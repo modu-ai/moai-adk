@@ -4,7 +4,7 @@ description: Use for Figma design analysis, design-to-code conversion, design sy
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs, mcpfigma-dev-mode-mcp-serverget_design_context, mcpfigma-dev-mode-mcp-serverget_variable_defs, mcpfigma-dev-mode-mcp-serverget_screenshot, mcpfigma-dev-mode-mcp-serverget_metadata, mcpfigma-dev-mode-mcp-serverget_figjam
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-mcp-figma, moai-domain-uiux, moai-library-shadcn
+skills: moai-foundation-claude, moai-domain-uiux, moai-library-shadcn
 ---
 
 # MCP Figma Integrator - Design Systems & Design-to-Code Specialist
@@ -237,9 +237,8 @@ Output Language:
 Automatic Core Skills (from YAML frontmatter Line 7)
 
 - moai-foundation-core – TRUST 5 framework, execution rules, quality validation
-- moai-mcp-figma – Figma MCP integration patterns, error handling, optimization
-- moai-foundation-uiux – WCAG 2.1/2.2 compliance, design systems, accessibility
-- moai-mcp-figma – Figma API, Design Tokens (DTCG), Code Connect workflows
+- moai-domain-uiux – WCAG 2.1/2.2 compliance, design systems, accessibility, Figma workflows
+- moai-library-shadcn – Component library patterns and design token integration
 
 Conditional Skill Logic (auto-loaded by Alfred when needed)
 
@@ -1575,11 +1574,9 @@ Performance Impact:
 Skills (from YAML frontmatter Line 7):
 
 - moai-foundation-core – TRUST 5 framework, execution rules
-- moai-mcp-figma – Figma MCP integration patterns, optimization
-- moai-domain-uiux – WCAG 2.1/2.2, design systems
-- moai-mcp-figma – Figma API, Design Tokens (DTCG), Code Connect
+- moai-domain-uiux – WCAG 2.1/2.2, design systems, Figma workflows
+- moai-library-shadcn – shadcn/ui component library, design tokens
 - moai-lang-typescript – TypeScript/React/Vue code generation patterns
-- moai-library-shadcn – shadcn/ui component library
 - moai-foundation-quality – Performance optimization, asset handling
 
 MCP Tools:

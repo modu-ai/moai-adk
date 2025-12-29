@@ -1,7 +1,7 @@
 ---
 name: moai-library-nextra
-description: Enterprise Nextra documentation framework with Next.js
-version: 2.0.0
+description: Enterprise Nextra documentation framework with Next.js. Use when building documentation sites, knowledge bases, or API reference documentation.
+version: 2.1.0
 modularized: true
 allowed-tools: Read, Write, Edit, Grep, Glob
 aliases:
@@ -31,12 +31,13 @@ Core Files:
 
 ### Features
 
-- Nextra documentation framework architecture patterns
-- Next.js 15 integration with optimal configuration
-- Theme customization and component overrides
+- Nextra 3.x/4.x documentation framework architecture patterns
+- Next.js 14/15 integration with optimal configuration
+- Theme customization via theme.config.tsx or Layout props
 - Advanced search with FlexSearch integration
 - Internationalization (i18n) support
 - MDX-powered content with React components
+- App Router support (Nextra 4.x) with Turbopack compatibility
 
 ### When to Use
 
@@ -282,7 +283,14 @@ Complementary Skills:
 
 ## Version History
 
-1.0.1 (2025-11-23)
+2.1.0 (2025-12-30)
+
+- Updated configuration.md with complete Nextra-specific theme.config.tsx patterns
+- Added Nextra 4.x App Router configuration patterns
+- Updated version compatibility for Next.js 14/15
+- Added Turbopack support documentation
+
+2.0.0 (2025-11-23)
 
 - Refactored with Progressive Disclosure
 - Configuration patterns highlighted

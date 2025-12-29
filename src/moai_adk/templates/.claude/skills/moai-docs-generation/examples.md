@@ -1,406 +1,252 @@
 # Documentation Generation Examples
 
-Multishot prompting examples demonstrating practical usage patterns for automated documentation generation.
+Practical examples demonstrating documentation generation patterns using real tools and workflows.
 
 ---
 
-## Example 1: Basic API Documentation Generation
+## Example 1: Sphinx Documentation for Python Package
 
-**Scenario**: Generate OpenAPI documentation from a FastAPI application.
+Scenario: Generate API documentation for a Python package using Sphinx with autodoc.
 
-**Input**:
-```python
-from moai_docs_generation import DocumentationGenerator
+Setup Steps:
 
-# Initialize generator
-doc_gen = DocumentationGenerator()
+1. Install Sphinx and extensions:
+   - pip install sphinx sphinx-autodoc-typehints sphinx-rtd-theme
 
-# Generate API documentation from FastAPI app
-api_docs = doc_gen.generate_api_docs(
-    source_file="src/app.py",
-    output_format="openapi",
-    include_examples=True
-)
-```
+2. Initialize Sphinx in docs directory:
+   - Run sphinx-quickstart docs
+   - Answer prompts for project name, author, version
 
-**Output**:
-```yaml
-openapi: 3.1.0
-info:
-  title: User Management API
-  version: 1.0.0
-  description: API for managing user accounts and authentication
+3. Configure docs/conf.py:
+   - Add parent directory to sys.path for module discovery
+   - Set extensions list to include autodoc, napoleon, viewcode
+   - Configure html_theme to sphinx_rtd_theme
+   - Set autodoc_member_order to bysource
 
-paths:
-  /users:
-    get:
-      summary: List all users
-      responses:
-        '200':
-          description: Successful response
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/User'
-              example:
-                - id: 1
-                  name: "John Doe"
-                  email: "john@example.com"
-```
+4. Generate API documentation:
+   - Run sphinx-apidoc -o docs/api src/mypackage
+   - This creates .rst files for each module
 
-**Explanation**: The generator analyzes FastAPI route decorators, Pydantic models, and docstrings to automatically produce OpenAPI 3.1 compliant documentation with examples.
+5. Build HTML documentation:
+   - Run make html in docs directory
+   - Output appears in docs/_build/html
+
+Result: Professional HTML documentation with automatically generated API reference from docstrings, syntax highlighting, and navigation sidebar.
 
 ---
 
-## Example 2: User Guide Generation from SPEC
+## Example 2: MkDocs with mkdocstrings
 
-**Scenario**: Create a comprehensive user guide from a SPEC document.
+Scenario: Create documentation site with automatic Python API docs using MkDocs Material.
 
-**Input**:
-```python
-from moai_docs_generation import DocumentationGenerator
+Setup Steps:
 
-doc_gen = DocumentationGenerator()
+1. Install MkDocs and plugins:
+   - pip install mkdocs mkdocs-material mkdocstrings mkdocstrings-python
 
-# SPEC data for feature
-spec_data = {
-    "id": "SPEC-001",
-    "title": "User Authentication System",
-    "description": "Secure user authentication with JWT tokens",
-    "requirements": [
-        "User registration with email verification",
-        "JWT token generation and refresh",
-        "Password reset via email"
-    ],
-    "api_endpoints": [
-        {"path": "/auth/login", "method": "POST"},
-        {"path": "/auth/register", "method": "POST"},
-        {"path": "/auth/refresh", "method": "POST"}
-    ]
-}
+2. Create mkdocs.yml configuration:
+   - Set site_name to project name
+   - Configure theme with name material
+   - Add mkdocstrings to plugins list
+   - Define nav structure with docs and API sections
 
-# Generate user guide
-user_guide = doc_gen.generate_user_guide(
-    spec_data=spec_data,
-    template="getting-started",
-    language="en"
-)
-```
+3. Create docs/api.md with mkdocstrings syntax:
+   - Use ::: mypackage.module.ClassName to document classes
+   - Use ::: mypackage.module.function_name for functions
+   - Configure options for rendering style
 
-**Output**:
-```markdown
-# User Authentication System Guide
+4. Serve locally for preview:
+   - Run mkdocs serve
+   - Access at http://localhost:8000
 
-## Getting Started
+5. Deploy to GitHub Pages:
+   - Run mkdocs gh-deploy
+   - Documentation available at username.github.io/repo
 
-This guide walks you through the user authentication system,
-including registration, login, and password management.
-
-### Prerequisites
-- API access credentials
-- Valid email address
-
-### Step 1: User Registration
-
-To create a new account, send a POST request to `/auth/register`:
-
-POST /auth/register
-Content-Type: application/json
-
-{
-  "email": "user@example.com",
-  "password": "securePassword123",
-  "name": "John Doe"
-}
-
-### Step 2: Email Verification
-Check your inbox for a verification email and click the link.
-
-### Step 3: Login
-After verification, authenticate using `/auth/login`:
-
-POST /auth/login
-Content-Type: application/json
-
-{
-  "email": "user@example.com",
-  "password": "securePassword123"
-}
-
-Response:
-{
-  "access_token": "eyJhbGc...",
-  "refresh_token": "eyJhbGc...",
-  "expires_in": 3600
-}
-```
-
-**Explanation**: The generator transforms SPEC requirements into step-by-step user guides with practical examples and clear instructions.
+Result: Modern documentation site with search, dark mode, and API documentation generated directly from Python docstrings.
 
 ---
 
-## Example 3: Multi-Format Documentation Export
+## Example 3: TypeDoc for TypeScript Library
 
-**Scenario**: Generate documentation in multiple formats for different audiences.
+Scenario: Generate API documentation for a TypeScript library.
 
-**Input**:
-```python
-from moai_docs_generation import DocumentationGenerator
+Setup Steps:
 
-doc_gen = DocumentationGenerator()
+1. Install TypeDoc:
+   - npm install typedoc --save-dev
 
-# Generate comprehensive documentation
-docs = doc_gen.generate_comprehensive_docs(
-    source_directory="./src",
-    include_api_docs=True,
-    include_user_guides=True,
-    output_formats=["markdown", "html", "pdf"]
-)
+2. Create typedoc.json configuration:
+   - Set entryPoints to src/index.ts
+   - Configure out to docs/api
+   - Enable includeVersion
+   - Set excludePrivate to true
 
-# Export to all formats
-export_results = doc_gen.export_to_formats(
-    documentation=docs,
-    output_dir="./docs/output",
-    formats=["markdown", "html", "pdf"],
-    options={
-        "html": {"theme": "modern", "responsive": True},
-        "pdf": {"page_size": "A4", "include_toc": True}
-    }
-)
-```
+3. Add documentation script to package.json:
+   - Add script docs:generate with command typedoc
 
-**Output**:
-```python
-{
-    "status": "success",
-    "exports": {
-        "markdown": {
-            "path": "./docs/output/markdown/",
-            "files": ["api-reference.md", "user-guide.md", "architecture.md"],
-            "size_kb": 145
-        },
-        "html": {
-            "path": "./docs/output/html/",
-            "files": ["index.html", "api-reference.html", "user-guide.html"],
-            "size_kb": 892,
-            "features": ["responsive", "search", "dark-mode"]
-        },
-        "pdf": {
-            "path": "./docs/output/pdf/complete-documentation.pdf",
-            "pages": 47,
-            "size_kb": 2340,
-            "includes_toc": True
-        }
-    }
-}
-```
+4. Write TSDoc comments in source:
+   - Add summary as first paragraph
+   - Use @param for each parameter
+   - Use @returns for return value
+   - Use @example for usage examples
 
-**Explanation**: The generator creates documentation in multiple formats simultaneously, with format-specific optimizations like responsive HTML and PDF table of contents.
+5. Generate documentation:
+   - Run npm run docs:generate
+   - HTML output in docs/api directory
+
+Result: Comprehensive TypeScript API documentation with type information, inheritance hierarchies, and source links.
+
+---
+
+## Example 4: OpenAPI from FastAPI
+
+Scenario: Generate and customize OpenAPI documentation for a FastAPI application.
+
+Enhancement Steps:
+
+1. Add detailed route docstrings:
+   - Include description of endpoint purpose
+   - Document expected behavior
+   - Note authentication requirements
+
+2. Configure Pydantic models:
+   - Add Field with description parameter
+   - Include example values
+   - Document validation rules
+
+3. Organize with tags:
+   - Add tags parameter to route decorators
+   - Define tag metadata in app setup
+   - Group related endpoints
+
+4. Access documentation:
+   - Swagger UI at /docs
+   - ReDoc at /redoc
+   - OpenAPI JSON at /openapi.json
+
+5. Export for external tools:
+   - Save openapi.json to file
+   - Use with Postman, Stoplight, or SDK generators
+
+Result: Interactive API documentation with try-it-out feature, automatically updated as code changes.
+
+---
+
+## Example 5: Docusaurus Documentation Site
+
+Scenario: Create a comprehensive documentation site with tutorials and API reference.
+
+Setup Steps:
+
+1. Initialize Docusaurus:
+   - Run npx create-docusaurus@latest my-docs classic
+
+2. Configure docusaurus.config.js:
+   - Set title, tagline, and url
+   - Configure navbar with documentation links
+   - Add footer with resources
+   - Enable search with Algolia
+
+3. Organize documentation:
+   - Create tutorial section in docs/tutorials
+   - Add getting-started guide
+   - Include API reference section
+   - Add blog for updates
+
+4. Add sidebar configuration:
+   - Create sidebars.js with category structure
+   - Use autogenerated sidebars for large sections
+   - Add custom ordering where needed
+
+5. Deploy to hosting:
+   - Build with npm run build
+   - Deploy to Vercel, Netlify, or GitHub Pages
+
+Result: Full-featured documentation site with versioning, search, blog, and responsive design.
+
+---
+
+## Example 6: CI/CD Documentation Pipeline
+
+Scenario: Automate documentation generation and deployment in GitHub Actions.
+
+Workflow Steps:
+
+1. Create .github/workflows/docs.yml:
+   - Trigger on push to main branch
+   - Trigger on changes to src or docs directories
+
+2. Setup job with checkout and runtime:
+   - Use actions/checkout
+   - Setup Python or Node.js as needed
+
+3. Install documentation dependencies:
+   - For Python: pip install sphinx or mkdocs
+   - For Node: npm ci
+
+4. Generate documentation:
+   - Run appropriate build command
+   - Validate output exists
+
+5. Deploy to GitHub Pages:
+   - Use peaceiris/actions-gh-pages action
+   - Configure publish directory
+   - Set custom domain if needed
+
+Result: Documentation automatically rebuilt and deployed on every code change, keeping docs in sync with code.
 
 ---
 
 ## Common Patterns
 
-### Pattern 1: Continuous Documentation Integration
+### Pattern 1: Documentation as Code
 
-Automatically update documentation when code changes:
+Treat documentation like source code:
+- Store in version control alongside code
+- Review documentation changes in pull requests
+- Use CI/CD to build and deploy
+- Track issues for documentation improvements
 
-```python
-# In pre-commit hook
-from moai_docs_generation import DocumentationGenerator
+### Pattern 2: Single Source of Truth
 
-def pre_commit_docs_update():
-    doc_gen = DocumentationGenerator()
+Generate documentation from authoritative sources:
+- API docs from code annotations and types
+- Configuration docs from schema files
+- Architecture docs from diagrams-as-code
 
-    # Get changed files
-    changed_files = get_git_staged_files()
+### Pattern 3: Progressive Documentation
 
-    # Update documentation for changed files only
-    doc_gen.update_documentation_for_files(
-        files=changed_files,
-        validate_links=True,
-        update_timestamps=True
-    )
-
-    # Stage updated documentation
-    stage_updated_docs()
-```
-
-### Pattern 2: AI-Enhanced Documentation
-
-Use AI to enhance documentation quality:
-
-```python
-from moai_docs_generation import DocumentationGenerator
-
-doc_gen = DocumentationGenerator()
-
-# Generate with AI enhancement
-enhanced_docs = doc_gen.generate_with_ai(
-    source_code="./src/",
-    enhancement_level="comprehensive",
-    options={
-        "include_examples": True,
-        "include_troubleshooting": True,
-        "include_best_practices": True,
-        "generate_diagrams": True
-    }
-)
-```
-
-### Pattern 3: Documentation Quality Validation
-
-Validate documentation completeness and accuracy:
-
-```python
-from moai_docs_generation import DocumentationGenerator
-
-doc_gen = DocumentationGenerator()
-
-# Validate documentation
-quality_report = doc_gen.validate_documentation(
-    docs_path="./docs",
-    completeness_threshold=0.9,
-    include_example_validation=True,
-    check_link_integrity=True,
-    check_code_samples=True
-)
-
-# Report structure
-# {
-#     "completeness_score": 0.92,
-#     "broken_links": [],
-#     "missing_sections": ["troubleshooting"],
-#     "invalid_examples": [],
-#     "recommendations": ["Add error handling examples"]
-# }
-```
+Layer documentation for different audiences:
+- Quick start for new users
+- Tutorials for learning
+- How-to guides for tasks
+- Reference for lookup
+- Explanation for understanding
 
 ---
 
-## Anti-Patterns (Patterns to Avoid)
+## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Monolithic Documentation Generation
+### Anti-Pattern 1: Orphaned Documentation
 
-**Problem**: Generating all documentation in a single call without structure.
+Problem: Documentation stored separately from code becomes outdated.
 
-```python
-# Incorrect approach
-doc_gen.generate_all(source="./", output="./docs/all.md")
-```
+Solution: Keep documentation in same repository, update in same PRs as code changes.
 
-**Solution**: Use structured generation with clear separation of concerns.
+### Anti-Pattern 2: Over-Documentation
 
-```python
-# Correct approach
-api_docs = doc_gen.generate_api_docs(source="./src/api")
-user_docs = doc_gen.generate_user_guide(source="./src/features")
-arch_docs = doc_gen.generate_architecture_docs(source="./src")
+Problem: Documenting obvious code clutters documentation and increases maintenance.
 
-doc_gen.compile_documentation(
-    sections=[api_docs, user_docs, arch_docs],
-    output_structure="hierarchical"
-)
-```
+Solution: Document why, not what. Focus on non-obvious decisions and usage patterns.
 
-### Anti-Pattern 2: Ignoring Documentation Validation
+### Anti-Pattern 3: No Documentation Ownership
 
-**Problem**: Publishing documentation without validation leads to broken links and outdated examples.
+Problem: No clear ownership leads to documentation decay.
 
-```python
-# Incorrect approach
-doc_gen.generate_and_publish(source="./src", deploy=True)
-```
-
-**Solution**: Always validate before publishing.
-
-```python
-# Correct approach
-docs = doc_gen.generate_documentation(source="./src")
-
-validation = doc_gen.validate_documentation(docs)
-if validation["completeness_score"] >= 0.9 and not validation["broken_links"]:
-    doc_gen.publish(docs, platform="github-pages")
-else:
-    raise DocumentationQualityError(validation["issues"])
-```
-
-### Anti-Pattern 3: Manual Format Conversion
-
-**Problem**: Manually converting documentation between formats introduces inconsistencies.
-
-```python
-# Incorrect approach
-markdown_docs = doc_gen.generate_markdown(source="./src")
-# Then manually converting to HTML using external tools
-```
-
-**Solution**: Use integrated multi-format export.
-
-```python
-# Correct approach
-doc_gen.export_to_formats(
-    documentation=docs,
-    formats=["markdown", "html", "pdf"],
-    maintain_consistency=True
-)
-```
+Solution: Assign documentation responsibilities, include in code review process.
 
 ---
 
-## Integration Examples
-
-### CI/CD Pipeline Integration
-
-```yaml
-# .github/workflows/docs.yml
-name: Documentation Generation
-
-on:
-  push:
-    branches: [main]
-    paths:
-      - 'src/**'
-      - 'docs/**'
-
-jobs:
-  generate-docs:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Generate Documentation
-        run: |
-          moai docs:generate --source ./src --output ./docs
-          moai docs:validate --path ./docs --threshold 0.9
-
-      - name: Deploy to GitHub Pages
-        if: success()
-        run: |
-          moai docs:deploy --platform github-pages --branch gh-pages
-```
-
-### Slack Notification on Documentation Updates
-
-```python
-from moai_docs_generation import DocumentationGenerator, notify_slack
-
-doc_gen = DocumentationGenerator()
-
-# Generate and validate
-docs = doc_gen.generate_documentation(source="./src")
-validation = doc_gen.validate_documentation(docs)
-
-# Notify team
-notify_slack(
-    channel="#documentation",
-    message=f"Documentation updated: {validation['completeness_score']*100:.1f}% complete",
-    details=validation
-)
-```
-
----
-
-*For additional patterns and advanced configurations, see the `modules/` directory.*
+Version: 2.0.0
+Last Updated: 2025-12-30

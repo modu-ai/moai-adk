@@ -2,156 +2,119 @@
 
 Advanced patterns for custom template development, performance optimization, and integration workflows.
 
+---
+
 ## Custom Template Development
 
-Documentation Templates:
-```python
-# Custom template for specific project type
-custom_template = {
- "project_type": "mobile_application",
- "language": "ko",
- "sections": {
- "product": {
- "mission": " ",
- "metrics": [" ", " ", " "],
- "success_criteria": " "
- },
- "tech": {
- "frameworks": ["Flutter", "React Native", "Swift"],
- "performance_targets": " "
- }
- }
-}
+### Documentation Templates
 
-# Generate custom documentation
-docs = project.documentation_manager._generate_product_doc(
- "mobile_application", "ko"
-)
-```
+To create a custom template for a specific project type, define the following structure:
 
-Language-Specific Customization:
-```python
-# Add custom language support
-custom_language_config = {
- "code": "de",
- "name": "German",
- "native_name": "Deutsch",
- "locale": "de_DE.UTF-8",
- "date_format": "%d.%m.%Y",
- "rtl": False
-}
+Template Configuration Fields:
+- Project type: Specify the target project type such as mobile_application, web_application, or cli_tool
+- Language: Set the primary language code
+- Sections: Define the documentation sections
 
-# Register custom language
-project.language_initializer.LANGUAGE_CONFIG["de"] = custom_language_config
-```
+For Product Section Configuration:
+- Mission: Define the product mission statement
+- Metrics: List the key performance indicators
+- Success criteria: Define measurable success conditions
+
+For Technical Section Configuration:
+- Frameworks: List the technology frameworks used
+- Performance targets: Define performance requirements
+
+After configuring the template, generate documentation by specifying the project type and language parameters.
+
+### Language-Specific Customization
+
+To add support for a custom language, configure the following fields:
+- Code: The language code such as "de" for German
+- Name: The display name in English such as "German"
+- Native name: The display name in the native language such as "Deutsch"
+- Locale: The system locale string such as "de_DE.UTF-8"
+- Date format: The date formatting pattern
+- RTL: Whether the language uses right-to-left text direction
+
+After defining the custom language configuration, register it with the language initialization system.
+
+---
 
 ## Performance Optimization Strategies
 
-Template Caching:
-```python
-# Enable template caching for performance
-project.template_optimizer.optimization_cache = {}
+### Template Caching
 
-# Cache optimization results
-def cached_optimization(template_path):
- cache_key = f"opt_{template_path}_{datetime.now().strftime('%Y%m%d')}"
- 
- if cache_key not in project.template_optimizer.optimization_cache:
- result = project.template_optimizer._optimize_template_file(template_path)
- project.template_optimizer.optimization_cache[cache_key] = result
- 
- return project.template_optimizer.optimization_cache[cache_key]
-```
+To enable template caching for improved performance:
 
-Batch Processing:
-```python
-# Process multiple templates efficiently
-def batch_optimize_templates(template_paths):
- results = []
- 
- for template_path in template_paths:
- try:
- result = project.template_optimizer._optimize_template_file(template_path)
- results.append(result)
- except Exception as e:
- results.append({
- "file_path": template_path,
- "success": False,
- "error": str(e)
- })
- 
- return results
-```
+Step 1: Initialize an empty cache storage for optimization results
+
+Step 2: Implement cached optimization by following this process:
+- Generate a cache key using the template path and current date
+- Check if the cache key exists in the optimization cache
+- If the key does not exist, execute the template optimization and store the result
+- If the key exists, retrieve the cached result
+
+Step 3: Use the cached optimization function for all template operations to avoid redundant processing
+
+### Batch Processing
+
+To process multiple templates efficiently:
+
+Step 1: Collect the list of template file paths to process
+
+Step 2: For each template in the list:
+- Attempt to optimize the template file
+- If successful: Add the result to the results collection
+- If an error occurs: Record the file path, mark success as false, and include the error message
+
+Step 3: Return the complete results collection for review
+
+---
 
 ## Integration Workflows
 
-Complete Project Lifecycle:
-```python
-def full_project_lifecycle():
- """Complete project setup and management workflow."""
- 
- # Phase 1: Project Initialization
- project = MoaiMenuProject("./new-project")
- init_result = project.initialize_complete_project(
- language="en",
- domains=["backend", "frontend"],
- optimization_enabled=True
- )
- 
- # Phase 2: Feature Development with SPEC
- spec_data = {
- "id": "SPEC-001",
- "title": "Core Feature Implementation",
- "requirements": ["Requirement 1", "Requirement 2"],
- "api_endpoints": [/* ... */]
- }
- 
- docs_result = project.generate_documentation_from_spec(spec_data)
- 
- # Phase 3: Performance Optimization
- optimization_result = project.optimize_project_templates()
- 
- # Phase 4: Documentation Export
- export_result = project.export_project_documentation("html")
- 
- # Phase 5: Backup Creation
- backup_result = project.create_project_backup()
- 
- return {
- "initialization": init_result,
- "documentation": docs_result,
- "optimization": optimization_result,
- "export": export_result,
- "backup": backup_result
- }
-```
+### Complete Project Lifecycle
 
-Multilingual Project Management:
-```python
-def multilingual_project_workflow():
- """Manage multilingual project with cost optimization."""
- 
- project = MoaiMenuProject("./multilingual-project")
- 
- # Initialize with primary language
- init_result = project.initialize_complete_project(
- language="ko",
- user_name=" ",
- domains=["backend", "frontend"]
- )
- 
- # Optimize agent prompts for cost (use English)
- lang_update = project.update_language_settings({
- "language.agent_prompt_language": "english"
- })
- 
- # Generate documentation in multiple languages
- for lang in ["ko", "en", "ja"]:
- export_result = project.export_project_documentation("markdown", lang)
- print(f"{lang} documentation exported: {export_result['success']}")
- 
- return init_result
-```
+The full project lifecycle workflow consists of five phases:
+
+Phase 1 - Project Initialization:
+- Create a new project instance with the target directory
+- Execute complete initialization with language, domains, and optimization settings
+
+Phase 2 - Feature Development with SPEC:
+- Prepare SPEC data with identifier, title, requirements, and API endpoint definitions
+- Generate documentation from the SPEC data
+
+Phase 3 - Performance Optimization:
+- Execute template optimization to improve performance and reduce file sizes
+
+Phase 4 - Documentation Export:
+- Export project documentation to the desired format such as HTML, Markdown, or PDF
+
+Phase 5 - Backup Creation:
+- Create a complete project backup for safety and version control
+
+Review the results from each phase to verify successful completion.
+
+### Multilingual Project Management
+
+To manage a multilingual project with cost optimization:
+
+Step 1: Initialize the project with the primary language
+- Set the language to the primary user language such as Korean
+- Configure the user name for personalization
+- Specify the project domains
+
+Step 2: Optimize agent prompts for cost efficiency
+- Update the agent prompt language setting to English
+- This reduces token usage while maintaining user-facing localization
+
+Step 3: Generate documentation in multiple languages
+- For each target language such as Korean, English, and Japanese:
+  - Export documentation in Markdown format for the specified language
+  - Verify successful export completion
+
+Step 4: Review the initialization and export results to confirm multilingual setup
 
 ---
 

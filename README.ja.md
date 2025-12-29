@@ -36,7 +36,7 @@ MoAI-ADK (Agentic Development Kit)は、**SPEC-First 開発**、**テスト駆�
 | セクション                                               | 目標                   |
 | -------------------------------------------------------- | ---------------------- |
 | [8. エージェントガイド](#8-エージェントガイド-24個)      | 専門エージェントの活用 |
-| [9. スキルライブラリ](#9-スキルライブラリ-50-個)          | 50 個のスキル探索      |
+| [9. スキルライブラリ](#9-スキルライブラリ-47-個)          | 47 個のスキル探索      |
 | [10. 組み合わせパターンと例](#10-組み合わせパターンと例) | 実際のプロジェクト例   |
 | [11. TRUST 5 品質保証](#11-trust-5-品質保証)             | 品質保証システム       |
 | [12. 高度な機能](#12-高度な機能)                         | Git Worktree & 強化されたログ管理 |
@@ -690,9 +690,9 @@ flowchart LR
 
 ---
 
-### 🌳 **moai-worktree** - 並列 SPEC 開発のための Git ワークツリー管理
+### 🌳 **moai-workflow-worktree** - 並列 SPEC 開発のための Git ワークツリー管理
 
-#### moai-worktree が必要な理由: 解決する問題
+#### moai-workflow-worktree が必要な理由: 解決する問題
 
 現代ソフトウェア開発、特に SPEC-First TDD 方法論に従う時、開発者は同時に複数の機能を作業する問題に頻繁に直面します。従来の Git ワークフローは開発者に次を強制します：
 
@@ -700,7 +700,7 @@ flowchart LR
 - **逐次開発**: 一度に一つの SPEC み作業して生産性低下
 - **環境衝突**: 違う SPEC は違う依存関係、データベース状態または設定が必要な場合がある
 
-**moai-worktree はこの問題を解決**し、各 SPEC に対して分離されたワークスペースを提供し、コンテキストスイッチングオーバーヘッドなしで真の並列開発を可能にします。
+**moai-workflow-worktree はこの問題を解決**し、各 SPEC に対して分離されたワークスペースを提供し、コンテキストスイッチングオーバーヘッドなしで真の並列開発を可能にします。
 
 #### 核心概念: SPEC ベース並列開発
 
@@ -713,7 +713,7 @@ Git ワークツリーは同一 Git リポジトリに接続された別の作�
 - 分離されたビルド成果物および依存関係
 - 独自のステージング領域およびステージングされていない変更
 
-**moai-worktree アーキテクチャ：**
+**moai-workflow-worktree アーキテクチャ：**
 
 ```
 メインリポジトリ/
@@ -766,20 +766,20 @@ Git ワークツリーは同一 Git リポジトリに接続された別の作�
 
 ```bash
 # すべてのワークツリーを最新メインブランチと同期
-moai-worktree sync --all
+moai-workflow-worktree sync --all
 
 # 衝突解決で特定ワークツリー同期
-moai-worktree sync SPEC-001 --auto-resolve
+moai-workflow-worktree sync SPEC-001 --auto-resolve
 ```
 
 **知能的整理**
 
 ```bash
 # マージされたブランチワークツリー自動削除
-moai-worktree clean --merged-only
+moai-workflow-worktree clean --merged-only
 
 # 確認プロンプトが含まれた安全整理
-moai-worktree clean --interactive
+moai-workflow-worktree clean --interactive
 ```
 
 **性能最適化**
@@ -788,7 +788,7 @@ moai-worktree clean --interactive
 - **共有履歴**: すべてのワークツリーは同一 Git オブジェクトデータベース共有
 - **選択的同期**: 必要時のみ変更事項を同期、全体リポジトリはしない
 
-#### moai-worktree 使用時期
+#### moai-workflow-worktree 使用時期
 
 **理想的シナリオ：**
 
@@ -810,7 +810,7 @@ moai-worktree clean --interactive
 # 方法2: 手動ワークツリー生成
 > /moai:1-plan 'ユーザー認証システム実装'
 # SPEC-AUTH-001 生成完了
-moai-worktree new SPEC-AUTH-001
+moai-workflow-worktree new SPEC-AUTH-001
 # → 分離されたワークツリー環境生成
 ```
 
@@ -818,11 +818,11 @@ moai-worktree new SPEC-AUTH-001
 
 ```bash
 # ワークツリーに移動（推奨方式）
-moai-worktree go SPEC-AUTH-001
+moai-workflow-worktree go SPEC-AUTH-001
 # → cd ~/moai/worktrees/MoAI-ADK/SPEC-AUTH-001
 
 # または新しいシェルで直接移動
-moai-worktree switch SPEC-AUTH-001
+moai-workflow-worktree switch SPEC-AUTH-001
 # → 新しいターミナルでワークツリーに移動
 ```
 
@@ -834,7 +834,7 @@ moai-worktree switch SPEC-AUTH-001
 # → RED → GREEN → REFACTOR サイクル実行
 
 # 開発中状態確認
-moai-worktree status
+moai-workflow-worktree status
 git status
 git log --oneline -5
 
@@ -847,13 +847,13 @@ git commit -m "Auth: Implement user login endpoint"
 
 ```bash
 # メインブランチ変更事項取得
-moai-worktree sync SPEC-AUTH-001
+moai-workflow-worktree sync SPEC-AUTH-001
 
 # 自動衝突解決で同期
-moai-worktree sync SPEC-AUTH-001 --auto-resolve
+moai-workflow-worktree sync SPEC-AUTH-001 --auto-resolve
 
 # すべてのワークツリー同期
-moai-worktree sync --all --auto-resolve
+moai-workflow-worktree sync --all --auto-resolve
 ```
 
 **5段階: 開発完了およびテスト（自動化）**
@@ -884,7 +884,7 @@ moai-worktree sync --all --auto-resolve
 
 ```bash
 # 1. ワークツリーからメインに移動
-moai-worktree go SPEC-AUTH-001  # または cd /path/to/main/repo
+moai-workflow-worktree go SPEC-AUTH-001  # または cd /path/to/main/repo
 
 # 2. ワークツリーブランチ取得
 git fetch origin feature/SPEC-AUTH-001
@@ -937,11 +937,11 @@ git rebase main  # 代わりに rebase 使用
 # - 整理完了報告
 ```
 
-**オプション B: 直接 moai-worktree コマンド（上級者向け）**
+**オプション B: 直接 moai-workflow-worktree コマンド（上級者向け）**
 
 ```bash
 # 1. ワークツリー状態最終確認
-moai-worktree status
+moai-workflow-worktree status
 # 出力例：
 # SPEC-AUTH-001
 #   Branch: feature/SPEC-AUTH-001
@@ -949,41 +949,41 @@ moai-worktree status
 #   Path:   ~/moai/worktrees/MoAI-ADK/SPEC-AUTH-001
 
 # 2. ワークツリー整理（安全な方法）
-moai-worktree clean --merged-only
+moai-workflow-worktree clean --merged-only
 # → マージされたブランチのワークツリーのみ自動削除
 
 # 3. または対話型整理（選択的削除）
-moai-worktree clean --interactive
+moai-workflow-worktree clean --interactive
 # → 削除するワークツリー選択可能
 
 # 4. 特定ワークツリー直接削除（強制）
-moai-worktree remove SPEC-AUTH-001 --force
+moai-workflow-worktree remove SPEC-AUTH-001 --force
 
 # 5. 全体ワークツリー状態確認
-moai-worktree list
+moai-workflow-worktree list
 # または
-moai-worktree status
+moai-workflow-worktree status
 ```
 
 **実用的なワークツリー管理コマンド集：**
 
 ```bash
 # 日常的なワークツリー管理
-moai-worktree list                    # すべてのワークツリーリスト
-moai-worktree status                  # 詳細状態確認
-moai-worktree sync SPEC-AUTH-001      # 特定ワークツリー同期
-moai-worktree sync --all              # すべてのワークツリー同期
+moai-workflow-worktree list                    # すべてのワークツリーリスト
+moai-workflow-worktree status                  # 詳細状態確認
+moai-workflow-worktree sync SPEC-AUTH-001      # 特定ワークツリー同期
+moai-workflow-worktree sync --all              # すべてのワークツリー同期
 
 # ワークツリー移動および作業
-moai-worktree go SPEC-001     # 現在シェルで移動
-moai-worktree switch SPEC-001         # 新しいシェルでワークツリー開く
+moai-workflow-worktree go SPEC-001     # 現在シェルで移動
+moai-workflow-worktree switch SPEC-001         # 新しいシェルでワークツリー開く
 
 # 衝突自動解決
-moai-worktree sync SPEC-AUTH-001 --auto-resolve
+moai-workflow-worktree sync SPEC-AUTH-001 --auto-resolve
 
 # 設定確認
-moai-worktree config get              # 現在設定表示
-moai-worktree config root             # ワークツリールートパス確認
+moai-workflow-worktree config get              # 現在設定表示
+moai-workflow-worktree config root             # ワークツリールートパス確認
 ```
 
 **混合ワークフロー推奨パターン：**
@@ -995,8 +995,8 @@ moai-worktree config root             # ワークツリールートパス確認
 > /moai:3-sync SPEC-XXX
 
 # 段階6-7: 直接コマンド（精密制御）
-moai-worktree sync SPEC-XXX --auto-resolve  # 衝突自動解決
-moai-worktree clean --merged-only           # 完了されたワークツリー整理
+moai-workflow-worktree sync SPEC-XXX --auto-resolve  # 衝突自動解決
+moai-workflow-worktree clean --merged-only           # 完了されたワークツリー整理
 ```
 
 ---
@@ -1005,40 +1005,40 @@ moai-worktree clean --merged-only           # 完了されたワークツリー�
 
 このセクションでは Claude Code 自動化と並行して使用できる直接コマンドを詳細に説明します。
 
-#### **基本 moai-worktree コマンド**
+#### **基本 moai-workflow-worktree コマンド**
 
 | コマンド               | 目的                   | 使用例                       | 説明                              |
 | ---------------------- | ---------------------- | --------------------------- | --------------------------------- |
-| `moai-worktree new`    | 新しいワークツリー生成   | `moai-worktree new SPEC-001` | SPEC-001 のための分離された作業空間生成 |
-| `moai-worktree list`   | ワークツリーリスト      | `moai-worktree list`         | すべてのアクティブワークツリー表示 |
-| `moai-worktree go`     | ワークツリー移動        | `moai-worktree go SPEC-001`  | 現在シェルでワークツリーに移動  |
-| `moai-worktree switch` | 新しいシェルでワークツリー開く | `moai-worktree switch SPEC-001` | 新しいターミナルでワークツリーに移動 |
-| `moai-worktree remove` | ワークツリー削除        | `moai-worktree remove SPEC-001` | 特定ワークツリー削除            |
-| `moai-worktree status` | 状態確認               | `moai-worktree status`       | すべてのワークツリー状態表示     |
+| `moai-workflow-worktree new`    | 新しいワークツリー生成   | `moai-workflow-worktree new SPEC-001` | SPEC-001 のための分離された作業空間生成 |
+| `moai-workflow-worktree list`   | ワークツリーリスト      | `moai-workflow-worktree list`         | すべてのアクティブワークツリー表示 |
+| `moai-workflow-worktree go`     | ワークツリー移動        | `moai-workflow-worktree go SPEC-001`  | 現在シェルでワークツリーに移動  |
+| `moai-workflow-worktree switch` | 新しいシェルでワークツリー開く | `moai-workflow-worktree switch SPEC-001` | 新しいターミナルでワークツリーに移動 |
+| `moai-workflow-worktree remove` | ワークツリー削除        | `moai-workflow-worktree remove SPEC-001` | 特定ワークツリー削除            |
+| `moai-workflow-worktree status` | 状態確認               | `moai-workflow-worktree status`       | すべてのワークツリー状態表示     |
 
 #### **同期コマンド**
 
 | コマンド                              | 目的                   | 使用例                                  | 説明                      |
 | ----------------------------------- | ---------------------- | -------------------------------------- | ------------------------- |
-| `moai-worktree sync`                | 特定ワークツリー同期     | `moai-worktree sync SPEC-001`          | メインブランチと変更事項同期 |
-| `moai-worktree sync --all`          | すべてのワークツリー同期 | `moai-worktree sync --all`             | すべてのワークツリーを一度に同期 |
-| `moai-worktree sync --auto-resolve` | 自動衝突解決           | `moai-worktree sync SPEC-001 --auto-resolve` | 衝突発生時自動解決試行     |
-| `moai-worktree sync --rebase`       | Rebase ベース同期       | `moai-worktree sync SPEC-001 --rebase` | マージの代わりに rebase 使用 |
+| `moai-workflow-worktree sync`                | 特定ワークツリー同期     | `moai-workflow-worktree sync SPEC-001`          | メインブランチと変更事項同期 |
+| `moai-workflow-worktree sync --all`          | すべてのワークツリー同期 | `moai-workflow-worktree sync --all`             | すべてのワークツリーを一度に同期 |
+| `moai-workflow-worktree sync --auto-resolve` | 自動衝突解決           | `moai-workflow-worktree sync SPEC-001 --auto-resolve` | 衝突発生時自動解決試行     |
+| `moai-workflow-worktree sync --rebase`       | Rebase ベース同期       | `moai-workflow-worktree sync SPEC-001 --rebase` | マージの代わりに rebase 使用 |
 
 #### **整理コマンド**
 
 | コマンド                              | 目的                     | 使用例                           | 説明                            |
 | ----------------------------------- | ------------------------ | -------------------------------- | ------------------------------- |
-| `moai-worktree clean`               | ワークツリー整理          | `moai-worktree clean`             | すべてのワークツリー整理         |
-| `moai-worktree clean --merged-only` | マージされたワークツリーのみ整理 | `moai-worktree clean --merged-only` | マージされたブランチのワークツリーのみ削除 |
-| `moai-worktree clean --interactive` | 対話型整理              | `moai-worktree clean --interactive` | 削除するワークツリー選択可能     |
+| `moai-workflow-worktree clean`               | ワークツリー整理          | `moai-workflow-worktree clean`             | すべてのワークツリー整理         |
+| `moai-workflow-worktree clean --merged-only` | マージされたワークツリーのみ整理 | `moai-workflow-worktree clean --merged-only` | マージされたブランチのワークツリーのみ削除 |
+| `moai-workflow-worktree clean --interactive` | 対話型整理              | `moai-workflow-worktree clean --interactive` | 削除するワークツリー選択可能     |
 
 #### **設定コマンド**
 
 | コマンド                      | 目的           | 使用例                 | 説明                           |
 | --------------------------- | -------------- | --------------------- | ------------------------------ |
-| `moai-worktree config`      | 設定表示      | `moai-worktree config` | 現在ワークツリー設定表示         |
-| `moai-worktree config root` | ルートパス確認 | `moai-worktree config root` | ワークツリールートディレクトリパス確認 |
+| `moai-workflow-worktree config`      | 設定表示      | `moai-workflow-worktree config` | 現在ワークツリー設定表示         |
+| `moai-workflow-worktree config root` | ルートパス確認 | `moai-workflow-worktree config root` | ワークツリールートディレクトリパス確認 |
 
 #### **高度な使用パターン**
 
@@ -1046,25 +1046,25 @@ moai-worktree clean --merged-only           # 完了されたワークツリー�
 
 ```bash
 # 複数 SPEC 同時に生成
-moai-worktree new SPEC-AUTH-001    # ユーザー認証
-moai-worktree new SPEC-PAY-002     # 決済システム
-moai-worktree new SPEC-UI-003      # UI 改善
+moai-workflow-worktree new SPEC-AUTH-001    # ユーザー認証
+moai-workflow-worktree new SPEC-PAY-002     # 決済システム
+moai-workflow-worktree new SPEC-UI-003      # UI 改善
 
 # 各ワークツリー状態確認
-moai-worktree status
+moai-workflow-worktree status
 
 # すべてのワークツリー同期
-moai-worktree sync --all --auto-resolve
+moai-workflow-worktree sync --all --auto-resolve
 ```
 
 **2. 衝突自動解決ワークフロー**
 
 ```bash
 # 1段階: 自動同期試行
-moai-worktree sync SPEC-001 --auto-resolve
+moai-workflow-worktree sync SPEC-001 --auto-resolve
 
 # 2段階: 自動解決失敗時手動介入
-moai-worktree go SPEC-001
+moai-workflow-worktree go SPEC-001
 git status  # 衝突ファイル確認
 
 # 3段階: 衝突解決戦略選択
@@ -1081,14 +1081,14 @@ git commit -m "Resolve: Auto-resolved conflicts in SPEC-001"
 
 ```bash
 # 毎朝実行推奨
-moai-worktree status                      # 現在状態確認
-moai-worktree sync --all                  # すべてのワークツリー同期
+moai-workflow-worktree status                      # 現在状態確認
+moai-workflow-worktree sync --all                  # すべてのワークツリー同期
 
 # 毎週実行推奨
-moai-worktree clean --merged-only         # 完了されたワークツリー整理
+moai-workflow-worktree clean --merged-only         # 完了されたワークツリー整理
 
 # 毎月実行推奨
-moai-worktree clean --interactive         # 対話型整理で不要なワークツリー削除
+moai-workflow-worktree clean --interactive         # 対話型整理で不要なワークツリー削除
 ```
 
 #### **Claude Code とコマンド組合せガイド**
@@ -1102,9 +1102,9 @@ moai-worktree clean --interactive         # 対話型整理で不要なワーク
 /moai:3-sync SPEC-001
 
 # 段階4-5: 直接コマンドで基本管理
-moai-worktree status                      # 状態確認
-moai-worktree sync SPEC-001               # 同期
-moai-worktree clean --merged-only         # 整理
+moai-workflow-worktree status                      # 状態確認
+moai-workflow-worktree sync SPEC-001               # 同期
+moai-workflow-worktree clean --merged-only         # 整理
 ```
 
 **中級者ユーザー：**
@@ -1115,27 +1115,27 @@ moai-worktree clean --merged-only         # 整理
 > /moai:2-run SPEC-PAY-001
 
 # 段階3: 直接コマンドで精密制御
-moai-worktree go SPEC-PAY-001
+moai-workflow-worktree go SPEC-PAY-001
 # 直接開発およびテスト
 git add .
 git commit -m "Pay: Implement core payment processing"
 
 # 段階4-5: 混合接近
 > /moai:3-sync SPEC-PAY-001                 # 自動化で品質検証
-moai-worktree sync SPEC-PAY-001 --auto-resolve  # 直接同期
+moai-workflow-worktree sync SPEC-PAY-001 --auto-resolve  # 直接同期
 ```
 
 **上級者ユーザー：**
 
 ```bash
 # 全過程を直接コマンドで制御
-moai-worktree new SPEC-ADV-001
-moai-worktree go SPEC-ADV-001
+moai-workflow-worktree new SPEC-ADV-001
+moai-workflow-worktree go SPEC-ADV-001
 # 完全な手動開発プロセス
 git add .
 git commit -m "Adv: Complex feature implementation"
-moai-worktree sync SPEC-ADV-001 --rebase
-moai-worktree clean --interactive
+moai-workflow-worktree sync SPEC-ADV-001 --rebase
+moai-workflow-worktree clean --interactive
 ```
 
 **生産性ヒント：**
@@ -1143,12 +1143,12 @@ moai-worktree clean --interactive
 1. **エイリアス設定** ( ~/.zshrc または ~/.bashrc に追加):
 
 ```bash
-alias wt-new='moai-worktree new'
-alias wt-go='moai-worktree go'
-alias wt-list='moai-worktree list'
-alias wt-status='moai-worktree status'
-alias wt-sync='moai-worktree sync'
-alias wt-clean='moai-worktree clean'
+alias wt-new='moai-workflow-worktree new'
+alias wt-go='moai-workflow-worktree go'
+alias wt-list='moai-workflow-worktree list'
+alias wt-status='moai-workflow-worktree status'
+alias wt-sync='moai-workflow-worktree sync'
+alias wt-clean='moai-workflow-worktree clean'
 ```
 
 2. **迅速ワークフロー関数**:
@@ -1156,8 +1156,8 @@ alias wt-clean='moai-worktree clean'
 ```bash
 # ワークツリー迅速生成および移動
 wt-dev() {
-    moai-worktree new "SPEC-$1"
-    moai-worktree go "SPEC-$1"
+    moai-workflow-worktree new "SPEC-$1"
+    moai-workflow-worktree go "SPEC-$1"
 }
 
 # 使用法: wt-dev AUTH-001
@@ -1190,9 +1190,9 @@ MoAI-ADK は **Claude Code 自動化**と **直接コマンド制御**の利点�
 > /moai:2-run SPEC-001
 
 # 2段階: 直接コマンドで基本管理
-moai-worktree status
-moai-worktree sync SPEC-001
-moai-worktree clean --merged-only
+moai-workflow-worktree status
+moai-workflow-worktree sync SPEC-001
+moai-workflow-worktree clean --merged-only
 
 # 3段階: 自動化で完了
 > /moai:3-sync SPEC-001
@@ -1205,8 +1205,8 @@ moai-worktree clean --merged-only
 > /moai:1-plan "複雑な機能"
 
 # 2段階: 直接制御で詳細実装
-moai-worktree new SPEC-001
-moai-worktree go SPEC-001
+moai-workflow-worktree new SPEC-001
+moai-workflow-worktree go SPEC-001
 # 詳細な開発作業
 
 # 3段階: 自動化で品質保証
@@ -1217,8 +1217,8 @@ moai-worktree go SPEC-001
 
 ```bash
 # 全過程を直接制御するが、必要時自動化活用
-moai-worktree new SPEC-001
-moai-worktree go SPEC-001
+moai-workflow-worktree new SPEC-001
+moai-workflow-worktree go SPEC-001
 # 完全な手動開発
 # 必要時 > /moai:3-syncで品質検証
 ```
@@ -1229,14 +1229,14 @@ moai-worktree go SPEC-001
 
 ```bash
 # すべての戦略を試行する自動解決
-moai-worktree sync SPEC-AUTH-001 --auto-resolve
+moai-workflow-worktree sync SPEC-AUTH-001 --auto-resolve
 ```
 
 ##### 2. 手動解決
 
 ```bash
 # ワークツリーに移動
-moai-worktree go SPEC-AUTH-001
+moai-workflow-worktree go SPEC-AUTH-001
 
 # 衝突状態確認
 git status
@@ -1292,19 +1292,19 @@ git commit
 
 ```bash
 # 最初の SPEC に移動して作業
-moai-worktree go SPEC-AUTH-001
+moai-workflow-worktree go SPEC-AUTH-001
 > /moai:2-run SPEC-AUTH-001
 
 # 違うターミナルで二番目の SPEC に移動
-moai-worktree go SPEC-PAY-002
+moai-workflow-worktree go SPEC-PAY-002
 > /moai:2-run SPEC-PAY-002
 
 # 三番目の SPEC で作業
-moai-worktree go SPEC-UI-003
+moai-workflow-worktree go SPEC-UI-003
 > /moai:2-run SPEC-UI-003
 
 # 定期的にすべてのワークツリー同期
-moai-worktree sync --all --auto-resolve
+moai-workflow-worktree sync --all --auto-resolve
 ```
 
 ##### コンテキスト転換なしで作業
@@ -1318,14 +1318,14 @@ moai-worktree sync --all --auto-resolve
 
 ```bash
 # 朝: 新しい SPEC 開始
-moai-worktree new SPEC-005 "ユーザープロフィール向上"
-moai-worktree go SPEC-005
+moai-workflow-worktree new SPEC-005 "ユーザープロフィール向上"
+moai-workflow-worktree go SPEC-005
 
 # 違う SPEC が完了される間に SPEC-005 実装
 > /moai:2-run SPEC-005
 
 # 午後: すべての SPEC 状態確認
-moai-worktree status
+moai-workflow-worktree status
 # 出力:
 # ✓ SPEC-001: 完了（マージ準備）
 # ✓ SPEC-002: テスト進行中
@@ -1333,7 +1333,7 @@ moai-worktree status
 # 🔄 SPEC-005: アクティブ開発
 
 # 夕方: 完了された SPEC 整理
-moai-worktree clean --merged-only
+moai-workflow-worktree clean --merged-only
 ```
 
 #### 技術的利益
@@ -1348,12 +1348,12 @@ moai-worktree clean --merged-only
 
 #### MoAI-ADK ワークフローと統合
 
-moai-worktree は MoAI-ADK Plan-Run-Sync サイクルと円滑に統合されます：
+moai-workflow-worktree は MoAI-ADK Plan-Run-Sync サイクルと円滑に統合されます：
 
-1. **Plan 段階**: `moai-worktree new SPEC-XXX` が専用ワークスペース生成
+1. **Plan 段階**: `moai-workflow-worktree new SPEC-XXX` が専用ワークスペース生成
 2. **Run 段階**: 違う SPEC に影響を与えず分離された環境で作業
-3. **Sync 段階**: `moai-worktree sync SPEC-XXX` がクリーンな統合保証
-4. **Cleanup 段階**: `moai-worktree clean` が完了したワークツリー削除
+3. **Sync 段階**: `moai-workflow-worktree sync SPEC-XXX` がクリーンな統合保証
+4. **Cleanup 段階**: `moai-workflow-worktree clean` が完了したワークツリー削除
 
 この統合は SPEC-First TDD 方法論原則を維持しながら同時に複数の SPEC を管理するための完全で体系的な接近方法を提供します。
 
@@ -1363,35 +1363,35 @@ moai-worktree は MoAI-ADK Plan-Run-Sync サイクルと円滑に統合されま
 
 ```bash
 # 利用可能なコマンドリスト
-moai-worktree --help
+moai-workflow-worktree --help
 
 # SPEC 開発のための新しいワークツリー生成
-moai-worktree new SPEC-001
+moai-workflow-worktree new SPEC-001
 
 # すべてのアクティブワークツリーリスト
-moai-worktree list
+moai-workflow-worktree list
 
 # 特定ワークツリーに移動
-moai-worktree go SPEC-001
+moai-workflow-worktree go SPEC-001
 
 # ワークツリーに転換（新しいシェルを開く）
-moai-worktree switch SPEC-001
+moai-workflow-worktree switch SPEC-001
 
 # ワークツリーを基本ブランチと同期
-moai-worktree sync SPEC-001
+moai-workflow-worktree sync SPEC-001
 
 # 特定ワークツリー削除
-moai-worktree remove SPEC-001
+moai-workflow-worktree remove SPEC-001
 
 # マージされたブランチワークツリー整理
-moai-worktree clean
+moai-workflow-worktree clean
 
 # ワークツリー状態および設定表示
-moai-worktree status
+moai-workflow-worktree status
 
 # ワークツリー設定
-moai-worktree config get
-moai-worktree config set <key> <value>
+moai-workflow-worktree config get
+moai-workflow-worktree config set <key> <value>
 ```
 
 ---
@@ -1689,11 +1689,11 @@ moai-worktree config set <key> <value>
 
 ---
 
-## 9. スキルライブラリ（50 個）
+## 9. スキルライブラリ（47 個）
 
 ![Skill Usage Statistics](./assets/images/readme/skill-usage-stats.png)
 
-MoAI-ADK は **50 個の専門スキル**を 7 個のカテゴリで提供します。各スキルは独立して使用したり組合せて使用できます。
+MoAI-ADK は **47 個の専門スキル**を 7 個のカテゴリで提供します。各スキルは独立して使用したり組合せて使用できます。
 
 ### 🏗️ Foundation（基盤）
 
@@ -1764,8 +1764,7 @@ MoAI-ADK は **50 個の専門スキル**を 7 個のカテゴリで提供しま
 主要なクラウドプラットフォームと BaaS サービス統合をサポートします。
 
 - **moai-platform-supabase** - PostgreSQL 16, pgvector, RLS, リアルタイムサブスクリプション
-- **moai-platform-auth0** - SSO, SAML, OIDC, 組織, B2B マルチテナンシー
-- **moai-security-auth0** *(NEW)* - Auth0 セキュリティ：Attack Protection, MFA, トークンセキュリティ, DPoP/mTLS, FAPI/GDPR
+- **moai-platform-auth0** - SSO, SAML, OIDC, 組織, B2B マルチテナンシー, Attack Protection, MFA, トークンセキュリティ, DPoP/mTLS, FAPI/GDPR
 - **moai-platform-clerk** - WebAuthn, パスキー, パスワードレス認証
 - **moai-platform-neon** - オートスケーリング, データベースブランチング, PITR
 - **moai-platform-firebase-auth** - ソーシャル認証, 電話認証, 匿名ログイン
@@ -1784,7 +1783,7 @@ MoAI-ADK は **50 個の専門スキル**を 7 個のカテゴリで提供しま
 - **moai-workflow-templates** - コードボイラープレート, フィードバックテンプレート
 - **moai-workflow-jit-docs** - ユーザー意図ベース知的ドキュメント検索＆キャッシュ
 - **moai-workflow-docs** - Nextra ドキュメントシステム, 技術ライティング, API ドキュメント
-- **moai-worktree** - 並行 SPEC 開発のための Git ワークツリー管理
+- **moai-workflow-worktree** - 並行 SPEC 開発のための Git ワークツリー管理
 
 ### 📚 Library（ライブラリ）
 
@@ -1795,12 +1794,10 @@ MoAI-ADK は **50 個の専門スキル**を 7 個のカテゴリで提供しま
 - **moai-library-nextra** - Next.js ベースエンタープライズドキュメントフレームワーク
 - **moai-formats-data** - TOON エンコーディング, JSON/YAML 最適化, データ検証
 
-### 🔌 MCP（Model Context Protocol）
+### 🤖 AI Integration（AI 統合）
 
-MCP サーバー統合のための専門スキルです。
+AI サービス統合のための専門スキルです。
 
-- **moai-mcp-notion** - Notion MCP 統合でワークスペース管理とデータベース運用
-- **moai-mcp-figma** - Figma MCP 統合でデザインシステム抽出とコンポーネント生成
 - **moai-ai-nano-banana** - Gemini 3 Nano Banana Pro を使用した画像生成
 
 ### 🎯 スキル使用ガイド

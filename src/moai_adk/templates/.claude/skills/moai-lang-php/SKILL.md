@@ -115,20 +115,7 @@ readonly class UserDTO
         public int $id,
         public string $name,
         public string $email,
-        public ?DateTime $createdAt = null,
     ) {}
-}
-```
-
-Typed Class Constants:
-```php
-<?php
-
-class Status
-{
-    public const string PENDING = 'pending';
-    public const string ACTIVE = 'active';
-    public const string INACTIVE = 'inactive';
 }
 ```
 
@@ -141,7 +128,6 @@ enum OrderStatus: string
     case Pending = 'pending';
     case Processing = 'processing';
     case Completed = 'completed';
-    case Cancelled = 'cancelled';
 
     public function label(): string
     {
@@ -149,16 +135,6 @@ enum OrderStatus: string
             self::Pending => 'Pending',
             self::Processing => 'Processing',
             self::Completed => 'Completed',
-            self::Cancelled => 'Cancelled',
-        };
-    }
-
-    public function canTransitionTo(self $status): bool
-    {
-        return match($this) {
-            self::Pending => in_array($status, [self::Processing, self::Cancelled]),
-            self::Processing => in_array($status, [self::Completed, self::Cancelled]),
-            self::Completed, self::Cancelled => false,
         };
     }
 }
@@ -181,9 +157,6 @@ class UserRequest
 {
     #[Validate('required|email')]
     public string $email;
-
-    #[Validate('required|min:8')]
-    public string $password;
 }
 ```
 
@@ -195,15 +168,12 @@ Eloquent Model with Relationships:
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Post extends Model
 {
-    use HasFactory;
-
     protected $fillable = ['title', 'content', 'user_id', 'status'];
 
     protected $casts = [
@@ -228,7 +198,7 @@ class Post extends Model
 }
 ```
 
-API Resource with Nested Data:
+API Resource:
 ```php
 <?php
 
@@ -244,19 +214,15 @@ class PostResource extends JsonResource
         return [
             'id' => $this->id,
             'title' => $this->title,
-            'content' => $this->content,
-            'status' => $this->status->value,
             'author' => new UserResource($this->whenLoaded('user')),
-            'comments' => CommentResource::collection($this->whenLoaded('comments')),
             'comments_count' => $this->whenCounted('comments'),
             'created_at' => $this->created_at->toIso8601String(),
-            'updated_at' => $this->updated_at->toIso8601String(),
         ];
     }
 }
 ```
 
-Migration with Foreign Keys:
+Migration:
 ```php
 <?php
 
@@ -274,17 +240,9 @@ return new class extends Migration
             $table->string('title');
             $table->text('content');
             $table->string('status')->default('draft');
-            $table->timestamp('published_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
-
-            $table->index(['status', 'published_at']);
         });
-    }
-
-    public function down(): void
-    {
-        Schema::dropIfExists('posts');
     }
 };
 ```
@@ -297,7 +255,6 @@ namespace App\Services;
 
 use App\Models\User;
 use App\DTOs\UserDTO;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 
 class UserService
@@ -311,22 +268,9 @@ class UserService
                 'password' => Hash::make($dto->password),
             ]);
 
-            $user->profile()->create([
-                'bio' => $dto->bio ?? '',
-            ]);
-
+            $user->profile()->create(['bio' => $dto->bio ?? '']);
             return $user->load('profile');
         });
-    }
-
-    public function update(User $user, UserDTO $dto): User
-    {
-        $user->update([
-            'name' => $dto->name,
-            'email' => $dto->email,
-        ]);
-
-        return $user->fresh();
     }
 }
 ```
@@ -345,7 +289,6 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: 'users')]
-#[ORM\HasLifecycleCallbacks]
 class User
 {
     #[ORM\Id]
@@ -355,61 +298,11 @@ class User
 
     #[ORM\Column(length: 255)]
     #[Assert\NotBlank]
-    #[Assert\Length(max: 255)]
     private ?string $name = null;
 
     #[ORM\Column(length: 180, unique: true)]
     #[Assert\Email]
     private ?string $email = null;
-
-    #[ORM\Column]
-    private ?\DateTimeImmutable $createdAt = null;
-
-    #[ORM\PrePersist]
-    public function setCreatedAtValue(): void
-    {
-        $this->createdAt = new \DateTimeImmutable();
-    }
-
-    // Getters and setters...
-}
-```
-
-Repository with Custom Queries:
-```php
-<?php
-
-namespace App\Repository;
-
-use App\Entity\User;
-use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\Persistence\ManagerRegistry;
-
-class UserRepository extends ServiceEntityRepository
-{
-    public function __construct(ManagerRegistry $registry)
-    {
-        parent::__construct($registry, User::class);
-    }
-
-    public function findActiveUsers(): array
-    {
-        return $this->createQueryBuilder('u')
-            ->andWhere('u.isActive = :active')
-            ->setParameter('active', true)
-            ->orderBy('u.createdAt', 'DESC')
-            ->getQuery()
-            ->getResult();
-    }
-
-    public function findByEmailDomain(string $domain): array
-    {
-        return $this->createQueryBuilder('u')
-            ->andWhere('u.email LIKE :domain')
-            ->setParameter('domain', '%@' . $domain)
-            ->getQuery()
-            ->getResult();
-    }
 }
 ```
 
@@ -420,7 +313,6 @@ Service with Dependency Injection:
 namespace App\Service;
 
 use App\Entity\User;
-use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
@@ -428,15 +320,13 @@ class UserService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly UserRepository $userRepository,
         private readonly UserPasswordHasherInterface $passwordHasher,
     ) {}
 
-    public function createUser(string $email, string $password, string $name): User
+    public function createUser(string $email, string $password): User
     {
         $user = new User();
         $user->setEmail($email);
-        $user->setName($name);
         $user->setPassword($this->passwordHasher->hashPassword($user, $password));
 
         $this->entityManager->persist($user);
@@ -473,28 +363,9 @@ class UserApiTest extends TestCase
         ]);
 
         $response->assertStatus(201)
-            ->assertJsonStructure([
-                'data' => ['id', 'name', 'email', 'created_at'],
-            ]);
+            ->assertJsonStructure(['data' => ['id', 'name', 'email']]);
 
-        $this->assertDatabaseHas('users', [
-            'email' => 'john@example.com',
-        ]);
-    }
-
-    public function test_cannot_create_user_with_duplicate_email(): void
-    {
-        User::factory()->create(['email' => 'john@example.com']);
-
-        $response = $this->postJson('/api/users', [
-            'name' => 'John Doe',
-            'email' => 'john@example.com',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
-        ]);
-
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['email']);
+        $this->assertDatabaseHas('users', ['email' => 'john@example.com']);
     }
 }
 ```
@@ -525,21 +396,6 @@ it('requires authentication to create post', function () {
         'content' => 'Content here.',
     ])->assertStatus(401);
 });
-
-dataset('invalid_posts', [
-    'missing title' => [['content' => 'content'], 'title'],
-    'missing content' => [['title' => 'title'], 'content'],
-    'title too short' => [['title' => 'ab', 'content' => 'content'], 'title'],
-]);
-
-it('validates post data', function (array $data, string $field) {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->postJson('/api/posts', $data)
-        ->assertStatus(422)
-        ->assertJsonValidationErrors([$field]);
-})->with('invalid_posts');
 ```
 
 ---
@@ -557,8 +413,7 @@ For comprehensive coverage including:
 - CI/CD integration patterns
 
 See:
-- [reference.md](reference.md) - Complete reference documentation
-- [examples.md](examples.md) - Production-ready code examples
+- [Advanced Patterns](modules/advanced-patterns.md) - Complete advanced patterns guide
 
 ---
 
@@ -580,10 +435,10 @@ See:
 
 - `moai-domain-backend` - REST API and microservices architecture
 - `moai-domain-database` - SQL patterns and ORM optimization
-- `moai-quality-testing` - TDD and testing strategies
+- `moai-workflow-testing` - TDD and testing strategies
 - `moai-platform-deploy` - Docker and deployment patterns
 - `moai-essentials-debug` - AI-powered debugging
-- `moai-foundation-trust` - TRUST 5 quality principles
+- `moai-foundation-quality` - TRUST 5 quality principles
 
 ---
 
@@ -594,13 +449,13 @@ Common Issues:
 PHP Version Check:
 ```bash
 php --version  # Should be 8.3+
-php -m | grep -E 'pdo|mbstring|openssl'  # Required extensions
+php -m | grep -E 'pdo|mbstring|openssl'
 ```
 
 Composer Autoload Issues:
 ```bash
-composer dump-autoload -o  # Regenerate optimized autoload
-composer clear-cache  # Clear composer cache
+composer dump-autoload -o
+composer clear-cache
 ```
 
 Laravel Cache Issues:
@@ -619,7 +474,6 @@ php bin/console cache:warmup
 
 Database Connection:
 ```php
-// Laravel - Check database connection
 try {
     DB::connection()->getPdo();
     echo "Connected successfully";
@@ -630,11 +484,9 @@ try {
 
 Migration Rollback:
 ```bash
-# Laravel
 php artisan migrate:rollback --step=1
 php artisan migrate:fresh --seed  # Development only
 
-# Symfony
 php bin/console doctrine:migrations:migrate prev
 ```
 

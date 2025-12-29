@@ -36,7 +36,7 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 | 섹션                                          | 목표                            |
 | --------------------------------------------- | ------------------------------- |
 | [8. 에이전트 가이드](#8-에이전트-가이드-24개) | 전문 에이전트 활용              |
-| [9. 스킬 라이브러리](#9-스킬-라이브러리-50개) | 50개 스킬 탐색                  |
+| [9. 스킬 라이브러리](#9-스킬-라이브러리-47개) | 47개 스킬 탐색                  |
 | [10. 조합 패턴과 예제](#10-조합-패턴과-예제)  | 실제 프로젝트 예제              |
 | [11. TRUST 5 품질보증](#11-trust-5-품질보증)  | 품질 보증 체계                  |
 | [12. 고급 기능](#12-고급-기능)                | Git Worktree & 향상된 로그 관리 |
@@ -694,9 +694,9 @@ flowchart LR
 
 ---
 
-### 🌳 **moai-worktree** - 병렬 SPEC 개발을 위한 Git 워크트리 관리
+### 🌳 **moai-workflow-worktree** - 병렬 SPEC 개발을 위한 Git 워크트리 관리
 
-#### moai-worktree가 필요한 이유: 해결하는 문제
+#### moai-workflow-worktree가 필요한 이유: 해결하는 문제
 
 현대 소프트웨어 개발, 특히 SPEC-First TDD 방법론을 따를 때 개발자들은 동시에 여러 기능을 작업하는 문제에 자주 직면합니다. 전통적인 Git 워크플로우는 개발자에게 다음을 강요합니다:
 
@@ -704,7 +704,7 @@ flowchart LR
 - **순차적 개발**: 한 번에 하나의 SPEC만 작업하여 생산성 저하
 - **환경 충돌**: 다른 SPEC는 다른 종속성, 데이터베이스 상태 또는 구성이 필요할 수 있음
 
-**moai-worktree는 이 문제들을 해결**하여 각 SPEC에 대해 격리된 워크스페이스를 제공하며, 컨텍스트 스위칭 오버헤드 없이 진정한 병렬 개발을 가능하게 합니다.
+**moai-workflow-worktree는 이 문제들을 해결**하여 각 SPEC에 대해 격리된 워크스페이스를 제공하며, 컨텍스트 스위칭 오버헤드 없이 진정한 병렬 개발을 가능하게 합니다.
 
 #### 핵심 개념: SPEC 기반 병렬 개발
 
@@ -717,7 +717,7 @@ Git 워크트리는 동일한 Git 저장소에 연결된 별도의 작업 디렉
 - 격리된 빌드 아티팩트 및 종속성
 - 자체 스테이징 영역 및 스테이징되지 않은 변경사항
 
-**moai-worktree 아키텍처:**
+**moai-workflow-worktree 아키텍처:**
 
 ```
 메인 저장소/
@@ -770,20 +770,20 @@ Git 워크트리는 동일한 Git 저장소에 연결된 별도의 작업 디렉
 
 ```bash
 # 모든 워크트리를 최신 메인 브랜치와 동기화
-moai-worktree sync --all
+moai-workflow-worktree sync --all
 
 # 충돌 해결로 특정 워크트리 동기화
-moai-worktree sync SPEC-001 --auto-resolve
+moai-workflow-worktree sync SPEC-001 --auto-resolve
 ```
 
 **지능형 정리**
 
 ```bash
 # 병합된 브랜치 워크트리 자동 제거
-moai-worktree clean --merged-only
+moai-workflow-worktree clean --merged-only
 
 # 확인 프롬프트가 포함된 안전 정리
-moai-worktree clean --interactive
+moai-workflow-worktree clean --interactive
 ```
 
 **성능 최적화**
@@ -792,7 +792,7 @@ moai-worktree clean --interactive
 - **공유 기록**: 모든 워크트리는 동일한 Git 객체 데이터베이스 공유
 - **선택적 동기화**: 필요할 때만 변경 사항을 동기화, 전체 저장소는 안 함
 
-#### moai-worktree 사용 시기
+#### moai-workflow-worktree 사용 시기
 
 **이상적인 시나리오:**
 
@@ -814,7 +814,7 @@ moai-worktree clean --interactive
 # 방법 2: 수동 워크트리 생성
 > /moai:1-plan '사용자 인증 시스템 구현'
 # SPEC-AUTH-001 생성됨
-moai-worktree new SPEC-AUTH-001
+moai-workflow-worktree new SPEC-AUTH-001
 # → 격리된 워크트리 환경 생성
 ```
 
@@ -822,7 +822,7 @@ moai-worktree new SPEC-AUTH-001
 
 ```bash
 # 워크트리로 이동 (새 쉘 열기)
-moai-worktree go SPEC-AUTH-001
+moai-workflow-worktree go SPEC-AUTH-001
 # → ~/moai/worktrees/MoAI-ADK/SPEC-AUTH-001에서 새 쉘 열림
 ```
 
@@ -834,7 +834,7 @@ moai-worktree go SPEC-AUTH-001
 # → RED → GREEN → REFACTOR 사이클 실행
 
 # 개발 중 상태 확인
-moai-worktree status
+moai-workflow-worktree status
 git status
 git log --oneline -5
 
@@ -847,13 +847,13 @@ git commit -m "Auth: Implement user login endpoint"
 
 ```bash
 # 메인 브랜치 변경 사항 가져오기
-moai-worktree sync SPEC-AUTH-001
+moai-workflow-worktree sync SPEC-AUTH-001
 
 # 자동 충돌 해결로 동기화
-moai-worktree sync SPEC-AUTH-001 --auto-resolve
+moai-workflow-worktree sync SPEC-AUTH-001 --auto-resolve
 
 # 모든 워크트리 동기화
-moai-worktree sync --all --auto-resolve
+moai-workflow-worktree sync --all --auto-resolve
 ```
 
 **5단계: 개발 완료 및 테스트 (자동화)**
@@ -884,7 +884,7 @@ moai-worktree sync --all --auto-resolve
 
 ```bash
 # 1. 워크트리에서 메인으로 이동
-moai-worktree go SPEC-AUTH-001  # 또는 cd /path/to/main/repo
+moai-workflow-worktree go SPEC-AUTH-001  # 또는 cd /path/to/main/repo
 
 # 2. 워크트리 브랜치 가져오기
 git fetch origin feature/SPEC-AUTH-001
@@ -937,11 +937,11 @@ git rebase main  # 대신 rebase 사용
 # - 정리 완료 보고
 ```
 
-**옵션 B: 직접 moai-worktree 명령어 (고급 사용자용)**
+**옵션 B: 직접 moai-workflow-worktree 명령어 (고급 사용자용)**
 
 ```bash
 # 1. 워크트리 상태 최종 확인
-moai-worktree status
+moai-workflow-worktree status
 # 출력 예시:
 # SPEC-AUTH-001
 #   Branch: feature/SPEC-AUTH-001
@@ -949,40 +949,40 @@ moai-worktree status
 #   Path:   ~/moai/worktrees/MoAI-ADK/SPEC-AUTH-001
 
 # 2. 워크트리 정리 (안전한 방법)
-moai-worktree clean --merged-only
+moai-workflow-worktree clean --merged-only
 # → 병합된 브랜치의 워크트리만 자동 제거
 
 # 3. 또는 대화형 정리 (선택적 제거)
-moai-worktree clean --interactive
+moai-workflow-worktree clean --interactive
 # → 제거할 워크트리 선택 가능
 
 # 4. 특정 워크트리 직접 제거 (강제)
-moai-worktree remove SPEC-AUTH-001 --force
+moai-workflow-worktree remove SPEC-AUTH-001 --force
 
 # 5. 전체 워크트리 상태 확인
-moai-worktree list
+moai-workflow-worktree list
 # 또는
-moai-worktree status
+moai-workflow-worktree status
 ```
 
 **실용적인 워크트리 관리 명령어 모음:**
 
 ```bash
 # 일상적인 워크트리 관리
-moai-worktree list                    # 모든 워크트리 목록
-moai-worktree status                  # 상세 상태 확인
-moai-worktree sync SPEC-AUTH-001      # 특정 워크트리 동기화
-moai-worktree sync --all              # 모든 워크트리 동기화
+moai-workflow-worktree list                    # 모든 워크트리 목록
+moai-workflow-worktree status                  # 상세 상태 확인
+moai-workflow-worktree sync SPEC-AUTH-001      # 특정 워크트리 동기화
+moai-workflow-worktree sync --all              # 모든 워크트리 동기화
 
 # 워크트리 이동
-moai-worktree go SPEC-001             # 새 셸에서 워크트리 열기
+moai-workflow-worktree go SPEC-001             # 새 셸에서 워크트리 열기
 
 # 충돌 자동 해결
-moai-worktree sync SPEC-AUTH-001 --auto-resolve
+moai-workflow-worktree sync SPEC-AUTH-001 --auto-resolve
 
 # 설정 확인
-moai-worktree config get              # 현재 설정 보기
-moai-worktree config root             # 워크트리 루트 경로 확인
+moai-workflow-worktree config get              # 현재 설정 보기
+moai-workflow-worktree config root             # 워크트리 루트 경로 확인
 ```
 
 **혼합 워크플로우 추천 패턴:**
@@ -994,8 +994,8 @@ moai-worktree config root             # 워크트리 루트 경로 확인
 > /moai:3-sync SPEC-XXX
 
 # 단계 6-7: 직접 명령어 (정밀 제어)
-moai-worktree sync SPEC-XXX --auto-resolve  # 충돌 자동 해결
-moai-worktree clean --merged-only           # 완료된 워크트리 정리
+moai-workflow-worktree sync SPEC-XXX --auto-resolve  # 충돌 자동 해결
+moai-workflow-worktree clean --merged-only           # 완료된 워크트리 정리
 ```
 
 ---
@@ -1004,39 +1004,39 @@ moai-worktree clean --merged-only           # 완료된 워크트리 정리
 
 이 섹션에서는 Claude Code 자동화와 병행하여 사용할 수 있는 직접 명령어들을 상세히 설명합니다.
 
-#### **기본 moai-worktree 명령어**
+#### **기본 moai-workflow-worktree 명령어**
 
 | 명령어                 | 목적                    | 사용 예시                       | 설명                                 |
 | ---------------------- | ----------------------- | ------------------------------- | ------------------------------------ |
-| `moai-worktree new`    | 새 워크트리 생성        | `moai-worktree new SPEC-001`    | SPEC-001을 위한 격리된 작업공간 생성 |
-| `moai-worktree list`   | 워크트리 목록           | `moai-worktree list`            | 모든 활성 워크트리 표시              |
-| `moai-worktree go`     | 워크트리 이동           | `moai-worktree go SPEC-001`     | 새 셸에서 워크트리로 이동            |
-| `moai-worktree remove` | 워크트리 제거           | `moai-worktree remove SPEC-001` | 특정 워크트리 삭제                   |
-| `moai-worktree status` | 상태 확인               | `moai-worktree status`          | 모든 워크트리 상태 표시              |
+| `moai-workflow-worktree new`    | 새 워크트리 생성        | `moai-workflow-worktree new SPEC-001`    | SPEC-001을 위한 격리된 작업공간 생성 |
+| `moai-workflow-worktree list`   | 워크트리 목록           | `moai-workflow-worktree list`            | 모든 활성 워크트리 표시              |
+| `moai-workflow-worktree go`     | 워크트리 이동           | `moai-workflow-worktree go SPEC-001`     | 새 셸에서 워크트리로 이동            |
+| `moai-workflow-worktree remove` | 워크트리 제거           | `moai-workflow-worktree remove SPEC-001` | 특정 워크트리 삭제                   |
+| `moai-workflow-worktree status` | 상태 확인               | `moai-workflow-worktree status`          | 모든 워크트리 상태 표시              |
 
 #### **동기화 명령어**
 
 | 명령어                              | 목적                 | 사용 예시                                    | 설명                          |
 | ----------------------------------- | -------------------- | -------------------------------------------- | ----------------------------- |
-| `moai-worktree sync`                | 특정 워크트리 동기화 | `moai-worktree sync SPEC-001`                | 메인 브랜치와 변경사항 동기화 |
-| `moai-worktree sync --all`          | 모든 워크트리 동기화 | `moai-worktree sync --all`                   | 모든 워크트리를 한번에 동기화 |
-| `moai-worktree sync --auto-resolve` | 자동 충돌 해결       | `moai-worktree sync SPEC-001 --auto-resolve` | 충돌 발생 시 자동 해결 시도   |
-| `moai-worktree sync --rebase`       | Rebase 기반 동기화   | `moai-worktree sync SPEC-001 --rebase`       | 병합 대신 rebase 사용         |
+| `moai-workflow-worktree sync`                | 특정 워크트리 동기화 | `moai-workflow-worktree sync SPEC-001`                | 메인 브랜치와 변경사항 동기화 |
+| `moai-workflow-worktree sync --all`          | 모든 워크트리 동기화 | `moai-workflow-worktree sync --all`                   | 모든 워크트리를 한번에 동기화 |
+| `moai-workflow-worktree sync --auto-resolve` | 자동 충돌 해결       | `moai-workflow-worktree sync SPEC-001 --auto-resolve` | 충돌 발생 시 자동 해결 시도   |
+| `moai-workflow-worktree sync --rebase`       | Rebase 기반 동기화   | `moai-workflow-worktree sync SPEC-001 --rebase`       | 병합 대신 rebase 사용         |
 
 #### **정리 명령어**
 
 | 명령어                              | 목적                   | 사용 예시                           | 설명                            |
 | ----------------------------------- | ---------------------- | ----------------------------------- | ------------------------------- |
-| `moai-worktree clean`               | 워크트리 정리          | `moai-worktree clean`               | 모든 워크트리 정리              |
-| `moai-worktree clean --merged-only` | 병합된 워크트리만 정리 | `moai-worktree clean --merged-only` | 병합된 브랜치의 워크트리만 제거 |
-| `moai-worktree clean --interactive` | 대화형 정리            | `moai-worktree clean --interactive` | 제거할 워크트리 선택 가능       |
+| `moai-workflow-worktree clean`               | 워크트리 정리          | `moai-workflow-worktree clean`               | 모든 워크트리 정리              |
+| `moai-workflow-worktree clean --merged-only` | 병합된 워크트리만 정리 | `moai-workflow-worktree clean --merged-only` | 병합된 브랜치의 워크트리만 제거 |
+| `moai-workflow-worktree clean --interactive` | 대화형 정리            | `moai-workflow-worktree clean --interactive` | 제거할 워크트리 선택 가능       |
 
 #### **설정 명령어**
 
 | 명령어                      | 목적           | 사용 예시                   | 설명                             |
 | --------------------------- | -------------- | --------------------------- | -------------------------------- |
-| `moai-worktree config`      | 설정 보기      | `moai-worktree config`      | 현재 워크트리 설정 표시          |
-| `moai-worktree config root` | 루트 경로 확인 | `moai-worktree config root` | 워크트리 루트 디렉토리 경로 확인 |
+| `moai-workflow-worktree config`      | 설정 보기      | `moai-workflow-worktree config`      | 현재 워크트리 설정 표시          |
+| `moai-workflow-worktree config root` | 루트 경로 확인 | `moai-workflow-worktree config root` | 워크트리 루트 디렉토리 경로 확인 |
 
 #### **고급 사용 패턴**
 
@@ -1044,25 +1044,25 @@ moai-worktree clean --merged-only           # 완료된 워크트리 정리
 
 ```bash
 # 여러 SPEC 동시에 생성
-moai-worktree new SPEC-AUTH-001    # 사용자 인증
-moai-worktree new SPEC-PAY-002     # 결제 시스템
-moai-worktree new SPEC-UI-003      # UI 개선
+moai-workflow-worktree new SPEC-AUTH-001    # 사용자 인증
+moai-workflow-worktree new SPEC-PAY-002     # 결제 시스템
+moai-workflow-worktree new SPEC-UI-003      # UI 개선
 
 # 각 워크트리 상태 확인
-moai-worktree status
+moai-workflow-worktree status
 
 # 모든 워크트리 동기화
-moai-worktree sync --all --auto-resolve
+moai-workflow-worktree sync --all --auto-resolve
 ```
 
 **2. 충돌 자동 해결 워크플로우**
 
 ```bash
 # 1단계: 자동 동기화 시도
-moai-worktree sync SPEC-001 --auto-resolve
+moai-workflow-worktree sync SPEC-001 --auto-resolve
 
 # 2단계: 자동 해결 실패 시 수동 개입
-moai-worktree go SPEC-001
+moai-workflow-worktree go SPEC-001
 git status  # 충돌 파일 확인
 
 # 3단계: 충돌 해결 전략 선택
@@ -1079,14 +1079,14 @@ git commit -m "Resolve: Auto-resolved conflicts in SPEC-001"
 
 ```bash
 # 매일 아침 실행 권장
-moai-worktree status                      # 현재 상태 확인
-moai-worktree sync --all                  # 모든 워크트리 동기화
+moai-workflow-worktree status                      # 현재 상태 확인
+moai-workflow-worktree sync --all                  # 모든 워크트리 동기화
 
 # 매주 실행 권장
-moai-worktree clean --merged-only         # 완료된 워크트리 정리
+moai-workflow-worktree clean --merged-only         # 완료된 워크트리 정리
 
 # 매월 실행 권장
-moai-worktree clean --interactive         # 대화형 정리로 불필요한 워크트리 제거
+moai-workflow-worktree clean --interactive         # 대화형 정리로 불필요한 워크트리 제거
 ```
 
 #### **Claude Code와 명령어 조합 가이드**
@@ -1100,9 +1100,9 @@ moai-worktree clean --interactive         # 대화형 정리로 불필요한 워
 /moai:3-sync SPEC-001
 
 # 단계 4-5: 직접 명령어로 기본 관리
-moai-worktree status                      # 상태 확인
-moai-worktree sync SPEC-001               # 동기화
-moai-worktree clean --merged-only         # 정리
+moai-workflow-worktree status                      # 상태 확인
+moai-workflow-worktree sync SPEC-001               # 동기화
+moai-workflow-worktree clean --merged-only         # 정리
 ```
 
 **중급 사용자:**
@@ -1113,27 +1113,27 @@ moai-worktree clean --merged-only         # 정리
 > /moai:2-run SPEC-PAY-001
 
 # 단계 3: 직접 명령어로 정밀 제어
-moai-worktree go SPEC-PAY-001
+moai-workflow-worktree go SPEC-PAY-001
 # 직접 개발 및 테스트
 git add .
 git commit -m "Pay: Implement core payment processing"
 
 # 단계 4-5: 혼합 접근
 > /moai:3-sync SPEC-PAY-001                 # 자동화로 품질 검증
-moai-worktree sync SPEC-PAY-001 --auto-resolve  # 직접 동기화
+moai-workflow-worktree sync SPEC-PAY-001 --auto-resolve  # 직접 동기화
 ```
 
 **고급 사용자:**
 
 ```bash
 # 전체 과정을 직접 명령어로 제어
-moai-worktree new SPEC-ADV-001
-moai-worktree go SPEC-ADV-001
+moai-workflow-worktree new SPEC-ADV-001
+moai-workflow-worktree go SPEC-ADV-001
 # 완전한 수동 개발 프로세스
 git add .
 git commit -m "Adv: Complex feature implementation"
-moai-worktree sync SPEC-ADV-001 --rebase
-moai-worktree clean --interactive
+moai-workflow-worktree sync SPEC-ADV-001 --rebase
+moai-workflow-worktree clean --interactive
 ```
 
 **생산성 팁:**
@@ -1141,12 +1141,12 @@ moai-worktree clean --interactive
 1. **별칭 설정** ( ~/.zshrc 또는 ~/.bashrc 에 추가):
 
 ```bash
-alias wt-new='moai-worktree new'
-alias wt-go='moai-worktree go'
-alias wt-list='moai-worktree list'
-alias wt-status='moai-worktree status'
-alias wt-sync='moai-worktree sync'
-alias wt-clean='moai-worktree clean'
+alias wt-new='moai-workflow-worktree new'
+alias wt-go='moai-workflow-worktree go'
+alias wt-list='moai-workflow-worktree list'
+alias wt-status='moai-workflow-worktree status'
+alias wt-sync='moai-workflow-worktree sync'
+alias wt-clean='moai-workflow-worktree clean'
 ```
 
 2. **빠른 워크플로우 함수**:
@@ -1154,8 +1154,8 @@ alias wt-clean='moai-worktree clean'
 ```bash
 # 워크트리 빠른 생성 및 이동
 wt-dev() {
-    moai-worktree new "SPEC-$1"
-    moai-worktree go "SPEC-$1"
+    moai-workflow-worktree new "SPEC-$1"
+    moai-workflow-worktree go "SPEC-$1"
 }
 
 # 사용법: wt-dev AUTH-001
@@ -1188,9 +1188,9 @@ MoAI-ADK는 **Claude Code 자동화**와 **직접 명령어 제어**의 장점�
 > /moai:2-run SPEC-001
 
 # 2단계: 직접 명령어로 기본 관리
-moai-worktree status
-moai-worktree sync SPEC-001
-moai-worktree clean --merged-only
+moai-workflow-worktree status
+moai-workflow-worktree sync SPEC-001
+moai-workflow-worktree clean --merged-only
 
 # 3단계: 자동화로 마무리
 > /moai:3-sync SPEC-001
@@ -1203,8 +1203,8 @@ moai-worktree clean --merged-only
 > /moai:1-plan "복잡한 기능"
 
 # 2단계: 직접 제어로 세부 구현
-moai-worktree new SPEC-001
-moai-worktree go SPEC-001
+moai-workflow-worktree new SPEC-001
+moai-workflow-worktree go SPEC-001
 # 상세한 개발 작업
 
 # 3단계: 자동화로 품질 보증
@@ -1215,8 +1215,8 @@ moai-worktree go SPEC-001
 
 ```bash
 # 전체 과정을 직접 제어하되, 필요시 자동화 활용
-moai-worktree new SPEC-001
-moai-worktree go SPEC-001
+moai-workflow-worktree new SPEC-001
+moai-workflow-worktree go SPEC-001
 # 완전한 수동 개발
 # 필요시 > /moai:3-sync로 품질 검증
 ```
@@ -1227,14 +1227,14 @@ moai-worktree go SPEC-001
 
 ```bash
 # 모든 전략을 시도하는 자동 해결
-moai-worktree sync SPEC-AUTH-001 --auto-resolve
+moai-workflow-worktree sync SPEC-AUTH-001 --auto-resolve
 ```
 
 ##### 2. 수동 해결
 
 ```bash
 # 워크트리로 이동
-moai-worktree go SPEC-AUTH-001
+moai-workflow-worktree go SPEC-AUTH-001
 
 # 충돌 상태 확인
 git status
@@ -1290,19 +1290,19 @@ git commit
 
 ```bash
 # 첫 번째 SPEC으로 이동하여 작업
-moai-worktree go SPEC-AUTH-001
+moai-workflow-worktree go SPEC-AUTH-001
 > /moai:2-run SPEC-AUTH-001
 
 # 다른 터미널에서 두 번째 SPEC으로 이동
-moai-worktree go SPEC-PAY-002
+moai-workflow-worktree go SPEC-PAY-002
 > /moai:2-run SPEC-PAY-002
 
 # 세 번째 SPEC에서 작업
-moai-worktree go SPEC-UI-003
+moai-workflow-worktree go SPEC-UI-003
 > /moai:2-run SPEC-UI-003
 
 # 정기적으로 모든 워크트리 동기화
-moai-worktree sync --all --auto-resolve
+moai-workflow-worktree sync --all --auto-resolve
 ```
 
 ##### 컨텍스트 전환 없이 작업
@@ -1316,14 +1316,14 @@ moai-worktree sync --all --auto-resolve
 
 ```bash
 # 아침: 새 SPEC 시작
-moai-worktree new SPEC-005 "사용자 프로필 향상"
-moai-worktree go SPEC-005
+moai-workflow-worktree new SPEC-005 "사용자 프로필 향상"
+moai-workflow-worktree go SPEC-005
 
 # 다른 SPEC들이 완료되는 동안 SPEC-005 구현
 > /moai:2-run SPEC-005
 
 # 오후: 모든 SPEC 상태 확인
-moai-worktree status
+moai-workflow-worktree status
 # 출력:
 # ✓ SPEC-001: 완료 (병합 준비)
 # ✓ SPEC-002: 테스트 진행 중
@@ -1331,7 +1331,7 @@ moai-worktree status
 # 🔄 SPEC-005: 활성 개발
 
 # 저녁: 완료된 SPEC 정리
-moai-worktree clean --merged-only
+moai-workflow-worktree clean --merged-only
 ```
 
 #### 기술적 이점
@@ -1346,12 +1346,12 @@ moai-worktree clean --merged-only
 
 #### MoAI-ADK 워크플로우와 통합
 
-moai-worktree는 MoAI-ADK Plan-Run-Sync 사이클과 원활하게 통합됩니다:
+moai-workflow-worktree는 MoAI-ADK Plan-Run-Sync 사이클과 원활하게 통합됩니다:
 
-1. **Plan 단계**: `moai-worktree new SPEC-XXX`가 전용 워크스페이스 생성
+1. **Plan 단계**: `moai-workflow-worktree new SPEC-XXX`가 전용 워크스페이스 생성
 2. **Run 단계**: 다른 SPEC에 영향을 주지 않고 격리된 환경에서 작업
-3. **Sync 단계**: `moai-worktree sync SPEC-XXX`가 깨끗한 통합 보장
-4. **Cleanup 단계**: `moai-worktree clean`이 완료된 워크트리 제거
+3. **Sync 단계**: `moai-workflow-worktree sync SPEC-XXX`가 깨끗한 통합 보장
+4. **Cleanup 단계**: `moai-workflow-worktree clean`이 완료된 워크트리 제거
 
 이 통합은 SPEC-First TDD 방법론 원칙을 유지하면서 동시에 여러 SPEC를 관리하기 위한 완전하고 체계적인 접근 방식을 제공합니다.
 
@@ -1361,35 +1361,35 @@ moai-worktree는 MoAI-ADK Plan-Run-Sync 사이클과 원활하게 통합됩니�
 
 ```bash
 # 사용 가능한 명령어 목록
-moai-worktree --help
+moai-workflow-worktree --help
 
 # SPEC 개발을 위한 새 워크트리 생성
-moai-worktree new SPEC-001
+moai-workflow-worktree new SPEC-001
 
 # 모든 활성 워크트리 목록
-moai-worktree list
+moai-workflow-worktree list
 
 # 특정 워크트리로 이동
-moai-worktree go SPEC-001
+moai-workflow-worktree go SPEC-001
 
 # 워크트리로 전환 (새 셸 열기)
-moai-worktree switch SPEC-001
+moai-workflow-worktree switch SPEC-001
 
 # 워크트리를 기본 브랜치와 동기화
-moai-worktree sync SPEC-001
+moai-workflow-worktree sync SPEC-001
 
 # 특정 워크트리 제거
-moai-worktree remove SPEC-001
+moai-workflow-worktree remove SPEC-001
 
 # 병합된 브랜치 워크트리 정리
-moai-worktree clean
+moai-workflow-worktree clean
 
 # 워크트리 상태 및 구성 표시
-moai-worktree status
+moai-workflow-worktree status
 
 # 워크트리 설정
-moai-worktree config get
-moai-worktree config set <key> <value>
+moai-workflow-worktree config get
+moai-workflow-worktree config set <key> <value>
 ```
 
 ---
@@ -1687,11 +1687,11 @@ moai-worktree config set <key> <value>
 
 ---
 
-## 9. 스킬 라이브러리 (50개)
+## 9. 스킬 라이브러리 (47개)
 
 ![Skill Usage Statistics](./assets/images/readme/skill-usage-stats.png)
 
-MoAI-ADK는 **50개의 전문 스킬**을 7개 카테고리로 제공합니다. 각 스킬은 독립적으로 사용하거나 조합하여 사용할 수 있습니다.
+MoAI-ADK는 **47개의 전문 스킬**을 7개 카테고리로 제공합니다. 각 스킬은 독립적으로 사용하거나 조합하여 사용할 수 있습니다.
 
 ### 🏗️ Foundation (기반)
 
@@ -1810,12 +1810,8 @@ MoAI-ADK는 **50개의 전문 스킬**을 7개 카테고리로 제공합니다. 
   - 서버리스 함수, 자동 동기화, 엣지 함수 배포
 
 - **moai-platform-auth0**
-  - SSO, SAML, OIDC, 조직, B2B 멀티테넌시를 위한 Auth0
-  - 엔터프라이즈 인증 페더레이션과 복잡한 인증 워크플로우
-
-- **moai-security-auth0** *(NEW)*
-  - Auth0 보안 전문가: Attack Protection, MFA, 토큰 보안
-  - DPoP/mTLS 송신자 제약, FAPI/GDPR/HIPAA 컴플라이언스
+  - Auth0 보안 전문가: Attack Protection, MFA, 토큰 보안, 송신자 제약
+  - SSO, SAML, OIDC, 조직, B2B 멀티테넌시, FAPI/GDPR/HIPAA 컴플라이언스
 
 - **moai-platform-clerk**
   - WebAuthn, 패스키, 비밀번호 없는 인증을 위한 Clerk
@@ -1873,7 +1869,7 @@ MoAI-ADK는 **50개의 전문 스킬**을 7개 카테고리로 제공합니다. 
   - Nextra 문서 시스템, 기술 라이팅, API 문서화
   - 자동화된 문서 생성과 지식 베이스 관리
 
-- **moai-worktree**
+- **moai-workflow-worktree**
   - 병렬 SPEC 개발을 위한 Git 워크트리 관리
   - 격리된 작업 공간, 자동 등록, MoAI-ADK 통합
 
@@ -1897,17 +1893,9 @@ MoAI-ADK는 **50개의 전문 스킬**을 7개 카테고리로 제공합니다. 
   - TOON 인코딩, JSON/YAML 최적화, 데이터 직렬화
   - 모던 애플리케이션을 위한 데이터 검증 및 처리
 
-### 🔌 MCP (Model Context Protocol)
+### 🤖 AI Integration
 
-MCP 서버 통합을 위한 전문 스킬들입니다.
-
-- **moai-mcp-notion**
-  - Notion MCP 통합으로 워크스페이스 관리와 데이터베이스 운영
-  - 페이지 생성, 콘텐츠 자동화, 지식 구성
-
-- **moai-mcp-figma**
-  - Figma MCP 통합으로 디자인 시스템 추출과 컴포넌트 생성
-  - 디자인-투-코드 워크플로우와 디자인 토큰 관리
+AI 서비스 통합을 위한 전문 스킬입니다.
 
 - **moai-ai-nano-banana**
   - Gemini 3 Nano Banana Pro를 사용한 이미지 생성

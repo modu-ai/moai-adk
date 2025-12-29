@@ -282,13 +282,13 @@ Minor release adding comprehensive Auth0 security skill, image generation capabi
 
 ### New Features
 
-- **feat(skills)**: Add moai-security-auth0 skill for Auth0 security (e4853270)
+- **feat(skills)**: Enhanced moai-platform-auth0 with comprehensive security modules (e4853270)
   - 36 comprehensive security modules covering MFA, attack protection, and compliance
   - Multi-factor authentication (WebAuthn, TOTP, SMS, Email, Push)
   - Attack protection (brute force, bot detection, breached passwords)
   - Compliance frameworks (GDPR, FAPI, Highly Regulated Identity)
   - Sender constraining (mTLS, DPoP) and continuous session protection
-  - Location: `.claude/skills/moai-security-auth0/`
+  - Location: `.claude/skills/moai-platform-auth0/`
 
 - **feat(nano-banana)**: Add image generation scripts (216a36a7)
   - `generate_image.py` - Single image generation with Gemini 3 Pro
@@ -392,7 +392,7 @@ None - all changes are additive or internal improvements.
 No migration required. New skills and features are available immediately after upgrade.
 
 To use new features:
-- Security guidance: Load `Skill("moai-security-auth0")`
+- Security guidance: Load `Skill("moai-platform-auth0")`
 - Image generation: Use scripts in `moai-ai-nano-banana` skill
 - Git workflows: Configure via `moai-adk init` or update `.moai/config/sections/git-strategy.yaml`
 
@@ -408,13 +408,13 @@ Auth0 보안 스킬, 이미지 생성 기능, 개선된 git 워크플로우, 플
 
 ### 신규 기능
 
-- **feat(skills)**: Auth0 보안을 위한 moai-security-auth0 스킬 추가 (e4853270)
+- **feat(skills)**: moai-platform-auth0 스킬에 포괄적인 보안 모듈 강화 (e4853270)
   - MFA, 공격 방어, 컴플라이언스를 다루는 36개의 포괄적인 보안 모듈
   - 다중 인증 (WebAuthn, TOTP, SMS, Email, Push)
   - 공격 방어 (무차별 대입 공격, 봇 탐지, 침해된 비밀번호)
   - 컴플라이언스 프레임워크 (GDPR, FAPI, 고도 규제 신원)
   - 발신자 제약 (mTLS, DPoP) 및 지속적 세션 보호
-  - 위치: `.claude/skills/moai-security-auth0/`
+  - 위치: `.claude/skills/moai-platform-auth0/`
 
 - **feat(nano-banana)**: 이미지 생성 스크립트 추가 (216a36a7)
   - `generate_image.py` - Gemini 3 Pro를 사용한 단일 이미지 생성
@@ -518,7 +518,7 @@ pip install moai-adk==0.35.0
 마이그레이션 불필요. 업그레이드 후 즉시 새로운 스킬 및 기능 사용 가능.
 
 새 기능 사용 방법:
-- 보안 가이드: `Skill("moai-security-auth0")` 로드
+- 보안 가이드: `Skill("moai-platform-auth0")` 로드
 - 이미지 생성: `moai-ai-nano-banana` 스킬의 스크립트 사용
 - Git 워크플로우: `moai-adk init`를 통해 구성하거나 `.moai/config/sections/git-strategy.yaml` 업데이트
 

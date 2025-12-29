@@ -1,130 +1,120 @@
 # API Documentation Generation
 
 ## Overview
-Automated API documentation generation from code with OpenAPI/Swagger support, example generation, and multi-format output.
 
-## Quick Implementation
+Generate comprehensive API documentation using established tools: FastAPI auto-docs, swagger-jsdoc, Redoc, and OpenAPI specification standards.
 
-```python
-from typing import Dict, List, Optional
-import inspect
-from fastapi import FastAPI
+## FastAPI Automatic Documentation
 
-class APIDocGenerator:
- def __init__(self, app: FastAPI):
- self.app = app
- self.openapi_schema = app.openapi()
+FastAPI provides built-in OpenAPI documentation. Access at /docs (Swagger UI) and /redoc (ReDoc).
 
- def generate_openapi_spec(self) -> dict:
- """Generate complete OpenAPI specification."""
- return {
- "openapi": "3.1.0",
- "info": {
- "title": self.openapi_schema["info"]["title"],
- "version": self.openapi_schema["info"]["version"],
- "description": self.openapi_schema["info"].get("description", ""),
- "contact": {
- "name": "API Support",
- "email": "support@example.com"
- }
- },
- "paths": self.enrich_paths_with_examples(),
- "components": self.generate_components()
- }
+### Enhancing FastAPI Documentation
 
- def enrich_paths_with_examples(self) -> dict:
- """Add examples and detailed descriptions to API paths."""
- enriched_paths = {}
+Add detailed descriptions to route handlers:
+- Include docstrings that describe endpoint purpose
+- Use response_model parameter for typed responses
+- Add summary and description parameters to decorators
+- Define examples in Pydantic model Config class
 
- for path, path_item in self.openapi_schema["paths"].items():
- enriched_paths[path] = {}
+Organize endpoints with tags:
+- Group related endpoints under meaningful tag names
+- Add tag descriptions in app configuration
+- Use consistent naming conventions
 
- for method, operation in path_item.items():
- if method.upper() in ["GET", "POST", "PUT", "DELETE"]:
- enriched_paths[path][method] = {
- operation,
- "responses": self.enrich_responses(operation.get("responses", {})),
- "examples": self.generate_examples(path, method, operation)
- }
+Enhance Pydantic models:
+- Add Field descriptions with Field(description="...")
+- Include examples with Field(example="...")
+- Document validation constraints
+- Use Config class for schema customization
 
- return enriched_paths
+### Exporting OpenAPI Specification
 
- def generate_examples(self, path: str, method: str, operation: dict) -> dict:
- """Generate request/response examples."""
- examples = {}
+Access the generated OpenAPI JSON at /openapi.json endpoint.
 
- if method.upper() == "POST":
- examples["application/json"] = {
- "summary": "Example request",
- "value": self.generate_request_example(operation)
- }
+For programmatic access, use app.openapi() method to get the specification dictionary.
 
- return examples
+Save to file by serializing the openapi() output to JSON format.
 
- def generate_markdown_docs(self) -> str:
- """Generate comprehensive Markdown documentation."""
- template = """
-# {title}
+## Express/Node.js with swagger-jsdoc
 
-{description}
+### Setup
 
-## Base URL
-```
-{base_url}
-```
+Install swagger-jsdoc and swagger-ui-express packages.
 
-## Authentication
-{authentication}
+Create swagger configuration object:
+- Define openapi version (3.0.0 or 3.1.0)
+- Set info section with title, version, description
+- Specify servers array with URLs
+- Define component schemas for reuse
+- Add security definitions if needed
 
-## Endpoints
+### Documenting Endpoints
 
-{endpoints}
+Add @openapi comments above route handlers:
+- Document path with HTTP method
+- Specify summary and description
+- Define parameters (path, query, body)
+- Document request body schema
+- List all response codes with schemas
+- Add tags for organization
 
-## Data Models
+### Serving Documentation
 
-{models}
- """
+Use swagger-ui-express to serve interactive documentation at /api-docs endpoint.
 
- endpoints = self.generate_endpoint_markdown()
- models = self.generate_model_markdown()
+Generate static OpenAPI JSON file for external tools.
 
- return template.format(
- title=self.openapi_schema["info"]["title"],
- description=self.openapi_schema["info"].get("description", ""),
- base_url="https://api.example.com/v1",
- authentication=self.generate_auth_docs(),
- endpoints=endpoints,
- models=models
- )
+## OpenAPI Specification Best Practices
 
-# Usage example
-def generate_api_docs():
- app = FastAPI(title="User Management API", version="1.0.0")
+Schema Organization:
+- Define reusable schemas in components section
+- Use $ref references to avoid duplication
+- Create separate schemas for request and response when different
+- Document nullable fields explicitly
 
- doc_generator = APIDocGenerator(app)
+Documentation Quality:
+- Write clear, concise summaries (under 80 characters)
+- Provide detailed descriptions for complex operations
+- Include realistic examples for all schemas
+- Document error responses with problem details
 
- # Generate different formats
- openapi_spec = doc_generator.generate_openapi_spec()
- markdown_docs = doc_generator.generate_markdown_docs()
- html_docs = doc_generator.generate_html_docs()
+Security Documentation:
+- Define security schemes in components
+- Apply security requirements at operation or global level
+- Document required scopes for OAuth flows
+- Include authentication examples
 
- return {
- "openapi": openapi_spec,
- "markdown": markdown_docs,
- "html": html_docs
- }
-```
+## Rendering Tools
 
-## Key Features
-- OpenAPI 3.1.0 specification generation
-- Automatic example generation
-- Multi-format output (OpenAPI, Markdown, HTML)
-- Request/response enrichment
-- Authentication documentation
-- Interactive API docs generation
+Swagger UI:
+- Interactive documentation with try-it-out feature
+- Customizable with CSS and configuration
+- Supports OAuth authentication flows
+
+Redoc:
+- Three-panel layout for better readability
+- Generates static HTML for hosting
+- Better for large API specifications
+
+Stoplight Elements:
+- Modern React-based documentation
+- Built-in mock server capabilities
+- Supports OpenAPI 3.1 features
 
 ## Integration Points
-- FastAPI applications
-- Express.js applications
-- Django REST Framework
-- Spring Boot applications
+
+CI/CD Integration:
+- Generate OpenAPI spec during build
+- Validate spec with spectral or openapi-validator
+- Deploy documentation alongside API
+- Version documentation with API releases
+
+External Tools:
+- Postman collection generation from OpenAPI
+- SDK generation with openapi-generator
+- API testing with tools like Dredd
+
+---
+
+Version: 2.0.0
+Last Updated: 2025-12-30

@@ -957,8 +957,8 @@ if has_worktree_flag:
         print(f"\n SPEC created: SPEC-{SPEC_ID}")
         print(f" Worktree created: {worktree_info.path}")
         print(f"\n Next steps:")
-        print(f"  1. Switch to worktree: moai-worktree switch SPEC-{SPEC_ID}")
-        print(f"  2. Or use shell eval: eval $(moai-worktree go SPEC-{SPEC_ID})")
+        print(f"  1. Switch to worktree: moai-workflow-worktree switch SPEC-{SPEC_ID}")
+        print(f"  2. Or use shell eval: eval $(moai-workflow-worktree go SPEC-{SPEC_ID})")
         print(f"  3. Then run: /moai:2-run SPEC-{SPEC_ID}")
 
     except Exception as e:
@@ -966,7 +966,7 @@ if has_worktree_flag:
         print(f"\n Worktree creation failed: {e}")
         print(f" SPEC created: SPEC-{SPEC_ID}")
         print(f" You can manually create worktree later with:")
-        print(f"   moai-worktree new SPEC-{SPEC_ID}")
+        print(f"   moai-workflow-worktree new SPEC-{SPEC_ID}")
 ```
 
 Expected Success Outcome:
@@ -976,8 +976,8 @@ Expected Success Outcome:
  Worktree created: ~/worktrees/MoAI-ADK/SPEC-AUTH-001
 
  Next steps:
-  1. Switch to worktree: moai-worktree switch SPEC-AUTH-001
-  2. Or use shell eval: eval $(moai-worktree go SPEC-AUTH-001)
+  1. Switch to worktree: moai-workflow-worktree switch SPEC-AUTH-001
+  2. Or use shell eval: eval $(moai-workflow-worktree go SPEC-AUTH-001)
   3. Then run: /moai:2-run SPEC-AUTH-001
 ```
 
@@ -1195,8 +1195,8 @@ Would you like to enable automatic branch creation for future SPEC creations?
 - Status: Ready for parallel development
 
  Next Steps:
-1.  Switch to worktree: `moai-worktree switch SPEC-{SPEC_ID}`
-2.  Or use shell eval: `eval $(moai-worktree go SPEC-{SPEC_ID})`
+1.  Switch to worktree: `moai-workflow-worktree switch SPEC-{SPEC_ID}`
+2.  Or use shell eval: `eval $(moai-workflow-worktree go SPEC-{SPEC_ID})`
 3.  Review SPEC documents in worktree: `.moai/specs/SPEC-{SPEC_ID}/`
 4.  Execute `/moai:2-run SPEC-{SPEC_ID}` to begin TDD implementation
 5.  Work on isolated environment without affecting other SPECs
@@ -1292,8 +1292,8 @@ Basic Worktree Creation:
 #  Worktree created: ~/worktrees/MoAI-ADK/SPEC-AUTH-001
 #
 #  Next steps:
-#   1. Switch to worktree: moai-worktree switch SPEC-AUTH-001
-#   2. Or use shell eval: eval $(moai-worktree go SPEC-AUTH-001)
+#   1. Switch to worktree: moai-workflow-worktree switch SPEC-AUTH-001
+#   2. Or use shell eval: eval $(moai-workflow-worktree go SPEC-AUTH-001)
 ```
 
 Interactive Environment Selection:
@@ -1316,7 +1316,7 @@ Associated Agents & Components:
 Key Integration Points:
 
 - WorktreeManager Import: `from moai_adk.cli.worktree.manager import WorktreeManager`
-- Worktree Registry: Automatic registration in `~/worktrees/MoAI-ADK/.moai-worktree-registry.json`
+- Worktree Registry: Automatic registration in `~/worktrees/MoAI-ADK/.moai-workflow-worktree-registry.json`
 - Git Integration: Creates feature branch `feature/SPEC-{ID}` and associated worktree
 - Error Handling: Graceful fallback if worktree creation fails
 
@@ -1357,15 +1357,15 @@ Status:  COMPLETE - Full integration achieved on 2025-11-28
  Worktree created: ~/worktrees/MoAI-ADK/SPEC-AUTH-001
 
  Next steps:
-  1. Switch to worktree: moai-worktree switch SPEC-AUTH-001
-  2. Or use shell eval: eval $(moai-worktree go SPEC-AUTH-001)
+  1. Switch to worktree: moai-workflow-worktree switch SPEC-AUTH-001
+  2. Or use shell eval: eval $(moai-workflow-worktree go SPEC-AUTH-001)
   3. Then run: /moai:2-run SPEC-AUTH-001
 ```
 
 ### Integration Points
 
 - Import: `from moai_adk.cli.worktree.manager import WorktreeManager`
-- Worktree Registry: Automatic registration in `~/worktrees/MoAI-ADK/.moai-worktree-registry.json`
+- Worktree Registry: Automatic registration in `~/worktrees/MoAI-ADK/.moai-workflow-worktree-registry.json`
 - Branch Creation: Creates feature branch `feature/SPEC-{SPEC_ID}` automatically
 - Documentation: Updated all examples, checklists, and status reports
 

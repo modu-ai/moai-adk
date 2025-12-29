@@ -4,7 +4,7 @@ description: Use for Notion workspace management, database operations, page crea
 tools: Read, TodoWrite, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-mcp-notion, moai-workflow-project
+skills: moai-foundation-claude, moai-workflow-project
 ---
 
 # MCP Notion Integrator Agent

@@ -1,147 +1,207 @@
-# User Guide Generation
+# User Guide Creation Patterns
 
 ## Overview
-Automated creation of comprehensive user guides, tutorials, getting started documentation, and cookbooks with AI-powered content generation.
 
-## Quick Implementation
+Create effective user guides, tutorials, and getting started documentation following best practices and established documentation standards.
 
-```python
-class UserGuideGenerator:
- def __init__(self, ai_client=None):
- self.ai_client = ai_client
+## Getting Started Guide Structure
 
- def generate_getting_started_guide(self, project_info: Dict) -> str:
- """Generate comprehensive getting started guide."""
+### Essential Sections
 
- guide_structure = [
- "# Getting Started",
- "",
- "## Prerequisites",
- self.generate_prerequisites_section(project_info),
- "",
- "## Installation",
- self.generate_installation_section(project_info),
- "",
- "## Quick Start",
- self.generate_quick_start_section(project_info),
- "",
- "## Basic Usage",
- self.generate_basic_usage_section(project_info),
- "",
- "## Next Steps",
- self.generate_next_steps_section(project_info)
- ]
+Prerequisites:
+- System requirements (OS, runtime versions)
+- Required tools and dependencies
+- Account or access requirements
+- Knowledge prerequisites
 
- return "\n".join(guide_structure)
+Installation:
+- Package manager commands (npm, pip, etc.)
+- Configuration file setup
+- Environment variable configuration
+- Verification steps to confirm success
 
- def generate_tutorial_series(self, features: List[Dict]) -> List[str]:
- """Generate a series of tutorials for different features."""
- tutorials = []
+Quick Start:
+- Minimal working example
+- Expected output description
+- Common first-time issues and solutions
 
- for feature in features:
- tutorial = self.generate_feature_tutorial(feature)
- tutorials.append(tutorial)
+Basic Usage:
+- Core concepts explanation
+- Essential API or CLI commands
+- Simple workflow demonstration
 
- return tutorials
+Next Steps:
+- Links to detailed tutorials
+- Reference documentation pointers
+- Community resources
 
- def generate_feature_tutorial(self, feature: Dict) -> str:
- """Generate a single tutorial for a specific feature."""
+### Writing Effective Instructions
 
- if self.ai_client:
- prompt = f"""
- Create a step-by-step tutorial for this feature:
+Use imperative mood for actions: "Run the command" not "You should run"
 
- Feature Name: {feature['name']}
- Description: {feature['description']}
- Key Functions: {', '.join(feature.get('functions', []))}
- Example Usage: {feature.get('example', '')}
+Break complex tasks into numbered steps:
+1. One action per step
+2. Include expected results
+3. Add troubleshooting for likely failures
 
- Please include:
- 1. Clear introduction explaining what the feature does
- 2. Prerequisites and setup requirements
- 3. Step-by-step implementation guide
- 4. Complete code example
- 5. Common use cases and variations
- 6. Troubleshooting tips
- 7. Related features and next steps
+Provide copy-paste ready commands:
+- Use consistent command prefixes
+- Include expected output where helpful
+- Note platform-specific variations
 
- Format as a comprehensive tutorial with clear sections and code blocks.
- """
+## Tutorial Structure
 
- response = self.ai_client.generate_content(prompt)
- return response["content"]
+### Tutorial Components
 
- else:
- return self.generate_basic_tutorial(feature)
+Introduction:
+- What the reader will learn
+- Why this topic matters
+- Estimated completion time
 
- def generate_cookbook(self, use_cases: List[Dict]) -> str:
- """Generate a cookbook of common patterns and solutions."""
+Prerequisites:
+- What should be completed first
+- Required background knowledge
+- Setup verification
 
- cookbook_content = ["# Cookbook", "", "## Common Patterns and Solutions"]
+Step-by-Step Instructions:
+- Logical progression of steps
+- Each step builds on previous
+- Clear success indicators
 
- for use_case in use_cases:
- recipe = self.generate_recipe(use_case)
- cookbook_content.extend(["", recipe])
+Complete Example:
+- Full working code at the end
+- Runnable without modifications
+- Includes all imports and setup
 
- return "\n".join(cookbook_content)
+Exercises:
+- Practice problems to reinforce learning
+- Variations to explore
+- Challenges for advanced readers
 
- def generate_recipe(self, use_case: Dict) -> str:
- """Generate a single recipe for the cookbook."""
+### Tutorial Types
 
- return f"""
-### {use_case['title']}
+Conceptual Tutorials:
+- Explain how things work
+- Use diagrams and analogies
+- Build mental models
 
-Problem: {use_case['problem']}
+Task-Based Tutorials:
+- Focus on accomplishing specific goals
+- Step-by-step with clear outcomes
+- Practical and actionable
 
-Solution: {use_case['solution']}
+Reference Tutorials:
+- Comprehensive feature coverage
+- Organized for lookup
+- Include all options and variations
 
-Code Example:
-```python
-{use_case.get('example_code', '# Example implementation')}
-```
+## Cookbook and Recipe Format
 
-Explanation: {use_case.get('explanation', 'Detailed explanation of the solution')}
+### Recipe Structure
 
-Variations: {use_case.get('variations', 'Common variations and adaptations')}
+Problem Statement:
+- Clear description of the challenge
+- When this pattern applies
+- What the reader wants to achieve
 
-Related Patterns: {', '.join(use_case.get('related_patterns', []))}
- """
-```
+Solution:
+- Concise answer or approach
+- Working code example
+- Configuration if applicable
 
-## Guide Types
+Explanation:
+- Why the solution works
+- Key concepts involved
+- Trade-offs and alternatives
 
-### 1. Getting Started Guides
-- Prerequisites and requirements
-- Installation and setup
-- Quick start examples
-- Basic usage patterns
-- Next steps and resources
+Variations:
+- Common modifications
+- Related patterns
+- Edge cases and handling
 
-### 2. Feature Tutorials
-- Step-by-step implementation
-- Complete working examples
-- Common use cases
-- Troubleshooting tips
-- Advanced variations
+### Cookbook Organization
 
-### 3. Cookbooks
-- Problem-solution format
-- Code-first examples
-- Common patterns
-- Best practices
-- Performance tips
+Organize by task or domain:
+- Authentication recipes
+- Database patterns
+- API integration examples
+- Testing strategies
 
-## Content Generation Features
-- AI-powered tutorial creation
-- Structured content templates
-- Code example generation
-- Progressive difficulty scaling
-- Cross-references and links
-- Troubleshooting sections
+Include difficulty indicators:
+- Beginner-friendly patterns
+- Intermediate techniques
+- Advanced implementations
 
-## Integration Points
-- Project documentation systems
-- Developer onboarding workflows
-- Knowledge base platforms
-- Customer support systems
-- Educational platforms
+Cross-reference related recipes:
+- Link prerequisites
+- Reference complementary patterns
+- Build learning paths
+
+## Documentation Style Guidelines
+
+### Google Developer Documentation Style
+
+Use second person (you):
+- "You can configure..." not "Users can configure..."
+
+Use active voice:
+- "The function returns..." not "The value is returned by..."
+
+Keep sentences short:
+- One idea per sentence
+- Break complex explanations into lists
+
+Use consistent terminology:
+- Define terms on first use
+- Maintain a glossary for projects
+
+### Microsoft Writing Style Guide
+
+Be concise:
+- Remove unnecessary words
+- Get to the point quickly
+
+Use simple words:
+- "use" not "utilize"
+- "start" not "commence"
+
+Format for scanning:
+- Use headings liberally
+- Include bulleted lists
+- Highlight key information
+
+## Documentation Maintenance
+
+### Keeping Docs Current
+
+Tie documentation to code changes:
+- Update docs in same PR as code
+- Include docs in definition of done
+- Review docs during code review
+
+Automate where possible:
+- Generate API docs from code
+- Validate code examples run
+- Check links regularly
+
+Track documentation health:
+- Monitor page views and feedback
+- Track time-to-resolution for support
+- Survey users periodically
+
+### Version Documentation
+
+Align doc versions with software versions:
+- Use versioned documentation systems
+- Mark deprecated content clearly
+- Provide migration guides
+
+Archive old versions:
+- Maintain access to historical docs
+- Clearly indicate version applicability
+- Redirect to current when appropriate
+
+---
+
+Version: 2.0.0
+Last Updated: 2025-12-30

@@ -1,12 +1,12 @@
 ---
 name: moai-platform-railway
 description: Railway container deployment specialist covering Docker, multi-service architectures, persistent volumes, and auto-scaling. Use when deploying containerized full-stack applications.
-version: 1.0.0
+version: 1.1.0
 category: platform
 tags: [railway, docker, containers, multi-service, auto-scaling]
-context7-libraries: []
+context7-libraries: [railway]
 related-skills: [moai-platform-vercel, moai-domain-backend]
-updated: 2025-12-07
+updated: 2025-12-30
 status: active
 allowed-tools: Read, Write, Bash, Grep, Glob
 ---
@@ -118,6 +118,8 @@ CMD ["./main"]
 
 ### Phase 2: Nixpacks Configuration
 
+Note: Nixpacks is deprecated and in maintenance mode. New services default to Railpack. Existing services continue to work with Nixpacks. To migrate, set builder = "RAILPACK" in railway.toml.
+
 Node.js nixpacks.toml:
 ```toml
 [phases.setup]
@@ -187,33 +189,46 @@ cpu = "1"
 
 ### Phase 4: Multi-Service Architecture
 
-Service Mesh Configuration (railway.yaml):
-```yaml
-services:
-  api:
-    build:
-      dockerfile: ./apps/api/Dockerfile
-    deploy:
-      replicas: 3
-      resources:
-        memory: 1Gi
-    environment:
-      DATABASE_URL: ${{Postgres.DATABASE_URL}}
-      REDIS_URL: ${{Redis.REDIS_URL}}
+Multi-Service Monorepo (railway.toml per service):
 
-  worker:
-    build:
-      dockerfile: ./apps/worker/Dockerfile
-    deploy:
-      replicas: 2
-    environment:
-      REDIS_URL: ${{Redis.REDIS_URL}}
+Each service in a monorepo requires its own railway.toml in its directory.
 
-  scheduler:
-    build:
-      dockerfile: ./apps/scheduler/Dockerfile
-    cron: "*/5 * * * *"
+API Service (apps/api/railway.toml):
+```toml
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "./Dockerfile"
+
+[deploy]
+startCommand = "node dist/main.js"
+healthcheckPath = "/health"
+numReplicas = 3
 ```
+
+Worker Service (apps/worker/railway.toml):
+```toml
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "./Dockerfile"
+
+[deploy]
+startCommand = "node dist/worker.js"
+numReplicas = 2
+```
+
+Scheduler Service (apps/scheduler/railway.toml):
+```toml
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "./Dockerfile"
+
+[deploy]
+startCommand = "node dist/scheduler.js"
+cronSchedule = "*/5 * * * *"
+```
+
+Service Variable References:
+Use Railway's variable reference syntax in service settings for cross-service communication with format ${{ServiceName.VARIABLE_NAME}}.
 
 Private Networking:
 ```typescript
@@ -374,4 +389,4 @@ railway rollback --previous
 
 ---
 
-Status: Production Ready | Version: 1.0.0 | Updated: 2025-12-07
+Status: Production Ready | Version: 1.1.0 | Updated: 2025-12-30

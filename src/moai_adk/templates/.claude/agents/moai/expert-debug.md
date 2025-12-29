@@ -4,7 +4,7 @@ description: Use PROACTIVELY when: When a runtime error occurs and it is necessa
 tools: Read, Grep, Glob, Bash, TodoWrite, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-workflow-testing, moai-lang-python, moai-lang-typescript
+skills: moai-foundation-claude, moai-workflow-testing, moai-lang-python, moai-lang-typescript, moai-lang-javascript
 ---
 
 # Debug Helper - Integrated Debugging Expert

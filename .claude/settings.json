@@ -1,38 +1,9 @@
 {
-  "companyAnnouncements": [
-    "🗿 MoAI-ADK: SPEC-First TDD with 135+ Skills and Context7 integration",
-    "📋 Commands: /moai:0-project (Setup) → /moai:1-plan (SPEC) → /moai:2-run (TDD) → /moai:3-sync (Docs)",
-    "🤖 Agents: 7-Tier hierarchy (workflow → core → domain → mcp → factory → support → ai)",
-    "🔄 Workflow: RED-GREEN-REFACTOR cycle with Git 3-Mode strategy (Manual/Personal/Team)",
-    "✅ Quality: TRUST 5 principles with ≥90% test coverage enforced",
-    "📚 Context7: Real-time library docs for hallucination-free code generation",
-    "🎯 Core Commands: /moai:1-plan generates SPEC → /moai:2-run implements TDD → /moai:3-sync creates docs",
-    "⚡ Agent Examples: workflow-tdd (TDD cycle), code-backend (API), mcp-context7 (docs), factory-skill (Skills)"
-  ],
-  "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start__show_project_info.py"
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_end__auto_cleanup.py"
-          }
-        ]
-      }
-    ]
+  "cleanupPeriodDays": 30,
+  "env": {
+    "MOAI_CONFIG_SOURCE": "sections"
   },
   "permissions": {
-    "defaultMode": "default",
     "allow": [
       "AskUserQuestion",
       "Bash(black:*)",
@@ -97,27 +68,6 @@
       "mcp__context7__resolve-library-id",
       "mcp__sequential-thinking__*"
     ],
-    "ask": [
-      "Bash(gh pr merge:*)",
-      "Bash(git add:*)",
-      "Bash(git checkout:*)",
-      "Bash(git commit:*)",
-      "Bash(git merge:*)",
-      "Bash(git push:*)",
-      "Bash(git rebase:*)",
-      "Bash(git reset:*)",
-      "Bash(git revert:*)",
-      "Bash(git stash:*)",
-      "Bash(pip install:*)",
-      "Bash(pip3 install:*)",
-      "Bash(rm -rf:*)",
-      "Bash(rm:*)",
-      "Bash(sudo:*)",
-      "Bash(uv add:*)",
-      "Bash(uv remove:*)",
-      "Read(./.env)",
-      "Read(./.env.*)"
-    ],
     "deny": [
       "Read(./secrets/**)",
       "Read(~/.ssh/**)",
@@ -156,17 +106,69 @@
       "Bash(git push --force-with-lease:*)",
       "Bash(git reset --hard:*)",
       "Bash(git rebase -i:*)"
+    ],
+    "ask": [
+      "Bash(gh pr merge:*)",
+      "Bash(git add:*)",
+      "Bash(git checkout:*)",
+      "Bash(git commit:*)",
+      "Bash(git merge:*)",
+      "Bash(git push:*)",
+      "Bash(git rebase:*)",
+      "Bash(git reset:*)",
+      "Bash(git revert:*)",
+      "Bash(git stash:*)",
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(rm -rf:*)",
+      "Bash(rm:*)",
+      "Bash(sudo:*)",
+      "Bash(uv add:*)",
+      "Bash(uv remove:*)",
+      "Read(./.env)",
+      "Read(./.env.*)"
+    ],
+    "defaultMode": "default"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start__show_project_info.py"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_end__auto_cleanup.py"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
     "type": "command",
     "command": "moai-adk statusline",
-    "padding": 0,
-    "refreshInterval": 300
+    "padding": 0
   },
   "outputStyle": "R2-D2",
-  "cleanupPeriodDays": 30,
-  "env": {
-    "MOAI_CONFIG_SOURCE": "sections"
+  "companyAnnouncements": [
+    "🗿 MoAI-ADK: SPEC-First TDD with 135+ Skills and Context7 integration",
+    "📋 Commands: /moai:0-project (Setup) → /moai:1-plan (SPEC) → /moai:2-run (TDD) → /moai:3-sync (Docs)",
+    "🤖 Agents: 7-Tier hierarchy (workflow → core → domain → mcp → factory → support → ai)",
+    "🔄 Workflow: RED-GREEN-REFACTOR cycle with Git 3-Mode strategy (Manual/Personal/Team)",
+    "✅ Quality: TRUST 5 principles with ≥90% test coverage enforced",
+    "📚 Context7: Real-time library docs for hallucination-free code generation",
+    "🎯 Core Commands: /moai:1-plan generates SPEC → /moai:2-run implements TDD → /moai:3-sync creates docs",
+    "⚡ Agent Examples: workflow-tdd (TDD cycle), code-backend (API), mcp-context7 (docs), factory-skill (Skills)"
+  ],
+  "enabledPlugins": {
+    "moai-security@moai-cc-plugins": true
   }
 }

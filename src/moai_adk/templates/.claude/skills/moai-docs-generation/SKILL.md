@@ -1,249 +1,290 @@
 ---
 name: moai-docs-generation
-description: Automated documentation generation specialist for technical specs, API docs, user guides, and knowledge bases with multi-format output
-version: 1.0.0
+description: Documentation generation patterns for technical specs, API docs, user guides, and knowledge bases using real tools like Sphinx, MkDocs, TypeDoc, and Nextra. Use when creating docs from code, building doc sites, or automating documentation workflows.
+version: 2.0.0
 category: workflow
-allowed-tools: Read, Write, Edit, Grep, Glob
-tags:
- - documentation
- - generation
- - automation
- - markdown
- - html
- - api-docs
-updated: 2025-12-06
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash
+updated: 2025-12-30
 status: active
-author: MoAI-ADK Team
 ---
 
-# Documentation Generation Specialist
+# Documentation Generation Patterns
 
 ## Quick Reference (30 seconds)
 
-Automated Documentation Generation - Comprehensive documentation automation covering technical specs, API documentation, user guides, and knowledge base creation with multi-format output capabilities.
+Purpose: Generate professional documentation using established tools and frameworks.
 
-Core Capabilities:
-- Technical Documentation: API docs, architecture specs, code documentation
-- User Guides: Tutorials, getting started guides, best practices
-- API Documentation: OpenAPI/Swagger generation, endpoint documentation
-- Multi-Format Output: Markdown, HTML, PDF, static sites
-- AI-Powered Generation: Context-aware content creation and enhancement
-- Continuous Updates: Auto-sync documentation with code changes
+Core Documentation Tools:
+- Python: Sphinx with autodoc, MkDocs with Material theme, pydoc
+- TypeScript/JavaScript: TypeDoc, JSDoc, TSDoc
+- API Documentation: OpenAPI/Swagger from FastAPI/Express, Redoc, Stoplight
+- Static Sites: Nextra (Next.js), Docusaurus (React), VitePress (Vue)
+- Universal: Markdown, MDX, reStructuredText
 
-When to Use:
-- Generating API documentation from code
-- Creating technical specifications and architecture docs
-- Building user guides and tutorials
-- Automating knowledge base creation
-- Maintaining up-to-date project documentation
+When to Use This Skill:
+- Generating API documentation from code annotations
+- Building documentation sites with search and navigation
+- Creating user guides and technical specifications
+- Automating documentation updates in CI/CD pipelines
+- Converting between documentation formats
 
 ---
 
 ## Implementation Guide (5 minutes)
 
-### Quick Start Workflow
+### Python Documentation with Sphinx
 
-Basic Documentation Generation:
-```python
-from moai_docs_generation import DocumentationGenerator
+Sphinx Setup and Configuration:
 
-# Initialize generator
-doc_gen = DocumentationGenerator()
+Install Sphinx and extensions with pip install sphinx sphinx-autodoc-typehints sphinx-rtd-theme myst-parser
 
-# Generate API documentation
-api_docs = doc_gen.generate_api_docs("path/to/your/app.py")
+Initialize a Sphinx project by running sphinx-quickstart docs which creates the basic structure.
 
-# Create user guide
-user_guide = doc_gen.generate_user_guide(project_info)
+Configure conf.py with the following key settings:
+- Set extensions to include autodoc, napoleon, typehints, and myst_parser
+- Configure html_theme to sphinx_rtd_theme for a professional look
+- Add autodoc_typehints set to description for inline type hints
 
-# Export to multiple formats
-doc_gen.export_to_formats(api_docs, formats=["html", "pdf", "markdown"])
-```
+Generate API documentation by running sphinx-apidoc with the source directory, outputting to docs/api, then run make html in the docs directory.
 
-Single Command Documentation:
-```bash
-# Generate complete documentation
-moai generate-docs --source ./src --output ./docs --formats html,pdf
+### Python Documentation with MkDocs
 
-# Update API docs from code
-moai update-api-docs --app-file app.py --format openapi
+MkDocs Material Setup:
 
-# Create tutorial from feature
-moai create-tutorial --feature authentication --output docs/tutorials/
-```
+Install with pip install mkdocs mkdocs-material mkdocstrings mkdocstrings-python
 
-### Core Components
+Create mkdocs.yml configuration:
+- Set site_name and site_url
+- Configure theme with name material and desired color palette
+- Add plugins including search and mkdocstrings
+- Define nav structure with sections and pages
 
-1. API Documentation (`modules/api-documentation.md`)
-- OpenAPI/Swagger specification generation
-- Interactive HTML documentation
-- Code example generation
-- Request/response documentation
+Use mkdocstrings syntax in Markdown files with ::: module.path to auto-generate API docs from docstrings.
 
-2. Code Documentation (`modules/code-documentation.md`)
-- AST-based code analysis
-- AI-powered docstring enhancement
-- Automatic documentation structure extraction
-- Multi-format documentation generation
+Serve locally with mkdocs serve, build with mkdocs build, deploy with mkdocs gh-deploy.
 
-3. User Guides (`modules/user-guides.md`)
-- Getting started guides
-- Feature tutorials
-- Cookbook generation
-- Step-by-step instructions
+### TypeScript Documentation with TypeDoc
 
-4. Multi-Format Output (`modules/multi-format-output.md`)
-- HTML site generation
-- PDF documentation
-- Static site export
-- Responsive design templates
+TypeDoc Setup:
+
+Install with npm install typedoc --save-dev
+
+Add to package.json scripts: typedoc --out docs/api src/index.ts
+
+Configure with typedoc.json:
+- Set entryPoints to source files
+- Configure out to docs/api
+- Enable includeVersion and categorizeByGroup
+- Set theme to default or install custom themes
+
+Generate documentation by running npm run docs:generate
+
+### JavaScript Documentation with JSDoc
+
+JSDoc Setup:
+
+Install with npm install jsdoc --save-dev
+
+Create jsdoc.json configuration:
+- Set source include paths and includePattern
+- Configure templates and output destination
+- Enable markdown plugin for rich formatting
+
+Document functions with JSDoc comments using tags:
+- @param for parameters with type and description
+- @returns for return value documentation
+- @example for usage examples
+- @throws for error documentation
+
+### OpenAPI/Swagger Documentation
+
+FastAPI Auto-Documentation:
+
+FastAPI provides automatic OpenAPI docs. Access Swagger UI at /docs and ReDoc at /redoc.
+
+Enhance documentation by:
+- Adding docstrings to route handlers
+- Using response_model for typed responses
+- Defining examples in Pydantic model Config class
+- Setting tags for endpoint grouping
+- Adding detailed descriptions in route decorators
+
+Export OpenAPI spec programmatically with app.openapi() and save to openapi.json.
+
+Express with Swagger:
+
+Install swagger-jsdoc and swagger-ui-express.
+
+Configure swagger-jsdoc with OpenAPI definition and API file paths.
+
+Add @openapi comments to route handlers documenting paths, parameters, and responses.
+
+Serve Swagger UI at /api-docs endpoint.
+
+### Static Documentation Sites
+
+Nextra (Next.js):
+
+Reference Skill("moai-library-nextra") for comprehensive Nextra patterns.
+
+Key advantages: MDX support, file-system routing, built-in search, theme customization.
+
+Create with npx create-nextra-app, configure theme.config.tsx, organize pages in pages directory.
+
+Docusaurus (React):
+
+Initialize with npx create-docusaurus@latest my-docs classic
+
+Configure in docusaurus.config.js:
+- Set siteMetadata with title, tagline, url
+- Configure presets with docs and blog settings
+- Add themeConfig for navbar and footer
+- Enable search with algolia plugin
+
+Organize documentation in docs folder with category.json files for sidebar structure.
+
+VitePress (Vue):
+
+Initialize with npm init vitepress
+
+Configure in .vitepress/config.js:
+- Set title, description, base path
+- Define themeConfig with nav and sidebar
+- Configure search and social links
+
+Use Markdown with Vue components, code highlighting, and frontmatter.
 
 ---
 
 ## Advanced Patterns (10+ minutes)
 
-### Continuous Documentation Integration
+### Documentation from SPEC Files
 
-Git Hooks for Auto-Documentation:
-```python
-# .git/hooks/pre-commit
-#!/bin/bash
-# Auto-update documentation before commits
+Pattern for generating documentation from MoAI SPEC files:
 
-python -c "
-from moai_docs_generation import DocumentationGenerator
-doc_gen = DocumentationGenerator()
-doc_gen.update_documentation_for_changed_files()
-"
-```
+Read SPEC file content and extract key sections: id, title, description, requirements, api_endpoints.
 
-CI/CD Pipeline Integration:
-```yaml
-# .github/workflows/docs.yml
-name: Generate Documentation
-on:
- push:
- branches: [main]
+Generate structured Markdown documentation:
+- Create overview section from description
+- List requirements as feature bullets
+- Document each API endpoint with method, path, and description
+- Add usage examples based on endpoint definitions
 
-jobs:
- docs:
- runs-on: ubuntu-latest
- steps:
- - uses: actions/checkout@v2
- - name: Generate Documentation
- run: |
- moai generate-docs --source ./src --output ./docs
- moai deploy-docs --platform github-pages
-```
+Save generated docs to appropriate location in docs directory.
 
-### AI-Enhanced Documentation
+### CI/CD Documentation Pipeline
 
-Smart Content Generation:
-```python
-# AI-powered example generation
-ai_enhanced_docs = doc_gen.generate_with_ai(
- source_code="path/to/code",
- enhancement_level="comprehensive",
- include_examples=True,
- include_troubleshooting=True
-)
-```
+GitHub Actions Workflow:
 
-### Documentation Quality Automation
+Create .github/workflows/docs.yml that triggers on push to main branch when src or docs paths change.
 
-Automated Quality Checks:
-```python
-# Validate documentation quality
-quality_report = doc_gen.validate_documentation(
- completeness_threshold=0.9,
- include_example_validation=True,
- check_link_integrity=True
-)
-```
+Workflow steps:
+- Checkout repository
+- Setup language runtime (Python, Node.js)
+- Install documentation dependencies
+- Generate documentation using appropriate tool
+- Deploy to GitHub Pages, Netlify, or Vercel
+
+Example for Python/Sphinx:
+- Install with pip install sphinx sphinx-rtd-theme
+- Generate with sphinx-build -b html docs/source docs/build
+- Deploy using actions-gh-pages action
+
+Example for TypeScript/TypeDoc:
+- Install with npm ci
+- Generate with npm run docs:generate
+- Deploy to Pages
+
+### Documentation Validation
+
+Link Checking:
+
+Use linkchecker for local link validation in HTML output.
+
+For Markdown, use markdown-link-check in pre-commit hooks.
+
+Spell Checking:
+
+Use pyspelling with Aspell for automated spell checking.
+
+Configure .pyspelling.yml with matrix entries for different file types.
+
+Documentation Coverage:
+
+For Python, use interrogate to check docstring coverage.
+
+Configure minimum coverage thresholds in pyproject.toml.
+
+Fail CI builds if coverage drops below threshold.
+
+### Multi-Language Documentation
+
+Internationalization with Nextra:
+
+Configure i18n in next.config.js with locales array and defaultLocale.
+
+Create locale-specific pages in pages/[locale] directory.
+
+Use next-intl or similar for translations.
+
+Internationalization with Docusaurus:
+
+Configure i18n in docusaurus.config.js with defaultLocale and locales.
+
+Use docusaurus write-translations to generate translation files.
+
+Organize translations in i18n/[locale] directory structure.
 
 ---
 
 ## Works Well With
 
-Complementary Skills:
-- `moai-foundation-core` - SPEC-first documentation approach
-- `moai-workflow-project` - Project documentation integration
-- `moai-lang-python` - Python code documentation patterns
-- `moai-lang-typescript` - TypeScript code documentation patterns
-- `moai-mcp-notion` - Notion documentation sync and knowledge management
+Skills:
+- moai-library-nextra - Comprehensive Nextra documentation framework patterns
+- moai-lang-python - Python docstring conventions and typing
+- moai-lang-typescript - TypeScript/JSDoc documentation patterns
+- moai-domain-backend - API documentation for backend services
+- moai-workflow-project - Project documentation integration
 
-Technology Integration:
-- FastAPI/Flask applications
-- Sphinx/MkDocs documentation
-- GitHub/GitLab wikis
-- Confluence knowledge bases
-- Static site generators (Hugo, Jekyll)
+Agents:
+- manager-docs - Documentation workflow orchestration
+- expert-backend - API endpoint documentation
+- expert-frontend - Component documentation
 
----
-
-## Usage Examples
-
-### Command Line Interface
-```bash
-# Complete documentation suite
-moai docs:generate --project ./my-project --output ./docs
-
-# API documentation only
-moai docs:api --source ./app.py --format openapi,html
-
-# User guide creation
-moai docs:guide --features auth,user-management --template getting-started
-
-# Documentation updates
-moai docs:update --sync-with-code --validate-links
-```
-
-### Python API
-```python
-from moai_docs_generation import DocumentationGenerator
-
-# Complete workflow
-generator = DocumentationGenerator()
-docs = generator.generate_comprehensive_docs(
- source_directory="./src",
- include_api_docs=True,
- include_user_guides=True,
- output_formats=["html", "pdf", "markdown"]
-)
-
-# Individual components
-api_gen = API Documentation Generation()
-api_spec = api_gen.generate_openapi_spec(fastapi_app)
-
-code_gen = Code Documentation Enhancement()
-enhanced_docs = code_gen.analyze_and_enhance("./src/")
-```
+Commands:
+- /moai:3-sync - Documentation synchronization with code changes
 
 ---
 
-## Technology Stack
+## Tool Reference
 
-Core Technologies:
-- Python 3.8+ (main implementation)
-- FastAPI/Flask (API documentation)
-- Jinja2 (HTML templating)
-- Markdown (content formatting)
-- WeasyPrint (PDF generation)
+Python Documentation:
+- Sphinx: https://www.sphinx-doc.org/
+- MkDocs: https://www.mkdocs.org/
+- MkDocs Material: https://squidfunk.github.io/mkdocs-material/
+- mkdocstrings: https://mkdocstrings.github.io/
 
-Optional Integrations:
-- AI services (content enhancement)
-- Git hooks (auto-updates)
-- CI/CD platforms (continuous deployment)
-- Static site generators (hosting)
-- Documentation platforms (confluence)
+JavaScript/TypeScript Documentation:
+- TypeDoc: https://typedoc.org/
+- JSDoc: https://jsdoc.app/
+- TSDoc: https://tsdoc.org/
 
-Output Formats:
-- HTML (responsive sites)
-- PDF (print-ready documents)
-- Markdown (version control friendly)
-- OpenAPI/Swagger (API specifications)
-- Static sites (hosting platforms)
+API Documentation:
+- OpenAPI Specification: https://spec.openapis.org/
+- Swagger UI: https://swagger.io/tools/swagger-ui/
+- Redoc: https://redocly.github.io/redoc/
+- Stoplight: https://stoplight.io/
+
+Static Site Generators:
+- Nextra: https://nextra.site/
+- Docusaurus: https://docusaurus.io/
+- VitePress: https://vitepress.dev/
+
+Style Guides:
+- Google Developer Documentation Style Guide: https://developers.google.com/style
+- Microsoft Writing Style Guide: https://learn.microsoft.com/style-guide/
 
 ---
 
-*For detailed implementation patterns and advanced configurations, see the `modules/` directory.*
+Version: 2.0.0
+Last Updated: 2025-12-30

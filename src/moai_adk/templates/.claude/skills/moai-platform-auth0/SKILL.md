@@ -1,291 +1,274 @@
 ---
 name: moai-platform-auth0
-description: Auth0 enterprise authentication specialist covering SSO, SAML, OIDC, organizations, and B2B multi-tenancy. Use when implementing enterprise identity federation or complex auth workflows.
+description: Auth0 security specialist covering attack protection, multi-factor authentication, token security, sender constraining, and compliance. Use when implementing Auth0 security features, configuring attack defenses, setting up MFA, or meeting regulatory requirements.
 version: 1.0.0
-category: platform
-tags: [auth0, sso, saml, oidc, enterprise, identity]
-context7-libraries: [/auth0/auth0-docs]
-related-skills: [moai-platform-clerk, moai-domain-backend, moai-security-auth0]
-updated: 2025-12-07
+category: security
+tags: [auth0, security, mfa, attack-protection, tokens, dpop, mtls, compliance, fapi, gdpr]
+updated: 2025-12-24
 status: active
-allowed-tools: Read, Write, Bash, Grep, Glob
+allowed-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash
+context7-libraries: /auth0/docs
 ---
 
-# Auth0 Enterprise Authentication Specialist
+# Auth0 Security Specialist
 
-Enterprise identity federation platform for B2B SaaS applications with SSO, SAML, OIDC, ADFS, Organizations, Actions, and Universal Login customization.
+Comprehensive security skill for Auth0 implementations covering attack protection, multi-factor authentication, token security, sender constraining (DPoP/mTLS), and regulatory compliance (FAPI, GDPR, HIPAA).
 
-## Quick Reference (30 seconds)
+## Quick Reference
 
-Auth0 Core Capabilities:
+### Security Feature Categories
 
-- Enterprise SSO: SAML, OIDC, ADFS with 50+ pre-built connections
-- Organizations: B2B multi-tenancy with isolated authentication contexts
-- Actions: Serverless extensibility for custom auth logic
-- Universal Login: Customizable branded login experience
-- Management API: Comprehensive user and tenant management
+Attack Protection:
+- Bot Detection: CAPTCHA challenges for suspicious traffic
+- Breached Password Detection: Blocks compromised credentials
+- Brute Force Protection: Limits failed login attempts per account
+- Suspicious IP Throttling: Rate limits high-velocity attacks
 
-When to Use Auth0:
+Multi-Factor Authentication:
+- Push notifications via Auth0 Guardian
+- One-time passwords (TOTP)
+- WebAuthn with security keys and biometrics
+- SMS/voice verification and Adaptive MFA
 
-- Enterprise SSO with SAML, OIDC, or ADFS required
-- B2B SaaS with organization-level isolation
-- 50+ enterprise identity provider integrations needed
-- Complex authentication workflows with custom logic
-- SOC2, HIPAA, or enterprise compliance requirements
+Token Security:
+- JWT structure and validation
+- Access token management with scopes
+- Refresh token rotation and expiration
+- Token revocation strategies
 
-Context7 Access:
+Sender Constraining:
+- DPoP: Application-layer token binding
+- mTLS: Transport-layer certificate binding
 
-Use resolve-library-id with "auth0" then get-library-docs for latest API documentation.
+Compliance: FAPI, GDPR, HIPAA/HITECH, PCI DSS, ISO 27001, SOC 2
+
+### Dashboard Navigation
+
+Attack Protection: Dashboard > Security > Attack Protection
+MFA Configuration: Dashboard > Security > Multi-factor Auth
+Security Center: Dashboard > Security > Security Center
+
+### Essential Setup Checklist
+
+1. Enable Bot Detection with appropriate sensitivity
+2. Activate Breached Password Detection
+3. Configure Brute Force Protection thresholds
+4. Enable Suspicious IP Throttling
+5. Set up at least one MFA factor
+6. Configure token expiration policies
 
 ---
 
 ## Implementation Guide
 
-### Enterprise SSO Configuration
+### Attack Protection
 
-SAML Identity Provider Integration:
+Bot Detection: Navigate to Dashboard > Security > Attack Protection > Bot Detection. Configure sensitivity (Low/Medium/High) and response type (Auth Challenge recommended, Simple CAPTCHA, or third-party). IP AllowList supports up to 100 addresses/CIDR ranges.
 
-Step 1: Navigate to Auth0 Dashboard, select Authentication, then Enterprise
-Step 2: Select SAML and click Create Connection
-Step 3: Provide connection name and IdP metadata URL or upload XML
-Step 4: Configure attribute mappings for user profile synchronization
-Step 5: Map SAML attributes to Auth0 user profile fields
-Step 6: Enable connection for target applications
+Supported flows: Universal Login, Classic Login, Lock.js v12.4.0+, native apps. Unsupported: Enterprise connections, social login, cross-origin authentication.
 
-SAML Attribute Mapping Configuration:
+Breached Password Detection: Enable for signup and login. Response actions include blocking compromised credentials and user/admin notifications. Standard Detection has 7-13 months detection time; Credential Guard (Enterprise) reduces to 12-36 hours. Test with passwords starting with AUTH0-TEST-.
 
-Common attribute mappings include email from http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress, given_name from http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname, family_name from http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname, and groups from http://schemas.xmlsoap.org/claims/Group.
+Brute Force Protection: Default threshold is 10 failed attempts (configurable 1-100). Protection mechanisms include IP-based blocking and account lockout. Blocks remove after 30 days, password change, admin removal, or user unblock link.
 
-OIDC Connection Setup:
+Suspicious IP Throttling: Velocity-based detection for high-volume attacks. Responds with HTTP 429. Configure separate thresholds for login (daily) and signup (per minute) attempts.
 
-Step 1: Select OpenID Connect in enterprise connections
-Step 2: Provide discovery URL from identity provider
-Step 3: Configure client ID and client secret from IdP
-Step 4: Define required scopes (openid, profile, email)
-Step 5: Map OIDC claims to Auth0 user profile attributes
-Step 6: Configure token validation settings
+For details: modules/attack-protection-overview.md
 
-ADFS Integration:
+### Multi-Factor Authentication
 
-Step 1: Configure ADFS as SAML identity provider in ADFS console
-Step 2: Add Auth0 as relying party trust
-Step 3: Export ADFS federation metadata XML
-Step 4: Create SAML connection in Auth0 with ADFS metadata
-Step 5: Configure claim rules in ADFS for required attributes
-Step 6: Test connection with ADFS sign-in flow
+Factor Configuration: Navigate to Dashboard > Security > Multi-factor Auth.
 
-### Organizations for B2B Multi-Tenancy
+Independent Factors (at least one required):
+- WebAuthn with FIDO Security Keys
+- One-time Password (OTP/TOTP)
+- Push Notifications via Auth0 Guardian
+- Phone Message (SMS/Voice)
+- Cisco Duo Security
 
-Organization Feature Overview:
+Dependent Factors: WebAuthn Biometrics, Email, Recovery codes
 
-Auth0 Organizations enable multi-tenant B2B SaaS applications with isolated authentication contexts per customer organization.
+MFA Policies: Never, Use Adaptive MFA (Enterprise), Always
 
-Organization Core Features:
+WebAuthn: Provides passwordless MFA with security keys or biometrics. Single interaction for multi-factor authentication, phishing-resistant.
 
-- Isolated user pools per organization
-- Organization-specific identity providers
-- Role-based access control per organization
-- Invitation and membership management
-- Custom branding per organization
-- Connection-level organization restrictions
+Adaptive MFA (Enterprise): Evaluates risk signals per transaction:
+- NewDevice: Device not used in past 30 days
+- ImpossibleTravel: Geographic anomalies
+- UntrustedIP: Suspicious activity history
 
-Creating Organizations Programmatically:
+High-risk transactions require verification regardless of existing MFA sessions.
 
-Use Management API to create organizations with name, display_name, branding configuration (logo_url, colors), metadata for custom attributes, and enabled_connections for allowed identity providers.
+Step-Up Authentication: Enhanced verification for sensitive operations. APIs use scopes; web apps verify ID token claims.
 
-Organization Membership Management:
+For details: modules/mfa-overview.md, modules/adaptive-mfa.md
 
-Invite users via email with customizable invitation templates, assign roles during invitation, support multiple organization memberships per user, and implement domain-based auto-enrollment.
+### Token Security
 
-Organization RBAC Configuration:
+JWT Fundamentals: RFC 7519 standard. Auth0 issues signed JWTs (JWS). Structure includes Header, Payload (claims), and Signature. Always validate signatures, never store sensitive data in payloads, use HTTPS only.
 
-Step 1: Enable Organizations in tenant settings
-Step 2: Define organization roles (org_admin, org_member, org_viewer)
-Step 3: Assign permissions to roles at organization level
-Step 4: Configure organization login experience
-Step 5: Implement role checks in application using organization claims
+Access Tokens: Authorize API access with scopes. Types: Opaque (require introspection) and JWT (self-contained). Key claims: iss, sub, aud, scope, exp. Default lifetime: 86400 seconds (24 hours).
 
-Organization-Specific Connections:
+Refresh Tokens: Enable session continuity. Maximum 200 active per user per application. Security features: Rotation (invalidates predecessor), expiring tokens (idle/absolute), revocation via Management API.
 
-Enable different identity providers per organization, allowing Enterprise customers to use SAML SSO while standard customers use email/password.
+Best Practices:
+- Treat signing keys as critical credentials
+- Prefer RS256 over HS256 for public key validation
+- Store tokens server-side when possible
+- Cache and reuse until expiration
 
-### Actions and Rules
+For details: modules/tokens-overview.md, modules/token-best-practices.md
 
-Actions Overview:
+### Sender Constraining
 
-Auth0 Actions replace deprecated Rules and Hooks with a modern serverless extensibility system.
+DPoP (Application Layer): Binds tokens to client-generated asymmetric key pairs.
 
-Action Triggers:
+Steps: Generate key pair (ES256 recommended), create DPoP Proof JWT, send via DPoP header, include updated proof with each API request.
 
-- post-login: Execute after successful authentication
-- post-user-registration: Execute after user signs up
-- pre-user-registration: Validate user before registration
-- post-change-password: Execute after password change
-- send-phone-message: Custom phone message providers
+Proof JWT Structure:
+- Header: typ (dpop+jwt), alg, jwk (public key)
+- Payload: jti, htm, htu, iat, ath (for API calls)
 
-Post-Login Action Patterns:
+Public clients must handle use_dpop_nonce errors.
 
-Add custom claims to tokens based on user metadata, enforce organization membership requirements, implement progressive profiling, log authentication events to external systems, and block users based on custom conditions.
+mTLS (Transport Layer): Binds tokens to X.509 certificates.
 
-Post-Login Action Structure:
+Process: Client establishes mTLS connection, Auth0 calculates certificate SHA-256 thumbprint, embeds in token cnf claim as x5t#S256. Resource server validates thumbprint.
 
-The exports.onExecutePostLogin function receives event and api parameters. Access user information via event.user, organization via event.organization, and modify tokens using api.idToken.setCustomClaim and api.accessToken.setCustomClaim methods.
+Requirements: Confidential clients only, Enterprise Plan with HRI add-on, PKI infrastructure.
 
-Pre-User-Registration Actions:
+For details: modules/dpop-implementation.md, modules/mtls-sender-constraining.md
 
-Validate email domains before allowing registration, check against external systems for user approval, populate initial user metadata, and enforce custom registration requirements.
+### Compliance
 
-Action Secrets Management:
+Highly Regulated Identity (Enterprise + HRI add-on):
+- Strong Customer Authentication: Minimum two independent factors
+- Dynamic Linking: Transaction details in authorization
+- PAR: Pushed Authorization Requests
+- JAR: JWT-Secured Authorization Requests
+- JWE: Access token encryption
+- Private Key JWT and mTLS authentication
 
-Store sensitive values like API keys in Action secrets, access via event.secrets object, rotate secrets without redeploying actions, and audit secret access in logs.
+GDPR Compliance:
+- Customer as Data Controller, Auth0 as Data Processor
+- User rights: Access, portability (JSON export), erasure, consent management
+- Security: Profile encryption, breach detection, brute-force protection
 
-### Universal Login Customization
+Certifications: ISO 27001/27017/27018, SOC 2 Type 2, CSA STAR, FAPI 1 Advanced OP, HIPAA BAA available, PCI DSS compliant models
 
-Universal Login Overview:
-
-Auth0 Universal Login provides a centralized, secure authentication experience hosted on Auth0 infrastructure.
-
-New Universal Login Features:
-
-- Built-in customization without code
-- Passwordless authentication support
-- WebAuthn and passkeys integration
-- Organization login picker
-- Identifier-first authentication flow
-
-Branding Configuration:
-
-Configure logo, colors, and fonts in Dashboard under Branding. Set primary_color for buttons and links, page_background_color for login page, and upload logo images in recommended dimensions.
-
-Custom Universal Login:
-
-For advanced customization, use Auth0 Lock widget or custom HTML pages. Implement custom CSS, JavaScript logic, and integrate with design systems while maintaining security.
-
-Page Templates:
-
-Customize login, signup, password reset, and MFA pages. Support multiple languages with template variables. Implement A/B testing for conversion optimization.
-
-### Management API
-
-Management API Overview:
-
-Auth0 Management API provides comprehensive programmatic access for user management, application configuration, and tenant administration.
-
-Authentication for Management API:
-
-Obtain Machine-to-Machine access tokens with appropriate scopes. Use client credentials flow with application client_id and client_secret targeting the Management API audience.
-
-User Management Operations:
-
-Create users with connection, email, password, and metadata. Search users with Lucene query syntax. Update user metadata (user_metadata for user-editable, app_metadata for application-controlled). Delete users and revoke sessions.
-
-Application Management:
-
-Create and configure applications programmatically. Manage allowed callbacks, logout URLs, and web origins. Configure JWT settings including token lifetime and signing algorithm.
-
-Connection Management:
-
-Create enterprise connections via API. Configure connection options and attribute mappings. Enable connections for specific applications. Manage connection-level settings.
-
-Rate Limiting Considerations:
-
-Management API enforces rate limits per endpoint. Implement exponential backoff for retry logic. Cache frequently accessed data. Use bulk operations where available.
+For details: modules/highly-regulated-identity.md, modules/gdpr-compliance.md
 
 ---
 
 ## Advanced Patterns
 
-### Enterprise Connection Patterns
+### Security Center Monitoring
 
-Connection Selector for Multiple IdPs:
+Access from Dashboard > Security > Security Center.
 
-Implement Home Realm Discovery using email domain to route users to appropriate identity provider automatically.
+Threat Categories:
+- Credential Stuffing: Machine-driven compromise attempts
+- Signup Attacks: Automated account creation
+- MFA Bypass: Circumvention attempts
 
-Connection Configuration per Environment:
+Filtering: Time period (up to 14 days), applications, connections. Auto-aggregation by minute/hour/day.
 
-Maintain separate connections for development, staging, and production environments. Use environment-specific metadata for connection configuration.
+Metrics: Bot detection counts, IP throttling events, brute force triggers, breached password alerts, MFA success/failure rates.
 
-Fallback Authentication Strategy:
+### Application Credentials
 
-Configure primary enterprise connection with database connection fallback. Allow password reset for users locked out of SSO.
+Client Secret (Default): Symmetric, simple but vulnerable to interception.
 
-### Token Customization
+Private Key JWT (Enterprise): Asymmetric key pairs, private key never transmitted, short-lived assertions. Recommended for enhanced security.
 
-Custom Claims in Access Tokens:
+mTLS for OAuth (HRI): X.509 certificates, strongest protection.
 
-Add organization_id, roles, and permissions as custom claims. Use namespaced claims following JWT best practices (e.g., https://myapp.com/claims/role).
+Key Management: Register up to two public keys for zero-downtime rotation. Algorithms: RS256, RS384, PS256.
 
-Refresh Token Rotation:
+### Continuous Session Protection
 
-Enable refresh token rotation for enhanced security. Configure absolute and inactivity expiration. Implement reuse detection for compromised tokens.
+Use Auth0 Actions for session context during token refresh events.
 
-Token Lifetime Configuration:
+Capabilities: IP/ASN monitoring, device tracking, expiration management, anomaly detection.
 
-Set appropriate lifetimes based on security requirements: access_token (15 minutes default), id_token (36000 seconds default), refresh_token (absolute and inactivity expiration).
+Dynamic management: Customize lifetimes by user attributes, organization, or role.
 
-### Migration Strategies
+---
 
-Lazy Migration from Legacy Database:
+## Module Reference
 
-Step 1: Create custom database connection
-Step 2: Implement Login script to validate against legacy DB
-Step 3: Implement GetUser script for profile retrieval
-Step 4: Auth0 creates user on successful legacy authentication
-Step 5: Monitor migration progress via logs
+Attack Protection:
+- modules/attack-protection-overview.md
+- modules/bot-detection.md
+- modules/breached-password-detection.md
+- modules/brute-force-protection.md
+- modules/suspicious-ip-throttling.md
+- modules/akamai-integration.md
+- modules/attack-protection-log-events.md
+- modules/state-parameters.md
 
-Bulk User Import:
+MFA:
+- modules/mfa-overview.md
+- modules/mfa-factors.md
+- modules/webauthn-fido.md
+- modules/adaptive-mfa.md
+- modules/guardian-configuration.md
+- modules/step-up-authentication.md
+- modules/mfa-api-management.md
+- modules/customize-mfa.md
+- modules/ropg-flow-mfa.md
 
-Export users from legacy system with password hashes. Format as Auth0 bulk import JSON with supported hash algorithms (bcrypt, argon2, pbkdf2). Submit import job via Management API. Monitor job status and handle errors.
+Tokens:
+- modules/tokens-overview.md
+- modules/jwt-fundamentals.md
+- modules/id-tokens.md
+- modules/access-tokens.md
+- modules/delegation-tokens.md
+- modules/refresh-tokens.md
+- modules/token-revocation.md
+- modules/token-best-practices.md
 
-Organization Migration:
+Sender Constraining:
+- modules/dpop-implementation.md
+- modules/mtls-sender-constraining.md
 
-Map legacy tenant structure to Auth0 Organizations. Migrate users with organization memberships. Configure organization-specific connections. Update application to use organization context.
+Compliance:
+- modules/compliance-overview.md
+- modules/fapi-implementation.md
+- modules/highly-regulated-identity.md
+- modules/gdpr-compliance.md
+- modules/certifications.md
+- modules/tenant-access-control.md
+- modules/customer-managed-keys.md
 
-### Security Best Practices
+Security Operations:
+- modules/security-center.md
+- modules/application-credentials.md
+- modules/continuous-session-protection.md
+- modules/security-guidance.md
+- modules/mdl-verification.md
 
-Anomaly Detection:
+---
 
-Enable brute-force protection with configurable thresholds. Configure breached password detection. Set up suspicious IP throttling. Monitor authentication anomalies in logs.
+## Usage Guide
 
-Adaptive MFA:
+This skill provides comprehensive Auth0 security guidance. Use it for:
+- Attack Protection configuration
+- Multi-Factor Authentication setup
+- Token security implementation
+- Sender constraining (DPoP/mTLS)
+- Compliance verification (FAPI, GDPR, HIPAA)
 
-Configure risk-based MFA challenges. Require MFA for sensitive operations. Support multiple factors (TOTP, SMS, WebAuthn, push). Implement step-up authentication for high-risk actions.
-
-Token Security:
-
-Use httpOnly cookies for token storage when possible. Implement token binding for enhanced security. Configure audience restrictions on access tokens. Validate tokens server-side before granting access.
+For comprehensive security reviews, use the expert-security agent included in this plugin.
 
 ---
 
 ## Resources
 
-Context7 Documentation Access:
-
-Use resolve-library-id with "auth0" then get-library-docs for comprehensive API reference and implementation guides.
-
-Works Well With:
-
-- moai-security-auth0: Auth0-specific security (Attack Protection, MFA, Token Security, Compliance)
-- moai-platform-clerk: Alternative for WebAuthn-first authentication
-- moai-platform-supabase: Supabase authentication integration
-- moai-platform-firebase-auth: Firebase authentication comparison
-- moai-platform-vercel: Vercel deployment with Auth0
-- moai-domain-backend: API development and token validation
-- moai-quality-security: OWASP compliance and security validation
-
-Auth0 Deployment Models:
-
-- Public Cloud: Multi-tenant SaaS deployment
-- Private Cloud: Dedicated tenant with enhanced isolation
-- Managed Private Cloud: Customer-controlled infrastructure
-
-Compliance Certifications:
-
-SOC 2 Type II, ISO 27001, ISO 27018, HIPAA BAA available, GDPR compliant, PCI DSS for applicable services.
-
----
-
-Status: Production Ready
-Generated with: MoAI-ADK Skill Factory v1.0
-Last Updated: 2025-12-07
-Platform: Auth0 Enterprise Authentication
+Official Documentation:
+- https://auth0.com/docs/secure
+- https://auth0.com/docs/secure/attack-protection
+- https://auth0.com/docs/secure/multi-factor-authentication
+- https://auth0.com/docs/secure/tokens
+- https://auth0.com/docs/secure/sender-constraining
+- https://auth0.com/docs/secure/data-privacy-and-compliance
