@@ -1,24 +1,22 @@
-"""Claude Code Headless-based Merge Analyzer
+"""Pure Python Merge Analyzer
 
-Analyzes template merge differences using Claude Code headless mode
+Analyzes template merge differences using semantic heuristics
 for intelligent backup vs new template comparison and recommendations.
+
+This module replaces the previous Claude Code headless implementation
+with a pure Python approach that works without API keys.
 """
 
 import json
 import logging
-import os
 import re
-import shutil
-import subprocess
-import sys
 from difflib import unified_diff
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import click
+import yaml
 from rich.console import Console
-from rich.live import Live
-from rich.spinner import Spinner
 from rich.table import Table
 
 console = Console()
@@ -26,94 +24,94 @@ logger = logging.getLogger(__name__)
 
 
 class MergeAnalyzer:
-    """Merge analyzer using Claude Code for intelligent template merge analysis
+    """Merge analyzer using semantic heuristics for intelligent template merge analysis
 
     Compares backed-up user configurations with new templates,
-    analyzes them using Claude AI, and provides merge recommendations.
+    analyzes them using Python-based semantic analysis, and provides merge recommendations.
     """
 
     # Primary files to analyze
     ANALYZED_FILES = [
         "CLAUDE.md",
         ".claude/settings.json",
-        ".moai/config/config.yaml",  # Updated: JSON → YAML migration
+        ".moai/config/config.yaml",
         ".gitignore",
     ]
 
-    # Claude headless execution settings
-    CLAUDE_TIMEOUT = 120  # Maximum 2 minutes
-    CLAUDE_MODEL = "claude-haiku-4-5-20251001"  # Latest Haiku (cost optimized)
-    CLAUDE_TOOLS = ["Read", "Glob", "Grep"]  # Read-only tools
+    # Risk factors for scoring
+    RISK_FACTORS = {
+        "user_section_modified": 3,
+        "permission_change": 2,
+        "env_variable_removed": 2,
+        "large_diff": 1,
+        "config_key_removed": 2,
+        "breaking_schema_change": 3,
+        "custom_content_loss": 3,
+    }
+
+    # User-customizable sections in CLAUDE.md (should be preserved)
+    CLAUDE_MD_USER_SECTIONS = [
+        "Project Information",
+        "User Personalization",
+        "Custom Rules",
+        "Local Configuration",
+    ]
+
+    # Critical settings.json keys that require careful handling
+    SETTINGS_CRITICAL_KEYS = [
+        "permissions.deny",
+        "permissions.allow",
+        "env",
+        "hooks",
+    ]
 
     def __init__(self, project_path: Path):
         """Initialize analyzer with project path."""
         self.project_path = project_path
 
     def analyze_merge(self, backup_path: Path, template_path: Path) -> dict[str, Any]:
-        """Perform merge analysis using Claude Code headless mode
+        """Perform merge analysis using semantic heuristics
 
         Args:
             backup_path: Path to backed-up configuration directory
             template_path: Path to new template directory
 
         Returns:
-            Dictionary containing analysis results:
-                - files: List of changes by file
-                - safe_to_auto_merge: Whether auto-merge is safe
-                - user_action_required: Whether user intervention is needed
-                - summary: Overall summary
-                - error: Error message (if any)
+            Dictionary containing analysis results
         """
         # 1. Collect files to compare
         diff_files = self._collect_diff_files(backup_path, template_path)
 
-        # 2. Create Claude headless prompt
-        prompt = self._create_analysis_prompt(backup_path, template_path, diff_files)
+        # 2. Perform semantic analysis for each file
+        files_analysis = []
+        total_risk_score = 0
 
-        # 3. Run Claude Code headless (show spinner)
-        spinner = Spinner("dots", text="[cyan]Running Claude Code analysis...[/cyan]")
+        for file_name, info in diff_files.items():
+            if not info["has_diff"] and info["backup_exists"] and info["template_exists"]:
+                # No changes, skip
+                continue
 
-        try:
-            with Live(spinner, refresh_per_second=12):
-                result = subprocess.run(
-                    self._build_claude_command(),
-                    input=prompt,
-                    capture_output=True,
-                    text=True,
-                    timeout=self.CLAUDE_TIMEOUT,
-                )
+            # Analyze based on file type
+            analysis = self._analyze_file_semantic(
+                file_name, backup_path, template_path, info
+            )
+            files_analysis.append(analysis)
+            total_risk_score += analysis.get("risk_score", 0)
 
-            if result.returncode == 0:
-                # Use new response parsing method
-                analysis = self._parse_claude_response(result.stdout)
-                if "error" not in analysis:
-                    console.print("[green]✅ Analysis complete[/green]")
-                    return analysis
-                else:
-                    console.print(f"[yellow]⚠️  Analysis failed: {analysis.get('summary', 'Unknown error')}[/yellow]")
-                    return self._fallback_analysis(backup_path, template_path, diff_files)
-            else:
-                # Use improved error detection with full context
-                error_msg = self._detect_claude_errors(
-                    result.stderr,
-                    returncode=result.returncode,
-                    stdout=result.stdout,
-                )
-                logger.warning(
-                    f"Claude Code failed: returncode={result.returncode}, "
-                    f"stderr={result.stderr[:200] if result.stderr else 'empty'}, "
-                    f"stdout_hint={result.stdout[:100] if result.stdout else 'empty'}"
-                )
-                console.print(f"[yellow]⚠️  Claude execution error: {error_msg}[/yellow]")
-                return self._fallback_analysis(backup_path, template_path, diff_files)
+        # 3. Determine overall safety
+        risk_level = self._calculate_risk_level(total_risk_score)
+        safe_to_merge = risk_level == "low"
+        user_action_required = risk_level == "high"
 
-        except subprocess.TimeoutExpired:
-            console.print("[yellow]⚠️  Claude analysis timeout (exceeded 120 seconds)[/yellow]")
-            return self._fallback_analysis(backup_path, template_path, diff_files)
-        except FileNotFoundError:
-            console.print("[red]❌ Claude Code not found.[/red]")
-            console.print("[cyan]   Install Claude Code: https://claude.com/claude-code[/cyan]")
-            return self._fallback_analysis(backup_path, template_path, diff_files)
+        return {
+            "files": files_analysis,
+            "safe_to_auto_merge": safe_to_merge,
+            "user_action_required": user_action_required,
+            "summary": f"{len(files_analysis)} files need attention",
+            "risk_assessment": risk_level.capitalize(),
+            "total_risk_score": total_risk_score,
+            "analysis_method": "pure_python_semantic",
+        }
 
     def ask_user_confirmation(self, analysis: dict[str, Any]) -> bool:
         """Display analysis results and request user confirmation
@@ -127,16 +125,15 @@ class MergeAnalyzer:
         # 1. Display analysis results
         self._display_analysis(analysis)
 
-        # 2. User confirmation
+        # 2. Show warnings for high-risk items
         if analysis.get("user_action_required", False):
             console.print(
-                "\n⚠️  User intervention required. Please review the following:",
-                style="warning",
+                "\n[yellow]User intervention may be required. Please review:[/yellow]",
             )
             for file_info in analysis.get("files", []):
                 if file_info.get("conflict_severity") in ["medium", "high"]:
                     console.print(
-                        f"   • {file_info['filename']}: {file_info.get('note', '')}",
+                        f"   [yellow]{file_info['filename']}: {file_info.get('note', '')}[/yellow]",
                     )
 
         # 3. Confirmation prompt
@@ -147,7 +144,9 @@ class MergeAnalyzer:
 
         return proceed
 
-    def _collect_diff_files(self, backup_path: Path, template_path: Path) -> dict[str, dict[str, Any]]:
+    def _collect_diff_files(
+        self, backup_path: Path, template_path: Path
+    ) -> dict[str, dict[str, Any]]:
         """Collect differences between backup and template files
 
         Returns:
@@ -162,17 +161,27 @@ class MergeAnalyzer:
             if not backup_file.exists() and not template_file.exists():
                 continue
 
-            diff_info = {
-                "backup_exists": backup_file.exists(),
-                "template_exists": template_file.exists(),
-                "has_diff": False,
-                "diff_lines": 0,
-            }
+            # Read file contents
+            backup_content: str | None = None
+            template_content: str | None = None
 
-            if backup_file.exists() and template_file.exists():
-                backup_content = backup_file.read_text(encoding="utf-8")
-                template_content = template_file.read_text(encoding="utf-8")
+            if backup_file.exists():
+                try:
+                    backup_content = backup_file.read_text(encoding="utf-8")
+                except Exception as e:
+                    logger.warning(f"Failed to read backup file {backup_file}: {e}")
 
+            if template_file.exists():
+                try:
+                    template_content = template_file.read_text(encoding="utf-8")
+                except Exception as e:
+                    logger.warning(f"Failed to read template file {template_file}: {e}")
+
+            # Calculate diff
+            has_diff = False
+            diff_lines = 0
+
+            if backup_content and template_content:
                 if backup_content != template_content:
                     diff = list(
                         unified_diff(
@@ -181,85 +190,450 @@ class MergeAnalyzer:
                             lineterm="",
                         )
                     )
-                    diff_info["has_diff"] = True
-                    diff_info["diff_lines"] = len(diff)
+                    has_diff = True
+                    diff_lines = len(diff)
+
+            diff_info: dict[str, Any] = {
+                "backup_exists": backup_file.exists(),
+                "template_exists": template_file.exists(),
+                "has_diff": has_diff,
+                "diff_lines": diff_lines,
+                "backup_content": backup_content,
+                "template_content": template_content,
+            }
 
             diff_files[file_name] = diff_info
 
         return diff_files
 
-    def _create_analysis_prompt(
+    def _analyze_file_semantic(
         self,
+        file_name: str,
         backup_path: Path,
         template_path: Path,
-        diff_files: dict[str, dict[str, Any]],
-    ) -> str:
-        """Generate Claude headless analysis prompt
+        info: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Perform semantic analysis based on file type
 
         Returns:
-            Analysis prompt to send to Claude
+            Analysis result for the specific file
         """
-        return f"""You are a MoAI-ADK configuration file merge expert.
+        # Route to appropriate analyzer based on file type
+        if file_name == "CLAUDE.md":
+            return self._analyze_claude_md(file_name, info)
+        elif file_name == ".claude/settings.json":
+            return self._analyze_settings_json(file_name, info)
+        elif file_name == ".moai/config/config.yaml":
+            return self._analyze_config_yaml(file_name, info)
+        elif file_name == ".gitignore":
+            return self._analyze_gitignore(file_name, info)
+        else:
+            return self._analyze_generic(file_name, info)
 
-## Context
-- Backed-up user configuration: {backup_path}
-- New template: {template_path}
-- Files to analyze: {", ".join(self.ANALYZED_FILES)}
+    def _analyze_claude_md(
+        self, file_name: str, info: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Analyze CLAUDE.md with section-aware logic
 
-## Files to Analyze
-{self._format_diff_summary(diff_files)}
+        Detects user-customized sections and determines merge strategy.
+        """
+        risk_score = 0
+        notes = []
+        recommendation = "use_template"
 
-## Analysis Tasks
-Analyze the following items and provide a JSON response:
+        backup_content = info.get("backup_content", "")
+        template_content = info.get("template_content", "")
 
-1. Identify changes per file
-2. Assess conflict risk (low/medium/high)
-3. Merge recommendations (use_template/keep_existing/smart_merge)
-4. Overall safety assessment
+        if not info["backup_exists"]:
+            return {
+                "filename": file_name,
+                "changes": "New file from template",
+                "recommendation": "use_template",
+                "conflict_severity": "low",
+                "risk_score": 0,
+                "note": "New file will be created",
+            }
 
-## Response Format (JSON)
-{{
-  "files": [
-    {{
-      "filename": "CLAUDE.md",
-      "changes": "Description of changes",
-      "recommendation": "use_template|keep_existing|smart_merge",
-      "conflict_severity": "low|medium|high",
-      "note": "Additional notes (optional)"
-    }}
-  ],
-  "safe_to_auto_merge": true/false,
-  "user_action_required": true/false,
-  "summary": "Whether merge is safe and why",
-  "risk_assessment": "Risk assessment"
-}}
+        if not info["template_exists"]:
+            return {
+                "filename": file_name,
+                "changes": "File removed in template",
+                "recommendation": "keep_existing",
+                "conflict_severity": "medium",
+                "risk_score": self.RISK_FACTORS["custom_content_loss"],
+                "note": "Template no longer includes this file",
+            }
 
-## Merge Rules Reference
-- CLAUDE.md: Preserve Project Information section
-- settings.json: Merge env variables, prioritize template permissions.deny
-- config.json: Preserve user metadata, update schema
-- .gitignore: Additions only (preserve existing items)
+        # Check for user-customized sections
+        user_customizations = []
+        for section in self.CLAUDE_MD_USER_SECTIONS:
+            pattern = rf"#+\s*{re.escape(section)}"
+            backup_has = bool(re.search(pattern, backup_content, re.IGNORECASE))
+            template_has = bool(re.search(pattern, template_content, re.IGNORECASE))
 
-## Additional Considerations
-- Assess risk of user customization loss
-- Determine if force overwriting Alfred infrastructure files
-- Review rollback possibilities
-"""
+            if backup_has and not template_has:
+                user_customizations.append(section)
+                risk_score += self.RISK_FACTORS["user_section_modified"]
+
+        # Analyze diff size
+        if info["diff_lines"] > 100:
+            risk_score += self.RISK_FACTORS["large_diff"]
+            notes.append("Large changes detected")
+
+        # Determine recommendation
+        if user_customizations:
+            recommendation = "smart_merge"
+            notes.append(f"User sections detected: {', '.join(user_customizations)}")
+        elif info["diff_lines"] > 50:
+            recommendation = "smart_merge"
+        else:
+            recommendation = "use_template"
+
+        severity = self._risk_score_to_severity(risk_score)
+
+        return {
+            "filename": file_name,
+            "changes": f"{info['diff_lines']} lines changed",
+            "recommendation": recommendation,
+            "conflict_severity": severity,
+            "risk_score": risk_score,
+            "note": "; ".join(notes) if notes else "Standard template update",
+            "user_customizations": user_customizations,
+        }
+
+    def _analyze_settings_json(
+        self, file_name: str, info: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Analyze settings.json with JSON structure comparison
+
+        Focuses on permissions, env variables, and hooks.
+        """
+        risk_score = 0
+        notes = []
+        recommendation = "use_template"
+
+        if not info["backup_exists"]:
+            return {
+                "filename": file_name,
+                "changes": "New file from template",
+                "recommendation": "use_template",
+                "conflict_severity": "low",
+                "risk_score": 0,
+                "note": "New settings file will be created",
+            }
+
+        if not info["template_exists"]:
+            return {
+                "filename": file_name,
+                "changes": "File removed in template",
+                "recommendation": "keep_existing",
+                "conflict_severity": "high",
+                "risk_score": self.RISK_FACTORS["breaking_schema_change"],
+                "note": "Critical: settings.json removed from template",
+            }
+
+        # Parse JSON
+        try:
+            backup_json = json.loads(info["backup_content"]) if info["backup_content"] else {}
+            template_json = json.loads(info["template_content"]) if info["template_content"] else {}
+        except json.JSONDecodeError as e:
+            logger.warning(f"JSON parse error in {file_name}: {e}")
+            return {
+                "filename": file_name,
+                "changes": "JSON parse error",
+                "recommendation": "smart_merge",
+                "conflict_severity": "high",
+                "risk_score": self.RISK_FACTORS["breaking_schema_change"],
+                "note": f"JSON parse error: {e}",
+            }
+
+        # Compare critical keys
+        critical_changes = []
+
+        # Check env variables
+        backup_env = backup_json.get("env", {})
+        template_env = template_json.get("env", {})
+
+        removed_env = set(backup_env.keys()) - set(template_env.keys())
+        if removed_env:
+            critical_changes.append(f"Env vars removed: {', '.join(removed_env)}")
+            risk_score += self.RISK_FACTORS["env_variable_removed"] * len(removed_env)
+
+        # Check permissions
+        backup_deny = set(backup_json.get("permissions", {}).get("deny", []))
+        template_deny = set(template_json.get("permissions", {}).get("deny", []))
+
+        if backup_deny != template_deny:
+            critical_changes.append("Permission deny list changed")
+            risk_score += self.RISK_FACTORS["permission_change"]
+
+        # Check hooks
+        backup_hooks = backup_json.get("hooks", {})
+        template_hooks = template_json.get("hooks", {})
+
+        if backup_hooks != template_hooks:
+            critical_changes.append("Hooks configuration changed")
+            risk_score += 1
+
+        # Determine recommendation
+        if critical_changes:
+            recommendation = "smart_merge"
+            notes.extend(critical_changes)
+        elif info["diff_lines"] > 20:
+            recommendation = "smart_merge"
+        else:
+            recommendation = "use_template"
+
+        severity = self._risk_score_to_severity(risk_score)
+
+        return {
+            "filename": file_name,
+            "changes": f"{info['diff_lines']} lines changed",
+            "recommendation": recommendation,
+            "conflict_severity": severity,
+            "risk_score": risk_score,
+            "note": "; ".join(notes) if notes else "Settings update available",
+            "critical_changes": critical_changes,
+        }
+
+    def _analyze_config_yaml(
+        self, file_name: str, info: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Analyze config.yaml with YAML structure comparison
+
+        Preserves user settings while updating schema.
+        """
+        risk_score = 0
+        notes = []
+        recommendation = "use_template"
+
+        if not info["backup_exists"]:
+            return {
+                "filename": file_name,
+                "changes": "New file from template",
+                "recommendation": "use_template",
+                "conflict_severity": "low",
+                "risk_score": 0,
+                "note": "New config file will be created",
+            }
+
+        if not info["template_exists"]:
+            return {
+                "filename": file_name,
+                "changes": "File removed in template",
+                "recommendation": "keep_existing",
+                "conflict_severity": "medium",
+                "risk_score": self.RISK_FACTORS["config_key_removed"],
+                "note": "Config file removed from template",
+            }
+
+        # Parse YAML
+        try:
+            backup_yaml = yaml.safe_load(info["backup_content"]) if info["backup_content"] else {}
+            template_yaml = yaml.safe_load(info["template_content"]) if info["template_content"] else {}
+
+            # Handle None results
+            backup_yaml = backup_yaml or {}
+            template_yaml = template_yaml or {}
+        except yaml.YAMLError as e:
+            logger.warning(f"YAML parse error in {file_name}: {e}")
+            return {
+                "filename": file_name,
+                "changes": "YAML parse error",
+                "recommendation": "smart_merge",
+                "conflict_severity": "high",
+                "risk_score": self.RISK_FACTORS["breaking_schema_change"],
+                "note": f"YAML parse error: {e}",
+            }
+
+        # User-specific keys to preserve
+        user_keys = ["user", "language", "project"]
+        user_customizations = []
+
+        for key in user_keys:
+            backup_val = backup_yaml.get(key)
+            template_val = template_yaml.get(key)
+
+            if backup_val and backup_val != template_val:
+                user_customizations.append(key)
+
+        # Check for removed keys
+        backup_keys = set(self._flatten_keys(backup_yaml))
+        template_keys = set(self._flatten_keys(template_yaml))
+        removed_keys = backup_keys - template_keys
+
+        if removed_keys:
+            risk_score += self.RISK_FACTORS["config_key_removed"]
+            notes.append(f"Keys removed: {len(removed_keys)}")
+
+        # Determine recommendation
+        if user_customizations:
+            recommendation = "smart_merge"
+            notes.append(f"User settings: {', '.join(user_customizations)}")
+            risk_score += 1
+        elif info["diff_lines"] > 30:
+            recommendation = "smart_merge"
+        else:
+            recommendation = "use_template"
+
+        severity = self._risk_score_to_severity(risk_score)
+
+        return {
+            "filename": file_name,
+            "changes": f"{info['diff_lines']} lines changed",
+            "recommendation": recommendation,
+            "conflict_severity": severity,
+            "risk_score": risk_score,
+            "note": "; ".join(notes) if notes else "Config update available",
+            "user_customizations": user_customizations,
+        }
+
+    def _analyze_gitignore(
+        self, file_name: str, info: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Analyze .gitignore with line-based comparison
+
+        Preserves user additions, only adds new template entries.
+        """
+        risk_score = 0
+        notes = []
+
+        if not info["backup_exists"]:
+            return {
+                "filename": file_name,
+                "changes": "New file from template",
+                "recommendation": "use_template",
+                "conflict_severity": "low",
+                "risk_score": 0,
+                "note": "New .gitignore will be created",
+            }
+
+        if not info["template_exists"]:
+            return {
+                "filename": file_name,
+                "changes": "File removed in template",
+                "recommendation": "keep_existing",
+                "conflict_severity": "low",
+                "risk_score": 0,
+                "note": "Keep existing .gitignore",
+            }
+
+        # Line-based analysis
+        backup_lines = set(info["backup_content"].splitlines()) if info["backup_content"] else set()
+        template_lines = set(info["template_content"].splitlines()) if info["template_content"] else set()
+
+        # Filter out comments and empty lines
+        backup_entries = {line.strip() for line in backup_lines if line.strip() and not line.startswith("#")}
+        template_entries = {line.strip() for line in template_lines if line.strip() and not line.startswith("#")}
+
+        new_in_template = template_entries - backup_entries
+        removed_in_template = backup_entries - template_entries
+
+        if new_in_template:
+            notes.append(f"{len(new_in_template)} new entries in template")
+
+        if removed_in_template:
+            notes.append(f"{len(removed_in_template)} user entries to preserve")
+            risk_score += 1
+
+        # gitignore is typically safe to merge (additions only)
+        recommendation = "smart_merge" if removed_in_template else "use_template"
+        severity = "low"
+
+        return {
+            "filename": file_name,
+            "changes": f"{info['diff_lines']} lines changed",
+            "recommendation": recommendation,
+            "conflict_severity": severity,
+            "risk_score": risk_score,
+            "note": "; ".join(notes) if notes else "gitignore update",
+            "new_entries": list(new_in_template),
+            "user_entries": list(removed_in_template),
+        }
+
+    def _analyze_generic(
+        self, file_name: str, info: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Generic file analysis for unknown file types"""
+        risk_score = 0
+
+        if not info["backup_exists"]:
+            return {
+                "filename": file_name,
+                "changes": "New file from template",
+                "recommendation": "use_template",
+                "conflict_severity": "low",
+                "risk_score": 0,
+            }
+
+        if not info["template_exists"]:
+            return {
+                "filename": file_name,
+                "changes": "File removed in template",
+                "recommendation": "keep_existing",
+                "conflict_severity": "medium",
+                "risk_score": self.RISK_FACTORS["custom_content_loss"],
+            }
+
+        if info["diff_lines"] > 100:
+            risk_score += self.RISK_FACTORS["large_diff"]
+
+        severity = self._risk_score_to_severity(risk_score)
+
+        return {
+            "filename": file_name,
+            "changes": f"{info['diff_lines']} lines changed",
+            "recommendation": "smart_merge" if info["diff_lines"] > 50 else "use_template",
+            "conflict_severity": severity,
+            "risk_score": risk_score,
+        }
+
+    def _flatten_keys(self, d: dict, parent_key: str = "") -> list[str]:
+        """Flatten nested dictionary keys for comparison"""
+        keys = []
+        for k, v in d.items():
+            new_key = f"{parent_key}.{k}" if parent_key else k
+            keys.append(new_key)
+            if isinstance(v, dict):
+                keys.extend(self._flatten_keys(v, new_key))
+        return keys
+
+    def _risk_score_to_severity(self, score: int) -> str:
+        """Convert risk score to severity level"""
+        if score <= 2:
+            return "low"
+        elif score <= 5:
+            return "medium"
+        else:
+            return "high"
+
+    def _calculate_risk_level(self, total_score: int) -> str:
+        """Calculate overall risk level from total score"""
+        if total_score <= 3:
+            return "low"
+        elif total_score <= 8:
+            return "medium"
+        else:
+            return "high"
 
     def _display_analysis(self, analysis: dict[str, Any]) -> None:
         """Display analysis results in Rich format"""
         # Title
-        console.print("\n📊 Merge Analysis Results (Claude Code)", style="bold")
+        method = analysis.get("analysis_method", "semantic")
+        console.print(f"\n[bold]Merge Analysis Results ({method})[/bold]")
 
         # Summary
         summary = analysis.get("summary", "No analysis results")
-        console.print(f"\n📝 {summary}")
+        console.print(f"\n{summary}")
 
         # Risk assessment
-        risk_assessment = analysis.get("risk_assessment", "")
-        if risk_assessment:
-            risk_style = "green" if "safe" in risk_assessment.lower() else "yellow"
-            console.print(f"⚠️  Risk Level: {risk_assessment}", style=risk_style)
+        risk_level = analysis.get("risk_assessment", "Unknown")
+        risk_style = {
+            "Low": "green",
+            "Medium": "yellow",
+            "High": "red",
+        }.get(risk_level, "white")
+        console.print(f"Risk Level: [{risk_style}]{risk_level}[/{risk_style}]")
 
         # Changes by file table
         files_list = analysis.get("files")
@@ -271,335 +645,31 @@ Analyze the following items and provide a JSON response:
             table.add_column("Risk", style="red")
 
             for file_info in files_list:
-                # Ensure file_info is a dictionary
                 if not isinstance(file_info, dict):
                     continue
 
+                severity = file_info.get("conflict_severity", "low")
                 severity_style = {
                     "low": "green",
                     "medium": "yellow",
                     "high": "red",
-                }.get(file_info.get("conflict_severity", "low"), "white")
+                }.get(severity, "white")
 
                 table.add_row(
                     file_info.get("filename", "?"),
-                    file_info.get("changes", "")[:30],
+                    str(file_info.get("changes", ""))[:40],
                     file_info.get("recommendation", "?"),
-                    file_info.get("conflict_severity", "?"),
+                    severity,
                     style=severity_style,
                 )
 
             console.print(table)
 
-            # Additional details
+            # Additional notes
             for file_info in files_list:
-                # Ensure file_info is a dictionary
                 if not isinstance(file_info, dict):
                     continue
-
                 if file_info.get("note"):
                     console.print(
-                        f"\n💡 {file_info['filename']}: {file_info['note']}",
-                        style="dim",
+                        f"\n[dim]{file_info['filename']}: {file_info['note']}[/dim]",
                     )
-
-    def _parse_claude_response(self, response_text: str) -> dict[str, Any]:
-        """Parse Claude Code response supporting both v1.x and v2.0+ formats.
-
-        Args:
-            response_text: Raw response text from Claude Code
-
-        Returns:
-            Parsed analysis dictionary
-        """
-        try:
-            # First try direct JSON parsing (v1.x format)
-            return json.loads(response_text)
-        except json.JSONDecodeError:
-            # Try v2.0+ wrapped format
-            try:
-                # Look for JSON in the response
-                if '"type":' in response_text and '"result":' in response_text:
-                    # Parse the wrapped v2.0+ format
-                    response_obj = json.loads(response_text)
-                    if "result" in response_obj:
-                        result_text = response_obj["result"]
-
-                        # Try to extract JSON from the result field
-                        if isinstance(result_text, str):
-                            # Look for JSON blocks in the result
-                            if "```json" in result_text:
-                                # Extract JSON from code block
-                                start = result_text.find("```json") + 7
-                                end = result_text.find("```", start)
-                                if end != -1:
-                                    json_text = result_text[start:end].strip()
-                                    return json.loads(json_text)
-                            elif result_text.strip().startswith("{"):
-                                # Try direct JSON parsing
-                                return json.loads(result_text)
-                            else:
-                                # Try to find JSON pattern in text
-                                json_match = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", result_text)
-                                if json_match:
-                                    try:
-                                        return json.loads(json_match.group(0))
-                                    except json.JSONDecodeError:
-                                        pass
-
-                # Fallback: try to find any JSON in the text
-                json_match = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", response_text)
-                if json_match:
-                    return json.loads(json_match.group(0))
-
-            except (json.JSONDecodeError, KeyError, TypeError) as e:
-                console.print(f"[yellow]⚠️  Failed to parse Claude v2.0+ response: {e}[/yellow]")
-                logger.warning(f"Claude response parsing failed: {e}")
-
-        # If all parsing attempts fail, return error structure
-        logger.error(f"Could not parse Claude response. Raw response: {response_text[:500]}...")
-        return {
-            "files": [],
-            "safe_to_auto_merge": False,
-            "user_action_required": True,
-            "summary": "Failed to parse Claude response",
-            "risk_assessment": "High - Response parsing failed",
-            "error": "response_parse_failed",
-            "raw_response": response_text[:500] if response_text else "",
-        }
-
-    def _detect_claude_errors(
-        self,
-        stderr: str,
-        returncode: int = None,
-        stdout: str = None,
-    ) -> str:
-        """Detect and interpret Claude Code specific errors.
-
-        Args:
-            stderr: Standard error output from Claude Code
-            returncode: Process exit code (optional, for better diagnostics)
-            stdout: Standard output (optional, may contain error hints)
-
-        Returns:
-            User-friendly error message with actionable guidance
-        """
-        # Case 1: Process failed but stderr is empty (silent failure)
-        if not stderr and returncode is not None and returncode != 0:
-            # Try to extract hints from stdout
-            if stdout:
-                stdout_lower = stdout.lower()
-                if "error" in stdout_lower or "failed" in stdout_lower or "exception" in stdout_lower:
-                    stdout_hint = stdout[:300] if len(stdout) > 300 else stdout
-                    return f"Process failed (exit code {returncode}). Output: {stdout_hint}"
-            return (
-                f"Process failed silently (exit code {returncode}). "
-                "No error details available. Try 'claude --version' to verify installation."
-            )
-
-        # Case 2: No stderr and no returncode context
-        if not stderr:
-            return "No error details available. Try running 'claude --version' to verify installation."
-
-        error_lower = stderr.lower()
-
-        # Pattern matching for specific known errors
-        if "model not found" in error_lower or "unknown model" in error_lower:
-            return f"Claude model '{self.CLAUDE_MODEL}' not found. Run 'claude --models' to see available models."
-
-        if "permission denied" in error_lower:
-            return "Permission denied. Check file permissions and Claude Code access rights."
-
-        if "timeout" in error_lower:
-            return f"Claude analysis timed out after {self.CLAUDE_TIMEOUT} seconds. Consider increasing timeout."
-
-        if "file not found" in error_lower:
-            return "Required files not found. Check project structure and file paths."
-
-        if "invalid argument" in error_lower or "unknown option" in error_lower:
-            return "Invalid Claude Code arguments. This might be a version compatibility issue. Try 'claude --help'."
-
-        if "api key" in error_lower or "authentication" in error_lower or "unauthorized" in error_lower:
-            return "Authentication error. Check your Claude API key configuration."
-
-        if "rate limit" in error_lower or "too many requests" in error_lower:
-            return "Rate limit exceeded. Please wait a moment and try again."
-
-        if "connection" in error_lower or "network" in error_lower:
-            return "Network connection error. Check your internet connection."
-
-        # Return generic error with exit code if available (extended to 300 chars)
-        exit_info = f" (exit code {returncode})" if returncode is not None else ""
-        return f"Claude Code error{exit_info}: {stderr[:300]}"
-
-    def _find_claude_executable(self) -> Optional[str]:
-        """Find Claude Code executable path with Windows compatibility.
-
-        Searches for Claude Code in:
-        1. System PATH (shutil.which)
-        2. Windows npm global directory
-        3. Windows local AppData directory
-        4. Common installation paths
-
-        Returns:
-            Full path to Claude executable or None if not found
-        """
-        # First try system PATH
-        claude_path = shutil.which("claude")
-        if claude_path:
-            return claude_path
-
-        # Windows-specific additional paths
-        if sys.platform == "win32":
-            possible_paths = []
-
-            # npm global installation
-            appdata = os.environ.get("APPDATA", "")
-            if appdata:
-                possible_paths.extend(
-                    [
-                        Path(appdata) / "npm" / "claude.cmd",
-                        Path(appdata) / "npm" / "claude.exe",
-                        Path(appdata) / "npm" / "claude",
-                    ]
-                )
-
-            # Local AppData installation
-            localappdata = os.environ.get("LOCALAPPDATA", "")
-            if localappdata:
-                possible_paths.extend(
-                    [
-                        Path(localappdata) / "Programs" / "claude" / "claude.exe",
-                        Path(localappdata)
-                        / "Microsoft"
-                        / "WinGet"
-                        / "Packages"
-                        / "Anthropic.ClaudeCode_*"
-                        / "claude.exe",
-                    ]
-                )
-
-            # User profile paths
-            userprofile = os.environ.get("USERPROFILE", "")
-            if userprofile:
-                possible_paths.extend(
-                    [
-                        Path(userprofile) / ".claude" / "claude.exe",
-                        Path(userprofile) / "AppData" / "Local" / "Programs" / "claude" / "claude.exe",
-                    ]
-                )
-
-            # Check each possible path
-            for p in possible_paths:
-                # Handle glob patterns
-                if "*" in str(p):
-                    parent = p.parent
-                    pattern = p.name
-                    if parent.exists():
-                        matches = list(parent.glob(pattern))
-                        if matches:
-                            return str(matches[0])
-                elif p.exists():
-                    return str(p)
-
-        return None
-
-    def _build_claude_command(self) -> list[str]:
-        """Build Claude Code headless command (based on official v4.0+)
-
-        Claude Code CLI official options:
-        - -p: Non-interactive headless mode
-        - --model: Explicit model selection (Haiku)
-        - --output-format: JSON response format
-        - --tools: Read-only tools only (space-separated - POSIX standard)
-        - --permission-mode: Auto-approval (background task)
-
-        Returns:
-            List of Claude CLI command arguments
-
-        Raises:
-            FileNotFoundError: If Claude Code executable is not found
-        """
-        # Find Claude executable with Windows compatibility
-        claude_path = self._find_claude_executable()
-        if not claude_path:
-            raise FileNotFoundError("Claude Code executable not found")
-
-        # Tools list space-separated (POSIX standard, officially recommended)
-        tools_str = " ".join(self.CLAUDE_TOOLS)
-
-        return [
-            claude_path,  # Use full path instead of just "claude"
-            "-p",  # Non-interactive headless mode
-            "--model",
-            self.CLAUDE_MODEL,  # Explicit model specification (Haiku)
-            "--output-format",
-            "json",  # Single JSON response
-            "--tools",
-            tools_str,  # Space-separated (Read Glob Grep)
-            "--permission-mode",
-            "dontAsk",  # Auto-approval (safe, read-only)
-        ]
-
-    def _format_diff_summary(self, diff_files: dict[str, dict[str, Any]]) -> str:
-        """Format diff_files for prompt"""
-        summary = []
-        for file_name, info in diff_files.items():
-            if info["backup_exists"] and info["template_exists"]:
-                status = f"✏️  Modified ({info['diff_lines']} lines)" if info["has_diff"] else "✓ Identical"
-            elif info["backup_exists"]:
-                status = "❌ Deleted from template"
-            else:
-                status = "✨ New file (from template)"
-
-            summary.append(f"- {file_name}: {status}")
-
-        return "\n".join(summary)
-
-    def _fallback_analysis(
-        self,
-        backup_path: Path,
-        template_path: Path,
-        diff_files: dict[str, dict[str, Any]],
-    ) -> dict[str, Any]:
-        """Fallback analysis when Claude call fails (difflib-based)
-
-        Returns basic analysis results when Claude is unavailable
-        """
-        console.print(
-            "⚠️  Claude Code unavailable. Using fallback analysis.",
-            style="yellow",
-        )
-
-        files_analysis = []
-        has_high_risk = False
-
-        for file_name, info in diff_files.items():
-            if not info["has_diff"]:
-                continue
-
-            # Simple risk assessment
-            severity = "low"
-            if file_name in [".claude/settings.json", ".moai/config/config.json"]:
-                severity = "medium" if info["diff_lines"] > 10 else "low"
-
-            files_analysis.append(
-                {
-                    "filename": file_name,
-                    "changes": f"{info['diff_lines']} lines changed",
-                    "recommendation": "smart_merge",
-                    "conflict_severity": severity,
-                }
-            )
-
-            if severity == "high":
-                has_high_risk = True
-
-        return {
-            "files": files_analysis,
-            "safe_to_auto_merge": not has_high_risk,
-            "user_action_required": has_high_risk,
-            "summary": f"{len(files_analysis)} files changed (fallback analysis)",
-            "risk_assessment": ("High - Claude unavailable, manual review recommended" if has_high_risk else "Low"),
-            "fallback": True,
-        }

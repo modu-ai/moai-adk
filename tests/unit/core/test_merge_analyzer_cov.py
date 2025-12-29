@@ -1,20 +1,15 @@
-"""Comprehensive coverage tests for MergeAnalyzer module.
+"""Comprehensive coverage tests for Pure Python MergeAnalyzer module.
 
 Tests MergeAnalyzer class for merge conflict detection, analysis, and recommendations.
 Target: 70%+ code coverage with actual code path execution and mocked dependencies.
 """
 
 import json
-import shutil
-import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
-
-
-# Check if Claude Code CLI is available (not installed in CI environments)
-CLAUDE_AVAILABLE = shutil.which("claude") is not None
+import yaml
 
 
 class TestMergeAnalyzerInit:
@@ -28,8 +23,6 @@ class TestMergeAnalyzerInit:
         analyzer = MergeAnalyzer(project_path)
 
         assert analyzer.project_path == project_path
-        assert analyzer.CLAUDE_TIMEOUT == 120
-        assert analyzer.CLAUDE_MODEL == "claude-haiku-4-5-20251001"
 
     def test_merge_analyzer_constants(self):
         """Should have correct constants defined."""
@@ -37,7 +30,17 @@ class TestMergeAnalyzerInit:
 
         assert len(MergeAnalyzer.ANALYZED_FILES) > 0
         assert "CLAUDE.md" in MergeAnalyzer.ANALYZED_FILES
-        assert len(MergeAnalyzer.CLAUDE_TOOLS) > 0
+        assert ".claude/settings.json" in MergeAnalyzer.ANALYZED_FILES
+        assert ".moai/config/config.yaml" in MergeAnalyzer.ANALYZED_FILES
+        assert ".gitignore" in MergeAnalyzer.ANALYZED_FILES
+
+    def test_risk_factors_defined(self):
+        """Should have risk factors defined."""
+        from moai_adk.core.merge.analyzer import MergeAnalyzer
+
+        assert "user_section_modified" in MergeAnalyzer.RISK_FACTORS
+        assert "permission_change" in MergeAnalyzer.RISK_FACTORS
+        assert "env_variable_removed" in MergeAnalyzer.RISK_FACTORS
 
 
 class TestCollectDiffFiles:
@@ -57,7 +60,6 @@ class TestCollectDiffFiles:
         diff_files = analyzer._collect_diff_files(backup_path, template_path)
 
         assert isinstance(diff_files, dict)
-        assert all("has_diff" in diff_files[f] for f in diff_files)
 
     def test_collect_diff_files_identical_content(self, tmp_path):
         """Should detect identical files."""
@@ -130,341 +132,365 @@ class TestCollectDiffFiles:
         backup_path.mkdir()
         template_path.mkdir()
 
-        (template_path / ".claude" / "settings.json").parent.mkdir(parents=True)
+        (template_path / ".claude").mkdir(parents=True)
         (template_path / ".claude" / "settings.json").write_text("{}")
 
         diff_files = analyzer._collect_diff_files(backup_path, template_path)
 
-        # Check for settings.json entry (may be in different key)
         assert len(diff_files) > 0
 
 
-class TestCreateAnalysisPrompt:
-    """Test _create_analysis_prompt method."""
+class TestAnalyzeClaudeMd:
+    """Test _analyze_claude_md method."""
 
-    def test_create_analysis_prompt_basic(self, tmp_path):
-        """Should create analysis prompt."""
+    def test_analyze_claude_md_new_file(self, tmp_path):
+        """Should handle new CLAUDE.md file."""
+        from moai_adk.core.merge.analyzer import MergeAnalyzer
+
+        analyzer = MergeAnalyzer(tmp_path)
+        info = {
+            "backup_exists": False,
+            "template_exists": True,
+            "has_diff": True,
+            "diff_lines": 100,
+            "backup_content": None,
+            "template_content": "# CLAUDE.md content",
+        }
+
+        result = analyzer._analyze_claude_md("CLAUDE.md", info)
+
+        assert result["recommendation"] == "use_template"
+        assert result["conflict_severity"] == "low"
+
+    def test_analyze_claude_md_with_user_sections(self, tmp_path):
+        """Should detect user-customized sections."""
+        from moai_adk.core.merge.analyzer import MergeAnalyzer
+
+        analyzer = MergeAnalyzer(tmp_path)
+        info = {
+            "backup_exists": True,
+            "template_exists": True,
+            "has_diff": True,
+            "diff_lines": 50,
+            "backup_content": "# Project Information\nCustom content here",
+            "template_content": "# New Content\nTemplate content",
+        }
+
+        result = analyzer._analyze_claude_md("CLAUDE.md", info)
+
+        assert result["recommendation"] == "smart_merge"
+        assert "user_customizations" in result
+
+
+class TestAnalyzeSettingsJson:
+    """Test _analyze_settings_json method."""
+
+    def test_analyze_settings_json_new_file(self, tmp_path):
+        """Should handle new settings.json file."""
+        from moai_adk.core.merge.analyzer import MergeAnalyzer
+
+        analyzer = MergeAnalyzer(tmp_path)
+        info = {
+            "backup_exists": False,
+            "template_exists": True,
+            "has_diff": True,
+            "diff_lines": 20,
+            "backup_content": None,
+            "template_content": "{}",
+        }
+
+        result = analyzer._analyze_settings_json(".claude/settings.json", info)
+
+        assert result["recommendation"] == "use_template"
+        assert result["conflict_severity"] == "low"
+
+    def test_analyze_settings_json_env_removed(self, tmp_path):
+        """Should detect removed env variables."""
+        from moai_adk.core.merge.analyzer import MergeAnalyzer
+
+        analyzer = MergeAnalyzer(tmp_path)
+        backup_json = {"env": {"MY_VAR": "value", "REMOVED_VAR": "old"}}
+        template_json = {"env": {"MY_VAR": "value"}}
+
+        info = {
+            "backup_exists": True,
+            "template_exists": True,
+            "has_diff": True,
+            "diff_lines": 5,
+            "backup_content": json.dumps(backup_json),
+            "template_content": json.dumps(template_json),
+        }
+
+        result = analyzer._analyze_settings_json(".claude/settings.json", info)
+
+        assert result["recommendation"] == "smart_merge"
+        assert any("Env vars removed" in c for c in result.get("critical_changes", []))
+
+    def test_analyze_settings_json_permission_change(self, tmp_path):
+        """Should detect permission changes."""
+        from moai_adk.core.merge.analyzer import MergeAnalyzer
+
+        analyzer = MergeAnalyzer(tmp_path)
+        backup_json = {"permissions": {"deny": ["Bash"]}}
+        template_json = {"permissions": {"deny": ["Bash", "Write"]}}
+
+        info = {
+            "backup_exists": True,
+            "template_exists": True,
+            "has_diff": True,
+            "diff_lines": 5,
+            "backup_content": json.dumps(backup_json),
+            "template_content": json.dumps(template_json),
+        }
+
+        result = analyzer._analyze_settings_json(".claude/settings.json", info)
+
+        assert result["recommendation"] == "smart_merge"
+
+    def test_analyze_settings_json_parse_error(self, tmp_path):
+        """Should handle JSON parse errors."""
+        from moai_adk.core.merge.analyzer import MergeAnalyzer
+
+        analyzer = MergeAnalyzer(tmp_path)
+        info = {
+            "backup_exists": True,
+            "template_exists": True,
+            "has_diff": True,
+            "diff_lines": 5,
+            "backup_content": "not valid json",
+            "template_content": "{}",
+        }
+
+        result = analyzer._analyze_settings_json(".claude/settings.json", info)
+
+        assert result["conflict_severity"] == "high"
+
+
+class TestAnalyzeConfigYaml:
+    """Test _analyze_config_yaml method."""
+
+    def test_analyze_config_yaml_new_file(self, tmp_path):
+        """Should handle new config.yaml file."""
+        from moai_adk.core.merge.analyzer import MergeAnalyzer
+
+        analyzer = MergeAnalyzer(tmp_path)
+        info = {
+            "backup_exists": False,
+            "template_exists": True,
+            "has_diff": True,
+            "diff_lines": 20,
+            "backup_content": None,
+            "template_content": "version: 1.0",
+        }
+
+        result = analyzer._analyze_config_yaml(".moai/config/config.yaml", info)
+
+        assert result["recommendation"] == "use_template"
+        assert result["conflict_severity"] == "low"
+
+    def test_analyze_config_yaml_user_settings(self, tmp_path):
+        """Should detect user settings changes."""
+        from moai_adk.core.merge.analyzer import MergeAnalyzer
+
+        analyzer = MergeAnalyzer(tmp_path)
+        backup_yaml = {"user": {"name": "CustomUser"}, "version": "1.0"}
+        template_yaml = {"user": {"name": "DefaultUser"}, "version": "1.1"}
+
+        info = {
+            "backup_exists": True,
+            "template_exists": True,
+            "has_diff": True,
+            "diff_lines": 10,
+            "backup_content": yaml.dump(backup_yaml),
+            "template_content": yaml.dump(template_yaml),
+        }
+
+        result = analyzer._analyze_config_yaml(".moai/config/config.yaml", info)
+
+        assert result["recommendation"] == "smart_merge"
+        assert "user" in result.get("user_customizations", [])
+
+    def test_analyze_config_yaml_parse_error(self, tmp_path):
+        """Should handle YAML parse errors."""
+        from moai_adk.core.merge.analyzer import MergeAnalyzer
+
+        analyzer = MergeAnalyzer(tmp_path)
+        info = {
+            "backup_exists": True,
+            "template_exists": True,
+            "has_diff": True,
+            "diff_lines": 5,
+            "backup_content": "invalid: yaml: content:",
+            "template_content": "version: 1.0",
+        }
+
+        result = analyzer._analyze_config_yaml(".moai/config/config.yaml", info)
+
+        # Should still return a result even with parse error
+        assert "conflict_severity" in result
+
+
+class TestAnalyzeGitignore:
+    """Test _analyze_gitignore method."""
+
+    def test_analyze_gitignore_new_file(self, tmp_path):
+        """Should handle new .gitignore file."""
+        from moai_adk.core.merge.analyzer import MergeAnalyzer
+
+        analyzer = MergeAnalyzer(tmp_path)
+        info = {
+            "backup_exists": False,
+            "template_exists": True,
+            "has_diff": True,
+            "diff_lines": 10,
+            "backup_content": None,
+            "template_content": "*.pyc\n__pycache__/",
+        }
+
+        result = analyzer._analyze_gitignore(".gitignore", info)
+
+        assert result["recommendation"] == "use_template"
+        assert result["conflict_severity"] == "low"
+
+    def test_analyze_gitignore_user_entries(self, tmp_path):
+        """Should detect user entries to preserve."""
+        from moai_adk.core.merge.analyzer import MergeAnalyzer
+
+        analyzer = MergeAnalyzer(tmp_path)
+        info = {
+            "backup_exists": True,
+            "template_exists": True,
+            "has_diff": True,
+            "diff_lines": 5,
+            "backup_content": "*.pyc\n__pycache__/\nmy_custom_dir/",
+            "template_content": "*.pyc\n__pycache__/\nbuild/",
+        }
+
+        result = analyzer._analyze_gitignore(".gitignore", info)
+
+        assert result["recommendation"] == "smart_merge"
+        assert "my_custom_dir/" in result.get("user_entries", [])
+        assert "build/" in result.get("new_entries", [])
+
+
+class TestAnalyzeMergeIntegration:
+    """Test analyze_merge integration."""
+
+    def test_analyze_merge_success(self, tmp_path):
+        """Should perform semantic analysis."""
         from moai_adk.core.merge.analyzer import MergeAnalyzer
 
         analyzer = MergeAnalyzer(tmp_path)
         backup_path = tmp_path / "backup"
         template_path = tmp_path / "template"
 
-        diff_files = {
-            "CLAUDE.md": {
-                "backup_exists": True,
-                "template_exists": True,
-                "has_diff": True,
-                "diff_lines": 5,
-            }
-        }
+        backup_path.mkdir()
+        template_path.mkdir()
 
-        prompt = analyzer._create_analysis_prompt(backup_path, template_path, diff_files)
+        # Create test files
+        (backup_path / "CLAUDE.md").write_text("# Old content")
+        (template_path / "CLAUDE.md").write_text("# New content")
 
-        assert isinstance(prompt, str)
-        assert "MoAI-ADK configuration file merge expert" in prompt
-        assert str(backup_path) in prompt
-        assert str(template_path) in prompt
-        assert "JSON" in prompt
-
-    def test_create_analysis_prompt_includes_rules(self, tmp_path):
-        """Should include merge rules in prompt."""
-        from moai_adk.core.merge.analyzer import MergeAnalyzer
-
-        analyzer = MergeAnalyzer(tmp_path)
-        backup_path = tmp_path / "backup"
-        template_path = tmp_path / "template"
-
-        diff_files = {
-            "CLAUDE.md": {
-                "backup_exists": True,
-                "template_exists": True,
-                "has_diff": False,
-                "diff_lines": 0,
-            }
-        }
-
-        prompt = analyzer._create_analysis_prompt(backup_path, template_path, diff_files)
-
-        assert "CLAUDE.md: Preserve Project Information section" in prompt
-        assert "settings.json" in prompt
-        assert "config.json" in prompt
-
-
-class TestParseClaudeResponse:
-    """Test _parse_claude_response method."""
-
-    def test_parse_claude_response_valid_json(self, tmp_path):
-        """Should parse valid JSON response."""
-        from moai_adk.core.merge.analyzer import MergeAnalyzer
-
-        analyzer = MergeAnalyzer(tmp_path)
-        response = """{
-            "files": [{"filename": "CLAUDE.md", "changes": "test"}],
-            "safe_to_auto_merge": true,
-            "user_action_required": false,
-            "summary": "Test summary"
-        }"""
-
-        result = analyzer._parse_claude_response(response)
-
-        assert result["safe_to_auto_merge"] is True
-        assert result["user_action_required"] is False
-        assert len(result["files"]) == 1
-
-    def test_parse_claude_response_wrapped_format(self, tmp_path):
-        """Should parse v2.0+ wrapped format."""
-        from moai_adk.core.merge.analyzer import MergeAnalyzer
-
-        analyzer = MergeAnalyzer(tmp_path)
-        response = """{
-            "type": "text",
-            "result": "```json\\n{\\"files\\": [], \\"safe_to_auto_merge\\": false}\\n```"
-        }"""
-
-        result = analyzer._parse_claude_response(response)
+        result = analyzer.analyze_merge(backup_path, template_path)
 
         assert isinstance(result, dict)
-        # Should either parse successfully or return error structure
-        assert "error" not in result or result.get("error") == "response_parse_failed"
-
-    def test_parse_claude_response_invalid_json_fallback(self, tmp_path):
-        """Should return error structure on parsing failure."""
-        from moai_adk.core.merge.analyzer import MergeAnalyzer
-
-        analyzer = MergeAnalyzer(tmp_path)
-        response = "This is not valid JSON at all"
-
-        result = analyzer._parse_claude_response(response)
-
-        assert "error" in result
-        assert result["safe_to_auto_merge"] is False
-        assert result["user_action_required"] is True
-
-
-class TestDetectClaudeErrors:
-    """Test _detect_claude_errors method."""
-
-    def test_detect_claude_errors_model_not_found(self, tmp_path):
-        """Should detect model not found error."""
-        from moai_adk.core.merge.analyzer import MergeAnalyzer
-
-        analyzer = MergeAnalyzer(tmp_path)
-        stderr = "Error: Unknown model 'claude-haiku-4-5-20251001'"
-
-        error_msg = analyzer._detect_claude_errors(stderr)
-
-        assert "model" in error_msg.lower()
-
-    def test_detect_claude_errors_permission_denied(self, tmp_path):
-        """Should detect permission denied error."""
-        from moai_adk.core.merge.analyzer import MergeAnalyzer
-
-        analyzer = MergeAnalyzer(tmp_path)
-        stderr = "Permission denied: cannot access file"
-
-        error_msg = analyzer._detect_claude_errors(stderr)
-
-        assert "permission" in error_msg.lower()
-
-    def test_detect_claude_errors_timeout(self, tmp_path):
-        """Should detect timeout error."""
-        from moai_adk.core.merge.analyzer import MergeAnalyzer
-
-        analyzer = MergeAnalyzer(tmp_path)
-        stderr = "Timeout: operation exceeded maximum time"
-
-        error_msg = analyzer._detect_claude_errors(stderr)
-
-        assert "timeout" in error_msg.lower()
-
-    def test_detect_claude_errors_empty_stderr(self, tmp_path):
-        """Should return helpful message for empty stderr."""
-        from moai_adk.core.merge.analyzer import MergeAnalyzer
-
-        analyzer = MergeAnalyzer(tmp_path)
-
-        # Empty stderr without returncode context should provide helpful guidance
-        error_msg = analyzer._detect_claude_errors("")
-        assert "No error details available" in error_msg
-        assert "claude --version" in error_msg
-
-    def test_detect_claude_errors_empty_stderr_with_returncode(self, tmp_path):
-        """Should include exit code in error message when process fails silently."""
-        from moai_adk.core.merge.analyzer import MergeAnalyzer
-
-        analyzer = MergeAnalyzer(tmp_path)
-
-        # Empty stderr with non-zero returncode should indicate silent failure
-        error_msg = analyzer._detect_claude_errors("", returncode=1)
-        assert "exit code 1" in error_msg
-        assert "silently" in error_msg
-
-    def test_detect_claude_errors_with_stdout_hint(self, tmp_path):
-        """Should extract error hints from stdout when stderr is empty."""
-        from moai_adk.core.merge.analyzer import MergeAnalyzer
-
-        analyzer = MergeAnalyzer(tmp_path)
-
-        # When stderr is empty but stdout contains error info
-        error_msg = analyzer._detect_claude_errors(
-            "",
-            returncode=1,
-            stdout="Error: Something went wrong"
-        )
-        assert "exit code 1" in error_msg
-        assert "Something went wrong" in error_msg
-
-
-@pytest.mark.skipif(not CLAUDE_AVAILABLE, reason="Claude Code CLI not installed")
-class TestBuildClaudeCommand:
-    """Test _build_claude_command method."""
-
-    def test_build_claude_command_structure(self, tmp_path):
-        """Should build correct command structure."""
-        from moai_adk.core.merge.analyzer import MergeAnalyzer
-
-        analyzer = MergeAnalyzer(tmp_path)
-        command = analyzer._build_claude_command()
-
-        assert isinstance(command, list)
-        # First element is the full path to claude executable (Windows compatibility)
-        assert "claude" in command[0].lower()  # Check executable contains "claude"
-        assert "-p" in command
-        assert "--model" in command
-        assert "--output-format" in command
-        assert "json" in command
-
-    def test_build_claude_command_has_tools(self, tmp_path):
-        """Should include tools in command."""
-        from moai_adk.core.merge.analyzer import MergeAnalyzer
-
-        analyzer = MergeAnalyzer(tmp_path)
-        command = analyzer._build_claude_command()
-
-        assert "--tools" in command
-        tools_idx = command.index("--tools")
-        assert tools_idx + 1 < len(command)
-
-
-class TestFormatDiffSummary:
-    """Test _format_diff_summary method."""
-
-    def test_format_diff_summary_modified(self, tmp_path):
-        """Should format modified files."""
-        from moai_adk.core.merge.analyzer import MergeAnalyzer
-
-        analyzer = MergeAnalyzer(tmp_path)
-        diff_files = {
-            "CLAUDE.md": {
-                "backup_exists": True,
-                "template_exists": True,
-                "has_diff": True,
-                "diff_lines": 10,
-            }
-        }
-
-        summary = analyzer._format_diff_summary(diff_files)
-
-        assert "CLAUDE.md" in summary
-        assert "Modified" in summary or "✏️" in summary
-
-    def test_format_diff_summary_deleted(self, tmp_path):
-        """Should format deleted files."""
-        from moai_adk.core.merge.analyzer import MergeAnalyzer
-
-        analyzer = MergeAnalyzer(tmp_path)
-        diff_files = {
-            "CLAUDE.md": {
-                "backup_exists": True,
-                "template_exists": False,
-                "has_diff": True,
-                "diff_lines": 0,
-            }
-        }
-
-        summary = analyzer._format_diff_summary(diff_files)
-
-        assert "CLAUDE.md" in summary
-        assert "Deleted" in summary or "❌" in summary
-
-    def test_format_diff_summary_new(self, tmp_path):
-        """Should format new files."""
-        from moai_adk.core.merge.analyzer import MergeAnalyzer
-
-        analyzer = MergeAnalyzer(tmp_path)
-        diff_files = {
-            "CLAUDE.md": {
-                "backup_exists": False,
-                "template_exists": True,
-                "has_diff": True,
-                "diff_lines": 5,
-            }
-        }
-
-        summary = analyzer._format_diff_summary(diff_files)
-
-        assert "CLAUDE.md" in summary
-        assert "New" in summary or "✨" in summary
-
-
-class TestFallbackAnalysis:
-    """Test _fallback_analysis method."""
-
-    def test_fallback_analysis_no_diffs(self, tmp_path):
-        """Should return safe analysis when no diffs."""
-        from moai_adk.core.merge.analyzer import MergeAnalyzer
-
-        analyzer = MergeAnalyzer(tmp_path)
-        backup_path = tmp_path / "backup"
-        template_path = tmp_path / "template"
-
-        diff_files = {
-            "CLAUDE.md": {"has_diff": False, "diff_lines": 0},
-            ".gitignore": {"has_diff": False, "diff_lines": 0},
-        }
-
-        result = analyzer._fallback_analysis(backup_path, template_path, diff_files)
-
-        assert result["safe_to_auto_merge"] is True
-        assert result["user_action_required"] is False
-        assert result["fallback"] is True
-
-    def test_fallback_analysis_with_diffs(self, tmp_path):
-        """Should handle diffs in fallback."""
-        from moai_adk.core.merge.analyzer import MergeAnalyzer
-
-        analyzer = MergeAnalyzer(tmp_path)
-        backup_path = tmp_path / "backup"
-        template_path = tmp_path / "template"
-
-        diff_files = {
-            ".moai/config/config.json": {"has_diff": True, "diff_lines": 15},
-        }
-
-        result = analyzer._fallback_analysis(backup_path, template_path, diff_files)
-
-        assert isinstance(result, dict)
-        assert "files" in result
         assert "safe_to_auto_merge" in result
+        assert "files" in result
+        assert result["analysis_method"] == "pure_python_semantic"
 
-    def test_fallback_analysis_high_risk_detection(self, tmp_path):
-        """Should detect high-risk changes."""
+    def test_analyze_merge_no_changes(self, tmp_path):
+        """Should handle no changes gracefully."""
         from moai_adk.core.merge.analyzer import MergeAnalyzer
 
         analyzer = MergeAnalyzer(tmp_path)
         backup_path = tmp_path / "backup"
         template_path = tmp_path / "template"
 
-        diff_files = {
-            ".claude/settings.json": {"has_diff": True, "diff_lines": 50},
-        }
+        backup_path.mkdir()
+        template_path.mkdir()
 
-        result = analyzer._fallback_analysis(backup_path, template_path, diff_files)
+        # Create identical files
+        content = "# Same content"
+        (backup_path / "CLAUDE.md").write_text(content)
+        (template_path / "CLAUDE.md").write_text(content)
 
-        assert "files" in result
-        if result["files"]:
-            assert any(f["conflict_severity"] in ["medium", "high"] for f in result["files"])
+        result = analyzer.analyze_merge(backup_path, template_path)
+
+        assert result["safe_to_auto_merge"] is True
+
+
+class TestRiskCalculation:
+    """Test risk calculation methods."""
+
+    def test_risk_score_to_severity_low(self, tmp_path):
+        """Should return low severity for low scores."""
+        from moai_adk.core.merge.analyzer import MergeAnalyzer
+
+        analyzer = MergeAnalyzer(tmp_path)
+
+        assert analyzer._risk_score_to_severity(0) == "low"
+        assert analyzer._risk_score_to_severity(1) == "low"
+        assert analyzer._risk_score_to_severity(2) == "low"
+
+    def test_risk_score_to_severity_medium(self, tmp_path):
+        """Should return medium severity for medium scores."""
+        from moai_adk.core.merge.analyzer import MergeAnalyzer
+
+        analyzer = MergeAnalyzer(tmp_path)
+
+        assert analyzer._risk_score_to_severity(3) == "medium"
+        assert analyzer._risk_score_to_severity(4) == "medium"
+        assert analyzer._risk_score_to_severity(5) == "medium"
+
+    def test_risk_score_to_severity_high(self, tmp_path):
+        """Should return high severity for high scores."""
+        from moai_adk.core.merge.analyzer import MergeAnalyzer
+
+        analyzer = MergeAnalyzer(tmp_path)
+
+        assert analyzer._risk_score_to_severity(6) == "high"
+        assert analyzer._risk_score_to_severity(10) == "high"
+
+    def test_calculate_risk_level(self, tmp_path):
+        """Should calculate overall risk level."""
+        from moai_adk.core.merge.analyzer import MergeAnalyzer
+
+        analyzer = MergeAnalyzer(tmp_path)
+
+        assert analyzer._calculate_risk_level(0) == "low"
+        assert analyzer._calculate_risk_level(3) == "low"
+        assert analyzer._calculate_risk_level(5) == "medium"
+        assert analyzer._calculate_risk_level(8) == "medium"
+        assert analyzer._calculate_risk_level(9) == "high"
+
+
+class TestFlattenKeys:
+    """Test _flatten_keys helper method."""
+
+    def test_flatten_keys_simple(self, tmp_path):
+        """Should flatten simple dictionary."""
+        from moai_adk.core.merge.analyzer import MergeAnalyzer
+
+        analyzer = MergeAnalyzer(tmp_path)
+        d = {"a": 1, "b": 2}
+
+        keys = analyzer._flatten_keys(d)
+
+        assert "a" in keys
+        assert "b" in keys
+
+    def test_flatten_keys_nested(self, tmp_path):
+        """Should flatten nested dictionary."""
+        from moai_adk.core.merge.analyzer import MergeAnalyzer
+
+        analyzer = MergeAnalyzer(tmp_path)
+        d = {"a": {"b": {"c": 1}}}
+
+        keys = analyzer._flatten_keys(d)
+
+        assert "a" in keys
+        assert "a.b" in keys
+        assert "a.b.c" in keys
 
 
 class TestDisplayAnalysis:
@@ -478,7 +504,8 @@ class TestDisplayAnalysis:
         analyzer = MergeAnalyzer(tmp_path)
         analysis = {
             "summary": "Test summary",
-            "risk_assessment": "Low - no critical changes",
+            "risk_assessment": "Low",
+            "analysis_method": "pure_python_semantic",
             "files": [
                 {
                     "filename": "CLAUDE.md",
@@ -499,75 +526,11 @@ class TestDisplayAnalysis:
         from moai_adk.core.merge.analyzer import MergeAnalyzer
 
         analyzer = MergeAnalyzer(tmp_path)
-        analysis = {"summary": "No changes", "files": []}
+        analysis = {"summary": "No changes", "files": [], "analysis_method": "pure_python_semantic"}
 
         analyzer._display_analysis(analysis)
 
         mock_console.print.assert_called()
-
-
-class TestAnalyzeMergeIntegration:
-    """Test analyze_merge integration."""
-
-    @patch("moai_adk.core.merge.analyzer.subprocess.run")
-    def test_analyze_merge_success(self, mock_subprocess, tmp_path):
-        """Should handle successful Claude analysis."""
-        from moai_adk.core.merge.analyzer import MergeAnalyzer
-
-        analyzer = MergeAnalyzer(tmp_path)
-        backup_path = tmp_path / "backup"
-        template_path = tmp_path / "template"
-
-        backup_path.mkdir()
-        template_path.mkdir()
-
-        mock_result = MagicMock()
-        mock_result.returncode = 0
-        mock_result.stdout = (
-            '{"files": [], "safe_to_auto_merge": true, "user_action_required": false, "summary": "Test"}'
-        )
-        mock_subprocess.return_value = mock_result
-
-        result = analyzer.analyze_merge(backup_path, template_path)
-
-        assert isinstance(result, dict)
-        assert "safe_to_auto_merge" in result
-
-    @patch("moai_adk.core.merge.analyzer.subprocess.run")
-    def test_analyze_merge_timeout(self, mock_subprocess, tmp_path):
-        """Should handle Claude timeout."""
-        from moai_adk.core.merge.analyzer import MergeAnalyzer
-
-        analyzer = MergeAnalyzer(tmp_path)
-        backup_path = tmp_path / "backup"
-        template_path = tmp_path / "template"
-
-        backup_path.mkdir()
-        template_path.mkdir()
-
-        mock_subprocess.side_effect = subprocess.TimeoutExpired("claude", 120)
-
-        result = analyzer.analyze_merge(backup_path, template_path)
-
-        assert "fallback" in result or "files" in result
-
-    @patch("moai_adk.core.merge.analyzer.subprocess.run")
-    def test_analyze_merge_not_found(self, mock_subprocess, tmp_path):
-        """Should handle Claude not found."""
-        from moai_adk.core.merge.analyzer import MergeAnalyzer
-
-        analyzer = MergeAnalyzer(tmp_path)
-        backup_path = tmp_path / "backup"
-        template_path = tmp_path / "template"
-
-        backup_path.mkdir()
-        template_path.mkdir()
-
-        mock_subprocess.side_effect = FileNotFoundError()
-
-        result = analyzer.analyze_merge(backup_path, template_path)
-
-        assert isinstance(result, dict)
 
 
 class TestAskUserConfirmation:

@@ -1500,15 +1500,14 @@ def _sync_templates(project_path: Path, force: bool = False, yes: bool = False) 
                 backup_path = backup.create_backup()
                 console.print(f"💾 Created backup: {backup_path.name}")
 
-                # Merge analysis using Claude Code headless mode
+                # Merge analysis using Pure Python semantic heuristics
                 try:
                     analyzer = MergeAnalyzer(project_path)
                     # Template source path from installed package
                     template_path = Path(__file__).parent.parent.parent / "templates"
 
-                    console.print("\n[cyan]🔍 Starting merge analysis (max 2 mins)...[/cyan]")
-                    console.print("[dim]   Analyzing intelligent merge with Claude Code.[/dim]")
-                    console.print("[dim]   Please wait...[/dim]\n")
+                    console.print("\n[cyan]🔍 Starting merge analysis...[/cyan]")
+                    console.print("[dim]   Analyzing templates with semantic heuristics.[/dim]\n")
                     analysis = analyzer.analyze_merge(backup_path, template_path)
 
                     # Ask user confirmation
