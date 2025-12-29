@@ -36,7 +36,7 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 | Section                                                           | Goal                       |
 | ----------------------------------------------------------------- | -------------------------- |
 | [8. Agent Guide](#8-agent-guide-24-agents)                        | Utilize specialized agents |
-| [9. Skill Library](#9-skill-library-48-skills)                    | Explore 48 skills          |
+| [9. Skill Library](#9-skill-library-50-skills)                    | Explore 50 skills          |
 | [10. Composition Patterns](#10-composition-patterns-and-examples) | Real project examples      |
 | [11. TRUST 5 Quality](#11-trust-5-quality-assurance)              | Quality assurance system   |
 | [12. Advanced Features](#12-advanced-features)                    | Git Worktree & enhanced log management |
@@ -1795,11 +1795,11 @@ For more details, see [15. 📸 ai-nano-banana Agent Usage Guide](#15---ai-nano-
 
 ---
 
-## 9. Skill Library (48 Skills)
+## 9. Skill Library (50 Skills)
 
 ![Skill Usage Statistics](./assets/images/readme/skill-usage-stats.png)
 
-MoAI-ADK provides **48 specialized skills** in 7 categories. Each skill can be used independently or in combination.
+MoAI-ADK provides **50 specialized skills** in 7 categories. Each skill can be used independently or in combination.
 
 ### 🏗️ Foundation
 
