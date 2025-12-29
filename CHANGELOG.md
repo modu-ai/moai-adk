@@ -1,3 +1,79 @@
+# v0.36.0 - JavaScript Skill & Merge Analyzer Refactoring (2025-12-29)
+
+## Summary
+
+Minor release adding comprehensive JavaScript/TypeScript skill with modern tooling support and refactoring the merge analyzer to use pure Python instead of Claude headless dependency.
+
+## Changes
+
+### New Features
+
+- **feat(skills)**: Add JavaScript/TypeScript skill (317aea4c)
+  - Add comprehensive `moai-lang-javascript` skill with ES2024+ support
+  - Include Node.js 22 LTS, modern runtimes (Deno, Bun)
+  - Add testing frameworks (Vitest, Jest), linting (ESLint 9, Biome)
+  - Support backend frameworks (Express, Fastify, Hono)
+  - Provide 973 lines of practical examples
+  - Include 695 lines of reference documentation
+  - Location: `src/moai_adk/templates/.claude/skills/moai-lang-javascript/`
+
+### Refactoring
+
+- **refactor(merge)**: Replace Claude headless with Pure Python analyzer (651e4dc7)
+  - Migrate merge analyzer from Claude API dependency to pure Python implementation
+  - Improve performance by eliminating external API calls
+  - Maintain same functionality with better reliability
+  - Update 944 lines in analyzer implementation
+  - Update 545 lines in test coverage
+  - Location: `src/moai_adk/core/merge/analyzer.py`, `tests/unit/core/test_merge_analyzer_cov.py`
+
+- **refactor(skills)**: Cleanup deprecated skill modules (317aea4c)
+  - Remove deprecated worktree management modules (701 lines)
+  - Remove deprecated integration patterns (982 lines)
+  - Remove deprecated parallel development guide (778 lines)
+  - Remove deprecated worktree commands (782 lines)
+  - Remove root-level SKILL.md, examples.md, reference.md
+  - Streamline skill structure and reduce technical debt
+  - Location: `.claude/skills/modules/`
+
+### Other Changes
+
+- **style**: Auto-fix lint and format issues (335dc7d6)
+  - Apply ruff format to codebase
+  - Clean up configuration backups
+  - Update .gitignore patterns
+  - Location: Multiple files
+
+## Installation & Update
+
+### Fresh Install (uv tool - Recommended)
+```bash
+uv tool install moai-adk
+```
+
+### Update Existing Installation
+```bash
+uv tool update moai-adk
+```
+
+### Alternative Methods
+- **pip**: `pip install moai-adk`
+- **pipx**: `pipx install moai-adk`
+- **uv (global)**: `uv pip install moai-adk`
+
+## Breaking Changes
+
+None. This is a backward-compatible minor release.
+
+## Quality Metrics
+
+- ✅ All 10,037 tests passing
+- ✅ Test coverage: 86.92% (above 85% threshold)
+- ✅ Ruff checks: Passing
+- ✅ Mypy: No issues found
+
+---
+
 # v0.35.2 - Plugin Documentation Update & YAML Parser Fix (2025-12-26)
 
 ## Summary
