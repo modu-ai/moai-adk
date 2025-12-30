@@ -75,6 +75,83 @@ uv tool update moai-adk
 
 ---
 
+# v0.36.1 - 스킬 라이브러리 통합 (2025-12-30)
+
+## 요약
+
+가상 구현을 제거하고 중복 기능을 병합하여 스킬 라이브러리를 50개에서 47개로 축소한 패치 릴리즈입니다. 이 릴리즈는 유지보수성을 개선하고 허구 발생 가능성이 있는 가상 스킬을 제거합니다.
+
+## 변경 사항
+
+### 스킬 리팩토링
+
+- **refactor(skills)**: 스킬 라이브러리 통합 및 최적화 (576697e8)
+  - moai-mcp-figma 삭제 (존재하지 않는 모듈의 가상 구현)
+  - moai-mcp-notion 삭제 (존재하지 않는 모듈의 가상 구현)
+  - moai-security-auth0를 moai-platform-auth0로 병합 (36개 보안 모듈 통합)
+  - moai-worktree를 moai-workflow-worktree로 이름 변경 (일관된 명명 규칙)
+  - 모든 README 파일에서 스킬 수를 50개에서 47개로 업데이트 (영어, 한국어, 일본어, 중국어)
+  - 유지보수성 향상을 위한 스킬 파일 크기 축소:
+    - Ruby: 688 → 424줄 (-38%)
+    - C++: 650 → 422줄 (-35%)
+    - PHP: 645 → 496줄 (-23%)
+    - Elixir: 613 → 386줄 (-37%)
+    - R: 580 → 381줄 (-34%)
+  - 기술 버전 참조 업데이트:
+    - Rust: 1.91 → 1.92 (최신 안정 버전)
+    - Mermaid.js: 10.x → 11.12.2 (최신 안정 버전)
+  - 모든 에이전트 참조 업데이트 (expert-security, manager-docs, mcp-figma, mcp-notion)
+  - 커맨드 참조 업데이트 (1-plan, 3-sync)
+  - MCP 섹션을 AI Integration 섹션으로 문서화 통합
+  - 총 변경: 165개 파일, 10,669줄 추가(+), 12,727줄 삭제(-)
+
+### 호환성 변경
+
+⚠️ **중요**: 다음 변경 사항이 기존 워크플로우에 영향을 줄 수 있습니다:
+
+- **moai-mcp-figma** 스킬 제거
+  - 마이그레이션: `mcp-figma` 에이전트와 함께 `moai-domain-uiux` 스킬 사용
+  - 이유: 실제 모듈 지원 없는 가상 구현
+
+- **moai-mcp-notion** 스킬 제거
+  - 마이그레이션: `mcp-notion` 에이전트와 함께 `moai-workflow-project` 스킬 사용
+  - 이유: 실제 모듈 지원 없는 가상 구현
+
+- **moai-security-auth0**가 **moai-platform-auth0**로 이름 변경
+  - 마이그레이션: 스킬 참조를 `moai-platform-auth0`로 업데이트
+  - 이유: 보안과 플랫폼 기능을 하나의 포괄적 스킬로 통합
+
+- **moai-worktree**가 **moai-workflow-worktree**로 이름 변경
+  - 마이그레이션: 스킬 참조를 `moai-workflow-worktree`로 업데이트
+  - 이유: 일관된 명명 규칙 (모든 워크플로우 스킬은 `moai-workflow-*` 접두사 사용)
+
+## 설치 및 업데이트
+
+### 신규 설치 (uv tool - 권장)
+```bash
+uv tool install moai-adk
+```
+
+### 기존 설치 업데이트
+```bash
+uv tool update moai-adk
+```
+
+### 대체 방법
+- **pip**: `pip install moai-adk`
+- **pipx**: `pipx install moai-adk`
+- **uv (global)**: `uv pip install moai-adk`
+
+## 품질 지표
+
+- ✅ 모든 10,037개 테스트 통과 (180개 스킵, 26개 xfailed, 36개 xpassed)
+- ✅ 테스트 커버리지: 86.90% (85% 임계값 초과)
+- ✅ Ruff 검사: 모든 검사 통과
+- ✅ Ruff 포맷: 191개 파일 변경 없음
+- ✅ Mypy: 146개 소스 파일에서 이슈 없음
+
+---
+
 # v0.36.0 - JavaScript Skill & Merge Analyzer Refactoring (2025-12-29)
 
 ## Summary

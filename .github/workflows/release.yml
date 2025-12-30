@@ -247,22 +247,44 @@ jobs:
 
           echo "📋 Extracting bilingual release notes for v$VERSION from CHANGELOG.md..."
 
-          # Extract both English and Korean sections from CHANGELOG.md
-          # Pattern: From "# vX.Y.Z -" to "# v0.34.1" (next version) or end of Korean section
+          # Extract bilingual content (English + Korean) from CHANGELOG.md
+          # Format expected:
+          #   # vX.Y.Z - English Title
+          #   [English content]
+          #   ---
+          #   # vX.Y.Z - Korean Title
+          #   [Korean content]
+          #   ---
+          #   # v(next version) ...
+
+          # Simple approach: find first occurrence of version header, extract until next different version header
           awk -v ver="$VERSION" '
-            BEGIN { found=0; printing=0; sections=0 }
-            /^# v/ {
+            BEGIN { found=0; printing=0; section_count=0 }
+            /^# v[0-9]+\.[0-9]+\.[0-9]+/ {
               if (index($0, "v" ver) > 0) {
-                if (!found) { found=1; printing=1; sections=1; print; next }
-                else if (sections == 1) { sections=2; print; next }
-              } else if (found && printing && sections >= 2) {
+                # This line contains our version - start or continue printing
+                if (!found) {
+                  found=1
+                }
+                section_count++
+                printing=1
+                print
+                next
+              } else if (found) {
+                # Different version found - stop printing
                 printing=0
                 exit
               }
             }
-            /^---$/ {
-              if (printing && sections == 1) { print; next }
-              else if (printing && sections == 2) { print; printing=0; exit }
+            /^---$/ && found {
+              # Separator line - print and check if we have both sections
+              print
+              if (section_count >= 2) {
+                # Both English and Korean sections found
+                printing=0
+                exit
+              }
+              next
             }
             printing { print }
           ' CHANGELOG.md > release_notes.md
@@ -275,7 +297,12 @@ jobs:
             echo "## Changes" >> release_notes.md
             git log --format="- %s (%h)" --reverse -10 >> release_notes.md
           else
-            echo "✅ Found bilingual release notes for v$VERSION"
+            SECTION_COUNT=$(grep -c "^# v$VERSION" release_notes.md || echo "0")
+            if [ "$SECTION_COUNT" -ge 2 ]; then
+              echo "✅ Found bilingual release notes for v$VERSION (English + Korean)"
+            else
+              echo "⚠️ Found single-language release notes for v$VERSION"
+            fi
           fi
 
           # Add footer
@@ -283,8 +310,8 @@ jobs:
           echo "---" >> release_notes.md
           echo "🤖 MoAI-ADK Unified Release Pipeline" >> release_notes.md
 
-          echo "📄 Generated release notes:"
-          head -50 release_notes.md
+          echo "📄 Generated release notes (first 80 lines):"
+          head -80 release_notes.md
 
           # Output for GitHub Release
           echo "body<<RELEASE_NOTES_EOF" >> "$GITHUB_OUTPUT"

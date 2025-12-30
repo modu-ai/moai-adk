@@ -82,18 +82,39 @@ Calculate new version and update:
 
 ---
 
-## PHASE 4: CHANGELOG Generation
+## PHASE 4: CHANGELOG Generation (Bilingual Required)
 
 Get commits: `git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s (%h)"`
 
-Create bilingual CHANGELOG entry (English + Korean) with:
-- Summary
-- New Features (feat commits)
-- Bug Fixes (fix commits)
-- Other changes
-- Installation instructions
+IMPORTANT: Create TWO separate sections in CHANGELOG.md
 
-Prepend to CHANGELOG.md and commit:
+Section 1 - English:
+```
+# vX.Y.Z - English Title (YYYY-MM-DD)
+## Summary
+[English summary]
+## Changes
+[English changes]
+## Installation & Update
+[English instructions]
+---
+```
+
+Section 2 - Korean (immediately after English section):
+```
+# vX.Y.Z - Korean Title (YYYY-MM-DD)
+## 요약
+[Korean summary]
+## 변경 사항
+[Korean changes]
+## 설치 및 업데이트
+[Korean instructions]
+---
+```
+
+Both sections are REQUIRED for proper GitHub Release generation.
+
+Prepend both sections to CHANGELOG.md and commit:
 `git add CHANGELOG.md && git commit -m "docs: Update CHANGELOG for vX.Y.Z"`
 
 ---
@@ -117,7 +138,26 @@ Use AskUserQuestion:
 If approved:
 1. Create tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z"`
 2. Push: `git push origin main --tags`
-3. Display completion message with GitHub Actions links
+3. Wait 5 seconds for GitHub Actions to start
+4. Verify GitHub Actions workflow started: `gh run list --limit 3`
+5. Display completion message
+
+---
+
+## PHASE 7: Release Verification
+
+After push completes:
+1. Check release workflow: `gh run list --workflow=release.yml --limit 1`
+2. Verify GitHub Release: `gh release list --limit 3`
+3. Display release information: `gh release view vX.Y.Z`
+
+Display final summary with links:
+- GitHub Release: https://github.com/modu-ai/moai-adk/releases/tag/vX.Y.Z
+- GitHub Actions: https://github.com/modu-ai/moai-adk/actions
+- PyPI: https://pypi.org/project/moai-adk/
+
+Note: GitHub Release is created automatically by release.yml workflow.
+If the release is not immediately visible, wait 2-3 minutes for the workflow to complete.
 
 ---
 

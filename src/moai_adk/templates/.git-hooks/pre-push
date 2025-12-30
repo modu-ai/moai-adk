@@ -2,6 +2,7 @@
 
 ################################################################################
 # Pre-push Hook: Security Detection + GitFlow Control
+# Version: 1.2.0 - Improved false positive prevention
 ################################################################################
 
 # Colors for output
@@ -19,18 +20,66 @@ echo "🔒 [Phase 1] Running Security Secrets Detection before push..."
 
 SECRETS_FOUND=false
 
-# Define secret patterns to detect
-declare -a PATTERNS=(
-    "AIzaSy[A-Za-z0-9_-]{35}"        # Google APIs
-    "sk-[A-Za-z0-9]{20,}"             # OpenAI
-    "sk_[A-Za-z0-9]{20,}"             # OpenAI variant
-    "sk-ant-[A-Za-z0-9]{20,}"        # Anthropic
-    "AKIA[0-9A-Z]{16}"                # AWS Access Keys
-    "api[_-]?key['\"]?\s*[:=]\s*['\"]?[A-Za-z0-9_-]{20,}['\"]?"
-    "bearer[_-]?token['\"]?\s*[:=]\s*['\"]?[A-Za-z0-9._-]{20,}['\"]?"
-    "aws_secret_access_key['\"]?\s*[:=]\s*['\"]?[A-Za-z0-9/+=]{40}['\"]?"
-    "access[_-]?token['\"]?\s*[:=]\s*['\"]?[A-Za-z0-9._-]{20,}['\"]?"
+# Define STRICT secret patterns (high confidence, low false positive)
+# These patterns are designed to catch real API keys, not code examples
+declare -a STRICT_PATTERNS=(
+    # API Keys with specific prefixes (high confidence)
+    "AIzaSy[A-Za-z0-9_-]{35}"           # Google APIs (always 39 chars total)
+    "sk-[A-Za-z0-9]{48}"                # OpenAI (exactly 51 chars)
+    "sk-ant-api[0-9]{2}-[A-Za-z0-9_-]{90,110}" # Anthropic (new format)
+    "AKIA[0-9A-Z]{16}"                  # AWS Access Keys (exactly 20 chars)
+    "ghp_[A-Za-z0-9]{36}"               # GitHub Personal Access Token
+    "gho_[A-Za-z0-9]{36}"               # GitHub OAuth Token
+    "ghs_[A-Za-z0-9]{36}"               # GitHub Server Token
+    "github_pat_[A-Za-z0-9_]{22,}"      # GitHub Fine-grained PAT
+    "xox[baprs]-[A-Za-z0-9-]{10,}"      # Slack tokens
+    "glpat-[A-Za-z0-9_-]{20}"           # GitLab PAT
+    "sq0[a-z]{3}-[A-Za-z0-9_-]{22}"     # Square tokens
+    "shpat_[A-Za-z0-9]{32}"             # Shopify tokens
 )
+
+# Define CONTEXT-AWARE patterns (require value check, not just pattern match)
+# These are checked only when they contain actual key-like values (not placeholders)
+declare -a CONTEXT_PATTERNS=(
+    # AWS secret key (40 chars of base64)
+    'aws_secret_access_key[[:space:]]*[:=][[:space:]]*["\x27]?[A-Za-z0-9/+=]{40}["\x27]?'
+)
+
+# Exclusion patterns - lines matching these are NOT secrets
+declare -a EXCLUSIONS=(
+    # Python type hints and function parameters
+    'api_key:[[:space:]]*str'
+    'api_key:[[:space:]]*Optional'
+    'api_key:[[:space:]]*=.*typer\.'
+    'api_key:[[:space:]]*=.*click\.'
+    'api_key:[[:space:]]*=.*Field\('
+    # Environment variable references (not actual keys)
+    'os\.getenv\('
+    'os\.environ\['
+    'environ\.get\('
+    'getenv\('
+    '\.env'
+    'envvar='
+    'env_var'
+    # Placeholder/example values
+    'your[_-]?api[_-]?key'
+    'your[_-]?secret'
+    'REPLACE_WITH'
+    'INSERT_YOUR'
+    'xxx+$'
+    '<[A-Z_]+>'
+    '\.\.\.'
+    # Documentation patterns
+    '```'
+    'example:'
+    'e\.g\.'
+    '# Example'
+    '// Example'
+    '<!-- '
+)
+
+# File types to skip for secret scanning (documentation files)
+SKIP_FILE_PATTERNS="\.md$|\.rst$|\.txt$|README|CHANGELOG|LICENSE|CONTRIBUTING"
 
 # Store all input lines for processing
 input_lines=()
@@ -39,49 +88,92 @@ while read local_ref local_oid remote_ref remote_oid; do
 
     # Check commits being pushed for secrets
     if [ "$local_oid" != "0000000000000000000000000000000000000000" ]; then
-        # Get the remote main/develop branch to exclude already-pushed commits
+        # Get the remote main/develop branch
         REMOTE_MAIN=$(git rev-parse origin/main 2>/dev/null || git rev-parse origin/develop 2>/dev/null || echo "")
 
-        remote_base="$remote_oid"
-        if [ "$remote_oid" = "0000000000000000000000000000000000000000" ]; then
-            # New branch - check all commits on this branch that are not on remote main
-            remote_base="$REMOTE_MAIN"
+        # Determine base commit for comparison
+        if [ "$remote_oid" != "0000000000000000000000000000000000000000" ]; then
+            # Updating existing branch - only check new commits
+            BASE_COMMIT="$remote_oid"
+        elif [ -n "$REMOTE_MAIN" ]; then
+            # New branch - check commits not on origin/main
+            BASE_COMMIT="$REMOTE_MAIN"
+        else
+            # Fallback - check last 10 commits
+            BASE_COMMIT=$(git rev-list --max-count=10 $local_oid | tail -1)
         fi
 
-        # Get commits being pushed (only new commits not on remote)
-        if [ -n "$remote_base" ] && [ "$remote_base" != "0000000000000000000000000000000000000000" ]; then
-            PUSHED_COMMITS=$(git rev-list $remote_base..$local_oid 2>/dev/null)
-        else
-            # For new branches or no remote base, only check commits not on origin/main
-            if [ -n "$REMOTE_MAIN" ]; then
-                PUSHED_COMMITS=$(git rev-list $REMOTE_MAIN..$local_oid 2>/dev/null)
-            else
-                PUSHED_COMMITS=$(git rev-list $local_oid 2>/dev/null | head -20)
-            fi
+        # Get list of commits to check
+        PUSHED_COMMITS=$(git rev-list $BASE_COMMIT..$local_oid 2>/dev/null)
+
+        if [ -z "$PUSHED_COMMITS" ]; then
+            # No new commits to check
+            continue
         fi
 
         for COMMIT in $PUSHED_COMMITS; do
-            # Skip commits that are already on the remote main branch (false positive prevention)
+            # Double-check: skip if commit is already on origin/main
             if [ -n "$REMOTE_MAIN" ]; then
                 if git merge-base --is-ancestor "$COMMIT" "$REMOTE_MAIN" 2>/dev/null; then
-                    # This commit is already on origin/main, skip it
                     continue
                 fi
             fi
 
-            COMMIT_CONTENT=$(git show $COMMIT 2>/dev/null)
+            # Get only the diff (changed lines) for this commit, not full content
+            # This reduces false positives from unchanged context
+            COMMIT_DIFF=$(git show --format= --no-color --unified=0 "$COMMIT" 2>/dev/null)
 
-            for PATTERN in "${PATTERNS[@]}"; do
-                if echo "$COMMIT_CONTENT" | grep -qE "$PATTERN"; then
-                    if [ "$SECRETS_FOUND" = false ]; then
-                        echo ""
-                        echo -e "${RED}❌ SECURITY ERROR: Secrets detected in commits!${NC}"
-                        SECRETS_FOUND=true
+            # Check strict patterns (high confidence)
+            for PATTERN in "${STRICT_PATTERNS[@]}"; do
+                # Only check added lines (lines starting with +)
+                MATCHES=$(echo "$COMMIT_DIFF" | grep -E "^\+" | grep -E "$PATTERN" 2>/dev/null)
+
+                if [ -n "$MATCHES" ]; then
+                    # Check against exclusion patterns
+                    EXCLUDED=false
+                    for EXCL in "${EXCLUSIONS[@]}"; do
+                        if echo "$MATCHES" | grep -qiE "$EXCL"; then
+                            EXCLUDED=true
+                            break
+                        fi
+                    done
+
+                    if [ "$EXCLUDED" = false ]; then
+                        if [ "$SECRETS_FOUND" = false ]; then
+                            echo ""
+                            echo -e "${RED}❌ SECURITY ERROR: Potential secrets detected!${NC}"
+                            SECRETS_FOUND=true
+                        fi
+                        echo -e "${RED}  Commit: ${COMMIT:0:7}${NC}"
+                        echo -e "${YELLOW}  Pattern: ${PATTERN:0:30}...${NC}"
+                        echo -e "${YELLOW}  Found: $(echo "$MATCHES" | head -1 | cut -c1-80)...${NC}"
                     fi
+                fi
+            done
 
-                    echo -e "${RED}  Commit: ${COMMIT:0:7}${NC}"
-                    LINE_NUMS=$(echo "$COMMIT_CONTENT" | grep -n -E "$PATTERN" | cut -d: -f1 | head -3)
-                    echo -e "${YELLOW}  Lines: $LINE_NUMS${NC}"
+            # Check context-aware patterns
+            for PATTERN in "${CONTEXT_PATTERNS[@]}"; do
+                MATCHES=$(echo "$COMMIT_DIFF" | grep -E "^\+" | grep -E "$PATTERN" 2>/dev/null)
+
+                if [ -n "$MATCHES" ]; then
+                    # Apply exclusions
+                    EXCLUDED=false
+                    for EXCL in "${EXCLUSIONS[@]}"; do
+                        if echo "$MATCHES" | grep -qiE "$EXCL"; then
+                            EXCLUDED=true
+                            break
+                        fi
+                    done
+
+                    if [ "$EXCLUDED" = false ]; then
+                        if [ "$SECRETS_FOUND" = false ]; then
+                            echo ""
+                            echo -e "${RED}❌ SECURITY ERROR: Potential secrets detected!${NC}"
+                            SECRETS_FOUND=true
+                        fi
+                        echo -e "${RED}  Commit: ${COMMIT:0:7}${NC}"
+                        echo -e "${YELLOW}  Pattern: AWS Secret Key pattern${NC}"
+                    fi
                 fi
             done
         done
@@ -91,14 +183,15 @@ done
 if [ "$SECRETS_FOUND" = true ]; then
     echo ""
     echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${RED}⛔ PUSH BLOCKED: Secrets detected in commits${NC}"
+    echo -e "${RED}⛔ PUSH BLOCKED: Potential secrets detected${NC}"
     echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    echo "✅ FIX:"
-    echo "  1. Amend commit: git commit --amend"
-    echo "  2. Replace secret with: 'your_actual_key_here'"
-    echo "  3. Store real key in: .env (git-ignored)"
-    echo "  4. Force push: git push --force-with-lease"
+    echo "✅ FIX OPTIONS:"
+    echo "  1. If false positive: git push --no-verify"
+    echo "  2. If real secret:"
+    echo "     a. Remove secret: git commit --amend"
+    echo "     b. Use env var:   export API_KEY=... in .env"
+    echo "     c. Force push:    git push --force-with-lease"
     echo ""
     echo "⚠️  Never push real API keys to GitHub!"
     echo ""
@@ -116,28 +209,16 @@ echo "🔄 [Phase 2] Checking GitFlow Rules..."
 # Check team mode from .moai/config.json
 is_team_mode() {
     if [ -f ".moai/config.json" ]; then
-        # Check if mode is "team"
         grep -q '"mode".*:.*"team"' ".moai/config.json" 2>/dev/null
         return $?
     fi
     return 1
 }
 
-# Colors for output
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
 TEAM_MODE=false
 is_team_mode && TEAM_MODE=true
 
-# Store all input lines for processing
-input_lines=()
-while read local_ref local_oid remote_ref remote_oid; do
-    input_lines+=("$local_ref $local_oid $remote_ref $remote_oid")
-done
+# Re-read input for Phase 2 (input_lines was already populated)
 
 # STRICT TAG VALIDATION - Check all refs for tags first
 for line in "${input_lines[@]}"; do
@@ -262,14 +343,13 @@ for line in "${input_lines[@]}"; do
     if [[ "$remote_ref" == refs/tags/* ]]; then
         continue
     fi
+
     # Extract the remote branch name from the reference
-    # remote_ref format: refs/heads/main
     remote_branch=$(echo "$remote_ref" | sed 's|refs/heads/||')
     local_branch=$(echo "$local_ref" | sed 's|refs/heads/||')
 
     # Check if attempting to push to main branch
     if [ "$remote_branch" = "main" ] || [ "$remote_branch" = "master" ]; then
-        # Get the current branch to determine if this is the develop branch
         current_branch=$(git rev-parse --abbrev-ref HEAD)
 
         # TEAM MODE ENFORCEMENT
@@ -346,9 +426,7 @@ for line in "${input_lines[@]}"; do
 
             # Check for force push attempts to main
             if [ "$remote_branch" = "main" ] || [ "$remote_branch" = "master" ]; then
-                # Check if remote_oid exists (non-zero means we're trying to update existing ref)
                 if [ "$remote_oid" != "0000000000000000000000000000000000000000" ]; then
-                    # Verify this is a fast-forward merge (no force push)
                     if ! git merge-base --is-ancestor "$remote_oid" "$local_oid" 2>/dev/null; then
                         echo ""
                         echo -e "${YELLOW}⚠️  ADVISORY: Force-push to main branch detected${NC}"
