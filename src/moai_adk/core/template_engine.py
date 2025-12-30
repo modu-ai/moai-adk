@@ -209,7 +209,16 @@ class TemplateEngine:
         Extract template variables from project configuration.
 
         Args:
-            config: Project configuration dictionary (from .moai/config/config.json)
+            config: Project configuration dictionary (from section YAML files
+                   or legacy .moai/config/config.json)
+
+        Configuration sources (in priority order):
+        1. Section YAML files: .moai/config/sections/*.yaml
+           - project.yaml: Project settings (name, description, owner)
+           - language.yaml: Language settings
+           - user.yaml: User settings
+           - system.yaml: MoAI/GitHub settings
+        2. Legacy: .moai/config/config.json
 
         Returns:
             Dictionary of template variables

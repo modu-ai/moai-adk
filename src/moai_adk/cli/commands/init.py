@@ -200,7 +200,9 @@ def init(
         # Always allow reinit (force mode by default)
         is_reinit = initializer.is_initialized()
 
-        # Reinit mode: set config.json optimized to false (v0.3.1+)
+        # Reinit mode: update configuration files (v0.3.1+)
+        # As of v0.37.0, we use section YAML files (.moai/config/sections/)
+        # but still support legacy config.yaml and config.json for backward compatibility
         if is_reinit:
             # Migration: Remove old hook files (Issue #163)
             old_hook_files = [
@@ -215,6 +217,7 @@ def init(
                         pass  # Ignore removal failures
 
             # Support both YAML (v0.32.5+) and JSON (legacy) config files
+            # New projects use section files; legacy projects may still have config.yaml/json
             config_yaml_path = project_path / ".moai" / "config" / "config.yaml"
             config_json_path = project_path / ".moai" / "config" / "config.json"
 

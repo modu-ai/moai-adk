@@ -5,11 +5,15 @@ Ensures version consistency across multiple configuration files and provides
 automatic synchronization capabilities.
 
 Key Features:
-- Version consistency validation across pyproject.toml, __init__.py, and config.json
+- Version consistency validation across pyproject.toml, __init__.py, and config
 - Automatic synchronization when inconsistencies detected
 - Cache invalidation for statusline version readers
 - Version change detection and notification system
 - Fallback strategies for version resolution
+
+Configuration sources (in priority order):
+1. Section YAML: .moai/config/sections/system.yaml (moai.version)
+2. Legacy: .moai/config/config.json (moai.version)
 """
 
 import json
@@ -28,7 +32,8 @@ class VersionSource(Enum):
     """Enum for version source tracking"""
 
     PYPROJECT_TOML = "pyproject_toml"
-    CONFIG_JSON = "config_json"
+    SECTION_YAML = "section_yaml"  # New: system.yaml
+    CONFIG_JSON = "config_json"  # Legacy fallback
     PACKAGE_METADATA = "package_metadata"
     FALLBACK = "fallback"
 
@@ -74,14 +79,17 @@ class VersionSynchronizer:
 
         self.working_dir = working_dir
         self.pyproject_path = working_dir / "pyproject.toml"
+        self.system_yaml_path = working_dir / ".moai" / "config" / "sections" / "system.yaml"
         self.config_path = working_dir / ".moai" / "config" / "config.json"
         self.init_path = working_dir / "src" / "moai_adk" / "__init__.py"
 
         # Version file paths in order of priority
         # Note: __init__.py reads version dynamically, so we don't synchronize it
+        # Priority: pyproject.toml > system.yaml (new) > config.json (legacy)
         self.version_files = [
             (self.pyproject_path, VersionSource.PYPROJECT_TOML),
-            (self.config_path, VersionSource.CONFIG_JSON),
+            (self.system_yaml_path, VersionSource.SECTION_YAML),  # New: section YAML
+            (self.config_path, VersionSource.CONFIG_JSON),  # Legacy fallback
         ]
 
         # Statusline cache directories to invalidate
@@ -200,6 +208,8 @@ class VersionSynchronizer:
 
             if source == VersionSource.PYPROJECT_TOML:
                 version = self._extract_from_pyproject(content)
+            elif source == VersionSource.SECTION_YAML:
+                version = self._extract_from_section_yaml(content)
             elif source == VersionSource.CONFIG_JSON:
                 version = self._extract_from_config(content)
             elif source == VersionSource.PACKAGE_METADATA:
@@ -226,8 +236,23 @@ class VersionSynchronizer:
         match = re.search(pattern, content, re.MULTILINE)
         return match.group(1) if match else None
 
+    def _extract_from_section_yaml(self, content: str) -> Optional[str]:
+        """Extract version from .moai/config/sections/system.yaml"""
+        try:
+            import yaml
+
+            yaml_data = yaml.safe_load(content)
+            moai_config = yaml_data.get("moai", {})
+            return moai_config.get("version")
+        except ImportError:
+            logger.warning("PyYAML not available for section YAML parsing")
+            return None
+        except Exception as e:
+            logger.error(f"Invalid YAML in system.yaml: {e}")
+            return None
+
     def _extract_from_config(self, content: str) -> Optional[str]:
-        """Extract version from .moai/config/config.json"""
+        """Extract version from .moai/config/config.json (legacy)"""
         try:
             config_data = json.loads(content)
             moai_config = config_data.get("moai", {})
@@ -270,8 +295,31 @@ class VersionSynchronizer:
 
     def _update_version_in_content(self, content: str, source: VersionSource, target_version: str) -> str:
         """Update version in content based on source type"""
-        if source == VersionSource.CONFIG_JSON:
-            # Update moai.version in JSON
+        if source == VersionSource.SECTION_YAML:
+            # Update moai.version in section YAML
+            try:
+                import yaml
+
+                yaml_data = yaml.safe_load(content) or {}
+                if "moai" not in yaml_data:
+                    yaml_data["moai"] = {}
+                yaml_data["moai"]["version"] = target_version
+                return yaml.safe_dump(
+                    yaml_data,
+                    default_flow_style=False,
+                    allow_unicode=True,
+                    sort_keys=False,
+                )
+            except ImportError:
+                logger.warning("PyYAML not available for section YAML update")
+                return content
+            except Exception:
+                # Fallback: regex replacement for version line
+                pattern = r'(version:\s*["\']?)[\d.]+(["\']?)'
+                return re.sub(pattern, f"\\g<1>{target_version}\\g<2>", content)
+
+        elif source == VersionSource.CONFIG_JSON:
+            # Update moai.version in JSON (legacy)
             try:
                 config_data = json.loads(content)
                 if "moai" not in config_data:

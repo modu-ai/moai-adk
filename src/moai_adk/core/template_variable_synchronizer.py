@@ -41,7 +41,8 @@ class TemplateVariableSynchronizer:
     TEMPLATE_TRACKING_PATTERNS = [
         ".claude/settings.json",
         ".claude/settings.local.json",
-        ".moai/config/config.json",
+        ".moai/config/sections/*.yaml",  # Section YAML files (new)
+        ".moai/config/config.json",  # Legacy config.json (fallback)
         ".claude/output-styles/**/*.md",
         ".claude/hooks/**/*.py",
         ".claude/commands/**/*.md",
@@ -126,12 +127,25 @@ class TemplateVariableSynchronizer:
         # If a specific config file changed, prioritize files that depend on it
         if changed_config_path:
             dependency_map = {
+                # Section YAML file dependencies (new approach)
+                ".moai/config/sections/language.yaml": [
+                    ".claude/settings.json",
+                    ".claude/settings.local.json",
+                    ".claude/output-styles",
+                    ".claude/hooks",
+                ],
+                ".moai/config/sections/user.yaml": [
+                    ".claude/settings.json",
+                    ".claude/settings.local.json",
+                    ".claude/output-styles",
+                ],
+                # Legacy config.json dependencies (fallback)
                 ".moai/config/config.json": [
                     ".claude/settings.json",
                     ".claude/settings.local.json",
                     ".claude/output-styles",
                     ".claude/hooks",
-                ]
+                ],
             }
 
             config_key = str(changed_config_path.relative_to(self.project_root))

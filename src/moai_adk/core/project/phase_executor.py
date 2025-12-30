@@ -378,54 +378,87 @@ class PhaseExecutor:
         config: dict[str, str | bool | dict[Any, Any]],
         progress_callback: ProgressCallback | None = None,
     ) -> list[str]:
-        """Phase 4: generate configuration.
+        """Phase 4: Update section YAML configuration files.
+
+        Note: As of v0.37.0, we use modular section YAML files instead of a single config.json.
+        Section files are located in .moai/config/sections/ and loaded by CLAUDE.md.
 
         Args:
             project_path: Project path.
-            config: Configuration dictionary.
+            config: Configuration dictionary with project, language, etc.
             progress_callback: Optional progress callback.
 
         Returns:
-            List of created files.
+            List of updated section files.
         """
         self.current_phase = 4
-        self._report_progress("Phase 4: Generating configurations...", progress_callback)
+        self._report_progress("Phase 4: Updating section configurations...", progress_callback)
 
         logger = logging.getLogger(__name__)
+        sections_dir = project_path / ".moai" / "config" / "sections"
+        updated_files: list[str] = []
 
-        # Read existing config to preserve user settings (Issue #165)
-        config_path = project_path / ".moai" / "config" / "config.json"
-        existing_config: dict[str, Any] = {}
-        if config_path.exists():
+        # Update project.yaml with dynamic values
+        project_yaml = sections_dir / "project.yaml"
+        if project_yaml.exists():
+            self._update_section_yaml(
+                project_yaml,
+                {
+                    "project.name": config.get("project", {}).get("name", project_path.name),
+                    "project.initialized": "true",
+                    "project.created_at": datetime.now().isoformat() + "Z",
+                },
+            )
+            updated_files.append(str(project_yaml))
+            logger.debug(f"Updated {project_yaml}")
+
+        # Update system.yaml with version
+        system_yaml = sections_dir / "system.yaml"
+        if system_yaml.exists():
             try:
-                with open(config_path, "r", encoding="utf-8") as f:
-                    existing_config = json.load(f)
-                logger.debug(f"Successfully read existing config from {config_path}")
-            except (json.JSONDecodeError, OSError) as e:
-                logger.warning(f"Failed to read existing config: {e}. Starting fresh.")
-                existing_config = {}
+                version_reader = self._get_version_reader()
+                current_version = version_reader.get_version()
+            except Exception:
+                current_version = __version__
 
-        # Enhanced config merging with comprehensive version preservation
-        merged_config = self._merge_configuration_preserving_versions(config, existing_config)
+            self._update_section_yaml(
+                system_yaml,
+                {"moai.version": current_version},
+            )
+            updated_files.append(str(system_yaml))
+            logger.debug(f"Updated {system_yaml}")
 
-        # Enhanced version handling using VersionReader for consistency
+        logger.info(f"Updated {len(updated_files)} section configuration files")
+        return updated_files
+
+    def _update_section_yaml(self, yaml_path: Path, updates: dict[str, str]) -> None:
+        """
+        Update specific values in a YAML section file.
+
+        Args:
+            yaml_path: Path to the YAML file
+            updates: Dictionary of dotted paths to new values (e.g., {"project.name": "MyProject"})
+        """
+        import yaml
+
         try:
-            version_reader = self._get_version_reader()
-            current_config_version = version_reader.get_version()
+            with open(yaml_path, "r", encoding="utf-8") as f:
+                content = yaml.safe_load(f) or {}
 
-            # Ensure version consistency across the merged config
-            self._ensure_version_consistency(merged_config, current_config_version, existing_config)
+            for dotted_key, value in updates.items():
+                keys = dotted_key.split(".")
+                current = content
+                for key in keys[:-1]:
+                    if key not in current:
+                        current[key] = {}
+                    current = current[key]
+                current[keys[-1]] = value
 
-            logger.debug(f"Version consistency check completed. Current version: {current_config_version}")
+            with open(yaml_path, "w", encoding="utf-8") as f:
+                yaml.dump(content, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
         except Exception as e:
-            logger.warning(f"Version consistency check failed: {e}. Using fallback version.")
-            merged_config["moai"]["version"] = __version__
-
-        # Write final config with enhanced formatting
-        self._write_configuration_file(config_path, merged_config)
-        logger.info(f"Configuration file written to {config_path}")
-
-        return [str(config_path)]
+            logging.getLogger(__name__).warning(f"Failed to update {yaml_path}: {e}")
 
     def _merge_configuration_preserving_versions(
         self, new_config: dict[str, Any], existing_config: dict[str, Any]

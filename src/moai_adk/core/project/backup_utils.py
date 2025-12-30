@@ -8,8 +8,11 @@ Selective backup strategy:
 from pathlib import Path
 
 # Backup targets (OR condition - back up when any exist)
+# Note: Both YAML and JSON config files are checked for backward compatibility
 BACKUP_TARGETS = [
-    ".moai/config/config.json",
+    ".moai/config/config.yaml",
+    ".moai/config/config.json",  # Legacy support
+    ".moai/config/sections/",  # Section-based config files
     ".moai/project/",
     ".moai/memory/",
     ".claude/",

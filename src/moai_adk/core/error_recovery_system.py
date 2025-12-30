@@ -855,7 +855,11 @@ class ErrorRecoverySystem:
             return False
 
     def _restore_config_backup(self, error_report: ErrorReport, parameters: Dict[str, Any]) -> bool:
-        """Restore configuration from backup"""
+        """Restore configuration from backup.
+
+        Supports both YAML and JSON configuration formats with backward
+        compatibility for legacy JSON-only backups.
+        """
         try:
             logger.info("Restoring configuration from backup...")
 
@@ -864,16 +868,30 @@ class ErrorRecoverySystem:
                 logger.warning("No configuration backup directory found")
                 return False
 
-            # Find most recent backup
-            backup_files = list(backup_dir.glob("config_*.json"))
+            # Find most recent backup - check both YAML and JSON formats
+            yaml_backups = list(backup_dir.glob("config_*.yaml"))
+            json_backups = list(backup_dir.glob("config_*.json"))
+            backup_files = yaml_backups + json_backups
+
             if not backup_files:
                 logger.warning("No configuration backups found")
                 return False
 
             latest_backup = max(backup_files, key=lambda f: f.stat().st_mtime)
+            is_yaml_backup = latest_backup.suffix in (".yaml", ".yml")
+
+            # Determine target config file based on backup format
+            if is_yaml_backup:
+                config_file = self.project_root / ".moai" / "config" / "config.yaml"
+            else:
+                # Legacy JSON backup - check if project uses YAML now
+                yaml_config = self.project_root / ".moai" / "config" / "config.yaml"
+                if yaml_config.exists():
+                    config_file = yaml_config
+                else:
+                    config_file = self.project_root / ".moai" / "config" / "config.json"
 
             # Restore configuration
-            config_file = self.project_root / ".moai" / "config" / "config.json"
             import shutil
 
             shutil.copy2(latest_backup, config_file)

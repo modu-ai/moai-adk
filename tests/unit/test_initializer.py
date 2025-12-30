@@ -208,7 +208,14 @@ class TestInitialize:
         assert (tmp_path / ".claude").exists()
         assert (tmp_path / ".github").exists()
         assert (tmp_path / "CLAUDE.md").exists()
-        assert (tmp_path / ".moai" / "config" / "config.json").exists()
+        # v0.37.0+: Config structure with section YAML files
+        config_dir = tmp_path / ".moai" / "config"
+        assert config_dir.exists(), "Config directory should exist"
+        # Check for section YAML files OR legacy config.yaml
+        sections_dir = config_dir / "sections"
+        has_sections = sections_dir.exists() and any(sections_dir.glob("*.yaml"))
+        has_legacy_config = (config_dir / "config.yaml").exists()
+        assert has_sections or has_legacy_config, "Should have section YAML files or config.yaml"
 
     def test_initialize_measures_duration(self, tmp_path: Path) -> None:
         """Should measure initialization duration"""

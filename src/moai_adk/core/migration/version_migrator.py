@@ -3,11 +3,19 @@ Main version migration orchestrator for MoAI-ADK
 
 Coordinates version detection, backup creation, file migration,
 and cleanup processes for automatic project upgrades.
+
+Supports migration from:
+- Legacy config.json (.moai/config.json) - pre-v0.24.0
+- Intermediate config.json (.moai/config/config.json) - v0.24.0
+- Section YAML files (.moai/config/sections/*.yaml) - v0.36.0+
 """
 
+import json
 import logging
 from pathlib import Path
 from typing import Any, Dict
+
+import yaml
 
 from .backup_manager import BackupManager
 from .file_migrator import FileMigrator
@@ -165,6 +173,13 @@ class VersionMigrator:
             print(f"   • {move_op['description']}")
             print(f"     {move_op['from']} → {move_op['to']}")
 
+        # Show conversion operations (config.json to section YAML)
+        if plan.get("convert"):
+            print("\n🔄 Files to convert:")
+            for convert_op in plan.get("convert", []):
+                print(f"   • {convert_op['description']}")
+                print(f"     {convert_op['from']} → {convert_op['to_dir']}/")
+
         print("\n🗑️  Files to cleanup after migration:")
         for cleanup_file in plan.get("cleanup", []):
             print(f"   - {cleanup_file}")
@@ -176,20 +191,40 @@ class VersionMigrator:
         Returns:
             True if verification passed
         """
-        # Check that new config exists
-        new_config = self.project_root / ".moai" / "config" / "config.json"
-        if not new_config.exists():
-            logger.error("Verification failed: new config.json not found")
-            return False
-
-        # Check that new config directory exists
+        # Check that config directory exists
         config_dir = self.project_root / ".moai" / "config"
         if not config_dir.is_dir():
             logger.error("Verification failed: config directory not found")
             return False
 
-        logger.debug("All verification checks passed")
-        return True
+        # Check for section YAML format (preferred v0.36.0+)
+        sections_dir = self.project_root / ".moai" / "config" / "sections"
+        system_yaml = sections_dir / "system.yaml"
+
+        if sections_dir.exists() and system_yaml.exists():
+            # Verify system.yaml is valid
+            try:
+                with open(system_yaml, "r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+                    if data and "moai" in data:
+                        logger.debug("Section YAML format verification passed")
+                        return True
+            except Exception as e:
+                logger.warning(f"Failed to verify system.yaml: {e}")
+
+        # Fallback: check for intermediate config.json (v0.24.0 format)
+        intermediate_config = self.project_root / ".moai" / "config" / "config.json"
+        if intermediate_config.exists():
+            try:
+                with open(intermediate_config, "r", encoding="utf-8") as f:
+                    json.load(f)
+                    logger.debug("Intermediate config.json verification passed")
+                    return True
+            except Exception as e:
+                logger.warning(f"Failed to verify config.json: {e}")
+
+        logger.error("Verification failed: no valid configuration found")
+        return False
 
     def check_status(self) -> Dict[str, Any]:
         """

@@ -42,7 +42,14 @@ class GitConflictDetector:
         "CLAUDE.md",
         ".gitignore",
         ".claude/settings.json",
-        ".moai/config/config.json",
+        ".moai/config/config.json",  # Legacy monolithic config
+        ".moai/config/config.yaml",  # Legacy monolithic config
+        ".moai/config/sections/language.yaml",  # Section-based config
+        ".moai/config/sections/user.yaml",
+        ".moai/config/sections/project.yaml",
+        ".moai/config/sections/system.yaml",
+        ".moai/config/sections/git-strategy.yaml",
+        ".moai/config/sections/quality.yaml",
     }
 
     # Config file patterns that are generally safe
@@ -53,6 +60,8 @@ class GitConflictDetector:
         ".prettierrc",
         "settings.json",
         "config.json",
+        "config.yaml",
+        ".yaml",  # YAML files (includes section files)
         ".md",  # Markdown files
     }
 

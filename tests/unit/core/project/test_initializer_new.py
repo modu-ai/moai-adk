@@ -118,83 +118,25 @@ class TestProjectInitializer:
             # Assert
             assert result is True
 
+    @pytest.mark.skip(reason="Memory files creation removed in v0.37.0")
     def test_create_memory_files_creates_all_files(self):
         """Test _create_memory_files creates all required memory files."""
-        # Arrange
-        with tempfile.TemporaryDirectory() as temp_dir:
-            initializer = ProjectInitializer(temp_dir)
+        pass
 
-            # Act
-            created_files = initializer._create_memory_files()
-
-            # Assert
-            assert len(created_files) == 3
-            assert any("project-notes.json" in f for f in created_files)
-            assert any("session-hint.json" in f for f in created_files)
-            assert any("user-patterns.json" in f for f in created_files)
-
+    @pytest.mark.skip(reason="Memory files creation removed in v0.37.0")
     def test_create_memory_files_project_notes_content(self):
         """Test _create_memory_files creates project-notes.json with correct content."""
-        # Arrange
-        with tempfile.TemporaryDirectory() as temp_dir:
-            path = Path(temp_dir)
-            initializer = ProjectInitializer(path)
+        pass
 
-            # Act
-            initializer._create_memory_files()
-
-            # Assert
-            project_notes_path = path / ".moai" / "memory" / "project-notes.json"
-            assert project_notes_path.exists()
-
-            with open(project_notes_path) as f:
-                content = json.load(f)
-
-            assert "tech_debt" in content
-            assert "performance_bottlenecks" in content
-            assert "recent_patterns" in content
-            assert isinstance(content["tech_debt"], list)
-
+    @pytest.mark.skip(reason="Memory files creation removed in v0.37.0")
     def test_create_memory_files_session_hint_content(self):
         """Test _create_memory_files creates session-hint.json with correct content."""
-        # Arrange
-        with tempfile.TemporaryDirectory() as temp_dir:
-            path = Path(temp_dir)
-            initializer = ProjectInitializer(path)
+        pass
 
-            # Act
-            initializer._create_memory_files()
-
-            # Assert
-            session_hint_path = path / ".moai" / "memory" / "session-hint.json"
-            assert session_hint_path.exists()
-
-            with open(session_hint_path) as f:
-                content = json.load(f)
-
-            assert content["last_command"] is None
-            assert content["current_branch"] == "main"
-
+    @pytest.mark.skip(reason="Memory files creation removed in v0.37.0")
     def test_create_memory_files_user_patterns_content(self):
         """Test _create_memory_files creates user-patterns.json with correct content."""
-        # Arrange
-        with tempfile.TemporaryDirectory() as temp_dir:
-            path = Path(temp_dir)
-            initializer = ProjectInitializer(path)
-
-            # Act
-            initializer._create_memory_files()
-
-            # Assert
-            user_patterns_path = path / ".moai" / "memory" / "user-patterns.json"
-            assert user_patterns_path.exists()
-
-            with open(user_patterns_path) as f:
-                content = json.load(f)
-
-            assert "tech_preferences" in content
-            assert "expertise_signals" in content
-            assert content["expertise_signals"]["estimated_level"] == "beginner"
+        pass
 
     def test_create_user_settings_creates_file(self):
         """Test _create_user_settings creates settings.local.json."""
@@ -310,14 +252,14 @@ class TestProjectInitializer:
                 ".claude/",
                 ".moai/",
             ]
-            mock_executor_instance.execute_configuration_phase.return_value = ["config.json"]
+            # v0.37.0: Uses section YAML files instead of config.json
+            mock_executor_instance.execute_configuration_phase.return_value = ["project.yaml", "system.yaml"]
             mock_executor_instance.execute_validation_phase.return_value = None
 
             # Act
             with patch.object(initializer, "executor", mock_executor_instance):
-                with patch.object(initializer, "_create_memory_files", return_value=[]):
-                    with patch.object(initializer, "_create_user_settings", return_value=[]):
-                        result = initializer.initialize()
+                with patch.object(initializer, "_create_user_settings", return_value=[]):
+                    result = initializer.initialize()
 
             # Assert
             assert result.success is True
@@ -341,9 +283,8 @@ class TestProjectInitializer:
 
             # Act
             with patch.object(initializer, "executor", mock_executor_instance):
-                with patch.object(initializer, "_create_memory_files", return_value=[]):
-                    with patch.object(initializer, "_create_user_settings", return_value=[]):
-                        result = initializer.initialize(locale="other", custom_language="Custom Language")
+                with patch.object(initializer, "_create_user_settings", return_value=[]):
+                    result = initializer.initialize(locale="other", custom_language="Custom Language")
 
             # Assert
             assert result.locale == "other"
@@ -416,9 +357,8 @@ class TestProjectInitializer:
 
             # Act
             with patch.object(initializer, "executor", mock_executor_instance):
-                with patch.object(initializer, "_create_memory_files", return_value=[]):
-                    with patch.object(initializer, "_create_user_settings", return_value=[]):
-                        initializer.initialize(locale="ko")
+                with patch.object(initializer, "_create_user_settings", return_value=[]):
+                    initializer.initialize(locale="ko")
 
             # Assert
             assert config_arg is not None
@@ -445,9 +385,8 @@ class TestProjectInitializer:
 
             # Act
             with patch.object(initializer, "executor", mock_executor_instance):
-                with patch.object(initializer, "_create_memory_files", return_value=[]):
-                    with patch.object(initializer, "_create_user_settings", return_value=[]):
-                        result = initializer.initialize()
+                with patch.object(initializer, "_create_user_settings", return_value=[]):
+                    result = initializer.initialize()
 
             # Assert
             assert result.duration >= 1500
@@ -477,9 +416,8 @@ class TestProjectInitializer:
 
             # Act
             with patch.object(initializer, "executor", mock_executor_instance):
-                with patch.object(initializer, "_create_memory_files", return_value=[]):
-                    with patch.object(initializer, "_create_user_settings", return_value=[]):
-                        initializer.initialize()
+                with patch.object(initializer, "_create_user_settings", return_value=[]):
+                    initializer.initialize()
 
             # Assert
             assert config_arg is not None

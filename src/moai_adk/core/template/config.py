@@ -3,11 +3,16 @@
 DEPRECATED: This module is maintained for backward compatibility.
 New code should use: moai_adk.core.config.unified.UnifiedConfigManager
 
-Manage .moai/config/config.json:
-- Read and write configuration files
-- Support deep merges
-- Preserve UTF-8 content
-- Create directories automatically
+Configuration sources (in priority order):
+1. Section YAML files: .moai/config/sections/*.yaml (new approach)
+   - language.yaml: Language settings
+   - user.yaml: User settings
+   - project.yaml: Project metadata
+   - system.yaml: MoAI system settings
+   - git-strategy.yaml: Git workflow settings
+   - quality.yaml: Quality and TDD settings
+2. Monolithic config.yaml: .moai/config/config.yaml (legacy)
+3. Monolithic config.json: .moai/config/config.json (legacy fallback)
 
 Migration Path:
     OLD:
@@ -36,10 +41,14 @@ except ImportError:
 
 class ConfigManager:
     """
-    Read and write .moai/config/config.json.
+    Read and write MoAI configuration.
 
     DEPRECATED: Use moai_adk.core.config.unified.UnifiedConfigManager instead.
     This class is now a thin wrapper around UnifiedConfigManager for backward compatibility.
+
+    Supports both:
+    - New: Section YAML files (.moai/config/sections/*.yaml)
+    - Legacy: Monolithic config.json (.moai/config/config.json)
     """
 
     DEFAULT_CONFIG = {"mode": "personal", "locale": "ko", "moai": {"version": "0.3.0"}}

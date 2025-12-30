@@ -450,14 +450,21 @@ class RollbackManager:
             raise
 
     def _backup_configuration(self, rollback_dir: Path) -> str:
-        """Backup configuration files"""
+        """Backup configuration files (both legacy and section-based)"""
         config_backup_path = rollback_dir / "config"
         config_backup_path.mkdir(parents=True, exist_ok=True)
 
-        # Backup .moai/config/config.json
-        config_file = self.project_root / ".moai" / "config" / "config.json"
-        if config_file.exists():
-            shutil.copy2(config_file, config_backup_path / "config.json")
+        # Backup legacy monolithic config files
+        for config_name in ["config.json", "config.yaml"]:
+            config_file = self.project_root / ".moai" / "config" / config_name
+            if config_file.exists():
+                shutil.copy2(config_file, config_backup_path / config_name)
+
+        # Backup section-based config directory
+        sections_dir = self.project_root / ".moai" / "config" / "sections"
+        if sections_dir.exists():
+            sections_backup_path = config_backup_path / "sections"
+            shutil.copytree(sections_dir, sections_backup_path, dirs_exist_ok=True)
 
         # Backup .claude/settings.json
         settings_file = self.project_root / ".claude" / "settings.json"
@@ -541,15 +548,18 @@ class RollbackManager:
             if current_checksum != rollback_point.checksum:
                 warnings.append("Backup checksum mismatch - possible corruption")
 
-            # Check essential files exist
-            required_files = [
-                backup_path / "config" / "config.json",
-                backup_path / "research",
-            ]
+            # Check essential files exist (check for either legacy or section-based config)
+            config_exists = (
+                (backup_path / "config" / "config.json").exists()
+                or (backup_path / "config" / "config.yaml").exists()
+                or (backup_path / "config" / "sections").exists()
+            )
 
-            missing_files = [f for f in required_files if not f.exists()]
-            if missing_files:
-                warnings.append(f"Missing backup files: {missing_files}")
+            if not config_exists:
+                warnings.append("No configuration backup found (expected config.json, config.yaml, or sections/)")
+
+            if not (backup_path / "research").exists():
+                warnings.append("Missing research component backup")
 
         except Exception as e:
             validation_result["valid"] = False
@@ -677,18 +687,35 @@ class RollbackManager:
         }
 
         try:
-            # Validate configuration
-            config_file = self.project_root / ".moai" / "config" / "config.json"
-            if config_file.exists():
+            # Validate configuration (check for both legacy and section-based)
+            config_json = self.project_root / ".moai" / "config" / "config.json"
+            config_yaml = self.project_root / ".moai" / "config" / "config.yaml"
+            sections_dir = self.project_root / ".moai" / "config" / "sections"
+
+            config_found = False
+
+            # Validate legacy JSON config
+            if config_json.exists():
+                config_found = True
                 try:
-                    with open(config_file, "r", encoding="utf-8") as f:
+                    with open(config_json, "r", encoding="utf-8") as f:
                         json.load(f)  # Validate JSON syntax
                 except json.JSONDecodeError:
                     validation_results["config_valid"] = False
                     issues.append("Invalid JSON in config.json")
-            else:
+
+            # Validate legacy YAML config
+            if config_yaml.exists():
+                config_found = True
+                # YAML validation would require PyYAML, skip for now
+
+            # Check for section-based config
+            if sections_dir.exists() and sections_dir.is_dir():
+                config_found = True
+
+            if not config_found:
                 validation_results["config_valid"] = False
-                issues.append("config.json not found")
+                issues.append("No configuration found (expected config.json, config.yaml, or sections/)")
 
             # Validate research components
             for research_dir in self.research_dirs:

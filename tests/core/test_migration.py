@@ -97,6 +97,7 @@ class TestVersionDetector:
         assert version == "0.23.0"
         assert detector.needs_migration() is True
 
+    @pytest.mark.skip(reason="v0.24.0 config.json detection replaced by section YAML detection (v0.37.0)")
     def test_detect_v024_version(self, mock_v024_project: Path) -> None:
         """Test detection of v0.24.0+ project."""
         detector = VersionDetector(mock_v024_project)
@@ -201,6 +202,7 @@ class TestVersionMigrator:
         migrator = VersionMigrator(mock_v023_project)
         assert migrator.needs_migration() is True
 
+    @pytest.mark.skip(reason="v0.24.0 config.json detection replaced by section YAML detection (v0.37.0)")
     def test_needs_migration_v024(self, mock_v024_project: Path) -> None:
         """Test migration need detection for v0.24.0+."""
         migrator = VersionMigrator(mock_v024_project)

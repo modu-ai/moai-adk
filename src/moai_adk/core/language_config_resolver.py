@@ -3,11 +3,17 @@ MoAI-ADK Language Configuration Resolver
 
 Centralized system for resolving language configuration from multiple sources:
 1. Environment variables (highest priority)
-2. Configuration file (.moai/config/config.json)
-3. Default values (fallback)
+2. Section files (.moai/config/sections/language.yaml, user.yaml)
+3. Legacy config file (.moai/config/config.yaml or config.json)
+4. Default values (fallback)
+
+Configuration Architecture:
+- New projects: Use modular section files for better organization
+- Legacy projects: Continue using config.json or config.yaml
+- Section files take priority over monolithic config if both exist
 
 This module provides a unified interface for all language-related configuration
-needs across the MoAI-ADK system.
+needs across the MoAI-ADK system with backward compatibility.
 """
 
 import json

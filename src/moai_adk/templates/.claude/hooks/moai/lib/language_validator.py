@@ -10,25 +10,110 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
+try:
+    import yaml
 
-def load_config() -> Dict[str, Any]:
-    """Load configuration from .moai/config/config.json
+    YAML_AVAILABLE = True
+except ImportError:
+    YAML_AVAILABLE = False
+
+
+def _load_yaml_file(file_path: Path) -> Dict[str, Any]:
+    """Load a YAML file safely with fallback to empty dict.
+
+    Args:
+        file_path: Path to the YAML file
 
     Returns:
-        Configuration dictionary or empty dict if not found
+        Parsed YAML content or empty dict on failure
     """
-    config_path = Path(".moai/config/config.json")
-
-    if not config_path.exists():
-        return {"error": "Configuration file not found"}
-
+    if not file_path.exists():
+        return {}
+    if not YAML_AVAILABLE:
+        return {}
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except json.JSONDecodeError as e:
-        return {"error": f"JSON decode error: {e}"}
-    except Exception as e:
-        return {"error": f"File read error: {e}"}
+        with open(file_path, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except Exception:
+        return {}
+
+
+def _merge_configs(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+    """Recursively merge two configuration dictionaries.
+
+    Args:
+        base: Base configuration dictionary
+        override: Override configuration dictionary
+
+    Returns:
+        Merged configuration dictionary
+    """
+    result = base.copy()
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = _merge_configs(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
+def load_config() -> Dict[str, Any]:
+    """Load configuration from section YAML files with fallbacks.
+
+    Priority:
+    1. Section files (.moai/config/sections/*.yaml)
+    2. Main config.yaml
+    3. Legacy config.json
+
+    Returns:
+        Configuration dictionary or dict with 'error' key if not found
+    """
+    config_dir = Path(".moai/config")
+    sections_dir = config_dir / "sections"
+
+    config: Dict[str, Any] = {}
+
+    # Try section-based configuration first (new approach)
+    if sections_dir.exists() and sections_dir.is_dir():
+        section_files = [
+            ("language.yaml", "language"),
+            ("user.yaml", "user"),
+            ("project.yaml", "project"),
+            ("system.yaml", "system"),
+            ("git-strategy.yaml", "git_strategy"),
+            ("quality.yaml", "quality"),
+        ]
+        for filename, _key in section_files:
+            section_path = sections_dir / filename
+            section_data = _load_yaml_file(section_path)
+            if section_data:
+                config = _merge_configs(config, section_data)
+        if config:
+            return config
+
+    # Fallback to main config.yaml
+    yaml_config_path = config_dir / "config.yaml"
+    if yaml_config_path.exists() and YAML_AVAILABLE:
+        try:
+            with open(yaml_config_path, "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f) or {}
+                if config:
+                    return config
+        except Exception:
+            pass
+
+    # Legacy fallback to config.json
+    json_config_path = config_dir / "config.json"
+    if json_config_path.exists():
+        try:
+            with open(json_config_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except json.JSONDecodeError as e:
+            return {"error": f"JSON decode error: {e}"}
+        except Exception as e:
+            return {"error": f"File read error: {e}"}
+
+    return {"error": "Configuration file not found"}
 
 
 def validate_language_config(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -137,7 +222,12 @@ def validate_output_style_compatibility() -> Dict[str, Any]:
             ]
 
             result["language_support_present"] = any(keyword in content for keyword in language_keywords)
-            result["config_reading_present"] = ".moai/config/config.json" in content
+            # Check for config reading (supports both YAML sections and legacy JSON)
+            result["config_reading_present"] = (
+                ".moai/config/sections" in content
+                or ".moai/config/config.yaml" in content
+                or ".moai/config/config.json" in content
+            )
 
             if not result["language_support_present"]:
                 recommendations.append("Add language support documentation to R2-D2 output style")

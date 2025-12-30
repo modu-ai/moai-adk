@@ -5,6 +5,8 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List
 
+import yaml
+
 # Configure logging
 logger = logging.getLogger(__name__)
 
@@ -24,37 +26,70 @@ class AutoSpecConfig:
         self.load_config()
 
     def _get_default_config_path(self) -> str:
-        """Get the default configuration file path."""
-        # Try to find config in multiple locations
-        possible_paths = [
-            Path.cwd() / ".moai" / "config.json",
-            Path.cwd() / "config.json",
-            Path.home() / ".moai" / "config.json",
-        ]
+        """Get the default configuration file path.
 
-        for path in possible_paths:
+        Checks for configuration files in this priority order:
+        1. Section YAML files (.moai/config/sections/*.yaml)
+        2. Main config YAML (.moai/config/config.yaml)
+        3. Legacy JSON config (.moai/config/config.json or .moai/config.json)
+        """
+        cwd = Path.cwd()
+
+        # Priority 1: Section-based config (new format)
+        sections_dir = cwd / ".moai" / "config" / "sections"
+        if sections_dir.exists() and any(sections_dir.glob("*.yaml")):
+            # Return main config.yaml path for compatibility
+            return str(cwd / ".moai" / "config" / "config.yaml")
+
+        # Priority 2: Main YAML config
+        yaml_paths = [
+            cwd / ".moai" / "config" / "config.yaml",
+            cwd / ".moai" / "config.yaml",
+        ]
+        for path in yaml_paths:
             if path.exists():
                 return str(path)
 
-        # Default to current directory
-        return str(Path.cwd() / ".moai" / "config.json")
+        # Priority 3: Legacy JSON config
+        json_paths = [
+            cwd / ".moai" / "config" / "config.json",
+            cwd / ".moai" / "config.json",
+            cwd / "config.json",
+            Path.home() / ".moai" / "config.json",
+        ]
+        for path in json_paths:
+            if path.exists():
+                return str(path)
+
+        # Default to YAML config in current directory
+        return str(cwd / ".moai" / "config" / "config.yaml")
 
     def load_config(self) -> None:
-        """Load configuration from file."""
+        """Load configuration from file.
+
+        Supports both YAML and JSON configuration files with automatic
+        format detection based on file extension.
+        """
+        config_path = Path(self.config_path)
+
         try:
             with open(self.config_path, "r", encoding="utf-8") as f:
-                self.config = json.load(f)
+                # Detect format based on file extension
+                if config_path.suffix in (".yaml", ".yml"):
+                    full_config = yaml.safe_load(f) or {}
+                else:
+                    full_config = json.load(f)
 
             # Extract auto-spec completion config
-            self.config = self.config.get("auto_spec_completion", {})
+            self.config = full_config.get("auto_spec_completion", {})
 
             logger.info(f"Loaded auto-spec completion configuration from {self.config_path}")
 
         except FileNotFoundError:
             logger.warning(f"Configuration file not found: {self.config_path}")
             self._load_default_config()
-        except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON in configuration file: {e}")
+        except (json.JSONDecodeError, yaml.YAMLError) as e:
+            logger.error(f"Invalid configuration file format: {e}")
             self._load_default_config()
         except Exception as e:
             logger.error(f"Error loading configuration: {e}")
@@ -312,18 +347,31 @@ class AutoSpecConfig:
         logger.info(f"Updated auto-spec completion configuration: {updates}")
 
     def save_config(self) -> None:
-        """Save configuration to file."""
+        """Save configuration to file.
+
+        Supports both YAML and JSON configuration files with automatic
+        format detection based on file extension.
+        """
+        config_path = Path(self.config_path)
+        is_yaml = config_path.suffix in (".yaml", ".yml")
+
         try:
             # Load the full config file
             with open(self.config_path, "r", encoding="utf-8") as f:
-                full_config = json.load(f)
+                if is_yaml:
+                    full_config = yaml.safe_load(f) or {}
+                else:
+                    full_config = json.load(f)
 
             # Update the auto-spec completion config
             full_config["auto_spec_completion"] = self.config
 
             # Save back to file
             with open(self.config_path, "w", encoding="utf-8") as f:
-                json.dump(full_config, f, indent=2, ensure_ascii=False)
+                if is_yaml:
+                    yaml.safe_dump(full_config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+                else:
+                    json.dump(full_config, f, indent=2, ensure_ascii=False)
 
             logger.info(f"Saved auto-spec completion configuration to {self.config_path}")
 

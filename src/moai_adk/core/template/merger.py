@@ -93,7 +93,11 @@ class TemplateMerger:
         existing_path.write_text("\n".join(merged_lines) + "\n", encoding="utf-8")
 
     def merge_config(self, detected_language: str | None = None) -> dict[str, str]:
-        """Smart merge for config.json.
+        """Smart merge for configuration using section YAML files with JSON fallback.
+
+        Supports both:
+        - New: Section YAML files (.moai/config/sections/*.yaml)
+        - Legacy: Monolithic config.json (.moai/config/config.json)
 
         Rules:
         - Prefer existing settings.
@@ -105,19 +109,41 @@ class TemplateMerger:
         Returns:
             Merged configuration dictionary.
         """
-        config_path = self.target_path / ".moai" / "config" / "config.json"
+        try:
+            import yaml
 
-        # Load existing config if present
+            yaml_available = True
+        except ImportError:
+            yaml_available = False
+
+        # Check for section-based YAML configuration first (new approach)
+        sections_dir = self.target_path / ".moai" / "config" / "sections"
         existing_config: dict[str, Any] = {}
-        if config_path.exists():
-            with open(config_path, encoding="utf-8") as f:
-                existing_config = json.load(f)
+
+        if yaml_available and sections_dir.exists() and sections_dir.is_dir():
+            # Load from section YAML files
+            for section_file in sections_dir.glob("*.yaml"):
+                try:
+                    with open(section_file, "r", encoding="utf-8") as f:
+                        section_data = yaml.safe_load(f) or {}
+                        existing_config.update(section_data)
+                except Exception:
+                    pass  # Skip unreadable section files
+        else:
+            # Fallback to legacy config.json
+            config_path = self.target_path / ".moai" / "config" / "config.json"
+            if config_path.exists():
+                with open(config_path, encoding="utf-8") as f:
+                    existing_config = json.load(f)
+
+        # Extract project-related settings from nested structure
+        project_config = existing_config.get("project", {})
 
         # Build new config while preferring existing values
         new_config: dict[str, str] = {
-            "projectName": existing_config.get("projectName", self.target_path.name),
+            "projectName": project_config.get("name", existing_config.get("projectName", self.target_path.name)),
             "mode": existing_config.get("mode", "personal"),
-            "locale": existing_config.get("locale", "ko"),
+            "locale": project_config.get("locale", existing_config.get("locale", "ko")),
             "language": existing_config.get("language", detected_language or "generic"),
         }
 

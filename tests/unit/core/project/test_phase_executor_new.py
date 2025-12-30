@@ -195,14 +195,23 @@ class TestPhaseExecutor:
             assert context["CODEBASE_LANGUAGE"] == "python"
 
     def test_execute_configuration_phase_creates_config_file(self):
-        """Test execute_configuration_phase creates config.json file."""
+        """Test execute_configuration_phase updates section YAML files.
+
+        Note: As of v0.37.0, we use section YAML files instead of config.json.
+        """
         # Arrange
         validator = MagicMock(spec=ProjectValidator)
         executor = PhaseExecutor(validator)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir)
-            (path / ".moai" / "config").mkdir(parents=True)
+            # Create sections directory with YAML files
+            sections_dir = path / ".moai" / "config" / "sections"
+            sections_dir.mkdir(parents=True)
+
+            # Create sample section files that Phase 4 updates
+            (sections_dir / "project.yaml").write_text("project:\n  name: \"\"\n  initialized: false\n")
+            (sections_dir / "system.yaml").write_text("moai:\n  version: \"0.0.0\"\n")
 
             config = {
                 "project": {"name": "test-project"},
@@ -213,10 +222,11 @@ class TestPhaseExecutor:
             # Act
             result = executor.execute_configuration_phase(path, config)
 
-            # Assert
+            # Assert - should return updated section files
             assert len(result) > 0
-            config_file = path / ".moai" / "config" / "config.json"
-            assert config_file.exists()
+            # Verify section files were updated (not config.json)
+            assert (sections_dir / "project.yaml").exists()
+            assert (sections_dir / "system.yaml").exists()
 
     def test_execute_configuration_phase_reads_existing_config(self):
         """Test execute_configuration_phase reads and preserves existing config."""
@@ -250,19 +260,22 @@ class TestPhaseExecutor:
             assert written_config is not None
 
     def test_execute_configuration_phase_merges_configurations(self):
-        """Test execute_configuration_phase merges existing and new configs."""
+        """Test execute_configuration_phase updates section YAML files.
+
+        Note: As of v0.37.0, we use section YAML files instead of config.json.
+        """
         # Arrange
         validator = MagicMock(spec=ProjectValidator)
         executor = PhaseExecutor(validator)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir)
-            config_dir = path / ".moai" / "config"
-            config_dir.mkdir(parents=True)
+            sections_dir = path / ".moai" / "config" / "sections"
+            sections_dir.mkdir(parents=True)
 
-            existing_config = {"moai": {"version": "0.30.0"}}
-            config_file = config_dir / "config.json"
-            config_file.write_text(json.dumps(existing_config))
+            # Create existing section files
+            (sections_dir / "project.yaml").write_text("project:\n  name: old-project\n  initialized: false\n")
+            (sections_dir / "system.yaml").write_text("moai:\n  version: \"0.30.0\"\n")
 
             new_config = {
                 "project": {"name": "test-project"},
@@ -272,10 +285,12 @@ class TestPhaseExecutor:
             # Act
             executor.execute_configuration_phase(path, new_config)
 
-            # Assert
-            written_config = json.loads(config_file.read_text())
-            assert "project" in written_config
-            assert "moai" in written_config
+            # Assert - verify section files were updated
+            import yaml
+            project_content = yaml.safe_load((sections_dir / "project.yaml").read_text())
+            assert project_content["project"]["name"] == "test-project"
+            # system.yaml is updated with the current MoAI version, not the config input
+            assert (sections_dir / "system.yaml").exists()
 
     def test_execute_validation_phase_calls_validator(self):
         """Test execute_validation_phase calls validator.validate_installation."""

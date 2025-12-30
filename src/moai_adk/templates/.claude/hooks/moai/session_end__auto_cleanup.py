@@ -119,35 +119,115 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def _load_yaml_file(file_path: Path) -> Dict[str, Any]:
+    """Load a YAML file safely with fallback to empty dict.
+
+    Args:
+        file_path: Path to the YAML file
+
+    Returns:
+        Parsed YAML content or empty dict on failure
+    """
+    if not file_path.exists():
+        return {}
+    try:
+        import yaml
+
+        with open(file_path, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except ImportError:
+        # PyYAML not available, try simple parsing
+        return {}
+    except Exception:
+        return {}
+
+
+def _load_config_from_sections() -> Dict[str, Any]:
+    """Load configuration from section YAML files with fallback to config.yaml/json.
+
+    Priority:
+    1. Section files (.moai/config/sections/*.yaml)
+    2. Main config.yaml
+    3. Legacy config.json
+
+    Returns:
+        Merged configuration dictionary
+    """
+    project_root = find_project_root()
+    config_dir = project_root / ".moai" / "config"
+    sections_dir = config_dir / "sections"
+
+    config: Dict[str, Any] = {}
+
+    # Try section-based configuration first (new approach)
+    if sections_dir.exists() and sections_dir.is_dir():
+        # Load all section files
+        section_files = [
+            "system.yaml",  # Contains hooks config
+            "language.yaml",
+            "user.yaml",
+            "project.yaml",
+            "git-strategy.yaml",
+            "quality.yaml",
+        ]
+        for filename in section_files:
+            section_path = sections_dir / filename
+            section_data = _load_yaml_file(section_path)
+            if section_data:
+                # Merge section data into config
+                for key, value in section_data.items():
+                    if key in config and isinstance(config[key], dict) and isinstance(value, dict):
+                        config[key].update(value)
+                    else:
+                        config[key] = value
+        if config:
+            return config
+
+    # Fallback to main config.yaml
+    yaml_config_path = config_dir / "config.yaml"
+    config = _load_yaml_file(yaml_config_path)
+    if config:
+        return config
+
+    # Legacy fallback to config.json
+    json_config_path = config_dir / "config.json"
+    if json_config_path.exists():
+        try:
+            with open(json_config_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    return {}
+
+
 def load_hook_timeout() -> int:
-    """Load hook timeout from config.json (default: 5000ms)
+    """Load hook timeout from configuration (default: 5000ms)
+
+    Loads from section YAML files, with fallback to config.yaml and config.json.
 
     Returns:
         Timeout in milliseconds
     """
     try:
-        config_file = Path(".moai/config/config.yaml")
-        if config_file.exists():
-            with open(config_file, "r", encoding="utf-8") as f:
-                config: Dict[str, Any] = json.load(f)
-                return config.get("hooks", {}).get("timeout_ms", 5000)
+        config = _load_config_from_sections()
+        return config.get("hooks", {}).get("timeout_ms", 5000)
     except Exception:
         pass
     return 5000
 
 
 def get_graceful_degradation() -> bool:
-    """Load graceful_degradation setting from config.json (default: true)
+    """Load graceful_degradation setting from configuration (default: true)
+
+    Loads from section YAML files, with fallback to config.yaml and config.json.
 
     Returns:
         Whether graceful degradation is enabled
     """
     try:
-        config_file = Path(".moai/config/config.yaml")
-        if config_file.exists():
-            with open(config_file, "r", encoding="utf-8") as f:
-                config: Dict[str, Any] = json.load(f)
-                return config.get("hooks", {}).get("graceful_degradation", True)
+        config = _load_config_from_sections()
+        return config.get("hooks", {}).get("graceful_degradation", True)
     except Exception:
         pass
     return True

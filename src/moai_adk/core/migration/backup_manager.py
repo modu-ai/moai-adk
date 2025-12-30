@@ -3,6 +3,11 @@ Backup management module for MoAI-ADK migrations
 
 Creates and manages backups during migration processes
 to ensure data safety and enable rollback.
+
+Supports backup of:
+- Legacy config.json (.moai/config.json) - pre-v0.24.0
+- Intermediate config.json (.moai/config/config.json) - v0.24.0
+- Section YAML files (.moai/config/sections/*.yaml) - v0.36.0+
 """
 
 import json
@@ -46,15 +51,25 @@ class BackupManager:
 
         logger.info(f"Creating backup at {backup_dir}")
 
-        # Files to backup
+        # Files to backup (supporting all config formats)
         backup_targets = [
+            # Legacy config.json (pre-v0.24.0)
             self.project_root / ".moai" / "config.json",
+            # Intermediate config.json (v0.24.0)
             self.project_root / ".moai" / "config" / "config.json",
+            # Statusline configs
             self.project_root / ".claude" / "statusline-config.yaml",
             self.project_root / ".moai" / "config" / "statusline-config.yaml",
         ]
 
+        # Add section YAML files (v0.36.0+)
+        sections_dir = self.project_root / ".moai" / "config" / "sections"
+        if sections_dir.exists():
+            for yaml_file in sections_dir.glob("*.yaml"):
+                backup_targets.append(yaml_file)
+
         backed_up_files = []
+        backed_up_dirs = []
 
         for target in backup_targets:
             if target.exists():
@@ -70,12 +85,18 @@ class BackupManager:
                 backed_up_files.append(str(rel_path))
                 logger.debug(f"Backed up: {rel_path}")
 
+        # Track sections directory if it exists
+        if sections_dir.exists():
+            backed_up_dirs.append(str(sections_dir.relative_to(self.project_root)))
+
         # Save backup metadata
         metadata = {
             "timestamp": timestamp,
             "description": description,
             "backed_up_files": backed_up_files,
+            "backed_up_dirs": backed_up_dirs,
             "project_root": str(self.project_root),
+            "config_format": self._detect_config_format(),
         }
 
         metadata_path = backup_dir / "backup_metadata.json"
@@ -84,6 +105,26 @@ class BackupManager:
 
         logger.info(f"✅ Backup created successfully: {backup_dir}")
         return backup_dir
+
+    def _detect_config_format(self) -> str:
+        """
+        Detect the current configuration format
+
+        Returns:
+            One of: "section_yaml", "intermediate_json", "legacy_json", "none"
+        """
+        sections_dir = self.project_root / ".moai" / "config" / "sections"
+        system_yaml = sections_dir / "system.yaml"
+        intermediate_config = self.project_root / ".moai" / "config" / "config.json"
+        legacy_config = self.project_root / ".moai" / "config.json"
+
+        if sections_dir.exists() and system_yaml.exists():
+            return "section_yaml"
+        elif intermediate_config.exists():
+            return "intermediate_json"
+        elif legacy_config.exists():
+            return "legacy_json"
+        return "none"
 
     def list_backups(self) -> List[Dict[str, str]]:
         """
@@ -110,6 +151,7 @@ class BackupManager:
                                     "timestamp": metadata.get("timestamp", "unknown"),
                                     "description": metadata.get("description", "unknown"),
                                     "files": len(metadata.get("backed_up_files", [])),
+                                    "config_format": metadata.get("config_format", "unknown"),
                                 }
                             )
                     except Exception as e:

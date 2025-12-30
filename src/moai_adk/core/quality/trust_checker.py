@@ -342,17 +342,37 @@ class TrustChecker:
         Returns:
             dict[str, str]: Selected tool dictionary
         """
-        config_path = project_path / ".moai" / "config" / "config.json"
-        if not config_path.exists():
-            return {
-                "test_framework": "pytest",
-                "coverage_tool": "coverage.py",
-                "linter": "ruff",
-                "type_checker": "mypy",
-            }
+        import yaml
 
-        config = json.loads(config_path.read_text())
-        language = config.get("project", {}).get("language", "python")
+        language = "python"  # Default
+
+        # Try section YAML file first (new format)
+        project_section_path = project_path / ".moai" / "config" / "sections" / "project.yaml"
+        if project_section_path.exists():
+            try:
+                with open(project_section_path, encoding="utf-8") as f:
+                    project_config = yaml.safe_load(f) or {}
+                language = project_config.get("project", {}).get("language", "python")
+            except (yaml.YAMLError, OSError):
+                pass  # Use default
+        else:
+            # Fall back to main config file (YAML or JSON)
+            yaml_config_path = project_path / ".moai" / "config" / "config.yaml"
+            json_config_path = project_path / ".moai" / "config" / "config.json"
+
+            if yaml_config_path.exists():
+                try:
+                    with open(yaml_config_path, encoding="utf-8") as f:
+                        config = yaml.safe_load(f) or {}
+                    language = config.get("project", {}).get("language", "python")
+                except (yaml.YAMLError, OSError):
+                    pass  # Use default
+            elif json_config_path.exists():
+                try:
+                    config = json.loads(json_config_path.read_text())
+                    language = config.get("project", {}).get("language", "python")
+                except (json.JSONDecodeError, OSError):
+                    pass  # Use default
 
         if language == "python":
             return {

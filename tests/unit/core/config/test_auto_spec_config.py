@@ -24,10 +24,10 @@ class TestAutoSpecConfig(unittest.TestCase):
 
     def test_default_config_initialization(self):
         """Test default configuration initialization."""
-        config = AutoSpecConfig()
+        # Use explicit path for testing to avoid Path.cwd() issues
+        config = AutoSpecConfig(self.config_file)
 
-        # Should have default values
-        self.assertEqual(config.config_path, AutoSpecConfig()._get_default_config_path())
+        # Should have default values when file doesn't exist
         self.assertTrue(config.is_enabled())
         self.assertEqual(config.get_confidence_threshold(), 0.7)
         self.assertEqual(config.get_execution_timeout_ms(), 1500)
@@ -86,8 +86,8 @@ class TestAutoSpecConfig(unittest.TestCase):
 
     def test_is_enabled(self):
         """Test enabled/disabled functionality."""
-        # Test enabled
-        config = AutoSpecConfig()
+        # Test enabled - use explicit path for testing
+        config = AutoSpecConfig(self.config_file)
         self.assertTrue(config.is_enabled())
 
         # Test disabled
@@ -96,7 +96,7 @@ class TestAutoSpecConfig(unittest.TestCase):
 
     def test_get_trigger_tools(self):
         """Test getting trigger tools."""
-        config = AutoSpecConfig()
+        config = AutoSpecConfig(self.config_file)
         tools = config.get_trigger_tools()
 
         # Should be a list
@@ -126,7 +126,7 @@ class TestAutoSpecConfig(unittest.TestCase):
 
     def test_get_quality_threshold(self):
         """Test getting quality threshold."""
-        config = AutoSpecConfig()
+        config = AutoSpecConfig(self.config_file)
         threshold = config.get_quality_threshold()
 
         # Should be a dictionary
@@ -137,7 +137,7 @@ class TestAutoSpecConfig(unittest.TestCase):
 
     def test_get_excluded_patterns(self):
         """Test getting excluded patterns."""
-        config = AutoSpecConfig()
+        config = AutoSpecConfig(self.config_file)
         patterns = config.get_excluded_patterns()
 
         # Should be a list
@@ -172,7 +172,7 @@ class TestAutoSpecConfig(unittest.TestCase):
 
     def test_get_domain_templates_config(self):
         """Test getting domain templates configuration."""
-        config = AutoSpecConfig()
+        config = AutoSpecConfig(self.config_file)
         domain_config = config.get_domain_templates_config()
 
         # Should be a dictionary
@@ -183,7 +183,7 @@ class TestAutoSpecConfig(unittest.TestCase):
 
     def test_get_spec_structure_config(self):
         """Test getting spec structure configuration."""
-        config = AutoSpecConfig()
+        config = AutoSpecConfig(self.config_file)
         structure_config = config.get_spec_structure_config()
 
         # Should be a dictionary
@@ -195,7 +195,7 @@ class TestAutoSpecConfig(unittest.TestCase):
 
     def test_get_required_sections(self):
         """Test getting required sections."""
-        config = AutoSpecConfig()
+        config = AutoSpecConfig(self.config_file)
         sections = config.get_required_sections()
 
         # Should be a list
@@ -217,7 +217,7 @@ class TestAutoSpecConfig(unittest.TestCase):
 
     def test_get_supported_domains(self):
         """Test getting supported domains."""
-        config = AutoSpecConfig()
+        config = AutoSpecConfig(self.config_file)
         domains = config.get_supported_domains()
 
         # Should be a list
@@ -318,7 +318,7 @@ class TestAutoSpecConfig(unittest.TestCase):
 
     def test_validate_config_valid(self):
         """Test configuration validation with valid config."""
-        config = AutoSpecConfig()
+        config = AutoSpecConfig(self.config_file)
         errors = config.validate_config()
 
         # Should have no errors
@@ -345,7 +345,7 @@ class TestAutoSpecConfig(unittest.TestCase):
 
     def test_to_dict(self):
         """Test converting configuration to dictionary."""
-        config = AutoSpecConfig()
+        config = AutoSpecConfig(self.config_file)
         config_dict = config.to_dict()
 
         # Should be a dictionary
@@ -385,7 +385,7 @@ class TestAutoSpecConfig(unittest.TestCase):
 
     def test_str_representation(self):
         """Test string representation."""
-        config = AutoSpecConfig()
+        config = AutoSpecConfig(self.config_file)
         config_str = str(config)
 
         # Should be a string containing JSON

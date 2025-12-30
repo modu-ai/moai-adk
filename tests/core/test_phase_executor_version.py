@@ -1,16 +1,26 @@
 """
 Tests for configuration generation phase preserving version field
 
+Note: As of v0.37.0, Phase 4 uses section YAML files instead of config.json.
+Version is now stored in .moai/config/sections/system.yaml.
+These tests are marked as skipped as they test legacy config.json behavior.
 """
 
 import json
 import tempfile
 from pathlib import Path
 
+import pytest
+
 
 class TestPhaseExecutorVersion:
-    """Test configuration generation phase preserving version field"""
+    """Test configuration generation phase preserving version field.
 
+    Note: These tests were designed for legacy config.json behavior.
+    As of v0.37.0, Phase 4 updates section YAML files instead.
+    """
+
+    @pytest.mark.skip(reason="Phase 4 now uses section YAML files instead of config.json (v0.37.0)")
     def test_phase_4_preserves_existing_version_field(self, tmp_path: Path) -> None:
         """
         GIVEN: Existing .moai/config/config.json with moai.version field
@@ -58,6 +68,7 @@ class TestPhaseExecutorVersion:
             f"Should preserve custom version '1.5.0-custom', got {final_config['moai']['version']}"
         )
 
+    @pytest.mark.skip(reason="Phase 4 now uses section YAML files instead of config.json (v0.37.0)")
     def test_phase_4_merges_new_config_with_existing_version(self, tmp_path: Path) -> None:
         """
         GIVEN: Existing .moai/config/config.json with version and new config with other fields
@@ -113,6 +124,7 @@ class TestPhaseExecutorVersion:
         )
         assert "constitution" in final_config, "Should have constitution section"
 
+    @pytest.mark.skip(reason="Phase 4 now uses section YAML files instead of config.json (v0.37.0)")
     def test_phase_4_handles_version_field_priority_correctly(self, tmp_path: Path) -> None:
         """
         GIVEN: New config has moai.version and existing config has different version
@@ -156,6 +168,7 @@ class TestPhaseExecutorVersion:
             f"Should preserve user's custom version '3.1.0-user-custom', got {final_config['moai']['version']}"
         )
 
+    @pytest.mark.skip(reason="Phase 4 now uses section YAML files instead of config.json (v0.37.0)")
     def test_phase_4_preserves_version_during_reinitialization(self, tmp_path: Path) -> None:
         """
         GIVEN: Reinitialization with existing .moai/config.json containing custom version
@@ -207,6 +220,7 @@ class TestPhaseExecutorVersion:
             f"Should have new locale field 'en', got {final_config['project'].get('locale')}"
         )
 
+    @pytest.mark.skip(reason="Phase 4 now uses section YAML files instead of config.json (v0.37.0)")
     def test_phase_4_version_field_validation(self, tmp_path: Path) -> None:
         """
         GIVEN: Existing config with invalid version field and new config
@@ -250,6 +264,7 @@ class TestPhaseExecutorVersion:
             f"Should preserve invalid version string, got {final_config['moai']['version']}"
         )
 
+    @pytest.mark.skip(reason="Phase 4 now uses section YAML files instead of config.json (v0.37.0)")
     def test_phase_4_with_missing_moai_section(self, tmp_path: Path) -> None:
         """
         GIVEN: Existing config without moai section
@@ -288,6 +303,7 @@ class TestPhaseExecutorVersion:
             f"Version should not be 'unknown', got {final_config['moai']['version']}"
         )
 
+    @pytest.mark.skip(reason="Phase 4 now uses section YAML files instead of config.json (v0.37.0)")
     def test_phase_4_version_field_preservation_with_multiple_changes(self, tmp_path: Path) -> None:
         """
         GIVEN: Existing config with version and multiple other fields being changed

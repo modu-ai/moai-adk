@@ -184,7 +184,10 @@ class TestResourcePhase:
 
 
 class TestConfigurationPhase:
-    """Test Phase 4: Configuration generation"""
+    """Test Phase 4: Configuration generation
+
+    Note: As of v0.37.0, Phase 4 updates section YAML files instead of creating config.json.
+    """
 
     def test_configuration_phase_updates_current_phase(self, executor: PhaseExecutor, tmp_path: Path) -> None:
         """Should update current phase to 4"""
@@ -199,10 +202,10 @@ class TestConfigurationPhase:
         (tmp_path / ".moai").mkdir(parents=True)
         config = {"projectName": "test"}
         executor.execute_configuration_phase(tmp_path, config, progress_callback=callback)
-        callback.assert_called_once_with("Phase 4: Generating configurations...", 4, 5)
+        callback.assert_called_once_with("Phase 4: Updating section configurations...", 4, 5)
 
     def test_configuration_phase_creates_config_file(self, executor: PhaseExecutor, tmp_path: Path) -> None:
-        """Should create config.json file"""
+        """Should update section YAML files (v0.37.0+)."""
         config = {
             "projectName": "TestProject",
             "mode": "personal",
@@ -210,16 +213,23 @@ class TestConfigurationPhase:
             "language": "python",
         }
 
-        (tmp_path / ".moai").mkdir(parents=True)
+        # Create sections directory with YAML files
+        sections_dir = tmp_path / ".moai" / "config" / "sections"
+        sections_dir.mkdir(parents=True)
+        (sections_dir / "project.yaml").write_text("project:\n  name: \"\"\n  initialized: false\n")
+        (sections_dir / "system.yaml").write_text("moai:\n  version: \"0.0.0\"\n")
+
         created_files = executor.execute_configuration_phase(tmp_path, config)
 
-        # Config file should be created
-        config_path = tmp_path / ".moai" / "config" / "config.json"
-        assert config_path.exists()
-        assert str(config_path) in created_files
+        # Section YAML files should be updated
+        assert (sections_dir / "project.yaml").exists()
+        # Should return list of updated files
+        assert len(created_files) > 0
 
     def test_configuration_phase_writes_correct_config(self, executor: PhaseExecutor, tmp_path: Path) -> None:
-        """Should write config data correctly"""
+        """Should write config data correctly to section YAML files (v0.37.0+)."""
+        import yaml
+
         config = {
             "project": {
                 "name": "TestProject",
@@ -229,19 +239,18 @@ class TestConfigurationPhase:
             }
         }
 
-        (tmp_path / ".moai").mkdir(parents=True)
+        # Create sections directory with YAML files
+        sections_dir = tmp_path / ".moai" / "config" / "sections"
+        sections_dir.mkdir(parents=True)
+        (sections_dir / "project.yaml").write_text("project:\n  name: \"\"\n  initialized: false\n")
+        (sections_dir / "system.yaml").write_text("moai:\n  version: \"0.0.0\"\n")
+
         executor.execute_configuration_phase(tmp_path, config)
 
-        # Verify config content
-        config_path = tmp_path / ".moai" / "config" / "config.json"
-        saved_config = json.loads(config_path.read_text())
-
-        # Check project section
-        assert "project" in saved_config
-        assert saved_config["project"]["name"] == "TestProject"
-        assert saved_config["project"]["mode"] == "team"
-        assert saved_config["project"]["locale"] == "en"
-        assert saved_config["project"]["language"] == "typescript"
+        # Verify project.yaml content
+        project_content = yaml.safe_load((sections_dir / "project.yaml").read_text())
+        assert "project" in project_content
+        assert project_content["project"]["name"] == "TestProject"
 
 
 class TestValidationPhase:

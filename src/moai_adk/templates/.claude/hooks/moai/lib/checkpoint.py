@@ -70,9 +70,12 @@ def detect_risky_operation(tool_name: str, tool_args: dict[str, Any], cwd: str) 
         critical_files = [
             "CLAUDE.md",
             "config.json",
+            "config.yaml",
             ".claude/skills/moai-core-dev-guide/reference.md",
             ".claude/skills/moai-core-spec-metadata-extended/reference.md",
-            ".moai/config/config.json",
+            ".moai/config/config.json",  # Legacy monolithic config
+            ".moai/config/config.yaml",  # Legacy monolithic config
+            ".moai/config/sections/",  # Section-based config (any file in sections/)
         ]
 
         if any(cf in file_path for cf in critical_files):

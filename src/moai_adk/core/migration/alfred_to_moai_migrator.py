@@ -6,8 +6,14 @@ Handles automatic migration from legacy alfred/ folders to new moai/ structure.
 - Installs fresh moai/ templates from package
 - Deletes alfred/ folders
 - Updates settings.json Hook paths
-- Records migration status in config.json
+- Records migration status in config.json (legacy) or config.yaml
 - Provides automatic rollback on failure
+
+BACKWARD COMPATIBILITY NOTE:
+- This migration tool maintains compatibility with legacy config.json format
+- New projects use modular section-based YAML configs (.moai/config/sections/*.yaml)
+- Migration status is recorded in whichever config format the project uses
+- Both formats are supported during migration process
 """
 
 import json

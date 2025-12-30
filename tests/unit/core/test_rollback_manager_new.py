@@ -388,14 +388,19 @@ class TestRollbackManagerBackupMethods:
     @patch("moai_adk.core.rollback_manager.RollbackManager._load_registry")
     @patch("moai_adk.core.rollback_manager.Path.exists")
     @patch("moai_adk.core.rollback_manager.shutil.copy2")
-    def test_backup_configuration(self, mock_copy, mock_exists, mock_load, mock_mkdir):
-        """Test _backup_configuration method."""
+    @patch("moai_adk.core.rollback_manager.shutil.copytree")
+    def test_backup_configuration(self, mock_copytree, mock_copy, mock_exists, mock_load, mock_mkdir):
+        """Test _backup_configuration method (supports both legacy and section YAML)."""
         mock_load.return_value = {}
+        # Now includes section YAML directory check
         mock_exists.side_effect = [
-            True,
-            True,
-            False,
-        ]  # config.json, settings.json, settings.local.json
+            True,   # config.json
+            False,  # config.yaml
+            True,   # sections dir
+            True,   # settings.json
+            False,  # settings.local.json
+        ]
+        mock_copytree.return_value = None
 
         manager = RollbackManager(project_root=Path("/test"))
         result = manager._backup_configuration(Path("/backup"))

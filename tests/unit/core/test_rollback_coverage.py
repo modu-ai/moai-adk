@@ -299,13 +299,15 @@ class TestBackupOperations:
 
     @patch("pathlib.Path.exists")
     @patch("shutil.copy2")
+    @patch("shutil.copytree")
     @patch("pathlib.Path.mkdir")
-    def test_backup_configuration_files(self, mock_mkdir, mock_copy, mock_exists):
-        """Test backing up configuration files."""
+    def test_backup_configuration_files(self, mock_mkdir, mock_copytree, mock_copy, mock_exists):
+        """Test backing up configuration files (supports both legacy and section YAML)."""
         # Arrange
         mock_exists.return_value = True
         mock_mkdir.return_value = None
         mock_copy.return_value = None
+        mock_copytree.return_value = None
 
         manager = RollbackManager()
         rollback_dir = Path("/mock/rollback")
@@ -315,7 +317,8 @@ class TestBackupOperations:
 
         # Assert
         assert result is not None
-        mock_copy.assert_called()
+        # Either copy2 (for legacy files) or copytree (for sections) should be called
+        assert mock_copy.called or mock_copytree.called
 
     @patch("pathlib.Path.exists")
     @patch("shutil.copytree")

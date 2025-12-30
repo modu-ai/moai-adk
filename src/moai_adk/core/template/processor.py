@@ -85,7 +85,8 @@ class TemplateProcessor:
         ".moai/specs/",  # User SPEC documents
         ".moai/reports/",  # User reports
         ".moai/project/",  # User project documents (product/structure/tech.md)
-        # config.json is now FORCE OVERWRITTEN (backup in .moai-backups/)
+        ".moai/config/sections/",  # User configuration section files (YAML)
+        # config.json/config.yaml is now FORCE OVERWRITTEN (backup in .moai-backups/)
         # Merge via /moai:0-project when optimized=false
     ]
 
@@ -907,11 +908,11 @@ class TemplateProcessor:
                 console.print("⚠️ .moai/ template not found")
             return
 
-        # Paths excluded from template copying (specs/, reports/, .moai/config/config.json)
+        # Paths excluded from template copying (specs/, reports/, sections/)
         template_protected_paths = [
             "specs",
             "reports",
-            ".moai/config/config.json",
+            "config/sections",  # User section YAML files
         ]
 
         all_warnings = []
@@ -1016,14 +1017,34 @@ class TemplateProcessor:
         self.merger.merge_settings_json(src, dst, backup_path)
 
     def _merge_config_json(self, src: Path, dst: Path) -> None:
-        """Smart merge for config.json using LanguageConfigResolver priority system.
+        """Smart merge for config using section YAML files with JSON fallback.
+
+        Supports both new section-based YAML files and legacy config.json.
+        Priority: Section YAML files > config.json fallback
 
         Args:
-            src: Template config.json.
-            dst: Project config.json.
+            src: Template config file (config.json for legacy projects).
+            dst: Project config file destination.
         """
         import json
+        import os
 
+        try:
+            import yaml  # noqa: F401
+
+            yaml_available = True
+        except ImportError:
+            yaml_available = False
+
+        # Check for section-based YAML configuration (new approach)
+        sections_dir = self.target_path / ".moai" / "config" / "sections"
+
+        if yaml_available and sections_dir.exists() and sections_dir.is_dir():
+            # Use section YAML files - merge each section individually
+            self._merge_section_yaml_files(sections_dir)
+            return
+
+        # Fallback to legacy config.json merging
         # Load template config
         try:
             template_config = json.loads(src.read_text(encoding="utf-8"))
@@ -1072,8 +1093,6 @@ class TemplateProcessor:
                         merged_config[key] = value
 
             # Apply environment variables (highest priority)
-            import os
-
             env_mappings = {
                 "MOAI_USER_NAME": ("user", "name"),
                 "MOAI_CONVERSATION_LANG": ("language", "conversation_language"),
@@ -1119,6 +1138,68 @@ class TemplateProcessor:
                 encoding="utf-8",
             )
             console.print("   ⚠️ Warning: Using simple merge (LanguageConfigResolver not available)")
+
+    def _merge_section_yaml_files(self, sections_dir: Path) -> None:
+        """Merge section YAML files with user-specific values preserved.
+
+        Args:
+            sections_dir: Path to sections directory (.moai/config/sections/)
+        """
+        import os
+
+        try:
+            import yaml
+        except ImportError:
+            console.print("⚠️ Warning: PyYAML not available, skipping section merge")
+            return
+
+        # Environment variable mappings for each section
+        env_mappings = {
+            "language.yaml": {
+                "MOAI_CONVERSATION_LANG": ["language", "conversation_language"],
+                "MOAI_AGENT_PROMPT_LANG": ["language", "agent_prompt_language"],
+                "MOAI_CONVERSATION_LANG_NAME": ["language", "conversation_language_name"],
+                "MOAI_GIT_COMMIT_MESSAGES_LANG": ["language", "git_commit_messages"],
+                "MOAI_CODE_COMMENTS_LANG": ["language", "code_comments"],
+                "MOAI_DOCUMENTATION_LANG": ["language", "documentation"],
+                "MOAI_ERROR_MESSAGES_LANG": ["language", "error_messages"],
+            },
+            "user.yaml": {
+                "MOAI_USER_NAME": ["user", "name"],
+            },
+        }
+
+        for section_file in sections_dir.glob("*.yaml"):
+            try:
+                # Read existing section content
+                with open(section_file, "r", encoding="utf-8") as f:
+                    section_data = yaml.safe_load(f) or {}
+
+                # Apply environment variable overrides if applicable
+                if section_file.name in env_mappings:
+                    for env_var, path in env_mappings[section_file.name].items():
+                        env_value = os.getenv(env_var)
+                        if env_value:
+                            # Navigate to the correct nested location
+                            current = section_data
+                            for key in path[:-1]:
+                                if key not in current:
+                                    current[key] = {}
+                                current = current[key]
+                            current[path[-1]] = env_value
+
+                # Write back if environment variables were applied
+                with open(section_file, "w", encoding="utf-8") as f:
+                    yaml.safe_dump(
+                        section_data,
+                        f,
+                        default_flow_style=False,
+                        allow_unicode=True,
+                        sort_keys=False,
+                    )
+
+            except Exception as e:
+                console.print(f"⚠️ Warning: Failed to merge {section_file.name}: {e}")
 
     def _copy_gitignore(self, silent: bool = False) -> None:
         """.gitignore copy (optional)."""
