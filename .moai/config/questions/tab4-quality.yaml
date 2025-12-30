@@ -1,0 +1,182 @@
+# Tab 4: Quality Principles & Reports
+# Priority: OPTIONAL
+# Questions: 7
+
+metadata:
+  id: tab_4_quality_reports
+  label: "Tab 4: Quality Principles & Reports"
+  description: "Configure TRUST 5, test coverage, max projects, report generation"
+  priority: OPTIONAL
+  order: 4
+  setting_count: 7
+
+target_sections:
+  - sections/quality.yaml
+
+batches:
+  # Batch 4.1: Constitution Settings
+  - batch_id: "4.1"
+    label: "Constitution Settings"
+    conditional: false
+    questions:
+      - id: enforce_tdd
+        question: "Enforce TDD (Test-Driven Development)?"
+        header: "Enforce TDD"
+        field: "constitution.enforce_tdd"
+        type: select_single
+        multi_select: false
+        required: true
+        options:
+          - label: "Enabled"
+            description: "Require tests before implementation (recommended)"
+            value: true
+          - label: "Disabled"
+            description: "Allow implementation without tests"
+            value: false
+        target:
+          file: "sections/quality.yaml"
+          path: "constitution.enforce_tdd"
+
+      # Q: Test Coverage Target - number_input type
+      # UX Note: For number_input, only show preset values.
+      # Users should type directly in "Type something" field for custom values.
+      - id: test_coverage_target
+        question: "Test coverage target percentage? To enter a custom percentage (0-100), type in the text field below."
+        header: "Coverage"
+        field: "constitution.test_coverage_target"
+        type: number_input
+        multi_select: false
+        required: true
+        options:
+          - label: "80%"
+            description: "Minimum acceptable coverage"
+            value: 80
+          - label: "85%"
+            description: "Standard coverage (recommended)"
+            value: 85
+          - label: "90%"
+            description: "High quality coverage"
+            value: 90
+          - label: "95%"
+            description: "Comprehensive coverage"
+            value: 95
+        target:
+          file: "sections/quality.yaml"
+          path: "constitution.test_coverage_target"
+
+      # Q: Max Projects - number_input type
+      # UX Note: For number_input, only show preset values.
+      # Users should type directly in "Type something" field for custom values.
+      - id: max_projects
+        question: "Maximum concurrent projects? To enter a custom number, type in the text field below."
+        header: "Max Projects"
+        field: "constitution.principles.simplicity.max_projects"
+        type: number_input
+        multi_select: false
+        required: true
+        options:
+          - label: "3 projects"
+            description: "Small team or individual"
+            value: 3
+          - label: "5 projects"
+            description: "Default recommendation"
+            value: 5
+          - label: "10 projects"
+            description: "For larger teams"
+            value: 10
+          - label: "20 projects"
+            description: "For enterprise teams"
+            value: 20
+        target:
+          file: "sections/quality.yaml"
+          path: "constitution.principles.simplicity.max_projects"
+
+  # Batch 4.2: Report Generation Policy
+  - batch_id: "4.2"
+    label: "Report Generation Policy"
+    conditional: false
+    questions:
+      - id: report_enabled
+        question: "Enable report generation?"
+        header: "Reports"
+        field: "report_generation.enabled"
+        type: select_single
+        multi_select: false
+        required: true
+        options:
+          - label: "Enabled"
+            description: "Generate reports (recommended)"
+            value: true
+          - label: "Disabled"
+            description: "No report generation"
+            value: false
+        target:
+          file: "sections/quality.yaml"
+          path: "report_generation.enabled"
+
+      - id: report_auto_create
+        question: "Auto-create full reports?"
+        header: "Auto Create"
+        field: "report_generation.auto_create"
+        type: select_single
+        multi_select: false
+        required: true
+        options:
+          - label: "Enabled"
+            description: "Automatically generate full reports"
+            value: true
+          - label: "Disabled"
+            description: "Generate minimal reports (recommended, saves tokens)"
+            value: false
+        target:
+          file: "sections/quality.yaml"
+          path: "report_generation.auto_create"
+
+      - id: report_warn_user
+        question: "Warn user before report creation?"
+        header: "Warn User"
+        field: "report_generation.warn_user"
+        type: select_single
+        multi_select: false
+        required: true
+        options:
+          - label: "Enabled"
+            description: "Ask user before generating reports (recommended)"
+            value: true
+          - label: "Disabled"
+            description: "Generate reports without asking"
+            value: false
+        target:
+          file: "sections/quality.yaml"
+          path: "report_generation.warn_user"
+
+      - id: report_user_choice
+        question: "Default user choice for reports?"
+        header: "Default"
+        field: "report_generation.user_choice"
+        type: select_single
+        multi_select: false
+        required: true
+        options:
+          - label: "Minimal"
+            description: "Generate minimal reports (recommended)"
+            value: "Minimal"
+          - label: "Full"
+            description: "Generate full reports"
+            value: "Full"
+          - label: "None"
+            description: "Skip report generation"
+            value: "None"
+        target:
+          file: "sections/quality.yaml"
+          path: "report_generation.user_choice"
+
+validation:
+  checkpoint: "after_tab_4"
+  rules:
+    - name: "validate_coverage_range"
+      description: "Coverage target must be 0-100"
+      field: "constitution.test_coverage_target"
+      validation: "range"
+      min: 0
+      max: 100

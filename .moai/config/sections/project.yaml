@@ -1,0 +1,13 @@
+# Project Settings
+# Basic project metadata
+
+project:
+  name: ""                    # Project name
+  description: ""             # Project description
+  type: ""                    # Project type: web_browser_app, mobile_app, cli_tool, backend_api
+  locale: en_US               # Auto-derived from conversation_language
+  created_at: ""              # Auto-set during init
+  initialized: false          # Auto-set during init
+
+github:
+  profile_name: ""            # GitHub username (e.g., @GoosLab)

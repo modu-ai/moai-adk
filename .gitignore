@@ -292,59 +292,9 @@ theme.config.tsx
 
 # Documentation build output (Nextra)
 docs/
-# Version: 0.28.0
-# Legacy config format (migrated to YAML in v0.32.0)
-!.moai/scripts/
-# Windows
-.moai/scripts/sync-*.py
-# Backups
-# .moai local development scripts (not distributed)
-# ---------------------------------------------
-!.moai/specs/
-.moai/docs/
-.moai/backups/
-# Build Artifacts
-.moai/temp/
-.moai/*
-!.moai/memory/
-# Add to .gitignore if needed per project
-# MoAI Directory Management
-!.moai/config/
-# Purpose: Essential patterns for user projects
-.moai/cache/
-# Python Cache & Database
-.moai/scripts/phase*.py
-# Package Distribution
-# uv.lock is intentionally included for reproducible builds
-.moai/logs/
-# Private keys and certificates (specific patterns to avoid false positives)
-# Tracked in git: config/, memory/, scripts/, specs/
-# Mac
-!.moai/specs/**
-.moai/scripts/*sync*.sh
+
+# ===========================================
+# Credential Patterns in Environment Files
+# ===========================================
 *_token=*
-# Linux
-.moai/work/
-# API credentials patterns
-.moai/scripts/__pycache__/
-.moai/analytics/
-# FIXED: Issue #237 - Replaced overly broad *key* and *secret* patterns
-.moai/error_logs/
 *_secret=*
-# Claude Code Local Configuration
-# .moai local-only directories (user projects only)
-.moai/archived-skills/
-!.moai/memory/**
-# User-generated content: logs/, cache/, reports/, etc.
-# Environment Variables & Secrets
-# uv.lock
-# Claude Code Skills Secrets
-.moai/scripts/sync-*.sh
-.moai/scripts/phase*.sh
-.moai/reports/
-.moai/archive/
-!.moai/scripts/**
-# CI/CD
-.moai/config/config.json
-# Old patterns caused false positives for: keyboard-config, hotkey, monkey-patch, etc.
-!.moai/config/**

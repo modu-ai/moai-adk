@@ -1,0 +1,174 @@
+# MoAI-ADK Question Schema Definition
+# Version: 1.1.0
+# Language: English only (runtime translation via conversation_language)
+
+schema_version: "1.1.0"
+last_updated: "2025-12-22"
+
+# AskUserQuestion Constraints (Claude Code)
+constraints:
+  max_questions_per_call: 4
+  max_options_per_question: 4
+  supports_multi_select: true
+  auto_includes_other: true
+  no_emoji_allowed: true
+
+# Question Types
+question_types:
+  select_single:
+    description: "Single selection from options"
+    multi_select: false
+    # UX Guidelines:
+    # - Provide clear, distinct options (max 4 per question)
+    # - Include descriptive text for each option
+    # - Use "(recommended)" suffix for default/preferred options
+  select_multiple:
+    description: "Multiple selection from options"
+    multi_select: true
+    # UX Guidelines:
+    # - Clearly indicate "multiple selections allowed" in question text
+    # - Limit to 4 options maximum
+  text_input:
+    description: "Text input via 'Type something' field (auto-added by AskUserQuestion tool)"
+    use_other_for_input: true
+    # UX Guidelines for text_input questions:
+    # - Only include 'Keep Current Value' option for existing values
+    # - DO NOT include 'Change' or 'Other' options - they confuse users
+    # - Include guidance in question text: "To change, type in the text field below"
+    # - The 'Type something...' input field is automatically added by the tool
+    # - Users type directly in this auto-added field for custom values
+    # IMPORTANT: Never use {{prompt_user}} - it is DEPRECATED
+  number_input:
+    description: "Number input via 'Type something' field or predefined numeric values"
+    use_other_for_input: true
+    # UX Guidelines for number_input questions:
+    # - Provide common preset values as options (max 4)
+    # - Include guidance in question text: "To enter a custom number, type in the text field below"
+    # - DO NOT include 'Other' option with {{prompt_user}} - it is DEPRECATED
+    # - Users type custom numbers directly in the auto-added 'Type something...' field
+    # - Include valid range in question text if applicable (e.g., "0-100", "1-168")
+    # IMPORTANT: Never use {{prompt_user}} - it is DEPRECATED
+
+# Conditional Logic Operators
+condition_operators:
+  basic:
+    - equals
+    - not_equals
+    - in
+    - not_in
+  compound:
+    - and           # All conditions must be true
+    - or            # At least one condition must be true
+  usage_notes:
+    simple_condition: "condition: {field: 'git_strategy.mode', operator: 'equals', value: 'personal'}"
+    compound_condition: |
+      condition:
+        operator: and
+        conditions:
+          - {field: 'git_strategy.mode', operator: 'not_equals', value: 'manual'}
+          - {field: 'git_strategy.{mode}.auto_branch', operator: 'equals', value: true}
+
+# Special Values
+special_values:
+  "{{current}}": "Keep current value from config"
+  "{{field_path}}": "Reference another field value"
+  # DEPRECATED: "{{prompt_user}}" - DO NOT USE
+  # Reason: For text_input, users type directly in 'Type something' field
+  # Instead of a 'Change' option, include guidance in the question text
+
+# Auto-Update Rules
+auto_update_patterns:
+  conversation_language_name:
+    trigger_field: "language.conversation_language"
+    mapping:
+      ko: "Korean"
+      en: "English"
+      ja: "Japanese"
+      es: "Spanish"
+      zh: "Chinese"
+      fr: "French"
+      de: "German"
+  project_locale:
+    trigger_field: "language.conversation_language"
+    mapping:
+      ko: "ko_KR"
+      en: "en_US"
+      ja: "ja_JP"
+      es: "es_ES"
+
+# Validation Rules
+validation_types:
+  enum:
+    description: "Value must be in allowed list"
+  pattern:
+    description: "Value must match regex pattern"
+  required:
+    description: "Field must have a value"
+  type_check:
+    description: "Value must match expected type"
+
+# Tab Priorities
+priorities:
+  REQUIRED: "Must complete before proceeding"
+  RECOMMENDED: "Strongly suggested to configure"
+  OPTIONAL: "Configure if needed"
+
+# Mode Conditions (Tab visibility control)
+mode_conditions:
+  INITIALIZATION: "Tab shown only during first-time project setup"
+  SETTINGS: "Tab shown only in settings management mode"
+  ALL: "Tab shown in all modes (default)"
+
+# Tab 0 Special Features (Smart Question System)
+tab0_features:
+  trigger_web_search:
+    description: "After collecting questions, trigger WebSearch for best practices"
+    enabled: true
+  generate_proposal:
+    description: "Generate smart technology proposal based on web search"
+    enabled: true
+  complexity_detection:
+    description: "Auto-detect project complexity from description keywords"
+    levels:
+      - simple
+      - medium
+      - complex
+
+# Validation Types (Extended)
+validation_types_extended:
+  min_length:
+    description: "Minimum string length validation"
+  range:
+    description: "Numeric value must be within range"
+    parameters:
+      - min
+      - max
+
+# Question Properties (Extended for Tab 0)
+question_properties:
+  tech_hint:
+    description: "Technology hint for project type options"
+  validation:
+    description: "Field validation rules"
+    properties:
+      - type
+      - pattern
+      - min_length
+      - error_message
+
+# Workflow Properties (Tab 0 specific)
+workflow_properties:
+  steps:
+    description: "Sequential workflow steps after question collection"
+    actions:
+      - collect_essential_info
+      - web_search
+      - generate_proposal
+      - user_approval
+      - delegate_to_agent
+  post_collection:
+    description: "Actions to perform after collecting all answers"
+    sections:
+      - web_search
+      - proposal
+      - approval
