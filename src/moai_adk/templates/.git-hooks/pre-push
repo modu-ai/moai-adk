@@ -48,11 +48,16 @@ while read local_ref local_oid remote_ref remote_oid; do
             remote_base="$REMOTE_MAIN"
         fi
 
-        # Get commits being pushed (only if we have a valid base)
-        if [ -n "$remote_base" ]; then
+        # Get commits being pushed (only new commits not on remote)
+        if [ -n "$remote_base" ] && [ "$remote_base" != "0000000000000000000000000000000000000000" ]; then
             PUSHED_COMMITS=$(git rev-list $remote_base..$local_oid 2>/dev/null)
         else
-            PUSHED_COMMITS=$(git rev-list $local_oid 2>/dev/null | head -20)
+            # For new branches or no remote base, only check commits not on origin/main
+            if [ -n "$REMOTE_MAIN" ]; then
+                PUSHED_COMMITS=$(git rev-list $REMOTE_MAIN..$local_oid 2>/dev/null)
+            else
+                PUSHED_COMMITS=$(git rev-list $local_oid 2>/dev/null | head -20)
+            fi
         fi
 
         for COMMIT in $PUSHED_COMMITS; do
