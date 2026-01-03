@@ -1,3 +1,153 @@
+# v0.36.2 - CLI Rename and Configuration System Improvements (2025-12-30)
+
+## Summary
+
+Patch release renaming the worktree CLI command for better user experience and migrating configuration system from monolithic JSON to modular YAML sections. This release improves usability and maintainability while fixing git hook issues.
+
+## Changes
+
+### CLI Improvements
+
+- **refactor**: Rename CLI command from `moai-workflow-worktree` to `moai-worktree` (73c778de)
+  - Shorter, more intuitive command name
+  - Updated all documentation (English, Korean, Japanese, Chinese)
+  - Updated pyproject.toml entry point
+  - Updated all skill references and examples
+  - Breaking Change: Users must reinstall package to use new command name
+
+### Configuration System
+
+- **refactor(config)**: Migrate from config.json to section YAML files (4f59c0d4)
+  - Modular section-based configuration (user.yaml, language.yaml, project.yaml, etc.)
+  - Improved token efficiency with on-demand loading
+  - Enhanced configuration management and validation
+  - Backward compatible migration system
+
+### Bug Fixes
+
+- **fix**: Restore .moai/config/ and clean up duplicate gitignore patterns (d736acdc)
+  - Fixed missing .moai/config/ directory in distribution
+  - Removed duplicate gitignore patterns
+
+- **fix(hooks)**: Improve pre-push hook to skip already-pushed commits (069a0e5c, 9f44a754)
+  - Only check commits not yet pushed to remote
+  - Improved performance for large repositories
+  - Better error messages and validation
+
+## Breaking Changes
+
+⚠️ **Important**: CLI command name changed
+
+- **Old command**: `moai-workflow-worktree`
+- **New command**: `moai-worktree`
+- **Migration**: Reinstall package with `pip install --upgrade moai-adk`
+
+All commands using the old name must be updated:
+```bash
+# Old
+moai-workflow-worktree new SPEC-001
+
+# New
+moai-worktree new SPEC-001
+```
+
+## Installation & Update
+
+```bash
+# Update to latest version
+pip install --upgrade moai-adk
+
+# Or with uv
+uv pip install --upgrade moai-adk
+
+# Verify installation
+moai-adk --version  # Should show 0.36.2
+moai-worktree --help  # Verify new CLI command works
+```
+
+## Quality Metrics
+
+- Test Coverage: 85.99% (10,024 tests passed)
+- Code Quality: All ruff and format checks passed
+- Files Changed: 75 files (+3,083 / -1,910)
+
+---
+
+# v0.36.2 - CLI 이름 변경 및 설정 시스템 개선 (2025-12-30)
+
+## 요약
+
+더 나은 사용자 경험을 위해 worktree CLI 명령어 이름을 변경하고, 설정 시스템을 단일 JSON에서 모듈화된 YAML 섹션으로 마이그레이션한 패치 릴리스입니다. 이 릴리스는 사용성과 유지보수성을 개선하고 git hook 문제를 수정합니다.
+
+## 변경 사항
+
+### CLI 개선
+
+- **리팩토링**: CLI 명령어를 `moai-workflow-worktree`에서 `moai-worktree`로 변경 (73c778de)
+  - 더 짧고 직관적인 명령어 이름
+  - 모든 문서 업데이트 (영어, 한국어, 일본어, 중국어)
+  - pyproject.toml 진입점 업데이트
+  - 모든 스킬 참조 및 예제 업데이트
+  - Breaking Change: 새 명령어 이름을 사용하려면 패키지 재설치 필요
+
+### 설정 시스템
+
+- **리팩토링(config)**: config.json에서 섹션 YAML 파일로 마이그레이션 (4f59c0d4)
+  - 모듈화된 섹션 기반 설정 (user.yaml, language.yaml, project.yaml 등)
+  - 온디맨드 로딩으로 토큰 효율성 개선
+  - 향상된 설정 관리 및 검증
+  - 하위 호환 가능한 마이그레이션 시스템
+
+### 버그 수정
+
+- **수정**: .moai/config/ 복원 및 중복 gitignore 패턴 정리 (d736acdc)
+  - 배포판에서 누락된 .moai/config/ 디렉토리 수정
+  - 중복 gitignore 패턴 제거
+
+- **수정(hooks)**: 이미 푸시된 커밋을 건너뛰도록 pre-push hook 개선 (069a0e5c, 9f44a754)
+  - 아직 원격에 푸시되지 않은 커밋만 확인
+  - 대규모 저장소의 성능 개선
+  - 더 나은 오류 메시지 및 검증
+
+## Breaking Changes
+
+⚠️ **중요**: CLI 명령어 이름 변경
+
+- **이전 명령어**: `moai-workflow-worktree`
+- **새 명령어**: `moai-worktree`
+- **마이그레이션**: `pip install --upgrade moai-adk`로 패키지 재설치
+
+이전 이름을 사용하는 모든 명령어를 업데이트해야 합니다:
+```bash
+# 이전
+moai-workflow-worktree new SPEC-001
+
+# 이후
+moai-worktree new SPEC-001
+```
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+pip install --upgrade moai-adk
+
+# 또는 uv 사용
+uv pip install --upgrade moai-adk
+
+# 설치 확인
+moai-adk --version  # 0.36.2 표시되어야 함
+moai-worktree --help  # 새 CLI 명령어 작동 확인
+```
+
+## 품질 지표
+
+- 테스트 커버리지: 85.99% (10,024개 테스트 통과)
+- 코드 품질: 모든 ruff 및 format 체크 통과
+- 변경된 파일: 75개 파일 (+3,083 / -1,910)
+
+---
+
 # v0.36.1 - Skill Library Consolidation (2025-12-30)
 
 ## Summary
