@@ -112,11 +112,31 @@ while read local_ref local_oid remote_ref remote_oid; do
         fi
 
         for COMMIT in $PUSHED_COMMITS; do
-            # Double-check: skip if commit is already on origin/main
-            if [ -n "$REMOTE_MAIN" ]; then
-                if git merge-base --is-ancestor "$COMMIT" "$REMOTE_MAIN" 2>/dev/null; then
-                    continue
+            # CRITICAL FIX: Skip if commit is already on ANY remote branch or tag
+            # Check all remote refs, not just origin/main
+            COMMIT_ON_REMOTE=false
+
+            # Check if commit exists on any remote branch
+            if git branch -r --contains "$COMMIT" 2>/dev/null | grep -q .; then
+                COMMIT_ON_REMOTE=true
+            fi
+
+            # Also check if commit is in any remote tag
+            if [ "$COMMIT_ON_REMOTE" = false ]; then
+                if git tag --contains "$COMMIT" 2>/dev/null | grep -q .; then
+                    # Check if this tag is on remote
+                    for TAG in $(git tag --contains "$COMMIT" 2>/dev/null); do
+                        if git ls-remote --tags origin | grep -q "$TAG"; then
+                            COMMIT_ON_REMOTE=true
+                            break
+                        fi
+                    done
                 fi
+            fi
+
+            # Skip this commit if it's already on remote
+            if [ "$COMMIT_ON_REMOTE" = true ]; then
+                continue
             fi
 
             # Get only the diff (changed lines) for this commit, not full content
