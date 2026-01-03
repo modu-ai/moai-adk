@@ -19,18 +19,18 @@ Parallel Development Benefits:
 Core Workflow:
 ```bash
 # Create parallel environments
-moai-workflow-worktree new SPEC-001 "User Authentication"
-moai-workflow-worktree new SPEC-002 "Payment Gateway"
-moai-workflow-worktree new SPEC-003 "Dashboard Analytics"
+moai-worktree new SPEC-001 "User Authentication"
+moai-worktree new SPEC-002 "Payment Gateway"
+moai-worktree new SPEC-003 "Dashboard Analytics"
 
 # Parallel development
-cd $(moai-workflow-worktree go SPEC-001) && /moai:2-run SPEC-001 &
-cd $(moai-workflow-worktree go SPEC-002) && /moai:2-run SPEC-002 &
-cd $(moai-workflow-worktree go SPEC-003) && /moai:2-run SPEC-003 &
+cd $(moai-worktree go SPEC-001) && /moai:2-run SPEC-001 &
+cd $(moai-worktree go SPEC-002) && /moai:2-run SPEC-002 &
+cd $(moai-worktree go SPEC-003) && /moai:2-run SPEC-003 &
 
 # Integration and sync
-moai-workflow-worktree sync --all
-moai-workflow-worktree clean --merged-only
+moai-worktree sync --all
+moai-worktree clean --merged-only
 ```
 
 ---
@@ -49,7 +49,7 @@ Complete Isolation Layers:
  .git/ 
  src/ 
  docs/ 
- .moai-workflow-worktree-registry.json 
+ .moai-worktree-registry.json 
 
  Worktree Root (~/workflows/project-name/) 
  
@@ -92,22 +92,22 @@ Use Case: Multiple unrelated features developed simultaneously
 echo "Setting up parallel development environments..."
 
 # Create worktrees for different feature areas
-moai-workflow-worktree new SPEC-AUTH-001 "User Authentication System"
-moai-workflow-worktree new SPEC-PAY-001 "Payment Gateway Integration"
-moai-workflow-worktree new SPEC-DASH-001 "Analytics Dashboard"
+moai-worktree new SPEC-AUTH-001 "User Authentication System"
+moai-worktree new SPEC-PAY-001 "Payment Gateway Integration"
+moai-worktree new SPEC-DASH-001 "Analytics Dashboard"
 
 # Phase 2: Initialize each environment
 echo "Initializing development environments..."
 
 # Setup authentication worktree
-cd $(moai-workflow-worktree go SPEC-AUTH-001)
+cd $(moai-worktree go SPEC-AUTH-001)
 npm install
 npm run setup:auth
 npm run dev &
 AUTH_PID=$!
 
 # Setup payment worktree
-cd $(moai-workflow-worktree go SPEC-PAY-001)
+cd $(moai-worktree go SPEC-PAY-001)
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -115,7 +115,7 @@ python manage.py migrate &
 PAY_PID=$!
 
 # Setup dashboard worktree
-cd $(moai-workflow-worktree go SPEC-DASH-001)
+cd $(moai-worktree go SPEC-DASH-001)
 yarn install
 yarn build &
 DASH_PID=$!
@@ -124,21 +124,21 @@ DASH_PID=$!
 echo "Starting parallel development..."
 
 # Work on authentication in first terminal
-moai-workflow-worktree switch SPEC-AUTH-001
+moai-worktree switch SPEC-AUTH-001
 /moai:2-run SPEC-AUTH-001
 
 # Work on payment in second terminal (simultaneous)
-moai-workflow-worktree switch SPEC-PAY-001
+moai-worktree switch SPEC-PAY-001
 /moai:2-run SPEC-PAY-001
 
 # Work on dashboard in third terminal (simultaneous)
-moai-workflow-worktree switch SPEC-DASH-001
+moai-worktree switch SPEC-DASH-001
 /moai:2-run SPEC-DASH-001
 
 # Phase 4: Integration
 echo "Integrating parallel development work..."
 
-moai-workflow-worktree sync --all
+moai-worktree sync --all
 /moai:3-sync --parallel SPEC-AUTH-001,SPEC-PAY-001,SPEC-DASH-001
 ```
 
@@ -151,30 +151,30 @@ Use Case: Features with dependencies, developed in sequence with overlap
 echo "Sequential development with preparation..."
 
 # Step 1: Start foundation work (SPEC-FOUND-001)
-moai-workflow-worktree new SPEC-FOUND-001 "Foundation Services"
-cd $(moai-workflow-worktree go SPEC-FOUND-001)
+moai-worktree new SPEC-FOUND-001 "Foundation Services"
+cd $(moai-worktree go SPEC-FOUND-001)
 /moai:2-run SPEC-FOUND-001
 
 # Step 2: While foundation develops, prepare dependent feature
-moai-workflow-worktree new SPEC-API-001 "API Layer" --base develop
-cd $(moai-workflow-worktree go SPEC-API-001)
+moai-worktree new SPEC-API-001 "API Layer" --base develop
+cd $(moai-worktree go SPEC-API-001)
 # Setup API structure, wait for foundation
 
 # Step 3: Foundation complete → switch to API
-moai-workflow-worktree switch SPEC-FOUND-001
+moai-worktree switch SPEC-FOUND-001
 # Complete foundation, merge to develop
 git checkout develop
 git merge feature/SPEC-FOUND-001-foundation-services
 git push origin develop
 
 # Step 4: API development with foundation available
-moai-workflow-worktree switch SPEC-API-001
-moai-workflow-worktree sync SPEC-API-001 # Get foundation changes
+moai-worktree switch SPEC-API-001
+moai-worktree sync SPEC-API-001 # Get foundation changes
 /moai:2-run SPEC-API-001
 
 # Step 5: While API develops, prepare UI layer
-moai-workflow-worktree new SPEC-UI-001 "User Interface" --base develop
-cd $(moai-workflow-worktree go SPEC-UI-001)
+moai-worktree new SPEC-UI-001 "User Interface" --base develop
+cd $(moai-worktree go SPEC-UI-001)
 # Setup UI structure, wait for API
 ```
 
@@ -187,18 +187,18 @@ Use Case: Experimental features alongside stable production work
 echo "Experimental and production parallel development..."
 
 # Production worktree (stable)
-moai-workflow-worktree new SPEC-PROD-001 "Production Bug Fixes" --base main
-cd $(moai-workflow-worktree go SPEC-PROD-001)
+moai-worktree new SPEC-PROD-001 "Production Bug Fixes" --base main
+cd $(moai-worktree go SPEC-PROD-001)
 # Stable production fixes
 
 # Experimental worktree (innovative)
-moai-workflow-worktree new SPEC-EXP-001 "Experimental Feature X" --base develop
-cd $(moai-workflow-worktree go SPEC-EXP-001)
+moai-worktree new SPEC-EXP-001 "Experimental Feature X" --base develop
+cd $(moai-worktree go SPEC-EXP-001)
 # Experimental development without affecting production
 
 # Context switching for reviews
-alias prod="cd \$(moai-workflow-worktree go SPEC-PROD-001)"
-alias exp="cd \$(moai-workflow-worktree go SPEC-EXP-001)"
+alias prod="cd \$(moai-worktree go SPEC-PROD-001)"
+alias exp="cd \$(moai-worktree go SPEC-EXP-001)"
 
 # Quick comparison
 prod
@@ -217,24 +217,24 @@ Team Parallel Development:
 
 ```bash
 # Developer A - Authentication worktree
-moai-workflow-worktree new SPEC-AUTH-001 "User Authentication" --developer alice
-cd $(moai-workflow-worktree go SPEC-AUTH-001)
+moai-worktree new SPEC-AUTH-001 "User Authentication" --developer alice
+cd $(moai-worktree go SPEC-AUTH-001)
 /moai:2-run SPEC-AUTH-001
 
 # Developer B - Payment worktree
-moai-workflow-worktree new SPEC-PAY-001 "Payment Processing" --developer bob
-cd $(moai-workflow-worktree go SPEC-PAY-001)
+moai-worktree new SPEC-PAY-001 "Payment Processing" --developer bob
+cd $(moai-worktree go SPEC-PAY-001)
 /moai:2-run SPEC-PAY-001
 
 # Developer C - Integration worktree
-moai-workflow-worktree new SPEC-INT-001 "Service Integration" --developer charlie
-cd $(moai-workflow-worktree go SPEC-INT-001)
+moai-worktree new SPEC-INT-001 "Service Integration" --developer charlie
+cd $(moai-worktree go SPEC-INT-001)
 # Integrates AUTH and PAY services
 
 # Team coordination commands
-moai-workflow-worktree list --all-developers
-moai-workflow-worktree status --team-overview
-moai-workflow-worktree sync --all --parallel
+moai-worktree list --all-developers
+moai-worktree status --team-overview
+moai-worktree sync --all --parallel
 ```
 
 Conflict Prevention Strategies:
@@ -244,21 +244,21 @@ Conflict Prevention Strategies:
 echo "Setting up coordinated development..."
 
 # Define integration points early
-moai-workflow-worktree new SPEC-AUTH-001 "Authentication API" --base main
-moai-workflow-worktree new SPEC-PAY-001 "Payment Service" --base main
+moai-worktree new SPEC-AUTH-001 "Authentication API" --base main
+moai-worktree new SPEC-PAY-001 "Payment Service" --base main
 
 # Create integration contract
-cd $(moai-workflow-worktree go SPEC-AUTH-001)
+cd $(moai-worktree go SPEC-AUTH-001)
 mkdir -p contracts
 echo '{"auth_endpoint": "/api/auth", "version": "1.0"}' > contracts/api.json
 
-cd $(moai-workflow-worktree go SPEC-PAY-001)
+cd $(moai-worktree go SPEC-PAY-001)
 mkdir -p contracts
 echo '{"payment_endpoint": "/api/pay", "auth_required": true}' > contracts/api.json
 
 # Shared integration worktree
-moai-workflow-worktree new SPEC-INT-001 "Service Integration"
-cd $(moai-workflow-worktree go SPEC-INT-001)
+moai-worktree new SPEC-INT-001 "Service Integration"
+cd $(moai-worktree go SPEC-INT-001)
 # Pulls contracts from AUTH and PAY worktrees
 ```
 
@@ -344,19 +344,19 @@ Resource Management:
 echo "Optimizing for parallel development..."
 
 # Lightweight worktrees for rapid iteration
-moai-workflow-worktree new SPEC-PROTO-001 "Prototype" --shallow --depth 1
-cd $(moai-workflow-worktree go SPEC-PROTO-001)
+moai-worktree new SPEC-PROTO-001 "Prototype" --shallow --depth 1
+cd $(moai-worktree go SPEC-PROTO-001)
 # Fast setup, minimal history
 
 # Full worktrees for comprehensive development
-moai-workflow-worktree new SPEC-FULL-001 "Complete Feature"
-cd $(moai-workflow-worktree go SPEC-FULL-001)
+moai-worktree new SPEC-FULL-001 "Complete Feature"
+cd $(moai-worktree go SPEC-FULL-001)
 # Full history, complete setup
 
 # Background operations for parallel work
 sync_all_background() {
- for spec in $(moai-workflow-worktree list --status active --format json | jq -r '.worktrees[].id'); do
- (moai-workflow-worktree sync "$spec" --background) &
+ for spec in $(moai-worktree list --status active --format json | jq -r '.worktrees[].id'); do
+ (moai-worktree sync "$spec" --background) &
  done
  wait
 }
@@ -365,10 +365,10 @@ sync_all_background() {
 quick_switch() {
  local target_spec=$1
  # Pre-load worktree metadata in background
- (moai-workflow-worktree status "$target_spec" --quiet > /dev/null) &
+ (moai-worktree status "$target_spec" --quiet > /dev/null) &
 
  # Switch immediately
- moai-workflow-worktree switch "$target_spec"
+ moai-worktree switch "$target_spec"
 
  # Background process completes metadata loading
  wait
@@ -383,12 +383,12 @@ echo "Managing parallel development servers..."
 
 # Start servers for each worktree
 start_parallel_servers() {
- local worktrees=($(moai-workflow-worktree list --status active --format json | jq -r '.worktrees[].id'))
+ local worktrees=($(moai-worktree list --status active --format json | jq -r '.worktrees[].id'))
 
  for spec in "${worktrees[@]}"; do
  (
  echo "Starting server for $spec..."
- cd $(moai-workflow-worktree go "$spec")
+ cd $(moai-worktree go "$spec")
 
  case $spec in
  *AUTH*)
@@ -413,11 +413,11 @@ start_parallel_servers() {
 
 # Stop all servers
 stop_parallel_servers() {
- local worktrees=($(moai-workflow-worktree list --status active --format json | jq -r '.worktrees[].id'))
+ local worktrees=($(moai-worktree list --status active --format json | jq -r '.worktrees[].id'))
 
  for spec in "${worktrees[@]}"; do
  (
- cd $(moai-workflow-worktree go "$spec")
+ cd $(moai-worktree go "$spec")
 
  # Kill servers by PID files
  for pid_file in ./*_server.pid; do
@@ -523,7 +523,7 @@ mwswitch() {
  fi
 
  # Switch to new worktree
- moai-workflow-worktree switch "$spec_id"
+ moai-worktree switch "$spec_id"
 
  # Load worktree-specific environment
  if [ -f ".worktree-env" ]; then
@@ -549,17 +549,17 @@ mwtoggle() {
 # Parallel development status
 mwstatus() {
  echo "=== Parallel Development Status ==="
- moai-workflow-worktree status --all
+ moai-worktree status --all
 
  echo ""
  echo "=== Active Development Servers ==="
 
- local worktrees=($(moai-workflow-worktree list --status active --format json | jq -r '.worktrees[].id'))
+ local worktrees=($(moai-worktree list --status active --format json | jq -r '.worktrees[].id'))
 
  for spec in "${worktrees[@]}"; do
  echo ""
  echo "$spec:"
- cd $(moai-workflow-worktree go "$spec") 2>/dev/null
+ cd $(moai-worktree go "$spec") 2>/dev/null
 
  # Check for running servers
  if [ -f ".auth_server.pid" ] && kill -0 $(cat .auth_server.pid) 2>/dev/null; then
@@ -591,19 +591,19 @@ Parallel Feature Flag Implementation:
 echo "Setting up feature flag development..."
 
 # Create worktrees for different feature flag configurations
-moai-workflow-worktree new SPEC-FF-001 "Feature Flag Backend"
-moai-workflow-worktree new SPEC-FF-002 "Feature Flag Frontend"
-moai-workflow-worktree new SPEC-FF-003 "Feature Flag Integration"
+moai-worktree new SPEC-FF-001 "Feature Flag Backend"
+moai-worktree new SPEC-FF-002 "Feature Flag Frontend"
+moai-worktree new SPEC-FF-003 "Feature Flag Integration"
 
 # Backend worktree - flag implementation
-cd $(moai-workflow-worktree go SPEC-FF-001)
+cd $(moai-worktree go SPEC-FF-001)
 cat > src/flags.py << 'EOF'
 FEATURE_NEW_AUTH = os.getenv('FEATURE_NEW_AUTH', 'false').lower() == 'true'
 FEATURE_ENHANCED_PAYMENT = os.getenv('FEATURE_ENHANCED_PAYMENT', 'false').lower() == 'true'
 EOF
 
 # Frontend worktree - flag consumption
-cd $(moai-workflow-worktree go SPEC-FF-002)
+cd $(moai-worktree go SPEC-FF-002)
 cat > src/featureFlags.ts << 'EOF'
 export const flags = {
  NEW_AUTH: process.env.REACT_APP_NEW_AUTH === 'true',
@@ -612,7 +612,7 @@ export const flags = {
 EOF
 
 # Integration worktree - testing different flag combinations
-cd $(moai-workflow-worktree go SPEC-FF-003)
+cd $(moai-worktree go SPEC-FF-003)
 
 # Test different flag configurations
 test_flag_combination() {
@@ -656,9 +656,9 @@ for service in "${SERVICES[@]}"; do
  spec_id="SPEC-MS-${service//service/}"
  description="Microservice: ${service^}"
 
- moai-workflow-worktree new "$spec_id" "$description" --template microservice
+ moai-worktree new "$spec_id" "$description" --template microservice
 
- cd $(moai-workflow-worktree go "$spec_id")
+ cd $(moai-worktree go "$spec_id")
 
  # Service-specific setup
  echo "PORT=$((3000 + ${#SERVICES[@]}))" > .env
@@ -670,8 +670,8 @@ for service in "${SERVICES[@]}"; do
 done
 
 # Gateway worktree for integration
-moai-workflow-worktree new SPEC-MS-GATEWAY "API Gateway Integration"
-cd $(moai-workflow-worktree go SPEC-MS-GATEWAY)
+moai-worktree new SPEC-MS-GATEWAY "API Gateway Integration"
+cd $(moai-worktree go SPEC-MS-GATEWAY)
 
 # Configure service discovery
 cat > config/services.yaml << 'EOF'
@@ -695,7 +695,7 @@ test_microservices() {
  for service in "${SERVICES[@]}"; do
  spec_id="SPEC-MS-${service//service/}"
  (
- cd $(moai-workflow-worktree go "$spec_id")
+ cd $(moai-worktree go "$spec_id")
  npm run test &
  )
  done
@@ -703,7 +703,7 @@ test_microservices() {
  wait
 
  # Test integration through gateway
- cd $(moai-workflow-worktree go SPEC-MS-GATEWAY)
+ cd $(moai-worktree go SPEC-MS-GATEWAY)
  npm run test:integration
 }
 ```
@@ -721,22 +721,22 @@ Resource-Aware Development:
 monitor_parallel_resources() {
  echo "=== Parallel Development Resource Monitor ==="
 
- local worktrees=($(moai-workflow-worktree list --status active --format json | jq -r '.worktrees[].id'))
+ local worktrees=($(moai-worktree list --status active --format json | jq -r '.worktrees[].id'))
 
  for spec in "${worktrees[@]}"; do
  echo ""
  echo "$spec:"
 
  # Check for running processes
- local processes=$(pgrep -f "$(moai-workflow-worktree go "$spec")" | wc -l)
+ local processes=$(pgrep -f "$(moai-worktree go "$spec")" | wc -l)
  echo " Processes: $processes"
 
  # Check disk usage
- local disk_usage=$(du -sh "$(moai-workflow-worktree go "$spec")" 2>/dev/null | cut -f1)
+ local disk_usage=$(du -sh "$(moai-worktree go "$spec")" 2>/dev/null | cut -f1)
  echo " Disk Usage: $disk_usage"
 
  # Check for memory-intensive processes
- local memory_usage=$(ps aux | grep "$(moai-workflow-worktree go "$spec")" | awk '{sum+=$6} END {print sum/1024}' 2>/dev/null)
+ local memory_usage=$(ps aux | grep "$(moai-worktree go "$spec")" | awk '{sum+=$6} END {print sum/1024}' 2>/dev/null)
  echo " Memory Usage: ${memory_usage:-0}MB"
  done
 
@@ -754,7 +754,7 @@ optimize_worktree() {
 
  echo "Optimizing worktree: $spec_id"
 
- cd $(moai-workflow-worktree go "$spec_id")
+ cd $(moai-worktree go "$spec_id")
 
  # Clean unnecessary files
  find . -name "*.log" -delete 2>/dev/null || true

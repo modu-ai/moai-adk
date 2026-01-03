@@ -18,22 +18,22 @@ Command Categories:
 
 Quick Start:
 ```bash
-moai-workflow-worktree new SPEC-001 "User Authentication"
-moai-workflow-worktree switch SPEC-001
-# or: eval $(moai-workflow-worktree go SPEC-001)
+moai-worktree new SPEC-001 "User Authentication"
+moai-worktree switch SPEC-001
+# or: eval $(moai-worktree go SPEC-001)
 ```
 
 ---
 
 ## Core Commands
 
-### `moai-workflow-worktree new` - Create Worktree
+### `moai-worktree new` - Create Worktree
 
 Create a new isolated Git worktree for SPEC development.
 
 Syntax:
 ```bash
-moai-workflow-worktree new <spec-id> [description] [options]
+moai-worktree new <spec-id> [description] [options]
 ```
 
 Arguments:
@@ -51,19 +51,19 @@ Options:
 Examples:
 ```bash
 # Basic worktree creation
-moai-workflow-worktree new SPEC-001 "User Authentication System"
+moai-worktree new SPEC-001 "User Authentication System"
 
 # Custom branch name
-moai-workflow-worktree new SPEC-002 "Payment Integration" --branch feature/payment-gateway
+moai-worktree new SPEC-002 "Payment Integration" --branch feature/payment-gateway
 
 # From develop branch
-moai-workflow-worktree new SPEC-003 "API Refactoring" --base develop
+moai-worktree new SPEC-003 "API Refactoring" --base develop
 
 # Using template
-moai-workflow-worktree new SPEC-004 "Frontend Overhaul" --template frontend
+moai-worktree new SPEC-004 "Frontend Overhaul" --template frontend
 
 # Fast creation with shallow clone
-moai-workflow-worktree new SPEC-005 "Bug Fixes" --shallow --depth 1
+moai-worktree new SPEC-005 "Bug Fixes" --shallow --depth 1
 ```
 
 Auto-Generated Branch Pattern:
@@ -75,22 +75,22 @@ Output:
  Created worktree: SPEC-001
  Branch: feature/SPEC-001-user-authentication
  Path: /Users/goos/worktrees/MoAI-ADK/SPEC-001
- Registered in: /Users/goos/worktrees/MoAI-ADK/.moai-workflow-worktree-registry.json
+ Registered in: /Users/goos/worktrees/MoAI-ADK/.moai-worktree-registry.json
 
 Next steps:
-1. Switch to worktree: moai-workflow-worktree switch SPEC-001
-2. Or use shell eval: eval $(moai-workflow-worktree go SPEC-001)
+1. Switch to worktree: moai-worktree switch SPEC-001
+2. Or use shell eval: eval $(moai-worktree go SPEC-001)
 ```
 
 ---
 
-### `moai-workflow-worktree list` - List Worktrees
+### `moai-worktree list` - List Worktrees
 
 Display all registered worktrees with their status and metadata.
 
 Syntax:
 ```bash
-moai-workflow-worktree list [options]
+moai-worktree list [options]
 ```
 
 Options:
@@ -103,19 +103,19 @@ Options:
 Examples:
 ```bash
 # Table format (default)
-moai-workflow-worktree list
+moai-worktree list
 
 # JSON output for scripting
-moai-workflow-worktree list --format json
+moai-worktree list --format json
 
 # Show only active worktrees
-moai-workflow-worktree list --status active
+moai-worktree list --status active
 
 # Sort by creation date
-moai-workflow-worktree list --sort created
+moai-worktree list --sort created
 
 # Detailed view
-moai-workflow-worktree list --verbose
+moai-worktree list --verbose
 ```
 
 Table Output:
@@ -153,13 +153,13 @@ JSON Output:
 
 ---
 
-### `moai-workflow-worktree switch` - Switch to Worktree
+### `moai-worktree switch` - Switch to Worktree
 
 Change current working directory to the specified worktree.
 
 Syntax:
 ```bash
-moai-workflow-worktree switch <spec-id> [options]
+moai-worktree switch <spec-id> [options]
 ```
 
 Arguments:
@@ -173,13 +173,13 @@ Options:
 Examples:
 ```bash
 # Basic switch
-moai-workflow-worktree switch SPEC-001
+moai-worktree switch SPEC-001
 
 # Switch with auto-sync
-moai-workflow-worktree switch SPEC-002 --auto-sync
+moai-worktree switch SPEC-002 --auto-sync
 
 # Force switch (with warning)
-moai-workflow-worktree switch SPEC-003 --force
+moai-worktree switch SPEC-003 --force
 ```
 
 Output:
@@ -192,13 +192,13 @@ Output:
 
 ---
 
-### `moai-workflow-worktree go` - Get Worktree Path
+### `moai-worktree go` - Get Worktree Path
 
 Output the `cd` command for shell integration.
 
 Syntax:
 ```bash
-moai-workflow-worktree go <spec-id> [options]
+moai-worktree go <spec-id> [options]
 ```
 
 Arguments:
@@ -212,28 +212,28 @@ Options:
 Examples:
 ```bash
 # Standard usage (shell eval)
-eval $(moai-workflow-worktree go SPEC-001)
+eval $(moai-worktree go SPEC-001)
 
 # Absolute path output
-moai-workflow-worktree go SPEC-001 --absolute
+moai-worktree go SPEC-001 --absolute
 
 # Relative path
-moai-workflow-worktree go SPEC-001 --relative
+moai-worktree go SPEC-001 --relative
 
 # Export as variable
-moai-workflow-worktree go SPEC-001 --export
+moai-worktree go SPEC-001 --export
 ```
 
 Shell Integration:
 ```bash
 # Method 1: eval (recommended)
-eval $(moai-workflow-worktree go SPEC-001)
+eval $(moai-worktree go SPEC-001)
 
 # Method 2: source
-moai-workflow-worktree go SPEC-001 | source
+moai-worktree go SPEC-001 | source
 
 # Method 3: manual
-cd $(moai-workflow-worktree go SPEC-001 --absolute)
+cd $(moai-worktree go SPEC-001 --absolute)
 ```
 
 Output:
@@ -250,13 +250,13 @@ cd "$WORKTREE_PATH"
 
 ## Management Commands
 
-### `moai-workflow-worktree sync` - Synchronize Worktree
+### `moai-worktree sync` - Synchronize Worktree
 
 Synchronize worktree with its base branch.
 
 Syntax:
 ```bash
-moai-workflow-worktree sync <spec-id> [options]
+moai-worktree sync <spec-id> [options]
 ```
 
 Arguments:
@@ -273,22 +273,22 @@ Options:
 Examples:
 ```bash
 # Sync specific worktree
-moai-workflow-worktree sync SPEC-001
+moai-worktree sync SPEC-001
 
 # Sync all worktrees
-moai-workflow-worktree sync --all
+moai-worktree sync --all
 
 # Interactive conflict resolution
-moai-workflow-worktree sync SPEC-001 --interactive
+moai-worktree sync SPEC-001 --interactive
 
 # Dry run to preview changes
-moai-workflow-worktree sync SPEC-001 --dry-run
+moai-worktree sync SPEC-001 --dry-run
 
 # Include only source files
-moai-workflow-worktree sync SPEC-001 --include "src/"
+moai-worktree sync SPEC-001 --include "src/"
 
 # Exclude build artifacts
-moai-workflow-worktree sync SPEC-001 --exclude "node_modules/" --exclude "dist/"
+moai-worktree sync SPEC-001 --exclude "node_modules/" --exclude "dist/"
 ```
 
 Conflict Resolution Options:
@@ -318,13 +318,13 @@ Output:
 
 ---
 
-### `moai-workflow-worktree remove` - Remove Worktree
+### `moai-worktree remove` - Remove Worktree
 
 Remove a worktree and clean up its registration.
 
 Syntax:
 ```bash
-moai-workflow-worktree remove <spec-id> [options]
+moai-worktree remove <spec-id> [options]
 ```
 
 Arguments:
@@ -339,19 +339,19 @@ Options:
 Examples:
 ```bash
 # Interactive removal
-moai-workflow-worktree remove SPEC-001
+moai-worktree remove SPEC-001
 
 # Force removal
-moai-workflow-worktree remove SPEC-001 --force
+moai-worktree remove SPEC-001 --force
 
 # Keep branch for future use
-moai-workflow-worktree remove SPEC-001 --keep-branch
+moai-worktree remove SPEC-001 --keep-branch
 
 # Create backup
-moai-workflow-worktree remove SPEC-001 --backup
+moai-worktree remove SPEC-001 --backup
 
 # Preview removal
-moai-workflow-worktree remove SPEC-001 --dry-run
+moai-worktree remove SPEC-001 --dry-run
 ```
 
 Interactive Confirmation:
@@ -381,13 +381,13 @@ Output:
 
 ---
 
-### `moai-workflow-worktree clean` - Clean Up Worktrees
+### `moai-worktree clean` - Clean Up Worktrees
 
 Remove worktrees for merged branches or stale worktrees.
 
 Syntax:
 ```bash
-moai-workflow-worktree clean [options]
+moai-worktree clean [options]
 ```
 
 Options:
@@ -401,22 +401,22 @@ Options:
 Examples:
 ```bash
 # Clean merged worktrees
-moai-workflow-worktree clean --merged-only
+moai-worktree clean --merged-only
 
 # Clean stale worktrees (not updated in 30 days)
-moai-workflow-worktree clean --stale
+moai-worktree clean --stale
 
 # Custom stale threshold (14 days)
-moai-workflow-worktree clean --stale --days 14
+moai-worktree clean --stale --days 14
 
 # Interactive cleaning
-moai-workflow-worktree clean --interactive
+moai-worktree clean --interactive
 
 # Preview what would be cleaned
-moai-workflow-worktree clean --dry-run
+moai-worktree clean --dry-run
 
 # Force clean without prompts
-moai-workflow-worktree clean --force
+moai-worktree clean --force
 ```
 
 Interactive Selection:
@@ -453,13 +453,13 @@ Output:
 
 ## Status and Configuration Commands
 
-### `moai-workflow-worktree status` - Show Worktree Status
+### `moai-worktree status` - Show Worktree Status
 
 Display detailed status information about worktrees.
 
 Syntax:
 ```bash
-moai-workflow-worktree status [spec-id] [options]
+moai-worktree status [spec-id] [options]
 ```
 
 Arguments:
@@ -474,19 +474,19 @@ Options:
 Examples:
 ```bash
 # Current worktree status
-moai-workflow-worktree status
+moai-worktree status
 
 # Specific worktree status
-moai-workflow-worktree status SPEC-001
+moai-worktree status SPEC-001
 
 # All worktrees with sync check
-moai-workflow-worktree status --all --sync-check
+moai-worktree status --all --sync-check
 
 # Detailed Git status
-moai-workflow-worktree status SPEC-001 --detailed
+moai-worktree status SPEC-001 --detailed
 
 # JSON output
-moai-workflow-worktree status --all --format json
+moai-worktree status --all --format json
 ```
 
 Current Worktree Status:
@@ -519,13 +519,13 @@ All Worktrees Status:
 
 ---
 
-### `moai-workflow-worktree config` - Configuration Management
+### `moai-worktree config` - Configuration Management
 
-Manage moai-workflow-worktree configuration settings.
+Manage moai-worktree configuration settings.
 
 Syntax:
 ```bash
-moai-workflow-worktree config <action> [key] [value]
+moai-worktree config <action> [key] [value]
 ```
 
 Actions:
@@ -546,21 +546,21 @@ Configuration Keys:
 Examples:
 ```bash
 # Show all configuration
-moai-workflow-worktree config list
+moai-worktree config list
 
 # Get specific value
-moai-workflow-worktree config get worktree_root
+moai-worktree config get worktree_root
 
 # Set configuration
-moai-workflow-worktree config set worktree_root ~/my-worktrees
-moai-workflow-worktree config set auto_sync true
-moai-workflow-worktree config set default_base develop
+moai-worktree config set worktree_root ~/my-worktrees
+moai-worktree config set auto_sync true
+moai-worktree config set default_base develop
 
 # Reset to default
-moai-workflow-worktree config reset worktree_root
+moai-worktree config reset worktree_root
 
 # Edit configuration
-moai-workflow-worktree config edit
+moai-worktree config edit
 ```
 
 Configuration Output:
@@ -570,7 +570,7 @@ worktree_root: /Users/goos/worktrees/MoAI-ADK
 auto_sync: true
 cleanup_merged: true
 default_base: main
-template_dir: ~/.moai-workflow-worktree/templates
+template_dir: ~/.moai-worktree/templates
 sync_strategy: merge
 registry_type: local
 ```
@@ -583,41 +583,41 @@ registry_type: local
 
 ```bash
 # Sync all active worktrees
-for spec in $(moai-workflow-worktree list --status active --format json | jq -r '.worktrees[].id'); do
- moai-workflow-worktree sync "$spec"
+for spec in $(moai-worktree list --status active --format json | jq -r '.worktrees[].id'); do
+ moai-worktree sync "$spec"
 done
 
 # Clean all merged worktrees
-moai-workflow-worktree clean --merged-only --force
+moai-worktree clean --merged-only --force
 
 # Create worktrees from SPEC list
-cat specs.txt | xargs -I {} moai-workflow-worktree new {} "Auto-generated worktree"
+cat specs.txt | xargs -I {} moai-worktree new {} "Auto-generated worktree"
 ```
 
 ### Shell Aliases and Functions
 
 ```bash
 # Add to ~/.bashrc or ~/.zshrc
-alias mw='moai-workflow-worktree'
-alias mwl='moai-workflow-worktree list'
-alias mws='moai-workflow-worktree switch'
-alias mwg='eval $(moai-workflow-worktree go'
+alias mw='moai-worktree'
+alias mwl='moai-worktree list'
+alias mws='moai-worktree switch'
+alias mwg='eval $(moai-worktree go'
 
 # Function for quick SPEC worktree creation
 mwnew() {
  local spec_id="$1"
  local description="$2"
- moai-workflow-worktree new "$spec_id" "$description"
- moai-workflow-worktree switch "$spec_id"
+ moai-worktree new "$spec_id" "$description"
+ moai-worktree switch "$spec_id"
 }
 
 # Function for worktree status overview
 mwstatus() {
  echo "=== Worktree Overview ==="
- moai-workflow-worktree status --all
+ moai-worktree status --all
  echo ""
  echo "=== Current Worktree ==="
- moai-workflow-worktree status
+ moai-worktree status
 }
 ```
 
@@ -626,14 +626,14 @@ mwstatus() {
 ```bash
 # .git/hooks/post-checkout
 #!/bin/bash
-if [ -f "../.moai-workflow-worktree-registry.json" ]; then
+if [ -f "../.moai-worktree-registry.json" ]; then
  SPEC_ID=$(basename $(pwd))
- moai-workflow-worktree status "$SPEC_ID" --sync-check
+ moai-worktree status "$SPEC_ID" --sync-check
 fi
 
 # .git/hooks/pre-push
 #!/bin/bash
-if [ -f "../.moai-workflow-worktree-registry.json" ]; then
+if [ -f "../.moai-worktree-registry.json" ]; then
  SPEC_ID=$(basename $(pwd))
  echo "Pushing from worktree: $SPEC_ID"
 fi

@@ -690,9 +690,9 @@ flowchart LR
 
 ---
 
-### 🌳 **moai-workflow-worktree** - 并行 SPEC 开发的 Git 工作树管理
+### 🌳 **moai-worktree** - 并行 SPEC 开发的 Git 工作树管理
 
-#### 为什么选择 moai-workflow-worktree？解决的问题
+#### 为什么选择 moai-worktree？解决的问题
 
 在现代软件开发中，特别是遵循 SPEC-First TDD 方法论时，开发者经常面临同时处理多个功能的问题。传统 Git 工作流迫使开发者：
 
@@ -700,7 +700,7 @@ flowchart LR
 - **顺序开发**: 一次只能处理一个 SPEC，降低生产力
 - **环境冲突**: 不同的 SPEC 可能需要不同的依赖、数据库状态或配置
 
-**moai-workflow-worktree 解决了这些问题**，为每个 SPEC 提供隔离的工作空间，实现无上下文切换开销的真正并行开发。
+**moai-worktree 解决了这些问题**，为每个 SPEC 提供隔离的工作空间，实现无上下文切换开销的真正并行开发。
 
 #### 核心概念：基于 SPEC 的并行开发
 
@@ -713,7 +713,7 @@ Git 工作树是链接到同一 Git 仓库的独立工作目录，允许在不�
 - 隔离的构建工件和依赖
 - 独立的暂存区和未暂存更改
 
-**moai-workflow-worktree 架构:**
+**moai-worktree 架构:**
 
 ```
 主仓库/
@@ -766,20 +766,20 @@ Git 工作树是链接到同一 Git 仓库的独立工作目录，允许在不�
 
 ```bash
 # 所有工作树与最新主分支同步
-moai-workflow-worktree sync --all
+moai-worktree sync --all
 
 # 带冲突解决的特定工作树同步
-moai-workflow-worktree sync SPEC-001 --auto-resolve
+moai-worktree sync SPEC-001 --auto-resolve
 ```
 
 **智能清理**
 
 ```bash
 # 已合并分支工作树自动删除
-moai-workflow-worktree clean --merged-only
+moai-worktree clean --merged-only
 
 # 带确认提示的安全清理
-moai-workflow-worktree clean --interactive
+moai-worktree clean --interactive
 ```
 
 **性能优化**
@@ -788,7 +788,7 @@ moai-workflow-worktree clean --interactive
 - **共享历史记录**: 所有工作树共享相同的 Git 对象数据库
 - **选择性同步**: 仅同步需要的更改，而不是整个仓库
 
-#### 何时使用 moai-workflow-worktree
+#### 何时使用 moai-worktree
 
 **理想场景:**
 
@@ -810,7 +810,7 @@ moai-workflow-worktree clean --interactive
 # 方法 2: 手动工作树创建
 > /moai:1-plan '实现用户认证系统'
 # SPEC-AUTH-001 创建完成
-moai-workflow-worktree new SPEC-AUTH-001
+moai-worktree new SPEC-AUTH-001
 # → 创建隔离的工作树环境
 ```
 
@@ -818,11 +818,11 @@ moai-workflow-worktree new SPEC-AUTH-001
 
 ```bash
 # 移动到工作树（推荐方式）
-moai-workflow-worktree go SPEC-AUTH-001
+moai-worktree go SPEC-AUTH-001
 # → cd ~/moai/worktrees/MoAI-ADK/SPEC-AUTH-001
 
 # 或在新 shell 中直接移动
-moai-workflow-worktree switch SPEC-AUTH-001
+moai-worktree switch SPEC-AUTH-001
 # → 在新终端窗口中移动到工作树
 ```
 
@@ -834,7 +834,7 @@ moai-workflow-worktree switch SPEC-AUTH-001
 # → 执行 RED → GREEN → REFACTOR 循环
 
 # 开发中状态检查
-moai-workflow-worktree status
+moai-worktree status
 git status
 git log --oneline -5
 
@@ -847,13 +847,13 @@ git commit -m "Auth: 实现用户登录端点"
 
 ```bash
 # 获取主分支更改
-moai-workflow-worktree sync SPEC-AUTH-001
+moai-worktree sync SPEC-AUTH-001
 
 # 带自动冲突解决的同步
-moai-workflow-worktree sync SPEC-AUTH-001 --auto-resolve
+moai-worktree sync SPEC-AUTH-001 --auto-resolve
 
 # 同步所有工作树
-moai-workflow-worktree sync --all --auto-resolve
+moai-worktree sync --all --auto-resolve
 ```
 
 **步骤 5: 开发完成和测试（自动化）**
@@ -884,7 +884,7 @@ moai-workflow-worktree sync --all --auto-resolve
 
 ```bash
 # 1. 从工作树移动到主分支
-moai-workflow-worktree go SPEC-AUTH-001  # 或 cd /path/to/main/repo
+moai-worktree go SPEC-AUTH-001  # 或 cd /path/to/main/repo
 
 # 2. 获取工作树分支
 git fetch origin feature/SPEC-AUTH-001
@@ -937,11 +937,11 @@ git rebase main  # 使用 rebase 代替
 # - 清理完成报告
 ```
 
-**选项 B: 直接 moai-workflow-worktree 命令（高级用户）**
+**选项 B: 直接 moai-worktree 命令（高级用户）**
 
 ```bash
 # 1. 工作树状态最终确认
-moai-workflow-worktree status
+moai-worktree status
 # 输出示例：
 # SPEC-AUTH-001
 #   Branch: feature/SPEC-AUTH-001
@@ -949,41 +949,41 @@ moai-workflow-worktree status
 #   Path:   ~/moai/worktrees/MoAI-ADK/SPEC-AUTH-001
 
 # 2. 工作树清理（安全方式）
-moai-workflow-worktree clean --merged-only
+moai-worktree clean --merged-only
 # → 仅自动删除已合并分支的工作树
 
 # 3. 或交互式清理（选择性删除）
-moai-workflow-worktree clean --interactive
+moai-worktree clean --interactive
 # → 可选择要删除的工作树
 
 # 4. 直接删除特定工作树（强制）
-moai-workflow-worktree remove SPEC-AUTH-001 --force
+moai-worktree remove SPEC-AUTH-001 --force
 
 # 5. 整体工作树状态检查
-moai-workflow-worktree list
+moai-worktree list
 # 或
-moai-workflow-worktree status
+moai-worktree status
 ```
 
 **实用的工作树管理命令集合:**
 
 ```bash
 # 日常工作树管理
-moai-workflow-worktree list                    # 所有工作树列表
-moai-workflow-worktree status                  # 详细状态检查
-moai-workflow-worktree sync SPEC-AUTH-001      # 特定工作树同步
-moai-workflow-worktree sync --all              # 同步所有工作树
+moai-worktree list                    # 所有工作树列表
+moai-worktree status                  # 详细状态检查
+moai-worktree sync SPEC-AUTH-001      # 特定工作树同步
+moai-worktree sync --all              # 同步所有工作树
 
 # 工作树移动和操作
-moai-workflow-worktree go SPEC-001     # 在当前 shell 中移动
-moai-workflow-worktree switch SPEC-001         # 在新 shell 中打开工作树
+moai-worktree go SPEC-001     # 在当前 shell 中移动
+moai-worktree switch SPEC-001         # 在新 shell 中打开工作树
 
 # 自动冲突解决
-moai-workflow-worktree sync SPEC-AUTH-001 --auto-resolve
+moai-worktree sync SPEC-AUTH-001 --auto-resolve
 
 # 设置检查
-moai-workflow-worktree config get              # 查看当前设置
-moai-workflow-worktree config root             # 检查工作树根路径
+moai-worktree config get              # 查看当前设置
+moai-worktree config root             # 检查工作树根路径
 ```
 
 **混合工作流推荐模式:**
@@ -995,8 +995,8 @@ moai-workflow-worktree config root             # 检查工作树根路径
 > /moai:3-sync SPEC-XXX
 
 # 步骤 6-7: 直接命令（精确控制）
-moai-workflow-worktree sync SPEC-XXX --auto-resolve  # 自动冲突解决
-moai-workflow-worktree clean --merged-only           # 清理完成的工作树
+moai-worktree sync SPEC-XXX --auto-resolve  # 自动冲突解决
+moai-worktree clean --merged-only           # 清理完成的工作树
 ```
 
 ---
@@ -1005,40 +1005,40 @@ moai-workflow-worktree clean --merged-only           # 清理完成的工作树
 
 本节详细介绍可与 Claude Code 自动化一起使用的直接命令。
 
-#### **基本 moai-workflow-worktree 命令**
+#### **基本 moai-worktree 命令**
 
 | 命令                 | 目的                    | 使用示例                      | 描述                               |
 | ---------------------- | ----------------------- | ----------------------------- | ---------------------------------- |
-| `moai-workflow-worktree new`    | 创建新工作树            | `moai-workflow-worktree new SPEC-001`   | 为 SPEC-001 创建隔离的工作空间     |
-| `moai-workflow-worktree list`   | 工作树列表              | `moai-workflow-worktree list`           | 显示所有活动工作树                 |
-| `moai-workflow-worktree go`     | 移动到工作树            | `moai-workflow-worktree go SPEC-001`    | 在当前 shell 中移动到工作树        |
-| `moai-workflow-worktree switch` | 在新 shell 中打开工作树 | `moai-workflow-worktree switch SPEC-001` | 在新终端中移动到工作树             |
-| `moai-workflow-worktree remove` | 删除工作树              | `moai-workflow-worktree remove SPEC-001` | 删除特定工作树                     |
-| `moai-workflow-worktree status` | 状态检查                | `moai-workflow-worktree status`         | 显示所有工作树状态                 |
+| `moai-worktree new`    | 创建新工作树            | `moai-worktree new SPEC-001`   | 为 SPEC-001 创建隔离的工作空间     |
+| `moai-worktree list`   | 工作树列表              | `moai-worktree list`           | 显示所有活动工作树                 |
+| `moai-worktree go`     | 移动到工作树            | `moai-worktree go SPEC-001`    | 在当前 shell 中移动到工作树        |
+| `moai-worktree switch` | 在新 shell 中打开工作树 | `moai-worktree switch SPEC-001` | 在新终端中移动到工作树             |
+| `moai-worktree remove` | 删除工作树              | `moai-worktree remove SPEC-001` | 删除特定工作树                     |
+| `moai-worktree status` | 状态检查                | `moai-worktree status`         | 显示所有工作树状态                 |
 
 #### **同步命令**
 
 | 命令                              | 目的                 | 使用示例                                | 描述                          |
 | --------------------------------- | -------------------- | --------------------------------------- | ----------------------------- |
-| `moai-workflow-worktree sync`                | 特定工作树同步       | `moai-workflow-worktree sync SPEC-001`           | 与主分支同步更改             |
-| `moai-workflow-worktree sync --all`          | 同步所有工作树       | `moai-workflow-worktree sync --all`              | 一次性同步所有工作树         |
-| `moai-workflow-worktree sync --auto-resolve` | 自动冲突解决         | `moai-workflow-worktree sync SPEC-001 --auto-resolve` | 冲突时尝试自动解决           |
-| `moai-workflow-worktree sync --rebase`       | 基于 Rebase 的同步   | `moai-workflow-worktree sync SPEC-001 --rebase`       | 使用 rebase 代替合并         |
+| `moai-worktree sync`                | 特定工作树同步       | `moai-worktree sync SPEC-001`           | 与主分支同步更改             |
+| `moai-worktree sync --all`          | 同步所有工作树       | `moai-worktree sync --all`              | 一次性同步所有工作树         |
+| `moai-worktree sync --auto-resolve` | 自动冲突解决         | `moai-worktree sync SPEC-001 --auto-resolve` | 冲突时尝试自动解决           |
+| `moai-worktree sync --rebase`       | 基于 Rebase 的同步   | `moai-worktree sync SPEC-001 --rebase`       | 使用 rebase 代替合并         |
 
 #### **清理命令**
 
 | 命令                              | 目的                   | 使用示例                        | 描述                            |
 | --------------------------------- | ---------------------- | ------------------------------- | ------------------------------- |
-| `moai-workflow-worktree clean`               | 工作树清理             | `moai-workflow-worktree clean`            | 清理所有工作树                 |
-| `moai-workflow-worktree clean --merged-only` | 清理已合并的工作树     | `moai-workflow-worktree clean --merged-only` | 仅删除已合并分支的工作树       |
-| `moai-workflow-worktree clean --interactive` | 交互式清理             | `moai-workflow-worktree clean --interactive` | 可选择要删除的工作树           |
+| `moai-worktree clean`               | 工作树清理             | `moai-worktree clean`            | 清理所有工作树                 |
+| `moai-worktree clean --merged-only` | 清理已合并的工作树     | `moai-worktree clean --merged-only` | 仅删除已合并分支的工作树       |
+| `moai-worktree clean --interactive` | 交互式清理             | `moai-worktree clean --interactive` | 可选择要删除的工作树           |
 
 #### **设置命令**
 
 | 命令                      | 目的           | 使用示例               | 描述                     |
 | --------------------------- | -------------- | ----------------------- | ------------------------ |
-| `moai-workflow-worktree config`      | 查看设置       | `moai-workflow-worktree config`  | 显示当前工作树设置        |
-| `moai-workflow-worktree config root` | 检查根路径    | `moai-workflow-worktree config root` | 检查工作树根目录路径     |
+| `moai-worktree config`      | 查看设置       | `moai-worktree config`  | 显示当前工作树设置        |
+| `moai-worktree config root` | 检查根路径    | `moai-worktree config root` | 检查工作树根目录路径     |
 
 #### **高级使用模式**
 
@@ -1046,25 +1046,25 @@ moai-workflow-worktree clean --merged-only           # 清理完成的工作树
 
 ```bash
 # 同时创建多个 SPEC
-moai-workflow-worktree new SPEC-AUTH-001    # 用户认证
-moai-workflow-worktree new SPEC-PAY-002     # 支付系统
-moai-workflow-worktree new SPEC-UI-003      # UI 改进
+moai-worktree new SPEC-AUTH-001    # 用户认证
+moai-worktree new SPEC-PAY-002     # 支付系统
+moai-worktree new SPEC-UI-003      # UI 改进
 
 # 检查每个工作树状态
-moai-workflow-worktree status
+moai-worktree status
 
 # 同步所有工作树
-moai-workflow-worktree sync --all --auto-resolve
+moai-worktree sync --all --auto-resolve
 ```
 
 **2. 自动冲突解决工作流**
 
 ```bash
 # 步骤 1: 尝试自动同步
-moai-workflow-worktree sync SPEC-001 --auto-resolve
+moai-worktree sync SPEC-001 --auto-resolve
 
 # 步骤 2: 自动解决失败时手动介入
-moai-workflow-worktree go SPEC-001
+moai-worktree go SPEC-001
 git status  # 检查冲突文件
 
 # 步骤 3: 选择冲突解决策略
@@ -1081,14 +1081,14 @@ git commit -m "解决：SPEC-001 中的自动冲突"
 
 ```bash
 # 推荐每天早上执行
-moai-workflow-worktree status                      # 当前状态检查
-moai-workflow-worktree sync --all                  # 同步所有工作树
+moai-worktree status                      # 当前状态检查
+moai-worktree sync --all                  # 同步所有工作树
 
 # 推荐每周执行
-moai-workflow-worktree clean --merged-only         # 清理完成的工作树
+moai-worktree clean --merged-only         # 清理完成的工作树
 
 # 推荐每月执行
-moai-workflow-worktree clean --interactive         # 交互式清理删除不必要的工作树
+moai-worktree clean --interactive         # 交互式清理删除不必要的工作树
 ```
 
 #### **Claude Code 与命令组合指南**
@@ -1102,9 +1102,9 @@ moai-workflow-worktree clean --interactive         # 交互式清理删除不必
 /moai:3-sync SPEC-001
 
 # 步骤 4-5: 直接命令基本管理
-moai-workflow-worktree status                      # 状态检查
-moai-workflow-worktree sync SPEC-001               # 同步
-moai-workflow-worktree clean --merged-only         # 清理
+moai-worktree status                      # 状态检查
+moai-worktree sync SPEC-001               # 同步
+moai-worktree clean --merged-only         # 清理
 ```
 
 **中级用户:**
@@ -1115,27 +1115,27 @@ moai-workflow-worktree clean --merged-only         # 清理
 > /moai:2-run SPEC-PAY-001
 
 # 步骤 3: 直接命令精确控制
-moai-workflow-worktree go SPEC-PAY-001
+moai-worktree go SPEC-PAY-001
 # 直接开发和测试
 git add .
 git commit -m "Pay: 实现核心支付处理"
 
 # 步骤 4-5: 混合方式
 > /moai:3-sync SPEC-PAY-001                 # 自动化质量验证
-moai-workflow-worktree sync SPEC-PAY-001 --auto-resolve  # 直接同步
+moai-worktree sync SPEC-PAY-001 --auto-resolve  # 直接同步
 ```
 
 **高级用户:**
 
 ```bash
 # 整个过程直接命令控制
-moai-workflow-worktree new SPEC-ADV-001
-moai-workflow-worktree go SPEC-ADV-001
+moai-worktree new SPEC-ADV-001
+moai-worktree go SPEC-ADV-001
 # 完全手动开发过程
 git add .
 git commit -m "Adv: 复杂功能实现"
-moai-workflow-worktree sync SPEC-ADV-001 --rebase
-moai-workflow-worktree clean --interactive
+moai-worktree sync SPEC-ADV-001 --rebase
+moai-worktree clean --interactive
 ```
 
 **生产力提示:**
@@ -1143,12 +1143,12 @@ moai-workflow-worktree clean --interactive
 1. **别名设置** (在 ~/.zshrc 或 ~/.bashrc 中添加):
 
 ```bash
-alias wt-new='moai-workflow-worktree new'
-alias wt-go='moai-workflow-worktree go'
-alias wt-list='moai-workflow-worktree list'
-alias wt-status='moai-workflow-worktree status'
-alias wt-sync='moai-workflow-worktree sync'
-alias wt-clean='moai-workflow-worktree clean'
+alias wt-new='moai-worktree new'
+alias wt-go='moai-worktree go'
+alias wt-list='moai-worktree list'
+alias wt-status='moai-worktree status'
+alias wt-sync='moai-worktree sync'
+alias wt-clean='moai-worktree clean'
 ```
 
 2. **快速工作流函数**:
@@ -1156,8 +1156,8 @@ alias wt-clean='moai-workflow-worktree clean'
 ```bash
 # 工作树快速创建和移动
 wt-dev() {
-    moai-workflow-worktree new "SPEC-$1"
-    moai-workflow-worktree go "SPEC-$1"
+    moai-worktree new "SPEC-$1"
+    moai-worktree go "SPEC-$1"
 }
 
 # 使用法: wt-dev AUTH-001
@@ -1190,9 +1190,9 @@ MoAI-ADK 设计为能够同时利用 **Claude Code 自动化**和**直接命令�
 > /moai:2-run SPEC-001
 
 # 步骤 2: 直接命令基本管理
-moai-workflow-worktree status
-moai-workflow-worktree sync SPEC-001
-moai-workflow-worktree clean --merged-only
+moai-worktree status
+moai-worktree sync SPEC-001
+moai-worktree clean --merged-only
 
 # 步骤 3: 自动化完成
 > /moai:3-sync SPEC-001
@@ -1205,8 +1205,8 @@ moai-workflow-worktree clean --merged-only
 > /moai:1-plan "复杂功能"
 
 # 步骤 2: 直接控制详细实现
-moai-workflow-worktree new SPEC-001
-moai-workflow-worktree go SPEC-001
+moai-worktree new SPEC-001
+moai-worktree go SPEC-001
 # 详细开发工作
 
 # 步骤 3: 自动化质量保证
@@ -1217,8 +1217,8 @@ moai-workflow-worktree go SPEC-001
 
 ```bash
 # 整个过程直接控制，需要时利用自动化
-moai-workflow-worktree new SPEC-001
-moai-workflow-worktree go SPEC-001
+moai-worktree new SPEC-001
+moai-worktree go SPEC-001
 # 完全手动开发
 # 必要时用 > /moai:3-sync 质量验证
 ```
@@ -1229,14 +1229,14 @@ moai-workflow-worktree go SPEC-001
 
 ```bash
 # 尝试所有策略的自动解决
-moai-workflow-worktree sync SPEC-AUTH-001 --auto-resolve
+moai-worktree sync SPEC-AUTH-001 --auto-resolve
 ```
 
 ##### 2. 手动解决
 
 ```bash
 # 移动到工作树
-moai-workflow-worktree go SPEC-AUTH-001
+moai-worktree go SPEC-AUTH-001
 
 # 检查冲突状态
 git status
@@ -1292,19 +1292,19 @@ git commit
 
 ```bash
 # 移动到第一个 SPEC 并工作
-moai-workflow-worktree go SPEC-AUTH-001
+moai-worktree go SPEC-AUTH-001
 > /moai:2-run SPEC-AUTH-001
 
 # 在另一个终端中移动到第二个 SPEC
-moai-workflow-worktree go SPEC-PAY-002
+moai-worktree go SPEC-PAY-002
 > /moai:2-run SPEC-PAY-002
 
 # 在第三个 SPEC 中工作
-moai-workflow-worktree go SPEC-UI-003
+moai-worktree go SPEC-UI-003
 > /moai:2-run SPEC-UI-003
 
 # 定期同步所有工作树
-moai-workflow-worktree sync --all --auto-resolve
+moai-worktree sync --all --auto-resolve
 ```
 
 ##### 无上下文切换工作
@@ -1318,14 +1318,14 @@ moai-workflow-worktree sync --all --auto-resolve
 
 ```bash
 # 早上：开始新的 SPEC
-moai-workflow-worktree new SPEC-005 "用户档案改进"
-moai-workflow-worktree go SPEC-005
+moai-worktree new SPEC-005 "用户档案改进"
+moai-worktree go SPEC-005
 
 # 其他 SPEC 完成时实现 SPEC-005
 > /moai:2-run SPEC-005
 
 # 下午：检查所有 SPEC 状态
-moai-workflow-worktree status
+moai-worktree status
 # 输出:
 # ✓ SPEC-001: 完成（合并准备）
 # ✓ SPEC-002: 测试进行中
@@ -1333,7 +1333,7 @@ moai-workflow-worktree status
 # 🔄 SPEC-005: 活动开发
 
 # 晚上：清理完成的 SPEC
-moai-workflow-worktree clean --merged-only
+moai-worktree clean --merged-only
 ```
 
 #### 技术优势
@@ -1348,12 +1348,12 @@ moai-workflow-worktree clean --merged-only
 
 #### 与 MoAI-ADK 工作流集成
 
-moai-workflow-worktree 与 MoAI-ADK Plan-Run-Sync 循环无缝集成：
+moai-worktree 与 MoAI-ADK Plan-Run-Sync 循环无缝集成：
 
-1. **Plan 阶段**: `moai-workflow-worktree new SPEC-XXX` 创建专用工作空间
+1. **Plan 阶段**: `moai-worktree new SPEC-XXX` 创建专用工作空间
 2. **Run 阶段**: 在隔离环境中工作，不影响其他 SPEC
-3. **Sync 阶段**: `moai-workflow-worktree sync SPEC-XXX` 确保干净的集成
-4. **Cleanup 阶段**: `moai-workflow-worktree clean` 删除完成的工作树
+3. **Sync 阶段**: `moai-worktree sync SPEC-XXX` 确保干净的集成
+4. **Cleanup 阶段**: `moai-worktree clean` 删除完成的工作树
 
 这种集成在保持 SPEC-First TDD 方法论原则的同时，为管理多个 SPEC 提供了完整且系统化的方法。
 
@@ -1363,35 +1363,35 @@ moai-workflow-worktree 与 MoAI-ADK Plan-Run-Sync 循环无缝集成：
 
 ```bash
 # 可用命令列表
-moai-workflow-worktree --help
+moai-worktree --help
 
 # 为 SPEC 开发创建新工作树
-moai-workflow-worktree new SPEC-001
+moai-worktree new SPEC-001
 
 # 所有活动工作树列表
-moai-workflow-worktree list
+moai-worktree list
 
 # 移动到特定工作树
-moai-workflow-worktree go SPEC-001
+moai-worktree go SPEC-001
 
 # 切换到工作树（打开新 shell）
-moai-workflow-worktree switch SPEC-001
+moai-worktree switch SPEC-001
 
 # 将工作树与基础分支同步
-moai-workflow-worktree sync SPEC-001
+moai-worktree sync SPEC-001
 
 # 删除特定工作树
-moai-workflow-worktree remove SPEC-001
+moai-worktree remove SPEC-001
 
 # 清理已合并分支的工作树
-moai-workflow-worktree clean
+moai-worktree clean
 
 # 显示工作树状态和配置
-moai-workflow-worktree status
+moai-worktree status
 
 # 工作树配置
-moai-workflow-worktree config get
-moai-workflow-worktree config set <key> <value>
+moai-worktree config get
+moai-worktree config set <key> <value>
 ```
 
 ---
@@ -1783,7 +1783,7 @@ MoAI-ADK 在 7 个类别中提供 **47 个专业技能**。每个技能可以独
 - **moai-workflow-templates** - 代码样板、反馈模板
 - **moai-workflow-jit-docs** - 用户意图基础智能文档搜索和缓存
 - **moai-workflow-docs** - Nextra 文档系统、技术写作、API 文档
-- **moai-workflow-worktree** - 并行 SPEC 开发的 Git worktree 管理
+- **moai-worktree** - 并行 SPEC 开发的 Git worktree 管理
 
 ### 📚 Library（库）
 

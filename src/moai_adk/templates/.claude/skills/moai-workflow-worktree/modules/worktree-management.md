@@ -29,7 +29,7 @@ Key Patterns:
 
 The registry is the central database that tracks all worktrees and their metadata.
 
-Registry File: `~/.worktrees/{PROJECT_NAME}/.moai-workflow-worktree-registry.json`
+Registry File: `~/.worktrees/{PROJECT_NAME}/.moai-worktree-registry.json`
 
 Complete Registry Schema:
 ```json
@@ -643,7 +643,7 @@ class MemoryOptimizedManager:
  def list_worktrees_streaming(self, filters: Dict[str, Any] = None) -> Iterator[WorktreeInfo]:
  """Stream worktrees without loading entire registry."""
 
- registry_path = self.worktree_root / ".moai-workflow-worktree-registry.json"
+ registry_path = self.worktree_root / ".moai-worktree-registry.json"
 
  if not registry_path.exists():
  return

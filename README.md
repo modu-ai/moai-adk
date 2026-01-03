@@ -698,9 +698,9 @@ flowchart LR
 
 ---
 
-### 🌳 **moai-workflow-worktree** - Git Worktree Management for Parallel SPEC Development
+### 🌳 **moai-worktree** - Git Worktree Management for Parallel SPEC Development
 
-#### Why moai-workflow-worktree? The Problem It Solves
+#### Why moai-worktree? The Problem It Solves
 
 In modern software development, especially when following SPEC-First TDD methodology, developers frequently face the challenge of working on multiple features simultaneously. Traditional Git workflow forces developers to:
 
@@ -708,7 +708,7 @@ In modern software development, especially when following SPEC-First TDD methodo
 - **Sequential Development**: Work on one SPEC at a time, reducing productivity
 - **Environment Conflicts**: Different SPECs may require different dependencies, database states, or configurations
 
-**moai-workflow-worktree solves these problems** by providing isolated workspaces for each SPEC, enabling true parallel development without context switching overhead.
+**moai-worktree solves these problems** by providing isolated workspaces for each SPEC, enabling true parallel development without context switching overhead.
 
 #### Core Concept: SPEC-Based Parallel Development
 
@@ -721,7 +721,7 @@ A Git worktree is a separate working directory linked to the same Git repository
 - Isolated build artifacts and dependencies
 - Own staging area and unstaged changes
 
-**moai-workflow-worktree Architecture:**
+**moai-worktree Architecture:**
 
 ```
 Main Repository/
@@ -774,20 +774,20 @@ Main Repository/
 
 ```bash
 # Sync all worktrees with latest main branch
-moai-workflow-worktree sync --all
+moai-worktree sync --all
 
 # Sync specific worktree with conflict resolution
-moai-workflow-worktree sync SPEC-001 --auto-resolve
+moai-worktree sync SPEC-001 --auto-resolve
 ```
 
 **Intelligent Cleanup**
 
 ```bash
 # Auto-remove worktrees for merged branches
-moai-workflow-worktree clean --merged-only
+moai-worktree clean --merged-only
 
 # Safe cleanup with confirmation prompts
-moai-workflow-worktree clean --interactive
+moai-worktree clean --interactive
 ```
 
 **Performance Optimization**
@@ -796,7 +796,7 @@ moai-workflow-worktree clean --interactive
 - **Shared History**: All worktrees share the same Git object database
 - **Selective Sync**: Only sync changes when needed, not entire repositories
 
-#### When to Use moai-workflow-worktree
+#### When to Use moai-worktree
 
 **Ideal Scenarios:**
 
@@ -818,7 +818,7 @@ moai-workflow-worktree clean --interactive
 # Method 2: Manual worktree creation
 > /moai:1-plan 'Implement user authentication system'
 # SPEC-AUTH-001 created
-moai-workflow-worktree new SPEC-AUTH-001
+moai-worktree new SPEC-AUTH-001
 # → Create isolated worktree environment
 ```
 
@@ -826,7 +826,7 @@ moai-workflow-worktree new SPEC-AUTH-001
 
 ```bash
 # Navigate to worktree (opens new shell)
-moai-workflow-worktree go SPEC-AUTH-001
+moai-worktree go SPEC-AUTH-001
 # → Opens new shell in ~/moai/worktrees/MoAI-ADK/SPEC-AUTH-001
 ```
 
@@ -838,7 +838,7 @@ moai-workflow-worktree go SPEC-AUTH-001
 # → Execute RED → GREEN → REFACTOR cycle
 
 # Check status during development
-moai-workflow-worktree status
+moai-worktree status
 git status
 git log --oneline -5
 
@@ -851,13 +851,13 @@ git commit -m "Auth: Implement user login endpoint"
 
 ```bash
 # Get main branch changes
-moai-workflow-worktree sync SPEC-AUTH-001
+moai-worktree sync SPEC-AUTH-001
 
 # Sync with automatic conflict resolution
-moai-workflow-worktree sync SPEC-AUTH-001 --auto-resolve
+moai-worktree sync SPEC-AUTH-001 --auto-resolve
 
 # Sync all worktrees
-moai-workflow-worktree sync --all --auto-resolve
+moai-worktree sync --all --auto-resolve
 ```
 
 **Step 5: Development Completion and Testing (Automation)**
@@ -888,7 +888,7 @@ moai-workflow-worktree sync --all --auto-resolve
 
 ```bash
 # 1. Navigate from worktree to main
-moai-workflow-worktree go SPEC-AUTH-001  # or cd /path/to/main/repo
+moai-worktree go SPEC-AUTH-001  # or cd /path/to/main/repo
 
 # 2. Fetch worktree branch
 git fetch origin feature/SPEC-AUTH-001
@@ -941,11 +941,11 @@ git rebase main  # Use rebase instead
 # - Cleanup complete report
 ```
 
-**Option B: Direct moai-workflow-worktree Commands (Advanced Users)**
+**Option B: Direct moai-worktree Commands (Advanced Users)**
 
 ```bash
 # 1. Final worktree status check
-moai-workflow-worktree status
+moai-worktree status
 # Output example:
 # SPEC-AUTH-001
 #   Branch: feature/SPEC-AUTH-001
@@ -953,40 +953,40 @@ moai-workflow-worktree status
 #   Path:   ~/moai/worktrees/MoAI-ADK/SPEC-AUTH-001
 
 # 2. Worktree cleanup (safe method)
-moai-workflow-worktree clean --merged-only
+moai-worktree clean --merged-only
 # → Auto-remove worktrees for merged branches only
 
 # 3. Or interactive cleanup (optional removal)
-moai-workflow-worktree clean --interactive
+moai-worktree clean --interactive
 # → Select worktrees to remove
 
 # 4. Direct removal of specific worktree (force)
-moai-workflow-worktree remove SPEC-AUTH-001 --force
+moai-worktree remove SPEC-AUTH-001 --force
 
 # 5. Overall worktree status check
-moai-workflow-worktree list
+moai-worktree list
 # or
-moai-workflow-worktree status
+moai-worktree status
 ```
 
 **Practical Worktree Management Command Collection:**
 
 ```bash
 # Daily worktree management
-moai-workflow-worktree list                    # List all worktrees
-moai-workflow-worktree status                  # Detailed status check
-moai-workflow-worktree sync SPEC-AUTH-001      # Sync specific worktree
-moai-workflow-worktree sync --all              # Sync all worktrees
+moai-worktree list                    # List all worktrees
+moai-worktree status                  # Detailed status check
+moai-worktree sync SPEC-AUTH-001      # Sync specific worktree
+moai-worktree sync --all              # Sync all worktrees
 
 # Worktree navigation
-moai-workflow-worktree go SPEC-001             # Open worktree in new shell
+moai-worktree go SPEC-001             # Open worktree in new shell
 
 # Automatic conflict resolution
-moai-workflow-worktree sync SPEC-AUTH-001 --auto-resolve
+moai-worktree sync SPEC-AUTH-001 --auto-resolve
 
 # Settings check
-moai-workflow-worktree config get              # View current settings
-moai-workflow-worktree config root             # Check worktree root path
+moai-worktree config get              # View current settings
+moai-worktree config root             # Check worktree root path
 ```
 
 **Mixed Workflow Recommended Pattern:**
@@ -998,8 +998,8 @@ moai-workflow-worktree config root             # Check worktree root path
 > /moai:3-sync SPEC-XXX
 
 # Steps 6-7: Direct commands (precise control)
-moai-workflow-worktree sync SPEC-XXX --auto-resolve  # Auto conflict resolution
-moai-workflow-worktree clean --merged-only           # Cleanup completed worktrees
+moai-worktree sync SPEC-XXX --auto-resolve  # Auto conflict resolution
+moai-worktree clean --merged-only           # Cleanup completed worktrees
 ```
 
 ---
@@ -1008,39 +1008,39 @@ moai-workflow-worktree clean --merged-only           # Cleanup completed worktre
 
 This section details direct commands that can be used alongside Claude Code automation.
 
-#### **Basic moai-workflow-worktree Commands**
+#### **Basic moai-worktree Commands**
 
 | Command                 | Purpose                    | Usage Example                       | Description                                 |
 | ---------------------- | --------------------------- | ----------------------------------- | -------------------------------------------- |
-| `moai-workflow-worktree new`    | Create new worktree         | `moai-workflow-worktree new SPEC-001`    | Create isolated workspace for SPEC-001       |
-| `moai-workflow-worktree list`   | List worktrees              | `moai-workflow-worktree list`            | Display all active worktrees                  |
-| `moai-workflow-worktree go`     | Go to worktree              | `moai-workflow-worktree go SPEC-001`     | Open worktree in new shell                   |
-| `moai-workflow-worktree remove` | Remove worktree             | `moai-workflow-worktree remove SPEC-001` | Delete specific worktree                     |
-| `moai-workflow-worktree status` | Check status                | `moai-workflow-worktree status`          | Display all worktree statuses                |
+| `moai-worktree new`    | Create new worktree         | `moai-worktree new SPEC-001`    | Create isolated workspace for SPEC-001       |
+| `moai-worktree list`   | List worktrees              | `moai-worktree list`            | Display all active worktrees                  |
+| `moai-worktree go`     | Go to worktree              | `moai-worktree go SPEC-001`     | Open worktree in new shell                   |
+| `moai-worktree remove` | Remove worktree             | `moai-worktree remove SPEC-001` | Delete specific worktree                     |
+| `moai-worktree status` | Check status                | `moai-worktree status`          | Display all worktree statuses                |
 
 #### **Synchronization Commands**
 
 | Command                              | Purpose                 | Usage Example                                    | Description                          |
 | ----------------------------------- | ----------------------- | ----------------------------------------------- | ------------------------------------- |
-| `moai-workflow-worktree sync`                | Sync specific worktree | `moai-workflow-worktree sync SPEC-001`                | Sync changes with main branch          |
-| `moai-workflow-worktree sync --all`          | Sync all worktrees      | `moai-workflow-worktree sync --all`                   | Sync all worktrees at once            |
-| `moai-workflow-worktree sync --auto-resolve` | Auto conflict resolution| `moai-workflow-worktree sync SPEC-001 --auto-resolve` | Auto-attempt conflict resolution       |
-| `moai-workflow-worktree sync --rebase`       | Rebase-based sync       | `moai-workflow-worktree sync SPEC-001 --rebase`       | Use rebase instead of merge           |
+| `moai-worktree sync`                | Sync specific worktree | `moai-worktree sync SPEC-001`                | Sync changes with main branch          |
+| `moai-worktree sync --all`          | Sync all worktrees      | `moai-worktree sync --all`                   | Sync all worktrees at once            |
+| `moai-worktree sync --auto-resolve` | Auto conflict resolution| `moai-worktree sync SPEC-001 --auto-resolve` | Auto-attempt conflict resolution       |
+| `moai-worktree sync --rebase`       | Rebase-based sync       | `moai-worktree sync SPEC-001 --rebase`       | Use rebase instead of merge           |
 
 #### **Cleanup Commands**
 
 | Command                              | Purpose                   | Usage Example                           | Description                        |
 | ----------------------------------- | ------------------------- | ------------------------------------- | ---------------------------------- |
-| `moai-workflow-worktree clean`               | Clean worktrees           | `moai-workflow-worktree clean`               | Clean all worktrees               |
-| `moai-workflow-worktree clean --merged-only` | Clean merged worktrees    | `moai-workflow-worktree clean --merged-only` | Remove worktrees for merged branches |
-| `moai-workflow-worktree clean --interactive` | Interactive cleanup       | `moai-workflow-worktree clean --interactive` | Select worktrees to remove        |
+| `moai-worktree clean`               | Clean worktrees           | `moai-worktree clean`               | Clean all worktrees               |
+| `moai-worktree clean --merged-only` | Clean merged worktrees    | `moai-worktree clean --merged-only` | Remove worktrees for merged branches |
+| `moai-worktree clean --interactive` | Interactive cleanup       | `moai-worktree clean --interactive` | Select worktrees to remove        |
 
 #### **Settings Commands**
 
 | Command                      | Purpose           | Usage Example               | Description                             |
 | --------------------------- | ----------------- | --------------------------- | -------------------------------------- |
-| `moai-workflow-worktree config`      | View settings     | `moai-workflow-worktree config`      | Display current worktree settings     |
-| `moai-workflow-worktree config root` | Check root path   | `moai-workflow-worktree config root` | Check worktree root directory path    |
+| `moai-worktree config`      | View settings     | `moai-worktree config`      | Display current worktree settings     |
+| `moai-worktree config root` | Check root path   | `moai-worktree config root` | Check worktree root directory path    |
 
 #### **Advanced Usage Patterns**
 
@@ -1048,25 +1048,25 @@ This section details direct commands that can be used alongside Claude Code auto
 
 ```bash
 # Create multiple SPECs simultaneously
-moai-workflow-worktree new SPEC-AUTH-001    # User authentication
-moai-workflow-worktree new SPEC-PAY-002     # Payment system
-moai-workflow-worktree new SPEC-UI-003      # UI improvement
+moai-worktree new SPEC-AUTH-001    # User authentication
+moai-worktree new SPEC-PAY-002     # Payment system
+moai-worktree new SPEC-UI-003      # UI improvement
 
 # Check each worktree status
-moai-workflow-worktree status
+moai-worktree status
 
 # Sync all worktrees
-moai-workflow-worktree sync --all --auto-resolve
+moai-worktree sync --all --auto-resolve
 ```
 
 **2. Auto Conflict Resolution Workflow**
 
 ```bash
 # Step 1: Attempt auto sync
-moai-workflow-worktree sync SPEC-001 --auto-resolve
+moai-worktree sync SPEC-001 --auto-resolve
 
 # Step 2: Manual intervention if auto resolution fails
-moai-workflow-worktree go SPEC-001
+moai-worktree go SPEC-001
 git status  # Check conflict files
 
 # Step 3: Select conflict resolution strategy
@@ -1083,14 +1083,14 @@ git commit -m "Resolve: Auto-resolved conflicts in SPEC-001"
 
 ```bash
 # Recommended to run daily
-moai-workflow-worktree status                      # Check current status
-moai-workflow-worktree sync --all                  # Sync all worktrees
+moai-worktree status                      # Check current status
+moai-worktree sync --all                  # Sync all worktrees
 
 # Recommended to run weekly
-moai-workflow-worktree clean --merged-only         # Clean completed worktrees
+moai-worktree clean --merged-only         # Clean completed worktrees
 
 # Recommended to run monthly
-moai-workflow-worktree clean --interactive         # Interactive cleanup of unnecessary worktrees
+moai-worktree clean --interactive         # Interactive cleanup of unnecessary worktrees
 ```
 
 #### **Claude Code and Command Combination Guide**
@@ -1104,9 +1104,9 @@ moai-workflow-worktree clean --interactive         # Interactive cleanup of unne
 /moai:3-sync SPEC-001
 
 # Steps 4-5: Direct commands for basic management
-moai-workflow-worktree status                      # Check status
-moai-workflow-worktree sync SPEC-001               # Sync
-moai-workflow-worktree clean --merged-only         # Cleanup
+moai-worktree status                      # Check status
+moai-worktree sync SPEC-001               # Sync
+moai-worktree clean --merged-only         # Cleanup
 ```
 
 **Intermediate Users:**
@@ -1117,27 +1117,27 @@ moai-workflow-worktree clean --merged-only         # Cleanup
 > /moai:2-run SPEC-PAY-001
 
 # Step 3: Direct commands for precise control
-moai-workflow-worktree go SPEC-PAY-001
+moai-worktree go SPEC-PAY-001
 # Direct development and testing
 git add .
 git commit -m "Pay: Implement core payment processing"
 
 # Steps 4-5: Mixed approach
 > /moai:3-sync SPEC-PAY-001                 # Automation for quality verification
-moai-workflow-worktree sync SPEC-PAY-001 --auto-resolve  # Direct sync
+moai-worktree sync SPEC-PAY-001 --auto-resolve  # Direct sync
 ```
 
 **Advanced Users:**
 
 ```bash
 # Control entire process with direct commands
-moai-workflow-worktree new SPEC-ADV-001
-moai-workflow-worktree go SPEC-ADV-001
+moai-worktree new SPEC-ADV-001
+moai-worktree go SPEC-ADV-001
 # Complete manual development process
 git add .
 git commit -m "Adv: Complex feature implementation"
-moai-workflow-worktree sync SPEC-ADV-001 --rebase
-moai-workflow-worktree clean --interactive
+moai-worktree sync SPEC-ADV-001 --rebase
+moai-worktree clean --interactive
 ```
 
 **Productivity Tips:**
@@ -1145,12 +1145,12 @@ moai-workflow-worktree clean --interactive
 1. **Alias Setup** (add to ~/.zshrc or ~/.bashrc):
 
 ```bash
-alias wt-new='moai-workflow-worktree new'
-alias wt-go='moai-workflow-worktree go'
-alias wt-list='moai-workflow-worktree list'
-alias wt-status='moai-workflow-worktree status'
-alias wt-sync='moai-workflow-worktree sync'
-alias wt-clean='moai-workflow-worktree clean'
+alias wt-new='moai-worktree new'
+alias wt-go='moai-worktree go'
+alias wt-list='moai-worktree list'
+alias wt-status='moai-worktree status'
+alias wt-sync='moai-worktree sync'
+alias wt-clean='moai-worktree clean'
 ```
 
 2. **Quick Workflow Functions**:
@@ -1158,8 +1158,8 @@ alias wt-clean='moai-workflow-worktree clean'
 ```bash
 # Quick worktree creation and navigation
 wt-dev() {
-    moai-workflow-worktree new "SPEC-$1"
-    moai-workflow-worktree go "SPEC-$1"
+    moai-worktree new "SPEC-$1"
+    moai-worktree go "SPEC-$1"
 }
 
 # Usage: wt-dev AUTH-001
@@ -1192,9 +1192,9 @@ MoAI-ADK is designed to leverage the benefits of both **Claude Code automation**
 > /moai:2-run SPEC-001
 
 # Step 2: Basic management with direct commands
-moai-workflow-worktree status
-moai-workflow-worktree sync SPEC-001
-moai-workflow-worktree clean --merged-only
+moai-worktree status
+moai-worktree sync SPEC-001
+moai-worktree clean --merged-only
 
 # Step 3: Complete with automation
 > /moai:3-sync SPEC-001
@@ -1207,8 +1207,8 @@ moai-workflow-worktree clean --merged-only
 > /moai:1-plan "complex feature"
 
 # Step 2: Detailed implementation with direct control
-moai-workflow-worktree new SPEC-001
-moai-workflow-worktree go SPEC-001
+moai-worktree new SPEC-001
+moai-worktree go SPEC-001
 # Detailed development work
 
 # Step 3: Quality assurance with automation
@@ -1219,8 +1219,8 @@ moai-workflow-worktree go SPEC-001
 
 ```bash
 # Control entire process with direct commands but use automation when needed
-moai-workflow-worktree new SPEC-001
-moai-workflow-worktree go SPEC-001
+moai-worktree new SPEC-001
+moai-worktree go SPEC-001
 # Complete manual development
 # Use > /moai:3-sync for quality verification when needed
 ```
@@ -1231,14 +1231,14 @@ moai-workflow-worktree go SPEC-001
 
 ```bash
 # Auto resolution trying all strategies
-moai-workflow-worktree sync SPEC-AUTH-001 --auto-resolve
+moai-worktree sync SPEC-AUTH-001 --auto-resolve
 ```
 
 ##### 2. Manual Resolution
 
 ```bash
 # Navigate to worktree
-moai-workflow-worktree go SPEC-AUTH-001
+moai-worktree go SPEC-AUTH-001
 
 # Check conflict status
 git status
@@ -1294,19 +1294,19 @@ git commit
 
 ```bash
 # Work on first SPEC
-moai-workflow-worktree go SPEC-AUTH-001
+moai-worktree go SPEC-AUTH-001
 > /moai:2-run SPEC-AUTH-001
 
 # Work on second SPEC in different terminal
-moai-workflow-worktree go SPEC-PAY-002
+moai-worktree go SPEC-PAY-002
 > /moai:2-run SPEC-PAY-002
 
 # Work on third SPEC
-moai-workflow-worktree go SPEC-UI-003
+moai-worktree go SPEC-UI-003
 > /moai:2-run SPEC-UI-003
 
 # Regularly sync all worktrees
-moai-workflow-worktree sync --all --auto-resolve
+moai-worktree sync --all --auto-resolve
 ```
 
 ##### Work Without Context Switching
@@ -1320,14 +1320,14 @@ moai-workflow-worktree sync --all --auto-resolve
 
 ```bash
 # Morning: Start new SPEC
-moai-workflow-worktree new SPEC-005 "User Profile Enhancement"
-moai-workflow-worktree go SPEC-005
+moai-worktree new SPEC-005 "User Profile Enhancement"
+moai-worktree go SPEC-005
 
 # Implement SPEC-005 while other SPECs complete
 > /moai:2-run SPEC-005
 
 # Afternoon: Check all SPEC statuses
-moai-workflow-worktree status
+moai-worktree status
 # Output:
 # ✓ SPEC-001: Complete (ready for merge)
 # ✓ SPEC-002: Testing in progress
@@ -1335,7 +1335,7 @@ moai-workflow-worktree status
 # 🔄 SPEC-005: Active development
 
 # Evening: Clean completed SPECs
-moai-workflow-worktree clean --merged-only
+moai-worktree clean --merged-only
 ```
 
 #### Technical Benefits
@@ -1350,12 +1350,12 @@ moai-workflow-worktree clean --merged-only
 
 #### Integration with MoAI-ADK Workflow
 
-moai-workflow-worktree seamlessly integrates with the MoAI-ADK Plan-Run-Sync cycle:
+moai-worktree seamlessly integrates with the MoAI-ADK Plan-Run-Sync cycle:
 
-1. **Plan Phase**: `moai-workflow-worktree new SPEC-XXX` creates dedicated workspace
+1. **Plan Phase**: `moai-worktree new SPEC-XXX` creates dedicated workspace
 2. **Run Phase**: Work in isolation without affecting other SPECs
-3. **Sync Phase**: `moai-workflow-worktree sync SPEC-XXX` ensures clean integration
-4. **Cleanup Phase**: `moai-workflow-worktree clean` removes completed worktrees
+3. **Sync Phase**: `moai-worktree sync SPEC-XXX` ensures clean integration
+4. **Cleanup Phase**: `moai-worktree clean` removes completed worktrees
 
 This integration provides a complete, systematic approach to managing multiple SPECs simultaneously while maintaining the SPEC-First TDD methodology principles.
 
@@ -1365,32 +1365,32 @@ This integration provides a complete, systematic approach to managing multiple S
 
 ```bash
 # List available commands
-moai-workflow-worktree --help
+moai-worktree --help
 
 # Create new worktree for SPEC development
-moai-workflow-worktree new SPEC-001
+moai-worktree new SPEC-001
 
 # List all active worktrees
-moai-workflow-worktree list
+moai-worktree list
 
 # Go to worktree (opens new shell)
-moai-workflow-worktree go SPEC-001
+moai-worktree go SPEC-001
 
 # Sync worktree with base branch
-moai-workflow-worktree sync SPEC-001
+moai-worktree sync SPEC-001
 
 # Remove specific worktree
-moai-workflow-worktree remove SPEC-001
+moai-worktree remove SPEC-001
 
 # Clean merged branch worktrees
-moai-workflow-worktree clean
+moai-worktree clean
 
 # Show worktree status and configuration
-moai-workflow-worktree status
+moai-worktree status
 
 # Configure worktree settings
-moai-workflow-worktree config get
-moai-workflow-worktree config set <key> <value>
+moai-worktree config get
+moai-worktree config set <key> <value>
 ```
 
 ---
@@ -1981,7 +1981,7 @@ Workflow skills for automating and optimizing development processes.
   - Nextra documentation system, technical writing, API documentation
   - Automated documentation generation and knowledge base management
 
-- **moai-workflow-worktree**
+- **moai-worktree**
   - Git worktree management for parallel SPEC development
   - Isolated workspaces, automatic registration, MoAI-ADK integration
 

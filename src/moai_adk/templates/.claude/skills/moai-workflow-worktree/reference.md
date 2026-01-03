@@ -1,6 +1,6 @@
 # MoAI Worktree Reference
 
-Purpose: External resources, documentation, and additional learning materials for moai-workflow-worktree skill.
+Purpose: External resources, documentation, and additional learning materials for moai-worktree skill.
 
 Version: 1.0.0
 Last Updated: 2025-11-29
@@ -29,14 +29,14 @@ Last Updated: 2025-11-29
  - Extension management across worktrees
 
 - Click Framework: [https://click.palletsprojects.com/](https://click.palletsprojects.com/)
- - Command-line interface framework used by moai-workflow-worktree
+ - Command-line interface framework used by moai-worktree
  - Advanced CLI patterns and argument parsing
  - Custom command development
 
 ### Python Development Resources
 
 - Rich Library: [https://rich.readthedocs.io/](https://rich.readthedocs.io/)
- - Terminal output formatting used by moai-workflow-worktree
+ - Terminal output formatting used by moai-worktree
  - Tables, progress bars, and syntax highlighting
  - Advanced terminal UI patterns
 
@@ -128,17 +128,17 @@ Last Updated: 2025-11-29
 
 1. Shallow Worktrees: For fast prototyping and testing
  ```bash
- moai-workflow-worktree new SPEC-PROTO-001 "Prototype" --shallow --depth 1
+ moai-worktree new SPEC-PROTO-001 "Prototype" --shallow --depth 1
  ```
 
 2. Selective Synchronization: Sync only essential files
  ```bash
- moai-workflow-worktree sync SPEC-001 --include "src/" --exclude "node_modules/"
+ moai-worktree sync SPEC-001 --include "src/" --exclude "node_modules/"
  ```
 
 3. Background Operations: Non-blocking worktree operations
  ```bash
- moai-workflow-worktree sync --all --background
+ moai-worktree sync --all --background
  ```
 
 ---
@@ -198,7 +198,7 @@ jobs:
  with:
  fetch-depth: 0
 
- - name: Setup moai-workflow-worktree
+ - name: Setup moai-worktree
  run: |
  pip install moai-adk
  echo "Setting up worktree environment..."
@@ -206,13 +206,13 @@ jobs:
  - name: Test Worktree Operations
  run: |
  # Test worktree creation
- moai-workflow-worktree new test-spec "Test Worktree"
+ moai-worktree new test-spec "Test Worktree"
 
  # Test worktree synchronization
- moai-workflow-worktree sync test-spec
+ moai-worktree sync test-spec
 
  # Test worktree cleanup
- moai-workflow-worktree remove test-spec
+ moai-worktree remove test-spec
 ```
 
 #### Jenkins Pipeline
@@ -227,7 +227,7 @@ pipeline {
  steps {
  sh '''
  pip install moai-adk
- moai-workflow-worktree config set worktree_root $WORKSPACE/worktrees
+ moai-worktree config set worktree_root $WORKSPACE/worktrees
  '''
  }
  }
@@ -237,8 +237,8 @@ pipeline {
  stage('Auth Worktree') {
  steps {
  sh '''
- moai-workflow-worktree new SPEC-AUTH-001 "Authentication Worktree"
- cd $(moai-workflow-worktree go SPEC-AUTH-001)
+ moai-worktree new SPEC-AUTH-001 "Authentication Worktree"
+ cd $(moai-worktree go SPEC-AUTH-001)
  npm test
  '''
  }
@@ -247,8 +247,8 @@ pipeline {
  stage('Payment Worktree') {
  steps {
  sh '''
- moai-workflow-worktree new SPEC-PAY-001 "Payment Worktree"
- cd $(moai-workflow-worktree go SPEC-PAY-001)
+ moai-worktree new SPEC-PAY-001 "Payment Worktree"
+ cd $(moai-worktree go SPEC-PAY-001)
  npm test
  '''
  }
@@ -259,7 +259,7 @@ pipeline {
  stage('Cleanup') {
  steps {
  sh '''
- moai-workflow-worktree clean --force
+ moai-worktree clean --force
  rm -rf $WORKSPACE/worktrees
  '''
  }
@@ -354,4 +354,4 @@ mkdocs build
 
 Version: 1.0.0
 Last Updated: 2025-11-29
-Reference: External resources and additional learning materials for moai-workflow-worktree
+Reference: External resources and additional learning materials for moai-worktree

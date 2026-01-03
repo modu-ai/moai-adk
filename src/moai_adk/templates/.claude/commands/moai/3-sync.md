@@ -329,7 +329,7 @@ Gather context for synchronization planning:
    - Execute: `git rev-parse --git-dir` to locate git directory
    - Analyze: Check if git directory path contains `worktrees/` component
    - If in worktree: Extract SPEC ID from current path (format: SPEC-{DOMAIN}-{NUMBER})
-   - Alternative: Check worktree registry at `~/worktrees/{PROJECT_NAME}/.moai-workflow-worktree-registry.json`
+   - Alternative: Check worktree registry at `~/worktrees/{PROJECT_NAME}/.moai-worktree-registry.json`
    - Store: `$WORKTREE_MODE=true` and `$CURRENT_SPEC_ID` for later use
    WHY: Worktree context enables specialized cleanup and workflow options
    IMPACT: Missing worktree detection prevents proper exit handling but does not block sync
@@ -1164,7 +1164,7 @@ After sync completion, provide worktree-specific options:
    - IF "Return to Main Directory" → Execute: `cd ~/MoAI/MoAI-ADK`
    - IF "Continue in Worktree" → Stay in current directory
    - IF "Switch to Another Worktree" → List available worktrees and facilitate switch
-   - IF "Remove This Worktree" → Execute: `moai-workflow-worktree remove {CURRENT_SPEC_ID}` then return to main
+   - IF "Remove This Worktree" → Execute: `moai-worktree remove {CURRENT_SPEC_ID}` then return to main
 
 If $BRANCH_MODE is true:
 

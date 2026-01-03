@@ -12,7 +12,7 @@ Patch release consolidating and optimizing the skill library, reducing from 50 t
   - Delete moai-mcp-figma (virtual implementation with non-existent module)
   - Delete moai-mcp-notion (virtual implementation with non-existent module)
   - Merge moai-security-auth0 into moai-platform-auth0 (consolidate 36 security modules)
-  - Rename moai-worktree to moai-workflow-worktree (consistent naming convention)
+  - Rename moai-worktree to moai-worktree (consistent naming convention)
   - Update skill count from 50 to 47 in all README files (English, Korean, Japanese, Chinese)
   - Reduce skill file sizes for better maintainability:
     - Ruby: 688 → 424 lines (-38%)
@@ -44,8 +44,8 @@ Patch release consolidating and optimizing the skill library, reducing from 50 t
   - Migration: Update skill references to `moai-platform-auth0`
   - Reason: Consolidate security and platform features into single comprehensive skill
 
-- **moai-worktree** renamed to **moai-workflow-worktree**
-  - Migration: Update skill references to `moai-workflow-worktree`
+- **moai-worktree** renamed to **moai-worktree**
+  - Migration: Update skill references to `moai-worktree`
   - Reason: Consistent naming convention (all workflow skills use `moai-workflow-*` prefix)
 
 ## Installation & Update
@@ -89,7 +89,7 @@ uv tool update moai-adk
   - moai-mcp-figma 삭제 (존재하지 않는 모듈의 가상 구현)
   - moai-mcp-notion 삭제 (존재하지 않는 모듈의 가상 구현)
   - moai-security-auth0를 moai-platform-auth0로 병합 (36개 보안 모듈 통합)
-  - moai-worktree를 moai-workflow-worktree로 이름 변경 (일관된 명명 규칙)
+  - moai-worktree를 moai-worktree로 이름 변경 (일관된 명명 규칙)
   - 모든 README 파일에서 스킬 수를 50개에서 47개로 업데이트 (영어, 한국어, 일본어, 중국어)
   - 유지보수성 향상을 위한 스킬 파일 크기 축소:
     - Ruby: 688 → 424줄 (-38%)
@@ -121,8 +121,8 @@ uv tool update moai-adk
   - 마이그레이션: 스킬 참조를 `moai-platform-auth0`로 업데이트
   - 이유: 보안과 플랫폼 기능을 하나의 포괄적 스킬로 통합
 
-- **moai-worktree**가 **moai-workflow-worktree**로 이름 변경
-  - 마이그레이션: 스킬 참조를 `moai-workflow-worktree`로 업데이트
+- **moai-worktree**가 **moai-worktree**로 이름 변경
+  - 마이그레이션: 스킬 참조를 `moai-worktree`로 업데이트
   - 이유: 일관된 명명 규칙 (모든 워크플로우 스킬은 `moai-workflow-*` 접두사 사용)
 
 ## 설치 및 업데이트

@@ -4,7 +4,7 @@ description: Specialized agent for Git operations including branch management, P
 tools: Bash, Read, Write, Edit, Glob, Grep, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-workflow-project, moai-workflow-testing, moai-workflow-worktree
+skills: moai-foundation-claude, moai-workflow-project, moai-workflow-testing, moai-worktree
 ---
 
 # Git Manager Agent - Git Operations Specialist

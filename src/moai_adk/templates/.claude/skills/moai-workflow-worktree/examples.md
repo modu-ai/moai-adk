@@ -1,6 +1,6 @@
 # MoAI Worktree Examples
 
-Purpose: Real-world usage examples and patterns for moai-workflow-worktree skill integration with MoAI-ADK workflow.
+Purpose: Real-world usage examples and patterns for moai-worktree skill integration with MoAI-ADK workflow.
 
 Version: 1.0.0
 Last Updated: 2025-11-29
@@ -22,20 +22,20 @@ Scenario: Creating a new SPEC with automatic worktree setup
 # Worktree created: ~/workflows/MoAI-ADK/SPEC-AUTH-001
 #
 # Next steps:
-# 1. Switch to worktree: moai-workflow-worktree switch SPEC-AUTH-001
-# 2. Or use shell eval: eval $(moai-workflow-worktree go SPEC-AUTH-001)
+# 1. Switch to worktree: moai-worktree switch SPEC-AUTH-001
+# 2. Or use shell eval: eval $(moai-worktree go SPEC-AUTH-001)
 # 3. Start development: /moai:2-run SPEC-AUTH-001
 
 # Development Phase - Implement in isolated environment
-eval $(moai-workflow-worktree go SPEC-AUTH-001)
+eval $(moai-worktree go SPEC-AUTH-001)
 /moai:2-run SPEC-AUTH-001
 
 # Sync Phase - Synchronize and integrate
-moai-workflow-worktree sync SPEC-AUTH-001
+moai-worktree sync SPEC-AUTH-001
 /moai:3-sync SPEC-AUTH-001
 
 # Cleanup Phase - Remove completed worktree
-moai-workflow-worktree remove SPEC-AUTH-001
+moai-worktree remove SPEC-AUTH-001
 ```
 
 ### Example 2: Parallel SPEC Development
@@ -44,28 +44,28 @@ Scenario: Working on multiple SPECs simultaneously
 
 ```bash
 # Create multiple worktrees for parallel development
-moai-workflow-worktree new SPEC-AUTH-001 "User Authentication"
-moai-workflow-worktree new SPEC-PAY-001 "Payment Processing"
-moai-workflow-worktree new SPEC-DASH-001 "Dashboard Analytics"
+moai-worktree new SPEC-AUTH-001 "User Authentication"
+moai-worktree new SPEC-PAY-001 "Payment Processing"
+moai-worktree new SPEC-DASH-001 "Dashboard Analytics"
 
 # Switch between worktrees
-moai-workflow-worktree switch SPEC-AUTH-001
+moai-worktree switch SPEC-AUTH-001
 # Work on authentication...
 
-moai-workflow-worktree switch SPEC-PAY-001
+moai-worktree switch SPEC-PAY-001
 # Work on payment system...
 
-moai-workflow-worktree switch SPEC-DASH-001
+moai-worktree switch SPEC-DASH-001
 # Work on dashboard...
 
 # Check status of all worktrees
-moai-workflow-worktree status --all
+moai-worktree status --all
 
 # Sync all worktrees
-moai-workflow-worktree sync --all
+moai-worktree sync --all
 
 # Clean up completed worktrees
-moai-workflow-worktree clean --merged-only
+moai-worktree clean --merged-only
 ```
 
 ### Example 3: Worktree in Development Commands
@@ -83,9 +83,9 @@ Scenario: Using worktree-aware TDD implementation
 # - Updates worktree metadata
 
 # Manual worktree management during development
-moai-workflow-worktree status SPEC-AUTH-001
-moai-workflow-worktree sync SPEC-AUTH-001 --include "src/"
-moai-workflow-worktree config get worktree_root
+moai-worktree status SPEC-AUTH-001
+moai-worktree sync SPEC-AUTH-001 --include "src/"
+moai-worktree config get worktree_root
 ```
 
 ---
@@ -98,7 +98,7 @@ Agent Usage: Project initialization with worktree support
 
 ```python
 # In manager-project agent context
-Skill("moai-workflow-worktree") # Load worktree patterns
+Skill("moai-worktree") # Load worktree patterns
 
 # Setup project with worktree support
 project_config = {
@@ -130,7 +130,7 @@ Agent Usage: Git operations with worktree awareness
 
 ```python
 # In manager-git agent context
-Skill("moai-workflow-worktree") # Load worktree patterns
+Skill("moai-worktree") # Load worktree patterns
 
 def create_feature_branch_with_worktree(spec_id: str, description: str):
  """Create feature branch and associated worktree."""
@@ -184,12 +184,12 @@ echo " Phase 1: Creating SPEC and worktree..."
 /moai:1-plan "$SPEC_DESCRIPTION" --worktree --spec-id "$SPEC_ID"
 
 # Check if worktree was created successfully
-if moai-workflow-worktree list --format json | jq -r ".worktrees[\"$SPEC_ID\"]" > /dev/null; then
+if moai-worktree list --format json | jq -r ".worktrees[\"$SPEC_ID\"]" > /dev/null; then
  echo " Worktree $SPEC_ID created successfully"
 
  # Phase 2: Develop
  echo " Phase 2: Switching to worktree for development..."
- cd $(moai-workflow-worktree go "$SPEC_ID")
+ cd $(moai-worktree go "$SPEC_ID")
 
  # Development loop
  while true; do
@@ -205,7 +205,7 @@ if moai-workflow-worktree list --format json | jq -r ".worktrees[\"$SPEC_ID\"]" 
 
  # Phase 3: Sync
  echo " Phase 3: Synchronizing worktree..."
- moai-workflow-worktree sync "$SPEC_ID"
+ moai-worktree sync "$SPEC_ID"
  cd - # Return to main repository
  /moai:3-sync "$SPEC_ID"
 
@@ -214,7 +214,7 @@ if moai-workflow-worktree list --format json | jq -r ".worktrees[\"$SPEC_ID\"]" 
  echo "Remove worktree $SPEC_ID? (y/n)"
  read -r cleanup_response
  if [[ "$cleanup_response" =~ ^[Yy]$ ]]; then
- moai-workflow-worktree remove "$SPEC_ID"
+ moai-worktree remove "$SPEC_ID"
  echo " Worktree $SPEC_ID removed"
  fi
 
@@ -256,11 +256,11 @@ cat > "$WORKTREE_ROOT/.team-config.json" << EOF
 EOF
 
 # Initialize shared registry
-moai-workflow-worktree config set worktree_root "$WORKTREE_ROOT"
-moai-workflow-worktree config set registry_type team
+moai-worktree config set worktree_root "$WORKTREE_ROOT"
+moai-worktree config set registry_type team
 
 echo " Team worktree configuration completed"
-echo "Team members can now join with: moai-workflow-worktree join --team $TEAM_NAME"
+echo "Team members can now join with: moai-worktree join --team $TEAM_NAME"
 ```
 
 ---
@@ -340,7 +340,7 @@ DEBUG=true""",
  }
 
  # Save template
- template_path = Path.home() / ".moai-workflow-worktree/templates" / "fullstack.json"
+ template_path = Path.home() / ".moai-worktree/templates" / "fullstack.json"
  template_path.parent.mkdir(parents=True, exist_ok=True)
 
  import json
@@ -353,7 +353,7 @@ DEBUG=true""",
 create_fullstack_template()
 
 # Create worktree with template
-# moai-workflow-worktree new SPEC-FULL-001 "Fullstack Application" --template fullstack
+# moai-worktree new SPEC-FULL-001 "Fullstack Application" --template fullstack
 ```
 
 ### Example 9: Worktree Automation Script
@@ -386,7 +386,7 @@ class WorktreeAutomation:
  print(f" Creating worktree: {spec_id}")
 
  result = subprocess.run([
- "moai-workflow-worktree", "new", spec_id, description,
+ "moai-worktree", "new", spec_id, description,
  "--template", template
  ], capture_output=True, text=True, check=True)
 
@@ -419,7 +419,7 @@ class WorktreeAutomation:
  if spec_ids is None:
  # Get all active worktrees
  result = subprocess.run([
- "moai-workflow-worktree", "list", "--status", "active", "--format", "json"
+ "moai-worktree", "list", "--status", "active", "--format", "json"
  ], capture_output=True, text=True, check=True)
 
  worktrees = json.loads(result.stdout)
@@ -432,7 +432,7 @@ class WorktreeAutomation:
  print(f" Syncing worktree: {spec_id}")
 
  result = subprocess.run([
- "moai-workflow-worktree", "sync", spec_id
+ "moai-worktree", "sync", spec_id
  ], capture_output=True, text=True, check=True)
 
  sync_info = {
@@ -463,7 +463,7 @@ class WorktreeAutomation:
 
  # Get worktree status
  status_result = subprocess.run([
- "moai-workflow-worktree", "status", "--all", "--format", "json"
+ "moai-worktree", "status", "--all", "--format", "json"
  ], capture_output=True, text=True, check=True)
 
  worktrees = json.loads(status_result.stdout)
@@ -505,7 +505,7 @@ class WorktreeAutomation:
  recommendations.append({
  'type': 'cleanup',
  'message': f"Found {len(stale_worktrees)} stale worktrees: {', '.join(stale_worktrees)}",
- 'action': 'moai-workflow-worktree clean --stale --days 30'
+ 'action': 'moai-worktree clean --stale --days 30'
  })
 
  # Check for large worktrees
@@ -518,7 +518,7 @@ class WorktreeAutomation:
  recommendations.append({
  'type': 'optimization',
  'message': f"Found {len(large_worktrees)} large worktrees: {', '.join(large_worktrees)}",
- 'action': 'moai-workflow-worktree optimize --analyze'
+ 'action': 'moai-worktree optimize --analyze'
  })
 
  return recommendations
@@ -565,29 +565,29 @@ git status
 git remote -v
 
 # Try with verbose output
-moai-workflow-worktree new SPEC-DEBUG-001 "Debug Test" --verbose
+moai-worktree new SPEC-DEBUG-001 "Debug Test" --verbose
 
 # Problem 2: Worktree sync conflicts
 echo " Resolving sync conflicts..."
 
 # Check sync status
-moai-workflow-worktree status SPEC-CONFLICT-001
+moai-worktree status SPEC-CONFLICT-001
 
 # Interactive conflict resolution
-moai-workflow-worktree sync SPEC-CONFLICT-001 --interactive
+moai-worktree sync SPEC-CONFLICT-001 --interactive
 
 # Force sync (if appropriate)
-moai-workflow-worktree sync SPEC-CONFLICT-001 --force
+moai-worktree sync SPEC-CONFLICT-001 --force
 
 # Problem 3: Worktree registry corruption
 echo " Repairing worktree registry..."
 
 # Backup current registry
-cp ~/.workflows/PROJECT/.moai-workflow-worktree-registry.json ~/.workflows/PROJECT/.moai-workflow-worktree-registry.json.backup
+cp ~/.workflows/PROJECT/.moai-worktree-registry.json ~/.workflows/PROJECT/.moai-worktree-registry.json.backup
 
 # Rebuild registry from worktree directories
-moai-workflow-worktree config set registry_rebuild true
-moai-workflow-worktree list --rebuild-registry
+moai-worktree config set registry_rebuild true
+moai-worktree list --rebuild-registry
 
 # Problem 4: Permission issues
 echo " Fixing permission issues..."
@@ -603,4 +603,4 @@ chmod -R 755 ~/workflows/PROJECT/
 
 Version: 1.0.0
 Last Updated: 2025-11-29
-Examples: Real-world usage patterns for moai-workflow-worktree integration
+Examples: Real-world usage patterns for moai-worktree integration

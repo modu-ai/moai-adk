@@ -4,7 +4,7 @@ description: Use PROACTIVELY when: When initial project setup and .moai/ directo
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-workflow-project, moai-workflow-templates, moai-workflow-worktree
+skills: moai-foundation-claude, moai-workflow-project, moai-workflow-templates, moai-worktree
 ---
 
 # Project Manager - Project Manager Agent

@@ -1,6 +1,6 @@
 # Integration Patterns Module
 
-Purpose: Comprehensive integration patterns for moai-workflow-worktree with MoAI-ADK workflow, development tools, and external systems.
+Purpose: Comprehensive integration patterns for moai-worktree with MoAI-ADK workflow, development tools, and external systems.
 
 Version: 1.0.0
 Last Updated: 2025-11-29
@@ -21,11 +21,11 @@ Core Integration Pattern:
 /moai:1-plan "User Authentication" → auto-creates SPEC-001 worktree
 
 # Development Phase - Isolated development
-cd $(moai-workflow-worktree go SPEC-001)
+cd $(moai-worktree go SPEC-001)
 /moai:2-run SPEC-001
 
 # Sync Phase - Clean integration
-moai-workflow-worktree sync SPEC-001
+moai-worktree sync SPEC-001
 /moai:3-sync SPEC-001
 ```
 
@@ -47,7 +47,7 @@ def create_worktree_after_spec(spec_id: str, spec_title: str) -> None:
  branch_name = f"feature/SPEC-{spec_id}-{spec_title.lower().replace(' ', '-')}"
 
  result = subprocess.run([
- "moai-workflow-worktree", "new", spec_id, spec_title,
+ "moai-worktree", "new", spec_id, spec_title,
  "--branch", branch_name,
  "--template", "spec-development"
  ], capture_output=True, text=True)
@@ -58,8 +58,8 @@ def create_worktree_after_spec(spec_id: str, spec_title: str) -> None:
  print(f" Path: {extract_worktree_path(result.stdout)}")
 
  print("\nNext steps:")
- print(f"1. Switch to worktree: moai-workflow-worktree switch {spec_id}")
- print(f"2. Or use shell eval: eval $(moai-workflow-worktree go {spec_id})")
+ print(f"1. Switch to worktree: moai-worktree switch {spec_id}")
+ print(f"2. Or use shell eval: eval $(moai-worktree go {spec_id})")
  print(f"3. Start development: /moai:2-run {spec_id}")
  else:
  print(f" Worktree creation failed: {result.stderr}")
@@ -81,21 +81,21 @@ def display_worktree_integration_info(spec_id: str, spec_title: str) -> None:
  Path: ~/workflows/{os.path.basename(os.getcwd())}/SPEC-{spec_id}
 
  Quick Start Options:
- 1. Switch to worktree: moai-workflow-worktree switch SPEC-{spec_id}
- 2. Shell integration: eval $(moai-workflow-worktree go SPEC-{spec_id})
- 3. Start development: cd $(moai-workflow-worktree go SPEC-{spec_id}) && /moai:2-run SPEC-{spec_id}
+ 1. Switch to worktree: moai-worktree switch SPEC-{spec_id}
+ 2. Shell integration: eval $(moai-worktree go SPEC-{spec_id})
+ 3. Start development: cd $(moai-worktree go SPEC-{spec_id}) && /moai:2-run SPEC-{spec_id}
 
  Development Workflow:
  Phase 1: SPEC created
  Phase 2: → Worktree ready for development
  Phase 3: → Implement with /moai:2-run
  Phase 4: → Sync with /moai:3-sync
- Phase 5: → Clean up with moai-workflow-worktree clean
+ Phase 5: → Clean up with moai-worktree clean
 
  Advanced Options:
- • Create with custom template: moai-workflow-worktree new {spec_id} "{spec_title}" --template <template>
- • Create from develop branch: moai-workflow-worktree new {spec_id} "{spec_title}" --base develop
- • Create with shallow clone: moai-workflow-worktree new {spec_id} "{spec_title}" --shallow
+ • Create with custom template: moai-worktree new {spec_id} "{spec_title}" --template <template>
+ • Create from develop branch: moai-worktree new {spec_id} "{spec_title}" --base develop
+ • Create with shallow clone: moai-worktree new {spec_id} "{spec_title}" --shallow
 """)
 ```
 
@@ -179,8 +179,8 @@ class WorktreeAwareTDDManager:
 
  if not self.is_worktree_env:
  print(f" Not in worktree environment. Consider running in worktree:")
- print(f" moai-workflow-worktree switch {self.spec_id}")
- print(f" or: eval $(moai-workflow-worktree go {self.spec_id})")
+ print(f" moai-worktree switch {self.spec_id}")
+ print(f" or: eval $(moai-worktree go {self.spec_id})")
 
  # TDD execution with worktree awareness
  result = self._run_tdd_cycle()
@@ -197,14 +197,14 @@ class WorktreeAwareTDDManager:
  try:
  # Update registry with TDD results
  subprocess.run([
- "moai-workflow-worktree", "config", "set",
+ "moai-worktree", "config", "set",
  f"last_tdd_result.{self.spec_id}",
  json.dumps(tdd_result.to_dict())
  ], check=False)
 
  # Update last access time
  subprocess.run([
- "moai-workflow-worktree", "status", self.spec_id, "--update-access"
+ "moai-worktree", "status", self.spec_id, "--update-access"
  ], check=False)
 
  except Exception as e:
@@ -225,7 +225,7 @@ class WorktreeSyncManager:
  worktree_info = self._get_worktree_info(spec_id)
  if not worktree_info:
  print(f" No worktree found for {spec_id}")
- print(f" Create with: moai-workflow-worktree new {spec_id}")
+ print(f" Create with: moai-worktree new {spec_id}")
  return SyncResult(skipped=True, reason="No worktree")
 
  # Sync worktree with base branch
@@ -233,7 +233,7 @@ class WorktreeSyncManager:
 
  try:
  sync_result = subprocess.run([
- "moai-workflow-worktree", "sync", spec_id,
+ "moai-worktree", "sync", spec_id,
  "--auto-resolve",
  "--include", "src/", "docs/", "tests/"
  ], capture_output=True, text=True)
@@ -299,7 +299,7 @@ Choice [1-4]: """)
  if cleanup_choice == "1":
  # Remove worktree
  result = subprocess.run([
- "moai-workflow-worktree", "remove", spec_id, "--force"
+ "moai-worktree", "remove", spec_id, "--force"
  ], capture_output=True, text=True)
 
  if result.returncode == 0:
@@ -311,14 +311,14 @@ Choice [1-4]: """)
  # Archive worktree
  archive_path = f"~/workflows/archives/{spec_id}-{datetime.now().strftime('%Y%m%d')}"
  subprocess.run([
- "moai-workflow-worktree", "remove", spec_id, "--backup"
+ "moai-worktree", "remove", spec_id, "--backup"
  ], capture_output=True, text=True)
 
  print(f" Worktree {spec_id} archived to {archive_path}")
 
  # Update registry
  subprocess.run([
- "moai-workflow-worktree", "config", "set",
+ "moai-worktree", "config", "set",
  f"completed_specs.{spec_id}", json.dumps({
  "merged_at": datetime.utcnow().isoformat(),
  "cleanup_action": cleanup_choice
@@ -427,13 +427,13 @@ def generate_worktree_tasks(worktree: dict) -> List[dict]:
  {
  "label": f"Sync SPEC-{spec_id}",
  "type": "shell",
- "command": f"moai-workflow-worktree sync {spec_id}",
+ "command": f"moai-worktree sync {spec_id}",
  "group": "build"
  },
  {
  "label": f"Switch to SPEC-{spec_id}",
  "type": "shell",
- "command": f"moai-workflow-worktree switch {spec_id}",
+ "command": f"moai-worktree switch {spec_id}",
  "group": "navigation"
  }
  ]
@@ -448,15 +448,15 @@ Enhanced Shell Profile:
 
 # Worktree completion
 _moai_worktree_completion() {
- local worktrees=($(moai-workflow-worktree list --format json 2>/dev/null | jq -r '.worktrees[].id' 2>/dev/null))
+ local worktrees=($(moai-worktree list --format json 2>/dev/null | jq -r '.worktrees[].id' 2>/dev/null))
  COMPREPLY=($(compgen -W "${worktrees[*]}" "${COMP_WORDS[COMP_CWORD]}"))
 }
 
-complete -F _moai_worktree_completion moai-workflow-worktree
+complete -F _moai_worktree_completion moai-worktree
 
 # Worktree-aware prompt
 update_prompt_with_worktree() {
- if [ -f "../.moai-workflow-worktree-registry.json" ]; then
+ if [ -f "../.moai-worktree-registry.json" ]; then
  local spec_id=$(basename $(pwd) 2>/dev/null | grep '^SPEC-' || echo "")
  if [ -n "$spec_id" ]; then
  export WORKTREE_SPEC=$spec_id
@@ -470,32 +470,32 @@ update_prompt_with_worktree() {
 PROMPT_COMMAND=update_prompt_with_worktree
 
 # Worktree navigation aliases
-alias mw='moai-workflow-worktree'
-alias mwl='moai-workflow-worktree list'
-alias mws='moai-workflow-worktree switch'
-alias mwg='eval $(moai-workflow-worktree go'
-alias mwsync='moai-workflow-worktree sync'
-alias mwclean='moai-workflow-worktree clean'
+alias mw='moai-worktree'
+alias mwl='moai-worktree list'
+alias mws='moai-worktree switch'
+alias mwg='eval $(moai-worktree go'
+alias mwsync='moai-worktree sync'
+alias mwclean='moai-worktree clean'
 
 # Quick worktree functions
 mwnew() {
  local spec_id="$1"
  local description="$2"
- moai-workflow-worktree new "$spec_id" "$description"
- moai-workflow-worktree switch "$spec_id"
+ moai-worktree new "$spec_id" "$description"
+ moai-worktree switch "$spec_id"
 }
 
 mwdev() {
  local spec_id="$1"
- moai-workflow-worktree switch "$spec_id"
+ moai-worktree switch "$spec_id"
  /moai:2-run "$spec_id"
 }
 
 mwpush() {
  local spec_id="${1:-$WORKTREE_SPEC}"
  if [ -n "$spec_id" ]; then
- moai-workflow-worktree sync "$spec_id"
- cd $(moai-workflow-worktree go "$spec_id")
+ moai-worktree sync "$spec_id"
+ cd $(moai-worktree go "$spec_id")
  git push origin "feature/SPEC-$spec_id"
  else
  echo "No SPEC ID provided or detected"
@@ -513,18 +513,18 @@ Enhanced Git Hooks:
 echo "Post-checkout hook: Checking worktree status"
 
 # Check if we're in a worktree
-if [ -f "../.moai-workflow-worktree-registry.json" ]; then
+if [ -f "../.moai-worktree-registry.json" ]; then
  SPEC_ID=$(basename $(pwd))
  echo "Switched to worktree: $SPEC_ID"
 
  # Update last access time
- moai-workflow-worktree status "$SPEC_ID" --update-access 2>/dev/null || true
+ moai-worktree status "$SPEC_ID" --update-access 2>/dev/null || true
 
  # Check if sync is needed
- SYNC_STATUS=$(moai-workflow-worktree status "$SPEC_ID" --sync-check 2>/dev/null || echo "unknown")
+ SYNC_STATUS=$(moai-worktree status "$SPEC_ID" --sync-check 2>/dev/null || echo "unknown")
  if echo "$SYNC_STATUS" | grep -q "needs sync"; then
  echo " Worktree needs synchronization"
- echo " Run: moai-workflow-worktree sync $SPEC_ID"
+ echo " Run: moai-worktree sync $SPEC_ID"
  fi
 
  # Load worktree-specific environment
@@ -539,7 +539,7 @@ fi
 echo "Pre-push hook: Validating worktree state"
 
 # Check if we're pushing from a worktree
-if [ -f "../.moai-workflow-worktree-registry.json" ]; then
+if [ -f "../.moai-worktree-registry.json" ]; then
  SPEC_ID=$(basename $(pwd))
  echo "Pushing from worktree: $SPEC_ID"
 
@@ -551,10 +551,10 @@ if [ -f "../.moai-workflow-worktree-registry.json" ]; then
  fi
 
  # Check if worktree is synced with base
- SYNC_STATUS=$(moai-workflow-worktree status "$SPEC_ID" --sync-check 2>/dev/null || echo "unknown")
+ SYNC_STATUS=$(moai-worktree status "$SPEC_ID" --sync-check 2>/dev/null || echo "unknown")
  if echo "$SYNC_STATUS" | grep -q "behind"; then
  echo " Worktree is behind base branch"
- echo " Run: moai-workflow-worktree sync $SPEC_ID"
+ echo " Run: moai-worktree sync $SPEC_ID"
  echo " Continue anyway? (y/N)"
  read -r response
  if [[ ! "$response" =~ ^[Yy]$ ]]; then
@@ -563,7 +563,7 @@ if [ -f "../.moai-workflow-worktree-registry.json" ]; then
  fi
 
  # Update worktree metadata
- moai-workflow-worktree config set "last_push.$SPEC_ID" "$(date -Iseconds)" 2>/dev/null || true
+ moai-worktree config set "last_push.$SPEC_ID" "$(date -Iseconds)" 2>/dev/null || true
 fi
 ```
 
@@ -581,7 +581,7 @@ class TeamWorktreeRegistry:
  def __init__(self, team_name: str, shared_registry_path: str):
  self.team_name = team_name
  self.shared_registry_path = Path(shared_registry_path)
- self.local_registry_path = Path.home() / "worktrees" / team_name / ".moai-workflow-worktree-registry.json"
+ self.local_registry_path = Path.home() / "worktrees" / team_name / ".moai-worktree-registry.json"
 
  def sync_with_team_registry(self) -> None:
  """Synchronize local registry with team shared registry."""
@@ -634,17 +634,17 @@ collaborative_development() {
  echo "Setting up collaborative development for $spec_id..."
 
  # Create shared worktree
- moai-workflow-worktree new "$spec_id" "Team Collaborative Development" --template collaborative
+ moai-worktree new "$spec_id" "Team Collaborative Development" --template collaborative
 
  # Configure team access
  IFS=',' read -ra MEMBERS <<< "$team_members"
  for member in "${MEMBERS[@]}"; do
- moai-workflow-worktree config set "team_access.$spec_id.$member" "read-write"
+ moai-worktree config set "team_access.$spec_id.$member" "read-write"
  echo " Granted read-write access to $member"
  done
 
  # Create shared configuration
- cd $(moai-workflow-worktree go "$spec_id")
+ cd $(moai-worktree go "$spec_id")
 
  cat > .team-config << EOF
 team_members: [$(echo "$team_members" | sed 's/,/, /g')]
@@ -655,7 +655,7 @@ EOF
 
  echo " Team collaboration setup completed"
  echo "Team members can now join with:"
- echo " moai-workflow-worktree join $spec_id --team-member <name>"
+ echo " moai-worktree join $spec_id --team-member <name>"
 }
 ```
 
@@ -959,7 +959,7 @@ class IntegrationErrorHandler:
 
  # Create new worktree
  subprocess.run([
- "moai-workflow-worktree", "new", spec_id,
+ "moai-worktree", "new", spec_id,
  "Auto-recreated after error"
  ], check=True)
 
@@ -979,4 +979,4 @@ class IntegrationErrorHandler:
 
 Version: 1.0.0
 Last Updated: 2025-11-29
-Module: Comprehensive integration patterns for moai-workflow-worktree with MoAI-ADK workflow, development tools, and external systems
+Module: Comprehensive integration patterns for moai-worktree with MoAI-ADK workflow, development tools, and external systems
