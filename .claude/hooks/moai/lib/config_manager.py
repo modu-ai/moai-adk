@@ -121,14 +121,16 @@ class ConfigManager:
                     else:
                         file_config = json.load(f)
                         config = self._merge_configs(DEFAULT_CONFIG.copy(), file_config)
-            except (
-                json.JSONDecodeError,
-                yaml.YAMLError if YAML_AVAILABLE else Exception,
-                IOError,
-                OSError,
-            ):
+            except (json.JSONDecodeError, IOError, OSError) as e:
                 # Use defaults if file is corrupted or unreadable
                 config = DEFAULT_CONFIG.copy()
+            except Exception as e:
+                # Handle YAML errors or other parsing issues
+                if YAML_AVAILABLE and isinstance(e, yaml.YAMLError):
+                    config = DEFAULT_CONFIG.copy()
+                else:
+                    # Re-raise unexpected exceptions
+                    raise
         else:
             # Use defaults if file doesn't exist
             config = DEFAULT_CONFIG.copy()

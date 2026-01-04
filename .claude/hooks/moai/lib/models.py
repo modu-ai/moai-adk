@@ -5,8 +5,10 @@ Provides HookPayload and HookResult classes used by hook handlers
 to process events and return execution results to Claude Code.
 """
 
+from __future__ import annotations
+
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class HookPayload(dict):
@@ -27,7 +29,7 @@ class HookPayload(dict):
         working_dir = payload.get("cwd", ".")
     """
 
-    def __init__(self, data: Optional[Dict[str, Any]] = None):
+    def __init__(self, data: dict[str, Any] | None = None):
         """Initialize HookPayload with optional data dictionary."""
         super().__init__(data or {})
 
@@ -39,7 +41,7 @@ class HookPayload(dict):
         """Set value in payload."""
         super().__setitem__(key, value)
 
-    def update(self, other: Dict[str, Any]) -> None:  # type: ignore[override]
+    def update(self, other: dict[str, Any]) -> None:  # type: ignore[override]
         """Update payload with another dictionary."""
         super().update(other)
 
@@ -77,10 +79,10 @@ class HookResult:
         )
     """
 
-    system_message: Optional[str] = None
+    system_message: str | None = None
     continue_execution: bool = True
-    context_files: List[str] = None
-    hook_specific_output: Optional[Dict[str, Any]] = None
+    context_files: list[str] = None  # type: ignore[assignment]
+    hook_specific_output: dict[str, Any] | None = None
     block_execution: bool = False
 
     def __post_init__(self):
@@ -90,7 +92,7 @@ class HookResult:
         if self.hook_specific_output is None:
             self.hook_specific_output = {}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert HookResult to a dictionary for JSON serialization.
 

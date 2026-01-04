@@ -1,8 +1,8 @@
 ---
 name: moai-lang-javascript
-description: JavaScript ES2024+ development specialist covering Node.js 22 LTS, modern runtimes (Deno, Bun), testing (Vitest, Jest), linting (ESLint 9, Biome), and backend frameworks (Express, Fastify, Hono). Use when developing JavaScript APIs, web applications, or Node.js projects.
-version: 1.0.0
-updated: 2025-12-22
+description: JavaScript ES2024+ development specialist covering Node.js 22 LTS, Bun 1.x (serve, SQLite, S3, shell, test), Deno 2.x, testing (Vitest, Jest), linting (ESLint 9, Biome), and backend frameworks (Express, Fastify, Hono). Use when developing JavaScript APIs, web applications, or Node.js projects.
+version: 1.1.0
+updated: 2026-01-05
 status: active
 allowed-tools: Read, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
@@ -406,5 +406,5 @@ const { default: esmModule } = await import('esm-package');
 
 ---
 
-Last Updated: 2025-12-22
-Status: Active (v1.0.0)
+Last Updated: 2026-01-05
+Status: Active (v1.1.0)

@@ -21,6 +21,33 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
 
+# =============================================================================
+# Constants - Risk Assessment Thresholds
+# =============================================================================
+# These thresholds determine project risk level based on various factors
+RISK_SCORE_HIGH = 20  # Score >= this is HIGH risk
+RISK_SCORE_MEDIUM = 10  # Score >= this (and < HIGH) is MEDIUM risk
+
+# Git changes thresholds for risk calculation
+GIT_CHANGES_HIGH_THRESHOLD = 20  # Adds 10 to risk score
+GIT_CHANGES_MEDIUM_THRESHOLD = 10  # Adds 5 to risk score
+
+# SPEC progress thresholds
+SPEC_PROGRESS_LOW = 50  # Below this adds 15 to risk score
+SPEC_PROGRESS_MEDIUM = 80  # Below this adds 8 to risk score
+
+# Risk score contributions
+RISK_GIT_CHANGES_HIGH = 10
+RISK_GIT_CHANGES_MEDIUM = 5
+RISK_SPEC_LOW = 15
+RISK_SPEC_MEDIUM = 8
+RISK_TEST_FAILED = 12
+RISK_COVERAGE_UNKNOWN = 5
+
+# Setup message suppression period (days)
+SETUP_MESSAGE_RESCAN_DAYS = 7
+
+# =============================================================================
 # Setup import path for shared modules
 HOOKS_DIR = Path(__file__).parent
 LIB_DIR = HOOKS_DIR / "lib"
@@ -348,7 +375,7 @@ def should_show_setup_messages() -> bool:
         # Flag is False, show messages
         return True
 
-    # Flag is True, check time threshold (7 days)
+    # Flag is True, check time threshold
     suppressed_at_str = session_config.get("setup_messages_suppressed_at")
     if not suppressed_at_str:
         # No timestamp recorded, show messages
@@ -359,8 +386,8 @@ def should_show_setup_messages() -> bool:
         now = datetime.now(suppressed_at.tzinfo) if suppressed_at.tzinfo else datetime.now()
         days_passed = (now - suppressed_at).days
 
-        # Show messages if more than 7 days have passed
-        return days_passed >= 7
+        # Show messages if threshold exceeded
+        return days_passed >= SETUP_MESSAGE_RESCAN_DAYS
     except (ValueError, TypeError):
         # If timestamp is invalid, show messages
         return True
@@ -650,31 +677,31 @@ def get_spec_progress() -> dict[str, Any]:
 
 
 def calculate_risk(git_info: dict, spec_progress: dict, test_info: dict) -> str:
-    """Calculate overall project risk level"""
+    """Calculate overall project risk level using defined thresholds."""
     risk_score = 0
 
     # Git changes contribute to risk
-    if git_info["changes"] > 20:
-        risk_score += 10
-    elif git_info["changes"] > 10:
-        risk_score += 5
+    if git_info["changes"] > GIT_CHANGES_HIGH_THRESHOLD:
+        risk_score += RISK_GIT_CHANGES_HIGH
+    elif git_info["changes"] > GIT_CHANGES_MEDIUM_THRESHOLD:
+        risk_score += RISK_GIT_CHANGES_MEDIUM
 
     # SPEC progress contributes to risk
-    if spec_progress["percentage"] < 50:
-        risk_score += 15
-    elif spec_progress["percentage"] < 80:
-        risk_score += 8
+    if spec_progress["percentage"] < SPEC_PROGRESS_LOW:
+        risk_score += RISK_SPEC_LOW
+    elif spec_progress["percentage"] < SPEC_PROGRESS_MEDIUM:
+        risk_score += RISK_SPEC_MEDIUM
 
     # Test status contributes to risk
     if test_info["status"] != "✅":
-        risk_score += 12
+        risk_score += RISK_TEST_FAILED
     elif test_info["coverage"] == "unknown":
-        risk_score += 5
+        risk_score += RISK_COVERAGE_UNKNOWN
 
     # Determine risk level
-    if risk_score >= 20:
+    if risk_score >= RISK_SCORE_HIGH:
         return "HIGH"
-    elif risk_score >= 10:
+    elif risk_score >= RISK_SCORE_MEDIUM:
         return "MEDIUM"
     else:
         return "LOW"
@@ -960,8 +987,9 @@ def main() -> None:
         """Execute session start logic with proper error handling"""
         # Read JSON payload from stdin (for compatibility)
         # Handle Docker/non-interactive environments by checking TTY
+        # Note: SessionStart hook receives session info but we don't need it currently
         input_data = sys.stdin.read() if not sys.stdin.isatty() else "{}"
-        json.loads(input_data) if input_data.strip() else {}
+        _ = json.loads(input_data) if input_data.strip() else {}  # Explicitly ignore
 
         # Check if setup messages should be shown
         show_messages = should_show_setup_messages()

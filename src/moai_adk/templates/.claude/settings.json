@@ -29,6 +29,35 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/pre_tool__security_guard.py",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/post_tool__code_formatter.py",
+            "timeout": 30000
+          },
+          {
+            "type": "command",
+            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/post_tool__linter.py",
+            "timeout": 60000
+          }
+        ]
+      }
     ]
   },
   "permissions": {

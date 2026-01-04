@@ -77,41 +77,28 @@ class ConfigManager:
         """Initialize configuration manager.
 
         Args:
-            config_path: Path to configuration file or sections directory
-                        (defaults to .moai/config/sections/ or .moai/config/config.yaml)
+            config_path: Path to configuration file (defaults to .moai/config/config.yaml or config.json)
         """
         if config_path:
             self.config_path = config_path
         else:
-            # Auto-detect configuration strategy
+            # Auto-detect YAML (preferred) or JSON (fallback)
             project_root = find_project_root()
-            base_path = project_root / ".moai" / "config"
-            sections_dir = base_path / "sections"
+            yaml_path = project_root / ".moai" / "config" / "config.yaml"
+            json_path = project_root / ".moai" / "config" / "config.json"
 
-            # Priority 1: Section-based configuration (new approach)
-            if sections_dir.exists() and sections_dir.is_dir():
-                self.config_path = sections_dir
+            if YAML_AVAILABLE and yaml_path.exists():
+                self.config_path = yaml_path
+            elif json_path.exists():
+                self.config_path = json_path
             else:
-                # Priority 2: Monolithic YAML (legacy)
-                yaml_path = base_path / "config.yaml"
-                json_path = base_path / "config.json"
-
-                if YAML_AVAILABLE and yaml_path.exists():
-                    self.config_path = yaml_path
-                elif json_path.exists():
-                    self.config_path = json_path
-                else:
-                    # Default to sections for new projects
-                    self.config_path = sections_dir if YAML_AVAILABLE else yaml_path
+                # Default to YAML for new projects
+                self.config_path = yaml_path if YAML_AVAILABLE else json_path
 
         self._config: Optional[Dict[str, Any]] = None
 
     def load_config(self) -> Dict[str, Any]:
-        """Load configuration from file or sections with fallback to defaults.
-
-        Supports two modes:
-        1. Section-based: Load from .moai/config/sections/*.yaml
-        2. Monolithic: Load from .moai/config/config.yaml or config.json
+        """Load configuration from file with fallback to defaults.
 
         Returns:
             Merged configuration dictionary
@@ -119,71 +106,37 @@ class ConfigManager:
         if self._config is not None:
             return self._config
 
-        # Load from file or sections if exists
+        # Load from file if exists
         config = {}
         if self.config_path.exists():
             try:
-                # Section-based configuration (new)
-                if self.config_path.is_dir():
-                    file_config = self._load_from_sections()
-                    config = self._merge_configs(DEFAULT_CONFIG.copy(), file_config)
-                # Monolithic configuration (legacy)
-                else:
-                    with open(self.config_path, "r", encoding="utf-8") as f:
-                        if self.config_path.suffix in [".yaml", ".yml"]:
-                            if not YAML_AVAILABLE:
-                                # Fall back to defaults if YAML not available
-                                config = DEFAULT_CONFIG.copy()
-                            else:
-                                file_config = yaml.safe_load(f) or {}
-                                config = self._merge_configs(DEFAULT_CONFIG.copy(), file_config)
+                with open(self.config_path, "r", encoding="utf-8") as f:
+                    if self.config_path.suffix in [".yaml", ".yml"]:
+                        if not YAML_AVAILABLE:
+                            # Fall back to defaults if YAML not available
+                            config = DEFAULT_CONFIG.copy()
                         else:
-                            file_config = json.load(f)
+                            file_config = yaml.safe_load(f) or {}
                             config = self._merge_configs(DEFAULT_CONFIG.copy(), file_config)
-            except (
-                json.JSONDecodeError,
-                yaml.YAMLError if YAML_AVAILABLE else Exception,
-                IOError,
-                OSError,
-            ):
+                    else:
+                        file_config = json.load(f)
+                        config = self._merge_configs(DEFAULT_CONFIG.copy(), file_config)
+            except (json.JSONDecodeError, IOError, OSError) as e:
                 # Use defaults if file is corrupted or unreadable
                 config = DEFAULT_CONFIG.copy()
+            except Exception as e:
+                # Handle YAML errors or other parsing issues
+                if YAML_AVAILABLE and isinstance(e, yaml.YAMLError):
+                    config = DEFAULT_CONFIG.copy()
+                else:
+                    # Re-raise unexpected exceptions
+                    raise
         else:
             # Use defaults if file doesn't exist
             config = DEFAULT_CONFIG.copy()
 
         self._config = config
         return config
-
-    def _load_from_sections(self) -> Dict[str, Any]:
-        """Load configuration from modular section YAML files.
-
-        Loads and merges all *.yaml files from sections directory:
-        - sections/language.yaml
-        - sections/user.yaml
-        - sections/system.yaml (contains hooks, moai, github configs)
-        - sections/git-strategy.yaml
-        - sections/quality.yaml
-
-        Returns:
-            Merged configuration dictionary
-        """
-        if not YAML_AVAILABLE:
-            return {}
-
-        merged_config = {}
-        section_files = sorted(self.config_path.glob("*.yaml"))
-
-        for section_file in section_files:
-            try:
-                with open(section_file, "r", encoding="utf-8") as f:
-                    section_data = yaml.safe_load(f) or {}
-                    merged_config = self._merge_configs(merged_config, section_data)
-            except Exception:
-                # Skip corrupted section files, continue with others
-                pass
-
-        return merged_config
 
     def get(self, key_path: str, default: Any = None) -> Any:
         """Get configuration value using dot notation.

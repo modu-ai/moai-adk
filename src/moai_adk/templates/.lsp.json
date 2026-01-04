@@ -1,0 +1,152 @@
+{
+  "$schema": "https://code.claude.com/schemas/lsp.json",
+  "_comment": "MoAI-ADK Language Server Protocol Configuration - Supports 16+ languages",
+
+  "python": {
+    "command": "pyright-langserver",
+    "args": ["--stdio"],
+    "extensionToLanguage": {
+      ".py": "python",
+      ".pyi": "python"
+    }
+  },
+
+  "typescript": {
+    "command": "typescript-language-server",
+    "args": ["--stdio"],
+    "extensionToLanguage": {
+      ".ts": "typescript",
+      ".tsx": "typescriptreact",
+      ".mts": "typescript",
+      ".cts": "typescript"
+    }
+  },
+
+  "javascript": {
+    "command": "typescript-language-server",
+    "args": ["--stdio"],
+    "extensionToLanguage": {
+      ".js": "javascript",
+      ".jsx": "javascriptreact",
+      ".mjs": "javascript",
+      ".cjs": "javascript"
+    }
+  },
+
+  "go": {
+    "command": "gopls",
+    "args": ["serve"],
+    "extensionToLanguage": {
+      ".go": "go"
+    }
+  },
+
+  "rust": {
+    "command": "rust-analyzer",
+    "args": [],
+    "extensionToLanguage": {
+      ".rs": "rust"
+    }
+  },
+
+  "java": {
+    "command": "jdtls",
+    "args": [],
+    "extensionToLanguage": {
+      ".java": "java"
+    }
+  },
+
+  "kotlin": {
+    "command": "kotlin-language-server",
+    "args": [],
+    "extensionToLanguage": {
+      ".kt": "kotlin",
+      ".kts": "kotlin"
+    }
+  },
+
+  "swift": {
+    "command": "sourcekit-lsp",
+    "args": [],
+    "extensionToLanguage": {
+      ".swift": "swift"
+    }
+  },
+
+  "csharp": {
+    "command": "OmniSharp",
+    "args": ["-lsp"],
+    "extensionToLanguage": {
+      ".cs": "csharp"
+    }
+  },
+
+  "cpp": {
+    "command": "clangd",
+    "args": ["--background-index"],
+    "extensionToLanguage": {
+      ".c": "c",
+      ".cpp": "cpp",
+      ".cc": "cpp",
+      ".cxx": "cpp",
+      ".h": "c",
+      ".hpp": "cpp",
+      ".hxx": "cpp"
+    }
+  },
+
+  "ruby": {
+    "command": "solargraph",
+    "args": ["stdio"],
+    "extensionToLanguage": {
+      ".rb": "ruby",
+      ".rake": "ruby",
+      ".gemspec": "ruby"
+    }
+  },
+
+  "php": {
+    "command": "intelephense",
+    "args": ["--stdio"],
+    "extensionToLanguage": {
+      ".php": "php"
+    }
+  },
+
+  "elixir": {
+    "command": "elixir-ls",
+    "args": [],
+    "extensionToLanguage": {
+      ".ex": "elixir",
+      ".exs": "elixir"
+    }
+  },
+
+  "scala": {
+    "command": "metals",
+    "args": [],
+    "extensionToLanguage": {
+      ".scala": "scala",
+      ".sc": "scala"
+    }
+  },
+
+  "r": {
+    "command": "R",
+    "args": ["--slave", "-e", "languageserver::run()"],
+    "extensionToLanguage": {
+      ".r": "r",
+      ".R": "r",
+      ".Rmd": "rmarkdown"
+    }
+  },
+
+  "dart": {
+    "command": "dart",
+    "args": ["language-server", "--protocol=lsp"],
+    "extensionToLanguage": {
+      ".dart": "dart"
+    }
+  }
+}
