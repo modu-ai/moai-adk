@@ -2818,7 +2818,7 @@ SOFTWARE.
 
 ### Made with ❤️ by MoAI-ADK Team
 
-**Version:** 0.33.0
+**Version:** 0.36.2
 **Last Updated:** 2025-12-01
 **Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
 **MoAI**: MoAI stands for "Modu-ui AI" (AI for Everyone). Our goal is to make AI accessible to everyone.

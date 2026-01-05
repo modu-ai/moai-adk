@@ -373,7 +373,7 @@ Mr.Alfred is MoAI-ADK's **chief orchestrator** who analyzes user requests, selec
 3. **Execute**: Delegate tasks to specialized agents (sequential/parallel)
 4. **Integrate**: Collect all results and report to user
 
-### 🌐 Multilingual Agent Routing (NEW in v0.34.0)
+### 🌐 Multilingual Agent Routing (NEW in v0.36.2)
 
 **Supported Languages:** English (EN), Korean (KO), Japanese (JA), Chinese (ZH)
 
@@ -2976,7 +2976,7 @@ SOFTWARE.
 
 ### Made with ❤️ by MoAI-ADK Team
 
-**Version:** 0.34.0
+**Version:** 0.36.2
 **Last Updated:** 2026-01-06
 **Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
 **MoAI**: MoAI stands for "Modu-ui AI" (AI for Everyone). Our goal is to make AI accessible to everyone.

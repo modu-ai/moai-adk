@@ -619,6 +619,60 @@ Configuration is split into modular section files for token efficiency:
 
 ---
 
+## Version Management
+
+### Single Source of Truth
+
+[HARD] pyproject.toml is the ONLY authoritative source for MoAI-ADK version.
+WHY: Prevents version inconsistencies across multiple files.
+
+Version Reference:
+- Authoritative Source: pyproject.toml (version = "X.Y.Z")
+- Runtime Access: src/moai_adk/version.py reads from pyproject.toml
+- Config Display: .moai/config/sections/system.yaml (updated by release process)
+
+### Files Requiring Version Sync
+
+When releasing new version, these files MUST be updated:
+
+Documentation Files:
+- README.md (Version line)
+- README.ko.md (Version line)
+- README.ja.md (Version line)
+- README.zh.md (Version line)
+- CHANGELOG.md (New version entry)
+
+Configuration Files:
+- pyproject.toml (Single Source - update FIRST)
+- src/moai_adk/version.py (_FALLBACK_VERSION)
+- .moai/config/sections/system.yaml (moai.version)
+- src/moai_adk/templates/.moai/config/config.yaml (moai.version)
+
+### Version Sync Process
+
+[HARD] Before any release:
+
+Step 1: Update pyproject.toml
+- Change version = "X.Y.Z" to new version
+
+Step 2: Run Version Sync Script
+- Execute: .github/scripts/sync-versions.sh X.Y.Z
+- Or manually update all files listed above
+
+Step 3: Verify Consistency
+- Run: grep -r "X.Y.Z" to confirm all files updated
+- Check: No old version numbers remain in critical files
+
+### Prohibited Practices
+
+- [HARD] Never hardcode version in multiple places without sync mechanism
+- [HARD] Never update README version without updating pyproject.toml
+- [HARD] Never release with mismatched versions across files
+
+WHY: Version inconsistency causes confusion and breaks tooling expectations.
+
+---
+
 ## Error Recovery and Problem Resolution
 
 ### Systematic Error Handling
