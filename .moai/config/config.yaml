@@ -1,0 +1,58 @@
+# MoAI-ADK Configuration
+# Format: YAML (modular section-based configuration)
+#
+# This is the main configuration file that references modular section files.
+# Each section is stored in a separate file under .moai/config/sections/
+# for better maintainability and token efficiency.
+#
+# Section Files:
+# - sections/user.yaml: User personalization settings
+# - sections/language.yaml: Language preferences
+# - sections/project.yaml: Project metadata
+# - sections/git-strategy.yaml: Git workflow configuration
+# - sections/quality.yaml: TDD and quality settings
+# - sections/system.yaml: MoAI system settings
+#
+# CLAUDE.md automatically loads:
+# @.moai/config/sections/user.yaml
+# @.moai/config/sections/language.yaml
+
+moai:
+  version: "0.36.2"
+  initialized: true
+  initialized_at: "2025-01-05T00:00:00Z"
+
+# Document Management System
+# Prevents project root pollution by enforcing .moai/ hierarchy for all internal files
+document_management:
+  enabled: true
+  enforce_structure: true
+  block_root_pollution: true
+
+  # Separation policy between logs and docs
+  separation_policy:
+    strict_separation: true
+    description: Clear separation between logs (runtime data) and docs (documentation content)
+    logs_scope: runtime sessions, errors, execution traces, agent transcripts
+    docs_scope: reports, analysis, validation, sync, inspection, documentation files
+
+  # Directory structure and retention policies
+  directories:
+    # Documentation files
+    docs:
+      base: .moai/docs/
+      retention_days: null # Keep indefinitely
+    # Log files (runtime data)
+    logs:
+      base: .moai/logs/
+      retention_days: 30
+    # Temporary files
+    temp:
+      base: .moai/temp/
+      retention_days: 7
+      auto_cleanup: true
+    # Cache files
+    cache:
+      base: .moai/cache/
+      retention_days: 30
+      auto_cleanup: true

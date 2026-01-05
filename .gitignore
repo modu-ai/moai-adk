@@ -186,6 +186,7 @@ mock_api_response_*.json
 .claude/local/
 .claude/settings.local.json
 .claude/settings.local.*.json
+.claude/settings.json.backup.*
 .claude/.venv/
 .claude/.pytest_cache/
 .claude/.env.local*
