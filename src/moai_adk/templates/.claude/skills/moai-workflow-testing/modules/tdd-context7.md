@@ -7,49 +7,23 @@
 
 ## Overview
 
-This module provides comprehensive TDD workflow management with Context7 integration for accessing latest testing best practices:
-- RED Phase: Write failing tests first
-- GREEN Phase: Implement minimum code to pass
-- REFACTOR Phase: Improve code while keeping tests green
-- REVIEW Phase: Validate and document changes
+TDD Context7 integration provides a comprehensive test-driven development workflow with AI-powered test generation, Context7-enhanced testing patterns, and automated best practices enforcement.
 
-## Quick Reference
+### Key Features
 
-### Core Components
+- AI-Powered Test Generation: Generate comprehensive test suites from specifications
+- Context7 Integration: Access latest testing patterns and best practices
+- RED-GREEN-REFACTOR Cycle: Complete TDD workflow implementation
+- Advanced Testing: Property-based testing, mutation testing, continuous testing
+- Test Patterns: Comprehensive library of testing patterns and fixtures
 
-TDDManager: Main workflow orchestrator
-- Manages TDD sessions and phase transitions
-- Integrates with Context7 for patterns
-- Tracks metrics and test coverage
+## Quick Start
 
-TestGenerator: AI-powered test case generation
-- Creates tests from specifications
-- Supports multiple test types
-- Generates parameterized tests
-
-Context7TDDIntegration: Pattern loading from Context7
-- TDD best practices
-- Testing patterns by language
-- Mocking strategies
-
-### Data Structures
-
-TestSpecification: Specification for test creation
-- name, description, test_type
-- requirements, acceptance_criteria
-- edge_cases, mock_requirements
-
-TestCase: Individual test with metadata
-- id, name, file_path, line_number
-- specification, status, execution_time
-
-TDDSession: Development session tracking
-- id, project_path, current_phase
-- test_cases, metrics, context7_patterns
-
-### Basic Usage
+### Basic TDD Cycle
 
 ```python
+from moai_workflow_testing import TDDManager, TestSpecification, TestType
+
 # Initialize TDD Manager
 tdd_manager = TDDManager(
     project_path="/path/to/project",
@@ -64,9 +38,18 @@ test_spec = TestSpecification(
     name="test_user_login_valid_credentials",
     description="Test that user can login with valid credentials",
     test_type=TestType.UNIT,
-    requirements=["User provides valid email and password"],
-    acceptance_criteria=["Valid credentials return user token"],
-    edge_cases=["Empty email", "Empty password"]
+    requirements=[
+        "User must provide valid email and password",
+        "System should authenticate user credentials"
+    ],
+    acceptance_criteria=[
+        "Valid credentials return user token",
+        "Invalid credentials raise AuthenticationError"
+    ],
+    edge_cases=[
+        "Test with empty email",
+        "Test with empty password"
+    ]
 )
 
 # Run complete TDD cycle
@@ -76,93 +59,207 @@ cycle_results = await tdd_manager.run_full_tdd_cycle(
 )
 ```
 
-## Implementation Guide
+## Core Components
 
-For detailed implementation patterns, see:
-- [Core Classes](./tdd/core-classes.md) - TDDManager and data structures
-- [Test Generation](./tdd/test-generation.md) - AI-powered test creation
-- [Context7 Patterns](./tdd/context7-patterns.md) - Pattern integration
+### TDD Cycle Phases
 
-### TDD Phase Workflow
+1. RED Phase: Write failing test
+   - Create test specification
+   - Generate test code
+   - Verify test fails for right reason
 
-RED Phase - Write Failing Test:
-1. Create test specification with requirements
-2. Generate test code using TestGenerator
-3. Write test to appropriate file
-4. Run tests and verify they fail
+2. GREEN Phase: Implement minimum code
+   - Write simplest implementation
+   - Make tests pass
+   - Focus on functionality, not quality
 
-GREEN Phase - Make Tests Pass:
-1. Implement minimum code to pass tests
-2. Run tests after implementation
-3. Verify all tests pass
-4. No refactoring yet
+3. REFACTOR Phase: Improve code quality
+   - Refactor while tests pass
+   - Apply design patterns
+   - Remove duplication
 
-REFACTOR Phase - Improve Code:
-1. Get refactoring patterns from Context7
-2. Generate improvement suggestions
-3. Apply changes incrementally
-4. Verify tests remain green after each change
+4. REVIEW Phase: Verify and commit
+   - Check test coverage
+   - Review code quality
+   - Commit changes
 
-REVIEW Phase - Validate:
-1. Run coverage analysis
-2. Generate documentation
-3. Update metrics
-4. Prepare for commit
+### Context7 Integration
 
-### Test Types
+The TDD Context7 integration provides:
 
-Unit Tests: Test individual functions or methods
-Integration Tests: Test component interactions
-Acceptance Tests: Test user requirements
-Performance Tests: Test response times
-Security Tests: Test vulnerability handling
-Regression Tests: Prevent bug reoccurrence
+- Pattern Loading: Access latest testing patterns from Context7
+- AI Test Generation: Enhanced test generation with Context7 patterns
+- Best Practices: Industry-standard testing practices
+- Edge Case Detection: Automatic edge case identification
+- Test Suggestions: AI-powered test improvement suggestions
 
-## Advanced Features
+## Module Structure
 
-### Context7 Pattern Loading
+### Core Modules
+
+**RED-GREEN-REFACTOR Implementation** (`tdd-context7/red-green-refactor.md`)
+- TDD cycle implementation
+- Test execution and validation
+- Coverage analysis
+- Session management
+
+**Test Generation** (`tdd-context7/test-generation.md`)
+- AI-powered test generation
+- Specification-based generation
+- Context7-enhanced generation
+- Template-based generation
+
+**Test Patterns** (`tdd-context7/test-patterns.md`)
+- Testing patterns and best practices
+- Pytest fixtures and organization
+- Test discovery structure
+- Coverage configuration
+
+**Advanced Features** (`tdd-context7/advanced-features.md`)
+- Comprehensive test suite generation
+- Property-based testing
+- Mutation testing
+- Continuous testing
+
+## Common Use Cases
+
+### Unit Testing
 
 ```python
-# Load TDD patterns from Context7
-patterns = await context7.get_library_docs(
-    context7_library_id="/testing/pytest",
-    topic="TDD RED-GREEN-REFACTOR patterns best practices 2025",
-    tokens=4000
+# Generate unit test from specification
+test_spec = TestSpecification(
+    name="test_calculate_sum",
+    description="Test sum calculation",
+    test_type=TestType.UNIT,
+    requirements=["Function should sum two numbers"],
+    acceptance_criteria=["Returns correct sum"],
+    edge_cases=["Zero values", "Negative numbers", "Large numbers"]
+)
+
+test_code = await test_generator.generate_test_case(test_spec)
+```
+
+### Integration Testing
+
+```python
+# Integration test specification
+integration_spec = TestSpecification(
+    name="test_database_integration",
+    description="Test database connection and query",
+    test_type=TestType.INTEGRATION,
+    requirements=["Database connection", "Query execution"],
+    acceptance_criteria=["Connection succeeds", "Query returns data"],
+    edge_cases=["Connection failure", "Empty results", "Large datasets"]
 )
 ```
 
-### Test Template System
-
-Multiple templates for different scenarios:
-- unit_function: Standard function tests
-- unit_method: Class method tests
-- integration_test: Multi-component tests
-- exception_test: Error handling tests
-- parameterized_test: Multiple input tests
-
-### Coverage Analysis
+### Exception Testing
 
 ```python
-# Run coverage analysis
-coverage_results = await tdd_manager._run_coverage_analysis()
-print(f"Coverage: {coverage_results['total_coverage']}%")
+# Exception test specification
+exception_spec = TestSpecification(
+    name="test_divide_by_zero",
+    description="Test division by zero exception",
+    test_type=TestType.UNIT,
+    requirements=["Division function", "Error handling"],
+    acceptance_criteria=["Raises ZeroDivisionError"],
+    edge_cases=["Divisor is zero", "Dividend is zero"]
+)
 ```
 
 ## Best Practices
 
-1. RED Phase: Always write failing tests first, ensure they fail correctly
-2. GREEN Phase: Write minimum code to pass, avoid premature optimization
-3. REFACTOR Phase: Improve design while keeping tests green
-4. Test Coverage: Aim for meaningful tests, not just high coverage
-5. Context Integration: Use Context7 for industry-standard patterns
+### Test Design
 
-## Related Modules
+1. One Test One Behavior: Each test should verify one specific behavior
+2. Descriptive Names: Test names should clearly describe what is being tested
+3. Arrange-Act-Assert: Structure tests with this pattern for clarity
+4. Independent Tests: Tests should not depend on each other
+5. Fast Execution: Keep tests fast for quick feedback
 
-- [AI Debugging](./ai-debugging.md) - Error analysis for failed tests
+### Context7 Integration
+
+1. Pattern Loading: Load Context7 patterns for latest best practices
+2. Edge Case Detection: Use Context7 to identify missing edge cases
+3. Test Suggestions: Leverage AI suggestions for test improvements
+4. Quality Analysis: Use Context7 for test quality analysis
+
+### TDD Workflow
+
+1. Write Failing Test First: Always start with a failing test
+2. Keep Tests Green: Never commit failing tests
+3. Refactor Confidently: Use tests as safety net for refactoring
+4. High Coverage: Aim for 80%+ test coverage
+5. Continuous Testing: Run tests automatically with every change
+
+## Advanced Features
+
+### Property-Based Testing
+
+Use Hypothesis for property-based testing to verify code properties across many random inputs.
+
+### Mutation Testing
+
+Use mutation testing to verify test suite quality by introducing code mutations and checking if tests catch them.
+
+### Continuous Testing
+
+Implement watch mode for automatic test execution on file changes.
+
+### AI-Powered Generation
+
+Leverage Context7 for intelligent test generation and suggestions.
+
+## Performance Considerations
+
+- Test Execution: Use parallel test execution for faster feedback
+- Test Isolation: Ensure tests are isolated to prevent interference
+- Mock External Dependencies: Mock external services for fast, reliable tests
+- Optimize Setup: Use fixtures and test factories for efficient test setup
+
+## Troubleshooting
+
+### Common Issues
+
+1. Tests Failing Intermittently
+   - Check for shared state between tests
+   - Verify test isolation
+   - Add proper cleanup in fixtures
+
+2. Slow Test Execution
+   - Use parallel test execution
+   - Mock external dependencies
+   - Optimize test setup
+
+3. Context7 Integration Issues
+   - Verify Context7 client configuration
+   - Check network connectivity
+   - Use default patterns as fallback
+
+## Resources
+
+### Detailed Modules
+
+- [RED-GREEN-REFACTOR Implementation](./tdd-context7/red-green-refactor.md) - Core TDD cycle
+- [Test Generation](./tdd-context7/test-generation.md) - AI-powered generation
+- [Test Patterns](./tdd-context7/test-patterns.md) - Patterns and best practices
+- [Advanced Features](./tdd-context7/advanced-features.md) - Advanced testing techniques
+
+### Related Modules
+
+- [AI Debugging](./ai-debugging.md) - Debugging techniques
 - [Performance Optimization](./performance-optimization.md) - Performance testing
-- [Smart Refactoring](./smart-refactoring.md) - Refactor phase patterns
+- [Smart Refactoring](./smart-refactoring.md) - Refactoring with tests
+
+### External Resources
+
+- [Pytest Documentation](https://docs.pytest.org/)
+- [Python Testing Best Practices](https://docs.python-guide.org/writing/tests/)
+- [Hypothesis Property-Based Testing](https://hypothesis.works/)
+- [Context7 MCP Documentation](https://context7.io/docs)
 
 ---
 
 Module: `modules/tdd-context7.md`
-Version: 2.0.0 (Modular Architecture)
+Version: 2.0.0 (Modular Structure)
+Last Updated: 2026-01-06
