@@ -5,7 +5,7 @@
 metadata:
   id: tab_4_quality_reports
   label: "Tab 4: Quality Principles & Reports"
-  description: "Configure TRUST 5, test coverage, max projects, report generation"
+  description: "Configure TRUST 5 quality framework (Test-first, Readable, Unified, Secured, Trackable), test coverage targets, and report generation"
   priority: OPTIONAL
   order: 4
   setting_count: 7
@@ -20,18 +20,18 @@ batches:
     conditional: false
     questions:
       - id: enforce_tdd
-        question: "Enforce TDD (Test-Driven Development)?"
-        header: "Enforce TDD"
+        question: "Enable TRUST 5 quality framework? TRUST 5 enforces: Test-first, Readable, Unified, Secured, Trackable code principles."
+        header: "TRUST 5"
         field: "constitution.enforce_tdd"
         type: select_single
         multi_select: false
         required: true
         options:
           - label: "Enabled"
-            description: "Require tests before implementation (recommended)"
+            description: "Enforce TRUST 5 quality principles (recommended)"
             value: true
           - label: "Disabled"
-            description: "Allow implementation without tests"
+            description: "Skip quality enforcement"
             value: false
         target:
           file: "sections/quality.yaml"
@@ -48,12 +48,12 @@ batches:
         multi_select: false
         required: true
         options:
+          - label: "85%"
+            description: "TRUST 5 standard coverage (recommended)"
+            value: 85
           - label: "80%"
             description: "Minimum acceptable coverage"
             value: 80
-          - label: "85%"
-            description: "Standard coverage (recommended)"
-            value: 85
           - label: "90%"
             description: "High quality coverage"
             value: 90
@@ -65,22 +65,23 @@ batches:
           path: "constitution.test_coverage_target"
 
       # Q: Max Projects - number_input type
+      # Note: This is a simplicity principle setting, NOT related to TRUST 5
       # UX Note: For number_input, only show preset values.
       # Users should type directly in "Type something" field for custom values.
       - id: max_projects
-        question: "Maximum concurrent projects? To enter a custom number, type in the text field below."
+        question: "Maximum concurrent projects to manage? This helps maintain focus and quality."
         header: "Max Projects"
         field: "constitution.principles.simplicity.max_projects"
         type: number_input
         multi_select: false
         required: true
         options:
-          - label: "3 projects"
-            description: "Small team or individual"
-            value: 3
           - label: "5 projects"
-            description: "Default recommendation"
+            description: "Recommended for focused work (recommended)"
             value: 5
+          - label: "3 projects"
+            description: "Small team or individual developer"
+            value: 3
           - label: "10 projects"
             description: "For larger teams"
             value: 10

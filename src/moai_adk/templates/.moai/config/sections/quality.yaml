@@ -1,14 +1,15 @@
 # Quality & Constitution Settings
-# TDD enforcement and report generation
+# TRUST 5 Framework: Test-first, Readable, Unified, Secured, Trackable
 
 constitution:
-  enforce_tdd: true           # Require tests before implementation
-  test_coverage_target: 85    # Minimum test coverage percentage (recommended: 85%)
+  # TRUST 5 quality framework enforcement
+  enforce_tdd: true           # Enable TRUST 5 quality principles
+  test_coverage_target: 85    # Test-first: minimum coverage (recommended: 85%)
 
-  # Quality principles (TRUST 5 framework)
+  # Simplicity principles (separate from TRUST 5)
   principles:
     simplicity:
-      max_projects: 5         # Maximum concurrent projects
+      max_projects: 5         # Maximum concurrent projects for focus
 
 report_generation:
   enabled: true               # Enable report generation
