@@ -1,17 +1,17 @@
 ---
 name: moai-platform-neon
-description: Neon serverless PostgreSQL specialist covering auto-scaling, database branching, PITR, and connection pooling. Use when building serverless apps needing PostgreSQL.
-version: 1.0.0
+description: Neon serverless PostgreSQL specialist covering auto-scaling, database branching, PITR, and connection pooling. Use when building serverless apps needing PostgreSQL, implementing preview environments, or optimizing database costs.
+version: 2.0.0
 category: platform
 tags: [neon, postgresql, serverless, branching, auto-scaling]
 context7-libraries: [/neondatabase/neon]
-related-skills: [moai-platform-supabase, moai-lang-typescript]
-allowed-tools: Read, Write, Bash, Grep, Glob
+related-skills: [moai-platform-supabase, moai-lang-typescript, moai-domain-database]
+allowed-tools: Read, Write, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
 
 # moai-platform-neon: Neon Serverless PostgreSQL Specialist
 
-## Quick Reference (30 seconds)
+## Quick Reference
 
 Neon Serverless PostgreSQL Expertise: Specialized knowledge for Neon serverless PostgreSQL covering auto-scaling, scale-to-zero compute, database branching, Point-in-Time Recovery, and modern ORM integration.
 
@@ -25,14 +25,41 @@ PostgreSQL 16: Full PostgreSQL 16 compatibility with extensions support
 
 ### Quick Decision Guide
 
-- Need serverless PostgreSQL with auto-scaling? Neon
-- Need database branching for CI/CD? Neon branching
-- Need edge-compatible database? Neon with connection pooling
-- Need instant preview environments? Neon branch per PR
+Need serverless PostgreSQL with auto-scaling: Use Neon
+Need database branching for CI/CD: Use Neon branching
+Need edge-compatible database: Use Neon with connection pooling
+Need instant preview environments: Use Neon branch per PR
+Need vector search: Consider Supabase with pgvector instead
 
-### Context7 Library Mapping
+### Context7 Documentation Access
 
-Neon: /neondatabase/neon
+To fetch the latest Neon documentation:
+
+Step 1: Resolve the library ID using mcp__context7__resolve-library-id with library name "neondatabase/neon"
+
+Step 2: Fetch documentation using mcp__context7__get-library-docs with the resolved Context7 ID, specifying topics like "branching", "connection pooling", or "auto-scaling"
+
+---
+
+## Module Index
+
+This skill is organized into focused modules for progressive disclosure:
+
+### Core Modules
+
+[Database Branching](modules/branching-workflows.md): Copy-on-write branches for development, preview environments, and CI/CD integration with GitHub Actions
+
+[Auto-Scaling and Compute](modules/auto-scaling.md): Compute unit configuration, scale-to-zero settings, and cost optimization strategies
+
+[Connection Pooling](modules/connection-pooling.md): Serverless connection pooling for edge runtimes, WebSocket configuration, and pool sizing
+
+[PITR and Backups](modules/pitr-backups.md): Point-in-time recovery, branch restoration, and backup strategies
+
+### Supporting Files
+
+[Reference Guide](reference.md): API reference, environment configuration, and provider comparison
+
+[Code Examples](examples.md): Complete working examples for common integration patterns
 
 ---
 
@@ -82,153 +109,10 @@ const result = await sql.transaction([
 ])
 ```
 
-WebSocket Connection for Session Persistence:
-```typescript
-import { Pool, neonConfig } from '@neondatabase/serverless'
-import ws from 'ws'
-
-// Required for Node.js environments
-neonConfig.webSocketConstructor = ws
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL })
-
-// Use pool for session-based operations
-const client = await pool.connect()
-try {
-  await client.query('BEGIN')
-  await client.query('INSERT INTO logs (message) VALUES ($1)', ['Action'])
-  await client.query('COMMIT')
-} finally {
-  client.release()
-}
-```
-
-### Database Branching
-
-Branch Management API:
-```typescript
-class NeonBranchManager {
-  private apiKey: string
-  private projectId: string
-  private baseUrl = 'https://console.neon.tech/api/v2'
-
-  constructor(apiKey: string, projectId: string) {
-    this.apiKey = apiKey
-    this.projectId = projectId
-  }
-
-  private async request(path: string, options: RequestInit = {}) {
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      ...options,
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-        ...options.headers
-      }
-    })
-    if (!response.ok) throw new Error(`Neon API error: ${response.statusText}`)
-    return response.json()
-  }
-
-  async createBranch(name: string, parentId: string = 'main') {
-    return this.request(`/projects/${this.projectId}/branches`, {
-      method: 'POST',
-      body: JSON.stringify({
-        branch: { name, parent_id: parentId }
-      })
-    })
-  }
-
-  async deleteBranch(branchId: string) {
-    return this.request(`/projects/${this.projectId}/branches/${branchId}`, {
-      method: 'DELETE'
-    })
-  }
-
-  async listBranches() {
-    return this.request(`/projects/${this.projectId}/branches`)
-  }
-
-  async getBranchConnectionString(branchId: string) {
-    const endpoints = await this.request(
-      `/projects/${this.projectId}/branches/${branchId}/endpoints`
-    )
-    return endpoints.endpoints[0]?.connection_uri
-  }
-}
-```
-
-Preview Branch for Pull Requests:
-```typescript
-async function createPreviewEnvironment(prNumber: number) {
-  const branchManager = new NeonBranchManager(
-    process.env.NEON_API_KEY!,
-    process.env.NEON_PROJECT_ID!
-  )
-
-  // Create branch from main
-  const branch = await branchManager.createBranch(`pr-${prNumber}`, 'main')
-
-  // Get connection string
-  const connectionString = await branchManager.getBranchConnectionString(branch.branch.id)
-
-  return {
-    branchId: branch.branch.id,
-    branchName: branch.branch.name,
-    connectionString
-  }
-}
-
-async function cleanupPreviewEnvironment(branchId: string) {
-  const branchManager = new NeonBranchManager(
-    process.env.NEON_API_KEY!,
-    process.env.NEON_PROJECT_ID!
-  )
-  await branchManager.deleteBranch(branchId)
-}
-```
-
-### Point-in-Time Recovery
-
-Restore to Specific Timestamp:
-```typescript
-async function restoreToPoint(timestamp: Date) {
-  const branchManager = new NeonBranchManager(
-    process.env.NEON_API_KEY!,
-    process.env.NEON_PROJECT_ID!
-  )
-
-  const response = await fetch(
-    `https://console.neon.tech/api/v2/projects/${process.env.NEON_PROJECT_ID}/branches`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.NEON_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        branch: {
-          name: `restore-${timestamp.toISOString().replace(/[:.]/g, '-')}`,
-          parent_id: 'main',
-          parent_timestamp: timestamp.toISOString()
-        }
-      })
-    }
-  )
-
-  return response.json()
-}
-
-// Usage: Restore to 1 hour ago
-const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
-const restoredBranch = await restoreToPoint(oneHourAgo)
-```
-
 ### Drizzle ORM Integration
 
 Schema Definition:
 ```typescript
-// schema.ts
 import { pgTable, uuid, text, timestamp, boolean, jsonb } from 'drizzle-orm/pg-core'
 
 export const users = pgTable('users', {
@@ -238,19 +122,10 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow(),
   metadata: jsonb('metadata')
 })
-
-export const projects = pgTable('projects', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  name: text('name').notNull(),
-  ownerId: uuid('owner_id').references(() => users.id),
-  isPublic: boolean('is_public').default(false),
-  createdAt: timestamp('created_at').defaultNow()
-})
 ```
 
 Drizzle Client Setup:
 ```typescript
-// db.ts
 import { neon } from '@neondatabase/serverless'
 import { drizzle } from 'drizzle-orm/neon-http'
 import * as schema from './schema'
@@ -260,50 +135,12 @@ export const db = drizzle(sql, { schema })
 
 // Query examples
 const allUsers = await db.select().from(schema.users)
-
-const userProjects = await db
-  .select()
-  .from(schema.projects)
-  .where(eq(schema.projects.ownerId, userId))
-  .orderBy(desc(schema.projects.createdAt))
 ```
 
 ### Prisma ORM Integration
 
-Prisma Schema:
-```prisma
-// schema.prisma
-generator client {
-  provider = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  name      String?
-  projects  Project[]
-  createdAt DateTime  @default(now())
-}
-
-model Project {
-  id        String   @id @default(uuid())
-  name      String
-  owner     User     @relation(fields: [ownerId], references: [id])
-  ownerId   String
-  isPublic  Boolean  @default(false)
-  createdAt DateTime @default(now())
-}
-```
-
 Prisma with Neon Serverless Driver:
 ```typescript
-// db.ts
 import { Pool, neonConfig } from '@neondatabase/serverless'
 import { PrismaNeon } from '@prisma/adapter-neon'
 import { PrismaClient } from '@prisma/client'
@@ -313,115 +150,6 @@ neonConfig.webSocketConstructor = require('ws')
 const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 const adapter = new PrismaNeon(pool)
 export const prisma = new PrismaClient({ adapter })
-
-// Query examples
-const users = await prisma.user.findMany({
-  include: { projects: true }
-})
-```
-
----
-
-## Advanced Patterns
-
-### Connection Pooling for Edge
-
-Edge Function Configuration:
-```typescript
-import { neon } from '@neondatabase/serverless'
-
-// Use pooled connection for edge environments
-const sql = neon(process.env.DATABASE_URL_POOLED!)
-
-export const config = {
-  runtime: 'edge'
-}
-
-export default async function handler(request: Request) {
-  const users = await sql`SELECT id, name FROM users LIMIT 10`
-  return Response.json(users)
-}
-```
-
-### CI/CD Branch Automation
-
-GitHub Actions Integration:
-```yaml
-name: Preview Environment
-
-on:
-  pull_request:
-    types: [opened, synchronize, closed]
-
-jobs:
-  create-preview:
-    if: github.event.action != 'closed'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Create Neon Branch
-        id: create-branch
-        run: |
-          BRANCH=$(curl -s -X POST \
-            -H "Authorization: Bearer ${{ secrets.NEON_API_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d '{"branch":{"name":"pr-${{ github.event.number }}"}}' \
-            "https://console.neon.tech/api/v2/projects/${{ secrets.NEON_PROJECT_ID }}/branches")
-          echo "branch_id=$(echo $BRANCH | jq -r '.branch.id')" >> $GITHUB_OUTPUT
-
-  cleanup-preview:
-    if: github.event.action == 'closed'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Delete Neon Branch
-        run: |
-          curl -X DELETE \
-            -H "Authorization: Bearer ${{ secrets.NEON_API_KEY }}" \
-            "https://console.neon.tech/api/v2/projects/${{ secrets.NEON_PROJECT_ID }}/branches/pr-${{ github.event.number }}"
-```
-
-### Auto-Scaling Configuration
-
-Compute Settings via API:
-```typescript
-async function configureAutoScaling(endpointId: string) {
-  const response = await fetch(
-    `https://console.neon.tech/api/v2/projects/${process.env.NEON_PROJECT_ID}/endpoints/${endpointId}`,
-    {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${process.env.NEON_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        endpoint: {
-          autoscaling_limit_min_cu: 0.25,  // Scale to zero
-          autoscaling_limit_max_cu: 4,     // Max 4 compute units
-          suspend_timeout_seconds: 300     // Suspend after 5 min idle
-        }
-      })
-    }
-  )
-  return response.json()
-}
-```
-
-### Migration Workflow
-
-Development to Production:
-```typescript
-// Run migrations on direct connection (not pooled)
-import { migrate } from 'drizzle-orm/neon-http/migrator'
-import { neon } from '@neondatabase/serverless'
-import { drizzle } from 'drizzle-orm/neon-http'
-
-async function runMigrations() {
-  // Use direct connection for migrations
-  const sql = neon(process.env.DATABASE_URL!)
-  const db = drizzle(sql)
-
-  await migrate(db, { migrationsFolder: './drizzle' })
-  console.log('Migrations completed')
-}
 ```
 
 ---
@@ -430,23 +158,23 @@ async function runMigrations() {
 
 ### When to Use Neon
 
-Serverless Applications: Auto-scaling and scale-to-zero reduce costs
-Preview Environments: Instant branching enables per-PR databases
-Edge Deployment: Connection pooling works with edge runtimes
-Development Workflow: Branch from production for realistic dev data
-Cost Optimization: Pay only for active compute time
+Serverless Applications: Auto-scaling and scale-to-zero reduce costs significantly
+Preview Environments: Instant branching enables per-PR databases with production data
+Edge Deployment: Connection pooling provides edge runtime compatibility
+Development Workflow: Branch from production for realistic development data
+Cost Optimization: Pay only for active compute time with scale-to-zero
 
 ### When to Consider Alternatives
 
-Need Vector Search: Consider Supabase with pgvector
-Need Real-time Subscriptions: Consider Supabase or Convex
-Need NoSQL Flexibility: Consider Firestore or Convex
-Need Built-in Auth: Consider Supabase
+Need Vector Search: Consider Supabase with pgvector or dedicated vector database
+Need Real-time Subscriptions: Consider Supabase or Convex for real-time features
+Need NoSQL Flexibility: Consider Firestore or Convex for document storage
+Need Built-in Auth: Consider Supabase for integrated authentication
 
-### Pricing Reference (2024)
+### Pricing Reference
 
 Free Tier: 3GB storage, 100 compute hours per month
-Pro Tier: Usage-based pricing, additional storage and compute
+Pro Tier: Usage-based pricing with additional storage and compute
 Scale-to-Zero: No charges during idle periods
 
 ---
@@ -456,12 +184,12 @@ Scale-to-Zero: No charges during idle periods
 - moai-platform-supabase - Alternative when RLS or pgvector needed
 - moai-lang-typescript - TypeScript patterns for Drizzle and Prisma
 - moai-domain-backend - Backend architecture with database integration
-- moai-workflow-cicd - CI/CD pipeline integration patterns
-- moai-context7-integration - Latest Neon documentation access
+- moai-domain-database - General database patterns and optimization
 
 ---
 
 Status: Production Ready
+Version: 2.0.0
 Generated with: MoAI-ADK Skill Factory v2.0
-Last Updated: 2025-12-07
+Last Updated: 2026-01-06
 Technology: Neon Serverless PostgreSQL

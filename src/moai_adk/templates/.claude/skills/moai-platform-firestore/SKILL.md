@@ -1,9 +1,9 @@
 ---
 name: moai-platform-firestore
 description: Firebase Firestore specialist covering NoSQL patterns, real-time sync, offline caching, and Security Rules. Use when building mobile-first apps with offline support, implementing real-time listeners, or configuring Firestore security.
-version: 1.0.0
+version: 2.0.0
 category: platform
-updated: 2025-12-07
+updated: 2026-01-06
 status: active
 tags:
   - firestore
@@ -18,12 +18,12 @@ related-skills:
   - moai-platform-firebase-auth
   - moai-lang-flutter
   - moai-lang-typescript
-allowed-tools: Read, Write, Bash, Grep, Glob
+allowed-tools: Read, Write, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
 
 # moai-platform-firestore: Firebase Firestore Specialist
 
-## Quick Reference (30 seconds)
+## Quick Reference
 
 Firebase Firestore Expertise: NoSQL document database with real-time synchronization, offline-first architecture, Security Rules, Cloud Functions triggers, and mobile-optimized SDKs.
 
@@ -43,15 +43,48 @@ Composite Indexes: Complex query optimization
 - Projects requiring Google Cloud integration
 - Apps with flexible, evolving data structures
 
-### Context7 Library Access
+### Context7 Documentation Access
 
-```python
-docs = await mcp__context7__get_library_docs(
-    context7CompatibleLibraryID="/firebase/firebase-docs",
-    topic="firestore security-rules offline-persistence cloud-functions indexes",
-    tokens=6000
-)
-```
+Step 1: Resolve the Firebase library ID
+- Use mcp__context7__resolve-library-id with libraryName "firebase"
+- Returns the Context7-compatible library ID
+
+Step 2: Fetch Firestore documentation
+- Use mcp__context7__get-library-docs with the resolved ID
+- Set topic to specific area: "firestore security-rules", "firestore offline", "firestore real-time"
+- Allocate 6000-8000 tokens for comprehensive coverage
+
+### Module Index
+
+This skill is organized into specialized modules for deep implementation guidance:
+
+Security Rules Module (modules/security-rules.md):
+- Basic rule structure and syntax
+- Role-based access control patterns
+- Custom claims integration
+- Field-level validation
+- Testing and debugging rules
+
+Offline and Caching Module (modules/offline-cache.md):
+- Persistent cache configuration
+- Multi-tab manager setup
+- Cache size optimization
+- Sync status handling
+- Network state management
+
+Real-time Listeners Module (modules/realtime-listeners.md):
+- Snapshot listener patterns
+- Metadata handling for pending writes
+- Query subscription optimization
+- Listener lifecycle management
+- Error handling strategies
+
+Transactions Module (modules/transactions.md):
+- Atomic batch operations
+- Transaction patterns and constraints
+- Distributed counter implementation
+- Conflict resolution strategies
+- Performance considerations
 
 ---
 
@@ -82,32 +115,8 @@ export const db = initializeFirestore(app, {
 })
 ```
 
-### Real-time Listeners with Metadata
+### Basic Security Rules Structure
 
-```typescript
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore'
-
-export function subscribeToDocuments(userId: string, callback: (docs: any[]) => void) {
-  const q = query(
-    collection(db, 'documents'),
-    where('collaborators', 'array-contains', userId),
-    orderBy('createdAt', 'desc')
-  )
-
-  return onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
-    callback(snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      _pending: doc.metadata.hasPendingWrites,
-      _fromCache: doc.metadata.fromCache
-    })))
-  })
-}
-```
-
-### Security Rules
-
-Basic Structure:
 ```javascript
 rules_version = '2';
 service cloud.firestore {
@@ -128,39 +137,26 @@ service cloud.firestore {
 }
 ```
 
-Role-Based Access with Custom Claims:
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    function isSignedIn() { return request.auth != null; }
-    function isAdmin() { return request.auth.token.admin == true; }
+### Real-time Listener with Metadata
 
-    match /organizations/{orgId} {
-      function isMember() {
-        return exists(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid));
-      }
-      function getMemberRole() {
-        return get(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)).data.role;
-      }
-      function isOrgAdmin() { return isMember() && getMemberRole() in ['admin', 'owner']; }
+```typescript
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore'
 
-      allow read: if isSignedIn() && isMember();
-      allow update: if isOrgAdmin();
-      allow delete: if getMemberRole() == 'owner';
+export function subscribeToDocuments(userId: string, callback: (docs: any[]) => void) {
+  const q = query(
+    collection(db, 'documents'),
+    where('collaborators', 'array-contains', userId),
+    orderBy('createdAt', 'desc')
+  )
 
-      match /members/{memberId} {
-        allow read: if isMember();
-        allow write: if isOrgAdmin();
-      }
-
-      match /projects/{projectId} {
-        allow read: if isMember();
-        allow create: if isMember() && getMemberRole() in ['admin', 'owner', 'editor'];
-        allow update, delete: if isOrgAdmin() || resource.data.createdBy == request.auth.uid;
-      }
-    }
-  }
+  return onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
+    callback(snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      _pending: doc.metadata.hasPendingWrites,
+      _fromCache: doc.metadata.fromCache
+    })))
+  })
 }
 ```
 
@@ -186,139 +182,6 @@ service cloud.firestore {
       ]
     }
   ]
-}
-```
-
-### Cloud Functions V2 Triggers
-
-```typescript
-import { onDocumentUpdated } from 'firebase-functions/v2/firestore'
-import { onCall, HttpsError } from 'firebase-functions/v2/https'
-import { onSchedule } from 'firebase-functions/v2/scheduler'
-import { getFirestore, FieldValue } from 'firebase-admin/firestore'
-
-const db = getFirestore()
-
-export const onDocumentUpdate = onDocumentUpdated(
-  { document: 'documents/{docId}', region: 'us-central1' },
-  async (event) => {
-    const before = event.data?.before.data()
-    const after = event.data?.after.data()
-    if (!before || !after) return
-
-    const batch = db.batch()
-    batch.set(db.collection('changes').doc(), {
-      documentId: event.params.docId,
-      before, after,
-      changedAt: FieldValue.serverTimestamp()
-    })
-    batch.update(db.doc('stats/documents'), {
-      totalModifications: FieldValue.increment(1)
-    })
-    await batch.commit()
-  }
-)
-
-export const inviteToOrganization = onCall({ region: 'us-central1' }, async (request) => {
-  if (!request.auth) throw new HttpsError('unauthenticated', 'Must be signed in')
-
-  const { organizationId, email, role } = request.data
-  const memberDoc = await db.doc(`organizations/${organizationId}/members/${request.auth.uid}`).get()
-
-  if (!memberDoc.exists || !['admin', 'owner'].includes(memberDoc.data()?.role)) {
-    throw new HttpsError('permission-denied', 'Must be organization admin')
-  }
-
-  const invitation = await db.collection('invitations').add({
-    organizationId, email, role,
-    invitedBy: request.auth.uid,
-    createdAt: FieldValue.serverTimestamp(),
-    status: 'pending'
-  })
-
-  return { invitationId: invitation.id }
-})
-
-export const dailyCleanup = onSchedule(
-  { schedule: '0 0 * * *', timeZone: 'UTC', region: 'us-central1' },
-  async () => {
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-
-    const oldDocs = await db.collection('tempFiles')
-      .where('createdAt', '<', thirtyDaysAgo).limit(500).get()
-
-    const batch = db.batch()
-    oldDocs.docs.forEach((doc) => batch.delete(doc.ref))
-    await batch.commit()
-  }
-)
-```
-
----
-
-## Advanced Patterns
-
-### Offline-First React Hook
-
-```typescript
-import { useEffect, useState } from 'react'
-import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore'
-
-export function useTasks(userId: string) {
-  const [tasks, setTasks] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    if (!userId) return
-    const q = query(collection(db, 'tasks'), where('userId', '==', userId), orderBy('createdAt', 'desc'))
-
-    return onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
-      setTasks(snapshot.docs.map((doc) => ({
-        id: doc.id, ...doc.data(),
-        _pending: doc.metadata.hasPendingWrites,
-        _fromCache: doc.metadata.fromCache
-      })))
-      setLoading(false)
-    })
-  }, [userId])
-
-  const addTask = (title: string) => addDoc(collection(db, 'tasks'), {
-    title, completed: false, userId, createdAt: serverTimestamp()
-  })
-
-  const toggleTask = (taskId: string, completed: boolean) =>
-    updateDoc(doc(db, 'tasks', taskId), { completed, updatedAt: serverTimestamp() })
-
-  return { tasks, loading, addTask, toggleTask }
-}
-```
-
-### Batch Operations and Transactions
-
-```typescript
-import { writeBatch, runTransaction, doc, increment } from 'firebase/firestore'
-
-async function batchUpdate(updates: Array<{ id: string; data: any }>) {
-  const batch = writeBatch(db)
-  updates.forEach(({ id, data }) => {
-    batch.update(doc(db, 'documents', id), { ...data, updatedAt: serverTimestamp() })
-  })
-  await batch.commit()
-}
-
-async function transferCredits(fromUserId: string, toUserId: string, amount: number) {
-  await runTransaction(db, async (transaction) => {
-    const fromRef = doc(db, 'users', fromUserId)
-    const toRef = doc(db, 'users', toUserId)
-    const fromDoc = await transaction.get(fromRef)
-
-    if (!fromDoc.exists()) throw new Error('Sender not found')
-    if (fromDoc.data().credits < amount) throw new Error('Insufficient credits')
-
-    transaction.update(fromRef, { credits: increment(-amount) })
-    transaction.update(toRef, { credits: increment(amount) })
-  })
 }
 ```
 
@@ -352,7 +215,18 @@ Daily Deletes: 20,000
 
 ---
 
+## Additional Resources
+
+- reference.md - Extended documentation and best practices
+- examples.md - Complete working code examples
+- modules/security-rules.md - Security Rules deep dive
+- modules/offline-cache.md - Offline persistence patterns
+- modules/realtime-listeners.md - Real-time subscription patterns
+- modules/transactions.md - Batch and transaction operations
+
+---
+
 Status: Production Ready
 Generated with: MoAI-ADK Skill Factory v2.0
-Last Updated: 2025-12-07
+Last Updated: 2026-01-06
 Platform: Firebase Firestore
