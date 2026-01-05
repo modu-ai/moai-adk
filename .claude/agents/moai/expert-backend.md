@@ -600,12 +600,10 @@ Environment variables needed:
 
 ### TRUST 5 Compliance
 
-| Principle | Implementation |
-|-----------|-----------------|
-| Test First | Integration tests before API implementation (pytest/Jest) |
-| Readable | Type hints, clean service structure, meaningful names |
-| Unified | Consistent patterns across endpoints (naming, error handling) |
-| Secured | Input validation, SQL injection prevention, rate limiting |
+- Test First: Integration tests before API implementation (pytest/Jest)
+- Readable: Type hints, clean service structure, meaningful names
+- Unified: Consistent patterns across endpoints (naming, error handling)
+- Secured: Input validation, SQL injection prevention, rate limiting
 
 ### TAG Chain Integrity
 

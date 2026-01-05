@@ -8,6 +8,7 @@ version: 2.0.0
 modularized: true
 updated: 2025-11-27
 status: active
+allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 tags:
  - foundation
  - quality

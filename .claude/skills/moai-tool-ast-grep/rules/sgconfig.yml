@@ -1,0 +1,54 @@
+# AST-Grep Configuration for MoAI-ADK
+# https://ast-grep.github.io/reference/sgconfig.html
+
+ruleDirs:
+  - security
+  - quality
+  - languages
+
+testConfigs:
+  - ./**/__tests__/*.yml
+
+languageGlobs:
+  python:
+    - "**/*.py"
+    - "**/*.pyi"
+  javascript:
+    - "**/*.js"
+    - "**/*.jsx"
+    - "**/*.mjs"
+    - "**/*.cjs"
+  typescript:
+    - "**/*.ts"
+    - "**/*.tsx"
+    - "**/*.mts"
+    - "**/*.cts"
+  go:
+    - "**/*.go"
+  rust:
+    - "**/*.rs"
+  java:
+    - "**/*.java"
+  kotlin:
+    - "**/*.kt"
+    - "**/*.kts"
+  cpp:
+    - "**/*.c"
+    - "**/*.cpp"
+    - "**/*.cc"
+    - "**/*.h"
+    - "**/*.hpp"
+  ruby:
+    - "**/*.rb"
+  php:
+    - "**/*.php"
+
+# Custom rules utilities
+utils:
+  is-security-sensitive:
+    any:
+      - pattern: password
+      - pattern: secret
+      - pattern: api_key
+      - pattern: token
+      - pattern: credential

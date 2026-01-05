@@ -4,7 +4,7 @@ description: Enterprise Mermaid diagramming skill for Claude Code using MCP Play
 version: 7.0.0
 modularized: true
 category: library
-allowed-tools: Read, Grep, Glob, Bash
+allowed-tools: Read, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
 
 ## Quick Reference

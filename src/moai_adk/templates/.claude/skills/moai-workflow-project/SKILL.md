@@ -7,7 +7,7 @@ updated: 2025-12-30
 status: active
 aliases: [moai-workflow-project]
 category: workflow
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob
+allowed-tools: Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
 
 # MoAI Workflow Project - Integrated Project Management System

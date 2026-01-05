@@ -1,0 +1,84 @@
+# Deprecated API Detection Rules
+
+id: deprecated-substr
+language: javascript
+severity: warning
+message: "substr() is deprecated. Use slice() or substring() instead."
+rule:
+  pattern: $STR.substr($$$ARGS)
+fix: $STR.slice($$$ARGS)
+
+---
+id: deprecated-escape
+language: javascript
+severity: warning
+message: "escape() is deprecated. Use encodeURIComponent() instead."
+rule:
+  pattern: escape($STR)
+fix: encodeURIComponent($STR)
+
+---
+id: deprecated-unescape
+language: javascript
+severity: warning
+message: "unescape() is deprecated. Use decodeURIComponent() instead."
+rule:
+  pattern: unescape($STR)
+fix: decodeURIComponent($STR)
+
+---
+id: deprecated-component-will-mount
+language: typescriptreact
+severity: error
+message: "componentWillMount is deprecated. Use componentDidMount or useEffect."
+rule:
+  pattern: componentWillMount() { $$$BODY }
+
+---
+id: deprecated-component-will-receive-props
+language: typescriptreact
+severity: error
+message: "componentWillReceiveProps is deprecated. Use getDerivedStateFromProps or useEffect."
+rule:
+  pattern: componentWillReceiveProps($PROPS) { $$$BODY }
+
+---
+id: deprecated-find-dom-node
+language: typescriptreact
+severity: warning
+message: "findDOMNode is deprecated. Use refs instead."
+rule:
+  pattern: ReactDOM.findDOMNode($COMPONENT)
+
+---
+id: deprecated-python-imp
+language: python
+severity: warning
+message: "imp module is deprecated. Use importlib instead."
+rule:
+  pattern: import imp
+
+---
+id: deprecated-python-optparse
+language: python
+severity: info
+message: "optparse is deprecated. Use argparse instead."
+rule:
+  pattern: import optparse
+
+---
+id: deprecated-python-thread
+language: python
+severity: warning
+message: "thread module is deprecated. Use threading instead."
+rule:
+  pattern: import thread
+
+---
+id: deprecated-python-cgi-escape
+language: python
+severity: warning
+message: "cgi.escape() is deprecated. Use html.escape() instead."
+rule:
+  pattern: cgi.escape($$$ARGS)
+fix: html.escape($$$ARGS)

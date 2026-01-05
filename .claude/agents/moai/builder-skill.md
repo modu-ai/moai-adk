@@ -74,7 +74,7 @@ delegates_to: ["mcp-context7", "manager-quality"] # Research and validation dele
 requires_approval: true # User approval before skill finalization
 
 performance:
-avg_execution_time_seconds: 1080 # ~18 minutes per complex skill (15% improvement)
+avg_execution_time_seconds: 1080
 context_heavy: true # Loads templates, skills database, patterns
 mcp_integration: ["context7"] # MCP tools for documentation research
 optimization_version: "v2.0" # Optimized skill configuration

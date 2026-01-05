@@ -12,7 +12,7 @@ description: |
 tools: Read, Grep, Glob, Bash, TodoWrite, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-workflow-testing, moai-lang-python, moai-lang-typescript, moai-lang-javascript
+skills: moai-foundation-claude, moai-workflow-testing, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-tool-ast-grep
 ---
 
 # Debug Helper - Integrated Debugging Expert

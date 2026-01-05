@@ -1,9 +1,9 @@
 ---
 name: moai-plugin-builder
 description: Claude Code plugin development patterns, templates, and best practices. Use when creating plugins, defining plugin components, or troubleshooting plugin issues.
-version: 1.1.0
+version: 1.2.0
 category: foundation
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 tags:
   - plugin
   - claude-code
@@ -15,7 +15,8 @@ tags:
   - skills
   - mcp
   - lsp
-updated: 2025-12-26
+  - marketplace
+updated: 2026-01-06
 status: active
 author: MoAI-ADK Team
 ---
@@ -257,28 +258,14 @@ hooks.json Structure:
 ```
 
 Available Hook Events:
-- PreToolUse - Before tool execution
-- PostToolUse - After successful tool execution
-- PostToolUseFailure - After tool execution failure
-- PermissionRequest - Permission dialog display
-- UserPromptSubmit - User message submission
-- Notification - Notification trigger
-- Stop - Execution interruption
-- SubagentStart - Sub-agent invocation start
-- SubagentStop - Sub-agent completion
-- SessionStart - Session initialization
-- SessionEnd - Session termination
-- PreCompact - Before context compaction
+- PreToolUse, PostToolUse, PostToolUseFailure - Tool execution lifecycle
+- PermissionRequest, UserPromptSubmit, Notification, Stop - User interaction
+- SubagentStart, SubagentStop - Sub-agent lifecycle
+- SessionStart, SessionEnd, PreCompact - Session lifecycle
 
-Hook Types:
-- command: Execute bash command
-- prompt: Send LLM prompt
-- agent: Invoke agent for processing
+Hook Types: command (bash), prompt (LLM), agent (invoke agent)
 
-Matcher Patterns:
-- Exact tool name: "Write", "Bash"
-- Wildcard: "*" matches all tools
-- Tool-specific filtering based on tool name
+Matcher Patterns: Exact name ("Write"), wildcard ("*"), tool-specific filtering
 
 ### MCP Server Configuration
 
@@ -297,17 +284,9 @@ Matcher Patterns:
 }
 ```
 
-Transport Types:
-- stdio: Standard input/output communication
-- http: HTTP-based transport
-- sse: Server-sent events transport
+Transport Types: stdio (default), http, sse
 
-Fields:
-- command: Executable command
-- args: Command arguments array
-- env: Environment variables
-- type: Transport type (default: stdio)
-- url: Server URL (for http/sse)
+Fields: command (executable), args (array), env (variables), type (transport), url (for http/sse)
 
 ### LSP Server Configuration
 
@@ -334,18 +313,7 @@ Required Fields:
 - command: LSP server executable
 - extensionToLanguage: File extension to language mapping
 
-Optional Fields:
-- args: Command arguments array
-- env: Environment variables
-- transport: Connection type (stdio default)
-- initializationOptions: LSP initialization options
-- settings: Runtime settings for the server
-- workspaceFolder: Override workspace folder
-- startupTimeout: Server startup timeout in milliseconds
-- shutdownTimeout: Server shutdown timeout in milliseconds
-- restartOnCrash: Automatically restart on crash (boolean)
-- maxRestarts: Maximum restart attempts
-- loggingConfig: Debug logging configuration
+Optional Fields: args, env, transport, initializationOptions, settings, workspaceFolder, startupTimeout, shutdownTimeout, restartOnCrash, maxRestarts, loggingConfig
 
 ---
 
@@ -417,48 +385,65 @@ claude plugin marketplace add <url>
 claude plugin marketplace list
 ```
 
+### Marketplace Creation
+
 marketplace.json Structure:
 ```json
 {
-  "name": "my-plugin",
-  "versions": {
-    "1.0.0": {
-      "url": "https://github.com/user/plugin/releases/v1.0.0",
-      "checksum": "sha256:..."
+  "name": "my-marketplace",
+  "owner": {
+    "name": "Organization Name",
+    "email": "contact@example.com"
+  },
+  "metadata": {
+    "description": "Custom plugins for our team",
+    "version": "1.0.0",
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "my-plugin",
+      "source": "./plugins/my-plugin",
+      "description": "Plugin description",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": ["automation", "workflow"]
     }
-  }
+  ]
 }
 ```
+
+Marketplace Required Fields:
+- name: Marketplace identifier in kebab-case
+- owner: Object with name (required) and email (optional)
+- plugins: Array of plugin entries
+
+Plugin Source Types:
+- Relative paths: `"source": "./plugins/my-plugin"`
+- GitHub: `{"source": "github", "repo": "owner/repo"}`
+- Git URL: `{"source": "url", "url": "https://gitlab.com/org/plugin.git"}`
+
+Reserved Marketplace Names (cannot be used):
+- claude-code-marketplace, claude-code-plugins, claude-plugins-official
+- anthropic-marketplace, anthropic-plugins
+- agent-skills, life-sciences
+
+Marketplace Hosting Options:
+- GitHub repository (recommended): Users add via `/plugin marketplace add owner/repo`
+- Other Git services: Full URL with `/plugin marketplace add https://...`
+- Local testing: `/plugin marketplace add ./path/to/marketplace`
 
 ---
 
 ## Troubleshooting
 
-Common Issues:
+Plugin Not Loading: Verify plugin.json exists and has valid syntax; confirm kebab-case name; ensure component directories at root level
 
-Plugin Not Loading:
-- Verify `.claude-plugin/plugin.json` exists
-- Check plugin.json syntax validity
-- Confirm name field uses kebab-case
-- Ensure component directories at root level
+Commands Not Found: Check .md extension; verify YAML frontmatter with description; test with `/plugin-name:command-name`
 
-Commands Not Found:
-- Check command file has .md extension
-- Verify YAML frontmatter with description
-- Confirm commands path in plugin.json
-- Test with `/plugin-name:command-name`
+Hooks Not Triggering: Verify hooks.json syntax; check matcher patterns; confirm command executable; enable debug mode
 
-Hooks Not Triggering:
-- Verify hooks.json syntax
-- Check matcher pattern matches tool name
-- Confirm hook command executable
-- Enable debug mode for detailed logs
-
-MCP Server Failures:
-- Verify command exists in PATH
-- Check environment variables set correctly
-- Confirm transport type matches server
-- Test server independently first
+MCP Server Failures: Verify command in PATH; check env variables; confirm transport type; test server independently
 
 ---
 
@@ -483,6 +468,7 @@ Extended Documentation:
 ---
 
 Status: Production Ready
-Last Updated: 2025-12-26
+Last Updated: 2026-01-06
 Maintained by: MoAI-ADK Team
-Version Changes: v1.1.0 - Added PostToolUseFailure, SubagentStart hook events; Added agent hook type; Added LSP advanced options; Added managed installation scope
+Version Changes: v1.2.0 - Added marketplace creation and hosting section; Added reserved marketplace names; Added plugin source types documentation
+v1.1.0 - Added PostToolUseFailure, SubagentStart hook events; Added agent hook type; Added LSP advanced options; Added managed installation scope

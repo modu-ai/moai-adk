@@ -38,7 +38,7 @@ delegates_to: ["mcp-context7", "core-quality"] # Research and validation delegat
 requires_approval: true # User approval before agent finalization
 
 performance:
-avg_execution_time_seconds: 960 # ~16 minutes per complex agent (20% improvement)
+avg_execution_time_seconds: 960
 context_heavy: true # Loads templates, skills database, patterns
 mcp_integration: ["context7"] # MCP tools for documentation research
 optimization_version: "v2.0" # Optimized skill configuration

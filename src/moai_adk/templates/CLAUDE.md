@@ -165,6 +165,12 @@ Debug (expert-debug):
 - JA: デバッグ, エラー, バグ, 例外, クラッシュ
 - ZH: 调试, 错误, bug, 异常, 崩溃, 故障排除
 
+Refactoring (expert-refactoring):
+- EN: refactor, restructure, codemod, transform, migrate API, bulk rename, AST search
+- KO: 리팩토링, 재구조화, 코드모드, 변환, API 마이그레이션, 일괄 변경, AST검색
+- JA: リファクタリング, 再構造化, コードモード, 変換, API移行, 一括変更, AST検索
+- ZH: 重构, 重组, 代码模式, 转换, API迁移, 批量重命名, AST搜索
+
 WHY: Keyword-based routing ensures consistent agent selection regardless of request language.
 
 #### Cross-Lingual Thought (XLT) Protocol
@@ -255,6 +261,13 @@ Frontend Frameworks:
 - Japanese: リアクト, ビュー, Next.js, Tailwind
 - Chinese: React, Vue, Next.js, Tailwind
 - Skill: moai-domain-frontend
+
+AST-Grep Technologies:
+- Keywords: ast-grep, sg, structural search, codemod, refactor pattern, AST search
+- Korean: AST검색, 구조적검색, 코드모드, 리팩토링패턴, AST그렙
+- Japanese: AST検索, 構造検索, コードモード, リファクタリングパターン
+- Chinese: AST搜索, 结构搜索, 代码模式, 重构模式
+- Skill: moai-tool-ast-grep
 
 WHY: Automatic skill loading ensures relevant framework knowledge is available without manual invocation.
 

@@ -55,6 +55,11 @@
             "type": "command",
             "command": "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__linter.py",
             "timeout": 60000
+          },
+          {
+            "type": "command",
+            "command": "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__ast_grep_scan.py",
+            "timeout": 30000
           }
         ]
       }
@@ -124,7 +129,9 @@
       "Bash(cat:*)",
       "Bash(find:*)",
       "Bash(sed:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(sg:*)",
+      "Bash(ast-grep:*)"
     ],
     "ask": [
       "Read(./.env)",

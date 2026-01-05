@@ -4,6 +4,7 @@ description: Rust 1.92+ development specialist covering Axum, Tokio, SQLx, and m
 version: 1.1.0
 updated: 2025-12-30
 status: active
+allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
 
 ## Quick Reference (30 seconds)

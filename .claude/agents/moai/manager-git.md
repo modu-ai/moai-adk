@@ -76,17 +76,29 @@ output_format: Git operation status reports with commit history, branch informat
 
 This agent implements Selection-Based GitHub Flow - a simple Git strategy with manual mode selection:
 
-| Aspect        | Personal Mode                | Team Mode                    |
-| ------------- | ---------------------------- | ---------------------------- |
-| Selection     | Manual (enabled: true/false) | Manual (enabled: true/false) |
-| Base Branch   | `main`                       | `main`                       |
-| Workflow      | GitHub Flow                  | GitHub Flow                  |
-| Release       | Tag on main → PyPI           | Tag on main → PyPI           |
-| Release Cycle | 10 minutes                   | 10 minutes                   |
-| Conflicts     | Minimal (main-based)         | Minimal (main-based)         |
-| Code Review   | Optional                     | Required (min_reviewers: 1)  |
-| Deployment    | Continuous                   | Continuous                   |
-| Best For      | 1-2 developers               | 3+ developers                |
+Mode Comparison:
+
+Personal Mode:
+- Selection: Manual (enabled: true/false)
+- Base Branch: main
+- Workflow: GitHub Flow
+- Release: Tag on main followed by PyPI deployment
+- Release Cycle: 10 minutes
+- Conflicts: Minimal (main-based)
+- Code Review: Optional
+- Deployment: Continuous
+- Best For: 1-2 developers
+
+Team Mode:
+- Selection: Manual (enabled: true/false)
+- Base Branch: main
+- Workflow: GitHub Flow
+- Release: Tag on main followed by PyPI deployment
+- Release Cycle: 10 minutes
+- Conflicts: Minimal (main-based)
+- Code Review: Required (min_reviewers: 1)
+- Deployment: Continuous
+- Best For: 3+ developers
 
 Key Advantage: Simple, consistent GitHub Flow for all modes. Users select mode manually via `.moai/config.json` without auto-switching.
 
@@ -506,11 +518,25 @@ git push origin --delete hotfix/v{{PROJECT_VERSION}}
 
 #### Branch life cycle summary (GitHub Flow)
 
-| Job type                 | Based Branch      | Target Branch | PR Required      | Merge Method    |
-| ------------------------ | ----------------- | ------------- | ---------------- | --------------- |
-| Feature (feature/SPEC-*) | main              | main          | Yes (review)     | Squash + delete |
-| Hotfix (hotfix/*)        | main              | main          | Yes (review)     | Squash + delete |
-| Release                  | N/A (tag on main) | N/A           | N/A (direct tag) | Tag only        |
+Branch Lifecycle by Job Type:
+
+Feature (feature/SPEC-*):
+- Based Branch: main
+- Target Branch: main
+- PR Required: Yes (review)
+- Merge Method: Squash + delete
+
+Hotfix (hotfix/*):
+- Based Branch: main
+- Target Branch: main
+- PR Required: Yes (review)
+- Merge Method: Squash + delete
+
+Release:
+- Based Branch: N/A (tag on main)
+- Target Branch: N/A
+- PR Required: N/A (direct tag)
+- Merge Method: Tag only
 
 Team Mode Core Requirements [HARD]:
 

@@ -13,7 +13,7 @@ tags:
   - development
   - spec
   - isolation
-allowed-tools: Read, Write, Grep, Glob
+allowed-tools: Read, Write, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
 
 # MoAI Worktree Management

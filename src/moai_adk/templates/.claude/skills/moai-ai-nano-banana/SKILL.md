@@ -3,7 +3,7 @@ name: moai-ai-nano-banana
 description: Nano-Banana AI service integration for content generation, image creation, and AI-powered workflows. Use when integrating AI services for content creation.
 version: 1.1.0
 category: integration
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob
+allowed-tools: Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 tags:
   - ai
   - content-generation

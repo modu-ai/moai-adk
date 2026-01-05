@@ -14,7 +14,7 @@ tags:
 updated: 2025-12-30
 status: active
 author: MoAI-ADK Team
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob
+allowed-tools: Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
 
 # Development Workflow Specialist

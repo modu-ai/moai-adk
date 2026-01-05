@@ -11,7 +11,7 @@ description: |
   Specialized in OWASP Top 10, security code review, and threat modeling.
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-foundation-quality, moai-workflow-testing, moai-platform-auth0
+skills: moai-foundation-claude, moai-foundation-quality, moai-workflow-testing, moai-platform-auth0, moai-tool-ast-grep
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 ---
 

@@ -13,6 +13,7 @@ tags:
  - ui
 updated: 2025-11-27
 status: active
+allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
 
 ## Quick Reference (30 seconds)

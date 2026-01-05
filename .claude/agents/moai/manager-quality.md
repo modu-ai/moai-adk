@@ -12,7 +12,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: haiku
 permissionMode: bypassPermissions
-skills: moai-foundation-claude, moai-workflow-testing, moai-foundation-quality
+skills: moai-foundation-claude, moai-workflow-testing, moai-foundation-quality, moai-tool-ast-grep
 ---
 
 # Quality Gate - Quality Verification Gate

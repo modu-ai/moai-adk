@@ -289,17 +289,15 @@ Execute framework selection using AskUserQuestion with these options:
 
 ### Framework-Specific Skills Loading
 
-| Framework | Language | Key Pattern | Skill |
-| -------------- | ---------- | ----------------------------------------- | -------------------- |
-| React 19 | TypeScript | Hooks, Server Components | moai-lang-typescript |
-| Next.js 15 | TypeScript | App Router, Server Actions | moai-lang-typescript |
-| Vue 3.5 | TypeScript | Composition API, Vapor Mode | moai-lang-typescript |
-| Nuxt | TypeScript | Auto-imports, Composables | moai-lang-typescript |
-| Angular 19 | TypeScript | Standalone Components, Signals | moai-lang-typescript |
-| SvelteKit | TypeScript | Reactive declarations, Stores | moai-lang-typescript |
-| Astro | TypeScript | Islands Architecture, Zero JS | moai-lang-typescript |
-| Remix | TypeScript | Loaders, Actions, Progressive Enhancement | moai-lang-typescript |
-| SolidJS | TypeScript | Fine-grained reactivity, Signals | moai-lang-typescript |
+- React 19: TypeScript language, uses Hooks and Server Components, loads moai-lang-typescript skill
+- Next.js 15: TypeScript language, uses App Router and Server Actions, loads moai-lang-typescript skill
+- Vue 3.5: TypeScript language, uses Composition API and Vapor Mode, loads moai-lang-typescript skill
+- Nuxt: TypeScript language, uses Auto-imports and Composables, loads moai-lang-typescript skill
+- Angular 19: TypeScript language, uses Standalone Components and Signals, loads moai-lang-typescript skill
+- SvelteKit: TypeScript language, uses Reactive declarations and Stores, loads moai-lang-typescript skill
+- Astro: TypeScript language, uses Islands Architecture and Zero JS, loads moai-lang-typescript skill
+- Remix: TypeScript language, uses Loaders, Actions, and Progressive Enhancement, loads moai-lang-typescript skill
+- SolidJS: TypeScript language, uses Fine-grained reactivity and Signals, loads moai-lang-typescript skill
 
 ## Workflow Steps
 
@@ -601,21 +599,10 @@ IMPACT: Missing documentation increases onboarding time and creates bottlenecks
 
 ### TRUST 5 Compliance
 
-[HARD] Test First: Create component tests before implementation (Vitest + Testing Library)
-WHY: Test-first development clarifies requirements and prevents regressions
-IMPACT: Skipping tests until later increases bug escape rate and refactoring risk
-
-[HARD] Readable: Use type hints, clean component structure, and meaningful names
-WHY: Readable code reduces maintenance burden and enables team collaboration
-IMPACT: Unreadable code increases onboarding time and bugs during maintenance
-
-[HARD] Unified: Apply consistent patterns across all components
-WHY: Consistent patterns reduce cognitive load and enable fast feature development
-IMPACT: Inconsistent patterns confuse developers and increase defect rates
-
-[HARD] Secured: Implement XSS prevention, CSP, and secure auth flows
-WHY: Security measures protect users from common attacks and data breaches
-IMPACT: Omitted security measures expose the application and users to compromise
+- Test First: Create component tests before implementation (Vitest + Testing Library)
+- Readable: Use type hints, clean component structure, and meaningful names
+- Unified: Apply consistent patterns across all components
+- Secured: Implement XSS prevention, CSP, and secure auth flows
 
 ### TAG Chain Integrity
 

@@ -6,7 +6,7 @@ version: 3.0.0
 category: workflow
 modularized: true
 replaces: moai-core-code-templates, moai-core-feedback-templates, moai-project-template-optimizer
-allowed-tools: Read, Write, Edit, Grep, Glob
+allowed-tools: Read, Write, Edit, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
 
 # Enterprise Template Management

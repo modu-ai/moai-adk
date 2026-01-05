@@ -11,6 +11,7 @@ tags:
   - fullstack
 updated: 2025-12-07
 status: active
+allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
 
 ## Quick Reference (30 seconds)

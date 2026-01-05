@@ -6,7 +6,7 @@ allowed-tools: Task, AskUserQuestion, TodoWrite
 model: inherit
 ---
 
-##  Pre-execution Context
+## Pre-execution Context
 
 !git status --porcelain
 !git diff --name-only HEAD
@@ -14,7 +14,7 @@ model: inherit
 !git log --oneline -10
 !find .moai/specs -name "spec.md" -type f 2>/dev/null
 
-##  Essential Files
+## Essential Files
 
 @.moai/config/config.yaml
 @.moai/specs/
@@ -22,7 +22,7 @@ model: inherit
 
 ---
 
-#  MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)
+# MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)
 
 User Interaction Architecture: AskUserQuestion must be used at COMMAND level only. Subagents via Task() are stateless and cannot interact with users. Collect all approvals BEFORE delegating to agents.
 
@@ -32,7 +32,7 @@ Batched Design: All AskUserQuestion calls follow batched design principles (1-4 
 
 ---
 
-##  Command Purpose
+## Command Purpose
 
 [HARD] This command orchestrates ONLY - delegates all sync work to manager-docs agent
 
@@ -56,7 +56,7 @@ Step 1 (Analysis & Planning) leads to Step 2 (Document Sync via Agent) leads to 
 
 ---
 
-##  Execution Modes
+## Execution Modes
 
 This command supports 4 operational modes:
 
@@ -93,7 +93,7 @@ Command usage examples:
 
 ---
 
-##  Associated Agents
+## Associated Agents
 
 - **manager-docs**: Synchronize Living Documents with code changes
   - Responsible for analyzing Git changes and executing documentation updates
@@ -158,21 +158,17 @@ Refer to CLAUDE.md "Agent Chaining Patterns" (lines 96-120) for complete pattern
 
 ---
 
-##  Execution Philosophy: "Sync → Verify → Commit"
+## Execution Philosophy: "Sync to Verify to Commit"
 
-`/moai:3-sync` performs documentation synchronization through complete agent delegation:
+/moai:3-sync performs documentation synchronization through complete agent delegation:
 
-```
-User Command: /moai:3-sync [mode] [path]
-    ↓
-/moai:3-sync Command
-    └─ Task(subagent_type="manager-docs" or "manager-quality" or "manager-git")
-        ├─ Phase 1: Analysis & Planning (manager-docs)
-        ├─ Phase 2: Execute Sync (manager-docs + manager-quality)
-        └─ Phase 3: Git Operations & PR (manager-git)
-            ↓
-        Output: Synchronized docs + commit + PR Ready (conditional)
-```
+Execution Flow:
+- User Command: /moai:3-sync [mode] [path]
+- /moai:3-sync Command delegates to Task with subagent_type set to manager-docs or manager-quality or manager-git
+  - Phase 1: Analysis and Planning (manager-docs)
+  - Phase 2: Execute Sync (manager-docs plus manager-quality)
+  - Phase 3: Git Operations and PR (manager-git)
+- Output: Synchronized docs plus commit plus PR Ready (conditional)
 
 ### Key Principle: Zero Direct Tool Usage
 

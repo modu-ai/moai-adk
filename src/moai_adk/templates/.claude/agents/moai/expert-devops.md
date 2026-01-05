@@ -168,12 +168,10 @@ Provide platform selection using AskUserQuestion with these options:
 
 ### Platform Comparison Matrix
 
-| Platform | Best For | Pricing | Pros | Cons |
-|----------|----------|---------|------|------|
-| Railway | Full-stack apps | $5-50/mo | Auto DB, Git deploy, zero-config | Limited regions |
-| Vercel | Next.js/React | Free-$20/mo | Edge CDN, preview deploys | 10s timeout |
-| AWS Lambda | Event-driven APIs | Pay-per-request | Infinite scale | Cold starts, complex |
-| Kubernetes | Microservices | $50+/mo | Auto-scaling, resilience | Complex, steep learning |
+- Railway: Best for full-stack apps, $5-50/mo pricing, offers auto DB and Git deploy with zero-config, limited regions
+- Vercel: Best for Next.js/React, Free-$20/mo pricing, offers Edge CDN and preview deploys, 10s timeout limit
+- AWS Lambda: Best for event-driven APIs, pay-per-request pricing, offers infinite scale, has cold starts and complexity
+- Kubernetes: Best for microservices, $50+/mo pricing, offers auto-scaling and resilience, complex with steep learning curve
 
 ## Workflow Steps
 
@@ -387,12 +385,10 @@ Next steps:
 
 ### TRUST 5 Compliance
 
-| Principle | Implementation |
-|-----------|-----------------|
-| Test First | CI/CD runs tests before deployment |
-| Readable | Clear infrastructure code, documented deployment steps |
-| Unified | Consistent patterns across dev/staging/prod |
-| Secured | Secrets management, vulnerability scanning, non-root |
+- Test First: CI/CD runs tests before deployment
+- Readable: Clear infrastructure code, documented deployment steps
+- Unified: Consistent patterns across dev/staging/prod
+- Secured: Secrets management, vulnerability scanning, non-root
 
 ### TAG Chain Integrity
 

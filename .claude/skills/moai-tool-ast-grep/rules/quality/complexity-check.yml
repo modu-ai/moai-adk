@@ -1,0 +1,94 @@
+# Code Complexity and Quality Rules
+
+id: deeply-nested-code
+language: javascript
+severity: warning
+message: "Deeply nested code is hard to read. Consider refactoring."
+rule:
+  pattern: |
+    if ($COND1) {
+      if ($COND2) {
+        if ($COND3) {
+          $$$BODY
+        }
+      }
+    }
+
+---
+id: deeply-nested-code-python
+language: python
+severity: warning
+message: "Deeply nested code is hard to read. Consider refactoring."
+rule:
+  pattern: |
+    if $COND1:
+        if $COND2:
+            if $COND3:
+                $$$BODY
+
+---
+id: long-function-params-js
+language: javascript
+severity: warning
+message: "Function has too many parameters. Consider using an options object."
+rule:
+  pattern: function $NAME($P1, $P2, $P3, $P4, $P5, $$$REST) { $$$BODY }
+
+---
+id: long-function-params-python
+language: python
+severity: warning
+message: "Function has too many parameters. Consider using **kwargs or a config object."
+rule:
+  pattern: def $NAME($P1, $P2, $P3, $P4, $P5, $P6, $$$REST):
+
+---
+id: callback-hell
+language: javascript
+severity: warning
+message: "Callback hell detected. Consider using async/await or Promises."
+rule:
+  pattern: |
+    $FUNC1($$$ARGS1, function($$$P1) {
+      $FUNC2($$$ARGS2, function($$$P2) {
+        $FUNC3($$$ARGS3, function($$$P3) {
+          $$$BODY
+        })
+      })
+    })
+
+---
+id: empty-catch-block
+language: javascript
+severity: warning
+message: "Empty catch block. Handle or log the error."
+rule:
+  pattern: |
+    catch ($ERR) {
+    }
+
+---
+id: empty-catch-block-python
+language: python
+severity: warning
+message: "Empty except block. Handle or log the exception."
+rule:
+  pattern: |
+    except $EXC:
+        pass
+
+---
+id: console-log-in-production
+language: javascript
+severity: info
+message: "console.log should be removed in production code"
+rule:
+  pattern: console.log($$$ARGS)
+
+---
+id: print-statement-python
+language: python
+severity: info
+message: "print() should be replaced with proper logging in production"
+rule:
+  pattern: print($$$ARGS)

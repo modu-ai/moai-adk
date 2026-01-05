@@ -6,19 +6,19 @@ allowed-tools: Task, AskUserQuestion, TodoWrite
 model: haiku
 ---
 
-##  Pre-execution Context
+## Pre-execution Context
 
 !git status --porcelain
 !git branch --show-current
 !git log --oneline -1
 
-##  Essential Files
+## Essential Files
 
 @.moai/config/config.yaml
 
 ---
 
-#  MoAI-ADK Step 9: Feedback Loop
+# MoAI-ADK Step 9: Feedback Loop
 
 > Architecture: Commands → Agents → Skills. This command orchestrates ONLY through `Task()` tool.
 > Delegation Model: Feedback collection delegated to `manager-quality` agent.
@@ -27,7 +27,7 @@ Workflow Integration: This command implements the feedback loop of the MoAI work
 
 ---
 
-##  Command Purpose
+## Command Purpose
 
 Collect user feedback, bug reports, or feature suggestions and create GitHub issues automatically.
 
@@ -35,20 +35,17 @@ Run on: `$ARGUMENTS` (Feedback type)
 
 ---
 
-##  Execution Philosophy
+## Execution Philosophy
 
-`/moai:9-feedback` performs feedback collection through agent delegation:
+/moai:9-feedback performs feedback collection through agent delegation:
 
-```
-User Command: /moai:9-feedback [type]
-    ↓
-Phase 1: Task(subagent_type="manager-quality")
-    → Analyze feedback type
-    → Collect details via AskUserQuestion
-    → Create GitHub Issue via Skill
-    ↓
-Output: Issue created with link
-```
+Execution Flow:
+- User Command: /moai:9-feedback [type]
+- Phase 1: Task with subagent_type "manager-quality"
+  - Analyze feedback type
+  - Collect details via AskUserQuestion
+  - Create GitHub Issue via Skill
+- Output: Issue created with link
 
 ### Key Principle: Full Delegation Pattern
 
@@ -69,11 +66,11 @@ This command exclusively uses these tools:
 
 ---
 
-##  Associated Agents & Skills
+## Associated Agents and Skills
 
-| Agent/Skill     | Purpose                                       |
-| --------------- | --------------------------------------------- |
-| manager-quality | Feedback collection and GitHub issue creation |
+Associated Agents for Feedback Collection:
+
+- manager-quality: Feedback collection and GitHub issue creation
 
 ---
 
@@ -125,7 +122,7 @@ Refer to CLAUDE.md "Agent Chaining Patterns" (lines 96-120) for complete pattern
 
 ---
 
-##  Execution Process
+## Execution Process
 
 ### Step 1: Delegate to Quality Gate Agent
 
@@ -204,7 +201,7 @@ Language and Accessibility:
 
 ---
 
-##  Summary: Execution Verification Checklist
+## Summary: Execution Verification Checklist
 
 Before considering command execution complete, verify all requirements:
 
@@ -226,14 +223,23 @@ Before considering command execution complete, verify all requirements:
 
 ---
 
-##  Quick Reference
+## Quick Reference
 
-| Scenario         | Entry Point                   | Expected Outcome                            |
-| ---------------- | ----------------------------- | ------------------------------------------- |
-| Report bug       | `/moai:9-feedback issue`      | GitHub issue created with bug label         |
-| Request feature  | `/moai:9-feedback suggestion` | GitHub issue created with enhancement label |
-| Ask question     | `/moai:9-feedback question`   | GitHub issue created with question label    |
-| General feedback | `/moai:9-feedback`            | Interactive feedback collection             |
+Scenario: Report bug
+- Entry Point: /moai:9-feedback issue
+- Expected Outcome: GitHub issue created with bug label
+
+Scenario: Request feature
+- Entry Point: /moai:9-feedback suggestion
+- Expected Outcome: GitHub issue created with enhancement label
+
+Scenario: Ask question
+- Entry Point: /moai:9-feedback question
+- Expected Outcome: GitHub issue created with question label
+
+Scenario: General feedback
+- Entry Point: /moai:9-feedback
+- Expected Outcome: Interactive feedback collection
 
 Associated Agent:
 
@@ -306,7 +312,7 @@ Requirements:
 
 ---
 
-##  EXECUTION DIRECTIVE
+## EXECUTION DIRECTIVE
 
 You must NOW execute the command following the "Execution Process" described above.
 

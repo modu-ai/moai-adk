@@ -12,7 +12,7 @@ tags:
   - trade-off-analysis
   - cognitive-bias
   - decision-making
-allowed-tools: Read, Grep, Glob
+allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
 
 # MoAI Foundation Philosopher

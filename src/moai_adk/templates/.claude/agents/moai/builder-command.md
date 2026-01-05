@@ -73,7 +73,7 @@ delegates_to: [builder-agent, builder-skill, manager-quality, Plan]
 requires_approval: true
 
 performance:
-avg_execution_time_seconds: 900 # ~15 minutes for full workflow
+avg_execution_time_seconds: 900
 context_heavy: true
 mcp_integration: [context7]
 optimization_version: "v1.0"
@@ -590,10 +590,9 @@ Section 4: Associated Agents & Skills
 ```markdown
 ## Associated Agents & Skills
 
-| Agent/Skill | Purpose |
-| ----------- | ------- |
+Associated agents and skills for this command:
 
-{agent_skill_table_rows}
+{agent_skill_list}
 ```
 
 Section 5: Agent Invocation Patterns (NEW)
@@ -728,6 +727,24 @@ Output: {expected_output}
   IMPACT: Complex multi-agent workflows remain coherent and recoverable
 ```
 
+### Selective Exceptions: Read-Only Tool Access
+
+Certain commands are allowed direct read-only tool usage for performance optimization:
+
+Command-specific tool exceptions:
+- moai:1-plan: Glob tool allowed for SPEC ID uniqueness validation (read-only; file creation delegated to agent)
+
+[HARD] Exception Requirements:
+- Only read-only operations may be performed directly
+- File creation/modification MUST be delegated to agents
+- Error handling logic MUST be included
+- Exception scope MUST be clearly documented in the command
+
+WHY: Selective read-only exceptions provide 30-40% performance improvement for validation-heavy operations
+IMPACT: Commands remain auditable while gaining speed benefits for non-destructive checks
+
+```
+
 Sections 7-9: Phase Workflow
 
 ```markdown
@@ -753,10 +770,9 @@ Section 10: Quick Reference
 ```markdown
 ## Quick Reference
 
-| Scenario | Entry Point | Key Phases | Expected Outcome |
-| -------- | ----------- | ---------- | ---------------- |
+Quick reference scenarios:
 
-{scenario_table_rows}
+{scenario_list}
 
 Version: {version}
 Last Updated: 2025-12-07

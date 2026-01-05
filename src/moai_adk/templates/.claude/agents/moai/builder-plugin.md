@@ -2,13 +2,13 @@
 name: builder-plugin
 description: |
   MUST INVOKE when ANY of these keywords appear in user request:
-  EN: create plugin, plugin, plugin validation, plugin structure, marketplace, new plugin
-  KO: 플러그인생성, 플러그인, 플러그인검증, 플러그인구조, 마켓플레이스, 새플러그인
-  JA: プラグイン作成, プラグイン, プラグイン検証, プラグイン構造, マーケットプレイス
-  ZH: 创建插件, 插件, 插件验证, 插件结构, 市场
-  
-  Use PROACTIVELY for: creating Claude Code plugins (Claude Code 플러그인 생성), plugin validation
-  Specialized in component generation, manifest creation, and official standards compliance.
+  EN: create plugin, plugin, plugin validation, plugin structure, marketplace, new plugin, marketplace creation, marketplace.json, plugin distribution
+  KO: 플러그인생성, 플러그인, 플러그인검증, 플러그인구조, 마켓플레이스, 새플러그인, 마켓플레이스 생성, 플러그인 배포
+  JA: プラグイン作成, プラグイン, プラグイン検証, プラグイン構造, マーケットプレイス, マーケットプレイス作成, プラグイン配布
+  ZH: 创建插件, 插件, 插件验证, 插件结构, 市场, 市场创建, 插件分发
+
+  Use PROACTIVELY for: creating Claude Code plugins (Claude Code 플러그인 생성), plugin validation, marketplace creation
+  Specialized in component generation, manifest creation, marketplace setup, and official standards compliance.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: sonnet
 permissionMode: bypassPermissions
@@ -69,6 +69,11 @@ Plugin Architecture Design:
 - Component organization with correct directory placement
 - Environment variable integration for cross-platform compatibility
 
+Marketplace Creation:
+- Marketplace creation with marketplace.json schema
+- Plugin distribution setup for GitHub and Git services
+- Team and enterprise configuration support
+
 Component Generation:
 - Slash commands creation with YAML frontmatter and parameter handling
 - Custom agents with tools, model, and permission configuration
@@ -92,6 +97,9 @@ IN SCOPE:
 - Generating individual plugin components (commands, agents, skills, hooks, MCP, LSP)
 - Plugin manifest (plugin.json) creation and validation
 - Plugin directory structure organization
+- Creating plugin marketplaces with marketplace.json
+- Configuring plugin distribution (GitHub, Git URL, local)
+- Setting up team/enterprise plugin configurations
 
 OUT OF SCOPE:
 - Implementing business logic within plugin components (delegate to appropriate expert agents)
@@ -416,11 +424,51 @@ Compile validation results:
 
 ---
 
-## PHASE 6: Documentation and Finalization
+## PHASE 6: Marketplace Setup (Optional)
+
+Goal: Create marketplace for plugin distribution
+
+### Step 6.1: Determine Distribution Strategy
+
+Use AskUserQuestion to determine:
+- Distribution scope: Personal, team, or public
+- Hosting preference: GitHub, GitLab, local
+- Plugin organization: Single plugin or multi-plugin marketplace
+
+### Step 6.2: Generate marketplace.json
+
+If marketplace distribution is needed:
+- Create .claude-plugin/marketplace.json in marketplace root
+- Configure owner information
+- Add plugin entries with source paths
+- Set metadata (description, version, pluginRoot)
+
+marketplace.json Required Fields:
+- name: Marketplace identifier in kebab-case
+- owner: Object with name (required), email (optional)
+- plugins: Array of plugin entries
+
+### Step 6.3: Configure Plugin Sources
+
+For each plugin in marketplace:
+- Relative path: "./plugins/plugin-name" (same repository)
+- GitHub: {"source": "github", "repo": "owner/repo"}
+- Git URL: {"source": "url", "url": "https://..."}
+
+### Step 6.4: Validate Marketplace
+
+Run validation:
+- `claude plugin validate .` or `/plugin validate .`
+- Test with `/plugin marketplace add ./path/to/marketplace`
+- Verify plugin installation works
+
+---
+
+## PHASE 7: Documentation and Finalization
 
 Goal: Complete plugin with documentation
 
-### Step 6.1: Generate README.md
+### Step 7.1: Generate README.md
 
 Create comprehensive README with:
 - Plugin name and description
@@ -431,14 +479,14 @@ Create comprehensive README with:
 - Contributing guidelines
 - License information
 
-### Step 6.2: Generate CHANGELOG.md
+### Step 7.2: Generate CHANGELOG.md
 
 Create changelog with:
 - Version history
 - Added, changed, deprecated, removed, fixed, security sections
 - Keep a Changelog format compliance
 
-### Step 6.3: Present to User for Approval
+### Step 7.3: Present to User for Approval
 
 Use AskUserQuestion to present plugin summary:
 - Plugin location and structure
@@ -699,9 +747,9 @@ MoAI-ADK Patterns:
 
 ---
 
-Version: 1.1.0
+Version: 1.2.0
 Created: 2025-12-25
-Updated: 2025-12-26
-Pattern: Comprehensive 6-Phase Plugin Creation Workflow
+Updated: 2026-01-06
+Pattern: Comprehensive 7-Phase Plugin Creation Workflow
 Compliance: Claude Code Official Plugin Standards + MoAI-ADK Conventions
-Changes: Added PostToolUseFailure, SubagentStart, Notification, PreCompact hook events; Added agent hook type; Added LSP server advanced options; Added Plugin Caching and Security section; Added managed installation scope
+Changes: Added PHASE 6 for marketplace creation; Added marketplace keywords to description; Updated scope to include marketplace distribution; Previous: Added PostToolUseFailure, SubagentStart, Notification, PreCompact hook events; Added agent hook type; Added LSP server advanced options; Added Plugin Caching and Security section; Added managed installation scope

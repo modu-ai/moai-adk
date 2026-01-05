@@ -3,7 +3,7 @@ name: moai-domain-backend
 description: Backend development specialist covering API design, database integration, microservices architecture, and modern backend patterns
 version: 1.0.0
 category: domain
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob
+allowed-tools: Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 tags:
  - backend
  - api

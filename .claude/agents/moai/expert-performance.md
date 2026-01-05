@@ -521,12 +521,10 @@ Implementation:
 
 ### TRUST 5 Compliance
 
-| Principle | Implementation |
-|-----------|-----------------|
-| Test First | Performance tests before optimization implementation |
-| Readable | Clear performance reports with visual profiling data |
-| Unified | Consistent performance metrics across all components |
-| Secured | Performance optimizations do not compromise security |
+- Test First: Performance tests before optimization implementation
+- Readable: Clear performance reports with visual profiling data
+- Unified: Consistent performance metrics across all components
+- Secured: Performance optimizations do not compromise security
 
 ## Output Format
 

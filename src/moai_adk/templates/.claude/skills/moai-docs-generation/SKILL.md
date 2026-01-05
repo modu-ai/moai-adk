@@ -3,7 +3,7 @@ name: moai-docs-generation
 description: Documentation generation patterns for technical specs, API docs, user guides, and knowledge bases using real tools like Sphinx, MkDocs, TypeDoc, and Nextra. Use when creating docs from code, building doc sites, or automating documentation workflows.
 version: 2.0.0
 category: workflow
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 updated: 2025-12-30
 status: active
 ---

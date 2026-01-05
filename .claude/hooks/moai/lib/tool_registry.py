@@ -17,7 +17,7 @@ import subprocess
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 
 class ToolType(Enum):
@@ -27,6 +27,7 @@ class ToolType(Enum):
     LINTER = "linter"
     TYPE_CHECKER = "type_checker"
     SECURITY_SCANNER = "security_scanner"
+    AST_ANALYZER = "ast_analyzer"
 
 
 @dataclass
@@ -102,6 +103,8 @@ class ToolRegistry:
         self._register_csharp_tools()
         # Markdown tools
         self._register_markdown_tools()
+        # AST-Grep tools (cross-language)
+        self._register_ast_grep_tools()
 
     def _register_python_tools(self) -> None:
         """Register Python formatting and linting tools."""
@@ -586,6 +589,86 @@ class ToolRegistry:
             ),
         ]
 
+    def _register_ast_grep_tools(self) -> None:
+        """Register AST-Grep tools for structural code analysis.
+
+        AST-Grep (sg) provides AST-based code search, lint, and rewriting.
+        Supports 40+ languages with pattern matching and code transformation.
+        """
+        # AST-Grep supports multiple languages - define common extensions
+        ast_grep_extensions = [
+            ".py",
+            ".pyi",  # Python
+            ".js",
+            ".jsx",
+            ".mjs",
+            ".cjs",  # JavaScript
+            ".ts",
+            ".tsx",
+            ".mts",
+            ".cts",  # TypeScript
+            ".go",  # Go
+            ".rs",  # Rust
+            ".java",  # Java
+            ".kt",
+            ".kts",  # Kotlin
+            ".c",
+            ".cpp",
+            ".cc",
+            ".cxx",
+            ".h",
+            ".hpp",  # C/C++
+            ".rb",  # Ruby
+            ".swift",  # Swift
+            ".cs",  # C#
+            ".php",  # PHP
+            ".scala",  # Scala
+            ".ex",
+            ".exs",  # Elixir
+            ".lua",  # Lua
+            ".html",
+            ".vue",
+            ".svelte",  # Web templates
+        ]
+
+        self._tools["ast_grep"] = [
+            # Security scanning with rules
+            ToolConfig(
+                name="ast-grep-scan",
+                command="sg",
+                args=["scan"],
+                extensions=ast_grep_extensions,
+                tool_type=ToolType.AST_ANALYZER,
+                priority=1,
+                timeout_seconds=60,
+                requires_config=True,
+                config_files=["sgconfig.yml", ".ast-grep/sgconfig.yml"],
+            ),
+            # Pattern-based search
+            ToolConfig(
+                name="ast-grep-run",
+                command="sg",
+                args=["run", "--pattern"],
+                file_args_position="end",
+                extensions=ast_grep_extensions,
+                tool_type=ToolType.AST_ANALYZER,
+                priority=2,
+                timeout_seconds=30,
+            ),
+            # Interactive testing
+            ToolConfig(
+                name="ast-grep-test",
+                command="sg",
+                args=["test"],
+                extensions=ast_grep_extensions,
+                tool_type=ToolType.AST_ANALYZER,
+                priority=3,
+                timeout_seconds=120,
+                requires_config=True,
+                config_files=["sgconfig.yml"],
+            ),
+        ]
+
     def is_tool_available(self, tool_name: str) -> bool:
         """Check if a tool is available on the system."""
         if tool_name in self._tool_cache:
@@ -606,9 +689,7 @@ class ToolRegistry:
         ext = Path(file_path).suffix.lower()
         return self._extension_map.get(ext)
 
-    def get_tools_for_language(
-        self, language: str, tool_type: Optional[ToolType] = None
-    ) -> List[ToolConfig]:
+    def get_tools_for_language(self, language: str, tool_type: Optional[ToolType] = None) -> List[ToolConfig]:
         """Get available tools for a language, optionally filtered by type."""
         tools = self._tools.get(language, [])
 
@@ -619,9 +700,7 @@ class ToolRegistry:
         available_tools = [t for t in tools if self.is_tool_available(t.name)]
         return sorted(available_tools, key=lambda t: t.priority)
 
-    def get_tools_for_file(
-        self, file_path: str, tool_type: Optional[ToolType] = None
-    ) -> List[ToolConfig]:
+    def get_tools_for_file(self, file_path: str, tool_type: Optional[ToolType] = None) -> List[ToolConfig]:
         """Get available tools for a specific file."""
         language = self.get_language_for_file(file_path)
         if not language:

@@ -439,15 +439,13 @@ Performance Metrics (Expected):
 
 ## Error Handling & Troubleshooting
 
-Common Errors & Solutions:
+Common Errors and Solutions:
 
-| Error                | Cause             | Solution                                         |
-| -------------------- | ----------------- | ------------------------------------------------ |
-| `RESOURCE_EXHAUSTED` | Quota exceeded    | Wait for quota reset or request quota increase   |
-| `PERMISSION_DENIED`  | Invalid API key   | Verify .env file and key from AI Studio          |
-| `DEADLINE_EXCEEDED`  | Timeout (>60s)    | Simplify prompt, reduce detail complexity        |
-| `INVALID_ARGUMENT`   | Invalid parameter | Check aspect ratio (must be from supported list) |
-| `API_KEY_INVALID`    | Wrong API key     | Verify .env file and key from AI Studio          |
+- RESOURCE_EXHAUSTED: Caused by quota exceeded. Solution: Wait for quota reset or request quota increase.
+- PERMISSION_DENIED: Caused by invalid API key. Solution: Verify .env file and key from AI Studio.
+- DEADLINE_EXCEEDED: Caused by timeout (greater than 60 seconds). Solution: Simplify prompt and reduce detail complexity.
+- INVALID_ARGUMENT: Caused by invalid parameter. Solution: Check aspect ratio (must be from supported list).
+- API_KEY_INVALID: Caused by wrong API key. Solution: Verify .env file and key from AI Studio.
 
 Retry Strategy (Built into Standard Script):
 
@@ -476,14 +474,12 @@ Layer 3: Color & Style - "Color palette: [specific colors]. Art style: [referenc
 
 Layer 4: Quality Standards - "Quality: [professional standard]. Aspect ratio: [ratio]. SynthID watermark: [included by default]."
 
-Common Pitfalls & Solutions:
+Common Pitfalls and Solutions:
 
-| Pitfall          | Solution                                                                                                                             |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| "Cat picture"    | "A fluffy orange tabby cat with bright green eyes, sitting on a sunlit windowsill, looking out at a snowy winter landscape"          |
-| "Nice landscape" | "A dramatic mountain vista at golden hour, with snow-capped peaks reflecting in a pristine alpine lake, stormy clouds parting above" |
-| Keyword list     | "A cozy bookshelf scene: worn leather armchair, stack of vintage books, reading lamp with warm glow, fireplace in background"        |
-| Vague style      | "Shot with 85mm portrait lens, shallow depth of field (f/2.8), film photography aesthetic, warm color grading, 1970s nostalgic feel" |
+- Vague subject like "Cat picture": Transform to detailed description such as "A fluffy orange tabby cat with bright green eyes, sitting on a sunlit windowsill, looking out at a snowy winter landscape"
+- Generic scene like "Nice landscape": Transform to specific description such as "A dramatic mountain vista at golden hour, with snow-capped peaks reflecting in a pristine alpine lake, stormy clouds parting above"
+- Using keyword list format: Transform to narrative description such as "A cozy bookshelf scene: worn leather armchair, stack of vintage books, reading lamp with warm glow, fireplace in background"
+- Vague style specification: Transform to technical description such as "Shot with 85mm portrait lens, shallow depth of field (f/2.8), film photography aesthetic, warm color grading, 1970s nostalgic feel"
 
 ---
 

@@ -5,7 +5,7 @@ description: Enterprise context and session management with token budget optimiz
 version: 3.0.0
 modularized: false
 category: foundation
-allowed-tools: Read, Grep, Glob
+allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 replaces: moai-core-context-budget, moai-core-session-state
 ---
 

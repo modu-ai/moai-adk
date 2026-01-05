@@ -529,12 +529,10 @@ Status: Automatic recovery in progress
 
 **Service availability fallbacks**:
 
-| Failed Service | Fallback |
-|---|---|
-| MCP unavailable | Use cached metadata + Figma REST API |
-| Figma API rate limited | Reduce batch size, queue remaining requests |
-| Asset download fails | Skip assets, continue analysis, flag for manual review |
-| Variable extraction fails | Use design tokens from cached analysis |
+- MCP unavailable: Use cached metadata combined with Figma REST API as fallback
+- Figma API rate limited: Reduce batch size and queue remaining requests for later processing
+- Asset download fails: Skip assets, continue analysis, and flag for manual review
+- Variable extraction fails: Use design tokens from cached analysis as alternative source
 
 ---
 
@@ -603,12 +601,10 @@ Recommendation: Process design in smaller sections (max 10 components)
 
 **Recovery procedures**:
 
-| Error | Detection | Recovery |
-|---|---|---|
-| Token expired | 401 response | Request new token, retry operation |
-| No permission | 403 response | Show file access request workflow |
-| File deleted | 404 response | Suggest alternative file or create new |
-| Offline | Connection timeout | Check MCP server status, use cached data |
+- Token expired (401 response): Request new token, then retry the operation
+- No permission (403 response): Show file access request workflow to user
+- File deleted (404 response): Suggest alternative file or guide user to create new
+- Offline (Connection timeout): Check MCP server status and use cached data if available
 
 **User notifications**:
 
@@ -688,11 +684,9 @@ Purpose: Extract structured design data and component hierarchy from Figma
 
 Parameters:
 
-| Parameter | Type   | Required | Description                          | Default     |
-| --------- | ------ | -------- | ------------------------------------ | ----------- |
-| `fileKey` | string |          | Figma file key (e.g., `abc123XYZ`)   | -           |
-| `nodeId`  | string |          | Specific node ID (e.g., `1234:5678`) | Entire file |
-| `depth`   | number |          | Tree traversal depth                 | Entire      |
+- fileKey (string): Figma file key (e.g., abc123XYZ). Required for all requests.
+- nodeId (string, optional): Specific node ID (e.g., 1234:5678). Default: Entire file if not specified.
+- depth (number, optional): Tree traversal depth. Default: Entire tree if not specified.
 
 Usage:
 
@@ -727,16 +721,14 @@ Purpose: Download Figma images, icons, vectors to local directory
 
 Parameters:
 
-| Parameter                         | Type    | Required | Description                    | Default |
-| --------------------------------- | ------- | -------- | ------------------------------ | ------- |
-| `fileKey`                         | string  |          | Figma file key                 | -       |
-| `localPath`                       | string  |          | Local save absolute path       | -       |
-| `pngScale`                        | number  |          | PNG scale (1-4)                | 1       |
-| `nodes`                           | array   |          | Node list to download          | -       |
-| `nodes[].nodeId`                  | string  |          | Node ID                        | -       |
-| `nodes[].fileName`                | string  |          | Save filename (with extension) | -       |
-| `nodes[].needsCropping`           | boolean |          | Auto-crop enabled              | false   |
-| `nodes[].requiresImageDimensions` | boolean |          | Extract size for CSS variables | false   |
+- fileKey (string): Figma file key. Required for asset download.
+- localPath (string): Local save absolute path. Required for file output.
+- pngScale (number, optional): PNG scale factor (1-4). Default: 1.
+- nodes (array): List of nodes to download containing:
+  - nodeId (string): Node ID within the Figma file.
+  - fileName (string): Save filename with extension.
+  - needsCropping (boolean, optional): Enable auto-crop. Default: false.
+  - requiresImageDimensions (boolean, optional): Extract size for CSS variables. Default: false.
 
 Usage:
 
@@ -762,11 +754,9 @@ Performance: <5s per 5 images | Variable depending on PNG scale
 
 Error Handling:
 
-| Error Message                      | Cause                 | Solution                                                            |
-| ---------------------------------- | --------------------- | ------------------------------------------------------------------- |
-| "Path for asset writes is invalid" | Invalid local path    | Use absolute path, verify directory exists, check write permissions |
-| "Image base64 format error"        | Image encoding failed | Reduce `pngScale` value (4→2), verify node type (FRAME/COMPONENT)   |
-| "Node not found"                   | Non-existent node ID  | Verify valid node ID first with `get_figma_data`                    |
+- "Path for asset writes is invalid": Caused by invalid local path. Solution: Use absolute path, verify directory exists, and check write permissions.
+- "Image base64 format error": Caused by image encoding failure. Solution: Reduce pngScale value (4 to 2) and verify node type is FRAME or COMPONENT.
+- "Node not found": Caused by non-existent node ID. Solution: Verify valid node ID first with get_figma_data tool.
 
 ---
 
@@ -791,10 +781,8 @@ Use the standard pattern for Figma Variables API integration:
 
 Parameters:
 
-| Parameter   | Type    | Location | Required | Description                    | Default |
-| ----------- | ------- | -------- | -------- | ------------------------------ | ------- |
-| `file_key`  | string  | Path     |          | Figma file key                 | -       |
-| `published` | boolean | Query    |          | Query only published variables | false   |
+- file_key (string, path parameter): Figma file key. Required for API call.
+- published (boolean, query parameter, optional): Query only published variables. Default: false.
 
 Returns (200 OK):
 
@@ -817,25 +805,21 @@ Performance: <5s per file | 98%+ variable capture rate
 
 Key Properties:
 
-| Property       | Type     | Read-Only | Description                                          |
-| -------------- | -------- | --------- | ---------------------------------------------------- |
-| `id`           | string   |           | Unique identifier for the variable                   |
-| `name`         | string   |           | Variable name                                        |
-| `key`          | string   |           | Key to use for importing                             |
-| `resolvedType` | string   |           | Variable type: `COLOR`, `FLOAT`, `STRING`, `BOOLEAN` |
-| `valuesByMode` | object   |           | Values by mode (e.g., Light/Dark)                    |
-| `scopes`       | string[] |           | UI picker scope (`FRAME_FILL`, `TEXT_FILL`, etc.)    |
-| `codeSyntax`   | object   |           | Platform-specific code syntax (WEB, ANDROID, iOS)    |
+- id (string): Unique identifier for the variable.
+- name (string): Variable name.
+- key (string): Key to use for importing.
+- resolvedType (string): Variable type, one of COLOR, FLOAT, STRING, or BOOLEAN.
+- valuesByMode (object): Values by mode (e.g., Light/Dark theme variants).
+- scopes (string array): UI picker scope such as FRAME_FILL, TEXT_FILL, and others.
+- codeSyntax (object): Platform-specific code syntax (WEB, ANDROID, iOS).
 
 Error Handling:
 
-| Error Code            | Message               | Cause                            | Solution                                                       |
-| --------------------- | --------------------- | -------------------------------- | -------------------------------------------------------------- |
-| 400 Bad Request       | "Invalid file key"    | Invalid file key format          | Extract correct file key from Figma URL (22-char alphanumeric) |
-| 401 Unauthorized      | "Invalid token"       | Invalid or expired token         | Generate new Personal Access Token in Figma settings           |
-| 403 Forbidden         | "Access denied"       | No file access permission        | Request edit/view permission from file owner                   |
-| 404 Not Found         | "File not found"      | Non-existent file                | Verify file key, check if file was deleted                     |
-| 429 Too Many Requests | "Rate limit exceeded" | API call limit exceeded (60/min) | Exponential backoff retry (1s → 2s → 4s)                       |
+- 400 Bad Request ("Invalid file key"): Caused by invalid file key format. Solution: Extract correct file key from Figma URL (22-character alphanumeric).
+- 401 Unauthorized ("Invalid token"): Caused by invalid or expired token. Solution: Generate new Personal Access Token in Figma settings.
+- 403 Forbidden ("Access denied"): Caused by no file access permission. Solution: Request edit/view permission from file owner.
+- 404 Not Found ("File not found"): Caused by non-existent file. Solution: Verify file key and check if file was deleted.
+- 429 Too Many Requests ("Rate limit exceeded"): Caused by API call limit exceeded (60/min). Solution: Apply exponential backoff retry (1s, 2s, 4s).
 
 No Variables Debugging:
 
@@ -870,10 +854,8 @@ The tool returns base64 image data that can be directly embedded in web applicat
 
 Parameters:
 
-| Parameter | Type   | Required | Description                        |
-| --------- | ------ | -------- | ---------------------------------- |
-| `node_id` | string |          | Node ID (e.g., `1234:5678`)        |
-| `format`  | string |          | Format: `PNG`, `SVG`, `JPG`, `PDF` |
+- node_id (string): Node ID to export (e.g., 1234:5678). Required for export.
+- format (string): Output format, one of PNG, SVG, JPG, or PDF.
 
 Performance: <2s | Returns Base64 (no file writing)
 
@@ -889,13 +871,11 @@ Purpose: Transform complex Figma API responses into structured data
 
 Supported Extractors:
 
-| Extractor       | Description             | Extracted Items                   |
-| --------------- | ----------------------- | --------------------------------- |
-| `allExtractors` | Extract all information | Layout, text, visuals, components |
-| `layoutAndText` | Layout + Text           | Structure, text content           |
-| `contentOnly`   | Text only               | Text content                      |
-| `layoutOnly`    | Layout only             | Structure, size, position         |
-| `visualsOnly`   | Visual properties only  | Colors, borders, effects          |
+- allExtractors: Extract all information including layout, text, visuals, and components.
+- layoutAndText: Extract layout and text, providing structure and text content.
+- contentOnly: Extract text only, providing text content.
+- layoutOnly: Extract layout only, providing structure, size, and position.
+- visualsOnly: Extract visual properties only, providing colors, borders, and effects.
 
 Usage:
 
@@ -914,11 +894,9 @@ This process transforms complex Figma API responses into structured, development
 
 ### Rate Limits
 
-| Endpoint        | Limit   | Solution                |
-| --------------- | ------- | ----------------------- |
-| General API     | 60/min  | Request every 1 second  |
-| Image Rendering | 30/min  | Request every 2 seconds |
-| Variables API   | 100/min | Relatively permissive   |
+- General API: 60 requests per minute. Solution: Request every 1 second to stay within limits.
+- Image Rendering: 30 requests per minute. Solution: Request every 2 seconds for image operations.
+- Variables API: 100 requests per minute. This endpoint is relatively permissive compared to others.
 
 ### Exponential Backoff Retry Strategy
 

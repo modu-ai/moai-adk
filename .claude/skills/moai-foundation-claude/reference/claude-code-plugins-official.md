@@ -2,6 +2,8 @@
 
 Source: https://code.claude.com/docs/en/plugins
 Related: https://code.claude.com/docs/en/plugins-reference
+Related: https://code.claude.com/docs/en/discover-plugins
+Related: https://code.claude.com/docs/en/plugin-marketplaces
 Updated: 2026-01-06
 
 ## What are Claude Code Plugins?
@@ -68,6 +70,19 @@ The plugin manifest defines metadata and component locations.
 - lspServers: Path to LSP server configuration
 - outputStyles: Path to output styles directory
 
+### Discovery Keywords
+
+- keywords: Array of discovery tags for finding plugins in marketplaces
+
+Example:
+```json
+{
+  "keywords": ["deployment", "ci-cd", "automation", "devops"]
+}
+```
+
+Keywords help users discover plugins through search. Use relevant, descriptive terms that reflect the plugin's functionality and domain.
+
 ### Example Plugin Manifest
 
 ```json
@@ -80,7 +95,8 @@ The plugin manifest defines metadata and component locations.
   },
   "homepage": "https://github.com/org/my-team-plugin",
   "repository": "https://github.com/org/my-team-plugin.git",
-  "license": "MIT"
+  "license": "MIT",
+  "keywords": ["team-standards", "workflow", "development"]
 }
 ```
 
@@ -197,12 +213,45 @@ Plugins can be installed at different scopes:
 - Availability: Enforced across organization
 - Use case: Compliance and security requirements
 
+## Official Anthropic Marketplace
+
+Anthropic maintains an official plugin marketplace with curated, verified plugins.
+
+Marketplace Name: claude-plugins-official
+
+Availability: Automatically available in Claude Code without additional configuration.
+
+Installation Syntax:
+/plugin install plugin-name@claude-plugins-official
+
+The official marketplace contains plugins that have been reviewed for quality and security. For a complete catalog of available plugins, see the discover-plugins reference documentation.
+
+## Interactive Plugin Manager
+
+Access the interactive plugin manager using the /plugin command.
+
+The plugin manager provides four navigation tabs:
+
+- Discover: Browse and search available plugins from configured marketplaces
+- Installed: View and manage currently installed plugins
+- Marketplaces: Configure and manage plugin marketplace sources
+- Errors: View and troubleshoot plugin-related errors
+
+Navigation Controls:
+- Tab key: Cycle forward through tabs
+- Shift+Tab: Cycle backward through tabs
+- Arrow keys: Navigate within tab content
+- Enter: Select or confirm action
+
 ## Plugin Management Commands
 
 ### Installation
 
 Install from marketplace:
 /plugin install plugin-name
+
+Install from official Anthropic marketplace:
+/plugin install plugin-name@claude-plugins-official
 
 Install from GitHub:
 /plugin install owner/repo
@@ -374,3 +423,10 @@ Use ${CLAUDE_PLUGIN_ROOT} for absolute paths
 Verify .mcp.json syntax
 Check server command exists
 Review server logs for errors
+
+## Related Reference Files
+
+For comprehensive plugin ecosystem documentation, see:
+
+- claude-code-discover-plugins-official.md - Plugin discovery and installation guide
+- claude-code-plugin-marketplaces-official.md - Creating and hosting custom marketplaces

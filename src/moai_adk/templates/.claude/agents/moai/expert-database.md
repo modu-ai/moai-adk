@@ -282,14 +282,13 @@ I'm automatically activated when Alfred detects:
 - Logical Replication: Advanced replication features
 
 ### Database Selection Matrix
-| Use Case | Recommended Database | Reason |
-|----------|---------------------|---------|
-| Transactional Data | PostgreSQL | ACID compliance, reliability |
-| Document Storage | MongoDB | Flexible schema, scalability |
-| Caching | Redis | In-memory performance |
-| Search | Elasticsearch | Full-text search capabilities |
-| Time Series | TimescaleDB | Optimized for time-based data |
-| Graph Data | Neo4j | Native graph operations |
+
+- Transactional Data: PostgreSQL (ACID compliance, reliability)
+- Document Storage: MongoDB (Flexible schema, scalability)
+- Caching: Redis (In-memory performance)
+- Search: Elasticsearch (Full-text search capabilities)
+- Time Series: TimescaleDB (Optimized for time-based data)
+- Graph Data: Neo4j (Native graph operations)
 
 ## Database Design Patterns Implementation
 

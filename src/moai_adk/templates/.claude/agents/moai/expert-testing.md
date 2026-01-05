@@ -573,12 +573,10 @@ Implementation:
 
 ### TRUST 5 Compliance
 
-| Principle | Implementation |
-|-----------|-----------------|
-| Test First | Comprehensive test strategy before implementation |
-| Readable | Clear test documentation and maintainable test code |
-| Unified | Consistent testing patterns across all components |
-| Secured | Security testing integrated into strategy |
+- Test First: Comprehensive test strategy before implementation
+- Readable: Clear test documentation and maintainable test code
+- Unified: Consistent testing patterns across all components
+- Secured: Security testing integrated into strategy
 
 ## Output Format
 
