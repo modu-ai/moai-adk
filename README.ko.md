@@ -35,7 +35,7 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 
 | 섹션                                          | 목표                            |
 | --------------------------------------------- | ------------------------------- |
-| [8. 에이전트 가이드](#8-에이전트-가이드-24개) | 전문 에이전트 활용              |
+| [8. 에이전트 가이드](#8-에이전트-가이드-27개) | 전문 에이전트 활용              |
 | [9. 스킬 라이브러리](#9-스킬-라이브러리-47개) | 47개 스킬 탐색                  |
 | [10. 조합 패턴과 예제](#10-조합-패턴과-예제)  | 실제 프로젝트 예제              |
 | [11. TRUST 5 품질보증](#11-trust-5-품질보증)  | 품질 보증 체계                  |
@@ -56,7 +56,7 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 
 ### 🗿 MoAI-ADK란?
 
-**MoAI-ADK** (Agentic Development Kit)는 AI 에이전트를 활용한 차세대 개발 프레임워크입니다. **SPEC-First 개발 방법론**과 **TDD** (Test-Driven Development, 테스트 주도 개발), 그리고 **24개의 전문 AI 에이전트**를 결합하여 완전하고 투명한 개발 라이프사이클을 제공합니다.
+**MoAI-ADK** (Agentic Development Kit)는 AI 에이전트를 활용한 차세대 개발 프레임워크입니다. **SPEC-First 개발 방법론**과 **TDD** (Test-Driven Development, 테스트 주도 개발), 그리고 **27개의 전문 AI 에이전트**를 결합하여 완전하고 투명한 개발 라이프사이클을 제공합니다.
 
 ### ✨ 왜 MoAI-ADK를 사용할까?
 
@@ -84,7 +84,8 @@ MoAI-ADK의 해결책:
 | --------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **SPEC-First**        | 모든 개발은 명확한 명세서로 시작                       | 요구사항 변경으로 인한 재작업 **90% 감소**<br/>명확한 SPEC으로 개발자-기획자 간 오해 제거                                                                                                        |
 | **TDD 강제**          | Red-Green-Refactor 사이클 자동화                       | 버그 **70% 감소**(85%+ 커버리지 시)<br/>테스트 작성 시간 포함 총 개발 시간 **15% 단축**                                                                                                          |
-| **AI 오케스트레이션** | Mr.Alfred가 24개의 전문 AI 에이전트 지휘 (7-Tier 계층) | **평균 토큰 절감**: 세션당 5,000 토큰 (Conditional Auto-load)<br/>**Simple 작업**: 0 토큰 (Quick Reference)<br/>**Complex 작업**: 8,470 토큰 (Auto-load 스킬)<br/>수동 대비 **60-70% 시간 절감** |
+| **AI 오케스트레이션** | Mr.Alfred가 27개의 전문 AI 에이전트 지휘 (5-Tier 계층) | **평균 토큰 절감**: 세션당 5,000 토큰 (Conditional Auto-load)<br/>**Simple 작업**: 0 토큰 (Quick Reference)<br/>**Complex 작업**: 8,470 토큰 (Auto-load 스킬)<br/>수동 대비 **60-70% 시간 절감** |
+| **다국어 라우팅** | 4개 언어 자동 에이전트 선택 (EN/KO/JA/ZH) | **100% 언어 커버리지** 에이전트 호출<br/>XLT (Cross-Lingual Thought) 프로토콜로 의미 매칭<br/>한국어, 일본어, 중국어 요청 지원 |
 | **자동 문서화**       | 코드 변경 시 문서 자동 동기화 (`> /moai:3-sync`)       | 문서 최신성 **100% 보장**<br/>수동 문서 작성 제거<br/>마지막 커밋 이후 자동 동기화                                                                                                               |
 | **TRUST 5 품질**      | Test, Readable, Unified, Secured, Trackable            | 엔터프라이즈급 품질 보증<br/>배포 후 긴급 패치 **99% 감소**                                                                                                                                      |
 
@@ -376,6 +377,34 @@ Mr.Alfred는 MoAI-ADK의 **최고 지휘자**(Orchestrator)이자 사용자의 �
 3. **실행하기**: 전문 에이전트에게 작업 위임 (순차/병렬)
 4. **통합하기**: 모든 결과를 모아 사용자에게 보고
 
+### 🌐 다국어 에이전트 라우팅 (v0.36.2 신규)
+
+**지원 언어:** 영어 (EN), 한국어 (KO), 일본어 (JA), 중국어 (ZH)
+
+Alfred는 이제 **모든 지원 언어**의 요청을 자동으로 올바른 에이전트로 라우팅합니다:
+
+**작동 방식:**
+
+1. **키워드 감지**: 각 에이전트는 다국어 트리거 키워드를 보유
+2. **XLT 프로토콜**: Cross-Lingual Thought 처리로 의미 매칭
+3. **자동 위임**: Alfred가 적절한 에이전트를 자동 호출
+
+**예시:**
+
+| 요청 언어 | 사용자 요청 | 호출되는 에이전트 |
+|----------|------------|------------------|
+| 영어 | "Design backend API" | expert-backend |
+| 한국어 | "백엔드 API 설계해줘" | expert-backend |
+| 일본어 | "バックエンドAPIを設計して" | expert-backend |
+| 중국어 | "设计后端API" | expert-backend |
+
+**다국어 키워드 예시:**
+
+- **백엔드**: backend, 백엔드, バックエンド, 后端
+- **프론트엔드**: frontend, 프론트엔드, フロントエンド, 前端
+- **테스트**: test, 테스트, テスト, 测试
+- **보안**: security, 보안, セキュリティ, 安全
+
 ```mermaid
 flowchart TD
     User[👤 사용자] -->|요청| Alfred[🎩 Mr.Alfred]
@@ -391,9 +420,9 @@ flowchart TD
 
 ### 🔧 에이전트 시스템 (5-Tier 계층)
 
-MoAI-ADK는 **24개의 전문 에이전트**를 **5개 계층**으로 조직하여 최적의 성능을 제공합니다.
+MoAI-ADK는 **27개의 전문 에이전트**를 **5개 계층**으로 조직하여 최적의 성능을 제공합니다.
 
-**Tier 1: Domain Experts** (도메인 전문가, 7개)
+**Tier 1: Domain Experts** (도메인 전문가, 9개)
 
 - `expert-backend`: 백엔드 아키텍처, API 개발
 - `expert-frontend`: 프론트엔드, React/Vue 구현
@@ -402,6 +431,8 @@ MoAI-ADK는 **24개의 전문 에이전트**를 **5개 계층**으로 조직하�
 - `expert-devops`: 배포, 인프라, CI/CD
 - `expert-uiux`: UI/UX 디자인, 컴포넌트
 - `expert-debug`: 디버깅, 오류 분석
+- `expert-performance`: 성능 최적화, 프로파일링
+- `expert-testing`: 테스트 전략, E2E 테스트
 
 **Tier 2: Workflow Managers** (워크플로우 관리, 8개)
 
@@ -414,11 +445,12 @@ MoAI-ADK는 **24개의 전문 에이전트**를 **5개 계층**으로 조직하�
 - `manager-git`: Git 워크플로우
 - `manager-claude-code`: Claude Code 통합
 
-**Tier 3: Meta-generators** (메타 생성기, 3개)
+**Tier 3: Meta-generators** (메타 생성기, 4개)
 
 - `builder-agent`: 새로운 에이전트 생성
 - `builder-skill`: 새로운 스킬 생성
 - `builder-command`: 새로운 명령어 생성
+- `builder-plugin`: Claude Code 플러그인 생성
 
 **Tier 4: MCP Integrators** (MCP 통합, 6개)
 
@@ -2819,6 +2851,6 @@ SOFTWARE.
 ### Made with ❤️ by MoAI-ADK Team
 
 **Version:** 0.36.2
-**Last Updated:** 2025-12-01
+**Last Updated:** 2026-01-06
 **Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
 **MoAI**: MoAI stands for "Modu-ui AI" (AI for Everyone). Our goal is to make AI accessible to everyone.

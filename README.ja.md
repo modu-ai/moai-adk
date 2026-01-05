@@ -56,7 +56,7 @@ MoAI-ADK (Agentic Development Kit)は、**SPEC-First 開発**、**テスト駆�
 
 ### 🗿 MoAI-ADK とは？
 
-**MoAI-ADK**（Agentic Development Kit）は、AI エージェントを活用した次世代開発フレームワークです。**SPEC-First 開発方法論**、**TDD**（Test-Driven Development, テスト駆動開発）、**24 個の専門 AI エージェント**を組み合わせて、完全で透明な開発ライフサイクルを提供します。
+**MoAI-ADK**（Agentic Development Kit）は、AI エージェントを活用した次世代開発フレームワークです。**SPEC-First 開発方法論**、**TDD**（Test-Driven Development, テスト駆動開発）、**27 個の専門 AI エージェント**を組み合わせて、完全で透明な開発ライフサイクルを提供します。
 
 ### ✨ なぜ MoAI-ADK を使用するのか？
 
@@ -84,7 +84,7 @@ MoAI-ADK の解決策：
 | ---------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **SPEC-First**         | すべての開発は明確な仕様書から開始                     | 要件変更による手戻り **90% 削減**<br/>明確な SPEC による開発者-企画者間の誤解排除                                                                                                                              |
 | **TDD 強制**           | Red-Green-Refactor サイクルの自動化                    | バグ **70% 削減**（85%+ カバレッジ時）<br/>テスト作成時間を含む総開発時間 **15% 短縮**                                                                                                                       |
-| **AI オーケストレーション** | Mr.Alfred が 24 個の専門 AI エージェントを指揮（7-Tier 階層） | **平均トークン節約**: セッションあたり 5,000 トークン（Conditional Auto-load）<br/>**Simple 作業**: 0 トークン（Quick Reference）<br/>**Complex 作業**: 8,470 トークン（Auto-load スキル）<br/>手動に比べて **60-70% 時間短縮** |
+| **AI オーケストレーション** | Mr.Alfred が 27 個の専門 AI エージェントを指揮（5-Tier 階層） | **平均トークン節約**: セッションあたり 5,000 トークン（Conditional Auto-load）<br/>**Simple 作業**: 0 トークン（Quick Reference）<br/>**Complex 作業**: 8,470 トークン（Auto-load スキル）<br/>手動に比べて **60-70% 時間短縮** |
 | **自動ドキュメント化**   | コード変更時のドキュメント自動同期 (`> /moai:3-sync`)    | ドキュメント最新性 **100% 保証**<br/>手動ドキュメント作成削除<br/>最後のコミット以降の自動同期                                                                                                                   |
 | **TRUST 5 品質**      | Test, Readable, Unified, Secured, Trackable           | エンタープライズ級品質保証<br/>デプロイ後の緊急パッチ **99% 削減                                                                                                                                               |
 
@@ -384,12 +384,49 @@ flowchart TD
     style Alfred fill:#fff,stroke:#333,stroke-width:2px
     style Agents fill:#fff,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5
 ```
+### 🌐 多言語エージェントルーティング
+
+MoAI-ADK v0.36.2 は 4 つの言語（EN/KO/JA/ZH）で**キーワードベースの自動エージェント選択**をサポートしています。
+
+**サポート言語:**
+- 🇺🇸 英語 (English)
+- 🇰🇷 韓国語 (한국어)
+- 🇯🇵 日本語
+- 🇨🇳 中国語 (中文)
+
+**動作原理:**
+
+```
+ユーザー: "バックエンド API を設計して"
+    ↓
+Alfred: キーワード検出 ("バックエンド", "API")
+    ↓
+自動ルーティング → expert-backend エージェント
+    ↓
+日本語で回答
+```
+
+**トリガーキーワード例:**
+
+| ドメイン | 日本語キーワード |
+|---------|-----------------|
+| Backend | バックエンド, API, サーバー, 認証, データベース |
+| Frontend | フロントエンド, UI, コンポーネント, リアクト |
+| Database | データベース, SQL, NoSQL, スキーマ, クエリ |
+| Security | セキュリティ, 脆弱性, OWASP, インジェクション |
+| TDD | TDD, テスト駆動開発, ユニットテスト |
+
+**XLT (Cross-Lingual Thought) プロトコル:**
+1. ユーザーリクエストを内部で英語キーワードにマッピング
+2. 英語パターンベースでエージェント選択
+3. ユーザーの会話言語で回答
+
 
 ### 🔧 エージェントシステム（5-Tier 階層）
 
-MoAI-ADK は **24 個の専門エージェント**を **5 個の階層**に組織して最適の性能を提供します。
+MoAI-ADK は **27 個の専門エージェント**を **5 個の階層**に組織して最適の性能を提供します。
 
-**Tier 1: Domain Experts**（ドメイン専門家、7 個）
+**Tier 1: Domain Experts**（ドメイン専門家、9 個）
 
 - `expert-backend`: バックエンドアーキテクチャ、API 開発
 - `expert-frontend`: フロントエンド、React/Vue 実装
@@ -410,11 +447,12 @@ MoAI-ADK は **24 個の専門エージェント**を **5 個の階層**に組�
 - `manager-git`: Git ワークフロー
 - `manager-claude-code`: Claude Code 統合
 
-**Tier 3: Meta-generators**（メタ生成器、3 個）
+**Tier 3: Meta-generators**（メタ生成器、4 個）
 
 - `builder-agent`: 新しいエージェント生成
 - `builder-skill`: 新しいスキル生成
 - `builder-command`: 新しいコマンド生成
+- `builder-plugin`: Claude Code プラグイン生成
 
 **Tier 4: MCP Integrators**（MCP 統合、6 個）
 
@@ -1831,7 +1869,7 @@ Skill("moai-lang-python")
 
 ### 🎭 エージェント組み合わせパターン
 
-MoAI-ADK の 24 個のエージェントは作業タイプに応じて最適な組み合わせで実行されます。
+MoAI-ADK の 27 個のエージェントは作業タイプに応じて最適な組み合わせで実行されます。
 
 ### パターン 1: 新機能開発
 

@@ -35,7 +35,7 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 
 | Section                                                           | Goal                       |
 | ----------------------------------------------------------------- | -------------------------- |
-| [8. Agent Guide](#8-agent-guide-24-agents)                        | Utilize specialized agents |
+| [8. Agent Guide](#8-agent-guide-27-agents)                        | Utilize specialized agents |
 | [9. Skill Library](#9-skill-library-47-skills)                    | Explore 47 skills          |
 | [10. Composition Patterns](#10-composition-patterns-and-examples) | Real project examples      |
 | [11. TRUST 5 Quality](#11-trust-5-quality-assurance)              | Quality assurance system   |
@@ -1424,7 +1424,7 @@ moai-worktree config set <key> <value>
 
 ---
 
-## 8. Agent Guide (29 Agents)
+## 8. Agent Guide (27 Agents)
 
 ### 🎯 Agent Selection Guide
 
