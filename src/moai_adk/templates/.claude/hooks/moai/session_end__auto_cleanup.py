@@ -130,10 +130,12 @@ def load_hook_timeout() -> int:
         Timeout in milliseconds
     """
     try:
+        import yaml
+
         config_file = get_safe_moai_path("config/config.yaml")
         if config_file.exists():
             with open(config_file, "r", encoding="utf-8") as f:
-                config: Dict[str, Any] = json.load(f)
+                config: Dict[str, Any] = yaml.safe_load(f) or {}
                 return config.get("hooks", {}).get("timeout_ms", 5000)
     except Exception:
         pass
@@ -147,10 +149,12 @@ def get_graceful_degradation() -> bool:
         Whether graceful degradation is enabled
     """
     try:
+        import yaml
+
         config_file = get_safe_moai_path("config/config.yaml")
         if config_file.exists():
             with open(config_file, "r", encoding="utf-8") as f:
-                config: Dict[str, Any] = json.load(f)
+                config: Dict[str, Any] = yaml.safe_load(f) or {}
                 return config.get("hooks", {}).get("graceful_degradation", True)
     except Exception:
         pass
@@ -297,7 +301,7 @@ def save_work_state(payload: Dict[str, Any]) -> bool:
     """
     try:
         # Create memory directory (use ensure_moai_dir for safe creation in project root)
-        memory_dir = ensure_moai_dir("memory")
+        ensure_moai_dir("memory")
 
         # Collect work state
         work_state = {

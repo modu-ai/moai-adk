@@ -24,6 +24,7 @@ try:
         get_file_pattern_category,
         get_summary_stats,
         is_root_whitelisted,
+        merge_configs,
         suggest_moai_location,
     )
     from lib.config_manager import (
@@ -33,6 +34,16 @@ try:
         get_exit_code,
         get_graceful_degradation,
         get_timeout_seconds,
+    )
+
+    # Import exceptions
+    from lib.exceptions import (
+        ConfigurationError,
+        GitOperationError,
+        HooksBaseError,
+        HookTimeoutError,
+        SecurityError,
+        ValidationError,
     )
 
     # Import models
@@ -51,6 +62,13 @@ try:
         "CrossPlatformTimeout",
         "TimeoutError",
         "timeout_context",
+        # Core - Exceptions
+        "HooksBaseError",
+        "HookTimeoutError",
+        "GitOperationError",
+        "ConfigurationError",
+        "ValidationError",
+        "SecurityError",
         # Core - Configuration
         "ConfigManager",
         "get_config_manager",
@@ -64,6 +82,7 @@ try:
         "is_root_whitelisted",
         "get_file_pattern_category",
         "suggest_moai_location",
+        "merge_configs",
         # Models
         "HookPayload",
         "HookResult",

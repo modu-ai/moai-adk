@@ -25,16 +25,27 @@ except ImportError:
         pass
 
 
+# Import find_project_root from path_utils (canonical implementation)
+# This consolidates project root detection to a single source of truth
+try:
+    from lib.path_utils import find_project_root as _canonical_find_project_root
+except ImportError:
+    # Fallback if path_utils not available
+    _canonical_find_project_root = None  # type: ignore
+
+
 # Cache directory for version check results
 CACHE_DIR_NAME = ".moai/cache"
 
 
 def find_project_root(start_path: str | Path = ".") -> Path:
-    """Find MoAI-ADK project root by searching upward for .moai/config/config.yaml
+    """Find MoAI-ADK project root by searching upward for project markers.
 
-    Traverses up the directory tree until it finds .moai/config/config.yaml or CLAUDE.md,
-    which indicates the project root. This ensures cache and other files are
-    always created in the correct location, regardless of where hooks execute.
+    This is a wrapper around path_utils.find_project_root() for backward compatibility.
+    The canonical implementation in path_utils provides:
+    - Environment variable support (MOAI_PROJECT_ROOT, CLAUDE_PROJECT_DIR)
+    - Caching for performance
+    - Multiple project marker detection
 
     Args:
         start_path: Starting directory (default: current directory)
@@ -48,17 +59,15 @@ def find_project_root(start_path: str | Path = ".") -> Path:
         >>> find_project_root(".claude/hooks/alfred")
         Path("/Users/user/my-project")  # Found root 3 levels up
 
-    Notes:
-        - Searches for .moai/config/config.yaml first (most reliable)
-        - Falls back to CLAUDE.md if config.yaml not found
-        - Max depth: 10 levels up (prevent infinite loop)
-        - Returns absolute path for consistency
-
-    TDD History:
-        - RED: 4 test scenarios (root, nested, not found, symlinks)
-        - GREEN: Minimal upward search with .moai/config/config.yaml detection
-        - REFACTOR: Add CLAUDE.md fallback, max depth limit, absolute path return
+    Note:
+        For new code, prefer using path_utils.find_project_root() directly.
     """
+    # Use canonical implementation if available
+    if _canonical_find_project_root is not None:
+        path = Path(start_path).resolve() if start_path != "." else None
+        return _canonical_find_project_root(path)
+
+    # Fallback implementation if path_utils not available
     current = Path(start_path).resolve()
     max_depth = 10  # Prevent infinite loop
 

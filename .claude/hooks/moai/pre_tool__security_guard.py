@@ -25,7 +25,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 # Patterns for files that should NEVER be modified
 DENY_PATTERNS = [
@@ -129,7 +129,7 @@ def check_file_path(file_path: str) -> Tuple[str, str]:
     # Check deny patterns first
     for pattern in DENY_COMPILED:
         if pattern.search(normalized):
-            return "deny", f"Protected file: matches pattern {pattern.pattern}"
+            return "deny", "Protected file: access denied for security reasons"
 
     # Check ask patterns
     for pattern in ASK_COMPILED:
@@ -151,8 +151,8 @@ def check_content_for_secrets(content: str) -> Tuple[bool, str]:
     for pattern in SENSITIVE_COMPILED:
         match = pattern.search(content)
         if match:
-            # Don't reveal the actual secret
-            return True, f"Detected sensitive pattern: {pattern.pattern[:30]}..."
+            # Don't reveal the actual secret or pattern
+            return True, "Detected sensitive data (credentials, API keys, or certificates)"
 
     return False, ""
 

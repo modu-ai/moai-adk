@@ -10,6 +10,34 @@ import statistics
 from typing import Any
 
 
+def merge_configs(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    """Recursively merge configuration dictionaries.
+
+    Deep merges two configuration dictionaries, with override values
+    taking precedence. Nested dictionaries are merged recursively.
+
+    Args:
+        base: Base configuration dictionary
+        override: Override configuration dictionary (values take precedence)
+
+    Returns:
+        Merged configuration dictionary
+
+    Examples:
+        >>> base = {"a": 1, "b": {"c": 2}}
+        >>> override = {"b": {"d": 3}}
+        >>> merge_configs(base, override)
+        {'a': 1, 'b': {'c': 2, 'd': 3}}
+    """
+    result = base.copy()
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = merge_configs(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
 def format_duration(seconds: float) -> str:
     """Format duration in seconds to readable string.
 

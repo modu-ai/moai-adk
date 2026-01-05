@@ -26,6 +26,13 @@ from typing import Any, Callable, Dict, Optional, Set
 
 import yaml
 
+# Import base TimeoutError from timeout module for exception hierarchy
+try:
+    from .timeout import TimeoutError as BaseTimeoutError
+except ImportError:
+    # Fallback if timeout module not available
+    BaseTimeoutError = Exception  # type: ignore
+
 
 class TimeoutPolicy(Enum):
     """Timeout policy types for different hook categories"""
@@ -62,8 +69,13 @@ class TimeoutSession:
     cleanup_actions: list = field(default_factory=list)
 
 
-class HookTimeoutError(Exception):
-    """Enhanced timeout error with context"""
+class HookTimeoutError(BaseTimeoutError):
+    """Enhanced timeout error with context.
+
+    Inherits from timeout.TimeoutError for consistent exception handling
+    across the hooks system. Adds hook-specific context like hook_id,
+    execution time, and retry information.
+    """
 
     def __init__(
         self,
