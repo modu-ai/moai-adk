@@ -9,12 +9,8 @@ Tests SpecStatusManager with full coverage of:
 - Batch operations
 """
 
-import pytest
 import tempfile
-import yaml
-from datetime import datetime
 from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open
 
 from moai_adk.core.spec_status_manager import SpecStatusManager
 

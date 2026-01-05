@@ -9,25 +9,22 @@ Tests context management with focus on:
 - ContextManager class functionality
 """
 
-import os
-import pytest
 import json
+import os
 import tempfile
-from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open, call
 from datetime import datetime, timezone
 
+import pytest
+
 from moai_adk.core.context_manager import (
-    validate_and_convert_path,
-    save_phase_result,
-    load_phase_result,
-    substitute_template_variables,
-    validate_no_template_vars,
-    _is_path_within_root,
-    _cleanup_temp_file,
     ContextManager,
-    PROJECT_ROOT_SAFETY_MSG,
-    PARENT_DIR_MISSING_MSG,
+    _cleanup_temp_file,
+    _is_path_within_root,
+    load_phase_result,
+    save_phase_result,
+    substitute_template_variables,
+    validate_and_convert_path,
+    validate_no_template_vars,
 )
 
 

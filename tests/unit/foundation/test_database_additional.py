@@ -11,20 +11,15 @@ Increases coverage for:
 - PerformanceMonitor: Query and connection monitoring
 """
 
-import pytest
 
 from moai_adk.foundation.database import (
-    ACIDCompliance,
     ConnectionPoolManager,
     DatabaseSelector,
     IndexingOptimizer,
-    IndexRecommendation,
     MigrationPlanner,
     PerformanceMonitor,
-    PoolConfiguration,
     SchemaNormalizer,
     TransactionManager,
-    ValidationResult,
 )
 
 

@@ -1,7 +1,8 @@
 """Tests for moai_adk.core.unified_permission_manager module."""
 
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import MagicMock, patch
 
 
 class TestUnifiedPermissionManager:

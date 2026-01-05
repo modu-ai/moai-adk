@@ -7,13 +7,13 @@ These tests exercise actual code paths including:
 - Configuration update logic
 """
 
+
 import pytest
-from unittest.mock import MagicMock, patch, call
 
 from moai_adk.cli.commands.update import (
-    UpdateError,
     InstallerNotFoundError,
     NetworkError,
+    UpdateError,
     UpgradeError,
 )
 
@@ -192,9 +192,9 @@ class TestUpdateConstants:
     def test_commands_are_lists(self):
         """Test all commands are lists."""
         from moai_adk.cli.commands.update import (
-            UV_TOOL_COMMAND,
-            PIPX_COMMAND,
             PIP_COMMAND,
+            PIPX_COMMAND,
+            UV_TOOL_COMMAND,
         )
 
         assert isinstance(UV_TOOL_COMMAND, list)
@@ -204,9 +204,9 @@ class TestUpdateConstants:
     def test_commands_contain_moai_adk(self):
         """Test all commands reference moai-adk."""
         from moai_adk.cli.commands.update import (
-            UV_TOOL_COMMAND,
-            PIPX_COMMAND,
             PIP_COMMAND,
+            PIPX_COMMAND,
+            UV_TOOL_COMMAND,
         )
 
         assert "moai-adk" in UV_TOOL_COMMAND

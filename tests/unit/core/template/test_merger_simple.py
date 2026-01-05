@@ -3,8 +3,6 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-import pytest
-
 from moai_adk.core.template.merger import TemplateMerger
 
 

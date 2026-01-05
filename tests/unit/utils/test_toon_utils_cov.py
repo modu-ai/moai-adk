@@ -416,7 +416,7 @@ class TestMigrateJsonToToon:
         json_str = json.dumps(json_data)
 
         with patch("pathlib.Path.read_text", return_value=json_str):
-            with patch("moai_adk.utils.toon_utils.toon_save") as mock_save:
+            with patch("moai_adk.utils.toon_utils.toon_save"):
                 result = migrate_json_to_toon(Path("data.json"), Path("custom.toon"))
                 assert result == Path("custom.toon")
 

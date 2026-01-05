@@ -1,8 +1,7 @@
 """Tests for moai_adk.core.realtime_monitoring_dashboard module."""
 
+
 import pytest
-from unittest.mock import patch, MagicMock
-from datetime import datetime
 
 
 class TestRealtimeMonitoringDashboard:

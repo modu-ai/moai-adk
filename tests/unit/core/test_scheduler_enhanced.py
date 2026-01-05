@@ -4,18 +4,17 @@ Enhanced tests for Phase-Optimized Hook Scheduler - targeting 60%+ coverage.
 Focus on actual API and enumerations.
 """
 
-import pytest
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+
+import pytest
 
 from moai_adk.core.phase_optimized_hook_scheduler import (
-    SchedulingStrategy,
-    SchedulingDecision,
-    HookSchedulingContext,
-    ScheduledHook,
-    SchedulingResult,
     ExecutionGroup,
+    HookSchedulingContext,
     PhaseOptimizedHookScheduler,
+    SchedulingDecision,
+    SchedulingResult,
+    SchedulingStrategy,
 )
 
 

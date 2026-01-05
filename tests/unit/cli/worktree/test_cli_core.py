@@ -6,17 +6,11 @@ error handling, and command execution.
 """
 
 from pathlib import Path
-from datetime import datetime
-from unittest.mock import MagicMock, patch, Mock
-
-import pytest
-import click
-from click.testing import CliRunner
+from unittest.mock import MagicMock, patch
 
 from moai_adk.cli.worktree.cli import (
-    get_manager,
     _detect_worktree_root,
-    _find_main_repository,
+    get_manager,
 )
 
 
@@ -107,13 +101,13 @@ class TestDetectWorktreeRoot:
         mock_find_main.return_value = Path("/test/repo")
 
         with patch("moai_adk.cli.worktree.cli.Path.home") as mock_home:
-            moai_dir = Path("/home/user/moai/worktrees")
+            Path("/home/user/moai/worktrees")
             mock_home.return_value = Path("/home/user")
 
             with patch.object(Path, "exists", return_value=True):
                 with patch.object(Path, "iterdir", return_value=[]):
                     # Act
-                    result = _detect_worktree_root(Path("/test/repo"))
+                    _detect_worktree_root(Path("/test/repo"))
 
                     # Assert - would find moai directory if it existed
                     # The actual logic is complex due to path operations
@@ -147,8 +141,8 @@ class TestFindMainRepository:
         # This function checks if .git exists and returns the path
         # Implementation details vary, we test what we can
 
-        with patch("moai_adk.cli.worktree.cli.Path") as mock_path_class:
-            repo_path = Path("/test/repo")
+        with patch("moai_adk.cli.worktree.cli.Path"):
+            Path("/test/repo")
             mock_repo = MagicMock()
             mock_repo.__truediv__ = MagicMock(return_value=MagicMock(exists=MagicMock(return_value=True)))
 
@@ -236,7 +230,7 @@ class TestWorktreeManagerIntegration:
         mock_manager_class.return_value = mock_manager
 
         # Act
-        result = get_manager(repo_path=repo_path, worktree_root=worktree_root)
+        get_manager(repo_path=repo_path, worktree_root=worktree_root)
 
         # Assert
         # Verify WorktreeManager was instantiated with correct paths
@@ -258,7 +252,7 @@ class TestWorktreeManagerIntegration:
         mock_manager_class.return_value = mock_manager
 
         # Act
-        result = get_manager(repo_path=repo_path, worktree_root=None)
+        get_manager(repo_path=repo_path, worktree_root=None)
 
         # Assert
         mock_detect.assert_called_once_with(repo_path)

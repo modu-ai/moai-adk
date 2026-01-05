@@ -1,13 +1,14 @@
 ---
-name: moai-lang-flutter
-description: Flutter 3.24+ / Dart 3.5+ development specialist covering Riverpod, go_router, and cross-platform patterns. Use when building cross-platform mobile apps, desktop apps, or web applications with Flutter.
+name: "moai-lang-flutter"
+description: "Flutter 3.24+ / Dart 3.5+ development specialist covering Riverpod, go_router, and cross-platform patterns. Use when building cross-platform mobile apps, desktop apps, or web applications with Flutter."
 version: 1.0.0
-category: language
-tags: [flutter, dart, riverpod, cross-platform, mobile, desktop]
-context7-libraries: [/flutter/flutter, /rrousselgit/riverpod, /flutter/packages]
-related-skills: [moai-lang-swift, moai-lang-kotlin]
+category: "language"
+modularized: false
+tags: ['flutter', 'dart', 'riverpod', 'cross-platform', 'mobile', 'desktop']
+context7-libraries: ['/flutter/flutter', '/rrousselgit/riverpod', '/flutter/packages']
+related-skills: ['moai-lang-swift', 'moai-lang-kotlin']
 updated: 2025-12-07
-status: active
+status: "active"
 ---
 
 ## Quick Reference (30 seconds)
@@ -469,9 +470,3 @@ Navigation and Storage:
 - `moai-domain-backend` - API integration and backend communication
 - `moai-quality-security` - Mobile security best practices
 - `moai-essentials-debug` - Flutter debugging and DevTools
-
----
-
-Version: 1.0.0
-Last Updated: 2025-12-07
-Status: Production Ready

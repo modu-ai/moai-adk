@@ -3,10 +3,9 @@
 Tests for online link validation utilities.
 """
 
-import asyncio
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -137,7 +136,6 @@ class TestLinkValidator:
     def test_extract_links_from_file_success(self):
         """Test extract_links_from_file successful."""
         validator = LinkValidator()
-        content = "[Link](https://example.com) and https://another.com"
         with patch("pathlib.Path.exists", return_value=True):
             with patch.object(
                 validator,
@@ -252,13 +250,13 @@ class TestLinkExtraction:
 
     def test_extract_markdown_links(self):
         """Test extracting markdown format links."""
-        validator = LinkValidator()
+        LinkValidator()
         # Test through extract_links_from_text if accessible
         # This tests integration with common.py functions
 
     def test_extract_plain_urls(self):
         """Test extracting plain URLs."""
-        validator = LinkValidator()
+        LinkValidator()
         # Test through extract_links_from_text if accessible
 
 

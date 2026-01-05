@@ -1,12 +1,10 @@
 """Comprehensive tests for UpdateChecker with 80% coverage target."""
 
 import json
-from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch, mock_open
-import urllib.request
 import urllib.error
-
-import pytest
+import urllib.request
+from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch
 
 from moai_adk.statusline.update_checker import UpdateChecker, UpdateInfo
 

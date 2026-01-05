@@ -5,10 +5,7 @@ Tests for logging and sensitive data filtering.
 
 import logging
 import os
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from moai_adk.utils.logger import SensitiveDataFilter, setup_logger
 
@@ -118,7 +115,7 @@ class TestSetupLogger:
         """Test logger creates log directory."""
         with patch("logging.FileHandler"):
             with patch("moai_adk.utils.logger.Path.mkdir") as mock_mkdir:
-                logger = setup_logger("test_logger", log_dir="/tmp/logs")
+                setup_logger("test_logger", log_dir="/tmp/logs")
                 # Verify mkdir was called
                 assert mock_mkdir.called
 

@@ -10,26 +10,22 @@ Tests JITContextLoader with focus on:
 - Performance metrics tracking
 """
 
-import pytest
-import tempfile
-import json
-import asyncio
 from datetime import datetime
-from pathlib import Path
-from unittest.mock import patch, MagicMock, AsyncMock
-from unittest.mock import mock_open, call
+from unittest.mock import patch
+
+import pytest
 
 from moai_adk.core.jit_context_loader import (
+    ContextCache,
+    ContextEntry,
+    ContextMetrics,
+    JITContextLoader,
     Phase,
     PhaseConfig,
-    ContextMetrics,
-    SkillInfo,
-    ContextEntry,
     PhaseDetector,
     SkillFilterEngine,
+    SkillInfo,
     TokenBudgetManager,
-    ContextCache,
-    JITContextLoader,
 )
 
 
@@ -369,7 +365,7 @@ class TestContextCache:
         """Test setting and getting cache entries."""
         cache = ContextCache()
 
-        entry = ContextEntry(
+        ContextEntry(
             key="test-key",
             content={"data": "test"},
             token_count=100,

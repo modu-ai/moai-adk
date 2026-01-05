@@ -9,36 +9,34 @@ Test Pattern: AAA (Arrange-Act-Assert)
 """
 
 import subprocess
-from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call, mock_open
+from unittest.mock import MagicMock, patch
+
 import pytest
 import yaml
-from packaging import version
 
 from moai_adk.cli.commands.update import (
-    _is_installed_via_uv_tool,
-    _is_installed_via_pipx,
-    _is_installed_via_pip,
-    _detect_tool_installer,
-    _get_current_version,
-    _get_latest_version,
-    _compare_versions,
-    _get_package_config_version,
-    _get_project_config_version,
-    _ask_merge_strategy,
-    _generate_manual_merge_guide,
-    _migrate_legacy_logs,
-    _detect_stale_cache,
-    _clear_uv_package_cache,
-    _execute_upgrade_with_retry,
-    UpdateError,
     InstallerNotFoundError,
     NetworkError,
-    UpgradeError,
     TemplateSyncError,
+    UpdateError,
+    UpgradeError,
+    _ask_merge_strategy,
+    _clear_uv_package_cache,
+    _compare_versions,
+    _detect_stale_cache,
+    _detect_tool_installer,
+    _execute_upgrade_with_retry,
+    _generate_manual_merge_guide,
+    _get_current_version,
+    _get_latest_version,
+    _get_package_config_version,
+    _get_project_config_version,
+    _is_installed_via_pip,
+    _is_installed_via_pipx,
+    _is_installed_via_uv_tool,
+    _migrate_legacy_logs,
 )
-
 
 # ============================================================================
 # Test Installer Detection Functions

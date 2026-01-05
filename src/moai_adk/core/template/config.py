@@ -1,18 +1,29 @@
-"""Configuration Manager (Migrated to Unified Config)
+"""Configuration Manager (Migrated to Unified Config).
 
-DEPRECATED: This module is maintained for backward compatibility.
-New code should use: moai_adk.core.config.unified.UnifiedConfigManager
+⚠️ DEPRECATED: This module is deprecated and will be removed in a future version.
+
+New code should use: from moai_adk.core.config.unified import UnifiedConfigManager, get_unified_config
+
+Migration Guide:
+    OLD:
+        >>> from moai_adk.core.template.config import ConfigManager
+        >>> config = ConfigManager()
+
+    NEW:
+        >>> from moai_adk.core.config.unified import UnifiedConfigManager
+        >>> config = UnifiedConfigManager()
+        >>> data = config.get_all()
 
 Configuration sources (in priority order):
-1. Section YAML files: .moai/config/sections/*.yaml (new approach)
-   - language.yaml: Language settings
-   - user.yaml: User settings
-   - project.yaml: Project metadata
-   - system.yaml: MoAI system settings
-   - git-strategy.yaml: Git workflow settings
-   - quality.yaml: Quality and TDD settings
-2. Monolithic config.yaml: .moai/config/config.yaml (legacy)
-3. Monolithic config.json: .moai/config/config.json (legacy fallback)
+    1. Section YAML files: .moai/config/sections/*.yaml (new approach)
+       - language.yaml: Language settings
+       - user.yaml: User settings
+       - project.yaml: Project metadata
+       - system.yaml: MoAI system settings
+       - git-strategy.yaml: Git workflow settings
+       - quality.yaml: Quality and TDD settings
+    2. Monolithic config.yaml: .moai/config/config.yaml (legacy)
+    3. Monolithic config.json: .moai/config/config.json (legacy fallback)
 
 Migration Path:
     OLD:
@@ -24,6 +35,10 @@ Migration Path:
         >>> from moai_adk.core.config.unified import get_unified_config
         >>> config = get_unified_config()
         >>> data = config.get_all()
+
+Status: Deprecated - Maintained for backward compatibility only
+Removal Target: v10.0.0
+Last Updated: 2026-01-06
 """
 
 import json

@@ -7,32 +7,26 @@ Tests use @patch for mocking subprocess, file operations, and dependencies.
 """
 
 import asyncio
-import pytest
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import MagicMock, patch, AsyncMock, call
-from io import StringIO
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from moai_adk.core.jit_enhanced_hook_manager import (
-    HookEvent,
-    HookPriority,
-    Phase,
-    ContextCache,
-    TokenBudgetManager,
-    JITEnhancedHookManager,
-    HookMetadata,
-    HookExecutionResult,
     CircuitBreaker,
     CircuitBreakerState,
-    HookResultCache,
     ConnectionPool,
-    RetryPolicy,
-    ResourceUsageMetrics,
-    HookPerformanceMetrics,
-    ResourceMonitor,
+    ContextCache,
     HealthChecker,
+    HookEvent,
+    HookPriority,
+    HookResultCache,
+    JITEnhancedHookManager,
     PerformanceAnomalyDetector,
+    ResourceMonitor,
+    RetryPolicy,
 )
 
 

@@ -8,7 +8,6 @@ Tests 5-phase installation workflow:
 - Phase 5: Validation and finalization
 """
 
-import json
 from pathlib import Path
 from unittest.mock import Mock, patch
 

@@ -7,16 +7,12 @@ Tests actual code paths without side effects.
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch, call
-from datetime import datetime
+from unittest.mock import MagicMock, call, patch
 
-import pytest
-import click
 from click.testing import CliRunner
-from rich.console import Console
 from rich.progress import Progress
 
-from moai_adk.cli.commands.init import init, create_progress_callback
+from moai_adk.cli.commands.init import create_progress_callback, init
 
 
 class TestCreateProgressCallback:

@@ -1,14 +1,13 @@
 ---
-name: moai-lang-csharp
-description: C# 12 / .NET 8 development specialist covering ASP.NET Core, Entity Framework, Blazor, and modern C# patterns. Use when developing .NET APIs, web applications, or enterprise solutions.
-allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+name: "moai-lang-csharp"
+description: "C# 12 / .NET 8 development specialist covering ASP.NET Core, Entity Framework, Blazor, and modern C# patterns. Use when developing .NET APIs, web applications, or enterprise solutions."
 version: 2.0.0
-context7-libraries:
-  - /dotnet/aspnetcore
-  - /dotnet/efcore
-  - /dotnet/runtime
+category: "language"
+modularized: true
+allowed-tools: "Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+context7-libraries: ['/dotnet/aspnetcore', '/dotnet/efcore', '/dotnet/runtime']
 updated: 2026-01-06
-status: active
+status: "active"
 ---
 
 # C# 12 / .NET 8 Development Specialist
@@ -187,9 +186,3 @@ public async IAsyncEnumerable<User> StreamUsersAsync(
 - `moai-workflow-testing` - Testing strategies and patterns
 - `moai-foundation-quality` - Code quality standards
 - `moai-essentials-debug` - Debugging .NET applications
-
----
-
-Version: 2.0.0
-Last Updated: 2026-01-06
-Status: Production Ready

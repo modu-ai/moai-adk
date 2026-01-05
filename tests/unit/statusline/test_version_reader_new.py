@@ -1,21 +1,18 @@
 """Comprehensive tests for VersionReader with 90% coverage target."""
 
 import asyncio
-import json
-from pathlib import Path
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch, mock_open
-import re
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
 
 from moai_adk.statusline.version_reader import (
-    VersionSource,
     CacheEntry,
     VersionConfig,
     VersionReader,
-    VersionReadError,
+    VersionSource,
 )
 
 
@@ -26,7 +23,7 @@ class TestVersionReaderAsyncMethods:
     async def test_file_exists_async_true(self):
         """Test async file existence check when file exists."""
         reader = VersionReader()
-        mock_path = MagicMock(spec=Path)
+        MagicMock(spec=Path)
 
         with patch.object(Path, "exists", return_value=True):
             # Use a real path for the test
@@ -546,7 +543,6 @@ class TestVersionReaderIntegration:
     @pytest.mark.asyncio
     async def test_full_async_flow(self):
         """Test complete asynchronous version reading flow."""
-        config_data = {"moai": {"version": "0.20.1"}}
         config = VersionConfig(enable_async=True)
         reader = VersionReader(config=config)
 

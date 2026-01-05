@@ -2,7 +2,7 @@
 
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from moai_adk.cli.commands.analyze import analyze
 
@@ -99,7 +99,7 @@ def test_analyze_days_option_parsed_correctly():
             mock_analyzer.generate_report.return_value = "Report"
             mock_analyzer.save_report.return_value = "report.md"
 
-            result = runner.invoke(analyze, ["--project-path", tmpdir, "--days", "30"])
+            runner.invoke(analyze, ["--project-path", tmpdir, "--days", "30"])
 
             # Verify 30 days was passed to analyzer if it was called
             if mock_analyzer_class.call_args:
@@ -128,7 +128,7 @@ def test_analyze_verbose_option_parsed():
             mock_analyzer.generate_report.return_value = "Report"
             mock_analyzer.save_report.return_value = "report.md"
 
-            result = runner.invoke(analyze, ["--project-path", tmpdir, "--verbose"])
+            runner.invoke(analyze, ["--project-path", tmpdir, "--verbose"])
 
             # Verify verbose=True was passed if analyzer was called
             if mock_analyzer_class.call_args:

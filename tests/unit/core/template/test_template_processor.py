@@ -7,8 +7,6 @@ Test cases for template synchronization and processing functionality.
 import tempfile
 from pathlib import Path
 
-import pytest
-
 
 class TestTemplateProcessor:
     """Test suite for template processor functionality."""

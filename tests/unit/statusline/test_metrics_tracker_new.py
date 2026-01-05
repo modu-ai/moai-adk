@@ -4,8 +4,6 @@ import time
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from moai_adk.statusline.metrics_tracker import MetricsTracker
 
 

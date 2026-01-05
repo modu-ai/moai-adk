@@ -8,8 +8,9 @@ Focuses on uncovered rendering methods:
 - Edge cases for constraint violations
 """
 
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from moai_adk.statusline.renderer import StatuslineData, StatuslineRenderer
 

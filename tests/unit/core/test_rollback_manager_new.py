@@ -4,11 +4,10 @@ Comprehensive tests for RollbackManager module.
 Tests all major methods with mocked file system and git operations.
 """
 
-import json
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -99,7 +98,7 @@ class TestRollbackManagerInit:
     def test_init_loads_registry(self, mock_load, mock_mkdir):
         """Test that __init__ loads existing registry."""
         mock_load.return_value = {"rollback_001": {"id": "rollback_001"}}
-        manager = RollbackManager(project_root=Path("/test"))
+        RollbackManager(project_root=Path("/test"))
         assert mock_load.called
 
 

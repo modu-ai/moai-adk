@@ -187,7 +187,7 @@ class UnifiedConfigManager:
             raise ImportError("PyYAML is required for section-based config. Install with: pip install pyyaml")
 
         # Merge all section files
-        merged_config = {}
+        merged_config: dict[str, Any] = {}
         section_files = sorted(self._config_path.glob("*.yaml"))
 
         for section_file in section_files:

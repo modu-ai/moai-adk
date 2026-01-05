@@ -1,8 +1,7 @@
 """Tests for moai_adk.version module."""
 
-import pytest
-from unittest.mock import patch, MagicMock
 from importlib.metadata import PackageNotFoundError
+from unittest.mock import patch
 
 from moai_adk.version import MOAI_VERSION, TEMPLATE_VERSION
 
@@ -78,17 +77,16 @@ class TestVersionImportBehavior:
 
         # Re-import to test the behavior
         import sys
-        import importlib
 
         # Store original version
-        original_version = sys.modules.get("moai_adk.version")
+        sys.modules.get("moai_adk.version")
 
         # Mock the import behavior
         with patch("moai_adk.version.pkg_version") as mock_pv:
             mock_pv.side_effect = PackageNotFoundError("Package not found")
             # The actual behavior is already set at import time
             # So we just verify the fallback exists
-            assert "0.30.0" is not None
+            assert "0.30.0" != None
 
     def test_version_constants_defined(self):
         """Test that version constants are properly defined in module."""

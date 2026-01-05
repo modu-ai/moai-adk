@@ -3,14 +3,10 @@ Comprehensive tests for comprehensive_monitoring_system.py
 Targets: 60%+ coverage for low-coverage module (21.14% baseline)
 """
 
-import json
 import threading
 import time
 from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, call, patch
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from moai_adk.core.comprehensive_monitoring_system import (
     Alert,
@@ -19,8 +15,8 @@ from moai_adk.core.comprehensive_monitoring_system import (
     ComprehensiveMonitoringSystem,
     HealthStatus,
     MetricData,
-    MetricType,
     MetricsCollector,
+    MetricType,
     PerformanceMonitor,
     PredictiveAnalytics,
     SystemHealth,

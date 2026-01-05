@@ -1,9 +1,6 @@
 """Tests for Hook-related dataclasses - Fixing the phase enum values."""
 
 from datetime import datetime
-from unittest.mock import Mock
-
-import pytest
 
 from moai_adk.core.jit_enhanced_hook_manager import (
     CircuitBreakerState,

@@ -7,18 +7,18 @@ handling paths in the jit_enhanced_hook_manager module, aiming for 95%+ coverage
 
 import asyncio
 import json
-import pytest
 import threading
 import time
 from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, patch, mock_open, call
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
+import pytest
 
 from moai_adk.core.jit_enhanced_hook_manager import (
     CircuitBreaker,
     CircuitBreakerState,
     ConnectionPool,
-    ContextCache,
+    HealthChecker,
     HookEvent,
     HookExecutionResult,
     HookMetadata,
@@ -26,12 +26,11 @@ from moai_adk.core.jit_enhanced_hook_manager import (
     HookPriority,
     HookResultCache,
     JITEnhancedHookManager,
-    Phase,
     PerformanceAnomalyDetector,
+    Phase,
     ResourceMonitor,
     ResourceUsageMetrics,
     RetryPolicy,
-    HealthChecker,
     execute_pre_tool_hooks,
     execute_session_end_hooks,
     execute_session_start_hooks,
@@ -46,7 +45,6 @@ from moai_adk.core.jit_enhanced_hook_manager import (
     optimize_hook_system,
     reset_circuit_breakers,
 )
-
 
 # ============================================================================
 # CircuitBreaker Tests
@@ -337,7 +335,7 @@ class TestConnectionPool:
         pool = ConnectionPool(max_connections=1)
         factory = AsyncMock(return_value={"conn": "test"})
 
-        conn1 = await pool.get_connection("pool", factory)
+        await pool.get_connection("pool", factory)
 
         # Pool full, should raise
         with pytest.raises(Exception, match="Connection pool"):
@@ -1238,7 +1236,7 @@ class TestExtendedCoverage:
         manager = JITEnhancedHookManager()
 
         # First call
-        time1 = manager._estimate_execution_time("test_hook.py")
+        manager._estimate_execution_time("test_hook.py")
         manager._metadata_cache["exec_time:test_hook.py"] = {"avg_time_ms": 123.45}
 
         # Second call should use cache

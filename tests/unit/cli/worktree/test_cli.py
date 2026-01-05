@@ -5,15 +5,14 @@ These tests verify that the module can be imported and basic functions
 can be executed without errors.
 """
 
-import pytest
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from moai_adk.cli.worktree.cli import (
-    get_manager,
     _detect_worktree_root,
     _find_main_repository,
+    get_manager,
 )
 
 
@@ -44,7 +43,7 @@ class TestGetManagerFunction:
     def test_get_manager_with_defaults(self, mock_detect, mock_manager_class):
         """Test get_manager with default parameters."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            repo_path = Path(tmpdir)
+            Path(tmpdir)
             worktree_root = Path(tmpdir) / "worktrees"
 
             mock_detect.return_value = worktree_root
@@ -108,7 +107,7 @@ class TestDetectWorktreeRootFunction:
 
             mock_find_main.return_value = main_repo
 
-            result = _detect_worktree_root(repo_path)
+            _detect_worktree_root(repo_path)
             mock_find_main.assert_called_once()
 
 

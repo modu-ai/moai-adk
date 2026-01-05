@@ -9,25 +9,26 @@ Tests skill loading with full coverage of:
 - Error handling and fallback
 """
 
-import pytest
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open, call
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from moai_adk.core.skill_loading_system import (
-    SkillLoader,
-    SkillData,
-    SkillValidator,
-    SkillRegistry,
+    DependencyError,
     LRUCache,
-    load_skill,
-    get_skill_cache_stats,
-    clear_skill_cache,
+    SkillData,
+    SkillLoader,
     SkillLoadingError,
     SkillNotFoundError,
+    SkillRegistry,
     SkillValidationError,
-    DependencyError,
+    SkillValidator,
+    clear_skill_cache,
+    get_skill_cache_stats,
+    load_skill,
 )
 
 
@@ -370,7 +371,7 @@ class TestSkillLoader:
 
             loader.cache.set("test-skill", cached_skill)
 
-            with patch.object(loader, "validator") as mock_validator:
+            with patch.object(loader, "validator"):
                 with patch.object(loader, "_load_skill_from_filesystem"):
                     result = loader.load_skill("test-skill")
 
@@ -416,7 +417,7 @@ class TestSkillLoader:
                     with patch.object(loader, "_apply_effort_parameter") as mock_apply:
                         mock_apply.return_value = skill
 
-                        result = loader.load_skill("test-skill", effort=3)
+                        loader.load_skill("test-skill", effort=3)
 
                         mock_validator.validate_effort_parameter.assert_called_once()
                         mock_apply.assert_called_once()
@@ -572,7 +573,7 @@ class TestModuleLevelFunctions:
             mock_skill = SkillData(name="test", frontmatter={}, content="", loaded_at=datetime.now())
             mock_loader.load_skill.return_value = mock_skill
 
-            result = load_skill("test-skill", effort=3, force_reload=False)
+            load_skill("test-skill", effort=3, force_reload=False)
 
             mock_loader.load_skill.assert_called_once_with("test-skill", 3, False)
 

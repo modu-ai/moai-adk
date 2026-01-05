@@ -4,29 +4,20 @@ Tests all uncovered CLI command paths with proper mocking of WorktreeManager
 and Git operations. Uses AAA pattern and @patch decorators for dependencies.
 """
 
-import pytest
-import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
+
 from click.testing import CliRunner
 
 from moai_adk.cli.worktree.cli import (
     worktree,
-    new_worktree,
-    list_worktrees,
-    remove_worktree,
-    status_worktrees,
-    go_worktree,
-    sync_worktree,
-    clean_worktrees,
-    config_worktree,
 )
 from moai_adk.cli.worktree.exceptions import (
-    WorktreeExistsError,
-    WorktreeNotFoundError,
-    UncommittedChangesError,
     GitOperationError,
     MergeConflictError,
+    UncommittedChangesError,
+    WorktreeExistsError,
+    WorktreeNotFoundError,
 )
 from moai_adk.cli.worktree.models import WorktreeInfo
 

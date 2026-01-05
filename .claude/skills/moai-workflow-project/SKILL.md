@@ -1,13 +1,13 @@
 ---
-name: moai-workflow-project
-description: Integrated project management system with documentation, language initialization, and template optimization modules. Use when setting up projects, generating documentation, configuring multilingual support, or optimizing templates.
+name: "moai-workflow-project"
+description: "Integrated project management system with documentation, language initialization, and template optimization modules. Use when setting up projects, generating documentation, configuring multilingual support, or optimizing templates."
 version: 2.0.0
+category: "workflow"
 modularized: true
 updated: 2025-12-30
-status: active
-aliases: [moai-workflow-project]
-category: workflow
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+status: "active"
+aliases: ['moai-workflow-project']
+allowed-tools: "Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 ---
 
 # MoAI Workflow Project - Integrated Project Management System
@@ -250,9 +250,3 @@ File Size Impact:
 - moai-workflow-docs: Unified documentation management
 - moai-workflow-templates: Template optimization strategies
 - moai-library-nextra: Advanced documentation architecture
-
----
-
-Version: 2.0.0
-Last Updated: 2025-12-30
-Integration Status: Complete - All modules implemented and tested

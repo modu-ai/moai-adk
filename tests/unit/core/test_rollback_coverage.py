@@ -9,21 +9,17 @@ Test Pattern: AAA (Arrange-Act-Assert)
 Mocks: File system operations, JSON I/O, shutil operations
 """
 
-import json
-import hashlib
-import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open, call
+from unittest.mock import MagicMock, mock_open, patch
+
 import pytest
-import shutil
 
 from moai_adk.core.rollback_manager import (
     RollbackManager,
     RollbackPoint,
     RollbackResult,
 )
-
 
 # ============================================================================
 # Test RollbackPoint and RollbackResult Dataclasses

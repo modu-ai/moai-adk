@@ -5,11 +5,8 @@ and edge cases. Target: 95%+ code coverage with complete method execution.
 """
 
 import json
-import re
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch, mock_open, call
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 
 class TestTemplateVariableSynchronizerInit:
@@ -934,7 +931,6 @@ class TestValidateTemplateVariableConsistency:
             synchronizer = TemplateVariableSynchronizer(str(tmp_path))
             with patch.object(synchronizer, "_find_files_with_template_variables", return_value=[test_file]):
                 # Patch the method to inject inconsistencies
-                original_method = synchronizer.validate_template_variable_consistency
 
                 def patched_validate():
                     result = {

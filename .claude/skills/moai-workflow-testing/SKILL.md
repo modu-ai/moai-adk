@@ -1,20 +1,14 @@
 ---
-name: moai-workflow-testing
-description: Comprehensive development workflow specialist combining TDD, debugging, performance optimization, code review, and quality assurance into unified development workflows
-version: 2.0.0
-category: workflow
-tags:
-  - workflow
-  - testing
-  - debugging
-  - performance
-  - quality
-  - tdd
-  - review
-updated: 2025-12-30
-status: active
-author: MoAI-ADK Team
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+name: "moai-workflow-testing"
+description: "Comprehensive development workflow specialist combining TDD, debugging, performance optimization, code review, PR review, and quality assurance into unified development workflows"
+version: 2.1.0
+category: "workflow"
+modularized: true
+tags: ['workflow', 'testing', 'debugging', 'performance', 'quality', 'tdd', 'review', 'pr-review']
+updated: 2026-01-06
+status: "active"
+author: "MoAI-ADK Team"
+allowed-tools: "Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 ---
 
 # Development Workflow Specialist
@@ -28,6 +22,7 @@ Core Capabilities:
 - AI-Powered Debugging: Intelligent error analysis and solution recommendations
 - Performance Optimization: Profiling and bottleneck detection guidance
 - Automated Code Review: TRUST 5 validation framework for quality analysis
+- PR Code Review: Multi-agent pattern with Haiku eligibility check and Sonnet parallel review
 - Quality Assurance: Comprehensive testing and CI/CD integration patterns
 - Workflow Orchestration: End-to-end development process guidance
 
@@ -40,6 +35,7 @@ When to Use:
 - Performance-critical applications
 - Technical debt reduction initiatives
 - Automated testing and CI/CD integration
+- Pull request code review automation
 
 ---
 
@@ -132,6 +128,13 @@ Code Review Process:
 - Step 5: Generate actionable recommendations with priority rankings
 - Step 6: Create a summary report with improvement roadmap
 
+PR Code Review Process:
+- Step 1: Eligibility Check using Haiku agent to filter PRs (skip closed, draft, already reviewed, trivial changes)
+- Step 2: Gather Context by finding CLAUDE.md files in modified directories and summarizing PR changes
+- Step 3: Parallel Review Agents using five Sonnet agents for independent analysis (CLAUDE.md compliance, obvious bugs, git blame context, previous comments, code comment compliance)
+- Step 4: Confidence Scoring from 0-100 for each detected issue (0: false positive, 25: somewhat confident, 50: moderately confident, 75: highly confident, 100: absolutely certain)
+- Step 5: Filter and Report by removing issues below 80 confidence threshold and posting via gh CLI
+
 ### Common Use Cases
 
 Enterprise Development Workflow:
@@ -182,6 +185,41 @@ JavaScript/TypeScript Projects: Integration with Jest or Vitest for testing, ESL
 Go Projects: Integration with go test for testing, golint and staticcheck for static analysis, gosec for security scanning, and pprof for performance analysis.
 
 Rust Projects: Integration with cargo test for testing, clippy for static analysis, cargo audit for security scanning, and flamegraph for performance analysis.
+
+### PR Code Review Multi-Agent Pattern
+
+The PR Code Review process uses a multi-agent architecture following the official Claude Code plugin pattern:
+
+Eligibility Check Agent (Haiku):
+The Haiku agent performs lightweight filtering to avoid unnecessary reviews. It checks the PR state and metadata to determine if review is warranted. Skip conditions include closed PRs, draft PRs, PRs already reviewed by bot, trivial changes like typo fixes, and automated dependency updates.
+
+Context Gathering:
+Before launching review agents, the system gathers relevant context by finding CLAUDE.md files in directories containing modified code to understand project-specific coding standards. It also generates a concise summary of PR changes including files modified, lines added or removed, and overall impact assessment.
+
+Parallel Review Agents (Sonnet x5):
+Five Sonnet agents run in parallel, each focusing on a specific review dimension. Agent 1 audits CLAUDE.md compliance checking for violations of documented coding standards and conventions. Agent 2 scans for obvious bugs including logic errors, null reference risks, and resource leaks. Agent 3 provides git blame and history context to identify recent changes and potential patterns. Agent 4 checks previous PR comments for recurring issues and unresolved feedback. Agent 5 validates code comment compliance ensuring comments are accurate and helpful.
+
+Confidence Scoring System:
+Each detected issue receives a confidence score from 0 to 100. A score of 0 indicates a false positive with no confidence. A score of 25 means somewhat confident but might be real. A score of 50 indicates moderately confident that the issue is real but minor. A score of 75 means highly confident that the issue is very likely real. A score of 100 indicates absolutely certain that the issue is definitely real.
+
+Filter and Report Stage:
+Issues below the 80 confidence threshold are filtered out to reduce noise. Remaining issues are formatted and posted to the PR using the GitHub CLI. The output format follows a standardized markdown structure with issue count, numbered list of issues, and direct links to code with specific commit SHA and line range.
+
+Example PR Review Output:
+```markdown
+### Code review
+
+Found 3 issues:
+
+1. Missing error handling for database connection (CLAUDE.md says "All database operations must include error handling")
+   [path/to/file.py:42-45](https://github.com/repo/pull/123/files/abc123#diff-123)
+
+2. Potential SQL injection vulnerability (Security rule: "Use parameterized queries")
+   [path/to/query.py:88](https://github.com/repo/pull/123/files/abc123#diff-456)
+
+3. Inconsistent naming convention (CLAUDE.md says "Use snake_case for function names")
+   [path/to/utils.py:102](https://github.com/repo/pull/123/files/abc123#diff-789)
+```
 
 ---
 
@@ -254,5 +292,6 @@ The containerized workflow ensures consistent execution environments across deve
 ---
 
 Status: Production Ready
-Last Updated: 2025-12-30
+Last Updated: 2026-01-06
 Maintained by: MoAI-ADK Development Workflow Team
+Version: 2.1.0 (PR Code Review Multi-Agent Pattern)

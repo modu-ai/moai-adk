@@ -8,7 +8,7 @@ JSON streaming, and multilingual support.
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -326,8 +326,8 @@ class TestCreateAgentWithMultilingualSupport:
             # Verify the custom languages were passed
             mock_gen.assert_called_once()
             # Check positional argument (the dict) and verify languages were in call
-            call_args = mock_gen.call_args[0]
-            call_kwargs = mock_gen.call_args[1]
+            mock_gen.call_args[0]
+            mock_gen.call_args[1]
             # Either in kwargs or check that it was called with custom languages
             assert custom_langs == custom_langs  # Verify list itself
 
@@ -425,7 +425,7 @@ class TestProcessJsonStreamInput:
 
         with patch.object(integration.template_engine, "render_string") as mock_render:
             mock_render.return_value = "Hello World"
-            result = integration.process_json_stream_input(input_data, {"NAME": "World"})
+            integration.process_json_stream_input(input_data, {"NAME": "World"})
 
         # Only the field with variables should be processed
         assert mock_render.called

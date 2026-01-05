@@ -5,13 +5,10 @@ Target: 200+ lines of coverage for MetricsCollector, AlertManager, DashboardMana
 Strategy: Maximum test coverage with all methods and edge cases
 """
 
-import json
-import statistics
 import threading
-import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch, call
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -22,10 +19,10 @@ from moai_adk.core.comprehensive_monitoring_system import (
     ComprehensiveMonitoringSystem,
     HealthStatus,
     MetricData,
-    MetricType,
     MetricsCollector,
-    PredictiveAnalytics,
+    MetricType,
     PerformanceMonitor,
+    PredictiveAnalytics,
     SystemHealth,
 )
 

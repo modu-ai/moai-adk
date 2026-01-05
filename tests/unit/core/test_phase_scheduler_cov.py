@@ -3,9 +3,7 @@ Comprehensive tests for phase_optimized_hook_scheduler.py
 Targets: 60%+ coverage for low-coverage module (19.74% baseline)
 """
 
-import asyncio
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 

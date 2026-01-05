@@ -5,17 +5,15 @@ This test file provides comprehensive coverage for language_validator.py,
 including edge cases, error conditions, and all code paths.
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
 
 from moai_adk.core.language_validator import (
+    LANGUAGE_DIRECTORY_MAP,
     LanguageValidator,
     get_all_supported_languages,
+    get_exclude_patterns,
     get_language_by_file_extension,
     is_code_directory,
-    get_exclude_patterns,
-    LANGUAGE_DIRECTORY_MAP,
 )
 
 
@@ -1004,7 +1002,7 @@ class TestGetLanguageStatistics:
         """Test that statistics updates analysis cache."""
         validator = LanguageValidator()
         files = ["main.py", "utils.py", "app.js"]
-        stats = validator.get_language_statistics(files)
+        validator.get_language_statistics(files)
         cache = validator.get_analysis_cache()
         assert cache["last_analysis_files"] == 3
         assert cache["supported_languages_found"] == 2
@@ -1013,7 +1011,7 @@ class TestGetLanguageStatistics:
         """Test that statistics tracks detected extensions."""
         validator = LanguageValidator()
         files = ["main.py", "app.js", "script.ts"]
-        stats = validator.get_language_statistics(files)
+        validator.get_language_statistics(files)
         cache = validator.get_analysis_cache()
         assert ".py" in cache["detected_extensions"]
         assert ".js" in cache["detected_extensions"]

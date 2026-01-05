@@ -14,14 +14,11 @@ import json
 import logging
 import threading
 import time
-import uuid
-from collections import deque
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
-import psutil
 
 from moai_adk.core.comprehensive_monitoring_system import (
     Alert,
@@ -30,18 +27,17 @@ from moai_adk.core.comprehensive_monitoring_system import (
     ComprehensiveMonitoringSystem,
     HealthStatus,
     MetricData,
-    MetricType,
     MetricsCollector,
+    MetricType,
     PerformanceMonitor,
     PredictiveAnalytics,
     SystemHealth,
+    add_metric,
+    get_dashboard_data,
     get_monitoring_system,
     start_monitoring,
     stop_monitoring,
-    add_metric,
-    get_dashboard_data,
 )
-
 
 # Set up test logging
 logging.basicConfig(level=logging.INFO)

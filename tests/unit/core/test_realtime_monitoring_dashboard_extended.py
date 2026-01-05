@@ -12,29 +12,22 @@ Extends coverage to include:
 - Multi-threaded concurrent operations
 """
 
-import asyncio
-import pytest
 import threading
-import time
 from datetime import datetime, timedelta
-from unittest.mock import Mock, MagicMock, patch, call, AsyncMock
-from collections import deque
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 from src.moai_adk.core.realtime_monitoring_dashboard import (
-    MetricType,
-    AlertSeverity,
-    DashboardType,
-    MetricData,
-    Alert,
-    DashboardWidget,
-    Dashboard,
-    MetricsCollector,
     AlertManager,
     DashboardManager,
+    DashboardType,
+    DashboardWidget,
+    MetricData,
+    MetricsCollector,
+    MetricType,
     RealtimeMonitoringDashboard,
-    get_monitoring_dashboard,
 )
-
 
 # ============================================================================
 # Extended Integration Tests
@@ -291,7 +284,7 @@ class TestWidgetDataRetrieval:
         dashboard.add_metric(MetricType.CPU_USAGE, 50.0, component="system")
 
         # Metric widget
-        metric_widget = DashboardWidget(
+        DashboardWidget(
             widget_id="w1",
             widget_type="metric",
             title="CPU",
@@ -510,7 +503,7 @@ class TestDashboardFiltering:
             position={"x": 0, "y": 0, "width": 4, "height": 2},
         )
 
-        id1 = manager.create_dashboard(
+        manager.create_dashboard(
             name="Dashboard 1",
             description="Test",
             dashboard_type=DashboardType.CUSTOM,
@@ -518,7 +511,7 @@ class TestDashboardFiltering:
             owner="user1",
         )
 
-        id2 = manager.create_dashboard(
+        manager.create_dashboard(
             name="Dashboard 2",
             description="Test",
             dashboard_type=DashboardType.CUSTOM,
@@ -542,7 +535,7 @@ class TestDashboardFiltering:
             position={"x": 0, "y": 0, "width": 4, "height": 2},
         )
 
-        id1 = manager.create_dashboard(
+        manager.create_dashboard(
             name="Public Dashboard",
             description="Test",
             dashboard_type=DashboardType.CUSTOM,
@@ -550,7 +543,7 @@ class TestDashboardFiltering:
             is_public=True,
         )
 
-        id2 = manager.create_dashboard(
+        manager.create_dashboard(
             name="Private Dashboard",
             description="Test",
             dashboard_type=DashboardType.CUSTOM,
@@ -647,7 +640,7 @@ class TestDashboardFiltering:
         )
 
         # Create dashboards for different tenants
-        id1 = manager.create_dashboard(
+        manager.create_dashboard(
             name="Tenant 1 Dashboard",
             description="Test",
             dashboard_type=DashboardType.CUSTOM,
@@ -655,7 +648,7 @@ class TestDashboardFiltering:
             tenant_id="tenant1",
         )
 
-        id2 = manager.create_dashboard(
+        manager.create_dashboard(
             name="Tenant 2 Dashboard",
             description="Test",
             dashboard_type=DashboardType.CUSTOM,

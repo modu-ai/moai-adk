@@ -5,15 +5,15 @@ Focus: RobustJSONParser class and JSON parsing with error recovery.
 Target: 60%+ code coverage with AAA pattern.
 """
 
+
 import pytest
-import json
-from unittest.mock import patch, MagicMock
+
 from moai_adk.core.robust_json_parser import (
-    RobustJSONParser,
-    ParseResult,
     ErrorSeverity,
-    parse_json,
+    ParseResult,
+    RobustJSONParser,
     get_parser_stats,
+    parse_json,
     reset_parser_stats,
 )
 

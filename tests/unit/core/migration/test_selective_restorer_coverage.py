@@ -13,13 +13,9 @@ Tests cover:
 - Factory function
 """
 
-import pytest
 import tempfile
-import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open, call
-from datetime import datetime
-import shutil
+from unittest.mock import MagicMock, patch
 
 from moai_adk.core.migration.selective_restorer import SelectiveRestorer, create_selective_restorer
 
@@ -104,7 +100,6 @@ class TestFindLatestBackup:
             backup3.mkdir(parents=True, exist_ok=True)
 
             # Manipulate modification times
-            import time
             for backup in [backup1, backup2, backup3]:
                 Path(backup / "marker.txt").write_text("marker")
 

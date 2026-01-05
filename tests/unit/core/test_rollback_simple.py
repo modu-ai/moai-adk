@@ -4,7 +4,6 @@ Tests basic rollback point creation, listing, and cleanup operations
 with mocked file operations.
 """
 
-import json
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path

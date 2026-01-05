@@ -23,7 +23,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-import yaml
 from click.testing import CliRunner
 
 from moai_adk.cli.commands.update import (

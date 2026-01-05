@@ -1,11 +1,10 @@
 """Tests for moai_adk.project.schema module."""
 
-import pytest
 from moai_adk.project.schema import (
-    load_tab_schema,
     _create_tab1_quick_start,
     _create_tab2_documentation,
     _create_tab3_git_automation,
+    load_tab_schema,
 )
 
 

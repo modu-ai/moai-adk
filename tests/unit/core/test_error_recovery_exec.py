@@ -7,13 +7,10 @@ These tests exercise actual code paths including:
 - Error event creation and handling
 """
 
-import pytest
-from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch
 
 from moai_adk.core.error_recovery_system import (
-    ErrorSeverity,
     ErrorCategory,
+    ErrorSeverity,
     FailureMode,
 )
 

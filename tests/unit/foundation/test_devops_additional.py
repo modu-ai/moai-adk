@@ -11,9 +11,6 @@ Increases coverage for:
 - DevOpsMetricsCollector: DevOps metrics
 """
 
-import pytest
-from unittest import mock
-from datetime import datetime, timezone
 
 from moai_adk.foundation.devops import (
     CICDPipelineOrchestrator,

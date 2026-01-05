@@ -11,30 +11,24 @@ Focus areas:
 All tests use @patch to mock async operations and external dependencies.
 """
 
-import json
-import pytest
-import asyncio
 import uuid
-from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch, AsyncMock, call
-from pathlib import Path
+from datetime import datetime
+
+import pytest
 
 from moai_adk.core.event_driven_hook_system import (
-    EventType,
-    EventPriority,
-    ResourceIsolationLevel,
-    MessageBrokerType,
     Event,
-    HookExecutionEvent,
-    WorkflowEvent,
-    MessageBroker,
-    InMemoryMessageBroker,
-    ResourcePool,
+    EventPriority,
     EventProcessor,
-    EventDrivenHookSystem,
+    EventType,
+    HookExecutionEvent,
+    InMemoryMessageBroker,
+    MessageBrokerType,
+    ResourceIsolationLevel,
+    ResourcePool,
+    WorkflowEvent,
 )
 from moai_adk.core.jit_enhanced_hook_manager import HookEvent
-
 
 # ============================================================================
 # Test EventType Enum

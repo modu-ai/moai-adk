@@ -4,10 +4,9 @@ Tests LanguageConfigResolver class for language configuration resolution and val
 Target: 70%+ code coverage with actual code path execution and mocked dependencies.
 """
 
-import json
 import os
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -166,8 +165,9 @@ class TestLoadConfigFile:
 
     def test_load_config_file_project_owner_fallback(self, tmp_path):
         """Should extract github profile name separately."""
-        from moai_adk.core.language_config_resolver import LanguageConfigResolver
         import yaml
+
+        from moai_adk.core.language_config_resolver import LanguageConfigResolver
 
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
@@ -578,8 +578,9 @@ class TestPriorityOrder:
 
     def test_file_overrides_defaults(self, tmp_path):
         """Config file should override defaults."""
-        from moai_adk.core.language_config_resolver import LanguageConfigResolver
         import os
+
+        from moai_adk.core.language_config_resolver import LanguageConfigResolver
 
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)

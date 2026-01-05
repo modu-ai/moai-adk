@@ -15,32 +15,31 @@ Uses @patch to mock: subprocess, file operations, network calls, datetime
 
 import json
 import subprocess
-import pytest
-import asyncio
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call, mock_open, AsyncMock, ANY
+from unittest.mock import MagicMock, patch
+
+import pytest
 from packaging import version as packaging_version
 
 from moai_adk.cli.commands.update import (
-    _is_installed_via_uv_tool,
-    _is_installed_via_pipx,
-    _is_installed_via_pip,
+    PIP_COMMAND,
+    PIPX_COMMAND,
+    UV_TOOL_COMMAND,
+    InstallerNotFoundError,
+    NetworkError,
+    TemplateSyncError,
+    UpdateError,
+    UpgradeError,
+    _compare_versions,
     _detect_tool_installer,
     _get_current_version,
     _get_latest_version,
-    _compare_versions,
     _get_package_config_version,
     _get_project_config_version,
-    UpdateError,
-    InstallerNotFoundError,
-    NetworkError,
-    UpgradeError,
-    TemplateSyncError,
-    TOOL_DETECTION_TIMEOUT,
-    UV_TOOL_COMMAND,
-    PIPX_COMMAND,
-    PIP_COMMAND,
+    _is_installed_via_pip,
+    _is_installed_via_pipx,
+    _is_installed_via_uv_tool,
 )
 
 
@@ -354,7 +353,6 @@ class TestConfigVersionFunctions:
     def test_get_package_config_version_success(self):
         """Test getting package config version."""
         # Arrange
-        config_data = {"template_version": "1.2.3"}
 
         # Act
         try:
@@ -379,7 +377,6 @@ class TestConfigVersionFunctions:
     def test_get_project_config_version_success(self):
         """Test getting project config version."""
         # Arrange
-        config_data = {"moai_config_version": "2.0.0"}
 
         # Act
         try:

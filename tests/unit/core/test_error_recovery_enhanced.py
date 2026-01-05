@@ -4,18 +4,16 @@ Enhanced tests for Error Recovery System - targeting 70%+ coverage.
 Focus on actual API and implementation that exists.
 """
 
+from unittest.mock import patch
+
 import pytest
-import tempfile
-from datetime import datetime, timezone
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 from moai_adk.core.error_recovery_system import (
-    ErrorSeverity,
     ErrorCategory,
+    ErrorRecoverySystem,
+    ErrorSeverity,
     FailureMode,
     RecoveryStrategy,
-    ErrorRecoverySystem,
     get_error_recovery_system,
     handle_error,
 )

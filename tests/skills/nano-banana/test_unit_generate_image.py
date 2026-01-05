@@ -19,15 +19,15 @@ import pytest
 
 # Import functions to test
 from generate_image import (
-    validate_aspect_ratio,
-    validate_resolution,
+    BASE_DELAY,
+    MAX_DELAY,
+    SUPPORTED_ASPECT_RATIOS,
+    SUPPORTED_RESOLUTIONS,
     build_prompt_with_style,
     calculate_backoff_delay,
     get_api_key,
-    SUPPORTED_ASPECT_RATIOS,
-    SUPPORTED_RESOLUTIONS,
-    BASE_DELAY,
-    MAX_DELAY,
+    validate_aspect_ratio,
+    validate_resolution,
 )
 
 

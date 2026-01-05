@@ -6,14 +6,11 @@ file I/O operations, and data validation scenarios.
 """
 
 import json
-import pytest
-import tempfile
-from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open, call
+from unittest.mock import MagicMock
 
-from moai_adk.cli.worktree.registry import WorktreeRegistry
 from moai_adk.cli.worktree.models import WorktreeInfo
+from moai_adk.cli.worktree.registry import WorktreeRegistry
 
 
 class TestWorktreeRegistryInitialization:

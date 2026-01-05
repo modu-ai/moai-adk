@@ -8,12 +8,9 @@ Tests cover:
 - Error handling and recovery
 """
 
-import pytest
-import tempfile
 import json
+import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open
-from datetime import datetime
 
 from moai_adk.core.migration.backup_manager import BackupManager
 
@@ -36,7 +33,7 @@ class TestBackupManagerInitialization:
     def test_init_creates_backup_directory(self):
         """Test that backup directory is created during initialization."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            manager = BackupManager(tmpdir)
+            BackupManager(tmpdir)
             backup_dir = Path(tmpdir) / ".moai" / "backups"
             assert backup_dir.exists()
 

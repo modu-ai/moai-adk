@@ -5,9 +5,7 @@ Tests focus on InquirerPy wrapper functions including fuzzy search,
 select, and text input with proper error handling.
 """
 
-from unittest.mock import MagicMock, patch, call
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from moai_adk.cli.ui.prompts import (
     fuzzy_checkbox,
@@ -138,7 +136,8 @@ class TestFuzzyCheckbox:
         mock_fuzzy.return_value.execute = mock_execute
 
         choices = ["choice1", "choice2", "choice3"]
-        validate_fn = lambda x: len(x) > 0
+        def validate_fn(x):
+            return len(x) > 0
 
         # Act
         fuzzy_checkbox("Select:", choices=choices, validate=validate_fn)

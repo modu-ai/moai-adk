@@ -3,14 +3,12 @@
 Focus on uncovered code paths with actual execution using mocked dependencies.
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch, PropertyMock
-from typing import Set, Dict, List, Any
+from unittest.mock import MagicMock, patch
 
 from moai_adk.core.migration.custom_element_scanner import (
-    TemplateSkill,
     CustomElementScanner,
+    TemplateSkill,
     create_custom_element_scanner,
 )
 
@@ -143,7 +141,7 @@ class TestCustomElementScanner:
                 "hooks": set(),
             }
 
-            agents_dir = Path("/project/.claude/agents")
+            Path("/project/.claude/agents")
             moai_dir = MagicMock()
             moai_dir.is_dir.return_value = True
             moai_dir.name = "moai"  # Should be skipped
@@ -184,10 +182,10 @@ class TestCustomElementScanner:
             commands_dir = Path("/project/.claude/commands")
             moai_dir = commands_dir / "moai"
 
-            with patch("pathlib.Path.exists") as mock_exists:
+            with patch("pathlib.Path.exists"):
                 with patch("pathlib.Path.glob") as mock_glob:
                     with patch("pathlib.Path.iterdir") as mock_iterdir:
-                        with patch("pathlib.Path.relative_to") as mock_relative:
+                        with patch("pathlib.Path.relative_to"):
                             # Setup exists checks
                             def exists_side_effect():
                                 if str(self) == str(moai_dir):
@@ -235,8 +233,8 @@ class TestCustomElementScanner:
             }
 
             # Create real Path objects
-            template_skill_path = Path("/project/.claude/skills/moai-foundation")
-            custom_skill_path = Path("/project/.claude/skills/my-custom-skill")
+            Path("/project/.claude/skills/moai-foundation")
+            Path("/project/.claude/skills/my-custom-skill")
 
             with patch("pathlib.Path.exists", return_value=True):
                 with patch("pathlib.Path.iterdir") as mock_iterdir:

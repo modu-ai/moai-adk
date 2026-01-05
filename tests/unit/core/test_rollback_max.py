@@ -7,16 +7,15 @@ Strategy: Maximum test coverage with mocking file operations
 
 import json
 import tempfile
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
 
 import pytest
 
 from moai_adk.core.rollback_manager import (
+    RollbackManager,
     RollbackPoint,
     RollbackResult,
-    RollbackManager,
 )
 
 
@@ -255,7 +254,7 @@ class TestRollbackManager:
             for i in range(3):
                 manager.create_rollback_point(f"Rollback {i}")
 
-            initial_count = len(manager.registry)
+            len(manager.registry)
 
             result = manager.cleanup_old_rollbacks(keep_count=1, dry_run=False)
 

@@ -5,9 +5,7 @@ Tests for basic ConfigManager functionality.
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from moai_adk.core.template.config import ConfigManager
 
@@ -76,7 +74,7 @@ class TestConfigSave:
         """Test save creates parent directory."""
         manager = ConfigManager(Path("/tmp/nested/config.json"))
         config = {"mode": "personal"}
-        with patch.object(Path, "mkdir") as mock_mkdir:
+        with patch.object(Path, "mkdir"):
             with patch("builtins.open", create=True):
                 with patch("json.dump"):
                     try:
@@ -89,7 +87,7 @@ class TestConfigSave:
         manager = ConfigManager(Path("/tmp/config.json"))
         config = {"mode": "personal"}
         with patch("pathlib.Path.mkdir"):
-            with patch("builtins.open", create=True) as mock_open:
+            with patch("builtins.open", create=True):
                 with patch("json.dump"):
                     manager.save(config)
                     # Check that open was called with encoding parameter
@@ -103,7 +101,7 @@ class TestConfigUpdate:
         """Test basic config update."""
         manager = ConfigManager(Path("/tmp/config.json"))
         with patch.object(manager, "load", return_value={"mode": "personal"}):
-            with patch.object(manager, "save", return_value=None) as mock_save:
+            with patch.object(manager, "save", return_value=None):
                 try:
                     manager.update({"locale": "en"})
                 except Exception:
@@ -150,7 +148,7 @@ class TestDeepMerge:
         manager = ConfigManager(Path("/tmp/config.json"))
         base = {"a": 1}
         updates = {"b": 2}
-        result = manager._deep_merge(base, updates)
+        manager._deep_merge(base, updates)
         assert base["a"] == 1
         assert "b" not in base  # Original not modified
 
@@ -160,7 +158,7 @@ class TestSetOptimizedField:
 
     def test_set_optimized_field_creates_file(self):
         """Test set_optimized_field creates file."""
-        with patch("pathlib.Path.parent") as mock_parent:
+        with patch("pathlib.Path.parent"):
             with patch("pathlib.Path.mkdir"):
                 with patch("pathlib.Path.exists", return_value=False):
                     with patch("builtins.open", create=True):
@@ -186,7 +184,7 @@ class TestSetOptimizedField:
 
     def test_set_optimized_field_nested_path(self):
         """Test set_optimized_field with nested path."""
-        config_path = Path("/tmp/config.json")
+        Path("/tmp/config.json")
         # This would need more sophisticated mocking to fully test
 
 

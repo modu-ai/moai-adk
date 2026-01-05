@@ -6,33 +6,31 @@ Tests all recovery methods, edge cases, exception handling, and recovery paths.
 Uses pytest-mock for mocking external dependencies.
 """
 
-import asyncio
-import pytest
 import tempfile
-import json
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, patch, AsyncMock, call, mock_open
-import threading
-import time
+from unittest.mock import patch
+
+import pytest
 
 from moai_adk.core.error_recovery_system import (
-    ErrorSeverity,
-    ErrorCategory,
-    FailureMode,
-    RecoveryStrategy,
+    AdvancedRecoveryAction,
     ConsistencyLevel,
-    RecoveryStatus,
+    ErrorCategory,
+    ErrorRecoverySystem,
     ErrorReport,
+    ErrorSeverity,
+    FailureEvent,
+    FailureMode,
     RecoveryAction,
     RecoveryResult,
-    FailureEvent,
-    AdvancedRecoveryAction,
+    RecoveryStatus,
+    RecoveryStrategy,
     SystemSnapshot,
-    ErrorRecoverySystem,
+    error_handler,
     get_error_recovery_system,
     handle_error,
-    error_handler,
 )
 
 
@@ -940,7 +938,7 @@ class TestRecoveryActionHelpers:
     def test_rollback_last_changes(self, recovery_system):
         """Test rolling back last changes."""
         # Arrange
-        with patch("sys.path") as mock_path:
+        with patch("sys.path"):
             with patch("builtins.__import__", side_effect=ImportError("RollbackManager not found")):
                 error_report = ErrorReport(
                     id="test",

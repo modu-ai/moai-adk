@@ -5,7 +5,6 @@ These tests verify that the module can be imported and basic classes
 can be instantiated without errors.
 """
 
-import pytest
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch

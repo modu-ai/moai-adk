@@ -10,29 +10,25 @@ Tests cover:
 - Compliance reporting
 """
 
-import asyncio
-import pytest
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, Mock, patch, AsyncMock
+
+import pytest
 
 from src.moai_adk.core.enterprise_features import (
-    DeploymentStrategy,
-    ScalingPolicy,
-    TenantType,
-    ComplianceStandard,
-    TenantConfiguration,
-    DeploymentConfig,
-    AuditLog,
-    LoadBalancer,
-    AutoScaler,
-    DeploymentManager,
-    TenantManager,
     AuditLogger,
+    AutoScaler,
+    ComplianceStandard,
+    DeploymentConfig,
+    DeploymentManager,
+    DeploymentStrategy,
     EnterpriseFeatures,
+    LoadBalancer,
+    ScalingPolicy,
+    TenantManager,
+    TenantType,
     get_enterprise_features,
     start_enterprise_features,
     stop_enterprise_features,
-    deploy_application,
 )
 
 
@@ -351,7 +347,7 @@ class TestDeploymentManager:
         scaler = AutoScaler()
         manager = DeploymentManager(lb, scaler)
 
-        config = DeploymentConfig(
+        DeploymentConfig(
             deployment_id="deploy_1",
             strategy=DeploymentStrategy.BLUE_GREEN,
             version="1.0.0",

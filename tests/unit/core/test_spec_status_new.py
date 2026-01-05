@@ -4,14 +4,8 @@ Comprehensive tests for SpecStatusManager.
 Tests SPEC status detection, validation, and batch updates.
 """
 
-import re
 import tempfile
-from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
-
-import pytest
-import yaml
 
 from moai_adk.core.spec_status_manager import SpecStatusManager
 

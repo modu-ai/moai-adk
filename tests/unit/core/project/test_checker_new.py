@@ -11,15 +11,8 @@ Tests cover:
 - check_environment helper
 """
 
-import platform
-import shutil
 import subprocess
-import tempfile
-from pathlib import Path
-from unittest import mock
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from moai_adk.core.project.checker import (
     SystemChecker,

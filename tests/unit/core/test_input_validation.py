@@ -5,16 +5,15 @@ These tests verify that the module can be imported and basic classes
 can be instantiated without errors.
 """
 
-import pytest
 from unittest.mock import MagicMock
 
 from moai_adk.core.input_validation_middleware import (
-    ValidationSeverity,
+    EnhancedInputValidationMiddleware,
     ToolCategory,
+    ToolParameter,
     ValidationError,
     ValidationResult,
-    ToolParameter,
-    EnhancedInputValidationMiddleware,
+    ValidationSeverity,
 )
 
 

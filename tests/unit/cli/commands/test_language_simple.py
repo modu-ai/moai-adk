@@ -1,14 +1,17 @@
 """Minimal coverage tests for language command."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from click.testing import CliRunner
 
 from moai_adk.cli.commands.language import (
-    language,
-    list as list_cmd,
     info,
+    language,
     render_template,
     validate_config,
+)
+from moai_adk.cli.commands.language import (
+    list as list_cmd,
 )
 
 
@@ -56,8 +59,8 @@ def test_info_command_invalid_language():
 
 def test_render_template_with_files():
     """Test render template command."""
-    import tempfile
     import json
+    import tempfile
     from pathlib import Path
 
     runner = CliRunner()
@@ -78,8 +81,8 @@ def test_render_template_with_files():
 
 def test_validate_config_with_valid_file():
     """Test validate_config command."""
-    import tempfile
     import json
+    import tempfile
     from pathlib import Path
 
     runner = CliRunner()
@@ -96,8 +99,8 @@ def test_validate_config_with_valid_file():
 
 def test_validate_config_missing_language_section():
     """Test validate_config with missing language section."""
-    import tempfile
     import json
+    import tempfile
     from pathlib import Path
 
     runner = CliRunner()

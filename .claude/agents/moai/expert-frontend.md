@@ -12,7 +12,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs, mcpplaywrightcreate-context, mcpplaywrightgoto, mcpplaywrightevaluate, mcpplaywrightget-page-state, mcpplaywrightscreenshot, mcpplaywrightfill, mcpplaywrightclick, mcpplaywrightpress, mcpplaywrighttype, mcpplaywrightwait-for-selector
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-lang-typescript, moai-lang-javascript, moai-domain-frontend
+skills: moai-foundation-claude, moai-lang-typescript, moai-lang-javascript, moai-domain-frontend, moai-tool-ast-grep
 ---
 
 # Frontend Expert - Frontend Architecture Specialist

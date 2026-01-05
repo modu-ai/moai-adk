@@ -6,7 +6,6 @@ Tests cover:
 - Tab schema structure and validation
 """
 
-import pytest
 
 from moai_adk.project.schema import (
     _create_tab1_quick_start,

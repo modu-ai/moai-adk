@@ -1,9 +1,6 @@
 """Tests for Event-driven system dataclasses."""
 
 from datetime import datetime
-from unittest.mock import Mock
-
-import pytest
 
 from moai_adk.core.event_driven_hook_system import (
     Event,

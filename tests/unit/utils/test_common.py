@@ -3,10 +3,9 @@
 Tests for basic functionality of utility classes and functions.
 """
 
-import asyncio
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 

@@ -4,20 +4,20 @@ Tests all uncovered manager methods with proper mocking of Git operations.
 Uses AAA pattern and @patch decorators for dependencies.
 """
 
-import pytest
 import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open, call
 from datetime import datetime
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
-from moai_adk.cli.worktree.manager import WorktreeManager
+import pytest
+
 from moai_adk.cli.worktree.exceptions import (
-    WorktreeExistsError,
-    WorktreeNotFoundError,
-    UncommittedChangesError,
     GitOperationError,
     MergeConflictError,
+    WorktreeExistsError,
+    WorktreeNotFoundError,
 )
+from moai_adk.cli.worktree.manager import WorktreeManager
 from moai_adk.cli.worktree.models import WorktreeInfo
 
 

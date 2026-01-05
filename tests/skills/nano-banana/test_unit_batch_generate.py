@@ -14,25 +14,22 @@ TDD Approach: RED-GREEN-REFACTOR cycle
 """
 
 import json
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 import pytest
 
 # Import functions to test
 from batch_generate import (
-    validate_aspect_ratio,
-    validate_resolution,
-    build_prompt_with_style,
-    calculate_backoff_delay,
-    load_config_file,
-    parse_tasks_from_config,
-    create_tasks_from_prompts,
-    ImageTask,
-    SUPPORTED_ASPECT_RATIOS,
-    SUPPORTED_RESOLUTIONS,
     BASE_DELAY,
     MAX_DELAY,
+    SUPPORTED_ASPECT_RATIOS,
+    ImageTask,
+    build_prompt_with_style,
+    calculate_backoff_delay,
+    create_tasks_from_prompts,
+    load_config_file,
+    parse_tasks_from_config,
+    validate_aspect_ratio,
+    validate_resolution,
 )
 
 

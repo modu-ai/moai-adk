@@ -6,20 +6,17 @@ Strategy: Maximum test coverage with mocking
 """
 
 import json
-from unittest.mock import Mock, patch, MagicMock
-from typing import Any, Dict
 
 import pytest
 
 from moai_adk.core.input_validation_middleware import (
     EnhancedInputValidationMiddleware,
+    ToolParameter,
     ValidationError,
     ValidationResult,
     ValidationSeverity,
-    ToolParameter,
-    ToolCategory,
-    validate_tool_input,
     get_validation_stats,
+    validate_tool_input,
 )
 
 

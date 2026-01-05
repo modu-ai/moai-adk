@@ -4,20 +4,18 @@ Focus on uncovered code paths with mocked dependencies.
 Tests actual code paths without side effects.
 """
 
-import json
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch, Mock
-from datetime import datetime
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from moai_adk.cli.spec_status import (
-    update_spec_status,
-    validate_spec_completion,
     batch_update_completed_specs,
     detect_draft_specs,
     main,
+    update_spec_status,
+    validate_spec_completion,
 )
 
 

@@ -1,12 +1,8 @@
 """Comprehensive tests for OutputStyleDetector with 80% coverage target."""
 
 import json
-import sys
 import time
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch, mock_open
-
-import pytest
+from unittest.mock import MagicMock, mock_open, patch
 
 from moai_adk.statusline.enhanced_output_style_detector import (
     OutputStyleDetector,

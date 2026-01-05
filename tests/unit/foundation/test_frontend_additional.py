@@ -11,20 +11,16 @@ Increases coverage for:
 - FrontendMetricsCollector: Frontend metrics
 """
 
-import pytest
-from datetime import datetime
 
 from moai_adk.foundation.frontend import (
     AccessibilityValidator,
     ComponentArchitect,
-    ComponentLevel,
     DesignSystemBuilder,
     FrontendMetricsCollector,
     PerformanceMetrics,
     PerformanceOptimizer,
     ResponsiveLayoutPlanner,
     StateManagementAdvisor,
-    WCAGLevel,
 )
 
 

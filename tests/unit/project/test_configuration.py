@@ -3,19 +3,19 @@
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from moai_adk.project.configuration import (
-    ConfigurationManager,
-    SmartDefaultsEngine,
     AutoDetectionEngine,
-    ConfigurationCoverageValidator,
     ConditionalBatchRenderer,
-    TemplateVariableInterpolator,
+    ConfigurationCoverageValidator,
+    ConfigurationManager,
     ConfigurationMigrator,
+    SmartDefaultsEngine,
     TabSchemaValidator,
+    TemplateVariableInterpolator,
 )
 
 

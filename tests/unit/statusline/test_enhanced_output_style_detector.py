@@ -1,9 +1,7 @@
 """Tests for moai_adk.statusline.enhanced_output_style_detector module."""
 
 import json
-from unittest.mock import MagicMock, patch, mock_open
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from moai_adk.statusline.enhanced_output_style_detector import (
     OutputStyleDetector,

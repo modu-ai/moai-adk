@@ -6,15 +6,14 @@ language selection, and error recovery.
 """
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import patch
 
 import pytest
 
 from moai_adk.cli.prompts.init_prompts import (
-    prompt_project_setup,
-    _prompt_text,
     _prompt_select,
-    ProjectSetupAnswers,
+    _prompt_text,
+    prompt_project_setup,
 )
 
 

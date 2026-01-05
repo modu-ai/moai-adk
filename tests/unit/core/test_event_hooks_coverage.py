@@ -6,28 +6,26 @@ Focuses on: Event registration, dispatch, handlers, message brokers, resource po
 Tests use @patch for mocking subprocess, file operations, and external services.
 """
 
-import pytest
 import asyncio
 import tempfile
-import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, patch, AsyncMock, call
-from typing import Dict, Any
+from unittest.mock import AsyncMock
+
+import pytest
 
 from moai_adk.core.event_driven_hook_system import (
-    EventType,
-    EventPriority,
-    ResourceIsolationLevel,
-    MessageBrokerType,
     Event,
-    HookExecutionEvent,
-    WorkflowEvent,
-    MessageBroker,
-    InMemoryMessageBroker,
-    ResourcePool,
-    EventProcessor,
     EventDrivenHookSystem,
+    EventPriority,
+    EventProcessor,
+    EventType,
+    HookExecutionEvent,
+    InMemoryMessageBroker,
+    MessageBrokerType,
+    ResourceIsolationLevel,
+    ResourcePool,
+    WorkflowEvent,
 )
 
 
@@ -405,7 +403,7 @@ class TestEventProcessor:
         handler = AsyncMock()
         processor.register_handler(EventType.SYSTEM_ALERT, handler)
 
-        event = Event(
+        Event(
             event_id="evt_003",
             event_type=EventType.SYSTEM_ALERT,
             priority=EventPriority.CRITICAL,
@@ -428,7 +426,7 @@ class TestEventDrivenHookSystem:
     @pytest.fixture
     def hook_system(self):
         """Create EventDrivenHookSystem instance."""
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory():
             system = EventDrivenHookSystem(
                 message_broker_type=MessageBrokerType.MEMORY,
                 isolation_level=ResourceIsolationLevel.TYPE_ISOLATED,
@@ -578,7 +576,7 @@ class TestEventDrivenHookSystem:
         """Test handling hook execution request."""
         # Arrange
         await hook_system.start()
-        event = Event(
+        Event(
             event_id="evt_005",
             event_type=EventType.HOOK_EXECUTION_REQUEST,
             priority=EventPriority.NORMAL,
@@ -600,7 +598,7 @@ class TestEventDrivenHookSystem:
         """Test handling hook execution completion."""
         # Arrange
         await hook_system.start()
-        event = Event(
+        Event(
             event_id="evt_006",
             event_type=EventType.HOOK_EXECUTION_COMPLETED,
             priority=EventPriority.NORMAL,
@@ -622,7 +620,7 @@ class TestEventDrivenHookSystem:
         """Test handling system alert."""
         # Arrange
         await hook_system.start()
-        event = Event(
+        Event(
             event_id="evt_007",
             event_type=EventType.SYSTEM_ALERT,
             priority=EventPriority.CRITICAL,
@@ -644,7 +642,7 @@ class TestEventDrivenHookSystem:
         """Test handling health check."""
         # Arrange
         await hook_system.start()
-        event = Event(
+        Event(
             event_id="evt_008",
             event_type=EventType.HEALTH_CHECK,
             priority=EventPriority.LOW,
@@ -666,7 +664,7 @@ class TestEventDrivenHookSystem:
         """Test handling batch execution request."""
         # Arrange
         await hook_system.start()
-        event = Event(
+        Event(
             event_id="evt_009",
             event_type=EventType.BATCH_EXECUTION_REQUEST,
             priority=EventPriority.LOW,
@@ -702,7 +700,7 @@ class TestEventDrivenHookSystem:
     async def test_event_retry_logic(self):
         """Test event retry on failure."""
         # Arrange
-        system = EventDrivenHookSystem()
+        EventDrivenHookSystem()
         event = Event(
             event_id="evt_010",
             event_type=EventType.HOOK_EXECUTION_REQUEST,

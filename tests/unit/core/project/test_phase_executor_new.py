@@ -11,14 +11,10 @@ Tests cover:
 """
 
 import json
-import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from unittest import mock
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from moai_adk.core.project.phase_executor import PhaseExecutor
 from moai_adk.core.project.validator import ProjectValidator

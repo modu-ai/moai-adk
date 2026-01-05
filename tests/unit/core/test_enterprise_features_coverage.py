@@ -10,13 +10,10 @@ Tests coverage goals:
 """
 
 import asyncio
-import logging
 import threading
-import time
-import uuid
 from collections import defaultdict, deque
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -796,7 +793,7 @@ class TestTenantManager:
 
     def test_list_tenants_all(self):
         """Test listing all tenants"""
-        tenant1_id = self.tenant_manager.create_tenant("Tenant 1", TenantType.SHARED)
+        self.tenant_manager.create_tenant("Tenant 1", TenantType.SHARED)
         tenant2_id = self.tenant_manager.create_tenant("Tenant 2", TenantType.SHARED)
 
         # Deactivate one tenant
@@ -811,7 +808,7 @@ class TestTenantManager:
 
     def test_list_tenants_active_only(self):
         """Test listing only active tenants"""
-        tenant1_id = self.tenant_manager.create_tenant("Tenant 1", TenantType.SHARED)
+        self.tenant_manager.create_tenant("Tenant 1", TenantType.SHARED)
         tenant2_id = self.tenant_manager.create_tenant("Tenant 2", TenantType.SHARED)
 
         # Deactivate one tenant
@@ -917,7 +914,7 @@ class TestAuditLogger:
 
     def test_log_event_with_all_params(self):
         """Test logging audit event with all parameters"""
-        log_id = self.audit_logger.log(
+        self.audit_logger.log(
             action="data_access",
             resource="database",
             user_id="admin",
@@ -944,7 +941,7 @@ class TestAuditLogger:
 
     def test_log_event_no_compliance_standards(self):
         """Test logging without compliance standards"""
-        log_id = self.audit_logger.log(
+        self.audit_logger.log(
             action="test_action",
             resource="test_resource",
             user_id="test_user",
@@ -969,9 +966,9 @@ class TestAuditLogger:
     def test_search_logs_with_filters(self):
         """Test searching logs with various filters"""
         # Add test logs
-        log1_id = self.audit_logger.log("login", "auth", "user1", tenant_id="tenant1")
-        log2_id = self.audit_logger.log("logout", "auth", "user2", tenant_id="tenant2")
-        log3_id = self.audit_logger.log("login", "database", "user1", tenant_id="tenant1")
+        self.audit_logger.log("login", "auth", "user1", tenant_id="tenant1")
+        self.audit_logger.log("logout", "auth", "user2", tenant_id="tenant2")
+        self.audit_logger.log("login", "database", "user1", tenant_id="tenant1")
 
         # Filter by tenant_id
         logs = self.audit_logger.search_logs(tenant_id="tenant1")
@@ -1032,10 +1029,10 @@ class TestAuditLogger:
         with patch('moai_adk.core.enterprise_features.datetime') as mock_dt:
             # Mock datetime.now() for log creation
             mock_dt.now.return_value = past
-            log1 = self.audit_logger.log("past", "resource", "user")
+            self.audit_logger.log("past", "resource", "user")
 
             mock_dt.now.return_value = future
-            log2 = self.audit_logger.log("future", "resource", "user")
+            self.audit_logger.log("future", "resource", "user")
 
         # Search between now and future (should include future log)
         logs = self.audit_logger.search_logs(
@@ -1703,7 +1700,7 @@ class TestIntegrationTests:
             )
 
             # Log audit events
-            log_id1 = enterprise.log_audit_event(
+            enterprise.log_audit_event(
                 action="tenant_created",
                 resource="tenant_manager",
                 user_id="admin",
@@ -1712,7 +1709,7 @@ class TestIntegrationTests:
                 details={"plan": "premium"},
             )
 
-            log_id2 = enterprise.log_audit_event(
+            enterprise.log_audit_event(
                 action="deployment_started",
                 resource="application",
                 user_id="admin",

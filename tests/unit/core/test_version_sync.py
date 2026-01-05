@@ -1,8 +1,7 @@
 """Tests for moai_adk.core.version_sync module."""
 
+
 import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 
 class TestVersionSync:

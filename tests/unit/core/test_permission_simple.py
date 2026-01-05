@@ -5,23 +5,24 @@ Focus: PermissionManager class, permission validation, and grants.
 Target: 60%+ code coverage with AAA pattern.
 """
 
-import pytest
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import patch
+
+import pytest
+
 from moai_adk.core.unified_permission_manager import (
-    UnifiedPermissionManager,
     PermissionMode,
+    PermissionRule,
     PermissionSeverity,
     ResourceType,
-    PermissionRule,
+    UnifiedPermissionManager,
     ValidationResult,
-    PermissionAudit,
-    validate_agent_permission,
-    check_tool_permission,
     auto_fix_all_agent_permissions,
+    check_tool_permission,
     get_permission_stats,
+    validate_agent_permission,
 )
 
 

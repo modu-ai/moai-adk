@@ -10,7 +10,6 @@ This module tests:
 """
 
 from datetime import datetime, timedelta
-from unittest import mock
 
 import pytest
 
@@ -23,8 +22,8 @@ from moai_adk.core.realtime_monitoring_dashboard import (
     DashboardType,
     DashboardWidget,
     MetricData,
-    MetricType,
     MetricsCollector,
+    MetricType,
     RealtimeMonitoringDashboard,
 )
 

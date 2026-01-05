@@ -13,21 +13,18 @@ Focus areas:
 Uses @patch for subprocess, async operations, and file system mocking.
 """
 
-import asyncio
-import json
-import pytest
-from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import MagicMock, patch, AsyncMock, call
 from enum import Enum
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from moai_adk.core.jit_enhanced_hook_manager import (
     HookEvent,
+    HookExecutionResult,
+    HookMetadata,
+    HookPerformanceMetrics,
     HookPriority,
     JITEnhancedHookManager,
-    HookPerformanceMetrics,
-    HookMetadata,
-    HookExecutionResult,
 )
 
 
@@ -291,7 +288,7 @@ class TestJITEnhancedHookManager:
         """Test executing hooks asynchronously."""
         # Arrange
         manager = JITEnhancedHookManager()
-        mock_hook = AsyncMock()
+        AsyncMock()
 
         # Act
         try:
@@ -569,7 +566,7 @@ class TestHookErrorHandling:
     def test_hook_error_handling(self):
         """Test error handling in hooks."""
         # Arrange
-        manager = JITEnhancedHookManager()
+        JITEnhancedHookManager()
 
         # Act
         try:

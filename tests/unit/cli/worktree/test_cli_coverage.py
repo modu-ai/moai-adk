@@ -8,36 +8,31 @@ Test Pattern: AAA (Arrange-Act-Assert)
 Mocks: Git operations, file system, subprocess calls
 """
 
-import os
-import subprocess
-from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call
-import pytest
+from unittest.mock import MagicMock, patch
+
 from click.testing import CliRunner
 
 from moai_adk.cli.worktree.cli import (
-    worktree,
-    get_manager,
     _detect_worktree_root,
     _find_main_repository,
-    new_worktree,
-    list_worktrees,
-    remove_worktree,
-    status_worktrees,
-    go_worktree,
-    sync_worktree,
     clean_worktrees,
     config_worktree,
+    get_manager,
+    go_worktree,
+    list_worktrees,
+    new_worktree,
+    remove_worktree,
+    status_worktrees,
+    sync_worktree,
+    worktree,
 )
 from moai_adk.cli.worktree.exceptions import (
+    GitOperationError,
+    UncommittedChangesError,
     WorktreeExistsError,
     WorktreeNotFoundError,
-    UncommittedChangesError,
-    GitOperationError,
-    MergeConflictError,
 )
-
 
 # ============================================================================
 # Test Manager and Root Detection

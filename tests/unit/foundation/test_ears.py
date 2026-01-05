@@ -9,7 +9,6 @@ Tests cover:
 - EARSAnalyzer class
 """
 
-import pytest
 
 from moai_adk.foundation.ears import (
     EARSAnalyzer,

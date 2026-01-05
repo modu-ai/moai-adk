@@ -4,10 +4,8 @@ Tests VersionSynchronizer class for version validation, synchronization, and rep
 Target: 70%+ code coverage with actual code path execution and mocked dependencies.
 """
 
-import json
-from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -238,7 +236,7 @@ class TestExtractVersion:
 
     def test_extract_version_pyproject(self, tmp_path):
         """Should extract from pyproject.toml."""
-        from moai_adk.core.version_sync import VersionSynchronizer, VersionSource
+        from moai_adk.core.version_sync import VersionSource, VersionSynchronizer
 
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text('version = "1.0.0"')
@@ -251,7 +249,7 @@ class TestExtractVersion:
 
     def test_extract_version_config_json(self, tmp_path):
         """Should extract from config.json."""
-        from moai_adk.core.version_sync import VersionSynchronizer, VersionSource
+        from moai_adk.core.version_sync import VersionSource, VersionSynchronizer
 
         config_dir = tmp_path / ".moai" / "config"
         config_dir.mkdir(parents=True)
@@ -266,7 +264,7 @@ class TestExtractVersion:
 
     def test_extract_version_file_not_found(self, tmp_path):
         """Should return None for missing file."""
-        from moai_adk.core.version_sync import VersionSynchronizer, VersionSource
+        from moai_adk.core.version_sync import VersionSource, VersionSynchronizer
 
         nonexistent = tmp_path / "missing.json"
         sync = VersionSynchronizer(tmp_path)
@@ -399,7 +397,7 @@ class TestUpdateVersionInContent:
 
     def test_update_json_version(self, tmp_path):
         """Should update version in JSON."""
-        from moai_adk.core.version_sync import VersionSynchronizer, VersionSource
+        from moai_adk.core.version_sync import VersionSource, VersionSynchronizer
 
         sync = VersionSynchronizer(tmp_path)
         content = '{"moai": {"version": "1.0.0"}}'
@@ -411,7 +409,7 @@ class TestUpdateVersionInContent:
 
     def test_update_init_version(self, tmp_path):
         """Should update version in __init__.py."""
-        from moai_adk.core.version_sync import VersionSynchronizer, VersionSource
+        from moai_adk.core.version_sync import VersionSource, VersionSynchronizer
 
         sync = VersionSynchronizer(tmp_path)
         content = '__version__ = "1.0.0"'
@@ -430,7 +428,7 @@ class TestSynchronizeFile:
 
     def test_synchronize_already_correct(self, tmp_path):
         """Should skip if already synchronized."""
-        from moai_adk.core.version_sync import VersionSynchronizer, VersionSource
+        from moai_adk.core.version_sync import VersionSource, VersionSynchronizer
 
         config_file = tmp_path / "config.json"
         config_file.write_text('{"moai": {"version": "1.0.0"}}')
@@ -443,7 +441,7 @@ class TestSynchronizeFile:
 
     def test_synchronize_updates_file(self, tmp_path):
         """Should update file to target version."""
-        from moai_adk.core.version_sync import VersionSynchronizer, VersionSource
+        from moai_adk.core.version_sync import VersionSource, VersionSynchronizer
 
         config_file = tmp_path / "config.json"
         config_file.write_text('{"moai": {"version": "1.0.0"}}')
@@ -456,7 +454,7 @@ class TestSynchronizeFile:
 
     def test_synchronize_dry_run(self, tmp_path):
         """Should not modify on dry run."""
-        from moai_adk.core.version_sync import VersionSynchronizer, VersionSource
+        from moai_adk.core.version_sync import VersionSource, VersionSynchronizer
 
         config_file = tmp_path / "config.json"
         original_content = '{"moai": {"version": "1.0.0"}}'
@@ -509,7 +507,7 @@ class TestSynchronizeAll:
         (config_dir / "config.json").write_text('{"moai": {"version": "1.0.0"}}')
 
         sync = VersionSynchronizer(tmp_path)
-        result = sync.synchronize_all(dry_run=True)
+        sync.synchronize_all(dry_run=True)
 
         # Content should remain unchanged
         content = (config_dir / "config.json").read_text()

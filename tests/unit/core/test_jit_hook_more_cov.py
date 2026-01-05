@@ -9,24 +9,18 @@ Focuses on uncovered code paths including:
 - Priority calculation and filtering
 """
 
-import asyncio
-import json
-import time
-from datetime import datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch, call
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from moai_adk.core.jit_enhanced_hook_manager import (
     HookEvent,
-    HookPriority,
-    HookMetadata,
     HookExecutionResult,
-    Phase,
-    ContextCache,
-    TokenBudgetManager,
+    HookMetadata,
+    HookPriority,
     JITEnhancedHookManager,
+    Phase,
 )
 
 
@@ -593,7 +587,7 @@ class TestSingleHookExecution:
                     return_value=mock_rp,
                 ):
                     # Act
-                    result = await hook_manager._execute_single_hook(hook_path, {})
+                    await hook_manager._execute_single_hook(hook_path, {})
 
         # Assert - anomaly detection should be called
         assert hook_manager._anomaly_detector.detect_anomaly.called

@@ -282,7 +282,7 @@ class TestWorktreePathWithProjectName:
         )
 
         # Create worktree
-        info = manager_with_project.create(spec_id=spec_id, base_branch="main")
+        manager_with_project.create(spec_id=spec_id, base_branch="main")
 
         # Verify registry contains correct path
         registry_info = manager_with_project.registry.get(spec_id)

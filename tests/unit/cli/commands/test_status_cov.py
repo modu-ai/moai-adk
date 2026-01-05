@@ -6,13 +6,9 @@ Tests actual code paths without side effects.
 
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch, Mock
 
-import pytest
-import click
 import yaml
 from click.testing import CliRunner
-from git import Repo
 
 from moai_adk.cli.commands.status import status
 

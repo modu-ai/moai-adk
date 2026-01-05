@@ -12,12 +12,11 @@ Tests cover:
 - Error handling and edge cases
 """
 
-import pytest
 import json
 import tempfile
-from pathlib import Path
 from datetime import datetime, timedelta
-from unittest.mock import patch, MagicMock
+from pathlib import Path
+from unittest.mock import patch
 
 from moai_adk.core.analysis.session_analyzer import SessionAnalyzer
 

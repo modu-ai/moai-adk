@@ -10,15 +10,16 @@ Tests cover:
 - Conflict summarization
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import MagicMock, patch, PropertyMock
-from git import GitCommandError, InvalidGitRepositoryError, Repo
+from unittest.mock import MagicMock, PropertyMock, patch
+
+import pytest
+from git import GitCommandError, InvalidGitRepositoryError
 
 from moai_adk.core.git.conflict_detector import (
-    GitConflictDetector,
-    ConflictSeverity,
     ConflictFile,
+    ConflictSeverity,
+    GitConflictDetector,
 )
 
 
@@ -27,20 +28,20 @@ class TestGitConflictDetectorInitialization:
 
     def test_init_with_valid_repo(self):
         """Test initialization with valid git repository."""
-        with patch("moai_adk.core.git.conflict_detector.Repo") as mock_repo:
+        with patch("moai_adk.core.git.conflict_detector.Repo"):
             detector = GitConflictDetector("/valid/repo")
             assert detector.repo_path == Path("/valid/repo")
             assert detector.repo is not None
 
     def test_init_with_path_object(self):
         """Test initialization with Path object."""
-        with patch("moai_adk.core.git.conflict_detector.Repo") as mock_repo:
+        with patch("moai_adk.core.git.conflict_detector.Repo"):
             detector = GitConflictDetector(Path("/valid/repo"))
             assert detector.repo_path == Path("/valid/repo")
 
     def test_init_with_current_directory(self):
         """Test initialization with default current directory."""
-        with patch("moai_adk.core.git.conflict_detector.Repo") as mock_repo:
+        with patch("moai_adk.core.git.conflict_detector.Repo"):
             detector = GitConflictDetector()
             assert detector.repo_path == Path(".")
 

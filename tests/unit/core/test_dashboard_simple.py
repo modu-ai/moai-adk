@@ -6,7 +6,7 @@ with mocked dependencies.
 
 import unittest
 from datetime import datetime
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock
 
 from src.moai_adk.core.realtime_monitoring_dashboard import (
     Alert,
@@ -17,8 +17,8 @@ from src.moai_adk.core.realtime_monitoring_dashboard import (
     DashboardType,
     DashboardWidget,
     MetricData,
-    MetricType,
     MetricsCollector,
+    MetricType,
     RealtimeMonitoringDashboard,
 )
 
@@ -401,7 +401,7 @@ class TestDashboardManager(unittest.TestCase):
         """Test listing dashboards."""
         # Arrange
         # Add a new dashboard for this test
-        dashboard_id = self.dashboard_manager.create_dashboard(
+        self.dashboard_manager.create_dashboard(
             name="Test Dashboard",
             description="Test",
             dashboard_type=DashboardType.CUSTOM,

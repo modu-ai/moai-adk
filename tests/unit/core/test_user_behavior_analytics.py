@@ -1,8 +1,7 @@
 """Tests for moai_adk.core.user_behavior_analytics module."""
 
+
 import pytest
-from datetime import datetime
-from unittest.mock import patch, MagicMock
 
 
 class TestUserBehaviorAnalytics:

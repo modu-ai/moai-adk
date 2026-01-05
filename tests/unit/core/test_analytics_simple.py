@@ -7,7 +7,7 @@ with mocked file operations.
 import unittest
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 from src.moai_adk.core.user_behavior_analytics import (
     SessionState,
@@ -557,7 +557,7 @@ class TestRealTimeMetrics(unittest.TestCase):
         """Test getting real-time metrics with active session."""
         # Arrange
         analytics = UserBehaviorAnalytics(storage_path=Path("/test/analytics"))
-        session_id = analytics.start_session("user_001")
+        analytics.start_session("user_001")
 
         # Act
         metrics = analytics.get_realtime_metrics()

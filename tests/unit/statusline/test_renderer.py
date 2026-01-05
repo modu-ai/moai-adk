@@ -1,7 +1,5 @@
 """Tests for moai_adk.statusline.renderer module."""
 
-import pytest
-from unittest.mock import MagicMock, patch
 
 from moai_adk.statusline.renderer import StatuslineData, StatuslineRenderer
 

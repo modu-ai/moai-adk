@@ -5,23 +5,20 @@ These tests verify that the module can be imported and basic classes
 can be instantiated without errors.
 """
 
-import pytest
-from datetime import datetime
-from unittest.mock import MagicMock, patch
 
-from moai_adk.core.phase_optimized_hook_scheduler import (
-    SchedulingStrategy,
-    SchedulingDecision,
-    HookSchedulingContext,
-    ScheduledHook,
-    SchedulingResult,
-    ExecutionGroup,
-)
 from moai_adk.core.jit_enhanced_hook_manager import (
     HookEvent,
+    HookMetadata,
     HookPriority,
     Phase,
-    HookMetadata,
+)
+from moai_adk.core.phase_optimized_hook_scheduler import (
+    ExecutionGroup,
+    HookSchedulingContext,
+    ScheduledHook,
+    SchedulingDecision,
+    SchedulingResult,
+    SchedulingStrategy,
 )
 
 

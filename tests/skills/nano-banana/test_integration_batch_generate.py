@@ -10,22 +10,18 @@ Tests cover:
 TDD Approach: All tests use mocked API calls (no real API calls).
 """
 
-import asyncio
 import json
 import sys
-from pathlib import Path
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from batch_generate import (
+    BatchResult,
+    ImageTask,
     generate_single_image,
+    main,
     run_batch_generation,
     save_batch_report,
-    main,
-    ImageTask,
-    BatchResult,
-    MODEL_NAME,
 )
 
 

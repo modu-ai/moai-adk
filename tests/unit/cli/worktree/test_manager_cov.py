@@ -5,22 +5,20 @@ Tests actual code paths without side effects.
 """
 
 import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, patch, Mock, call, PropertyMock
 from datetime import datetime
+from pathlib import Path
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
-from git import Repo
 
-from moai_adk.cli.worktree.manager import WorktreeManager
-from moai_adk.cli.worktree.models import WorktreeInfo
 from moai_adk.cli.worktree.exceptions import (
     GitOperationError,
     MergeConflictError,
-    UncommittedChangesError,
     WorktreeExistsError,
     WorktreeNotFoundError,
 )
+from moai_adk.cli.worktree.manager import WorktreeManager
+from moai_adk.cli.worktree.models import WorktreeInfo
 
 
 class TestWorktreeManagerCreate:

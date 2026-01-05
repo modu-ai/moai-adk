@@ -3,20 +3,19 @@
 Focus on uncovered code paths with actual execution using mocked dependencies.
 """
 
-import pytest
-from unittest.mock import MagicMock, Mock, patch, call
-from typing import Any, Dict, List
+from unittest.mock import MagicMock, patch
 
 from InquirerPy.base.control import Choice, Separator
+
 from moai_adk.cli.ui.prompts import (
+    _process_choices,
+    create_grouped_choices,
     fuzzy_checkbox,
     fuzzy_select,
     styled_checkbox,
-    styled_select,
-    styled_input,
     styled_confirm,
-    _process_choices,
-    create_grouped_choices,
+    styled_input,
+    styled_select,
 )
 
 
@@ -135,7 +134,8 @@ class TestFuzzyCheckbox:
 
     def test_fuzzy_checkbox_validation(self):
         """Test fuzzy checkbox with validation."""
-        validator = lambda x: len(x) > 0
+        def validator(x):
+            return len(x) > 0
 
         with patch("moai_adk.cli.ui.prompts.inquirer.fuzzy") as mock_fuzzy:
             mock_result = MagicMock()
@@ -153,7 +153,7 @@ class TestFuzzyCheckbox:
             mock_result.execute.return_value = ["A", "B"]
             mock_fuzzy.return_value = mock_result
 
-            result = fuzzy_checkbox("Choose", ["A", "B"])
+            fuzzy_checkbox("Choose", ["A", "B"])
             _, kwargs = mock_fuzzy.call_args
             assert "transformer" in kwargs
             # Test transformer
@@ -390,7 +390,8 @@ class TestStyledInput:
 
     def test_styled_input_validation(self):
         """Test styled input with custom validation."""
-        validator = lambda x: len(x) > 3
+        def validator(x):
+            return len(x) > 3
 
         with patch("moai_adk.cli.ui.prompts.inquirer.text") as mock_text:
             mock_result = MagicMock()

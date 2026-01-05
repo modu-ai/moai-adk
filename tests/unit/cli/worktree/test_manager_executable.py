@@ -11,13 +11,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from moai_adk.cli.worktree.manager import WorktreeManager
 from moai_adk.cli.worktree.exceptions import (
     GitOperationError,
     MergeConflictError,
     WorktreeExistsError,
     WorktreeNotFoundError,
 )
+from moai_adk.cli.worktree.manager import WorktreeManager
 
 
 class TestWorktreeManagerExecutable:

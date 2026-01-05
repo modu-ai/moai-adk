@@ -4,7 +4,6 @@ This module contains tests targeting uncovered code paths in link_validator.py
 to achieve 90%+ coverage.
 """
 
-import asyncio
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -509,7 +508,7 @@ class TestValidateReadmeLinks:
             mock_validator.extract_links_from_file.return_value = []
             mock_validator_class.return_value = mock_validator
 
-            with patch("pathlib.Path.write_text") as mock_write:
+            with patch("pathlib.Path.write_text"):
                 # Mock the async function
                 with patch("asyncio.run"):
                     validate_readme_links(Path("README.md"))

@@ -8,26 +8,23 @@ Focuses on simple, working tests for core functionality:
 - Connection pooling
 """
 
-import asyncio
 import time
 from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch, call
 
 import pytest
 
 from moai_adk.core.jit_enhanced_hook_manager import (
-    HookEvent,
-    HookPriority,
-    HookMetadata,
-    HookExecutionResult,
-    Phase,
-    ContextCache,
-    TokenBudgetManager,
     CircuitBreaker,
     CircuitBreakerState,
-    HookResultCache,
     ConnectionPool,
+    ContextCache,
+    HookEvent,
+    HookExecutionResult,
+    HookMetadata,
+    HookPriority,
+    HookResultCache,
+    Phase,
+    TokenBudgetManager,
 )
 
 

@@ -3,24 +3,22 @@
 Focus on uncovered code paths with actual execution using mocked dependencies.
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch, call
-from typing import Any
+from rich.progress import Progress, TaskID
+from rich.text import Text
 
 from moai_adk.cli.ui.progress import (
     MoAISpinnerColumn,
-    create_progress_bar,
-    create_spinner,
     ProgressContext,
     SpinnerContext,
-    progress_steps,
-    print_step,
     console,
+    create_progress_bar,
+    create_spinner,
+    print_step,
+    progress_steps,
 )
-from rich.text import Text
-from rich.style import Style
-from rich.progress import Progress, TaskID
 
 
 class TestMoAISpinnerColumn:
@@ -54,7 +52,6 @@ class TestMoAISpinnerColumn:
         task.get_time.return_value = 0.0
 
         # Mock spinner.render to return a string
-        original_render = column.spinner.render
 
         with patch.object(column.spinner, "render", return_value="spinner_frame"):
             result = column.render(task)
@@ -126,7 +123,7 @@ class TestCreateSpinner:
         """Test spinner with default parameters."""
         with patch.object(console, "status") as mock_status:
             mock_status.return_value = MagicMock()
-            spinner = create_spinner()
+            create_spinner()
             mock_status.assert_called_once()
             args, kwargs = mock_status.call_args
             assert args[0] == "Processing..."
@@ -200,7 +197,7 @@ class TestProgressContext:
             mock_progress = MagicMock()
             mock_create.return_value = mock_progress
 
-            with ProgressContext("Test task", transient=True) as ctx:
+            with ProgressContext("Test task", transient=True):
                 args, kwargs = mock_create.call_args
                 assert kwargs["transient"] is True
 
@@ -212,7 +209,7 @@ class TestProgressContext:
             mock_create.return_value = mock_progress
 
             with ProgressContext("Test") as ctx:
-                task_id = ctx.add_task("Download", total=100)
+                ctx.add_task("Download", total=100)
 
                 assert "Download" in ctx.tasks
                 assert ctx.tasks["Download"] == TaskID(1)
@@ -676,7 +673,7 @@ class TestProgressIntegration:
             mock_create.return_value = mock_progress
 
             with ProgressContext("Multi-task") as ctx:
-                task1 = ctx.add_task("Task 1", total=100)
+                ctx.add_task("Task 1", total=100)
                 ctx.advance("Task 1", 50)
                 ctx.update_task("Task 1", completed=50)
                 ctx.complete_task("Task 1")

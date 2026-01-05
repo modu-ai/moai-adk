@@ -12,7 +12,7 @@ Increases coverage for:
 """
 
 import asyncio
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from unittest import mock
 
 import pytest
@@ -23,7 +23,6 @@ from moai_adk.foundation.backend import (
     AuthenticationManager,
     BackendMetricsCollector,
     ErrorHandlingStrategy,
-    HTTPMethod,
     MicroserviceArchitect,
     PerformanceOptimizer,
 )
@@ -241,7 +240,7 @@ class TestAsyncPatternAdvisorAdditional:
     @pytest.mark.asyncio
     async def test_execute_concurrent_with_timeout(self):
         """Test concurrent execution with timeout."""
-        advisor = AsyncPatternAdvisor()
+        AsyncPatternAdvisor()
 
         async def slow_task():
             await asyncio.sleep(10)
@@ -253,7 +252,7 @@ class TestAsyncPatternAdvisorAdditional:
     @pytest.mark.asyncio
     async def test_execute_concurrent_partial_timeout(self):
         """Test concurrent execution with partial timeout."""
-        advisor = AsyncPatternAdvisor()
+        AsyncPatternAdvisor()
 
         async def task(duration):
             await asyncio.sleep(duration)
@@ -316,7 +315,7 @@ class TestAsyncPatternAdvisorAdditional:
 
         # Run in event loop - may raise or succeed depending on timing
         try:
-            result = asyncio.run(flaky_task())
+            asyncio.run(flaky_task())
             assert call_count >= 1
         except ValueError:
             assert call_count >= 1
@@ -371,9 +370,9 @@ class TestAuthenticationManagerAdditional:
         auth = AuthenticationManager("test-secret")
         # Create token that expires immediately
         import base64
-        import json
-        import hmac
         import hashlib
+        import hmac
+        import json
 
         header = {"alg": "HS256", "typ": "JWT"}
         payload = {

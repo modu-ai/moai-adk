@@ -8,7 +8,7 @@ Target: 60%+ coverage
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -168,7 +168,7 @@ class TestProcessTemplateCommand:
         variables = {}
 
         # Act
-        result = integration.process_template_command(
+        integration.process_template_command(
             command_template, variables, print_mode=True, output_format="json"
         )
 
@@ -323,7 +323,7 @@ class TestCreateAgentWithMultilingualSupport:
         mock_generate.return_value = {"test-agent": {"en": "Test"}}
 
         # Act
-        result = integration.create_agent_with_multilingual_support(
+        integration.create_agent_with_multilingual_support(
             "test-agent", "Test", ["tool1"], target_languages=["en"]
         )
 

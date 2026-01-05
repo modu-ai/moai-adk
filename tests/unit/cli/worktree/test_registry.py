@@ -5,14 +5,12 @@ These tests verify that the module can be imported and basic classes
 can be instantiated without errors.
 """
 
-import pytest
-import tempfile
 import json
+import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from moai_adk.cli.worktree.registry import WorktreeRegistry
-from moai_adk.cli.worktree.models import WorktreeInfo
 
 
 class TestImports:
@@ -147,7 +145,7 @@ class TestWorktreeRegistryFileHandling:
         """Test WorktreeRegistry creates parent directory if needed."""
         with tempfile.TemporaryDirectory() as tmpdir:
             worktree_root = Path(tmpdir) / "subdir" / "nested"
-            registry = WorktreeRegistry(worktree_root)
+            WorktreeRegistry(worktree_root)
             # Should create parent directories
             assert worktree_root.exists()
 

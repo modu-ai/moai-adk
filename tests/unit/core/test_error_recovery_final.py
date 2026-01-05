@@ -10,31 +10,26 @@ Focus areas:
 All tests use @patch to mock file operations and external dependencies.
 """
 
-import json
-import pytest
-import tempfile
 from datetime import datetime, timezone
-from pathlib import Path
-from unittest.mock import MagicMock, patch, call, mock_open
-import threading
-import time
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from moai_adk.core.error_recovery_system import (
-    ErrorSeverity,
-    ErrorCategory,
-    FailureMode,
-    RecoveryStrategy,
+    AdvancedRecoveryAction,
     ConsistencyLevel,
-    RecoveryStatus,
+    ErrorCategory,
+    ErrorRecoverySystem,
     ErrorReport,
+    ErrorSeverity,
+    FailureEvent,
+    FailureMode,
     RecoveryAction,
     RecoveryResult,
-    FailureEvent,
-    AdvancedRecoveryAction,
+    RecoveryStatus,
+    RecoveryStrategy,
     SystemSnapshot,
-    ErrorRecoverySystem,
 )
-
 
 # ============================================================================
 # Test FailureEvent Dataclass

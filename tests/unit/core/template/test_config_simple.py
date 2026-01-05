@@ -1,10 +1,8 @@
 """Unit tests for moai_adk.core.template.config module."""
 
+import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import json
-
-import pytest
 
 from moai_adk.core.template.config import ConfigManager
 
@@ -93,7 +91,6 @@ class TestConfigManager:
 
     def test_load_file_format(self):
         """Test loading file format."""
-        import json
 
         with TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.json"

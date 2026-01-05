@@ -9,19 +9,16 @@ Tests cover:
 TDD Approach: All tests use mocked API calls (no real API calls).
 """
 
-import os
 import sys
-from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 # Import functions to test
 from generate_image import (
+    MODEL_NAME,
     generate_image,
     main,
-    MODEL_NAME,
-    MAX_RETRIES,
 )
 
 
@@ -203,7 +200,7 @@ class TestGenerateImageRetry:
             mock_genai.Client.return_value = mock_client
             mock_client.models.generate_content.side_effect = mock_api_key_error
 
-            with patch("generate_image.time.sleep") as mock_sleep:
+            with patch("generate_image.time.sleep"):
                 result = generate_image(
                     prompt="Test",
                     output_path=str(output_path),

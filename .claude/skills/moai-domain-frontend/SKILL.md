@@ -1,23 +1,15 @@
 ---
-name: moai-domain-frontend
-description: Frontend development specialist covering React 19, Next.js 16, Vue 3.5, and modern UI/UX patterns with component architecture. Use when building web UIs, implementing components, optimizing frontend performance, or integrating state management.
+name: "moai-domain-frontend"
+description: "Frontend development specialist covering React 19, Next.js 16, Vue 3.5, and modern UI/UX patterns with component architecture. Use when building web UIs, implementing components, optimizing frontend performance, or integrating state management."
 version: 2.0.0
-category: domain
-allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-context7-libraries:
-  - /facebook/react
-  - /vercel/next.js
-  - /vuejs/vue
-tags:
-  - frontend
-  - react
-  - nextjs
-  - vue
-  - ui
-  - components
+category: "domain"
+modularized: true
+tags: ['frontend', 'react', 'nextjs', 'vue', 'ui', 'components']
+allowed-tools: "Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+context7-libraries: ['/facebook/react', '/vercel/next.js', '/vuejs/vue']
 updated: 2026-01-06
-status: active
-author: MoAI-ADK Team
+status: "active"
+author: "MoAI-ADK Team"
 ---
 
 # Frontend Development Specialist

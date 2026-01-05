@@ -4,21 +4,22 @@ Tests all uncovered code paths in ConfigurationManager and related classes.
 Uses AAA pattern and @patch decorators for file operations and dependencies.
 """
 
-import pytest
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import patch
+
+import pytest
 
 from moai_adk.project.configuration import (
-    ConfigurationManager,
-    SmartDefaultsEngine,
     AutoDetectionEngine,
-    ConfigurationCoverageValidator,
     ConditionalBatchRenderer,
-    TemplateVariableInterpolator,
+    ConfigurationCoverageValidator,
+    ConfigurationManager,
     ConfigurationMigrator,
+    SmartDefaultsEngine,
     TabSchemaValidator,
+    TemplateVariableInterpolator,
 )
 
 

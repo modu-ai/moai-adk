@@ -12,8 +12,6 @@ This module provides 90%+ coverage for all utility functions including:
 """
 
 import asyncio
-import json
-import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path

@@ -8,12 +8,8 @@ Tests cover:
 - main function
 """
 
-import json
-import os
 from io import StringIO
 from unittest import mock
-
-import pytest
 
 from moai_adk.statusline.main import (
     build_statusline_data,

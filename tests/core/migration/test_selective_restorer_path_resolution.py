@@ -6,9 +6,6 @@ causing errors like:
 ".claude/agents/yoda/yoda-master.md is not in the subpath of /Users/goos/MoAI/yoda"
 """
 
-import tempfile
-from pathlib import Path
-from unittest.mock import patch
 
 from moai_adk.core.migration.selective_restorer import create_selective_restorer
 

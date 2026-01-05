@@ -4,17 +4,17 @@ Enhanced tests for Comprehensive Monitoring System - targeting 60%+ coverage.
 Focus on actual API that exists.
 """
 
-import pytest
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+
+import pytest
 
 from moai_adk.core.comprehensive_monitoring_system import (
-    MetricType,
+    Alert,
     AlertSeverity,
+    ComprehensiveMonitoringSystem,
     HealthStatus,
     MetricData,
-    Alert,
-    ComprehensiveMonitoringSystem,
+    MetricType,
 )
 
 

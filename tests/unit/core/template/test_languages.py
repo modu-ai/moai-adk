@@ -1,6 +1,5 @@
 """Unit tests for moai_adk.core.template.languages module."""
 
-import pytest
 
 from moai_adk.core.template.languages import LANGUAGE_TEMPLATES, get_language_template
 

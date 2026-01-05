@@ -5,9 +5,11 @@ Focus: TemplateProcessor class initialization, variable substitution, and templa
 Target: 50%+ code coverage with AAA pattern.
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import patch
+
+import pytest
+
 from moai_adk.core.template.processor import (
     TemplateProcessor,
     TemplateProcessorConfig,

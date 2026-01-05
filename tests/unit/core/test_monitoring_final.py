@@ -8,24 +8,18 @@ Focuses on simple, working tests for:
 - SystemHealth
 """
 
-import json
-import statistics
-import time
 from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import MagicMock, patch, Mock
-
-import pytest
+from unittest.mock import MagicMock
 
 from moai_adk.core.comprehensive_monitoring_system import (
-    MetricType,
+    Alert,
+    AlertManager,
     AlertSeverity,
     HealthStatus,
     MetricData,
-    Alert,
-    SystemHealth,
     MetricsCollector,
-    AlertManager,
+    MetricType,
+    SystemHealth,
 )
 
 
@@ -624,7 +618,7 @@ class TestAlertManager:
         """Test creating an alert directly."""
         # Arrange
         collector = MetricsCollector()
-        manager = AlertManager(metrics_collector=collector)
+        AlertManager(metrics_collector=collector)
 
         # Act - Create alert directly using Alert class
         alert = Alert(

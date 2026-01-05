@@ -15,37 +15,30 @@ Tests cover:
 """
 
 import asyncio
-import json
-import logging
-import time
-import uuid
 from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, patch, call
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
 from moai_adk.core.event_driven_hook_system import (
     Event,
     EventDrivenHookSystem,
-    EventProcessor,
     EventPriority,
+    EventProcessor,
     EventType,
     HookExecutionEvent,
     InMemoryMessageBroker,
     MessageBrokerType,
-    MessageBroker,
     RedisMessageBroker,
     ResourceIsolationLevel,
     ResourcePool,
     WorkflowEvent,
+    execute_hook_with_event_system,
     get_event_system,
     start_event_system,
     stop_event_system,
-    execute_hook_with_event_system,
 )
 from moai_adk.core.jit_enhanced_hook_manager import HookEvent
-
 
 # =============================================================================
 # ENUM TESTS

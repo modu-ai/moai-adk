@@ -10,21 +10,21 @@ These tests exercise actual code paths including:
 
 import asyncio
 import json
-import pytest
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, AsyncMock, patch, call
+from unittest.mock import AsyncMock
+
+import pytest
 
 from moai_adk.core.event_driven_hook_system import (
     Event,
-    EventType,
     EventPriority,
-    ResourceIsolationLevel,
-    MessageBrokerType,
+    EventType,
     HookExecutionEvent,
-    WorkflowEvent,
     InMemoryMessageBroker,
+    MessageBrokerType,
+    ResourceIsolationLevel,
+    WorkflowEvent,
 )
-from moai_adk.core.jit_enhanced_hook_manager import HookEvent
 
 
 class TestEventCreation:

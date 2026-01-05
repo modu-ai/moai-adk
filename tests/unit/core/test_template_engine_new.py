@@ -6,7 +6,6 @@ Tests template rendering, variable substitution, and validation.
 
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -152,7 +151,7 @@ class TestRenderFile:
             template_path.write_text("Hello {{name}}!")
 
             engine = TemplateEngine()
-            result = engine.render_file(
+            engine.render_file(
                 template_path,
                 {"name": "World"},
                 output_path=output_path,
@@ -280,7 +279,7 @@ class TestRenderDirectory:
             (subdir / "nested.txt").write_text("Nested: {{val}}")
 
             engine = TemplateEngine()
-            results = engine.render_directory(
+            engine.render_directory(
                 template_dir,
                 output_dir,
                 {"val": "data"},

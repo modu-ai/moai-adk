@@ -6,9 +6,9 @@ These tests exercise actual code paths including:
 - Git operation errors
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+
+import pytest
 
 from moai_adk.cli.worktree.exceptions import (
     GitOperationError,

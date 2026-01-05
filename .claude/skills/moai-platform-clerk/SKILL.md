@@ -1,14 +1,15 @@
 ---
-name: moai-platform-clerk
-description: Clerk modern authentication specialist covering WebAuthn, passkeys, passwordless, and beautiful UI components. Use when implementing modern auth with great UX.
+name: "moai-platform-clerk"
+description: "Clerk modern authentication specialist covering WebAuthn, passkeys, passwordless, and beautiful UI components. Use when implementing modern auth with great UX."
 version: 2.0.0
-category: platform
-tags: clerk, webauthn, passkeys, passwordless, authentication
-context7-libraries: /clerk/clerk-docs
-related-skills: moai-platform-auth0, moai-lang-typescript
+category: "platform"
+modularized: true
+tags: ['clerk, webauthn, passkeys, passwordless, authentication']
+context7-libraries: "/clerk/clerk-docs"
+related-skills: "moai-platform-auth0, moai-lang-typescript"
 updated: 2025-12-30
-status: active
-allowed-tools: Read, Write, Bash, Grep, Glob
+status: "active"
+allowed-tools: "Read, Write, Bash, Grep, Glob"
 ---
 
 # Clerk Modern Authentication Specialist

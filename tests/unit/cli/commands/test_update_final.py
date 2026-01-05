@@ -13,34 +13,32 @@ All tests use @patch to mock subprocess, file operations, and network calls.
 
 import json
 import subprocess
-import pytest
-from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call, mock_open
-from packaging import version as packaging_version
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from moai_adk.cli.commands.update import (
-    _is_installed_via_uv_tool,
-    _is_installed_via_pipx,
-    _is_installed_via_pip,
+    PIP_COMMAND,
+    PIPX_COMMAND,
+    TOOL_DETECTION_TIMEOUT,
+    UV_TOOL_COMMAND,
+    InstallerNotFoundError,
+    NetworkError,
+    TemplateSyncError,
+    UpdateError,
+    UpgradeError,
+    _ask_merge_strategy,
+    _compare_versions,
     _detect_tool_installer,
     _get_current_version,
     _get_latest_version,
-    _compare_versions,
     _get_package_config_version,
     _get_project_config_version,
-    _ask_merge_strategy,
-    UpdateError,
-    InstallerNotFoundError,
-    NetworkError,
-    UpgradeError,
-    TemplateSyncError,
-    TOOL_DETECTION_TIMEOUT,
-    UV_TOOL_COMMAND,
-    PIPX_COMMAND,
-    PIP_COMMAND,
+    _is_installed_via_pip,
+    _is_installed_via_pipx,
+    _is_installed_via_uv_tool,
 )
-
 
 # ============================================================================
 # Test Exception Classes

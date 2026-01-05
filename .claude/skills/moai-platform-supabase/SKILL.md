@@ -1,14 +1,15 @@
 ---
-name: moai-platform-supabase
-description: Supabase specialist covering PostgreSQL 16, pgvector, RLS, real-time subscriptions, and Edge Functions. Use when building full-stack apps with Supabase backend.
+name: "moai-platform-supabase"
+description: "Supabase specialist covering PostgreSQL 16, pgvector, RLS, real-time subscriptions, and Edge Functions. Use when building full-stack apps with Supabase backend."
 version: 2.0.0
-category: platform
-tags: [supabase, postgresql, pgvector, realtime, rls, edge-functions]
-context7-libraries: [/supabase/supabase]
-related-skills: [moai-platform-neon, moai-lang-typescript]
+category: "platform"
+modularized: true
+tags: ['supabase', 'postgresql', 'pgvector', 'realtime', 'rls', 'edge-functions']
+context7-libraries: ['/supabase/supabase']
+related-skills: ['moai-platform-neon', 'moai-lang-typescript']
 updated: 2026-01-06
-status: active
-allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+status: "active"
+allowed-tools: "Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 ---
 
 # moai-platform-supabase: Supabase Platform Specialist

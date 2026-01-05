@@ -13,11 +13,9 @@ Tests cover:
 - Element type detection
 """
 
-import pytest
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch, Mock
-from io import StringIO
+from unittest.mock import MagicMock, patch
 
 from moai_adk.core.migration.interactive_checkbox_ui import (
     InteractiveCheckboxUI,

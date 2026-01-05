@@ -7,8 +7,6 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from moai_adk.core.template.merger import TemplateMerger
 
 
@@ -222,10 +220,10 @@ class TestTemplateMergerIntegration:
 
     def test_full_merge_workflow(self):
         """Test complete merge workflow."""
-        merger = TemplateMerger(Path("/tmp/project"))
+        TemplateMerger(Path("/tmp/project"))
         # Would require more sophisticated mocking
 
     def test_merges_multiple_files(self):
         """Test merging multiple file types."""
-        merger = TemplateMerger(Path("/tmp/project"))
+        TemplateMerger(Path("/tmp/project"))
         # Would require coordinated mocking of multiple file operations

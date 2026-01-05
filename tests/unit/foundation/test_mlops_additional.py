@@ -11,8 +11,7 @@ Increases coverage for:
 - MLOpsMetricsCollector: ML metrics
 """
 
-import pytest
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 from moai_adk.foundation.ml_ops import (
     DataPipelineBuilder,

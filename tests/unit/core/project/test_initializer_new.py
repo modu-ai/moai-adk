@@ -12,9 +12,7 @@ Tests cover:
 
 import json
 import tempfile
-from datetime import datetime
 from pathlib import Path
-from unittest import mock
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -229,7 +227,7 @@ class TestProjectInitializer:
 
             # Act
             with patch.object(initializer, "executor", mock_executor_instance):
-                result = initializer.initialize()
+                initializer.initialize()
 
             # Assert
             mock_executor_instance.execute_preparation_phase.assert_called_once()

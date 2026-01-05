@@ -16,7 +16,6 @@ import pytest
 
 from moai_adk.core.template.processor import TemplateProcessor
 
-
 # Environment variables that need to be cleared for test isolation
 MOAI_ENV_VARS = [
     "MOAI_USER_NAME",

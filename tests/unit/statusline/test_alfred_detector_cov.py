@@ -9,10 +9,8 @@ Focuses on uncovered code paths:
 """
 
 import json
-import logging
 from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import mock_open, patch
 
 import pytest
 
@@ -180,7 +178,7 @@ class TestSessionStateReading:
                     mock_default.return_value = AlfredTask(None, None, None)
 
                     # Act
-                    result = detector._read_session_state()
+                    detector._read_session_state()
 
         # Assert
         mock_default.assert_called_once()
@@ -196,7 +194,7 @@ class TestSessionStateReading:
                     mock_default.return_value = AlfredTask(None, None, None)
 
                     # Act
-                    result = detector._read_session_state()
+                    detector._read_session_state()
 
         # Assert
         mock_default.assert_called_once()
@@ -232,7 +230,7 @@ class TestSessionStateReading:
                     mock_default.return_value = AlfredTask(None, None, None)
 
                     # Act
-                    result = detector._read_session_state()
+                    detector._read_session_state()
 
         # Assert
         mock_default.assert_called_once()
@@ -246,7 +244,7 @@ class TestSessionStateReading:
                     mock_default.return_value = AlfredTask(None, None, None)
 
                     # Act
-                    result = detector._read_session_state()
+                    detector._read_session_state()
 
         # Assert
         mock_default.assert_called_once()
@@ -258,7 +256,7 @@ class TestSessionStateReading:
             with patch("builtins.open", side_effect=ValueError("Bad data")):
                 with patch.object(detector, "_create_default_task") as mock_default:
                     mock_default.return_value = AlfredTask(None, None, None)
-                    with patch("moai_adk.statusline.alfred_detector.logger") as mock_logger:
+                    with patch("moai_adk.statusline.alfred_detector.logger"):
                         # Act
                         detector._read_session_state()
 

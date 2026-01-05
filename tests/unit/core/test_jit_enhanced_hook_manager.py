@@ -5,17 +5,15 @@ These tests verify that the module can be imported and basic classes
 can be instantiated without errors.
 """
 
-import pytest
-from unittest.mock import MagicMock, patch
 
 from moai_adk.core.jit_enhanced_hook_manager import (
-    HookEvent,
-    HookPriority,
-    Phase,
     ContextCache,
-    TokenBudgetManager,
-    JITEnhancedHookManager,
+    HookEvent,
     HookMetadata,
+    HookPriority,
+    JITEnhancedHookManager,
+    Phase,
+    TokenBudgetManager,
 )
 
 

@@ -6,8 +6,6 @@ Tests for safe file reading with encoding fallbacks.
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from moai_adk.utils.safe_file_reader import (
     SafeFileReader,
     safe_glob_read,

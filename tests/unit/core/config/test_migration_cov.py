@@ -9,17 +9,15 @@ Tests cover:
 - get_spec_git_workflow - workflow setting retrieval
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
-from typing import Any
+from unittest.mock import patch
 
 from moai_adk.core.config.migration import (
-    migrate_config_to_nested_structure,
     get_conversation_language,
     get_conversation_language_name,
-    migrate_config_schema_v0_17_0,
     get_report_generation_config,
     get_spec_git_workflow,
+    migrate_config_schema_v0_17_0,
+    migrate_config_to_nested_structure,
 )
 
 

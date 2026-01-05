@@ -12,32 +12,30 @@ Provides extensive coverage for:
 """
 
 import asyncio
-import pytest
 import threading
-import time
 from datetime import datetime, timedelta
-from unittest.mock import Mock, MagicMock, patch, call
-from collections import deque
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 from src.moai_adk.core.realtime_monitoring_dashboard import (
-    MetricType,
-    AlertSeverity,
-    DashboardType,
-    MetricData,
     Alert,
-    DashboardWidget,
-    Dashboard,
-    MetricsCollector,
     AlertManager,
+    AlertSeverity,
+    Dashboard,
     DashboardManager,
+    DashboardType,
+    DashboardWidget,
+    MetricData,
+    MetricsCollector,
+    MetricType,
     RealtimeMonitoringDashboard,
+    add_hook_metric,
+    add_system_metric,
     get_monitoring_dashboard,
     start_monitoring,
     stop_monitoring,
-    add_system_metric,
-    add_hook_metric,
 )
-
 
 # ============================================================================
 # MetricData Tests
@@ -687,7 +685,6 @@ class TestMetricsCollector:
     def test_thread_safety(self):
         """Test thread safety of MetricsCollector"""
         collector = MetricsCollector()
-        results = []
 
         def add_metrics():
             for i in range(100):
@@ -1006,7 +1003,7 @@ class TestAlertManager:
         )
         collector.add_metric(metric)
 
-        alerts = manager.check_alerts()
+        manager.check_alerts()
 
         assert callback_mock.called
         assert len(callback_mock.call_args_list) == 1

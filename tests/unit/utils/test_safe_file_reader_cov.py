@@ -7,8 +7,6 @@ to achieve 90%+ coverage.
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from moai_adk.utils.safe_file_reader import (
     SafeFileReader,
     safe_glob_read,
@@ -412,7 +410,7 @@ class TestEncodingFallbackSequence:
                     UnicodeDecodeError("bad", b"", 0, 1, "reason"),
                     "fallback with replace",
                 ]
-                result = reader.read_text(Path("test.txt"))
+                reader.read_text(Path("test.txt"))
                 # Verify second call used error handling
                 calls = mock_read.call_args_list
                 assert len(calls) >= 2

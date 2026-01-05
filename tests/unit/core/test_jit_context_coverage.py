@@ -7,28 +7,26 @@ and JITContextLoader classes with actual code path execution.
 Coverage Target: 70%+
 """
 
-import pytest
-import asyncio
-import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open, AsyncMock
-from collections import OrderedDict
+from unittest.mock import patch
+
+import pytest
 
 from moai_adk.core.jit_context_loader import (
+    ContextCache,
+    ContextEntry,
+    ContextMetrics,
+    JITContextLoader,
     Phase,
     PhaseConfig,
-    ContextMetrics,
-    SkillInfo,
-    ContextEntry,
     PhaseDetector,
     SkillFilterEngine,
+    SkillInfo,
     TokenBudgetManager,
-    ContextCache,
-    JITContextLoader,
-    load_optimized_context,
-    get_jit_stats,
     clear_jit_cache,
+    get_jit_stats,
+    load_optimized_context,
 )
 
 
@@ -139,9 +137,9 @@ class TestPhaseDetector:
         detector = PhaseDetector()
 
         # Act
-        phase1 = detector.detect_phase("Create SPEC")
-        phase2 = detector.detect_phase("Write tests")
-        phase3 = detector.detect_phase("Refactor code")
+        detector.detect_phase("Create SPEC")
+        detector.detect_phase("Write tests")
+        detector.detect_phase("Refactor code")
 
         # Assert
         assert len(detector.phase_history) >= 0
@@ -441,10 +439,8 @@ class TestJITContextLoaderAsync:
 
         # Act
         context1, _ = await loader.load_context("Test input 1")
-        cache_stats_before = loader.context_cache.hits
 
         context2, metrics = await loader.load_context("Test input 1")
-        cache_stats_after = loader.context_cache.hits
 
         # Assert
         # Second call might use cache

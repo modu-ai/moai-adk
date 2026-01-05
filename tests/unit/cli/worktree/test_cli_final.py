@@ -8,26 +8,24 @@ Focuses on simple, working tests for Click commands:
 - Click command execution
 """
 
-import subprocess
-from pathlib import Path
 from datetime import datetime
-from unittest.mock import MagicMock, patch, Mock, call
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
-import pytest
 from click.testing import CliRunner
 
 from moai_adk.cli.worktree.cli import (
-    get_manager,
     _detect_worktree_root,
     _find_main_repository,
-    worktree,
-    new_worktree,
+    get_manager,
     list_worktrees,
+    new_worktree,
     remove_worktree,
+    worktree,
 )
 from moai_adk.cli.worktree.exceptions import (
-    WorktreeExistsError,
     GitOperationError,
+    WorktreeExistsError,
 )
 
 
@@ -62,7 +60,7 @@ class TestDetectWorktreeRoot:
         """Test detection returns default path as fallback."""
         # Arrange
         home = Path("/home/user")
-        default_root = home / "moai" / "worktrees"
+        home / "moai" / "worktrees"
 
         mock_path_class.home = MagicMock(return_value=home)
 
@@ -474,7 +472,7 @@ class TestDetectWorktreeRootWithExistingWorktrees:
         """Test detection finds existing worktrees in standard location."""
         # Arrange
         home = Path("/home/user")
-        worktree_root = home / "moai" / "worktrees"
+        home / "moai" / "worktrees"
         main_repo = Path("/test/main/repo")
 
         mock_find_repo.return_value = main_repo

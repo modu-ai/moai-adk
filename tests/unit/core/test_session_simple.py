@@ -9,17 +9,14 @@ Tests SessionManager class with full coverage of:
 """
 
 import json
-import pytest
 import tempfile
-from datetime import datetime
 from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open, call
+from unittest.mock import MagicMock, patch
 
 from moai_adk.core.session_manager import (
     SessionManager,
-    get_session_manager,
-    register_agent,
     get_resume_id,
+    register_agent,
     should_resume,
 )
 
@@ -504,7 +501,7 @@ class TestConvenienceFunctions:
 
     def test_register_agent_convenience(self):
         """Test register_agent convenience function."""
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory():
             with patch("moai_adk.core.session_manager.get_session_manager") as mock_get:
                 mock_manager = MagicMock()
                 mock_get.return_value = mock_manager

@@ -8,7 +8,7 @@ import asyncio
 import json
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, call, mock_open, patch
+from unittest.mock import MagicMock, mock_open, patch
 
 import aiohttp
 import pytest
@@ -486,7 +486,7 @@ class TestRateLimiterCleanup:
         time.sleep(1.1)
 
         # Check can make request should clean up old requests
-        can_make = limiter.can_make_request()
+        limiter.can_make_request()
         assert len(limiter.requests) == 0
 
     def test_rate_limiter_mixed_old_new_requests(self):

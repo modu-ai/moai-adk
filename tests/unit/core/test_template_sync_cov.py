@@ -5,9 +5,7 @@ Target: 70%+ code coverage with actual code path execution and mocked dependenci
 """
 
 import json
-import re
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -229,7 +227,7 @@ class TestUpdateFileTemplateVariables:
         synchronizer = TemplateVariableSynchronizer(str(tmp_path))
         template_vars = {"USER_NAME": "TestUser"}
 
-        updated = synchronizer._update_file_template_variables(test_file, template_vars)
+        synchronizer._update_file_template_variables(test_file, template_vars)
 
         content = test_file.read_text()
         assert content.count("TestUser") == 2

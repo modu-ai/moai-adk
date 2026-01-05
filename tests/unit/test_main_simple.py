@@ -1,10 +1,10 @@
 """Minimal coverage tests for __main__.py."""
 
-import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from click.testing import CliRunner
 
-from moai_adk.__main__ import cli, main, show_logo, get_console
+from moai_adk.__main__ import cli, get_console, main, show_logo
 
 
 def test_get_console_returns_console():

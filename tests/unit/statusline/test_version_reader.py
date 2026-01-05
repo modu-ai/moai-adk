@@ -2,18 +2,17 @@
 
 import asyncio
 import sys
-from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 import pytest
 
 from moai_adk.statusline.version_reader import (
-    VersionSource,
     CacheEntry,
     VersionConfig,
     VersionReader,
     VersionReadError,
+    VersionSource,
 )
 
 
@@ -73,7 +72,7 @@ class TestVersionReader:
     @pytest.mark.skipif(sys.version_info < (3, 12), reason="Path mock issues on Python < 3.12")
     def test_init_custom_working_dir(self):
         """Test VersionReader initialization with custom working dir."""
-        with patch("pathlib.Path") as mock_path:
+        with patch("pathlib.Path"):
             reader = VersionReader(working_dir="/custom/dir")
             assert reader._config_path is not None
 

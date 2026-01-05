@@ -5,16 +5,14 @@ These tests verify that the module can be imported and basic classes
 can be instantiated without errors.
 """
 
-import pytest
 from datetime import datetime
-from unittest.mock import MagicMock, patch
 
 from moai_adk.core.comprehensive_monitoring_system import (
-    MetricType,
+    Alert,
     AlertSeverity,
     HealthStatus,
     MetricData,
-    Alert,
+    MetricType,
 )
 
 

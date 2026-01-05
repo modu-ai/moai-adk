@@ -135,7 +135,7 @@ class TestTimeoutContext:
 
     def test_timeout_context_cleanup(self):
         """Test timeout_context properly cancels on exit."""
-        with patch.object(CrossPlatformTimeout, "cancel") as mock_cancel:
+        with patch.object(CrossPlatformTimeout, "cancel"):
             with timeout_context(5):
                 pass
             # Cancel should be called on exit
@@ -143,5 +143,5 @@ class TestTimeoutContext:
     def test_timeout_context_negative_timeout(self):
         """Test timeout_context with negative timeout."""
         # Should not timeout and complete normally
-        with timeout_context(-1) as ctx:
+        with timeout_context(-1):
             pass

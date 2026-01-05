@@ -8,15 +8,11 @@ atomic file operations, and template variable handling.
 import json
 import os
 import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 
 from moai_adk.core.context_manager import (
-    PARENT_DIR_MISSING_MSG,
-    PROJECT_ROOT_SAFETY_MSG,
-    TEMPLATE_VAR_PATTERN,
     ContextManager,
     load_phase_result,
     save_phase_result,
@@ -32,7 +28,7 @@ class TestIsPathWithinRoot:
     def test_path_within_root(self):
         """Test path that is within project root."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            file_path = os.path.join(tmpdir, "subdir", "file.txt")
+            os.path.join(tmpdir, "subdir", "file.txt")
             # Don't need file to exist for this test
             from moai_adk.core.context_manager import _is_path_within_root
 
@@ -129,8 +125,8 @@ class TestValidateAndConvertPath:
             result = validate_and_convert_path("./subdir/../subdir", tmpdir)
 
             assert os.path.isabs(result)
-            assert not ".." in result
-            assert not "." in result.split("/")[-1]
+            assert ".." not in result
+            assert "." not in result.split("/")[-1]
 
 
 class TestSavePhaseResult:
@@ -181,7 +177,7 @@ class TestSavePhaseResult:
             data = {"phase": "test"}
 
             # Mock os.replace to verify atomic behavior
-            with patch("moai_adk.core.context_manager.os.replace") as mock_replace:
+            with patch("moai_adk.core.context_manager.os.replace"):
                 with patch("moai_adk.core.context_manager.tempfile.mkstemp") as mock_mkstemp:
                     mock_mkstemp.return_value = (999, "/tmp/test.tmp")
                     with patch("builtins.open", create=True):
@@ -402,7 +398,7 @@ class TestContextManager:
     def test_init_creates_state_dir(self):
         """Test initialization creates state directory."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            cm = ContextManager(tmpdir)
+            ContextManager(tmpdir)
 
             state_dir = os.path.join(tmpdir, ".moai", "memory", "command-state")
             assert os.path.exists(state_dir)
@@ -482,7 +478,7 @@ class TestContextManager:
             assert not os.path.exists(state_path)
 
             # Initialize ContextManager
-            cm = ContextManager(tmpdir)
+            ContextManager(tmpdir)
 
             # Directory should now exist
             assert os.path.exists(state_path)
@@ -534,7 +530,7 @@ class TestEdgeCases:
 
             # Should handle gracefully
             try:
-                result = validate_and_convert_path(long_path, tmpdir)
+                validate_and_convert_path(long_path, tmpdir)
                 # May fail with parent not found, but shouldn't crash
             except FileNotFoundError:
                 pass
@@ -551,7 +547,7 @@ class TestEdgeCases:
 
                     # Try to use symlink - should be blocked or handled safely
                     # The realpath check should catch this
-                    result = validate_and_convert_path("link", tmpdir)
+                    validate_and_convert_path("link", tmpdir)
                     # Result should resolve to outside path, but validation checks it
                 except (OSError, ValueError):
                     # Either operation not supported or path validation caught it

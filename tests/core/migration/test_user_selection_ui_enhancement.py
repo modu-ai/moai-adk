@@ -4,9 +4,8 @@ This test module covers the improvement from manual number input to checkbox/spa
 for custom file restoration, making the UI more user-friendly and accessible.
 """
 
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 from dataclasses import dataclass
+from unittest.mock import MagicMock, patch
 
 from moai_adk.core.migration.user_selection_ui import create_user_selection_ui
 

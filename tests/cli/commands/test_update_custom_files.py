@@ -12,9 +12,7 @@ Test Coverage Strategy:
 4. Integration into template sync workflow
 """
 
-from unittest.mock import patch
 
-import pytest
 
 
 class TestDetectCustomCommands:

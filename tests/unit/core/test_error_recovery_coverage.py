@@ -6,28 +6,28 @@ Focuses on: Error detection, recovery strategies, rollback, state management.
 Tests use @patch for mocking subprocess, file operations, and external services.
 """
 
-import pytest
 import tempfile
-import json
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from unittest.mock import MagicMock, patch, AsyncMock, call
 import threading
+from datetime import datetime, timezone
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from moai_adk.core.error_recovery_system import (
-    ErrorSeverity,
-    ErrorCategory,
-    FailureMode,
-    RecoveryStrategy,
+    AdvancedRecoveryAction,
     ConsistencyLevel,
-    RecoveryStatus,
+    ErrorCategory,
+    ErrorRecoverySystem,
     ErrorReport,
+    ErrorSeverity,
+    FailureEvent,
+    FailureMode,
     RecoveryAction,
     RecoveryResult,
-    FailureEvent,
-    AdvancedRecoveryAction,
+    RecoveryStatus,
+    RecoveryStrategy,
     SystemSnapshot,
-    ErrorRecoverySystem,
 )
 
 
@@ -632,8 +632,8 @@ class TestErrorRecoverySystem:
     def test_update_error_stats(self, recovery_system):
         """Test error statistics update."""
         # Arrange
-        error1 = ValueError("Error")
-        error2 = RuntimeError("Error")
+        ValueError("Error")
+        RuntimeError("Error")
         report1 = ErrorReport(
             id="err1",
             timestamp=datetime.now(timezone.utc),
