@@ -518,141 +518,91 @@ END: Implementation complete. Next steps provided based on user selection
 
 ### Sequential Phase Execution Pattern
 
-Command executes phases sequentially with decision checkpoints between each phase. Below is the implementation pseudocode showing tool calls and decision logic:
+Command executes phases sequentially with decision checkpoints between each phase. Below is the implementation workflow describing tool calls and decision logic:
 
-**Phase 1: SPEC Analysis & Planning**
+**Phase 1: SPEC Analysis and Planning**
 
-```python
-# Phase 1: Analyze SPEC and create execution plan
-plan_result = Task(
-    subagent_type="manager-strategy",
-    instructions="""
-    Analyze the provided SPEC ID and create detailed execution strategy:
-    - Extract requirements and success criteria
-    - Identify implementation phases and tasks
-    - Determine tech stack and dependencies
-    - Estimate complexity and effort
-    - Present step-by-step execution strategy
-    Return: Detailed execution plan for user review
-    """
-)
+Phase 1 Execution Steps:
+- Invoke the manager-strategy subagent to analyze the provided SPEC ID
+- The subagent performs the following analysis:
+  - Extract requirements and success criteria from the SPEC
+  - Identify implementation phases and individual tasks
+  - Determine the tech stack and dependencies required
+  - Estimate complexity and effort for the implementation
+  - Present a step-by-step execution strategy
+- The subagent returns a detailed execution plan for user review
 
-# User approval checkpoint [HARD]
-approval = AskUserQuestion({
-    "question": "Does this execution plan look good?",
-    "header": "Plan Review",
-    "multiSelect": false,
-    "options": [
-        {"label": "Proceed with plan", "description": "Start implementation"},
-        {"label": "Modify plan", "description": "Request changes"},
-        {"label": "Postpone", "description": "Stop here, continue later"}
-    ]
-})
-
-if approval != "Proceed with plan":
-    return  # Exit execution
-```
+User Approval Checkpoint (HARD requirement):
+- Present the execution plan to the user using AskUserQuestion
+- Question: "Does this execution plan look good?"
+- Header: "Plan Review"
+- Provide three options:
+  - "Proceed with plan" - Start implementation
+  - "Modify plan" - Request changes to the plan
+  - "Postpone" - Stop here and continue later
+- If user does not select "Proceed with plan": Exit execution and await further instructions
 
 **Phase 2: TDD Implementation**
 
-```python
-# Phase 2: Execute TDD implementation
-tdd_result = Task(
-    subagent_type="manager-tdd",
-    context=plan_result,  # Pass planning context forward
-    instructions="""
-    Execute complete TDD implementation for the approved plan:
-    - Write failing tests (RED phase)
-    - Implement minimal code (GREEN phase)
-    - Refactor for quality (REFACTOR phase)
-    - Ensure test coverage >= 85%
-    - Verify all tests passing
-    Return: Implementation files with passing test suite and coverage metrics
-    """
-)
-```
+Phase 2 Execution Steps:
+- Invoke the manager-tdd subagent with context from Phase 1 plan result
+- The subagent executes complete TDD implementation for the approved plan:
+  - Write failing tests first (RED phase)
+  - Implement minimal code to pass tests (GREEN phase)
+  - Refactor for quality improvements (REFACTOR phase)
+  - Ensure test coverage meets or exceeds 85%
+  - Verify all tests are passing
+- The subagent returns implementation files with passing test suite and coverage metrics
 
 **Phase 2.5: Quality Validation**
 
-```python
-# Phase 2.5: Validate implementation quality
-quality_result = Task(
-    subagent_type="manager-quality",
-    context={plan: plan_result, implementation: tdd_result},
-    instructions="""
-    Validate implementation against TRUST 5 principles:
-    - T: Test-first (tests exist and pass)
-    - R: Readable (code is clear and documented)
-    - U: Unified (follows project patterns)
-    - S: Secured (no security vulnerabilities)
-    - T: Trackable (changes are logged and traceable)
-    Also verify: Test coverage >= 85%
-    Return: Quality assessment (PASS/WARNING/CRITICAL) with specific findings
-    """
-)
+Phase 2.5 Execution Steps:
+- Invoke the manager-quality subagent with context containing both plan and implementation results
+- The subagent validates implementation against TRUST 5 principles:
+  - T (Test-first): Verify tests exist and pass
+  - R (Readable): Verify code is clear and documented
+  - U (Unified): Verify implementation follows project patterns
+  - S (Secured): Verify no security vulnerabilities present
+  - T (Trackable): Verify changes are logged and traceable
+- Additionally verify test coverage meets or exceeds 85%
+- The subagent returns quality assessment with status (PASS, WARNING, or CRITICAL) and specific findings
 
-# Quality gate decision [HARD]
-if quality_result.status not in ["PASS", "WARNING"]:
-    # Report issues and exit
-    AskUserQuestion({
-        "question": "Quality validation failed. Review issues and try again?",
-        "options": [{"label": "Return to implementation", ...}]
-    })
-    return
-```
+Quality Gate Decision (HARD requirement):
+- If quality status is CRITICAL (not PASS or WARNING):
+  - Present quality issues to user using AskUserQuestion
+  - Question: "Quality validation failed. Review issues and try again?"
+  - Provide option to return to implementation phase
+  - Exit current execution flow
 
 **Phase 3: Git Operations**
 
-```python
-# Phase 3: Create commits with full context awareness
-git_result = Task(
-    subagent_type="manager-git",
-    context={
-        plan: plan_result,
-        implementation: tdd_result,
-        quality: quality_result
-    },
-    instructions="""
-    Create commits for SPEC implementation:
-    - Create feature branch: feature/SPEC-[ID]
-    - Stage all relevant files (implementation + tests)
-    - Create meaningful commits using conventional commit format
-      (The complete context from planning, implementation, and quality review
-       ensures commits are semantically meaningful)
-    - Verify commits created successfully
-    Return: Commit summary with SHA references and branch name
-    """
-)
-```
+Phase 3 Execution Steps:
+- Invoke the manager-git subagent with full context from all previous phases (plan, implementation, quality)
+- The subagent creates commits for SPEC implementation:
+  - Create feature branch with naming format feature/SPEC-[ID]
+  - Stage all relevant files including implementation and tests
+  - Create meaningful commits using conventional commit format
+  - The complete context from planning, implementation, and quality review ensures commits are semantically meaningful
+  - Verify commits were created successfully
+- The subagent returns commit summary with SHA references and branch name
 
-**Phase 4: Completion & Guidance**
+**Phase 4: Completion and Guidance**
 
-```python
-# Phase 4: User guidance for next steps
-next_steps = AskUserQuestion({
-    "question": "Implementation complete. What would you like to do next?",
-    "header": "Next Steps",
-    "multiSelect": false,
-    "options": [
-        {"label": "Sync Documentation",
-         "description": "Execute /moai:3-sync to synchronize documentation"},
-        {"label": "Implement Another Feature",
-         "description": "Execute /moai:1-plan to define another SPEC"},
-        {"label": "Review Results",
-         "description": "Examine the implementation and test coverage"},
-        {"label": "Finish",
-         "description": "Session complete"}
-    ]
-})
+Phase 4 Execution Steps:
+- Present next steps to user using AskUserQuestion
+- Question: "Implementation complete. What would you like to do next?"
+- Header: "Next Steps"
+- Provide four options:
+  - "Sync Documentation" - Execute /moai:3-sync to synchronize documentation
+  - "Implement Another Feature" - Execute /moai:1-plan to define another SPEC
+  - "Review Results" - Examine the implementation and test coverage
+  - "Finish" - Session complete
 
-# Return completion summary
-return {
-    "status": "COMPLETE",
-    "branch": git_result.branch_name,
-    "commits": git_result.commit_count,
-    "next_action": next_steps
-}
-```
+Completion Summary:
+- Return final status indicating COMPLETE
+- Include the branch name from git operations
+- Include the commit count from git operations
+- Include the user's selected next action
 
 ### Context Flow & Propagation [HARD]
 

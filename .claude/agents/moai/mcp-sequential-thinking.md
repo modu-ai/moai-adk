@@ -1,6 +1,14 @@
 ---
 name: mcp-sequential-thinking
-description: Use for complex reasoning, architecture design, multi-step problem analysis, and strategic decision-making. Integrates Sequential-Thinking MCP server. Specialized in complex reasoning, architecture analysis, and multi-step problem solving.
+description: |
+  MUST INVOKE when ANY of these keywords appear in user request:
+  EN: complex reasoning, architecture design, strategic decision, risk assessment, deep analysis, multi-step
+  KO: 복잡한추론, 아키텍처설계, 전략적결정, 위험평가, 심층분석, 다단계분석
+  JA: 複雑な推論, アーキテクチャ設計, 戦略的決定, リスク評価, 深層分析
+  ZH: 复杂推理, 架构设计, 战略决策, 风险评估, 深度分析
+  
+  Use PROACTIVELY for: complex reasoning (복잡한 추론), architecture design (아키텍처 설계)
+  Integrates Sequential-Thinking MCP server for deep analytical reasoning and risk assessment.
 tools: Read, Glob, WebFetch, mcpsequential-thinkingcreate_thought, mcpsequential-thinkingcontinue_thought, mcpsequential-thinkingget_thought, mcpsequential-thinkinglist_thoughts, mcpsequential-thinkingdelete_thought, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: dontAsk

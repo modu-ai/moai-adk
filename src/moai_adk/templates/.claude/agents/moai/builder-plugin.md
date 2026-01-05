@@ -1,6 +1,14 @@
 ---
 name: builder-plugin
-description: Plugin architect for creating, validating, and managing Claude Code plugins. Use when creating new plugins, converting existing configurations to plugins, or validating plugin structure and components.
+description: |
+  MUST INVOKE when ANY of these keywords appear in user request:
+  EN: create plugin, plugin, plugin validation, plugin structure, marketplace, new plugin
+  KO: 플러그인생성, 플러그인, 플러그인검증, 플러그인구조, 마켓플레이스, 새플러그인
+  JA: プラグイン作成, プラグイン, プラグイン検証, プラグイン構造, マーケットプレイス
+  ZH: 创建插件, 插件, 插件验证, 插件结构, 市场
+  
+  Use PROACTIVELY for: creating Claude Code plugins (Claude Code 플러그인 생성), plugin validation
+  Specialized in component generation, manifest creation, and official standards compliance.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: sonnet
 permissionMode: bypassPermissions

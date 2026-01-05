@@ -1,17 +1,17 @@
 ---
 name: moai-workflow-testing
 description: Comprehensive development workflow specialist combining TDD, debugging, performance optimization, code review, and quality assurance into unified development workflows
-version: 1.0.0
+version: 2.0.0
 category: workflow
 tags:
- - workflow
- - testing
- - debugging
- - performance
- - quality
- - tdd
- - review
-updated: 2025-11-30
+  - workflow
+  - testing
+  - debugging
+  - performance
+  - quality
+  - tdd
+  - review
+updated: 2025-12-30
 status: active
 author: MoAI-ADK Team
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob
@@ -19,438 +19,240 @@ allowed-tools: Read, Write, Edit, Bash, Grep, Glob
 
 # Development Workflow Specialist
 
-## Quick Reference (30 seconds)
+## Quick Reference
 
-Unified Development Workflow - Comprehensive development lifecycle management combining TDD, AI-powered debugging, performance optimization, automated code review, and quality assurance into integrated workflows.
+Unified Development Workflow provides comprehensive development lifecycle management combining TDD, AI-powered debugging, performance optimization, automated code review, and quality assurance into integrated workflows.
 
 Core Capabilities:
-- Test-Driven Development: RED-GREEN-REFACTOR cycle with Context7 patterns
-- AI-Powered Debugging: Intelligent error analysis and Context7 best practices
-- Performance Optimization: Real-time profiling and bottleneck detection
-- Automated Code Review: TRUST 5 validation with AI quality analysis
-- Quality Assurance: Comprehensive testing and CI/CD integration
-- Workflow Orchestration: End-to-end development process automation
+- Test-Driven Development: RED-GREEN-REFACTOR cycle with best practice patterns
+- AI-Powered Debugging: Intelligent error analysis and solution recommendations
+- Performance Optimization: Profiling and bottleneck detection guidance
+- Automated Code Review: TRUST 5 validation framework for quality analysis
+- Quality Assurance: Comprehensive testing and CI/CD integration patterns
+- Workflow Orchestration: End-to-end development process guidance
 
-Unified Development Workflow:
-```
-Debug → Refactor → Optimize → Review → Test → Profile
- ↓ ↓ ↓ ↓ ↓ ↓
-AI- AI- AI- AI- AI- AI-
-Powered Powered Powered Powered Powered Powered
-```
+Workflow Progression: Debug stage leads to Refactor stage, which leads to Optimize stage, then Review stage, followed by Test stage, and finally Profile stage. Each stage benefits from AI-powered analysis and recommendations.
 
 When to Use:
 - Complete development lifecycle management
-- Enterprise-grade quality assurance
+- Enterprise-grade quality assurance implementation
 - Multi-language development projects
 - Performance-critical applications
 - Technical debt reduction initiatives
 - Automated testing and CI/CD integration
 
-Quick Start:
-```python
-# Initialize comprehensive workflow
-from moai_workflow_testing import (
- AIProfiler, TDDManager, AutomatedCodeReviewer
-)
-
-# Start complete development workflow
-workflow = DevelopmentWorkflow(
- project_path="/project/src",
- context7_client=context7
-)
-
-# Run full workflow cycle
-results = await workflow.execute_complete_cycle()
-```
-
 ---
 
-## Implementation Guide (5 minutes)
+## Implementation Guide
 
 ### Core Concepts
 
 Unified Development Philosophy:
 - Integrates all aspects of development into cohesive workflow
 - AI-powered assistance for complex decision-making
-- Context7 integration for industry best practices
+- Industry best practices integration for optimal patterns
 - Continuous feedback loops between workflow stages
 - Automated quality gates and validation
 
 Workflow Components:
-1. AI-Powered Debugging: Intelligent error classification and Context7-based solutions
-2. Smart Refactoring: Technical debt analysis with safe automated transformations
-3. Performance Optimization: Real-time monitoring with bottleneck detection
-4. TDD with Context7: Enhanced test generation and RED-GREEN-REFACTOR cycles
-5. Automated Code Review: TRUST 5 framework validation with AI analysis
 
-### Basic Implementation
+Component 1 - AI-Powered Debugging:
+The debugging component provides intelligent error classification and solution recommendations. When an error occurs, the system analyzes the error type, stack trace, and surrounding context to identify root causes and suggest appropriate fixes. The debugger references current best practices and common error resolution patterns.
 
-```python
-from moai_workflow_testing import (
- AIDebugger, AIRefactorer, PerformanceProfiler,
- TDDManager, AutomatedCodeReviewer
-)
+Component 2 - Smart Refactoring:
+The refactoring component performs technical debt analysis and identifies safe automated transformation opportunities. It evaluates code complexity, duplication, and maintainability metrics to recommend specific refactoring actions with risk assessments.
 
-# 1. AI-Powered Debugging
-debugger = AIDebugger(context7_client=context7)
+Component 3 - Performance Optimization:
+The performance component provides real-time monitoring guidance and bottleneck detection. It helps identify CPU-intensive operations, memory leaks, and I/O bottlenecks, then recommends specific optimization strategies based on the identified issues.
 
-try:
- result = some_risky_operation()
-except Exception as e:
- analysis = await debugger.debug_with_context7_patterns(
- e, {'file': __file__, 'function': 'main'}, '/project/src'
- )
- print(f"Found {len(analysis.solutions)} solutions")
+Component 4 - TDD Cycle Management:
+The TDD component guides the RED-GREEN-REFACTOR cycle with enhanced test generation. It helps write failing tests first, implement minimal code to pass, then refactor while maintaining test coverage.
 
-# 2. Smart Refactoring
-refactorer = AIRefactorer(context7_client=context7)
-refactor_plan = await refactorer.refactor_with_intelligence('/project/src')
-print(f"Found {len(refactor_plan.opportunities)} refactoring opportunities")
+Component 5 - Automated Code Review:
+The code review component applies TRUST 5 framework validation with AI-powered quality analysis. It evaluates code against five trust dimensions and provides actionable improvement recommendations.
 
-# 3. Performance Optimization
-profiler = PerformanceProfiler(context7_client=context7)
-profiler.start_profiling(['cpu', 'memory', 'line'])
+### TRUST 5 Framework
 
-# Run code to profile
-result = expensive_function()
+The TRUST 5 framework is a conceptual quality assessment model with five dimensions. This framework provides guidance for evaluating code quality, not an implemented module.
 
-profile_results = profiler.stop_profiling()
-bottlenecks = await profiler.detect_bottlenecks(profile_results)
+Dimension 1 - Testability:
+Evaluate whether the code can be effectively tested. Consider: Are functions pure and deterministic? Are dependencies injectable? Is the code modular enough for unit testing? Scoring ranges from low testability requiring significant refactoring to high testability with excellent test coverage support.
 
-# 4. TDD with Context7
-tdd_manager = TDDManager('/project/src', context7_client=context7)
+Dimension 2 - Readability:
+Assess how easily the code can be understood by others. Consider: Are variable and function names descriptive? Is the code structure logical? Are complex operations documented? Scoring evaluates naming conventions, code organization, and documentation quality.
 
-test_spec = TestSpecification(
- name="test_user_authentication",
- description="Test user authentication with valid credentials",
- test_type=TestType.UNIT,
- requirements=["Valid email and password required"],
- acceptance_criteria=["Valid credentials return token"]
-)
+Dimension 3 - Understandability:
+Evaluate the conceptual clarity of the implementation. Consider: Is the business logic clearly expressed? Are abstractions appropriate? Can a new developer understand the code quickly? This goes beyond surface readability to assess architectural clarity.
 
-cycle_results = await tdd_manager.run_full_tdd_cycle(
- specification=test_spec,
- target_function="authenticate_user"
-)
+Dimension 4 - Security:
+Assess security posture and vulnerability exposure. Consider: Are inputs validated? Are secrets properly managed? Are common vulnerability patterns avoided (injection, XSS, CSRF)? Scoring evaluates adherence to security best practices.
 
-# 5. Automated Code Review
-reviewer = AutomatedCodeReviewer(context7_client=context7)
-review_report = await reviewer.review_codebase('/project/src')
+Dimension 5 - Transparency:
+Evaluate operational visibility and debuggability. Consider: Is error handling comprehensive? Are logs meaningful and structured? Can issues be traced through the system? Scoring assesses observability and troubleshooting capabilities.
 
-print(f"Overall TRUST Score: {review_report.overall_trust_score:.2f}")
-print(f"Critical Issues: {len(review_report.critical_issues)}")
-```
+Overall TRUST Score Calculation:
+The overall TRUST score combines all five dimensions using weighted averaging. Critical issues in any dimension can override the average, ensuring security or testability problems are not masked by high scores elsewhere. A passing score typically requires minimum thresholds in each dimension plus an acceptable weighted average.
+
+### Basic Workflow Implementation
+
+Debugging Workflow Process:
+- Step 1: Capture the error with full context including stack trace, environment, and recent code changes
+- Step 2: Classify the error type (syntax, runtime, logic, integration, or performance)
+- Step 3: Analyze the error pattern against known issue databases and best practices
+- Step 4: Generate solution candidates ranked by likelihood of success
+- Step 5: Apply the recommended fix and verify resolution
+- Step 6: Document the issue and solution for future reference
+
+Refactoring Workflow Process:
+- Step 1: Analyze the target codebase for code smells and technical debt indicators
+- Step 2: Calculate complexity metrics including cyclomatic complexity and coupling
+- Step 3: Identify refactoring opportunities with associated risk levels
+- Step 4: Generate a refactoring plan with prioritized actions
+- Step 5: Apply refactoring transformations in safe increments
+- Step 6: Verify behavior preservation through test execution
+
+Performance Optimization Process:
+- Step 1: Configure profiling for target metrics (CPU, memory, I/O, network)
+- Step 2: Execute profiling runs under representative load conditions
+- Step 3: Analyze profiling results to identify bottlenecks
+- Step 4: Generate optimization recommendations with expected impact estimates
+- Step 5: Apply optimizations in isolation to measure individual effects
+- Step 6: Validate overall performance improvement
+
+TDD Cycle Process:
+- RED Phase: Write a failing test that defines the desired behavior. The test should clearly express what the code should do, not how it should do it. Run the test to confirm it fails for the expected reason.
+- GREEN Phase: Write the minimum code necessary to make the test pass. Avoid over-engineering or premature optimization. Focus solely on satisfying the test requirements.
+- REFACTOR Phase: Improve the code structure while keeping all tests passing. Apply design patterns, extract common functionality, and improve naming. Run tests after each refactoring step.
+
+Code Review Process:
+- Step 1: Scan the codebase to identify files requiring review
+- Step 2: Apply TRUST 5 framework analysis to each file
+- Step 3: Identify critical issues requiring immediate attention
+- Step 4: Calculate per-file and aggregate quality scores
+- Step 5: Generate actionable recommendations with priority rankings
+- Step 6: Create a summary report with improvement roadmap
 
 ### Common Use Cases
 
 Enterprise Development Workflow:
-```python
-# Complete enterprise workflow integration
-workflow = EnterpriseWorkflow(
- project_path="/enterprise/app",
- context7_client=context7,
- quality_gates={
- 'min_trust_score': 0.85,
- 'max_critical_issues': 0,
- 'required_coverage': 0.80
- }
-)
-
-# Execute workflow with quality validation
-results = await workflow.execute_with_validation()
-if results.quality_passed:
- print(" Ready for deployment")
-else:
- print(" Quality gates not met")
- workflow.show_quality_issues()
-```
+For enterprise applications, the workflow integrates quality gates at each stage. Before deployment, the code must pass minimum TRUST score thresholds, have zero critical issues identified, and meet required test coverage percentages. The quality gates configuration specifies minimum trust scores (typically 0.85), maximum allowed critical issues (typically zero), and required coverage levels (typically 80 percent).
 
 Performance-Critical Applications:
-```python
-# Performance-focused workflow
-perf_workflow = PerformanceWorkflow(
- project_path="/performance_app",
- context7_client=context7,
- performance_thresholds={
- 'max_response_time': 100, # ms
- 'max_memory_usage': 512, # MB
- 'min_throughput': 1000 # requests/second
- }
-)
-
-# Profile and optimize
-optimization_results = await perf_workflow.optimize_performance()
-print(f"Performance improvement: {optimization_results.improvement_percentage:.1f}%")
-```
+For performance-sensitive systems, the workflow emphasizes profiling and optimization stages. Performance thresholds define maximum acceptable response times, memory usage limits, and minimum throughput requirements. The workflow provides percentage improvement tracking and specific optimization recommendations.
 
 ---
 
-## Advanced Features (10+ minutes)
+## Advanced Features
 
 ### Workflow Integration Patterns
 
 Continuous Integration Integration:
-```python
-# CI/CD pipeline integration
-class CIWorkflowIntegrator:
- def __init__(self, workflow_system, ci_config):
- self.workflow = workflow_system
- self.config = ci_config
+The workflow integrates with CI/CD pipelines through a multi-stage validation process. The CI pipeline executes the following stages sequentially:
 
- async def run_ci_pipeline(self, commit_hash: str):
- """Run complete CI pipeline with workflow validation."""
+Stage 1 - Code Quality Validation: Run the code review component and verify results meet quality standards. If the quality check fails, the pipeline terminates with a quality failure report.
 
- # 1. Code quality validation
- review_results = await self.workflow.run_code_review()
- if not self._meets_quality_standards(review_results):
- return self._create_failure_report("Code quality check failed")
+Stage 2 - Testing Validation: Execute the full test suite including unit, integration, and end-to-end tests. If any tests fail, the pipeline terminates with a test failure report.
 
- # 2. Testing validation
- test_results = await self.workflow.run_full_test_suite()
- if not test_results.all_tests_passed:
- return self._create_failure_report("Tests failed")
+Stage 3 - Performance Validation: Run performance tests and compare results against defined thresholds. If performance standards are not met, the pipeline terminates with a performance failure report.
 
- # 3. Performance validation
- perf_results = await self.workflow.run_performance_tests()
- if not self._meets_performance_standards(perf_results):
- return self._create_failure_report("Performance standards not met")
+Stage 4 - Security Validation: Execute security analysis including static analysis and dependency scanning. If critical vulnerabilities are found, the pipeline terminates with a security failure report.
 
- # 4. Security validation
- security_results = await self.workflow.run_security_analysis()
- if security_results.critical_vulnerabilities:
- return self._create_failure_report("Security issues found")
+Upon passing all stages, the pipeline generates a success report and proceeds to deployment.
 
- return self._create_success_report(commit_hash)
-```
+### Quality Gate Configuration
 
-### AI-Enhanced Decision Making
+Quality gates define the criteria that must be met at each workflow stage. Gates can be configured with different strictness levels:
 
-Context7-Powered Workflow Optimization:
-```python
-class AIWorkflowOptimizer:
- """AI-powered workflow optimization using Context7 patterns."""
+Strict Mode: All quality dimensions must meet or exceed thresholds. Any critical issue blocks progression. Full test coverage requirements apply.
 
- def __init__(self, context7_client):
- self.context7 = context7_client
+Standard Mode: Average quality score must meet threshold. Critical issues block progression, but warnings are allowed. Standard coverage requirements apply.
 
- async def optimize_workflow_execution(
- self, project_context: Dict
- ) -> Dict[str, Any]:
- """Optimize workflow execution based on project characteristics."""
+Lenient Mode: Only critical blocking issues prevent progression. Quality scores generate warnings but do not block. Reduced coverage requirements apply.
 
- # Get Context7 workflow patterns
- patterns = await self.context7.get_library_docs(
- context7_library_id="/workflow/devops",
- topic="optimal development workflow patterns 2025",
- tokens=4000
- )
+Gate configuration includes threshold values for each TRUST dimension, maximum allowed issues by severity, required test coverage levels, and performance benchmark targets.
 
- # Analyze project characteristics
- project_analysis = self._analyze_project_context(project_context)
+### Multi-Language Support
 
- # Generate optimized workflow plan
- optimized_plan = await self._generate_optimized_workflow(
- project_analysis, patterns
- )
+The workflow supports development across multiple programming languages. Language-specific adaptations include:
 
- return optimized_plan
-```
+Python Projects: Integration with pytest for testing, pylint and flake8 for static analysis, bandit for security scanning, and cProfile or memory_profiler for performance analysis.
 
-### Advanced Quality Assurance
+JavaScript/TypeScript Projects: Integration with Jest or Vitest for testing, ESLint for static analysis, npm audit for security scanning, and Chrome DevTools or lighthouse for performance analysis.
 
-Comprehensive Quality Gates:
-```python
-class QualityGateManager:
- """Manages comprehensive quality gates across workflow stages."""
+Go Projects: Integration with go test for testing, golint and staticcheck for static analysis, gosec for security scanning, and pprof for performance analysis.
 
- def __init__(self, quality_config: Dict[str, Any]):
- self.gates = self._initialize_quality_gates(quality_config)
-
- async def validate_workflow_stage(
- self, stage: str, artifacts: Dict[str, Any]
- ) -> Dict[str, Any]:
- """Validate quality gates for specific workflow stage."""
-
- gate_config = self.gates.get(stage, {})
- validation_results = {}
-
- # Run stage-specific validations
- for gate_name, gate_config in gate_config.items():
- result = await self._run_quality_gate(
- gate_name, artifacts, gate_config
- )
- validation_results[gate_name] = result
-
- # Calculate overall gate status
- gate_passed = all(
- result['status'] == 'passed'
- for result in validation_results.values()
- )
-
- return {
- 'stage': stage,
- 'passed': gate_passed,
- 'validations': validation_results,
- 'recommendations': self._generate_recommendations(validation_results)
- }
-```
+Rust Projects: Integration with cargo test for testing, clippy for static analysis, cargo audit for security scanning, and flamegraph for performance analysis.
 
 ---
 
 ## Works Well With
 
-- moai-domain-backend - Backend development workflows and API testing
-- moai-domain-frontend - Frontend development workflows and UI testing
-- moai-foundation-core - Core SPEC system and workflow management
-- moai-platform-supabase - Supabase testing patterns
-- moai-platform-vercel - Vercel deployment testing
-- moai-platform-firebase-auth - Firebase authentication testing
-- moai-workflow-project - Project management and documentation workflows
+- moai-domain-backend: Backend development workflows and API testing patterns
+- moai-domain-frontend: Frontend development workflows and UI testing strategies
+- moai-foundation-core: Core SPEC system and workflow management integration
+- moai-platform-supabase: Supabase-specific testing patterns and database testing
+- moai-platform-vercel: Vercel deployment testing and edge function validation
+- moai-platform-firebase-auth: Firebase authentication testing patterns
+- moai-workflow-project: Project management and documentation workflows
 
 ---
 
-## Module References
+## Technology Stack Reference
 
-Core Implementation Modules:
-- [`modules/ai-debugging.md`](./modules/ai-debugging.md) - AI-powered debugging with Context7 integration
-- [`modules/smart-refactoring.md`](./modules/smart-refactoring.md) - Technical debt analysis and safe refactoring
-- [`modules/performance-optimization.md`](./modules/performance-optimization.md) - Real-time profiling and bottleneck detection
-- [`modules/tdd-context7.md`](./modules/tdd-context7.md) - TDD cycles with Context7-enhanced test generation
-- [`modules/automated-code-review.md`](./modules/automated-code-review.md) - TRUST 5 validation with AI code review
+The workflow leverages industry-standard tools for each capability area:
 
----
-
-## Usage Examples
-
-### CLI Integration
-```bash
-# Run complete development workflow
-moai-workflow execute --project /project/src --mode full
-
-# Run specific workflow components
-moai-workflow debug --file app.py --error "AttributeError"
-moai-workflow refactor --directory src/ --max-risk medium
-moai-workflow profile --target function_name --types cpu,memory
-moai-workflow test --spec user_auth.spec --mode tdd
-moai-workflow review --project /project/src --trust-score-min 0.8
-
-# Continuous integration
-moai-workflow ci --commit abc123 --quality-gates strict
-```
-
-### Python API
-```python
-from moai_workflow_testing import (
- DevelopmentWorkflow, WorkflowConfig
-)
-
-# Configure workflow
-config = WorkflowConfig(
- enable_debugging=True,
- enable_refactoring=True,
- enable_profiling=True,
- enable_tdd=True,
- enable_code_review=True,
- context7_client=context7
-)
-
-# Initialize and run workflow
-workflow = DevelopmentWorkflow(
- project_path="/project/src",
- config=config
-)
-
-# Execute complete workflow
-results = await workflow.execute_complete_workflow()
-
-# Access results by stage
-print(f"Debugging solutions found: {len(results.debugging.solutions)}")
-print(f"Refactoring opportunities: {len(results.refactoring.opportunities)}")
-print(f"Performance bottlenecks: {len(results.profiling.bottlenecks)}")
-print(f"Test coverage: {results.tdd.coverage_percentage:.1f}%")
-print(f"Code review score: {results.code_review.trust_score:.2f}")
-```
-
----
-
-## Technology Stack
-
-Core Analysis Libraries:
-- cProfile: Python profiling and performance analysis
-- memory_profiler: Memory usage analysis and optimization
-- psutil: System resource monitoring
-- line_profiler: Line-by-line performance profiling
+Analysis Libraries:
+- cProfile provides Python profiling and performance analysis
+- memory_profiler enables memory usage analysis and optimization
+- psutil supports system resource monitoring
+- line_profiler offers line-by-line performance profiling
 
 Static Analysis Tools:
-- pylint: Comprehensive code analysis and quality checks
-- flake8: Style guide enforcement and error detection
-- bandit: Security vulnerability scanning
-- mypy: Static type checking and validation
+- pylint performs comprehensive code analysis and quality checks
+- flake8 enforces style guide compliance and error detection
+- bandit scans for security vulnerabilities
+- mypy validates static types
 
 Testing Frameworks:
-- pytest: Advanced testing framework with fixtures and plugins
-- unittest: Standard library testing framework
-- coverage: Code coverage measurement and analysis
-
-Context7 Integration:
-- MCP Protocol: Context7 message passing and communication
-- Dynamic Documentation: Real-time access to latest patterns and practices
-- AI-Powered Analysis: Enhanced error analysis and solution generation
+- pytest provides advanced testing with fixtures and plugins
+- unittest offers standard library testing capabilities
+- coverage measures code coverage and identifies untested paths
 
 ---
 
-## Integration Examples
+## Integration Patterns
 
 ### GitHub Actions Integration
-```yaml
-# .github/workflows/development-workflow.yml
-name: Development Workflow
 
-on: [push, pull_request]
+The workflow integrates with GitHub Actions through a multi-step job configuration:
 
-jobs:
- workflow:
- runs-on: ubuntu-latest
- steps:
- - uses: actions/checkout@v3
- - name: Setup Python
- uses: actions/setup-python@v4
- with:
- python-version: '3.11'
+Job Configuration Steps:
+- Step 1: Check out the repository using actions/checkout
+- Step 2: Set up the Python environment using actions/setup-python with the target Python version
+- Step 3: Install project dependencies including testing and analysis tools
+- Step 4: Execute the quality validation workflow with strict quality gates
+- Step 5: Run the test suite with coverage reporting
+- Step 6: Perform performance benchmarking against baseline metrics
+- Step 7: Execute security scanning and vulnerability detection
+- Step 8: Upload workflow results as job artifacts for review
 
- - name: Run Development Workflow
- run: |
- moai-workflow execute \
- --project . \
- --mode ci \
- --quality-gates strict \
- --output workflow-results.json
-
- - name: Upload Results
- uses: actions/upload-artifact@v3
- with:
- name: workflow-results
- path: workflow-results.json
-```
+The job can be configured to run on push and pull request events, with matrix testing across multiple Python versions if needed.
 
 ### Docker Integration
-```dockerfile
-# Dockerfile for workflow execution
-FROM python:3.11-slim
 
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+For containerized environments, the workflow executes within Docker containers:
 
-COPY . .
+Container Configuration:
+- Base the image on a Python slim variant for minimal size
+- Install project dependencies from requirements file
+- Copy project source code into the container
+- Configure entrypoint to execute the complete workflow sequence
+- Mount volumes for result output if persistent storage is needed
 
-# Run complete workflow on container start
-CMD ["moai-workflow", "execute", "--project", "/app", "--mode", "full"]
-```
+The containerized workflow ensures consistent execution environments across development, testing, and production systems.
 
 ---
 
 Status: Production Ready
-Last Updated: 2025-11-30
+Last Updated: 2025-12-30
 Maintained by: MoAI-ADK Development Workflow Team

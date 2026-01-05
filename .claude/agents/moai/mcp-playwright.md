@@ -1,6 +1,14 @@
 ---
 name: mcp-playwright
-description: Use for browser automation, web scraping, end-to-end testing, and web interaction. Integrates Playwright MCP server. Specialized in browser automation, UI testing, and screenshot-based validation.
+description: |
+  MUST INVOKE when ANY of these keywords appear in user request:
+  EN: browser automation, E2E testing, visual regression, web scraping, screenshot, UI testing
+  KO: 브라우저자동화, E2E테스트, 시각적회귀, 웹스크래핑, 스크린샷, UI테스트
+  JA: ブラウザ自動化, E2Eテスト, ビジュアルリグレッション, ウェブスクレイピング
+  ZH: 浏览器自动化, E2E测试, 视觉回归, 网页抓取, 截图
+  
+  Use PROACTIVELY for: browser automation (브라우저 자동화), E2E testing (E2E 테스트)
+  Integrates Playwright MCP server for browser automation, UI testing, and screenshot validation.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs, mcpplaywright_navigate, mcpplaywright_page_screenshot, mcpplaywright_click, mcpplaywright_fill, mcpplaywright_get_element_text, mcpplaywright_get_page_content, mcpplaywright_wait_for_element, mcpplaywright_close, mcpplaywright_go_back, mcpplaywright_go_forward, mcp__playwright_refresh
 model: inherit
 permissionMode: default

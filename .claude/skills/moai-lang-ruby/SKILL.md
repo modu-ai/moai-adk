@@ -106,7 +106,6 @@ YJIT (Production-Ready):
 - 15-20% performance improvement for Rails apps
 - Enable: `ruby --yjit` or `RUBY_YJIT_ENABLE=1`
 - Check status: `RubyVM::YJIT.enabled?`
-- Memory optimization with better code caching
 
 Pattern Matching (case/in):
 ```ruby
@@ -122,23 +121,10 @@ def process_response(response)
     puts "Unknown response"
   end
 end
-
-# Array pattern matching
-case [1, 2, 3]
-in [first, *rest]
-  puts "First: #{first}, Rest: #{rest}"
-end
-
-# Hash pattern matching with guard
-case { name: "John", age: 25 }
-in { name:, age: } if age >= 18
-  puts "Adult: #{name}"
-end
 ```
 
 Data Class (Immutable Structs):
 ```ruby
-# Define immutable data class
 User = Data.define(:name, :email) do
   def greeting
     "Hello, #{name}!"
@@ -148,30 +134,14 @@ end
 user = User.new(name: "John", email: "john@example.com")
 user.name         # => "John"
 user.greeting     # => "Hello, John!"
-# user.name = "Jane"  # => FrozenError
-
-# With default values
-Point = Data.define(:x, :y) do
-  def self.origin
-    new(x: 0, y: 0)
-  end
-end
 ```
 
 Endless Method Definition:
 ```ruby
 class Calculator
-  # Single expression methods
   def add(a, b) = a + b
   def multiply(a, b) = a * b
-
-  # With method chaining
-  def double(n) = n * 2
-  def square(n) = n ** 2
-
-  # Predicate methods
   def positive?(n) = n > 0
-  def even?(n) = n.even?
 end
 ```
 
@@ -187,8 +157,6 @@ gem "pg", "~> 1.5"
 gem "puma", ">= 6.0"
 gem "turbo-rails"
 gem "stimulus-rails"
-gem "jbuilder"
-gem "redis", ">= 5.0"
 gem "sidekiq", "~> 7.0"
 
 group :development, :test do
@@ -238,13 +206,11 @@ class Post < ApplicationRecord
   validates :content, presence: true
 
   scope :published, -> { where(published: true) }
-  scope :by_user, ->(user) { where(user: user) }
 end
 ```
 
 Service Objects:
 ```ruby
-# app/services/user_registration_service.rb
 class UserRegistrationService
   def initialize(user_params)
     @user_params = user_params
@@ -297,7 +263,6 @@ Turbo Frames:
   <article class="post">
     <h2><%= link_to post.title, post %></h2>
     <p><%= truncate(post.content, length: 200) %></p>
-    <%= link_to "Edit", edit_post_path(post) %>
   </article>
 <% end %>
 ```
@@ -329,8 +294,7 @@ Stimulus Controller:
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["input", "submit", "output"]
-  static values = { url: String }
+  static targets = ["input", "submit"]
 
   connect() {
     this.validate()
@@ -340,129 +304,10 @@ export default class extends Controller {
     const isValid = this.inputTargets.every(input => input.value.length > 0)
     this.submitTarget.disabled = !isValid
   }
-
-  async submit(event) {
-    event.preventDefault()
-
-    const response = await fetch(this.urlValue, {
-      method: "POST",
-      body: new FormData(this.element),
-      headers: { "Accept": "text/vnd.turbo-stream.html" }
-    })
-
-    if (response.ok) {
-      this.element.reset()
-    }
-  }
 }
 ```
 
-### RSpec Testing Patterns
-
-Model Specs:
-```ruby
-# spec/models/user_spec.rb
-RSpec.describe User, type: :model do
-  describe "associations" do
-    it { is_expected.to have_many(:posts).dependent(:destroy) }
-    it { is_expected.to have_one(:profile).dependent(:destroy) }
-  end
-
-  describe "validations" do
-    subject { build(:user) }
-
-    it { is_expected.to validate_presence_of(:email) }
-    it { is_expected.to validate_uniqueness_of(:email).case_insensitive }
-    it { is_expected.to validate_length_of(:name).is_at_least(2).is_at_most(100) }
-  end
-
-  describe "scopes" do
-    describe ".active" do
-      let!(:active_user) { create(:user, active: true) }
-      let!(:inactive_user) { create(:user, active: false) }
-
-      it "returns only active users" do
-        expect(described_class.active).to contain_exactly(active_user)
-      end
-    end
-  end
-
-  describe "#full_name" do
-    context "when both names are present" do
-      let(:user) { build(:user, first_name: "John", last_name: "Doe") }
-
-      it "returns the full name" do
-        expect(user.full_name).to eq("John Doe")
-      end
-    end
-
-    context "when last name is missing" do
-      let(:user) { build(:user, first_name: "John", last_name: nil) }
-
-      it "returns only first name" do
-        expect(user.full_name).to eq("John")
-      end
-    end
-  end
-end
-```
-
-Request Specs:
-```ruby
-# spec/requests/posts_spec.rb
-RSpec.describe "Posts", type: :request do
-  let(:user) { create(:user) }
-
-  before { sign_in user }
-
-  describe "GET /posts" do
-    let!(:posts) { create_list(:post, 3, user: user) }
-
-    it "returns a successful response" do
-      get posts_path
-      expect(response).to have_http_status(:ok)
-    end
-
-    it "displays all posts" do
-      get posts_path
-      posts.each do |post|
-        expect(response.body).to include(post.title)
-      end
-    end
-  end
-
-  describe "POST /posts" do
-    let(:valid_params) { { post: attributes_for(:post) } }
-    let(:invalid_params) { { post: { title: "" } } }
-
-    context "with valid parameters" do
-      it "creates a new post" do
-        expect {
-          post posts_path, params: valid_params
-        }.to change(Post, :count).by(1)
-      end
-
-      it "redirects to the created post" do
-        post posts_path, params: valid_params
-        expect(response).to redirect_to(Post.last)
-      end
-    end
-
-    context "with invalid parameters" do
-      it "does not create a new post" do
-        expect {
-          post posts_path, params: invalid_params
-        }.not_to change(Post, :count)
-      end
-
-      it "returns unprocessable entity status" do
-        post posts_path, params: invalid_params
-        expect(response).to have_http_status(:unprocessable_entity)
-      end
-    end
-  end
-end
-```
+### RSpec Testing Basics
 
 Factory Bot Patterns:
 ```ruby
@@ -472,11 +317,6 @@ FactoryBot.define do
     sequence(:email) { |n| "user#{n}@example.com" }
     name { Faker::Name.name }
     password { "password123" }
-    active { true }
-
-    trait :inactive do
-      active { false }
-    end
 
     trait :admin do
       role { :admin }
@@ -491,99 +331,6 @@ FactoryBot.define do
         create_list(:post, evaluator.posts_count, user: user)
       end
     end
-
-    factory :admin_user, traits: [:admin]
-  end
-end
-```
-
-### Sidekiq Background Jobs
-
-Job Definition:
-```ruby
-# app/jobs/process_order_job.rb
-class ProcessOrderJob < ApplicationJob
-  queue_as :default
-  retry_on ActiveRecord::Deadlocked, wait: 5.seconds, attempts: 3
-  discard_on ActiveJob::DeserializationError
-
-  def perform(order_id)
-    order = Order.find(order_id)
-
-    ActiveRecord::Base.transaction do
-      order.process!
-      order.update!(processed_at: Time.current)
-      OrderMailer.confirmation(order).deliver_later
-    end
-  end
-end
-
-# Sidekiq configuration
-# config/initializers/sidekiq.rb
-Sidekiq.configure_server do |config|
-  config.redis = { url: ENV.fetch("REDIS_URL", "redis://localhost:6379/1") }
-end
-
-Sidekiq.configure_client do |config|
-  config.redis = { url: ENV.fetch("REDIS_URL", "redis://localhost:6379/1") }
-end
-```
-
-### ActiveRecord Advanced Patterns
-
-Scopes and Query Objects:
-```ruby
-class Post < ApplicationRecord
-  scope :published, -> { where(published: true) }
-  scope :recent, -> { order(created_at: :desc) }
-  scope :by_author, ->(author) { where(author: author) }
-  scope :search, ->(query) { where("title ILIKE ?", "%#{query}%") }
-
-  # Complex scope with joins
-  scope :with_comments, -> {
-    joins(:comments).group(:id).having("COUNT(comments.id) > 0")
-  }
-
-  # Scope returning specific columns
-  scope :titles_only, -> { select(:id, :title) }
-end
-
-# Query Object
-class PostSearchQuery
-  def initialize(relation = Post.all)
-    @relation = relation
-  end
-
-  def call(params)
-    @relation
-      .then { |r| filter_by_status(r, params[:status]) }
-      .then { |r| filter_by_date(r, params[:start_date], params[:end_date]) }
-      .then { |r| search_by_title(r, params[:query]) }
-      .then { |r| paginate(r, params[:page], params[:per_page]) }
-  end
-
-  private
-
-  def filter_by_status(relation, status)
-    return relation if status.blank?
-    relation.where(status: status)
-  end
-
-  def filter_by_date(relation, start_date, end_date)
-    relation = relation.where("created_at >= ?", start_date) if start_date
-    relation = relation.where("created_at <= ?", end_date) if end_date
-    relation
-  end
-
-  def search_by_title(relation, query)
-    return relation if query.blank?
-    relation.where("title ILIKE ?", "%#{query}%")
-  end
-
-  def paginate(relation, page, per_page)
-    page ||= 1
-    per_page ||= 25
-    relation.limit(per_page).offset((page.to_i - 1) * per_page.to_i)
   end
 end
 ```
@@ -594,15 +341,16 @@ end
 
 For comprehensive coverage including:
 - Production deployment patterns (Docker, Kubernetes)
-- Advanced ActiveRecord patterns (polymorphic, STI)
+- Advanced ActiveRecord patterns (polymorphic, STI, query objects)
 - Action Cable real-time features
 - Performance optimization techniques
 - Security best practices
 - CI/CD integration patterns
+- Complete RSpec testing patterns
 
 See:
-- [reference.md](reference.md) - Complete reference documentation
-- [examples.md](examples.md) - Production-ready code examples
+- [Advanced Patterns](modules/advanced-patterns.md) - Production patterns and advanced features
+- [Testing Patterns](modules/testing-patterns.md) - Complete RSpec testing guide
 
 ---
 
@@ -624,9 +372,9 @@ See:
 
 - `moai-domain-backend` - REST API and web application architecture
 - `moai-domain-database` - SQL patterns and ActiveRecord optimization
-- `moai-quality-testing` - TDD and testing strategies
+- `moai-workflow-testing` - TDD and testing strategies
 - `moai-essentials-debug` - AI-powered debugging
-- `moai-foundation-trust` - TRUST 5 quality principles
+- `moai-foundation-quality` - TRUST 5 quality principles
 
 ---
 
@@ -653,31 +401,20 @@ Database Connection Issues:
 
 Asset Pipeline Issues:
 ```bash
-# Precompile assets
 rails assets:precompile
-
-# Clear asset cache
 rails assets:clobber
 ```
 
 RSpec Setup Issues:
 ```bash
-# Install RSpec
 rails generate rspec:install
-
-# Run specific test
 bundle exec rspec spec/models/user_spec.rb
-
-# Run with verbose output
 bundle exec rspec --format documentation
 ```
 
 Turbo/Stimulus Issues:
 ```bash
-# Rebuild JavaScript
 rails javascript:install:esbuild
-
-# Clear Turbo cache
 rails turbo:install
 ```
 

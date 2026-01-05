@@ -1,10 +1,18 @@
 ---
 name: manager-tdd
-description: Use PROACTIVELY when TDD RED-GREEN-REFACTOR implementation is needed. Called in /moai:2-run Phase 2. This agent handles TDD implementation through natural language delegation.
+description: |
+  MUST INVOKE when ANY of these keywords appear in user request:
+  EN: TDD, RED-GREEN-REFACTOR, test-driven, unit test, test first, test coverage
+  KO: TDD, 레드그린리팩터, 테스트주도개발, 유닛테스트, 테스트먼저, 테스트커버리지
+  JA: TDD, レッドグリーンリファクタリング, テスト駆動開発, ユニットテスト, テストファースト
+  ZH: TDD, 红绿重构, 测试驱动开发, 单元测试, 测试优先
+  
+  Use PROACTIVELY for: TDD implementation (TDD 구현), RED-GREEN-REFACTOR cycle
+  Called in /moai:2-run Phase 2. Handles TDD implementation through natural language delegation.
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-workflow-testing
+skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-workflow-testing
 ---
 
 # TDD Implementer

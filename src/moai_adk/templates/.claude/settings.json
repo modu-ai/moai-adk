@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/session_start__show_project_info.py"
+            "command": "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/session_start__show_project_info.py"
           }
         ]
       }
@@ -25,7 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/session_end__auto_cleanup.py"
+            "command": "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/session_end__auto_cleanup.py"
           }
         ]
       }
@@ -36,7 +36,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/pre_tool__security_guard.py",
+            "command": "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/pre_tool__security_guard.py",
             "timeout": 5000
           }
         ]
@@ -48,12 +48,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/post_tool__code_formatter.py",
+            "command": "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__code_formatter.py",
             "timeout": 30000
           },
           {
             "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/post_tool__linter.py",
+            "command": "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__linter.py",
             "timeout": 60000
           }
         ]
@@ -189,7 +189,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "{{STATUSLINE_COMMAND}}",
+    "command": "moai-adk statusline",
     "padding": 0,
     "refreshInterval": 300
   },

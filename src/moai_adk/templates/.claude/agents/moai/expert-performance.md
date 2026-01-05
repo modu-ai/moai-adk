@@ -1,6 +1,14 @@
 ---
 name: expert-performance
-description: Use PROACTIVELY when performance profiling, load testing, memory analysis, bundle optimization, or query performance tuning is needed. Specialized in performance diagnostics and optimization strategies.
+description: |
+  MUST INVOKE when ANY of these keywords appear in user request:
+  EN: performance, profiling, optimization, benchmark, memory, bundle, latency, speed
+  KO: 성능, 프로파일링, 최적화, 벤치마크, 메모리, 번들, 지연시간, 속도
+  JA: パフォーマンス, プロファイリング, 最適化, ベンチマーク, メモリ, バンドル, レイテンシ
+  ZH: 性能, 性能分析, 优化, 基准测试, 内存, 包体, 延迟
+  
+  Use PROACTIVELY for: performance profiling (성능 프로파일링), memory analysis (메모리 분석), bundle optimization (번들 최적화)
+  Specialized in performance diagnostics and optimization strategies.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default

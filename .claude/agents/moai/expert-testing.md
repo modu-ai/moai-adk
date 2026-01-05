@@ -1,10 +1,18 @@
 ---
 name: expert-testing
-description: Use PROACTIVELY when test strategy design, E2E testing, integration testing, load testing, or test automation framework selection is needed. Specialized in comprehensive testing methodologies beyond TDD.
+description: |
+  MUST INVOKE when ANY of these keywords appear in user request:
+  EN: test strategy, E2E, integration test, load test, test automation, coverage, QA
+  KO: 테스트전략, E2E, 통합테스트, 부하테스트, 테스트자동화, 커버리지, QA
+  JA: テスト戦略, E2E, 統合テスト, 負荷テスト, テスト自動化, カバレッジ, QA
+  ZH: 测试策略, E2E, 集成测试, 负载测试, 测试自动化, 覆盖率, QA
+  
+  Use PROACTIVELY for: test strategy design (테스트 전략), E2E testing (E2E 테스트), load testing (부하 테스트)
+  Specialized in comprehensive testing methodologies beyond TDD.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs, mcpplaywrightevaluate, mcpplaywrightscreenshot
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-workflow-testing, moai-foundation-quality
+skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-workflow-testing, moai-foundation-quality
 ---
 
 # Testing Expert

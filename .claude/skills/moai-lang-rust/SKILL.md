@@ -1,18 +1,14 @@
 ---
 name: moai-lang-rust
-description: Rust 1.91+ development specialist covering Axum, Tokio, SQLx, and memory-safe systems programming. Use when building high-performance, memory-safe applications or WebAssembly.
-version: 1.0.0
-category: language
-tags: rust, axum, tokio, async, memory-safe, wasm
-context7-libraries: /tokio-rs/axum, /tokio-rs/tokio, /launchbadge/sqlx
-related-skills: moai-lang-go, moai-domain-backend
-updated: 2025-12-07
+description: Rust 1.92+ development specialist covering Axum, Tokio, SQLx, and memory-safe systems programming. Use when building high-performance, memory-safe applications or WebAssembly.
+version: 1.1.0
+updated: 2025-12-30
 status: active
 ---
 
 ## Quick Reference (30 seconds)
 
-Rust 1.91+ Development Specialist with deep patterns for high-performance, memory-safe applications.
+Rust 1.92+ Development Specialist with deep patterns for high-performance, memory-safe applications.
 
 Auto-Triggers: `.rs`, `Cargo.toml`, async/await, Tokio, Axum, SQLx, serde, lifetimes, traits
 
@@ -51,9 +47,10 @@ async fn get_user(
 
 ## Implementation Guide (5 minutes)
 
-### Rust 1.91 Features
+### Rust 1.92 Features
 
 Modern Rust Features:
+- Rust 2024 Edition available (released with Rust 1.85)
 - Async traits in stable (no more async-trait crate needed)
 - Const generics for compile-time array sizing
 - let-else for pattern matching with early return
@@ -287,7 +284,7 @@ strip = true
 
 Minimal Container (5-15MB):
 ```dockerfile
-FROM rust:1.91-alpine AS builder
+FROM rust:1.92-alpine AS builder
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 RUN mkdir src && echo "fn main(){}" > src/main.rs && cargo build --release
@@ -338,8 +335,8 @@ Library Documentation Access:
 
 - `moai-lang-go` - Go systems programming patterns
 - `moai-domain-backend` - REST API architecture and microservices patterns
-- `moai-quality-security` - Security hardening for Rust applications
-- `moai-workflow-tdd` - Test-driven development workflows
+- `moai-foundation-quality` - Security hardening for Rust applications
+- `moai-workflow-testing` - Test-driven development workflows
 
 ---
 
@@ -368,5 +365,5 @@ See [examples.md](examples.md) for production-ready code examples.
 
 ---
 
-Last Updated: 2025-12-07
-Version: 1.0.0
+Last Updated: 2025-12-30
+Version: 1.1.0

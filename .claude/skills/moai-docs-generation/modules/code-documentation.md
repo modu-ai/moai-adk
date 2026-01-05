@@ -1,152 +1,152 @@
-# Code Documentation Enhancement
+# Code Documentation Patterns
 
 ## Overview
-AI-powered code documentation generation with AST analysis, automatic docstring enhancement, and multi-format output generation.
 
-## Quick Implementation
+Generate documentation from source code using established tools: Sphinx for Python, TypeDoc for TypeScript, JSDoc for JavaScript, and mkdocstrings for MkDocs integration.
 
-```python
-import ast
-import inspect
-from typing import Dict, List, Any
+## Python Documentation with Sphinx
 
-class CodeDocGenerator:
- def __init__(self, ai_client=None):
- self.ai_client = ai_client
+### Setup and Configuration
 
- def analyze_python_file(self, file_path: str) -> Dict[str, Any]:
- """Analyze Python file and extract documentation structure."""
- with open(file_path, 'r', encoding='utf-8') as f:
- content = f.read()
+Install Sphinx and extensions:
+- sphinx - Core documentation generator
+- sphinx-autodoc-typehints - Type hint integration
+- sphinx-rtd-theme - Read the Docs theme
+- myst-parser - Markdown support in Sphinx
 
- tree = ast.parse(content)
+Initialize project with sphinx-quickstart in docs directory.
 
- documentation = {
- "file": file_path,
- "modules": [],
- "classes": [],
- "functions": [],
- "imports": []
- }
+Configure conf.py:
+- Add source directory to sys.path for autodoc
+- Enable extensions: autodoc, napoleon, typehints, viewcode
+- Set html_theme to sphinx_rtd_theme
+- Configure autodoc options for member ordering
 
- for node in ast.walk(tree):
- if isinstance(node, ast.ClassDef):
- class_info = self.analyze_class(node)
- documentation["classes"].append(class_info)
+### Writing Docstrings
 
- elif isinstance(node, ast.FunctionDef):
- if not any(isinstance(parent, ast.ClassDef) for parent in ast.walk(tree)):
- func_info = self.analyze_function(node)
- documentation["functions"].append(func_info)
+Use Google style or NumPy style docstrings:
+- Include summary line (one sentence)
+- Add detailed description if needed
+- Document all parameters with types
+- Document return values
+- Include usage examples
+- Document raised exceptions
 
- elif isinstance(node, ast.Import):
- for alias in node.names:
- documentation["imports"].append(alias.name)
+### Generating Documentation
 
- return documentation
+Run sphinx-apidoc to generate rst files from source:
+- Specify source directory and output directory
+- Use --separate for one file per module
+- Use --force to overwrite existing files
 
- def analyze_class(self, class_node: ast.ClassDef) -> Dict[str, Any]:
- """Analyze class structure and generate documentation."""
- methods = []
- properties = []
+Build HTML documentation with make html or sphinx-build command.
 
- for node in class_node.body:
- if isinstance(node, ast.FunctionDef):
- method_info = self.analyze_function(node)
- methods.append(method_info)
+## Python Documentation with MkDocs
 
- elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
- prop_info = self.analyze_property(node)
- properties.append(prop_info)
+### mkdocstrings Integration
 
- # Generate enhanced docstring with AI
- enhanced_docstring = None
- if self.ai_client:
- enhanced_docstring = self.enhance_docstring_with_ai(
- class_node.name,
- methods,
- properties,
- ast.get_docstring(class_node)
- )
+Install mkdocs-material and mkdocstrings-python.
 
- return {
- "name": class_node.name,
- "docstring": ast.get_docstring(class_node),
- "enhanced_docstring": enhanced_docstring,
- "methods": methods,
- "properties": properties,
- "inheritance": [base.id for base in class_node.bases if isinstance(base, ast.Name)],
- "decorators": [self.get_decorator_name(dec) for dec in class_node.decorator_list]
- }
+Configure mkdocs.yml:
+- Add mkdocstrings plugin
+- Configure Python handler with options
+- Set docstring style (google, numpy, sphinx)
+- Enable signature rendering
 
- def enhance_docstring_with_ai(self, name: str, methods: List, properties: List, existing_doc: str = None) -> str:
- """Enhance documentation using AI analysis."""
- method_signatures = [method["signature"] for method in methods]
+### Usage in Markdown
 
- prompt = f"""
- Enhance this Python class documentation:
+Reference Python objects with ::: syntax:
+- Use ::: module.Class to document a class
+- Use ::: module.function to document a function
+- Configure display options per reference
 
- Class Name: {name}
- Existing Documentation: {existing_doc or 'No documentation'}
+Organize documentation with nav structure in mkdocs.yml.
 
- Methods:
- {chr(10).join(method_signatures)}
+## TypeScript Documentation with TypeDoc
 
- Properties:
- {', '.join([prop['name'] for prop in properties])}
+### Setup
 
- Please provide:
- 1. Clear class description
- 2. Usage examples
- 3. Method descriptions
- 4. Implementation notes
- 5. Best practices for using this class
+Install typedoc as development dependency.
 
- Format as proper docstring with sections.
- """
+Create typedoc.json configuration:
+- Set entryPoints to source files or directories
+- Configure out for output directory
+- Enable excludePrivate and excludeProtected as needed
+- Set includeVersion for version display
+- Configure theme (default or custom)
 
- response = self.ai_client.generate_content(prompt)
- return response["content"]
+### Writing TSDoc Comments
 
- def generate_documentation_files(self, documentation: Dict, output_dir: str):
- """Generate various documentation files from analysis."""
- import os
- from pathlib import Path
+Use TSDoc comment format:
+- Start with summary paragraph
+- Use @param for parameters
+- Use @returns for return value
+- Use @example for code examples
+- Use @see for cross-references
+- Use @deprecated for deprecated items
 
- output_path = Path(output_dir)
- output_path.mkdir(exist_ok=True)
+### Plugin Ecosystem
 
- # Generate README
- readme_content = self.generate_readme(documentation)
- (output_path / "README.md").write_text(readme_content, encoding='utf-8')
+Enhance TypeDoc with plugins:
+- typedoc-plugin-markdown for Markdown output
+- typedoc-plugin-missing-exports for coverage
+- Custom themes for branding
 
- # Generate API reference
- api_content = self.generate_api_reference(documentation)
- (output_path / "API.md").write_text(api_content, encoding='utf-8')
+## JavaScript Documentation with JSDoc
 
- # Generate examples
- examples_content = self.generate_examples(documentation)
- (output_path / "EXAMPLES.md").write_text(examples_content, encoding='utf-8')
-```
+### Setup
 
-## Key Features
-- AST-based code analysis
-- AI-powered docstring enhancement
-- Automatic documentation structure extraction
-- Multi-format output generation (README, API, Examples)
-- Class hierarchy analysis
-- Method and property documentation
-- Import dependency tracking
+Install jsdoc as development dependency.
 
-## Usage Patterns
-1. Code Analysis: Parse Python files for documentation structure
-2. AI Enhancement: Use AI to improve existing documentation
-3. File Generation: Create comprehensive documentation files
-4. Class Analysis: Extract inheritance, methods, and properties
-5. Documentation Standards: Ensure consistent docstring format
+Create jsdoc.json configuration:
+- Configure source paths and patterns
+- Set output destination
+- Enable plugins like markdown
+- Configure templates
 
-## Integration Points
-- Static analysis tools
-- Documentation generators (Sphinx, MkDocs)
-- AI services for content enhancement
-- Code review workflows
+### Writing JSDoc Comments
+
+Document functions with JSDoc tags:
+- @param for parameters with type and description
+- @returns for return value
+- @throws for exceptions
+- @example for usage examples
+- @typedef for custom types
+- @callback for callback definitions
+
+Document modules with @module tag at file start.
+
+## Documentation Coverage
+
+### Python Coverage with interrogate
+
+Install interrogate for docstring coverage analysis.
+
+Configure in pyproject.toml:
+- Set minimum coverage threshold
+- Exclude specific patterns or files
+- Configure output format
+
+Run in CI to enforce documentation standards.
+
+### TypeScript Coverage
+
+Use typedoc with strict mode to identify undocumented items.
+
+Configure TSDoc linting with eslint-plugin-tsdoc.
+
+## Integration with Editors
+
+VS Code Extensions:
+- Python Docstring Generator
+- Document This for TypeScript/JavaScript
+- TSDoc Comment Tags
+
+IntelliJ/WebStorm:
+- Built-in documentation generation
+- Quick documentation preview
+
+---
+
+Version: 2.0.0
+Last Updated: 2025-12-30

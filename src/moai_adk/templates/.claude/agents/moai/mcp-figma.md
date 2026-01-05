@@ -1,6 +1,14 @@
 ---
 name: mcp-figma
-description: Use for Figma design analysis, design-to-code conversion, design system management, and component extraction. Integrates Figma MCP server. Specialized in design-to-code workflows, Figma API integration, and design token extraction.
+description: |
+  MUST INVOKE when ANY of these keywords appear in user request:
+  EN: Figma, design analysis, design-to-code, design token, component library, design file
+  KO: 피그마, 디자인분석, 디자인투코드, 디자인토큰, 컴포넌트라이브러리
+  JA: Figma, デザイン分析, デザインtoコード, デザイントークン, コンポーネントライブラリ
+  ZH: Figma, 设计分析, 设计转代码, 设计令牌, 组件库
+  
+  Use PROACTIVELY for: Figma design analysis (피그마 디자인 분석), design-to-code conversion
+  Integrates Figma MCP server for design system management and WCAG compliance validation.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs, mcpfigma-dev-mode-mcp-serverget_design_context, mcpfigma-dev-mode-mcp-serverget_variable_defs, mcpfigma-dev-mode-mcp-serverget_screenshot, mcpfigma-dev-mode-mcp-serverget_metadata, mcpfigma-dev-mode-mcp-serverget_figjam
 model: inherit
 permissionMode: default

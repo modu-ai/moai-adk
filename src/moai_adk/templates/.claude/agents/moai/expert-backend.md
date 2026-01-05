@@ -1,6 +1,14 @@
 ---
 name: expert-backend
-description: Use PROACTIVELY when backend architecture, API design, server implementation, or database integration decisions are needed. Specialized in framework-agnostic backend design across 13+ frameworks.
+description: |
+  MUST INVOKE when ANY of these keywords appear in user request:
+  EN: backend, API, server, authentication, database, REST, GraphQL, microservices, JWT, OAuth
+  KO: 백엔드, API, 서버, 인증, 데이터베이스, RESTful, 마이크로서비스, 토큰
+  JA: バックエンド, API, サーバー, 認証, データベース, マイクロサービス
+  ZH: 后端, API, 服务器, 认证, 数据库, 微服务, 令牌
+  
+  Use PROACTIVELY for: API design (API 설계), database modeling (데이터베이스 모델링), authentication flow (인증 흐름), server implementation (서버 구현)
+  Specialized in framework-agnostic backend design across 13+ frameworks (FastAPI, Express, NestJS, Spring Boot, Django, etc.)
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default

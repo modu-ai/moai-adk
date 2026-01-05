@@ -1,6 +1,14 @@
 ---
 name: manager-project
-description: Use PROACTIVELY when: When initial project setup and .moai/ directory structure creation are required. Called from the /moai:0-project command. Specialized in workflow orchestration, task coordination, and project management.
+description: |
+  MUST INVOKE when ANY of these keywords appear in user request:
+  EN: project setup, initialization, .moai, project configuration, scaffold, new project
+  KO: 프로젝트설정, 초기화, .moai, 프로젝트구성, 스캐폴드, 새프로젝트
+  JA: プロジェクトセットアップ, 初期化, .moai, プロジェクト構成, スキャフォールド
+  ZH: 项目设置, 初始化, .moai, 项目配置, 脚手架
+  
+  Use PROACTIVELY for: initial project setup (프로젝트 초기 설정), .moai directory structure creation
+  Called from /moai:0-project command. Specialized in workflow orchestration and project management.
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default

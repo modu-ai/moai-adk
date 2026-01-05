@@ -1,12 +1,12 @@
 ---
 name: moai-platform-clerk
 description: Clerk modern authentication specialist covering WebAuthn, passkeys, passwordless, and beautiful UI components. Use when implementing modern auth with great UX.
-version: 1.0.0
+version: 2.0.0
 category: platform
-tags: [clerk, webauthn, passkeys, passwordless, authentication]
-context7-libraries: [/clerk/clerk-docs]
-related-skills: [moai-platform-auth0, moai-lang-typescript]
-updated: 2025-12-07
+tags: clerk, webauthn, passkeys, passwordless, authentication
+context7-libraries: /clerk/clerk-docs
+related-skills: moai-platform-auth0, moai-lang-typescript
+updated: 2025-12-30
 status: active
 allowed-tools: Read, Write, Bash, Grep, Glob
 ---
@@ -15,376 +15,405 @@ allowed-tools: Read, Write, Bash, Grep, Glob
 
 Modern authentication platform with WebAuthn, passkeys, passwordless flows, beautiful pre-built UI components, and multi-tenant organization support.
 
+SDK Versions (as of December 2025):
+- @clerk/nextjs: 6.x (Core 2, requires Next.js 13.0.4+, React 18+)
+- @clerk/clerk-react: 5.x (Core 2, requires React 18+)
+- @clerk/express: 1.x
+- Node.js: 18.17.0+ required
+
 ## Quick Reference (30 seconds)
 
-Clerk Core Capabilities:
+Environment Variables:
 
-- WebAuthn and Passkeys: First-class biometric and hardware key support
-- Passwordless: Email magic links, SMS OTP, email OTP
-- Pre-built UI: SignIn, SignUp, UserButton, OrganizationSwitcher components
-- Organizations: Multi-tenant team management with RBAC
-- Multi-Platform: React, Next.js, Vue, React Native, Node.js SDKs
+```bash
+# .env.local
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+```
+
+ClerkProvider Setup (app/layout.tsx):
+
+```tsx
+import { ClerkProvider } from '@clerk/nextjs'
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <ClerkProvider>
+      <html lang="en">
+        <body>{children}</body>
+      </html>
+    </ClerkProvider>
+  )
+}
+```
+
+Basic Middleware (middleware.ts):
+
+```typescript
+import { clerkMiddleware } from '@clerk/nextjs/server'
+
+export default clerkMiddleware()
+
+export const config = {
+  matcher: [
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/(api|trpc)(.*)',
+  ],
+}
+```
 
 Context7 Access:
-
 - Library: /clerk/clerk-docs
 - Resolution: Use resolve-library-id with "clerk" then get-library-docs
-
-Quick Decision Criteria:
-
-- Need WebAuthn and passkeys? Clerk is ideal
-- Need beautiful pre-built auth UI? Clerk provides ready components
-- Need passwordless authentication? Clerk supports all methods
-- Need multi-tenant organizations? Clerk Organizations feature
-- Need React/Next.js integration? Clerk has first-class support
 
 ---
 
 ## Implementation Guide
 
-### WebAuthn and Passkey Implementation
+### ClerkProvider with Authentication Components
 
-WebAuthn Configuration:
+Full layout with sign-in/sign-out controls:
 
-Clerk provides first-class WebAuthn support enabling passwordless authentication with biometrics and hardware security keys.
+```tsx
+// app/layout.tsx
+import type { Metadata } from 'next'
+import {
+  ClerkProvider,
+  SignInButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+} from '@clerk/nextjs'
+import './globals.css'
 
-Step 1: Enable WebAuthn in Clerk Dashboard under User and Authentication
-Step 2: Configure passkey requirements (required, optional, or disabled)
-Step 3: Set verification requirements for passkey registration
-Step 4: Implement passkey UI using Clerk components or custom flow
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <ClerkProvider>
+      <html lang="en">
+        <body>
+          <header className="flex justify-end items-center p-4 gap-4 h-16">
+            <SignedOut>
+              <SignInButton />
+              <SignUpButton />
+            </SignedOut>
+            <SignedIn>
+              <UserButton />
+            </SignedIn>
+          </header>
+          {children}
+        </body>
+      </html>
+    </ClerkProvider>
+  )
+}
+```
 
-Passkey User Experience:
+### Protecting Routes with Middleware
 
-- Registration flow prompts for biometric or security key
-- Login flow automatically detects available passkeys
-- Fallback to password if passkeys unavailable
-- Cross-device passkey support with FIDO Alliance standards
+Route protection with createRouteMatcher:
 
-Passkey Registration Flow:
+```typescript
+// middleware.ts
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
-User clicks "Add Passkey" button in account settings
-Clerk prompts for device biometric or security key
-Browser WebAuthn API handles credential creation
-Passkey stored securely in Clerk backend
-User can manage multiple passkeys per account
+const isProtectedRoute = createRouteMatcher([
+  '/dashboard(.*)',
+  '/forum(.*)',
+  '/api/private(.*)',
+])
 
-Passkey Login Flow:
+export default clerkMiddleware(async (auth, req) => {
+  if (isProtectedRoute(req)) {
+    await auth.protect()
+  }
+})
 
-User navigates to sign-in page
-Clerk detects available passkeys for user
-User authenticates with biometric or security key
-Session created automatically upon successful verification
+export const config = {
+  matcher: [
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/(api|trpc)(.*)',
+  ],
+}
+```
 
-### Passwordless Authentication
+Protecting all routes except public:
 
-Email Magic Links:
+```typescript
+// middleware.ts
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
-Clerk sends secure magic links for passwordless sign-in with customizable email templates.
+const isPublicRoute = createRouteMatcher([
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/',
+  '/about',
+])
 
-Configuration Steps:
+export default clerkMiddleware(async (auth, req) => {
+  if (!isPublicRoute(req)) {
+    await auth.protect()
+  }
+})
+```
 
-Step 1: Enable Email magic link in Clerk Dashboard
-Step 2: Customize email template with branding
-Step 3: Configure link expiration time
-Step 4: Set redirect URL after successful authentication
+### useAuth Hook
 
-Magic Link Features:
+Access authentication state and tokens:
 
-- Customizable email templates with branding
-- Configurable expiration times
-- Secure one-time use tokens
-- Automatic session creation on click
+```tsx
+'use client'
+import { useAuth } from '@clerk/nextjs'
 
-SMS One-Time Passwords:
+export default function ExternalDataPage() {
+  const { userId, sessionId, getToken, isLoaded, isSignedIn } = useAuth()
 
-Step 1: Enable SMS authentication in Dashboard
-Step 2: Configure phone number verification requirements
-Step 3: Set OTP expiration and retry limits
-Step 4: Customize SMS message template
+  const fetchExternalData = async () => {
+    const token = await getToken()
+    const response = await fetch('https://api.example.com/data', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    return response.json()
+  }
 
-Email One-Time Passwords:
+  if (!isLoaded) return <div>Loading...</div>
+  if (!isSignedIn) return <div>Sign in to view this page</div>
 
-Step 1: Enable Email OTP in authentication settings
-Step 2: Configure code length (6 or 8 digits)
-Step 3: Set code expiration time
-Step 4: Customize email template
+  return (
+    <div>
+      <p>User ID: {userId}</p>
+      <p>Session ID: {sessionId}</p>
+      <button onClick={fetchExternalData}>Fetch Data</button>
+    </div>
+  )
+}
+```
 
-### Pre-built UI Components
+### useUser Hook
 
-Available Components:
+Access user profile data:
 
-SignIn Component: Complete sign-in form with social and email options
-SignUp Component: Registration form with verification
-UserButton Component: User avatar dropdown with profile management
-OrganizationSwitcher Component: Organization selection dropdown
-UserProfile Component: Full user profile management
-CreateOrganization Component: Organization creation flow
+```tsx
+'use client'
+import { useUser } from '@clerk/nextjs'
 
-React Integration:
+export default function ProfilePage() {
+  const { isSignedIn, user, isLoaded } = useUser()
 
-Install @clerk/clerk-react package
-Wrap application with ClerkProvider
-Use components directly in JSX
-Customize appearance via theme prop
+  if (!isLoaded) return <div>Loading...</div>
+  if (!isSignedIn) return <div>Sign in to view your profile</div>
 
-Next.js Integration:
+  return (
+    <div>
+      <h1>Welcome, {user.firstName}!</h1>
+      <p>Email: {user.primaryEmailAddress?.emailAddress}</p>
+      <img src={user.imageUrl} alt="Profile" width={100} height={100} />
+    </div>
+  )
+}
+```
 
-Install @clerk/nextjs package
-Add Clerk middleware for route protection
-Use components in pages and layouts
-Configure environment variables for API keys
+### SignIn and SignUp Pages
 
-Component Customization:
+Dedicated authentication pages:
 
-- Theme customization via appearance prop
-- Custom CSS with provided class names
-- Override individual elements
-- Dark mode support built-in
+```tsx
+// app/sign-in/[[...sign-in]]/page.tsx
+import { SignIn } from '@clerk/nextjs'
 
-### Organization Management (Multi-Tenancy)
+export default function SignInPage() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <SignIn />
+    </div>
+  )
+}
+```
 
-Organization Features:
+```tsx
+// app/sign-up/[[...sign-up]]/page.tsx
+import { SignUp } from '@clerk/nextjs'
 
-- Create and manage organizations programmatically
-- Invite users via email with customizable invitations
-- Role-based permissions (admin, member, custom roles)
-- Organization switching for users with multiple memberships
-- Domain verification for automatic organization membership
+export default function SignUpPage() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <SignUp />
+    </div>
+  )
+}
+```
 
-Creating Organizations:
+### Server-Side Authentication
 
-Step 1: Enable Organizations feature in Dashboard
-Step 2: Configure default roles and permissions
-Step 3: Set invitation email templates
-Step 4: Implement CreateOrganization component
+App Router server components:
 
-Invitation System:
+```tsx
+// app/dashboard/page.tsx
+import { auth, currentUser } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
 
-Step 1: Admin initiates invitation via dashboard or API
-Step 2: Invitee receives customizable email invitation
-Step 3: Invitee clicks link and completes signup or signin
-Step 4: Automatic organization membership upon completion
+export default async function DashboardPage() {
+  const { userId } = await auth()
+  if (!userId) redirect('/sign-in')
 
-Role-Based Access Control:
+  const user = await currentUser()
 
-Default Roles:
-- org:admin: Full organization management
-- org:member: Standard member access
+  return (
+    <div>
+      <h1>Dashboard</h1>
+      <p>Welcome, {user?.firstName}!</p>
+    </div>
+  )
+}
+```
 
-Custom Roles:
-- Define custom roles in Dashboard
-- Assign permissions to roles
-- Check permissions in application code
+Route Handler authentication:
 
-Domain Verification:
+```typescript
+// app/api/user/route.ts
+import { auth } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
 
-Organizations can claim domains for automatic membership
-Users with verified email from claimed domain auto-join
-Reduces friction for enterprise onboarding
+export async function GET() {
+  const { userId } = await auth()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  return NextResponse.json({ userId })
+}
+```
 
-### Session Management
+### Organization Management
 
-Session Features:
+OrganizationSwitcher component:
 
-- Automatic token refresh
-- Multi-device session tracking
-- Session revocation capability
-- Configurable session duration
+```tsx
+// app/dashboard/layout.tsx
+import { OrganizationSwitcher } from '@clerk/nextjs'
 
-Session Configuration:
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      <nav className="flex items-center gap-4 p-4">
+        <OrganizationSwitcher />
+      </nav>
+      {children}
+    </div>
+  )
+}
+```
 
-Step 1: Configure session lifetime in Dashboard
-Step 2: Set multi-session or single-session mode
-Step 3: Configure token refresh behavior
-Step 4: Enable session activity tracking
+Custom organization switcher with useOrganizationList:
 
-Token Management:
+```tsx
+'use client'
+import { useOrganizationList } from '@clerk/nextjs'
 
-- Access tokens for API authentication
-- Session tokens for frontend state
-- Automatic refresh before expiration
-- Secure httpOnly cookie storage option
+export function CustomOrganizationSwitcher() {
+  const { isLoaded, setActive, userMemberships } = useOrganizationList({
+    userMemberships: { infinite: true },
+  })
 
-### Multi-Platform SDK Support
+  if (!isLoaded) return <p>Loading...</p>
 
-Supported Platforms:
+  return (
+    <div>
+      <h2>Your Organizations</h2>
+      <ul>
+        {userMemberships.data?.map((membership) => (
+          <li key={membership.id}>
+            <span>{membership.organization.name}</span>
+            <button
+              onClick={() => setActive({ organization: membership.organization.id })}
+            >
+              Select
+            </button>
+          </li>
+        ))}
+      </ul>
+      {userMemberships.hasNextPage && (
+        <button onClick={() => userMemberships.fetchNext()}>Load more</button>
+      )}
+    </div>
+  )
+}
+```
 
-React: @clerk/clerk-react
-Next.js: @clerk/nextjs with middleware support
-Vue: @clerk/vue (community maintained)
-React Native: @clerk/clerk-expo
-Node.js: @clerk/clerk-sdk-node
-Express: @clerk/express
-Fastify: @clerk/fastify
+Access current organization with useOrganization:
 
-Next.js Middleware:
+```tsx
+'use client'
+import { useOrganization } from '@clerk/nextjs'
 
-Clerk middleware protects routes at Edge
-Configure public and protected route patterns
-Automatic redirect to sign-in for unauthenticated users
-Access user session in middleware for custom logic
+export function OrganizationInfo() {
+  const { organization, isLoaded } = useOrganization()
 
-Backend Verification:
+  if (!isLoaded) return <div>Loading...</div>
+  if (!organization) return <div>No organization selected</div>
 
-Node.js SDK verifies session tokens
-Extract user ID and organization from token
-Implement authorization logic in API routes
-Webhook signature verification for events
+  return (
+    <div>
+      <h2>{organization.name}</h2>
+      <img src={organization.imageUrl} alt={organization.name} width={64} />
+      <p>Members: {organization.membersCount}</p>
+    </div>
+  )
+}
+```
 
 ---
 
 ## Advanced Patterns
 
-### Custom Authentication Flows
+For advanced implementation patterns including Core 2 migration, role-based access control, webhooks, custom auth flows, and external service integration, see:
 
-Building Custom Sign-In:
+- [Advanced Patterns](modules/advanced-patterns.md)
 
-Use useSignIn hook for programmatic control
-Implement multi-step verification flows
-Handle errors with custom UI
-Support social OAuth alongside email
+Key Core 2 Migration Changes:
+- Environment: CLERK_FRONTEND_API to NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+- Middleware: authMiddleware() to clerkMiddleware()
+- Imports: '@clerk/nextjs' to '@clerk/nextjs/server' for server-side
+- Session: setSession() to setActive()
+- Images: profileImageUrl/logoUrl to imageUrl
 
-Building Custom Sign-Up:
+Migration Tool:
 
-Use useSignUp hook for registration logic
-Implement progressive profiling
-Custom verification code entry UI
-Handle optional vs required fields
-
-Headless Mode:
-
-Full control over UI while using Clerk backend
-Access all functionality via hooks
-Implement completely custom designs
-Maintain security without pre-built components
-
-### Webhook Integration
-
-Available Webhook Events:
-
-user.created: New user registration completed
-user.updated: User profile changes
-user.deleted: User account deleted
-session.created: New session started
-session.ended: Session terminated
-organization.created: New organization created
-organization.membership.created: User joined organization
-
-Webhook Configuration:
-
-Step 1: Add webhook endpoint URL in Dashboard
-Step 2: Select events to subscribe
-Step 3: Copy signing secret for verification
-Step 4: Implement signature verification in endpoint
-
-Webhook Security:
-
-Verify webhook signatures using svix library
-Check timestamp to prevent replay attacks
-Return 200 status for successful processing
-Implement idempotency for duplicate handling
-
-### JWT Customization
-
-Custom Claims:
-
-Add custom claims to session tokens
-Include organization metadata
-Add user roles and permissions
-Configure claim templates in Dashboard
-
-JWT Templates:
-
-Create multiple JWT templates for different services
-Configure issuer and audience
-Set expiration times
-Add conditional claims based on user attributes
-
-### Integration Patterns
-
-Clerk with Database Providers:
-
-Clerk with Convex:
-- Use Clerk JWT verification in Convex functions
-- Sync user data via webhooks
-- Implement organization-based access control
-
-Clerk with Supabase:
-- Configure Clerk JWT in Supabase settings
-- Map Clerk claims to RLS policies
-- Use organization ID for multi-tenant isolation
-
-Clerk with Prisma:
-- Sync user ID from Clerk to database
-- Store additional user data with Clerk user ID as foreign key
-- Handle user lifecycle via webhooks
-
-Deployment Platforms:
-
-Vercel: Native integration with Edge Middleware
-Railway: Environment variable configuration
-Netlify: Serverless function integration
-AWS Lambda: SDK support for serverless
-
-### Security Best Practices
-
-Token Security:
-
-- Use short-lived access tokens
-- Enable automatic token refresh
-- Store tokens securely in httpOnly cookies
-- Validate tokens on backend for all requests
-
-Rate Limiting:
-
-- Clerk implements built-in rate limiting
-- Configure custom limits per organization
-- Monitor authentication attempts
-- Alert on suspicious patterns
-
-Multi-Factor Authentication:
-
-Enable MFA in Dashboard settings
-Support authenticator apps (TOTP)
-Backup codes for account recovery
-SMS as secondary verification option
-
-Account Protection:
-
-- Enable device verification for new logins
-- Configure suspicious activity detection
-- Implement session activity monitoring
-- Provide users with security notifications
+```bash
+npx @clerk/upgrade --from=core-1
+```
 
 ---
 
 ## Resources
 
-Context7 Documentation Access:
-
-Library Resolution: Use resolve-library-id with "clerk"
-Documentation Fetch: Use get-library-docs with resolved ID
-
-API Documentation:
-
-Backend API: https://clerk.com/docs/reference/backend-api
-Frontend SDK: https://clerk.com/docs/references/react/overview
-Next.js SDK: https://clerk.com/docs/references/nextjs/overview
-Webhooks: https://clerk.com/docs/integrations/webhooks
+Official Documentation:
+- Quickstart: https://clerk.com/docs/quickstarts/nextjs
+- SDK Reference: https://clerk.com/docs/reference/nextjs/overview
+- Core 2 Migration: https://clerk.com/docs/guides/development/upgrading/upgrade-guides/core-2/nextjs
+- Webhooks: https://clerk.com/docs/integrations/webhooks
 
 Works Well With:
-
 - moai-platform-auth0: Alternative enterprise SSO solution
 - moai-platform-supabase: Supabase authentication integration
 - moai-platform-vercel: Vercel deployment with Clerk
-- moai-platform-firebase-auth: Firebase authentication comparison
 - moai-lang-typescript: TypeScript development patterns
 - moai-domain-frontend: React and Next.js integration
-- moai-quality-security: Security validation and OWASP compliance
 
 ---
 
 Status: Production Ready
-Generated with: MoAI-ADK Skill Factory v1.0
-Last Updated: 2025-12-07
-Provider Coverage: Clerk Authentication Platform
+Version: 2.0.0
+Last Updated: 2025-12-30
+SDK Version: @clerk/nextjs 6.x (Core 2)

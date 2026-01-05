@@ -60,12 +60,25 @@ Step 1 (Analysis & Planning) leads to Step 2 (Document Sync via Agent) leads to 
 
 This command supports 4 operational modes:
 
-| Mode               | Scope                   | PR Processing         | Use Case                            |
-| ------------------ | ----------------------- | --------------------- | ----------------------------------- |
-| auto (default) | Smart selective sync    | PR Ready conversion   | Daily development workflow          |
-| force          | Full project re-sync    | Full regeneration     | Error recovery, major refactoring   |
-| status         | Status check only       | Report only           | Quick health check                  |
-| project        | Integrated project-wide | Project-level updates | Milestone completion, periodic sync |
+- **auto** (default): Smart selective sync
+  - Scope: Selectively syncs changed files only
+  - PR Processing: PR Ready conversion
+  - Use Case: Daily development workflow
+
+- **force**: Full project re-sync
+  - Scope: Complete regeneration of all documentation
+  - PR Processing: Full regeneration
+  - Use Case: Error recovery, major refactoring
+
+- **status**: Status check only
+  - Scope: Read-only health check
+  - PR Processing: Report only
+  - Use Case: Quick health check
+
+- **project**: Integrated project-wide
+  - Scope: Project-wide documentation updates
+  - PR Processing: Project-level updates
+  - Use Case: Milestone completion, periodic sync
 
 Command usage examples:
 
@@ -82,11 +95,17 @@ Command usage examples:
 
 ##  Associated Agents
 
-| Agent           | Purpose                                         |
-| --------------- | ----------------------------------------------- |
-| manager-docs    | Synchronize Living Documents with code changes  |
-| manager-quality | Verify project integrity and TRUST 5 compliance |
-| manager-git     | Handle Git operations and commit management     |
+- **manager-docs**: Synchronize Living Documents with code changes
+  - Responsible for analyzing Git changes and executing documentation updates
+  - Handles SPEC synchronization and domain-specific documentation
+
+- **manager-quality**: Verify project integrity and TRUST 5 compliance
+  - Performs automated code review and quality validation
+  - Ensures documentation meets quality standards
+
+- **manager-git**: Handle Git operations and commit management
+  - Creates commits for documentation changes
+  - Manages PR transitions and branch operations
 
 ---
 
@@ -1250,13 +1269,32 @@ Exit command with code 0.
 
 ##  Quick Reference
 
-| Scenario             | Mode    | Entry Point                 | Key Phases                                                    | Expected Outcome          |
-| -------------------- | ------- | --------------------------- | ------------------------------------------------------------- | ------------------------- |
-| Daily development    | auto    | `/moai:3-sync`              | Phase 0.5 (QV) → Phase 1 → Analysis → Phase 2 → Sync → Phase 3 → Git | PR Ready + docs synced    |
-| Error recovery       | force   | `/moai:3-sync force`        | Phase 0.5 (QV) → Full project re-sync                         | All docs regenerated      |
-| Quick health check   | status  | `/moai:3-sync status`       | Phase 0.5 (QV) → Status check only                            | Health report             |
-| Milestone completion | project | `/moai:3-sync project`      | Phase 0.5 (QV) → Integrated sync                              | Project-wide updates      |
-| Auto-merge workflow  | auto    | `/moai:3-sync --auto-merge` | Phase 0.5 (QV) → PR auto-merge + cleanup                      | Branch merged and deleted |
+Workflow Scenarios:
+
+- **Daily development** (auto mode)
+  - Entry Point: `/moai:3-sync`
+  - Key Phases: Phase 0.5 (QV) → Phase 1 → Analysis → Phase 2 → Sync → Phase 3 → Git
+  - Expected Outcome: PR Ready + docs synced
+
+- **Error recovery** (force mode)
+  - Entry Point: `/moai:3-sync force`
+  - Key Phases: Phase 0.5 (QV) → Full project re-sync
+  - Expected Outcome: All docs regenerated
+
+- **Quick health check** (status mode)
+  - Entry Point: `/moai:3-sync status`
+  - Key Phases: Phase 0.5 (QV) → Status check only
+  - Expected Outcome: Health report
+
+- **Milestone completion** (project mode)
+  - Entry Point: `/moai:3-sync project`
+  - Key Phases: Phase 0.5 (QV) → Integrated sync
+  - Expected Outcome: Project-wide updates
+
+- **Auto-merge workflow** (auto mode with flag)
+  - Entry Point: `/moai:3-sync --auto-merge`
+  - Key Phases: Phase 0.5 (QV) → PR auto-merge + cleanup
+  - Expected Outcome: Branch merged and deleted
 
 Note: Phase 0.5 = Quality Verification (pytest, ruff, mypy, code-review)
 

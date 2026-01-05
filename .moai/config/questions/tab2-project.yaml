@@ -1,0 +1,79 @@
+# Tab 2: Project Settings
+# Priority: RECOMMENDED
+# Questions: 2 + auto-processing
+
+metadata:
+  id: tab_2_project_info
+  label: "Tab 2: Project Basic Information"
+  description: "Configure project name (GitHub Profile moved to Tab 3, Project Mode removed)"
+  priority: RECOMMENDED
+  order: 2
+  setting_count: 2
+
+target_sections:
+  - sections/project.yaml
+
+batches:
+  - batch_id: "2.1"
+    label: "Project Metadata"
+    conditional: false
+    questions:
+      # Q1: Project Name
+      # UX Note: For text_input, only show "Keep Current" option.
+      # Users should type directly in "Type something" field to enter new value.
+      - id: project_name
+        question: "What is the project name? To change, type the new name in the text field below."
+        header: "Project Name"
+        field: "project.name"
+        type: text_input
+        multi_select: false
+        required: true
+        options:
+          - label: "Keep Current Value"
+            description: "Continue using current name (to change, type in the field below)"
+            value: "{{current}}"
+        target:
+          file: "sections/project.yaml"
+          path: "project.name"
+
+      # Q2: Project Description
+      # UX Note: For text_input, only show "Keep Current" option.
+      # Users should type directly in "Type something" field to enter new value.
+      - id: project_description
+        question: "What is the project description? To change, type the new description in the text field below."
+        header: "Description"
+        field: "project.description"
+        type: text_input
+        multi_select: false
+        required: true
+        options:
+          - label: "Keep Current Value"
+            description: "Continue using current description (to change, type in the field below)"
+            value: "{{current}}"
+        target:
+          file: "sections/project.yaml"
+          path: "project.description"
+
+  - batch_id: "2.2"
+    label: "Auto-processed Locale Settings"
+    conditional: false
+    questions: []
+    auto_processing:
+      enabled: true
+      description: "Automatically derived from language.conversation_language"
+      fields:
+        - field: "project.locale"
+          derivation: "auto-map from conversation_language"
+          mapping:
+            ko: "ko_KR"
+            en: "en_US"
+            ja: "ja_JP"
+            es: "es_ES"
+
+validation:
+  checkpoint: "after_tab_2"
+  rules:
+    - name: "validate_project_name"
+      description: "Project name must not be empty"
+      field: "project.name"
+      validation: "required"

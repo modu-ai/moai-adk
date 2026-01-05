@@ -1,238 +1,380 @@
 # Claude Code Sub-agents - Official Documentation Reference
 
-Source: https://code.claude.com/docs/en/sub-agents
+Source: https://code.claude.com/docs/ko/sub-agents
+Updated: 2026-01-06
 
-## Key Concepts
+## What are Sub-agents?
 
-### What are Claude Code Sub-agents?
+Sub-agents are specialized AI assistants that Claude Code can delegate tasks to. Each sub-agent has:
 
-Sub-agents are specialized AI assistants that can be invoked to handle specific tasks or domains. They extend Claude Code's capabilities through delegation patterns.
+- A specific purpose and domain expertise
+- Its own separate context window
+- Configurable tools with granular access control
+- A custom system prompt that guides behavior
 
-### Sub-agent Limitations
+When Claude encounters a task matching a sub-agent's specialty, it can delegate work to that specialized assistant while the main conversation remains focused on high-level goals.
 
-Critical Constraint: Sub-agents cannot spawn other sub-agents. This is a fundamental limitation to prevent infinite recursion.
+## Key Benefits
 
-Required Pattern: All sub-agent delegation must use the `Task()` function:
-```python
-# CORRECT - Required delegation pattern
-Task(subagent_type="specialized-agent", prompt="Handle specific task")
-```
+Context Preservation: Each sub-agent operates in isolation, preventing main conversation pollution
 
-### Sub-agent Configuration
+Specialized Expertise: Fine-tuned with detailed domain instructions for higher success rates
 
-Required Fields:
+Reusability: Created once, used across projects and shareable with teams
+
+Flexible Permissions: Each can have different tool access levels for security
+
+## Creating Sub-agents
+
+### Quick Start Using /agents Command (Recommended)
+
+Step 1: Open the agents interface by typing /agents
+
+Step 2: Select "Create New Agent" (project or user level)
+
+Step 3: Define the sub-agent:
+- Describe its purpose and when to use it
+- Select tools (or leave blank to inherit all)
+- Press `e` to edit the system prompt in your editor
+- Recommended: Have Claude generate it first, then customize
+
+### Direct File Creation
+
+Create markdown files with YAML frontmatter in the appropriate location:
+
+Project Sub-agents: .claude/agents/agent-name.md
+Personal Sub-agents: ~/.claude/agents/agent-name.md
+
+## Configuration
+
+### File Format
+
 ```yaml
 ---
-name: agent-name
-description: Clear description of agent's purpose and domain
-tools: Read, Write, Bash, Grep # Required: Available tools
-model: sonnet # Model choice: sonnet, opus, haiku, inherit
-permissionMode: default # Permission handling strategy
-skills: skill1, skill2 # Available skills for agent
+name: your-sub-agent-name
+description: Description of when this subagent should be invoked
+tools: tool1, tool2, tool3
+model: sonnet
 ---
+
+Your subagent's system prompt goes here. This can be multiple paragraphs
+and should clearly define the subagent's role, capabilities, and approach
+to solving problems.
 ```
 
-### Model Selection
+### Configuration Fields
+
+Required Fields:
+
+- name: Unique identifier using lowercase letters and hyphens
+
+- description: Natural language explanation of purpose. Include phrases like "use PROACTIVELY" or "MUST BE USED" to encourage automatic invocation.
+
+Optional Fields:
+
+- tools: Comma-separated tool list. If omitted, inherits all available tools.
+
+- model: Model alias (sonnet, opus, haiku) or 'inherit' to use same model as main conversation. If omitted, uses configured default (usually sonnet).
+
+### Storage Locations and Priority
+
+Sub-agents are stored as markdown files with YAML frontmatter:
+
+1. Project Level: .claude/agents/ (highest priority)
+2. User Level: ~/.claude/agents/ (lower priority)
+
+Project-level definitions take precedence over user-level definitions with the same name.
+
+## Using Sub-agents
+
+### Automatic Delegation
+
+Claude proactively delegates tasks based on:
+
+- Request description matching sub-agent descriptions
+- Sub-agent's description field content
+- Current context and available tools
+
+Tip: Include phrases like "use PROACTIVELY" or "MUST BE USED" in descriptions to encourage automatic invocation.
+
+### Explicit Invocation
+
+Request specific sub-agents directly:
+
+- "Use the code-reviewer subagent to check my recent changes"
+- "Have the debugger subagent investigate this error"
+
+### Sub-agent Chaining
+
+Chain multiple sub-agents for complex workflows:
+
+"First use the code-analyzer subagent to find performance issues, then use the optimizer subagent to fix them"
+
+## Model Selection
+
+Available model options:
 
 - sonnet: Balanced performance and quality (default)
 - opus: Highest quality, higher cost
 - haiku: Fastest, most cost-effective
-- inherit: Use same model as calling agent
+- inherit: Use same model as main conversation
 
-### Permission Modes
+If model field is omitted, uses the configured default (usually sonnet).
 
-Official Claude Code permissionMode values (verified from official documentation):
+## Built-in Sub-agents
 
-- default: Standard permission prompts. Each tool usage requires user approval on first use in the session. This is the default value if permissionMode is omitted. Recommended for most agents requiring user oversight.
+### Plan Sub-agent
 
-- acceptEdits: Automatically accepts file edit operations (Write, Edit, MultiEdit) without prompting. Other tool operations (like Bash) still require approval. Use for trusted development environments where file modifications are expected and safe.
+Purpose: Used during plan mode to research codebases
+Model: Sonnet (for stronger analysis)
+Tools: Read, Glob, Grep, Bash
+Auto-invoked: When in plan mode and codebase investigation is needed
+Behavior: Prevents infinite nesting of sub-agents while enabling context gathering
 
-- dontAsk: Suppresses all permission dialog prompts for this agent. All tool operations proceed without user confirmation. Use with caution - recommended ONLY for automated environments, CI/CD pipelines, or fully sandboxed contexts.
+## Resumable Agents
 
-Important Notes:
-- If `permissionMode` is omitted, the default value is `default`
-- The values `bypassPermissions`, `plan`, and `ignore` are NOT official permissionMode values
-- For maximum security, use `default` and explicitly approve each operation
-- For automation workflows in safe environments, `acceptEdits` or `dontAsk` may be appropriate
+Each sub-agent execution gets a unique agentId. Conversations are stored in agent-{agentId}.jsonl format. You can resume previous agent context with full context preserved:
 
-### Tool Permissions
+"Resume agent abc123 and now analyze the authorization logic"
 
-Security Principle: Apply least privilege - only grant tools necessary for agent's domain.
+Use Cases for Resumable Agents:
 
-Common Tool Categories:
-- Read Tools: `Read`, `Grep`, `Glob` (file system access)
-- Write Tools: `Write`, `Edit`, `MultiEdit` (file modification)
-- System Tools: `Bash` (command execution)
-- Communication Tools: `AskUserQuestion`, `WebFetch` (interaction)
+- Long-running research tasks
+- Iterative improvements
+- Multi-step workflows spanning multiple sessions
 
-### Sub-agent Creation Patterns
+## CLI-based Configuration
 
-Domain-Specific Specialization:
+Define sub-agents dynamically via --agents flag:
+
+```bash
+claude --agents '{
+  "code-reviewer": {
+    "description": "Expert code reviewer. Use proactively after code changes.",
+    "prompt": "You are a senior code reviewer. Focus on code quality, security, and best practices.",
+    "tools": ["Read", "Grep", "Glob", "Bash"],
+    "model": "sonnet"
+  }
+}'
+```
+
+Priority Order: CLI definitions have lowest priority, followed by User-level, then Project-level (highest).
+
+## Managing Sub-agents with /agents Command
+
+The /agents command provides an interactive menu to:
+
+- View all available sub-agents (built-in, user, project)
+- Create new sub-agents with guided setup
+- Edit existing custom sub-agents and tool access
+- Delete custom sub-agents
+- Manage tool permissions with full available tools list
+
+## Practical Examples
+
+### Code Reviewer
+
 ```yaml
 ---
-name: security-expert
-description: OWASP security analysis and vulnerability assessment
-tools: Read, Grep, Bash, WebFetch
-model: sonnet
-skills: moai-quality-security
+name: code-reviewer
+description: Expert code review specialist. Proactively reviews code for quality, security, and maintainability. Use immediately after writing or modifying code.
+tools: Read, Grep, Glob, Bash
+model: inherit
 ---
+
+You are a senior code reviewer ensuring high standards of code quality and security.
+
+When invoked:
+1. Run git diff to see recent changes
+2. Focus on modified files
+3. Begin review immediately
+
+Review checklist:
+- Code is simple and readable
+- Functions and variables are well-named
+- No duplicated code
+- Proper error handling
+- No exposed secrets or API keys
+- Input validation implemented
+- Good test coverage
+- Performance considerations addressed
 ```
 
-Task-Oriented Specialization:
+### Debugger
+
 ```yaml
 ---
-name: spec-builder
-description: Generate EARS format specifications from requirements
-tools: Read, Write, Bash
-model: sonnet
-skills: moai-foundation-specs
+name: debugger
+description: Debugging specialist for errors, test failures, and unexpected behavior. Use proactively when encountering any issues.
+tools: Read, Edit, Bash, Grep, Glob
 ---
+
+You are an expert debugger specializing in root cause analysis.
+
+Debugging process:
+- Analyze error messages and logs
+- Check recent code changes
+- Form and test hypotheses
+- Add strategic debug logging
+- Inspect variable states
+
+For each issue, provide:
+- Root cause explanation
+- Evidence supporting the diagnosis
+- Specific code fix
+- Testing approach
+- Prevention recommendations
 ```
 
-### Best Practices
+### Data Scientist
 
-1. Clear Scope Definition: Single domain or responsibility
-2. Specific System Prompts: Clear instructions about agent boundaries
-3. Security Boundaries: Explicit limitations on agent behavior
-4. Error Handling: Robust error recovery and fallback strategies
-5. Performance Considerations: Appropriate model selection and context management
+```yaml
+---
+name: data-scientist
+description: Data analysis expert for SQL queries and data insights. Use proactively for data analysis tasks.
+tools: Bash, Read, Write
+model: sonnet
+---
 
-### Integration Patterns
+You are a data scientist specializing in SQL and BigQuery analysis.
 
-Sequential Delegation:
-```python
-# Phase 1: Analysis
-analysis = Task(
- subagent_type="spec-builder",
- prompt="Analyze requirements for user authentication"
-)
-
-# Phase 2: Implementation (passes analysis results)
-implementation = Task(
- subagent_type="backend-expert",
- prompt="Implement authentication API based on analysis",
- context={"analysis": analysis}
-)
+Key practices:
+- Write optimized SQL queries with proper filters
+- Use appropriate aggregations and joins
+- Include comments explaining complex logic
+- Format results for readability
+- Provide data-driven recommendations
 ```
 
-Parallel Delegation:
-```python
-# Independent execution
-results = await Promise.all([
- Task(subagent_type="backend-expert", prompt="Backend implementation"),
- Task(subagent_type="frontend-expert", prompt="Frontend implementation"),
- Task(subagent_type="test-engineer", prompt="Test strategy")
-])
-```
+## Integration Patterns
 
-Conditional Delegation:
-```python
-# Route based on analysis results
-if analysis.has_database_issues:
- result = Task(subagent_type="database-expert", prompt="Optimize database")
-elif analysis.has_api_issues:
- result = Task(subagent_type="backend-expert", prompt="Fix API issues")
-```
+### Sequential Delegation
 
-### Context Management
+Execute tasks in order, passing results between agents:
 
-Efficient Data Passing:
+Phase 1 Analysis: Invoke spec-builder subagent to analyze requirements
+Phase 2 Implementation: Invoke backend-expert subagent with analysis results
+Phase 3 Validation: Invoke quality-gate subagent to validate implementation
+
+### Parallel Delegation
+
+Execute independent tasks simultaneously:
+
+Invoke backend-expert, frontend-expert, and test-engineer subagents in parallel for independent implementation tasks
+
+### Conditional Delegation
+
+Route based on analysis results:
+
+Based on analysis findings, route to database-expert for database issues or backend-expert for API issues
+
+## Context Management
+
+### Efficient Data Passing
+
 - Pass only essential information between agents
 - Use structured data formats for complex information
 - Minimize context size for performance optimization
 - Include validation metadata when appropriate
 
-Context Size Limits:
+### Context Size Guidelines
+
 - Each Task() creates independent context window
-- Recommended context size: 20K-50K tokens maximum
+- Each sub-agent operates in its own 200K token session
+- Recommended context size: 20K-50K tokens maximum for passed data
 - Large datasets should be referenced rather than embedded
 
-### File Storage Standards
+## Tool Permissions
 
-Agent Definition Location:
-```
-.claude/agents/
- domain/
- agent-name.md # Agent definition
- examples.md # Usage examples
- integration.md # Integration patterns
- validation.md # Quality checks
- agent-factory.md # Agent creation utilities
-```
+Security Principle: Apply least privilege by only granting tools necessary for the agent's domain.
 
-### Naming Conventions
+Common Tool Categories:
 
-- Format: lowercase with hyphens (domain-function)
-- Length: Maximum 64 characters
-- Descriptive: Name should clearly indicate agent's domain
-- Unique: Must be unique across all agents
+Read Tools: Read, Grep, Glob (file system access)
+Write Tools: Write, Edit, MultiEdit (file modification)
+System Tools: Bash (command execution)
+Communication Tools: AskUserQuestion, WebFetch (interaction)
 
-### Testing and Validation
+Available tools include Claude Code's internal tool set plus any connected MCP server tools.
+
+## Critical Limitations
+
+Sub-agents Cannot Spawn Other Sub-agents: This is a fundamental limitation to prevent infinite recursion. All delegation must flow from the main conversation or command.
+
+Sub-agents Cannot Use AskUserQuestion Effectively: Sub-agents operate in isolated, stateless contexts and cannot interact with users directly. All user interaction must happen in the main conversation before delegating to sub-agents.
+
+Required Pattern: All sub-agent delegation must use the Task() function.
+
+## Best Practices
+
+### 1. Start with Claude
+
+Have Claude generate initial sub-agents, then customize based on your needs.
+
+### 2. Single Responsibility
+
+Design focused sub-agents with clear, single purposes. Each agent should excel at one domain.
+
+### 3. Detailed Prompts
+
+Include specific instructions, examples, and constraints in the system prompt.
+
+### 4. Limit Tool Access
+
+Grant only necessary tools for the sub-agent's role following least privilege principle.
+
+### 5. Version Control
+
+Check in project sub-agents to enable team collaboration through git.
+
+### 6. Clear Descriptions
+
+Make description specific and action-oriented. Include trigger scenarios.
+
+## Testing and Validation
 
 Test Categories:
+
 1. Functionality Testing: Agent performs expected tasks correctly
 2. Integration Testing: Agent works properly with other agents
 3. Security Testing: Agent respects security boundaries
 4. Performance Testing: Agent operates efficiently within token limits
 
 Validation Steps:
+
 1. Test agent behavior with various inputs
 2. Verify tool usage respects permissions
 3. Validate error handling and recovery
 4. Check integration with other agents or skills
 
-### Error Handling
+## Error Handling
 
 Common Error Types:
+
 - Agent Not Found: Incorrect agent name or file not found
 - Permission Denied: Insufficient tool permissions
 - Context Overflow: Too much context passed between agents
-- Infinite Recursion: Agent tries to spawn another sub-agent
+- Infinite Recursion Attempt: Agent tries to spawn another sub-agent
 
 Recovery Strategies:
+
 - Fallback to basic functionality
 - User notification with clear error messages
 - Graceful degradation of complex features
 - Context optimization for retry attempts
 
-### Performance Optimization
-
-Model Selection Guidelines:
-- Simple Tasks: Use `haiku` for speed and cost efficiency
-- Complex Analysis: Use `sonnet` for quality and reliability
-- Creative Tasks: Use `opus` for highest quality output
-- Cost-Sensitive: Use `haiku` with careful prompt optimization
-
-Context Optimization:
-- Minimize passed context between agents
-- Use efficient data structures
-- Cache reusable results
-- Avoid circular references
-
-### Security Considerations
+## Security Considerations
 
 Access Control:
+
 - Apply principle of least privilege
 - Validate all external inputs
 - Restrict file system access where appropriate
 - Audit tool usage regularly
 
 Data Protection:
-- Never pass sensitive credentials
+
+- Never pass sensitive credentials between agents
 - Sanitize inputs before processing
 - Use secure communication channels
 - Log agent activities appropriately
-
-### Monitoring and Observability
-
-Activity Logging:
-- Track all agent invocations
-- Monitor token usage and performance
-- Log error conditions and recovery attempts
-- Record integration patterns and dependencies
-
-Quality Metrics:
-- Agent success rates and error frequencies
-- Average response times per task type
-- Token efficiency and optimization opportunities
-- User satisfaction and feedback collection

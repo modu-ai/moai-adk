@@ -2,7 +2,7 @@
 name: moai:0-project
 description: "Initialize project metadata and documentation"
 argument-hint: "[<empty>|setting|update|--glm-on <token>]"
-allowed-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill
+allowed-tools: Task, AskUserQuestion, TodoWrite
 model: inherit
 ---
 

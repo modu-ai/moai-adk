@@ -1,178 +1,185 @@
-# Multi-Format Output Generation
+# Multi-Format Documentation Output
 
 ## Overview
-Comprehensive documentation generation supporting HTML sites, PDF documents, static sites, and various output formats with responsive design and professional styling.
 
-## Quick Implementation
+Generate documentation in multiple formats using established tools: static site generators for HTML, WeasyPrint or Pandoc for PDF, and Markdown for portable content.
 
-```python
-from jinja2 import Template
-import markdown
+## Static Site Generators
 
-class HTMLDocGenerator:
- def __init__(self):
- self.templates = self.load_templates()
+### Nextra (Next.js)
 
- def generate_html_site(self, documentation: Dict, output_dir: str):
- """Generate a complete HTML documentation site."""
+Reference Skill("moai-library-nextra") for comprehensive patterns.
 
- # Generate index page
- index_html = self.generate_index_page(documentation)
- self.write_file(output_dir, "index.html", index_html)
+Key features:
+- MDX support for React components in Markdown
+- File-system based routing
+- Built-in search with FlexSearch
+- Theme customization
+- Internationalization support
 
- # Generate API reference pages
- self.generate_api_pages(documentation, output_dir)
+Deployment options:
+- Vercel (recommended for Next.js)
+- Netlify
+- GitHub Pages with static export
 
- # Generate tutorial pages
- self.generate_tutorial_pages(documentation, output_dir)
+### Docusaurus (React)
 
- # Generate CSS and assets
- self.generate_assets(output_dir)
+Initialize with npx create-docusaurus command.
 
- def generate_index_page(self, documentation: Dict) -> str:
- """Generate the main index page."""
+Configure docusaurus.config.js:
+- Set site metadata (title, tagline, url)
+- Configure presets for docs and blog
+- Add theme configuration for navbar, footer
+- Enable plugins for search, analytics
 
- template = Template("""
-<!DOCTYPE html>
-<html lang="en">
-<head>
- <meta charset="UTF-8">
- <meta name="viewport" content="width=device-width, initial-scale=1.0">
- <title>{{ title }}</title>
- <link rel="stylesheet" href="assets/style.css">
-</head>
-<body>
- <nav class="sidebar">
- <div class="logo">
- <h2>{{ title }}</h2>
- </div>
- <ul class="nav-menu">
- <li><a href="index.html" class="active">Home</a></li>
- <li><a href="api/index.html">API Reference</a></li>
- <li><a href="tutorials/index.html">Tutorials</a></li>
- <li><a href="cookbook.html">Cookbook</a></li>
- </ul>
- </nav>
+Organize content:
+- Place docs in docs directory
+- Use category.json for sidebar configuration
+- Add versioning for multiple doc versions
+- Configure blog in blog directory
 
- <main class="content">
- <section class="hero">
- <h1>{{ title }}</h1>
- <p>{{ description }}</p>
- <div class="cta-buttons">
- <a href="tutorials/getting-started.html" class="btn primary">Get Started</a>
- <a href="api/index.html" class="btn secondary">API Docs</a>
- </div>
- </section>
+### VitePress (Vue)
 
- <section class="features">
- <h2>Key Features</h2>
- <div class="feature-grid">
- {% for feature in features %}
- <div class="feature-card">
- <h3>{{ feature.name }}</h3>
- <p>{{ feature.description }}</p>
- </div>
- {% endfor %}
- </div>
- </section>
+Initialize with npm init vitepress.
 
- <section class="quick-start">
- <h2>Quick Start</h2>
- <pre><code>{{ quick_start_example }}</code></pre>
- </section>
- </main>
+Configure in .vitepress/config.js:
+- Set site title and description
+- Define navigation and sidebar
+- Configure search (built-in or Algolia)
+- Add social links
 
- <script src="assets/script.js"></script>
-</body>
-</html>
- """)
+Features:
+- Vue components in Markdown
+- Automatic code syntax highlighting
+- Dark mode support
+- Fast hot module replacement
 
- return template.render(
- title=documentation.get("title", "API Documentation"),
- description=documentation.get("description", ""),
- features=documentation.get("features", []),
- quick_start_example=documentation.get("quick_start", "")
- )
+### MkDocs with Material
 
- def generate_pdf_documentation(self, markdown_content: str, output_path: str):
- """Generate PDF from Markdown content."""
- try:
- import weasyprint
+Install mkdocs-material theme.
 
- # Convert Markdown to HTML
- html_content = markdown.markdown(
- markdown_content,
- extensions=['tables', 'fenced_code', 'toc']
- )
+Configure mkdocs.yml:
+- Set theme to material
+- Configure color palette and fonts
+- Enable navigation features (tabs, sections)
+- Add plugins for search, social cards
 
- # Add CSS styling
- styled_html = f"""
- <!DOCTYPE html>
- <html>
- <head>
- <style>
- body {{ font-family: Arial, sans-serif; line-height: 1.6; margin: 40px; }}
- h1 {{ color: #333; border-bottom: 2px solid #333; }}
- h2 {{ color: #666; }}
- code {{ background: #f4f4f4; padding: 2px 4px; border-radius: 3px; }}
- pre {{ background: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto; }}
- table {{ border-collapse: collapse; width: 100%; }}
- th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
- </style>
- </head>
- <body>
- {html_content}
- </body>
- </html>
- """
+Deploy with mkdocs gh-deploy for GitHub Pages.
 
- # Generate PDF
- weasyprint.HTML(string=styled_html).write_pdf(output_path)
+## PDF Generation
 
- except ImportError:
- raise ImportError("weasyprint is required for PDF generation. Install with: pip install weasyprint")
-```
+### Sphinx PDF Output
 
-## Output Formats
+Use sphinx-build with latex builder:
+- Requires LaTeX installation (texlive)
+- Configure latex_documents in conf.py
+- Customize styling with latex_elements
 
-### 1. HTML Documentation Sites
-- Responsive design with sidebar navigation
-- Interactive code examples
-- Search functionality
-- Dark/light theme support
-- Mobile-optimized layouts
+Alternative with rinohtype:
+- Pure Python PDF generation
+- No LaTeX dependency
+- Configure with rinoh.ini
 
-### 2. PDF Documentation
-- Professional print-ready formatting
+### MkDocs PDF Export
+
+Install mkdocs-pdf-export-plugin.
+
+Configure in mkdocs.yml:
+- Set combined output option
+- Configure styling
+- Exclude specific pages if needed
+
+Alternative with mkdocs-with-pdf plugin:
+- Better styling options
+- Cover page support
 - Table of contents generation
-- Code syntax highlighting
-- Header/footer customization
-- Page numbering and bookmarks
 
-### 3. Static Site Generation
-- Jekyll/Hugo compatible output
-- SEO optimization
-- Fast loading times
-- GitHub Pages deployment
-- Custom domain support
+### Pandoc Conversion
 
-### 4. Markdown Variants
-- GitHub Flavored Markdown
-- CommonMark compliance
-- Extension support (tables, footnotes)
-- Cross-reference linking
-- Image optimization
+Convert Markdown to PDF with Pandoc:
+- Requires Pandoc and LaTeX installation
+- Use templates for consistent styling
+- Configure with YAML metadata
 
-## Template System
-- Jinja2-based templating
-- Customizable themes
-- Component-based design
-- Asset management
-- Multi-language support
+Supports multiple input formats:
+- Markdown, reStructuredText
+- HTML, EPUB
+- Word documents
 
-## Integration Points
-- Documentation platforms (GitBook, Docusaurus)
-- CI/CD pipelines
-- Static site hosting
-- Content management systems
-- Version control workflows
+### WeasyPrint for HTML to PDF
+
+Convert HTML documentation to PDF:
+- Renders CSS for print media
+- Supports modern CSS features
+- Generates bookmarks from headings
+
+Configuration options:
+- Custom stylesheets
+- Page size and margins
+- Headers and footers
+
+## Markdown Output
+
+### GitHub Flavored Markdown
+
+Standard for repository documentation:
+- README.md for project overview
+- CONTRIBUTING.md for contribution guidelines
+- CHANGELOG.md for version history
+- docs/ directory for extended documentation
+
+Features:
+- Tables, task lists, strikethrough
+- Syntax highlighted code blocks
+- Automatic linking for URLs
+- Emoji shortcodes
+
+### MDX for Component Documentation
+
+Combine Markdown with JSX:
+- Import and use React components
+- Interactive examples
+- Code playgrounds
+
+Supported by:
+- Nextra, Docusaurus
+- Storybook for component docs
+- Custom MDX processors
+
+## Hosting and Deployment
+
+### GitHub Pages
+
+Deploy static sites:
+- Configure in repository settings
+- Use GitHub Actions for automation
+- Support custom domains
+
+### Netlify
+
+Features:
+- Automatic builds from Git
+- Preview deployments for PRs
+- Form handling, serverless functions
+- Split testing
+
+### Vercel
+
+Optimized for Next.js (Nextra):
+- Zero configuration deployment
+- Edge functions
+- Analytics
+- Incremental static regeneration
+
+### Read the Docs
+
+Specialized for Sphinx:
+- Automatic versioning
+- PDF generation
+- Search integration
+- Pull request previews
+
+---
+
+Version: 2.0.0
+Last Updated: 2025-12-30

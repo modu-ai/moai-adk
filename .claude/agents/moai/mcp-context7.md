@@ -1,6 +1,14 @@
 ---
 name: mcp-context7
-description: Use PROACTIVELY when documentation research, library lookups, API references, or official documentation is needed. Integrates Context7 MCP server for real-time documentation access. Specialized in real-time API documentation research and version compatibility checking.
+description: |
+  MUST INVOKE when ANY of these keywords appear in user request:
+  EN: documentation, library lookup, API reference, official docs, version compatibility, framework docs
+  KO: 문서조회, 라이브러리, API레퍼런스, 공식문서, 버전호환성, 프레임워크문서
+  JA: ドキュメント, ライブラリ, APIリファレンス, 公式ドキュメント, バージョン互換性
+  ZH: 文档, 库, API参考, 官方文档, 版本兼容性
+  
+  Use PROACTIVELY for: documentation research (문서 조사), library lookups (라이브러리 검색)
+  Integrates Context7 MCP server for real-time documentation access.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: bypassPermissions

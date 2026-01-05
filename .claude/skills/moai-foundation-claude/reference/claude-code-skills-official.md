@@ -1,113 +1,385 @@
 # Claude Code Skills - Official Documentation Reference
 
 Source: https://code.claude.com/docs/en/skills
+Related: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview
+Updated: 2026-01-06
 
-## Key Concepts
+## What are Agent Skills?
 
-### What are Claude Code Skills?
+Agent Skills are modular extensions that expand Claude's capabilities. They consist of a SKILL.md file with YAML frontmatter and Markdown instructions, plus optional supporting files (scripts, templates, documentation).
 
-Skills are reusable pieces of functionality that extend Claude Code's capabilities. They can be automatically loaded based on context or manually invoked by users.
+Key Characteristic: Skills are model-invoked, meaning Claude autonomously decides when to use them based on user requests and skill descriptions. This differs from slash commands which are user-invoked.
 
-### Skill Types
+## Skill Types
 
-1. Automatic Skills: Load automatically based on conversation context
-2. Manual Skills: User must explicitly invoke using `/skill <skill-name>`
-3. Plugin Skills: Bundled with installed packages
+Three categories of Skills exist:
 
-### Storage Locations (Priority Order)
+1. Personal Skills: Located at `~/.claude/skills/skill-name/`, available across all projects
+2. Project Skills: Located at `.claude/skills/skill-name/`, shared via git with team members
+3. Plugin Skills: Bundled within Claude Code plugins
 
-1. Personal Skills: `~/.claude/skills/` (highest priority)
-2. Project Skills: `.claude/skills/` (team-shared)
-3. Plugin Skills: Bundled with installed packages (lowest priority)
+## Progressive Disclosure Architecture
 
-### Required Frontmatter Fields
+Skills leverage Claude's VM environment with a three-level loading system that optimizes context window usage:
 
-```yaml
----
-name: my-skill # Required: kebab-case, max 64 chars
-description: Brief description of what the skill does and when to trigger it
-allowed-tools: Read, Write, Bash # Required: comma-separated tool list
----
-```
+### Level 1: Metadata (Always Loaded)
 
-### Optional Frontmatter Fields
+The Skill's YAML frontmatter provides discovery information and is pre-loaded into the system prompt at startup. This lightweight approach means many Skills can be installed without context penalty.
 
-```yaml
----
-name: my-skill
-description: What the skill does and when to trigger it
-version: 1.0.0 # Semantic versioning
-modularized: false # Whether skill can be split into modules
-tags: [tag1, tag2] # For categorization
-updated: 2025-11-25 # Last update date
-status: active # active, deprecated, experimental
----
-```
+Content: `name` and `description` fields from YAML frontmatter
+Token Cost: Approximately 100 tokens per Skill
 
-### Skill Discovery and Loading
+### Level 2: Instructions (Loaded When Triggered)
 
-- Automatic Loading: Skills load when Claude detects relevant context
-- Progressive Loading: Supporting files load on-demand
-- Tool Restrictions: Skills only have access to declared tools
+The main body of SKILL.md contains procedural knowledge including workflows, best practices, and guidance. When a request matches a Skill's description, Claude reads SKILL.md from the filesystem via bash, only then loading this content into the context window.
 
-### Best Practices
+Content: SKILL.md body with instructions and guidance
+Token Cost: Under 5K tokens recommended
 
-1. Single Responsibility: Each skill should have one clear purpose
-2. Specific Descriptions: Include trigger scenarios in description
-3. Minimal Tools: Declare only necessary tools using least privilege
-4. Progressive Disclosure: Keep main SKILL.md concise; expand with supporting files
-5. Working Examples: Include practical, tested examples
+### Level 3: Resources and Code (Loaded As Needed)
 
-### File Structure Standards
+Skills can bundle additional materials that Claude accesses only when referenced:
 
-```
+- Instructions: Additional markdown files (FORMS.md, REFERENCE.md) containing specialized guidance
+- Code: Executable scripts (fill_form.py, validate.py) that Claude runs via bash
+- Resources: Reference materials like database schemas, API documentation, templates, or examples
+
+Content: Bundled files executed via bash without loading contents into context
+Token Cost: Effectively unlimited since they are accessed on-demand
+
+## SKILL.md Structure and Format
+
+### Directory Organization
+
 skill-name/
- SKILL.md # Always create (main file, ≤ 500 lines)
- reference.md # Optional: Extended documentation
- examples.md # Optional: Code examples
- scripts/ # Optional: Utility scripts
- helper.sh
- templates/ # Optional: File templates
- template.md
-```
+- SKILL.md (required, main file, 500 lines or less)
+- reference.md (optional, extended documentation)
+- examples.md (optional, code examples)
+- scripts/ (optional, utility scripts)
+- templates/ (optional, file templates)
 
-### Skill Naming Conventions
+### YAML Frontmatter Requirements
 
-- Format: kebab-case (lowercase with hyphens)
-- Length: Maximum 64 characters
-- Uniqueness: Must be unique across all storage locations
-- Descriptive: Name should indicate skill purpose
+Required Fields:
 
-### Tool Permissions
+- name: Skill identifier (max 64 characters, lowercase letters, numbers, and hyphens only, no XML tags, no reserved words like "anthropic" or "claude")
 
-Skills only have access to tools declared in `allowed-tools`. Common tool categories:
+- description: What the Skill does and when to use it (max 1024 characters, non-empty, no XML tags)
 
-- Information: `Read`, `Grep`, `Glob` (no user approval needed)
-- Modification: `Write`, `Edit`, `Bash` (user approval required)
-- External: `WebFetch`, `WebSearch` (user approval required)
+Optional Fields:
 
-### Integration Patterns
+- allowed-tools: Comma-separated tool names to restrict access. If not specified, Claude follows standard permission model.
 
-Skill Dependencies:
+### Example SKILL.md Structure
+
 ```yaml
-skills: moai-foundation-claude, other-skill-name
+---
+name: your-skill-name
+description: Brief description of what this Skill does and when to use it. Include both what it does AND specific triggers for when Claude should use it.
+allowed-tools: Read, Grep, Glob
+---
+
+# Your Skill Name
+
+## Instructions
+Clear, step-by-step guidance for Claude to follow.
+
+## Examples
+Concrete examples of using this Skill.
 ```
 
-MCP Server Integration:
-```yaml
-mcpServers:
- - context7
- - figma-dev-mode-mcp-server
+## Tool Restrictions with allowed-tools
+
+The `allowed-tools` field restricts which tools Claude can use when a skill is active.
+
+Use Cases for Tool Restrictions:
+
+- Read-only Skills that should not modify files (allowed-tools: Read, Grep, Glob)
+- Limited-scope Skills for data analysis only
+- Security-sensitive workflows
+
+If `allowed-tools` is not specified, Claude follows the standard permission model and may request tool access as needed.
+
+## Writing Effective Descriptions
+
+The description field enables Skill discovery and should include both what the Skill does and when to use it.
+
+Critical Rules:
+
+- Always write in third person. The description is injected into the system prompt, and inconsistent point-of-view can cause discovery problems.
+- Good: "Processes Excel files and generates reports"
+- Avoid: "I can help you process Excel files"
+- Avoid: "You can use this to process Excel files"
+
+Be Specific and Include Key Terms:
+
+Effective examples:
+
+- PDF Processing: "Extract text and tables from PDF files, fill forms, merge documents. Use when working with PDF files or when the user mentions PDFs, forms, or document extraction."
+
+- Git Commit Helper: "Generate descriptive commit messages by analyzing git diffs. Use when the user asks for help writing commit messages or reviewing staged changes."
+
+Avoid vague descriptions:
+
+- "Helps with documents" (too vague)
+- "Processes data" (not specific)
+- "Does stuff with files" (unclear triggers)
+
+## Naming Conventions
+
+Recommended format uses gerund form (verb + -ing) for Skill names as this clearly describes the activity or capability:
+
+Good Naming Examples:
+
+- processing-pdfs
+- analyzing-spreadsheets
+- managing-databases
+- testing-code
+- writing-documentation
+
+Acceptable Alternatives:
+
+- Noun phrases: pdf-processing, spreadsheet-analysis
+- Action-oriented: process-pdfs, analyze-spreadsheets
+
+Avoid:
+
+- Vague names: helper, utils, tools
+- Overly generic: documents, data, files
+- Reserved words: anthropic-helper, claude-tools
+- Inconsistent patterns within skill collection
+
+## Best Practices
+
+### Core Principle: Concise is Key
+
+The context window is a shared resource. Your Skill competes with system prompt, conversation history, other Skills' metadata, and the actual request.
+
+Default Assumption: Claude is already very smart. Only add context Claude does not already have. Challenge each piece of information by asking:
+
+- Does Claude really need this explanation?
+- Can I assume Claude knows this?
+- Does this paragraph justify its token cost?
+
+### Set Appropriate Degrees of Freedom
+
+Match the level of specificity to the task's fragility and variability.
+
+High Freedom (Text-based instructions):
+
+Use when multiple approaches are valid, decisions depend on context, or heuristics guide the approach.
+
+Medium Freedom (Pseudocode or scripts with parameters):
+
+Use when a preferred pattern exists, some variation is acceptable, or configuration affects behavior.
+
+Low Freedom (Specific scripts, few or no parameters):
+
+Use when operations are fragile and error-prone, consistency is critical, or a specific sequence must be followed.
+
+### Test With All Models You Plan to Use
+
+Skills act as additions to models, so effectiveness depends on the underlying model:
+
+- Claude Haiku (fast, economical): Does the Skill provide enough guidance?
+- Claude Sonnet (balanced): Is the Skill clear and efficient?
+- Claude Opus (powerful reasoning): Does the Skill avoid over-explaining?
+
+### Build Evaluations First
+
+Create evaluations BEFORE writing extensive documentation to ensure your Skill solves real problems:
+
+1. Identify gaps: Run Claude on representative tasks without a Skill, document specific failures
+2. Create evaluations: Build three scenarios that test these gaps
+3. Establish baseline: Measure Claude's performance without the Skill
+4. Write minimal instructions: Create just enough content to address gaps and pass evaluations
+5. Iterate: Execute evaluations, compare against baseline, refine
+
+### Develop Skills Iteratively with Claude
+
+Work with one instance of Claude ("Claude A") to create a Skill that will be used by other instances ("Claude B"):
+
+1. Complete a task without a Skill using normal prompting
+2. Identify the reusable pattern from the context you provided
+3. Ask Claude A to create a Skill capturing that pattern
+4. Review for conciseness
+5. Improve information architecture
+6. Test on similar tasks with Claude B
+7. Iterate based on observation
+
+## Progressive Disclosure Patterns
+
+### Pattern 1: High-level Guide with References
+
+Keep SKILL.md as overview pointing Claude to detailed materials:
+
+```markdown
+# PDF Processing
+
+## Quick start
+Extract text with pdfplumber (brief example)
+
+## Advanced features
+**Form filling**: See [FORMS.md](FORMS.md) for complete guide
+**API reference**: See [REFERENCE.md](REFERENCE.md) for all methods
+**Examples**: See [EXAMPLES.md](EXAMPLES.md) for common patterns
 ```
 
-### Validation and Debugging
+Claude loads additional files only when needed.
 
-Common Issues:
-- Skill not loading: Check YAML syntax and file path
-- Tool prompts unexpected: Review `allowed-tools` declaration
-- Duplicate triggers: Rename skill or tighten description
+### Pattern 2: Domain-specific Organization
 
-Debug Commands:
-- `claude --debug`: Check skill loading and configuration
-- Validate YAML: Use online YAML validators or local tools
-- Test skills: Create test cases for skill functionality
+For Skills with multiple domains, organize content by domain to avoid loading irrelevant context:
+
+```
+bigquery-skill/
+- SKILL.md (overview and navigation)
+- reference/
+  - finance.md (revenue metrics)
+  - sales.md (pipeline data)
+  - product.md (usage analytics)
+```
+
+When user asks about revenue, Claude reads only reference/finance.md.
+
+### Pattern 3: Conditional Details
+
+Show basic content, link to advanced content:
+
+```markdown
+## Creating documents
+Use docx-js for new documents. See [DOCX-JS.md](DOCX-JS.md).
+
+## Editing documents
+For simple edits, modify the XML directly.
+**For tracked changes**: See [REDLINING.md](REDLINING.md)
+```
+
+### Important: Avoid Deeply Nested References
+
+Keep references one level deep from SKILL.md. Claude may partially read files when they are referenced from other referenced files, resulting in incomplete information.
+
+Bad: SKILL.md references advanced.md which references details.md
+Good: SKILL.md directly references all files (advanced.md, reference.md, examples.md)
+
+## Where Skills Work
+
+Skills are available across Claude's agent products with different behaviors:
+
+### Claude Code
+
+Custom Skills only. Create Skills as directories with SKILL.md files. Claude discovers and uses them automatically. Skills are filesystem-based and do not require API uploads.
+
+### Claude API
+
+Supports both pre-built Agent Skills and custom Skills. Specify the relevant `skill_id` in the `container` parameter. Custom Skills are shared organization-wide.
+
+### Claude.ai
+
+Supports both pre-built Agent Skills and custom Skills. Upload custom Skills as zip files through Settings, Features. Custom Skills are individual to each user and not shared organization-wide.
+
+### Claude Agent SDK
+
+Supports custom Skills through filesystem-based configuration. Create Skills in `.claude/skills/` and enable by including "Skill" in `allowed_tools` configuration.
+
+## Security Considerations
+
+We strongly recommend using Skills only from trusted sources: those you created yourself or obtained from Anthropic. Skills provide Claude with new capabilities through instructions and code, and a malicious Skill can direct Claude to invoke tools or execute code in ways that do not match the Skill's stated purpose.
+
+Key Security Considerations:
+
+- Audit thoroughly: Review all files bundled in the Skill including SKILL.md, scripts, images, and other resources
+- External sources are risky: Skills that fetch data from external URLs pose particular risk
+- Tool misuse: Malicious Skills can invoke tools in harmful ways
+- Data exposure: Skills with access to sensitive data could leak information to external systems
+- Treat like installing software: Only use Skills from trusted sources
+
+## Managing Skills
+
+### View Available Skills
+
+Ask Claude directly: "What Skills are available?"
+
+Or check file system:
+
+- Personal Skills: ls ~/.claude/skills/
+- Project Skills: ls .claude/skills/
+
+### Update a Skill
+
+Edit SKILL.md directly. Changes apply on next Claude Code startup.
+
+### Remove a Skill
+
+Personal: rm -rf ~/.claude/skills/my-skill
+Project: rm -rf .claude/skills/my-skill && git commit -m "Remove unused Skill"
+
+## Debugging Skills
+
+### Claude Not Using the Skill
+
+Check if description is specific enough:
+
+- Include what it does AND when to use it
+- Add key trigger terms users will mention
+
+Check YAML syntax validity:
+
+- Opening and closing --- markers
+- Proper indentation
+- No tabs (use spaces)
+
+Check correct file location:
+
+- Personal: ~/.claude/skills/*/SKILL.md
+- Project: .claude/skills/*/SKILL.md
+
+### Multiple Skills Conflicting
+
+Use distinct trigger terms in descriptions:
+
+Instead of two skills both having "For data analysis" and "For analyzing data", use specific triggers:
+
+- Skill 1: "Analyze sales data in Excel files and CRM exports. Use for sales reports, pipeline analysis, and revenue tracking."
+- Skill 2: "Analyze log files and system metrics data. Use for performance monitoring, debugging, and system diagnostics."
+
+## Anti-patterns to Avoid
+
+### Avoid Windows-style Paths
+
+Always use forward slashes in file paths, even on Windows:
+
+- Good: scripts/helper.py, reference/guide.md
+- Avoid: scripts\helper.py, reference\guide.md
+
+### Avoid Offering Too Many Options
+
+Do not present multiple approaches unless necessary. Provide a default with an escape hatch for special cases.
+
+### Avoid Time-sensitive Information
+
+Do not include information that will become outdated. Use "old patterns" section for deprecated approaches instead of date-based conditions.
+
+## Checklist for Effective Skills
+
+Before sharing a Skill, verify:
+
+Core Quality:
+
+- Description is specific and includes key terms
+- Description includes both what the Skill does and when to use it
+- SKILL.md body is under 500 lines
+- Additional details are in separate files if needed
+- No time-sensitive information
+- Consistent terminology throughout
+- Examples are concrete, not abstract
+- File references are one level deep
+- Progressive disclosure used appropriately
+- Workflows have clear steps
+
+Testing:
+
+- At least three evaluations created
+- Tested with Haiku, Sonnet, and Opus
+- Tested with real usage scenarios
+- Team feedback incorporated if applicable

@@ -1,6 +1,14 @@
 ---
 name: ai-nano-banana
-description: Use PROACTIVELY when user requests image generation/editing with natural language, asks for visual content creation, or needs prompt optimization for Gemini 3 Nano Banana Pro. Called from /moai:1-plan and task delegation workflows. Specialized in prompt engineering for Gemini Nano Banana and technical visualization.
+description: |
+  MUST INVOKE when ANY of these keywords appear in user request:
+  EN: image generation, visual content, prompt optimization, Gemini, AI image, image edit
+  KO: 이미지생성, 시각적콘텐츠, 프롬프트최적화, 제미나이, AI이미지, 이미지편집
+  JA: 画像生成, ビジュアルコンテンツ, プロンプト最適化, Gemini, AI画像
+  ZH: 图像生成, 视觉内容, 提示词优化, Gemini, AI图像
+  
+  Use PROACTIVELY for: image generation (이미지 생성), visual content creation (시각적 콘텐츠 제작)
+  Specialized in prompt engineering for Gemini Nano Banana and technical visualization.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill
 model: inherit
 permissionMode: default

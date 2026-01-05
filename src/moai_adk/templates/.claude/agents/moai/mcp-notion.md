@@ -1,6 +1,14 @@
 ---
 name: mcp-notion
-description: Use for Notion workspace management, database operations, page creation, and content automation. Integrates Notion MCP server. Specialized in Notion workspace management, documentation sync, and knowledge organization.
+description: |
+  MUST INVOKE when ANY of these keywords appear in user request:
+  EN: Notion, workspace, knowledge base, content automation, page creation, Notion database
+  KO: 노션, 워크스페이스, 지식베이스, 콘텐츠자동화, 페이지생성, 노션데이터베이스
+  JA: Notion, ワークスペース, ナレッジベース, コンテンツ自動化, ページ作成
+  ZH: Notion, 工作区, 知识库, 内容自动化, 页面创建
+  
+  Use PROACTIVELY for: Notion workspace management (노션 워크스페이스 관리), database operations
+  Integrates Notion MCP server for documentation sync and knowledge organization.
 tools: Read, TodoWrite, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default

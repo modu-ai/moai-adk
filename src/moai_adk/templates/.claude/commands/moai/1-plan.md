@@ -741,37 +741,35 @@ PHASE 3 is SKIPPED IF:
 
 MANDATORY: Read configuration BEFORE any git operations
 
-Execute the following config validation (this is pseudo-code representing the actual decision logic):
+Execute configuration validation following this decision process:
 
-```python
-# Step 1A: Read configuration from .moai/config/config.yaml
-config = read_json(".moai/config/config.yaml")
-git_mode = config.get("git_strategy", {}).get("mode")  # "personal" or "team"
-spec_workflow = config.get("github", {}).get("spec_git_workflow")  # Required
+Step 1A - Read Configuration:
+- Read the configuration file from .moai/config/config.yaml
+- Extract git_mode value from git_strategy.mode (expected values: "personal" or "team")
+- Extract spec_workflow value from github.spec_git_workflow (this is required)
 
-# Step 1B: Validate spec_git_workflow value
-valid_workflows = ["develop_direct", "feature_branch", "per_spec"]
-if spec_workflow not in valid_workflows:
-    ERROR: f"Invalid spec_git_workflow: {spec_workflow}"
-    ERROR: f"Must be one of: {valid_workflows}"
-    SKIP_PHASE_3 = True
-    ABORT_GIT_OPERATIONS()
+Step 1B - Validate spec_git_workflow Value:
+- Check if spec_workflow is one of the valid values: "develop_direct", "feature_branch", or "per_spec"
+- If spec_workflow is not one of these valid values:
+  - Report error indicating the invalid spec_git_workflow value
+  - Report error listing the valid workflow options
+  - Set SKIP_PHASE_3 to true
+  - Abort all git operations
 
-# Step 1C: Validate consistency
-if git_mode == "personal" and spec_workflow == "develop_direct":
-    CONSISTENCY_OK = True  #  Consistent
-elif git_mode == "personal" and spec_workflow in ["feature_branch", "per_spec"]:
-    WARN: "Personal mode with branch creation is non-standard but allowed"
-    CONSISTENCY_OK = True
-elif git_mode == "team" and spec_workflow in ["feature_branch", "per_spec"]:
-    CONSISTENCY_OK = True
-else:
-    ERROR: "Inconsistent git configuration"
-    ABORT_GIT_OPERATIONS()
+Step 1C - Validate Configuration Consistency:
+- If git_mode equals "personal" and spec_workflow equals "develop_direct":
+  - Configuration is consistent, proceed normally
+- If git_mode equals "personal" and spec_workflow equals "feature_branch" or "per_spec":
+  - Issue warning that personal mode with branch creation is non-standard but allowed
+  - Configuration is acceptable, proceed with caution
+- If git_mode equals "team" and spec_workflow equals "feature_branch" or "per_spec":
+  - Configuration is consistent, proceed normally
+- Otherwise:
+  - Report error for inconsistent git configuration
+  - Abort all git operations
 
-# Step 1D: Determine PHASE 3 routing
-log(f"Git Config: mode={git_mode}, spec_workflow={spec_workflow}")
-```
+Step 1D - Log Configuration Status:
+- Log the final git configuration showing mode and spec_workflow values
 
 Visual: Configuration validation checkpoint
 
@@ -921,53 +919,33 @@ CONDITION: `--worktree` flag is provided in user command
 
 ACTION: Create Git worktree using WorktreeManager
 
-```python
-# Step 2.5: Create worktree (when --worktree flag provided)
-# Parse command arguments to check for --worktree flag
-import sys
-import shlex
-from pathlib import Path
+Step 2.5A - Parse Command Arguments:
+- Parse the command arguments from ARGUMENTS variable
+- Check if --worktree flag is present in the arguments
+- Check if --branch flag is present in the arguments
 
-# Parse command arguments to detect --worktree flag
-command_args = shlex.split("$ARGUMENTS" if "$ARGUMENTS" else "")
-has_worktree_flag = "--worktree" in command_args
-has_branch_flag = "--branch" in command_args
+Step 2.5B - Worktree Creation (when --worktree flag is present):
+- Determine project root as the current working directory
+- Set worktree root to the user home directory under worktrees/MoAI-ADK
+- Initialize the WorktreeManager with project root and worktree root paths
+- Create worktree for the SPEC with the following parameters:
+  - spec_id: The generated SPEC ID (e.g., SPEC-AUTH-001)
+  - branch_name: Feature branch name in format feature/SPEC-{ID}
+  - base_branch: main
 
-if has_worktree_flag:
-    # Worktree creation logic
-    try:
-        # Import WorktreeManager from the implemented CLI module
-        from moai_adk.cli.worktree.manager import WorktreeManager
+Step 2.5C - Success Output:
+- Display confirmation that SPEC was created with the SPEC ID
+- Display the worktree path that was created
+- Provide next steps guidance:
+  - Option 1: Switch to worktree using moai-worktree switch command
+  - Option 2: Use shell eval with moai-worktree go command
+  - Option 3: Run /moai:2-run with the SPEC ID
 
-        # Determine paths
-        project_root = Path.cwd()  # Current working directory
-        worktree_root = Path.home() / "worktrees" / "MoAI-ADK"  # Default worktree root
-
-        # Initialize worktree manager
-        worktree_manager = WorktreeManager(project_root, worktree_root)
-
-        # Create worktree for the SPEC
-        worktree_info = worktree_manager.create(
-            spec_id="SPEC-{SPEC_ID}",
-            branch_name=f"feature/SPEC-{SPEC_ID}",
-            base_branch="main"
-        )
-
-        # Display success messages
-        print(f"\n SPEC created: SPEC-{SPEC_ID}")
-        print(f" Worktree created: {worktree_info.path}")
-        print(f"\n Next steps:")
-        print(f"  1. Switch to worktree: moai-worktree switch SPEC-{SPEC_ID}")
-        print(f"  2. Or use shell eval: eval $(moai-worktree go SPEC-{SPEC_ID})")
-        print(f"  3. Then run: /moai:2-run SPEC-{SPEC_ID}")
-
-    except Exception as e:
-        # Handle worktree creation errors gracefully
-        print(f"\n Worktree creation failed: {e}")
-        print(f" SPEC created: SPEC-{SPEC_ID}")
-        print(f" You can manually create worktree later with:")
-        print(f"   moai-worktree new SPEC-{SPEC_ID}")
-```
+Step 2.5D - Error Handling:
+- If worktree creation fails:
+  - Display error message with the failure reason
+  - Confirm that the SPEC was still created successfully
+  - Provide manual worktree creation command as fallback
 
 Expected Success Outcome:
 

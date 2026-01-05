@@ -2,12 +2,12 @@
 # Basic project metadata
 
 project:
-  name: "moai-adk"                                                  # Project name
-  description: "AI Development Kit for Claude Code"                 # Project description
-  type: "cli_tool"                                                  # Project type: web_browser_app, mobile_app, cli_tool, backend_api
-  locale: ko_KR                                                     # Auto-derived from conversation_language
-  created_at: "2025-01-05T00:00:00Z"                                # Auto-set during init
-  initialized: true                                                 # Auto-set during init
+  name: ""                    # Project name
+  description: ""             # Project description
+  type: ""                    # Project type: web_browser_app, mobile_app, cli_tool, backend_api
+  locale: en_US               # Auto-derived from conversation_language
+  created_at: ""              # Auto-set during init
+  initialized: false          # Auto-set during init
 
 github:
-  profile_name: "modu-ai"               # GitHub organization (e.g., modu-ai)
+  profile_name: ""            # GitHub username (e.g., @GoosLab)

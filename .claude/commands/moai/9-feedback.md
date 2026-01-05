@@ -2,7 +2,7 @@
 name: moai:9-feedback
 description: "Submit feedback or report issues"
 argument-hint: "[issue|suggestion|question]"
-allowed-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, AskUserQuestion, Task, Skill
+allowed-tools: Task, AskUserQuestion, TodoWrite
 model: haiku
 ---
 

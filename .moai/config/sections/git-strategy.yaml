@@ -3,8 +3,7 @@
 # Complete field coverage for all Git workflow modes
 
 git_strategy:
-  mode: personal                # manual, personal, team
-  github_profile: "GoosLab"     # GitHub username/organization
+  mode: manual                # manual, personal, team
 
   # Manual Mode Settings (Local Git)
   manual:

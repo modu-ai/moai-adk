@@ -1,6 +1,14 @@
 ---
 name: manager-git
-description: Specialized agent for Git operations including branch management, PR handling, commit generation, and release automation. Specialized in Git workflows, conventional commits, and branch management.
+description: |
+  MUST INVOKE when ANY of these keywords appear in user request:
+  EN: git, commit, branch, PR, pull request, merge, release, version control
+  KO: git, 커밋, 브랜치, PR, 풀리퀘스트, 머지, 릴리즈, 버전관리
+  JA: git, コミット, ブランチ, PR, プルリクエスト, マージ, リリース
+  ZH: git, 提交, 分支, PR, 拉取请求, 合并, 发布
+  
+  Specialized agent for: Git operations (Git 작업), branch management (브랜치 관리), PR handling (PR 처리)
+  Specialized in Git workflows, conventional commits, and branch management.
 tools: Bash, Read, Write, Edit, Glob, Grep, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default

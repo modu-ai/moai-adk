@@ -18,9 +18,9 @@
 # @.moai/config/sections/language.yaml
 
 moai:
-  version: "0.36.2"
+  version: "0.34.0"
   initialized: true
-  initialized_at: "2025-01-05T00:00:00Z"
+  initialized_at: "2025-12-19T00:00:00Z"
 
 # Document Management System
 # Prevents project root pollution by enforcing .moai/ hierarchy for all internal files
