@@ -60,10 +60,10 @@ class PostToolAutoSpecCompletion(BaseHook):
     def _get_auto_spec_config(self) -> Dict[str, Any]:
         """Get auto-spec completion configuration."""
         try:
-            from moai_adk.core.config.config_manager import ConfigManager
+            from moai_adk.core.config.unified import UnifiedConfigManager as ConfigManager
 
             config = ConfigManager()
-            return config.get_value(
+            return config.get(
                 "auto_spec_completion",
                 {
                     "enabled": True,
