@@ -31,7 +31,11 @@ from typing import Any, Dict, List, Optional
 # Add module path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from lib.path_utils import find_project_root  # noqa: E402
+from lib.path_utils import (  # noqa: E402
+    ensure_moai_dir,
+    find_project_root,
+    get_safe_moai_path,
+)
 
 # Import unified timeout manager and Git operations manager
 try:
@@ -119,115 +123,35 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-def _load_yaml_file(file_path: Path) -> Dict[str, Any]:
-    """Load a YAML file safely with fallback to empty dict.
-
-    Args:
-        file_path: Path to the YAML file
-
-    Returns:
-        Parsed YAML content or empty dict on failure
-    """
-    if not file_path.exists():
-        return {}
-    try:
-        import yaml
-
-        with open(file_path, "r", encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
-    except ImportError:
-        # PyYAML not available, try simple parsing
-        return {}
-    except Exception:
-        return {}
-
-
-def _load_config_from_sections() -> Dict[str, Any]:
-    """Load configuration from section YAML files with fallback to config.yaml/json.
-
-    Priority:
-    1. Section files (.moai/config/sections/*.yaml)
-    2. Main config.yaml
-    3. Legacy config.json
-
-    Returns:
-        Merged configuration dictionary
-    """
-    project_root = find_project_root()
-    config_dir = project_root / ".moai" / "config"
-    sections_dir = config_dir / "sections"
-
-    config: Dict[str, Any] = {}
-
-    # Try section-based configuration first (new approach)
-    if sections_dir.exists() and sections_dir.is_dir():
-        # Load all section files
-        section_files = [
-            "system.yaml",  # Contains hooks config
-            "language.yaml",
-            "user.yaml",
-            "project.yaml",
-            "git-strategy.yaml",
-            "quality.yaml",
-        ]
-        for filename in section_files:
-            section_path = sections_dir / filename
-            section_data = _load_yaml_file(section_path)
-            if section_data:
-                # Merge section data into config
-                for key, value in section_data.items():
-                    if key in config and isinstance(config[key], dict) and isinstance(value, dict):
-                        config[key].update(value)
-                    else:
-                        config[key] = value
-        if config:
-            return config
-
-    # Fallback to main config.yaml
-    yaml_config_path = config_dir / "config.yaml"
-    config = _load_yaml_file(yaml_config_path)
-    if config:
-        return config
-
-    # Legacy fallback to config.json
-    json_config_path = config_dir / "config.json"
-    if json_config_path.exists():
-        try:
-            with open(json_config_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except (json.JSONDecodeError, OSError):
-            pass
-
-    return {}
-
-
 def load_hook_timeout() -> int:
-    """Load hook timeout from configuration (default: 5000ms)
-
-    Loads from section YAML files, with fallback to config.yaml and config.json.
+    """Load hook timeout from config.yaml (default: 5000ms)
 
     Returns:
         Timeout in milliseconds
     """
     try:
-        config = _load_config_from_sections()
-        return config.get("hooks", {}).get("timeout_ms", 5000)
+        config_file = get_safe_moai_path("config/config.yaml")
+        if config_file.exists():
+            with open(config_file, "r", encoding="utf-8") as f:
+                config: Dict[str, Any] = json.load(f)
+                return config.get("hooks", {}).get("timeout_ms", 5000)
     except Exception:
         pass
     return 5000
 
 
 def get_graceful_degradation() -> bool:
-    """Load graceful_degradation setting from configuration (default: true)
-
-    Loads from section YAML files, with fallback to config.yaml and config.json.
+    """Load graceful_degradation setting from config.yaml (default: true)
 
     Returns:
         Whether graceful degradation is enabled
     """
     try:
-        config = _load_config_from_sections()
-        return config.get("hooks", {}).get("graceful_degradation", True)
+        config_file = get_safe_moai_path("config/config.yaml")
+        if config_file.exists():
+            with open(config_file, "r", encoding="utf-8") as f:
+                config: Dict[str, Any] = json.load(f)
+                return config.get("hooks", {}).get("graceful_degradation", True)
     except Exception:
         pass
     return True
@@ -252,13 +176,13 @@ def cleanup_old_files(config: Dict[str, Any]) -> Dict[str, int]:
         cleanup_days = cleanup_config.get("cleanup_days", 7)
         cutoff_date = datetime.now() - timedelta(days=cleanup_days)
 
-        # Clean up temporary files
-        temp_dir = Path(".moai/temp")
+        # Clean up temporary files (use safe path to prevent creation in wrong directory)
+        temp_dir = get_safe_moai_path("temp")
         if temp_dir.exists():
             stats["temp_cleaned"] = cleanup_directory(temp_dir, cutoff_date, None, patterns=["*"])
 
-        # Clean up cache files
-        cache_dir = Path(".moai/cache")
+        # Clean up cache files (use safe path to prevent creation in wrong directory)
+        cache_dir = get_safe_moai_path("cache")
         if cache_dir.exists():
             stats["cache_cleaned"] = cleanup_directory(cache_dir, cutoff_date, None, patterns=["*"])
 
@@ -336,9 +260,8 @@ def save_session_metrics(payload: Dict[str, Any]) -> bool:
         Success status
     """
     try:
-        # Create logs directory
-        logs_dir = Path(".moai/logs/sessions")
-        logs_dir.mkdir(parents=True, exist_ok=True)
+        # Create logs directory (use ensure_moai_dir for safe creation in project root)
+        logs_dir = ensure_moai_dir("logs/sessions")
 
         # Collect session information
         session_metrics = {
@@ -373,9 +296,8 @@ def save_work_state(payload: Dict[str, Any]) -> bool:
         Success status
     """
     try:
-        # Create memory directory
-        memory_dir = Path(".moai/memory")
-        memory_dir.mkdir(parents=True, exist_ok=True)
+        # Create memory directory (use ensure_moai_dir for safe creation in project root)
+        memory_dir = ensure_moai_dir("memory")
 
         # Collect work state
         work_state = {
@@ -387,7 +309,7 @@ def save_work_state(payload: Dict[str, Any]) -> bool:
         }
 
         # Save state
-        state_file = memory_dir / "last-session-state.json"
+        state_file = get_safe_moai_path("memory/last-session-state.json")
         with open(state_file, "w", encoding="utf-8") as f:
             json.dump(work_state, f, indent=2, ensure_ascii=False)
 
@@ -572,8 +494,8 @@ def extract_specs_from_memory() -> List[str]:
     specs = []
 
     try:
-        # Query recent SPECs from command_execution_state.json
-        state_file = Path(".moai/memory/command-execution-state.json")
+        # Query recent SPECs from command_execution_state.json (use safe path)
+        state_file = get_safe_moai_path("memory/command-execution-state.json")
         if state_file.exists():
             with open(state_file, "r", encoding="utf-8") as f:
                 state_data = json.load(f)
@@ -604,10 +526,8 @@ def scan_root_violations(config: Dict[str, Any]) -> List[Dict[str, str]]:
     violations = []
 
     try:
-        # Get project root
-        project_root = Path(".moai/config/config.yaml").parent.parent
-        if not project_root.exists():
-            project_root = find_project_root()
+        # Get project root (always use find_project_root for consistent behavior)
+        project_root = find_project_root()
 
         # Scan root directory
         for item in project_root.iterdir():
