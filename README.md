@@ -56,7 +56,7 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 
 ### 🗿 What is MoAI-ADK?
 
-**MoAI-ADK** (Agentic Development Kit) is a next-generation development framework powered by AI agents. It combines **SPEC-First development methodology**, **TDD** (Test-Driven Development), and **24 specialized AI agents** to deliver a complete and transparent development lifecycle.
+**MoAI-ADK** (Agentic Development Kit) is a next-generation development framework powered by AI agents. It combines **SPEC-First development methodology**, **TDD** (Test-Driven Development), and **27 specialized AI agents** to deliver a complete and transparent development lifecycle.
 
 ### ✨ Why Use MoAI-ADK?
 
@@ -84,7 +84,8 @@ MoAI-ADK solutions:
 | ---------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **SPEC-First**         | All development starts with clear specifications     | **90% reduction** in rework from requirement changes<br/>Clear SPEC eliminates developer-planner misunderstandings                                                                                                       |
 | **TDD Enforcement**    | Automated Red-Green-Refactor cycle                   | **70% reduction** in bugs (with 85%+ coverage)<br/>**15% shorter** total development time including test writing                                                                                                         |
-| **AI Orchestration**   | Mr.Alfred commands 24 specialized AI agents (7-Tier) | **Average token savings**: 5,000 tokens per session (Conditional Auto-load)<br/>**Simple tasks**: 0 tokens (Quick Reference)<br/>**Complex tasks**: 8,470 tokens (Auto-load skill)<br/>**60-70% time savings** vs manual |
+| **AI Orchestration**   | Mr.Alfred commands 27 specialized AI agents (5-Tier) | **Average token savings**: 5,000 tokens per session (Conditional Auto-load)<br/>**Simple tasks**: 0 tokens (Quick Reference)<br/>**Complex tasks**: 8,470 tokens (Auto-load skill)<br/>**60-70% time savings** vs manual |
+| **Multilingual Routing** | Automatic agent selection in 4 languages (EN/KO/JA/ZH) | **100% language coverage** for agent invocation<br/>XLT (Cross-Lingual Thought) protocol for semantic matching<br/>Works with Korean, Japanese, Chinese requests                                                          |
 | **Auto Documentation** | Automatic doc sync on code changes (`> /moai:3-sync`) | **100% documentation freshness**<br/>Eliminates manual doc writing<br/>Auto-sync since last commit                                                                                                                       |
 | **TRUST 5 Quality**    | Test, Readable, Unified, Secured, Trackable          | Enterprise-grade quality assurance<br/>**99% reduction** in post-deployment emergency patches                                                                                                                            |
 
@@ -371,6 +372,34 @@ Mr.Alfred is MoAI-ADK's **chief orchestrator** who analyzes user requests, selec
 2. **Plan**: Establish execution plan through Plan agent
 3. **Execute**: Delegate tasks to specialized agents (sequential/parallel)
 4. **Integrate**: Collect all results and report to user
+
+### 🌐 Multilingual Agent Routing (NEW in v0.34.0)
+
+**Supported Languages:** English (EN), Korean (KO), Japanese (JA), Chinese (ZH)
+
+Alfred now automatically routes requests in **any supported language** to the correct agent:
+
+**How It Works:**
+
+1. **Keyword Detection**: Each agent has multilingual trigger keywords
+2. **XLT Protocol**: Cross-Lingual Thought processing for semantic matching
+3. **Automatic Delegation**: Alfred invokes the appropriate agent
+
+**Example:**
+
+| Request Language | User Request | Agent Invoked |
+|-----------------|--------------|---------------|
+| English | "Design backend API" | expert-backend |
+| Korean | "백엔드 API 설계해줘" | expert-backend |
+| Japanese | "バックエンドAPIを設計して" | expert-backend |
+| Chinese | "设计后端API" | expert-backend |
+
+**Multilingual Keyword Examples:**
+
+- **Backend**: backend, 백엔드, バックエンド, 后端
+- **Frontend**: frontend, 프론트엔드, フロントエンド, 前端
+- **Testing**: test, 테스트, テスト, 测试
+- **Security**: security, 보안, セキュリティ, 安全
 
 ```mermaid
 flowchart TD
@@ -2947,7 +2976,7 @@ SOFTWARE.
 
 ### Made with ❤️ by MoAI-ADK Team
 
-**Version:** 0.33.1
-**Last Updated:** 2025-12-22
+**Version:** 0.34.0
+**Last Updated:** 2026-01-06
 **Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
 **MoAI**: MoAI stands for "Modu-ui AI" (AI for Everyone). Our goal is to make AI accessible to everyone.
