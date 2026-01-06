@@ -36,7 +36,7 @@ MoAI-ADK (Agentic Development Kit)は、**SPEC-First 開発**、**テスト駆�
 | セクション                                               | 目標                   |
 | -------------------------------------------------------- | ---------------------- |
 | [8. エージェントガイド](#8-エージェントガイド-24個)      | 専門エージェントの活用 |
-| [9. スキルライブラリ](#9-スキルライブラリ-47-個)          | 47 個のスキル探索      |
+| [9. スキルライブラリ](#9-スキルライブラリ-48-個)          | 48 個のスキル探索      |
 | [10. 組み合わせパターンと例](#10-組み合わせパターンと例) | 実際のプロジェクト例   |
 | [11. TRUST 5 品質保証](#11-trust-5-品質保証)             | 品質保証システム       |
 | [12. 高度な機能](#12-高度な機能)                         | Git Worktree & 強化されたログ管理 |
@@ -56,7 +56,7 @@ MoAI-ADK (Agentic Development Kit)は、**SPEC-First 開発**、**テスト駆�
 
 ### 🗿 MoAI-ADK とは？
 
-**MoAI-ADK**（Agentic Development Kit）は、AI エージェントを活用した次世代開発フレームワークです。**SPEC-First 開発方法論**、**TDD**（Test-Driven Development, テスト駆動開発）、**27 個の専門 AI エージェント**を組み合わせて、完全で透明な開発ライフサイクルを提供します。
+**MoAI-ADK**（Agentic Development Kit）は、AI エージェントを活用した次世代開発フレームワークです。**SPEC-First 開発方法論**、**TDD**（Test-Driven Development, テスト駆動開発）、**28 個の専門 AI エージェント**を組み合わせて、完全で透明な開発ライフサイクルを提供します。
 
 ### ✨ なぜ MoAI-ADK を使用するのか？
 
@@ -424,9 +424,9 @@ Alfred: キーワード検出 ("バックエンド", "API")
 
 ### 🔧 エージェントシステム（5-Tier 階層）
 
-MoAI-ADK は **27 個の専門エージェント**を **5 個の階層**に組織して最適の性能を提供します。
+MoAI-ADK は **28 個の専門エージェント**を **5 個の階層**に組織して最適の性能を提供します。
 
-**Tier 1: Domain Experts**（ドメイン専門家、9 個）
+**Tier 1: Domain Experts**（ドメイン専門家、10 個）
 
 - `expert-backend`: バックエンドアーキテクチャ、API 開発
 - `expert-frontend`: フロントエンド、React/Vue 実装
@@ -435,6 +435,9 @@ MoAI-ADK は **27 個の専門エージェント**を **5 個の階層**に組�
 - `expert-devops`: デプロイ、インフラ、CI/CD
 - `expert-uiux`: UI/UX デザイン、コンポーネント
 - `expert-debug`: デバッグ、エラー分析
+- `expert-performance`: パフォーマンスプロファイリング、最適化
+- `expert-refactoring`: コードリファクタリング、AST-grep 基盤変換
+- `expert-testing`: テスト戦略、カバレッジ最適化
 
 **Tier 2: Workflow Managers**（ワークフロー管理、8 個）
 
@@ -454,7 +457,7 @@ MoAI-ADK は **27 個の専門エージェント**を **5 個の階層**に組�
 - `builder-command`: 新しいコマンド生成
 - `builder-plugin`: Claude Code プラグイン生成
 
-**Tier 4: MCP Integrators**（MCP 統合、6 個）
+**Tier 4: MCP Integrators**（MCP 統合、5 個）
 
 - `mcp-context7`: 最新ライブラリ文書検索
 - `mcp-sequential-thinking`: 複雑な推論分析
@@ -1655,10 +1658,12 @@ moai-worktree config set <key> <value>
 #### builder-plugin
 
 **目的**: Claude Code プラグインの作成と管理
-**使用例**: プラグイン作成、検証、マイグレーション
+**使用例**: プラグイン作成（Standalone/MoAI-Integratedモード）、検証、マイグレーション、マーケットプレイス設定
+**v0.40 新機能**: MoAI非依存プラグイン向けStandaloneモード、包括的テストセクション
 
 ```bash
 > Use the builder-plugin subagent to"commands、agents、hooksを含むsecurity-toolsプラグイン作成"
+> Use the builder-plugin subagent to"公開配布用standaloneプラグイン作成"
 ```
 
 ---

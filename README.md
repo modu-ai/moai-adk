@@ -36,7 +36,7 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 | Section                                                           | Goal                       |
 | ----------------------------------------------------------------- | -------------------------- |
 | [8. Agent Guide](#8-agent-guide-27-agents)                        | Utilize specialized agents |
-| [9. Skill Library](#9-skill-library-47-skills)                    | Explore 47 skills          |
+| [9. Skill Library](#9-skill-library-48-skills)                    | Explore 48 skills          |
 | [10. Composition Patterns](#10-composition-patterns-and-examples) | Real project examples      |
 | [11. TRUST 5 Quality](#11-trust-5-quality-assurance)              | Quality assurance system   |
 | [12. Advanced Features](#12-advanced-features)                    | Git Worktree & enhanced log management |
@@ -56,7 +56,7 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 
 ### 🗿 What is MoAI-ADK?
 
-**MoAI-ADK** (Agentic Development Kit) is a next-generation development framework powered by AI agents. It combines **SPEC-First development methodology**, **TDD** (Test-Driven Development), and **27 specialized AI agents** to deliver a complete and transparent development lifecycle.
+**MoAI-ADK** (Agentic Development Kit) is a next-generation development framework powered by AI agents. It combines **SPEC-First development methodology**, **TDD** (Test-Driven Development), and **28 specialized AI agents** to deliver a complete and transparent development lifecycle.
 
 ### ✨ Why Use MoAI-ADK?
 
@@ -84,7 +84,7 @@ MoAI-ADK solutions:
 | ---------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **SPEC-First**         | All development starts with clear specifications     | **90% reduction** in rework from requirement changes<br/>Clear SPEC eliminates developer-planner misunderstandings                                                                                                       |
 | **TDD Enforcement**    | Automated Red-Green-Refactor cycle                   | **70% reduction** in bugs (with 85%+ coverage)<br/>**15% shorter** total development time including test writing                                                                                                         |
-| **AI Orchestration**   | Mr.Alfred commands 27 specialized AI agents (5-Tier) | **Average token savings**: 5,000 tokens per session (Conditional Auto-load)<br/>**Simple tasks**: 0 tokens (Quick Reference)<br/>**Complex tasks**: 8,470 tokens (Auto-load skill)<br/>**60-70% time savings** vs manual |
+| **AI Orchestration**   | Mr.Alfred commands 28 specialized AI agents (5-Tier) | **Average token savings**: 5,000 tokens per session (Conditional Auto-load)<br/>**Simple tasks**: 0 tokens (Quick Reference)<br/>**Complex tasks**: 8,470 tokens (Auto-load skill)<br/>**60-70% time savings** vs manual |
 | **Multilingual Routing** | Automatic agent selection in 4 languages (EN/KO/JA/ZH) | **100% language coverage** for agent invocation<br/>XLT (Cross-Lingual Thought) protocol for semantic matching<br/>Works with Korean, Japanese, Chinese requests                                                          |
 | **AST-Grep Integration** | Structural code search, security scanning, and refactoring | **Pattern-based code analysis** (not text-based regex)<br/>Support for **40+ programming languages**<br/>**Automatic security scanning** on code changes<br/>**Large-scale refactoring** with expert-refactoring agent |
 | **Auto Documentation** | Automatic doc sync on code changes (`> /moai:3-sync`) | **100% documentation freshness**<br/>Eliminates manual doc writing<br/>Auto-sync since last commit                                                                                                                       |
@@ -417,9 +417,9 @@ flowchart TD
 
 ### 🔧 Agent System (5-Tier Hierarchy)
 
-MoAI-ADK organizes **24 specialized agents** into **5 tiers** for optimal performance.
+MoAI-ADK organizes **28 specialized agents** into **5 tiers** for optimal performance.
 
-**Tier 1: Domain Experts** (7 agents)
+**Tier 1: Domain Experts** (10 agents)
 
 - `expert-backend`: Backend architecture, API development
 - `expert-frontend`: Frontend, React/Vue implementation
@@ -428,6 +428,9 @@ MoAI-ADK organizes **24 specialized agents** into **5 tiers** for optimal perfor
 - `expert-devops`: Deployment, infrastructure, CI/CD
 - `expert-uiux`: UI/UX design, components
 - `expert-debug`: Debugging, error analysis
+- `expert-performance`: Performance profiling, optimization
+- `expert-refactoring`: Code refactoring, AST-grep based transforms
+- `expert-testing`: Test strategy, coverage optimization
 
 **Tier 2: Workflow Managers** (8 agents)
 
@@ -440,13 +443,14 @@ MoAI-ADK organizes **24 specialized agents** into **5 tiers** for optimal perfor
 - `manager-git`: Git workflow
 - `manager-claude-code`: Claude Code integration
 
-**Tier 3: Meta-generators** (3 agents)
+**Tier 3: Meta-generators** (4 agents)
 
 - `builder-agent`: Create new agents
 - `builder-skill`: Create new skills
 - `builder-command`: Create new commands
+- `builder-plugin`: Create new plugins
 
-**Tier 4: MCP Integrators** (6 agents)
+**Tier 4: MCP Integrators** (5 agents)
 
 - `mcp-context7`: Real-time library documentation lookup
 - `mcp-sequential-thinking`: Complex reasoning analysis
@@ -1721,10 +1725,12 @@ Each agent has specific domain expertise. Select the right agent for your task.
 #### builder-plugin
 
 **Purpose**: Create and manage Claude Code plugins
-**Use case**: Plugin creation, validation, and migration
+**Use case**: Plugin creation (Standalone/MoAI-Integrated modes), validation, migration, and marketplace setup
+**New in v0.40**: Standalone mode for MoAI-independent plugins, comprehensive testing section
 
 ```bash
 > Use the builder-plugin subagent to"Create security-tools plugin with commands, agents, and hooks"
+> Use the builder-plugin subagent to"Create standalone plugin for public distribution"
 ```
 
 ---
@@ -1854,6 +1860,7 @@ Core philosophy and execution rules foundation skills.
 - **moai-plugin-builder**
   - Claude Code plugin development patterns, templates, and best practices
   - Plugin structure, component generation, validation, and migration guides
+  - Standalone mode for MoAI-independent plugins, marketplace creation support
 
 ### 🎯 Domain
 
@@ -3196,7 +3203,7 @@ SOFTWARE.
 
 ### Made with ❤️ by MoAI-ADK Team
 
-**Version:** 0.36.5
+**Version:** 0.40.0
 **Last Updated:** 2026-01-06
 **Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
 **MoAI**: MoAI stands for "Modu-ui AI" (AI for Everyone). Our goal is to make AI accessible to everyone.

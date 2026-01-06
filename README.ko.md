@@ -36,7 +36,7 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 | 섹션                                          | 목표                            |
 | --------------------------------------------- | ------------------------------- |
 | [8. 에이전트 가이드](#8-에이전트-가이드-27개) | 전문 에이전트 활용              |
-| [9. 스킬 라이브러리](#9-스킬-라이브러리-47개) | 47개 스킬 탐색                  |
+| [9. 스킬 라이브러리](#9-스킬-라이브러리-48개) | 48개 스킬 탐색                  |
 | [10. 조합 패턴과 예제](#10-조합-패턴과-예제)  | 실제 프로젝트 예제              |
 | [11. TRUST 5 품질보증](#11-trust-5-품질보증)  | 품질 보증 체계                  |
 | [12. 고급 기능](#12-고급-기능)                | Git Worktree & 향상된 로그 관리 |
@@ -56,7 +56,7 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 
 ### 🗿 MoAI-ADK란?
 
-**MoAI-ADK** (Agentic Development Kit)는 AI 에이전트를 활용한 차세대 개발 프레임워크입니다. **SPEC-First 개발 방법론**과 **TDD** (Test-Driven Development, 테스트 주도 개발), 그리고 **27개의 전문 AI 에이전트**를 결합하여 완전하고 투명한 개발 라이프사이클을 제공합니다.
+**MoAI-ADK** (Agentic Development Kit)는 AI 에이전트를 활용한 차세대 개발 프레임워크입니다. **SPEC-First 개발 방법론**과 **TDD** (Test-Driven Development, 테스트 주도 개발), 그리고 **28개의 전문 AI 에이전트**를 결합하여 완전하고 투명한 개발 라이프사이클을 제공합니다.
 
 ### ✨ 왜 MoAI-ADK를 사용할까?
 
@@ -84,7 +84,7 @@ MoAI-ADK의 해결책:
 | --------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **SPEC-First**        | 모든 개발은 명확한 명세서로 시작                       | 요구사항 변경으로 인한 재작업 **90% 감소**<br/>명확한 SPEC으로 개발자-기획자 간 오해 제거                                                                                                        |
 | **TDD 강제**          | Red-Green-Refactor 사이클 자동화                       | 버그 **70% 감소**(85%+ 커버리지 시)<br/>테스트 작성 시간 포함 총 개발 시간 **15% 단축**                                                                                                          |
-| **AI 오케스트레이션** | Mr.Alfred가 27개의 전문 AI 에이전트 지휘 (5-Tier 계층) | **평균 토큰 절감**: 세션당 5,000 토큰 (Conditional Auto-load)<br/>**Simple 작업**: 0 토큰 (Quick Reference)<br/>**Complex 작업**: 8,470 토큰 (Auto-load 스킬)<br/>수동 대비 **60-70% 시간 절감** |
+| **AI 오케스트레이션** | Mr.Alfred가 28개의 전문 AI 에이전트 지휘 (5-Tier 계층) | **평균 토큰 절감**: 세션당 5,000 토큰 (Conditional Auto-load)<br/>**Simple 작업**: 0 토큰 (Quick Reference)<br/>**Complex 작업**: 8,470 토큰 (Auto-load 스킬)<br/>수동 대비 **60-70% 시간 절감** |
 | **다국어 라우팅** | 4개 언어 자동 에이전트 선택 (EN/KO/JA/ZH) | **100% 언어 커버리지** 에이전트 호출<br/>XLT (Cross-Lingual Thought) 프로토콜로 의미 매칭<br/>한국어, 일본어, 중국어 요청 지원 |
 | **AST-Grep 통합** | 구조적 코드 검색, 보안 스캔, 리팩토링 | **패턴 기반 코드 분석** (텍스트 기반 regex 아님)<br/>**40개 이상의 프로그래밍 언어** 지원<br/>코드 변경 시 **자동 보안 스캔**<br/>expert-refactoring 에이전트로 **대규모 리팩토링** |
 | **자동 문서화**       | 코드 변경 시 문서 자동 동기화 (`> /moai:3-sync`)       | 문서 최신성 **100% 보장**<br/>수동 문서 작성 제거<br/>마지막 커밋 이후 자동 동기화                                                                                                               |
@@ -421,9 +421,9 @@ flowchart TD
 
 ### 🔧 에이전트 시스템 (5-Tier 계층)
 
-MoAI-ADK는 **27개의 전문 에이전트**를 **5개 계층**으로 조직하여 최적의 성능을 제공합니다.
+MoAI-ADK는 **28개의 전문 에이전트**를 **5개 계층**으로 조직하여 최적의 성능을 제공합니다.
 
-**Tier 1: Domain Experts** (도메인 전문가, 9개)
+**Tier 1: Domain Experts** (도메인 전문가, 10개)
 
 - `expert-backend`: 백엔드 아키텍처, API 개발
 - `expert-frontend`: 프론트엔드, React/Vue 구현
@@ -433,6 +433,7 @@ MoAI-ADK는 **27개의 전문 에이전트**를 **5개 계층**으로 조직하�
 - `expert-uiux`: UI/UX 디자인, 컴포넌트
 - `expert-debug`: 디버깅, 오류 분석
 - `expert-performance`: 성능 최적화, 프로파일링
+- `expert-refactoring`: 코드 리팩토링, AST-grep 기반 변환
 - `expert-testing`: 테스트 전략, E2E 테스트
 
 **Tier 2: Workflow Managers** (워크플로우 관리, 8개)
@@ -453,7 +454,7 @@ MoAI-ADK는 **27개의 전문 에이전트**를 **5개 계층**으로 조직하�
 - `builder-command`: 새로운 명령어 생성
 - `builder-plugin`: Claude Code 플러그인 생성
 
-**Tier 4: MCP Integrators** (MCP 통합, 6개)
+**Tier 4: MCP Integrators** (MCP 통합, 5개)
 
 - `mcp-context7`: 최신 라이브러리 문서 조회
 - `mcp-sequential-thinking`: 복잡한 추론 분석
@@ -1648,10 +1649,12 @@ moai-worktree config set <key> <value>
 #### builder-plugin
 
 **목적**: Claude Code 플러그인 생성 및 관리
-**사용 사례**: 플러그인 생성, 검증, 마이그레이션
+**사용 사례**: 플러그인 생성 (Standalone/MoAI-Integrated 모드), 검증, 마이그레이션, 마켓플레이스 설정
+**v0.40 신규**: MoAI 독립 플러그인을 위한 Standalone 모드, 포괄적 테스트 섹션
 
 ```bash
 > Use the builder-plugin subagent to"commands, agents, hooks가 포함된 security-tools 플러그인 생성"
+> Use the builder-plugin subagent to"공개 배포용 standalone 플러그인 생성"
 ```
 
 ---
@@ -1749,6 +1752,7 @@ MoAI-ADK는 **47개의 전문 스킬**을 7개 카테고리로 제공합니다. 
 - **moai-plugin-builder**
   - Claude Code 플러그인 개발 패턴, 템플릿, 모범 사례
   - 플러그인 구조, 컴포넌트 생성, 검증, 마이그레이션 가이드
+  - MoAI 독립 플러그인을 위한 Standalone 모드, 마켓플레이스 생성 지원
 
 ### 🎯 Domain (도메인 전문)
 
