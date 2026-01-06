@@ -187,6 +187,30 @@ Path Rules:
 
 ---
 
+## Independence Requirements (Standalone Mode)
+
+When user selects Standalone Plugin type, the following constraints apply:
+
+Forbidden References:
+- No MoAI-ADK internal skill references (moai-platform-*, moai-lang-*, moai-foundation-*, etc.)
+- No Context7 MCP references (exclude context7-libraries field from skills frontmatter)
+- No Alfred orchestration references (@CLAUDE.md, Alfred patterns)
+- No /moai:* command references
+- No Essential Reference section referencing @CLAUDE.md
+
+Required Patterns:
+- Use only standard Claude Code tools (Read, Write, Edit, Grep, Glob, Bash, Task, AskUserQuestion)
+- Self-contained documentation without external skill dependencies
+- Standalone operation without MoAI-ADK framework
+
+When user selects MoAI-Integrated Plugin type:
+- MoAI-ADK skills can be referenced (skills: moai-foundation-claude, moai-workflow-project, etc.)
+- Context7 MCP integration available
+- Alfred patterns and @CLAUDE.md references allowed
+- Full MoAI-ADK framework features available
+
+---
+
 ## PHASE 1: Requirements Analysis
 
 Goal: Understand plugin requirements and scope
@@ -205,10 +229,15 @@ Extract plugin requirements:
 [HARD] Ask targeted questions to fully specify requirements
 
 Use AskUserQuestion with structured questions to determine:
+- Plugin type: Standalone (no MoAI dependencies, portable) or MoAI-Integrated (uses MoAI-ADK patterns and skills)
 - Plugin purpose: workflow automation, developer tools, integration bridge, utility collection
 - Component needs: which component types are required
 - Distribution scope: personal use, team sharing, or public distribution
 - Integration requirements: external services, MCP servers, or self-contained
+
+Plugin Type Selection Guide:
+- Standalone: Best for public distribution, external teams, or projects without MoAI-ADK
+- MoAI-Integrated: Best for MoAI-ADK users, leveraging existing skills and patterns
 
 ### Step 1.3: Component Planning
 
@@ -421,6 +450,34 @@ Compile validation results:
 - Component validation: PASS or FAIL for each component
 - Security validation: PASS or FAIL with recommendations
 - Overall status: READY, NEEDS_FIXES, or CRITICAL_ISSUES
+
+### Step 5.6: Plugin Testing
+
+Test plugin functionality across multiple dimensions:
+
+Installation Testing:
+- Run /plugin validate to verify plugin structure
+- Confirm plugin.json is valid and schema-compliant
+- Verify all components are discoverable by Claude Code
+- Test plugin loading without errors
+
+Component Functionality Testing:
+- Skills: Verify skill loads correctly, test skill invocation, validate content quality
+- Agents: Verify agent creation, test agent execution, validate tool permissions
+- Commands: Verify command registration, test invocation, validate argument parsing
+- Hooks: Verify hook registration, test trigger conditions, validate execution
+
+User Workflow Testing:
+- Install plugin in test environment
+- Execute primary feature workflow
+- Verify expected output matches specification
+- Test error handling and recovery
+
+Edge Case Testing:
+- Missing required parameters
+- Invalid input formats
+- Component failure scenarios
+- Resource constraint handling
 
 ---
 
@@ -747,9 +804,9 @@ MoAI-ADK Patterns:
 
 ---
 
-Version: 1.2.0
+Version: 1.3.0
 Created: 2025-12-25
 Updated: 2026-01-06
 Pattern: Comprehensive 7-Phase Plugin Creation Workflow
 Compliance: Claude Code Official Plugin Standards + MoAI-ADK Conventions
-Changes: Added PHASE 6 for marketplace creation; Added marketplace keywords to description; Updated scope to include marketplace distribution; Previous: Added PostToolUseFailure, SubagentStart, Notification, PreCompact hook events; Added agent hook type; Added LSP server advanced options; Added Plugin Caching and Security section; Added managed installation scope
+Changes: Added Plugin Type selection (Standalone vs MoAI-Integrated); Added Independence Requirements section for Standalone mode; Enhanced PHASE 5 with comprehensive Testing subsection (Step 5.6); Previous: Added PHASE 6 for marketplace creation; Added marketplace keywords to description; Updated scope to include marketplace distribution
