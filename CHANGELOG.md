@@ -1,3 +1,209 @@
+# v0.40.0 - Large-Scale Module Optimization and Documentation Updates (2026-01-06)
+
+## Summary
+
+Major release featuring comprehensive module optimization, accurate documentation updates, standalone plugin mode, and enhanced skill library. This release significantly improves maintainability by removing 16,432 lines of obsolete code while adding critical features and fixing quality issues.
+
+## Changes
+
+### Documentation Updates
+
+- **docs**: Update README files with accurate skill and agent counts (7cfd568c)
+  - Skill count: 47 → 48
+  - Agent count: 27 → 28 (consistent across all sections)
+  - Added missing agents: expert-performance, expert-refactoring, expert-testing, builder-plugin
+  - Updated tier counts and descriptions
+  - Applied to all language versions (EN/KO/JA/ZH)
+
+- **docs(readme)**: Update all README files with agent count and multilingual routing (7bcde13b)
+- **docs(readme)**: Add multilingual agent routing feature documentation (bb31219b)
+- **docs(config)**: Clarify TRUST 5 framework description and set 85% coverage default (26d08a36)
+
+### New Features
+
+- **feat(agents)**: Add Standalone plugin mode and testing section to builder-plugin (4ade0780)
+  - Standalone mode for MoAI-independent plugins
+  - Comprehensive testing section for plugin validation
+  - Enhanced marketplace setup guidance
+
+- **feat(hooks)**: Add PostToolUse/PreToolUse hooks and LSP config (245c26fa)
+  - Enhanced hook system with pre/post tool execution
+  - Language Server Protocol configuration support
+
+- **feat(skills)**: Complete Context7 integration and module optimization (36652250)
+- **feat(skills)**: Modularize Tier 2 language skills and add quality validator (7020a3f3)
+- **feat(workflow-testing)**: Complete large-scale module optimization with progressive disclosure (7ae64f21)
+
+### Refactoring and Optimization
+
+- **refactor(skills)**: Large-scale module optimization and cleanup (117bf5d9)
+  - Removed 16,432 lines of obsolete code
+  - Improved module structure and organization
+  - Enhanced maintainability and reduced complexity
+
+- **refactor(hooks)**: Full hooks system refactoring with code consolidation and architecture improvements (f87009d0)
+- **refactor(skills)**: Modularize all 7 platform skills with hybrid documentation pattern (fffb60fb)
+- **refactor(skill)**: Modularize moai-platform-supabase with hybrid documentation pattern (123f1a4b)
+- **refactor(templates)**: Comprehensive MoAI-ADK v4.0.0 template refactoring (c9dd6624)
+- **refactor(hooks)**: Enhance path_utils with safe project root detection (321b5b39)
+
+### Bug Fixes
+
+- **fix(cli)**: Add reset_stdin() to fix interactive prompt after SpinnerContext (3045ab3d)
+  - Fixed interactive prompt issues after spinner display
+  - Improved terminal state management
+
+- **fix**: Resolve quality issues and remove obsolete test files (5fe29d21)
+- **fix(version)**: Sync all versions to 0.36.2 and add version management guidelines (5e02977e)
+- **fix(hooks)**: Skip commits already on remote branches/tags (75d0b6f4)
+- **fix**: Import bug in post_tool_auto_spec_completion.py (e4c34979)
+
+### Code Cleanup
+
+- **chore**: Remove dead code: Auto-Spec Completion System (3,515 lines) (3b0858b2)
+- **chore**: Remove unused validate_skills.py utility script (e974f56c)
+- **chore**: Remove local settings file from git tracking (fdeacf19)
+- **chore**: Remove tracked backup file (now in .gitignore) (5f21c4c2)
+- **chore**: Add .moai/config to version control and exclude backup files (6a0aa8cc)
+
+### Code Quality
+
+- **style**: Auto-fix lint and format issues (b8691da2)
+  - Applied ruff formatter to 3 files
+  - Improved code consistency
+
+## Statistics
+
+- **Total Changes**: 853 files changed
+- **Code Changes**: +137,480 insertions, -69,084 deletions
+- **Net Change**: +68,396 lines
+- **Test Coverage**: 85.44% (9,627 tests passed)
+- **Commits**: 26 commits since v0.36.2
+
+## Installation & Update
+
+```bash
+# Install or update to v0.40.0
+uv tool install moai-adk
+# or
+pip install --upgrade moai-adk
+
+# Verify installation
+moai-adk --version
+# Should show: 0.40.0
+```
+
+## What's Next
+
+- v0.41.0: Enhanced agent coordination patterns
+- v0.42.0: Advanced context management features
+- v0.43.0: Performance optimization and benchmarking
+
+---
+
+# v0.40.0 - 대규모 모듈 최적화 및 문서 업데이트 (2026-01-06)
+
+## 요약
+
+포괄적인 모듈 최적화, 정확한 문서 업데이트, 독립형 플러그인 모드, 향상된 스킬 라이브러리를 포함하는 주요 릴리스입니다. 이 릴리스는 16,432줄의 obsolete 코드를 제거하면서 중요한 기능을 추가하고 품질 문제를 수정하여 유지보수성을 크게 향상시켰습니다.
+
+## 변경 사항
+
+### 문서 업데이트
+
+- **docs**: 정확한 스킬 및 에이전트 수로 README 파일 업데이트 (7cfd568c)
+  - 스킬 수: 47 → 48
+  - 에이전트 수: 27 → 28 (모든 섹션에서 일관성 유지)
+  - 누락된 에이전트 추가: expert-performance, expert-refactoring, expert-testing, builder-plugin
+  - 계층 수 및 설명 업데이트
+  - 모든 언어 버전에 적용 (EN/KO/JA/ZH)
+
+- **docs(readme)**: 에이전트 수 및 다국어 라우팅으로 모든 README 파일 업데이트 (7bcde13b)
+- **docs(readme)**: 다국어 에이전트 라우팅 기능 문서 추가 (bb31219b)
+- **docs(config)**: TRUST 5 프레임워크 설명 명확화 및 85% 커버리지 기본값 설정 (26d08a36)
+
+### 새로운 기능
+
+- **feat(agents)**: builder-plugin에 독립형 플러그인 모드 및 테스팅 섹션 추가 (4ade0780)
+  - MoAI 독립형 플러그인을 위한 Standalone 모드
+  - 플러그인 검증을 위한 포괄적인 테스팅 섹션
+  - 향상된 마켓플레이스 설정 가이드
+
+- **feat(hooks)**: PostToolUse/PreToolUse 훅 및 LSP 설정 추가 (245c26fa)
+  - 도구 실행 전후 훅 시스템 강화
+  - Language Server Protocol 설정 지원
+
+- **feat(skills)**: Context7 통합 완료 및 모듈 최적화 (36652250)
+- **feat(skills)**: Tier 2 언어 스킬 모듈화 및 품질 검증기 추가 (7020a3f3)
+- **feat(workflow-testing)**: 점진적 공개를 통한 대규모 모듈 최적화 완료 (7ae64f21)
+
+### 리팩토링 및 최적화
+
+- **refactor(skills)**: 대규모 모듈 최적화 및 정리 (117bf5d9)
+  - 16,432줄의 obsolete 코드 제거
+  - 모듈 구조 및 조직 개선
+  - 유지보수성 향상 및 복잡도 감소
+
+- **refactor(hooks)**: 코드 통합 및 아키텍처 개선을 통한 전체 훅 시스템 리팩토링 (f87009d0)
+- **refactor(skills)**: 하이브리드 문서 패턴으로 모든 7개 플랫폼 스킬 모듈화 (fffb60fb)
+- **refactor(skill)**: 하이브리드 문서 패턴으로 moai-platform-supabase 모듈화 (123f1a4b)
+- **refactor(templates)**: 포괄적인 MoAI-ADK v4.0.0 템플릿 리팩토링 (c9dd6624)
+- **refactor(hooks)**: 안전한 프로젝트 루트 감지로 path_utils 강화 (321b5b39)
+
+### 버그 수정
+
+- **fix(cli)**: SpinnerContext 이후 대화형 프롬프트 수정을 위한 reset_stdin() 추가 (3045ab3d)
+  - 스피너 표시 후 대화형 프롬프트 문제 수정
+  - 터미널 상태 관리 개선
+
+- **fix**: 품질 문제 해결 및 obsolete 테스트 파일 제거 (5fe29d21)
+- **fix(version)**: 모든 버전을 0.36.2로 동기화 및 버전 관리 가이드라인 추가 (5e02977e)
+- **fix(hooks)**: 원격 브랜치/태그에 이미 있는 커밋 건너뛰기 (75d0b6f4)
+- **fix**: post_tool_auto_spec_completion.py의 import 버그 (e4c34979)
+
+### 코드 정리
+
+- **chore**: 데드 코드 제거: Auto-Spec Completion System (3,515줄) (3b0858b2)
+- **chore**: 미사용 validate_skills.py 유틸리티 스크립트 제거 (e974f56c)
+- **chore**: git 추적에서 로컬 설정 파일 제거 (fdeacf19)
+- **chore**: 추적된 백업 파일 제거 (이제 .gitignore에 포함) (5f21c4c2)
+- **chore**: .moai/config를 버전 관리에 추가하고 백업 파일 제외 (6a0aa8cc)
+
+### 코드 품질
+
+- **style**: 린트 및 포맷 문제 자동 수정 (b8691da2)
+  - 3개 파일에 ruff 포맷터 적용
+  - 코드 일관성 개선
+
+## 통계
+
+- **총 변경**: 853개 파일 변경
+- **코드 변경**: +137,480 삽입, -69,084 삭제
+- **순 변경**: +68,396줄
+- **테스트 커버리지**: 85.44% (9,627개 테스트 통과)
+- **커밋**: v0.36.2 이후 26개 커밋
+
+## 설치 및 업데이트
+
+```bash
+# v0.40.0 설치 또는 업데이트
+uv tool install moai-adk
+# 또는
+pip install --upgrade moai-adk
+
+# 설치 확인
+moai-adk --version
+# 출력: 0.40.0
+```
+
+## 다음 계획
+
+- v0.41.0: 향상된 에이전트 조정 패턴
+- v0.42.0: 고급 컨텍스트 관리 기능
+- v0.43.0: 성능 최적화 및 벤치마킹
+
+---
+
 # v0.36.2 - CLI Rename and Configuration System Improvements (2025-12-30)
 
 ## Summary
