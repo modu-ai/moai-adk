@@ -24,7 +24,7 @@ Output:
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 # Setup import path for shared modules
 HOOKS_DIR = Path(__file__).parent
@@ -195,14 +195,14 @@ def main() -> None:
     try:
         # Read JSON input from stdin
         input_data = json.load(sys.stdin)
-    except json.JSONDecodeError as e:
+    except json.JSONDecodeError:
         # Invalid JSON input - exit silently
         sys.exit(0)
 
     # Extract tool information
     tool_name = input_data.get("tool_name", "")
     tool_input = input_data.get("tool_input", {})
-    tool_response = input_data.get("tool_response", {})
+    input_data.get("tool_response", {})
 
     # Only process Write and Edit tools
     if tool_name not in ("Write", "Edit"):

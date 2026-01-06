@@ -6,19 +6,7 @@ description: Canonical Claude Code authoring kit covering Skills, sub-agents, pl
 version: 4.0.0
 modularized: false
 allowed-tools: Read, Write, Edit, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-tags:
- - foundation
- - claude-code
- - skills
- - sub-agents
- - plugins
- - slash-commands
- - hooks
- - memory
- - settings
- - sandboxing
- - headless
- - agent-patterns
+tags: ['foundation', 'claude-code', 'skills', 'sub-agents', 'plugins', 'slash-commands', 'hooks', 'memory', 'settings', 'sandboxing', 'headless', 'agent-patterns']
 # Claude Code Authoring Kit
 
 Comprehensive reference for Claude Code Skills, sub-agents, plugins, slash commands, hooks, memory, settings, sandboxing, headless mode, and advanced agent patterns.

@@ -1453,7 +1453,7 @@ moai-worktree config set <key> <value>
 - サーバー性能最適化
 
 ```bash
-> @agent-expert-backend "FastAPI でユーザー認証 API 開発"
+> Use the expert-backend subagent to"FastAPI でユーザー認証 API 開発"
 ```
 
 ---
@@ -1469,7 +1469,7 @@ moai-worktree config set <key> <value>
 - 反応型デザイン
 
 ```bash
-> @agent-expert-frontend "React でダッシュボード UI 実装"
+> Use the expert-frontend subagent to"React でダッシュボード UI 実装"
 ```
 
 ---
@@ -1485,7 +1485,7 @@ moai-worktree config set <key> <value>
 - 性能チューニング
 
 ```bash
-> @agent-expert-database "PostgreSQL 大規模テーブル最適化"
+> Use the expert-database subagent to"PostgreSQL 大規模テーブル最適化"
 ```
 
 ---
@@ -1501,7 +1501,7 @@ moai-worktree config set <key> <value>
 - データ暗号化
 
 ```bash
-> @agent-expert-security "ログイン機能セキュリティ監査"
+> Use the expert-security subagent to"ログイン機能セキュリティ監査"
 ```
 
 ---
@@ -1517,7 +1517,7 @@ moai-worktree config set <key> <value>
 - インフラ自動化
 
 ```bash
-> @agent-expert-devops "Next.js アプリ Docker デプロイ設定"
+> Use the expert-devops subagent to"Next.js アプリ Docker デプロイ設定"
 ```
 
 ---
@@ -1533,7 +1533,7 @@ moai-worktree config set <key> <value>
 - ユーザー体験最適化
 
 ```bash
-> @agent-expert-uiux "shadcn/ui 基盤デザインシステム構築"
+> Use the expert-uiux subagent to"shadcn/ui 基盤デザインシステム構築"
 ```
 
 ---
@@ -1549,7 +1549,7 @@ moai-worktree config set <key> <value>
 - メモリリーク検出
 
 ```bash
-> @agent-expert-debug "API 応答時間遅延原因分析"
+> Use the expert-debug subagent to"API 応答時間遅延原因分析"
 ```
 
 ---
@@ -1562,7 +1562,7 @@ moai-worktree config set <key> <value>
 **自動呼び出し**: `> /moai:1-plan` 実行時
 
 ```bash
-> @agent-manager-spec "ユーザープロフィール API SPEC 作成"
+> Use the manager-spec subagent to"ユーザープロフィール API SPEC 作成"
 ```
 
 ---
@@ -1573,7 +1573,7 @@ moai-worktree config set <key> <value>
 **自動呼び出し**: `> /moai:2-run` 実行時
 
 ```bash
-> @agent-manager-tdd "SPEC-001 実装"
+> Use the manager-tdd subagent to"SPEC-001 実装"
 ```
 
 ---
@@ -1584,7 +1584,7 @@ moai-worktree config set <key> <value>
 **自動呼び出し**: `> /moai:3-sync` 実行時
 
 ```bash
-> @agent-manager-docs "ログイン機能ドキュメント生成"
+> Use the manager-docs subagent to"ログイン機能ドキュメント生成"
 ```
 
 ---
@@ -1595,7 +1595,7 @@ moai-worktree config set <key> <value>
 **自動呼び出し**: `> /moai:2-run` 完了後
 
 ```bash
-> @agent-manager-quality "コード品質検証"
+> Use the manager-quality subagent to"コード品質検証"
 ```
 
 ---
@@ -1610,9 +1610,9 @@ moai-worktree config set <key> <value>
 - 性能最適化戦略
 
 ```bash
-> @agent-manager-strategy "モノリスからマイクロサービスへのマイグレーション計画"
+> Use the manager-strategy subagent to"モノリスからマイクロサービスへのマイグレーション計画"
 # または Built-in agent 使用
-> @agent-Plan "モノリスからマイクロサービスへのマイグレーション計画"
+> Use the Plan subagent to"モノリスからマイクロサービスへのマイグレーション計画"
 ```
 
 ---
@@ -1625,7 +1625,7 @@ moai-worktree config set <key> <value>
 **使用例**: 組織特化エージェント生成
 
 ```bash
-> @agent-builder-agent "データ分析専門エージェント生成"
+> Use the builder-agent subagent to "データ分析専門エージェント生成"
 ```
 
 ---
@@ -1636,7 +1636,7 @@ moai-worktree config set <key> <value>
 **使用例**: チーム特化スキル開発
 
 ```bash
-> @agent-builder-skill "GraphQL API 開発スキルモジュール作成"
+> Use the builder-skill subagent to"GraphQL API 開発スキルモジュール作成"
 ```
 
 ---
@@ -1647,7 +1647,7 @@ moai-worktree config set <key> <value>
 **使用例**: カスタムワークフロー自動化
 
 ```bash
-> @agent-builder-command "> /moai:deploy コマンド生成（自動デプロイワークフロー）"
+> Use the builder-command subagent to"> /moai:deploy コマンド生成（自動デプロイワークフロー）"
 ```
 
 ---
@@ -1658,7 +1658,7 @@ moai-worktree config set <key> <value>
 **使用例**: プラグイン作成、検証、マイグレーション
 
 ```bash
-> @agent-builder-plugin "commands、agents、hooksを含むsecurity-toolsプラグイン作成"
+> Use the builder-plugin subagent to"commands、agents、hooksを含むsecurity-toolsプラグイン作成"
 ```
 
 ---
@@ -1675,7 +1675,7 @@ moai-worktree config set <key> <value>
 - ライブラリ互換性検証
 
 ```bash
-> @agent-mcp-context7 "React 19 最新 Hooks API 検索"
+> Use the mcp-context7 subagent to"React 19 最新 Hooks API 検索"
 ```
 
 ---
@@ -1691,7 +1691,7 @@ moai-worktree config set <key> <value>
 - SPEC 分析
 
 ```bash
-> @agent-mcp-sequential-thinking "マイクロサービスアーキテクチャ設計分析"
+> Use the mcp-sequential-thinking subagent to"マイクロサービスアーキテクチャ設計分析"
 ```
 
 ---
@@ -1706,7 +1706,7 @@ moai-worktree config set <key> <value>
 - クロスブラウザ検証
 
 ```bash
-> @agent-mcp-playwright "ログイン機能 E2E テスト作成"
+> Use the mcp-playwright subagent to"ログイン機能 E2E テスト作成"
 ```
 
 ---
@@ -1910,16 +1910,16 @@ manager-quality (検証)
 **例**：
 
 ```bash
-> @agent-expert-debug "API 応答遅延分析"
+> Use the expert-debug subagent to"API 応答遅延分析"
 # → ボトルネック発見 (DB クエリ N+1 問題)
 
-> @agent-mcp-sequential-thinking "N+1 問題最適化戦略策定"
+> Use the mcp-sequential-thinking subagent to"N+1 問題最適化戦略策定"
 # → ORM クエリ最適化戦略提示
 
-> @agent-expert-backend "ORM クエリ最適化実装"
+> Use the expert-backend subagent to"ORM クエリ最適化実装"
 # → select_related(), prefetch_related() 適用
 
-> @agent-manager-quality "性能テストおよび検証"
+> Use the manager-quality subagent to"性能テストおよび検証"
 # → 応答時間 500ms → 50ms (90% 改善)
 ```
 
@@ -1938,13 +1938,13 @@ mcp-playwright (E2E テスト)
 **例**：
 
 ```bash
-> @agent-expert-uiux "ログインページデザイン shadcn/ui 基盤"
+> Use the expert-uiux subagent to"ログインページデザイン shadcn/ui 基盤"
 # → Button, Input, Card コンポーネント組合せ
 
-> @agent-expert-frontend "React ログインフォーム実装"
+> Use the expert-frontend subagent to"React ログインフォーム実装"
 # → shadcn/ui コンポーネント使用した実装
 
-> @agent-mcp-playwright "ログインシナリオ E2E テスト"
+> Use the mcp-playwright subagent to"ログインシナリオ E2E テスト"
 # → 成功/失敗ケース自動テスト
 ```
 
@@ -1965,16 +1965,16 @@ manager-quality (再検証)
 ### パターン 5: マイクロサービスアーキテクチャ設計
 
 ```bash
-> @agent-mcp-sequential-thinking "モノリスからマイクロサービスマイグレーション戦略"
+> Use the mcp-sequential-thinking subagent to"モノリスからマイクロサービスマイグレーション戦略"
 # → サービス分解戦略, API ゲートウェイ設計
 
-> @agent-expert-backend "ユーザーサービス & 注文サービス開発"
+> Use the expert-backend subagent to"ユーザーサービス & 注文サービス開発"
 # → サービス別 API 実装
 
-> @agent-expert-devops "Kubernetes デプロイ設定"
+> Use the expert-devops subagent to"Kubernetes デプロイ設定"
 # → Docker, K8s manifest 自動生成
 
-> @agent-manager-docs "サービス例文書化"
+> Use the manager-docs subagent to"サービス例文書化"
 # → サービスマップ, API 文書, デプロイガイド
 ```
 
@@ -2295,7 +2295,7 @@ flowchart TD
 
 ```bash
 # SPEC 省略して直接実装
-> @agent-expert-backend "簡単なバグ修正"
+> Use the expert-backend subagent to"簡単なバグ修正"
 ```
 
 **SPEC 生成後進行**：
@@ -2371,7 +2371,7 @@ cat .mcp.json
 
 ```bash
 # Claude Code で
-> @agent-ai-nano-banana "専門的なログインページ UI モックアップ生成"
+> Use the ai-nano-banana subagent to"専門的なログインページ UI モックアップ生成"
 ```
 
 #### 画像生成プロンプト

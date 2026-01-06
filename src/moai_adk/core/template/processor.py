@@ -802,7 +802,7 @@ class TemplateProcessor:
             "output-styles/moai",
             "agents/alfred",
             "agents/moai",
-            "skills",  # NEW: Complete replacement for skills folder
+            # NOTE: "skills" handled by _sync_skills_selective() to preserve custom skills
         ]
 
         # 1. Copy Alfred and Moai folders wholesale (backup before delete & overwrite)
@@ -849,6 +849,9 @@ class TemplateProcessor:
                 if not silent:
                     console.print(f"   ✅ .claude/{rel_subdir}/ copied")
 
+        # 1.6 Sync skills selectively (preserve custom skills, update moai-* skills)
+        self._sync_skills_selective(src, dst, silent)
+
         # 2. Copy other files/folders individually (smart merge for settings.json and config.json)
         all_warnings = []
         for item in src.iterdir():
@@ -856,11 +859,13 @@ class TemplateProcessor:
             dst_item = dst / rel_path
 
             # Skip Alfred parent folders (already handled above)
+            # Also skip "skills" - handled by _sync_skills_selective()
             if item.is_dir() and item.name in [
                 "hooks",
                 "commands",
                 "output-styles",
                 "agents",
+                "skills",  # Handled by _sync_skills_selective() to preserve custom skills
             ]:
                 continue
 
@@ -897,6 +902,57 @@ class TemplateProcessor:
 
         if not silent:
             console.print("   ✅ .claude/ copy complete (variables substituted)")
+
+    def _sync_skills_selective(self, src: Path, dst: Path, silent: bool = False) -> None:
+        """Sync only moai-* template skills, preserve custom skills.
+
+        This method ensures that:
+        - Template skills (moai-* prefix) are updated from source
+        - Custom skills (any other prefix) are preserved untouched
+
+        Args:
+            src: Source .claude directory from template
+            dst: Destination .claude directory in project
+            silent: Suppress console output if True
+        """
+        skills_src = src / "skills"
+        skills_dst = dst / "skills"
+
+        if not skills_src.exists():
+            return
+
+        skills_dst.mkdir(parents=True, exist_ok=True)
+
+        # Step 1: Identify template skills in source (moai-* prefix)
+        template_skills = {d.name for d in skills_src.iterdir()
+                          if d.is_dir() and d.name.startswith("moai-")}
+
+        # Step 2: Delete only template skills in destination
+        if skills_dst.exists():
+            for skill_dir in list(skills_dst.iterdir()):
+                if skill_dir.is_dir() and skill_dir.name.startswith("moai-"):
+                    shutil.rmtree(skill_dir)
+                    if not silent:
+                        console.print(f"   [dim]Updating template skill: {skill_dir.name}[/dim]")
+
+        # Step 3: Copy template skills from source
+        for skill_name in sorted(template_skills):
+            src_skill = skills_src / skill_name
+            dst_skill = skills_dst / skill_name
+            shutil.copytree(src_skill, dst_skill)
+
+        if not silent and template_skills:
+            console.print(f"   ✅ Synced {len(template_skills)} template skill(s)")
+
+        # Step 4: Report preserved custom skills
+        if skills_dst.exists():
+            custom_skills = [d.name for d in skills_dst.iterdir()
+                            if d.is_dir() and not d.name.startswith("moai-")]
+            if custom_skills and not silent:
+                preview = ", ".join(sorted(custom_skills)[:3])
+                suffix = "..." if len(custom_skills) > 3 else ""
+                console.print(f"   ✅ Preserved {len(custom_skills)} custom skill(s): {preview}{suffix}")
+
 
     def _copy_moai(self, silent: bool = False) -> None:
         """.moai/ directory copy with variable substitution (excludes protected paths)."""

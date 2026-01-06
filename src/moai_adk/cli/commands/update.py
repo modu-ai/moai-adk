@@ -2473,7 +2473,10 @@ def _handle_custom_element_restoration(project_path: Path, backup_path: Path | N
             return
 
         # Create enhanced user selection UI
-        ui = create_user_selection_ui(project_path)
+        # IMPORTANT: Use backup_path, not project_path!
+        # At this point, custom elements in project have been deleted by copy_templates().
+        # The UI must scan the BACKUP to find elements available for restoration.
+        ui = create_user_selection_ui(backup_path)
 
         console.print(f"\n[cyan]🔍 Found {backup_element_count} custom elements in backup[/cyan]")
 

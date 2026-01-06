@@ -43,7 +43,8 @@ class TemplateBackup:
         Returns:
             True when any tracked file exists.
         """
-        return any((self.target_path / item).exists() for item in [".moai", ".claude", ".github", "CLAUDE.md"])
+        tracked_items = [".moai", ".claude", ".github", "CLAUDE.md", ".mcp.json", ".lsp.json", ".git-hooks"]
+        return any((self.target_path / item).exists() for item in tracked_items)
 
     def create_backup(self) -> Path:
         """Create a timestamped backup under .moai-backups/.
@@ -61,7 +62,7 @@ class TemplateBackup:
         backup_path.mkdir(parents=True, exist_ok=True)
 
         # Copy backup targets
-        for item in [".moai", ".claude", ".github", "CLAUDE.md"]:
+        for item in [".moai", ".claude", ".github", "CLAUDE.md", ".mcp.json", ".lsp.json", ".git-hooks"]:
             src = self.target_path / item
             if not src.exists():
                 continue
@@ -152,7 +153,7 @@ class TemplateBackup:
             raise FileNotFoundError(f"Backup not found: {backup_path}")
 
         # Restore each item from backup
-        for item in [".moai", ".claude", ".github", "CLAUDE.md"]:
+        for item in [".moai", ".claude", ".github", "CLAUDE.md", ".mcp.json", ".lsp.json", ".git-hooks"]:
             src = backup_path / item
             dst = self.target_path / item
 

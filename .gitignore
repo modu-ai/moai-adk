@@ -299,3 +299,6 @@ docs/
 # ===========================================
 *_token=*
 *_secret=*
+# MoAI-ADK Skills backup files
+*.bak.*
+# Backup files from skills standardizer

@@ -1,10 +1,10 @@
 ---
-name: moai-library-mermaid
-description: Enterprise Mermaid diagramming skill for Claude Code using MCP Playwright. Use when creating architecture diagrams, flowcharts, sequence diagrams, or visual documentation.
+name: "moai-library-mermaid"
+description: "Enterprise Mermaid diagramming skill for Claude Code using MCP Playwright. Use when creating architecture diagrams, flowcharts, sequence diagrams, or visual documentation."
 version: 7.0.0
+category: "library"
 modularized: true
-category: library
-allowed-tools: Read, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+allowed-tools: "Read, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 ---
 
 ## Quick Reference
@@ -154,9 +154,4 @@ Skills that complement this skill include moai-docs-generation for comprehensive
 
 Commands that utilize this skill include moai:3-sync for documentation with embedded diagrams and moai:1-plan for SPEC creation with visual architecture diagrams.
 
----
-
-Version: 7.0.0
-Last Updated: 2025-12-30
-Mermaid Version: 11.12.2
 Focus: Pure skill-based Mermaid rendering with MCP Playwright integration

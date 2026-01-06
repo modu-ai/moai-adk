@@ -1,10 +1,12 @@
 ---
-name: moai-lang-ruby
-description: Ruby 3.3+ development specialist covering Rails 7.2, ActiveRecord, Hotwire/Turbo, and modern Ruby patterns. Use when developing Ruby APIs, web applications, or Rails projects.
+name: "moai-lang-ruby"
+description: "Ruby 3.3+ development specialist covering Rails 7.2, ActiveRecord, Hotwire/Turbo, and modern Ruby patterns. Use when developing Ruby APIs, web applications, or Rails projects."
 version: 1.0.0
+category: "language"
+modularized: true
 updated: 2025-12-07
-status: active
-allowed-tools: Read, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+status: "active"
+allowed-tools: "Read, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 ---
 
 ## Quick Reference (30 seconds)

@@ -103,7 +103,7 @@ class BackupManager:
         with open(metadata_path, "w", encoding="utf-8") as f:
             json.dump(metadata, f, indent=2, ensure_ascii=False)
 
-        logger.info(f"✅ Backup created successfully: {backup_dir}")
+        logger.info(f"Backup created successfully: {backup_dir}")
         return backup_dir
 
     def _detect_config_format(self) -> str:
@@ -200,7 +200,7 @@ class BackupManager:
                     shutil.copy2(backup_file, target_file)
                     logger.debug(f"Restored: {rel_path}")
 
-            logger.info("✅ Backup restored successfully")
+            logger.info("Backup restored successfully")
             return True
 
         except Exception as e:
@@ -255,6 +255,9 @@ class BackupManager:
         - .claude/ (entire directory)
         - .moai/ (entire directory)
         - CLAUDE.md (file)
+        - .mcp.json (MCP server configuration) (v2.0.0)
+        - .lsp.json (LSP server configuration) (v2.0.0)
+        - .git-hooks/ (custom git hooks) (v2.0.0)
 
         Args:
             description: Description of this backup (default: "pre-update-backup")
@@ -274,6 +277,11 @@ class BackupManager:
             (self.project_root / ".claude", True),  # (path, is_directory)
             (self.project_root / ".moai", True),
             (self.project_root / "CLAUDE.md", False),
+            # MCP/LSP configuration (v2.0.0)
+            (self.project_root / ".mcp.json", False),  # MCP server configuration
+            (self.project_root / ".lsp.json", False),  # LSP server configuration
+            # Git hooks (v2.0.0)
+            (self.project_root / ".git-hooks", True),  # Custom git hooks
         ]
 
         backed_up_items = []
@@ -315,5 +323,5 @@ class BackupManager:
         with open(metadata_path, "w", encoding="utf-8") as f:
             json.dump(metadata, f, indent=2, ensure_ascii=False)
 
-        logger.info(f"✅ Full project backup created successfully: {backup_dir}")
+        logger.info(f"Full project backup created successfully: {backup_dir}")
         return backup_dir

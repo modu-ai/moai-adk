@@ -1,24 +1,14 @@
 ---
-name: moai-plugin-builder
-description: Claude Code plugin development patterns, templates, and best practices. Use when creating plugins, defining plugin components, or troubleshooting plugin issues.
+name: "moai-plugin-builder"
+description: "Claude Code plugin development patterns, templates, and best practices. Use when creating plugins, defining plugin components, or troubleshooting plugin issues."
 version: 1.2.0
-category: foundation
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-tags:
-  - plugin
-  - claude-code
-  - development
-  - templates
-  - hooks
-  - commands
-  - agents
-  - skills
-  - mcp
-  - lsp
-  - marketplace
+category: "foundation"
+modularized: false
+tags: ['plugin', 'claude-code', 'development', 'templates', 'hooks', 'commands', 'agents', 'skills', 'mcp', 'lsp', 'marketplace']
+allowed-tools: "Read, Write, Edit, Grep, Glob, Bash, TodoWrite, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 updated: 2026-01-06
-status: active
-author: MoAI-ADK Team
+status: "active"
+author: "MoAI-ADK Team"
 ---
 
 # Claude Code Plugin Builder

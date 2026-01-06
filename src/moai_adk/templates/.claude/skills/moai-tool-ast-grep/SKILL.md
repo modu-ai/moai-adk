@@ -1,13 +1,14 @@
 ---
-name: moai-tool-ast-grep
-description: AST-based structural code search, security scanning, and refactoring using ast-grep (sg CLI). Supports 40+ languages with pattern matching and code transformation.
+name: "moai-tool-ast-grep"
+description: "AST-based structural code search, security scanning, and refactoring using ast-grep (sg CLI). Supports 40+ languages with pattern matching and code transformation."
 version: 1.0.0
-category: tool
-tags: [ast, refactoring, code-search, lint, structural-search, security, codemod]
-related-skills: [moai-workflow-testing, moai-foundation-quality, moai-domain-backend, moai-domain-frontend]
+category: "tool"
+modularized: true
+tags: ['ast', 'refactoring', 'code-search', 'lint', 'structural-search', 'security', 'codemod']
+related-skills: ['moai-workflow-testing', 'moai-foundation-quality', 'moai-domain-backend', 'moai-domain-frontend']
 updated: 2026-01-06
-status: active
-allowed-tools: Read, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+status: "active"
+allowed-tools: "Read, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 ---
 
 # AST-Grep Integration

@@ -4,7 +4,7 @@ This module provides an enhanced interactive CLI interface with checkbox-style s
 arrow key navigation, and proper element preservation during updates.
 
 Key Features:
-- Arrow key navigation (↑↓) to move between elements
+- Arrow key navigation to move between elements
 - Spacebar to toggle selection with [x] checkbox markers
 - Category grouping (Agents, Commands, Skills, Hooks)
 - Preserve unselected elements (fixes disappearing issue)
@@ -55,13 +55,13 @@ class InteractiveCheckboxUI:
         flattened_elements = self._flatten_elements(elements_by_category)
 
         if not flattened_elements:
-            print("\n✅ No custom elements found in project.")
+            print("\n[OK] No custom elements found in project.")
             print("   All elements are part of the official MoAI-ADK template.")
             return None
 
         if not backup_available:
-            print("\n⚠️ No backup available. Cannot restore custom elements.")
-            print("💡 Run 'moai-adk update' without --force to create a backup first.")
+            print("\n[WARNING] No backup available. Cannot restore custom elements.")
+            print("[TIP] Run 'moai-adk update' without --force to create a backup first.")
             return None
 
         # Launch curses interface
@@ -69,16 +69,16 @@ class InteractiveCheckboxUI:
             selected_indices = self._run_curses_interface(flattened_elements, elements_by_category)
         except ImportError:
             # Curses not available, use enhanced fallback immediately
-            print("\n📱 Terminal doesn't support interactive mode, using enhanced selection...")
+            print("\n[INFO] Terminal doesn't support interactive mode, using enhanced selection...")
             return self._fallback_selection(flattened_elements)
         except Exception as e:
             # Fallback to simple selection if curses fails
-            print(f"\n⚠️ Interactive mode failed: {e}")
+            print(f"\n[WARNING] Interactive mode failed: {e}")
             print("Falling back to enhanced selection mode...")
             return self._fallback_selection(flattened_elements)
 
         if selected_indices is None:
-            print("\n⚠️ Selection cancelled.")
+            print("\n[WARNING] Selection cancelled.")
             return None
 
         # Convert indices to element paths
@@ -88,7 +88,7 @@ class InteractiveCheckboxUI:
                 selected_paths.append(flattened_elements[idx]["path"])
 
         if not selected_paths:
-            print("\n⚠️ No elements selected for restoration.")
+            print("\n[WARNING] No elements selected for restoration.")
             return None
 
         return selected_paths
@@ -180,14 +180,20 @@ class InteractiveCheckboxUI:
         """
 
         def interface(stdscr):
-            # Initialize curses
+            # Initialize curses with adaptive colors
             curses.curs_set(0)  # Hide cursor
-            curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)  # Selected
-            curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLUE)  # Header
-            curses.init_pair(3, curses.COLOR_GREEN, curses.COLOR_BLACK)  # Success
-            curses.init_pair(4, curses.COLOR_YELLOW, curses.COLOR_BLACK)  # Warning
 
-            stdscr.clear()
+            # Enable default terminal colors (transparent background)
+            curses.use_default_colors()
+
+            # Color pairs using -1 for transparent/default background
+            curses.init_pair(1, curses.COLOR_CYAN, -1)  # Current selection (highlighted)
+            curses.init_pair(2, curses.COLOR_YELLOW, -1)  # Category headers
+            curses.init_pair(3, curses.COLOR_GREEN, -1)  # Checked items / Success
+            curses.init_pair(4, curses.COLOR_RED, -1)  # Warnings / Errors
+            curses.init_pair(5, curses.COLOR_MAGENTA, -1)  # Special emphasis
+
+            stdscr.erase()  # Use erase() instead of clear() to preserve background
             stdscr.refresh()
 
             # Main input loop
@@ -224,20 +230,20 @@ class InteractiveCheckboxUI:
             elements: Flattened list of elements and headers
             elements_by_category: Categorized elements for reference
         """
-        stdscr.clear()
+        stdscr.erase()  # Use erase() instead of clear() to preserve background
         h, w = stdscr.getmaxyx()
 
         # Title
-        title = "🔍 Custom Elements Restoration"
+        title = "[SEARCH] Custom Elements Restoration"
         stdscr.addstr(1, (w - len(title)) // 2, title, curses.A_BOLD)
 
         # Instructions
-        instructions = ["↑↓ Navigate | Space Toggle | A:All N:None | Enter:Confirm | Q/ESC:Cancel"]
+        instructions = ["Up/Down Navigate | Space Toggle | A:All N:None | Enter:Confirm | Q/ESC:Cancel"]
         for i, instruction in enumerate(instructions):
             stdscr.addstr(3, 2, instruction)
 
         # Separator
-        stdscr.addstr(4, 0, "─" * w)
+        stdscr.addstr(4, 0, "-" * w)
 
         # Display elements with checkboxes
         y_offset = 6
@@ -247,7 +253,7 @@ class InteractiveCheckboxUI:
 
             if element["type"] == "header":
                 # Category header
-                header_text = f"📁 {element['text']}"
+                header_text = f"[FOLDER] {element['text']}"
                 stdscr.addstr(y_offset, 2, header_text, curses.color_pair(2) | curses.A_BOLD)
                 y_offset += 1
             else:
@@ -261,8 +267,13 @@ class InteractiveCheckboxUI:
                 line = f"{checkbox} {display_name}"
 
                 if is_current:
+                    # Current selection: cyan color with bold
                     stdscr.addstr(y_offset, 4, line, curses.color_pair(1) | curses.A_BOLD)
+                elif is_selected:
+                    # Selected but not current: green color
+                    stdscr.addstr(y_offset, 4, line, curses.color_pair(3))
                 else:
+                    # Not selected: default color
                     stdscr.addstr(y_offset, 4, line)
 
                 y_offset += 1
@@ -356,14 +367,14 @@ class InteractiveCheckboxUI:
         h, w = stdscr.getmaxyx()
 
         # Clear screen for confirmation
-        stdscr.clear()
+        stdscr.erase()  # Use erase() instead of clear() to preserve background
         stdscr.addstr(1, (w - 20) // 2, "Confirm Selection", curses.A_BOLD)
         stdscr.addstr(3, 2, f"Selected {len(selected_paths)} elements:")
 
         for i, path in enumerate(selected_paths[:10]):  # Show max 10 items
             if i >= h - 8:
                 break
-            stdscr.addstr(5 + i, 4, f"• {path}")
+            stdscr.addstr(5 + i, 4, f"* {path}")
 
         if len(selected_paths) > 10:
             stdscr.addstr(h - 4, 4, f"... and {len(selected_paths) - 10} more")
@@ -384,7 +395,7 @@ class InteractiveCheckboxUI:
             List of selected paths or None if cancelled
         """
         print("\n" + "=" * 60)
-        print("🔍 Custom Elements Detected (Simple Mode)")
+        print("[SEARCH] Custom Elements Detected (Simple Mode)")
         print("=" * 60)
         print("These elements are not part of the official MoAI-ADK template:")
         print()
@@ -393,15 +404,15 @@ class InteractiveCheckboxUI:
         for i, element in enumerate(element_list, 1):
             print(f"  {i:2d}. [{element['category']}] {element['name']}")
 
-        print("\n💡 Selection Instructions:")
-        print("   • Enter numbers separated by commas (e.g., 1,3,5)")
-        print("   • Use 'all' to select all elements")
-        print("   • Press Enter with empty input to cancel")
+        print("\n[TIP] Selection Instructions:")
+        print("   * Enter numbers separated by commas (e.g., 1,3,5)")
+        print("   * Use 'all' to select all elements")
+        print("   * Press Enter with empty input to cancel")
 
         try:
             user_input = input("\nSelect elements to restore: ").strip()
         except (KeyboardInterrupt, EOFError):
-            print("\n⚠️ Selection cancelled.")
+            print("\n[WARNING] Selection cancelled.")
             return None
 
         if not user_input:
@@ -418,9 +429,9 @@ class InteractiveCheckboxUI:
                 if 1 <= idx <= len(element_list):
                     selected_paths.append(element_list[idx - 1]["path"])
                 else:
-                    print(f"⚠️ Invalid number: {idx}")
+                    print(f"[WARNING] Invalid number: {idx}")
         except ValueError:
-            print("⚠️ Invalid input. Please enter numbers separated by commas.")
+            print("[WARNING] Invalid input. Please enter numbers separated by commas.")
             return None
 
         return selected_paths if selected_paths else None
@@ -434,7 +445,7 @@ class InteractiveCheckboxUI:
         Returns:
             True if user confirms, False otherwise
         """
-        print("\n📋 Selection Summary:")
+        print("\n[LIST] Selection Summary:")
         print("-" * 40)
 
         for i, element_path in enumerate(selected_elements, 1):
@@ -449,7 +460,7 @@ class InteractiveCheckboxUI:
             confirm = input("\nConfirm restoration? (y/N): ").strip().lower()
             return confirm in ["y", "yes"]
         except (KeyboardInterrupt, EOFError):
-            print("\n⚠️ Restoration cancelled.")
+            print("\n[WARNING] Restoration cancelled.")
             return False
 
     def _get_element_type(self, element_path: str) -> str:

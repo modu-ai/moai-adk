@@ -1452,7 +1452,7 @@ moai-worktree config set <key> <value>
 - 服务器性能优化
 
 ```bash
-> @agent-expert-backend "使用 FastAPI 开发用户认证 API"
+> Use the expert-backend subagent to"使用 FastAPI 开发用户认证 API"
 ```
 
 ---
@@ -1468,7 +1468,7 @@ moai-worktree config set <key> <value>
 - 响应式设计
 
 ```bash
-> @agent-expert-frontend "使用 React 实现仪表板 UI"
+> Use the expert-frontend subagent to"使用 React 实现仪表板 UI"
 ```
 
 ---
@@ -1484,7 +1484,7 @@ moai-worktree config set <key> <value>
 - 性能调优
 
 ```bash
-> @agent-expert-database "优化大型 PostgreSQL 表"
+> Use the expert-database subagent to"优化大型 PostgreSQL 表"
 ```
 
 ---
@@ -1500,7 +1500,7 @@ moai-worktree config set <key> <value>
 - 数据加密
 
 ```bash
-> @agent-expert-security "登录功能安全审计"
+> Use the expert-security subagent to"登录功能安全审计"
 ```
 
 ---
@@ -1516,7 +1516,7 @@ moai-worktree config set <key> <value>
 - 基础设施自动化
 
 ```bash
-> @agent-expert-devops "为 Next.js 应用设置 Docker 部署"
+> Use the expert-devops subagent to"为 Next.js 应用设置 Docker 部署"
 ```
 
 ---
@@ -1532,7 +1532,7 @@ moai-worktree config set <key> <value>
 - 用户体验优化
 
 ```bash
-> @agent-expert-uiux "基于 shadcn/ui 构建设计系统"
+> Use the expert-uiux subagent to"基于 shadcn/ui 构建设计系统"
 ```
 
 ---
@@ -1548,7 +1548,7 @@ moai-worktree config set <key> <value>
 - 内存泄漏检测
 
 ```bash
-> @agent-expert-debug "分析 API 响应时间缓慢的原因"
+> Use the expert-debug subagent to"分析 API 响应时间缓慢的原因"
 ```
 
 ---
@@ -1561,7 +1561,7 @@ moai-worktree config set <key> <value>
 **自动调用**: `> /moai:1-plan` 执行时
 
 ```bash
-> @agent-manager-spec "为用户档案 API 编写 SPEC"
+> Use the manager-spec subagent to"为用户档案 API 编写 SPEC"
 ```
 
 ---
@@ -1572,7 +1572,7 @@ moai-worktree config set <key> <value>
 **自动调用**: `> /moai:2-run` 执行时
 
 ```bash
-> @agent-manager-tdd "实现 SPEC-001"
+> Use the manager-tdd subagent to"实现 SPEC-001"
 ```
 
 ---
@@ -1583,7 +1583,7 @@ moai-worktree config set <key> <value>
 **自动调用**: `> /moai:3-sync` 执行时
 
 ```bash
-> @agent-manager-docs "生成登录功能文档"
+> Use the manager-docs subagent to"生成登录功能文档"
 ```
 
 ---
@@ -1594,7 +1594,7 @@ moai-worktree config set <key> <value>
 **自动调用**: `> /moai:2-run` 完成后
 
 ```bash
-> @agent-manager-quality "验证代码质量"
+> Use the manager-quality subagent to"验证代码质量"
 ```
 
 ---
@@ -1609,9 +1609,9 @@ moai-worktree config set <key> <value>
 - 性能优化策略
 
 ```bash
-> @agent-manager-strategy "规划从单体到微服务的迁移"
+> Use the manager-strategy subagent to"规划从单体到微服务的迁移"
 # 或使用内置智能体
-> @agent-Plan "规划从单体到微服务的迁移"
+> Use the Plan subagent to"规划从单体到微服务的迁移"
 ```
 
 ---
@@ -1624,7 +1624,7 @@ moai-worktree config set <key> <value>
 **使用场景**: 创建组织特定智能体
 
 ```bash
-> @agent-builder-agent "创建数据分析专业智能体"
+> Use the builder-agent subagent to "创建数据分析专业智能体"
 ```
 
 ---
@@ -1635,7 +1635,7 @@ moai-worktree config set <key> <value>
 **使用场景**: 开发团队特定技能
 
 ```bash
-> @agent-builder-skill "编写 GraphQL API 开发技能模块"
+> Use the builder-skill subagent to"编写 GraphQL API 开发技能模块"
 ```
 
 ---
@@ -1646,7 +1646,7 @@ moai-worktree config set <key> <value>
 **使用场景**: 自定义工作流自动化
 
 ```bash
-> @agent-builder-command "创建 > /moai:deploy 命令 (自动部署工作流)"
+> Use the builder-command subagent to"创建 > /moai:deploy 命令 (自动部署工作流)"
 ```
 
 ---
@@ -1657,7 +1657,7 @@ moai-worktree config set <key> <value>
 **使用场景**: 插件创建、验证、迁移
 
 ```bash
-> @agent-builder-plugin "创建包含 commands、agents、hooks 的 security-tools 插件"
+> Use the builder-plugin subagent to"创建包含 commands、agents、hooks 的 security-tools 插件"
 ```
 
 ---
@@ -1674,7 +1674,7 @@ moai-worktree config set <key> <value>
 - 验证库兼容性
 
 ```bash
-> @agent-mcp-context7 "查询 React 19 的最新 Hooks API"
+> Use the mcp-context7 subagent to"查询 React 19 的最新 Hooks API"
 ```
 
 ---
@@ -1690,7 +1690,7 @@ moai-worktree config set <key> <value>
 - SPEC 分析
 
 ```bash
-> @agent-mcp-sequential-thinking "分析微服务架构设计"
+> Use the mcp-sequential-thinking subagent to"分析微服务架构设计"
 ```
 
 ---
@@ -1705,7 +1705,7 @@ moai-worktree config set <key> <value>
 - 跨浏览器验证
 
 ```bash
-> @agent-mcp-playwright "编写登录功能的 E2E 测试"
+> Use the mcp-playwright subagent to"编写登录功能的 E2E 测试"
 ```
 
 ---
@@ -1909,16 +1909,16 @@ manager-quality (验证)
 **示例**:
 
 ```bash
-> @agent-expert-debug "分析 API 响应缓慢"
+> Use the expert-debug subagent to"分析 API 响应缓慢"
 # → 发现瓶颈 (DB 查询 N+1 问题)
 
-> @agent-mcp-sequential-thinking "规划 N+1 问题优化策略"
+> Use the mcp-sequential-thinking subagent to"规划 N+1 问题优化策略"
 # → 建议 ORM 查询优化策略
 
-> @agent-expert-backend "实现 ORM 查询优化"
+> Use the expert-backend subagent to"实现 ORM 查询优化"
 # → 应用 select_related(), prefetch_related()
 
-> @agent-manager-quality "性能测试和验证"
+> Use the manager-quality subagent to"性能测试和验证"
 # → 响应时间 500ms → 50ms (90% 改进)
 ```
 
@@ -1937,13 +1937,13 @@ mcp-playwright (E2E 测试)
 **示例**:
 
 ```bash
-> @agent-expert-uiux "基于 shadcn/ui 的登录页面设计"
+> Use the expert-uiux subagent to"基于 shadcn/ui 的登录页面设计"
 # → Button, Input, Card 组件组合
 
-> @agent-expert-frontend "实现 React 登录表单"
+> Use the expert-frontend subagent to"实现 React 登录表单"
 # → 使用 shadcn/ui 组件的实现
 
-> @agent-mcp-playwright "登录场景的 E2E 测试"
+> Use the mcp-playwright subagent to"登录场景的 E2E 测试"
 # → 成功/失败案例的自动测试
 ```
 
@@ -1964,16 +1964,16 @@ manager-quality (重新验证)
 ### 模式 5: 微服务架构设计
 
 ```bash
-> @agent-mcp-sequential-thinking "规划从单体到微服务的迁移策略"
+> Use the mcp-sequential-thinking subagent to"规划从单体到微服务的迁移策略"
 # → 服务分解策略、API 网关设计
 
-> @agent-expert-backend "开发用户服务和订单服务"
+> Use the expert-backend subagent to"开发用户服务和订单服务"
 # → 服务特定 API 实现
 
-> @agent-expert-devops "Kubernetes 部署配置"
+> Use the expert-devops subagent to"Kubernetes 部署配置"
 # → 自动生成 Docker、K8s 清单
 
-> @agent-manager-docs "服务示例文档"
+> Use the manager-docs subagent to"服务示例文档"
 # → 服务映射、API 文档、部署指南
 ```
 
@@ -2294,7 +2294,7 @@ flowchart TD
 
 ```bash
 # 跳过 SPEC 直接实现
-> @agent-expert-backend "简单错误修复"
+> Use the expert-backend subagent to"简单错误修复"
 ```
 
 **使用 SPEC 进行时**:
@@ -2370,7 +2370,7 @@ cat .mcp.json
 
 ```bash
 # Claude Code 中
-> @agent-ai-nano-banana "生成专业登录页面 UI 模型"
+> Use the ai-nano-banana subagent to"生成专业登录页面 UI 模型"
 ```
 
 #### 图像生成提示

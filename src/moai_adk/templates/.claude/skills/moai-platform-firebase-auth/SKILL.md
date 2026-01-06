@@ -1,14 +1,15 @@
 ---
-name: moai-platform-firebase-auth
-description: Firebase Authentication specialist covering Google ecosystem, social auth, phone auth, and mobile-first patterns. Use when building Firebase-backed or Google ecosystem apps, implementing social login, or adding phone verification.
+name: "moai-platform-firebase-auth"
+description: "Firebase Authentication specialist covering Google ecosystem, social auth, phone auth, and mobile-first patterns. Use when building Firebase-backed or Google ecosystem apps, implementing social login, or adding phone verification."
 version: 2.0.0
-category: platform
+category: "platform"
+modularized: true
+tags: ['firebase, google, social-auth, mobile, authentication']
 updated: 2025-12-07
-status: active
-tags: firebase, google, social-auth, mobile, authentication
-context7-libraries: /firebase/firebase-docs
-related-skills: moai-platform-firestore, moai-lang-flutter, moai-lang-typescript
-allowed-tools: Read, Write, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+status: "active"
+context7-libraries: "/firebase/firebase-docs"
+related-skills: "moai-platform-firestore, moai-lang-flutter, moai-lang-typescript"
+allowed-tools: "Read, Write, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 ---
 
 # Firebase Authentication Specialist

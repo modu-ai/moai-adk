@@ -1,19 +1,14 @@
 ---
-name: moai-domain-database
-description: Database specialist covering PostgreSQL, MongoDB, Redis, and advanced data patterns for modern applications
+name: "moai-domain-database"
+description: "Database specialist covering PostgreSQL, MongoDB, Redis, and advanced data patterns for modern applications"
 version: 1.0.0
-category: domain
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-tags:
- - database
- - postgresql
- - mongodb
- - redis
- - data-patterns
- - performance
+category: "domain"
+modularized: true
+tags: ['database', 'postgresql', 'mongodb', 'redis', 'data-patterns', 'performance']
+allowed-tools: "Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 updated: 2025-12-06
-status: active
-author: MoAI-ADK Team
+status: "active"
+author: "MoAI-ADK Team"
 ---
 
 # Database Domain Specialist

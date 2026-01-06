@@ -86,6 +86,7 @@ MoAI-ADK의 해결책:
 | **TDD 강제**          | Red-Green-Refactor 사이클 자동화                       | 버그 **70% 감소**(85%+ 커버리지 시)<br/>테스트 작성 시간 포함 총 개발 시간 **15% 단축**                                                                                                          |
 | **AI 오케스트레이션** | Mr.Alfred가 27개의 전문 AI 에이전트 지휘 (5-Tier 계층) | **평균 토큰 절감**: 세션당 5,000 토큰 (Conditional Auto-load)<br/>**Simple 작업**: 0 토큰 (Quick Reference)<br/>**Complex 작업**: 8,470 토큰 (Auto-load 스킬)<br/>수동 대비 **60-70% 시간 절감** |
 | **다국어 라우팅** | 4개 언어 자동 에이전트 선택 (EN/KO/JA/ZH) | **100% 언어 커버리지** 에이전트 호출<br/>XLT (Cross-Lingual Thought) 프로토콜로 의미 매칭<br/>한국어, 일본어, 중국어 요청 지원 |
+| **AST-Grep 통합** | 구조적 코드 검색, 보안 스캔, 리팩토링 | **패턴 기반 코드 분석** (텍스트 기반 regex 아님)<br/>**40개 이상의 프로그래밍 언어** 지원<br/>코드 변경 시 **자동 보안 스캔**<br/>expert-refactoring 에이전트로 **대규모 리팩토링** |
 | **자동 문서화**       | 코드 변경 시 문서 자동 동기화 (`> /moai:3-sync`)       | 문서 최신성 **100% 보장**<br/>수동 문서 작성 제거<br/>마지막 커밋 이후 자동 동기화                                                                                                               |
 | **TRUST 5 품질**      | Test, Readable, Unified, Secured, Trackable            | 엔터프라이즈급 품질 보증<br/>배포 후 긴급 패치 **99% 감소**                                                                                                                                      |
 
@@ -1445,7 +1446,7 @@ moai-worktree config set <key> <value>
 - 서버 성능 최적화
 
 ```bash
-> @agent-expert-backend "FastAPI로 사용자 인증 API 개발"
+> Use the expert-backend subagent to"FastAPI로 사용자 인증 API 개발"
 ```
 
 ---
@@ -1461,7 +1462,7 @@ moai-worktree config set <key> <value>
 - 반응형 디자인
 
 ```bash
-> @agent-expert-frontend "React로 대시보드 UI 구현"
+> Use the expert-frontend subagent to"React로 대시보드 UI 구현"
 ```
 
 ---
@@ -1477,7 +1478,7 @@ moai-worktree config set <key> <value>
 - 성능 튜닝
 
 ```bash
-> @agent-expert-database "PostgreSQL 대규모 테이블 최적화"
+> Use the expert-database subagent to"PostgreSQL 대규모 테이블 최적화"
 ```
 
 ---
@@ -1493,7 +1494,7 @@ moai-worktree config set <key> <value>
 - 데이터 암호화
 
 ```bash
-> @agent-expert-security "로그인 기능 보안 감사"
+> Use the expert-security subagent to"로그인 기능 보안 감사"
 ```
 
 ---
@@ -1509,7 +1510,7 @@ moai-worktree config set <key> <value>
 - 인프라 자동화
 
 ```bash
-> @agent-expert-devops "Next.js 앱 Docker 배포 설정"
+> Use the expert-devops subagent to"Next.js 앱 Docker 배포 설정"
 ```
 
 ---
@@ -1525,7 +1526,7 @@ moai-worktree config set <key> <value>
 - 사용자 경험 최적화
 
 ```bash
-> @agent-expert-uiux "shadcn/ui 기반 디자인 시스템 구축"
+> Use the expert-uiux subagent to"shadcn/ui 기반 디자인 시스템 구축"
 ```
 
 ---
@@ -1541,7 +1542,7 @@ moai-worktree config set <key> <value>
 - 메모리 누수 감지
 
 ```bash
-> @agent-expert-debug "API 응답 시간이 느린 원인 분석"
+> Use the expert-debug subagent to"API 응답 시간이 느린 원인 분석"
 ```
 
 ---
@@ -1554,7 +1555,7 @@ moai-worktree config set <key> <value>
 **자동 호출**: `> /moai:1-plan` 실행 시
 
 ```bash
-> @agent-manager-spec "사용자 프로필 API SPEC 작성"
+> Use the manager-spec subagent to"사용자 프로필 API SPEC 작성"
 ```
 
 ---
@@ -1565,7 +1566,7 @@ moai-worktree config set <key> <value>
 **자동 호출**: `> /moai:2-run` 실행 시
 
 ```bash
-> @agent-manager-tdd "SPEC-001 구현"
+> Use the manager-tdd subagent to"SPEC-001 구현"
 ```
 
 ---
@@ -1576,7 +1577,7 @@ moai-worktree config set <key> <value>
 **자동 호출**: `> /moai:3-sync` 실행 시
 
 ```bash
-> @agent-manager-docs "로그인 기능 문서 생성"
+> Use the manager-docs subagent to"로그인 기능 문서 생성"
 ```
 
 ---
@@ -1587,7 +1588,7 @@ moai-worktree config set <key> <value>
 **자동 호출**: `> /moai:2-run` 완료 후
 
 ```bash
-> @agent-manager-quality "코드 품질 검증"
+> Use the manager-quality subagent to"코드 품질 검증"
 ```
 
 ---
@@ -1602,9 +1603,9 @@ moai-worktree config set <key> <value>
 - 성능 최적화 전략
 
 ```bash
-> @agent-manager-strategy "모놀리식에서 마이크로서비스로 마이그레이션 계획"
+> Use the manager-strategy subagent to"모놀리식에서 마이크로서비스로 마이그레이션 계획"
 # 또는 Built-in agent 사용
-> @agent-Plan "모놀리식에서 마이크로서비스로 마이그레이션 계획"
+> Use the Plan subagent to"모놀리식에서 마이크로서비스로 마이그레이션 계획"
 ```
 
 ---
@@ -1617,7 +1618,7 @@ moai-worktree config set <key> <value>
 **사용 사례**: 조직 특화 에이전트 생성
 
 ```bash
-> @agent-builder-agent "데이터 분석 전문 에이전트 생성"
+> Use the builder-agent subagent to "데이터 분석 전문 에이전트 생성"
 ```
 
 ---
@@ -1628,7 +1629,7 @@ moai-worktree config set <key> <value>
 **사용 사례**: 팀 특화 스킬 개발
 
 ```bash
-> @agent-builder-skill "GraphQL API 개발 스킬 모듈 작성"
+> Use the builder-skill subagent to"GraphQL API 개발 스킬 모듈 작성"
 ```
 
 ---
@@ -1639,7 +1640,7 @@ moai-worktree config set <key> <value>
 **사용 사례**: 커스텀 워크플로우 자동화
 
 ```bash
-> @agent-builder-command "> /moai:deploy 커맨드 생성 (자동 배포 워크플로우)"
+> Use the builder-command subagent to"> /moai:deploy 커맨드 생성 (자동 배포 워크플로우)"
 ```
 
 ---
@@ -1650,7 +1651,7 @@ moai-worktree config set <key> <value>
 **사용 사례**: 플러그인 생성, 검증, 마이그레이션
 
 ```bash
-> @agent-builder-plugin "commands, agents, hooks가 포함된 security-tools 플러그인 생성"
+> Use the builder-plugin subagent to"commands, agents, hooks가 포함된 security-tools 플러그인 생성"
 ```
 
 ---
@@ -1667,7 +1668,7 @@ moai-worktree config set <key> <value>
 - 라이브러리 호환성 검증
 
 ```bash
-> @agent-mcp-context7 "React 19의 최신 Hooks API 조회"
+> Use the mcp-context7 subagent to"React 19의 최신 Hooks API 조회"
 ```
 
 ---
@@ -1683,7 +1684,7 @@ moai-worktree config set <key> <value>
 - SPEC 분석
 
 ```bash
-> @agent-mcp-sequential-thinking "마이크로서비스 아키텍처 설계 분석"
+> Use the mcp-sequential-thinking subagent to"마이크로서비스 아키텍처 설계 분석"
 ```
 
 ---
@@ -1698,7 +1699,7 @@ moai-worktree config set <key> <value>
 - 크로스 브라우저 검증
 
 ```bash
-> @agent-mcp-playwright "로그인 기능 E2E 테스트 작성"
+> Use the mcp-playwright subagent to"로그인 기능 E2E 테스트 작성"
 ```
 
 ---
@@ -2005,16 +2006,16 @@ manager-quality (검증)
 **예시:**
 
 ```bash
-> @agent-expert-debug "API 응답 느림 분석"
+> Use the expert-debug subagent to"API 응답 느림 분석"
 # → 병목 지점 발견 (DB 쿼리 N+1 문제)
 
-> @agent-mcp-sequential-thinking "N+1 문제 최적화 전략 수립"
+> Use the mcp-sequential-thinking subagent to"N+1 문제 최적화 전략 수립"
 # → ORM 쿼리 최적화 전략 제시
 
-> @agent-expert-backend "ORM 쿼리 최적화 구현"
+> Use the expert-backend subagent to"ORM 쿼리 최적화 구현"
 # → select_related(), prefetch_related() 적용
 
-> @agent-manager-quality "성능 테스트 및 검증"
+> Use the manager-quality subagent to"성능 테스트 및 검증"
 # → 응답 시간 500ms → 50ms (90% 개선)
 ```
 
@@ -2033,13 +2034,13 @@ mcp-playwright (E2E 테스트)
 **예시:**
 
 ```bash
-> @agent-expert-uiux "로그인 페이지 디자인 shadcn/ui 기반"
+> Use the expert-uiux subagent to"로그인 페이지 디자인 shadcn/ui 기반"
 # → Button, Input, Card 컴포넌트 조합
 
-> @agent-expert-frontend "React 로그인 폼 구현"
+> Use the expert-frontend subagent to"React 로그인 폼 구현"
 # → shadcn/ui 컴포넌트 사용한 구현
 
-> @agent-mcp-playwright "로그인 시나리오 E2E 테스트"
+> Use the mcp-playwright subagent to"로그인 시나리오 E2E 테스트"
 # → 성공/실패 케이스 자동 테스트
 ```
 
@@ -2060,16 +2061,16 @@ manager-quality (재검증)
 ### 패턴 5: 마이크로서비스 아키텍처 설계
 
 ```bash
-> @agent-mcp-sequential-thinking "모놀리식에서 마이크로서비스 마이그레이션 전략"
+> Use the mcp-sequential-thinking subagent to"모놀리식에서 마이크로서비스 마이그레이션 전략"
 # → 서비스 분해 전략, API 게이트웨이 설계
 
-> @agent-expert-backend "사용자 서비스 & 주문 서비스 개발"
+> Use the expert-backend subagent to"사용자 서비스 & 주문 서비스 개발"
 # → 서비스별 API 구현
 
-> @agent-expert-devops "Kubernetes 배포 설정"
+> Use the expert-devops subagent to"Kubernetes 배포 설정"
 # → Docker, K8s manifest 자동 생성
 
-> @agent-manager-docs "서비스 예시 문서화"
+> Use the manager-docs subagent to"서비스 예시 문서화"
 # → 서비스맵, API 문서, 배포 가이드
 ```
 
@@ -2390,7 +2391,7 @@ flowchart TD
 
 ```bash
 # SPEC 생략하고 바로 구현
-> @agent-expert-backend "간단한 버그 수정"
+> Use the expert-backend subagent to"간단한 버그 수정"
 ```
 
 **SPEC 생성 후 진행:**
@@ -2465,7 +2466,7 @@ cat .mcp.json
 
 ```bash
 # Claude Code에서
-> @agent-ai-nano-banana "전문적인 로그인 페이지 UI 목업 생성"
+> Use the ai-nano-banana subagent to"전문적인 로그인 페이지 UI 목업 생성"
 ```
 
 #### 이미지 생성 프롬프트

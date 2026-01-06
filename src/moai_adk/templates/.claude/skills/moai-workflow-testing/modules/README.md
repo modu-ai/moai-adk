@@ -10,7 +10,9 @@ This modules directory contains detailed implementation modules for the moai-wor
 
 ## Available Modules
 
-### [AI-Powered Debugging](./ai-debugging.md)
+### Root Level Modules
+
+#### [AI-Powered Debugging](./ai-debugging.md)
 Complexity: Advanced | Time: 20+ minutes | Dependencies: Python 3.8+, Context7 MCP
 
 - Intelligent error classification with Context7 patterns
@@ -79,6 +81,53 @@ Key Features:
 - Context7 security and quality pattern integration
 - Automated issue detection with prioritization
 - Integration with CI/CD pipelines and quality gates
+
+### Thematic Subdirectories
+
+#### [Automated Code Review](./automated-code-review/)
+Comprehensive code review workflows with TRUST 5 framework integration.
+- `context7-integration.md` - Context7 integration for code review
+- `review-workflows.md` - Code review workflow patterns
+- `trust5-framework.md` - TRUST 5 framework overview
+- `trust5-framework/` - TRUST 5 sub-components directory
+  - `relevance-analysis.md` - Relevance dimension analysis
+  - `safety-analysis.md` - Safety dimension analysis
+  - `scoring-algorithms.md` - Scoring algorithm details
+  - `timeliness-analysis.md` - Timeliness dimension analysis
+  - `truthfulness-analysis.md` - Truthfulness dimension analysis
+  - `usability-analysis.md` - Usability dimension analysis
+
+#### [Code Review Patterns](./code-review/)
+Code review patterns and methodologies.
+- `analysis-patterns.md` - Code analysis patterns
+- `core-classes.md` - Core code review classes
+- `tool-integration.md` - Tool integration patterns
+
+#### [Debugging Workflows](./debugging/)
+AI-powered debugging workflows.
+- `debugging-workflows.md` - Debugging workflow processes
+- `error-analysis.md` - Error analysis techniques
+
+#### [Performance Optimization](./performance/)
+Performance optimization strategies.
+- `optimization-patterns.md` - Performance optimization patterns
+- `profiling-techniques.md` - Profiling and measurement techniques
+
+#### [Refactoring Patterns](./refactoring/)
+AI-powered refactoring workflows.
+- `ai-workflows.md` - AI refactoring workflows
+- `patterns.md` - Refactoring patterns
+
+#### [TDD with Context7](./tdd-context7/)
+Test-driven development with Context7 integration.
+- `advanced-features.md` - Advanced TDD features
+- `red-green-refactor.md` - RED-GREEN-REFACTOR cycle
+- `test-generation.md` - Automated test generation
+- `test-patterns.md` - TDD testing patterns
+
+#### [Core TDD](./tdd/)
+Core TDD documentation.
+- `core-classes.md` - Core TDD classes and patterns
 
 ## Module Integration
 
@@ -215,6 +264,6 @@ When contributing to modules:
 
 ---
 
-Last Updated: 2025-11-30
-Module Count: 5 comprehensive modules
+Last Updated: 2026-01-06
+Module Count: 12 root-level modules + 7 thematic subdirectories
 Maintained by: MoAI-ADK Development Workflow Team

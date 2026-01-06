@@ -86,6 +86,7 @@ MoAI-ADK solutions:
 | **TDD Enforcement**    | Automated Red-Green-Refactor cycle                   | **70% reduction** in bugs (with 85%+ coverage)<br/>**15% shorter** total development time including test writing                                                                                                         |
 | **AI Orchestration**   | Mr.Alfred commands 27 specialized AI agents (5-Tier) | **Average token savings**: 5,000 tokens per session (Conditional Auto-load)<br/>**Simple tasks**: 0 tokens (Quick Reference)<br/>**Complex tasks**: 8,470 tokens (Auto-load skill)<br/>**60-70% time savings** vs manual |
 | **Multilingual Routing** | Automatic agent selection in 4 languages (EN/KO/JA/ZH) | **100% language coverage** for agent invocation<br/>XLT (Cross-Lingual Thought) protocol for semantic matching<br/>Works with Korean, Japanese, Chinese requests                                                          |
+| **AST-Grep Integration** | Structural code search, security scanning, and refactoring | **Pattern-based code analysis** (not text-based regex)<br/>Support for **40+ programming languages**<br/>**Automatic security scanning** on code changes<br/>**Large-scale refactoring** with expert-refactoring agent |
 | **Auto Documentation** | Automatic doc sync on code changes (`> /moai:3-sync`) | **100% documentation freshness**<br/>Eliminates manual doc writing<br/>Auto-sync since last commit                                                                                                                       |
 | **TRUST 5 Quality**    | Test, Readable, Unified, Secured, Trackable          | Enterprise-grade quality assurance<br/>**99% reduction** in post-deployment emergency patches                                                                                                                            |
 
@@ -1443,7 +1444,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Server performance optimization
 
 ```bash
-> @agent-expert-backend "Develop user authentication API with FastAPI"
+> Use the expert-backend subagent to"Develop user authentication API with FastAPI"
 ```
 
 ---
@@ -1459,7 +1460,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Responsive design
 
 ```bash
-> @agent-expert-frontend "Implement dashboard UI with React"
+> Use the expert-frontend subagent to"Implement dashboard UI with React"
 ```
 
 ---
@@ -1475,7 +1476,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Performance tuning
 
 ```bash
-> @agent-expert-database "Optimize large PostgreSQL tables"
+> Use the expert-database subagent to"Optimize large PostgreSQL tables"
 ```
 
 ---
@@ -1491,7 +1492,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Data encryption
 
 ```bash
-> @agent-expert-security "Security audit for login feature"
+> Use the expert-security subagent to"Security audit for login feature"
 ```
 
 ---
@@ -1507,7 +1508,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Infrastructure automation
 
 ```bash
-> @agent-expert-devops "Setup Docker deployment for Next.js app"
+> Use the expert-devops subagent to"Setup Docker deployment for Next.js app"
 ```
 
 ---
@@ -1523,7 +1524,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - User experience optimization
 
 ```bash
-> @agent-expert-uiux "Build design system based on shadcn/ui"
+> Use the expert-uiux subagent to"Build design system based on shadcn/ui"
 ```
 
 ---
@@ -1539,7 +1540,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Memory leak detection
 
 ```bash
-> @agent-expert-debug "Analyze slow API response time"
+> Use the expert-debug subagent to"Analyze slow API response time"
 ```
 
 ---
@@ -1555,7 +1556,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Caching strategies
 
 ```bash
-> @agent-expert-performance "Optimize application response time"
+> Use the expert-performance subagent to"Optimize application response time"
 ```
 
 ---
@@ -1571,7 +1572,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Integration testing
 
 ```bash
-> @agent-expert-testing "Design comprehensive test strategy"
+> Use the expert-testing subagent to"Design comprehensive test strategy"
 ```
 
 ---
@@ -1584,7 +1585,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 **Auto-invoked**: When executing `> /moai:1-plan`
 
 ```bash
-> @agent-manager-spec "Write SPEC for user profile API"
+> Use the manager-spec subagent to"Write SPEC for user profile API"
 ```
 
 ---
@@ -1595,7 +1596,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 **Auto-invoked**: When executing `> /moai:2-run`
 
 ```bash
-> @agent-manager-tdd "Implement SPEC-001"
+> Use the manager-tdd subagent to"Implement SPEC-001"
 ```
 
 ---
@@ -1606,7 +1607,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 **Auto-invoked**: When executing `> /moai:3-sync`
 
 ```bash
-> @agent-manager-docs "Generate documentation for login feature"
+> Use the manager-docs subagent to"Generate documentation for login feature"
 ```
 
 ---
@@ -1617,7 +1618,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 **Auto-invoked**: After `> /moai:2-run` completion
 
 ```bash
-> @agent-manager-quality "Verify code quality"
+> Use the manager-quality subagent to"Verify code quality"
 ```
 
 ---
@@ -1632,9 +1633,9 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Performance optimization strategy
 
 ```bash
-> @agent-manager-strategy "Plan monolith to microservices migration"
+> Use the manager-strategy subagent to"Plan monolith to microservices migration"
 # Or use Built-in agent
-> @agent-Plan "Plan monolith to microservices migration"
+> Use the Plan subagent to"Plan monolith to microservices migration"
 ```
 
 ---
@@ -1650,7 +1651,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Performance tuning
 
 ```bash
-> @agent-manager-claude-code "Optimize Claude Code configuration"
+> Use the manager-claude-code subagent to"Optimize Claude Code configuration"
 ```
 
 ---
@@ -1666,7 +1667,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Merge request automation
 
 ```bash
-> @agent-manager-git "Setup Git workflow for team collaboration"
+> Use the manager-git subagent to"Setup Git workflow for team collaboration"
 ```
 
 ---
@@ -1677,7 +1678,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 **Auto-invoked**: When executing `> /moai:0-project`
 
 ```bash
-> @agent-manager-project "Initialize project with optimal settings"
+> Use the manager-project subagent to"Initialize project with optimal settings"
 ```
 
 ---
@@ -1690,7 +1691,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 **Use case**: Create organization-specific agents
 
 ```bash
-> @agent-builder-agent "Create data analysis specialist agent"
+> Use the builder-agent subagent to "Create data analysis specialist agent"
 ```
 
 ---
@@ -1701,7 +1702,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 **Use case**: Develop team-specific skills
 
 ```bash
-> @agent-builder-skill "Create GraphQL API development skill module"
+> Use the builder-skill subagent to"Create GraphQL API development skill module"
 ```
 
 ---
@@ -1712,7 +1713,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 **Use case**: Custom workflow automation
 
 ```bash
-> @agent-builder-command "Create > /moai:deploy command (auto-deployment workflow)"
+> Use the builder-command subagent to"Create > /moai:deploy command (auto-deployment workflow)"
 ```
 
 ---
@@ -1723,7 +1724,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 **Use case**: Plugin creation, validation, and migration
 
 ```bash
-> @agent-builder-plugin "Create security-tools plugin with commands, agents, and hooks"
+> Use the builder-plugin subagent to"Create security-tools plugin with commands, agents, and hooks"
 ```
 
 ---
@@ -1740,7 +1741,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Verify library compatibility
 
 ```bash
-> @agent-mcp-context7 "Lookup React 19 latest Hooks API"
+> Use the mcp-context7 subagent to"Lookup React 19 latest Hooks API"
 ```
 
 ---
@@ -1756,7 +1757,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - SPEC analysis
 
 ```bash
-> @agent-mcp-sequential-thinking "Analyze microservices architecture design"
+> Use the mcp-sequential-thinking subagent to"Analyze microservices architecture design"
 ```
 
 ---
@@ -1771,7 +1772,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Cross-browser verification
 
 ```bash
-> @agent-mcp-playwright "Create E2E tests for login feature"
+> Use the mcp-playwright subagent to"Create E2E tests for login feature"
 ```
 
 ---
@@ -1787,7 +1788,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Design-to-code workflow
 
 ```bash
-> @agent-mcp-figma "Extract design system from Figma file"
+> Use the mcp-figma subagent to"Extract design system from Figma file"
 ```
 
 ---
@@ -1803,7 +1804,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 - Knowledge base organization
 
 ```bash
-> @agent-mcp-notion "Sync project documentation with Notion"
+> Use the mcp-notion subagent to"Sync project documentation with Notion"
 ```
 
 ---
@@ -2114,16 +2115,16 @@ manager-quality (Verification)
 **Example**:
 
 ```bash
-> @agent-expert-debug "Analyze slow API response"
+> Use the expert-debug subagent to"Analyze slow API response"
 # → Finds bottleneck (DB query N+1 problem)
 
-> @agent-mcp-sequential-thinking "Plan N+1 problem optimization strategy"
+> Use the mcp-sequential-thinking subagent to"Plan N+1 problem optimization strategy"
 # → Suggests ORM query optimization
 
-> @agent-expert-backend "Implement ORM query optimization"
+> Use the expert-backend subagent to"Implement ORM query optimization"
 # → Applies select_related(), prefetch_related()
 
-> @agent-manager-quality "Performance test and verification"
+> Use the manager-quality subagent to"Performance test and verification"
 # → Response time 500ms → 50ms (90% improvement)
 ```
 
@@ -2142,13 +2143,13 @@ mcp-playwright (E2E testing)
 **Example**:
 
 ```bash
-> @agent-expert-uiux "Login page design based on shadcn/ui"
+> Use the expert-uiux subagent to"Login page design based on shadcn/ui"
 # → Combination of Button, Input, Card components
 
-> @agent-expert-frontend "Implement React login form"
+> Use the expert-frontend subagent to"Implement React login form"
 # → Implementation using shadcn/ui components
 
-> @agent-mcp-playwright "E2E test for login scenario"
+> Use the mcp-playwright subagent to"E2E test for login scenario"
 # → Auto-test success/failure cases
 ```
 
@@ -2169,16 +2170,16 @@ manager-quality (Re-verification)
 ### Pattern 5: Microservices Architecture Design
 
 ```bash
-> @agent-mcp-sequential-thinking "Monolith to microservices migration strategy"
+> Use the mcp-sequential-thinking subagent to"Monolith to microservices migration strategy"
 # → Service decomposition strategy, API gateway design
 
-> @agent-expert-backend "Develop user service & order service"
+> Use the expert-backend subagent to"Develop user service & order service"
 # → Service-specific API implementation
 
-> @agent-expert-devops "Kubernetes deployment configuration"
+> Use the expert-devops subagent to"Kubernetes deployment configuration"
 # → Auto-generate Docker, K8s manifests
 
-> @agent-manager-docs "Service example documentation"
+> Use the manager-docs subagent to"Service example documentation"
 # → Service map, API docs, deployment guide
 ```
 
@@ -2282,7 +2283,226 @@ flowchart TD
 
 ---
 
-## 12. Advanced Features
+## 12. AST-Grep Integration
+
+### 🔍 What is AST-Grep?
+
+**AST-Grep** (sg CLI) is a structural code search and refactoring tool that uses Abstract Syntax Tree (AST) pattern matching instead of text-based regex. This enables:
+
+- **Precise code analysis** (understands code structure, not just text)
+- **Language-aware patterns** (works with 40+ programming languages)
+- **Safe refactoring** (AST-level transformations preserve semantics)
+- **Security vulnerability detection** (pattern-based security scanning)
+
+### 🎯 Core Capabilities
+
+| Capability | Description | Example Use Cases |
+|------------|-------------|-------------------|
+| **Structural Search** | Find code patterns by AST structure, not text | Find all SQL queries without parameterization |
+| **Security Scanning** | Automatic vulnerability detection on code changes | Detect SQL injection, XSS, hardcoded secrets |
+| **Pattern-Based Refactoring** | Safe code transformations using AST patterns | Rename variables across files, extract functions |
+| **Multi-Language Support** | Works with 40+ programming languages | Python, TypeScript, Go, Rust, Java, C++, etc. |
+
+### 🔧 How It Works in MoAI-ADK
+
+#### Automatic Security Scanning
+
+Every time you write or edit code, MoAI-ADK automatically runs AST-Grep security scanning:
+
+```bash
+# After any Write or Edit operation
+$ ast-grep scan --rule .claude/skills/moai-tool-ast-grep/rules/security/
+```
+
+**Detected vulnerabilities:**
+- SQL injection (SQL queries without parameterization)
+- XSS vulnerabilities (unsafe HTML rendering)
+- Hardcoded secrets (API keys, passwords in code)
+- Insecure deserialization
+- Path traversal vulnerabilities
+
+#### Large-Scale Refactoring
+
+Use the `expert-refactoring` agent for complex code transformations:
+
+```bash
+# Rename a variable across the entire codebase
+> Use the expert-refactoring subagent to"Rename all occurrences of 'userName' to 'username'"
+
+# Extract repeated code into a function
+> Use the expert-refactoring subagent to"Extract this authentication logic into a separate function"
+
+# Apply design patterns
+> Use the expert-refactoring subagent to"Apply Singleton pattern to DatabaseConnection class"
+```
+
+### 📁 AST-Grep Components in MoAI-ADK
+
+```
+.claude/
+├── skills/moai-tool-ast-grep/       # AST-Grep skill
+│   ├── SKILL.md                     # Main skill documentation
+│   ├── modules/                     # Pattern modules
+│   │   ├── pattern-syntax.md        # Pattern syntax guide
+│   │   ├── security-rules.md        # Security rule definitions
+│   │   ├── refactoring-patterns.md  # Refactoring patterns
+│   │   └── language-specific.md     # Language-specific patterns
+│   └── rules/                       # Rule files
+│       ├── sgconfig.yml             # Global configuration
+│       ├── security/                # Security rules
+│       │   ├── sql-injection.yml
+│       │   ├── xss.yml
+│       │   └── hardcoded-secrets.yml
+│       ├── quality/                 # Quality rules
+│       │   ├── code-duplication.yml
+│       │   └── naming-convention.yml
+│       └── languages/               # Language-specific rules
+│           ├── python.yml
+│           ├── typescript.yml
+│           └── go.yml
+├── agents/moai/expert-refactoring.md # Refactoring agent
+└── hooks/moai/post_tool__ast_grep_scan.py # Auto-scan hook
+```
+
+### 🚀 Quick Start
+
+#### Basic Structural Search
+
+```bash
+# Find all SQL queries in Python code
+sg -p 'sql_query($$$)' --lang python
+
+# Find all React useEffect hooks
+sg -p 'useEffect($$$, $$$)' --lang typescript
+```
+
+#### Security Scanning
+
+```bash
+# Scan for security vulnerabilities
+ast-grep scan -r .claude/skills/moai-tool-ast-grep/rules/security/
+
+# Scan specific files
+ast-grep scan src/auth.py -r .claude/skills/moai-tool-ast-grep/rules/security/sql-injection.yml
+```
+
+#### Refactoring with AST-Grep
+
+```bash
+# Rename variable across project
+ast-grep rewrite --pattern 'old_name' --rewrite 'new_name' src/
+
+# Apply custom refactoring rule
+ast-grep rewrite -r .claude/skills/moai-tool-ast-grep/rules/refactoring/extract-function.yml
+```
+
+### 🔐 Security Rule Examples
+
+**SQL Injection Detection Rule** (`sql-injection.yml`):
+
+```yaml
+id: sql-injection
+message: SQL query uses string formatting (potential injection)
+severity: error
+language: python
+rule:
+  pattern: execute($$$)
+  inside:
+    pattern: function($X, $$$)
+    has:
+      pattern: format($$$)
+      stopBy: end
+```
+
+**Hardcoded Secrets Detection** (`hardcoded-secrets.yml`):
+
+```yaml
+id: hardcoded-secrets
+message: Hardcoded secret detected in code
+severity: warning
+language: generic
+rule:
+  any:
+    - pattern: password = $S
+      metavariable:
+        S:
+          regex: '["\'].*["\']'
+    - pattern: api_key = $S
+      metavariable:
+        S:
+          regex: '["\'].*["\']'
+```
+
+### 🎯 Expert-Refactoring Agent
+
+The `expert-refactoring` agent specializes in large-scale code transformations:
+
+**Use Cases:**
+
+1. **Variable/Function Renaming**: Safe renaming across files
+2. **Code Extraction**: Extract repeated logic into functions
+3. **Design Pattern Application**: Apply patterns (Singleton, Factory, etc.)
+4. **API Migration**: Upgrade API versions across codebase
+5. **Dead Code Removal**: Find and remove unused code
+
+**Example Session:**
+
+```bash
+> Use the expert-refactoring subagent to"I need to extract user authentication logic into a separate module"
+
+# Agent will:
+# 1. Analyze current authentication code structure
+# 2. Identify repeated authentication patterns
+# 3. Create new auth module with extracted functions
+# 4. Update all callers to use new module
+# 5. Run tests to verify transformation
+# 6. Report changes made
+```
+
+### 📊 Benefits
+
+| Benefit | Description | Impact |
+|---------|-------------|--------|
+| **Early Detection** | Security issues detected immediately | **95% reduction** in security bugs reaching production |
+| **Safe Refactoring** | AST-level transformations preserve semantics | **99% reduction** in refactoring-induced bugs |
+| **Language Coverage** | Supports 40+ programming languages | **Unified tool** across polyglot codebases |
+| **Automation** | Automatic scanning on every code change | **Zero manual effort** for security checks |
+
+### 🔗 Integration with MoAI-ADK Workflow
+
+AST-Grep integrates seamlessly with the Plan-Run-Sync cycle:
+
+```
+Plan (SPEC) → Run (TDD + AST-Grep Scan) → Sync (Documentation)
+                     ↓
+            [Automatic Security Scanning]
+                     ↓
+            [Instant Vulnerability Feedback]
+```
+
+**During TDD Phase:**
+- Write test (Red)
+- Implement code (Green)
+- **AST-Grep automatically scans for security issues**
+- Refactor with confidence (Refactor)
+
+**If vulnerability detected:**
+```bash
+⚠️  AST-Grep: Potential SQL injection detected in src/auth.py:47
+   Pattern: execute(f"SELECT * FROM users WHERE id={user_id}")
+   Suggestion: Use parameterized query: execute("SELECT * FROM users WHERE id=%s", (user_id,))
+```
+
+### 📚 Additional Resources
+
+- **AST-Grep Documentation**: https://ast-grep.github.io/
+- **Rule Writing Guide**: `.claude/skills/moai-tool-ast-grep/modules/pattern-syntax.md`
+- **Security Rules**: `.claude/skills/moai-tool-ast-grep/rules/security/`
+- **Expert-Refactoring Agent**: `.claude/agents/moai/expert-refactoring.md`
+
+---
+
+## 13. Advanced Features
 
 ### 🌳 Git Worktree CLI (Parallel Development)
 
@@ -2354,7 +2574,7 @@ moai worktree go main
 
 ---
 
-## 13. Advanced Configuration
+## 14. Advanced Configuration
 
 ### 🔧 Configuration File Location
 
@@ -2481,7 +2701,7 @@ flowchart TD
 
 ---
 
-## 14. FAQ & Quick Reference
+## 15. FAQ & Quick Reference
 
 ### Q1: Is SPEC always required?
 
@@ -2499,7 +2719,7 @@ flowchart TD
 
 ```bash
 # Skip SPEC and implement directly
-> @agent-expert-backend "simple bug fix"
+> Use the expert-backend subagent to"simple bug fix"
 ```
 
 **Proceed with SPEC:**
@@ -2550,7 +2770,7 @@ cat .mcp.json
 
 ---
 
-## 15. 📸 ai-nano-banana Agent Usage Guide
+## 16. 📸 ai-nano-banana Agent Usage Guide
 
 **Purpose**: Professional image generation using Google Gemini 3 Nano Banana Pro
 
@@ -2574,7 +2794,7 @@ cat .mcp.json
 
 ```bash
 # In Claude Code
-> @agent-ai-nano-banana "Generate professional login page UI mockup"
+> Use the ai-nano-banana subagent to"Generate professional login page UI mockup"
 ```
 
 #### Image Generation Prompts
@@ -2706,7 +2926,7 @@ White background, consistent style"
 
 ---
 
-## 16. 🚀 GLM Integration with z.ai (Cost-Effective Alternative)
+## 17. 🚀 GLM Integration with z.ai (Cost-Effective Alternative)
 
 ### Overview
 
@@ -2930,7 +3150,7 @@ Based on real-world testing with MoAI-ADK:
 
 **Start saving today while maintaining full development productivity!** 🚀
 
-## 17. Additional Resources
+## 18. Additional Resources
 
 ### 🆘 Support (Support)
 
@@ -2976,7 +3196,7 @@ SOFTWARE.
 
 ### Made with ❤️ by MoAI-ADK Team
 
-**Version:** 0.36.2
+**Version:** 0.36.5
 **Last Updated:** 2026-01-06
 **Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
 **MoAI**: MoAI stands for "Modu-ui AI" (AI for Everyone). Our goal is to make AI accessible to everyone.

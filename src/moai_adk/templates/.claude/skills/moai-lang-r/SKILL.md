@@ -1,10 +1,12 @@
 ---
-name: moai-lang-r
-description: R 4.4+ development specialist covering tidyverse, ggplot2, Shiny, and data science patterns. Use when developing data analysis pipelines, visualizations, or Shiny applications.
+name: "moai-lang-r"
+description: "R 4.4+ development specialist covering tidyverse, ggplot2, Shiny, and data science patterns. Use when developing data analysis pipelines, visualizations, or Shiny applications."
 version: 1.0.0
+category: "language"
+modularized: true
 updated: 2025-12-07
-status: active
-allowed-tools: Read, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+status: "active"
+allowed-tools: "Read, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 ---
 
 ## Quick Reference (30 seconds)

@@ -1,22 +1,14 @@
 ---
-name: moai-foundation-quality
-aliases:
- - moai-foundation-quality
-category: foundation
-description: Enterprise code quality orchestrator with TRUST 5 validation, proactive analysis, and automated best practices enforcement
+name: "moai-foundation-quality"
+description: "Enterprise code quality orchestrator with TRUST 5 validation, proactive analysis, and automated best practices enforcement"
 version: 2.0.0
+category: "foundation"
 modularized: true
+tags: ['foundation', 'quality', 'testing', 'validation', 'trust-5', 'best-practices', 'code-review']
+aliases: ['moai-foundation-quality']
 updated: 2025-11-27
-status: active
-allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-tags:
- - foundation
- - quality
- - testing
- - validation
- - trust-5
- - best-practices
- - code-review
+status: "active"
+allowed-tools: "Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 ---
 
 # Enterprise Code Quality Orchestrator

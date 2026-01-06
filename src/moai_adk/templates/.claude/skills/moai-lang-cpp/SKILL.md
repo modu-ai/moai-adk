@@ -1,10 +1,12 @@
 ---
-name: moai-lang-cpp
-description: Modern C++ (C++23/C++20) development specialist covering RAII, smart pointers, concepts, ranges, modules, and CMake. Use when developing high-performance applications, games, system software, or embedded systems.
+name: "moai-lang-cpp"
+description: "Modern C++ (C++23/C++20) development specialist covering RAII, smart pointers, concepts, ranges, modules, and CMake. Use when developing high-performance applications, games, system software, or embedded systems."
 version: 1.0.0
+category: "language"
+modularized: true
 updated: 2025-12-07
-status: active
-allowed-tools: Read, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+status: "active"
+allowed-tools: "Read, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 ---
 
 ## Quick Reference (30 seconds)

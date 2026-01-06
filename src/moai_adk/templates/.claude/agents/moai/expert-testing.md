@@ -12,7 +12,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs, mcpplaywrightevaluate, mcpplaywrightscreenshot
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-workflow-testing, moai-foundation-quality
+skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-workflow-testing, moai-foundation-quality, moai-tool-ast-grep
 ---
 
 # Testing Expert

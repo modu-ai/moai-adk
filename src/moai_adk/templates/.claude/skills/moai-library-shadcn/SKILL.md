@@ -1,19 +1,14 @@
 ---
-name: moai-library-shadcn
-aliases: [moai-library-shadcn]
-category: library
-description: Moai Lib Shadcn Ui - Professional implementation guide
+name: "moai-library-shadcn"
+description: "Moai Lib Shadcn Ui - Professional implementation guide"
 version: 2.0.0
+category: "library"
 modularized: true
-tags:
- - library
- - shadcn
- - enterprise
- - development
- - ui
+tags: ['library', 'shadcn', 'enterprise', 'development', 'ui']
+aliases: ['moai-library-shadcn']
 updated: 2025-11-27
-status: active
-allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+status: "active"
+allowed-tools: "Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 ---
 
 ## Quick Reference (30 seconds)

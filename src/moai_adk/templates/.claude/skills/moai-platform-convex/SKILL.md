@@ -1,12 +1,13 @@
 ---
-name: moai-platform-convex
-description: Convex real-time backend specialist covering TypeScript-first reactive patterns, optimistic updates, server functions, and file storage. Use when building real-time collaborative apps, implementing reactive queries, or integrating with Clerk/Auth0.
+name: "moai-platform-convex"
+description: "Convex real-time backend specialist covering TypeScript-first reactive patterns, optimistic updates, server functions, and file storage. Use when building real-time collaborative apps, implementing reactive queries, or integrating with Clerk/Auth0."
 version: 2.0.0
-category: platform
-tags: convex, realtime, reactive, typescript, optimistic-updates
-context7-libraries: /get-convex/convex
-related-skills: moai-platform-supabase, moai-lang-typescript, moai-domain-frontend
-allowed-tools: Read, Write, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+category: "platform"
+modularized: true
+tags: ['convex', 'realtime', 'reactive', 'typescript', 'optimistic-updates']
+context7-libraries: "/get-convex/convex"
+related-skills: "moai-platform-supabase, moai-lang-typescript, moai-domain-frontend"
+allowed-tools: "Read, Write, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 ---
 
 # Convex Real-time Backend Specialist

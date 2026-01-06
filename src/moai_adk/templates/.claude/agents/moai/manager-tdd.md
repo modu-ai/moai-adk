@@ -12,7 +12,7 @@ description: |
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-workflow-testing
+skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-workflow-testing, moai-foundation-quality, moai-tool-ast-grep
 ---
 
 # TDD Implementer

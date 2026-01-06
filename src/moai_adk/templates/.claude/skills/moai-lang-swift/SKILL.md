@@ -1,14 +1,15 @@
 ---
-name: moai-lang-swift
-description: Swift 6+ development specialist covering SwiftUI, Combine, Swift Concurrency, and iOS patterns. Use when building iOS apps, macOS apps, or Apple platform applications.
+name: "moai-lang-swift"
+description: "Swift 6+ development specialist covering SwiftUI, Combine, Swift Concurrency, and iOS patterns. Use when building iOS apps, macOS apps, or Apple platform applications."
 version: 2.0.0
-category: language
-tags: [swift, swiftui, ios, macos, combine, concurrency]
-allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-context7-libraries: [/apple/swift, /apple/swift-evolution]
-related-skills: [moai-lang-kotlin, moai-lang-flutter]
+category: "language"
+modularized: true
+tags: ['swift', 'swiftui', 'ios', 'macos', 'combine', 'concurrency']
+allowed-tools: "Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+context7-libraries: ['/apple/swift', '/apple/swift-evolution']
+related-skills: ['moai-lang-kotlin', 'moai-lang-flutter']
 updated: 2026-01-06
-status: active
+status: "active"
 ---
 
 # Swift 6+ Development Specialist
@@ -183,9 +184,3 @@ final class ViewModelTests: XCTestCase {
 
 - [reference.md](reference.md) - Architecture patterns, network layer, SwiftData
 - [examples.md](examples.md) - Production-ready code examples
-
----
-
-Version: 2.0.0
-Last Updated: 2026-01-06
-Status: Production Ready

@@ -1,13 +1,14 @@
 ---
-name: moai-lang-kotlin
-description: Kotlin 2.0+ development specialist covering Ktor, coroutines, Compose Multiplatform, and Kotlin-idiomatic patterns. Use when building Kotlin server apps, Android apps, or multiplatform projects.
+name: "moai-lang-kotlin"
+description: "Kotlin 2.0+ development specialist covering Ktor, coroutines, Compose Multiplatform, and Kotlin-idiomatic patterns. Use when building Kotlin server apps, Android apps, or multiplatform projects."
 version: 1.0.0
-category: language
-tags: kotlin, ktor, coroutines, compose, android, multiplatform
-context7-libraries: /ktorio/ktor, /jetbrains/compose-multiplatform, /jetbrains/exposed
-related-skills: moai-lang-java, moai-lang-swift
+category: "language"
+modularized: false
+tags: ['kotlin', 'ktor', 'coroutines', 'compose', 'android', 'multiplatform']
+context7-libraries: "/ktorio/ktor, /jetbrains/compose-multiplatform, /jetbrains/exposed"
+related-skills: "moai-lang-java, moai-lang-swift"
 updated: 2025-12-07
-status: active
+status: "active"
 ---
 
 ## Quick Reference (30 seconds)

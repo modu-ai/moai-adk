@@ -1,12 +1,13 @@
 ---
-name: moai-platform-neon
-description: Neon serverless PostgreSQL specialist covering auto-scaling, database branching, PITR, and connection pooling. Use when building serverless apps needing PostgreSQL, implementing preview environments, or optimizing database costs.
+name: "moai-platform-neon"
+description: "Neon serverless PostgreSQL specialist covering auto-scaling, database branching, PITR, and connection pooling. Use when building serverless apps needing PostgreSQL, implementing preview environments, or optimizing database costs."
 version: 2.0.0
-category: platform
-tags: [neon, postgresql, serverless, branching, auto-scaling]
-context7-libraries: [/neondatabase/neon]
-related-skills: [moai-platform-supabase, moai-lang-typescript, moai-domain-database]
-allowed-tools: Read, Write, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+category: "platform"
+modularized: true
+tags: ['neon', 'postgresql', 'serverless', 'branching', 'auto-scaling']
+context7-libraries: ['/neondatabase/neon']
+related-skills: ['moai-platform-supabase', 'moai-lang-typescript', 'moai-domain-database']
+allowed-tools: "Read, Write, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 ---
 
 # moai-platform-neon: Neon Serverless PostgreSQL Specialist

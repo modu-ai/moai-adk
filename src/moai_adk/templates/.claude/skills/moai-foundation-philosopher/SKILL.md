@@ -1,18 +1,13 @@
 ---
-name: moai-foundation-philosopher
-description: Strategic thinking framework integrating First Principles Analysis, Stanford Design Thinking, and MIT Systems Engineering for deeper problem-solving and decision-making
+name: "moai-foundation-philosopher"
+description: "Strategic thinking framework integrating First Principles Analysis, Stanford Design Thinking, and MIT Systems Engineering for deeper problem-solving and decision-making"
 version: 1.0.0
+category: "foundation"
 modularized: true
+tags: ['foundation', 'strategic-thinking', 'first-principles', 'trade-off-analysis', 'cognitive-bias', 'decision-making']
 updated: 2025-12-19
-status: active
-tags:
-  - foundation
-  - strategic-thinking
-  - first-principles
-  - trade-off-analysis
-  - cognitive-bias
-  - decision-making
-allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+status: "active"
+allowed-tools: "Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 ---
 
 # MoAI Foundation Philosopher
@@ -307,9 +302,4 @@ Module Deep Dives:
 Examples: [examples.md](examples.md)
 External Resources: [reference.md](reference.md)
 
----
-
-Version: 1.0.0
-Last Updated: 2025-12-19
-Status: Active
 Origin: Inspired by Claude Code Philosopher Ignition framework

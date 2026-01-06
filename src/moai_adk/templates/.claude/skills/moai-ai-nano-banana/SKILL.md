@@ -1,22 +1,15 @@
 ---
-name: moai-ai-nano-banana
-description: Nano-Banana AI service integration for content generation, image creation, and AI-powered workflows. Use when integrating AI services for content creation.
+name: "moai-ai-nano-banana"
+description: "Nano-Banana AI service integration for content generation, image creation, and AI-powered workflows. Use when integrating AI services for content creation."
 version: 1.1.0
-category: integration
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-tags:
-  - ai
-  - content-generation
-  - image-generation
-  - nano-banana
-  - ai-service
-  - gemini-3-pro
-related-skills:
-  - moai-docs-generation
-  - moai-domain-uiux
+category: "integration"
+modularized: false
+tags: ['ai', 'content-generation', 'image-generation', 'nano-banana', 'ai-service', 'gemini-3-pro']
+allowed-tools: "Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+related-skills: ['moai-docs-generation', 'moai-domain-uiux']
 updated: 2025-12-23
-status: active
-author: MoAI-ADK Team
+status: "active"
+author: "MoAI-ADK Team"
 ---
 
 # Nano-Banana AI Service Integration
@@ -299,9 +292,3 @@ Skill Files:
 External Documentation:
 - Google AI Studio: https://aistudio.google.com/
 - Gemini API Reference: https://ai.google.dev/gemini-api/docs
-
----
-
-Version: 1.1.0
-Last Updated: 2025-12-23
-Status: Active

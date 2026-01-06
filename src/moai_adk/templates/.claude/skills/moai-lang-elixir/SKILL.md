@@ -1,10 +1,12 @@
 ---
-name: moai-lang-elixir
-description: Elixir 1.17+ development specialist covering Phoenix 1.7, LiveView, Ecto, and OTP patterns. Use when developing real-time applications, distributed systems, or Phoenix projects.
+name: "moai-lang-elixir"
+description: "Elixir 1.17+ development specialist covering Phoenix 1.7, LiveView, Ecto, and OTP patterns. Use when developing real-time applications, distributed systems, or Phoenix projects."
 version: 1.0.0
+category: "language"
+modularized: true
 updated: 2025-12-07
-status: active
-allowed-tools: Read, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+status: "active"
+allowed-tools: "Read, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 ---
 
 ## Quick Reference (30 seconds)

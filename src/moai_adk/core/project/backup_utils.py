@@ -18,6 +18,11 @@ BACKUP_TARGETS = [
     ".claude/",
     ".github/",
     "CLAUDE.md",
+    # MCP/LSP configuration (v2.0.0)
+    ".mcp.json",  # MCP server configuration
+    ".lsp.json",  # LSP server configuration
+    # Git hooks (v2.0.0)
+    ".git-hooks/",  # Custom git hooks
 ]
 
 # User data protection paths (excluded from backups)
