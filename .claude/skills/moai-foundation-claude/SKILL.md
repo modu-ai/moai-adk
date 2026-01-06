@@ -18,6 +18,8 @@ tags:
  - settings
  - iam
  - best-practices
+---
+
 # Claude Code Authoring Kit
 
 Comprehensive reference for Claude Code Skills, sub-agents, custom slash commands, hooks, memory, settings, and IAM permissions with official standards compliance.
