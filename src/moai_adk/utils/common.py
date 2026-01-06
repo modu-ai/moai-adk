@@ -314,6 +314,7 @@ def reset_stdin() -> None:
     try:
         # Try to flush any pending input (Unix-like systems)
         import termios
+
         termios.tcflush(sys.stdin, termios.TCIFLUSH)
     except (ImportError, OSError, AttributeError):
         pass

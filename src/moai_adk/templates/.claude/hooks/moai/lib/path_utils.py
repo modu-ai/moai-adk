@@ -158,9 +158,7 @@ def ensure_moai_dir(subpath: str = "") -> Path:
     try:
         target_dir.resolve().relative_to(project_root.resolve())
     except ValueError:
-        raise ValueError(
-            f"Cannot create .moai directory outside project root: {target_dir}"
-        )
+        raise ValueError(f"Cannot create .moai directory outside project root: {target_dir}")
 
     # Create directory if it doesn't exist
     target_dir.mkdir(parents=True, exist_ok=True)

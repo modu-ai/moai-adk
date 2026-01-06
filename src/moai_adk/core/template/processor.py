@@ -924,8 +924,7 @@ class TemplateProcessor:
         skills_dst.mkdir(parents=True, exist_ok=True)
 
         # Step 1: Identify template skills in source (moai-* prefix)
-        template_skills = {d.name for d in skills_src.iterdir()
-                          if d.is_dir() and d.name.startswith("moai-")}
+        template_skills = {d.name for d in skills_src.iterdir() if d.is_dir() and d.name.startswith("moai-")}
 
         # Step 2: Delete only template skills in destination
         if skills_dst.exists():
@@ -946,13 +945,11 @@ class TemplateProcessor:
 
         # Step 4: Report preserved custom skills
         if skills_dst.exists():
-            custom_skills = [d.name for d in skills_dst.iterdir()
-                            if d.is_dir() and not d.name.startswith("moai-")]
+            custom_skills = [d.name for d in skills_dst.iterdir() if d.is_dir() and not d.name.startswith("moai-")]
             if custom_skills and not silent:
                 preview = ", ".join(sorted(custom_skills)[:3])
                 suffix = "..." if len(custom_skills) > 3 else ""
                 console.print(f"   ✅ Preserved {len(custom_skills)} custom skill(s): {preview}{suffix}")
-
 
     def _copy_moai(self, silent: bool = False) -> None:
         """.moai/ directory copy with variable substitution (excludes protected paths)."""
