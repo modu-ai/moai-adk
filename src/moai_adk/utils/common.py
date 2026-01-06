@@ -292,3 +292,35 @@ def get_graceful_degradation() -> bool:
     except (yaml.YAMLError, FileNotFoundError, KeyError):
         logger.warning("Failed to load graceful_degradation from config, using default True")
         return True
+
+
+def reset_stdin() -> None:
+    """Reset stdin to ensure interactive prompts work correctly.
+
+    This is needed after SpinnerContext or other operations that may
+    leave stdin in a non-interactive state. Call this before using
+    click.confirm() or input() after spinner operations.
+
+    Example:
+        with SpinnerContext("Processing..."):
+            do_work()
+        reset_stdin()  # Reset before interactive prompt
+        if click.confirm("Continue?"):
+            ...
+    """
+    import os
+    import sys
+
+    try:
+        # Try to flush any pending input (Unix-like systems)
+        import termios
+        termios.tcflush(sys.stdin, termios.TCIFLUSH)
+    except (ImportError, OSError, AttributeError):
+        pass
+
+    try:
+        # Reopen stdin from /dev/tty if available (Unix-like systems)
+        if os.path.exists("/dev/tty"):
+            sys.stdin = open("/dev/tty", "r")
+    except (OSError, IOError):
+        pass

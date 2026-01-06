@@ -183,7 +183,11 @@ def format_scan_result(result: dict, file_path: str) -> str:
     if result["details"]:
         issues = []
         for detail in result["details"][:3]:
-            issues.append(f"  - [{detail['severity'].upper()}] {detail['rule']}: {detail['message']} (line {detail['line']})")
+            severity = detail["severity"].upper()
+            rule = detail["rule"]
+            message = detail["message"]
+            line_num = detail["line"]
+            issues.append(f"  - [{severity}] {rule}: {message} (line {line_num})")
         summary += "\n" + "\n".join(issues)
 
         if len(result["details"]) > 3:

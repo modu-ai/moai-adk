@@ -302,3 +302,57 @@ docs/
 # MoAI-ADK Skills backup files
 *.bak.*
 # Backup files from skills standardizer
+.moai/work/
+# FIXED: Issue #237 - Replaced overly broad *key* and *secret* patterns
+# ---------------------------------------------
+.moai/archive/
+!.moai/memory/
+# API credentials patterns
+.moai/docs/
+.moai/config/config.json
+.moai/temp/
+.moai/logs/
+.moai/scripts/__pycache__/
+.moai/backups/
+# Add to .gitignore if needed per project
+!.moai/specs/**
+.moai/scripts/*sync*.sh
+# Purpose: Essential patterns for user projects
+# Backups
+# Claude Code Local Configuration
+# MoAI Directory Management
+.moai/scripts/phase*.sh
+# Legacy config format (migrated to YAML in v0.32.0)
+# Version: 0.28.0
+# User-generated content: logs/, cache/, reports/, etc.
+.moai/reports/
+.moai/error_logs/
+!.moai/config/**
+!.moai/scripts/**
+# uv.lock
+.moai/analytics/
+# uv.lock is intentionally included for reproducible builds
+# Windows
+.moai/cache/
+# Tracked in git: config/, memory/, scripts/, specs/
+.moai/scripts/sync-*.sh
+# .moai local-only directories (user projects only)
+!.moai/scripts/
+# Environment Variables & Secrets
+# Private keys and certificates (specific patterns to avoid false positives)
+.moai/scripts/phase*.py
+# Package Distribution
+.moai/archived-skills/
+.moai/scripts/sync-*.py
+!.moai/specs/
+# Python Cache & Database
+# CI/CD
+# Build Artifacts
+# Old patterns caused false positives for: keyboard-config, hotkey, monkey-patch, etc.
+.moai/*
+# .moai local development scripts (not distributed)
+# Mac
+# Linux
+# Claude Code Skills Secrets
+!.moai/config/
+!.moai/memory/**

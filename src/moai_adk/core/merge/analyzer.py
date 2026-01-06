@@ -19,6 +19,8 @@ import yaml
 from rich.console import Console
 from rich.table import Table
 
+from moai_adk.utils.common import reset_stdin
+
 console = Console()
 logger = logging.getLogger(__name__)
 
@@ -135,6 +137,9 @@ class MergeAnalyzer:
                     )
 
         # 3. Confirmation prompt
+        # Reset stdin to ensure interactive prompt works after SpinnerContext
+        reset_stdin()
+
         proceed = click.confirm(
             "\nProceed with merge?",
             default=analysis.get("safe_to_auto_merge", False),

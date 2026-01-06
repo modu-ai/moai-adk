@@ -378,7 +378,7 @@ Mr.Alfred는 MoAI-ADK의 **최고 지휘자**(Orchestrator)이자 사용자의 �
 3. **실행하기**: 전문 에이전트에게 작업 위임 (순차/병렬)
 4. **통합하기**: 모든 결과를 모아 사용자에게 보고
 
-### 🌐 다국어 에이전트 라우팅 (v0.36.2 신규)
+### 🌐 다국어 에이전트 라우팅 (v0.40.0 신규)
 
 **지원 언어:** 영어 (EN), 한국어 (KO), 일본어 (JA), 중국어 (ZH)
 
@@ -2851,7 +2851,7 @@ SOFTWARE.
 
 ### Made with ❤️ by MoAI-ADK Team
 
-**Version:** 0.36.2
+**Version:** 0.40.0
 **Last Updated:** 2026-01-06
 **Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
 **MoAI**: MoAI stands for "Modu-ui AI" (AI for Everyone). Our goal is to make AI accessible to everyone.

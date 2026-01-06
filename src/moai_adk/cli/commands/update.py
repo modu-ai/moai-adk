@@ -65,6 +65,7 @@ from moai_adk.core.migration.custom_element_scanner import create_custom_element
 from moai_adk.core.migration.selective_restorer import create_selective_restorer
 from moai_adk.core.migration.user_selection_ui import create_user_selection_ui
 from moai_adk.core.template.processor import TemplateProcessor
+from moai_adk.utils.common import reset_stdin
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -2090,6 +2091,7 @@ def _execute_migration_if_needed(project_path: Path, yes: bool = False) -> bool:
 
         # Confirm with user (unless --yes)
         if not yes:
+            reset_stdin()  # Reset stdin before interactive prompt
             if not click.confirm("Do you want to proceed with migration?", default=True):
                 console.print("[yellow]⚠️  Migration skipped. Some features may not work correctly.[/yellow]")
                 console.print("[cyan]💡 Run 'moai-adk migrate' manually when ready[/cyan]")
@@ -2273,6 +2275,7 @@ def update(
 
             # Confirm upgrade (unless --yes)
             if not yes:
+                reset_stdin()  # Reset stdin before interactive prompt
                 if not click.confirm(f"Upgrade {current} → {latest}?", default=True):
                     console.print("Cancelled")
                     return

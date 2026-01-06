@@ -194,7 +194,7 @@ Updates trigger the following automatic changes:
 
 ## Advanced Implementation
 
-For advanced patterns including custom template development, performance optimization strategies, and integration workflows, see the modules/advanced-patterns.md file which covers:
+For advanced patterns including custom template development, performance optimization strategies, and integration workflows, see reference.md which covers:
 
 - Custom Templates: Creating project-type-specific documentation templates
 - Performance Caching: Implementing template caching for improved performance

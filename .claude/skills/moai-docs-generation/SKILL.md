@@ -4,6 +4,7 @@ description: "Documentation generation patterns for technical specs, API docs, u
 version: 2.0.0
 category: "workflow"
 modularized: true
+tags: ['workflow', 'documentation', 'sphinx', 'mkdocs', 'typedoc', 'api-docs', 'static-sites']
 allowed-tools: "Read, Write, Edit, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 updated: 2025-12-30
 status: "active"

@@ -24,7 +24,7 @@ Output:
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 # Setup import path for shared modules
 HOOKS_DIR = Path(__file__).parent

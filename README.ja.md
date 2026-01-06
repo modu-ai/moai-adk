@@ -386,7 +386,7 @@ flowchart TD
 ```
 ### 🌐 多言語エージェントルーティング
 
-MoAI-ADK v0.36.2 は 4 つの言語（EN/KO/JA/ZH）で**キーワードベースの自動エージェント選択**をサポートしています。
+MoAI-ADK v0.40.0 は 4 つの言語（EN/KO/JA/ZH）で**キーワードベースの自動エージェント選択**をサポートしています。
 
 **サポート言語:**
 - 🇺🇸 英語 (English)
@@ -2816,7 +2816,7 @@ SOFTWARE.
 
 ### Made with ❤️ by MoAI-ADK Team
 
-**Version:** 0.36.2
+**Version:** 0.40.0
 **Last Updated:** 2025-12-01
 **Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
 **MoAI**: MoAI stands for "Modu-ui AI" (AI for Everyone). Our goal is to make AI accessible to everyone.

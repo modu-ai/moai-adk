@@ -4,6 +4,7 @@ description: "Enhanced Just-In-Time document loading system that intelligently d
 version: 3.0.0
 category: "workflow"
 modularized: false
+tags: ['workflow', 'documentation', 'jit-loading', 'context-aware', 'caching', 'discovery']
 allowed-tools: "Read, Grep, Glob, WebFetch, WebSearch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 ---
 
