@@ -587,17 +587,17 @@ class TestSetupLoggerDirectories:
             assert os.path.exists(log_dir)
             assert os.path.isdir(log_dir)
 
-    def test_setup_logger_default_log_dir(self):
+    def test_setup_logger_default_log_dir(self, tmp_path, monkeypatch):
         """Test default log directory is .moai/logs."""
+        # CRITICAL: Run in temp directory to avoid deleting real .moai folder
+        monkeypatch.chdir(tmp_path)
+
         logger = setup_logger("app")
         # Logger should be created successfully
         assert logger is not None
 
-        # Cleanup
-        import shutil
-
-        if os.path.exists(".moai"):
-            shutil.rmtree(".moai")
+        # Verify default directory was created in temp location
+        assert (tmp_path / ".moai" / "logs").exists()
 
     def test_setup_logger_creates_parent_directories(self):
         """Test that setup_logger creates parent directories."""
@@ -837,16 +837,16 @@ class TestSetupLoggerLogging:
 class TestSetupLoggerEdgeCases:
     """Tests for edge cases in setup_logger."""
 
-    def test_setup_logger_with_none_log_dir(self):
+    def test_setup_logger_with_none_log_dir(self, tmp_path, monkeypatch):
         """Test setup_logger with None log_dir uses default."""
+        # CRITICAL: Run in temp directory to avoid deleting real .moai folder
+        monkeypatch.chdir(tmp_path)
+
         logger = setup_logger("app", log_dir=None)
         assert logger is not None
 
-        # Cleanup
-        import shutil
-
-        if os.path.exists(".moai"):
-            shutil.rmtree(".moai")
+        # Verify default directory was created in temp location
+        assert (tmp_path / ".moai" / "logs").exists()
 
     def test_setup_logger_with_none_level(self):
         """Test setup_logger with None level uses environment."""
