@@ -1,3 +1,95 @@
+# v0.40.1 - Multilingual Agent Routing Enhancement (2026-01-07)
+
+## Summary
+
+Patch release enhancing Alfred's multilingual capabilities with comprehensive cross-lingual agent routing. Adds extensive keyword mappings across English, Korean, Japanese, and Chinese to enable seamless agent selection regardless of user's language preference.
+
+## Changes
+
+### New Features
+
+- **feat**: Add multilingual agent routing with cross-lingual keyword mapping (409ecaf7)
+  - English, Korean, Japanese, Chinese keyword support
+  - 16 domain categories with comprehensive trigger patterns
+  - Git operations, UI/UX design, quality gates, testing strategy
+  - Project setup, implementation strategy, Claude Code configuration
+  - Agent/command/skill/plugin creation workflows
+  - Image generation with Nano-Banana AI integration
+  - Cross-Lingual Thought (XLT) protocol for semantic bridging
+  - Dynamic skill loading based on technology keywords
+
+- **feat(agents)**: Add summary first line to all agent descriptions (24332d8f)
+  - Enhanced agent discoverability and documentation
+  - Applied to all 28 agents consistently
+
+### Quality
+
+- All tests passing (9,627 passed, 85.63% coverage)
+- No linting or type checking issues
+- Security checks passed
+
+## Installation & Update
+
+```bash
+# Install
+pip install moai-adk==0.40.1
+# or
+uv pip install moai-adk==0.40.1
+
+# Upgrade
+pip install --upgrade moai-adk
+# or
+uv pip install --upgrade moai-adk
+```
+
+---
+
+# v0.40.1 - 다국어 에이전트 라우팅 개선 (2026-01-07)
+
+## 요약
+
+Alfred의 다국어 기능을 강화한 패치 릴리스입니다. 영어, 한국어, 일본어, 중국어 전반에 걸친 포괄적인 키워드 매핑을 통해 사용자의 언어 선호도와 관계없이 원활한 에이전트 선택을 가능하게 합니다.
+
+## 변경 사항
+
+### 새로운 기능
+
+- **feat**: 다국어 에이전트 라우팅 및 교차 언어 키워드 매핑 추가 (409ecaf7)
+  - 영어, 한국어, 일본어, 중국어 키워드 지원
+  - 포괄적인 트리거 패턴을 갖춘 16개 도메인 카테고리
+  - Git 작업, UI/UX 디자인, 품질 게이트, 테스트 전략
+  - 프로젝트 설정, 구현 전략, Claude Code 구성
+  - 에이전트/커맨드/스킬/플러그인 생성 워크플로우
+  - Nano-Banana AI 통합을 통한 이미지 생성
+  - 의미론적 브릿징을 위한 Cross-Lingual Thought (XLT) 프로토콜
+  - 기술 키워드 기반 동적 스킬 로딩
+
+- **feat(agents)**: 모든 에이전트 설명에 요약 첫 줄 추가 (24332d8f)
+  - 향상된 에이전트 검색 가능성 및 문서화
+  - 28개 모든 에이전트에 일관되게 적용
+
+### 품질
+
+- 모든 테스트 통과 (9,627개 통과, 85.63% 커버리지)
+- 린팅 또는 타입 체킹 이슈 없음
+- 보안 검사 통과
+
+## 설치 및 업데이트
+
+```bash
+# 설치
+pip install moai-adk==0.40.1
+# 또는
+uv pip install moai-adk==0.40.1
+
+# 업그레이드
+pip install --upgrade moai-adk
+# 또는
+uv pip install --upgrade moai-adk
+```
+
+---
+
 # v0.40.0 - Large-Scale Module Optimization and Documentation Updates (2026-01-06)
 
 ## Summary
