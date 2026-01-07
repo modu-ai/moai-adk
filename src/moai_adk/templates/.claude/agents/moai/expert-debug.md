@@ -1,14 +1,12 @@
 ---
 name: expert-debug
 description: |
+  Debugging specialist. Use PROACTIVELY for error diagnosis, bug fixing, exception handling, and troubleshooting.
   MUST INVOKE when ANY of these keywords appear in user request:
   EN: debug, error, bug, exception, crash, troubleshoot, diagnose, fix error
   KO: 디버그, 에러, 버그, 예외, 크래시, 문제해결, 진단, 오류수정
   JA: デバッグ, エラー, バグ, 例外, クラッシュ, トラブルシュート, 診断
   ZH: 调试, 错误, bug, 异常, 崩溃, 故障排除, 诊断
-  
-  Use PROACTIVELY when: runtime error occurs (런타임 에러 발생), cause analysis needed (원인 분석 필요)
-  Specialized in systematic debugging, performance profiling, and error diagnosis.
 tools: Read, Grep, Glob, Bash, TodoWrite, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default

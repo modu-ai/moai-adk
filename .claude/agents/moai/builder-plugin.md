@@ -1,14 +1,12 @@
 ---
 name: builder-plugin
 description: |
+  Plugin creation specialist. Use PROACTIVELY for Claude Code plugins, marketplace setup, and plugin validation.
   MUST INVOKE when ANY of these keywords appear in user request:
   EN: create plugin, plugin, plugin validation, plugin structure, marketplace, new plugin, marketplace creation, marketplace.json, plugin distribution
   KO: 플러그인생성, 플러그인, 플러그인검증, 플러그인구조, 마켓플레이스, 새플러그인, 마켓플레이스 생성, 플러그인 배포
   JA: プラグイン作成, プラグイン, プラグイン検証, プラグイン構造, マーケットプレイス, マーケットプレイス作成, プラグイン配布
   ZH: 创建插件, 插件, 插件验证, 插件结构, 市场, 市场创建, 插件分发
-
-  Use PROACTIVELY for: creating Claude Code plugins (Claude Code 플러그인 생성), plugin validation, marketplace creation
-  Specialized in component generation, manifest creation, marketplace setup, and official standards compliance.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: sonnet
 permissionMode: bypassPermissions

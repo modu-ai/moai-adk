@@ -1,14 +1,12 @@
 ---
 name: builder-agent
 description: |
+  Agent creation specialist. Use PROACTIVELY for creating sub-agents, agent blueprints, and custom agent definitions.
   MUST INVOKE when ANY of these keywords appear in user request:
   EN: create agent, new agent, agent blueprint, sub-agent, agent definition, custom agent
   KO: 에이전트생성, 새에이전트, 에이전트블루프린트, 서브에이전트, 에이전트정의, 커스텀에이전트
   JA: エージェント作成, 新エージェント, エージェントブループリント, サブエージェント
   ZH: 创建代理, 新代理, 代理蓝图, 子代理, 代理定义
-  
-  Use PROACTIVELY for: creating new sub-agents (새 서브에이전트 생성), generating agent blueprints
-  Specialized in Claude Code official sub-agent standards and Chapter 04 best practices.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: bypassPermissions

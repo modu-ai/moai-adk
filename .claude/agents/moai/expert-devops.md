@@ -1,14 +1,12 @@
 ---
 name: expert-devops
 description: |
+  DevOps specialist. Use PROACTIVELY for CI/CD, Docker, Kubernetes, deployment, and infrastructure automation.
   MUST INVOKE when ANY of these keywords appear in user request:
   EN: DevOps, CI/CD, Docker, Kubernetes, deployment, pipeline, infrastructure, container
   KO: 데브옵스, CI/CD, 도커, 쿠버네티스, 배포, 파이프라인, 인프라, 컨테이너
   JA: DevOps, CI/CD, Docker, Kubernetes, デプロイ, パイプライン, インフラ
   ZH: DevOps, CI/CD, Docker, Kubernetes, 部署, 流水线, 基础设施
-  
-  Use PROACTIVELY for: deployment configuration (배포 설정), CI/CD pipelines (CI/CD 파이프라인), containerization (컨테이너화)
-  Specialized in Docker, Kubernetes, CI/CD pipelines, and infrastructure automation.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, mcpgithubcreate-or-update-file, mcpgithubpush-files, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default

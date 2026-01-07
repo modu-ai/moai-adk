@@ -1,14 +1,12 @@
 ---
 name: builder-skill
 description: |
+  Skill creation specialist. Use PROACTIVELY for creating skills, YAML frontmatter design, and knowledge organization.
   MUST INVOKE when ANY of these keywords appear in user request:
   EN: create skill, new skill, skill optimization, knowledge domain, YAML frontmatter
   KO: 스킬생성, 새스킬, 스킬최적화, 지식도메인, YAML프론트매터
   JA: スキル作成, 新スキル, スキル最適化, 知識ドメイン, YAMLフロントマター
   ZH: 创建技能, 新技能, 技能优化, 知识领域, YAML前置信息
-  
-  Use PROACTIVELY for: creating Claude Code skills (Claude Code 스킬 생성), skill optimization
-  Specialized in skill architecture, YAML frontmatter design, and knowledge organization.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: bypassPermissions

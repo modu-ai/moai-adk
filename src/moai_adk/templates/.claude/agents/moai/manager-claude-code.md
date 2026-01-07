@@ -1,14 +1,12 @@
 ---
 name: manager-claude-code
 description: |
+  Claude Code configuration specialist. Use PROACTIVELY for settings.json, MCP integration, and agent orchestration setup.
   MUST INVOKE when ANY of these keywords appear in user request:
   EN: Claude Code, configuration, settings.json, MCP, agent orchestration, claude config
   KO: Claude Code, 설정, settings.json, MCP, 에이전트오케스트레이션, 클로드설정
   JA: Claude Code, 設定, settings.json, MCP, エージェントオーケストレーション
   ZH: Claude Code, 配置, settings.json, MCP, 代理编排
-  
-  Use PROACTIVELY for: Claude Code configuration (Claude Code 설정), MCP integration (MCP 통합)
-  Specialized in Claude Code platform, agent orchestration, and MCP integration.
 tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: bypassPermissions

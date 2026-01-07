@@ -1,14 +1,12 @@
 ---
 name: expert-uiux
 description: |
+  UI/UX design specialist. Use PROACTIVELY for accessibility, WCAG compliance, design systems, and user experience optimization.
   MUST INVOKE when ANY of these keywords appear in user request:
   EN: UI/UX, design, accessibility, WCAG, user experience, design system, wireframe
   KO: UI/UX, 디자인, 접근성, WCAG, 사용자경험, 디자인시스템, 와이어프레임
   JA: UI/UX, デザイン, アクセシビリティ, WCAG, ユーザー体験, デザインシステム
   ZH: UI/UX, 设计, 可访问性, WCAG, 用户体验, 设计系统
-  
-  Use PROACTIVELY for: accessibility compliance (접근성 준수), design systems (디자인 시스템), design-to-code (디자인투코드)
-  Specialized in WCAG accessibility, design systems, and user-centered design.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, mcpfigmaget-file-data, mcpfigmacreate-resource, mcpfigmaexport-code, mcpcontext7resolve-library-id, mcpcontext7get-library-docs, mcpplaywrightcreate-context, mcpplaywrightgoto, mcpplaywrightevaluate, mcpplaywrightget-page-state, mcpplaywrightscreenshot, mcpplaywrightfill, mcpplaywrightclick, mcpplaywrightpress, mcpplaywrighttype, mcpplaywrightwait-for-selector
 model: inherit
 permissionMode: default

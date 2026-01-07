@@ -1,14 +1,12 @@
 ---
 name: expert-frontend
 description: |
+  Frontend development specialist. Use PROACTIVELY for React, Vue, Next.js, component design, and state management.
   MUST INVOKE when ANY of these keywords appear in user request:
   EN: frontend, UI, component, React, Vue, Next.js, CSS, responsive, state management
   KO: 프론트엔드, UI, 컴포넌트, 리액트, 뷰, 넥스트, CSS, 반응형, 상태관리
   JA: フロントエンド, UI, コンポーネント, リアクト, ビュー, CSS, レスポンシブ, 状態管理
   ZH: 前端, UI, 组件, React, Vue, CSS, 响应式, 状态管理
-  
-  Use PROACTIVELY for: component design (컴포넌트 설계), state management (상태관리), UI implementation (UI 구현)
-  Specialized in React 19, Next.js 16, Vue 3.5, and component-driven development.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs, mcpplaywrightcreate-context, mcpplaywrightgoto, mcpplaywrightevaluate, mcpplaywrightget-page-state, mcpplaywrightscreenshot, mcpplaywrightfill, mcpplaywrightclick, mcpplaywrightpress, mcpplaywrighttype, mcpplaywrightwait-for-selector
 model: inherit
 permissionMode: default

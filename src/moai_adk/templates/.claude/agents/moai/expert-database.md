@@ -1,14 +1,12 @@
 ---
 name: expert-database
 description: |
+  Database design specialist. Use PROACTIVELY for schema design, query optimization, PostgreSQL, MongoDB, and Redis.
   MUST INVOKE when ANY of these keywords appear in user request:
   EN: database, SQL, NoSQL, PostgreSQL, MongoDB, Redis, schema, query, index, data modeling
   KO: 데이터베이스, SQL, NoSQL, PostgreSQL, MongoDB, Redis, 스키마, 쿼리, 인덱스, 데이터모델링
   JA: データベース, SQL, NoSQL, PostgreSQL, MongoDB, Redis, スキーマ, クエリ, インデックス
   ZH: 数据库, SQL, NoSQL, PostgreSQL, MongoDB, Redis, 架构, 查询, 索引
-  
-  Use for: schema design (스키마 설계), query optimization (쿼리 최적화), data modeling (데이터 모델링)
-  Specialized in PostgreSQL, MongoDB, Redis, and database performance optimization.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: default

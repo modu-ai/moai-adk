@@ -1,14 +1,12 @@
 ---
 name: builder-command
 description: |
+  Slash command creation specialist. Use PROACTIVELY for custom commands, command optimization, and workflow automation.
   MUST INVOKE when ANY of these keywords appear in user request:
   EN: create command, slash command, custom command, command optimization, new command
   KO: 커맨드생성, 슬래시커맨드, 커스텀커맨드, 커맨드최적화, 새커맨드
   JA: コマンド作成, スラッシュコマンド, カスタムコマンド, コマンド最適化
   ZH: 创建命令, 斜杠命令, 自定义命令, 命令优化
-  
-  Use PROACTIVELY for: creating custom slash commands (슬래시 커맨드 생성), command optimization
-  Specialized in command creation, parameter validation, and workflow automation.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
 model: inherit
 permissionMode: bypassPermissions
