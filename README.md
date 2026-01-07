@@ -1831,11 +1831,11 @@ For more details, see [15. 📸 ai-nano-banana Agent Usage Guide](#15---ai-nano-
 
 ---
 
-## 9. Skill Library (47 Skills)
+## 9. Skill Library (49 Skills)
 
 ![Skill Usage Statistics](./assets/images/readme/skill-usage-stats.png)
 
-MoAI-ADK provides **47 specialized skills** in 7 categories. Each skill can be used independently or in combination.
+MoAI-ADK provides **49 specialized skills** in 8 categories. Each skill can be used independently or in combination.
 
 ### 🏗️ Foundation
 
@@ -1989,6 +1989,18 @@ Integration with major cloud platforms and BaaS services.
 - **moai-platform-convex**
   - Convex for TypeScript-first reactive patterns, optimistic updates
   - Real-time collaborative apps and server functions
+
+### 🛠️ Tool (2 Skills)
+
+Developer tools and code analysis utilities.
+
+- **moai-tool-ast-grep**
+  - AST-based structural code search, security scanning, refactoring
+  - 40+ language support with pattern matching and code transformation
+
+- **moai-tool-opencode**
+  - OpenCode.ai open-source AI coding agent reference
+  - TUI, CLI, IDE integration, MCP servers, plugins, and SDK development
 
 ### 📋 Workflow (7 Skills)
 
