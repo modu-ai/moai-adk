@@ -171,6 +171,78 @@ Refactoring (expert-refactoring):
 - JA: リファクタリング, 再構造化, コードモード, 変換, API移行, 一括変更, AST検索
 - ZH: 重构, 重组, 代码模式, 转换, API迁移, 批量重命名, AST搜索
 
+Git Operations (manager-git):
+- EN: git, commit, push, pull, branch, PR, pull request, merge, release, version control, checkout, rebase, stash
+- KO: git, 커밋, 푸시, 풀, 브랜치, PR, 풀리퀘스트, 머지, 릴리즈, 버전관리, 체크아웃, 리베이스
+- JA: git, コミット, プッシュ, プル, ブランチ, PR, プルリクエスト, マージ, リリース
+- ZH: git, 提交, 推送, 拉取, 分支, PR, 拉取请求, 合并, 发布
+
+UI/UX Design (expert-uiux):
+- EN: UI/UX, design, accessibility, WCAG, user experience, design system, wireframe, persona, user journey
+- KO: UI/UX, 디자인, 접근성, WCAG, 사용자경험, 디자인시스템, 와이어프레임, 페르소나
+- JA: UI/UX, デザイン, アクセシビリティ, WCAG, ユーザー体験, デザインシステム
+- ZH: UI/UX, 设计, 可访问性, WCAG, 用户体验, 设计系统
+
+Quality Gate (manager-quality):
+- EN: quality, TRUST 5, code review, compliance, quality gate, lint, code quality
+- KO: 품질, TRUST 5, 코드리뷰, 준수, 품질게이트, 린트, 코드품질
+- JA: 品質, TRUST 5, コードレビュー, コンプライアンス, 品質ゲート, リント
+- ZH: 质量, TRUST 5, 代码审查, 合规, 质量门, lint
+
+Testing Strategy (expert-testing):
+- EN: test strategy, E2E, integration test, load test, test automation, coverage, QA
+- KO: 테스트전략, E2E, 통합테스트, 부하테스트, 테스트자동화, 커버리지, QA
+- JA: テスト戦略, E2E, 統合テスト, 負荷テスト, テスト自動化, カバレッジ, QA
+- ZH: 测试策略, E2E, 集成测试, 负载测试, 测试自动化, 覆盖率, QA
+
+Project Setup (manager-project):
+- EN: project setup, initialization, .moai, project configuration, scaffold, new project
+- KO: 프로젝트설정, 초기화, .moai, 프로젝트구성, 스캐폴드, 새프로젝트
+- JA: プロジェクトセットアップ, 初期化, .moai, プロジェクト構成, スキャフォールド
+- ZH: 项目设置, 初始化, .moai, 项目配置, 脚手架
+
+Implementation Strategy (manager-strategy):
+- EN: strategy, implementation plan, architecture decision, technology evaluation, planning
+- KO: 전략, 구현계획, 아키텍처결정, 기술평가, 계획
+- JA: 戦略, 実装計画, アーキテクチャ決定, 技術評価
+- ZH: 策略, 实施计划, 架构决策, 技术评估
+
+Claude Code Configuration (manager-claude-code):
+- EN: Claude Code, configuration, settings.json, MCP, agent orchestration, claude config
+- KO: Claude Code, 설정, settings.json, MCP, 에이전트오케스트레이션, 클로드설정
+- JA: Claude Code, 設定, settings.json, MCP, エージェントオーケストレーション
+- ZH: Claude Code, 配置, settings.json, MCP, 代理编排
+
+Agent Creation (builder-agent):
+- EN: create agent, new agent, agent blueprint, sub-agent, agent definition, custom agent
+- KO: 에이전트생성, 새에이전트, 에이전트블루프린트, 서브에이전트, 에이전트정의, 커스텀에이전트
+- JA: エージェント作成, 新エージェント, エージェントブループリント, サブエージェント
+- ZH: 创建代理, 新代理, 代理蓝图, 子代理, 代理定义
+
+Command Creation (builder-command):
+- EN: create command, slash command, custom command, command optimization, new command
+- KO: 커맨드생성, 슬래시커맨드, 커스텀커맨드, 커맨드최적화, 새커맨드
+- JA: コマンド作成, スラッシュコマンド, カスタムコマンド, コマンド最適化
+- ZH: 创建命令, 斜杠命令, 自定义命令, 命令优化
+
+Skill Creation (builder-skill):
+- EN: create skill, new skill, skill optimization, knowledge domain, YAML frontmatter
+- KO: 스킬생성, 새스킬, 스킬최적화, 지식도메인, YAML프론트매터
+- JA: スキル作成, 新スキル, スキル最適化, 知識ドメイン, YAMLフロントマター
+- ZH: 创建技能, 新技能, 技能优化, 知识领域, YAML前置信息
+
+Plugin Creation (builder-plugin):
+- EN: create plugin, plugin, plugin validation, plugin structure, marketplace, new plugin
+- KO: 플러그인생성, 플러그인, 플러그인검증, 플러그인구조, 마켓플레이스, 새플러그인
+- JA: プラグイン作成, プラグイン, プラグイン検証, プラグイン構造, マーケットプレイス
+- ZH: 创建插件, 插件, 插件验证, 插件结构, 市场
+
+Image Generation (ai-nano-banana):
+- EN: image generation, visual content, prompt optimization, Gemini, AI image, image edit
+- KO: 이미지생성, 시각적콘텐츠, 프롬프트최적화, 제미나이, AI이미지, 이미지편집
+- JA: 画像生成, ビジュアルコンテンツ, プロンプト最適化, Gemini, AI画像
+- ZH: 图像生成, 视觉内容, 提示词优化, Gemini, AI图像
+
 WHY: Keyword-based routing ensures consistent agent selection regardless of request language.
 
 #### Cross-Lingual Thought (XLT) Protocol
