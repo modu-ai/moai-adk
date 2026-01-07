@@ -1,3 +1,77 @@
+# v0.40.2 - Test Isolation Fix (2026-01-08)
+
+## Summary
+
+Patch release fixing a critical bug in test suite where pytest would delete the real project `.moai` folder during test execution. This release improves test isolation using pytest's `tmp_path` and `monkeypatch` fixtures.
+
+## Changes
+
+### Bug Fixes
+
+- **fix(tests)**: Prevent test_logger from deleting real .moai folder (e612d193)
+  - Use tmp_path and monkeypatch.chdir for test isolation
+  - Affected tests: test_setup_logger_default_log_dir, test_setup_logger_with_none_log_dir
+  - Prevents accidental deletion of project configuration during testing
+
+### Quality
+
+- All tests passing (9,627 passed, 85.63% coverage)
+- No linting or type checking issues
+- Security checks passed
+
+## Installation & Update
+
+```bash
+# Install
+pip install moai-adk==0.40.2
+# or
+uv pip install moai-adk==0.40.2
+
+# Upgrade
+pip install --upgrade moai-adk
+# or
+uv pip install --upgrade moai-adk
+```
+
+---
+
+# v0.40.2 - 테스트 격리 버그 수정 (2026-01-08)
+
+## 요약
+
+테스트 실행 중 실제 프로젝트 `.moai` 폴더가 삭제되는 심각한 버그를 수정한 패치 릴리스입니다. pytest의 `tmp_path`와 `monkeypatch` 픽스처를 사용하여 테스트 격리를 개선했습니다.
+
+## 변경 사항
+
+### 버그 수정
+
+- **fix(tests)**: test_logger가 실제 .moai 폴더를 삭제하는 문제 수정 (e612d193)
+  - tmp_path와 monkeypatch.chdir를 사용한 테스트 격리
+  - 영향받은 테스트: test_setup_logger_default_log_dir, test_setup_logger_with_none_log_dir
+  - 테스트 중 프로젝트 구성이 실수로 삭제되는 것을 방지
+
+### 품질
+
+- 모든 테스트 통과 (9,627개 통과, 커버리지 85.63%)
+- 린트 및 타입 체크 이슈 없음
+- 보안 체크 통과
+
+## 설치 및 업데이트
+
+```bash
+# 설치
+pip install moai-adk==0.40.2
+# 또는
+uv pip install moai-adk==0.40.2
+
+# 업그레이드
+pip install --upgrade moai-adk
+# 또는
+uv pip install --upgrade moai-adk
+```
+
+---
+
 # v0.40.1 - Multilingual Agent Routing Enhancement (2026-01-07)
 
 ## Summary
