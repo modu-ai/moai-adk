@@ -4,6 +4,7 @@ description: "Modern C++ (C++23/C++20) development specialist covering RAII, sma
 version: 1.0.0
 category: "language"
 modularized: true
+user-invocable: false
 updated: 2026-01-08
 status: "active"
 allowed-tools:

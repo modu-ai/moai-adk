@@ -4,6 +4,7 @@ description: "AST-based structural code search, security scanning, and refactori
 version: 1.1.0
 category: "tool"
 modularized: true
+user-invocable: false
 context: fork
 agent: Explore
 tags: ['ast', 'refactoring', 'code-search', 'lint', 'structural-search', 'security', 'codemod']

@@ -4,6 +4,7 @@ description: "Supabase specialist covering PostgreSQL 16, pgvector, RLS, real-ti
 version: 2.0.0
 category: "platform"
 modularized: true
+user-invocable: false
 tags: ['supabase', 'postgresql', 'pgvector', 'realtime', 'rls', 'edge-functions']
 context7-libraries: ['/supabase/supabase']
 related-skills: ['moai-platform-neon', 'moai-lang-typescript']

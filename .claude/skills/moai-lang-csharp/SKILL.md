@@ -4,6 +4,7 @@ description: "C# 12 / .NET 8 development specialist covering ASP.NET Core, Entit
 version: 2.0.0
 category: "language"
 modularized: true
+user-invocable: false
 allowed-tools:
   - Read
   - Grep

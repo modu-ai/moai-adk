@@ -4,6 +4,7 @@ description: "Ruby 3.3+ development specialist covering Rails 7.2, ActiveRecord,
 version: 1.0.0
 category: "language"
 modularized: true
+user-invocable: false
 updated: 2026-01-08
 status: "active"
 allowed-tools:

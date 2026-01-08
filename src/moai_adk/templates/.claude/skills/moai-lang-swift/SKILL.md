@@ -4,6 +4,7 @@ description: "Swift 6+ development specialist covering SwiftUI, Combine, Swift C
 version: 2.0.0
 category: "language"
 modularized: true
+user-invocable: false
 tags: ['swift', 'swiftui', 'ios', 'macos', 'combine', 'concurrency']
 allowed-tools:
   - Read

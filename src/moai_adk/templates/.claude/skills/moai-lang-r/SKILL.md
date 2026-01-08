@@ -4,6 +4,7 @@ description: "R 4.4+ development specialist covering tidyverse, ggplot2, Shiny, 
 version: 1.0.0
 category: "language"
 modularized: true
+user-invocable: false
 updated: 2026-01-08
 status: "active"
 allowed-tools:

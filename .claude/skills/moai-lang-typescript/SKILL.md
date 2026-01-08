@@ -4,6 +4,7 @@ description: "TypeScript 5.9+ development specialist covering React 19, Next.js 
 version: 1.0.0
 category: "language"
 modularized: false
+user-invocable: false
 tags: ['typescript', 'react', 'nextjs', 'frontend', 'fullstack']
 updated: 2026-01-08
 status: "active"

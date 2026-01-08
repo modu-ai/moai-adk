@@ -4,6 +4,7 @@ description: "Flutter 3.24+ / Dart 3.5+ development specialist covering Riverpod
 version: 1.0.0
 category: "language"
 modularized: false
+user-invocable: false
 tags: ['flutter', 'dart', 'riverpod', 'cross-platform', 'mobile', 'desktop']
 context7-libraries: ['/flutter/flutter', '/rrousselgit/riverpod', '/flutter/packages']
 related-skills: ['moai-lang-swift', 'moai-lang-kotlin']

@@ -4,6 +4,7 @@ description: "Firebase Authentication specialist covering Google ecosystem, soci
 version: 2.0.0
 category: "platform"
 modularized: true
+user-invocable: false
 tags: ['firebase, google, social-auth, mobile, authentication']
 updated: 2026-01-08
 status: "active"

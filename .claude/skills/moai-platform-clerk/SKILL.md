@@ -4,6 +4,7 @@ description: "Clerk modern authentication specialist covering WebAuthn, passkeys
 version: 2.0.0
 category: "platform"
 modularized: true
+user-invocable: false
 tags: ['clerk', 'webauthn', 'passkeys', 'passwordless', 'authentication']
 context7-libraries: "/clerk/clerk-docs"
 related-skills: "moai-platform-auth0, moai-lang-typescript"

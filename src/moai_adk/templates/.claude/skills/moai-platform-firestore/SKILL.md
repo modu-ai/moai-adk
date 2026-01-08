@@ -4,6 +4,7 @@ description: "Firebase Firestore specialist covering NoSQL patterns, real-time s
 version: 2.0.0
 category: "platform"
 modularized: true
+user-invocable: false
 tags: ['firestore', 'firebase', 'nosql', 'realtime', 'offline', 'mobile']
 updated: 2026-01-08
 status: "active"

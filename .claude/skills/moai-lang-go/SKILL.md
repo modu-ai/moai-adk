@@ -4,6 +4,7 @@ description: "Go 1.23+ development specialist covering Fiber, Gin, GORM, and con
 version: 1.0.0
 category: "language"
 modularized: false
+user-invocable: false
 tags: ['go', 'golang', 'fiber', 'gin', 'concurrency', 'microservices']
 context7-libraries: ['/gofiber/fiber', '/gin-gonic/gin', '/go-gorm/gorm']
 related-skills: ['moai-lang-rust', 'moai-domain-backend']

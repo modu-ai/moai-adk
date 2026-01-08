@@ -5,6 +5,7 @@ category: foundation
 description: Canonical Claude Code authoring kit covering Skills, sub-agents, plugins, slash commands, hooks, memory, settings, sandboxing, headless mode, and advanced agent patterns. Use when creating Claude Code extensions or configuring Claude Code features.
 version: 5.0.0
 modularized: false
+user-invocable: false
 allowed-tools:
   - Read
   - Write

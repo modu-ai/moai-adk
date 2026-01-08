@@ -4,6 +4,7 @@ description: "Railway container deployment specialist covering Docker, multi-ser
 version: 2.0.0
 category: "platform"
 modularized: true
+user-invocable: false
 tags: ['railway', 'docker', 'containers', 'multi-service', 'auto-scaling']
 context7-libraries: ['/railwayapp/railway']
 related-skills: ['moai-platform-vercel', 'moai-domain-backend']

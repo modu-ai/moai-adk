@@ -4,6 +4,7 @@ description: "Frontend development specialist covering React 19, Next.js 16, Vue
 version: 2.0.0
 category: "domain"
 modularized: true
+user-invocable: false
 tags: ['frontend', 'react', 'nextjs', 'vue', 'ui', 'components']
 context7-libraries: ['/facebook/react', '/vercel/next.js', '/vuejs/vue']
 updated: 2026-01-08

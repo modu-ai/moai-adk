@@ -4,6 +4,7 @@ description: "Backend development specialist covering API design, database integ
 version: 1.0.0
 category: "domain"
 modularized: false
+user-invocable: false
 tags: ['backend', 'api', 'database', 'microservices', 'architecture']
 updated: 2026-01-08
 allowed-tools:

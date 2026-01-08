@@ -4,6 +4,7 @@ description: "Convex real-time backend specialist covering TypeScript-first reac
 version: 2.0.0
 category: "platform"
 modularized: true
+user-invocable: false
 tags: ['convex', 'realtime', 'reactive', 'typescript', 'optimistic-updates']
 context7-libraries: "/get-convex/convex"
 related-skills: "moai-platform-supabase, moai-lang-typescript, moai-domain-frontend"

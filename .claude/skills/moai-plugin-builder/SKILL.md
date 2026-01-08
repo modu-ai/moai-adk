@@ -4,6 +4,7 @@ description: "Claude Code plugin development patterns, templates, and best pract
 version: 1.2.0
 category: "foundation"
 modularized: false
+user-invocable: false
 tags: ['plugin', 'claude-code', 'development', 'templates', 'hooks', 'commands', 'agents', 'skills', 'mcp', 'lsp', 'marketplace']
 updated: 2026-01-08
 allowed-tools:

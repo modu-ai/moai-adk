@@ -4,6 +4,7 @@ description: "PHP 8.3+ development specialist covering Laravel 11, Symfony 7, El
 version: 1.0.0
 category: "language"
 modularized: true
+user-invocable: false
 updated: 2026-01-08
 status: "active"
 allowed-tools:

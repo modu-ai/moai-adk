@@ -4,6 +4,7 @@ description: "Python 3.13+ development specialist covering FastAPI, Django, asyn
 version: 1.0.0
 category: "language"
 modularized: false
+user-invocable: false
 updated: 2026-01-08
 status: "active"
 allowed-tools:

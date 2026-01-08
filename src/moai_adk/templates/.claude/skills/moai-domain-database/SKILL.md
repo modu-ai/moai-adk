@@ -4,6 +4,7 @@ description: "Database specialist covering PostgreSQL, MongoDB, Redis, and advan
 version: 1.0.0
 category: "domain"
 modularized: true
+user-invocable: false
 tags: ['database', 'postgresql', 'mongodb', 'redis', 'data-patterns', 'performance']
 updated: 2026-01-08
 allowed-tools:

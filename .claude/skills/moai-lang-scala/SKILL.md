@@ -4,6 +4,7 @@ description: "Scala 3.4+ development specialist covering Akka, Cats Effect, ZIO,
 version: 2.0.0
 category: "language"
 modularized: true
+user-invocable: false
 updated: 2026-01-08
 allowed-tools:
   - Read

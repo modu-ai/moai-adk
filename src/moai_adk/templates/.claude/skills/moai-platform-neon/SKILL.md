@@ -4,6 +4,7 @@ description: "Neon serverless PostgreSQL specialist covering auto-scaling, datab
 version: 2.0.0
 category: "platform"
 modularized: true
+user-invocable: false
 tags: ['neon', 'postgresql', 'serverless', 'branching', 'auto-scaling']
 context7-libraries: ['/neondatabase/neon']
 related-skills: ['moai-platform-supabase', 'moai-lang-typescript', 'moai-domain-database']

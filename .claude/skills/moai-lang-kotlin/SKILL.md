@@ -4,6 +4,7 @@ description: "Kotlin 2.0+ development specialist covering Ktor, coroutines, Comp
 version: 1.0.0
 category: "language"
 modularized: false
+user-invocable: false
 tags: ['kotlin', 'ktor', 'coroutines', 'compose', 'android', 'multiplatform']
 context7-libraries: "/ktorio/ktor, /jetbrains/compose-multiplatform, /jetbrains/exposed"
 related-skills: "moai-lang-java, moai-lang-swift"

@@ -4,6 +4,7 @@ description: "Domain UI/UX Expert - Enterprise design systems, component archite
 version: 2.0.0
 category: "domain"
 modularized: true
+user-invocable: false
 tags: ['domain', 'uiux', 'design-systems', 'accessibility', 'components', 'icons', 'theming']
 aliases: ['moai-foundation-uiux']
 updated: 2026-01-08

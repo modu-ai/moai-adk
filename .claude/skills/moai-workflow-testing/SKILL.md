@@ -4,6 +4,7 @@ description: "Comprehensive development workflow specialist combining TDD, debug
 version: 2.2.0
 category: "workflow"
 modularized: true
+user-invocable: false
 context: fork
 agent: expert-testing
 tags: ['workflow', 'testing', 'debugging', 'performance', 'quality', 'tdd', 'review', 'pr-review']

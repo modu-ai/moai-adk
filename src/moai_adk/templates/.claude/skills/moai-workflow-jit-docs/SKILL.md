@@ -4,6 +4,7 @@ description: "Enhanced Just-In-Time document loading system that intelligently d
 version: 3.0.0
 category: "workflow"
 modularized: false
+user-invocable: false
 tags: ['workflow', 'documentation', 'jit-loading', 'context-aware', 'caching', 'discovery']
 updated: 2026-01-08
 allowed-tools:

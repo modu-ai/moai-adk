@@ -4,6 +4,7 @@ description: "SPEC workflow orchestration with EARS format, requirement clarific
 version: 1.2.0
 category: "workflow"
 modularized: true
+user-invocable: false
 context: fork
 agent: Plan
 tags: ['workflow', 'spec', 'ears', 'requirements', 'moai-adk', 'planning']

@@ -2,6 +2,7 @@
 name: moai-tool-opencode
 description: OpenCode.ai open-source AI coding agent comprehensive reference. Use when working with OpenCode TUI, CLI, IDE integration, configuring agents, tools, MCP servers, creating plugins, or developing with the SDK.
 version: 2.0.0
+user-invocable: false
 status: active
 updated: 2026-01-08
 allowed-tools:

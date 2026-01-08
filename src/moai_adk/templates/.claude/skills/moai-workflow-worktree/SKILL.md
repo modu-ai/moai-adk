@@ -4,6 +4,7 @@ description: "Git worktree management for parallel SPEC development with isolate
 version: 1.1.0
 category: "workflow"
 modularized: true
+user-invocable: false
 tags: ['git', 'worktree', 'parallel', 'development', 'spec', 'isolation']
 updated: 2026-01-08
 status: "active"

@@ -4,6 +4,7 @@ description: "JavaScript ES2024+ development specialist covering Node.js 22 LTS,
 version: 1.1.0
 category: "language"
 modularized: false
+user-invocable: false
 updated: 2026-01-08
 status: "active"
 allowed-tools:

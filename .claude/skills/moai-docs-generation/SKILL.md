@@ -4,6 +4,7 @@ description: "Documentation generation patterns for technical specs, API docs, u
 version: 2.1.0
 category: "workflow"
 modularized: true
+user-invocable: false
 context: fork
 agent: general-purpose
 tags: ['workflow', 'documentation', 'sphinx', 'mkdocs', 'typedoc', 'api-docs', 'static-sites']

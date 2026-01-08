@@ -4,6 +4,7 @@ description: "Java 21 LTS development specialist covering Spring Boot 3.3, virtu
 version: 1.0.0
 category: "language"
 modularized: false
+user-invocable: false
 tags: ['java', 'spring-boot', 'jpa', 'hibernate', 'virtual-threads', 'enterprise']
 context7-libraries: ['/spring-projects/spring-boot', '/spring-projects/spring-framework', '/spring-projects/spring-security']
 related-skills: ['moai-lang-kotlin', 'moai-domain-backend']

@@ -4,6 +4,7 @@ description: "Elixir 1.17+ development specialist covering Phoenix 1.7, LiveView
 version: 1.0.0
 category: "language"
 modularized: true
+user-invocable: false
 updated: 2026-01-08
 status: "active"
 allowed-tools:

@@ -4,6 +4,7 @@ description: "Nano-Banana AI service integration for content generation, image c
 version: 1.1.0
 category: "integration"
 modularized: false
+user-invocable: false
 tags: ['ai', 'content-generation', 'image-generation', 'nano-banana', 'ai-service', 'gemini-3-pro']
 related-skills: ['moai-docs-generation', 'moai-domain-uiux']
 updated: 2026-01-08

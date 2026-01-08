@@ -3,6 +3,7 @@ name: moai-library-nextra
 description: Enterprise Nextra documentation framework with Next.js. Use when building documentation sites, knowledge bases, or API reference documentation.
 version: 2.1.0
 modularized: true
+user-invocable: false
 updated: 2026-01-08
 allowed-tools:
   - Read
