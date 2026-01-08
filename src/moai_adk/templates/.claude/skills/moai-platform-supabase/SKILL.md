@@ -7,9 +7,14 @@ modularized: true
 tags: ['supabase', 'postgresql', 'pgvector', 'realtime', 'rls', 'edge-functions']
 context7-libraries: ['/supabase/supabase']
 related-skills: ['moai-platform-neon', 'moai-lang-typescript']
-updated: 2026-01-06
+updated: 2026-01-08
 status: "active"
-allowed-tools: "Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
 # moai-platform-supabase: Supabase Platform Specialist

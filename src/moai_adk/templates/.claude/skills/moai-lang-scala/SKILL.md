@@ -4,7 +4,13 @@ description: "Scala 3.4+ development specialist covering Akka, Cats Effect, ZIO,
 version: 2.0.0
 category: "language"
 modularized: true
-allowed-tools: "Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+updated: 2026-01-08
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
 # Scala 3.4+ Development Specialist

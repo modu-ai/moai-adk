@@ -6,9 +6,14 @@ category: "domain"
 modularized: true
 tags: ['domain', 'uiux', 'design-systems', 'accessibility', 'components', 'icons', 'theming']
 aliases: ['moai-foundation-uiux']
-updated: 2025-11-30
+updated: 2026-01-08
 status: "active"
-allowed-tools: "Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
 ## Quick Reference (30 seconds)

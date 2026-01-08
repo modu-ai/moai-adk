@@ -5,10 +5,15 @@ version: 2.0.0
 category: "language"
 modularized: true
 tags: ['swift', 'swiftui', 'ios', 'macos', 'combine', 'concurrency']
-allowed-tools: "Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 context7-libraries: ['/apple/swift', '/apple/swift-evolution']
 related-skills: ['moai-lang-kotlin', 'moai-lang-flutter']
-updated: 2026-01-06
+updated: 2026-01-08
 status: "active"
 ---
 

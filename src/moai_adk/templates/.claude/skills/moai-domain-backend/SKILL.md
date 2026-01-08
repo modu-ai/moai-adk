@@ -5,8 +5,16 @@ version: 1.0.0
 category: "domain"
 modularized: false
 tags: ['backend', 'api', 'database', 'microservices', 'architecture']
-allowed-tools: "Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
-updated: 2025-12-06
+updated: 2026-01-08
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - Grep
+  - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 status: "active"
 author: "MoAI-ADK Team"
 ---

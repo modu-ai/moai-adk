@@ -5,9 +5,17 @@ version: 1.0.0
 category: "security"
 modularized: true
 tags: ['auth0', 'security', 'mfa', 'attack-protection', 'tokens', 'dpop', 'mtls', 'compliance', 'fapi', 'gdpr']
-updated: 2025-12-24
+updated: 2026-01-08
 status: "active"
-allowed-tools: "Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - WebFetch
+  - WebSearch
+  - Bash
 context7-libraries: "/auth0/docs"
 ---
 

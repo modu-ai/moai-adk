@@ -7,7 +7,16 @@ modularized: true
 tags: ['convex', 'realtime', 'reactive', 'typescript', 'optimistic-updates']
 context7-libraries: "/get-convex/convex"
 related-skills: "moai-platform-supabase, moai-lang-typescript, moai-domain-frontend"
-allowed-tools: "Read, Write, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+updated: 2026-01-08
+status: "active"
+allowed-tools:
+  - Read
+  - Write
+  - Bash
+  - Grep
+  - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
 # Convex Real-time Backend Specialist

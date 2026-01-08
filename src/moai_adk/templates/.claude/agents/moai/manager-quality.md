@@ -11,6 +11,16 @@ tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task
 model: haiku
 permissionMode: bypassPermissions
 skills: moai-foundation-claude, moai-workflow-testing, moai-foundation-quality, moai-tool-ast-grep
+hooks:
+  PostToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/post_tool__code_formatter.py"
+          timeout: 30
+        - type: command
+          command: "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/post_tool__linter.py"
+          timeout: 30
 ---
 
 # Quality Gate - Quality Verification Gate

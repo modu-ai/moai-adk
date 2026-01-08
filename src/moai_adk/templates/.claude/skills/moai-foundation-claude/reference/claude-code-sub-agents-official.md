@@ -76,6 +76,46 @@ Optional Fields:
 
 - model: Model alias (sonnet, opus, haiku) or 'inherit' to use same model as main conversation. If omitted, uses configured default (usually sonnet).
 
+- permissionMode: Controls permission handling. Valid values: `default`, `acceptEdits`, `dontAsk`, `bypassPermissions`, `plan`, `ignore`.
+
+- skills: Comma-separated list of skill names to auto-load when agent is invoked. Skills are NOT inherited from parent.
+
+- hooks: Define lifecycle hooks scoped to this agent. Supports PreToolUse, PostToolUse, Stop events. Note: `once` field is NOT supported in agent hooks.
+
+### Hooks Configuration (2026-01)
+
+Agents can define hooks in their frontmatter that only run when the agent is active:
+
+```yaml
+---
+name: code-reviewer
+description: Review code changes with quality checks
+tools: Read, Grep, Glob, Bash
+model: inherit
+hooks:
+  PreToolUse:
+    - matcher: "Edit"
+      hooks:
+        - type: command
+          command: "./scripts/pre-edit-check.sh"
+  PostToolUse:
+    - matcher: "Edit|Write"
+      hooks:
+        - type: command
+          command: "./scripts/run-linter.sh"
+          timeout: 45
+---
+```
+
+Hook Fields:
+- matcher: Regex pattern to match tool names (e.g., "Edit", "Write|Edit", "Bash")
+- hooks: Array of hook definitions
+  - type: "command" (shell) or "prompt" (LLM)
+  - command: Shell command to execute
+  - timeout: Timeout in seconds (default: 60)
+
+IMPORTANT: The `once` field is NOT supported in agent hooks. Use skill hooks if you need one-time execution.
+
 ### Storage Locations and Priority
 
 Sub-agents are stored as markdown files with YAML frontmatter:

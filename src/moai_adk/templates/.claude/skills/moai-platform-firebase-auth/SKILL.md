@@ -5,11 +5,18 @@ version: 2.0.0
 category: "platform"
 modularized: true
 tags: ['firebase, google, social-auth, mobile, authentication']
-updated: 2025-12-07
+updated: 2026-01-08
 status: "active"
 context7-libraries: "/firebase/firebase-docs"
 related-skills: "moai-platform-firestore, moai-lang-flutter, moai-lang-typescript"
-allowed-tools: "Read, Write, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+allowed-tools:
+  - Read
+  - Write
+  - Bash
+  - Grep
+  - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
 # Firebase Authentication Specialist

@@ -5,9 +5,14 @@ version: 2.0.0
 category: "domain"
 modularized: true
 tags: ['frontend', 'react', 'nextjs', 'vue', 'ui', 'components']
-allowed-tools: "Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 context7-libraries: ['/facebook/react', '/vercel/next.js', '/vuejs/vue']
-updated: 2026-01-06
+updated: 2026-01-08
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 status: "active"
 author: "MoAI-ADK Team"
 ---

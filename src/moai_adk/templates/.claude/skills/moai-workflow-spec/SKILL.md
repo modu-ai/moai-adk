@@ -1,14 +1,24 @@
 ---
 name: "moai-workflow-spec"
 description: "SPEC workflow orchestration with EARS format, requirement clarification, and Plan-Run-Sync integration for MoAI-ADK development methodology"
-version: 1.1.0
+version: 1.2.0
 category: "workflow"
 modularized: true
+context: fork
+agent: Plan
 tags: ['workflow', 'spec', 'ears', 'requirements', 'moai-adk', 'planning']
-updated: 2025-12-30
+updated: 2026-01-08
 status: "active"
 author: "MoAI-ADK Team"
-allowed-tools: "Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - Grep
+  - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
 # SPEC Workflow Management
