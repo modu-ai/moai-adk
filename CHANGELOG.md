@@ -1,3 +1,97 @@
+# v0.41.2 - Skill Menu Visibility Enhancement (2026-01-09)
+
+## Summary
+
+Patch release improving user experience by hiding internal skills from the slash command menu while maintaining full functionality. All 45 skills now include `user-invocable: false` frontmatter to reduce menu clutter and improve discoverability of user-facing commands.
+
+## Changes
+
+### User Experience
+
+- **feat(skills)**: Add user-invocable: false to all skill frontmatter (5cc6088e)
+  - Add `user-invocable: false` to 45 skill files
+  - Hide skills from slash command menu (`/` autocomplete)
+  - Skills remain fully accessible via `Skill()` function and Agent invocation
+  - Improves UX by reducing menu clutter
+  - Affected files: All skill SKILL.md files in `.claude/skills/` and `src/moai_adk/templates/.claude/skills/`
+
+### Maintenance
+
+- **chore**: Bump version to 0.41.2 (1d2b095a)
+
+### Quality
+
+- All tests passing (9,627 passed, 85.70% coverage)
+- Zero linting or type checking issues
+- Security checks passed
+
+## Installation & Update
+
+```bash
+# Install
+pip install moai-adk==0.41.2
+# or
+uv pip install moai-adk==0.41.2
+
+# Update existing installation
+pip install --upgrade moai-adk
+# or
+uv pip install --upgrade moai-adk
+```
+
+## Migration Guide
+
+No action required. Skills that were previously visible in the slash command menu will now be hidden but remain fully functional when invoked by Alfred or agents.
+
+---
+
+# v0.41.2 - 스킬 메뉴 가시성 개선 (2026-01-09)
+
+## 요약
+
+내부 스킬을 슬래시 명령 메뉴에서 숨겨 사용자 경험을 개선한 패치 릴리즈입니다. 45개 모든 스킬에 `user-invocable: false` frontmatter를 추가하여 메뉴 혼잡도를 줄이고 사용자 대상 명령어의 발견성을 향상시켰습니다.
+
+## 변경 사항
+
+### 사용자 경험
+
+- **feat(skills)**: 모든 스킬 frontmatter에 user-invocable: false 추가 (5cc6088e)
+  - 45개 스킬 파일에 `user-invocable: false` 추가
+  - 슬래시 명령 메뉴(`/` 자동완성)에서 스킬 숨김
+  - `Skill()` 함수 및 Agent 호출을 통한 완전한 접근성 유지
+  - 메뉴 혼잡도 감소로 UX 개선
+  - 영향받는 파일: `.claude/skills/` 및 `src/moai_adk/templates/.claude/skills/`의 모든 SKILL.md 파일
+
+### 유지보수
+
+- **chore**: 버전을 0.41.2로 업데이트 (1d2b095a)
+
+### 품질
+
+- 모든 테스트 통과 (9,627개 통과, 커버리지 85.70%)
+- 린팅 및 타입 체킹 이슈 없음
+- 보안 검사 통과
+
+## 설치 및 업데이트
+
+```bash
+# 설치
+pip install moai-adk==0.41.2
+# 또는
+uv pip install moai-adk==0.41.2
+
+# 기존 설치 업데이트
+pip install --upgrade moai-adk
+# 또는
+uv pip install --upgrade moai-adk
+```
+
+## 마이그레이션 가이드
+
+별도 조치 불필요. 이전에 슬래시 명령 메뉴에 표시되던 스킬들이 숨겨지지만 Alfred나 Agent를 통한 호출 시 정상 작동합니다.
+
+---
+
 # v0.41.1 - Critical Bug Fixes & File Read Enhancement (2026-01-09)
 
 ## Summary
