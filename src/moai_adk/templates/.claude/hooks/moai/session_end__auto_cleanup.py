@@ -28,6 +28,18 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+# =============================================================================
+# Windows UTF-8 Encoding Fix (Issue #249)
+# Ensures emoji characters are properly displayed on Windows terminals
+# =============================================================================
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, OSError):
+        # Python < 3.7 or reconfigure not available
+        pass
+
 # Add module path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 

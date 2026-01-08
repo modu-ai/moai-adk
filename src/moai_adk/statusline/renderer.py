@@ -105,8 +105,8 @@ class StatuslineRenderer:
         if self._display_config.model:
             parts.append(f"🤖 {data.model}")
 
-        # Add Claude Code version if available
-        if data.claude_version:
+        # Add Claude Code version if available and display enabled (Issue #248 fix)
+        if self._display_config.version and data.claude_version:
             claude_ver_str = data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
             parts.append(f"🔅 {claude_ver_str}")
 
@@ -125,6 +125,10 @@ class StatuslineRenderer:
         # Add Git info (development context)
         if self._display_config.branch:
             parts.append(f"🔀 {data.branch}")
+
+        # Add directory if display enabled and not empty (Issue #248 fix)
+        if self._display_config.directory and data.directory:
+            parts.append(f"📁 {data.directory}")
 
         # Add active_task if display enabled and not empty
         if self._display_config.active_task and data.active_task.strip():
@@ -149,7 +153,8 @@ class StatuslineRenderer:
         # Build parts list
         parts = [f"🤖 {data.model}"]
 
-        if data.claude_version:
+        # Issue #248 fix: Check display_config.version before rendering
+        if self._display_config.version and data.claude_version:
             claude_ver_str = data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
             parts.append(f"🔅 {claude_ver_str}")
 
@@ -174,7 +179,8 @@ class StatuslineRenderer:
             truncated_branch = self._truncate_branch(data.branch, max_length=12)
             parts = [f"🤖 {data.model}"]
 
-            if data.claude_version:
+            # Issue #248 fix: Check display_config.version before rendering
+            if self._display_config.version and data.claude_version:
                 claude_ver_str = (
                     data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
                 )
@@ -224,7 +230,8 @@ class StatuslineRenderer:
         if self._display_config.model:
             parts.append(f"🤖 {data.model}")
 
-        if data.claude_version:
+        # Issue #248 fix: Check display_config.version before rendering
+        if self._display_config.version and data.claude_version:
             claude_ver_str = data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
             parts.append(f"🔅 {claude_ver_str}")
 
@@ -240,6 +247,10 @@ class StatuslineRenderer:
         if self._display_config.branch:
             parts.append(f"🔀 {branch}")
 
+        # Issue #248 fix: Add directory rendering
+        if self._display_config.directory and data.directory:
+            parts.append(f"📁 {data.directory}")
+
         if self._display_config.active_task and data.active_task.strip():
             parts.append(data.active_task)
 
@@ -251,7 +262,8 @@ class StatuslineRenderer:
             parts = []
             if self._display_config.model:
                 parts.append(f"🤖 {data.model}")
-            if data.claude_version:
+            # Issue #248 fix: Check display_config.version before rendering
+            if self._display_config.version and data.claude_version:
                 claude_ver_str = (
                     data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
                 )
