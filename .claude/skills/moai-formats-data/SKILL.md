@@ -5,8 +5,15 @@ version: 2.0.0
 category: "library"
 modularized: true
 tags: ['formats', 'data', 'toon', 'serialization', 'validation', 'optimization']
-allowed-tools: "Read, Write, Edit, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
-updated: 2026-01-06
+updated: 2026-01-08
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 status: "active"
 author: "MoAI-ADK Team"
 ---

@@ -1,14 +1,24 @@
 ---
 name: "moai-workflow-testing"
 description: "Comprehensive development workflow specialist combining TDD, debugging, performance optimization, code review, PR review, and quality assurance into unified development workflows"
-version: 2.1.0
+version: 2.2.0
 category: "workflow"
 modularized: true
+context: fork
+agent: expert-testing
 tags: ['workflow', 'testing', 'debugging', 'performance', 'quality', 'tdd', 'review', 'pr-review']
-updated: 2026-01-06
+updated: 2026-01-08
 status: "active"
 author: "MoAI-ADK Team"
-allowed-tools: "Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - Grep
+  - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
 # Development Workflow Specialist

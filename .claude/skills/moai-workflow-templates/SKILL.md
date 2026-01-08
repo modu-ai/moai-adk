@@ -7,7 +7,15 @@ category: workflow
 modularized: true
 tags: ['workflow', 'templates', 'boilerplate', 'scaffolding', 'optimization', 'feedback']
 replaces: moai-core-code-templates, moai-core-feedback-templates, moai-project-template-optimizer
-allowed-tools: Read, Write, Edit, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+updated: 2026-01-08
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
 # Enterprise Template Management

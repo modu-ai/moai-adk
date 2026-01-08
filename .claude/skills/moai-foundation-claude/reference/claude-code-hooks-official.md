@@ -72,6 +72,116 @@ UserPromptSubmit: When user submits prompts
 - Modify prompts programmatically
 - Add contextual information
 
+## Hook Configuration Locations
+
+Hooks can be configured in three locations with different capabilities:
+
+### 1. Settings Files (Global/Project)
+
+- Location: `~/.claude/settings.json` (user) or `.claude/settings.json` (project)
+- Scope: All sessions in scope
+- Features: Full hook types, matchers, timeouts
+- Limitation: `once` field NOT supported
+
+### 2. Skill/Slash Command Frontmatter (Component-scoped)
+
+- Location: SKILL.md or command .md frontmatter
+- Scope: Only when the skill/command is active
+- Features: Full hook types, matchers, timeouts, `once` field
+- Special: `once: true` runs hook only once per session
+
+### 3. Agent Frontmatter (Agent-scoped)
+
+- Location: Agent .md frontmatter
+- Scope: Only when the agent is running
+- Features: PreToolUse, PostToolUse, Stop hooks
+- Limitation: `once` field NOT supported (agents only)
+
+## Skill/Command Frontmatter Hooks (2026-01)
+
+Skills and slash commands can define hooks directly in their YAML frontmatter. This is the ONLY location where the `once` field is supported.
+
+### Basic Skill Hook Example
+
+```yaml
+---
+name: secure-file-operations
+description: File operations with security checks
+hooks:
+  PreToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "./scripts/security-check.sh $TOOL_INPUT"
+          timeout: 30
+  PostToolUse:
+    - matcher: "Write"
+      hooks:
+        - type: command
+          command: "./scripts/verify-write.sh"
+---
+```
+
+### Using once: true (Skills Only)
+
+The `once` field ensures a hook runs only once per session, regardless of how many times the tool is used:
+
+```yaml
+---
+name: setup-skill
+description: Skill with one-time initialization
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "./init.sh"
+          once: true
+---
+```
+
+IMPORTANT: The `once` field is ONLY supported in skill/slash command frontmatter hooks. It is NOT supported in settings.json or agent frontmatter.
+
+### Slash Command Hook Example
+
+```yaml
+---
+name: deploy
+description: Deploy application with pre-checks
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "./scripts/deployment-check.sh"
+          timeout: 60
+          once: true
+---
+```
+
+### Agent Frontmatter Hooks
+
+Agents can also define hooks, but `once` is NOT supported:
+
+```yaml
+---
+name: code-reviewer
+description: Review code changes
+hooks:
+  PreToolUse:
+    - matcher: "Edit"
+      hooks:
+        - type: command
+          command: "./scripts/pre-edit-check.sh"
+  PostToolUse:
+    - matcher: "Edit|Write"
+      hooks:
+        - type: command
+          command: "./scripts/run-linter.sh"
+          timeout: 45
+---
+```
+
 ## Hook Configuration Structure
 
 ### Basic Configuration

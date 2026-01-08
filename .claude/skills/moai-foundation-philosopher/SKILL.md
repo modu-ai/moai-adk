@@ -1,13 +1,19 @@
 ---
 name: "moai-foundation-philosopher"
 description: "Strategic thinking framework integrating First Principles Analysis, Stanford Design Thinking, and MIT Systems Engineering for deeper problem-solving and decision-making"
-version: 1.0.0
+version: 1.1.0
 category: "foundation"
 modularized: true
+user-invocable: false
 tags: ['foundation', 'strategic-thinking', 'first-principles', 'trade-off-analysis', 'cognitive-bias', 'decision-making']
-updated: 2025-12-19
+updated: 2026-01-08
 status: "active"
-allowed-tools: "Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
 # MoAI Foundation Philosopher

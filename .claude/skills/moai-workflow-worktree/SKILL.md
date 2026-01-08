@@ -5,9 +5,15 @@ version: 1.1.0
 category: "workflow"
 modularized: true
 tags: ['git', 'worktree', 'parallel', 'development', 'spec', 'isolation']
-updated: 2025-12-30
+updated: 2026-01-08
 status: "active"
-allowed-tools: "Read, Write, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+allowed-tools:
+  - Read
+  - Write
+  - Grep
+  - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
 # MoAI Worktree Management

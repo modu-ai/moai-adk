@@ -4,10 +4,18 @@ description: "Integrated project management system with documentation, language 
 version: 2.0.0
 category: "workflow"
 modularized: true
-updated: 2025-12-30
+updated: 2026-01-08
 status: "active"
 aliases: ['moai-workflow-project']
-allowed-tools: "Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - Grep
+  - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
 # MoAI Workflow Project - Integrated Project Management System

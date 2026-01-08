@@ -22,6 +22,18 @@ from pathlib import Path
 from typing import Any, Dict
 
 # =============================================================================
+# Windows UTF-8 Encoding Fix (Issue #249)
+# Ensures emoji characters are properly displayed on Windows terminals
+# =============================================================================
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, OSError):
+        # Python < 3.7 or reconfigure not available
+        pass
+
+# =============================================================================
 # Constants - Risk Assessment Thresholds
 # =============================================================================
 # These thresholds determine project risk level based on various factors

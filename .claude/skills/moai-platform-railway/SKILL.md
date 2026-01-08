@@ -7,9 +7,16 @@ modularized: true
 tags: ['railway', 'docker', 'containers', 'multi-service', 'auto-scaling']
 context7-libraries: ['/railwayapp/railway']
 related-skills: ['moai-platform-vercel', 'moai-domain-backend']
-updated: 2025-12-30
+updated: 2026-01-08
 status: "active"
-allowed-tools: "Read, Write, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+allowed-tools:
+  - Read
+  - Write
+  - Bash
+  - Grep
+  - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
 # moai-platform-railway: Container Deployment Specialist

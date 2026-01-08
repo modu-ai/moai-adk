@@ -4,9 +4,15 @@ description: "JavaScript ES2024+ development specialist covering Node.js 22 LTS,
 version: 1.1.0
 category: "language"
 modularized: false
-updated: 2026-01-05
+updated: 2026-01-08
 status: "active"
-allowed-tools: "Read, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
 ## Quick Reference (30 seconds)

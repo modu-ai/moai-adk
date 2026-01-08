@@ -5,9 +5,17 @@ version: 1.1.0
 category: "integration"
 modularized: false
 tags: ['ai', 'content-generation', 'image-generation', 'nano-banana', 'ai-service', 'gemini-3-pro']
-allowed-tools: "Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs"
 related-skills: ['moai-docs-generation', 'moai-domain-uiux']
-updated: 2025-12-23
+updated: 2026-01-08
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - Grep
+  - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 status: "active"
 author: "MoAI-ADK Team"
 ---

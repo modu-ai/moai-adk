@@ -68,7 +68,89 @@ Required Fields:
 
 Optional Fields:
 
-- allowed-tools: Comma-separated tool names to restrict access. If not specified, Claude follows standard permission model.
+- allowed-tools: Tool names to restrict access. Supports comma-separated string or YAML list format. If not specified, Claude follows standard permission model.
+
+- model: Model to use when Skill is active (e.g., `claude-sonnet-4-20250514`). Defaults to the current model.
+
+- context: Set to `fork` to run Skill in isolated sub-agent context with separate conversation history.
+
+- agent: Agent type when `context: fork` is set. Options: `Explore`, `Plan`, `general-purpose`. Defaults to `general-purpose`.
+
+- hooks: Define lifecycle hooks (PreToolUse, PostToolUse, Stop) scoped to the Skill. See Hooks section below.
+
+- user-invocable: Boolean to control slash command menu visibility. Default is `true`. Set to `false` to hide internal Skills from the menu.
+
+### Advanced Frontmatter Examples (2026-01)
+
+#### allowed-tools as YAML List
+
+```yaml
+---
+name: reading-files-safely
+description: Read files without making changes. Use for read-only file access.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+---
+```
+
+#### Forked Context with Agent Type
+
+```yaml
+---
+name: code-analysis
+description: Analyze code quality and generate detailed reports. Use for comprehensive code review.
+context: fork
+agent: Explore
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+---
+```
+
+#### With Lifecycle Hooks
+
+```yaml
+---
+name: secure-operations
+description: Perform operations with additional security checks.
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "./scripts/security-check.sh $TOOL_INPUT"
+          once: true
+  PostToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "./scripts/verify-write.sh"
+---
+```
+
+Hook Configuration Fields:
+- type: "command" (bash) or "prompt" (LLM evaluation)
+- command: Bash command to execute (for type: command)
+- prompt: LLM prompt for evaluation (for type: prompt)
+- timeout: Timeout in seconds (default: 60)
+- matcher: Pattern to match tool names (regex supported)
+- once: Boolean, run hook only once per session (Skills only)
+
+#### Hidden from Menu
+
+```yaml
+---
+name: internal-helper
+description: Internal Skill used by other Skills. Not for direct user invocation.
+user-invocable: false
+allowed-tools:
+  - Read
+  - Grep
+---
+```
 
 ### Example SKILL.md Structure
 
