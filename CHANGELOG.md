@@ -1,3 +1,119 @@
+# v0.41.0 - Claude Code 2026-01 Compatibility & OpenCode Integration (2026-01-08)
+
+## Summary
+
+Minor release adding comprehensive support for Claude Code 2026-01 frontmatter fields and introducing the moai-tool-opencode skill for OpenCode AI editor integration. This release updates all 51 skills and agents to use modern YAML list format and adds specialized hooks for security, TDD, and quality workflows.
+
+## Changes
+
+### New Features
+
+- **feat(skills)**: Add Claude Code 2026-01 frontmatter fields support (6870ea00)
+  - Add `context: fork` and `agent` fields to 4 workflow skills
+  - Add `user-invocable: false` to 4 foundation skills
+  - Migrate 48 skills to YAML list format for `allowed-tools`
+  - Add hooks field to 3 agents (expert-security, manager-tdd, manager-quality)
+  - Update moai-foundation-claude reference docs with new field documentation
+
+- **feat(skills)**: Add moai-tool-opencode skill for OpenCode AI editor integration (a2cc7e62)
+  - Comprehensive OpenCode configuration and usage patterns
+  - 22 detailed module files covering configuration, usage, and development
+  - Support for agents, commands, skills, MCP servers, LSP servers, and custom tools
+  - ~6,800 lines of documentation and examples
+
+### Documentation
+
+- **docs(readme)**: Add Tool category with moai-tool-opencode and moai-tool-ast-grep (8d6ecf92)
+  - Reorganize skill categories to highlight tool integrations
+  - Add Tool category alongside Workflow, Domain, Language, and Platform
+
+### Refactoring
+
+- **refactor(skills)**: Rename moai-platform-opencode to moai-tool-opencode (a2cc7e62)
+  - Better categorization: OpenCode is a tool, not a platform
+  - Consistent with other tool skills like moai-tool-ast-grep
+
+### Quality
+
+- All tests passing (9,627 passed, 85.63% coverage)
+- Zero linting or type checking issues
+- Security checks passed
+- Verified against official Claude Code documentation
+
+## Installation & Update
+
+```bash
+# Install
+pip install moai-adk==0.41.0
+# or
+uv pip install moai-adk==0.41.0
+
+# Upgrade
+pip install --upgrade moai-adk
+# or
+uv pip install --upgrade moai-adk
+```
+
+---
+
+# v0.41.0 - Claude Code 2026-01 호환성 및 OpenCode 통합 (2026-01-08)
+
+## 요약
+
+Claude Code 2026-01 frontmatter 필드에 대한 포괄적 지원을 추가하고 OpenCode AI 편집기 통합을 위한 moai-tool-opencode 스킬을 도입한 마이너 릴리스입니다. 이번 릴리스에서는 51개의 모든 스킬과 에이전트를 최신 YAML 리스트 형식으로 업데이트했으며, 보안, TDD, 품질 워크플로우를 위한 특화 hooks를 추가했습니다.
+
+## 변경 사항
+
+### 새로운 기능
+
+- **feat(skills)**: Claude Code 2026-01 frontmatter 필드 지원 추가 (6870ea00)
+  - 4개 워크플로우 스킬에 `context: fork`와 `agent` 필드 추가
+  - 4개 foundation 스킬에 `user-invocable: false` 추가
+  - 48개 스킬을 `allowed-tools` YAML 리스트 형식으로 마이그레이션
+  - 3개 에이전트에 hooks 필드 추가 (expert-security, manager-tdd, manager-quality)
+  - moai-foundation-claude reference 문서에 신규 필드 문서화 추가
+
+- **feat(skills)**: OpenCode AI 편집기 통합을 위한 moai-tool-opencode 스킬 추가 (a2cc7e62)
+  - 포괄적인 OpenCode 구성 및 사용 패턴 제공
+  - 구성, 사용법, 개발을 다루는 22개 상세 모듈 파일
+  - agents, commands, skills, MCP servers, LSP servers, custom tools 지원
+  - 약 6,800줄의 문서 및 예제 제공
+
+### 문서화
+
+- **docs(readme)**: moai-tool-opencode와 moai-tool-ast-grep을 포함한 Tool 카테고리 추가 (8d6ecf92)
+  - 도구 통합을 강조하기 위한 스킬 카테고리 재구성
+  - Workflow, Domain, Language, Platform과 함께 Tool 카테고리 추가
+
+### 리팩토링
+
+- **refactor(skills)**: moai-platform-opencode를 moai-tool-opencode로 이름 변경 (a2cc7e62)
+  - 더 나은 분류: OpenCode는 플랫폼이 아닌 도구
+  - moai-tool-ast-grep과 같은 다른 도구 스킬과 일관성 유지
+
+### 품질
+
+- 모든 테스트 통과 (9,627 passed, 85.63% coverage)
+- 린트 및 타입 체크 이슈 없음
+- 보안 검사 통과
+- Claude Code 공식 문서 기준 검증 완료
+
+## 설치 및 업데이트
+
+```bash
+# 설치
+pip install moai-adk==0.41.0
+# 또는
+uv pip install moai-adk==0.41.0
+
+# 업그레이드
+pip install --upgrade moai-adk
+# 또는
+uv pip install --upgrade moai-adk
+```
+
+---
+
 # v0.40.2 - Test Isolation Fix (2026-01-08)
 
 ## Summary
