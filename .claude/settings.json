@@ -203,6 +203,8 @@
   "outputStyle": "R2-D2",
   "cleanupPeriodDays": 30,
   "env": {
-    "MOAI_CONFIG_SOURCE": "sections"
+    "MOAI_CONFIG_SOURCE": "sections",
+    "ENABLE_TOOL_SEARCH": "1",
+    "CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS": "55555"
   }
 }
