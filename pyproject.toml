@@ -164,6 +164,7 @@ exclude = [
 
 [project.scripts]
 moai-adk = "moai_adk.__main__:main"
+moai = "moai_adk.__main__:main"
 moai-worktree = "moai_adk.cli.worktree.__main__:main"
 
 [project.urls]
