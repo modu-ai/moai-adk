@@ -117,6 +117,9 @@ class TerminalManager:
     async def read(self, session_id: str, size: int = 4096) -> bytes:
         """Read output from a terminal session.
 
+        Uses select() for non-blocking read to avoid blocking the event loop
+        when no data is available from the PTY.
+
         Args:
             session_id: The terminal session ID
             size: Maximum number of bytes to read (default: 4096)
@@ -127,24 +130,29 @@ class TerminalManager:
         Raises:
             KeyError: If session_id does not exist
         """
+        import select
+
         if session_id not in self.pty_processes:
             raise KeyError(f"Terminal session not found: {session_id}")
 
         pty = self.pty_processes[session_id]
+        fd = pty.fd
 
-        # Non-blocking read with timeout
+        # Non-blocking read using select
         loop = asyncio.get_event_loop()
         try:
-            # Use executor for non-blocking PTY read
-            output = await asyncio.wait_for(
-                loop.run_in_executor(None, lambda: pty.read(size)),
-                timeout=0.1,
-            )
+
+            def _read_if_available() -> bytes:
+                # Check if data is available (timeout=0.05s)
+                readable, _, _ = select.select([fd], [], [], 0.05)
+                if readable:
+                    return os.read(fd, size)
+                return b""
+
+            output = await loop.run_in_executor(None, _read_if_available)
             return output
-        except asyncio.TimeoutError:
-            return b""
-        except EOFError:
-            # Terminal closed
+        except (OSError, EOFError):
+            # Terminal closed or read error
             return b""
 
     async def write(self, session_id: str, data: str) -> None:

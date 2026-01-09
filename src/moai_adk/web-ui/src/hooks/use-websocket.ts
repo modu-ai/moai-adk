@@ -129,11 +129,12 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
 
   const send = useCallback((type: WSMessageType, payload: unknown) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      const message: WSMessage = {
-        type,
-        payload,
-        timestamp: new Date().toISOString(),
-      }
+      // For terminal messages, send in backend format: { type, data, ... }
+      // For other messages, send in standard format: { type, payload, timestamp }
+      const payloadObj = payload as Record<string, unknown>
+      const message = payloadObj?.data !== undefined
+        ? { type, data: payloadObj.data }  // Terminal format
+        : { type, payload, timestamp: new Date().toISOString() }  // Standard format
       wsRef.current.send(JSON.stringify(message))
     } else {
       console.warn('WebSocket is not connected')

@@ -20,16 +20,33 @@ export function useTerminal(options: UseTerminalOptions = {}): UseTerminalReturn
   const terminalRef = useRef<HTMLDivElement>(null)
 
   const handleMessage = useCallback((wsMessage: WSMessage) => {
-    if (wsMessage.type === 'tool.update') {
-      const payload = wsMessage.payload as {
-        type: 'stdout' | 'stderr'
-        content: string
-      }
+    // Handle backend message format: { type: "output" | "error" | "close", data: string }
+    const msgType = wsMessage.type
+    const data = (wsMessage as unknown as { data?: string }).data ||
+                 (wsMessage.payload as { data?: string })?.data || ''
+
+    if (msgType === 'output' && data) {
       const output: TerminalOutput = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        type: payload.type,
-        content: payload.content,
-        timestamp: wsMessage.timestamp,
+        type: 'stdout',
+        content: data,
+        timestamp: wsMessage.timestamp || new Date().toISOString(),
+      }
+      setOutputs((prev) => [...prev, output])
+    } else if (msgType === 'error' && data) {
+      const output: TerminalOutput = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        type: 'stderr',
+        content: data,
+        timestamp: wsMessage.timestamp || new Date().toISOString(),
+      }
+      setOutputs((prev) => [...prev, output])
+    } else if (msgType === 'close') {
+      const output: TerminalOutput = {
+        id: `${Date.now()}-close`,
+        type: 'stderr',
+        content: `[Terminal closed: ${data}]`,
+        timestamp: wsMessage.timestamp || new Date().toISOString(),
       }
       setOutputs((prev) => [...prev, output])
     }
@@ -60,8 +77,8 @@ export function useTerminal(options: UseTerminalOptions = {}): UseTerminalReturn
       }
       setOutputs((prev) => [...prev, inputOutput])
 
-      // Send command
-      send('tool.start', { command })
+      // Send command in backend format: { type: "input", data: "command\n" }
+      send('input', { data: command + '\n' })
     },
     [send]
   )
