@@ -17,6 +17,7 @@ model: inherit
 @.moai/config/sections/ralph.yaml
 @.moai/config/sections/git-strategy.yaml
 @.moai/config/sections/quality.yaml
+@.moai/config/sections/llm.yaml
 
 ---
 
@@ -35,6 +36,70 @@ Automates the full "Plan -> Run -> Sync" workflow:
 3. Synchronizes documentation (`/moai:3-sync`)
 
 Feature Description: $ARGUMENTS
+
+## LLM Mode Detection
+
+Before workflow execution, check the configured LLM mode from `llm.yaml`:
+
+### Mode Detection Logic
+
+Step 1 - Read LLM Configuration:
+
+- Check `.moai/config/sections/llm.yaml` for `llm.mode` setting
+- Valid modes: `opus-only`, `hybrid`, `glm-only`
+
+Step 2 - Auto-Routing Based on Mode:
+
+IF mode is `opus-only`:
+
+- Execute entire workflow in current session (default behavior)
+- No worktree creation needed
+- All phases use Claude Opus
+
+IF mode is `hybrid`:
+
+- Phase 1 (Plan): Execute with Claude Opus in main terminal
+- Phase 2-3 (Run/Sync): Create worktree with GLM configuration
+- Output copy-paste command for worktree execution
+
+IF mode is `glm-only`:
+
+- Create worktree with GLM configuration immediately
+- Output copy-paste command for full workflow execution in worktree
+
+### Worktree with GLM Configuration
+
+When hybrid or glm-only mode is detected:
+
+Step 1 - Check GLM API Token:
+
+- Verify `GLM_API_TOKEN` environment variable exists
+- IF missing: Warn user and provide setup instructions
+
+Step 2 - Create Worktree with GLM Config:
+
+- Use `moai-worktree new SPEC-XXX --glm` command
+- This copies `.moai/llm-configs/glm.json` to worktree's `.claude/settings.local.json`
+- Environment variable `${GLM_API_TOKEN}` is substituted with actual value
+
+Step 3 - Output Copy-Paste Command:
+
+Format for user to execute in new terminal:
+
+```
+moai-worktree go SPEC-XXX && claude '/moai:2-run SPEC-XXX'
+```
+
+### LLM Mode Summary Display
+
+After mode detection, display current configuration:
+
+```
+LLM Mode: [hybrid]
+- Plan Phase: Claude Opus (current terminal)
+- Run/Sync Phase: GLM 4.6 (worktree terminal)
+- GLM Token: Configured (GLM_API_TOKEN)
+```
 
 ## Intelligent Routing Analysis
 
@@ -615,33 +680,53 @@ Skill Loading: Load `moai-foundation-core` and `moai-workflow-project` skills at
 You must NOW execute the command following the workflow described above.
 
 1. Start by parsing $ARGUMENTS to extract feature description and detect flags.
+
 2. IF resume mode: Load cached state and skip to appropriate phase.
-3. Perform Intelligent Routing Analysis:
+
+3. Detect LLM Mode from llm.yaml:
+   - Read `llm.mode` from `.moai/config/sections/llm.yaml`
+   - Display current LLM mode configuration to user
+   - IF mode is `hybrid` or `glm-only`: Check GLM_API_TOKEN environment variable
+
+4. Perform Intelligent Routing Analysis:
    - Detect domain keywords in feature description
    - Count domains involved
    - Determine optimal execution path
-4. Use AskUserQuestion to confirm routing decision with user:
-   - Full Workflow (Plan -> Run -> Sync)
-   - Expert Delegation (single domain task)
-   - Hybrid (expert implementation + doc sync)
-5. IF Full Workflow selected:
+
+5. Use AskUserQuestion to confirm routing decision with user:
+   - Full Workflow: Plan -> Run -> Sync
+   - Expert Delegation: Single domain task
+   - Hybrid: Expert implementation + doc sync
+
+6. IF Full Workflow selected:
    - Execute Phase 1 by invoking Skill("moai:1-plan") with feature description
    - Wait for user SPEC approval via AskUserQuestion
-   - Execute Phase 2 by invoking Skill("moai:2-run") with approved SPEC-ID
-   - Validate quality gates and present results
-   - Execute Phase 3 by invoking Skill("moai:3-sync") with SPEC-ID
-6. IF Expert Delegation selected:
+   - IF LLM mode is `opus-only`:
+     - Continue with Phase 2 and 3 in current session
+   - IF LLM mode is `hybrid` or `glm-only`:
+     - Create worktree: `moai-worktree new SPEC-XXX --glm`
+     - Output copy-paste command for worktree execution:
+       ```
+       moai-worktree go SPEC-XXX && claude '/moai:2-run SPEC-XXX'
+       ```
+     - Inform user to open new terminal and paste command
+     - Phase 2 and 3 will execute in worktree with GLM
+
+7. IF Expert Delegation selected:
    - Invoke appropriate expert subagent (expert-backend, expert-frontend, etc.)
    - Report completion directly without SPEC generation
-7. IF Hybrid selected:
+
+8. IF Hybrid selected:
    - Invoke expert subagent for implementation
    - Execute Phase 3 by invoking Skill("moai:3-sync") for documentation
-8. Generate completion summary and present next steps.
-9. Do NOT just describe what you will do. DO IT.
+
+9. Generate completion summary and present next steps.
+
+10. Do NOT just describe what you will do. DO IT.
 
 ---
 
-Version: 2.1.0
+Version: 2.2.0
 Last Updated: 2026-01-10
-Pattern: Intelligent Routing with Sequential Phase Orchestration
-Integration: /moai:1-plan, /moai:2-run, /moai:3-sync, Expert Agents, Ralph Engine, Git Strategy, TRUST 5
+Pattern: Intelligent Routing with Multi-LLM Support and Sequential Phase Orchestration
+Integration: /moai:1-plan, /moai:2-run, /moai:3-sync, Expert Agents, Ralph Engine, Git Strategy, TRUST 5, LLM Mode Routing

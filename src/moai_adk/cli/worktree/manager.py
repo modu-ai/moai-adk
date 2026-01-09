@@ -46,6 +46,7 @@ class WorktreeManager:
         branch_name: str | None = None,
         base_branch: str = "main",
         force: bool = False,
+        llm_config_path: Path | None = None,
     ) -> WorktreeInfo:
         """Create a new worktree for a SPEC.
 
@@ -56,6 +57,9 @@ class WorktreeManager:
             branch_name: Custom branch name (defaults to spec_id).
             base_branch: Base branch to create from (defaults to 'main').
             force: Force creation even if worktree exists.
+            llm_config_path: Path to LLM config file to copy to worktree.
+                            If provided, copies to {worktree}/.claude/settings.local.json
+                            and substitutes environment variables (e.g., ${GLM_API_TOKEN}).
 
         Returns:
             WorktreeInfo for the created worktree.
@@ -132,6 +136,10 @@ class WorktreeManager:
 
             # Register in registry
             self.registry.register(info, project_name=self.project_name)
+
+            # Copy LLM config to worktree if provided
+            if llm_config_path and llm_config_path.exists():
+                self._copy_llm_config(worktree_path, llm_config_path)
 
             return info
 
@@ -491,3 +499,45 @@ class WorktreeManager:
         except Exception as e:
             # Auto-resolution failed, raise error for manual intervention
             raise GitOperationError(f"Auto-resolution failed for {spec_id}: {e}")
+
+    def _copy_llm_config(self, worktree_path: Path, llm_config_path: Path) -> None:
+        """Copy LLM config to worktree with environment variable substitution.
+
+        Args:
+            worktree_path: Path to the worktree directory.
+            llm_config_path: Path to the LLM config template file.
+
+        The config file is copied to {worktree}/.claude/settings.local.json.
+        Environment variables in the format ${VAR_NAME} are substituted
+        with their actual values from the environment.
+        """
+        import os
+        import re
+
+        try:
+            # Create .claude directory in worktree
+            claude_dir = worktree_path / ".claude"
+            claude_dir.mkdir(parents=True, exist_ok=True)
+
+            # Read template config
+            with open(llm_config_path, "r", encoding="utf-8") as f:
+                config_content = f.read()
+
+            # Substitute environment variables (${VAR_NAME} pattern)
+            def substitute_env_var(match: re.Match) -> str:
+                var_name = match.group(1)
+                env_value = os.environ.get(var_name)
+                return env_value if env_value is not None else match.group(0)
+
+            config_content = re.sub(r"\$\{([^}]+)\}", substitute_env_var, config_content)
+
+            # Write to worktree
+            target_path = claude_dir / "settings.local.json"
+            with open(target_path, "w", encoding="utf-8") as f:
+                f.write(config_content)
+
+        except Exception as e:
+            # Log warning but don't fail worktree creation
+            import sys
+
+            print(f"Warning: Failed to copy LLM config: {e}", file=sys.stderr)

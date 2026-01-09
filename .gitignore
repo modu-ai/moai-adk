@@ -1,6 +1,7 @@
 # ============================================
 # MoAI-ADK Package Distribution .gitignore
-# Version: 0.32.3
+# Version: 0.33.0
+# Updated: 2026-01-10
 # ============================================
 
 # ===========================================
@@ -24,7 +25,6 @@ pip-wheel-metadata/
 share/python-wheels/
 .installed.cfg
 MANIFEST
-*.pyd
 
 # ===========================================
 # Python Cache & Bytecode
@@ -32,6 +32,7 @@ MANIFEST
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 *.pot
 *.po
 .mypy_cache/
@@ -45,6 +46,8 @@ venv/
 .venv/
 env/
 .env/
+.uv_cache/
+.uv-cache/
 
 # ===========================================
 # Test Coverage
@@ -79,6 +82,7 @@ htmlcov_spec/
 # ===========================================
 # OS Files
 # ===========================================
+# Mac
 .DS_Store
 .AppleDouble
 .LSOverride
@@ -90,10 +94,14 @@ htmlcov_spec/
 .VolumeIcon.icns
 .com.apple.timemachine.donotpresent
 ._*
+
+# Windows
 Thumbs.db
 ehthumbs.db
 [Dd]esktop.ini
 [Ss]ystem32/
+
+# Linux
 .directory
 
 # ===========================================
@@ -105,6 +113,7 @@ logs/
 *.tmp
 *.temp
 *.bak
+*.bak.*
 *.backup
 *.db
 *.sqlite
@@ -113,7 +122,7 @@ logs/
 *.rdb
 
 # ===========================================
-# Backups (All backup directories)
+# Backups
 # ===========================================
 /backups/
 .moai-backups/
@@ -123,12 +132,10 @@ logs/
 hooks_backup_*/
 docs_backup_*/
 
-# Documentation build output (Nextra)
-# docs/  # Allowed: Nextra documentation source
-
 # ===========================================
 # Secrets and Credentials (CRITICAL)
 # ===========================================
+# Environment files
 .env
 .env.*
 !.env.example
@@ -169,11 +176,14 @@ google-credentials.json
 firebase-key.json
 
 # API Keys and Tokens (file patterns only)
-# Note: Actual key patterns are checked by pre-commit hooks
 *_api_key.txt
 *_api_key.json
 *.credentials
 *.tokens
+
+# Credential patterns in environment files
+*_token=*
+*_secret=*
 
 # Test credentials
 test_*_credentials.json
@@ -203,19 +213,20 @@ mock_api_response_*.json
 # .moai/ Directory Management (ROOT ONLY)
 # Template .moai (src/moai_adk/templates/.moai/) is fully tracked
 # ===========================================
-
 # Exclude all .moai/* by default
 /.moai/*
 
 # Include tracked directories
 !/.moai/config/
 !/.moai/config/**
+!/.moai/project/
+!/.moai/project/**
 !/.moai/scripts/
 !/.moai/scripts/**
 !/.moai/specs/
 !/.moai/specs/**
 
-# Exclude local-only directories (explicitly)
+# Exclude local-only directories
 /.moai/cache/
 /.moai/logs/
 /.moai/docs/
@@ -236,6 +247,10 @@ mock_api_response_*.json
 /.moai/temp/
 /.moai/memory/
 /.moai/memory/**
+
+# Legacy config format (migrated to YAML in v0.32.0)
+/.moai/config/config.json
+
 # Exclude local development scripts
 /.moai/scripts/phase*.py
 /.moai/scripts/phase*.sh
@@ -266,6 +281,9 @@ out/
 dist-ssr/
 *.local
 
+# Documentation build output (Nextra)
+docs/
+
 # ===========================================
 # Deployment & CI/CD
 # ===========================================
@@ -276,13 +294,6 @@ dist-ssr/
 .gitlab-ci.yml.bak
 
 # ===========================================
-# Package Manager
-# ===========================================
-uv.lock
-.uv_cache/
-.uv-cache/
-
-# ===========================================
 # Miscellaneous
 # ===========================================
 .playwright-mcp
@@ -291,69 +302,3 @@ theme.config.tsx
 
 # Keep local development guide tracked
 !CLAUDE.local.md
-
-# Documentation build output (Nextra)
-docs/
-
-# ===========================================
-# Credential Patterns in Environment Files
-# ===========================================
-*_token=*
-*_secret=*
-# MoAI-ADK Skills backup files
-*.bak.*
-# Backup files from skills standardizer
-.moai/work/
-# FIXED: Issue #237 - Replaced overly broad *key* and *secret* patterns
-# ---------------------------------------------
-.moai/archive/
-!.moai/memory/
-# API credentials patterns
-.moai/docs/
-.moai/config/config.json
-.moai/temp/
-.moai/logs/
-.moai/scripts/__pycache__/
-.moai/backups/
-# Add to .gitignore if needed per project
-!.moai/specs/**
-.moai/scripts/*sync*.sh
-# Purpose: Essential patterns for user projects
-# Backups
-# Claude Code Local Configuration
-# MoAI Directory Management
-.moai/scripts/phase*.sh
-# Legacy config format (migrated to YAML in v0.32.0)
-# Version: 0.28.0
-# User-generated content: logs/, cache/, reports/, etc.
-.moai/reports/
-.moai/error_logs/
-!.moai/config/**
-!.moai/scripts/**
-# uv.lock
-.moai/analytics/
-# uv.lock is intentionally included for reproducible builds
-# Windows
-.moai/cache/
-# Tracked in git: config/, memory/, scripts/, specs/
-.moai/scripts/sync-*.sh
-# .moai local-only directories (user projects only)
-!.moai/scripts/
-# Environment Variables & Secrets
-# Private keys and certificates (specific patterns to avoid false positives)
-.moai/scripts/phase*.py
-# Package Distribution
-.moai/archived-skills/
-.moai/scripts/sync-*.py
-!.moai/specs/
-# Python Cache & Database
-# CI/CD
-# Build Artifacts
-# Old patterns caused false positives for: keyboard-config, hotkey, monkey-patch, etc.
-.moai/*
-# .moai local development scripts (not distributed)
-# Mac
-# Linux
-# Claude Code Skills Secrets
-!.moai/config/
-!.moai/memory/**

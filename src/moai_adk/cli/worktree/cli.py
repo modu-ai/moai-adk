@@ -164,6 +164,8 @@ def worktree() -> None:
 @click.option("--repo", type=click.Path(), default=None, help="Repository path")
 @click.option("--worktree-root", type=click.Path(), default=None, help="Worktree root directory")
 @click.option("--force", "-f", is_flag=True, help="Force creation even if worktree exists")
+@click.option("--glm", is_flag=True, help="Use GLM LLM config (copies .moai/llm-configs/glm.json)")
+@click.option("--llm-config", type=click.Path(), default=None, help="Path to custom LLM config file")
 def new_worktree(
     spec_id: str,
     branch: str | None,
@@ -171,6 +173,8 @@ def new_worktree(
     repo: str | None,
     worktree_root: str | None,
     force: bool,
+    glm: bool,
+    llm_config: str | None,
 ) -> None:
     """Create a new worktree for a SPEC.
 
@@ -180,10 +184,28 @@ def new_worktree(
         base: Base branch to create from (default: main)
         repo: Repository path (optional)
         worktree_root: Worktree root directory (optional)
+        glm: Use GLM LLM config
+        llm_config: Path to custom LLM config file
     """
     try:
         repo_path = Path(repo) if repo else Path.cwd()
         wt_root = Path(worktree_root) if worktree_root else None
+
+        # Determine LLM config path
+        llm_config_path: Path | None = None
+        if llm_config:
+            llm_config_path = Path(llm_config)
+            if not llm_config_path.exists():
+                console.print(f"[red]✗[/red] LLM config file not found: {llm_config}")
+                raise click.Abort()
+        elif glm:
+            # Use default GLM config from .moai/llm-configs/glm.json
+            glm_config_path = repo_path / ".moai" / "llm-configs" / "glm.json"
+            if glm_config_path.exists():
+                llm_config_path = glm_config_path
+            else:
+                console.print(f"[yellow]![/yellow] GLM config not found: {glm_config_path}")
+                console.print("[yellow]  Worktree will be created without LLM config[/yellow]")
 
         manager = get_manager(repo_path, wt_root)
         info = manager.create(
@@ -191,6 +213,7 @@ def new_worktree(
             branch_name=branch,
             base_branch=base,
             force=force,
+            llm_config_path=llm_config_path,
         )
 
         console.print("[green]✓[/green] Worktree created successfully")
@@ -198,6 +221,8 @@ def new_worktree(
         console.print(f"  Path:       {info.path}")
         console.print(f"  Branch:     {info.branch}")
         console.print(f"  Status:     {info.status}")
+        if llm_config_path:
+            console.print(f"  LLM Config: {llm_config_path.name}")
         console.print()
         console.print("[yellow]Next steps:[/yellow]")
         console.print(f"  moai-worktree go {spec_id}       # Go to this worktree")

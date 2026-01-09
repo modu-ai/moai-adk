@@ -1,21 +1,22 @@
 # ============================================
 # MoAI-ADK Package Distribution .gitignore
 # ============================================
-# Version: 0.28.0
+# Version: 0.33.0
+# Updated: 2026-01-10
 # Purpose: Essential patterns for user projects
 # ============================================
 
-# ---------------------------------------------
-# Build Artifacts
-# ---------------------------------------------
+# ===========================================
+# Build Artifacts & Distribution
+# ===========================================
 build/
 dist/
 *.egg-info/
 *.egg
 
-# ---------------------------------------------
-# Python Cache & Database
-# ---------------------------------------------
+# ===========================================
+# Python Cache & Bytecode
+# ===========================================
 __pycache__/
 .pytest_cache/
 *.pyc
@@ -29,9 +30,9 @@ __pycache__/
 *.rdb
 *.dbm
 
-# ---------------------------------------------
+# ===========================================
 # Virtual Environments
-# ---------------------------------------------
+# ===========================================
 venv/
 .venv/
 env/
@@ -39,9 +40,16 @@ env/
 .uv_cache/
 .uv-cache/
 
-# ---------------------------------------------
+# ===========================================
+# Test Coverage
+# ===========================================
+.coverage
+coverage.json
+htmlcov/
+
+# ===========================================
 # IDE & Editors
-# ---------------------------------------------
+# ===========================================
 .vscode/
 .idea/
 *.swp
@@ -56,9 +64,9 @@ env/
 *.suo
 .#*
 
-# ---------------------------------------------
+# ===========================================
 # OS Files
-# ---------------------------------------------
+# ===========================================
 # Mac
 .DS_Store
 .AppleDouble
@@ -78,18 +86,9 @@ ehthumbs.db
 # Linux
 .directory
 
-# ---------------------------------------------
-# Node.js (for docs/Nextra)
-# ---------------------------------------------
-node_modules/
-*.tsbuildinfo
-.tscache/
-.next/
-out/
-
-# ---------------------------------------------
+# ===========================================
 # Logs & Temporary Files
-# ---------------------------------------------
+# ===========================================
 *.log
 logs/
 *.tmp
@@ -97,17 +96,18 @@ logs/
 *.bak
 *.backup
 
-# ---------------------------------------------
-# Test Coverage
-# ---------------------------------------------
-.coverage
-coverage.json
-htmlcov/
-.pytest_cache/
+# ===========================================
+# Backups
+# ===========================================
+.moai-backups/
+*.backup/
+*-backup/
+*_backup_*/
 
-# ---------------------------------------------
-# Environment Variables & Secrets
-# ---------------------------------------------
+# ===========================================
+# Secrets and Credentials (CRITICAL)
+# ===========================================
+# Environment files
 .env
 .env.*
 !.env.example
@@ -118,9 +118,8 @@ htmlcov/
 *.pfx
 *.jks
 
-# Private keys and certificates (specific patterns to avoid false positives)
+# Private keys (specific patterns to avoid false positives)
 # FIXED: Issue #237 - Replaced overly broad *key* and *secret* patterns
-# Old patterns caused false positives for: keyboard-config, hotkey, monkey-patch, etc.
 *-key.*
 *_key.*
 *.key.*
@@ -134,51 +133,42 @@ private-key*
 *.secret.*
 secret-*.*
 
-# API credentials patterns
+# Credential patterns in environment files
 *_secret=*
 *_token=*
 
 # Cloud provider credentials
 .aws/config
 .aws/credentials
-.vercel/
-.netlify/
-.firebase/
 
-# Claude Code Skills Secrets
+# ===========================================
+# Claude Code Configuration
+# ===========================================
+.claude/settings.local.json
+.claude/settings.local.*.json
+.claude/.env.local*
+.claude/local/
+
+# Skill-specific credentials
 .claude/skills/*/.env*
 .claude/skills/*/secrets/
 .claude/skills/*/*/*secret*
 .claude/skills/*/*/*key*
 .claude/skills/*/*/*token*
 
-# ---------------------------------------------
-# Backups
-# ---------------------------------------------
-.moai-backups/
-*.backup/
-*-backup/
-*_backup_*/
-
-# ---------------------------------------------
-# Claude Code Local Configuration
-# ---------------------------------------------
-.claude/settings.local.json
-.claude/settings.local.*.json
-.claude/.env.local*
-.claude/local/
-
-# ---------------------------------------------
-# MoAI Directory Management
-# ---------------------------------------------
-# Tracked in git: config/, memory/, scripts/, specs/
-# User-generated content: logs/, cache/, reports/, etc.
-
+# ===========================================
+# .moai/ Directory Management
+# ===========================================
+# Exclude all .moai/* by default
 .moai/*
+
+# Include tracked directories
 !.moai/config/
 !.moai/config/**
 !.moai/memory/
 !.moai/memory/**
+!.moai/project/
+!.moai/project/**
 !.moai/scripts/
 !.moai/scripts/**
 !.moai/specs/
@@ -187,7 +177,7 @@ secret-*.*
 # Legacy config format (migrated to YAML in v0.32.0)
 .moai/config/config.json
 
-# .moai local-only directories (user projects only)
+# Exclude local-only directories
 .moai/cache/
 .moai/logs/
 .moai/docs/
@@ -200,7 +190,7 @@ secret-*.*
 .moai/temp/
 .moai/work/
 
-# .moai local development scripts (not distributed)
+# Exclude local development scripts
 .moai/scripts/phase*.py
 .moai/scripts/phase*.sh
 .moai/scripts/sync-*.sh
@@ -208,15 +198,27 @@ secret-*.*
 .moai/scripts/*sync*.sh
 .moai/scripts/__pycache__/
 
-# ---------------------------------------------
-# CI/CD
-# ---------------------------------------------
+# ===========================================
+# Node.js (for docs/Nextra)
+# ===========================================
+node_modules/
+*.tsbuildinfo
+.tscache/
+.next/
+out/
+
+# ===========================================
+# Build Tools & Frameworks
+# ===========================================
+.turbo/
+.nuxt/
+dist-ssr/
+
+# ===========================================
+# Deployment & CI/CD
+# ===========================================
+.vercel/
+.netlify/
+.firebase/
 .github/workflows/*.yml.bak
 .gitlab-ci.yml.bak
-
-# ---------------------------------------------
-# Package Distribution
-# ---------------------------------------------
-# uv.lock is intentionally included for reproducible builds
-# Add to .gitignore if needed per project
-# uv.lock
