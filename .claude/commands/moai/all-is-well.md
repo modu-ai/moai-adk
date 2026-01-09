@@ -1,5 +1,5 @@
 ---
-name: moai:all-is-well
+name: moai:\all-is-well
 description: "One-click automation - From SPEC generation to documentation sync"
 argument-hint: '"feature description" [--branch] [--pr]'
 allowed-tools: Task, AskUserQuestion, TodoWrite, Skill
@@ -18,7 +18,7 @@ model: inherit
 
 ---
 
-# /all-is-well - One-Click Development Automation
+# /moai:all-is-well - One-Click Development Automation
 
 Execute the complete MoAI development workflow with a single command.
 
@@ -35,17 +35,17 @@ Feature Description: $ARGUMENTS
 
 Basic usage (uses git-strategy settings):
 ```
-/all-is-well "User authentication with JWT tokens"
+/moai:all-is-well "User authentication with JWT tokens"
 ```
 
 With branch creation override:
 ```
-/all-is-well "Shopping cart feature" --branch
+/moai:all-is-well "Shopping cart feature" --branch
 ```
 
 With PR creation override:
 ```
-/all-is-well "Payment integration" --pr
+/moai:all-is-well "Payment integration" --pr
 ```
 
 ## Command Options
@@ -133,7 +133,7 @@ If any phase fails:
 ## Execution Flow
 
 ```
-START: /all-is-well "feature description"
+START: /moai:all-is-well "feature description"
 
 PARSE: Extract description and flags from $ARGUMENTS
 

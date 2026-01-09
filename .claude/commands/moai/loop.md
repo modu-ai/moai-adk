@@ -1,5 +1,5 @@
 ---
-name: moai:moai-loop
+name: moai:loop
 description: "Start Ralph-style feedback loop for automated error correction"
 argument-hint: '[--max-iterations N] [--auto-fix]'
 allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit
@@ -17,7 +17,7 @@ model: inherit
 
 ---
 
-# /moai-loop - Ralph Engine Feedback Loop
+# /moai:loop - Ralph Engine Feedback Loop
 
 Start an automated feedback loop that continuously checks for errors and guides fixes until all conditions are satisfied.
 
@@ -35,17 +35,17 @@ Arguments: $ARGUMENTS
 
 Start basic feedback loop:
 ```
-/moai-loop
+/moai:loop
 ```
 
 With iteration limit:
 ```
-/moai-loop --max-iterations 5
+/moai:loop --max-iterations 5
 ```
 
 With auto-fix enabled (applies safe fixes automatically):
 ```
-/moai-loop --auto-fix
+/moai:loop --auto-fix
 ```
 
 ## Command Options
@@ -201,7 +201,7 @@ When `--auto-fix` is enabled, safe fixes are applied automatically:
 ## Cancellation
 
 To cancel an active loop:
-- Use `/cancel-loop` command
+- Use `/moai:cancel-loop` command
 - Or set environment variable: `MOAI_LOOP_ACTIVE=false`
 - Or delete state file: `.moai/cache/.moai_loop_state.json`
 
@@ -218,7 +218,7 @@ If the loop gets stuck:
 1. Check LSP server status
 2. Verify test framework is working
 3. Review recent changes for syntax errors
-4. Use `/cancel-loop` and fix manually if needed
+4. Use `/moai:cancel-loop` and fix manually if needed
 
 ---
 

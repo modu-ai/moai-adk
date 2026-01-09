@@ -1,5 +1,5 @@
 ---
-name: moai:moai-fix
+name: moai:fix
 description: "Auto-fix current LSP errors and AST-grep warnings"
 argument-hint: '[--errors-only] [--dry-run] [file_path]'
 allowed-tools: Task, AskUserQuestion, Bash, Read, Write, Edit, Glob, Grep
@@ -17,7 +17,7 @@ model: inherit
 
 ---
 
-# /moai-fix - Automatic Error and Warning Fixer
+# /moai:fix - Automatic Error and Warning Fixer
 
 Automatically detect and fix LSP errors, linting issues, and AST-grep warnings in the current project or specific files.
 
@@ -35,22 +35,22 @@ Target: $ARGUMENTS
 
 Fix all issues in project:
 ```
-/moai-fix
+/moai:fix
 ```
 
 Fix specific file:
 ```
-/moai-fix src/auth.py
+/moai:fix src/auth.py
 ```
 
 Fix errors only (ignore warnings):
 ```
-/moai-fix --errors-only
+/moai:fix --errors-only
 ```
 
 Preview fixes without applying:
 ```
-/moai-fix --dry-run
+/moai:fix --dry-run
 ```
 
 ## Command Options
@@ -109,7 +109,7 @@ These issues require manual intervention:
 ## Execution Flow
 
 ```
-START: /moai-fix [options] [target]
+START: /moai:fix [options] [target]
 
 PHASE 1: SCAN
   |-- Run LSP diagnostics on target
@@ -176,7 +176,7 @@ Leverages existing linters via `tool_registry.py`:
 ### Dry-Run Output
 
 ```markdown
-## Dry Run: /moai-fix
+## Dry Run: /moai:fix
 
 ### Would Fix Automatically (12 issues)
 - src/auth.py: 4 issues (unused imports, formatting)
@@ -198,7 +198,7 @@ No changes made (dry run).
 ### Fix Completion Output
 
 ```markdown
-## Fix Complete: /moai-fix
+## Fix Complete: /moai:fix
 
 ### Applied Fixes (15 total)
 - Auto-fixed: 12 issues
@@ -253,9 +253,23 @@ Falls back to linter-based detection:
 
 ## Related Commands
 
-- `/moai-loop`: Continuous fix loop until all issues resolved
-- `/cancel-loop`: Stop an active fix loop
+- `/moai:loop`: Continuous fix loop until all issues resolved
+- `/moai:cancel-loop`: Stop an active fix loop
 - `/moai:2-run`: TDD implementation with integrated fixing
+
+---
+
+## Execution Directive
+
+[HARD] Execute the fix workflow immediately upon command invocation:
+
+1. Scan for issues using LSP diagnostics and AST-grep
+2. Categorize issues by fixability (auto, semi-auto, manual)
+3. Apply auto-fixes without user intervention
+4. Present semi-auto fixes for user approval via AskUserQuestion
+5. Report remaining manual issues
+
+Note: This command uses direct tool access (Edit, Write) intentionally for quick one-time fixes. For iterative fixing with full agent support, use `/moai:loop` instead.
 
 ---
 

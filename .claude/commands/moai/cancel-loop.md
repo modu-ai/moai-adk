@@ -2,9 +2,14 @@
 name: moai:cancel-loop
 description: "Cancel an active Ralph feedback loop"
 argument-hint: '[--force]'
-allowed-tools: Bash, Read, Write
+allowed-tools: Bash, Read, Write, AskUserQuestion
 model: inherit
 ---
+
+## Pre-execution Context
+
+!git status --porcelain
+!cat .moai/cache/.moai_loop_state.json 2>/dev/null || echo "No active loop"
 
 ## Essential Files
 
@@ -12,13 +17,13 @@ model: inherit
 
 ---
 
-# /cancel-loop - Cancel Active Feedback Loop
+# /moai:cancel-loop - Cancel Active Feedback Loop
 
 Stop an active Ralph Engine feedback loop and optionally preserve or discard state.
 
 ## Command Purpose
 
-Gracefully terminates an active `/moai-loop` session:
+Gracefully terminates an active `/moai:loop` session:
 1. Stops the loop iteration cycle
 2. Clears loop state file
 3. Reports final status
@@ -30,12 +35,12 @@ Arguments: $ARGUMENTS
 
 Cancel loop with confirmation:
 ```
-/cancel-loop
+/moai:cancel-loop
 ```
 
 Force cancel without confirmation:
 ```
-/cancel-loop --force
+/moai:cancel-loop --force
 ```
 
 ## Command Options
@@ -46,7 +51,7 @@ Force cancel without confirmation:
 ## Cancellation Process
 
 ```
-START: /cancel-loop
+START: /moai:cancel-loop
 
 CHECK: Is loop active?
   |
@@ -110,8 +115,8 @@ Files modified during this loop:
 
 ### Next Steps
 1. Review modified files for partial fixes
-2. Run `/moai-fix` to address remaining issues
-3. Or start fresh with `/moai-loop`
+2. Run `/moai:fix` to address remaining issues
+3. Or start fresh with `/moai:loop`
 ```
 
 ### No Active Loop
@@ -123,7 +128,7 @@ There is no active feedback loop to cancel.
 
 To start a new loop:
 ```
-/moai-loop
+/moai:loop
 ```
 ```
 
@@ -164,7 +169,7 @@ If you cancelled mid-fix:
 3. **Decide Next Action**
    - Commit working changes
    - Revert problematic changes
-   - Resume with `/moai-loop`
+   - Resume with `/moai:loop`
 
 ## Environment Variables
 
@@ -176,9 +181,9 @@ These are cleared on cancellation.
 
 ## Related Commands
 
-- `/moai-loop`: Start a new feedback loop
-- `/moai-fix`: One-time fix without loop
-- `/all-is-well`: Full workflow automation
+- `/moai:loop`: Start a new feedback loop
+- `/moai:fix`: One-time fix without loop
+- `/moai:all-is-well`: Full workflow automation
 
 ---
 
