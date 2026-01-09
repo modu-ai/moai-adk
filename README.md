@@ -35,7 +35,7 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 
 | Section                                                           | Goal                       |
 | ----------------------------------------------------------------- | -------------------------- |
-| [8. Agent Guide](#8-agent-guide-27-agents)                        | Utilize specialized agents |
+| [8. Agent Guide](#8-agent-guide-28-agents)                        | Utilize specialized agents |
 | [9. Skill Library](#9-skill-library-48-skills)                    | Explore 48 skills          |
 | [10. Composition Patterns](#10-composition-patterns-and-examples) | Real project examples      |
 | [11. TRUST 5 Quality](#11-trust-5-quality-assurance)              | Quality assurance system   |
@@ -1429,7 +1429,79 @@ moai-worktree config set <key> <value>
 
 ---
 
-## 8. Agent Guide (27 Agents)
+### 🔄 **Ralph Engine Commands** - Intelligent Code Quality Automation
+
+MoAI Ralph Engine combines LSP (Language Server Protocol), AST-grep, and autonomous feedback loops to provide intelligent code quality assurance.
+
+#### `> /moai:all-is-well` - One-Click Automation
+
+**Purpose**: Execute complete SPEC workflow in one command
+
+**When to use**: For end-to-end feature development automation
+
+```bash
+> /moai:all-is-well "implement user authentication"
+```
+
+**Workflow**:
+1. Creates SPEC document (`/moai:1-plan`)
+2. Implements with TDD (`/moai:2-run`)
+3. Syncs documentation (`/moai:3-sync`)
+
+**Options**:
+- `--branch`: Create feature branch
+- `--pr`: Create Pull Request after completion
+
+---
+
+#### `> /moai:moai-loop` - Ralph-Style Feedback Loop
+
+**Purpose**: Start autonomous error correction loop
+
+**When to use**: For iterative quality improvement
+
+```bash
+> /moai:moai-loop "fix all type errors"
+```
+
+**Features**:
+- Combines LSP diagnostics + AST-grep scanning
+- Automatically feeds results to Claude for fixes
+- Continues until completion condition is met
+- Default max iterations: 10
+
+---
+
+#### `> /moai:moai-fix` - Auto-Fix Current Issues
+
+**Purpose**: Automatically fix current LSP errors and AST-grep warnings
+
+**When to use**: Quick one-time fix for detected issues
+
+```bash
+> /moai:moai-fix
+```
+
+**What it fixes**:
+- LSP diagnostics (type errors, warnings)
+- AST-grep security warnings
+- Code quality issues
+
+---
+
+#### `> /moai:cancel-loop` - Cancel Active Loop
+
+**Purpose**: Cancel an active Ralph feedback loop
+
+**When to use**: To stop a running moai-loop
+
+```bash
+> /moai:cancel-loop
+```
+
+---
+
+## 8. Agent Guide (28 Agents)
 
 ### 🎯 Agent Selection Guide
 
