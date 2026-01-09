@@ -153,6 +153,36 @@ def update(ctx: click.Context, **kwargs) -> None:
     ctx.invoke(_update, **kwargs)
 
 
+@cli.command()
+@click.option(
+    "--port",
+    "-p",
+    type=int,
+    default=8080,
+    help="Server port number (default: 8080)",
+    show_default=True,
+)
+@click.option(
+    "--host",
+    "-h",
+    type=str,
+    default="127.0.0.1",
+    help="Server host address (default: 127.0.0.1)",
+    show_default=True,
+)
+@click.option(
+    "--open/--no-open",
+    default=True,
+    help="Open browser automatically (default: --open)",
+)
+@click.pass_context
+def web(ctx: click.Context, port: int, host: str, open: bool) -> None:
+    """Start the MoAI Web Backend server"""
+    from moai_adk.cli.commands.web import web as _web
+
+    ctx.invoke(_web, port=port, host=host, open=open)
+
+
 # statusline command (for Claude Code statusline rendering)
 @cli.command(name="statusline")
 def statusline() -> None:
