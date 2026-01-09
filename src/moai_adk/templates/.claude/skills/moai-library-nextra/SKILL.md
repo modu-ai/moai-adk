@@ -14,8 +14,10 @@ allowed-tools:
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
 aliases:
- - moai-library-nextra
+  - moai-library-nextra
 category: library
+tags: ["library", "nextra", "nextjs", "documentation", "mdx", "static-site"]
+status: "active"
 ---
 
 ## Quick Reference (30 seconds)
@@ -168,12 +170,12 @@ Example:
 ```javascript
 // pages/guides/_meta.js
 export default {
- index: "Overview",
- "getting-started": "Getting Started",
- basics: "Basic Concepts",
- advanced: "Advanced Topics",
- "---": "", // Separator
- faq: "FAQ",
+  index: "Overview",
+  "getting-started": "Getting Started",
+  basics: "Basic Concepts",
+  advanced: "Advanced Topics",
+  "---": "", // Separator
+  faq: "FAQ",
 };
 ```
 
@@ -187,14 +189,14 @@ Example:
 # My Documentation
 
 <div className="bg-blue-100 p-4">
- <h3>Important Note</h3>
- <p>You can embed React components directly!</p>
+  <h3>Important Note</h3>
+  <p>You can embed React components directly!</p>
 </div>
 
 ## Code Examples
 
 export const MyComponent = () => (
- <button onClick={() => alert("Clicked!")}>Click me</button>
+  <button onClick={() => alert("Clicked!")}>Click me</button>
 );
 
 <MyComponent />
@@ -299,13 +301,13 @@ Complementary Skills:
 - Updated version compatibility for Next.js 14/15
 - Added Turbopack support documentation
 
-2.0.0 (2025-11-23)
+  2.0.0 (2025-11-23)
 
 - Refactored with Progressive Disclosure
 - Configuration patterns highlighted
 - MDX integration guide
 
-1.0.0 (2025-11-12)
+  1.0.0 (2025-11-12)
 
 - Nextra architecture guide
 - Theme configuration
@@ -322,15 +324,18 @@ Generated with: MoAI-ADK Skill Factory
 ## Works Well With
 
 Agents:
+
 - workflow-docs - Documentation generation
 - code-frontend - Nextra implementation
 - workflow-spec - Architecture documentation
 
 Skills:
+
 - moai-docs-generation - Content generation
 - moai-workflow-docs - Documentation validation
 - moai-library-mermaid - Diagram integration
 
 Commands:
+
 - `/moai:3-sync` - Documentation deployment
 - `/moai:0-project` - Nextra project initialization

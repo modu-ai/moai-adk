@@ -5,6 +5,7 @@ version: 1.0.0
 category: "language"
 modularized: true
 user-invocable: false
+tags: ["language", "ruby", "rails", "activerecord", "hotwire", "turbo", "rspec"]
 updated: 2026-01-08
 status: "active"
 allowed-tools:
@@ -23,6 +24,7 @@ Ruby 3.3+ Development Specialist - Rails 7.2, ActiveRecord, Hotwire/Turbo, RSpec
 Auto-Triggers: `.rb` files, `Gemfile`, `Rakefile`, `config.ru`, Rails/Ruby discussions
 
 Core Capabilities:
+
 - Ruby 3.3 Features: YJIT production-ready, pattern matching, Data class, endless methods
 - Web Framework: Rails 7.2 with Turbo, Stimulus, ActiveRecord
 - Frontend: Hotwire (Turbo + Stimulus) for SPA-like experiences
@@ -35,6 +37,7 @@ Core Capabilities:
 ### Quick Patterns
 
 Rails Controller:
+
 ```ruby
 class UsersController < ApplicationController
   before_action :set_user, only: %i[show edit update destroy]
@@ -69,6 +72,7 @@ end
 ```
 
 ActiveRecord Model:
+
 ```ruby
 class User < ApplicationRecord
   has_many :posts, dependent: :destroy
@@ -87,6 +91,7 @@ end
 ```
 
 RSpec Test:
+
 ```ruby
 RSpec.describe User, type: :model do
   describe "validations" do
@@ -111,12 +116,14 @@ end
 ### Ruby 3.3 New Features
 
 YJIT (Production-Ready):
+
 - Enabled by default in Ruby 3.3
 - 15-20% performance improvement for Rails apps
 - Enable: `ruby --yjit` or `RUBY_YJIT_ENABLE=1`
 - Check status: `RubyVM::YJIT.enabled?`
 
 Pattern Matching (case/in):
+
 ```ruby
 def process_response(response)
   case response
@@ -133,6 +140,7 @@ end
 ```
 
 Data Class (Immutable Structs):
+
 ```ruby
 User = Data.define(:name, :email) do
   def greeting
@@ -146,6 +154,7 @@ user.greeting     # => "Hello, John!"
 ```
 
 Endless Method Definition:
+
 ```ruby
 class Calculator
   def add(a, b) = a + b
@@ -157,6 +166,7 @@ end
 ### Rails 7.2 Patterns
 
 Application Setup:
+
 ```ruby
 # Gemfile
 source "https://rubygems.org"
@@ -182,6 +192,7 @@ end
 ```
 
 Model with Concerns:
+
 ```ruby
 # app/models/concerns/sluggable.rb
 module Sluggable
@@ -219,6 +230,7 @@ end
 ```
 
 Service Objects:
+
 ```ruby
 class UserRegistrationService
   def initialize(user_params)
@@ -259,6 +271,7 @@ end
 ### Hotwire (Turbo + Stimulus)
 
 Turbo Frames:
+
 ```erb
 <!-- app/views/posts/index.html.erb -->
 <%= turbo_frame_tag "posts" do %>
@@ -277,6 +290,7 @@ Turbo Frames:
 ```
 
 Turbo Streams:
+
 ```ruby
 # app/controllers/posts_controller.rb
 def create
@@ -298,20 +312,21 @@ end
 ```
 
 Stimulus Controller:
+
 ```javascript
 // app/javascript/controllers/form_controller.js
-import { Controller } from "@hotwired/stimulus"
+import { Controller } from "@hotwired/stimulus";
 
 export default class extends Controller {
-  static targets = ["input", "submit"]
+  static targets = ["input", "submit"];
 
   connect() {
-    this.validate()
+    this.validate();
   }
 
   validate() {
-    const isValid = this.inputTargets.every(input => input.value.length > 0)
-    this.submitTarget.disabled = !isValid
+    const isValid = this.inputTargets.every((input) => input.value.length > 0);
+    this.submitTarget.disabled = !isValid;
   }
 }
 ```
@@ -319,6 +334,7 @@ export default class extends Controller {
 ### RSpec Testing Basics
 
 Factory Bot Patterns:
+
 ```ruby
 # spec/factories/users.rb
 FactoryBot.define do
@@ -349,6 +365,7 @@ end
 ## Advanced Implementation (10+ minutes)
 
 For comprehensive coverage including:
+
 - Production deployment patterns (Docker, Kubernetes)
 - Advanced ActiveRecord patterns (polymorphic, STI, query objects)
 - Action Cable real-time features
@@ -358,6 +375,7 @@ For comprehensive coverage including:
 - Complete RSpec testing patterns
 
 See:
+
 - [Advanced Patterns](modules/advanced-patterns.md) - Production patterns and advanced features
 - [Testing Patterns](modules/testing-patterns.md) - Complete RSpec testing guide
 
@@ -392,29 +410,34 @@ See:
 Common Issues:
 
 Ruby Version Check:
+
 ```bash
 ruby --version  # Should be 3.3+
 ruby -e "puts RubyVM::YJIT.enabled?"  # Check YJIT status
 ```
 
 Rails Version Check:
+
 ```bash
 rails --version  # Should be 7.2+
 bundle exec rails about  # Full environment info
 ```
 
 Database Connection Issues:
+
 - Check `config/database.yml` configuration
 - Ensure PostgreSQL/MySQL service is running
 - Run `rails db:create` if database doesn't exist
 
 Asset Pipeline Issues:
+
 ```bash
 rails assets:precompile
 rails assets:clobber
 ```
 
 RSpec Setup Issues:
+
 ```bash
 rails generate rspec:install
 bundle exec rspec spec/models/user_spec.rb
@@ -422,6 +445,7 @@ bundle exec rspec --format documentation
 ```
 
 Turbo/Stimulus Issues:
+
 ```bash
 rails javascript:install:esbuild
 rails turbo:install

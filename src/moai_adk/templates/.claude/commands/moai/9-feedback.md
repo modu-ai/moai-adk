@@ -2,6 +2,7 @@
 name: moai:9-feedback
 description: "Submit feedback or report issues"
 argument-hint: "[issue|suggestion|question]"
+type: local
 allowed-tools: Task, AskUserQuestion, TodoWrite
 model: haiku
 ---
@@ -40,6 +41,7 @@ Run on: `$ARGUMENTS` (Feedback type)
 /moai:9-feedback performs feedback collection through agent delegation:
 
 Execution Flow:
+
 - User Command: /moai:9-feedback [type]
 - Phase 1: Task with subagent_type "manager-quality"
   - Analyze feedback type
@@ -83,12 +85,14 @@ This command uses agent execution patterns defined in CLAUDE.md (lines 96-120).
 Command implements simple sequential execution through 2 phases:
 
 Phase Flow:
+
 - Phase 1: Feedback Collection (manager-quality analyzes type and collects details)
 - Phase 2: GitHub Issue Creation (manager-quality creates issue with collected information)
 
 Each phase receives outputs from previous phase as context.
 
 WHY: Sequential execution ensures complete feedback capture before submission
+
 - Phase 2 requires validated feedback details from Phase 1
 - Issue creation requires all user input to be collected
 
@@ -99,6 +103,7 @@ IMPACT: Skipping Phase 1 would create incomplete GitHub issues
 Not applicable - simple linear workflow
 
 WHY: Feedback workflow has minimal complexity
+
 - Only one agent (manager-quality) handles entire process
 - Single feedback submission at a time
 - No independent operations to parallelize
@@ -110,6 +115,7 @@ IMPACT: Parallel execution unnecessary for single-agent linear workflow
 Not applicable - command completes in single execution
 
 WHY: Feedback submission is fast atomic operation
+
 - Typical execution completes in under 30 seconds
 - GitHub API calls are atomic and fast
 - No long-running processes requiring checkpoints
@@ -226,18 +232,22 @@ Before considering command execution complete, verify all requirements:
 ## Quick Reference
 
 Scenario: Report bug
+
 - Entry Point: /moai:9-feedback issue
 - Expected Outcome: GitHub issue created with bug label
 
 Scenario: Request feature
+
 - Entry Point: /moai:9-feedback suggestion
 - Expected Outcome: GitHub issue created with enhancement label
 
 Scenario: Ask question
+
 - Entry Point: /moai:9-feedback question
 - Expected Outcome: GitHub issue created with question label
 
 Scenario: General feedback
+
 - Entry Point: /moai:9-feedback
 - Expected Outcome: Interactive feedback collection
 
@@ -296,6 +306,7 @@ WHY: Guided choices help users continue productive workflows
 IMPACT: Abrupt completion requires user to determine next actions
 
 Next Step Options:
+
 - Continue Development: Return to current development workflow
 - Submit Additional Feedback: Report another issue or suggestion
 - View Issue: Open created GitHub issue in browser

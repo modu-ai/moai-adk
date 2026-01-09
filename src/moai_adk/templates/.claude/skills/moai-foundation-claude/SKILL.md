@@ -14,7 +14,23 @@ allowed-tools:
   - Glob
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
-tags: ['foundation', 'claude-code', 'skills', 'sub-agents', 'plugins', 'slash-commands', 'hooks', 'memory', 'settings', 'sandboxing', 'headless', 'agent-patterns']
+tags:
+  [
+    "foundation",
+    "claude-code",
+    "skills",
+    "sub-agents",
+    "plugins",
+    "slash-commands",
+    "hooks",
+    "memory",
+    "settings",
+    "sandboxing",
+    "headless",
+    "agent-patterns",
+  ]
+updated: 2026-01-10
+status: "active"
 ---
 
 # Claude Code Authoring Kit
@@ -24,18 +40,21 @@ Comprehensive reference for Claude Code Skills, sub-agents, plugins, slash comma
 ## Documentation Index
 
 Core Features:
+
 - [Skills Guide](reference/claude-code-skills-official.md) - Agent Skills creation and management
 - [Sub-agents Guide](reference/claude-code-sub-agents-official.md) - Sub-agent development and delegation
 - [Plugins Guide](reference/claude-code-plugins-official.md) - Plugin architecture and distribution
 - [Slash Commands](reference/claude-code-custom-slash-commands-official.md) - Command creation and orchestration
 
 Configuration:
+
 - [Settings](reference/claude-code-settings-official.md) - Configuration hierarchy and management
 - [Memory](reference/claude-code-memory-official.md) - Context and knowledge persistence
 - [Hooks](reference/claude-code-hooks-official.md) - Event-driven automation
 - [IAM & Permissions](reference/claude-code-iam-official.md) - Access control and security
 
 Advanced Features:
+
 - [Sandboxing](reference/claude-code-sandboxing-official.md) - Security isolation
 - [Headless Mode](reference/claude-code-headless-official.md) - Programmatic and CI/CD usage
 - [Dev Containers](reference/claude-code-devcontainers-official.md) - Containerized environments
@@ -55,7 +74,7 @@ Commands: User-invoked via /command. Parameters: $ARGUMENTS, $1, $2. File refs: 
 
 Hooks: Events in settings.json. PreToolUse, PostToolUse, SessionStart, SessionEnd, PreCompact, Notification.
 
-Memory: CLAUDE.md files + .claude/rules/*.md. Enterprise to Project to User hierarchy. @import syntax.
+Memory: CLAUDE.md files + .claude/rules/\*.md. Enterprise to Project to User hierarchy. @import syntax.
 
 Settings: 6-level hierarchy. Managed to file-managed to CLI to local to shared to user.
 
@@ -116,7 +135,6 @@ description: When to invoke. Use PROACTIVELY for auto-delegation.
 tools: Read, Write, Bash
 model: sonnet
 ---
-
 System prompt here.
 ```
 
@@ -148,7 +166,7 @@ my-plugin/
   "name": "my-plugin",
   "description": "Plugin purpose",
   "version": "1.0.0",
-  "author": {"name": "Author"}
+  "author": { "name": "Author" }
 }
 ```
 
@@ -241,4 +259,3 @@ v4.0.0 (2026-01-06): Added plugins, sandboxing, headless, statusline, dev contai
 v3.0.0 (2025-12-06): Added progressive disclosure, sub-agent details, integration patterns
 
 v2.0.0 (2025-11-26): Initial comprehensive release
-

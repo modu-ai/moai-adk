@@ -5,6 +5,17 @@ version: 1.0.0
 category: "language"
 modularized: true
 user-invocable: false
+tags:
+  [
+    "language",
+    "cpp",
+    "c++23",
+    "c++20",
+    "cmake",
+    "raii",
+    "smart-pointers",
+    "concepts",
+  ]
 updated: 2026-01-08
 status: "active"
 allowed-tools:
@@ -23,6 +34,7 @@ Modern C++ (C++23/C++20) Development Specialist - RAII, smart pointers, concepts
 Auto-Triggers: `.cpp`, `.hpp`, `.h`, `CMakeLists.txt`, `vcpkg.json`, `conanfile.txt`, modern C++ discussions
 
 Core Capabilities:
+
 - C++23 Features: std::expected, std::print, std::generator, deducing this
 - C++20 Features: Concepts, Ranges, Modules, Coroutines, std::format
 - Memory Safety: RAII, Rule of 5, smart pointers (unique_ptr, shared_ptr, weak_ptr)
@@ -35,6 +47,7 @@ Core Capabilities:
 ### Quick Patterns
 
 Smart Pointer Factory:
+
 ```cpp
 #include <memory>
 
@@ -52,6 +65,7 @@ auto widget = Widget::create(42);
 ```
 
 Concepts Constraint:
+
 ```cpp
 #include <concepts>
 
@@ -65,6 +79,7 @@ auto square(T value) -> T {
 ```
 
 Ranges Pipeline:
+
 ```cpp
 #include <ranges>
 #include <vector>
@@ -82,6 +97,7 @@ auto result = std::views::iota(1, 100)
 ### C++23 New Features
 
 std::expected for Error Handling:
+
 ```cpp
 #include <expected>
 #include <string>
@@ -109,6 +125,7 @@ if (result) {
 ```
 
 std::print for Type-Safe Output:
+
 ```cpp
 #include <print>
 
@@ -120,6 +137,7 @@ int main() {
 ```
 
 Deducing This (Explicit Object Parameter):
+
 ```cpp
 class Builder {
     std::string data_;
@@ -139,6 +157,7 @@ auto result = Builder{}.append("Hello").append(" World").build();
 ### C++20 Features
 
 Concepts and Constraints:
+
 ```cpp
 #include <concepts>
 
@@ -161,6 +180,7 @@ void process(std::integral auto value) {
 ```
 
 Modules (C++20):
+
 ```cpp
 // math.cppm - Module interface
 export module math;
@@ -183,6 +203,7 @@ int main() {
 ```
 
 Ranges Library:
+
 ```cpp
 #include <ranges>
 #include <vector>
@@ -208,6 +229,7 @@ void process_people(std::vector<Person>& people) {
 ### RAII and Resource Management
 
 Rule of Five:
+
 ```cpp
 class Resource {
     int* data_;
@@ -253,6 +275,7 @@ public:
 ```
 
 Smart Pointer Patterns:
+
 ```cpp
 #include <memory>
 
@@ -281,6 +304,7 @@ public:
 ### CMake Modern Patterns
 
 CMakeLists.txt (C++23 Project):
+
 ```cmake
 cmake_minimum_required(VERSION 3.28)
 project(MyProject VERSION 1.0.0 LANGUAGES CXX)
@@ -321,6 +345,7 @@ gtest_discover_tests(mylib_tests)
 ### Concurrency
 
 std::jthread and Stop Tokens:
+
 ```cpp
 #include <thread>
 #include <stop_token>
@@ -339,6 +364,7 @@ int main() {
 ```
 
 Synchronization Primitives:
+
 ```cpp
 #include <latch>
 #include <barrier>
@@ -366,6 +392,7 @@ void limited_resource() {
 ## Advanced Implementation (10+ minutes)
 
 For comprehensive coverage including:
+
 - Template metaprogramming patterns
 - Advanced concurrency (thread pools, lock-free data structures)
 - Memory management and custom allocators
@@ -374,6 +401,7 @@ For comprehensive coverage including:
 - Extended testing with Google Test and Catch2
 
 See:
+
 - [Advanced Patterns](modules/advanced-patterns.md) - Complete advanced patterns guide
 
 ---
@@ -405,6 +433,7 @@ See:
 ## Troubleshooting
 
 Version Check:
+
 ```bash
 g++ --version  # GCC 13+ for C++23
 clang++ --version  # Clang 17+ for C++23
@@ -412,12 +441,14 @@ cmake --version  # CMake 3.28+
 ```
 
 Common Compilation Flags:
+
 ```bash
 g++ -std=c++23 -Wall -Wextra -Wpedantic -O2 main.cpp -o main
 g++ -std=c++23 -fsanitize=address,undefined -g main.cpp -o main
 ```
 
 vcpkg Integration:
+
 ```bash
 git clone https://github.com/microsoft/vcpkg
 ./vcpkg/bootstrap-vcpkg.sh

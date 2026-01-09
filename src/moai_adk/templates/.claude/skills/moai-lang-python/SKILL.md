@@ -5,6 +5,8 @@ version: 1.0.0
 category: "language"
 modularized: false
 user-invocable: false
+tags:
+  ["language", "python", "fastapi", "django", "pytest", "async", "data-science"]
 updated: 2026-01-08
 status: "active"
 allowed-tools:
@@ -23,6 +25,7 @@ Python 3.13+ Development Specialist - FastAPI, Django, async patterns, pytest, a
 Auto-Triggers: `.py` files, `pyproject.toml`, `requirements.txt`, `pytest.ini`, FastAPI/Django discussions
 
 Core Capabilities:
+
 - Python 3.13 Features: JIT compiler (PEP 744), GIL-free mode (PEP 703), pattern matching
 - Web Frameworks: FastAPI 0.115+, Django 5.2 LTS
 - Data Validation: Pydantic v2.9 with model_validate patterns
@@ -36,6 +39,7 @@ Core Capabilities:
 ### Quick Patterns
 
 FastAPI Endpoint:
+
 ```python
 from fastapi import FastAPI, Depends
 from pydantic import BaseModel
@@ -52,6 +56,7 @@ async def create_user(user: UserCreate) -> User:
 ```
 
 Pydantic v2.9 Validation:
+
 ```python
 from pydantic import BaseModel, ConfigDict
 
@@ -67,6 +72,7 @@ user = User.model_validate_json(json_data)  # from JSON
 ```
 
 pytest Async Test:
+
 ```python
 import pytest
 
@@ -83,6 +89,7 @@ async def test_create_user(async_client):
 ### Python 3.13 New Features
 
 JIT Compiler (PEP 744):
+
 - Experimental feature, disabled by default
 - Enable: `PYTHON_JIT=1` environment variable
 - Build option: `--enable-experimental-jit`
@@ -90,6 +97,7 @@ JIT Compiler (PEP 744):
 - Copy-and-patch JIT that translates specialized bytecode to machine code
 
 GIL-Free Mode (PEP 703):
+
 - Experimental free-threaded build (python3.13t)
 - Allows true parallel thread execution
 - Available in official Windows/macOS installers
@@ -97,6 +105,7 @@ GIL-Free Mode (PEP 703):
 - Not recommended for production yet
 
 Pattern Matching (match/case):
+
 ```python
 def process_response(response: dict) -> str:
     match response:
@@ -113,6 +122,7 @@ def process_response(response: dict) -> str:
 ### FastAPI 0.115+ Patterns
 
 Async Dependency Injection:
+
 ```python
 from fastapi import FastAPI, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -142,6 +152,7 @@ async def get_user(
 ```
 
 Class-Based Dependencies:
+
 ```python
 from fastapi import Depends
 
@@ -159,6 +170,7 @@ async def list_items(pagination: Paginator = Depends()) -> list[Item]:
 ### Django 5.2 LTS Features
 
 Composite Primary Keys:
+
 ```python
 from django.db import models
 
@@ -172,6 +184,7 @@ class OrderItem(models.Model):
 ```
 
 URL Reverse with Query Parameters:
+
 ```python
 from django.urls import reverse
 
@@ -180,6 +193,7 @@ url = reverse("search", query={"q": "django", "page": 1}, fragment="results")
 ```
 
 Automatic Model Imports in Shell:
+
 ```bash
 python manage.py shell
 # Models from all installed apps are automatically imported
@@ -188,6 +202,7 @@ python manage.py shell
 ### Pydantic v2.9 Deep Patterns
 
 Reusable Validators with Annotated:
+
 ```python
 from typing import Annotated
 from pydantic import AfterValidator, BaseModel
@@ -205,6 +220,7 @@ class Product(BaseModel):
 ```
 
 Model Validator for Cross-Field Validation:
+
 ```python
 from pydantic import BaseModel, model_validator
 from typing import Self
@@ -221,6 +237,7 @@ class DateRange(BaseModel):
 ```
 
 ConfigDict Best Practices:
+
 ```python
 from pydantic import BaseModel, ConfigDict
 
@@ -236,6 +253,7 @@ class BaseSchema(BaseModel):
 ### SQLAlchemy 2.0 Async Patterns
 
 Engine and Session Setup:
+
 ```python
 from sqlalchemy.ext.asyncio import (
     create_async_engine,
@@ -257,6 +275,7 @@ async_session = async_sessionmaker(
 ```
 
 Repository Pattern:
+
 ```python
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -280,6 +299,7 @@ class UserRepository:
 ```
 
 Streaming Large Results:
+
 ```python
 async def stream_users(db: AsyncSession):
     result = await db.stream(select(User))
@@ -290,6 +310,7 @@ async def stream_users(db: AsyncSession):
 ### pytest Advanced Patterns
 
 Async Fixtures with pytest-asyncio:
+
 ```python
 import pytest
 import pytest_asyncio
@@ -309,6 +330,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 ```
 
 Parametrized Tests:
+
 ```python
 @pytest.mark.parametrize(
     "input_data,expected_status",
@@ -325,6 +347,7 @@ async def test_create_user(async_client, input_data, expected_status):
 ```
 
 Fixture Factories:
+
 ```python
 @pytest.fixture
 def user_factory():
@@ -340,6 +363,7 @@ def user_factory():
 ### Type Hints Modern Patterns
 
 Protocol for Structural Typing:
+
 ```python
 from typing import Protocol, runtime_checkable
 
@@ -351,6 +375,7 @@ class Repository(Protocol[T]):
 ```
 
 ParamSpec for Decorators:
+
 ```python
 from typing import ParamSpec, TypeVar, Callable
 from functools import wraps
@@ -375,6 +400,7 @@ def retry(times: int = 3) -> Callable[[Callable[P, R]], Callable[P, R]]:
 ### Package Management
 
 pyproject.toml (Poetry):
+
 ```toml
 [tool.poetry]
 name = "my-project"
@@ -400,6 +426,7 @@ asyncio_mode = "auto"
 ```
 
 uv (Fast Package Manager):
+
 ```bash
 # Install uv
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -419,6 +446,7 @@ uv add fastapi
 ## Advanced Implementation (10+ minutes)
 
 For comprehensive coverage including:
+
 - Production deployment patterns (Docker, Kubernetes)
 - Advanced async patterns (task groups, semaphores)
 - Data science integration (numpy, pandas, polars)
@@ -427,6 +455,7 @@ For comprehensive coverage including:
 - CI/CD integration patterns
 
 See:
+
 - [reference.md](reference.md) - Complete reference documentation
 - [examples.md](examples.md) - Production-ready code examples
 
@@ -462,16 +491,19 @@ See:
 Common Issues:
 
 Python Version Check:
+
 ```bash
 python --version  # Should be 3.13+
 python -c "import sys; print(sys.version_info)"
 ```
 
 Async Session Detached Error:
+
 - Solution: Set `expire_on_commit=False` in session config
 - Or: Use `await session.refresh(obj)` after commit
 
 pytest asyncio Mode Warning:
+
 ```toml
 # pyproject.toml
 [tool.pytest.ini_options]
@@ -480,6 +512,7 @@ asyncio_default_fixture_loop_scope = "function"
 ```
 
 Pydantic v2 Migration:
+
 - `parse_obj()` is now `model_validate()`
 - `parse_raw()` is now `model_validate_json()`
 - `from_orm()` requires `from_attributes=True` in ConfigDict

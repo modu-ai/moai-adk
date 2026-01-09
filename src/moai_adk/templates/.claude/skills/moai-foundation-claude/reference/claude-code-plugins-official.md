@@ -13,12 +13,14 @@ Plugins are reusable extensions that bundle Claude Code configurations for distr
 ## Plugin vs Standalone Configuration
 
 Standalone Configuration (`.claude/` directory):
+
 - Scope: Single project only
 - Sharing: Manual copy or git submodules
 - Updates: Manual synchronization
 - Best for: Project-specific customizations
 
 Plugin Configuration:
+
 - Scope: Reusable across multiple projects
 - Sharing: Installable via marketplaces or git URLs
 - Updates: Automatic or manual via plugin manager
@@ -75,6 +77,7 @@ The plugin manifest defines metadata and component locations.
 - keywords: Array of discovery tags for finding plugins in marketplaces
 
 Example:
+
 ```json
 {
   "keywords": ["deployment", "ci-cd", "automation", "devops"]
@@ -116,6 +119,29 @@ commands/
 
 Plugin commands use the namespace prefix pattern: /plugin-name:command-name
 
+Command File Structure:
+
+```markdown
+---
+description: Command description for discovery
+---
+
+Command instructions and prompt content.
+
+Arguments: $ARGUMENTS (all), $1, $2 (positional)
+File references: @path/to/file.md
+```
+
+Frontmatter Fields:
+
+- description (required): Command purpose for help display
+
+Argument Handling:
+
+- `$ARGUMENTS` - All arguments as single string
+- `$1`, `$2`, `$3` - Individual positional arguments
+- `@file.md` - File content injection
+
 ### Agents
 
 Custom sub-agents with markdown definitions:
@@ -126,7 +152,40 @@ agents/
 - security-analyst.md
 ```
 
-Each agent file follows the standard sub-agent format with YAML frontmatter.
+Agent File Structure:
+
+```markdown
+---
+name: my-agent
+description: Agent purpose and capabilities
+tools: Read, Write, Edit, Grep, Glob, Bash
+model: sonnet
+permissionMode: default
+skills:
+  - skill-name-one
+  - skill-name-two
+---
+
+Agent system prompt and instructions.
+```
+
+Frontmatter Fields:
+
+- name (required): Agent identifier
+- description: Agent purpose
+- tools: Comma-separated tool list
+- model: sonnet, opus, haiku, inherit
+- permissionMode: default, bypassPermissions, plan, passthrough
+- skills: Array of skill names to load
+
+Available Tools:
+
+- Read, Write, Edit - File operations
+- Grep, Glob - Search operations
+- Bash - Command execution
+- WebFetch, WebSearch - Web access
+- Task - Sub-agent delegation
+- TodoWrite - Task management
 
 ### Skills
 
@@ -164,6 +223,21 @@ Hook definitions in hooks/hooks.json:
 
 Use ${CLAUDE_PLUGIN_ROOT} for absolute paths within the plugin.
 
+Available Hook Events:
+
+- PreToolUse, PostToolUse, PostToolUseFailure - Tool execution lifecycle
+- PermissionRequest, UserPromptSubmit, Notification, Stop - User interaction
+- SubagentStart, SubagentStop - Sub-agent lifecycle
+- SessionStart, SessionEnd, PreCompact - Session lifecycle
+
+Hook Types:
+
+- command: Execute bash command
+- prompt: Send prompt to LLM
+- agent: Invoke custom agent
+
+Matcher Patterns: Exact name ("Write"), wildcard ("\*"), tool-specific filtering
+
 ### MCP Servers
 
 MCP server configurations in .mcp.json:
@@ -182,6 +256,33 @@ MCP server configurations in .mcp.json:
 ### LSP Servers
 
 Language server configurations in .lsp.json for code intelligence features.
+
+LSP Server Structure:
+
+```json
+{
+  "lspServers": {
+    "python": {
+      "command": "pylsp",
+      "args": [],
+      "extensionToLanguage": {
+        ".py": "python",
+        ".pyi": "python"
+      },
+      "env": {
+        "PYTHONPATH": "${CLAUDE_PROJECT_DIR}"
+      }
+    }
+  }
+}
+```
+
+Required Fields:
+
+- command: LSP server executable
+- extensionToLanguage: File extension to language mapping
+
+Optional Fields: args, env, transport, initializationOptions, settings, workspaceFolder, startupTimeout, shutdownTimeout, restartOnCrash, maxRestarts, loggingConfig
 
 ## Installation Scopes
 
@@ -238,6 +339,7 @@ The plugin manager provides four navigation tabs:
 - Errors: View and troubleshoot plugin-related errors
 
 Navigation Controls:
+
 - Tab key: Cycle forward through tabs
 - Shift+Tab: Cycle backward through tabs
 - Arrow keys: Navigate within tab content
@@ -276,9 +378,9 @@ Validate: /plugin validate . (in plugin directory)
 
 The following name patterns are reserved and cannot be used:
 
-- claude-code-*
-- anthropic-*
-- official-*
+- claude-code-\*
+- anthropic-\*
+- official-\*
 
 ## Environment Variables in Plugins
 
@@ -287,6 +389,7 @@ Use these variables for path resolution:
 - ${CLAUDE_PLUGIN_ROOT}: Absolute path to plugin installation directory
 
 Example usage:
+
 ```json
 {
   "command": "${CLAUDE_PLUGIN_ROOT}/scripts/my-script.sh"
@@ -340,6 +443,7 @@ Install from local path for testing:
 ### Step 6: Distribute
 
 Push to git repository and share via:
+
 - GitHub repository URL
 - Custom marketplace
 - Direct git URL
@@ -361,6 +465,7 @@ Push to git repository and share via:
 ### Via Direct Git URL
 
 Share the full git URL including protocol:
+
 - HTTPS: https://github.com/owner/repo.git
 - SSH: git@github.com:owner/repo.git
 
@@ -423,6 +528,109 @@ Use ${CLAUDE_PLUGIN_ROOT} for absolute paths
 Verify .mcp.json syntax
 Check server command exists
 Review server logs for errors
+
+## Development Workflow
+
+### Local Development
+
+```bash
+# Test single plugin
+claude --plugin-dir ./my-plugin
+
+# Test multiple plugins
+claude --plugin-dir ./plugin-one --plugin-dir ./plugin-two
+```
+
+### Testing Components
+
+- Commands: `/plugin-name:command-name` invocation
+- Agents: `/agents` to list, then invoke by name
+- Skills: Ask questions relevant to skill domain
+- Hooks: Trigger events and check debug logs
+
+### Debugging
+
+```bash
+# Enable debug mode
+claude --debug
+
+# Validate plugin structure
+claude plugin validate
+
+# View plugin errors
+/plugin errors
+```
+
+## Creating Custom Marketplaces
+
+### marketplace.json Structure
+
+```json
+{
+  "name": "my-marketplace",
+  "owner": {
+    "name": "Organization Name",
+    "email": "contact@example.com"
+  },
+  "metadata": {
+    "description": "Custom plugins for our team",
+    "version": "1.0.0",
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "my-plugin",
+      "source": "./plugins/my-plugin",
+      "description": "Plugin description",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": ["automation", "workflow"]
+    }
+  ]
+}
+```
+
+### Required Fields
+
+- name: Marketplace identifier in kebab-case
+- owner: Object with name (required) and email (optional)
+- plugins: Array of plugin entries
+
+### Plugin Source Types
+
+- Relative paths: `"source": "./plugins/my-plugin"`
+- GitHub: `{"source": "github", "repo": "owner/repo"}`
+- Git URL: `{"source": "url", "url": "https://gitlab.com/org/plugin.git"}`
+
+### Reserved Marketplace Names
+
+Cannot be used:
+
+- claude-code-marketplace, claude-code-plugins, claude-plugins-official
+- anthropic-marketplace, anthropic-plugins
+- agent-skills, life-sciences
+
+### Marketplace Hosting Options
+
+- GitHub repository (recommended): Users add via `/plugin marketplace add owner/repo`
+- Other Git services: Full URL with `/plugin marketplace add https://...`
+- Local testing: `/plugin marketplace add ./path/to/marketplace`
+
+## Security Best Practices
+
+### Path Security
+
+- Always use `${CLAUDE_PLUGIN_ROOT}` for plugin-relative paths
+- Never hardcode absolute paths
+- Validate all inputs in hook scripts
+- Prevent path traversal attacks
+
+### Permission Guidelines
+
+- Apply least privilege for tool access
+- Limit agent permissions to required operations
+- Validate hook command inputs
+- Sanitize environment variables
 
 ## Related Reference Files
 

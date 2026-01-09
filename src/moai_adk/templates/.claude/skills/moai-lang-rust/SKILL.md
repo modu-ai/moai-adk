@@ -5,6 +5,7 @@ version: 1.1.0
 category: "language"
 modularized: false
 user-invocable: false
+tags: ["language", "rust", "axum", "tokio", "sqlx", "serde", "wasm", "cargo"]
 updated: 2026-01-08
 status: "active"
 allowed-tools:
@@ -22,6 +23,7 @@ Rust 1.92+ Development Specialist with deep patterns for high-performance, memor
 Auto-Triggers: `.rs`, `Cargo.toml`, async/await, Tokio, Axum, SQLx, serde, lifetimes, traits
 
 Core Use Cases:
+
 - High-performance REST APIs and microservices
 - Memory-safe concurrent systems
 - CLI tools and system utilities
@@ -31,6 +33,7 @@ Core Use Cases:
 Quick Patterns:
 
 Axum REST API:
+
 ```rust
 let app = Router::new()
     .route("/api/users/:id", get(get_user))
@@ -40,6 +43,7 @@ axum::serve(listener, app).await?;
 ```
 
 Async Handler with SQLx:
+
 ```rust
 async fn get_user(
     State(state): State<AppState>,
@@ -59,6 +63,7 @@ async fn get_user(
 ### Rust 1.92 Features
 
 Modern Rust Features:
+
 - Rust 2024 Edition available (released with Rust 1.85)
 - Async traits in stable (no more async-trait crate needed)
 - Const generics for compile-time array sizing
@@ -66,6 +71,7 @@ Modern Rust Features:
 - Improved borrow checker with polonius
 
 Async Traits (Stable):
+
 ```rust
 trait AsyncRepository {
     async fn get(&self, id: i64) -> Result<User, Error>;
@@ -81,6 +87,7 @@ impl AsyncRepository for PostgresRepository {
 ```
 
 Let-Else Pattern:
+
 ```rust
 fn get_user(id: Option<i64>) -> Result<User, Error> {
     let Some(id) = id else { return Err(Error::MissingId); };
@@ -92,6 +99,7 @@ fn get_user(id: Option<i64>) -> Result<User, Error> {
 ### Web Framework: Axum 0.8
 
 Installation:
+
 ```toml
 [dependencies]
 axum = "0.8"
@@ -100,6 +108,7 @@ tower-http = { version = "0.6", features = ["cors", "trace"] }
 ```
 
 Complete API Setup:
+
 ```rust
 use axum::{extract::{Path, State, Query}, routing::{get, post}, Router, Json};
 use tower_http::cors::CorsLayer;
@@ -126,6 +135,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 
 Handler Patterns:
+
 ```rust
 async fn list_users(
     State(state): State<AppState>,
@@ -142,6 +152,7 @@ async fn list_users(
 ### Async Runtime: Tokio 1.48
 
 Task Spawning and Channels:
+
 ```rust
 use tokio::sync::mpsc;
 
@@ -165,6 +176,7 @@ async fn timeout_operation() -> Result<Data, Error> {
 ### Database: SQLx 0.8
 
 Type-Safe Queries:
+
 ```rust
 #[derive(Debug, sqlx::FromRow)]
 struct User { id: i64, name: String, email: String }
@@ -203,6 +215,7 @@ struct User {
 ### Error Handling
 
 thiserror:
+
 ```rust
 use thiserror::Error;
 
@@ -281,6 +294,7 @@ mod tests {
 ### Performance Optimization
 
 Release Build:
+
 ```toml
 [profile.release]
 lto = true
@@ -292,6 +306,7 @@ strip = true
 ### Deployment
 
 Minimal Container (5-15MB):
+
 ```dockerfile
 FROM rust:1.92-alpine AS builder
 WORKDIR /app
@@ -309,6 +324,7 @@ CMD ["/app"]
 ### Concurrency
 
 Rate-Limited Operations:
+
 ```rust
 use tokio::sync::Semaphore;
 
@@ -330,6 +346,7 @@ async fn rate_limited(items: Vec<String>, max: usize) -> Vec<String> {
 ## Context7 Integration
 
 Library Documentation Access:
+
 - `/rust-lang/rust` - Rust language and stdlib
 - `/tokio-rs/tokio` - Tokio async runtime
 - `/tokio-rs/axum` - Axum web framework
@@ -352,12 +369,14 @@ Library Documentation Access:
 ## Troubleshooting
 
 Common Issues:
+
 - Cargo errors: `cargo clean && cargo build`
 - Version check: `rustc --version && cargo --version`
 - Dependency issues: `cargo update && cargo tree`
 - Compile-time SQL check: `cargo sqlx prepare`
 
 Performance Characteristics:
+
 - Startup Time: 50-100ms
 - Memory Usage: 5-20MB base
 - Throughput: 100k-200k req/s
