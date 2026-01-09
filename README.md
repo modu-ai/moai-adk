@@ -33,22 +33,21 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 
 ### PART C: Advanced Learning (2-3 hours)
 
-| Section                                                           | Goal                       |
-| ----------------------------------------------------------------- | -------------------------- |
-| [8. Agent Guide](#8-agent-guide-28-agents)                        | Utilize specialized agents |
-| [9. Skill Library](#9-skill-library-48-skills)                    | Explore 48 skills          |
-| [10. Composition Patterns](#10-composition-patterns-and-examples) | Real project examples      |
-| [11. TRUST 5 Quality](#11-trust-5-quality-assurance)              | Quality assurance system   |
+| Section                                                           | Goal                                   |
+| ----------------------------------------------------------------- | -------------------------------------- |
+| [8. Agent Guide](#8-agent-guide-28-agents)                        | Utilize specialized agents             |
+| [9. Skill Library](#9-skill-library-48-skills)                    | Explore 48 skills                      |
+| [10. Composition Patterns](#10-composition-patterns-and-examples) | Real project examples                  |
+| [11. TRUST 5 Quality](#11-trust-5-quality-assurance)              | Quality assurance system               |
 | [12. Advanced Features](#12-advanced-features)                    | Git Worktree & enhanced log management |
 
 ### PART D: Advanced & Reference (As Needed)
 
-| Section                                                                                    | Purpose                   |
-| ------------------------------------------------------------------------------------------- | ------------------------- |
-| [13. Advanced Configuration](#13-advanced-configuration)                                  | Project customization     |
-| [14. FAQ & Quick Reference](#14-faq--quick-reference)                                      | Common questions          |
-| [15. 📸 ai-nano-banana Agent Usage Guide](#15---ai-nano-banana-agent-usage-guide)          | Image generation guide    |
-| [16. Additional Resources](#16-additional-resources)                                        | Support & information     |
+| Section                                                  | Purpose               |
+| -------------------------------------------------------- | --------------------- |
+| [13. Advanced Configuration](#13-advanced-configuration) | Project customization |
+| [14. FAQ & Quick Reference](#14-faq--quick-reference)    | Common questions      |
+| [15. Additional Resources](#15-additional-resources)     | Support & information |
 
 ---
 
@@ -56,7 +55,7 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 
 ### 🗿 What is MoAI-ADK?
 
-**MoAI-ADK** (Agentic Development Kit) is a next-generation development framework powered by AI agents. It combines **SPEC-First development methodology**, **TDD** (Test-Driven Development), and **28 specialized AI agents** to deliver a complete and transparent development lifecycle.
+**MoAI-ADK** (Agentic Development Kit) is a next-generation development framework powered by AI agents. It combines **SPEC-First development methodology**, **TDD** (Test-Driven Development), and **20 specialized AI agents** to deliver a complete and transparent development lifecycle.
 
 ### ✨ Why Use MoAI-ADK?
 
@@ -80,15 +79,15 @@ MoAI-ADK solutions:
 
 ![5 Core Features](./assets/images/readme/feature-overview-grid.png)
 
-| Feature                | Description                                          | Quantitative Impact                                                                                                                                                                                                      |
-| ---------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **SPEC-First**         | All development starts with clear specifications     | **90% reduction** in rework from requirement changes<br/>Clear SPEC eliminates developer-planner misunderstandings                                                                                                       |
-| **TDD Enforcement**    | Automated Red-Green-Refactor cycle                   | **70% reduction** in bugs (with 85%+ coverage)<br/>**15% shorter** total development time including test writing                                                                                                         |
-| **AI Orchestration**   | Mr.Alfred commands 28 specialized AI agents (5-Tier) | **Average token savings**: 5,000 tokens per session (Conditional Auto-load)<br/>**Simple tasks**: 0 tokens (Quick Reference)<br/>**Complex tasks**: 8,470 tokens (Auto-load skill)<br/>**60-70% time savings** vs manual |
-| **Multilingual Routing** | Automatic agent selection in 4 languages (EN/KO/JA/ZH) | **100% language coverage** for agent invocation<br/>XLT (Cross-Lingual Thought) protocol for semantic matching<br/>Works with Korean, Japanese, Chinese requests                                                          |
-| **AST-Grep Integration** | Structural code search, security scanning, and refactoring | **Pattern-based code analysis** (not text-based regex)<br/>Support for **40+ programming languages**<br/>**Automatic security scanning** on code changes<br/>**Large-scale refactoring** with expert-refactoring agent |
-| **Auto Documentation** | Automatic doc sync on code changes (`> /moai:3-sync`) | **100% documentation freshness**<br/>Eliminates manual doc writing<br/>Auto-sync since last commit                                                                                                                       |
-| **TRUST 5 Quality**    | Test, Readable, Unified, Secured, Trackable          | Enterprise-grade quality assurance<br/>**99% reduction** in post-deployment emergency patches                                                                                                                            |
+| Feature                  | Description                                                | Quantitative Impact                                                                                                                                                                                                      |
+| ------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **SPEC-First**           | All development starts with clear specifications           | **90% reduction** in rework from requirement changes<br/>Clear SPEC eliminates developer-planner misunderstandings                                                                                                       |
+| **TDD Enforcement**      | Automated Red-Green-Refactor cycle                         | **70% reduction** in bugs (with 85%+ coverage)<br/>**15% shorter** total development time including test writing                                                                                                         |
+| **AI Orchestration**     | Mr.Alfred commands 20 specialized AI agents (5-Tier)       | **Average token savings**: 5,000 tokens per session (Conditional Auto-load)<br/>**Simple tasks**: 0 tokens (Quick Reference)<br/>**Complex tasks**: 8,470 tokens (Auto-load skill)<br/>**60-70% time savings** vs manual |
+| **Multilingual Routing** | Automatic agent selection in 4 languages (EN/KO/JA/ZH)     | **100% language coverage** for agent invocation<br/>XLT (Cross-Lingual Thought) protocol for semantic matching<br/>Works with Korean, Japanese, Chinese requests                                                         |
+| **AST-Grep Integration** | Structural code search, security scanning, and refactoring | **Pattern-based code analysis** (not text-based regex)<br/>Support for **40+ programming languages**<br/>**Automatic security scanning** on code changes<br/>**Large-scale refactoring** with expert-refactoring agent   |
+| **Auto Documentation**   | Automatic doc sync on code changes (`> /moai:3-sync`)      | **100% documentation freshness**<br/>Eliminates manual doc writing<br/>Auto-sync since last commit                                                                                                                       |
+| **TRUST 5 Quality**      | Test, Readable, Unified, Secured, Trackable                | Enterprise-grade quality assurance<br/>**99% reduction** in post-deployment emergency patches                                                                                                                            |
 
 ---
 
@@ -388,12 +387,12 @@ Alfred now automatically routes requests in **any supported language** to the co
 
 **Example:**
 
-| Request Language | User Request | Agent Invoked |
-|-----------------|--------------|---------------|
-| English | "Design backend API" | expert-backend |
-| Korean | "백엔드 API 설계해줘" | expert-backend |
-| Japanese | "バックエンドAPIを設計して" | expert-backend |
-| Chinese | "设计后端API" | expert-backend |
+| Request Language | User Request                | Agent Invoked  |
+| ---------------- | --------------------------- | -------------- |
+| English          | "Design backend API"        | expert-backend |
+| Korean           | "백엔드 API 설계해줘"       | expert-backend |
+| Japanese         | "バックエンドAPIを設計して" | expert-backend |
+| Chinese          | "设计后端API"               | expert-backend |
 
 **Multilingual Keyword Examples:**
 
@@ -573,7 +572,7 @@ In this phase:
 
 This phase automatically executes:
 
-- 🔍 **Phase 0.5: Quality Verification** *(NEW)*
+- 🔍 **Phase 0.5: Quality Verification** _(NEW)_
   - Auto-detect project language (16 languages supported)
   - Run language-specific test runner, linter, and type checker
   - Execute code-review via manager-quality agent
@@ -1044,37 +1043,37 @@ This section details direct commands that can be used alongside Claude Code auto
 
 #### **Basic moai-worktree Commands**
 
-| Command                 | Purpose                    | Usage Example                       | Description                                 |
-| ---------------------- | --------------------------- | ----------------------------------- | -------------------------------------------- |
-| `moai-worktree new`    | Create new worktree         | `moai-worktree new SPEC-001`    | Create isolated workspace for SPEC-001       |
-| `moai-worktree list`   | List worktrees              | `moai-worktree list`            | Display all active worktrees                  |
-| `moai-worktree go`     | Go to worktree              | `moai-worktree go SPEC-001`     | Open worktree in new shell                   |
-| `moai-worktree remove` | Remove worktree             | `moai-worktree remove SPEC-001` | Delete specific worktree                     |
-| `moai-worktree status` | Check status                | `moai-worktree status`          | Display all worktree statuses                |
+| Command                | Purpose             | Usage Example                   | Description                            |
+| ---------------------- | ------------------- | ------------------------------- | -------------------------------------- |
+| `moai-worktree new`    | Create new worktree | `moai-worktree new SPEC-001`    | Create isolated workspace for SPEC-001 |
+| `moai-worktree list`   | List worktrees      | `moai-worktree list`            | Display all active worktrees           |
+| `moai-worktree go`     | Go to worktree      | `moai-worktree go SPEC-001`     | Open worktree in new shell             |
+| `moai-worktree remove` | Remove worktree     | `moai-worktree remove SPEC-001` | Delete specific worktree               |
+| `moai-worktree status` | Check status        | `moai-worktree status`          | Display all worktree statuses          |
 
 #### **Synchronization Commands**
 
-| Command                              | Purpose                 | Usage Example                                    | Description                          |
-| ----------------------------------- | ----------------------- | ----------------------------------------------- | ------------------------------------- |
-| `moai-worktree sync`                | Sync specific worktree | `moai-worktree sync SPEC-001`                | Sync changes with main branch          |
-| `moai-worktree sync --all`          | Sync all worktrees      | `moai-worktree sync --all`                   | Sync all worktrees at once            |
-| `moai-worktree sync --auto-resolve` | Auto conflict resolution| `moai-worktree sync SPEC-001 --auto-resolve` | Auto-attempt conflict resolution       |
-| `moai-worktree sync --rebase`       | Rebase-based sync       | `moai-worktree sync SPEC-001 --rebase`       | Use rebase instead of merge           |
+| Command                             | Purpose                  | Usage Example                                | Description                      |
+| ----------------------------------- | ------------------------ | -------------------------------------------- | -------------------------------- |
+| `moai-worktree sync`                | Sync specific worktree   | `moai-worktree sync SPEC-001`                | Sync changes with main branch    |
+| `moai-worktree sync --all`          | Sync all worktrees       | `moai-worktree sync --all`                   | Sync all worktrees at once       |
+| `moai-worktree sync --auto-resolve` | Auto conflict resolution | `moai-worktree sync SPEC-001 --auto-resolve` | Auto-attempt conflict resolution |
+| `moai-worktree sync --rebase`       | Rebase-based sync        | `moai-worktree sync SPEC-001 --rebase`       | Use rebase instead of merge      |
 
 #### **Cleanup Commands**
 
-| Command                              | Purpose                   | Usage Example                           | Description                        |
-| ----------------------------------- | ------------------------- | ------------------------------------- | ---------------------------------- |
-| `moai-worktree clean`               | Clean worktrees           | `moai-worktree clean`               | Clean all worktrees               |
-| `moai-worktree clean --merged-only` | Clean merged worktrees    | `moai-worktree clean --merged-only` | Remove worktrees for merged branches |
-| `moai-worktree clean --interactive` | Interactive cleanup       | `moai-worktree clean --interactive` | Select worktrees to remove        |
+| Command                             | Purpose                | Usage Example                       | Description                          |
+| ----------------------------------- | ---------------------- | ----------------------------------- | ------------------------------------ |
+| `moai-worktree clean`               | Clean worktrees        | `moai-worktree clean`               | Clean all worktrees                  |
+| `moai-worktree clean --merged-only` | Clean merged worktrees | `moai-worktree clean --merged-only` | Remove worktrees for merged branches |
+| `moai-worktree clean --interactive` | Interactive cleanup    | `moai-worktree clean --interactive` | Select worktrees to remove           |
 
 #### **Settings Commands**
 
-| Command                      | Purpose           | Usage Example               | Description                             |
-| --------------------------- | ----------------- | --------------------------- | -------------------------------------- |
-| `moai-worktree config`      | View settings     | `moai-worktree config`      | Display current worktree settings     |
-| `moai-worktree config root` | Check root path   | `moai-worktree config root` | Check worktree root directory path    |
+| Command                     | Purpose         | Usage Example               | Description                        |
+| --------------------------- | --------------- | --------------------------- | ---------------------------------- |
+| `moai-worktree config`      | View settings   | `moai-worktree config`      | Display current worktree settings  |
+| `moai-worktree config root` | Check root path | `moai-worktree config root` | Check worktree root directory path |
 
 #### **Advanced Usage Patterns**
 
@@ -1207,14 +1206,14 @@ MoAI-ADK is designed to leverage the benefits of both **Claude Code automation**
 
 #### **When to Use What**
 
-| Situation                 | Recommended Approach     | Reason                         |
-| ------------------------- | ------------------------ | ------------------------------ |
-| **Start new feature**     | Claude Code automation  | Fast SPEC creation and initial setup  |
-| **Complex algorithms**    | Direct control           | Step-by-step debugging and optimization needed |
-| **Daily synchronization** | Direct commands          | Fast execution and precise control     |
-| **Quality verification**  | Claude Code automation  | Automated testing and verification      |
-| **Conflict resolution**   | Mixed approach           | Auto detection + manual resolution        |
-| **Cleanup & maintenance** | Direct commands          | Optional control and safe cleanup   |
+| Situation                 | Recommended Approach   | Reason                                         |
+| ------------------------- | ---------------------- | ---------------------------------------------- |
+| **Start new feature**     | Claude Code automation | Fast SPEC creation and initial setup           |
+| **Complex algorithms**    | Direct control         | Step-by-step debugging and optimization needed |
+| **Daily synchronization** | Direct commands        | Fast execution and precise control             |
+| **Quality verification**  | Claude Code automation | Automated testing and verification             |
+| **Conflict resolution**   | Mixed approach         | Auto detection + manual resolution             |
+| **Cleanup & maintenance** | Direct commands        | Optional control and safe cleanup              |
 
 #### **Recommended Combination Workflows**
 
@@ -1444,11 +1443,13 @@ MoAI Ralph Engine combines LSP (Language Server Protocol), AST-grep, and autonom
 ```
 
 **Workflow**:
+
 1. Creates SPEC document (`/moai:1-plan`)
 2. Implements with TDD (`/moai:2-run`)
 3. Syncs documentation (`/moai:3-sync`)
 
 **Options**:
+
 - `--branch`: Create feature branch
 - `--pr`: Create Pull Request after completion
 
@@ -1465,6 +1466,7 @@ MoAI Ralph Engine combines LSP (Language Server Protocol), AST-grep, and autonom
 ```
 
 **Features**:
+
 - Combines LSP diagnostics + AST-grep scanning
 - Automatically feeds results to Claude for fixes
 - Continues until completion condition is met
@@ -1483,6 +1485,7 @@ MoAI Ralph Engine combines LSP (Language Server Protocol), AST-grep, and autonom
 ```
 
 **What it fixes**:
+
 - LSP diagnostics (type errors, warnings)
 - AST-grep security warnings
 - Code quality issues
@@ -1962,7 +1965,7 @@ Support for various programming languages and frameworks.
   - Python 3.13+ for FastAPI, Django, async patterns, data science
   - Testing with pytest, modern Python features and async programming
 
-- **moai-lang-javascript** *(NEW)*
+- **moai-lang-javascript** _(NEW)_
   - ES2024+, Node.js 22 LTS, Deno, Bun runtimes
   - Express, Fastify, Hono frameworks; Vitest/Jest testing; ESLint 9 flat config
 
@@ -2387,12 +2390,12 @@ flowchart TD
 
 ### 🎯 Core Capabilities
 
-| Capability | Description | Example Use Cases |
-|------------|-------------|-------------------|
-| **Structural Search** | Find code patterns by AST structure, not text | Find all SQL queries without parameterization |
-| **Security Scanning** | Automatic vulnerability detection on code changes | Detect SQL injection, XSS, hardcoded secrets |
-| **Pattern-Based Refactoring** | Safe code transformations using AST patterns | Rename variables across files, extract functions |
-| **Multi-Language Support** | Works with 40+ programming languages | Python, TypeScript, Go, Rust, Java, C++, etc. |
+| Capability                    | Description                                       | Example Use Cases                                |
+| ----------------------------- | ------------------------------------------------- | ------------------------------------------------ |
+| **Structural Search**         | Find code patterns by AST structure, not text     | Find all SQL queries without parameterization    |
+| **Security Scanning**         | Automatic vulnerability detection on code changes | Detect SQL injection, XSS, hardcoded secrets     |
+| **Pattern-Based Refactoring** | Safe code transformations using AST patterns      | Rename variables across files, extract functions |
+| **Multi-Language Support**    | Works with 40+ programming languages              | Python, TypeScript, Go, Rust, Java, C++, etc.    |
 
 ### 🔧 How It Works in MoAI-ADK
 
@@ -2406,6 +2409,7 @@ $ ast-grep scan --rule .claude/skills/moai-tool-ast-grep/rules/security/
 ```
 
 **Detected vulnerabilities:**
+
 - SQL injection (SQL queries without parameterization)
 - XSS vulnerabilities (unsafe HTML rendering)
 - Hardcoded secrets (API keys, passwords in code)
@@ -2552,12 +2556,12 @@ The `expert-refactoring` agent specializes in large-scale code transformations:
 
 ### 📊 Benefits
 
-| Benefit | Description | Impact |
-|---------|-------------|--------|
-| **Early Detection** | Security issues detected immediately | **95% reduction** in security bugs reaching production |
-| **Safe Refactoring** | AST-level transformations preserve semantics | **99% reduction** in refactoring-induced bugs |
-| **Language Coverage** | Supports 40+ programming languages | **Unified tool** across polyglot codebases |
-| **Automation** | Automatic scanning on every code change | **Zero manual effort** for security checks |
+| Benefit               | Description                                  | Impact                                                 |
+| --------------------- | -------------------------------------------- | ------------------------------------------------------ |
+| **Early Detection**   | Security issues detected immediately         | **95% reduction** in security bugs reaching production |
+| **Safe Refactoring**  | AST-level transformations preserve semantics | **99% reduction** in refactoring-induced bugs          |
+| **Language Coverage** | Supports 40+ programming languages           | **Unified tool** across polyglot codebases             |
+| **Automation**        | Automatic scanning on every code change      | **Zero manual effort** for security checks             |
 
 ### 🔗 Integration with MoAI-ADK Workflow
 
@@ -2572,12 +2576,14 @@ Plan (SPEC) → Run (TDD + AST-Grep Scan) → Sync (Documentation)
 ```
 
 **During TDD Phase:**
+
 - Write test (Red)
 - Implement code (Green)
 - **AST-Grep automatically scans for security issues**
 - Refactor with confidence (Refactor)
 
 **If vulnerability detected:**
+
 ```bash
 ⚠️  AST-Grep: Potential SQL injection detected in src/auth.py:47
    Pattern: execute(f"SELECT * FROM users WHERE id={user_id}")
@@ -2735,16 +2741,16 @@ flowchart TD
 
 #### 3 Modes Comparison
 
-| Aspect          | Manual            | Personal                       | Team         |
-| --------------- | ----------------- | ------------------------------ | ------------ |
-| **Use Case**    | Personal learning | Personal GitHub                | Team projects |
-| **GitHub**      | ❌                | ✅                             | ✅           |
-| **Branches**    | Optional          | Optional creation or<br>Feature auto | Feature auto |
-| **Push**        | Manual            | Auto                           | Auto         |
-| **PR**          | None              | Suggested                       | Auto-created |
-| **Code Review** | None              | Optional                       | **Required** |
-| **Deployment**  | Manual            | Manual                         | CI/CD auto   |
-| **Setup Time**  | **5min**         | 15min                          | 25min        |
+| Aspect          | Manual            | Personal                             | Team          |
+| --------------- | ----------------- | ------------------------------------ | ------------- |
+| **Use Case**    | Personal learning | Personal GitHub                      | Team projects |
+| **GitHub**      | ❌                | ✅                                   | ✅            |
+| **Branches**    | Optional          | Optional creation or<br>Feature auto | Feature auto  |
+| **Push**        | Manual            | Auto                                 | Auto          |
+| **PR**          | None              | Suggested                            | Auto-created  |
+| **Code Review** | None              | Optional                             | **Required**  |
+| **Deployment**  | Manual            | Manual                               | CI/CD auto    |
+| **Setup Time**  | **5min**          | 15min                                | 25min         |
 
 #### Quick Setup (.moai/config/config.json)
 
@@ -2828,7 +2834,6 @@ flowchart TD
 **Required MCP servers (2):**
 
 1. **Context7** (Required)
-
    - Auto-reference latest library API documentation
    - Prevent hallucination during code generation
    - Installation: Automatic (included in `.mcp.json`)
@@ -3025,14 +3030,14 @@ For developers concerned about Claude Code usage costs, MoAI-ADK supports **GLM 
 
 ### 💡 Why Choose GLM over Claude?
 
-| Feature               | Claude Code                     | z.ai GLM 4.6                  |
-| --------------------- | ------------------------------- | ----------------------------- |
-| **Cost**              | $20/month (Pro plan)            | **$6-$60/month (Flexible)**   |
-| **Models**            | Claude 4.5 Sonnet, Opus, Haiku | GLM 4.6, GLM 4.5-air         |
-| **Compatibility**     | Native                           | **100% Claude Compatible**    |
-| **Token Limits**      | Limited                         | **Unlimited on paid plans**   |
-| **API Access**        | Included                        | **Full API access**           |
-| **Speed**             | Fast                            | **Comparable performance**    |
+| Feature           | Claude Code                    | z.ai GLM 4.6                |
+| ----------------- | ------------------------------ | --------------------------- |
+| **Cost**          | $20/month (Pro plan)           | **$6-$60/month (Flexible)** |
+| **Models**        | Claude 4.5 Sonnet, Opus, Haiku | GLM 4.6, GLM 4.5-air        |
+| **Compatibility** | Native                         | **100% Claude Compatible**  |
+| **Token Limits**  | Limited                        | **Unlimited on paid plans** |
+| **API Access**    | Included                       | **Full API access**         |
+| **Speed**         | Fast                           | **Comparable performance**  |
 
 ### 🎯 GLM Coding Plan Subscription
 
@@ -3044,12 +3049,12 @@ By subscribing through this link, you'll receive a 10% additional discount and d
 
 #### Subscription Plans:
 
-| Plan          | Price                              | Features                                                                 | Best For                          |
-| ------------- | ---------------------------------- | ----------------------------------------------------------------------- | --------------------------------- |
-| **Lite**      | First month $3<br/>From 2nd month $6/month | • 3x Claude Pro usage<br/>• GLM-4.6 powered<br/>• 10+ coding tools compatible | Lightweight workloads, getting started |
-| **Pro**       | First month $15<br/>From 2nd month $30/month | • All Lite benefits<br/>• 5× Lite plan usage<br/>• 40-60% faster<br/>• Vision, Web Search, Web Reader | Professional developers, teams    |
-| **Max**       | First month $30<br/>From 2nd month $60/month | • All Pro benefits<br/>• 4× Pro plan usage<br/>• Guaranteed peak performance<br/>• Early feature access | High-volume workloads, power users |
-| **Enterprise**| Custom                             | • Custom pricing<br/>• Dedicated support<br/>• SLA guarantees | Large organizations, custom needs |
+| Plan           | Price                                        | Features                                                                                                | Best For                               |
+| -------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| **Lite**       | First month $3<br/>From 2nd month $6/month   | • 3x Claude Pro usage<br/>• GLM-4.6 powered<br/>• 10+ coding tools compatible                           | Lightweight workloads, getting started |
+| **Pro**        | First month $15<br/>From 2nd month $30/month | • All Lite benefits<br/>• 5× Lite plan usage<br/>• 40-60% faster<br/>• Vision, Web Search, Web Reader   | Professional developers, teams         |
+| **Max**        | First month $30<br/>From 2nd month $60/month | • All Pro benefits<br/>• 4× Pro plan usage<br/>• Guaranteed peak performance<br/>• Early feature access | High-volume workloads, power users     |
+| **Enterprise** | Custom                                       | • Custom pricing<br/>• Dedicated support<br/>• SLA guarantees                                           | Large organizations, custom needs      |
 
 #### Benefits for GLM Coding Plan Subscribers:
 
@@ -3064,16 +3069,19 @@ By subscribing through this link, you'll receive a 10% additional discount and d
 #### **🌟 Recommended Upgrade Path**
 
 **Step 1: Start with Lite Plan ($6/month)**
+
 - Get 3x Claude Pro usage at just $6/month
 - Try GLM-4.6 with your actual projects for 2-3 weeks
 - Experience compatibility with 10+ coding tools
 
 **Step 2: Upgrade Based on Usage**
+
 - **For regular development**: Upgrade to **Pro ($30/month)** for 40-60% faster performance
 - **For heavy workloads**: Choose **Max ($60/month)** for guaranteed peak performance
 - **Power users benefit**: Pro gives 5× Lite usage, Max gives 20× Lite usage
 
 **Why This Approach Works:**
+
 - **Low barrier entry**: Only $6/month to start with professional AI coding
 - **Scale as needed**: Upgrade only when your workload requires it
 - **Performance gains**: Pro plan significantly faster for complex tasks
@@ -3167,6 +3175,7 @@ GLM 4.6 is now active and ready to use!
 #### Check Current Mode:
 
 GLM is active when:
+
 - `.claude/settings.local.json` contains GLM configuration
 - Base URL is set to `https://api.z.ai/api/anthropic`
 - Models are mapped to GLM variants
@@ -3175,38 +3184,42 @@ GLM is active when:
 
 Based on real-world testing with MoAI-ADK:
 
-| Task                           | Claude 4.5 Sonnet | GLM 4.6      | Performance Gap |
-| ------------------------------ | ----------------- | ------------ | --------------- |
-| **Code Generation**           | Excellent         | **Excellent** | < 5% difference |
-| **TDD Implementation**         | Excellent         | **Very Good** | 10% faster      |
-| **Documentation Writing**      | Very Good         | **Good**      | 15% faster      |
-| **Complex Problem Solving**    | Excellent         | **Very Good** | Comparable     |
-| **API Rate Limits**           | Moderate          | **Higher**    | 3x-20x more usage |
-| **Performance Speed**         | Fast              | **40-60% faster (Pro+)** | Significant improvement |
-| **Advanced Features**        | Basic             | **Vision, Web Search, Web Reader (Pro+)** | Enhanced capabilities |
-| **Cost Efficiency**           | $20-$200/month    | **$6-$60/month** | **Save up to 70%** |
+| Task                        | Claude 4.5 Sonnet | GLM 4.6                                   | Performance Gap         |
+| --------------------------- | ----------------- | ----------------------------------------- | ----------------------- |
+| **Code Generation**         | Excellent         | **Excellent**                             | < 5% difference         |
+| **TDD Implementation**      | Excellent         | **Very Good**                             | 10% faster              |
+| **Documentation Writing**   | Very Good         | **Good**                                  | 15% faster              |
+| **Complex Problem Solving** | Excellent         | **Very Good**                             | Comparable              |
+| **API Rate Limits**         | Moderate          | **Higher**                                | 3x-20x more usage       |
+| **Performance Speed**       | Fast              | **40-60% faster (Pro+)**                  | Significant improvement |
+| **Advanced Features**       | Basic             | **Vision, Web Search, Web Reader (Pro+)** | Enhanced capabilities   |
+| **Cost Efficiency**         | $20-$200/month    | **$6-$60/month**                          | **Save up to 70%**      |
 
 ### ✅ Recommended Usage Scenarios
 
 #### **GLM Lite ($6/month) Usage:**
+
 - **Getting Started**: 3x Claude Pro usage at 70% less cost
 - **Lightweight Workloads**: Small projects, occasional coding
 - **Learning Projects**: Practice, tutorials, experiments
 - **Budget-Conscious**: Professional AI coding at just $6/month
 
 #### **GLM Pro ($30/month) Usage:**
+
 - **Professional Developers**: 40-60% faster performance for complex tasks
 - **Daily Development**: 5× Lite usage limit with advanced features
 - **Team Collaboration**: Vision understanding, web search capabilities
 - **Power Users**: Faster responses for complex problem solving
 
 #### **GLM Max ($60/month) Usage:**
+
 - **High-Volume Workloads**: 20× Lite usage for intensive development
 - **Enterprise Teams**: Guaranteed peak-hour performance
 - **Continuous Integration**: No rate limits for automated workflows
 - **Early Adopters**: First access to new features and improvements
 
 #### **Consider Claude for:**
+
 - **Enterprise Production**: Mission-critical deployments
 - **Complex Research**: Advanced reasoning tasks
 - **Large-Scale Migration**: Complex system transformations
@@ -3214,13 +3227,13 @@ Based on real-world testing with MoAI-ADK:
 
 ### 🛠️ Troubleshooting
 
-| Issue                    | Solution                                                                 |
-| ------------------------ | ------------------------------------------------------------------------ |
-| **Token not working**    | Verify token from z.ai dashboard, ensure Coding Plan subscription         |
-| **Model errors**         | Check endpoint URL: `https://api.z.ai/api/anthropic`                    |
-| **Slow responses**       | GLM may have higher latency during peak hours                            |
-| **Connection refused**   | Firewall may block z.ai domain, check network settings                   |
-| **Fallback needed**      | Use `--glm-off` to switch back to Claude temporarily                   |
+| Issue                  | Solution                                                          |
+| ---------------------- | ----------------------------------------------------------------- |
+| **Token not working**  | Verify token from z.ai dashboard, ensure Coding Plan subscription |
+| **Model errors**       | Check endpoint URL: `https://api.z.ai/api/anthropic`              |
+| **Slow responses**     | GLM may have higher latency during peak hours                     |
+| **Connection refused** | Firewall may block z.ai domain, check network settings            |
+| **Fallback needed**    | Use `--glm-off` to switch back to Claude temporarily              |
 
 ### 🔗 Useful Links
 

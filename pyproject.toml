@@ -63,6 +63,7 @@ web = [
     "aiosqlite>=0.20.0",
     "pydantic>=2.9.0",
     "ptyprocess>=0.7.0",
+    "anthropic>=0.40.0",  # Claude API SDK for chat integration
 ]
 
 [tool.pytest.ini_options]

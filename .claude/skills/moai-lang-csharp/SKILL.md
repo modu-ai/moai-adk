@@ -5,13 +5,15 @@ version: 2.0.0
 category: "language"
 modularized: true
 user-invocable: false
+tags:
+  ["language", "csharp", "dotnet", "aspnet-core", "entity-framework", "blazor"]
 allowed-tools:
   - Read
   - Grep
   - Glob
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
-context7-libraries: ['/dotnet/aspnetcore', '/dotnet/efcore', '/dotnet/runtime']
+context7-libraries: ["/dotnet/aspnetcore", "/dotnet/efcore", "/dotnet/runtime"]
 updated: 2026-01-08
 status: "active"
 ---
@@ -25,6 +27,7 @@ Modern C# development with ASP.NET Core, Entity Framework Core, Blazor, and ente
 Auto-Triggers: `.cs`, `.csproj`, `.sln` files, C# projects, .NET solutions, ASP.NET Core applications
 
 Core Stack:
+
 - C# 12: Primary constructors, collection expressions, alias any type, default lambda parameters
 - .NET 8: Minimal APIs, Native AOT, improved performance, WebSockets
 - ASP.NET Core 8: Controllers, Endpoints, Middleware, Authentication
@@ -33,6 +36,7 @@ Core Stack:
 - Testing: xUnit, NUnit, FluentAssertions, Moq
 
 Quick Commands:
+
 ```bash
 # Create .NET 8 Web API project
 dotnet new webapi -n MyApi --framework net8.0
@@ -56,19 +60,24 @@ dotnet add package MediatR
 This skill uses progressive disclosure with specialized modules for deep coverage:
 
 ### Language Features
+
 - [C# 12 Features](modules/csharp12-features.md) - Primary constructors, collection expressions, type aliases, default lambdas
 
 ### Web Development
+
 - [ASP.NET Core 8](modules/aspnet-core.md) - Minimal API, Controllers, Middleware, Authentication
 - [Blazor Components](modules/blazor-components.md) - Server, WASM, InteractiveServer, Components
 
 ### Data Access
+
 - [Entity Framework Core 8](modules/efcore-patterns.md) - DbContext, Repository pattern, Migrations, Query optimization
 
 ### Architecture Patterns
+
 - [CQRS and Validation](modules/cqrs-validation.md) - MediatR CQRS, FluentValidation, Handler patterns
 
 ### Reference Materials
+
 - [API Reference](reference.md) - Complete API reference, Context7 library mappings
 - [Code Examples](examples.md) - Production-ready examples, testing templates
 
@@ -99,6 +108,7 @@ src/
 ### Essential Patterns
 
 Primary Constructor with DI:
+
 ```csharp
 public class UserService(IUserRepository repository, ILogger<UserService> logger)
 {
@@ -111,6 +121,7 @@ public class UserService(IUserRepository repository, ILogger<UserService> logger
 ```
 
 Minimal API Endpoint:
+
 ```csharp
 app.MapGet("/api/users/{id:guid}", async (Guid id, IUserService service) =>
 {
@@ -122,6 +133,7 @@ app.MapGet("/api/users/{id:guid}", async (Guid id, IUserService service) =>
 ```
 
 Entity Configuration:
+
 ```csharp
 public class UserConfiguration : IEntityTypeConfiguration<User>
 {
@@ -159,6 +171,7 @@ mcp__context7__get-library-docs("/dotnet/runtime", "collections threading")
 ## Quick Troubleshooting
 
 Build and Runtime:
+
 ```bash
 dotnet build --verbosity detailed    # Detailed build output
 dotnet run --launch-profile https    # Run with HTTPS profile
@@ -167,6 +180,7 @@ dotnet ef migrations add Initial     # Create new migration
 ```
 
 Common Patterns:
+
 ```csharp
 // Null reference handling
 var user = await context.Users.FindAsync(id);

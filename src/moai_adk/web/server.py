@@ -82,3 +82,7 @@ def create_app(config: WebConfig | None = None) -> FastAPI:
     app.include_router(workflow.router, prefix="/api/workflow", tags=["workflow"])
 
     return app
+
+
+# Create app instance for uvicorn
+app = create_app()

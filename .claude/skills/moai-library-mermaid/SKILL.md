@@ -6,6 +6,17 @@ category: "library"
 modularized: true
 user-invocable: false
 updated: 2026-01-08
+tags:
+  [
+    "library",
+    "mermaid",
+    "diagrams",
+    "flowchart",
+    "sequence",
+    "visualization",
+    "documentation",
+  ]
+status: "active"
 allowed-tools:
   - Read
   - Grep

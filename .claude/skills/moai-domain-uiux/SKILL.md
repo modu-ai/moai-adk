@@ -5,8 +5,16 @@ version: 2.0.0
 category: "domain"
 modularized: true
 user-invocable: false
-tags: ['domain', 'uiux', 'design-systems', 'accessibility', 'components', 'icons', 'theming']
-aliases: ['moai-foundation-uiux']
+tags:
+  [
+    "domain",
+    "uiux",
+    "design-systems",
+    "accessibility",
+    "components",
+    "icons",
+    "theming",
+  ]
 updated: 2026-01-08
 status: "active"
 allowed-tools:
@@ -24,6 +32,7 @@ allowed-tools:
 Enterprise-grade UI/UX foundation integrating design systems (W3C DTCG 2025.10), component architecture (React 19, Vue 3.5), accessibility (WCAG 2.2), icon libraries (200K+ icons), and theming systems.
 
 Unified Capabilities:
+
 - Design Systems: W3C DTCG 2025.10 tokens, Style Dictionary 4.0, Figma MCP workflows
 - Component Architecture: Atomic Design, React 19, Vue 3.5, shadcn/ui, Radix UI primitives
 - Accessibility: WCAG 2.2 AA/AAA compliance, keyboard navigation, screen reader optimization
@@ -31,6 +40,7 @@ Unified Capabilities:
 - Theming: CSS variables, light/dark modes, theme provider, brand customization
 
 When to Use:
+
 - Building modern UI component libraries with design system foundations
 - Implementing accessible, enterprise-grade user interfaces
 - Setting up design token architecture for multi-platform projects
@@ -38,6 +48,7 @@ When to Use:
 - Creating customizable theming systems with dark mode support
 
 Module Organization:
+
 - Components: [Component Architecture](modules/component-architecture.md) (Atomic Design, component patterns, props APIs)
 - Design Systems: [Design System Tokens](modules/design-system-tokens.md) (DTCG tokens, Style Dictionary, Figma MCP)
 - Accessibility: [Accessibility WCAG](modules/accessibility-wcag.md) (WCAG 2.2 compliance, testing, navigation)
@@ -53,6 +64,7 @@ Module Organization:
 ### Foundation Stack (November 2025)
 
 Core Technologies:
+
 - React 19 (Server Components, Concurrent Rendering)
 - TypeScript 5.5 (Full type safety, improved inference)
 - Tailwind CSS 3.4 (JIT compilation, CSS variables, dark mode)
@@ -79,31 +91,34 @@ Quick Decision Matrix:
 ### 1. Design System Setup (30 minutes)
 
 Step 1: Initialize design tokens
+
 ```json
 {
- "$schema": "https://tr.designtokens.org/format/",
- "$tokens": {
- "color": {
- "$type": "color",
- "primary": { "500": { "$value": "#3b82f6" } }
- },
- "spacing": {
- "$type": "dimension",
- "md": { "$value": "1rem" }
- }
- }
+  "$schema": "https://tr.designtokens.org/format/",
+  "$tokens": {
+    "color": {
+      "$type": "color",
+      "primary": { "500": { "$value": "#3b82f6" } }
+    },
+    "spacing": {
+      "$type": "dimension",
+      "md": { "$value": "1rem" }
+    }
+  }
 }
 ```
 
 Step 2: Transform tokens with Style Dictionary
+
 ```bash
 npm install --save-dev style-dictionary
 npx style-dictionary build
 ```
 
 Step 3: Integrate with components
+
 ```typescript
-import { colors, spacing } from '@/tokens'
+import { colors, spacing } from "@/tokens";
 ```
 
 See: [Design System Tokens](modules/design-system-tokens.md) for complete token architecture
@@ -113,12 +128,14 @@ See: [Design System Tokens](modules/design-system-tokens.md) for complete token 
 ### 2. Component Library Setup (45 minutes)
 
 Step 1: Initialize shadcn/ui
+
 ```bash
 npx shadcn-ui@latest init
 npx shadcn-ui@latest add button form dialog
 ```
 
 Step 2: Setup Atomic Design structure
+
 ```
 components/
  atoms/ (Button, Input, Label)
@@ -127,6 +144,7 @@ components/
 ```
 
 Step 3: Implement with accessibility
+
 ```typescript
 <Button aria-label="Submit form" variant="primary">
  Submit
@@ -140,6 +158,7 @@ See: [Component Architecture](modules/component-architecture.md) for patterns an
 ### 3. Icon System Integration (15 minutes)
 
 Step 1: Choose icon library
+
 ```bash
 # General purpose
 npm install lucide-react
@@ -152,6 +171,7 @@ npm install @tabler/icons-react
 ```
 
 Step 2: Implement type-safe icons
+
 ```typescript
 import { Heart, Search } from 'lucide-react'
 
@@ -165,19 +185,21 @@ See: [Icon Libraries](modules/icon-libraries.md) for library comparison and opti
 ### 4. Theme System Setup (30 minutes)
 
 Step 1: Configure CSS variables
+
 ```css
 :root {
- --primary: 222.2 47.4% 11.2%;
- --background: 0 0% 100%;
+  --primary: 222.2 47.4% 11.2%;
+  --background: 0 0% 100%;
 }
 
 .dark {
- --primary: 210 40% 98%;
- --background: 222.2 84% 4.9%;
+  --primary: 210 40% 98%;
+  --background: 222.2 84% 4.9%;
 }
 ```
 
 Step 2: Implement Theme Provider
+
 ```typescript
 <ThemeProvider attribute="class" defaultTheme="system">
  <App />
@@ -191,25 +213,29 @@ See: [Theming System](modules/theming-system.md) for complete theme system
 ## Key Principles
 
 1. Design Token First:
+
 - Single source of truth for design decisions
 - Semantic naming (`color.primary.500` not `blue-500`)
 - Multi-theme support (light/dark)
 - Platform-agnostic transformation
 
 2. Accessibility by Default:
+
 - WCAG 2.2 AA minimum (4.5:1 text contrast)
 - Keyboard navigation for all interactive elements
 - ARIA attributes for screen readers
 - Focus management and visible indicators
 
 3. Component Composition:
+
 - Atomic Design hierarchy (Atoms → Molecules → Organisms)
 - Props API for reusability
 - Variant-based styling (not separate components)
 - Type-safe with TypeScript
 
 4. Performance Optimization:
-- Tree-shaking for icons (import specific, not *)
+
+- Tree-shaking for icons (import specific, not \*)
 - Lazy loading for large components
 - React.memo for expensive renders
 - Bundle size monitoring
@@ -218,31 +244,33 @@ See: [Theming System](modules/theming-system.md) for complete theme system
 
 ## Tool Ecosystem
 
-| Category | Tool | Version | Purpose |
-|----------|------|---------|---------|
-| Design Tokens | W3C DTCG | 2025.10 | Token specification |
-| | Style Dictionary | 4.0+ | Token transformation |
-| Components | React | 19 | UI framework |
-| | shadcn/ui | Latest | Component library |
-| | Radix UI | Latest | Accessible primitives |
-| Icons | Lucide | Latest | 1000+ modern icons |
-| | React Icons | Latest | 35K+ multi-library |
-| | Iconify | Latest | 200K+ universal |
-| Theming | Tailwind CSS | 3.4 | Utility-first CSS |
-| | CSS Variables | Native | Theme tokens |
-| Accessibility | axe DevTools | Latest | Accessibility testing |
-| | jest-axe | Latest | Automated a11y tests |
-| Documentation | Storybook | 8.x | Component docs |
-| | Figma MCP | Latest | Design-to-code |
+| Category      | Tool             | Version | Purpose               |
+| ------------- | ---------------- | ------- | --------------------- |
+| Design Tokens | W3C DTCG         | 2025.10 | Token specification   |
+|               | Style Dictionary | 4.0+    | Token transformation  |
+| Components    | React            | 19      | UI framework          |
+|               | shadcn/ui        | Latest  | Component library     |
+|               | Radix UI         | Latest  | Accessible primitives |
+| Icons         | Lucide           | Latest  | 1000+ modern icons    |
+|               | React Icons      | Latest  | 35K+ multi-library    |
+|               | Iconify          | Latest  | 200K+ universal       |
+| Theming       | Tailwind CSS     | 3.4     | Utility-first CSS     |
+|               | CSS Variables    | Native  | Theme tokens          |
+| Accessibility | axe DevTools     | Latest  | Accessibility testing |
+|               | jest-axe         | Latest  | Automated a11y tests  |
+| Documentation | Storybook        | 8.x     | Component docs        |
+|               | Figma MCP        | Latest  | Design-to-code        |
 
 ---
 
 ## Module Cross-Reference
 
 ### [Component Architecture](modules/component-architecture.md)
+
 Focus: Component architecture and implementation patterns
 
 Key Topics:
+
 - Atomic Design (Atoms, Molecules, Organisms)
 - React 19 + Server Components
 - Vue 3.5 + Composition API
@@ -255,9 +283,11 @@ When to Use: Building or architecting UI component libraries
 ---
 
 ### [Design System Tokens](modules/design-system-tokens.md)
+
 Focus: Design token architecture and tooling
 
 Key Topics:
+
 - W3C DTCG 2025.10 token structure
 - Style Dictionary configuration
 - Multi-theme support
@@ -269,9 +299,11 @@ When to Use: Setting up design system foundations
 ---
 
 ### [Accessibility WCAG](modules/accessibility-wcag.md)
+
 Focus: WCAG 2.2 compliance and accessibility testing
 
 Key Topics:
+
 - Color contrast validation (4.5:1 AA, 7:1 AAA)
 - Keyboard navigation patterns
 - Screen reader optimization (ARIA)
@@ -283,9 +315,11 @@ When to Use: Ensuring accessibility compliance
 ---
 
 ### [Icon Libraries](modules/icon-libraries.md)
+
 Focus: Icon library selection and integration
 
 Key Topics:
+
 - 10+ library comparison (Lucide, React Icons, Tabler, Iconify)
 - Bundle size optimization
 - Tree-shaking strategies
@@ -297,9 +331,11 @@ When to Use: Integrating icon systems with optimal bundle sizes
 ---
 
 ### [Theming System](modules/theming-system.md)
+
 Focus: Theme system implementation
 
 Key Topics:
+
 - CSS variable architecture
 - Light/dark mode switching
 - System preference detection
@@ -311,9 +347,11 @@ When to Use: Implementing customizable theming
 ---
 
 ### [Examples](examples.md)
+
 Focus: Practical code examples
 
 Key Topics:
+
 - Button component (React, Vue)
 - Form validation (Zod + React Hook Form)
 - Data table (TanStack Table)
@@ -326,9 +364,11 @@ When to Use: Reference implementations
 ---
 
 ### [Reference](reference.md)
+
 Focus: External documentation links
 
 Key Topics:
+
 - Official documentation (DTCG, WCAG, Figma, Storybook)
 - Library references (React, Tailwind, Radix UI)
 - Tool documentation (Style Dictionary, jest-axe)
@@ -341,6 +381,7 @@ When to Use: Finding official resources
 ## Best Practices
 
 DO:
+
 - Use semantic design tokens (`color.primary.500` not `blue-500`)
 - Follow Atomic Design hierarchy (Atoms → Molecules → Organisms)
 - Verify 4.5:1 contrast ratio for all text (WCAG AA)
@@ -389,18 +430,21 @@ IMPACT: Missing loading states create poor user experience with unclear interfac
 ## Works Well With
 
 Skills:
+
 - `moai-lang-typescript` - TypeScript and JavaScript best practices
 - `moai-foundation-core` - TRUST 5 quality validation
 - `moai-library-nextra` - Documentation generation
 - `moai-library-shadcn` - shadcn/ui specialized patterns (complementary)
 
 Agents:
+
 - `code-frontend` - Frontend component implementation
 - `design-uiux` - Design system architecture
 - `mcp-figma` - Figma integration workflows
 - `core-quality` - Accessibility and quality validation
 
 Commands:
+
 - `/moai:2-run` - TDD implementation cycle
 - `/moai:3-sync` - Documentation generation
 
@@ -411,21 +455,25 @@ Commands:
 This skill consolidates 4 previous skills:
 
 moai-component-designer → [Component Architecture](modules/component-architecture.md)
+
 - Atomic Design patterns
 - React 19 / Vue 3.5 examples
 - Component architecture
 
 moai-design-systems → [Design System Tokens](modules/design-system-tokens.md) + [Accessibility WCAG](modules/accessibility-wcag.md)
+
 - DTCG token architecture
 - Figma MCP workflows
 - WCAG 2.2 compliance
 
 moai-icons-vector → [Icon Libraries](modules/icon-libraries.md)
+
 - Icon library comparison
 - Performance optimization
 - Integration patterns
 
 moai-library-shadcn (partially) → [Component Architecture](modules/component-architecture.md) + [Theming System](modules/theming-system.md)
+
 - shadcn/ui patterns
 - Theme system
 - Component composition

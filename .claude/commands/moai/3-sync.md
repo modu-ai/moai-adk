@@ -2,6 +2,7 @@
 name: moai:3-sync
 description: "Synchronize documentation with Phase 0.5 quality verification and finalize PR"
 argument-hint: "Mode target path - Mode: auto (default)|force|status|project, target path: Synchronization target path"
+type: workflow
 allowed-tools: Task, AskUserQuestion, TodoWrite
 model: inherit
 ---
@@ -41,12 +42,14 @@ Document sync target: $ARGUMENTS
 Agent Delegation Pattern:
 
 Correct Approach [HARD]:
+
 - Invoke Task() with subagent_type="manager-docs"
 - Pass complete context including changed files and verification results
 - Let manager-docs agent determine implementation strategy
 - WHY: Specialized agent has domain expertise and handles all complexity
 
 Forbidden Approach:
+
 - Direct file manipulation using Edit, Write, Read tools
 - Direct bash execution of document updates
 - WHY: Bypasses quality controls and loses context-specific error handling
@@ -118,6 +121,7 @@ This command uses agent execution patterns defined in CLAUDE.md (lines 96-120).
 Command implements sequential chaining through 3 core phases:
 
 Phase Flow:
+
 - Phase 1: Analysis & Planning (manager-docs analyzes changed files and sync scope)
 - Phase 2: Execute Sync (manager-docs updates documentation, manager-quality validates)
 - Phase 3: Git Operations & PR (manager-git creates commits and prepares PR if applicable)
@@ -125,6 +129,7 @@ Phase Flow:
 Each phase receives outputs from previous phases as context.
 
 WHY: Sequential execution ensures documentation consistency and validation
+
 - Phase 2 requires analysis results from Phase 1 to determine sync scope
 - Phase 3 requires validated documentation from Phase 2 before commit
 - PR creation requires successful commit from Phase 3
@@ -136,6 +141,7 @@ IMPACT: Skipping phases would create inconsistent documentation or invalid commi
 Limited parallel execution within Phase 2 for independent documentation files
 
 WHY: Some documentation files can be generated simultaneously
+
 - Multiple markdown files without cross-references can be updated in parallel
 - Index updates and validation must remain sequential
 
@@ -146,6 +152,7 @@ IMPACT: Full parallel execution would risk broken cross-references and index inc
 Not applicable - command typically completes quickly in single execution
 
 WHY: Documentation sync is fast operation (usually under 2 minutes)
+
 - Most sync operations complete in first attempt
 - File system operations are atomic and recoverable
 - No long-running processes requiring checkpoints
@@ -163,6 +170,7 @@ Refer to CLAUDE.md "Agent Chaining Patterns" (lines 96-120) for complete pattern
 /moai:3-sync performs documentation synchronization through complete agent delegation:
 
 Execution Flow:
+
 - User Command: /moai:3-sync [mode] [path]
 - /moai:3-sync Command delegates to Task with subagent_type set to manager-docs or manager-quality or manager-git
   - Phase 1: Analysis and Planning (manager-docs)
@@ -175,6 +183,7 @@ Execution Flow:
 [HARD] This command uses ONLY Task(), AskUserQuestion(), and TodoWrite():
 
 Permitted Tools:
+
 - Task() for orchestration [HARD]
 - AskUserQuestion() for user interaction AT COMMAND LEVEL ONLY [HARD]
   - WHY: Subagents via Task() are stateless and cannot interact with users
@@ -182,6 +191,7 @@ Permitted Tools:
 - TodoWrite() for progress tracking [HARD]
 
 Forbidden Tools (All delegated to agents):
+
 - Read (delegated) - All file reading operations must be performed by specialized agents
 - Write (delegated) - All file writing operations must be performed by specialized agents
 - Edit (delegated) - All file editing operations must be performed by specialized agents
@@ -197,11 +207,12 @@ All complexity is handled by specialized agents (manager-docs, manager-quality, 
 
 ---
 
-##  Output Format
+## Output Format
 
 All command execution outputs must use semantic XML sections for clarity and consistency:
 
 XML Structure Format:
+
 ```
 <analysis>Detailed assessment of project state, identified changes, and validation results</analysis>
 <plan>Synchronization strategy including scope, affected documents, and approach rationale</plan>
@@ -211,6 +222,7 @@ XML Structure Format:
 ```
 
 Required Elements:
+
 - Analysis must detail all findings from project validation and Git analysis
 - Plan must explain strategy choice including WHY and IMPACT of decisions
 - Execution must track all agent actions and file modifications
@@ -223,7 +235,7 @@ IMPACT: Unstructured output reduces comprehension and prevents automated process
 
 ---
 
-##  OVERALL WORKFLOW STRUCTURE
+## OVERALL WORKFLOW STRUCTURE
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -259,7 +271,7 @@ IMPACT: Unstructured output reduces comprehension and prevents automated process
 
 ---
 
-##  PHASE 1: Analysis & Planning
+## PHASE 1: Analysis & Planning
 
 Goal: Gather project context, verify project status, and get user approval.
 
@@ -312,8 +324,8 @@ Gather context for synchronization planning:
    - Execute: `git status --porcelain` to identify modified files
    - Execute: `git diff --name-only HEAD` to list changed file paths
    - Categorize: Count Python files, test files, documents, SPEC files separately
-   WHY: Git state determines synchronization scope and impact analysis
-   IMPACT: Incomplete Git analysis leads to partial synchronization
+     WHY: Git state determines synchronization scope and impact analysis
+     IMPACT: Incomplete Git analysis leads to partial synchronization
 
 2. [HARD] Read Project Configuration:
 
@@ -323,8 +335,8 @@ Gather context for synchronization planning:
    - Extract: `git_strategy.mode` value (must be Personal or Team)
    - Extract: `language.conversation_language` value (determines document language)
    - Extract: `git_strategy.spec_git_workflow` value
-   WHY: Configuration drives workflow behavior and language output
-   IMPACT: Missing configuration values cause workflow misalignment and language errors
+     WHY: Configuration drives workflow behavior and language output
+     IMPACT: Missing configuration values cause workflow misalignment and language errors
 
 3. [HARD] Determine Synchronization Mode:
 
@@ -334,8 +346,8 @@ Gather context for synchronization planning:
    - If empty: Default to auto mode
    - Parse optional flags: --auto-merge, --skip-pre-check, --skip-quality-check
    - Parse special flags: --worktree, --branch
-   WHY: Mode determines scope and processing strategy
-   IMPACT: Invalid mode selection produces incorrect synchronization behavior
+     WHY: Mode determines scope and processing strategy
+     IMPACT: Invalid mode selection produces incorrect synchronization behavior
 
 4. [SOFT] Handle Worktree Detection:
 
@@ -346,8 +358,8 @@ Gather context for synchronization planning:
    - If in worktree: Extract SPEC ID from current path (format: SPEC-{DOMAIN}-{NUMBER})
    - Alternative: Check worktree registry at `~/worktrees/{PROJECT_NAME}/.moai-worktree-registry.json`
    - Store: `$WORKTREE_MODE=true` and `$CURRENT_SPEC_ID` for later use
-   WHY: Worktree context enables specialized cleanup and workflow options
-   IMPACT: Missing worktree detection prevents proper exit handling but does not block sync
+     WHY: Worktree context enables specialized cleanup and workflow options
+     IMPACT: Missing worktree detection prevents proper exit handling but does not block sync
 
 5. [SOFT] Handle Branch Detection:
 
@@ -356,8 +368,8 @@ Gather context for synchronization planning:
    - Check: Is --branch flag present in arguments OR is current branch not main
    - Execute: `git branch --show-current` to get current branch name
    - Store: `$BRANCH_MODE=true` and `$CURRENT_BRANCH` for later use
-   WHY: Branch context enables proper merge and cleanup operations
-   IMPACT: Missing branch detection reduces workflow automation but does not prevent sync
+     WHY: Branch context enables proper merge and cleanup operations
+     IMPACT: Missing branch detection reduces workflow automation but does not prevent sync
 
 6. [HARD] Handle Status Mode Early Exit:
 
@@ -369,8 +381,8 @@ Gather context for synchronization planning:
    - Report: Synchronization recommendation
    - If status mode: Execute Phase 0.5 quality verification before reporting
    - Exit: Command completes with success code (no further phases)
-   WHY: Status mode serves quick health check without making changes, but still validates project quality
-   IMPACT: Skipping quality check in status mode reduces visibility of project health
+     WHY: Status mode serves quick health check without making changes, but still validates project quality
+     IMPACT: Skipping quality check in status mode reduces visibility of project health
 
 Result: Project context gathered. Synchronization mode established. Ready for quality verification (Phase 0.5).
 
@@ -474,6 +486,7 @@ Language Detection Rules (check in order, first match wins):
     - Skip language-specific tools, proceed directly to code-review
 
 Log detection result:
+
 - Print to user: "Project language detection: [detected_language]"
 
 ---
@@ -718,16 +731,19 @@ Result: Quality verification complete. All issues documented. Ready for project 
 WHY: Partial scans miss issues in unmodified sections. Comprehensive scanning ensures quality gates pass.
 
 Verification Requirements:
+
 - Project integrity assessment (identify broken references, inconsistencies)
 - Complete issues detection with precise locations
 - Resolution recommendations for discovered issues
 
 Output Requirements:
+
 - Complete issue list with file locations and line numbers
 - Project integrity status: Healthy or Issues Detected
 - Severity classification for each issue: Critical, High, Medium, Low
 
 Storage:
+
 - Store complete response in `$PROJECT_VALIDATION_RESULTS`
 - Format must be machine-parseable for downstream agent processing
 
@@ -800,7 +816,6 @@ Present synchronization plan and get user decision:
    ```
 
 2. Ask for user approval using AskUserQuestion:
-
    - `question`: "Synchronization plan is ready. How would you like to proceed?"
    - `header`: "Plan Approval"
    - `multiSelect`: false
@@ -820,7 +835,7 @@ Result: User decision captured. Command proceeds or exits.
 
 ---
 
-##  PHASE 2: Execute Document Synchronization
+## PHASE 2: Execute Document Synchronization
 
 Goal: Synchronize documents with code changes, update SPECs, verify quality.
 
@@ -851,7 +866,7 @@ IMPACT: Missing backup eliminates recovery option if sync produces errors
    - README.md (if exists) - Project documentation
    - docs/ directory (if exists) - Additional documentation
    - .moai/specs/ directory - SPEC definitions
-   WHY: Backing up all critical files enables complete state restoration
+     WHY: Backing up all critical files enables complete state restoration
 
 4. [HARD] Verify Backup Integrity:
 
@@ -861,7 +876,7 @@ IMPACT: Missing backup eliminates recovery option if sync produces errors
    - Verify: Backup directory is not empty
    - If empty: Print error message and exit with failure code
    - If complete: Print success message and continue
-   WHY: Verification confirms backup is usable for recovery
+     WHY: Verification confirms backup is usable for recovery
 
 Result: Safety backup created and verified. Ready for synchronization phase.
 
@@ -891,24 +906,20 @@ Previous analysis results:
 Task Instructions:
 
 1. Living Document synchronization:
-
    - Reflect changed code in documentation
    - Auto-generate/update API documentation
    - Update README (if needed)
    - Synchronize Architecture documents
 
 2. Project improvements:
-
    - Fix project issues (if possible)
    - Restore broken references
 
 3. SPEC synchronization:
-
    - Ensure SPEC documents match implementation
    - Update EARS statements if needed
 
 4. Domain-based documentation:
-
    - Detect changed domains (frontend/backend/devops/database/ml/mobile)
    - Generate domain-specific documentation updates
 
@@ -965,7 +976,6 @@ After successful synchronization, update SPEC status to completed:
    ```
 
 2. Verify status updates:
-
    - Check results from batch update
    - Record version changes and status transitions
    - Include status changes in sync report
@@ -987,7 +997,7 @@ Integration: Status updates are included in the Git commit from Phase 3 with det
 
 ---
 
-##  PHASE 3: Git Operations & PR
+## PHASE 3: Git Operations & PR
 
 Goal: Commit changes, transition PR (if Team mode), optionally auto-merge.
 
@@ -1059,12 +1069,10 @@ Verify:
 For Team mode projects only:
 
 1. Check if Team mode:
-
    - Read: `git_strategy.mode` from config
    - IF Personal → Skip to next phase
 
 2. Transition PR to Ready:
-
    - Use Task tool:
      - `subagent_type`: "manager-git"
      - `description`: "Transition PR to Ready for Review"
@@ -1079,17 +1087,14 @@ For Team mode projects only:
 If `--auto-merge` flag is set:
 
 1. Check CI/CD status:
-
    - Execute: `gh pr checks`
    - IF failing → Print warning and skip merge
 
 2. Check merge conflicts:
-
    - Execute: `gh pr view --json mergeable`
    - IF conflicts exist → Print warning and skip merge
 
 3. Execute auto-merge:
-
    - Execute: `gh pr merge --squash --delete-branch`
 
 4. Branch cleanup:
@@ -1099,7 +1104,7 @@ If `--auto-merge` flag is set:
 
 ---
 
-##  PHASE 4: Completion & Next Steps
+## PHASE 4: Completion & Next Steps
 
 Goal: Report results and guide user to next action.
 
@@ -1237,7 +1242,7 @@ Use AskUserQuestion to guide next steps:
 
 ---
 
-##  Graceful Exit (User Aborts)
+## Graceful Exit (User Aborts)
 
 If user chooses to abort in PHASE 1:
 
@@ -1263,7 +1268,7 @@ Exit command with code 0.
 
 ---
 
-##  Quick Reference
+## Quick Reference
 
 Workflow Scenarios:
 
@@ -1349,7 +1354,7 @@ Important:
 - No emojis in any AskUserQuestion fields
 - Always provide clear next step options
 
-##  EXECUTION DIRECTIVE
+## EXECUTION DIRECTIVE
 
 You must NOW execute the command following the "OVERALL WORKFLOW STRUCTURE" described above.
 

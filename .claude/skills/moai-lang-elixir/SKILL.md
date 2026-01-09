@@ -5,6 +5,7 @@ version: 1.0.0
 category: "language"
 modularized: true
 user-invocable: false
+tags: ["language", "elixir", "phoenix", "liveview", "ecto", "otp", "genserver"]
 updated: 2026-01-08
 status: "active"
 allowed-tools:
@@ -23,6 +24,7 @@ Elixir 1.17+ Development Specialist - Phoenix 1.7, LiveView, Ecto, OTP patterns,
 Auto-Triggers: `.ex`, `.exs` files, `mix.exs`, `config/`, Phoenix/LiveView discussions
 
 Core Capabilities:
+
 - Elixir 1.17: Pattern matching, pipes, protocols, behaviours, macros
 - Phoenix 1.7: Controllers, LiveView, Channels, PubSub, Verified Routes
 - Ecto: Schemas, Changesets, Queries, Migrations, Multi
@@ -34,6 +36,7 @@ Core Capabilities:
 ### Quick Patterns
 
 Phoenix Controller:
+
 ```elixir
 defmodule MyAppWeb.UserController do
   use MyAppWeb, :controller
@@ -60,6 +63,7 @@ end
 ```
 
 Ecto Schema with Changeset:
+
 ```elixir
 defmodule MyApp.Accounts.User do
   use Ecto.Schema
@@ -86,6 +90,7 @@ end
 ```
 
 GenServer Pattern:
+
 ```elixir
 defmodule MyApp.Counter do
   use GenServer
@@ -113,6 +118,7 @@ end
 ### Elixir 1.17 Features
 
 Pattern Matching Advanced:
+
 ```elixir
 def process_message(%{type: :email, to: to} = message) when is_binary(to) do
   send_email(message)
@@ -126,6 +132,7 @@ def process_message(_), do: {:error, :invalid_message}
 ```
 
 Pipe Operator with Error Handling:
+
 ```elixir
 def process_order_safe(params) do
   with {:ok, validated} <- validate_order(params),
@@ -140,6 +147,7 @@ end
 ```
 
 Protocols for Polymorphism:
+
 ```elixir
 defprotocol Stringify do
   @doc "Converts a data structure to string"
@@ -158,6 +166,7 @@ end
 ### Phoenix 1.7 Patterns
 
 LiveView Component:
+
 ```elixir
 defmodule MyAppWeb.CounterLive do
   use MyAppWeb, :live_view
@@ -182,6 +191,7 @@ end
 ```
 
 LiveView Form with Changesets:
+
 ```elixir
 defmodule MyAppWeb.UserFormLive do
   use MyAppWeb, :live_view
@@ -229,6 +239,7 @@ end
 ```
 
 Phoenix Channels:
+
 ```elixir
 defmodule MyAppWeb.RoomChannel do
   use MyAppWeb, :channel
@@ -257,6 +268,7 @@ end
 ```
 
 Verified Routes:
+
 ```elixir
 # In router.ex
 scope "/", MyAppWeb do
@@ -274,6 +286,7 @@ end
 ### Ecto Patterns
 
 Multi for Transactions:
+
 ```elixir
 def transfer_funds(from_account, to_account, amount) do
   Ecto.Multi.new()
@@ -291,6 +304,7 @@ end
 ```
 
 Query Composition:
+
 ```elixir
 defmodule MyApp.Accounts.UserQuery do
   import Ecto.Query
@@ -318,6 +332,7 @@ User
 ## Advanced Implementation (10+ minutes)
 
 For comprehensive coverage including:
+
 - Production deployment with releases
 - Distributed systems with libcluster
 - Advanced LiveView patterns (streams, components)
@@ -327,6 +342,7 @@ For comprehensive coverage including:
 - CI/CD integration patterns
 
 See:
+
 - [Advanced Patterns](modules/advanced-patterns.md) - Complete advanced patterns guide
 
 ---
@@ -358,12 +374,14 @@ See:
 Common Issues:
 
 Elixir Version Check:
+
 ```bash
 elixir --version  # Should be 1.17+
 mix --version     # Mix build tool version
 ```
 
 Dependency Issues:
+
 ```bash
 mix deps.get      # Fetch dependencies
 mix deps.compile  # Compile dependencies
@@ -371,6 +389,7 @@ mix clean         # Clean build artifacts
 ```
 
 Database Migrations:
+
 ```bash
 mix ecto.create   # Create database
 mix ecto.migrate  # Run migrations
@@ -378,6 +397,7 @@ mix ecto.rollback # Rollback last migration
 ```
 
 Phoenix Server:
+
 ```bash
 mix phx.server           # Start server
 iex -S mix phx.server    # Start with IEx
@@ -385,6 +405,7 @@ MIX_ENV=prod mix release # Build release
 ```
 
 LiveView Not Loading:
+
 - Check websocket connection in browser console
 - Verify endpoint configuration for websocket
 - Ensure Phoenix.LiveView is in mix.exs dependencies

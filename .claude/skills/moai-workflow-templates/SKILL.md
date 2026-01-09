@@ -6,7 +6,16 @@ version: 3.0.0
 category: workflow
 modularized: true
 user-invocable: false
-tags: ['workflow', 'templates', 'boilerplate', 'scaffolding', 'optimization', 'feedback']
+tags:
+  [
+    "workflow",
+    "templates",
+    "boilerplate",
+    "scaffolding",
+    "optimization",
+    "feedback",
+  ]
+status: "active"
 replaces: moai-core-code-templates, moai-core-feedback-templates, moai-project-template-optimizer
 updated: 2026-01-08
 allowed-tools:
@@ -26,6 +35,7 @@ Unified template system combining code boilerplates, feedback templates, and pro
 ## Quick Reference (30 seconds)
 
 Core Capabilities:
+
 - Code template library (FastAPI, React, Vue, Next.js)
 - GitHub issue feedback templates (6 types)
 - Project template optimization and smart merging
@@ -34,6 +44,7 @@ Core Capabilities:
 - Pattern reusability and customization
 
 When to Use:
+
 - Scaffolding new projects or features
 - Creating GitHub issues with `/moai:9-feedback`
 - Optimizing template structures after MoAI-ADK updates
@@ -42,12 +53,14 @@ When to Use:
 - Generating boilerplate code
 
 Key Features:
+
 1. Code Templates: FastAPI, React, Vue, Docker, CI/CD
 2. Feedback Templates: 6 GitHub issue types (bug, feature, improvement, refactor, docs, question)
 3. Template Optimizer: Smart merge, backup restoration, version tracking
 4. Pattern Library: Reusable patterns for common scenarios
 
 Quick Access:
+
 - Code Templates → [code-templates.md](modules/code-templates.md)
 - Feedback Templates → [feedback-templates.md](modules/feedback-templates.md)
 - Template Optimizer → [template-optimizer.md](modules/template-optimizer.md)
@@ -73,6 +86,7 @@ Quick Access:
 ### Core Patterns
 
 Pattern 1: Template Structure
+
 ```
 templates/
  fastapi-backend/
@@ -91,23 +105,25 @@ templates/
 ```
 
 Pattern 2: Template Variables
+
 ```json
 {
- "variables": {
- "PROJECT_NAME": "my-project",
- "AUTHOR": "John Doe",
- "LICENSE": "MIT",
- "PYTHON_VERSION": "3.13"
- },
- "files": {
- "pyproject.toml": "substitute",
- "README.md": "substitute",
- "src//*.py": "copy"
- }
+  "variables": {
+    "PROJECT_NAME": "my-project",
+    "AUTHOR": "John Doe",
+    "LICENSE": "MIT",
+    "PYTHON_VERSION": "3.13"
+  },
+  "files": {
+    "pyproject.toml": "substitute",
+    "README.md": "substitute",
+    "src//*.py": "copy"
+  }
 }
 ```
 
 Pattern 3: Template Generation
+
 ```python
 def generate_from_template(template_name, variables):
  1. Load template directory
@@ -124,6 +140,7 @@ def generate_from_template(template_name, variables):
 Concept: Rapidly scaffold projects with production-ready boilerplates.
 
 Usage Example:
+
 ```python
 # Generate FastAPI project structure
 template = load_template("backend/fastapi")
@@ -155,6 +172,7 @@ Details: See [Feedback Templates](modules/feedback-templates.md) for all templat
 Concept: Intelligently merge template updates while preserving user customizations.
 
 Smart Merge Algorithm:
+
 ```python
 def smart_merge(backup, template, current):
  """Three-way merge with intelligence."""
@@ -184,6 +202,7 @@ Details: See [Template Optimizer](modules/template-optimizer.md) for complete wo
 Concept: Automatic backup management with intelligent restoration.
 
 Restoration Process:
+
 ```python
 def restore_from_backup(backup_id: str):
  """Restore project from specific backup."""
@@ -211,18 +230,15 @@ Details: See [Template Optimizer - Backup Restoration](modules/template-optimize
 Concept: Track template versions and maintain update history.
 
 Version Tracking:
+
 ```json
 {
- "template_optimization": {
- "last_optimized": "2025-11-24T12:00:00Z",
- "backup_version": "backup-2025-10-15-v0.27.0",
- "template_version": "0.28.2",
- "customizations_preserved": [
- "language",
- "team_settings",
- "domains"
- ]
- }
+  "template_optimization": {
+    "last_optimized": "2025-11-24T12:00:00Z",
+    "backup_version": "backup-2025-10-15-v0.27.0",
+    "template_version": "0.28.2",
+    "customizations_preserved": ["language", "team_settings", "domains"]
+  }
 }
 ```
 
@@ -241,18 +257,21 @@ Details: See [Template Optimizer - Version Tracking](modules/template-optimizer.
 ### Module Contents
 
 Code Templates:
+
 - FastAPI REST API template
 - React component template
 - Docker & CI/CD templates
 - Template variables and scaffolding
 
 Feedback Templates:
+
 - Bug Report template
 - Feature Request template
 - Improvement, Refactor, Documentation, Question templates
 - Integration with `/moai:9-feedback`
 
 Template Optimizer:
+
 - 6-phase optimization workflow
 - Smart merge algorithm
 - Backup discovery and restoration
@@ -316,11 +335,13 @@ IMPACT: Without version tracking, teams cannot determine which template features
 ## Works Well With
 
 Agents:
+
 - workflow-project - Project initialization
 - core-planner - Template planning
 - workflow-spec - SPEC template generation
 
 Skills:
+
 - moai-project-config-manager - Configuration management and validation
 - moai-cc-configuration - Claude Code settings integration
 - moai-foundation-specs - SPEC template generation
@@ -328,12 +349,14 @@ Skills:
 - moai-core-workflow - Template-driven workflows
 
 Commands:
+
 - `/moai:0-project` - Project initialization with templates
 - `/moai:9-feedback` - Feedback template selection and issue creation
 
 ## Workflow Integration
 
 Project Initialization:
+
 ```
 1. Select code template (Pattern 1)
  ↓
@@ -345,6 +368,7 @@ Project Initialization:
 ```
 
 Feedback Submission:
+
 ```
 1. /moai:9-feedback execution
  ↓
@@ -356,6 +380,7 @@ Feedback Submission:
 ```
 
 Template Update:
+
 ```
 1. Detect template version change
  ↓

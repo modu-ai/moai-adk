@@ -2,8 +2,9 @@
 name: moai:99-release
 description: "MoAI-ADK release with Claude Code review and tag-based auto deployment"
 argument-hint: "[VERSION] - optional target version (e.g., 0.35.0)"
+type: local
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, AskUserQuestion
-model: "sonnet"
+model: haiku
 ---
 
 ## EXECUTION DIRECTIVE - START IMMEDIATELY
@@ -11,6 +12,7 @@ model: "sonnet"
 This is a release command. Execute the workflow below in order. Do NOT just describe the steps - actually run the commands.
 
 Arguments provided: $ARGUMENTS
+
 - If VERSION argument provided: Use it as target version, skip version selection
 - If no argument: Ask user to select version type (patch/minor/major)
 
@@ -41,6 +43,7 @@ If ruff made changes, commit them:
 `git add -A && git commit -m "style: Auto-fix lint and format issues"`
 
 Display quality summary:
+
 - pytest: PASS or FAIL (if FAIL, stop and report)
 - ruff: PASS or FIXED
 - mypy: PASS or WARNING
@@ -56,6 +59,7 @@ Get diff stats:
 `git diff $(git describe --tags --abbrev=0 2>/dev/null || echo HEAD~20)..HEAD --stat`
 
 Analyze changes for:
+
 - Bug potential
 - Security issues
 - Breaking changes
@@ -68,14 +72,17 @@ Display review report with recommendation: PROCEED or REVIEW_NEEDED
 ## PHASE 3: Version Selection
 
 If VERSION argument was provided (e.g., "0.35.0"):
+
 - Use that version directly
 - Skip AskUserQuestion
 
 If no VERSION argument:
+
 - Read current version from pyproject.toml
 - Use AskUserQuestion to ask: patch/minor/major
 
 Calculate new version and update:
+
 1. Edit pyproject.toml version field
 2. Edit src/moai_adk/version.py MOAI_VERSION
 3. Commit: `git add pyproject.toml src/moai_adk/version.py && git commit -m "chore: Bump version to X.Y.Z"`
@@ -89,6 +96,7 @@ Get commits: `git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"-
 IMPORTANT: Create TWO separate sections in CHANGELOG.md
 
 Section 1 - English:
+
 ```
 # vX.Y.Z - English Title (YYYY-MM-DD)
 ## Summary
@@ -101,6 +109,7 @@ Section 1 - English:
 ```
 
 Section 2 - Korean (immediately after English section):
+
 ```
 # vX.Y.Z - Korean Title (YYYY-MM-DD)
 ## 요약
@@ -122,12 +131,14 @@ Prepend both sections to CHANGELOG.md and commit:
 ## PHASE 5: Final Approval
 
 Display release summary:
+
 - Version change
 - Commits included
 - Quality gate results
 - What will happen after approval
 
 Use AskUserQuestion:
+
 - Release: Create tag and push
 - Abort: Cancel (changes remain local)
 
@@ -136,6 +147,7 @@ Use AskUserQuestion:
 ## PHASE 6: Tag and Push
 
 If approved:
+
 1. Create tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z"`
 2. Push: `git push origin main --tags`
 3. Wait 5 seconds for GitHub Actions to start
@@ -147,11 +159,13 @@ If approved:
 ## PHASE 7: Release Verification
 
 After push completes:
+
 1. Check release workflow: `gh run list --workflow=release.yml --limit 1`
 2. Verify GitHub Release: `gh release list --limit 3`
 3. Display release information: `gh release view vX.Y.Z`
 
 Display final summary with links:
+
 - GitHub Release: https://github.com/modu-ai/moai-adk/releases/tag/vX.Y.Z
 - GitHub Actions: https://github.com/modu-ai/moai-adk/actions
 - PyPI: https://pypi.org/project/moai-adk/

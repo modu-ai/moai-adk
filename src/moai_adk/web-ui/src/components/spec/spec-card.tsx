@@ -14,7 +14,10 @@ const statusConfig: Record<
 > = {
   draft: { icon: FileText, color: 'text-muted-foreground', label: 'Draft' },
   planned: { icon: Clock, color: 'text-blue-500', label: 'Planned' },
+  approved: { icon: CheckCircle, color: 'text-blue-600', label: 'Approved' },
   in_progress: { icon: Loader2, color: 'text-yellow-500', label: 'In Progress' },
+  implementing: { icon: Loader2, color: 'text-orange-500', label: 'Implementing' },
+  testing: { icon: Loader2, color: 'text-purple-500', label: 'Testing' },
   completed: { icon: CheckCircle, color: 'text-green-500', label: 'Completed' },
   blocked: { icon: AlertCircle, color: 'text-red-500', label: 'Blocked' },
 }

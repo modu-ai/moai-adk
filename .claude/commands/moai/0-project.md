@@ -2,6 +2,7 @@
 name: moai:0-project
 description: "Initialize project metadata and documentation"
 argument-hint: "[<empty>|setting|update|--glm-on <token>]"
+type: workflow
 allowed-tools: Task, AskUserQuestion, TodoWrite
 model: inherit
 ---
@@ -103,7 +104,7 @@ WHY: Mode-specific language handling respects existing configuration while enabl
 
 All configuration questions are defined in YAML files under .moai/config/questions/:
 
-- _schema.yaml: Schema definition and constraints
+- \_schema.yaml: Schema definition and constraints
 - tab1-user.yaml: User and language settings (3 questions)
 - tab2-project.yaml: Project metadata (2 questions)
 - tab3-git.yaml: Git strategy and workflow (26 questions, includes GitHub Profile)
@@ -116,15 +117,17 @@ IMPACT: Question changes require only YAML updates, not code modifications.
 
 ### Language-Aware Question Execution
 
-[HARD] When executing questions from .moai/config/questions/*.yaml, translate to user's conversation_language at runtime.
+[HARD] When executing questions from .moai/config/questions/\*.yaml, translate to user's conversation_language at runtime.
 
 Question files are written in English (source of truth). At execution time:
+
 - Read user's conversation_language from sections/language.yaml
 - Translate question text, options, and descriptions to user's language
 - Present AskUserQuestion in user's language
 - Store answer values in English (field values remain English)
 
 Example Translation Flow:
+
 - Question YAML (English): "What is your name?"
 - User Language: Korean (ko)
 - AskUserQuestion presented: Korean translation of question
@@ -136,14 +139,15 @@ IMPACT: Adding new languages requires only translation logic, not question file 
 
 ### Question Loading Priority
 
-1. Load question definitions from .moai/config/questions/tab*.yaml
-2. Read current values from .moai/config/sections/*.yaml
+1. Load question definitions from .moai/config/questions/tab\*.yaml
+2. Read current values from .moai/config/sections/\*.yaml
 3. Present questions with current values as defaults
-4. Store updated values back to sections/*.yaml
+4. Store updated values back to sections/\*.yaml
 
 ### Section File Updates
 
 Configuration values are stored in modular section files:
+
 - sections/user.yaml: User name (loaded by CLAUDE.md)
 - sections/language.yaml: All language settings (loaded by CLAUDE.md)
 - sections/project.yaml: Project metadata
@@ -166,6 +170,7 @@ This command uses agent execution patterns defined in CLAUDE.md (lines 96-120).
 Command implements sequential chaining through 3 main phases:
 
 Phase Flow:
+
 - Phase 1: Mode Detection & Language Configuration (determines operation mode and loads language)
 - Phase 2: User Intent Collection (gathers project metadata and preferences via AskUserQuestion)
 - Phase 3: Configuration & Documentation Generation (manager-project generates all project files)
@@ -173,6 +178,7 @@ Phase Flow:
 Each phase receives outputs from previous phases as context.
 
 WHY: Sequential execution ensures proper configuration and file generation
+
 - Phase 2 requires mode and language from Phase 1 to display appropriate questions
 - Phase 3 requires user responses from Phase 2 to generate correct configuration
 - File generation requires complete configuration before creating documentation
@@ -184,6 +190,7 @@ IMPACT: Skipping phases would create incomplete or misconfigured project setup
 Not applicable - configuration requires sequential processing
 
 WHY: Project initialization has strict ordering requirements
+
 - Language must be determined before asking questions
 - User responses must be collected before generating files
 - Configuration must be validated before documentation generation
@@ -195,6 +202,7 @@ IMPACT: Parallel execution would create configuration conflicts and invalid proj
 Not applicable - command completes in single execution
 
 WHY: Project setup is fast atomic operation
+
 - Most setups complete in under 1 minute
 - Configuration operations are atomic and transactional
 - No long-running processes requiring checkpoints
@@ -248,24 +256,29 @@ IMPACT: Incorrect routing causes wrong execution flow.
 The system routes based on provided arguments:
 
 GLM Configuration: Command includes --glm-on with optional API token
+
 - Detect token in --glm-on parameter
 - If token missing: Attempt auto-load from .env.glm file
 - If token missing: Attempt auto-load from ANTHROPIC_AUTH_TOKEN environment variable
 - If all sources missing: Request token from user via AskUserQuestion
 
 SETTINGS Mode: Command includes setting argument
+
 - Always use interactive tab selection via AskUserQuestion
 - User selects specific tab or "Modify All Tabs" option
 
 UPDATE Mode: Command includes update argument
+
 - No additional argument parsing required
 
 INITIALIZATION or AUTO-DETECT: Command has no arguments
+
 - [HARD] Check if .moai/config/config.yaml exists
 - File exists: Route to AUTO-DETECT MODE
 - File missing: Route to INITIALIZATION MODE
 
 Invalid Arguments: Unrecognized command format
+
 - Display error message explaining valid command syntax
 - Exit with error state
 
@@ -430,12 +443,15 @@ IMPACT: Outdated recommendations would create technical debt from project start.
 Based on collected project_type, execute 3 parallel searches:
 
 Search Query 1: "[project_type] best practices 2025"
+
 - Extract: Design patterns, architecture recommendations, common pitfalls
 
 Search Query 2: "[project_type] recommended tech stack 2025"
+
 - Extract: Framework comparisons, library recommendations, version requirements
 
 Search Query 3: "[project_type] [project_description keywords] architecture patterns"
+
 - Extract: Domain-specific patterns, similar project architectures
 
 Analyze search results and compile:
@@ -459,6 +475,7 @@ IMPACT: Poor recommendations would lead to project failure or rework.
 Proposal Structure:
 
 Complexity Detection (before proposing):
+
 - Simple Projects (recommend NO framework):
   - Keywords: "게임", "game", "간단한", "simple", "첫", "first", "연습", "practice"
   - Project types: Browser games, simple utilities, learning projects
@@ -474,6 +491,7 @@ Complexity Detection (before proposing):
   - Recommended stack: Full framework with state management, testing, etc.
 
 Technology Stack Proposal:
+
 - For Simple Projects (games, learning):
   - Framework: "프레임워크 없음 - 순수 HTML/CSS/JavaScript로 충분해요"
   - UI: "CSS만 사용 (Canvas for games)"
@@ -487,11 +505,13 @@ Technology Stack Proposal:
   - Build Tools: Current best practice
 
 Architecture Proposal:
+
 - Directory Structure: Recommended layout for project type
 - Key Patterns: Component patterns, state management approach
 - Data Flow: How data moves through the application
 
 Quality Standards:
+
 - Test Coverage Target: Industry standard percentage
 - TRUST 5 Level: Recommended validation level
 - Accessibility: WCAG level appropriate for project
@@ -514,16 +534,19 @@ Present in user's conversation_language with clear sections:
 Based on your project "{project_name}" ({project_type}), here is my recommendation:
 
 **Technology Stack**
+
 - Framework: {framework} - {brief_rationale}
 - UI: {ui_library} - {brief_rationale}
 - Testing: {test_framework}
 - Build: {build_tools}
 
 **Architecture**
+
 - Structure: {directory_pattern}
 - Patterns: {key_patterns}
 
 **Quality Standards**
+
 - Coverage: {coverage_target}%
 - TRUST Level: {trust_level}
 
@@ -546,6 +569,7 @@ Approval Question:
     description: "Re-run search with different criteria"
 
 If user selects "Modify":
+
 - Use additional AskUserQuestion to collect specific changes
 - Update $SMART_PROPOSAL with modifications
 - Re-present for approval
@@ -572,6 +596,7 @@ Pass to manager-project via Task():
 - WebSearch Sources: URLs used for recommendations
 
 Agent responsibilities:
+
 - Generate .moai/project/product.md from project description + approved proposal
 - Generate .moai/project/structure.md from architecture proposal
 - Generate .moai/project/tech.md from technology stack proposal
@@ -673,6 +698,7 @@ When user runs /moai:0-project setting (without tab_ID), present tab selection u
 Question: Which settings tab would you like to modify?
 
 Options:
+
 - Tab 1: User and Language - Configure user name, conversation language, agent prompt language
 - Tab 2: Project Settings - Configure project name, description
 - Tab 3: Git Strategy and Workflow - Configure GitHub profile, Manual/Personal/Team Git settings, commit/branch strategy
@@ -685,6 +711,7 @@ After Tab Completion:
 Question: Would you like to modify another settings tab?
 
 Options:
+
 - No, finish settings
 - Select another tab
 
@@ -757,28 +784,33 @@ Single Batch Execution Example (Tab 1, Batch 1.1):
 Call AskUserQuestion with the following questions array:
 
 Question 1 - User Name:
+
 - Question text: What is your name? To change, type your name in the text field below. (current: GoosLab)
 - Header: User Name
 - MultiSelect: false
 - Options: Keep Current Value with description to continue using current value
 
 Question 2 - Conversation Language:
+
 - Question text: What language should Alfred use in conversations? (current: Korean/ko)
 - Header: Conversation Language
 - MultiSelect: false
 - Options: Korean, English, Japanese, Chinese with localized descriptions
 
 Question 3 - Language Display Name:
+
 - Question text: What is the display name for the selected language? (current: Korean)
 - Header: Language Display Name
 - MultiSelect: false
 
 Question 4 - Agent Prompt Language:
+
 - Question text: What language should agent prompts use? (current: same as conversation)
 - Header: Agent Prompt Language
 - MultiSelect: false
 
 Process user responses from AskUserQuestion into config update:
+
 - user.name receives user input or keeps current value
 - language.conversation_language receives selected value
 - language.conversation_language_name receives user input or keeps current value
@@ -795,6 +827,7 @@ Step 1: Get field path from schema (for example, user.name)
 Step 2: Get user's response (selected option or custom input from Type something field)
 
 Step 3: Convert to config.yaml value using these rules:
+
 - If custom text input from Type something field: Use the typed value directly
 - If selected preset option: Use the option's mapped value
 - If Keep Current Value option: Use existing value from config
@@ -810,13 +843,11 @@ Note: The Type something input field is auto-added by AskUserQuestion tool. User
 Checkpoint Locations (from tab_schema navigation_flow):
 
 1. After Tab 1 (Language settings):
-
    - Verify conversation_language is valid (ko, en, ja, es, etc)
    - Verify agent_prompt_language consistency
    - Error recovery: Re-ask Tab 1 if validation fails
 
 2. After Tab 3 (Git strategy):
-
    - Validate Personal/Team mode conflicts
      - If Personal: main_branch should not be "develop"
      - If Team: PR base must be develop or main (never direct to main)
@@ -836,12 +867,14 @@ Update Pattern (Skill-delegated):
 Delegate ALL config update operations to UnifiedConfigManager from moai-workflow-project:
 
 Manager responsibilities:
+
 - Handle backup and rollback logic internally
 - Perform deep merge with validation
 - Write atomically to config.yaml
 - Report success or failure
 
 Agent responsibilities:
+
 - Collect user responses from AskUserQuestion
 - Map responses to config field paths
 - Pass update map to Skill
@@ -867,12 +900,14 @@ Step 2: Extracts Tab 1 (tab_1_user_language)
 Step 3: Gets Batch 1.1 (Basic Settings)
 
 Step 4: Loads current values from config.yaml including extended language settings:
+
 - User configuration: user.name value
 - Conversation language: language.conversation_language (ko, en, ja, zh, etc.)
 - Agent prompt language: language.agent_prompt_language
 - Additional language settings: git_commit_messages, code_comments, documentation, error_messages
 
 Step 5: Calls AskUserQuestion with 3 questions for core language settings:
+
 - Question 1: The user name is currently set to [current value]. Is this correct?
 - Question 2: What language should Alfred use in conversations? (current: [language display name]/[code])
 - Question 3: The agent internal prompt language is currently set to [display name]/[code]. How would you like to configure this?
@@ -880,21 +915,25 @@ Step 5: Calls AskUserQuestion with 3 questions for core language settings:
 Step 6: Receives user responses and maps them to configuration fields
 
 Step 7: Processes each response (map to config fields):
+
 - user.name response maps to user.name
 - conversation_language response maps to language.conversation_language
 - Auto-update: conversation_language_name (ko maps to Korean, en maps to English, ja maps to Japanese, es maps to Spanish)
 - agent_prompt_language response maps to language.agent_prompt_language
 
 Step 8: Runs Tab 1 validation checkpoint:
+
 - Check language is valid
 - Verify consistency
 
 Step 9: Delegates atomic update to UnifiedConfigManager from moai-workflow-project:
+
 - Manager handles backup and rollback internally
 - Manager performs deep merge (including auto-updated conversation_language_name)
 - Manager verifies final structure
 
 Step 10: Receives result from Manager:
+
 - Success: Report changes made (4 fields: user.name, conversation_language, conversation_language_name [auto], agent_prompt_language)
 - Failure: Report error from Skill with recovery suggestions
 
@@ -905,27 +944,32 @@ User runs: /moai:0-project setting (or /moai:0-project setting tab_3_git_strateg
 Step 1: Load Tab 3 (tab_3_git_strategy) - 6 batches total
 
 Step 2: Execute Batch 3.0 (Workflow Mode Selection):
+
 - User selects: Personal, Team, or Hybrid
 - Validation: Confirm mode selection
 
 Step 3: CONDITIONAL LOGIC - Based on mode:
 
 If mode is Personal:
+
 - Execute Batch 3.1 (Personal core settings)
 - Execute Batch 3.2 (Personal branch and cleanup)
 - Execute Batch 3.3 (Personal protection and merge)
 - Skip Batches 3.4, 3.5, 3.6 (Team batches)
 
 If mode is Team:
+
 - Skip Batches 3.1, 3.2, 3.3 (Personal batches)
 - Execute Batch 3.4 (Team core settings)
 - Execute Batch 3.5 (Team branch and protection)
 - Execute Batch 3.6 (Team safety and merge)
 
 If mode is Hybrid:
+
 - Execute ALL batches (3.1-3.6) for full flexibility
 
 Step 4: Run Tab 3 validation checkpoint:
+
 - Validate mode selection consistency
 - Check Personal/Team conflicts:
   - Personal mode: base_branch should be main (not develop)
@@ -937,6 +981,7 @@ Step 4: Run Tab 3 validation checkpoint:
 Step 5: Merge all executed batches into single update object
 
 Step 6: Delegate atomic update to UnifiedConfigManager from moai-workflow-project:
+
 - Manager handles backup and rollback internally
 - Manager performs deep merge with final validation
 
@@ -953,6 +998,7 @@ Step 1: Show Tab Selection Screen (Which settings tab would you like to modify?)
 Step 2: User selects tab or Modify All Tabs
 
 Step 3: Execute selected tab:
+
 - Tab 1 (REQUIRED): User and Language (1 batch, 3 questions)
 - Tab 2 (RECOMMENDED): Project Info (2 batches, 2 questions in batch 2.1 plus 0 questions auto-processing in batch 2.2)
 - Tab 3 (RECOMMENDED): Git Strategy (10 batches, 26 questions total, conditional by mode)
@@ -965,12 +1011,14 @@ Step 3: Execute selected tab:
 - Tab 5 (OPTIONAL): System and GitHub (2 batches, 8 questions)
 
 Step 4: After tab completion, ask: Would you like to modify another settings tab?
+
 - Option: No, finish settings (exit)
 - Option: Select another tab (return to step 1)
 
 Step 5: Final atomic update after user finishes all selected tabs
 
 Tab-level behavior:
+
 - If user cancels mid-tab, changes NOT saved
 - If tab validation fails, user can retry or skip tab
 - After ALL selected tabs complete successfully, perform final atomic update
@@ -978,6 +1026,7 @@ Tab-level behavior:
 - Tab 3 conditional batches respect mode selection (shown or hidden based on git_strategy.mode)
 
 Tab completion order (recommended):
+
 - Tab 1 (REQUIRED): Foundation language settings
 - Tab 2: Project metadata
 - Tab 3: Git workflow strategy (includes GitHub Profile)
@@ -989,20 +1038,24 @@ Tab completion order (recommended):
 The tab schema JSON file contains the following structure:
 
 Root Level:
+
 - version: Schema version (for example, 1.0.0)
 - tabs: Array of tab definitions
 - navigation_flow: Navigation and validation configuration
 
 Tab Definition:
+
 - id: Tab identifier (for example, tab_1_user_language)
 - label: Display label (for example, Tab 1: User and Language)
 - batches: Array of batch definitions
 
 Batch Definition:
+
 - batch_id: Batch identifier (for example, 1.1)
 - questions: Array of question definitions
 
 Question Definition:
+
 - question: Question text displayed to user
 - header: Section header text
 - field: Configuration path (for example, user.name)
@@ -1013,6 +1066,7 @@ Question Definition:
 - required: Boolean indicating if field is required
 
 Navigation Flow:
+
 - completion_order: Array of tab IDs in recommended order (tab_1, tab_2, tab_3, tab_4, tab_5)
 - validation_sequence: Array of validation checkpoints (Tab 1 checkpoint, Tab 3 checkpoint, Final validation)
 
@@ -1059,6 +1113,7 @@ After manager-project agent completes, extract the following information:
 The manager-project agent handles all context saving.
 
 Context data to persist:
+
 - Phase: 0-project
 - Mode: INITIALIZATION, AUTO-DETECT, SETTINGS, or UPDATE
 - Timestamp: ISO8601 UTC format
@@ -1073,6 +1128,7 @@ Context data to persist:
 - Next phase: 1-plan
 
 Agent delegates to UnifiedConfigManager from moai-workflow-project:
+
 - Save context via ContextManager
 - Handle file path validation
 - Implement error recovery (non-blocking)
@@ -1265,21 +1321,25 @@ IMPACT: Unstructured output reduces ability to track execution state and causes 
 ## Quick Reference
 
 Scenario: First-time setup
+
 - Mode: INITIALIZATION
 - Entry Point: /moai:0-project (no config)
 - Key Phases: Read language then Interview then Docs
 
 Scenario: Existing project
+
 - Mode: AUTO-DETECT
 - Entry Point: /moai:0-project (config exists)
 - Key Phases: Read language then Display then Options
 
 Scenario: Modify config
+
 - Mode: SETTINGS
 - Entry Point: /moai:0-project setting
 - Key Phases: Interactive tab selection then Conditional batches then Skill update
 
 Scenario: After package update
+
 - Mode: UPDATE
 - Entry Point: /moai:0-project update
 - Key Phases: Preserve language then Template merge then Announce
@@ -1321,11 +1381,13 @@ Question: Project setup is complete. What would you like to do next?
 Header: Next Steps
 MultiSelect: false
 Options:
+
 - Write Specification - Execute /moai:1-plan to define feature specifications
 - Review Project Structure - Check current project status and settings
 - Start New Session - Initialize workspace and start fresh
 
 Important:
+
 - Use conversation language from config
 - No emojis in any AskUserQuestion fields
 - Always provide clear next step options

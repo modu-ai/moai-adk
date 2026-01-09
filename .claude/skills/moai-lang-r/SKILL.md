@@ -5,6 +5,8 @@ version: 1.0.0
 category: "language"
 modularized: true
 user-invocable: false
+tags:
+  ["language", "r", "tidyverse", "ggplot2", "shiny", "dplyr", "data-science"]
 updated: 2026-01-08
 status: "active"
 allowed-tools:
@@ -23,6 +25,7 @@ R 4.4+ Development Specialist - tidyverse, ggplot2, Shiny, renv, and modern R pa
 Auto-Triggers: `.R` files, `.Rmd`, `.qmd`, `DESCRIPTION`, `renv.lock`, Shiny/ggplot2 discussions
 
 Core Capabilities:
+
 - R 4.4 Features: Native pipe |>, lambda syntax \(x), improved error messages
 - Data Manipulation: dplyr, tidyr, purrr, stringr, forcats
 - Visualization: ggplot2, plotly, scales, patchwork
@@ -35,6 +38,7 @@ Core Capabilities:
 ### Quick Patterns
 
 dplyr Data Pipeline:
+
 ```r
 library(tidyverse)
 
@@ -53,6 +57,7 @@ result <- data |>
 ```
 
 ggplot2 Visualization:
+
 ```r
 library(ggplot2)
 
@@ -69,6 +74,7 @@ ggplot(data, aes(x = date, y = value, color = category)) +
 ```
 
 Shiny Basic App:
+
 ```r
 library(shiny)
 
@@ -94,6 +100,7 @@ shinyApp(ui, server)
 ### R 4.4 Modern Features
 
 Native Pipe Operator |>:
+
 ```r
 result <- data |>
   filter(!is.na(value)) |>
@@ -106,6 +113,7 @@ data |>
 ```
 
 Lambda Syntax with Backslash:
+
 ```r
 map(data, \(x) x^2)
 map2(list1, list2, \(x, y) x + y)
@@ -118,6 +126,7 @@ data |>
 ### tidyverse Data Manipulation
 
 dplyr Core Verbs:
+
 ```r
 library(dplyr)
 
@@ -146,6 +155,7 @@ data |>
 ```
 
 tidyr Reshaping:
+
 ```r
 library(tidyr)
 
@@ -168,6 +178,7 @@ long_data |>
 ```
 
 purrr Functional Programming:
+
 ```r
 library(purrr)
 
@@ -184,6 +195,7 @@ successes <- results |> map("result") |> compact()
 ### ggplot2 Visualization Patterns
 
 Complete Plot Structure:
+
 ```r
 library(ggplot2)
 library(scales)
@@ -208,6 +220,7 @@ ggsave("output.png", p, width = 10, height = 6, dpi = 300)
 ```
 
 Multiple Plots with patchwork:
+
 ```r
 library(patchwork)
 
@@ -222,6 +235,7 @@ combined <- (p1 | p2) / p3 +
 ### Shiny Application Patterns
 
 Modular Shiny App:
+
 ```r
 dataFilterUI <- function(id) {
   ns <- NS(id)
@@ -252,6 +266,7 @@ dataFilterServer <- function(id, data) {
 ```
 
 Reactive Patterns:
+
 ```r
 server <- function(input, output, session) {
   # reactive: Cached computation
@@ -279,6 +294,7 @@ server <- function(input, output, session) {
 ### testthat Testing Framework
 
 Test Structure:
+
 ```r
 library(testthat)
 
@@ -300,6 +316,7 @@ test_that("calculate_growth handles edge cases", {
 ### renv Dependency Management
 
 Project Setup:
+
 ```r
 renv::init()
 renv::install("tidyverse")
@@ -313,6 +330,7 @@ renv::restore()
 ## Advanced Implementation (10+ minutes)
 
 For comprehensive coverage including:
+
 - Advanced Shiny patterns (async, caching, deployment)
 - Complex ggplot2 extensions and custom themes
 - Database integration with dbplyr and pool
@@ -321,6 +339,7 @@ For comprehensive coverage including:
 - Production deployment (Docker, Posit Connect)
 
 See:
+
 - [Advanced Patterns](modules/advanced-patterns.md) - Complete advanced patterns guide
 
 ---
@@ -354,16 +373,19 @@ See:
 Common Issues:
 
 R Version Check:
+
 ```r
 R.version.string  # Should be 4.4+
 packageVersion("dplyr")
 ```
 
 Native Pipe Not Working:
+
 - Ensure R version is 4.1+ for |>
 - Check RStudio settings: Tools > Global Options > Code > Use native pipe
 
 renv Issues:
+
 ```r
 renv::clean()
 renv::rebuild()
@@ -371,6 +393,7 @@ renv::snapshot(force = TRUE)
 ```
 
 Shiny Reactivity Debug:
+
 ```r
 options(shiny.reactlog = TRUE)
 reactlog::reactlog_enable()
@@ -378,6 +401,7 @@ shiny::reactlogShow()
 ```
 
 ggplot2 Font Issues:
+
 ```r
 library(showtext)
 font_add_google("Roboto", "roboto")

@@ -6,8 +6,17 @@ version: 3.1.0
 modularized: false
 user-invocable: false
 category: foundation
-tags: ['foundation', 'context', 'session', 'token-optimization', 'state-management', 'multi-agent']
+tags:
+  [
+    "foundation",
+    "context",
+    "session",
+    "token-optimization",
+    "state-management",
+    "multi-agent",
+  ]
 updated: 2026-01-08
+status: "active"
 allowed-tools:
   - Read
   - Grep
@@ -24,6 +33,7 @@ replaces: moai-core-context-budget, moai-core-session-state
 Unified context optimization and session state management for Claude Code with 200K token budget management, session persistence, and multi-agent handoff protocols.
 
 Core Capabilities:
+
 - 200K token budget allocation and monitoring
 - Session state tracking with persistence
 - Context-aware token optimization
@@ -32,6 +42,7 @@ Core Capabilities:
 - Session forking for parallel exploration
 
 When to Use:
+
 - Session initialization and cleanup
 - Long-running workflows (>10 minutes)
 - Multi-agent orchestration
@@ -40,6 +51,7 @@ When to Use:
 - Workflow phase transitions
 
 Key Principles (2025):
+
 1. Avoid Last 20% - Performance degrades in final fifth of context
 2. Aggressive Clearing - `/clear` every 1-3 messages for SPEC workflows
 3. Lean Memory Files - Keep each file < 500 lines
@@ -69,6 +81,7 @@ Key Principles (2025):
 ### Core Patterns
 
 Pattern 1: Progressive File Loading
+
 ```python
 # Load files by priority tiers
 Tier 1: CLAUDE.md, config.json (always loaded)
@@ -78,6 +91,7 @@ Tier 4: Reference documentation (on-demand)
 ```
 
 Pattern 2: Context Checkpointing
+
 1. Monitor token usage: warn at 150K, critical at 180K
 2. Identify essential context to preserve
 3. Execute `/clear` to reset session
@@ -85,6 +99,7 @@ Pattern 2: Context Checkpointing
 5. Resume work with preserved context
 
 Pattern 3: MCP Context Continuity
+
 ```python
 # Preserve MCP agent context across /clear
 agent_id = mcp_agent.get_id()
@@ -99,6 +114,7 @@ agent_id = mcp_agent.get_id()
 Concept: Strategic allocation and monitoring of 200K token context window.
 
 Allocation Strategy:
+
 ```
 200K Token Budget Breakdown:
  System Prompt & Instructions: ~15K tokens (7.5%)
@@ -121,6 +137,7 @@ Allocation Strategy:
 ```
 
 Monitoring Thresholds:
+
 ```python
 def monitor_token_budget(context_usage: int):
  """Real-time token budget monitoring with automatic actions."""
@@ -149,6 +166,7 @@ Use Case: Prevent context overflow in long-running SPEC-First workflows.
 Concept: Proactive context clearing at strategic checkpoints to maintain efficiency.
 
 Clear Execution Rules:
+
 ```
 MANDATORY /clear Points:
  After /moai:1-plan completion (saves 45-50K tokens)
@@ -159,6 +177,7 @@ MANDATORY /clear Points:
 ```
 
 Implementation:
+
 ```python
 def should_execute_clear(context: dict) -> bool:
  """Determine if /clear should be executed."""
@@ -182,6 +201,7 @@ Use Case: Maximize token efficiency across SPEC-Run-Sync cycles.
 Concept: Maintain session continuity across interruptions with state snapshots.
 
 Session State Architecture:
+
 ```
 Session State Layers:
  L1: Context-Aware Layer (Claude 4.5+ feature)
@@ -197,27 +217,28 @@ Session State Layers:
 ```
 
 State Snapshot Structure:
+
 ```json
 {
- "session_id": "sess_uuid_v4",
- "model": "claude-sonnet-4-5-20250929",
- "created_at": "2025-11-24T10:30:00Z",
- "context_window": {
- "total": 200000,
- "used": 85000,
- "available": 115000,
- "position_percent": 42.5
- },
- "persistence": {
- "auto_load_history": true,
- "context_preservation": "critical_only",
- "cache_enabled": true
- },
- "work_state": {
- "current_spec": "SPEC-001",
- "phase": "implementation",
- "completed_steps": ["spec_complete", "architecture_defined"]
- }
+  "session_id": "sess_uuid_v4",
+  "model": "claude-sonnet-4-5-20250929",
+  "created_at": "2025-11-24T10:30:00Z",
+  "context_window": {
+    "total": 200000,
+    "used": 85000,
+    "available": 115000,
+    "position_percent": 42.5
+  },
+  "persistence": {
+    "auto_load_history": true,
+    "context_preservation": "critical_only",
+    "cache_enabled": true
+  },
+  "work_state": {
+    "current_spec": "SPEC-001",
+    "phase": "implementation",
+    "completed_steps": ["spec_complete", "architecture_defined"]
+  }
 }
 ```
 
@@ -230,33 +251,35 @@ Use Case: Resume long-running tasks after interruptions without context loss.
 Concept: Seamless context transfer between agents with minimal token overhead.
 
 Handoff Package:
+
 ```json
 {
- "handoff_id": "uuid-v4",
- "from_agent": "spec-builder",
- "to_agent": "tdd-implementer",
- "session_context": {
- "session_id": "sess_uuid",
- "model": "claude-sonnet-4-5-20250929",
- "context_position": 42.5,
- "available_tokens": 115000,
- "user_language": "ko"
- },
- "task_context": {
- "spec_id": "SPEC-001",
- "current_phase": "implementation",
- "completed_steps": ["spec_complete", "architecture_defined"],
- "next_step": "write_tests"
- },
- "recovery_info": {
- "last_checkpoint": "2025-11-24T10:25:00Z",
- "recovery_tokens_reserved": 55000,
- "session_fork_available": true
- }
+  "handoff_id": "uuid-v4",
+  "from_agent": "spec-builder",
+  "to_agent": "tdd-implementer",
+  "session_context": {
+    "session_id": "sess_uuid",
+    "model": "claude-sonnet-4-5-20250929",
+    "context_position": 42.5,
+    "available_tokens": 115000,
+    "user_language": "ko"
+  },
+  "task_context": {
+    "spec_id": "SPEC-001",
+    "current_phase": "implementation",
+    "completed_steps": ["spec_complete", "architecture_defined"],
+    "next_step": "write_tests"
+  },
+  "recovery_info": {
+    "last_checkpoint": "2025-11-24T10:25:00Z",
+    "recovery_tokens_reserved": 55000,
+    "session_fork_available": true
+  }
 }
 ```
 
 Handoff Validation:
+
 ```python
 def validate_handoff(handoff_package: dict) -> bool:
  """Validate handoff package integrity."""
@@ -285,6 +308,7 @@ Use Case: Efficient Plan → Run → Sync workflow execution.
 Concept: Load context progressively based on relevance and need.
 
 Progressive Summarization:
+
 ```python
 def progressive_summarization(context: str, target_ratio: float = 0.3):
  """Compress context while preserving key information."""
@@ -302,6 +326,7 @@ def progressive_summarization(context: str, target_ratio: float = 0.3):
 ```
 
 Context Tagging:
+
 ```python
 # Bad (high token cost):
 "The user configuration from the previous 20 messages..."
@@ -330,6 +355,7 @@ For detailed patterns and implementation strategies:
 ## Best Practices
 
 ### DO
+
 - Execute `/clear` immediately after SPEC creation
 - Monitor token usage and plan accordingly
 - Use context-aware token budget tracking
@@ -393,6 +419,7 @@ IMPACT: Maintains 55K token emergency reserve, prevents forced interruptions, en
 ## Workflow Integration
 
 Session Initialization:
+
 ```
 1. Initialize token budget (Pattern 1)
 2. Load session state (Pattern 3)
@@ -401,6 +428,7 @@ Session Initialization:
 ```
 
 SPEC-First Workflow:
+
 ```
 1. /moai:1-plan execution
  ↓
@@ -416,6 +444,7 @@ SPEC-First Workflow:
 ```
 
 Context Monitoring:
+
 ```
 Continuous:
  Track token usage (Pattern 1)

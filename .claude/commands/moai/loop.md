@@ -1,7 +1,8 @@
 ---
 name: moai:loop
 description: "Start Ralph-style feedback loop for automated error correction"
-argument-hint: '[--max-iterations N] [--auto-fix]'
+argument-hint: "[--max-iterations N] [--auto-fix]"
+type: utility
 allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit
 model: inherit
 ---
@@ -24,6 +25,7 @@ Start an automated feedback loop that continuously checks for errors and guides 
 ## Command Purpose
 
 Implements the Ralph-style "continuous improvement" pattern:
+
 1. Check current state (LSP errors, test failures, coverage)
 2. If issues exist, provide guidance to fix them
 3. After each fix, re-check conditions
@@ -34,16 +36,19 @@ Arguments: $ARGUMENTS
 ## Usage Examples
 
 Start basic feedback loop:
+
 ```
 /moai:loop
 ```
 
 With iteration limit:
+
 ```
 /moai:loop --max-iterations 5
 ```
 
 With auto-fix enabled (applies safe fixes automatically):
+
 ```
 /moai:loop --auto-fix
 ```
@@ -107,12 +112,14 @@ ITERATION START (repeat)
 
 When the loop is active, these hooks provide real-time feedback:
 
-### PostToolUse Hook (post_tool__lsp_diagnostic.py)
+### PostToolUse Hook (post_tool\_\_lsp_diagnostic.py)
+
 - Runs after every Write/Edit operation
 - Provides immediate LSP diagnostic feedback
 - Exit code 2 signals errors needing attention
 
-### Stop Hook (stop__loop_controller.py)
+### Stop Hook (stop\_\_loop_controller.py)
+
 - Runs after each Claude response
 - Checks completion conditions
 - Exit code 1 continues the loop
@@ -140,12 +147,14 @@ State is persisted in `.moai/cache/.moai_loop_state.json`:
 When `--auto-fix` is enabled, safe fixes are applied automatically:
 
 ### Safe Auto-Fixes (applied without confirmation)
+
 - Import sorting and organization
 - Whitespace and formatting issues
 - Unused import removal
 - Simple type annotation additions
 
 ### Unsafe Fixes (require confirmation)
+
 - Logic changes
 - API modifications
 - Test modifications
@@ -159,17 +168,20 @@ When `--auto-fix` is enabled, safe fixes are applied automatically:
 ## Ralph Loop: Iteration 3/10
 
 ### Current Status
+
 - Errors: 2
 - Warnings: 5
 - Tests: 23/25 passing
 - Coverage: 82%
 
 ### Issues to Address
+
 1. [ERROR] src/auth.py:45 - undefined name 'jwt_token'
 2. [ERROR] src/auth.py:67 - missing return statement
 3. [WARNING] tests/test_auth.py:12 - unused variable 'result'
 
 ### Suggested Actions
+
 1. Import jwt_token or define it locally
 2. Add return statement to validate_token function
 3. Use or remove the 'result' variable
@@ -181,6 +193,7 @@ When `--auto-fix` is enabled, safe fixes are applied automatically:
 ## Ralph Loop: COMPLETE
 
 ### Final Status
+
 - Iterations: 4
 - Errors: 0
 - Warnings: 0
@@ -188,11 +201,13 @@ When `--auto-fix` is enabled, safe fixes are applied automatically:
 - Coverage: 87%
 
 ### Changes Made
+
 - Fixed 3 errors
 - Resolved 5 warnings
 - Added 2 test cases
 
 ### Duration
+
 - Start: 10:30:00
 - End: 10:35:42
 - Total: 5m 42s
@@ -201,6 +216,7 @@ When `--auto-fix` is enabled, safe fixes are applied automatically:
 ## Cancellation
 
 To cancel an active loop:
+
 - Use `/moai:cancel-loop` command
 - Or set environment variable: `MOAI_LOOP_ACTIVE=false`
 - Or delete state file: `.moai/cache/.moai_loop_state.json`
@@ -215,6 +231,7 @@ To cancel an active loop:
 ## Error Recovery
 
 If the loop gets stuck:
+
 1. Check LSP server status
 2. Verify test framework is working
 3. Review recent changes for syntax errors
@@ -240,5 +257,6 @@ The Stop hook (`stop__loop_controller.py`) manages the loop continuation.
 ---
 
 Version: 1.0.0
+Last Updated: 2026-01-10
 Pattern: Continuous Feedback Loop
 Integration: LSP Diagnostics, AST-grep, Test Runner

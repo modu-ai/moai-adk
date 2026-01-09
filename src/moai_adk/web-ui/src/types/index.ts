@@ -60,18 +60,26 @@ export interface Session {
 }
 
 // SPEC types
-export type SpecStatus = 'draft' | 'planned' | 'in_progress' | 'completed' | 'blocked'
+export type SpecStatus = 'draft' | 'planned' | 'approved' | 'in_progress' | 'implementing' | 'testing' | 'completed' | 'blocked'
 
 export interface Spec {
   id: string
   title: string
   description: string
   status: SpecStatus
+  priority: 'low' | 'medium' | 'high'
   createdAt: string
   updatedAt: string
   tags: string[]
   progress: number
   tasks: SpecTask[]
+  filePath?: string
+  worktreePath?: string
+}
+
+export interface SpecListResponse {
+  specs: Spec[]
+  total: number
 }
 
 export interface SpecTask {

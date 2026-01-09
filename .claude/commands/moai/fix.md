@@ -1,7 +1,8 @@
 ---
 name: moai:fix
 description: "Auto-fix current LSP errors and AST-grep warnings"
-argument-hint: '[--errors-only] [--dry-run] [file_path]'
+argument-hint: "[--errors-only] [--dry-run] [file_path]"
+type: utility
 allowed-tools: Task, AskUserQuestion, Bash, Read, Write, Edit, Glob, Grep
 model: inherit
 ---
@@ -24,6 +25,7 @@ Automatically detect and fix LSP errors, linting issues, and AST-grep warnings i
 ## Command Purpose
 
 Provides one-command fixing for common code issues:
+
 1. Scans for LSP diagnostics (errors and warnings)
 2. Identifies AST-grep security and quality issues
 3. Applies safe auto-fixes where possible
@@ -34,21 +36,25 @@ Target: $ARGUMENTS
 ## Usage Examples
 
 Fix all issues in project:
+
 ```
 /moai:fix
 ```
 
 Fix specific file:
+
 ```
 /moai:fix src/auth.py
 ```
 
 Fix errors only (ignore warnings):
+
 ```
 /moai:fix --errors-only
 ```
 
 Preview fixes without applying:
+
 ```
 /moai:fix --dry-run
 ```
@@ -68,6 +74,7 @@ Preview fixes without applying:
 These issues are safe to fix automatically:
 
 **Python**:
+
 - Import sorting (isort/ruff)
 - Unused imports removal
 - Whitespace/formatting (black/ruff)
@@ -76,12 +83,14 @@ These issues are safe to fix automatically:
 - Dictionary comprehension suggestions
 
 **TypeScript/JavaScript**:
+
 - Import organization
 - Unused variable removal (when safe)
 - Formatting (prettier)
 - Simple ESLint auto-fixes
 
 **General**:
+
 - Trailing whitespace
 - Missing newlines at EOF
 - Mixed indentation
@@ -151,21 +160,27 @@ END: Summary with remaining issues
 ## Integration with Tools
 
 ### LSP Integration
+
 Uses `MoAILSPClient` for language-aware diagnostics:
+
 - Python: pyright/pylsp
 - TypeScript: tsserver
 - Go: gopls
 - Rust: rust-analyzer
 
 ### AST-grep Integration
+
 Runs security and quality scans:
+
 - SQL injection patterns
 - XSS vulnerabilities
 - Insecure configurations
 - Code smell patterns
 
 ### Linter Integration
+
 Leverages existing linters via `tool_registry.py`:
+
 - ruff (Python)
 - eslint/biome (TypeScript/JavaScript)
 - golangci-lint (Go)
@@ -179,16 +194,19 @@ Leverages existing linters via `tool_registry.py`:
 ## Dry Run: /moai:fix
 
 ### Would Fix Automatically (12 issues)
+
 - src/auth.py: 4 issues (unused imports, formatting)
 - src/api/routes.py: 3 issues (import order)
 - tests/test_auth.py: 5 issues (whitespace)
 
 ### Would Require Confirmation (3 issues)
+
 - src/auth.py:45 - Rename 'usr' to 'user'?
 - src/api/routes.py:78 - Add return type annotation?
 - src/models.py:23 - Convert to dataclass?
 
 ### Manual Fixes Needed (2 issues)
+
 - [ERROR] src/auth.py:67 - Logic error in token validation
 - [SECURITY] src/api/routes.py:112 - Potential SQL injection
 
@@ -201,16 +219,19 @@ No changes made (dry run).
 ## Fix Complete: /moai:fix
 
 ### Applied Fixes (15 total)
+
 - Auto-fixed: 12 issues
 - User-approved: 3 issues
 - Skipped: 0 issues
 
 ### Files Modified
+
 - src/auth.py (7 fixes)
 - src/api/routes.py (5 fixes)
 - tests/test_auth.py (3 fixes)
 
 ### Remaining Issues (2 manual)
+
 1. [ERROR] src/auth.py:67
    Logic error in token validation
    Suggestion: Review the condition on line 67
@@ -220,6 +241,7 @@ No changes made (dry run).
    Suggestion: Use parameterized queries
 
 ### Verification
+
 - Linter: PASS
 - Tests: 24/24 passing
 - Coverage: 87%
@@ -228,17 +250,21 @@ No changes made (dry run).
 ## Error Handling
 
 ### If LSP Unavailable
+
 Falls back to linter-based detection:
+
 - Uses ruff for Python
 - Uses tsc for TypeScript
 - Reports degraded mode to user
 
 ### If Fixes Cause New Issues
+
 - Detects regression
 - Reverts problematic fixes
 - Reports to user with details
 
 ### If Tests Fail After Fixes
+
 - Warns user
 - Suggests running full test suite
 - Offers to revert changes
@@ -274,5 +300,6 @@ Note: This command uses direct tool access (Edit, Write) intentionally for quick
 ---
 
 Version: 1.0.0
+Last Updated: 2026-01-10
 Pattern: Scan-Categorize-Fix
 Integration: LSP, AST-grep, Linters, Formatters

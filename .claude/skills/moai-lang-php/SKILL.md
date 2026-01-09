@@ -5,6 +5,8 @@ version: 1.0.0
 category: "language"
 modularized: true
 user-invocable: false
+tags:
+  ["language", "php", "laravel", "symfony", "eloquent", "doctrine", "phpunit"]
 updated: 2026-01-08
 status: "active"
 allowed-tools:
@@ -23,6 +25,7 @@ PHP 8.3+ Development Specialist - Laravel 11, Symfony 7, Eloquent, Doctrine, and
 Auto-Triggers: `.php` files, `composer.json`, `artisan`, `symfony.yaml`, Laravel/Symfony discussions
 
 Core Capabilities:
+
 - PHP 8.3 Features: readonly classes, typed properties, attributes, enums, named arguments
 - Laravel 11: Controllers, Models, Migrations, Form Requests, API Resources, Eloquent
 - Symfony 7: Attribute-based routing, Doctrine ORM, Services, Dependency Injection
@@ -35,6 +38,7 @@ Core Capabilities:
 ### Quick Patterns
 
 Laravel Controller:
+
 ```php
 <?php
 
@@ -57,6 +61,7 @@ class UserController extends Controller
 ```
 
 Laravel Form Request:
+
 ```php
 <?php
 
@@ -83,6 +88,7 @@ class StoreUserRequest extends FormRequest
 ```
 
 Symfony Controller:
+
 ```php
 <?php
 
@@ -115,6 +121,7 @@ class UserController extends AbstractController
 ### PHP 8.3 Modern Features
 
 Readonly Classes:
+
 ```php
 <?php
 
@@ -129,6 +136,7 @@ readonly class UserDTO
 ```
 
 Enums with Methods:
+
 ```php
 <?php
 
@@ -150,6 +158,7 @@ enum OrderStatus: string
 ```
 
 Attributes:
+
 ```php
 <?php
 
@@ -172,6 +181,7 @@ class UserRequest
 ### Laravel 11 Patterns
 
 Eloquent Model with Relationships:
+
 ```php
 <?php
 
@@ -208,6 +218,7 @@ class Post extends Model
 ```
 
 API Resource:
+
 ```php
 <?php
 
@@ -232,6 +243,7 @@ class PostResource extends JsonResource
 ```
 
 Migration:
+
 ```php
 <?php
 
@@ -257,6 +269,7 @@ return new class extends Migration
 ```
 
 Service Layer Pattern:
+
 ```php
 <?php
 
@@ -287,6 +300,7 @@ class UserService
 ### Symfony 7 Patterns
 
 Entity with Doctrine Attributes:
+
 ```php
 <?php
 
@@ -316,6 +330,7 @@ class User
 ```
 
 Service with Dependency Injection:
+
 ```php
 <?php
 
@@ -349,6 +364,7 @@ class UserService
 ### Testing Patterns
 
 PHPUnit Feature Test (Laravel):
+
 ```php
 <?php
 
@@ -380,6 +396,7 @@ class UserApiTest extends TestCase
 ```
 
 Pest Test (Laravel):
+
 ```php
 <?php
 
@@ -412,6 +429,7 @@ it('requires authentication to create post', function () {
 ## Advanced Implementation (10+ minutes)
 
 For comprehensive coverage including:
+
 - Production deployment patterns (Docker, Kubernetes)
 - Advanced Eloquent patterns (observers, accessors, mutators)
 - Doctrine advanced mapping (embeddables, inheritance)
@@ -422,6 +440,7 @@ For comprehensive coverage including:
 - CI/CD integration patterns
 
 See:
+
 - [Advanced Patterns](modules/advanced-patterns.md) - Complete advanced patterns guide
 
 ---
@@ -456,18 +475,21 @@ See:
 Common Issues:
 
 PHP Version Check:
+
 ```bash
 php --version  # Should be 8.3+
 php -m | grep -E 'pdo|mbstring|openssl'
 ```
 
 Composer Autoload Issues:
+
 ```bash
 composer dump-autoload -o
 composer clear-cache
 ```
 
 Laravel Cache Issues:
+
 ```bash
 php artisan config:clear
 php artisan cache:clear
@@ -476,12 +498,14 @@ php artisan view:clear
 ```
 
 Symfony Cache Issues:
+
 ```bash
 php bin/console cache:clear
 php bin/console cache:warmup
 ```
 
 Database Connection:
+
 ```php
 try {
     DB::connection()->getPdo();
@@ -490,11 +514,15 @@ try {
     echo "Connection failed: " . $e->getMessage();
 }
 ```
+
 Migration Rollback:
+
 ```bash
 php artisan migrate:rollback --step=1
 php artisan migrate:fresh --seed  # Development only
 php bin/console doctrine:migrations:migrate prev
 ```
+
 ---
+
 Version: 1.0.0 | Updated: 2025-12-07 | Status: Active

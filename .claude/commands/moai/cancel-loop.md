@@ -1,7 +1,8 @@
 ---
 name: moai:cancel-loop
 description: "Cancel an active Ralph feedback loop"
-argument-hint: '[--force]'
+argument-hint: "[--force]"
+type: utility
 allowed-tools: Bash, Read, Write, AskUserQuestion
 model: inherit
 ---
@@ -24,6 +25,7 @@ Stop an active Ralph Engine feedback loop and optionally preserve or discard sta
 ## Command Purpose
 
 Gracefully terminates an active `/moai:loop` session:
+
 1. Stops the loop iteration cycle
 2. Clears loop state file
 3. Reports final status
@@ -34,11 +36,13 @@ Arguments: $ARGUMENTS
 ## Usage Examples
 
 Cancel loop with confirmation:
+
 ```
 /moai:cancel-loop
 ```
 
 Force cancel without confirmation:
+
 ```
 /moai:cancel-loop --force
 ```
@@ -83,11 +87,13 @@ END: Loop cancelled
 ## State File Location
 
 The loop state is stored at:
+
 ```
 .moai/cache/.moai_loop_state.json
 ```
 
 Contents include:
+
 - `active`: Whether loop is active
 - `iteration`: Current iteration number
 - `max_iterations`: Maximum allowed iterations
@@ -104,16 +110,20 @@ Contents include:
 ## Loop Cancelled
 
 ### Final Status
+
 - Iterations completed: 4
 - Errors remaining: 2
 - Warnings remaining: 3
 
 ### Work in Progress
+
 Files modified during this loop:
+
 - src/auth.py
 - tests/test_auth.py
 
 ### Next Steps
+
 1. Review modified files for partial fixes
 2. Run `/moai:fix` to address remaining issues
 3. Or start fresh with `/moai:loop`
@@ -128,8 +138,11 @@ There is no active feedback loop to cancel.
 
 To start a new loop:
 ```
+
 /moai:loop
+
 ```
+
 ```
 
 ### Force Cancellation
@@ -147,6 +160,7 @@ Note: Any unsaved progress may be lost.
 ## When to Cancel
 
 Cancel the loop when:
+
 - Loop appears stuck (same errors repeating)
 - Need to make manual changes
 - Want to change loop configuration
@@ -158,6 +172,7 @@ Cancel the loop when:
 If you cancelled mid-fix:
 
 1. **Check Git Status**
+
    ```
    git status
    git diff
@@ -174,6 +189,7 @@ If you cancelled mid-fix:
 ## Environment Variables
 
 The loop uses these environment variables:
+
 - `MOAI_LOOP_ACTIVE`: Set to "true" when loop is active
 - `MOAI_LOOP_ITERATION`: Current iteration number
 
@@ -217,5 +233,6 @@ else:
 ---
 
 Version: 1.0.0
+Last Updated: 2026-01-10
 Pattern: State Management
 Integration: Ralph Engine Loop Controller

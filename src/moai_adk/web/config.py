@@ -21,9 +21,17 @@ class WebConfig:
     """
 
     host: str = "127.0.0.1"
-    port: int = 8080
+    port: int = 9595
+    frontend_port: int = 9005
     database_path: Path = field(default_factory=lambda: Path(".moai/web/moai.db"))
-    cors_origins: list[str] = field(default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000"])
+    cors_origins: list[str] = field(
+        default_factory=lambda: [
+            "http://localhost:9005",
+            "http://127.0.0.1:9005",
+            "http://localhost:9595",
+            "http://127.0.0.1:9595",
+        ]
+    )
     debug: bool = False
 
     def __post_init__(self):

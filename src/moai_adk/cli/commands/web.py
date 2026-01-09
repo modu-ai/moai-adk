@@ -14,8 +14,8 @@ import click
     "--port",
     "-p",
     type=int,
-    default=8080,
-    help="Server port number (default: 8080)",
+    default=9595,
+    help="API server port number (default: 9595)",
     show_default=True,
 )
 @click.option(
@@ -39,9 +39,9 @@ def web(port: int, host: str, open: bool) -> None:
 
     Examples:
 
-        moai web                    # Start on default port 8080
+        moai web                    # Start API on 9595, open browser to 9005
 
-        moai web --port 3000        # Start on port 3000
+        moai web --port 8080        # Start API on port 8080
 
         moai web --no-open          # Start without opening browser
     """
@@ -50,7 +50,8 @@ def web(port: int, host: str, open: bool) -> None:
 
 def start_server(
     host: str = "127.0.0.1",
-    port: int = 8080,
+    port: int = 9595,
+    frontend_port: int = 9005,
     open_browser: bool = True,
     reload: bool = False,
 ) -> None:
@@ -58,7 +59,8 @@ def start_server(
 
     Args:
         host: Server host address
-        port: Server port number
+        port: API server port number
+        frontend_port: Frontend dev server port number
         open_browser: Whether to open browser automatically
         reload: Enable auto-reload for development
     """
@@ -73,25 +75,22 @@ def start_server(
         )
         raise SystemExit(1)
 
-    # Import here to avoid loading FastAPI if web deps not installed
-    from moai_adk.web.config import WebConfig
-
-    # Create configuration
-    config = WebConfig(host=host, port=port)
-
     # Display startup message
     click.echo()
-    click.echo(click.style("MoAI Web Backend", fg="cyan", bold=True))
-    click.echo(click.style("=" * 40, fg="cyan"))
-    click.echo(f"  Host: {click.style(host, fg='green')}")
-    click.echo(f"  Port: {click.style(str(port), fg='green')}")
-    click.echo(f"  URL:  {click.style(f'http://{host}:{port}', fg='yellow')}")
-    click.echo(click.style("=" * 40, fg="cyan"))
+    click.echo(click.style("🗿 MoAI Web Dashboard", fg="cyan", bold=True))
+    click.echo(click.style("=" * 44, fg="cyan"))
+    click.echo(f"  API Server: {click.style(f'http://{host}:{port}', fg='green')}")
+    click.echo(f"  Web UI:     {click.style(f'http://{host}:{frontend_port}', fg='yellow')}")
+    click.echo(click.style("=" * 44, fg="cyan"))
+    click.echo()
+    click.echo(
+        click.style("  Run frontend: ", fg="white") + click.style("cd src/moai_adk/web-ui && npm run dev", fg="cyan")
+    )
     click.echo()
     click.echo("Press Ctrl+C to stop the server")
     click.echo()
 
-    # Open browser if requested
+    # Open browser if requested (opens Web UI frontend)
     if open_browser:
         import threading
 
@@ -99,7 +98,7 @@ def start_server(
             import time
 
             time.sleep(1.5)  # Wait for server to start
-            webbrowser.open(f"http://{host}:{port}/docs")
+            webbrowser.open(f"http://{host}:{frontend_port}")
 
         threading.Thread(target=_open_browser, daemon=True).start()
 
