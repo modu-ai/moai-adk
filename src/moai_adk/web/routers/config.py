@@ -37,9 +37,10 @@ _config_manager: ConfigurationManager | None = None
 def get_config_manager() -> ConfigurationManager:
     """Get or create ConfigurationManager instance."""
     global _config_manager
-    if _config_manager is None:
-        config_path = CONFIG_DIR / "config.yaml"
-        _config_manager = ConfigurationManager(config_path=config_path)
+    # Always create new manager to use current CONFIG_DIR
+    config_path = CONFIG_DIR / "config.yaml"
+    _config_manager = None  # Clear cache to ensure fresh instance
+    _config_manager = ConfigurationManager(config_path=config_path)
     return _config_manager
 
 
@@ -110,7 +111,7 @@ async def save_config(config_data: Dict[str, Any]) -> SaveConfigResponse:
     backup_path = None
 
     if config_path.exists():
-        backup_path = str(config_path.with_suffix(".backup"))
+        backup_path = str(config_path) + ".backup"
         try:
             shutil.copy2(config_path, backup_path)
         except Exception as e:
@@ -145,7 +146,7 @@ async def save_config(config_data: Dict[str, Any]) -> SaveConfigResponse:
 
     if missing_fields:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={
                 "message": "Missing required fields",
                 "missing_fields": missing_fields,
@@ -162,7 +163,7 @@ async def save_config(config_data: Dict[str, Any]) -> SaveConfigResponse:
         )
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(e),
         ) from e
     except Exception as e:
