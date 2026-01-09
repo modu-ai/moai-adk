@@ -1,9 +1,28 @@
 """Web Routers Package
 
 FastAPI routers for the MoAI Web Backend including
-health checks, sessions, chat, providers, specs, and terminal endpoints.
+health checks, sessions, chat, providers, specs, terminal,
+model router, and cost tracking endpoints.
 """
 
-from moai_adk.web.routers import chat, health, providers, sessions, specs, terminal
+from moai_adk.web.routers import (
+    chat,
+    cost,
+    health,
+    model_router,
+    providers,
+    sessions,
+    specs,
+    terminal,
+)
 
-__all__ = ["chat", "health", "providers", "sessions", "specs", "terminal"]
+__all__ = [
+    "chat",
+    "cost",
+    "health",
+    "model_router",
+    "providers",
+    "sessions",
+    "specs",
+    "terminal",
+]

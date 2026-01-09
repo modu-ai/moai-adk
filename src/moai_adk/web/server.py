@@ -12,7 +12,16 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from moai_adk.web.config import WebConfig
 from moai_adk.web.database import close_database, init_database
-from moai_adk.web.routers import chat, health, providers, sessions, specs, terminal
+from moai_adk.web.routers import (
+    chat,
+    cost,
+    health,
+    model_router,
+    providers,
+    sessions,
+    specs,
+    terminal,
+)
 
 
 @asynccontextmanager
@@ -64,5 +73,7 @@ def create_app(config: WebConfig | None = None) -> FastAPI:
     app.include_router(specs.router, prefix="/api", tags=["specs"])
     app.include_router(terminal.router, prefix="/api", tags=["terminals"])
     app.include_router(terminal.router, prefix="/ws", tags=["terminals"])
+    app.include_router(model_router.router, prefix="/api", tags=["model-router"])
+    app.include_router(cost.router, prefix="/api", tags=["cost"])
 
     return app
