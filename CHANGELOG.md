@@ -1,3 +1,89 @@
+# [Unreleased]
+
+## Added
+
+- **Ralph Engine** - Intelligent code quality assurance system (SPEC-RALPH-001)
+  - **LSP Integration Layer**: Real-time diagnostics with 16+ language support
+    - `MoAILSPClient`: High-level LSP client interface
+    - `LSPServerManager`: Server lifecycle management
+    - `LSPProtocol`: JSON-RPC 2.0 implementation
+    - Data models: Diagnostic, Position, Range, Location, HoverInfo
+  - **AST-grep Analyzer**: Structural pattern matching and security scanning
+    - `MoAIASTGrepAnalyzer`: AST-based code analysis
+    - Pattern search and replacement capabilities
+    - Security rule scanning with severity levels
+    - Support for 20+ programming languages
+  - **Loop Controller**: Ralph-style autonomous feedback loops
+    - `MoAILoopController`: Feedback loop orchestration
+    - `LoopState` and `LoopStorage`: State persistence
+    - `FeedbackGenerator`: LSP + AST-grep feedback synthesis
+    - Completion detection and progress tracking
+  - **RalphEngine**: Unified facade integrating all components
+    - Combined file diagnosis (LSP + AST-grep)
+    - Project-wide scanning capabilities
+    - Feedback loop management
+  - **Slash Commands**:
+    - `/moai:moai-loop`: Start Ralph-style feedback loop
+    - `/moai:moai-fix`: Auto-fix current LSP errors and AST-grep warnings
+    - `/moai:cancel-loop`: Cancel an active feedback loop
+  - **Hooks**:
+    - `post_tool__lsp_diagnostic`: LSP diagnostics after tool execution
+    - `stop__loop_controller`: Loop controller state management
+
+### Test Coverage
+
+- Phase 1 (LSP): 95 tests
+- Phase 2 (AST-grep): 59 tests
+- Phase 3 (Loop Controller): 82 tests
+- Phase 4 (Commands/Hooks): 44 tests
+- Phase 5 (Integration): 22 tests
+- **Total**: 302 tests for Ralph Engine
+
+---
+
+# [Unreleased] (한국어)
+
+## 추가됨
+
+- **Ralph Engine** - 지능형 코드 품질 보증 시스템 (SPEC-RALPH-001)
+  - **LSP 통합 레이어**: 16개 이상 언어 지원 실시간 진단
+    - `MoAILSPClient`: 고수준 LSP 클라이언트 인터페이스
+    - `LSPServerManager`: 서버 생명주기 관리
+    - `LSPProtocol`: JSON-RPC 2.0 구현
+    - 데이터 모델: Diagnostic, Position, Range, Location, HoverInfo
+  - **AST-grep 분석기**: 구조적 패턴 매칭 및 보안 스캐닝
+    - `MoAIASTGrepAnalyzer`: AST 기반 코드 분석
+    - 패턴 검색 및 교체 기능
+    - 심각도 레벨별 보안 규칙 스캐닝
+    - 20개 이상 프로그래밍 언어 지원
+  - **Loop Controller**: Ralph 스타일 자율 피드백 루프
+    - `MoAILoopController`: 피드백 루프 오케스트레이션
+    - `LoopState` 및 `LoopStorage`: 상태 영속성
+    - `FeedbackGenerator`: LSP + AST-grep 피드백 합성
+    - 완료 감지 및 진행률 추적
+  - **RalphEngine**: 모든 컴포넌트를 통합하는 통합 파사드
+    - 통합 파일 진단 (LSP + AST-grep)
+    - 프로젝트 전체 스캐닝 기능
+    - 피드백 루프 관리
+  - **슬래시 커맨드**:
+    - `/moai:moai-loop`: Ralph 스타일 피드백 루프 시작
+    - `/moai:moai-fix`: 현재 LSP 오류 및 AST-grep 경고 자동 수정
+    - `/moai:cancel-loop`: 활성 피드백 루프 취소
+  - **훅**:
+    - `post_tool__lsp_diagnostic`: 도구 실행 후 LSP 진단
+    - `stop__loop_controller`: 루프 컨트롤러 상태 관리
+
+### 테스트 커버리지
+
+- Phase 1 (LSP): 95개 테스트
+- Phase 2 (AST-grep): 59개 테스트
+- Phase 3 (Loop Controller): 82개 테스트
+- Phase 4 (Commands/Hooks): 44개 테스트
+- Phase 5 (Integration): 22개 테스트
+- **총계**: Ralph Engine 302개 테스트
+
+---
+
 # v0.41.2 - Skill Menu Visibility Enhancement (2026-01-09)
 
 ## Summary
