@@ -166,6 +166,7 @@ exclude = [
 moai-adk = "moai_adk.__main__:main"
 moai = "moai_adk.__main__:main"
 moai-worktree = "moai_adk.cli.worktree.__main__:main"
+moai-wt = "moai_adk.cli.worktree.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/modu-ai/moai-adk"

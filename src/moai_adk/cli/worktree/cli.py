@@ -153,7 +153,11 @@ def _find_main_repository(start_path: Path) -> Path:
 
 @click.group()
 def worktree() -> None:
-    """Manage Git worktrees for parallel SPEC development."""
+    """Manage Git worktrees for parallel SPEC development.
+
+    \b
+    Alias: moai-wt
+    """
     pass
 
 
