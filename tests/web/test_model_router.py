@@ -517,3 +517,127 @@ class TestModelRouterAPI:
         """Test that getting environment for invalid tier returns 400"""
         response = await client.get("/api/router/environment/invalid_tier")
         assert response.status_code == 400
+
+
+class TestModelRouterFallback:
+    """Test cases for model router fallback functionality"""
+
+    @pytest.mark.asyncio
+    async def test_get_fallback_tier_planner_to_implementer(self):
+        """Test that PLANNER tier falls back to IMPLEMENTER"""
+        from moai_adk.web.models.model_config import ModelTier
+        from moai_adk.web.services.model_router import ModelRouter
+
+        router = ModelRouter()
+        fallback = router.get_fallback_tier(ModelTier.PLANNER)
+
+        assert fallback == ModelTier.IMPLEMENTER
+
+    @pytest.mark.asyncio
+    async def test_get_fallback_tier_implementer_no_fallback(self):
+        """Test that IMPLEMENTER tier has no fallback (returns itself)"""
+        from moai_adk.web.models.model_config import ModelTier
+        from moai_adk.web.services.model_router import ModelRouter
+
+        router = ModelRouter()
+        fallback = router.get_fallback_tier(ModelTier.IMPLEMENTER)
+
+        assert fallback == ModelTier.IMPLEMENTER
+
+    @pytest.mark.asyncio
+    async def test_route_with_fallback_primary_success(self):
+        """Test route_with_fallback returns primary model when not failed"""
+        from moai_adk.web.services.model_router import ModelRouter
+
+        router = ModelRouter()
+        config, fallback_used = router.route_with_fallback(
+            "design the API architecture",
+            primary_failed=False,
+        )
+
+        assert config is not None
+        assert fallback_used is False
+
+    @pytest.mark.asyncio
+    async def test_route_with_fallback_primary_failed(self):
+        """Test route_with_fallback uses fallback when primary fails"""
+        from moai_adk.web.models.model_config import ModelTier
+        from moai_adk.web.services.model_router import ModelRouter
+
+        router = ModelRouter()
+        config, fallback_used = router.route_with_fallback(
+            "design the API architecture",  # Would normally use PLANNER
+            primary_failed=True,
+        )
+
+        assert config is not None
+        assert config.tier == ModelTier.IMPLEMENTER
+        assert fallback_used is True
+
+    @pytest.mark.asyncio
+    async def test_route_with_fallback_implementer_no_change(self):
+        """Test that IMPLEMENTER doesn't change even with failure"""
+        from moai_adk.web.models.model_config import ModelTier
+        from moai_adk.web.services.model_router import ModelRouter
+
+        router = ModelRouter()
+        config, fallback_used = router.route_with_fallback(
+            "implement the feature",  # Would use IMPLEMENTER
+            primary_failed=True,
+        )
+
+        assert config is not None
+        assert config.tier == ModelTier.IMPLEMENTER
+        assert fallback_used is False  # No fallback because already IMPLEMENTER
+
+    @pytest.mark.asyncio
+    async def test_is_fallback_available_planner(self):
+        """Test that fallback is available for PLANNER"""
+        from moai_adk.web.models.model_config import ModelTier
+        from moai_adk.web.services.model_router import ModelRouter
+
+        router = ModelRouter()
+        assert router.is_fallback_available(ModelTier.PLANNER) is True
+
+    @pytest.mark.asyncio
+    async def test_is_fallback_available_implementer(self):
+        """Test that fallback is not available for IMPLEMENTER"""
+        from moai_adk.web.models.model_config import ModelTier
+        from moai_adk.web.services.model_router import ModelRouter
+
+        router = ModelRouter()
+        assert router.is_fallback_available(ModelTier.IMPLEMENTER) is False
+
+
+class TestModelRoutingError:
+    """Test cases for ModelRoutingError exception"""
+
+    @pytest.mark.asyncio
+    async def test_model_routing_error_exists(self):
+        """Test that ModelRoutingError exception exists"""
+        from moai_adk.web.services.model_router import ModelRoutingError
+
+        assert ModelRoutingError is not None
+
+    @pytest.mark.asyncio
+    async def test_model_routing_error_creation(self):
+        """Test creating a ModelRoutingError instance"""
+        from moai_adk.web.models.model_config import ModelTier
+        from moai_adk.web.services.model_router import ModelRoutingError
+
+        error = ModelRoutingError(
+            message="Model unavailable",
+            tier=ModelTier.PLANNER,
+            fallback_used=True,
+        )
+
+        assert error.message == "Model unavailable"
+        assert error.tier == ModelTier.PLANNER
+        assert error.fallback_used is True
+
+    @pytest.mark.asyncio
+    async def test_model_routing_error_is_exception(self):
+        """Test that ModelRoutingError is an Exception subclass"""
+        from moai_adk.web.services.model_router import ModelRoutingError
+
+        assert issubclass(ModelRoutingError, Exception)

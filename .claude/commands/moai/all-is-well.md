@@ -1,5 +1,5 @@
 ---
-name: moai:\all-is-well
+name: moai:all-is-well
 description: "One-click automation - From SPEC generation to documentation sync"
 argument-hint: '"feature description" [--branch] [--pr]'
 allowed-tools: Task, AskUserQuestion, TodoWrite, Skill

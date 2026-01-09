@@ -445,10 +445,9 @@ class TestCostTrackingAPI:
     @pytest_asyncio.fixture
     async def client(self, tmp_path):
         """Create a test client with a temporary database"""
-        from moai_adk.web.routers.cost import get_cost_tracker
-
         from moai_adk.web.config import WebConfig
         from moai_adk.web.database import close_database, init_database
+        from moai_adk.web.routers.cost import get_cost_tracker
         from moai_adk.web.server import create_app
 
         # Clear existing records
@@ -598,3 +597,139 @@ class TestCostTrackingAPI:
             params={"tier": "invalid_tier", "estimated_tokens": 1000},
         )
         assert response.status_code == 400
+
+
+class TestCostLimitWarning:
+    """Test cases for cost limit warning functionality"""
+
+    @pytest.mark.asyncio
+    async def test_cost_limit_warning_class_exists(self):
+        """Test that CostLimitWarning class exists"""
+        from moai_adk.web.services.cost_tracker import CostLimitWarning
+
+        assert CostLimitWarning is not None
+
+    @pytest.mark.asyncio
+    async def test_cost_limit_warning_creation(self):
+        """Test creating a CostLimitWarning instance"""
+        from moai_adk.web.services.cost_tracker import CostLimitWarning
+
+        warning = CostLimitWarning(
+            current_cost=5.0,
+            limit=10.0,
+            percentage_used=0.5,
+            is_exceeded=False,
+        )
+
+        assert warning.current_cost == 5.0
+        assert warning.limit == 10.0
+        assert warning.percentage_used == 0.5
+        assert warning.is_exceeded is False
+
+    @pytest.mark.asyncio
+    async def test_cost_limit_warning_to_dict(self):
+        """Test CostLimitWarning to_dict method"""
+        from moai_adk.web.services.cost_tracker import CostLimitWarning
+
+        warning = CostLimitWarning(
+            current_cost=8.0,
+            limit=10.0,
+            percentage_used=0.8,
+            is_exceeded=False,
+        )
+
+        result = warning.to_dict()
+
+        assert result["current_cost"] == 8.0
+        assert result["limit"] == 10.0
+        assert result["percentage_used"] == 0.8
+        assert result["is_exceeded"] is False
+
+
+class TestCostTrackerLimitFeature:
+    """Test cases for cost tracker limit functionality"""
+
+    @pytest.mark.asyncio
+    async def test_cost_tracker_has_daily_limit(self):
+        """Test that CostTracker has daily_limit_usd attribute"""
+        from moai_adk.web.services.cost_tracker import CostTracker
+
+        tracker = CostTracker()
+        assert hasattr(tracker, "daily_limit_usd")
+        assert tracker.daily_limit_usd == 10.0  # Default value
+
+    @pytest.mark.asyncio
+    async def test_cost_tracker_custom_limit(self):
+        """Test CostTracker with custom daily limit"""
+        from moai_adk.web.services.cost_tracker import CostTracker
+
+        tracker = CostTracker(daily_limit_usd=20.0)
+        assert tracker.daily_limit_usd == 20.0
+
+    @pytest.mark.asyncio
+    async def test_cost_tracker_has_warning_threshold(self):
+        """Test that CostTracker has warning_threshold attribute"""
+        from moai_adk.web.services.cost_tracker import CostTracker
+
+        tracker = CostTracker()
+        assert hasattr(tracker, "warning_threshold")
+        assert tracker.warning_threshold == 0.8  # Default 80%
+
+    @pytest.mark.asyncio
+    async def test_check_daily_limit_returns_warning(self):
+        """Test check_daily_limit returns CostLimitWarning"""
+        from moai_adk.web.services.cost_tracker import CostLimitWarning, CostTracker
+
+        tracker = CostTracker(daily_limit_usd=10.0)
+        warning = tracker.check_daily_limit()
+
+        assert isinstance(warning, CostLimitWarning)
+        assert warning.limit == 10.0
+
+    @pytest.mark.asyncio
+    async def test_is_limit_warning_false_under_threshold(self):
+        """Test is_limit_warning returns False when under threshold"""
+        from moai_adk.web.services.cost_tracker import CostTracker
+
+        tracker = CostTracker(daily_limit_usd=100.0, warning_threshold=0.8)
+        # No usage recorded, so should be under threshold
+        assert tracker.is_limit_warning() is False
+
+    @pytest.mark.asyncio
+    async def test_is_limit_exceeded_false_initially(self):
+        """Test is_limit_exceeded returns False when no usage"""
+        from moai_adk.web.services.cost_tracker import CostTracker
+
+        tracker = CostTracker(daily_limit_usd=10.0)
+        assert tracker.is_limit_exceeded() is False
+
+    @pytest.mark.asyncio
+    async def test_set_daily_limit(self):
+        """Test setting daily limit"""
+        from moai_adk.web.services.cost_tracker import CostTracker
+
+        tracker = CostTracker(daily_limit_usd=10.0)
+        tracker.set_daily_limit(25.0)
+        assert tracker.daily_limit_usd == 25.0
+
+    @pytest.mark.asyncio
+    async def test_set_warning_threshold(self):
+        """Test setting warning threshold"""
+        from moai_adk.web.services.cost_tracker import CostTracker
+
+        tracker = CostTracker()
+        tracker.set_warning_threshold(0.9)
+        assert tracker.warning_threshold == 0.9
+
+    @pytest.mark.asyncio
+    async def test_set_warning_threshold_clamped(self):
+        """Test warning threshold is clamped between 0 and 1"""
+        from moai_adk.web.services.cost_tracker import CostTracker
+
+        tracker = CostTracker()
+
+        tracker.set_warning_threshold(1.5)
+        assert tracker.warning_threshold == 1.0
+
+        tracker.set_warning_threshold(-0.5)
+        assert tracker.warning_threshold == 0.0

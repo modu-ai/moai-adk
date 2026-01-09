@@ -9,6 +9,16 @@ from typing import Dict
 from moai_adk.web.models.model_config import ModelConfig, ModelTier, TaskClassification
 
 
+class ModelRoutingError(Exception):
+    """Error during model routing"""
+
+    def __init__(self, message: str, tier: ModelTier, fallback_used: bool = False):
+        self.message = message
+        self.tier = tier
+        self.fallback_used = fallback_used
+        super().__init__(message)
+
+
 class ModelRouter:
     """Routes tasks to appropriate model tier based on classification
 
@@ -170,3 +180,57 @@ class ModelRouter:
             ModelConfig for the active tier
         """
         return self.MODELS[self._active_tier]
+
+    def get_fallback_tier(self, tier: ModelTier) -> ModelTier:
+        """Get the fallback tier for a given tier
+
+        PLANNER falls back to IMPLEMENTER (cost-effective)
+        IMPLEMENTER has no fallback (already cost-effective)
+
+        Args:
+            tier: The original tier
+
+        Returns:
+            The fallback tier
+        """
+        if tier == ModelTier.PLANNER:
+            return ModelTier.IMPLEMENTER
+        # IMPLEMENTER is already the most cost-effective, no fallback
+        return tier
+
+    def route_with_fallback(
+        self,
+        task_description: str,
+        primary_failed: bool = False,
+    ) -> tuple[ModelConfig, bool]:
+        """Route a task with fallback support
+
+        Args:
+            task_description: Description of the task
+            primary_failed: Whether the primary model has failed
+
+        Returns:
+            Tuple of (ModelConfig, fallback_used)
+        """
+        classification = self.classify_task(task_description)
+        target_tier = classification.recommended_tier
+
+        if primary_failed:
+            fallback_tier = self.get_fallback_tier(target_tier)
+            if fallback_tier != target_tier:
+                return self.MODELS[fallback_tier], True
+            # No fallback available, return original
+            return self.MODELS[target_tier], False
+
+        return self.MODELS[target_tier], False
+
+    def is_fallback_available(self, tier: ModelTier) -> bool:
+        """Check if a fallback is available for a tier
+
+        Args:
+            tier: The tier to check
+
+        Returns:
+            True if fallback is available
+        """
+        return tier == ModelTier.PLANNER

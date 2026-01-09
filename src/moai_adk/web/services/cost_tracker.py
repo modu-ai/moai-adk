@@ -12,6 +12,30 @@ from moai_adk.web.models.cost import CostRecord, CostSummary, TokenUsage
 from moai_adk.web.models.model_config import ModelTier
 
 
+class CostLimitWarning:
+    """Cost limit warning data"""
+
+    def __init__(
+        self,
+        current_cost: float,
+        limit: float,
+        percentage_used: float,
+        is_exceeded: bool,
+    ):
+        self.current_cost = current_cost
+        self.limit = limit
+        self.percentage_used = percentage_used
+        self.is_exceeded = is_exceeded
+
+    def to_dict(self) -> Dict:
+        return {
+            "current_cost": self.current_cost,
+            "limit": self.limit,
+            "percentage_used": self.percentage_used,
+            "is_exceeded": self.is_exceeded,
+        }
+
+
 class CostTracker:
     """Tracks token usage and costs per model
 
@@ -21,6 +45,8 @@ class CostTracker:
     Attributes:
         records: List of all cost records
         MODEL_PRICING: Pricing configuration per model
+        daily_limit_usd: Daily spending limit in USD (default: $10.00)
+        warning_threshold: Percentage at which to warn (default: 0.8 = 80%)
     """
 
     # Pricing per 1K tokens for each model
@@ -41,9 +67,26 @@ class CostTracker:
         ModelTier.IMPLEMENTER: "glm-4.7",
     }
 
-    def __init__(self):
-        """Initialize the cost tracker"""
+    # Default daily limit ($10)
+    DEFAULT_DAILY_LIMIT_USD: float = 10.0
+
+    # Warning threshold (80%)
+    DEFAULT_WARNING_THRESHOLD: float = 0.8
+
+    def __init__(
+        self,
+        daily_limit_usd: float = DEFAULT_DAILY_LIMIT_USD,
+        warning_threshold: float = DEFAULT_WARNING_THRESHOLD,
+    ):
+        """Initialize the cost tracker
+
+        Args:
+            daily_limit_usd: Daily spending limit in USD
+            warning_threshold: Percentage (0-1) at which to warn
+        """
         self.records: List[CostRecord] = []
+        self.daily_limit_usd = daily_limit_usd
+        self.warning_threshold = warning_threshold
 
     def _calculate_cost(self, model_id: str, input_tokens: int, output_tokens: int) -> float:
         """Calculate cost for token usage
@@ -183,3 +226,66 @@ class CostTracker:
     def clear_records(self) -> None:
         """Clear all records"""
         self.records.clear()
+
+    def check_daily_limit(self, target_date: date | None = None) -> CostLimitWarning:
+        """Check if daily cost limit is approaching or exceeded
+
+        Args:
+            target_date: Date to check (defaults to today)
+
+        Returns:
+            CostLimitWarning with limit status
+        """
+        if target_date is None:
+            target_date = date.today()
+
+        daily_summary = self.get_daily_cost(target_date)
+        current_cost = daily_summary.total_cost
+        percentage_used = current_cost / self.daily_limit_usd if self.daily_limit_usd > 0 else 0
+
+        return CostLimitWarning(
+            current_cost=current_cost,
+            limit=self.daily_limit_usd,
+            percentage_used=percentage_used,
+            is_exceeded=current_cost >= self.daily_limit_usd,
+        )
+
+    def is_limit_warning(self, target_date: date | None = None) -> bool:
+        """Check if usage has reached warning threshold
+
+        Args:
+            target_date: Date to check (defaults to today)
+
+        Returns:
+            True if warning threshold reached
+        """
+        warning = self.check_daily_limit(target_date)
+        return warning.percentage_used >= self.warning_threshold
+
+    def is_limit_exceeded(self, target_date: date | None = None) -> bool:
+        """Check if daily limit has been exceeded
+
+        Args:
+            target_date: Date to check (defaults to today)
+
+        Returns:
+            True if limit exceeded
+        """
+        warning = self.check_daily_limit(target_date)
+        return warning.is_exceeded
+
+    def set_daily_limit(self, limit_usd: float) -> None:
+        """Set a new daily spending limit
+
+        Args:
+            limit_usd: New daily limit in USD
+        """
+        self.daily_limit_usd = limit_usd
+
+    def set_warning_threshold(self, threshold: float) -> None:
+        """Set a new warning threshold
+
+        Args:
+            threshold: New threshold as percentage (0-1)
+        """
+        self.warning_threshold = max(0.0, min(1.0, threshold))
