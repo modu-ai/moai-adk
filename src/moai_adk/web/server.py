@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from moai_adk.web.config import WebConfig
 from moai_adk.web.database import close_database, init_database
-from moai_adk.web.routers import chat, health, providers, sessions, specs
+from moai_adk.web.routers import chat, health, providers, sessions, specs, terminal
 
 
 @asynccontextmanager
@@ -21,7 +21,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup: Initialize database
     await init_database()
     yield
-    # Shutdown: Close database connection
+    # Shutdown: Close database connection and terminal sessions
+    from moai_adk.web.routers.terminal import get_terminal_manager
+
+    await get_terminal_manager().close_all()
     await close_database()
 
 
@@ -59,5 +62,7 @@ def create_app(config: WebConfig | None = None) -> FastAPI:
     app.include_router(chat.router, prefix="/ws", tags=["chat"])
     app.include_router(providers.router, prefix="/api", tags=["providers"])
     app.include_router(specs.router, prefix="/api", tags=["specs"])
+    app.include_router(terminal.router, prefix="/api", tags=["terminals"])
+    app.include_router(terminal.router, prefix="/ws", tags=["terminals"])
 
     return app
