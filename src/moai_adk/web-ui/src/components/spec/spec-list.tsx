@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Search, Filter, RefreshCw, Play } from 'lucide-react'
+import { Plus, Search, Filter, RefreshCw, Play, FileText } from 'lucide-react'
 import { SpecCard } from './spec-card'
+import { SpecDetailViewer } from './spec-detail-viewer'
+import { SpecCreateDialog } from './spec-create-dialog'
 import { Button, Input, ScrollArea } from '@/components/ui'
 import type { Spec, SpecStatus, SpecListResponse } from '@/types'
 
@@ -37,6 +39,9 @@ export function SpecList() {
   const [specs, setSpecs] = useState<Spec[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedSpec, setSelectedSpec] = useState<Spec | null>(null)
+  const [isViewerOpen, setIsViewerOpen] = useState(false)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 
   const fetchSpecs = useCallback(async () => {
     setLoading(true)
@@ -105,108 +110,183 @@ export function SpecList() {
     }
   }
 
+  const handleCreateSpec = async (instructions: string) => {
+    try {
+      const response = await fetch('/api/specs/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ instructions }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.detail || `Failed to create SPEC: ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log('SPEC creation initiated:', data)
+
+      // Emit event for terminal panel to connect
+      const event = new CustomEvent('spec-terminal-created', {
+        detail: {
+          specId: null, // New SPEC, ID will be generated
+          terminalId: data.terminal_id,
+          websocketUrl: data.websocket_url,
+          command: data.command,
+          worktreePath: null,
+        },
+      })
+      window.dispatchEvent(event)
+
+      // Refresh spec list after a delay to allow SPEC creation
+      setTimeout(() => fetchSpecs(), 3000)
+    } catch (err) {
+      console.error('Error creating SPEC:', err)
+      alert(err instanceof Error ? err.message : 'Failed to create SPEC')
+      throw err // Re-throw to let dialog handle loading state
+    }
+  }
+
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="p-4 border-b space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">SPEC Monitor</h2>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={fetchSpecs}
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            </Button>
-            <Button size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              New SPEC
-            </Button>
+    <div className="flex flex-col h-full bg-background">
+      {/* Page Header */}
+      <div className="border-b bg-card">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight">SPEC Monitor</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                {specs.length} {specs.length === 1 ? 'specification' : 'specifications'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchSpecs}
+                disabled={loading}
+                className="gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Refresh</span>
+              </Button>
+              <Button size="sm" className="gap-2" onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">New SPEC</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Search */}
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search specifications..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
           </div>
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search SPECs..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-
-        {/* Filters */}
-        <div className="flex items-center gap-2 overflow-x-auto">
-          <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
-          {statusFilters.map((filter) => (
-            <Button
-              key={filter.value}
-              variant={statusFilter === filter.value ? 'secondary' : 'ghost'}
-              size="sm"
-              onClick={() => setStatusFilter(filter.value)}
-              className="shrink-0"
-            >
-              {filter.label}
-            </Button>
-          ))}
+        {/* Status Filters */}
+        <div className="px-6 pb-3">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+            <div className="h-4 w-px bg-border shrink-0" />
+            {statusFilters.map((filter) => (
+              <Button
+                key={filter.value}
+                variant={statusFilter === filter.value ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setStatusFilter(filter.value)}
+                className="shrink-0 h-7"
+              >
+                {filter.label}
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Spec List */}
       <ScrollArea className="flex-1">
-        <div className="p-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {loading ? (
-            <div className="col-span-full text-center py-8">
-              <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-muted-foreground" />
-              <p className="text-muted-foreground">Loading SPECs...</p>
-            </div>
-          ) : error ? (
-            <div className="col-span-full text-center py-8">
-              <p className="text-destructive mb-2">{error}</p>
-              <Button variant="outline" size="sm" onClick={fetchSpecs}>
-                Retry
-              </Button>
-            </div>
-          ) : filteredSpecs.length === 0 ? (
-            <div className="col-span-full text-center py-8">
-              <p className="text-muted-foreground">
-                {specs.length === 0
-                  ? 'No SPECs found. Create one using /moai:1-plan in chat.'
-                  : 'No SPECs match your search'}
-              </p>
-            </div>
-          ) : (
-            filteredSpecs.map((spec) => (
-              <div key={spec.id} className="relative group">
-                <SpecCard spec={spec} />
-                {/* Run button overlay */}
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => handleRunSpec(spec.id)}
-                    title="Run SPEC with /moai:all-is-well"
-                  >
-                    <Play className="h-3 w-3 mr-1" />
-                    Run
-                  </Button>
-                </div>
-                {/* Worktree indicator */}
-                {spec.worktreePath && (
-                  <div className="absolute bottom-2 right-2">
-                    <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-0.5 rounded">
-                      Worktree
-                    </span>
-                  </div>
-                )}
+        <div className="p-6">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {loading && specs.length === 0 ? (
+              <div className="col-span-full flex flex-col items-center justify-center py-16">
+                <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground mb-3" />
+                <p className="text-muted-foreground">Loading specifications...</p>
               </div>
-            ))
-          )}
+            ) : error ? (
+              <div className="col-span-full flex flex-col items-center justify-center py-16">
+                <div className="text-destructive mb-3">{error}</div>
+                <Button variant="outline" size="sm" onClick={fetchSpecs}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry
+                </Button>
+              </div>
+            ) : filteredSpecs.length === 0 ? (
+              <div className="col-span-full flex flex-col items-center justify-center py-16">
+                <FileText className="h-12 w-12 text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground">
+                  {specs.length === 0
+                    ? 'No specifications found. Create one using /moai:1-plan in chat.'
+                    : 'No specifications match your search'}
+                </p>
+              </div>
+            ) : (
+              filteredSpecs.map((spec) => (
+                <div key={spec.id} className="relative group">
+                  <SpecCard spec={spec} onClick={() => {
+                    setSelectedSpec(spec)
+                    setIsViewerOpen(true)
+                  }} />
+                  {/* Run button overlay */}
+                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleRunSpec(spec.id)
+                      }}
+                      title="Run SPEC with /moai:all-is-well"
+                      className="shadow-sm"
+                    >
+                      <Play className="h-3 w-3 mr-1" />
+                      Run
+                    </Button>
+                  </div>
+                  {/* Worktree indicator */}
+                  {spec.worktreePath && (
+                    <div className="absolute bottom-3 right-3">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                        Worktree
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </ScrollArea>
+
+      {/* SPEC Detail Viewer */}
+      <SpecDetailViewer
+        spec={selectedSpec}
+        open={isViewerOpen}
+        onOpenChange={setIsViewerOpen}
+      />
+
+      {/* SPEC Create Dialog */}
+      <SpecCreateDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onCreateSpec={handleCreateSpec}
+      />
     </div>
   )
 }

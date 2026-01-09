@@ -23,6 +23,9 @@ from moai_adk.web.routers import (
     terminal,
 )
 
+# Import config_router with alias to avoid conflict with WebConfig parameter
+from moai_adk.web.routers.config import router as config_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -75,6 +78,7 @@ def create_app(config: WebConfig | None = None) -> FastAPI:
     app.include_router(terminal.router, prefix="/ws", tags=["terminals"])
     app.include_router(model_router.router, prefix="/api", tags=["model-router"])
     app.include_router(cost.router, prefix="/api", tags=["cost"])
+    app.include_router(config_router, prefix="/api", tags=["config"])
 
     # Import workflow router here to avoid circular import and lint removal
     from moai_adk.web.routers import workflow

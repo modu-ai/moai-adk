@@ -39,6 +39,12 @@ class SpecList(BaseModel):
     total: int = Field(default=0, description="Total number of SPECs")
 
 
+class SpecCreateRequest(BaseModel):
+    """Request model for creating a new SPEC"""
+
+    instructions: str = Field(..., min_length=1, description="Instructions for SPEC creation")
+
+
 def _find_spec_entries(base_path: Path) -> list[tuple[Path, str]]:
     """Find all SPEC entries in the project
 
@@ -101,12 +107,11 @@ def _parse_yaml_frontmatter(content: str) -> dict:
         return {}
 
 
-def _calculate_progress(spec_status: str, plan_path: Optional[Path] = None) -> int:
+def _calculate_progress(spec_status: str) -> int:
     """Calculate progress percentage based on status
 
     Args:
         spec_status: Current SPEC status
-        plan_path: Path to plan.md if exists
 
     Returns:
         Progress percentage 0-100
@@ -191,8 +196,7 @@ def _parse_directory_spec(dir_path: Path) -> Optional[SpecStatus]:
                     break
 
         # Calculate progress
-        plan_path = dir_path / "plan.md"
-        progress = _calculate_progress(spec_status, plan_path if plan_path.exists() else None)
+        progress = _calculate_progress(spec_status)
 
         # Check for worktree
         worktree_path = _check_worktree(spec_id)
@@ -311,6 +315,57 @@ async def list_specs() -> SpecList:
     return SpecList(specs=specs, total=len(specs))
 
 
+@router.post("/specs/create")
+async def create_spec(request: SpecCreateRequest) -> dict:
+    """Create a new SPEC via interactive terminal
+
+    Spawns a terminal with claude CLI running /moai:1-plan command
+    to interactively create a new SPEC.
+
+    Args:
+        request: SpecCreateRequest containing instructions
+
+    Returns:
+        Dict with terminal_id, websocket_url for connecting to the terminal
+    """
+    # Import here to avoid circular import
+    from moai_adk.web.routers.terminal import get_terminal_manager
+
+    # Escape single quotes in instructions for shell command
+    escaped_instructions = request.instructions.replace("'", "'\"'\"'")
+
+    # Build the command - use opus model for quality SPEC generation
+    initial_command = f"claude --model opus '/moai:1-plan {escaped_instructions}'"
+
+    # Create terminal session
+    try:
+        manager = get_terminal_manager()
+        session = await manager.create_terminal(
+            spec_id=None,  # New SPEC, ID will be generated
+            worktree_path=None,
+            initial_command=initial_command,
+        )
+
+        return {
+            "terminal_id": session.id,
+            "command": initial_command,
+            "websocket_url": f"/ws/terminal/{session.id}",
+            "status": "running",
+            "message": "Terminal created for SPEC generation. Connect via WebSocket.",
+        }
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(e),
+        )
+
+
 @router.get("/specs/{spec_id}", response_model=SpecStatus)
 async def get_spec(spec_id: str) -> SpecStatus:
     """Get a specific SPEC by ID
@@ -342,6 +397,66 @@ async def get_spec(spec_id: str) -> SpecStatus:
         status_code=status.HTTP_404_NOT_FOUND,
         detail=f"SPEC '{spec_id}' not found",
     )
+
+
+@router.get("/specs/{spec_id}/content")
+async def get_spec_content(spec_id: str) -> dict:
+    """Get the content files for a SPEC
+
+    Returns the content of spec.md, plan.md, and sync.md files if they exist.
+
+    Args:
+        spec_id: The SPEC identifier (e.g., SPEC-001)
+
+    Returns:
+        Dict with spec, plan, and sync content
+
+    Raises:
+        HTTPException: If SPEC not found
+    """
+    base_path = Path.cwd()
+    spec_entries = _find_spec_entries(base_path)
+
+    spec_dir = None
+    for path, format_type in spec_entries:
+        entry_id = path.stem if format_type == "file" else path.name
+        if entry_id == spec_id:
+            if format_type == "directory":
+                spec_dir = path
+            else:
+                # For file-based SPECs, use the parent directory
+                spec_dir = path.parent
+            break
+
+    if spec_dir is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"SPEC '{spec_id}' not found",
+        )
+
+    # Read content from the three possible files
+    result = {
+        "spec": "",
+        "plan": "",
+        "sync": "",
+    }
+
+    # Helper function to safely read file content
+    def _read_file(filename: str) -> str:
+        file_path = spec_dir / filename
+        if file_path.exists() and file_path.is_file():
+            try:
+                return file_path.read_text(encoding="utf-8")
+            except Exception:
+                return ""
+        return ""
+
+    # Read each file if it exists
+    result["spec"] = _read_file("spec.md")
+    result["plan"] = _read_file("plan.md")
+    result["sync"] = _read_file("sync.md")
+
+    return result
 
 
 @router.post("/specs/{spec_id}/run")

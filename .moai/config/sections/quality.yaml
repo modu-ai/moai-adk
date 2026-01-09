@@ -9,7 +9,7 @@ constitution:
   # Simplicity principles (separate from TRUST 5)
   principles:
     simplicity:
-      max_projects: 5         # Maximum concurrent projects for focus
+      max_parallel_tasks: 5   # Maximum parallel operations for focus (NOT concurrent projects)
 
 report_generation:
   enabled: true               # Enable report generation

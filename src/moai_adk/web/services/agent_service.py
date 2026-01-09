@@ -6,7 +6,7 @@ chat functionality and streaming response handling.
 
 import os
 import re
-from typing import AsyncGenerator, Optional
+from typing import TYPE_CHECKING, AsyncGenerator, Optional, cast
 
 from moai_adk.web.services.provider_service import ProviderService
 
@@ -17,6 +17,9 @@ try:
     ANTHROPIC_AVAILABLE = True
 except ImportError:
     ANTHROPIC_AVAILABLE = False
+
+if TYPE_CHECKING:
+    from anthropic.types import MessageParam
 
 
 # MoAI command pattern detection
@@ -84,6 +87,17 @@ class AgentService:
             List of context messages
         """
         return self._context.get(session_id, [])
+
+    def get_context_typed(self, session_id: str) -> list["MessageParam"]:
+        """Get the conversation context with proper typing for Anthropic API
+
+        Args:
+            session_id: The session ID
+
+        Returns:
+            List of typed context messages
+        """
+        return cast(list["MessageParam"], self._context.get(session_id, []))
 
     def add_to_context(self, session_id: str, role: str, content: str) -> None:
         """Add a message to the session context
@@ -197,7 +211,7 @@ class AgentService:
             Response text chunks
         """
         # Build messages from context
-        messages = self.get_context(session_id)
+        messages = self.get_context_typed(session_id)
 
         # Determine which model to use
         # Map provider model names to Anthropic model IDs

@@ -130,6 +130,12 @@ export type WSMessageType =
   | 'error'
   | 'ping'
   | 'pong'
+  // Terminal message types
+  | 'input'
+  | 'output'
+  | 'resize'
+  | 'heartbeat'
+  | 'close'
 
 export interface WSMessage<T = unknown> {
   type: WSMessageType

@@ -45,9 +45,9 @@ export function AppShell({ children, isConnected }: AppShellProps) {
   }, [])
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="h-screen flex flex-col bg-background text-foreground overflow-hidden">
       <Header isConnected={isConnected} />
-      <div className="flex h-[calc(100vh-3.5rem)]">
+      <div className="flex flex-1 overflow-hidden">
         <Sidebar />
         <main className="flex-1 overflow-hidden">{children}</main>
       </div>

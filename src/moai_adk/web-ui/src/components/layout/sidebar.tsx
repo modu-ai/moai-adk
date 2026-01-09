@@ -41,7 +41,7 @@ export function Sidebar() {
   if (!sidebarOpen) {
     return (
       <aside className="hidden md:flex flex-col w-16 border-r bg-muted/30">
-        <nav className="flex flex-col items-center gap-2 p-2">
+        <nav className="flex flex-col items-center gap-1 p-2">
           {navItems.map((item) => (
             <Button
               key={item.id}
@@ -49,8 +49,12 @@ export function Sidebar() {
               size="icon"
               onClick={() => setActiveTab(item.id)}
               aria-label={item.label}
+              className="relative"
             >
               <item.icon className="h-5 w-5" />
+              {activeTab === item.id && (
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-full" />
+              )}
             </Button>
           ))}
         </nav>
@@ -61,16 +65,16 @@ export function Sidebar() {
   return (
     <aside className="hidden md:flex flex-col w-64 border-r bg-muted/30">
       {/* Navigation */}
-      <nav className="flex items-center gap-1 p-2 border-b">
+      <nav className="flex flex-col gap-1 p-2 border-b">
         {navItems.map((item) => (
           <Button
             key={item.id}
             variant={activeTab === item.id ? 'secondary' : 'ghost'}
             size="sm"
-            className="flex-1"
+            className="w-full justify-start"
             onClick={() => setActiveTab(item.id)}
           >
-            <item.icon className="h-4 w-4 mr-1.5" />
+            <item.icon className="h-4 w-4 mr-2" />
             {item.label}
           </Button>
         ))}
@@ -78,13 +82,15 @@ export function Sidebar() {
 
       {/* Sessions List (shown for chat tab) */}
       {activeTab === 'chat' && (
-        <div className="flex-1 flex flex-col">
-          <div className="flex items-center justify-between p-2 border-b">
-            <span className="text-sm font-medium">Sessions</span>
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex items-center justify-between px-3 py-2 border-b">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Sessions
+            </span>
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className="h-7 w-7 shrink-0"
               onClick={handleNewSession}
               aria-label="New session"
             >
@@ -95,24 +101,33 @@ export function Sidebar() {
           <ScrollArea className="flex-1">
             <div className="p-2 space-y-1">
               {sessions.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No sessions yet
-                </p>
+                <div className="flex flex-col items-center justify-center py-8 px-2 text-center">
+                  <MessageSquare className="h-8 w-8 text-muted-foreground/50 mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    No sessions yet
+                  </p>
+                </div>
               ) : (
                 sessions.map((session) => (
-                  <div
+                  <button
                     key={session.id}
                     className={cn(
-                      'group flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors',
+                      'group w-full flex items-center gap-2 p-2.5 rounded-md text-left transition-all',
                       activeSessionId === session.id
-                        ? 'bg-secondary'
-                        : 'hover:bg-muted'
+                        ? 'bg-secondary shadow-sm'
+                        : 'hover:bg-muted/50'
                     )}
                     onClick={() => setActiveSession(session.id)}
                   >
-                    <MessageSquare className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <MessageSquare className={cn(
+                      'h-4 w-4 shrink-0',
+                      activeSessionId === session.id ? 'text-foreground' : 'text-muted-foreground'
+                    )} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
+                      <p className={cn(
+                        'text-sm truncate',
+                        activeSessionId === session.id ? 'font-medium' : 'font-normal'
+                      )}>
                         {session.name}
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -122,7 +137,7 @@ export function Sidebar() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={(e) => {
                         e.stopPropagation()
                         removeSession(session.id)
@@ -131,7 +146,7 @@ export function Sidebar() {
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
-                  </div>
+                  </button>
                 ))
               )}
             </div>

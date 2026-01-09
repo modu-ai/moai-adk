@@ -327,13 +327,14 @@ class LSPProtocol:
                 break
 
         # Parse Content-Length
-        content_length = None
-        for line in headers.decode("utf-8").split("\r\n"):
-            if line.startswith("Content-Length:"):
+        content_length: int | None = None
+        headers_text: str = headers.decode("utf-8")
+        for header_line in headers_text.split("\r\n"):
+            if header_line.startswith("Content-Length:"):
                 try:
-                    content_length = int(line.split(":")[1].strip())
+                    content_length = int(header_line.split(":")[1].strip())
                 except ValueError:
-                    raise ContentLengthError(f"Invalid Content-Length: {line}")
+                    raise ContentLengthError(f"Invalid Content-Length: {header_line}")
                 break
 
         if content_length is None:

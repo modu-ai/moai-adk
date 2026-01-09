@@ -64,33 +64,34 @@ batches:
           file: "sections/quality.yaml"
           path: "constitution.test_coverage_target"
 
-      # Q: Max Projects - number_input type
+      # Q: Max Parallel Tasks - number_input type
       # Note: This is a simplicity principle setting, NOT related to TRUST 5
+      # Note: This is about maximum parallel operations, NOT concurrent projects
       # UX Note: For number_input, only show preset values.
       # Users should type directly in "Type something" field for custom values.
-      - id: max_projects
-        question: "Maximum concurrent projects to manage? This helps maintain focus and quality."
-        header: "Max Projects"
-        field: "constitution.principles.simplicity.max_projects"
+      - id: max_parallel_tasks
+        question: "Maximum parallel operations? This limits simultaneous parallel tasks to maintain focus and quality."
+        header: "Max Parallel"
+        field: "constitution.principles.simplicity.max_parallel_tasks"
         type: number_input
         multi_select: false
         required: true
         options:
-          - label: "5 projects"
+          - label: "5 parallel"
             description: "Recommended for focused work (recommended)"
             value: 5
-          - label: "3 projects"
+          - label: "3 parallel"
             description: "Small team or individual developer"
             value: 3
-          - label: "10 projects"
+          - label: "10 parallel"
             description: "For larger teams"
             value: 10
-          - label: "20 projects"
+          - label: "20 parallel"
             description: "For enterprise teams"
             value: 20
         target:
           file: "sections/quality.yaml"
-          path: "constitution.principles.simplicity.max_projects"
+          path: "constitution.principles.simplicity.max_parallel_tasks"
 
   # Batch 4.2: Report Generation Policy
   - batch_id: "4.2"
