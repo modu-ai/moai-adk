@@ -56,15 +56,6 @@ security = [
     "pip-audit>=2.7.0",
     "bandit>=1.8.0"
 ]
-web = [
-    "fastapi>=0.115.0",
-    "uvicorn>=0.34.0",
-    "websockets>=14.0",
-    "aiosqlite>=0.20.0",
-    "pydantic>=2.9.0",
-    "ptyprocess>=0.7.0",
-    "anthropic>=0.40.0",  # Claude API SDK for chat integration
-]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
