@@ -2,7 +2,7 @@
 
 Service layer for the MoAI Web Backend including
 agent integration, provider management, terminal management,
-model routing, and cost tracking.
+model routing, cost tracking, and workflow orchestration.
 """
 
 from moai_adk.web.services import (
@@ -11,6 +11,7 @@ from moai_adk.web.services import (
     model_router,
     provider_service,
     terminal_service,
+    workflow_service,
 )
 
 __all__ = [
@@ -19,4 +20,5 @@ __all__ = [
     "model_router",
     "provider_service",
     "terminal_service",
+    "workflow_service",
 ]
