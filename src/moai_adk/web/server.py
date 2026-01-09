@@ -76,4 +76,9 @@ def create_app(config: WebConfig | None = None) -> FastAPI:
     app.include_router(model_router.router, prefix="/api", tags=["model-router"])
     app.include_router(cost.router, prefix="/api", tags=["cost"])
 
+    # Import workflow router here to avoid circular import and lint removal
+    from moai_adk.web.routers import workflow
+
+    app.include_router(workflow.router, prefix="/api/workflow", tags=["workflow"])
+
     return app
