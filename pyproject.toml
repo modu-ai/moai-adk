@@ -62,6 +62,7 @@ web = [
     "websockets>=14.0",
     "aiosqlite>=0.20.0",
     "pydantic>=2.9.0",
+    "ptyprocess>=0.7.0",
 ]
 
 [tool.pytest.ini_options]
