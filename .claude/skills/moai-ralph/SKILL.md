@@ -2,7 +2,20 @@
 name: moai-ralph
 description: Ralph Engine - Automated feedback loop with LSP diagnostics and AST-grep integration for continuous code quality improvement. Use when implementing error-driven development, automated fixing, or continuous quality validation workflows.
 version: 1.0.0
+category: integration
+tags: ['lsp', 'ast-grep', 'feedback-loop', 'code-quality', 'automation', 'diagnostics']
 user-invocable: false
+updated: 2026-01-10
+status: active
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - Grep
+  - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__get-library-docs
 ---
 
 # Ralph Engine
@@ -23,10 +36,10 @@ Key Components:
 - `ralph.yaml`: Configuration settings
 
 Commands:
-- `/all-is-well`: One-click Plan-Run-Sync automation
-- `/moai-loop`: Start feedback loop
-- `/moai-fix`: One-time auto-fix
-- `/cancel-loop`: Stop active loop
+- `/moai:all-is-well`: One-click Plan-Run-Sync automation
+- `/moai:loop`: Start feedback loop
+- `/moai:fix`: One-time auto-fix
+- `/moai:cancel-loop`: Stop active loop
 
 When to Use:
 - Implementing features with zero-error goal
@@ -42,7 +55,7 @@ When to Use:
 User Command
      |
      v
-Command Layer (/moai-loop, /moai-fix, /all-is-well)
+Command Layer (/moai:loop, /moai:fix, /moai:all-is-well)
      |
      v
 Hook System
@@ -204,7 +217,7 @@ def check_custom_conditions(config: dict) -> bool:
 # GitHub Actions example
 - name: Run Ralph Loop
   run: |
-    claude -p "/moai-loop --max-iterations 5"
+    claude -p "/moai:loop --max-iterations 5"
   env:
     MOAI_LOOP_ACTIVE: "true"
 ```
@@ -231,7 +244,7 @@ When LSP is unavailable, the system falls back to:
 ### Loop Stuck
 - Check max_iterations setting
 - Review completion conditions
-- Use `/cancel-loop` to reset
+- Use `/moai:cancel-loop` to reset
 
 ## Works Well With
 

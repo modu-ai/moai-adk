@@ -490,16 +490,11 @@ try {
     echo "Connection failed: " . $e->getMessage();
 }
 ```
-
 Migration Rollback:
 ```bash
 php artisan migrate:rollback --step=1
 php artisan migrate:fresh --seed  # Development only
-
 php bin/console doctrine:migrations:migrate prev
 ```
-
 ---
-
-Last Updated: 2025-12-07
-Status: Active (v1.0.0)
+Version: 1.0.0 | Updated: 2025-12-07 | Status: Active
