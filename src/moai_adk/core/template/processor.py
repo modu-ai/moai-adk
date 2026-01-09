@@ -175,6 +175,31 @@ class TemplateProcessor:
                 self.logger.info("VersionReader created with enhanced configuration")
         return self._version_reader
 
+    def _get_current_version(self) -> Optional[str]:
+        """
+        Get the current MoAI-ADK package version.
+
+        Returns:
+            Current version string, or None if version cannot be determined
+        """
+        try:
+            version_reader = self._get_version_reader()
+            version = version_reader.get_version()
+            if version and version != "unknown":
+                return version
+        except Exception as e:
+            self.logger.warning(f"Failed to get current version: {e}")
+
+        # Fallback: try direct import
+        try:
+            from moai_adk import __version__
+
+            return __version__
+        except ImportError:
+            pass
+
+        return None
+
     def _validate_template_variables(self, context: Dict[str, str]) -> None:
         """
         Validate template variables with comprehensive checking.
@@ -1206,6 +1231,9 @@ class TemplateProcessor:
             console.print("⚠️ Warning: PyYAML not available, skipping section merge")
             return
 
+        # Get current package version for system.yaml update
+        current_version = self._get_current_version()
+
         # Environment variable mappings for each section
         env_mappings = {
             "language.yaml": {
@@ -1228,6 +1256,16 @@ class TemplateProcessor:
                 with open(section_file, "r", encoding="utf-8") as f:
                     section_data = yaml.safe_load(f) or {}
 
+                modified = False
+
+                # Update system.yaml version to current package version
+                if section_file.name == "system.yaml" and current_version:
+                    if "moai" not in section_data:
+                        section_data["moai"] = {}
+                    if section_data.get("moai", {}).get("version") != current_version:
+                        section_data["moai"]["version"] = current_version
+                        modified = True
+
                 # Apply environment variable overrides if applicable
                 if section_file.name in env_mappings:
                     for env_var, path in env_mappings[section_file.name].items():
@@ -1239,17 +1277,20 @@ class TemplateProcessor:
                                 if key not in current:
                                     current[key] = {}
                                 current = current[key]
-                            current[path[-1]] = env_value
+                            if current.get(path[-1]) != env_value:
+                                current[path[-1]] = env_value
+                                modified = True
 
-                # Write back if environment variables were applied
-                with open(section_file, "w", encoding="utf-8") as f:
-                    yaml.safe_dump(
-                        section_data,
-                        f,
-                        default_flow_style=False,
-                        allow_unicode=True,
-                        sort_keys=False,
-                    )
+                # Write back only if modifications were made
+                if modified or section_file.name in env_mappings:
+                    with open(section_file, "w", encoding="utf-8") as f:
+                        yaml.safe_dump(
+                            section_data,
+                            f,
+                            default_flow_style=False,
+                            allow_unicode=True,
+                            sort_keys=False,
+                        )
 
             except Exception as e:
                 console.print(f"⚠️ Warning: Failed to merge {section_file.name}: {e}")
