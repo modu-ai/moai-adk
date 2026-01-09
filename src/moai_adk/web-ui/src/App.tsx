@@ -1,30 +1,33 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { AppShell } from '@/components/layout'
 import { ChatView } from '@/components/chat'
 import { SpecList } from '@/components/spec'
 import { TerminalView } from '@/components/terminal'
 import { CostView } from '@/components/cost'
 import { useUIStore } from '@/stores'
-import { useWebSocket } from '@/hooks'
 
 function App() {
   const { activeTab } = useUIStore()
   const [isConnected, setIsConnected] = useState(false)
 
-  // Main WebSocket connection for app-wide events
-  const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`
-
-  const { isConnected: wsConnected } = useWebSocket({
-    url: wsUrl,
-    onOpen: () => setIsConnected(true),
-    onClose: () => setIsConnected(false),
-    reconnect: true,
-    reconnectInterval: 3000,
-  })
+  // Check server health via REST API polling
+  const checkHealth = useCallback(async () => {
+    try {
+      const response = await fetch('/api/health')
+      setIsConnected(response.ok)
+    } catch {
+      setIsConnected(false)
+    }
+  }, [])
 
   useEffect(() => {
-    setIsConnected(wsConnected)
-  }, [wsConnected])
+    // Initial health check
+    checkHealth()
+
+    // Poll health every 5 seconds
+    const interval = setInterval(checkHealth, 5000)
+    return () => clearInterval(interval)
+  }, [checkHealth])
 
   const renderContent = () => {
     switch (activeTab) {

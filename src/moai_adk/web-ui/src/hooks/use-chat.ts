@@ -80,9 +80,10 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   )
 
   const wsUrl = useMemo(() => {
+    if (!currentSessionId) return null
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
-    return `${protocol}//${host}/ws/chat${currentSessionId ? `?session=${currentSessionId}` : ''}`
+    return `${protocol}//${host}/ws/chat/${currentSessionId}`
   }, [currentSessionId])
 
   const { isConnected, send } = useWebSocket({

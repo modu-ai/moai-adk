@@ -1,6 +1,10 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useRef, useState, useMemo } from 'react'
 import { useWebSocket } from './use-websocket'
 import type { WSMessage, TerminalOutput } from '@/types'
+
+interface UseTerminalOptions {
+  terminalId?: string
+}
 
 interface UseTerminalReturn {
   outputs: TerminalOutput[]
@@ -10,7 +14,8 @@ interface UseTerminalReturn {
   terminalRef: React.RefObject<HTMLDivElement | null>
 }
 
-export function useTerminal(): UseTerminalReturn {
+export function useTerminal(options: UseTerminalOptions = {}): UseTerminalReturn {
+  const { terminalId } = options
   const [outputs, setOutputs] = useState<TerminalOutput[]>([])
   const terminalRef = useRef<HTMLDivElement>(null)
 
@@ -30,7 +35,12 @@ export function useTerminal(): UseTerminalReturn {
     }
   }, [])
 
-  const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/terminal`
+  const wsUrl = useMemo(() => {
+    if (!terminalId) return null
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const host = window.location.host
+    return `${protocol}//${host}/ws/terminal/${terminalId}`
+  }, [terminalId])
 
   const { isConnected, send } = useWebSocket({
     url: wsUrl,

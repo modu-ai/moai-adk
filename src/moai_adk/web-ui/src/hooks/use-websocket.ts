@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 import type { WSMessage, WSMessageType } from '@/types'
 
 interface UseWebSocketOptions {
-  url: string
+  url: string | null
   onMessage?: (message: WSMessage) => void
   onOpen?: () => void
   onClose?: () => void
@@ -47,7 +47,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
   }, [])
 
   const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+    if (!url || wsRef.current?.readyState === WebSocket.OPEN) {
       return
     }
 

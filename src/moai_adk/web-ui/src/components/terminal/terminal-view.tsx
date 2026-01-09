@@ -1,15 +1,36 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Terminal as TerminalIcon, Trash2, Copy, Check } from 'lucide-react'
+import { Terminal as TerminalIcon, Trash2, Copy, Check, Plus } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { useTerminal } from '@/hooks'
 import { cn } from '@/lib/utils'
 
 export function TerminalView() {
-  const { outputs, isConnected, sendCommand, clear } = useTerminal()
+  const [terminalId, setTerminalId] = useState<string | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
+  const { outputs, isConnected, sendCommand, clear } = useTerminal({ terminalId: terminalId ?? undefined })
   const [input, setInput] = useState('')
   const [copied, setCopied] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Create a new terminal session
+  const createTerminal = useCallback(async () => {
+    setIsCreating(true)
+    try {
+      const response = await fetch('/api/terminals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setTerminalId(data.id)
+      }
+    } catch (error) {
+      console.error('Failed to create terminal:', error)
+    } finally {
+      setIsCreating(false)
+    }
+  }, [])
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -80,7 +101,20 @@ export function TerminalView() {
         ref={scrollRef}
         className="flex-1 overflow-auto p-4 font-mono text-sm"
       >
-        {outputs.length === 0 ? (
+        {!terminalId ? (
+          <div className="flex flex-col items-center justify-center h-full text-zinc-500">
+            <TerminalIcon className="h-12 w-12 mb-4 opacity-50" />
+            <p className="mb-4">No terminal session active</p>
+            <Button
+              onClick={createTerminal}
+              disabled={isCreating}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              {isCreating ? 'Creating...' : 'Create Terminal'}
+            </Button>
+          </div>
+        ) : outputs.length === 0 ? (
           <div className="text-zinc-500">
             <p>Terminal ready. Type a command to execute.</p>
             <p className="mt-1 text-xs">
@@ -118,8 +152,8 @@ export function TerminalView() {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={isConnected ? 'Enter command...' : 'Connecting...'}
-          disabled={!isConnected}
+          placeholder={!terminalId ? 'Create terminal first...' : isConnected ? 'Enter command...' : 'Connecting...'}
+          disabled={!terminalId || !isConnected}
           className="flex-1 bg-transparent border-none outline-none font-mono text-sm placeholder:text-zinc-600 disabled:cursor-not-allowed"
           autoFocus
         />
