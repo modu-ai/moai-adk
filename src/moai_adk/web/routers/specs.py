@@ -348,12 +348,17 @@ async def get_spec(spec_id: str) -> SpecStatus:
 async def run_spec(spec_id: str) -> dict:
     """Trigger execution of a SPEC via terminal
 
+    Creates a new terminal session and executes the SPEC workflow.
+
     Args:
         spec_id: The SPEC identifier to execute
 
     Returns:
-        Dict with execution status and terminal info
+        Dict with terminal_id, websocket_url for connecting to the terminal
     """
+    # Import here to avoid circular import
+    from moai_adk.web.routers.terminal import get_terminal_manager
+
     # Verify SPEC exists
     base_path = Path.cwd()
     spec_entries = _find_spec_entries(base_path)
@@ -374,12 +379,40 @@ async def run_spec(spec_id: str) -> dict:
             detail=f"SPEC '{spec_id}' not found",
         )
 
-    # Return info for terminal spawning
-    # Actual terminal creation handled by terminal router
-    return {
-        "spec_id": spec_id,
-        "worktree_path": worktree_path,
-        "command": f"claude /moai:all-is-well {spec_id}",
-        "status": "ready",
-        "message": f"Ready to execute {spec_id}. Use terminal endpoint to spawn.",
-    }
+    # Build the command based on whether worktree exists
+    if worktree_path:
+        # Change to worktree directory, then run claude
+        initial_command = f"cd {worktree_path} && claude /moai:all-is-well {spec_id}"
+    else:
+        # Run directly in current directory
+        initial_command = f"claude /moai:all-is-well {spec_id}"
+
+    # Create terminal session
+    try:
+        manager = get_terminal_manager()
+        session = await manager.create_terminal(
+            spec_id=spec_id,
+            worktree_path=worktree_path,
+            initial_command=initial_command,
+        )
+
+        return {
+            "spec_id": spec_id,
+            "terminal_id": session.id,
+            "worktree_path": worktree_path,
+            "command": initial_command,
+            "websocket_url": f"/ws/terminal/{session.id}",
+            "status": "running",
+            "message": f"Terminal created for {spec_id}. Connect via WebSocket.",
+        }
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(e),
+        )

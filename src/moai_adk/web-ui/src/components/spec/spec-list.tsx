@@ -79,13 +79,26 @@ export function SpecList() {
         method: 'POST',
       })
       if (!response.ok) {
-        throw new Error(`Failed to run SPEC: ${response.status}`)
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.detail || `Failed to run SPEC: ${response.status}`)
       }
       const data = await response.json()
       console.log('SPEC run initiated:', data)
-      // TODO: Open terminal with the command
-      // For now, show alert with command
-      alert(`Ready to run: ${data.command}\n\nWorktree: ${data.worktree_path || 'None'}`)
+
+      // Emit event for terminal panel to connect
+      const event = new CustomEvent('spec-terminal-created', {
+        detail: {
+          specId: data.spec_id,
+          terminalId: data.terminal_id,
+          websocketUrl: data.websocket_url,
+          command: data.command,
+          worktreePath: data.worktree_path,
+        },
+      })
+      window.dispatchEvent(event)
+
+      // Refresh spec list to update status
+      await fetchSpecs()
     } catch (err) {
       console.error('Error running SPEC:', err)
       alert(err instanceof Error ? err.message : 'Failed to run SPEC')
