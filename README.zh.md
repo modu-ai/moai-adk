@@ -35,7 +35,7 @@ MoAI-ADK (Agentic Development Kit) 是结合 **SPEC-First 开发**、**测试驱
 
 | 章节                                         | 目标                     |
 | -------------------------------------------- | ------------------------ |
-| [8. 智能体指南](#8-智能体指南-28个)              | 专业智能体利用           |
+| [8. 智能体指南](#8-智能体指南-20个)              | 专业智能体利用           |
 | [9. 技能库](#9-技能库48个)                  | 48 个技能探索            |
 | [10. 组合模式和示例](#10-组合模式和示例)     | 实际项目示例             |
 | [11. TRUST 5 质量保证](#11-trust-5-质量保证) | 质量保证系统             |
@@ -47,8 +47,7 @@ MoAI-ADK (Agentic Development Kit) 是结合 **SPEC-First 开发**、**测试驱
 | ------------------------------------------------------------------------------------------ | ------------------------ |
 | [13. 高级设置](#13-高级设置)                                                              | 项目自定义               |
 | [14. FAQ & 快速参考](#14-faq--快速参考)                                                  | 常见问题                 |
-| [15. 📸 ai-nano-banana 智能体使用指南](#15---ai-nano-banana-智能体使用指南)                   | 图像生成指南             |
-| [16. 附加资源](#16-附加资源)                                                              | 支持和信息               |
+| [15. 附加资源](#15-附加资源)                                                              | 支持和信息               |
 
 ---
 
@@ -56,7 +55,7 @@ MoAI-ADK (Agentic Development Kit) 是结合 **SPEC-First 开发**、**测试驱
 
 ### 🗿 MoAI-ADK 是什么？
 
-**MoAI-ADK** (Agentic Development Kit) 是基于 AI 智能体驱动的下一代开发框架。它结合 **SPEC-First 开发方法论**、**TDD**（测试驱动开发）和 **28 个专业 AI 智能体**，提供完整且透明的开发生命周期。
+**MoAI-ADK** (Agentic Development Kit) 是基于 AI 智能体驱动的下一代开发框架。它结合 **SPEC-First 开发方法论**、**TDD**（测试驱动开发）和 **20 个专业 AI 智能体**，提供完整且透明的开发生命周期。
 
 ### ✨ 为什么选择 MoAI-ADK？
 
@@ -84,7 +83,7 @@ MoAI-ADK 的解决方案：
 | ---------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **SPEC-First**   | 所有开发都从清晰的规格开始                  | 由于需求变更导致的返工**减少 90%**<br/>清晰的 SPEC 消除开发者-规划者之间的误解                                                                                   |
 | **TDD 强制**     | 自动 Red-Green-Refactor 循环                | （85%+ 覆盖率）错误**减少 70%**<br/>包括测试编写的总开发时间**减少 15%**                                                                                           |
-| **AI 编排**      | Mr.Alfred 指挥 28 个专业 AI 智能体（5-Tier 层级） | 平均令牌节省：每会话 5,000 令牌（条件性自动加载）<br/>**简单任务**：0 令牌（快速参考）<br/>**复杂任务**：8,470 令牌（自动加载技能）<br/>相比手动**60-70% 时间节省** |
+| **AI 编排**      | Mr.Alfred 指挥 20 个专业 AI 智能体（3-Tier + MCP 层级） | 平均令牌节省：每会话 5,000 令牌（条件性自动加载）<br/>**简单任务**：0 令牌（快速参考）<br/>**复杂任务**：8,470 令牌（自动加载技能）<br/>相比手动**60-70% 时间节省** |
 | **自动文档**     | 代码更改时自动文档同步（`> /moai:3-sync`）  | **100% 文档新鲜度保证**<br/>消除手动文档编写<br/>最后一次提交以来的自动同步                                                                                      |
 | **TRUST 5 质量** | Test, Readable, Unified, Secured, Trackable | 企业级质量保证<br/>部署后紧急补丁**减少 99%**                                                                                                                       |
 
@@ -386,7 +385,7 @@ flowchart TD
 ```
 ### 🌐 多语言智能体路由
 
-MoAI-ADK v0.40.0 支持 4 种语言（EN/KO/JA/ZH）的**基于关键字的自动智能体选择**。
+MoAI-ADK v0.41.2 支持 4 种语言（EN/KO/JA/ZH）的**基于关键字的自动智能体选择**。
 
 **支持的语言:**
 - 🇺🇸 英语 (English)
@@ -422,24 +421,11 @@ Alfred: 检测关键词 ("后端", "API")
 3. 用用户的会话语言回答
 
 
-### 🔧 智能体系统（5-Tier 层级）
+### 🔧 智能体系统（3-Tier + MCP 层级）
 
-MoAI-ADK 将**28 个专业智能体**组织成**5 个层级**以提供最佳性能。
+MoAI-ADK 将**20 个专业智能体**组织成**3 个层级 + MCP 集成**以提供最佳性能。
 
-**Tier 1: Domain Experts**（领域专家，10个）
-
-- `expert-backend`: 后端架构、API 开发
-- `expert-frontend`: 前端、React/Vue 实现
-- `expert-database`: 数据库设计、优化
-- `expert-security`: 安全分析、漏洞扫描
-- `expert-devops`: 部署、基础设施、CI/CD
-- `expert-uiux`: UI/UX 设计、组件
-- `expert-debug`: 调试、错误分析
-- `expert-performance`: 性能分析、优化
-- `expert-refactoring`: 代码重构、AST-grep 基础转换
-- `expert-testing`: 测试策略、覆盖率优化
-
-**Tier 2: Workflow Managers**（工作流管理，8个）
+**Tier 1: Workflow Managers**（工作流管理，8个）
 
 - `manager-spec`: SPEC 编写（EARS 格式）
 - `manager-tdd`: TDD 实现（RED-GREEN-REFACTOR）
@@ -450,6 +436,17 @@ MoAI-ADK 将**28 个专业智能体**组织成**5 个层级**以提供最佳性�
 - `manager-git`: Git 工作流
 - `manager-claude-code`: Claude Code 集成
 
+**Tier 2: Domain Experts**（领域专家，8个）
+
+- `expert-backend`: 后端架构、API 开发、数据库设计
+- `expert-frontend`: 前端、React/Vue 实现、UI/UX 设计
+- `expert-security`: 安全分析、漏洞扫描
+- `expert-devops`: 部署、基础设施、CI/CD
+- `expert-debug`: 调试、错误分析
+- `expert-performance`: 性能分析、优化
+- `expert-refactoring`: 代码重构、AST-grep 基础转换
+- `expert-testing`: 测试策略、覆盖率优化
+
 **Tier 3: Meta-generators**（元生成器，4个）
 
 - `builder-agent`: 创建新智能体
@@ -457,17 +454,13 @@ MoAI-ADK 将**28 个专业智能体**组织成**5 个层级**以提供最佳性�
 - `builder-command`: 创建新命令
 - `builder-plugin`: 创建 Claude Code 插件
 
-**Tier 4: MCP Integrators**（MCP 集成，5个）
+**MCP Integrators**（MCP 集成）
 
 - `mcp-context7`: 最新库文档实时查询
 - `mcp-sequential-thinking`: 复杂推理分析
 - `mcp-playwright`: Web 自动化测试
 - `mcp-figma`: Figma 设计系统
 - `mcp-notion`: Notion 工作空间管理
-
-**Tier 5: AI Services**（AI 服务，1个）
-
-- `ai-nano-banana`: Gemini 3 图像生成
 
 ---
 
@@ -1509,127 +1502,13 @@ MoAI Ralph Engine 结合了 LSP（语言服务器协议）、AST-grep 和自主�
 
 ---
 
-## 8. 智能体指南（28个）
+## 8. 智能体指南（20个）
 
 ### 🎯 智能体选择指南
 
 每个智能体都具有特定的领域专业知识。为任务选择合适的智能体。
 
-### Tier 1: Domain Experts (领域专家)
-
-#### expert-backend (后端开发)
-
-**专业知识**: FastAPI、Django、Node.js 后端开发
-**使用场景**:
-
-- RESTful API 设计和实现
-- 数据库查询优化
-- 身份验证和授权管理
-- 服务器性能优化
-
-```bash
-> Use the expert-backend subagent to"使用 FastAPI 开发用户认证 API"
-```
-
----
-
-#### expert-frontend (前端开发)
-
-**专业知识**: React、Vue、Next.js 前端
-**使用场景**:
-
-- UI 组件实现
-- 状态管理 (Redux, Zustand)
-- API 集成
-- 响应式设计
-
-```bash
-> Use the expert-frontend subagent to"使用 React 实现仪表板 UI"
-```
-
----
-
-#### expert-database (数据库)
-
-**专业知识**: SQL、NoSQL、ORM、优化
-**使用场景**:
-
-- 数据库架构设计
-- 查询优化
-- 迁移
-- 性能调优
-
-```bash
-> Use the expert-database subagent to"优化大型 PostgreSQL 表"
-```
-
----
-
-#### expert-security (安全)
-
-**专业知识**: 安全分析、漏洞扫描、OWASP
-**使用场景**:
-
-- 安全代码审查
-- 漏洞分析
-- OWASP Top 10 验证
-- 数据加密
-
-```bash
-> Use the expert-security subagent to"登录功能安全审计"
-```
-
----
-
-#### expert-devops (DevOps)
-
-**专业知识**: Docker、Kubernetes、CI/CD、部署
-**使用场景**:
-
-- Docker 镜像优化
-- Kubernetes 配置
-- GitHub Actions CI/CD
-- 基础设施自动化
-
-```bash
-> Use the expert-devops subagent to"为 Next.js 应用设置 Docker 部署"
-```
-
----
-
-#### expert-uiux (UI/UX 设计)
-
-**专业知识**: 设计系统、组件、可访问性
-**使用场景**:
-
-- UI 组件库设计
-- 设计系统构建
-- 可访问性(A11y)验证
-- 用户体验优化
-
-```bash
-> Use the expert-uiux subagent to"基于 shadcn/ui 构建设计系统"
-```
-
----
-
-#### expert-debug (调试)
-
-**专业知识**: 问题分析、错误跟踪、性能分析
-**使用场景**:
-
-- 错误分析
-- 性能瓶颈分析
-- 日志分析
-- 内存泄漏检测
-
-```bash
-> Use the expert-debug subagent to"分析 API 响应时间缓慢的原因"
-```
-
----
-
-### Tier 2: Workflow Managers (工作流管理)
+### Tier 1: Workflow Managers (工作流管理)
 
 #### manager-spec (SPEC 编写)
 
@@ -1692,6 +1571,89 @@ MoAI Ralph Engine 结合了 LSP（语言服务器协议）、AST-grep 和自主�
 
 ---
 
+### Tier 2: Domain Experts (领域专家)
+
+#### expert-backend (后端开发)
+
+**专业知识**: FastAPI、Django、Node.js 后端开发、数据库设计
+**使用场景**:
+
+- RESTful API 设计和实现
+- 数据库查询优化
+- 身份验证和授权管理
+- 服务器性能优化
+
+```bash
+> Use the expert-backend subagent to"使用 FastAPI 开发用户认证 API"
+```
+
+---
+
+#### expert-frontend (前端开发)
+
+**专业知识**: React、Vue、Next.js 前端、UI/UX 设计
+**使用场景**:
+
+- UI 组件实现
+- 状态管理 (Redux, Zustand)
+- API 集成
+- 响应式设计
+- 设计系统构建
+
+```bash
+> Use the expert-frontend subagent to"使用 React 实现仪表板 UI"
+```
+
+---
+
+#### expert-security (安全)
+
+**专业知识**: 安全分析、漏洞扫描、OWASP
+**使用场景**:
+
+- 安全代码审查
+- 漏洞分析
+- OWASP Top 10 验证
+- 数据加密
+
+```bash
+> Use the expert-security subagent to"登录功能安全审计"
+```
+
+---
+
+#### expert-devops (DevOps)
+
+**专业知识**: Docker、Kubernetes、CI/CD、部署
+**使用场景**:
+
+- Docker 镜像优化
+- Kubernetes 配置
+- GitHub Actions CI/CD
+- 基础设施自动化
+
+```bash
+> Use the expert-devops subagent to"为 Next.js 应用设置 Docker 部署"
+```
+
+---
+
+#### expert-debug (调试)
+
+**专业知识**: 问题分析、错误跟踪、性能分析
+**使用场景**:
+
+- 错误分析
+- 性能瓶颈分析
+- 日志分析
+- 内存泄漏检测
+
+```bash
+> Use the expert-debug subagent to"分析 API 响应时间缓慢的原因"
+```
+
+---
+
 ### Tier 3: Meta-generators (元生成器, 4个)
 
 #### builder-agent
@@ -1738,7 +1700,7 @@ MoAI Ralph Engine 结合了 LSP（语言服务器协议）、AST-grep 和自主�
 
 ---
 
-### Tier 4: MCP Integrators (MCP 集成)
+### MCP Integrators (MCP 集成)
 
 #### mcp-context7 (文档查询)
 
@@ -1786,27 +1748,11 @@ MoAI Ralph Engine 结合了 LSP（语言服务器协议）、AST-grep 和自主�
 
 ---
 
-### Tier 5: AI Services
-
-#### ai-nano-banana (图像生成)
-
-**目的**: 使用 Gemini 3 生成高质量图像
-**使用场景**:
-
-- UI/UX 模型生成
-- 技术图表创建
-- 营销材料
-- 徽标/图标生成
-
-更多详情请参见 [15. 📸 ai-nano-banana 智能体使用指南](#15---ai-nano-banana-智能体使用指南)
-
----
-
-## 9. 技能库（47个）
+## 9. 技能库（48个）
 
 ![技能使用统计](./assets/images/readme/skill-usage-stats.png)
 
-MoAI-ADK 在 7 个类别中提供 **47 个专业技能**。每个技能可以独立或组合使用。
+MoAI-ADK 在 6 个类别中提供 **48 个专业技能**。每个技能可以独立或组合使用。
 
 ### 🏗️ Foundation（基础）
 
@@ -1907,12 +1853,6 @@ MoAI-ADK 在 7 个类别中提供 **47 个专业技能**。每个技能可以独
 - **moai-library-nextra** - 基于 Next.js 的企业文档框架
 - **moai-formats-data** - TOON 编码、JSON/YAML 优化、数据验证
 
-### 🤖 AI 集成
-
-AI 服务集成的专业技能。
-
-- **moai-ai-nano-banana** - 使用 Gemini 3 Nano Banana Pro 的图像生成
-
 ### 🎯 技能使用指南
 
 #### 技能调用方法
@@ -2003,9 +1943,7 @@ manager-quality (验证)
 ### 模式 3: UI/UX 开发
 
 ```text
-expert-uiux (设计系统)
-  ↓
-expert-frontend (组件实现)
+expert-frontend (设计系统 + 组件实现)
   ↓
 mcp-playwright (E2E 测试)
 ```
@@ -2013,11 +1951,8 @@ mcp-playwright (E2E 测试)
 **示例**:
 
 ```bash
-> Use the expert-uiux subagent to"基于 shadcn/ui 的登录页面设计"
-# → Button, Input, Card 组件组合
-
-> Use the expert-frontend subagent to"实现 React 登录表单"
-# → 使用 shadcn/ui 组件的实现
+> Use the expert-frontend subagent to"基于 shadcn/ui 的登录页面设计"
+# → Button, Input, Card 组件组合 + React 实现
 
 > Use the mcp-playwright subagent to"登录场景的 E2E 测试"
 # → 成功/失败案例的自动测试
@@ -2422,163 +2357,7 @@ cat .mcp.json
 
 ---
 
-## 15. 📸 ai-nano-banana 智能体使用指南
-
-**目的**: 使用 Google Gemini 3 Nano Banana Pro 进行专业图像生成
-
-**核心功能**:
-
-- ✅ 自然语言提示生成高质量图像
-- ✅ 实时 AI 图像生成 (Token 高效)
-- ✅ Claude Code 中直接生成
-- ✅ 多种风格支持 (realistic, artistic, diagram, mockup 等)
-- ✅ 批量图像生成
-
-**使用场景**:
-
-1. **UI/UX 模型生成**: 网站、应用屏幕设计
-2. **技术图表**: 架构、流程图表
-3. **文档插入图像**: README、演示文稿
-4. **营销材料**: 社交媒体内容、横幅
-5. **徽标/图标**: 项目品牌化
-
-#### 快速开始
-
-```bash
-# Claude Code 中
-> Use the ai-nano-banana subagent to"生成专业登录页面 UI 模型"
-```
-
-#### 图像生成提示
-
-**有效提示模式**:
-
-1. **风格指定**:
-
-   ```
-   "[写实|艺术|极简|3D] 风格的图像生成..."
-   ```
-
-2. **质量设置**:
-
-   ```
-   "[1024x1024|1920x1080] 高分辨率专业图像生成..."
-   ```
-
-3. **布局指定**:
-
-   ```
-   "[深色|浅色] 主题的仪表板模型生成..."
-   ```
-
-4. **背景设置**:
-
-   ```
-   "现代 [白色|渐变|黑色] 背景中..."
-   ```
-
-5. **故事板生成**:
-
-   ```
-   "生成 4 面板故事板: 步骤 1, 步骤 2, 步骤 3, 步骤 4"
-   ```
-
-#### 实战示例 (5 种)
-
-**1. Web 登录页面模型**:
-
-```
-提示: "创建包含邮箱和密码输入字段、登录按钮的
-现代简洁登录页面 UI 模型。极简设计，蓝色
-强调色。1024x768 分辨率，白色背景，专业和
-现代感觉"
-```
-
-**2. 微服务架构图表**:
-
-```
-提示: "创建展示 5 个微服务的技术图表：
-API Gateway, User Service, Order Service, Payment Service,
-Notification Service。用箭头表示连接。
-专业技术图表风格，白色背景"
-```
-
-**3. 移动应用屏幕系列**:
-
-```
-提示: "创建 3 屏移动应用故事板：
-1) 欢迎屏幕，2) 用户档案屏幕，3) 设置屏幕。
-iOS 风格，现代设计，简洁 UI"
-```
-
-**4. 社交媒体横幅 (1200x630)**:
-
-```
-提示: "为 AI 开发公司创建专业 LinkedIn 横幅。
-包含 'AI-Powered Development' 文本和现代技术元素。
-蓝紫色渐变的深色主题"
-```
-
-**5. 文档图标集**:
-
-```
-提示: "创建 6 个简单、专业、扁平设计的图标：
-1) 代码图标，2) 数据库图标，3) 服务器图标，
-4) 安全图标，5) 测试图标，6) 部署图标。
-白色背景，一致风格"
-```
-
-#### 高级功能
-
-- **批量生成**: 同时生成多个图像
-- **重复请求**: 微调提示生成多个版本
-- **图像集成**: 自动将生成的图像插入文档/演示文稿
-- **风格一致性**: 生成相同风格的多个图像
-
-#### 最佳实践
-
-✅ 推荐:
-
-- 指定具体风格 (realistic, minimalist, 3d 等)
-- 明确的颜色描述 (蓝色、渐变、深色主题等)
-- 分辨率指定 (1024x1024, 1920x1080 等)
-- 提供上下文 (专业用、演示文稿用等)
-- 使用多个提示生成版本
-
-❌ 不推荐:
-
-- 过于抽象的描述
-- 法律/权利问题的内容
-- 真实人物肖像 (推荐使用合成面孔)
-- 版权品牌徽标
-- 负面内容
-
-#### Gemini 3 Nano Banana Pro 规格
-
-- 模型: Google Gemini 3
-- 响应时间: 5-30 秒
-- 最大分辨率: 2048x2048
-- Token 效率: 每张图像约 1,000-2,000 Token
-
-#### 问题解决
-
-| 问题         | 原因         | 解决方案         |
-| ------------ | ------------ | ---------------- |
-| 生成失败     | API 错误     | 简化提示         |
-| 品质低       | 提示不明确   | 添加具体细节     |
-| 风格不匹配   | 风格未指定   | 指定 "realistic" 等 |
-| 超时         | 复杂请求     | 从小请求开始     |
-
-#### 参考资料
-
-- 技能: `moai-connector-nano-banana`
-- 官方用法: `/help` → "ai-nano-banana"
-- 示例: 本指南中的 5 种实战示例
-- Gemini 文档: <https://ai.google.dev/>
-
----
-
-## 16. 附加资源
+## 15. 附加资源
 
 ### 🆘 支持 (Support)
 
@@ -2622,7 +2401,7 @@ SOFTWARE.
 
 ---
 
-## 16. 🚀 GLM 与 z.ai 集成（经济高效的替代方案）
+## 16. GLM 与 z.ai 集成（经济高效的替代方案）
 
 ### 概述
 
@@ -2846,7 +2625,7 @@ GLM 4.6 现已激活，准备使用！
 
 **从今天开始节省成本，同时保持开发生产力！** 🚀
 
-## 17. 额外资源
+## 17. 额外资源和社区
 
 ### 🆘 支持
 
@@ -2890,9 +2669,9 @@ SOFTWARE.
 
 ---
 
-### ❤️ by MoAI-ADK 团队创建
+### by MoAI-ADK 团队创建
 
-**版本**: 0.40.0
-**最后更新**: 2025-12-01
+**版本**: 0.41.2
+**最后更新**: 2026-01-10
 **理念**: SPEC-First TDD + 智能体编排 + 85% Token 效率
 **MoAI**: MoAI 意为"所有人的 AI (Modu-ui AI)"。我们的目标是让每个人都能使用 AI。

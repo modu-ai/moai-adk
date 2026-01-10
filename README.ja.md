@@ -35,7 +35,7 @@ MoAI-ADK (Agentic Development Kit)は、**SPEC-First 開発**、**テスト駆�
 
 | セクション                                               | 目標                   |
 | -------------------------------------------------------- | ---------------------- |
-| [8. エージェントガイド](#8-エージェントガイド-28-個)      | 専門エージェントの活用 |
+| [8. エージェントガイド](#8-エージェントガイド-20-個)      | 専門エージェントの活用 |
 | [9. スキルライブラリ](#9-スキルライブラリ-48-個)          | 48 個のスキル探索      |
 | [10. 組み合わせパターンと例](#10-組み合わせパターンと例) | 実際のプロジェクト例   |
 | [11. TRUST 5 品質保証](#11-trust-5-品質保証)             | 品質保証システム       |
@@ -47,8 +47,7 @@ MoAI-ADK (Agentic Development Kit)は、**SPEC-First 開発**、**テスト駆�
 | ------------------------------------------------------------------------------------------------------ | ------------------------ |
 | [13. 高度な設定](#13-高度な設定)                                                                       | プロジェクトカスタマイズ |
 | [14. FAQ & クイックリファレンス](#14-faq--クイックリファレンス)                                         | よくある質問             |
-| [15. 📸 ai-nano-banana エージェント使用法ガイド](#15---ai-nano-banana-エージェント-使用法ガイド)     | 画像生成ガイド           |
-| [16. 追加資料](#16-追加資料)                                                                           | サポートおよび情報       |
+| [15. 追加資料](#15-追加資料)                                                                           | サポートおよび情報       |
 
 ---
 
@@ -56,7 +55,7 @@ MoAI-ADK (Agentic Development Kit)は、**SPEC-First 開発**、**テスト駆�
 
 ### 🗿 MoAI-ADK とは？
 
-**MoAI-ADK**（Agentic Development Kit）は、AI エージェントを活用した次世代開発フレームワークです。**SPEC-First 開発方法論**、**TDD**（Test-Driven Development, テスト駆動開発）、**28 個の専門 AI エージェント**を組み合わせて、完全で透明な開発ライフサイクルを提供します。
+**MoAI-ADK**（Agentic Development Kit）は、AI エージェントを活用した次世代開発フレームワークです。**SPEC-First 開発方法論**、**TDD**（Test-Driven Development, テスト駆動開発）、**20 個の専門 AI エージェント**を組み合わせて、完全で透明な開発ライフサイクルを提供します。
 
 ### ✨ なぜ MoAI-ADK を使用するのか？
 
@@ -84,7 +83,7 @@ MoAI-ADK の解決策：
 | ---------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **SPEC-First**         | すべての開発は明確な仕様書から開始                     | 要件変更による手戻り **90% 削減**<br/>明確な SPEC による開発者-企画者間の誤解排除                                                                                                                              |
 | **TDD 強制**           | Red-Green-Refactor サイクルの自動化                    | バグ **70% 削減**（85%+ カバレッジ時）<br/>テスト作成時間を含む総開発時間 **15% 短縮**                                                                                                                       |
-| **AI オーケストレーション** | Mr.Alfred が 28 個の専門 AI エージェントを指揮（5-Tier 階層） | **平均トークン節約**: セッションあたり 5,000 トークン（Conditional Auto-load）<br/>**Simple 作業**: 0 トークン（Quick Reference）<br/>**Complex 作業**: 8,470 トークン（Auto-load スキル）<br/>手動に比べて **60-70% 時間短縮** |
+| **AI オーケストレーション** | Mr.Alfred が 20 個の専門 AI エージェントを指揮（3-Tier + MCP 階層） | **平均トークン節約**: セッションあたり 5,000 トークン（Conditional Auto-load）<br/>**Simple 作業**: 0 トークン（Quick Reference）<br/>**Complex 作業**: 8,470 トークン（Auto-load スキル）<br/>手動に比べて **60-70% 時間短縮** |
 | **自動ドキュメント化**   | コード変更時のドキュメント自動同期 (`> /moai:3-sync`)    | ドキュメント最新性 **100% 保証**<br/>手動ドキュメント作成削除<br/>最後のコミット以降の自動同期                                                                                                                   |
 | **TRUST 5 品質**      | Test, Readable, Unified, Secured, Trackable           | エンタープライズ級品質保証<br/>デプロイ後の緊急パッチ **99% 削減                                                                                                                                               |
 
@@ -386,7 +385,7 @@ flowchart TD
 ```
 ### 🌐 多言語エージェントルーティング
 
-MoAI-ADK v0.40.0 は 4 つの言語（EN/KO/JA/ZH）で**キーワードベースの自動エージェント選択**をサポートしています。
+MoAI-ADK v0.41.2 は 4 つの言語（EN/KO/JA/ZH）で**キーワードベースの自動エージェント選択**をサポートしています。
 
 **サポート言語:**
 - 🇺🇸 英語 (English)
@@ -422,18 +421,16 @@ Alfred: キーワード検出 ("バックエンド", "API")
 3. ユーザーの会話言語で回答
 
 
-### 🔧 エージェントシステム（5-Tier 階層）
+### 🔧 エージェントシステム（3-Tier + MCP 階層）
 
-MoAI-ADK は **28 個の専門エージェント**を **5 個の階層**に組織して最適の性能を提供します。
+MoAI-ADK は **20 個の専門エージェント**を **3 個の階層 + MCP** に組織して最適の性能を提供します。
 
-**Tier 1: Domain Experts**（ドメイン専門家、10 個）
+**Tier 1: Domain Experts**（ドメイン専門家、8 個）
 
-- `expert-backend`: バックエンドアーキテクチャ、API 開発
-- `expert-frontend`: フロントエンド、React/Vue 実装
-- `expert-database`: データベース設計、最適化
+- `expert-backend`: バックエンドアーキテクチャ、API 開発、データベース設計
+- `expert-frontend`: フロントエンド、React/Vue 実装、UI/UX デザイン
 - `expert-security`: セキュリティ分析、脆弱性スキャン
 - `expert-devops`: デプロイ、インフラ、CI/CD
-- `expert-uiux`: UI/UX デザイン、コンポーネント
 - `expert-debug`: デバッグ、エラー分析
 - `expert-performance`: パフォーマンスプロファイリング、最適化
 - `expert-refactoring`: コードリファクタリング、AST-grep 基盤変換
@@ -457,17 +454,13 @@ MoAI-ADK は **28 個の専門エージェント**を **5 個の階層**に組�
 - `builder-command`: 新しいコマンド生成
 - `builder-plugin`: Claude Code プラグイン生成
 
-**Tier 4: MCP Integrators**（MCP 統合、5 個）
+**MCP Integrators**（MCP 統合、5 個）
 
 - `mcp-context7`: 最新ライブラリ文書検索
 - `mcp-sequential-thinking`: 複雑な推論分析
 - `mcp-playwright`: ウェブ自動化テスト
 - `mcp-figma`: Figma デザインシステム
 - `mcp-notion`: Notion ワークスペース管理
-
-**Tier 5: AI Services**（AI サービス、1 個）
-
-- `ai-nano-banana`: Gemini 3 画像生成
 
 ---
 
@@ -1509,23 +1502,24 @@ MoAI Ralph Engine は LSP（Language Server Protocol）、AST-grep、自律フ�
 
 ---
 
-## 8. エージェントガイド（28 個）
+## 8. エージェントガイド（20 個）
 
 ### 🎯 エージェント選択ガイド
 
 各エージェントは特定のドメイン専門性を持っています。作業に合ったエージェントを選択してください。
 
-### Tier 1: Domain Experts（ドメイン専門家）
+### Tier 1: Domain Experts（ドメイン専門家、8 個）
 
 #### expert-backend（バックエンド開発）
 
-**専門性**: FastAPI, Django, Node.js バックエンド開発
+**専門性**: FastAPI, Django, Node.js バックエンド開発、データベース設計・最適化
 **使用例**:
 
 - RESTful API 設計および実装
 - データベースクエリ最適化
 - 認証および権限管理
 - サーバー性能最適化
+- データベーススキーマ設計
 
 ```bash
 > Use the expert-backend subagent to"FastAPI でユーザー認証 API 開発"
@@ -1535,32 +1529,18 @@ MoAI Ralph Engine は LSP（Language Server Protocol）、AST-grep、自律フ�
 
 #### expert-frontend（フロントエンド開発）
 
-**専門性**: React, Vue, Next.js フロントエンド
+**専門性**: React, Vue, Next.js フロントエンド、UI/UX デザイン、デザインシステム
 **使用例**:
 
 - UI コンポーネント実装
 - 状態管理（Redux, Zustand）
 - API 統合
 - 反応型デザイン
+- デザインシステム構築
+- アクセシビリティ(A11y) 検証
 
 ```bash
 > Use the expert-frontend subagent to"React でダッシュボード UI 実装"
-```
-
----
-
-#### expert-database（データベース）
-
-**専門性**: SQL, NoSQL, ORM, 最適化
-**使用例**:
-
-- データベーススキーマ設計
-- クエリ最適化
-- マイグレーション
-- 性能チューニング
-
-```bash
-> Use the expert-database subagent to"PostgreSQL 大規模テーブル最適化"
 ```
 
 ---
@@ -1597,22 +1577,6 @@ MoAI Ralph Engine は LSP（Language Server Protocol）、AST-grep、自律フ�
 
 ---
 
-#### expert-uiux（UI/UX デザイン）
-
-**専門性**: デザインシステム、コンポーネント、アクセシビリティ
-**使用例**:
-
-- UI コンポーネントライブラリ設計
-- デザインシステム構築
-- アクセシビリティ(A11y) 検証
-- ユーザー体験最適化
-
-```bash
-> Use the expert-uiux subagent to"shadcn/ui 基盤デザインシステム構築"
-```
-
----
-
 #### expert-debug（デバッグ）
 
 **専門性**: 問題分析、エラー追跡、性能プロファイリング
@@ -1629,7 +1593,7 @@ MoAI Ralph Engine は LSP（Language Server Protocol）、AST-grep、自律フ�
 
 ---
 
-### Tier 2: Workflow Managers（ワークフロー管理）
+### Tier 2: Workflow Managers（ワークフロー管理、8 個）
 
 #### manager-spec（SPEC 作成）
 
@@ -1692,7 +1656,7 @@ MoAI Ralph Engine は LSP（Language Server Protocol）、AST-grep、自律フ�
 
 ---
 
-### Tier 3: Meta-generators（メタ生成器、4個）
+### Tier 3: Meta-generators（メタ生成器、4 個）
 
 #### builder-agent
 
@@ -1740,7 +1704,7 @@ MoAI Ralph Engine は LSP（Language Server Protocol）、AST-grep、自律フ�
 
 ---
 
-### Tier 4: MCP Integrators（MCP 統合）
+### MCP Integrators（MCP 統合、5 個）
 
 #### mcp-context7（文書検索）
 
@@ -1788,23 +1752,7 @@ MoAI Ralph Engine は LSP（Language Server Protocol）、AST-grep、自律フ�
 
 ---
 
-### Tier 5: AI Services
-
-#### ai-nano-banana（画像生成）
-
-**目的**: Gemini 3 で高品質画像生成
-**使用例**:
-
-- UI/UX モックアップ生成
-- 技術図表生成
-- マーケティング資料生成
-- ロゴ/アイコン生成
-
-より詳細は [15. 📸 ai-nano-banana エージェント使用法ガイド](#15---ai-nano-banana-エージェント-使用法ガイド) 参照
-
----
-
-## 9. スキルライブラリ（47 個）
+## 9. スキルライブラリ（48 個）
 
 ![Skill Usage Statistics](./assets/images/readme/skill-usage-stats.png)
 
@@ -1913,8 +1861,6 @@ MoAI-ADK は **47 個の専門スキル**を 7 個のカテゴリで提供しま
 
 AI サービス統合のための専門スキルです。
 
-- **moai-ai-nano-banana** - Gemini 3 Nano Banana Pro を使用した画像生成
-
 ### 🎯 スキル使用ガイド
 
 #### スキル呼び出し方法
@@ -1946,7 +1892,7 @@ Skill("moai-lang-python")
 
 ### 🎭 エージェント組み合わせパターン
 
-MoAI-ADK の 28 個のエージェントは作業タイプに応じて最適な組み合わせで実行されます。
+MoAI-ADK の 20 個のエージェントは作業タイプに応じて最適な組み合わせで実行されます。
 
 ### パターン 1: 新機能開発
 
@@ -2005,9 +1951,7 @@ manager-quality (検証)
 ### パターン 3: UI/UX 開発
 
 ```text
-expert-uiux (デザインシステム)
-  ↓
-expert-frontend (コンポーネント実装)
+expert-frontend (デザインシステム + コンポーネント実装)
   ↓
 mcp-playwright (E2E テスト)
 ```
@@ -2015,11 +1959,8 @@ mcp-playwright (E2E テスト)
 **例**：
 
 ```bash
-> Use the expert-uiux subagent to"ログインページデザイン shadcn/ui 基盤"
-# → Button, Input, Card コンポーネント組合せ
-
-> Use the expert-frontend subagent to"React ログインフォーム実装"
-# → shadcn/ui コンポーネント使用した実装
+> Use the expert-frontend subagent to"ログインページデザイン shadcn/ui 基盤"
+# → Button, Input, Card コンポーネント組合せ + React 実装
 
 > Use the mcp-playwright subagent to"ログインシナリオ E2E テスト"
 # → 成功/失敗ケース自動テスト
@@ -2356,7 +2297,28 @@ flowchart TD
 
 ## 14. FAQ & クイックリファレンス
 
-### Q1: SPEC が常に必要ですか？
+### Q1: expert-database と expert-uiux はどこに行きましたか？
+
+**v0.41.0 での統合:**
+
+| 旧エージェント | 統合先 | 理由 |
+| -------------- | --------------- | -------------------------------- |
+| `expert-database` | `expert-backend` | バックエンド開発とデータベース設計は密接に関連 |
+| `expert-uiux` | `expert-frontend` | フロントエンド開発とUI/UXデザインは統合的なワークフロー |
+
+**使用方法の変更:**
+
+```bash
+# 旧: expert-database
+> Use the expert-backend subagent to"PostgreSQL 大規模テーブル最適化"
+
+# 旧: expert-uiux
+> Use the expert-frontend subagent to"shadcn/ui 基盤デザインシステム構築"
+```
+
+---
+
+### Q2: SPEC が常に必要ですか？
 
 **SPEC 生成推奨基準**：
 
@@ -2385,7 +2347,7 @@ flowchart TD
 
 ---
 
-### Q2: MCP サーバーインストールが必須ですか？
+### Q3: MCP サーバーインストールが必須ですか？
 
 **必須 MCP サーバー（2 個）**：
 
@@ -2424,162 +2386,7 @@ cat .mcp.json
 
 ---
 
-## 15. 📸 ai-nano-banana エージェント使用法ガイド
-
-**目的**: Google Gemini 3 Nano Banana Pro を使用した専門的な画像生成
-
-**核心機能**：
-
-- ✅ 自然言語プロンプトで高品質画像生成
-- ✅ リアルタイム AI 画像生成（Token 効率的）
-- ✅ Claude Code で直接生成可能
-- ✅ 多様なスタイルサポート（realistic, artistic, diagram, mockup 等）
-- ✅ バッチ画像生成可能
-
-**使用シナリオ**：
-
-1. **UI/UX モックアップ生成**: ウェブサイト、アプリ画面デザイン
-2. **技術図表**: アーキテクチャ、フローチャート
-3. **文書挿入画像**: README, プレゼンテーション
-4. **マーケティング資料**: SNS コンテンツ、バナー
-5. **ロゴ/アイコン**: プロジェクトブランディング
-
-#### クイックスタート
-
-```bash
-# Claude Code で
-> Use the ai-nano-banana subagent to"専門的なログインページ UI モックアップ生成"
-```
-
-#### 画像生成プロンプト
-
-**効果的なプロンプトパターン**：
-
-1. **スタイル指定**：
-
-   ```
-   "[写実的|芸術的|ミニマル|3D] スタイルの画像を生成して..."
-   ```
-
-2. **品質設定**：
-
-   ```
-   "[1024x1024|1920x1080] 高解像度専門的な画像を生成して..."
-   ```
-
-3. **レイアウト指定**：
-
-   ```
-   "[ダーク|ライト] テーマのダッシュボードモックアップを生成して..."
-   ```
-
-4. **背景設定**：
-
-   ```
-   "モダンな [白|グラデーション|黒] 背景で..."
-   ```
-
-5. **ストーリーボード生成**：
-
-   ```
-   "4 パネルのストーリーボードを生成して: 段階1, 段階2, 段階3, 段階4"
-   ```
-
-#### 実戦例（5 種類）
-
-**1. ウェブログインページモックアップ**：
-
-```
-プロンプト: "メールとパスワード入力フィールド、ログインボタンがあるモダンで
-クリーンなログインページ UI モックアップを作成して。ミニマルデザインで
-青色アクセントカラー。1024x768 解像度、白背景、専門的でモダンな感じ"
-```
-
-**2. マイクロサービスアーキテクチャ図表**：
-
-```
-プロンプト: "5 つのマイクロサービスを示す技術図表を作成して：
-API Gateway, User Service, Order Service, Payment Service,
-Notification Service。矢印で接続を表示して。
-専門的な技術図表スタイルで白背景"
-```
-
-**3. モバイルアプリ画面シリーズ**：
-
-```
-プロンプト: "モバイルアプリの 3 画面ストーリーボードを作成して：
-1) オンボーディング歓迎画面, 2) ユーザープロフィール画面, 3) 設定画面。
-iOS スタイル、モダンデザイン、クリーン UI"
-```
-
-**4. SNS バナー (1200x630)**：
-
-```
-プロンプト: "AI 開発会社のための専門的な LinkedIn バナーを作成して。
-'AI-Powered Development' テキストとモダンな技術要素を含めて。
-青色と紫色グラデーションがあるダークテーマ"
-```
-
-**5. 文書用アイコンセット**：
-
-```
-プロンプト: "フラットデザインの 6 つシンプルで専門的なアイコンを作成して：
-1) コードアイコン, 2) データベースアイコン, 3) サーバーアイコン,
-4) セキュリティアイコン, 5) テストアイコン, 6) デプロイアイコン。
-白背景、一貫したスタイル"
-```
-
-#### 高度な機能
-
-- **バッチ生成**: 複数画像同時生成
-- **反復要求**: プロンプト微調整して複数バージョン生成
-- **画像統合**: 生成された画像を文書/プレゼンテーションに自動挿入
-- **スタイル一貫性**: 同一スタイルで複数画像生成
-
-#### ベストプラクティス
-
-✅ DO:
-
-- 具体的なスタイル指定（realistic, minimalist, 3d 等）
-- 明確な色説明（blue, gradient, dark theme 等）
-- 解像度指定（1024x1024, 1920x1080 等）
-- 文脈提供（専門家用、プレゼンテーション用等）
-- 複数プロンプトでバージョン生成
-
-❌ DON'T:
-
-- あまり抽象的な説明
-- 法的/権利イシューがある内容
-- 実在人物の肖像（合成顔使用推奨）
-- 著作権のあるブランドロゴ
-- 否定的コンテンツ
-
-#### Gemini 3 Nano Banana Pro 仕様
-
-- モデル: Google Gemini 3
-- 応答時間: 5-30 秒
-- 最大解像度: 2048x2048
-- トークン効率: 画像当たり約 1,000-2,000 トークン
-
-#### 問題解決
-
-| 問題           | 原因            | 解決策              |
-| -------------- | --------------- | ------------------- |
-| 生成失敗      | API エラー        | プロンプト単純化     |
-| 品質低い      | プロンプト不明確 | 具体的指定追加      |
-| スタイル合わない | スタイル未指定   | "realistic" 等明示 |
-| 時間超過      | 複雑な要求     | 小さい要求から開始  |
-
-#### 参考資料
-
-- Skill: `moai-connector-nano-banana`
-- 公式使用法: `/help` → "ai-nano-banana"
-- 例: 本ガイドの 5 種類実戦例
-- Gemini 文書: <https://ai.google.dev/>
-
----
-
-## 16. 追加資料
+## 15. 追加資料
 
 ### 🆘 サポート（Support）
 
@@ -2623,7 +2430,7 @@ SOFTWARE.
 
 ---
 
-## 16. 🚀 z.aiとのGLM統合（コスト効果の高い代替案）
+## 16. z.aiとのGLM統合（コスト効果の高い代替案）
 
 ### 概要
 
@@ -2893,7 +2700,7 @@ SOFTWARE.
 
 ### Made with ❤️ by MoAI-ADK Team
 
-**Version:** 0.40.0
-**Last Updated:** 2025-12-01
+**Version:** 0.41.2
+**Last Updated:** 2026-01-10
 **Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
 **MoAI**: MoAI stands for "Modu-ui AI" (AI for Everyone). Our goal is to make AI accessible to everyone.

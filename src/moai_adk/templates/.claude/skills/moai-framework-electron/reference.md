@@ -2,7 +2,7 @@
 
 ## Platform Version Matrix
 
-### Electron 33 (December 2025)
+### Electron 33 (October 2024)
 
 - Chromium: 130
 - Node.js: 20.18
@@ -971,6 +971,8 @@ mac:
   gatekeeperAssess: false
   entitlements: entitlements.mac.plist
   entitlementsInherit: entitlements.mac.plist
+  notarize:
+    teamId: ${APPLE_TEAM_ID}
   target:
     - target: dmg
       arch: [x64, arm64]
@@ -989,6 +991,8 @@ dmg:
 
 win:
   icon: resources/icons/icon.ico
+  signingHashAlgorithms: [sha256]
+  signAndEditExecutable: true
   target:
     - target: nsis
       arch: [x64]

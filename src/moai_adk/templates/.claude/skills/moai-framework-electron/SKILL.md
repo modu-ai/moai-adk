@@ -91,6 +91,9 @@ Application Lifecycle:
 import { app, BrowserWindow, session } from "electron";
 import { join } from "path";
 
+// Enable sandbox globally for all renderers (security best practice)
+app.enableSandbox();
+
 let mainWindow: BrowserWindow | null = null;
 
 async function createMainWindow(): Promise<void> {
@@ -280,7 +283,17 @@ ipcMain.handle("file:read", async (_, path: string) => {
 
 ### Auto-Update Implementation
 
-Update Service:
+Simplified Auto-Update (for GitHub releases):
+
+```typescript
+// Simplified auto-update (recommended for GitHub releases)
+// npm install update-electron-app
+require("update-electron-app")();
+
+// Or use electron-updater for more control (shown below)
+```
+
+Full Update Service:
 
 ```typescript
 // src/main/services/updater.ts
@@ -349,11 +362,19 @@ directories:
 mac:
   category: public.app-category.developer-tools
   hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: entitlements.mac.plist
+  entitlementsInherit: entitlements.mac.plist
+  notarize:
+    teamId: ${APPLE_TEAM_ID}
   target:
     - target: dmg
       arch: [x64, arm64]
 
 win:
+  icon: resources/icons/icon.ico
+  signingHashAlgorithms: [sha256]
+  signAndEditExecutable: true
   target:
     - target: nsis
       arch: [x64]
@@ -415,33 +436,6 @@ For comprehensive documentation including:
 - Performance optimization
 
 See: [reference.md](reference.md) and [examples.md](examples.md)
-
----
-
-## Context7 Library Mappings
-
-Electron Core:
-
-- `/electron/electron` - Electron framework
-- `/electron/forge` - Electron Forge tooling
-
-Build and Package:
-
-- `/electron-userland/electron-builder` - App packaging
-- `/nickmeinhold/electron-vite` - Vite integration
-
-Native Modules:
-
-- `/nickmeinhold/better-sqlite3` - SQLite database
-- `/nickmeinhold/keytar` - Secure credential storage
-
-Auto-Update:
-
-- `/electron-userland/electron-updater` - Auto-update support
-
-Testing:
-
-- `/nickmeinhold/playwright` - E2E testing
 
 ---
 

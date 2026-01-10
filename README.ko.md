@@ -35,8 +35,8 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 
 | 섹션                                          | 목표                            |
 | --------------------------------------------- | ------------------------------- |
-| [8. 에이전트 가이드](#8-에이전트-가이드-28개) | 전문 에이전트 활용              |
-| [9. 스킬 라이브러리](#9-스킬-라이브러리-49개) | 49개 스킬 탐색                  |
+| [8. 에이전트 가이드](#8-에이전트-가이드-20개) | 전문 에이전트 활용              |
+| [9. 스킬 라이브러리](#9-스킬-라이브러리-48개) | 48개 스킬 탐색                  |
 | [10. 조합 패턴과 예제](#10-조합-패턴과-예제)  | 실제 프로젝트 예제              |
 | [11. TRUST 5 품질보증](#11-trust-5-품질보증)  | 품질 보증 체계                  |
 | [12. 고급 기능](#12-고급-기능)                | Git Worktree & 향상된 로그 관리 |
@@ -47,8 +47,8 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 | ------------------------------------------------------------------------------------------- | --------------------- |
 | [13. 고급 설정](#13-고급-설정)                                                              | 프로젝트 커스터마이징 |
 | [14. FAQ & 빠른 참조](#14-faq--빠른-참조)                                                   | 자주 묻는 질문        |
-| [15. 📸 ai-nano-banana 에이전트 사용법 가이드](#15---ai-nano-banana-에이전트-사용법-가이드) | 이미지 생성 가이드    |
-| [16. 추가 자료](#16-추가-자료)                                                              | 지원 및 정보          |
+| [15. z.ai와의 GLM 통합](#15-zai와의-glm-통합-비용-효율적인-대안)                            | 비용 효율적 대안      |
+| [16. 추가 리소스](#16-추가-리소스)                                                           | 지원 및 정보          |
 
 ---
 
@@ -56,7 +56,7 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 
 ### 🗿 MoAI-ADK란?
 
-**MoAI-ADK** (Agentic Development Kit)는 AI 에이전트를 활용한 차세대 개발 프레임워크입니다. **SPEC-First 개발 방법론**과 **TDD** (Test-Driven Development, 테스트 주도 개발), 그리고 **28개의 전문 AI 에이전트**를 결합하여 완전하고 투명한 개발 라이프사이클을 제공합니다.
+**MoAI-ADK** (Agentic Development Kit)는 AI 에이전트를 활용한 차세대 개발 프레임워크입니다. **SPEC-First 개발 방법론**과 **TDD** (Test-Driven Development, 테스트 주도 개발), 그리고 **20개의 전문 AI 에이전트**를 결합하여 완전하고 투명한 개발 라이프사이클을 제공합니다.
 
 ### ✨ 왜 MoAI-ADK를 사용할까?
 
@@ -84,7 +84,7 @@ MoAI-ADK의 해결책:
 | --------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **SPEC-First**        | 모든 개발은 명확한 명세서로 시작                       | 요구사항 변경으로 인한 재작업 **90% 감소**<br/>명확한 SPEC으로 개발자-기획자 간 오해 제거                                                                                                        |
 | **TDD 강제**          | Red-Green-Refactor 사이클 자동화                       | 버그 **70% 감소**(85%+ 커버리지 시)<br/>테스트 작성 시간 포함 총 개발 시간 **15% 단축**                                                                                                          |
-| **AI 오케스트레이션** | Mr.Alfred가 28개의 전문 AI 에이전트 지휘 (5-Tier 계층) | **평균 토큰 절감**: 세션당 5,000 토큰 (Conditional Auto-load)<br/>**Simple 작업**: 0 토큰 (Quick Reference)<br/>**Complex 작업**: 8,470 토큰 (Auto-load 스킬)<br/>수동 대비 **60-70% 시간 절감** |
+| **AI 오케스트레이션** | Mr.Alfred가 20개의 전문 AI 에이전트 지휘 (3-Tier + MCP 계층) | **평균 토큰 절감**: 세션당 5,000 토큰 (Conditional Auto-load)<br/>**Simple 작업**: 0 토큰 (Quick Reference)<br/>**Complex 작업**: 8,470 토큰 (Auto-load 스킬)<br/>수동 대비 **60-70% 시간 절감** |
 | **다국어 라우팅** | 4개 언어 자동 에이전트 선택 (EN/KO/JA/ZH) | **100% 언어 커버리지** 에이전트 호출<br/>XLT (Cross-Lingual Thought) 프로토콜로 의미 매칭<br/>한국어, 일본어, 중국어 요청 지원 |
 | **AST-Grep 통합** | 구조적 코드 검색, 보안 스캔, 리팩토링 | **패턴 기반 코드 분석** (텍스트 기반 regex 아님)<br/>**40개 이상의 프로그래밍 언어** 지원<br/>코드 변경 시 **자동 보안 스캔**<br/>expert-refactoring 에이전트로 **대규모 리팩토링** |
 | **자동 문서화**       | 코드 변경 시 문서 자동 동기화 (`> /moai:3-sync`)       | 문서 최신성 **100% 보장**<br/>수동 문서 작성 제거<br/>마지막 커밋 이후 자동 동기화                                                                                                               |
@@ -419,18 +419,16 @@ flowchart TD
     style Agents fill:#fff,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5
 ```
 
-### 🔧 에이전트 시스템 (5-Tier 계층)
+### 🔧 에이전트 시스템 (3-Tier + MCP 계층)
 
-MoAI-ADK는 **28개의 전문 에이전트**를 **5개 계층**으로 조직하여 최적의 성능을 제공합니다.
+MoAI-ADK는 **20개의 전문 에이전트**를 **3개 계층 + MCP**로 조직하여 최적의 성능을 제공합니다.
 
-**Tier 1: Domain Experts** (도메인 전문가, 10개)
+**Tier 1: Domain Experts** (도메인 전문가, 8개)
 
-- `expert-backend`: 백엔드 아키텍처, API 개발
-- `expert-frontend`: 프론트엔드, React/Vue 구현
-- `expert-database`: 데이터베이스 설계, 최적화
+- `expert-backend`: 백엔드 아키텍처, API 개발, 데이터베이스 통합
+- `expert-frontend`: 프론트엔드, React/Vue 구현, UI/UX 디자인
 - `expert-security`: 보안 분석, 취약점 스캔
 - `expert-devops`: 배포, 인프라, CI/CD
-- `expert-uiux`: UI/UX 디자인, 컴포넌트
 - `expert-debug`: 디버깅, 오류 분석
 - `expert-performance`: 성능 최적화, 프로파일링
 - `expert-refactoring`: 코드 리팩토링, AST-grep 기반 변환
@@ -454,17 +452,13 @@ MoAI-ADK는 **28개의 전문 에이전트**를 **5개 계층**으로 조직하�
 - `builder-command`: 새로운 명령어 생성
 - `builder-plugin`: Claude Code 플러그인 생성
 
-**Tier 4: MCP Integrators** (MCP 통합, 5개)
+**MCP Integrators** (MCP 통합)
 
 - `mcp-context7`: 최신 라이브러리 문서 조회
 - `mcp-sequential-thinking`: 복잡한 추론 분석
 - `mcp-playwright`: 웹 자동화 테스트
 - `mcp-figma`: Figma 디자인 시스템
 - `mcp-notion`: Notion 워크스페이스 관리
-
-**Tier 5: AI Services** (AI 서비스, 1개)
-
-- `ai-nano-banana`: Gemini 3 이미지 생성
 
 ---
 
@@ -1500,7 +1494,7 @@ MoAI Ralph Engine은 LSP (Language Server Protocol), AST-grep, 자율 피드백 
 
 ---
 
-## 8. 에이전트 가이드 (28개)
+## 8. 에이전트 가이드 (20개)
 
 ### 🎯 에이전트 선택 가이드
 
@@ -1510,13 +1504,14 @@ MoAI Ralph Engine은 LSP (Language Server Protocol), AST-grep, 자율 피드백 
 
 #### expert-backend (백엔드 개발)
 
-**전문성**: FastAPI, Django, Node.js 백엔드 개발
+**전문성**: FastAPI, Django, Node.js 백엔드 개발, 데이터베이스 통합
 **사용 사례**:
 
 - RESTful API 설계 및 구현
 - 데이터베이스 쿼리 최적화
 - 인증 및 권한 관리
 - 서버 성능 최적화
+- 데이터베이스 스키마 설계
 
 ```bash
 > Use the expert-backend subagent to"FastAPI로 사용자 인증 API 개발"
@@ -1526,32 +1521,18 @@ MoAI Ralph Engine은 LSP (Language Server Protocol), AST-grep, 자율 피드백 
 
 #### expert-frontend (프론트엔드 개발)
 
-**전문성**: React, Vue, Next.js 프론트엔드
+**전문성**: React, Vue, Next.js 프론트엔드, UI/UX 디자인
 **사용 사례**:
 
 - UI 컴포넌트 구현
 - 상태 관리 (Redux, Zustand)
 - API 통합
 - 반응형 디자인
+- 디자인 시스템 구축
+- 접근성(A11y) 검증
 
 ```bash
 > Use the expert-frontend subagent to"React로 대시보드 UI 구현"
-```
-
----
-
-#### expert-database (데이터베이스)
-
-**전문성**: SQL, NoSQL, ORM, 최적화
-**사용 사례**:
-
-- 데이터베이스 스키마 설계
-- 쿼리 최적화
-- 마이그레이션
-- 성능 튜닝
-
-```bash
-> Use the expert-database subagent to"PostgreSQL 대규모 테이블 최적화"
 ```
 
 ---
@@ -1584,22 +1565,6 @@ MoAI Ralph Engine은 LSP (Language Server Protocol), AST-grep, 자율 피드백 
 
 ```bash
 > Use the expert-devops subagent to"Next.js 앱 Docker 배포 설정"
-```
-
----
-
-#### expert-uiux (UI/UX 디자인)
-
-**전문성**: 디자인 시스템, 컴포넌트, 접근성
-**사용 사례**:
-
-- UI 컴포넌트 라이브러리 설계
-- 디자인 시스템 구축
-- 접근성(A11y) 검증
-- 사용자 경험 최적화
-
-```bash
-> Use the expert-uiux subagent to"shadcn/ui 기반 디자인 시스템 구축"
 ```
 
 ---
@@ -1731,7 +1696,7 @@ MoAI Ralph Engine은 LSP (Language Server Protocol), AST-grep, 자율 피드백 
 
 ---
 
-### Tier 4: MCP Integrators (MCP 통합)
+### MCP Integrators (MCP 통합)
 
 #### mcp-context7 (문서 조회)
 
@@ -1779,27 +1744,11 @@ MoAI Ralph Engine은 LSP (Language Server Protocol), AST-grep, 자율 피드백 
 
 ---
 
-### Tier 5: AI Services
-
-#### ai-nano-banana (이미지 생성)
-
-**목적**: Gemini 3로 고품질 이미지 생성
-**사용 사례**:
-
-- UI/UX 목업 생성
-- 기술 다이어그램 생성
-- 마케팅 자료 생성
-- 로고/아이콘 생성
-
-더 자세한 사항은 [15. 📸 ai-nano-banana 에이전트 사용법 가이드](#15---ai-nano-banana-에이전트-사용법-가이드) 참조
-
----
-
-## 9. 스킬 라이브러리 (49개)
+## 9. 스킬 라이브러리 (48개)
 
 ![Skill Usage Statistics](./assets/images/readme/skill-usage-stats.png)
 
-MoAI-ADK는 **49개의 전문 스킬**을 8개 카테고리로 제공합니다. 각 스킬은 독립적으로 사용하거나 조합하여 사용할 수 있습니다.
+MoAI-ADK는 **48개의 전문 스킬**을 8개 카테고리로 제공합니다. 각 스킬은 독립적으로 사용하거나 조합하여 사용할 수 있습니다.
 
 ### 🏗️ Foundation (기반)
 
@@ -2014,14 +1963,6 @@ MoAI-ADK는 **49개의 전문 스킬**을 8개 카테고리로 제공합니다. 
   - TOON 인코딩, JSON/YAML 최적화, 데이터 직렬화
   - 모던 애플리케이션을 위한 데이터 검증 및 처리
 
-### 🤖 AI Integration
-
-AI 서비스 통합을 위한 전문 스킬입니다.
-
-- **moai-ai-nano-banana**
-  - Gemini 3 Nano Banana Pro를 사용한 이미지 생성
-  - 자연어 프롬프트로 전문적인 시각적 콘텐츠 생성
-
 ### 🎯 스킬 사용 가이드
 
 #### 스킬 호출 방법
@@ -2112,9 +2053,7 @@ manager-quality (검증)
 ### 패턴 3: UI/UX 개발
 
 ```text
-expert-uiux (디자인 시스템)
-  ↓
-expert-frontend (컴포넌트 구현)
+expert-frontend (UI/UX 디자인 + 컴포넌트 구현)
   ↓
 mcp-playwright (E2E 테스트)
 ```
@@ -2122,11 +2061,8 @@ mcp-playwright (E2E 테스트)
 **예시:**
 
 ```bash
-> Use the expert-uiux subagent to"로그인 페이지 디자인 shadcn/ui 기반"
-# → Button, Input, Card 컴포넌트 조합
-
-> Use the expert-frontend subagent to"React 로그인 폼 구현"
-# → shadcn/ui 컴포넌트 사용한 구현
+> Use the expert-frontend subagent to"로그인 페이지 디자인 및 React 구현 shadcn/ui 기반"
+# → Button, Input, Card 컴포넌트 조합 + 로그인 폼 구현
 
 > Use the mcp-playwright subagent to"로그인 시나리오 E2E 테스트"
 # → 성공/실패 케이스 자동 테스트
@@ -2530,162 +2466,7 @@ cat .mcp.json
 
 ---
 
-## 15. 📸 ai-nano-banana 에이전트 사용법 가이드
-
-**목적**: Google Gemini 3 Nano Banana Pro를 사용한 전문적인 이미지 생성
-
-**핵심 기능**:
-
-- ✅ 자연어 프롬프트로 고품질 이미지 생성
-- ✅ 실시간 AI 이미지 생성 (Token 효율적)
-- ✅ Claude Code에서 직접 생성 가능
-- ✅ 다양한 스타일 지원 (realistic, artistic, diagram, mockup 등)
-- ✅ 배치 이미지 생성 가능
-
-**사용 시나리오**:
-
-1. **UI/UX 목업 생성**: 웹사이트, 앱 화면 디자인
-2. **기술 다이어그램**: 아키텍처, 플로우 차트
-3. **문서 삽입 이미지**: README, 프리젠테이션
-4. **마케팅 자료**: SNS 콘텐츠, 배너
-5. **로고/아이콘**: 프로젝트 브랜딩
-
-#### 빠른 시작
-
-```bash
-# Claude Code에서
-> Use the ai-nano-banana subagent to"전문적인 로그인 페이지 UI 목업 생성"
-```
-
-#### 이미지 생성 프롬프트
-
-**효과적인 프롬프트 패턴:**
-
-1. **스타일 지정**:
-
-   ```
-   "[사실적|예술적|미니멀|3D] 스타일의 이미지를 생성해줘..."
-   ```
-
-2. **품질 설정**:
-
-   ```
-   "[1024x1024|1920x1080] 고해상도 전문적인 이미지를 생성해줘..."
-   ```
-
-3. **레이아웃 지정**:
-
-   ```
-   "[다크|라이트] 테마의 대시보드 목업을 생성해줘..."
-   ```
-
-4. **배경 설정**:
-
-   ```
-   "모던한 [흰색|그래디언트|검은색] 배경으로..."
-   ```
-
-5. **스토리보드 생성**:
-
-   ```
-   "4개 패널의 스토리보드를 생성해줘: 단계1, 단계2, 단계3, 단계4"
-   ```
-
-#### 실전 예제 (5가지)
-
-**1. 웹 로그인 페이지 목업**:
-
-```
-프롬프트: "이메일과 비밀번호 입력 필드, 로그인 버튼이 있는 모던하고 깔끔한
-로그인 페이지 UI 목업을 만들어줘. 미니멀 디자인에 파란색 악센트 색상.
-1024x768 해상도, 흰색 배경, 전문적이고 모던한 느낌"
-```
-
-**2. 마이크로서비스 아키텍처 다이어그램**:
-
-```
-프롬프트: "5개의 마이크로서비스를 보여주는 기술 다이어그램을 만들어줘:
-API Gateway, User Service, Order Service, Payment Service,
-Notification Service. 화살표로 연결을 표시해줘.
-전문적인 기술 다이어그램 스타일에 흰색 배경"
-```
-
-**3. 모바일 앱 화면 시리즈**:
-
-```
-프롬프트: "모바일 앱의 3개 화면 스토리보드를 만들어줘:
-1) 온보딩 환영 화면, 2) 사용자 프로필 화면, 3) 설정 화면.
-iOS 스타일, 모던 디자인, 깔끔한 UI"
-```
-
-**4. SNS 배너 (1200x630)**:
-
-```
-프롬프트: "AI 개발 회사를 위한 전문적인 LinkedIn 배너를 만들어줘.
-'AI-Powered Development' 텍스트와 모던한 기술 요소를 포함해줘.
-파란색과 보라색 그래디언트가 있는 다크 테마"
-```
-
-**5. 문서용 아이콘 세트**:
-
-```
-프롬프트: "플랫 디자인의 6개 심플하고 전문적인 아이콘을 만들어줘:
-1) 코드 아이콘, 2) 데이터베이스 아이콘, 3) 서버 아이콘,
-4) 보안 아이콘, 5) 테스트 아이콘, 6) 배포 아이콘.
-흰색 배경, 일관된 스타일"
-```
-
-#### 고급 기능
-
-- **배치 생성**: 여러 이미지 동시 생성
-- **반복 요청**: 프롬프트 미세 조정하여 여러 버전 생성
-- **이미지 통합**: 생성된 이미지를 문서/프리젠테이션에 자동 삽입
-- **스타일 일관성**: 동일 스타일로 여러 이미지 생성
-
-#### 베스트 프랙티스
-
-✅ DO:
-
-- 구체적인 스타일 지정 (realistic, minimalist, 3d 등)
-- 명확한 색상 설명 (blue, gradient, dark theme 등)
-- 해상도 지정 (1024x1024, 1920x1080 등)
-- 문맥 제공 (전문가용, 프레젠테이션용 등)
-- 여러 프롬프트로 버전 생성
-
-❌ DON'T:
-
-- 너무 추상적인 설명
-- 법적/권리 이슈가 있는 내용
-- 실제 인물 초상화 (합성 얼굴 사용 권장)
-- 저작권 있는 브랜드 로고
-- 부정적 콘텐츠
-
-#### Gemini 3 Nano Banana Pro 스펙
-
-- 모델: Google Gemini 3
-- 응답 시간: 5-30초
-- 최대 해상도: 2048x2048
-- 토큰 효율: 이미지당 약 1,000-2,000 토큰
-
-#### 문제 해결
-
-| 문제           | 원인            | 해결책              |
-| -------------- | --------------- | ------------------- |
-| 생성 실패      | API 오류        | 프롬프트 단순화     |
-| 품질 낮음      | 프롬프트 불명확 | 구체적 지정 추가    |
-| 스타일 안 맞음 | 스타일 미지정   | "realistic" 등 명시 |
-| 시간 초과      | 복잡한 요청     | 작은 요청부터 시작  |
-
-#### 참고 자료
-
-- Skill: `moai-connector-nano-banana`
-- 공식 사용법: `/help` → "ai-nano-banana"
-- 예제: 본 가이드의 5가지 실전 예제
-- Gemini 문서: <https://ai.google.dev/>
-
----
-
-## 16. 🚀 z.ai와의 GLM 통합 (비용 효율적인 대안)
+## 15. 🚀 z.ai와의 GLM 통합 (비용 효율적인 대안)
 
 ### 개요
 
@@ -2893,7 +2674,7 @@ GLM은 다음 경우 활성 상태:
 
 **오늘부터 비용을 절감하면서 개발 생산성을 유지하세요!** 🚀
 
-## 17. 추가 리소스
+## 16. 추가 리소스
 
 ### 🆘 지원
 
@@ -2939,7 +2720,7 @@ SOFTWARE.
 
 ### Made with ❤️ by MoAI-ADK Team
 
-**Version:** 0.40.0
-**Last Updated:** 2026-01-06
+**Version:** 0.41.2
+**Last Updated:** 2026-01-10
 **Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
 **MoAI**: MoAI stands for "Modu-ui AI" (AI for Everyone). Our goal is to make AI accessible to everyone.

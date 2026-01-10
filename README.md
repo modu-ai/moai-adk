@@ -35,7 +35,7 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 
 | Section                                                           | Goal                                   |
 | ----------------------------------------------------------------- | -------------------------------------- |
-| [8. Agent Guide](#8-agent-guide-28-agents)                        | Utilize specialized agents             |
+| [8. Agent Guide](#8-agent-guide-20-agents)                        | Utilize specialized agents             |
 | [9. Skill Library](#9-skill-library-48-skills)                    | Explore 48 skills                      |
 | [10. Composition Patterns](#10-composition-patterns-and-examples) | Real project examples                  |
 | [11. TRUST 5 Quality](#11-trust-5-quality-assurance)              | Quality assurance system               |
@@ -47,7 +47,7 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 | -------------------------------------------------------- | --------------------- |
 | [13. Advanced Configuration](#13-advanced-configuration) | Project customization |
 | [14. FAQ & Quick Reference](#14-faq--quick-reference)    | Common questions      |
-| [15. Additional Resources](#15-additional-resources)     | Support & information |
+| [15. Additional Resources](#17-additional-resources)     | Support & information |
 
 ---
 
@@ -83,7 +83,7 @@ MoAI-ADK solutions:
 | ------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **SPEC-First**           | All development starts with clear specifications           | **90% reduction** in rework from requirement changes<br/>Clear SPEC eliminates developer-planner misunderstandings                                                                                                       |
 | **TDD Enforcement**      | Automated Red-Green-Refactor cycle                         | **70% reduction** in bugs (with 85%+ coverage)<br/>**15% shorter** total development time including test writing                                                                                                         |
-| **AI Orchestration**     | Mr.Alfred commands 20 specialized AI agents (5-Tier)       | **Average token savings**: 5,000 tokens per session (Conditional Auto-load)<br/>**Simple tasks**: 0 tokens (Quick Reference)<br/>**Complex tasks**: 8,470 tokens (Auto-load skill)<br/>**60-70% time savings** vs manual |
+| **AI Orchestration**     | Mr.Alfred commands 20 specialized AI agents (3-Tier + MCP) | **Average token savings**: 5,000 tokens per session (Conditional Auto-load)<br/>**Simple tasks**: 0 tokens (Quick Reference)<br/>**Complex tasks**: 8,470 tokens (Auto-load skill)<br/>**60-70% time savings** vs manual |
 | **Multilingual Routing** | Automatic agent selection in 4 languages (EN/KO/JA/ZH)     | **100% language coverage** for agent invocation<br/>XLT (Cross-Lingual Thought) protocol for semantic matching<br/>Works with Korean, Japanese, Chinese requests                                                         |
 | **AST-Grep Integration** | Structural code search, security scanning, and refactoring | **Pattern-based code analysis** (not text-based regex)<br/>Support for **40+ programming languages**<br/>**Automatic security scanning** on code changes<br/>**Large-scale refactoring** with expert-refactoring agent   |
 | **Auto Documentation**   | Automatic doc sync on code changes (`> /moai:3-sync`)      | **100% documentation freshness**<br/>Eliminates manual doc writing<br/>Auto-sync since last commit                                                                                                                       |
@@ -414,18 +414,16 @@ flowchart TD
     style Agents fill:#fff,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5
 ```
 
-### 🔧 Agent System (5-Tier Hierarchy)
+### 🔧 Agent System (3-Tier + MCP)
 
-MoAI-ADK organizes **28 specialized agents** into **5 tiers** for optimal performance.
+MoAI-ADK organizes **20 specialized agents** into **3 tiers** for optimal performance, plus optional MCP integrators.
 
-**Tier 1: Domain Experts** (10 agents)
+**Tier 1: Domain Experts** (8 agents)
 
-- `expert-backend`: Backend architecture, API development
-- `expert-frontend`: Frontend, React/Vue implementation
-- `expert-database`: Database design, optimization
+- `expert-backend`: Backend architecture, API development, database design
+- `expert-frontend`: Frontend, React/Vue implementation, UI/UX design
 - `expert-security`: Security analysis, vulnerability scanning
 - `expert-devops`: Deployment, infrastructure, CI/CD
-- `expert-uiux`: UI/UX design, components
 - `expert-debug`: Debugging, error analysis
 - `expert-performance`: Performance profiling, optimization
 - `expert-refactoring`: Code refactoring, AST-grep based transforms
@@ -449,17 +447,13 @@ MoAI-ADK organizes **28 specialized agents** into **5 tiers** for optimal perfor
 - `builder-command`: Create new commands
 - `builder-plugin`: Create new plugins
 
-**Tier 4: MCP Integrators** (5 agents)
+**MCP Integrators** (Optional - 5 integrators)
 
 - `mcp-context7`: Real-time library documentation lookup
 - `mcp-sequential-thinking`: Complex reasoning analysis
 - `mcp-playwright`: Web automation testing
 - `mcp-figma`: Figma design system
 - `mcp-notion`: Notion workspace management
-
-**Tier 5: AI Services** (1 agent)
-
-- `ai-nano-banana`: Gemini 3 image generation
 
 ---
 
@@ -1504,7 +1498,7 @@ MoAI Ralph Engine combines LSP (Language Server Protocol), AST-grep, and autonom
 
 ---
 
-## 8. Agent Guide (28 Agents)
+## 8. Agent Guide (20 Agents)
 
 ### 🎯 Agent Selection Guide
 
@@ -1514,11 +1508,11 @@ Each agent has specific domain expertise. Select the right agent for your task.
 
 #### expert-backend (Backend Development)
 
-**Expertise**: FastAPI, Django, Node.js backend development
+**Expertise**: FastAPI, Django, Node.js backend development, database design
 **Use cases**:
 
 - RESTful API design and implementation
-- Database query optimization
+- Database schema design and query optimization
 - Authentication and authorization
 - Server performance optimization
 
@@ -1530,32 +1524,16 @@ Each agent has specific domain expertise. Select the right agent for your task.
 
 #### expert-frontend (Frontend Development)
 
-**Expertise**: React, Vue, Next.js frontend
+**Expertise**: React, Vue, Next.js frontend, UI/UX design
 **Use cases**:
 
 - UI component implementation
 - State management (Redux, Zustand)
-- API integration
+- Design systems and accessibility
 - Responsive design
 
 ```bash
 > Use the expert-frontend subagent to"Implement dashboard UI with React"
-```
-
----
-
-#### expert-database (Database)
-
-**Expertise**: SQL, NoSQL, ORM, optimization
-**Use cases**:
-
-- Database schema design
-- Query optimization
-- Migration
-- Performance tuning
-
-```bash
-> Use the expert-database subagent to"Optimize large PostgreSQL tables"
 ```
 
 ---
@@ -1588,22 +1566,6 @@ Each agent has specific domain expertise. Select the right agent for your task.
 
 ```bash
 > Use the expert-devops subagent to"Setup Docker deployment for Next.js app"
-```
-
----
-
-#### expert-uiux (UI/UX Design)
-
-**Expertise**: Design systems, components, accessibility
-**Use cases**:
-
-- UI component library design
-- Design system development
-- Accessibility (A11y) verification
-- User experience optimization
-
-```bash
-> Use the expert-uiux subagent to"Build design system based on shadcn/ui"
 ```
 
 ---
@@ -1810,7 +1772,7 @@ Each agent has specific domain expertise. Select the right agent for your task.
 
 ---
 
-### Tier 4: MCP Integrators (6 Integrators)
+### MCP Integrators (Optional - 5 Integrators)
 
 #### mcp-context7 (Documentation Lookup)
 
@@ -1890,27 +1852,11 @@ Each agent has specific domain expertise. Select the right agent for your task.
 
 ---
 
-### Tier 5: AI Services (1 Service)
-
-#### ai-nano-banana (Image Generation)
-
-**Purpose**: Generate high-quality images with Gemini 3
-**Use cases**:
-
-- UI/UX mockup generation
-- Technical diagram creation
-- Marketing materials
-- Logo/icon generation
-
-For more details, see [15. 📸 ai-nano-banana Agent Usage Guide](#15---ai-nano-banana-agent-usage-guide)
-
----
-
-## 9. Skill Library (49 Skills)
+## 9. Skill Library (48 Skills)
 
 ![Skill Usage Statistics](./assets/images/readme/skill-usage-stats.png)
 
-MoAI-ADK provides **49 specialized skills** in 8 categories. Each skill can be used independently or in combination.
+MoAI-ADK provides **48 specialized skills** in 7 categories. Each skill can be used independently or in combination.
 
 ### 🏗️ Foundation
 
@@ -2129,14 +2075,6 @@ Skills specialized for specific libraries and frameworks.
   - TOON encoding, JSON/YAML optimization, data serialization
   - Data validation and processing for modern applications
 
-### 🤖 AI Integration (1 Skill)
-
-Specialized skills for AI service integration.
-
-- **moai-ai-nano-banana**
-  - Image generation with Gemini 3 Nano Banana Pro
-  - Professional visual content creation with natural language prompts
-
 ### 🎯 Skill Usage Guide
 
 #### How to Invoke Skills
@@ -2168,7 +2106,7 @@ Skill("moai-lang-python")
 
 ### 🎭 Agent Composition Patterns
 
-MoAI-ADK's 28 agents execute in optimal combinations based on task type.
+MoAI-ADK's 20 agents execute in optimal combinations based on task type.
 
 ### Pattern 1: New Feature Development
 
@@ -2227,9 +2165,7 @@ manager-quality (Verification)
 ### Pattern 3: UI/UX Development
 
 ```text
-expert-uiux (Design system)
-  ↓
-expert-frontend (Component implementation)
+expert-frontend (Design system + Component implementation)
   ↓
 mcp-playwright (E2E testing)
 ```
@@ -2237,7 +2173,7 @@ mcp-playwright (E2E testing)
 **Example**:
 
 ```bash
-> Use the expert-uiux subagent to"Login page design based on shadcn/ui"
+> Use the expert-frontend subagent to"Login page design based on shadcn/ui"
 # → Combination of Button, Input, Card components
 
 > Use the expert-frontend subagent to"Implement React login form"
@@ -2866,163 +2802,7 @@ cat .mcp.json
 
 ---
 
-## 16. 📸 ai-nano-banana Agent Usage Guide
-
-**Purpose**: Professional image generation using Google Gemini 3 Nano Banana Pro
-
-**Core Features**:
-
-- ✅ Generate high-quality images from natural language prompts
-- ✅ Real-time AI image generation (token efficient)
-- ✅ Generate directly in Claude Code
-- ✅ Multiple style support (realistic, artistic, diagram, mockup, etc.)
-- ✅ Batch image generation
-
-**Use Scenarios**:
-
-1. **UI/UX Mockups**: Website, app screen designs
-2. **Technical Diagrams**: Architecture, flowcharts
-3. **Document Images**: README, presentations
-4. **Marketing Materials**: SNS content, banners
-5. **Logos/Icons**: Project branding
-
-#### Quick Start
-
-```bash
-# In Claude Code
-> Use the ai-nano-banana subagent to"Generate professional login page UI mockup"
-```
-
-#### Image Generation Prompts
-
-**Effective Prompt Patterns:**
-
-1. **Specify Style**:
-
-   ```
-   "Generate [realistic|artistic|minimalist|3D] style image..."
-   ```
-
-2. **Set Quality**:
-
-   ```
-   "Generate [1024x1024|1920x1080] high-resolution professional image..."
-   ```
-
-3. **Specify Layout**:
-
-   ```
-   "Generate [dark|light] theme dashboard mockup..."
-   ```
-
-4. **Set Background**:
-
-   ```
-   "Modern [white|gradient|black] background..."
-   ```
-
-5. **Create Storyboard**:
-
-   ```
-   "Generate 4-panel storyboard: step1, step2, step3, step4"
-   ```
-
-#### Practical Examples (5 types)
-
-**1. Web Login Page Mockup**:
-
-```
-Prompt: "Create a modern and clean login page UI mockup with email
-and password input fields, login button. Minimalist design with blue
-accent color. 1024x768 resolution, white background, professional
-and modern feel"
-```
-
-**2. Microservices Architecture Diagram**:
-
-```
-Prompt: "Create a technical diagram showing 5 microservices:
-API Gateway, User Service, Order Service, Payment Service,
-Notification Service. Show connections with arrows.
-Professional technical diagram style with white background"
-```
-
-**3. Mobile App Screen Series**:
-
-```
-Prompt: "Create 3-screen mobile app storyboard:
-1) Onboarding welcome screen, 2) User profile screen, 3) Settings screen.
-iOS style, modern design, clean UI"
-```
-
-**4. SNS Banner (1200x630)**:
-
-```
-Prompt: "Create a professional LinkedIn banner for AI development company.
-Include 'AI-Powered Development' text with modern tech elements.
-Dark theme with blue and purple gradient"
-```
-
-**5. Icon Set for Documentation**:
-
-```
-Prompt: "Create 6 simple and professional flat design icons:
-1) Code icon, 2) Database icon, 3) Server icon,
-4) Security icon, 5) Testing icon, 6) Deployment icon.
-White background, consistent style"
-```
-
-#### Advanced Features
-
-- **Batch Generation**: Generate multiple images simultaneously
-- **Iterative Requests**: Generate multiple versions with fine-tuned prompts
-- **Image Integration**: Auto-insert generated images in docs/presentations
-- **Style Consistency**: Generate multiple images in same style
-
-#### Best Practices
-
-✅ DO:
-
-- Specify concrete style (realistic, minimalist, 3d, etc.)
-- Clear color descriptions (blue, gradient, dark theme, etc.)
-- Specify resolution (1024x1024, 1920x1080, etc.)
-- Provide context (professional, presentation, etc.)
-- Generate versions with multiple prompts
-
-❌ DON'T:
-
-- Too abstract descriptions
-- Content with legal/rights issues
-- Real person portraits (use synthetic faces)
-- Copyrighted brand logos
-- Negative content
-
-#### Gemini 3 Nano Banana Pro Specs
-
-- Model: Google Gemini 3
-- Response time: 5-30 seconds
-- Max resolution: 2048x2048
-- Token efficiency: ~1,000-2,000 tokens per image
-
-#### Troubleshooting
-
-| Problem          | Cause               | Solution                    |
-| ---------------- | ------------------- | --------------------------- |
-| Generation fails | API error           | Simplify prompt             |
-| Low quality      | Unclear prompt      | Add specific details        |
-| Style mismatch   | Style not specified | Specify "realistic" etc.    |
-| Timeout          | Complex request     | Start with smaller requests |
-
-#### References
-
-- Skill: `moai-connector-nano-banana`
-- Official usage: `/help` → "ai-nano-banana"
-- Examples: 5 practical examples in this guide
-- Gemini docs: <https://ai.google.dev/>
-
----
-
-## 17. 🚀 GLM Integration with z.ai (Cost-Effective Alternative)
+## 16. 🚀 GLM Integration with z.ai (Cost-Effective Alternative)
 
 ### Overview
 
@@ -3254,7 +3034,7 @@ Based on real-world testing with MoAI-ADK:
 
 **Start saving today while maintaining full development productivity!** 🚀
 
-## 18. Additional Resources
+## 17. Additional Resources
 
 ### 🆘 Support (Support)
 
@@ -3300,7 +3080,7 @@ SOFTWARE.
 
 ### Made with ❤️ by MoAI-ADK Team
 
-**Version:** 0.40.0
-**Last Updated:** 2026-01-06
+**Version:** 0.41.2
+**Last Updated:** 2026-01-10
 **Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
 **MoAI**: MoAI stands for "Modu-ui AI" (AI for Everyone). Our goal is to make AI accessible to everyone.
