@@ -79,7 +79,7 @@ To create a new agent: Type /agents, select "Create New Agent", define purpose, 
 ### Agent Chaining Patterns
 
 Sequential Chaining:
-First use the code-analyzer subagent to identify issues, then use the optimizer subagent to implement fixes, finally use the tester subagent to validate the solution
+First use the expert-debug subagent to identify issues, then use the expert-refactoring subagent to implement fixes, finally use the expert-testing subagent to validate the solution
 
 Parallel Execution:
 Use the expert-backend subagent to develop the API, simultaneously use the expert-frontend subagent to create the UI
@@ -110,24 +110,17 @@ Alfred automatically routes user requests to specialized agents based on keyword
 
 Backend Domain (expert-backend):
 
-- EN: backend, API, server, authentication, database, REST, GraphQL, microservices
-- KO: 백엔드, API, 서버, 인증, 데이터베이스, RESTful, 마이크로서비스
-- JA: バックエンド, API, サーバー, 認証, データベース
-- ZH: 后端, API, 服务器, 认证, 数据库, 微服务
+- EN: backend, API, server, authentication, database, REST, GraphQL, microservices, SQL, NoSQL, PostgreSQL, MongoDB, Redis, schema, query, index
+- KO: 백엔드, API, 서버, 인증, 데이터베이스, RESTful, 마이크로서비스, SQL, NoSQL, 스키마, 쿼리, 인덱스
+- JA: バックエンド, API, サーバー, 認証, データベース, SQL, NoSQL, スキーマ, クエリ
+- ZH: 后端, API, 服务器, 认证, 数据库, 微服务, SQL, NoSQL, 架构, 查询, 索引
 
 Frontend Domain (expert-frontend):
 
-- EN: frontend, UI, component, React, Vue, Next.js, CSS, state management
-- KO: 프론트엔드, UI, 컴포넌트, 리액트, 뷰, CSS, 상태관리
-- JA: フロントエンド, UI, コンポーネント, リアクト, CSS, 状態管理
-- ZH: 前端, UI, 组件, React, Vue, CSS, 状态管理
-
-Database Domain (expert-database):
-
-- EN: database, SQL, NoSQL, PostgreSQL, MongoDB, Redis, schema, query
-- KO: 데이터베이스, SQL, NoSQL, 스키마, 쿼리, 인덱스
-- JA: データベース, SQL, NoSQL, スキーマ, クエリ
-- ZH: 数据库, SQL, NoSQL, 架构, 查询, 索引
+- EN: frontend, UI, component, React, Vue, Next.js, CSS, state management, UI/UX, design, accessibility, WCAG, user experience, design system, wireframe
+- KO: 프론트엔드, UI, 컴포넌트, 리액트, 뷰, CSS, 상태관리, UI/UX, 디자인, 접근성, WCAG, 사용자경험, 디자인시스템, 와이어프레임
+- JA: フロントエンド, UI, コンポーネント, リアクト, CSS, 状態管理, UI/UX, デザイン, アクセシビリティ, WCAG, ユーザー体験, デザインシステム
+- ZH: 前端, UI, 组件, React, Vue, CSS, 状态管理, UI/UX, 设计, 可访问性, WCAG, 用户体验, 设计系统
 
 Security Domain (expert-security):
 
@@ -192,13 +185,6 @@ Git Operations (manager-git):
 - JA: git, コミット, プッシュ, プル, ブランチ, PR, プルリクエスト, マージ, リリース
 - ZH: git, 提交, 推送, 拉取, 分支, PR, 拉取请求, 合并, 发布
 
-UI/UX Design (expert-uiux):
-
-- EN: UI/UX, design, accessibility, WCAG, user experience, design system, wireframe, persona, user journey
-- KO: UI/UX, 디자인, 접근성, WCAG, 사용자경험, 디자인시스템, 와이어프레임, 페르소나
-- JA: UI/UX, デザイン, アクセシビリティ, WCAG, ユーザー体験, デザインシステム
-- ZH: UI/UX, 设计, 可访问性, WCAG, 用户体验, 设计系统
-
 Quality Gate (manager-quality):
 
 - EN: quality, TRUST 5, code review, compliance, quality gate, lint, code quality
@@ -261,13 +247,6 @@ Plugin Creation (builder-plugin):
 - KO: 플러그인생성, 플러그인, 플러그인검증, 플러그인구조, 마켓플레이스, 새플러그인
 - JA: プラグイン作成, プラグイン, プラグイン検証, プラグイン構造, マーケットプレイス
 - ZH: 创建插件, 插件, 插件验证, 插件结构, 市场
-
-Image Generation (ai-nano-banana):
-
-- EN: image generation, visual content, prompt optimization, Gemini, AI image, image edit
-- KO: 이미지생성, 시각적콘텐츠, 프롬프트최적화, 제미나이, AI이미지, 이미지편집
-- JA: 画像生成, ビジュアルコンテンツ, プロンプト最適化, Gemini, AI画像
-- ZH: 图像生成, 视觉内容, 提示词优化, Gemini, AI图像
 
 WHY: Keyword-based routing ensures consistent agent selection regardless of request language.
 
@@ -721,7 +700,7 @@ Enforcement:
 
 Definition: Commands for rapid fixes, loops, and automation utilities where speed is prioritized.
 
-Commands: moai:fix, moai:loop, moai:cancel-loop
+Commands: moai:fix, moai:loop, moai:cancel-loop, moai:alfred
 
 Allowed Tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 
@@ -842,12 +821,12 @@ MoAI Command Integration Process:
 
 SPEC Execution Agent Chain:
 
-- Phase 1: Use the spec-analyzer subagent to understand requirements
-- Phase 2: Use the architect-designer subagent to create system design
+- Phase 1: Use the manager-spec subagent to understand requirements
+- Phase 2: Use the manager-strategy subagent to create system design
 - Phase 3: Use the expert-backend subagent to implement core features
 - Phase 4: Use the expert-frontend subagent to create user interface
-- Phase 5: Use the tester-validator subagent to ensure quality standards
-- Phase 6: Use the docs-generator subagent to create documentation
+- Phase 5: Use the manager-quality subagent to ensure quality standards
+- Phase 6: Use the manager-docs subagent to create documentation
 
 ---
 
@@ -857,7 +836,7 @@ SPEC Execution Agent Chain:
 
 Context Optimization Process:
 
-- Before delegating to agents: Use the context-optimizer subagent to create minimal context
+- Before delegating to agents: Prepare minimal context with essential information only
 - Include: spec_id, key_requirements (max 3 bullet points), architecture_summary (max 200 chars)
 - Exclude: background information, reasoning, and non-essential details
 
@@ -963,8 +942,8 @@ Error Handling Process:
 
 - Agent execution errors: Use the expert-debug subagent to troubleshoot issues
 - Token limit errors: Execute /clear to refresh context, then resume agent work
-- Permission errors: Use the system-admin subagent to check settings and permissions
-- Integration errors: Use the integration-specialist subagent to resolve issues
+- Permission errors: Review settings.json and file permissions manually
+- Integration errors: Use the expert-devops subagent to resolve issues
 
 ---
 
@@ -1013,12 +992,24 @@ Mandatory Verification Steps:
 
 ## Quick Reference
 
+### Available Agents (20)
+
+Manager Agents (8):
+manager-git, manager-spec, manager-tdd, manager-docs, manager-quality, manager-project, manager-strategy, manager-claude-code
+
+Expert Agents (8):
+expert-backend, expert-frontend, expert-security, expert-devops, expert-performance, expert-debug, expert-testing, expert-refactoring
+
+Builder Agents (4):
+builder-agent, builder-command, builder-skill, builder-plugin
+
 ### Core Commands
 
 - /moai:0-project - Project configuration management
 - /moai:1-plan "description" - Specification generation
 - /moai:2-run SPEC-001 - TDD implementation
 - /moai:3-sync SPEC-001 - Documentation synchronization
+- /moai:alfred - Intelligent routing automation
 - /moai:9-feedback "feedback" - Improvement feedback
 - /clear - Context refresh
 - /agents - Sub-agent management interface
@@ -1049,7 +1040,7 @@ Summary:
 2. External documentation or API research needed? Use WebSearch or WebFetch tools
 3. Domain expertise needed? Use the expert-[domain] subagent
 4. Workflow coordination needed? Use the manager-[workflow] subagent
-5. Complex multi-step tasks? Use the general-purpose subagent
+5. Complex multi-step tasks? Use the manager-strategy subagent
 
 ---
 
@@ -1075,13 +1066,27 @@ XML tags are reserved for internal agent-to-agent data transfer only:
 
 ---
 
-Version: 9.0.0 (Advanced Agent Patterns Integration)
-Last Updated: 2026-01-06
+Version: 9.1.0 (Agent Ecosystem Consolidation)
+Last Updated: 2026-01-10
 Core Rule: Alfred is an orchestrator; direct implementation is prohibited
 Language: Dynamic setting (language.conversation_language)
 
 Critical: Alfred must delegate all tasks to specialized agents
 Required: All tasks use "Use the [subagent] subagent to..." format for specialized agent delegation
+
+Changes from 9.0.0:
+
+- Removed: Non-existent agents (expert-database, expert-uiux, ai-nano-banana)
+- Merged: Database keywords into expert-backend, UI/UX keywords into expert-frontend
+- Fixed: Agent chaining patterns to use existing agents only
+- Fixed: SPEC Execution Agent Chain (spec-analyzer→manager-spec, architect-designer→manager-strategy, tester-validator→manager-quality, docs-generator→manager-docs)
+- Fixed: Error recovery section (removed system-admin, integration-specialist references)
+- Fixed: Agent selection decision tree (general-purpose→manager-strategy)
+- Added: Available Agents (20) quick reference section with categorization
+- Added: moai:alfred to Type B utility commands and core commands
+- Renamed: moai:all-is-well → moai:alfred for consistency
+- Optimized: Reduced ~40 lines by removing non-existent agent definitions
+- Verified: All 20 agents have physical files in .claude/agents/moai/
 
 Changes from 8.5.0:
 

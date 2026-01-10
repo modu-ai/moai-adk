@@ -36,7 +36,7 @@ Key Components:
 - `ralph.yaml`: Configuration settings
 
 Commands:
-- `/moai:all-is-well`: One-click Plan-Run-Sync automation
+- `/moai:alfred`: One-click Plan-Run-Sync automation
 - `/moai:loop`: Start feedback loop
 - `/moai:fix`: One-time auto-fix
 - `/moai:cancel-loop`: Stop active loop
@@ -55,7 +55,7 @@ When to Use:
 User Command
      |
      v
-Command Layer (/moai:loop, /moai:fix, /moai:all-is-well)
+Command Layer (/moai:loop, /moai:fix, /moai:alfred)
      |
      v
 Hook System

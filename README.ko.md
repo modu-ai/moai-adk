@@ -1432,14 +1432,14 @@ moai-worktree config set <key> <value>
 
 MoAI Ralph Engine은 LSP (Language Server Protocol), AST-grep, 자율 피드백 루프를 결합하여 지능형 코드 품질 보증을 제공합니다.
 
-#### `> /moai:all-is-well` - 원클릭 자동화
+#### `> /moai:alfred` - 원클릭 자동화
 
 **목적**: 완전한 SPEC 워크플로우를 한 명령으로 실행
 
 **사용 시점**: 엔드투엔드 기능 개발 자동화 시
 
 ```bash
-> /moai:all-is-well "사용자 인증 구현"
+> /moai:alfred "사용자 인증 구현"
 ```
 
 **워크플로우**:

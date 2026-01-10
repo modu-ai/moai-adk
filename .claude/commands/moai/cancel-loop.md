@@ -199,7 +199,7 @@ These are cleared on cancellation.
 
 - `/moai:loop`: Start a new feedback loop
 - `/moai:fix`: One-time fix without loop
-- `/moai:all-is-well`: Full workflow automation
+- `/moai:alfred`: Full workflow automation
 
 ---
 

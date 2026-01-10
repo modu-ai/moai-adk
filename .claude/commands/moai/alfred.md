@@ -1,5 +1,5 @@
 ---
-name: moai:all-is-well
+name: moai:alfred
 description: "One-click automation - From SPEC generation to documentation sync"
 argument-hint: '"feature description" [--branch] [--pr] | resume SPEC-XXX'
 type: workflow
@@ -21,7 +21,7 @@ model: inherit
 
 ---
 
-# /moai:all-is-well - One-Click Development Automation
+# /moai:alfred - One-Click Development Automation
 
 User Interaction Architecture: AskUserQuestion must be used at COMMAND level only. Subagents via Task() are stateless and cannot interact with users. Collect all user input BEFORE delegating to agents.
 
@@ -226,37 +226,37 @@ Step 3 - Store Parsed Values:
 Basic usage (uses git-strategy settings):
 
 ```
-/moai:all-is-well "User authentication with JWT tokens"
+/moai:alfred "User authentication with JWT tokens"
 ```
 
 With branch creation override:
 
 ```
-/moai:all-is-well "Shopping cart feature" --branch
+/moai:alfred "Shopping cart feature" --branch
 ```
 
 With PR creation override:
 
 ```
-/moai:all-is-well "Payment integration" --pr
+/moai:alfred "Payment integration" --pr
 ```
 
 Combined flags:
 
 ```
-/moai:all-is-well "OAuth2 authentication with Google and GitHub providers" --branch --pr
+/moai:alfred "OAuth2 authentication with Google and GitHub providers" --branch --pr
 ```
 
 Resume interrupted workflow:
 
 ```
-/moai:all-is-well resume SPEC-AUTH-001
+/moai:alfred resume SPEC-AUTH-001
 ```
 
 Multi-word description (proper quoting):
 
 ```
-/moai:all-is-well "Shopping cart with quantity limits and discount codes"
+/moai:alfred "Shopping cart with quantity limits and discount codes"
 ```
 
 ## Command Options
@@ -314,9 +314,9 @@ IMPACT: Parallel execution would create documentation without approved SPEC or i
 
 Command supports resume pattern using SPEC ID:
 
-- Invoke: /moai:all-is-well resume SPEC-XXX
+- Invoke: /moai:alfred resume SPEC-XXX
 - Behavior: Resumes from last successful phase checkpoint
-- Storage: Workflow state preserved in `.moai/cache/all-is-well-{spec-id}.json`
+- Storage: Workflow state preserved in `.moai/cache/alfred-{spec-id}.json`
 
 WHY: Complex workflows may encounter interruptions or token limits
 IMPACT: Resume capability prevents loss of workflow progress
@@ -449,7 +449,7 @@ IMPACT: Missing context produces inconsistent or incomplete documentation
 
 ### Checkpoint Data Persistence
 
-Storage Location: `.moai/cache/all-is-well-{spec-id}.json`
+Storage Location: `.moai/cache/alfred-{spec-id}.json`
 
 Contents:
 
@@ -611,7 +611,7 @@ Workflow is considered successful when:
 Phase completion reports use Markdown formatting:
 
 ```markdown
-## All-Is-Well Workflow Complete
+## Alfred Workflow Complete
 
 ### Summary
 
@@ -637,8 +637,8 @@ Phase completion reports use Markdown formatting:
 
 Command Syntax:
 
-- New workflow: `/moai:all-is-well "description" [--branch] [--pr]`
-- Resume workflow: `/moai:all-is-well resume SPEC-XXX`
+- New workflow: `/moai:alfred "description" [--branch] [--pr]`
+- Resume workflow: `/moai:alfred resume SPEC-XXX`
 
 Phase Summary:
 
@@ -649,7 +649,7 @@ Phase Summary:
 Key Files:
 
 - SPEC storage: `.moai/specs/SPEC-XXX.md`
-- Cache storage: `.moai/cache/all-is-well-{spec-id}.json`
+- Cache storage: `.moai/cache/alfred-{spec-id}.json`
 - Config files: `.moai/config/sections/*.yaml`
 
 Override Flags:

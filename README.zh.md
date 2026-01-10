@@ -1441,14 +1441,14 @@ moai-worktree config set <key> <value>
 
 MoAI Ralph Engine 结合了 LSP（语言服务器协议）、AST-grep 和自主反馈循环，提供智能代码质量保证。
 
-#### `> /moai:all-is-well` - 一键自动化
+#### `> /moai:alfred` - 一键自动化
 
 **目的**: 用一个命令执行完整的 SPEC 工作流
 
 **使用时机**: 端到端功能开发自动化
 
 ```bash
-> /moai:all-is-well "实现用户认证"
+> /moai:alfred "实现用户认证"
 ```
 
 **工作流程**:
