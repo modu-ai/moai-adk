@@ -24,4 +24,4 @@ constitution:
   test_coverage_target: 85
   enforce_tdd: true
 moai:
-  version: 0.41.2
+  version: 0.42.3
