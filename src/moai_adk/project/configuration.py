@@ -101,7 +101,7 @@ class ConfigurationManager:
         return config
 
     def _parse_responses(self, responses: Dict[str, Any]) -> Dict[str, Any]:
-        """Parse flat response dict into nested config structure"""
+        """Parse flat or nested response dict into nested config structure"""
         config: Dict[str, Any] = {
             "user": {},
             "language": {},
@@ -142,6 +142,13 @@ class ConfigurationManager:
             if response_key in mapping:
                 path = mapping[response_key]
                 self._set_nested(config, path, response_value)
+            elif isinstance(response_value, dict):
+                # Handle nested input (e.g., {"user": {"name": "..."}, ...})
+                if response_key in config:
+                    config[response_key] = response_value
+            else:
+                # Direct key assignment for unknown keys
+                config[response_key] = response_value
 
         return config
 

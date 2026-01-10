@@ -1,6 +1,7 @@
 """Project initialization prompts
 
 Collect interactive project settings with modern UI.
+Supports multilingual prompts based on user's language selection.
 """
 
 from pathlib import Path
@@ -8,18 +9,32 @@ from typing import TypedDict
 
 from rich.console import Console
 
+from moai_adk.cli.prompts.translations import get_translation
+
 console = Console()
 
 
 class ProjectSetupAnswers(TypedDict):
-    """Project setup answers"""
+    """Project setup answers."""
 
+    # Core settings
     project_name: str
-    mode: str  # personal | team (default from init)
-    locale: str  # ko | en | ja | zh | other (default from init)
-    language: str | None  # Will be set in /moai:0-project
-    author: str  # Will be set in /moai:0-project
-    custom_language: str | None  # User input for "other" language option
+    locale: str  # ko | en | ja | zh
+
+    # Service settings
+    service_type: str  # claude_subscription | claude_api | glm | hybrid
+    pricing_plan: str | None  # pro | max5 | max20 | basic | glm_pro | enterprise
+    anthropic_api_key: str | None
+    glm_api_key: str | None
+
+    # Git settings
+    git_mode: str  # manual | personal | team
+    github_username: str | None
+
+    # Output language settings
+    git_commit_lang: str  # ko | en | ja | zh
+    code_comment_lang: str  # ko | en | ja | zh
+    doc_lang: str  # ko | en | ja | zh
 
 
 def prompt_project_setup(
@@ -29,6 +44,16 @@ def prompt_project_setup(
     initial_locale: str | None = None,
 ) -> ProjectSetupAnswers:
     """Project setup prompt with modern UI.
+
+    Implements 8-question flow:
+    1. Conversation language selection
+    2. Service selection (Claude subscription/API, GLM, Hybrid)
+    3. Pricing plan (if API selected)
+    4. API key input (if API selected)
+    5. Project name
+    6. Git mode
+    7. GitHub username (if needed)
+    8. Output language settings (commit, comment, docs)
 
     Args:
         project_name: Project name (asks when None)
@@ -44,58 +69,32 @@ def prompt_project_setup(
     """
     answers: ProjectSetupAnswers = {
         "project_name": "",
-        "mode": "personal",  # Default: will be configurable in /moai:0-project
-        "locale": "en",  # Default: will be configurable in /moai:0-project
-        "language": None,  # Will be detected in /moai:0-project
-        "author": "",  # Will be set in /moai:0-project
-        "custom_language": None,  # User input for other language
+        "locale": "en",
+        "service_type": "claude_subscription",
+        "pricing_plan": None,
+        "anthropic_api_key": None,
+        "glm_api_key": None,
+        "git_mode": "manual",
+        "github_username": None,
+        "git_commit_lang": "en",
+        "code_comment_lang": "en",
+        "doc_lang": "en",
     }
 
     try:
-        # SIMPLIFIED: Only ask for project name
-        # All other settings (mode, locale, language, author) are now configured in /moai:0-project
-
-        # 1. Project name (only when not using the current directory)
-        if not is_current_dir:
-            if project_name:
-                answers["project_name"] = project_name
-                console.print(f"[#DA7756]📦 Project Name:[/#DA7756] {project_name}")
-            else:
-                # Try new UI, fallback to questionary
-                result = _prompt_text(
-                    "📦 Project Name:",
-                    default="my-moai-project",
-                    required=True,
-                )
-                if result is None:
-                    raise KeyboardInterrupt
-                answers["project_name"] = result
-        else:
-            # Use the current directory name
-            # Note: Path.cwd() reflects the process working directory (Codex CLI cwd)
-            # Prefer project_path when provided (user execution location)
-            if project_path:
-                answers["project_name"] = project_path.name
-            else:
-                answers["project_name"] = Path.cwd().name  # fallback
-            console.print(
-                f"[#DA7756]📦 Project Name:[/#DA7756] {answers['project_name']} [dim](current directory)[/dim]"
-            )
-
-        # 2. Language selection - Korean, English, Japanese, Chinese, Other
+        # ========================================
+        # Q1: Language Selection (always in English first)
+        # ========================================
         console.print("\n[blue]🌐 Language Selection[/blue]")
 
-        # Build choices list
         language_choices = [
             {"name": "Korean (한국어)", "value": "ko"},
             {"name": "English", "value": "en"},
             {"name": "Japanese (日本語)", "value": "ja"},
             {"name": "Chinese (中文)", "value": "zh"},
-            {"name": "Other - Manual input", "value": "other"},
         ]
 
-        # Determine default
-        language_values = ["ko", "en", "ja", "zh", "other"]
+        language_values = ["ko", "en", "ja", "zh"]
         default_locale = initial_locale or "en"
         default_value = default_locale if default_locale in language_values else "en"
 
@@ -108,35 +107,251 @@ def prompt_project_setup(
         if language_choice is None:
             raise KeyboardInterrupt
 
-        if language_choice == "other":
-            # Prompt for manual input
-            custom_lang = _prompt_text(
-                "Enter your language:",
+        answers["locale"] = language_choice
+        t = get_translation(language_choice)
+
+        language_names = {
+            "ko": "Korean (한국어)",
+            "en": "English",
+            "ja": "Japanese (日本語)",
+            "zh": "Chinese (中文)",
+        }
+        console.print(
+            f"[#DA7756]🌐 Selected:[/#DA7756] {language_names.get(language_choice, language_choice)}"
+        )
+
+        # ========================================
+        # Q2: Service Selection
+        # ========================================
+        console.print(f"\n[blue]{t['service_selection']}[/blue]")
+
+        service_choices = [
+            {
+                "name": f"{t['opt_claude_subscription']} - {t['desc_claude_subscription']}",
+                "value": "claude_subscription",
+            },
+            {
+                "name": f"{t['opt_claude_api']} - {t['desc_claude_api']}",
+                "value": "claude_api",
+            },
+            {"name": f"{t['opt_glm']} - {t['desc_glm']}", "value": "glm"},
+            {"name": f"{t['opt_hybrid']} - {t['desc_hybrid']}", "value": "hybrid"},
+        ]
+
+        service_choice = _prompt_select(
+            t["q_service"],
+            choices=service_choices,
+            default="claude_subscription",
+        )
+
+        if service_choice is None:
+            raise KeyboardInterrupt
+
+        answers["service_type"] = service_choice
+
+        # ========================================
+        # Q3: Pricing Plan (conditional)
+        # ========================================
+        if service_choice in ("claude_api", "hybrid"):
+            console.print(f"\n[blue]{t['pricing_selection']}[/blue]")
+
+            claude_pricing_choices = [
+                {"name": f"{t['opt_pro']} - {t['desc_pro']}", "value": "pro"},
+                {"name": f"{t['opt_max5']} - {t['desc_max5']}", "value": "max5"},
+                {"name": f"{t['opt_max20']} - {t['desc_max20']}", "value": "max20"},
+            ]
+
+            pricing_choice = _prompt_select(
+                t["q_pricing_claude"],
+                choices=claude_pricing_choices,
+                default="pro",
+            )
+
+            if pricing_choice is None:
+                raise KeyboardInterrupt
+
+            answers["pricing_plan"] = pricing_choice
+
+        if service_choice == "glm":
+            console.print(f"\n[blue]{t['pricing_selection']}[/blue]")
+
+            glm_pricing_choices = [
+                {"name": f"{t['opt_basic']} - {t['desc_basic']}", "value": "basic"},
+                {
+                    "name": f"{t['opt_glm_pro']} - {t['desc_glm_pro']}",
+                    "value": "glm_pro",
+                },
+                {
+                    "name": f"{t['opt_enterprise']} - {t['desc_enterprise']}",
+                    "value": "enterprise",
+                },
+            ]
+
+            pricing_choice = _prompt_select(
+                t["q_pricing_glm"],
+                choices=glm_pricing_choices,
+                default="basic",
+            )
+
+            if pricing_choice is None:
+                raise KeyboardInterrupt
+
+            answers["pricing_plan"] = pricing_choice
+
+        # ========================================
+        # Q4: API Key Input (conditional)
+        # ========================================
+        if service_choice in ("claude_api", "hybrid"):
+            console.print(f"\n[blue]{t['api_key_input']}[/blue]")
+
+            api_key = _prompt_password(t["q_api_key_anthropic"])
+
+            if api_key is None:
+                raise KeyboardInterrupt
+
+            answers["anthropic_api_key"] = api_key
+            console.print(f"[dim]{t['msg_api_key_stored']}[/dim]")
+
+        if service_choice in ("glm", "hybrid"):
+            if service_choice == "glm":
+                console.print(f"\n[blue]{t['api_key_input']}[/blue]")
+
+            glm_key = _prompt_password(t["q_api_key_glm"])
+
+            if glm_key is None:
+                raise KeyboardInterrupt
+
+            answers["glm_api_key"] = glm_key
+            console.print(f"[dim]{t['msg_api_key_stored']}[/dim]")
+
+        # ========================================
+        # Q5: Project Name
+        # ========================================
+        console.print(f"\n[blue]{t['project_setup']}[/blue]")
+
+        if not is_current_dir:
+            if project_name:
+                answers["project_name"] = project_name
+                console.print(
+                    f"[#DA7756]📦 {t['q_project_name']}[/#DA7756] {project_name}"
+                )
+            else:
+                result = _prompt_text(
+                    t["q_project_name"],
+                    default="my-moai-project",
+                    required=True,
+                )
+                if result is None:
+                    raise KeyboardInterrupt
+                answers["project_name"] = result
+        else:
+            if project_path:
+                answers["project_name"] = project_path.name
+            else:
+                answers["project_name"] = Path.cwd().name
+            project_display = answers["project_name"]
+            current_dir_msg = t["msg_current_dir"]
+            console.print(
+                f"[#DA7756]📦 {t['q_project_name']}[/#DA7756] {project_display} [dim]{current_dir_msg}[/dim]"
+            )
+
+        # ========================================
+        # Q6: Git Mode
+        # ========================================
+        console.print(f"\n[blue]{t['git_setup']}[/blue]")
+
+        git_choices = [
+            {"name": f"{t['opt_manual']} - {t['desc_manual']}", "value": "manual"},
+            {
+                "name": f"{t['opt_personal']} - {t['desc_personal']}",
+                "value": "personal",
+            },
+            {"name": f"{t['opt_team']} - {t['desc_team']}", "value": "team"},
+        ]
+
+        git_choice = _prompt_select(
+            t["q_git_mode"],
+            choices=git_choices,
+            default="manual",
+        )
+
+        if git_choice is None:
+            raise KeyboardInterrupt
+
+        answers["git_mode"] = git_choice
+
+        # ========================================
+        # Q7: GitHub Username (conditional)
+        # ========================================
+        if git_choice in ("personal", "team"):
+            github_username = _prompt_text(
+                t["q_github_username"],
                 required=True,
             )
 
-            if custom_lang is None:
+            if github_username is None:
                 raise KeyboardInterrupt
 
-            answers["custom_language"] = custom_lang
-            answers["locale"] = "other"  # When ISO code is not available
-            console.print(f"[#DA7756]🌐 Selected Language:[/#DA7756] {custom_lang}")
-        else:
-            answers["locale"] = language_choice
-            language_names = {
-                "ko": "Korean (한국어)",
-                "en": "English",
-                "ja": "Japanese (日本語)",
-                "zh": "Chinese (中文)",
-            }
-            console.print(
-                f"[#DA7756]🌐 Selected Language:[/#DA7756] {language_names.get(language_choice, language_choice)}"
-            )
+            answers["github_username"] = github_username
+
+        # ========================================
+        # Q8: Output Language Settings
+        # ========================================
+        console.print(f"\n[blue]{t['output_language']}[/blue]")
+
+        lang_choices = [
+            {"name": "English", "value": "en"},
+            {"name": "Korean (한국어)", "value": "ko"},
+            {"name": "Japanese (日本語)", "value": "ja"},
+            {"name": "Chinese (中文)", "value": "zh"},
+        ]
+
+        # Default to conversation language
+        default_output_lang = answers["locale"]
+
+        # Commit message language
+        commit_lang = _prompt_select(
+            t["q_commit_lang"],
+            choices=lang_choices,
+            default=default_output_lang,
+        )
+
+        if commit_lang is None:
+            raise KeyboardInterrupt
+
+        answers["git_commit_lang"] = commit_lang
+
+        # Code comment language
+        comment_lang = _prompt_select(
+            t["q_comment_lang"],
+            choices=lang_choices,
+            default=default_output_lang,
+        )
+
+        if comment_lang is None:
+            raise KeyboardInterrupt
+
+        answers["code_comment_lang"] = comment_lang
+
+        # Documentation language
+        doc_lang = _prompt_select(
+            t["q_doc_lang"],
+            choices=lang_choices,
+            default=default_output_lang,
+        )
+
+        if doc_lang is None:
+            raise KeyboardInterrupt
+
+        answers["doc_lang"] = doc_lang
+
+        console.print(f"\n[green]{t['msg_setup_complete']}[/green]")
 
         return answers
 
     except KeyboardInterrupt:
-        console.print("\n[yellow]Setup cancelled by user[/yellow]")
+        t = get_translation(answers.get("locale", "en"))
+        console.print(f"\n[yellow]{t['msg_cancelled']}[/yellow]")
         raise
 
 
@@ -217,3 +432,28 @@ def _prompt_select(
             return None
 
         return value_map.get(result_name)
+
+
+def _prompt_password(
+    message: str,
+) -> str | None:
+    """Display password input prompt.
+
+    Args:
+        message: Prompt message
+
+    Returns:
+        User input or None if cancelled
+    """
+    try:
+        from moai_adk.cli.ui.prompts import styled_password
+
+        return styled_password(message)
+    except ImportError:
+        import questionary
+
+        result = questionary.password(
+            message,
+            validate=lambda text: len(text) > 0 or "API key is required",
+        ).ask()
+        return result

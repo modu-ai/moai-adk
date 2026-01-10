@@ -141,29 +141,27 @@ THEN: Delegate to Expert Agent directly
 
 ### Domain Detection Keywords
 
-Backend domain indicators:
+[HARD] Use CLAUDE.md Intent-to-Agent Mapping as Single Source of Truth
 
-- API, REST, GraphQL, endpoint, server, authentication, JWT, OAuth
-- Korean: API, 서버, 인증, 백엔드
-- Japanese: API, サーバー, 認証, バックエンド
+All domain detection keywords are defined in CLAUDE.md under the "Intent-to-Agent Mapping" section. This command references those definitions rather than duplicating them.
 
-Frontend domain indicators:
+Reference: @CLAUDE.md (Intent-to-Agent Mapping section)
 
-- UI, component, React, Vue, Next.js, CSS, responsive, state management
-- Korean: UI, 컴포넌트, 프론트엔드, 상태관리
-- Japanese: UI, コンポーネント, フロントエンド
+Available Agent Types for Expert Delegation:
 
-Database domain indicators:
+- expert-backend: API, server, authentication, database
+- expert-frontend: UI, component, React, Vue, Next.js
+- expert-security: security, vulnerability, OWASP
+- expert-performance: performance, profiling, optimization
+- expert-debug: debug, error, bug, exception
+- expert-refactoring: refactor, codemod, AST search
+- builder-skill: create skill, skill optimization
+- builder-agent: create agent, agent blueprint
+- builder-command: slash command, custom command
+- builder-plugin: plugin, marketplace
 
-- Schema, migration, query, index, PostgreSQL, MongoDB, Redis
-- Korean: 스키마, 쿼리, 데이터베이스, 인덱스
-- Japanese: スキーマ, クエリ, データベース
-
-Security domain indicators:
-
-- Security, vulnerability, OWASP, injection, XSS, CSRF, audit
-- Korean: 보안, 취약점, 감사
-- Japanese: セキュリティ, 脆弱性, 監査
+WHY: Centralizing keywords in CLAUDE.md prevents duplication and ensures consistency
+IMPACT: Changes to agent keywords only need to be made in one place
 
 ### Routing Decision Flow
 
@@ -713,20 +711,48 @@ You must NOW execute the command following the workflow described above.
      - Phase 2 and 3 will execute in worktree with GLM
 
 7. IF Expert Delegation selected:
-   - Invoke appropriate expert subagent (expert-backend, expert-frontend, etc.)
+   - [HARD] You MUST invoke the agent using Task() tool - direct implementation is PROHIBITED
+   - Match detected domain keywords to agent type from Domain Detection Keywords section
+   - Execute: Task(subagent_type="[detected-agent]", prompt="[user's original request with context]")
+   - Example for skill creation: Task(subagent_type="builder-skill", prompt="Create moai-framework-electron skill...")
+   - Example for backend: Task(subagent_type="expert-backend", prompt="Implement JWT authentication...")
+   - Wait for agent completion and report results to user
    - Report completion directly without SPEC generation
 
 8. IF Hybrid selected:
-   - Invoke expert subagent for implementation
+   - [HARD] Invoke expert subagent using Task() for implementation
    - Execute Phase 3 by invoking Skill("moai:3-sync") for documentation
 
 9. Generate completion summary and present next steps.
 
-10. Do NOT just describe what you will do. DO IT.
+10. [CRITICAL] Implementation Rules:
+    - NEVER write code directly - always delegate via Task()
+    - NEVER use Write/Edit tools directly for implementation
+    - ALWAYS match domain keywords to correct agent type
+    - IF unsure which agent: Use AskUserQuestion to confirm with user
+
+11. Do NOT just describe what you will do. DO IT.
 
 ---
 
-Version: 2.2.0
+Version: 2.4.0
 Last Updated: 2026-01-10
 Pattern: Intelligent Routing with Multi-LLM Support and Sequential Phase Orchestration
 Integration: /moai:1-plan, /moai:2-run, /moai:3-sync, Expert Agents, Ralph Engine, Git Strategy, TRUST 5, LLM Mode Routing
+
+Changes in 2.4.0:
+
+- Consolidated Domain Detection Keywords to reference CLAUDE.md as Single Source of Truth
+- Removed ~60 lines of duplicated keyword definitions
+- Added @CLAUDE.md reference for Intent-to-Agent Mapping
+- Simplified agent type listing for quick reference
+- Maintained all agent routing functionality with reduced duplication
+
+Changes in 2.3.0:
+
+- Added explicit Task() invocation requirement in Expert Delegation path
+- Added builder-skill, builder-agent, builder-command, builder-plugin domain keywords
+- Added expert-performance, expert-debug, expert-refactoring domain keywords
+- Added Agent field to all domain indicators for clear mapping
+- Strengthened EXECUTION DIRECTIVE with [HARD] and [CRITICAL] rules
+- Added implementation examples for Task() invocation

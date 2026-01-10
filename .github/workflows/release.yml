@@ -145,6 +145,66 @@ jobs:
 
           echo "✅ Version consistency verified"
 
+      - name: 🔄 Configuration files version check
+        run: |
+          VERSION="${{ needs.extract-metadata.outputs.version }}"
+          ERRORS=0
+
+          echo "🔍 Checking configuration file versions..."
+
+          # Check version.py fallback
+          if [ -f "src/moai_adk/version.py" ]; then
+            FALLBACK_VER=$(grep '_FALLBACK_VERSION = ' src/moai_adk/version.py | sed 's/_FALLBACK_VERSION = "//' | sed 's/"//')
+            if [ "$FALLBACK_VER" != "$VERSION" ]; then
+              echo "   ⚠️  version.py fallback: $FALLBACK_VER (expected: $VERSION)"
+              ERRORS=$((ERRORS + 1))
+            else
+              echo "   ✅ version.py: $FALLBACK_VER"
+            fi
+          fi
+
+          # Check .moai/config/config.yaml
+          if [ -f ".moai/config/config.yaml" ]; then
+            CONFIG_VER=$(grep 'version:' .moai/config/config.yaml | head -1 | sed 's/.*version: "//' | sed 's/".*//')
+            if [ "$CONFIG_VER" != "$VERSION" ]; then
+              echo "   ⚠️  config.yaml: $CONFIG_VER (expected: $VERSION)"
+              ERRORS=$((ERRORS + 1))
+            else
+              echo "   ✅ config.yaml: $CONFIG_VER"
+            fi
+          fi
+
+          # Check .moai/config/sections/system.yaml
+          if [ -f ".moai/config/sections/system.yaml" ]; then
+            SYSTEM_VER=$(grep 'version:' .moai/config/sections/system.yaml | head -1 | sed 's/.*version: "//' | sed 's/".*//')
+            if [ "$SYSTEM_VER" != "$VERSION" ]; then
+              echo "   ⚠️  system.yaml: $SYSTEM_VER (expected: $VERSION)"
+              ERRORS=$((ERRORS + 1))
+            else
+              echo "   ✅ system.yaml: $SYSTEM_VER"
+            fi
+          fi
+
+          # Check template files use placeholders (not hardcoded versions)
+          if [ -f "src/moai_adk/templates/.moai/config/config.yaml" ]; then
+            if grep -q "version: \"[0-9]*\.[0-9]*\.[0-9]*\"" src/moai_adk/templates/.moai/config/config.yaml; then
+              echo "   ⚠️  Template config.yaml has hardcoded version (should use {{MOAI_VERSION}})"
+              ERRORS=$((ERRORS + 1))
+            else
+              echo "   ✅ Template config.yaml uses placeholder"
+            fi
+          fi
+
+          if [ $ERRORS -gt 0 ]; then
+            echo ""
+            echo "❌ Found $ERRORS version inconsistencies!"
+            echo "   Run: .github/scripts/sync-versions.sh $VERSION"
+            echo "   Then commit and push before creating release tag"
+            exit 1
+          fi
+
+          echo "✅ All configuration files are in sync"
+
       - name: 🛡️ Safety validation
         id: safety
         run: |

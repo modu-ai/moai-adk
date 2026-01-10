@@ -304,6 +304,35 @@ def styled_confirm(
         return None
 
 
+def styled_password(
+    message: str,
+    instruction: str = "",
+) -> Optional[str]:
+    """Display a styled password input prompt.
+
+    Args:
+        message: Question to display
+        instruction: Help text
+
+    Returns:
+        User input, or None if cancelled
+    """
+    try:
+        result = inquirer.secret(
+            message=message,
+            instruction=instruction,
+            style=_INQUIRER_STYLE,
+            qmark=SYMBOLS["pointer"],
+            amark=SYMBOLS["success"],
+            validate=EmptyInputValidator("This field is required"),
+        ).execute()
+
+        return result
+
+    except KeyboardInterrupt:
+        return None
+
+
 def _process_choices(
     choices: List[Union[str, Dict[str, Any], Choice, Separator]],
     defaults: Optional[List[Any]] = None,
