@@ -28,6 +28,8 @@ class OAuthState:
     redirect_port: int
     callback_received: bool = False
     auth_code: Optional[str] = None
+    api_key: Optional[str] = None  # Direct API key from new flow
+    username: Optional[str] = None  # Username from callback
     error: Optional[str] = None
 
 
@@ -66,7 +68,24 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
                 self._send_response(400, f"Authorization failed: {self.oauth_state.error}")
                 return
 
-            # Extract authorization code
+            # Check for direct API key (new MoAI Rank flow)
+            api_key = params.get("api_key", [""])[0]
+            username = params.get("username", [""])[0]
+
+            if api_key:
+                # New flow: API key received directly from server
+                self.oauth_state.api_key = api_key
+                self.oauth_state.username = username
+                self.oauth_state.callback_received = True
+                self._send_success_response()
+
+                # Signal completion
+                on_complete_cb = OAuthCallbackHandler._on_complete  # type: ignore[misc]
+                if on_complete_cb is not None:
+                    threading.Thread(target=on_complete_cb, daemon=True).start()
+                return
+
+            # Fallback: Extract authorization code (legacy flow)
             code = params.get("code", [""])[0]
             if code:
                 self.oauth_state.auth_code = code
@@ -78,8 +97,8 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
                 if on_complete_cb is not None:
                     threading.Thread(target=on_complete_cb, daemon=True).start()
             else:
-                self.oauth_state.error = "No authorization code received"
-                self._send_response(400, "No authorization code")
+                self.oauth_state.error = "No authorization code or API key received"
+                self._send_response(400, "Authorization incomplete")
         else:
             self.send_error(404, "Not Found")
 
@@ -234,8 +253,23 @@ class OAuthHandler:
             # Open browser
             webbrowser.open(auth_url)
 
-            # Wait for callback or timeout
-            server_thread.join(timeout=timeout + 5)
+            # Print the auth URL for manual access
+            print(f"\n{auth_url}")
+
+            # Wait for callback with interruptible intervals
+            # This allows Ctrl+C to be properly handled
+            try:
+                start_wait = time.time()
+                while server_thread.is_alive():
+                    # Use small intervals to allow signal processing
+                    server_thread.join(timeout=0.5)
+                    if time.time() - start_wait > timeout + 5:
+                        break
+            except KeyboardInterrupt:
+                error_msg = "Registration cancelled by user"
+                if on_error:
+                    on_error(error_msg)
+                return None
 
             # Check result
             if self._oauth_state.error:
@@ -249,7 +283,21 @@ class OAuthHandler:
                     on_error(error_msg)
                 return None
 
-            # Exchange code for API key
+            # Check if we received a direct API key (new flow)
+            if self._oauth_state.api_key:
+                credentials = RankCredentials(
+                    api_key=self._oauth_state.api_key,
+                    username=self._oauth_state.username or "unknown",
+                    user_id="",  # Not provided in direct flow
+                    created_at="",  # Not provided in direct flow
+                )
+                # Save credentials
+                RankConfig.save_credentials(credentials)
+                if on_success:
+                    on_success(credentials)
+                return credentials
+
+            # Fallback: Exchange code for API key (legacy flow)
             credentials = self._exchange_code_for_key(
                 self._oauth_state.auth_code,
                 redirect_uri,

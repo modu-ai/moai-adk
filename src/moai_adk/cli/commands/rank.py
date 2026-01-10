@@ -2,16 +2,18 @@
 
 Commands for interacting with the MoAI Rank leaderboard service:
 - register: Connect GitHub account via OAuth
-- status: Show current rank and statistics
-- leaderboard: Display the top users
+- status: Show current rank, statistics, and hook status
 - logout: Remove stored credentials
+- exclude: Exclude a project from session tracking (use --list to view)
+- include: Re-include a previously excluded project
+
+For the full leaderboard and detailed statistics, visit https://rank.mo.ai.kr
 """
 
 import click
+from rich.columns import Columns
 from rich.console import Console
 from rich.panel import Panel
-from rich.table import Table
-from rich.text import Text
 
 console = Console()
 
@@ -77,6 +79,8 @@ def register() -> None:
         handler = OAuthHandler()
 
     def on_success(creds):
+        from moai_adk.rank.hook import install_hook
+
         console.print()
         console.print(
             Panel(
@@ -87,6 +91,24 @@ def register() -> None:
                 border_style="green",
             )
         )
+
+        # Install global hook automatically
+        if install_hook():
+            console.print()
+            console.print(
+                Panel(
+                    "[cyan]Session tracking hook installed globally.[/cyan]\n\n"
+                    "Your Claude Code sessions will be automatically tracked.\n"
+                    "Hook location: [dim]~/.claude/hooks/moai/session_end__rank_submit.py[/dim]\n\n"
+                    "[dim]To exclude specific projects:[/dim]\n"
+                    "  [cyan]moai rank exclude /path/to/project[/cyan]",
+                    title="[bold]Global Hook Installed[/bold]",
+                    border_style="cyan",
+                )
+            )
+        else:
+            console.print("[yellow]Warning: Failed to install session tracking hook.[/yellow]")
+
         console.print()
         console.print("[dim]Run [cyan]moai rank status[/cyan] to see your stats.[/dim]")
 
@@ -100,15 +122,34 @@ def register() -> None:
     handler.start_oauth_flow(on_success=on_success, on_error=on_error, timeout=300)
 
 
+def _get_rank_medal(position: int) -> str:
+    """Get medal emoji for rank position."""
+    medals = {1: "[gold1]1st[/gold1]", 2: "[grey70]2nd[/grey70]", 3: "[orange3]3rd[/orange3]"}
+    return medals.get(position, f"#{position}")
+
+
+def _create_progress_bar(value: int, total: int, width: int = 20) -> str:
+    """Create a simple text-based progress bar."""
+    if total == 0:
+        return "[dim]" + "-" * width + "[/dim]"
+    ratio = min(value / total, 1.0)
+    filled = int(width * ratio)
+    return f"[cyan]{'█' * filled}[/cyan][dim]{'░' * (width - filled)}[/dim]"
+
+
 @rank.command()
 def status() -> None:
     """Show your current rank and statistics.
 
-    Displays your ranking position across different time periods
-    and your cumulative token usage statistics.
+    Displays your ranking position across different time periods,
+    cumulative token usage statistics, and hook installation status.
+
+    For the full leaderboard, visit https://rank.mo.ai.kr
     """
+
     from moai_adk.rank.client import AuthenticationError, RankClient, RankClientError
     from moai_adk.rank.config import RankConfig
+    from moai_adk.rank.hook import is_hook_installed
 
     if not RankConfig.has_credentials():
         console.print("[yellow]Not registered with MoAI Rank.[/yellow]")
@@ -120,137 +161,75 @@ def status() -> None:
             client = RankClient()
             user_rank = client.get_user_rank()
 
-        # Build status display
         console.print()
 
-        # Header with username
-        header = Text()
-        header.append("MoAI Rank Status: ", style="bold")
-        header.append(user_rank.username, style="cyan bold")
-        console.print(Panel(header, border_style="cyan"))
+        # === Header Panel with main stats ===
+        weekly = user_rank.weekly
+        if weekly:
+            rank_text = _get_rank_medal(weekly.position)
+            header_content = (
+                f"[bold cyan]{user_rank.username}[/bold cyan]\n\n"
+                f"[dim]Weekly Rank[/dim]  {rank_text} [dim]/ {weekly.total_participants}[/dim]\n"
+                f"[dim]Score[/dim]        [bold]{weekly.composite_score:,.0f}[/bold]"
+            )
+        else:
+            header_content = f"[bold cyan]{user_rank.username}[/bold cyan]\n\n[dim]No ranking data[/dim]"
 
-        # Rankings table
-        rankings_table = Table(show_header=True, header_style="bold cyan", box=None)
-        rankings_table.add_column("Period", style="dim")
-        rankings_table.add_column("Rank", justify="right")
-        rankings_table.add_column("Score", justify="right")
+        console.print(Panel(header_content, title="[bold]MoAI Rank[/bold]", border_style="cyan"))
 
+        # === Rankings Grid (2x2) ===
+        rank_panels = []
         periods = [
-            ("Daily", user_rank.daily),
-            ("Weekly", user_rank.weekly),
-            ("Monthly", user_rank.monthly),
-            ("All Time", user_rank.all_time),
+            ("Daily", user_rank.daily, "yellow"),
+            ("Weekly", user_rank.weekly, "cyan"),
+            ("Monthly", user_rank.monthly, "green"),
+            ("All Time", user_rank.all_time, "magenta"),
         ]
 
-        for period_name, rank_info in periods:
+        for period_name, rank_info, color in periods:
             if rank_info:
-                rank_display = format_rank_position(rank_info.position, rank_info.total_participants)
-                score = f"{rank_info.composite_score:,.0f}"
+                pos = _get_rank_medal(rank_info.position)
+                content = (
+                    f"{pos} [dim]/ {rank_info.total_participants}[/dim]\n[dim]{rank_info.composite_score:,.0f}[/dim]"
+                )
             else:
-                rank_display = "[dim]-[/dim]"
-                score = "[dim]-[/dim]"
-            rankings_table.add_row(period_name, rank_display, score)
+                content = "[dim]-[/dim]"
+            rank_panels.append(Panel(content, title=f"[{color}]{period_name}[/{color}]", border_style=color, width=20))
 
-        console.print(Panel(rankings_table, title="[bold]Rankings[/bold]", border_style="blue"))
+        console.print(Columns(rank_panels, equal=True, expand=True))
 
-        # Statistics table
-        stats_table = Table(show_header=False, box=None, padding=(0, 2))
-        stats_table.add_column("Stat", style="dim")
-        stats_table.add_column("Value", style="bold", justify="right")
+        # === Token Statistics with Progress Bars ===
+        total = user_rank.total_tokens
+        input_pct = (user_rank.input_tokens / total * 100) if total > 0 else 0
+        output_pct = (user_rank.output_tokens / total * 100) if total > 0 else 0
 
-        stats_table.add_row("Total Tokens", format_tokens(user_rank.total_tokens))
-        stats_table.add_row("Input Tokens", format_tokens(user_rank.input_tokens))
-        stats_table.add_row("Output Tokens", format_tokens(user_rank.output_tokens))
-        stats_table.add_row("Sessions", str(user_rank.total_sessions))
+        stats_content = (
+            f"[bold]{format_tokens(total)}[/bold] [dim]total tokens[/dim]\n\n"
+            f"[dim]Input[/dim]  {_create_progress_bar(user_rank.input_tokens, total, 15)} "
+            f"[bold]{format_tokens(user_rank.input_tokens)}[/bold] [dim]({input_pct:.0f}%)[/dim]\n"
+            f"[dim]Output[/dim] {_create_progress_bar(user_rank.output_tokens, total, 15)} "
+            f"[bold]{format_tokens(user_rank.output_tokens)}[/bold] [dim]({output_pct:.0f}%)[/dim]\n\n"
+            f"[dim]Sessions:[/dim] [bold]{user_rank.total_sessions}[/bold]"
+        )
 
-        console.print(Panel(stats_table, title="[bold]Statistics[/bold]", border_style="green"))
+        console.print(Panel(stats_content, title="[bold]Token Usage[/bold]", border_style="green"))
 
+        # === Footer: Hook + Links ===
+        hook_icon = "[green]●[/green]" if is_hook_installed() else "[yellow]○[/yellow]"
+        hook_text = "Installed" if is_hook_installed() else "Not installed"
+
+        footer = f"{hook_icon} Hook: {hook_text}  [dim]|[/dim]  [cyan]https://rank.mo.ai.kr[/cyan]"
         console.print()
-        console.print(f"[dim]Last updated: {user_rank.last_updated}[/dim]")
+        console.print(footer)
+
+        if not is_hook_installed():
+            console.print("[dim]Run [cyan]moai rank register[/cyan] to install the hook.[/dim]")
 
     except AuthenticationError as e:
         console.print(f"[red]Authentication failed: {e}[/red]")
         console.print("[dim]Your API key may be invalid. Try [cyan]moai rank register[/cyan] again.[/dim]")
     except RankClientError as e:
         console.print(f"[red]Failed to fetch status: {e}[/red]")
-
-
-@rank.command()
-@click.option(
-    "--period",
-    "-p",
-    type=click.Choice(["daily", "weekly", "monthly", "all_time"]),
-    default="weekly",
-    help="Leaderboard period (default: weekly)",
-)
-@click.option(
-    "--limit",
-    "-n",
-    type=int,
-    default=10,
-    help="Number of entries to show (default: 10, max: 100)",
-)
-def leaderboard(period: str, limit: int) -> None:
-    """Display the MoAI Rank leaderboard.
-
-    Shows the top users ranked by composite score for the selected period.
-    """
-    from moai_adk.rank.client import RankClient, RankClientError
-
-    limit = min(max(1, limit), 100)
-
-    try:
-        with console.status(f"[bold cyan]Fetching {period} leaderboard...[/bold cyan]"):
-            client = RankClient()
-            entries = client.get_leaderboard(period=period, limit=limit)
-
-        if not entries:
-            console.print(f"[yellow]No entries found for {period} leaderboard.[/yellow]")
-            return
-
-        console.print()
-
-        # Build leaderboard table
-        table = Table(
-            title=f"[bold cyan]MoAI Rank - {period.replace('_', ' ').title()} Leaderboard[/bold cyan]",
-            show_header=True,
-            header_style="bold",
-        )
-
-        table.add_column("#", style="dim", width=4)
-        table.add_column("User", style="cyan")
-        table.add_column("Score", justify="right")
-        table.add_column("Tokens", justify="right")
-        table.add_column("Sessions", justify="right")
-
-        for entry in entries:
-            # Rank with medal for top 3
-            if entry.rank == 1:
-                rank_str = "[gold1]1[/gold1]"
-            elif entry.rank == 2:
-                rank_str = "[grey70]2[/grey70]"
-            elif entry.rank == 3:
-                rank_str = "[orange3]3[/orange3]"
-            else:
-                rank_str = str(entry.rank)
-
-            # Username (anonymized if private)
-            username = entry.username if not entry.is_private else f"[dim]{entry.username}[/dim]"
-
-            table.add_row(
-                rank_str,
-                username,
-                f"{entry.composite_score:,.0f}",
-                format_tokens(entry.total_tokens),
-                str(entry.session_count),
-            )
-
-        console.print(table)
-        console.print()
-        console.print("[dim]Visit [cyan]https://rank.mo.ai.kr[/cyan] for the full leaderboard.[/dim]")
-
-    except RankClientError as e:
-        console.print(f"[red]Failed to fetch leaderboard: {e}[/red]")
 
 
 @rank.command()
@@ -276,29 +255,87 @@ def logout() -> None:
 
 
 @rank.command()
-def verify() -> None:
-    """Verify your API key is valid.
+@click.option("--list", "-l", "show_list", is_flag=True, help="List all excluded projects")
+@click.argument("path", required=False)
+def exclude(path: str | None, show_list: bool) -> None:
+    """Exclude a project from session tracking.
 
-    Makes a test request to verify your stored credentials work.
+    Adds the specified project path (or current directory) to the exclusion list.
+    Sessions from excluded projects will not be submitted to MoAI Rank.
+
+    Examples:
+        moai rank exclude                    # Exclude current directory
+        moai rank exclude /path/to/project   # Exclude specific project
+        moai rank exclude "*/private/*"      # Exclude with wildcard pattern
+        moai rank exclude --list             # List all excluded projects
     """
-    from moai_adk.rank.auth import verify_api_key
-    from moai_adk.rank.config import RankConfig
+    from pathlib import Path as PathLib
 
-    if not RankConfig.has_credentials():
-        console.print("[yellow]No credentials stored.[/yellow]")
-        console.print("[dim]Run [cyan]moai rank register[/cyan] to connect your account.[/dim]")
+    from moai_adk.rank.hook import add_project_exclusion, load_rank_config
+
+    # Handle --list option
+    if show_list:
+        config = load_rank_config()
+        exclusions = config.get("exclude_projects", [])
+
+        if not exclusions:
+            console.print("[dim]No projects are excluded from tracking.[/dim]")
+            console.print("[dim]Use [cyan]moai rank exclude <path>[/cyan] to exclude a project.[/dim]")
+            return
+
+        console.print()
+        console.print("[bold]Excluded Projects:[/bold]")
+        for exc_path in exclusions:
+            console.print(f"  [dim]•[/dim] {exc_path}")
+        console.print()
+        console.print(f"[dim]Total: {len(exclusions)} project(s) excluded[/dim]")
         return
 
-    creds = RankConfig.load_credentials()
-    if not creds:
-        console.print("[red]Failed to load credentials.[/red]")
-        return
+    # Use current directory if no path specified
+    if path is None:
+        path = str(PathLib.cwd())
 
-    with console.status("[bold cyan]Verifying API key...[/bold cyan]"):
-        is_valid = verify_api_key(creds.api_key)
+    if add_project_exclusion(path):
+        console.print(f"[green]Excluded: [bold]{path}[/bold][/green]")
+        console.print("[dim]Sessions from this project will not be tracked.[/dim]")
 
-    if is_valid:
-        console.print(f"[green]API key for [bold]{creds.username}[/bold] is valid.[/green]")
+        # Show current exclusions
+        config = load_rank_config()
+        exclusions = config.get("exclude_projects", [])
+        if len(exclusions) > 1:
+            console.print(f"\n[dim]Total excluded projects: {len(exclusions)}[/dim]")
     else:
-        console.print("[red]API key is invalid or expired.[/red]")
-        console.print("[dim]Run [cyan]moai rank register[/cyan] to get a new key.[/dim]")
+        console.print(f"[red]Failed to exclude: {path}[/red]")
+
+
+@rank.command()
+@click.argument("path", required=False)
+def include(path: str | None) -> None:
+    """Re-include a previously excluded project.
+
+    Removes the specified project path (or current directory) from the exclusion list.
+    Sessions from this project will be submitted to MoAI Rank again.
+
+    Examples:
+        moai rank include                    # Include current directory
+        moai rank include /path/to/project   # Include specific project
+    """
+    from pathlib import Path as PathLib
+
+    from moai_adk.rank.hook import load_rank_config, remove_project_exclusion
+
+    # Use current directory if no path specified
+    if path is None:
+        path = str(PathLib.cwd())
+
+    if remove_project_exclusion(path):
+        console.print(f"[green]Included: [bold]{path}[/bold][/green]")
+        console.print("[dim]Sessions from this project will now be tracked.[/dim]")
+
+        # Show remaining exclusions
+        config = load_rank_config()
+        exclusions = config.get("exclude_projects", [])
+        if exclusions:
+            console.print(f"\n[dim]Remaining excluded projects: {len(exclusions)}[/dim]")
+    else:
+        console.print(f"[red]Failed to include: {path}[/red]")

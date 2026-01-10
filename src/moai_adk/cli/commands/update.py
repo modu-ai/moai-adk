@@ -2451,6 +2451,14 @@ def update(
 
         console.print("\n[green]✓ Update complete![/green]")
 
+        # Prompt for MoAI Rank hook installation if eligible
+        try:
+            from moai_adk.rank.hook import prompt_hook_installation
+
+            prompt_hook_installation(console=console)
+        except ImportError:
+            pass  # rank module not available
+
     except Exception as e:
         console.print(f"[red]✗ Update failed: {e}[/red]")
         raise click.ClickException(str(e)) from e

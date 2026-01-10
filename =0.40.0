@@ -1,6 +1,0 @@
-Resolved 16 packages in 66ms
-Prepared 3 packages in 154ms
-Installed 3 packages in 4ms
- + anthropic==0.75.0
- + docstring-parser==0.17.0
- + jiter==0.12.0

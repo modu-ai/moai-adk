@@ -392,6 +392,14 @@ def init(
                 console.print("  [blue]3.[/blue] Start developing with MoAI-ADK!\n")
             else:
                 console.print("  [blue]2.[/blue] Start developing with MoAI-ADK!\n")
+
+            # Prompt for MoAI Rank hook installation if eligible
+            try:
+                from moai_adk.rank.hook import prompt_hook_installation
+
+                prompt_hook_installation(console=console)
+            except ImportError:
+                pass  # rank module not available
         else:
             console.print("\n[red bold]❌ Initialization Failed![/red bold]")
             if result.errors:
@@ -466,6 +474,12 @@ def _save_additional_config(
 
     if anthropic_api_key or glm_api_key:
         env_path.write_text("\n".join(env_lines) + "\n")
+        # SECURITY: Set file permissions to owner-only (chmod 600)
+        # Prevents other users from reading API keys on shared systems
+        import os
+        import stat
+
+        os.chmod(env_path, stat.S_IRUSR | stat.S_IWUSR)
 
     # 2. Save service/pricing to pricing.yaml
     pricing_path = sections_dir / "pricing.yaml"

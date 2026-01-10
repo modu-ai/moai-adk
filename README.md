@@ -112,7 +112,7 @@ flowchart TB
 | [9. Skill Library](#9-skill-library-48-skills)                    | Explore 48 skills                      |
 | [10. Composition Patterns](#10-composition-patterns-and-examples) | Real project examples                  |
 | [11. TRUST 5 Quality](#11-trust-5-quality-assurance)              | Quality assurance system               |
-| [12. Advanced Features](#12-advanced-features)                    | Git Worktree & enhanced log management |
+| [12. Advanced Features](#12-advanced-features)                    | Git Worktree, Log Management, MoAI Rank |
 
 ### PART D: Advanced & Reference (As Needed)
 
@@ -2774,6 +2774,98 @@ moai worktree go main
 ```
 
 **Automatic migration**: Existing logs automatically reorganized on `moai-adk update`.
+
+---
+
+### 🏆 MoAI Rank (Token Usage Leaderboard)
+
+**Overview**: Track your Claude Code token usage and compete on the global leaderboard. MoAI Rank automatically collects session data and provides insights into your coding patterns.
+
+#### Quick Start
+
+```bash
+# Register via GitHub OAuth
+moai rank register
+
+# Check your current rank and statistics
+moai rank status
+
+# View the leaderboard
+moai rank leaderboard
+
+# View weekly leaderboard (default)
+moai rank leaderboard --period weekly
+
+# View top 20 users
+moai rank leaderboard --limit 20
+```
+
+#### Key Features
+
+- **Automatic Session Tracking**: Global hook automatically submits session data after each Claude Code session
+- **Multi-Period Rankings**: Daily, weekly, monthly, and all-time leaderboards
+- **Dashboard Analytics**: Tool usage, model usage, and code metrics visualization
+- **Privacy Controls**: Exclude specific projects from tracking
+
+#### Commands Reference
+
+| Command                     | Description                          |
+| --------------------------- | ------------------------------------ |
+| `moai rank register`        | Connect GitHub account via OAuth     |
+| `moai rank status`          | Show your current rank & statistics  |
+| `moai rank leaderboard`     | Display leaderboard                  |
+| `moai rank verify`          | Verify API key validity              |
+| `moai rank logout`          | Remove stored credentials            |
+| `moai rank exclude [path]`  | Exclude project from tracking        |
+| `moai rank include [path]`  | Re-include excluded project          |
+| `moai rank list-excluded`   | List all excluded projects           |
+| `moai rank hook-status`     | Check global hook installation       |
+
+#### Privacy & Project Exclusion
+
+```bash
+# Exclude current project from tracking
+moai rank exclude
+
+# Exclude specific project path
+moai rank exclude /path/to/private-project
+
+# Exclude with wildcard pattern
+moai rank exclude "*/confidential/*"
+
+# Re-include a project
+moai rank include /path/to/project
+
+# List all excluded projects
+moai rank list-excluded
+```
+
+#### Dashboard Data Collection
+
+MoAI Rank collects the following anonymized metrics for the dashboard:
+
+| Metric            | Description                                              |
+| ----------------- | -------------------------------------------------------- |
+| **Token Usage**   | Input/output tokens, cache tokens per session            |
+| **Tool Usage**    | Count of each tool used (Read, Edit, Bash, etc.)         |
+| **Model Usage**   | Per-model token breakdown (Opus, Sonnet, Haiku)          |
+| **Code Metrics**  | Lines added/deleted, files modified/created              |
+| **Session Info**  | Duration, turn count, timestamps                         |
+
+**Privacy Note**: Only numerical metrics are collected. File paths, code content, and project names are never transmitted.
+
+#### Vibe Coding Style Analysis
+
+Based on your tool usage patterns, MoAI Rank identifies your coding style:
+
+| Style         | Characteristics                                                  |
+| ------------- | ---------------------------------------------------------------- |
+| **Explorer**  | Heavy use of Read, Grep, Glob - focuses on understanding code   |
+| **Creator**   | Heavy use of Write - builds new features from scratch            |
+| **Refactorer**| Heavy use of Edit, MultiEdit - improves existing code            |
+| **Automator** | Heavy use of Bash, Task - automates workflows and processes      |
+
+Visit [rank.mo.ai.kr](https://rank.mo.ai.kr) for the full web dashboard.
 
 ---
 

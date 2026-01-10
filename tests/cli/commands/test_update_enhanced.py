@@ -1132,7 +1132,7 @@ class TestDisplayFunctions:
         _show_post_update_guidance(backup_path)
         captured = capsys.readouterr()
         assert "Update complete" in captured.out
-        assert "/moai:0-project update" in captured.out
+        assert "CLAUDE.local.md" in captured.out
 
 
 class TestApplyContext:

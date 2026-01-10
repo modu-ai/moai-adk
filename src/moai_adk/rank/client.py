@@ -64,7 +64,25 @@ class ApiStatus:
 
 @dataclass
 class SessionSubmission:
-    """Session data for submission."""
+    """Session data for submission.
+
+    Attributes:
+        session_hash: Unique hash for deduplication
+        ended_at: Session end timestamp (UTC ISO format)
+        input_tokens: Total input tokens consumed
+        output_tokens: Total output tokens generated
+        cache_creation_tokens: Tokens used for cache creation
+        cache_read_tokens: Tokens read from cache
+        model_name: Primary model used in the session
+
+        # Dashboard fields (for activity visualization)
+        started_at: Session start timestamp (UTC ISO format)
+        duration_seconds: Total session duration in seconds
+        turn_count: Number of user turns (messages)
+        tool_usage: Tool usage counts (e.g., {"Read": 5, "Write": 3})
+        model_usage: Per-model token usage (e.g., {"claude-opus-4-5": {"input": 5000, "output": 2000}})
+        code_metrics: Code change metrics (e.g., {"linesAdded": 100, "linesDeleted": 20, ...})
+    """
 
     session_hash: str
     ended_at: str
@@ -73,7 +91,14 @@ class SessionSubmission:
     cache_creation_tokens: int = 0
     cache_read_tokens: int = 0
     model_name: Optional[str] = None
-    anonymous_project_id: Optional[str] = None
+
+    # Dashboard fields for activity visualization
+    started_at: Optional[str] = None
+    duration_seconds: int = 0
+    turn_count: int = 0
+    tool_usage: Optional[dict[str, int]] = None
+    model_usage: Optional[dict[str, dict[str, int]]] = None
+    code_metrics: Optional[dict[str, int]] = None
 
 
 class RankClientError(Exception):
@@ -275,7 +300,10 @@ class RankClient:
         Raises:
             AuthenticationError: If API key is invalid
         """
-        data = self._make_request("GET", "/rank", auth=True)
+        response = self._make_request("GET", "/rank", auth=True)
+
+        # API returns {"success": true, "data": {...}}
+        data = response.get("data", response)
 
         def parse_rank_info(rank_data: Optional[dict]) -> Optional[RankInfo]:
             if not rank_data:
@@ -330,6 +358,13 @@ class RankClient:
             response = self._session.get(url, params=params, timeout=self.timeout)
             data = response.json()
 
+            # Validate response is a dictionary before calling .get()
+            if not isinstance(data, dict):
+                raise ApiError(
+                    f"Unexpected response format: {type(data).__name__}",
+                    response.status_code,
+                )
+
             if response.status_code >= 400:
                 raise ApiError(
                     data.get("error", "Failed to fetch leaderboard"),
@@ -337,7 +372,21 @@ class RankClient:
                 )
 
             entries = []
-            for item in data.get("data", []):
+
+            # API returns: {"data": {"items": [...], "pagination": {...}}}
+            data_obj = data.get("data", {})
+            if isinstance(data_obj, dict):
+                leaderboard_data = data_obj.get("items", [])
+            elif isinstance(data_obj, list):
+                # Fallback for old API format
+                leaderboard_data = data_obj
+            else:
+                leaderboard_data = []
+
+            for item in leaderboard_data:
+                # Skip non-dict items
+                if not isinstance(item, dict):
+                    continue
                 entries.append(
                     LeaderboardEntry(
                         rank=item.get("rank", 0),
@@ -381,8 +430,24 @@ class RankClient:
         if session.model_name:
             data["modelName"] = session.model_name
 
-        if session.anonymous_project_id:
-            data["anonymousProjectId"] = session.anonymous_project_id
+        # Dashboard fields (optional)
+        if session.started_at:
+            data["startedAt"] = session.started_at
+
+        if session.duration_seconds > 0:
+            data["durationSeconds"] = session.duration_seconds
+
+        if session.turn_count > 0:
+            data["turnCount"] = session.turn_count
+
+        if session.tool_usage:
+            data["toolUsage"] = session.tool_usage
+
+        if session.model_usage:
+            data["modelUsage"] = session.model_usage
+
+        if session.code_metrics:
+            data["codeMetrics"] = session.code_metrics
 
         return self._make_request("POST", "/sessions", data=data, hmac_auth=True)
 
@@ -409,6 +474,10 @@ class RankClient:
             SHA-256 hash string
         """
         # Create a deterministic string from session data
+        # SECURITY: Use cryptographically secure random token instead of time.time_ns()
+        # to prevent session hash prediction even if timestamp is known
+        import secrets
+
         data = ":".join(
             [
                 str(input_tokens),
@@ -417,8 +486,8 @@ class RankClient:
                 str(cache_read_tokens),
                 model_name or "",
                 ended_at,
-                # Include a random component to ensure uniqueness
-                str(time.time_ns()),
+                # Cryptographically secure random component for uniqueness
+                secrets.token_hex(16),
             ]
         )
 
