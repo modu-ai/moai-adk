@@ -1446,18 +1446,13 @@ def _restore_selected_skills(skills: list[str], backup_path: Path, project_path:
 
 
 def _show_post_update_guidance(backup_path: Path) -> None:
-    """Show post-update guidance for running /moai:0-project update.
+    """Show post-update completion message.
 
     Args:
         backup_path: Backup directory path for reference
     """
     console.print("\n" + "[cyan]" + "=" * 60 + "[/cyan]")
     console.print("[green]✅ Update complete![/green]")
-    console.print("\n[yellow]📝 IMPORTANT - Next step:[/yellow]")
-    console.print("   Run [cyan]/moai:0-project update[/cyan] in Claude Code")
-    console.print("\n   This will:")
-    console.print("   • Merge your settings with new templates")
-    console.print("   • Validate configuration compatibility")
     console.print("\n[dim]💡 Personal instructions should go in CLAUDE.local.md[/dim]")
     console.print(f"[dim]📂 Backup location: {backup_path}[/dim]")
     console.print("[cyan]" + "=" * 60 + "[/cyan]\n")
@@ -1945,7 +1940,7 @@ def _validate_template_substitution(project_path: Path) -> None:
         console.print("[red]✗ Template substitution validation failed:[/red]")
         for issue in issues_found:
             console.print(f"   {issue}")
-        console.print("[yellow]💡 Run '/moai:0-project' to fix template variables[/yellow]")
+        console.print("[yellow]💡 Check .moai/config/ files for missing variable values[/yellow]")
     else:
         console.print("[green]✅ Template substitution validation passed[/green]")
 
@@ -1988,7 +1983,7 @@ def _validate_template_substitution_with_rollback(project_path: Path, backup_pat
         if backup_path:
             console.print("[yellow]🔄 Rolling back due to validation failure...[/yellow]")
         else:
-            console.print("[yellow]💡 Run '/moai:0-project' to fix template variables[/yellow]")
+            console.print("[yellow]💡 Check .moai/config/ files for missing variable values[/yellow]")
             console.print("[red]⚠️ No backup available - manual fix required[/red]")
 
         return False
@@ -2455,7 +2450,6 @@ def update(
         console.print("   [yellow]⚙️  Set optimized=false (optimization needed)[/yellow]")
 
         console.print("\n[green]✓ Update complete![/green]")
-        console.print("[cyan]ℹ️  Next step: Run /moai:0-project update to optimize template changes[/cyan]")
 
     except Exception as e:
         console.print(f"[red]✗ Update failed: {e}[/red]")

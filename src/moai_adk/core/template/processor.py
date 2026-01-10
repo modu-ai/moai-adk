@@ -745,6 +745,7 @@ class TemplateProcessor:
 
         self._copy_claude(silent)
         self._copy_moai(silent)
+        self._sync_new_section_files(silent)  # Add new section files from template
         self._copy_github(silent)
         self._copy_claude_md(silent)
         self._copy_gitignore(silent)
@@ -1022,6 +1023,132 @@ class TemplateProcessor:
 
         if not silent:
             console.print("   ✅ .moai/ copy complete (variables substituted)")
+
+    def _deep_merge_dicts(self, base: dict, overlay: dict) -> tuple[dict, list[str]]:
+        """Deep merge two dictionaries, preserving base values and adding new keys from overlay.
+
+        Args:
+            base: User's existing configuration (values to preserve)
+            overlay: Template configuration (new keys to add)
+
+        Returns:
+            Tuple of (merged dict, list of new keys added)
+        """
+        result = base.copy()
+        new_keys = []
+
+        for key, value in overlay.items():
+            if key not in result:
+                # New key: add from template
+                result[key] = value
+                new_keys.append(key)
+            elif isinstance(value, dict) and isinstance(result.get(key), dict):
+                # Both are dicts: recurse
+                merged, nested_new = self._deep_merge_dicts(result[key], value)
+                result[key] = merged
+                new_keys.extend([f"{key}.{k}" for k in nested_new])
+            # else: key exists in base, preserve user's value
+
+        return result, new_keys
+
+    def _sync_new_section_files(self, silent: bool = False) -> None:
+        """Sync section files from template to project with smart merge.
+
+        This method handles section file synchronization with the following logic:
+        - New files (template has, project doesn't): Copy from template
+        - Existing files: Smart merge (preserve user values, add new fields)
+        - system.yaml: Always update moai.version to current package version
+
+        Smart Merge Behavior:
+        - User values are NEVER overwritten
+        - Only new keys/fields from template are added
+        - Nested structures are recursively merged
+        """
+        template_sections = self.template_root / ".moai" / "config" / "sections"
+        project_sections = self.target_path / ".moai" / "config" / "sections"
+
+        if not template_sections.exists():
+            return
+
+        # Ensure project sections directory exists
+        project_sections.mkdir(parents=True, exist_ok=True)
+
+        # Get current package version
+        try:
+            from moai_adk import __version__
+
+            current_version = __version__
+        except ImportError:
+            current_version = None
+
+        new_files_added = []
+        files_updated = []
+
+        import yaml
+
+        for template_file in template_sections.glob("*.yaml"):
+            project_file = project_sections / template_file.name
+
+            if not project_file.exists():
+                # New file: copy with variable substitution
+                self._copy_file_with_substitution(template_file, project_file)
+                new_files_added.append(template_file.name)
+            else:
+                # Existing file: smart merge (add new fields only)
+                try:
+                    # Load template data
+                    template_content = template_file.read_text(encoding="utf-8")
+                    template_data = yaml.safe_load(template_content) or {}
+
+                    # Load project data (user's current values)
+                    project_content = project_file.read_text(encoding="utf-8")
+                    project_data = yaml.safe_load(project_content) or {}
+
+                    # Deep merge: preserve user values, add new template keys
+                    merged_data, new_keys = self._deep_merge_dicts(project_data, template_data)
+
+                    if new_keys:
+                        # Write merged data back
+                        with open(project_file, "w", encoding="utf-8") as f:
+                            yaml.dump(
+                                merged_data,
+                                f,
+                                default_flow_style=False,
+                                allow_unicode=True,
+                                sort_keys=False,
+                            )
+                        files_updated.append(f"{template_file.name} (+{len(new_keys)} fields)")
+
+                except Exception:
+                    pass  # Silently ignore yaml errors for individual files
+
+        # Update system.yaml version (special case: always update version)
+        system_yaml = project_sections / "system.yaml"
+        if system_yaml.exists() and current_version:
+            try:
+                content = system_yaml.read_text(encoding="utf-8")
+                data = yaml.safe_load(content) or {}
+
+                # Update moai.version
+                if "moai" not in data:
+                    data["moai"] = {}
+                if data.get("moai", {}).get("version") != current_version:
+                    data["moai"]["version"] = current_version
+
+                    # Write back
+                    with open(system_yaml, "w", encoding="utf-8") as f:
+                        yaml.dump(data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+                    if not silent:
+                        console.print(f"   🔄 system.yaml version updated to {current_version}")
+            except Exception:
+                pass  # Silently ignore yaml errors
+
+        if new_files_added and not silent:
+            console.print(f"   ✨ New section files added: {', '.join(new_files_added)}")
+
+        if files_updated and not silent:
+            console.print(f"   🔀 Section files updated: {', '.join(files_updated)}")
 
     def _copy_github(self, silent: bool = False) -> None:
         """.github/ directory copy with smart merge (preserves user workflows)."""
