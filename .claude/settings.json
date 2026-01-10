@@ -247,9 +247,12 @@
       "Bash(DROP TABLE:*)",
       "Bash(TRUNCATE:*)",
       "Bash(DELETE FROM:*)",
-      "Bash(mongo --eval 'db.dropDatabase():*)",
+      "Bash(mongo:*)",
+      "Bash(mongosh:*)",
       "Bash(redis-cli FLUSHALL:*)",
-      "Bash(redis-cli FLUSHDB:*)"
+      "Bash(redis-cli FLUSHDB:*)",
+      "Bash(psql -c DROP:*)",
+      "Bash(mysql -e DROP:*)"
     ]
   },
   "statusLine": {
