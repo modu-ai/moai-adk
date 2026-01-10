@@ -22,7 +22,7 @@ Create standards-compliant Claude Code sub-agents with optimal tool permissions,
 
 Version: 1.0.0
 Last Updated: 2025-11-25
- 
+
 orchestration:
 can_resume: false # Can continue agent refinement through iterations
 typical_chain_position: "initial" # First in agent creation workflow

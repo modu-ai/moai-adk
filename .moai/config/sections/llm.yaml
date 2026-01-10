@@ -16,8 +16,8 @@ llm:
   # Auto worktree settings
   # When hybrid mode is enabled, automatically create worktree with GLM config
   auto_worktree:
-    enabled: false # Enable auto-worktree for hybrid mode
-    copy_glm_config: true # Copy GLM settings.local.json to worktree
+    enabled: false          # Enable auto-worktree for hybrid mode
+    copy_glm_config: true   # Copy GLM settings.local.json to worktree
 
   # GLM API Configuration
   # These values are used in .moai/llm-configs/glm.json template

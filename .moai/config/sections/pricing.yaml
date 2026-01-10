@@ -1,0 +1,30 @@
+# Pricing and Service Settings (CLAUDE.md Reference)
+# This file is auto-loaded by CLAUDE.md for service configuration
+
+service:
+  # Service type: claude_subscription | claude_api | glm | hybrid
+  type: "claude_subscription"
+
+  # Pricing plan based on service type
+  # Claude: pro | max5 | max20
+  # GLM: basic | glm_pro | enterprise
+  pricing_plan: "pro"
+
+  # API keys are stored in .env file, not here
+  # ANTHROPIC_API_KEY for Claude API
+  # GLM_API_KEY for GLM CodePlan
+
+# Model allocation strategy
+# Models are automatically assigned based on service type and pricing plan
+# See model_allocator.py for detailed allocation logic
+model_allocation:
+  # Strategy: auto (based on pricing) | custom (manual override)
+  strategy: "auto"
+
+  # Custom overrides (only used when strategy is "custom")
+  # Uncomment and modify to override specific agent models
+  # custom:
+  #   plan: opus
+  #   expert_security: opus
+  #   expert_backend: sonnet
+  #   explore: haiku
