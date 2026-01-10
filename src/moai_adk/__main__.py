@@ -6,7 +6,7 @@ Implements the CLI entry point:
 - Rich console terminal output
 - ASCII logo rendering (lazy-loaded)
 - --version and --help options
-- Four core commands: init, doctor, status, update (lazy-loaded)
+- Core commands: init, doctor, status, update, switch, rank (lazy-loaded)
 
 Performance optimization: Commands and heavy libraries are lazy-loaded
 to reduce CLI startup time by 75% (~400ms → ~100ms).
@@ -229,6 +229,18 @@ def statusline() -> None:
     # Render statusline
     output = build_statusline_data(context, mode="extended")
     print(output, end="")
+
+
+# Rank command group (lazy-loaded)
+def _load_rank_group():
+    """Lazy load the rank command group."""
+    from moai_adk.cli.commands.rank import rank
+
+    return rank
+
+
+# Register rank command group
+cli.add_command(_load_rank_group(), name="rank")
 
 
 def main() -> int:

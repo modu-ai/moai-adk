@@ -23,6 +23,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from click.testing import CliRunner
+from rich.progress import TaskID
 
 from moai_adk import __version__
 from moai_adk.cli.commands.init import create_progress_callback, init
@@ -35,7 +36,7 @@ class TestCreateProgressCallback:
     def test_create_progress_callback_returns_callable(self) -> None:
         """Should return a callable progress callback"""
         mock_progress = Mock()
-        task_ids = [1, 2, 3, 4, 5]
+        task_ids: list[TaskID] = [TaskID(1), TaskID(2), TaskID(3), TaskID(4), TaskID(5)]
 
         callback = create_progress_callback(mock_progress, task_ids)
 
@@ -44,22 +45,22 @@ class TestCreateProgressCallback:
     def test_progress_callback_updates_correct_task(self) -> None:
         """Should update the correct task based on current phase"""
         mock_progress = Mock()
-        task_ids = [10, 20, 30, 40, 50]
+        task_ids: list[TaskID] = [TaskID(10), TaskID(20), TaskID(30), TaskID(40), TaskID(50)]
 
         callback = create_progress_callback(mock_progress, task_ids)
 
         # Test phase 1 (index 0)
         callback("Phase 1 message", 1, 5)
-        mock_progress.update.assert_called_with(10, completed=1, description="Phase 1 message")
+        mock_progress.update.assert_called_with(TaskID(10), completed=1, description="Phase 1 message")
 
         # Test phase 3 (index 2)
         callback("Phase 3 message", 3, 5)
-        mock_progress.update.assert_called_with(30, completed=1, description="Phase 3 message")
+        mock_progress.update.assert_called_with(TaskID(30), completed=1, description="Phase 3 message")
 
     def test_progress_callback_handles_out_of_range_phases(self) -> None:
         """Should not crash on out-of-range phase numbers"""
         mock_progress = Mock()
-        task_ids = [1, 2, 3]
+        task_ids: list[TaskID] = [TaskID(1), TaskID(2), TaskID(3)]
 
         callback = create_progress_callback(mock_progress, task_ids)
 
@@ -70,7 +71,7 @@ class TestCreateProgressCallback:
     def test_progress_callback_with_empty_task_ids(self) -> None:
         """Should handle empty task_ids list gracefully"""
         mock_progress = Mock()
-        task_ids = []
+        task_ids: list[TaskID] = []
 
         callback = create_progress_callback(mock_progress, task_ids)
         callback("Message", 1, 5)
@@ -142,10 +143,17 @@ class TestInitInteractiveMode:
 
         mock_answers = {
             "project_name": "test-project",
-            "mode": "team",
             "locale": "ko",
-            "language": "python",
-            "custom_language": None,
+            "service_type": "claude_subscription",
+            "claude_auth_type": None,
+            "pricing_plan": "pro",
+            "anthropic_api_key": None,
+            "glm_api_key": None,
+            "git_mode": "team",
+            "github_username": None,
+            "git_commit_lang": "en",
+            "code_comment_lang": "en",
+            "doc_lang": "en",
         }
 
         with patch("moai_adk.cli.commands.init.prompt_project_setup") as mock_prompt:
@@ -176,12 +184,20 @@ class TestInitInteractiveMode:
         """Should use answers from interactive prompts"""
         runner = CliRunner()
 
+        # New 8-question flow structure
         mock_answers = {
             "project_name": "interactive-project",
-            "mode": "team",
             "locale": "ja",
-            "language": "typescript",
-            "custom_language": None,
+            "service_type": "claude_subscription",
+            "claude_auth_type": None,
+            "pricing_plan": "pro",
+            "anthropic_api_key": None,
+            "glm_api_key": None,
+            "git_mode": "team",
+            "github_username": "testuser",
+            "git_commit_lang": "en",
+            "code_comment_lang": "en",
+            "doc_lang": "en",
         }
 
         with patch("moai_adk.cli.commands.init.prompt_project_setup") as mock_prompt:
@@ -192,8 +208,8 @@ class TestInitInteractiveMode:
                 mock_init.return_value.initialize.return_value = InstallationResult(
                     success=True,
                     project_path=str(tmp_path),
-                    language="typescript",
-                    mode="team",
+                    language="auto",  # Language detection happens in /moai:0-project
+                    mode="personal",  # Mapped from git_mode
                     locale="ja",
                     duration=100,
                     created_files=[".moai/"],
@@ -203,20 +219,30 @@ class TestInitInteractiveMode:
 
                 # Verify initialize was called with prompt answers
                 init_call = mock_init.return_value.initialize.call_args
-                assert init_call.kwargs["mode"] == "team"
+                # git_mode is mapped to mode="personal" for backward compatibility
+                assert init_call.kwargs["mode"] == "personal"
                 assert init_call.kwargs["locale"] == "ja"
-                assert init_call.kwargs["language"] == "typescript"
+                # Language is None in interactive mode (detected later)
+                assert init_call.kwargs["language"] is None
 
-    def test_init_interactive_mode_with_custom_language(self, tmp_path: Path) -> None:
-        """Should handle custom language from interactive prompts"""
+    def test_init_interactive_mode_with_git_mode_personal(self, tmp_path: Path) -> None:
+        """Should handle personal git mode from interactive prompts"""
         runner = CliRunner()
 
+        # New 8-question flow structure with personal git mode
         mock_answers = {
-            "project_name": "custom-lang-project",
-            "mode": "personal",
+            "project_name": "personal-project",
             "locale": "en",
-            "language": "other",
-            "custom_language": "Rust",
+            "service_type": "claude_api",
+            "claude_auth_type": None,
+            "pricing_plan": "pro",
+            "anthropic_api_key": "sk-test-key",
+            "glm_api_key": None,
+            "git_mode": "personal",
+            "github_username": "myuser",
+            "git_commit_lang": "en",
+            "code_comment_lang": "en",
+            "doc_lang": "en",
         }
 
         with patch("moai_adk.cli.commands.init.prompt_project_setup") as mock_prompt:
@@ -227,7 +253,7 @@ class TestInitInteractiveMode:
                 mock_init.return_value.initialize.return_value = InstallationResult(
                     success=True,
                     project_path=str(tmp_path),
-                    language="other",
+                    language="auto",
                     mode="personal",
                     locale="en",
                     duration=100,
@@ -236,9 +262,10 @@ class TestInitInteractiveMode:
 
                 runner.invoke(init, [str(tmp_path)])
 
-                # Verify custom_language is passed
+                # Verify initialize was called
                 init_call = mock_init.return_value.initialize.call_args
-                assert init_call.kwargs["custom_language"] == "Rust"
+                assert init_call.kwargs["mode"] == "personal"
+                assert init_call.kwargs["locale"] == "en"
 
     def test_init_interactive_mode_with_current_directory(self, tmp_path: Path) -> None:
         """Should handle interactive mode in current directory"""
@@ -246,10 +273,17 @@ class TestInitInteractiveMode:
 
         mock_answers = {
             "project_name": tmp_path.name,
-            "mode": "personal",
             "locale": "en",
-            "language": "python",
-            "custom_language": None,
+            "service_type": "claude_subscription",
+            "claude_auth_type": None,
+            "pricing_plan": "pro",
+            "anthropic_api_key": None,
+            "glm_api_key": None,
+            "git_mode": "personal",
+            "github_username": None,
+            "git_commit_lang": "en",
+            "code_comment_lang": "en",
+            "doc_lang": "en",
         }
 
         with patch("moai_adk.cli.commands.init.prompt_project_setup") as mock_prompt:
@@ -279,12 +313,20 @@ class TestInitInteractiveMode:
         """Should use locale from answers when initial_locale is None (line 184)"""
         runner = CliRunner()
 
+        # New 8-question flow structure
         mock_answers = {
             "project_name": "test-project",
-            "mode": "personal",
             "locale": "ko",  # This should be used when locale parameter is None
-            "language": "python",
-            "custom_language": None,
+            "service_type": "claude_subscription",
+            "claude_auth_type": None,
+            "pricing_plan": "pro",
+            "anthropic_api_key": None,
+            "glm_api_key": None,
+            "git_mode": "manual",
+            "github_username": None,
+            "git_commit_lang": "ko",
+            "code_comment_lang": "en",
+            "doc_lang": "ko",
         }
 
         with patch("moai_adk.cli.commands.init.prompt_project_setup") as mock_prompt:
@@ -295,7 +337,7 @@ class TestInitInteractiveMode:
                 mock_init.return_value.initialize.return_value = InstallationResult(
                     success=True,
                     project_path=str(tmp_path),
-                    language="python",
+                    language="auto",
                     mode="personal",
                     locale="ko",
                     duration=100,
@@ -346,12 +388,20 @@ class TestInitReinitializationFlow:
         # Create existing .moai directory
         (tmp_path / ".moai").mkdir()
 
+        # New 8-question flow structure
         mock_answers = {
             "project_name": "test-project",
-            "mode": "personal",
             "locale": "en",
-            "language": "python",
-            "custom_language": None,
+            "service_type": "claude_subscription",
+            "claude_auth_type": None,
+            "pricing_plan": "pro",
+            "anthropic_api_key": None,
+            "glm_api_key": None,
+            "git_mode": "manual",
+            "github_username": None,
+            "git_commit_lang": "en",
+            "code_comment_lang": "en",
+            "doc_lang": "en",
         }
 
         with patch("moai_adk.cli.commands.init.prompt_project_setup") as mock_prompt:
@@ -362,7 +412,7 @@ class TestInitReinitializationFlow:
                 mock_init.return_value.initialize.return_value = InstallationResult(
                     success=True,
                     project_path=str(tmp_path),
-                    language="python",
+                    language="auto",
                     mode="personal",
                     locale="en",
                     duration=100,
@@ -775,7 +825,7 @@ class TestInitNonInteractiveMode:
             mock_init.return_value.initialize.return_value = InstallationResult(
                 success=True,
                 project_path=str(tmp_path),
-                language=None,
+                language="auto",
                 mode="personal",
                 locale="en",
                 duration=100,
@@ -800,7 +850,7 @@ class TestInitNonInteractiveMode:
             mock_init.return_value.initialize.return_value = InstallationResult(
                 success=True,
                 project_path=str(tmp_path),
-                language=None,
+                language="auto",
                 mode="personal",
                 locale="ko",
                 duration=100,
@@ -823,7 +873,7 @@ class TestInitNonInteractiveMode:
             mock_init.return_value.initialize.return_value = InstallationResult(
                 success=True,
                 project_path=str(tmp_path),
-                language=None,
+                language="auto",
                 mode="team",
                 locale="en",
                 duration=100,

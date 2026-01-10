@@ -173,6 +173,8 @@ secret-*.*
 !.moai/scripts/**
 !.moai/specs/
 !.moai/specs/**
+!.moai/announcements/
+!.moai/announcements/**
 
 # Legacy config format (migrated to YAML in v0.32.0)
 .moai/config/config.json

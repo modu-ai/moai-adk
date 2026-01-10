@@ -1,0 +1,18 @@
+{
+  "companyAnnouncements": [
+    "🗿 MoAI-ADK: SPEC-First TDD with 48 Skills and Context7 integration",
+    "⚡ /moai:alfred: One-stop Plan→Run→Sync automation with intelligent routing",
+    "🌳 moai-worktree: Parallel SPEC development - work on multiple features simultaneously",
+    "🤖 Expert Agents: backend, frontend, security, devops, performance, debug, testing, refactoring",
+    "🤖 Manager Agents: git, spec, tdd, docs, quality, project, strategy, claude-code",
+    "🤖 Builder Agents: agent, command, skill, plugin - create custom extensions",
+    "📋 Workflow: /moai:1-plan (SPEC) → /moai:2-run (TDD) → /moai:3-sync (Docs)",
+    "✅ Quality: TRUST 5 + ≥85% coverage + Ralph Engine (LSP + AST-grep)",
+    "🔄 Git Strategy: 3-Mode (Manual/Personal/Team) with Smart Merge config updates",
+    "📚 Tip: moai update --templates-only syncs latest skills and agents to your project",
+    "📚 Tip: moai-wt new SPEC-XXX creates isolated worktree for parallel development",
+    "💡 Hybrid Mode: Plan with Claude (Opus/Sonnet), Run/Sync with GLM for cost savings",
+    "💡 Parallel Dev: Terminal 1 runs Claude, Terminal 2+ run 'moai switch glm && claude' for parallel execution",
+    "🏆 moai rank: Track your Claude token usage and compete on rank.mo.ai.kr leaderboard"
+  ]
+}

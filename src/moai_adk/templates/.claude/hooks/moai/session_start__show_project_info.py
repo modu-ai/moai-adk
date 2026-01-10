@@ -932,31 +932,35 @@ def format_session_output() -> str:
     ]
 
     # FIX #5: Add personalization or setup guidance (never show template variables)
+    # Multilingual support: ko, en, ja, zh
+    conv_lang = personalization.get("conversation_language", "en")
+
     if personalization.get("needs_setup", False):
         # Show setup guidance (based on conversation_language)
-        if personalization["is_korean"]:
-            output.append(
-                "   👋 환영합니다! 프로젝트를 시작하기 전에 "
-                "'/moai:0-project setting' 명령어로 사용자 이름과 설정을 구성해주세요"
-            )
-        else:
-            output.append(
-                "   👋 Welcome! Before starting, please run '/moai:0-project setting' "
-                "to configure your name and project settings"
-            )
+        # Guide user to generate project documentation with /moai:0-project
+        setup_messages = {
+            "ko": "   👋 환영합니다! '/moai:0-project' 명령어로 프로젝트 문서를 생성해주세요",
+            "ja": "   👋 ようこそ！'/moai:0-project' コマンドでプロジェクトドキュメントを生成してください",
+            "zh": "   👋 欢迎！请运行 '/moai:0-project' 命令生成项目文档",
+            "en": "   👋 Welcome! Please run '/moai:0-project' to generate project documentation",
+        }
+        output.append(setup_messages.get(conv_lang, setup_messages["en"]))
     elif personalization["has_personalization"]:
         user_greeting = personalization.get("personalized_greeting", "")
-        if user_greeting:
-            if personalization["is_korean"]:
-                greeting = f"   👋 다시 오신 것을 환영합니다, {user_greeting}!"
-            else:
-                greeting = f"   👋 Welcome back, {user_greeting}!"
-        else:
-            if personalization["is_korean"]:
-                greeting = f"   👋 다시 오신 것을 환영합니다, {personalization['user_name']}님!"
-            else:
-                greeting = f"   👋 Welcome back, {personalization['user_name']}!"
-        output.append(greeting)
+        user_name = personalization.get("user_name", "")
+        display_name = user_greeting if user_greeting else user_name
+
+        # Prevent duplicate honorifics (e.g., "님님" in Korean, "さんさん" in Japanese)
+        ko_suffix = "" if display_name.endswith("님") else "님"
+        ja_suffix = "" if display_name.endswith("さん") else "さん"
+
+        welcome_back_messages = {
+            "ko": f"   👋 다시 오신 것을 환영합니다, {display_name}{ko_suffix}!",
+            "ja": f"   👋 おかえりなさい、{display_name}{ja_suffix}！",
+            "zh": f"   👋 欢迎回来，{display_name}！",
+            "en": f"   👋 Welcome back, {display_name}!",
+        }
+        output.append(welcome_back_messages.get(conv_lang, welcome_back_messages["en"]))
 
     # Configuration source is now handled silently for cleaner output
     # Users can check configuration using dedicated tools if needed
