@@ -12,6 +12,79 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 
 ---
 
+## 🏗️ MoAI-ADK Architecture Overview
+
+```mermaid
+flowchart TB
+    subgraph User["👤 Developer"]
+        Request[User Request]
+    end
+
+    subgraph Alfred["🎩 Mr. Alfred - Orchestrator"]
+        Analyze[Analyze Request]
+        Route[Route to Agent]
+        Integrate[Integrate Results]
+    end
+
+    subgraph Agents["🤖 20 Specialized Agents"]
+        subgraph Tier1["Tier 1: Domain Experts - 8 Agents"]
+            Backend[expert-backend]
+            Frontend[expert-frontend]
+            Security[expert-security]
+            DevOps[expert-devops]
+        end
+        subgraph Tier2["Tier 2: Workflow Managers - 8 Agents"]
+            Spec[manager-spec]
+            TDD[manager-tdd]
+            Docs[manager-docs]
+            Quality[manager-quality]
+        end
+        subgraph Tier3["Tier 3: Meta-Generators - 4 Agents"]
+            BuilderAgent[builder-agent]
+            BuilderSkill[builder-skill]
+            BuilderCommand[builder-command]
+            BuilderPlugin[builder-plugin]
+        end
+    end
+
+    subgraph Skills["📚 48 Skills Library"]
+        Foundation[5 Foundation Skills]
+        Domain[4 Domain Skills]
+        Language[16 Language Skills]
+        Platform[10 Platform Skills]
+        Workflow[7 Workflow Skills]
+        Library[4 Library Skills]
+        Tool[2 Tool Skills]
+    end
+
+    subgraph MCP["🔌 MCP Integrators"]
+        Context7[mcp-context7]
+        Sequential[mcp-sequential-thinking]
+        Playwright[mcp-playwright]
+    end
+
+    Request --> Analyze
+    Analyze --> Route
+    Route --> Tier1
+    Route --> Tier2
+    Route --> Tier3
+    Tier1 --> Skills
+    Tier2 --> Skills
+    Tier3 --> Skills
+    Tier1 --> MCP
+    Tier2 --> MCP
+    Tier1 --> Integrate
+    Tier2 --> Integrate
+    Tier3 --> Integrate
+    Integrate --> User
+
+    style Alfred fill:#fff,stroke:#333,stroke-width:2px
+    style Skills fill:#e8f5e9,stroke:#4caf50,stroke-width:1px
+    style MCP fill:#e3f2fd,stroke:#2196f3,stroke-width:1px
+```
+
+---
+
 ## 📑 Table of Contents (Quick Navigation)
 
 ### PART A: Getting Started (30 minutes)
@@ -43,11 +116,14 @@ MoAI-ADK (Agentic Development Kit) is an open-source framework that combines **S
 
 ### PART D: Advanced & Reference (As Needed)
 
-| Section                                                  | Purpose               |
-| -------------------------------------------------------- | --------------------- |
-| [13. Advanced Configuration](#13-advanced-configuration) | Project customization |
-| [14. FAQ & Quick Reference](#14-faq--quick-reference)    | Common questions      |
-| [15. Additional Resources](#17-additional-resources)     | Support & information |
+| Section                                                                             | Purpose                   |
+| ----------------------------------------------------------------------------------- | ------------------------- |
+| [13. Advanced Configuration](#13-advanced-configuration)                            | Project customization     |
+| [14. FAQ & Quick Reference](#14-faq--quick-reference)                               | Common questions          |
+| [15. AST-Grep Integration](#12-ast-grep-integration)                                | Structural code analysis  |
+| [16. GLM Integration with z.ai](#16-glm-integration-with-zai-cost-effective-alternative) | Cost-effective alternative |
+| [17. Simplified Installation (v0.41+)](#17-simplified-installation-experience-v041) | New interactive wizard    |
+| [18. Additional Resources](#18-additional-resources)                                | Support & information     |
 
 ---
 
@@ -1858,6 +1934,75 @@ Each agent has specific domain expertise. Select the right agent for your task.
 
 MoAI-ADK provides **48 specialized skills** in 7 categories. Each skill can be used independently or in combination.
 
+### 📚 Skill Library Structure
+
+```mermaid
+graph TB
+    subgraph Skills["📚 48 Skills Library"]
+        subgraph Foundation["🏗️ Foundation - 5 Skills"]
+            FC[moai-foundation-core]
+            FCX[moai-foundation-context]
+            FCL[moai-foundation-claude]
+            FQ[moai-foundation-quality]
+            FP[moai-plugin-builder]
+        end
+
+        subgraph Domain["🎯 Domain - 4 Skills"]
+            DB[moai-domain-backend]
+            DF[moai-domain-frontend]
+            DD[moai-domain-database]
+            DU[moai-domain-uiux]
+        end
+
+        subgraph Language["💻 Language - 16 Skills"]
+            LP[Python/TypeScript/Go]
+            LR[Rust/Java/C#/Swift]
+            LK[Kotlin/Ruby/PHP]
+            LE[Elixir/Scala/C++]
+            LF[Flutter/R/JavaScript]
+        end
+
+        subgraph Platform["🚀 Platform - 10 Skills"]
+            PS[Supabase/Neon/Convex]
+            PA[Auth0/Clerk/Firebase]
+            PV[Vercel/Railway]
+        end
+
+        subgraph Workflow["📋 Workflow - 7 Skills"]
+            WS[moai-workflow-spec]
+            WT[moai-workflow-testing]
+            WP[moai-workflow-project]
+            WD[moai-workflow-docs]
+            WW[moai-worktree]
+        end
+
+        subgraph Library["📚 Library - 4 Skills"]
+            LS[moai-library-shadcn]
+            LM[moai-library-mermaid]
+            LN[moai-library-nextra]
+            LFD[moai-formats-data]
+        end
+
+        subgraph Tool["🛠️ Tool - 2 Skills"]
+            TA[moai-tool-ast-grep]
+            TO[moai-tool-opencode]
+        end
+    end
+
+    Agent[🤖 Agent Request] --> Skills
+    Skills --> Result[📦 Skill-Enhanced Response]
+
+    classDef foundationStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef domainStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef langStyle fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    classDef platformStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+
+    class Foundation foundationStyle
+    class Domain domainStyle
+    class Language langStyle
+    class Platform platformStyle
+```
+
 ### 🏗️ Foundation
 
 Core philosophy and execution rules foundation skills.
@@ -2220,6 +2365,31 @@ manager-quality (Re-verification)
 ![TRUST 5 Pentagon](./assets/images/readme/trust5-pentagon.png)
 
 All MoAI-ADK projects comply with the **TRUST 5** quality framework. TRUST 5 consists of 5 core principles: Test-First, Readable, Unified, Secured, Trackable, ensuring enterprise-grade software quality.
+
+### 🏆 TRUST 5 Quality Framework Diagram
+
+```mermaid
+graph TD
+    subgraph TRUST5["🏆 TRUST 5 Quality Framework"]
+        T1["🔴 T: Test-First<br/>━━━━━━━━<br/>• TDD Red-Green-Refactor<br/>• 85%+ Test Coverage<br/>• Automated Testing"]
+        R["📖 R: Readable<br/>━━━━━━━━<br/>• Clear Naming<br/>• Code Comments<br/>• Linter Compliance"]
+        U["🔄 U: Unified<br/>━━━━━━━━<br/>• Consistent Style<br/>• Standard Patterns<br/>• Error Handling"]
+        S["🔒 S: Secured<br/>━━━━━━━━<br/>• OWASP Top 10<br/>• Vulnerability Scan<br/>• Encryption Policy"]
+        T2["📋 T: Trackable<br/>━━━━━━━━<br/>• Clear Commits<br/>• Issue Tracking<br/>• CHANGELOG"]
+    end
+
+    T1 --> R
+    R --> U
+    U --> S
+    S --> T2
+    T2 -->|Quality Gate| Deploy["✅ Production Ready"]
+
+    classDef trustStyle fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
+    classDef deployStyle fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+
+    class T1,R,U,S,T2 trustStyle
+    class Deploy deployStyle
+```
 
 ### T - Test-First
 
@@ -2806,14 +2976,14 @@ cat .mcp.json
 
 ### Overview
 
-For developers concerned about Claude Code usage costs, MoAI-ADK supports **GLM 4.6** integration through **z.ai** at a fraction of the cost. This configuration provides full compatibility with Claude Code while offering significant cost savings.
+For developers concerned about Claude Code usage costs, MoAI-ADK supports **GLM 4.7** integration through **z.ai** at a fraction of the cost. This configuration provides full compatibility with Claude Code while offering significant cost savings.
 
 ### 💡 Why Choose GLM over Claude?
 
-| Feature           | Claude Code                    | z.ai GLM 4.6                |
+| Feature           | Claude Code                    | z.ai GLM 4.7                |
 | ----------------- | ------------------------------ | --------------------------- |
 | **Cost**          | $20/month (Pro plan)           | **$6-$60/month (Flexible)** |
-| **Models**        | Claude 4.5 Sonnet, Opus, Haiku | GLM 4.6, GLM 4.5-air        |
+| **Models**        | Claude 4.5 Sonnet, Opus, Haiku | GLM 4.7, GLM 4.5-air        |
 | **Compatibility** | Native                         | **100% Claude Compatible**  |
 | **Token Limits**  | Limited                        | **Unlimited on paid plans** |
 | **API Access**    | Included                       | **Full API access**         |
@@ -2831,7 +3001,7 @@ By subscribing through this link, you'll receive a 10% additional discount and d
 
 | Plan           | Price                                        | Features                                                                                                | Best For                               |
 | -------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| **Lite**       | First month $3<br/>From 2nd month $6/month   | • 3x Claude Pro usage<br/>• GLM-4.6 powered<br/>• 10+ coding tools compatible                           | Lightweight workloads, getting started |
+| **Lite**       | First month $3<br/>From 2nd month $6/month   | • 3x Claude Pro usage<br/>• GLM-4.7 powered<br/>• 10+ coding tools compatible                           | Lightweight workloads, getting started |
 | **Pro**        | First month $15<br/>From 2nd month $30/month | • All Lite benefits<br/>• 5× Lite plan usage<br/>• 40-60% faster<br/>• Vision, Web Search, Web Reader   | Professional developers, teams         |
 | **Max**        | First month $30<br/>From 2nd month $60/month | • All Pro benefits<br/>• 4× Pro plan usage<br/>• Guaranteed peak performance<br/>• Early feature access | High-volume workloads, power users     |
 | **Enterprise** | Custom                                       | • Custom pricing<br/>• Dedicated support<br/>• SLA guarantees                                           | Large organizations, custom needs      |
@@ -2840,7 +3010,7 @@ By subscribing through this link, you'll receive a 10% additional discount and d
 
 1. **Massive Cost Savings**: Lite plan at $6/month (3x Claude Pro usage)
 2. **Full Tool Compatibility**: Supports Claude Code, Roo Code, Cline, Kilo Code, OpenCode, Crush, Goose, and more
-3. **High-Performance Models**: Powered by GLM-4.6 (comparable to Claude 4.5 Sonnet)
+3. **High-Performance Models**: Powered by GLM-4.7 (comparable to Claude 4.5 Sonnet)
 4. **Flexible Pricing**: From $6 Lite to $60 Max (scales with your needs)
 5. **Performance Options**: Pro plan 40-60% faster, Max plan with guaranteed peak performance
 6. **Advanced Features**: Vision Understanding, Web Search, Web Reader MCP (Pro+)
@@ -2851,7 +3021,7 @@ By subscribing through this link, you'll receive a 10% additional discount and d
 **Step 1: Start with Lite Plan ($6/month)**
 
 - Get 3x Claude Pro usage at just $6/month
-- Try GLM-4.6 with your actual projects for 2-3 weeks
+- Try GLM-4.7 with your actual projects for 2-3 weeks
 - Experience compatibility with 10+ coding tools
 
 **Step 2: Upgrade Based on Usage**
@@ -2887,7 +3057,7 @@ By subscribing through this link, you'll receive a 10% additional discount and d
 3. Complete registration and payment
 4. Note your API token from the dashboard
 
-**💡 Pro Tip**: Start with the $6 Lite plan to test GLM-4.6, then upgrade to Pro for faster performance or Max for high-volume workloads!
+**💡 Pro Tip**: Start with the $6 Lite plan to test GLM-4.7, then upgrade to Pro for faster performance or Max for high-volume workloads!
 
 #### Step 2: Configure MoAI-ADK for GLM
 
@@ -2905,7 +3075,7 @@ In Claude Code, run:
 
 ✅ **API Token Setup**: Securely stores your GLM API token
 ✅ **Endpoint Configuration**: Sets up z.ai API endpoints
-✅ **Model Mapping**: Maps GLM 4.6 to Claude model tiers
+✅ **Model Mapping**: Maps GLM 4.7 to Claude model tiers
 ✅ **Verification**: Tests connection and model availability
 ✅ **Fallback Ready**: Keeps Claude as backup option
 
@@ -2921,8 +3091,8 @@ In Claude Code, run:
     "ANTHROPIC_AUTH_TOKEN": "your_glm_token_here",
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.6"
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.7"
   }
 }
 ```
@@ -2936,35 +3106,36 @@ In Claude Code, run:
 claude
 ```
 
-GLM 4.6 is now active and ready to use!
+GLM 4.7 is now active and ready to use!
 
 ### 🔄 Managing GLM Configuration
 
-#### Enable GLM Mode:
+#### Switch Backend with CLI:
 
 ```bash
-> /moai:0-project --glm-on [YOUR_TOKEN]
+# Check current backend status
+moai switch status
+
+# Switch to GLM backend (cost-effective)
+moai switch glm
+
+# Switch to Claude backend (default)
+moai switch claude
 ```
 
-#### Disable GLM (Switch back to Claude):
+#### How It Works:
 
-```bash
-> /moai:0-project --glm-off
-```
+The `moai switch` command modifies `.claude/settings.local.json` to:
+- **GLM mode**: Add GLM environment variables (API URL, model mappings)
+- **Claude mode**: Remove GLM environment variables (restores default)
 
-#### Check Current Mode:
-
-GLM is active when:
-
-- `.claude/settings.local.json` contains GLM configuration
-- Base URL is set to `https://api.z.ai/api/anthropic`
-- Models are mapped to GLM variants
+**Note**: Restart Claude Code after switching to apply changes.
 
 ### 📊 Performance Comparison
 
 Based on real-world testing with MoAI-ADK:
 
-| Task                        | Claude 4.5 Sonnet | GLM 4.6                                   | Performance Gap         |
+| Task                        | Claude 4.5 Sonnet | GLM 4.7                                   | Performance Gap         |
 | --------------------------- | ----------------- | ----------------------------------------- | ----------------------- |
 | **Code Generation**         | Excellent         | **Excellent**                             | < 5% difference         |
 | **TDD Implementation**      | Excellent         | **Very Good**                             | 10% faster              |
@@ -3034,7 +3205,124 @@ Based on real-world testing with MoAI-ADK:
 
 **Start saving today while maintaining full development productivity!** 🚀
 
-## 17. Additional Resources
+## 17. Simplified Installation Experience (v0.41+)
+
+### 🚀 New Interactive Installation Wizard
+
+Starting from MoAI-ADK v0.41, we've introduced a streamlined **interactive installation wizard** that makes getting started easier than ever.
+
+```bash
+moai-adk init my-project
+```
+
+The interactive wizard guides you through:
+
+1. **🌐 Language Selection** - Choose your preferred language (Korean/English/Japanese/Chinese)
+2. **👤 User Name Setup** - Configure your user name for personalized greetings
+3. **🎨 Output Style Selection** - Choose your AI assistant persona (R2-D2/Yoda)
+4. **📦 Project Template Setup** - Automatic project structure generation
+
+All configurations are automatically saved to `.moai/config/` and `.claude/` directories.
+
+### 📊 Installation Flow Diagram
+
+```mermaid
+flowchart LR
+    subgraph Step1["Step 1: Install"]
+        UV[Install uv] --> MOAI[Install moai-adk]
+    end
+
+    subgraph Step2["Step 2: Initialize"]
+        MOAI --> Init["moai-adk init my-project"]
+        Init --> Wizard{Interactive Wizard}
+    end
+
+    subgraph Step3["Step 3: Configure"]
+        Wizard --> Lang["🌐 Language<br/>KO/EN/JA/ZH"]
+        Wizard --> User["👤 User Name"]
+        Wizard --> Style["🎨 Output Style<br/>R2-D2/Yoda"]
+        Wizard --> Template["📦 Template"]
+    end
+
+    subgraph Step4["Step 4: Ready"]
+        Lang --> Config[".moai/config/"]
+        User --> Config
+        Style --> Claude[".claude/"]
+        Template --> Claude
+        Config --> Ready["✅ Ready to Code!"]
+        Claude --> Ready
+    end
+
+    classDef stepStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef configStyle fill:#fff8e1,stroke:#ff9800,stroke-width:2px
+
+    class Step1,Step2 stepStyle
+    class Step3,Step4 configStyle
+```
+
+### 🎯 Key Features of v0.41+ Installation
+
+| Feature | Description | Benefit |
+|---------|-------------|---------|
+| **One Command Setup** | `moai-adk init` handles everything | No manual configuration needed |
+| **Multilingual Support** | 4 languages out of the box | Use MoAI-ADK in your native language |
+| **Persona Selection** | R2-D2 (technical) or Yoda (philosophical) | Customized AI interaction style |
+| **Auto-Detection** | Detects existing project structure | Safe integration with existing projects |
+| **Config Separation** | Modular config in sections/ | Easy to customize individual settings |
+
+### 🔧 Quick Setup Commands
+
+```bash
+# New project (full wizard experience)
+moai-adk init my-new-project
+
+# Existing project (preserves your files)
+cd your-existing-project
+moai-adk init .
+
+# After initialization, run Claude Code
+claude
+
+# Initialize project metadata
+> /moai:0-project
+```
+
+### 📁 Generated Configuration Structure
+
+```text
+my-project/
+├── .claude/                      # Claude Code configuration
+│   ├── agents/moai/              # 20 specialized agents
+│   ├── commands/moai/            # Slash commands (/moai:*)
+│   ├── hooks/moai/               # Automation hooks
+│   ├── skills/                   # 48 skill modules
+│   ├── output-styles/moai/       # R2-D2 & Yoda personas
+│   └── settings.json             # Claude Code settings
+├── .moai/                        # MoAI-ADK configuration
+│   ├── config/
+│   │   └── sections/             # Modular config files
+│   │       ├── user.yaml         # User settings
+│   │       ├── language.yaml     # Language preferences
+│   │       ├── project.yaml      # Project metadata
+│   │       ├── git-strategy.yaml # Git workflow
+│   │       └── quality.yaml      # TDD settings
+│   ├── specs/                    # SPEC documents
+│   ├── memory/                   # Session memory
+│   └── docs/                     # Auto-generated docs
+├── CLAUDE.md                     # Alfred execution directives
+└── README.md
+```
+
+---
+
+## 18. Additional Resources
+
+### 🌐 Community & Developer Resources
+
+**Join Our Community:**
+
+- **Discord (Official)**: [https://discord.gg/umywNygN](https://discord.gg/umywNygN) - Join the MoAI-ADK community for discussions, support, and updates
+- **Developer Blog**: [https://goos.kim](https://goos.kim) - Technical articles, tutorials, and development insights
 
 ### 🆘 Support (Support)
 

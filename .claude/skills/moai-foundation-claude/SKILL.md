@@ -29,7 +29,7 @@ tags:
     "headless",
     "agent-patterns",
   ]
-updated: 2026-01-10
+updated: 2026-01-11
 status: "active"
 ---
 
@@ -41,28 +41,28 @@ Comprehensive reference for Claude Code Skills, sub-agents, plugins, slash comma
 
 Core Features:
 
-- [Skills Guide](reference/claude-code-skills-official.md) - Agent Skills creation and management
-- [Sub-agents Guide](reference/claude-code-sub-agents-official.md) - Sub-agent development and delegation
-- [Plugins Guide](reference/claude-code-plugins-official.md) - Plugin architecture and distribution
-- [Slash Commands](reference/claude-code-custom-slash-commands-official.md) - Command creation and orchestration
+- reference/claude-code-skills-official.md - Agent Skills creation and management
+- reference/claude-code-sub-agents-official.md - Sub-agent development and delegation
+- reference/claude-code-plugins-official.md - Plugin architecture and distribution
+- reference/claude-code-custom-slash-commands-official.md - Command creation and orchestration
 
 Configuration:
 
-- [Settings](reference/claude-code-settings-official.md) - Configuration hierarchy and management
-- [Memory](reference/claude-code-memory-official.md) - Context and knowledge persistence
-- [Hooks](reference/claude-code-hooks-official.md) - Event-driven automation
-- [IAM & Permissions](reference/claude-code-iam-official.md) - Access control and security
+- reference/claude-code-settings-official.md - Configuration hierarchy and management
+- reference/claude-code-memory-official.md - Context and knowledge persistence
+- reference/claude-code-hooks-official.md - Event-driven automation
+- reference/claude-code-iam-official.md - Access control and security
 
 Advanced Features:
 
-- [Sandboxing](reference/claude-code-sandboxing-official.md) - Security isolation
-- [Headless Mode](reference/claude-code-headless-official.md) - Programmatic and CI/CD usage
-- [Dev Containers](reference/claude-code-devcontainers-official.md) - Containerized environments
-- [CLI Reference](reference/claude-code-cli-reference-official.md) - Command-line interface
-- [Statusline](reference/claude-code-statusline-official.md) - Custom status display
-- [Advanced Patterns](reference/advanced-agent-patterns.md) - Engineering best practices
+- reference/claude-code-sandboxing-official.md - Security isolation
+- reference/claude-code-headless-official.md - Programmatic and CI/CD usage
+- reference/claude-code-devcontainers-official.md - Containerized environments
+- reference/claude-code-cli-reference-official.md - Command-line interface
+- reference/claude-code-statusline-official.md - Custom status display
+- reference/advanced-agent-patterns.md - Engineering best practices
 
-## Quick Reference (30 seconds)
+## Quick Reference
 
 Skills: Model-invoked extensions in ~/.claude/skills/ (personal) or .claude/skills/ (project). Three-level progressive disclosure. Max 500 lines.
 
@@ -74,7 +74,7 @@ Commands: User-invoked via /command. Parameters: $ARGUMENTS, $1, $2. File refs: 
 
 Hooks: Events in settings.json. PreToolUse, PostToolUse, SessionStart, SessionEnd, PreCompact, Notification.
 
-Memory: CLAUDE.md files + .claude/rules/\*.md. Enterprise to Project to User hierarchy. @import syntax.
+Memory: CLAUDE.md files + .claude/rules/*.md. Enterprise to Project to User hierarchy. @import syntax.
 
 Settings: 6-level hierarchy. Managed to file-managed to CLI to local to shared to user.
 
@@ -82,7 +82,7 @@ Sandboxing: OS-level isolation. Filesystem and network restrictions. Auto-allow 
 
 Headless: -p flag for non-interactive. --allowedTools, --json-schema, --agents for automation.
 
-## Skill Creation (3 minutes)
+## Skill Creation
 
 ### Progressive Disclosure Architecture
 
@@ -94,20 +94,7 @@ Level 3 (Resources): Additional files loaded on demand, effectively unlimited
 
 ### Required Format
 
-```yaml
----
-name: skill-name
-description: What it does AND when to use it. Third person. Max 1024 chars.
----
-
-# Skill Name
-
-## Quick start
-Brief instructions here.
-
-## Details
-See [REFERENCE.md](REFERENCE.md) for more.
-```
+Create a SKILL.md file with YAML frontmatter containing name in kebab-case and description explaining what it does and when to use it in third person. Maximum 1024 characters for description. After the frontmatter, include a heading with the skill name, a Quick Start section with brief instructions, and a Details section referencing REFERENCE.md for more information.
 
 ### Best Practices
 
@@ -117,26 +104,15 @@ See [REFERENCE.md](REFERENCE.md) for more.
 - One level deep references
 - Test with Haiku, Sonnet, Opus
 
-## Sub-agent Creation (3 minutes)
+## Sub-agent Creation
 
 ### Using /agents Command
 
-1. Type /agents
-2. Select Create New Agent
-3. Define purpose and tools
-4. Press e to edit prompt
+Type /agents, select Create New Agent, define purpose and tools, press e to edit prompt.
 
 ### File Format
 
-```yaml
----
-name: agent-name
-description: When to invoke. Use PROACTIVELY for auto-delegation.
-tools: Read, Write, Bash
-model: sonnet
----
-System prompt here.
-```
+Create a markdown file with YAML frontmatter containing name, description explaining when to invoke (use PROACTIVELY for auto-delegation), tools as comma-separated list (Read, Write, Bash), and model specification (sonnet). After frontmatter, include the system prompt.
 
 ### Critical Rules
 
@@ -145,36 +121,21 @@ System prompt here.
 - All user interaction before delegation
 - Each gets own 200K context
 
-## Plugin Creation (3 minutes)
+## Plugin Creation
 
 ### Directory Structure
 
-```
-my-plugin/
-- .claude-plugin/plugin.json
-- commands/
-- agents/
-- skills/
-- hooks/hooks.json
-- .mcp.json
-```
+Create my-plugin directory with .claude-plugin/plugin.json, commands directory, agents directory, skills directory, hooks/hooks.json, and .mcp.json file.
 
 ### Manifest (plugin.json)
 
-```json
-{
-  "name": "my-plugin",
-  "description": "Plugin purpose",
-  "version": "1.0.0",
-  "author": { "name": "Author" }
-}
-```
+Create a JSON object with name, description explaining plugin purpose, version as 1.0.0, and author object containing name field.
 
 ### Commands
 
-/plugin install owner/repo
-/plugin validate .
-/plugin enable plugin-name
+Use /plugin install owner/repo to install from GitHub.
+Use /plugin validate . to validate current directory.
+Use /plugin enable plugin-name to enable a plugin.
 
 ## Advanced Agent Patterns
 
@@ -184,7 +145,7 @@ Initializer agent: Sets up environment, feature registry, progress docs
 
 Executor agent: Works single features, updates registry, maintains progress
 
-See [Advanced Patterns](reference/advanced-agent-patterns.md) for details.
+See reference/advanced-agent-patterns.md for details.
 
 ### Orchestrator-Worker Architecture
 
@@ -252,10 +213,13 @@ Phase 4 Commit: Descriptive messages, logical groupings, clean history
 - Validate inputs before passing to Claude
 - Handle errors with exit codes
 
-## Version History
+## Resources
 
-v4.0.0 (2026-01-06): Added plugins, sandboxing, headless, statusline, dev containers, CLI reference, advanced patterns from engineering blogs
+For detailed patterns and working examples, see the reference directory.
 
-v3.0.0 (2025-12-06): Added progressive disclosure, sub-agent details, integration patterns
+Version History:
 
-v2.0.0 (2025-11-26): Initial comprehensive release
+- v5.0.0 (2026-01-11): Converted to narrative format per CLAUDE.md Documentation Standards
+- v4.0.0 (2026-01-06): Added plugins, sandboxing, headless, statusline, dev containers, CLI reference, advanced patterns
+- v3.0.0 (2025-12-06): Added progressive disclosure, sub-agent details, integration patterns
+- v2.0.0 (2025-11-26): Initial comprehensive release

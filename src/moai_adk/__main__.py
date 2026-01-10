@@ -145,12 +145,69 @@ def status(ctx: click.Context, **kwargs) -> None:
 
 
 @cli.command()
+@click.option(
+    "--path",
+    type=click.Path(exists=True),
+    default=".",
+    help="Project path (default: current directory)",
+)
+@click.option("--force", is_flag=True, help="Skip backup and force the update")
+@click.option("--check", is_flag=True, help="Only check version (do not update)")
+@click.option("--templates-only", is_flag=True, help="Skip package upgrade, sync templates only")
+@click.option("--yes", is_flag=True, help="Auto-confirm all prompts (CI/CD mode)")
+@click.option(
+    "-c",
+    "--config",
+    "edit_config",
+    is_flag=True,
+    help="Edit project configuration (same as init wizard)",
+)
+@click.option(
+    "--merge",
+    "merge_strategy",
+    flag_value="auto",
+    help="Auto-merge: Apply template + preserve user changes",
+)
+@click.option(
+    "--manual",
+    "merge_strategy",
+    flag_value="manual",
+    help="Manual merge: Preserve backup, generate merge guide",
+)
 @click.pass_context
-def update(ctx: click.Context, **kwargs) -> None:
+def update(
+    ctx: click.Context,
+    path: str,
+    force: bool,
+    check: bool,
+    templates_only: bool,
+    yes: bool,
+    edit_config: bool,
+    merge_strategy: str | None,
+) -> None:
     """Update MoAI-ADK to latest version"""
     from moai_adk.cli.commands.update import update as _update
 
-    ctx.invoke(_update, **kwargs)
+    ctx.invoke(
+        _update,
+        path=path,
+        force=force,
+        check=check,
+        templates_only=templates_only,
+        yes=yes,
+        edit_config=edit_config,
+        merge_strategy=merge_strategy,
+    )
+
+
+@cli.command()
+@click.argument("backend", type=click.Choice(["glm", "claude", "status"]), default="status")
+@click.pass_context
+def switch(ctx: click.Context, backend: str) -> None:
+    """Switch LLM backend between Claude and GLM"""
+    from moai_adk.cli.commands.switch import switch as _switch
+
+    ctx.invoke(_switch, backend=backend)
 
 
 # statusline command (for Claude Code statusline rendering)

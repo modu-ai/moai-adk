@@ -1,13 +1,13 @@
 ---
 name: "moai-lang-scala"
 description: "Scala 3.4+ development specialist covering Akka, Cats Effect, ZIO, and Spark patterns. Use when building distributed systems, big data pipelines, or functional programming applications."
-version: 2.0.0
+version: 2.1.0
 category: "language"
 modularized: true
 user-invocable: false
 tags: ["language", "scala", "akka", "cats-effect", "zio", "spark", "sbt"]
 status: "active"
-updated: 2026-01-08
+updated: 2026-01-11
 allowed-tools:
   - Read
   - Grep
@@ -66,60 +66,15 @@ This skill uses progressive disclosure with specialized modules:
 
 ### Project Setup (SBT 1.10)
 
-```scala
-ThisBuild / scalaVersion := "3.4.2"
-ThisBuild / organization := "com.example"
-
-lazy val root = (project in file("."))
-  .settings(
-    name := "scala-service",
-    libraryDependencies ++= Seq(
-      "org.typelevel" %% "cats-effect" % "3.5.4",
-      "dev.zio" %% "zio" % "2.1.0",
-      "com.typesafe.akka" %% "akka-actor-typed" % "2.9.0",
-      "org.http4s" %% "http4s-ember-server" % "0.24.0",
-      "io.circe" %% "circe-generic" % "0.15.0",
-      "org.scalatest" %% "scalatest" % "3.2.18" % Test
-    ),
-    scalacOptions ++= Seq("-deprecation", "-feature", "-Xfatal-warnings")
-  )
-```
+In build.sbt, set ThisBuild / scalaVersion to "3.4.2" and organization. Define lazy val root project with settings including name and libraryDependencies. Add dependencies for cats-effect, zio, akka-actor-typed, http4s-ember-server, circe-generic, and scalatest for test scope. Include scalacOptions for deprecation, feature warnings, and Xfatal-warnings.
 
 ### Quick Examples
 
-Extension Methods:
+Extension Methods: Use extension keyword with parameter in parentheses. Define methods like words splitting on whitespace and truncate checking length before taking characters and appending ellipsis.
 
-```scala
-extension (s: String)
-  def words: List[String] = s.split("\\s+").toList
-  def truncate(maxLen: Int): String =
-    if s.length <= maxLen then s else s.take(maxLen - 3) + "..."
-```
+Given and Using: Define trait with abstract method signature. Create given instance with with keyword and implement the method. Create functions with using parameter clause for implicit resolution.
 
-Given and Using:
-
-```scala
-trait JsonEncoder[A]:
-  def encode(value: A): String
-
-given JsonEncoder[String] with
-  def encode(value: String): String = s"\"$value\""
-
-def toJson[A](value: A)(using encoder: JsonEncoder[A]): String =
-  encoder.encode(value)
-```
-
-Enum Types:
-
-```scala
-enum Result[+E, +A]:
-  case Success(value: A)
-  case Failure(error: E)
-
-  def map[B](f: A => B): Result[E, B] = this match
-    case Success(a) => Success(f(a))
-    case Failure(e) => Failure(e)
-```
+Enum Types: Define enum with generic type parameters and plus variance annotations. Create case entries with parameters. Define methods on enum using match expression to handle each case, returning appropriate results.
 
 ---
 
@@ -160,38 +115,11 @@ Big Data:
 
 ## Testing Quick Reference
 
-ScalaTest:
+ScalaTest: Extend AnyFlatSpec with Matchers. Use string description with should in for behavior. Make assertions with shouldBe for equality checks.
 
-```scala
-class UserServiceSpec extends AnyFlatSpec with Matchers:
-  "UserService" should "create user successfully" in {
-    val result = service.createUser(CreateUserRequest("John", "john@example.com"))
-    result.name shouldBe "John"
-  }
-```
+MUnit with Cats Effect: Extend CatsEffectSuite. Define test with string name. Return IO containing assertEquals assertions.
 
-MUnit with Cats Effect:
-
-```scala
-class UserServiceSuite extends CatsEffectSuite:
-  test("should fetch user") {
-    UserService.findById(1L).map { result =>
-      assertEquals(result.name, "John")
-    }
-  }
-```
-
-ZIO Test:
-
-```scala
-object UserServiceSpec extends ZIOSpecDefault:
-  def spec = suite("UserService")(
-    test("should find user") {
-      for result <- UserService.findById(1L)
-      yield assertTrue(result.name == "John")
-    }
-  )
-```
+ZIO Test: Extend ZIOSpecDefault. Define spec as suite with test entries. Use for-comprehension to run effects and yield assertTrue assertions.
 
 ---
 
@@ -229,5 +157,5 @@ For comprehensive reference materials:
 
 ---
 
-Last Updated: 2026-01-06
-Status: Production Ready (v2.0.0)
+Last Updated: 2026-01-11
+Status: Production Ready (v2.1.0)

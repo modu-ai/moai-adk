@@ -1,5 +1,4 @@
 ---
-name: moai:1-plan
 description: "Define specifications and create development branch or worktree"
 argument-hint: Title 1 Title 2 ... | SPEC-ID modifications [--worktree | --branch]
 type: workflow

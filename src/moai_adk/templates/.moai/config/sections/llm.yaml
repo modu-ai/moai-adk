@@ -4,10 +4,10 @@
 
 llm:
   # LLM Mode Selection
-  # - opus-only: Use Claude Opus for all phases (highest quality, highest cost)
-  # - hybrid: Plan with Opus, Run/Sync with GLM (balanced)
+  # - claude-only: Use Claude for all phases (Opus/Sonnet based on pricing plan)
+  # - mashup: Plan with Claude, Run/Sync with GLM (balanced)
   # - glm-only: Use GLM for all phases (lowest cost)
-  mode: opus-only
+  mode: claude-only
 
   # Environment variable name for GLM API token
   # User must set this in their shell profile (~/.zshrc, ~/.bashrc)
@@ -25,8 +25,8 @@ llm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
       haiku: "glm-4.5-air"
-      sonnet: "glm-4.6"
-      opus: "glm-4.6"
+      sonnet: "glm-4.7"
+      opus: "glm-4.7"
 
   # Routing behavior
   routing:

@@ -1,12 +1,12 @@
 ---
 name: "moai-lang-ruby"
 description: "Ruby 3.3+ development specialist covering Rails 7.2, ActiveRecord, Hotwire/Turbo, and modern Ruby patterns. Use when developing Ruby APIs, web applications, or Rails projects."
-version: 1.0.0
+version: 1.1.0
 category: "language"
 modularized: true
 user-invocable: false
 tags: ["language", "ruby", "rails", "activerecord", "hotwire", "turbo", "rspec"]
-updated: 2026-01-08
+updated: 2026-01-11
 status: "active"
 allowed-tools:
   - Read
@@ -21,93 +21,32 @@ allowed-tools:
 
 Ruby 3.3+ Development Specialist - Rails 7.2, ActiveRecord, Hotwire/Turbo, RSpec, and modern Ruby patterns.
 
-Auto-Triggers: `.rb` files, `Gemfile`, `Rakefile`, `config.ru`, Rails/Ruby discussions
+Auto-Triggers: Files with .rb extension, Gemfile, Rakefile, config.ru, Rails or Ruby discussions
 
 Core Capabilities:
 
 - Ruby 3.3 Features: YJIT production-ready, pattern matching, Data class, endless methods
-- Web Framework: Rails 7.2 with Turbo, Stimulus, ActiveRecord
-- Frontend: Hotwire (Turbo + Stimulus) for SPA-like experiences
-- Testing: RSpec with factories, request specs, system specs
+- Web Framework: Rails 7.2 with Turbo, Stimulus, and ActiveRecord
+- Frontend: Hotwire including Turbo and Stimulus for SPA-like experiences
+- Testing: RSpec with factories, request specs, and system specs
 - Background Jobs: Sidekiq with ActiveJob
 - Package Management: Bundler with Gemfile
 - Code Quality: RuboCop with Rails cops
-- Database: ActiveRecord with migrations, associations, scopes
+- Database: ActiveRecord with migrations, associations, and scopes
 
 ### Quick Patterns
 
-Rails Controller:
+Rails Controller Pattern:
 
-```ruby
-class UsersController < ApplicationController
-  before_action :set_user, only: %i[show edit update destroy]
+Create UsersController inheriting from ApplicationController. Add before_action for set_user calling only on show, edit, update, and destroy actions. Define index method assigning User.all to instance variable. Define create method creating new User with user_params. Use respond_to block with format.html redirecting on success or rendering new with unprocessable_entity status, and format.turbo_stream for Turbo responses. Add private set_user method finding by params id. Add user_params method requiring user and permitting name and email.
 
-  def index
-    @users = User.all
-  end
+ActiveRecord Model Pattern:
 
-  def create
-    @user = User.new(user_params)
+Create User model inheriting from ApplicationRecord. Define has_many for posts with dependent destroy and has_one for profile with dependent destroy. Add validates for email with presence, uniqueness, and format using URI::MailTo::EMAIL_REGEXP. Add validates for name with presence and length minimum 2 maximum 100. Define active scope filtering where active is true. Define recent scope ordering by created_at descending. Create full_name method returning first_name and last_name joined with space and stripped.
 
-    respond_to do |format|
-      if @user.save
-        format.html { redirect_to @user, notice: "User was successfully created." }
-        format.turbo_stream
-      else
-        format.html { render :new, status: :unprocessable_entity }
-      end
-    end
-  end
+RSpec Test Pattern:
 
-  private
-
-  def set_user
-    @user = User.find(params[:id])
-  end
-
-  def user_params
-    params.require(:user).permit(:name, :email)
-  end
-end
-```
-
-ActiveRecord Model:
-
-```ruby
-class User < ApplicationRecord
-  has_many :posts, dependent: :destroy
-  has_one :profile, dependent: :destroy
-
-  validates :email, presence: true, uniqueness: true, format: { with: URI::MailTo::EMAIL_REGEXP }
-  validates :name, presence: true, length: { minimum: 2, maximum: 100 }
-
-  scope :active, -> { where(active: true) }
-  scope :recent, -> { order(created_at: :desc) }
-
-  def full_name
-    "#{first_name} #{last_name}".strip
-  end
-end
-```
-
-RSpec Test:
-
-```ruby
-RSpec.describe User, type: :model do
-  describe "validations" do
-    it { is_expected.to validate_presence_of(:email) }
-    it { is_expected.to validate_uniqueness_of(:email) }
-  end
-
-  describe "#full_name" do
-    let(:user) { build(:user, first_name: "John", last_name: "Doe") }
-
-    it "returns the full name" do
-      expect(user.full_name).to eq("John Doe")
-    end
-  end
-end
-```
+Create RSpec.describe for User model type. In describe validations block, add expectations for validate_presence_of and validate_uniqueness_of for email. In describe full_name block, use let to build user with first_name John and last_name Doe. Add it block expecting user.full_name to eq John Doe.
 
 ---
 
@@ -115,250 +54,55 @@ end
 
 ### Ruby 3.3 New Features
 
-YJIT (Production-Ready):
+YJIT Production-Ready:
 
-- Enabled by default in Ruby 3.3
-- 15-20% performance improvement for Rails apps
-- Enable: `ruby --yjit` or `RUBY_YJIT_ENABLE=1`
-- Check status: `RubyVM::YJIT.enabled?`
+YJIT is enabled by default in Ruby 3.3 providing 15 to 20 percent performance improvement for Rails applications. Enable by running ruby with yjit flag or setting RUBY_YJIT_ENABLE environment variable to 1. Check status by calling RubyVM::YJIT.enabled? method.
 
-Pattern Matching (case/in):
+Pattern Matching with case/in:
 
-```ruby
-def process_response(response)
-  case response
-  in { status: "ok", data: data }
-    puts "Success: #{data}"
-  in { status: "error", message: msg }
-    puts "Error: #{msg}"
-  in { status: status } if %w[pending processing].include?(status)
-    puts "In progress..."
-  else
-    puts "Unknown response"
-  end
-end
-```
+Create process_response method taking response parameter. Use case with response and in for pattern matching. Match status ok with data extracting data variable and puts success message. Match status error with message extracting msg variable. Match status with guard condition checking pending or processing. Use else for unknown response.
 
-Data Class (Immutable Structs):
+Data Class for Immutable Structs:
 
-```ruby
-User = Data.define(:name, :email) do
-  def greeting
-    "Hello, #{name}!"
-  end
-end
-
-user = User.new(name: "John", email: "john@example.com")
-user.name         # => "John"
-user.greeting     # => "Hello, John!"
-```
+Create User using Data.define with name and email symbols. Add block defining greeting method returning hello message with name. Create user instance with keyword arguments. Access name property and call greeting method.
 
 Endless Method Definition:
 
-```ruby
-class Calculator
-  def add(a, b) = a + b
-  def multiply(a, b) = a * b
-  def positive?(n) = n > 0
-end
-```
+Create Calculator class with add, multiply, and positive? methods using equals sign syntax for single expression methods.
 
 ### Rails 7.2 Patterns
 
-Application Setup:
+Application Setup in Gemfile:
 
-```ruby
-# Gemfile
-source "https://rubygems.org"
-
-gem "rails", "~> 7.2.0"
-gem "pg", "~> 1.5"
-gem "puma", ">= 6.0"
-gem "turbo-rails"
-gem "stimulus-rails"
-gem "sidekiq", "~> 7.0"
-
-group :development, :test do
-  gem "rspec-rails", "~> 7.0"
-  gem "factory_bot_rails"
-  gem "faker"
-  gem "rubocop-rails", require: false
-end
-
-group :test do
-  gem "capybara"
-  gem "shoulda-matchers"
-end
-```
+Set source to rubygems.org. Add rails version constraint for 7.2, pg for 1.5, puma for 6.0 or later, turbo-rails, stimulus-rails, and sidekiq for 7.0. In development and test group add rspec-rails for 7.0, factory_bot_rails, faker, and rubocop-rails with require false. In test group add capybara and shoulda-matchers.
 
 Model with Concerns:
 
-```ruby
-# app/models/concerns/sluggable.rb
-module Sluggable
-  extend ActiveSupport::Concern
+Create Sluggable module extending ActiveSupport::Concern. In included block add before_validation for generate_slug on create and validates for slug with presence and uniqueness. Define to_param returning slug. Add private generate_slug method setting slug from parameterized title if title present and slug blank. Create Post model including Sluggable with belongs_to user, has_many comments with dependent destroy, has_many_attached images. Add validations and published scope.
 
-  included do
-    before_validation :generate_slug, on: :create
-    validates :slug, presence: true, uniqueness: true
-  end
+Service Objects Pattern:
 
-  def to_param
-    slug
-  end
+Create UserRegistrationService with initialize accepting user_params. Define call method creating User, using ActiveRecord::Base.transaction to save user, create profile, and send welcome email. Return Result with success true and user. Rescue RecordInvalid returning Result with success false and errors. Add private methods for create_profile and send_welcome_email. Define Result as Data.define with success, user, and errors, adding success? and failure? predicate methods.
 
-  private
+### Hotwire Turbo and Stimulus
 
-  def generate_slug
-    self.slug = title.parameterize if title.present? && slug.blank?
-  end
-end
+Turbo Frames Pattern:
 
-# app/models/post.rb
-class Post < ApplicationRecord
-  include Sluggable
+In index view, use turbo_frame_tag with posts id and iterate posts rendering each. In post partial, use turbo_frame_tag with dom_id for post, containing article with h2 link and truncated content paragraph.
 
-  belongs_to :user
-  has_many :comments, dependent: :destroy
-  has_many_attached :images
+Turbo Streams Pattern:
 
-  validates :title, presence: true, length: { minimum: 5 }
-  validates :content, presence: true
+In controller create action, build post from current_user.posts. Use respond_to with format.turbo_stream and format.html for redirect or render based on save success. In create.turbo_stream.erb view, use turbo_stream.prepend for posts with post, and turbo_stream.update for new_post form partial.
 
-  scope :published, -> { where(published: true) }
-end
-```
+Stimulus Controller Pattern:
 
-Service Objects:
-
-```ruby
-class UserRegistrationService
-  def initialize(user_params)
-    @user_params = user_params
-  end
-
-  def call
-    user = User.new(@user_params)
-
-    ActiveRecord::Base.transaction do
-      user.save!
-      create_profile(user)
-      send_welcome_email(user)
-    end
-
-    Result.new(success: true, user: user)
-  rescue ActiveRecord::RecordInvalid => e
-    Result.new(success: false, errors: e.record.errors)
-  end
-
-  private
-
-  def create_profile(user)
-    user.create_profile!(bio: "New user")
-  end
-
-  def send_welcome_email(user)
-    UserMailer.welcome(user).deliver_later
-  end
-
-  Result = Data.define(:success, :user, :errors) do
-    def success? = success
-    def failure? = !success
-  end
-end
-```
-
-### Hotwire (Turbo + Stimulus)
-
-Turbo Frames:
-
-```erb
-<!-- app/views/posts/index.html.erb -->
-<%= turbo_frame_tag "posts" do %>
-  <% @posts.each do |post| %>
-    <%= render post %>
-  <% end %>
-<% end %>
-
-<!-- app/views/posts/_post.html.erb -->
-<%= turbo_frame_tag dom_id(post) do %>
-  <article class="post">
-    <h2><%= link_to post.title, post %></h2>
-    <p><%= truncate(post.content, length: 200) %></p>
-  </article>
-<% end %>
-```
-
-Turbo Streams:
-
-```ruby
-# app/controllers/posts_controller.rb
-def create
-  @post = current_user.posts.build(post_params)
-
-  respond_to do |format|
-    if @post.save
-      format.turbo_stream
-      format.html { redirect_to @post }
-    else
-      format.html { render :new, status: :unprocessable_entity }
-    end
-  end
-end
-
-# app/views/posts/create.turbo_stream.erb
-<%= turbo_stream.prepend "posts", @post %>
-<%= turbo_stream.update "new_post", partial: "posts/form", locals: { post: Post.new } %>
-```
-
-Stimulus Controller:
-
-```javascript
-// app/javascript/controllers/form_controller.js
-import { Controller } from "@hotwired/stimulus";
-
-export default class extends Controller {
-  static targets = ["input", "submit"];
-
-  connect() {
-    this.validate();
-  }
-
-  validate() {
-    const isValid = this.inputTargets.every((input) => input.value.length > 0);
-    this.submitTarget.disabled = !isValid;
-  }
-}
-```
+In JavaScript controller file, import Controller from hotwired/stimulus. Export default class extending Controller with static targets array for input and submit. Define connect method calling validate. Define validate method checking all input targets have values and setting submit target disabled accordingly.
 
 ### RSpec Testing Basics
 
 Factory Bot Patterns:
 
-```ruby
-# spec/factories/users.rb
-FactoryBot.define do
-  factory :user do
-    sequence(:email) { |n| "user#{n}@example.com" }
-    name { Faker::Name.name }
-    password { "password123" }
-
-    trait :admin do
-      role { :admin }
-    end
-
-    trait :with_posts do
-      transient do
-        posts_count { 3 }
-      end
-
-      after(:create) do |user, evaluator|
-        create_list(:post, evaluator.posts_count, user: user)
-      end
-    end
-  end
-end
-```
+In factories file, define factory for user with sequence for email, Faker::Name.name for name, and password123 for password. Add admin trait setting role to admin symbol. Add with_posts trait with transient posts_count defaulting to 3, using after create callback to create_list posts for user.
 
 ---
 
@@ -366,8 +110,8 @@ end
 
 For comprehensive coverage including:
 
-- Production deployment patterns (Docker, Kubernetes)
-- Advanced ActiveRecord patterns (polymorphic, STI, query objects)
+- Production deployment patterns for Docker and Kubernetes
+- Advanced ActiveRecord patterns including polymorphic, STI, and query objects
 - Action Cable real-time features
 - Performance optimization techniques
 - Security best practices
@@ -376,32 +120,30 @@ For comprehensive coverage including:
 
 See:
 
-- [Advanced Patterns](modules/advanced-patterns.md) - Production patterns and advanced features
-- [Testing Patterns](modules/testing-patterns.md) - Complete RSpec testing guide
+- modules/advanced-patterns.md for production patterns and advanced features
+- modules/testing-patterns.md for complete RSpec testing guide
 
 ---
 
 ## Context7 Library Mappings
 
-```
-/rails/rails - Ruby on Rails web framework
-/rspec/rspec - RSpec testing framework
-/hotwired/turbo-rails - Turbo for Rails
-/hotwired/stimulus-rails - Stimulus for Rails
-/sidekiq/sidekiq - Background job processing
-/rubocop/rubocop - Ruby style guide enforcement
-/thoughtbot/factory_bot - Test data factories
-```
+- rails/rails for Ruby on Rails web framework
+- rspec/rspec for RSpec testing framework
+- hotwired/turbo-rails for Turbo for Rails
+- hotwired/stimulus-rails for Stimulus for Rails
+- sidekiq/sidekiq for background job processing
+- rubocop/rubocop for Ruby style guide enforcement
+- thoughtbot/factory_bot for test data factories
 
 ---
 
 ## Works Well With
 
-- `moai-domain-backend` - REST API and web application architecture
-- `moai-domain-database` - SQL patterns and ActiveRecord optimization
-- `moai-workflow-testing` - TDD and testing strategies
-- `moai-essentials-debug` - AI-powered debugging
-- `moai-foundation-quality` - TRUST 5 quality principles
+- moai-domain-backend for REST API and web application architecture
+- moai-domain-database for SQL patterns and ActiveRecord optimization
+- moai-workflow-testing for TDD and testing strategies
+- moai-essentials-debug for AI-powered debugging
+- moai-foundation-quality for TRUST 5 quality principles
 
 ---
 
@@ -411,47 +153,31 @@ Common Issues:
 
 Ruby Version Check:
 
-```bash
-ruby --version  # Should be 3.3+
-ruby -e "puts RubyVM::YJIT.enabled?"  # Check YJIT status
-```
+Run ruby with version flag for 3.3 or later. Check YJIT status by running ruby -e with puts RubyVM::YJIT.enabled? command.
 
 Rails Version Check:
 
-```bash
-rails --version  # Should be 7.2+
-bundle exec rails about  # Full environment info
-```
+Run rails with version flag for 7.2 or later. Run bundle exec rails about for full environment information.
 
 Database Connection Issues:
 
-- Check `config/database.yml` configuration
-- Ensure PostgreSQL/MySQL service is running
-- Run `rails db:create` if database doesn't exist
+- Check config/database.yml configuration
+- Ensure PostgreSQL or MySQL service is running
+- Run rails db:create if database does not exist
 
 Asset Pipeline Issues:
 
-```bash
-rails assets:precompile
-rails assets:clobber
-```
+Run rails assets:precompile to compile assets. Run rails assets:clobber to clear compiled assets.
 
 RSpec Setup Issues:
 
-```bash
-rails generate rspec:install
-bundle exec rspec spec/models/user_spec.rb
-bundle exec rspec --format documentation
-```
+Run rails generate rspec:install for initial setup. Run bundle exec rspec with specific file path for single spec. Run bundle exec rspec with format documentation for verbose output.
 
-Turbo/Stimulus Issues:
+Turbo and Stimulus Issues:
 
-```bash
-rails javascript:install:esbuild
-rails turbo:install
-```
+Run rails javascript:install:esbuild for JavaScript setup. Run rails turbo:install for Turbo installation.
 
 ---
 
-Last Updated: 2025-12-07
-Status: Active (v1.0.0)
+Last Updated: 2026-01-11
+Status: Active (v1.1.0)

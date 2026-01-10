@@ -1,13 +1,13 @@
 ---
 name: "moai-lang-php"
 description: "PHP 8.3+ development specialist covering Laravel 11, Symfony 7, Eloquent ORM, and modern PHP patterns. Use when developing PHP APIs, web applications, or Laravel/Symfony projects."
-version: 1.0.0
+version: 1.1.0
 category: "language"
 modularized: true
 user-invocable: false
 tags:
   ["language", "php", "laravel", "symfony", "eloquent", "doctrine", "phpunit"]
-updated: 2026-01-08
+updated: 2026-01-11
 status: "active"
 allowed-tools:
   - Read
@@ -22,97 +22,32 @@ allowed-tools:
 
 PHP 8.3+ Development Specialist - Laravel 11, Symfony 7, Eloquent, Doctrine, and modern PHP patterns.
 
-Auto-Triggers: `.php` files, `composer.json`, `artisan`, `symfony.yaml`, Laravel/Symfony discussions
+Auto-Triggers: PHP files with .php extension, composer.json, artisan command, symfony.yaml, Laravel or Symfony discussions
 
 Core Capabilities:
 
 - PHP 8.3 Features: readonly classes, typed properties, attributes, enums, named arguments
 - Laravel 11: Controllers, Models, Migrations, Form Requests, API Resources, Eloquent
 - Symfony 7: Attribute-based routing, Doctrine ORM, Services, Dependency Injection
-- ORMs: Eloquent (Laravel), Doctrine (Symfony)
-- Testing: PHPUnit, Pest, feature/unit testing patterns
+- ORMs: Eloquent for Laravel, Doctrine for Symfony
+- Testing: PHPUnit, Pest, feature and unit testing patterns
 - Package Management: Composer with autoloading
 - Coding Standards: PSR-12, Laravel Pint, PHP CS Fixer
 - Docker: PHP-FPM, nginx, multi-stage builds
 
 ### Quick Patterns
 
-Laravel Controller:
+Laravel Controller Pattern:
 
-```php
-<?php
+In the App\Http\Controllers\Api namespace, create a UserController extending Controller. Import StoreUserRequest, UserResource, User, and JsonResponse. Define a store method accepting StoreUserRequest that creates a User using validated data and returns a JsonResponse with UserResource wrapping the user and status 201.
 
-namespace App\Http\Controllers\Api;
+Laravel Form Request Pattern:
 
-use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreUserRequest;
-use App\Http\Resources\UserResource;
-use App\Models\User;
-use Illuminate\Http\JsonResponse;
+In the App\Http\Requests namespace, create a StoreUserRequest extending FormRequest. The authorize method returns true. The rules method returns an array with name requiring required, string, and max 255 validation, email requiring required, email, and unique on users table, and password requiring required, min 8, and confirmed validation.
 
-class UserController extends Controller
-{
-    public function store(StoreUserRequest $request): JsonResponse
-    {
-        $user = User::create($request->validated());
-        return response()->json(new UserResource($user), 201);
-    }
-}
-```
+Symfony Controller Pattern:
 
-Laravel Form Request:
-
-```php
-<?php
-
-namespace App\Http\Requests;
-
-use Illuminate\Foundation\Http\FormRequest;
-
-class StoreUserRequest extends FormRequest
-{
-    public function authorize(): bool
-    {
-        return true;
-    }
-
-    public function rules(): array
-    {
-        return [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:users,email'],
-            'password' => ['required', 'min:8', 'confirmed'],
-        ];
-    }
-}
-```
-
-Symfony Controller:
-
-```php
-<?php
-
-namespace App\Controller;
-
-use App\Entity\User;
-use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\Routing\Attribute\Route;
-
-#[Route('/api/users')]
-class UserController extends AbstractController
-{
-    #[Route('', methods: ['POST'])]
-    public function create(EntityManagerInterface $em): JsonResponse
-    {
-        $user = new User();
-        $em->persist($user);
-        $em->flush();
-        return $this->json($user, 201);
-    }
-}
-```
+In the App\Controller namespace, create a UserController extending AbstractController. Import User, EntityManagerInterface, JsonResponse, and Route attribute. Apply Route attribute at class level for api/users path. Create a create method with Route attribute for empty path and POST method. Inject EntityManagerInterface, create new User, persist and flush, then return json response with user and status 201.
 
 ---
 
@@ -122,307 +57,53 @@ class UserController extends AbstractController
 
 Readonly Classes:
 
-```php
-<?php
-
-readonly class UserDTO
-{
-    public function __construct(
-        public int $id,
-        public string $name,
-        public string $email,
-    ) {}
-}
-```
+Declare a readonly class UserDTO with a constructor promoting public properties for int id, string name, and string email.
 
 Enums with Methods:
 
-```php
-<?php
-
-enum OrderStatus: string
-{
-    case Pending = 'pending';
-    case Processing = 'processing';
-    case Completed = 'completed';
-
-    public function label(): string
-    {
-        return match($this) {
-            self::Pending => 'Pending',
-            self::Processing => 'Processing',
-            self::Completed => 'Completed',
-        };
-    }
-}
-```
+Create an OrderStatus enum backed by string. Define cases Pending with pending value, Processing with processing value, and Completed with completed value. Add a label method that uses match expression on $this to return appropriate display labels for each case.
 
 Attributes:
 
-```php
-<?php
-
-#[Attribute(Attribute::TARGET_PROPERTY)]
-class Validate
-{
-    public function __construct(
-        public string $rule,
-        public ?string $message = null,
-    ) {}
-}
-
-class UserRequest
-{
-    #[Validate('required|email')]
-    public string $email;
-}
-```
+Create a Validate attribute class targeting properties with Attribute attribute. The constructor accepts a string rule and optional string message. Create a UserRequest class with email property decorated with Validate attribute specifying required and email rules.
 
 ### Laravel 11 Patterns
 
 Eloquent Model with Relationships:
 
-```php
-<?php
+In the App\Models namespace, create a Post model extending Model. Set protected fillable array with title, content, user_id, and status. Set protected casts array with status casting to PostStatus enum and published_at casting to datetime. Define a user method returning BelongsTo relationship. Define a comments method returning HasMany relationship. Add a scopePublished method that filters by published status.
 
-namespace App\Models;
+API Resource Pattern:
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+In the App\Http\Resources namespace, create a PostResource extending JsonResource. The toArray method takes a Request parameter. Return an array with id, title, author using UserResource with whenLoaded for user relationship, comments_count using whenCounted, and created_at formatted as ISO 8601 string.
 
-class Post extends Model
-{
-    protected $fillable = ['title', 'content', 'user_id', 'status'];
+Migration Pattern:
 
-    protected $casts = [
-        'status' => PostStatus::class,
-        'published_at' => 'datetime',
-    ];
-
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    public function comments(): HasMany
-    {
-        return $this->hasMany(Comment::class);
-    }
-
-    public function scopePublished($query)
-    {
-        return $query->where('status', PostStatus::Published);
-    }
-}
-```
-
-API Resource:
-
-```php
-<?php
-
-namespace App\Http\Resources;
-
-use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
-
-class PostResource extends JsonResource
-{
-    public function toArray(Request $request): array
-    {
-        return [
-            'id' => $this->id,
-            'title' => $this->title,
-            'author' => new UserResource($this->whenLoaded('user')),
-            'comments_count' => $this->whenCounted('comments'),
-            'created_at' => $this->created_at->toIso8601String(),
-        ];
-    }
-}
-```
-
-Migration:
-
-```php
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
-{
-    public function up(): void
-    {
-        Schema::create('posts', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->string('title');
-            $table->text('content');
-            $table->string('status')->default('draft');
-            $table->timestamps();
-            $table->softDeletes();
-        });
-    }
-};
-```
+Create an anonymous migration class extending Migration. The up method calls Schema create on posts table. Define id, foreignId for user_id with constrained and cascadeOnDelete, string for title, text for content, string for status defaulting to draft, timestamps, and softDeletes.
 
 Service Layer Pattern:
 
-```php
-<?php
-
-namespace App\Services;
-
-use App\Models\User;
-use App\DTOs\UserDTO;
-use Illuminate\Support\Facades\DB;
-
-class UserService
-{
-    public function create(UserDTO $dto): User
-    {
-        return DB::transaction(function () use ($dto) {
-            $user = User::create([
-                'name' => $dto->name,
-                'email' => $dto->email,
-                'password' => Hash::make($dto->password),
-            ]);
-
-            $user->profile()->create(['bio' => $dto->bio ?? '']);
-            return $user->load('profile');
-        });
-    }
-}
-```
+In the App\Services namespace, create a UserService class. Define a create method accepting UserDTO. Use DB transaction wrapping User create with data from DTO properties, profile creation with default bio, and returning user with loaded profile relationship. Catch ActiveRecord\RecordInvalid exceptions to handle validation failures.
 
 ### Symfony 7 Patterns
 
 Entity with Doctrine Attributes:
 
-```php
-<?php
-
-namespace App\Entity;
-
-use App\Repository\UserRepository;
-use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Validator\Constraints as Assert;
-
-#[ORM\Entity(repositoryClass: UserRepository::class)]
-#[ORM\Table(name: 'users')]
-class User
-{
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
-    private ?int $id = null;
-
-    #[ORM\Column(length: 255)]
-    #[Assert\NotBlank]
-    private ?string $name = null;
-
-    #[ORM\Column(length: 180, unique: true)]
-    #[Assert\Email]
-    private ?string $email = null;
-}
-```
+In the App\Entity namespace, create a User class. Apply ORM\Entity attribute with repositoryClass pointing to UserRepository. Apply ORM\Table attribute with name users. Add private nullable int id with ORM\Id, ORM\GeneratedValue, and ORM\Column attributes. Add private nullable string name with ORM\Column length 255 and Assert\NotBlank. Add private nullable string email with ORM\Column length 180 unique and Assert\Email.
 
 Service with Dependency Injection:
 
-```php
-<?php
-
-namespace App\Service;
-
-use App\Entity\User;
-use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
-
-class UserService
-{
-    public function __construct(
-        private readonly EntityManagerInterface $entityManager,
-        private readonly UserPasswordHasherInterface $passwordHasher,
-    ) {}
-
-    public function createUser(string $email, string $password): User
-    {
-        $user = new User();
-        $user->setEmail($email);
-        $user->setPassword($this->passwordHasher->hashPassword($user, $password));
-
-        $this->entityManager->persist($user);
-        $this->entityManager->flush();
-
-        return $user;
-    }
-}
-```
+In the App\Service namespace, create a UserService class. The constructor accepts readonly EntityManagerInterface and readonly UserPasswordHasherInterface via property promotion. Define createUser method taking email and password strings. Create new User, set email, hash password using the password hasher, persist with entity manager, flush, and return user.
 
 ### Testing Patterns
 
-PHPUnit Feature Test (Laravel):
+PHPUnit Feature Test for Laravel:
 
-```php
-<?php
+In Tests\Feature namespace, create UserApiTest extending TestCase with RefreshDatabase trait. The test_can_create_user method posts JSON to api/users with name, email, password, and password_confirmation. Assert status 201 and JSON structure with data containing id, name, and email. Assert database has users table with the email.
 
-namespace Tests\Feature;
+Pest Test for Laravel:
 
-use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
-
-class UserApiTest extends TestCase
-{
-    use RefreshDatabase;
-
-    public function test_can_create_user(): void
-    {
-        $response = $this->postJson('/api/users', [
-            'name' => 'John Doe',
-            'email' => 'john@example.com',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
-        ]);
-
-        $response->assertStatus(201)
-            ->assertJsonStructure(['data' => ['id', 'name', 'email']]);
-
-        $this->assertDatabaseHas('users', ['email' => 'john@example.com']);
-    }
-}
-```
-
-Pest Test (Laravel):
-
-```php
-<?php
-
-use App\Models\User;
-use App\Models\Post;
-
-it('can create a post', function () {
-    $user = User::factory()->create();
-
-    $response = $this->actingAs($user)
-        ->postJson('/api/posts', [
-            'title' => 'My First Post',
-            'content' => 'This is the content.',
-        ]);
-
-    $response->assertStatus(201);
-    expect(Post::count())->toBe(1);
-});
-
-it('requires authentication to create post', function () {
-    $this->postJson('/api/posts', [
-        'title' => 'My Post',
-        'content' => 'Content here.',
-    ])->assertStatus(401);
-});
-```
+Use App\Models\User and Post. Create a test using it function for can create a post. Create user with factory. Call actingAs with user, post JSON to api/posts with title and content. Assert status 201 and expect Post count to be 1. Create second test for requires authentication that posts without authentication and asserts status 401.
 
 ---
 
@@ -430,43 +111,41 @@ it('requires authentication to create post', function () {
 
 For comprehensive coverage including:
 
-- Production deployment patterns (Docker, Kubernetes)
-- Advanced Eloquent patterns (observers, accessors, mutators)
-- Doctrine advanced mapping (embeddables, inheritance)
+- Production deployment patterns for Docker and Kubernetes
+- Advanced Eloquent patterns including observers, accessors, and mutators
+- Doctrine advanced mapping with embeddables and inheritance
 - Queue and job processing
 - Event-driven architecture
-- Caching strategies (Redis, Memcached)
-- Security best practices (OWASP patterns)
+- Caching strategies with Redis and Memcached
+- Security best practices following OWASP patterns
 - CI/CD integration patterns
 
 See:
 
-- [Advanced Patterns](modules/advanced-patterns.md) - Complete advanced patterns guide
+- modules/advanced-patterns.md for complete advanced patterns guide
 
 ---
 
 ## Context7 Library Mappings
 
-```
-/laravel/framework - Laravel web framework
-/symfony/symfony - Symfony components and framework
-/doctrine/orm - Doctrine ORM for PHP
-/phpunit/phpunit - PHP testing framework
-/pestphp/pest - Elegant PHP testing framework
-/laravel/sanctum - Laravel API authentication
-/laravel/horizon - Laravel queue dashboard
-```
+- laravel/framework for Laravel web framework
+- symfony/symfony for Symfony components and framework
+- doctrine/orm for Doctrine ORM for PHP
+- phpunit/phpunit for PHP testing framework
+- pestphp/pest for elegant PHP testing framework
+- laravel/sanctum for Laravel API authentication
+- laravel/horizon for Laravel queue dashboard
 
 ---
 
 ## Works Well With
 
-- `moai-domain-backend` - REST API and microservices architecture
-- `moai-domain-database` - SQL patterns and ORM optimization
-- `moai-workflow-testing` - TDD and testing strategies
-- `moai-platform-deploy` - Docker and deployment patterns
-- `moai-essentials-debug` - AI-powered debugging
-- `moai-foundation-quality` - TRUST 5 quality principles
+- moai-domain-backend for REST API and microservices architecture
+- moai-domain-database for SQL patterns and ORM optimization
+- moai-workflow-testing for TDD and testing strategies
+- moai-platform-deploy for Docker and deployment patterns
+- moai-essentials-debug for AI-powered debugging
+- moai-foundation-quality for TRUST 5 quality principles
 
 ---
 
@@ -476,53 +155,28 @@ Common Issues:
 
 PHP Version Check:
 
-```bash
-php --version  # Should be 8.3+
-php -m | grep -E 'pdo|mbstring|openssl'
-```
+Run php with version flag to verify 8.3 or later. Use php with -m flag piped to grep for checking pdo, mbstring, and openssl extensions.
 
 Composer Autoload Issues:
 
-```bash
-composer dump-autoload -o
-composer clear-cache
-```
+Run composer dump-autoload with -o flag for optimized autoloader. Run composer clear-cache to clear the package cache.
 
 Laravel Cache Issues:
 
-```bash
-php artisan config:clear
-php artisan cache:clear
-php artisan route:clear
-php artisan view:clear
-```
+Run php artisan config:clear to clear configuration cache. Run php artisan cache:clear to clear application cache. Run php artisan route:clear to clear route cache. Run php artisan view:clear to clear compiled views.
 
 Symfony Cache Issues:
 
-```bash
-php bin/console cache:clear
-php bin/console cache:warmup
-```
+Run php bin/console cache:clear to clear cache. Run php bin/console cache:warmup to warm up the cache.
 
 Database Connection:
 
-```php
-try {
-    DB::connection()->getPdo();
-    echo "Connected successfully";
-} catch (\Exception $e) {
-    echo "Connection failed: " . $e->getMessage();
-}
-```
+Use try-catch block around DB::connection()->getPdo() call. Output success message on connection or exception message on failure.
 
 Migration Rollback:
 
-```bash
-php artisan migrate:rollback --step=1
-php artisan migrate:fresh --seed  # Development only
-php bin/console doctrine:migrations:migrate prev
-```
+Use php artisan migrate:rollback with step 1 to rollback last migration. Use php artisan migrate:fresh with seed flag for development reset only. For Symfony, use php bin/console doctrine:migrations:migrate prev to rollback.
 
 ---
 
-Version: 1.0.0 | Updated: 2025-12-07 | Status: Active
+Version: 1.1.0 | Updated: 2026-01-11 | Status: Active

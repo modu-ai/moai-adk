@@ -1,7 +1,7 @@
 ---
 name: "moai-lang-cpp"
 description: "Modern C++ (C++23/C++20) development specialist covering RAII, smart pointers, concepts, ranges, modules, and CMake. Use when developing high-performance applications, games, system software, or embedded systems."
-version: 1.0.0
+version: 1.1.0
 category: "language"
 modularized: true
 user-invocable: false
@@ -16,7 +16,7 @@ tags:
     "smart-pointers",
     "concepts",
   ]
-updated: 2026-01-08
+updated: 2026-01-11
 status: "active"
 allowed-tools:
   - Read
@@ -46,49 +46,11 @@ Core Capabilities:
 
 ### Quick Patterns
 
-Smart Pointer Factory:
+Smart Pointer Factory Pattern: Create a class with a static factory method that returns std::unique_ptr. Include a header for memory, define a Widget class with a static create method taking an int value parameter. The create method uses std::make_unique to instantiate and return the Widget. The constructor should be explicit and take the value parameter, storing it in a private member variable.
 
-```cpp
-#include <memory>
+Concepts Constraint Pattern: Define a concept named Numeric that combines std::integral or std::floating_point constraints. Create a template function square that requires T to satisfy the Numeric concept, taking a value parameter and returning value multiplied by itself.
 
-class Widget {
-public:
-    static auto create(int value) -> std::unique_ptr<Widget> {
-        return std::make_unique<Widget>(value);
-    }
-    explicit Widget(int v) : value_(v) {}
-private:
-    int value_;
-};
-
-auto widget = Widget::create(42);
-```
-
-Concepts Constraint:
-
-```cpp
-#include <concepts>
-
-template<typename T>
-concept Numeric = std::integral<T> || std::floating_point<T>;
-
-template<Numeric T>
-auto square(T value) -> T {
-    return value * value;
-}
-```
-
-Ranges Pipeline:
-
-```cpp
-#include <ranges>
-#include <vector>
-
-auto result = std::views::iota(1, 100)
-    | std::views::filter([](int n) { return n % 2 == 0; })
-    | std::views::transform([](int n) { return n * n; })
-    | std::views::take(10);
-```
+Ranges Pipeline Pattern: Use std::views::iota to create a range from 1 to 100, pipe it through a filter to select even numbers, then transform by squaring each value, and finally take the first 10 results.
 
 ---
 
@@ -96,296 +58,35 @@ auto result = std::views::iota(1, 100)
 
 ### C++23 New Features
 
-std::expected for Error Handling:
+std::expected for Error Handling: Create an enum class ParseError with InvalidFormat and OutOfRange values. Define a parse_int function that takes std::string_view and returns std::expected containing either int or ParseError. Inside, use a try-catch block to call std::stoi. Catch std::invalid_argument and return std::unexpected with InvalidFormat, catch std::out_of_range and return std::unexpected with OutOfRange. On success, return the parsed value directly. Usage involves checking the result with if(result) and accessing the value with asterisk operator or handling the error case.
 
-```cpp
-#include <expected>
-#include <string>
+std::print for Type-Safe Output: Include the print header and use std::println for formatted output with curly brace placeholders. Supports format specifiers like colon followed by hash x for hexadecimal or colon followed by .2f for floating point precision.
 
-enum class ParseError { InvalidFormat, OutOfRange };
-
-auto parse_int(std::string_view str) -> std::expected<int, ParseError> {
-    try {
-        int value = std::stoi(std::string(str));
-        return value;
-    } catch (const std::invalid_argument&) {
-        return std::unexpected(ParseError::InvalidFormat);
-    } catch (const std::out_of_range&) {
-        return std::unexpected(ParseError::OutOfRange);
-    }
-}
-
-// Usage
-auto result = parse_int("42");
-if (result) {
-    std::println("Value: {}", *result);
-} else {
-    std::println("Error occurred");
-}
-```
-
-std::print for Type-Safe Output:
-
-```cpp
-#include <print>
-
-int main() {
-    std::println("Hello, {}!", "World");
-    std::print("Value: {}, Hex: {:#x}\n", 255, 255);
-    std::println("Formatted: {:.2f}", 3.14159);
-}
-```
-
-Deducing This (Explicit Object Parameter):
-
-```cpp
-class Builder {
-    std::string data_;
-public:
-    template<typename Self>
-    auto append(this Self&& self, std::string_view s) -> Self&& {
-        self.data_ += s;
-        return std::forward<Self>(self);
-    }
-
-    auto build() const -> std::string { return data_; }
-};
-
-auto result = Builder{}.append("Hello").append(" World").build();
-```
+Deducing This (Explicit Object Parameter): Define a Builder class with a data_ member string. Create a template method append with template parameter Self that takes this Self and and a string_view parameter. Forward self with std::forward and return Self and and. This enables chaining on both lvalue and rvalue objects.
 
 ### C++20 Features
 
-Concepts and Constraints:
+Concepts and Constraints: Define a Hashable concept using requires expression that checks if std::hash can produce a std::size_t. Create template functions with requires clauses to constrain Container types to std::ranges::range. Use abbreviated syntax with std::integral auto for simple constraints on individual parameters.
 
-```cpp
-#include <concepts>
+Modules: Create a module interface file with .cppm extension. Use export module followed by the module name. Define an export namespace containing template functions. In consumer files, use import statements instead of include directives. Import std for standard library access in module-aware compilers.
 
-template<typename T>
-concept Hashable = requires(T a) {
-    { std::hash<T>{}(a) } -> std::convertible_to<std::size_t>;
-};
-
-template<typename Container>
-    requires std::ranges::range<Container>
-auto make_default_filled(std::size_t count) -> Container {
-    Container c;
-    c.resize(count);
-    return c;
-}
-
-void process(std::integral auto value) {
-    // value is constrained to integral types
-}
-```
-
-Modules (C++20):
-
-```cpp
-// math.cppm - Module interface
-export module math;
-
-export namespace math {
-    template<typename T>
-    constexpr auto add(T a, T b) -> T {
-        return a + b;
-    }
-}
-
-// main.cpp - Consumer
-import math;
-import std;
-
-int main() {
-    auto result = math::add(10, 20);
-    std::println("Result: {}", result);
-}
-```
-
-Ranges Library:
-
-```cpp
-#include <ranges>
-#include <vector>
-
-struct Person {
-    std::string name;
-    int age;
-};
-
-void process_people(std::vector<Person>& people) {
-    auto adults = people
-        | std::views::filter([](const Person& p) { return p.age >= 18; })
-        | std::views::transform([](const Person& p) { return p.name; });
-
-    for (const auto& name : adults) {
-        std::println("{}", name);
-    }
-
-    std::ranges::sort(people, {}, &Person::age);
-}
-```
+Ranges Library: Define structs for data types like Person with name and age fields. Use pipe operator to chain views::filter with a lambda checking conditions, then views::transform to extract fields. Iterate with range-based for loops. Use std::ranges::sort with projections for sorting by member fields.
 
 ### RAII and Resource Management
 
-Rule of Five:
+Rule of Five: Implement a Resource class managing a raw pointer and size. The constructor allocates with new array syntax. The destructor calls delete array. Copy constructor allocates new memory and uses std::copy. Copy assignment uses copy-and-swap idiom by creating a temp and calling swap. Move constructor uses std::exchange to take ownership and null the source. Move assignment deletes current data and uses std::exchange. The swap member swaps both pointer and size members.
 
-```cpp
-class Resource {
-    int* data_;
-    std::size_t size_;
-
-public:
-    explicit Resource(std::size_t size)
-        : data_(new int[size]), size_(size) {}
-
-    ~Resource() { delete[] data_; }
-
-    Resource(const Resource& other)
-        : data_(new int[other.size_]), size_(other.size_) {
-        std::copy(other.data_, other.data_ + size_, data_);
-    }
-
-    auto operator=(const Resource& other) -> Resource& {
-        if (this != &other) {
-            Resource temp(other);
-            swap(temp);
-        }
-        return *this;
-    }
-
-    Resource(Resource&& other) noexcept
-        : data_(std::exchange(other.data_, nullptr))
-        , size_(std::exchange(other.size_, 0)) {}
-
-    auto operator=(Resource&& other) noexcept -> Resource& {
-        if (this != &other) {
-            delete[] data_;
-            data_ = std::exchange(other.data_, nullptr);
-            size_ = std::exchange(other.size_, 0);
-        }
-        return *this;
-    }
-
-    void swap(Resource& other) noexcept {
-        std::swap(data_, other.data_);
-        std::swap(size_, other.size_);
-    }
-};
-```
-
-Smart Pointer Patterns:
-
-```cpp
-#include <memory>
-
-class Connection {
-public:
-    static auto create(std::string_view host) -> std::unique_ptr<Connection> {
-        return std::make_unique<Connection>(host);
-    }
-    explicit Connection(std::string_view host) : host_(host) {}
-private:
-    std::string host_;
-};
-
-class Node : public std::enable_shared_from_this<Node> {
-public:
-    std::vector<std::shared_ptr<Node>> children;
-    std::weak_ptr<Node> parent;  // Weak to break cycle
-
-    void add_child(std::shared_ptr<Node> child) {
-        child->parent = weak_from_this();
-        children.push_back(std::move(child));
-    }
-};
-```
+Smart Pointer Patterns: For unique ownership, create static factory methods returning std::unique_ptr via std::make_unique. For shared ownership with cycles, use std::enable_shared_from_this as a base class. Store children in std::vector of shared_ptr and parent as std::weak_ptr to break reference cycles. Use weak_from_this when setting parent relationships.
 
 ### CMake Modern Patterns
 
-CMakeLists.txt (C++23 Project):
-
-```cmake
-cmake_minimum_required(VERSION 3.28)
-project(MyProject VERSION 1.0.0 LANGUAGES CXX)
-
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-add_compile_options(
-    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
-    $<$<CXX_COMPILER_ID:MSVC>:/W4>
-)
-
-include(FetchContent)
-
-FetchContent_Declare(fmt
-    GIT_REPOSITORY https://github.com/fmtlib/fmt
-    GIT_TAG 10.2.1)
-FetchContent_Declare(googletest
-    GIT_REPOSITORY https://github.com/google/googletest
-    GIT_TAG v1.14.0)
-FetchContent_MakeAvailable(fmt googletest)
-
-add_library(mylib STATIC src/core.cpp)
-target_include_directories(mylib PUBLIC include)
-target_link_libraries(mylib PUBLIC fmt::fmt)
-
-add_executable(myapp src/main.cpp)
-target_link_libraries(myapp PRIVATE mylib)
-
-enable_testing()
-add_executable(mylib_tests tests/core_test.cpp)
-target_link_libraries(mylib_tests PRIVATE mylib GTest::gtest_main)
-include(GoogleTest)
-gtest_discover_tests(mylib_tests)
-```
+CMakeLists.txt Structure for C++23: Begin with cmake_minimum_required VERSION 3.28 and project declaration. Set CMAKE_CXX_STANDARD to 23 with STANDARD_REQUIRED ON. Enable CMAKE_EXPORT_COMPILE_COMMANDS. Use generator expressions for compiler-specific warning flags, checking CXX_COMPILER_ID for GNU, Clang, or MSVC. Use FetchContent to declare dependencies with GIT_REPOSITORY and GIT_TAG parameters. Call FetchContent_MakeAvailable to download and configure. Create libraries with add_library, set include directories with target_include_directories, and link with target_link_libraries. For testing, enable_testing, add test executables, link GTest::gtest_main, and use gtest_discover_tests.
 
 ### Concurrency
 
-std::jthread and Stop Tokens:
+std::jthread and Stop Tokens: Define worker functions taking std::stop_token parameter. Loop while stop_requested returns false, performing work and sleeping. Create std::jthread objects passing the worker function. Call request_stop to signal termination. The thread destructor automatically joins.
 
-```cpp
-#include <thread>
-#include <stop_token>
-
-void worker(std::stop_token stoken) {
-    while (!stoken.stop_requested()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-}
-
-int main() {
-    std::jthread worker_thread(worker);
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    worker_thread.request_stop();
-}
-```
-
-Synchronization Primitives:
-
-```cpp
-#include <latch>
-#include <barrier>
-#include <semaphore>
-
-void parallel_init(std::latch& ready, int id) {
-    ready.count_down();
-}
-
-void parallel_compute(std::barrier<>& sync, int id) {
-    for (int i = 0; i < 10; ++i) {
-        sync.arrive_and_wait();
-    }
-}
-
-std::counting_semaphore<4> pool(4);
-void limited_resource() {
-    pool.acquire();
-    pool.release();
-}
-```
+Synchronization Primitives: Use std::latch for one-time synchronization by calling count_down. Use std::barrier for repeated synchronization with arrive_and_wait. Use std::counting_semaphore for resource pools with acquire and release calls.
 
 ---
 
@@ -408,15 +109,13 @@ See:
 
 ## Context7 Library Mappings
 
-```
-/microsoft/vcpkg - Package manager
-/conan-io/conan - Conan package manager
-/google/googletest - Google Test framework
-/catchorg/Catch2 - Catch2 testing framework
-/fmtlib/fmt - {fmt} formatting library
-/nlohmann/json - JSON for Modern C++
-/gabime/spdlog - Fast logging library
-```
+- /microsoft/vcpkg - Package manager
+- /conan-io/conan - Conan package manager
+- /google/googletest - Google Test framework
+- /catchorg/Catch2 - Catch2 testing framework
+- /fmtlib/fmt - fmt formatting library
+- /nlohmann/json - JSON for Modern C++
+- /gabime/spdlog - Fast logging library
 
 ---
 
@@ -432,31 +131,13 @@ See:
 
 ## Troubleshooting
 
-Version Check:
+Version Check: Run g++ --version to verify GCC 13+ for C++23 support, clang++ --version for Clang 17+, and cmake --version for CMake 3.28+.
 
-```bash
-g++ --version  # GCC 13+ for C++23
-clang++ --version  # Clang 17+ for C++23
-cmake --version  # CMake 3.28+
-```
+Common Compilation Flags: Use -std=c++23 with -Wall -Wextra -Wpedantic -O2 for standard builds. Add -fsanitize=address,undefined -g for debugging builds.
 
-Common Compilation Flags:
-
-```bash
-g++ -std=c++23 -Wall -Wextra -Wpedantic -O2 main.cpp -o main
-g++ -std=c++23 -fsanitize=address,undefined -g main.cpp -o main
-```
-
-vcpkg Integration:
-
-```bash
-git clone https://github.com/microsoft/vcpkg
-./vcpkg/bootstrap-vcpkg.sh
-./vcpkg/vcpkg install fmt nlohmann-json gtest
-cmake -B build -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake
-```
+vcpkg Integration: Clone the vcpkg repository from GitHub, run bootstrap-vcpkg.sh, then install packages like fmt, nlohmann-json, and gtest using vcpkg install. Configure CMake with -DCMAKE_TOOLCHAIN_FILE pointing to vcpkg's buildsystems/vcpkg.cmake.
 
 ---
 
-Last Updated: 2025-12-07
-Status: Active (v1.0.0)
+Last Updated: 2026-01-11
+Status: Active (v1.1.0)

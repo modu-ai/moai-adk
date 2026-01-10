@@ -1,13 +1,13 @@
 ---
 name: "moai-lang-python"
 description: "Python 3.13+ development specialist covering FastAPI, Django, async patterns, data science, testing with pytest, and modern Python features. Use when developing Python APIs, web applications, data pipelines, or writing tests."
-version: 1.0.0
+version: 1.1.0
 category: "language"
 modularized: false
 user-invocable: false
 tags:
   ["language", "python", "fastapi", "django", "pytest", "async", "data-science"]
-updated: 2026-01-08
+updated: 2026-01-11
 status: "active"
 allowed-tools:
   - Read
@@ -22,65 +22,33 @@ allowed-tools:
 
 Python 3.13+ Development Specialist - FastAPI, Django, async patterns, pytest, and modern Python features.
 
-Auto-Triggers: `.py` files, `pyproject.toml`, `requirements.txt`, `pytest.ini`, FastAPI/Django discussions
+Auto-Triggers: Python files with .py extension, pyproject.toml, requirements.txt, pytest.ini, FastAPI or Django discussions
 
 Core Capabilities:
 
-- Python 3.13 Features: JIT compiler (PEP 744), GIL-free mode (PEP 703), pattern matching
-- Web Frameworks: FastAPI 0.115+, Django 5.2 LTS
+- Python 3.13 Features: JIT compiler via PEP 744, GIL-free mode via PEP 703, pattern matching with match and case statements
+- Web Frameworks: FastAPI 0.115 and later, Django 5.2 LTS
 - Data Validation: Pydantic v2.9 with model_validate patterns
 - ORM: SQLAlchemy 2.0 async patterns
-- Testing: pytest with fixtures, async testing, parametrize
+- Testing: pytest with fixtures, async testing, parametrize decorators
 - Package Management: poetry, uv, pip with pyproject.toml
-- Type Hints: Protocol, TypeVar, ParamSpec, modern typing patterns
-- Async: asyncio, async generators, task groups
-- Data Science: numpy, pandas, polars basics
+- Type Hints: Protocol, TypeVar, ParamSpec, and modern typing patterns
+- Async: asyncio, async generators, and task groups
+- Data Science: numpy, pandas, and polars basics
 
 ### Quick Patterns
 
-FastAPI Endpoint:
+FastAPI Endpoint Pattern:
 
-```python
-from fastapi import FastAPI, Depends
-from pydantic import BaseModel
+Import FastAPI and Depends from fastapi, and BaseModel from pydantic. Create a FastAPI application instance. Define a UserCreate model class inheriting from BaseModel with name and email string fields. Create an async post endpoint at the users path that accepts a UserCreate parameter and returns a User by calling UserService.create with await.
 
-app = FastAPI()
+Pydantic v2.9 Validation Pattern:
 
-class UserCreate(BaseModel):
-    name: str
-    email: str
+Import BaseModel and ConfigDict from pydantic. Define a User class inheriting from BaseModel. Set model_config using ConfigDict with from_attributes set to True and str_strip_whitespace set to True. Add id as integer, name as string, and email as string fields. Use model_validate to create from ORM objects and model_validate_json to create from JSON data.
 
-@app.post("/users/")
-async def create_user(user: UserCreate) -> User:
-    return await UserService.create(user)
-```
+pytest Async Test Pattern:
 
-Pydantic v2.9 Validation:
-
-```python
-from pydantic import BaseModel, ConfigDict
-
-class User(BaseModel):
-    model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
-
-    id: int
-    name: str
-    email: str
-
-user = User.model_validate(orm_obj)  # from ORM object
-user = User.model_validate_json(json_data)  # from JSON
-```
-
-pytest Async Test:
-
-```python
-import pytest
-
-@pytest.mark.asyncio
-async def test_create_user(async_client):
-    response = await async_client.post("/users/", json={"name": "Test"})
-    assert response.status_code == 201
-```
+Import pytest and mark the test function with pytest.mark.asyncio decorator. Create an async test function that takes async_client as a fixture parameter. Send a post request to the users endpoint with a JSON body containing a name field. Assert that the response status_code equals 201.
 
 ---
 
@@ -88,358 +56,111 @@ async def test_create_user(async_client):
 
 ### Python 3.13 New Features
 
-JIT Compiler (PEP 744):
+JIT Compiler via PEP 744:
 
-- Experimental feature, disabled by default
-- Enable: `PYTHON_JIT=1` environment variable
-- Build option: `--enable-experimental-jit`
+- Experimental feature disabled by default
+- Enable using the PYTHON_JIT environment variable set to 1
+- Build option available as enable-experimental-jit flag
 - Provides performance improvements for CPU-bound code
-- Copy-and-patch JIT that translates specialized bytecode to machine code
+- Uses copy-and-patch JIT that translates specialized bytecode to machine code
 
-GIL-Free Mode (PEP 703):
+GIL-Free Mode via PEP 703:
 
-- Experimental free-threaded build (python3.13t)
+- Experimental free-threaded build available as python3.13t
 - Allows true parallel thread execution
-- Available in official Windows/macOS installers
-- Best for: CPU-intensive multi-threaded applications
-- Not recommended for production yet
+- Available in official Windows and macOS installers
+- Best suited for CPU-intensive multi-threaded applications
+- Not recommended for production use yet
 
-Pattern Matching (match/case):
+Pattern Matching with match and case:
 
-```python
-def process_response(response: dict) -> str:
-    match response:
-        case {"status": "ok", "data": data}:
-            return f"Success: {data}"
-        case {"status": "error", "message": msg}:
-            return f"Error: {msg}"
-        case {"status": status} if status in ("pending", "processing"):
-            return "In progress..."
-        case _:
-            return "Unknown response"
-```
+Create a process_response function that takes a response dictionary and returns a string. Use match statement on response. For case with status ok and data field, return success message with the data. For case with status error and message field, return error message. For case with status matching pending or processing using a guard condition, return in progress message. For default case using underscore, return unknown response.
 
 ### FastAPI 0.115+ Patterns
 
 Async Dependency Injection:
 
-```python
-from fastapi import FastAPI, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from contextlib import asynccontextmanager
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    await init_db()
-    yield
-    # Shutdown
-    await cleanup()
-
-app = FastAPI(lifespan=lifespan)
-
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    async with async_session() as session:
-        yield session
-
-@app.get("/users/{user_id}")
-async def get_user(
-    user_id: int,
-    db: AsyncSession = Depends(get_db)
-) -> UserResponse:
-    user = await get_user_by_id(db, user_id)
-    return UserResponse.model_validate(user)
-```
+Import FastAPI, Depends from fastapi, AsyncSession from sqlalchemy.ext.asyncio, and asynccontextmanager from contextlib. Create a lifespan async context manager decorated with asynccontextmanager that takes the FastAPI app. In the lifespan, call await init_db for startup, yield, then call await cleanup for shutdown. Create the FastAPI app with the lifespan parameter. Define an async get_db function returning AsyncGenerator of AsyncSession that uses async with on async_session and yields the session. Create a get endpoint for users with user_id path parameter, using Depends with get_db to inject the database session. Call await get_user_by_id and return UserResponse.model_validate with the user.
 
 Class-Based Dependencies:
 
-```python
-from fastapi import Depends
-
-class Paginator:
-    def __init__(self, page: int = 1, size: int = 20):
-        self.page = max(1, page)
-        self.size = min(100, max(1, size))
-        self.offset = (self.page - 1) * self.size
-
-@app.get("/items/")
-async def list_items(pagination: Paginator = Depends()) -> list[Item]:
-    return await Item.get_page(pagination.offset, pagination.size)
-```
+Create a Paginator class with an init method accepting page defaulting to 1 and size defaulting to 20. Set self.page to max of 1 and page, self.size to min of 100 and max of 1 and size, and self.offset to page minus 1 multiplied by size. Create a list_items endpoint using Depends on Paginator to inject pagination and return items using get_page with offset and size.
 
 ### Django 5.2 LTS Features
 
 Composite Primary Keys:
 
-```python
-from django.db import models
-
-class OrderItem(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    quantity = models.IntegerField()
-
-    class Meta:
-        pk = models.CompositePrimaryKey("order", "product")
-```
+Create an OrderItem model with ForeignKey to Order with CASCADE deletion, ForeignKey to Product with CASCADE deletion, and an IntegerField for quantity. In the Meta class, set pk to models.CompositePrimaryKey with order and product fields.
 
 URL Reverse with Query Parameters:
 
-```python
-from django.urls import reverse
-
-url = reverse("search", query={"q": "django", "page": 1}, fragment="results")
-# /search/?q=django&page=1#results
-```
+Import reverse from django.urls. Call reverse with the search view name, query dictionary containing q set to django and page set to 1, and fragment set to results. The result is the search path with query string and fragment.
 
 Automatic Model Imports in Shell:
 
-```bash
-python manage.py shell
-# Models from all installed apps are automatically imported
-```
+Run python manage.py shell and models from all installed apps are automatically imported without explicit import statements.
 
 ### Pydantic v2.9 Deep Patterns
 
 Reusable Validators with Annotated:
 
-```python
-from typing import Annotated
-from pydantic import AfterValidator, BaseModel
-
-def validate_positive(v: int) -> int:
-    if v <= 0:
-        raise ValueError("Must be positive")
-    return v
-
-PositiveInt = Annotated[int, AfterValidator(validate_positive)]
-
-class Product(BaseModel):
-    price: PositiveInt
-    quantity: PositiveInt
-```
+Import Annotated from typing and AfterValidator and BaseModel from pydantic. Define a validate_positive function that takes an integer v and returns an integer. If v is less than or equal to 0, raise ValueError with must be positive message. Otherwise return v. Create PositiveInt as Annotated with int and AfterValidator using validate_positive. Use PositiveInt in model fields for price and quantity.
 
 Model Validator for Cross-Field Validation:
 
-```python
-from pydantic import BaseModel, model_validator
-from typing import Self
-
-class DateRange(BaseModel):
-    start_date: date
-    end_date: date
-
-    @model_validator(mode="after")
-    def validate_dates(self) -> Self:
-        if self.end_date < self.start_date:
-            raise ValueError("end_date must be after start_date")
-        return self
-```
+Import BaseModel and model_validator from pydantic, and Self from typing. Create a DateRange model with start_date and end_date as date fields. Add a model_validator decorator with mode set to after. In the validate_dates method returning Self, check if end_date is before start_date and raise ValueError if so, otherwise return self.
 
 ConfigDict Best Practices:
 
-```python
-from pydantic import BaseModel, ConfigDict
-
-class BaseSchema(BaseModel):
-    model_config = ConfigDict(
-        from_attributes=True,      # ORM object support
-        populate_by_name=True,     # Allow aliases
-        extra="forbid",            # Fail on unknown fields
-        str_strip_whitespace=True, # Clean strings
-    )
-```
+Create a BaseSchema model with model_config set to ConfigDict. Set from_attributes to True for ORM object support, populate_by_name to True to allow aliases, extra to forbid to fail on unknown fields, and str_strip_whitespace to True to clean strings.
 
 ### SQLAlchemy 2.0 Async Patterns
 
 Engine and Session Setup:
 
-```python
-from sqlalchemy.ext.asyncio import (
-    create_async_engine,
-    async_sessionmaker,
-    AsyncSession,
-)
-
-engine = create_async_engine(
-    "postgresql+asyncpg://user:pass@localhost/db",
-    pool_pre_ping=True,
-    echo=True,
-)
-
-async_session = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,  # Prevent detached instance errors
-)
-```
+Import create_async_engine, async_sessionmaker, and AsyncSession from sqlalchemy.ext.asyncio. Create engine using create_async_engine with the postgresql+asyncpg connection string, pool_pre_ping set to True, and echo set to True. Create async_session using async_sessionmaker with the engine, class_ set to AsyncSession, and expire_on_commit set to False to prevent detached instance errors.
 
 Repository Pattern:
 
-```python
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-class UserRepository:
-    def __init__(self, session: AsyncSession):
-        self.session = session
-
-    async def get_by_id(self, user_id: int) -> User | None:
-        result = await self.session.execute(
-            select(User).where(User.id == user_id)
-        )
-        return result.scalar_one_or_none()
-
-    async def create(self, user: UserCreate) -> User:
-        db_user = User(**user.model_dump())
-        self.session.add(db_user)
-        await self.session.commit()
-        await self.session.refresh(db_user)
-        return db_user
-```
+Create a UserRepository class with an init method taking an AsyncSession. Define an async get_by_id method that executes a select query with a where clause for user_id, returning scalar_one_or_none result. Define an async create method that creates a User from UserCreate model_dump, adds to session, commits, refreshes, and returns the user.
 
 Streaming Large Results:
 
-```python
-async def stream_users(db: AsyncSession):
-    result = await db.stream(select(User))
-    async for user in result.scalars():
-        yield user
-```
+Create an async stream_users function that takes an AsyncSession. Call await db.stream with the select User query. Use async for to iterate over result.scalars and yield each user.
 
 ### pytest Advanced Patterns
 
 Async Fixtures with pytest-asyncio:
 
-```python
-import pytest
-import pytest_asyncio
-from httpx import AsyncClient
-
-@pytest_asyncio.fixture
-async def async_client(app) -> AsyncGenerator[AsyncClient, None]:
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        yield client
-
-@pytest_asyncio.fixture
-async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    async with async_session() as session:
-        async with session.begin():
-            yield session
-            await session.rollback()
-```
+Import pytest, pytest_asyncio, and AsyncClient from httpx. Decorate fixtures with pytest_asyncio.fixture. Create an async_client fixture that uses async with on AsyncClient with app and base_url, yielding the client. Create a db_session fixture that uses async with on async_session and session.begin, yielding session and calling await session.rollback.
 
 Parametrized Tests:
 
-```python
-@pytest.mark.parametrize(
-    "input_data,expected_status",
-    [
-        ({"name": "Valid"}, 201),
-        ({"name": ""}, 422),
-        ({}, 422),
-    ],
-    ids=["valid", "empty_name", "missing_name"],
-)
-async def test_create_user(async_client, input_data, expected_status):
-    response = await async_client.post("/users/", json=input_data)
-    assert response.status_code == expected_status
-```
+Use pytest.mark.parametrize decorator with input_data and expected_status parameter names. Provide test cases as tuples with dictionaries and expected status codes. Add ids for valid, empty_name, and missing_name cases. The test function takes async_client, input_data, and expected_status, posts to users endpoint, and asserts status_code matches expected.
 
 Fixture Factories:
 
-```python
-@pytest.fixture
-def user_factory():
-    async def _create_user(db: AsyncSession, **kwargs) -> User:
-        defaults = {"name": "Test User", "email": "test@example.com"}
-        user = User(**(defaults | kwargs))
-        db.add(user)
-        await db.commit()
-        return user
-    return _create_user
-```
+Create a user_factory fixture that returns an async function. The inner function takes db as AsyncSession and keyword arguments. Set defaults dictionary with name and email. Create User with defaults merged with kwargs using the pipe operator, add to db, commit, and return user.
 
 ### Type Hints Modern Patterns
 
 Protocol for Structural Typing:
 
-```python
-from typing import Protocol, runtime_checkable
-
-@runtime_checkable
-class Repository(Protocol[T]):
-    async def get(self, id: int) -> T | None: ...
-    async def create(self, data: dict) -> T: ...
-    async def delete(self, id: int) -> bool: ...
-```
+Import Protocol and runtime_checkable from typing. Apply runtime_checkable decorator. Define a Repository Protocol with generic type T. Add abstract async get method taking int id returning T or None, async create method taking dict data returning T, and async delete method taking int id returning bool.
 
 ParamSpec for Decorators:
 
-```python
-from typing import ParamSpec, TypeVar, Callable
-from functools import wraps
-
-P = ParamSpec("P")
-R = TypeVar("R")
-
-def retry(times: int = 3) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    def decorator(func: Callable[P, R]) -> Callable[P, R]:
-        @wraps(func)
-        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-            for attempt in range(times):
-                try:
-                    return await func(*args, **kwargs)
-                except Exception:
-                    if attempt == times - 1:
-                        raise
-        return wrapper
-    return decorator
-```
+Import ParamSpec, TypeVar, and Callable from typing, and wraps from functools. Define P as ParamSpec and R as TypeVar. Create a retry decorator function taking times defaulting to 3 that returns a callable wrapper. The inner decorator wraps the function and the wrapper iterates for the specified times, trying to await the function and re-raising on the last attempt.
 
 ### Package Management
 
-pyproject.toml (Poetry):
+pyproject.toml with Poetry:
 
-```toml
-[tool.poetry]
-name = "my-project"
-version = "1.0.0"
-python = "^3.13"
+In the tool.poetry section, set name, version, and python version constraint. Under dependencies, add fastapi, pydantic, and sqlalchemy with asyncio extra. Under dev dependencies, add pytest, pytest-asyncio, and ruff. Configure ruff with line-length and target-version. Set pytest asyncio_mode to auto in ini_options.
 
-[tool.poetry.dependencies]
-fastapi = "^0.115.0"
-pydantic = "^2.9.0"
-sqlalchemy = {extras = ["asyncio"], version = "^2.0.0"}
+uv Fast Package Manager:
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.0"
-pytest-asyncio = "^0.24"
-ruff = "^0.8"
-
-[tool.ruff]
-line-length = 100
-target-version = "py313"
-
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-```
-
-uv (Fast Package Manager):
-
-```bash
-# Install uv
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Create virtual environment
-uv venv
-
-# Install dependencies
-uv pip install -r requirements.txt
-
-# Add dependency
-uv add fastapi
-```
+Install uv using curl with the install script from astral.sh. Create virtual environment with uv venv. Install dependencies with uv pip install from requirements.txt. Add dependencies with uv add command.
 
 ---
 
@@ -447,42 +168,40 @@ uv add fastapi
 
 For comprehensive coverage including:
 
-- Production deployment patterns (Docker, Kubernetes)
-- Advanced async patterns (task groups, semaphores)
-- Data science integration (numpy, pandas, polars)
+- Production deployment patterns for Docker and Kubernetes
+- Advanced async patterns including task groups and semaphores
+- Data science integration with numpy, pandas, and polars
 - Performance optimization techniques
-- Security best practices (OWASP patterns)
+- Security best practices following OWASP patterns
 - CI/CD integration patterns
 
 See:
 
-- [reference.md](reference.md) - Complete reference documentation
-- [examples.md](examples.md) - Production-ready code examples
+- reference.md for complete reference documentation
+- examples.md for production-ready code examples
 
 ---
 
 ## Context7 Library Mappings
 
-```
-/tiangolo/fastapi - FastAPI async web framework
-/django/django - Django web framework
-/pydantic/pydantic - Data validation with type annotations
-/sqlalchemy/sqlalchemy - SQL toolkit and ORM
-/pytest-dev/pytest - Testing framework
-/numpy/numpy - Numerical computing
-/pandas-dev/pandas - Data analysis library
-/pola-rs/polars - Fast DataFrame library
-```
+- tiangolo/fastapi for FastAPI async web framework
+- django/django for Django web framework
+- pydantic/pydantic for data validation with type annotations
+- sqlalchemy/sqlalchemy for SQL toolkit and ORM
+- pytest-dev/pytest for testing framework
+- numpy/numpy for numerical computing
+- pandas-dev/pandas for data analysis library
+- pola-rs/polars for fast DataFrame library
 
 ---
 
 ## Works Well With
 
-- `moai-domain-backend` - REST API and microservices architecture
-- `moai-domain-database` - SQL patterns and ORM optimization
-- `moai-quality-testing` - TDD and testing strategies
-- `moai-essentials-debug` - AI-powered debugging
-- `moai-foundation-trust` - TRUST 5 quality principles
+- moai-domain-backend for REST API and microservices architecture
+- moai-domain-database for SQL patterns and ORM optimization
+- moai-workflow-testing for TDD and testing strategies
+- moai-essentials-debug for AI-powered debugging
+- moai-foundation-quality for TRUST 5 quality principles
 
 ---
 
@@ -492,32 +211,21 @@ Common Issues:
 
 Python Version Check:
 
-```bash
-python --version  # Should be 3.13+
-python -c "import sys; print(sys.version_info)"
-```
+Run python with version flag to verify 3.13 or later. Use python with -c flag to print sys.version_info for detailed version information.
 
 Async Session Detached Error:
 
-- Solution: Set `expire_on_commit=False` in session config
-- Or: Use `await session.refresh(obj)` after commit
+Set expire_on_commit to False in session configuration. Alternatively, use await session.refresh with the object after commit.
 
 pytest asyncio Mode Warning:
 
-```toml
-# pyproject.toml
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "function"
-```
+In pyproject.toml under tool.pytest.ini_options, set asyncio_mode to auto and asyncio_default_fixture_loop_scope to function.
 
 Pydantic v2 Migration:
 
-- `parse_obj()` is now `model_validate()`
-- `parse_raw()` is now `model_validate_json()`
-- `from_orm()` requires `from_attributes=True` in ConfigDict
+The parse_obj method is now model_validate. The parse_raw method is now model_validate_json. The from_orm functionality requires from_attributes set to True in ConfigDict.
 
 ---
 
-Last Updated: 2025-12-07
-Status: Active (v1.0.0)
+Last Updated: 2026-01-11
+Status: Active (v1.1.0)

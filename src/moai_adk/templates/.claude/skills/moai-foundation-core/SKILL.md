@@ -6,7 +6,7 @@ category: "foundation"
 modularized: true
 user-invocable: false
 tags: ['foundation', 'core', 'orchestration', 'agents', 'commands', 'trust-5', 'spec-first-tdd']
-updated: 2026-01-08
+updated: 2026-01-11
 status: "active"
 allowed-tools:
   - Read
@@ -22,30 +22,33 @@ Foundational principles and architectural patterns that power MoAI-ADK's AI-driv
 
 Core Philosophy: Quality-first, test-driven, modular, and efficient AI development through proven patterns and automated workflows.
 
-## Quick Reference (30 seconds)
+## Quick Reference
 
 What is MoAI Foundation Core?
+
 Six essential principles that ensure quality, efficiency, and scalability in AI-powered development:
 
 1. TRUST 5 Framework - Quality gate system (Test-first, Readable, Unified, Secured, Trackable)
 2. SPEC-First TDD - Specification-driven test-driven development workflow
 3. Delegation Patterns - Task orchestration via specialized agents (never direct execution)
 4. Token Optimization - 200K budget management and context efficiency
-5. Progressive Disclosure - Three-tier knowledge delivery (Quick → Implementation → Advanced)
+5. Progressive Disclosure - Three-tier knowledge delivery (Quick, Implementation, Advanced)
 6. Modular System - File splitting and reference architecture for scalability
 
 Quick Access:
-- Quality standards → [TRUST 5 Module](modules/trust-5-framework.md)
-- Development workflow → [SPEC-First TDD Module](modules/spec-first-tdd.md)
-- Agent coordination → [Delegation Patterns Module](modules/delegation-patterns.md)
-- Budget management → [Token Optimization Module](modules/token-optimization.md)
-- Content structure → [Progressive Disclosure Module](modules/progressive-disclosure.md)
-- File organization → [Modular System Module](modules/modular-system.md)
-- Agent catalog → [Agents Reference Module](modules/agents-reference.md) NEW
-- Command reference → [Commands Reference Module](modules/commands-reference.md) NEW
-- Security & constraints → [Execution Rules Module](modules/execution-rules.md) NEW
+
+- Quality standards in modules/trust-5-framework.md
+- Development workflow in modules/spec-first-tdd.md
+- Agent coordination in modules/delegation-patterns.md
+- Budget management in modules/token-optimization.md
+- Content structure in modules/progressive-disclosure.md
+- File organization in modules/modular-system.md
+- Agent catalog in modules/agents-reference.md
+- Command reference in modules/commands-reference.md
+- Security and constraints in modules/execution-rules.md
 
 Use Cases:
+
 - New agent creation with quality standards
 - New skill development with structural guidelines
 - Complex workflow orchestration
@@ -55,7 +58,7 @@ Use Cases:
 
 ---
 
-## Implementation Guide (5 minutes)
+## Implementation Guide
 
 ### 1. TRUST 5 Framework - Quality Assurance System
 
@@ -63,48 +66,19 @@ Purpose: Automated quality gates ensuring code quality, security, and maintainab
 
 Five Pillars:
 
-Test-first Pillar:
-- Requirement: Maintain test coverage at or above 85 percent
-- Validation: Execute pytest with coverage reporting
-- Failure Action: Block merge and generate missing tests
-- WHY: High coverage ensures code reliability and reduces production defects
-- IMPACT: Catches bugs early, reduces debugging time by 60-70 percent
+Test-first Pillar: Maintain test coverage at or above 85 percent. Execute pytest with coverage reporting. Block merge and generate missing tests on failure. High coverage ensures code reliability and reduces production defects. Catches bugs early and reduces debugging time by 60-70 percent.
 
-Readable Pillar:
-- Requirement: Use clear and descriptive naming conventions
-- Validation: Execute ruff linter checks
-- Failure Action: Issue warning and suggest refactoring improvements
-- WHY: Clear naming improves code comprehension and team collaboration
-- IMPACT: Reduces onboarding time by 40 percent, improves maintenance velocity
+Readable Pillar: Use clear and descriptive naming conventions. Execute ruff linter checks. Issue warning and suggest refactoring improvements on failure. Clear naming improves code comprehension and team collaboration. Reduces onboarding time by 40 percent and improves maintenance velocity.
 
-Unified Pillar:
-- Requirement: Apply consistent formatting and import patterns
-- Validation: Execute black formatter and isort checks
-- Failure Action: Auto-format code or issue warning
-- WHY: Consistency eliminates style debates and merge conflicts
-- IMPACT: Reduces code review time by 30 percent, improves readability
+Unified Pillar: Apply consistent formatting and import patterns. Execute black formatter and isort checks. Auto-format code or issue warning on failure. Consistency eliminates style debates and merge conflicts. Reduces code review time by 30 percent and improves readability.
 
-Secured Pillar:
-- Requirement: Comply with OWASP security standards
-- Validation: Execute security-expert agent analysis
-- Failure Action: Block merge and require security review
-- WHY: Security vulnerabilities create critical business and legal risks
-- IMPACT: Prevents 95+ percent of common security vulnerabilities
+Secured Pillar: Comply with OWASP security standards. Execute security-expert agent analysis. Block merge and require security review on failure. Security vulnerabilities create critical business and legal risks. Prevents 95+ percent of common security vulnerabilities.
 
-Trackable Pillar:
-- Requirement: Write clear and structured commit messages
-- Validation: Match Git commit message regex patterns
-- Failure Action: Suggest proper commit message format
-- WHY: Clear history enables debugging, auditing, and collaboration
-- IMPACT: Reduces issue investigation time by 50 percent
+Trackable Pillar: Write clear and structured commit messages. Match Git commit message regex patterns. Suggest proper commit message format on failure. Clear history enables debugging, auditing, and collaboration. Reduces issue investigation time by 50 percent.
 
-Integration Points:
-- Pre-commit hooks → Automated validation
-- CI/CD pipelines → Quality gate enforcement
-- Agent workflows → core-quality validation
-- Documentation → Quality metrics
+Integration Points: Pre-commit hooks for automated validation, CI/CD pipelines for quality gate enforcement, Agent workflows for core-quality validation, Documentation for quality metrics.
 
-Detailed Reference: [TRUST 5 Framework Module](modules/trust-5-framework.md)
+Detailed Reference: modules/trust-5-framework.md
 
 ---
 
@@ -114,36 +88,19 @@ Purpose: Specification-driven development ensuring clear requirements before imp
 
 Three-Phase Workflow:
 
-```
-Phase 1: SPEC (/moai:1-plan)
- workflow-spec → EARS format
- Output: .moai/specs/SPEC-XXX/spec.md
- Execute /clear (saves 45-50K tokens)
+Phase 1 SPEC (/moai:1-plan): workflow-spec generates EARS format. Output is .moai/specs/SPEC-XXX/spec.md. Execute /clear to save 45-50K tokens.
 
-Phase 2: TDD (/moai:2-run)
- RED: Failing tests
- GREEN: Passing code
- REFACTOR: Optimize
- Validate: ≥85% coverage
+Phase 2 TDD (/moai:2-run): RED for failing tests, GREEN for passing code, REFACTOR for optimization. Validate with at least 85% coverage.
 
-Phase 3: Docs (/moai:3-sync)
- API documentation
- Architecture diagrams
- Project reports
-```
+Phase 3 Docs (/moai:3-sync): API documentation, architecture diagrams, project reports.
 
-EARS Format:
-- Ubiquitous: System-wide (always active)
-- Event-driven: Trigger-based (when X, do Y)
-- State-driven: Conditional (while X, do Y)
-- Unwanted: Prohibited (shall not do X)
-- Optional: Nice-to-have (where possible, do X)
+EARS Format: Ubiquitous for system-wide always active requirements. Event-driven for trigger-based when X do Y requirements. State-driven for conditional while X do Y requirements. Unwanted for prohibited shall not do X requirements. Optional for nice-to-have where possible do X requirements.
 
-Token Budget: SPEC 30K | TDD 180K | Docs 40K | Total 250K
+Token Budget: SPEC takes 30K, TDD takes 180K, Docs takes 40K, Total is 250K.
 
 Key Practice: Execute /clear after Phase 1 to initialize context.
 
-Detailed Reference: [SPEC-First TDD Module](modules/spec-first-tdd.md)
+Detailed Reference: modules/spec-first-tdd.md
 
 ---
 
@@ -151,49 +108,21 @@ Detailed Reference: [SPEC-First TDD Module](modules/spec-first-tdd.md)
 
 Purpose: Task delegation to specialized agents, avoiding direct execution.
 
-Core Principle [HARD]: Alfred must delegate all work through Task() to specialized agents.
+Core Principle: Alfred must delegate all work through Task() to specialized agents. Direct execution bypasses specialization, quality gates, and token optimization. Proper delegation improves task success rate by 40 percent and enables parallel execution.
 
-WHY: Direct execution bypasses specialization, quality gates, and token optimization.
-IMPACT: Proper delegation improves task success rate by 40 percent and enables parallel execution.
-
-Delegation Syntax:
-```python
-result = await Task(
- subagent_type="specialized_agent",
- prompt="Clear, specific task",
- context={"relevant": "data"}
-)
-```
+Delegation Syntax: Call Task with subagent_type parameter for specialized agent, prompt parameter for clear specific task, and context parameter with relevant data dictionary.
 
 Three Patterns:
 
-Sequential (dependencies):
-```python
-design = Task(subagent_type="api-designer", prompt="Design API")
-code = Task(subagent_type="backend-expert", prompt="Implement", context={"design": design})
-```
+Sequential for dependencies: Call Task to api-designer for design, then Task to backend-expert for implementation with design context.
 
-Parallel (independent):
-```python
-results = await Promise.all([
- Task(subagent_type="backend-expert", prompt="Backend"),
- Task(subagent_type="frontend-expert", prompt="Frontend")
-])
-```
+Parallel for independent work: Call Promise.all with Task to backend-expert and Task to frontend-expert simultaneously.
 
-Conditional (analysis-based):
-```python
-analysis = Task(subagent_type="debug-helper", prompt="Analyze")
-if analysis.type == "security":
- Task(subagent_type="security-expert", prompt="Fix")
-```
+Conditional for analysis-based: Call Task to debug-helper for analysis, then based on analysis.type, call Task to security-expert or other appropriate agent.
 
-Agent Selection:
-- Simple (1 file): 1-2 agents sequential
-- Medium (3-5 files): 2-3 agents sequential
-- Complex (10+ files): 5+ agents mixed
+Agent Selection: Simple tasks with 1 file use 1-2 agents sequential. Medium tasks with 3-5 files use 2-3 agents sequential. Complex tasks with 10+ files use 5+ agents mixed.
 
-Detailed Reference: [Delegation Patterns Module](modules/delegation-patterns.md)
+Detailed Reference: modules/delegation-patterns.md
 
 ---
 
@@ -203,48 +132,25 @@ Purpose: Efficient 200K token budget through strategic context management.
 
 Budget Allocation:
 
-SPEC Phase:
-- Token Budget: 30K tokens
-- Strategy: Load requirements only, execute /clear after completion
-- WHY: Specification phase requires minimal context for requirement analysis
-- IMPACT: Saves 45-50K tokens for implementation phase
+SPEC Phase takes 30K tokens. Strategy is to load requirements only and execute /clear after completion. Specification phase requires minimal context for requirement analysis. Saves 45-50K tokens for implementation phase.
 
-TDD Phase:
-- Token Budget: 180K tokens
-- Strategy: Selective file loading, load only implementation-relevant files
-- WHY: Implementation requires deep context but not full codebase
-- IMPACT: Enables 70 percent larger implementations within budget
+TDD Phase takes 180K tokens. Strategy is selective file loading, load only implementation-relevant files. Implementation requires deep context but not full codebase. Enables 70 percent larger implementations within budget.
 
-Docs Phase:
-- Token Budget: 40K tokens
-- Strategy: Result caching and template reuse
-- WHY: Documentation builds on completed work artifacts
-- IMPACT: Reduces redundant file reads by 60 percent
+Docs Phase takes 40K tokens. Strategy is result caching and template reuse. Documentation builds on completed work artifacts. Reduces redundant file reads by 60 percent.
 
-Total Budget:
-- Combined Budget: 250K tokens across all phases
-- Strategy: Phase separation with context reset between phases
-- WHY: Clean context boundaries prevent token bloat
-- IMPACT: Enables 2-3x larger projects within same budget
+Total Budget is 250K tokens across all phases. Phase separation with context reset between phases provides clean context boundaries and prevents token bloat. Enables 2-3x larger projects within same budget.
 
 Token Saving Strategies:
 
-1. Phase Separation: /clear between phases
- - After /moai:1-plan (saves 45-50K)
- - When context > 150K
- - After 50+ messages
+Phase Separation: Execute /clear between phases, after /moai:1-plan to save 45-50K, when context exceeds 150K, after 50+ messages.
 
-2. Selective Loading: Load only necessary files
+Selective Loading: Load only necessary files.
 
-3. Context Optimization: 20-30K tokens target
+Context Optimization: Target 20-30K tokens.
 
-4. Model Selection: Sonnet (quality) | Haiku (speed/cost)
+Model Selection: Sonnet for quality, Haiku for speed and cost with 70% cheaper rates for 60-70% total savings.
 
-Monitoring: /context command, track budget, suggest /clear
-
-Cost Savings: Haiku 70% cheaper → 60-70% total savings
-
-Detailed Reference: [Token Optimization Module](modules/token-optimization.md)
+Detailed Reference: modules/token-optimization.md
 
 ---
 
@@ -254,53 +160,19 @@ Purpose: Three-tier knowledge delivery balancing value with depth.
 
 Three Levels:
 
-Quick Reference Level:
-- Time Investment: 30 seconds
-- Content: Core principles and essential concepts
-- Token Usage: Approximately 1,000 tokens
-- WHY: Rapid value delivery for time-constrained users
-- IMPACT: Users gain 80 percent understanding in 5 percent of time
+Quick Reference Level: 30 seconds time investment, core principles and essential concepts, approximately 1,000 tokens. Rapid value delivery for time-constrained users. Users gain 80 percent understanding in 5 percent of time.
 
-Implementation Level:
-- Time Investment: 5 minutes
-- Content: Workflows, practical examples, integration patterns
-- Token Usage: Approximately 3,000 tokens
-- WHY: Bridges concept to execution with actionable guidance
-- IMPACT: Enables immediate productive work without deep expertise
+Implementation Level: 5 minutes time investment, workflows, practical examples, integration patterns, approximately 3,000 tokens. Bridges concept to execution with actionable guidance. Enables immediate productive work without deep expertise.
 
-Advanced Level:
-- Time Investment: 10+ minutes
-- Content: Deep technical dives, edge cases, optimization techniques
-- Token Usage: Approximately 5,000 tokens
-- WHY: Provides mastery-level knowledge for complex scenarios
-- IMPACT: Reduces escalations by 70 percent through comprehensive coverage
+Advanced Level: 10+ minutes time investment, deep technical dives, edge cases, optimization techniques, approximately 5,000 tokens. Provides mastery-level knowledge for complex scenarios. Reduces escalations by 70 percent through comprehensive coverage.
 
-SKILL.md Structure (≤500 lines):
-```markdown
-## Quick Reference (30s)
-## Implementation Guide (5min)
-## Advanced Patterns (10+min)
-## Works Well With
-```
+SKILL.md Structure (maximum 500 lines): Quick Reference section, Implementation Guide section, Advanced Patterns section, Works Well With section.
 
-Module Architecture:
-- SKILL.md: Entry point, cross-references
-- modules/: Deep dives, unlimited
-- examples.md: Working samples
-- reference.md: External links
+Module Architecture: SKILL.md as entry point with cross-references, modules directory for deep dives with unlimited size, examples.md for working samples, reference.md for external links.
 
-File Splitting (when >500 lines):
-```
-SKILL.md (500 lines)
- Quick (80-120)
- Implementation (180-250)
- Advanced (80-140)
- References (10-20)
+File Splitting when exceeding 500 lines: SKILL.md contains Quick at 80-120 lines, Implementation at 180-250 lines, Advanced at 80-140 lines, References at 10-20 lines. Overflow content goes to modules/topic.md.
 
-Overflow → modules/[topic].md
-```
-
-Detailed Reference: [Progressive Disclosure Module](modules/progressive-disclosure.md)
+Detailed Reference: modules/progressive-disclosure.md
 
 ---
 
@@ -308,107 +180,63 @@ Detailed Reference: [Progressive Disclosure Module](modules/progressive-disclosu
 
 Purpose: Scalable file structure enabling unlimited content.
 
-Standard Structure:
-```
-.claude/skills/skill-name/
- SKILL.md # Core (≤500 lines)
- modules/ # Extended (unlimited)
- patterns.md
- examples.md # Working samples
- reference.md # External links
- scripts/ # Utilities (optional)
- templates/ # Templates (optional)
-```
+Standard Structure: Create .claude/skills/skill-name/ directory containing SKILL.md as core file under 500 lines, modules directory for extended content with unlimited size including patterns.md, examples.md for working samples, reference.md for external links, scripts directory for utilities (optional), templates directory (optional).
 
-File Principles:
+File Principles: SKILL.md stays under 500 lines with progressive disclosure and cross-references. modules directory is topic-focused with no limits and self-contained content. examples.md is copy-paste ready with comments. reference.md contains API docs and resources.
 
-1. SKILL.md: ≤500 lines, progressive disclosure, cross-references
-2. modules/: Topic-focused, no limits, self-contained
-3. examples.md: Copy-paste ready, commented
-4. reference.md: API docs, resources
+Cross-Reference Syntax: Reference modules as Details in modules/patterns.md, reference examples as Examples in examples.md#auth, reference external docs as External in reference.md#api.
 
-Cross-Reference Syntax:
-```markdown
-Details: [Module](modules/patterns.md)
-Examples: [Examples](examples.md#auth)
-External: [Reference](reference.md#api)
-```
+Discovery Flow: SKILL.md to Topic to modules/topic.md to Deep dive.
 
-Discovery Flow: SKILL.md → Topic → modules/[topic].md → Deep dive
-
-Detailed Reference: [Modular System Module](modules/modular-system.md)
+Detailed Reference: modules/modular-system.md
 
 ---
 
-## Advanced Implementation (10+ minutes)
+## Advanced Implementation
 
 Advanced patterns including cross-module integration, quality validation, and error handling are available in the detailed module references.
 
 Key Advanced Topics:
+
 - Cross-Module Integration: Combining TRUST 5 + SPEC-First TDD
 - Token-Optimized Delegation: Parallel execution with context reset
 - Progressive Agent Workflows: Escalation patterns
 - Quality Validation: Pre/Post execution validation
 - Error Handling: Delegation failure recovery
 
-Detailed Reference: [examples.md](examples.md) for working code samples
+Detailed Reference: examples.md for working code samples
 
 ---
 
 ## Works Well With
 
-Agents:
-- agent-factory - Create agents with foundation principles
-- skill-factory - Generate skills with modular architecture
-- core-quality - Automated TRUST 5 validation
-- workflow-spec - EARS format specification
-- workflow-tdd - RED-GREEN-REFACTOR execution
-- workflow-docs - Documentation with progressive disclosure
+Agents: agent-factory for creating agents with foundation principles, skill-factory for generating skills with modular architecture, core-quality for automated TRUST 5 validation, workflow-spec for EARS format specification, workflow-tdd for RED-GREEN-REFACTOR execution, workflow-docs for documentation with progressive disclosure.
 
-Skills:
-- moai-cc-claude-md - CLAUDE.md with foundation patterns
-- moai-cc-configuration - Config with TRUST 5
-- moai-cc-memory - Token optimization
-- moai-context7-integration - MCP integration
+Skills: moai-cc-claude-md for CLAUDE.md with foundation patterns, moai-cc-configuration for config with TRUST 5, moai-cc-memory for token optimization, moai-context7-integration for MCP integration.
 
-Tools:
-- AskUserQuestion - Use directly for all user interaction and clarification needs
+Tools: AskUserQuestion for direct user interaction and clarification needs.
 
-Commands:
-- /moai:1-plan - SPEC-First Phase 1
-- /moai:2-run - TDD Phase 2
-- /moai:3-sync - Documentation Phase 3
-- /moai:9-feedback - Continuous improvement
-- /clear - Token management
+Commands: /moai:1-plan for SPEC-First Phase 1, /moai:2-run for TDD Phase 2, /moai:3-sync for Documentation Phase 3, /moai:9-feedback for continuous improvement, /clear for token management.
 
-Foundation Modules (Extended Documentation):
-- [Agents Reference](modules/agents-reference.md) - 26-agent catalog with 7-tier hierarchy
-- [Commands Reference](modules/commands-reference.md) - 6 core commands workflow
-- [Execution Rules](modules/execution-rules.md) - Security, Git strategy, compliance
+Foundation Modules (Extended Documentation): modules/agents-reference.md for 26-agent catalog with 7-tier hierarchy, modules/commands-reference.md for 6 core commands workflow, modules/execution-rules.md for security, Git strategy, and compliance.
 
 ---
 
-## Quick Decision Matrix
+## Quick Decision Guide
 
-| Scenario | Primary Principle | Supporting Principles |
-|----------|------------------|----------------------|
-| New Agent | TRUST 5, Delegation | Token Opt, Modular |
-| New Skill | Progressive, Modular | TRUST 5, Token Opt |
-| Workflow | Delegation Patterns | SPEC-First, Token Opt |
-| Quality | TRUST 5 Framework | SPEC-First TDD |
-| Budget | Token Optimization | Progressive, Modular |
-| Docs | Progressive, Modular | Token Optimization |
+New Agent: Primary principle is TRUST 5 and Delegation. Supporting principles are Token Optimization and Modular.
 
-Module Deep Dives:
-- [TRUST 5 Framework](modules/trust-5-framework.md)
-- [SPEC-First TDD](modules/spec-first-tdd.md)
-- [Delegation Patterns](modules/delegation-patterns.md)
-- [Token Optimization](modules/token-optimization.md)
-- [Progressive Disclosure](modules/progressive-disclosure.md)
-- [Modular System](modules/modular-system.md)
-- [Agents Reference](modules/agents-reference.md) NEW
-- [Commands Reference](modules/commands-reference.md) NEW
-- [Execution Rules](modules/execution-rules.md) NEW
+New Skill: Primary principle is Progressive and Modular. Supporting principles are TRUST 5 and Token Optimization.
 
-Full Examples: [examples.md](examples.md)
-External Resources: [reference.md](reference.md)
+Workflow: Primary principle is Delegation Patterns. Supporting principles are SPEC-First and Token Optimization.
+
+Quality: Primary principle is TRUST 5 Framework. Supporting principle is SPEC-First TDD.
+
+Budget: Primary principle is Token Optimization. Supporting principles are Progressive and Modular.
+
+Docs: Primary principle is Progressive and Modular. Supporting principle is Token Optimization.
+
+Module Deep Dives: modules/trust-5-framework.md, modules/spec-first-tdd.md, modules/delegation-patterns.md, modules/token-optimization.md, modules/progressive-disclosure.md, modules/modular-system.md, modules/agents-reference.md, modules/commands-reference.md, modules/execution-rules.md.
+
+Full Examples: examples.md
+External Resources: reference.md

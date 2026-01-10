@@ -1,5 +1,4 @@
 ---
-name: moai:loop
 description: "Start Ralph-style feedback loop for automated error correction"
 argument-hint: "[--max-iterations N] [--auto-fix]"
 type: utility

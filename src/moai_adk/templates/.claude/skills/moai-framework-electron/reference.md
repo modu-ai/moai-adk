@@ -2,27 +2,39 @@
 
 ## Platform Version Matrix
 
-### Electron 33 (October 2024)
+### Electron 33 (October 2024) - Current Stable
 
 - Chromium: 130
-- Node.js: 20.18
+- Node.js: 20.18.0
 - V8: 13.0
 - Key Features:
-  - Enhanced security defaults
-  - Improved context isolation
+  - Enhanced security defaults with sandbox enabled by default
+  - Improved context isolation patterns
   - Native ESM support in main process
   - Service Worker support in renderer
-  - WebGPU API support
-  - Improved auto-updater
+  - WebGPU API support for GPU-accelerated graphics
+  - Improved auto-updater with differential updates
+  - Utility process enhancements for background tasks
+  - Better crash reporting integration
 
-### Electron 32 (August 2025)
+### Electron 32 (August 2024)
 
 - Chromium: 128
-- Node.js: 20.16
+- Node.js: 20.16.0
 - Key Features:
   - Utility process improvements
   - Enhanced file system access
   - Better macOS notarization support
+  - Improved window management APIs
+
+### Electron 31 (June 2024)
+
+- Chromium: 126
+- Node.js: 20.14.0
+- Key Features:
+  - Performance improvements for large apps
+  - Enhanced IPC serialization
+  - Better TypeScript support
 
 ## Context7 Library Mappings
 
@@ -1027,6 +1039,536 @@ publish:
 
 ---
 
+## Utility Process (Electron 33+)
+
+### Background Task Worker
+
+Utility processes run in a separate Node.js environment for CPU-intensive tasks without blocking the main process:
+
+```typescript
+// src/main/workers/utility-worker.ts
+import { utilityProcess, MessageChannelMain } from "electron";
+import { join } from "path";
+
+export class UtilityWorker {
+  private worker: Electron.UtilityProcess | null = null;
+  private port: Electron.MessagePortMain | null = null;
+
+  async spawn(): Promise<void> {
+    const { port1, port2 } = new MessageChannelMain();
+
+    this.worker = utilityProcess.fork(
+      join(__dirname, "workers/image-processor.js"),
+      [],
+      {
+        serviceName: "image-processor",
+        allowLoadingUnsignedLibraries: false,
+      }
+    );
+
+    this.worker.postMessage({ type: "init" }, [port1]);
+    this.port = port2;
+
+    this.worker.on("exit", (code) => {
+      console.log(`Utility process exited with code ${code}`);
+      this.worker = null;
+    });
+  }
+
+  async processImage(imagePath: string): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      if (!this.port) {
+        reject(new Error("Worker not initialized"));
+        return;
+      }
+
+      const handler = (event: Electron.MessageEvent) => {
+        if (event.data.type === "result") {
+          this.port?.removeListener("message", handler);
+          resolve(Buffer.from(event.data.buffer));
+        } else if (event.data.type === "error") {
+          this.port?.removeListener("message", handler);
+          reject(new Error(event.data.message));
+        }
+      };
+
+      this.port.on("message", handler);
+      this.port.postMessage({ type: "process", path: imagePath });
+    });
+  }
+
+  terminate(): void {
+    this.worker?.kill();
+    this.worker = null;
+    this.port = null;
+  }
+}
+```
+
+### Utility Process Script
+
+```typescript
+// src/main/workers/image-processor.js
+const sharp = require("sharp");
+
+process.parentPort.on("message", async (event) => {
+  const [port] = event.ports;
+
+  port.on("message", async (msgEvent) => {
+    const { type, path } = msgEvent.data;
+
+    if (type === "process") {
+      try {
+        const buffer = await sharp(path)
+          .resize(800, 600, { fit: "inside" })
+          .webp({ quality: 80 })
+          .toBuffer();
+
+        port.postMessage({ type: "result", buffer });
+      } catch (error) {
+        port.postMessage({ type: "error", message: error.message });
+      }
+    }
+  });
+
+  port.start();
+});
+```
+
+---
+
+## Protocol Handlers and Deep Linking
+
+### Custom Protocol Registration
+
+```typescript
+// src/main/protocol.ts
+import { app, protocol, net } from "electron";
+import { join } from "path";
+import { pathToFileURL } from "url";
+
+const PROTOCOL_NAME = "myapp";
+
+export function registerProtocols(): void {
+  // Register as default protocol client (for deep linking)
+  if (process.defaultApp) {
+    if (process.argv.length >= 2) {
+      app.setAsDefaultProtocolClient(PROTOCOL_NAME, process.execPath, [
+        join(process.argv[1]),
+      ]);
+    }
+  } else {
+    app.setAsDefaultProtocolClient(PROTOCOL_NAME);
+  }
+
+  // Register custom protocol handler for local resources
+  protocol.handle("app", (request) => {
+    const url = new URL(request.url);
+    const filePath = join(__dirname, "../renderer", url.pathname);
+    return net.fetch(pathToFileURL(filePath).toString());
+  });
+}
+
+export function handleProtocolUrl(url: string): void {
+  // Parse the URL: myapp://action/path?query=value
+  const parsedUrl = new URL(url);
+
+  switch (parsedUrl.hostname) {
+    case "open":
+      handleOpenAction(parsedUrl.pathname, parsedUrl.searchParams);
+      break;
+    case "auth":
+      handleAuthCallback(parsedUrl.searchParams);
+      break;
+    default:
+      console.warn("Unknown protocol action:", parsedUrl.hostname);
+  }
+}
+
+function handleOpenAction(
+  path: string,
+  params: URLSearchParams
+): void {
+  // Handle open file/project action
+  const filePath = decodeURIComponent(path.slice(1));
+  // Send to renderer or process directly
+}
+
+function handleAuthCallback(params: URLSearchParams): void {
+  // Handle OAuth callback
+  const code = params.get("code");
+  const state = params.get("state");
+  // Process authentication
+}
+```
+
+### macOS Deep Link Handling
+
+```typescript
+// src/main/index.ts
+app.on("open-url", (event, url) => {
+  event.preventDefault();
+  handleProtocolUrl(url);
+});
+
+// Handle deep link on Windows/Linux (second instance)
+app.on("second-instance", (_event, commandLine) => {
+  const url = commandLine.find((arg) => arg.startsWith(`${PROTOCOL_NAME}://`));
+  if (url) {
+    handleProtocolUrl(url);
+  }
+
+  // Focus the main window
+  const mainWindow = windowManager.getWindow("main");
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+});
+```
+
+---
+
+## Security Hardening (OWASP Aligned)
+
+### Comprehensive Security Configuration
+
+```typescript
+// src/main/security.ts
+import { app, session, shell, BrowserWindow } from "electron";
+
+export function configureSecurity(): void {
+  // 1. Disable remote module (deprecated but ensure disabled)
+  app.on("remote-get-builtin", (event) => event.preventDefault());
+  app.on("remote-get-current-web-contents", (event) => event.preventDefault());
+  app.on("remote-get-current-window", (event) => event.preventDefault());
+
+  // 2. Block navigation to untrusted origins
+  app.on("web-contents-created", (_event, contents) => {
+    // Block navigation
+    contents.on("will-navigate", (event, url) => {
+      const allowedOrigins = ["http://localhost", "file://"];
+      const isAllowed = allowedOrigins.some((origin) => url.startsWith(origin));
+      if (!isAllowed) {
+        event.preventDefault();
+        console.warn("Blocked navigation to:", url);
+      }
+    });
+
+    // Block new windows
+    contents.setWindowOpenHandler(({ url }) => {
+      // Open external URLs in default browser
+      if (url.startsWith("https://") || url.startsWith("http://")) {
+        shell.openExternal(url);
+      }
+      return { action: "deny" };
+    });
+
+    // Block webview creation
+    contents.on("will-attach-webview", (event) => {
+      event.preventDefault();
+      console.warn("Blocked webview creation");
+    });
+  });
+}
+
+export function configureSessionSecurity(): void {
+  const ses = session.defaultSession;
+
+  // Content Security Policy
+  ses.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        "Content-Security-Policy": [
+          [
+            "default-src 'self'",
+            "script-src 'self'",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data: https:",
+            "font-src 'self' data:",
+            "connect-src 'self' https://api.example.com",
+            "frame-ancestors 'none'",
+            "base-uri 'self'",
+            "form-action 'self'",
+          ].join("; "),
+        ],
+        "X-Content-Type-Options": ["nosniff"],
+        "X-Frame-Options": ["DENY"],
+        "X-XSS-Protection": ["1; mode=block"],
+      },
+    });
+  });
+
+  // Permission request handler
+  ses.setPermissionRequestHandler((webContents, permission, callback) => {
+    const allowedPermissions: Electron.PermissionType[] = [
+      "notifications",
+      "clipboard-read",
+    ];
+
+    const denied: Electron.PermissionType[] = [
+      "geolocation",
+      "media",
+      "mediaKeySystem",
+      "midi",
+      "pointerLock",
+      "fullscreen",
+    ];
+
+    if (denied.includes(permission)) {
+      console.warn(`Denied permission: ${permission}`);
+      callback(false);
+      return;
+    }
+
+    callback(allowedPermissions.includes(permission));
+  });
+
+  // Certificate error handler (for development, not production)
+  if (process.env.NODE_ENV !== "development") {
+    ses.setCertificateVerifyProc((request, callback) => {
+      // Reject invalid certificates in production
+      if (request.errorCode !== 0) {
+        console.error("Certificate error:", request.hostname);
+        callback(-2); // Reject
+        return;
+      }
+      callback(0); // Accept
+    });
+  }
+}
+```
+
+### Secure BrowserWindow Factory
+
+```typescript
+// src/main/windows/secure-window.ts
+import { BrowserWindow, BrowserWindowConstructorOptions } from "electron";
+import { join } from "path";
+
+export function createSecureWindow(
+  options: BrowserWindowConstructorOptions = {}
+): BrowserWindow {
+  const secureDefaults: BrowserWindowConstructorOptions = {
+    webPreferences: {
+      // Security: Isolate renderer from Node.js
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+
+      // Security: Disable dangerous features
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      experimentalFeatures: false,
+      enableWebSQL: false,
+
+      // Security: Preload script for safe API exposure
+      preload: join(__dirname, "../preload/index.js"),
+
+      // Security: Disable devtools in production
+      devTools: process.env.NODE_ENV === "development",
+
+      // Performance: Disable unused features
+      spellcheck: false,
+      backgroundThrottling: true,
+    },
+
+    // Security: Prevent title from showing sensitive data
+    title: "My App",
+  };
+
+  return new BrowserWindow({
+    ...secureDefaults,
+    ...options,
+    webPreferences: {
+      ...secureDefaults.webPreferences,
+      ...options.webPreferences,
+    },
+  });
+}
+```
+
+---
+
+## Crash Reporting and Telemetry
+
+### Crash Reporter Setup
+
+```typescript
+// src/main/crash-reporter.ts
+import { crashReporter, app } from "electron";
+import { join } from "path";
+
+export function initializeCrashReporter(): void {
+  crashReporter.start({
+    productName: app.getName(),
+    companyName: "Your Company",
+    submitURL: "https://your-crash-server.com/submit",
+    uploadToServer: true,
+    ignoreSystemCrashHandler: false,
+    rateLimit: true,
+    compress: true,
+    extra: {
+      version: app.getVersion(),
+      platform: process.platform,
+      arch: process.arch,
+    },
+  });
+
+  // Log crash reports location for debugging
+  console.log("Crash reports path:", app.getPath("crashDumps"));
+}
+
+export function addCrashContext(key: string, value: string): void {
+  crashReporter.addExtraParameter(key, value);
+}
+```
+
+### Error Boundary in Main Process
+
+```typescript
+// src/main/error-handler.ts
+import { dialog, app } from "electron";
+import log from "electron-log";
+
+export function setupErrorHandlers(): void {
+  // Unhandled promise rejections
+  process.on("unhandledRejection", (reason, promise) => {
+    log.error("Unhandled Rejection:", reason);
+
+    if (process.env.NODE_ENV === "development") {
+      dialog.showErrorBox(
+        "Unhandled Promise Rejection",
+        String(reason)
+      );
+    }
+  });
+
+  // Uncaught exceptions
+  process.on("uncaughtException", (error) => {
+    log.error("Uncaught Exception:", error);
+
+    dialog.showErrorBox(
+      "Application Error",
+      `An unexpected error occurred: ${error.message}\n\nThe application will now quit.`
+    );
+
+    app.quit();
+  });
+
+  // Renderer process crashes
+  app.on("render-process-gone", (event, webContents, details) => {
+    log.error("Renderer process gone:", details);
+
+    if (details.reason === "crashed") {
+      const options = {
+        type: "error" as const,
+        title: "Window Crashed",
+        message: "This window has crashed.",
+        buttons: ["Reload", "Close"],
+      };
+
+      dialog.showMessageBox(options).then((result) => {
+        if (result.response === 0) {
+          webContents.reload();
+        }
+      });
+    }
+  });
+
+  // GPU process crashes
+  app.on("child-process-gone", (event, details) => {
+    log.error("Child process gone:", details);
+
+    if (details.type === "GPU" && details.reason === "crashed") {
+      log.warn("GPU process crashed, app may have rendering issues");
+    }
+  });
+}
+```
+
+---
+
+## Native Module Integration
+
+### Rebuilding Native Modules
+
+```json
+// package.json scripts
+{
+  "scripts": {
+    "postinstall": "electron-builder install-app-deps",
+    "rebuild": "electron-rebuild -f -w better-sqlite3,keytar"
+  }
+}
+```
+
+### Native Module Usage Pattern
+
+```typescript
+// src/main/services/database.ts
+import Database from "better-sqlite3";
+import { app } from "electron";
+import { join } from "path";
+
+export class DatabaseService {
+  private db: Database.Database;
+
+  constructor() {
+    const dbPath = join(app.getPath("userData"), "app.db");
+    this.db = new Database(dbPath, {
+      verbose: process.env.NODE_ENV === "development" ? console.log : undefined,
+    });
+
+    // Enable WAL mode for better concurrency
+    this.db.pragma("journal_mode = WAL");
+
+    // Initialize schema
+    this.initializeSchema();
+  }
+
+  private initializeSchema(): void {
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+      );
+
+      CREATE TABLE IF NOT EXISTS documents (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        content TEXT,
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+      );
+    `);
+  }
+
+  getSetting<T>(key: string): T | undefined {
+    const row = this.db
+      .prepare("SELECT value FROM settings WHERE key = ?")
+      .get(key) as { value: string } | undefined;
+    return row ? JSON.parse(row.value) : undefined;
+  }
+
+  setSetting<T>(key: string, value: T): void {
+    this.db
+      .prepare(
+        "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, strftime('%s', 'now'))"
+      )
+      .run(key, JSON.stringify(value));
+  }
+
+  close(): void {
+    this.db.close();
+  }
+}
+```
+
+---
+
 ## Troubleshooting
 
 ### Common Issues
@@ -1102,5 +1644,6 @@ Solution:
 
 ---
 
-Version: 1.0.0
+Version: 1.1.0
 Last Updated: 2026-01-10
+Changes: Added Utility Process patterns, Protocol Handlers, Deep Linking, OWASP-aligned Security Hardening, Crash Reporting, Native Module Integration

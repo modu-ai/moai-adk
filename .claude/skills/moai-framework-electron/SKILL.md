@@ -1,492 +1,288 @@
 ---
-name: "moai-framework-electron"
-description: "Electron 33+ desktop app development specialist covering Main/Renderer process architecture, IPC communication, auto-update, packaging with Electron Forge and electron-builder, and security best practices. Use when building cross-platform desktop applications, implementing native OS integrations, or packaging Electron apps for distribution."
-version: 1.0.0
-category: "framework"
+name: moai-framework-electron
+description: "Electron 33+ desktop app development specialist covering Main/Renderer process architecture, IPC communication, auto-update, packaging with Electron Forge and electron-builder, and security best practices. Use when building cross-platform desktop applications, implementing native OS integrations, or packaging Electron apps for distribution. [KO: Electron 데스크톱 앱, 크로스플랫폼 개발, IPC 통신] [JA: Electronデスクトップアプリ、クロスプラットフォーム開発] [ZH: Electron桌面应用、跨平台开发]"
+version: 2.0.0
+category: framework
 modularized: false
 user-invocable: false
-tags: ["electron", "desktop", "cross-platform", "nodejs", "chromium"]
+tags:
+  - electron
+  - desktop
+  - cross-platform
+  - nodejs
+  - chromium
+  - ipc
+  - auto-update
+  - electron-builder
+  - electron-forge
 context7-libraries:
-  [
-    "/electron/electron",
-    "/electron/forge",
-    "/electron-userland/electron-builder",
-  ]
+  - /electron/electron
+  - /electron/forge
+  - /electron-userland/electron-builder
 related-skills:
-  ["moai-lang-typescript", "moai-domain-frontend", "moai-lang-javascript"]
+  - moai-lang-typescript
+  - moai-domain-frontend
+  - moai-lang-javascript
 updated: 2026-01-10
-status: "active"
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+status: active
+allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
 
-## Quick Reference (30 seconds)
+# Electron 33+ Desktop Development
 
-Electron 33+ Desktop App Development Specialist - Cross-platform desktop applications with web technologies.
+## Quick Reference
 
-Auto-Triggers: Electron projects (`electron.vite.config.ts`, `electron-builder.yml`), desktop app development, IPC communication patterns
+Electron 33+ Desktop App Development Specialist enables building cross-platform desktop applications with web technologies.
 
-Core Capabilities:
+Auto-Triggers: Electron projects detected via electron.vite.config.ts or electron-builder.yml files, desktop app development requests, IPC communication pattern implementation
 
-- Electron 33: Chromium 130, Node.js 20.18, native ESM support
-- Process Architecture: Main process, Renderer process, Preload scripts
-- IPC Communication: Type-safe invoke/handle patterns with contextBridge
-- Auto-Update: electron-updater with GitHub/S3 publishing
-- Packaging: Electron Forge, electron-builder for all platforms
-- Security: contextIsolation, sandbox, CSP, input validation
+### Core Capabilities
 
-Quick Commands:
+Electron 33 Platform:
 
-```bash
-# Create new Electron app with Vite
-npm create @electron/create-electron-app@latest my-app -- --template=vite-typescript
+- Chromium 130 rendering engine for modern web features
+- Node.js 20.18 runtime for native system access
+- Native ESM support in main process
+- WebGPU API support for GPU-accelerated graphics
 
-# Install electron-builder
-npm install -D electron-builder
+Process Architecture:
 
-# Install auto-updater
-npm install electron-updater
-```
+- Main process runs as single instance per application with full Node.js access
+- Renderer processes display web content in sandboxed environments
+- Preload scripts bridge main and renderer with controlled API exposure
+- Utility processes handle background tasks without blocking UI
+
+IPC Communication:
+
+- Type-safe invoke/handle patterns for request-response communication
+- contextBridge API for secure renderer access to main process functionality
+- Event-based messaging for push notifications from main to renderer
+
+Auto-Update Support:
+
+- electron-updater integration with GitHub and S3 publishing
+- Differential updates for smaller download sizes
+- Update notification and installation management
+
+Packaging Options:
+
+- Electron Forge for integrated build tooling and plugin ecosystem
+- electron-builder for flexible multi-platform distribution
+
+Security Features:
+
+- contextIsolation for preventing prototype pollution
+- Sandbox enforcement for renderer process isolation
+- Content Security Policy configuration
+- Input validation patterns for IPC handlers
+
+### Project Initialization
+
+Creating a new Electron application requires running the create-electron-app command with the vite-typescript template. Install electron-builder as a development dependency for packaging. Add electron-updater as a runtime dependency for auto-update functionality.
+
+For detailed commands and configuration, see reference.md Quick Commands section.
 
 ---
 
-## Implementation Guide (5 minutes)
+## Implementation Guide
 
 ### Project Structure
 
 Recommended Directory Layout:
 
-```
-electron-app/
-├── src/
-│   ├── main/                   # Main process code
-│   │   ├── index.ts           # Entry point
-│   │   ├── ipc/               # IPC handlers
-│   │   ├── services/          # Business logic
-│   │   └── windows/           # Window management
-│   ├── preload/               # Preload scripts
-│   │   ├── index.ts           # Main preload
-│   │   └── api.ts             # Exposed APIs
-│   ├── renderer/              # React/Vue/Svelte app
-│   │   ├── src/
-│   │   ├── index.html
-│   │   └── vite.config.ts
-│   └── shared/                # Shared types/constants
-├── resources/                 # App resources
-├── electron.vite.config.ts
-├── electron-builder.yml
-└── package.json
-```
+The source directory should contain four main subdirectories:
+
+Main Directory: Contains the main process entry point, IPC handler definitions organized by domain, business logic services, and window management modules
+
+Preload Directory: Contains the preload script entry point and exposed API definitions that bridge main and renderer
+
+Renderer Directory: Contains the web application built with React, Vue, or Svelte, including the HTML entry point and Vite configuration
+
+Shared Directory: Contains TypeScript types and constants shared between main and renderer processes
+
+The project root should include the electron.vite.config.ts for build configuration, electron-builder.yml for packaging options, and resources directory for app icons and assets.
 
 ### Main Process Setup
 
-Application Lifecycle:
+Application Lifecycle Management:
 
-```typescript
-// src/main/index.ts
-import { app, BrowserWindow, session } from "electron";
-import { join } from "path";
+The main process initialization follows a specific sequence. First, enable sandbox globally using app.enableSandbox() to ensure all renderer processes run in isolated environments. Then request single instance lock to prevent multiple app instances from running simultaneously.
 
-// Enable sandbox globally for all renderers (security best practice)
-app.enableSandbox();
+Window creation should occur after the app ready event fires. Configure BrowserWindow with security-focused webPreferences including contextIsolation enabled, nodeIntegration disabled, sandbox enabled, and webSecurity enabled. Set the preload script path to expose safe APIs to the renderer.
 
-let mainWindow: BrowserWindow | null = null;
+Handle platform-specific behaviors: on macOS, re-create windows when the dock icon is clicked if no windows exist. On other platforms, quit the application when all windows close.
 
-async function createMainWindow(): Promise<void> {
-  mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    show: false,
-    webPreferences: {
-      preload: join(__dirname, "../preload/index.js"),
-      sandbox: true,
-      contextIsolation: true,
-      nodeIntegration: false,
-      webSecurity: true,
-    },
-  });
-
-  mainWindow.on("ready-to-show", () => mainWindow?.show());
-
-  if (process.env.NODE_ENV === "development") {
-    mainWindow.loadURL("http://localhost:5173");
-    mainWindow.webContents.openDevTools();
-  } else {
-    mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
-  }
-}
-
-app.whenReady().then(createMainWindow);
-
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
-});
-
-app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
-});
-```
-
-Single Instance Lock:
-
-```typescript
-const gotSingleLock = app.requestSingleInstanceLock();
-if (!gotSingleLock) {
-  app.quit();
-} else {
-  app.on("second-instance", () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
-  });
-}
-```
+For implementation examples, see examples.md Main Process Entry Point section.
 
 ### Type-Safe IPC Communication
 
-Define IPC Types:
+IPC Type Definition Pattern:
 
-```typescript
-// src/shared/ipc-types.ts
-export interface IpcChannels {
-  "file:open": { path: string };
-  "file:save": { path: string; content: string };
-  "file:read": string;
-  "window:minimize": void;
-  "window:maximize": void;
-  "storage:get": { key: string };
-  "storage:set": { key: string; value: unknown };
-}
-```
+Define an interface that maps channel names to their payload types. Group channels by domain such as file operations, window operations, and storage operations. This enables type checking for both main process handlers and renderer invocations.
 
-Main Process Handlers:
+Main Process Handler Registration:
 
-```typescript
-// src/main/ipc/index.ts
-import { ipcMain, dialog, BrowserWindow } from "electron";
-import { readFile, writeFile } from "fs/promises";
-import Store from "electron-store";
+Register IPC handlers in a dedicated module that imports from the shared types. Each handler should validate input using a schema validation library such as Zod before processing. Use ipcMain.handle for request-response patterns and return structured results.
 
-const store = new Store();
+Preload Script Implementation:
 
-export function registerIpcHandlers(): void {
-  ipcMain.handle("file:open", async () => {
-    const result = await dialog.showOpenDialog({
-      properties: ["openFile"],
-    });
-    if (result.canceled) return null;
-    const content = await readFile(result.filePaths[0], "utf-8");
-    return { path: result.filePaths[0], content };
-  });
+Create an API object that wraps ipcRenderer.invoke calls for each channel. Use contextBridge.exposeInMainWorld to make this API available in the renderer as window.electronAPI. Include cleanup functions for event listeners to prevent memory leaks.
 
-  ipcMain.handle("file:save", async (_, { path, content }) => {
-    await writeFile(path, content, "utf-8");
-    return { success: true };
-  });
-
-  ipcMain.handle("storage:get", (_, { key }) => store.get(key));
-  ipcMain.handle("storage:set", (_, { key, value }) => {
-    store.set(key, value);
-    return { success: true };
-  });
-}
-```
-
-Preload Script with contextBridge:
-
-```typescript
-// src/preload/index.ts
-import { contextBridge, ipcRenderer } from "electron";
-
-const api = {
-  file: {
-    open: () => ipcRenderer.invoke("file:open"),
-    save: (path: string, content: string) =>
-      ipcRenderer.invoke("file:save", { path, content }),
-    read: (path: string) => ipcRenderer.invoke("file:read", path),
-  },
-  storage: {
-    get: <T>(key: string): Promise<T | undefined> =>
-      ipcRenderer.invoke("storage:get", { key }),
-    set: (key: string, value: unknown) =>
-      ipcRenderer.invoke("storage:set", { key, value }),
-  },
-  onUpdateAvailable: (callback: (version: string) => void) => {
-    const handler = (_: unknown, { version }: { version: string }) =>
-      callback(version);
-    ipcRenderer.on("app:update-available", handler);
-    return () => ipcRenderer.removeListener("app:update-available", handler);
-  },
-};
-
-contextBridge.exposeInMainWorld("electronAPI", api);
-
-declare global {
-  interface Window {
-    electronAPI: typeof api;
-  }
-}
-```
+For complete IPC implementation patterns, see examples.md Type-Safe IPC Implementation section.
 
 ### Security Best Practices
 
 Mandatory Security Settings:
 
-```typescript
-const mainWindow = new BrowserWindow({
-  webPreferences: {
-    contextIsolation: true, // Always enable
-    nodeIntegration: false, // Never enable in renderer
-    sandbox: true, // Always enable
-    webSecurity: true, // Never disable
-    preload: join(__dirname, "../preload/index.js"),
-  },
-});
-```
+Every BrowserWindow must have webPreferences configured with four critical settings. contextIsolation must always be enabled to prevent renderer code from accessing Electron internals. nodeIntegration must always be disabled in renderer processes. sandbox must always be enabled for process-level isolation. webSecurity must never be disabled to maintain same-origin policy enforcement.
 
 Content Security Policy:
 
-```typescript
-session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-  callback({
-    responseHeaders: {
-      ...details.responseHeaders,
-      "Content-Security-Policy": [
-        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
-      ],
-    },
-  });
-});
-```
+Configure session-level CSP headers using webRequest.onHeadersReceived. Restrict default-src to self, script-src to self without unsafe-inline, and connect-src to allowed API domains. This prevents XSS attacks and unauthorized resource loading.
 
-Input Validation with Zod:
+Input Validation:
 
-```typescript
-import { z } from "zod";
+Every IPC handler must validate inputs before processing. Prevent path traversal attacks by rejecting paths containing parent directory references. Validate file names against reserved characters. Use allowlists for permitted directories when implementing file access.
 
-const FilePathSchema = z
-  .string()
-  .refine((path) => !path.includes("..") && !path.startsWith("/"), {
-    message: "Invalid file path",
-  });
-
-ipcMain.handle("file:read", async (_, path: string) => {
-  const validPath = FilePathSchema.parse(path);
-  return readFile(validPath, "utf-8");
-});
-```
+For security implementation details, see reference.md Security Best Practices section.
 
 ### Auto-Update Implementation
 
-Simplified Auto-Update (for GitHub releases):
+Update Service Architecture:
 
-```typescript
-// Simplified auto-update (recommended for GitHub releases)
-// npm install update-electron-app
-require("update-electron-app")();
+Create an UpdateService class that manages the electron-updater lifecycle. Initialize with the main window reference to enable UI notifications. Configure autoDownload as false to give users control over bandwidth usage.
 
-// Or use electron-updater for more control (shown below)
-```
+Event Handling:
 
-Full Update Service:
+Handle update-available events by notifying the renderer and prompting the user for download confirmation. Track download-progress events to display progress indicators. Handle update-downloaded events by prompting for restart.
 
-```typescript
-// src/main/services/updater.ts
-import { autoUpdater, UpdateInfo } from "electron-updater";
-import { BrowserWindow, dialog } from "electron";
-import log from "electron-log";
+User Notification Pattern:
 
-export class UpdateService {
-  private mainWindow: BrowserWindow | null = null;
+Use system dialogs to prompt users when updates are available and when downloads complete. Send events to the renderer for in-app notification display. Support both immediate and deferred installation.
 
-  initialize(window: BrowserWindow): void {
-    this.mainWindow = window;
-    autoUpdater.logger = log;
-    autoUpdater.autoDownload = false;
-
-    autoUpdater.on("update-available", (info: UpdateInfo) => {
-      this.mainWindow?.webContents.send("app:update-available", {
-        version: info.version,
-      });
-      this.promptForUpdate(info);
-    });
-
-    autoUpdater.on("update-downloaded", () => {
-      this.promptForRestart();
-    });
-  }
-
-  async checkForUpdates(): Promise<void> {
-    await autoUpdater.checkForUpdates();
-  }
-
-  private async promptForUpdate(info: UpdateInfo): Promise<void> {
-    const result = await dialog.showMessageBox(this.mainWindow!, {
-      type: "info",
-      title: "Update Available",
-      message: `Version ${info.version} is available. Download now?`,
-      buttons: ["Download", "Later"],
-    });
-    if (result.response === 0) autoUpdater.downloadUpdate();
-  }
-
-  private async promptForRestart(): Promise<void> {
-    const result = await dialog.showMessageBox(this.mainWindow!, {
-      type: "info",
-      title: "Update Ready",
-      message: "Restart to apply the update?",
-      buttons: ["Restart Now", "Later"],
-    });
-    if (result.response === 0) autoUpdater.quitAndInstall(false, true);
-  }
-}
-```
+For complete update service implementation, see examples.md Auto-Update Integration section.
 
 ### App Packaging
 
 Electron Builder Configuration:
 
-```yaml
-# electron-builder.yml
-appId: com.example.myapp
-productName: My App
-directories:
-  output: dist
-  buildResources: resources
+Configure the appId with reverse-domain notation for platform registration. Specify productName for display in system UI. Set up platform-specific targets for macOS, Windows, and Linux.
 
-mac:
-  category: public.app-category.developer-tools
-  hardenedRuntime: true
-  gatekeeperAssess: false
-  entitlements: entitlements.mac.plist
-  entitlementsInherit: entitlements.mac.plist
-  notarize:
-    teamId: ${APPLE_TEAM_ID}
-  target:
-    - target: dmg
-      arch: [x64, arm64]
+macOS Configuration:
 
-win:
-  icon: resources/icons/icon.ico
-  signingHashAlgorithms: [sha256]
-  signAndEditExecutable: true
-  target:
-    - target: nsis
-      arch: [x64]
+Set category for App Store classification. Enable hardenedRuntime and configure entitlements for notarization. Configure universal builds targeting both x64 and arm64 architectures.
 
-linux:
-  category: Development
-  target:
-    - AppImage
-    - deb
+Windows Configuration:
 
-publish:
-  provider: github
-  owner: your-username
-  repo: your-repo
-```
+Specify icon path for executable and installer. Configure NSIS installer options including installation directory selection. Set up code signing with appropriate hash algorithms.
 
-Electron Forge Configuration:
+Linux Configuration:
 
-```javascript
-// forge.config.js
-module.exports = {
-  packagerConfig: {
-    asar: true,
-    darwinDarkModeSupport: true,
-    icon: "./resources/icons/icon",
-    osxSign: { identity: "Developer ID Application: Your Name (TEAM_ID)" },
-  },
-  makers: [
-    { name: "@electron-forge/maker-squirrel" },
-    { name: "@electron-forge/maker-dmg" },
-    { name: "@electron-forge/maker-deb" },
-  ],
-  plugins: [
-    {
-      name: "@electron-forge/plugin-vite",
-      config: {
-        build: [
-          { entry: "src/main/index.ts", config: "vite.main.config.ts" },
-          { entry: "src/preload/index.ts", config: "vite.preload.config.ts" },
-        ],
-        renderer: [{ name: "main_window", config: "vite.renderer.config.ts" }],
-      },
-    },
-  ],
-};
-```
+Configure category for desktop environment integration. Set up multiple targets including AppImage for universal distribution and deb/rpm for package manager installation.
+
+For complete configuration examples, see reference.md Configuration section.
 
 ---
 
 ## Advanced Patterns
 
-For comprehensive documentation including:
+For comprehensive documentation on advanced topics, see reference.md and examples.md:
 
-- Window state persistence and multi-window management
-- System tray and native menus
-- Utility processes for background tasks
-- Native module integration
-- Deep linking and protocol handlers
-- Performance optimization
+Window State Persistence:
 
-See: [reference.md](reference.md) and [examples.md](examples.md)
+- Saving and restoring window position and size across sessions
+- Handling multiple displays and display changes
+- Managing maximized and fullscreen states
+
+Multi-Window Management:
+
+- Creating secondary windows with proper parent-child relationships
+- Sharing state between multiple windows
+- Coordinating window lifecycle events
+
+System Tray and Native Menus:
+
+- Creating and updating system tray icons with context menus
+- Building application menus with keyboard shortcuts
+- Platform-specific menu patterns for macOS and Windows
+
+Utility Processes:
+
+- Spawning utility processes for CPU-intensive background tasks
+- Communicating with utility processes via MessageChannel
+- Managing utility process lifecycle and error handling
+
+Native Module Integration:
+
+- Rebuilding native modules for Electron Node.js version
+- Using better-sqlite3 for local database storage
+- Integrating keytar for secure credential storage
+
+Protocol Handlers and Deep Linking:
+
+- Registering custom URL protocols for app launching
+- Handling deep links on different platforms
+- OAuth callback handling via custom protocols
+
+Performance Optimization:
+
+- Lazy loading windows and heavy modules
+- Optimizing startup time with deferred initialization
+- Memory management for long-running applications
 
 ---
 
 ## Works Well With
 
-- `moai-lang-typescript` - TypeScript patterns for type-safe Electron development
-- `moai-domain-frontend` - React/Vue/Svelte renderer development
-- `moai-lang-javascript` - Node.js patterns for main process
-- `moai-domain-backend` - Backend API integration
-- `moai-workflow-testing` - Testing strategies for desktop apps
+- moai-lang-typescript - TypeScript patterns for type-safe Electron development
+- moai-domain-frontend - React, Vue, or Svelte renderer development
+- moai-lang-javascript - Node.js patterns for main process
+- moai-domain-backend - Backend API integration
+- moai-workflow-testing - Testing strategies for desktop apps
 
 ---
 
-## Quick Troubleshooting
+## Troubleshooting
 
-Common Issues:
+Common Issues and Solutions:
 
 White Screen on Launch:
 
-- Check preload script path is correct
-- Verify loadFile/loadURL path
-- Check for CSP blocking scripts
-- Enable devTools to see errors
+Verify the preload script path is correctly configured relative to the built output directory. Check that loadFile or loadURL paths point to existing files. Enable devTools to inspect console errors. Review CSP settings that may block script execution.
 
 IPC Not Working:
 
-- Verify channel names match exactly
-- Check handler registered before window loads
-- Ensure contextBridge used correctly
+Confirm channel names match exactly between main handlers and renderer invocations. Ensure handlers are registered before windows load content. Verify contextBridge usage follows the correct pattern with exposeInMainWorld.
 
 Native Modules Fail:
 
-- Run `electron-rebuild` after npm install
-- Match Electron Node.js version
-- Use postinstall script for automatic rebuild
+Run electron-rebuild after npm install to recompile native modules. Match the Node.js version embedded in Electron. Add a postinstall script to automate rebuilding.
 
 Auto-Update Not Working:
 
-- Ensure app is signed (required for updates)
-- Check publish configuration
-- Enable electron-updater logging
+Verify the application is code-signed as updates require signing. Check publish configuration in electron-builder.yml. Enable electron-updater logging to diagnose connection issues. Review firewall settings that may block update checks.
 
 Debug Commands:
 
-```bash
-# Rebuild native modules
-npx electron-rebuild
+Rebuild native modules with npx electron-rebuild. Check Electron version with npx electron --version. Enable verbose update logging with DEBUG=electron-updater environment variable.
 
-# Check Electron version
-npx electron --version
+---
 
-# Run with verbose logging
-DEBUG=electron-updater npm start
-```
+## Resources
+
+For complete code examples and configuration templates, see:
+
+- reference.md - Detailed API documentation, version matrix, Context7 library mappings
+- examples.md - Production-ready code examples for all patterns
+
+For latest documentation, use Context7 to query:
+
+- /electron/electron for core Electron APIs
+- /electron/forge for Electron Forge tooling
+- /electron-userland/electron-builder for packaging configuration
+
+---
+
+Version: 2.0.0
+Last Updated: 2026-01-10
+Changes: Restructured to comply with CLAUDE.md Documentation Standards - removed all code examples, converted to narrative text format

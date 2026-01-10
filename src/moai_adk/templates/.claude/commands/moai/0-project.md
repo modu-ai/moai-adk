@@ -1,5 +1,4 @@
 ---
-name: moai:0-project
 description: "Generate project documentation from codebase analysis"
 argument-hint: ""
 type: workflow

@@ -17,10 +17,12 @@ class InitTranslations(TypedDict):
     project_setup: str
     git_setup: str
     output_language: str
+    claude_auth_selection: str  # New: Claude authentication method selection
 
     # Questions
     q_language: str
     q_service: str
+    q_claude_auth_type: str  # New: Claude auth type question
     q_pricing_claude: str
     q_pricing_glm: str
     q_api_key_anthropic: str
@@ -37,6 +39,12 @@ class InitTranslations(TypedDict):
     opt_claude_api: str
     opt_glm: str
     opt_hybrid: str
+
+    # Options - Claude Auth Type (for hybrid)
+    opt_claude_sub: str  # New
+    opt_claude_api_key: str  # New
+    desc_claude_sub: str  # New
+    desc_claude_api_key: str  # New
 
     # Options - Pricing Claude
     opt_pro: str
@@ -86,9 +94,11 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "project_setup": "📁 프로젝트 설정",
         "git_setup": "🔀 Git 설정",
         "output_language": "🗣️ 출력 언어 설정",
+        "claude_auth_selection": "🔐 Claude 인증 방식",
         # Questions
         "q_language": "대화 언어를 선택하세요:",
         "q_service": "사용할 서비스를 선택하세요:",
+        "q_claude_auth_type": "Claude 인증 방식을 선택하세요:",
         "q_pricing_claude": "Claude 요금제를 선택하세요:",
         "q_pricing_glm": "GLM CodePlan 요금제를 선택하세요:",
         "q_api_key_anthropic": "Anthropic API 키를 입력하세요:",
@@ -104,6 +114,11 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "opt_claude_api": "Claude API",
         "opt_glm": "GLM CodePlan",
         "opt_hybrid": "Claude + GLM (하이브리드)",
+        # Options - Claude Auth Type (for hybrid)
+        "opt_claude_sub": "구독",
+        "opt_claude_api_key": "API 키",
+        "desc_claude_sub": "Claude Code 구독 사용",
+        "desc_claude_api_key": "API 키 직접 입력",
         # Options - Pricing Claude
         "opt_pro": "Pro ($20/월)",
         "opt_max5": "Max5 ($100/월)",
@@ -146,9 +161,11 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "project_setup": "📁 Project Setup",
         "git_setup": "🔀 Git Setup",
         "output_language": "🗣️ Output Language Settings",
+        "claude_auth_selection": "🔐 Claude Authentication",
         # Questions
         "q_language": "Select your conversation language:",
         "q_service": "Select the service to use:",
+        "q_claude_auth_type": "Select Claude authentication method:",
         "q_pricing_claude": "Select Claude pricing plan:",
         "q_pricing_glm": "Select GLM CodePlan pricing plan:",
         "q_api_key_anthropic": "Enter your Anthropic API key:",
@@ -164,6 +181,11 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "opt_claude_api": "Claude API",
         "opt_glm": "GLM CodePlan",
         "opt_hybrid": "Claude + GLM (Hybrid)",
+        # Options - Claude Auth Type (for hybrid)
+        "opt_claude_sub": "Subscription",
+        "opt_claude_api_key": "API Key",
+        "desc_claude_sub": "Use Claude Code subscription",
+        "desc_claude_api_key": "Enter API key directly",
         # Options - Pricing Claude
         "opt_pro": "Pro ($20/mo)",
         "opt_max5": "Max5 ($100/mo)",
@@ -206,9 +228,11 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "project_setup": "📁 プロジェクト設定",
         "git_setup": "🔀 Git設定",
         "output_language": "🗣️ 出力言語設定",
+        "claude_auth_selection": "🔐 Claude認証方式",
         # Questions
         "q_language": "会話言語を選択してください:",
         "q_service": "使用するサービスを選択してください:",
+        "q_claude_auth_type": "Claude認証方式を選択してください:",
         "q_pricing_claude": "Claudeの料金プランを選択してください:",
         "q_pricing_glm": "GLM CodePlanの料金プランを選択してください:",
         "q_api_key_anthropic": "Anthropic APIキーを入力してください:",
@@ -224,6 +248,11 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "opt_claude_api": "Claude API",
         "opt_glm": "GLM CodePlan",
         "opt_hybrid": "Claude + GLM (ハイブリッド)",
+        # Options - Claude Auth Type (for hybrid)
+        "opt_claude_sub": "サブスクリプション",
+        "opt_claude_api_key": "APIキー",
+        "desc_claude_sub": "Claude Codeサブスクリプション使用",
+        "desc_claude_api_key": "APIキーを直接入力",
         # Options - Pricing Claude
         "opt_pro": "Pro ($20/月)",
         "opt_max5": "Max5 ($100/月)",
@@ -266,9 +295,11 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "project_setup": "📁 项目设置",
         "git_setup": "🔀 Git设置",
         "output_language": "🗣️ 输出语言设置",
+        "claude_auth_selection": "🔐 Claude认证方式",
         # Questions
         "q_language": "选择您的对话语言:",
         "q_service": "选择要使用的服务:",
+        "q_claude_auth_type": "选择Claude认证方式:",
         "q_pricing_claude": "选择Claude定价方案:",
         "q_pricing_glm": "选择GLM CodePlan定价方案:",
         "q_api_key_anthropic": "输入您的Anthropic API密钥:",
@@ -284,6 +315,11 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "opt_claude_api": "Claude API",
         "opt_glm": "GLM CodePlan",
         "opt_hybrid": "Claude + GLM (混合)",
+        # Options - Claude Auth Type (for hybrid)
+        "opt_claude_sub": "订阅",
+        "opt_claude_api_key": "API密钥",
+        "desc_claude_sub": "使用Claude Code订阅",
+        "desc_claude_api_key": "直接输入API密钥",
         # Options - Pricing Claude
         "opt_pro": "Pro ($20/月)",
         "opt_max5": "Max5 ($100/月)",

@@ -2405,14 +2405,14 @@ SOFTWARE.
 
 ### 概述
 
-对于担心 Claude Code 使用成本的开发者，MoAI-ADK 支持通过 **z.ai** 进行 **GLM 4.6** 集成。此配置在保持与 Claude Code 完全兼容的同时，大幅降低成本。
+对于担心 Claude Code 使用成本的开发者，MoAI-ADK 支持通过 **z.ai** 进行 **GLM 4.7** 集成。此配置在保持与 Claude Code 完全兼容的同时，大幅降低成本。
 
 ### 💡 选择 GLM 的理由
 
-| 功能 | Claude Code | z.ai GLM 4.6 |
+| 功能 | Claude Code | z.ai GLM 4.7 |
 | --------------------- | ------------------------------- | ----------------------------- |
 | **成本** | $20/月（Pro 计划） | **$6-$60/月（灵活）** |
-| **模型** | Claude 4.5 Sonnet, Opus, Haiku | GLM 4.6, GLM 4.5-air |
+| **模型** | Claude 4.5 Sonnet, Opus, Haiku | GLM 4.7, GLM 4.5-air |
 | **兼容性** | 原生 | **100% Claude 兼容** |
 | **令牌限制** | 限制 | **付费计划无限制** |
 | **API 访问** | 包含 | **完整 API 访问** |
@@ -2430,7 +2430,7 @@ SOFTWARE.
 
 | 计划 | 价格 | 功能 | 最适合 |
 | ------------- | ---------------------------------- | ----------------------------------------------------------------------- | --------------------------------- |
-| **轻量** | 第一个月 $3<br/>第二个月起 $6/月 | • Claude Pro 使用量 3 倍<br/>• GLM-4.6 驱动<br/>• 10 多个编码工具兼容 | 轻量级工作负载，入门 |
+| **轻量** | 第一个月 $3<br/>第二个月起 $6/月 | • Claude Pro 使用量 3 倍<br/>• GLM-4.7 驱动<br/>• 10 多个编码工具兼容 | 轻量级工作负载，入门 |
 | **专业** | 第一个月 $15<br/>第二个月起 $30/月 | • 所有轻量级权益<br/>• 轻量级计划使用量 5 倍<br/>• 40-60% 更快<br/>• Vision、Web Search、Web Reader | 专业开发者、团队 |
 | **最大** | 第一个月 $30<br/>第二个月起 $60/月 | • 所有专业权益<br/>• 专业计划使用量 4 倍<br/>• 保证峰值性能<br/>• 新功能优先访问 | 大容量工作负载、高级用户 |
 | **企业** | 定制 | • 定制定价<br/>• 专属支持<br/>• SLA 保证 | 大型组织、定制需求 |
@@ -2439,7 +2439,7 @@ SOFTWARE.
 
 1. **大幅成本节省**: 轻量级计划月费 $6 即可享受 Claude Pro 使用量 3 倍
 2. **完整工具兼容性**: 支持 Claude Code、Roo Code、Cline、Kilo Code、OpenCode、Crush、Goose 等 10 多个编码工具
-3. **高性能模型**: 基于 GLM-4.6（与 Claude 4.5 Sonnet 相当）
+3. **高性能模型**: 基于 GLM-4.7（与 Claude 4.5 Sonnet 相当）
 4. **灵活定价**: 从月费 $6 轻量级到 $60 最大（根据需求扩展）
 5. **性能选项**: 专业计划快 40-60%，最大计划保证峰值性能
 6. **高级功能**: 框架理解、Web 搜索、Web Reader MCP（专业及以上）
@@ -2449,7 +2449,7 @@ SOFTWARE.
 
 **第1步：轻量级计划（$6/月）开始**
 - 月费 $6 享受 Claude Pro 使用量 3 倍
-- 用实际项目测试 GLM-4.6 2-3 周
+- 用实际项目测试 GLM-4.7 2-3 周
 - 体验与 10 多个编码工具的兼容性
 
 **第2步：根据使用量升级**
@@ -2483,7 +2483,7 @@ SOFTWARE.
 3. 完成注册和支付
 4. 从仪表板记录 API 令牌
 
-**💡 提示**: 从 $6 轻量级计划开始测试 GLM-4.6，然后为更快性能升级到专业，或为大容量工作负载升级到最大！
+**💡 提示**: 从 $6 轻量级计划开始测试 GLM-4.7，然后为更快性能升级到专业，或为大容量工作负载升级到最大！
 
 #### 第2步：将 MoAI-ADK 配置为 GLM
 
@@ -2501,7 +2501,7 @@ SOFTWARE.
 
 ✅ **API 令牌设置**: 安全存储 GLM API 令牌
 ✅ **端点配置**: 设置 z.ai API 端点
-✅ **模型映射**: 将 GLM 4.6 映射到 Claude 模型层
+✅ **模型映射**: 将 GLM 4.7 映射到 Claude 模型层
 ✅ **验证**: 测试连接和模型可用性
 ✅ **回退准备**: 将 Claude 保留为备份选项
 
@@ -2517,8 +2517,8 @@ SOFTWARE.
     "ANTHROPIC_AUTH_TOKEN": "your_glm_token_here",
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.6"
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.7"
   }
 }
 ```
@@ -2532,34 +2532,36 @@ SOFTWARE.
 claude
 ```
 
-GLM 4.6 现已激活，准备使用！
+GLM 4.7 现已激活，准备使用！
 
 ### 🔄 GLM 配置管理
 
-#### 启用 GLM 模式:
+#### CLI 切换后端:
 
 ```bash
-> /moai:0-project --glm-on [YOUR_TOKEN]
+# 检查当前后端状态
+moai switch status
+
+# 切换到 GLM 后端（成本效益高）
+moai switch glm
+
+# 切换到 Claude 后端（默认）
+moai switch claude
 ```
 
-#### 禁用 GLM（切换回 Claude）:
+#### 工作原理:
 
-```bash
-> /moai:0-project --glm-off
-```
+`moai switch` 命令修改 `.claude/settings.local.json`：
+- **GLM 模式**：添加 GLM 环境变量（API URL、模型映射）
+- **Claude 模式**：移除 GLM 环境变量（恢复默认）
 
-#### 检查当前模式:
-
-当满足以下条件时 GLM 处于活动状态:
-- `.claude/settings.local.json` 包含 GLM 配置
-- 基础 URL 设置为 `https://api.z.ai/api/anthropic`
-- 模型映射到 GLM 变体
+**注意**：切换后需要重启 Claude Code 以应用更改。
 
 ### 📊 性能比较
 
 基于实际 MoAI-ADK 测试:
 
-| 任务 | Claude 4.5 Sonnet | GLM 4.6 | 性能差距 |
+| 任务 | Claude 4.5 Sonnet | GLM 4.7 | 性能差距 |
 | ------------------------------ | ----------------- | ------------ | --------------- |
 | **代码生成** | 优秀 | **优秀** | 差异小于 5% |
 | **TDD 实现** | 优秀 | **非常好** | 快 10% |
@@ -2626,6 +2628,13 @@ GLM 4.6 现已激活，准备使用！
 **从今天开始节省成本，同时保持开发生产力！** 🚀
 
 ## 17. 额外资源和社区
+
+### 🌐 社区 & 开发者资源
+
+**加入我们的社区:**
+
+- **Discord（官方）**: [https://discord.gg/umywNygN](https://discord.gg/umywNygN) - 加入 MoAI-ADK 社区进行讨论、获取支持和更新
+- **开发者博客**: [https://goos.kim](https://goos.kim) - 技术文章、教程和开发洞察
 
 ### 🆘 支持
 

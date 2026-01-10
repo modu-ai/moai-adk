@@ -1,14 +1,14 @@
 ---
 name: "moai-platform-supabase"
 description: "Supabase specialist covering PostgreSQL 16, pgvector, RLS, real-time subscriptions, and Edge Functions. Use when building full-stack apps with Supabase backend."
-version: 2.0.0
+version: 2.1.0
 category: "platform"
 modularized: true
 user-invocable: false
 tags: ['supabase', 'postgresql', 'pgvector', 'realtime', 'rls', 'edge-functions']
 context7-libraries: ['/supabase/supabase']
 related-skills: ['moai-platform-neon', 'moai-lang-typescript']
-updated: 2026-01-08
+updated: 2026-01-11
 status: "active"
 allowed-tools:
   - Read
@@ -20,39 +20,39 @@ allowed-tools:
 
 # moai-platform-supabase: Supabase Platform Specialist
 
-## Quick Reference (30 seconds)
+## Quick Reference
 
 Supabase Full-Stack Platform: PostgreSQL 16 with pgvector for AI/vector search, Row-Level Security for multi-tenant apps, real-time subscriptions, Edge Functions with Deno runtime, and integrated Storage with transformations.
 
 ### Core Capabilities
 
-PostgreSQL 16: Latest PostgreSQL with full SQL support, JSONB, and advanced features
-pgvector Extension: AI embeddings storage with HNSW/IVFFlat indexes for similarity search
-Row-Level Security: Automatic multi-tenant data isolation at database level
-Real-time Subscriptions: Live data sync via Postgres Changes and Presence
-Edge Functions: Serverless Deno functions at the edge
-Storage: File storage with automatic image transformations
-Auth: Built-in authentication with JWT integration
+PostgreSQL 16 provides latest PostgreSQL with full SQL support, JSONB, and advanced features.
+
+pgvector Extension enables AI embeddings storage with HNSW and IVFFlat indexes for similarity search.
+
+Row-Level Security provides automatic multi-tenant data isolation at database level.
+
+Real-time Subscriptions enable live data sync via Postgres Changes and Presence.
+
+Edge Functions provide serverless Deno functions at the edge.
+
+Storage provides file storage with automatic image transformations.
+
+Auth provides built-in authentication with JWT integration.
 
 ### When to Use Supabase
 
-- Multi-tenant SaaS applications requiring data isolation
-- AI/ML applications needing vector embeddings and similarity search
-- Real-time collaborative features (presence, live updates)
-- Full-stack applications needing auth, database, and storage
-- Projects requiring PostgreSQL-specific features
+Use Supabase for multi-tenant SaaS applications requiring data isolation, AI/ML applications needing vector embeddings and similarity search, real-time collaborative features including presence and live updates, full-stack applications needing auth, database, and storage, and projects requiring PostgreSQL-specific features.
 
 ### Context7 Documentation Access
 
 For latest Supabase API documentation, use the Context7 MCP tools:
 
-Step 1 - Resolve library ID:
-Use mcp__context7__resolve-library-id with query "supabase" to get the Context7-compatible library ID
+Step 1 - Resolve library ID: Use mcp__context7__resolve-library-id with query "supabase" to get the Context7-compatible library ID.
 
-Step 2 - Fetch documentation:
-Use mcp__context7__get-library-docs with the resolved library ID, specifying topic and token allocation
+Step 2 - Fetch documentation: Use mcp__context7__get-library-docs with the resolved library ID, specifying topic and token allocation.
 
-Example topics: "postgresql pgvector", "row-level-security policies", "realtime subscriptions presence", "edge-functions deno", "storage transformations", "auth jwt"
+Example topics include "postgresql pgvector", "row-level-security policies", "realtime subscriptions presence", "edge-functions deno", "storage transformations", and "auth jwt".
 
 ---
 
@@ -62,47 +62,19 @@ This skill uses progressive disclosure with specialized modules for detailed imp
 
 ### Core Modules
 
-**postgresql-pgvector** - PostgreSQL 16 with pgvector extension for AI embeddings and semantic search
-- Vector storage with 1536-dimension OpenAI embeddings
-- HNSW and IVFFlat index strategies
-- Semantic search functions
-- Hybrid search combining vector and full-text
+postgresql-pgvector covers PostgreSQL 16 with pgvector extension for AI embeddings and semantic search. Topics include vector storage with 1536-dimension OpenAI embeddings, HNSW and IVFFlat index strategies, semantic search functions, and hybrid search combining vector and full-text.
 
-**row-level-security** - RLS policies for multi-tenant data isolation
-- Basic tenant isolation patterns
-- Hierarchical organization access
-- Role-based modification policies
-- Service role bypass for server operations
+row-level-security covers RLS policies for multi-tenant data isolation. Topics include basic tenant isolation patterns, hierarchical organization access, role-based modification policies, and service role bypass for server operations.
 
-**realtime-presence** - Real-time subscriptions and presence tracking
-- Postgres Changes subscription patterns
-- Filtered change listeners
-- Presence state management
-- Collaborative cursor and typing indicators
+realtime-presence covers real-time subscriptions and presence tracking. Topics include Postgres Changes subscription patterns, filtered change listeners, presence state management, and collaborative cursor and typing indicators.
 
-**edge-functions** - Serverless Deno functions at the edge
-- Basic Edge Function with authentication
-- CORS header configuration
-- JWT token verification
-- Rate limiting implementation
+edge-functions covers serverless Deno functions at the edge. Topics include basic Edge Function with authentication, CORS header configuration, JWT token verification, and rate limiting implementation.
 
-**storage-cdn** - File storage with image transformations
-- File upload patterns
-- Image transformation URLs
-- Thumbnail generation
-- Cache control configuration
+storage-cdn covers file storage with image transformations. Topics include file upload patterns, image transformation URLs, thumbnail generation, and cache control configuration.
 
-**auth-integration** - Authentication patterns and JWT handling
-- Server-side client creation
-- Cookie-based session management
-- Auth state synchronization
-- Protected route patterns
+auth-integration covers authentication patterns and JWT handling. Topics include server-side client creation, cookie-based session management, auth state synchronization, and protected route patterns.
 
-**typescript-patterns** - TypeScript client patterns and service layers
-- Server-side client for Next.js App Router
-- Service layer abstraction pattern
-- Subscription management
-- Type-safe database operations
+typescript-patterns covers TypeScript client patterns and service layers. Topics include server-side client for Next.js App Router, service layer abstraction pattern, subscription management, and type-safe database operations.
 
 ---
 
@@ -110,76 +82,39 @@ This skill uses progressive disclosure with specialized modules for detailed imp
 
 ### Database Setup
 
-Enable pgvector extension and create embeddings table:
-
-```sql
-CREATE EXTENSION IF NOT EXISTS vector;
-
-CREATE TABLE documents (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  content TEXT NOT NULL,
-  embedding vector(1536),
-  metadata JSONB DEFAULT '{}',
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_documents_embedding ON documents
-USING hnsw (embedding vector_cosine_ops);
-```
+To enable pgvector extension and create embeddings table, execute SQL to create extension vector if not exists. Create a documents table with id as UUID primary key defaulting to gen_random_uuid(), content as TEXT not null, embedding as vector with 1536 dimensions, metadata as JSONB defaulting to empty object, and created_at as TIMESTAMPTZ defaulting to NOW(). Create an index on documents embedding using hnsw with vector_cosine_ops operator class.
 
 ### Basic RLS Policy
 
-```sql
-ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "tenant_isolation" ON projects FOR ALL
-  USING (tenant_id = (auth.jwt() ->> 'tenant_id')::UUID);
-```
+To create a tenant isolation policy, alter the projects table to enable row level security. Create a policy named "tenant_isolation" on projects for all operations using a condition where tenant_id equals the tenant_id extracted from the auth.jwt() function cast to UUID.
 
 ### Real-time Subscription
 
-```typescript
-const channel = supabase.channel('db-changes')
-  .on('postgres_changes',
-    { event: '*', schema: 'public', table: 'messages' },
-    (payload) => console.log('Change:', payload)
-  )
-  .subscribe()
-```
+For real-time subscription, create a channel using supabase.channel with a channel name. Chain the on method for postgres_changes with event set to asterisk for all events, schema set to public, and table set to messages. Provide a callback that logs the payload. Chain subscribe to activate the subscription.
 
 ### Edge Function Template
 
-```typescript
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-serve(async (req) => {
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  )
-  // Process request
-  return new Response(JSON.stringify({ success: true }))
-})
-```
+For Edge Function template, import serve from deno.land/std/http/server.ts and createClient from esm.sh/@supabase/supabase-js. Call serve with an async handler that creates a Supabase client using environment variables SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY. Process the request and return a new Response with JSON stringified success object.
 
 ---
 
 ## Best Practices
 
-Performance: Use HNSW indexes for vectors, Supavisor for connection pooling in serverless
-Security: Always enable RLS, verify JWT tokens, use service_role only in Edge Functions
-Migration: Use Supabase CLI (supabase migration new, supabase db push)
+Performance: Use HNSW indexes for vectors and Supavisor for connection pooling in serverless environments.
+
+Security: Always enable RLS, verify JWT tokens, and use service_role only in Edge Functions.
+
+Migration: Use Supabase CLI with supabase migration new and supabase db push commands.
 
 ---
 
 ## Works Well With
 
-- moai-platform-neon - Alternative PostgreSQL for specific use cases
-- moai-lang-typescript - TypeScript patterns for Supabase client
-- moai-domain-backend - Backend architecture integration
-- moai-foundation-quality - Security and RLS best practices
-- moai-workflow-testing - Test-driven development with Supabase
+- moai-platform-neon for alternative PostgreSQL for specific use cases
+- moai-lang-typescript for TypeScript patterns for Supabase client
+- moai-domain-backend for backend architecture integration
+- moai-foundation-quality for security and RLS best practices
+- moai-workflow-testing for test-driven development with Supabase
 
 ---
 
@@ -187,21 +122,20 @@ Migration: Use Supabase CLI (supabase migration new, supabase db push)
 
 For detailed implementation patterns, see the modules directory:
 
-- modules/postgresql-pgvector.md - Complete vector search implementation
-- modules/row-level-security.md - Multi-tenant RLS patterns
-- modules/realtime-presence.md - Real-time collaboration features
-- modules/edge-functions.md - Serverless function patterns
-- modules/storage-cdn.md - File storage and transformations
-- modules/auth-integration.md - Authentication patterns
-- modules/typescript-patterns.md - TypeScript client architecture
+- modules/postgresql-pgvector.md covers complete vector search implementation
+- modules/row-level-security.md covers multi-tenant RLS patterns
+- modules/realtime-presence.md covers real-time collaboration features
+- modules/edge-functions.md covers serverless function patterns
+- modules/storage-cdn.md covers file storage and transformations
+- modules/auth-integration.md covers authentication patterns
+- modules/typescript-patterns.md covers TypeScript client architecture
 
-For API reference summary, see reference.md
-For full-stack templates, see examples.md
+For API reference summary, see reference.md. For full-stack templates, see examples.md.
 
 ---
 
 Status: Production Ready
 Generated with: MoAI-ADK Skill Factory v2.0
-Last Updated: 2026-01-06
-Version: 2.0.0 (Modularized)
+Last Updated: 2026-01-11
+Version: 2.1.0 (Modularized)
 Coverage: PostgreSQL 16, pgvector, RLS, Real-time, Edge Functions, Storage

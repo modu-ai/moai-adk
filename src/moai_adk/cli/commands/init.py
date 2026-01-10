@@ -164,9 +164,7 @@ def init(
 
         if non_interactive:
             # Non-Interactive Mode
-            console.print(
-                f"\n[cyan]🚀 Initializing project at {project_path}...[/cyan]\n"
-            )
+            console.print(f"\n[cyan]🚀 Initializing project at {project_path}...[/cyan]\n")
             project_name = project_path.name if is_current_dir else path
             locale = locale or "en"
             # Language detection happens in /moai:0-project, so default to None here
@@ -212,9 +210,7 @@ def init(
         if initializer.is_initialized():
             # Always reinitialize without confirmation (force mode by default)
             if non_interactive:
-                console.print(
-                    "\n[green]🔄 Reinitializing project (force mode)...[/green]\n"
-                )
+                console.print("\n[green]🔄 Reinitializing project (force mode)...[/green]\n")
             else:
                 # Interactive mode: Simple notification
                 console.print("\n[cyan]🔄 Reinitializing project...[/cyan]")
@@ -245,9 +241,7 @@ def init(
             config_yaml_path = project_path / ".moai" / "config" / "config.yaml"
             config_json_path = project_path / ".moai" / "config" / "config.json"
 
-            config_path = (
-                config_yaml_path if config_yaml_path.exists() else config_json_path
-            )
+            config_path = config_yaml_path if config_yaml_path.exists() else config_json_path
             is_yaml = config_path.suffix in (".yaml", ".yml")
 
             if config_path.exists():
@@ -327,6 +321,8 @@ def init(
         if result.success and not non_interactive:
             _save_additional_config(
                 project_path=project_path,
+                project_name=project_name,
+                locale=locale,
                 service_type=service_type,
                 pricing_plan=pricing_plan,
                 anthropic_api_key=anthropic_api_key,
@@ -341,51 +337,35 @@ def init(
         # 6. Output results
         if result.success:
             separator = "[dim]" + ("─" * 60) + "[/dim]"
-            console.print(
-                "\n[green bold]✅ Initialization Completed Successfully![/green bold]"
-            )
+            console.print("\n[green bold]✅ Initialization Completed Successfully![/green bold]")
             console.print(separator)
             console.print("\n[cyan]📊 Summary:[/cyan]")
             console.print(f"  [dim]📁 Location:[/dim]  {result.project_path}")
             # Show language more clearly - "generic" means auto-detect
-            language_display = (
-                "Auto-detect (use /moai:0-project)"
-                if result.language == "generic"
-                else result.language
-            )
+            language_display = "Auto-detect (use /moai:0-project)" if result.language == "generic" else result.language
             console.print(f"  [dim]🌐 Language:[/dim]  {language_display}")
             # Show Git Strategy (default: manual = local-only, no auto-branch)
-            console.print(
-                "  [dim]🔀 Git:[/dim]       manual (github-flow, branch: manual)"
-            )
+            console.print("  [dim]🔀 Git:[/dim]       manual (github-flow, branch: manual)")
             console.print(f"  [dim]🌍 Locale:[/dim]    {result.locale}")
-            console.print(
-                f"  [dim]📄 Files:[/dim]     {len(result.created_files)} created"
-            )
+            console.print(f"  [dim]📄 Files:[/dim]     {len(result.created_files)} created")
             console.print(f"  [dim]⏱️  Duration:[/dim]  {result.duration}ms")
 
             # Show backup info if reinitialized
             if is_reinit:
                 backup_dir = project_path / ".moai-backups"
                 if backup_dir.exists():
-                    latest_backup = max(
-                        backup_dir.iterdir(), key=lambda p: p.stat().st_mtime
-                    )
+                    latest_backup = max(backup_dir.iterdir(), key=lambda p: p.stat().st_mtime)
                     console.print(f"  [dim]💾 Backup:[/dim]    {latest_backup.name}/")
 
             console.print(f"\n{separator}")
 
             # Show config merge notice if reinitialized
             if is_reinit:
-                console.print(
-                    "\n[yellow]⚠️  Configuration Status: optimized=false (merge required)[/yellow]"
-                )
+                console.print("\n[yellow]⚠️  Configuration Status: optimized=false (merge required)[/yellow]")
                 console.print()
                 console.print("[cyan]What Happened:[/cyan]")
                 console.print("  ✅ Template files updated to latest version")
-                console.print(
-                    "  💾 Your previous settings backed up in: [cyan].moai-backups/backup/[/cyan]"
-                )
+                console.print("  💾 Your previous settings backed up in: [cyan].moai-backups/backup/[/cyan]")
                 console.print("  ⏳ Configuration merge required")
                 console.print()
                 console.print("[cyan]What is optimized=false?[/cyan]")
@@ -395,30 +375,18 @@ def init(
                 console.print()
                 console.print("[cyan]What Happens Next:[/cyan]")
                 console.print("  1. Run [bold]/moai:0-project[/bold] in Claude Code")
-                console.print(
-                    "  2. System intelligently merges old settings + new template"
-                )
+                console.print("  2. System intelligently merges old settings + new template")
                 console.print("  3. After successful merge → optimized becomes true")
                 console.print("  4. You're ready to continue developing\n")
 
             console.print("\n[cyan]🚀 Next Steps:[/cyan]")
             if not is_current_dir:
-                console.print(
-                    f"  [blue]1.[/blue] Run [bold]cd {project_name}[/bold] to enter the project"
-                )
-                console.print(
-                    "  [blue]2.[/blue] Run [bold]/moai:0-project[/bold] in Claude Code for full setup"
-                )
-                console.print(
-                    "     (Configure: mode, language, report generation, etc.)"
-                )
+                console.print(f"  [blue]1.[/blue] Run [bold]cd {project_name}[/bold] to enter the project")
+                console.print("  [blue]2.[/blue] Run [bold]/moai:0-project[/bold] in Claude Code for full setup")
+                console.print("     (Configure: mode, language, report generation, etc.)")
             else:
-                console.print(
-                    "  [blue]1.[/blue] Run [bold]/moai:0-project[/bold] in Claude Code for full setup"
-                )
-                console.print(
-                    "     (Configure: mode, language, report generation, etc.)"
-                )
+                console.print("  [blue]1.[/blue] Run [bold]/moai:0-project[/bold] in Claude Code for full setup")
+                console.print("     (Configure: mode, language, report generation, etc.)")
 
             if not is_current_dir:
                 console.print("  [blue]3.[/blue] Start developing with MoAI-ADK!\n")
@@ -438,9 +406,7 @@ def init(
         raise click.Abort()
     except FileExistsError as e:
         console.print("\n[yellow]⚠ Project already initialized[/yellow]")
-        console.print(
-            "[dim]  Use 'python -m moai_adk status' to check configuration[/dim]\n"
-        )
+        console.print("[dim]  Use 'python -m moai_adk status' to check configuration[/dim]\n")
         raise click.Abort() from e
     except Exception as e:
         console.print(f"\n[red]✗ Initialization failed: {e}[/red]\n")
@@ -452,6 +418,8 @@ def init(
 
 def _save_additional_config(
     project_path: Path,
+    project_name: str,
+    locale: str,
     service_type: str,
     pricing_plan: str | None,
     anthropic_api_key: str | None,
@@ -466,6 +434,8 @@ def _save_additional_config(
 
     Args:
         project_path: Project directory path
+        project_name: Project name
+        locale: Conversation language (ko, en, ja, zh)
         service_type: Service type (claude_subscription, claude_api, glm, hybrid)
         pricing_plan: Pricing plan
         anthropic_api_key: Anthropic API key (if provided)
@@ -477,6 +447,8 @@ def _save_additional_config(
         doc_lang: Documentation language
     """
     sections_dir = project_path / ".moai" / "config" / "sections"
+    # Ensure sections directory exists
+    sections_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Save API keys to .env file
     env_path = project_path / ".env"
@@ -485,11 +457,7 @@ def _save_additional_config(
         env_lines = env_path.read_text().splitlines()
 
     # Remove existing keys and add new ones
-    env_lines = [
-        line
-        for line in env_lines
-        if not line.startswith(("ANTHROPIC_API_KEY=", "GLM_API_KEY="))
-    ]
+    env_lines = [line for line in env_lines if not line.startswith(("ANTHROPIC_API_KEY=", "GLM_API_KEY="))]
 
     if anthropic_api_key:
         env_lines.append(f"ANTHROPIC_API_KEY={anthropic_api_key}")
@@ -538,14 +506,22 @@ def _save_additional_config(
     if "language" not in lang_data:
         lang_data["language"] = {}
 
+    # Conversation language mapping
+    locale_names = {
+        "ko": "Korean (한국어)",
+        "en": "English",
+        "ja": "Japanese (日本語)",
+        "zh": "Chinese (中文)",
+    }
+
+    lang_data["language"]["conversation_language"] = locale
+    lang_data["language"]["conversation_language_name"] = locale_names.get(locale, "English")
     lang_data["language"]["git_commit_messages"] = git_commit_lang
     lang_data["language"]["code_comments"] = code_comment_lang
     lang_data["language"]["documentation"] = doc_lang
 
     with open(language_path, "w", encoding="utf-8") as f:
-        yaml.safe_dump(
-            lang_data, f, default_flow_style=False, allow_unicode=True, sort_keys=False
-        )
+        yaml.safe_dump(lang_data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
     # 4. Update git-strategy.yaml with git mode
     git_path = sections_dir / "git-strategy.yaml"
@@ -563,31 +539,34 @@ def _save_additional_config(
     git_data["git_strategy"]["mode"] = git_mode
 
     with open(git_path, "w", encoding="utf-8") as f:
-        yaml.safe_dump(
-            git_data, f, default_flow_style=False, allow_unicode=True, sort_keys=False
-        )
+        yaml.safe_dump(git_data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
-    # 5. Update project.yaml with GitHub username if provided
-    if github_username:
-        project_yaml_path = sections_dir / "project.yaml"
-        if project_yaml_path.exists():
-            try:
-                project_data = yaml.safe_load(project_yaml_path.read_text()) or {}
-            except Exception:
-                project_data = {}
-        else:
+    # 5. Update project.yaml with project name and GitHub username
+    project_yaml_path = sections_dir / "project.yaml"
+    if project_yaml_path.exists():
+        try:
+            project_data = yaml.safe_load(project_yaml_path.read_text()) or {}
+        except Exception:
             project_data = {}
+    else:
+        project_data = {}
 
+    # Save project name
+    if "project" not in project_data:
+        project_data["project"] = {}
+    project_data["project"]["name"] = project_name
+
+    # Save GitHub username if provided
+    if github_username:
         if "github" not in project_data:
             project_data["github"] = {}
-
         project_data["github"]["profile_name"] = github_username
 
-        with open(project_yaml_path, "w", encoding="utf-8") as f:
-            yaml.safe_dump(
-                project_data,
-                f,
-                default_flow_style=False,
-                allow_unicode=True,
-                sort_keys=False,
-            )
+    with open(project_yaml_path, "w", encoding="utf-8") as f:
+        yaml.safe_dump(
+            project_data,
+            f,
+            default_flow_style=False,
+            allow_unicode=True,
+            sort_keys=False,
+        )

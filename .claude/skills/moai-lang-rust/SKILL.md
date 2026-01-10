@@ -1,12 +1,12 @@
 ---
 name: "moai-lang-rust"
 description: "Rust 1.92+ development specialist covering Axum, Tokio, SQLx, and memory-safe systems programming. Use when building high-performance, memory-safe applications or WebAssembly."
-version: 1.1.0
+version: 1.2.0
 category: "language"
 modularized: false
 user-invocable: false
 tags: ["language", "rust", "axum", "tokio", "sqlx", "serde", "wasm", "cargo"]
-updated: 2026-01-08
+updated: 2026-01-11
 status: "active"
 allowed-tools:
   - Read
@@ -32,29 +32,9 @@ Core Use Cases:
 
 Quick Patterns:
 
-Axum REST API:
+Axum REST API: Create Router with route macro chaining path and handler. Add with_state for shared state. Bind TcpListener with tokio::net and serve with axum::serve.
 
-```rust
-let app = Router::new()
-    .route("/api/users/:id", get(get_user))
-    .with_state(app_state);
-let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
-axum::serve(listener, app).await?;
-```
-
-Async Handler with SQLx:
-
-```rust
-async fn get_user(
-    State(state): State<AppState>,
-    Path(id): Path<i64>,
-) -> Result<Json<User>, AppError> {
-    let user = sqlx::query_as!(User, "SELECT * FROM users WHERE id = $1", id)
-        .fetch_optional(&state.db).await?
-        .ok_or(AppError::NotFound)?;
-    Ok(Json(user))
-}
-```
+Async Handler with SQLx: Define async handler function taking State extractor for AppState and Path extractor for id. Use sqlx::query_as! macro with SQL string and bind parameters. Call fetch_optional on pool, await, and use ok_or for error conversion. Return Json wrapped result.
 
 ---
 
@@ -70,222 +50,41 @@ Modern Rust Features:
 - let-else for pattern matching with early return
 - Improved borrow checker with polonius
 
-Async Traits (Stable):
+Async Traits (Stable): Define trait with async fn signatures. Implement trait for concrete types with async fn implementations. Call sqlx macros directly in trait methods.
 
-```rust
-trait AsyncRepository {
-    async fn get(&self, id: i64) -> Result<User, Error>;
-    async fn create(&self, user: CreateUser) -> Result<User, Error>;
-}
-
-impl AsyncRepository for PostgresRepository {
-    async fn get(&self, id: i64) -> Result<User, Error> {
-        sqlx::query_as!(User, "SELECT * FROM users WHERE id = $1", id)
-            .fetch_one(&self.pool).await
-    }
-}
-```
-
-Let-Else Pattern:
-
-```rust
-fn get_user(id: Option<i64>) -> Result<User, Error> {
-    let Some(id) = id else { return Err(Error::MissingId); };
-    let Ok(user) = repository.find(id) else { return Err(Error::NotFound); };
-    Ok(user)
-}
-```
+Let-Else Pattern: Use let Some(value) = option else with return for early exit. Chain multiple let-else statements for sequential validation. Return error types in else blocks.
 
 ### Web Framework: Axum 0.8
 
-Installation:
+Installation: In Cargo.toml dependencies section, add axum version 0.8, tokio version 1.48 with full features, and tower-http version 0.6 with cors and trace features.
 
-```toml
-[dependencies]
-axum = "0.8"
-tokio = { version = "1.48", features = ["full"] }
-tower-http = { version = "0.6", features = ["cors", "trace"] }
-```
+Complete API Setup: Import extractors from axum::extract and routing macros. Define Clone-derive AppState struct holding PgPool. In tokio::main async main, create pool with PgPoolOptions setting max_connections and connecting with DATABASE_URL from env. Build Router with route chains for paths and handlers, add CorsLayer, and call with_state. Bind TcpListener and call axum::serve.
 
-Complete API Setup:
-
-```rust
-use axum::{extract::{Path, State, Query}, routing::{get, post}, Router, Json};
-use tower_http::cors::CorsLayer;
-
-#[derive(Clone)]
-struct AppState { db: PgPool }
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let pool = PgPoolOptions::new()
-        .max_connections(25)
-        .connect(&std::env::var("DATABASE_URL")?).await?;
-
-    let app = Router::new()
-        .route("/api/v1/users", get(list_users).post(create_user))
-        .route("/api/v1/users/:id", get(get_user))
-        .layer(CorsLayer::permissive())
-        .with_state(AppState { db: pool });
-
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
-    axum::serve(listener, app).await?;
-    Ok(())
-}
-```
-
-Handler Patterns:
-
-```rust
-async fn list_users(
-    State(state): State<AppState>,
-    Query(params): Query<ListParams>,
-) -> Result<Json<Vec<User>>, AppError> {
-    let users = sqlx::query_as!(User,
-        "SELECT * FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2",
-        params.limit.unwrap_or(10), params.offset.unwrap_or(0))
-        .fetch_all(&state.db).await?;
-    Ok(Json(users))
-}
-```
+Handler Patterns: Define async handlers taking State, Path, and Query extractors with appropriate types. Use sqlx::query_as! for type-safe queries with positional binds. Return Result with Json success and AppError failure.
 
 ### Async Runtime: Tokio 1.48
 
-Task Spawning and Channels:
-
-```rust
-use tokio::sync::mpsc;
-
-async fn worker_pool() {
-    let (tx, mut rx) = mpsc::channel::<Job>(100);
-    for _ in 0..4 {
-        tokio::spawn(async move {
-            while let Some(job) = rx.recv().await { process_job(job).await; }
-        });
-    }
-}
-
-async fn timeout_operation() -> Result<Data, Error> {
-    tokio::select! {
-        result = fetch_data() => result,
-        _ = tokio::time::sleep(Duration::from_secs(5)) => Err(Error::Timeout),
-    }
-}
-```
+Task Spawning and Channels: Create mpsc channel with capacity. Spawn worker tasks with tokio::spawn that receive from channel in loop. For timeouts, use tokio::select! macro with operation branch and sleep branch, returning error on timeout.
 
 ### Database: SQLx 0.8
 
-Type-Safe Queries:
-
-```rust
-#[derive(Debug, sqlx::FromRow)]
-struct User { id: i64, name: String, email: String }
-
-async fn user_operations(pool: &PgPool) -> Result<(), sqlx::Error> {
-    let user = sqlx::query_as!(User,
-        "SELECT id, name, email FROM users WHERE id = $1", 1i64)
-        .fetch_one(pool).await?;
-
-    let mut tx = pool.begin().await?;
-    sqlx::query!("INSERT INTO users (name, email) VALUES ($1, $2)", "John", "john@example.com")
-        .execute(&mut *tx).await?;
-    tx.commit().await?;
-    Ok(())
-}
-```
+Type-Safe Queries: Derive sqlx::FromRow on structs for automatic mapping. Use query_as! macro for compile-time checked queries. Call fetch_one or fetch_optional on pool. For transactions, call pool.begin, execute queries on transaction reference, and call tx.commit.
 
 ### Serialization: Serde 1.0
 
-```rust
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct User {
-    id: i64,
-    #[serde(rename = "userName")]
-    name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    profile_url: Option<String>,
-    #[serde(default)]
-    is_active: bool,
-}
-```
+Derive Serialize and Deserialize on structs. Use serde attribute with rename_all for case conversion. Use rename attribute for field-specific naming. Use skip_serializing_if with Option::is_none. Use default attribute for default values.
 
 ### Error Handling
 
-thiserror:
-
-```rust
-use thiserror::Error;
-
-#[derive(Error, Debug)]
-pub enum AppError {
-    #[error("database error: {0}")]
-    Database(#[from] sqlx::Error),
-    #[error("not found: {0}")]
-    NotFound(String),
-    #[error("unauthorized")]
-    Unauthorized,
-}
-
-impl IntoResponse for AppError {
-    fn into_response(self) -> Response {
-        let (status, message) = match &self {
-            AppError::NotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
-            AppError::Unauthorized => (StatusCode::UNAUTHORIZED, self.to_string()),
-            AppError::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Internal error".into()),
-        };
-        (status, Json(json!({"error": message}))).into_response()
-    }
-}
-```
+thiserror: Derive Error on enum with error attribute for display messages. Use from attribute for automatic conversion from source errors. Implement IntoResponse by matching on variants and returning status code with Json body containing error message.
 
 ### CLI Development: clap
 
-```rust
-use clap::{Parser, Subcommand};
-
-#[derive(Parser)]
-#[command(name = "myapp", version, about)]
-struct Cli {
-    #[arg(short, long, global = true)]
-    config: Option<PathBuf>,
-    #[command(subcommand)]
-    command: Commands,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    Serve { #[arg(short, long, default_value = "3000")] port: u16 },
-    Migrate,
-}
-
-fn main() {
-    let cli = Cli::parse();
-    match cli.command {
-        Commands::Serve { port } => serve(port),
-        Commands::Migrate => migrate(),
-    }
-}
-```
+Derive Parser on main Cli struct with command attributes for name, version, about. Use arg attribute for global flags. Derive Subcommand on enum for commands. Match on command in main to dispatch logic.
 
 ### Testing Patterns
 
-```rust
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_create_user() {
-        let pool = setup_test_db().await;
-        let result = create_user(&pool, "John", "john@example.com").await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap().name, "John");
-    }
-}
-```
+Create test module with cfg(test) attribute. Define tokio::test async functions. Call setup helpers, invoke functions under test, and use assert! macros for verification.
 
 ---
 
@@ -293,53 +92,15 @@ mod tests {
 
 ### Performance Optimization
 
-Release Build:
-
-```toml
-[profile.release]
-lto = true
-codegen-units = 1
-panic = "abort"
-strip = true
-```
+Release Build: In Cargo.toml profile.release section, enable lto, set codegen-units to 1, set panic to abort, and enable strip.
 
 ### Deployment
 
-Minimal Container (5-15MB):
-
-```dockerfile
-FROM rust:1.92-alpine AS builder
-WORKDIR /app
-COPY Cargo.toml Cargo.lock ./
-RUN mkdir src && echo "fn main(){}" > src/main.rs && cargo build --release
-COPY src ./src
-RUN touch src/main.rs && cargo build --release
-
-FROM alpine:latest
-COPY --from=builder /app/target/release/app /app
-EXPOSE 3000
-CMD ["/app"]
-```
+Minimal Container: Use multi-stage Dockerfile. First stage uses rust alpine image, copies Cargo files, creates dummy main for dependency caching, builds release, copies source, touches main.rs for rebuild, builds final release. Second stage uses alpine, copies binary from builder, exposes port, and sets CMD.
 
 ### Concurrency
 
-Rate-Limited Operations:
-
-```rust
-use tokio::sync::Semaphore;
-
-async fn rate_limited(items: Vec<String>, max: usize) -> Vec<String> {
-    let sem = std::sync::Arc::new(Semaphore::new(max));
-    let handles: Vec<_> = items.into_iter().map(|item| {
-        let sem = sem.clone();
-        tokio::spawn(async move {
-            let _permit = sem.acquire().await.unwrap();
-            process_item(item).await
-        })
-    }).collect();
-    futures::future::join_all(handles).await.into_iter().filter_map(|r| r.ok()).collect()
-}
-```
+Rate-Limited Operations: Create Arc-wrapped Semaphore with max permits. Map over items spawning tasks that acquire permit, process, and return result. Use futures::future::join_all to collect results.
 
 ---
 
@@ -370,10 +131,10 @@ Library Documentation Access:
 
 Common Issues:
 
-- Cargo errors: `cargo clean && cargo build`
-- Version check: `rustc --version && cargo --version`
-- Dependency issues: `cargo update && cargo tree`
-- Compile-time SQL check: `cargo sqlx prepare`
+- Cargo errors: Run cargo clean followed by cargo build
+- Version check: Run rustc --version and cargo --version
+- Dependency issues: Run cargo update and cargo tree
+- Compile-time SQL check: Run cargo sqlx prepare
 
 Performance Characteristics:
 
@@ -393,5 +154,5 @@ See [examples.md](examples.md) for production-ready code examples.
 
 ---
 
-Last Updated: 2025-12-30
-Version: 1.1.0
+Last Updated: 2026-01-11
+Version: 1.2.0

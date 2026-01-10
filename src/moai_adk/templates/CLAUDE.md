@@ -524,21 +524,18 @@ Select Type C when:
 
 Commands should declare their type in frontmatter for clarity:
 
-Type A example:
+Type A example (moai:2-run):
 
-- name: moai:2-run
 - type: workflow
 - allowed-tools: Task, AskUserQuestion, TodoWrite
 
-Type B example:
+Type B example (moai:fix):
 
-- name: moai:fix
 - type: utility
 - allowed-tools: Task, AskUserQuestion, Bash, Read, Write, Edit, Glob, Grep
 
-Type C example:
+Type C example (moai:99-release):
 
-- name: moai:99-release
 - type: local
 - allowed-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, AskUserQuestion
 

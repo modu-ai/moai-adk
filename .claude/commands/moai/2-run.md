@@ -1,5 +1,4 @@
 ---
-name: moai:2-run
 description: "Execute TDD implementation cycle"
 argument-hint: 'SPEC-ID - All with SPEC ID to implement (e.g. SPEC-001) or all "SPEC Implementation"'
 type: workflow

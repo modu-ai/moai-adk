@@ -1,11 +1,11 @@
 ---
 name: "moai-library-mermaid"
 description: "Enterprise Mermaid diagramming skill for Claude Code using MCP Playwright. Use when creating architecture diagrams, flowcharts, sequence diagrams, or visual documentation."
-version: 7.0.0
+version: 7.1.0
 category: "library"
 modularized: true
 user-invocable: false
-updated: 2026-01-08
+updated: 2026-01-11
 tags:
   [
     "library",
@@ -28,7 +28,7 @@ allowed-tools:
 
 ## Quick Reference
 
-Mermaid Diagram Expert v7.0.0 - Pure skill-based Mermaid rendering for Claude Code with MCP Playwright integration.
+Mermaid Diagram Expert v7.1.0 - Pure skill-based Mermaid rendering for Claude Code with MCP Playwright integration.
 
 This skill provides complete Mermaid 11.12.2 syntax for all 21 diagram types, MCP Playwright integration for rendering SVG and PNG outputs, ready-to-use examples and reference documentation, and enterprise diagram patterns with best practices.
 
@@ -58,48 +58,17 @@ To render diagrams, the MCP Playwright server must be configured in the project 
 
 ## Implementation Guide
 
-### Diagram Syntax Examples
+### Diagram Syntax Patterns
 
-Flowchart diagrams use the flowchart keyword followed by direction indicators such as TD for top-down or LR for left-right. Nodes are defined with brackets for shapes, and connections use arrow syntax with optional labels.
+Flowchart diagrams use the flowchart keyword followed by direction indicators such as TD for top-down or LR for left-right. Nodes are defined with brackets for shapes where round brackets create rounded rectangles, square brackets create standard rectangles, curly braces create rhombus decision nodes, and double brackets create stadium-shaped nodes. Connections use arrow syntax with double dashes and angle brackets for arrows, with optional pipe-delimited labels for edge descriptions. Subgraphs group related nodes using the subgraph keyword with a title and end delimiter.
 
-```mermaid
-flowchart TD
-  Start([Start]) --> Input[Input Data]
-  Input --> Process{Validation}
-  Process -->|Valid| Calculate[Calculate Result]
-  Process -->|Invalid| Error[Error Handler]
-  Calculate --> Output[Output]
-  Error --> Output
-  Output --> End([End])
-```
+Sequence diagrams define participants first using the participant keyword, then show interactions using arrow notation. Solid arrows with double angle brackets represent synchronous calls, while dashed arrows represent responses or asynchronous messages. Activation rectangles show participant activity duration using activate and deactivate keywords or the plus and minus shorthand on arrows. Notes can be added to the right, left, or over participants.
 
-Sequence diagrams define participants first, then show interactions using arrow notation. Solid arrows represent synchronous calls, while dashed arrows represent responses.
+C4 Context diagrams use the C4Context keyword and define system boundaries using Enterprise_Boundary or System_Boundary functions. Persons are defined with the Person function taking an ID, name, and optional description. Systems are defined with System for internal systems and System_Ext for external systems. Relationships use the Rel function specifying source, target, description, and optional technology.
 
-```mermaid
-sequenceDiagram
-  participant User
-  participant API
-  participant Database
+Class diagrams use the classDiagram keyword and define classes with their attributes and methods. Relationships include inheritance using the angle bracket and pipe symbols, composition using asterisk, aggregation using circle, and association using dashes. Visibility modifiers use plus for public, minus for private, and hash for protected.
 
-  User->>API: GET /users
-  API->>Database: SELECT * FROM users
-  Database-->>API: User records
-  API-->>User: JSON response
-```
-
-C4 Context diagrams use the C4Context keyword and define boundaries, persons, systems, and relationships using dedicated functions for each element type.
-
-```mermaid
-C4Context
-  title System Context diagram for Internet Banking System
-  Enterprise_Boundary(b0, "Banking System") {
-    Person(customer, "Banking Customer", "A customer using the banking system")
-    System(banking_system, "Internet Banking System", "Allows customers to check accounts")
-  }
-  System_Ext(mail_system, "E-mail System", "External mail system")
-  Rel(customer, banking_system, "Uses", "HTTP/HTTPS")
-  Rel(banking_system, mail_system, "Sends e-mail", "SMTP")
-```
+State diagrams use the stateDiagram-v2 keyword for the newer syntax. States are defined with the state keyword and brackets. Transitions use arrow notation with optional labels. Composite states contain nested states within the state block.
 
 ### Diagram Categories
 

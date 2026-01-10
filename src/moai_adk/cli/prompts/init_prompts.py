@@ -23,6 +23,7 @@ class ProjectSetupAnswers(TypedDict):
 
     # Service settings
     service_type: str  # claude_subscription | claude_api | glm | hybrid
+    claude_auth_type: str | None  # subscription | api_key (for hybrid mode)
     pricing_plan: str | None  # pro | max5 | max20 | basic | glm_pro | enterprise
     anthropic_api_key: str | None
     glm_api_key: str | None
@@ -71,6 +72,7 @@ def prompt_project_setup(
         "project_name": "",
         "locale": "en",
         "service_type": "claude_subscription",
+        "claude_auth_type": None,
         "pricing_plan": None,
         "anthropic_api_key": None,
         "glm_api_key": None,
@@ -116,9 +118,7 @@ def prompt_project_setup(
             "ja": "Japanese (日本語)",
             "zh": "Chinese (中文)",
         }
-        console.print(
-            f"[#DA7756]🌐 Selected:[/#DA7756] {language_names.get(language_choice, language_choice)}"
-        )
+        console.print(f"[#DA7756]🌐 Selected:[/#DA7756] {language_names.get(language_choice, language_choice)}")
 
         # ========================================
         # Q2: Service Selection
@@ -150,9 +150,37 @@ def prompt_project_setup(
         answers["service_type"] = service_choice
 
         # ========================================
+        # Q2.5: Claude Auth Type (for hybrid only)
+        # ========================================
+        if service_choice == "hybrid":
+            console.print(f"\n[blue]{t['claude_auth_selection']}[/blue]")
+
+            claude_auth_choices = [
+                {
+                    "name": f"{t['opt_claude_sub']} - {t['desc_claude_sub']}",
+                    "value": "subscription",
+                },
+                {
+                    "name": f"{t['opt_claude_api_key']} - {t['desc_claude_api_key']}",
+                    "value": "api_key",
+                },
+            ]
+
+            claude_auth_choice = _prompt_select(
+                t["q_claude_auth_type"],
+                choices=claude_auth_choices,
+                default="subscription",
+            )
+
+            if claude_auth_choice is None:
+                raise KeyboardInterrupt
+
+            answers["claude_auth_type"] = claude_auth_choice
+
+        # ========================================
         # Q3: Pricing Plan (conditional)
         # ========================================
-        if service_choice in ("claude_api", "hybrid"):
+        if service_choice in ("claude_api", "claude_subscription", "hybrid"):
             console.print(f"\n[blue]{t['pricing_selection']}[/blue]")
 
             claude_pricing_choices = [
@@ -201,7 +229,12 @@ def prompt_project_setup(
         # ========================================
         # Q4: API Key Input (conditional)
         # ========================================
-        if service_choice in ("claude_api", "hybrid"):
+        # Anthropic API key: only for claude_api, or hybrid with api_key auth
+        needs_anthropic_key = service_choice == "claude_api" or (
+            service_choice == "hybrid" and answers["claude_auth_type"] == "api_key"
+        )
+
+        if needs_anthropic_key:
             console.print(f"\n[blue]{t['api_key_input']}[/blue]")
 
             api_key = _prompt_password(t["q_api_key_anthropic"])
@@ -212,8 +245,9 @@ def prompt_project_setup(
             answers["anthropic_api_key"] = api_key
             console.print(f"[dim]{t['msg_api_key_stored']}[/dim]")
 
+        # GLM API key: for glm or hybrid
         if service_choice in ("glm", "hybrid"):
-            if service_choice == "glm":
+            if service_choice == "glm" or not needs_anthropic_key:
                 console.print(f"\n[blue]{t['api_key_input']}[/blue]")
 
             glm_key = _prompt_password(t["q_api_key_glm"])
@@ -225,35 +259,25 @@ def prompt_project_setup(
             console.print(f"[dim]{t['msg_api_key_stored']}[/dim]")
 
         # ========================================
-        # Q5: Project Name
+        # Q5: Project Name (editable for both cases)
         # ========================================
         console.print(f"\n[blue]{t['project_setup']}[/blue]")
 
         if not is_current_dir:
-            if project_name:
-                answers["project_name"] = project_name
-                console.print(
-                    f"[#DA7756]📦 {t['q_project_name']}[/#DA7756] {project_name}"
-                )
-            else:
-                result = _prompt_text(
-                    t["q_project_name"],
-                    default="my-moai-project",
-                    required=True,
-                )
-                if result is None:
-                    raise KeyboardInterrupt
-                answers["project_name"] = result
+            # New project directory - use provided name or prompt
+            default_name = project_name if project_name else "my-moai-project"
         else:
-            if project_path:
-                answers["project_name"] = project_path.name
-            else:
-                answers["project_name"] = Path.cwd().name
-            project_display = answers["project_name"]
-            current_dir_msg = t["msg_current_dir"]
-            console.print(
-                f"[#DA7756]📦 {t['q_project_name']}[/#DA7756] {project_display} [dim]{current_dir_msg}[/dim]"
-            )
+            # Current directory - use folder name as default but allow editing
+            default_name = project_path.name if project_path else Path.cwd().name
+
+        result = _prompt_text(
+            t["q_project_name"],
+            default=default_name,
+            required=True,
+        )
+        if result is None:
+            raise KeyboardInterrupt
+        answers["project_name"] = result
 
         # ========================================
         # Q6: Git Mode

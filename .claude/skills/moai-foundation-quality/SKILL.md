@@ -1,13 +1,13 @@
 ---
 name: "moai-foundation-quality"
 description: "Enterprise code quality orchestrator with TRUST 5 validation, proactive analysis, and automated best practices enforcement"
-version: 2.1.0
+version: 2.2.0
 category: "foundation"
 modularized: true
 user-invocable: false
 tags: ['foundation', 'quality', 'testing', 'validation', 'trust-5', 'best-practices', 'code-review']
 aliases: ['moai-foundation-quality']
-updated: 2026-01-08
+updated: 2026-01-11
 status: "active"
 allowed-tools:
   - Read
@@ -24,6 +24,7 @@ Enterprise-grade code quality management system that combines systematic code re
 ## Quick Reference (30 seconds)
 
 Core Capabilities:
+
 - TRUST 5 Validation: Testable, Readable, Unified, Secured, Trackable quality gates
 - Proactive Analysis: Automated issue detection and improvement suggestions
 - Best Practices Enforcement: Context7-powered real-time standards validation
@@ -31,260 +32,91 @@ Core Capabilities:
 - Enterprise Integration: CI/CD pipelines, quality metrics, reporting
 
 Key Patterns:
-1. Quality Gate Pipeline → Automated validation with configurable thresholds
-2. Proactive Scanner → Continuous analysis with improvement recommendations
-3. Best Practices Engine → Context7-driven standards enforcement
-4. Quality Metrics Dashboard → Comprehensive reporting and trend analysis
+
+- Quality Gate Pipeline: Automated validation with configurable thresholds
+- Proactive Scanner: Continuous analysis with improvement recommendations
+- Best Practices Engine: Context7-driven standards enforcement
+- Quality Metrics Dashboard: Comprehensive reporting and trend analysis
 
 When to Use:
+
 - Code review automation and quality gate enforcement
 - Proactive code quality improvement and technical debt reduction
 - Enterprise coding standards enforcement and compliance validation
 - CI/CD pipeline integration with automated quality checks
 
 Quick Access:
-- TRUST 5 Framework → [trust5-validation.md](modules/trust5-validation.md)
-- Proactive Analysis → [proactive-analysis.md](modules/proactive-analysis.md)
-- Best Practices → [best-practices.md](modules/best-practices.md)
-- Integration Patterns → [integration-patterns.md](modules/integration-patterns.md)
+
+- TRUST 5 Framework: See [trust5-validation.md](modules/trust5-validation.md)
+- Proactive Analysis: See [proactive-analysis.md](modules/proactive-analysis.md)
+- Best Practices: See [best-practices.md](modules/best-practices.md)
+- Integration Patterns: See [integration-patterns.md](modules/integration-patterns.md)
 
 ## Implementation Guide
 
 ### Getting Started
 
-Basic Quality Validation:
-```python
-# Initialize quality orchestrator
-quality_orchestrator = QualityOrchestrator(
- trust5_enabled=True,
- proactive_analysis=True,
- best_practices_enforcement=True,
- context7_integration=True
-)
+Basic Quality Validation: Initialize QualityOrchestrator with trust5_enabled, proactive_analysis, best_practices_enforcement, and context7_integration all set to True. Call analyze_codebase method with path parameter set to source directory, languages list including python, javascript, and typescript, and quality_threshold of 0.85. The method returns comprehensive quality results.
 
-# Run comprehensive quality analysis
-result = await quality_orchestrator.analyze_codebase(
- path="src/",
- languages=["python", "javascript", "typescript"],
- quality_threshold=0.85
-)
+For quality gate validation with TRUST 5, create QualityGate instance and call validate_trust5 with codebase_path, test_coverage_threshold of 0.90, and complexity_threshold of 10.
 
-# Quality gate validation with TRUST 5
-quality_gate = QualityGate()
-validation_result = await quality_gate.validate_trust5(
- codebase_path="src/",
- test_coverage_threshold=0.90,
- complexity_threshold=10
-)
-```
-
-Proactive Quality Analysis:
-```python
-# Initialize proactive scanner
-proactive_scanner = ProactiveQualityScanner(
- context7_client=context7_client,
- rule_engine=BestPracticesEngine()
-)
-
-# Scan for improvement opportunities
-improvements = await proactive_scanner.scan_codebase(
- path="src/",
- scan_types=["security", "performance", "maintainability", "testing"]
-)
-
-# Generate improvement recommendations
-recommendations = await proactive_scanner.generate_recommendations(
- issues=improvements,
- priority="high",
- auto_fix=True
-)
-```
+Proactive Quality Analysis: Initialize ProactiveQualityScanner with context7_client and BestPracticesEngine rule_engine. Call scan_codebase with path and scan_types list including security, performance, maintainability, and testing. Generate recommendations by calling generate_recommendations with issues, priority set to high, and auto_fix enabled.
 
 ### Core Components
 
-#### 1. Quality Orchestration Engine
+#### Quality Orchestration Engine
 
-```python
-class QualityOrchestrator:
- """Enterprise quality orchestration with TRUST 5 framework"""
+The QualityOrchestrator class provides enterprise quality orchestration with TRUST 5 framework. Initialize with QualityConfig and create instances of TRUST5Validator, ProactiveScanner, BestPracticesEngine, Context7Client, and QualityMetricsCollector.
 
- def __init__(self, config: QualityConfig):
- self.trust5_validator = TRUST5Validator()
- self.proactive_scanner = ProactiveScanner()
- self.best_practices_engine = BestPracticesEngine()
- self.context7_client = Context7Client()
- self.metrics_collector = QualityMetricsCollector()
+The analyze_codebase method performs comprehensive analysis in four phases. Phase 1 runs TRUST 5 validation on the codebase with specified thresholds. Phase 2 performs proactive analysis scanning focus areas. Phase 3 checks best practices for specified languages with Context7 docs enabled. Phase 4 collects comprehensive metrics from all analysis results.
 
- async def analyze_codebase(self, request: QualityAnalysisRequest) -> QualityResult:
- """Comprehensive codebase quality analysis"""
+The method returns QualityResult containing trust5_validation, proactive_analysis, best_practices, metrics, and overall_score calculated from all results.
 
- # Phase 1: TRUST 5 Validation
- trust5_result = await self.trust5_validator.validate(
- codebase=request.path,
- thresholds=request.quality_thresholds
- )
+Detailed implementations available in modules:
 
- # Phase 2: Proactive Analysis
- proactive_result = await self.proactive_scanner.scan(
- codebase=request.path,
- focus_areas=request.focus_areas
- )
-
- # Phase 3: Best Practices Check
- practices_result = await self.best_practices_engine.validate(
- codebase=request.path,
- languages=request.languages,
- context7_docs=True
- )
-
- # Phase 4: Metrics Collection
- metrics = await self.metrics_collector.collect_comprehensive_metrics(
- codebase=request.path,
- analysis_results=[trust5_result, proactive_result, practices_result]
- )
-
- return QualityResult(
- trust5_validation=trust5_result,
- proactive_analysis=proactive_result,
- best_practices=practices_result,
- metrics=metrics,
- overall_score=self._calculate_overall_quality_score([
- trust5_result, proactive_result, practices_result
- ])
- )
-```
-
-Detailed implementations:
-- [TRUST 5 Validator Implementation](modules/trust5-validation.md#trust-5-validator-implementation)
-- [Proactive Scanner Implementation](modules/proactive-analysis.md#proactive-scanner-implementation)
-- [Best Practices Engine Implementation](modules/best-practices.md#best-practices-engine-implementation)
+- TRUST 5 Validator Implementation in [trust5-validation.md](modules/trust5-validation.md)
+- Proactive Scanner Implementation in [proactive-analysis.md](modules/proactive-analysis.md)
+- Best Practices Engine Implementation in [best-practices.md](modules/best-practices.md)
 
 ### Configuration and Customization
 
-Quality Configuration:
-```yaml
-# quality-config.yaml
-quality_orchestration:
- trust5_framework:
- enabled: true
- thresholds:
- overall: 0.85
- testable: 0.90
- readable: 0.80
- unified: 0.85
- secured: 0.90
- trackable: 0.80
+Quality Configuration: Create quality-config.yaml with quality_orchestration section.
 
- proactive_analysis:
- enabled: true
- scan_frequency: "daily"
- focus_areas:
- - "performance"
- - "security"
- - "maintainability"
- - "technical_debt"
+Under trust5_framework, set enabled to true with thresholds for overall (0.85), testable (0.90), readable (0.80), unified (0.85), secured (0.90), and trackable (0.80).
 
- auto_fix:
- enabled: true
- severity_threshold: "medium"
- confirmation_required: true
+Under proactive_analysis, set enabled true, scan_frequency to daily, and focus_areas list including performance, security, maintainability, and technical_debt.
 
- best_practices:
- enabled: true
- context7_integration: true
- auto_update_standards: true
- compliance_target: 0.85
+Under auto_fix, set enabled true, severity_threshold to medium, and confirmation_required to true.
 
- language_rules:
- python:
- style_guide: "pep8"
- formatter: "black"
- linter: "ruff"
- type_checker: "mypy"
+Under best_practices, set enabled true, context7_integration true, auto_update_standards true, and compliance_target to 0.85.
 
- javascript:
- style_guide: "airbnb"
- formatter: "prettier"
- linter: "eslint"
+Under language_rules, configure python with pep8 style_guide, black formatter, ruff linter, and mypy type_checker. Configure javascript with airbnb style_guide, prettier formatter, and eslint linter. Configure typescript with google style_guide, prettier formatter, and eslint linter.
 
- typescript:
- style_guide: "google"
- formatter: "prettier"
- linter: "eslint"
+Under reporting, set enabled true, metrics_retention_days to 90, trend_analysis true, and executive_dashboard true.
 
- reporting:
- enabled: true
- metrics_retention_days: 90
- trend_analysis: true
- executive_dashboard: true
+Under notifications, enable quality_degradation, security_vulnerabilities, and technical_debt_increase.
 
- notifications:
- quality_degradation: true
- security_vulnerabilities: true
- technical_debt_increase: true
-```
-
-Integration Examples:
-
-See [Integration Patterns](modules/integration-patterns.md) for:
-- CI/CD Pipeline Integration
-- GitHub Actions Integration
-- Quality-as-Service REST API
-- Cross-Project Benchmarking
+Integration Examples: See [Integration Patterns](modules/integration-patterns.md) for CI/CD Pipeline Integration, GitHub Actions Integration, Quality-as-Service REST API, and Cross-Project Benchmarking.
 
 ## Advanced Patterns
 
-### 1. Custom Quality Rules
+### Custom Quality Rules
 
-```python
-class CustomQualityRule:
- """Define custom quality validation rules"""
-
- def __init__(self, name: str, validator: Callable, severity: str = "medium"):
- self.name = name
- self.validator = validator
- self.severity = severity
-
- async def validate(self, codebase: str) -> RuleResult:
- """Execute custom rule validation"""
- try:
- result = await self.validator(codebase)
- return RuleResult(
- rule_name=self.name,
- passed=result.passed,
- severity=self.severity,
- details=result.details,
- recommendations=result.recommendations
- )
- except Exception as e:
- return RuleResult(
- rule_name=self.name,
- passed=False,
- severity="error",
- details={"error": str(e)},
- recommendations=["Fix rule implementation"]
- )
-```
+Create CustomQualityRule class with name, validator callable, and severity defaulting to medium. The validate async method executes the validator on codebase, wrapping in try-except. On success, return RuleResult with rule_name, passed status, severity, details, and recommendations. On exception, return RuleResult with passed false, severity error, error details, and fix recommendation.
 
 See [Best Practices - Custom Rules](modules/best-practices.md#custom-quality-rules) for complete examples.
 
-### 2. Machine Learning Quality Prediction
+### Machine Learning Quality Prediction
 
-ML-powered quality issue prediction using code feature extraction and predictive models.
+ML-powered quality issue prediction using code feature extraction and predictive models. See [Proactive Analysis - ML Prediction](modules/proactive-analysis.md#machine-learning-quality-prediction) for implementation details.
 
-See [Proactive Analysis - ML Prediction](modules/proactive-analysis.md#machine-learning-quality-prediction) for implementation details.
+### Real-time Quality Monitoring
 
-### 3. Real-time Quality Monitoring
+Continuous quality monitoring with automated alerting for quality degradation and security vulnerabilities. See [Proactive Analysis - Real-time Monitoring](modules/proactive-analysis.md#real-time-quality-monitoring) for implementation details.
 
-Continuous quality monitoring with automated alerting for quality degradation and security vulnerabilities.
+### Cross-Project Quality Benchmarking
 
-See [Proactive Analysis - Real-time Monitoring](modules/proactive-analysis.md#real-time-quality-monitoring) for implementation details.
-
-### 4. Cross-Project Quality Benchmarking
-
-Compare project quality metrics against similar projects in your industry.
-
-See [Integration Patterns - Benchmarking](modules/integration-patterns.md#cross-project-quality-benchmarking) for implementation details.
+Compare project quality metrics against similar projects in your industry. See [Integration Patterns - Benchmarking](modules/integration-patterns.md#cross-project-quality-benchmarking) for implementation details.
 
 ## Module Reference
 
@@ -297,39 +129,22 @@ See [Integration Patterns - Benchmarking](modules/integration-patterns.md#cross-
 
 ### Key Components by Module
 
-TRUST 5 Validation:
-- `TRUST5Validator` - Five-pillar quality validation
-- `TestableValidator` - Test coverage and quality
-- `SecuredValidator` - Security and OWASP compliance
-- Quality gate pipeline integration
+TRUST 5 Validation: TRUST5Validator for five-pillar quality validation, TestableValidator for test coverage and quality, SecuredValidator for security and OWASP compliance, and quality gate pipeline integration.
 
-Proactive Analysis:
-- `ProactiveQualityScanner` - Automated issue detection
-- `QualityPredictionEngine` - ML-powered predictions
-- `RealTimeQualityMonitor` - Continuous monitoring
-- Performance and maintainability analysis
+Proactive Analysis: ProactiveQualityScanner for automated issue detection, QualityPredictionEngine for ML-powered predictions, RealTimeQualityMonitor for continuous monitoring, and performance and maintainability analysis.
 
-Best Practices:
-- `BestPracticesEngine` - Standards validation
-- Context7 integration for latest docs
-- Custom quality rules
-- Language-specific validators
+Best Practices: BestPracticesEngine for standards validation, Context7 integration for latest docs, custom quality rules, and language-specific validators.
 
-Integration Patterns:
-- CI/CD pipeline integration
-- GitHub Actions workflows
-- Quality-as-Service REST API
-- Cross-project benchmarking
+Integration Patterns: CI/CD pipeline integration, GitHub Actions workflows, Quality-as-Service REST API, and cross-project benchmarking.
 
 ## Context7 Library Mappings
 
-Essential library mappings for quality analysis tools and frameworks.
-
-See [Best Practices - Library Mappings](modules/best-practices.md#context7-library-mappings) for complete list.
+Essential library mappings for quality analysis tools and frameworks. See [Best Practices - Library Mappings](modules/best-practices.md#context7-library-mappings) for complete list.
 
 ## Works Well With
 
 Agents:
+
 - core-planner - Quality requirements planning
 - workflow-tdd - TDD implementation validation
 - security-expert - Security vulnerability analysis
@@ -337,6 +152,7 @@ Agents:
 - code-frontend - Frontend code quality
 
 Skills:
+
 - moai-foundation-core - TRUST 5 framework reference
 - moai-tdd-implementation - TDD workflow validation
 - moai-security-owasp - Security compliance
@@ -344,17 +160,18 @@ Skills:
 - moai-performance-optimization - Performance analysis
 
 Commands:
-- `/moai:2-run` - TDD validation integration
-- `/moai:3-sync` - Documentation quality checks
-- `/moai:9-feedback` - Quality improvement feedback
+
+- /moai:2-run - TDD validation integration
+- /moai:3-sync - Documentation quality checks
+- /moai:9-feedback - Quality improvement feedback
 
 ## Quick Reference Summary
 
 Core Capabilities: TRUST 5 validation, proactive scanning, Context7-powered best practices, multi-language support, enterprise integration
 
-Key Classes: `QualityOrchestrator`, `TRUST5Validator`, `ProactiveQualityScanner`, `BestPracticesEngine`, `QualityMetricsCollector`
+Key Classes: QualityOrchestrator, TRUST5Validator, ProactiveQualityScanner, BestPracticesEngine, QualityMetricsCollector
 
-Essential Methods: `analyze_codebase()`, `validate_trust5()`, `scan_for_issues()`, `validate_best_practices()`, `generate_quality_report()`
+Essential Methods: analyze_codebase(), validate_trust5(), scan_for_issues(), validate_best_practices(), generate_quality_report()
 
 Integration Ready: CI/CD pipelines, GitHub Actions, REST APIs, real-time monitoring, cross-project benchmarking
 

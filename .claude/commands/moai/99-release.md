@@ -1,5 +1,4 @@
 ---
-name: moai:99-release
 description: "MoAI-ADK release with Claude Code review and tag-based auto deployment"
 argument-hint: "[VERSION] - optional target version (e.g., 0.35.0)"
 type: local

@@ -1,5 +1,4 @@
 ---
-name: moai:3-sync
 description: "Synchronize documentation with Phase 0.5 quality verification and finalize PR"
 argument-hint: "Mode target path - Mode: auto (default)|force|status|project, target path: Synchronization target path"
 type: workflow

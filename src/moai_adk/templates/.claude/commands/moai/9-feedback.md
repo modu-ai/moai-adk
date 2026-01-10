@@ -1,5 +1,4 @@
 ---
-name: moai:9-feedback
 description: "Submit feedback or report issues"
 argument-hint: "[issue|suggestion|question]"
 type: local

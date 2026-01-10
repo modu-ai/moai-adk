@@ -1,5 +1,4 @@
 ---
-name: moai:alfred
 description: "One-click automation - From SPEC generation to documentation sync"
 argument-hint: '"feature description" [--branch] [--pr] | resume SPEC-XXX'
 type: workflow

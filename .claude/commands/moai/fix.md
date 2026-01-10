@@ -1,5 +1,4 @@
 ---
-name: moai:fix
 description: "Auto-fix current LSP errors and AST-grep warnings"
 argument-hint: "[--errors-only] [--dry-run] [file_path]"
 type: utility

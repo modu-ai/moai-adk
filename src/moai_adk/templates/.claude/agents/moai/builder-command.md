@@ -509,21 +509,35 @@ Execute template selection based on the determined reuse strategy:
 
 ### Step 5.2: Generate Frontmatter
 
+IMPORTANT: Command name is automatically derived from file path structure:
+- `.claude/commands/{namespace}/{command-name}.md` → `/{namespace}:{command-name}`
+- Example: `.claude/commands/moai/fix.md` → `/moai:fix`
+
+DO NOT include a `name` field in frontmatter - it is not officially supported.
+
 ```yaml
 ---
-name: { command_name } # kebab-case
 description: "{command_description}"
 argument-hint: "{argument_format}"
+type: {workflow|utility|local}
 allowed-tools:
   - Task
   - AskUserQuestion
   - TodoWrite # Optional, based on complexity
-model: { model_choice } # haiku or sonnet based on complexity
-skills:
-  - { skill_1 }
-  - { skill_2 }
+model: { model_choice } # haiku, sonnet, or inherit
 ---
 ```
+
+Supported frontmatter fields (official Claude Code documentation):
+- `description` - Command description shown in /help
+- `argument-hint` - Argument syntax hint for autocomplete
+- `allowed-tools` - Tools this command can invoke
+- `model` - Override default model for this command
+- `hooks` - Hook definitions for command execution
+- `disable-model-invocation` - Prevent Skill tool invocation
+
+MoAI-ADK extension field:
+- `type` - Command classification (workflow, utility, local)
 
 ### Step 5.3: Generate Required Sections
 

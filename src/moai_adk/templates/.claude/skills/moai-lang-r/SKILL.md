@@ -1,13 +1,13 @@
 ---
 name: "moai-lang-r"
 description: "R 4.4+ development specialist covering tidyverse, ggplot2, Shiny, and data science patterns. Use when developing data analysis pipelines, visualizations, or Shiny applications."
-version: 1.0.0
+version: 1.1.0
 category: "language"
 modularized: true
 user-invocable: false
 tags:
   ["language", "r", "tidyverse", "ggplot2", "shiny", "dplyr", "data-science"]
-updated: 2026-01-08
+updated: 2026-01-11
 status: "active"
 allowed-tools:
   - Read
@@ -22,11 +22,11 @@ allowed-tools:
 
 R 4.4+ Development Specialist - tidyverse, ggplot2, Shiny, renv, and modern R patterns.
 
-Auto-Triggers: `.R` files, `.Rmd`, `.qmd`, `DESCRIPTION`, `renv.lock`, Shiny/ggplot2 discussions
+Auto-Triggers: Files with .R extension, .Rmd, .qmd, DESCRIPTION, renv.lock, Shiny or ggplot2 discussions
 
 Core Capabilities:
 
-- R 4.4 Features: Native pipe |>, lambda syntax \(x), improved error messages
+- R 4.4 Features: Native pipe operator, lambda syntax with backslash, improved error messages
 - Data Manipulation: dplyr, tidyr, purrr, stringr, forcats
 - Visualization: ggplot2, plotly, scales, patchwork
 - Web Applications: Shiny, reactivity, modules, bslib
@@ -37,61 +37,17 @@ Core Capabilities:
 
 ### Quick Patterns
 
-dplyr Data Pipeline:
+dplyr Data Pipeline Pattern:
 
-```r
-library(tidyverse)
+Load tidyverse library. Create result by piping data through filter for year 2020 or later, mutate adding revenue_k as revenue divided by 1000 and growth as current minus lagged revenue divided by lagged revenue, group_by category, then summarise with total_revenue as sum, avg_growth as mean with na.rm TRUE, and groups set to drop.
 
-result <- data |>
-  filter(year >= 2020) |>
-  mutate(
-    revenue_k = revenue / 1000,
-    growth = (revenue - lag(revenue)) / lag(revenue)
-  ) |>
-  group_by(category) |>
-  summarise(
-    total_revenue = sum(revenue_k, na.rm = TRUE),
-    avg_growth = mean(growth, na.rm = TRUE),
-    .groups = "drop"
-  )
-```
+ggplot2 Visualization Pattern:
 
-ggplot2 Visualization:
+Load ggplot2 library. Create ggplot with data and aes mapping x to date, y to value, and color to category. Add geom_line with linewidth 1 and geom_point with size 2. Apply scale_color_viridis_d for color scale. Add labs for title, axis labels, and color legend. Apply theme_minimal for clean appearance.
 
-```r
-library(ggplot2)
+Shiny Basic App Pattern:
 
-ggplot(data, aes(x = date, y = value, color = category)) +
-  geom_line(linewidth = 1) +
-  geom_point(size = 2) +
-  scale_color_viridis_d() +
-  labs(
-    title = "Trend Analysis",
-    x = "Date", y = "Value",
-    color = "Category"
-  ) +
-  theme_minimal()
-```
-
-Shiny Basic App:
-
-```r
-library(shiny)
-
-ui <- fluidPage(
-  selectInput("var", "Variable:", choices = names(mtcars)),
-  plotOutput("plot")
-)
-
-server <- function(input, output, session) {
-  output$plot <- renderPlot({
-    ggplot(mtcars, aes(.data[[input$var]])) +
-      geom_histogram()
-  })
-}
-
-shinyApp(ui, server)
-```
+Load shiny library. Create ui using fluidPage with selectInput for variable selection from mtcars column names and plotOutput for plot. Create server function with input, output, and session parameters. In server, assign renderPlot to output plot using ggplot with mtcars and aes using .data pronoun with input variable for histogram. Create app with shinyApp passing ui and server.
 
 ---
 
@@ -99,231 +55,59 @@ shinyApp(ui, server)
 
 ### R 4.4 Modern Features
 
-Native Pipe Operator |>:
+Native Pipe Operator:
 
-```r
-result <- data |>
-  filter(!is.na(value)) |>
-  mutate(log_value = log(value)) |>
-  summarise(mean_log = mean(log_value))
-
-# Placeholder _ for non-first argument
-data |>
-  lm(formula = y ~ x, data = _)
-```
+Create result by piping data through filter removing NA values, mutate adding log_value as log of value, and summarise computing mean_log. For non-first argument position, use underscore placeholder in lm formula call with data parameter.
 
 Lambda Syntax with Backslash:
 
-```r
-map(data, \(x) x^2)
-map2(list1, list2, \(x, y) x + y)
-
-# In dplyr contexts
-data |>
-  mutate(across(where(is.numeric), \(x) scale(x)[,1]))
-```
+Use map with data and backslash x syntax for x squared. Use map2 with two lists and backslash x y for x plus y. In dplyr contexts, use mutate with across on numeric columns applying backslash x for scale function extracting first column.
 
 ### tidyverse Data Manipulation
 
 dplyr Core Verbs:
 
-```r
-library(dplyr)
+Load dplyr library. Create processed by piping raw_data through filter for active status and positive amount, select for specific columns, mutate adding month using floor_date and amount_scaled dividing by max, then arrange descending by date. For grouped summaries, pipe through group_by, summarise with n for count, sum and mean for aggregations, and groups drop.
 
-processed <- raw_data |>
-  filter(status == "active", amount > 0) |>
-  select(id, date, amount, category) |>
-  mutate(
-    month = floor_date(date, "month"),
-    amount_scaled = amount / max(amount)
-  ) |>
-  arrange(desc(date))
+tidyr Reshaping Pattern:
 
-# group_by with summarise
-summary <- processed |>
-  group_by(category, month) |>
-  summarise(
-    n = n(),
-    total = sum(amount),
-    avg = mean(amount),
-    .groups = "drop"
-  )
-
-# across for multiple columns
-data |>
-  mutate(across(starts_with("price"), \(x) round(x, 2)))
-```
-
-tidyr Reshaping:
-
-```r
-library(tidyr)
-
-# pivot_longer (wide to long)
-wide_data |>
-  pivot_longer(
-    cols = starts_with("year_"),
-    names_to = "year",
-    names_prefix = "year_",
-    values_to = "value"
-  )
-
-# pivot_wider (long to wide)
-long_data |>
-  pivot_wider(
-    names_from = category,
-    values_from = value,
-    values_fill = 0
-  )
-```
+Load tidyr library. For wide to long transformation, use pivot_longer with cols starting with year prefix, names_to for column name, names_prefix to strip, and values_to for values. For long to wide transformation, use pivot_wider with names_from and values_from, adding values_fill for missing value handling.
 
 purrr Functional Programming:
 
-```r
-library(purrr)
-
-files |> map(\(f) read_csv(f))
-files |> map_dfr(\(f) read_csv(f), .id = "source")
-values |> map_dbl(\(x) mean(x, na.rm = TRUE))
-
-# safely for error handling
-safe_read <- safely(read_csv)
-results <- files |> map(safe_read)
-successes <- results |> map("result") |> compact()
-```
+Load purrr library. Use map with files and lambda to read_csv each file. Use map_dfr for row-binding with id parameter for source column. Use map_dbl for extracting numeric results with mean and na.rm TRUE. For error handling, create safe_read using safely wrapper on read_csv. Map files through safe_read, extract results, and use compact to filter successes.
 
 ### ggplot2 Visualization Patterns
 
 Complete Plot Structure:
 
-```r
-library(ggplot2)
-library(scales)
-
-p <- ggplot(data, aes(x = x, y = y, color = group)) +
-  geom_point(alpha = 0.7, size = 3) +
-  geom_smooth(method = "lm", se = TRUE) +
-  scale_x_continuous(labels = comma) +
-  scale_y_log10(labels = dollar) +
-  scale_color_brewer(palette = "Set2") +
-  facet_wrap(~ category, scales = "free_y") +
-  labs(
-    title = "Analysis Title",
-    subtitle = "Descriptive subtitle",
-    x = "X Axis Label",
-    y = "Y Axis Label"
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(legend.position = "bottom")
-
-ggsave("output.png", p, width = 10, height = 6, dpi = 300)
-```
+Load ggplot2 and scales libraries. Create p using ggplot with data and aesthetics for x, y, and color by group. Add geom_point with alpha and size, geom_smooth with lm method and standard error. Apply scale_x_continuous with comma labels, scale_y_log10 with dollar labels, and scale_color_brewer with Set2 palette. Add facet_wrap by category with free_y scales. Add labs for title, subtitle, and axis labels. Apply theme_minimal with base_size and theme for legend position. Save with ggsave specifying filename, plot, dimensions, and dpi.
 
 Multiple Plots with patchwork:
 
-```r
-library(patchwork)
-
-p1 <- ggplot(data, aes(x)) + geom_histogram()
-p2 <- ggplot(data, aes(x, y)) + geom_point()
-p3 <- ggplot(data, aes(group, y)) + geom_boxplot()
-
-combined <- (p1 | p2) / p3 +
-  plot_annotation(title = "Combined Analysis", tag_levels = "A")
-```
+Load patchwork library. Create p1 with histogram, p2 with scatter plot, and p3 with boxplot. Combine using pipe and parentheses for layout with p1 beside p2 over p3. Add plot_annotation for title and tag_levels.
 
 ### Shiny Application Patterns
 
 Modular Shiny App:
 
-```r
-dataFilterUI <- function(id) {
-  ns <- NS(id)
-  tagList(
-    selectInput(ns("category"), "Category:", choices = NULL),
-    sliderInput(ns("range"), "Range:", min = 0, max = 100, value = c(0, 100))
-  )
-}
-
-dataFilterServer <- function(id, data) {
-  moduleServer(id, function(input, output, session) {
-    observe({
-      categories <- unique(data()$category)
-      updateSelectInput(session, "category", choices = categories)
-    })
-
-    reactive({
-      req(input$category)
-      data() |>
-        filter(
-          category == input$category,
-          value >= input$range[1],
-          value <= input$range[2]
-        )
-    })
-  })
-}
-```
+Create dataFilterUI function taking id parameter. Use NS function for namespace. Return tagList with selectInput for category with NULL initial choices and sliderInput for range. Create dataFilterServer function taking id and data reactive. Use moduleServer with inner function. In observe block, extract unique categories and updateSelectInput. Return reactive filtering data by category and range inputs using req for input validation.
 
 Reactive Patterns:
 
-```r
-server <- function(input, output, session) {
-  # reactive: Cached computation
-  processed_data <- reactive({
-    raw_data() |>
-      filter(year == input$year)
-  })
-
-  # reactiveVal: Mutable state
-  counter <- reactiveVal(0)
-  observeEvent(input$increment, {
-    counter(counter() + 1)
-  })
-
-  # eventReactive: Trigger on specific event
-  analysis <- eventReactive(input$run_analysis, {
-    expensive_computation(processed_data())
-  })
-
-  # debounce for rapid inputs
-  search_term <- reactive(input$search) |> debounce(300)
-}
-```
+In server function, create processed_data as reactive caching filtered data by input year. Create counter as reactiveVal initialized to 0. Use observeEvent on input increment to update counter. Create analysis as eventReactive on input run_analysis for expensive computation. Apply debounce with 300 milliseconds on search input reactive for rapid input handling.
 
 ### testthat Testing Framework
 
-Test Structure:
+Test Structure Pattern:
 
-```r
-library(testthat)
-
-test_that("calculate_growth returns correct values", {
-  data <- tibble(year = 2020:2022, value = c(100, 110, 121))
-
-  result <- calculate_growth(data)
-
-  expect_equal(nrow(result), 3)
-  expect_equal(result$growth[2], 0.1, tolerance = 0.001)
-  expect_true(is.na(result$growth[1]))
-})
-
-test_that("calculate_growth handles edge cases", {
-  expect_error(calculate_growth(NULL), "data cannot be NULL")
-})
-```
+Load testthat library. Create test_that block for calculate_growth with tibble of years and values. Call function and store result. Use expect_equal for row count, expect_equal for growth value with tolerance, and expect_true for NA check.
 
 ### renv Dependency Management
 
 Project Setup:
 
-```r
-renv::init()
-renv::install("tidyverse")
-renv::install("shiny")
-renv::snapshot()
-renv::restore()
-```
+Call renv::init for initialization. Call renv::install for tidyverse and shiny packages. Call renv::snapshot to record state. Call renv::restore to restore from lockfile.
 
 ---
 
@@ -331,40 +115,38 @@ renv::restore()
 
 For comprehensive coverage including:
 
-- Advanced Shiny patterns (async, caching, deployment)
+- Advanced Shiny patterns for async, caching, and deployment
 - Complex ggplot2 extensions and custom themes
 - Database integration with dbplyr and pool
 - R package development patterns
 - Performance optimization techniques
-- Production deployment (Docker, Posit Connect)
+- Production deployment with Docker and Posit Connect
 
 See:
 
-- [Advanced Patterns](modules/advanced-patterns.md) - Complete advanced patterns guide
+- modules/advanced-patterns.md for complete advanced patterns guide
 
 ---
 
 ## Context7 Library Mappings
 
-```
-/tidyverse/dplyr - Data manipulation verbs
-/tidyverse/ggplot2 - Grammar of graphics visualization
-/tidyverse/purrr - Functional programming toolkit
-/tidyverse/tidyr - Data tidying functions
-/rstudio/shiny - Web application framework
-/r-lib/testthat - Unit testing framework
-/rstudio/renv - Dependency management
-```
+- tidyverse/dplyr for data manipulation verbs
+- tidyverse/ggplot2 for grammar of graphics visualization
+- tidyverse/purrr for functional programming toolkit
+- tidyverse/tidyr for data tidying functions
+- rstudio/shiny for web application framework
+- r-lib/testthat for unit testing framework
+- rstudio/renv for dependency management
 
 ---
 
 ## Works Well With
 
-- `moai-lang-python` - Python/R interoperability with reticulate
-- `moai-domain-database` - SQL patterns and database optimization
-- `moai-workflow-testing` - TDD and testing strategies
-- `moai-essentials-debug` - AI-powered debugging
-- `moai-foundation-quality` - TRUST 5 quality principles
+- moai-lang-python for Python and R interoperability with reticulate
+- moai-domain-database for SQL patterns and database optimization
+- moai-workflow-testing for TDD and testing strategies
+- moai-essentials-debug for AI-powered debugging
+- moai-foundation-quality for TRUST 5 quality principles
 
 ---
 
@@ -374,41 +156,26 @@ Common Issues:
 
 R Version Check:
 
-```r
-R.version.string  # Should be 4.4+
-packageVersion("dplyr")
-```
+Call R.version.string in R console for version 4.4 or later. Call packageVersion with package name to check installed package versions.
 
 Native Pipe Not Working:
 
-- Ensure R version is 4.1+ for |>
-- Check RStudio settings: Tools > Global Options > Code > Use native pipe
+- Ensure R version is 4.1 or later for native pipe operator
+- Check RStudio settings under Tools, Global Options, Code for Use native pipe option
 
 renv Issues:
 
-```r
-renv::clean()
-renv::rebuild()
-renv::snapshot(force = TRUE)
-```
+Call renv::clean to remove unused packages. Call renv::rebuild to rebuild package library. Call renv::snapshot with force TRUE to force snapshot update.
 
 Shiny Reactivity Debug:
 
-```r
-options(shiny.reactlog = TRUE)
-reactlog::reactlog_enable()
-shiny::reactlogShow()
-```
+Set options shiny.reactlog to TRUE. Call reactlog::reactlog_enable to enable logging. Call shiny::reactlogShow to display reactive log visualization.
 
 ggplot2 Font Issues:
 
-```r
-library(showtext)
-font_add_google("Roboto", "roboto")
-showtext_auto()
-```
+Load showtext library. Call font_add_google with font name and family. Call showtext_auto to enable for all graphics devices.
 
 ---
 
-Last Updated: 2025-12-07
-Status: Active (v1.0.0)
+Last Updated: 2026-01-11
+Status: Active (v1.1.0)

@@ -6,7 +6,7 @@ category: "domain"
 modularized: true
 user-invocable: false
 tags: ['database', 'postgresql', 'mongodb', 'redis', 'data-patterns', 'performance']
-updated: 2026-01-08
+updated: 2026-01-11
 allowed-tools:
   - Read
   - Write
@@ -22,11 +22,12 @@ author: "MoAI-ADK Team"
 
 # Database Domain Specialist
 
-## Quick Reference (30 seconds)
+## Quick Reference
 
 Enterprise Database Expertise - Comprehensive database patterns and implementations covering PostgreSQL, MongoDB, Redis, and advanced data management for scalable modern applications.
 
 Core Capabilities:
+
 - PostgreSQL: Advanced relational patterns, optimization, and scaling
 - MongoDB: Document modeling, aggregation, and NoSQL performance tuning
 - Redis: In-memory caching, real-time analytics, and distributed systems
@@ -35,6 +36,7 @@ Core Capabilities:
 - Operations: Connection management, migrations, and monitoring
 
 When to Use:
+
 - Designing database schemas and data models
 - Implementing caching strategies and performance optimization
 - Building scalable data architectures
@@ -43,280 +45,122 @@ When to Use:
 
 ---
 
-## Implementation Guide (5 minutes)
+## Implementation Guide
 
 ### Quick Start Workflow
 
 Database Stack Initialization:
-```python
-from moai_domain_database import DatabaseManager
 
-# Initialize multi-database stack
-db_manager = DatabaseManager()
-
-# Configure PostgreSQL for relational data
-postgresql = db_manager.setup_postgresql(
- connection_string="postgresql://...",
- connection_pool_size=20,
- enable_query_logging=True
-)
-
-# Configure MongoDB for document storage
-mongodb = db_manager.setup_mongodb(
- connection_string="mongodb://...",
- database_name="app_data",
- enable_sharding=True
-)
-
-# Configure Redis for caching and real-time features
-redis = db_manager.setup_redis(
- connection_string="redis://...",
- max_connections=50,
- enable_clustering=True
-)
-
-# Use unified database interface
-user_data = db_manager.get_user_with_profile(user_id)
-analytics = db_manager.get_user_analytics(user_id, time_range="30d")
-```
+Create a DatabaseManager instance and configure multiple database connections. Set up PostgreSQL with connection string, pool size of 20, and query logging enabled. Configure MongoDB with connection string, database name, and sharding enabled. Configure Redis with connection string, max connections of 50, and clustering enabled. Use the unified interface to query user data with profile and analytics across all database types.
 
 Single Database Operations:
-```bash
-# PostgreSQL schema migration
-moai db:migrate --database postgresql --migration-file schema_v2.sql
 
-# MongoDB aggregation pipeline
-moai db:aggregate --collection users --pipeline analytics_pipeline.json
-
-# Redis cache warming
-moai db:cache:warm --pattern "user:*" --ttl 3600
-```
+Run PostgreSQL schema migrations using the migration command with the database type and migration file path. Execute MongoDB aggregation pipelines by specifying the collection name and pipeline JSON file. Warm Redis cache by specifying key patterns and TTL values.
 
 ### Core Components
 
-1. PostgreSQL (`modules/postgresql.md`)
+PostgreSQL Module:
+
 - Advanced schema design and constraints
 - Complex query optimization and indexing
 - Window functions and CTEs
 - Partitioning and materialized views
 - Connection pooling and performance tuning
 
-2. MongoDB (`modules/mongodb.md`)
+MongoDB Module:
+
 - Document modeling and schema design
 - Aggregation pipelines for analytics
 - Indexing strategies and performance
 - Sharding and scaling patterns
 - Data consistency and validation
 
-3. Redis (`modules/redis.md`)
+Redis Module:
+
 - Multi-layer caching strategies
 - Real-time analytics and counting
 - Distributed locking and coordination
 - Pub/sub messaging and streams
-- Advanced data structures (HyperLogLog, Geo)
+- Advanced data structures including HyperLogLog and Geo
 
 ---
 
-## Advanced Patterns (10+ minutes)
+## Advanced Patterns
 
 ### Multi-Database Architecture
 
 Polyglot Persistence Pattern:
-```python
-class DataRouter:
- def __init__(self):
- self.postgresql = PostgreSQLConnection()
- self.mongodb = MongoDBConnection()
- self.redis = RedisConnection()
 
- def get_user_profile(self, user_id):
- # Get structured user data from PostgreSQL
- user = self.postgresql.get_user(user_id)
-
- # Get flexible profile data from MongoDB
- profile = self.mongodb.get_user_profile(user_id)
-
- # Get real-time status from Redis
- status = self.redis.get_user_status(user_id)
-
- return self.merge_user_data(user, profile, status)
-
- def update_user_data(self, user_id, data):
- # Route different data types to appropriate databases
- if 'structured_data' in data:
- self.postgresql.update_user(user_id, data['structured_data'])
-
- if 'profile_data' in data:
- self.mongodb.update_user_profile(user_id, data['profile_data'])
-
- if 'real_time_data' in data:
- self.redis.set_user_status(user_id, data['real_time_data'])
-
- # Invalidate cache across databases
- self.invalidate_user_cache(user_id)
-```
+Create a DataRouter class that initializes connections to PostgreSQL, MongoDB, and Redis. Implement get_user_profile method that retrieves structured user data from PostgreSQL, flexible profile data from MongoDB, and real-time status from Redis, then merges all data sources. Implement update_user_data method that routes structured data updates to PostgreSQL, profile data updates to MongoDB, and real-time data updates to Redis, followed by cache invalidation.
 
 Data Synchronization:
-```python
-class DataSyncManager:
- def sync_user_data(self, user_id):
- # Sync from PostgreSQL to MongoDB for search
- pg_user = self.postgresql.get_user(user_id)
- search_document = self.create_search_document(pg_user)
- self.mongodb.upsert_user_search(user_id, search_document)
 
- # Update cache in Redis
- cache_data = self.create_cache_document(pg_user)
- self.redis.set_user_cache(user_id, cache_data, ttl=3600)
-```
+Create a DataSyncManager class that synchronizes user data across databases. Implement sync_user_data method that retrieves user from PostgreSQL, creates a search document for MongoDB, upserts to the MongoDB search collection, creates cache data, and updates Redis cache with TTL.
 
 ### Performance Optimization
 
 Query Performance Analysis:
-```python
-# PostgreSQL query optimization
-def analyze_query_performance(query):
- explain_result = postgresql.execute(f"EXPLAIN (ANALYZE, BUFFERS) {query}")
- return QueryAnalyzer(explain_result).get_optimization_suggestions()
 
-# MongoDB aggregation optimization
-def optimize_aggregation_pipeline(pipeline):
- optimizer = AggregationOptimizer()
- return optimizer.optimize_pipeline(pipeline)
-
-# Redis performance monitoring
-def monitor_redis_performance():
- metrics = redis.info()
- return PerformanceAnalyzer(metrics).get_recommendations()
-```
+For PostgreSQL, execute EXPLAIN ANALYZE BUFFERS on queries and use a QueryAnalyzer to generate optimization suggestions. For MongoDB, create an AggregationOptimizer to analyze and optimize aggregation pipelines. For Redis, retrieve info metrics and use a PerformanceAnalyzer to generate recommendations.
 
 Scaling Strategies:
-```python
-# Read replicas for PostgreSQL
-read_replicas = postgresql.setup_read_replicas([
- "postgresql://replica1...",
- "postgresql://replica2..."
-])
 
-# Sharding for MongoDB
-mongodb.setup_sharding(
- shard_key="user_id",
- num_shards=4
-)
-
-# Redis clustering
-redis.setup_cluster([
- "redis://node1:7000",
- "redis://node2:7000",
- "redis://node3:7000"
-])
-```
+Configure PostgreSQL read replicas by providing replica connection URLs. Set up MongoDB sharding with shard key and number of shards. Configure Redis clustering by providing node URLs for the cluster.
 
 ---
 
 ## Works Well With
 
 Complementary Skills:
-- `moai-domain-backend` - API integration and business logic
-- `moai-foundation-core` - Database migration and schema management
-- `moai-workflow-project` - Database project setup and configuration
-- `moai-platform-supabase` - Supabase database integration patterns
-- `moai-platform-neon` - Neon database integration patterns
-- `moai-platform-firestore` - Firestore database integration patterns
+
+- moai-domain-backend - API integration and business logic
+- moai-foundation-core - Database migration and schema management
+- moai-workflow-project - Database project setup and configuration
+- moai-platform-supabase - Supabase database integration patterns
+- moai-platform-neon - Neon database integration patterns
+- moai-platform-firestore - Firestore database integration patterns
 
 Technology Integration:
-- ORMs and ODMs (SQLAlchemy, Mongoose, TypeORM)
-- Connection pooling (PgBouncer, connection pools)
-- Migration tools (Alembic, Flyway)
-- Monitoring (pg_stat_statements, MongoDB Atlas)
+
+- ORMs and ODMs including SQLAlchemy, Mongoose, and TypeORM
+- Connection pooling with PgBouncer and connection pools
+- Migration tools including Alembic and Flyway
+- Monitoring with pg_stat_statements and MongoDB Atlas
 - Cache invalidation and synchronization
-
----
-
-## Usage Examples
-
-### Database Operations
-```python
-# PostgreSQL advanced queries
-users = postgresql.query(
- "SELECT * FROM users WHERE created_at > %s ORDER BY activity_score DESC LIMIT 100",
- [datetime.now() - timedelta(days=30)]
-)
-
-# MongoDB analytics
-analytics = mongodb.aggregate('events', [
- {"$match": {"timestamp": {"$gte": start_date}}},
- {"$group": {"_id": "$type", "count": {"$sum": 1}}},
- {"$sort": {"count": -1}}
-])
-
-# Redis caching operations
-async def get_user_data(user_id):
- cache_key = f"user:{user_id}"
- data = await redis.get(cache_key)
-
- if not data:
- data = fetch_from_database(user_id)
- await redis.setex(cache_key, 3600, json.dumps(data))
-
- return json.loads(data)
-```
-
-### Multi-Database Transactions
-```python
-async def create_user_with_profile(user_data, profile_data):
- try:
- # Start transaction across databases
- async with transaction_manager():
- # Create user in PostgreSQL
- user_id = await postgresql.insert_user(user_data)
-
- # Create profile in MongoDB
- await mongodb.insert_user_profile(user_id, profile_data)
-
- # Set initial cache in Redis
- await redis.set_user_cache(user_id, {
- "id": user_id,
- "status": "active",
- "created_at": datetime.now().isoformat()
- })
-
- return user_id
-
- except Exception as e:
- # Automatic rollback across databases
- logger.error(f"User creation failed: {e}")
- raise
-```
 
 ---
 
 ## Technology Stack
 
 Relational Database:
-- PostgreSQL 14+ (primary)
-- MySQL 8.0+ (alternative)
-- Connection pooling (PgBouncer, SQLAlchemy)
+
+- PostgreSQL 14+ as primary database
+- MySQL 8.0+ as alternative
+- Connection pooling with PgBouncer and SQLAlchemy
 
 NoSQL Database:
-- MongoDB 6.0+ (primary)
+
+- MongoDB 6.0+ as primary document store
 - Document modeling and validation
 - Aggregation framework
 - Sharding and replication
 
 In-Memory Database:
-- Redis 7.0+ (primary)
+
+- Redis 7.0+ as primary cache
 - Redis Stack for advanced features
 - Clustering and high availability
 - Advanced data structures
 
 Supporting Tools:
-- Migration tools (Alembic, Flyway)
-- Monitoring (Prometheus, Grafana)
-- ORMs/ODMs (SQLAlchemy, Mongoose)
-- Connection management
+
+- Migration tools including Alembic and Flyway
+- Monitoring with Prometheus and Grafana
+- ORMs and ODMs including SQLAlchemy and Mongoose
+- Connection management utilities
 
 Performance Features:
+
 - Query optimization and analysis
 - Index management and strategies
 - Caching layers and invalidation
@@ -324,4 +168,12 @@ Performance Features:
 
 ---
 
-*For detailed implementation patterns and database-specific optimizations, see the `modules/` directory.*
+## Resources
+
+For working code examples, see [examples.md](examples.md).
+
+For detailed implementation patterns and database-specific optimizations, see the modules directory.
+
+Status: Production Ready
+Last Updated: 2026-01-11
+Maintained by: MoAI-ADK Database Team

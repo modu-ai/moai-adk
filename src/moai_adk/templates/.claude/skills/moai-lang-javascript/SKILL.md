@@ -1,7 +1,7 @@
 ---
 name: "moai-lang-javascript"
 description: "JavaScript ES2024+ development specialist covering Node.js 22 LTS, Bun 1.x (serve, SQLite, S3, shell, test), Deno 2.x, testing (Vitest, Jest), linting (ESLint 9, Biome), and backend frameworks (Express, Fastify, Hono). Use when developing JavaScript APIs, web applications, or Node.js projects."
-version: 1.1.0
+version: 1.2.0
 category: "language"
 modularized: false
 user-invocable: false
@@ -16,7 +16,7 @@ tags:
     "eslint",
     "express",
   ]
-updated: 2026-01-08
+updated: 2026-01-11
 status: "active"
 allowed-tools:
   - Read
@@ -31,13 +31,13 @@ allowed-tools:
 
 JavaScript ES2024+ Development Specialist - Modern JavaScript with Node.js 22 LTS, multiple runtimes, and contemporary tooling.
 
-Auto-Triggers: `.js`, `.mjs`, `.cjs` files, `package.json`, Node.js projects, JavaScript discussions
+Auto-Triggers: Files with .js, .mjs, or .cjs extensions, package.json, Node.js projects, JavaScript discussions
 
 Core Stack:
 
 - ES2024+: Set methods, Promise.withResolvers, immutable arrays, import attributes
 - Node.js 22 LTS: Native TypeScript, built-in WebSocket, stable watch mode
-- Runtimes: Node.js 20/22 LTS, Deno 2.x, Bun 1.x
+- Runtimes: Node.js 20 and 22 LTS, Deno 2.x, Bun 1.x
 - Testing: Vitest, Jest, Node.js test runner
 - Linting: ESLint 9 flat config, Biome
 - Bundlers: Vite, esbuild, Rollup
@@ -45,19 +45,7 @@ Core Stack:
 
 Quick Commands:
 
-```bash
-# Create Vite project
-npm create vite@latest my-app -- --template vanilla
-
-# Initialize with modern tooling
-npm init -y && npm install -D vitest eslint @eslint/js
-
-# Run with Node.js watch mode
-node --watch server.js
-
-# Run TypeScript directly in Node.js 22+
-node --experimental-strip-types app.ts
-```
+Create a Vite project using npm create vite with latest tag, project name, and vanilla template. Initialize with modern tooling using npm init and npm install with D flag for vitest, eslint, and eslint/js. Run with Node.js watch mode using node with watch flag. Run TypeScript directly in Node.js 22+ using node with experimental-strip-types flag.
 
 ---
 
@@ -67,310 +55,79 @@ node --experimental-strip-types app.ts
 
 Set Operations:
 
-```javascript
-const setA = new Set([1, 2, 3, 4]);
-const setB = new Set([3, 4, 5, 6]);
+Create setA with values 1, 2, 3, 4 and setB with values 3, 4, 5, 6. Call setA.intersection with setB to get Set containing 3 and 4. Call setA.union with setB to get Set containing 1 through 6. Call setA.difference with setB to get Set containing 1 and 2. Call setA.symmetricDifference with setB to get Set containing 1, 2, 5, and 6. Call isSubsetOf, isSupersetOf, and isDisjointFrom methods for set comparisons.
 
-setA.intersection(setB); // Set {3, 4}
-setA.union(setB); // Set {1, 2, 3, 4, 5, 6}
-setA.difference(setB); // Set {1, 2}
-setA.symmetricDifference(setB); // Set {1, 2, 5, 6}
-setA.isSubsetOf(setB); // false
-setA.isSupersetOf(setB); // false
-setA.isDisjointFrom(setB); // false
-```
+Promise.withResolvers:
 
-Promise.withResolvers():
-
-```javascript
-function createDeferred() {
-  const { promise, resolve, reject } = Promise.withResolvers();
-  return { promise, resolve, reject };
-}
-
-const deferred = createDeferred();
-setTimeout(() => deferred.resolve("done"), 1000);
-const result = await deferred.promise;
-```
+Create a createDeferred function that destructures promise, resolve, and reject from Promise.withResolvers call. Return an object with these three properties. Create a deferred instance, set a timeout to resolve with done after 1000 milliseconds, and await the promise for the result.
 
 Immutable Array Methods:
 
-```javascript
-const original = [3, 1, 4, 1, 5];
-
-// New methods return new arrays (don't mutate)
-const sorted = original.toSorted(); // [1, 1, 3, 4, 5]
-const reversed = original.toReversed(); // [5, 1, 4, 1, 3]
-const spliced = original.toSpliced(1, 2, 9); // [3, 9, 1, 5]
-const changed = original.with(2, 99); // [3, 1, 99, 1, 5]
-
-console.log(original); // [3, 1, 4, 1, 5] - unchanged
-```
+Create original array with values 3, 1, 4, 1, 5. Call toSorted to get new sorted array without mutating original. Call toReversed to get new reversed array. Call toSpliced with index 1, delete count 2, and insert value 9. Call with method at index 2 with value 99 to get new array with replaced element. The original array remains unchanged.
 
 Object.groupBy and Map.groupBy:
 
-```javascript
-const items = [
-  { type: "fruit", name: "apple" },
-  { type: "vegetable", name: "carrot" },
-  { type: "fruit", name: "banana" },
-];
-
-const grouped = Object.groupBy(items, (item) => item.type);
-// { fruit: [{...}, {...}], vegetable: [{...}] }
-
-const mapGrouped = Map.groupBy(items, (item) => item.type);
-// Map { 'fruit' => [...], 'vegetable' => [...] }
-```
+Create items array with objects containing type and name properties. Call Object.groupBy with items and a function that returns item.type to get an object with arrays grouped by type. Call Map.groupBy with the same arguments to get a Map with type keys and array values.
 
 ### ES2025 Features
 
-Import Attributes (JSON Modules):
+Import Attributes for JSON Modules:
 
-```javascript
-import config from "./config.json" with { type: "json" };
-import styles from "./styles.css" with { type: "css" };
-
-console.log(config.apiUrl);
-```
+Import config from config.json with type attribute set to json. Import styles from styles.css with type attribute set to css. Access config.apiUrl property.
 
 RegExp.escape:
 
-```javascript
-const userInput = "hello (world)";
-const safePattern = RegExp.escape(userInput);
-// "hello\\ \\(world\\)"
-const regex = new RegExp(safePattern);
-```
+Create userInput string with special characters like parentheses. Call RegExp.escape with userInput to get escaped pattern string. Create new RegExp with the safe pattern.
 
 ### Node.js 22 LTS Features
 
 Built-in WebSocket Client:
 
-```javascript
-const ws = new WebSocket("wss://example.com/socket");
+Create new WebSocket with wss URL. Add event listener for open event that sends JSON stringified message. Add event listener for message event that parses event.data as JSON and logs the received data.
 
-ws.addEventListener("open", () => {
-  ws.send(JSON.stringify({ type: "hello" }));
-});
+Native TypeScript Support Experimental:
 
-ws.addEventListener("message", (event) => {
-  const data = JSON.parse(event.data);
-  console.log("Received:", data);
-});
-```
+Run .ts files directly in Node.js 22.6+ using node with experimental-strip-types flag. In Node.js 22.18+, type stripping is enabled by default so files can be run directly.
 
-Native TypeScript Support (Experimental):
+Watch Mode Stable:
 
-```bash
-# Run .ts files directly in Node.js 22.6+
-node --experimental-strip-types app.ts
-
-# In Node.js 22.18+, type stripping is enabled by default
-node app.ts
-```
-
-Watch Mode (Stable):
-
-```bash
-# Auto-restart on file changes
-node --watch server.js
-
-# Watch specific files
-node --watch-path=./src --watch-path=./config server.js
-```
+Use node with watch flag for auto-restart on file changes. Use watch-path flag multiple times to watch specific directories like src and config.
 
 Permission Model:
 
-```bash
-# Restrict file system access
-node --permission --allow-fs-read=/app/data server.js
-
-# Restrict network access
-node --permission --allow-net=api.example.com server.js
-```
+Use node with permission flag and allow-fs-read set to a specific path to restrict file system access. Use allow-net flag with domain name to restrict network access.
 
 ### Backend Frameworks
 
-Express (Traditional):
+Express Traditional Pattern:
 
-```javascript
-import express from "express";
+Import express. Create app by calling express function. Use express.json middleware. Create a get endpoint at api/users that awaits database query and responds with json. Create a post endpoint that creates a user and responds with status 201 and json. Call listen on port 3000 with callback logging server running.
 
-const app = express();
-app.use(express.json());
+Fastify High Performance Pattern:
 
-app.get("/api/users", async (req, res) => {
-  const users = await db.users.findAll();
-  res.json(users);
-});
+Import Fastify. Create fastify instance with logger set to true. Define userSchema with body containing type object, required array with name and email, and properties with validation constraints. Create a post endpoint with schema option and async handler that creates user and returns with code 201. Call listen with port 3000.
 
-app.post("/api/users", async (req, res) => {
-  const user = await db.users.create(req.body);
-  res.status(201).json(user);
-});
+Hono Edge-First Pattern:
 
-app.listen(3000, () => console.log("Server running on port 3000"));
-```
-
-Fastify (High Performance):
-
-```javascript
-import Fastify from "fastify";
-
-const fastify = Fastify({ logger: true });
-
-const userSchema = {
-  body: {
-    type: "object",
-    required: ["name", "email"],
-    properties: {
-      name: { type: "string", minLength: 2 },
-      email: { type: "string", format: "email" },
-    },
-  },
-};
-
-fastify.post("/api/users", { schema: userSchema }, async (request, reply) => {
-  const user = await db.users.create(request.body);
-  return reply.code(201).send(user);
-});
-
-await fastify.listen({ port: 3000 });
-```
-
-Hono (Edge-First):
-
-```javascript
-import { Hono } from "hono";
-import { cors } from "hono/cors";
-import { logger } from "hono/logger";
-import { validator } from "hono/validator";
-
-const app = new Hono();
-
-app.use("*", logger());
-app.use("/api/*", cors());
-
-app.get("/api/users", async (c) => {
-  const users = await db.users.findAll();
-  return c.json(users);
-});
-
-app.post(
-  "/api/users",
-  validator("json", (value, c) => {
-    if (!value.name || !value.email) {
-      return c.json({ error: "Invalid input" }, 400);
-    }
-    return value;
-  }),
-  async (c) => {
-    const user = await db.users.create(c.req.valid("json"));
-    return c.json(user, 201);
-  },
-);
-
-export default app;
-```
+Import Hono and middleware functions. Create app instance. Use logger middleware for all routes. Use cors middleware for api routes. Create get endpoint at api/users that awaits database query and returns c.json. Create post endpoint with validator middleware that checks for required fields, then creates user and returns c.json with status 201. Export app as default.
 
 ### Testing with Vitest
 
 Configuration:
 
-```javascript
-// vitest.config.js
-import { defineConfig } from "vitest/config";
-
-export default defineConfig({
-  test: {
-    globals: true,
-    environment: "node",
-    coverage: {
-      provider: "v8",
-      reporter: ["text", "json", "html"],
-    },
-  },
-});
-```
+Create vitest.config.js with defineConfig. Set test object with globals true, environment node, and coverage with provider v8 and reporters for text, json, and html.
 
 Test Example:
 
-```javascript
-// user.test.js
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createUser, getUser } from "./user.js";
-
-describe("User Service", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("should create a user", async () => {
-    const user = await createUser({ name: "John", email: "john@example.com" });
-    expect(user).toMatchObject({ name: "John", email: "john@example.com" });
-    expect(user.id).toBeDefined();
-  });
-
-  it("should throw on invalid email", async () => {
-    await expect(
-      createUser({ name: "John", email: "invalid" }),
-    ).rejects.toThrow("Invalid email");
-  });
-});
-```
+In test file, import describe, it, expect, vi, and beforeEach from vitest. Import functions to test. Create describe block for User Service. In beforeEach, call vi.clearAllMocks. Create it block for should create a user that awaits createUser and expects result to match object with name and email, and id to be defined. Create it block for should throw on invalid email that expects createUser to reject with Invalid email error.
 
 ### ESLint 9 Flat Config
 
-```javascript
-// eslint.config.js
-import js from "@eslint/js";
-import globals from "globals";
+Create eslint.config.js. Import js from eslint/js and globals. Export array with js.configs.recommended followed by object with languageOptions containing ecmaVersion 2025, sourceType module, and globals merged from globals.node and globals.es2025. Set rules for no-unused-vars with error and args ignore pattern, no-console with warn and allowed methods, prefer-const as error, and no-var as error.
 
-export default [
-  js.configs.recommended,
-  {
-    languageOptions: {
-      ecmaVersion: 2025,
-      sourceType: "module",
-      globals: {
-        ...globals.node,
-        ...globals.es2025,
-      },
-    },
-    rules: {
-      "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
-      "no-console": ["warn", { allow: ["warn", "error"] }],
-      "prefer-const": "error",
-      "no-var": "error",
-    },
-  },
-];
-```
+### Biome All-in-One
 
-### Biome (All-in-One)
-
-```json
-{
-  "$schema": "https://biomejs.dev/schemas/1.9.0/schema.json",
-  "organizeImports": { "enabled": true },
-  "linter": {
-    "enabled": true,
-    "rules": { "recommended": true }
-  },
-  "formatter": {
-    "enabled": true,
-    "indentStyle": "space",
-    "indentWidth": 2
-  },
-  "javascript": {
-    "formatter": {
-      "quoteStyle": "single",
-      "semicolons": "always"
-    }
-  }
-}
-```
+Create biome.json with schema URL. Enable organizeImports. Set linter enabled with recommended rules. Set formatter enabled with indentStyle space and indentWidth 2. Under javascript.formatter, set quoteStyle to single and semicolons to always.
 
 ---
 
@@ -378,29 +135,23 @@ export default [
 
 For comprehensive documentation including advanced async patterns, module system details, performance optimization, and production deployment configurations, see:
 
-- [reference.md](reference.md) - Complete API reference, Context7 library mappings, package manager comparison
-- [examples.md](examples.md) - Production-ready code examples, full-stack patterns, testing templates
+- reference.md for complete API reference, Context7 library mappings, and package manager comparison
+- examples.md for production-ready code examples, full-stack patterns, and testing templates
 
 ### Context7 Integration
 
-```javascript
-// Node.js - mcp__context7__get_library_docs("/nodejs/node", "esm modules async", 1)
-// Express - mcp__context7__get_library_docs("/expressjs/express", "middleware routing", 1)
-// Fastify - mcp__context7__get_library_docs("/fastify/fastify", "plugins hooks", 1)
-// Hono - mcp__context7__get_library_docs("/honojs/hono", "middleware validators", 1)
-// Vitest - mcp__context7__get_library_docs("/vitest-dev/vitest", "mocking coverage", 1)
-```
+For Node.js documentation, use context7 get library docs with nodejs/node and topics like esm modules async. For Express, use expressjs/express with middleware routing. For Fastify, use fastify/fastify with plugins hooks. For Hono, use honojs/hono with middleware validators. For Vitest, use vitest-dev/vitest with mocking coverage.
 
 ---
 
 ## Works Well With
 
-- `moai-lang-typescript` - TypeScript integration, type checking with JSDoc
-- `moai-domain-backend` - API design, microservices architecture
-- `moai-domain-database` - Database integration, ORM patterns
-- `moai-workflow-testing` - TDD workflows, testing strategies
-- `moai-foundation-quality` - Code quality standards
-- `moai-essentials-debug` - Debugging JavaScript applications
+- moai-lang-typescript for TypeScript integration and type checking with JSDoc
+- moai-domain-backend for API design and microservices architecture
+- moai-domain-database for database integration and ORM patterns
+- moai-workflow-testing for TDD workflows and testing strategies
+- moai-foundation-quality for code quality standards
+- moai-essentials-debug for debugging JavaScript applications
 
 ---
 
@@ -408,46 +159,21 @@ For comprehensive documentation including advanced async patterns, module system
 
 Module System Issues:
 
-```bash
-# Check package.json type
-cat package.json | grep '"type"'
-
-# ESM: "type": "module" - use import/export
-# CommonJS: "type": "commonjs" or omitted - use require/module.exports
-```
+Check package.json for type field. ESM uses type module with import and export. CommonJS uses type commonjs or omits the field and uses require and module.exports.
 
 Node.js Version Check:
 
-```bash
-node --version  # Should be 20.x or 22.x LTS
-npm --version   # Should be 10.x+
-```
+Run node with version flag for 20.x or 22.x LTS. Run npm with version flag for 10.x or later.
 
 Common Fixes:
 
-```bash
-# Clear npm cache
-npm cache clean --force
+Clear npm cache with npm cache clean using force flag. Delete node_modules and package-lock.json then run npm install. Fix permission issues by setting npm config prefix to home directory npm-global folder.
 
-# Delete node_modules and reinstall
-rm -rf node_modules package-lock.json && npm install
+ESM and CommonJS Interop:
 
-# Fix permission issues
-npm config set prefix ~/.npm-global
-```
-
-ESM/CommonJS Interop:
-
-```javascript
-// Import CommonJS from ESM
-import pkg from "commonjs-package";
-const { namedExport } = pkg;
-
-// Dynamic import in CommonJS
-const { default: esmModule } = await import("esm-package");
-```
+To import CommonJS from ESM, import the default then destructure named exports from it. For dynamic import in CommonJS, use await import and destructure the default property.
 
 ---
 
-Last Updated: 2026-01-05
-Status: Active (v1.1.0)
+Last Updated: 2026-01-11
+Status: Active (v1.2.0)

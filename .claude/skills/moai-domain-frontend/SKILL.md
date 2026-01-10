@@ -7,7 +7,7 @@ modularized: true
 user-invocable: false
 tags: ['frontend', 'react', 'nextjs', 'vue', 'ui', 'components']
 context7-libraries: ['/facebook/react', '/vercel/next.js', '/vuejs/vue']
-updated: 2026-01-08
+updated: 2026-01-11
 allowed-tools:
   - Read
   - Grep
@@ -25,6 +25,7 @@ author: "MoAI-ADK Team"
 Modern Frontend Development - Comprehensive patterns for React 19, Next.js 16, Vue 3.5.
 
 Core Capabilities:
+
 - React 19: Server components, concurrent features, cache(), Suspense
 - Next.js 16: App Router, Server Actions, ISR, Route handlers
 - Vue 3.5: Composition API, TypeScript, Pinia state management
@@ -32,6 +33,7 @@ Core Capabilities:
 - Performance: Code splitting, dynamic imports, memoization
 
 When to Use:
+
 - Modern web application development
 - Component library creation
 - Frontend performance optimization
@@ -45,24 +47,30 @@ Load specific modules for detailed patterns:
 
 ### Framework Patterns
 
-[React 19 Patterns](modules/react19-patterns.md):
+React 19 Patterns in modules/react19-patterns.md:
+
 - Server Components, Concurrent features, cache() API, Form handling
 
-[Next.js 16 Patterns](modules/nextjs16-patterns.md):
+Next.js 16 Patterns in modules/nextjs16-patterns.md:
+
 - App Router, Server Actions, ISR, Route Handlers, Parallel Routes
 
-[Vue 3.5 Patterns](modules/vue35-patterns.md):
+Vue 3.5 Patterns in modules/vue35-patterns.md:
+
 - Composition API, Composables, Reactivity, Pinia, Provide/Inject
 
 ### Architecture Patterns
 
-[Component Architecture](modules/component-architecture.md):
+Component Architecture in modules/component-architecture.md:
+
 - Design tokens, CVA variants, Compound components, Accessibility
 
-[State Management](modules/state-management.md):
+State Management in modules/state-management.md:
+
 - Zustand, Redux Toolkit, React Context, Pinia
 
-[Performance Optimization](modules/performance-optimization.md):
+Performance Optimization in modules/performance-optimization.md:
+
 - Code splitting, Dynamic imports, Image optimization, Memoization
 
 ---
@@ -71,95 +79,19 @@ Load specific modules for detailed patterns:
 
 ### React 19 Server Component
 
-```tsx
-import { cache } from 'react'
-import { Suspense } from 'react'
-
-const getData = cache(async (id: string) => {
-  const res = await fetch(`/api/data/${id}`)
-  return res.json()
-})
-
-export default async function Page({ params }: { params: { id: string } }) {
-  return (
-    <Suspense fallback={<Skeleton />}>
-      <DataDisplay data={await getData(params.id)} />
-    </Suspense>
-  )
-}
-```
+Create an async page component that uses the cache function from React to memoize data fetching. Import Suspense for loading states. Define a getData function that fetches from the API endpoint with an id parameter and returns JSON. In the page component, wrap the DataDisplay component with Suspense using a Skeleton fallback, and pass the awaited getData result as the data prop.
 
 ### Next.js Server Action
 
-```tsx
-'use server'
-
-import { revalidatePath } from 'next/cache'
-import { z } from 'zod'
-
-const schema = z.object({
-  title: z.string().min(1),
-  content: z.string().min(10)
-})
-
-export async function createPost(formData: FormData) {
-  const result = schema.safeParse({
-    title: formData.get('title'),
-    content: formData.get('content')
-  })
-  if (!result.success) return { errors: result.error.flatten().fieldErrors }
-  await db.post.create({ data: result.data })
-  revalidatePath('/posts')
-}
-```
+Create a server action file with the use server directive. Import revalidatePath from next/cache and z from zod for validation. Define a schema with title (minimum 1 character) and content (minimum 10 characters). The createPost function accepts FormData, validates with safeParse, returns errors on failure, creates the post in the database, and calls revalidatePath for the posts page.
 
 ### Vue Composable
 
-```typescript
-import { ref, computed, watchEffect } from 'vue'
-
-export function useUser(userId: Ref<string>) {
-  const user = ref<User | null>(null)
-  const loading = ref(false)
-  const fullName = computed(() =>
-    user.value ? `${user.value.firstName} ${user.value.lastName}` : ''
-  )
-  watchEffect(async () => {
-    loading.value = true
-    user.value = await fetchUser(userId.value)
-    loading.value = false
-  })
-  return { user, loading, fullName }
-}
-```
+Create a useUser composable that accepts a userId ref parameter. Define user as a nullable ref, loading as a boolean ref, and fullName as a computed property that concatenates firstName and lastName. Use watchEffect to set loading true, fetch the user data asynchronously, assign to user ref, and set loading false. Return the user, loading, and fullName refs.
 
 ### CVA Component
 
-```tsx
-import { cva, type VariantProps } from 'class-variance-authority'
-
-const buttonVariants = cva(
-  'inline-flex items-center justify-center rounded-md font-medium',
-  {
-    variants: {
-      variant: {
-        default: 'bg-primary text-white hover:bg-primary/90',
-        outline: 'border border-input hover:bg-accent',
-      },
-      size: {
-        sm: 'h-9 px-3 text-sm',
-        default: 'h-10 px-4',
-        lg: 'h-11 px-8',
-      },
-    },
-    defaultVariants: { variant: 'default', size: 'default' },
-  }
-)
-
-export function Button({ variant, size, children }: ButtonProps) {
-  return <button className={buttonVariants({ variant, size })}>{children}</button>
-}
-```
+Import cva and VariantProps from class-variance-authority. Define buttonVariants with base classes for inline-flex, items-center, justify-center, rounded-md, and font-medium. Add variants object with variant options for default (primary background with hover) and outline (border with hover accent). Add size options for sm (h-9, px-3, text-sm), default (h-10, px-4), and lg (h-11, px-8). Set defaultVariants for variant and size. Export a Button component that applies the variants to a button element className.
 
 ---
 
@@ -176,20 +108,30 @@ export function Button({ variant, size, children }: ButtonProps) {
 ## Technology Stack
 
 Frameworks: React 19, Next.js 16, Vue 3.5, Nuxt 3
+
 Languages: TypeScript 5.9+, JavaScript ES2024
+
 Styling: Tailwind CSS 3.4+, CSS Modules, shadcn/ui
+
 State: Zustand, Redux Toolkit, Pinia
+
 Testing: Vitest, Testing Library, Playwright
 
 ---
 
 ## Resources
 
-Module files in modules/ directory contain detailed patterns.
+Module files in the modules directory contain detailed patterns.
+
+For working code examples, see [examples.md](examples.md).
+
+Official documentation:
+
 - React: https://react.dev/
 - Next.js: https://nextjs.org/docs
 - Vue: https://vuejs.org/
 
 ---
 
-Version: 2.0.0 | Last Updated: 2026-01-06
+Version: 2.0.0
+Last Updated: 2026-01-11

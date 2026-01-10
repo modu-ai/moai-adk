@@ -1,13 +1,13 @@
 ---
 name: "moai-library-shadcn"
 description: "Moai Lib Shadcn Ui - Professional implementation guide"
-version: 2.0.0
+version: 2.1.0
 category: "library"
 modularized: true
 user-invocable: false
 tags: ['library', 'shadcn', 'enterprise', 'development', 'ui']
 aliases: ['moai-library-shadcn']
-updated: 2026-01-08
+updated: 2026-01-11
 status: "active"
 allowed-tools:
   - Read
@@ -17,13 +17,14 @@ allowed-tools:
   - mcp__context7__get-library-docs
 ---
 
-## Quick Reference (30 seconds)
+## Quick Reference
 
-# Enterprise shadcn/ui Component Library Expert
+Enterprise shadcn/ui Component Library Expert
 
 Comprehensive shadcn/ui expertise with AI-powered design system architecture, Context7 integration, and intelligent component orchestration for modern React applications.
 
 Core Capabilities:
+
 - AI-Powered Component Architecture using Context7 MCP
 - Intelligent Design System with automated theme customization
 - Advanced Component Orchestration with accessibility and performance
@@ -31,6 +32,7 @@ Core Capabilities:
 - Predictive Component Analytics with usage insights
 
 When to Use:
+
 - shadcn/ui component library discussions
 - React component architecture planning
 - Tailwind CSS integration and design tokens
@@ -38,11 +40,12 @@ When to Use:
 - Design system customization
 
 Module Organization:
-- Core Concepts: This file (shadcn/ui overview, architecture, ecosystem)
-- Components: [shadcn Components](modules/shadcn-components.md) (component library, advanced patterns)
-- Theming: [shadcn Theming](modules/shadcn-theming.md) (theme system, customization)
-- Advanced Patterns: [Advanced Patterns](modules/advanced-patterns.md) (complex implementations)
-- Optimization: [Optimization](modules/optimization.md) (performance tuning)
+
+- Core Concepts: This file covers shadcn/ui overview, architecture, and ecosystem
+- Components: The shadcn-components.md module covers component library and advanced patterns
+- Theming: The shadcn-theming.md module covers theme system and customization
+- Advanced Patterns: The advanced-patterns.md module covers complex implementations
+- Optimization: The optimization.md module covers performance tuning
 
 ---
 
@@ -50,240 +53,75 @@ Module Organization:
 
 ### shadcn/ui Overview
 
-What is shadcn/ui:
-shadcn/ui is a collection of re-usable components built with Radix UI and Tailwind CSS. Unlike traditional component libraries, it's not an npm package but rather a collection of components you copy into your project.
+shadcn/ui is a collection of re-usable components built with Radix UI and Tailwind CSS. Unlike traditional component libraries, it is not an npm package but rather a collection of components you copy into your project.
 
-Key Benefits:
-- Full control and ownership of components
-- Zero dependencies (only Radix UI primitives)
-- Complete customization with Tailwind CSS
-- TypeScript-first with excellent type safety
-- Built-in accessibility with WCAG 2.1 AA compliance
+Key Benefits include full control and ownership of components, zero dependencies beyond Radix UI primitives, complete customization with Tailwind CSS, TypeScript-first design with excellent type safety, and built-in accessibility with WCAG 2.1 AA compliance.
 
-Architecture Philosophy:
-```
-shadcn/ui Components
- Radix UI Primitives (unstyled, accessible)
- Tailwind CSS (utility-first styling)
- TypeScript (type safety)
- Your Customization (full control)
-```
+Architecture Philosophy: shadcn/ui components are built on top of Radix UI Primitives which provide unstyled accessible primitives. Tailwind CSS provides utility-first styling. TypeScript ensures type safety throughout. Your customization layer provides full control over the final implementation.
 
 ### Core Component Categories
 
-1. Form Components:
-- Input, Select, Checkbox, Radio, Textarea
-- Form validation with react-hook-form + Zod
-- Accessibility with proper ARIA labels
+Form Components include Input, Select, Checkbox, Radio, and Textarea. Form validation integrates with react-hook-form and Zod. Accessibility is ensured through proper ARIA labels.
 
-2. Display Components:
-- Card, Dialog, Sheet, Drawer, Popover
-- Responsive design patterns
-- Dark mode support
+Display Components include Card, Dialog, Sheet, Drawer, and Popover. Responsive design patterns are built in. Dark mode support is included.
 
-3. Navigation Components:
-- Navigation Menu, Breadcrumb, Tabs, Pagination
-- Keyboard navigation support
-- Focus management
+Navigation Components include Navigation Menu, Breadcrumb, Tabs, and Pagination. Keyboard navigation support is built in. Focus management is handled automatically.
 
-4. Data Components:
-- Table, Calendar, DatePicker, Charts
-- Virtual scrolling for large datasets
-- TanStack Table integration
+Data Components include Table, Calendar, DatePicker, and Charts. Virtual scrolling is available for large datasets. TanStack Table integration is supported.
 
-5. Feedback Components:
-- Alert, Toast, Progress, Badge, Avatar
-- Loading states and skeletons
-- Error boundaries
+Feedback Components include Alert, Toast, Progress, Badge, and Avatar. Loading states and skeletons are available. Error boundaries are supported.
 
-### Installation & Setup
+### Installation and Setup
 
-Step 1: Initialize shadcn/ui:
-```bash
-npx shadcn-ui@latest init
-```
+Step 1: Initialize shadcn/ui by running the shadcn-ui init command with npx using the latest version.
 
-Step 2: Configure components.json:
-```json
-{
- "$schema": "https://ui.shadcn.com/schema.json",
- "style": "default",
- "rsc": true,
- "tsx": true,
- "tailwind": {
- "config": "tailwind.config.js",
- "css": "app/globals.css",
- "baseColor": "slate",
- "cssVariables": true,
- "prefix": ""
- },
- "aliases": {
- "components": "@/components",
- "utils": "@/lib/utils",
- "ui": "@/components/ui"
- }
-}
-```
+Step 2: Configure components.json with the schema URL pointing to ui.shadcn.com/schema.json. Set the style to default and enable RSC and TSX. Configure Tailwind settings including the config path, CSS path, base color, CSS variables enabled, and optional prefix. Set up aliases for components, utils, and ui paths.
 
-Step 3: Add Components:
-```bash
-npx shadcn-ui@latest add button
-npx shadcn-ui@latest add form
-npx shadcn-ui@latest add dialog
-```
+Step 3: Add components individually using the shadcn-ui add command with npx, specifying component names such as button, form, or dialog.
 
-### Foundation Technologies (November 2025)
+### Foundation Technologies
 
-React 19:
-- Server Components support
-- Concurrent rendering features
-- Automatic batching improvements
-- Streaming SSR enhancements
+React 19 features include Server Components support, concurrent rendering features, automatic batching improvements, and streaming SSR enhancements.
 
-TypeScript 5.5:
-- Full type safety across components
-- Improved inference for generics
-- Better error messages
-- Enhanced developer experience
+TypeScript 5.5 provides full type safety across components, improved inference for generics, better error messages, and enhanced developer experience.
 
-Tailwind CSS 3.4:
-- JIT (Just-In-Time) compilation
-- CSS variable support
-- Dark mode variants
-- Container queries
+Tailwind CSS 3.4 includes JIT compilation, CSS variable support, dark mode variants, and container queries.
 
-Radix UI:
-- Unstyled, accessible primitives
-- Keyboard navigation
-- Focus management
-- ARIA attributes
+Radix UI provides unstyled accessible primitives, keyboard navigation, focus management, and ARIA attributes.
 
-Integration Stack:
-- React Hook Form: Form state management
-- Zod: Schema validation
-- class-variance-authority: Variant management
-- Framer Motion: Animation library
-- Lucide React: Icon library
+Integration Stack includes React Hook Form for form state management, Zod for schema validation, class-variance-authority for variant management, Framer Motion for animation library, and Lucide React for icon library.
 
 ### AI-Powered Architecture Design
 
-```python
-# AI-powered shadcn/ui architecture optimization with Context7
-class ShadcnUIArchitectOptimizer:
- def __init__(self):
- self.context7_client = Context7Client()
- self.component_analyzer = ComponentAnalyzer()
- self.theme_optimizer = ThemeOptimizer()
- 
- async def design_optimal_shadcn_architecture(self, 
- requirements: DesignSystemRequirements) -> ShadcnUIArchitecture:
- """Design optimal shadcn/ui architecture using AI analysis."""
- 
- # Get latest shadcn/ui and React documentation via Context7
- shadcn_docs = await self.context7_client.get_library_docs(
- context7_library_id='/shadcn-ui/docs',
- topic="component library design system theming accessibility 2025",
- tokens=3000
- )
- 
- react_docs = await self.context7_client.get_library_docs(
- context7_library_id='/react/docs',
- topic="hooks server-components performance optimization 2025",
- tokens=2000
- )
- 
- # Optimize component selection
- component_selection = self.component_analyzer.optimize_component_selection(
- requirements.ui_components,
- requirements.user_needs,
- shadcn_docs
- )
- 
- # Optimize theme configuration
- theme_configuration = self.theme_optimizer.optimize_theme_system(
- requirements.brand_guidelines,
- requirements.accessibility_requirements,
- shadcn_docs
- )
- 
- return ShadcnUIArchitecture(
- component_library=component_selection,
- theme_system=theme_configuration,
- accessibility_compliance=self._ensure_accessibility_compliance(
- requirements.accessibility_requirements
- ),
- performance_optimization=self._optimize_component_performance(
- component_selection
- ),
- integration_patterns=self._design_integration_patterns(
- requirements.framework_stack
- ),
- customization_strategy=self._plan_customization_strategy(
- requirements.customization_needs
- )
- )
-```
+The ShadcnUIArchitectOptimizer class uses Context7 MCP integration to design optimal shadcn/ui architectures. It initializes a Context7 client, component analyzer, and theme optimizer. The design_optimal_shadcn_architecture method takes design system requirements and fetches latest shadcn/ui and React documentation via Context7. It then optimizes component selection based on UI components and user needs, optimizes theme configuration based on brand guidelines and accessibility requirements, and returns a complete ShadcnUIArchitecture including component library, theme system, accessibility compliance, performance optimization, integration patterns, and customization strategy.
 
 ### Best Practices
 
-Requirements:
-- Use CSS variables for theme customization
-- Implement proper TypeScript types
-- Follow accessibility guidelines (WCAG 2.1 AA)
-- Use Radix UI primitives for complex interactions
-- Test components with React Testing Library
-- Optimize bundle size with tree-shaking
-- Implement responsive design patterns
+Requirements include using CSS variables for theme customization, implementing proper TypeScript types, following accessibility guidelines for WCAG 2.1 AA compliance, using Radix UI primitives for complex interactions, testing components with React Testing Library, optimizing bundle size with tree-shaking, and implementing responsive design patterns.
 
 Critical Implementation Standards:
 
-[HARD] Use CSS variables exclusively for color values
-WHY: Enables dynamic theming, supports dark mode transitions, and maintains design system consistency across all components
-IMPACT: Without CSS variables, theme changes require code modifications, dark mode fails, and brand customization becomes unmaintainable
+[HARD] Use CSS variables exclusively for color values. This enables dynamic theming, supports dark mode transitions, and maintains design system consistency across all components. Without CSS variables, theme changes require code modifications, dark mode fails, and brand customization becomes unmaintainable.
 
-[HARD] Include accessibility attributes on all interactive elements
-WHY: Ensures WCAG 2.1 AA compliance, screen reader compatibility, and inclusive user experience for users with disabilities
-IMPACT: Missing accessibility attributes excludes users with disabilities, violates legal compliance requirements, and reduces application usability by 15-20% of potential users
+[HARD] Include accessibility attributes on all interactive elements. This ensures WCAG 2.1 AA compliance, screen reader compatibility, and inclusive user experience for users with disabilities. Missing accessibility attributes excludes users with disabilities, violates legal compliance requirements, and reduces application usability.
 
-[HARD] Implement keyboard navigation for all interactive components
-WHY: Provides essential navigation method for keyboard users, supports assistive technologies, and improves overall user experience efficiency
-IMPACT: Without keyboard navigation, power users cannot efficiently use the application, accessibility compliance fails, and user productivity decreases by 30-40% for keyboard-dependent workflows
+[HARD] Implement keyboard navigation for all interactive components. This provides essential navigation method for keyboard users, supports assistive technologies, and improves overall user experience efficiency. Without keyboard navigation, power users cannot efficiently use the application and accessibility compliance fails.
 
-[SOFT] Provide loading states for asynchronous operations
-WHY: Communicates operation progress to users, reduces perceived latency, and improves user confidence in application responsiveness
-IMPACT: Missing loading states create user uncertainty, increase perceived application slowness by 2-3x, and lead to duplicate action submissions
+[SOFT] Provide loading states for asynchronous operations. This communicates operation progress to users, reduces perceived latency, and improves user confidence in application responsiveness.
 
-[HARD] Implement error boundaries around component trees
-WHY: Prevents entire application crashes from isolated component failures, enables graceful error recovery, and maintains application stability
-IMPACT: Without error boundaries, single component failures crash the entire application, user data loss occurs, and recovery requires full page refresh
+[HARD] Implement error boundaries around component trees. This prevents entire application crashes from isolated component failures, enables graceful error recovery, and maintains application stability.
 
-[HARD] Apply Tailwind CSS classes instead of inline styles
-WHY: Maintains consistency with design system, enables JIT compilation benefits, supports responsive design variants, and improves bundle size optimization
-IMPACT: Inline styles bypass Tailwind optimization, increase CSS bundle size by 40-60%, prevent design token usage, and break theme customization
+[HARD] Apply Tailwind CSS classes instead of inline styles. This maintains consistency with design system, enables JIT compilation benefits, supports responsive design variants, and improves bundle size optimization.
 
-[SOFT] Implement dark mode support across all components
-WHY: Provides user preference respect, reduces eye strain in low-light environments, and aligns with modern UI expectations
-IMPACT: Missing dark mode support limits usability in 60% of usage contexts, increases user eye strain, and reduces user satisfaction scores by 20-30%
+[SOFT] Implement dark mode support across all components. This provides user preference respect, reduces eye strain in low-light environments, and aligns with modern UI expectations.
 
 ### Performance Optimization
 
-Bundle Size:
-- Tree-shaking removes unused components
-- Code splitting for large components
-- Lazy loading with React.lazy
-- Dynamic imports for heavy dependencies
+Bundle Size optimization includes tree-shaking to remove unused components, code splitting for large components, lazy loading with React.lazy, and dynamic imports for heavy dependencies.
 
-Runtime Performance:
-- React.memo for expensive components
-- useMemo/useCallback for computations
-- Virtual scrolling for large lists
-- Debouncing user interactions
+Runtime Performance optimization includes React.memo for expensive components, useMemo and useCallback for computations, virtual scrolling for large lists, and debouncing user interactions.
 
-Accessibility:
-- ARIA attributes for all interactive elements
-- Keyboard navigation support
-- Focus management
-- Screen reader testing
+Accessibility includes ARIA attributes for all interactive elements, keyboard navigation support, focus management, and screen reader testing.
 
 ---
 
@@ -291,78 +129,41 @@ Accessibility:
 
 ### Component Composition
 
-Composable Pattern:
-```typescript
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-
-export function DashboardCard({ title, children }) {
- return (
- <Card>
- <CardHeader>
- <CardTitle>{title}</CardTitle>
- </CardHeader>
- <CardContent>
- {children}
- </CardContent>
- </Card>
- );
-}
-```
+The composable pattern involves importing Card, CardHeader, CardTitle, and CardContent from the ui/card components. A DashboardCard component accepts a title and children props, wrapping them in the Card structure with CardHeader containing CardTitle and CardContent containing the children.
 
 ### Form Validation
 
-Zod + React Hook Form:
-```typescript
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-
-const formSchema = z.object({
- email: z.string().email(),
- password: z.string().min(8),
-});
-
-type FormValues = z.infer<typeof formSchema>;
-
-export function LoginForm() {
- const form = useForm<FormValues>({
- resolver: zodResolver(formSchema),
- });
-
- return (
- <form onSubmit={form.handleSubmit(onSubmit)}>
- {/* Form fields */}
- </form>
- );
-}
-```
+The Zod and React Hook Form integration pattern involves importing useForm from react-hook-form, zodResolver from hookform/resolvers/zod, and z from zod. Define a formSchema with z.object containing field validations such as z.string().email() for email and z.string().min(8) for password. Infer the FormValues type from the schema. The form component uses useForm with zodResolver passing the formSchema. The form element uses form.handleSubmit with an onSubmit handler.
 
 ---
 
 ## Works Well With
 
-- [shadcn Components](modules/shadcn-components.md) - Advanced component patterns and implementation
-- [shadcn Theming](modules/shadcn-theming.md) - Theme system and customization strategies
-- `moai-domain-uiux` - Design system architecture and principles
-- `moai-lang-typescript` - TypeScript best practices
-- `code-frontend` - Frontend development patterns
+- shadcn-components.md module for advanced component patterns and implementation
+- shadcn-theming.md module for theme system and customization strategies
+- moai-domain-uiux for design system architecture and principles
+- moai-lang-typescript for TypeScript best practices
+- code-frontend for frontend development patterns
 
 ---
 
 ## Context7 Integration
 
 Related Libraries:
-- [shadcn/ui](/shadcn-ui/ui): Re-usable components built with Radix UI and Tailwind
-- [Radix UI](/radix-ui/primitives): Unstyled, accessible component primitives
-- [Tailwind CSS](/tailwindlabs/tailwindcss): Utility-first CSS framework
+
+- shadcn/ui at /shadcn-ui/ui provides re-usable components built with Radix UI and Tailwind
+- Radix UI at /radix-ui/primitives provides unstyled accessible component primitives
+- Tailwind CSS at /tailwindlabs/tailwindcss provides utility-first CSS framework
 
 Official Documentation:
-- [shadcn/ui Documentation](https://ui.shadcn.com/docs)
-- [API Reference](https://ui.shadcn.com/docs/components)
-- [Radix UI Documentation](https://www.radix-ui.com/)
-- [Tailwind CSS Documentation](https://tailwindcss.com/)
 
-Latest Versions (November 2025):
+- shadcn/ui Documentation at ui.shadcn.com/docs
+- API Reference at ui.shadcn.com/docs/components
+- Radix UI Documentation at radix-ui.com
+- Tailwind CSS Documentation at tailwindcss.com
+
+Latest Versions as of November 2025:
+
 - React 19
 - TypeScript 5.5
 - Tailwind CSS 3.4
@@ -370,5 +171,5 @@ Latest Versions (November 2025):
 
 ---
 
-Last Updated: 2025-11-21
+Last Updated: 2026-01-11
 Status: Production Ready

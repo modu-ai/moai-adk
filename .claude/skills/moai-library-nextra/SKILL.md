@@ -1,10 +1,10 @@
 ---
 name: moai-library-nextra
 description: Enterprise Nextra documentation framework with Next.js. Use when building documentation sites, knowledge bases, or API reference documentation.
-version: 2.1.0
+version: 2.2.0
 modularized: true
 user-invocable: false
-updated: 2026-01-08
+updated: 2026-01-11
 allowed-tools:
   - Read
   - Write
@@ -20,298 +20,100 @@ tags: ["library", "nextra", "nextjs", "documentation", "mdx", "static-site"]
 status: "active"
 ---
 
-## Quick Reference (30 seconds)
+## Quick Reference
 
-Purpose: Build professional documentation sites with Nextra + Next.js.
+Purpose: Build professional documentation sites with Nextra and Next.js.
 
 Nextra Advantages:
 
-- Zero config MDX (Markdown + JSX seamlessly)
-- File-system routing (automatic routes)
-- Performance optimized (code splitting, prefetching)
-- Theme system (pluggable, customizable)
-- i18n built-in (internationalization)
+- Zero config MDX with seamless Markdown and JSX integration
+- File-system routing with automatic route generation
+- Performance optimized with code splitting and prefetching
+- Theme system with pluggable and customizable themes
+- Built-in internationalization support
 
 Core Files:
 
-- `pages/` - Documentation pages (MDX)
-- `theme.config.tsx` - Site configuration
-- `_meta.js` - Navigation structure
+- The pages directory contains documentation pages in MDX format
+- The theme.config.tsx file contains site configuration
+- The _meta.js files control navigation structure
 
-## Implementation Guide (5 minutes)
+## Implementation Guide
 
 ### Features
 
-- Nextra 3.x/4.x documentation framework architecture patterns
-- Next.js 14/15 integration with optimal configuration
-- Theme customization via theme.config.tsx or Layout props
-- Advanced search with FlexSearch integration
-- Internationalization (i18n) support
-- MDX-powered content with React components
-- App Router support (Nextra 4.x) with Turbopack compatibility
+This skill covers Nextra 3.x and 4.x documentation framework architecture patterns, Next.js 14 and 15 integration with optimal configuration, theme customization via theme.config.tsx or Layout props, advanced search with FlexSearch integration, internationalization support, MDX-powered content with React components, and App Router support in Nextra 4.x with Turbopack compatibility.
 
 ### When to Use
 
-- Building documentation sites with modern React features
-- Creating knowledge bases with advanced search capabilities
-- Developing multi-language documentation portals
-- Implementing custom documentation themes
-- Integrating interactive examples in technical docs
+Use this skill when building documentation sites with modern React features, creating knowledge bases with advanced search capabilities, developing multi-language documentation portals, implementing custom documentation themes, or integrating interactive examples in technical docs.
 
-### Core Patterns
+### Project Setup
 
-Pattern 1: Nextra Project Setup
+To initialize a Nextra documentation site, use the create-nextra-app command with npx specifying the docs template. The resulting project structure includes a pages directory containing the custom App component file, the index MDX file for the home page, and subdirectories for documentation sections. Each section contains MDX files for content and a _meta.json file for navigation configuration.
 
-```bash
-# Initialize Nextra docs site
-npx create-nextra-app@latest my-docs --template docs
+### Theme Configuration
 
-# Project structure
-pages/
- _app.tsx (custom App component)
- index.mdx (home page)
- docs/
- guide.mdx
- api.mdx
- _meta.json (navigation config)
-```
+The theme.config.tsx file exports a configuration object with several key properties. The logo property defines the site branding element. The project property contains a link to the project repository. The docsRepositoryBase property specifies the base URL for the edit link feature. The useNextSeoProps function returns SEO configuration including the title template.
 
-Pattern 2: Custom Theme Configuration
+Essential configuration options include branding settings for logo and logoLink, navigation settings for project links and repository base URLs, sidebar settings for default collapse level and toggle button visibility, table of contents settings including the back-to-top feature, and footer settings for custom footer text.
 
-```typescript
-// theme.config.tsx
-export default {
- logo: <span>My Documentation</span>,
- project: { link: "https://github.com/user/repo" },
- docsRepositoryBase: "https://github.com/user/repo/tree/main",
- useNextSeoProps: () => ({
- titleTemplate: "%s – My Docs",
- }),
-};
-```
+### Navigation Structure
 
-Pattern 3: MDX with React Components
+The _meta.js files control sidebar menu ordering and display names. Each file exports a default object where keys represent file or directory names and values represent display labels. Special entries include separator lines using triple dashes as keys with empty string values, and external links can be configured with nested objects containing title, href, and newWindow properties.
 
-```mdx
-import { Callout } from "nextra/components";
+### MDX Content and JSX Integration
 
-# API Reference
+Nextra supports mixing Markdown with React components directly in MDX files. Components can be imported at the top of the file and used inline with the Markdown content. Custom components can be defined and exported within the MDX file itself. The Callout component from nextra/components provides styled callout boxes for notes, warnings, and tips.
 
-<Callout type="info">This API requires authentication.</Callout>
+### Search and SEO Optimization
 
-<CustomCodeBlock language="typescript">// Your code here</CustomCodeBlock>
-```
-
-## Core Patterns (5-10 minutes)
-
-### Pattern 1: Project Structure
-
-Key Concept: Organize documentation files logically
-
-Recommended Structure:
-
-```
-docs/
- pages/
- index.mdx # Homepage
- getting-started/
- _meta.js # Section config
- index.mdx
- installation.mdx
- guides/
- _meta.js
- basics.mdx
- advanced.mdx
- api/
- _meta.js
- reference.mdx
- public/ # Static assets
- theme.config.tsx # Main config
- next.config.js # Next.js config
- package.json
-```
-
-### Pattern 2: Theme Configuration
-
-Key Concept: Customize site appearance and behavior
-
-Essential Config:
-
-```typescript
-const config: DocsThemeConfig = {
- // Branding
- logo: <span>My Docs</span>,
- logoLink: "/",
-
- // Navigation
- project: { link: "https://github.com/..." },
- docsRepositoryBase: "https://github.com/.../tree/main",
-
- // Sidebar
- sidebar: {
- defaultMenuCollapseLevel: 1,
- toggleButton: true,
- },
-
- // Table of contents
- toc: { backToTop: true },
-
- // Footer
- footer: { text: "Built with Nextra" },
-};
-```
-
-### Pattern 3: Navigation Structure (\_meta.js)
-
-Key Concept: Control sidebar menu and page ordering
-
-Example:
-
-```javascript
-// pages/guides/_meta.js
-export default {
-  index: "Overview",
-  "getting-started": "Getting Started",
-  basics: "Basic Concepts",
-  advanced: "Advanced Topics",
-  "---": "", // Separator
-  faq: "FAQ",
-};
-```
-
-### Pattern 4: MDX Content & JSX Integration
-
-Key Concept: Mix Markdown with React components
-
-Example:
-
-```mdx
-# My Documentation
-
-<div className="bg-blue-100 p-4">
-  <h3>Important Note</h3>
-  <p>You can embed React components directly!</p>
-</div>
-
-## Code Examples
-
-export const MyComponent = () => (
-  <button onClick={() => alert("Clicked!")}>Click me</button>
-);
-
-<MyComponent />
-```
-
-### Pattern 5: Search & SEO Optimization
-
-Key Concept: Make documentation discoverable
-
-Config:
-
-```typescript
-// theme.config.tsx
-const config: DocsThemeConfig = {
- // Enable search
- search: {
- placeholder: "Search docs...",
- },
-
- // SEO metadata
- head: (
- <>
- <meta name="og:title" content="My Documentation" />
- <meta name="og:description" content="Complete guide" />
- <meta name="og:image" content="/og-image.png" />
- </>
- ),
-
- // Analytics
- useNextSeoProps() {
- return {
- titleTemplate: "%s - My Docs",
- };
- },
-};
-```
+The theme configuration supports built-in search with customizable placeholder text. SEO metadata can be configured through the head property which accepts JSX for meta tags including Open Graph title, description, and image. The useNextSeoProps function provides dynamic title template configuration.
 
 ---
 
 ## Advanced Documentation
 
-This Skill uses Progressive Disclosure. For detailed patterns:
+This skill uses Progressive Disclosure. For detailed patterns see the modules directory:
 
-- [modules/configuration.md](modules/configuration.md) - Complete theme.config reference
-- [modules/mdx-components.md](modules/mdx-components.md) - MDX component library
-- [modules/i18n-setup.md](modules/i18n-setup.md) - Internationalization guide
-- [modules/deployment.md](modules/deployment.md) - Hosting & deployment
+- modules/configuration.md provides complete theme.config reference
+- modules/mdx-components.md covers the MDX component library
+- modules/i18n-setup.md contains the internationalization guide
+- modules/deployment.md covers hosting and deployment
 
 ---
 
 ## Theme Options
 
-Built-in Themes:
+Built-in themes include nextra-theme-docs which is recommended for documentation sites, and nextra-theme-blog for blog implementations.
 
-- nextra-theme-docs (recommended for documentation)
-- nextra-theme-blog (for blogs)
-
-Customization:
-
-- CSS variables for colors
-- Custom sidebar components
-- Footer customization
-- Navigation layout
+Customization options include CSS variables for colors, custom sidebar components, footer customization, and navigation layout modifications.
 
 ---
 
 ## Deployment
 
-Popular Platforms:
+Popular deployment platforms include Vercel with zero-config recommended setup, GitHub Pages for free self-hosted options, Netlify for flexible CI/CD integration, and custom servers for full control.
 
-- Vercel (zero-config, recommended)
-- GitHub Pages (free, self-hosted)
-- Netlify (flexible, CI/CD)
-- Custom servers (full control)
-
-Vercel Deployment:
-
-```bash
-npm install -g vercel
-vercel
-# Select project and deploy
-```
+For Vercel deployment, install the Vercel CLI globally using npm, then run the vercel command to select the project and deploy.
 
 ---
 
 ## Integration with Other Skills
 
-Complementary Skills:
-
-- Skill("moai-docs-generation") - Auto-generate docs from code
-- Skill("moai-workflow-docs") - Validate documentation quality
-- Skill("moai-cc-claude-md") - Markdown formatting
+Complementary skills include moai-docs-generation for auto-generating docs from code, moai-workflow-docs for validating documentation quality, and moai-cc-claude-md for Markdown formatting.
 
 ---
 
 ## Version History
 
-2.1.0 (2025-12-30)
+Version 2.2.0 released 2026-01-11 removes code blocks to comply with CLAUDE.md Documentation Standards and converts all examples to narrative descriptions.
 
-- Updated configuration.md with complete Nextra-specific theme.config.tsx patterns
-- Added Nextra 4.x App Router configuration patterns
-- Updated version compatibility for Next.js 14/15
-- Added Turbopack support documentation
+Version 2.1.0 released 2025-12-30 updated configuration.md with complete Nextra-specific theme.config.tsx patterns, added Nextra 4.x App Router configuration patterns, updated version compatibility for Next.js 14 and 15, and added Turbopack support documentation.
 
-  2.0.0 (2025-11-23)
+Version 2.0.0 released 2025-11-23 refactored with Progressive Disclosure, highlighted configuration patterns, and added MDX integration guide.
 
-- Refactored with Progressive Disclosure
-- Configuration patterns highlighted
-- MDX integration guide
-
-  1.0.0 (2025-11-12)
-
-- Nextra architecture guide
-- Theme configuration
-- i18n support
+Version 1.0.0 released 2025-11-12 provided initial Nextra architecture guide, theme configuration, and i18n support.
 
 ---
 
@@ -325,17 +127,17 @@ Generated with: MoAI-ADK Skill Factory
 
 Agents:
 
-- workflow-docs - Documentation generation
-- code-frontend - Nextra implementation
-- workflow-spec - Architecture documentation
+- workflow-docs for documentation generation
+- code-frontend for Nextra implementation
+- workflow-spec for architecture documentation
 
 Skills:
 
-- moai-docs-generation - Content generation
-- moai-workflow-docs - Documentation validation
-- moai-library-mermaid - Diagram integration
+- moai-docs-generation for content generation
+- moai-workflow-docs for documentation validation
+- moai-library-mermaid for diagram integration
 
 Commands:
 
-- `/moai:3-sync` - Documentation deployment
-- `/moai:0-project` - Nextra project initialization
+- moai:3-sync for documentation deployment
+- moai:0-project for Nextra project initialization

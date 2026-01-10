@@ -140,9 +140,7 @@ def _save_config(config_path: Path, config_data: dict[str, Any]) -> None:
     is_yaml = config_path.suffix in (".yaml", ".yml")
 
     if is_yaml:
-        content = yaml.safe_dump(
-            config_data, default_flow_style=False, allow_unicode=True, sort_keys=False
-        )
+        content = yaml.safe_dump(config_data, default_flow_style=False, allow_unicode=True, sort_keys=False)
     else:
         content = json.dumps(config_data, indent=2, ensure_ascii=False) + "\n"
 
@@ -271,9 +269,7 @@ def _get_latest_version() -> str:
 
     try:
         url = "https://pypi.org/pypi/moai-adk/json"
-        with urllib.request.urlopen(
-            url, timeout=5
-        ) as response:  # nosec B310 - URL is hardcoded HTTPS to PyPI API, no user input
+        with urllib.request.urlopen(url, timeout=5) as response:  # nosec B310 - URL is hardcoded HTTPS to PyPI API, no user input
             data = json.loads(response.read().decode("utf-8"))
             return cast(str, data["info"]["version"])
     except (urllib.error.URLError, json.JSONDecodeError, KeyError, TimeoutError) as e:
@@ -336,9 +332,7 @@ def _get_project_config_version(project_path: Path) -> str:
 
     def _is_placeholder_val(value: str) -> bool:
         """Check if value contains unsubstituted template placeholders."""
-        return (
-            isinstance(value, str) and value.startswith("{{") and value.endswith("}}")
-        )
+        return isinstance(value, str) and value.startswith("{{") and value.endswith("}}")
 
     config_path, _ = _get_config_path(project_path)
 
@@ -379,13 +373,9 @@ def _ask_merge_strategy(yes: bool = False) -> str:
 
     console.print("\n[cyan]🔀 Choose merge strategy:[/cyan]")
     console.print("[cyan]  [1] Auto-merge (default)[/cyan]")
-    console.print(
-        "[dim]     → Template installs fresh + user changes preserved + minimal conflicts[/dim]"
-    )
+    console.print("[dim]     → Template installs fresh + user changes preserved + minimal conflicts[/dim]")
     console.print("[cyan]  [2] Manual merge[/cyan]")
-    console.print(
-        "[dim]     → Backup preserved + merge guide generated + you control merging[/dim]"
-    )
+    console.print("[dim]     → Backup preserved + merge guide generated + you control merging[/dim]")
 
     response = click.prompt("Select [1 or 2]", default="1")
     if response == "2":
@@ -393,9 +383,7 @@ def _ask_merge_strategy(yes: bool = False) -> str:
     return "auto"
 
 
-def _generate_manual_merge_guide(
-    backup_path: Path, template_path: Path, project_path: Path
-) -> Path:
+def _generate_manual_merge_guide(backup_path: Path, template_path: Path, project_path: Path) -> Path:
     """
     Generate comprehensive merge guide for manual merging.
 
@@ -424,9 +412,9 @@ def _generate_manual_merge_guide(
                 rel_path = file.relative_to(backup_path)
                 current_file = project_path / rel_path
                 if current_file.exists():
-                    if file.read_text(
+                    if file.read_text(encoding="utf-8", errors="ignore") != current_file.read_text(
                         encoding="utf-8", errors="ignore"
-                    ) != current_file.read_text(encoding="utf-8", errors="ignore"):
+                    ):
                         changed_files.append(f"  - {rel_path}")
                 else:
                     changed_files.append(f"  - {rel_path} (new)")
@@ -588,11 +576,7 @@ def _migrate_legacy_logs(project_path: Path, dry_run: bool = False) -> bool:
         files_skipped = 0
 
         # Check if any legacy directories exist
-        has_legacy_files = (
-            legacy_memory.exists()
-            or legacy_error_logs.exists()
-            or legacy_reports.exists()
-        )
+        has_legacy_files = legacy_memory.exists() or legacy_error_logs.exists() or legacy_reports.exists()
 
         if not has_legacy_files:
             if not dry_run:
@@ -625,9 +609,7 @@ def _migrate_legacy_logs(project_path: Path, dry_run: bool = False) -> bool:
 
                 if target_file.exists():
                     files_skipped += 1
-                    migration_log.append(
-                        f"Skipped: {session_file.relative_to(project_path)} (target already exists)"
-                    )
+                    migration_log.append(f"Skipped: {session_file.relative_to(project_path)} (target already exists)")
                 else:
                     if not dry_run:
                         shutil.copy2(session_file, target_file)
@@ -656,24 +638,18 @@ def _migrate_legacy_logs(project_path: Path, dry_run: bool = False) -> bool:
                     if target_file.exists():
                         files_skipped += 1
                         error_path = error_file.relative_to(project_path)
-                        migration_log.append(
-                            f"Skipped: {error_path} (target already exists)"
-                        )
+                        migration_log.append(f"Skipped: {error_path} (target already exists)")
                     else:
                         if not dry_run:
                             shutil.copy2(error_file, target_file)
                             shutil.copystat(error_file, target_file)
                             error_path = error_file.relative_to(project_path)
                             target_path = target_file.relative_to(project_path)
-                            migration_log.append(
-                                f"Migrated: {error_path} → {target_path}"
-                            )
+                            migration_log.append(f"Migrated: {error_path} → {target_path}")
                         else:
                             error_path = error_file.relative_to(project_path)
                             target_path = target_file.relative_to(project_path)
-                            migration_log.append(
-                                f"Would migrate: {error_path} → {target_path}"
-                            )
+                            migration_log.append(f"Would migrate: {error_path} → {target_path}")
                         files_migrated += 1
 
         # Migration 3: .moai/reports/ → .moai/docs/reports/
@@ -690,24 +666,18 @@ def _migrate_legacy_logs(project_path: Path, dry_run: bool = False) -> bool:
                     if target_file.exists():
                         files_skipped += 1
                         report_path = report_file.relative_to(project_path)
-                        migration_log.append(
-                            f"Skipped: {report_path} (target already exists)"
-                        )
+                        migration_log.append(f"Skipped: {report_path} (target already exists)")
                     else:
                         if not dry_run:
                             shutil.copy2(report_file, target_file)
                             shutil.copystat(report_file, target_file)
                             report_path = report_file.relative_to(project_path)
                             target_path = target_file.relative_to(project_path)
-                            migration_log.append(
-                                f"Migrated: {report_path} → {target_path}"
-                            )
+                            migration_log.append(f"Migrated: {report_path} → {target_path}")
                         else:
                             report_path = report_file.relative_to(project_path)
                             target_path = target_file.relative_to(project_path)
-                            migration_log.append(
-                                f"Would migrate: {report_path} → {target_path}"
-                            )
+                            migration_log.append(f"Would migrate: {report_path} → {target_path}")
                         files_migrated += 1
 
         # Create migration log
@@ -731,20 +701,12 @@ def _migrate_legacy_logs(project_path: Path, dry_run: bool = False) -> bool:
         # Display results
         if files_migrated > 0 or files_skipped > 0:
             if dry_run:
-                console.print(
-                    f"   [yellow]Would migrate {files_migrated} files, skip {files_skipped} files[/yellow]"
-                )
+                console.print(f"   [yellow]Would migrate {files_migrated} files, skip {files_skipped} files[/yellow]")
             else:
-                console.print(
-                    f"   [green]✓ Migrated {files_migrated} legacy log files[/green]"
-                )
+                console.print(f"   [green]✓ Migrated {files_migrated} legacy log files[/green]")
                 if files_skipped > 0:
-                    console.print(
-                        f"   [yellow]⚠ Skipped {files_skipped} files (already exist)[/yellow]"
-                    )
-                console.print(
-                    f"   [dim]   Migration log: {migration_log_path.relative_to(project_path)}[/dim]"
-                )
+                    console.print(f"   [yellow]⚠ Skipped {files_skipped} files (already exist)[/yellow]")
+                console.print(f"   [dim]   Migration log: {migration_log_path.relative_to(project_path)}[/dim]")
         elif has_legacy_files:
             console.print("   [dim]   No files to migrate[/dim]")
 
@@ -756,9 +718,7 @@ def _migrate_legacy_logs(project_path: Path, dry_run: bool = False) -> bool:
         return False
 
 
-def _detect_stale_cache(
-    upgrade_output: str, current_version: str, latest_version: str
-) -> bool:
+def _detect_stale_cache(upgrade_output: str, current_version: str, latest_version: str) -> bool:
     """
     Detect if uv cache is stale by comparing versions.
 
@@ -853,9 +813,7 @@ def _clear_uv_package_cache(package_name: str = "moai-adk") -> bool:
         return False
 
 
-def _execute_upgrade_with_retry(
-    installer_cmd: list[str], package_name: str = "moai-adk"
-) -> bool:
+def _execute_upgrade_with_retry(installer_cmd: list[str], package_name: str = "moai-adk") -> bool:
     """
     Execute upgrade with automatic cache retry on stale detection.
 
@@ -902,9 +860,7 @@ def _execute_upgrade_with_retry(
     """
     # Stage 1: First upgrade attempt
     try:
-        result = subprocess.run(
-            installer_cmd, capture_output=True, text=True, timeout=60, check=False
-        )
+        result = subprocess.run(installer_cmd, capture_output=True, text=True, timeout=60, check=False)
     except subprocess.TimeoutExpired:
         raise  # Re-raise timeout for caller to handle
     except Exception:
@@ -973,9 +929,7 @@ def _execute_upgrade(installer_cmd: list[str]) -> bool:
         subprocess.TimeoutExpired: If upgrade times out
     """
     try:
-        result = subprocess.run(
-            installer_cmd, capture_output=True, text=True, timeout=60, check=False
-        )
+        result = subprocess.run(installer_cmd, capture_output=True, text=True, timeout=60, check=False)
         return result.returncode == 0
     except subprocess.TimeoutExpired:
         raise  # Re-raise timeout for caller to handle
@@ -1014,9 +968,7 @@ def _preserve_user_settings(project_path: Path) -> dict[str, Path | None]:
     return preserved
 
 
-def _restore_user_settings(
-    project_path: Path, preserved: dict[str, Path | None]
-) -> bool:
+def _restore_user_settings(project_path: Path, preserved: dict[str, Path | None]) -> bool:
     """Restore user-specific settings files after template sync.
 
     Args:
@@ -1039,9 +991,7 @@ def _restore_user_settings(
             settings_local.write_text(backup_path.read_text(encoding="utf-8"))
             console.print("   [cyan]✓ Restored user settings[/cyan]")
         except Exception as e:
-            console.print(
-                f"   [yellow]⚠️ Failed to restore settings.local.json: {e}[/yellow]"
-            )
+            console.print(f"   [yellow]⚠️ Failed to restore settings.local.json: {e}[/yellow]")
             logger.warning(f"Failed to restore settings.local.json: {e}")
             success = False
 
@@ -1075,9 +1025,7 @@ def _get_template_command_names() -> set[str]:
     if not commands_path.exists():
         return set()
 
-    return {
-        f.name for f in commands_path.iterdir() if f.is_file() and f.suffix == ".md"
-    }
+    return {f.name for f in commands_path.iterdir() if f.is_file() and f.suffix == ".md"}
 
 
 def _get_template_agent_names() -> set[str]:
@@ -1110,9 +1058,7 @@ def _get_template_hook_names() -> set[str]:
     return {f.name for f in hooks_path.iterdir() if f.is_file() and f.suffix == ".py"}
 
 
-def _detect_custom_commands(
-    project_path: Path, template_commands: set[str]
-) -> list[str]:
+def _detect_custom_commands(project_path: Path, template_commands: set[str]) -> list[str]:
     """Detect custom commands NOT in template (user-created).
 
     Args:
@@ -1127,9 +1073,7 @@ def _detect_custom_commands(
     if not commands_path.exists():
         return []
 
-    project_commands = {
-        f.name for f in commands_path.iterdir() if f.is_file() and f.suffix == ".md"
-    }
+    project_commands = {f.name for f in commands_path.iterdir() if f.is_file() and f.suffix == ".md"}
     custom_commands = project_commands - template_commands
 
     return sorted(custom_commands)
@@ -1171,9 +1115,7 @@ def _detect_custom_hooks(project_path: Path, template_hooks: set[str]) -> list[s
     if not hooks_path.exists():
         return []
 
-    project_hooks = {
-        f.name for f in hooks_path.iterdir() if f.is_file() and f.suffix == ".py"
-    }
+    project_hooks = {f.name for f in hooks_path.iterdir() if f.is_file() and f.suffix == ".py"}
     custom_hooks = project_hooks - template_hooks
 
     return sorted(custom_hooks)
@@ -1228,9 +1170,7 @@ def _prompt_custom_files_restore(
 
     # In --yes mode, skip restoration (safest default)
     if yes:
-        console.print(
-            "\n[dim]   Skipping custom files restoration (--yes mode)[/dim]\n"
-        )
+        console.print("\n[dim]   Skipping custom files restoration (--yes mode)[/dim]\n")
         return {
             "commands": [],
             "agents": [],
@@ -1250,14 +1190,10 @@ def _prompt_custom_files_restore(
             ]
 
         if custom_agents:
-            groups["Agents (.claude/agents/)"] = [
-                {"name": agent, "value": f"agent:{agent}"} for agent in custom_agents
-            ]
+            groups["Agents (.claude/agents/)"] = [{"name": agent, "value": f"agent:{agent}"} for agent in custom_agents]
 
         if custom_hooks:
-            groups["Hooks (.claude/hooks/moai/)"] = [
-                {"name": hook, "value": f"hook:{hook}"} for hook in custom_hooks
-            ]
+            groups["Hooks (.claude/hooks/moai/)"] = [{"name": hook, "value": f"hook:{hook}"} for hook in custom_hooks]
 
         choices = create_grouped_choices(groups)
 
@@ -1293,9 +1229,7 @@ def _prompt_custom_files_restore(
                 choices_legacy.append(Choice(title=hook, value=f"hook:{hook}"))
 
         console.print("\n[cyan]📦 Custom files detected in backup:[/cyan]")
-        console.print(
-            "[dim]   Select files to restore (none selected by default)[/dim]\n"
-        )
+        console.print("[dim]   Select files to restore (none selected by default)[/dim]\n")
 
         selected = questionary.checkbox(
             "Select custom files to restore:",
@@ -1466,18 +1400,13 @@ def _prompt_skill_restore(custom_skills: list[str], yes: bool = False) -> list[s
 
         selected = questionary.checkbox(
             "Select skills to restore (none selected by default):",
-            choices=[
-                questionary.Choice(title=skill, checked=False)
-                for skill in custom_skills
-            ],
+            choices=[questionary.Choice(title=skill, checked=False) for skill in custom_skills],
         ).ask()
 
     return selected if selected else []
 
 
-def _restore_selected_skills(
-    skills: list[str], backup_path: Path, project_path: Path
-) -> bool:
+def _restore_selected_skills(skills: list[str], backup_path: Path, project_path: Path) -> bool:
     """Restore selected skills from backup.
 
     Args:
@@ -1579,9 +1508,7 @@ def _sync_templates(project_path: Path, force: bool = False, yes: bool = False) 
                     template_path = Path(__file__).parent.parent.parent / "templates"
 
                     console.print("\n[cyan]🔍 Starting merge analysis...[/cyan]")
-                    console.print(
-                        "[dim]   Analyzing templates with semantic heuristics.[/dim]\n"
-                    )
+                    console.print("[dim]   Analyzing templates with semantic heuristics.[/dim]\n")
                     analysis = analyzer.analyze_merge(backup_path, template_path)
 
                     # Ask user confirmation
@@ -1625,14 +1552,10 @@ def _sync_templates(project_path: Path, force: bool = False, yes: bool = False) 
                 return False
 
         # Validate template substitution
-        validation_passed = _validate_template_substitution_with_rollback(
-            project_path, backup_path
-        )
+        validation_passed = _validate_template_substitution_with_rollback(project_path, backup_path)
         if not validation_passed:
             if backup_path:
-                console.print(
-                    f"[yellow]🔄 Rolling back to backup: {backup_path.name}[/yellow]"
-                )
+                console.print(f"[yellow]🔄 Rolling back to backup: {backup_path.name}[/yellow]")
                 backup = TemplateBackup(project_path)
                 backup.restore_backup(backup_path)
             return False
@@ -1649,13 +1572,7 @@ def _sync_templates(project_path: Path, force: bool = False, yes: bool = False) 
             import sys
 
             utils_dir = (
-                Path(__file__).parent.parent.parent
-                / "templates"
-                / ".claude"
-                / "hooks"
-                / "moai"
-                / "shared"
-                / "utils"
+                Path(__file__).parent.parent.parent / "templates" / ".claude" / "hooks" / "moai" / "shared" / "utils"
             )
 
             if utils_dir.exists():
@@ -1667,9 +1584,7 @@ def _sync_templates(project_path: Path, force: bool = False, yes: bool = False) 
                     auto_translate_and_update(project_path)
                     console.print("[green]✓ Announcements updated[/green]")
                 except Exception as e:
-                    console.print(
-                        f"[yellow]⚠️  Announcement update failed: {e}[/yellow]"
-                    )
+                    console.print(f"[yellow]⚠️  Announcement update failed: {e}[/yellow]")
                 finally:
                     sys.path.remove(str(utils_dir))
 
@@ -1682,9 +1597,7 @@ def _sync_templates(project_path: Path, force: bool = False, yes: bool = False) 
         # NEW: Migrate legacy logs to unified structure
         console.print("\n[cyan]📁 Migrating legacy log files...[/cyan]")
         if not _migrate_legacy_logs(project_path):
-            console.print(
-                "[yellow]⚠️ Legacy log migration failed, but update continuing[/yellow]"
-            )
+            console.print("[yellow]⚠️ Legacy log migration failed, but update continuing[/yellow]")
 
         # Clean up legacy presets directory
         _cleanup_legacy_presets(project_path)
@@ -1700,9 +1613,7 @@ def _sync_templates(project_path: Path, force: bool = False, yes: bool = False) 
     except Exception as e:
         console.print(f"[red]✗ Template sync failed: {e}[/red]")
         if backup_path:
-            console.print(
-                f"[yellow]🔄 Rolling back to backup: {backup_path.name}[/yellow]"
-            )
+            console.print(f"[yellow]🔄 Rolling back to backup: {backup_path.name}[/yellow]")
             try:
                 backup = TemplateBackup(project_path)
                 backup.restore_backup(backup_path)
@@ -1754,19 +1665,13 @@ def _load_existing_config(project_path: Path) -> dict[str, Any]:
         try:
             return _load_config(config_path)
         except (json.JSONDecodeError, yaml.YAMLError):
-            console.print(
-                "[yellow]⚠ Existing config could not be parsed. Proceeding with defaults.[/yellow]"
-            )
+            console.print("[yellow]⚠ Existing config could not be parsed. Proceeding with defaults.[/yellow]")
     return {}
 
 
 def _is_placeholder(value: Any) -> bool:
     """Check if a string value is an unsubstituted template placeholder."""
-    return (
-        isinstance(value, str)
-        and value.strip().startswith("{{")
-        and value.strip().endswith("}}")
-    )
+    return isinstance(value, str) and value.strip().startswith("{{") and value.strip().endswith("}}")
 
 
 def _coalesce(*values: Any, default: str = "") -> str:
@@ -1830,11 +1735,7 @@ def _build_template_context(
     )
 
     # Detect OS for cross-platform Hook path configuration
-    hook_project_dir = (
-        "%CLAUDE_PROJECT_DIR%"
-        if platform.system() == "Windows"
-        else "$CLAUDE_PROJECT_DIR"
-    )
+    hook_project_dir = "%CLAUDE_PROJECT_DIR%" if platform.system() == "Windows" else "$CLAUDE_PROJECT_DIR"
 
     # Detect OS for cross-platform statusline command
     # Windows: Use python -m for better PATH compatibility
@@ -1855,9 +1756,7 @@ def _build_template_context(
         # Extract language configuration with environment variable priority
         language_config = {
             "conversation_language": resolved_config.get("conversation_language", "en"),
-            "conversation_language_name": resolved_config.get(
-                "conversation_language_name", "English"
-            ),
+            "conversation_language_name": resolved_config.get("conversation_language_name", "English"),
             "agent_prompt_language": resolved_config.get("agent_prompt_language", "en"),
         }
 
@@ -1874,9 +1773,7 @@ def _build_template_context(
 
         user_name = existing_config.get("user", {}).get("name", "")
         conv_lang = language_config.get("conversation_language")
-        personalized_greeting = (
-            f"{user_name}님" if user_name and conv_lang == "ko" else user_name
-        )
+        personalized_greeting = f"{user_name}님" if user_name and conv_lang == "ko" else user_name
         config_source = "config_file"
 
     # Enhanced version formatting (matches TemplateProcessor.get_enhanced_version_context)
@@ -1929,13 +1826,9 @@ def _build_template_context(
         "CREATION_TIMESTAMP": created_at,
         "PROJECT_DIR": hook_project_dir,
         "CONVERSATION_LANGUAGE": language_config.get("conversation_language", "en"),
-        "CONVERSATION_LANGUAGE_NAME": language_config.get(
-            "conversation_language_name", "English"
-        ),
+        "CONVERSATION_LANGUAGE_NAME": language_config.get("conversation_language_name", "English"),
         "AGENT_PROMPT_LANGUAGE": language_config.get("agent_prompt_language", "en"),
-        "GIT_COMMIT_MESSAGES_LANGUAGE": language_config.get(
-            "git_commit_messages", "en"
-        ),
+        "GIT_COMMIT_MESSAGES_LANGUAGE": language_config.get("git_commit_messages", "en"),
         "CODE_COMMENTS_LANGUAGE": language_config.get("code_comments", "en"),
         "DOCUMENTATION_LANGUAGE": language_config.get(
             "documentation", language_config.get("conversation_language", "en")
@@ -1990,9 +1883,7 @@ def _preserve_project_metadata(
     if locale:
         project_data["locale"] = locale
 
-    language = _coalesce(
-        existing_project.get("language"), existing_config.get("language")
-    )
+    language = _coalesce(existing_project.get("language"), existing_config.get("language"))
     if language:
         project_data["language"] = language
 
@@ -2015,9 +1906,7 @@ def _apply_context_to_file(processor: TemplateProcessor, target_path: Path) -> N
     except UnicodeDecodeError:
         return
 
-    substituted, warnings = processor._substitute_variables(
-        content
-    )  # pylint: disable=protected-access
+    substituted, warnings = processor._substitute_variables(content)  # pylint: disable=protected-access
     if warnings:
         console.print("[yellow]⚠ Template warnings:[/yellow]")
         for warning in warnings:
@@ -2048,28 +1937,20 @@ def _validate_template_substitution(project_path: Path) -> None:
             unsubstituted = re.findall(r"\{\{([A-Z_]+)\}\}", content)
             if unsubstituted:
                 unique_vars = sorted(set(unsubstituted))
-                issues_found.append(
-                    f"{file_path.relative_to(project_path)}: {', '.join(unique_vars)}"
-                )
+                issues_found.append(f"{file_path.relative_to(project_path)}: {', '.join(unique_vars)}")
         except Exception as e:
-            console.print(
-                f"[yellow]⚠️ Could not validate {file_path.relative_to(project_path)}: {e}[/yellow]"
-            )
+            console.print(f"[yellow]⚠️ Could not validate {file_path.relative_to(project_path)}: {e}[/yellow]")
 
     if issues_found:
         console.print("[red]✗ Template substitution validation failed:[/red]")
         for issue in issues_found:
             console.print(f"   {issue}")
-        console.print(
-            "[yellow]💡 Run '/moai:0-project' to fix template variables[/yellow]"
-        )
+        console.print("[yellow]💡 Run '/moai:0-project' to fix template variables[/yellow]")
     else:
         console.print("[green]✅ Template substitution validation passed[/green]")
 
 
-def _validate_template_substitution_with_rollback(
-    project_path: Path, backup_path: Path | None
-) -> bool:
+def _validate_template_substitution_with_rollback(project_path: Path, backup_path: Path | None) -> bool:
     """Validate template substitution with rollback capability.
 
     Returns:
@@ -2095,13 +1976,9 @@ def _validate_template_substitution_with_rollback(
             unsubstituted = re.findall(r"\{\{([A-Z_]+)\}\}", content)
             if unsubstituted:
                 unique_vars = sorted(set(unsubstituted))
-                issues_found.append(
-                    f"{file_path.relative_to(project_path)}: {', '.join(unique_vars)}"
-                )
+                issues_found.append(f"{file_path.relative_to(project_path)}: {', '.join(unique_vars)}")
         except Exception as e:
-            console.print(
-                f"[yellow]⚠️ Could not validate {file_path.relative_to(project_path)}: {e}[/yellow]"
-            )
+            console.print(f"[yellow]⚠️ Could not validate {file_path.relative_to(project_path)}: {e}[/yellow]")
 
     if issues_found:
         console.print("[red]✗ Template substitution validation failed:[/red]")
@@ -2109,13 +1986,9 @@ def _validate_template_substitution_with_rollback(
             console.print(f"   {issue}")
 
         if backup_path:
-            console.print(
-                "[yellow]🔄 Rolling back due to validation failure...[/yellow]"
-            )
+            console.print("[yellow]🔄 Rolling back due to validation failure...[/yellow]")
         else:
-            console.print(
-                "[yellow]💡 Run '/moai:0-project' to fix template variables[/yellow]"
-            )
+            console.print("[yellow]💡 Run '/moai:0-project' to fix template variables[/yellow]")
             console.print("[red]⚠️ No backup available - manual fix required[/red]")
 
         return False
@@ -2170,18 +2043,14 @@ def _show_network_error_help() -> None:
     console.print("Options:")
     console.print("  1. Check network connection")
     console.print("  2. Try again with: [cyan]moai-adk update --force[/cyan]")
-    console.print(
-        "  3. Skip version check: [cyan]moai-adk update --templates-only[/cyan]"
-    )
+    console.print("  3. Skip version check: [cyan]moai-adk update --templates-only[/cyan]")
 
 
 def _show_template_sync_failure_help() -> None:
     """Show help when template sync fails."""
     console.print("[yellow]⚠️  Template sync failed[/yellow]\n")
     console.print("Rollback options:")
-    console.print(
-        "  1. Restore from backup: [cyan]cp -r .moai-backups/TIMESTAMP .moai/[/cyan]"
-    )
+    console.print("  1. Restore from backup: [cyan]cp -r .moai-backups/TIMESTAMP .moai/[/cyan]")
     console.print("  2. Skip backup and retry: [cyan]moai-adk update --force[/cyan]")
     console.print("  3. Report issue: https://github.com/modu-ai/moai-adk/issues")
 
@@ -2219,9 +2088,7 @@ def _execute_migration_if_needed(project_path: Path, yes: bool = False) -> bool:
         console.print()
         console.print("   This will migrate configuration files to new locations:")
         console.print("   • .moai/config.json → .moai/config/config.json")
-        console.print(
-            "   • .claude/statusline-config.yaml → .moai/config/statusline-config.yaml"
-        )
+        console.print("   • .claude/statusline-config.yaml → .moai/config/statusline-config.yaml")
         console.print()
         console.print("   A backup will be created automatically.")
         console.print()
@@ -2229,15 +2096,9 @@ def _execute_migration_if_needed(project_path: Path, yes: bool = False) -> bool:
         # Confirm with user (unless --yes)
         if not yes:
             reset_stdin()  # Reset stdin before interactive prompt
-            if not click.confirm(
-                "Do you want to proceed with migration?", default=True
-            ):
-                console.print(
-                    "[yellow]⚠️  Migration skipped. Some features may not work correctly.[/yellow]"
-                )
-                console.print(
-                    "[cyan]💡 Run 'moai-adk migrate' manually when ready[/cyan]"
-                )
+            if not click.confirm("Do you want to proceed with migration?", default=True):
+                console.print("[yellow]⚠️  Migration skipped. Some features may not work correctly.[/yellow]")
+                console.print("[cyan]💡 Run 'moai-adk migrate' manually when ready[/cyan]")
                 return False
 
         # Execute migration
@@ -2249,9 +2110,7 @@ def _execute_migration_if_needed(project_path: Path, yes: bool = False) -> bool:
             return True
         else:
             console.print("[red]❌ Migration failed[/red]")
-            console.print(
-                "[cyan]💡 Use 'moai-adk migrate --rollback' to restore from backup[/cyan]"
-            )
+            console.print("[cyan]💡 Use 'moai-adk migrate --rollback' to restore from backup[/cyan]")
             return False
 
     except Exception as e:
@@ -2269,10 +2128,15 @@ def _execute_migration_if_needed(project_path: Path, yes: bool = False) -> bool:
 )
 @click.option("--force", is_flag=True, help="Skip backup and force the update")
 @click.option("--check", is_flag=True, help="Only check version (do not update)")
-@click.option(
-    "--templates-only", is_flag=True, help="Skip package upgrade, sync templates only"
-)
+@click.option("--templates-only", is_flag=True, help="Skip package upgrade, sync templates only")
 @click.option("--yes", is_flag=True, help="Auto-confirm all prompts (CI/CD mode)")
+@click.option(
+    "-c",
+    "--config",
+    "edit_config",
+    is_flag=True,
+    help="Edit project configuration (same as init wizard)",
+)
 @click.option(
     "--merge",
     "merge_strategy",
@@ -2291,6 +2155,7 @@ def update(
     check: bool,
     templates_only: bool,
     yes: bool,
+    edit_config: bool,
     merge_strategy: str | None,
 ) -> None:
     """Update command with 3-stage workflow + merge strategy selection (v0.26.0+).
@@ -2342,6 +2207,11 @@ def update(
             console.print("[yellow]⚠ Project not initialized[/yellow]")
             raise click.Abort()
 
+        # Handle --config / -c mode (edit configuration only, no template updates)
+        if edit_config:
+            _edit_configuration(project_path)
+            return
+
         # Get versions (needed for --check and normal workflow, but not for --templates-only alone)
         # Note: If --check is used, always fetch versions even if --templates-only is also present
         # Initialize with defaults to satisfy type checker (will be set in the block below if needed)
@@ -2366,9 +2236,7 @@ def update(
             except RuntimeError as e:
                 console.print(f"[red]Error: {e}[/red]")
                 if not force:
-                    console.print(
-                        "[yellow]⚠ Cannot check for updates. Use --force to update anyway.[/yellow]"
-                    )
+                    console.print("[yellow]⚠ Cannot check for updates. Use --force to update anyway.[/yellow]")
                     raise click.Abort()
                 # With --force, proceed to Stage 2 even if version check fails
                 current = __version__
@@ -2380,16 +2248,12 @@ def update(
         if check:
             comparison = _compare_versions(current, latest)
             if comparison < 0:
-                console.print(
-                    f"\n[yellow]📦 Update available: {current} → {latest}[/yellow]"
-                )
+                console.print(f"\n[yellow]📦 Update available: {current} → {latest}[/yellow]")
                 console.print("   Run 'moai-adk update' to upgrade")
             elif comparison == 0:
                 console.print(f"[green]✓ Already up to date ({current})[/green]")
             else:
-                console.print(
-                    f"[cyan]ℹ️  Dev version: {current} (latest: {latest})[/cyan]"
-                )
+                console.print(f"[cyan]ℹ️  Dev version: {current} (latest: {latest})[/cyan]")
             return
 
         # Step 2: Handle --templates-only (skip upgrade, go straight to sync)
@@ -2416,9 +2280,7 @@ def update(
             _restore_user_settings(project_path, preserved_settings)
 
             console.print("   [green]✅ .claude/ update complete[/green]")
-            console.print(
-                "   [green]✅ .moai/ update complete (specs/reports preserved)[/green]"
-            )
+            console.print("   [green]✅ .moai/ update complete (specs/reports preserved)[/green]")
             console.print("   [green]🔄 CLAUDE.md merge complete[/green]")
             console.print("   [green]🔄 config.json merge complete[/green]")
             console.print("\n[green]✓ Template sync complete![/green]")
@@ -2454,9 +2316,7 @@ def update(
             try:
                 upgrade_result = _execute_upgrade(installer_cmd)
                 if not upgrade_result:
-                    raise UpgradeError(
-                        f"Upgrade command failed: {' '.join(installer_cmd)}"
-                    )
+                    raise UpgradeError(f"Upgrade command failed: {' '.join(installer_cmd)}")
             except subprocess.TimeoutExpired:
                 _show_timeout_error_help()
                 raise click.Abort()
@@ -2466,9 +2326,7 @@ def update(
 
             # Prompt re-run
             console.print("\n[green]✓ Upgrade complete![/green]")
-            console.print(
-                "[cyan]📢 Run 'moai-adk update' again to sync templates[/cyan]"
-            )
+            console.print("[cyan]📢 Run 'moai-adk update' again to sync templates[/cyan]")
             return
 
         # Stage 1.5: Migration Check (NEW in v0.24.0)
@@ -2477,16 +2335,12 @@ def update(
         # Execute migration if needed
         if not _execute_migration_if_needed(project_path, yes):
             console.print("[yellow]⚠️  Update continuing without migration[/yellow]")
-            console.print(
-                "[cyan]💡 Some features may require migration to work correctly[/cyan]"
-            )
+            console.print("[cyan]💡 Some features may require migration to work correctly[/cyan]")
 
         # Migrate config.json → config.yaml (v0.32.0+)
         console.print("\n[cyan]🔍 Checking for config format migration...[/cyan]")
         if not _migrate_config_json_to_yaml(project_path):
-            console.print(
-                "[yellow]⚠️  Config migration failed, continuing with existing format[/yellow]"
-            )
+            console.print("[yellow]⚠️  Config migration failed, continuing with existing format[/yellow]")
 
         # Stage 2: Config Version Comparison
         try:
@@ -2503,32 +2357,22 @@ def update(
         console.print(f"   Project config:   {project_config_version}")
 
         try:
-            config_comparison = _compare_versions(
-                package_config_version, project_config_version
-            )
+            config_comparison = _compare_versions(package_config_version, project_config_version)
         except version.InvalidVersion as e:
             # Handle invalid version strings (e.g., unsubstituted template placeholders, corrupted configs)
             console.print(f"[yellow]⚠ Invalid version format in config: {e}[/yellow]")
-            console.print(
-                "[cyan]ℹ️  Forcing template sync to repair configuration...[/cyan]"
-            )
+            console.print("[cyan]ℹ️  Forcing template sync to repair configuration...[/cyan]")
             # Force template sync by treating project version as outdated
             config_comparison = 1  # package_config_version > project_config_version
 
         # If versions are equal, no sync needed
         if config_comparison <= 0:
-            console.print(
-                f"\n[green]✓ Project already has latest template version ({project_config_version})[/green]"
-            )
-            console.print(
-                "[cyan]ℹ️  Templates are up to date! No changes needed.[/cyan]"
-            )
+            console.print(f"\n[green]✓ Project already has latest template version ({project_config_version})[/green]")
+            console.print("[cyan]ℹ️  Templates are up to date! No changes needed.[/cyan]")
             return
 
         # Stage 3: Template Sync (Only if package_config_version > project_config_version)
-        console.print(
-            f"\n[cyan]📄 Syncing templates ({project_config_version} → {package_config_version})...[/cyan]"
-        )
+        console.print(f"\n[cyan]📄 Syncing templates ({project_config_version} → {package_config_version})...[/cyan]")
 
         # Determine merge strategy (default: auto-merge)
         final_merge_strategy = merge_strategy or "auto"
@@ -2544,39 +2388,23 @@ def update(
                 from moai_adk.core.migration.backup_manager import BackupManager
 
                 backup_manager = BackupManager(project_path)
-                full_backup_path = backup_manager.create_full_project_backup(
-                    description="pre-update-backup"
-                )
-                console.print(
-                    f"   [green]✓ Backup: {full_backup_path.relative_to(project_path)}/[/green]"
-                )
+                full_backup_path = backup_manager.create_full_project_backup(description="pre-update-backup")
+                console.print(f"   [green]✓ Backup: {full_backup_path.relative_to(project_path)}/[/green]")
 
                 # Generate merge guide
                 console.print("   [cyan]📋 Generating merge guide...[/cyan]")
                 template_path = Path(__file__).parent.parent.parent / "templates"
-                guide_path = _generate_manual_merge_guide(
-                    full_backup_path, template_path, project_path
-                )
-                console.print(
-                    f"   [green]✓ Guide: {guide_path.relative_to(project_path)}[/green]"
-                )
+                guide_path = _generate_manual_merge_guide(full_backup_path, template_path, project_path)
+                console.print(f"   [green]✓ Guide: {guide_path.relative_to(project_path)}[/green]")
 
                 # Summary
                 console.print("\n[green]✓ Manual merge setup complete![/green]")
-                console.print(
-                    f"[cyan]📍 Backup location: {full_backup_path.relative_to(project_path)}/[/cyan]"
-                )
-                console.print(
-                    f"[cyan]📋 Merge guide: {guide_path.relative_to(project_path)}[/cyan]"
-                )
+                console.print(f"[cyan]📍 Backup location: {full_backup_path.relative_to(project_path)}/[/cyan]")
+                console.print(f"[cyan]📋 Merge guide: {guide_path.relative_to(project_path)}[/cyan]")
                 console.print("\n[yellow]⚠️  Next steps:[/yellow]")
                 console.print("[yellow]  1. Review the merge guide[/yellow]")
-                console.print(
-                    "[yellow]  2. Compare files using diff or visual tools[/yellow]"
-                )
-                console.print(
-                    "[yellow]  3. Manually merge your customizations[/yellow]"
-                )
+                console.print("[yellow]  2. Compare files using diff or visual tools[/yellow]")
+                console.print("[yellow]  3. Manually merge your customizations[/yellow]")
                 console.print("[yellow]  4. Test and commit changes[/yellow]")
 
             except Exception as e:
@@ -2596,9 +2424,7 @@ def update(
             try:
                 processor = TemplateProcessor(project_path)
                 backup_path = processor.create_backup()
-                console.print(
-                    f"   [green]✓ Backup: {backup_path.relative_to(project_path)}/[/green]"
-                )
+                console.print(f"   [green]✓ Backup: {backup_path.relative_to(project_path)}/[/green]")
             except Exception as e:
                 console.print(f"   [yellow]⚠ Backup failed: {e}[/yellow]")
                 console.print("   [yellow]⚠ Continuing without backup...[/yellow]")
@@ -2623,28 +2449,20 @@ def update(
             raise click.Abort()
 
         console.print("   [green]✅ .claude/ update complete[/green]")
-        console.print(
-            "   [green]✅ .moai/ update complete (specs/reports preserved)[/green]"
-        )
+        console.print("   [green]✅ .moai/ update complete (specs/reports preserved)[/green]")
         console.print("   [green]🔄 CLAUDE.md merge complete[/green]")
         console.print("   [green]🔄 config.json merge complete[/green]")
-        console.print(
-            "   [yellow]⚙️  Set optimized=false (optimization needed)[/yellow]"
-        )
+        console.print("   [yellow]⚙️  Set optimized=false (optimization needed)[/yellow]")
 
         console.print("\n[green]✓ Update complete![/green]")
-        console.print(
-            "[cyan]ℹ️  Next step: Run /moai:0-project update to optimize template changes[/cyan]"
-        )
+        console.print("[cyan]ℹ️  Next step: Run /moai:0-project update to optimize template changes[/cyan]")
 
     except Exception as e:
         console.print(f"[red]✗ Update failed: {e}[/red]")
         raise click.ClickException(str(e)) from e
 
 
-def _handle_custom_element_restoration(
-    project_path: Path, backup_path: Path | None, yes: bool = False
-) -> None:
+def _handle_custom_element_restoration(project_path: Path, backup_path: Path | None, yes: bool = False) -> None:
     """Handle custom element restoration using the enhanced system.
 
     This function provides an improved interface for restoring user-created custom elements
@@ -2674,9 +2492,7 @@ def _handle_custom_element_restoration(
 
         if backup_element_count == 0:
             # No custom elements found in backup
-            console.print(
-                "[green]✓ No custom elements found in backup to restore[/green]"
-            )
+            console.print("[green]✓ No custom elements found in backup to restore[/green]")
             return
 
         # Create enhanced user selection UI
@@ -2685,15 +2501,11 @@ def _handle_custom_element_restoration(
         # The UI must scan the BACKUP to find elements available for restoration.
         ui = create_user_selection_ui(backup_path)
 
-        console.print(
-            f"\n[cyan]🔍 Found {backup_element_count} custom elements in backup[/cyan]"
-        )
+        console.print(f"\n[cyan]🔍 Found {backup_element_count} custom elements in backup[/cyan]")
 
         # If yes mode is enabled, restore all elements automatically
         if yes:
-            console.print(
-                f"[cyan]🔄 Auto-restoring {backup_element_count} custom elements...[/cyan]"
-            )
+            console.print(f"[cyan]🔄 Auto-restoring {backup_element_count} custom elements...[/cyan]")
             backup_custom_elements = backup_scanner.scan_custom_elements()
             selected_elements = []
 
@@ -2711,47 +2523,31 @@ def _handle_custom_element_restoration(
 
             if not selected_elements:
                 console.print("[yellow]⚠ No elements selected for restoration[/yellow]")
-                console.print(
-                    "[green]✓ All existing custom elements will be preserved[/green]"
-                )
+                console.print("[green]✓ All existing custom elements will be preserved[/green]")
                 return
 
             # Confirm selection
             if not ui.confirm_selection(selected_elements):
                 console.print("[yellow]⚠ Restoration cancelled by user[/yellow]")
-                console.print(
-                    "[green]✓ All existing custom elements will be preserved[/green]"
-                )
+                console.print("[green]✓ All existing custom elements will be preserved[/green]")
                 return
 
         # Perform selective restoration - ONLY restore selected elements
         if selected_elements:
-            console.print(
-                f"[cyan]🔄 Restoring {len(selected_elements)} selected elements from backup...[/cyan]"
-            )
+            console.print(f"[cyan]🔄 Restoring {len(selected_elements)} selected elements from backup...[/cyan]")
             restorer = create_selective_restorer(project_path, backup_path)
             success, stats = restorer.restore_elements(selected_elements)
 
             if success:
-                console.print(
-                    f"[green]✅ Successfully restored {stats['success']} custom elements[/green]"
-                )
-                console.print(
-                    "[green]✓ All unselected elements remain preserved[/green]"
-                )
+                console.print(f"[green]✅ Successfully restored {stats['success']} custom elements[/green]")
+                console.print("[green]✓ All unselected elements remain preserved[/green]")
             else:
-                console.print(
-                    f"[yellow]⚠️ Partial restoration: {stats['success']}/{stats['total']} elements[/yellow]"
-                )
+                console.print(f"[yellow]⚠️ Partial restoration: {stats['success']}/{stats['total']} elements[/yellow]")
                 if stats["failed"] > 0:
-                    console.print(
-                        f"[red]❌ Failed to restore {stats['failed']} elements[/red]"
-                    )
+                    console.print(f"[red]❌ Failed to restore {stats['failed']} elements[/red]")
                 console.print("[yellow]⚠️ All other elements remain preserved[/yellow]")
         else:
-            console.print(
-                "[green]✓ No elements selected, all custom elements preserved[/green]"
-            )
+            console.print("[green]✓ No elements selected, all custom elements preserved[/green]")
 
     except Exception as e:
         console.print(f"[yellow]⚠️ Custom element restoration failed: {e}[/yellow]")
@@ -2780,17 +2576,13 @@ def _cleanup_legacy_presets(project_path: Path) -> None:
     try:
         # Remove entire presets directory (no longer needed)
         shutil.rmtree(presets_dir)
-        console.print(
-            "   [cyan]🧹 Removed legacy presets directory (now in sections/git-strategy.yaml)[/cyan]"
-        )
+        console.print("   [cyan]🧹 Removed legacy presets directory (now in sections/git-strategy.yaml)[/cyan]")
         logger.info(f"Removed legacy presets directory: {presets_dir}")
     except Exception as e:
         logger.warning(f"Failed to remove legacy presets directory {presets_dir}: {e}")
 
 
-def _cleanup_cli_redesign_obsolete_files(
-    project_path: Path, dry_run: bool = False
-) -> int:
+def _cleanup_cli_redesign_obsolete_files(project_path: Path, dry_run: bool = False) -> int:
     """
     Remove obsolete files from CLI redesign migration (v0.41+).
 
@@ -2826,14 +2618,10 @@ def _cleanup_cli_redesign_obsolete_files(
             else:
                 if full_path.is_dir():
                     shutil.rmtree(full_path)
-                    console.print(
-                        f"   [cyan]Removed obsolete directory: {relative_path}[/cyan]"
-                    )
+                    console.print(f"   [cyan]Removed obsolete directory: {relative_path}[/cyan]")
                 else:
                     full_path.unlink()
-                    console.print(
-                        f"   [cyan]Removed obsolete file: {relative_path}[/cyan]"
-                    )
+                    console.print(f"   [cyan]Removed obsolete file: {relative_path}[/cyan]")
                 logger.info(f"Cleaned up obsolete: {relative_path}")
                 cleaned_count += 1
         except Exception as e:
@@ -2848,9 +2636,7 @@ def _cleanup_cli_redesign_obsolete_files(
                     console.print("   [dim]Would remove: .moai/scripts (empty)[/dim]")
                 else:
                     shutil.rmtree(scripts_dir)
-                    console.print(
-                        "   [cyan]Removed empty .moai/scripts directory[/cyan]"
-                    )
+                    console.print("   [cyan]Removed empty .moai/scripts directory[/cyan]")
                     logger.info("Removed empty .moai/scripts directory")
                 cleaned_count += 1
         except Exception as e:
@@ -2877,9 +2663,7 @@ def _migrate_config_json_to_yaml(project_path: Path) -> bool:
     try:
         import yaml
     except ImportError:
-        console.print(
-            "   [yellow]⚠️ PyYAML not available, skipping config migration[/yellow]"
-        )
+        console.print("   [yellow]⚠️ PyYAML not available, skipping config migration[/yellow]")
         return True  # Not a critical error
 
     config_dir = project_path / ".moai" / "config"
@@ -2895,15 +2679,11 @@ def _migrate_config_json_to_yaml(project_path: Path) -> bool:
         # YAML already exists, just remove JSON
         try:
             json_path.unlink()
-            console.print(
-                "   [cyan]🔄 Removed legacy config.json (YAML version exists)[/cyan]"
-            )
+            console.print("   [cyan]🔄 Removed legacy config.json (YAML version exists)[/cyan]")
             logger.info(f"Removed legacy config.json: {json_path}")
             return True
         except Exception as e:
-            console.print(
-                f"   [yellow]⚠️ Failed to remove legacy config.json: {e}[/yellow]"
-            )
+            console.print(f"   [yellow]⚠️ Failed to remove legacy config.json: {e}[/yellow]")
             logger.warning(f"Failed to remove {json_path}: {e}")
             return True  # Not critical
 
@@ -2990,7 +2770,161 @@ def _migrate_preset_files_to_yaml(config_dir: Path) -> None:
             logger.warning(f"Failed to migrate preset {json_file}: {e}")
 
     if migrated_count > 0:
-        console.print(
-            f"   [cyan]🔄 Migrated {migrated_count} preset file(s) to YAML[/cyan]"
-        )
+        console.print(f"   [cyan]🔄 Migrated {migrated_count} preset file(s) to YAML[/cyan]")
         logger.info(f"Migrated {migrated_count} preset files to YAML")
+
+
+def _load_current_settings(project_path: Path) -> dict[str, Any]:
+    """Load current settings from section YAML files.
+
+    Args:
+        project_path: Project directory path
+
+    Returns:
+        Dictionary with current settings from all section files
+    """
+    sections_dir = project_path / ".moai" / "config" / "sections"
+    settings: dict[str, Any] = {}
+
+    section_files = [
+        ("language", "language.yaml"),
+        ("project", "project.yaml"),
+        ("pricing", "pricing.yaml"),
+        ("git_strategy", "git-strategy.yaml"),
+        ("user", "user.yaml"),
+        ("llm", "llm.yaml"),
+    ]
+
+    for key, filename in section_files:
+        file_path = sections_dir / filename
+        if file_path.exists():
+            try:
+                data = yaml.safe_load(file_path.read_text(encoding="utf-8"))
+                if data:
+                    settings[key] = data
+            except yaml.YAMLError:
+                pass
+
+    return settings
+
+
+def _show_current_config(project_path: Path) -> None:
+    """Display current configuration summary in a panel.
+
+    Args:
+        project_path: Project directory path
+    """
+    from rich.panel import Panel
+
+    settings = _load_current_settings(project_path)
+
+    # Extract values with defaults
+    project_name = settings.get("project", {}).get("project", {}).get("name", project_path.name)
+    if isinstance(settings.get("project", {}).get("project"), dict):
+        project_name = settings["project"]["project"].get("name", project_path.name)
+    elif "project" in settings and "name" in settings.get("project", {}).get("project", {}):
+        project_name = settings["project"]["project"]["name"]
+    else:
+        # Try alternative structure
+        project_name = settings.get("project", {}).get("name", project_path.name)
+
+    user_name = settings.get("user", {}).get("user", {}).get("name", "")
+    if not user_name and isinstance(settings.get("user"), dict):
+        user_name = settings.get("user", {}).get("name", "")
+
+    conv_lang = settings.get("language", {}).get("language", {}).get("conversation_language", "en")
+    conv_lang_name = settings.get("language", {}).get("language", {}).get("conversation_language_name", "English")
+
+    service_type = settings.get("pricing", {}).get("service", {}).get("type", "claude_subscription")
+    pricing_plan = settings.get("pricing", {}).get("service", {}).get("pricing_plan", "")
+
+    git_mode = settings.get("git_strategy", {}).get("git_strategy", {}).get("mode", "personal")
+
+    llm_mode = settings.get("llm", {}).get("llm", {}).get("mode", "claude-only")
+
+    # Build display content
+    lines = [
+        f"📁 Project: [cyan]{project_name}[/cyan]",
+    ]
+    if user_name:
+        lines.append(f"👤 User: [cyan]{user_name}[/cyan]")
+
+    lines.append("")
+    lines.append(f"🌐 Language: [green]{conv_lang}[/green] ({conv_lang_name})")
+    lines.append(f"🔧 Service: [green]{service_type}[/green]" + (f" ({pricing_plan})" if pricing_plan else ""))
+    lines.append(f"🔀 Git: [green]{git_mode}[/green]")
+    lines.append(f"🤖 LLM Mode: [green]{llm_mode}[/green]")
+
+    content = "\n".join(lines)
+    console.print(Panel(content, title="[yellow]Current Configuration[/yellow]", border_style="cyan"))
+
+
+def _edit_configuration(project_path: Path) -> None:
+    """Interactive configuration editing using init prompts.
+
+    Args:
+        project_path: Project directory path
+    """
+    from moai_adk.cli.commands.init import _save_additional_config
+    from moai_adk.cli.prompts.init_prompts import prompt_project_setup
+    from moai_adk.utils.common import reset_stdin
+
+    console.print("\n[cyan]⚙️  Configuration Edit Mode[/cyan]")
+    console.print("[dim]Edit your project settings (same as init wizard)[/dim]\n")
+
+    # Show current config
+    _show_current_config(project_path)
+    console.print()
+
+    # Load current settings to pre-fill
+    settings = _load_current_settings(project_path)
+
+    # Extract current locale for pre-fill
+    current_locale = settings.get("language", {}).get("language", {}).get("conversation_language", "en")
+    project_name = project_path.name
+
+    # Try to get project name from settings
+    project_data = settings.get("project", {})
+    if isinstance(project_data.get("project"), dict):
+        project_name = project_data["project"].get("name", project_path.name)
+    elif "name" in project_data:
+        project_name = project_data.get("name", project_path.name)
+
+    # Reset stdin for interactive prompts
+    reset_stdin()
+
+    # Run interactive prompt
+    try:
+        answers = prompt_project_setup(
+            project_name=project_name,
+            is_current_dir=True,
+            project_path=project_path,
+            initial_locale=current_locale,
+        )
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Configuration edit cancelled.[/yellow]")
+        return
+
+    if not answers:
+        console.print("[yellow]No changes made.[/yellow]")
+        return
+
+    # Save configuration to section files
+    # Note: API keys are not modified in config edit mode (pass None to preserve existing)
+    _save_additional_config(
+        project_path=project_path,
+        project_name=answers.get("project_name", project_name),
+        locale=answers.get("locale", current_locale),
+        service_type=answers.get("service_type", "claude_subscription"),
+        pricing_plan=answers.get("pricing_plan"),
+        anthropic_api_key=None,  # Preserve existing key
+        glm_api_key=None,  # Preserve existing key
+        git_mode=answers.get("git_mode", "personal"),
+        github_username=answers.get("github_username"),
+        git_commit_lang=answers.get("git_commit_lang", "en"),
+        code_comment_lang=answers.get("code_comment_lang", "en"),
+        doc_lang=answers.get("doc_lang", "en"),
+    )
+
+    console.print("\n[green]✓ Configuration updated successfully![/green]")
+    console.print("[dim]Changes saved to .moai/config/sections/[/dim]")

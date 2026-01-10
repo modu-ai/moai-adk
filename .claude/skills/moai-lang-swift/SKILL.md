@@ -1,7 +1,7 @@
 ---
 name: "moai-lang-swift"
 description: "Swift 6+ development specialist covering SwiftUI, Combine, Swift Concurrency, and iOS patterns. Use when building iOS apps, macOS apps, or Apple platform applications."
-version: 2.0.0
+version: 2.1.0
 category: "language"
 modularized: true
 user-invocable: false
@@ -14,7 +14,7 @@ allowed-tools:
   - mcp__context7__get-library-docs
 context7-libraries: ['/apple/swift', '/apple/swift-evolution']
 related-skills: ['moai-lang-kotlin', 'moai-lang-flutter']
-updated: 2026-01-08
+updated: 2026-01-11
 status: "active"
 ---
 
@@ -44,100 +44,49 @@ Auto-Triggers: Swift files (`.swift`), iOS/macOS projects, Xcode workspaces
 
 ### Project Setup
 
-Package.swift Configuration:
-```swift
-// swift-tools-version: 6.0
-import PackageDescription
-
-let package = Package(
-    name: "MyApp",
-    platforms: [.iOS(.v17), .macOS(.v14)],
-    products: [
-        .library(name: "MyAppCore", targets: ["MyAppCore"])
-    ],
-    dependencies: [
-        .package(url: "https://github.com/Alamofire/Alamofire.git", from: "5.9.0"),
-        .package(url: "https://github.com/pointfreeco/swift-composable-architecture", from: "1.15.0")
-    ],
-    targets: [
-        .target(name: "MyAppCore", dependencies: ["Alamofire"]),
-        .testTarget(name: "MyAppCoreTests", dependencies: ["MyAppCore"])
-    ]
-)
-```
+Package.swift Configuration: Begin with swift-tools-version comment set to 6.0. Import PackageDescription. Define let package with Package initializer. Set name, platforms array with .iOS and .macOS minimum versions, products array with library definitions, dependencies array with package URLs and version requirements, and targets array with target and testTarget entries including dependencies.
 
 ### Essential Patterns
 
-Basic @Observable ViewModel:
-```swift
-import Observation
+Basic @Observable ViewModel: Import Observation framework. Apply @Observable and @MainActor attributes to final class. Declare private(set) var properties for state. Create async functions that set isLoading true, use defer to set false, and assign fetched data with try? await and nil coalescing.
 
-@Observable
-@MainActor
-final class ContentViewModel {
-    private(set) var items: [Item] = []
-    private(set) var isLoading = false
-    
-    func load() async {
-        isLoading = true
-        defer { isLoading = false }
-        items = try? await api.fetchItems() ?? []
-    }
-}
-```
+Basic SwiftUI View: Define struct conforming to View. Declare @State private var for viewModel. In body computed property, use NavigationStack containing List iterating over viewModel items. Add .task modifier calling await on viewModel.load and .refreshable modifier for pull-to-refresh.
 
-Basic SwiftUI View:
-```swift
-struct ContentView: View {
-    @State private var viewModel = ContentViewModel()
-    
-    var body: some View {
-        NavigationStack {
-            List(viewModel.items) { item in
-                Text(item.title)
-            }
-            .task { await viewModel.load() }
-            .refreshable { await viewModel.load() }
-        }
-    }
-}
-```
-
-Basic Actor for Thread Safety:
-```swift
-actor DataCache {
-    private var cache: [String: Data] = [:]
-    
-    func get(_ key: String) -> Data? { cache[key] }
-    func set(_ key: String, data: Data) { cache[key] = data }
-}
-```
+Basic Actor for Thread Safety: Define actor type with private dictionary for cache. Create get function returning optional Data for key lookup. Create set function taking key and data parameters for cache storage.
 
 ## Module Index
 
 ### Swift 6 Features
+
 [modules/swift6-features.md](modules/swift6-features.md)
+
 - Typed throws for precise error handling
 - Complete concurrency checking
 - Data-race safety by default
 - Sendable conformance requirements
 
 ### SwiftUI Patterns
+
 [modules/swiftui-patterns.md](modules/swiftui-patterns.md)
+
 - @Observable macro and state management
 - NavigationStack and navigation patterns
 - View lifecycle and .task modifier
 - Environment and dependency injection
 
 ### Swift Concurrency
+
 [modules/concurrency.md](modules/concurrency.md)
+
 - async/await fundamentals
 - Actor isolation and @MainActor
 - TaskGroup for parallel execution
 - Custom executors and structured concurrency
 
 ### Combine Framework
+
 [modules/combine-reactive.md](modules/combine-reactive.md)
+
 - Publishers and Subscribers
 - Operators and transformations
 - async/await bridge patterns
@@ -146,12 +95,14 @@ actor DataCache {
 ## Context7 Library Mappings
 
 ### Core Swift
+
 - `/apple/swift` - Swift language and standard library
 - `/apple/swift-evolution` - Swift evolution proposals
 - `/apple/swift-package-manager` - SwiftPM documentation
 - `/apple/swift-async-algorithms` - Async sequence algorithms
 
 ### Popular Libraries
+
 - `/Alamofire/Alamofire` - HTTP networking
 - `/onevcat/Kingfisher` - Image downloading and caching
 - `/realm/realm-swift` - Mobile database
@@ -161,22 +112,7 @@ actor DataCache {
 
 ## Testing Quick Start
 
-Async Test with MainActor:
-```swift
-@MainActor
-final class ViewModelTests: XCTestCase {
-    func testLoadSuccess() async throws {
-        let mockAPI = MockAPI()
-        mockAPI.mockItems = [Item(id: "1", title: "Test")]
-        let sut = ContentViewModel(api: mockAPI)
-        
-        await sut.load()
-        
-        XCTAssertEqual(sut.items.count, 1)
-        XCTAssertFalse(sut.isLoading)
-    }
-}
-```
+Async Test with MainActor: Apply @MainActor attribute to test class extending XCTestCase. Define test function with async throws. Create mock API and set mock data. Initialize system under test with mock. Call await on async method. Use XCTAssertEqual for count verification and XCTAssertFalse for boolean state checks.
 
 ## Works Well With
 

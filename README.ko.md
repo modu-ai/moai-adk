@@ -12,6 +12,79 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 
 ---
 
+## 🏗️ MoAI-ADK 아키텍처 개요
+
+```mermaid
+flowchart TB
+    subgraph User["👤 개발자"]
+        Request[사용자 요청]
+    end
+
+    subgraph Alfred["🎩 Mr. Alfred - 오케스트레이터"]
+        Analyze[요청 분석]
+        Route[에이전트 라우팅]
+        Integrate[결과 통합]
+    end
+
+    subgraph Agents["🤖 20개 전문 에이전트"]
+        subgraph Tier1["Tier 1: 도메인 전문가 - 8개"]
+            Backend[expert-backend]
+            Frontend[expert-frontend]
+            Security[expert-security]
+            DevOps[expert-devops]
+        end
+        subgraph Tier2["Tier 2: 워크플로우 관리자 - 8개"]
+            Spec[manager-spec]
+            TDD[manager-tdd]
+            Docs[manager-docs]
+            Quality[manager-quality]
+        end
+        subgraph Tier3["Tier 3: 메타 생성기 - 4개"]
+            BuilderAgent[builder-agent]
+            BuilderSkill[builder-skill]
+            BuilderCommand[builder-command]
+            BuilderPlugin[builder-plugin]
+        end
+    end
+
+    subgraph Skills["📚 48개 스킬 라이브러리"]
+        Foundation[5개 Foundation 스킬]
+        Domain[4개 Domain 스킬]
+        Language[16개 Language 스킬]
+        Platform[10개 Platform 스킬]
+        Workflow[7개 Workflow 스킬]
+        Library[4개 Library 스킬]
+        Tool[2개 Tool 스킬]
+    end
+
+    subgraph MCP["🔌 MCP 통합"]
+        Context7[mcp-context7]
+        Sequential[mcp-sequential-thinking]
+        Playwright[mcp-playwright]
+    end
+
+    Request --> Analyze
+    Analyze --> Route
+    Route --> Tier1
+    Route --> Tier2
+    Route --> Tier3
+    Tier1 --> Skills
+    Tier2 --> Skills
+    Tier3 --> Skills
+    Tier1 --> MCP
+    Tier2 --> MCP
+    Tier1 --> Integrate
+    Tier2 --> Integrate
+    Tier3 --> Integrate
+    Integrate --> User
+
+    style Alfred fill:#fff,stroke:#333,stroke-width:2px
+    style Skills fill:#e8f5e9,stroke:#4caf50,stroke-width:1px
+    style MCP fill:#e3f2fd,stroke:#2196f3,stroke-width:1px
+```
+
+---
+
 ## 📑 목차 (빠른 네비게이션)
 
 ### PART A: 시작하기 (30분)
@@ -43,12 +116,13 @@ MoAI-ADK (Agentic Development Kit)는 **SPEC-First 개발**, **테스트 주도 
 
 ### PART D: 고급 & 참고 (필요시)
 
-| 섹션                                                                                        | 목적                  |
-| ------------------------------------------------------------------------------------------- | --------------------- |
-| [13. 고급 설정](#13-고급-설정)                                                              | 프로젝트 커스터마이징 |
-| [14. FAQ & 빠른 참조](#14-faq--빠른-참조)                                                   | 자주 묻는 질문        |
-| [15. z.ai와의 GLM 통합](#15-zai와의-glm-통합-비용-효율적인-대안)                            | 비용 효율적 대안      |
-| [16. 추가 리소스](#16-추가-리소스)                                                           | 지원 및 정보          |
+| 섹션                                                                                        | 목적                         |
+| ------------------------------------------------------------------------------------------- | --------------------------- |
+| [13. 고급 설정](#13-고급-설정)                                                              | 프로젝트 커스터마이징        |
+| [14. FAQ & 빠른 참조](#14-faq--빠른-참조)                                                   | 자주 묻는 질문               |
+| [15. z.ai와의 GLM 통합](#15-zai와의-glm-통합-비용-효율적인-대안)                            | 비용 효율적 대안             |
+| [16. 간소화된 설치 (v0.41+)](#16-간소화된-설치-경험-v041)                                    | 새로운 대화형 마법사          |
+| [17. 추가 리소스](#17-추가-리소스)                                                           | 지원 및 정보                 |
 
 ---
 
@@ -1750,6 +1824,75 @@ MoAI Ralph Engine은 LSP (Language Server Protocol), AST-grep, 자율 피드백 
 
 MoAI-ADK는 **48개의 전문 스킬**을 8개 카테고리로 제공합니다. 각 스킬은 독립적으로 사용하거나 조합하여 사용할 수 있습니다.
 
+### 📚 스킬 라이브러리 구조
+
+```mermaid
+graph TB
+    subgraph Skills["📚 48개 스킬 라이브러리"]
+        subgraph Foundation["🏗️ Foundation - 5개 스킬"]
+            FC[moai-foundation-core]
+            FCX[moai-foundation-context]
+            FCL[moai-foundation-claude]
+            FQ[moai-foundation-quality]
+            FP[moai-plugin-builder]
+        end
+
+        subgraph Domain["🎯 Domain - 4개 스킬"]
+            DB[moai-domain-backend]
+            DF[moai-domain-frontend]
+            DD[moai-domain-database]
+            DU[moai-domain-uiux]
+        end
+
+        subgraph Language["💻 Language - 16개 스킬"]
+            LP[Python/TypeScript/Go]
+            LR[Rust/Java/C#/Swift]
+            LK[Kotlin/Ruby/PHP]
+            LE[Elixir/Scala/C++]
+            LF[Flutter/R/JavaScript]
+        end
+
+        subgraph Platform["🚀 Platform - 10개 스킬"]
+            PS[Supabase/Neon/Convex]
+            PA[Auth0/Clerk/Firebase]
+            PV[Vercel/Railway]
+        end
+
+        subgraph Workflow["📋 Workflow - 7개 스킬"]
+            WS[moai-workflow-spec]
+            WT[moai-workflow-testing]
+            WP[moai-workflow-project]
+            WD[moai-workflow-docs]
+            WW[moai-worktree]
+        end
+
+        subgraph Library["📚 Library - 4개 스킬"]
+            LS[moai-library-shadcn]
+            LM[moai-library-mermaid]
+            LN[moai-library-nextra]
+            LFD[moai-formats-data]
+        end
+
+        subgraph Tool["🛠️ Tool - 2개 스킬"]
+            TA[moai-tool-ast-grep]
+            TO[moai-tool-opencode]
+        end
+    end
+
+    Agent[🤖 에이전트 요청] --> Skills
+    Skills --> Result[📦 스킬 강화 응답]
+
+    classDef foundationStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef domainStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef langStyle fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    classDef platformStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+
+    class Foundation foundationStyle
+    class Domain domainStyle
+    class Language langStyle
+    class Platform platformStyle
+```
+
 ### 🏗️ Foundation (기반)
 
 핵심 철학과 실행 규칙을 정의하는 기반 스킬들입니다.
@@ -2105,6 +2248,31 @@ manager-quality (재검증)
 ![TRUST 5 Pentagon](./assets/images/readme/trust5-pentagon.png)
 
 모든 MoAI-ADK 프로젝트는 **TRUST 5** 품질 프레임워크를 준수합니다. TRUST 5는 Test-First, Readable, Unified, Secured, Trackable의 5가지 핵심 원칙으로 구성되어 있으며, 엔터프라이즈급 소프트웨어의 품질을 보증하는 체계입니다.
+
+### 🏆 TRUST 5 품질 프레임워크 다이어그램
+
+```mermaid
+graph TD
+    subgraph TRUST5["🏆 TRUST 5 품질 프레임워크"]
+        T1["🔴 T: 테스트 우선<br/>━━━━━━━━<br/>• TDD Red-Green-Refactor<br/>• 85%+ 테스트 커버리지<br/>• 자동화된 테스트"]
+        R["📖 R: 읽기 쉬움<br/>━━━━━━━━<br/>• 명확한 네이밍<br/>• 코드 주석<br/>• 린터 준수"]
+        U["🔄 U: 일관된<br/>━━━━━━━━<br/>• 일관된 스타일<br/>• 표준 패턴<br/>• 에러 핸들링"]
+        S["🔒 S: 보안<br/>━━━━━━━━<br/>• OWASP Top 10<br/>• 취약점 스캔<br/>• 암호화 정책"]
+        T2["📋 T: 추적 가능<br/>━━━━━━━━<br/>• 명확한 커밋<br/>• 이슈 추적<br/>• CHANGELOG"]
+    end
+
+    T1 --> R
+    R --> U
+    U --> S
+    S --> T2
+    T2 -->|품질 게이트| Deploy["✅ 프로덕션 준비 완료"]
+
+    classDef trustStyle fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
+    classDef deployStyle fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+
+    class T1,R,U,S,T2 trustStyle
+    class Deploy deployStyle
+```
 
 ### T - Test-First (테스트 우선)
 
@@ -2470,14 +2638,14 @@ cat .mcp.json
 
 ### 개요
 
-Claude Code 사용 비용에 대해 우려하는 개발자들을 위해 MoAI-ADK는 **z.ai**를 통한 **GLM 4.6** 통합을 지원합니다. 이 구성은 Claude Code와의 완전 호환성을 유지하면서도 비용을 크게 절감할 수 있습니다.
+Claude Code 사용 비용에 대해 우려하는 개발자들을 위해 MoAI-ADK는 **z.ai**를 통한 **GLM 4.7** 통합을 지원합니다. 이 구성은 Claude Code와의 완전 호환성을 유지하면서도 비용을 크게 절감할 수 있습니다.
 
 ### 💡 GLM을 선택해야 하는 이유
 
-| 기능 | Claude Code | z.ai GLM 4.6 |
+| 기능 | Claude Code | z.ai GLM 4.7 |
 | --------------------- | ------------------------------- | ----------------------------- |
 | **비용** | $20/월 (Pro 플랜) | **$6-$60/월 (유연한)** |
-| **모델** | Claude 4.5 Sonnet, Opus, Haiku | GLM 4.6, GLM 4.5-air |
+| **모델** | Claude 4.5 Sonnet, Opus, Haiku | GLM 4.7, GLM 4.5-air |
 | **호환성** | 네이티브 | **100% Claude 호환** |
 | **토큰 제한** | 제한됨 | **유료 플랜에서 무제한** |
 | **API 접근** | 포함됨 | **전체 API 접근** |
@@ -2495,7 +2663,7 @@ Claude Code 사용 비용에 대해 우려하는 개발자들을 위해 MoAI-ADK
 
 | 플랜 | 가격 | 기능 | 최적한 대상 |
 | ------------- | ---------------------------------- | ----------------------------------------------------------------------- | --------------------------------- |
-| **라이트** | 첫달 `$3`<br/>2개월 차부터 월 `$6` | • Claude Pro 사용량 3배<br/>• GLM-4.6 기반<br/>• 10개 이상 코딩 도지 호환 | 가벼운 작업량, 시작 단계 |
+| **라이트** | 첫달 `$3`<br/>2개월 차부터 월 `$6` | • Claude Pro 사용량 3배<br/>• GLM-4.7 기반<br/>• 10개 이상 코딩 도지 호환 | 가벼운 작업량, 시작 단계 |
 | **프로** | 첫달 `$15`<br/>2개월 차부터 월 `$30` | • 모든 라이트 혜택<br/>• 라이트 플랜 사용량 5배<br/>• 40-60% 더 빠름<br/>• Vision, Web Search, Web Reader | 전문 개발자, 팀 |
 | **맥스** | 첫달 `$30`<br/>2개월 차부터 월 `$60` | • 모든 프로 혜택<br/>• 프로 플랜 사용량 4배<br/>• 보장된 피크 성능<br/>• 신규 기능 우선 접근 | 대용량 작업량, 파워 유저 |
 | **엔터프라이즈** | 맞춤 | • 맞춤 가격<br/>• 전용 지원<br/>• SLA 보장 | 대규모 조직, 맞춤 요구사항 |
@@ -2513,7 +2681,7 @@ Claude Code 사용 비용에 대해 우려하는 개발자들을 위해 MoAI-ADK
 
 **1단계: 라이트 플랜($6/월)으로 시작**
 - 월 `$6`으로 Claude Pro 사용량 3배
-- 실제 프로젝트로 2-3주간 GLM-4.6 테스트
+- 실제 프로젝트로 2-3주간 GLM-4.7 테스트
 - 10개 이상 코딩 도지와 호환성 경험
 
 **2단계: 사용량에 따라 업그레이드**
@@ -2539,7 +2707,7 @@ Claude Code 사용 비용에 대해 우려하는 개발자들을 위해 MoAI-ADK
 3. 등록 및 결제 완료
 4. 대시보드에서 API 토큰 메모
 
-**💡 팁**: $6 라이트 플랜으로 시작하여 GLM-4.6을 테스트한 다음, 더 빠른 성능을 위해 프로로 업그레이드하거나 대용량 작업량을 위해 맥스로 업그레이드하세요!
+**💡 팁**: $6 라이트 플랜으로 시작하여 GLM-4.7을 테스트한 다음, 더 빠른 성능을 위해 프로로 업그레이드하거나 대용량 작업량을 위해 맥스로 업그레이드하세요!
 
 #### 2단계: MoAI-ADK에서 GLM 사용하기 
 
@@ -2573,8 +2741,8 @@ Claude Code에서 실행:
     "ANTHROPIC_AUTH_TOKEN": "your_glm_token_here",
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.6"
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.7"
   }
 }
 ```
@@ -2588,34 +2756,36 @@ Claude Code에서 실행:
 claude
 ```
 
-GLM 4.6이 이제 활성화되어 사용 준비 완료!
+GLM 4.7이 이제 활성화되어 사용 준비 완료!
 
 ### 🔄 GLM 구성 관리
 
-#### GLM 모드 활성화:
+#### CLI로 백엔드 전환:
 
 ```bash
-> /moai:0-project --glm-on [YOUR_TOKEN]
+# 현재 백엔드 상태 확인
+moai switch status
+
+# GLM 백엔드로 전환 (비용 효율적)
+moai switch glm
+
+# Claude 백엔드로 전환 (기본값)
+moai switch claude
 ```
 
-#### GLM 비활성화 (Claude로 다시 전환):
+#### 작동 방식:
 
-```bash
-> /moai:0-project --glm-off
-```
+`moai switch` 명령어는 `.claude/settings.local.json`을 수정합니다:
+- **GLM 모드**: GLM 환경변수 추가 (API URL, 모델 매핑)
+- **Claude 모드**: GLM 환경변수 제거 (기본값 복원)
 
-#### 현재 모드 확인:
-
-GLM은 다음 경우 활성 상태:
-- `.claude/settings.local.json`에 GLM 구성이 포함된 경우
-- 기본 URL이 `https://api.z.ai/api/anthropic`으로 설정된 경우
-- 모델이 GLM 변형에 매핑된 경우
+**참고**: 전환 후 변경 사항을 적용하려면 Claude Code를 재시작하세요.
 
 ### 📊 성능 비교
 
 실제 MoAI-ADK 테스트 기반:
 
-| 작업 | Claude 4.5 Sonnet | GLM 4.6 | 성능 격차 |
+| 작업 | Claude 4.5 Sonnet | GLM 4.7 | 성능 격차 |
 | ------------------------------ | ----------------- | ------------ | --------------- |
 | **코드 생성** | 우수함 | **우수함** | 5% 미만 차이 |
 | **TDD 구현** | 우수함 | **매우 좋음** | 10% 더 빠름 |
@@ -2632,7 +2802,7 @@ GLM은 다음 경우 활성 상태:
 - **시작 단계**: 70% 적은 비용으로 Claude Pro 사용량 3배
 - **가벼운 작업량**: 소규모 프로젝트, 간헐적 코딩
 - **학습 프로젝트**: 연습, 튜토리얼, 실험
-- **예산 의식**: 월 $6으로 전문 AI 코딩
+- **예산 의식**: 월 $6으로 전문 AI 코딩 (GLM 4.7 기반)
 
 #### **GLM 프로($30/월) 사용:**
 - **전문 개발자**: 복잡한 작업에 40-60% 더 빠른 성능
@@ -2674,7 +2844,124 @@ GLM은 다음 경우 활성 상태:
 
 **오늘부터 비용을 절감하면서 개발 생산성을 유지하세요!** 🚀
 
-## 16. 추가 리소스
+## 16. 간소화된 설치 경험 (v0.41+)
+
+### 🚀 새로운 대화형 설치 마법사
+
+MoAI-ADK v0.41부터 시작하기가 그 어느 때보다 쉬워진 간소화된 **대화형 설치 마법사**가 도입되었습니다.
+
+```bash
+moai-adk init my-project
+```
+
+대화형 마법사가 안내하는 항목:
+
+1. **🌐 언어 선택** - 선호하는 언어 선택 (한국어/English/日本語/中文)
+2. **👤 사용자 이름 설정** - 개인화된 인사를 위한 사용자 이름 구성
+3. **🎨 출력 스타일 선택** - AI 어시스턴트 페르소나 선택 (R2-D2/Yoda)
+4. **📦 프로젝트 템플릿 설정** - 자동 프로젝트 구조 생성
+
+모든 설정은 `.moai/config/` 및 `.claude/` 디렉토리에 자동으로 저장됩니다.
+
+### 📊 설치 플로우 다이어그램
+
+```mermaid
+flowchart LR
+    subgraph Step1["1단계: 설치"]
+        UV[uv 설치] --> MOAI[moai-adk 설치]
+    end
+
+    subgraph Step2["2단계: 초기화"]
+        MOAI --> Init["moai-adk init my-project"]
+        Init --> Wizard{대화형 마법사}
+    end
+
+    subgraph Step3["3단계: 구성"]
+        Wizard --> Lang["🌐 언어<br/>KO/EN/JA/ZH"]
+        Wizard --> User["👤 사용자 이름"]
+        Wizard --> Style["🎨 출력 스타일<br/>R2-D2/Yoda"]
+        Wizard --> Template["📦 템플릿"]
+    end
+
+    subgraph Step4["4단계: 준비 완료"]
+        Lang --> Config[".moai/config/"]
+        User --> Config
+        Style --> Claude[".claude/"]
+        Template --> Claude
+        Config --> Ready["✅ 코딩 준비 완료!"]
+        Claude --> Ready
+    end
+
+    classDef stepStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef configStyle fill:#fff8e1,stroke:#ff9800,stroke-width:2px
+
+    class Step1,Step2 stepStyle
+    class Step3,Step4 configStyle
+```
+
+### 🎯 v0.41+ 설치의 주요 기능
+
+| 기능 | 설명 | 장점 |
+|------|------|------|
+| **원커맨드 설정** | `moai-adk init`이 모든 것을 처리 | 수동 구성 불필요 |
+| **다국어 지원** | 즉시 4개 언어 지원 | 모국어로 MoAI-ADK 사용 |
+| **페르소나 선택** | R2-D2 (기술적) 또는 Yoda (철학적) | 맞춤형 AI 상호작용 스타일 |
+| **자동 감지** | 기존 프로젝트 구조 감지 | 기존 프로젝트와 안전한 통합 |
+| **설정 분리** | sections/의 모듈식 구성 | 개별 설정을 쉽게 커스터마이징 |
+
+### 🔧 빠른 설정 명령어
+
+```bash
+# 새 프로젝트 (전체 마법사 경험)
+moai-adk init my-new-project
+
+# 기존 프로젝트 (파일 보존)
+cd your-existing-project
+moai-adk init .
+
+# 초기화 후 Claude Code 실행
+claude
+
+# 프로젝트 메타데이터 초기화
+> /moai:0-project
+```
+
+### 📁 생성되는 구성 구조
+
+```text
+my-project/
+├── .claude/                      # Claude Code 구성
+│   ├── agents/moai/              # 20개 전문 에이전트
+│   ├── commands/moai/            # 슬래시 명령어 (/moai:*)
+│   ├── hooks/moai/               # 자동화 훅
+│   ├── skills/                   # 48개 스킬 모듈
+│   ├── output-styles/moai/       # R2-D2 & Yoda 페르소나
+│   └── settings.json             # Claude Code 설정
+├── .moai/                        # MoAI-ADK 구성
+│   ├── config/
+│   │   └── sections/             # 모듈식 구성 파일
+│   │       ├── user.yaml         # 사용자 설정
+│   │       ├── language.yaml     # 언어 기본 설정
+│   │       ├── project.yaml      # 프로젝트 메타데이터
+│   │       ├── git-strategy.yaml # Git 워크플로우
+│   │       └── quality.yaml      # TDD 설정
+│   ├── specs/                    # SPEC 문서
+│   ├── memory/                   # 세션 메모리
+│   └── docs/                     # 자동 생성 문서
+├── CLAUDE.md                     # Alfred 실행 지시서
+└── README.md
+```
+
+---
+
+## 17. 추가 리소스
+
+### 🌐 커뮤니티 & 개발자 리소스
+
+**커뮤니티에 참여하세요:**
+
+- **Discord (공식)**: [https://discord.gg/umywNygN](https://discord.gg/umywNygN) - MoAI-ADK 커뮤니티에 참여하여 토론, 지원 및 업데이트를 받아보세요
+- **개발자 블로그**: [https://goos.kim](https://goos.kim) - 기술 아티클, 튜토리얼 및 개발 인사이트
 
 ### 🆘 지원
 

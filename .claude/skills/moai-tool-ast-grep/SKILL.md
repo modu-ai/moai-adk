@@ -1,7 +1,7 @@
 ---
 name: "moai-tool-ast-grep"
 description: "AST-based structural code search, security scanning, and refactoring using ast-grep (sg CLI). Supports 40+ languages with pattern matching and code transformation."
-version: 1.1.0
+version: 1.2.0
 category: "tool"
 modularized: true
 user-invocable: false
@@ -9,7 +9,7 @@ context: fork
 agent: Explore
 tags: ['ast', 'refactoring', 'code-search', 'lint', 'structural-search', 'security', 'codemod']
 related-skills: ['moai-workflow-testing', 'moai-foundation-quality', 'moai-domain-backend', 'moai-domain-frontend']
-updated: 2026-01-08
+updated: 2026-01-11
 status: "active"
 allowed-tools:
   - Read
@@ -24,43 +24,37 @@ allowed-tools:
 
 Structural code search, lint, and transformation tool using Abstract Syntax Tree analysis.
 
-## Quick Reference (30 seconds)
+## Quick Reference
 
-### What is AST-Grep?
+### What is AST-Grep
 
 AST-Grep (sg) is a fast, polyglot tool for structural code search and transformation. Unlike regex-based search, it understands code syntax and matches patterns based on AST structure.
 
 ### When to Use
 
-- Searching for code patterns that regex cannot capture (e.g., nested function calls)
+- Searching for code patterns that regex cannot capture such as nested function calls
 - Refactoring code across multiple files with semantic awareness
-- Security scanning for vulnerability patterns (SQL injection, XSS, etc.)
+- Security scanning for vulnerability patterns including SQL injection and XSS
 - API migration and deprecation handling
 - Enforcing code style rules at the syntax level
 
 ### Core Commands
 
-```bash
-# Pattern search
-sg run --pattern 'console.log($MSG)' --lang javascript src/
+Pattern search: Execute sg run with pattern option specifying the code pattern to find, lang option for the programming language, and the source directory path.
 
-# Security scan with rules
-sg scan --config sgconfig.yml
+Security scan with rules: Execute sg scan with config option pointing to your sgconfig.yml file.
 
-# Code transformation
-sg run --pattern 'foo($A)' --rewrite 'bar($A)' --lang python src/
+Code transformation: Execute sg run with pattern option for the code to find, rewrite option for the replacement, lang option for the language, and source directory path.
 
-# Test rules
-sg test
-```
+Test rules: Execute sg test to validate your rule definitions.
 
 ### Pattern Syntax Basics
 
-```
-$VAR       - Matches any single AST node (meta-variable)
-$$$ARGS    - Matches zero or more nodes (variadic)
-$$_        - Matches any single node (anonymous)
-```
+The dollar sign followed by a variable name such as VAR matches any single AST node and acts as a meta-variable for capturing.
+
+The dollar sign followed by three dollar signs and a variable name such as ARGS matches zero or more nodes using variadic capture.
+
+The double dollar sign followed by underscore matches any single node as an anonymous capture when the value is not needed.
 
 ### Supported Languages
 
@@ -68,240 +62,132 @@ Python, JavaScript, TypeScript, Go, Rust, Java, Kotlin, C, C++, Ruby, Swift, C#,
 
 ---
 
-## Implementation Guide (5 minutes)
+## Implementation Guide
 
 ### Installation
 
-```bash
-# macOS
-brew install ast-grep
+For macOS, use brew install ast-grep.
 
-# npm (cross-platform)
-npm install -g @ast-grep/cli
+For cross-platform via npm, use npm install -g @ast-grep/cli.
 
-# Cargo (Rust)
-cargo install ast-grep
-```
+For Rust via Cargo, use cargo install ast-grep.
 
 ### Basic Pattern Matching
 
 #### Simple Pattern Search
 
-```bash
-# Find all console.log calls
-sg run --pattern 'console.log($MSG)' --lang javascript
+To find all console.log calls, run sg with pattern console.log($MSG) and lang javascript.
 
-# Find all Python function definitions
-sg run --pattern 'def $FUNC($$$ARGS): $$$BODY' --lang python
+To find all Python function definitions, run sg with pattern def $FUNC($$$ARGS): $$$BODY and lang python.
 
-# Find React useState hooks
-sg run --pattern 'useState($INIT)' --lang typescriptreact
-```
+To find React useState hooks, run sg with pattern useState($INIT) and lang typescriptreact.
 
 #### Meta-variables
 
-Meta-variables capture matching AST nodes:
+Meta-variables capture matching AST nodes in patterns.
 
-```yaml
-# $NAME - Single node capture
-pattern: 'const $NAME = require($PATH)'
+Single node capture uses $NAME syntax. For example, pattern const $NAME = require($PATH) captures the variable name and path.
 
-# $$$ARGS - Variadic capture (zero or more)
-pattern: 'function $NAME($$$ARGS) { $$$BODY }'
+Variadic capture uses $$$ARGS syntax. For example, pattern function $NAME($$$ARGS) captures function name and all arguments.
 
-# $$_ - Anonymous single capture (don't care)
-pattern: 'if ($$_) { return $VALUE }'
-```
+Anonymous single capture uses $$_ syntax when you need to match but not reference the value.
 
 ### Code Transformation
 
 #### Simple Rewrite
 
-```bash
-# Rename function
-sg run --pattern 'oldFunc($ARGS)' --rewrite 'newFunc($ARGS)' --lang python
+To rename a function, run sg with pattern oldFunc($ARGS), rewrite newFunc($ARGS), and lang python.
 
-# Update API call
-sg run --pattern 'axios.get($URL)' --rewrite 'fetch($URL)' --lang typescript
-```
+To update an API call, run sg with pattern axios.get($URL), rewrite fetch($URL), and lang typescript.
 
 #### Complex Transformation with YAML Rules
 
-```yaml
-# rule.yml
-id: convert-var-to-const
-language: javascript
-rule:
-  pattern: 'var $NAME = $VALUE'
-fix: 'const $NAME = $VALUE'
-message: 'Prefer const over var'
-severity: warning
-```
+Create a YAML rule file with the following structure. Set the id field to a unique rule identifier such as convert-var-to-const. Set language to the target language such as javascript. Under the rule section, specify the pattern to match such as var $NAME = $VALUE. Set the fix field to the replacement pattern such as const $NAME = $VALUE. Add a message describing the issue and set severity to warning or error.
 
-```bash
-sg scan --rule rule.yml src/
-```
+Run sg scan with the rule option pointing to your rule file and the source directory.
 
 ### Rule-Based Scanning
 
-#### Configuration File (sgconfig.yml)
+#### Configuration File
 
-```yaml
-ruleDirs:
-  - ./rules/security
-  - ./rules/quality
-
-testConfigs:
-  - ./rules/**/__tests__/*.yml
-
-languageGlobs:
-  python: ['**/*.py']
-  typescript: ['**/*.ts', '**/*.tsx']
-  javascript: ['**/*.js', '**/*.jsx']
-```
+Create an sgconfig.yml file with the following sections. The ruleDirs section lists directories containing rule files such as ./rules/security and ./rules/quality. The testConfigs section specifies test file patterns. The languageGlobs section maps languages to file patterns, mapping python to .py files, typescript to .ts and .tsx files, and javascript to .js and .jsx files.
 
 #### Security Rule Example
 
-```yaml
-# rules/security/sql-injection.yml
-id: sql-injection-risk
-language: python
-severity: error
-message: 'Potential SQL injection vulnerability. Use parameterized queries.'
-rule:
-  any:
-    - pattern: 'cursor.execute($QUERY % $ARGS)'
-    - pattern: 'cursor.execute($QUERY.format($$$ARGS))'
-    - pattern: 'cursor.execute(f"$$$SQL")'
-fix: 'cursor.execute($QUERY, $ARGS)'
-```
+Create a security rule file for SQL injection detection. Set the id to sql-injection-risk. Set language to python and severity to error. Write a descriptive message about the vulnerability. Under the rule section, use the any operator to match multiple patterns including cursor.execute with percent formatting, cursor.execute with format method, and cursor.execute with f-string interpolation. Set the fix to show the parameterized query alternative.
 
 ### Relational Rules
 
-#### Inside Rule (Scoped Search)
+#### Inside Rule for Scoped Search
 
-```yaml
-id: no-console-in-function
-language: javascript
-rule:
-  pattern: 'console.log($$$ARGS)'
-  inside:
-    pattern: 'function $NAME($$$PARAMS) { $$$BODY }'
-```
+Create a rule that searches for console.log calls only inside function declarations. Set the pattern to console.log($$$ARGS) and add an inside constraint with pattern function $NAME($$$PARAMS).
 
-#### Has Rule (Contains Check)
+#### Has Rule for Contains Check
 
-```yaml
-id: async-without-await
-language: javascript
-rule:
-  pattern: 'async function $NAME($$$PARAMS) { $$$BODY }'
-  not:
-    has:
-      pattern: 'await $EXPR'
-message: 'Async function without await'
-```
+Create a rule to find async functions without await. Set the pattern to async function $NAME($$$PARAMS) with a not constraint containing a has rule with pattern await $EXPR. Add message indicating async function without await.
 
-#### Follows/Precedes Rules
+#### Follows and Precedes Rules
 
-```yaml
-id: missing-error-handling
-language: go
-rule:
-  pattern: '$ERR := $CALL'
-  not:
-    follows:
-      pattern: 'if $ERR != nil { $$$BODY }'
-```
+Create a rule to detect missing error handling. Set the pattern to match error assignment $ERR := $CALL and add a not constraint with follows rule checking for if $ERR != nil error handling block.
 
 ### Composite Rules
 
-```yaml
-id: complex-rule
-language: typescript
-rule:
-  all:
-    - pattern: 'useState($INIT)'
-    - inside:
-        pattern: 'function $COMPONENT($$$PROPS) { $$$BODY }'
-    - not:
-        precedes:
-          pattern: 'useEffect($$$ARGS)'
-```
+Create complex rules using the all operator to combine multiple conditions. For example, combine pattern useState($INIT) with inside constraint for function component and not precedes constraint for useEffect call.
 
 ---
 
 ## Advanced Patterns
 
-For comprehensive documentation including:
-- Complex multi-file transformations
-- Custom language configuration
-- CI/CD integration patterns
-- Performance optimization tips
+For comprehensive documentation including complex multi-file transformations, custom language configuration, CI/CD integration patterns, and performance optimization tips, see the following module files.
 
-See the following module files:
+Pattern syntax reference is available in modules/pattern-syntax.md.
 
-- [modules/pattern-syntax.md](modules/pattern-syntax.md) - Complete pattern syntax reference
-- [modules/security-rules.md](modules/security-rules.md) - Security scanning rule templates
-- [modules/refactoring-patterns.md](modules/refactoring-patterns.md) - Common refactoring patterns
-- [modules/language-specific.md](modules/language-specific.md) - Language-specific patterns
+Security scanning rule templates are documented in modules/security-rules.md.
+
+Common refactoring patterns are covered in modules/refactoring-patterns.md.
+
+Language-specific patterns are detailed in modules/language-specific.md.
 
 ### Context7 Integration
 
-For latest AST-Grep documentation:
+For latest AST-Grep documentation, follow this two-step process.
 
-```
-Step 1: Resolve library ID
-Use mcp__context7__resolve-library-id with query "ast-grep"
+Step 1: Use mcp__context7__resolve-library-id with query ast-grep to resolve the library identifier.
 
-Step 2: Fetch documentation
-Use mcp__context7__get-library-docs with the resolved library ID
-```
+Step 2: Use mcp__context7__get-library-docs with the resolved library ID to fetch current documentation.
 
 ### MoAI-ADK Integration
 
-AST-Grep is integrated into MoAI-ADK through:
-
-1. **Tool Registry**: Registered as AST_ANALYZER type in `tool_registry.py`
-2. **PostToolUse Hook**: Automatic security scanning after Write/Edit operations
-3. **Permissions**: `Bash(sg:*)` and `Bash(ast-grep:*)` auto-allowed
+AST-Grep is integrated into MoAI-ADK through the Tool Registry as AST_ANALYZER type in tool_registry.py, PostToolUse Hook for automatic security scanning after Write/Edit operations, and Permissions with Bash(sg:*) and Bash(ast-grep:*) auto-allowed.
 
 ### Running Scans
 
-```bash
-# Scan with MoAI-ADK rules
-sg scan --config .claude/skills/moai-tool-ast-grep/rules/sgconfig.yml
+To scan with MoAI-ADK rules, execute sg scan with config pointing to .claude/skills/moai-tool-ast-grep/rules/sgconfig.yml.
 
-# Scan specific directory
-sg scan --config sgconfig.yml src/
+To scan a specific directory, execute sg scan with config sgconfig.yml and the src/ directory.
 
-# JSON output for CI/CD
-sg scan --config sgconfig.yml --json > results.json
-```
+For JSON output suitable for CI/CD, execute sg scan with config and json flag, redirecting to results.json.
 
 ---
 
 ## Works Well With
 
-- **moai-workflow-testing** - TDD integration, test pattern detection
-- **moai-foundation-quality** - TRUST 5 compliance, code quality gates
-- **moai-domain-backend** - API pattern detection, security scanning
-- **moai-domain-frontend** - React/Vue pattern optimization
-- **moai-lang-python** - Python-specific security and style rules
-- **moai-lang-typescript** - TypeScript type safety patterns
+- moai-workflow-testing: TDD integration and test pattern detection
+- moai-foundation-quality: TRUST 5 compliance and code quality gates
+- moai-domain-backend: API pattern detection and security scanning
+- moai-domain-frontend: React/Vue pattern optimization
+- moai-lang-python: Python-specific security and style rules
+- moai-lang-typescript: TypeScript type safety patterns
 
 ### Related Agents
 
-- **expert-refactoring** - AST-based large-scale refactoring
-- **expert-security** - Security vulnerability scanning
-- **manager-quality** - Code complexity analysis
-- **expert-debug** - Pattern-based debugging
+- expert-refactoring: AST-based large-scale refactoring
+- expert-security: Security vulnerability scanning
+- manager-quality: Code complexity analysis
+- expert-debug: Pattern-based debugging
 
 ---
 
 ## Reference
 
-- [AST-Grep Official Documentation](https://ast-grep.github.io/)
-- [AST-Grep GitHub Repository](https://github.com/ast-grep/ast-grep)
-- [Pattern Playground](https://ast-grep.github.io/playground.html)
-- [Rule Configuration Reference](https://ast-grep.github.io/reference/yaml.html)
+For additional information, consult the AST-Grep Official Documentation at ast-grep.github.io, the AST-Grep GitHub Repository at github.com/ast-grep/ast-grep, the Pattern Playground at ast-grep.github.io/playground.html, and the Rule Configuration Reference at ast-grep.github.io/reference/yaml.html.

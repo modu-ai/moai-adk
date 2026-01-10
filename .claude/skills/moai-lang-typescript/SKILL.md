@@ -1,12 +1,12 @@
 ---
 name: "moai-lang-typescript"
 description: "TypeScript 5.9+ development specialist covering React 19, Next.js 16 App Router, type-safe APIs with tRPC, Zod validation, and modern TypeScript patterns. Use when developing TypeScript applications, React components, Next.js pages, or type-safe APIs."
-version: 1.0.0
+version: 1.1.0
 category: "language"
 modularized: false
 user-invocable: false
 tags: ['typescript', 'react', 'nextjs', 'frontend', 'fullstack']
-updated: 2026-01-08
+updated: 2026-01-11
 status: "active"
 allowed-tools:
   - Read
@@ -20,26 +20,19 @@ allowed-tools:
 
 TypeScript 5.9+ Development Specialist - Modern TypeScript with React 19, Next.js 16, and type-safe API patterns.
 
-Auto-Triggers: `.ts`, `.tsx`, `.mts`, `.cts` files, TypeScript configurations, React/Next.js projects
+Auto-Triggers: Files with .ts, .tsx, .mts, or .cts extensions, TypeScript configurations, React or Next.js projects
 
 Core Stack:
+
 - TypeScript 5.9: Deferred module evaluation, decorators, satisfies operator
-- React 19: Server Components, use() hook, Actions, concurrent features
+- React 19: Server Components, use hook, Actions, concurrent features
 - Next.js 16: App Router, Server Actions, middleware, ISR/SSG/SSR
 - Type-Safe APIs: tRPC 11, Zod 3.23, tanstack-query
 - Testing: Vitest, React Testing Library, Playwright
 
 Quick Commands:
-```bash
-# Create Next.js 16 project
-npx create-next-app@latest --typescript --tailwind --app
 
-# Install type-safe API stack
-npm install @trpc/server @trpc/client @trpc/react-query zod @tanstack/react-query
-
-# Install testing stack
-npm install -D vitest @testing-library/react @playwright/test
-```
+Create Next.js 16 project using npx create-next-app with latest, typescript, tailwind, and app flags. Install type-safe API stack with npm install for trpc server, client, react-query, zod, and tanstack react-query. Install testing stack with npm install D flag for vitest, testing-library react, and playwright test.
 
 ---
 
@@ -47,264 +40,79 @@ npm install -D vitest @testing-library/react @playwright/test
 
 ### TypeScript 5.9 Key Features
 
-Satisfies Operator - Type checking without widening:
-```typescript
-type Colors = "red" | "green" | "blue";
-const palette = {
-  red: [255, 0, 0],
-  green: "#00ff00",
-  blue: [0, 0, 255],
-} satisfies Record<Colors, string | number[]>;
+Satisfies Operator for Type Checking Without Widening:
 
-palette.red.map((n) => n * 2); // Works - red is number[]
-palette.green.toUpperCase();   // Works - green is string
-```
+Define Colors type as union of red, green, and blue string literals. Create palette object with red as number array, green as hex string, and blue as number array. Apply satisfies operator with Record of Colors to string or number array. Now palette.red can use map method because it is inferred as number array, and palette.green can use toUpperCase because it is inferred as string.
 
 Deferred Module Evaluation:
-```typescript
-import defer * as analytics from "./heavy-analytics";
-function trackEvent(name: string) {
-  analytics.track(name); // Loads module on first use
-}
-```
 
-Modern Decorators (Stage 3):
-```typescript
-function logged<T extends (...args: any[]) => any>(
-  target: T,
-  context: ClassMethodDecoratorContext
-) {
-  return function (this: ThisParameterType<T>, ...args: Parameters<T>) {
-    console.log(`Calling ${String(context.name)}`);
-    return target.apply(this, args);
-  };
-}
+Use import defer with asterisk as namespace from heavy module path. In function that needs the module, access namespace property which loads module on first use.
 
-class API {
-  @logged
-  async fetchUser(id: string) { return fetch(`/api/users/${id}`); }
-}
-```
+Modern Decorators Stage 3:
+
+Create logged function decorator that takes target function and ClassMethodDecoratorContext. Return function that logs method name then calls target with apply. Apply logged decorator to class method that fetches data.
 
 ### React 19 Patterns
 
-Server Components (Default in App Router):
-```typescript
-// app/users/[id]/page.tsx - Server Component
-interface PageProps { params: Promise<{ id: string }>; }
+Server Components Default in App Router:
 
-export default async function UserPage({ params }: PageProps) {
-  const { id } = await params;
-  const user = await db.user.findUnique({ where: { id } });
-  if (!user) notFound();
-  return <main><h1>{user.name}</h1></main>;
-}
-```
+For page component in app/users/[id]/page.tsx, define PageProps interface with params as Promise of object containing id string. Create async default function that awaits params, queries database for user, calls notFound if not found, and returns main element with user name.
 
-use() Hook - Unwrap Promises and Context:
-```typescript
-"use client";
-import { use } from "react";
+use Hook for Unwrapping Promises and Context:
 
-function UserProfile({ userPromise }: { userPromise: Promise<User> }) {
-  const user = use(userPromise); // Suspends until resolved
-  return <div>{user.name}</div>;
-}
-```
+In client component marked with use client directive, import use from react. Create UserProfile component that takes userPromise prop as Promise of User type. Call use hook with the promise to suspend until resolved. Return div with user name.
 
-Actions - Form Handling with Server Functions:
-```typescript
-// app/actions.ts
-"use server";
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
+Actions for Form Handling with Server Functions:
 
-const CreateUserSchema = z.object({
-  name: z.string().min(2),
-  email: z.string().email(),
-});
-
-export async function createUser(formData: FormData) {
-  const validated = CreateUserSchema.parse({
-    name: formData.get("name"),
-    email: formData.get("email"),
-  });
-  await db.user.create({ data: validated });
-  revalidatePath("/users");
-}
-```
+In server actions file marked with use server directive, import revalidatePath. Define CreateUserSchema with zod for name and email validation. Create async createUser function that takes FormData, parses with schema, creates user in database, and revalidates path.
 
 useActionState for Form Status:
-```typescript
-"use client";
-import { useActionState } from "react";
 
-export function CreateUserForm() {
-  const [state, action, isPending] = useActionState(createUser, null);
-  return (
-    <form action={action}>
-      <input name="name" disabled={isPending} />
-      <button disabled={isPending}>{isPending ? "Creating..." : "Create"}</button>
-      {state?.error && <p className="error">{state.error}</p>}
-    </form>
-  );
-}
-```
+In client component, import useActionState. Create form component that destructures state, action, and isPending from useActionState called with createUser action. Return form with action prop, input disabled when pending, button with dynamic text, and error message from state.
 
 ### Next.js 16 App Router
 
 Route Structure:
-```
-app/
-  layout.tsx          # Root layout
-  page.tsx            # Home page (/)
-  loading.tsx         # Loading UI
-  error.tsx           # Error boundary
-  api/route.ts        # API route (/api)
-  users/
-    page.tsx          # /users
-    [id]/page.tsx     # /users/:id
-  (marketing)/about/page.tsx  # /about (route group)
-```
+
+The app directory contains layout.tsx for root layout, page.tsx for home route, loading.tsx for loading UI, error.tsx for error boundary, and api/route.ts for API routes. Subdirectories like users contain page.tsx for list and [id]/page.tsx for dynamic routes. Route groups use parentheses like (marketing)/about/page.tsx.
 
 Metadata API:
-```typescript
-import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: { default: "My App", template: "%s | My App" },
-  description: "Modern TypeScript application",
-};
-
-export async function generateMetadata({ params }): Promise<Metadata> {
-  const { id } = await params;
-  const user = await getUser(id);
-  return { title: user.name };
-}
-```
+Import Metadata type. Export metadata object with title as object containing default and template, and description string. Export async generateMetadata function that takes params, awaits params, fetches user, and returns object with title set to user name.
 
 Server Actions with Validation:
-```typescript
-"use server";
-import { z } from "zod";
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
-const UpdateUserSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string().min(2).max(100),
-  email: z.string().email(),
-});
-
-export async function updateUser(prevState: any, formData: FormData) {
-  const result = UpdateUserSchema.safeParse(Object.fromEntries(formData));
-  if (!result.success) {
-    return { errors: result.error.flatten().fieldErrors };
-  }
-  await db.user.update({ where: { id: result.data.id }, data: result.data });
-  revalidatePath(`/users/${result.data.id}`);
-  redirect(`/users/${result.data.id}`);
-}
-```
+In server file, import zod, revalidatePath, and redirect. Define UpdateUserSchema with id, name, and email validation. Create async updateUser function taking prevState and formData. Parse with safeParse, return errors if failed, update database, revalidate path, and redirect.
 
 ### Type-Safe APIs with tRPC
 
 Server Setup:
-```typescript
-// server/trpc.ts
-import { initTRPC, TRPCError } from "@trpc/server";
 
-const t = initTRPC.context<Context>().create();
-
-export const router = t.router;
-export const publicProcedure = t.procedure;
-export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
-  if (!ctx.session?.user) throw new TRPCError({ code: "UNAUTHORIZED" });
-  return next({ ctx: { ...ctx, user: ctx.session.user } });
-});
-```
+Import initTRPC and TRPCError from trpc server. Create t by calling initTRPC.context with Context type then create. Export router, publicProcedure, and protectedProcedure from t. The protectedProcedure uses middleware that checks session user and throws UNAUTHORIZED error if missing.
 
 Router Definition:
-```typescript
-import { z } from "zod";
-import { router, publicProcedure, protectedProcedure } from "../trpc";
 
-export const userRouter = router({
-  getById: publicProcedure
-    .input(z.object({ id: z.string().uuid() }))
-    .query(({ input, ctx }) => ctx.db.user.findUnique({ where: { id: input.id } })),
-
-  create: protectedProcedure
-    .input(z.object({ name: z.string().min(2), email: z.string().email() }))
-    .mutation(({ input, ctx }) => ctx.db.user.create({ data: input })),
-});
-```
+Import zod. Create userRouter with router function. Define getById procedure using publicProcedure with input schema for id as uuid string, and query that finds user by id. Define create procedure using protectedProcedure with input schema for name and email, and mutation that creates user.
 
 Client Usage:
-```typescript
-"use client";
-export function UserList() {
-  const { data, isLoading } = trpc.user.list.useQuery({ page: 1 });
-  const createUser = trpc.user.create.useMutation();
-  if (isLoading) return <div>Loading...</div>;
-  return <ul>{data?.map((u) => <li key={u.id}>{u.name}</li>)}</ul>;
-}
-```
+
+In client component, create UserList function that calls trpc.user.list.useQuery with page parameter. Destructure data and isLoading. Create mutation with trpc.user.create.useMutation. Return loading state or list of users.
 
 ### Zod Schema Patterns
 
 Complex Validation:
-```typescript
-import { z } from "zod";
 
-const UserSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string().min(2).max(100),
-  email: z.string().email(),
-  role: z.enum(["admin", "user", "guest"]),
-  createdAt: z.coerce.date(),
-}).strict();
-
-type User = z.infer<typeof UserSchema>;
-
-const CreateUserSchema = UserSchema.omit({ id: true, createdAt: true })
-  .extend({ password: z.string().min(8), confirmPassword: z.string() })
-  .refine((d) => d.password === d.confirmPassword, {
-    message: "Passwords don't match", path: ["confirmPassword"],
-  });
-```
+Create UserSchema with z.object containing id as uuid string, name with min and max length, email as email format, role as enum of admin, user, and guest, and createdAt with coerce.date. Apply strict method. Infer User type from schema. Create CreateUserSchema by omitting id and createdAt, extending with password and confirmPassword, and adding refine for password match validation with custom message and path.
 
 ### State Management
 
 Zustand for Client State:
-```typescript
-import { create } from "zustand";
-import { devtools, persist } from "zustand/middleware";
 
-interface AuthState {
-  user: User | null;
-  login: (user: User) => void;
-  logout: () => void;
-}
-
-export const useAuthStore = create<AuthState>()(
-  devtools(persist((set) => ({
-    user: null,
-    login: (user) => set({ user }),
-    logout: () => set({ user: null }),
-  }), { name: "auth-storage" }))
-);
-```
+Import create from zustand and middleware. Define AuthState interface with user as User or null, login method, and logout method. Create useAuthStore with create function wrapped in devtools and persist middleware. Set initial user to null, login sets user, logout sets user to null. Persist uses auth-storage name.
 
 Jotai for Atomic State:
-```typescript
-import { atom } from "jotai";
-import { atomWithStorage } from "jotai/utils";
 
-const countAtom = atom(0);
-const doubleCountAtom = atom((get) => get(countAtom) * 2);
-const themeAtom = atomWithStorage<"light" | "dark">("theme", "light");
-```
+Import atom from jotai and atomWithStorage from jotai/utils. Create countAtom with initial value 0. Create doubleCountAtom as derived atom that gets countAtom and multiplies by 2. Create themeAtom with atomWithStorage for light or dark theme persisted to storage.
 
 ---
 
@@ -312,54 +120,41 @@ const themeAtom = atomWithStorage<"light" | "dark">("theme", "light");
 
 For comprehensive documentation including advanced TypeScript patterns, performance optimization, testing strategies, and deployment configurations, see:
 
-- [reference.md](reference.md) - Complete API reference, Context7 library mappings, advanced type patterns
-- [examples.md](examples.md) - Production-ready code examples, full-stack patterns, testing templates
+- reference.md for complete API reference, Context7 library mappings, and advanced type patterns
+- examples.md for production-ready code examples, full-stack patterns, and testing templates
 
 ### Context7 Integration
 
-```typescript
-// TypeScript - mcp__context7__get_library_docs("/microsoft/TypeScript", "decorators satisfies", 1)
-// React 19 - mcp__context7__get_library_docs("/facebook/react", "server-components use-hook", 1)
-// Next.js 16 - mcp__context7__get_library_docs("/vercel/next.js", "app-router server-actions", 1)
-// tRPC - mcp__context7__get_library_docs("/trpc/trpc", "procedures middleware", 1)
-// Zod - mcp__context7__get_library_docs("/colinhacks/zod", "schema validation", 1)
-```
+For TypeScript documentation, use microsoft/TypeScript with decorators satisfies topics. For React 19, use facebook/react with server-components use-hook. For Next.js 16, use vercel/next.js with app-router server-actions. For tRPC, use trpc/trpc with procedures middleware. For Zod, use colinhacks/zod with schema validation.
 
 ---
 
 ## Works Well With
 
-- `moai-domain-frontend` - UI components, styling patterns
-- `moai-domain-backend` - API design, database integration
-- `moai-library-shadcn` - Component library integration
-- `moai-workflow-testing` - Testing strategies and patterns
-- `moai-foundation-quality` - Code quality standards
-- `moai-essentials-debug` - Debugging TypeScript applications
+- moai-domain-frontend for UI components and styling patterns
+- moai-domain-backend for API design and database integration
+- moai-library-shadcn for component library integration
+- moai-workflow-testing for testing strategies and patterns
+- moai-foundation-quality for code quality standards
+- moai-essentials-debug for debugging TypeScript applications
 
 ---
 
 ## Quick Troubleshooting
 
 TypeScript Errors:
-```bash
-npx tsc --noEmit                    # Type check only
-npx tsc --generateTrace ./trace     # Performance trace
-```
 
-React/Next.js Issues:
-```bash
-npm run build                       # Check for build errors
-npx next lint                       # ESLint check
-rm -rf .next && npm run dev         # Clear cache
-```
+Run npx tsc with noEmit flag for type check only. Run npx tsc with generateTrace flag and output directory for performance trace.
 
-Type Safety:
-```typescript
-// Exhaustive check
-function assertNever(x: never): never { throw new Error(`Unexpected: ${x}`); }
+React and Next.js Issues:
 
-// Type guard
-function isUser(v: unknown): v is User {
-  return typeof v === "object" && v !== null && "id" in v;
-}
-```
+Run npm run build to check for build errors. Run npx next lint for ESLint check. Delete .next directory and run npm run dev to clear cache.
+
+Type Safety Patterns:
+
+Create assertNever function taking never type parameter that throws error for unexpected values, used in exhaustive switch statements. Create type guard function isUser that checks if value is object with id property and returns type predicate.
+
+---
+
+Last Updated: 2026-01-11
+Status: Active (v1.1.0)

@@ -1,5 +1,4 @@
 ---
-name: moai:cancel-loop
 description: "Cancel an active Ralph feedback loop"
 argument-hint: "[--force]"
 type: utility

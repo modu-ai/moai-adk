@@ -42,34 +42,44 @@ Directory Structure:
  README.md # Command index and documentation
 ```
 
+### Command Naming Convention
+
+IMPORTANT: Command name is automatically derived from file path structure:
+- `.claude/commands/{namespace}/{command-name}.md` → `/{namespace}:{command-name}`
+- `.claude/commands/my-command.md` → `/my-command`
+- Example: `.claude/commands/moai/fix.md` → `/moai:fix`
+
+DO NOT include a `name` field in frontmatter - it is not officially supported.
+
 ### Command File Format
+
+Official Frontmatter Fields (per Claude Code documentation):
+```markdown
+---
+description: Brief description of what the command does
+argument-hint: [action] [target] [options]
+allowed-tools: Bash, Read, Write
+model: haiku
+---
+```
+
+Supported Frontmatter Fields:
+- `description` - Command description shown in /help (recommended)
+- `argument-hint` - Argument syntax hint for autocomplete
+- `allowed-tools` - Tools this command can invoke
+- `model` - Override default model (haiku, sonnet, opus)
+- `hooks` - Hook definitions for command execution
+- `disable-model-invocation` - Prevent Skill tool invocation
+
+All frontmatter options are optional; commands work without frontmatter.
 
 Complete Command Template:
 ```markdown
 ---
-name: my-command
 description: Brief description of what the command does and when to use it
-usage: |
- /my-command [argument] [options]
- Examples:
- /my-command create user --name="John Doe"
- /my-command validate @config.yaml
-parameters:
- - name: action
- description: Action to perform (create, update, delete, validate)
- required: true
- type: string
- values: [create, update, delete, validate]
- - name: target
- description: Target entity or file to operate on
- required: false
- type: string
- allowFileReference: true
- - name: options
- description: Additional command options
- required: false
- type: object
- default: {}
+argument-hint: [action] [target] [options]
+allowed-tools: Bash(git add:*), Bash(git status:*), Read, Write
+model: haiku
 ---
 
 # Command Implementation

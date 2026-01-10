@@ -6,7 +6,7 @@ category: "library"
 modularized: true
 user-invocable: false
 tags: ['formats', 'data', 'toon', 'serialization', 'validation', 'optimization']
-updated: 2026-01-08
+updated: 2026-01-11
 allowed-tools:
   - Read
   - Write
@@ -21,64 +21,57 @@ author: "MoAI-ADK Team"
 
 # Data Format Specialist
 
-## Quick Reference (30 seconds)
+## Quick Reference
 
 Advanced Data Format Management - Comprehensive data handling covering TOON encoding, JSON/YAML optimization, serialization patterns, and data validation for performance-critical applications.
 
-**Core Capabilities:**
-- **TOON Encoding**: 40-60% token reduction vs JSON for LLM communication
-- **JSON/YAML Optimization**: Efficient serialization and parsing patterns
-- **Data Validation**: Schema validation, type checking, error handling
-- **Format Conversion**: Seamless transformation between data formats
-- **Performance**: Optimized data structures and caching strategies
-- **Schema Management**: Dynamic schema generation and evolution
+Core Capabilities:
 
-**When to Use:**
+- TOON Encoding: 40-60% token reduction vs JSON for LLM communication
+- JSON/YAML Optimization: Efficient serialization and parsing patterns
+- Data Validation: Schema validation, type checking, error handling
+- Format Conversion: Seamless transformation between data formats
+- Performance: Optimized data structures and caching strategies
+- Schema Management: Dynamic schema generation and evolution
+
+When to Use:
+
 - Optimizing data transmission to LLMs within token budgets
 - High-performance serialization/deserialization
 - Schema validation and data integrity
 - Format conversion and data transformation
 - Large dataset processing and optimization
 
-**Quick Start:**
-```python
-# TOON encoding (40-60% token reduction)
-from moai_formats_data import TOONEncoder
-encoder = TOONEncoder()
-compressed = encoder.encode({"user": "John", "age": 30})
-original = encoder.decode(compressed)
+Quick Start:
 
-# Fast JSON processing
-from moai_formats_data import JSONOptimizer
-optimizer = JSONOptimizer()
-fast_json = optimizer.serialize_fast(large_dataset)
+Create a TOONEncoder instance and call encode with a dictionary containing user and age fields to compress the data. The encoded result achieves 40-60% token reduction. Call decode to restore the original data structure.
 
-# Data validation
-from moai_formats_data import DataValidator
-validator = DataValidator()
-schema = validator.create_schema({"name": {"type": "string", "required": True}})
-result = validator.validate({"name": "John"}, schema)
-```
+Create a JSONOptimizer instance and call serialize_fast with a large dataset to achieve ultra-fast JSON processing.
+
+Create a DataValidator instance and call create_schema with a dictionary defining name as a required string type. Call validate with the data and schema to check validity.
 
 ---
 
-## Implementation Guide (5 minutes)
+## Implementation Guide
 
 ### Core Concepts
 
-**TOON (Token-Optimized Object Notation):**
+TOON (Token-Optimized Object Notation):
+
 - Custom binary-compatible format optimized for LLM token usage
-- Type markers: # (numbers), ! (booleans), @ (timestamps), ~ (null)
+- Type markers: # for numbers, ! for booleans, @ for timestamps, ~ for null
 - 40-60% size reduction vs JSON for typical data structures
 - Lossless round-trip encoding/decoding
 
-**Performance Optimization:**
-- Ultra-fast JSON processing with orjson (2-5x faster than standard json)
+Performance Optimization:
+
+- Ultra-fast JSON processing with orjson achieving 2-5x faster than standard json
 - Streaming processing for large datasets using ijson
 - Intelligent caching with LRU eviction and memory management
 - Schema compression and validation optimization
 
-**Data Validation:**
+Data Validation:
+
 - Type-safe validation with custom rules and patterns
 - Schema evolution and migration support
 - Cross-field validation and dependency checking
@@ -86,93 +79,31 @@ result = validator.validate({"name": "John"}, schema)
 
 ### Basic Implementation
 
-```python
-from moai_formats_data import TOONEncoder, JSONOptimizer, DataValidator
-from datetime import datetime
+TOON Encoding for LLM Optimization:
 
-# 1. TOON Encoding for LLM optimization
-encoder = TOONEncoder()
-data = {
-    "user": {"id": 123, "name": "John", "active": True, "created": datetime.now()},
-    "permissions": ["read", "write", "admin"]
-}
+Create a TOONEncoder instance. Define data with user object containing id, name, active boolean, and created datetime, plus permissions array. Call encode to compress and decode to restore. Compare sizes to verify reduction.
 
-# Encode and compare sizes
-toon_data = encoder.encode(data)
-original_data = encoder.decode(toon_data)
+Fast JSON Processing:
 
-# 2. Fast JSON Processing
-optimizer = JSONOptimizer()
+Create a JSONOptimizer instance. Call serialize_fast to get bytes and deserialize_fast to parse. Use compress_schema with a type object and properties definition to optimize repeated validation.
 
-# Ultra-fast serialization
-json_bytes = optimizer.serialize_fast(data)
-parsed_data = optimizer.deserialize_fast(json_bytes)
+Data Validation:
 
-# Schema compression for repeated validation
-schema = {"type": "object", "properties": {"name": {"type": "string"}}}
-compressed_schema = optimizer.compress_schema(schema)
-
-# 3. Data Validation
-validator = DataValidator()
-
-# Create validation schema
-user_schema = validator.create_schema({
-    "username": {"type": "string", "required": True, "min_length": 3},
-    "email": {"type": "email", "required": True},
-    "age": {"type": "integer", "required": False, "min_value": 13}
-})
-
-# Validate data
-user_data = {"username": "john_doe", "email": "john@example.com", "age": 30}
-result = validator.validate(user_data, user_schema)
-
-if result['valid']:
-    print("Data is valid!")
-    sanitized = result['sanitized_data']
-else:
-    print("Validation errors:", result['errors'])
-```
+Create a DataValidator instance. Define user_schema with username requiring string type, minimum length 3, email requiring email type, and age as optional integer with minimum value 13. Call validate with user_data and schema, then check result for valid status, sanitized_data, or errors list.
 
 ### Common Use Cases
 
-**API Response Optimization:**
-```python
-# Optimize API responses for LLM consumption
-def optimize_api_response(data: Dict) -> str:
-    encoder = TOONEncoder()
-    return encoder.encode(data)
+API Response Optimization:
 
-# Parse optimized responses
-def parse_optimized_response(toon_data: str) -> Dict:
-    encoder = TOONEncoder()
-    return encoder.decode(toon_data)
-```
+Create a function to optimize API responses for LLM consumption by encoding data with TOONEncoder. Create a corresponding function to parse optimized responses by decoding TOON data back to dictionary.
 
-**Configuration Management:**
-```python
-# Fast YAML configuration loading
-from moai_formats_data import YAMLOptimizer
+Configuration Management:
 
-yaml_optimizer = YAMLOptimizer()
-config = yaml_optimizer.load_fast("config.yaml")
+Create a YAMLOptimizer instance and call load_fast with a config file path. Call merge_configs with base_config, env_config, and user_config for multi-file merging.
 
-# Merge multiple configurations
-merged = yaml_optimizer.merge_configs(base_config, env_config, user_config)
-```
+Large Dataset Processing:
 
-**Large Dataset Processing:**
-```python
-# Stream processing for large JSON files
-from moai_formats_data import StreamProcessor
-
-processor = StreamProcessor(chunk_size=8192)
-
-# Process file line by line without loading into memory
-def process_item(item):
-    print(f"Processing: {item['id']}")
-
-processor.process_json_stream("large_dataset.json", process_item)
-```
+Create a StreamProcessor with chunk_size of 8192. Define a process_item function that handles each item. Call process_json_stream with the file path and callback to process large JSON files without loading into memory.
 
 ---
 
@@ -180,79 +111,68 @@ processor.process_json_stream("large_dataset.json", process_item)
 
 ### Advanced TOON Features
 
-See [`modules/toon-encoding.md`](./modules/toon-encoding.md) for:
-- Custom type handlers (UUID, Decimal, etc.)
-- Streaming TOON processing
-- Batch TOON encoding
-- Performance characteristics and benchmarks
+See modules/toon-encoding.md for custom type handlers (UUID, Decimal), streaming TOON processing, batch TOON encoding, and performance characteristics with benchmarks.
 
 ### Advanced Validation Patterns
 
-See [`modules/data-validation.md`](./modules/data-validation.md) for:
-- Cross-field validation
-- Schema evolution and migration
-- Custom validation rules
-- Batch validation optimization
+See modules/data-validation.md for cross-field validation, schema evolution and migration, custom validation rules, and batch validation optimization.
 
 ### Performance Optimization
 
-See [`modules/caching-performance.md`](./modules/caching-performance.md) for:
-- Intelligent caching strategies
-- Cache warming and invalidation
-- Memory management
-- Performance monitoring
+See modules/caching-performance.md for intelligent caching strategies, cache warming and invalidation, memory management, and performance monitoring.
 
 ### JSON/YAML Advanced Features
 
-See [`modules/json-optimization.md`](./modules/json-optimization.md) for:
-- Streaming JSON processing
-- Memory-efficient parsing
-- Schema compression
-- Format conversion utilities
+See modules/json-optimization.md for streaming JSON processing, memory-efficient parsing, schema compression, and format conversion utilities.
 
 ---
 
 ## Works Well With
 
-- **moai-domain-backend** - Backend data serialization and API responses
-- **moai-domain-database** - Database data format optimization
-- **moai-foundation-core** - MCP data serialization and transmission patterns
-- **moai-workflow-docs** - Documentation data formatting
-- **moai-foundation-context** - Context optimization for token budgets
+- moai-domain-backend - Backend data serialization and API responses
+- moai-domain-database - Database data format optimization
+- moai-foundation-core - MCP data serialization and transmission patterns
+- moai-workflow-docs - Documentation data formatting
+- moai-foundation-context - Context optimization for token budgets
 
 ---
 
 ## Module References
 
-**Core Implementation Modules:**
-- [`modules/toon-encoding.md`](./modules/toon-encoding.md) - TOON encoding implementation (308 lines)
-- [`modules/json-optimization.md`](./modules/json-optimization.md) - High-performance JSON/YAML (374 lines)
-- [`modules/data-validation.md`](./modules/data-validation.md) - Advanced validation and schemas (485 lines)
-- [`modules/caching-performance.md`](./modules/caching-performance.md) - Caching strategies (459 lines)
+Core Implementation Modules:
 
-**Supporting Files:**
-- [`modules/README.md`](./modules/README.md) - Module overview and integration patterns (98 lines)
-- [`reference.md`](./reference.md) - Extended reference documentation (585 lines)
-- [`examples.md`](./examples.md) - Complete working examples (804 lines)
+- modules/toon-encoding.md - TOON encoding implementation
+- modules/json-optimization.md - High-performance JSON/YAML
+- modules/data-validation.md - Advanced validation and schemas
+- modules/caching-performance.md - Caching strategies
+
+Supporting Files:
+
+- modules/README.md - Module overview and integration patterns
+- reference.md - Extended reference documentation
+- examples.md - Complete working examples
 
 ---
 
 ## Technology Stack
 
-**Core Libraries:**
+Core Libraries:
+
 - orjson: Ultra-fast JSON parsing and serialization
 - PyYAML: YAML processing with C-based loaders
 - ijson: Streaming JSON parser for large files
 - python-dateutil: Advanced datetime parsing
 - regex: Advanced regular expression support
 
-**Performance Tools:**
+Performance Tools:
+
 - lru_cache: Built-in memoization
 - pickle: Object serialization
 - hashlib: Hash generation for caching
 - functools: Function decorators and utilities
 
-**Validation Libraries:**
+Validation Libraries:
+
 - jsonschema: JSON Schema validation
 - cerberus: Lightweight data validation
 - marshmallow: Object serialization/deserialization
@@ -260,22 +180,10 @@ See [`modules/json-optimization.md`](./modules/json-optimization.md) for:
 
 ---
 
-## Version History
+## Resources
 
-**v2.0.0 (2026-01-06):**
-- Modularized skill with progressive disclosure pattern
-- Reduced SKILL.md from 493 to 247 lines (50% reduction)
-- Organized advanced content into focused modules
-- Enhanced module cross-references and integration patterns
-- Updated Context7 MCP tools in allowed-tools
+For working code examples, see [examples.md](examples.md).
 
-**v1.0.0 (2025-12-06):**
-- Initial release with monolithic structure
-- TOON encoding, JSON/YAML optimization, data validation
-- Basic caching and performance features
-
----
-
-**Status:** Production Ready
-**Last Updated:** 2026-01-06
-**Maintained by:** MoAI-ADK Data Team
+Status: Production Ready
+Last Updated: 2026-01-11
+Maintained by: MoAI-ADK Data Team
