@@ -1,0 +1,27 @@
+user:
+  name: New User
+language:
+  conversation_language: en
+  agent_prompt_language: en
+  conversation_language_name: English
+project:
+  name: new-project
+  documentation_mode: skip
+  language: python
+  locale: en_US
+  template_version: 3.0.0
+git_strategy:
+  mode: personal
+  personal:
+    workflow: github-flow
+    auto_checkpoint: disabled
+    push_to_remote: false
+  team:
+    workflow: git-flow
+    auto_pr: false
+    draft_pr: false
+constitution:
+  test_coverage_target: 85
+  enforce_tdd: true
+moai:
+  version: 0.41.2

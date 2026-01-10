@@ -95,181 +95,13 @@ Each sub-agent execution gets a unique agentId stored in agent-{agentId}.jsonl f
 
 ### Multilingual Agent Routing
 
-Alfred automatically routes user requests to specialized agents based on keyword matching in any supported language.
+Alfred automatically routes user requests to specialized agents based on keyword matching defined in each agent's YAML description field.
 
-#### Supported Languages
+Keyword Source: .claude/agents/moai/\*.md (description field contains multilingual trigger keywords)
 
-- EN: English
-- KO: Korean (한국어)
-- JA: Japanese (日本語)
-- ZH: Chinese (中文)
+Supported Languages: EN, KO, JA, ZH
 
-#### Intent-to-Agent Mapping
-
-[HARD] When user request contains these keywords (in ANY language), Alfred MUST automatically invoke the corresponding agent:
-
-Backend Domain (expert-backend):
-
-- EN: backend, API, server, authentication, database, REST, GraphQL, microservices, SQL, NoSQL, PostgreSQL, MongoDB, Redis, schema, query, index
-- KO: 백엔드, API, 서버, 인증, 데이터베이스, RESTful, 마이크로서비스, SQL, NoSQL, 스키마, 쿼리, 인덱스
-- JA: バックエンド, API, サーバー, 認証, データベース, SQL, NoSQL, スキーマ, クエリ
-- ZH: 后端, API, 服务器, 认证, 数据库, 微服务, SQL, NoSQL, 架构, 查询, 索引
-
-Frontend Domain (expert-frontend):
-
-- EN: frontend, UI, component, React, Vue, Next.js, CSS, state management, UI/UX, design, accessibility, WCAG, user experience, design system, wireframe
-- KO: 프론트엔드, UI, 컴포넌트, 리액트, 뷰, CSS, 상태관리, UI/UX, 디자인, 접근성, WCAG, 사용자경험, 디자인시스템, 와이어프레임
-- JA: フロントエンド, UI, コンポーネント, リアクト, CSS, 状態管理, UI/UX, デザイン, アクセシビリティ, WCAG, ユーザー体験, デザインシステム
-- ZH: 前端, UI, 组件, React, Vue, CSS, 状态管理, UI/UX, 设计, 可访问性, WCAG, 用户体验, 设计系统
-
-Security Domain (expert-security):
-
-- EN: security, vulnerability, OWASP, injection, XSS, CSRF, audit
-- KO: 보안, 취약점, OWASP, 인젝션, XSS, CSRF, 감사
-- JA: セキュリティ, 脆弱性, OWASP, インジェクション
-- ZH: 安全, 漏洞, OWASP, 注入, XSS, CSRF, 审计
-
-TDD Implementation (manager-tdd):
-
-- EN: TDD, RED-GREEN-REFACTOR, test-driven, unit test, test first
-- KO: TDD, 레드그린리팩터, 테스트주도개발, 유닛테스트
-- JA: TDD, テスト駆動開発, ユニットテスト
-- ZH: TDD, 红绿重构, 测试驱动开发, 单元测试
-
-SPEC Creation (manager-spec):
-
-- EN: SPEC, requirement, specification, EARS, acceptance criteria
-- KO: SPEC, 요구사항, 명세서, EARS, 인수조건
-- JA: SPEC, 要件, 仕様書, EARS, 受入基準
-- ZH: SPEC, 需求, 规格书, EARS, 验收标准
-
-DevOps Domain (expert-devops):
-
-- EN: DevOps, CI/CD, Docker, Kubernetes, deployment, pipeline
-- KO: 데브옵스, CI/CD, 도커, 쿠버네티스, 배포, 파이프라인
-- JA: DevOps, CI/CD, Docker, Kubernetes, デプロイ
-- ZH: DevOps, CI/CD, Docker, Kubernetes, 部署, 流水线
-
-Documentation (manager-docs):
-
-- EN: documentation, README, API docs, technical writing
-- KO: 문서, README, API문서, 기술문서
-- JA: ドキュメント, README, APIドキュメント
-- ZH: 文档, README, API文档, 技术写作
-
-Performance (expert-performance):
-
-- EN: performance, profiling, optimization, benchmark, memory, latency
-- KO: 성능, 프로파일링, 최적화, 벤치마크, 메모리
-- JA: パフォーマンス, プロファイリング, 最適化
-- ZH: 性能, 性能分析, 优化, 基准测试
-
-Debug (expert-debug):
-
-- EN: debug, error, bug, exception, crash, troubleshoot
-- KO: 디버그, 에러, 버그, 예외, 크래시, 문제해결
-- JA: デバッグ, エラー, バグ, 例外, クラッシュ
-- ZH: 调试, 错误, bug, 异常, 崩溃, 故障排除
-
-Refactoring (expert-refactoring):
-
-- EN: refactor, restructure, codemod, transform, migrate API, bulk rename, AST search
-- KO: 리팩토링, 재구조화, 코드모드, 변환, API 마이그레이션, 일괄 변경, AST검색
-- JA: リファクタリング, 再構造化, コードモード, 変換, API移行, 一括変更, AST検索
-- ZH: 重构, 重组, 代码模式, 转换, API迁移, 批量重命名, AST搜索
-
-Git Operations (manager-git):
-
-- EN: git, commit, push, pull, branch, PR, pull request, merge, release, version control, checkout, rebase, stash
-- KO: git, 커밋, 푸시, 풀, 브랜치, PR, 풀리퀘스트, 머지, 릴리즈, 버전관리, 체크아웃, 리베이스
-- JA: git, コミット, プッシュ, プル, ブランチ, PR, プルリクエスト, マージ, リリース
-- ZH: git, 提交, 推送, 拉取, 分支, PR, 拉取请求, 合并, 发布
-
-Quality Gate (manager-quality):
-
-- EN: quality, TRUST 5, code review, compliance, quality gate, lint, code quality
-- KO: 품질, TRUST 5, 코드리뷰, 준수, 품질게이트, 린트, 코드품질
-- JA: 品質, TRUST 5, コードレビュー, コンプライアンス, 品質ゲート, リント
-- ZH: 质量, TRUST 5, 代码审查, 合规, 质量门, lint
-
-Testing Strategy (expert-testing):
-
-- EN: test strategy, E2E, integration test, load test, test automation, coverage, QA
-- KO: 테스트전략, E2E, 통합테스트, 부하테스트, 테스트자동화, 커버리지, QA
-- JA: テスト戦略, E2E, 統合テスト, 負荷テスト, テスト自動化, カバレッジ, QA
-- ZH: 测试策略, E2E, 集成测试, 负载测试, 测试自动化, 覆盖率, QA
-
-Project Setup (manager-project):
-
-- EN: project setup, initialization, .moai, project configuration, scaffold, new project
-- KO: 프로젝트설정, 초기화, .moai, 프로젝트구성, 스캐폴드, 새프로젝트
-- JA: プロジェクトセットアップ, 初期化, .moai, プロジェクト構成, スキャフォールド
-- ZH: 项目设置, 初始化, .moai, 项目配置, 脚手架
-
-Implementation Strategy (manager-strategy):
-
-- EN: strategy, implementation plan, architecture decision, technology evaluation, planning
-- KO: 전략, 구현계획, 아키텍처결정, 기술평가, 계획
-- JA: 戦略, 実装計画, アーキテクチャ決定, 技術評価
-- ZH: 策略, 实施计划, 架构决策, 技术评估
-
-Claude Code Configuration (manager-claude-code):
-
-- EN: Claude Code, configuration, settings.json, MCP, agent orchestration, claude config
-- KO: Claude Code, 설정, settings.json, MCP, 에이전트오케스트레이션, 클로드설정
-- JA: Claude Code, 設定, settings.json, MCP, エージェントオーケストレーション
-- ZH: Claude Code, 配置, settings.json, MCP, 代理编排
-
-Agent Creation (builder-agent):
-
-- EN: create agent, new agent, agent blueprint, sub-agent, agent definition, custom agent
-- KO: 에이전트생성, 새에이전트, 에이전트블루프린트, 서브에이전트, 에이전트정의, 커스텀에이전트
-- JA: エージェント作成, 新エージェント, エージェントブループリント, サブエージェント
-- ZH: 创建代理, 新代理, 代理蓝图, 子代理, 代理定义
-
-Command Creation (builder-command):
-
-- EN: create command, slash command, custom command, command optimization, new command
-- KO: 커맨드생성, 슬래시커맨드, 커스텀커맨드, 커맨드최적화, 새커맨드
-- JA: コマンド作成, スラッシュコマンド, カスタムコマンド, コマンド最適化
-- ZH: 创建命令, 斜杠命令, 自定义命令, 命令优化
-
-Skill Creation (builder-skill):
-
-- EN: create skill, new skill, skill optimization, knowledge domain, YAML frontmatter
-- KO: 스킬생성, 새스킬, 스킬최적화, 지식도메인, YAML프론트매터
-- JA: スキル作成, 新スキル, スキル最適化, 知識ドメイン, YAMLフロントマター
-- ZH: 创建技能, 新技能, 技能优化, 知识领域, YAML前置信息
-
-Plugin Creation (builder-plugin):
-
-- EN: create plugin, plugin, plugin validation, plugin structure, marketplace, new plugin
-- KO: 플러그인생성, 플러그인, 플러그인검증, 플러그인구조, 마켓플레이스, 새플러그인
-- JA: プラグイン作成, プラグイン, プラグイン検証, プラグイン構造, マーケットプレイス
-- ZH: 创建插件, 插件, 插件验证, 插件结构, 市场
-
-WHY: Keyword-based routing ensures consistent agent selection regardless of request language.
-
-#### Cross-Lingual Thought (XLT) Protocol
-
-[HARD] When processing non-English user requests:
-
-Step 1 - Internal Translation:
-
-- Internally identify English equivalents of user intent keywords
-- Example: "백엔드 API 설계해줘" → Internal mapping: "backend API design"
-
-Step 2 - Agent Selection:
-
-- Match translated keywords against agent trigger patterns
-- Select appropriate agent based on keyword matching
-
-Step 3 - Delegation:
-
-- Invoke selected agent with original user request (preserving user's language)
-- Agent responds in user's conversation_language
-
-WHY: XLT processing bridges the semantic gap between user's language and English-based agent descriptions.
+WHY: Agent YAML files are the Single Source of Truth for trigger keywords. Task tool reads these descriptions at runtime for keyword matching.
 
 #### Mandatory Delegation Enforcement
 
@@ -288,78 +120,6 @@ Enforcement Rule:
 - Direct implementation by Alfred is PROHIBITED
 
 WHY: Direct implementation bypasses specialized expertise and quality controls.
-
-#### Dynamic Skill Loading Triggers
-
-[HARD] When user mentions specific technologies, automatically load corresponding skills:
-
-Technology-to-Skill Mapping:
-
-Python Technologies:
-
-- Keywords: Python, FastAPI, Django, Flask, pytest, pip, virtualenv
-- Korean: 파이썬, FastAPI, 장고, 플라스크
-- Japanese: パイソン, FastAPI, Django
-- Chinese: Python, FastAPI, Django
-- Skill: moai-lang-python
-
-TypeScript/JavaScript Technologies:
-
-- Keywords: TypeScript, JavaScript, React, Next.js, Vue, Node.js, npm, Express
-- Korean: 타입스크립트, 자바스크립트, 리액트, 넥스트, 뷰, 노드
-- Japanese: TypeScript, JavaScript, リアクト, ビュー, ノード
-- Chinese: TypeScript, JavaScript, React, Vue, Node
-- Skill: moai-lang-typescript, moai-lang-javascript
-
-Go Technologies:
-
-- Keywords: Go, Golang, Gin, Echo, Fiber
-- Korean: 고, 고랭, Gin
-- Japanese: Go, Golang, Gin
-- Chinese: Go, Golang, Gin
-- Skill: moai-lang-go
-
-Rust Technologies:
-
-- Keywords: Rust, Axum, Tokio, Cargo
-- Korean: 러스트, Axum, Tokio
-- Japanese: Rust, Axum, Tokio
-- Chinese: Rust, Axum, Tokio
-- Skill: moai-lang-rust
-
-Java/Kotlin Technologies:
-
-- Keywords: Java, Spring Boot, Kotlin, Gradle, Maven
-- Korean: 자바, 스프링부트, 코틀린
-- Japanese: Java, Spring Boot, Kotlin
-- Chinese: Java, Spring Boot, Kotlin
-- Skill: moai-lang-java, moai-lang-kotlin
-
-Database Technologies:
-
-- Keywords: PostgreSQL, MongoDB, Redis, MySQL, SQLite
-- Korean: PostgreSQL, MongoDB, Redis, MySQL
-- Japanese: PostgreSQL, MongoDB, Redis
-- Chinese: PostgreSQL, MongoDB, Redis
-- Skill: moai-domain-database
-
-Frontend Frameworks:
-
-- Keywords: React, Vue, Next.js, Nuxt, Tailwind, CSS
-- Korean: 리액트, 뷰, 넥스트, 테일윈드
-- Japanese: リアクト, ビュー, Next.js, Tailwind
-- Chinese: React, Vue, Next.js, Tailwind
-- Skill: moai-domain-frontend
-
-AST-Grep Technologies:
-
-- Keywords: ast-grep, sg, structural search, codemod, refactor pattern, AST search
-- Korean: AST검색, 구조적검색, 코드모드, 리팩토링패턴, AST그렙
-- Japanese: AST検索, 構造検索, コードモード, リファクタリングパターン
-- Chinese: AST搜索, 结构搜索, 代码模式, 重构模式
-- Skill: moai-tool-ast-grep
-
-WHY: Automatic skill loading ensures relevant framework knowledge is available without manual invocation.
 
 ---
 
@@ -1066,7 +826,7 @@ XML tags are reserved for internal agent-to-agent data transfer only:
 
 ---
 
-Version: 9.1.0 (Agent Ecosystem Consolidation)
+Version: 9.2.0 (Single Source of Truth Consolidation)
 Last Updated: 2026-01-10
 Core Rule: Alfred is an orchestrator; direct implementation is prohibited
 Language: Dynamic setting (language.conversation_language)
@@ -1074,19 +834,22 @@ Language: Dynamic setting (language.conversation_language)
 Critical: Alfred must delegate all tasks to specialized agents
 Required: All tasks use "Use the [subagent] subagent to..." format for specialized agent delegation
 
+Changes from 9.1.0:
+
+- Removed: Intent-to-Agent Mapping section (~145 lines) - Agent YAML is Single Source of Truth
+- Removed: Dynamic Skill Loading Triggers section (~70 lines) - Skill YAML is Single Source of Truth
+- Simplified: Multilingual Agent Routing now references .claude/agents/moai/\*.md
+- Optimized: Reduced from 1100 lines to ~860 lines (~22% reduction)
+
 Changes from 9.0.0:
 
 - Removed: Non-existent agents (expert-database, expert-uiux, ai-nano-banana)
 - Merged: Database keywords into expert-backend, UI/UX keywords into expert-frontend
 - Fixed: Agent chaining patterns to use existing agents only
-- Fixed: SPEC Execution Agent Chain (spec-analyzer→manager-spec, architect-designer→manager-strategy, tester-validator→manager-quality, docs-generator→manager-docs)
-- Fixed: Error recovery section (removed system-admin, integration-specialist references)
-- Fixed: Agent selection decision tree (general-purpose→manager-strategy)
-- Added: Available Agents (20) quick reference section with categorization
-- Added: moai:alfred to Type B utility commands and core commands
-- Renamed: moai:all-is-well → moai:alfred for consistency
-- Optimized: Reduced ~40 lines by removing non-existent agent definitions
-- Verified: All 20 agents have physical files in .claude/agents/moai/
+- Fixed: SPEC Execution Agent Chain
+- Fixed: Error recovery section, Agent selection decision tree
+- Added: Available Agents (20) quick reference section
+- Renamed: moai:all-is-well → moai:alfred
 
 Changes from 8.5.0:
 
