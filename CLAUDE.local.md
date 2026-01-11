@@ -36,6 +36,13 @@ src/moai_adk/templates/.moai/      → .moai/
 src/moai_adk/templates/CLAUDE.md   → ./CLAUDE.md
 ```
 
+### Protected Directories (Never Delete During Sync)
+```bash
+# CRITICAL: These directories contain user data and must NEVER be deleted
+.moai/project/    # Project documentation (product.md, structure.md, tech.md)
+.moai/specs/      # SPEC documents (active development files)
+```
+
 ### Local-Only Files (Never Sync)
 ```
 .claude/commands/moai/99-release.md  # Local release command
@@ -44,6 +51,8 @@ CLAUDE.local.md                      # This file
 .moai/cache/                         # Cache
 .moai/logs/                          # Logs
 .moai/rollbacks/                     # Rollback data
+.moai/project/                       # Project docs (protected from deletion)
+.moai/specs/                         # SPEC documents (protected from deletion)
 ```
 
 ### Template-Only Files (Distribution)
@@ -96,8 +105,14 @@ def calculate():  # Calculate score
 ### Sync
 ```bash
 # Sync from template to local
-rsync -avz src/moai_adk/templates/.claude/ .claude/
-rsync -avz src/moai_adk/templates/.moai/ .moai/
+# IMPORTANT: --exclude prevents deletion of protected directories
+rsync -avz --delete src/moai_adk/templates/.claude/ .claude/
+rsync -avz --delete --exclude='project/' --exclude='specs/' src/moai_adk/templates/.moai/ .moai/
+cp src/moai_adk/templates/CLAUDE.md ./CLAUDE.md
+
+# Alternative: One-liner for all sync (with protection)
+rsync -avz --delete src/moai_adk/templates/.claude/ .claude/ && \
+rsync -avz --delete --exclude='project/' --exclude='specs/' src/moai_adk/templates/.moai/ .moai/ && \
 cp src/moai_adk/templates/CLAUDE.md ./CLAUDE.md
 ```
 
@@ -158,6 +173,10 @@ MoAI-ADK/
 - Template changes trigger auto-sync via hooks
 - Local config is never synced to package (user-specific)
 - Output styles allow visual emphasis emoji (🤖 R2-D2 ★) per CLAUDE.md Documentation Standards
+- **CRITICAL**: `.moai/project/` and `.moai/specs/` are protected from deletion during sync
+  - These directories contain user-generated project documentation and active SPEC files
+  - Always use `--exclude='project/' --exclude='specs/'` when syncing `.moai/`
+  - If accidentally deleted, restore with: `git checkout <commit-hash> -- .moai/project/ .moai/specs/`
 
 ---
 
@@ -296,5 +315,5 @@ MoAI-ADK uses YAML for configuration:
 ---
 
 **Status**: ✅ Active (Local Development)
-**Version**: 2.2.0 (Config YAML, Output Styles, Directory Structure Update)
-**Last Updated**: 2025-12-04
+**Version**: 2.3.0 (Protected Directories - .moai/project/ and .moai/specs/)
+**Last Updated**: 2026-01-12
