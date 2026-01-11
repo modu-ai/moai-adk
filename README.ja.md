@@ -65,6 +65,14 @@ moai glm YOUR_API_KEY
 
 ## 1. 30秒インストール
 
+### 🚀 方法1: クイックインストール (推奨)
+
+```bash
+curl -LsSf https://moai-adk.github.io/MoAI-ADK/install.sh | sh
+```
+
+### 🔧 方法2: 手動インストール
+
 ```bash
 # Step 1: uv インストール (macOS/Linux)
 curl -LsSf https://astral.sh/uv/install.sh | sh

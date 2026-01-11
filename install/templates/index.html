@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MoAI-ADK Installer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .logo {
+            font-size: 64px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .tagline {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 16px;
+        }
+
+        .install-box {
+            background: #f7f7f7;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .install-box h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin-bottom: 10px;
+        }
+
+        .copy-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .copy-btn:hover {
+            background: #5568d3;
+        }
+
+        .copy-btn.copied {
+            background: #10b981;
+        }
+
+        .requirements {
+            margin-bottom: 30px;
+        }
+
+        .requirements h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .requirement-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        .checkmark {
+            color: #10b981;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        .links {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .links a {
+            color: #667eea;
+            text-decoration: none;
+            margin: 0 15px;
+            transition: color 0.3s;
+        }
+
+        .links a:hover {
+            color: #764ba2;
+        }
+
+        .version {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🗿</div>
+        <h1>MoAI-ADK</h1>
+        <p class="tagline">Agentic AI Development Kit</p>
+
+        <div class="install-box">
+            <h3>🚀 Quick Install (macOS & Linux)</h3>
+            <div class="code-block" id="install-cmd">curl -LsSf https://moai-adk.github.io/MoAI-ADK/install.sh | sh</div>
+            <button class="copy-btn" onclick="copyToClipboard('install-cmd', this)">📋 Copy</button>
+        </div>
+
+        <div class="install-box">
+            <h3>🪟 Windows Install</h3>
+            <div class="code-block" id="windows-cmd">irm https://moai-adk.github.io/MoAI-ADK/install.ps1 | iex</div>
+            <button class="copy-btn" onclick="copyToClipboard('windows-cmd', this)">📋 Copy</button>
+        </div>
+
+        <div class="requirements">
+            <h3>📋 Requirements</h3>
+            <div class="requirement-item">
+                <span class="checkmark">✓</span>
+                <span>macOS 10.15+ / Linux (Ubuntu 20.04+, Debian 11+)</span>
+            </div>
+            <div class="requirement-item">
+                <span class="checkmark">✓</span>
+                <span>UV package manager (auto-installed)</span>
+            </div>
+            <div class="requirement-item">
+                <span class="checkmark">✓</span>
+                <span>Python 3.11+ (auto-managed by UV)</span>
+            </div>
+        </div>
+
+        <div class="links">
+            <a href="https://github.com/goosso/MoAI-ADK" target="_blank">📚 Documentation</a>
+            <a href="https://github.com/goosso/MoAI-ADK/issues" target="_blank">🐛 Report Issues</a>
+            <a href="https://github.com/goosso/MoAI-ADK" target="_blank">⭐ GitHub</a>
+        </div>
+
+        <p class="version">Version 0.42.3</p>
+    </div>
+
+    <script>
+        function copyToClipboard(elementId, button) {
+            const text = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(text).then(function() {
+                const originalText = button.innerText;
+                button.innerText = '✅ Copied!';
+                button.classList.add('copied');
+                setTimeout(function() {
+                    button.innerText = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            }, function(err) {
+                button.innerText = '❌ Failed';
+                setTimeout(function() {
+                    button.innerText = '📋 Copy';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>

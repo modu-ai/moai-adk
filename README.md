@@ -65,6 +65,14 @@ moai glm YOUR_API_KEY
 
 ## 1. 30-Second Installation
 
+### 🚀 Method 1: Quick Install (Recommended)
+
+```bash
+curl -LsSf https://moai-adk.github.io/MoAI-ADK/install.sh | sh
+```
+
+### 🔧 Method 2: Manual Install
+
 ```bash
 # Step 1: Install uv (macOS/Linux)
 curl -LsSf https://astral.sh/uv/install.sh | sh
