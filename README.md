@@ -22,12 +22,12 @@ MoAI-ADK partners with **z.ai GLM 4.7** to provide developers with an economical
 
 ### 🚀 GLM 4.7 Special Benefits
 
-| Benefit | Description |
-|--------|-------------|
-| **💰 70% Cost Savings** | 1/7 the price of Claude with equivalent performance |
-| **⚡ Fast Response Speed** | Low-latency responses with optimized infrastructure |
-| **🔄 Compatibility** | Fully compatible with Claude Code, no code modification needed |
-| **📈 Unlimited Usage** | Use freely without daily/weekly token limits |
+| Benefit                    | Description                                                    |
+| -------------------------- | -------------------------------------------------------------- |
+| **💰 70% Cost Savings**    | 1/7 the price of Claude with equivalent performance            |
+| **⚡ Fast Response Speed** | Low-latency responses with optimized infrastructure            |
+| **🔄 Compatibility**       | Fully compatible with Claude Code, no code modification needed |
+| **📈 Unlimited Usage**     | Use freely without daily/weekly token limits                   |
 
 ### 🎁 Sign-Up Special Discount
 
@@ -64,7 +64,6 @@ moai glm YOUR_API_KEY
 ---
 
 > **📚 For detailed information, see the official online documentation:** [https://adk.mo.ai.kr](https://adk.mo.ai.kr)
->
 
 ## 1. 30-Second Installation
 
@@ -327,15 +326,15 @@ moai update --manual
 
 **Automatically Preserved Items**:
 
-| Item | Description |
-|------|-------------|
-| **User Settings** | `.claude/settings.local.json` (MCP, GLM settings) |
-| **Custom Agents** | User-created agents not in template |
-| **Custom Commands** | User-defined slash commands |
-| **Custom Skills** | User-defined skills |
-| **Custom Hooks** | User-defined hook scripts |
-| **SPEC Documents** | Entire `.moai/specs/` folder |
-| **Reports** | Entire `.moai/reports/` folder |
+| Item                | Description                                       |
+| ------------------- | ------------------------------------------------- |
+| **User Settings**   | `.claude/settings.local.json` (MCP, GLM settings) |
+| **Custom Agents**   | User-created agents not in template               |
+| **Custom Commands** | User-defined slash commands                       |
+| **Custom Skills**   | User-defined skills                               |
+| **Custom Hooks**    | User-defined hook scripts                         |
+| **SPEC Documents**  | Entire `.moai/specs/` folder                      |
+| **Reports**         | Entire `.moai/reports/` folder                    |
 
 > 💡 **Update Tip**: You can change language, API key, and Git settings anytime with `moai update -c`.
 > It's recommended to create your commands, agents, skills, and hooks in folders other than moai.
@@ -352,11 +351,11 @@ For new or existing projects, you can automatically generate **project documenta
 
 ### 3 Generated Files
 
-| File | Purpose | Key Content |
-|------|---------|-------------|
-| `.moai/project/product.md` | **Product Overview** | Project name/description, target users, core features, use cases |
-| `.moai/project/structure.md` | **Structure Analysis** | Directory tree, main folder purposes, core file locations, module composition |
-| `.moai/project/tech.md` | **Tech Stack** | Technologies used, framework selection reasons, dev environment, build/deployment settings |
+| File                         | Purpose                | Key Content                                                                                |
+| ---------------------------- | ---------------------- | ------------------------------------------------------------------------------------------ |
+| `.moai/project/product.md`   | **Product Overview**   | Project name/description, target users, core features, use cases                           |
+| `.moai/project/structure.md` | **Structure Analysis** | Directory tree, main folder purposes, core file locations, module composition              |
+| `.moai/project/tech.md`      | **Tech Stack**         | Technologies used, framework selection reasons, dev environment, build/deployment settings |
 
 ### Why Do You Need This?
 
@@ -583,12 +582,12 @@ Linter
 
 **Fix Levels**:
 
-| Level | Description | Approval | Example |
-|-------|-------------|----------|---------|
-| 1 | Immediate fix | Not needed | import sorting, whitespace |
-| 2 | Safe fix | Log only | variable names, type addition |
-| 3 | Approval needed | Needed | logic changes, API modification |
-| 4 | Manual needed | Impossible | security, architecture |
+| Level | Description     | Approval   | Example                         |
+| ----- | --------------- | ---------- | ------------------------------- |
+| 1     | Immediate fix   | Not needed | import sorting, whitespace      |
+| 2     | Safe fix        | Log only   | variable names, type addition   |
+| 3     | Approval needed | Needed     | logic changes, API modification |
+| 4     | Manual needed   | Impossible | security, architecture          |
 
 **Options**:
 
@@ -700,8 +699,6 @@ Safely cancels running autonomous loop and saves all progress state as snapshot.
   모든 작업이 성공적으로 완료되었습니다! 🎉
 ```
 
-
-
 ---
 
 ## 4. Mr.Alfred and Sub-Agents
@@ -721,53 +718,53 @@ Safely cancels running autonomous loop and saves all progress state as snapshot.
 
 Alfred automatically recognizes 4 language requests and invokes the correct agent:
 
-| Request Language | Example | Agent Invoked |
-|------------------|---------|---------------|
-| English | "Design backend API" | expert-backend |
-| Korean | "백엔드 API 설계해줘" | expert-backend |
-| Japanese | "バックエンドAPIを設計して" | expert-backend |
-| Chinese | "设计后端API" | expert-backend |
+| Request Language | Example                     | Agent Invoked  |
+| ---------------- | --------------------------- | -------------- |
+| English          | "Design backend API"        | expert-backend |
+| Korean           | "백엔드 API 설계해줘"       | expert-backend |
+| Japanese         | "バックエンドAPIを設計して" | expert-backend |
+| Chinese          | "设计后端API"               | expert-backend |
 
 ---
 
 ### 🔧 Tier 1: Domain Experts (8)
 
-| Agent | Expertise | Usage Example |
-|-------|-----------|---------------|
-| **expert-backend** | FastAPI, Django, DB design | API design, query optimization |
-| **expert-frontend** | React, Vue, Next.js | UI components, state management |
-| **expert-security** | Security analysis, OWASP | Security audit, vulnerability analysis |
-| **expert-devops** | Docker, K8s, CI/CD | Deployment automation, infrastructure |
-| **expert-debug** | Bug analysis, performance | Problem diagnosis, bottleneck resolution |
-| **expert-performance** | Profiling, optimization | Response time improvement |
-| **expert-refactoring** | Code refactoring, AST-Grep | Large-scale code transformation |
-| **expert-testing** | Test strategy, E2E | Test planning, coverage |
+| Agent                  | Expertise                  | Usage Example                            |
+| ---------------------- | -------------------------- | ---------------------------------------- |
+| **expert-backend**     | FastAPI, Django, DB design | API design, query optimization           |
+| **expert-frontend**    | React, Vue, Next.js        | UI components, state management          |
+| **expert-security**    | Security analysis, OWASP   | Security audit, vulnerability analysis   |
+| **expert-devops**      | Docker, K8s, CI/CD         | Deployment automation, infrastructure    |
+| **expert-debug**       | Bug analysis, performance  | Problem diagnosis, bottleneck resolution |
+| **expert-performance** | Profiling, optimization    | Response time improvement                |
+| **expert-refactoring** | Code refactoring, AST-Grep | Large-scale code transformation          |
+| **expert-testing**     | Test strategy, E2E         | Test planning, coverage                  |
 
 ---
 
 ### 🎯 Tier 2: Workflow Managers (8)
 
-| Agent | Role | Auto Invocation Timing |
-|-------|------|----------------------|
-| **manager-spec** | SPEC writing (EARS) | `/moai:1-plan` |
-| **manager-tdd** | TDD auto execution | `/moai:2-run` |
-| **manager-docs** | Documentation auto generation | `/moai:3-sync` |
-| **manager-quality** | TRUST 5 verification | After implementation completion |
-| **manager-strategy** | Execution strategy establishment | Complex planning |
-| **manager-project** | Project initialization | `/moai:0-project` |
-| **manager-git** | Git workflow | Branch/PR management |
-| **manager-claude-code** | Claude Code integration | Settings optimization |
+| Agent                   | Role                             | Auto Invocation Timing          |
+| ----------------------- | -------------------------------- | ------------------------------- |
+| **manager-spec**        | SPEC writing (EARS)              | `/moai:1-plan`                  |
+| **manager-tdd**         | TDD auto execution               | `/moai:2-run`                   |
+| **manager-docs**        | Documentation auto generation    | `/moai:3-sync`                  |
+| **manager-quality**     | TRUST 5 verification             | After implementation completion |
+| **manager-strategy**    | Execution strategy establishment | Complex planning                |
+| **manager-project**     | Project initialization           | `/moai:0-project`               |
+| **manager-git**         | Git workflow                     | Branch/PR management            |
+| **manager-claude-code** | Claude Code integration          | Settings optimization           |
 
 ---
 
 ### 🏗️ Tier 3: Claude Code Builder (4)
 
-| Agent | Role | Usage Example |
-|-------|------|--------------|
-| **builder-agent** | Create new agent | Organization specialist agent |
-| **builder-skill** | Create new skill | Team-specific skill module |
-| **builder-command** | Create new command | Custom workflow |
-| **builder-plugin** | Create plugin | Distribution plugin |
+| Agent               | Role               | Usage Example                 |
+| ------------------- | ------------------ | ----------------------------- |
+| **builder-agent**   | Create new agent   | Organization specialist agent |
+| **builder-skill**   | Create new skill   | Team-specific skill module    |
+| **builder-command** | Create new command | Custom workflow               |
+| **builder-plugin**  | Create plugin      | Distribution plugin           |
 
 ---
 
@@ -787,12 +784,12 @@ Alfred automatically recognizes 4 language requests and invokes the correct agen
 
 ### Frequently Used Skill Combinations
 
-| Purpose | Skill Combination |
-|---------|-------------------|
-| **Backend API** | `moai-lang-python` + `moai-domain-backend` + `moai-platform-supabase` |
-| **Frontend UI** | `moai-lang-typescript` + `moai-domain-frontend` + `moai-library-shadcn` |
-| **Documentation** | `moai-library-nextra` + `moai-workflow-docs` + `moai-library-mermaid` |
-| **Testing** | `moai-lang-python` + `moai-workflow-testing` + `moai-foundation-quality` |
+| Purpose           | Skill Combination                                                        |
+| ----------------- | ------------------------------------------------------------------------ |
+| **Backend API**   | `moai-lang-python` + `moai-domain-backend` + `moai-platform-supabase`    |
+| **Frontend UI**   | `moai-lang-typescript` + `moai-domain-frontend` + `moai-library-shadcn`  |
+| **Documentation** | `moai-library-nextra` + `moai-workflow-docs` + `moai-library-mermaid`    |
+| **Testing**       | `moai-lang-python` + `moai-workflow-testing` + `moai-foundation-quality` |
 
 ### Skill Usage
 
@@ -887,12 +884,12 @@ graph TD
 
 **AST-Grep** analyzes **code structure** not text:
 
-| Feature | Description | Example |
-|---------|-------------|---------|
-| **Structural Search** | AST pattern matching | Find unparameterized SQL queries |
-| **Security Scan** | Auto vulnerability detection | SQL Injection, XSS, hardcoded secrets |
-| **Pattern Refactoring** | Safe code transformation | Bulk variable rename, function extraction |
-| **Multi-language Support** | 40+ languages | Python, TypeScript, Go, Rust... |
+| Feature                    | Description                  | Example                                   |
+| -------------------------- | ---------------------------- | ----------------------------------------- |
+| **Structural Search**      | AST pattern matching         | Find unparameterized SQL queries          |
+| **Security Scan**          | Auto vulnerability detection | SQL Injection, XSS, hardcoded secrets     |
+| **Pattern Refactoring**    | Safe code transformation     | Bulk variable rename, function extraction |
+| **Multi-language Support** | 40+ languages                | Python, TypeScript, Go, Rust...           |
 
 ### Auto Inspection Flow
 
@@ -1045,28 +1042,28 @@ moai-wt clean --merged-only
 
 ### ✨ Worktree Benefits
 
-| Benefit | Description |
-|---------|-------------|
-| **Complete Isolation** | Each SPEC has independent Git state, no file conflicts |
-| **LLM Independence** | Separate LLM settings per Worktree |
+| Benefit                | Description                                              |
+| ---------------------- | -------------------------------------------------------- |
+| **Complete Isolation** | Each SPEC has independent Git state, no file conflicts   |
+| **LLM Independence**   | Separate LLM settings per Worktree                       |
 | **Unlimited Parallel** | Unlimited SPEC parallel development without dependencies |
-| **Safe Merge** | Only completed SPECs sequentially merge to main |
+| **Safe Merge**         | Only completed SPECs sequentially merge to main          |
 
 ---
 
 ### 📊 Worktree Commands
 
-| Command | Description | Usage Example |
-|---------|-------------|---------------|
-| `moai-wt new SPEC-ID` | Create new Worktree | `moai-wt new SPEC-AUTH-001` |
-| `moai-wt go SPEC-ID` | Enter Worktree (open new shell) | `moai-wt go SPEC-AUTH-001` |
-| `moai-wt list` | List Worktrees | `moai-wt list` |
-| `moai-wt remove SPEC-ID` | Remove Worktree | `moai-wt remove SPEC-AUTH-001` |
-| `moai-wt status` | Check Worktree status and registry | `moai-wt status` |
-| `moai-wt sync [SPEC-ID]` | Synchronize Worktree | `moai-wt sync --all` |
-| `moai-wt clean` | Clean merged Worktrees | `moai-wt clean --merged-only` |
-| `moai-wt recover` | Recover registry from disk | `moai-wt recover` |
-| `moai-wt config` | Check Worktree settings | `moai-wt config root` |
+| Command                  | Description                        | Usage Example                  |
+| ------------------------ | ---------------------------------- | ------------------------------ |
+| `moai-wt new SPEC-ID`    | Create new Worktree                | `moai-wt new SPEC-AUTH-001`    |
+| `moai-wt go SPEC-ID`     | Enter Worktree (open new shell)    | `moai-wt go SPEC-AUTH-001`     |
+| `moai-wt list`           | List Worktrees                     | `moai-wt list`                 |
+| `moai-wt remove SPEC-ID` | Remove Worktree                    | `moai-wt remove SPEC-AUTH-001` |
+| `moai-wt status`         | Check Worktree status and registry | `moai-wt status`               |
+| `moai-wt sync [SPEC-ID]` | Synchronize Worktree               | `moai-wt sync --all`           |
+| `moai-wt clean`          | Clean merged Worktrees             | `moai-wt clean --merged-only`  |
+| `moai-wt recover`        | Recover registry from disk         | `moai-wt recover`              |
+| `moai-wt config`         | Check Worktree settings            | `moai-wt config root`          |
 
 ---
 
@@ -1076,12 +1073,12 @@ moai-wt clean --merged-only
 
 ### Why MoAI Rank?
 
-| Feature | Description |
-|---------|-------------|
-| **📊 Token Tracking** | Automatic AI usage tracking per session |
-| **🏆 Global Leaderboard** | Daily/Weekly/Monthly/All-time rankings |
+| Feature                      | Description                               |
+| ---------------------------- | ----------------------------------------- |
+| **📊 Token Tracking**        | Automatic AI usage tracking per session   |
+| **🏆 Global Leaderboard**    | Daily/Weekly/Monthly/All-time rankings    |
 | **🎭 Coding Style Analysis** | Discover your unique development patterns |
-| **📈 Dashboard** | Visualized statistics and insights |
+| **📈 Dashboard**             | Visualized statistics and insights        |
 
 ---
 
@@ -1141,7 +1138,32 @@ Waiting for authorization (timeout: 5 minutes)...
 
 ---
 
-### Step 2: Check Your Rank
+### Step 2: Sync Session Data
+
+Sync your existing Claude Code session data to MoAI Rank.
+
+```bash
+❯ moai rank sync
+
+Syncing 2577 session(s) to MoAI Rank
+Phase 1: Parsing transcripts (parallel: 20 workers)
+
+  Parsing transcripts ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% (2577/2577)
+
+Phase 2: Submitting 1873 session(s) (batch mode)
+Batch size: 100 | Batches: 19
+
+  Submitting batches ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% (19/19)
+
+Sync Complete
+  ✓ Submitted: 1169
+  ○ Skipped:   704 (no usage or duplicate)
+  ✗ Failed:    0
+```
+
+---
+
+### Step 3: Check Your Rank
 
 ```bash
 ❯ moai rank status
@@ -1187,13 +1209,13 @@ On the dashboard:
 
 ### Step 4: Collected Metrics
 
-| Metric | Description |
-|--------|-------------|
-| **Token Usage** | Input/output tokens, cache tokens |
-| **Tool Usage** | Read, Edit, Bash usage counts |
-| **Model Usage** | Opus, Sonnet, Haiku breakdown |
+| Metric           | Description                         |
+| ---------------- | ----------------------------------- |
+| **Token Usage**  | Input/output tokens, cache tokens   |
+| **Tool Usage**   | Read, Edit, Bash usage counts       |
+| **Model Usage**  | Opus, Sonnet, Haiku breakdown       |
 | **Code Metrics** | Added/deleted lines, modified files |
-| **Session Info** | Duration, turn count, timestamps |
+| **Session Info** | Duration, turn count, timestamps    |
 
 ### 🔒 Privacy Protection
 
@@ -1219,13 +1241,13 @@ moai rank list-excluded
 
 ### Q1: Is SPEC Always Required?
 
-| Condition | SPEC Required |
-|-----------|---------------|
-| 1-2 files modified | Optional (can skip) |
-| 3-5 files modified | Recommended |
-| 10+ files modified | Required |
-| New feature addition | Recommended |
-| Bug fix | Optional |
+| Condition            | SPEC Required       |
+| -------------------- | ------------------- |
+| 1-2 files modified   | Optional (can skip) |
+| 3-5 files modified   | Recommended         |
+| 10+ files modified   | Required            |
+| New feature addition | Recommended         |
+| Bug fix              | Optional            |
 
 ### Q2: Is MCP Server Installation Required?
 
