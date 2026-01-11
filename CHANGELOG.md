@@ -671,7 +671,7 @@ uv tool install moai-adk
 pip install --upgrade moai-adk
 
 # Verify installation
-moai-adk --version
+moai --version
 # Should show: 0.40.0
 ```
 
@@ -774,7 +774,7 @@ uv tool install moai-adk
 pip install --upgrade moai-adk
 
 # 설치 확인
-moai-adk --version
+moai --version
 # 출력: 0.40.0
 ```
 
@@ -831,6 +831,7 @@ Patch release renaming the worktree CLI command for better user experience and m
 - **Migration**: Reinstall package with `pip install --upgrade moai-adk`
 
 All commands using the old name must be updated:
+
 ```bash
 # Old
 moai-workflow-worktree new SPEC-001
@@ -849,7 +850,7 @@ pip install --upgrade moai-adk
 uv pip install --upgrade moai-adk
 
 # Verify installation
-moai-adk --version  # Should show 0.36.2
+moai --version  # Should show 0.36.2
 moai-worktree --help  # Verify new CLI command works
 ```
 
@@ -906,6 +907,7 @@ moai-worktree --help  # Verify new CLI command works
 - **마이그레이션**: `pip install --upgrade moai-adk`로 패키지 재설치
 
 이전 이름을 사용하는 모든 명령어를 업데이트해야 합니다:
+
 ```bash
 # 이전
 moai-workflow-worktree new SPEC-001
@@ -924,7 +926,7 @@ pip install --upgrade moai-adk
 uv pip install --upgrade moai-adk
 
 # 설치 확인
-moai-adk --version  # 0.36.2 표시되어야 함
+moai --version  # 0.36.2 표시되어야 함
 moai-worktree --help  # 새 CLI 명령어 작동 확인
 ```
 

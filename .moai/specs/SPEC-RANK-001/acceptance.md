@@ -5,8 +5,9 @@
 ### TS-001: Token Collection Hook
 
 #### Scenario 1.1: Successful Session Submission
+
 ```gherkin
-Given a user has registered with moai-adk rank register
+Given a user has registered with moai rank register
 And the user is working in a MoAI project (contains .moai folder)
 When the Claude Code session ends
 Then the session hook should execute
@@ -17,8 +18,9 @@ And the session should appear in the user's dashboard
 ```
 
 #### Scenario 1.2: Non-MoAI Project Ignored
+
 ```gherkin
-Given a user has registered with moai-adk rank register
+Given a user has registered with moai rank register
 And the user is working in a non-MoAI project (no .moai folder)
 When the Claude Code session ends
 Then the session hook should NOT collect any data
@@ -26,6 +28,7 @@ And no API request should be made
 ```
 
 #### Scenario 1.3: Network Failure Retry
+
 ```gherkin
 Given a user has a valid session to submit
 And the network is temporarily unavailable
@@ -40,9 +43,10 @@ And when network is restored, queued sessions should be submitted
 ### TS-002: User Registration
 
 #### Scenario 2.1: Fresh Registration
+
 ```gherkin
 Given a user has NOT previously registered
-When the user runs "moai-adk rank register"
+When the user runs "moai rank register"
 Then the system should open a browser for GitHub OAuth
 And after successful authentication
 Then an API key should be generated (256-bit entropy)
@@ -51,9 +55,10 @@ And the user should see a confirmation message with profile link
 ```
 
 #### Scenario 2.2: Already Registered
+
 ```gherkin
 Given a user has previously registered
-When the user runs "moai-adk rank register"
+When the user runs "moai rank register"
 Then the system should display current registration status
 And offer option to re-authenticate or regenerate API key
 ```
@@ -63,6 +68,7 @@ And offer option to re-authenticate or regenerate API key
 ### TS-003: Leaderboard Display
 
 #### Scenario 3.1: Public Leaderboard View
+
 ```gherkin
 Given any user visits rank.mo.ai.kr
 When the page loads
@@ -73,6 +79,7 @@ And users with privacy_mode should show as "Anonymous"
 ```
 
 #### Scenario 3.2: Authenticated User Highlight
+
 ```gherkin
 Given an authenticated user visits the leaderboard
 When the page loads
@@ -81,6 +88,7 @@ And if not in current view, a "Jump to my rank" button should appear
 ```
 
 #### Scenario 3.3: Period Filtering
+
 ```gherkin
 Given a user is viewing the leaderboard
 When the user selects "weekly" filter
@@ -93,6 +101,7 @@ And scores should reflect only this week's activity
 ### TS-004: User Dashboard
 
 #### Scenario 4.1: Dashboard Overview
+
 ```gherkin
 Given an authenticated user visits /dashboard
 When the page loads
@@ -105,6 +114,7 @@ Then the user should see:
 ```
 
 #### Scenario 4.2: API Key Regeneration
+
 ```gherkin
 Given an authenticated user is on the dashboard
 When the user clicks "Regenerate API Key"
@@ -117,6 +127,7 @@ And after confirmation:
 ```
 
 #### Scenario 4.3: Privacy Mode Toggle
+
 ```gherkin
 Given an authenticated user is on the dashboard
 When the user enables privacy mode
@@ -130,6 +141,7 @@ And they should see their own rank (not publicly visible)
 ### TS-005: Composite Score Calculation
 
 #### Scenario 5.1: Score Formula Verification
+
 ```gherkin
 Given a user with:
   - Total tokens: 1,000,000
@@ -146,6 +158,7 @@ Then the score should be:
 ```
 
 #### Scenario 5.2: Daily Aggregation
+
 ```gherkin
 Given sessions are submitted throughout the day
 When midnight UTC occurs
@@ -158,8 +171,9 @@ And rankings should be updated based on new aggregates
 ### TS-006: CLI Status Commands
 
 #### Scenario 6.1: Rank Status
+
 ```gherkin
-Given a registered user runs "moai-adk rank status"
+Given a registered user runs "moai rank status"
 When the command executes
 Then the output should display:
   - Current rank: #X (top Y%)
@@ -169,8 +183,9 @@ Then the output should display:
 ```
 
 #### Scenario 6.2: CLI Leaderboard
+
 ```gherkin
-Given a registered user runs "moai-adk rank leaderboard --limit 10"
+Given a registered user runs "moai rank leaderboard --limit 10"
 When the command executes
 Then a formatted table should display:
   - Top 10 users with rank, username, score
@@ -182,6 +197,7 @@ Then a formatted table should display:
 ### TS-007: Security Scenarios
 
 #### Scenario 7.1: Invalid HMAC Signature
+
 ```gherkin
 Given an attacker attempts to submit session data
 With an invalid or missing HMAC signature
@@ -191,6 +207,7 @@ And the attempt should be logged in security audit log
 ```
 
 #### Scenario 7.2: Replay Attack Prevention
+
 ```gherkin
 Given an attacker captures a valid signed request
 And replays it after 5 minutes
@@ -200,6 +217,7 @@ And return 401 Unauthorized
 ```
 
 #### Scenario 7.3: Rate Limit Exceeded
+
 ```gherkin
 Given a user has submitted 100 sessions in the past hour
 When they attempt to submit another session
@@ -208,6 +226,7 @@ And include Retry-After header
 ```
 
 #### Scenario 7.4: API Key Compromise Response
+
 ```gherkin
 Given a user suspects their API key is compromised
 When they regenerate their API key from the dashboard
@@ -221,6 +240,7 @@ And the user should receive the new key for CLI configuration
 ### TS-008: Privacy Scenarios
 
 #### Scenario 8.1: No Code Content Collected
+
 ```gherkin
 Given the session hook analyzes .jsonl logs
 When extracting usage data
@@ -232,6 +252,7 @@ Then NO code content, prompts, or responses should be accessed
 ```
 
 #### Scenario 8.2: Project Path Anonymization
+
 ```gherkin
 Given a session is submitted with project path
 When the server processes it
@@ -245,6 +266,7 @@ And the original path should NEVER be logged or stored
 ## Checklist Summary
 
 ### Functional Requirements
+
 - [ ] FR-001: Token Collection Hook
 - [ ] FR-002: User Registration
 - [ ] FR-003: Leaderboard Display
@@ -253,12 +275,14 @@ And the original path should NEVER be logged or stored
 - [ ] FR-006: CLI Status Commands
 
 ### Non-Functional Requirements
+
 - [ ] NFR-001: Security (API key hash, HMAC, rate limiting)
 - [ ] NFR-002: Performance (< 2s page load, < 500ms API)
 - [ ] NFR-003: Privacy (no code collection, path hashing)
 - [ ] NFR-004: Availability (99.9% uptime, offline CLI)
 
 ### Security Checklist
+
 - [ ] API key 256-bit entropy
 - [ ] Local secure storage (Keychain/libsecret)
 - [ ] HMAC request signing

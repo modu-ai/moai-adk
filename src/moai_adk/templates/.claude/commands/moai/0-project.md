@@ -42,7 +42,7 @@ WHY: Documentation generation is separated from project initialization to allow 
 
 IMPACT: Users can generate accurate project documentation after codebase development.
 
-Note: Project configuration (language, service, pricing, git mode) is handled by `moai-adk init` CLI command.
+Note: Project configuration (language, service, pricing, git mode) is handled by `moai init` CLI command.
 
 ---
 
@@ -157,14 +157,12 @@ Use the manager-docs subagent to generate documentation with the following param
 Documentation Files:
 
 1. product.md:
-
    - Project name and description
    - Target audience
    - Core features and benefits
    - Use cases and examples
 
 2. structure.md:
-
    - Directory tree visualization
    - Purpose of each major directory
    - Key file locations
@@ -223,26 +221,33 @@ install the recommended LSP server:
 Installation Commands by Language:
 
 Python:
+
 - pyright: `npm install -g pyright` or `pip install pyright`
 - pylsp: `pip install python-lsp-server`
 
 TypeScript/JavaScript:
+
 - `npm install -g typescript typescript-language-server`
 
 Go:
+
 - `go install golang.org/x/tools/gopls@latest`
 
 Rust:
+
 - Via rustup: `rustup component add rust-analyzer`
 - Or standalone: Download from GitHub releases
 
 Ruby:
+
 - `gem install solargraph`
 
 PHP:
+
 - `npm install -g intelephense`
 
 C/C++:
+
 - macOS: `brew install llvm` (includes clangd)
 - Ubuntu: `apt install clangd`
 

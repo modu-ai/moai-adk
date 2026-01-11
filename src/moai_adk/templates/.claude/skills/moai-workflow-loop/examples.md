@@ -760,7 +760,7 @@ jobs:
       - name: Install MoAI-ADK
         run: |
           pip install moai-adk
-          moai-adk init
+          moai init
 
       - name: Run Ralph Loop
         run: |
@@ -800,7 +800,7 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install moai-adk
-          moai-adk init
+          moai init
 
       - name: Run ${{ matrix.check }} Check
         run: |
@@ -810,7 +810,7 @@ jobs:
                 --allowedTools "Read,Write,Edit"
               ;;
             ast-grep)
-              moai-adk ast-grep scan --security
+              moai ast-grep scan --security
               ;;
             tests)
               pytest tests/ -v
@@ -840,7 +840,7 @@ jobs:
 echo "Running Ralph pre-commit checks..."
 
 # Run LSP diagnostics
-moai-adk lsp diagnose --changed-files
+moai lsp diagnose --changed-files
 
 if [ $? -ne 0 ]; then
     echo "❌ LSP errors found. Run '/moai:fix' to resolve."
@@ -848,7 +848,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Run AST-grep security scan
-moai-adk ast-grep scan --security --changed-files
+moai ast-grep scan --security --changed-files
 
 if [ $? -ne 0 ]; then
     echo "❌ Security issues found. Review and fix."
@@ -875,7 +875,7 @@ RUN pip install moai-adk
 COPY . .
 
 # Initialize MoAI-ADK
-RUN moai-adk init
+RUN moai init
 
 # Run Ralph quality check
 RUN claude -p "/moai:loop --max-iterations 3" \
@@ -979,7 +979,7 @@ ralph:
 /moai:fix --severity warning
 
 # 4. Run security scan
-moai-adk ast-grep scan --security
+moai ast-grep scan --security
 
 # 5. Sync documentation
 /moai:3-sync
@@ -998,10 +998,10 @@ moai-adk ast-grep scan --security
 cat .moai/logs/lsp_diagnostic.log
 
 # Test LSP connection
-moai-adk lsp test-connection python
+moai lsp test-connection python
 
 # View diagnostics directly
-moai-adk lsp diagnose src/auth.py
+moai lsp diagnose src/auth.py
 ```
 
 **Common LSP Errors:**
