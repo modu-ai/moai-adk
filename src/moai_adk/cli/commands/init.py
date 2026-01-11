@@ -151,10 +151,12 @@ def init(
         custom_language = None
 
         # 3. Interactive vs Non-Interactive
-        # Default values for new settings
-        service_type = "claude_subscription"
-        pricing_plan = None
-        anthropic_api_key = None
+        # Default values for new settings (GLM-only simplified flow)
+        user_name = ""
+        service_type = "glm"  # Always GLM
+        pricing_plan = None  # Not used in GLM-only flow
+        glm_pricing_plan = "basic"  # Default GLM pricing plan
+        anthropic_api_key = None  # Not used in GLM-only flow
         glm_api_key = None
         git_mode = "manual"
         github_username = None
@@ -175,7 +177,7 @@ def init(
             # Interactive Mode
             print_welcome_message()
 
-            # Interactive prompt with 8-question flow
+            # Interactive prompt with simplified GLM-only flow
             answers = prompt_project_setup(
                 project_name=None if is_current_dir else path,
                 is_current_dir=is_current_dir,
@@ -183,18 +185,22 @@ def init(
                 initial_locale=locale,
             )
 
-            # Extract all answers
+            # Extract answers (GLM-only flow)
             locale = answers["locale"]
+            user_name = answers["user_name"]
             project_name = answers["project_name"]
-            service_type = answers["service_type"]
-            pricing_plan = answers["pricing_plan"]
-            anthropic_api_key = answers["anthropic_api_key"]
             glm_api_key = answers["glm_api_key"]
             git_mode = answers["git_mode"]
             github_username = answers["github_username"]
             git_commit_lang = answers["git_commit_lang"]
             code_comment_lang = answers["code_comment_lang"]
             doc_lang = answers["doc_lang"]
+
+            # GLM-only defaults (not prompted in simplified flow)
+            service_type = "glm"
+            glm_pricing_plan = "basic"
+            pricing_plan = None
+            anthropic_api_key = None
 
             # Map git_mode to mode for backward compatibility
             mode = "personal" if git_mode in ("personal", "team") else "personal"
@@ -323,8 +329,10 @@ def init(
                 project_path=project_path,
                 project_name=project_name,
                 locale=locale,
+                user_name=user_name,
                 service_type=service_type,
                 pricing_plan=pricing_plan,
+                glm_pricing_plan=glm_pricing_plan,
                 anthropic_api_key=anthropic_api_key,
                 glm_api_key=glm_api_key,
                 git_mode=git_mode,
@@ -428,8 +436,10 @@ def _save_additional_config(
     project_path: Path,
     project_name: str,
     locale: str,
+    user_name: str,
     service_type: str,
     pricing_plan: str | None,
+    glm_pricing_plan: str | None,
     anthropic_api_key: str | None,
     glm_api_key: str | None,
     git_mode: str,
@@ -444,8 +454,10 @@ def _save_additional_config(
         project_path: Project directory path
         project_name: Project name
         locale: Conversation language (ko, en, ja, zh)
+        user_name: User name for personalization (can be empty)
         service_type: Service type (claude_subscription, claude_api, glm, hybrid)
-        pricing_plan: Pricing plan
+        pricing_plan: Claude pricing plan (pro, max5, max20)
+        glm_pricing_plan: GLM pricing plan (basic, glm_pro, enterprise)
         anthropic_api_key: Anthropic API key (if provided)
         glm_api_key: GLM API key (if provided)
         git_mode: Git mode (manual, personal, team)
@@ -458,28 +470,37 @@ def _save_additional_config(
     # Ensure sections directory exists
     sections_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Save API keys to .env file
-    env_path = project_path / ".env"
-    env_lines = []
-    if env_path.exists():
-        env_lines = env_path.read_text().splitlines()
-
-    # Remove existing keys and add new ones
-    env_lines = [line for line in env_lines if not line.startswith(("ANTHROPIC_API_KEY=", "GLM_API_KEY="))]
-
+    # 1. Save API keys to global locations
+    # Anthropic key → ~/.moai/credentials.yaml
+    # GLM key → ~/.moai/.env.glm (new dotenv format)
     if anthropic_api_key:
-        env_lines.append(f"ANTHROPIC_API_KEY={anthropic_api_key}")
+        from moai_adk.core.credentials import save_credentials
+
+        save_credentials(
+            anthropic_api_key=anthropic_api_key,
+            merge=True,  # Preserve existing keys
+        )
+
     if glm_api_key:
-        env_lines.append(f"GLM_API_KEY={glm_api_key}")
-
-    if anthropic_api_key or glm_api_key:
-        env_path.write_text("\n".join(env_lines) + "\n")
-        # SECURITY: Set file permissions to owner-only (chmod 600)
-        # Prevents other users from reading API keys on shared systems
         import os
-        import stat
 
-        os.chmod(env_path, stat.S_IRUSR | stat.S_IWUSR)
+        from moai_adk.core.credentials import (
+            get_env_glm_path,
+            remove_glm_key_from_shell_config,
+            save_glm_key_to_env,
+        )
+
+        save_glm_key_to_env(glm_api_key)
+        console.print(f"[green]✓[/green] GLM API key saved to [cyan]{get_env_glm_path()}[/cyan]")
+
+        # Automatically remove GLM_API_KEY from shell config if present
+        if os.environ.get("GLM_API_KEY"):
+            results = remove_glm_key_from_shell_config()
+            modified = [name for name, mod in results.items() if mod]
+            if modified:
+                files_str = ", ~/.".join(modified)
+                console.print(f"[green]✓[/green] Removed GLM_API_KEY from: [cyan]~/.{files_str}[/cyan]")
+                console.print("[dim]Backup: .moai-backup | Run 'source ~/.zshrc' to apply[/dim]")
 
     # 2. Save service/pricing to pricing.yaml
     pricing_path = sections_dir / "pricing.yaml"
@@ -496,7 +517,9 @@ def _save_additional_config(
 
     pricing_data["service"]["type"] = service_type
     if pricing_plan:
-        pricing_data["service"]["pricing_plan"] = pricing_plan
+        pricing_data["service"]["claude_pricing_plan"] = pricing_plan
+    if glm_pricing_plan:
+        pricing_data["service"]["glm_pricing_plan"] = glm_pricing_plan
 
     with open(pricing_path, "w", encoding="utf-8") as f:
         yaml.safe_dump(
@@ -579,6 +602,30 @@ def _save_additional_config(
     with open(project_yaml_path, "w", encoding="utf-8") as f:
         yaml.safe_dump(
             project_data,
+            f,
+            default_flow_style=False,
+            allow_unicode=True,
+            sort_keys=False,
+        )
+
+    # 6. Update user.yaml with user name
+    user_yaml_path = sections_dir / "user.yaml"
+    if user_yaml_path.exists():
+        try:
+            user_data = yaml.safe_load(user_yaml_path.read_text()) or {}
+        except Exception:
+            user_data = {}
+    else:
+        user_data = {}
+
+    if "user" not in user_data:
+        user_data["user"] = {}
+
+    user_data["user"]["name"] = user_name
+
+    with open(user_yaml_path, "w", encoding="utf-8") as f:
+        yaml.safe_dump(
+            user_data,
             f,
             default_flow_style=False,
             allow_unicode=True,

@@ -30,6 +30,8 @@ class OAuthState:
     auth_code: Optional[str] = None
     api_key: Optional[str] = None  # Direct API key from new flow
     username: Optional[str] = None  # Username from callback
+    user_id: Optional[str] = None  # GitHub user ID from callback
+    created_at: Optional[str] = None  # Timestamp from callback
     error: Optional[str] = None
 
 
@@ -71,11 +73,15 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
             # Check for direct API key (new MoAI Rank flow)
             api_key = params.get("api_key", [""])[0]
             username = params.get("username", [""])[0]
+            user_id = params.get("user_id", [""])[0]
+            created_at = params.get("created_at", [""])[0]
 
             if api_key:
                 # New flow: API key received directly from server
                 self.oauth_state.api_key = api_key
                 self.oauth_state.username = username
+                self.oauth_state.user_id = user_id
+                self.oauth_state.created_at = created_at
                 self.oauth_state.callback_received = True
                 self._send_success_response()
 
@@ -288,8 +294,8 @@ class OAuthHandler:
                 credentials = RankCredentials(
                     api_key=self._oauth_state.api_key,
                     username=self._oauth_state.username or "unknown",
-                    user_id="",  # Not provided in direct flow
-                    created_at="",  # Not provided in direct flow
+                    user_id=self._oauth_state.user_id or "",
+                    created_at=self._oauth_state.created_at or "",
                 )
                 # Save credentials
                 RankConfig.save_credentials(credentials)
@@ -388,7 +394,8 @@ class OAuthHandler:
         """Clean up resources."""
         if self._server:
             try:
-                self._server.shutdown()
+                # Don't call shutdown() - it blocks waiting for serve_forever()
+                # which we don't use (we use handle_request() directly)
                 self._server.server_close()
             except Exception:
                 pass

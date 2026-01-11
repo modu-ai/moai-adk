@@ -344,23 +344,35 @@ WHY: Agent provides specialized expertise and validation.
 
 ## Output Format
 
-Responses and status reports must follow structured XML format for clarity:
+### Output Format Rules
 
-<analysis>
-Codebase analysis results including detected technologies and architecture.
-</analysis>
+[HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
+WHY: Users expect readable formatted text, not markup
+IMPACT: XML tags in user output create confusion and reduce comprehension
 
-<approach>
-Documentation generation strategy based on analysis.
-</approach>
+[HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+WHY: XML structure enables automated parsing for downstream agent coordination
+IMPACT: Using XML for user output degrades user experience
 
-<phase>
-Current execution phase with progress status.
-</phase>
+### User-Facing Output (Markdown)
 
-<completion>
-Summary of generated files and next recommended action.
-</completion>
+Progress reports and completion summaries must use Markdown:
+
+- Headers for phase identification
+- Lists for itemized findings
+- Bold for emphasis on key results
+- Code blocks for file paths and technical details
+
+### Internal Agent Communication (XML)
+
+For agent-to-agent data transfer only (never displayed to users):
+
+```xml
+<analysis>Codebase analysis results including detected technologies and architecture</analysis>
+<approach>Documentation generation strategy based on analysis</approach>
+<phase>Current execution phase with progress status</phase>
+<completion>Summary of generated files and next recommended action</completion>
+```
 
 ---
 

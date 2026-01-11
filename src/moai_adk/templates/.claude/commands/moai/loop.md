@@ -1,6 +1,6 @@
 ---
-description: "Start Ralph-style feedback loop for automated error correction"
-argument-hint: "[--max-iterations N] [--auto-fix]"
+description: "Agentic autonomous loop - Auto-fix until completion marker"
+argument-hint: "[--max N] [--auto] [--parallel] | --resume snapshot"
 type: utility
 allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit
 model: inherit
@@ -17,245 +17,280 @@ model: inherit
 
 ---
 
-# /moai:loop - Ralph Engine Feedback Loop
+# /moai:loop - Agentic Autonomous Loop
 
-Start an automated feedback loop that continuously checks for errors and guides fixes until all conditions are satisfied.
+## Core Principle: 완전 자율 반복 수정
+
+AI가 스스로 이슈를 찾고 수정하고 완료할 때까지 반복합니다.
+
+```
+START: 이슈 감지
+  ↓
+AI: 수정 → 검증 → 반복
+  ↓
+AI: 완료 마커 추가
+  ↓
+<promise>DONE</promise>
+```
 
 ## Command Purpose
 
-Implements the Ralph-style "continuous improvement" pattern:
+LSP 오류, 테스트 실패, 커버리지를 AI가 자율적으로 수정:
 
-1. Check current state (LSP errors, test failures, coverage)
-2. If issues exist, provide guidance to fix them
-3. After each fix, re-check conditions
-4. Repeat until all conditions are met or max iterations reached
+1. **병렬 진단** (LSP + AST-grep + Tests 동시 실행)
+2. **TODO 자동 생성**
+3. **자율 수정** (Level 1-3)
+4. **반복 검증**
+5. **완료 마커 감지**
 
 Arguments: $ARGUMENTS
 
-## Usage Examples
+## Quick Start
 
-Start basic feedback loop:
-
-```
+```bash
+# 기본 자율 루프
 /moai:loop
-```
 
-With iteration limit:
+# 최대 50회 반복
+/moai:loop --max 50
 
-```
-/moai:loop --max-iterations 5
-```
+# 병렬 진단 + 자동 수정
+/moai:loop --parallel --auto
 
-With auto-fix enabled (applies safe fixes automatically):
-
-```
-/moai:loop --auto-fix
+# 스냅샷 복구
+/moai:loop --resume latest
 ```
 
 ## Command Options
 
-- `--max-iterations N`: Override max iterations (default: 10 from ralph.yaml)
-- `--auto-fix`: Enable automatic application of safe fixes
-- `--errors-only`: Only check for errors, ignore warnings
-- `--include-coverage`: Include test coverage in completion conditions
+| 옵션 | 축약 | 설명 | 기본값 |
+|------|------|------|--------|
+| `--max N` | --max-iterations | 최대 반복 횟수 | 100 |
+| `--auto` | --auto-fix | 자동 수정 활성화 | Level 1 |
+| `--parallel` | - | 병렬 진단 실행 | 권장 |
+| `--errors` | --errors-only | 에러만 수정 | 전체 |
+| `--coverage` | --include-coverage | 커버리지 포함 | 85% |
+| `--resume ID` | --resume-from | 스냅샷 복구 | - |
 
-## Loop Behavior
+## Completion Promise (완료 마커)
 
-### Completion Conditions (from ralph.yaml)
+AI가 모든 작업을 완료하면 마커를 추가:
 
-The loop completes when ALL enabled conditions are met:
+```markdown
+## 루프 완료
 
-1. **zero_errors**: No LSP/compiler errors
-2. **zero_warnings**: No LSP warnings (optional, default: false)
-3. **tests_pass**: All tests pass
-4. **coverage_threshold**: Test coverage meets minimum (default: 85%)
-
-### Loop Iteration Cycle
-
-```
-ITERATION START
-  |
-  v
-CHECK CONDITIONS
-  |-- LSP Diagnostics (errors/warnings)
-  |-- Test Execution (pass/fail)
-  |-- Coverage Report (percentage)
-  |
-  v
-ALL MET? --YES--> COMPLETE
-  |
-  NO
-  |
-  v
-GENERATE GUIDANCE
-  |-- List specific issues
-  |-- Suggest fixes
-  |-- Prioritize by severity
-  |
-  v
-APPLY FIXES (manual or auto)
-  |
-  v
-INCREMENT ITERATION
-  |
-  v
-MAX REACHED? --YES--> STOP (with summary)
-  |
-  NO
-  |
-  v
-ITERATION START (repeat)
+7번의 반복으로 5개 에러, 3개 경고 해결. <promise>DONE</promise>
 ```
 
-## Integration with Hooks
+**마커 종류**:
+- `<promise>DONE</promise>` - 작업 완료
+- `<promise>COMPLETE</promise>` - 전체 완료
+- `<ralph:done />` - XML 형식
 
-When the loop is active, these hooks provide real-time feedback:
+마커 없으면 계속 반복합니다.
 
-### PostToolUse Hook (post_tool\_\_lsp_diagnostic.py)
+## Autonomous Loop Flow
 
-- Runs after every Write/Edit operation
-- Provides immediate LSP diagnostic feedback
-- Exit code 2 signals errors needing attention
+```
+START: /moai:loop
 
-### Stop Hook (stop\_\_loop_controller.py)
-
-- Runs after each Claude response
-- Checks completion conditions
-- Exit code 1 continues the loop
-- Exit code 0 completes the loop
-
-## Loop State Management
-
-State is persisted in `.moai/cache/.moai_loop_state.json`:
-
-```json
-{
-  "active": true,
-  "iteration": 3,
-  "max_iterations": 10,
-  "last_error_count": 2,
-  "last_warning_count": 5,
-  "files_modified": ["src/auth.py", "tests/test_auth.py"],
-  "start_time": 1704067200.0,
-  "completion_reason": null
-}
+PARALLEL 진단 (--parallel)
+  ├── LSP: 에러/경고
+  ├── AST-grep: 보안
+  ├── Tests: 테스트
+  └── Coverage: 커버리지
+  ↓
+통합 결과
+  ↓
+완료 마커 감지?
+  ├── YES → COMPLETE
+  ↓
+조건 충족?
+  ├── YES → "마커 추가 또는 계속?"
+  ↓
+TODO 생성 (즉시)
+  ↓
+수정 실행 (자율)
+  ├── Level 1: 즉시 수정 (import, formatting)
+  ├── Level 2: 안전 수정 (rename, type)
+  └── Level 3: 승인 필요 (logic, api)
+  ↓
+검증
+  ↓
+max 도달? → STOP
+  ↓
+반복
 ```
 
-## Auto-Fix Capabilities
+## Parallel Diagnostics (병렬 진단)
 
-When `--auto-fix` is enabled, safe fixes are applied automatically:
+```bash
+# --parallel 없이 (순차)
+LSP → AST-grep → Tests → Coverage
+총 30초
 
-### Safe Auto-Fixes (applied without confirmation)
+# --parallel 사용 (병렬)
+LSP ├─┐
+     ├─→ 통합 → 8초 (3.75배 빠름)
+AST ├─┤
+    ├─┘
+Tests ┤
+       └─→ 3-4배 속도 향상
+Coverage
+```
 
-- Import sorting and organization
-- Whitespace and formatting issues
-- Unused import removal
-- Simple type annotation additions
+## TODO-Obsessive Rule (자율 추적)
 
-### Unsafe Fixes (require confirmation)
+```
+[HARD] TODO 관리 규칙
 
-- Logic changes
-- API modifications
-- Test modifications
-- Security-related changes
+반복마다:
+1. 즉시 생성: 이슈 → TODO
+2. 즉시 진행: [ ] → [in_progress]
+3. 즉시 완료: [in_progress] → [x]
+4. 모두 완료: All [x] → 완료 마커
+```
+
+### TODO 예시
+
+```markdown
+## Loop 3/100
+
+### Status
+- Errors: 2
+- Warnings: 5
+
+### TODO
+1. [x] src/auth.py:45 - undefined 'jwt_token'
+2. [in_progress] src/auth.py:67 - missing return
+3. [ ] tests/test_auth.py:12 - unused 'result'
+```
+
+## Auto-Fix Levels
+
+| Level | 설명 | 승인 | 예시 |
+|-------|------|------|------|
+| 1 | 즉시 수정 | 불필요 | import 정렬, 공백 |
+| 2 | 안전 수정 | 로그만 | 변수改名, 타입 추가 |
+| 3 | 승인 필요 | 필요 | 로직 변경, API 수정 |
+| 4 | 수동 필요 | 불가능 | 보안, 아키텍처 |
 
 ## Output Format
 
-### During Loop
+### 실행 중
 
 ```markdown
-## Ralph Loop: Iteration 3/10
+## Loop: 3/100 (parallel)
 
-### Current Status
-
-- Errors: 2
-- Warnings: 5
+### Diagnostics (0.8s)
+- LSP: 2 errors, 5 warnings
+- AST-grep: 0 security issues
 - Tests: 23/25 passing
 - Coverage: 82%
 
-### Issues to Address
+### TODO
+1. [x] src/auth.py:45 - undefined 'jwt_token'
+2. [in_progress] src/auth.py:67 - missing return
+3. [ ] tests/test_auth.py:12 - unused 'result'
 
-1. [ERROR] src/auth.py:45 - undefined name 'jwt_token'
-2. [ERROR] src/auth.py:67 - missing return statement
-3. [WARNING] tests/test_auth.py:12 - unused variable 'result'
-
-### Suggested Actions
-
-1. Import jwt_token or define it locally
-2. Add return statement to validate_token function
-3. Use or remove the 'result' variable
+수정 중...
 ```
 
-### On Completion
+### 완료 (마커 감지)
 
 ```markdown
-## Ralph Loop: COMPLETE
+## Loop: COMPLETE
 
-### Final Status
-
-- Iterations: 4
-- Errors: 0
-- Warnings: 0
+### Summary
+- Iterations: 7
+- Errors fixed: 5
+- Warnings fixed: 3
 - Tests: 25/25 passing
 - Coverage: 87%
 
-### Changes Made
+### Files Modified
+- src/auth.py (7 fixes)
+- tests/test_auth.py (3 fixes)
+- src/api/routes.py (2 fixes)
 
-- Fixed 3 errors
-- Resolved 5 warnings
-- Added 2 test cases
+<promise>DONE</promise>
+```
 
-### Duration
+### 최대 반복 도달
 
-- Start: 10:30:00
-- End: 10:35:42
-- Total: 5m 42s
+```markdown
+## Loop: MAX REACHED (100/100)
+
+### Remaining
+- Errors: 1
+- Warnings: 2
+
+### Options
+1. /moai:loop --max 200  # 계속
+2. /moai:fix --parallel  # 한 번만
+3. 수동 수정
+```
+
+## State & Snapshot
+
+```bash
+# 상태 저장
+.moai/cache/.moai_loop_state.json
+
+# 스냅샷
+.moai/cache/ralph-snapshots/
+├── iteration-001.json
+├── iteration-002.json
+└── latest.json
+
+# 복구
+/moai:loop --resume iteration-002
+/moai:loop --resume latest
 ```
 
 ## Cancellation
 
-To cancel an active loop:
+```bash
+# 취소 (스냅샷 저장)
+/moai:cancel-loop --snapshot
 
-- Use `/moai:cancel-loop` command
-- Or set environment variable: `MOAI_LOOP_ACTIVE=false`
-- Or delete state file: `.moai/cache/.moai_loop_state.json`
+# 강제 취소
+/moai:cancel-loop --force
+```
 
-## Best Practices
+## Quick Reference
 
-1. **Start Small**: Begin with `--max-iterations 3` for new projects
-2. **Review Auto-Fixes**: Even with `--auto-fix`, review changes before committing
-3. **Use with TDD**: Combine with `/moai:2-run` for test-driven development
-4. **Monitor Progress**: Watch iteration count to detect stuck loops
+```bash
+# 자율 루프
+/moai:loop
 
-## Error Recovery
+# 병렬 + 자동
+/moai:loop --parallel --auto
 
-If the loop gets stuck:
+# 최대 반복
+/moai:loop --max 50
 
-1. Check LSP server status
-2. Verify test framework is working
-3. Review recent changes for syntax errors
-4. Use `/moai:cancel-loop` and fix manually if needed
+# 에러만
+/moai:loop --errors
 
----
-
-## Execution Directive
-
-When this command is invoked:
-
-1. Parse arguments for options
-2. Initialize or resume loop state
-3. Set environment variables:
-   - `MOAI_LOOP_ACTIVE=true`
-   - `MOAI_LOOP_ITERATION=N`
-4. Check initial conditions
-5. If issues exist, provide first iteration guidance
-6. Let hooks handle subsequent iterations
-
-The Stop hook (`stop__loop_controller.py`) manages the loop continuation.
+# 복구
+/moai:loop --resume latest
+```
 
 ---
 
-Version: 1.0.0
-Last Updated: 2026-01-10
-Pattern: Continuous Feedback Loop
-Integration: LSP Diagnostics, AST-grep, Test Runner
+## EXECUTION DIRECTIVE
+
+1. $ARGUMENTS 파싱
+2. 병렬 진단 실행 (--parallel)
+3. 완료 마커 감지 확인
+4. TODO 생성 (즉시)
+5. 수정 실행 (--auto 레벨)
+6. 검증
+7. 반복 (max 미만)
+
+---
+
+Version: 2.1.0
+Last Updated: 2026-01-11
+Core: Agentic AI Autonomous Loop

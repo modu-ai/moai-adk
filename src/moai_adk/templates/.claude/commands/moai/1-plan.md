@@ -1190,34 +1190,47 @@ Would you like to enable automatic branch creation for future SPEC creations?
 
 ## Output Format
 
-All command execution phases must produce structured output with semantic XML sections:
+### Output Format Rules
 
-Analysis Output Format:
+[HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
+WHY: Users expect readable formatted text, not markup
+IMPACT: XML tags in user output create confusion and reduce comprehension
 
-Project analysis results structured as:
+[HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+WHY: XML structure enables automated parsing for downstream agent coordination
+IMPACT: Using XML for user output degrades user experience
 
-- Context: Current project state and relevant files discovered
-- Findings: SPEC candidates identified with rationale
-- Assessment: Technical constraints and implementation feasibility
-- Recommendations: Next steps and decision options
+### User-Facing Output (Markdown)
 
-Plan Output Format:
+Progress reports must use Markdown with clear sections:
 
-SPEC planning results structured as:
+**Analysis Output**:
+- **Context**: Current project state and relevant files discovered
+- **Findings**: SPEC candidates identified with rationale
+- **Assessment**: Technical constraints and implementation feasibility
+- **Recommendations**: Next steps and decision options
 
-- Requirements: Approved SPEC title, ID, priority, and scope
-- Architecture: Technical stack, dependencies, and integration points
-- Decomposition: Task breakdown and implementation sequence
-- Validation: Quality criteria and acceptance conditions
+**Plan Output**:
+- **Requirements**: Approved SPEC title, ID, priority, and scope
+- **Architecture**: Technical stack, dependencies, and integration points
+- **Decomposition**: Task breakdown and implementation sequence
+- **Validation**: Quality criteria and acceptance conditions
 
-Implementation Output Format:
+**Implementation Output**:
+- **Status**: Phase completion status and artifacts created
+- **Artifacts**: Location and format of created SPEC files
+- **Validation**: Quality gate results and compliance verification
+- **NextSteps**: User guidance for proceeding to implementation phase
 
-SPEC creation results structured as:
+### Internal Agent Communication (XML)
 
-- Status: Phase completion status and artifacts created
-- Artifacts: Location and format of created SPEC files
-- Validation: Quality gate results and compliance verification
-- NextSteps: User guidance for proceeding to implementation phase
+For agent-to-agent data transfer only (never displayed to users):
+
+```xml
+<analysis>Context, findings, assessment, and recommendations</analysis>
+<plan>Requirements, architecture, decomposition, and validation criteria</plan>
+<implementation>Status, artifacts, validation results, and next steps</implementation>
+```
 
 WHY: Structured output enables parsing for automated workflows and tool integration
 IMPACT: Unstructured output prevents downstream automation and creates manual overhead

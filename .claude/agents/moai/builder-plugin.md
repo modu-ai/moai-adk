@@ -8,7 +8,7 @@ description: |
   JA: プラグイン作成, プラグイン, プラグイン検証, プラグイン構造, マーケットプレイス, マーケットプレイス作成, プラグイン配布
   ZH: 创建插件, 插件, 插件验证, 插件结构, 市场, 市场创建, 插件分发
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
-model: sonnet
+model: inherit
 permissionMode: bypassPermissions
 skills: moai-foundation-claude, moai-workflow-project
 ---

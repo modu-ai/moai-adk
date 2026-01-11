@@ -11,7 +11,6 @@ Features:
 - Cross-platform support (macOS, Linux, Windows)
 """
 
-import shlex
 import shutil
 import subprocess
 from dataclasses import dataclass, field
@@ -707,6 +706,80 @@ class ToolRegistry:
             return []
         return self.get_tools_for_language(language, tool_type)
 
+    def _validate_file_path(self, file_path: str, cwd: Optional[str] = None) -> str:
+        """Validate and sanitize file path to prevent injection attacks.
+
+        Security measures:
+        - Reject paths with null bytes
+        - Reject paths with shell metacharacters in dangerous positions
+        - Resolve and validate path is within allowed boundaries
+        - Ensure path exists and is a file
+
+        Args:
+            file_path: Path to validate
+            cwd: Working directory context
+
+        Returns:
+            Validated absolute path
+
+        Raises:
+            ValueError: If path is invalid or potentially dangerous
+        """
+
+        # Check for null bytes (common injection technique)
+        if "\x00" in file_path:
+            raise ValueError("Invalid file path: contains null byte")
+
+        # Check for shell metacharacters that could be dangerous
+        # These are dangerous in string interpolation contexts (like R code)
+        dangerous_chars = ["'", '"', "`", "$", ";", "&", "|", "\n", "\r"]
+        for char in dangerous_chars:
+            if char in file_path:
+                raise ValueError(f"Invalid file path: contains dangerous character '{repr(char)}'")
+
+        # Resolve path
+        try:
+            path = Path(file_path)
+            if not path.is_absolute():
+                base = Path(cwd) if cwd else Path.cwd()
+                path = (base / path).resolve()
+            else:
+                path = path.resolve()
+        except (OSError, ValueError) as e:
+            raise ValueError(f"Invalid file path: {e}") from e
+
+        # Ensure path exists and is a file
+        if not path.exists():
+            raise ValueError(f"File does not exist: {file_path}")
+        if not path.is_file():
+            raise ValueError(f"Path is not a file: {file_path}")
+
+        return str(path)
+
+    def _escape_for_code_string(self, value: str, language: str = "generic") -> str:
+        """Escape a string value for safe inclusion in code.
+
+        Args:
+            value: String to escape
+            language: Target language (r, python, generic)
+
+        Returns:
+            Escaped string safe for code inclusion
+        """
+        # Basic escaping for string literals
+        # Escape backslashes first, then quotes
+        escaped = value.replace("\\", "\\\\")
+
+        if language == "r":
+            # R uses single quotes, escape them
+            escaped = escaped.replace("'", "\\'")
+        else:
+            # Generic: escape both quote types
+            escaped = escaped.replace("'", "\\'")
+            escaped = escaped.replace('"', '\\"')
+
+        return escaped
+
     def run_tool(
         self,
         tool: ToolConfig,
@@ -714,21 +787,41 @@ class ToolRegistry:
         cwd: Optional[str] = None,
         extra_args: Optional[List[str]] = None,
     ) -> ToolResult:
-        """Run a tool on a file and return the result."""
+        """Run a tool on a file and return the result.
+
+        Security measures:
+        - Validates file path before execution
+        - Uses subprocess list mode (shell=False) to prevent shell injection
+        - Properly escapes paths for code interpolation contexts
+        """
         try:
+            # Validate file path first (security check)
+            try:
+                validated_path = self._validate_file_path(file_path, cwd)
+            except ValueError as e:
+                return ToolResult(
+                    success=False,
+                    tool_name=tool.name,
+                    error=f"Path validation failed: {e}",
+                    exit_code=-1,
+                )
+
             # Build command
             cmd = [tool.command] + tool.args
 
             # Add file path based on position
             if tool.file_args_position == "end":
-                cmd.append(file_path)
+                cmd.append(validated_path)
             elif tool.file_args_position == "start":
-                cmd.insert(1, file_path)
+                cmd.insert(1, validated_path)
             elif tool.file_args_position.startswith("replace:"):
+                # Handle code interpolation (e.g., R's styler::style_file)
                 placeholder = tool.file_args_position.split(":")[1]
-                # Use shlex.quote to prevent shell injection attacks
-                safe_path = shlex.quote(file_path)
-                cmd = [c.replace(placeholder, safe_path) for c in cmd]
+                # Escape path for safe code string inclusion
+                escaped_path = self._escape_for_code_string(validated_path, "r")
+                # Build function call: placeholder → placeholder('escaped_path')
+                replacement = f"{placeholder}('{escaped_path}')"
+                cmd = [c.replace(placeholder, replacement) for c in cmd]
 
             # Add extra args
             if extra_args:

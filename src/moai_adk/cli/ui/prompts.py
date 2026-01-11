@@ -226,8 +226,38 @@ def styled_select(
 
         return result
 
-    except KeyboardInterrupt:
-        return None
+    except (KeyboardInterrupt, OSError, Exception):
+        # Fallback to questionary on any error (macOS terminal compatibility)
+        import questionary
+
+        choice_names = [c.get("name", str(c)) if isinstance(c, dict) else str(c) for c in choices]
+        value_map = {}
+
+        for c in choices:
+            if isinstance(c, dict):
+                name = c.get("name", str(c))
+                value = c.get("value", name)
+                value_map[name] = value
+
+        # Find default name
+        default_name = None
+        if default:
+            for c in choices:
+                if isinstance(c, dict):
+                    if c.get("value") == default:
+                        default_name = c.get("name")
+                        break
+
+        result_name = questionary.select(
+            message,
+            choices=choice_names,
+            default=default_name,
+        ).ask()
+
+        if result_name is None:
+            return None
+
+        return value_map.get(result_name, result_name)
 
 
 def styled_input(

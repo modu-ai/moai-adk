@@ -1,6 +1,6 @@
 ---
-description: "Cancel an active Ralph feedback loop"
-argument-hint: "[--force]"
+description: "Cancel autonomous loop with snapshot preservation"
+argument-hint: "[--force] [--snapshot] | [--list]"
 type: utility
 allowed-tools: Bash, Read, Write, AskUserQuestion
 model: inherit
@@ -17,221 +17,147 @@ model: inherit
 
 ---
 
-# /moai:cancel-loop - Cancel Active Feedback Loop
+# /moai:cancel-loop - Cancel Autonomous Loop
 
-Stop an active Ralph Engine feedback loop and optionally preserve or discard state.
+## Core Principle: 상태 보존
+
+루프 취소 시 모든 진행 상태를 스냅샷으로 저장합니다.
+
+```
+CANCEL → SNAPSHOT → RECOVER 가능
+```
 
 ## Command Purpose
 
-Gracefully terminates an active `/moai:loop` session:
+활성 루프를 취소하고 복구 가능한 스냅샷을 생성:
 
-1. Stops the loop iteration cycle
-2. Clears loop state file
-3. Reports final status
-4. Optionally preserves work in progress
+1. 루프 중지
+2. 스냅샷 저장
+3. 상태 보고
+4. 복구 옵션 제공
 
 Arguments: $ARGUMENTS
 
-## Usage Examples
+## Quick Start
 
-Cancel loop with confirmation:
-
-```
+```bash
+# 기본 취소 (확인 후)
 /moai:cancel-loop
-```
 
-Force cancel without confirmation:
-
-```
+# 강제 취소
 /moai:cancel-loop --force
+
+# 스냅샷 저장
+/moai:cancel-loop --snapshot
+
+# 스냅샷 목록
+/moai:cancel-loop --list
 ```
 
 ## Command Options
 
-- `--force`: Skip confirmation prompt and cancel immediately
-- `--preserve-state`: Keep the state file for debugging
-
-## Cancellation Process
-
-```
-START: /moai:cancel-loop
-
-CHECK: Is loop active?
-  |
-  NO --> Report "No active loop" and EXIT
-  |
-  YES
-  |
-  v
-CONFIRM (unless --force)
-  |-- Show current loop status
-  |-- Ask for confirmation
-  |-- IF rejected: EXIT without canceling
-  |
-  v
-CANCEL
-  |-- Clear MOAI_LOOP_ACTIVE environment
-  |-- Remove state file (unless --preserve-state)
-  |-- Log cancellation
-  |
-  v
-REPORT
-  |-- Show final iteration count
-  |-- Show issues remaining
-  |-- Suggest next steps
-
-END: Loop cancelled
-```
-
-## State File Location
-
-The loop state is stored at:
-
-```
-.moai/cache/.moai_loop_state.json
-```
-
-Contents include:
-
-- `active`: Whether loop is active
-- `iteration`: Current iteration number
-- `max_iterations`: Maximum allowed iterations
-- `last_error_count`: Errors from last check
-- `last_warning_count`: Warnings from last check
-- `files_modified`: List of modified files
-- `start_time`: When loop started
+| 옵션 | 설명 |
+|------|------|
+| `--force` | 확인 없이 취소 |
+| `--snapshot` | 스냅샷 저장 |
+| `--keep` | state 파일 보존 |
+| `--reason TEXT` | 취소 사유 |
+| `--list` | 스냅샷 목록 |
 
 ## Output Format
 
-### Normal Cancellation
+### 기본 취소
 
 ```markdown
-## Loop Cancelled
+## Loop: Cancelled
 
-### Final Status
+### Status
+- Iterations: 7/100
+- Errors: 2 remaining
+- Warnings: 3 remaining
 
-- Iterations completed: 4
-- Errors remaining: 2
-- Warnings remaining: 3
+### TODO
+1. [ ] src/auth.py:67 - missing return
+2. [ ] tests/test_auth.py:12 - unused var
 
-### Work in Progress
+### Snapshot
+.moai/cache/ralph-snapshots/cancel-20240111-105230.json
 
-Files modified during this loop:
-
-- src/auth.py
-- tests/test_auth.py
-
-### Next Steps
-
-1. Review modified files for partial fixes
-2. Run `/moai:fix` to address remaining issues
-3. Or start fresh with `/moai:loop`
+### Recovery
+/moai:loop --resume latest
 ```
 
-### No Active Loop
+### 스냅샷 목록
+
+```markdown
+## Snapshots: 2 available
+
+1. cancel-20240111-105230 (7 iters, 2 errors)
+2. cancel-20240110-154523 (12 iters, 0 errors)
+
+### Recovery
+/moai:loop --resume cancel-20240111-105230
+```
+
+### 활성 루프 없음
 
 ```markdown
 ## No Active Loop
 
-There is no active feedback loop to cancel.
+### Snapshots Available
+2 snapshots found. Use --list to view.
 
-To start a new loop:
-```
-
+### Start New
 /moai:loop
-
 ```
 
+## Snapshot Location
+
+```bash
+.moai/cache/ralph-snapshots/
+├── cancel-20240111-103042.json
+├── cancel-20240111-105230.json
+└── latest.json -> cancel-20240111-105230.json
 ```
 
-### Force Cancellation
+## Recovery
 
-```markdown
-## Loop Force-Cancelled
+```bash
+# 최신 스냅샷
+/moai:loop --resume latest
 
-Loop terminated without confirmation.
-
-State file removed: .moai/cache/.moai_loop_state.json
-
-Note: Any unsaved progress may be lost.
+# 특정 스냅샷
+/moai:loop --resume cancel-20240111-105230
 ```
 
-## When to Cancel
+## Quick Reference
 
-Cancel the loop when:
+```bash
+# 취소
+/moai:cancel-loop
 
-- Loop appears stuck (same errors repeating)
-- Need to make manual changes
-- Want to change loop configuration
-- Encountered unexpected errors
-- Need to switch to different task
+# 강제 취소
+/moai:cancel-loop --force
 
-## Recovery After Cancellation
+# 스냅샷 저장
+/moai:cancel-loop --snapshot
 
-If you cancelled mid-fix:
-
-1. **Check Git Status**
-
-   ```
-   git status
-   git diff
-   ```
-
-2. **Review Changes**
-   Look at modified files for partial fixes
-
-3. **Decide Next Action**
-   - Commit working changes
-   - Revert problematic changes
-   - Resume with `/moai:loop`
-
-## Environment Variables
-
-The loop uses these environment variables:
-
-- `MOAI_LOOP_ACTIVE`: Set to "true" when loop is active
-- `MOAI_LOOP_ITERATION`: Current iteration number
-
-These are cleared on cancellation.
-
-## Related Commands
-
-- `/moai:loop`: Start a new feedback loop
-- `/moai:fix`: One-time fix without loop
-- `/moai:alfred`: Full workflow automation
-
----
-
-## Implementation
-
-When this command runs:
-
-1. Check for state file existence
-2. If exists and active, proceed with cancellation
-3. Clear environment variables
-4. Remove or archive state file
-5. Report status to user
-
-```python
-# Pseudo-implementation
-state_path = Path(".moai/cache/.moai_loop_state.json")
-
-if state_path.exists():
-    state = json.load(state_path)
-    if state.get("active"):
-        # Show status and confirm
-        # Then clear state
-        state_path.unlink()
-        print("Loop cancelled")
-    else:
-        print("Loop already inactive")
-else:
-    print("No active loop found")
+# 목록
+/moai:cancel-loop --list
 ```
 
 ---
 
-Version: 1.0.0
-Last Updated: 2026-01-10
-Pattern: State Management
-Integration: Ralph Engine Loop Controller
+## EXECUTION DIRECTIVE
+
+1. 활성 루프 확인
+2. 확인 요청 (--force 제외)
+3. 스냅샷 저장 (--snapshot)
+4. 상태 보고
+5. 복구 옵션
+
+---
+
+Version: 2.1.0
+Last Updated: 2026-01-11
+Core: Agentic AI State Management

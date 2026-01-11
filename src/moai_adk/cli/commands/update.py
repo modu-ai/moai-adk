@@ -2837,8 +2837,8 @@ def _show_current_config(project_path: Path) -> None:
     conv_lang = settings.get("language", {}).get("language", {}).get("conversation_language", "en")
     conv_lang_name = settings.get("language", {}).get("language", {}).get("conversation_language_name", "English")
 
-    service_type = settings.get("pricing", {}).get("service", {}).get("type", "claude_subscription")
-    pricing_plan = settings.get("pricing", {}).get("service", {}).get("pricing_plan", "")
+    # GLM-only simplified flow - service is always GLM
+    glm_pricing_plan = settings.get("pricing", {}).get("service", {}).get("glm_pricing_plan", "basic")
 
     git_mode = settings.get("git_strategy", {}).get("git_strategy", {}).get("mode", "personal")
 
@@ -2853,7 +2853,7 @@ def _show_current_config(project_path: Path) -> None:
 
     lines.append("")
     lines.append(f"🌐 Language: [green]{conv_lang}[/green] ({conv_lang_name})")
-    lines.append(f"🔧 Service: [green]{service_type}[/green]" + (f" ({pricing_plan})" if pricing_plan else ""))
+    lines.append("🔧 Service: [green]GLM CodePlan[/green]" + (f" ({glm_pricing_plan})" if glm_pricing_plan else ""))
     lines.append(f"🔀 Git: [green]{git_mode}[/green]")
     lines.append(f"🤖 LLM Mode: [green]{llm_mode}[/green]")
 
@@ -2869,7 +2869,6 @@ def _edit_configuration(project_path: Path) -> None:
     """
     from moai_adk.cli.commands.init import _save_additional_config
     from moai_adk.cli.prompts.init_prompts import prompt_project_setup
-    from moai_adk.utils.common import reset_stdin
 
     console.print("\n[cyan]⚙️  Configuration Edit Mode[/cyan]")
     console.print("[dim]Edit your project settings (same as init wizard)[/dim]\n")
@@ -2892,9 +2891,6 @@ def _edit_configuration(project_path: Path) -> None:
     elif "name" in project_data:
         project_name = project_data.get("name", project_path.name)
 
-    # Reset stdin for interactive prompts
-    reset_stdin()
-
     # Run interactive prompt
     try:
         answers = prompt_project_setup(
@@ -2913,13 +2909,16 @@ def _edit_configuration(project_path: Path) -> None:
 
     # Save configuration to section files
     # Note: API keys are not modified in config edit mode (pass None to preserve existing)
+    # GLM-only flow: service_type is always "glm", glm_pricing_plan defaults to "basic"
     _save_additional_config(
         project_path=project_path,
         project_name=answers.get("project_name", project_name),
         locale=answers.get("locale", current_locale),
-        service_type=answers.get("service_type", "claude_subscription"),
-        pricing_plan=answers.get("pricing_plan"),
-        anthropic_api_key=None,  # Preserve existing key
+        user_name=answers.get("user_name", ""),
+        service_type="glm",  # Always GLM in simplified flow
+        pricing_plan=None,  # Not used in GLM-only flow
+        glm_pricing_plan="basic",  # Default GLM pricing plan
+        anthropic_api_key=None,  # Not used in GLM-only flow
         glm_api_key=None,  # Preserve existing key
         git_mode=answers.get("git_mode", "personal"),
         github_username=answers.get("github_username"),

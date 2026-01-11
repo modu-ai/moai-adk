@@ -11,6 +11,7 @@ class InitTranslations(TypedDict):
 
     # Headers
     language_selection: str
+    user_setup: str  # New: User name setup header
     service_selection: str
     pricing_selection: str
     api_key_input: str
@@ -21,6 +22,7 @@ class InitTranslations(TypedDict):
 
     # Questions
     q_language: str
+    q_user_name: str  # New: User name question
     q_service: str
     q_claude_auth_type: str  # New: Claude auth type question
     q_pricing_claude: str
@@ -78,6 +80,9 @@ class InitTranslations(TypedDict):
 
     # Messages
     msg_api_key_stored: str
+    msg_glm_key_found: str  # New: GLM key found message
+    msg_glm_key_keep_prompt: str  # New: Prompt to keep or replace existing key
+    msg_glm_key_skip_guidance: str  # New: Guidance when skipping GLM API key
     msg_setup_complete: str
     msg_cancelled: str
     msg_current_dir: str
@@ -88,6 +93,7 @@ TRANSLATIONS: dict[str, InitTranslations] = {
     "ko": {
         # Headers
         "language_selection": "🌐 대화 언어 선택",
+        "user_setup": "👤 사용자 설정",
         "service_selection": "💳 서비스 선택",
         "pricing_selection": "💰 요금제 선택",
         "api_key_input": "🔑 API 키 입력",
@@ -97,6 +103,7 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "claude_auth_selection": "🔐 Claude 인증 방식",
         # Questions
         "q_language": "대화 언어를 선택하세요:",
+        "q_user_name": "사용자 이름을 입력하세요 (선택사항):",
         "q_service": "사용할 서비스를 선택하세요:",
         "q_claude_auth_type": "Claude 인증 방식을 선택하세요:",
         "q_pricing_claude": "Claude 요금제를 선택하세요:",
@@ -147,6 +154,9 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "desc_team": "GitHub 팀/조직 사용",
         # Messages
         "msg_api_key_stored": "API 키가 .env 파일에 저장되었습니다",
+        "msg_glm_key_found": "기존 GLM API 키를 찾았습니다:",
+        "msg_glm_key_keep_prompt": "Enter를 누르면 기존 키 유지, 새 키를 입력하면 교체됩니다",
+        "msg_glm_key_skip_guidance": "나중에 'moai glm <키>' 또는 'moai update'로 추가할 수 있습니다",
         "msg_setup_complete": "✅ 설정이 완료되었습니다!",
         "msg_cancelled": "사용자에 의해 설정이 취소되었습니다",
         "msg_current_dir": "(현재 디렉토리)",
@@ -155,6 +165,7 @@ TRANSLATIONS: dict[str, InitTranslations] = {
     "en": {
         # Headers
         "language_selection": "🌐 Language Selection",
+        "user_setup": "👤 User Setup",
         "service_selection": "💳 Service Selection",
         "pricing_selection": "💰 Pricing Plan",
         "api_key_input": "🔑 API Key Input",
@@ -164,6 +175,7 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "claude_auth_selection": "🔐 Claude Authentication",
         # Questions
         "q_language": "Select your conversation language:",
+        "q_user_name": "Enter your name (optional):",
         "q_service": "Select the service to use:",
         "q_claude_auth_type": "Select Claude authentication method:",
         "q_pricing_claude": "Select Claude pricing plan:",
@@ -214,6 +226,9 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "desc_team": "GitHub team/organization",
         # Messages
         "msg_api_key_stored": "API key stored in .env file",
+        "msg_glm_key_found": "Existing GLM API key found:",
+        "msg_glm_key_keep_prompt": "Press Enter to keep existing key, or type new key to replace",
+        "msg_glm_key_skip_guidance": "You can add it later with 'moai glm <key>' or 'moai update'",
         "msg_setup_complete": "✅ Setup complete!",
         "msg_cancelled": "Setup cancelled by user",
         "msg_current_dir": "(current directory)",
@@ -222,6 +237,7 @@ TRANSLATIONS: dict[str, InitTranslations] = {
     "ja": {
         # Headers
         "language_selection": "🌐 言語選択",
+        "user_setup": "👤 ユーザー設定",
         "service_selection": "💳 サービス選択",
         "pricing_selection": "💰 料金プラン",
         "api_key_input": "🔑 APIキー入力",
@@ -231,6 +247,7 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "claude_auth_selection": "🔐 Claude認証方式",
         # Questions
         "q_language": "会話言語を選択してください:",
+        "q_user_name": "お名前を入力してください（任意）:",
         "q_service": "使用するサービスを選択してください:",
         "q_claude_auth_type": "Claude認証方式を選択してください:",
         "q_pricing_claude": "Claudeの料金プランを選択してください:",
@@ -281,6 +298,9 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "desc_team": "GitHubチーム/組織",
         # Messages
         "msg_api_key_stored": "APIキーが.envファイルに保存されました",
+        "msg_glm_key_found": "既存のGLM APIキーが見つかりました:",
+        "msg_glm_key_keep_prompt": "Enterキーで既存のキーを保持、新しいキーを入力すると置換",
+        "msg_glm_key_skip_guidance": "後で 'moai glm <キー>' または 'moai update' で追加できます",
         "msg_setup_complete": "✅ 設定完了！",
         "msg_cancelled": "ユーザーにより設定がキャンセルされました",
         "msg_current_dir": "(現在のディレクトリ)",
@@ -289,6 +309,7 @@ TRANSLATIONS: dict[str, InitTranslations] = {
     "zh": {
         # Headers
         "language_selection": "🌐 语言选择",
+        "user_setup": "👤 用户设置",
         "service_selection": "💳 服务选择",
         "pricing_selection": "💰 定价方案",
         "api_key_input": "🔑 API密钥输入",
@@ -298,6 +319,7 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "claude_auth_selection": "🔐 Claude认证方式",
         # Questions
         "q_language": "选择您的对话语言:",
+        "q_user_name": "请输入您的姓名（可选）:",
         "q_service": "选择要使用的服务:",
         "q_claude_auth_type": "选择Claude认证方式:",
         "q_pricing_claude": "选择Claude定价方案:",
@@ -348,6 +370,9 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "desc_team": "GitHub团队/组织",
         # Messages
         "msg_api_key_stored": "API密钥已保存到.env文件",
+        "msg_glm_key_found": "找到现有GLM API密钥:",
+        "msg_glm_key_keep_prompt": "按Enter保留现有密钥,或输入新密钥进行替换",
+        "msg_glm_key_skip_guidance": "您可以稍后使用 'moai glm <密钥>' 或 'moai update' 添加",
         "msg_setup_complete": "✅ 设置完成！",
         "msg_cancelled": "用户取消设置",
         "msg_current_dir": "(当前目录)",

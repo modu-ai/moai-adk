@@ -113,8 +113,25 @@ ASK_COMPILED = compile_patterns(ASK_PATTERNS)
 SENSITIVE_COMPILED = compile_patterns(SENSITIVE_CONTENT_PATTERNS)
 
 
+def get_project_root() -> Path:
+    """Get the project root directory from environment or current working directory.
+
+    Returns:
+        Path to the project root directory.
+    """
+    import os
+
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+    return Path(project_dir).resolve()
+
+
 def check_file_path(file_path: str) -> Tuple[str, str]:
     """Check if file path matches any security patterns.
+
+    Security measures:
+    - Resolves symlinks and '..' components to prevent path traversal
+    - Checks both original and resolved paths against patterns
+    - Validates path is within project boundaries
 
     Args:
         file_path: Path to check
@@ -123,17 +140,37 @@ def check_file_path(file_path: str) -> Tuple[str, str]:
         Tuple of (decision, reason)
         decision: "allow", "deny", or "ask"
     """
-    # Normalize path for matching
-    normalized = file_path.replace("\\", "/")
+    # Resolve path to prevent path traversal attacks
+    # This handles: symlinks, '..' components, and normalizes the path
+    try:
+        resolved_path = Path(file_path).resolve()
+        resolved_str = str(resolved_path)
+    except (OSError, ValueError):
+        # If path resolution fails, deny for safety
+        return "deny", "Invalid file path: cannot resolve"
 
-    # Check deny patterns first
+    # Normalize original path for pattern matching (keeps relative structure visible)
+    normalized_original = file_path.replace("\\", "/")
+    normalized_resolved = resolved_str.replace("\\", "/")
+
+    # Check project boundary (optional but recommended)
+    project_root = get_project_root()
+    try:
+        resolved_path.relative_to(project_root)
+    except ValueError:
+        # Path is outside project directory - potential path traversal attack
+        return "deny", "Path traversal detected: file is outside project directory"
+
+    # Check deny patterns against BOTH original and resolved paths
+    # This catches attempts like ".env/../other.txt" (matches .env in original)
+    # AND "/absolute/path/to/.env" (matches in resolved)
     for pattern in DENY_COMPILED:
-        if pattern.search(normalized):
+        if pattern.search(normalized_original) or pattern.search(normalized_resolved):
             return "deny", "Protected file: access denied for security reasons"
 
-    # Check ask patterns
+    # Check ask patterns against both paths
     for pattern in ASK_COMPILED:
-        if pattern.search(normalized):
+        if pattern.search(normalized_original) or pattern.search(normalized_resolved):
             return "ask", f"Critical config file: {Path(file_path).name}"
 
     return "allow", ""

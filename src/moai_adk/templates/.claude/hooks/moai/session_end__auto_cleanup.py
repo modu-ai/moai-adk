@@ -138,6 +138,8 @@ logger = logging.getLogger(__name__)
 def load_hook_timeout() -> int:
     """Load hook timeout from config.yaml (default: 5000ms)
 
+    Uses try/except instead of exists() check to prevent TOCTOU race conditions.
+
     Returns:
         Timeout in milliseconds
     """
@@ -145,17 +147,21 @@ def load_hook_timeout() -> int:
         import yaml
 
         config_file = get_safe_moai_path("config/config.yaml")
-        if config_file.exists():
-            with open(config_file, "r", encoding="utf-8") as f:
-                config: Dict[str, Any] = yaml.safe_load(f) or {}
-                return config.get("hooks", {}).get("timeout_ms", 5000)
+        # Direct open without exists() check to prevent race condition
+        with open(config_file, "r", encoding="utf-8") as f:
+            config: Dict[str, Any] = yaml.safe_load(f) or {}
+            return config.get("hooks", {}).get("timeout_ms", 5000)
+    except FileNotFoundError:
+        pass  # Config file doesn't exist, use default
     except Exception:
-        pass
+        pass  # Config file corrupted or invalid, use default
     return 5000
 
 
 def get_graceful_degradation() -> bool:
     """Load graceful_degradation setting from config.yaml (default: true)
+
+    Uses try/except instead of exists() check to prevent TOCTOU race conditions.
 
     Returns:
         Whether graceful degradation is enabled
@@ -164,12 +170,14 @@ def get_graceful_degradation() -> bool:
         import yaml
 
         config_file = get_safe_moai_path("config/config.yaml")
-        if config_file.exists():
-            with open(config_file, "r", encoding="utf-8") as f:
-                config: Dict[str, Any] = yaml.safe_load(f) or {}
-                return config.get("hooks", {}).get("graceful_degradation", True)
+        # Direct open without exists() check to prevent race condition
+        with open(config_file, "r", encoding="utf-8") as f:
+            config: Dict[str, Any] = yaml.safe_load(f) or {}
+            return config.get("hooks", {}).get("graceful_degradation", True)
+    except FileNotFoundError:
+        pass  # Config file doesn't exist, use default
     except Exception:
-        pass
+        pass  # Config file corrupted or invalid, use default
     return True
 
 
@@ -506,20 +514,27 @@ def count_recent_commits() -> int:
 
 
 def extract_specs_from_memory() -> List[str]:
-    """Extract SPEC information from memory"""
-    specs = []
+    """Extract SPEC information from memory
+
+    Uses try/except instead of exists() check to prevent TOCTOU race conditions.
+    """
+    specs: List[str] = []
 
     try:
         # Query recent SPECs from command_execution_state.json (use safe path)
         state_file = get_safe_moai_path("memory/command-execution-state.json")
-        if state_file.exists():
-            with open(state_file, "r", encoding="utf-8") as f:
-                state_data = json.load(f)
+        # Direct open without exists() check to prevent race condition
+        with open(state_file, "r", encoding="utf-8") as f:
+            state_data = json.load(f)
 
-            # Extract recent SPEC IDs
-            if "last_specs" in state_data:
-                specs = state_data["last_specs"][:3]  # Latest 3
+        # Extract recent SPEC IDs
+        if "last_specs" in state_data:
+            specs = state_data["last_specs"][:3]  # Latest 3
 
+    except FileNotFoundError:
+        pass  # State file doesn't exist yet, return empty list
+    except (json.JSONDecodeError, KeyError, TypeError) as e:
+        logger.warning(f"Failed to parse specs from memory: {e}")
     except Exception as e:
         logger.warning(f"Failed to extract specs from memory: {e}")
 

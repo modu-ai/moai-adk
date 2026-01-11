@@ -46,12 +46,26 @@ def rank() -> None:
 
 
 @rank.command()
-def register() -> None:
+@click.option(
+    "--no-sync",
+    is_flag=True,
+    help="Skip syncing existing sessions after registration",
+)
+@click.option(
+    "--background-sync",
+    "-b",
+    is_flag=True,
+    help="Sync existing sessions in background after registration",
+)
+def register(no_sync: bool, background_sync: bool) -> None:
     """Register with MoAI Rank via GitHub OAuth.
 
     Opens your browser to authorize with GitHub.
     Your API key will be stored securely in ~/.moai/rank/credentials.json
     """
+    import subprocess
+    import sys
+
     from moai_adk.rank.auth import OAuthHandler
     from moai_adk.rank.config import RankConfig
 
@@ -106,6 +120,27 @@ def register() -> None:
                     border_style="cyan",
                 )
             )
+
+            # Handle sync options
+            if no_sync:
+                console.print()
+                console.print(
+                    "[dim]Sync skipped. Run [cyan]moai rank sync[/cyan] later to sync existing sessions.[/dim]"
+                )
+            elif background_sync:
+                console.print()
+                console.print("[cyan]Starting background sync...[/cyan]")
+                subprocess.Popen(
+                    [sys.executable, "-m", "moai_adk.cli.commands.rank", "sync", "--background"],
+                    start_new_session=True,
+                )
+            else:
+                console.print()
+                console.print(
+                    "[dim]To sync existing sessions, run:[/dim]\n"
+                    "  [cyan]moai rank sync[/cyan]           # Foreground\n"
+                    "  [cyan]moai rank sync --background[/cyan]  # Background (~3min)"
+                )
         else:
             console.print("[yellow]Warning: Failed to install session tracking hook.[/yellow]")
 
@@ -249,9 +284,76 @@ def logout() -> None:
 
     if click.confirm(f"Remove credentials for {username}?"):
         RankConfig.delete_credentials()
-        console.print("[green]Credentials removed successfully.[/green]")
+        console.print("[green]Credentials removed successfully.[/]")
     else:
         console.print("[dim]Cancelled.[/dim]")
+
+
+@rank.command()
+@click.option("--background", "-b", is_flag=True, help="Run sync in background")
+def sync(background: bool) -> None:
+    """Sync all existing Claude Code sessions to MoAI Rank.
+
+    Scans ~/.claude/projects/ for all session transcripts and submits them
+    to the rank server.
+
+    Examples:
+        moai rank sync              # Sync in foreground
+        moai rank sync --background  # Sync in background (detached)
+    """
+    import os
+    import subprocess
+    import sys
+
+    from moai_adk.rank.config import RankConfig
+
+    if not RankConfig.has_credentials():
+        console.print("[yellow]Not registered with MoAI Rank.[/yellow]")
+        console.print("[dim]Run [cyan]moai rank register[/cyan] first.[/dim]")
+        return
+
+    if background:
+        # Run in background
+        console.print("[cyan]Starting background sync...[/cyan]")
+
+        python_exe = sys.executable
+
+        # Create the sync script
+        sync_script = f'''
+import sys
+sys.path.insert(0, "{os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))}")
+from moai_adk.rank.hook import sync_all_sessions
+from rich.console import Console
+
+sync_all_sessions(Console())
+'''
+
+        # Write to temp file
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+            f.write(sync_script)
+            script_path = f.name
+
+        # Run in background
+        log_file = RankConfig.CONFIG_DIR / "sync.log"
+        null_dev = "/dev/null" if os.name != "nt" else "NUL"
+
+        try:
+            subprocess.Popen(
+                [python_exe, script_path],
+                stdout=(open(log_file, "a") if log_file.parent.exists() else open(null_dev, "w")),
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+            console.print(f"[green]Background sync started[/green]\n[dim]Log file: [cyan]{log_file}[/cyan][/dim]")
+            console.print("[dim]Check sync status with: [cyan]tail -f ~/.moai/rank/sync.log[/cyan][/dim]")
+        finally:
+            os.unlink(script_path)
+    else:
+        from moai_adk.rank.hook import sync_all_sessions
+
+        sync_all_sessions(console)
 
 
 @rank.command()

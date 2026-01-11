@@ -1,6 +1,6 @@
 ---
-description: "Auto-fix current LSP errors and AST-grep warnings"
-argument-hint: "[--errors-only] [--dry-run] [file_path]"
+description: "Agentic auto-fix - Parallel scan with autonomous correction"
+argument-hint: "[--dry] [--parallel] [--level N] [file_path]"
 type: utility
 allowed-tools: Task, AskUserQuestion, Bash, Read, Write, Edit, Glob, Grep
 model: inherit
@@ -17,288 +17,182 @@ model: inherit
 
 ---
 
-# /moai:fix - Automatic Error and Warning Fixer
+# /moai:fix - Agentic Auto-Fix
 
-Automatically detect and fix LSP errors, linting issues, and AST-grep warnings in the current project or specific files.
+## Core Principle: 완전 자율 수정
+
+AI가 스스로 이슈를 찾고 수정합니다.
+
+```
+START: 이슈 감지
+  ↓
+AI: 병렬 스캔 → 분류 → 수정 → 검증
+  ↓
+AI: 완료 마커 추가
+```
 
 ## Command Purpose
 
-Provides one-command fixing for common code issues:
+LSP 오류, linting 이슈를 자율적으로 수정:
 
-1. Scans for LSP diagnostics (errors and warnings)
-2. Identifies AST-grep security and quality issues
-3. Applies safe auto-fixes where possible
-4. Reports issues requiring manual intervention
+1. **병렬 스캔** (LSP + AST-grep + Linters 동시)
+2. **자율 분류** (Level 1-4)
+3. **자동 수정** (Level 1-2)
+4. **검증**
+5. **보고**
 
 Target: $ARGUMENTS
 
-## Usage Examples
+## Quick Start
 
-Fix all issues in project:
-
-```
+```bash
+# 기본 수정
 /moai:fix
-```
 
-Fix specific file:
+# 병렬 스캔
+/moai:fix --parallel
 
-```
+# 미리보기
+/moai:fix --dry
+
+# 특정 파일
 /moai:fix src/auth.py
-```
 
-Fix errors only (ignore warnings):
-
-```
-/moai:fix --errors-only
-```
-
-Preview fixes without applying:
-
-```
-/moai:fix --dry-run
+# 수정 레벨 제한
+/moai:fix --level 2
 ```
 
 ## Command Options
 
-- `file_path`: Optional specific file or directory to fix
-- `--errors-only`: Only fix errors, skip warnings and hints
-- `--dry-run`: Show what would be fixed without making changes
-- `--include-security`: Include AST-grep security fixes
-- `--no-format`: Skip auto-formatting after fixes
+| 옵션 | 축약 | 설명 | 기본값 |
+|------|------|------|--------|
+| `--dry` | --dry-run | 미리보기만 | 적용 |
+| `--parallel` | - | 병렬 스캔 | 권장 |
+| `--level N` | - | 최대 수정 레벨 | 3 |
+| `--errors` | --errors-only | 에러만 수정 | 전체 |
+| `--security` | --include-security | 보안 포함 | 제외 |
+| `--no-fmt` | --no-format | 포맷팅 스킵 | 포함 |
 
-## Fix Categories
+## Parallel Scan (병렬 스캔)
 
-### Category 1: Auto-Fixable (Applied Automatically)
+```bash
+# 순차 (30초)
+LSP → AST → Linter
 
-These issues are safe to fix automatically:
-
-**Python**:
-
-- Import sorting (isort/ruff)
-- Unused imports removal
-- Whitespace/formatting (black/ruff)
-- Simple type annotations
-- f-string conversions
-- Dictionary comprehension suggestions
-
-**TypeScript/JavaScript**:
-
-- Import organization
-- Unused variable removal (when safe)
-- Formatting (prettier)
-- Simple ESLint auto-fixes
-
-**General**:
-
-- Trailing whitespace
-- Missing newlines at EOF
-- Mixed indentation
-
-### Category 2: Semi-Auto (Require Confirmation)
-
-These fixes are suggested but need user approval:
-
-- Renaming to fix typos
-- Adding missing function parameters
-- Changing return types
-- Modifying exception handling
-- Updating deprecated API calls
-
-### Category 3: Manual (Report Only)
-
-These issues require manual intervention:
-
-- Logic errors
-- Security vulnerabilities
-- Architectural issues
-- Complex type mismatches
-- Missing implementations
-
-## Execution Flow
-
-```
-START: /moai:fix [options] [target]
-
-PHASE 1: SCAN
-  |-- Run LSP diagnostics on target
-  |-- Run AST-grep security scan
-  |-- Run linter checks
-  |-- Collect all issues
-  |
-  v
-PHASE 2: CATEGORIZE
-  |-- Sort issues by fixability
-  |-- Group by file
-  |-- Prioritize by severity
-  |
-  v
-PHASE 3: DRY-RUN CHECK
-  |-- IF --dry-run: Report and EXIT
-  |
-  v
-PHASE 4: AUTO-FIX
-  |-- Apply Category 1 fixes
-  |-- Run formatters
-  |-- Re-scan for remaining issues
-  |
-  v
-PHASE 5: SEMI-AUTO
-  |-- Present Category 2 fixes
-  |-- Get user approval for each
-  |-- Apply approved fixes
-  |
-  v
-PHASE 6: REPORT
-  |-- List remaining manual issues
-  |-- Show fix summary
-  |-- Suggest next steps
-
-END: Summary with remaining issues
+# 병렬 (8초)
+LSP   ├─┐
+      ├─→ 통합 (3.75배)
+AST   ├─┤
+     ├─┘
+Linter
 ```
 
-## Integration with Tools
+## Auto-Fix Levels
 
-### LSP Integration
+| Level | 설명 | 승인 | 예시 |
+|-------|------|------|------|
+| 1 | 즉시 | 불필요 | import, 공백 |
+| 2 | 안전 | 로그 | 변수改名, 타입 |
+| 3 | 승인 | 필요 | 로직, API |
+| 4 | 수동 | 불가능 | 보안, 아키텍처 |
 
-Uses `MoAILSPClient` for language-aware diagnostics:
+## TODO-Obsessive Rule
 
-- Python: pyright/pylsp
-- TypeScript: tsserver
-- Go: gopls
-- Rust: rust-analyzer
+```
+[HARD] TODO 관리 규칙
 
-### AST-grep Integration
-
-Runs security and quality scans:
-
-- SQL injection patterns
-- XSS vulnerabilities
-- Insecure configurations
-- Code smell patterns
-
-### Linter Integration
-
-Leverages existing linters via `tool_registry.py`:
-
-- ruff (Python)
-- eslint/biome (TypeScript/JavaScript)
-- golangci-lint (Go)
-- clippy (Rust)
+1. 즉시 생성: 이슈 → TODO
+2. 즉시 진행: [ ] → [in_progress]
+3. 즉시 완료: [in_progress] → [x]
+4. 증거: 모든 수정에 출처
+```
 
 ## Output Format
 
-### Dry-Run Output
+### 미리보기
 
 ```markdown
-## Dry Run: /moai:fix
+## Fix: Dry Run
 
-### Would Fix Automatically (12 issues)
+### Scan (0.8s, parallel)
+- LSP: 12 issues
+- AST-grep: 0 security
+- Linter: 5 issues
 
-- src/auth.py: 4 issues (unused imports, formatting)
-- src/api/routes.py: 3 issues (import order)
-- tests/test_auth.py: 5 issues (whitespace)
+### Level 1 (12건)
+- src/auth.py: import, formatting
+- src/api/routes.py: import order
+- tests/test_auth.py: whitespace
 
-### Would Require Confirmation (3 issues)
+### Level 2 (3건)
+- src/auth.py:45 - 'usr' → 'user'
+- src/api/routes.py:78 - type 추가
+- src/models.py:23 - dataclass?
 
-- src/auth.py:45 - Rename 'usr' to 'user'?
-- src/api/routes.py:78 - Add return type annotation?
-- src/models.py:23 - Convert to dataclass?
+### Level 4 (2건)
+- src/auth.py:67 - logic error
+- src/api/routes.py:112 - SQL injection
 
-### Manual Fixes Needed (2 issues)
-
-- [ERROR] src/auth.py:67 - Logic error in token validation
-- [SECURITY] src/api/routes.py:112 - Potential SQL injection
-
-No changes made (dry run).
+No changes (--dry).
 ```
 
-### Fix Completion Output
+### 완료
 
 ```markdown
-## Fix Complete: /moai:fix
+## Fix: Complete
 
-### Applied Fixes (15 total)
+### Applied
+- Level 1: 12 issues
+- Level 2: 3 issues
+- Level 3: 0 issues
 
-- Auto-fixed: 12 issues
-- User-approved: 3 issues
-- Skipped: 0 issues
+### Evidence
+**src/auth.py:5** - Removed unused `os`, `sys`
+**src/auth.py:23** - Fixed whitespace
+**src/api/routes.py:12** - Sorted imports
 
-### Files Modified
+### Remaining (Level 4)
+1. src/auth.py:67 - logic error
+2. src/api/routes.py:112 - SQL injection
 
-- src/auth.py (7 fixes)
-- src/api/routes.py (5 fixes)
-- tests/test_auth.py (3 fixes)
-
-### Remaining Issues (2 manual)
-
-1. [ERROR] src/auth.py:67
-   Logic error in token validation
-   Suggestion: Review the condition on line 67
-
-2. [SECURITY] src/api/routes.py:112
-   Potential SQL injection
-   Suggestion: Use parameterized queries
-
-### Verification
-
-- Linter: PASS
-- Tests: 24/24 passing
-- Coverage: 87%
+### Next
+/moai:loop --parallel  # 루프로 계속
 ```
 
-## Error Handling
+## Quick Reference
 
-### If LSP Unavailable
+```bash
+# 수정
+/moai:fix
 
-Falls back to linter-based detection:
+# 병렬
+/moai:fix --parallel
 
-- Uses ruff for Python
-- Uses tsc for TypeScript
-- Reports degraded mode to user
+# 미리보기
+/moai:fix --dry
 
-### If Fixes Cause New Issues
+# 에러만
+/moai:fix --errors
 
-- Detects regression
-- Reverts problematic fixes
-- Reports to user with details
-
-### If Tests Fail After Fixes
-
-- Warns user
-- Suggests running full test suite
-- Offers to revert changes
-
-## Best Practices
-
-1. **Run Tests First**: Ensure tests pass before fixing
-2. **Use Dry-Run**: Preview changes with `--dry-run` first
-3. **Commit Before Fixing**: Have a clean commit to revert to
-4. **Review Changes**: Always review auto-fixes before committing
-5. **Fix Incrementally**: Fix one category at a time for complex projects
-
-## Related Commands
-
-- `/moai:loop`: Continuous fix loop until all issues resolved
-- `/moai:cancel-loop`: Stop an active fix loop
-- `/moai:2-run`: TDD implementation with integrated fixing
+# 특정 파일
+/moai:fix src/auth.py
+```
 
 ---
 
-## Execution Directive
+## EXECUTION DIRECTIVE
 
-[HARD] Execute the fix workflow immediately upon command invocation:
-
-1. Scan for issues using LSP diagnostics and AST-grep
-2. Categorize issues by fixability (auto, semi-auto, manual)
-3. Apply auto-fixes without user intervention
-4. Present semi-auto fixes for user approval via AskUserQuestion
-5. Report remaining manual issues
-
-Note: This command uses direct tool access (Edit, Write) intentionally for quick one-time fixes. For iterative fixing with full agent support, use `/moai:loop` instead.
+1. $ARGUMENTS 파싱
+2. 병렬 스캔 (--parallel)
+3. 분류 (Level 1-4)
+4. TODO 생성
+5. Level 1-2 수정
+6. Level 3 승인 요청
+7. 검증
+8. 보고 (증거 포함)
 
 ---
 
-Version: 1.0.0
-Last Updated: 2026-01-10
-Pattern: Scan-Categorize-Fix
-Integration: LSP, AST-grep, Linters, Formatters
+Version: 2.1.0
+Last Updated: 2026-01-11
+Core: Agentic AI Auto-Fix

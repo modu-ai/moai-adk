@@ -132,11 +132,52 @@ def load_ralph_config() -> dict[str, Any]:
     return config
 
 
-async def get_lsp_diagnostics(file_path: str) -> dict[str, Any]:
-    """Get LSP diagnostics for a file.
+def _run_async_safely(coro):
+    """Run an async coroutine safely, handling existing event loops.
 
-    This function attempts to get diagnostics from the LSP client.
-    If the LSP infrastructure is not available, it gracefully degrades.
+    This handles the case where an event loop already exists (e.g., in IDE plugins
+    or other async contexts) by using the existing loop or creating a new one.
+
+    Args:
+        coro: Async coroutine to run.
+
+    Returns:
+        Result of the coroutine.
+
+    Raises:
+        Exception: Any exception from the coroutine.
+    """
+    import asyncio
+
+    try:
+        # Try to get the current running loop
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # No running loop - safe to use asyncio.run()
+        loop = None
+
+    if loop is not None:
+        # Event loop already running - use nest_asyncio if available
+        # or create a new loop in a thread
+        try:
+            import nest_asyncio
+
+            nest_asyncio.apply()
+            return loop.run_until_complete(coro)
+        except ImportError:
+            # nest_asyncio not available, run in separate thread
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, coro)
+                return future.result(timeout=60)
+    else:
+        # No existing loop - safe to use asyncio.run()
+        return asyncio.run(coro)
+
+
+async def _get_lsp_diagnostics_async(file_path: str) -> dict[str, Any]:
+    """Async implementation of LSP diagnostics retrieval.
 
     Args:
         file_path: Path to the file.
@@ -203,6 +244,32 @@ async def get_lsp_diagnostics(file_path: str) -> dict[str, Any]:
         result["error"] = f"LSP error: {str(e)}"
 
     return result
+
+
+def get_lsp_diagnostics(file_path: str) -> dict[str, Any]:
+    """Get LSP diagnostics for a file (sync wrapper).
+
+    This function attempts to get diagnostics from the LSP client.
+    If the LSP infrastructure is not available, it gracefully degrades.
+
+    Args:
+        file_path: Path to the file.
+
+    Returns:
+        Dictionary with diagnostic information.
+    """
+    try:
+        return _run_async_safely(_get_lsp_diagnostics_async(file_path))
+    except Exception as e:
+        return {
+            "available": False,
+            "error_count": 0,
+            "warning_count": 0,
+            "info_count": 0,
+            "hint_count": 0,
+            "diagnostics": [],
+            "error": f"Async execution error: {str(e)}",
+        }
 
 
 def run_fallback_diagnostics(file_path: str) -> dict[str, Any]:
@@ -401,14 +468,8 @@ def main() -> None:
     if not Path(file_path).exists():
         sys.exit(0)
 
-    # Try to get LSP diagnostics
-    import asyncio
-
-    try:
-        result = asyncio.run(get_lsp_diagnostics(file_path))
-    except Exception:
-        # If async fails, try fallback
-        result = run_fallback_diagnostics(file_path)
+    # Try to get LSP diagnostics (get_lsp_diagnostics is now a sync wrapper)
+    result = get_lsp_diagnostics(file_path)
 
     # If LSP failed and no fallback, try fallback explicitly
     if not result.get("available") and not result.get("fallback"):

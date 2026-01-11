@@ -36,6 +36,18 @@ LOOP_ITERATION_ENV_VAR = "MOAI_LOOP_ITERATION"
 # State file for tracking loop status across invocations
 STATE_FILE_NAME = ".moai_loop_state.json"
 
+# Maximum state file size (64KB should be more than enough)
+MAX_STATE_FILE_SIZE = 64 * 1024
+
+# Completion promise markers (oh-my-opencode pattern)
+COMPLETION_MARKERS = [
+    "<promise>DONE</promise>",
+    "<promise>COMPLETE</promise>",
+    "<ralph:done />",
+    "<ralph:complete />",
+    "<alfred:complete />",
+]
+
 
 @dataclass
 class LoopState:
@@ -104,6 +116,9 @@ def get_state_file_path() -> Path:
 def load_loop_state() -> LoopState:
     """Load loop state from file or environment.
 
+    Uses direct file access without exists() check to prevent TOCTOU race conditions.
+    Includes file size limit to prevent memory exhaustion.
+
     Returns:
         LoopState instance.
     """
@@ -112,31 +127,55 @@ def load_loop_state() -> LoopState:
         iteration = int(os.environ.get(LOOP_ITERATION_ENV_VAR, "0"))
         return LoopState(active=True, iteration=iteration)
 
-    # Then check state file
+    # Then check state file - use try/except instead of exists() to prevent race condition
     state_path = get_state_file_path()
-    if state_path.exists():
-        try:
-            with open(state_path) as f:
-                data = json.load(f)
-                return LoopState.from_dict(data)
-        except Exception:
-            pass
+    try:
+        # Check file size before reading to prevent memory exhaustion
+        file_size = state_path.stat().st_size
+        if file_size > MAX_STATE_FILE_SIZE:
+            return LoopState()  # File too large, return default
+
+        with open(state_path, encoding="utf-8") as f:
+            data = json.load(f)
+            return LoopState.from_dict(data)
+    except FileNotFoundError:
+        pass  # File doesn't exist, return default
+    except (OSError, json.JSONDecodeError, ValueError, KeyError):
+        pass  # File corrupted or invalid, return default
 
     return LoopState()
 
 
 def save_loop_state(state: LoopState) -> None:
-    """Save loop state to file.
+    """Save loop state to file using atomic write.
+
+    Uses write-to-temp-then-rename pattern to prevent race conditions
+    and partial writes from corrupting state.
 
     Args:
         state: LoopState to save.
     """
+    import tempfile
+
     state_path = get_state_file_path()
     state_path.parent.mkdir(parents=True, exist_ok=True)
 
     try:
-        with open(state_path, "w") as f:
-            json.dump(state.to_dict(), f, indent=2)
+        # Write to temporary file first, then atomic rename
+        # This prevents partial writes from corrupting state
+        fd, temp_path = tempfile.mkstemp(dir=state_path.parent, prefix=".tmp_", suffix=".json")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(state.to_dict(), f, indent=2)
+            # Atomic rename (on POSIX systems)
+            os.replace(temp_path, state_path)
+        except Exception:
+            # Clean up temp file on error
+            try:
+                os.unlink(temp_path)
+            except OSError:
+                pass
+            raise
     except Exception:
         pass  # Graceful degradation
 
@@ -289,41 +328,71 @@ def check_tests_pass() -> tuple[bool, str]:
 def check_coverage(threshold: int = 85) -> tuple[bool, float]:
     """Check if test coverage meets threshold.
 
+    Uses try/except instead of exists() check to prevent TOCTOU race conditions.
+
     Args:
         threshold: Minimum coverage percentage.
 
     Returns:
         Tuple of (coverage_met, actual_coverage).
     """
+    # Maximum coverage file size (1MB should be more than enough)
+    max_coverage_file_size = 1024 * 1024
+
     # Try to read coverage from common locations
     project_dir = get_project_dir()
 
-    # Check for coverage.json (pytest-cov)
+    # Check for coverage.json (pytest-cov) - use try/except to prevent race condition
     coverage_json = project_dir / "coverage.json"
-    if coverage_json.exists():
-        try:
-            with open(coverage_json) as f:
+    try:
+        file_size = coverage_json.stat().st_size
+        if file_size <= max_coverage_file_size:
+            with open(coverage_json, encoding="utf-8") as f:
                 data = json.load(f)
                 total = data.get("totals", {}).get("percent_covered", 0)
                 return total >= threshold, total
-        except Exception:
-            pass
+    except FileNotFoundError:
+        pass  # File doesn't exist, try next option
+    except (OSError, json.JSONDecodeError, ValueError, KeyError):
+        pass  # File corrupted or invalid, try next option
 
-    # Check for coverage.xml
+    # Check for coverage.xml - use try/except to prevent race condition
     coverage_xml = project_dir / "coverage.xml"
-    if coverage_xml.exists():
-        try:
-            import xml.etree.ElementTree as ET
+    try:
+        import xml.etree.ElementTree as ET
 
+        file_size = coverage_xml.stat().st_size
+        if file_size <= max_coverage_file_size:
             tree = ET.parse(coverage_xml)
             root = tree.getroot()
             line_rate = float(root.attrib.get("line-rate", 0)) * 100
             return line_rate >= threshold, line_rate
-        except Exception:
-            pass
+    except FileNotFoundError:
+        pass  # File doesn't exist
+    except (OSError, ValueError, KeyError, Exception):
+        pass  # File corrupted, invalid XML, or other errors
 
     # No coverage data available - consider met to not block
     return True, -1.0
+
+
+def check_completion_promise(conversation_text: str) -> bool:
+    """Check if completion promise marker is present in conversation.
+
+    Args:
+        conversation_text: Full conversation text to search.
+
+    Returns:
+        True if any completion marker is found.
+    """
+    if not conversation_text:
+        return False
+
+    text_lower = conversation_text.lower()
+    for marker in COMPLETION_MARKERS:
+        if marker.lower() in text_lower:
+            return True
+    return False
 
 
 def check_completion_conditions(config: dict[str, Any]) -> CompletionStatus:
@@ -445,11 +514,38 @@ def main() -> None:
         sys.exit(0)
 
     # Read input from stdin (contains conversation context)
-    # Note: input_data reserved for future use with conversation context
+    conversation_text = ""
     try:
-        _ = json.load(sys.stdin)  # Consume stdin to avoid blocking
+        input_data = json.load(sys.stdin)
+        # Extract conversation text for completion promise detection
+        if "messages" in input_data:
+            messages = input_data["messages"]
+            if messages:
+                # Get last few assistant messages for completion marker detection
+                recent_messages = messages[-3:] if len(messages) >= 3 else messages
+                conversation_text = " ".join(
+                    [msg.get("content", "") for msg in recent_messages if msg.get("role") == "assistant"]
+                )
     except (json.JSONDecodeError, OSError):
         pass  # No input available
+
+    # PRIORITY CHECK: Completion promise marker (oh-my-opencode pattern)
+    # This takes precedence over all other conditions
+    if check_completion_promise(conversation_text):
+        state.active = False
+        state.completion_reason = "Completion promise detected"
+        action = "COMPLETE - <promise>DONE</promise> detected"
+        clear_loop_state()
+        exit_code = 0
+
+        output = {
+            "hookSpecificOutput": {
+                "hookEventName": "Stop",
+                "additionalContext": f"Ralph Loop: {action}",
+            }
+        }
+        print(json.dumps(output))
+        sys.exit(0)
 
     # Check if we should check completion
     if not hook_config.get("check_completion", True):

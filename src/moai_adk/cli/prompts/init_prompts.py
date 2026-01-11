@@ -15,17 +15,14 @@ console = Console()
 
 
 class ProjectSetupAnswers(TypedDict):
-    """Project setup answers."""
+    """Project setup answers (GLM-only simplified flow)."""
 
     # Core settings
     project_name: str
     locale: str  # ko | en | ja | zh
+    user_name: str  # User name for personalization (optional, can be empty)
 
-    # Service settings
-    service_type: str  # claude_subscription | claude_api | glm | hybrid
-    claude_auth_type: str | None  # subscription | api_key (for hybrid mode)
-    pricing_plan: str | None  # pro | max5 | max20 | basic | glm_pro | enterprise
-    anthropic_api_key: str | None
+    # GLM API key (optional)
     glm_api_key: str | None
 
     # Git settings
@@ -44,17 +41,16 @@ def prompt_project_setup(
     project_path: Path | None = None,
     initial_locale: str | None = None,
 ) -> ProjectSetupAnswers:
-    """Project setup prompt with modern UI.
+    """Project setup prompt with modern UI (GLM-only simplified flow).
 
-    Implements 8-question flow:
+    Implements simplified 5-question flow:
     1. Conversation language selection
-    2. Service selection (Claude subscription/API, GLM, Hybrid)
-    3. Pricing plan (if API selected)
-    4. API key input (if API selected)
-    5. Project name
-    6. Git mode
-    7. GitHub username (if needed)
-    8. Output language settings (commit, comment, docs)
+    2. User name (optional)
+    3. GLM API key input (optional, can skip)
+    4. Project name
+    5. Git mode
+    6. GitHub username (if needed)
+    7. Output language settings (commit, comment, docs)
 
     Args:
         project_name: Project name (asks when None)
@@ -71,10 +67,7 @@ def prompt_project_setup(
     answers: ProjectSetupAnswers = {
         "project_name": "",
         "locale": "en",
-        "service_type": "claude_subscription",
-        "claude_auth_type": None,
-        "pricing_plan": None,
-        "anthropic_api_key": None,
+        "user_name": "",
         "glm_api_key": None,
         "git_mode": "manual",
         "github_username": None,
@@ -121,145 +114,68 @@ def prompt_project_setup(
         console.print(f"[#DA7756]🌐 Selected:[/#DA7756] {language_names.get(language_choice, language_choice)}")
 
         # ========================================
-        # Q2: Service Selection
+        # Q1.5: User Name (optional)
         # ========================================
-        console.print(f"\n[blue]{t['service_selection']}[/blue]")
+        console.print(f"\n[blue]{t['user_setup']}[/blue]")
 
-        service_choices = [
-            {
-                "name": f"{t['opt_claude_subscription']} - {t['desc_claude_subscription']}",
-                "value": "claude_subscription",
-            },
-            {
-                "name": f"{t['opt_claude_api']} - {t['desc_claude_api']}",
-                "value": "claude_api",
-            },
-            {"name": f"{t['opt_glm']} - {t['desc_glm']}", "value": "glm"},
-            {"name": f"{t['opt_hybrid']} - {t['desc_hybrid']}", "value": "hybrid"},
-        ]
-
-        service_choice = _prompt_select(
-            t["q_service"],
-            choices=service_choices,
-            default="claude_subscription",
+        user_name = _prompt_text(
+            t["q_user_name"],
+            default="",
+            required=False,
         )
 
-        if service_choice is None:
+        if user_name is None:
             raise KeyboardInterrupt
 
-        answers["service_type"] = service_choice
+        answers["user_name"] = user_name.strip()
+        if answers["user_name"]:
+            console.print(f"[#DA7756]👤 Welcome:[/#DA7756] {answers['user_name']}")
 
         # ========================================
-        # Q2.5: Claude Auth Type (for hybrid only)
+        # Q2: GLM API Key Input (optional)
         # ========================================
-        if service_choice == "hybrid":
-            console.print(f"\n[blue]{t['claude_auth_selection']}[/blue]")
-
-            claude_auth_choices = [
-                {
-                    "name": f"{t['opt_claude_sub']} - {t['desc_claude_sub']}",
-                    "value": "subscription",
-                },
-                {
-                    "name": f"{t['opt_claude_api_key']} - {t['desc_claude_api_key']}",
-                    "value": "api_key",
-                },
-            ]
-
-            claude_auth_choice = _prompt_select(
-                t["q_claude_auth_type"],
-                choices=claude_auth_choices,
-                default="subscription",
-            )
-
-            if claude_auth_choice is None:
-                raise KeyboardInterrupt
-
-            answers["claude_auth_type"] = claude_auth_choice
-
-        # ========================================
-        # Q3: Pricing Plan (conditional)
-        # ========================================
-        if service_choice in ("claude_api", "claude_subscription", "hybrid"):
-            console.print(f"\n[blue]{t['pricing_selection']}[/blue]")
-
-            claude_pricing_choices = [
-                {"name": f"{t['opt_pro']} - {t['desc_pro']}", "value": "pro"},
-                {"name": f"{t['opt_max5']} - {t['desc_max5']}", "value": "max5"},
-                {"name": f"{t['opt_max20']} - {t['desc_max20']}", "value": "max20"},
-            ]
-
-            pricing_choice = _prompt_select(
-                t["q_pricing_claude"],
-                choices=claude_pricing_choices,
-                default="pro",
-            )
-
-            if pricing_choice is None:
-                raise KeyboardInterrupt
-
-            answers["pricing_plan"] = pricing_choice
-
-        if service_choice == "glm":
-            console.print(f"\n[blue]{t['pricing_selection']}[/blue]")
-
-            glm_pricing_choices = [
-                {"name": f"{t['opt_basic']} - {t['desc_basic']}", "value": "basic"},
-                {
-                    "name": f"{t['opt_glm_pro']} - {t['desc_glm_pro']}",
-                    "value": "glm_pro",
-                },
-                {
-                    "name": f"{t['opt_enterprise']} - {t['desc_enterprise']}",
-                    "value": "enterprise",
-                },
-            ]
-
-            pricing_choice = _prompt_select(
-                t["q_pricing_glm"],
-                choices=glm_pricing_choices,
-                default="basic",
-            )
-
-            if pricing_choice is None:
-                raise KeyboardInterrupt
-
-            answers["pricing_plan"] = pricing_choice
-
-        # ========================================
-        # Q4: API Key Input (conditional)
-        # ========================================
-        # Anthropic API key: only for claude_api, or hybrid with api_key auth
-        needs_anthropic_key = service_choice == "claude_api" or (
-            service_choice == "hybrid" and answers["claude_auth_type"] == "api_key"
+        from moai_adk.core.credentials import (
+            glm_env_exists,
+            load_glm_key_from_env,
+            save_glm_key_to_env,
         )
 
-        if needs_anthropic_key:
-            console.print(f"\n[blue]{t['api_key_input']}[/blue]")
+        console.print(f"\n[blue]{t['api_key_input']}[/blue]")
+        console.print("[dim]GLM CodePlan API key (optional - press Enter to skip)[/dim]\n")
 
-            api_key = _prompt_password(t["q_api_key_anthropic"])
+        has_existing_key = glm_env_exists()
+        existing_key = load_glm_key_from_env() if has_existing_key else None
 
-            if api_key is None:
-                raise KeyboardInterrupt
+        if has_existing_key and existing_key:
+            masked_key = existing_key[:8] + "..." if existing_key else "..."
+            console.print(f"[green]✓[/green] {t['msg_glm_key_found']} [cyan]{masked_key}[/cyan]")
+            console.print(f"[dim]{t['msg_glm_key_keep_prompt']}[/dim]\n")
+        else:
+            console.print(f"[dim]{t['msg_glm_key_skip_guidance']}[/dim]\n")
 
-            answers["anthropic_api_key"] = api_key
-            console.print(f"[dim]{t['msg_api_key_stored']}[/dim]")
+        # Prompt for GLM API key (optional, can skip)
+        glm_key = _prompt_password_optional(t["q_api_key_glm"])
 
-        # GLM API key: for glm or hybrid
-        if service_choice in ("glm", "hybrid"):
-            if service_choice == "glm" or not needs_anthropic_key:
-                console.print(f"\n[blue]{t['api_key_input']}[/blue]")
+        if glm_key is None:
+            raise KeyboardInterrupt
 
-            glm_key = _prompt_password(t["q_api_key_glm"])
-
-            if glm_key is None:
-                raise KeyboardInterrupt
-
+        # Save new key if provided
+        if glm_key:
+            save_glm_key_to_env(glm_key)
             answers["glm_api_key"] = glm_key
             console.print(f"[dim]{t['msg_api_key_stored']}[/dim]")
+        elif has_existing_key and existing_key:
+            # User pressed Enter, keeping existing key
+            answers["glm_api_key"] = existing_key
+            console.print("[dim]Keeping existing GLM API key.[/dim]")
+        else:
+            # User skipped, no key provided - this is allowed
+            answers["glm_api_key"] = None
+            console.print("[yellow]⚠️  GLM API key skipped.[/yellow]")
+            console.print(f"[dim]{t['msg_glm_key_skip_guidance']}[/dim]")
 
         # ========================================
-        # Q5: Project Name (editable for both cases)
+        # Q3: Project Name (editable for both cases)
         # ========================================
         console.print(f"\n[blue]{t['project_setup']}[/blue]")
 
@@ -280,7 +196,7 @@ def prompt_project_setup(
         answers["project_name"] = result
 
         # ========================================
-        # Q6: Git Mode
+        # Q4: Git Mode
         # ========================================
         console.print(f"\n[blue]{t['git_setup']}[/blue]")
 
@@ -305,7 +221,7 @@ def prompt_project_setup(
         answers["git_mode"] = git_choice
 
         # ========================================
-        # Q7: GitHub Username (conditional)
+        # Q5: GitHub Username (conditional)
         # ========================================
         if git_choice in ("personal", "team"):
             github_username = _prompt_text(
@@ -319,7 +235,7 @@ def prompt_project_setup(
             answers["github_username"] = github_username
 
         # ========================================
-        # Q8: Output Language Settings
+        # Q6: Output Language Settings
         # ========================================
         console.print(f"\n[blue]{t['output_language']}[/blue]")
 
@@ -431,7 +347,8 @@ def _prompt_select(
         from moai_adk.cli.ui.prompts import styled_select
 
         return styled_select(message, choices=choices, default=default)
-    except ImportError:
+    except (ImportError, OSError, Exception):
+        # Fallback to questionary on any error (including macOS OSError: Invalid argument)
         import questionary
 
         # Map choices for questionary format
@@ -481,3 +398,24 @@ def _prompt_password(
             validate=lambda text: len(text) > 0 or "API key is required",
         ).ask()
         return result
+
+
+def _prompt_password_optional(
+    message: str,
+) -> str | None:
+    """Display password input prompt with optional empty input.
+
+    Allows pressing Enter to submit empty string (for keeping existing key).
+
+    Args:
+        message: Prompt message
+
+    Returns:
+        User input (empty string allowed), or None if cancelled
+    """
+    import questionary
+
+    result = questionary.password(message).ask()
+    # Return empty string as-is (user pressed Enter to keep existing key)
+    # Return None only if user cancelled with Ctrl+C
+    return result if result is not None else None

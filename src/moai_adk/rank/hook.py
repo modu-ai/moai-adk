@@ -508,6 +508,62 @@ def parse_session_data(session_data: dict[str, Any]) -> Optional[dict[str, Any]]
         return None
 
 
+def parse_transcript_to_submission(
+    transcript_path: Path,
+) -> Optional[SessionSubmission]:
+    """Parse a transcript file and return a SessionSubmission object.
+
+    This function is used for batch processing - it parses the transcript
+    without submitting, allowing multiple sessions to be batched together.
+
+    Args:
+        transcript_path: Path to the JSONL transcript file
+
+    Returns:
+        SessionSubmission object if valid, None if no token usage or error
+    """
+    try:
+        session_data = {
+            "session_id": transcript_path.stem,
+            "transcript_path": str(transcript_path),
+            "cwd": str(transcript_path.parent.parent),
+        }
+
+        parsed = parse_session_data(session_data)
+        if not parsed:
+            return None
+
+        client = RankClient()
+
+        # Compute session hash
+        session_hash = client.compute_session_hash(
+            input_tokens=parsed["input_tokens"],
+            output_tokens=parsed["output_tokens"],
+            cache_creation_tokens=parsed["cache_creation_tokens"],
+            cache_read_tokens=parsed["cache_read_tokens"],
+            model_name=parsed["model_name"],
+            ended_at=parsed["ended_at"],
+        )
+
+        return SessionSubmission(
+            session_hash=session_hash,
+            ended_at=parsed["ended_at"],
+            input_tokens=parsed["input_tokens"],
+            output_tokens=parsed["output_tokens"],
+            cache_creation_tokens=parsed["cache_creation_tokens"],
+            cache_read_tokens=parsed["cache_read_tokens"],
+            model_name=parsed["model_name"],
+            started_at=parsed.get("started_at"),
+            duration_seconds=parsed.get("duration_seconds", 0),
+            turn_count=parsed.get("turn_count", 0),
+            tool_usage=parsed.get("tool_usage"),
+            model_usage=parsed.get("model_usage"),
+            code_metrics=parsed.get("code_metrics"),
+        )
+    except Exception:
+        return None
+
+
 def submit_session_hook(session_data: dict[str, Any]) -> dict[str, Any]:
     """Hook function to submit session data to MoAI Rank.
 
@@ -837,11 +893,69 @@ if __name__ == "__main__":
 '''
 
 
+def _register_hook_in_settings() -> bool:
+    """Register SessionEnd hook in ~/.claude/settings.json.
+
+    Claude Code requires hooks to be explicitly registered in settings.json
+    to be executed. This function adds the SessionEnd hook configuration.
+
+    Returns:
+        True if successfully registered, False otherwise
+    """
+    import json
+
+    settings_file = Path.home() / ".claude" / "settings.json"
+    hook_command = f"python3 {Path.home()}/.claude/hooks/moai/session_end__rank_submit.py"
+
+    try:
+        # Load existing settings or create new
+        if settings_file.exists():
+            with open(settings_file, encoding="utf-8") as f:
+                settings = json.load(f)
+        else:
+            settings = {}
+
+        # Ensure hooks section exists
+        if "hooks" not in settings:
+            settings["hooks"] = {}
+
+        # Check if SessionEnd hook already exists
+        if "SessionEnd" in settings["hooks"]:
+            # Check if our hook is already registered
+            for hook_config in settings["hooks"]["SessionEnd"]:
+                for hook in hook_config.get("hooks", []):
+                    if "session_end__rank_submit.py" in hook.get("command", ""):
+                        return True  # Already registered
+
+        # Add SessionEnd hook
+        session_end_config = {
+            "matcher": ".*",
+            "hooks": [{"type": "command", "command": hook_command}],
+        }
+
+        if "SessionEnd" not in settings["hooks"]:
+            settings["hooks"]["SessionEnd"] = []
+
+        settings["hooks"]["SessionEnd"].append(session_end_config)
+
+        # Write back
+        with open(settings_file, "w", encoding="utf-8") as f:
+            json.dump(settings, f, indent=2)
+
+        return True
+
+    except (OSError, json.JSONDecodeError):
+        return False
+
+
 def install_hook(project_path: Optional[Path] = None) -> bool:
     """Install the session end hook globally to ~/.claude/hooks/moai/.
 
     This installs the hook at the user level so it runs for all projects.
     Users can opt-out specific projects via ~/.moai/rank/config.yaml.
+
+    Also registers the hook in ~/.claude/settings.json so Claude Code
+    knows to execute it on session end.
 
     Args:
         project_path: Deprecated, ignored. Hook is always installed globally.
@@ -860,13 +974,63 @@ def install_hook(project_path: Optional[Path] = None) -> bool:
     try:
         hook_file.write_text(create_global_hook_script())
         hook_file.chmod(0o755)  # Make executable
+
+        # Register hook in settings.json
+        if not _register_hook_in_settings():
+            return False
+
         return True
     except OSError:
         return False
 
 
+def _unregister_hook_from_settings() -> bool:
+    """Remove SessionEnd hook from ~/.claude/settings.json.
+
+    Returns:
+        True if successfully unregistered, False otherwise
+    """
+    import json
+
+    settings_file = Path.home() / ".claude" / "settings.json"
+
+    try:
+        if not settings_file.exists():
+            return True  # Nothing to remove
+
+        with open(settings_file, encoding="utf-8") as f:
+            settings = json.load(f)
+
+        if "hooks" not in settings or "SessionEnd" not in settings["hooks"]:
+            return True  # Nothing to remove
+
+        # Filter out our hook
+        settings["hooks"]["SessionEnd"] = [
+            hook_config
+            for hook_config in settings["hooks"]["SessionEnd"]
+            if not any(
+                "session_end__rank_submit.py" in hook.get("command", "") for hook in hook_config.get("hooks", [])
+            )
+        ]
+
+        # Remove empty SessionEnd array
+        if not settings["hooks"]["SessionEnd"]:
+            del settings["hooks"]["SessionEnd"]
+
+        # Write back
+        with open(settings_file, "w", encoding="utf-8") as f:
+            json.dump(settings, f, indent=2)
+
+        return True
+
+    except (OSError, json.JSONDecodeError):
+        return False
+
+
 def uninstall_hook() -> bool:
     """Uninstall the global session end hook.
+
+    Removes both the hook file and the registration in settings.json.
 
     Returns:
         True if hook was uninstalled successfully
@@ -874,8 +1038,13 @@ def uninstall_hook() -> bool:
     hook_file = Path.home() / ".claude" / "hooks" / "moai" / "session_end__rank_submit.py"
 
     try:
+        # Remove hook file
         if hook_file.exists():
             hook_file.unlink()
+
+        # Unregister from settings.json
+        _unregister_hook_from_settings()
+
         return True
     except OSError:
         return False
@@ -884,11 +1053,39 @@ def uninstall_hook() -> bool:
 def is_hook_installed() -> bool:
     """Check if the global hook is installed.
 
+    Checks both the hook file existence and registration in settings.json.
+
     Returns:
-        True if the hook file exists
+        True if the hook file exists and is registered
     """
+    import json
+
     hook_file = Path.home() / ".claude" / "hooks" / "moai" / "session_end__rank_submit.py"
-    return hook_file.exists()
+    if not hook_file.exists():
+        return False
+
+    # Also check if registered in settings.json
+    settings_file = Path.home() / ".claude" / "settings.json"
+    try:
+        if not settings_file.exists():
+            return False
+
+        with open(settings_file, encoding="utf-8") as f:
+            settings = json.load(f)
+
+        if "hooks" not in settings or "SessionEnd" not in settings["hooks"]:
+            return False
+
+        # Check if our hook is registered
+        for hook_config in settings["hooks"]["SessionEnd"]:
+            for hook in hook_config.get("hooks", []):
+                if "session_end__rank_submit.py" in hook.get("command", ""):
+                    return True
+
+        return False
+
+    except (OSError, json.JSONDecodeError):
+        return False
 
 
 def prompt_hook_installation(console: Any = None, confirm_func: Any = None) -> bool:
@@ -945,3 +1142,362 @@ def prompt_hook_installation(console: Any = None, confirm_func: Any = None) -> b
     else:
         console.print("[dim]Skipped. You can install later with: moai rank register[/dim]")
         return False
+
+
+def find_all_transcripts() -> list[Path]:
+    """Find all Claude Code transcript files.
+
+    Scans ~/.claude/projects/ for all session transcript JSONL files.
+    Excludes subagent transcripts.
+
+    Returns:
+        List of paths to transcript files
+    """
+    claude_dir = Path.home() / ".claude" / "projects"
+    if not claude_dir.exists():
+        return []
+
+    transcripts = []
+    for jsonl_file in claude_dir.rglob("*.jsonl"):
+        # Skip subagent transcripts
+        if "subagents" in str(jsonl_file):
+            continue
+        transcripts.append(jsonl_file)
+
+    return transcripts
+
+
+def sync_all_sessions(
+    console: Any = None,
+    max_workers: int = 20,
+    batch_size: int = 100,
+) -> dict[str, int]:
+    """Sync all existing Claude Code sessions to MoAI Rank.
+
+    Uses a 2-phase approach:
+    1. Parse all transcripts in parallel (local I/O)
+    2. Submit in batches to minimize network requests (falls back to individual if batch not available)
+
+    Args:
+        console: Rich console instance for output (optional)
+        max_workers: Maximum number of parallel workers for parsing (default: 20)
+        batch_size: Number of sessions per batch request (default: 100, max: 100)
+
+    Returns:
+        Dictionary with sync statistics:
+        - total: Total transcripts found
+        - submitted: Successfully submitted
+        - skipped: Already submitted or no token usage
+        - failed: Failed to submit
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from threading import Lock
+
+    from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
+
+    if console is None:
+        from rich.console import Console
+
+        console = Console()
+
+    # Check credentials
+    if not RankConfig.has_credentials():
+        console.print("[yellow]Not registered with MoAI Rank.[/yellow]")
+        return {"total": 0, "submitted": 0, "skipped": 0, "failed": 0}
+
+    # Find all transcripts
+    transcripts = find_all_transcripts()
+    if not transcripts:
+        console.print("[dim]No session transcripts found.[/dim]")
+        return {"total": 0, "submitted": 0, "skipped": 0, "failed": 0}
+
+    stats = {"total": len(transcripts), "submitted": 0, "skipped": 0, "failed": 0}
+    stats_lock = Lock()
+
+    console.print()
+    console.print(f"[cyan]Syncing {len(transcripts)} session(s) to MoAI Rank[/cyan]")
+    console.print(f"[dim]Phase 1: Parsing transcripts (parallel: {max_workers} workers)[/dim]")
+    console.print()
+
+    # Phase 1: Parse all transcripts in parallel
+    submissions: list[SessionSubmission] = []
+    skipped_count = 0
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TextColumn("[dim]({task.completed}/{task.total})[/dim]"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Parsing transcripts", total=len(transcripts))
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(parse_transcript_to_submission, path): path for path in transcripts}
+
+            for future in as_completed(futures):
+                submission = future.result()
+                if submission is not None:
+                    submissions.append(submission)
+                    with stats_lock:
+                        stats["submitted"] += 1
+                else:
+                    with stats_lock:
+                        stats["skipped"] += 1
+                    skipped_count += 1
+
+                progress.update(task, advance=1)
+
+    # Phase 2: Submit
+    if not submissions:
+        console.print()
+        console.print("[dim]No valid sessions to submit.[/dim]")
+        return {
+            "total": len(transcripts),
+            "submitted": 0,
+            "skipped": len(transcripts),
+            "failed": 0,
+        }
+
+    # Reset submitted count for submission tracking
+    stats["submitted"] = 0
+    stats["skipped"] = skipped_count
+
+    client = RankClient()
+
+    # First, try to detect if batch API is available
+    batch_available = False
+    if submissions:
+        try:
+            # Try a small batch first
+            test_batch = submissions[:1]
+            client.submit_sessions_batch(test_batch)
+            batch_available = True
+        except Exception:
+            batch_available = False
+
+    if batch_available:
+        # Use batch submission
+        batch_count = (len(submissions) + batch_size - 1) // batch_size
+        console.print()
+        console.print(f"[cyan]Phase 2: Submitting {len(submissions)} session(s) [dim](batch mode)[/dim][/cyan]")
+        console.print(f"[dim]Batch size: {batch_size} | Batches: {batch_count}[/dim]")
+        console.print()
+
+        batch_submitted = 0
+        batch_skipped = 0
+        batch_failed = 0
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TextColumn("[dim]({task.completed}/{task.total})[/dim]"),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Submitting batches", total=batch_count)
+
+            for i in range(0, len(submissions), batch_size):
+                batch = submissions[i : i + batch_size]
+
+                try:
+                    response = client.submit_sessions_batch(batch)
+
+                    if response.get("success"):
+                        batch_submitted += response.get("succeeded", 0)
+                        batch_failed += response.get("failed", 0)
+
+                        # Check individual results for duplicates/skipped
+                        for result in response.get("results", []):
+                            if not result.get("success"):
+                                error_msg = result.get("error", "").lower()
+                                if "duplicate" in error_msg or "already" in error_msg:
+                                    batch_skipped += 1
+                                    batch_failed -= 1
+                    else:
+                        batch_failed += len(batch)
+
+                except Exception:
+                    batch_failed += len(batch)
+
+                progress.update(task, advance=1)
+
+        stats["submitted"] = batch_submitted
+        stats["skipped"] += batch_skipped
+        stats["failed"] = batch_failed
+    else:
+        # Fall back to individual submissions (sequential)
+        console.print()
+        console.print(f"[cyan]Phase 2: Submitting {len(submissions)} session(s) [dim](individual mode)[/dim][/cyan]")
+        console.print()
+
+        from time import sleep
+
+        from moai_adk.rank.client import ApiError, RankClientError
+
+        # Track errors for debugging
+        error_samples: list[str] = []
+        error_type_counts: dict[str, int] = {}
+        error_lock = Lock()
+
+        # Ensure log directory exists and set up logging
+        RankConfig.ensure_config_dir()
+        log_file = RankConfig.CONFIG_DIR / "sync_errors.log"
+
+        # Clear previous log
+        if log_file.exists():
+            log_file.unlink()
+
+        import logging
+
+        logging.basicConfig(
+            filename=str(log_file),
+            level=logging.ERROR,
+            format="%(asctime)s - %(message)s",
+            force=True,
+        )
+
+        # Use sequential submission with rate limiting to avoid server limits
+        submission_delay = 0.1  # 100ms between submissions
+
+        console.print(f"[dim]Rate limit: {submission_delay}s between submissions[/dim]")
+        console.print()
+
+        # Estimate time
+        estimated_seconds = len(submissions) * submission_delay
+        console.print(f"[dim]Estimated time: ~{int(estimated_seconds / 60)}m {int(estimated_seconds % 60)}s[/dim]")
+        console.print()
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TextColumn("[dim]({task.completed}/{task.total})[/dim]"),
+            TextColumn("[dim]|[/dim]"),
+            TextColumn("[green]✓ {task.fields[submitted]}[/green]"),
+            TextColumn("[dim]○ {task.fields[skipped]}[/dim]"),
+            TextColumn("[red]✗ {task.fields[failed]}[/red]"),
+            console=console,
+        ) as progress:
+            task = progress.add_task(
+                "Submitting sessions",
+                total=len(submissions),
+                submitted=0,
+                skipped=0,
+                failed=0,
+            )
+
+            for idx, submission in enumerate(submissions):
+                try:
+                    response = client.submit_session(submission)
+
+                    # Handle nested response structure
+                    session_id: str | None = None
+                    if isinstance(response, dict):
+                        # Try direct access
+                        session_id = response.get("sessionId")
+                        # If not found, check nested data structure
+                        if not session_id and isinstance(response.get("data"), dict):
+                            session_id = response["data"].get("sessionId")
+
+                    if session_id:
+                        stats["submitted"] += 1
+                    else:
+                        # Check for duplicate/already recorded
+                        msg = str(response.get("message", "")).lower()
+                        if "duplicate" in msg or "already" in msg:
+                            stats["skipped"] += 1
+                        else:
+                            # Log unexpected failure
+                            with error_lock:
+                                if len(error_samples) < 5:
+                                    error_samples.append(f"No sessionId: {response}")
+                            stats["failed"] += 1
+
+                except (ApiError, RankClientError) as e:
+                    error_msg = str(e).lower()
+                    if "duplicate" in error_msg or "already" in error_msg:
+                        stats["skipped"] += 1
+                    elif "too soon" in error_msg or "rate limit" in error_msg:
+                        # Rate limit hit - wait and retry
+                        with error_lock:
+                            if len(error_samples) < 5:
+                                error_samples.append(f"Rate limited: {e}")
+                        sleep(2)  # Wait before retry
+                        try:
+                            response = client.submit_session(submission)
+                            session_id: str | None = None
+                            if isinstance(response, dict):
+                                session_id = response.get("sessionId")
+                                if not session_id and isinstance(response.get("data"), dict):
+                                    session_id = response["data"].get("sessionId")
+                            if session_id:
+                                stats["submitted"] += 1
+                            else:
+                                stats["failed"] += 1
+                        except Exception:
+                            stats["failed"] += 1
+                    else:
+                        # Log API errors
+                        with error_lock:
+                            if len(error_samples) < 20:
+                                error_samples.append(f"API Error: {e}")
+                            # Categorize error type
+                            err_str = str(e)
+                            if "too soon" in err_str.lower():
+                                error_type_counts["rate_limited"] = error_type_counts.get("rate_limited", 0) + 1
+                            elif "validation" in err_str.lower():
+                                error_type_counts["validation"] = error_type_counts.get("validation", 0) + 1
+                            else:
+                                error_type_counts["other_api"] = error_type_counts.get("other_api", 0) + 1
+                        logging.error(f"API Error: {e}")
+                        stats["failed"] += 1
+                except Exception as e:
+                    # Log unexpected errors
+                    with error_lock:
+                        if len(error_samples) < 20:
+                            error_samples.append(f"Unexpected: {e}")
+                        error_type_counts["unexpected"] = error_type_counts.get("unexpected", 0) + 1
+                    logging.error(f"Unexpected error: {e}")
+                    stats["failed"] += 1
+
+                # Update progress bar
+                progress.update(
+                    task,
+                    advance=1,
+                    submitted=stats["submitted"],
+                    skipped=stats["skipped"],
+                    failed=stats["failed"],
+                )
+
+                # Small delay to avoid rate limiting
+                if idx < len(submissions) - 1:
+                    sleep(submission_delay)
+
+        # Show error samples if there were failures
+        if error_samples:
+            console.print()
+            console.print("[yellow]Sample errors:[/yellow]")
+            for i, error in enumerate(error_samples, 1):
+                console.print(f"  [dim]{i}. {error}[/dim]")
+
+        # Show error type breakdown
+        if error_type_counts:
+            console.print()
+            console.print("[yellow]Error breakdown:[/yellow]")
+            for error_type, count in sorted(error_type_counts.items(), key=lambda x: -x[1]):
+                console.print(f"  [dim]{error_type}: {count}[/dim]")
+
+    # Print summary
+    console.print()
+    console.print("[bold]Sync Complete[/bold]")
+    console.print(f"  [green]✓ Submitted:[/green] {stats['submitted']}")
+    console.print(f"  [dim]○ Skipped:[/dim]   {stats['skipped']} [dim](no usage or duplicate)[/dim]")
+    if stats["failed"] > 0:
+        console.print(f"  [red]✗ Failed:[/red]    {stats['failed']}")
+    console.print()
+
+    return stats

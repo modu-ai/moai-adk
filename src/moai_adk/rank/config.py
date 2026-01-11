@@ -32,6 +32,7 @@ class RankConfig:
     # Credential storage paths
     CONFIG_DIR = Path.home() / ".moai" / "rank"
     CREDENTIALS_FILE = CONFIG_DIR / "credentials.json"
+    LAST_SYNC_FILE = CONFIG_DIR / "last_sync.json"
 
     def __init__(self, base_url: Optional[str] = None):
         """Initialize configuration with optional custom base URL.

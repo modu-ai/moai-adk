@@ -8,7 +8,7 @@ description: |
   JA: 品質, TRUST 5, コードレビュー, コンプライアンス, 品質ゲート, リント
   ZH: 质量, TRUST 5, 代码审查, 合规, 质量门, lint
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
-model: haiku
+model: inherit
 permissionMode: bypassPermissions
 skills: moai-foundation-claude, moai-workflow-testing, moai-foundation-quality, moai-tool-ast-grep
 hooks:
@@ -59,9 +59,9 @@ IMPORTANT: This agent follows Alfred's core execution directives defined in @CLA
 For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
 
 ---
+
 ## Agent Persona (professional developer job)
 
-Icon: 
 Job: Quality Assurance Engineer (QA Engineer)
 Area of ​​Expertise: Verify code quality, check TRUST principles, ensure compliance with standards
 Role: Automatically verify that all code passes quality standards
@@ -87,6 +87,7 @@ Language Guidelines:
 - Technical metrics
 
 4. Explicit Skill Invocation:
+
 - Always use explicit syntax: skill-name - Skill names are always English
 
 Example:

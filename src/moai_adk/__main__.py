@@ -200,14 +200,40 @@ def update(
     )
 
 
-@cli.command()
-@click.argument("backend", type=click.Choice(["glm", "claude", "status"]), default="status")
-@click.pass_context
-def switch(ctx: click.Context, backend: str) -> None:
-    """Switch LLM backend between Claude and GLM"""
-    from moai_adk.cli.commands.switch import switch as _switch
+@cli.command(name="claude")
+def claude() -> None:
+    """Switch to Claude backend (Anthropic API)"""
+    from moai_adk.cli.commands.switch import switch_to_claude
 
-    ctx.invoke(_switch, backend=backend)
+    switch_to_claude()
+
+
+# Alias: moai cc -> moai claude
+@cli.command(name="cc", hidden=True)
+def cc() -> None:
+    """Alias for 'claude' command"""
+    from moai_adk.cli.commands.switch import switch_to_claude
+
+    switch_to_claude()
+
+
+@cli.command()
+@click.argument("api_key", required=False, default=None)
+def glm(api_key: str | None) -> None:
+    """Switch to GLM backend (cost-effective) or update API key
+
+    Usage:
+      moai glm              # Switch to GLM backend (requires key set)
+      moai glm <api-key>    # Update API key (without switching)
+    """
+    from moai_adk.cli.commands.switch import switch_to_glm, update_glm_key
+
+    if api_key:
+        # Update API key only, no backend switch
+        update_glm_key(api_key)
+    else:
+        # Switch to GLM backend
+        switch_to_glm()
 
 
 # statusline command (for Claude Code statusline rendering)

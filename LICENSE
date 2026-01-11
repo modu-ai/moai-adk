@@ -1,21 +1,99 @@
-MIT License
+COPYLEFT-3.0 License
 
-Copyright (c) 2025 MoAI-ADK Team
+Copyright (c) 2025-2026 MoAI-ADK Team
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This software is licensed under the COPYLEFT-3.0 License, which is based on
+copyleft principles to ensure that this software and all derivative works
+remain free and open source.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+TERMS AND CONDITIONS
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+1. DEFINITIONS
+
+   "Software" means the MoAI-ADK software and associated documentation files.
+
+   "Derivative Work" means any work that is based on or derived from the
+   Software, including modifications, translations, and extensions.
+
+   "Source Code" means the preferred form of the Software for making
+   modifications to it.
+
+2. GRANT OF RIGHTS
+
+   Subject to the terms of this License, the copyright holders grant you a
+   worldwide, royalty-free, non-exclusive license to:
+
+   a) Use the Software for any purpose, including commercial applications.
+
+   b) Study how the Software works and modify it to suit your needs.
+
+   c) Redistribute copies of the original Software.
+
+   d) Distribute copies of your modified versions to others.
+
+3. COPYLEFT OBLIGATIONS
+
+   If you distribute the Software or any Derivative Work, you must:
+
+   a) PROVIDE SOURCE CODE: Make the complete corresponding Source Code
+      available under this same License.
+
+   b) USE SAME LICENSE: License any Derivative Work under this COPYLEFT-3.0
+      License. You may not impose additional restrictions beyond those in
+      this License.
+
+   c) PRESERVE NOTICES: Retain all copyright notices, license notices, and
+      disclaimers in the Source Code and any accompanying documentation.
+
+   d) STATE CHANGES: Clearly indicate any modifications you have made to
+      the Software, including the date of changes.
+
+4. NETWORK USE PROVISION
+
+   If you modify the Software and make it available for use over a network
+   (such as a web service or SaaS), you must provide access to the complete
+   corresponding Source Code of your modified version to all users who
+   interact with the Software over the network.
+
+5. PATENT LICENSE
+
+   Each contributor grants you a non-exclusive, worldwide, royalty-free
+   patent license under the contributor's essential patent claims, to make,
+   use, sell, offer for sale, import and otherwise transfer the Software.
+
+6. NO WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+
+7. LIMITATION OF LIABILITY
+
+   IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY
+   DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+   (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+   LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+   ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+8. TERMINATION
+
+   Your rights under this License will terminate automatically if you fail
+   to comply with any of its terms. However, parties who have received copies
+   or rights from you under this License will not have their licenses
+   terminated so long as such parties remain in full compliance.
+
+9. ACCEPTANCE
+
+   You are not required to accept this License in order to receive or run a
+   copy of the Software. However, nothing else grants you permission to
+   modify or distribute the Software or its Derivative Works. These actions
+   are prohibited by law if you do not accept this License.
+
+---
+
+For more information about MoAI-ADK: https://github.com/modu-ai/moai-adk
+Contact: support@mo.ai.kr
+
+END OF TERMS AND CONDITIONS

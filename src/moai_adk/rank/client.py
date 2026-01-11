@@ -451,6 +451,69 @@ class RankClient:
 
         return self._make_request("POST", "/sessions", data=data, hmac_auth=True)
 
+    def submit_sessions_batch(self, sessions: list[SessionSubmission]) -> dict[str, Any]:
+        """Submit multiple Claude Code sessions in a single batch request.
+
+        This method uses HMAC authentication and is more efficient than
+        submitting sessions individually when syncing many sessions.
+
+        Args:
+            sessions: List of session data to submit (max 100 per batch)
+
+        Returns:
+            API response with batch results:
+            - success: Overall success status
+            - processed: Number of sessions processed
+            - succeeded: Number of sessions successfully submitted
+            - failed: Number of sessions that failed
+            - results: List of individual results per session
+
+        Raises:
+            AuthenticationError: If API key or signature is invalid
+            ApiError: If batch submission fails
+            ValueError: If more than 100 sessions provided
+        """
+        if len(sessions) > 100:
+            raise ValueError("Maximum 100 sessions per batch request")
+
+        sessions_data = []
+        for session in sessions:
+            session_data = {
+                "sessionHash": session.session_hash,
+                "endedAt": session.ended_at,
+                "inputTokens": session.input_tokens,
+                "outputTokens": session.output_tokens,
+                "cacheCreationTokens": session.cache_creation_tokens,
+                "cacheReadTokens": session.cache_read_tokens,
+            }
+
+            if session.model_name:
+                session_data["modelName"] = session.model_name
+
+            if session.started_at:
+                session_data["startedAt"] = session.started_at
+
+            if session.duration_seconds > 0:
+                session_data["durationSeconds"] = session.duration_seconds
+
+            if session.turn_count > 0:
+                session_data["turnCount"] = session.turn_count
+
+            if session.tool_usage:
+                session_data["toolUsage"] = session.tool_usage
+
+            if session.model_usage:
+                session_data["modelUsage"] = session.model_usage
+
+            if session.code_metrics:
+                session_data["codeMetrics"] = session.code_metrics
+
+            sessions_data.append(session_data)
+
+        data = {"sessions": sessions_data}
+
+        return self._make_request("POST", "/sessions/batch", data=data, hmac_auth=True)
+
     def compute_session_hash(
         self,
         input_tokens: int,

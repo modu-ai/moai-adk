@@ -316,7 +316,11 @@ def reset_stdin() -> None:
         import termios
 
         termios.tcflush(sys.stdin, termios.TCIFLUSH)
-    except (ImportError, OSError, AttributeError):
+    except (ImportError, AttributeError):
+        pass
+    except OSError:
+        # Ignore OSError on macOS (Errno 22 - Invalid argument)
+        # This occurs in certain terminal environments (iTerm2, VSCode integrated terminal)
         pass
 
     try:

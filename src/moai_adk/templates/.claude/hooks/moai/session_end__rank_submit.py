@@ -15,6 +15,13 @@ Privacy:
 - Only token counts are submitted (input, output, cache tokens)
 - Project paths are anonymized using one-way hashing
 - No code or conversation content is transmitted
+
+Opt-out: Configure ~/.moai/rank/config.yaml to exclude specific projects:
+    rank:
+      enabled: true
+      exclude_projects:
+        - "/path/to/private-project"
+        - "*/confidential/*"
 """
 
 import json
@@ -31,18 +38,17 @@ def main():
 
         session_data = json.loads(input_data)
 
-        # Skip if no token usage data
-        input_tokens = session_data.get("inputTokens", 0)
-        output_tokens = session_data.get("outputTokens", 0)
-        if input_tokens == 0 and output_tokens == 0:
-            return
-
         # Lazy import to avoid startup delay
         try:
-            from moai_adk.rank.hook import submit_session_hook
+            from moai_adk.rank.hook import is_project_excluded, submit_session_hook
         except ImportError:
             # moai-adk not installed or rank module not available
             return
+
+        # Check if this project is excluded
+        project_path = session_data.get("projectPath") or session_data.get("cwd")
+        if is_project_excluded(project_path):
+            return  # Silently skip excluded projects
 
         result = submit_session_hook(session_data)
 

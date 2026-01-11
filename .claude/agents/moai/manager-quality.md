@@ -8,7 +8,7 @@ description: |
   JA: 品質, TRUST 5, コードレビュー, コンプライアンス, 品質ゲート, リント
   ZH: 质量, TRUST 5, 代码审查, 合规, 质量门, lint
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
-model: haiku
+model: inherit
 permissionMode: bypassPermissions
 skills: moai-foundation-claude, moai-workflow-testing, moai-foundation-quality, moai-tool-ast-grep
 hooks:

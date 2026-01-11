@@ -208,11 +208,31 @@ All complexity is handled by specialized agents (manager-docs, manager-quality, 
 
 ## Output Format
 
-All command execution outputs must use semantic XML sections for clarity and consistency:
+### Output Format Rules
 
-XML Structure Format:
+[HARD] User-Facing Reports: Always use Markdown formatting for user communication. Never display XML tags to users.
+WHY: Users expect readable formatted text, not markup
+IMPACT: XML tags in user output create confusion and reduce comprehension
 
-```
+[HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
+WHY: XML structure enables automated parsing for downstream agent coordination
+IMPACT: Using XML for user output degrades user experience
+
+### User-Facing Output (Markdown)
+
+Progress reports must use Markdown with clear sections:
+
+- **Analysis**: Project state assessment and findings
+- **Plan**: Synchronization strategy and rationale
+- **Execution**: Actions taken and files modified
+- **Verification**: Quality gate results
+- **Completion**: Summary and next steps
+
+### Internal Agent Communication (XML)
+
+For agent-to-agent data transfer only (never displayed to users):
+
+```xml
 <analysis>Detailed assessment of project state, identified changes, and validation results</analysis>
 <plan>Synchronization strategy including scope, affected documents, and approach rationale</plan>
 <execution>Concrete actions taken: files updated, reports generated, status changes recorded</execution>
@@ -220,7 +240,7 @@ XML Structure Format:
 <completion>Summary of outcomes, generated reports locations, and next steps for user</completion>
 ```
 
-Required Elements:
+Required Elements for Internal Communication:
 
 - Analysis must detail all findings from project validation and Git analysis
 - Plan must explain strategy choice including WHY and IMPACT of decisions
@@ -228,9 +248,7 @@ Required Elements:
 - Verification must report all quality gates and their outcomes
 - Completion must guide user toward next meaningful action
 
-WHY: XML sections provide machine-parseable structure and enable audit trails. Clear sections ensure user can understand command progress at any point.
-
-IMPACT: Unstructured output reduces comprehension and prevents automated processing of results.
+WHY: XML sections provide machine-parseable structure for agent coordination and enable audit trails.
 
 ---
 
