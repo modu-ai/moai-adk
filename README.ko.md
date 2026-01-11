@@ -1138,7 +1138,32 @@ Waiting for authorization (timeout: 5 minutes)...
 
 ---
 
-### Step 2: 내 순위 확인
+### Step 2: 세션 데이터 동기화
+
+기존 Claude Code 세션 데이터를 MoAI Rank에 동기화합니다.
+
+```bash
+❯ moai rank sync
+
+Syncing 2577 session(s) to MoAI Rank
+Phase 1: Parsing transcripts (parallel: 20 workers)
+
+  Parsing transcripts ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% (2577/2577)
+
+Phase 2: Submitting 1873 session(s) (batch mode)
+Batch size: 100 | Batches: 19
+
+  Submitting batches ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% (19/19)
+
+Sync Complete
+  ✓ Submitted: 1169
+  ○ Skipped:   704 (no usage or duplicate)
+  ✗ Failed:    0
+```
+
+---
+
+### Step 3: 내 순위 확인
 
 ```bash
 ❯ moai rank status
@@ -1165,7 +1190,7 @@ Waiting for authorization (timeout: 5 minutes)...
 
 ---
 
-### Step 3: 웹 대시보드
+### Step 4: 웹 대시보드
 
 ![MoAI Rank Dashboard](./assets/images/readme/moai-rank-dashboard.png)
 
