@@ -38,9 +38,7 @@ jobs:
       - name: Upload to GitHub Pages
         uses: actions/upload-pages-artifact@v3
         with:
-          path: |
-            install.sh
-            index.html
+          path: '.'
 
       - name: Deploy to GitHub Pages
         id: deployment
