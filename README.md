@@ -63,6 +63,9 @@ moai glm YOUR_API_KEY
 
 ---
 
+> **📚 For detailed information, see the official online documentation:** [https://adk.mo.ai.kr](https://adk.mo.ai.kr)
+>
+
 ## 1. 30-Second Installation
 
 ### 🚀 Method 1: Quick Install (Recommended)
