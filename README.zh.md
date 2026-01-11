@@ -84,30 +84,6 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv tool install moai-adk
 ```
 
-### 🔨 开发者选项: GitHub Pages 设置 (可选)
-
-> **注意:** 本部分仅供想要直接托管安装脚本的开发者参考。普通用户可以跳过。
-
-要自行托管安装脚本，请在 GitHub Repository 中配置以下内容:
-
-**1. 启用 GitHub Pages**
-```
-Settings → Pages
-Source: GitHub Actions
-```
-
-**2. 发布时自动部署**
-- 发布 Release 时会自动部署到 GitHub Pages
-- 部署 URL: `https://moai-adk.github.io/MoAI-ADK/install.sh`
-
-**3. 本地测试**
-```bash
-# 本地测试安装脚本
-bash install/install.sh
-```
-
----
-
 ### 🎨 交互式设置向导
 
 运行`moai init`命令时，**9步交互式向导**启动:
