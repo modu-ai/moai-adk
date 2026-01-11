@@ -1,2686 +1,1271 @@
-# 🗿 MoAI-ADK: 基于 AI 智能体的 SPEC-First TDD 开发框架
+# 🗿 MoAI-ADK: AI 智能体开发框架
 
 ![MoAI-ADK Hero Banner](./assets/images/readme/hero-banner-moai-adk.png)
 
 **可用语言:** [🇰🇷 한국어](./README.ko.md) | [🇺🇸 English](./README.md) | [🇯🇵 日本語](./README.ja.md) | [🇨🇳 中文](./README.zh.md)
 
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Copyleft](https://img.shields.io/badge/License-Copyleft--3.0-blue.svg)](./LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.11--3.14-blue)](https://www.python.org/)
 
-MoAI-ADK (Agentic Development Kit) 是结合 **SPEC-First 开发**、**测试驱动开发**（TDD）和 **AI 智能体**的开源框架，提供完整且透明的开发生命周期。
+> **"Vibe Coding的目的不是快速生产力，而是代码质量。"**
+
+MoAI-ADK提供**高质量代码的AI开发环境**。SPEC-First TDD、测试驱动开发、持续重构和20个专业AI智能体协同工作。
 
 ---
 
-## 📑 目录（快速导航）
+## 🎁 MoAI-ADK赞助商: z.ai GLM 4.7
 
-### PART A: 入门（30 分钟）
+**💎 经济高效的AI开发最佳解决方案**
 
-| 章节                           | 时间    | 目标                     |
-| ------------------------------ | ------- | ------------------------ |
-| [1. 介绍](#1-介绍)             | 2 分钟  | 理解 MoAI-ADK 是什么     |
-| [2. 安装和设置](#2-安装和设置) | 10 分钟 | 配置基础环境             |
-| [3. 快速开始](#3-快速开始)     | 5 分钟  | 完成第一个功能           |
+MoAI-ADK通过**z.ai GLM 4.7**合作伙伴关系为开发者提供经济高效的AI开发环境。
 
-### PART B: 核心概念（45 分钟）
+### 🚀 GLM 4.7 特别优惠
 
-| 章节                                      | 时间    | 目标                     |
-| ----------------------------------------- | ------- | ------------------------ |
-| [4. SPEC 和 EARS 格式](#4-spec和ears格式) | 10 分钟 | 理解规格文档编写         |
-| [5. Mr.Alfred 和智能体](#5-mralfred和智能体) | 12 分钟 | 理解智能体系统           |
-| [6. 开发工作流](#6-开发工作流)            | 15 分钟 | Plan → Run → Sync        |
-| [7. 核心命令](#7-核心命令)                | 8 分钟  | `> /moai:0-3` 命令       |
+| 优惠                 | 说明                                           |
+| -------------------- | ---------------------------------------------- |
+| **💰 70% 成本节省**  | Claude的1/7价格获得同等性能                   |
+| **⚡ 快速响应**      | 优化的基础设施提供低延迟响应                  |
+| **🔄 兼容性**        | 与Claude Code完全兼容，无需修改代码           |
+| **📈 无限使用**      | 无每日/每周令牌限制，自由使用                 |
 
-### PART C: 深度学习（2-3 小时）
+### 🎁 注册特别折扣
 
-| 章节                                         | 目标                     |
-| -------------------------------------------- | ------------------------ |
-| [8. 智能体指南](#8-智能体指南-20个)              | 专业智能体利用           |
-| [9. 技能库](#9-技能库48个)                  | 48 个技能探索            |
-| [10. 组合模式和示例](#10-组合模式和示例)     | 实际项目示例             |
-| [11. TRUST 5 质量保证](#11-trust-5-质量保证) | 质量保证系统             |
-| [12. 高级功能](#12-高级功能)                 | Git Worktree & 增强的日志管理 |
+**👉 [GLM 4.7 注册 (10% 额外折扣)](https://z.ai/subscribe?ic=1NDV03BGWU)**
 
-### PART D: 高级和参考（需要时）
+通过此链接注册:
 
-| 章节                                                                                       | 目的                     |
-| ------------------------------------------------------------------------------------------ | ------------------------ |
-| [13. 高级设置](#13-高级设置)                                                              | 项目自定义               |
-| [14. FAQ & 快速参考](#14-faq--快速参考)                                                  | 常见问题                 |
-| [15. 附加资源](#15-附加资源)                                                              | 支持和信息               |
+- ✅ **额外10%折扣**优惠
+- ✅ 为**MoAI开源开发**做贡献 (奖励积分用于开源项目)
 
----
-
-## 1. 介绍
-
-### 🗿 MoAI-ADK 是什么？
-
-**MoAI-ADK** (Agentic Development Kit) 是基于 AI 智能体驱动的下一代开发框架。它结合 **SPEC-First 开发方法论**、**TDD**（测试驱动开发）和 **20 个专业 AI 智能体**，提供完整且透明的开发生命周期。
-
-### ✨ 为什么选择 MoAI-ADK？
-
-![传统 vs MoAI-ADK](./assets/images/readme/before-after-comparison.png)
-
-传统开发的局限性：
-
-- ❌ 由于需求不明确而频繁返工
-- ❌ 文档与代码不同步
-- ❌ 推迟测试导致质量下降
-- ❌ 重复的样板代码编写
-
-MoAI-ADK 的解决方案：
-
-- ✅ 从**清晰的 SPEC 文档**开始，消除误解
-- ✅ **自动文档同步**始终保持最新状态
-- ✅ **TDD 强制**保证 85%+ 测试覆盖率
-- ✅ **AI 智能体**自动化重复任务
-
-### 🎯 核心功能
-
-![5 个核心功能](./assets/images/readme/feature-overview-grid.png)
-
-| 功能             | 描述                                        | 定量效果                                                                                                                                                             |
-| ---------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **SPEC-First**   | 所有开发都从清晰的规格开始                  | 由于需求变更导致的返工**减少 90%**<br/>清晰的 SPEC 消除开发者-规划者之间的误解                                                                                   |
-| **TDD 强制**     | 自动 Red-Green-Refactor 循环                | （85%+ 覆盖率）错误**减少 70%**<br/>包括测试编写的总开发时间**减少 15%**                                                                                           |
-| **AI 编排**      | Mr.Alfred 指挥 20 个专业 AI 智能体（3-Tier + MCP 层级） | 平均令牌节省：每会话 5,000 令牌（条件性自动加载）<br/>**简单任务**：0 令牌（快速参考）<br/>**复杂任务**：8,470 令牌（自动加载技能）<br/>相比手动**60-70% 时间节省** |
-| **自动文档**     | 代码更改时自动文档同步（`> /moai:3-sync`）  | **100% 文档新鲜度保证**<br/>消除手动文档编写<br/>最后一次提交以来的自动同步                                                                                      |
-| **TRUST 5 质量** | Test, Readable, Unified, Secured, Trackable | 企业级质量保证<br/>部署后紧急补丁**减少 99%**                                                                                                                       |
-
----
-
-## 2. 安装和设置
-
-### 🎯 基本安装（10 分钟）
-
-#### 步骤 1：安装 uv（1 分钟）
+### 💡 使用指南
 
 ```bash
-# macOS / Linux
+# 1. 获取GLM API密钥
+通过上方链接注册后获取API密钥
+
+# 2. 在MoAI-ADK中配置GLM
+moai glm YOUR_API_KEY
+```
+
+> **💡 提示**: 在Worktree环境中使用GLM 4.7，用Opus设计并用GLM大量实现，最多可节省70%成本。
+
+---
+
+## 🌟 核心价值
+
+- **🎯 SPEC-First**: 清晰的规格说明减少90%返工
+- **🔴 TDD强制**: 自动保证85%+测试覆盖率
+- **🤖 AI编排**: 20个专业智能体 + 48个技能
+- **🌐 多语言路由**: 自动支持韩语/英语/日语/中文
+- **🌳 Worktree并行开发**: 完全隔离环境中无限并行工作
+- **🏆 MoAI Rank**: 通过Vibe Coding排行榜获得动力
+
+---
+
+## 1. 30秒安装
+
+```bash
+# 步骤1: 安装uv (macOS/Linux)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Windows (PowerShell)
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-
-# 验证安装
-uv --version
-```
-
-#### 步骤 2：安装 MoAI-ADK（2 分钟）
-
-```bash
-# 安装最新版本
+# 步骤2: 安装MoAI-ADK
 uv tool install moai-adk
-
-# 验证安装
-moai-adk --version
 ```
 
-#### 步骤 3A：初始化新项目（3 分钟）
+### 🎨 交互式设置向导
 
-```bash
-# 创建新项目
-moai-adk init my-project
-cd my-project
+运行`moai init`命令时，**9步交互式向导**启动:
 
-# 检查项目结构
-ls -la
+![MoAI-ADK Init Wizard](./assets/images/readme/init-wizard-banner.png)
+
+---
+
+#### 步骤1: 语言选择
+
+选择对话语言。之后所有指南将以所选语言显示。
+
 ```
-
-生成的文件结构：
-
-```text
-my-project/
-├── .claude/              # Claude Code 配置
-├── .moai/                # MoAI-ADK 配置
-├── src/                  # 源代码
-├── tests/                # 测试代码
-├── .moai/specs/          # SPEC 文档
-├── README.md
-└── pyproject.toml
+🌐 Language Selection
+❯ Select your conversation language: [↑↓] Navigate  [Enter] Select
+❯ Korean (한국어)
+  English
+  Japanese (日本語)
+  Chinese (中文)
 ```
 
 ---
 
-#### 步骤 3B：设置现有项目（5 分钟）
+#### 步骤2: 输入姓名
 
-**对于现有项目，通过 3 个简单步骤集成 MoAI-ADK：**
+输入您的姓名。AI将提供个性化响应。
+
+```
+👤 用户设置
+❯ 输入用户名 (可选):
+```
+
+---
+
+#### 步骤3: 输入GLM API密钥
+
+输入Z.AI公司的GLM API密钥。
+
+```
+🔑 API 密钥输入
+GLM CodePlan API key (optional - press Enter to skip)
+
+✓ 找到现有GLM API密钥: 99c1a2df...
+按Enter保留现有密钥，输入新密钥将替换
+
+? 输入GLM API密钥:
+```
+
+> 🎁 **GLM注册优惠**: 如果您没有GLM账户，请通过下方链接注册!
+>
+> **👉 [GLM 注册 (10% 额外折扣)](https://z.ai/subscribe?ic=1NDV03BGWU)**
+>
+> 通过此链接注册可获得**额外10%折扣**。
+> 此外，通过链接注册产生的奖励将用于**MoAI开源开发**。🙏
+
+---
+
+#### 步骤4: 项目设置
+
+输入项目名称。
+
+```
+📁 项目设置
+❯ 项目名称: MoAI-ADK
+```
+
+---
+
+#### 步骤5: Git设置
+
+选择Git模式。
+
+```
+🔀 Git设置
+❯ 选择Git模式: [↑↓] Navigate  [Enter] Select
+❯ manual (仅本地) - 仅使用本地仓库
+  personal (GitHub个人) - 使用GitHub个人账户
+  team (GitHub团队) - 使用GitHub团队/组织
+```
+
+---
+
+#### 步骤6: GitHub用户名
+
+选择personal/team时输入GitHub用户名。
+
+```
+❯ GitHub用户名:
+```
+
+---
+
+#### 步骤7: 提交消息语言
+
+选择Git提交消息使用的语言。
+
+```
+🗣️ 输出语言设置
+❯ 提交消息语言: [↑↓] Navigate  [Enter] Select
+  English
+❯ Korean (한국어)
+  Japanese (日本語)
+  Chinese (中文)
+```
+
+---
+
+#### 步骤8: 代码注释语言
+
+选择代码注释使用的语言。
+
+```
+❯ 代码注释语言: [↑↓] Navigate  [Enter] Select
+  English
+❯ Korean (한국어)
+  Japanese (日本語)
+  Chinese (中文)
+```
+
+---
+
+#### 步骤9: 文档语言
+
+选择文档使用的语言。
+
+```
+❯ 文档语言: [↑↓] Navigate  [Enter] Select
+  English
+❯ Korean (한국어)
+  Japanese (日本語)
+  Chinese (中文)
+```
+
+> 💡 **令牌优化策略**: 指导智能体的内部提示固定为**英语**。
+>
+> **原因**: 非英语语言在Claude中**额外消耗12%~20%令牌**。当无限重复的智能体工作增多时，会对成本和每周令牌限制产生重大影响，因此MoAI将内部智能体指导固定为英语，**仅用用户语言提供一般对话**。
+>
+> 这是MoAI**减少令牌浪费的努力**。
+
+---
+
+#### 安装完成
+
+所有设置完成后，5步安装自动进行:
+
+```
+🚀 Starting installation...
+
+Phase 1: Preparation and backup...        ████████████████ 100%
+Phase 2: Creating directory structure...  ████████████████ 100%
+Phase 3: Installing resources...          ████████████████ 100%
+Phase 4: Generating configurations...     ████████████████ 100%
+Phase 5: Validation and finalization...   ████████████████ 100%
+
+✅ Initialization Completed Successfully!
+────────────────────────────────────────────────────────────────
+
+📊 Summary:
+  📁 Location:   /path/to/my-project
+  🌐 Language:   Auto-detect (use /moai:0-project)
+  🔀 Git:        manual (github-flow, branch: manual)
+  🌍 Locale:     ko
+  📄 Files:      47 created
+  ⏱️  Duration:   1234ms
+
+🚀 Next Steps:
+  1. Run cd my-project to enter the project
+  2. Run /moai:0-project in Claude Code for full setup
+  3. Start developing with MoAI-ADK!
+```
+
+### 添加到现有项目
 
 ```bash
-# 导航到您的现有项目
 cd your-existing-project
-
-# 在当前目录中初始化 MoAI-ADK
-moai-adk init .
-
-# 验证 MoAI-ADK 集成
-ls -la .claude/ .moai/
+moai init .
+# 现有文件保持不变
 ```
-
-**添加到您项目的内容：**
-
-```text
-your-existing-project/
-├── .claude/              # Claude Code 配置（添加）
-│   ├── agents/           # MoAI-ADK 智能体
-│   ├── commands/         # 自定义命令
-│   ├── hooks/             # 自动化工作流
-│   └── settings.json     # 项目设置
-├── .moai/                # MoAI-ADK 配置（添加）
-│   ├── config/           # 项目配置
-│   ├── memory/           # 会话内存
-│   ├── specs/            # SPEC 文档
-│   └── docs/             # 自动生成文档
-├── src/                  # 您现有的源代码（未更改）
-├── tests/                # 您现有的测试（未更改）
-└── README.md             # 您现有的 README（未更改）
-```
-
-**重要：** 您的现有文件保持不变。MoAI-ADK 只添加配置文件。
 
 ---
 
-#### 步骤 4：运行 Claude Code 和初始化项目元数据
+### 🔄 MoAI-ADK更新
+
+将现有项目更新到最新版本。
 
 ```bash
-# 在项目目录中运行 Claude Code
-claude
+moai update
+```
 
-# 在 Claude Code 中，初始化项目元数据
+**3步智能更新工作流**:
+
+```
+Stage 1: 📦 检查包版本
+         └─ 从PyPI检查最新版本 → 必要时自动升级
+
+Stage 2: 🔍 比较配置版本
+         └─ 比较包模板 vs 项目配置
+         └─ 相同则跳过 (性能提升70-80%)
+
+Stage 3: 📄 同步模板
+         └─ 创建备份 → 更新模板 → 恢复用户配置
+```
+
+**主要选项**:
+
+```bash
+# 仅检查版本 (不更新)
+moai update --check
+
+# 仅同步模板 (跳过包升级)
+moai update --templates-only
+
+# 配置编辑模式 (重新运行init向导)
+moai update --config
+moai update -c
+
+# 无备份强制更新
+moai update --force
+
+# All is well~ 自动模式 (自动批准所有确认)
+moai update --yes
+```
+
+**合并策略选择**:
+
+```
+🔀 Choose merge strategy:
+  [1] Auto-merge (default)
+      → 自动保留模板 + 用户更改
+  [2] Manual merge
+      → 创建备份 + 合并指南 (直接控制)
+```
+
+```bash
+# 强制自动合并 (默认)
+moai update --merge
+
+# 强制手动合并
+moai update --manual
+```
+
+**自动保留项目**:
+
+| 项目                | 说明                                          |
+| ------------------- | --------------------------------------------- |
+| **用户设置**        | `.claude/settings.local.json` (MCP, GLM设置) |
+| **自定义智能体**    | 模板中不存在的用户创建智能体                  |
+| **自定义命令**      | 用户定义斜杠命令                              |
+| **自定义技能**      | 用户定义技能                                  |
+| **自定义钩子**      | 用户定义钩子脚本                              |
+| **SPEC文档**        | `.moai/specs/` 整个文件夹                    |
+| **报告**            | `.moai/reports/` 整个文件夹                  |
+
+> 💡 **更新提示**: 使用`moai update -c`随时更改语言、API密钥、Git设置。
+> 建议在moai以外的文件夹中创建您的命令、智能体、技能、钩子。
+
+---
+
+## 2. 项目文档生成 (可选)
+
+在新项目或现有项目中**自动生成帮助Claude Code理解项目的项目文档**:
+
+```
 > /moai:0-project
 ```
 
-**`/moai:0-project` 的作用：**
+### 生成的3个文件
+
+| 文件                         | 目标          | 主要内容                                                  |
+| ---------------------------- | ------------- | --------------------------------------------------------- |
+| `.moai/project/product.md`   | **产品概述**  | 项目名称/描述、目标用户、核心功能、用例                   |
+| `.moai/project/structure.md` | **结构分析**  | 目录树、主要文件夹目的、核心文件位置、模块组成            |
+| `.moai/project/tech.md`      | **技术栈**    | 使用技术、框架选择原因、开发环境、构建/部署设置            |
+
+### 为什么需要?
+
+- **提供上下文**: Claude Code快速掌握项目上下文
+- **保持一致性**: 团队成员间共享项目理解
+- **加速入职**: 缩短新开发者的项目掌握时间
+- **优化AI协作**: 更准确的代码建议和审查
+
+> 💡 **提示**: 在项目初期或结构变更时运行`/moai:0-project`以最新状态更新文档。
+
+---
+
+## 3. 核心命令集合
+
+### 🎯 `/moai:0-project` - 项目初始化
+
+```bash
+> /moai:0-project
+```
+
+自动分析项目当前状态并配置最佳开发环境。检测编程语言和框架，自动设置Git工作流和质量保证标准。所有配置完成后立即可开始开发。
+
+**工作内容**:
 
 - ✅ 分析项目结构
-- ✅ 检测编程语言和框架
-- ✅ 在 `.moai/config/config.json` 中生成项目元数据
-- ✅ 设置默认 Git 工作流配置
-- ✅ 创建会话内存系统
-- ✅ 配置质量保证标准
-
-**预期输出：**
-
-```
-✓ 项目分析完成：检测到 Python 项目
-✓ 元数据生成完成：.moai/config/config.json
-✓ Git 策略：手动模式配置完成
-✓ 质量门：85% 测试覆盖率目标
-✓ 项目初始化成功
-```
-
-项目元数据和环境现在已准备好进行 SPEC-First TDD 开发！
+- ✅ 检测编程语言/框架
+- ✅ 生成`.moai/config/config.yaml`
+- ✅ 设置Git工作流
+- ✅ 配置会话内存系统
+- ✅ 设置质量保证标准
 
 ---
 
-## 3. 快速开始
-
-### 🎯 目标：5 分钟完成第一个功能
-
-![快速开始旅程](./assets/images/readme/quickstart-journey-map.png)
-
----
-
-### **步骤 1：规划第一个功能** ⏱️ 2 分钟
-
-在 Claude Code 内：
-
-```
-> /moai:1-plan "添加用户登录功能"
-```
-
-这个命令将：
-
-- 自动生成 SPEC-001 文档
-- 定义需求、约束、成功标准
-- 创建测试场景
-
----
-
-### **步骤 2：初始化上下文** ⏱️ 1 分钟
-
-```
-> /clear
-```
-
-为了令牌效率，清除之前的上下文。
-
----
-
-### **步骤 3：实现（Run）** ⏱️ 2 分钟
-
-```
-> /moai:2-run SPEC-001
-```
-
-这个命令将：
-
-- 首先编写测试（Red）
-- 实现代码（Green）
-- 重构（Refactor）
-- 自动执行 TRUST 5 验证
-
----
-
-### **步骤 4：文档（Sync）** ⏱️ （可选）
-
-```
-> /moai:3-sync SPEC-001
-```
-
-自动地：
-
-- 生成 API 文档
-- 创建架构图
-- 更新 README
-- 准备部署
-
-**完成！** 第一个功能已完全实现。🎉
-
----
-
-### 📁 更多信息
-
-- **高级安装选项**: [13. 高级设置](#13-高级设置)
-- **详细命令使用**: [7. 核心命令](#7-核心命令)
-- **开发工作流**: [6. 开发工作流](#6-开发工作流)
-
----
-
-## 4. SPEC 和 EARS 格式
-
-### 📋 SPEC-First 开发
-
-![SPEC-First 视觉指南](./assets/images/readme/spec-first-visual-guide.png)
-
-**什么是 SPEC-First？**
-
-所有开发都从**清晰的规格**开始。SPEC 遵循 **EARS（Easy Approach to Requirements Syntax）格式**，包含：
-
-- **需求**: 要构建什么？
-- **约束**: 有哪些限制？
-- **成功标准**: 何时完成？
-- **测试场景**: 如何验证？
-
-### 🎯 EARS 格式示例
-
-```markdown
-# SPEC-001: 用户登录功能
-
-## 需求 (Requirements)
-
-- WHEN 用户输入邮箱和密码并点击"登录"按钮时
-- IF 凭证有效
-- THEN 系统应发放 JWT (JSON Web Token) 并导航到仪表板
-
-## 约束 (Constraints)
-
-- 密码必须至少 8 个字符
-- 连续 5 次失败后锁定账户（30 分钟）
-- 响应时间必须在 500ms 以内
-
-## 成功标准 (Success Criteria)
-
-- 有效凭证登录成功率 100%
-- 对无效凭证显示清晰的错误消息
-- 响应时间 < 500ms
-- 测试覆盖率 >= 85%
-
-## 测试场景 (Test Cases)
-
-### TC-1: 成功登录
-
-- 输入: email="user@example.com", password="secure123"
-- 期待结果: 发放令牌，导航到仪表板
-
-### TC-2: 无效密码
-
-- 输入: email="user@example.com", password="wrong"
-- 期待结果: "密码不正确"错误消息
-
-### TC-3: 账户锁定
-
-- 输入: 连续 5 次失败
-- 期待结果: "账户已锁定。30 分钟后重试"
-```
-
-### 💡 EARS 格式的 5 种类型
-
-| 类型             | 语法           | 示例                               |
-| ---------------- | -------------- | ---------------------------------- |
-| **Ubiquitous**   | 总是执行       | "系统应始终记录活动"               |
-| **Event-driven** | WHEN...THEN    | "当用户登录时，发放令牌"           |
-| **State-driven** | IF...THEN      | "如果账户处于活动状态，则允许登录" |
-| **Unwanted**     | shall not      | "系统不得以明文形式存储密码"       |
-| **Optional**     | where possible | "在可能的情况下提供 OAuth 登录"    |
-
----
-
-## 5. Mr.Alfred 和智能体
-
-### 🎩 Mr. Alfred - 超级智能体编排者
-
-**Mr. Alfred 是什么？**
-
-Mr. Alfred 是 MoAI-ADK 的**首席编排者**（Orchestrator），分析用户请求，选择合适的专业智能体来委派任务，并整合结果。
-
-**Alfred 的角色：**
-
-1. **理解**: 分析用户请求并澄清模糊性
-2. **规划**: 通过 Plan 智能体建立执行计划
-3. **执行**: 将任务委派给专业智能体（顺序/并行）
-4. **整合**: 收集所有结果并向用户报告
-
-```mermaid
-flowchart TD
-    User[👤 用户] -->|请求| Alfred[🎩 Mr.Alfred]
-    Alfred -->|分析| Plan[📋 Plan 智能体]
-    Plan -->|计划| Alfred
-    Alfred -->|委派| Agents[👥 专业智能体们]
-    Agents -->|结果| Alfred
-    Alfred -->|整合报告| User
-
-    style Alfred fill:#fff,stroke:#333,stroke-width:2px
-    style Agents fill:#fff,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5
-```
-### 🌐 多语言智能体路由
-
-MoAI-ADK v0.41.2 支持 4 种语言（EN/KO/JA/ZH）的**基于关键字的自动智能体选择**。
-
-**支持的语言:**
-- 🇺🇸 英语 (English)
-- 🇰🇷 韩语 (한국어)
-- 🇯🇵 日语 (日本語)
-- 🇨🇳 中文
-
-**工作原理:**
-
-```
-用户: "设计后端 API"
-    ↓
-Alfred: 检测关键词 ("后端", "API")
-    ↓
-自动路由 → expert-backend 智能体
-    ↓
-用中文回答
-```
-
-**触发关键词示例:**
-
-| 领域 | 中文关键词 |
-|------|-----------|
-| Backend | 后端, API, 服务器, 认证, 数据库, 微服务 |
-| Frontend | 前端, UI, 组件, React, Vue, 状态管理 |
-| Database | 数据库, SQL, NoSQL, 架构, 查询, 索引 |
-| Security | 安全, 漏洞, OWASP, 注入, XSS, 审计 |
-| TDD | TDD, 红绿重构, 测试驱动开发, 单元测试 |
-
-**XLT (跨语言思维) 协议:**
-1. 将用户请求内部映射到英文关键词
-2. 基于英文模式选择智能体
-3. 用用户的会话语言回答
-
-
-### 🔧 智能体系统（3-Tier + MCP 层级）
-
-MoAI-ADK 将**20 个专业智能体**组织成**3 个层级 + MCP 集成**以提供最佳性能。
-
-**Tier 1: Workflow Managers**（工作流管理，8个）
-
-- `manager-spec`: SPEC 编写（EARS 格式）
-- `manager-tdd`: TDD 实现（RED-GREEN-REFACTOR）
-- `manager-docs`: 文档自动生成
-- `manager-quality`: 质量验证（TRUST 5）
-- `manager-strategy`: 执行策略规划
-- `manager-project`: 项目初始化
-- `manager-git`: Git 工作流
-- `manager-claude-code`: Claude Code 集成
-
-**Tier 2: Domain Experts**（领域专家，8个）
-
-- `expert-backend`: 后端架构、API 开发、数据库设计
-- `expert-frontend`: 前端、React/Vue 实现、UI/UX 设计
-- `expert-security`: 安全分析、漏洞扫描
-- `expert-devops`: 部署、基础设施、CI/CD
-- `expert-debug`: 调试、错误分析
-- `expert-performance`: 性能分析、优化
-- `expert-refactoring`: 代码重构、AST-grep 基础转换
-- `expert-testing`: 测试策略、覆盖率优化
-
-**Tier 3: Meta-generators**（元生成器，4个）
-
-- `builder-agent`: 创建新智能体
-- `builder-skill`: 创建新技能
-- `builder-command`: 创建新命令
-- `builder-plugin`: 创建 Claude Code 插件
-
-**MCP Integrators**（MCP 集成）
-
-- `mcp-context7`: 最新库文档实时查询
-- `mcp-sequential-thinking`: 复杂推理分析
-- `mcp-playwright`: Web 自动化测试
-- `mcp-figma`: Figma 设计系统
-- `mcp-notion`: Notion 工作空间管理
-
----
-
-## 6. 开发工作流
-
-### 🔄 Plan-Run-Sync 无限循环
-
-MoAI-ADK 的开发以**3 阶段无限循环**进行：
-
-```mermaid
-sequenceDiagram
-    participant U as 👤 用户
-    participant A as 🎩 Alfred
-    participant S as 📝 SPEC 构建器
-    participant T as 💻 TDD 实现者
-    participant D as 📚 文档管理器
-
-    Note over U,D: 🔄 Plan → Run → Sync 循环
-
-    rect rgb(245, 245, 245)
-        Note right of U: 阶段 1: Plan
-        U->>A: > /moai:1-plan "登录功能"
-        A->>S: 请求 SPEC 编写
-        S-->>A: SPEC-001 草稿
-        A-->>U: 请求审查
-        U->>A: 批准
-        A->>U: 💡 推荐 /clear
-    end
-
-    rect rgb(250, 250, 250)
-        Note right of U: 阶段 2: Run
-        U->>A: > /moai:2-run SPEC-001
-        A->>T: 请求 TDD 实现
-        T->>T: 🔴 编写测试（失败）
-        T->>T: 🟢 实现代码（成功）
-        T->>T: 🔵 重构 & 优化
-        T-->>A: 实现完成（测试通过）
-        A-->>U: 确认完成
-    end
-
-    rect rgb(240, 250, 240)
-        Note right of U: 阶段 3: Sync (自动化)
-        U->>A: > /moai:3-sync SPEC-001
-        A->>D: 自动测试执行
-        D->>D: 🔴 最终测试
-        D->>D: 📊 覆盖率确认
-        D->>D: 🔍 代码质量检查
-        D->>D: 📝 自动提交生成
-        D->>D: 📚 文档更新
-        D-->>A: 全部完成（自动化）
-        A-->>U: 合并准备完成
-    end
-```
-
-### 📊 各阶段详细说明
-
-#### 阶段 1: Plan（设计，5-10 分钟）
-
-**目标**: 要构建什么？
+### 📋 `/moai:1-plan` - SPEC编写
 
 ```bash
-> /moai:1-plan "用户登录功能"
+> /moai:1-plan "功能描述"
 ```
 
-在这个阶段：
+使用EARS格式自动生成无歧义的规格说明。包含需求定义、成功标准、测试场景，明确指明开发方向。生成的SPEC作为开发团队和AI共享理解的单一来源(Single Source of Truth)。
 
-- ✅ 自动生成 SPEC-001 文档
-- ✅ 以 EARS 格式定义需求
-- ✅ 明确成功标准
-- ✅ 编写测试场景
+**自动生成**:
 
-**产出物**: `.moai/specs/SPEC-001/spec.md`
-
----
-
-#### 阶段 2: Run（实现，20-40 分钟）
-
-**目标**: 如何构建？
-
-```bash
-> /clear
-> /moai:2-run SPEC-001
-```
-
-在这个阶段：
-
-- 🔴 **RED**: 首先编写失败的测试
-- 🟢 **GREEN**: 通过代码让测试通过
-- 🔵 **REFACTOR**: 清理和优化代码
-
-**自动验证**:
-
-- 测试覆盖率 >= 85%
-- 通过代码检查
-- 通过安全检查
-- 通过类型检查
-
-**产出物**: 实现完成 + 测试代码 + 85%+ 覆盖率
-
----
-
-#### 阶段 3: Sync（自动化，5-10 分钟）
-
-**目标**: 完成了吗？（自动化）
-
-```bash
-> /clear
-> /moai:3-sync SPEC-001
-```
-
-这个阶段自动执行：
-
-- 🔴 **最终测试执行**: 所有测试自动运行
-- 📊 **覆盖率确认**: 95% 以上覆盖率自动保证
-- 🔍 **代码质量检查**: ruff、mypy 自动执行
-- 📝 **自动提交生成**: "Ready for merge" 提交自动生成
-- 📚 **文档更新**: API 文档、README 自动更新
-- 🚀 **合并准备**: Claude Code 自动完成合并准备
-
-**产出物**: 测试通过 + 文档完成 + 合并准备完成
-
----
-
-### 💡 可视化工作流："博客评论功能"示例
-
-```mermaid
-flowchart LR
-    Start([👤 用户请求]) -->|"<br/>能创建<br/>评论功能吗？<br/>"| Plan["<b>📋 PLAN</b><br/>（设计）<br/>━━━━━━<br/>✨ SPEC 编写<br/>✅ 成功标准定义<br/>⏱️ 5分钟"]
-
-    Plan -->|"<br/>SPEC-001<br/>准备完成<br/>"| Run["<b>💻 RUN</b><br/>（实现）<br/>━━━━━━<br/>🔴 测试编写<br/>🟢 代码实现<br/>🔵 重构<br/>⏱️ 20分钟"]
-
-    Run -->|"<br/>测试通过<br/>代码完成<br/>"| Sync["<b>📚 SYNC</b><br/>（自动化）<br/>━━━━━━<br/>🔴 最终测试<br/>📊 覆盖率确认<br/>🔍 代码质量检查<br/>📝 自动提交生成<br/>🚀 合并准备<br/>⏱️ 5分钟"]
-
-    Sync -->|"<br/>完全自动化完成！<br/>🚀 合并准备完成<br/>"| End([✅ 功能部署完成])
-
-    classDef planStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:3px,color:#000
-    classDef runStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px,color:#000
-    classDef syncStyle fill:#fff8e1,stroke:#ff9800,stroke-width:3px,color:#000
-    classDef normalStyle fill:#fafafa,stroke:#666,stroke-width:2px
-
-    class Plan planStyle
-    class Run runStyle
-    class Sync syncStyle
-    class Start,End normalStyle
-```
-
----
-
-## 7. 核心命令
-
-### 🎯 `> /moai:0-project` - 项目初始化
-
-**目的**: 生成项目元数据
-
-**使用时机**: 项目首次启动时
-
-```bash
-> /moai:0-project
-```
-
-**生成的文件**:
-
-- `.moai/config/config.json`: 项目设置
-- `.moai/memory/`: 项目内存
-- `.moai/docs/`: 自动生成文档
-
----
-
-### 📋 `> /moai:1-plan` - SPEC 编写
-
-**目的**: EARS 格式 SPEC 文档生成
-
-**使用时机**: 新功能开发开始前
-
-```bash
-> /moai:1-plan "添加登录功能"
-```
+- EARS格式规格说明
+- 需求定义
+- 成功标准
+- 测试场景
 
 **示例**:
 
 ```bash
-> /moai:1-plan "实现用户档案页面"
-# → SPEC-002 创建 (.moai/specs/SPEC-002/spec.md)
+> /moai:1-plan "用户档案页面"
+# → 生成SPEC-002
 
-> /moai:1-plan "开发支付功能 API"
-# → SPEC-003 创建
+> /moai:1-plan "支付API"
+# → 生成SPEC-003
 ```
 
-**生成的 SPEC 包含**:
-
-- 需求 (Requirements)
-- 约束 (Constraints)
-- 成功标准 (Success Criteria)
-- 测试场景 (Test Cases)
-
-**重要**: 接下来必须执行`> /clear`
-
-```bash
-> /moai:1-plan "功能名"
-# 完成后
-> /clear
-```
+**重要**: 之后必须执行`> /clear`
 
 ---
 
-### 💻 `> /moai:2-run` - TDD 实现
-
-**目的**: RED-GREEN-REFACTOR 循环代码实现
-
-**使用时机**: SPEC 编写后实现时
+### 💻 `/moai:2-run` - TDD实现
 
 ```bash
 > /moai:2-run SPEC-001
 ```
 
-**示例**:
+通过Red-Green-Refactor循环先编写测试，然后实现通过的代码。所有实现必须通过85%以上测试覆盖率以及linting、类型检查、安全检查。自动验证TRUST 5质量原则，只提交稳定的代码。
 
-```bash
-> /moai:2-run SPEC-001  # 基本实现
-```
+**自动执行**:
 
-**自动执行事项**:
+- 🔴 先编写测试 (Red)
+- 🟢 测试通过代码 (Green)
+- 🔵 重构 (Refactor)
+- ✅ TRUST 5验证
 
-- 🔴 测试首先编写
-- 🟢 代码通过测试
-- 🔵 重构 & 优化
-- ✅ TRUST 5 验证（自动）
-
-**验证项**:
+**验证项目**:
 
 - 测试覆盖率 >= 85%
-- 代码检查通过
+- Linting通过
 - 类型检查通过
 - 安全检查通过
 
 ---
 
-### 📚 `> /moai:3-sync` - 文档同步
-
-**目的**: 在文档中反映代码更改
-
-**使用时机**: 实现完成后
+### 📚 `/moai:3-sync` - 文档同步
 
 ```bash
 > /moai:3-sync SPEC-001
 ```
+
+从质量验证开始执行文档同步、Git提交、PR自动化。自动生成API文档、架构图、README、CHANGELOG并保持最新状态。自动提交更改，团队模式下将PR从Draft转换为Ready。
+
+**自动执行任务**:
+
+1. **阶段1: 质量验证**
+   - 测试执行 (pytest, jest, go test等)
+   - Linter检查 (ruff, eslint, golangci-lint等)
+   - 类型检查器 (mypy, tsc, go vet等)
+   - 代码审查 (manager-quality)
+
+2. **阶段2-3: 文档同步**
+   - 自动生成API文档
+   - 更新架构图
+   - 更新README
+   - 同步SPEC文档
+
+3. **阶段4: Git自动化**
+   - 提交更改
+   - PR Draft → Ready转换
+   - (可选) Auto-merge
+
+**执行模式**:
+
+- `auto` (默认): 仅同步更改的文件
+- `force`: 重新生成所有文档
+- `status`: 仅执行状态检查
+- `project`: 同步整个项目
+
+**详细内容**: 参考命令文件
+
+---
+
+### 🚀 `/moai:alfred` - 完全自主自动化
+
+```bash
+> /moai:alfred "功能描述"
+```
+
+用户提出目标，AI自行执行探索、计划、实现、验证。通过并行探索分析代码库，通过自主循环自行修复问题。检测到完成标记(`<promise>DONE</promise>`)时自动终止，开发者只需确认最终结果。
+
+**一次性执行**:
+
+1. **阶段0**: 并行探索 (Explore + Research + Quality)
+2. **阶段1**: SPEC生成 (EARS格式)
+3. **阶段2**: TDD实现 (自主循环)
+4. **阶段3**: 文档同步
+
+**选项**:
+
+- `--loop`: 启用自主重复修复 (AI自行解决问题)
+- `--max N`: 指定最大重复次数 (默认: 100)
+- `--parallel`: 启用并行探索 (更快分析)
+- `--branch`: 自动创建功能分支
+- `--pr`: 完成后创建Pull Request
+- `--resume SPEC`: 继续
 
 **示例**:
 
 ```bash
-> /moai:3-sync SPEC-001  # 整体文档
-```
+# 基本自主执行
+> /moai:alfred "JWT认证添加"
 
-**自动生成文档**:
+# 自动循环 + 并行探索
+> /moai:alfred "JWT认证" --loop --parallel
 
-- API 参考
-- 架构图
-- 部署指南
-- README 更新
-- CHANGELOG
-
----
-
-### 🌳 **moai-worktree** - 并行 SPEC 开发的 Git 工作树管理
-
-#### 为什么选择 moai-worktree？解决的问题
-
-在现代软件开发中，特别是遵循 SPEC-First TDD 方法论时，开发者经常面临同时处理多个功能的问题。传统 Git 工作流迫使开发者：
-
-- **上下文切换地狱**: 在同一工作空间中不断切换分支，失去上下文并面临未完成工作的风险
-- **顺序开发**: 一次只能处理一个 SPEC，降低生产力
-- **环境冲突**: 不同的 SPEC 可能需要不同的依赖、数据库状态或配置
-
-**moai-worktree 解决了这些问题**，为每个 SPEC 提供隔离的工作空间，实现无上下文切换开销的真正并行开发。
-
-#### 核心概念：基于 SPEC 的并行开发
-
-**什么是 Git 工作树？**
-
-Git 工作树是链接到同一 Git 仓库的独立工作目录，允许在不同工作目录中同时检出不同的分支。每个工作树具有：
-
-- 独立的文件系统
-- 分离的工作目录状态
-- 隔离的构建工件和依赖
-- 独立的暂存区和未暂存更改
-
-**moai-worktree 架构:**
-
-```
-主仓库/
-├── .git/                    # 共享 Git 仓库
-├── src/                     # 主分支文件
-└── worktrees/               # 自动创建的工作树
-    ├── SPEC-001/
-    │   ├── .git             # 工作树特定 git 文件
-    │   ├── src/             # SPEC-001 实现
-    │   └── tests/           # SPEC-001 测试
-    ├── SPEC-002/
-    │   ├── .git             # 工作树特定 git 文件
-    │   ├── src/             # SPEC-002 实现
-    │   └── tests/           # SPEC-002 测试
-    └── SPEC-003/
-        ├── .git             # 工作树特定 git 文件
-        ├── src/             # SPEC-003 实现
-        └── tests/           # SPEC-003 测试
-```
-
-#### SPEC-First 开发的核心优势
-
-**1. 零上下文切换**
-
-- 每个 SPEC 都有专用工作空间
-- SPEC 间切换时绝不会丢失工作上下文
-- 保持对特定需求的精神专注
-
-**2. 真正的并行开发**
-
-- SPEC-002 测试运行时处理 SPEC-001 实现
-- SPEC-004 文档同步时处理 SPEC-003 调试
-- 无需等待其他进程完成
-
-**3. 隔离环境**
-
-- 不同 SPEC 可以使用不同依赖版本
-- 分离的数据库状态和配置
-- SPEC 间无污染
-
-**4. SPEC 完成跟踪**
-
-- 活动 SPEC 列表的清晰视觉显示
-- 轻松识别中断或未完成的 SPEC
-- 完成工作的系统清理
-
-#### 高级功能
-
-**智能同步**
-
-```bash
-# 所有工作树与最新主分支同步
-moai-worktree sync --all
-
-# 带冲突解决的特定工作树同步
-moai-worktree sync SPEC-001 --auto-resolve
-```
-
-**智能清理**
-
-```bash
-# 已合并分支工作树自动删除
-moai-worktree clean --merged-only
-
-# 带确认提示的安全清理
-moai-worktree clean --interactive
-```
-
-**性能优化**
-
-- **并发操作**: 可以同时修改多个工作树
-- **共享历史记录**: 所有工作树共享相同的 Git 对象数据库
-- **选择性同步**: 仅同步需要的更改，而不是整个仓库
-
-#### 何时使用 moai-worktree
-
-**理想场景:**
-
-- **多个活动 SPEC**: 同时处理 3 个或更多 SPEC
-- **长期运行任务**: SPEC 实现需要数天或数周
-- **团队协作**: 不同开发者处理不同 SPEC
-- **功能分支**: 每个 SPEC 成为自己的功能分支
-- **环境隔离**: 不同 SPEC 需要不同配置
-
-#### 完整的开发工作流（从开始到合并）
-
-**步骤 1: SPEC 创建和工作树设置**
-
-```bash
-# 方法 1: 带自动工作树创建的 SPEC 创建
-> /moai:1-plan '实现用户认证系统' --worktree
-# → 自动创建 SPEC-AUTH-001 和工作树设置
-
-# 方法 2: 手动工作树创建
-> /moai:1-plan '实现用户认证系统'
-# SPEC-AUTH-001 创建完成
-moai-worktree new SPEC-AUTH-001
-# → 创建隔离的工作树环境
-```
-
-**步骤 2: 移动到工作树并开始开发**
-
-```bash
-# 移动到工作树（推荐方式）
-moai-worktree go SPEC-AUTH-001
-# → cd ~/moai/worktrees/MoAI-ADK/SPEC-AUTH-001
-
-# 或在新 shell 中直接移动
-moai-worktree switch SPEC-AUTH-001
-# → 在新终端窗口中移动到工作树
-```
-
-**步骤 3: 在隔离环境中开发**
-
-```bash
-# 在工作树内进行 TDD 开发
-> /moai:2-run SPEC-AUTH-001
-# → 执行 RED → GREEN → REFACTOR 循环
-
-# 开发中状态检查
-moai-worktree status
-git status
-git log --oneline -5
-
-# 中间保存
-git add .
-git commit -m "Auth: 实现用户登录端点"
-```
-
-**步骤 4: 同步和冲突解决**
-
-```bash
-# 获取主分支更改
-moai-worktree sync SPEC-AUTH-001
-
-# 带自动冲突解决的同步
-moai-worktree sync SPEC-AUTH-001 --auto-resolve
-
-# 同步所有工作树
-moai-worktree sync --all --auto-resolve
-```
-
-**步骤 5: 开发完成和测试（自动化）**
-
-```bash
-# MoAI 工作流同步 - 自动执行测试、质量检查、提交
-> /moai:3-sync SPEC-AUTH-001
-# → 自动执行最终测试、覆盖率确认、代码质量检查、最终提交完成
-```
-
-**步骤 6: 主分支合并准备（自动化 + 直接命令）**
-
-**选项 A: Claude Code 自动化（初学者）**
-
-```bash
-# Claude Code 自动执行合并准备
-# 用户只需要请求：
-> 将 SPEC-AUTH-001 准备合并到主分支
-
-# Claude Code 自动执行：
-# - 获取工作树分支
-# - 本地合并测试
-# - 冲突检查和解决建议
-# - 合并准备完成报告
-```
-
-**选项 B: 直接 Git 命令（高级用户）**
-
-```bash
-# 1. 从工作树移动到主分支
-moai-worktree go SPEC-AUTH-001  # 或 cd /path/to/main/repo
-
-# 2. 获取工作树分支
-git fetch origin feature/SPEC-AUTH-001
-git checkout -b merge/SPEC-AUTH-001 origin/feature/SPEC-AUTH-001
-
-# 3. 本地合并测试
-git merge main --no-ff  # 从主分支合并更改
-
-# 4. 如有冲突手动解决
-git status  # 检查冲突文件
-# 冲突文件编辑后：
-git add .
-git commit -m "解决：SPEC-AUTH-001 中的合并冲突"
-
-# 5. 确认合并准备完成
-git log --oneline -5
-git status  # 确认干净的工作目录
-```
-
-**冲突解决直接命令集合:**
-
-```bash
-# 冲突时的策略方法
-git checkout --ours conflicted_file.py    # 优先主分支
-git checkout --theirs conflicted_file.py  # 优先工作树更改
-
-# 取消合并并重试
-git merge --abort
-git merge main --no-ff
-
-# 更改整个合并策略
-git rebase main  # 使用 rebase 代替
-```
-
-**步骤 7: 完成和清理（自动化 + 直接命令）**
-
-**选项 A: Claude Code 自动化（初学者）**
-
-```bash
-# 工作树清理（请求 Claude Code 自动处理）
-> 清理 SPEC-AUTH-001 工作树
-
-# README.ko.md 更新（Claude Code 自动处理）
-> 将完成的 SPEC-AUTH-001 功能添加到 README.ko.md
-
-# Claude Code 自动执行：
-# - 工作树状态检查
-# - 完成的功能文档化
-# - README 更新
-# - 清理完成报告
-```
-
-**选项 B: 直接 moai-worktree 命令（高级用户）**
-
-```bash
-# 1. 工作树状态最终确认
-moai-worktree status
-# 输出示例：
-# SPEC-AUTH-001
-#   Branch: feature/SPEC-AUTH-001
-#   Status: completed
-#   Path:   ~/moai/worktrees/MoAI-ADK/SPEC-AUTH-001
-
-# 2. 工作树清理（安全方式）
-moai-worktree clean --merged-only
-# → 仅自动删除已合并分支的工作树
-
-# 3. 或交互式清理（选择性删除）
-moai-worktree clean --interactive
-# → 可选择要删除的工作树
-
-# 4. 直接删除特定工作树（强制）
-moai-worktree remove SPEC-AUTH-001 --force
-
-# 5. 整体工作树状态检查
-moai-worktree list
-# 或
-moai-worktree status
-```
-
-**实用的工作树管理命令集合:**
-
-```bash
-# 日常工作树管理
-moai-worktree list                    # 所有工作树列表
-moai-worktree status                  # 详细状态检查
-moai-worktree sync SPEC-AUTH-001      # 特定工作树同步
-moai-worktree sync --all              # 同步所有工作树
-
-# 工作树移动和操作
-moai-worktree go SPEC-001     # 在当前 shell 中移动
-moai-worktree switch SPEC-001         # 在新 shell 中打开工作树
-
-# 自动冲突解决
-moai-worktree sync SPEC-AUTH-001 --auto-resolve
-
-# 设置检查
-moai-worktree config get              # 查看当前设置
-moai-worktree config root             # 检查工作树根路径
-```
-
-**混合工作流推荐模式:**
-
-```bash
-# 步骤 1-5: Claude Code 自动化（快速开发）
-> /moai:1-plan "功能名"
-> /moai:2-run SPEC-XXX
-> /moai:3-sync SPEC-XXX
-
-# 步骤 6-7: 直接命令（精确控制）
-moai-worktree sync SPEC-XXX --auto-resolve  # 自动冲突解决
-moai-worktree clean --merged-only           # 清理完成的工作树
+# 继续
+> /moai:alfred resume SPEC-AUTH-001
 ```
 
 ---
 
-### 🔧 直接命令参考（Manual Command Reference）
-
-本节详细介绍可与 Claude Code 自动化一起使用的直接命令。
-
-#### **基本 moai-worktree 命令**
-
-| 命令                 | 目的                    | 使用示例                      | 描述                               |
-| ---------------------- | ----------------------- | ----------------------------- | ---------------------------------- |
-| `moai-worktree new`    | 创建新工作树            | `moai-worktree new SPEC-001`   | 为 SPEC-001 创建隔离的工作空间     |
-| `moai-worktree list`   | 工作树列表              | `moai-worktree list`           | 显示所有活动工作树                 |
-| `moai-worktree go`     | 移动到工作树            | `moai-worktree go SPEC-001`    | 在当前 shell 中移动到工作树        |
-| `moai-worktree switch` | 在新 shell 中打开工作树 | `moai-worktree switch SPEC-001` | 在新终端中移动到工作树             |
-| `moai-worktree remove` | 删除工作树              | `moai-worktree remove SPEC-001` | 删除特定工作树                     |
-| `moai-worktree status` | 状态检查                | `moai-worktree status`         | 显示所有工作树状态                 |
-
-#### **同步命令**
-
-| 命令                              | 目的                 | 使用示例                                | 描述                          |
-| --------------------------------- | -------------------- | --------------------------------------- | ----------------------------- |
-| `moai-worktree sync`                | 特定工作树同步       | `moai-worktree sync SPEC-001`           | 与主分支同步更改             |
-| `moai-worktree sync --all`          | 同步所有工作树       | `moai-worktree sync --all`              | 一次性同步所有工作树         |
-| `moai-worktree sync --auto-resolve` | 自动冲突解决         | `moai-worktree sync SPEC-001 --auto-resolve` | 冲突时尝试自动解决           |
-| `moai-worktree sync --rebase`       | 基于 Rebase 的同步   | `moai-worktree sync SPEC-001 --rebase`       | 使用 rebase 代替合并         |
-
-#### **清理命令**
-
-| 命令                              | 目的                   | 使用示例                        | 描述                            |
-| --------------------------------- | ---------------------- | ------------------------------- | ------------------------------- |
-| `moai-worktree clean`               | 工作树清理             | `moai-worktree clean`            | 清理所有工作树                 |
-| `moai-worktree clean --merged-only` | 清理已合并的工作树     | `moai-worktree clean --merged-only` | 仅删除已合并分支的工作树       |
-| `moai-worktree clean --interactive` | 交互式清理             | `moai-worktree clean --interactive` | 可选择要删除的工作树           |
-
-#### **设置命令**
-
-| 命令                      | 目的           | 使用示例               | 描述                     |
-| --------------------------- | -------------- | ----------------------- | ------------------------ |
-| `moai-worktree config`      | 查看设置       | `moai-worktree config`  | 显示当前工作树设置        |
-| `moai-worktree config root` | 检查根路径    | `moai-worktree config root` | 检查工作树根目录路径     |
-
-#### **高级使用模式**
-
-**1. 多 SPEC 并行开发**
+### 🔁 `/moai:loop` - 自主重复修复
 
 ```bash
-# 同时创建多个 SPEC
-moai-worktree new SPEC-AUTH-001    # 用户认证
-moai-worktree new SPEC-PAY-002     # 支付系统
-moai-worktree new SPEC-UI-003      # UI 改进
-
-# 检查每个工作树状态
-moai-worktree status
-
-# 同步所有工作树
-moai-worktree sync --all --auto-resolve
+> /moai:loop
 ```
 
-**2. 自动冲突解决工作流**
+AI自行诊断LSP错误、测试失败、覆盖率不足并重复修复。通过并行诊断同时执行LSP、AST-grep、Tests、Coverage，快3-4倍解决问题。检测到完成标记或达到最大重复次数时自主执行。
 
-```bash
-# 步骤 1: 尝试自动同步
-moai-worktree sync SPEC-001 --auto-resolve
+**自主循环流程**:
 
-# 步骤 2: 自动解决失败时手动介入
-moai-worktree go SPEC-001
-git status  # 检查冲突文件
-
-# 步骤 3: 选择冲突解决策略
-git checkout --ours conflicted_file.py    # 优先主分支
-# 或
-git checkout --theirs conflicted_file.py  # 优先工作树更改
-
-# 步骤 4: 解决完成后提交
-git add conflicted_file.py
-git commit -m "解决：SPEC-001 中的自动冲突"
+```text
+并行诊断 → 生成TODO → 执行修复 → 验证 → 重复
+    ↓
+检测完成标记 → <promise>DONE</promise>
 ```
-
-**3. 定期工作树维护**
-
-```bash
-# 推荐每天早上执行
-moai-worktree status                      # 当前状态检查
-moai-worktree sync --all                  # 同步所有工作树
-
-# 推荐每周执行
-moai-worktree clean --merged-only         # 清理完成的工作树
-
-# 推荐每月执行
-moai-worktree clean --interactive         # 交互式清理删除不必要的工作树
-```
-
-#### **Claude Code 与命令组合指南**
-
-**初学者用户:**
-
-```bash
-# 步骤 1-3: Claude Code 自动化快速开始
-/moai:1-plan "用户登录功能"
-/moai:2-run SPEC-001
-/moai:3-sync SPEC-001
-
-# 步骤 4-5: 直接命令基本管理
-moai-worktree status                      # 状态检查
-moai-worktree sync SPEC-001               # 同步
-moai-worktree clean --merged-only         # 清理
-```
-
-**中级用户:**
-
-```bash
-# 步骤 1-2: Claude Code 自动化
-> /moai:1-plan "支付系统开发"
-> /moai:2-run SPEC-PAY-001
-
-# 步骤 3: 直接命令精确控制
-moai-worktree go SPEC-PAY-001
-# 直接开发和测试
-git add .
-git commit -m "Pay: 实现核心支付处理"
-
-# 步骤 4-5: 混合方式
-> /moai:3-sync SPEC-PAY-001                 # 自动化质量验证
-moai-worktree sync SPEC-PAY-001 --auto-resolve  # 直接同步
-```
-
-**高级用户:**
-
-```bash
-# 整个过程直接命令控制
-moai-worktree new SPEC-ADV-001
-moai-worktree go SPEC-ADV-001
-# 完全手动开发过程
-git add .
-git commit -m "Adv: 复杂功能实现"
-moai-worktree sync SPEC-ADV-001 --rebase
-moai-worktree clean --interactive
-```
-
-**生产力提示:**
-
-1. **别名设置** (在 ~/.zshrc 或 ~/.bashrc 中添加):
-
-```bash
-alias wt-new='moai-worktree new'
-alias wt-go='moai-worktree go'
-alias wt-list='moai-worktree list'
-alias wt-status='moai-worktree status'
-alias wt-sync='moai-worktree sync'
-alias wt-clean='moai-worktree clean'
-```
-
-2. **快速工作流函数**:
-
-```bash
-# 工作树快速创建和移动
-wt-dev() {
-    moai-worktree new "SPEC-$1"
-    moai-worktree go "SPEC-$1"
-}
-
-# 使用法: wt-dev AUTH-001
-```
-
----
-
-### 🎯 **自动化与直接控制的完美结合**
-
-MoAI-ADK 设计为能够同时利用 **Claude Code 自动化**和**直接命令控制**的优势。
-
-#### **何时使用什么？**
-
-| 情况                 | 推荐方法          | 原因                         |
-| -------------------- | ----------------- | ---------------------------- |
-| **新功能开始**       | Claude Code 自动化 | 快速 SPEC 生成和初始配置     |
-| **复杂算法**         | 直接控制          | 需要分步调试和优化           |
-| **日常同步**         | 直接命令          | 快速执行和精确控制           |
-| **质量验证**         | Claude Code 自动化 | 自动化测试和验证             |
-| **冲突解决**         | 混合方式          | 自动检测 + 手动解决          |
-| **清理和维护**       | 直接命令          | 选择性控制和安全清理         |
-
-#### **推荐的组合工作流**
-
-##### 初学者：自动化中心（70% 自动化 + 30% 直接控制）
-
-```bash
-# 步骤 1: 自动化快速开始
-> /moai:1-plan "功能开发"
-> /moai:2-run SPEC-001
-
-# 步骤 2: 直接命令基本管理
-moai-worktree status
-moai-worktree sync SPEC-001
-moai-worktree clean --merged-only
-
-# 步骤 3: 自动化完成
-> /moai:3-sync SPEC-001
-```
-
-##### 中级：平衡方法（50% 自动化 + 50% 直接控制）
-
-```bash
-# 步骤 1: 自动化规划
-> /moai:1-plan "复杂功能"
-
-# 步骤 2: 直接控制详细实现
-moai-worktree new SPEC-001
-moai-worktree go SPEC-001
-# 详细开发工作
-
-# 步骤 3: 自动化质量保证
-> /moai:3-sync SPEC-001
-```
-
-##### 高级：直接控制中心（30% 自动化 + 70% 直接控制）
-
-```bash
-# 整个过程直接控制，需要时利用自动化
-moai-worktree new SPEC-001
-moai-worktree go SPEC-001
-# 完全手动开发
-# 必要时用 > /moai:3-sync 质量验证
-```
-
-#### 合并冲突解决策略
-
-##### 1. 自动解决（推荐）
-
-```bash
-# 尝试所有策略的自动解决
-moai-worktree sync SPEC-AUTH-001 --auto-resolve
-```
-
-##### 2. 手动解决
-
-```bash
-# 移动到工作树
-moai-worktree go SPEC-AUTH-001
-
-# 检查冲突状态
-git status
-
-# 编辑冲突文件
-# <<<<<<< HEAD
-# 主分支内容
-# =======
-# 工作树分支内容
-# >>>>>>> feature/SPEC-AUTH-001
-
-# 解决后标记
-git add conflict_file.py
-git commit -m "解决：认证系统中的合并冲突"
-```
-
-##### 3. 策略性方法
-
-```bash
-# 冲突时优先主分支
-git checkout --ours conflict_file.py
-git add conflict_file.py
-git commit
-
-# 或优先工作树更改
-git checkout --theirs conflict_file.py
-git add conflict_file.py
-git commit
-```
-
-#### 完成检查清单
-
-##### 开发完成前
-
-- [ ] 所有测试通过（>= 95% 覆盖率）
-- [ ] 代码质量检查通过（ruff, mypy）
-- [ ] 安全审查完成
-- [ ] 文档更新
-- [ ] 本地合并测试
-
-##### 合并完成后
-
-- [ ] 推送到远程仓库
-- [ ] 创建并获得 Pull Request 批准
-- [ ] 合并到主分支
-- [ ] 工作树清理完成
-- [ ] 执行 > /moai:3-sync
-- [ ] 部署测试
-
-#### 并行开发提示
-
-##### 多个 SPEC 同时工作
-
-```bash
-# 移动到第一个 SPEC 并工作
-moai-worktree go SPEC-AUTH-001
-> /moai:2-run SPEC-AUTH-001
-
-# 在另一个终端中移动到第二个 SPEC
-moai-worktree go SPEC-PAY-002
-> /moai:2-run SPEC-PAY-002
-
-# 在第三个 SPEC 中工作
-moai-worktree go SPEC-UI-003
-> /moai:2-run SPEC-UI-003
-
-# 定期同步所有工作树
-moai-worktree sync --all --auto-resolve
-```
-
-##### 无上下文切换工作
-
-- 每个工作树是完全隔离的环境
-- 独立的 Git 状态
-- 允许不同的依赖版本
-- 可同时开发多个功能
-
-##### 实际示例工作流
-
-```bash
-# 早上：开始新的 SPEC
-moai-worktree new SPEC-005 "用户档案改进"
-moai-worktree go SPEC-005
-
-# 其他 SPEC 完成时实现 SPEC-005
-> /moai:2-run SPEC-005
-
-# 下午：检查所有 SPEC 状态
-moai-worktree status
-# 输出:
-# ✓ SPEC-001: 完成（合并准备）
-# ✓ SPEC-002: 测试进行中
-# ⏳ SPEC-003: 实现阶段
-# 🔄 SPEC-005: 活动开发
-
-# 晚上：清理完成的 SPEC
-moai-worktree clean --merged-only
-```
-
-#### 技术优势
-
-##### 内存效率：共享 Git 对象数据库意味着与多个完整仓库相比，具有最小的内存开销
-
-##### 磁盘空间优化：工作树共享仓库历史记录，仅使用工作文件的额外空间
-
-##### 原子操作：每个工作树操作都是原子的，防止仓库损坏
-
-##### Git 原生：使用标准 Git 工作树功能，保证与所有 Git 工具的兼容性
-
-#### 与 MoAI-ADK 工作流集成
-
-moai-worktree 与 MoAI-ADK Plan-Run-Sync 循环无缝集成：
-
-1. **Plan 阶段**: `moai-worktree new SPEC-XXX` 创建专用工作空间
-2. **Run 阶段**: 在隔离环境中工作，不影响其他 SPEC
-3. **Sync 阶段**: `moai-worktree sync SPEC-XXX` 确保干净的集成
-4. **Cleanup 阶段**: `moai-worktree clean` 删除完成的工作树
-
-这种集成在保持 SPEC-First TDD 方法论原则的同时，为管理多个 SPEC 提供了完整且系统化的方法。
-
-##### 重要注意：从 Git 中排除的本地文件(.CLAUDE.local.md, .env, .claude/settings.local.json 等)不会在工作树之间自动同步。为确保一致的开发环境配置，这些文件必须在创建工作树后手动复制到各个目录中。
-
-##### 命令概述
-
-```bash
-# 可用命令列表
-moai-worktree --help
-
-# 为 SPEC 开发创建新工作树
-moai-worktree new SPEC-001
-
-# 所有活动工作树列表
-moai-worktree list
-
-# 移动到特定工作树
-moai-worktree go SPEC-001
-
-# 切换到工作树（打开新 shell）
-moai-worktree switch SPEC-001
-
-# 将工作树与基础分支同步
-moai-worktree sync SPEC-001
-
-# 删除特定工作树
-moai-worktree remove SPEC-001
-
-# 清理已合并分支的工作树
-moai-worktree clean
-
-# 显示工作树状态和配置
-moai-worktree status
-
-# 工作树配置
-moai-worktree config get
-moai-worktree config set <key> <value>
-```
-
----
-
-### 🔄 **Ralph Engine 命令** - 智能代码质量自动化
-
-MoAI Ralph Engine 结合了 LSP（语言服务器协议）、AST-grep 和自主反馈循环，提供智能代码质量保证。
-
-#### `> /moai:alfred` - 一键自动化
-
-**目的**: 用一个命令执行完整的 SPEC 工作流
-
-**使用时机**: 端到端功能开发自动化
-
-```bash
-> /moai:alfred "实现用户认证"
-```
-
-**工作流程**:
-1. 创建 SPEC 文档 (`/moai:1-plan`)
-2. TDD 实现 (`/moai:2-run`)
-3. 文档同步 (`/moai:3-sync`)
 
 **选项**:
-- `--branch`: 创建功能分支
-- `--pr`: 完成后创建 Pull Request
 
----
+- `--max N`: 最大重复次数 (默认: 100)
+- `--auto`: 启用自动修复 (Level 1-3)
+- `--parallel`: 执行并行诊断 (推荐)
+- `--errors`: 仅修复错误
+- `--coverage`: 包含覆盖率 (目标85%)
+- `--resume ID`: 恢复快照
 
-#### `> /moai:moai-loop` - Ralph 风格反馈循环
-
-**目的**: 启动自主错误修正循环
-
-**使用时机**: 迭代质量改进
-
-```bash
-> /moai:moai-loop "修复所有类型错误"
-```
-
-**特点**:
-- 结合 LSP 诊断 + AST-grep 扫描
-- 自动将结果反馈给 Claude 进行修复
-- 持续直到满足完成条件
-- 默认最大迭代次数: 10
-
----
-
-#### `> /moai:moai-fix` - 自动修复当前问题
-
-**目的**: 自动修复当前 LSP 错误和 AST-grep 警告
-
-**使用时机**: 快速一次性修复检测到的问题
+**示例**:
 
 ```bash
-> /moai:moai-fix
-```
+# 基本自主循环
+> /moai:loop
 
-**修复对象**:
-- LSP 诊断（类型错误、警告）
-- AST-grep 安全警告
-- 代码质量问题
+# 并行 + 自动修复
+> /moai:loop --parallel --auto
+
+# 最多重复50次
+> /moai:loop --max 50
+
+# 恢复快照
+> /moai:loop --resume latest
+```
 
 ---
 
-#### `> /moai:cancel-loop` - 取消活动循环
+### 🔧 `/moai:fix` - 单次自动修复
 
-**目的**: 取消活动的 Ralph 反馈循环
+```bash
+> /moai:fix
+```
 
-**使用时机**: 停止正在运行的 moai-loop
+并行扫描LSP错误、linting问题并一次性修复。Level 1-2立即修复，Level 3需用户批准后修复，Level 4报告需要手动修复。使用`--dry`选项预览后应用实际修复。
+
+**并行扫描**:
+
+```text
+LSP ├─┐
+    ├─→ 综合结果 (快3.75倍)
+AST ├─┤
+    ├─┘
+Linter
+```
+
+**修复级别**:
+
+| Level | 说明      | 批准   | 示例                 |
+| ----- | --------- | ------ | -------------------- |
+| 1     | 立即修复 | 不需要 | import排序、空白     |
+| 2     | 安全修复 | 仅日志 | 变量名、类型添加     |
+| 3     | 需要批准 | 需要   | 逻辑变更、API修改    |
+| 4     | 手动需要 | 不可能 | 安全、架构           |
+
+**选项**:
+
+- `--dry`: 仅预览 (无实际修复)
+- `--parallel`: 并行扫描 (推荐)
+- `--level N`: 最大修复级别 (默认: 3)
+- `--errors`: 仅修复错误
+- `--security`: 包含安全检查
+- `--no-fmt`: 跳过格式化
+
+**示例**:
+
+```bash
+# 基本修复
+> /moai:fix
+
+# 并行扫描
+> /moai:fix --parallel
+
+# 预览
+> /moai:fix --dry
+
+# 特定文件
+> /moai:fix src/auth.py
+```
+
+---
+
+### ⏹️ `/moai:cancel-loop` - 取消循环
 
 ```bash
 > /moai:cancel-loop
 ```
 
----
+安全取消正在运行的自主循环并将所有进度保存为快照。取消时TODO状态、修复历史、重复次数全部保留，之后可以继续。使用`--list`选项查看以前的快照并恢复到特定时间点。
 
-## 8. 智能体指南（20个）
+**选项**:
 
-### 🎯 智能体选择指南
+- `--force`: 无确认取消
+- `--snapshot`: 保存快照
+- `--keep`: 保留state文件
+- `--reason TEXT`: 记录取消原因
+- `--list`: 查看快照列表
 
-每个智能体都具有特定的领域专业知识。为任务选择合适的智能体。
-
-### Tier 1: Workflow Managers (工作流管理)
-
-#### manager-spec (SPEC 编写)
-
-**目的**: EARS 格式 SPEC 文档生成
-**自动调用**: `> /moai:1-plan` 执行时
+**恢复**:
 
 ```bash
-> Use the manager-spec subagent to"为用户档案 API 编写 SPEC"
+# 恢复最新快照
+> /moai:loop --resume latest
+
+# 恢复特定快照
+> /moai:loop --resume cancel-20240111-105230
 ```
 
----
-
-#### manager-tdd (TDD 实现)
-
-**目的**: RED-GREEN-REFACTOR 自动执行
-**自动调用**: `> /moai:2-run` 执行时
+**示例**:
 
 ```bash
-> Use the manager-tdd subagent to"实现 SPEC-001"
+# 基本取消 (确认后)
+> /moai:cancel-loop
+
+# 强制取消
+> /moai:cancel-loop --force
+
+# 保存快照
+> /moai:cancel-loop --snapshot
+
+# 快照列表
+> /moai:cancel-loop --list
 ```
+
+**实际输出结果**:
+
+```
+⏺ ✅ 循环取消完成
+
+  状态报告
+
+  ═══════════════════════════════════════════════════════
+           Loop: Cancelled (No Active Loop)
+  ═══════════════════════════════════════════════════════
+
+  ### Status
+  - 运行中的循环: 无
+  - 完成的工作: 100%
+  - 剩余TODO: 0个
+
+  ### Completed Tasks
+  ✅ README.ko.md "3. 核心命令集合" 部分更新
+  ✅ Fenced code blocks语言指定添加 (MD040) - 9项
+  ✅ Emphasis → Heading变更 (MD036) - 2项
+  ✅ Table column style修改 (MD060) - 2项
+
+  ### Changes Summary
+  - 命令数量: 4个 → 8个 (loop, fix, cancel-loop添加)
+  - 说明风格: 简单列表 → 3句以上详细说明
+  - Markdown linting: 13项问题 → 0项
+
+  ═══════════════════════════════════════════════════════
+
+  最终文件状态
+
+  README.ko.md:
+  - 所有markdown linting问题已解决
+  - 8个核心命令详细说明完成
+  - 标准markdown格式符合
+
+  ---
+  所有工作已成功完成! 🎉
+```
+
+
 
 ---
 
-#### manager-docs (文档自动生成)
+## 4. Mr.Alfred和Sub-Agents
 
-**目的**: API 文档、图表、指南自动生成
-**自动调用**: `> /moai:3-sync` 执行时
+### 🎩 Mr.Alfred - 超级智能体 (首席编排者)
 
-```bash
-> Use the manager-docs subagent to"生成登录功能文档"
-```
+**角色**: 分析用户请求并委派给适当的专业智能体
 
----
+**工作流程**:
 
-#### manager-quality (质量验证)
+1. **Understand**: 请求分析和明确化
+2. **Plan**: 通过Plan智能体建立执行计划
+3. **Execute**: 委派专业智能体 (顺序/并行)
+4. **Integrate**: 整合结果并向用户报告
 
-**目的**: TRUST 5 验证 (Test, Readable, Unified, Secured, Trackable)
-**自动调用**: `> /moai:2-run` 完成后
+### 🌐 多语言自动路由 (NEW)
 
-```bash
-> Use the manager-quality subagent to"验证代码质量"
-```
+Alfred自动识别4种语言请求并调用正确的智能体:
 
----
-
-#### manager-strategy (策略规划)
-
-**目的**: 复杂实现策略规划
-**使用场景**:
-
-- 微服务架构设计
-- 迁移规划
-- 性能优化策略
-
-```bash
-> Use the manager-strategy subagent to"规划从单体到微服务的迁移"
-# 或使用内置智能体
-> Use the Plan subagent to"规划从单体到微服务的迁移"
-```
+| 请求语言 | 示例                        | 调用智能体     |
+| -------- | --------------------------- | -------------- |
+| 英语     | "Design backend API"        | expert-backend |
+| 韩语     | "백엔드 API 설계해줘"       | expert-backend |
+| 日语     | "バックエンドAPIを設計して" | expert-backend |
+| 中文     | "设计后端API"               | expert-backend |
 
 ---
 
-### Tier 2: Domain Experts (领域专家)
+### 🔧 Tier 1: 领域专家 (8个)
 
-#### expert-backend (后端开发)
-
-**专业知识**: FastAPI、Django、Node.js 后端开发、数据库设计
-**使用场景**:
-
-- RESTful API 设计和实现
-- 数据库查询优化
-- 身份验证和授权管理
-- 服务器性能优化
-
-```bash
-> Use the expert-backend subagent to"使用 FastAPI 开发用户认证 API"
-```
+| 智能体              | 专业领域                  | 使用示例              |
+| ------------------- | ------------------------- | --------------------- |
+| **expert-backend**  | FastAPI, Django, DB设计   | API设计、查询优化     |
+| **expert-frontend** | React, Vue, Next.js       | UI组件、状态管理      |
+| **expert-security** | 安全分析、OWASP           | 安全审计、漏洞分析    |
+| **expert-devops**   | Docker, K8s, CI/CD        | 部署自动化、基础设施  |
+| **expert-debug**    | Bug分析、性能             | 问题诊断、瓶颈解决    |
+| **expert-perf**     | 性能分析、优化            | 响应时间改善          |
+| **expert-refactor** | 代码重构、AST-Grep        | 大规模代码转换        |
+| **expert-testing**  | 测试策略、E2E             | 测试计划、覆盖率      |
 
 ---
 
-#### expert-frontend (前端开发)
+### 🎯 Tier 2: 工作流管理器 (8个)
 
-**专业知识**: React、Vue、Next.js 前端、UI/UX 设计
-**使用场景**:
-
-- UI 组件实现
-- 状态管理 (Redux, Zustand)
-- API 集成
-- 响应式设计
-- 设计系统构建
-
-```bash
-> Use the expert-frontend subagent to"使用 React 实现仪表板 UI"
-```
+| 智能体               | 角色           | 自动调用时机      |
+| -------------------- | -------------- | ----------------- |
+| **manager-spec**     | SPEC编写 (EARS) | `/moai:1-plan`    |
+| **manager-tdd**      | TDD自动执行    | `/moai:2-run`     |
+| **manager-docs**     | 文档自动生成   | `/moai:3-sync`    |
+| **manager-quality**  | TRUST 5验证    | 实现完成后        |
+| **manager-strategy** | 执行策略建立   | 复杂规划时        |
+| **manager-project**  | 项目初始化     | `/moai:0-project` |
+| **manager-git**      | Git工作流      | 分支/PR管理       |
+| **manager-claude**   | Claude Code集成| 设置优化          |
 
 ---
 
-#### expert-security (安全)
+### 🏗️ Tier 3: 元生成器 (4个)
 
-**专业知识**: 安全分析、漏洞扫描、OWASP
-**使用场景**:
-
-- 安全代码审查
-- 漏洞分析
-- OWASP Top 10 验证
-- 数据加密
-
-```bash
-> Use the expert-security subagent to"登录功能安全审计"
-```
+| 智能体            | 角色           | 使用示例            |
+| ----------------- | -------------- | ------------------- |
+| **builder-agent** | 创建新智能体   | 组织专家智能体      |
+| **builder-skill** | 创建新技能     | 团队专用技能模块    |
+| **builder-command**| 创建新命令     | 自定义工作流        |
+| **builder-plugin**| 创建插件       | 分发用插件          |
 
 ---
 
-#### expert-devops (DevOps)
+## 5. Agent-Skills
 
-**专业知识**: Docker、Kubernetes、CI/CD、部署
-**使用场景**:
+### 📚 技能库结构
 
-- Docker 镜像优化
-- Kubernetes 配置
-- GitHub Actions CI/CD
-- 基础设施自动化
-
-```bash
-> Use the expert-devops subagent to"为 Next.js 应用设置 Docker 部署"
+```text
+🏗️ Foundation (5)    → 核心哲学、执行规则
+🎯 Domain (4)        → 领域专业知识
+💻 Language (16)     → 16种编程语言
+🚀 Platform (10)     → 云/BaaS集成
+📋 Workflow (7)      → 自动化工作流
+📚 Library (4)       → 特殊库
+🛠️ Tool (2)         → 开发工具
 ```
 
----
-
-#### expert-debug (调试)
-
-**专业知识**: 问题分析、错误跟踪、性能分析
-**使用场景**:
-
-- 错误分析
-- 性能瓶颈分析
-- 日志分析
-- 内存泄漏检测
-
-```bash
-> Use the expert-debug subagent to"分析 API 响应时间缓慢的原因"
-```
-
----
-
-### Tier 3: Meta-generators (元生成器, 4个)
-
-#### builder-agent
-
-**目的**: 创建新智能体
-**使用场景**: 创建组织特定智能体
-
-```bash
-> Use the builder-agent subagent to "创建数据分析专业智能体"
-```
-
----
-
-#### builder-skill
-
-**目的**: 创建新技能
-**使用场景**: 开发团队特定技能
-
-```bash
-> Use the builder-skill subagent to"编写 GraphQL API 开发技能模块"
-```
-
----
-
-#### builder-command
-
-**目的**: 创建新命令
-**使用场景**: 自定义工作流自动化
-
-```bash
-> Use the builder-command subagent to"创建 > /moai:deploy 命令 (自动部署工作流)"
-```
-
----
-
-#### builder-plugin
-
-**目的**: 创建和管理 Claude Code 插件
-**使用场景**: 插件创建、验证、迁移
-
-```bash
-> Use the builder-plugin subagent to"创建包含 commands、agents、hooks 的 security-tools 插件"
-```
-
----
-
-### MCP Integrators (MCP 集成)
-
-#### mcp-context7 (文档查询)
-
-**目的**: 最新库文档实时查询
-**使用场景**:
-
-- 检查 React 最新 API
-- 参考 FastAPI 文档
-- 验证库兼容性
-
-```bash
-> Use the mcp-context7 subagent to"查询 React 19 的最新 Hooks API"
-```
-
----
-
-#### mcp-sequential-thinking (高级推理)
-
-**目的**: 复杂问题多阶段分析
-**自动激活**: 复杂度 > 中等时
-**使用场景**:
-
-- 架构设计
-- 算法优化
-- SPEC 分析
-
-```bash
-> Use the mcp-sequential-thinking subagent to"分析微服务架构设计"
-```
-
----
-
-#### mcp-playwright (Web 自动化)
-
-**目的**: E2E 测试、Web 自动化
-**使用场景**:
-
-- E2E 测试编写
-- 视觉回归测试
-- 跨浏览器验证
-
-```bash
-> Use the mcp-playwright subagent to"编写登录功能的 E2E 测试"
-```
-
----
-
-## 9. 技能库（48个）
-
-![技能使用统计](./assets/images/readme/skill-usage-stats.png)
-
-MoAI-ADK 在 6 个类别中提供 **48 个专业技能**。每个技能可以独立或组合使用。
-
-### 🏗️ Foundation（基础）
-
-定义核心哲学和执行规则的基础技能。
-
-- **moai-foundation-core**
-  - TRUST 5、SPEC-First TDD、智能体委派模式、令牌优化
-  - 为所有 AI 驱动开发工作流提供执行规则
-
-- **moai-foundation-context**
-  - 具有令牌预算优化和状态持久化的企业级上下文管理
-  - 会话内存系统和高效令牌利用策略
-
-- **moai-foundation-claude**
-  - 符合 Claude Code 官方文档的技能编写套件
-  - 智能体、子智能体模板、斜杠命令、钩子、内存、IAM 规则
-
-- **moai-foundation-quality**
-  - TRUST 5 验证、主动分析、自动化最佳实践执行
-  - 企业级代码质量保证系统
-
-- **moai-plugin-builder**
-  - Claude Code 插件开发模式、模板、最佳实践
-  - 插件结构、组件生成、验证、迁移指南
-
-### 🎯 Domain（领域专业）
-
-为特定技术领域提供深度专业知识。
-
-- **moai-domain-backend**
-  - 框架无关的后端设计，13+ 框架专业知识
-  - API 设计、数据库集成、微服务架构
-
-- **moai-domain-frontend**
-  - 包括 React 19、Next.js 16、Vue 3.5 的现代 UI/UX 模式
-  - 组件架构、状态管理、响应式设计
-
-- **moai-domain-database**
-  - 包括 PostgreSQL、MongoDB、Redis 的数据库专业知识
-  - 查询性能优化、数据建模、数据库策略
-
-- **moai-domain-uiux**
-  - 企业设计系统、组件架构、可访问性
-  - WCAG 合规、设计令牌、图标、主题系统
-
-### 💻 Language（语言）
-
-支持各种编程语言和框架。
-
-- **moai-lang-python** - Python 3.13+ 用于 FastAPI、Django、async 模式、数据科学
-- **moai-lang-typescript** - React 19、Next.js 16 App Router、tRPC 类型安全 API、Zod 验证
-- **moai-lang-go** - Fiber、Gin、GORM 高性能微服务
-- **moai-lang-rust** - Axum、Tokio、SQLx 内存安全系统编程
-- **moai-lang-java** - Spring Boot 3.3、虚拟线程、Java 21 LTS 企业模式
-- **moai-lang-csharp** - C# 12/.NET 8 用于 ASP.NET Core、Entity Framework、Blazor
-- **moai-lang-swift** - iOS/macOS 开发用 SwiftUI、Combine、Swift 6 并发
-- **moai-lang-kotlin** - Kotlin 2.0 用于 Ktor、协程、Compose Multiplatform
-- **moai-lang-ruby** - Ruby 3.3+ 用于 Ruby on Rails 8、ActiveRecord、Hotwire/Turbo
-- **moai-lang-php** - PHP 8.3+ 用于 Laravel 11、Symfony 7、Eloquent ORM
-- **moai-lang-elixir** - Elixir 1.17+ 开发用 Phoenix 1.7、LiveView、Ecto
-- **moai-lang-scala** - Scala 3.4+ 用于 Akka、Cats Effect、ZIO、Spark
-- **moai-lang-cpp** - C++23/20 用 RAII、智能指针、概念、模块
-- **moai-lang-flutter** - Flutter 3.24+/Dart 3.5+ 开发用 Riverpod、go_router
-- **moai-lang-r** - R 4.4+ 数据分析用 tidyverse、ggplot2、Shiny
-
-### 🚀 Platform（平台）
-
-支持主要云平台和 BaaS 服务集成。
-
-- **moai-platform-supabase** - PostgreSQL 16、pgvector、RLS、实时订阅
-- **moai-platform-auth0** - SSO、SAML、OIDC、组织、B2B 多租户、攻击防护、MFA、令牌安全、DPoP/mTLS、FAPI/GDPR
-- **moai-platform-clerk** - WebAuthn、密钥、无密码认证
-- **moai-platform-neon** - 自动扩展、数据库分支、PITR
-- **moai-platform-firebase-auth** - 社交认证、电话认证、匿名登录
-- **moai-platform-firestore** - NoSQL 数据建模、实时同步、离线支持
-- **moai-platform-vercel** - Edge Functions、Next.js 优化、ISR
-- **moai-platform-railway** - Docker、多服务架构、持久卷
-- **moai-platform-convex** - TypeScript 优先响应式模式、乐观更新
-
-### 📋 Workflow（工作流）
-
-自动化和优化开发流程的工作流技能。
-
-- **moai-workflow-spec** - EARS 格式、需求澄清、Plan-Run-Sync 集成
-- **moai-workflow-testing** - TDD、调试、性能优化、代码审查集成
-- **moai-workflow-project** - 项目管理、文档化、语言初始化模块
-- **moai-workflow-templates** - 代码样板、反馈模板
-- **moai-workflow-jit-docs** - 用户意图基础智能文档搜索和缓存
-- **moai-workflow-docs** - Nextra 文档系统、技术写作、API 文档
-- **moai-worktree** - 并行 SPEC 开发的 Git worktree 管理
-
-### 📚 Library（库）
-
-特定库和框架的专业技能。
-
-- **moai-library-shadcn** - shadcn/ui、Radix、Tailwind CSS 专业实现指南
-- **moai-library-mermaid** - 使用 MCP Playwright 的企业 Mermaid 图表
-- **moai-library-nextra** - 基于 Next.js 的企业文档框架
-- **moai-formats-data** - TOON 编码、JSON/YAML 优化、数据验证
-
-### 🎯 技能使用指南
-
-#### 技能调用方法
+### 常用技能组合
+
+| 目标              | 技能组合                                                                |
+| ----------------- | ---------------------------------------------------------------------- |
+| **后端API**       | `moai-lang-python` + `moai-domain-backend` + `moai-platform-supabase` |
+| **前端UI**        | `moai-lang-typescript` + `moai-domain-frontend` + `moai-library-shadcn` |
+| **文档生成**      | `moai-library-nextra` + `moai-workflow-docs` + `moai-library-mermaid` |
+| **测试**          | `moai-lang-python` + `moai-workflow-testing` + `moai-foundation-quality`|
+
+### 技能使用法
 
 ```python
-# 方法 1: 直接调用 (开发者)
+# 方法1: 直接调用 (智能体)
 Skill("moai-lang-python")
 
-# 方法 2: Alfred 自动选择 (普通用户)
-"用 Python 创建 FastAPI 服务器"
-→ Alfred 自动选择 moai-lang-python + moai-platform-supabase
-```
-
-#### 技能组合模式
-
-**后端 API**: `moai-foundation-core` + `moai-lang-python` + `moai-platform-supabase`
-
-**前端 UI**: `moai-domain-uiux` + `moai-lang-typescript` + `moai-library-shadcn`
-
-**文档化**: `moai-library-nextra` + `moai-workflow-docs` + `moai-library-mermaid`
-
-**测试**: `moai-lang-python` + `moai-workflow-testing` + `moai-foundation-quality`
-
-**数据分析**: `moai-lang-r` + `moai-domain-database` + `moai-formats-data`
-
----
-
-## 10. 组合模式和示例
-
-### 🎭 智能体组合模式
-
-MoAI-ADK 的 28 个智能体根据任务类型以最佳组合执行。
-
-### 模式 1: 新功能开发
-
-```text
-manager-spec (SPEC 生成)
-  ↓
-manager-strategy (执行计划)
-  ↓
-manager-tdd (TDD 实现)
-  ↓
-manager-docs (文档同步)
-```
-
-**示例**:
-
-```bash
-> /moai:1-plan "用户登录功能"   # manager-spec
-> /clear
-> /moai:2-run SPEC-001               # manager-strategy → manager-tdd
-> /clear
-> /moai:3-sync SPEC-001              # manager-docs
+# 方法2: Alfred自动选择 (一般用户)
+"FastAPI服务器制作"
+→ Alfred自动选择moai-lang-python
 ```
 
 ---
 
-### 模式 2: 性能优化
+## 5. TRUST 5质量原则
 
-```text
-expert-debug (问题分析)
-  ↓
-mcp-sequential-thinking (复杂度分析)
-  ↓
-expert-backend (优化实现)
-  ↓
-manager-quality (验证)
+MoAI-ADK的所有项目遵循**TRUST 5**质量框架。
+
+### 🏆 TRUST 5 = Test + Readable + Unified + Secured + Trackable
+
+```mermaid
+graph TD
+    T1["🔴 T: Test-First<br/>━━━━━━━━<br/>• TDD Red-Green-Refactor<br/>• 85%+覆盖率<br/>• 自动测试"]
+    R["📖 R: Readable<br/>━━━━━━━━<br/>• 清晰命名<br/>• 代码注释<br/>• Linter符合"]
+    U["🔄 U: Unified<br/>━━━━━━━━<br/>• 一致风格<br/>• 标准模式<br/>• 错误处理"]
+    S["🔒 S: Secured<br/>━━━━━━━━<br/>• OWASP Top 10<br/>• 漏洞扫描<br/>• 加密政策"]
+    T2["📋 T: Trackable<br/>━━━━━━━━<br/>• 清晰提交<br/>• Issue跟踪<br/>• CHANGELOG"]
+
+    T1 --> R --> U --> S --> T2 --> Deploy["✅ Production Ready"]
 ```
-
-**示例**:
-
-```bash
-> Use the expert-debug subagent to"分析 API 响应缓慢"
-# → 发现瓶颈 (DB 查询 N+1 问题)
-
-> Use the mcp-sequential-thinking subagent to"规划 N+1 问题优化策略"
-# → 建议 ORM 查询优化策略
-
-> Use the expert-backend subagent to"实现 ORM 查询优化"
-# → 应用 select_related(), prefetch_related()
-
-> Use the manager-quality subagent to"性能测试和验证"
-# → 响应时间 500ms → 50ms (90% 改进)
-```
-
----
-
-### 模式 3: UI/UX 开发
-
-```text
-expert-frontend (设计系统 + 组件实现)
-  ↓
-mcp-playwright (E2E 测试)
-```
-
-**示例**:
-
-```bash
-> Use the expert-frontend subagent to"基于 shadcn/ui 的登录页面设计"
-# → Button, Input, Card 组件组合 + React 实现
-
-> Use the mcp-playwright subagent to"登录场景的 E2E 测试"
-# → 成功/失败案例的自动测试
-```
-
----
-
-### 模式 4: 安全审计
-
-```text
-expert-security (漏洞扫描)
-  ↓
-expert-backend (安全补丁)
-  ↓
-manager-quality (重新验证)
-```
-
----
-
-### 模式 5: 微服务架构设计
-
-```bash
-> Use the mcp-sequential-thinking subagent to"规划从单体到微服务的迁移策略"
-# → 服务分解策略、API 网关设计
-
-> Use the expert-backend subagent to"开发用户服务和订单服务"
-# → 服务特定 API 实现
-
-> Use the expert-devops subagent to"Kubernetes 部署配置"
-# → 自动生成 Docker、K8s 清单
-
-> Use the manager-docs subagent to"服务示例文档"
-# → 服务映射、API 文档、部署指南
-```
-
----
-
-## 11. TRUST 5 质量保证
-
-![TRUST 5 五边形](./assets/images/readme/trust5-pentagon.png)
-
-所有 MoAI-ADK 项目都遵循 **TRUST 5** 质量框架。TRUST 5 由 5 个核心原则组成：Test-First、Readable、Unified、Secured、Trackable，确保企业级软件质量。
 
 ### T - Test-First (测试优先)
 
-**原则**: 所有实现都从测试开始。
+**原则**: 所有实现从测试开始
 
 **验证**:
 
 - 测试覆盖率 >= 85%
-- 首先编写失败的测试 (Red)
-- 通过代码实现 (Green)
-- 重构
+- 先编写失败的测试 (Red)
+- 测试通过的代码 (Green)
+- 重构 (Refactor)
 
-**自动化**: `manager-tdd` 智能体自动执行 TDD 循环
+### R - Readable (可读性)
 
----
-
-### R - Readable (可读)
-
-**原则**: 代码必须清晰且易于理解。
+**原则**: 代码必须清晰易懂
 
 **验证**:
 
-- 清晰的变量名 (最小化缩写)
-- 代码注释 (复杂逻辑)
-- 通过代码审查
-- 通过代码检查
+- 清晰的变量名
+- 复杂逻辑的注释
+- 代码审查通过
+- Linter检查通过
 
-**自动化**: `quality-expert` 智能体应用样式指南
+### U - Unified (统一性)
 
----
-
-### U - Unified (统一)
-
-**原则**: 在整个项目中保持一致的样式。
+**原则**: 项目整体保持一致的风格
 
 **验证**:
 
-- 遵循项目样式指南
-- 一致的命名约定
+- 遵循项目风格指南
+- 一致的命名规则
 - 统一的错误处理
-- 标准化的文档格式
+- 标准文档格式
 
-**自动化**: `quality-expert` 智能体验证一致性
+### S - Secured (安全性)
 
----
-
-### S - Secured (安全)
-
-**原则**: 所有代码都必须通过安全验证。
+**原则**: 所有代码通过安全检查
 
 **验证**:
 
-- OWASP Top 10 检查
+- OWASP Top 10检查
 - 依赖漏洞扫描
-- 加密策略合规
+- 加密政策符合
 - 访问控制验证
 
-**自动化**: `expert-security` 智能体执行自动安全审计
+### T - Trackable (可追踪性)
 
----
-
-### T - Trackable (可跟踪)
-
-**原则**: 所有更改都必须清晰可跟踪。
+**原则**: 所有更改清晰可追踪
 
 **验证**:
 
 - 清晰的提交消息
-- 问题跟踪 (GitHub Issues)
-- 维护 CHANGELOG
+- Issue跟踪 (GitHub Issues)
+- 维护CHANGELOG
 - 代码审查记录
 
-**自动化**: Git 和 GitHub Actions 自动化
-
 ---
 
-### 🎯 TRUST 5 验证流程
+## 6. 自动质量检查
 
-```mermaid
-flowchart TD
-    Start([编写代码]) --> T[T: 测试<br/>覆盖率 >= 85%]
-    T --> R[R: 可读<br/>检查器通过]
-    R --> U[U: 统一<br/>样式检查]
-    U --> S[S: 安全<br/>漏洞扫描]
-    S --> T2[T: 可跟踪<br/>提交消息]
-    T2 --> Pass{全部通过?}
-    Pass -->|是| Success([批准部署])
-    Pass -->|否| Fix[需要修复]
-    Fix --> Start
-```
+### 🔍 AST-Grep结构化检查
 
----
+**AST-Grep**分析**代码结构**而非文本:
 
-## 12. 高级功能
+| 功能            | 说明             | 示例                                  |
+| --------------- | ---------------- | ------------------------------------- |
+| **结构化搜索**  | AST模式匹配      | 查找未参数化的SQL查询                 |
+| **安全扫描**    | 自动漏洞检测     | SQL Injection、XSS、硬编码密钥        |
+| **模式重构**    | 安全代码转换     | 批量更改变量名、提取函数              |
+| **多语言支持**  | 40+种语言        | Python、TypeScript、Go、Rust...       |
 
-### 🌳 Git Worktree CLI (并行开发)
-
-**概述**: 管理多个 Git 工作树，实现并行 SPEC 开发而无需上下文切换。
-
-#### 快速开始
-
-```bash
-# 为 SPEC 创建新工作树
-moai worktree create SPEC-001 feature/user-auth
-
-# 所有工作树列表
-moai worktree list
-
-# 工作树间切换
-moai worktree switch SPEC-001
-
-# 删除已完成的工作树
-moai worktree remove SPEC-001
-```
-
-#### 核心优势
-
-- **并行开发**: 同时处理多个 SPEC
-- **上下文隔离**: 每个工作树都有自己的 git 状态
-- **快速切换**: 功能之间的即时上下文更改
-- **保持主分支稳定**: 始终保持主分支稳定
-
-#### 工作流示例
-
-```bash
-# 主开发工作树 (主分支)
-cd ~/project-main
-> /moai:1-plan "用户认证"  # 创建 SPEC-001
-
-# 为 SPEC-001 创建并行工作树
-moai worktree create SPEC-001 feature/auth
-cd ~/project-worktrees/SPEC-001
-
-# 在不影响主分支的情况下处理认证
-> /moai:2-run SPEC-001
-# ... 实现认证 ...
-
-# 切换回主分支处理新功能
-moai worktree switch main
-> /moai:1-plan "用户仪表板"     # 创建 SPEC-002
-```
-
----
-
-### 🔧 增强的日志管理
-
-**新的统一日志结构**:
-
-```
-.moai/
-├── logs/              # 仅 JSON 日志 (运行时数据)
-│   ├── sessions/     # 会话执行日志
-│   ├── errors/       # 错误日志
-│   ├── execution/    # 命令执行日志
-│   └── archive/      # 历史日志
-└── docs/              # 仅文档 (面向用户)
-    ├── reports/       # 分析报告
-    ├── analytics/     # 分析结果
-    └── sync/          # 同步记录
-```
-
-**自动迁移**: `moai-adk update` 时现有日志会自动重组。
-
----
-
-## 13. 高级设置
-
-### 🔧 配置文件位置
-
-MoAI-ADK 使用 `.claude/settings.json` 文件。
-
-### 📋 主要配置项
-
-```json
-{
-  "user": {
-    "name": "GOOS"
-  },
-  "language": {
-    "conversation_language": "zh",
-    "agent_prompt_language": "en"
-  },
-  "constitution": {
-    "enforce_tdd": true,
-    "test_coverage_target": 85
-  },
-  "git_strategy": {
-    "mode": "personal",
-    "branch_creation": {
-      "prompt_always": true,
-      "auto_enabled": false
-    }
-  },
-  "github": {
-    "spec_git_workflow": "develop_direct"
-  },
-  "statusline": {
-    "enabled": true,
-    "format": "compact",
-    "style": "R2-D2"
-  }
-}
-```
-
-### 🌳 Git 策略 (3 种模式)
-
-MoAI-ADK 提供适合开发环境和团队组成的 3 种 Git 策略。
-
-#### 模式选择决策树
-
-```mermaid
-flowchart TD
-    Q1{"使用<br/>GitHub 吗？"}
-
-    Q1 -->|否| Manual["<b>📦 Manual</b><br/>仅本地 Git<br/>━━━━━━━━<br/>特点:<br/>• 仅本地提交<br/>• 手动推送<br/>• 可选分支<br/><br/>目标: 个人学习"]
-
-    Q1 -->|是| Q2{"团队<br/>项目吗？"}
-
-    Q2 -->|否| Personal["<b>👤 Personal</b><br/>个人 GitHub<br/>━━━━━━━━<br/>特点:<br/>• 功能分支<br/>• 自动推送<br/>• 可选 PR<br/><br/>目标: 个人项目"]
-
-    Q2 -->|是| Team["<b>👥 Team</b><br/>团队 GitHub<br/>━━━━━━━━<br/>特点:<br/>• 自动起草 PR<br/>• 必须审查<br/>• 自动部署<br/><br/>目标: 团队项目"]
-
-    classDef manual fill:#fff3e0,stroke:#ff9800,stroke-width:2px
-    classDef personal fill:#e3f2fd,stroke:#2196f3,stroke-width:2px
-    classDef team fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
-    classDef question fill:#fafafa,stroke:#666,stroke-width:2px
-
-    class Manual manual
-    class Personal personal
-    class Team team
-    class Q1,Q2 question
-```
-
-#### 3 种模式比较
-
-| 区分          | Manual      | Personal                       | Team         |
-| ------------- | ----------- | ------------------------------ | ------------ |
-| **使用场景**  | 个人学习    | 个人 GitHub                    | 团队项目     |
-| **GitHub**    | ❌          | ✅                             | ✅           |
-| **分支**      | 可选创建    | 可选创建 or<br/>功能自动       | 功能自动     |
-| **推送**      | 手动        | 自动                           | 自动         |
-| **PR**        | 无          | 建议                           | 自动创建     |
-| **代码审查**  | 无          | 可选                           | **必须**     |
-| **部署**      | 手动        | 手动                           | CI/CD 自动   |
-| **设置时间**  | **5 分钟**  | 15 分钟                       | 25 分钟      |
-
-#### 快速设置 (.moai/config/config.json)
-
-**Manual** (仅本地使用):
-
-```json
-{
-  "git_strategy": {
-    "mode": "manual",
-    "branch_creation": {
-      "prompt_always": true,
-      "auto_enabled": false
-    }
-  }
-}
-```
-
-**Personal** (个人 GitHub):
-
-```json
-{
-  "git_strategy": {
-    "mode": "personal",
-    "branch_creation": {
-      "prompt_always": false,
-      "auto_enabled": true
-    }
-  }
-}
-```
-
-**Team** (团队项目):
-
-```json
-{
-  "git_strategy": {
-    "mode": "team",
-    "branch_creation": {
-      "prompt_always": false,
-      "auto_enabled": true
-    }
-  }
-}
-```
-
----
-
-## 14. FAQ & 快速参考
-
-### Q1: SPEC 总是必需的吗？
-
-**SPEC 生成推荐标准**:
-
-| 条件                | SPEC 需求                    |
-| ------------------- | ---------------------------- |
-| 1-2 个文件修改      | 可选 (简单情况可以跳过)       |
-| 3-5 个文件修改      | 推荐 (明确需求)               |
-| 10 个以上文件修改   | 必需 (复杂度高)                |
-| 新功能添加          | 推荐                          |
-| 错误修复            | 可选                          |
-
-**不使用 SPEC 进行时**:
-
-```bash
-# 跳过 SPEC 直接实现
-> Use the expert-backend subagent to"简单错误修复"
-```
-
-**使用 SPEC 进行时**:
-
-```bash
-> /moai:1-plan "复杂功能规格"
-> /clear
-> /moai:2-run SPEC-001
-```
-
----
-
-### Q2: MCP 服务器安装是必需的吗？
-
-**必需 MCP 服务器 (2个)**:
-
-1. **Context7** (必需)
-
-   - 最新库 API 文档自动引用
-   - 代码生成时防止幻觉
-   - 安装: 自动 (包含在 `.mcp.json` 中)
-
-2. **Sequential-Thinking** (推荐)
-
-   - 复杂问题分析
-   - 架构设计、算法优化
-   - 安装: 自动 (包含在 `.mcp.json` 中)
-
-**可选 MCP 服务器**:
-
-- Figma MCP: 设计到代码转换
-- Playwright MCP: Web 自动化测试
-- Notion MCP: 文档管理集成
-
-**安装验证**:
-
-```bash
-# 检查 MCP 服务器列表
-cat .mcp.json
-
-# 启用/禁用 mcp 服务器 (禁用时节省令牌)
-> @
-─────────────────────────────────────────────────────────
-  ✓ [mcp] context7                enabled (⏎ to toggle)
-  ○ [mcp] playwright              disabled (⏎ to toggle)
-  ○ [mcp] notion                  disabled (⏎ to toggle)
-
-```
-
----
-
-## 15. 附加资源
-
-### 🆘 支持 (Support)
-
-**电子邮件支持**:
-
-- 技术支持: [support@mo.ai.kr](mailto:support@mo.ai.kr)
-
-### 📊 Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=Date)](https://star-history.com/#modu-ai/moai-adk&Date)
-
----
-
-## 📝 许可证
-
-MoAI-ADK 在 [MIT 许可证](./LICENSE) 下获得许可。
+### 自动检查流程
 
 ```text
-MIT License
+代码编写
+    ↓
+[Hook] AST-Grep自动扫描
+    ↓
+⚠️  发现漏洞时立即通知
+    ↓
+✅ 重构为安全代码
+```
 
-Copyright (c) 2025 MoAI-ADK Team
+**检测示例**:
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+```bash
+⚠️  AST-Grep: src/auth.py:47潜在SQL注入
+   Pattern: execute(f"SELECT * FROM users WHERE id={user_id}")
+   Suggestion: execute("SELECT * FROM users WHERE id=%s", (user_id,))
 ```
 
 ---
 
-## 16. GLM 与 z.ai 集成（经济高效的替代方案）
+## 7. 🌳 Worktree并行开发
 
-### 概述
+MoAI-ADK的核心创新: **通过Worktree完全隔离、无限并行开发**
 
-对于担心 Claude Code 使用成本的开发者，MoAI-ADK 支持通过 **z.ai** 进行 **GLM 4.7** 集成。此配置在保持与 Claude Code 完全兼容的同时，大幅降低成本。
+### 💡 为什么选择Worktree?
 
-### 💡 选择 GLM 的理由
+**问题**: 使用`moai glm`/`moai cc`更改LLM时，适用于**所有打开的会话**。在同一会话中更改模型会导致认证错误，难以继续。
 
-| 功能 | Claude Code | z.ai GLM 4.7 |
-| --------------------- | ------------------------------- | ----------------------------- |
-| **成本** | $20/月（Pro 计划） | **$6-$60/月（灵活）** |
-| **模型** | Claude 4.5 Sonnet, Opus, Haiku | GLM 4.7, GLM 4.5-air |
-| **兼容性** | 原生 | **100% Claude 兼容** |
-| **令牌限制** | 限制 | **付费计划无限制** |
-| **API 访问** | 包含 | **完整 API 访问** |
-| **速度** | 快速 | **相当的性能** |
+**解决方案**: 通过Git Worktree完全隔离每个SPEC，保持独立的LLM设置
 
-### 🎯 GLM 编程计划订阅
+---
 
-**专属邀请链接**:
-🚀 **您已受邀加入 GLM 编程计划！享受对 Claude Code、Cline 和 10 多个顶级编码工具的完全支持。月费仅 3 美元起。**
+### 📦 Worktree工作流
 
-👉 **在此订阅**: https://z.ai/subscribe?ic=1NDV03BGWU
-通过此链接订阅，您将从 Z.AI 获得 10% 额外折扣和专用积分，用于支持 MoAI-ADK 开源开发。
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  终端1 (Claude Opus) - SPEC设计专用                              │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│  $ cd my-project                                                │
+│  $ claude                                                        │
+│                                                                  │
+│  > /moai:1-plan "用户认证系统" --worktree                        │
+│  ✅ SPEC-AUTH-001生成完成                                        │
+│  ✅ Worktree创建: ~/moai/worktrees/my-project/SPEC-AUTH-001       │
+│  ✅ Branch: feature/SPEC-AUTH-001                                │
+│                                                                  │
+│  > /moai:1-plan "支付系统" --worktree                            │
+│  ✅ SPEC-PAY-002生成完成                                         │
+│  ✅ Worktree创建: ~/moai/worktrees/my-project/SPEC-PAY-002        │
+│                                                                  │
+│  > /moai:1-plan "仪表板UI" --worktree                            │
+│  ✅ SPEC-UI-003生成完成                                          │
+│  ✅ Worktree创建: ~/moai/worktrees/my-project/SPEC-UI-003         │
+│                                                                  │
+│  💡 用Opus完成所有SPEC规划 (会话保持中...)                        │
+└─────────────────────────────────────────────────────────────────┘
 
-#### 订阅计划:
+┌─────────────────────────────────────────────────────────────────┐
+│  终端2 - SPEC-AUTH-001 Worktree (GLM 4.7)                       │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│  $ moai-worktree go SPEC-AUTH-001                                │
+│  # 或简写: moai-wt go SPEC-AUTH-001                              │
+│                                                                  │
+│  📁 当前位置: ~/moai/worktrees/my-project/SPEC-AUTH-001         │
+│  🔀 Branch: feature/SPEC-AUTH-001                                │
+│                                                                  │
+│  $ moai glm                                                       │
+│  ✅ Switched to GLM backend                                      │
+│                                                                  │
+│  $ claude                                                        │
+│  > /moai:2-run SPEC-AUTH-001                                     │
+│  🔄 TDD执行中... (Red → Green → Refactor)                         │
+│  ✅ 实现完成!                                                    │
+│  ✅ 测试通过 (Coverage: 92%)                                     │
+│                                                                  │
+│  > /moai:3-sync SPEC-AUTH-001                                    │
+│  ✅ 文档同步完成                                                 │
+│                                                                  │
+│  # 完成后合并                                                    │
+│  $ git checkout main                                             │
+│  $ git merge feature/SPEC-AUTH-001                               │
+│  $ moai-worktree clean --merged-only                             │
+└─────────────────────────────────────────────────────────────────┘
 
-| 计划 | 价格 | 功能 | 最适合 |
-| ------------- | ---------------------------------- | ----------------------------------------------------------------------- | --------------------------------- |
-| **轻量** | 第一个月 $3<br/>第二个月起 $6/月 | • Claude Pro 使用量 3 倍<br/>• GLM-4.7 驱动<br/>• 10 多个编码工具兼容 | 轻量级工作负载，入门 |
-| **专业** | 第一个月 $15<br/>第二个月起 $30/月 | • 所有轻量级权益<br/>• 轻量级计划使用量 5 倍<br/>• 40-60% 更快<br/>• Vision、Web Search、Web Reader | 专业开发者、团队 |
-| **最大** | 第一个月 $30<br/>第二个月起 $60/月 | • 所有专业权益<br/>• 专业计划使用量 4 倍<br/>• 保证峰值性能<br/>• 新功能优先访问 | 大容量工作负载、高级用户 |
-| **企业** | 定制 | • 定制定价<br/>• 专属支持<br/>• SLA 保证 | 大型组织、定制需求 |
+┌─────────────────────────────────────────────────────────────────┐
+│  终端3 - SPEC-PAY-002 Worktree (GLM 4.7)                        │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│  $ moai-wt go SPEC-PAY-002                                       │
+│  $ moai glm                                                       │
+│  $ claude                                                        │
+│                                                                  │
+│  > /moai:alfred SPEC-PAY-002                                     │
+│  🔄 Plan → Run → Sync自动执行                                    │
+│  ✅ 完成!                                                        │
+│                                                                  │
+│  $ git checkout main && git merge feature/SPEC-PAY-002           │
+└─────────────────────────────────────────────────────────────────┘
 
-#### GLM 编程计划订阅者权益:
-
-1. **大幅成本节省**: 轻量级计划月费 $6 即可享受 Claude Pro 使用量 3 倍
-2. **完整工具兼容性**: 支持 Claude Code、Roo Code、Cline、Kilo Code、OpenCode、Crush、Goose 等 10 多个编码工具
-3. **高性能模型**: 基于 GLM-4.7（与 Claude 4.5 Sonnet 相当）
-4. **灵活定价**: 从月费 $6 轻量级到 $60 最大（根据需求扩展）
-5. **性能选项**: 专业计划快 40-60%，最大计划保证峰值性能
-6. **高级功能**: 框架理解、Web 搜索、Web Reader MCP（专业及以上）
-7. **MoAI-ADK 支持**: 订阅的一部分用于支持 MoAI-ADK 开发
-
-#### **🌟 推荐升级路径**
-
-**第1步：轻量级计划（$6/月）开始**
-- 月费 $6 享受 Claude Pro 使用量 3 倍
-- 用实际项目测试 GLM-4.7 2-3 周
-- 体验与 10 多个编码工具的兼容性
-
-**第2步：根据使用量升级**
-- **常规开发**: 升级到**专业（$30/月）**，复杂任务快 40-60%
-- **大容量工作负载**: 选择**最大（$60/月）**获得峰值性能
-- **高级用户权益**: 专业计划是轻量级使用量的 5 倍，最大计划是轻量级使用量的 20 倍
-
-**此方法有效的原因:**
-- **低入门门槛**: 月费 $6 开始专业 AI 编程
-- **按需扩展**: 仅在需要工作负载时升级
-- **性能提升**: 专业计划在复杂任务上显著更快
-- **高级功能**: 专业及以上提供 Vision、Web 搜索、Web Reader MCP
-
-#### 活动详情（信用规则）:
-
-- 📋 **官方规则**: https://docs.z.ai/devpack/credit-campaign-rules
-- 🎁 **特别优惠**: MoAI-ADK 用户额外信用
-- 💝 **社区支持**: 订阅支持 MoAI-ADK 开发
-- 🔄 **灵活使用**: 信用按月结转
-
-### ⚙️ 快速设置：GLM 配置
-
-#### 第1步：订阅 GLM 编程计划
-
-1. 访问: https://z.ai/subscribe?ic=1NDV03BGWU
-2. 选择计划:
-   - **轻量级（第一个月 $3，第二个月起 $6/月）**: 完美入门，Claude Pro 使用量 3 倍
-   - **专业（第一个月 $15，第二个月起 $30/月）**: 快 40-60%，包含 Vision 和 Web 功能
-   - **最大（第一个月 $30，第二个月起 $60/月）**: 保证性能，新功能优先访问
-   - **企业**: 大型组织定制定价
-3. 完成注册和支付
-4. 从仪表板记录 API 令牌
-
-**💡 提示**: 从 $6 轻量级计划开始测试 GLM-4.7，然后为更快性能升级到专业，或为大容量工作负载升级到最大！
-
-#### 第2步：将 MoAI-ADK 配置为 GLM
-
-在 Claude Code 中执行:
-
-```bash
-# 使用 API 令牌配置 GLM
-> /moai:0-project --glm-on YOUR_API_TOKEN
-
-# 无令牌（输入提示）
-> /moai:0-project --glm-on
+┌─────────────────────────────────────────────────────────────────┐
+│  终端4 - SPEC-UI-003 Worktree (GLM 4.7)                         │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│  $ moai-wt go SPEC-UI-003                                        │
+│  $ moai glm                                                       │
+│  $ claude                                                        │
+│  > /moai:alfred SPEC-UI-003                                      │
+│  ✅ 完成!                                                        │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-**配置期间发生的操作:**
+---
 
-✅ **API 令牌设置**: 安全存储 GLM API 令牌
-✅ **端点配置**: 设置 z.ai API 端点
-✅ **模型映射**: 将 GLM 4.7 映射到 Claude 模型层
-✅ **验证**: 测试连接和模型可用性
-✅ **回退准备**: 将 Claude 保留为备份选项
+### 🎯 核心工作流
 
-#### 第3步：验证配置
+#### 阶段1: 用Claude 4.5 Opus规划 (终端1)
 
 ```bash
-# 检查当前配置
-> cat .claude/settings.local.json
-
-# 预期输出:
-{
-  "env": {
-    "ANTHROPIC_AUTH_TOKEN": "your_glm_token_here",
-    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.7"
-  }
-}
+/moai:1-plan "功能描述" --worktree
 ```
 
-#### 第4步：重启 Claude Code
+- ✅ 生成SPEC文档
+- ✅ 自动创建Worktree
+- ✅ 自动创建功能分支
+
+#### 阶段2: 用GLM 4.7实现 (终端2, 3, 4...)
 
 ```bash
-# 退出 Claude Code 并重启
-> /exit
-# 然后
+moai-wt go SPEC-ID
+moai glm
 claude
+> /moai:2-run SPEC-ID
+> /moai:3-sync SPEC-ID
 ```
 
-GLM 4.7 现已激活，准备使用！
+- ✅ 独立工作环境
+- ✅ GLM成本效率
+- ✅ 无冲突并行开发
 
-### 🔄 GLM 配置管理
-
-#### CLI 切换后端:
+**阶段3: 合并和清理**
 
 ```bash
-# 检查当前后端状态
-moai switch status
-
-# 切换到 GLM 后端（成本效益高）
-moai switch glm
-
-# 切换到 Claude 后端（默认）
-moai switch claude
+git checkout main
+git merge feature/SPEC-ID
+moai-wt clean --merged-only
 ```
-
-#### 工作原理:
-
-`moai switch` 命令修改 `.claude/settings.local.json`：
-- **GLM 模式**：添加 GLM 环境变量（API URL、模型映射）
-- **Claude 模式**：移除 GLM 环境变量（恢复默认）
-
-**注意**：切换后需要重启 Claude Code 以应用更改。
-
-### 📊 性能比较
-
-基于实际 MoAI-ADK 测试:
-
-| 任务 | Claude 4.5 Sonnet | GLM 4.7 | 性能差距 |
-| ------------------------------ | ----------------- | ------------ | --------------- |
-| **代码生成** | 优秀 | **优秀** | 差异小于 5% |
-| **TDD 实现** | 优秀 | **非常好** | 快 10% |
-| **文档编写** | 非常好 | **好** | 快 15% |
-| **复杂问题解决** | 优秀 | **非常好** | 相当 |
-| **API 速率限制** | 中等 | **更高** | 3-20 倍更多使用量 |
-| **性能速度** | 快速 | **40-60% 更快（专业及以上）** | 显著改善 |
-| **高级功能** | 基本 | **Vision、Web Search、Web Reader（专业及以上）** | 增强功能 |
-| **成本效率** | $20-$200/月 | **$6-$60/月** | **节省高达 70%** |
-
-### ✅ 推荐使用场景
-
-#### **GLM 轻量级（$6/月）使用:**
-- **入门**: 成本降低 70%，Claude Pro 使用量 3 倍
-- **轻量级工作负载**: 小型项目、间歇性编码
-- **学习项目**: 练习、教程、实验
-- **预算意识**: 月费 $6 专业 AI 编码
-
-#### **GLM 专业（$30/月）使用:**
-- **专业开发者**: 复杂任务快 40-60%
-- **日常开发**: 高级功能，轻量级使用量限制 5 倍
-- **团队协作**: Vision 理解、Web 搜索功能
-- **高级用户**: 复杂问题解决响应更快
-
-#### **GLM 最大（$60/月）使用:**
-- **大容量工作负载**: 密集开发，轻量级使用量 20 倍
-- **企业团队**: 保证高峰时段性能
-- **持续集成**: 自动化工作流无速率限制
-- **早期采用者**: 新功能和改进优先访问
-
-#### **考虑 Claude 的情况:**
-- **企业生产**: 关键任务部署
-- **复杂研究**: 高级推理任务
-- **大规模迁移**: 复杂系统转换
-- **合规要求**: 特定模型认证
-
-### 🛠️ 故障排除
-
-| 问题 | 解决方案 |
-| ------------------------ | ------------------------------------------------------------------------ |
-| **令牌不工作** | 从 z.ai 仪表板验证令牌，确认编程计划订阅 |
-| **模型错误** | 检查端点 URL: `https://api.z.ai/api/anthropic` |
-| **响应慢** | GLM 在高峰时段可能有更高延迟 |
-| **连接被拒绝** | 防火墙可能阻止 z.ai 域，检查网络设置 |
-| **需要回退** | 临时使用 `--glm-off` 切换回 Claude |
-
-### 🔗 有用链接
-
-- **GLM 编程计划**: https://z.ai/subscribe?ic=1NDV03BGWU
-- **信用活动规则**: https://docs.z.ai/devpack/credit-campaign-rules
-- **GLM 文档**: https://docs.z.ai/
-- **MoAI-ADK GLM 指南**: https://github.com/modu-ai/moai-adk/docs/glm-integration
-- **支持**: support@z.ai
-
-### 💬 社区与支持
-
-- **Discord**: 加入 z.ai 社区获取提示和更新
-- **GitHub**: 报告问题和功能请求
-- **邮件**: 技术支持联系 support@z.ai
-- **MoAI-ADK**: 框架特定帮助访问 github.com/modu-ai/moai-adk
 
 ---
 
-**从今天开始节省成本，同时保持开发生产力！** 🚀
+### ✨ Worktree优势
 
-## 17. 额外资源和社区
+| 优势            | 说明                                      |
+| --------------- | ----------------------------------------- |
+| **完全隔离**    | 每个SPEC独立Git状态，无文件冲突           |
+| **LLM独立**     | 每个Worktree可设置不同LLM                 |
+| **无限并行**    | 无依赖无限SPEC并行开发                     |
+| **安全合并**    | 仅将完成的SPEC按顺序合并到main             |
 
-### 🌐 社区 & 开发者资源
+---
 
-**加入我们的社区:**
+### 📊 Worktree命令
 
-- **Discord（官方）**: [https://discord.gg/umywNygN](https://discord.gg/umywNygN) - 加入 MoAI-ADK 社区进行讨论、获取支持和更新
-- **开发者博客**: [https://goos.kim](https://goos.kim) - 技术文章、教程和开发洞察
+| 命令                   | 说明                             | 使用示例                      |
+| ---------------------- | -------------------------------- | ----------------------------- |
+| `moai-wt new SPEC-ID`   | 创建新Worktree                   | `moai-wt new SPEC-AUTH-001`   |
+| `moai-wt go SPEC-ID`    | 进入Worktree (打开新shell)        | `moai-wt go SPEC-AUTH-001`    |
+| `moai-wt list`         | 查看Worktree列表                 | `moai-wt list`                |
+| `moai-wt remove SPEC-ID`| 删除Worktree                     | `moai-wt remove SPEC-AUTH-001`|
+| `moai-wt status`       | 查看Worktree状态和注册表         | `moai-wt status`              |
+| `moai-wt sync [SPEC-ID]`| 同步Worktree                     | `moai-wt sync --all`          |
+| `moai-wt clean`        | 清理已合并的Worktree             | `moai-wt clean --merged-only` |
+| `moai-wt recover`      | 从磁盘恢复注册表                 | `moai-wt recover`             |
+| `moai-wt config`       | 查看Worktree配置                 | `moai-wt config root`         |
+
+---
+
+## 8. MoAI Rank介绍
+
+**智能体编程的新维度**: 追踪您的编程之旅，与全球开发者竞争!
+
+### 为什么选择MoAI Rank?
+
+| 功能                   | 说明                       |
+| ---------------------- | -------------------------- |
+| **📊 令牌追踪**        | 自动记录每个会话AI使用量   |
+| **🏆 全球排行榜**      | 日/周/月/全部排名          |
+| **🎭 编程风格分析**    | 发现您独有的开发模式       |
+| **📈 仪表板**          | 可视化统计和洞察           |
+
+---
+
+### 🚀 CLI命令
+
+```bash
+❯ moai rank
+Usage: moai rank [OPTIONS] COMMAND [ARGS]...
+
+  MoAI Rank - Token usage leaderboard.
+
+  Track your Claude Code token usage and compete on the leaderboard.
+  Visit https://rank.mo.ai.kr for the web dashboard.
+
+Commands:
+  register   Register with MoAI Rank via GitHub OAuth.
+  status     Show your current rank and statistics.
+  exclude    Exclude a project from session tracking.
+  include    Re-include a previously excluded project.
+  logout     Remove stored MoAI Rank credentials.
+```
+
+---
+
+### 步骤1: GitHub OAuth注册
+
+```bash
+❯ moai rank register
+
+╭──────────────────────────── Registration ────────────────────────────╮
+│ MoAI Rank Registration                                               │
+│                                                                      │
+│ This will open your browser to authorize with GitHub.                │
+│ After authorization, your API key will be stored securely.           │
+╰──────────────────────────────────────────────────────────────────────╯
+
+Opening browser for GitHub authorization...
+Waiting for authorization (timeout: 5 minutes)...
+
+╭───────────────────────── Registration Complete ──────────────────────╮
+│ Successfully registered as your-github-id                            │
+│                                                                      │
+│ API Key: moai_rank_a9011fac_c...                                     │
+│ Stored in: ~/.moai/rank/credentials.json                             │
+╰──────────────────────────────────────────────────────────────────────╯
+
+╭───────────────────────── Global Hook Installed ──────────────────────╮
+│ Session tracking hook installed globally.                            │
+│                                                                      │
+│ Your Claude Code sessions will be automatically tracked.             │
+│ Hook location: ~/.claude/hooks/moai/session_end__rank_submit.py      │
+│                                                                      │
+│ To exclude specific projects:                                        │
+│   moai rank exclude /path/to/project                                 │
+╰──────────────────────────────────────────────────────────────────────╯
+```
+
+---
+
+### 步骤2: 查看我的排名
+
+```bash
+❯ moai rank status
+
+╭────────────────────────────── MoAI Rank ─────────────────────────────╮
+│ your-github-id                                                       │
+│                                                                      │
+│ 🏆 Global Rank: #42                                                  │
+╰──────────────────────────────────────────────────────────────────────╯
+╭───── Daily ──────╮  ╭───── Weekly ─────╮  ╭──── Monthly ─────╮  ╭──── All Time ────╮
+│ #12              │  │ #28              │  │ #42              │  │ #156             │
+╰──────────────────╯  ╰──────────────────╯  ╰──────────────────╯  ╰──────────────────╯
+╭─────────────────────────── Token Usage ──────────────────────────────╮
+│ 1,247,832 total tokens                                               │
+│                                                                      │
+│ Input  ██████████████░░░░░░ 847,291 (68%)                            │
+│ Output ██████░░░░░░░░░░░░░░ 400,541 (32%)                            │
+│                                                                      │
+│ Sessions: 47                                                         │
+╰──────────────────────────────────────────────────────────────────────╯
+
+● Hook: Installed  |  https://rank.mo.ai.kr
+```
+
+---
+
+### 步骤3: 网页仪表板
+
+![MoAI Rank Dashboard](./assets/images/readme/moai-rank-dashboard.png)
+
+**[https://rank.mo.ai.kr](https://rank.mo.ai.kr)**
+
+在仪表板中:
+
+- 令牌使用趋势
+- 工具使用统计
+- 按模型的使用分析
+- 周/月报告
+
+📖 **详细信息**: 参考[modu-ai/moai-rank](https://github.com/modu-ai/moai-rank)仓库。
+
+---
+
+### 步骤4: 收集的指标
+
+| 指标        | 说明                          |
+| ----------- | ----------------------------- |
+| **令牌使用** | 输入/输出令牌、缓存令牌       |
+| **工具使用** | Read、Edit、Bash等使用次数    |
+| **模型使用** | Opus、Sonnet、Haiku按量       |
+| **代码指标** | 添加/删除行、修改文件         |
+| **会话信息** | 持续时间、轮数、时间戳        |
+
+### 🔒 隐私保护
+
+```bash
+# 排除当前项目
+moai rank exclude
+
+# 排除特定路径
+moai rank exclude /path/to/private
+
+# 通配符模式
+moai rank exclude "*/confidential/*"
+
+# 查看排除列表
+moai rank list-excluded
+```
+
+**保证**: 收集的数据**仅数值指标** (不发送代码内容、文件路径)
+
+---
+
+## 9. FAQ 5个
+
+### Q1: SPEC总是必需的吗?
+
+| 条件          | SPEC需求         |
+| ------------- | ---------------- |
+| 1-2个文件修改 | 可选 (可省略)    |
+| 3-5个文件修改 | 推荐             |
+| 10+个文件修改| 必需             |
+| 新功能添加   | 推荐             |
+| Bug修复      | 可选             |
+
+### Q2: 需要安装MCP服务器吗?
+
+**必需 (2个)**:
+
+- **Context7**: 最新库文档、Skill参考生成时使用
+
+**可选**:
+
+- claude-in-chrome: 浏览器中使用Claude及Web自动化测试
+- Playwright: Web自动化测试
+- Figma: 设计系统
+
+### Q3: MoAI Rank有费用吗?
+
+免费。仅自动收集会话数据。
+
+### Q4: GLM设置是必需的吗?
+
+不是。仅使用Claude也可以。但为节省成本推荐。
+
+### Q5: 可以应用到现有项目吗?
+
+可以。使用`moai init .`保持现有文件不变。
+
+---
+
+## 17. 社区 & 支持
+
+### 🌐 参与
+
+- **Discord (官方)**: [https://discord.gg/umywNygN](https://discord.gg/umywNygN)
+- **GitHub**: [https://github.com/modu-ai/moai-adk](https://github.com/modu-ai/moai-adk)
+- **开发者博客**: [https://goos.kim](https://goos.kim)
 
 ### 🆘 支持
 
-**邮件支持:**
-
-- 技术支持: [support@mo.ai.kr](mailto:support@mo.ai.kr)
-
-### 📊 星标历史
-
-[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=Date)](https://star-history.com/#modu-ai/moai-adk&Date)
+- 电子邮件: [support@mo.ai.kr](mailto:support@mo.ai.kr)
+- 文档: [https://adk.mo.ai.kr](https://adk.mo.ai.kr)
 
 ---
 
 ## 📝 许可证
 
-MoAI-ADK 在 [MIT 许可证](./LICENSE) 下授权。
-
-```text
-MIT License
-
-Copyright (c) 2025 MoAI-ADK Team
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
+Copyleft License (COPYLEFT-3.0) - [LICENSE](./LICENSE)
 
 ---
 
-### by MoAI-ADK 团队创建
+## 🙏 由MoAI-ADK团队用❤️制作
 
-**版本**: 0.41.2
-**最后更新**: 2026-01-10
-**理念**: SPEC-First TDD + 智能体编排 + 85% Token 效率
-**MoAI**: MoAI 意为"所有人的 AI (Modu-ui AI)"。我们的目标是让每个人都能使用 AI。
+**最后更新:** 2026-01-11
+**哲学**: SPEC-First TDD + 智能体编排 + 混合LLM
+**MoAI**: MoAI意为"所有人的AI (Modu-ui AI)"。
+
+> **"无限可能主义 - 所有人的AI"**

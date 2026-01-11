@@ -1,2715 +1,1271 @@
-# 🗿 MoAI-ADK: Agentic AI ベース SPEC-First TDD 開発フレームワーク
+# 🗿 MoAI-ADK: Agentic AI 開発フレームワーク
 
 ![MoAI-ADK Hero Banner](./assets/images/readme/hero-banner-moai-adk.png)
 
 **利用可能な言語:** [🇰🇷 한국어](./README.ko.md) | [🇺🇸 English](./README.md) | [🇯🇵 日本語](./README.ja.md) | [🇨🇳 中文](./README.zh.md)
 
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Copyleft](https://img.shields.io/badge/License-Copyleft--3.0-blue.svg)](./LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.11--3.14-blue)](https://www.python.org/)
 
-MoAI-ADK (Agentic Development Kit)は、**SPEC-First 開発**、**テスト駆動開発**（TDD）、**AI エージェント**を組み合わせて、完全で透明な開発ライフサイクルを提供するオープンソースフレームワークです。
+> **"バイブコーディングの目的は迅速な生産性ではなく、コード品質である"**
+
+MoAI-ADKは**高品質なコードを作成するAI開発環境**を提供します。SPEC-First TDD、テスト駆動開発、継続的リファクタリング、そして20個の専門AIエージェントが一緒に働きます。
 
 ---
 
-## 📑 目次（クイックナビゲーション）
+## 🎁 MoAI-ADK スポンサー: z.ai GLM 4.7
 
-### パート A: はじめに（30 分）
+**💎 コスト効率の良いAI開発のための最適ソリューション**
 
-| セクション                                                     | 時間  | 目標                  |
-| -------------------------------------------------------------- | ----- | --------------------- |
-| [1. はじめに](#1-はじめに)                                     | 2 分  | MoAI-ADK が何かを理解 |
-| [2. インストールとセットアップ](#2-インストールとセットアップ) | 10 分 | 基本環境構成          |
-| [3. クイックスタート](#3-クイックスタート)                     | 5 分  | 最初の機能完成        |
+MoAI-ADKは**z.ai GLM 4.7**とのパートナーシップを通じて、開発者に経済的なAI開発環境を提供します。
 
-### パート B: コア概念（45 分）
+### 🚀 GLM 4.7 特別特典
 
-| セクション                                                | 時間  | 目標                       |
-| --------------------------------------------------------- | ----- | -------------------------- |
-| [4. SPEC と EARS フォーマット](#4-specとearsフォーマット) | 10 分 | 仕様書作成の理解           |
-| [5. Mr.Alfred とエージェント](#5-mralfredとエージェント)  | 12 分 | エージェントシステムの理解 |
-| [6. 開発ワークフロー](#6-開発ワークフロー)                | 15 分 | Plan → Run → Sync          |
-| [7. コアコマンド](#7-コアコマンド)                        | 8 分  | `> /moai:0-3` コマンド      |
+| 特典                  | 説明                                           |
+| ------------------- | ---------------------------------------------- |
+| **💰 70% コスト削減**  | Claude比 1/7価格で同等性能                      |
+| **⚡ 高速応答**       | 最適化されたインフラで低レイテンシ応答提供       |
+| **🔄 互換性**         | Claude Codeと完全互換、別途コード修正不要        |
+| **📈 無制限使用**     | 日次/週次トークンリミットなしで自由に使用        |
 
-### パート C: 上級学習（2-3 時間）
+### 🎁 登録特別割引
 
-| セクション                                               | 目標                   |
-| -------------------------------------------------------- | ---------------------- |
-| [8. エージェントガイド](#8-エージェントガイド-20-個)      | 専門エージェントの活用 |
-| [9. スキルライブラリ](#9-スキルライブラリ-48-個)          | 48 個のスキル探索      |
-| [10. 組み合わせパターンと例](#10-組み合わせパターンと例) | 実際のプロジェクト例   |
-| [11. TRUST 5 品質保証](#11-trust-5-品質保証)             | 品質保証システム       |
-| [12. 高度な機能](#12-高度な機能)                         | Git Worktree & 強化されたログ管理 |
+**👉 [GLM 4.7 登録 (10% 追加割引)](https://z.ai/subscribe?ic=1NDV03BGWU)**
 
-### パート D: 上級 & 参考資料（必要時）
+このリンクから登録すると:
 
-| セクション                                                                                             | 目的                     |
-| ------------------------------------------------------------------------------------------------------ | ------------------------ |
-| [13. 高度な設定](#13-高度な設定)                                                                       | プロジェクトカスタマイズ |
-| [14. FAQ & クイックリファレンス](#14-faq--クイックリファレンス)                                         | よくある質問             |
-| [15. 追加資料](#15-追加資料)                                                                           | サポートおよび情報       |
+- ✅ **追加10%割引**特典
+- ✅ **MoAIオープンソース開発**に貢献 (リワードクレジットはオープンソースプロジェクトに使用されます)
 
----
-
-## 1. はじめに
-
-### 🗿 MoAI-ADK とは？
-
-**MoAI-ADK**（Agentic Development Kit）は、AI エージェントを活用した次世代開発フレームワークです。**SPEC-First 開発方法論**、**TDD**（Test-Driven Development, テスト駆動開発）、**20 個の専門 AI エージェント**を組み合わせて、完全で透明な開発ライフサイクルを提供します。
-
-### ✨ なぜ MoAI-ADK を使用するのか？
-
-![Traditional vs MoAI-ADK](./assets/images/readme/before-after-comparison.png)
-
-従来の開発方法の限界：
-
-- ❌ 不明確な要件による頻繁な手戻り
-- ❌ ドキュメントとコードの同期がされない
-- ❌ テスト作成を先延ばしによる品質低下
-- ❌ 反復的なボイラープレート作成
-
-MoAI-ADK の解決策：
-
-- ✅ **明確な SPEC 文書**から開始し、誤解を排除
-- ✅ **自動ドキュメント同期**で常に最新状態を維持
-- ✅ **TDD 強制**で 85% 以上のテストカバレッジを保証
-- ✅ **AI エージェント**が反復作業を自動化
-
-### 🎯 コア特徴
-
-![5 Core Features](./assets/images/readme/feature-overview-grid.png)
-
-| 特徴                   | 説明                                                   | 定量的効果                                                                                                                                                                                                     |
-| ---------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **SPEC-First**         | すべての開発は明確な仕様書から開始                     | 要件変更による手戻り **90% 削減**<br/>明確な SPEC による開発者-企画者間の誤解排除                                                                                                                              |
-| **TDD 強制**           | Red-Green-Refactor サイクルの自動化                    | バグ **70% 削減**（85%+ カバレッジ時）<br/>テスト作成時間を含む総開発時間 **15% 短縮**                                                                                                                       |
-| **AI オーケストレーション** | Mr.Alfred が 20 個の専門 AI エージェントを指揮（3-Tier + MCP 階層） | **平均トークン節約**: セッションあたり 5,000 トークン（Conditional Auto-load）<br/>**Simple 作業**: 0 トークン（Quick Reference）<br/>**Complex 作業**: 8,470 トークン（Auto-load スキル）<br/>手動に比べて **60-70% 時間短縮** |
-| **自動ドキュメント化**   | コード変更時のドキュメント自動同期 (`> /moai:3-sync`)    | ドキュメント最新性 **100% 保証**<br/>手動ドキュメント作成削除<br/>最後のコミット以降の自動同期                                                                                                                   |
-| **TRUST 5 品質**      | Test, Readable, Unified, Secured, Trackable           | エンタープライズ級品質保証<br/>デプロイ後の緊急パッチ **99% 削減                                                                                                                                               |
-
----
-
-## 2. インストールとセットアップ
-
-### 🎯 基本インストール（10 分）
-
-#### Step 1: uv のインストール（1 分）
+### 💡 使用ガイド
 
 ```bash
-# macOS / Linux
+# 1. GLM APIキー発行
+上記リンクから登録後APIキー発行
+
+# 2. MoAI-ADKでGLM設定
+moai glm YOUR_API_KEY
+```
+
+> **💡 ヒント**: Worktree環境でGLM 4.7を活用すると、Opusで設計してGLMで大量実装してコストを最大70%削減できます。
+
+---
+
+## 🌟 核心価値
+
+- **🎯 SPEC-First**: 明確な仕様書で90%再作業削減
+- **🔴 TDD強制**: 85%+テストカバレッジ自動保証
+- **🤖 AIオーケストレーション**: 20個専門エージェント + 48個スキル
+- **🌐 多言語ルーティング**: 韓国語/英語/日本語/中国語自動サポート
+- **🌳 Worktree並列開発**: 完全分離環境で無制限並列作業
+- **🏆 MoAI Rank**: バイブコーディングリーダーボードでモチベーション
+
+---
+
+## 1. 30秒インストール
+
+```bash
+# Step 1: uv インストール (macOS/Linux)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Windows (PowerShell)
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-
-# インストール確認
-uv --version
-```
-
-#### Step 2: MoAI-ADK のインストール（2 分）
-
-```bash
-# 最新バージョンをインストール
+# Step 2: MoAI-ADK インストール
 uv tool install moai-adk
-
-# インストール確認
-moai-adk --version
 ```
 
-#### Step 3A: 新規プロジェクト初期化（3 分）
+### 🎨 対話型設定ウィザード
 
-```bash
-# 新規プロジェクト作成
-moai-adk init my-project
-cd my-project
+`moai init`コマンド実行時に**9段階対話型ウィザード**が開始されます:
 
-# プロジェクト構造確認
-ls -la
+![MoAI-ADK Init Wizard](./assets/images/readme/init-wizard-banner.png)
+
+---
+
+#### Step 1: 言語選択
+
+対話言語を選択します。以降の案内がすべて選択した言語で表示されます。
+
 ```
-
-生成されるファイル構造：
-
-```text
-my-project/
-├── .claude/              # Claude Code 設定
-├── .moai/                # MoAI-ADK 設定
-├── src/                  # ソースコード
-├── tests/                # テストコード
-├── .moai/specs/          # SPEC 文書
-├── README.md
-└── pyproject.toml
+🌐 Language Selection
+❯ Select your conversation language: [↑↓] Navigate  [Enter] Select
+❯ Japanese (日本語)
+  English
+  Korean (한국어)
+  Chinese (中文)
 ```
 
 ---
 
-#### Step 3B: 既存プロジェクト設定（5 分）
+#### Step 2: 名前入力
 
-**既存プロジェクトに 3 ステップで MoAI-ADK を統合：**
+ユーザー名を入力します。AIがパーソナライズされた応答を提供します。
+
+```
+👤 ユーザー設定
+❯ ユーザー名を入力してください (選択事項):
+```
+
+---
+
+#### Step 3: GLM APIキー入力
+
+Z.AI社のGLM APIキーを入力します。
+
+```
+🔑 APIキー入力
+GLM CodePlan API key (optional - press Enter to skip)
+
+✓ 既存GLM APIキーが見つかりました: 99c1a2df...
+Enterを押すと既存キー維持、新しいキーを入力すると交換されます
+
+? GLM APIキーを入力してください:
+```
+
+> 🎁 **GLM登録特典**: GLMアカウントがない場合は下記リンクで登録してください!
+>
+> **👉 [GLM 登録 (10% 追加割引)](https://z.ai/subscribe?ic=1NDV03BGWU)**
+>
+> このリンクから登録すると**追加10%割引**特典を受けられます。
+> また、リンクを通じた登録時に発生するリワードは**MoAIオープンソース開発**に使用されます。🙏
+
+---
+
+#### Step 4: プロジェクト設定
+
+プロジェクト名を入力します。
+
+```
+📁 プロジェクト設定
+❯ プロジェクト名: MoAI-ADK
+```
+
+---
+
+#### Step 5: Git設定
+
+Gitモードを選択します。
+
+```
+🔀 Git設定
+❯ Gitモードを選択してください: [↑↓] Navigate  [Enter] Select
+❯ manual (ローカルのみ) - ローカルリポジトリのみ使用
+  personal (GitHub個人) - GitHub個人アカウント使用
+  team (GitHubチーム) - GitHubチーム/組織使用
+```
+
+---
+
+#### Step 6: GitHubユーザー名
+
+personal/team選択時にGitHubユーザー名を入力します。
+
+```
+❯ GitHubユーザー名:
+```
+
+---
+
+#### Step 7: コミットメッセージ言語
+
+Gitコミットメッセージに使用する言語を選択します。
+
+```
+🗣️ 出力言語設定
+❯ コミットメッセージ言語: [↑↓] Navigate  [Enter] Select
+  English
+❯ Japanese (日本語)
+  Korean (한국어)
+  Chinese (中文)
+```
+
+---
+
+#### Step 8: コードコメント言語
+
+コードコメントに使用する言語を選択します。
+
+```
+❯ コードコメント言語: [↑↓] Navigate  [Enter] Select
+  English
+❯ Japanese (日本語)
+  Korean (한국어)
+  Chinese (中文)
+```
+
+---
+
+#### Step 9: ドキュメント言語
+
+ドキュメントに使用する言語を選択します。
+
+```
+❯ ドキュメント言語: [↑↓] Navigate  [Enter] Select
+  English
+❯ Japanese (日本語)
+  Korean (한국어)
+  Chinese (中文)
+```
+
+> 💡 **トークン最適化戦略**: エージェントに指示する内部プロンプトは**英語で固定**されています。
+>
+> **理由**: 非英語圏言語はClaudeで**12%~20%トークンを追加消費**します。無限反復エージェント作業が多くなるとコストと週次トークンリミットに大きな影響を与えるため、MoAIは内部エージェント指示は英語で固定し**一般対話のみユーザー言語で提供**します。
+>
+> これがMoAIの**トークン浪費を減らすための取り組み**です。
+
+---
+
+#### インストール完了
+
+すべての設定が完了すると5段階インストールが自動進行します:
+
+```
+🚀 Starting installation...
+
+Phase 1: Preparation and backup...        ████████████████ 100%
+Phase 2: Creating directory structure...  ████████████████ 100%
+Phase 3: Installing resources...          ████████████████ 100%
+Phase 4: Generating configurations...     ████████████████ 100%
+Phase 5: Validation and finalization...   ████████████████ 100%
+
+✅ Initialization Completed Successfully!
+────────────────────────────────────────────────────────────────
+
+📊 Summary:
+  📁 Location:   /path/to/my-project
+  🌐 Language:   Auto-detect (use /moai:0-project)
+  🔀 Git:        manual (github-flow, branch: manual)
+  🌍 Locale:     ja
+  📄 Files:      47 created
+  ⏱️  Duration:   1234ms
+
+🚀 Next Steps:
+  1. Run cd my-project to enter the project
+  2. Run /moai:0-project in Claude Code for full setup
+  3. Start developing with MoAI-ADK!
+```
+
+### 既存プロジェクトに追加
 
 ```bash
-# 既存プロジェクトに移動
 cd your-existing-project
-
-# 現在ディレクトリで MoAI-ADK を初期化
-moai-adk init .
-
-# MoAI-ADK 統合を確認
-ls -la .claude/ .moai/
+moai init .
+# 既存ファイルはそのまま維持されます
 ```
-
-**プロジェクトに追加されるファイル：**
-
-```text
-your-existing-project/
-├── .claude/              # Claude Code 設定（追加）
-│   ├── agents/           # MoAI-ADK エージェント
-│   ├── commands/         # カスタムコマンド
-│   ├── hooks/             # 自動化ワークフロー
-│   └── settings.json     # プロジェクト設定
-├── .moai/                # MoAI-ADK 設定（追加）
-│   ├── config/           # プロジェクト設定
-│   ├── memory/           # セッションメモリ
-│   ├── specs/            # SPEC 文書
-│   └── docs/             # 自動生成ドキュメント
-├── src/                  # 既存ソースコード（変更なし）
-├── tests/                # 既存テスト（変更なし）
-└── README.md             # 既存 README（変更なし）
-```
-
-**重要:** 既存ファイルは一切変更されません。MoAI-ADK は設定ファイルのみを追加します。
 
 ---
 
-#### Step 4: Claude Code 実行およびプロジェクトメタデータ初期化
+### 🔄 MoAI-ADK アップデート
+
+既存プロジェクトを最新バージョンにアップデートします。
 
 ```bash
-# プロジェクトディレクトリで Claude Code を実行
-claude
+moai update
+```
 
-# Claude Code 内でプロジェクトメタデータを初期化
+**3段階スマートアップデートワークフロー**:
+
+```
+Stage 1: 📦 パッケージバージョン確認
+         └─ PyPIで最新バージョン確認 → 必要時自動アップグレード
+
+Stage 2: 🔍 Configバージョン比較
+         └─ パッケージテンプレート vs プロジェクト設定比較
+         └─ 同一ならスキップ (70-80% 性能向上)
+
+Stage 3: 📄 テンプレート同期
+         └─ バックアップ作成 → テンプレートアップデート → ユーザー設定復元
+```
+
+**主要オプション**:
+
+```bash
+# バージョンのみ確認 (アップデートなし)
+moai update --check
+
+# テンプレートのみ同期 (パッケージアップグレードスキップ)
+moai update --templates-only
+
+# 設定編集モード (initウィザード再実行)
+moai update --config
+moai update -c
+
+# バックアップなし強制アップデート
+moai update --force
+
+# All is well~ 自動モード (すべての確認自動承認)
+moai update --yes
+```
+
+**マージ戦略選択**:
+
+```
+🔀 Choose merge strategy:
+  [1] Auto-merge (default)
+      → テンプレート + ユーザー変更事項自動保存
+  [2] Manual merge
+      → バックアップ + マージガイド作成 (直接制御)
+```
+
+```bash
+# Auto-merge強制 (デフォルト)
+moai update --merge
+
+# Manual merge強制
+moai update --manual
+```
+
+**自動保存項目**:
+
+| 項目              | 説明                                          |
+| ----------------- | --------------------------------------------- |
+| **ユーザー設定**     | `.claude/settings.local.json` (MCP, GLM設定) |
+| **カスタムエージェント** | テンプレートにないユーザー生成エージェント    |
+| **カスタムコマンド**   | ユーザー定義スラッシュコマンド                |
+| **カスタムスキル**     | ユーザー定義スキル                             |
+| **カスタムフック**       | ユーザー定義フックスクリプト                   |
+| **SPECドキュメント**       | `.moai/specs/` フォルダ全体                  |
+| **レポート**          | `.moai/reports/` フォルダ全体                |
+
+> 💡 **アップデートヒント**: `moai update -c`でいつでも言語、APIキー、Git設定を変更できます。
+> ユーザーのコマンド、エージェント、スキル、フックはmoai以外のフォルダに生成して使用すると良いです。
+
+---
+
+## 2. プロジェクトドキュメント生成 (選択事項)
+
+新規プロジェクトや既存プロジェクトで**Claude Codeがプロジェクトを理解するのを助ける**プロジェクトドキュメントを自動生成できます:
+
+```
 > /moai:0-project
 ```
 
-**`> /moai:0-project` がすること：**
+### 生成される3つのファイル
+
+| ファイル                        | 目標          | 主要内容                                                  |
+| ------------------------------- | ------------- | ---------------------------------------------------------- |
+| `.moai/project/product.md`      | **製品概要** | プロジェクト名/説明、ターゲットユーザー、核心機能、使用事例      |
+| `.moai/project/structure.md`    | **構造分析** | ディレクトリツリー、主要フォルダ目的、核心ファイル位置、モジュール構成   |
+| `.moai/project/tech.md`         | **技術スタック** | 使用技術、フレームワーク選択理由、開発環境、ビルド/デプロイ設定 |
+
+### なぜ必要なのか？
+
+- **コンテキスト提供**: Claude Codeがプロジェクト文脈を迅速把握
+- **一貫性維持**: チームメンバー間のプロジェクト理解度共有
+- **オンボーディング加速**: 新規開発者のプロジェクト把握時間短縮
+- **AI協業最適化**: より正確なコード提案とレビュー可能
+
+> 💡 **ヒント**: プロジェクト初期または構造変更時に`/moai:0-project`を実行すると最新状態でドキュメントが更新されます。
+
+---
+
+## 3. 核心コマンド集
+
+### 🎯 `/moai:0-project` - プロジェクト初期化
+
+```bash
+> /moai:0-project
+```
+
+プロジェクトの現在状態を自動分析して最適の開発環境を構成します。プログラミング言語とフレームワークを検出し、Gitワークフローと品質保証基準を自動設定します。すべての構成が完了するとすぐに開発を開始できる準備状態になります。
+
+**作業内容**:
 
 - ✅ プロジェクト構造分析
-- ✅ プログラミング言語およびフレームワーク検出
-- ✅ `.moai/config/config.json` にプロジェクトメタデータ生成
-- ✅ デフォルト Git ワークフロー設定
-- ✅ セッションメモリシステム生成
+- ✅ プログラミング言語/フレームワーク検出
+- ✅ `.moai/config/config.yaml` 生成
+- ✅ Gitワークフロー設定
+- ✅ セッションメモリシステム構成
 - ✅ 品質保証基準設定
 
-**期待結果：**
-
-```
-✓ プロジェクト分析完了: Python プロジェクト検出
-✓ メタデータ生成完了: .moai/config/config.json
-✓ Git 戦略: Manual モード設定完了
-✓ 品質ゲート: 85% テストカバレッジ目標
-✓ プロジェクト初期化完了
-```
-
-これで SPEC-First TDD 開発のためのプロジェクトメタデータと環境が準備できました！
-
 ---
 
-## 3. クイックスタート
-
-### 🎯 目標: 最初の機能を 5 分で完了
-
-![Quick Start Journey](./assets/images/readme/quickstart-journey-map.png)
-
----
-
-### **Step 1: 最初の機能 Plan** ⏱️ 2 分
-
-Claude Code で：
-
-```
-> /moai:1-plan "ユーザーログイン機能追加"
-```
-
-このコマンドが：
-
-- SPEC-001 文書自動生成
-- 要件、制約、成功基準定義
-- テストシナリオ作成
-
----
-
-### **Step 2: コンテキスト初期化** ⏱️ 1 分
-
-```
-> /clear
-```
-
-トークン効率のために以前のコンテキストを整理します。
-
----
-
-### **Step 3: 実装（Run）** ⏱️ 2 分
-
-```
-> /moai:2-run SPEC-001
-```
-
-このコマンドが：
-
-- テストを先に作成（Red）
-- コード実装（Green）
-- リファクタリング（Refactor）
-- TRUST 5 検証を自動実行
-
----
-
-### **Step 4: ドキュメント化（Sync）** ⏱️ （オプション）
-
-```
-> /moai:3-sync SPEC-001
-```
-
-自動的に：
-
-- API ドキュメント生成
-- アーキテクチャ図
-- README 更新
-- デプロイ準備完了
-
-**完了！** 最初の機能が完全に実装されました。🎉
-
----
-
-### 📁 詳細情報
-
-- **インストール高度なオプション**: [13. 高度な設定](#13-高度な設定)
-- **コマンド詳細使用法**: [7. コアコマンド](#7-コアコマンド)
-- **開発ワークフロー**: [6. 開発ワークフロー](#6-開発ワークフロー)
-
----
-
-## 4. SPEC と EARS フォーマット
-
-### 📋 SPEC-First Development
-
-![SPEC-First Visual Guide](./assets/images/readme/spec-first-visual-guide.png)
-
-**SPEC-First とは？**
-
-すべての開発は **明確な仕様書**（Specification）から開始します。SPEC は **EARS(Easy Approach to Requirements Syntax) フォーマット** に従って作成され、以下を含みます：
-
-- **要件**: 何を作成するか？
-- **制約**: どのような制限があるか？
-- **成功基準**: いつ完了か？
-- **テストシナリオ**: どのように検証するか？
-
-### 🎯 EARS フォーマット例
-
-```markdown
-# SPEC-001: ユーザーログイン機能
-
-## 要件 (Requirements)
-
-- WHEN ユーザーがメールとパスワードを入力し "ログイン" ボタンをクリックした時
-- IF 資格情報が有効な場合
-- THEN システムは JWT(JSON Web Token) トークンを発行しダッシュボードに移動する
-
-## 制約 (Constraints)
-
-- パスワードは最低 8 文字以上
-- 5 回連続失敗時アカウントロック（30 分）
-- 応答時間は 500ms 以内
-
-## 成功基準 (Success Criteria)
-
-- 有効な資格情報でログイン成功率 100%
-- 無効な資格情報時は明確なエラーメッセージ表示
-- 応答時間 < 500ms
-- テストカバレッジ >= 85%
-
-## テストシナリオ (Test Cases)
-
-### TC-1: 正常ログイン
-
-- 入力: email="user@example.com", password="secure123"
-- 期待結果: トークン発行、ダッシュボード移動
-
-### TC-2: 間違ったパスワード
-
-- 入力: email="user@example.com", password="wrong"
-- 期待結果: "パスワードが間違っています" エラーメッセージ
-
-### TC-3: アカウントロック
-
-- 入力: 5 回連続失敗
-- 期待結果: "アカウントがロックされました。30 分後再試行してください"
-```
-
-### 💡 EARS フォーマットの 5 種類
-
-| タイプ         | 構文         | 例                                          |
-| -------------- | ------------ | ------------------------------------------- |
-| **Ubiquitous** | 常に実行     | "システムは常にログを記録しなければならない" |
-| **Event-driven** | WHEN...THEN  | "ユーザーがログインした時、トークンを発行する" |
-| **State-driven** | IF...THEN    | "アカウントが有効状態の時、ログインを許可" |
-| **Unwanted**   | shall not    | "システムは平文パスワードを保存してはならない" |
-| **Optional**   | where possible | "可能であれば OAuth ログインを提供" |
-
----
-
-## 5. Mr.Alfred とエージェント
-
-### 🎩 Mr.Alfred - Super Agent Orchestrator
-
-**Alfred は誰か？**
-
-Mr.Alfred は MoAI-ADK の **最高指揮者**（Orchestrator）であり、ユーザーの要求を分析し、適切な専門エージェントを選択して作業を委任し、結果を統合します。
-
-**Alfred の役割：**
-
-1. **理解する**: ユーザー要求分析および不明確な部分質問
-2. **計画する**: Plan エージェントを通じて実行計画策定
-3. **実行する**: 専門エージェントに作業委任（順次/並列）
-4. **統合する**: すべての結果を集めてユーザーに報告
-
-```mermaid
-flowchart TD
-    User[👤 ユーザー] -->|要求| Alfred[🎩 Mr.Alfred]
-    Alfred -->|分析| Plan[📋 Plan Agent]
-    Plan -->|計画| Alfred
-    Alfred -->|委任| Agents[👥 専門エージェント群]
-    Agents -->|結果| Alfred
-    Alfred -->|統合報告| User
-
-    style Alfred fill:#fff,stroke:#333,stroke-width:2px
-    style Agents fill:#fff,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5
-```
-### 🌐 多言語エージェントルーティング
-
-MoAI-ADK v0.41.2 は 4 つの言語（EN/KO/JA/ZH）で**キーワードベースの自動エージェント選択**をサポートしています。
-
-**サポート言語:**
-- 🇺🇸 英語 (English)
-- 🇰🇷 韓国語 (한국어)
-- 🇯🇵 日本語
-- 🇨🇳 中国語 (中文)
-
-**動作原理:**
-
-```
-ユーザー: "バックエンド API を設計して"
-    ↓
-Alfred: キーワード検出 ("バックエンド", "API")
-    ↓
-自動ルーティング → expert-backend エージェント
-    ↓
-日本語で回答
-```
-
-**トリガーキーワード例:**
-
-| ドメイン | 日本語キーワード |
-|---------|-----------------|
-| Backend | バックエンド, API, サーバー, 認証, データベース |
-| Frontend | フロントエンド, UI, コンポーネント, リアクト |
-| Database | データベース, SQL, NoSQL, スキーマ, クエリ |
-| Security | セキュリティ, 脆弱性, OWASP, インジェクション |
-| TDD | TDD, テスト駆動開発, ユニットテスト |
-
-**XLT (Cross-Lingual Thought) プロトコル:**
-1. ユーザーリクエストを内部で英語キーワードにマッピング
-2. 英語パターンベースでエージェント選択
-3. ユーザーの会話言語で回答
-
-
-### 🔧 エージェントシステム（3-Tier + MCP 階層）
-
-MoAI-ADK は **20 個の専門エージェント**を **3 個の階層 + MCP** に組織して最適の性能を提供します。
-
-**Tier 1: Domain Experts**（ドメイン専門家、8 個）
-
-- `expert-backend`: バックエンドアーキテクチャ、API 開発、データベース設計
-- `expert-frontend`: フロントエンド、React/Vue 実装、UI/UX デザイン
-- `expert-security`: セキュリティ分析、脆弱性スキャン
-- `expert-devops`: デプロイ、インフラ、CI/CD
-- `expert-debug`: デバッグ、エラー分析
-- `expert-performance`: パフォーマンスプロファイリング、最適化
-- `expert-refactoring`: コードリファクタリング、AST-grep 基盤変換
-- `expert-testing`: テスト戦略、カバレッジ最適化
-
-**Tier 2: Workflow Managers**（ワークフロー管理、8 個）
-
-- `manager-spec`: SPEC 作成（EARS フォーマット）
-- `manager-tdd`: TDD 実装（RED-GREEN-REFACTOR）
-- `manager-docs`: ドキュメント自動生成
-- `manager-quality`: 品質検証（TRUST 5）
-- `manager-strategy`: 実行戦略策定
-- `manager-project`: プロジェクト初期化
-- `manager-git`: Git ワークフロー
-- `manager-claude-code`: Claude Code 統合
-
-**Tier 3: Meta-generators**（メタ生成器、4 個）
-
-- `builder-agent`: 新しいエージェント生成
-- `builder-skill`: 新しいスキル生成
-- `builder-command`: 新しいコマンド生成
-- `builder-plugin`: Claude Code プラグイン生成
-
-**MCP Integrators**（MCP 統合、5 個）
-
-- `mcp-context7`: 最新ライブラリ文書検索
-- `mcp-sequential-thinking`: 複雑な推論分析
-- `mcp-playwright`: ウェブ自動化テスト
-- `mcp-figma`: Figma デザインシステム
-- `mcp-notion`: Notion ワークスペース管理
-
----
-
-## 6. 開発ワークフロー
-
-### 🔄 Plan-Run-Sync 無限ループ
-
-MoAI-ADK の開発は **3 段階無限ループ**で進行します：
-
-```mermaid
-sequenceDiagram
-    participant U as 👤 ユーザー
-    participant A as 🎩 Alfred
-    participant S as 📝 SPEC Builder
-    participant T as 💻 TDD Implementer
-    participant D as 📚 Docs Manager
-
-    Note over U,D: 🔄 Plan → Run → Sync ループ
-
-    rect rgb(245, 245, 245)
-        Note right of U: Phase 1: Plan
-        U->>A: > /moai:1-plan "ログイン機能"
-        A->>S: SPEC 作成依頼
-        S-->>A: SPEC-001 下書き
-        A-->>U: 検討依頼
-        U->>A: 承認
-        A->>U: 💡 /clear 推奨
-    end
-
-    rect rgb(250, 250, 250)
-        Note right of U: Phase 2: Run
-        U->>A: > /moai:2-run SPEC-001
-        A->>T: TDD 実装依頼
-        T->>T: 🔴 テスト作成（失敗）
-        T->>T: 🟢 コード実装（成功）
-        T->>T: 🔵 リファクタリング & 最適化
-        T-->>A: 実装完了（テスト合格）
-        A-->>U: 完了確認
-    end
-
-    rect rgb(240, 250, 240)
-        Note right of U: Phase 3: Sync (自動化)
-        U->>A: > /moai:3-sync SPEC-001
-        A->>D: 自動テスト実行
-        D->>D: 🔴 最終テスト
-        D->>D: 📊 カバレッジ確認
-        D->>D: 🔍 コード品質検査
-        D->>D: 📝 自動コミット生成
-        D->>D: 📚 ドキュメント更新
-        D-->>A: すべて完了（自動化）
-        A-->>U: マージ準備完了
-    end
-```
-
-### 📊 各段階別詳細説明
-
-#### Phase 1: Plan（設計、5-10 分）
-
-**目標**: 何を作成するか？
+### 📋 `/moai:1-plan` - SPEC作成
 
 ```bash
-> /moai:1-plan "ユーザーログイン機能"
+> /moai:1-plan "機能説明"
 ```
 
-この段階で：
+EARS形式を使用して曖昧さのない仕様書を自動生成します。要求事項定義、成功基準、テストシナリオを含めて開発方向を明確に提示します。生成されたSPECは開発チームとAIが同一理解を共有する単一ソース（Source of Truth）として作動します。
 
-- ✅ SPEC-001 文書自動生成
-- ✅ EARS フォーマットで要件定義
-- ✅ 成功基準明確化
-- ✅ テストシナリオ作成
+**自動生成**:
 
-**成果物**: `.moai/specs/SPEC-001/spec.md`
+- EARS形式仕様書
+- 要求事項定義
+- 成功基準
+- テストシナリオ
 
----
-
-#### Phase 2: Run（実装、20-40 分）
-
-**目標**: どのように作成するか？
+**例**:
 
 ```bash
-> /clear
-> /moai:2-run SPEC-001
-```
+> /moai:1-plan "ユーザープロフィールページ"
+# → SPEC-002 生成
 
-この段階で：
-
-- 🔴 **RED**: 失敗するテストを先に作成
-- 🟢 **GREEN**: 最小コードでテスト合格
-- 🔵 **REFACTOR**: コード整理および最適化
-
-**自動検証**：
-
-- テストカバレッジ >= 85%
-- コードリンティング合格
-- セキュリティ検査合格
-- タイプ検査合格
-
-**成果物**: 実装完了 + テストコード + 85%+ カバレッジ
-
----
-
-#### Phase 3: Sync（自動化、5-10 分）
-
-**目標**: 完成したか？（自動化）
-
-```bash
-> /clear
-> /moai:3-sync SPEC-001
-```
-
-この段階で自動的に実行：
-
-- 🔴 **最終テスト実行**: すべてのテスト自動実行
-- 📊 **カバレッジ確認**: 95% 以上カバレッジ自動保証
-- 🔍 **コード品質検査**: ruff, mypy 自動実行
-- 📝 **自動コミット生成**: "Ready for merge" コミット自動生成
-- 📚 **ドキュメント更新**: API ドキュメント、README 自動更新
-- 🚀 **マージ準備**: Claude Code がマージ準備自動完了
-
-**成果物**: テスト合格 + ドキュメント完成 + マージ準備完了
-
----
-
-### 💡 視覚的ワークフロー：「ブログコメント機能」の例
-
-```mermaid
-flowchart LR
-    Start([👤 ユーザー要求]) -->|"<br/>コメント機能作ってくれる？<br/>"| Plan["<b>📋 PLAN</b><br/>（設計）<br/>━━━━━━<br/>✨ SPEC 作成<br/>✅ 成功基準定義<br/>⏱️ 5分"]
-
-    Plan -->|"<br/>SPEC-001<br/>準備完了<br/>"| Run["<b>💻 RUN</b><br/>（実装）<br/>━━━━━━<br/>🔴 テスト作成<br/>🟢 コード実装<br/>🔵 リファクタリング<br/>⏱️ 20分"]
-
-    Run -->|"<br/>テスト合格<br/>コード完了<br/>"| Sync["<b>📚 SYNC</b><br/>（自動化）<br/>━━━━━━<br/>🔴 最終テスト<br/>📊 カバレッジ確認<br/>🔍 コード品質検査<br/>📝 自動コミット生成<br/>🚀 マージ準備<br/>⏱️ 5分"]
-
-    Sync -->|"<br/>完全自動化完了！<br/>🚀 マージ準備完了<br/>"| End([✅ 機能デプロイ完了])
-
-    classDef planStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:3px,color:#000
-    classDef runStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px,color:#000
-    classDef syncStyle fill:#fff8e1,stroke:#ff9800,stroke-width:3px,color:#000
-    classDef normalStyle fill:#fafafa,stroke:#666,stroke-width:2px
-
-    class Plan planStyle
-    class Run runStyle
-    class Sync syncStyle
-    class Start,End normalStyle
-```
-
----
-
-## 7. コアコマンド
-
-### 🎯 `> /moai:0-project` - プロジェクト初期化
-
-**目的**: プロジェクトメタデータ生成
-
-**使用時期**: プロジェクト初回開始時
-
-```bash
-> /moai:0-project
-```
-
-**生成されるファイル**：
-
-- `.moai/config/config.json`: プロジェクト設定
-- `.moai/memory/`: プロジェクトメモリ
-- `.moai/docs/`: 自動生成ドキュメント
-
----
-
-### 📋 `> /moai:1-plan` - SPEC 作成
-
-**目的**: EARS フォーマット SPEC 文書生成
-
-**使用時期**: 新機能開発開始前
-
-```bash
-> /moai:1-plan "ログイン機能追加"
-```
-
-**例**：
-
-```bash
-> /moai:1-plan "ユーザープロフィールページ実装"
-# → SPEC-002 生成 (.moai/specs/SPEC-002/spec.md)
-
-> /moai:1-plan "決済機能 API 開発"
+> /moai:1-plan "決済API"
 # → SPEC-003 生成
 ```
 
-**生成される SPEC 含有事項**：
-
-- 要件 (Requirements)
-- 制約 (Constraints)
-- 成功基準 (Success Criteria)
-- テストシナリオ (Test Cases)
-
-**重要**: 次は必ず `> /clear` 実行
-
-```bash
-> /moai:1-plan "機能名"
-# 作業完了後
-> /clear
-```
+**重要**: 必ず次に`> /clear`実行
 
 ---
 
-### 💻 `> /moai:2-run` - TDD 実装
-
-**目的**: RED-GREEN-REFACTOR サイクルでコード実装
-
-**使用時期**: SPEC 作成後の実装
+### 💻 `/moai:2-run` - TDD実装
 
 ```bash
 > /moai:2-run SPEC-001
 ```
 
-**例**：
+Red-Green-Refactorサイクルを通じてテストを先に書き、それを通過するコードを実装します。すべての実装は85%以上のテストカバレッジとリンティング、タイプ検査、セキュリティ検査を通過しなければなりません。TRUST 5品質原則を自動検証して安定したコードのみコミットされます。
 
-```bash
-> /moai:2-run SPEC-001  # 基本実装
-```
+**自動実行**:
 
-**自動実行事項**：
+- 🔴 テスト先作成 (Red)
+- 🟢 テスト通過コード (Green)
+- 🔵 リファクタリング (Refactor)
+- ✅ TRUST 5検証
 
-- 🔴 テストを先に作成
-- 🟢 コードでテスト合格
-- 🔵 リファクタリング & 最適化
-- ✅ TRUST 5 検証 (自動)
-
-**検証項目**：
+**検証項目**:
 
 - テストカバレッジ >= 85%
-- リンティング検査合格
-- タイプ検査合格
-- セキュリティ検査合格
+- リンティング通過
+- タイプ検査通過
+- セキュリティ検査通過
 
 ---
 
-### 📚 `> /moai:3-sync` - ドキュメント同期
-
-**目的**: コード変更事項をドキュメントに反映
-
-**使用時期**: 実装完了後
+### 📚 `/moai:3-sync` - ドキュメント同期
 
 ```bash
 > /moai:3-sync SPEC-001
 ```
 
-**例**：
+品質検証を開始にドキュメント同期、Gitコミット、PR自動化を行います。APIドキュメント、アーキテクチャ図、README、CHANGELOGを自動生成して最新状態を維持します。変更事項を自動コミットしてチームモードではPRをDraftからReadyに転換します。
 
-```bash
-> /moai:3-sync SPEC-001  # 全体ドキュメント
-```
+**自動実行される作業**:
 
-**自動生成ドキュメント**：
+1. **Phase 1: 品質検証**
+   - テスト実行 (pytest, jest, go test等)
+   - リンター検査 (ruff, eslint, golangci-lint等)
+   - タイプチェッカー (mypy, tsc, go vet等)
+   - コードレビュー (manager-quality)
 
-- API リファレンス
-- アーキテクチャ図
-- デプロイガイド
-- README 更新
-- CHANGELOG
+2. **Phase 2-3: ドキュメント同期**
+   - APIドキュメント自動生成
+   - アーキテクチャ図更新
+   - README更新
+   - SPECドキュメント同期
+
+3. **Phase 4: Git自動化**
+   - 変更事項コミット
+   - PR Draft → Ready転換
+   - (選択) Auto-merge
+
+**実行モード**:
+
+- `auto` (デフォルト): 変更されたファイルのみ選択同期
+- `force`: 全体ドキュメント再生成
+- `status`: 状態確認のみ実行
+- `project`: プロジェクト全体同期
+
+**詳細**: コマンドファイル参照
 
 ---
 
-### 🌳 **moai-worktree** - 並列 SPEC 開発のための Git ワークツリー管理
-
-#### moai-worktree が必要な理由: 解決する問題
-
-現代ソフトウェア開発、特に SPEC-First TDD 方法論に従う時、開発者は同時に複数の機能を作業する問題に頻繁に直面します。従来の Git ワークフローは開発者に次を強制します：
-
-- **コンテキストスイッチング地獄**: 同一ワークスペースで継続的にブランチを切り替えてコンテキストを失い未完了作業のリスクを冒す
-- **逐次開発**: 一度に一つの SPEC み作業して生産性低下
-- **環境衝突**: 違う SPEC は違う依存関係、データベース状態または設定が必要な場合がある
-
-**moai-worktree はこの問題を解決**し、各 SPEC に対して分離されたワークスペースを提供し、コンテキストスイッチングオーバーヘッドなしで真の並列開発を可能にします。
-
-#### 核心概念: SPEC ベース並列開発
-
-**Git ワークツリーとは？**
-
-Git ワークツリーは同一 Git リポジトリに接続された別の作業ディレクトリで、違うブランチを同時に違う作業ディレクトリでチェックアウトできます。各ワークツリーは次を持ちます：
-
-- 独立したファイルシステム
-- 別の作業ディレクトリ状態
-- 分離されたビルド成果物および依存関係
-- 独自のステージング領域およびステージングされていない変更
-
-**moai-worktree アーキテクチャ：**
-
-```
-メインリポジトリ/
-├── .git/                    # 共有 Git リポジトリ
-├── src/                     # メインブランチファイル
-└── worktrees/               # 自動生成ワークツリー
-    ├── SPEC-001/
-    │   ├── .git             # ワークツリー別 git ファイル
-    │   ├── src/             # SPEC-001 実装
-    │   └── tests/           # SPEC-001 テスト
-    ├── SPEC-002/
-    │   ├── .git             # ワークツリー別 git ファイル
-    │   ├── src/             # SPEC-002 実装
-    │   └── tests/           # SPEC-002 テスト
-    └── SPEC-003/
-        ├── .git             # ワークツリー別 git ファイル
-        ├── src/             # SPEC-003 実装
-        └── tests/           # SPEC-003 テスト
-```
-
-#### SPEC-First 開発のための核心利益
-
-**1. ゼロコンテキストスイッチング**
-
-- 各 SPEC は独自専用ワークスペースを持つ
-- SPEC 間に切り替える時作業コンテキストを絶対に失わない
-- 特定の要求に対する精神的集中維持
-
-**2. 真の並列開発**
-
-- SPEC-002 テストが実行される間に SPEC-001 実装作業
-- SPEC-004 ドキュメント同期される間に SPEC-003 デバッグ
-- 他のプロセスが完了するまで待つ必要なし
-
-**3. 分離された環境**
-
-- 違う SPEC は違う依存関係バージョンを使用できる
-- 分離されたデータベース状態および設定
-- SPEC 間汚染なし
-
-**4. SPEC 完了追跡**
-
-- アクティブ SPEC リストに対する明確な視覚的表示
-- 中断または未完了 SPEC の簡単な識別
-- 完了した作業の体系的整理
-
-#### 高度な機能
-
-**スマート同期**
+### 🚀 `/moai:alfred` - 完全自律自動化
 
 ```bash
-# すべてのワークツリーを最新メインブランチと同期
-moai-worktree sync --all
-
-# 衝突解決で特定ワークツリー同期
-moai-worktree sync SPEC-001 --auto-resolve
+> /moai:alfred "機能説明"
 ```
 
-**知能的整理**
+ユーザーが目標を提示するとAIが自ら探索、計画、実装、検証をすべて行います。並列探索でコードベースを分析し、自律ループを通じて問題を自ら修正します。完了マーカー(`<promise>DONE</promise>`)を検知すると自動終了して開発者は最終結果のみ確認すれば良いです。
 
-```bash
-# マージされたブランチワークツリー自動削除
-moai-worktree clean --merged-only
+**一度に実行**:
 
-# 確認プロンプトが含まれた安全整理
-moai-worktree clean --interactive
-```
-
-**性能最適化**
-
-- **同時作業**: 複数のワークツリーを同時に修正できる
-- **共有履歴**: すべてのワークツリーは同一 Git オブジェクトデータベース共有
-- **選択的同期**: 必要時のみ変更事項を同期、全体リポジトリはしない
-
-#### moai-worktree 使用時期
-
-**理想的シナリオ：**
-
-- **複数アクティブ SPEC**: 3 個以上の SPEC を同時に作業
-- **長期実行作業**: SPEC 実装に数日または数週間要する
-- **チーム協業**: 違う開発者が違う SPEC 作業
-- **機能ブランチング**: 各 SPEC が独自機能ブランチになる
-- **環境分離**: 違う SPEC が違う設定が必要
-
-#### 完全な開発ワークフロー（開始からマージまで）
-
-**1段階: SPEC 生成およびワークツリー設定**
-
-```bash
-# 方法1: 自動ワークツリー生成で SPEC 生成
-> /moai:1-plan 'ユーザー認証システム実装' --worktree
-# → 自動的に SPEC-AUTH-001 生成およびワークツリー設定
-
-# 方法2: 手動ワークツリー生成
-> /moai:1-plan 'ユーザー認証システム実装'
-# SPEC-AUTH-001 生成完了
-moai-worktree new SPEC-AUTH-001
-# → 分離されたワークツリー環境生成
-```
-
-**2段階: ワークツリーに移動して開発開始**
-
-```bash
-# ワークツリーに移動（推奨方式）
-moai-worktree go SPEC-AUTH-001
-# → cd ~/moai/worktrees/MoAI-ADK/SPEC-AUTH-001
-
-# または新しいシェルで直接移動
-moai-worktree switch SPEC-AUTH-001
-# → 新しいターミナルでワークツリーに移動
-```
-
-**3段階: 分離された環境で開発**
-
-```bash
-# ワークツリー内で TDD 開発
-> /moai:2-run SPEC-AUTH-001
-# → RED → GREEN → REFACTOR サイクル実行
-
-# 開発中状態確認
-moai-worktree status
-git status
-git log --oneline -5
-
-# 中間保存
-git add .
-git commit -m "Auth: Implement user login endpoint"
-```
-
-**4段階: 同期および衝突解決**
-
-```bash
-# メインブランチ変更事項取得
-moai-worktree sync SPEC-AUTH-001
-
-# 自動衝突解決で同期
-moai-worktree sync SPEC-AUTH-001 --auto-resolve
-
-# すべてのワークツリー同期
-moai-worktree sync --all --auto-resolve
-```
-
-**5段階: 開発完了およびテスト（自動化）**
-
-```bash
-# MoAI ワークフロー同期 - 自動的にテスト、品質検査、コミット実行
-> /moai:3-sync SPEC-AUTH-001
-# → 自動的に最終テスト、カバレッジ確認、コード品質検査、最終コミット完了
-```
-
-**6段階: メインブランチへのマージ準備（自動化 + 直接コマンド）**
-
-**オプション A: Claude Code 自動化（初級者向け）**
-
-```bash
-# Claude Code が自動的にマージ準備を実行します。
-# ユーザーは次を要求するだけ：
-> SPEC-AUTH-001 をメインブランチにマージ準備して
-
-# Claude Code が自動的に実行：
-# - ワークツリーブランチ取得
-# - ローカルマージテスト
-# - 衝突確認および解決提案
-# - マージ準備完了報告
-```
-
-**オプション B: 直接 Git コマンド（上級者向け）**
-
-```bash
-# 1. ワークツリーからメインに移動
-moai-worktree go SPEC-AUTH-001  # または cd /path/to/main/repo
-
-# 2. ワークツリーブランチ取得
-git fetch origin feature/SPEC-AUTH-001
-git checkout -b merge/SPEC-AUTH-001 origin/feature/SPEC-AUTH-001
-
-# 3. ローカルマージテスト
-git merge main --no-ff  # main からの変更事項マージ
-
-# 4. 衝突がある場合手動解決
-git status  # 衝突ファイル確認
-# 衝突ファイル修正後：
-git add .
-git commit -m "Resolve: Merge conflicts in SPEC-AUTH-001"
-
-# 5. マージ準備完了確認
-git log --oneline -5
-git status  # Clean working directory 確認
-```
-
-**衝突解決直接コマンド集：**
-
-```bash
-# 衝突発生時戦略的接近
-git checkout --ours conflicted_file.py    # メインブランチ優先
-git checkout --theirs conflicted_file.py  # ワークツリー変更事項優先
-
-# マージ取り消しおよび再試行
-git merge --abort
-git merge main --no-ff
-
-# 全体マージ戦略変更
-git rebase main  # 代わりに rebase 使用
-```
-
-**7段階: 完了および整理（自動化 + 直接コマンド）**
-
-**オプション A: Claude Code 自動化（初級者向け）**
-
-```bash
-# ワークツリー整理（Claude Code 自動処理要求）
-> SPEC-AUTH-001 ワークツリー整理して
-
-# README.ko.md 更新（Claude Code 自動処理）
-> 完了された SPEC-AUTH-001 機能を README.ko.md に追加して
-
-# Claude Code が自動的に実行：
-# - ワークツリー状態確認
-# - 完了された機能文書化
-# - README 更新
-# - 整理完了報告
-```
-
-**オプション B: 直接 moai-worktree コマンド（上級者向け）**
-
-```bash
-# 1. ワークツリー状態最終確認
-moai-worktree status
-# 出力例：
-# SPEC-AUTH-001
-#   Branch: feature/SPEC-AUTH-001
-#   Status: completed
-#   Path:   ~/moai/worktrees/MoAI-ADK/SPEC-AUTH-001
-
-# 2. ワークツリー整理（安全な方法）
-moai-worktree clean --merged-only
-# → マージされたブランチのワークツリーのみ自動削除
-
-# 3. または対話型整理（選択的削除）
-moai-worktree clean --interactive
-# → 削除するワークツリー選択可能
-
-# 4. 特定ワークツリー直接削除（強制）
-moai-worktree remove SPEC-AUTH-001 --force
-
-# 5. 全体ワークツリー状態確認
-moai-worktree list
-# または
-moai-worktree status
-```
-
-**実用的なワークツリー管理コマンド集：**
-
-```bash
-# 日常的なワークツリー管理
-moai-worktree list                    # すべてのワークツリーリスト
-moai-worktree status                  # 詳細状態確認
-moai-worktree sync SPEC-AUTH-001      # 特定ワークツリー同期
-moai-worktree sync --all              # すべてのワークツリー同期
-
-# ワークツリー移動および作業
-moai-worktree go SPEC-001     # 現在シェルで移動
-moai-worktree switch SPEC-001         # 新しいシェルでワークツリー開く
-
-# 衝突自動解決
-moai-worktree sync SPEC-AUTH-001 --auto-resolve
-
-# 設定確認
-moai-worktree config get              # 現在設定表示
-moai-worktree config root             # ワークツリールートパス確認
-```
-
-**混合ワークフロー推奨パターン：**
-
-```bash
-# 段階1-5: Claude Code 自動化（迅速開発）
-> /moai:1-plan "機能名"
-> /moai:2-run SPEC-XXX
-> /moai:3-sync SPEC-XXX
-
-# 段階6-7: 直接コマンド（精密制御）
-moai-worktree sync SPEC-XXX --auto-resolve  # 衝突自動解決
-moai-worktree clean --merged-only           # 完了されたワークツリー整理
-```
-
----
-
-### 🔧 手動コマンドリファレンス (Manual Command Reference)
-
-このセクションでは Claude Code 自動化と並行して使用できる直接コマンドを詳細に説明します。
-
-#### **基本 moai-worktree コマンド**
-
-| コマンド               | 目的                   | 使用例                       | 説明                              |
-| ---------------------- | ---------------------- | --------------------------- | --------------------------------- |
-| `moai-worktree new`    | 新しいワークツリー生成   | `moai-worktree new SPEC-001` | SPEC-001 のための分離された作業空間生成 |
-| `moai-worktree list`   | ワークツリーリスト      | `moai-worktree list`         | すべてのアクティブワークツリー表示 |
-| `moai-worktree go`     | ワークツリー移動        | `moai-worktree go SPEC-001`  | 現在シェルでワークツリーに移動  |
-| `moai-worktree switch` | 新しいシェルでワークツリー開く | `moai-worktree switch SPEC-001` | 新しいターミナルでワークツリーに移動 |
-| `moai-worktree remove` | ワークツリー削除        | `moai-worktree remove SPEC-001` | 特定ワークツリー削除            |
-| `moai-worktree status` | 状態確認               | `moai-worktree status`       | すべてのワークツリー状態表示     |
-
-#### **同期コマンド**
-
-| コマンド                              | 目的                   | 使用例                                  | 説明                      |
-| ----------------------------------- | ---------------------- | -------------------------------------- | ------------------------- |
-| `moai-worktree sync`                | 特定ワークツリー同期     | `moai-worktree sync SPEC-001`          | メインブランチと変更事項同期 |
-| `moai-worktree sync --all`          | すべてのワークツリー同期 | `moai-worktree sync --all`             | すべてのワークツリーを一度に同期 |
-| `moai-worktree sync --auto-resolve` | 自動衝突解決           | `moai-worktree sync SPEC-001 --auto-resolve` | 衝突発生時自動解決試行     |
-| `moai-worktree sync --rebase`       | Rebase ベース同期       | `moai-worktree sync SPEC-001 --rebase` | マージの代わりに rebase 使用 |
-
-#### **整理コマンド**
-
-| コマンド                              | 目的                     | 使用例                           | 説明                            |
-| ----------------------------------- | ------------------------ | -------------------------------- | ------------------------------- |
-| `moai-worktree clean`               | ワークツリー整理          | `moai-worktree clean`             | すべてのワークツリー整理         |
-| `moai-worktree clean --merged-only` | マージされたワークツリーのみ整理 | `moai-worktree clean --merged-only` | マージされたブランチのワークツリーのみ削除 |
-| `moai-worktree clean --interactive` | 対話型整理              | `moai-worktree clean --interactive` | 削除するワークツリー選択可能     |
-
-#### **設定コマンド**
-
-| コマンド                      | 目的           | 使用例                 | 説明                           |
-| --------------------------- | -------------- | --------------------- | ------------------------------ |
-| `moai-worktree config`      | 設定表示      | `moai-worktree config` | 現在ワークツリー設定表示         |
-| `moai-worktree config root` | ルートパス確認 | `moai-worktree config root` | ワークツリールートディレクトリパス確認 |
-
-#### **高度な使用パターン**
-
-**1. 複数 SPEC 並列開発**
-
-```bash
-# 複数 SPEC 同時に生成
-moai-worktree new SPEC-AUTH-001    # ユーザー認証
-moai-worktree new SPEC-PAY-002     # 決済システム
-moai-worktree new SPEC-UI-003      # UI 改善
-
-# 各ワークツリー状態確認
-moai-worktree status
-
-# すべてのワークツリー同期
-moai-worktree sync --all --auto-resolve
-```
-
-**2. 衝突自動解決ワークフロー**
-
-```bash
-# 1段階: 自動同期試行
-moai-worktree sync SPEC-001 --auto-resolve
-
-# 2段階: 自動解決失敗時手動介入
-moai-worktree go SPEC-001
-git status  # 衝突ファイル確認
-
-# 3段階: 衝突解決戦略選択
-git checkout --ours conflicted_file.py    # メインブランチ優先
-# または
-git checkout --theirs conflicted_file.py  # ワークツリー変更事項優先
-
-# 4段階: 解決完了後コミット
-git add conflicted_file.py
-git commit -m "Resolve: Auto-resolved conflicts in SPEC-001"
-```
-
-**3. 定期的なワークツリー保守**
-
-```bash
-# 毎朝実行推奨
-moai-worktree status                      # 現在状態確認
-moai-worktree sync --all                  # すべてのワークツリー同期
-
-# 毎週実行推奨
-moai-worktree clean --merged-only         # 完了されたワークツリー整理
-
-# 毎月実行推奨
-moai-worktree clean --interactive         # 対話型整理で不要なワークツリー削除
-```
-
-#### **Claude Code とコマンド組合せガイド**
-
-**初級者ユーザー：**
-
-```bash
-# 段階1-3: Claude Code 自動化で迅速開始
-/moai:1-plan "ユーザーログイン機能"
-/moai:2-run SPEC-001
-/moai:3-sync SPEC-001
-
-# 段階4-5: 直接コマンドで基本管理
-moai-worktree status                      # 状態確認
-moai-worktree sync SPEC-001               # 同期
-moai-worktree clean --merged-only         # 整理
-```
-
-**中級者ユーザー：**
-
-```bash
-# 段階1-2: Claude Code 自動化
-> /moai:1-plan "決済システム開発"
-> /moai:2-run SPEC-PAY-001
-
-# 段階3: 直接コマンドで精密制御
-moai-worktree go SPEC-PAY-001
-# 直接開発およびテスト
-git add .
-git commit -m "Pay: Implement core payment processing"
-
-# 段階4-5: 混合接近
-> /moai:3-sync SPEC-PAY-001                 # 自動化で品質検証
-moai-worktree sync SPEC-PAY-001 --auto-resolve  # 直接同期
-```
-
-**上級者ユーザー：**
-
-```bash
-# 全過程を直接コマンドで制御
-moai-worktree new SPEC-ADV-001
-moai-worktree go SPEC-ADV-001
-# 完全な手動開発プロセス
-git add .
-git commit -m "Adv: Complex feature implementation"
-moai-worktree sync SPEC-ADV-001 --rebase
-moai-worktree clean --interactive
-```
-
-**生産性ヒント：**
-
-1. **エイリアス設定** ( ~/.zshrc または ~/.bashrc に追加):
-
-```bash
-alias wt-new='moai-worktree new'
-alias wt-go='moai-worktree go'
-alias wt-list='moai-worktree list'
-alias wt-status='moai-worktree status'
-alias wt-sync='moai-worktree sync'
-alias wt-clean='moai-worktree clean'
-```
-
-2. **迅速ワークフロー関数**:
-
-```bash
-# ワークツリー迅速生成および移動
-wt-dev() {
-    moai-worktree new "SPEC-$1"
-    moai-worktree go "SPEC-$1"
-}
-
-# 使用法: wt-dev AUTH-001
-```
-
----
-
-### 🎯 **自動化と直接制御の完璧な組合せ**
-
-MoAI-ADK は **Claude Code 自動化**と **直接コマンド制御**の利点をすべて活用できるように設計されました。
-
-#### **いつ何を使用するか？**
-
-| 状況                 | 推奨接近方式     | 理由                           |
-| -------------------- | ---------------- | ------------------------------ |
-| **新機能開始**     | Claude Code 自動化 | 迅速 SPEC 生成および初期設定  |
-| **複雑なアルゴリズム**  | 直接制御          | 段階的デバッグおよび最適化必要 |
-| **日常的な同期**  | 直接コマンド    | 迅速実行および精密な制御     |
-| **品質検証**        | Claude Code 自動化 | 自動化されたテストおよび検証  |
-| **衝突解決**        | 混合接近          | 自動検知 + 手動解決           |
-| **整理および保守** | 直接コマンド    | 選択的制御および安全な整理   |
-
-#### **推奨組合せワークフロー**
-
-##### 初級者: 自動化中心（70% 自動化 + 30% 直接制御）
-
-```bash
-# 1段階: 自動化で迅速開始
-> /moai:1-plan "機能開発"
-> /moai:2-run SPEC-001
-
-# 2段階: 直接コマンドで基本管理
-moai-worktree status
-moai-worktree sync SPEC-001
-moai-worktree clean --merged-only
-
-# 3段階: 自動化で完了
-> /moai:3-sync SPEC-001
-```
-
-##### 中級者: 均衡接近（50% 自動化 + 50% 直接制御）
-
-```bash
-# 1段階: 自動化で計画
-> /moai:1-plan "複雑な機能"
-
-# 2段階: 直接制御で詳細実装
-moai-worktree new SPEC-001
-moai-worktree go SPEC-001
-# 詳細な開発作業
-
-# 3段階: 自動化で品質保証
-> /moai:3-sync SPEC-001
-```
-
-##### 上級者: 直接制御中心（30% 自動化 + 70% 直接制御）
-
-```bash
-# 全過程を直接制御するが、必要時自動化活用
-moai-worktree new SPEC-001
-moai-worktree go SPEC-001
-# 完全な手動開発
-# 必要時 > /moai:3-syncで品質検証
-```
-
-#### マージ衝突解決戦略
-
-##### 1. 自動解決（推奨）
-
-```bash
-# すべての戦略を試行する自動解決
-moai-worktree sync SPEC-AUTH-001 --auto-resolve
-```
-
-##### 2. 手動解決
-
-```bash
-# ワークツリーに移動
-moai-worktree go SPEC-AUTH-001
-
-# 衝突状態確認
-git status
-
-# 衝突ファイル編集
-# <<<<<<< HEAD
-# メインブランチ内容
-# =======
-# ワークツリーブランチ内容
-# >>>>>>> feature/SPEC-AUTH-001
-
-# 解決後マーキング
-git add conflict_file.py
-git commit -m "Resolve: Merge conflicts in auth system"
-```
-
-##### 3. 戦略的接近
-
-```bash
-# 衝突発生時メインブランチ優先
-git checkout --ours conflict_file.py
-git add conflict_file.py
-git commit
-
-# またはワークツリー変更事項優先
-git checkout --theirs conflict_file.py
-git add conflict_file.py
-git commit
-```
-
-#### 完了チェックリスト
-
-##### 開発完了前
-
-- [ ] すべてのテスト合格（>= 95% カバレッジ）
-- [ ] コード品質検査合格（ruff, mypy）
-- [ ] セキュリティ検討完了
-- [ ] ドキュメント化更新
-- [ ] ローカルでマージテスト
-
-##### マージ完了後
-
-- [ ] リモートリポジトリにプッシュ
-- [ ] Pull Request 生成および承認
-- [ ] メインブランチにマージ
-- [ ] ワークツリー整理完了
-- [ ] > /moai:3-sync 実行
-- [ ] デプロイテスト
-
-#### 並列開発ヒント
-
-##### 複数 SPEC 同時作業
-
-```bash
-# 最初の SPEC に移動して作業
-moai-worktree go SPEC-AUTH-001
-> /moai:2-run SPEC-AUTH-001
-
-# 違うターミナルで二番目の SPEC に移動
-moai-worktree go SPEC-PAY-002
-> /moai:2-run SPEC-PAY-002
-
-# 三番目の SPEC で作業
-moai-worktree go SPEC-UI-003
-> /moai:2-run SPEC-UI-003
-
-# 定期的にすべてのワークツリー同期
-moai-worktree sync --all --auto-resolve
-```
-
-##### コンテキスト転換なしで作業
-
-- 各ワークツリーは完全に分離された環境
-- 独立した Git 状態
-- 違う依存関係バージョン許容
-- 同時に複数の機能開発可能
-
-##### 実際の例ワークフロー
-
-```bash
-# 朝: 新しい SPEC 開始
-moai-worktree new SPEC-005 "ユーザープロフィール向上"
-moai-worktree go SPEC-005
-
-# 違う SPEC が完了される間に SPEC-005 実装
-> /moai:2-run SPEC-005
-
-# 午後: すべての SPEC 状態確認
-moai-worktree status
-# 出力:
-# ✓ SPEC-001: 完了（マージ準備）
-# ✓ SPEC-002: テスト進行中
-# ⏳ SPEC-003: 実装段階
-# 🔄 SPEC-005: アクティブ開発
-
-# 夕方: 完了された SPEC 整理
-moai-worktree clean --merged-only
-```
-
-#### 技術的利益
-
-##### メモリ効率: 共有 Git オブジェクトデータベースは複数の全体リポジトリと比較して最小限のメモリオーバーヘッドを意味
-
-##### ディスク空間最適化: ワークツリーはリポジトリ履歴を共有し、作業ファイルにのみ追加的な空間を使用
-
-##### 原子的作業: 各ワークツリー作業は原子的であり、リポジトリ損傷を防止
-
-##### Git ネイティブ: 標準 Git ワークツリー機能を使用し、すべての Git ツールとの互換性保証
-
-#### MoAI-ADK ワークフローと統合
-
-moai-worktree は MoAI-ADK Plan-Run-Sync サイクルと円滑に統合されます：
-
-1. **Plan 段階**: `moai-worktree new SPEC-XXX` が専用ワークスペース生成
-2. **Run 段階**: 違う SPEC に影響を与えず分離された環境で作業
-3. **Sync 段階**: `moai-worktree sync SPEC-XXX` がクリーンな統合保証
-4. **Cleanup 段階**: `moai-worktree clean` が完了したワークツリー削除
-
-この統合は SPEC-First TDD 方法論原則を維持しながら同時に複数の SPEC を管理するための完全で体系的な接近方法を提供します。
-
-##### 重要参考事項: Git から除外されるローカルファイル(.CLAUDE.local.md, .env, .claude/settings.local.json など)は worktree 間に自動的に同期されません。一貫した開発環境構成のためにこれらのファイルは worktree 生成後各ディレクトリに手動でコピーする必要があります
-
-##### コマンド概要
-
-```bash
-# 利用可能なコマンドリスト
-moai-worktree --help
-
-# SPEC 開発のための新しいワークツリー生成
-moai-worktree new SPEC-001
-
-# すべてのアクティブワークツリーリスト
-moai-worktree list
-
-# 特定ワークツリーに移動
-moai-worktree go SPEC-001
-
-# ワークツリーに転換（新しいシェルを開く）
-moai-worktree switch SPEC-001
-
-# ワークツリーを基本ブランチと同期
-moai-worktree sync SPEC-001
-
-# 特定ワークツリー削除
-moai-worktree remove SPEC-001
-
-# マージされたブランチワークツリー整理
-moai-worktree clean
-
-# ワークツリー状態および設定表示
-moai-worktree status
-
-# ワークツリー設定
-moai-worktree config get
-moai-worktree config set <key> <value>
-```
-
----
-
-### 🔄 **Ralph Engine コマンド** - インテリジェントコード品質自動化
-
-MoAI Ralph Engine は LSP（Language Server Protocol）、AST-grep、自律フィードバックループを組み合わせて、インテリジェントなコード品質保証を提供します。
-
-#### `> /moai:alfred` - ワンクリック自動化
-
-**目的**: 完全な SPEC ワークフローを 1 つのコマンドで実行
-
-**使用時点**: エンドツーエンド機能開発の自動化時
-
-```bash
-> /moai:alfred "ユーザー認証を実装"
-```
-
-**ワークフロー**:
-1. SPEC ドキュメント作成 (`/moai:1-plan`)
-2. TDD で実装 (`/moai:2-run`)
-3. ドキュメント同期 (`/moai:3-sync`)
+1. **Phase 0**: 並列探索 (Explore + Research + Quality)
+2. **Phase 1**: SPEC生成 (EARS形式)
+3. **Phase 2**: TDD実装 (自律ループ)
+4. **Phase 3**: ドキュメント同期
 
 **オプション**:
-- `--branch`: 機能ブランチを作成
-- `--pr`: 完了後に Pull Request を作成
 
----
+- `--loop`: 自律反復修正活性化 (AIが自ら問題解決)
+- `--max N`: 最大反復回数指定 (デフォルト: 100)
+- `--parallel`: 並列探索活性化 (より高速な分析)
+- `--branch`: 機能ブランチ自動作成
+- `--pr`: 完了後Pull Request作成
+- `--resume SPEC`: 続きから
 
-#### `> /moai:moai-loop` - Ralph スタイルフィードバックループ
-
-**目的**: 自律エラー修正ループを開始
-
-**使用時点**: 反復的な品質改善時
-
-```bash
-> /moai:moai-loop "すべての型エラーを修正"
-```
-
-**特徴**:
-- LSP 診断 + AST-grep スキャンを組み合わせ
-- 結果を自動的に Claude にフィードバックして修正
-- 完了条件が満たされるまで継続
-- デフォルト最大反復回数: 10 回
-
----
-
-#### `> /moai:moai-fix` - 現在の問題を自動修正
-
-**目的**: 現在の LSP エラーと AST-grep 警告を自動修正
-
-**使用時点**: 検出された問題の迅速な一回限りの修正時
+**例**:
 
 ```bash
-> /moai:moai-fix
-```
+# 基本自律実行
+> /moai:alfred "JWT認証追加"
 
-**修正対象**:
-- LSP 診断（型エラー、警告）
-- AST-grep セキュリティ警告
-- コード品質の問題
+# 自動ループ + 並列探索
+> /moai:alfred "JWT認証" --loop --parallel
+
+# 続きから
+> /moai:alfred resume SPEC-AUTH-001
+```
 
 ---
 
-#### `> /moai:cancel-loop` - アクティブループをキャンセル
+### 🔁 `/moai:loop` - 自律反復修正
 
-**目的**: アクティブな Ralph フィードバックループをキャンセル
+```bash
+> /moai:loop
+```
 
-**使用時点**: 実行中の moai-loop を停止する時
+AIが自らLSPエラー、テスト失敗、カバレッジ不足を診断して修正を反復します。並列診断でLSP、AST-grep、Tests、Coverageを同時実行して3-4倍速く問題を解決します。完了マーカーを検知または最大反復回数に到達するまで自律的に実行されます。
+
+**自律ループフロー**:
+
+```text
+並列診断 → TODO生成 → 修正実行 → 検証 → 反復
+    ↓
+完了マーカー検知 → <promise>DONE</promise>
+```
+
+**オプション**:
+
+- `--max N`: 最大反復回数 (デフォルト: 100)
+- `--auto`: 自動修正活性化 (Level 1-3)
+- `--parallel`: 並列診断実行 (推奨)
+- `--errors`: エラーのみ修正
+- `--coverage`: カバレッジ包含 (85%目標)
+- `--resume ID`: スナップショット復元
+
+**例**:
+
+```bash
+# 基本自律ループ
+> /moai:loop
+
+# 並列 + 自動修正
+> /moai:loop --parallel --auto
+
+# 最大50回反復
+> /moai:loop --max 50
+
+# スナップショット復元
+> /moai:loop --resume latest
+```
+
+---
+
+### 🔧 `/moai:fix` - 単発自動修正
+
+```bash
+> /moai:fix
+```
+
+LSPエラー、linting問題を並列でスキャンして一度に修正します。Level 1-2は即時修正し、Level 3はユーザー承認後修正し、Level 4は手動修正が必要だと報告します。`--dry`オプションでプレビュー確認後実際の修正を適用できます。
+
+**並列スキャン**:
+
+```text
+LSP ├─┐
+    ├─→ 統合結果 (3.75倍高速)
+AST ├─┤
+    ├─┘
+Linter
+```
+
+**修正レベル**:
+
+| Level | 説明      | 承認   | 例                 |
+| ----- | --------- | ------ | -------------------- |
+| 1     | 即時修正 | 不要 | import整列、空白    |
+| 2     | 安全修正 | ログのみ | 変数名、タイプ追加 |
+| 3     | 承認必要 | 必要   | ロジック変更、API修正  |
+| 4     | 手動必要 | 不可 | セキュリティ、アーキテクチャ       |
+
+**オプション**:
+
+- `--dry`: プレビューのみ (実際修正なし)
+- `--parallel`: 並列スキャン (推奨)
+- `--level N`: 最大修正レベル (デフォルト: 3)
+- `--errors`: エラーのみ修正
+- `--security`: セキュリティ検査包含
+- `--no-fmt`: フォーマットスキップ
+
+**例**:
+
+```bash
+# 基本修正
+> /moai:fix
+
+# 並列スキャン
+> /moai:fix --parallel
+
+# プレビュー
+> /moai:fix --dry
+
+# 特定ファイル
+> /moai:fix src/auth.py
+```
+
+---
+
+### ⏹️ `/moai:cancel-loop` - ループキャンセル
 
 ```bash
 > /moai:cancel-loop
 ```
 
----
+実行中の自律ループを安全にキャンセルしてすべての進行状態をスナップショットで保存します。キャンセル時TODO状態、修正履歴、反復回数がすべて保存されて後で続きから継続できます。`--list`オプションで以前スナップショットを確認して特定時点で復元できます。
 
-## 8. エージェントガイド（20 個）
+**オプション**:
 
-### 🎯 エージェント選択ガイド
+- `--force`: 確認なしキャンセル
+- `--snapshot`: スナップショット保存
+- `--keep`: stateファイル保存
+- `--reason TEXT`: キャンセル事由記録
+- `--list`: スナップショットリスト確認
 
-各エージェントは特定のドメイン専門性を持っています。作業に合ったエージェントを選択してください。
-
-### Tier 1: Domain Experts（ドメイン専門家、8 個）
-
-#### expert-backend（バックエンド開発）
-
-**専門性**: FastAPI, Django, Node.js バックエンド開発、データベース設計・最適化
-**使用例**:
-
-- RESTful API 設計および実装
-- データベースクエリ最適化
-- 認証および権限管理
-- サーバー性能最適化
-- データベーススキーマ設計
+**復元**:
 
 ```bash
-> Use the expert-backend subagent to"FastAPI でユーザー認証 API 開発"
+# 最新スナップショット復元
+> /moai:loop --resume latest
+
+# 特定スナップショット復元
+> /moai:loop --resume cancel-20240111-105230
 ```
 
----
-
-#### expert-frontend（フロントエンド開発）
-
-**専門性**: React, Vue, Next.js フロントエンド、UI/UX デザイン、デザインシステム
-**使用例**:
-
-- UI コンポーネント実装
-- 状態管理（Redux, Zustand）
-- API 統合
-- 反応型デザイン
-- デザインシステム構築
-- アクセシビリティ(A11y) 検証
+**例**:
 
 ```bash
-> Use the expert-frontend subagent to"React でダッシュボード UI 実装"
+# 基本キャンセル (確認後)
+> /moai:cancel-loop
+
+# 強制キャンセル
+> /moai:cancel-loop --force
+
+# スナップショット保存
+> /moai:cancel-loop --snapshot
+
+# スナップショットリスト
+> /moai:cancel-loop --list
 ```
+
+**実際出力結果**:
+
+```
+
+⏺ ✅ ループキャンセル完了
+
+  状態報告
+
+  ═══════════════════════════════════════════════════════
+           Loop: Cancelled (No Active Loop)
+  ═══════════════════════════════════════════════════════
+
+  ### Status
+  - 実行中ループ: なし
+  - 完了作業: 100%
+  - 残りTODO: 0個
+
+  ### Completed Tasks
+  ✅ README.ja.md "3. 核心コマンド集" セクション更新
+  ✅ Fenced code blocks言語指定追加 (MD040) - 9件
+  ✅ Emphasis → Heading変更 (MD036) - 2件
+  ✅ Table column style修正 (MD060) - 2件
+
+  ### Changes Summary
+  - コマンド個数: 4個 → 8個 (loop, fix, cancel-loop追加)
+  - 説明スタイル: 簡単リスト → 3文以上詳細説明
+  - Markdown linting: 13件問題 → 0件
+
+  ═══════════════════════════════════════════════════════
+
+  最終ファイル状態
+
+  README.ja.md:
+  - すべてmarkdown linting問題解決
+  - 8個核心コマンド詳細説明完了
+  - 標準markdown形式準拠
+
+  ---
+  すべての作業が正常完了しました！🎉
+```
+
+
 
 ---
 
-#### expert-security（セキュリティ）
+## 4. Mr.AlfredとSub-Agents
 
-**専門性**: セキュリティ分析、脆弱性スキャン、OWASP
-**使用例**:
+### 🎩 Mr.Alfred - Super Agent (首席オーケストレーター)
 
-- セキュリティコードレビュー
-- 脆弱性分析
-- OWASP Top 10 検証
-- データ暗号化
+**役割**: ユーザーリクエストを分析して適切な専門エージェントに委任
 
-```bash
-> Use the expert-security subagent to"ログイン機能セキュリティ監査"
-```
+**作業フロー**:
 
----
+1. **Understand**: リクエスト分析及び明確化
+2. **Plan**: Planエージェントを通じ実行計画策定
+3. **Execute**: 専門エージェントに作業委任 (順次/並列)
+4. **Integrate**: 結果統合及びユーザー報告
 
-#### expert-devops（DevOps）
+### 🌐 多言語自動ルーティング (NEW)
 
-**専門性**: Docker, Kubernetes, CI/CD, デプロイ
-**使用例**:
+Alfredは4つの言語リクエストを自動認識して正しいエージェントを呼び出します:
 
-- Docker イメージ最適化
-- Kubernetes 設定
-- GitHub Actions CI/CD
-- インフラ自動化
-
-```bash
-> Use the expert-devops subagent to"Next.js アプリ Docker デプロイ設定"
-```
+| リクエスト言語 | 例                        | 呼出エージェント  |
+| --------- | --------------------------- | -------------- |
+| 英語      | "Design backend API"        | expert-backend |
+| 韓国語    | "백엔드 API 설계해줘"       | expert-backend |
+| 日本語    | "バックエンドAPIを設計して" | expert-backend |
+| 中国語    | "设计后端API"               | expert-backend |
 
 ---
 
-#### expert-debug（デバッグ）
+### 🔧 Tier 1: ドメイン専門家 (8個)
 
-**専門性**: 問題分析、エラー追跡、性能プロファイリング
-**使用例**:
-
-- バグ分析
-- 性能ボトルネック分析
-- ログ分析
-- メモリリーク検出
-
-```bash
-> Use the expert-debug subagent to"API 応答時間遅延原因分析"
-```
-
----
-
-### Tier 2: Workflow Managers（ワークフロー管理、8 個）
-
-#### manager-spec（SPEC 作成）
-
-**目的**: EARS フォーマット SPEC 文書生成
-**自動呼び出し**: `> /moai:1-plan` 実行時
-
-```bash
-> Use the manager-spec subagent to"ユーザープロフィール API SPEC 作成"
-```
+| エージェント               | 専門分野                | 使用例              |
+| ---------------------- | ------------------------ | ---------------------- |
+| **expert-backend**     | FastAPI, Django, DB設計 | API設計、クエリ最適化  |
+| **expert-frontend**    | React, Vue, Next.js      | UIコンポーネント、状態管理 |
+| **expert-security**    | セキュリティ分析、OWASP         | セキュリティ監査、脆弱性分析 |
+| **expert-devops**      | Docker, K8s, CI/CD       | デプロイ自動化、インフラ    |
+| **expert-debug**       | バグ分析、性能          | 問題診断、ボトルネック解決   |
+| **expert-performance** | プロファイリング、最適化       | 応答時間改善         |
+| **expert-refactoring** | コードリファクタリング、AST-Grep  | 大規模コード変換       |
+| **expert-testing**     | テスト戦略、E2E         | テスト計画、カバレッジ  |
 
 ---
 
-#### manager-tdd（TDD 実装）
+### 🎯 Tier 2: ワークフロー管理者 (8個)
 
-**目的**: RED-GREEN-REFACTOR 自動実行
-**自動呼び出し**: `> /moai:2-run` 実行時
-
-```bash
-> Use the manager-tdd subagent to"SPEC-001 実装"
-```
-
----
-
-#### manager-docs（ドキュメント自動化）
-
-**目的**: API ドキュメント、図表、ガイド自動生成
-**自動呼び出し**: `> /moai:3-sync` 実行時
-
-```bash
-> Use the manager-docs subagent to"ログイン機能ドキュメント生成"
-```
+| エージェント                | 役割             | 自動呼出時期    |
+| ----------------------- | ---------------- | ----------------- |
+| **manager-spec**        | SPEC作成 (EARS) | `/moai:1-plan`    |
+| **manager-tdd**         | TDD自動実行    | `/moai:2-run`     |
+| **manager-docs**        | ドキュメント自動生成   | `/moai:3-sync`    |
+| **manager-quality**     | TRUST 5検証     | 実装完了後      |
+| **manager-strategy**    | 実行戦略策立   | 複雑な企画時    |
+| **manager-project**     | プロジェクト初期化  | `/moai:0-project` |
+| **manager-git**         | Gitワークフロー   | ブランチ/PR管理    |
+| **manager-claude-code** | Claude Code統合 | 設定最適化       |
 
 ---
 
-#### manager-quality（品質検証）
+### 🏗️ Tier 3: メタ生成器 (4個)
 
-**目的**: TRUST 5 検証（Test, Readable, Unified, Secured, Trackable）
-**自動呼び出し**: `> /moai:2-run` 完了後
-
-```bash
-> Use the manager-quality subagent to"コード品質検証"
-```
-
----
-
-#### manager-strategy（戦略策定）
-
-**目的**: 複雑な実装戦略策定
-**使用例**:
-
-- マイクロサービスアーキテクチャ設計
-- マイグレーション計画
-- 性能最適化戦略
-
-```bash
-> Use the manager-strategy subagent to"モノリスからマイクロサービスへのマイグレーション計画"
-# または Built-in agent 使用
-> Use the Plan subagent to"モノリスからマイクロサービスへのマイグレーション計画"
-```
+| エージェント            | 役割             | 使用例            |
+| ------------------- | ---------------- | -------------------- |
+| **builder-agent**   | 新エージェント生成 | 組織専門家エージェント |
+| **builder-skill**   | 新スキル生成     | チーム専用スキルモジュール    |
+| **builder-command** | 新コマンド生成   | カスタムワークフロー    |
+| **builder-plugin**  | プラグイン生成    | デプロイ用プラグイン      |
 
 ---
 
-### Tier 3: Meta-generators（メタ生成器、4 個）
+## 5. Agent-Skills
 
-#### builder-agent
+### 📚 スキルライブラリ構造
 
-**目的**: 新しいエージェント生成
-**使用例**: 組織特化エージェント生成
-
-```bash
-> Use the builder-agent subagent to "データ分析専門エージェント生成"
+```text
+🏗️ Foundation (5)    → 核心哲学、実行ルール
+🎯 Domain (4)        → ドメイン専門知識
+💻 Language (16)     → 16個プログラミング言語
+🚀 Platform (10)     → クラウド/BaaS統合
+📋 Workflow (7)      → 自動化ワークフロー
+📚 Library (4)       → 特殊ライブラリ
+🛠️ Tool (2)          → 開発ツール
 ```
 
----
+### よく使うスキル組合せ
 
-#### builder-skill
+| 目的              | スキル組合せ                                                                |
+| ----------------- | ------------------------------------------------------------------------ |
+| **バックエンドAPI**    | `moai-lang-python` + `moai-domain-backend` + `moai-platform-supabase`    |
+| **フロントエンドUI** | `moai-lang-typescript` + `moai-domain-frontend` + `moai-library-shadcn`  |
+| **ドキュメント生成**     | `moai-library-nextra` + `moai-workflow-docs` + `moai-library-mermaid`    |
+| **テスト**        | `moai-lang-python` + `moai-workflow-testing` + `moai-foundation-quality` |
 
-**目的**: 新しいスキル生成
-**使用例**: チーム特化スキル開発
-
-```bash
-> Use the builder-skill subagent to"GraphQL API 開発スキルモジュール作成"
-```
-
----
-
-#### builder-command
-
-**目的**: 新しいコマンド生成
-**使用例**: カスタムワークフロー自動化
-
-```bash
-> Use the builder-command subagent to"> /moai:deploy コマンド生成（自動デプロイワークフロー）"
-```
-
----
-
-#### builder-plugin
-
-**目的**: Claude Code プラグインの作成と管理
-**使用例**: プラグイン作成（Standalone/MoAI-Integratedモード）、検証、マイグレーション、マーケットプレイス設定
-**v0.40 新機能**: MoAI非依存プラグイン向けStandaloneモード、包括的テストセクション
-
-```bash
-> Use the builder-plugin subagent to"commands、agents、hooksを含むsecurity-toolsプラグイン作成"
-> Use the builder-plugin subagent to"公開配布用standaloneプラグイン作成"
-```
-
----
-
-### MCP Integrators（MCP 統合、5 個）
-
-#### mcp-context7（文書検索）
-
-**目的**: 最新ライブラリ文書リアルタイム検索
-**使用例**:
-
-- React 最新 API 確認
-- FastAPI 文書参照
-- ライブラリ互換性検証
-
-```bash
-> Use the mcp-context7 subagent to"React 19 最新 Hooks API 検索"
-```
-
----
-
-#### mcp-sequential-thinking（高度推論）
-
-**目的**: 複雑な問題多段階分析
-**自動活性化**: 複雑度 > 中程度の時
-**使用例**:
-
-- アーキテクチャ設計
-- アルゴリズム最適化
-- SPEC 分析
-
-```bash
-> Use the mcp-sequential-thinking subagent to"マイクロサービスアーキテクチャ設計分析"
-```
-
----
-
-#### mcp-playwright（ウェブ自動化）
-
-**目的**: E2E テスト、ウェブ自動化
-**使用例**:
-
-- E2E テスト作成
-- 視覚回帰テスト
-- クロスブラウザ検証
-
-```bash
-> Use the mcp-playwright subagent to"ログイン機能 E2E テスト作成"
-```
-
----
-
-## 9. スキルライブラリ（48 個）
-
-![Skill Usage Statistics](./assets/images/readme/skill-usage-stats.png)
-
-MoAI-ADK は **47 個の専門スキル**を 7 個のカテゴリで提供します。各スキルは独立して使用したり組合せて使用できます。
-
-### 🏗️ Foundation（基盤）
-
-コア哲学と実行ルールを定義する基盤スキルです。
-
-- **moai-foundation-core**
-  - TRUST 5, SPEC-First TDD, エージェント委任パターン, トークン最適化
-  - すべての AI 駆動開発ワークフローを構築するための実行ルールを提供
-
-- **moai-foundation-context**
-  - トークン予算最適化と状態永続化を備えたエンタープライズコンテキスト管理
-  - セッションメモリシステムと効率的なトークン活用戦略
-
-- **moai-foundation-claude**
-  - Claude Code 公式ドキュメントに準拠したスキル作成キット
-  - エージェント, サブエージェントテンプレート, スラッシュコマンド, フック, メモリ, IAM ルール
-
-- **moai-foundation-quality**
-  - TRUST 5 検証, プロアクティブ分析, 自動化されたベストプラクティス適用
-  - エンタープライズ級コード品質保証システム
-
-- **moai-plugin-builder**
-  - Claude Code プラグイン開発パターン、テンプレート、ベストプラクティス
-  - プラグイン構造、コンポーネント生成、検証、マイグレーションガイド
-
-### 🎯 Domain（ドメイン専門）
-
-特定の技術ドメインに対する深い専門性を提供します。
-
-- **moai-domain-backend**
-  - フレームワークに依存しないバックエンド設計, 13+ フレームワーク専門性
-  - API 設計, データベース統合, マイクロサービスアーキテクチャ
-
-- **moai-domain-frontend**
-  - React 19, Next.js 16, Vue 3.5 を含む最新 UI/UX パターン
-  - コンポーネントアーキテクチャ, 状態管理, レスポンシブデザイン
-
-- **moai-domain-database**
-  - PostgreSQL, MongoDB, Redis を含むデータベース専門性
-  - クエリ性能最適化, データモデリング, データベース戦略
-
-- **moai-domain-uiux**
-  - エンタープライズデザインシステム, コンポーネントアーキテクチャ, アクセシビリティ
-  - WCAG 準拠, デザイントークン, アイコン, テーマシステム
-
-### 💻 Language（言語）
-
-さまざまなプログラミング言語とフレームワークをサポートします。
-
-- **moai-lang-python** - FastAPI, Django, async パターン, データサイエンス向け Python 3.13+
-- **moai-lang-typescript** - React 19, Next.js 16 App Router, tRPC で型安全 API, Zod 検証
-- **moai-lang-go** - Fiber, Gin, GORM を使用した高性能マイクロサービス
-- **moai-lang-rust** - Axum, Tokio, SQLx を使用したメモリ安全システムプログラミング
-- **moai-lang-java** - Spring Boot 3.3, 仮想スレッド, Java 21 LTS エンタープライズパターン
-- **moai-lang-csharp** - ASP.NET Core, Entity Framework, Blazor 向け C# 12/.NET 8
-- **moai-lang-swift** - SwiftUI, Combine, Swift 6 並行処理向け iOS/macOS 開発
-- **moai-lang-kotlin** - Ktor, コルーチン, Compose Multiplatform 向け Kotlin 2.0
-- **moai-lang-ruby** - Ruby on Rails 8, ActiveRecord, Hotwire/Turbo 向け Ruby 3.3+
-- **moai-lang-php** - Laravel 11, Symfony 7, Eloquent ORM 向け PHP 8.3+
-- **moai-lang-elixir** - Phoenix 1.7, LiveView, Ecto を使用した Elixir 1.17+ 開発
-- **moai-lang-scala** - Akka, Cats Effect, ZIO, Spark 向け Scala 3.4+
-- **moai-lang-cpp** - RAII, スマートポインタ, コンセプト, モジュールを使用した C++23/20
-- **moai-lang-flutter** - Riverpod, go_router を使用した Flutter 3.24+/Dart 3.5+ 開発
-- **moai-lang-r** - tidyverse, ggplot2, Shiny を使用した R 4.4+ データ分析
-
-### 🚀 Platform（プラットフォーム）
-
-主要なクラウドプラットフォームと BaaS サービス統合をサポートします。
-
-- **moai-platform-supabase** - PostgreSQL 16, pgvector, RLS, リアルタイムサブスクリプション
-- **moai-platform-auth0** - SSO, SAML, OIDC, 組織, B2B マルチテナンシー, Attack Protection, MFA, トークンセキュリティ, DPoP/mTLS, FAPI/GDPR
-- **moai-platform-clerk** - WebAuthn, パスキー, パスワードレス認証
-- **moai-platform-neon** - オートスケーリング, データベースブランチング, PITR
-- **moai-platform-firebase-auth** - ソーシャル認証, 電話認証, 匿名ログイン
-- **moai-platform-firestore** - NoSQL データモデリング, リアルタイム同期, オフラインサポート
-- **moai-platform-vercel** - Edge Functions, Next.js 最適化, ISR
-- **moai-platform-railway** - Docker, マルチサービスアーキテクチャ, 永続ボリューム
-- **moai-platform-convex** - TypeScript ファースト リアクティブパターン, 楽観的更新
-
-### 📋 Workflow（ワークフロー）
-
-開発プロセスを自動化・最適化するワークフロースキルです。
-
-- **moai-workflow-spec** - EARS フォーマット, 要件明確化, Plan-Run-Sync 統合
-- **moai-workflow-testing** - TDD, デバッグ, 性能最適化, コードレビュー統合
-- **moai-workflow-project** - プロジェクト管理, ドキュメント化, 言語初期化モジュール
-- **moai-workflow-templates** - コードボイラープレート, フィードバックテンプレート
-- **moai-workflow-jit-docs** - ユーザー意図ベース知的ドキュメント検索＆キャッシュ
-- **moai-workflow-docs** - Nextra ドキュメントシステム, 技術ライティング, API ドキュメント
-- **moai-worktree** - 並行 SPEC 開発のための Git ワークツリー管理
-
-### 📚 Library（ライブラリ）
-
-特定のライブラリとフレームワーク専門スキルです。
-
-- **moai-library-shadcn** - shadcn/ui, Radix, Tailwind CSS 専門実装ガイド
-- **moai-library-mermaid** - MCP Playwright を使用したエンタープライズ Mermaid ダイアグラミング
-- **moai-library-nextra** - Next.js ベースエンタープライズドキュメントフレームワーク
-- **moai-formats-data** - TOON エンコーディング, JSON/YAML 最適化, データ検証
-
-### 🤖 AI Integration（AI 統合）
-
-AI サービス統合のための専門スキルです。
-
-### 🎯 スキル使用ガイド
-
-#### スキル呼び出し方法
+### スキル使用法
 
 ```python
-# 方法1: 直接呼び出し（開発者）
+# 方法1: 直接呼出 (Agent)
 Skill("moai-lang-python")
 
-# 方法2: Alfred 自動選択（一般ユーザー）
-"Python で FastAPI サーバーを作成して"
-→ Alfred が moai-lang-python + moai-platform-supabase 自動選択
-```
-
-#### スキル組合せパターン
-
-**バックエンド API**: `moai-foundation-core` + `moai-lang-python` + `moai-platform-supabase`
-
-**フロントエンド UI**: `moai-domain-uiux` + `moai-lang-typescript` + `moai-library-shadcn`
-
-**ドキュメント化**: `moai-library-nextra` + `moai-workflow-docs` + `moai-library-mermaid`
-
-**テスト**: `moai-lang-python` + `moai-workflow-testing` + `moai-foundation-quality`
-
-**データ分析**: `moai-lang-r` + `moai-domain-database` + `moai-formats-data`
-
----
-
-## 10. 組み合わせパターンと例
-
-### 🎭 エージェント組み合わせパターン
-
-MoAI-ADK の 20 個のエージェントは作業タイプに応じて最適な組み合わせで実行されます。
-
-### パターン 1: 新機能開発
-
-```text
-manager-spec (SPEC 生成)
-  ↓
-manager-strategy (実行計画)
-  ↓
-manager-tdd (TDD 実装)
-  ↓
-manager-docs (ドキュメント同期)
-```
-
-**例**：
-
-```bash
-> /moai:1-plan "ユーザーログイン機能"   # manager-spec
-> /clear
-> /moai:2-run SPEC-001               # manager-strategy → manager-tdd
-> /clear
-> /moai:3-sync SPEC-001              # manager-docs
+# 方法2: Alfred自動選択 (一般ユーザー)
+"FastAPIサーバー作成して"
+→ Alfredが自動でmoai-lang-python選択
 ```
 
 ---
 
-### パターン 2: 性能最適化
+## 5. TRUST 5品質原則
 
-```text
-expert-debug (問題分析)
-  ↓
-mcp-sequential-thinking (複雑度分析)
-  ↓
-expert-backend (最適化実装)
-  ↓
-manager-quality (検証)
+MoAI-ADKのすべてプロジェクトは**TRUST 5**品質フレームワークに従います。
+
+### 🏆 TRUST 5 = Test + Readable + Unified + Secured + Trackable
+
+```mermaid
+graph TD
+    T1["🔴 T: Test-First<br/>━━━━━━━━<br/>• TDD Red-Green-Refactor<br/>• 85%+ カバレッジ<br/>• 自動テスト"]
+    R["📖 R: Readable<br/>━━━━━━━━<br/>• 明確な命名<br/>• コードコメント<br/>• リンター準拠"]
+    U["🔄 U: Unified<br/>━━━━━━━━<br/>• 一貫したスタイル<br/>• 標準パターン<br/>• エラー処理"]
+    S["🔒 S: Secured<br/>━━━━━━━━<br/>• OWASP Top 10<br/>• 脆弱性スキャン<br/>• 暗号化ポリシー"]
+    T2["📋 T: Trackable<br/>━━━━━━━━<br/>• 明確なコミット<br/>• イシュー追跡<br/>• CHANGELOG"]
+
+    T1 --> R --> U --> S --> T2 --> Deploy["✅ Production Ready"]
 ```
 
-**例**：
+### T - Test-First (テスト優先)
 
-```bash
-> Use the expert-debug subagent to"API 応答遅延分析"
-# → ボトルネック発見 (DB クエリ N+1 問題)
+**原則**: すべての実装はテストから開始
 
-> Use the mcp-sequential-thinking subagent to"N+1 問題最適化戦略策定"
-# → ORM クエリ最適化戦略提示
-
-> Use the expert-backend subagent to"ORM クエリ最適化実装"
-# → select_related(), prefetch_related() 適用
-
-> Use the manager-quality subagent to"性能テストおよび検証"
-# → 応答時間 500ms → 50ms (90% 改善)
-```
-
----
-
-### パターン 3: UI/UX 開発
-
-```text
-expert-frontend (デザインシステム + コンポーネント実装)
-  ↓
-mcp-playwright (E2E テスト)
-```
-
-**例**：
-
-```bash
-> Use the expert-frontend subagent to"ログインページデザイン shadcn/ui 基盤"
-# → Button, Input, Card コンポーネント組合せ + React 実装
-
-> Use the mcp-playwright subagent to"ログインシナリオ E2E テスト"
-# → 成功/失敗ケース自動テスト
-```
-
----
-
-### パターン 4: セキュリティ監査
-
-```text
-expert-security (脆弱性スキャン)
-  ↓
-expert-backend (セキュリティパッチ)
-  ↓
-manager-quality (再検証)
-```
-
----
-
-### パターン 5: マイクロサービスアーキテクチャ設計
-
-```bash
-> Use the mcp-sequential-thinking subagent to"モノリスからマイクロサービスマイグレーション戦略"
-# → サービス分解戦略, API ゲートウェイ設計
-
-> Use the expert-backend subagent to"ユーザーサービス & 注文サービス開発"
-# → サービス別 API 実装
-
-> Use the expert-devops subagent to"Kubernetes デプロイ設定"
-# → Docker, K8s manifest 自動生成
-
-> Use the manager-docs subagent to"サービス例文書化"
-# → サービスマップ, API 文書, デプロイガイド
-```
-
----
-
-## 11. TRUST 5 品質保証
-
-![TRUST 5 Pentagon](./assets/images/readme/trust5-pentagon.png)
-
-すべての MoAI-ADK プロジェクトは **TRUST 5** 品質フレームワークを準拠します。TRUST 5 は Test-First, Readable, Unified, Secured, Trackable の 5 つのコア原則で構成され、エンタープライズ級ソフトウェアの品質を保証する体系です。
-
-### T - Test-First（テスト優先）
-
-**原則**: すべての実装はテストから開始します。
-
-**検証**：
+**検証**:
 
 - テストカバレッジ >= 85%
-- 失敗するテストを先に作成 (Red)
-- コードで合格 (Green)
+- 失敗するテスト先作成 (Red)
+- テスト通過コード (Green)
 - リファクタリング (Refactor)
 
-**自動化**: `manager-tdd` エージェントが自動的に TDD サイクル実行
+### R - Readable (可読性)
 
----
+**原則**: コードは明確で理解しやすいべき
 
-### R - Readable（読みやすい）
+**検証**:
 
-**原則**: コードは明確で理解しやすくなければなりません。
+- 明確な変数名
+- 複雑なロジックにコメント
+- コードレビュー通過
+- リンター検査通過
 
-**検証**：
+### U - Unified (統一性)
 
-- 明確な変数名（略語最小化）
-- コードコメント（複雑なロジック）
-- コードレビュー合格
-- リンター検査合格
+**原則**: プロジェクト全体に一貫したスタイル維持
 
-**自動化**: `quality-expert` エージェントがスタイルガイド適用
-
----
-
-### U - Unified（統一）
-
-**原則**: プロジェクト全体に一貫したスタイルを維持します。
-
-**検証**：
+**検証**:
 
 - プロジェクトスタイルガイド準拠
-- 一貫したネーミング規約
-- 統一されたエラーハンドリング
-- 標準文書フォーマット
+- 一貫した命名規則
+- 統一されたエラー処理
+- 標準ドキュメント形式
 
-**自動化**: `quality-expert` エージェントが一貫性検証
+### S - Secured (セキュリティ)
 
----
+**原則**: すべてのコードはセキュリティ検査通過
 
-### S - Secured（セキュリティ）
+**検証**:
 
-**原則**: すべてのコードはセキュリティ検証を通過しなければなりません。
-
-**検証**：
-
-- OWASP Top 10 検査
+- OWASP Top 10チェック
 - 依存関係脆弱性スキャン
 - 暗号化ポリシー準拠
 - アクセス制御検証
 
-**自動化**: `expert-security` エージェントが自動セキュリティ監査
+### T - Trackable (追跡可能性)
 
----
+**原則**: すべての変更は明確に追跡可能
 
-### T - Trackable（追跡可能）
-
-**原則**: すべての変更事項は明確に追跡可能でなければなりません。
-
-**検証**：
+**検証**:
 
 - 明確なコミットメッセージ
 - イシュー追跡 (GitHub Issues)
-- CHANGELOG 維持
+- CHANGELOG維持
 - コードレビュー記録
 
-**自動化**: Git および GitHub Actions 自動化
-
 ---
 
-### 🎯 TRUST 5 検証プロセス
+## 6. 自動品質検査
 
-```mermaid
-flowchart TD
-    Start([コード作成]) --> T[T: テスト<br/>カバレッジ >= 85%]
-    T --> R[R: 読みやすい<br/>リンター合格]
-    R --> U[U: 統一<br/>スタイル検査]
-    U --> S[S: セキュリティ<br/>脆弱性スキャン]
-    S --> T2[T: 追跡<br/>コミットメッセージ]
-    T2 --> Pass{すべて合格?}
-    Pass -->|はい| Success([デプロイ承認])
-    Pass -->|いいえ| Fix[修正必要]
-    Fix --> Start
-```
+### 🔍 AST-Grep基盤構造的検査
 
----
+**AST-Grep**はテキストではなく**コード構造**を分析します:
 
-## 12. 高度な機能
+| 機能              | 説明             | 例                                  |
+| ----------------- | ---------------- | ------------------------------------- |
+| **構造的検索**   | ASTパターンマッチング    | パラメータ化されないSQLクエリ探求     |
+| **セキュリティスキャン**     | 自動脆弱点探知 | SQL Injection, XSS, ハードコードされた秘密鍵 |
+| **パターンリファクタリング** | 安全コード変換 | 変数名一括変更、関数抽出           |
+| **多言語サポート**   | 40+ 言語         | Python, TypeScript, Go, Rust...       |
 
-### 🌳 Git Worktree CLI（並列開発）
-
-**概要**: コンテキスト転換なしで並列 SPEC 開発のための複数の Git ワークツリー管理
-
-#### クイックスタート
-
-```bash
-# SPEC のための新しいワークツリー生成
-moai worktree create SPEC-001 feature/user-auth
-
-# すべてのワークツリーリスト
-moai worktree list
-
-# ワークツリー間転換
-moai worktree switch SPEC-001
-
-# 完了したワークツリー削除
-moai worktree remove SPEC-001
-```
-
-#### 核心利益
-
-- **並列開発**: 複数の SPEC を同時に作業
-- **コンテキスト分離**: 各ワークツリーは独自 git 状態を持つ
-- **迅速転換**: 機能間即時コンテキスト変更
-- **クリーンなメイン**: メインブランチを常に安定的に維持
-
-#### ワークフロー例
-
-```bash
-# メイン開発ワークツリー（メインブランチ）
-cd ~/project-main
-> /moai:1-plan "ユーザー認証"  # SPEC-001 生成
-
-# SPEC-001 のための並列ワークツリー生成
-moai worktree create SPEC-001 feature/auth
-cd ~/project-worktrees/SPEC-001
-
-# メインに影響を与えず認証作業
-> /moai:2-run SPEC-001
-# ... 認証実装 ...
-
-# 新機能のためにメインに転換
-moai worktree switch main
-> /moai:1-plan "ユーザーダッシュボード"     # SPEC-002 生成
-```
-
----
-
-### 🔧 強化されたログ管理
-
-**新しい統合ログ構造**：
-
-```
-.moai/
-├── logs/              # JSON ログのみ（ランタイムデータ）
-│   ├── sessions/     # セッション実行ログ
-│   ├── errors/       # エラーログ
-│   ├── execution/    # コマンド実行ログ
-│   └── archive/      # 過去ログ
-└── docs/              # 文書化のみ（ユーザー用）
-    ├── reports/       # 分析レポート
-    ├── analytics/     # 分析結果
-    └── sync/          | 同期記録
-```
-
-**自動マイグレーション**: 既存ログは `moai-adk update` 時に自動的に再構成されます。
-
----
-
-## 13. 高度な設定
-
-### 🔧 Configuration ファイル位置
-
-MoAI-ADK は `.claude/settings.json` ファイルを使用します。
-
-### 📋 主要設定項目
-
-```json
-{
-  "user": {
-    "name": "GOOS"
-  },
-  "language": {
-    "conversation_language": "ja",
-    "agent_prompt_language": "en"
-  },
-  "constitution": {
-    "enforce_tdd": true,
-    "test_coverage_target": 85
-  },
-  "git_strategy": {
-    "mode": "personal",
-    "branch_creation": {
-      "prompt_always": true,
-      "auto_enabled": false
-    }
-  },
-  "github": {
-    "spec_git_workflow": "develop_direct"
-  },
-  "statusline": {
-    "enabled": true,
-    "format": "compact",
-    "style": "R2-D2"
-  }
-}
-```
-
-### 🌳 Git 戦略（3 モード）
-
-MoAI-ADK は開発環境とチーム構成に合わせて 3 つの Git 戦略を提供します。
-
-#### モード選択決定木
-
-```mermaid
-flowchart TD
-    Q1{"GitHub を<br/>使用しますか？"}
-
-    Q1 -->|いいえ| Manual["<b>📦 Manual</b><br/>ローカル Git のみ使用<br/>━━━━━━━━<br/>特徴:<br/>• ローカルコミットのみ<br/>• 手動プッシュ<br/>• ブランチ選択的<br/><br/>対象: 個人学習"]
-
-    Q1 -->|はい| Q2{"チーム<br/>プロジェクトですか？"}
-
-    Q2 -->|いいえ| Personal["<b>👤 Personal</b><br/>個人 GitHub<br/>━━━━━━━━<br/>特徴:<br/>• Feature ブランチ<br/>• 自動プッシュ<br/>• PR 選択的<br/><br/>対象: 個人プロジェクト"]
-
-    Q2 -->|はい| Team["<b>👥 Team</b><br/>チーム GitHub<br/>━━━━━━━━<br/>特徴:<br/>• Draft PR 自動<br/>• レビュー必須<br/>• 自動デプロイ<br/><br/>対象: チームプロジェクト"]
-
-    classDef manual fill:#fff3e0,stroke:#ff9800,stroke-width:2px
-    classDef personal fill:#e3f2fd,stroke:#2196f3,stroke-width:2px
-    classDef team fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
-    classDef question fill:#fafafa,stroke:#666,stroke-width:2px
-
-    class Manual manual
-    class Personal personal
-    class Team team
-    class Q1,Q2 question
-```
-
-#### 3 モード比較
-
-| 区分         | Manual      | Personal                       | Team         |
-| ------------ | ----------- | ------------------------------ | ------------ |
-| **使用場所**    | 個人学習   | 個人 GitHub                    | チームプロジェクト  |
-| **GitHub**    | ❌          | ✅                             | ✅           |
-| **ブランチ**    | 選択的生成 | 選択的生成 or<br/>Feature 自動 | Feature 自動 |
-| **Push**      | 手動        | 自動                           | 自動         |
-| **PR**        | なし        | 提案                           | 自動生成    |
-| **コードレビュー** | なし        | 選択                           | **必須**     |
-| **デプロイ**      | 手動        | 手動                           | CI/CD 自動   |
-| **設定**      | **5 分**     | 15 分                           | 25 分         |
-
-#### 迅速設定 (.moai/config/config.json)
-
-**Manual**（ローカルのみ使用）:
-
-```json
-{
-  "git_strategy": {
-    "mode": "manual",
-    "branch_creation": {
-      "prompt_always": true,
-      "auto_enabled": false
-    }
-  }
-}
-```
-
-**Personal**（個人 GitHub）:
-
-```json
-{
-  "git_strategy": {
-    "mode": "personal",
-    "branch_creation": {
-      "prompt_always": false,
-      "auto_enabled": true
-    }
-  }
-}
-```
-
-**Team**（チームプロジェクト）:
-
-```json
-{
-  "git_strategy": {
-    "mode": "team",
-    "branch_creation": {
-      "prompt_always": false,
-      "auto_enabled": true
-    }
-  }
-}
-```
-
----
-
-## 14. FAQ & クイックリファレンス
-
-### Q1: expert-database と expert-uiux はどこに行きましたか？
-
-**v0.41.0 での統合:**
-
-| 旧エージェント | 統合先 | 理由 |
-| -------------- | --------------- | -------------------------------- |
-| `expert-database` | `expert-backend` | バックエンド開発とデータベース設計は密接に関連 |
-| `expert-uiux` | `expert-frontend` | フロントエンド開発とUI/UXデザインは統合的なワークフロー |
-
-**使用方法の変更:**
-
-```bash
-# 旧: expert-database
-> Use the expert-backend subagent to"PostgreSQL 大規模テーブル最適化"
-
-# 旧: expert-uiux
-> Use the expert-frontend subagent to"shadcn/ui 基盤デザインシステム構築"
-```
-
----
-
-### Q2: SPEC が常に必要ですか？
-
-**SPEC 生成推奨基準**：
-
-| 条件                | SPEC 必要有無                    |
-| ------------------- | --------------------------------- |
-| 1-2 個ファイル修正     | 選択事項（簡単な場合省略可能）    |
-| 3-5 個ファイル修正     | 推奨（要求事項明確化）            |
-| 10 個以上ファイル修正 | 必須（複雑度高）                  |
-| 新しい機能追加    | 推奨                              |
-| バグ修正           | 選択事項                         |
-
-**SPEC なしで進行する場合**：
-
-```bash
-# SPEC 省略して直接実装
-> Use the expert-backend subagent to"簡単なバグ修正"
-```
-
-**SPEC 生成後進行**：
-
-```bash
-> /moai:1-plan "複雑な機能仕様"
-> /clear
-> /moai:2-run SPEC-001
-```
-
----
-
-### Q3: MCP サーバーインストールが必須ですか？
-
-**必須 MCP サーバー（2 個）**：
-
-1. **Context7**（必須）
-
-   - 最新ライブラリ API 文書自動参照
-   - コード生成時 hallucination 防止
-   - インストール: 自動（`.mcp.json` に含まれる）
-
-2. **Sequential-Thinking**（推奨）
-
-   - 複雑な問題分析
-   - アーキテクチャ設計、アルゴリズム最適化
-   - インストール: 自動（`.mcp.json` に含まれる）
-
-**選択 MCP サーバー**：
-
-- Figma MCP: デザイン・ツー・コード変換
-- Playwright MCP: ウェブ自動化テスト
-- Notion MCP: 文書管理連携
-
-**インストール確認**：
-
-```bash
-# MCP サーバーリスト確認
-cat .mcp.json
-
-# mcp サーバー活性化/非活性化（非活性時トークン節約）
-> @
-─────────────────────────────────────────────────────────
-  ✓ [mcp] context7                enabled (⏎ to toggle)
-  ○ [mcp] playwright              disabled (⏎ to toggle)
-  ○ [mcp] notion                  disabled (⏎ to toggle)
-
-```
-
----
-
-## 15. 追加資料
-
-### 🆘 サポート（Support）
-
-**メールサポート**：
-
-- 技術サポート: [support@mo.ai.kr](mailto:support@mo.ai.kr)
-
-### 📊 Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=Date)](https://star-history.com/#modu-ai/moai-adk&Date)
-
----
-
-## 📝 License
-
-MoAI-ADK is licensed under the [MIT License](./LICENSE).
+### 自動検査フロー
 
 ```text
-MIT License
+コード作成
+    ↓
+[Hook] AST-Grep 自動スキャン
+    ↓
+⚠️  脆弱点発見時即時通知
+    ↓
+✅ 安全コードでリファクタリング
+```
 
-Copyright (c) 2025 MoAI-ADK Team
+**検出例**:
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+```bash
+⚠️  AST-Grep: Potential SQL injection in src/auth.py:47
+   Pattern: execute(f"SELECT * FROM users WHERE id={user_id}")
+   Suggestion: execute("SELECT * FROM users WHERE id=%s", (user_id,))
 ```
 
 ---
 
-## 16. z.aiとのGLM統合（コスト効果の高い代替案）
+## 7. 🌳 Worktree並列開発
 
-### 概要
+MoAI-ADKの核心革新: **Worktreeで完全分離、無制限並列開発**
 
-Claude Codeの利用コストを懸念する開発者のために、MoAI-ADKは**z.ai**経由での**GLM 4.7**統合をサポートしています。この構成はClaude Codeとの完全互換性を維持しながら、大幅なコスト削減を実現します。
+### 💡 なぜWorktreeなのか？
 
-### 💡 GLMを選ぶ理由
+**問題点**: `moai glm`/`moai cc`でLLMを変更すると**すべて開かれたセッション**に適用されます。同一セッションでモデルを変更すると認証エラーでその後進行が困難です。
 
-| 機能 | Claude Code | z.ai GLM 4.7 |
-| --------------------- | ------------------------------- | ----------------------------- |
-| **コスト** | $20/月（Proプラン） | **$6-$60/月（柔軟）** |
-| **モデル** | Claude 4.5 Sonnet, Opus, Haiku | GLM 4.7, GLM 4.5-air |
-| **互換性** | ネイティブ | **100% Claude互換** |
-| **トークン制限** | 制限あり | **有料プランで無制限** |
-| **APIアクセス** | 含まれる | **フルAPIアクセス** |
-| **速度** | 高速 | **同等のパフォーマンス** |
+**解決策**: Git Worktreeで各SPECを完全分離して独立LLM設定維持
 
-### 🎯 GLMコーディングプランのサブスクリプション
+---
 
-**専用招待リンク**:
-🚀 **GLMコーディングプランに招待されました！Claude Code、Cline、10以上のトップコーディングツールの完全サポート。月額$3から開始。**
+### 📦 Worktreeワークフロー
 
-👉 **ここで購読**: https://z.ai/subscribe?ic=1NDV03BGWU
-このリンクから購読すると、Z.AIから10%の追加割引とMoAI-ADKオープンソース開発をサポートするための専用クレジットを受け取れます。
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  ターミナル1 (Claude Opus) - SPEC設計専用                        │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│  $ cd my-project                                                │
+│  $ claude                                                        │
+│                                                                  │
+│  > /moai:1-plan "ユーザー認証システム" --worktree                   │
+│  ✅ SPEC-AUTH-001 生成完了                                      │
+│  ✅ Worktree生成: ~/moai/worktrees/my-project/SPEC-AUTH-001     │
+│  ✅ Branch: feature/SPEC-AUTH-001                                │
+│                                                                  │
+│  > /moai:1-plan "決済システム" --worktree                          │
+│  ✅ SPEC-PAY-002 生成完了                                       │
+│  ✅ Worktree生成: ~/moai/worktrees/my-project/SPEC-PAY-002      │
+│                                                                  │
+│  > /moai:1-plan "ダッシュボードUI" --worktree                         │
+│  ✅ SPEC-UI-003 生成完                                        │
+│  ✅ Worktree生成: ~/moai/worktrees/my-project/SPEC-UI-003       │
+│                                                                  │
+│  💡 OpusですべてSPEC計画完了 (セッション維持中...)                  │
+└─────────────────────────────────────────────────────────────────┘
 
-#### サブスクリプションプラン:
+┌─────────────────────────────────────────────────────────────────┐
+│  ターミナル2 - SPEC-AUTH-001 Worktree (GLM 4.7)                    │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│  $ moai-worktree go SPEC-AUTH-001                                │
+│  # または省略形: moai-wt go SPEC-AUTH-001                          │
+│                                                                  │
+│  📁 現在位置: ~/moai/worktrees/my-project/SPEC-AUTH-001        │
+│  🔀 Branch: feature/SPEC-AUTH-001                                │
+│                                                                  │
+│  $ moai glm                                                       │
+│  ✅ Switched to GLM backend                                      │
+│                                                                  │
+│  $ claude                                                        │
+│  > /moai:2-run SPEC-AUTH-001                                     │
+│  🔄 TDD実行中... (Red → Green → Refactor)                       │
+│  ✅ 実装完了!                                                   │
+│  ✅ テスト通過 (Coverage: 92%)                                  │
+│                                                                  │
+│  > /moai:3-sync SPEC-AUTH-001                                    │
+│  ✅ ドキュメント同期完了                                             │
+│                                                                  │
+│  # 完了後マージ                                                   │
+│  $ git checkout main                                             │
+│  $ git merge feature/SPEC-AUTH-001                               │
+│  $ moai-worktree clean --merged-only                             │
+└─────────────────────────────────────────────────────────────────┘
 
-| プラン | 価格 | 機能 | 最適な対象 |
-| ------------- | ---------------------------------- | ----------------------------------------------------------------------- | --------------------------------- |
-| **ライト** | 初月$3<br/>2ヶ月目から月$6 | • Claude Pro使用量3倍<br/>• GLM-4.7ベース<br/>• 10以上のコーディングツツ互換 | 軽量なワークロード、導入 |
-| **プロ** | 初月$15<br/>2ヶ月目から月$30 | • すべてのライト特典<br/>• ライトプラン使用量5倍<br/>• 40-60%高速<br/>• Vision、Web Search、Web Reader | プロフェッショナル開発者、チーム |
-| **マックス** | 初月$30<br/>2ヶ月目から月$60 | • すべてのプロ特典<br/>• プロプラン使用量4倍<br/>•保証されたピークパフォーマンス<br/>• 新機能優先アクセス | 高容量ワークロード、パワーユーザー |
-| **エンタープライズ** | カスタム | • カスタム価格<br/>• 専用サポート<br/>• SLA保証 | 大規模組織、カスタムニーズ |
+┌─────────────────────────────────────────────────────────────────┐
+│  ターミナル3 - SPEC-PAY-002 Worktree (GLM 4.7)                     │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│  $ moai-wt go SPEC-PAY-002                                       │
+│  $ moai glm                                                       │
+│  $ claude                                                        │
+│                                                                  │
+│  > /moai:alfred SPEC-PAY-002                                     │
+│  🔄 Plan → Run → Sync 自動実行                                  │
+│  ✅ 完了!                                                        │
+│                                                                  │
+│  $ git checkout main && git merge feature/SPEC-PAY-002           │
+└─────────────────────────────────────────────────────────────────┘
 
-#### GLMコーディングプラン購読者の特典:
-
-1. **大幅なコスト削減**: ライトプラン月$6でClaude Pro使用量3倍
-2. **完全なツール互換性**: Claude Code、Roo Code、Cline、Kilo Code、OpenCode、Crush、Gooseなど10以上のコーディングツツをサポート
-3. **高性能モデル**: GLM-4.7ベース（Claude 4.5 Sonnetと同等）
-4. **柔軟な価格**: 月$6ライトから月$60マックスまで（ニーズに応じて拡張）
-5. **パフォーマンスオプション**: プロプランで40-60%高速、マックスプランで保証されたピークパフォーマンス
-6. **高度な機能**: フレームワーク理解、Web検索、WebリーダーMCP（プロ以上）
-7. **MoAI-ADKサポート**: 購読の一部がMoAI-ADK開発のサポートに使用されます
-
-#### **🌟 推奨アップグレードパス**
-
-**ステップ1: ライトプラン（$6/月）で開始**
-- 月$6でClaude Pro使用量3倍
-- 実際のプロジェクトで2-3週間GLM-4.7をテスト
-- 10以上のコーディングツツとの互換性を体験
-
-**ステップ2: 使用量に応じてアップグレード**
-- **通常開発の場合**: **プロ（$30/月）**にアップグレードして複雑なタスクで40-60%高速なパフォーマンス
-- **高容量ワークロードの場合**: ピークパフォーマンスのために**マックス（$60/月）**を選択
-- **パワーユーザー特典**: プロはライト使用量の5倍、マックスはライト使用量の20倍
-
-**このアプローチが有効な理由:**
-- **低い参入障壁**: 月$6でプロフェッショナルAIコーディングを開始
-- **必要に応じて拡張**: ワークロードが必要な場合のみアップグレード
-- **パフォーマンス向上**: プロプランは複雑なタスクで大幅に高速
-- **高度な機能**: Vision、Web検索、WebリーダーMCPがプロ以上で提供
-
-#### キャンペーン詳細（クレジットルール）:
-
-- 📋 **公式ルール**: https://docs.z.ai/devpack/credit-campaign-rules
-- 🎁 **特別提供**: MoAI-ADKユーザーに追加クレジットを提供
-- 💝 **コミュニティサポート**: 購読がMoAI-ADK開発をサポート
-- 🔄 **柔軟な使用**: クレジットは月次繰り越し
-
-### ⚙️ クイックセットアップ: GLM設定
-
-#### ステップ1: GLMコーディングプランに購読
-
-1. 訪問: https://z.ai/subscribe?ic=1NDV03BGWU
-2. プラン選択:
-   - **ライト（初月$3、2ヶ月目から$6/月）**: 開始に最適、Claude Pro使用量3倍
-   - **プロ（初月$15、2ヶ月目から$30/月）**: 40-60%高速、VisionおよびWeb機能含む
-   - **マックス（初月$30、2ヶ月目から$60/月）**: 保証されたパフォーマンス、新機能優先アクセス
-   - **エンタープライズ**: 大規模組織向けカスタム価格
-3. 登録および支払い完了
-4. ダッシュボードからAPIトークンをメモ
-
-**💡 ヒント**: $6ライトプランで開始してGLM-4.7をテストし、より高速なパフォーマンスのためにプロにアップグレードするか、高容量ワークロードのためにマックスにアップグレードしてください！
-
-#### ステップ2: MoAI-ADKをGLM用に設定
-
-Claude Codeで実行:
-
-```bash
-# APIトークンでGLMを設定
-> /moai:0-project --glm-on YOUR_API_TOKEN
-
-# トークンなし（入力プロンプト）
-> /moai:0-project --glm-on
+┌─────────────────────────────────────────────────────────────────┐
+│  ターミナル4 - SPEC-UI-003 Worktree (GLM 4.7)                      │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│  $ moai-wt go SPEC-UI-003                                        │
+│  $ moai glm                                                       │
+│  $ claude                                                        │
+│  > /moai:alfred SPEC-UI-003                                      │
+│  ✅ 完了!                                                        │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-**設定中に発生する処理:**
+---
 
-✅ **APIトークン設定**: GLM APIトークンを安全に保存
-✅ **エンドポイント設定**: z.ai APIエンドポイントを設定
-✅ **モデルマッピング**: GLM 4.7をClaudeモデル階層にマッピング
-✅ **検証**: 接続とモデル可用性のテスト
-✅ **フォールバック準備**: Claudeをバックアップオプションとして維持
+### 🎯 核心ワークフロー
 
-#### ステップ3: 設定の検証
+#### Phase 1: Claude 4.5 Opusで計画 (ターミナル1)
 
 ```bash
-# 現在の設定を確認
-> cat .claude/settings.local.json
-
-# 期待される出力:
-{
-  "env": {
-    "ANTHROPIC_AUTH_TOKEN": "your_glm_token_here",
-    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.7"
-  }
-}
+/moai:1-plan "機能説明" --worktree
 ```
 
-#### ステップ4: Claude Codeの再起動
+- ✅ SPECドキュメント生成
+- ✅ Worktree自動生成
+- ✅ 機能ブランチ自動生成
+
+#### Phase 2: GLM 4.7で実装 (ターミナル2, 3, 4...)
 
 ```bash
-# Claude Codeを終了して再起動
-> /exit
-# その後
+moai-wt go SPEC-ID
+moai glm
 claude
+> /moai:2-run SPEC-ID
+> /moai:3-sync SPEC-ID
 ```
 
-GLM 4.7がアクティブになり、使用準備完了！
+- ✅ 独立した作業環境
+- ✅ GLMコスト効率
+- ✅ 衝突なし並列開発
 
-### 🔄 GLM設定の管理
-
-#### CLIでバックエンド切り替え:
+**Phase 3: マージ及び整理**
 
 ```bash
-# 現在のバックエンドステータスを確認
-moai switch status
-
-# GLMバックエンドに切り替え（コスト効率的）
-moai switch glm
-
-# Claudeバックエンドに切り替え（デフォルト）
-moai switch claude
+git checkout main
+git merge feature/SPEC-ID
+moai-wt clean --merged-only
 ```
-
-#### 仕組み:
-
-`moai switch`コマンドは`.claude/settings.local.json`を変更します：
-- **GLMモード**: GLM環境変数を追加（API URL、モデルマッピング）
-- **Claudeモード**: GLM環境変数を削除（デフォルトに復元）
-
-**注意**: 変更を適用するには、切り替え後にClaude Codeを再起動してください。
-
-### 📊 パフォーマンス比較
-
-実際のMoAI-ADKテストに基づく:
-
-| タスク | Claude 4.5 Sonnet | GLM 4.7 | パフォーマンス差 |
-| ------------------------------ | ----------------- | ------------ | --------------- |
-| **コード生成** | 優秀 | **優秀** | 5%未満の差 |
-| **TDD実装** | 優秀 | **非常に良い** | 10%高速 |
-| **ドキュメント作成** | 非常に良い | **良い** | 15%高速 |
-| **複雑な問題解決** | 優秀 | **非常に良い** | 同等 |
-| **APIレート制限** | 中程度 | **より高い** | 3倍-20倍多くの使用量 |
-| **パフォーマンス速度** | 高速 | **40-60%高速（プロ以上）** | 著しい改善 |
-| **高度な機能** | ベーシック | **Vision、Web Search、Web Reader（プロ以上）** | 強化された機能 |
-| **コスト効率** | $20-$200/月 | **$6-$60/月** | **最大70%節約** |
-
-### ✅ 推奨使用シナリオ
-
-#### **GLMライト（$6/月）使用:**
-- **導入**: 70%低コストでClaude Pro使用量3倍
-- **軽量ワークロード**: 小規模プロジェクト、断続的なコーディング
-- **学習プロジェクト**: 練習、チュートリアル、実験
-- **予算意識**: 月$6でプロフェッショナルAIコーディング
-
-#### **GLMプロ（$30/月）使用:**
-- **プロフェッショナル開発者**: 複雑なタスクで40-60%高速なパフォーマンス
-- **日常開発**: 高度な機能付きでライト使用量制限の5倍
-- **チームコラボレーション**: Vision理解、Web検索機能
-- **パワーユーザー**: 複雑な問題解決でより高速な応答
-
-#### **GLMマックス（$60/月）使用:**
-- **高容量ワークロード**: 集中的な開発でライト使用量20倍
-- **エンタープライズチーム**: 保証されたピーク時間パフォーマンス
-- **継続的インテグレーション**: 自動化されたワークフローでレート制限なし
-- **早期導入者**: 新機能および改善の優先アクセス
-
-#### **Claudeを検討すべき場合:**
-- **エンタープライズプロダクション**: ミッションクリティカルな展開
-- **複雑な研究**: 高度な推論タスク
-- **大規模移行**: 複雑なシステム変換
-- **コンプライアンス要件**: 特定のモデル認証が必要
-
-### 🛠️ トラブルシューティング
-
-| 問題 | 解決策 |
-| ------------------------ | ------------------------------------------------------------------------ |
-| **トークンが動作しない** | z.aiダッシュボードでトークンを検証、コーディングプラン購読を確認 |
-| **モデルエラー** | エンドポイントURLを確認: `https://api.z.ai/api/anthropic` |
-| **応答が遅い** | GLMはピーク時間により高いレイテンシーがある可能性 |
-| **接続拒否** | ファイアウォールがz.aiドメインをブロックしている可能性、ネットワーク設定を確認 |
-| **フォールバックが必要** | 一時的に`--glm-off`を使用してClaudeに戻す |
-
-### 🔗 有用なリンク
-
-- **GLMコーディングプラン**: https://z.ai/subscribe?ic=1NDV03BGWU
-- **クレジットキャンペーンルール**: https://docs.z.ai/devpack/credit-campaign-rules
-- **GLMドキュメント**: https://docs.z.ai/
-- **MoAI-ADK GLMガイド**: https://github.com/modu-ai/moai-adk/docs/glm-integration
-- **サポート**: support@z.ai
-
-### 💬 コミュニティとサポート
-
-- **Discord**: ヒントと更新のためにz.aiコミュニティに参加
-- **GitHub**: 問題報告と機能リクエスト
-- **メール**: 技術サポートのためにsupport@z.ai
-- **MoAI-ADK**: フレームワーク別のヘルプはgithub.com/modu-ai/moai-adk
 
 ---
 
-**今日からコストを削減しながら開発生産性を維持しましょう！** 🚀
+### ✨ Worktree長所
 
-## 17. 追加リソース
+| 長所            | 説明                                      |
+| --------------- | ----------------------------------------- |
+| **完全分離**   | 各SPECが独立Git状態、ファイル衝突なし |
+| **LLM独立**    | 各Worktreeで別LLM設定可能        |
+| **無制限並列** | 依存性なし無制限SPEC並列開発          |
+| **安全マージ**   | 完了SPECのみ順次的にmainにマージ      |
 
-### 🌐 コミュニティ & 開発者リソース
+---
 
-**コミュニティに参加:**
+### 📊 Worktreeコマンド
 
-- **Discord（公式）**: [https://discord.gg/umywNygN](https://discord.gg/umywNygN) - MoAI-ADKコミュニティに参加してディスカッション、サポート、アップデートを受け取りましょう
-- **開発者ブログ**: [https://goos.kim](https://goos.kim) - 技術記事、チュートリアル、開発インサイト
+| コマンド                   | 説明                             | 使用例                      |
+| ------------------------ | -------------------------------- | ------------------------------ |
+| `moai-wt new SPEC-ID`    | 新Worktree生成                 | `moai-wt new SPEC-AUTH-001`    |
+| `moai-wt go SPEC-ID`     | Worktree進入 (新シェル開く)       | `moai-wt go SPEC-AUTH-001`     |
+| `moai-wt list`           | Worktreeリスト確認               | `moai-wt list`                 |
+| `moai-wt remove SPEC-ID` | Worktree削除                    | `moai-wt remove SPEC-AUTH-001` |
+| `moai-wt status`         | Worktree状態及びレジストリ確認 | `moai-wt status`               |
+| `moai-wt sync [SPEC-ID]` | Worktree同期                  | `moai-wt sync --all`           |
+| `moai-wt clean`          | マージWorktree整理             | `moai-wt clean --merged-only`  |
+| `moai-wt recover`        | ディスクからレジストリ復復       | `moai-wt recover`              |
+| `moai-wt config`         | Worktree設定確認               | `moai-wt config root`          |
+
+---
+
+## 8. MoAI Rank 紹介
+
+**エージェンティックコーディングの新次元**: あなたのコーディング旅を追跡して、グローバル開発者たちと競争してください！
+
+### なぜMoAI Rankなのか？
+
+| 機能                   | 説明                       |
+| ---------------------- | -------------------------- |
+| **📊 トークントラッキング**      | セッション別AI使用量自動記録 |
+| **🏆 グローバルリーダーボード**  | 日間/週間/月間/全体順位   |
+| **🎭 コーディングスタイル分析** | あなただけの開発パターン発見    |
+| **📈 ダッシュボード**         | 可視化された統計とインサイト   |
+
+---
+
+### 🚀 CLIコマンド
+
+```bash
+❯ moai rank
+Usage: moai rank [OPTIONS] COMMAND [ARGS]...
+
+  MoAI Rank - Token usage leaderboard.
+
+  Track your Claude Code token usage and compete on the leaderboard.
+  Visit https://rank.mo.ai.kr for the web dashboard.
+
+Commands:
+  register   Register with MoAI Rank via GitHub OAuth.
+  status     Show your current rank and statistics.
+  exclude    Exclude a project from session tracking.
+  include    Re-include a previously excluded project.
+  logout     Remove stored MoAI Rank credentials.
+```
+
+---
+
+### Step 1: GitHub OAuth登録
+
+```bash
+❯ moai rank register
+
+╭──────────────────────────── Registration ────────────────────────────╮
+│ MoAI Rank Registration                                               │
+│                                                                      │
+│ This will open your browser to authorize with GitHub.                │
+│ After authorization, your API key will be stored securely.           │
+╰──────────────────────────────────────────────────────────────────────╯
+
+Opening browser for GitHub authorization...
+Waiting for authorization (timeout: 5 minutes)...
+
+╭───────────────────────── Registration Complete ──────────────────────╮
+│ Successfully registered as your-github-id                            │
+│                                                                      │
+│ API Key: moai_rank_a9011fac_c...                                     │
+│ Stored in: ~/.moai/rank/credentials.json                             │
+╰──────────────────────────────────────────────────────────────────────╯
+
+╭───────────────────────── Global Hook Installed ──────────────────────╮
+│ Session tracking hook installed globally.                            │
+│                                                                      │
+│ Your Claude Code sessions will be automatically tracked.             │
+│ Hook location: ~/.claude/hooks/moai/session_end__rank_submit.py      │
+│                                                                      │
+│ To exclude specific projects:                                        │
+│   moai rank exclude /path/to/project                                 │
+╰──────────────────────────────────────────────────────────────────────╯
+```
+
+---
+
+### Step 2: 私の順位確認
+
+```bash
+❯ moai rank status
+
+╭────────────────────────────── MoAI Rank ─────────────────────────────╮
+│ your-github-id                                                       │
+│                                                                      │
+│ 🏆 Global Rank: #42                                                  │
+╰──────────────────────────────────────────────────────────────────────╯
+╭───── Daily ──────╮  ╭───── Weekly ─────╮  ╭──── Monthly ─────╮  ╭──── All Time ────╮
+│ #12              │  │ #28              │  │ #42              │  │ #156             │
+╰──────────────────╯  ╰──────────────────╯  ╰──────────────────╯  ╰──────────────────╯
+╭─────────────────────────── Token Usage ──────────────────────────────╮
+│ 1,247,832 total tokens                                               │
+│                                                                      │
+│ Input  ██████████████░░░░░░ 847,291 (68%)                            │
+│ Output ██████░░░░░░░░░░░░░░ 400,541 (32%)                            │
+│                                                                      │
+│ Sessions: 47                                                         │
+╰──────────────────────────────────────────────────────────────────────╯
+
+● Hook: Installed  |  https://rank.mo.ai.kr
+```
+
+---
+
+### Step 3: ウェブダッシュボード
+
+![MoAI Rank Dashboard](./assets/images/readme/moai-rank-dashboard.png)
+
+**[https://rank.mo.ai.kr](https://rank.mo.ai.kr)**
+
+ダッシュボードで:
+
+- トークン使用量推移
+- ツール使用統計
+- モデル別使用分析
+- 週間/月間レポート
+
+📖 **詳細**: [modu-ai/moai-rank](https://github.com/modu-ai/moai-rank)リポジトリを参照してください。
+
+---
+
+### Step 4: 収集メトリック
+
+| メトリック          | 説明                          |
+| --------------- | ----------------------------- |
+| **トークン使用量** | 入力/出力トークン、キャッシュトークン     |
+| **ツール使用**   | Read, Edit, Bash等使用回数 |
+| **モデル使用**   | Opus, Sonnet, Haiku別分量    |
+| **コードメトリック** | 追加/削除ライン、修正ファイル     |
+| **セッション情報**   | 継続時間、ターン数、タイムスタンプ  |
+
+### 🔒 プライバシー保護
+
+```bash
+# 現在プロジェクト除外
+moai rank exclude
+
+# 特定パス除外
+moai rank exclude /path/to/private
+
+# ワイルドカードパターン
+moai rank exclude "*/confidential/*"
+
+# 除外リスト確認
+moai rank list-excluded
+```
+
+**保証**: 収集データは**数値メトリックのみ** (コード内容、ファイルパス非転送)
+
+---
+
+## 9. FAQ 5個
+
+### Q1: SPECは常に必要ですか？
+
+| 条件          | SPEC必要有無   |
+| ------------- | ---------------- |
+| 1-2ファイル修正 | 選択 (省略可能) |
+| 3-5ファイル修正 | 推奨             |
+| 10+ファイル修正 | 必須             |
+| 新機能追加  | 推奨             |
+| バグ修正     | 選択             |
+
+### Q2: MCPサーバーインストールが必要ですか？
+
+**必須 (2個)**:
+
+- **Context7**: 最新ライブラリドキュメント、Skillラッパンス生成時使用
+
+**選択**:
+- claude-in-chrome: ブラウザでClaude使用及びウェブ自動化テスト
+- Playwright: ウェブ自動化テスト
+- Figma: デザインシステム
+
+### Q3: MoAI Rankは費用がかかりますか？
+
+無料です。セッションデータのみ自動収集します。
+
+### Q4: GLM設定は必須ですか？
+
+違います。Claudeのみ使用でも良いです。ただ、コスト削減のために推奨します。
+
+### Q5: 既存プロジェクトにも適用可能ですか？
+
+はい。`moai init .`で既存ファイルはそのまま維持されます。
+
+---
+
+## 17. コミュニティ & サポート
+
+### 🌐 参加する
+
+- **Discord (公式)**: [https://discord.gg/umywNygN](https://discord.gg/umywNygN)
+- **GitHub**: [https://github.com/modu-ai/moai-adk](https://github.com/modu-ai/moai-adk)
+- **開発者ブログ**: [https://goos.kim](https://goos.kim)
 
 ### 🆘 サポート
 
-**メールサポート:**
-
-- 技術サポート: [support@mo.ai.kr](mailto:support@mo.ai.kr)
-
-### 📊 スター履歴
-
-[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=Date)](https://star-history.com/#modu-ai/moai-adk&Date)
+- メール: [support@mo.ai.kr](mailto:support@mo.ai.kr)
+- ドキュメント: [https://adk.mo.ai.kr](https://adk.mo.ai.kr)
 
 ---
 
 ## 📝 ライセンス
 
-MoAI-ADKは[MITライセンス](./LICENSE)の下でライセンスされています。
-
-```text
-MIT License
-
-Copyright (c) 2025 MoAI-ADK Team
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
+Copyleft License (COPYLEFT-3.0) - [LICENSE](./LICENSE)
 
 ---
 
-### Made with ❤️ by MoAI-ADK Team
+## 🙏 Made with ❤️ by MoAI-ADK Team
 
-**Version:** 0.41.2
-**Last Updated:** 2026-01-10
-**Philosophy**: SPEC-First TDD + Agent Orchestration + 85% Token Efficiency
-**MoAI**: MoAI stands for "Modu-ui AI" (AI for Everyone). Our goal is to make AI accessible to everyone.
+**Last Updated:** 2026-01-11
+**Philosophy**: SPEC-First TDD + Agent Orchestration + Hybrid LLM
+**MoAI**: MoAIは"みんなのためのAI (Modu-ui AI)"を意味します。
+
+> **"無限可能主義 - みんなのAI"**

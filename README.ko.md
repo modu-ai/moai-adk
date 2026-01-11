@@ -1,4 +1,4 @@
-# 🗿 MoAI-ADK: AI와 함께 대화하며 코딩하는 바이브 코딩 프레임워크
+# 🗿 MoAI-ADK: Agentic AI 개발 프레임워크
 
 ![MoAI-ADK Hero Banner](./assets/images/readme/hero-banner-moai-adk.png)
 
@@ -60,10 +60,6 @@ moai glm YOUR_API_KEY
 - **🌐 다국어 라우팅**: 한국어/영어/일본어/중국어 자동 지원
 - **🌳 Worktree 병렬 개발**: 완전 격리 환경에서 무제한 병렬 작업
 - **🏆 MoAI Rank**: 바이브 코딩 리더보드로 동기부여
-
----
-
-## PART A: 지금 바로 시작하기 (5분)
 
 ---
 
@@ -362,83 +358,7 @@ moai update --manual
 
 ---
 
-## 3. 3분 첫 기능 완성
-
-Claude Code에서 다음 명령어를 순서대로 실행하세요:
-
-### Step 1: Plan (1분)
-
-```
-> /moai:1-plan 사용자 로그인 기능 구현 해줘.
-```
-
-✅ 자동 생성됨:
-
-- SPEC-001 문서 (.moai/specs/SPEC-001/spec.md)
-- 요구사항 (EARS 형식)
-- 제약 조건
-- 성공 기준
-- 테스트 시나리오
-
-### Step 2: Clear (10초)
-
-```
-> /clear
-```
-
-토큰 효율을 위해 컨텍스트를 정리합니다.
-
-### Step 3: Run (2분)
-
-```
-> /moai:2-run SPEC-001
-```
-
-자동 실행됨:
-
-- 🔴 **RED**: 실패하는 테스트 작성
-- 🟢 **GREEN**: 테스트 통과 코드 구현
-- 🔵 **REFACTOR**: 코드 최적화
-- ✅ **TRUST 5 검증**: 품질 자동 검사
-
-### Step 4: Sync (선택)
-
-```
-> /moai:3-sync SPEC-001
-```
-
-자동 생성됨:
-
-- API 문서
-- 아키텍처 다이어그램
-- README 업데이트
-- 배포 준비
-
-**🎉 완료!** 첫 번째 기능이 구현되었습니다.
-
----
-
-## PART B: 바이브 코딩 마스터하기 (20분)
-
----
-
-## 4. 바이브 코딩이란?
-
-**바이브 코딩(Vibe Coding)** = AI와 함께 흐름 타며 코딩하는 경험
-
-| 전통적 개발      | 바이브 코딩           |
-| ---------------- | --------------------- |
-| 문서 작성 → 코딩 | 대화하며 동시에 진행  |
-| 재작업 잦음      | SPEC로 한 번에 완성   |
-| 테스트 나중에    | TDD로 먼저 검증       |
-| 코드만 작성      | 코드 + 문서 동시 생성 |
-| 혼자 고민        | 20명의 전문가와 협업  |
-
-**핵심 철학**: "AI는 도구가 아니라 파트너다."
-
----
-
-## 5. 핵심 명령어 4개
+## 3. 핵심 명령어 모음
 
 ### 🎯 `/moai:0-project` - 프로젝트 초기화
 
@@ -446,11 +366,13 @@ Claude Code에서 다음 명령어를 순서대로 실행하세요:
 > /moai:0-project
 ```
 
+프로젝트의 현재 상태를 자동으로 분석하여 최적의 개발 환경을 구성합니다. 프로그래밍 언어와 프레임워크를 감지하고, Git 워크플로우와 품질 보증 기준을 자동으로 설정합니다. 모든 구성이 완료되면 즉시 개발을 시작할 수 있는 준비 상태가 됩니다.
+
 **작업 내용**:
 
 - ✅ 프로젝트 구조 분석
 - ✅ 프로그래밍 언어/프레임워크 감지
-- ✅ `.moai/config/config.json` 생성
+- ✅ `.moai/config/config.yaml` 생성
 - ✅ Git 워크플로우 설정
 - ✅ 세션 메모리 시스템 구성
 - ✅ 품질 보증 기준 설정
@@ -462,6 +384,8 @@ Claude Code에서 다음 명령어를 순서대로 실행하세요:
 ```bash
 > /moai:1-plan "기능 설명"
 ```
+
+EARS 형식을 사용하여 모호함 없는 명세서를 자동으로 생성합니다. 요구사항 정의, 성공 기준, 테스트 시나리오를 포함하여 개발 방향을 명확히 제시합니다. 생성된 SPEC은 개발팀과 AI가 동일한 이해를 공유하는 단일 출처(Source of Truth)로 작동합니다.
 
 **자동 생성**:
 
@@ -490,6 +414,8 @@ Claude Code에서 다음 명령어를 순서대로 실행하세요:
 > /moai:2-run SPEC-001
 ```
 
+Red-Green-Refactor 사이클을 통해 테스트 먼저 작성하고, 이를 통과하는 코드를 구현합니다. 모든 구현은 85% 이상의 테스트 커버리지와 린팅, 타입 검사, 보안 검사를 통과해야 합니다. TRUST 5 품질 원칙을 자동으로 검증하여 안정적인 코드만 커밋됩니다.
+
 **자동 실행**:
 
 - 🔴 테스트 먼저 작성 (Red)
@@ -512,38 +438,264 @@ Claude Code에서 다음 명령어를 순서대로 실행하세요:
 > /moai:3-sync SPEC-001
 ```
 
-**자동 생성**:
+품질 검증을 시작으로 문서 동기화, Git 커밋, PR 자동화를 수행합니다. API 문서, 아키텍처 다이어그램, README, CHANGELOG를 자동으로 생성하고 최신 상태로 유지합니다. 변경사항을 자동으로 커밋하고 팀 모드에서는 PR을 Draft에서 Ready로 전환합니다.
 
-- API 레퍼런스
-- 아키텍처 다이어그램
-- 배포 가이드
-- README 업데이트
-- CHANGELOG
+**자동 실행되는 작업**:
+
+1. **Phase 1: 품질 검증**
+   - 테스트 실행 (pytest, jest, go test 등)
+   - 린터 검사 (ruff, eslint, golangci-lint 등)
+   - 타입 체커 (mypy, tsc, go vet 등)
+   - 코드 리뷰 (manager-quality)
+
+2. **Phase 2-3: 문서 동기화**
+   - API 문서 자동 생성
+   - 아키텍처 다이어그램 업데이트
+   - README 업데이트
+   - SPEC 문서 동기화
+
+3. **Phase 4: Git 자동화**
+   - 변경사항 커밋
+   - PR Draft → Ready 전환
+   - (선택) Auto-merge
+
+**실행 모드**:
+
+- `auto` (기본): 변경된 파일만 선택 동기화
+- `force`: 전체 문서 재생성
+- `status`: 상태 확인만 수행
+- `project`: 프로젝트 전체 동기화
+
+**자세한 내용**: 명령 파일 참조
 
 ---
 
-### 🚀 `/moai:alfred` - 원클릭 자동화
+### 🚀 `/moai:alfred` - 완전 자율 자동화
 
 ```bash
 > /moai:alfred "기능 설명"
 ```
 
+사용자가 목표를 제시하면 AI가 스스로 탐색, 계획, 구현, 검증을 모두 수행합니다. 병렬 탐색으로 코드베이스를 분석하고, 자율 루프를 통해 이슈를 스스로 수정합니다. 완료 마커(`<promise>DONE</promise>`)를 감지하면 자동으로 종료되어 개발자는 최종 결과만 확인하면 됩니다.
+
 **한 번에 실행**:
 
-1. Plan (SPEC 생성)
-2. Run (TDD 구현)
-3. Sync (문서 동기화)
+1. **Phase 0**: 병렬 탐색 (Explore + Research + Quality)
+2. **Phase 1**: SPEC 생성 (EARS 형식)
+3. **Phase 2**: TDD 구현 (자율 루프)
+4. **Phase 3**: 문서 동기화
 
 **옵션**:
 
+- `--loop`: 자율 반복 수정 활성화 (AI가 스스로 이슈 해결)
+- `--max N`: 최대 반복 횟수 지정 (기본값: 100)
+- `--parallel`: 병렬 탐색 활성화 (더 빠른 분석)
 - `--branch`: 기능 브랜치 자동 생성
 - `--pr`: 완료 후 Pull Request 생성
+- `--resume SPEC`: 이어서 하기
+
+**예시**:
+
+```bash
+# 기본 자율 실행
+> /moai:alfred "JWT 인증 추가"
+
+# 자동 루프 + 병렬 탐색
+> /moai:alfred "JWT 인증" --loop --parallel
+
+# 이어서 하기
+> /moai:alfred resume SPEC-AUTH-001
+```
 
 ---
 
-## 6. Mr.Alfred와 20개 에이전트
+### 🔁 `/moai:loop` - 자율 반복 수정
 
-### 🎩 Mr.Alfred - 수석 오케스트레이터
+```bash
+> /moai:loop
+```
+
+AI가 스스로 LSP 오류, 테스트 실패, 커버리지 부족을 진단하고 수정을 반복합니다. 병렬 진단으로 LSP, AST-grep, Tests, Coverage를 동시에 실행하여 3-4배 빠르게 이슈를 해결합니다. 완료 마커를 감지하거나 최대 반복 횟수에 도달할 때까지 자율적으로 실행됩니다.
+
+**자율 루프 흐름**:
+
+```text
+병렬 진단 → TODO 생성 → 수정 실행 → 검증 → 반복
+    ↓
+완료 마커 감지 → <promise>DONE</promise>
+```
+
+**옵션**:
+
+- `--max N`: 최대 반복 횟수 (기본값: 100)
+- `--auto`: 자동 수정 활성화 (Level 1-3)
+- `--parallel`: 병렬 진단 실행 (권장)
+- `--errors`: 에러만 수정
+- `--coverage`: 커버리지 포함 (85% 목표)
+- `--resume ID`: 스냅샷 복구
+
+**예시**:
+
+```bash
+# 기본 자율 루프
+> /moai:loop
+
+# 병렬 + 자동 수정
+> /moai:loop --parallel --auto
+
+# 최대 50회 반복
+> /moai:loop --max 50
+
+# 스냅샷 복구
+> /moai:loop --resume latest
+```
+
+---
+
+### 🔧 `/moai:fix` - 단발 자동 수정
+
+```bash
+> /moai:fix
+```
+
+LSP 오류, linting 이슈를 병렬로 스캔하고 한 번에 수정합니다. Level 1-2는 즉시 수정하고, Level 3은 사용자 승인 후 수정하며, Level 4는 수동 수정이 필요하다고 보고합니다. `--dry` 옵션으로 미리보기를 확인 후 실제 수정을 적용할 수 있습니다.
+
+**병렬 스캔**:
+
+```text
+LSP ├─┐
+    ├─→ 통합 결과 (3.75배 빠름)
+AST ├─┤
+    ├─┘
+Linter
+```
+
+**수정 레벨**:
+
+| Level | 설명      | 승인   | 예시                 |
+| ----- | --------- | ------ | -------------------- |
+| 1     | 즉시 수정 | 불필요 | import 정렬, 공백    |
+| 2     | 안전 수정 | 로그만 | 변수 이름, 타입 추가 |
+| 3     | 승인 필요 | 필요   | 로직 변경, API 수정  |
+| 4     | 수동 필요 | 불가능 | 보안, 아키텍처       |
+
+**옵션**:
+
+- `--dry`: 미리보기만 (실제 수정 없음)
+- `--parallel`: 병렬 스캔 (권장)
+- `--level N`: 최대 수정 레벨 (기본값: 3)
+- `--errors`: 에러만 수정
+- `--security`: 보안 검사 포함
+- `--no-fmt`: 포맷팅 스킵
+
+**예시**:
+
+```bash
+# 기본 수정
+> /moai:fix
+
+# 병렬 스캔
+> /moai:fix --parallel
+
+# 미리보기
+> /moai:fix --dry
+
+# 특정 파일
+> /moai:fix src/auth.py
+```
+
+---
+
+### ⏹️ `/moai:cancel-loop` - 루프 취소
+
+```bash
+> /moai:cancel-loop
+```
+
+실행 중인 자율 루프를 안전하게 취소하고 모든 진행 상태를 스냅샷으로 저장합니다. 취소 시 TODO 상태, 수정 내역, 반복 횟수가 모두 보존되어 나중에 이어서 계속할 수 있습니다. `--list` 옵션으로 이전 스냅샷을 확인하고 특정 시점으로 복구할 수 있습니다.
+
+**옵션**:
+
+- `--force`: 확인 없이 취소
+- `--snapshot`: 스냅샷 저장
+- `--keep`: state 파일 보존
+- `--reason TEXT`: 취소 사유 기록
+- `--list`: 스냅샷 목록 확인
+
+**복구**:
+
+```bash
+# 최신 스냅샷 복구
+> /moai:loop --resume latest
+
+# 특정 스냅샷 복구
+> /moai:loop --resume cancel-20240111-105230
+```
+
+**예시**:
+
+```bash
+# 기본 취소 (확인 후)
+> /moai:cancel-loop
+
+# 강제 취소
+> /moai:cancel-loop --force
+
+# 스냅샷 저장
+> /moai:cancel-loop --snapshot
+
+# 스냅샷 목록
+> /moai:cancel-loop --list
+```
+
+**실제 출력 결과**:
+
+```
+
+⏺ ✅ 루프 취소 완료
+
+  상태 보고
+
+  ═══════════════════════════════════════════════════════
+           Loop: Cancelled (No Active Loop)
+  ═══════════════════════════════════════════════════════
+
+  ### Status
+  - 실행 중인 루프: 없음
+  - 완료된 작업: 100%
+  - 남은 TODO: 0개
+
+  ### Completed Tasks
+  ✅ README.ko.md "3. 핵심 명령어 모음" 섹션 업데이트
+  ✅ Fenced code blocks 언어 지정 추가 (MD040) - 9건
+  ✅ Emphasis → Heading 변경 (MD036) - 2건
+  ✅ Table column style 수정 (MD060) - 2건
+
+  ### Changes Summary
+  - 명령어 개수: 4개 → 8개 (loop, fix, cancel-loop 추가)
+  - 설명 스타일: 간단 목록 → 3문장 이상 상세 설명
+  - Markdown linting: 13건 이슈 → 0건
+
+  ═══════════════════════════════════════════════════════
+
+  최종 파일 상태
+
+  README.ko.md:
+  - 모든 markdown linting 이슈 해결
+  - 8개 핵심 명령어 상세 설명 완료
+  - 표준 markdown 형식 준수
+
+  ---
+  모든 작업이 성공적으로 완료되었습니다! 🎉
+```
+
+
+
+---
+
+## 4. Mr.Alfred와 Sub-Agents
+
+### 🎩 Mr.Alfred - Super Agent (수석 오케스트레이터)
 
 **역할**: 사용자 요청을 분석하고 적절한 전문 에이전트에게 위임
 
@@ -608,11 +760,11 @@ Alfred는 4개 언어 요청을 자동으로 인식하고 올바른 에이전트
 
 ---
 
-## 7. 48개 스킬 한눈에
+## 5. Agent-Skills
 
 ### 📚 스킬 라이브러리 구조
 
-```
+```text
 🏗️ Foundation (5)    → 핵심 철학, 실행 규칙
 🎯 Domain (4)        → 도메인 전문 지식
 💻 Language (16)     → 16개 프로그래밍 언어
@@ -634,7 +786,7 @@ Alfred는 4개 언어 요청을 자동으로 인식하고 올바른 에이전트
 ### 스킬 사용법
 
 ```python
-# 방법 1: 직접 호출 (개발자)
+# 방법 1: 직접 호출 (Agent)
 Skill("moai-lang-python")
 
 # 방법 2: Alfred 자동 선택 (일반 사용자)
@@ -644,13 +796,7 @@ Skill("moai-lang-python")
 
 ---
 
-## PART D: 품질 보장 시스템 (10분)
-
----
-
-## 8. TRUST 5 품질 원칙
-
-![TRUST 5 Pentagon](./assets/images/readme/trust5-pentagon.png)
+## 5. TRUST 5 품질 원칙
 
 MoAI-ADK의 모든 프로젝트는 **TRUST 5** 품질 프레임워크를 따릅니다.
 
@@ -724,7 +870,7 @@ graph TD
 
 ---
 
-## 9. 자동 품질 검사
+## 6. 자동 품질 검사
 
 ### 🔍 AST-Grep 기반 구조적 검사
 
@@ -739,10 +885,10 @@ graph TD
 
 ### 자동 검사 흐름
 
-```
+```text
 코드 작성
     ↓
-[AST-Grep 자동 스캔]
+[Hook] AST-Grep 자동 스캔
     ↓
 ⚠️  취약점 발견시 즉시 알림
     ↓
@@ -759,7 +905,7 @@ graph TD
 
 ---
 
-## PART C: 🌳 Worktree 병렬 개발
+## 7. 🌳 Worktree 병렬 개발
 
 MoAI-ADK의 핵심 혁신: **Worktree로 완전 격리, 무제한 병렬 개발**
 
@@ -773,7 +919,7 @@ MoAI-ADK의 핵심 혁신: **Worktree로 완전 격리, 무제한 병렬 개발*
 
 ### 📦 Worktree 워크플로우
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │  터미널 1 (Claude Opus) - SPEC 설계 전용                        │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
@@ -852,7 +998,7 @@ MoAI-ADK의 핵심 혁신: **Worktree로 완전 격리, 무제한 병렬 개발*
 
 ### 🎯 핵심 워크플로우
 
-**Phase 1: Opus로 계획 (터미널 1)**
+#### Phase 1: Claude 4.5 Opus로 계획 (터미널 1)
 
 ```bash
 /moai:1-plan "기능 설명" --worktree
@@ -862,7 +1008,7 @@ MoAI-ADK의 핵심 혁신: **Worktree로 완전 격리, 무제한 병렬 개발*
 - ✅ Worktree 자동 생성
 - ✅ 기능 브랜치 자동 생성
 
-**Phase 2: GLM으로 구현 (터미널 2, 3, 4...)**
+#### Phase 2: GLM 4.7으로 구현 (터미널 2, 3, 4...)
 
 ```bash
 moai-wt go SPEC-ID
@@ -899,22 +1045,23 @@ moai-wt clean --merged-only
 
 ### 📊 Worktree 명령어
 
-| 명령어                        | 설명                 |
-| ----------------------------- | -------------------- |
-| `moai-wt go SPEC-ID`          | Worktree 진입        |
-| `moai-wt list`                | Worktree 목록 확인   |
-| `moai-wt clean --merged-only` | 병합된 Worktree 정리 |
-| `moai-wt sync --all`          | 모든 Worktree 동기화 |
+| 명령어                   | 설명                             | 사용 예시                      |
+| ------------------------ | -------------------------------- | ------------------------------ |
+| `moai-wt new SPEC-ID`    | 새 Worktree 생성                 | `moai-wt new SPEC-AUTH-001`    |
+| `moai-wt go SPEC-ID`     | Worktree 진입 (새 셸 열기)       | `moai-wt go SPEC-AUTH-001`     |
+| `moai-wt list`           | Worktree 목록 확인               | `moai-wt list`                 |
+| `moai-wt remove SPEC-ID` | Worktree 제거                    | `moai-wt remove SPEC-AUTH-001` |
+| `moai-wt status`         | Worktree 상태 및 레지스트리 확인 | `moai-wt status`               |
+| `moai-wt sync [SPEC-ID]` | Worktree 동기화                  | `moai-wt sync --all`           |
+| `moai-wt clean`          | 병합된 Worktree 정리             | `moai-wt clean --merged-only`  |
+| `moai-wt recover`        | 디스크에서 레지스트리 복구       | `moai-wt recover`              |
+| `moai-wt config`         | Worktree 설정 확인               | `moai-wt config root`          |
 
 ---
 
-## PART E: 🏆 MoAI Rank - 코딩 리더보드
+## 8. MoAI Rank 소개
 
----
-
-## 11. MoAI Rank 소개
-
-**바이브 코딩의 새로운 차원**: 당신의 코딩 여정을 추적하고, 글로벌 개발자들과 경쟁하세요!
+**에이전틱 코딩의 새로운 차원**: 당신의 코딩 여정을 추적하고, 글로벌 개발자들과 경쟁하세요!
 
 ### 왜 MoAI Rank인가?
 
@@ -927,11 +1074,9 @@ moai-wt clean --merged-only
 
 ---
 
-## 12. 빠른 시작
-
 ### 🚀 CLI 명령어
 
-```
+```bash
 ❯ moai rank
 Usage: moai rank [OPTIONS] COMMAND [ARGS]...
 
@@ -952,7 +1097,7 @@ Commands:
 
 ### Step 1: GitHub OAuth 등록
 
-```
+```bash
 ❯ moai rank register
 
 ╭──────────────────────────── Registration ────────────────────────────╮
@@ -987,7 +1132,7 @@ Waiting for authorization (timeout: 5 minutes)...
 
 ### Step 2: 내 순위 확인
 
-```
+```bash
 ❯ moai rank status
 
 ╭────────────────────────────── MoAI Rank ─────────────────────────────╮
@@ -1012,11 +1157,11 @@ Waiting for authorization (timeout: 5 minutes)...
 
 ---
 
-### 🌐 웹 대시보드
+### Step 3: 웹 대시보드
 
-```
-https://rank.mo.ai.kr
-```
+![MoAI Rank Dashboard](./assets/images/readme/moai-rank-dashboard.png)
+
+**[https://rank.mo.ai.kr](https://rank.mo.ai.kr)**
 
 대시보드에서:
 
@@ -1029,22 +1174,7 @@ https://rank.mo.ai.kr
 
 ---
 
-## 13. 나의 코딩 스타일
-
-도구 사용 패턴으로 발견하는 당신만의 바이브 코딩 스타일:
-
-| 스타일           | 특징          | 주요 도구           | 성향        |
-| ---------------- | ------------- | ------------------- | ----------- |
-| **🔍 Explorer**   | 코드 탐험가   | Read, Grep, Glob    | 이해 중심   |
-| **✨ Creator**    | 새로운 창조자 | Write, 새 파일 생성 | 창작 중심   |
-| **🔧 Refactorer** | 개선의 달인   | Edit, MultiEdit     | 최적화 중심 |
-| **⚡ Automator**  | 자동화 마스터 | Bash, Task          | 효율 중심   |
-
----
-
-## 14. 대시보드 활용
-
-### 📊 수집되는 메트릭
+### Step 4: 수집되는 메트릭
 
 | 메트릭          | 설명                          |
 | --------------- | ----------------------------- |
@@ -1070,29 +1200,11 @@ moai rank exclude "*/confidential/*"
 moai rank list-excluded
 ```
 
-**보증**: 수집 데이터는 **수치 메트릭만** (코드 내용, 파일 경로 미전송)
+**보증**: 수집 데이터는 **수치 메트릭만** (코드 내용, 파일 경로 미전송) 
 
 ---
 
-## PART F: 더 알아보기 (필요시)
-
----
-
-## 15. 고급 기능 링크
-
-상세 가이드는 별도 문서를 참고하세요:
-
-| 기능                | 문서                                                 | 설명                   |
-| ------------------- | ---------------------------------------------------- | ---------------------- |
-| **Git Worktree**    | [docs/worktree.md](./docs/worktree.md)               | 병렬 개발 상세 가이드  |
-| **GLM Integration** | [docs/glm-integration.md](./docs/glm-integration.md) | z.ai GLM 설정          |
-| **고급 설정**       | [docs/advanced-config.md](./docs/advanced-config.md) | Git 전략 3모드         |
-| **에이전트 상세**   | [docs/agents.md](./docs/agents.md)                   | 20개 에이전트 레퍼런스 |
-| **스킬 카탈로그**   | [docs/skills.md](./docs/skills.md)                   | 48개 스킬 상세         |
-
----
-
-## 16. FAQ 5개
+## 9. FAQ 5개
 
 ### Q1: SPEC는 항상 필요한가요?
 
@@ -1108,11 +1220,10 @@ moai rank list-excluded
 
 **필수 (2개)**:
 
-- **Context7**: 최신 라이브러리 문서 (자동 포함)
-- **Sequential-Thinking**: 복잡한 문제 분석 (자동 포함)
+- **Context7**: 최신 라이브러리 문서, Skill 래퍼런스 생성시 사용
 
 **선택**:
-
+- claude-in-chrome: 브라우저에서 Claude 사용 및 웹 자동화 테스트 
 - Playwright: 웹 자동화 테스트
 - Figma: 디자인 시스템
 
@@ -1141,7 +1252,7 @@ moai rank list-excluded
 ### 🆘 지원
 
 - 이메일: [support@mo.ai.kr](mailto:support@mo.ai.kr)
-- 문서: [https://docs.moai.kr](https://docs.moai.kr)
+- 문서: [https://adk.mo.ai.kr](https://adk.mo.ai.kr)
 
 ---
 
@@ -1153,9 +1264,8 @@ Copyleft License (COPYLEFT-3.0) - [LICENSE](./LICENSE)
 
 ## 🙏 Made with ❤️ by MoAI-ADK Team
 
-**Version:** 0.42.0
 **Last Updated:** 2026-01-11
 **Philosophy**: SPEC-First TDD + Agent Orchestration + Hybrid LLM
 **MoAI**: MoAI는 "모두를 위한 AI (Modu-ui AI)"를 의미합니다.
 
-> **"모두가 AI를 자유롭게 사용할 수 있는 세상"**
+> **"무한가능주의 - 모두의 AI"**
