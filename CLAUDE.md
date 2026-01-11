@@ -766,8 +766,8 @@ builder-agent, builder-command, builder-skill, builder-plugin
 - /moai:1-plan "description" - Specification generation
 - /moai:2-run SPEC-001 - TDD implementation
 - /moai:3-sync SPEC-001 - Documentation synchronization
-- /moai:9-feedback "feedback" - Improvement feedback
 - /moai:alfred - Intelligent routing automation
+- /moai:9-feedback "feedback" - Improvement feedback
 - /clear - Context refresh
 - /agents - Sub-agent management interface
 

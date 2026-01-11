@@ -936,7 +936,8 @@ def format_session_output() -> str:
     conv_lang = personalization.get("conversation_language", "en")
 
     if personalization.get("needs_setup", False):
-        # Show setup guidance for project documentation generation
+        # Show setup guidance (based on conversation_language)
+        # Guide user to generate project documentation with /moai:0-project
         setup_messages = {
             "ko": "   👋 환영합니다! '/moai:0-project' 명령어로 프로젝트 문서를 생성해주세요",
             "ja": "   👋 ようこそ！'/moai:0-project' コマンドでプロジェクトドキュメントを生成してください",
