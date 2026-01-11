@@ -1,7 +1,7 @@
 #!/bin/sh
 # MoAI-ADK Installer
 # Version: 0.42.3
-# Website: https://github.com/goosso/MoAI-ADK
+# Website: https://adk.mo.ai.kr
 
 set -e
 
@@ -125,7 +125,7 @@ print_success() {
     echo "      ${BLUE}moai-adk init my-project${NC}"
     echo ""
     echo "📖 Documentation:"
-    echo "      ${BLUE}https://github.com/goosso/MoAI-ADK${NC}"
+    echo "      ${BLUE}https://adk.mo.ai.kr${NC}"
     echo ""
     echo "═══════════════════════════════════════════════════════"
 }

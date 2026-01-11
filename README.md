@@ -71,7 +71,7 @@ moai glm YOUR_API_KEY
 ### 🚀 Method 1: Quick Install (Recommended)
 
 ```bash
-curl -LsSf https://moai-adk.github.io/MoAI-ADK/install.sh | sh
+curl -LsSf https://modu-ai.github.io/moai-adk/install.sh | sh
 ```
 
 ### 🔧 Method 2: Manual Install

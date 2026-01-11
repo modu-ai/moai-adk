@@ -71,7 +71,7 @@ moai glm YOUR_API_KEY
 ### 🚀 方法1: 快速安装 (推荐)
 
 ```bash
-curl -LsSf https://moai-adk.github.io/MoAI-ADK/install.sh | sh
+curl -LsSf https://modu-ai.github.io/moai-adk/install.sh | sh
 ```
 
 ### 🔧 方法2: 手动安装
