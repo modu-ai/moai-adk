@@ -40,7 +40,6 @@ jobs:
         with:
           path: |
             install.sh
-            install.ps1
             index.html
 
       - name: Deploy to GitHub Pages
