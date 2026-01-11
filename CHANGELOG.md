@@ -1,86 +1,188 @@
-# [Unreleased]
+# v1.0.0 - Production Ready Release (2026-01-12)
+
+## Summary
+
+MoAI-ADK reaches version 1.0.0, marking its **Production/Stable** status. This major release includes the Ralph Engine for intelligent code quality assurance, the Rank System with Dashboard TUI, a major CLI redesign with multilingual support, and comprehensive documentation updates. The package is now ready for production use with 9,800+ tests and 80%+ coverage.
+
+## Highlights
+
+- 🚀 **Ralph Engine**: Intelligent code quality assurance with LSP and AST-grep integration
+- 📊 **Rank System**: Dashboard TUI for development progress tracking
+- 🌐 **CLI Redesign**: Streamlined init flow with multilingual support
+- 📦 **curl Installation**: One-line installation via `curl -fsSL https://moai-adk.github.io/MoAI-ADK/install.sh | sh`
+- ✨ **Production Status**: Development Status upgraded from Beta to Production/Stable
 
 ## Added
 
-- **Ralph Engine** - Intelligent code quality assurance system (SPEC-RALPH-001)
-  - **LSP Integration Layer**: Real-time diagnostics with 16+ language support
-    - `MoAILSPClient`: High-level LSP client interface
-    - `LSPServerManager`: Server lifecycle management
-    - `LSPProtocol`: JSON-RPC 2.0 implementation
-    - Data models: Diagnostic, Position, Range, Location, HoverInfo
-  - **AST-grep Analyzer**: Structural pattern matching and security scanning
-    - `MoAIASTGrepAnalyzer`: AST-based code analysis
-    - Pattern search and replacement capabilities
-    - Security rule scanning with severity levels
-    - Support for 20+ programming languages
-  - **Loop Controller**: Ralph-style autonomous feedback loops
-    - `MoAILoopController`: Feedback loop orchestration
-    - `LoopState` and `LoopStorage`: State persistence
-    - `FeedbackGenerator`: LSP + AST-grep feedback synthesis
-    - Completion detection and progress tracking
-  - **RalphEngine**: Unified facade integrating all components
-    - Combined file diagnosis (LSP + AST-grep)
-    - Project-wide scanning capabilities
-    - Feedback loop management
-  - **Slash Commands**:
-    - `/moai:moai-loop`: Start Ralph-style feedback loop
-    - `/moai:moai-fix`: Auto-fix current LSP errors and AST-grep warnings
-    - `/moai:cancel-loop`: Cancel an active feedback loop
-  - **Hooks**:
-    - `post_tool__lsp_diagnostic`: LSP diagnostics after tool execution
-    - `stop__loop_controller`: Loop controller state management
+### Ralph Engine (SPEC-RALPH-001)
 
-### Test Coverage
+- **LSP Integration Layer**: Real-time diagnostics with 16+ language support
+  - `MoAILSPClient`: High-level LSP client interface
+  - `LSPServerManager`: Server lifecycle management
+  - `LSPProtocol`: JSON-RPC 2.0 implementation
+- **AST-grep Analyzer**: Structural pattern matching and security scanning
+  - Support for 20+ programming languages
+  - Security rule scanning with severity levels
+- **Loop Controller**: Ralph-style autonomous feedback loops
+  - Completion detection and progress tracking
+  - State persistence with `LoopState` and `LoopStorage`
+- **Slash Commands**: `/moai:loop`, `/moai:fix`, `/moai:cancel-loop`
+- **Test Coverage**: 302 tests for Ralph Engine
 
-- Phase 1 (LSP): 95 tests
-- Phase 2 (AST-grep): 59 tests
-- Phase 3 (Loop Controller): 82 tests
-- Phase 4 (Commands/Hooks): 44 tests
-- Phase 5 (Integration): 22 tests
-- **Total**: 302 tests for Ralph Engine
+### Rank System
+
+- Dashboard TUI with real-time progress tracking
+- Hook-based development activity monitoring
+- Stability improvements and test fixes
+
+### CLI Improvements
+
+- Major CLI redesign with streamlined init flow
+- Multilingual support (English, Korean, Japanese, Chinese)
+- `moai-wt` alias for `moai-worktree` command
+- curl install script with GitHub Pages deployment
+
+### Infrastructure
+
+- Terminal PTY support with WebSocket integration
+- Multi-LLM support with GLM config auto-copy
+- Permission settings optimization for bypass/acceptEdits modes
+
+## Changed
+
+- **CLI Display**: Standardized CLI command display to use `moai` alias
+- **Command Naming**: Renamed `moai:all-is-well` to `moai:alfred`
+- **Skills**: Converted all 40 skills to CLAUDE.md Documentation Standards
+- **Agent Ecosystem**: Consolidated from 28 to 20 agents, 50 to 47 skills
+- **Development Status**: Upgraded from "4 - Beta" to "5 - Production/Stable"
+
+## Fixed
+
+- MongoDB deny pattern parse error in settings.json
+- GitHub Pages URL case sensitivity
+- Config sections sync with templates
+- PTY read blocking issue with select-based non-blocking read
+
+## Documentation
+
+- Enhanced README with 9-step wizard and quality focus
+- Synchronized all language READMEs with Korean master template
+- Added Star History chart to Korean README
+- Added official online documentation link to all README files
+
+## Installation
+
+```bash
+# One-line installation (recommended)
+curl -fsSL https://moai-adk.github.io/MoAI-ADK/install.sh | sh
+
+# Or via pip/uv
+pip install moai-adk==1.0.0
+uv tool install moai-adk
+
+# Verify installation
+moai --version
+```
+
+## Statistics
+
+- **Commits since v0.41.2**: 74 commits
+- **Files changed**: 433 files
+- **Test Coverage**: 80%+ (9,800+ tests)
 
 ---
 
-# [Unreleased] (한국어)
+# v1.0.0 - 프로덕션 준비 릴리스 (2026-01-12)
+
+## 요약
+
+MoAI-ADK가 버전 1.0.0에 도달하여 **Production/Stable** 상태가 되었습니다. 이 주요 릴리스에는 지능형 코드 품질 보증을 위한 Ralph Engine, 대시보드 TUI가 포함된 Rank System, 다국어 지원이 포함된 주요 CLI 재설계, 그리고 포괄적인 문서 업데이트가 포함되어 있습니다. 이 패키지는 9,800개 이상의 테스트와 80% 이상의 커버리지로 프로덕션 사용 준비가 완료되었습니다.
+
+## 하이라이트
+
+- 🚀 **Ralph Engine**: LSP 및 AST-grep 통합을 통한 지능형 코드 품질 보증
+- 📊 **Rank System**: 개발 진행 상황 추적을 위한 대시보드 TUI
+- 🌐 **CLI 재설계**: 다국어 지원이 포함된 간소화된 init 플로우
+- 📦 **curl 설치**: `curl -fsSL https://moai-adk.github.io/MoAI-ADK/install.sh | sh`로 한 줄 설치
+- ✨ **프로덕션 상태**: 개발 상태가 Beta에서 Production/Stable로 업그레이드
 
 ## 추가됨
 
-- **Ralph Engine** - 지능형 코드 품질 보증 시스템 (SPEC-RALPH-001)
-  - **LSP 통합 레이어**: 16개 이상 언어 지원 실시간 진단
-    - `MoAILSPClient`: 고수준 LSP 클라이언트 인터페이스
-    - `LSPServerManager`: 서버 생명주기 관리
-    - `LSPProtocol`: JSON-RPC 2.0 구현
-    - 데이터 모델: Diagnostic, Position, Range, Location, HoverInfo
-  - **AST-grep 분석기**: 구조적 패턴 매칭 및 보안 스캐닝
-    - `MoAIASTGrepAnalyzer`: AST 기반 코드 분석
-    - 패턴 검색 및 교체 기능
-    - 심각도 레벨별 보안 규칙 스캐닝
-    - 20개 이상 프로그래밍 언어 지원
-  - **Loop Controller**: Ralph 스타일 자율 피드백 루프
-    - `MoAILoopController`: 피드백 루프 오케스트레이션
-    - `LoopState` 및 `LoopStorage`: 상태 영속성
-    - `FeedbackGenerator`: LSP + AST-grep 피드백 합성
-    - 완료 감지 및 진행률 추적
-  - **RalphEngine**: 모든 컴포넌트를 통합하는 통합 파사드
-    - 통합 파일 진단 (LSP + AST-grep)
-    - 프로젝트 전체 스캐닝 기능
-    - 피드백 루프 관리
-  - **슬래시 커맨드**:
-    - `/moai:moai-loop`: Ralph 스타일 피드백 루프 시작
-    - `/moai:moai-fix`: 현재 LSP 오류 및 AST-grep 경고 자동 수정
-    - `/moai:cancel-loop`: 활성 피드백 루프 취소
-  - **훅**:
-    - `post_tool__lsp_diagnostic`: 도구 실행 후 LSP 진단
-    - `stop__loop_controller`: 루프 컨트롤러 상태 관리
+### Ralph Engine (SPEC-RALPH-001)
 
-### 테스트 커버리지
+- **LSP 통합 레이어**: 16개 이상 언어 지원 실시간 진단
+  - `MoAILSPClient`: 고수준 LSP 클라이언트 인터페이스
+  - `LSPServerManager`: 서버 생명주기 관리
+  - `LSPProtocol`: JSON-RPC 2.0 구현
+- **AST-grep 분석기**: 구조적 패턴 매칭 및 보안 스캐닝
+  - 20개 이상 프로그래밍 언어 지원
+  - 심각도 레벨별 보안 규칙 스캐닝
+- **Loop Controller**: Ralph 스타일 자율 피드백 루프
+  - 완료 감지 및 진행률 추적
+  - `LoopState` 및 `LoopStorage`를 통한 상태 영속성
+- **슬래시 커맨드**: `/moai:loop`, `/moai:fix`, `/moai:cancel-loop`
+- **테스트 커버리지**: Ralph Engine 302개 테스트
 
-- Phase 1 (LSP): 95개 테스트
-- Phase 2 (AST-grep): 59개 테스트
-- Phase 3 (Loop Controller): 82개 테스트
-- Phase 4 (Commands/Hooks): 44개 테스트
-- Phase 5 (Integration): 22개 테스트
-- **총계**: Ralph Engine 302개 테스트
+### Rank System
+
+- 실시간 진행 상황 추적이 포함된 대시보드 TUI
+- 훅 기반 개발 활동 모니터링
+- 안정성 개선 및 테스트 수정
+
+### CLI 개선
+
+- 간소화된 init 플로우를 포함한 주요 CLI 재설계
+- 다국어 지원 (영어, 한국어, 일본어, 중국어)
+- `moai-worktree` 명령어를 위한 `moai-wt` 별칭
+- GitHub Pages 배포가 포함된 curl 설치 스크립트
+
+### 인프라
+
+- WebSocket 통합이 포함된 터미널 PTY 지원
+- GLM 설정 자동 복사가 포함된 Multi-LLM 지원
+- bypass/acceptEdits 모드를 위한 권한 설정 최적화
+
+## 변경됨
+
+- **CLI 표시**: CLI 명령어 표시를 `moai` 별칭 사용으로 표준화
+- **명령어 이름**: `moai:all-is-well`을 `moai:alfred`로 이름 변경
+- **스킬**: 40개 모든 스킬을 CLAUDE.md 문서 표준으로 변환
+- **에이전트 생태계**: 28개에서 20개 에이전트로, 50개에서 47개 스킬로 통합
+- **개발 상태**: "4 - Beta"에서 "5 - Production/Stable"로 업그레이드
+
+## 수정됨
+
+- settings.json의 MongoDB deny 패턴 파싱 오류
+- GitHub Pages URL 대소문자 구분 문제
+- 템플릿과 config 섹션 동기화 문제
+- select 기반 논블로킹 읽기로 PTY 읽기 블로킹 문제 해결
+
+## 문서
+
+- 9단계 마법사 및 품질 집중으로 README 개선
+- 한국어 마스터 템플릿과 모든 언어 README 동기화
+- 한국어 README에 Star History 차트 추가
+- 모든 README 파일에 공식 온라인 문서 링크 추가
+
+## 설치
+
+```bash
+# 한 줄 설치 (권장)
+curl -fsSL https://moai-adk.github.io/MoAI-ADK/install.sh | sh
+
+# 또는 pip/uv 사용
+pip install moai-adk==1.0.0
+uv tool install moai-adk
+
+# 설치 확인
+moai --version
+```
+
+## 통계
+
+- **v0.41.2 이후 커밋 수**: 74개 커밋
+- **변경된 파일 수**: 433개 파일
+- **테스트 커버리지**: 80% 이상 (9,800개 이상 테스트)
 
 ---
 

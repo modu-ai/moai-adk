@@ -1,6 +1,6 @@
 #!/bin/sh
 # MoAI-ADK Installer
-# Version: 0.42.3
+# Version: 1.0.0
 # Website: https://adk.mo.ai.kr
 
 set -e
