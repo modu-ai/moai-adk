@@ -84,6 +84,30 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv tool install moai-adk
 ```
 
+### 🔨 開発者向け: GitHub Pages設定 (オプション)
+
+> **注意:** このセクションはインストールスクリプトを直接ホストしたい開発者向けのオプションです。一般ユーザーはスキップできます。
+
+インストールスクリプトを自分でホストするには、GitHub Repositoryで以下を設定してください:
+
+**1. GitHub Pagesを有効化**
+```
+Settings → Pages
+Source: GitHub Actions
+```
+
+**2. リリース時の自動デプロイ**
+- Releaseを公開すると自動的にGitHub Pagesにデプロイされます
+- デプロイURL: `https://moai-adk.github.io/MoAI-ADK/install.sh`
+
+**3. ローカルテスト**
+```bash
+# インストールスクリプトをローカルでテスト
+bash install/install.sh
+```
+
+---
+
 ### 🎨 対話型設定ウィザード
 
 `moai init`コマンド実行時に**9段階対話型ウィザード**が開始されます:

@@ -84,6 +84,30 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv tool install moai-adk
 ```
 
+### 🔨 For Developers: GitHub Pages Setup (Optional)
+
+> **Note:** This section is optional for developers who want to host the install script directly. Regular users can skip this.
+
+To host the install script yourself, configure the following in your GitHub Repository:
+
+**1. Enable GitHub Pages**
+```
+Settings → Pages
+Source: GitHub Actions
+```
+
+**2. Auto-deploy on Release**
+- GitHub Pages deployment is triggered automatically when you publish a Release
+- Deployment URL: `https://moai-adk.github.io/MoAI-ADK/install.sh`
+
+**3. Local Testing**
+```bash
+# Test install script locally
+bash install/install.sh
+```
+
+---
+
 ### 🎨 Interactive Setup Wizard
 
 Running `moai init` starts a **9-step interactive wizard**:
