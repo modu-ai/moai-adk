@@ -749,7 +749,7 @@ Alfred automatically recognizes 4 language requests and invokes the correct agen
 
 ---
 
-### 🏗️ Tier 3: Meta Generators (4)
+### 🏗️ Tier 3: Claude Code Builder (4)
 
 | Agent | Role | Usage Example |
 |-------|------|--------------|
