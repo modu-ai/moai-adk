@@ -90,40 +90,120 @@ Calculate new version and update:
 
 ## PHASE 4: CHANGELOG Generation (Bilingual Required)
 
-Get commits: `git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s (%h)"`
+IMPORTANT: CHANGELOG MUST always contain actual content!
 
-IMPORTANT: Create TWO separate sections in CHANGELOG.md
+Step 1: Get commits since last tag
+```
+COMMITS=$(git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s (%h)")
+```
 
-Section 1 - English:
+Step 2: Analyze commits to categorize changes:
+- Features (feat): New functionality
+- Fixes (fix): Bug fixes
+- Changes (chore): Maintenance, refactoring
+- Docs (docs): Documentation updates
+- Performance (perf): Performance improvements
+
+Step 3: Generate CHANGELOG content
+
+Read the existing CHANGELOG.md first to understand the format.
+
+Then create TWO separate sections in CHANGELOG.md:
+
+Section 1 - English (MUST contain actual changes):
 
 ```
-# vX.Y.Z - English Title (YYYY-MM-DD)
+# vX.Y.Z - [Title based on main changes] (YYYY-MM-DD)
+
 ## Summary
-[English summary]
-## Changes
-[English changes]
+[1-2 sentence summary of what this release delivers]
+
+## What's Changed
+
+### Features
+[List new features from commits with "feat:" prefix]
+
+### Bug Fixes
+[List bug fixes from commits with "fix:" prefix]
+
+### Improvements
+[List other changes from "chore:", "refactor:", etc.]
+
+### Documentation
+[List docs changes if significant]
+
 ## Installation & Update
-[English instructions]
+
+```bash
+# Upgrade existing installation
+pip install --upgrade moai-adk
+
+# Or with uv
+uv pip install --upgrade moai-adk
+
+# Or with pipx
+pipx upgrade moai-adk
+```
+
+For full installation instructions, visit: https://github.com/modu-ai/moai-adk#installation
+
 ---
 ```
 
-Section 2 - Korean (immediately after English section):
+Section 2 - Korean (immediately after English section, MUST contain actual changes):
 
 ```
-# vX.Y.Z - Korean Title (YYYY-MM-DD)
+# vX.Y.Z - [Korean title based on changes] (YYYY-MM-DD)
+
 ## 요약
-[Korean summary]
+[이번 릴리스가 제공하는 것을 1-2문장으로 설명]
+
 ## 변경 사항
-[Korean changes]
+
+### 새로운 기능
+["feat:" 접두사가 있는 커밋 목록]
+
+### 버그 수정
+["fix:" 접두사가 있는 커밋 목록]
+
+### 개선 사항
+["chore:", "refactor:" 등 기타 변경 사항]
+
+### 문서
+[문서 업데이트가 있으면 목록]
+
 ## 설치 및 업데이트
-[Korean instructions]
+
+```bash
+# 기존 설치 업그레이드
+pip install --upgrade moai-adk
+
+# uv 사용
+uv pip install --upgrade moai-adk
+
+# pipx 사용
+pipx upgrade moai-adk
+```
+
+전체 설치 방법: https://github.com/modu-ai/moai-adk#installation
+
 ---
 ```
 
-Both sections are REQUIRED for proper GitHub Release generation.
+CRITICAL RULES:
+1. ALWAYS include actual commit-based changes, NEVER leave placeholder text
+2. If no changes in a category, omit that section entirely
+3. Both English and Korean sections are MANDATORY
+4. Date format: YYYY-MM-DD (today's date)
+5. Title should reflect the most significant change
 
 Prepend both sections to CHANGELOG.md and commit:
 `git add CHANGELOG.md && git commit -m "docs: Update CHANGELOG for vX.Y.Z"`
+
+VERIFY CHANGELOG content before committing:
+```bash
+head -60 CHANGELOG.md  # Should show both sections with actual content
+```
 
 ---
 
