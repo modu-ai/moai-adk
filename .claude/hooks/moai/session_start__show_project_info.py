@@ -468,6 +468,7 @@ def get_git_info() -> Dict[str, Any]:
 
     # Fallback to basic Git operations
     try:
+        import concurrent.futures
         from concurrent.futures import ThreadPoolExecutor, as_completed
 
         # Define git commands to run in parallel

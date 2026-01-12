@@ -1171,8 +1171,28 @@ class TemplateProcessor:
             console.print("   🔄 .github/ merged (user workflows preserved, variables substituted)")
 
     def _copy_claude_md(self, silent: bool = False) -> None:
-        """Copy CLAUDE.md with complete replacement (no merge)."""
-        src = self.template_root / "CLAUDE.md"
+        """Copy CLAUDE.md with complete replacement (no merge).
+
+        Selects language-specific CLAUDE.md based on conversation_language setting:
+        - CLAUDE.ko.md for Korean
+        - CLAUDE.ja.md for Japanese
+        - CLAUDE.zh.md for Chinese
+        - CLAUDE.md for English (default)
+        """
+        # Get language from context (set by set_context())
+        language = self.context.get("CONVERSATION_LANGUAGE", "en") if self.context else "en"
+
+        # Select language-specific file
+        if language and language != "en":
+            lang_specific_src = self.template_root / f"CLAUDE.{language}.md"
+            if lang_specific_src.exists():
+                src = lang_specific_src
+            else:
+                # Fallback to English if language-specific file doesn't exist
+                src = self.template_root / "CLAUDE.md"
+        else:
+            src = self.template_root / "CLAUDE.md"
+
         dst = self.target_path / "CLAUDE.md"
 
         if not src.exists():
@@ -1235,7 +1255,7 @@ class TemplateProcessor:
         import os
 
         try:
-            import yaml  # noqa: F401
+            import yaml  # noqa: F401 # pyright: ignore[reportUnusedImport]
 
             yaml_available = True
         except ImportError:

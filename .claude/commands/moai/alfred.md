@@ -1,6 +1,6 @@
 ---
 description: "Agentic AI automation - From SPEC to code with autonomous loop"
-argument-hint: '"task description" [--loop] [--max N] | resume SPEC-XXX'
+argument-hint: '"task description" [--loop] [--max N] [--seq] | resume SPEC-XXX'
 type: utility
 allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 model: inherit
@@ -22,138 +22,199 @@ model: inherit
 
 # /moai:alfred - Agentic AI Autonomous Automation
 
-## Core Principle: 완전 자율 자동화
+## Core Principle: Fully Autonomous Automation
 
-사용자가 목표를 제시하면 AI가 스스로 계획하고 실행하고 완료합니다.
+User provides a goal, AI autonomously plans, executes, and completes.
 
 ```
-USER: "인증 기능 추가"
+USER: "Add authentication feature"
   ↓
-AI: 탐색 → 계획 → 구현 → 검증 → 반복
+AI: Explore → Plan → Implement → Verify → Repeat
   ↓
-AI: 모든 이슈 해 solved
+AI: All issues resolved
   ↓
 AI: <moai>DONE</moai>
 ```
 
 ## Command Purpose
 
-전체 MoAI 워크플로우를 자율적으로 실행:
+Autonomously execute the full MoAI workflow:
 
-1. **병렬 탐색** (Explore + Research 동시 실행)
-2. **SPEC 생성** (사용자 승인 후)
-3. **TDD 구현** (자동 반복 수정)
-4. **문서 동기화**
-5. **완료 마커 감지** (`<moai>DONE</moai>`)
+1. **Parallel Exploration** (Explore + Research simultaneously)
+2. **SPEC Generation** (after user approval)
+3. **TDD Implementation** (auto iterative fixing)
+4. **Documentation Sync**
+5. **Completion Marker Detection** (`<moai>DONE</moai>`)
 
 Feature Description: $ARGUMENTS
 
 ## Quick Start
 
 ```bash
-# 기본 자율 실행
-/moai:alfred "JWT 인증 추가"
+# Default autonomous execution (parallel exploration)
+/moai:alfred "Add JWT authentication"
 
-# 자동 루프 활성화 (최대 50회)
-/moai:alfred "JWT 인증" --loop --max 50
+# Enable auto loop (max 50 iterations)
+/moai:alfred "JWT auth" --loop --max 50
 
-# 병렬 탐색 + 자동 루프
-/moai:alfred "JWT 인증" --loop --parallel
+# Sequential exploration + auto loop
+/moai:alfred "JWT auth" --loop --sequential
 
-# 이어서 하기
+# Resume previous work
 /moai:alfred resume SPEC-AUTH-001
 ```
 
 ## Command Options
 
-| 옵션 | 축약 | 설명 | 기본값 |
-|------|------|------|--------|
-| `--loop` | - | 자동 반복 수정 활성화 | ralph.yaml |
-| `--max N` | --max-iterations | 최대 반복 횟수 | 100 |
-| `--parallel` | - | 병렬 탐색 활성화 | 권장 |
-| `--branch` | - | 기능 브랜치 자동 생성 | git-strategy |
-| `--pr` | - | PR 자동 생성 | git-strategy |
-| `--resume SPEC` | - | 이어서 하기 | - |
+| Option | Alias | Description | Default |
+|--------|-------|-------------|---------|
+| `--loop` | - | Enable auto iterative fixing | ralph.yaml |
+| `--max N` | --max-iterations | Maximum iteration count | 100 |
+| `--sequential` | --seq | Sequential exploration (for debugging) | Parallel |
+| `--branch` | - | Auto-create feature branch | git-strategy |
+| `--pr` | - | Auto-create PR | git-strategy |
+| `--resume SPEC` | - | Resume previous work | - |
 
-## Completion Promise (완료 마커)
+## Completion Promise
 
-AI가 작업을 완료했을 때 반드시 마커를 추가:
+AI must add a marker when work is complete:
 
 ```markdown
-## 완료
+## Complete
 
-모든 구현 완료, 테스트 통과, 문서 업데이트. <moai>DONE</moai>
+All implementation complete, tests passing, docs updated. <moai>DONE</moai>
 ```
 
-**마커 종류**:
-- `<moai>DONE</moai>` - 작업 완료
-- `<moai>COMPLETE</moai>` - 전체 완료
-- `<moai:done />` - XML 형식
+**Marker Types**:
+- `<moai>DONE</moai>` - Task complete
+- `<moai>COMPLETE</moai>` - Full completion
+- `<moai:done />` - XML format
 
 ## Agentic Autonomous Flow
 
 ```
 START: /moai:alfred "task description"
 
-PHASE 0: 병렬 탐색 (자율)
-  ├── Explore Agent: 코드베이스 분석
-  ├── Research Agent: 문서/이슈 검색
-  └── Quality Agent: 현재 상태 진단
+PHASE 0: Parallel Exploration (autonomous)
+  ┌── Explore Agent: Codebase analysis
+  ├── Research Agent: Documentation/issue search
+  └── Quality Agent: Current state diagnosis
   ↓
-통합 → 실행 계획 생성
+Integration → Execution plan generation
 
-PHASE 1: SPEC 생성
-  └── EARS 형식으로 작성
+PHASE 1: SPEC Generation
+  └── Written in EARS format
   ↓
-사용자 승인
+User Approval
   ↓
-PHASE 2: TDD 구현 (자율 루프)
+PHASE 2: TDD Implementation (autonomous loop)
   │
   └── WHILE (issues_exist AND iteration < max):
-       ├── 진단 (LSP + Tests + Coverage)
-       ├── TODO 생성
-       ├── 수정 실행
-       ├── 검증
-       └── 완료 마커 감지? → BREAK
+       ├── Diagnostics (LSP + Tests + Coverage)
+       ├── TODO generation
+       ├── Fix execution
+       ├── Verification
+       └── Completion marker detected? → BREAK
   ↓
-PHASE 3: 문서 동기화
-  └── 마커 추가: <moai>DONE</moai>
+PHASE 3: Documentation Sync
+  └── Add marker: <moai>DONE</moai>
   ↓
 COMPLETE
 ```
 
-## TODO-Obsessive Rule (자율 추적)
+### Phase 0: Parallel Exploration Implementation
 
-```
-[HARD] TODO 관리 규칙
+By default, execute three exploration agents simultaneously for optimal performance:
 
-1. 즉시 생성: 이슈 발견 즉시 TODO 추가
-2. 즉시 진행: 시작 전 in_progress 표시
-3. 즉시 완료: 완료 후 completed 표시
-4. 금지: 배치 완료 (여러 개 한꺼번에 완료 금지)
-5. 완료 조건: 모든 TODO 완료 OR 완료 마커
-```
+Step 1 - Launch Parallel Agent Tasks:
+
+In a single response, invoke all three Task tools simultaneously (Claude Code executes them in parallel automatically):
+
+1. Explore Agent:
+   - subagent_type: Explore
+   - description: Codebase analysis for task context
+   - prompt: Include user task description, request relevant files, architecture patterns, existing implementations
+
+2. Research Agent:
+   - subagent_type: Explore (with WebSearch/WebFetch focus)
+   - description: External documentation and best practices research
+   - prompt: Include user task description, request API docs, library documentation, similar implementations
+
+3. Quality Agent:
+   - subagent_type: manager-quality
+   - description: Current project quality assessment
+   - prompt: Request test coverage status, lint status, technical debt assessment
+
+All three Task calls in the same response triggers automatic parallel execution (up to 10 concurrent).
+
+Step 2 - Collect and Integrate Results:
+
+After all three agents complete:
+
+1. Collect outputs from each agent response
+2. Extract key findings:
+   - From Explore: Relevant files, architecture patterns, existing code to reference
+   - From Research: External knowledge, best practices, API patterns
+   - From Quality: Current test coverage, code quality baseline, known issues
+
+3. Synthesize into unified exploration report
+
+Step 3 - Generate Execution Plan:
+
+Based on integrated findings:
+
+1. Identify implementation approach
+2. List files to create/modify
+3. Define test strategy
+4. Estimate scope and complexity
+
+Step 4 - User Approval Checkpoint:
+
+Present integrated findings and proposed plan to user via AskUserQuestion:
+- Options: Proceed to SPEC creation, Modify approach, Cancel
+
+Error Handling:
+
+If any agent fails:
+- Continue with results from successful agents
+- Note missing information in plan
+- Offer to retry failed agent or proceed with partial information
+
+WHY: Parallel exploration reduces Phase 0 time from 45-90 seconds to 15-30 seconds (2-3x speedup)
+IMPACT: Faster initial context gathering without sacrificing comprehensiveness
+
+## TODO-Obsessive Rule
+
+[HARD] TodoWrite Tool Mandatory Usage:
+
+1. Immediate Creation: When issues are discovered, call TodoWrite tool to add items with pending status
+2. Immediate Progress: Before starting work, call TodoWrite tool to change item to in_progress
+3. Immediate Completion: After completing work, call TodoWrite tool to change item to completed
+4. Prohibited: Output TODO lists as text (MUST use TodoWrite tool)
+5. Completion Condition: All TODOs completed OR completion marker detected
+
+WHY: Using TodoWrite tool allows users to track progress in real-time.
 
 ## Output Format
 
-### 실행 중
+### Running
 
 ```markdown
 ## Alfred: Phase 2 (Loop 3/100)
 
 ### TODO Status
-- [x] JWT 토큰 생성 구현
-- [x] 로그인 엔드포인트 구현
-- [ ] 토큰 검증 미들웨어 ← 진행 중
+- [x] Implement JWT token generation
+- [x] Implement login endpoint
+- [ ] Token validation middleware ← in progress
 
 ### Issues
 - ERROR: src/auth.py:45 - undefined 'jwt_decode'
 - WARNING: tests/test_auth.py:12 - unused 'result'
 
-수정 중...
+Fixing...
 ```
 
-### 완료 시
+### Complete
 
 ```markdown
 ## Alfred: COMPLETE
@@ -177,42 +238,42 @@ COMPLETE
 
 ## LLM Mode
 
-`llm.yaml` 설정에 따라 자동 분기:
+Auto-routing based on `llm.yaml` settings:
 
-| 모드 | Plan Phase | Run Phase |
+| Mode | Plan Phase | Run Phase |
 |------|------------|-----------|
-| opus-only | Claude (현재) | Claude (현재) |
-| hybrid | Claude (현재) | GLM (worktree) |
+| opus-only | Claude (current) | Claude (current) |
+| hybrid | Claude (current) | GLM (worktree) |
 | glm-only | GLM (worktree) | GLM (worktree) |
 
-## Expert Delegation (단일 도메인)
+## Expert Delegation (Single Domain)
 
-단일 도메인 작업은 전문 에이전트에게 직접 위임:
+Single domain tasks are delegated directly to expert agents:
 
 ```bash
-# Alfred가 자동 판단
-/moai:alfred "SQL 쿼리 최적화"
+# Alfred auto-determines
+/moai:alfred "SQL query optimization"
 
-# → expert-performance 에이전트에게 직접 위임
-# → SPEC 없이 즉시 구현
+# → Delegates directly to expert-performance agent
+# → Immediate implementation without SPEC
 ```
 
 ## Quick Reference
 
 ```bash
-# 자율 실행 (기본)
+# Autonomous execution (default parallel)
 /moai:alfred "task"
 
-# 자동 루프 + 병렬
-/moai:alfred "task" --loop --parallel
+# Auto loop + sequential
+/moai:alfred "task" --loop --sequential
 
-# 최대 반복 지정
+# Specify max iterations
 /moai:alfred "task" --loop --max 50
 
-# 브랜치 + PR
+# Branch + PR
 /moai:alfred "task" --branch --pr
 
-# 이어서 하기
+# Resume
 /moai:alfred resume SPEC-XXX
 ```
 
@@ -220,13 +281,56 @@ COMPLETE
 
 ## EXECUTION DIRECTIVE
 
-1. $ARGUMENTS 파싱
-2. LLM 모드 감지 (llm.yaml)
-3. 병렬 탐색 실행 (--parallel 또는 ralph.yaml)
-4. 라우팅 결정 (전체 워크플로우 vs 전문가 위임)
-5. 사용자 확인
-6. 실행 및 자율 루프
-7. 완료 마커로 종료
+1. Parse $ARGUMENTS (extract --loop, --max, --sequential, --branch, --pr, --resume flags)
+
+2. IF --resume flag with SPEC ID: Load existing SPEC and continue from last state
+
+3. Detect LLM mode from llm.yaml (opus-only, hybrid, glm-only)
+
+4. Execute Phase 0 - Parallel Exploration:
+
+   IF --sequential flag is specified:
+
+   4a. Run Explore, then Research, then Quality sequentially
+
+   ELSE (default parallel mode):
+
+   4b. In a single response, invoke three Task tools simultaneously:
+       - Task 1 (Explore): Codebase analysis with subagent_type="Explore"
+       - Task 2 (Research): Documentation research with subagent_type="Explore" and WebSearch focus
+       - Task 3 (Quality): Quality assessment with subagent_type="manager-quality"
+
+   4c. Collect and integrate results from all three agents
+
+   4d. Generate unified exploration report and execution plan
+
+5. Routing decision:
+   - IF single-domain task (e.g., "SQL optimization"): Delegate directly to expert agent, skip SPEC
+   - IF multi-domain task: Proceed to full workflow with SPEC generation
+
+6. [HARD] Call TodoWrite tool to add discovered tasks with pending status
+
+7. User confirmation via AskUserQuestion (Proceed, Modify, Cancel)
+
+8. Execute Phase 1 - SPEC Generation:
+   - Use manager-spec subagent to create EARS-format SPEC document
+
+9. Execute Phase 2 - TDD Implementation Loop:
+
+   IF --loop flag OR ralph.yaml loop.enabled is true:
+
+   9a. WHILE (issues exist AND iteration less than max):
+       - [HARD] Before each task, call TodoWrite to change item to in_progress
+       - Execute diagnostics (parallel if enabled)
+       - Fix discovered issues
+       - [HARD] After each fix, call TodoWrite to change item to completed
+       - Check for completion marker
+       - IF marker found: Break loop
+
+10. Execute Phase 3 - Documentation Sync:
+    - Use manager-docs subagent to synchronize documentation
+
+11. Terminate with completion marker: Add marker when all tasks complete successfully
 
 ---
 

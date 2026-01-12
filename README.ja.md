@@ -95,7 +95,7 @@ uv tool install moai-adk
 
 対話言語を選択します。以降の案内がすべて選択した言語で表示されます。
 
-```
+```text
 🌐 Language Selection
 ❯ Select your conversation language: [↑↓] Navigate  [Enter] Select
 ❯ Japanese (日本語)
@@ -110,7 +110,7 @@ uv tool install moai-adk
 
 ユーザー名を入力します。AIがパーソナライズされた応答を提供します。
 
-```
+```text
 👤 ユーザー設定
 ❯ ユーザー名を入力してください (選択事項):
 ```
@@ -121,7 +121,7 @@ uv tool install moai-adk
 
 Z.AI社のGLM APIキーを入力します。
 
-```
+```text
 🔑 APIキー入力
 GLM CodePlan API key (optional - press Enter to skip)
 
@@ -144,7 +144,7 @@ Enterを押すと既存キー維持、新しいキーを入力すると交換さ
 
 プロジェクト名を入力します。
 
-```
+```text
 📁 プロジェクト設定
 ❯ プロジェクト名: MoAI-ADK
 ```
@@ -155,7 +155,7 @@ Enterを押すと既存キー維持、新しいキーを入力すると交換さ
 
 Gitモードを選択します。
 
-```
+```text
 🔀 Git設定
 ❯ Gitモードを選択してください: [↑↓] Navigate  [Enter] Select
 ❯ manual (ローカルのみ) - ローカルリポジトリのみ使用
@@ -169,7 +169,7 @@ Gitモードを選択します。
 
 personal/team選択時にGitHubユーザー名を入力します。
 
-```
+```text
 ❯ GitHubユーザー名:
 ```
 
@@ -179,7 +179,7 @@ personal/team選択時にGitHubユーザー名を入力します。
 
 Gitコミットメッセージに使用する言語を選択します。
 
-```
+```text
 🗣️ 出力言語設定
 ❯ コミットメッセージ言語: [↑↓] Navigate  [Enter] Select
   English
@@ -194,7 +194,7 @@ Gitコミットメッセージに使用する言語を選択します。
 
 コードコメントに使用する言語を選択します。
 
-```
+```text
 ❯ コードコメント言語: [↑↓] Navigate  [Enter] Select
   English
 ❯ Japanese (日本語)
@@ -208,7 +208,7 @@ Gitコミットメッセージに使用する言語を選択します。
 
 ドキュメントに使用する言語を選択します。
 
-```
+```text
 ❯ ドキュメント言語: [↑↓] Navigate  [Enter] Select
   English
 ❯ Japanese (日本語)
@@ -228,7 +228,7 @@ Gitコミットメッセージに使用する言語を選択します。
 
 すべての設定が完了すると5段階インストールが自動進行します:
 
-```
+```text
 🚀 Starting installation...
 
 Phase 1: Preparation and backup...        ████████████████ 100%
@@ -274,7 +274,7 @@ moai update
 
 **3段階スマートアップデートワークフロー**:
 
-```
+```text
 Stage 1: 📦 パッケージバージョン確認
          └─ PyPIで最新バージョン確認 → 必要時自動アップグレード
 
@@ -308,7 +308,7 @@ moai update --yes
 
 **マージ戦略選択**:
 
-```
+```text
 🔀 Choose merge strategy:
   [1] Auto-merge (default)
       → テンプレート + ユーザー変更事項自動保存
@@ -345,7 +345,7 @@ moai update --manual
 
 新規プロジェクトや既存プロジェクトで**Claude Codeがプロジェクトを理解するのを助ける**プロジェクトドキュメントを自動生成できます:
 
-```
+```text
 > /moai:0-project
 ```
 
@@ -486,7 +486,7 @@ Red-Green-Refactorサイクルを通じてテストを先に書き、それを�
 > /moai:alfred "機能説明"
 ```
 
-ユーザーが目標を提示するとAIが自ら探索、計画、実装、検証をすべて行います。並列探索でコードベースを分析し、自律ループを通じて問題を自ら修正します。完了マーカー(`<promise>DONE</promise>`)を検知すると自動終了して開発者は最終結果のみ確認すれば良いです。
+ユーザーが目標を提示するとAIが自ら探索、計画、実装、検証をすべて行います。並列探索でコードベースを分析し、自律ループを通じて問題を自ら修正します。完了マーカー(`<moai>DONE</moai>`)を検知すると自動終了して開発者は最終結果のみ確認すれば良いです。
 
 **一度に実行**:
 
@@ -499,19 +499,21 @@ Red-Green-Refactorサイクルを通じてテストを先に書き、それを�
 
 - `--loop`: 自律反復修正活性化 (AIが自ら問題解決)
 - `--max N`: 最大反復回数指定 (デフォルト: 100)
-- `--parallel`: 並列探索活性化 (より高速な分析)
+- `--sequential` / `--seq`: 順次探索 (デバッグ用) - 並列がデフォルト
 - `--branch`: 機能ブランチ自動作成
 - `--pr`: 完了後Pull Request作成
 - `--resume SPEC`: 続きから
 
+> **パフォーマンス**: 並列探索がデフォルトになり、3-4倍高速な分析が可能です。`--sequential`はデバッグ用にのみ使用してください。
+
 **例**:
 
 ```bash
-# 基本自律実行
+# 基本自律実行 (並列がデフォルト)
 > /moai:alfred "JWT認証追加"
 
-# 自動ループ + 並列探索
-> /moai:alfred "JWT認証" --loop --parallel
+# 自動ループ + 順次探索 (デバッグ用)
+> /moai:alfred "JWT認証" --loop --seq
 
 # 続きから
 > /moai:alfred resume SPEC-AUTH-001
@@ -532,26 +534,28 @@ AIが自らLSPエラー、テスト失敗、カバレッジ不足を診断して
 ```text
 並列診断 → TODO生成 → 修正実行 → 検証 → 反復
     ↓
-完了マーカー検知 → <promise>DONE</promise>
+完了マーカー検知 → <moai>DONE</moai>
 ```
 
 **オプション**:
 
 - `--max N`: 最大反復回数 (デフォルト: 100)
 - `--auto`: 自動修正活性化 (Level 1-3)
-- `--parallel`: 並列診断実行 (推奨)
+- `--sequential` / `--seq`: 順次診断 (デバッグ用) - 並列がデフォルト
 - `--errors`: エラーのみ修正
 - `--coverage`: カバレッジ包含 (85%目標)
 - `--resume ID`: スナップショット復元
 
+> **パフォーマンス**: 並列診断がデフォルトになり、LSP、AST-grep、Tests、Coverageを同時実行します (3.75倍高速)。
+
 **例**:
 
 ```bash
-# 基本自律ループ
+# 基本自律ループ (並列がデフォルト)
 > /moai:loop
 
-# 並列 + 自動修正
-> /moai:loop --parallel --auto
+# 順次 + 自動修正 (デバッグ用)
+> /moai:loop --seq --auto
 
 # 最大50回反復
 > /moai:loop --max 50
@@ -592,20 +596,22 @@ Linter
 **オプション**:
 
 - `--dry`: プレビューのみ (実際修正なし)
-- `--parallel`: 並列スキャン (推奨)
+- `--sequential` / `--seq`: 順次スキャン (デバッグ用) - 並列がデフォルト
 - `--level N`: 最大修正レベル (デフォルト: 3)
 - `--errors`: エラーのみ修正
 - `--security`: セキュリティ検査包含
 - `--no-fmt`: フォーマットスキップ
 
+> **パフォーマンス**: 並列スキャンがデフォルトになり、LSP、AST-grep、Linterを同時実行します (3.75倍高速)。
+
 **例**:
 
 ```bash
-# 基本修正
+# 基本修正 (並列がデフォルト)
 > /moai:fix
 
-# 並列スキャン
-> /moai:fix --parallel
+# 順次スキャン (デバッグ用)
+> /moai:fix --seq
 
 # プレビュー
 > /moai:fix --dry
@@ -660,7 +666,7 @@ Linter
 
 **実際出力結果**:
 
-```
+```text
 
 ⏺ ✅ ループキャンセル完了
 
@@ -701,7 +707,80 @@ Linter
 
 ---
 
-## 4. Mr.AlfredとSub-Agents
+## 4. 🤖 All is Well - エージェンティック自律自動化
+
+**MoAI-ADKの最も強力な機能**: AIが自ら探索し、計画し、実装し、検証を完了マーカー検出まで繰り返します。
+
+### 核心コンセプト
+
+```text
+ユーザー: "認証機能追加"
+  ↓
+AI: 探索 → 計画 → 実装 → 検証 → 繰り返し
+  ↓
+AI: すべての問題解決
+  ↓
+AI: <moai>DONE</moai>  ← 完了マーカー
+```
+
+### 3つのコマンド階層
+
+| コマンド             | タイプ      | 説明                                          |
+| -------------------- | ----------- | --------------------------------------------- |
+| `/moai:fix`          | 単発        | 1回スキャン + 自動修正                        |
+| `/moai:loop`         | 自律ループ  | 完了マーカー または 最大回数まで繰り返し修正  |
+| `/moai:alfred`       | 完全自律    | 目標 → SPEC → 実装 → ドキュメント全過程自動化 |
+
+### コマンドチェーン関係
+
+```text
+/moai:alfred
+  ├── Phase 0: 並列探索 (Explore + Research + Quality)
+  ├── Phase 1: /moai:1-plan (SPEC生成)
+  ├── Phase 2: /moai:2-run (TDD実装)
+  │     └── /moai:loop (自律ループ)
+  │           └── /moai:fix (単発修正) × N回
+  └── Phase 3: /moai:3-sync (ドキュメント同期)
+```
+
+### 完了マーカー
+
+AIが作業完了時にマーカーを追加して自律ループが終了します:
+
+| マーカー               | 説明       |
+| ---------------------- | ---------- |
+| `<moai>DONE</moai>`    | 作業完了   |
+| `<moai>COMPLETE</moai>`| 全体完了   |
+| `<moai:done />`        | XML形式    |
+
+### 自動修正レベル
+
+| Level | 説明     | 承認     | 例                           |
+| ----- | -------- | -------- | ---------------------------- |
+| 1     | 即時修正 | 不要     | import整列、空白             |
+| 2     | 安全修正 | ログのみ | 変数名、タイプ追加           |
+| 3     | 承認必要 | 必要     | ロジック変更、API修正        |
+| 4     | 手動必要 | 不可     | セキュリティ、アーキテクチャ |
+
+### クイックスタート
+
+```bash
+# 1回修正 (並列がデフォルト)
+> /moai:fix
+
+# 自律ループ (完了マーカーまで、並列がデフォルト)
+> /moai:loop --auto
+
+# 完全自律自動化 (All is Well!、並列がデフォルト)
+> /moai:alfred "JWT認証追加" --loop
+
+# 続きから
+> /moai:alfred resume SPEC-AUTH-001
+```
+
+---
+
+## 5. Mr.AlfredとSub-Agents
 
 ### 🎩 Mr.Alfred - Super Agent (首席オーケストレーター)
 
@@ -768,7 +847,7 @@ Alfredは4つの言語リクエストを自動認識して正しいエージェ�
 
 ---
 
-## 5. Agent-Skills
+## 6. Agent-Skills
 
 ### 📚 スキルライブラリ構造
 
@@ -804,7 +883,7 @@ Skill("moai-lang-python")
 
 ---
 
-## 5. TRUST 5品質原則
+## 7. TRUST 5品質原則
 
 MoAI-ADKのすべてプロジェクトは**TRUST 5**品質フレームワークに従います。
 
@@ -878,7 +957,7 @@ graph TD
 
 ---
 
-## 6. 自動品質検査
+## 8. 自動品質検査
 
 ### 🔍 AST-Grep基盤構造的検査
 
@@ -913,7 +992,72 @@ graph TD
 
 ---
 
-## 7. 🌳 Worktree並列開発
+## 9. 📊 Statuslineカスタマイズ
+
+MoAI-ADKはClaude Codeターミナルにリアルタイム状態情報を表示するカスタマイズ可能なstatuslineを提供します。
+
+### デフォルトレイアウト
+
+```text
+🤖 Opus 4.5 | 💰 152K/200K | 💬 Mr. Alfred | 📁 MoAI-ADK | 📊 +0 M58 ?5 | 💾 57.7MB | 🔀 main
+```
+
+### 使用可能なコンポーネント
+
+| アイコン | コンポーネント | 説明 | 設定キー |
+|----------|----------------|------|----------|
+| 🤖 | モデル | Claudeモデル (Opus, Sonnet等) | `model` |
+| 💰 | コンテキスト | コンテキストウィンドウ使用量 (例: 77K/200K) | `context_window` |
+| 💬 | スタイル | アクティブアウトプットスタイル (例: Mr. Alfred) | `output_style` |
+| 📁 | ディレクトリ | 現在のプロジェクト名 | `directory` |
+| 📊 | Git状態 | ステージング/修正/追跡されないファイル数 | `git_status` |
+| 💾 | メモリ | プロセスメモリ使用量 | `memory_usage` |
+| 🔀 | ブランチ | 現在のGitブランチ | `branch` |
+| 🔅 | バージョン | Claude Codeバージョン (オプション) | `version` |
+
+### 設定
+
+`.moai/config/statusline-config.yaml`で表示項目を設定します:
+
+```yaml
+display:
+  model: true           # 🤖 Claudeモデル
+  context_window: true  # 💰 コンテキストウィンドウ
+  output_style: true    # 💬 アウトプットスタイル
+  directory: true       # 📁 プロジェクト名
+  git_status: true      # 📊 Git状態
+  memory_usage: true    # 💾 メモリ使用量
+  branch: true          # 🔀 Gitブランチ
+  version: false        # 🔅 バージョン (オプション)
+  active_task: true     # アクティブタスク
+```
+
+### メモリコレクター
+
+`memory_usage`が有効な場合、MoAI-ADKは`psutil`を使用してリアルタイムメモリ使用量を収集します:
+
+- **プロセスメモリ**: 現在のPythonプロセスのRSS (常駐セットサイズ)
+- **キャッシング**: 10秒TTLで性能最適化
+- **クロスプラットフォーム**: macOS, Linux, Windowsサポート
+- **グレースフルデグラデーション**: psutilが使用不可な場合は"N/A"表示
+
+### ディスプレイモード
+
+| モード | 最大長 | 使用ケース |
+|--------|--------|------------|
+| `compact` | 80文字 | 標準ターミナル |
+| `extended` | 120文字 | ワイドターミナル |
+| `minimal` | 40文字 | 狭いターミナル |
+
+モード設定:
+
+```bash
+export MOAI_STATUSLINE_MODE=extended
+```
+
+---
+
+## 10. 🌳 Worktree並列開発
 
 MoAI-ADKの核心革新: **Worktreeで完全分離、無制限並列開発**
 
@@ -1067,7 +1211,7 @@ moai-wt clean --merged-only
 
 ---
 
-## 8. MoAI Rank 紹介
+## 11. MoAI Rank 紹介
 
 **エージェンティックコーディングの新次元**: あなたのコーディング旅を追跡して、グローバル開発者たちと競争してください！
 
@@ -1237,7 +1381,7 @@ moai rank list-excluded
 
 ---
 
-## 9. FAQ 5個
+## 12. FAQ 5個
 
 ### Q1: SPECは常に必要ですか？
 
@@ -1275,7 +1419,7 @@ moai rank list-excluded
 
 ---
 
-## 17. コミュニティ & サポート
+## 13. コミュニティ & サポート
 
 ### 🌐 参加する
 

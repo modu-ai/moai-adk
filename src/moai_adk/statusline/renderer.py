@@ -67,7 +67,7 @@ class StatuslineRenderer:
 
     def _render_compact(self, data: StatuslineData) -> str:
         """
-        Render compact mode: 🤖 Model | 🔅 Version | 💰 Context | 💬 Style | 📊 Changes | 🔀 Branch
+        Render compact mode: 🤖 Model | 💰 Context | 💬 Style | 📁 Directory | 📊 Changes | 💾 Memory | 🔀 Branch
         Constraint: <= 80 characters
 
         Args:
@@ -91,7 +91,7 @@ class StatuslineRenderer:
     def _build_compact_parts(self, data: StatuslineData) -> List[str]:
         """
         Build parts list for compact mode with labeled sections
-        Format: 🤖 Model | 🔅 Version | 💰 Context | 💬 Style | 📊 Changes | 🔀 Branch
+        Format: 🤖 Model | 💰 Context | 💬 Style | 📁 Directory | 📊 Changes | 💾 Memory | 🔀 Branch
 
         Args:
             data: StatuslineData instance
@@ -101,36 +101,35 @@ class StatuslineRenderer:
         """
         parts = []
 
-        # Add model if display enabled (most important - cloud service context)
+        # 1. Add model first (cloud service context)
         if self._display_config.model:
             parts.append(f"🤖 {data.model}")
 
-        # Add Claude Code version if available and display enabled (Issue #248 fix)
-        if self._display_config.version and data.claude_version:
-            claude_ver_str = data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
-            parts.append(f"🔅 {claude_ver_str}")
-
-        # Add context window usage if available (💰 icon)
+        # 2. Add context window usage if available
         if data.context_window:
             parts.append(f"💰 {data.context_window}")
 
-        # Add output style if not empty
+        # 3. Add output style if not empty
         if data.output_style:
             parts.append(f"💬 {data.output_style}")
 
-        # Add git status if display enabled and status not empty
-        if self._display_config.git_status and data.git_status:
-            parts.append(f"📊 {data.git_status}")
-
-        # Add Git info (development context)
-        if self._display_config.branch:
-            parts.append(f"🔀 {data.branch}")
-
-        # Add directory if display enabled and not empty (Issue #248 fix)
+        # 4. Add directory (project context)
         if self._display_config.directory and data.directory:
             parts.append(f"📁 {data.directory}")
 
-        # Add active_task if display enabled and not empty
+        # 5. Add git status if display enabled and status not empty
+        if self._display_config.git_status and data.git_status:
+            parts.append(f"📊 {data.git_status}")
+
+        # 6. Add memory usage if display enabled
+        if self._display_config.memory_usage and data.memory_usage:
+            parts.append(f"💾 {data.memory_usage}")
+
+        # 7. Add Git branch (development context)
+        if self._display_config.branch:
+            parts.append(f"🔀 {data.branch}")
+
+        # 8. Add active_task if display enabled and not empty
         if self._display_config.active_task and data.active_task.strip():
             parts.append(data.active_task)
 
@@ -139,7 +138,7 @@ class StatuslineRenderer:
     def _fit_to_constraint(self, data: StatuslineData, max_length: int) -> str:
         """
         Fit statusline to character constraint by truncating
-        Format: 🤖 Model | 🔅 Version | 💰 Context | 💬 Style | 📊 Changes | 🔀 Branch
+        Format: 🤖 Model | 💰 Context | 💬 Style | 📁 Directory | 📊 Changes | 💾 Memory | 🔀 Branch
 
         Args:
             data: StatuslineData instance
@@ -150,13 +149,10 @@ class StatuslineRenderer:
         """
         truncated_branch = self._truncate_branch(data.branch, max_length=30)
 
-        # Build parts list
-        parts = [f"🤖 {data.model}"]
+        # Build parts list in new order
+        parts = []
 
-        # Issue #248 fix: Check display_config.version before rendering
-        if self._display_config.version and data.claude_version:
-            claude_ver_str = data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
-            parts.append(f"🔅 {claude_ver_str}")
+        parts.append(f"🤖 {data.model}")
 
         if data.context_window:
             parts.append(f"💰 {data.context_window}")
@@ -164,8 +160,14 @@ class StatuslineRenderer:
         if data.output_style:
             parts.append(f"💬 {data.output_style}")
 
+        if self._display_config.directory and data.directory:
+            parts.append(f"📁 {data.directory}")
+
         if self._display_config.git_status and data.git_status:
             parts.append(f"📊 {data.git_status}")
+
+        if self._display_config.memory_usage and data.memory_usage:
+            parts.append(f"💾 {data.memory_usage}")
 
         parts.append(f"🔀 {truncated_branch}")
 
@@ -177,24 +179,22 @@ class StatuslineRenderer:
         # If still too long, try more aggressive branch truncation
         if len(result) > max_length:
             truncated_branch = self._truncate_branch(data.branch, max_length=12)
-            parts = [f"🤖 {data.model}"]
-
-            # Issue #248 fix: Check display_config.version before rendering
-            if self._display_config.version and data.claude_version:
-                claude_ver_str = (
-                    data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
-                )
-                parts.append(f"🔅 {claude_ver_str}")
+            parts = []
+            parts.append(f"🤖 {data.model}")
             if data.context_window:
                 parts.append(f"💰 {data.context_window}")
             if data.output_style:
                 parts.append(f"💬 {data.output_style}")
+            if self._display_config.directory and data.directory:
+                parts.append(f"📁 {data.directory}")
             if data.git_status:
                 parts.append(f"📊 {data.git_status}")
+            if self._display_config.memory_usage and data.memory_usage:
+                parts.append(f"💾 {data.memory_usage}")
             parts.append(f"🔀 {truncated_branch}")
             result = self._format_config.separator.join(parts)
 
-        # If still too long, remove output_style
+        # If still too long, remove output_style and memory_usage
         if len(result) > max_length:
             parts = [f"🤖 {data.model}"]
             if data.context_window:
@@ -214,7 +214,7 @@ class StatuslineRenderer:
         """
         Render extended mode: Full path and detailed info with labels
         Constraint: <= 120 characters
-        Format: 🤖 Model | 🔅 Version | 💰 Context | 💬 Style | 📊 Changes | 🔀 Branch
+        Format: 🤖 Model | 💰 Context | 💬 Style | 📁 Directory | 📊 Changes | 💾 Memory | 🔀 Branch
 
         Args:
             data: StatuslineData instance
@@ -224,33 +224,38 @@ class StatuslineRenderer:
         """
         branch = self._truncate_branch(data.branch, max_length=30)
 
-        # Build parts list
+        # Build parts list in new order
         parts = []
 
+        # 1. Model first
         if self._display_config.model:
             parts.append(f"🤖 {data.model}")
 
-        # Issue #248 fix: Check display_config.version before rendering
-        if self._display_config.version and data.claude_version:
-            claude_ver_str = data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
-            parts.append(f"🔅 {claude_ver_str}")
-
+        # 2. Context window
         if data.context_window:
             parts.append(f"💰 {data.context_window}")
 
+        # 3. Output style
         if data.output_style:
             parts.append(f"💬 {data.output_style}")
 
-        if self._display_config.git_status and data.git_status:
-            parts.append(f"📊 {data.git_status}")
-
-        if self._display_config.branch:
-            parts.append(f"🔀 {branch}")
-
-        # Issue #248 fix: Add directory rendering
+        # 4. Directory
         if self._display_config.directory and data.directory:
             parts.append(f"📁 {data.directory}")
 
+        # 5. Git status
+        if self._display_config.git_status and data.git_status:
+            parts.append(f"📊 {data.git_status}")
+
+        # 6. Memory usage
+        if self._display_config.memory_usage and data.memory_usage:
+            parts.append(f"💾 {data.memory_usage}")
+
+        # 7. Git branch
+        if self._display_config.branch:
+            parts.append(f"🔀 {branch}")
+
+        # 8. Active task
         if self._display_config.active_task and data.active_task.strip():
             parts.append(data.active_task)
 
@@ -262,18 +267,16 @@ class StatuslineRenderer:
             parts = []
             if self._display_config.model:
                 parts.append(f"🤖 {data.model}")
-            # Issue #248 fix: Check display_config.version before rendering
-            if self._display_config.version and data.claude_version:
-                claude_ver_str = (
-                    data.claude_version if data.claude_version.startswith("v") else f"v{data.claude_version}"
-                )
-                parts.append(f"🔅 {claude_ver_str}")
             if data.context_window:
                 parts.append(f"💰 {data.context_window}")
             if data.output_style:
                 parts.append(f"💬 {data.output_style}")
+            if self._display_config.directory and data.directory:
+                parts.append(f"📁 {data.directory}")
             if data.git_status:
                 parts.append(f"📊 {data.git_status}")
+            if self._display_config.memory_usage and data.memory_usage:
+                parts.append(f"💾 {data.memory_usage}")
             parts.append(f"🔀 {branch}")
             result = self._format_config.separator.join(parts)
 

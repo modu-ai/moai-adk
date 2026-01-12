@@ -2,11 +2,11 @@
 
 > **Purpose**: Essential guide for local MoAI-ADK development
 > **Audience**: GOOS (local developer only)
-> **Last Updated**: 2025-12-04
+> **Last Updated**: 2026-01-13
 
 ---
 
-## Quick Start
+## 1. Quick Start
 
 ### Work Location
 ```bash
@@ -27,7 +27,7 @@
 
 ---
 
-## File Synchronization
+## 2. File Synchronization
 
 ### Auto-Sync Directories
 ```bash
@@ -63,29 +63,29 @@ src/moai_adk/templates/.moai/config/presets/        # Configuration presets
 
 ---
 
-## Code Standards
+## 3. Code Standards
 
 ### Language: English Only
-- ✅ All code, comments, docstrings in English
-- ✅ Variable names: camelCase or snake_case
-- ✅ Class names: PascalCase
-- ✅ Constants: UPPER_SNAKE_CASE
-- ✅ Commit messages: English
+- All code, comments, docstrings in English
+- Variable names: camelCase or snake_case
+- Class names: PascalCase
+- Constants: UPPER_SNAKE_CASE
+- Commit messages: English
 
 ### Forbidden
 ```python
-# ❌ WRONG - Korean comments
+# WRONG - Korean comments
 def calculate():  # 계산
     pass
 
-# ✅ CORRECT - English comments
+# CORRECT - English comments
 def calculate():  # Calculate score
     pass
 ```
 
 ---
 
-## Git Workflow
+## 4. Git Workflow
 
 ### Before Commit
 - [ ] Code in English
@@ -100,87 +100,259 @@ def calculate():  # Calculate score
 
 ---
 
-## Frequently Used Commands
+## 5. Version Management
 
-### Sync
-```bash
-# Sync from template to local
-# IMPORTANT: --exclude prevents deletion of protected directories
-rsync -avz --delete src/moai_adk/templates/.claude/ .claude/
-rsync -avz --delete --exclude='project/' --exclude='specs/' src/moai_adk/templates/.moai/ .moai/
-cp src/moai_adk/templates/CLAUDE.md ./CLAUDE.md
+### Single Source of Truth
 
-# Alternative: One-liner for all sync (with protection)
-rsync -avz --delete src/moai_adk/templates/.claude/ .claude/ && \
-rsync -avz --delete --exclude='project/' --exclude='specs/' src/moai_adk/templates/.moai/ .moai/ && \
-cp src/moai_adk/templates/CLAUDE.md ./CLAUDE.md
-```
+- [HARD] pyproject.toml is the ONLY authoritative source for MoAI-ADK version
+- WHY: Prevents version inconsistencies across multiple files
 
-### Validation
-```bash
-# Code quality
-ruff check src/
-mypy src/
+Version Reference:
 
-# Tests
-pytest tests/ -v --cov
+- Authoritative Source: pyproject.toml (version = "X.Y.Z")
+- Runtime Access: src/moai_adk/version.py reads from pyproject.toml
+- Config Display: .moai/config/sections/system.yaml (updated by release process)
 
-# Docs
-python .moai/tools/validate-docs.py
-```
+### Files Requiring Version Sync
 
-### Release (Local Only)
-```bash
-/moai:99-release  # Local release command
-```
+When releasing new version, these files MUST be updated:
 
----
+Documentation Files:
 
-## Directory Structure
+- README.md (Version line)
+- README.ko.md (Version line)
+- README.ja.md (Version line)
+- README.zh.md (Version line)
+- CHANGELOG.md (New version entry)
 
-```
-MoAI-ADK/
-├── src/moai_adk/              # Package source
-│   ├── cli/                   # CLI commands
-│   ├── core/                  # Core modules
-│   ├── foundation/            # Foundation components
-│   ├── project/               # Project management
-│   ├── statusline/            # Statusline features
-│   ├── templates/             # Distribution templates (work here)
-│   │   ├── .claude/           # Claude Code config templates
-│   │   │   ├── agents/        # Agent definitions
-│   │   │   ├── commands/      # Slash commands
-│   │   │   ├── hooks/         # Hook scripts
-│   │   │   ├── output-styles/ # Output style definitions
-│   │   │   └── skills/        # Skill definitions
-│   │   ├── .moai/             # MoAI config templates
-│   │   │   └── config/        # config.yaml template
-│   │   └── CLAUDE.md          # Alfred execution directives
-│   └── utils/                 # Utility modules
-│
-├── .claude/                   # Synced from templates
-├── .moai/                     # Synced from templates
-├── CLAUDE.md                  # Synced from templates
-├── CLAUDE.local.md            # This file (local only)
-└── tests/                     # Test suite
-```
+Configuration Files:
+
+- pyproject.toml (Single Source - update FIRST)
+- src/moai_adk/version.py (_FALLBACK_VERSION)
+- .moai/config/sections/system.yaml (moai.version)
+- src/moai_adk/templates/.moai/config/config.yaml (moai.version)
+
+### Version Sync Process
+
+- [HARD] Before any release:
+
+Step 1: Update pyproject.toml
+
+- Change version = "X.Y.Z" to new version
+
+Step 2: Run Version Sync Script
+
+- Execute: .github/scripts/sync-versions.sh X.Y.Z
+- Or manually update all files listed above
+
+Step 3: Verify Consistency
+
+- Run: grep -r "X.Y.Z" to confirm all files updated
+- Check: No old version numbers remain in critical files
+
+### Prohibited Practices
+
+- [HARD] Never hardcode version in multiple places without sync mechanism
+- [HARD] Never update README version without updating pyproject.toml
+- [HARD] Never release with mismatched versions across files
+
+WHY: Version inconsistency causes confusion and breaks tooling expectations.
 
 ---
 
-## Important Notes
+## 6. Plugin Development
 
-- `/Users/goos/MoAI/MoAI-ADK/.claude/settings.json` uses substituted variables
-- Template changes trigger auto-sync via hooks
-- Local config is never synced to package (user-specific)
-- Output styles allow visual emphasis emoji (🤖 R2-D2 ★) per CLAUDE.md Documentation Standards
-- **CRITICAL**: `.moai/project/` and `.moai/specs/` are protected from deletion during sync
-  - These directories contain user-generated project documentation and active SPEC files
-  - Always use `--exclude='project/' --exclude='specs/'` when syncing `.moai/`
-  - If accidentally deleted, restore with: `git checkout <commit-hash> -- .moai/project/ .moai/specs/`
+### What are Plugins
+
+Plugins are reusable extensions that bundle Claude Code configurations for distribution across projects. Unlike standalone configurations in .claude/ directories, plugins can be installed via marketplaces and version-controlled independently.
+
+### Plugin vs Standalone Configuration
+
+Standalone Configuration:
+
+- Scope: Single project only
+- Sharing: Manual copy or git submodules
+- Best for: Project-specific customizations
+
+Plugin Configuration:
+
+- Scope: Reusable across multiple projects
+- Sharing: Installable via marketplaces or git URLs
+- Best for: Team standards, reusable workflows, community tools
+
+### Plugin Structure
+
+Create a plugin directory with the following structure:
+
+- .claude-plugin/plugin.json - Plugin manifest with name, description, version, author
+- commands/ - Slash commands
+- agents/ - Sub-agent definitions
+- skills/ - Skill definitions
+- hooks/hooks.json - Hook configurations
+- .mcp.json - MCP server configurations
+
+### Plugin Management Commands
+
+Installation:
+
+- /plugin install plugin-name - Install from marketplace
+- /plugin install owner/repo - Install from GitHub
+- /plugin install plugin-name --scope project - Install with scope
+
+Other Commands:
+
+- /plugin uninstall - Remove a plugin
+- /plugin enable - Enable a disabled plugin
+- /plugin disable - Disable a plugin temporarily
+- /plugin update - Update to latest version
+- /plugin list - List installed plugins
+- /plugin validate - Validate plugin structure
+
+For detailed plugin development, refer to Skill("moai-foundation-claude") reference documentation.
 
 ---
 
-## Path Variable Strategy
+## 7. Sandboxing
+
+### OS-Level Security Isolation
+
+Claude Code provides OS-level sandboxing to restrict file system and network access during code execution.
+
+Platform-Specific Implementation:
+
+- Linux: Uses bubblewrap (bwrap) for namespace-based isolation
+- macOS: Uses Seatbelt (sandbox-exec) for profile-based restrictions
+
+### Default Sandbox Behavior
+
+When sandboxing is enabled:
+
+- File writes are restricted to the current working directory
+- Network access is limited to allowed domains
+- System resources are protected from modification
+
+### Auto-Allow Mode
+
+If a command only reads from allowed paths, writes to allowed paths, and accesses allowed network domains, it executes automatically without user confirmation.
+
+### Security Best Practices
+
+Start Restrictive:
+
+- Begin with minimal permissions
+- Monitor for violations
+- Add specific allowances as needed
+
+Combine with IAM:
+
+- Sandbox provides OS-level isolation
+- IAM provides Claude-level permissions
+- Together they create defense-in-depth
+
+For detailed configuration, refer to Skill("moai-foundation-claude") reference documentation.
+
+---
+
+## 8. Headless Mode and CI/CD
+
+### Basic Usage
+
+Simple Prompt:
+
+- claude -p "Your prompt here" - Runs Claude with the given prompt and exits after completion
+
+Continue Previous Conversation:
+
+- claude -c "Follow-up question" - Continues the most recent conversation
+
+Resume Specific Session:
+
+- claude -r session_id "Continue this task" - Resumes a specific session by ID
+
+### Output Formats
+
+Available formats:
+
+- text - Default plain text output
+- json - Structured JSON output
+- stream-json - Streaming JSON for real-time processing
+
+### Tool Management
+
+Allow Specific Tools:
+
+- claude -p "Build the project" --allowedTools "Bash,Read,Write" - Auto-approves specified tools
+
+Tool Pattern Matching:
+
+- claude -p "Check git status" --allowedTools "Bash(git:*)" - Allow only specific patterns
+
+### Structured Output with JSON Schema
+
+Validate output against provided JSON schema for reliable data extraction in automated pipelines.
+
+Use --json-schema flag with a schema file to enforce output structure.
+
+### Best Practices for CI/CD
+
+- Use --append-system-prompt to retain Claude Code capabilities
+- [HARD] Always specify --allowedTools in CI/CD to prevent unintended actions
+- Use --output-format json for reliable parsing
+- Handle errors with exit code checks
+- Use --agents for multi-agent orchestration in pipelines
+
+For complete CLI reference, refer to Skill("moai-foundation-claude") reference documentation.
+
+---
+
+## 9. Documentation Standards
+
+### Required Practices
+
+All instruction documents must follow these standards:
+
+Formatting Requirements:
+
+- Use detailed markdown formatting for explanations
+- Document step-by-step procedures in text form
+- Describe concepts and logic in narrative style
+- Present workflows with clear textual descriptions
+- Organize information using list format
+
+### Content Restrictions
+
+Restricted Content:
+
+- [HARD] Conceptual explanations expressed as code examples
+- [HARD] Flow control logic expressed as code syntax
+- [HARD] Decision trees shown as code structures
+- [HARD] Table format in instructions
+- [HARD] Emoji characters in instructions
+- [HARD] Time estimates or duration predictions
+
+WHY: Code examples can be misinterpreted as executable commands. Flow control must use narrative text format.
+
+### Scope of Application
+
+These standards apply to:
+
+- CLAUDE.md
+- Agent definitions
+- Slash commands
+- Skill definitions
+- Hook definitions
+- Configuration files
+
+Note: These restrictions do NOT apply to:
+
+- Output styles (may use visual emphasis emoji)
+- User-facing documentation
+- README files
+- Code files themselves
+
+---
+
+## 10. Path Variable Strategy
 
 ### Template vs Local Settings
 
@@ -223,15 +395,15 @@ MoAI-ADK uses different path variable strategies for template and local environm
 
 ### Critical Rules
 
-✅ **DO**:
+DO:
 - Keep `{{PROJECT_DIR}}` in template files (src/moai_adk/templates/)
 - Keep `"$CLAUDE_PROJECT_DIR"` in local files (.claude/)
 - Quote the variable: `"$CLAUDE_PROJECT_DIR"` (prevents shell expansion issues)
 
-❌ **DON'T**:
-- Never use absolute paths in templates (breaks cross-platform compatibility)
-- Never commit `{{PROJECT_DIR}}` in local files (breaks runtime resolution)
-- Never use `$CLAUDE_PROJECT_DIR` without quotes (causes parsing errors)
+DO NOT:
+- [HARD] Never use absolute paths in templates (breaks cross-platform compatibility)
+- [HARD] Never commit `{{PROJECT_DIR}}` in local files (breaks runtime resolution)
+- [HARD] Never use `$CLAUDE_PROJECT_DIR` without quotes (causes parsing errors)
 
 ### Verification
 
@@ -256,32 +428,7 @@ Expected output:
 
 ---
 
-## Output Styles
-
-### Visual Emphasis Emoji Policy
-
-Per CLAUDE.md Documentation Standards, output styles may use visual emphasis emoji:
-
-**Allowed in output styles:**
-- Header decorations: `🤖 R2-D2 ★ Code Insight`, `🧙 Yoda ★ Deep Understanding`
-- Section markers: `💡`, `📊`, `⚡`, `✅`, `❓`, `🔍`
-- Brand identity: `🗿 MoAI-ADK`
-- Numbered items: `1️⃣`, `2️⃣`, `3️⃣`, `4️⃣`
-
-**NOT allowed in AskUserQuestion:**
-- No emoji in question text, headers, or option labels
-
-### Output Style Locations
-
-```
-src/moai_adk/templates/.claude/output-styles/moai/
-├── r2d2.md    # Pair programming partner (v2.0.0)
-└── yoda.md    # Technical wisdom master (v2.0.0)
-```
-
----
-
-## Configuration System
+## 11. Configuration System
 
 ### Config File Format
 
@@ -305,15 +452,128 @@ MoAI-ADK uses YAML for configuration:
 
 ---
 
-## Reference
+## 12. Output Styles
 
-- CLAUDE.md: Alfred execution directives (v8.1.0)
+### Visual Emphasis Emoji Policy
+
+Per CLAUDE.md Documentation Standards, output styles may use visual emphasis emoji:
+
+**Allowed in output styles:**
+- Header decorations: `R2-D2 Code Insight`, `Yoda Deep Understanding`
+- Section markers for visual separation
+- Brand identity markers
+- Numbered items for lists
+
+**NOT allowed in AskUserQuestion:**
+- No emoji in question text, headers, or option labels
+
+### Output Style Locations
+
+```
+src/moai_adk/templates/.claude/output-styles/moai/
+├── r2d2.md    # Pair programming partner (v2.0.0)
+└── yoda.md    # Technical wisdom master (v2.0.0)
+```
+
+---
+
+## 13. Directory Structure
+
+```
+MoAI-ADK/
+├── src/moai_adk/              # Package source
+│   ├── cli/                   # CLI commands
+│   ├── core/                  # Core modules
+│   ├── foundation/            # Foundation components
+│   ├── project/               # Project management
+│   ├── statusline/            # Statusline features
+│   ├── templates/             # Distribution templates (work here)
+│   │   ├── .claude/           # Claude Code config templates
+│   │   │   ├── agents/        # Agent definitions
+│   │   │   ├── commands/      # Slash commands
+│   │   │   ├── hooks/         # Hook scripts
+│   │   │   ├── output-styles/ # Output style definitions
+│   │   │   └── skills/        # Skill definitions
+│   │   ├── .moai/             # MoAI config templates
+│   │   │   └── config/        # config.yaml template
+│   │   └── CLAUDE.md          # Alfred execution directives
+│   └── utils/                 # Utility modules
+│
+├── .claude/                   # Synced from templates
+├── .moai/                     # Synced from templates
+├── CLAUDE.md                  # Synced from templates
+├── CLAUDE.local.md            # This file (local only)
+└── tests/                     # Test suite
+```
+
+---
+
+## 14. Frequently Used Commands
+
+### Sync Commands
+```bash
+# Sync from template to local
+# IMPORTANT: --exclude prevents deletion of protected directories
+rsync -avz --delete src/moai_adk/templates/.claude/ .claude/
+rsync -avz --delete --exclude='project/' --exclude='specs/' src/moai_adk/templates/.moai/ .moai/
+cp src/moai_adk/templates/CLAUDE.md ./CLAUDE.md
+
+# Alternative: One-liner for all sync (with protection)
+rsync -avz --delete src/moai_adk/templates/.claude/ .claude/ && \
+rsync -avz --delete --exclude='project/' --exclude='specs/' src/moai_adk/templates/.moai/ .moai/ && \
+cp src/moai_adk/templates/CLAUDE.md ./CLAUDE.md
+```
+
+### Validation Commands
+```bash
+# Code quality
+ruff check src/
+mypy src/
+
+# Tests
+pytest tests/ -v --cov
+
+# Docs
+python .moai/tools/validate-docs.py
+```
+
+### Release Commands (Local Only)
+```bash
+# Use the local release command
+/moai:99-release
+
+# Manual version sync
+.github/scripts/sync-versions.sh X.Y.Z
+
+# Verify version consistency
+grep -r "X.Y.Z" pyproject.toml README.md CHANGELOG.md
+```
+
+---
+
+## 15. Important Notes
+
+- `/Users/goos/MoAI/MoAI-ADK/.claude/settings.json` uses substituted variables
+- Template changes trigger auto-sync via hooks
+- Local config is never synced to package (user-specific)
+- Output styles allow visual emphasis emoji per CLAUDE.md Documentation Standards
+- **CRITICAL**: `.moai/project/` and `.moai/specs/` are protected from deletion during sync
+  - These directories contain user-generated project documentation and active SPEC files
+  - Always use `--exclude='project/' --exclude='specs/'` when syncing `.moai/`
+  - If accidentally deleted, restore with: `git checkout <commit-hash> -- .moai/project/ .moai/specs/`
+
+---
+
+## 16. Reference
+
+- CLAUDE.md: Alfred execution directives (v9.3.0)
 - README.md: Project overview
 - Skills: `Skill("moai-foundation-core")` for execution rules
+- Skills: `Skill("moai-foundation-claude")` for plugin development, sandboxing, headless mode
 - Output Styles: r2d2.md, yoda.md (v2.0.0)
 
 ---
 
-**Status**: ✅ Active (Local Development)
-**Version**: 2.3.0 (Protected Directories - .moai/project/ and .moai/specs/)
-**Last Updated**: 2026-01-12
+**Status**: Active (Local Development)
+**Version**: 3.0.0 (Added Version Management, Plugin Development, Sandboxing, Headless Mode, Documentation Standards)
+**Last Updated**: 2026-01-13

@@ -2,7 +2,7 @@
 description: "Generate project documentation from codebase analysis"
 argument-hint: ""
 type: workflow
-allowed-tools: Task, AskUserQuestion, TodoWrite
+allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 model: inherit
 ---
 
@@ -303,18 +303,15 @@ Options:
 
 ## Critical Rules
 
-### Tool Usage Constraints
+### Tool Usage Guidelines
 
-[HARD] Use ONLY Task() for agent orchestration and AskUserQuestion() for interaction.
+This command has access to all tools for flexibility:
 
-Prohibited Direct Tools:
+- Task() for agent orchestration (recommended for complex tasks)
+- AskUserQuestion() for user interaction at command level
+- Read, Write, Edit, Bash, Glob, Grep for direct operations when needed
 
-- NO Read for file operations (delegated to agents)
-- NO Write for file creation (delegated to agents)
-- NO Edit for modifications (delegated to agents)
-- NO Bash for command execution (delegated to agents)
-
-WHY: Delegation enables specialized agent tool access and consistent execution context.
+Agent delegation is recommended for complex tasks that benefit from specialized expertise. Direct tool usage is permitted when appropriate for simpler operations.
 
 ### Language Handling
 

@@ -16,14 +16,14 @@ MoAI-ADK는 **품질 있는 코드를 만드는 AI 개발 환경**을 제공합�
 
 ## 🎁 MoAI-ADK 스폰서: z.ai GLM 4.7
 
-### 💎 비용 효율적인 AI 개발을 위한 최적 솔루션
+### 비용 효율적인 AI 개발을 위한 최적 솔루션
 
 MoAI-ADK는 **z.ai GLM 4.7**과 파트너십을 통해 개발자들에게 경제적인 AI 개발 환경을 제공합니다.
 
 ### 🚀 GLM 4.7 특별 혜택
 
-| 혜택                  | 설명                                           |
-| --------------------- | ---------------------------------------------- |
+| 혜택                 | 설명                                           |
+| -------------------- | ---------------------------------------------- |
 | **💰 70% 비용 절감**  | Claude 대비 1/7 가격으로 동등한 성능           |
 | **⚡ 빠른 응답 속도** | 최적화된 인프라로 저지연 응답 제공             |
 | **🔄 호환성**         | Claude Code와 완벽 호환, 별도 코드 수정 불필요 |
@@ -46,7 +46,7 @@ MoAI-ADK는 **z.ai GLM 4.7**과 파트너십을 통해 개발자들에게 경제
 
 # 2. MoAI-ADK에 GLM 설정
 moai glm YOUR_API_KEY
-```text
+```
 
 > **💡 팁**: Worktree 환경에서 GLM 4.7을 활용하면 Opus로 설계하고 GLM으로 대량 구현하여 비용을 최대 70% 절감할 수 있습니다.
 
@@ -487,7 +487,7 @@ Red-Green-Refactor 사이클을 통해 테스트 먼저 작성하고, 이를 통
 > /moai:alfred "기능 설명"
 ```text
 
-사용자가 목표를 제시하면 AI가 스스로 탐색, 계획, 구현, 검증을 모두 수행합니다. 병렬 탐색으로 코드베이스를 분석하고, 자율 루프를 통해 이슈를 스스로 수정합니다. 완료 마커(`<promise>DONE</promise>`)를 감지하면 자동으로 종료되어 개발자는 최종 결과만 확인하면 됩니다.
+사용자가 목표를 제시하면 AI가 스스로 탐색, 계획, 구현, 검증을 모두 수행합니다. 병렬 탐색으로 코드베이스를 분석하고, 자율 루프를 통해 이슈를 스스로 수정합니다. 완료 마커(`<moai>DONE</moai>`)를 감지하면 자동으로 종료되어 개발자는 최종 결과만 확인하면 됩니다.
 
 **한 번에 실행**:
 
@@ -500,19 +500,21 @@ Red-Green-Refactor 사이클을 통해 테스트 먼저 작성하고, 이를 통
 
 - `--loop`: 자율 반복 수정 활성화 (AI가 스스로 이슈 해결)
 - `--max N`: 최대 반복 횟수 지정 (기본값: 100)
-- `--parallel`: 병렬 탐색 활성화 (더 빠른 분석)
+- `--sequential` / `--seq`: 순차 탐색 (디버깅용) - 병렬이 기본값
 - `--branch`: 기능 브랜치 자동 생성
 - `--pr`: 완료 후 Pull Request 생성
 - `--resume SPEC`: 이어서 하기
 
+> **성능**: 병렬 탐색이 기본값으로 변경되어 3-4배 빠른 분석이 가능합니다. `--sequential`은 디버깅용으로만 사용하세요.
+
 **예시**:
 
 ```bash
-# 기본 자율 실행
+# 기본 자율 실행 (병렬이 기본값)
 > /moai:alfred "JWT 인증 추가"
 
-# 자동 루프 + 병렬 탐색
-> /moai:alfred "JWT 인증" --loop --parallel
+# 자동 루프 + 순차 탐색 (디버깅용)
+> /moai:alfred "JWT 인증" --loop --seq
 
 # 이어서 하기
 > /moai:alfred resume SPEC-AUTH-001
@@ -533,26 +535,28 @@ AI가 스스로 LSP 오류, 테스트 실패, 커버리지 부족을 진단하�
 ```text
 병렬 진단 → TODO 생성 → 수정 실행 → 검증 → 반복
     ↓
-완료 마커 감지 → <promise>DONE</promise>
+완료 마커 감지 → <moai>DONE</moai>
 ```text
 
 **옵션**:
 
 - `--max N`: 최대 반복 횟수 (기본값: 100)
 - `--auto`: 자동 수정 활성화 (Level 1-3)
-- `--parallel`: 병렬 진단 실행 (권장)
+- `--sequential` / `--seq`: 순차 진단 (디버깅용) - 병렬이 기본값
 - `--errors`: 에러만 수정
 - `--coverage`: 커버리지 포함 (85% 목표)
 - `--resume ID`: 스냅샷 복구
 
+> **성능**: 병렬 진단이 기본값으로 변경되어 LSP, AST-grep, Tests, Coverage를 동시에 실행합니다 (3.75배 빠름).
+
 **예시**:
 
 ```bash
-# 기본 자율 루프
+# 기본 자율 루프 (병렬이 기본값)
 > /moai:loop
 
-# 병렬 + 자동 수정
-> /moai:loop --parallel --auto
+# 순차 + 자동 수정 (디버깅용)
+> /moai:loop --seq --auto
 
 # 최대 50회 반복
 > /moai:loop --max 50
@@ -593,20 +597,22 @@ Linter
 **옵션**:
 
 - `--dry`: 미리보기만 (실제 수정 없음)
-- `--parallel`: 병렬 스캔 (권장)
+- `--sequential` / `--seq`: 순차 스캔 (디버깅용) - 병렬이 기본값
 - `--level N`: 최대 수정 레벨 (기본값: 3)
 - `--errors`: 에러만 수정
 - `--security`: 보안 검사 포함
 - `--no-fmt`: 포맷팅 스킵
 
+> **성능**: 병렬 스캔이 기본값으로 변경되어 LSP, AST-grep, Linter를 동시에 실행합니다 (3.75배 빠름).
+
 **예시**:
 
 ```bash
-# 기본 수정
+# 기본 수정 (병렬이 기본값)
 > /moai:fix
 
-# 병렬 스캔
-> /moai:fix --parallel
+# 순차 스캔 (디버깅용)
+> /moai:fix --seq
 
 # 미리보기
 > /moai:fix --dry
@@ -702,7 +708,280 @@ Linter
 
 ---
 
-## 4. Mr.Alfred와 Sub-Agents
+## 4. All is Well - 에이전틱 자율 자동화
+
+MoAI-ADK의 핵심 워크플로우 세 가지 명령어를 완전하게 분석했습니다.
+
+---
+
+### 1. `/moai:fix` - 단발성 자동 수정
+
+#### 📋 메타데이터
+
+| 항목    | 값                                                         |
+| ------- | ---------------------------------------------------------- |
+| Type    | utility                                                    |
+| Version | 2.1.0                                                      |
+| Tools   | Task, AskUserQuestion, Bash, Read, Write, Edit, Glob, Grep |
+| Purpose | 한 번의 스캔으로 이슈 감지 및 자율 수정                    |
+
+#### 🔄 워크플로우
+
+```text
+START: /moai:fix [--seq] [--dry]
+  ↓
+PARALLEL SCAN (병렬이 기본값, --seq로 순차)
+  ├── LSP 진단
+  ├── AST-grep (보안)
+  └── Linter (ruff 등)
+  ↓
+CLASSIFICATION (자율 분류)
+  ├── Level 1: import, 공백 (즉시)
+  ├── Level 2: 변수명, 타입 (안전)
+  ├── Level 3: 로직, API (승인필요)
+  └── Level 4: 보안 (수동필요)
+  ↓
+AUTO-FIX (Level 1-2 자동 수정)
+  → Level 3: AskUserQuestion
+  ↓
+VERIFY → REPORT (증거 포함)
+  ↓
+END (한 번 실행 후 종료)
+```text
+
+#### 🎯 핵심 특징
+
+- **1회성 실행**: 한 번 스캔/수정 후 종료
+- **증거 기반**: 모든 수정에 출처 명시
+- **--dry 모드**: 미리보기만 가능
+
+---
+
+### 2. `/moai:loop` - 자율 반복 수정 루프
+
+#### 📋 메타데이터
+
+| 항목    | 값                                                        |
+| ------- | --------------------------------------------------------- |
+| Type    | utility                                                   |
+| Version | 2.1.0                                                     |
+| Tools   | Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit |
+| Purpose | 완료될 때까지 자율적으로 반복 수정                        |
+
+#### 🔄 워크플로우
+
+```text
+START: /moai:loop [--max N] [--seq]
+  ↓
+PARALLEL DIAGNOSTICS (병렬이 기본값, --seq로 순차)
+  ├── LSP: 에러/경고
+  ├── AST-grep: 보안 이슈
+  ├── Tests: 테스트 실행
+  └── Coverage: 커버리지 측정
+  ↓
+완료 마커 감지?
+  ├── YES → COMPLETE 🎉
+  └── NO  ↓
+TODO 즉시 생성 (TODO-Obsessive Rule)
+  ↓
+AUTO-FIX (레벨별 수정)
+  ├── Level 1: 즉시 수정
+  ├── Level 2: 안전 수정
+  └── Level 3: 승인 요청
+  ↓
+VERIFY (검증)
+  ↓
+max 도달?
+  ├── YES → STOP (스냅샷 저장)
+  └── NO  → 🔄 반복 (처음으로)
+  ↓
+END: <moai>DONE</moai>
+```text
+
+#### 🎯 핵심 특징
+
+- **자율 반복**: max 도달 또는 완료 마커까지 계속
+- **완료 마커**: `<moai:DONE</moai>` 감지 시 종료
+- **스냅샷**: 상태 저장/복구 가능
+- **취소**: `/moai:cancel-loop`으로 중단 가능
+
+---
+
+### 3. `/moai:alfred` - 완전 자율 자동화
+
+#### 📋 메타데이터
+
+| 항목    | 값                                                  |
+| ------- | --------------------------------------------------- |
+| Type    | workflow                                            |
+| Version | 3.1.0                                               |
+| Tools   | Task, AskUserQuestion, TodoWrite, Skill, Glob, Bash |
+| Purpose | 목표 → SPEC → 구현 → 검증 전체 자율화               |
+
+#### 🔄 워크플로우
+
+```text
+START: /moai:alfred "JWT 인증 추가"
+  ↓
+PHASE 0: 병렬 탐색 (자율)
+  ├── Explore Agent: 코드베이스 분석
+  ├── Research Agent: 문서/이슈 검색
+  └── Quality Agent: 현재 상태 진단
+  ↓
+통합 → 실행 계획 생성
+  ↓
+PHASE 1: SPEC 생성
+  └── EARS 형식 작성
+  ↓
+👤 사용자 승인 (AskUserQuestion)
+  ↓
+PHASE 2: TDD 구현 (자율 루프)
+  │
+  └── WHILE (issues && iter < max):
+       ├── 진단 (LSP + Tests)
+       ├── TODO 생성
+       ├── 수정 실행
+       ├── 검증
+       └── 완료 마커? → BREAK
+  ↓
+PHASE 3: 문서 동기화
+  └── 마커 추가
+  ↓
+END: <moai>DONE</moai>
+```text
+
+#### 🎯 핵심 특징
+
+- **전체 워크플로우**: 목표 → SPEC → 구현 → 문서
+- **전문가 위임**: 단일 도메인은 expert-* 에이전트에 직접 위임
+- **LLM 모드**: opus-only, hybrid, glm-only 지원
+- **이어서 하기**: `resume SPEC-XXX`로 중단점부터 재개
+
+---
+
+### 📊 세 명령어 비교
+
+| 구분          | `/moai:fix` | `/moai:loop`   | `/moai:alfred`   |
+| ------------- | ----------- | -------------- | ---------------- |
+| **범위**      | 코드 수정만 | 코드 수정 반복 | 전체 개발 사이클 |
+| **반복**      | 1회         | max까지 반복   | Phase 2에서 반복 |
+| **SPEC**      | ❌           | ❌              | ✅ 생성           |
+| **승인**      | Level 3만   | Level 3만      | SPEC 승인        |
+| **Type**      | utility     | utility        | workflow         |
+| **완료 조건** | 1회 실행    | 마커 감지      | 마커 감지        |
+
+---
+
+### 🔗 명령어 체인 관계
+
+```text
+/moai:alfred (전체 자동화)
+│
+├── Phase 0: 탐색
+├── Phase 1: SPEC
+├── Phase 2: 구현 ←─┬── /moai:loop (반복 수정)
+│                   │        │
+│                   │        └── /moai:fix (단발 수정)
+└── Phase 3: 문서
+```text
+
+---
+
+### ★ Insight
+
+세 명령어는 계층적 구조를 가집니다:
+
+- **`/moai:fix`**: 가장 기본 단위 (1회 스캔+수정)
+- **`/moai:loop`**: fix를 반복 실행하는 래퍼
+- **`/moai:alfred`**: 전체 개발 사이클에 loop를 내장
+
+모두 공통적으로 **완료 마커 (`<moai:DONE</moai>`)**를 사용하여 AI가 스스로 작업 완료를 판단합니다.
+
+---
+
+
+
+**MoAI-ADK의 가장 강력한 기능**: AI가 완료 마커가 감지될 때까지 스스로 탐색, 계획, 구현, 검증을 수행합니다.
+
+### 핵심 개념
+
+```text
+사용자: "인증 기능 추가해줘"
+  ↓
+AI: 탐색 → 계획 → 구현 → 검증 → 반복
+  ↓
+AI: 모든 이슈 해결
+  ↓
+AI: <moai>DONE</moai>  ← 완료 마커
+```text
+
+### 세 가지 명령어 계층
+
+MoAI-ADK는 세 단계의 자율 자동화를 제공합니다:
+
+| 명령어         | 범위             | 반복          | 목적                      |
+| -------------- | ---------------- | ------------- | ------------------------- |
+| `/moai:fix`    | 코드 수정만      | 1회           | 단일 스캔 + 자동 수정     |
+| `/moai:loop`   | 코드 수정        | 마커/최대까지 | 자율 반복 수정            |
+| `/moai:alfred` | 전체 개발 사이클 | 마커/최대까지 | 목표 → SPEC → 구현 → 문서 |
+
+### 명령어 체인 관계
+
+```text
+/moai:alfred (전체 자동화)
+     │
+     ├── Phase 0: 병렬 탐색
+     ├── Phase 1: SPEC 생성
+     ├── Phase 2: 구현 ←─┬── /moai:loop (반복)
+     │                   │        │
+     │                   │        └── /moai:fix (단발)
+     └── Phase 3: 문서 동기화
+```text
+
+### 완료 마커
+
+AI는 작업 완료를 알리기 위해 완료 마커를 사용합니다:
+
+```markdown
+## 작업 완료
+
+모든 구현 완료, 테스트 통과, 문서 업데이트. <moai>DONE</moai>
+```text
+
+**지원 마커**:
+- `<moai>DONE</moai>` - 작업 완료
+- `<moai>COMPLETE</moai>` - 전체 완료
+- `<moai:done />` - XML 형식
+
+### 자동 수정 레벨
+
+| 레벨 | 설명      | 승인      | 예시                   |
+| ---- | --------- | --------- | ---------------------- |
+| 1    | 즉시 수정 | 불필요    | import 정렬, 공백      |
+| 2    | 안전 수정 | 로그만    | 변수명 변경, 타입 힌트 |
+| 3    | 승인 필요 | 필요      | 로직 변경, API 수정    |
+| 4    | 수동 필요 | 자동 불가 | 보안, 아키텍처         |
+
+### 빠른 시작 예시
+
+```bash
+# 단일 스캔 및 수정 (병렬이 기본값)
+> /moai:fix
+
+# 해결될 때까지 자율 루프
+> /moai:loop --max 50
+
+# 전체 자율 개발 (병렬이 기본값)
+> /moai:alfred "JWT 인증 추가" --loop
+```text
+
+### 왜 "All is Well"인가?
+
+이름은 철학을 반영합니다: **목표를 설정하고 AI를 믿으세요**. MoAI-ADK의 에이전틱 자동화는 전체 개발 사이클을 자율적으로 처리합니다. `<moai>DONE</moai>`을 보면, 정말로 모든 것이 잘 된 것입니다.
+
+---
+
+## 5. Mr.Alfred와 Sub-Agents
 
 ### 🎩 Mr.Alfred - Super Agent (수석 오케스트레이터)
 
@@ -769,7 +1048,7 @@ Alfred는 4개 언어 요청을 자동으로 인식하고 올바른 에이전트
 
 ---
 
-## 5. Agent-Skills
+## 6. Agent-Skills
 
 ### 📚 스킬 라이브러리 구조
 
@@ -805,7 +1084,7 @@ Skill("moai-lang-python")
 
 ---
 
-## 5. TRUST 5 품질 원칙
+## 7. TRUST 5 품질 원칙
 
 MoAI-ADK의 모든 프로젝트는 **TRUST 5** 품질 프레임워크를 따릅니다.
 
@@ -879,7 +1158,7 @@ graph TD
 
 ---
 
-## 6. 자동 품질 검사
+## 8. 자동 품질 검사
 
 ### 🔍 AST-Grep 기반 구조적 검사
 
@@ -914,7 +1193,72 @@ graph TD
 
 ---
 
-## 7. 🌳 Worktree 병렬 개발
+## 9. 📊 Statusline 커스터마이징
+
+MoAI-ADK는 Claude Code 터미널에 실시간 상태 정보를 표시하는 사용자 정의 가능한 statusline을 제공합니다.
+
+### 기본 레이아웃
+
+```text
+🤖 Opus 4.5 | 💰 152K/200K | 💬 Mr. Alfred | 📁 MoAI-ADK | 📊 +0 M58 ?5 | 💾 57.7MB | 🔀 main
+```
+
+### 사용 가능한 컴포넌트
+
+| 아이콘 | 컴포넌트 | 설명                                  | 설정 키          |
+| ------ | -------- | ------------------------------------- | ---------------- |
+| 🤖      | 모델     | Claude 모델 (Opus, Sonnet 등)         | `model`          |
+| 💰      | 컨텍스트 | 컨텍스트 윈도우 사용량 (예: 77K/200K) | `context_window` |
+| 💬      | 스타일   | 활성 아웃풋 스타일 (예: Mr. Alfred)   | `output_style`   |
+| 📁      | 디렉토리 | 현재 프로젝트 이름                    | `directory`      |
+| 📊      | Git 상태 | 스테이징/수정/추적되지 않은 파일 수   | `git_status`     |
+| 💾      | 메모리   | 프로세스 메모리 사용량                | `memory_usage`   |
+| 🔀      | 브랜치   | 현재 Git 브랜치                       | `branch`         |
+| 🔅      | 버전     | Claude Code 버전 (선택적)             | `version`        |
+
+### 설정
+
+`.moai/config/statusline-config.yaml`에서 표시 항목을 설정합니다:
+
+```yaml
+display:
+  model: true           # 🤖 Claude 모델
+  context_window: true  # 💰 컨텍스트 윈도우
+  output_style: true    # 💬 아웃풋 스타일
+  directory: true       # 📁 프로젝트 이름
+  git_status: true      # 📊 Git 상태
+  memory_usage: true    # 💾 메모리 사용량
+  branch: true          # 🔀 Git 브랜치
+  version: false        # 🔅 버전 (선택적)
+  active_task: true     # 활성 작업
+```
+
+### 메모리 수집기
+
+`memory_usage`가 활성화되면 MoAI-ADK는 `psutil`을 사용하여 실시간 메모리 사용량을 수집합니다:
+
+- **프로세스 메모리**: 현재 Python 프로세스의 RSS (상주 세트 크기)
+- **캐싱**: 10초 TTL로 성능 최적화
+- **크로스 플랫폼**: macOS, Linux, Windows 지원
+- **우아한 저하**: psutil을 사용할 수 없으면 "N/A" 표시
+
+### 디스플레이 모드
+
+| 모드       | 최대 길이 | 사용 사례     |
+| ---------- | --------- | ------------- |
+| `compact`  | 80자      | 표준 터미널   |
+| `extended` | 120자     | 와이드 터미널 |
+| `minimal`  | 40자      | 좁은 터미널   |
+
+모드 설정:
+
+```bash
+export MOAI_STATUSLINE_MODE=extended
+```
+
+---
+
+## 10. 🌳 Worktree 병렬 개발
 
 MoAI-ADK의 핵심 혁신: **Worktree로 완전 격리, 무제한 병렬 개발**
 
@@ -1068,14 +1412,14 @@ moai-wt clean --merged-only
 
 ---
 
-## 8. MoAI Rank 소개
+## 11. MoAI Rank 소개
 
 **에이전틱 코딩의 새로운 차원**: 당신의 코딩 여정을 추적하고, 글로벌 개발자들과 경쟁하세요!
 
 ### 왜 MoAI Rank인가?
 
-| 기능                    | 설명                       |
-| ----------------------- | -------------------------- |
+| 기능                   | 설명                       |
+| ---------------------- | -------------------------- |
 | **📊 토큰 트래킹**      | 세션별 AI 사용량 자동 기록 |
 | **🏆 글로벌 리더보드**  | 일간/주간/월간/전체 순위   |
 | **🎭 코딩 스타일 분석** | 당신만의 개발 패턴 발견    |
@@ -1238,7 +1582,7 @@ moai rank list-excluded
 
 ---
 
-## 9. FAQ 5개
+## 12. FAQ 5개
 
 ### Q1: SPEC는 항상 필요한가요?
 
@@ -1276,7 +1620,7 @@ moai rank list-excluded
 
 ---
 
-## 10. 커뮤니티 & 지원
+## 13. 커뮤니티 & 지원
 
 ### 🌐 참여하기
 

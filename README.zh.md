@@ -95,7 +95,7 @@ uv tool install moai-adk
 
 选择对话语言。之后所有指南将以所选语言显示。
 
-```
+```text
 🌐 Language Selection
 ❯ Select your conversation language: [↑↓] Navigate  [Enter] Select
 ❯ Korean (한국어)
@@ -110,7 +110,7 @@ uv tool install moai-adk
 
 输入您的姓名。AI将提供个性化响应。
 
-```
+```text
 👤 用户设置
 ❯ 输入用户名 (可选):
 ```
@@ -121,7 +121,7 @@ uv tool install moai-adk
 
 输入Z.AI公司的GLM API密钥。
 
-```
+```text
 🔑 API 密钥输入
 GLM CodePlan API key (optional - press Enter to skip)
 
@@ -144,7 +144,7 @@ GLM CodePlan API key (optional - press Enter to skip)
 
 输入项目名称。
 
-```
+```text
 📁 项目设置
 ❯ 项目名称: MoAI-ADK
 ```
@@ -155,7 +155,7 @@ GLM CodePlan API key (optional - press Enter to skip)
 
 选择Git模式。
 
-```
+```text
 🔀 Git设置
 ❯ 选择Git模式: [↑↓] Navigate  [Enter] Select
 ❯ manual (仅本地) - 仅使用本地仓库
@@ -169,7 +169,7 @@ GLM CodePlan API key (optional - press Enter to skip)
 
 选择personal/team时输入GitHub用户名。
 
-```
+```text
 ❯ GitHub用户名:
 ```
 
@@ -179,7 +179,7 @@ GLM CodePlan API key (optional - press Enter to skip)
 
 选择Git提交消息使用的语言。
 
-```
+```text
 🗣️ 输出语言设置
 ❯ 提交消息语言: [↑↓] Navigate  [Enter] Select
   English
@@ -194,7 +194,7 @@ GLM CodePlan API key (optional - press Enter to skip)
 
 选择代码注释使用的语言。
 
-```
+```text
 ❯ 代码注释语言: [↑↓] Navigate  [Enter] Select
   English
 ❯ Korean (한국어)
@@ -208,7 +208,7 @@ GLM CodePlan API key (optional - press Enter to skip)
 
 选择文档使用的语言。
 
-```
+```text
 ❯ 文档语言: [↑↓] Navigate  [Enter] Select
   English
 ❯ Korean (한국어)
@@ -228,7 +228,7 @@ GLM CodePlan API key (optional - press Enter to skip)
 
 所有设置完成后，5步安装自动进行:
 
-```
+```text
 🚀 Starting installation...
 
 Phase 1: Preparation and backup...        ████████████████ 100%
@@ -274,7 +274,7 @@ moai update
 
 **3步智能更新工作流**:
 
-```
+```text
 Stage 1: 📦 检查包版本
          └─ 从PyPI检查最新版本 → 必要时自动升级
 
@@ -308,7 +308,7 @@ moai update --yes
 
 **合并策略选择**:
 
-```
+```text
 🔀 Choose merge strategy:
   [1] Auto-merge (default)
       → 自动保留模板 + 用户更改
@@ -345,7 +345,7 @@ moai update --manual
 
 在新项目或现有项目中**自动生成帮助Claude Code理解项目的项目文档**:
 
-```
+```text
 > /moai:0-project
 ```
 
@@ -486,7 +486,7 @@ moai update --manual
 > /moai:alfred "功能描述"
 ```
 
-用户提出目标，AI自行执行探索、计划、实现、验证。通过并行探索分析代码库，通过自主循环自行修复问题。检测到完成标记(`<promise>DONE</promise>`)时自动终止，开发者只需确认最终结果。
+用户提出目标，AI自行执行探索、计划、实现、验证。通过并行探索分析代码库，通过自主循环自行修复问题。检测到完成标记(`<moai>DONE</moai>`)时自动终止，开发者只需确认最终结果。
 
 **一次性执行**:
 
@@ -499,19 +499,21 @@ moai update --manual
 
 - `--loop`: 启用自主重复修复 (AI自行解决问题)
 - `--max N`: 指定最大重复次数 (默认: 100)
-- `--parallel`: 启用并行探索 (更快分析)
+- `--sequential` / `--seq`: 顺序探索 (用于调试) - 并行为默认值
 - `--branch`: 自动创建功能分支
 - `--pr`: 完成后创建Pull Request
 - `--resume SPEC`: 继续
 
+> **性能**: 并行探索已成为默认设置，可实现3-4倍更快的分析。`--sequential`仅用于调试。
+
 **示例**:
 
 ```bash
-# 基本自主执行
+# 基本自主执行 (并行为默认值)
 > /moai:alfred "JWT认证添加"
 
-# 自动循环 + 并行探索
-> /moai:alfred "JWT认证" --loop --parallel
+# 自动循环 + 顺序探索 (用于调试)
+> /moai:alfred "JWT认证" --loop --seq
 
 # 继续
 > /moai:alfred resume SPEC-AUTH-001
@@ -532,26 +534,28 @@ AI自行诊断LSP错误、测试失败、覆盖率不足并重复修复。通过
 ```text
 并行诊断 → 生成TODO → 执行修复 → 验证 → 重复
     ↓
-检测完成标记 → <promise>DONE</promise>
+检测完成标记 → <moai>DONE</moai>
 ```
 
 **选项**:
 
 - `--max N`: 最大重复次数 (默认: 100)
 - `--auto`: 启用自动修复 (Level 1-3)
-- `--parallel`: 执行并行诊断 (推荐)
+- `--sequential` / `--seq`: 顺序诊断 (用于调试) - 并行为默认值
 - `--errors`: 仅修复错误
 - `--coverage`: 包含覆盖率 (目标85%)
 - `--resume ID`: 恢复快照
 
+> **性能**: 并行诊断已成为默认设置，可同时执行LSP、AST-grep、Tests、Coverage (快3.75倍)。
+
 **示例**:
 
 ```bash
-# 基本自主循环
+# 基本自主循环 (并行为默认值)
 > /moai:loop
 
-# 并行 + 自动修复
-> /moai:loop --parallel --auto
+# 顺序 + 自动修复 (用于调试)
+> /moai:loop --seq --auto
 
 # 最多重复50次
 > /moai:loop --max 50
@@ -592,20 +596,22 @@ Linter
 **选项**:
 
 - `--dry`: 仅预览 (无实际修复)
-- `--parallel`: 并行扫描 (推荐)
+- `--sequential` / `--seq`: 顺序扫描 (用于调试) - 并行为默认值
 - `--level N`: 最大修复级别 (默认: 3)
 - `--errors`: 仅修复错误
 - `--security`: 包含安全检查
 - `--no-fmt`: 跳过格式化
 
+> **性能**: 并行扫描已成为默认设置，可同时执行LSP、AST-grep、Linter (快3.75倍)。
+
 **示例**:
 
 ```bash
-# 基本修复
+# 基本修复 (并行为默认值)
 > /moai:fix
 
-# 并行扫描
-> /moai:fix --parallel
+# 顺序扫描 (用于调试)
+> /moai:fix --seq
 
 # 预览
 > /moai:fix --dry
@@ -660,7 +666,7 @@ Linter
 
 **实际输出结果**:
 
-```
+```text
 ⏺ ✅ 循环取消完成
 
   状态报告
@@ -700,7 +706,80 @@ Linter
 
 ---
 
-## 4. Mr.Alfred和Sub-Agents
+## 4. 🤖 All is Well - 智能体自主自动化
+
+**MoAI-ADK最强大的功能**: AI自主探索、计划、实现、验证，直到检测到完成标记为止。
+
+### 核心概念
+
+```text
+用户: "添加认证功能"
+  ↓
+AI: 探索 → 计划 → 实现 → 验证 → 重复
+  ↓
+AI: 所有问题已解决
+  ↓
+AI: <moai>DONE</moai>  ← 完成标记
+```
+
+### 三个命令层级
+
+| 命令           | 类型     | 说明                                 |
+| -------------- | -------- | ------------------------------------ |
+| `/moai:fix`    | 单次     | 1次扫描 + 自动修复                   |
+| `/moai:loop`   | 自主循环 | 重复修复直到完成标记或最大次数       |
+| `/moai:alfred` | 完全自主 | 目标 → SPEC → 实现 → 文档全过程自动化 |
+
+### 命令链关系
+
+```text
+/moai:alfred
+  ├── Phase 0: 并行探索 (Explore + Research + Quality)
+  ├── Phase 1: /moai:1-plan (SPEC生成)
+  ├── Phase 2: /moai:2-run (TDD实现)
+  │     └── /moai:loop (自主循环)
+  │           └── /moai:fix (单次修复) × N次
+  └── Phase 3: /moai:3-sync (文档同步)
+```
+
+### 完成标记
+
+AI完成工作时添加标记，自主循环终止:
+
+| 标记                   | 说明     |
+| ---------------------- | -------- |
+| `<moai>DONE</moai>`    | 任务完成 |
+| `<moai>COMPLETE</moai>`| 全部完成 |
+| `<moai:done />`        | XML格式  |
+
+### 自动修复级别
+
+| Level | 说明     | 批准   | 示例              |
+| ----- | -------- | ------ | ----------------- |
+| 1     | 立即修复 | 不需要 | import排序、空白  |
+| 2     | 安全修复 | 仅日志 | 变量名、类型添加  |
+| 3     | 需要批准 | 需要   | 逻辑变更、API修改 |
+| 4     | 手动需要 | 不可能 | 安全、架构        |
+
+### 快速开始
+
+```bash
+# 单次修复 (并行为默认值)
+> /moai:fix
+
+# 自主循环 (直到完成标记，并行为默认值)
+> /moai:loop --auto
+
+# 完全自主自动化 (All is Well!，并行为默认值)
+> /moai:alfred "添加JWT认证" --loop
+
+# 继续
+> /moai:alfred resume SPEC-AUTH-001
+```
+
+---
+
+## 5. Mr.Alfred和Sub-Agents
 
 ### 🎩 Mr.Alfred - 超级智能体 (首席编排者)
 
@@ -767,7 +846,7 @@ Alfred自动识别4种语言请求并调用正确的智能体:
 
 ---
 
-## 5. Agent-Skills
+## 6. Agent-Skills
 
 ### 📚 技能库结构
 
@@ -803,7 +882,7 @@ Skill("moai-lang-python")
 
 ---
 
-## 5. TRUST 5质量原则
+## 7. TRUST 5质量原则
 
 MoAI-ADK的所有项目遵循**TRUST 5**质量框架。
 
@@ -877,7 +956,7 @@ graph TD
 
 ---
 
-## 6. 自动质量检查
+## 8. 自动质量检查
 
 ### 🔍 AST-Grep结构化检查
 
@@ -912,7 +991,72 @@ graph TD
 
 ---
 
-## 7. 🌳 Worktree并行开发
+## 9. 📊 Statusline 定制
+
+MoAI-ADK提供可定制的statusline，在Claude Code终端中显示实时状态信息。
+
+### 默认布局
+
+```text
+🤖 Opus 4.5 | 💰 152K/200K | 💬 Mr. Alfred | 📁 MoAI-ADK | 📊 +0 M58 ?5 | 💾 57.7MB | 🔀 main
+```
+
+### 可用组件
+
+| 图标 | 组件   | 说明                                    | 配置键           |
+| ---- | ------ | --------------------------------------- | ---------------- |
+| 🤖   | 模型   | Claude模型 (Opus, Sonnet等)             | `model`          |
+| 💰   | 上下文 | 上下文窗口使用量 (例: 77K/200K)         | `context_window` |
+| 💬   | 风格   | 活动输出风格 (例: Mr. Alfred)           | `output_style`   |
+| 📁   | 目录   | 当前项目名称                            | `directory`      |
+| 📊   | Git状态| 暂存/修改/未跟踪文件数                  | `git_status`     |
+| 💾   | 内存   | 进程内存使用量                          | `memory_usage`   |
+| 🔀   | 分支   | 当前Git分支                             | `branch`         |
+| 🔅   | 版本   | Claude Code版本 (可选)                  | `version`        |
+
+### 配置
+
+在`.moai/config/statusline-config.yaml`文件中配置:
+
+```yaml
+display:
+  model: true           # 🤖 Claude模型
+  context_window: true  # 💰 上下文窗口
+  output_style: true    # 💬 输出风格
+  directory: true       # 📁 项目名称
+  git_status: true      # 📊 Git状态
+  memory_usage: true    # 💾 内存使用量
+  branch: true          # 🔀 Git分支
+  version: false        # 🔅 版本 (可选)
+  active_task: true     # 活动任务
+```
+
+### 内存收集器
+
+启用`memory_usage`时，MoAI-ADK使用`psutil`收集实时内存使用量:
+
+- **进程内存**: 当前Python进程的RSS (常驻集大小)
+- **缓存**: 10秒TTL优化性能
+- **跨平台**: 支持macOS, Linux, Windows
+- **优雅降级**: psutil不可用时显示"N/A"
+
+### 显示模式
+
+| 模式       | 最大长度 | 使用场景   |
+| ---------- | -------- | ---------- |
+| `compact`  | 80字符   | 标准终端   |
+| `extended` | 120字符  | 宽屏终端   |
+| `minimal`  | 40字符   | 窄屏终端   |
+
+设置模式:
+
+```bash
+export MOAI_STATUSLINE_MODE=extended
+```
+
+---
+
+## 10. 🌳 Worktree并行开发
 
 MoAI-ADK的核心创新: **通过Worktree完全隔离、无限并行开发**
 
@@ -1066,7 +1210,7 @@ moai-wt clean --merged-only
 
 ---
 
-## 8. MoAI Rank介绍
+## 11. MoAI Rank介绍
 
 **智能体编程的新维度**: 追踪您的编程之旅，与全球开发者竞争!
 
@@ -1236,7 +1380,7 @@ moai rank list-excluded
 
 ---
 
-## 9. FAQ 5个
+## 12. FAQ 5个
 
 ### Q1: SPEC总是必需的吗?
 
@@ -1274,7 +1418,7 @@ moai rank list-excluded
 
 ---
 
-## 17. 社区 & 支持
+## 13. 社区 & 支持
 
 ### 🌐 参与
 

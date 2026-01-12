@@ -58,7 +58,7 @@ class OutputStyleDetector:
 
     def __init__(self):
         self.cache = {}
-        self.cache_ttl = 5  # Cache for 5 seconds to balance performance and accuracy
+        self.cache_ttl: float = 5.0  # Cache for 5 seconds to balance performance and accuracy
 
     def detect_from_session_context(self, session_data: Dict[str, Any]) -> Optional[str]:
         """
@@ -291,7 +291,7 @@ class OutputStyleDetector:
             print(f"Message pattern analysis error: {e}", file=sys.stderr)
             return None
 
-    def get_output_style(self, session_context: Dict[str, Any] = None) -> str:
+    def get_output_style(self, session_context: Optional[Dict[str, Any]] = None) -> str:
         """
         Get the current output style using all available detection methods.
 
@@ -332,8 +332,8 @@ class OutputStyleDetector:
                 print(f"{method_name} detection failed: {e}", file=sys.stderr)
                 continue
 
-        # Default fallback
-        return "R2-D2"
+        # Default fallback - Mr. Alfred is the default output style
+        return "Mr. Alfred"
 
 
 def safe_collect_output_style() -> str:
@@ -363,7 +363,7 @@ def safe_collect_output_style() -> str:
 
     except Exception as e:
         print(f"Output style detection failed: {e}", file=sys.stderr)
-        return "R2-D2"
+        return "Mr. Alfred"
 
 
 # For backward compatibility

@@ -7,10 +7,20 @@ description: |
   KO: 커맨드생성, 슬래시커맨드, 커스텀커맨드, 커맨드최적화, 새커맨드
   JA: コマンド作成, スラッシュコマンド, カスタムコマンド, コマンド最適化
   ZH: 创建命令, 斜杠命令, 自定义命令, 命令优化
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: bypassPermissions
 skills: moai-foundation-claude, moai-workflow-project, moai-workflow-templates
+hooks:
+  PostToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__code_formatter.py"
+          timeout: 30
+        - type: command
+          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__linter.py"
+          timeout: 30
 ---
 
 # Command Factory Orchestration Metadata (v1.0)
@@ -322,8 +332,8 @@ Goal: Gather latest documentation and best practices
 Fetch official Claude Code documentation for custom slash commands:
 
 Use Context7 MCP integration:
-- First resolve library ID for "claude-code" using mcpcontext7resolve-library-id
-- Then fetch custom slash commands documentation using mcpcontext7get-library-docs with topic "custom-slash-commands" and mode "code"
+- First resolve library ID for "claude-code" using mcp__context7__resolve-library-id
+- Then fetch custom slash commands documentation using mcp__context7__get-library-docs with topic "custom-slash-commands" and mode "code"
 - Store latest command creation standards for reference
 
 ### Step 2.2: WebSearch for Best Practices

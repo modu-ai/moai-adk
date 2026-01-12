@@ -39,13 +39,12 @@ STATE_FILE_NAME = ".moai_loop_state.json"
 # Maximum state file size (64KB should be more than enough)
 MAX_STATE_FILE_SIZE = 64 * 1024
 
-# Completion promise markers (oh-my-opencode pattern)
+# Completion markers (MoAI branding)
 COMPLETION_MARKERS = [
-    "<promise>DONE</promise>",
-    "<promise>COMPLETE</promise>",
-    "<ralph:done />",
-    "<ralph:complete />",
-    "<alfred:complete />",
+    "<moai>DONE</moai>",
+    "<moai>COMPLETE</moai>",
+    "<moai:done />",
+    "<moai:complete />",
 ]
 
 
@@ -534,7 +533,7 @@ def main() -> None:
     if check_completion_promise(conversation_text):
         state.active = False
         state.completion_reason = "Completion promise detected"
-        action = "COMPLETE - <promise>DONE</promise> detected"
+        action = "COMPLETE - <moai>DONE</moai> detected"
         clear_loop_state()
         exit_code = 0
 

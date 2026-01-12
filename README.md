@@ -95,7 +95,7 @@ Running `moai init` starts a **9-step interactive wizard**:
 
 Select your conversation language. All subsequent instructions will be displayed in your chosen language.
 
-```
+```text
 🌐 Language Selection
 ❯ Select your conversation language: [↑↓] Navigate  [Enter] Select
 ❯ Korean (한국어)
@@ -110,7 +110,7 @@ Select your conversation language. All subsequent instructions will be displayed
 
 Enter your user name. AI will provide personalized responses.
 
-```
+```text
 👤 User Settings
 ❯ Enter your user name (optional):
 ```
@@ -121,7 +121,7 @@ Enter your user name. AI will provide personalized responses.
 
 Enter your GLM API key from Z.AI.
 
-```
+```text
 🔑 API Key Input
 GLM CodePlan API key (optional - press Enter to skip)
 
@@ -144,7 +144,7 @@ Press Enter to keep existing key, or enter new key to replace
 
 Enter your project name.
 
-```
+```text
 📁 Project Setup
 ❯ Project name: MoAI-ADK
 ```
@@ -155,7 +155,7 @@ Enter your project name.
 
 Select your Git mode.
 
-```
+```text
 🔀 Git Setup
 ❯ Select your Git mode: [↑↓] Navigate  [Enter] Select
 ❯ manual (local only) - Use local repository only
@@ -169,7 +169,7 @@ Select your Git mode.
 
 For personal/team selection, enter your GitHub username.
 
-```
+```text
 ❯ GitHub username:
 ```
 
@@ -179,7 +179,7 @@ For personal/team selection, enter your GitHub username.
 
 Select the language for Git commit messages.
 
-```
+```text
 🗣️ Output Language Settings
 ❯ Commit message language: [↑↓] Navigate  [Enter] Select
   English
@@ -194,7 +194,7 @@ Select the language for Git commit messages.
 
 Select the language for code comments.
 
-```
+```text
 ❯ Code comment language: [↑↓] Navigate  [Enter] Select
   English
 ❯ Korean (한국어)
@@ -208,7 +208,7 @@ Select the language for code comments.
 
 Select the language for documentation.
 
-```
+```text
 ❯ Documentation language: [↑↓] Navigate  [Enter] Select
   English
 ❯ Korean (한국어)
@@ -228,7 +228,7 @@ Select the language for documentation.
 
 When all settings are complete, 5-phase installation runs automatically:
 
-```
+```text
 🚀 Starting installation...
 
 Phase 1: Preparation and backup...        ████████████████ 100%
@@ -274,7 +274,7 @@ moai update
 
 **3-Phase Smart Update Workflow**:
 
-```
+```text
 Stage 1: 📦 Package Version Check
          └─ Check latest version from PyPI → Auto-upgrade if needed
 
@@ -308,7 +308,7 @@ moai update --yes
 
 **Merge Strategy Selection**:
 
-```
+```text
 🔀 Choose merge strategy:
   [1] Auto-merge (default)
       → Automatically preserve template + user changes
@@ -345,7 +345,7 @@ moai update --manual
 
 For new or existing projects, you can automatically generate **project documentation to help Claude Code understand your project**:
 
-```
+```text
 > /moai:0-project
 ```
 
@@ -486,7 +486,7 @@ Performs quality verification followed by documentation synchronization, Git com
 > /moai:alfred "feature description"
 ```
 
-User presents the goal and AI autonomously performs exploration, planning, implementation, and verification. Analyzes codebase through parallel exploration and self-corrects issues through autonomous loops. Automatically terminates when completion marker (`<promise>DONE</promise>`) is detected, so developer only needs to verify final result.
+User presents the goal and AI autonomously performs exploration, planning, implementation, and verification. Analyzes codebase through parallel exploration and self-corrects issues through autonomous loops. Automatically terminates when completion marker (`<moai>DONE</moai>`) is detected, so developer only needs to verify final result.
 
 **Single Execution**:
 
@@ -499,19 +499,21 @@ User presents the goal and AI autonomously performs exploration, planning, imple
 
 - `--loop`: Enable autonomous iterative fixes (AI self-resolves issues)
 - `--max N`: Specify max iterations (default: 100)
-- `--parallel`: Enable parallel exploration (faster analysis)
+- `--sequential` / `--seq`: Sequential exploration (for debugging) - parallel is default
 - `--branch`: Auto-create feature branch
 - `--pr`: Create Pull Request after completion
 - `--resume SPEC`: Resume work
 
+> **Performance**: Parallel exploration is now the default, providing 3-4x faster analysis. Use `--sequential` only for debugging.
+
 **Example**:
 
 ```bash
-# Basic autonomous execution
+# Basic autonomous execution (parallel by default)
 > /moai:alfred "Add JWT authentication"
 
-# Auto loop + parallel exploration
-> /moai:alfred "JWT authentication" --loop --parallel
+# Auto loop with sequential exploration (for debugging)
+> /moai:alfred "JWT authentication" --loop --seq
 
 # Resume
 > /moai:alfred resume SPEC-AUTH-001
@@ -532,26 +534,28 @@ AI autonomously diagnoses and fixes LSP errors, test failures, and coverage defi
 ```text
 Parallel diagnosis → TODO creation → Fix execution → Verification → Repeat
     ↓
-Completion marker detected → <promise>DONE</promise>
+Completion marker detected → <moai>DONE</moai>
 ```
 
 **Options**:
 
 - `--max N`: Maximum iterations (default: 100)
 - `--auto`: Enable auto-fix (Level 1-3)
-- `--parallel`: Parallel diagnosis execution (recommended)
+- `--sequential` / `--seq`: Sequential diagnosis (for debugging) - parallel is default
 - `--errors`: Fix errors only
 - `--coverage`: Include coverage (85% target)
 - `--resume ID`: Restore snapshot
 
+> **Performance**: Parallel diagnosis is now the default, executing LSP, AST-grep, Tests, and Coverage simultaneously (3.75x faster).
+
 **Example**:
 
 ```bash
-# Basic autonomous loop
+# Basic autonomous loop (parallel by default)
 > /moai:loop
 
-# Parallel + auto-fix
-> /moai:loop --parallel --auto
+# Sequential + auto-fix (for debugging)
+> /moai:loop --seq --auto
 
 # Max 50 iterations
 > /moai:loop --max 50
@@ -592,20 +596,22 @@ Linter
 **Options**:
 
 - `--dry`: Preview only (no actual fixes)
-- `--parallel`: Parallel scan (recommended)
+- `--sequential` / `--seq`: Sequential scan (for debugging) - parallel is default
 - `--level N`: Max fix level (default: 3)
 - `--errors`: Fix errors only
 - `--security`: Include security check
 - `--no-fmt`: Skip formatting
 
+> **Performance**: Parallel scan is now the default, combining LSP, AST-grep, and Linter results simultaneously (3.75x faster).
+
 **Example**:
 
 ```bash
-# Basic fix
+# Basic fix (parallel by default)
 > /moai:fix
 
-# Parallel scan
-> /moai:fix --parallel
+# Sequential scan (for debugging)
+> /moai:fix --seq
 
 # Preview
 > /moai:fix --dry
@@ -660,7 +666,7 @@ Safely cancels running autonomous loop and saves all progress state as snapshot.
 
 **Actual Output Result**:
 
-```
+```text
 
 ⏺ ✅ Loop Cancel Complete
 
@@ -701,7 +707,89 @@ Safely cancels running autonomous loop and saves all progress state as snapshot.
 
 ---
 
-## 4. Mr.Alfred and Sub-Agents
+## 4. 🤖 All is Well - Agentic Autonomous Automation
+
+**The most powerful feature of MoAI-ADK**: AI autonomously explores, plans, implements, and verifies until the completion marker is detected.
+
+### Core Concept
+
+```text
+User: "Add authentication feature"
+  ↓
+AI: Explore → Plan → Implement → Verify → Repeat
+  ↓
+AI: All issues resolved
+  ↓
+AI: <moai>DONE</moai>  ← Completion Marker
+```
+
+### Three-Command Hierarchy
+
+MoAI-ADK provides three levels of autonomous automation:
+
+| Command | Scope | Iteration | Purpose |
+|---------|-------|-----------|---------|
+| `/moai:fix` | Code fixes only | 1 time | Single scan + auto-fix |
+| `/moai:loop` | Code fixes | Until marker/max | Autonomous iterative fixing |
+| `/moai:alfred` | Full dev cycle | Until marker/max | Goal → SPEC → Implement → Docs |
+
+### Command Chain Relationship
+
+```text
+/moai:alfred (Full Automation)
+     │
+     ├── Phase 0: Parallel Exploration
+     ├── Phase 1: SPEC Generation
+     ├── Phase 2: Implementation ←─┬── /moai:loop (Iterative)
+     │                             │        │
+     │                             │        └── /moai:fix (Single)
+     └── Phase 3: Documentation
+```
+
+### Completion Markers
+
+AI uses completion markers to signal task completion:
+
+```markdown
+## Task Complete
+
+All implementations done, tests passing, docs updated. <moai>DONE</moai>
+```
+
+**Supported Markers**:
+- `<moai>DONE</moai>` - Task complete
+- `<moai>COMPLETE</moai>` - Full completion
+- `<moai:done />` - XML format
+
+### Auto-Fix Levels
+
+| Level | Description | Approval | Examples |
+|-------|-------------|----------|----------|
+| 1 | Immediate fix | Not required | import sorting, whitespace |
+| 2 | Safe fix | Log only | variable rename, type hints |
+| 3 | Approval needed | Required | logic changes, API modifications |
+| 4 | Manual required | Cannot auto | security, architecture |
+
+### Quick Start Examples
+
+```bash
+# Single scan and fix (parallel by default)
+> /moai:fix
+
+# Autonomous loop until resolved
+> /moai:loop --max 50
+
+# Full autonomous development (parallel by default)
+> /moai:alfred "Add JWT authentication" --loop
+```
+
+### Why "All is Well"?
+
+The name reflects the philosophy: **set the goal and trust the AI**. MoAI-ADK's agentic automation handles the entire development cycle autonomously. When you see `<moai>DONE</moai>`, all is truly well.
+
+---
+
+## 5. Mr.Alfred and Sub-Agents
 
 ### 🎩 Mr.Alfred - Super Agent (Chief Orchestrator)
 
@@ -768,7 +856,7 @@ Alfred automatically recognizes 4 language requests and invokes the correct agen
 
 ---
 
-## 5. Agent-Skills
+## 6. Agent-Skills
 
 ### 📚 Skill Library Structure
 
@@ -804,7 +892,7 @@ Skill("moai-lang-python")
 
 ---
 
-## 5. TRUST 5 Quality Principles
+## 7. TRUST 5 Quality Principles
 
 All MoAI-ADK projects follow the **TRUST 5** quality framework.
 
@@ -878,7 +966,7 @@ graph TD
 
 ---
 
-## 6. Automated Quality Checks
+## 8. Automated Quality Checks
 
 ### 🔍 AST-Grep Based Structural Inspection
 
@@ -913,7 +1001,72 @@ Code writing
 
 ---
 
-## 7. 🌳 Worktree Parallel Development
+## 9. 📊 Statusline Customization
+
+MoAI-ADK provides a **customizable statusline** that displays real-time project information in Claude Code.
+
+### Default Statusline Layout
+
+```text
+🤖 Opus 4.5 | 💰 152K/200K | 💬 Mr. Alfred | 📁 MoAI-ADK | 📊 +0 M58 ?5 | 💾 57.7MB | 🔀 main
+```
+
+### Statusline Components
+
+| Icon | Component | Description | Config Key |
+|------|-----------|-------------|------------|
+| 🤖 | **Model** | Claude model (Opus, Sonnet, etc.) | `model` |
+| 💰 | **Context** | Context window usage (e.g., 77K/200K) | `context_window` |
+| 💬 | **Style** | Active output style (e.g., Mr. Alfred) | `output_style` |
+| 📁 | **Directory** | Current project name | `directory` |
+| 📊 | **Git Status** | Staged/Modified/Untracked files | `git_status` |
+| 💾 | **Memory** | Process memory usage | `memory_usage` |
+| 🔀 | **Branch** | Current Git branch | `branch` |
+| 🔅 | **Version** | Claude Code version (optional) | `version` |
+
+### Configuration
+
+Edit `.moai/config/statusline-config.yaml`:
+
+```yaml
+display:
+  model: true           # 🤖 Claude model
+  context_window: true  # 💰 Context window
+  output_style: true    # 💬 Output style
+  directory: true       # 📁 Project name
+  git_status: true      # 📊 Git status
+  memory_usage: true    # 💾 Memory usage
+  branch: true          # 🔀 Git branch
+  version: false        # 🔅 Version (optional)
+  active_task: true     # Active task
+```
+
+### Memory Collector
+
+When `memory_usage` is enabled, MoAI-ADK uses `psutil` to collect real-time memory usage:
+
+- **Process Memory**: RSS (Resident Set Size) of the current Python process
+- **Caching**: Performance optimization with 10-second TTL
+- **Cross-Platform**: Supports macOS, Linux, Windows
+- **Graceful Degradation**: Displays "N/A" when psutil is unavailable
+
+### Display Modes
+
+| Mode | Max Length | Use Case |
+|------|------------|----------|
+| `compact` | 80 chars | Standard terminal |
+| `extended` | 120 chars | Wide terminal |
+| `minimal` | 40 chars | Narrow terminal |
+
+Set mode:
+
+```bash
+export MOAI_STATUSLINE_MODE=extended
+```
+
+---
+
+## 10. 🌳 Worktree Parallel Development
 
 MoAI-ADK's core innovation: **Worktree for complete isolation, unlimited parallel development**
 
@@ -1067,7 +1220,7 @@ moai-wt clean --merged-only
 
 ---
 
-## 8. MoAI Rank Introduction
+## 10. MoAI Rank Introduction
 
 **A new dimension of agentic coding**: Track your coding journey and compete with global developers!
 
@@ -1237,7 +1390,7 @@ moai rank list-excluded
 
 ---
 
-## 9. FAQ 5 Questions
+## 11. FAQ 5 Questions
 
 ### Q1: Is SPEC Always Required?
 
@@ -1275,7 +1428,7 @@ Yes. `moai init .` preserves existing files.
 
 ---
 
-## 17. Community & Support
+## 12. Community & Support
 
 ### 🌐 Participate
 

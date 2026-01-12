@@ -1,6 +1,6 @@
 ---
 description: "Agentic autonomous loop - Auto-fix until completion marker"
-argument-hint: "[--max N] [--auto] [--parallel] | --resume snapshot"
+argument-hint: "[--max N] [--auto] [--seq] | --resume snapshot"
 type: utility
 allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 model: inherit
@@ -19,165 +19,187 @@ model: inherit
 
 # /moai:loop - Agentic Autonomous Loop
 
-## Core Principle: 완전 자율 반복 수정
+## Core Principle: Fully Autonomous Iterative Fixing
 
-AI가 스스로 이슈를 찾고 수정하고 완료할 때까지 반복합니다.
+AI autonomously finds issues, fixes them, and repeats until completion.
 
 ```
-START: 이슈 감지
+START: Issue Detection
   ↓
-AI: 수정 → 검증 → 반복
+AI: Fix → Verify → Repeat
   ↓
-AI: 완료 마커 추가
+AI: Add Completion Marker
   ↓
 <moai>DONE</moai>
 ```
 
 ## Command Purpose
 
-LSP 오류, 테스트 실패, 커버리지를 AI가 자율적으로 수정:
+Autonomously fix LSP errors, test failures, and coverage issues:
 
-1. **병렬 진단** (LSP + AST-grep + Tests 동시 실행)
-2. **TODO 자동 생성**
-3. **자율 수정** (Level 1-3)
-4. **반복 검증**
-5. **완료 마커 감지**
+1. **Parallel Diagnostics** (LSP + AST-grep + Tests simultaneously)
+2. **Auto TODO Generation**
+3. **Autonomous Fixing** (Level 1-3)
+4. **Iterative Verification**
+5. **Completion Marker Detection**
 
 Arguments: $ARGUMENTS
 
 ## Quick Start
 
 ```bash
-# 기본 자율 루프
+# Default autonomous loop (parallel diagnostics)
 /moai:loop
 
-# 최대 50회 반복
+# Maximum 50 iterations
 /moai:loop --max 50
 
-# 병렬 진단 + 자동 수정
-/moai:loop --parallel --auto
+# Sequential diagnostics + auto fix
+/moai:loop --sequential --auto
 
-# 스냅샷 복구
+# Restore from snapshot
 /moai:loop --resume latest
 ```
 
 ## Command Options
 
-| 옵션 | 축약 | 설명 | 기본값 |
-|------|------|------|--------|
-| `--max N` | --max-iterations | 최대 반복 횟수 | 100 |
-| `--auto` | --auto-fix | 자동 수정 활성화 | Level 1 |
-| `--parallel` | - | 병렬 진단 실행 | 권장 |
-| `--errors` | --errors-only | 에러만 수정 | 전체 |
-| `--coverage` | --include-coverage | 커버리지 포함 | 85% |
-| `--resume ID` | --resume-from | 스냅샷 복구 | - |
+| Option | Alias | Description | Default |
+|--------|-------|-------------|---------|
+| `--max N` | --max-iterations | Maximum iteration count | 100 |
+| `--auto` | --auto-fix | Enable auto-fix | Level 1 |
+| `--sequential` | --seq | Sequential diagnostics (for debugging) | Parallel |
+| `--errors` | --errors-only | Fix errors only | All |
+| `--coverage` | --include-coverage | Include coverage | 85% |
+| `--resume ID` | --resume-from | Restore from snapshot | - |
 
-## Completion Promise (완료 마커)
+## Completion Promise
 
-AI가 모든 작업을 완료하면 마커를 추가:
+AI adds a marker when all work is complete:
 
 ```markdown
-## 루프 완료
+## Loop Complete
 
-7번의 반복으로 5개 에러, 3개 경고 해결. <moai>DONE</moai>
+Resolved 5 errors, 3 warnings in 7 iterations. <moai>DONE</moai>
 ```
 
-**마커 종류**:
-- `<moai>DONE</moai>` - 작업 완료
-- `<moai>COMPLETE</moai>` - 전체 완료
-- `<moai:done />` - XML 형식
+**Marker Types**:
+- `<moai>DONE</moai>` - Task complete
+- `<moai>COMPLETE</moai>` - Full completion
+- `<moai:done />` - XML format
 
-마커 없으면 계속 반복합니다.
+Without marker, loop continues.
 
 ## Autonomous Loop Flow
 
 ```
 START: /moai:loop
 
-PARALLEL 진단 (--parallel)
-  ├── LSP: 에러/경고
-  ├── AST-grep: 보안
-  ├── Tests: 테스트
-  └── Coverage: 커버리지
+PARALLEL Diagnostics (default)
+  ├── LSP: Errors/Warnings
+  ├── AST-grep: Security
+  ├── Tests: Test results
+  └── Coverage: Coverage metrics
   ↓
-통합 결과
+Integrated Results
   ↓
-완료 마커 감지?
+Completion Marker Detected?
   ├── YES → COMPLETE
   ↓
-조건 충족?
-  ├── YES → "마커 추가 또는 계속?"
+Conditions Met?
+  ├── YES → "Add marker or continue?"
   ↓
-TODO 생성 (즉시)
+TODO Generation (immediate)
   ↓
-수정 실행 (자율)
-  ├── Level 1: 즉시 수정 (import, formatting)
-  ├── Level 2: 안전 수정 (rename, type)
-  └── Level 3: 승인 필요 (logic, api)
+Fix Execution (autonomous)
+  ├── Level 1: Immediate fix (import, formatting)
+  ├── Level 2: Safe fix (rename, type)
+  └── Level 3: Approval required (logic, api)
   ↓
-검증
+Verification
   ↓
-max 도달? → STOP
+Max reached? → STOP
   ↓
-반복
+Repeat
 ```
 
-## Parallel Diagnostics (병렬 진단)
+## Parallel Diagnostics
 
 ```bash
-# --parallel 없이 (순차)
+# Sequential (--sequential)
 LSP → AST-grep → Tests → Coverage
-총 30초
+Total 30s
 
-# --parallel 사용 (병렬)
+# Parallel (default)
 LSP ├─┐
-     ├─→ 통합 → 8초 (3.75배 빠름)
+     ├─→ Merge → 8s (3.75x faster)
 AST ├─┤
     ├─┘
 Tests ┤
-       └─→ 3-4배 속도 향상
+       └─→ 3-4x speed improvement
 Coverage
 ```
 
-## TODO-Obsessive Rule (자율 추적)
+### Parallel Diagnostics Implementation
 
-```
-[HARD] TODO 관리 규칙
+By default, execute all four diagnostic tools simultaneously each iteration for optimal performance:
 
-반복마다:
-1. 즉시 생성: 이슈 → TODO
-2. 즉시 진행: [ ] → [in_progress]
-3. 즉시 완료: [in_progress] → [x]
-4. 모두 완료: All [x] → 완료 마커
-```
+Step 1 - Launch Background Tasks:
 
-### TODO 예시
+1. LSP Diagnostics: Use Bash tool with run_in_background set to true for language-specific LSP diagnostic command
+2. AST-grep Scan: Use Bash tool with run_in_background set to true for ast-grep with security and quality rules
+3. Test Runner: Use Bash tool with run_in_background set to true for language-specific test framework (pytest, jest, go test)
+4. Coverage Check: Use Bash tool with run_in_background set to true for coverage measurement (coverage.py, c8, go test -cover)
 
-```markdown
-## Loop 3/100
+Step 2 - Collect Results:
 
-### Status
-- Errors: 2
-- Warnings: 5
+1. Use TaskOutput tool to collect results from all four background tasks
+2. Wait for all tasks to complete (timeout: 120 seconds per task)
+3. Handle partial failures gracefully - continue with available results
 
-### TODO
-1. [x] src/auth.py:45 - undefined 'jwt_token'
-2. [in_progress] src/auth.py:67 - missing return
-3. [ ] tests/test_auth.py:12 - unused 'result'
-```
+Step 3 - Aggregate Diagnostics:
+
+1. Parse output from each tool into structured diagnostic report
+2. Calculate metrics: error count, warning count, test pass rate, coverage percentage
+3. Detect completion conditions: zero errors AND tests passing AND coverage meets threshold
+
+Step 4 - Completion Check:
+
+1. Check for completion marker in previous iteration response
+2. If marker found: Exit loop with success
+3. If all conditions met and no new issues: Prompt for completion marker or continue
+
+Language-Specific Commands:
+
+Python: pytest --tb=short for tests, coverage run -m pytest for coverage
+TypeScript: npm test or jest for tests, npm run coverage for coverage
+Go: go test ./... for tests, go test -cover ./... for coverage
+Rust: cargo test for tests, cargo tarpaulin for coverage
+
+## TODO-Obsessive Rule
+
+[HARD] TodoWrite Tool Mandatory Usage:
+
+Call TodoWrite tool on every iteration to manage tasks:
+
+1. Immediate Creation: When issues are discovered, call TodoWrite to add items with pending status
+2. Immediate Progress: Before starting work, call TodoWrite to change item to in_progress
+3. Immediate Completion: After completing work, call TodoWrite to change item to completed
+4. Prohibited: Output TODO lists as text (MUST use TodoWrite tool)
+
+WHY: Using TodoWrite tool allows users to track progress in real-time.
 
 ## Auto-Fix Levels
 
-| Level | 설명 | 승인 | 예시 |
-|-------|------|------|------|
-| 1 | 즉시 수정 | 불필요 | import 정렬, 공백 |
-| 2 | 안전 수정 | 로그만 | 변수改名, 타입 추가 |
-| 3 | 승인 필요 | 필요 | 로직 변경, API 수정 |
-| 4 | 수동 필요 | 불가능 | 보안, 아키텍처 |
+| Level | Description | Approval | Examples |
+|-------|-------------|----------|----------|
+| 1 | Immediate fix | Not required | import sort, whitespace |
+| 2 | Safe fix | Log only | rename var, add type |
+| 3 | Approval needed | Required | logic change, API modify |
+| 4 | Manual required | Not allowed | security, architecture |
 
 ## Output Format
 
-### 실행 중
+### Running
 
 ```markdown
 ## Loop: 3/100 (parallel)
@@ -193,10 +215,10 @@ Coverage
 2. [in_progress] src/auth.py:67 - missing return
 3. [ ] tests/test_auth.py:12 - unused 'result'
 
-수정 중...
+Fixing...
 ```
 
-### 완료 (마커 감지)
+### Complete (Marker Detected)
 
 ```markdown
 ## Loop: COMPLETE
@@ -216,7 +238,7 @@ Coverage
 <moai>DONE</moai>
 ```
 
-### 최대 반복 도달
+### Max Iterations Reached
 
 ```markdown
 ## Loop: MAX REACHED (100/100)
@@ -226,24 +248,24 @@ Coverage
 - Warnings: 2
 
 ### Options
-1. /moai:loop --max 200  # 계속
-2. /moai:fix --parallel  # 한 번만
-3. 수동 수정
+1. /moai:loop --max 200  # Continue
+2. /moai:fix             # Single run
+3. Manual fix
 ```
 
 ## State & Snapshot
 
 ```bash
-# 상태 저장
+# State storage
 .moai/cache/.moai_loop_state.json
 
-# 스냅샷
+# Snapshots
 .moai/cache/ralph-snapshots/
 ├── iteration-001.json
 ├── iteration-002.json
 └── latest.json
 
-# 복구
+# Restore
 /moai:loop --resume iteration-002
 /moai:loop --resume latest
 ```
@@ -251,29 +273,29 @@ Coverage
 ## Cancellation
 
 ```bash
-# 취소 (스냅샷 저장)
+# Cancel (save snapshot)
 /moai:cancel-loop --snapshot
 
-# 강제 취소
+# Force cancel
 /moai:cancel-loop --force
 ```
 
 ## Quick Reference
 
 ```bash
-# 자율 루프
+# Autonomous loop (default parallel)
 /moai:loop
 
-# 병렬 + 자동
-/moai:loop --parallel --auto
+# Sequential + auto
+/moai:loop --sequential --auto
 
-# 최대 반복
+# Max iterations
 /moai:loop --max 50
 
-# 에러만
+# Errors only
 /moai:loop --errors
 
-# 복구
+# Restore
 /moai:loop --resume latest
 ```
 
@@ -281,13 +303,58 @@ Coverage
 
 ## EXECUTION DIRECTIVE
 
-1. $ARGUMENTS 파싱
-2. 병렬 진단 실행 (--parallel)
-3. 완료 마커 감지 확인
-4. TODO 생성 (즉시)
-5. 수정 실행 (--auto 레벨)
-6. 검증
-7. 반복 (max 미만)
+1. Parse $ARGUMENTS (extract --max, --auto, --sequential, --errors, --coverage, --resume flags)
+
+2. IF --resume flag: Load state from specified snapshot and continue from saved iteration
+
+3. Detect project language from indicator files (pyproject.toml, package.json, go.mod, Cargo.toml)
+
+4. Initialize iteration counter to 0
+
+5. LOOP START (while iteration less than max):
+
+   5a. Check for completion marker in previous response:
+       - If DONE, COMPLETE, or done marker found: Exit loop with success
+
+   5b. Execute diagnostic scan:
+
+       IF --sequential flag is specified:
+
+       - Run LSP, then AST-grep, then Tests, then Coverage sequentially
+
+       ELSE (default parallel mode):
+
+       - Launch all four diagnostic tools in parallel using Bash with run_in_background:
+         - Task 1: LSP diagnostics for detected language
+         - Task 2: AST-grep scan with sgconfig.yml rules
+         - Task 3: Test runner for detected language
+         - Task 4: Coverage measurement for detected language
+
+       - Collect results using TaskOutput for each background task
+
+       - Aggregate results into unified diagnostic report
+
+   5c. Check completion conditions:
+       - Zero errors AND all tests passing AND coverage meets threshold
+       - If all conditions met: Prompt user to add completion marker or continue
+
+   5d. [HARD] Call TodoWrite tool to add newly discovered issues with pending status
+
+   5e. [HARD] Before each fix, call TodoWrite to change item to in_progress
+
+   5f. Execute fixes based on --auto level (Level 1-3)
+
+   5g. [HARD] After each fix completion, call TodoWrite to change item to completed
+
+   5h. Save iteration snapshot to .moai/cache/ralph-snapshots/
+
+   5i. Increment iteration counter
+
+6. LOOP END
+
+7. IF max iterations reached without completion: Display remaining issues and options
+
+8. Report final summary with evidence
 
 ---
 

@@ -431,7 +431,7 @@ class TestOutputStyleDetectorGetStyle:
             with patch("pathlib.Path.cwd") as mock_cwd:
                 mock_cwd.return_value = MagicMock()
                 result = detector.get_output_style({})
-                assert result == "R2-D2"
+                assert result == "Mr. Alfred"
 
     def test_get_output_style_none_session_context(self):
         """Test with None session context."""
@@ -440,7 +440,7 @@ class TestOutputStyleDetectorGetStyle:
             with patch("pathlib.Path.cwd") as mock_cwd:
                 mock_cwd.return_value = MagicMock()
                 result = detector.get_output_style(None)
-                assert result == "R2-D2"
+                assert result == "Mr. Alfred"
 
 
 class TestSafeCollectOutputStyle:
@@ -461,7 +461,7 @@ class TestSafeCollectOutputStyle:
             mock_stdin.read.return_value = ""
             mock_stdin.isatty.return_value = False
             result = safe_collect_output_style()
-            assert result == "R2-D2"
+            assert result == "Mr. Alfred"
 
     def test_safe_collect_with_invalid_json(self):
         """Test with invalid JSON."""
@@ -469,14 +469,14 @@ class TestSafeCollectOutputStyle:
             mock_stdin.read.return_value = "invalid json {{"
             mock_stdin.isatty.return_value = False
             result = safe_collect_output_style()
-            assert result == "R2-D2"
+            assert result == "Mr. Alfred"
 
     def test_safe_collect_with_tty(self):
         """Test with TTY input."""
         with patch("sys.stdin") as mock_stdin:
             mock_stdin.isatty.return_value = True
             result = safe_collect_output_style()
-            assert result == "R2-D2"
+            assert result == "Mr. Alfred"
 
     def test_safe_collect_eof_exception(self):
         """Test with EOF exception."""
@@ -484,7 +484,7 @@ class TestSafeCollectOutputStyle:
             mock_stdin.read.side_effect = EOFError()
             mock_stdin.isatty.return_value = False
             result = safe_collect_output_style()
-            assert result == "R2-D2"
+            assert result == "Mr. Alfred"
 
     def test_safe_collect_general_exception(self):
         """Test with general exception."""
@@ -493,7 +493,7 @@ class TestSafeCollectOutputStyle:
             mock_stdin.isatty.return_value = False
             with patch("sys.stderr", new_callable=MagicMock):
                 result = safe_collect_output_style()
-                assert result == "R2-D2"
+                assert result == "Mr. Alfred"
 
     def test_safe_collect_returns_string(self):
         """Test that result is always a string."""

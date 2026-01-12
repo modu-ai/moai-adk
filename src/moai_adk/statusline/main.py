@@ -125,6 +125,23 @@ def safe_collect_version() -> str:
 # safe_collect_output_style function removed - no longer needed
 
 
+def safe_collect_memory() -> str:
+    """
+    Safely collect memory usage with fallback.
+
+    Returns:
+        Formatted memory usage string (e.g., "128MB")
+    """
+    try:
+        from .memory_collector import MemoryCollector
+
+        collector = MemoryCollector()
+        return collector.get_display_string(mode="process")
+    except (ImportError, OSError, AttributeError, RuntimeError):
+        # Memory collector errors
+        return "N/A"
+
+
 def safe_check_update(current_version: str) -> tuple[bool, Optional[str]]:
     """
     Safely check for updates with fallback.
@@ -246,6 +263,7 @@ def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
         duration = safe_collect_duration()
         active_task = safe_collect_alfred_task()
         version = safe_collect_version()
+        memory_usage = safe_collect_memory()
         update_available, latest_version = safe_check_update(version)
 
         # Build StatuslineData with dynamic fields
@@ -253,7 +271,7 @@ def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
             model=model,
             claude_version=claude_version,
             version=version,
-            memory_usage="256MB",  # TODO: Get actual memory usage
+            memory_usage=memory_usage,
             branch=branch,
             git_status=git_status,
             duration=duration,

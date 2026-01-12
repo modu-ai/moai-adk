@@ -1,6 +1,6 @@
 ---
 description: "Agentic auto-fix - Parallel scan with autonomous correction"
-argument-hint: "[--dry] [--parallel] [--level N] [file_path]"
+argument-hint: "[--dry] [--sequential] [--level N] [file_path]"
 type: utility
 allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 model: inherit
@@ -19,97 +19,133 @@ model: inherit
 
 # /moai:fix - Agentic Auto-Fix
 
-## Core Principle: 완전 자율 수정
+## Core Principle: Fully Autonomous Fixing
 
-AI가 스스로 이슈를 찾고 수정합니다.
+AI autonomously finds and fixes issues.
 
 ```
-START: 이슈 감지
+START: Issue Detection
   ↓
-AI: 병렬 스캔 → 분류 → 수정 → 검증
+AI: Parallel Scan → Classify → Fix → Verify
   ↓
-AI: 완료 마커 추가
+AI: Add Completion Marker
 ```
 
 ## Command Purpose
 
-LSP 오류, linting 이슈를 자율적으로 수정:
+Autonomously fix LSP errors and linting issues:
 
-1. **병렬 스캔** (LSP + AST-grep + Linters 동시)
-2. **자율 분류** (Level 1-4)
-3. **자동 수정** (Level 1-2)
-4. **검증**
-5. **보고**
+1. **Parallel Scan** (LSP + AST-grep + Linters simultaneously)
+2. **Auto Classification** (Level 1-4)
+3. **Auto Fix** (Level 1-2)
+4. **Verification**
+5. **Report**
 
 Target: $ARGUMENTS
 
 ## Quick Start
 
 ```bash
-# 기본 수정
+# Default fix (parallel scan)
 /moai:fix
 
-# 병렬 스캔
-/moai:fix --parallel
+# Sequential scan (for debugging)
+/moai:fix --sequential
 
-# 미리보기
+# Preview only
 /moai:fix --dry
 
-# 특정 파일
+# Specific file
 /moai:fix src/auth.py
 
-# 수정 레벨 제한
+# Limit fix level
 /moai:fix --level 2
 ```
 
 ## Command Options
 
-| 옵션 | 축약 | 설명 | 기본값 |
-|------|------|------|--------|
-| `--dry` | --dry-run | 미리보기만 | 적용 |
-| `--parallel` | - | 병렬 스캔 | 권장 |
-| `--level N` | - | 최대 수정 레벨 | 3 |
-| `--errors` | --errors-only | 에러만 수정 | 전체 |
-| `--security` | --include-security | 보안 포함 | 제외 |
-| `--no-fmt` | --no-format | 포맷팅 스킵 | 포함 |
+| Option | Alias | Description | Default |
+|--------|-------|-------------|---------|
+| `--dry` | --dry-run | Preview only | Apply |
+| `--sequential` | --seq | Sequential scan (for debugging) | Parallel |
+| `--level N` | - | Maximum fix level | 3 |
+| `--errors` | --errors-only | Fix errors only | All |
+| `--security` | --include-security | Include security issues | Exclude |
+| `--no-fmt` | --no-format | Skip formatting | Include |
 
-## Parallel Scan (병렬 스캔)
+## Parallel Scan
 
 ```bash
-# 순차 (30초)
+# Sequential (30s)
 LSP → AST → Linter
 
-# 병렬 (8초)
+# Parallel (8s)
 LSP   ├─┐
-      ├─→ 통합 (3.75배)
+      ├─→ Merge (3.75x faster)
 AST   ├─┤
      ├─┘
 Linter
 ```
 
+### Parallel Scan Implementation
+
+By default, execute all diagnostic tools simultaneously for optimal performance:
+
+Step 1 - Launch Background Tasks:
+
+1. LSP Diagnostics: Use Bash tool with run_in_background set to true for LSP diagnostic command based on detected language
+2. AST-grep Scan: Use Bash tool with run_in_background set to true for ast-grep with security rules from sgconfig.yml
+3. Linter Scan: Use Bash tool with run_in_background set to true for appropriate linter (ruff, eslint, etc.)
+
+Step 2 - Collect Results:
+
+1. Use TaskOutput tool to collect results from all three background tasks
+2. Wait for all tasks to complete (timeout: 120 seconds per task)
+3. Handle partial failures gracefully - continue with available results
+
+Step 3 - Aggregate and Deduplicate:
+
+1. Parse output from each tool into structured issue list
+2. Remove duplicate issues appearing in multiple scanners
+3. Sort by severity: Critical, High, Medium, Low
+4. Group by file path for efficient fixing
+
+Step 4 - Proceed to Classification:
+
+1. Classify aggregated issues into Levels 1-4
+2. Call TodoWrite with all issues as pending items
+3. Begin fix execution
+
+Language-Specific Commands:
+
+Python: ruff check --output-format json for linter, mypy --output json for types
+TypeScript: eslint --format json for linter, tsc --noEmit for types
+Go: golangci-lint run --out-format json for linter
+Rust: cargo clippy --message-format json for linter
+
 ## Auto-Fix Levels
 
-| Level | 설명 | 승인 | 예시 |
-|-------|------|------|------|
-| 1 | 즉시 | 불필요 | import, 공백 |
-| 2 | 안전 | 로그 | 변수改名, 타입 |
-| 3 | 승인 | 필요 | 로직, API |
-| 4 | 수동 | 불가능 | 보안, 아키텍처 |
+| Level | Description | Approval | Examples |
+|-------|-------------|----------|----------|
+| 1 | Immediate | Not required | import, whitespace |
+| 2 | Safe | Log only | rename var, add type |
+| 3 | Review | Required | logic, API |
+| 4 | Manual | Not allowed | security, architecture |
 
 ## TODO-Obsessive Rule
 
-```
-[HARD] TODO 관리 규칙
+[HARD] TodoWrite Tool Mandatory Usage:
 
-1. 즉시 생성: 이슈 → TODO
-2. 즉시 진행: [ ] → [in_progress]
-3. 즉시 완료: [in_progress] → [x]
-4. 증거: 모든 수정에 출처
-```
+1. Immediate Creation: When issues are discovered, call TodoWrite tool to add items with pending status
+2. Immediate Progress: Before starting work, call TodoWrite tool to change item to in_progress
+3. Immediate Completion: After completing work, call TodoWrite tool to change item to completed
+4. Prohibited: Output TODO lists as text (MUST use TodoWrite tool)
+
+WHY: Using TodoWrite tool allows users to track progress in real-time.
 
 ## Output Format
 
-### 미리보기
+### Preview
 
 ```markdown
 ## Fix: Dry Run
@@ -119,24 +155,24 @@ Linter
 - AST-grep: 0 security
 - Linter: 5 issues
 
-### Level 1 (12건)
+### Level 1 (12 items)
 - src/auth.py: import, formatting
 - src/api/routes.py: import order
 - tests/test_auth.py: whitespace
 
-### Level 2 (3건)
+### Level 2 (3 items)
 - src/auth.py:45 - 'usr' → 'user'
-- src/api/routes.py:78 - type 추가
+- src/api/routes.py:78 - add type
 - src/models.py:23 - dataclass?
 
-### Level 4 (2건)
+### Level 4 (2 items)
 - src/auth.py:67 - logic error
 - src/api/routes.py:112 - SQL injection
 
 No changes (--dry).
 ```
 
-### 완료
+### Complete
 
 ```markdown
 ## Fix: Complete
@@ -156,25 +192,25 @@ No changes (--dry).
 2. src/api/routes.py:112 - SQL injection
 
 ### Next
-/moai:loop --parallel  # 루프로 계속
+/moai:loop  # Continue with loop
 ```
 
 ## Quick Reference
 
 ```bash
-# 수정
+# Fix (default parallel)
 /moai:fix
 
-# 병렬
-/moai:fix --parallel
+# Sequential scan
+/moai:fix --sequential
 
-# 미리보기
+# Preview only
 /moai:fix --dry
 
-# 에러만
+# Errors only
 /moai:fix --errors
 
-# 특정 파일
+# Specific file
 /moai:fix src/auth.py
 ```
 
@@ -182,14 +218,44 @@ No changes (--dry).
 
 ## EXECUTION DIRECTIVE
 
-1. $ARGUMENTS 파싱
-2. 병렬 스캔 (--parallel)
-3. 분류 (Level 1-4)
-4. TODO 생성
-5. Level 1-2 수정
-6. Level 3 승인 요청
-7. 검증
-8. 보고 (증거 포함)
+1. Parse $ARGUMENTS (extract --sequential, --dry, --level, --errors, --security flags)
+
+2. Detect project language from indicator files (pyproject.toml, package.json, go.mod, Cargo.toml)
+
+3. Execute diagnostic scan:
+
+   IF --sequential flag is specified:
+
+   3a. Run LSP diagnostics, then AST-grep, then Linter sequentially
+
+   ELSE (default parallel mode):
+
+   3b. Launch all three diagnostic tools in parallel using Bash with run_in_background:
+       - Task 1: LSP diagnostics for detected language
+       - Task 2: AST-grep scan with sgconfig.yml rules
+       - Task 3: Linter for detected language
+
+   3c. Collect results using TaskOutput for each background task
+
+   3d. Aggregate results, remove duplicates, sort by severity
+
+4. Classify aggregated issues into Level 1-4
+
+5. [HARD] Call TodoWrite tool to add all discovered issues with pending status
+
+6. IF --dry flag: Display preview and exit
+
+7. [HARD] Before each fix, call TodoWrite to change item to in_progress
+
+8. Execute Level 1-2 fixes automatically
+
+9. [HARD] After each fix completion, call TodoWrite to change item to completed
+
+10. Request approval for Level 3 fixes via AskUserQuestion
+
+11. Verify fixes by re-running affected diagnostics
+
+12. Report with evidence (file:line changes made)
 
 ---
 

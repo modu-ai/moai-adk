@@ -2,7 +2,7 @@
 description: "Execute TDD implementation cycle"
 argument-hint: 'SPEC-ID - All with SPEC ID to implement (e.g. SPEC-001) or all "SPEC Implementation"'
 type: workflow
-allowed-tools: Task, AskUserQuestion, TodoWrite
+allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 model: inherit
 ---
 
@@ -104,28 +104,16 @@ Phase 4 (4_completion_guidance):
 - Output: Summary and next steps options
 - Checkpoint: User directed to /moai:3-sync
 
-### Tool Usage Discipline [HARD]
+### Tool Usage Guidelines
 
-This command **MUST** only use these three tool categories:
+This command has access to all tools for flexibility:
 
-- **Task()**: Delegates to specialized agents (manager-strategy, manager-tdd, manager-quality, manager-git)
-  - WHY: Maintains architectural clarity and separation of concerns
-  - IMPACT: Ensures each phase remains focused and reusable
+- Task() for agent orchestration (recommended for complex tasks)
+- AskUserQuestion() for user interaction at command level
+- TodoWrite() for tracking task progress across phases
+- Read, Write, Edit, Bash, Glob, Grep for direct operations when needed
 
-- **AskUserQuestion()**: Obtains user approval and next steps guidance AT COMMAND LEVEL ONLY
-  - WHY: Subagents via Task() are stateless and cannot interact with users
-  - IMPACT: Expecting agents to use AskUserQuestion causes workflow failures
-  - CORRECT: Command collects approvals, passes decisions to agents as parameters
-
-- **TodoWrite()**: Tracks task progress across phases
-  - WHY: Maintains visibility into long-running implementation workflows
-  - IMPACT: Enables recovery and debugging if phases fail
-
-- **Agents handle all direct tool usage** (Read, Write, Edit, Bash, Grep, Glob)
-  - WHY: Command stays lightweight; agents bring domain expertise
-  - IMPACT: Reduces command complexity by 71% while improving reliability
-
-The command orchestrates phases sequentially; specialized agents handle all implementation complexity.
+Agent delegation is recommended for complex tasks that benefit from specialized expertise. Direct tool usage is permitted when appropriate for simpler operations.
 
 ---
 

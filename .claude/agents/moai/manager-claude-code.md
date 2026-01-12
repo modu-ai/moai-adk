@@ -7,7 +7,7 @@ description: |
   KO: Claude Code, 설정, settings.json, MCP, 에이전트오케스트레이션, 클로드설정
   JA: Claude Code, 設定, settings.json, MCP, エージェントオーケストレーション
   ZH: Claude Code, 配置, settings.json, MCP, 代理编排
-tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
+tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: bypassPermissions
 skills: moai-foundation-claude, moai-workflow-project

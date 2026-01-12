@@ -2,7 +2,7 @@
 description: "Define specifications and create development branch or worktree"
 argument-hint: Title 1 Title 2 ... | SPEC-ID modifications [--worktree | --branch]
 type: workflow
-allowed-tools: Task, AskUserQuestion, TodoWrite
+allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 model: inherit
 ---
 
@@ -27,6 +27,18 @@ model: inherit
 # MoAI-ADK Step 1: Establish a plan (Plan) - Always make a plan first and then proceed
 
 User Interaction Architecture: AskUserQuestion must be used at COMMAND level only. Subagents invoked via Task() operate in isolated, stateless contexts and cannot interact with users. Collect all user input BEFORE delegating to agents.
+
+[HARD] AskUserQuestion Mandatory Usage:
+
+Requirement: All user decisions MUST be collected via AskUserQuestion tool before proceeding
+WHY: Ensures explicit user consent and prevents unintended actions
+IMPACT: Skipping AskUserQuestion causes unpredictable behavior and user confusion
+
+Mandatory Decision Points:
+
+1. SPEC Creation Approval: Ask before creating SPEC files (Step 1B.2)
+2. Development Environment Selection: Ask for worktree/branch/current choice (Step 2.2)
+3. Next Action Selection: Ask after SPEC creation completes (Final Step)
 
 Batched Design: All AskUserQuestion calls follow batched design principles (1-4 questions per call, max 4 options per question) to minimize user interaction turns. See CLAUDE.md section "User Interaction Architecture" for details.
 
@@ -182,48 +194,15 @@ Execution Flow:
   - Phase 3: Git Branch and PR Setup
 - Output: SPEC documents plus branch (conditional) plus next steps
 
-### Key Principle: Zero Direct Tool Usage
+### Tool Usage Guidelines
 
-[HARD] Complete Delegation Model:
+This command has access to all tools for flexibility:
 
-This command uses ONLY Task() and AskUserQuestion():
-WHY: Specialized agents encapsulate domain logic and ensure quality control
-IMPACT: Direct tool usage bypasses expert review and quality gates
+- Task() for agent orchestration (recommended for complex tasks)
+- AskUserQuestion() for user interaction at command level
+- Read, Write, Edit, Bash, Glob, Grep for direct operations when needed
 
-[HARD] AskUserQuestion at Command Level Only:
-WHY: Subagents via Task() are stateless and cannot interact with users
-IMPACT: Expecting agents to use AskUserQuestion causes workflow failures
-Correct Pattern: Command collects user input, passes choices to Task() as parameters
-
-Requirement: All file operations delegated to agents
-
-- No Read (file operations delegated)
-  WHY: Agents handle context-aware file discovery
-  IMPACT: Direct read loses architectural context
-
-- No Write (file operations delegated)
-  WHY: Agents implement validation before file creation
-  IMPACT: Direct write skips quality checks
-
-- No Edit (file operations delegated)
-  WHY: Agents coordinate multi-file updates atomically
-  IMPACT: Direct edit risks partial updates
-
-- No Bash (all bash commands delegated)
-  WHY: Agents handle error recovery and state consistency
-  IMPACT: Direct bash loses error handling context
-
-Required Tool Usage:
-
-- Task() for agent orchestration
-  WHY: Task ensures structured agent coordination
-  IMPACT: Uncoordinated agent calls produce inconsistent results
-
-- AskUserQuestion() for user interaction
-  WHY: Structured questions ensure consistent user experience
-  IMPACT: Informal interaction produces ambiguous responses
-
-All complexity is handled by specialized agents, not by direct command execution.
+Agent delegation is recommended for complex tasks that benefit from specialized expertise. Direct tool usage is permitted when appropriate for simpler operations.
 
 ---
 
@@ -918,13 +897,28 @@ CONDITION: `--worktree` flag is provided in user command
 
 ACTION: Create Git worktree using WorktreeManager
 
+[HARD] SPEC Commit Before Worktree Creation:
+
+Requirement: When --worktree flag is provided, SPEC files MUST be committed before worktree creation
+WHY: Worktree is created from the current commit; uncommitted SPEC files won't exist in the worktree
+IMPACT: Uncommitted SPECs cause missing files in worktree and inconsistent state
+
 Step 2.5A - Parse Command Arguments:
 
 - Parse the command arguments from ARGUMENTS variable
 - Check if --worktree flag is present in the arguments
 - Check if --branch flag is present in the arguments
 
-Step 2.5B - Worktree Creation (when --worktree flag is present):
+Step 2.5B - MANDATORY SPEC Commit (when --worktree flag is present):
+
+Before worktree creation, commit SPEC files:
+
+1. Stage SPEC files: `git add .moai/specs/SPEC-{SPEC_ID}/`
+2. Create commit with message: `feat(spec): Add SPEC-{SPEC_ID} - {title}`
+3. Verify commit was successful before proceeding
+4. If commit fails, abort worktree creation and report error
+
+Step 2.5C - Worktree Creation (after SPEC commit):
 
 - Determine project root as the current working directory
 - Set worktree root to the user home directory under worktrees/MoAI-ADK
@@ -932,27 +926,34 @@ Step 2.5B - Worktree Creation (when --worktree flag is present):
 - Create worktree for the SPEC with the following parameters:
   - spec_id: The generated SPEC ID (e.g., SPEC-AUTH-001)
   - branch_name: Feature branch name in format feature/SPEC-{ID}
-  - base_branch: main
+  - base_branch: main (or current branch with SPEC commit)
 
-Step 2.5C - Success Output:
+Step 2.5D - Success Output:
 
-- Display confirmation that SPEC was created with the SPEC ID
+- Display confirmation that SPEC was created and committed with the SPEC ID
 - Display the worktree path that was created
 - Provide next steps guidance:
   - Option 1: Switch to worktree using moai-worktree switch command
   - Option 2: Use shell eval with moai-worktree go command
   - Option 3: Run /moai:2-run with the SPEC ID
 
-Step 2.5D - Error Handling:
+Step 2.5E - Error Handling:
 
-- If worktree creation fails:
+- If SPEC commit fails:
   - Display error message with the failure reason
-  - Confirm that the SPEC was still created successfully
+  - Abort worktree creation (do NOT create worktree with uncommitted SPEC)
+  - Suggest manual commit: `git add .moai/specs/SPEC-{ID}/ && git commit -m "feat(spec): Add SPEC-{ID}"`
+  - After manual commit, retry worktree creation
+
+- If worktree creation fails (after successful SPEC commit):
+  - Display error message with the failure reason
+  - Confirm that the SPEC was committed successfully
   - Provide manual worktree creation command as fallback
 
 Expected Success Outcome:
 
 - SPEC created: SPEC-AUTH-001
+- SPEC committed: `feat(spec): Add SPEC-AUTH-001 - {title}`
 - Worktree created: ~/worktrees/MoAI-ADK/SPEC-AUTH-001
 
 Next steps:
@@ -963,7 +964,8 @@ Next steps:
 
 Error Handling:
 
-- If worktree creation fails: SPEC is still created, show manual worktree creation instructions
+- If SPEC commit fails: Abort worktree creation, show manual commit instructions
+- If worktree creation fails: SPEC is committed, show manual worktree creation instructions
 - If worktree already exists: Show switch instructions
 - If WorktreeManager not available: Show installation/dependency instructions
 
@@ -1166,10 +1168,12 @@ Would you like to enable automatic branch creation for future SPEC creations?
 
  Worktree Creation: --worktree flag provided OR user chose "Create Worktree"
  SPEC Created: SPEC-{SPEC_ID} documents generated successfully
+ SPEC Committed: feat(spec): Add SPEC-{SPEC_ID} - {title}
 
  Isolated Worktree Created:
 - Path: ~/worktrees/MoAI-ADK/SPEC-{SPEC_ID}/
 - Branch: feature/SPEC-{SPEC_ID}
+- Base Commit: Contains committed SPEC files
 - Status: Ready for parallel development
 
  Next Steps:
@@ -1184,6 +1188,7 @@ Would you like to enable automatic branch creation for future SPEC creations?
 - 🔀 Easy switching between multiple SPECs
 - 🧹 Automatic cleanup when SPEC is completed
 -  Lower memory usage than full repository clones
+-  SPEC files guaranteed in worktree (committed before creation)
 ```
 
 ---
@@ -1241,18 +1246,29 @@ IMPACT: Unstructured output prevents downstream automation and creates manual ov
 
 Before you consider this command complete, verify:
 
+### AskUserQuestion Compliance (HARD Rules)
+- [ ] SPEC Creation Approval: AskUserQuestion used before creating SPEC files
+- [ ] Development Environment Selection: AskUserQuestion used for worktree/branch/current choice
+- [ ] Next Action Selection: AskUserQuestion used after SPEC creation completes
+
+### PHASE 1 Checklist
 - [ ] PHASE 1 executed: manager-spec analyzed project and proposed SPEC candidates
 - [ ] Progress report displayed: User shown detailed progress report with analysis results
-- [ ] User approval obtained: User explicitly approved SPEC creation (via enhanced AskUserQuestion)
+- [ ] User approval obtained: User explicitly approved SPEC creation (via AskUserQuestion)
+
+### PHASE 2 Checklist
 - [ ] PHASE 2 executed: manager-spec created all 3 SPEC files (spec.md, plan.md, acceptance.md)
 - [ ] Directory naming correct: `.moai/specs/SPEC-{ID}/` format followed
 - [ ] YAML frontmatter valid: All 7 required fields present
 - [ ] HISTORY section present: Immediately after YAML frontmatter
 - [ ] EARS structure complete: All 5 requirement types included
+
+### PHASE 3 Checklist
 - [ ] PHASE 3 executed: Appropriate action taken based on flags/user choice:
+  - [ ] If --worktree: SPEC committed BEFORE worktree creation (HARD rule)
   - [ ] If --worktree: WorktreeManager created isolated worktree environment
   - [ ] If --branch: manager-git created feature branch
-  - [ ] If prompt: User choice implemented (worktree/branch/current)
+  - [ ] If prompt: User choice implemented via AskUserQuestion (worktree/branch/current)
   - [ ] If Team mode: Draft PR created (when branch created, not worktree)
 - [ ] Branch/Worktree naming correct: `feature/SPEC-{ID}` format for branches, `SPEC-{ID}` for worktrees
 - [ ] Next steps presented: User shown appropriate guidance for worktree navigation or branch development

@@ -131,13 +131,13 @@ class TestOutputStyleDetector:
             assert result is None
 
     def test_get_output_style_default_fallback(self):
-        """Test get_output_style returns R2-D2 as default."""
+        """Test get_output_style returns Mr. Alfred as default."""
         detector = OutputStyleDetector()
         with patch.dict("os.environ", {}, clear=True):
             with patch("pathlib.Path.cwd") as mock_cwd:
                 mock_cwd.return_value = MagicMock()
                 result = detector.get_output_style(None)
-                assert result == "R2-D2"
+                assert result == "Mr. Alfred"
 
 
 class TestSafeCollectOutputStyle:
@@ -158,7 +158,7 @@ class TestSafeCollectOutputStyle:
             mock_stdin.read.return_value = ""
             mock_stdin.isatty.return_value = False
             result = safe_collect_output_style()
-            assert result == "R2-D2"
+            assert result == "Mr. Alfred"
 
     def test_safe_collect_output_style_with_invalid_json(self):
         """Test safe_collect_output_style with invalid JSON."""
@@ -166,7 +166,7 @@ class TestSafeCollectOutputStyle:
             mock_stdin.read.return_value = "invalid json {{"
             mock_stdin.isatty.return_value = False
             result = safe_collect_output_style()
-            assert result == "R2-D2"
+            assert result == "Mr. Alfred"
 
     def test_safe_collect_output_style_returns_string(self):
         """Test safe_collect_output_style always returns string."""

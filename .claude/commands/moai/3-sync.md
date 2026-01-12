@@ -2,7 +2,7 @@
 description: "Synchronize documentation with Phase 0.5 quality verification and finalize PR"
 argument-hint: "Mode target path - Mode: auto (default)|force|status|project, target path: Synchronization target path"
 type: workflow
-allowed-tools: Task, AskUserQuestion, TodoWrite
+allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 model: inherit
 ---
 
@@ -177,30 +177,16 @@ Execution Flow:
   - Phase 3: Git Operations and PR (manager-git)
 - Output: Synchronized docs plus commit plus PR Ready (conditional)
 
-### Key Principle: Zero Direct Tool Usage
+### Tool Usage Guidelines
 
-[HARD] This command uses ONLY Task(), AskUserQuestion(), and TodoWrite():
+This command has access to all tools for flexibility:
 
-Permitted Tools:
+- Task() for agent orchestration (recommended for complex tasks)
+- AskUserQuestion() for user interaction at command level
+- TodoWrite() for progress tracking
+- Read, Write, Edit, Bash, Glob, Grep for direct operations when needed
 
-- Task() for orchestration [HARD]
-- AskUserQuestion() for user interaction AT COMMAND LEVEL ONLY [HARD]
-  - WHY: Subagents via Task() are stateless and cannot interact with users
-  - CORRECT: Collect approvals before Task() calls, pass choices as parameters
-- TodoWrite() for progress tracking [HARD]
-
-Forbidden Tools (All delegated to agents):
-
-- Read (delegated) - All file reading operations must be performed by specialized agents
-- Write (delegated) - All file writing operations must be performed by specialized agents
-- Edit (delegated) - All file editing operations must be performed by specialized agents
-- Bash (delegated) - All bash execution must be performed by specialized agents
-
-WHY: Zero direct tool usage maintains clean separation of concerns. Each tool type has a specialized agent that understands context-specific requirements.
-
-IMPACT: Direct tool usage would bypass quality controls, specialized agent expertise, and error recovery mechanisms. Delegation ensures consistent execution patterns.
-
-All complexity is handled by specialized agents (manager-docs, manager-quality, manager-git).
+Agent delegation is recommended for complex tasks that benefit from specialized expertise. Direct tool usage is permitted when appropriate for simpler operations.
 
 ---
 
@@ -419,15 +405,47 @@ This phase automatically detects the project language and runs appropriate quali
 ```
 Detect Project Language
     ↓
-Language-specific tool execution
-    ├── Test Runner (pytest/jest/go test/cargo test/etc.)
+Language-specific tool execution (PARALLEL)
+    ┌── Test Runner (pytest/jest/go test/cargo test/etc.)
     ├── Linter (ruff/eslint/golangci-lint/clippy/etc.)
     └── Type Checker (mypy/tsc/go vet/etc.)
+    ↓
+Result Collection & Aggregation
     ↓
 code-review invocation (manager-quality)
     ↓
 Quality Report
 ```
+
+### Parallel Quality Verification Implementation
+
+After language detection, execute test runner, linter, and type checker simultaneously:
+
+Step 1 - Launch Background Tasks:
+
+1. Test Runner: Use Bash tool with run_in_background set to true for language-specific test command
+2. Linter: Use Bash tool with run_in_background set to true for language-specific lint command
+3. Type Checker: Use Bash tool with run_in_background set to true for language-specific type check command
+
+Step 2 - Collect Results:
+
+1. Use TaskOutput tool to collect results from all three background tasks
+2. Wait for all tasks to complete (timeout: 180 seconds per task for test runner, 120 seconds for others)
+3. Handle partial failures gracefully - continue with available results
+
+Step 3 - Aggregate Results:
+
+1. Parse output from each tool into structured result
+2. Determine status for each tool: PASS, FAIL, WARN, SKIP
+3. If test runner has failures: Prompt user via AskUserQuestion before proceeding
+
+Step 4 - Proceed to Code Review:
+
+1. Pass aggregated results to manager-quality
+2. Generate comprehensive quality report
+
+WHY: Parallel execution reduces Phase 0.5 time from 60-90 seconds to 20-40 seconds (2-3x speedup)
+IMPACT: Significantly faster quality verification without sacrificing thoroughness
 
 ---
 

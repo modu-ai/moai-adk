@@ -7,10 +7,20 @@ description: |
   KO: 스킬생성, 새스킬, 스킬최적화, 지식도메인, YAML프론트매터
   JA: スキル作成, 新スキル, スキル最適化, 知識ドメイン, YAMLフロントマター
   ZH: 创建技能, 新技能, 技能优化, 知识领域, YAML前置信息
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcpcontext7resolve-library-id, mcpcontext7get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: bypassPermissions
 skills: moai-foundation-claude, moai-workflow-project
+hooks:
+  PostToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__code_formatter.py"
+          timeout: 30
+        - type: command
+          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__linter.py"
+          timeout: 30
 ---
 
 # Skill Orchestration Metadata (v1.0)
@@ -141,8 +151,8 @@ Context7 MCP Integration:
 Research Execution:
 
 Execute comprehensive documentation retrieval using the two-step Context7 access pattern:
-1. Library Resolution: First resolve the library name to its Context7-compatible ID using the mcpcontext7resolve-library-id tool with the specific library name (e.g., "pytest")
-2. Documentation Retrieval: Then fetch the latest documentation using mcpcontext7get-library-docs tool with the resolved Context7 ID, targeted topic, and appropriate token allocation for comprehensive coverage
+1. Library Resolution: First resolve the library name to its Context7-compatible ID using the mcp__context7__resolve-library-id tool with the specific library name (e.g., "pytest")
+2. Documentation Retrieval: Then fetch the latest documentation using mcp__context7__get-library-docs tool with the resolved Context7 ID, targeted topic, and appropriate token allocation for comprehensive coverage
 
 Quality Validation:
 - Documentation currency verification

@@ -153,7 +153,7 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "desc_personal": "GitHub 개인 계정 사용",
         "desc_team": "GitHub 팀/조직 사용",
         # Messages
-        "msg_api_key_stored": "API 키가 .env 파일에 저장되었습니다",
+        "msg_api_key_stored": "GLM API 키가 ~/.moai/.env.glm에 저장되었습니다",
         "msg_glm_key_found": "기존 GLM API 키를 찾았습니다:",
         "msg_glm_key_keep_prompt": "Enter를 누르면 기존 키 유지, 새 키를 입력하면 교체됩니다",
         "msg_glm_key_skip_guidance": "나중에 'moai glm <키>' 또는 'moai update'로 추가할 수 있습니다",
@@ -225,7 +225,7 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "desc_personal": "GitHub personal account",
         "desc_team": "GitHub team/organization",
         # Messages
-        "msg_api_key_stored": "API key stored in .env file",
+        "msg_api_key_stored": "GLM API key stored in ~/.moai/.env.glm",
         "msg_glm_key_found": "Existing GLM API key found:",
         "msg_glm_key_keep_prompt": "Press Enter to keep existing key, or type new key to replace",
         "msg_glm_key_skip_guidance": "You can add it later with 'moai glm <key>' or 'moai update'",
@@ -297,7 +297,7 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "desc_personal": "GitHub個人アカウント",
         "desc_team": "GitHubチーム/組織",
         # Messages
-        "msg_api_key_stored": "APIキーが.envファイルに保存されました",
+        "msg_api_key_stored": "GLM APIキーが~/.moai/.env.glmに保存されました",
         "msg_glm_key_found": "既存のGLM APIキーが見つかりました:",
         "msg_glm_key_keep_prompt": "Enterキーで既存のキーを保持、新しいキーを入力すると置換",
         "msg_glm_key_skip_guidance": "後で 'moai glm <キー>' または 'moai update' で追加できます",
@@ -369,7 +369,7 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "desc_personal": "GitHub个人账户",
         "desc_team": "GitHub团队/组织",
         # Messages
-        "msg_api_key_stored": "API密钥已保存到.env文件",
+        "msg_api_key_stored": "GLM API密钥已保存到~/.moai/.env.glm",
         "msg_glm_key_found": "找到现有GLM API密钥:",
         "msg_glm_key_keep_prompt": "按Enter保留现有密钥,或输入新密钥进行替换",
         "msg_glm_key_skip_guidance": "您可以稍后使用 'moai glm <密钥>' 或 'moai update' 添加",
