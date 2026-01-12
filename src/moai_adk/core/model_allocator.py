@@ -215,8 +215,9 @@ def get_agent_model(
     key = agent_name.lower().replace("-", "_")
 
     # Try direct lookup
-    if key in allocation:
-        return allocation[key]
+    value = allocation.get(key)
+    if isinstance(value, str):
+        return value
 
     # Try category-based lookup
     if key.startswith("expert_"):

@@ -776,7 +776,7 @@ def save_rank_config(config: dict[str, Any]) -> bool:
         config_dir.mkdir(parents=True, exist_ok=True)
 
         # Load existing config to preserve other settings
-        existing = {}
+        existing: dict[str, Any] = {}
         if config_file.exists():
             with open(config_file) as f:
                 existing = yaml.safe_load(f) or {}
@@ -1429,7 +1429,7 @@ def sync_all_sessions(
                         sleep(2)  # Wait before retry
                         try:
                             response = client.submit_session(submission)
-                            session_id: str | None = None
+                            session_id = None
                             if isinstance(response, dict):
                                 session_id = response.get("sessionId")
                                 if not session_id and isinstance(response.get("data"), dict):

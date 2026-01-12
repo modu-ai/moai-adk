@@ -350,8 +350,8 @@ class RankClient:
         url = f"{self.config.base_url}/api/leaderboard"
         params = {
             "period": period,
-            "limit": min(limit, 100),
-            "offset": offset,
+            "limit": str(min(limit, 100)),
+            "offset": str(offset),
         }
 
         try:
