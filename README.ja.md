@@ -1028,7 +1028,7 @@ display:
   git_status: true      # 📊 Git状態
   memory_usage: true    # 💾 メモリ使用量
   branch: true          # 🔀 Gitブランチ
-  version: false        # 🔅 バージョン (オプション)
+  version: 1.1.0        # 🔅 バージョン (オプション)
   active_task: true     # アクティブタスク
 ```
 
@@ -1217,7 +1217,108 @@ moai-wt clean --merged-only
 
 ---
 
-## 11. MoAI Rank 紹介
+## 11. CLAUDE.mdの理解
+
+MoAI-ADKインストール後、プロジェクトルートに生成される`CLAUDE.md`は**Alfred（AIオーケストレーター）の実行指示書**です。このファイルはClaude Codeがプロジェクトでどのように動作するかを定義します。
+
+### CLAUDE.mdとは？
+
+`CLAUDE.md`はClaude Codeがセッション開始時に自動的に読み込むプロジェクト設定ファイルです。MoAI-ADKではこのファイルを通じて**Alfredオーケストレーター**の行動規則を定義します。
+
+```text
+📁 プロジェクトルート
+├── CLAUDE.md              ← Alfred実行指示書（変更非推奨）
+├── CLAUDE.local.md        ← 個人カスタム指示（オプション）
+├── .claude/
+│   ├── settings.json      ← Claude Code設定
+│   ├── agents/            ← サブエージェント定義
+│   ├── commands/          ← スラッシュコマンド
+│   └── skills/            ← スキル定義
+└── .moai/
+    └── config/            ← MoAI設定
+```
+
+### CLAUDE.mdコア構造
+
+| セクション | 説明 | 主要内容 |
+|-----------|------|---------|
+| **Core Identity** | Alfredの役割定義 | 戦略的オーケストレーター、HARDルール |
+| **Request Processing Pipeline** | リクエスト処理フロー | Analyze → Route → Execute → Report |
+| **Command Reference** | コマンド分類 | Type A (Workflow), Type B (Utility), Type C (Feedback) |
+| **Agent Catalog** | サブエージェントリスト | Manager 8個, Expert 8個, Builder 4個 |
+| **SPEC-Based Workflow** | SPEC基盤開発 | Plan → Run → Sync フロー |
+| **Quality Gates** | 品質検証ルール | HARD/SOFTルールチェックリスト |
+| **Configuration Reference** | 設定参照 | 言語、出力形式ルール |
+
+### 使用方法：変更しないでください
+
+> **推奨**：`CLAUDE.md`は**変更せずそのまま使用**してください。
+
+**理由**：
+- MoAI-ADKアップデート時に自動的に最新バージョンに置き換えられます
+- 変更するとアップデート時に競合が発生する可能性があります
+- エージェント間の一貫した動作を保証します
+
+```bash
+# アップデート時CLAUDE.mdは自動的に最新化
+moai update
+```
+
+### カスタマイズ：CLAUDE.local.mdを使用
+
+追加指示が必要な場合は**`CLAUDE.local.md`**ファイルを作成してください。
+
+```bash
+# プロジェクトルートにCLAUDE.local.mdを作成
+touch CLAUDE.local.md
+```
+
+**CLAUDE.local.md例**：
+
+```markdown
+# プロジェクトローカル指示
+
+## コーディングスタイル
+- すべての関数に型ヒント必須
+- docstringはGoogleスタイル使用
+
+## プロジェクト特殊ルール
+- APIレスポンスは常にsnake_case使用
+- テストファイルはtest_プレフィックス必須
+
+## 禁止事項
+- console.log使用禁止（logger使用）
+- any型使用禁止
+```
+
+**利点**：
+- `CLAUDE.md`アップデートと競合なし
+- プロジェクト別カスタム設定可能
+- `.gitignore`に追加して個人設定維持可能
+
+### CLAUDE.md vs CLAUDE.local.md
+
+| 区分 | CLAUDE.md | CLAUDE.local.md |
+|------|-----------|-----------------|
+| **目的** | Alfred実行指示 | 個人/プロジェクト追加指示 |
+| **変更** | 非推奨 | 自由に変更可能 |
+| **アップデート** | MoAIが自動管理 | ユーザーが直接管理 |
+| **Git** | コミット対象 | 選択（.gitignore可能） |
+| **優先順位** | 基本ルール | 追加/オーバーライドルール |
+
+### コアルール（HARD Rules）
+
+`CLAUDE.md`に定義された**HARDルール**は必ず遵守されます：
+
+1. **Language-Aware Responses**：ユーザー言語で応答
+2. **Parallel Execution**：独立タスクは並列実行
+3. **No XML in User Responses**：ユーザー応答にXMLタグ非表示
+
+これらのルールは`CLAUDE.local.md`でもオーバーライドできません。
+
+---
+
+## 12. MoAI Rank 紹介
 
 **エージェンティックコーディングの新次元**: あなたのコーディング旅を追跡して、グローバル開発者たちと競争してください！
 
@@ -1387,7 +1488,7 @@ moai rank list-excluded
 
 ---
 
-## 12. FAQ 5個
+## 13. FAQ 5個
 
 ### Q1: SPECは常に必要ですか？
 
@@ -1425,7 +1526,7 @@ moai rank list-excluded
 
 ---
 
-## 13. コミュニティ & サポート
+## 14. コミュニティ & サポート
 
 ### 🌐 参加する
 

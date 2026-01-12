@@ -1037,7 +1037,7 @@ display:
   git_status: true      # 📊 Git status
   memory_usage: true    # 💾 Memory usage
   branch: true          # 🔀 Git branch
-  version: false        # 🔅 Version (optional)
+  version: 1.1.0        # 🔅 Version (optional)
   active_task: true     # Active task
 ```
 
@@ -1226,7 +1226,108 @@ moai-wt clean --merged-only
 
 ---
 
-## 10. MoAI Rank Introduction
+## 11. Understanding CLAUDE.md
+
+The `CLAUDE.md` file generated in your project root after MoAI-ADK installation is **Alfred's (AI Orchestrator) execution directive**. This file defines how Claude Code behaves in your project.
+
+### What is CLAUDE.md?
+
+`CLAUDE.md` is a project configuration file that Claude Code automatically reads at session start. In MoAI-ADK, this file defines the behavioral rules for the **Alfred orchestrator**.
+
+```text
+📁 Project Root
+├── CLAUDE.md              ← Alfred execution directive (don't modify)
+├── CLAUDE.local.md        ← Personal custom directives (optional)
+├── .claude/
+│   ├── settings.json      ← Claude Code settings
+│   ├── agents/            ← Sub-agent definitions
+│   ├── commands/          ← Slash commands
+│   └── skills/            ← Skill definitions
+└── .moai/
+    └── config/            ← MoAI configuration
+```
+
+### CLAUDE.md Core Structure
+
+| Section | Description | Key Content |
+|---------|-------------|-------------|
+| **Core Identity** | Alfred's role definition | Strategic orchestrator, HARD rules |
+| **Request Processing Pipeline** | Request handling flow | Analyze → Route → Execute → Report |
+| **Command Reference** | Command classification | Type A (Workflow), Type B (Utility), Type C (Feedback) |
+| **Agent Catalog** | Sub-agent listing | 8 Managers, 8 Experts, 4 Builders |
+| **SPEC-Based Workflow** | SPEC-driven development | Plan → Run → Sync flow |
+| **Quality Gates** | Quality validation rules | HARD/SOFT rules checklist |
+| **Configuration Reference** | Settings reference | Language, output format rules |
+
+### Usage: Don't Modify It
+
+> **Recommendation**: Use `CLAUDE.md` **as-is without modification**.
+
+**Reasons**:
+- Automatically replaced with the latest version during MoAI-ADK updates
+- Modifications may cause update conflicts
+- Ensures consistent behavior across agents
+
+```bash
+# CLAUDE.md is automatically updated
+moai update
+```
+
+### Customization: Use CLAUDE.local.md
+
+If you need additional directives, create a **`CLAUDE.local.md`** file.
+
+```bash
+# Create CLAUDE.local.md in project root
+touch CLAUDE.local.md
+```
+
+**CLAUDE.local.md Example**:
+
+```markdown
+# Project Local Directives
+
+## Coding Style
+- Type hints required for all functions
+- Use Google-style docstrings
+
+## Project-Specific Rules
+- API responses always use snake_case
+- Test files must have test_ prefix
+
+## Prohibited
+- No console.log (use logger)
+- No any type usage
+```
+
+**Benefits**:
+- No conflicts with `CLAUDE.md` updates
+- Project-specific customization
+- Can add to `.gitignore` for personal settings
+
+### CLAUDE.md vs CLAUDE.local.md
+
+| Aspect | CLAUDE.md | CLAUDE.local.md |
+|--------|-----------|-----------------|
+| **Purpose** | Alfred execution directives | Personal/project additional directives |
+| **Modification** | Not recommended | Freely modifiable |
+| **Updates** | Managed by MoAI | Managed by user |
+| **Git** | Committed | Optional (.gitignore possible) |
+| **Priority** | Base rules | Additional/override rules |
+
+### Core Rules (HARD Rules)
+
+**HARD rules** defined in `CLAUDE.md` are always enforced:
+
+1. **Language-Aware Responses**: Respond in user's language
+2. **Parallel Execution**: Execute independent tasks in parallel
+3. **No XML in User Responses**: No XML tags in user-facing responses
+
+These rules cannot be overridden even by `CLAUDE.local.md`.
+
+---
+
+## 12. MoAI Rank Introduction
 
 **A new dimension of agentic coding**: Track your coding journey and compete with global developers!
 
@@ -1396,7 +1497,7 @@ moai rank list-excluded
 
 ---
 
-## 11. FAQ 5 Questions
+## 13. FAQ 5 Questions
 
 ### Q1: Is SPEC Always Required?
 
@@ -1434,7 +1535,7 @@ Yes. `moai init .` preserves existing files.
 
 ---
 
-## 12. Community & Support
+## 14. Community & Support
 
 ### 🌐 Participate
 

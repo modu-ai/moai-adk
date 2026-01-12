@@ -1027,7 +1027,7 @@ display:
   git_status: true      # 📊 Git状态
   memory_usage: true    # 💾 内存使用量
   branch: true          # 🔀 Git分支
-  version: false        # 🔅 版本 (可选)
+  version: 1.1.0        # 🔅 版本 (可选)
   active_task: true     # 活动任务
 ```
 
@@ -1216,7 +1216,108 @@ moai-wt clean --merged-only
 
 ---
 
-## 11. MoAI Rank介绍
+## 11. 理解CLAUDE.md
+
+MoAI-ADK安装后在项目根目录生成的`CLAUDE.md`是**Alfred（AI编排器）的执行指令书**。此文件定义Claude Code在项目中如何运行。
+
+### 什么是CLAUDE.md？
+
+`CLAUDE.md`是Claude Code在会话开始时自动读取的项目配置文件。在MoAI-ADK中，此文件定义**Alfred编排器**的行为规则。
+
+```text
+📁 项目根目录
+├── CLAUDE.md              ← Alfred执行指令书（不建议修改）
+├── CLAUDE.local.md        ← 个人自定义指令（可选）
+├── .claude/
+│   ├── settings.json      ← Claude Code设置
+│   ├── agents/            ← 子代理定义
+│   ├── commands/          ← 斜杠命令
+│   └── skills/            ← 技能定义
+└── .moai/
+    └── config/            ← MoAI配置
+```
+
+### CLAUDE.md核心结构
+
+| 章节 | 说明 | 主要内容 |
+|------|------|----------|
+| **Core Identity** | Alfred角色定义 | 战略编排器、HARD规则 |
+| **Request Processing Pipeline** | 请求处理流程 | Analyze → Route → Execute → Report |
+| **Command Reference** | 命令分类 | Type A (Workflow), Type B (Utility), Type C (Feedback) |
+| **Agent Catalog** | 子代理列表 | Manager 8个, Expert 8个, Builder 4个 |
+| **SPEC-Based Workflow** | SPEC驱动开发 | Plan → Run → Sync 流程 |
+| **Quality Gates** | 质量验证规则 | HARD/SOFT规则检查列表 |
+| **Configuration Reference** | 配置参考 | 语言、输出格式规则 |
+
+### 使用方法：不要修改
+
+> **建议**：`CLAUDE.md`请**原样使用，不要修改**。
+
+**原因**：
+- MoAI-ADK更新时会自动替换为最新版本
+- 修改可能导致更新冲突
+- 确保代理间行为一致性
+
+```bash
+# 更新时CLAUDE.md自动更新
+moai update
+```
+
+### 自定义：使用CLAUDE.local.md
+
+如需添加指令，请创建**`CLAUDE.local.md`**文件。
+
+```bash
+# 在项目根目录创建CLAUDE.local.md
+touch CLAUDE.local.md
+```
+
+**CLAUDE.local.md示例**：
+
+```markdown
+# 项目本地指令
+
+## 编码风格
+- 所有函数必须有类型提示
+- 使用Google风格的docstring
+
+## 项目特定规则
+- API响应始终使用snake_case
+- 测试文件必须有test_前缀
+
+## 禁止事项
+- 禁止使用console.log（使用logger）
+- 禁止使用any类型
+```
+
+**优点**：
+- 与`CLAUDE.md`更新不冲突
+- 可按项目自定义设置
+- 可添加到`.gitignore`保持个人设置
+
+### CLAUDE.md vs CLAUDE.local.md
+
+| 对比 | CLAUDE.md | CLAUDE.local.md |
+|------|-----------|-----------------|
+| **目的** | Alfred执行指令 | 个人/项目附加指令 |
+| **修改** | 不建议 | 自由修改 |
+| **更新** | MoAI自动管理 | 用户自行管理 |
+| **Git** | 提交对象 | 可选（可.gitignore） |
+| **优先级** | 基本规则 | 附加/覆盖规则 |
+
+### 核心规则（HARD Rules）
+
+`CLAUDE.md`中定义的**HARD规则**必须遵守：
+
+1. **Language-Aware Responses**：使用用户语言响应
+2. **Parallel Execution**：独立任务并行执行
+3. **No XML in User Responses**：用户响应中不显示XML标签
+
+这些规则即使使用`CLAUDE.local.md`也无法覆盖。
+
+---
+
+## 12. MoAI Rank介绍
 
 **智能体编程的新维度**: 追踪您的编程之旅，与全球开发者竞争!
 
@@ -1386,7 +1487,7 @@ moai rank list-excluded
 
 ---
 
-## 12. FAQ 5个
+## 13. FAQ 5个
 
 ### Q1: SPEC总是必需的吗?
 
@@ -1424,7 +1525,7 @@ moai rank list-excluded
 
 ---
 
-## 13. 社区 & 支持
+## 14. 社区 & 支持
 
 ### 🌐 参与
 

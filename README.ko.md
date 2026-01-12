@@ -1198,7 +1198,7 @@ display:
   git_status: true      # 📊 Git 상태
   memory_usage: true    # 💾 메모리 사용량
   branch: true          # 🔀 Git 브랜치
-  version: false        # 🔅 버전 (선택적)
+  version: 1.1.0        # 🔅 버전 (선택적)
   active_task: true     # 활성 작업
 ```
 
@@ -1393,7 +1393,108 @@ moai-wt clean --merged-only
 
 ---
 
-## 11. MoAI Rank 소개
+## 11. CLAUDE.md 이해하기
+
+MoAI-ADK 설치 후 프로젝트 루트에 생성되는 `CLAUDE.md`는 **Alfred(AI 오케스트레이터)의 실행 지침서**입니다. 이 파일은 Claude Code가 프로젝트에서 어떻게 동작할지 정의합니다.
+
+### CLAUDE.md란?
+
+`CLAUDE.md`는 Claude Code가 세션 시작 시 자동으로 읽어들이는 프로젝트 설정 파일입니다. MoAI-ADK에서는 이 파일을 통해 **Alfred 오케스트레이터**의 행동 규칙을 정의합니다.
+
+```text
+📁 프로젝트 루트
+├── CLAUDE.md              ← Alfred 실행 지침서 (수정 비권장)
+├── CLAUDE.local.md        ← 개인 커스텀 지침 (선택사항)
+├── .claude/
+│   ├── settings.json      ← Claude Code 설정
+│   ├── agents/            ← 서브에이전트 정의
+│   ├── commands/          ← 슬래시 명령어
+│   └── skills/            ← 스킬 정의
+└── .moai/
+    └── config/            ← MoAI 설정
+```
+
+### CLAUDE.md 핵심 구조
+
+| 섹션 | 설명 | 주요 내용 |
+|------|------|----------|
+| **Core Identity** | Alfred의 역할 정의 | 전략적 오케스트레이터, HARD 규칙 |
+| **Request Processing Pipeline** | 요청 처리 흐름 | Analyze → Route → Execute → Report |
+| **Command Reference** | 명령어 분류 | Type A (Workflow), Type B (Utility), Type C (Feedback) |
+| **Agent Catalog** | 서브에이전트 목록 | Manager 8개, Expert 8개, Builder 4개 |
+| **SPEC-Based Workflow** | SPEC 기반 개발 | Plan → Run → Sync 흐름 |
+| **Quality Gates** | 품질 검증 규칙 | HARD/SOFT 규칙 체크리스트 |
+| **Configuration Reference** | 설정 참조 | 언어, 출력 형식 규칙 |
+
+### 사용 방법: 수정하지 마세요
+
+> **권장**: `CLAUDE.md`는 **수정하지 않고 그대로 사용**하세요.
+
+**이유**:
+- MoAI-ADK 업데이트 시 자동으로 최신 버전으로 교체됩니다
+- 수정하면 업데이트 충돌이 발생할 수 있습니다
+- 에이전트 간 일관된 동작을 보장합니다
+
+```bash
+# 업데이트 시 CLAUDE.md는 자동으로 최신화
+moai update
+```
+
+### 커스터마이징: CLAUDE.local.md 사용
+
+추가 지침이 필요하면 **`CLAUDE.local.md`** 파일을 생성하세요.
+
+```bash
+# 프로젝트 루트에 CLAUDE.local.md 생성
+touch CLAUDE.local.md
+```
+
+**CLAUDE.local.md 예시**:
+
+```markdown
+# 프로젝트 로컬 지침
+
+## 코딩 스타일
+- 모든 함수에 타입 힌트 필수
+- docstring은 Google 스타일 사용
+
+## 프로젝트 특수 규칙
+- API 응답은 항상 snake_case 사용
+- 테스트 파일은 test_ 접두사 필수
+
+## 금지 사항
+- console.log 사용 금지 (logger 사용)
+- any 타입 사용 금지
+```
+
+**장점**:
+- `CLAUDE.md` 업데이트와 충돌 없음
+- 프로젝트별 맞춤 설정 가능
+- `.gitignore`에 추가하여 개인 설정 유지 가능
+
+### CLAUDE.md vs CLAUDE.local.md
+
+| 구분 | CLAUDE.md | CLAUDE.local.md |
+|------|-----------|-----------------|
+| **목적** | Alfred 실행 지침 | 개인/프로젝트 추가 지침 |
+| **수정** | 비권장 | 자유롭게 수정 |
+| **업데이트** | MoAI가 자동 관리 | 사용자가 직접 관리 |
+| **Git** | 커밋 대상 | 선택 (.gitignore 가능) |
+| **우선순위** | 기본 규칙 | 추가/오버라이드 규칙 |
+
+### 핵심 규칙 (HARD Rules)
+
+`CLAUDE.md`에 정의된 **HARD 규칙**은 반드시 준수됩니다:
+
+1. **Language-Aware Responses**: 사용자 언어로 응답
+2. **Parallel Execution**: 독립 작업은 병렬 실행
+3. **No XML in User Responses**: 사용자 응답에 XML 태그 미표시
+
+이 규칙들은 `CLAUDE.local.md`로도 오버라이드할 수 없습니다.
+
+---
+
+## 12. MoAI Rank 소개
 
 **에이전틱 코딩의 새로운 차원**: 당신의 코딩 여정을 추적하고, 글로벌 개발자들과 경쟁하세요!
 
@@ -1563,7 +1664,7 @@ moai rank list-excluded
 
 ---
 
-## 12. FAQ 5개
+## 13. FAQ 5개
 
 ### Q1: SPEC는 항상 필요한가요?
 
@@ -1601,7 +1702,7 @@ moai rank list-excluded
 
 ---
 
-## 13. 커뮤니티 & 지원
+## 14. 커뮤니티 & 지원
 
 ### 🌐 참여하기
 
