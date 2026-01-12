@@ -1176,6 +1176,11 @@ claude
 **阶段3: 合并和清理**
 
 ```bash
+# 方法1: 一键完成 (推荐)
+moai-wt done SPEC-ID              # checkout main → merge → cleanup
+moai-wt done SPEC-ID --push       # 上述 + 推送到远程
+
+# 方法2: 手动处理
 git checkout main
 git merge feature/SPEC-ID
 moai-wt clean --merged-only
@@ -1196,17 +1201,18 @@ moai-wt clean --merged-only
 
 ### 📊 Worktree命令
 
-| 命令                     | 说明                       | 使用示例                       |
-| ------------------------ | -------------------------- | ------------------------------ |
-| `moai-wt new SPEC-ID`    | 创建新Worktree             | `moai-wt new SPEC-AUTH-001`    |
-| `moai-wt go SPEC-ID`     | 进入Worktree (打开新shell) | `moai-wt go SPEC-AUTH-001`     |
-| `moai-wt list`           | 查看Worktree列表           | `moai-wt list`                 |
-| `moai-wt remove SPEC-ID` | 删除Worktree               | `moai-wt remove SPEC-AUTH-001` |
-| `moai-wt status`         | 查看Worktree状态和注册表   | `moai-wt status`               |
-| `moai-wt sync [SPEC-ID]` | 同步Worktree               | `moai-wt sync --all`           |
-| `moai-wt clean`          | 清理已合并的Worktree       | `moai-wt clean --merged-only`  |
-| `moai-wt recover`        | 从磁盘恢复注册表           | `moai-wt recover`              |
-| `moai-wt config`         | 查看Worktree配置           | `moai-wt config root`          |
+| 命令                     | 说明                         | 使用示例                         |
+| ------------------------ | ---------------------------- | -------------------------------- |
+| `moai-wt new SPEC-ID`    | 创建新Worktree               | `moai-wt new SPEC-AUTH-001`      |
+| `moai-wt go SPEC-ID`     | 进入Worktree (打开新shell)   | `moai-wt go SPEC-AUTH-001`       |
+| `moai-wt list`           | 查看Worktree列表             | `moai-wt list`                   |
+| `moai-wt done SPEC-ID`   | 合并后清理 (checkout→merge)  | `moai-wt done SPEC-AUTH-001`     |
+| `moai-wt remove SPEC-ID` | 删除Worktree                 | `moai-wt remove SPEC-AUTH-001`   |
+| `moai-wt status`         | 查看Worktree状态和注册表     | `moai-wt status`                 |
+| `moai-wt sync [SPEC-ID]` | 同步Worktree                 | `moai-wt sync --all`             |
+| `moai-wt clean`          | 清理已合并的Worktree         | `moai-wt clean --merged-only`    |
+| `moai-wt recover`        | 从磁盘恢复注册表             | `moai-wt recover`                |
+| `moai-wt config`         | 查看Worktree配置             | `moai-wt config root`            |
 
 ---
 

@@ -1353,6 +1353,11 @@ claude
 #### Phase 3: 병합 및 정리
 
 ```bash
+# 방법 1: 한번에 완료 (권장)
+moai-wt done SPEC-ID              # checkout main → merge → cleanup
+moai-wt done SPEC-ID --push       # 위 + 원격 푸시
+
+# 방법 2: 수동 처리
 git checkout main
 git merge feature/SPEC-ID
 moai-wt clean --merged-only
@@ -1373,17 +1378,18 @@ moai-wt clean --merged-only
 
 ### 📊 Worktree 명령어
 
-| 명령어                   | 설명                             | 사용 예시                      |
-| ------------------------ | -------------------------------- | ------------------------------ |
-| `moai-wt new SPEC-ID`    | 새 Worktree 생성                 | `moai-wt new SPEC-AUTH-001`    |
-| `moai-wt go SPEC-ID`     | Worktree 진입 (새 셸 열기)       | `moai-wt go SPEC-AUTH-001`     |
-| `moai-wt list`           | Worktree 목록 확인               | `moai-wt list`                 |
-| `moai-wt remove SPEC-ID` | Worktree 제거                    | `moai-wt remove SPEC-AUTH-001` |
-| `moai-wt status`         | Worktree 상태 및 레지스트리 확인 | `moai-wt status`               |
-| `moai-wt sync [SPEC-ID]` | Worktree 동기화                  | `moai-wt sync --all`           |
-| `moai-wt clean`          | 병합된 Worktree 정리             | `moai-wt clean --merged-only`  |
-| `moai-wt recover`        | 디스크에서 레지스트리 복구       | `moai-wt recover`              |
-| `moai-wt config`         | Worktree 설정 확인               | `moai-wt config root`          |
+| 명령어                   | 설명                             | 사용 예시                        |
+| ------------------------ | -------------------------------- | -------------------------------- |
+| `moai-wt new SPEC-ID`    | 새 Worktree 생성                 | `moai-wt new SPEC-AUTH-001`      |
+| `moai-wt go SPEC-ID`     | Worktree 진입 (새 셸 열기)       | `moai-wt go SPEC-AUTH-001`       |
+| `moai-wt list`           | Worktree 목록 확인               | `moai-wt list`                   |
+| `moai-wt done SPEC-ID`   | 병합 후 정리 (checkout→merge→rm) | `moai-wt done SPEC-AUTH-001`     |
+| `moai-wt remove SPEC-ID` | Worktree 제거                    | `moai-wt remove SPEC-AUTH-001`   |
+| `moai-wt status`         | Worktree 상태 및 레지스트리 확인 | `moai-wt status`                 |
+| `moai-wt sync [SPEC-ID]` | Worktree 동기화                  | `moai-wt sync --all`             |
+| `moai-wt clean`          | 병합된 Worktree 정리             | `moai-wt clean --merged-only`    |
+| `moai-wt recover`        | 디스크에서 레지스트리 복구       | `moai-wt recover`                |
+| `moai-wt config`         | Worktree 설정 확인               | `moai-wt config root`            |
 
 ---
 

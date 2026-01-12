@@ -1177,6 +1177,11 @@ claude
 **Phase 3: マージ及び整理**
 
 ```bash
+# 方法1: 一括完了 (推奨)
+moai-wt done SPEC-ID              # checkout main → merge → cleanup
+moai-wt done SPEC-ID --push       # 上記 + リモートプッシュ
+
+# 方法2: 手動処理
 git checkout main
 git merge feature/SPEC-ID
 moai-wt clean --merged-only
@@ -1197,17 +1202,18 @@ moai-wt clean --merged-only
 
 ### 📊 Worktreeコマンド
 
-| コマンド                 | 説明                           | 使用例                         |
-| ------------------------ | ------------------------------ | ------------------------------ |
-| `moai-wt new SPEC-ID`    | 新Worktree生成                 | `moai-wt new SPEC-AUTH-001`    |
-| `moai-wt go SPEC-ID`     | Worktree進入 (新シェル開く)    | `moai-wt go SPEC-AUTH-001`     |
-| `moai-wt list`           | Worktreeリスト確認             | `moai-wt list`                 |
-| `moai-wt remove SPEC-ID` | Worktree削除                   | `moai-wt remove SPEC-AUTH-001` |
-| `moai-wt status`         | Worktree状態及びレジストリ確認 | `moai-wt status`               |
-| `moai-wt sync [SPEC-ID]` | Worktree同期                   | `moai-wt sync --all`           |
-| `moai-wt clean`          | マージWorktree整理             | `moai-wt clean --merged-only`  |
-| `moai-wt recover`        | ディスクからレジストリ復復     | `moai-wt recover`              |
-| `moai-wt config`         | Worktree設定確認               | `moai-wt config root`          |
+| コマンド                 | 説明                           | 使用例                           |
+| ------------------------ | ------------------------------ | -------------------------------- |
+| `moai-wt new SPEC-ID`    | 新Worktree生成                 | `moai-wt new SPEC-AUTH-001`      |
+| `moai-wt go SPEC-ID`     | Worktree進入 (新シェル開く)    | `moai-wt go SPEC-AUTH-001`       |
+| `moai-wt list`           | Worktreeリスト確認             | `moai-wt list`                   |
+| `moai-wt done SPEC-ID`   | マージ後整理 (checkout→merge)  | `moai-wt done SPEC-AUTH-001`     |
+| `moai-wt remove SPEC-ID` | Worktree削除                   | `moai-wt remove SPEC-AUTH-001`   |
+| `moai-wt status`         | Worktree状態及びレジストリ確認 | `moai-wt status`                 |
+| `moai-wt sync [SPEC-ID]` | Worktree同期                   | `moai-wt sync --all`             |
+| `moai-wt clean`          | マージWorktree整理             | `moai-wt clean --merged-only`    |
+| `moai-wt recover`        | ディスクからレジストリ復復     | `moai-wt recover`                |
+| `moai-wt config`         | Worktree設定確認               | `moai-wt config root`            |
 
 ---
 

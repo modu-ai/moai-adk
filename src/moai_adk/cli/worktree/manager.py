@@ -500,6 +500,111 @@ class WorktreeManager:
             # Auto-resolution failed, raise error for manual intervention
             raise GitOperationError(f"Auto-resolution failed for {spec_id}: {e}")
 
+    def done(
+        self,
+        spec_id: str,
+        base_branch: str = "main",
+        push: bool = False,
+        force: bool = False,
+    ) -> dict:
+        """Complete worktree workflow: merge to base branch and remove worktree.
+
+        This is a convenience method that performs the following steps:
+        1. Checkout base branch in main repository
+        2. Merge worktree branch into base branch
+        3. Remove worktree and its branch
+
+        Args:
+            spec_id: SPEC ID of worktree to complete.
+            base_branch: Branch to merge into (defaults to 'main').
+            push: Push merged changes to remote after merge.
+            force: Force removal even with uncommitted changes.
+
+        Returns:
+            dict with keys: 'merged_branch', 'base_branch', 'pushed'
+
+        Raises:
+            WorktreeNotFoundError: If worktree doesn't exist.
+            MergeConflictError: If merge conflict occurs.
+            GitOperationError: If Git operation fails.
+        """
+        info = self.registry.get(spec_id, project_name=self.project_name)
+        if not info:
+            raise WorktreeNotFoundError(spec_id)
+
+        merged_branch = info.branch
+        pushed = False
+
+        try:
+            # Step 1: Fetch latest from remote
+            try:
+                self.repo.remotes.origin.fetch()
+            except Exception:
+                pass
+
+            # Step 2: Checkout base branch in main repo
+            try:
+                self.repo.git.checkout(base_branch)
+            except Exception as e:
+                raise GitOperationError(f"Failed to checkout {base_branch}: {e}")
+
+            # Step 3: Merge worktree branch into base branch
+            try:
+                self.repo.git.merge(merged_branch, "--no-ff", "-m", f"Merge {merged_branch} into {base_branch}")
+            except Exception as e:
+                # Check for merge conflicts
+                try:
+                    status = self.repo.git.status("--porcelain")
+                    conflicted = [
+                        line.split()[-1]
+                        for line in status.split("\n")
+                        if line.startswith("UU")
+                        or line.startswith("DD")
+                        or line.startswith("AA")
+                        or line.startswith("DU")
+                    ]
+                    if conflicted:
+                        # Abort merge to leave clean state
+                        try:
+                            self.repo.git.merge("--abort")
+                        except Exception:
+                            pass
+                        raise MergeConflictError(spec_id, conflicted)
+                except MergeConflictError:
+                    raise
+                except Exception:
+                    pass
+                raise GitOperationError(f"Failed to merge {merged_branch}: {e}")
+
+            # Step 4: Push if requested
+            if push:
+                try:
+                    self.repo.git.push("origin", base_branch)
+                    pushed = True
+                except Exception as e:
+                    raise GitOperationError(f"Failed to push to origin/{base_branch}: {e}")
+
+            # Step 5: Remove worktree
+            self.remove(spec_id=spec_id, force=force)
+
+            # Step 6: Delete the branch (optional cleanup)
+            try:
+                self.repo.git.branch("-d", merged_branch)
+            except Exception:
+                # Branch might be protected or already deleted
+                pass
+
+            return {
+                "merged_branch": merged_branch,
+                "base_branch": base_branch,
+                "pushed": pushed,
+            }
+
+        except (WorktreeNotFoundError, MergeConflictError, GitOperationError):
+            raise
+        except Exception as e:
+            raise GitOperationError(f"Failed to complete worktree: {e}")
+
     def _copy_llm_config(self, worktree_path: Path, llm_config_path: Path) -> None:
         """Copy LLM config to worktree with environment variable substitution.
 

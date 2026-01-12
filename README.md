@@ -1186,6 +1186,11 @@ claude
 #### Phase 3: Merge and Cleanup
 
 ```bash
+# Option 1: Complete in one step (Recommended)
+moai-wt done SPEC-ID              # checkout main → merge → cleanup
+moai-wt done SPEC-ID --push       # above + push to remote
+
+# Option 2: Manual steps
 git checkout main
 git merge feature/SPEC-ID
 moai-wt clean --merged-only
@@ -1206,17 +1211,18 @@ moai-wt clean --merged-only
 
 ### 📊 Worktree Commands
 
-| Command                  | Description                        | Usage Example                  |
-| ------------------------ | ---------------------------------- | ------------------------------ |
-| `moai-wt new SPEC-ID`    | Create new Worktree                | `moai-wt new SPEC-AUTH-001`    |
-| `moai-wt go SPEC-ID`     | Enter Worktree (open new shell)    | `moai-wt go SPEC-AUTH-001`     |
-| `moai-wt list`           | List Worktrees                     | `moai-wt list`                 |
-| `moai-wt remove SPEC-ID` | Remove Worktree                    | `moai-wt remove SPEC-AUTH-001` |
-| `moai-wt status`         | Check Worktree status and registry | `moai-wt status`               |
-| `moai-wt sync [SPEC-ID]` | Synchronize Worktree               | `moai-wt sync --all`           |
-| `moai-wt clean`          | Clean merged Worktrees             | `moai-wt clean --merged-only`  |
-| `moai-wt recover`        | Recover registry from disk         | `moai-wt recover`              |
-| `moai-wt config`         | Check Worktree settings            | `moai-wt config root`          |
+| Command                  | Description                        | Usage Example                    |
+| ------------------------ | ---------------------------------- | -------------------------------- |
+| `moai-wt new SPEC-ID`    | Create new Worktree                | `moai-wt new SPEC-AUTH-001`      |
+| `moai-wt go SPEC-ID`     | Enter Worktree (open new shell)    | `moai-wt go SPEC-AUTH-001`       |
+| `moai-wt list`           | List Worktrees                     | `moai-wt list`                   |
+| `moai-wt done SPEC-ID`   | Merge and cleanup (checkout→merge) | `moai-wt done SPEC-AUTH-001`     |
+| `moai-wt remove SPEC-ID` | Remove Worktree                    | `moai-wt remove SPEC-AUTH-001`   |
+| `moai-wt status`         | Check Worktree status and registry | `moai-wt status`                 |
+| `moai-wt sync [SPEC-ID]` | Synchronize Worktree               | `moai-wt sync --all`             |
+| `moai-wt clean`          | Clean merged Worktrees             | `moai-wt clean --merged-only`    |
+| `moai-wt recover`        | Recover registry from disk         | `moai-wt recover`                |
+| `moai-wt config`         | Check Worktree settings            | `moai-wt config root`            |
 
 ---
 

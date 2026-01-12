@@ -653,6 +653,82 @@ def recover_worktrees(repo: str | None, worktree_root: str | None) -> None:
         raise click.Abort()
 
 
+@worktree.command(name="done")
+@click.argument("spec_id")
+@click.option("--base", default="main", help="Base branch to merge into")
+@click.option("--push", is_flag=True, help="Push to remote after merge")
+@click.option("--force", "-f", is_flag=True, help="Force remove with uncommitted changes")
+@click.option("--repo", type=click.Path(), default=None, help="Repository path")
+@click.option("--worktree-root", type=click.Path(), default=None, help="Worktree root directory")
+def done_worktree(
+    spec_id: str,
+    base: str,
+    push: bool,
+    force: bool,
+    repo: str | None,
+    worktree_root: str | None,
+) -> None:
+    """Complete worktree: merge to main and cleanup.
+
+    This command performs the full completion workflow:
+    1. Checkout base branch (main)
+    2. Merge worktree branch into base
+    3. Remove worktree
+    4. Delete feature branch
+
+    Args:
+        spec_id: SPEC ID to complete
+        base: Base branch to merge into (default: main)
+        push: Push to remote after merge
+        force: Force removal even with uncommitted changes
+        repo: Repository path (optional)
+        worktree_root: Worktree root directory (optional)
+    """
+    try:
+        repo_path = Path(repo) if repo else Path.cwd()
+        wt_root = Path(worktree_root) if worktree_root else None
+
+        manager = get_manager(repo_path, wt_root)
+
+        # Get worktree info for display
+        info = manager.registry.get(spec_id, project_name=manager.project_name)
+        if not info:
+            console.print(f"[red]✗[/red] Worktree not found: {spec_id}")
+            raise click.Abort()
+
+        console.print(f"[cyan]Completing worktree: {spec_id}[/cyan]")
+        console.print(f"  Branch: {info.branch}")
+        console.print(f"  Merging into: {base}")
+        console.print()
+
+        result = manager.done(
+            spec_id=spec_id,
+            base_branch=base,
+            push=push,
+            force=force,
+        )
+
+        console.print("[green]✓[/green] Worktree completed successfully")
+        console.print(f"  Merged: {result['merged_branch']} → {result['base_branch']}")
+        if result["pushed"]:
+            console.print(f"  Pushed: origin/{result['base_branch']}")
+        console.print()
+        console.print("[yellow]Branch cleanup:[/yellow]")
+        console.print(f"  - Worktree removed: {spec_id}")
+        console.print(f"  - Branch deleted: {result['merged_branch']}")
+
+    except WorktreeNotFoundError as e:
+        console.print(f"[red]✗[/red] {e}")
+        raise click.Abort()
+    except MergeConflictError as e:
+        console.print(f"[red]✗[/red] Merge conflict: {e}")
+        console.print("[yellow]Resolve conflicts manually and try again[/yellow]")
+        raise click.Abort()
+    except GitOperationError as e:
+        console.print(f"[red]✗[/red] {e}")
+        raise click.Abort()
+
+
 @worktree.command(name="config")
 @click.argument("key", required=False)
 @click.argument("value", required=False)

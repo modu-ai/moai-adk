@@ -13,6 +13,12 @@ Minor release introducing parallel execution as the default workflow mode for im
   - Better utilization of system resources
   - Related PR: #255
 
+- **feat(worktree)**: Add `moai-wt done` command for streamlined workflow completion
+  - One-command completion: checkout main → merge branch → remove worktree
+  - Optional `--push` flag to push merged changes to remote
+  - Automatic feature branch cleanup after merge
+  - Simplifies Phase 3 (Merge and Cleanup) workflow
+
 ## Fixed
 
 - **fix(hooks)**: Prevent session_start hook from hanging on slow git operations (#254)
@@ -20,6 +26,11 @@ Minor release introducing parallel execution as the default workflow mode for im
   - Improved timeout handling for git operations
   - Enhanced reliability of session initialization
   - Related PR: #254
+
+- **fix(hooks)**: Run session_end hook in background to prevent exit delays
+  - Session exit now completes instantly without waiting for cleanup
+  - Background processing for auto-cleanup and rank submission
+  - Eliminates ~3 second delay when closing Claude Code sessions
 
 - **fix(commands)**: Align tool permissions with CLAUDE.md Command Types policy
   - Ensured all commands follow documented permission policies
@@ -62,6 +73,12 @@ No breaking changes. Existing workflows will automatically benefit from parallel
   - 시스템 리소스 활용 개선
   - 관련 PR: #255
 
+- **feat(worktree)**: 워크플로우 완료를 위한 `moai-wt done` 명령어 추가
+  - 한 번의 명령으로 완료: checkout main → 브랜치 병합 → worktree 제거
+  - 병합된 변경사항을 원격에 푸시하는 `--push` 옵션
+  - 병합 후 자동 feature 브랜치 정리
+  - Phase 3 (병합 및 정리) 워크플로우 간소화
+
 ## 수정됨
 
 - **fix(hooks)**: 느린 git 작업으로 인한 session_start hook hang 방지 (#254)
@@ -69,6 +86,11 @@ No breaking changes. Existing workflows will automatically benefit from parallel
   - git 작업에 대한 타임아웃 처리 개선
   - 세션 초기화의 안정성 향상
   - 관련 PR: #254
+
+- **fix(hooks)**: 종료 지연 방지를 위해 session_end hook을 백그라운드에서 실행
+  - 세션 종료가 정리 작업을 기다리지 않고 즉시 완료됨
+  - auto-cleanup 및 rank 제출의 백그라운드 처리
+  - Claude Code 세션 종료 시 ~3초 지연 제거
 
 - **fix(commands)**: CLAUDE.md Command Types 정책에 맞춰 도구 권한 정렬
   - 모든 명령어가 문서화된 권한 정책을 따르도록 보장
