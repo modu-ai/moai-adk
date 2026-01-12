@@ -5,6 +5,7 @@ Analyze command for MoAI-ADK
 Analyze Claude Code sessions and generate improvement suggestions.
 """
 
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -14,7 +15,12 @@ from rich.table import Table
 
 from moai_adk.core.analysis.session_analyzer import SessionAnalyzer
 
-console = Console()
+# Force UTF-8 encoding for Windows compatibility
+# Windows PowerShell/Console uses 'charmap' by default, which can't encode emojis
+if sys.platform == "win32":
+    console = Console(force_terminal=True, legacy_windows=False)
+else:
+    console = Console()
 
 
 @click.command()

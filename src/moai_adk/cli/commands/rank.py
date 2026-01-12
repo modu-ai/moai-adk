@@ -10,12 +10,18 @@ Commands for interacting with the MoAI Rank leaderboard service:
 For the full leaderboard and detailed statistics, visit https://rank.mo.ai.kr
 """
 
+import sys
+
 import click
 from rich.columns import Columns
 from rich.console import Console
 from rich.panel import Panel
 
-console = Console()
+# Force UTF-8 encoding for Windows compatibility
+if sys.platform == "win32":
+    console = Console(force_terminal=True, legacy_windows=False)
+else:
+    console = Console()
 
 
 def format_tokens(tokens: int) -> str:

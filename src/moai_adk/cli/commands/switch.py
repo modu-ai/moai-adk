@@ -10,13 +10,19 @@ Usage:
 import json
 import os
 import re
+import sys
 from pathlib import Path
 
 import click
 from rich.console import Console
 from rich.panel import Panel
 
-console = Console()
+# Force UTF-8 encoding for Windows compatibility
+# Windows PowerShell/Console uses 'charmap' by default, which can't encode emojis
+if sys.platform == "win32":
+    console = Console(force_terminal=True, legacy_windows=False)
+else:
+    console = Console()
 
 
 def _get_credential_value(var_name: str) -> str | None:

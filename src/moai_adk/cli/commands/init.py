@@ -27,6 +27,7 @@ Project initialization command (interactive/non-interactive):
 """
 
 import json
+import sys
 from pathlib import Path
 from typing import Sequence
 
@@ -44,7 +45,12 @@ from moai_adk.statusline.version_reader import (
 )
 from moai_adk.utils.banner import print_banner, print_welcome_message
 
-console = Console()
+# Force UTF-8 encoding for Windows compatibility
+# Windows PowerShell/Console uses 'charmap' by default, which can't encode emojis
+if sys.platform == "win32":
+    console = Console(force_terminal=True, legacy_windows=False)
+else:
+    console = Console()
 
 
 def create_progress_callback(progress: Progress, task_ids: Sequence[TaskID]):

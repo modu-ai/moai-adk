@@ -5,6 +5,7 @@ and multilingual content generation.
 """
 
 import json
+import sys
 from pathlib import Path
 
 import click
@@ -20,7 +21,12 @@ from ...core.language_config import (
 )
 from ...core.template_engine import TemplateEngine
 
-console = Console()
+# Force UTF-8 encoding for Windows compatibility
+# Windows PowerShell/Console uses 'charmap' by default, which can't encode emojis
+if sys.platform == "win32":
+    console = Console(force_terminal=True, legacy_windows=False)
+else:
+    console = Console()
 
 
 @click.group()

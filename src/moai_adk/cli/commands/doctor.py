@@ -33,6 +33,7 @@ System diagnostics command:
 """
 
 import json
+import sys
 from pathlib import Path
 
 import click
@@ -43,7 +44,12 @@ from rich.table import Table
 from moai_adk.core.project.checker import SystemChecker, check_environment
 from moai_adk.core.project.detector import detect_project_language
 
-console = Console()
+# Force UTF-8 encoding for Windows compatibility
+# Windows PowerShell/Console uses 'charmap' by default, which can't encode emojis
+if sys.platform == "win32":
+    console = Console(force_terminal=True, legacy_windows=False)
+else:
+    console = Console()
 
 
 @click.command()

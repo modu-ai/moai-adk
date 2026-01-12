@@ -30,6 +30,7 @@ Project status display:
    - When SPEC count grows, verify with `Skill("moai-foundation-trust")`
 """
 
+import sys
 from pathlib import Path
 
 import click
@@ -38,7 +39,12 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-console = Console()
+# Force UTF-8 encoding for Windows compatibility
+# Windows PowerShell/Console uses 'charmap' by default, which can't encode emojis
+if sys.platform == "win32":
+    console = Console(force_terminal=True, legacy_windows=False)
+else:
+    console = Console()
 
 
 @click.command()

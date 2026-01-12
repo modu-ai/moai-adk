@@ -46,6 +46,7 @@ import json
 import logging
 import shutil
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Union, cast
@@ -67,7 +68,12 @@ from moai_adk.core.migration.user_selection_ui import create_user_selection_ui
 from moai_adk.core.template.processor import TemplateProcessor
 from moai_adk.utils.common import reset_stdin
 
-console = Console()
+# Force UTF-8 encoding for Windows compatibility
+# Windows PowerShell/Console uses 'charmap' by default, which can't encode emojis
+if sys.platform == "win32":
+    console = Console(force_terminal=True, legacy_windows=False)
+else:
+    console = Console()
 logger = logging.getLogger(__name__)
 
 # Constants for tool detection
