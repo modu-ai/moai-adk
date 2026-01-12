@@ -2,7 +2,7 @@
 description: "Submit feedback or report issues"
 argument-hint: "[issue|suggestion|question]"
 type: local
-allowed-tools: Task, AskUserQuestion, TodoWrite
+allowed-tools: Read, Write, Edit, Bash, Grep, Glob, TodoWrite, AskUserQuestion
 model: sonnet
 ---
 

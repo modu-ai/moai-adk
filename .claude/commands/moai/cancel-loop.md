@@ -2,7 +2,7 @@
 description: "Cancel autonomous loop with snapshot preservation"
 argument-hint: "[--force] [--snapshot] | [--list]"
 type: utility
-allowed-tools: Bash, Read, Write, AskUserQuestion
+allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 model: inherit
 ---
 

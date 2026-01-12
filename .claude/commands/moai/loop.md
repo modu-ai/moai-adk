@@ -2,7 +2,7 @@
 description: "Agentic autonomous loop - Auto-fix until completion marker"
 argument-hint: "[--max N] [--auto] [--parallel] | --resume snapshot"
 type: utility
-allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit
+allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 model: inherit
 ---
 
@@ -30,7 +30,7 @@ AI: 수정 → 검증 → 반복
   ↓
 AI: 완료 마커 추가
   ↓
-<promise>DONE</promise>
+<moai>DONE</moai>
 ```
 
 ## Command Purpose
@@ -79,13 +79,13 @@ AI가 모든 작업을 완료하면 마커를 추가:
 ```markdown
 ## 루프 완료
 
-7번의 반복으로 5개 에러, 3개 경고 해결. <promise>DONE</promise>
+7번의 반복으로 5개 에러, 3개 경고 해결. <moai>DONE</moai>
 ```
 
 **마커 종류**:
-- `<promise>DONE</promise>` - 작업 완료
-- `<promise>COMPLETE</promise>` - 전체 완료
-- `<ralph:done />` - XML 형식
+- `<moai>DONE</moai>` - 작업 완료
+- `<moai>COMPLETE</moai>` - 전체 완료
+- `<moai:done />` - XML 형식
 
 마커 없으면 계속 반복합니다.
 
@@ -213,7 +213,7 @@ Coverage
 - tests/test_auth.py (3 fixes)
 - src/api/routes.py (2 fixes)
 
-<promise>DONE</promise>
+<moai>DONE</moai>
 ```
 
 ### 최대 반복 도달

@@ -1,8 +1,8 @@
 ---
 description: "Agentic AI automation - From SPEC to code with autonomous loop"
 argument-hint: '"task description" [--loop] [--max N] | resume SPEC-XXX'
-type: workflow
-allowed-tools: Task, AskUserQuestion, TodoWrite, Skill, Glob, Bash
+type: utility
+allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 model: inherit
 ---
 
@@ -33,7 +33,7 @@ AI: 탐색 → 계획 → 구현 → 검증 → 반복
   ↓
 AI: 모든 이슈 해 solved
   ↓
-AI: <promise>DONE</promise>
+AI: <moai>DONE</moai>
 ```
 
 ## Command Purpose
@@ -44,7 +44,7 @@ AI: <promise>DONE</promise>
 2. **SPEC 생성** (사용자 승인 후)
 3. **TDD 구현** (자동 반복 수정)
 4. **문서 동기화**
-5. **완료 마커 감지** (`<promise>DONE</promise>`)
+5. **완료 마커 감지** (`<moai>DONE</moai>`)
 
 Feature Description: $ARGUMENTS
 
@@ -82,13 +82,13 @@ AI가 작업을 완료했을 때 반드시 마커를 추가:
 ```markdown
 ## 완료
 
-모든 구현 완료, 테스트 통과, 문서 업데이트. <promise>DONE</promise>
+모든 구현 완료, 테스트 통과, 문서 업데이트. <moai>DONE</moai>
 ```
 
 **마커 종류**:
-- `<promise>DONE</promise>` - 작업 완료
-- `<promise>COMPLETE</promise>` - 전체 완료
-- `<ralph:done />` - XML 형식
+- `<moai>DONE</moai>` - 작업 완료
+- `<moai>COMPLETE</moai>` - 전체 완료
+- `<moai:done />` - XML 형식
 
 ## Agentic Autonomous Flow
 
@@ -117,7 +117,7 @@ PHASE 2: TDD 구현 (자율 루프)
        └── 완료 마커 감지? → BREAK
   ↓
 PHASE 3: 문서 동기화
-  └── 마커 추가: <promise>DONE</promise>
+  └── 마커 추가: <moai>DONE</moai>
   ↓
 COMPLETE
 ```
@@ -172,7 +172,7 @@ COMPLETE
 + Unit tests (12 cases)
 + API documentation
 
-<promise>DONE</promise>
+<moai>DONE</moai>
 ```
 
 ## LLM Mode

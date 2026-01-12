@@ -2,7 +2,7 @@
 description: "Agentic auto-fix - Parallel scan with autonomous correction"
 argument-hint: "[--dry] [--parallel] [--level N] [file_path]"
 type: utility
-allowed-tools: Task, AskUserQuestion, Bash, Read, Write, Edit, Glob, Grep
+allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 model: inherit
 ---
 
