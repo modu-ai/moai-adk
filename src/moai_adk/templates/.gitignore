@@ -173,6 +173,8 @@ secret-*.*
 !.moai/scripts/**
 !.moai/specs/
 !.moai/specs/**
+!.moai/llm-configs/
+!.moai/llm-configs/**
 !.moai/announcements/
 !.moai/announcements/**
 

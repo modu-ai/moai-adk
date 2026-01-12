@@ -225,6 +225,8 @@ mock_api_response_*.json
 !/.moai/scripts/**
 !/.moai/specs/
 !/.moai/specs/**
+!/.moai/llm-configs/
+!/.moai/llm-configs/**
 
 # Exclude local-only directories
 /.moai/cache/
