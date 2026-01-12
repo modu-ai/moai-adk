@@ -1,3 +1,101 @@
+# v1.1.0 - Parallel Execution & Performance Optimization (2026-01-13)
+
+## Summary
+
+Minor release introducing parallel execution as the default workflow mode for improved performance, along with critical bug fixes for git hook hangs and command permission alignment. This release enhances developer experience with faster task execution and more reliable background operations.
+
+## Added
+
+- **feat(workflow)**: Parallel execution is now the default mode (#255)
+  - All independent tasks execute in parallel by default
+  - Add `--sequential` option to opt-out and run tasks sequentially when needed
+  - Significantly improves workflow performance for multi-step operations
+  - Better utilization of system resources
+  - Related PR: #255
+
+## Fixed
+
+- **fix(hooks)**: Prevent session_start hook from hanging on slow git operations (#254)
+  - Fixed blocking issue where slow git commands caused startup delays
+  - Improved timeout handling for git operations
+  - Enhanced reliability of session initialization
+  - Related PR: #254
+
+- **fix(commands)**: Align tool permissions with CLAUDE.md Command Types policy
+  - Ensured all commands follow documented permission policies
+  - Improved security and consistency across command execution
+  - Better alignment with Type A, Type B, and Type C command classifications
+
+## Installation & Update
+
+```bash
+# Install
+pip install moai-adk==1.1.0
+uv tool install moai-adk
+
+# Update existing installation
+pip install --upgrade moai-adk
+uv tool install --upgrade moai-adk
+
+# Verify version
+moai --version
+```
+
+## Migration Guide
+
+No breaking changes. Existing workflows will automatically benefit from parallel execution. If you need sequential execution for specific workflows, use the `--sequential` flag.
+
+---
+
+# v1.1.0 - 병렬 실행 및 성능 최적화 (2026-01-13)
+
+## 요약
+
+성능 향상을 위한 병렬 실행을 기본 워크플로우 모드로 도입하고, git hook hang 및 명령어 권한 정렬에 대한 중요한 버그 수정이 포함된 마이너 릴리스입니다. 이 릴리스는 더 빠른 작업 실행과 더 안정적인 백그라운드 작업을 통해 개발자 경험을 향상시킵니다.
+
+## 추가됨
+
+- **feat(workflow)**: 병렬 실행이 이제 기본 모드입니다 (#255)
+  - 모든 독립적인 작업이 기본적으로 병렬로 실행됩니다
+  - 필요할 때 순차 실행을 위한 `--sequential` 옵션 추가
+  - 다단계 작업의 워크플로우 성능 대폭 향상
+  - 시스템 리소스 활용 개선
+  - 관련 PR: #255
+
+## 수정됨
+
+- **fix(hooks)**: 느린 git 작업으로 인한 session_start hook hang 방지 (#254)
+  - 느린 git 명령어가 시작 지연을 유발하는 블로킹 문제 수정
+  - git 작업에 대한 타임아웃 처리 개선
+  - 세션 초기화의 안정성 향상
+  - 관련 PR: #254
+
+- **fix(commands)**: CLAUDE.md Command Types 정책에 맞춰 도구 권한 정렬
+  - 모든 명령어가 문서화된 권한 정책을 따르도록 보장
+  - 명령어 실행 전반의 보안 및 일관성 개선
+  - Type A, Type B, Type C 명령어 분류와의 더 나은 정렬
+
+## 설치 및 업데이트
+
+```bash
+# 설치
+pip install moai-adk==1.1.0
+uv tool install moai-adk
+
+# 기존 설치 업데이트
+pip install --upgrade moai-adk
+uv tool install --upgrade moai-adk
+
+# 버전 확인
+moai --version
+```
+
+## 마이그레이션 가이드
+
+Breaking change 없음. 기존 워크플로우는 자동으로 병렬 실행의 이점을 얻습니다. 특정 워크플로우에 순차 실행이 필요한 경우 `--sequential` 플래그를 사용하세요.
+
+---
+
 # v1.0.1 - Git Worktree Support Fix (2026-01-12)
 
 ## Summary
