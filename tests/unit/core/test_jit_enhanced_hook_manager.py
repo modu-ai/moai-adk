@@ -5,7 +5,6 @@ These tests verify that the module can be imported and basic classes
 can be instantiated without errors.
 """
 
-
 from moai_adk.core.jit_enhanced_hook_manager import (
     ContextCache,
     HookEvent,

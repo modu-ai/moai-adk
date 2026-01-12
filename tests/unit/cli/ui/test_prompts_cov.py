@@ -134,6 +134,7 @@ class TestFuzzyCheckbox:
 
     def test_fuzzy_checkbox_validation(self):
         """Test fuzzy checkbox with validation."""
+
         def validator(x):
             return len(x) > 0
 
@@ -301,14 +302,20 @@ class TestStyledSelect:
             assert result == "B"
 
     def test_styled_select_keyboard_interrupt(self):
-        """Test styled select handles KeyboardInterrupt."""
+        """Test styled select handles KeyboardInterrupt and falls back to questionary."""
         with patch("moai_adk.cli.ui.prompts.inquirer.select") as mock_select:
             mock_result = MagicMock()
             mock_result.execute.side_effect = KeyboardInterrupt()
             mock_select.return_value = mock_result
 
-            result = styled_select("Choose", ["A"])
-            assert result is None
+            # When inquirer raises KeyboardInterrupt, styled_select falls back to questionary
+            with patch("questionary.select") as mock_questionary:
+                mock_q_result = MagicMock()
+                mock_q_result.ask.return_value = None  # Simulate cancelled selection
+                mock_questionary.return_value = mock_q_result
+
+                result = styled_select("Choose", ["A"])
+                assert result is None
 
     def test_styled_select_cycle(self):
         """Test styled select with cycle parameter."""
@@ -390,6 +397,7 @@ class TestStyledInput:
 
     def test_styled_input_validation(self):
         """Test styled input with custom validation."""
+
         def validator(x):
             return len(x) > 3
 

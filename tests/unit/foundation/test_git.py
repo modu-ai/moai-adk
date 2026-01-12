@@ -1,6 +1,5 @@
 """Tests for moai_adk.foundation.git module."""
 
-
 from moai_adk.foundation.git import (
     BranchingStrategySelector,
     ConventionalCommitValidator,

@@ -437,10 +437,7 @@ class TestRestoreSingleElement:
             backup_file.write_text("agent content")
 
             restorer = SelectiveRestorer(project_path, backup_path)
-            success = restorer._restore_single_element(
-                Path(".claude/agents/my-agent.md"),
-                "agents"
-            )
+            success = restorer._restore_single_element(Path(".claude/agents/my-agent.md"), "agents")
 
             assert success is True
             target_file = project_path / ".claude" / "agents" / "my-agent.md"
@@ -461,10 +458,7 @@ class TestRestoreSingleElement:
             (backup_skill / "file2.py").write_text("file2 content")
 
             restorer = SelectiveRestorer(project_path, backup_path)
-            success = restorer._restore_single_element(
-                Path(".moai/skills/my-skill"),
-                "skills"
-            )
+            success = restorer._restore_single_element(Path(".moai/skills/my-skill"), "skills")
 
             assert success is True
             target_skill = project_path / ".moai" / "skills" / "my-skill"
@@ -480,10 +474,7 @@ class TestRestoreSingleElement:
             backup_path.mkdir(parents=True, exist_ok=True)
 
             restorer = SelectiveRestorer(project_path, backup_path)
-            success = restorer._restore_single_element(
-                Path(".claude/agents/nonexistent.md"),
-                "agents"
-            )
+            success = restorer._restore_single_element(Path(".claude/agents/nonexistent.md"), "agents")
 
             assert success is False
 
@@ -495,10 +486,7 @@ class TestRestoreSingleElement:
             backup_path.mkdir(parents=True, exist_ok=True)
 
             restorer = SelectiveRestorer(project_path, backup_path)
-            success = restorer._restore_single_element(
-                Path("invalid/path/file.md"),
-                "unknown"
-            )
+            success = restorer._restore_single_element(Path("invalid/path/file.md"), "unknown")
 
             assert success is False
 
@@ -515,10 +503,7 @@ class TestRestoreSingleElement:
             backup_file.write_text("command content")
 
             restorer = SelectiveRestorer(project_path, backup_path)
-            success = restorer._restore_single_element(
-                Path(".claude/commands/moai/deep/nested/cmd.md"),
-                "commands"
-            )
+            success = restorer._restore_single_element(Path(".claude/commands/moai/deep/nested/cmd.md"), "commands")
 
             assert success is True
             target_file = project_path / ".claude" / "commands" / "moai" / "deep" / "nested" / "cmd.md"
@@ -537,10 +522,7 @@ class TestRestoreSingleElement:
             backup_file.write_text("agent content")
 
             restorer = SelectiveRestorer(project_path, backup_path)
-            restorer._restore_single_element(
-                Path(".claude/agents/my-agent.md"),
-                "agents"
-            )
+            restorer._restore_single_element(Path(".claude/agents/my-agent.md"), "agents")
 
             assert len(restorer.restoration_log) > 0
             log_entry = restorer.restoration_log[0]
@@ -768,12 +750,14 @@ class TestWasRestorationSuccessful:
         """Test checking successful restoration."""
         with tempfile.TemporaryDirectory() as tmpdir:
             restorer = SelectiveRestorer(Path(tmpdir))
-            restorer.restoration_log.append({
-                "path": ".claude/agents/agent.md",
-                "type": "agents",
-                "status": "success",
-                "timestamp": "123456",
-            })
+            restorer.restoration_log.append(
+                {
+                    "path": ".claude/agents/agent.md",
+                    "type": "agents",
+                    "status": "success",
+                    "timestamp": "123456",
+                }
+            )
 
             result = restorer._was_restoration_successful(Path(".claude/agents/agent.md"))
 
@@ -783,12 +767,14 @@ class TestWasRestorationSuccessful:
         """Test checking failed restoration."""
         with tempfile.TemporaryDirectory() as tmpdir:
             restorer = SelectiveRestorer(Path(tmpdir))
-            restorer.restoration_log.append({
-                "path": ".claude/agents/agent.md",
-                "type": "agents",
-                "status": "failed",
-                "timestamp": "123456",
-            })
+            restorer.restoration_log.append(
+                {
+                    "path": ".claude/agents/agent.md",
+                    "type": "agents",
+                    "status": "failed",
+                    "timestamp": "123456",
+                }
+            )
 
             result = restorer._was_restoration_successful(Path(".claude/agents/agent.md"))
 
@@ -819,7 +805,7 @@ class TestDisplayRestorationSummary:
                 "by_type": {
                     "agents": {"total": 1, "success": 1, "failed": 0},
                     "skills": {"total": 2, "success": 2, "failed": 0},
-                }
+                },
             }
 
             restorer._display_restoration_summary(stats)
@@ -841,7 +827,7 @@ class TestDisplayRestorationSummary:
                 "by_type": {
                     "agents": {"total": 1, "success": 0, "failed": 1},
                     "skills": {"total": 2, "success": 2, "failed": 0},
-                }
+                },
             }
 
             restorer._display_restoration_summary(stats)
@@ -1004,7 +990,7 @@ class TestRestoreElementTypeEdgeCases:
             restorer = SelectiveRestorer(project_path, backup_path)
 
             # Mock _restore_single_element to raise an exception
-            with patch.object(restorer, '_restore_single_element', side_effect=Exception("Test error")):
+            with patch.object(restorer, "_restore_single_element", side_effect=Exception("Test error")):
                 elements = [Path(".claude/agents/agent.md")]
                 stats = restorer._restore_element_type("agents", elements)
 
@@ -1038,7 +1024,7 @@ class TestNormalizePathEdgeCases:
             mock_path.is_absolute.return_value = True
 
             # When str() is called on the mock, return a string with .claude/
-            with patch('pathlib.Path.__str__', return_value="/some/path/.moai/file"):
+            with patch("pathlib.Path.__str__", return_value="/some/path/.moai/file"):
                 # This should work and normalize properly
                 element_path = Path("/some/path/.moai/file")
                 result = restorer._normalize_element_path(element_path)
@@ -1098,7 +1084,9 @@ class TestHandleFileConflictEdgeCases:
             restorer = SelectiveRestorer(project_path)
 
             # Mock to cause backup to fail
-            with patch("moai_adk.core.migration.selective_restorer.shutil.copy2", side_effect=PermissionError("Cannot backup")):
+            with patch(
+                "moai_adk.core.migration.selective_restorer.shutil.copy2", side_effect=PermissionError("Cannot backup")
+            ):
                 result = restorer._handle_file_conflict(target_file, backup_file)
 
             assert result is False
@@ -1119,7 +1107,7 @@ class TestHandleFileConflictEdgeCases:
             restorer = SelectiveRestorer(project_path)
 
             # Mock read_text to raise an exception
-            with patch.object(Path, 'read_text', side_effect=RuntimeError("Read error")):
+            with patch.object(Path, "read_text", side_effect=RuntimeError("Read error")):
                 result = restorer._handle_file_conflict(target_file, backup_file)
 
             assert result is False
@@ -1158,7 +1146,7 @@ class TestPrintAndLoggingEdgeCases:
                 "failed": 0,
                 "by_type": {
                     "agents": {"total": 0, "success": 0, "failed": 0},
-                }
+                },
             }
 
             restorer._display_restoration_summary(stats)
@@ -1186,10 +1174,7 @@ class TestEdgeCasesAndErrors:
 
             # Mock shutil.copy2 to raise PermissionError
             with patch("shutil.copy2", side_effect=PermissionError("Access denied")):
-                success = restorer._restore_single_element(
-                    Path(".claude/agents/agent.md"),
-                    "agents"
-                )
+                success = restorer._restore_single_element(Path(".claude/agents/agent.md"), "agents")
 
             assert success is False
 
@@ -1228,10 +1213,7 @@ class TestEdgeCasesAndErrors:
             backup_file.write_text("content")
 
             restorer = SelectiveRestorer(project_path, backup_path)
-            success = restorer._restore_single_element(
-                Path(".claude/agents/agent.md"),
-                "agents"
-            )
+            success = restorer._restore_single_element(Path(".claude/agents/agent.md"), "agents")
 
             assert success is True
 

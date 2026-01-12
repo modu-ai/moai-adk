@@ -7,7 +7,6 @@ These tests exercise actual code paths including:
 - Error event creation and handling
 """
 
-
 from moai_adk.core.error_recovery_system import (
     ErrorCategory,
     ErrorSeverity,

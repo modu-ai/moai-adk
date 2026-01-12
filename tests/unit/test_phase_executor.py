@@ -215,8 +215,8 @@ class TestConfigurationPhase:
         # Create sections directory with YAML files
         sections_dir = tmp_path / ".moai" / "config" / "sections"
         sections_dir.mkdir(parents=True)
-        (sections_dir / "project.yaml").write_text("project:\n  name: \"\"\n  initialized: false\n")
-        (sections_dir / "system.yaml").write_text("moai:\n  version: \"0.0.0\"\n")
+        (sections_dir / "project.yaml").write_text('project:\n  name: ""\n  initialized: false\n')
+        (sections_dir / "system.yaml").write_text('moai:\n  version: "0.0.0"\n')
 
         created_files = executor.execute_configuration_phase(tmp_path, config)
 
@@ -241,8 +241,8 @@ class TestConfigurationPhase:
         # Create sections directory with YAML files
         sections_dir = tmp_path / ".moai" / "config" / "sections"
         sections_dir.mkdir(parents=True)
-        (sections_dir / "project.yaml").write_text("project:\n  name: \"\"\n  initialized: false\n")
-        (sections_dir / "system.yaml").write_text("moai:\n  version: \"0.0.0\"\n")
+        (sections_dir / "project.yaml").write_text('project:\n  name: ""\n  initialized: false\n')
+        (sections_dir / "system.yaml").write_text('moai:\n  version: "0.0.0"\n')
 
         executor.execute_configuration_phase(tmp_path, config)
 

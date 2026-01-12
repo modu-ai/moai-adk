@@ -11,7 +11,6 @@ Increases coverage for:
 - FrontendMetricsCollector: Frontend metrics
 """
 
-
 from moai_adk.foundation.frontend import (
     AccessibilityValidator,
     ComponentArchitect,

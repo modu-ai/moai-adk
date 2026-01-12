@@ -7,7 +7,6 @@ These tests exercise actual code paths including:
 - Configuration update logic
 """
 
-
 import pytest
 
 from moai_adk.cli.commands.update import (

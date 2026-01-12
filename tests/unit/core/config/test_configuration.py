@@ -1,6 +1,5 @@
 """Tests for moai_adk.project.configuration module."""
 
-
 import pytest
 
 

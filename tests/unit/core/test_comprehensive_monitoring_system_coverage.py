@@ -55,7 +55,7 @@ class TestMetricData:
             value=75.5,
             tags={"component": "test"},
             source="test_source",
-            metadata={"version": "1.0"}
+            metadata={"version": "1.0"},
         )
 
         assert metric.metric_type == MetricType.CPU_USAGE
@@ -72,7 +72,7 @@ class TestMetricData:
             metric_type=MetricType.MEMORY_USAGE,
             value=85.0,
             tags={"component": "test"},
-            source="test_source"
+            source="test_source",
         )
 
         result = metric.to_dict()
@@ -99,7 +99,7 @@ class TestAlert:
             metric_type=MetricType.CPU_USAGE,
             threshold=80.0,
             current_value=85.0,
-            source="test_source"
+            source="test_source",
         )
 
         assert alert.alert_id == "test_alert_123"
@@ -132,7 +132,7 @@ class TestAlert:
             resolved_at=timestamp,
             acknowledged=True,
             acknowledged_at=timestamp,
-            tags={"environment": "test"}
+            tags={"environment": "test"},
         )
 
         result = alert.to_dict()
@@ -166,7 +166,7 @@ class TestSystemHealth:
             active_alerts=["alert1", "alert2"],
             recent_metrics={"cpu_usage": 50.0},
             uptime_percentage=99.9,
-            last_check=datetime.now()
+            last_check=datetime.now(),
         )
 
         assert health.status == HealthStatus.HEALTHY
@@ -188,7 +188,7 @@ class TestSystemHealth:
             component_scores={"cpu": 90.0},
             active_alerts=["alert1"],
             recent_metrics={"cpu_usage": 50.0},
-            last_check=last_check
+            last_check=last_check,
         )
 
         result = health.to_dict()
@@ -221,10 +221,7 @@ class TestMetricsCollector:
         """Test adding metrics"""
         collector = MetricsCollector()
         metric = MetricData(
-            timestamp=datetime.now(),
-            metric_type=MetricType.CPU_USAGE,
-            value=75.5,
-            tags={"component": "test"}
+            timestamp=datetime.now(), metric_type=MetricType.CPU_USAGE, value=75.5, tags={"component": "test"}
         )
 
         collector.add_metric(metric)
@@ -239,7 +236,7 @@ class TestMetricsCollector:
             timestamp=datetime.now(),
             metric_type=MetricType.USER_BEHAVIOR,
             value="test_value",
-            tags={"component": "test"}
+            tags={"component": "test"},
         )
 
         collector.add_metric(metric)
@@ -251,10 +248,7 @@ class TestMetricsCollector:
         """Test aggregated metrics update"""
         collector = MetricsCollector()
         metric = MetricData(
-            timestamp=datetime.now(),
-            metric_type=MetricType.CPU_USAGE,
-            value=75.5,
-            tags={"component": "test"}
+            timestamp=datetime.now(), metric_type=MetricType.CPU_USAGE, value=75.5, tags={"component": "test"}
         )
 
         collector._update_aggregated_metrics(metric)
@@ -272,19 +266,11 @@ class TestMetricsCollector:
 
         # Add old metric
         old_timestamp = datetime.now() - timedelta(hours=2)
-        old_metric = MetricData(
-            timestamp=old_timestamp,
-            metric_type=MetricType.CPU_USAGE,
-            value=50.0
-        )
+        old_metric = MetricData(timestamp=old_timestamp, metric_type=MetricType.CPU_USAGE, value=50.0)
         collector.add_metric(old_metric)
 
         # Add recent metric
-        recent_metric = MetricData(
-            timestamp=datetime.now(),
-            metric_type=MetricType.CPU_USAGE,
-            value=75.0
-        )
+        recent_metric = MetricData(timestamp=datetime.now(), metric_type=MetricType.CPU_USAGE, value=75.0)
         collector.add_metric(recent_metric)
 
         # Force cleanup by modifying last_cleanup
@@ -301,9 +287,7 @@ class TestMetricsCollector:
         # Add test metrics
         for i in range(10):
             metric = MetricData(
-                timestamp=datetime.now() - timedelta(minutes=i),
-                metric_type=MetricType.CPU_USAGE,
-                value=50.0 + i
+                timestamp=datetime.now() - timedelta(minutes=i), metric_type=MetricType.CPU_USAGE, value=50.0 + i
             )
             collector.add_metric(metric)
 
@@ -321,11 +305,7 @@ class TestMetricsCollector:
         assert len(limited_metrics) == 3
 
         # Test all filters
-        filtered_metrics = collector.get_metrics(
-            metric_type=MetricType.CPU_USAGE,
-            start_time=recent_time,
-            limit=2
-        )
+        filtered_metrics = collector.get_metrics(metric_type=MetricType.CPU_USAGE, start_time=recent_time, limit=2)
         assert len(filtered_metrics) == 2
 
     def test_get_statistics(self):
@@ -334,11 +314,7 @@ class TestMetricsCollector:
 
         # Add test data
         for i in range(20):
-            metric = MetricData(
-                timestamp=datetime.now(),
-                metric_type=MetricType.CPU_USAGE,
-                value=50.0 + i
-            )
+            metric = MetricData(timestamp=datetime.now(), metric_type=MetricType.CPU_USAGE, value=50.0 + i)
             collector.add_metric(metric)
 
         stats = collector.get_statistics(MetricType.CPU_USAGE)
@@ -362,11 +338,7 @@ class TestMetricsCollector:
         collector = MetricsCollector()
 
         # Add single value
-        metric = MetricData(
-            timestamp=datetime.now(),
-            metric_type=MetricType.CPU_USAGE,
-            value=50.0
-        )
+        metric = MetricData(timestamp=datetime.now(), metric_type=MetricType.CPU_USAGE, value=50.0)
         collector.add_metric(metric)
 
         stats = collector.get_statistics(MetricType.CPU_USAGE)
@@ -398,7 +370,7 @@ class TestAlertManager:
             operator="gt",
             severity=AlertSeverity.HIGH,
             window_minutes=5,
-            consecutive_violations=2
+            consecutive_violations=2,
         )
 
         assert len(self.alert_manager.alert_rules) == 1
@@ -459,10 +431,7 @@ class TestAlertManager:
     def test_check_alerts_rule_disabled(self):
         """Test checking alerts with disabled rule"""
         self.alert_manager.add_alert_rule(
-            name="Test Alert",
-            metric_type=MetricType.CPU_USAGE,
-            threshold=80.0,
-            operator="gt"
+            name="Test Alert", metric_type=MetricType.CPU_USAGE, threshold=80.0, operator="gt"
         )
 
         # Disable the rule
@@ -471,25 +440,17 @@ class TestAlertManager:
         alerts = self.alert_manager.check_alerts()
         assert len(alerts) == 0
 
-    @patch('time.time')
+    @patch("time.time")
     def test_check_alerts_triggered(self, mock_time):
         """Test triggered alerts"""
         mock_time.return_value = 1234567890
 
         # Mock metrics collector
-        mock_metric = MetricData(
-            timestamp=datetime.now(),
-            metric_type=MetricType.CPU_USAGE,
-            value=85.0
-        )
+        mock_metric = MetricData(timestamp=datetime.now(), metric_type=MetricType.CPU_USAGE, value=85.0)
         self.mock_collector.get_metrics.return_value = [mock_metric]
 
         self.alert_manager.add_alert_rule(
-            name="High CPU",
-            metric_type=MetricType.CPU_USAGE,
-            threshold=80.0,
-            operator="gt",
-            consecutive_violations=1
+            name="High CPU", metric_type=MetricType.CPU_USAGE, threshold=80.0, operator="gt", consecutive_violations=1
         )
 
         alerts = self.alert_manager.check_alerts()
@@ -514,26 +475,19 @@ class TestAlertManager:
             metric_type=MetricType.CPU_USAGE,
             threshold=80.0,
             current_value=85.0,
-            source="test"
+            source="test",
         )
         self.alert_manager.active_alerts[alert.alert_id] = alert
 
         # Mock metrics showing threshold not exceeded
-        mock_metric = MetricData(
-            timestamp=datetime.now(),
-            metric_type=MetricType.CPU_USAGE,
-            value=75.0
-        )
+        mock_metric = MetricData(timestamp=datetime.now(), metric_type=MetricType.CPU_USAGE, value=75.0)
         self.mock_collector.get_metrics.return_value = [mock_metric]
 
         # Add rule for the alert with "gt" operator
         # The alert was triggered when value > threshold (85.0 > 80.0)
         # It should be resolved when value <= threshold (75.0 <= 80.0)
         self.alert_manager.add_alert_rule(
-            name="High CPU",
-            metric_type=MetricType.CPU_USAGE,
-            threshold=80.0,
-            operator="gt"
+            name="High CPU", metric_type=MetricType.CPU_USAGE, threshold=80.0, operator="gt"
         )
 
         # Check alerts - should resolve because 75.0 is not > 80.0
@@ -557,7 +511,7 @@ class TestAlertManager:
             metric_type=MetricType.CPU_USAGE,
             threshold=80.0,
             current_value=85.0,
-            source="test"
+            source="test",
         )
         self.alert_manager.active_alerts[alert.alert_id] = alert
 
@@ -585,7 +539,7 @@ class TestAlertManager:
                 metric_type=MetricType.CPU_USAGE,
                 threshold=80.0,
                 current_value=85.0,
-                source="test"
+                source="test",
             )
             self.alert_manager.active_alerts[alert.alert_id] = alert
 
@@ -610,7 +564,7 @@ class TestAlertManager:
             metric_type=MetricType.CPU_USAGE,
             threshold=80.0,
             current_value=85.0,
-            source="test"
+            source="test",
         )
         self.alert_manager.alert_history.append(old_alert)
 
@@ -624,7 +578,7 @@ class TestAlertManager:
             metric_type=MetricType.CPU_USAGE,
             threshold=80.0,
             current_value=85.0,
-            source="test"
+            source="test",
         )
         self.alert_manager.alert_history.append(recent_alert)
 
@@ -660,9 +614,7 @@ class TestPredictiveAnalytics:
         base_time = datetime.now() - timedelta(hours=24)
         for i in range(20):
             metric = MetricData(
-                timestamp=base_time + timedelta(minutes=i * 72),
-                metric_type=MetricType.CPU_USAGE,
-                value=70.0 + i * 0.5
+                timestamp=base_time + timedelta(minutes=i * 72), metric_type=MetricType.CPU_USAGE, value=70.0 + i * 0.5
             )
             mock_metrics.append(metric)
 
@@ -691,13 +643,7 @@ class TestPredictiveAnalytics:
     def test_predict_metric_trend_insufficient_numeric_data(self):
         """Test prediction with insufficient numeric data"""
         # Mock non-numeric data
-        mock_metrics = [
-            MetricData(
-                timestamp=datetime.now(),
-                metric_type=MetricType.CPU_USAGE,
-                value="test"
-            )
-        ]
+        mock_metrics = [MetricData(timestamp=datetime.now(), metric_type=MetricType.CPU_USAGE, value="test")]
         self.mock_collector.get_metrics.return_value = mock_metrics
 
         result = self.analytics.predict_metric_trend(MetricType.CPU_USAGE)
@@ -723,16 +669,12 @@ class TestPredictiveAnalytics:
 
         # Mock metrics
         mock_metrics = [
-            MetricData(
-                timestamp=datetime.now(),
-                metric_type=MetricType.CPU_USAGE,
-                value=75.0
-            ),
+            MetricData(timestamp=datetime.now(), metric_type=MetricType.CPU_USAGE, value=75.0),
             MetricData(
                 timestamp=datetime.now() + timedelta(minutes=1),
                 metric_type=MetricType.CPU_USAGE,
-                value=80.0  # Anomaly
-            )
+                value=80.0,  # Anomaly
+            ),
         ]
         self.mock_collector.get_metrics.return_value = mock_metrics
 
@@ -757,16 +699,8 @@ class TestPredictiveAnalytics:
         """Test anomaly detection with zero variance"""
         # Mock metrics with same values
         mock_metrics = [
-            MetricData(
-                timestamp=datetime.now(),
-                metric_type=MetricType.CPU_USAGE,
-                value=75.0
-            ),
-            MetricData(
-                timestamp=datetime.now() + timedelta(minutes=1),
-                metric_type=MetricType.CPU_USAGE,
-                value=75.0
-            )
+            MetricData(timestamp=datetime.now(), metric_type=MetricType.CPU_USAGE, value=75.0),
+            MetricData(timestamp=datetime.now() + timedelta(minutes=1), metric_type=MetricType.CPU_USAGE, value=75.0),
         ]
         self.mock_collector.get_metrics.return_value = mock_metrics
 
@@ -823,11 +757,12 @@ class TestPerformanceMonitor:
 
     def test_collect_system_metrics(self):
         """Test system metrics collection"""
-        with patch('psutil.cpu_percent') as mock_cpu, \
-             patch('psutil.virtual_memory') as mock_memory, \
-             patch('psutil.Process') as mock_process_class, \
-             patch('psutil.getloadavg') as mock_load:
-
+        with (
+            patch("psutil.cpu_percent") as mock_cpu,
+            patch("psutil.virtual_memory") as mock_memory,
+            patch("psutil.Process") as mock_process_class,
+            patch("psutil.getloadavg") as mock_load,
+        ):
             # Setup mocks
             mock_cpu.return_value = 75.0
             mock_memory.return_value = Mock(percent=65.0, total=16 * 1024**3)
@@ -852,7 +787,7 @@ class TestPerformanceMonitor:
 
     def test_collect_system_metrics_exception(self):
         """Test metrics collection exception handling"""
-        with patch('psutil.cpu_percent', side_effect=Exception("Test error")):
+        with patch("psutil.cpu_percent", side_effect=Exception("Test error")):
             self.monitor._collect_system_metrics()
 
             # Should not raise exception
@@ -869,11 +804,11 @@ class TestPerformanceMonitor:
             metric_type=MetricType.CPU_USAGE,
             threshold=80.0,
             current_value=85.0,
-            source="test"
+            source="test",
         )
 
-        with patch.object(self.monitor.alert_manager, 'check_alerts', return_value=[mock_alert]):
-            with patch('logging.Logger.warning') as mock_warning:
+        with patch.object(self.monitor.alert_manager, "check_alerts", return_value=[mock_alert]):
+            with patch("logging.Logger.warning") as mock_warning:
                 self.monitor._check_alerts()
 
                 mock_warning.assert_called_once()
@@ -881,8 +816,8 @@ class TestPerformanceMonitor:
 
     def test_check_alerts_exception(self):
         """Test alert checking exception handling"""
-        with patch.object(self.monitor.alert_manager, 'check_alerts', side_effect=Exception("Test error")):
-            with patch('logging.Logger.error') as mock_error:
+        with patch.object(self.monitor.alert_manager, "check_alerts", side_effect=Exception("Test error")):
+            with patch("logging.Logger.error") as mock_error:
                 self.monitor._check_alerts()
 
                 mock_error.assert_called_once()
@@ -891,10 +826,7 @@ class TestPerformanceMonitor:
     def test_add_custom_metric(self):
         """Test adding custom metric"""
         self.monitor.add_custom_metric(
-            metric_type=MetricType.TOKEN_USAGE,
-            value=1000,
-            tags={"model": "gpt-3.5"},
-            source="api_call"
+            metric_type=MetricType.TOKEN_USAGE, value=1000, tags={"model": "gpt-3.5"}, source="api_call"
         )
 
         metrics = self.monitor.metrics_collector.get_metrics(MetricType.TOKEN_USAGE)
@@ -907,27 +839,15 @@ class TestPerformanceMonitor:
         """Test system health calculation"""
         # Add test metrics
         for i in range(5):
-            metric = MetricData(
-                timestamp=datetime.now(),
-                metric_type=MetricType.CPU_USAGE,
-                value=50.0 + i * 5
-            )
+            metric = MetricData(timestamp=datetime.now(), metric_type=MetricType.CPU_USAGE, value=50.0 + i * 5)
             self.monitor.metrics_collector.add_metric(metric)
 
         for i in range(5):
-            metric = MetricData(
-                timestamp=datetime.now(),
-                metric_type=MetricType.MEMORY_USAGE,
-                value=60.0 + i * 3
-            )
+            metric = MetricData(timestamp=datetime.now(), metric_type=MetricType.MEMORY_USAGE, value=60.0 + i * 3)
             self.monitor.metrics_collector.add_metric(metric)
 
         for i in range(5):
-            metric = MetricData(
-                timestamp=datetime.now(),
-                metric_type=MetricType.ERROR_RATE,
-                value=1.0 + i * 0.5
-            )
+            metric = MetricData(timestamp=datetime.now(), metric_type=MetricType.ERROR_RATE, value=1.0 + i * 0.5)
             self.monitor.metrics_collector.add_metric(metric)
 
         health = self.monitor.get_system_health()
@@ -941,7 +861,7 @@ class TestPerformanceMonitor:
 
     def test_get_system_health_exception(self):
         """Test system health exception handling"""
-        with patch.object(self.monitor.metrics_collector, 'get_metrics', side_effect=Exception("Test error")):
+        with patch.object(self.monitor.metrics_collector, "get_metrics", side_effect=Exception("Test error")):
             health = self.monitor.get_system_health()
 
             assert health.status == HealthStatus.DOWN
@@ -1002,12 +922,7 @@ class TestComprehensiveMonitoringSystem:
 
     def test_load_config_file_exists(self):
         """Test loading config when file exists"""
-        config_data = {
-            "buffer_size": 5000,
-            "retention_hours": 12,
-            "monitor_interval": 60,
-            "enable_predictions": False
-        }
+        config_data = {"buffer_size": 5000, "retention_hours": 12, "monitor_interval": 60, "enable_predictions": False}
 
         with open(self.config_file, "w") as f:
             json.dump(config_data, f)
@@ -1070,10 +985,10 @@ class TestComprehensiveMonitoringSystem:
             metric_type=MetricType.CPU_USAGE,
             threshold=80.0,
             current_value=85.0,
-            source="test"
+            source="test",
         )
 
-        with patch('logging.Logger.warning') as mock_warning:
+        with patch("logging.Logger.warning") as mock_warning:
             self.system._handle_alert(alert)
 
             mock_warning.assert_called_once()
@@ -1083,10 +998,7 @@ class TestComprehensiveMonitoringSystem:
     def test_add_metric(self):
         """Test adding metric"""
         self.system.add_metric(
-            metric_type=MetricType.TOKEN_USAGE,
-            value=1000,
-            tags={"model": "gpt-3.5"},
-            source="api_call"
+            metric_type=MetricType.TOKEN_USAGE, value=1000, tags={"model": "gpt-3.5"}, source="api_call"
         )
 
         # Give some time for the metric to be processed
@@ -1123,7 +1035,7 @@ class TestComprehensiveMonitoringSystem:
 
     def test_get_dashboard_data_exception(self):
         """Test dashboard data exception handling"""
-        with patch.object(self.system, 'performance_monitor') as mock_monitor:
+        with patch.object(self.system, "performance_monitor") as mock_monitor:
             mock_monitor.get_system_health.side_effect = Exception("Test error")
 
             dashboard = self.system.get_dashboard_data()
@@ -1149,7 +1061,7 @@ class TestComprehensiveMonitoringSystem:
             metric_type=MetricType.CPU_USAGE,
             threshold=80.0,
             current_value=85.0,
-            source="test"
+            source="test",
         )
         self.system.alert_manager.alert_history.append(alert)
 
@@ -1170,7 +1082,7 @@ class TestComprehensiveMonitoringSystem:
 
     def test_get_analytics_report_exception(self):
         """Test analytics report exception handling"""
-        with patch.object(self.system, 'metrics_collector') as mock_collector:
+        with patch.object(self.system, "metrics_collector") as mock_collector:
             mock_collector.get_statistics.side_effect = Exception("Test error")
 
             report = self.system.get_analytics_report()
@@ -1183,7 +1095,7 @@ class TestComprehensiveMonitoringSystem:
         metrics_summary = {
             MetricType.CPU_USAGE.value: {"average": 75.0},
             MetricType.MEMORY_USAGE.value: {"average": 85.0},
-            MetricType.ERROR_RATE.value: {"average": 6.0}
+            MetricType.ERROR_RATE.value: {"average": 6.0},
         }
         anomalies = {MetricType.CPU_USAGE.value: {"anomalies": [1, 2, 3]}}
 
@@ -1200,7 +1112,7 @@ class TestComprehensiveMonitoringSystem:
         metrics_summary = {
             MetricType.CPU_USAGE.value: {"average": 40.0},
             MetricType.MEMORY_USAGE.value: {"average": 50.0},
-            MetricType.ERROR_RATE.value: {"average": 1.0}
+            MetricType.ERROR_RATE.value: {"average": 1.0},
         }
         anomalies = {}
 
@@ -1221,7 +1133,7 @@ class TestGlobalFunctions:
 
     def test_start_stop_monitoring(self):
         """Test global start/stop functions"""
-        with patch('moai_adk.core.comprehensive_monitoring_system.get_monitoring_system') as mock_get:
+        with patch("moai_adk.core.comprehensive_monitoring_system.get_monitoring_system") as mock_get:
             mock_system = Mock()
             mock_get.return_value = mock_system
 
@@ -1233,19 +1145,17 @@ class TestGlobalFunctions:
 
     def test_add_metric_global(self):
         """Test global add metric function"""
-        with patch('moai_adk.core.comprehensive_monitoring_system.get_monitoring_system') as mock_get:
+        with patch("moai_adk.core.comprehensive_monitoring_system.get_monitoring_system") as mock_get:
             mock_system = Mock()
             mock_get.return_value = mock_system
 
             add_metric(MetricType.CPU_USAGE, 75.0, {"test": "tag"}, "test_source")
 
-            mock_system.add_metric.assert_called_once_with(
-                MetricType.CPU_USAGE, 75.0, {"test": "tag"}, "test_source"
-            )
+            mock_system.add_metric.assert_called_once_with(MetricType.CPU_USAGE, 75.0, {"test": "tag"}, "test_source")
 
     def test_get_dashboard_data_global(self):
         """Test global get dashboard data function"""
-        with patch('moai_adk.core.comprehensive_monitoring_system.get_monitoring_system') as mock_get:
+        with patch("moai_adk.core.comprehensive_monitoring_system.get_monitoring_system") as mock_get:
             mock_system = Mock()
             mock_system.get_dashboard_data.return_value = {"test": "data"}
             mock_get.return_value = mock_system
@@ -1262,14 +1172,13 @@ class TestEdgeCases:
     def test_thread_safety(self):
         """Test thread safety of metrics collection"""
         from moai_adk.core.comprehensive_monitoring_system import MetricsCollector
+
         collector = MetricsCollector(buffer_size=1000)
 
         def add_metrics(worker_id):
             for i in range(100):
                 metric = MetricData(
-                    timestamp=datetime.now(),
-                    metric_type=MetricType.CPU_USAGE,
-                    value=50.0 + worker_id * 10 + i
+                    timestamp=datetime.now(), metric_type=MetricType.CPU_USAGE, value=50.0 + worker_id * 10 + i
                 )
                 collector.add_metric(metric)
 
@@ -1291,6 +1200,7 @@ class TestEdgeCases:
     def test_metric_buffer_size_limit(self):
         """Test metric buffer size limit"""
         from moai_adk.core.comprehensive_monitoring_system import MetricsCollector
+
         collector = MetricsCollector(buffer_size=5)
 
         # Add more metrics than buffer size
@@ -1298,7 +1208,7 @@ class TestEdgeCases:
             metric = MetricData(
                 timestamp=datetime.now(),  # Same timestamp for this test
                 metric_type=MetricType.CPU_USAGE,
-                value=i
+                value=i,
             )
             collector.add_metric(metric)
 
@@ -1312,16 +1222,14 @@ class TestEdgeCases:
     def test_alert_manager_concurrent_access(self):
         """Test concurrent access to alert manager"""
         from moai_adk.core.comprehensive_monitoring_system import MetricsCollector
+
         mock_collector = Mock(spec=MetricsCollector)
         alert_manager = AlertManager(mock_collector)
 
         def add_rules():
             for i in range(10):
                 alert_manager.add_alert_rule(
-                    name=f"Test Alert {i}",
-                    metric_type=MetricType.CPU_USAGE,
-                    threshold=80.0,
-                    operator="gt"
+                    name=f"Test Alert {i}", metric_type=MetricType.CPU_USAGE, threshold=80.0, operator="gt"
                 )
 
         # Create multiple threads
@@ -1366,14 +1274,11 @@ class TestEdgeCases:
     def test_metric_types_comprehensive(self):
         """Test all metric types"""
         from moai_adk.core.comprehensive_monitoring_system import MetricsCollector
+
         collector = MetricsCollector()
 
         for metric_type in MetricType:
-            metric = MetricData(
-                timestamp=datetime.now(),
-                metric_type=metric_type,
-                value=50.0
-            )
+            metric = MetricData(timestamp=datetime.now(), metric_type=metric_type, value=50.0)
             collector.add_metric(metric)
 
         # Verify all metric types were stored
@@ -1387,8 +1292,8 @@ class TestEdgeCases:
 class TestMainExecution:
     """Test the main execution block"""
 
-    @patch('moai_adk.core.comprehensive_monitoring_system.ComprehensiveMonitoringSystem')
-    @patch('time.sleep')
+    @patch("moai_adk.core.comprehensive_monitoring_system.ComprehensiveMonitoringSystem")
+    @patch("time.sleep")
     def test_main_execution(self, mock_sleep, mock_system_class):
         """Test main execution block"""
         # This test is complex and may have issues with module loading

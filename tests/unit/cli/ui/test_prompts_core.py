@@ -136,6 +136,7 @@ class TestFuzzyCheckbox:
         mock_fuzzy.return_value.execute = mock_execute
 
         choices = ["choice1", "choice2", "choice3"]
+
         def validate_fn(x):
             return len(x) > 0
 

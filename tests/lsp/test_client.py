@@ -5,8 +5,8 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from moai_adk.lsp.client import MoAILSPClient
 
+from moai_adk.lsp.client import MoAILSPClient
 from moai_adk.lsp.models import (
     Diagnostic,
     DiagnosticSeverity,

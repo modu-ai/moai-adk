@@ -384,8 +384,6 @@ class TestListWorktreesCommand:
         assert result.exit_code == 0
 
 
-
-
 class TestRemoveWorktreeCommand:
     """Test remove_worktree Click command."""
 

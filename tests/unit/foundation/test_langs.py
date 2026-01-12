@@ -1,6 +1,5 @@
 """Tests for moai_adk.foundation.langs module."""
 
-
 from moai_adk.foundation.langs import (
     AntiPatternDetector,
     EcosystemAnalyzer,

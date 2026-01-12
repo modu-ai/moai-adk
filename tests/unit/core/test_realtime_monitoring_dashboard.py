@@ -1,6 +1,5 @@
 """Tests for moai_adk.core.realtime_monitoring_dashboard module."""
 
-
 import pytest
 
 

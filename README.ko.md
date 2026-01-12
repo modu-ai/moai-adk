@@ -16,7 +16,7 @@ MoAI-ADK는 **품질 있는 코드를 만드는 AI 개발 환경**을 제공합�
 
 ## 🎁 MoAI-ADK 스폰서: z.ai GLM 4.7
 
-**💎 비용 효율적인 AI 개발을 위한 최적 솔루션**
+### 💎 비용 효율적인 AI 개발을 위한 최적 솔루션
 
 MoAI-ADK는 **z.ai GLM 4.7**과 파트너십을 통해 개발자들에게 경제적인 AI 개발 환경을 제공합니다.
 
@@ -46,7 +46,7 @@ MoAI-ADK는 **z.ai GLM 4.7**과 파트너십을 통해 개발자들에게 경제
 
 # 2. MoAI-ADK에 GLM 설정
 moai glm YOUR_API_KEY
-```
+```text
 
 > **💡 팁**: Worktree 환경에서 GLM 4.7을 활용하면 Opus로 설계하고 GLM으로 대량 구현하여 비용을 최대 70% 절감할 수 있습니다.
 
@@ -71,7 +71,7 @@ moai glm YOUR_API_KEY
 
 ```bash
 curl -LsSf https://modu-ai.github.io/moai-adk/install.sh | sh
-```
+```text
 
 ### 🔧 방법 2: 수동 설치
 
@@ -81,7 +81,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Step 2: MoAI-ADK 설치
 uv tool install moai-adk
-```
+```text
 
 ### 🎨 대화형 설정 마법사
 
@@ -95,14 +95,14 @@ uv tool install moai-adk
 
 대화 언어를 선택합니다. 이후 모든 안내가 선택한 언어로 표시됩니다.
 
-```
+```text
 🌐 Language Selection
 ❯ Select your conversation language: [↑↓] Navigate  [Enter] Select
 ❯ Korean (한국어)
   English
   Japanese (日本語)
   Chinese (中文)
-```
+```text
 
 ---
 
@@ -110,10 +110,10 @@ uv tool install moai-adk
 
 사용자 이름을 입력합니다. AI가 개인화된 응답을 제공합니다.
 
-```
+```text
 👤 사용자 설정
 ❯ 사용자 이름을 입력하세요 (선택사항):
-```
+```text
 
 ---
 
@@ -121,7 +121,7 @@ uv tool install moai-adk
 
 Z.AI사의 GLM API 키를 입력합니다.
 
-```
+```text
 🔑 API 키 입력
 GLM CodePlan API key (optional - press Enter to skip)
 
@@ -129,7 +129,7 @@ GLM CodePlan API key (optional - press Enter to skip)
 Enter를 누르면 기존 키 유지, 새 키를 입력하면 교체됩니다
 
 ? GLM API 키를 입력하세요:
-```
+```text
 
 > 🎁 **GLM 가입 혜택**: GLM 계정이 없다면 아래 링크로 가입하세요!
 >
@@ -144,10 +144,10 @@ Enter를 누르면 기존 키 유지, 새 키를 입력하면 교체됩니다
 
 프로젝트 이름을 입력합니다.
 
-```
+```text
 📁 프로젝트 설정
 ❯ 프로젝트 이름: MoAI-ADK
-```
+```text
 
 ---
 
@@ -155,13 +155,13 @@ Enter를 누르면 기존 키 유지, 새 키를 입력하면 교체됩니다
 
 Git 모드를 선택합니다.
 
-```
+```text
 🔀 Git 설정
 ❯ Git 모드를 선택하세요: [↑↓] Navigate  [Enter] Select
 ❯ manual (로컬만) - 로컬 저장소만 사용
   personal (GitHub 개인) - GitHub 개인 계정 사용
   team (GitHub 팀) - GitHub 팀/조직 사용
-```
+```text
 
 ---
 
@@ -169,9 +169,9 @@ Git 모드를 선택합니다.
 
 personal/team 선택 시 GitHub 사용자명을 입력합니다.
 
-```
+```text
 ❯ GitHub 사용자명:
-```
+```text
 
 ---
 
@@ -179,14 +179,14 @@ personal/team 선택 시 GitHub 사용자명을 입력합니다.
 
 Git 커밋 메시지에 사용할 언어를 선택합니다.
 
-```
+```text
 🗣️ 출력 언어 설정
 ❯ 커밋 메시지 언어: [↑↓] Navigate  [Enter] Select
   English
 ❯ Korean (한국어)
   Japanese (日本語)
   Chinese (中文)
-```
+```text
 
 ---
 
@@ -194,13 +194,13 @@ Git 커밋 메시지에 사용할 언어를 선택합니다.
 
 코드 주석에 사용할 언어를 선택합니다.
 
-```
+```text
 ❯ 코드 주석 언어: [↑↓] Navigate  [Enter] Select
   English
 ❯ Korean (한국어)
   Japanese (日本語)
   Chinese (中文)
-```
+```text
 
 ---
 
@@ -208,13 +208,13 @@ Git 커밋 메시지에 사용할 언어를 선택합니다.
 
 문서에 사용할 언어를 선택합니다.
 
-```
+```text
 ❯ 문서 언어: [↑↓] Navigate  [Enter] Select
   English
 ❯ Korean (한국어)
   Japanese (日本語)
   Chinese (中文)
-```
+```text
 
 > 💡 **토큰 최적화 전략**: 에이전트에게 지시하는 내부 프롬프트는 **영어로 고정**되어 있습니다.
 >
@@ -228,7 +228,7 @@ Git 커밋 메시지에 사용할 언어를 선택합니다.
 
 모든 설정이 완료되면 5단계 설치가 자동 진행됩니다:
 
-```
+```text
 🚀 Starting installation...
 
 Phase 1: Preparation and backup...        ████████████████ 100%
@@ -252,7 +252,7 @@ Phase 5: Validation and finalization...   ████████████�
   1. Run cd my-project to enter the project
   2. Run /moai:0-project in Claude Code for full setup
   3. Start developing with MoAI-ADK!
-```
+```text
 
 ### 기존 프로젝트에 추가
 
@@ -260,7 +260,7 @@ Phase 5: Validation and finalization...   ████████████�
 cd your-existing-project
 moai init .
 # 기존 파일은 그대로 유지됩니다
-```
+```text
 
 ---
 
@@ -270,11 +270,11 @@ moai init .
 
 ```bash
 moai update
-```
+```text
 
 **3단계 스마트 업데이트 워크플로우**:
 
-```
+```text
 Stage 1: 📦 패키지 버전 확인
          └─ PyPI에서 최신 버전 확인 → 필요시 자동 업그레이드
 
@@ -284,7 +284,7 @@ Stage 2: 🔍 Config 버전 비교
 
 Stage 3: 📄 템플릿 동기화
          └─ 백업 생성 → 템플릿 업데이트 → 사용자 설정 복원
-```
+```text
 
 **주요 옵션**:
 
@@ -304,17 +304,17 @@ moai update --force
 
 # All is well~  자동 모드 (모든 확인 자동 승인)
 moai update --yes
-```
+```text
 
 **머지 전략 선택**:
 
-```
+```text
 🔀 Choose merge strategy:
   [1] Auto-merge (default)
       → 템플릿 + 사용자 변경 사항 자동 보존
   [2] Manual merge
       → 백업 + 머지 가이드 생성 (직접 제어)
-```
+```text
 
 ```bash
 # Auto-merge 강제 (기본값)
@@ -322,7 +322,7 @@ moai update --merge
 
 # Manual merge 강제
 moai update --manual
-```
+```text
 
 **자동 보존되는 항목**:
 
@@ -345,9 +345,9 @@ moai update --manual
 
 신규 프로젝트나 기존 프로젝트에서 **Claude Code가 프로젝트를 이해하는 데 도움**이 되는 프로젝 문서를 자동 생성할 수 있습니다:
 
-```
+```text
 > /moai:0-project
-```
+```text
 
 ### 생성되는 3개 파일
 
@@ -374,7 +374,7 @@ moai update --manual
 
 ```bash
 > /moai:0-project
-```
+```text
 
 프로젝트의 현재 상태를 자동으로 분석하여 최적의 개발 환경을 구성합니다. 프로그래밍 언어와 프레임워크를 감지하고, Git 워크플로우와 품질 보증 기준을 자동으로 설정합니다. 모든 구성이 완료되면 즉시 개발을 시작할 수 있는 준비 상태가 됩니다.
 
@@ -393,7 +393,8 @@ moai update --manual
 
 ```bash
 > /moai:1-plan "기능 설명"
-```
+> /moai:1-plan "기능 설명" --worktree
+```text
 
 EARS 형식을 사용하여 모호함 없는 명세서를 자동으로 생성합니다. 요구사항 정의, 성공 기준, 테스트 시나리오를 포함하여 개발 방향을 명확히 제시합니다. 생성된 SPEC은 개발팀과 AI가 동일한 이해를 공유하는 단일 출처(Source of Truth)로 작동합니다.
 
@@ -412,7 +413,7 @@ EARS 형식을 사용하여 모호함 없는 명세서를 자동으로 생성합
 
 > /moai:1-plan "결제 API"
 # → SPEC-003 생성
-```
+```text
 
 **중요**: 반드시 다음에 `> /clear` 실행
 
@@ -422,7 +423,7 @@ EARS 형식을 사용하여 모호함 없는 명세서를 자동으로 생성합
 
 ```bash
 > /moai:2-run SPEC-001
-```
+```text
 
 Red-Green-Refactor 사이클을 통해 테스트 먼저 작성하고, 이를 통과하는 코드를 구현합니다. 모든 구현은 85% 이상의 테스트 커버리지와 린팅, 타입 검사, 보안 검사를 통과해야 합니다. TRUST 5 품질 원칙을 자동으로 검증하여 안정적인 코드만 커밋됩니다.
 
@@ -446,7 +447,7 @@ Red-Green-Refactor 사이클을 통해 테스트 먼저 작성하고, 이를 통
 
 ```bash
 > /moai:3-sync SPEC-001
-```
+```text
 
 품질 검증을 시작으로 문서 동기화, Git 커밋, PR 자동화를 수행합니다. API 문서, 아키텍처 다이어그램, README, CHANGELOG를 자동으로 생성하고 최신 상태로 유지합니다. 변경사항을 자동으로 커밋하고 팀 모드에서는 PR을 Draft에서 Ready로 전환합니다.
 
@@ -484,7 +485,7 @@ Red-Green-Refactor 사이클을 통해 테스트 먼저 작성하고, 이를 통
 
 ```bash
 > /moai:alfred "기능 설명"
-```
+```text
 
 사용자가 목표를 제시하면 AI가 스스로 탐색, 계획, 구현, 검증을 모두 수행합니다. 병렬 탐색으로 코드베이스를 분석하고, 자율 루프를 통해 이슈를 스스로 수정합니다. 완료 마커(`<promise>DONE</promise>`)를 감지하면 자동으로 종료되어 개발자는 최종 결과만 확인하면 됩니다.
 
@@ -515,7 +516,7 @@ Red-Green-Refactor 사이클을 통해 테스트 먼저 작성하고, 이를 통
 
 # 이어서 하기
 > /moai:alfred resume SPEC-AUTH-001
-```
+```text
 
 ---
 
@@ -523,7 +524,7 @@ Red-Green-Refactor 사이클을 통해 테스트 먼저 작성하고, 이를 통
 
 ```bash
 > /moai:loop
-```
+```text
 
 AI가 스스로 LSP 오류, 테스트 실패, 커버리지 부족을 진단하고 수정을 반복합니다. 병렬 진단으로 LSP, AST-grep, Tests, Coverage를 동시에 실행하여 3-4배 빠르게 이슈를 해결합니다. 완료 마커를 감지하거나 최대 반복 횟수에 도달할 때까지 자율적으로 실행됩니다.
 
@@ -533,7 +534,7 @@ AI가 스스로 LSP 오류, 테스트 실패, 커버리지 부족을 진단하�
 병렬 진단 → TODO 생성 → 수정 실행 → 검증 → 반복
     ↓
 완료 마커 감지 → <promise>DONE</promise>
-```
+```text
 
 **옵션**:
 
@@ -558,7 +559,7 @@ AI가 스스로 LSP 오류, 테스트 실패, 커버리지 부족을 진단하�
 
 # 스냅샷 복구
 > /moai:loop --resume latest
-```
+```text
 
 ---
 
@@ -566,7 +567,7 @@ AI가 스스로 LSP 오류, 테스트 실패, 커버리지 부족을 진단하�
 
 ```bash
 > /moai:fix
-```
+```text
 
 LSP 오류, linting 이슈를 병렬로 스캔하고 한 번에 수정합니다. Level 1-2는 즉시 수정하고, Level 3은 사용자 승인 후 수정하며, Level 4는 수동 수정이 필요하다고 보고합니다. `--dry` 옵션으로 미리보기를 확인 후 실제 수정을 적용할 수 있습니다.
 
@@ -578,7 +579,7 @@ LSP ├─┐
 AST ├─┤
     ├─┘
 Linter
-```
+```text
 
 **수정 레벨**:
 
@@ -612,7 +613,7 @@ Linter
 
 # 특정 파일
 > /moai:fix src/auth.py
-```
+```text
 
 ---
 
@@ -620,7 +621,7 @@ Linter
 
 ```bash
 > /moai:cancel-loop
-```
+```text
 
 실행 중인 자율 루프를 안전하게 취소하고 모든 진행 상태를 스냅샷으로 저장합니다. 취소 시 TODO 상태, 수정 내역, 반복 횟수가 모두 보존되어 나중에 이어서 계속할 수 있습니다. `--list` 옵션으로 이전 스냅샷을 확인하고 특정 시점으로 복구할 수 있습니다.
 
@@ -640,7 +641,7 @@ Linter
 
 # 특정 스냅샷 복구
 > /moai:loop --resume cancel-20240111-105230
-```
+```text
 
 **예시**:
 
@@ -656,11 +657,11 @@ Linter
 
 # 스냅샷 목록
 > /moai:cancel-loop --list
-```
+```text
 
 **실제 출력 결과**:
 
-```
+```text
 
 ⏺ ✅ 루프 취소 완료
 
@@ -697,7 +698,7 @@ Linter
 
   ---
   모든 작업이 성공적으로 완료되었습니다! 🎉
-```
+```text
 
 ---
 
@@ -780,7 +781,7 @@ Alfred는 4개 언어 요청을 자동으로 인식하고 올바른 에이전트
 📋 Workflow (7)      → 자동화 워크플로우
 📚 Library (4)       → 특수 라이브러리
 🛠️ Tool (2)          → 개발 도구
-```
+```text
 
 ### 자주 쓰는 스킬 조합
 
@@ -800,7 +801,7 @@ Skill("moai-lang-python")
 # 방법 2: Alfred 자동 선택 (일반 사용자)
 "FastAPI 서버 만들어줘"
 → Alfred가 자동으로 moai-lang-python 선택
-```
+```text
 
 ---
 
@@ -819,7 +820,7 @@ graph TD
     T2["📋 T: Trackable<br/>━━━━━━━━<br/>• 명확한 커밋<br/>• 이슈 추적<br/>• CHANGELOG"]
 
     T1 --> R --> U --> S --> T2 --> Deploy["✅ Production Ready"]
-```
+```text
 
 ### T - Test-First (테스트 우선)
 
@@ -901,7 +902,7 @@ graph TD
 ⚠️  취약점 발견시 즉시 알림
     ↓
 ✅ 안전한 코드로 리팩토링
-```
+```text
 
 **검출 예시**:
 
@@ -909,7 +910,7 @@ graph TD
 ⚠️  AST-Grep: Potential SQL injection in src/auth.py:47
    Pattern: execute(f"SELECT * FROM users WHERE id={user_id}")
    Suggestion: execute("SELECT * FROM users WHERE id=%s", (user_id,))
-```
+```text
 
 ---
 
@@ -1000,7 +1001,7 @@ MoAI-ADK의 핵심 혁신: **Worktree로 완전 격리, 무제한 병렬 개발*
 │  > /moai:alfred SPEC-UI-003                                      │
 │  ✅ 완료!                                                        │
 └─────────────────────────────────────────────────────────────────┘
-```
+```text
 
 ---
 
@@ -1010,7 +1011,7 @@ MoAI-ADK의 핵심 혁신: **Worktree로 완전 격리, 무제한 병렬 개발*
 
 ```bash
 /moai:1-plan "기능 설명" --worktree
-```
+```text
 
 - ✅ SPEC 문서 생성
 - ✅ Worktree 자동 생성
@@ -1024,19 +1025,19 @@ moai glm
 claude
 > /moai:2-run SPEC-ID
 > /moai:3-sync SPEC-ID
-```
+```text
 
 - ✅ 독립된 작업 환경
 - ✅ GLM 비용 효율
 - ✅ 충돌 없는 병렬 개발
 
-**Phase 3: 병합 및 정리**
+#### Phase 3: 병합 및 정리
 
 ```bash
 git checkout main
 git merge feature/SPEC-ID
 moai-wt clean --merged-only
-```
+```text
 
 ---
 
@@ -1099,7 +1100,7 @@ Commands:
   exclude    Exclude a project from session tracking.
   include    Re-include a previously excluded project.
   logout     Remove stored MoAI Rank credentials.
-```
+```text
 
 ---
 
@@ -1134,7 +1135,7 @@ Waiting for authorization (timeout: 5 minutes)...
 │ To exclude specific projects:                                        │
 │   moai rank exclude /path/to/project                                 │
 ╰──────────────────────────────────────────────────────────────────────╯
-```
+```text
 
 ---
 
@@ -1159,7 +1160,7 @@ Sync Complete
   ✓ Submitted: 1169
   ○ Skipped:   704 (no usage or duplicate)
   ✗ Failed:    0
-```
+```text
 
 ---
 
@@ -1186,7 +1187,7 @@ Sync Complete
 ╰──────────────────────────────────────────────────────────────────────╯
 
 ● Hook: Installed  |  https://rank.mo.ai.kr
-```
+```text
 
 ---
 
@@ -1231,7 +1232,7 @@ moai rank exclude "*/confidential/*"
 
 # 제외 목록 확인
 moai rank list-excluded
-```
+```text
 
 **보증**: 수집 데이터는 **수치 메트릭만** (코드 내용, 파일 경로 미전송)
 
@@ -1275,7 +1276,7 @@ moai rank list-excluded
 
 ---
 
-## 17. 커뮤니티 & 지원
+## 10. 커뮤니티 & 지원
 
 ### 🌐 참여하기
 

@@ -9,7 +9,6 @@ Tests cover:
 - EARSAnalyzer class
 """
 
-
 from moai_adk.foundation.ears import (
     EARSAnalyzer,
     EARSParser,

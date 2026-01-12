@@ -1,3 +1,59 @@
+# v1.0.1 - Git Worktree Support Fix (2026-01-12)
+
+## Summary
+
+Patch release that fixes `.gitignore` configuration to properly track `llm-configs/` directory in git worktrees. This resolves the issue where `moai glm` command failed in worktree environments because untracked files are not copied to worktrees.
+
+## Fixed
+
+- **Git Worktree Support**: Added exception rules for `llm-configs/` directory in `.gitignore`
+  - Problem: `/.moai/*` rule excluded `llm-configs/`, causing `moai glm` command to fail in worktrees
+  - Solution: Added `!/.moai/llm-configs/` and `!/.moai/llm-configs/**` exception rules
+
+## Changed
+
+- **Test Suite**: Updated test mocks to match current GLM-only authentication flow
+  - Updated `test_init_prompts_core.py` mock structure
+  - Updated `test_init_enhanced.py` ProjectSetupAnswers structure
+  - Fixed `test_prompts_cov.py` KeyboardInterrupt handling
+
+## Installation
+
+```bash
+pip install moai-adk==1.0.1
+uv tool install moai-adk
+```
+
+---
+
+# v1.0.1 - Git Worktree 지원 수정 (2026-01-12)
+
+## 요약
+
+git worktree에서 `llm-configs/` 디렉토리를 올바르게 추적하도록 `.gitignore` 설정을 수정한 패치 릴리스입니다. 추적되지 않는 파일은 worktree에 복사되지 않기 때문에 worktree 환경에서 `moai glm` 명령어가 실패하는 문제를 해결합니다.
+
+## 수정
+
+- **Git Worktree 지원**: `.gitignore`에 `llm-configs/` 디렉토리 예외 규칙 추가
+  - 문제: `/.moai/*` 규칙이 `llm-configs/`를 제외하여 worktree에서 `moai glm` 명령어 실패
+  - 해결: `!/.moai/llm-configs/` 및 `!/.moai/llm-configs/**` 예외 규칙 추가
+
+## 변경
+
+- **테스트 스위트**: 현재 GLM-only 인증 플로우에 맞게 테스트 mock 업데이트
+  - `test_init_prompts_core.py` mock 구조 업데이트
+  - `test_init_enhanced.py` ProjectSetupAnswers 구조 업데이트
+  - `test_prompts_cov.py` KeyboardInterrupt 처리 수정
+
+## 설치
+
+```bash
+pip install moai-adk==1.0.1
+uv tool install moai-adk
+```
+
+---
+
 # v1.0.0 - Production Ready Release (2026-01-12)
 
 ## Summary

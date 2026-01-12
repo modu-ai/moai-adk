@@ -6,8 +6,8 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from moai_adk.loop.controller import MoAILoopController
 
+from moai_adk.loop.controller import MoAILoopController
 from moai_adk.loop.state import (
     ASTIssueSnapshot,
     CompletionResult,

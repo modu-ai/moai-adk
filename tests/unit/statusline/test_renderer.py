@@ -1,6 +1,5 @@
 """Tests for moai_adk.statusline.renderer module."""
 
-
 from moai_adk.statusline.renderer import StatuslineData, StatuslineRenderer
 
 

@@ -1,6 +1,5 @@
 """Tests for moai_adk.core.version_sync module."""
 
-
 import pytest
 
 

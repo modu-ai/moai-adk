@@ -347,9 +347,7 @@ class TestSystemMetricsCollection:
         memory_metrics = dashboard.metrics_collector.get_metrics(metric_type=MetricType.MEMORY_USAGE)
         assert len(memory_metrics) > 0
 
-        perf_metrics = dashboard.metrics_collector.get_metrics(
-            metric_type=MetricType.SYSTEM_PERFORMANCE
-        )
+        perf_metrics = dashboard.metrics_collector.get_metrics(metric_type=MetricType.SYSTEM_PERFORMANCE)
         assert len(perf_metrics) > 0
 
     @patch("psutil.cpu_percent", side_effect=Exception("psutil error"))
@@ -364,9 +362,7 @@ class TestSystemMetricsCollection:
     @patch("psutil.cpu_percent", return_value=50.0)
     @patch("psutil.virtual_memory")
     @patch("psutil.Process")
-    def test_collect_system_metrics_loadavg_unavailable(
-        self, mock_process, mock_memory, mock_cpu, mock_loadavg
-    ):
+    def test_collect_system_metrics_loadavg_unavailable(self, mock_process, mock_memory, mock_cpu, mock_loadavg):
         """Test system metrics collection when getloadavg is unavailable"""
         mock_mem_obj = MagicMock()
         mock_mem_obj.percent = 50.0

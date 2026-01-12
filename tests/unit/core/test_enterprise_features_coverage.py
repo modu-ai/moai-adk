@@ -402,7 +402,7 @@ class TestLoadBalancer:
         result = self.load_balancer.perform_health_check("b1")
         assert result is True  # Should return True when no config
 
-    @patch('random.random')
+    @patch("random.random")
     def test_perform_health_check_success(self, mock_random):
         """Test successful health check"""
         mock_random.return_value = 0.9  # High value = success
@@ -415,7 +415,7 @@ class TestLoadBalancer:
         assert self.load_balancer.backends[0]["is_healthy"] is True
         assert self.load_balancer._stats["health_check_failures"]["b1"] == 0
 
-    @patch('random.random')
+    @patch("random.random")
     def test_perform_health_check_failure(self, mock_random):
         """Test failed health check"""
         mock_random.return_value = 0.05  # Low value = failure
@@ -434,7 +434,7 @@ class TestLoadBalancer:
         self.load_balancer.health_checks["b1"] = {"path": "/health"}
 
         # Mock random to raise exception
-        with patch('random.random', side_effect=Exception("Network error")):
+        with patch("random.random", side_effect=Exception("Network error")):
             result = self.load_balancer.perform_health_check("b1")
 
             assert result is False
@@ -747,11 +747,14 @@ class TestTenantManager:
         """Test updating tenant configuration"""
         tenant_id = self.tenant_manager.create_tenant("Original Name", TenantType.SHARED)
 
-        result = self.tenant_manager.update_tenant(tenant_id, {
-            "tenant_name": "Updated Name",
-            "billing_plan": "premium",
-            "is_active": False,
-        })
+        result = self.tenant_manager.update_tenant(
+            tenant_id,
+            {
+                "tenant_name": "Updated Name",
+                "billing_plan": "premium",
+                "is_active": False,
+            },
+        )
 
         assert result is True
 
@@ -847,9 +850,7 @@ class TestTenantManager:
     def test_generate_compliance_report_success(self):
         """Test generating compliance report successfully"""
         tenant_id = self.tenant_manager.create_tenant(
-            "Test Tenant",
-            TenantType.SHARED,
-            compliance_requirements=[ComplianceStandard.GDPR]
+            "Test Tenant", TenantType.SHARED, compliance_requirements=[ComplianceStandard.GDPR]
         )
 
         report = self.tenant_manager.generate_compliance_report(tenant_id, ComplianceStandard.GDPR)
@@ -1002,17 +1003,10 @@ class TestAuditLogger:
 
     def test_search_logs_compliance_standard_filter(self):
         """Test searching logs by compliance standard"""
+        self.audit_logger.log("action1", "resource1", "user1", compliance_standards=[ComplianceStandard.GDPR])
+        self.audit_logger.log("action2", "resource2", "user2", compliance_standards=[ComplianceStandard.HIPAA])
         self.audit_logger.log(
-            "action1", "resource1", "user1",
-            compliance_standards=[ComplianceStandard.GDPR]
-        )
-        self.audit_logger.log(
-            "action2", "resource2", "user2",
-            compliance_standards=[ComplianceStandard.HIPAA]
-        )
-        self.audit_logger.log(
-            "action3", "resource3", "user3",
-            compliance_standards=[ComplianceStandard.GDPR, ComplianceStandard.HIPAA]
+            "action3", "resource3", "user3", compliance_standards=[ComplianceStandard.GDPR, ComplianceStandard.HIPAA]
         )
 
         logs = self.audit_logger.search_logs(compliance_standard=ComplianceStandard.GDPR)
@@ -1026,7 +1020,7 @@ class TestAuditLogger:
         future = now + timedelta(hours=1)
 
         # Create logs with specific timestamps
-        with patch('moai_adk.core.enterprise_features.datetime') as mock_dt:
+        with patch("moai_adk.core.enterprise_features.datetime") as mock_dt:
             # Mock datetime.now() for log creation
             mock_dt.now.return_value = past
             self.audit_logger.log("past", "resource", "user")
@@ -1035,10 +1029,7 @@ class TestAuditLogger:
             self.audit_logger.log("future", "resource", "user")
 
         # Search between now and future (should include future log)
-        logs = self.audit_logger.search_logs(
-            start_time=now,
-            end_time=future + timedelta(minutes=1)
-        )
+        logs = self.audit_logger.search_logs(start_time=now, end_time=future + timedelta(minutes=1))
         assert len(logs) == 1
         assert logs[0].action == "future"
 
@@ -1061,15 +1052,9 @@ class TestAuditLogger:
     def test_get_compliance_report_basic(self):
         """Test generating basic compliance report"""
         # Add some test logs
+        self.audit_logger.log("login", "auth", "user1", compliance_standards=[ComplianceStandard.GDPR], severity="info")
         self.audit_logger.log(
-            "login", "auth", "user1",
-            compliance_standards=[ComplianceStandard.GDPR],
-            severity="info"
-        )
-        self.audit_logger.log(
-            "logout", "auth", "user2",
-            compliance_standards=[ComplianceStandard.GDPR],
-            severity="warning"
+            "logout", "auth", "user2", compliance_standards=[ComplianceStandard.GDPR], severity="warning"
         )
 
         report = self.audit_logger.get_compliance_report(ComplianceStandard.GDPR)
@@ -1085,15 +1070,10 @@ class TestAuditLogger:
         """Test generating compliance report for specific tenant"""
         tenant_id = "test-tenant"
         self.audit_logger.log(
-            "action", "resource", "user",
-            tenant_id=tenant_id,
-            compliance_standards=[ComplianceStandard.GDPR]
+            "action", "resource", "user", tenant_id=tenant_id, compliance_standards=[ComplianceStandard.GDPR]
         )
 
-        report = self.audit_logger.get_compliance_report(
-            ComplianceStandard.GDPR,
-            tenant_id=tenant_id
-        )
+        report = self.audit_logger.get_compliance_report(ComplianceStandard.GDPR, tenant_id=tenant_id)
 
         assert report["tenant_id"] == tenant_id
         assert report["total_logs"] == 1
@@ -1103,10 +1083,7 @@ class TestAuditLogger:
         # Add a log
         self.audit_logger.log("action", "resource", "user")
 
-        report = self.audit_logger.get_compliance_report(
-            ComplianceStandard.GDPR,
-            days=7
-        )
+        report = self.audit_logger.get_compliance_report(ComplianceStandard.GDPR, days=7)
 
         assert report["period"] == "7 days"
 
@@ -1177,7 +1154,7 @@ class TestDeploymentManager:
     async def test_deploy_blue_green_health_check_failure(self):
         """Test blue-green deployment with health check failure"""
         # Mock health check to fail
-        with patch.object(self.load_balancer, 'perform_health_check', return_value=False):
+        with patch.object(self.load_balancer, "perform_health_check", return_value=False):
             config = DeploymentConfig(
                 deployment_id="bg-fail",
                 strategy=DeploymentStrategy.BLUE_GREEN,
@@ -1239,10 +1216,10 @@ class TestDeploymentManager:
             traffic_percentage=10,
             auto_promote=False,
         )
-        config.canary_analysis = {'period': 300}
+        config.canary_analysis = {"period": 300}
 
         # Mock the success rate to be low enough to trigger rollback
-        with patch('random.random', side_effect=[0.95, 0.88]):  # High success rate but low performance
+        with patch("random.random", side_effect=[0.95, 0.88]):  # High success rate but low performance
             result = await self.deployment_manager.deploy(config)
 
             assert result["success"] is True
@@ -1273,7 +1250,7 @@ class TestDeploymentManager:
     async def test_deploy_exception(self):
         """Test deployment with exception"""
         # Mock an exception in deployment
-        with patch.object(self.deployment_manager, '_deploy_blue_green', side_effect=Exception("Test error")):
+        with patch.object(self.deployment_manager, "_deploy_blue_green", side_effect=Exception("Test error")):
             config = DeploymentConfig(
                 deployment_id="exception-deploy",
                 strategy=DeploymentStrategy.BLUE_GREEN,
@@ -1325,7 +1302,7 @@ class TestDeploymentManager:
         self.load_balancer.add_backend("prod-current", "http://current.example.com")
 
         # Mock remove_backend to raise exception
-        with patch.object(self.load_balancer, 'remove_backend', side_effect=Exception("Remove failed")):
+        with patch.object(self.load_balancer, "remove_backend", side_effect=Exception("Remove failed")):
             result = self.deployment_manager.rollback("deploy-123")
 
             assert result["status"] == "failed"
@@ -1420,7 +1397,7 @@ class TestEnterpriseFeatures:
         assert self.enterprise._running is True
 
     @pytest.mark.asyncio
-    @patch('threading.Thread')
+    @patch("threading.Thread")
     async def test_start_success(self, mock_thread):
         """Test successful start"""
         mock_thread_instance = Mock()
@@ -1437,7 +1414,7 @@ class TestEnterpriseFeatures:
     async def test_start_exception(self):
         """Test start with exception"""
         # Mock background task to raise exception
-        with patch.object(self.enterprise, '_start_background_tasks', side_effect=Exception("Start failed")):
+        with patch.object(self.enterprise, "_start_background_tasks", side_effect=Exception("Start failed")):
             with pytest.raises(Exception, match="Start failed"):
                 await self.enterprise.start()
 
@@ -1461,7 +1438,7 @@ class TestEnterpriseFeatures:
 
         assert self.enterprise._running is False
 
-    @patch('time.sleep')
+    @patch("time.sleep")
     def test_start_background_tasks(self, mock_sleep):
         """Test starting background tasks"""
         # Mock time.sleep to prevent actual waiting
@@ -1621,6 +1598,7 @@ class TestGlobalFunctions:
         """Test getting enterprise features with custom parameters"""
         # Reset global variable using the actual global reference
         import moai_adk.core.enterprise_features as ef_module
+
         ef_module._enterprise_features = None
 
         # First call should create instance with params
@@ -1787,15 +1765,11 @@ class TestIntegrationTests:
 
         # Create tenant with GDPR compliance requirement
         tenant_id = enterprise.create_tenant(
-            "Audit Test Tenant",
-            TenantType.SHARED,
-            compliance_requirements=[ComplianceStandard.GDPR]
+            "Audit Test Tenant", TenantType.SHARED, compliance_requirements=[ComplianceStandard.GDPR]
         )
 
         # Generate compliance report
-        report = enterprise.tenant_manager.generate_compliance_report(
-            tenant_id, ComplianceStandard.GDPR
-        )
+        report = enterprise.tenant_manager.generate_compliance_report(tenant_id, ComplianceStandard.GDPR)
 
         # Check that audit event was logged
         # Note: Compliance report generation doesn't automatically create audit logs
@@ -1806,7 +1780,7 @@ class TestIntegrationTests:
             user_id="test_user",
             tenant_id=tenant_id,
             compliance_standards=[ComplianceStandard.GDPR],
-            details={"report_id": report.get("report_id")}
+            details={"report_id": report.get("report_id")},
         )
 
         # Now check that audit event was logged
@@ -1824,13 +1798,19 @@ if __name__ == "__main__":
     import sys
 
     # Run tests and generate coverage report
-    result = subprocess.run([
-        sys.executable, "-m", "pytest",
-        "test_enterprise_features_coverage.py",
-        "-v",
-        "--cov=src/moai_adk/core/enterprise_features",
-        "--cov-report=term-missing"
-    ], capture_output=True, text=True)
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "test_enterprise_features_coverage.py",
+            "-v",
+            "--cov=src/moai_adk/core/enterprise_features",
+            "--cov-report=term-missing",
+        ],
+        capture_output=True,
+        text=True,
+    )
 
     print("STDOUT:")
     print(result.stdout)

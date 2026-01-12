@@ -624,9 +624,7 @@ class TestMetricsCollector:
             )
             collector.add_metric(metric)
 
-        stats = collector.get_statistics(
-            MetricType.CPU_USAGE, component="system", tenant_id="tenant1"
-        )
+        stats = collector.get_statistics(MetricType.CPU_USAGE, component="system", tenant_id="tenant1")
 
         assert stats["count"] == 5
 

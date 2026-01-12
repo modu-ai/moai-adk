@@ -13,8 +13,6 @@ Test Coverage Strategy:
 """
 
 
-
-
 class TestDetectCustomCommands:
     """Test detection of custom commands in .claude/commands/moai/"""
 

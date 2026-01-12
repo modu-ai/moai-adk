@@ -1,6 +1,5 @@
 """Tests for moai_adk.core.template_variable_synchronizer module."""
 
-
 import pytest
 
 

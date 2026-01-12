@@ -414,9 +414,7 @@ class TestSystemHealthMonitoring:
             mock_recovery.return_value = RecoveryResult(
                 success=False, action_name="test", message="Failed", duration=0.0
             )
-            recovery_system.handle_error(
-                error, severity=ErrorSeverity.HIGH, category=ErrorCategory.SYSTEM
-            )
+            recovery_system.handle_error(error, severity=ErrorSeverity.HIGH, category=ErrorCategory.SYSTEM)
 
         # Act
         health = recovery_system.get_system_health()
@@ -434,9 +432,7 @@ class TestSystemHealthMonitoring:
             mock_recovery.return_value = RecoveryResult(
                 success=False, action_name="test", message="Failed", duration=0.0
             )
-            recovery_system.handle_error(
-                error, severity=ErrorSeverity.CRITICAL, category=ErrorCategory.SYSTEM
-            )
+            recovery_system.handle_error(error, severity=ErrorSeverity.CRITICAL, category=ErrorCategory.SYSTEM)
 
         health = recovery_system.get_system_health()
 
@@ -486,9 +482,7 @@ class TestErrorSummaryGeneration:
         recovery_system.handle_error(
             RuntimeError("Error 2"), severity=ErrorSeverity.MEDIUM, category=ErrorCategory.SYSTEM
         )
-        recovery_system.handle_error(
-            Exception("Error 3"), severity=ErrorSeverity.LOW, category=ErrorCategory.RESEARCH
-        )
+        recovery_system.handle_error(Exception("Error 3"), severity=ErrorSeverity.LOW, category=ErrorCategory.RESEARCH)
 
         # Act
         summary = recovery_system.get_error_summary()
@@ -503,9 +497,7 @@ class TestErrorSummaryGeneration:
         """Test error summary respects limit parameter."""
         # Arrange
         for i in range(100):
-            recovery_system.handle_error(
-                Exception(f"Error {i}"), severity=ErrorSeverity.LOW
-            )
+            recovery_system.handle_error(Exception(f"Error {i}"), severity=ErrorSeverity.LOW)
 
         # Act
         summary = recovery_system.get_error_summary(limit=10)
@@ -569,9 +561,7 @@ class TestErrorCleanup:
         """Test cleanup of old error records."""
         # Arrange
         # Add current error
-        recovery_system.handle_error(
-            ValueError("Current error"), severity=ErrorSeverity.MEDIUM
-        )
+        recovery_system.handle_error(ValueError("Current error"), severity=ErrorSeverity.MEDIUM)
 
         # Add old error
         old_error = ErrorReport(
@@ -758,9 +748,7 @@ class TestPhase3AdvancedRecovery:
     async def test_create_system_snapshot(self, recovery_system):
         """Test system snapshot creation."""
         # Act
-        snapshot_id = await recovery_system._create_system_snapshot(
-            description="Test snapshot", is_rollback_point=True
-        )
+        snapshot_id = await recovery_system._create_system_snapshot(description="Test snapshot", is_rollback_point=True)
 
         # Assert
         assert snapshot_id is not None
@@ -1072,8 +1060,7 @@ class TestValidationAndRepair:
         agent_file.write_text(
             "role: Test Agent\n"
             "description: Test\n"
-            "content here\n"
-            + "Extended content\n" * 20  # Ensure content is longer than 200 chars
+            "content here\n" + "Extended content\n" * 20  # Ensure content is longer than 200 chars
         )
 
         # Act
@@ -1200,6 +1187,7 @@ class TestGlobalFunctionsAndDecorator:
 
     def test_error_handler_decorator_success(self):
         """Test error handler decorator on successful function."""
+
         # Arrange
         @error_handler(severity=ErrorSeverity.MEDIUM, category=ErrorCategory.SYSTEM)
         def test_function():
@@ -1213,6 +1201,7 @@ class TestGlobalFunctionsAndDecorator:
 
     def test_error_handler_decorator_error(self):
         """Test error handler decorator on failing function."""
+
         # Arrange
         @error_handler(severity=ErrorSeverity.HIGH, category=ErrorCategory.SYSTEM)
         def failing_function():
@@ -1224,6 +1213,7 @@ class TestGlobalFunctionsAndDecorator:
 
     def test_error_handler_decorator_with_context(self):
         """Test error handler decorator with custom context."""
+
         # Arrange
         @error_handler(
             severity=ErrorSeverity.MEDIUM,
@@ -1260,9 +1250,7 @@ class TestBackgroundMonitoring:
         # Arrange
         # Add many errors in a short time
         for i in range(12):
-            recovery_system.handle_error(
-                Exception(f"Error {i}"), severity=ErrorSeverity.LOW
-            )
+            recovery_system.handle_error(Exception(f"Error {i}"), severity=ErrorSeverity.LOW)
 
         # Act
         recovery_system._check_error_patterns()

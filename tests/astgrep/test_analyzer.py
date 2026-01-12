@@ -37,7 +37,6 @@ class TestMoAIASTGrepAnalyzerInit:
     def test_analyzer_instantiation_with_config(self) -> None:
         """Test analyzer instantiation with custom config."""
         from moai_adk.astgrep.analyzer import MoAIASTGrepAnalyzer
-
         from moai_adk.astgrep.models import ScanConfig
 
         config = ScanConfig(
@@ -57,7 +56,6 @@ class TestScanFile:
     def test_scan_file_returns_scan_result(self) -> None:
         """Test that scan_file returns a ScanResult."""
         from moai_adk.astgrep.analyzer import MoAIASTGrepAnalyzer
-
         from moai_adk.astgrep.models import ScanResult
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
@@ -87,7 +85,6 @@ class TestScanFile:
     def test_scan_file_with_custom_config(self) -> None:
         """Test scan_file with custom config override."""
         from moai_adk.astgrep.analyzer import MoAIASTGrepAnalyzer
-
         from moai_adk.astgrep.models import ScanConfig, ScanResult
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".js", delete=False) as f:
@@ -138,7 +135,6 @@ class TestScanProject:
     def test_scan_project_returns_project_scan_result(self) -> None:
         """Test that scan_project returns a ProjectScanResult."""
         from moai_adk.astgrep.analyzer import MoAIASTGrepAnalyzer
-
         from moai_adk.astgrep.models import ProjectScanResult
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -188,7 +184,6 @@ class TestScanProject:
     def test_scan_project_with_include_patterns(self) -> None:
         """Test that scan_project respects include patterns."""
         from moai_adk.astgrep.analyzer import MoAIASTGrepAnalyzer
-
         from moai_adk.astgrep.models import ScanConfig
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -211,7 +206,6 @@ class TestPatternSearch:
     def test_pattern_search_returns_list_of_matches(self) -> None:
         """Test that pattern_search returns a list of ASTMatch."""
         from moai_adk.astgrep.analyzer import MoAIASTGrepAnalyzer
-
         from moai_adk.astgrep.models import ASTMatch
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -264,7 +258,6 @@ class TestPatternReplace:
     def test_pattern_replace_dry_run_returns_replace_result(self) -> None:
         """Test that pattern_replace dry run returns ReplaceResult."""
         from moai_adk.astgrep.analyzer import MoAIASTGrepAnalyzer
-
         from moai_adk.astgrep.models import ReplaceResult
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -291,7 +284,6 @@ class TestPatternReplace:
     def test_pattern_replace_actual_modifies_files(self) -> None:
         """Test that pattern_replace with dry_run=False modifies files."""
         from moai_adk.astgrep.analyzer import MoAIASTGrepAnalyzer
-
         from moai_adk.astgrep.models import ReplaceResult
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -316,7 +308,6 @@ class TestPatternReplace:
     def test_pattern_replace_no_matches(self) -> None:
         """Test pattern_replace with no matches."""
         from moai_adk.astgrep.analyzer import MoAIASTGrepAnalyzer
-
         from moai_adk.astgrep.models import ReplaceResult
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -357,7 +348,6 @@ class TestGracefulDegradation:
     def test_scan_file_without_sg_cli(self) -> None:
         """Test that scan_file works without sg CLI (graceful degradation)."""
         from moai_adk.astgrep.analyzer import MoAIASTGrepAnalyzer
-
         from moai_adk.astgrep.models import ScanResult
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:

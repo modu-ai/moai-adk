@@ -206,8 +206,8 @@ class TestPhaseExecutor:
             sections_dir.mkdir(parents=True)
 
             # Create sample section files that Phase 4 updates
-            (sections_dir / "project.yaml").write_text("project:\n  name: \"\"\n  initialized: false\n")
-            (sections_dir / "system.yaml").write_text("moai:\n  version: \"0.0.0\"\n")
+            (sections_dir / "project.yaml").write_text('project:\n  name: ""\n  initialized: false\n')
+            (sections_dir / "system.yaml").write_text('moai:\n  version: "0.0.0"\n')
 
             config = {
                 "project": {"name": "test-project"},
@@ -271,7 +271,7 @@ class TestPhaseExecutor:
 
             # Create existing section files
             (sections_dir / "project.yaml").write_text("project:\n  name: old-project\n  initialized: false\n")
-            (sections_dir / "system.yaml").write_text("moai:\n  version: \"0.30.0\"\n")
+            (sections_dir / "system.yaml").write_text('moai:\n  version: "0.30.0"\n')
 
             new_config = {
                 "project": {"name": "test-project"},
@@ -283,6 +283,7 @@ class TestPhaseExecutor:
 
             # Assert - verify section files were updated
             import yaml
+
             project_content = yaml.safe_load((sections_dir / "project.yaml").read_text())
             assert project_content["project"]["name"] == "test-project"
             # system.yaml is updated with the current MoAI version, not the config input

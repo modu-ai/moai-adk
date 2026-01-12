@@ -3,8 +3,6 @@ Comprehensive tests for input_validation_middleware.py
 Targets: 60%+ coverage for low-coverage module (21.98% baseline)
 """
 
-
-
 from moai_adk.core.input_validation_middleware import (
     EnhancedInputValidationMiddleware,
     ToolCategory,

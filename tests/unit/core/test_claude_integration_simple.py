@@ -168,9 +168,7 @@ class TestProcessTemplateCommand:
         variables = {}
 
         # Act
-        integration.process_template_command(
-            command_template, variables, print_mode=True, output_format="json"
-        )
+        integration.process_template_command(command_template, variables, print_mode=True, output_format="json")
 
         # Assert
         call_args = mock_run.call_args[0][0]
@@ -323,9 +321,7 @@ class TestCreateAgentWithMultilingualSupport:
         mock_generate.return_value = {"test-agent": {"en": "Test"}}
 
         # Act
-        integration.create_agent_with_multilingual_support(
-            "test-agent", "Test", ["tool1"], target_languages=["en"]
-        )
+        integration.create_agent_with_multilingual_support("test-agent", "Test", ["tool1"], target_languages=["en"])
 
         # Assert
         mock_generate.assert_called_once()

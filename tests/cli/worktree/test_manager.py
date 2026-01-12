@@ -70,9 +70,7 @@ def manager(temp_repo_dir: Path, temp_worktree_root: Path) -> WorktreeManager:
 class TestWorktreePathWithProjectName:
     """Test worktree path generation with project_name support."""
 
-    def test_worktree_path_includes_project_name(
-        self, manager: WorktreeManager, temp_repo_dir: Path
-    ) -> None:
+    def test_worktree_path_includes_project_name(self, manager: WorktreeManager, temp_repo_dir: Path) -> None:
         """Test that worktree path includes project_name as intermediate directory.
 
         Current behavior (failing):
@@ -95,13 +93,9 @@ class TestWorktreePathWithProjectName:
 
         # Verify path includes project_name
         expected_path = manager.worktree_root / "my-project" / spec_id
-        assert info.path == expected_path, (
-            f"Expected path {expected_path}, got {info.path}"
-        )
+        assert info.path == expected_path, f"Expected path {expected_path}, got {info.path}"
 
-    def test_project_name_defaults_to_repo_name(
-        self, manager: WorktreeManager, temp_repo_dir: Path
-    ) -> None:
+    def test_project_name_defaults_to_repo_name(self, manager: WorktreeManager, temp_repo_dir: Path) -> None:
         """Test that project_name defaults to repository name when not provided.
 
         When project_name is not explicitly provided, it should:
@@ -123,13 +117,10 @@ class TestWorktreePathWithProjectName:
         repo_name = temp_repo_dir.name  # "test_repo"
         expected_path = manager.worktree_root / repo_name / spec_id
         assert info.path == expected_path, (
-            f"Expected path {expected_path}, got {info.path}. "
-            f"Repository name: {repo_name}"
+            f"Expected path {expected_path}, got {info.path}. Repository name: {repo_name}"
         )
 
-    def test_multiple_projects_namespace_isolation(
-        self, temp_repo_dir: Path, temp_worktree_root: Path
-    ) -> None:
+    def test_multiple_projects_namespace_isolation(self, temp_repo_dir: Path, temp_worktree_root: Path) -> None:
         """Test that multiple projects maintain isolated namespace directories.
 
         Scenario:
@@ -175,9 +166,7 @@ class TestWorktreePathWithProjectName:
         assert manager_a.registry.get(spec_id_a) is not None
         assert manager_b.registry.get(spec_id_b) is not None
 
-    def test_same_spec_id_different_projects_can_coexist(
-        self, temp_repo_dir: Path, temp_worktree_root: Path
-    ) -> None:
+    def test_same_spec_id_different_projects_can_coexist(self, temp_repo_dir: Path, temp_worktree_root: Path) -> None:
         """Test that identical spec_id values can exist across projects."""
         manager_a = WorktreeManager(
             repo_path=temp_repo_dir,
@@ -296,7 +285,4 @@ class TestWorktreePathWithProjectName:
         with open(registry_file, "r") as f:
             registry_data = json.load(f)
             assert spec_id in registry_data
-            assert (
-                Path(registry_data[spec_id]["path"])
-                == manager.worktree_root / "registry-test" / spec_id
-            )
+            assert Path(registry_data[spec_id]["path"]) == manager.worktree_root / "registry-test" / spec_id

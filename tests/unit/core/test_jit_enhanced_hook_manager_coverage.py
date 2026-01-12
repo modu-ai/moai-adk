@@ -575,9 +575,9 @@ class TestResourceMonitor:
 
         # Should return a ResourceUsageMetrics object
         assert isinstance(metrics, ResourceUsageMetrics)
-        assert hasattr(metrics, 'memory_usage_mb')
-        assert hasattr(metrics, 'cpu_usage_percent')
-        assert hasattr(metrics, 'thread_count')
+        assert hasattr(metrics, "memory_usage_mb")
+        assert hasattr(metrics, "cpu_usage_percent")
+        assert hasattr(metrics, "thread_count")
 
     def test_resource_monitor_peak_usage(self):
         """Test peak usage tracking."""
@@ -771,9 +771,7 @@ class TestJITEnhancedHookManager:
         """Test loading optimized context."""
         manager = JITEnhancedHookManager()
 
-        context = await manager._load_optimized_context(
-            HookEvent.SESSION_START, {"test": "data"}, Phase.RED, []
-        )
+        context = await manager._load_optimized_context(HookEvent.SESSION_START, {"test": "data"}, Phase.RED, [])
 
         assert isinstance(context, dict)
         assert "hook_event_type" in context
@@ -1212,9 +1210,7 @@ class TestExtendedCoverage:
         """Test hook execution with timeout."""
         try:
             manager = JITEnhancedHookManager()
-            results = await manager.execute_hooks(
-                HookEvent.SESSION_START, {}, max_total_execution_time_ms=1.0
-            )
+            results = await manager.execute_hooks(HookEvent.SESSION_START, {}, max_total_execution_time_ms=1.0)
             # Should handle timeout gracefully
             assert isinstance(results, list)
         except ZeroDivisionError:

@@ -393,10 +393,10 @@ class TestRollbackManagerBackupMethods:
         mock_load.return_value = {}
         # Now includes section YAML directory check
         mock_exists.side_effect = [
-            True,   # config.json
+            True,  # config.json
             False,  # config.yaml
-            True,   # sections dir
-            True,   # settings.json
+            True,  # sections dir
+            True,  # settings.json
             False,  # settings.local.json
         ]
         mock_copytree.return_value = None

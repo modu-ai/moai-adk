@@ -141,13 +141,11 @@ class TestInitInteractiveMode:
         """Should call prompt_project_setup in interactive mode"""
         runner = CliRunner()
 
+        # Current ProjectSetupAnswers structure (GLM-only simplified flow)
         mock_answers = {
             "project_name": "test-project",
             "locale": "ko",
-            "service_type": "claude_subscription",
-            "claude_auth_type": None,
-            "pricing_plan": "pro",
-            "anthropic_api_key": None,
+            "user_name": "",
             "glm_api_key": None,
             "git_mode": "team",
             "github_username": None,
@@ -184,14 +182,11 @@ class TestInitInteractiveMode:
         """Should use answers from interactive prompts"""
         runner = CliRunner()
 
-        # New 8-question flow structure
+        # Current ProjectSetupAnswers structure (GLM-only simplified flow)
         mock_answers = {
             "project_name": "interactive-project",
             "locale": "ja",
-            "service_type": "claude_subscription",
-            "claude_auth_type": None,
-            "pricing_plan": "pro",
-            "anthropic_api_key": None,
+            "user_name": "",
             "glm_api_key": None,
             "git_mode": "team",
             "github_username": "testuser",
@@ -229,14 +224,11 @@ class TestInitInteractiveMode:
         """Should handle personal git mode from interactive prompts"""
         runner = CliRunner()
 
-        # New 8-question flow structure with personal git mode
+        # Current ProjectSetupAnswers structure (GLM-only simplified flow)
         mock_answers = {
             "project_name": "personal-project",
             "locale": "en",
-            "service_type": "claude_api",
-            "claude_auth_type": None,
-            "pricing_plan": "pro",
-            "anthropic_api_key": "sk-test-key",
+            "user_name": "",
             "glm_api_key": None,
             "git_mode": "personal",
             "github_username": "myuser",
@@ -271,13 +263,11 @@ class TestInitInteractiveMode:
         """Should handle interactive mode in current directory"""
         runner = CliRunner()
 
+        # Current ProjectSetupAnswers structure (GLM-only simplified flow)
         mock_answers = {
             "project_name": tmp_path.name,
             "locale": "en",
-            "service_type": "claude_subscription",
-            "claude_auth_type": None,
-            "pricing_plan": "pro",
-            "anthropic_api_key": None,
+            "user_name": "",
             "glm_api_key": None,
             "git_mode": "personal",
             "github_username": None,
@@ -313,14 +303,11 @@ class TestInitInteractiveMode:
         """Should use locale from answers when initial_locale is None (line 184)"""
         runner = CliRunner()
 
-        # New 8-question flow structure
+        # Current ProjectSetupAnswers structure (GLM-only simplified flow)
         mock_answers = {
             "project_name": "test-project",
             "locale": "ko",  # This should be used when locale parameter is None
-            "service_type": "claude_subscription",
-            "claude_auth_type": None,
-            "pricing_plan": "pro",
-            "anthropic_api_key": None,
+            "user_name": "",
             "glm_api_key": None,
             "git_mode": "manual",
             "github_username": None,
@@ -388,14 +375,11 @@ class TestInitReinitializationFlow:
         # Create existing .moai directory
         (tmp_path / ".moai").mkdir()
 
-        # New 8-question flow structure
+        # Current ProjectSetupAnswers structure (GLM-only simplified flow)
         mock_answers = {
             "project_name": "test-project",
             "locale": "en",
-            "service_type": "claude_subscription",
-            "claude_auth_type": None,
-            "pricing_plan": "pro",
-            "anthropic_api_key": None,
+            "user_name": "",
             "glm_api_key": None,
             "git_mode": "manual",
             "github_username": None,

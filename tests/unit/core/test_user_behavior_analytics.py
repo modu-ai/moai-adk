@@ -1,6 +1,5 @@
 """Tests for moai_adk.core.user_behavior_analytics module."""
 
-
 import pytest
 
 

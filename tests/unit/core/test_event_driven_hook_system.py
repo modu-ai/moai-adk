@@ -696,18 +696,10 @@ class TestResourcePool:
     @pytest.mark.asyncio
     async def test_priority_isolated_pool_key(self, pool_priority_isolated):
         """Test PRIORITY_ISOLATED isolation"""
-        key_security = pool_priority_isolated._get_pool_key(
-            "security_hook.py", HookEvent.SESSION_START
-        )
-        key_validation = pool_priority_isolated._get_pool_key(
-            "validation_hook.py", HookEvent.SESSION_START
-        )
-        key_performance = pool_priority_isolated._get_pool_key(
-            "performance_hook.py", HookEvent.SESSION_START
-        )
-        key_normal = pool_priority_isolated._get_pool_key(
-            "normal_hook.py", HookEvent.SESSION_START
-        )
+        key_security = pool_priority_isolated._get_pool_key("security_hook.py", HookEvent.SESSION_START)
+        key_validation = pool_priority_isolated._get_pool_key("validation_hook.py", HookEvent.SESSION_START)
+        key_performance = pool_priority_isolated._get_pool_key("performance_hook.py", HookEvent.SESSION_START)
+        key_normal = pool_priority_isolated._get_pool_key("normal_hook.py", HookEvent.SESSION_START)
 
         assert key_security == "critical"
         assert key_validation == "critical"
@@ -746,17 +738,13 @@ class TestResourcePool:
     async def test_acquire_release_cycle(self, pool_shared):
         """Test multiple acquire-release cycles"""
         for i in range(3):
-            result = await pool_shared.acquire_execution_slot(
-                f"hook{i}.py", HookEvent.SESSION_START
-            )
+            result = await pool_shared.acquire_execution_slot(f"hook{i}.py", HookEvent.SESSION_START)
             assert result is True
 
         assert pool_shared._stats["active_executions"] == 3
 
         for i in range(3):
-            await pool_shared.release_execution_slot(
-                f"hook{i}.py", HookEvent.SESSION_START
-            )
+            await pool_shared.release_execution_slot(f"hook{i}.py", HookEvent.SESSION_START)
 
         assert pool_shared._stats["active_executions"] == 0
 
@@ -1363,6 +1351,7 @@ class TestGlobalUtilityFunctions:
     def test_get_event_system_singleton(self):
         """Test get_event_system returns singleton"""
         import moai_adk.core.event_driven_hook_system as module
+
         module._event_system = None  # Reset singleton
 
         system1 = get_event_system()

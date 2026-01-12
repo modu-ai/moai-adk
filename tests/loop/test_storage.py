@@ -5,14 +5,13 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from moai_adk.loop.storage import LoopStorage
-
 from moai_adk.loop.state import (
     ASTIssueSnapshot,
     DiagnosticSnapshot,
     LoopState,
     LoopStatus,
 )
+from moai_adk.loop.storage import LoopStorage
 
 
 class TestLoopStorageInit:

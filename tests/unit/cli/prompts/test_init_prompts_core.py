@@ -20,48 +20,46 @@ from moai_adk.cli.prompts.init_prompts import (
 class TestPromptProjectSetup:
     """Test main project setup prompt function."""
 
+    @patch("moai_adk.core.credentials.glm_env_exists", return_value=False)
+    @patch("moai_adk.cli.prompts.init_prompts._prompt_password_optional", return_value="")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_select")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_text")
-    def test_setup_current_directory_no_name_input(self, mock_text, mock_select):
+    def test_setup_current_directory_no_name_input(self, mock_text, mock_select, mock_password, mock_glm_exists):
         """Test setup with current directory uses dirname."""
-        # Arrange - new flow needs 7 select values:
-        # 1. locale, 2. service_type, 3. pricing_plan, 4. git_mode,
-        # 5. git_commit_lang, 6. code_comment_lang, 7. doc_lang
+        # Arrange - current flow needs 5 select values:
+        # 1. locale, 2. git_mode, 3. git_commit_lang, 4. code_comment_lang, 5. doc_lang
         mock_select.side_effect = [
             "en",  # locale
-            "claude_subscription",  # service_type
-            "pro",  # pricing_plan
             "manual",  # git_mode
             "en",  # git_commit_lang
             "en",  # code_comment_lang
             "en",  # doc_lang
         ]
-        mock_text.return_value = "my-project"  # project_name
+        mock_text.return_value = "my-project"  # user_name and project_name
 
         # Act
         result = prompt_project_setup(is_current_dir=True, project_path=Path("/test/my-project"))
 
-        # Assert - new structure fields
+        # Assert
         assert result["project_name"] == "my-project"
         assert result["locale"] == "en"
         assert result["git_mode"] == "manual"
-        assert result["service_type"] == "claude_subscription"
 
+    @patch("moai_adk.core.credentials.glm_env_exists", return_value=False)
+    @patch("moai_adk.cli.prompts.init_prompts._prompt_password_optional", return_value="")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_select")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_text")
-    def test_setup_provided_project_name(self, mock_text, mock_select):
+    def test_setup_provided_project_name(self, mock_text, mock_select, mock_password, mock_glm_exists):
         """Test setup with provided project name."""
-        # Arrange - new flow needs 7 select values
+        # Arrange - current flow needs 5 select values
         mock_select.side_effect = [
             "ko",  # locale
-            "claude_subscription",  # service_type
-            "pro",  # pricing_plan
             "manual",  # git_mode
             "ko",  # git_commit_lang
             "en",  # code_comment_lang
             "ko",  # doc_lang
         ]
-        mock_text.return_value = "test-project"  # project_name is always prompted
+        mock_text.return_value = "test-project"
 
         # Act
         result = prompt_project_setup(
@@ -72,12 +70,13 @@ class TestPromptProjectSetup:
         # Assert
         assert result["project_name"] == "test-project"
         assert result["locale"] == "ko"
-        # In new flow, project name is always prompted (with default)
         mock_text.assert_called()
 
+    @patch("moai_adk.core.credentials.glm_env_exists", return_value=False)
+    @patch("moai_adk.cli.prompts.init_prompts._prompt_password_optional", return_value="")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_select")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_text")
-    def test_setup_prompt_project_name(self, mock_text, mock_select):
+    def test_setup_prompt_project_name(self, mock_text, mock_select, mock_password, mock_glm_exists):
         """Test setup prompts for project name when not provided."""
         # Arrange
         mock_text.return_value = "my-new-project"
@@ -90,21 +89,22 @@ class TestPromptProjectSetup:
         assert result["project_name"] == "my-new-project"
         mock_text.assert_called()
 
+    @patch("moai_adk.core.credentials.glm_env_exists", return_value=False)
+    @patch("moai_adk.cli.prompts.init_prompts._prompt_password_optional", return_value="")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_select")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_text")
-    def test_setup_language_korean(self, mock_text, mock_select):
+    def test_setup_language_korean(self, mock_text, mock_select, mock_password, mock_glm_exists):
         """Test setup with Korean language selection."""
-        # Arrange - new flow needs 7 select values
+        # Arrange - current flow needs 5 select values:
+        # 1. locale, 2. git_mode, 3. git_commit_lang, 4. code_comment_lang, 5. doc_lang
         mock_select.side_effect = [
             "ko",  # locale
-            "claude_subscription",  # service_type
-            "pro",  # pricing_plan
             "manual",  # git_mode
             "ko",  # git_commit_lang
             "en",  # code_comment_lang
             "ko",  # doc_lang
         ]
-        mock_text.return_value = "test"  # project_name
+        mock_text.return_value = "test"  # user_name and project_name
 
         # Act
         result = prompt_project_setup(
@@ -117,9 +117,11 @@ class TestPromptProjectSetup:
         assert result["locale"] == "ko"
         assert result["git_commit_lang"] == "ko"
 
+    @patch("moai_adk.core.credentials.glm_env_exists", return_value=False)
+    @patch("moai_adk.cli.prompts.init_prompts._prompt_password_optional", return_value="")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_select")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_text")
-    def test_setup_language_japanese(self, mock_text, mock_select):
+    def test_setup_language_japanese(self, mock_text, mock_select, mock_password, mock_glm_exists):
         """Test setup with Japanese language selection."""
         # Arrange
         mock_select.return_value = "ja"
@@ -134,9 +136,11 @@ class TestPromptProjectSetup:
         # Assert
         assert result["locale"] == "ja"
 
+    @patch("moai_adk.core.credentials.glm_env_exists", return_value=False)
+    @patch("moai_adk.cli.prompts.init_prompts._prompt_password_optional", return_value="")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_select")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_text")
-    def test_setup_language_chinese(self, mock_text, mock_select):
+    def test_setup_language_chinese(self, mock_text, mock_select, mock_password, mock_glm_exists):
         """Test setup with Chinese language selection."""
         # Arrange
         mock_select.return_value = "zh"
@@ -151,22 +155,22 @@ class TestPromptProjectSetup:
         # Assert
         assert result["locale"] == "zh"
 
-    @patch("moai_adk.cli.prompts.init_prompts._prompt_password")
+    @patch("moai_adk.core.credentials.glm_env_exists", return_value=False)
+    @patch("moai_adk.cli.prompts.init_prompts._prompt_password_optional")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_select")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_text")
-    def test_setup_glm_service_type(self, mock_text, mock_select, mock_password):
-        """Test setup with GLM service type selection."""
-        # Arrange - GLM service type uses different pricing options
+    def test_setup_glm_api_key(self, mock_text, mock_select, mock_password, mock_glm_exists):
+        """Test setup with GLM API key input."""
+        # Arrange - current flow needs 5 select values:
+        # 1. locale, 2. git_mode, 3. git_commit_lang, 4. code_comment_lang, 5. doc_lang
         mock_select.side_effect = [
             "zh",  # locale
-            "glm",  # service_type
-            "basic",  # pricing_plan (GLM pricing)
             "manual",  # git_mode
             "zh",  # git_commit_lang
             "en",  # code_comment_lang
             "zh",  # doc_lang
         ]
-        mock_text.return_value = "test"  # project_name
+        mock_text.return_value = "test"  # user_name and project_name
         mock_password.return_value = "glm-api-key"  # GLM API key
 
         # Act
@@ -178,14 +182,14 @@ class TestPromptProjectSetup:
 
         # Assert
         assert result["locale"] == "zh"
-        assert result["service_type"] == "glm"
-        assert result["pricing_plan"] == "basic"
         assert result["glm_api_key"] == "glm-api-key"
         mock_text.assert_called()
 
+    @patch("moai_adk.core.credentials.glm_env_exists", return_value=False)
+    @patch("moai_adk.cli.prompts.init_prompts._prompt_password_optional", return_value="")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_select")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_text")
-    def test_setup_with_initial_locale(self, mock_text, mock_select):
+    def test_setup_with_initial_locale(self, mock_text, mock_select, mock_password, mock_glm_exists):
         """Test setup respects initial_locale preference."""
         # Arrange
         mock_select.return_value = "ja"
@@ -201,9 +205,10 @@ class TestPromptProjectSetup:
         # Assert
         assert result["locale"] == "ja"
 
+    @patch("moai_adk.core.credentials.glm_env_exists", return_value=False)
     @patch("moai_adk.cli.prompts.init_prompts._prompt_select")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_text")
-    def test_setup_keyboard_interrupt_text(self, mock_text, mock_select):
+    def test_setup_keyboard_interrupt_text(self, mock_text, mock_select, mock_glm_exists):
         """Test setup handles KeyboardInterrupt from text prompt."""
         # Arrange
         mock_text.side_effect = KeyboardInterrupt()
@@ -214,9 +219,10 @@ class TestPromptProjectSetup:
                 is_current_dir=False,
             )
 
+    @patch("moai_adk.core.credentials.glm_env_exists", return_value=False)
     @patch("moai_adk.cli.prompts.init_prompts._prompt_select")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_text")
-    def test_setup_keyboard_interrupt_select(self, mock_text, mock_select):
+    def test_setup_keyboard_interrupt_select(self, mock_text, mock_select, mock_glm_exists):
         """Test setup handles KeyboardInterrupt from select prompt."""
         # Arrange
         mock_text.return_value = "test"
@@ -228,9 +234,10 @@ class TestPromptProjectSetup:
                 is_current_dir=False,
             )
 
+    @patch("moai_adk.core.credentials.glm_env_exists", return_value=False)
     @patch("moai_adk.cli.prompts.init_prompts._prompt_select")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_text")
-    def test_setup_none_text_input(self, mock_text, mock_select):
+    def test_setup_none_text_input(self, mock_text, mock_select, mock_glm_exists):
         """Test setup handles None from text prompt (cancellation)."""
         # Arrange
         mock_text.return_value = None
@@ -241,9 +248,10 @@ class TestPromptProjectSetup:
                 is_current_dir=False,
             )
 
+    @patch("moai_adk.core.credentials.glm_env_exists", return_value=False)
     @patch("moai_adk.cli.prompts.init_prompts._prompt_select")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_text")
-    def test_setup_none_select_input(self, mock_text, mock_select):
+    def test_setup_none_select_input(self, mock_text, mock_select, mock_glm_exists):
         """Test setup handles None from select prompt (cancellation)."""
         # Arrange
         mock_text.return_value = "test"
@@ -255,9 +263,10 @@ class TestPromptProjectSetup:
                 is_current_dir=False,
             )
 
+    @patch("moai_adk.core.credentials.glm_env_exists", return_value=False)
     @patch("moai_adk.cli.prompts.init_prompts._prompt_select")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_text")
-    def test_setup_none_custom_language(self, mock_text, mock_select):
+    def test_setup_none_custom_language(self, mock_text, mock_select, mock_glm_exists):
         """Test setup handles None when custom language prompt cancelled."""
         # Arrange
         mock_select.return_value = "other"
@@ -274,32 +283,37 @@ class TestPromptProjectSetup:
     def test_setup_returns_typed_dict(self):
         """Test setup returns proper ProjectSetupAnswers dict."""
         # Arrange
-        with patch("moai_adk.cli.prompts.init_prompts._prompt_text") as mock_text:
-            with patch("moai_adk.cli.prompts.init_prompts._prompt_select") as mock_select:
-                mock_text.return_value = "test-project"
-                # New flow needs 7 select values
-                mock_select.side_effect = [
-                    "en",  # locale
-                    "claude_subscription",  # service_type
-                    "pro",  # pricing_plan
-                    "manual",  # git_mode
-                    "en",  # git_commit_lang
-                    "en",  # code_comment_lang
-                    "en",  # doc_lang
-                ]
+        with patch("moai_adk.core.credentials.glm_env_exists", return_value=False):
+            with patch(
+                "moai_adk.cli.prompts.init_prompts._prompt_password_optional",
+                return_value="",
+            ):
+                with patch("moai_adk.cli.prompts.init_prompts._prompt_text") as mock_text:
+                    with patch("moai_adk.cli.prompts.init_prompts._prompt_select") as mock_select:
+                        mock_text.return_value = "test-project"
+                        # Current flow needs 5 select values:
+                        # 1. locale, 2. git_mode, 3. git_commit_lang, 4. code_comment_lang, 5. doc_lang
+                        mock_select.side_effect = [
+                            "en",  # locale
+                            "manual",  # git_mode
+                            "en",  # git_commit_lang
+                            "en",  # code_comment_lang
+                            "en",  # doc_lang
+                        ]
 
-                # Act
-                result = prompt_project_setup(is_current_dir=False)
+                        # Act
+                        result = prompt_project_setup(is_current_dir=False)
 
-                # Assert - new structure fields
-                assert isinstance(result, dict)
-                assert "project_name" in result
-                assert "locale" in result
-                assert "service_type" in result
-                assert "git_mode" in result
-                assert "git_commit_lang" in result
-                assert "code_comment_lang" in result
-                assert "doc_lang" in result
+                        # Assert - current ProjectSetupAnswers fields
+                        assert isinstance(result, dict)
+                        assert "project_name" in result
+                        assert "locale" in result
+                        assert "user_name" in result
+                        assert "glm_api_key" in result
+                        assert "git_mode" in result
+                        assert "git_commit_lang" in result
+                        assert "code_comment_lang" in result
+                        assert "doc_lang" in result
 
 
 class TestPromptText:

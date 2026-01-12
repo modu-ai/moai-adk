@@ -3,9 +3,8 @@
 
 from datetime import datetime, timezone
 
-from moai_adk.loop.feedback import FeedbackGenerator
-
 from moai_adk.astgrep.models import ASTMatch
+from moai_adk.loop.feedback import FeedbackGenerator
 from moai_adk.loop.state import (
     ASTIssueSnapshot,
     DiagnosticSnapshot,

@@ -94,7 +94,9 @@ class TestSynchronizeAfterConfigChange:
         with patch("moai_adk.core.template_variable_synchronizer.get_resolver", return_value=mock_resolver):
             synchronizer = TemplateVariableSynchronizer(str(tmp_path))
             with patch.object(synchronizer, "_find_files_with_template_variables", return_value=[mock_file]):
-                with patch.object(synchronizer, "_update_file_template_variables", return_value=["CONVERSATION_LANGUAGE"]):
+                with patch.object(
+                    synchronizer, "_update_file_template_variables", return_value=["CONVERSATION_LANGUAGE"]
+                ):
                     with patch.object(synchronizer, "_handle_special_file_updates"):
                         result = synchronizer.synchronize_after_config_change()
 
@@ -177,10 +179,14 @@ class TestSynchronizeAfterConfigChange:
         with patch("moai_adk.core.template_variable_synchronizer.get_resolver", return_value=mock_resolver):
             synchronizer = TemplateVariableSynchronizer(str(tmp_path))
             with patch.object(synchronizer, "_find_files_with_template_variables", return_value=[file1, file2]):
-                with patch.object(synchronizer, "_update_file_template_variables", side_effect=[
-                    ["VAR1", "VAR2"],
-                    ["VAR3"],
-                ]):
+                with patch.object(
+                    synchronizer,
+                    "_update_file_template_variables",
+                    side_effect=[
+                        ["VAR1", "VAR2"],
+                        ["VAR3"],
+                    ],
+                ):
                     with patch.object(synchronizer, "_handle_special_file_updates"):
                         result = synchronizer.synchronize_after_config_change()
 
@@ -404,10 +410,7 @@ class TestUpdateFileTemplateVariables:
 
         with patch("moai_adk.core.template_variable_synchronizer.get_resolver"):
             synchronizer = TemplateVariableSynchronizer(str(tmp_path))
-            updated_vars = synchronizer._update_file_template_variables(
-                test_file,
-                {"CONVERSATION_LANGUAGE": "en"}
-            )
+            updated_vars = synchronizer._update_file_template_variables(test_file, {"CONVERSATION_LANGUAGE": "en"})
 
             assert "CONVERSATION_LANGUAGE" in updated_vars
             content = test_file.read_text()
@@ -425,10 +428,7 @@ class TestUpdateFileTemplateVariables:
 
         with patch("moai_adk.core.template_variable_synchronizer.get_resolver"):
             synchronizer = TemplateVariableSynchronizer(str(tmp_path))
-            updated_vars = synchronizer._update_file_template_variables(
-                test_file,
-                {"CONVERSATION_LANGUAGE": "en"}
-            )
+            updated_vars = synchronizer._update_file_template_variables(test_file, {"CONVERSATION_LANGUAGE": "en"})
 
             assert updated_vars == []
 
@@ -442,10 +442,7 @@ class TestUpdateFileTemplateVariables:
 
         with patch("moai_adk.core.template_variable_synchronizer.get_resolver"):
             synchronizer = TemplateVariableSynchronizer(str(tmp_path))
-            updated_vars = synchronizer._update_file_template_variables(
-                nonexistent,
-                {"CONVERSATION_LANGUAGE": "en"}
-            )
+            updated_vars = synchronizer._update_file_template_variables(nonexistent, {"CONVERSATION_LANGUAGE": "en"})
 
             assert updated_vars == []
 
@@ -465,7 +462,7 @@ class TestUpdateFileTemplateVariables:
                 {
                     "CONVERSATION_LANGUAGE": "en",
                     "USER_NAME": "John",
-                }
+                },
             )
 
             assert len(updated_vars) == 2
@@ -485,10 +482,7 @@ class TestUpdateFileTemplateVariables:
 
         with patch("moai_adk.core.template_variable_synchronizer.get_resolver"):
             synchronizer = TemplateVariableSynchronizer(str(tmp_path))
-            synchronizer._update_file_template_variables(
-                test_file,
-                {"NONEXISTENT_VAR": "value"}
-            )
+            synchronizer._update_file_template_variables(test_file, {"NONEXISTENT_VAR": "value"})
 
             # File should not be modified
             assert test_file.stat().st_mtime == original_mtime
@@ -504,10 +498,7 @@ class TestUpdateFileTemplateVariables:
         with patch("moai_adk.core.template_variable_synchronizer.get_resolver"):
             synchronizer = TemplateVariableSynchronizer(str(tmp_path))
             with patch.object(Path, "read_text", side_effect=UnicodeDecodeError("utf-8", b"", 0, 1, "invalid")):
-                updated_vars = synchronizer._update_file_template_variables(
-                    test_file,
-                    {"CONVERSATION_LANGUAGE": "en"}
-                )
+                updated_vars = synchronizer._update_file_template_variables(test_file, {"CONVERSATION_LANGUAGE": "en"})
 
                 assert updated_vars == []
 
@@ -523,10 +514,7 @@ class TestUpdateFileTemplateVariables:
         with patch("moai_adk.core.template_variable_synchronizer.get_resolver"):
             synchronizer = TemplateVariableSynchronizer(str(tmp_path))
             with patch.object(Path, "write_text", side_effect=UnicodeEncodeError("utf-8", "", 0, 1, "invalid")):
-                updated_vars = synchronizer._update_file_template_variables(
-                    test_file,
-                    {"CONVERSATION_LANGUAGE": "en"}
-                )
+                updated_vars = synchronizer._update_file_template_variables(test_file, {"CONVERSATION_LANGUAGE": "en"})
 
                 assert updated_vars == []
 
@@ -541,10 +529,7 @@ class TestUpdateFileTemplateVariables:
         with patch("moai_adk.core.template_variable_synchronizer.get_resolver"):
             synchronizer = TemplateVariableSynchronizer(str(tmp_path))
             with patch.object(Path, "read_text", side_effect=OSError("File error")):
-                updated_vars = synchronizer._update_file_template_variables(
-                    test_file,
-                    {"CONVERSATION_LANGUAGE": "en"}
-                )
+                updated_vars = synchronizer._update_file_template_variables(test_file, {"CONVERSATION_LANGUAGE": "en"})
 
                 assert updated_vars == []
 
@@ -559,10 +544,7 @@ class TestUpdateFileTemplateVariables:
 
         with patch("moai_adk.core.template_variable_synchronizer.get_resolver"):
             synchronizer = TemplateVariableSynchronizer(str(tmp_path))
-            updated_vars = synchronizer._update_file_template_variables(
-                test_file,
-                {"TEST_VAR": "value.with.dots"}
-            )
+            updated_vars = synchronizer._update_file_template_variables(test_file, {"TEST_VAR": "value.with.dots"})
 
             assert "TEST_VAR" in updated_vars
 
@@ -591,10 +573,7 @@ class TestHandleSpecialFileUpdates:
             }
 
             with patch.object(synchronizer, "_update_settings_env_vars") as mock_update:
-                synchronizer._handle_special_file_updates(
-                    {"CONVERSATION_LANGUAGE": "en"},
-                    results
-                )
+                synchronizer._handle_special_file_updates({"CONVERSATION_LANGUAGE": "en"}, results)
 
                 mock_update.assert_called_once()
 
@@ -613,10 +592,7 @@ class TestHandleSpecialFileUpdates:
             }
 
             with patch.object(synchronizer, "_update_settings_env_vars") as mock_update:
-                synchronizer._handle_special_file_updates(
-                    {"CONVERSATION_LANGUAGE": "en"},
-                    results
-                )
+                synchronizer._handle_special_file_updates({"CONVERSATION_LANGUAGE": "en"}, results)
 
                 mock_update.assert_not_called()
 
@@ -640,10 +616,7 @@ class TestHandleSpecialFileUpdates:
             }
 
             with patch.object(synchronizer, "_update_settings_env_vars", side_effect=Exception("Test error")):
-                synchronizer._handle_special_file_updates(
-                    {"CONVERSATION_LANGUAGE": "en"},
-                    results
-                )
+                synchronizer._handle_special_file_updates({"CONVERSATION_LANGUAGE": "en"}, results)
 
                 assert len(results["errors"]) > 0
                 assert "Test error" in results["errors"][0]
@@ -670,9 +643,7 @@ class TestUpdateSettingsEnvVars:
             }
 
             synchronizer._update_settings_env_vars(
-                settings_file,
-                {"CONVERSATION_LANGUAGE": "en", "USER_NAME": "Jane"},
-                results
+                settings_file, {"CONVERSATION_LANGUAGE": "en", "USER_NAME": "Jane"}, results
             )
 
             content = json.loads(settings_file.read_text())
@@ -686,7 +657,7 @@ class TestUpdateSettingsEnvVars:
         )
 
         settings_file = tmp_path / "settings.json"
-        settings_file.write_text('{}')
+        settings_file.write_text("{}")
 
         with patch("moai_adk.core.template_variable_synchronizer.get_resolver"):
             synchronizer = TemplateVariableSynchronizer(str(tmp_path))
@@ -696,11 +667,7 @@ class TestUpdateSettingsEnvVars:
                 "errors": [],
             }
 
-            synchronizer._update_settings_env_vars(
-                settings_file,
-                {"CONVERSATION_LANGUAGE": "en"},
-                results
-            )
+            synchronizer._update_settings_env_vars(settings_file, {"CONVERSATION_LANGUAGE": "en"}, results)
 
             content = json.loads(settings_file.read_text())
             assert "env" in content
@@ -725,11 +692,7 @@ class TestUpdateSettingsEnvVars:
                 "errors": [],
             }
 
-            synchronizer._update_settings_env_vars(
-                settings_file,
-                {"CONVERSATION_LANGUAGE": "en"},
-                results
-            )
+            synchronizer._update_settings_env_vars(settings_file, {"CONVERSATION_LANGUAGE": "en"}, results)
 
             # File should not be modified
             assert settings_file.stat().st_mtime == original_mtime
@@ -741,7 +704,7 @@ class TestUpdateSettingsEnvVars:
         )
 
         settings_file = tmp_path / "settings.json"
-        settings_file.write_text('invalid json')
+        settings_file.write_text("invalid json")
 
         with patch("moai_adk.core.template_variable_synchronizer.get_resolver"):
             synchronizer = TemplateVariableSynchronizer(str(tmp_path))
@@ -752,11 +715,7 @@ class TestUpdateSettingsEnvVars:
             }
 
             # Should not raise
-            synchronizer._update_settings_env_vars(
-                settings_file,
-                {"CONVERSATION_LANGUAGE": "en"},
-                results
-            )
+            synchronizer._update_settings_env_vars(settings_file, {"CONVERSATION_LANGUAGE": "en"}, results)
 
             # Results should be unchanged
             assert results["files_updated"] == 0
@@ -778,11 +737,7 @@ class TestUpdateSettingsEnvVars:
             }
 
             with patch.object(Path, "read_text", side_effect=UnicodeDecodeError("utf-8", b"", 0, 1, "invalid")):
-                synchronizer._update_settings_env_vars(
-                    settings_file,
-                    {"CONVERSATION_LANGUAGE": "en"},
-                    results
-                )
+                synchronizer._update_settings_env_vars(settings_file, {"CONVERSATION_LANGUAGE": "en"}, results)
 
                 assert results["files_updated"] == 0
 
@@ -803,11 +758,7 @@ class TestUpdateSettingsEnvVars:
             }
 
             with patch.object(Path, "read_text", side_effect=OSError("File error")):
-                synchronizer._update_settings_env_vars(
-                    settings_file,
-                    {"CONVERSATION_LANGUAGE": "en"},
-                    results
-                )
+                synchronizer._update_settings_env_vars(settings_file, {"CONVERSATION_LANGUAGE": "en"}, results)
 
                 assert results["files_updated"] == 0
 
@@ -921,7 +872,7 @@ class TestValidateTemplateVariableConsistency:
         )
 
         test_file = tmp_path / "test.json"
-        test_file.write_text('{}')
+        test_file.write_text("{}")
 
         mock_resolver = MagicMock()
         mock_resolver.resolve_config.return_value = {}
@@ -935,12 +886,7 @@ class TestValidateTemplateVariableConsistency:
                 def patched_validate():
                     result = {
                         "status": "passed",
-                        "inconsistencies": [
-                            {
-                                "file": "test.json",
-                                "issues": ["VAR_NOT_SUBSTITUTED"]
-                            }
-                        ],
+                        "inconsistencies": [{"file": "test.json", "issues": ["VAR_NOT_SUBSTITUTED"]}],
                         "total_files_checked": 1,
                         "files_with_variables": 0,
                     }
@@ -995,9 +941,7 @@ class TestGetTemplateVariableUsageReport:
         )
 
         test_file = tmp_path / "test.json"
-        test_file.write_text(
-            '{"lang1": "{{CONVERSATION_LANGUAGE}}", "lang2": "{{CONVERSATION_LANGUAGE}}"}'
-        )
+        test_file.write_text('{"lang1": "{{CONVERSATION_LANGUAGE}}", "lang2": "{{CONVERSATION_LANGUAGE}}"}')
 
         with patch("moai_adk.core.template_variable_synchronizer.get_resolver"):
             synchronizer = TemplateVariableSynchronizer(str(tmp_path))
