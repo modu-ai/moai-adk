@@ -468,6 +468,7 @@ def get_git_info() -> Dict[str, Any]:
 
     # Fallback to basic Git operations
     try:
+        import concurrent.futures
         from concurrent.futures import ThreadPoolExecutor, as_completed
 
         # Define git commands to run in parallel
@@ -486,14 +487,27 @@ def get_git_info() -> Dict[str, Any]:
             # Submit all tasks
             futures = {executor.submit(_run_git_command_fallback, cmd): key for cmd, key in git_commands}
 
-            # Collect results as they complete
-            for future in as_completed(futures):
-                key = futures[future]
-                try:
-                    results[key] = future.result()
-                except (TimeoutError, RuntimeError):
-                    # Future execution timeout or runtime errors
-                    results[key] = ""
+            # Collect results as they complete with overall timeout
+            # FIX #254: Add timeout to prevent infinite waiting on stuck git operations
+            try:
+                for future in as_completed(futures, timeout=8):
+                    key = futures[future]
+                    try:
+                        results[key] = future.result()
+                    except (TimeoutError, RuntimeError):
+                        # Future execution timeout or runtime errors
+                        results[key] = ""
+            except concurrent.futures.TimeoutError:
+                # Overall timeout exceeded - use whatever results we have
+                logging.warning("Git operations timeout after 8 seconds - using partial results")
+                # Collect any completed futures before timeout
+                for future, key in futures.items():
+                    if future.done():
+                        try:
+                            if key not in results:
+                                results[key] = future.result()
+                        except (TimeoutError, RuntimeError):
+                            results[key] = ""
 
         # Process results with proper handling for empty values
         branch = results.get("branch", "")
