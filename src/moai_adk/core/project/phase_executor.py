@@ -428,6 +428,22 @@ class PhaseExecutor:
             updated_files.append(str(system_yaml))
             logger.debug(f"Updated {system_yaml}")
 
+        # Update quality.yaml with TAG settings (NEW - SPEC-TAG-002)
+        quality_yaml = sections_dir / "quality.yaml"
+        if quality_yaml.exists() and "quality" in config:
+            quality_config = config["quality"]
+            if "tag_validation" in quality_config:
+                tag_config = quality_config["tag_validation"]
+                self._update_section_yaml(
+                    quality_yaml,
+                    {
+                        "tag_validation.enabled": tag_config.get("enabled", True),
+                        "tag_validation.mode": tag_config.get("mode", "warn"),
+                    },
+                )
+                updated_files.append(str(quality_yaml))
+                logger.debug(f"Updated {quality_yaml} with TAG settings")
+
         logger.info(f"Updated {len(updated_files)} section configuration files")
         return updated_files
 

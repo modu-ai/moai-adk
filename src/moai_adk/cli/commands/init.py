@@ -169,6 +169,8 @@ def init(
         git_commit_lang = "en"
         code_comment_lang = "en"
         doc_lang = "en"
+        tag_enabled = True  # NEW - SPEC-TAG-002
+        tag_mode = "warn"  # NEW - SPEC-TAG-002
 
         if non_interactive:
             # Non-Interactive Mode
@@ -201,6 +203,8 @@ def init(
             git_commit_lang = answers["git_commit_lang"]
             code_comment_lang = answers["code_comment_lang"]
             doc_lang = answers["doc_lang"]
+            tag_enabled = answers["tag_enabled"]  # NEW - SPEC-TAG-002
+            tag_mode = answers["tag_mode"]  # NEW - SPEC-TAG-002
 
             # GLM-only defaults (not prompted in simplified flow)
             service_type = "glm"
@@ -327,6 +331,8 @@ def init(
                 backup_enabled=True,
                 progress_callback=callback,
                 reinit=True,  # Always allow reinit (force mode by default)
+                tag_enabled=tag_enabled,  # NEW - SPEC-TAG-002
+                tag_mode=tag_mode,  # NEW - SPEC-TAG-002
             )
 
         # 5.5. Save additional configuration from interactive mode

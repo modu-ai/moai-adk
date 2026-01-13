@@ -682,7 +682,41 @@ Execution Steps:
 
 ---
 
-#### Task 1.2.5.5: Invoke manager-quality for Code Review
+#### Task 1.2.5.5: TAG Configuration Check (NEW - SPEC-TAG-002)
+
+Verify TAG validation configuration before proceeding with synchronization.
+
+WHY: TAG system maintains traceability between code and SPEC documents for TDD cycles.
+IMPACT: Misconfigured TAG settings can break documentation-driven development workflow.
+
+TAG Configuration Check Steps:
+
+1. Read quality.yaml configuration:
+   - Read .moai/config/sections/quality.yaml
+   - Verify tag_validation section exists
+   - Check tag_validation.enabled status
+   - Check tag_validation.mode validity (must be: warn | enforce | off)
+
+2. Determine TAG validation status:
+   - IF tag_validation.enabled == false: Store TAG_VALIDATION_STATUS as DISABLED
+   - IF tag_validation.mode == off: Store TAG_VALIDATION_STATUS as OFF
+   - IF tag_validation.mode == warn: Store TAG_VALIDATION_STATUS as WARN
+   - IF tag_validation.mode == enforce: Store TAG_VALIDATION_STATUS as ENFORCE
+   - IF tag_validation.mode is invalid: Store TAG_VALIDATION_STATUS as ERROR
+
+3. Report TAG configuration:
+   - Print to user: "TAG Validation: [enabled|disabled] - mode: [warn|enforce|off]"
+   - IF enabled: Print "TAG system active - maintaining code↔documentation traceability"
+   - IF disabled: Print "TAG system disabled - TDD cycle tracking not available"
+
+4. Store TAG validation status in TAG_VALIDATION_STATUS for later use in quality report
+
+WHY: TAG validation configuration affects how pre-commit hooks behave during sync
+IMPACT: Knowing TAG configuration helps understand TDD compliance level
+
+---
+
+#### Task 1.2.5.6: Invoke manager-quality for Code Review
 
 Execute code-review agent regardless of project language:
 
@@ -703,6 +737,7 @@ Task Instructions:
    - Understandable: Verify code organization and documentation
    - Secure: Check for security issues and best practices
    - Tagged: Verify TAG annotations are present (if applicable)
+   - **Note**: Use TAG_VALIDATION_STATUS from Task 1.2.5.5 to determine strictness
 
 2. Generate quality report:
    - Summary of findings
@@ -717,7 +752,7 @@ Store: Response in CODE_REVIEW_RESULTS
 
 ---
 
-#### Task 1.2.5.6: Generate Quality Report
+#### Task 1.2.5.7: Generate Quality Report
 
 After all checks complete, generate comprehensive quality report:
 
@@ -730,15 +765,17 @@ After all checks complete, generate comprehensive quality report:
    Project Language: [detected_language]
 
    Tool Verification Results:
-   test-runner:  [PASS|FAIL|WARN|SKIP] ([tool_name])
-   linter:       [PASS|FAIL|WARN|SKIP] ([tool_name])
-   type-checker: [PASS|FAIL|WARN|SKIP] ([tool_name])
-   code-review:  [PASS|WARN]
+   test-runner:    [PASS|FAIL|WARN|SKIP] ([tool_name])
+   linter:         [PASS|FAIL|WARN|SKIP] ([tool_name])
+   type-checker:   [PASS|FAIL|WARN|SKIP] ([tool_name])
+   tag-validation: [ENABLED|DISABLED|WARN|ENFORCE|OFF|ERROR] ([mode])
+   code-review:    [PASS|WARN]
 
    Details:
    - test-runner: [summary]
    - linter: [summary]
    - type-checker: [summary]
+   - tag-validation: [summary] - NEW - SPEC-TAG-002
    - code-review: [summary]
 
    Overall Status: [PASS|WARN]

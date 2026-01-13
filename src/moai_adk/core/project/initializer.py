@@ -120,6 +120,8 @@ class ProjectInitializer:
         backup_enabled: bool = True,
         progress_callback: ProgressCallback | None = None,
         reinit: bool = False,
+        tag_enabled: bool = True,  # NEW - SPEC-TAG-002
+        tag_mode: str = "warn",  # NEW - SPEC-TAG-002
     ) -> InstallationResult:
         """Execute project initialization (5-phase process)
 
@@ -131,6 +133,8 @@ class ProjectInitializer:
             backup_enabled: Whether to enable backup
             progress_callback: Progress callback
             reinit: Reinitialization mode (v0.3.0, SPEC-INIT-003)
+            tag_enabled: Enable TAG validation - Default: True (TDD recommended) - NEW - SPEC-TAG-002
+            tag_mode: TAG validation mode (warn|enforce|off) - Default: warn - NEW - SPEC-TAG-002
 
         Returns:
             InstallationResult object
@@ -234,6 +238,15 @@ class ProjectInitializer:
                 "constitution": {
                     "enforce_tdd": True,
                     "test_coverage_target": 85,
+                },
+                # TAG System v2.0 Configuration (NEW - SPEC-TAG-002)
+                "quality": {
+                    "tag_validation": {
+                        "enabled": tag_enabled,  # From user prompt (Q7.1)
+                        "mode": tag_mode,  # From user prompt (Q7.2)
+                        "check_spec_exists": True,
+                        "max_tags_per_file": 100,
+                    },
                 },
                 "git_strategy": {
                     "personal": {
