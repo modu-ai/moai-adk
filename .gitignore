@@ -216,17 +216,19 @@ mock_api_response_*.json
 # Exclude all .moai/* by default
 /.moai/*
 
-# Include tracked directories
+# Include tracked directories (config, scripts only - NO user data)
 !/.moai/config/
 !/.moai/config/**
-!/.moai/project/
-!/.moai/project/**
 !/.moai/scripts/
 !/.moai/scripts/**
-!/.moai/specs/
-!/.moai/specs/**
 !/.moai/llm-configs/
 !/.moai/llm-configs/**
+
+# CRITICAL: User data directories (NEVER track these)
+/.moai/project/
+/.moai/project/**
+/.moai/specs/
+/.moai/specs/**
 
 # Exclude local-only directories
 /.moai/cache/
