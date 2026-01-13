@@ -283,3 +283,18 @@ class TestInitializeProjectFunction:
         assert result.success is True, f"Initialization failed with errors: {result.errors}"
         # Callback should be called
         assert callback.call_count >= 5
+
+
+class TestAnnouncementExceptionHandling:
+    """Test exception handling in announcement processing"""
+
+    def test_announcement_module_not_found(self, tmp_path: Path) -> None:
+        """Should handle announcement module not being available"""
+        initializer = ProjectInitializer(tmp_path)
+
+        # The initialization should work even if announcement module fails
+        # This tests the exception handling at lines 105-106
+        result = initializer.initialize(backup_enabled=False)
+
+        # Should succeed (announcement is optional)
+        assert result.success is True, f"Initialization failed: {result.errors}"

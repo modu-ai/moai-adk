@@ -4,6 +4,7 @@ Cache System Tests
 Test cases for caching system functionality.
 """
 
+import os
 import tempfile
 
 import pytest
@@ -323,3 +324,40 @@ class TestCacheSystem:
 
             # Verify it's gone
             assert not cache.exists("existing_key")
+
+    def test_cache_system_key_sanitization(self):
+        """Test that keys with special characters are sanitized."""
+        from moai_adk.core.performance.cache_system import CacheSystem
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cache = CacheSystem(cache_dir=temp_dir)
+
+            # Key with slashes should be sanitized
+            cache.set("path/to/key", "value1")
+            assert cache.get("path/to/key") == "value1"
+
+            # Key with backslashes should be sanitized
+            cache.set("path\\to\\key", "value2")
+            assert cache.get("path\\to\\key") == "value2"
+
+    def test_cache_system_cleanup_corrupted_files(self):
+        """Test that corrupted cache files are removed during cleanup."""
+        from moai_adk.core.performance.cache_system import CacheSystem
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cache = CacheSystem(cache_dir=temp_dir)
+
+            # Create a corrupted cache file (must use .cache extension)
+            cache.set("good_key", "good_value")
+            corrupted_file = os.path.join(temp_dir, "corrupted.cache")
+            with open(corrupted_file, "w") as f:
+                f.write("invalid json content {")
+
+            # Trigger cleanup
+            cache._cleanup_expired_files()
+
+            # Good key should still exist
+            assert cache.get("good_key") == "good_value"
+
+            # Corrupted file should be removed
+            assert not os.path.exists(corrupted_file)

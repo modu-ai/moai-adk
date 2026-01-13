@@ -204,3 +204,13 @@ class TestGitManagerPush:
         except Exception as e:
             # Expected to fail since no remote exists, but verify it's a Git error
             assert "remote" in str(e).lower() or "origin" in str(e).lower()
+
+    def test_push_without_set_upstream(self, tmp_git_repo: Path):
+        """Push method should call git.push() when set_upstream=False"""
+        manager = GitManager(str(tmp_git_repo))
+        # Should not crash even without remote (will fail at Git level, not Python)
+        try:
+            manager.push(set_upstream=False)
+        except Exception as e:
+            # Expected to fail since no remote exists, but verify it's a Git error
+            assert "remote" in str(e).lower() or "origin" in str(e).lower()

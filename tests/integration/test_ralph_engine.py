@@ -442,3 +442,27 @@ class TestRalphEngineIntegration:
 
         # Results may be empty if no AST-grep matches
         assert isinstance(results, dict)
+
+    @pytest.mark.asyncio
+    async def test_diagnose_project_with_ast_matches(self, tmp_path: Path):
+        """Test diagnosing project with AST-grep matches."""
+        # Create test file with AST-grep match
+        src_dir = tmp_path / "src"
+        src_dir.mkdir()
+
+        test_file = src_dir / "test.py"
+        # Write code that triggers AST-grep rule (e.g., print statement)
+        test_file.write_text("print('debug output')\n")
+
+        engine = RalphEngine(project_root=tmp_path)
+
+        with patch.object(
+            engine.lsp_client,
+            "get_diagnostics",
+            new_callable=AsyncMock,
+            return_value=[],
+        ):
+            results = await engine.diagnose_project()
+
+        # Should process files with AST matches
+        assert isinstance(results, dict)

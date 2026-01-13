@@ -16,7 +16,7 @@ import subprocess
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional
+
 
 
 class ToolType(Enum):
@@ -35,16 +35,16 @@ class ToolConfig:
 
     name: str
     command: str
-    args: List[str] = field(default_factory=list)
+    args: list[str] = field(default_factory=list)
     file_args_position: str = "end"  # "end", "start", or "replace:{placeholder}"
-    check_args: List[str] = field(default_factory=list)  # Args to check if tool exists
-    fix_args: List[str] = field(default_factory=list)  # Args to auto-fix issues
-    extensions: List[str] = field(default_factory=list)
+    check_args: list[str] = field(default_factory=list)  # Args to check if tool exists
+    fix_args: list[str] = field(default_factory=list)  # Args to auto-fix issues
+    extensions: list[str] = field(default_factory=list)
     tool_type: ToolType = ToolType.FORMATTER
     priority: int = 1  # Lower = higher priority
     timeout_seconds: int = 30
     requires_config: bool = False  # Needs config file to work
-    config_files: List[str] = field(default_factory=list)  # e.g., ["pyproject.toml"]
+    config_files: list[str] = field(default_factory=list)  # e.g., ["pyproject.toml"]
 
 
 @dataclass
@@ -65,9 +65,9 @@ class ToolRegistry:
     """Registry for language tools (formatters, linters, etc.)."""
 
     def __init__(self) -> None:
-        self._tools: Dict[str, List[ToolConfig]] = {}
-        self._extension_map: Dict[str, str] = {}
-        self._tool_cache: Dict[str, bool] = {}
+        self._tools: dict[str, list[ToolConfig]] = {}
+        self._extension_map: dict[str, str] = {}
+        self._tool_cache: dict[str, bool] = {}
         self._register_default_tools()
 
     def _register_default_tools(self) -> None:
@@ -683,12 +683,12 @@ class ToolRegistry:
 
         return False
 
-    def get_language_for_file(self, file_path: str) -> Optional[str]:
+    def get_language_for_file(self, file_path: str) -> str | None:
         """Get language identifier for a file path."""
         ext = Path(file_path).suffix.lower()
         return self._extension_map.get(ext)
 
-    def get_tools_for_language(self, language: str, tool_type: Optional[ToolType] = None) -> List[ToolConfig]:
+    def get_tools_for_language(self, language: str, tool_type: ToolType | None = None) -> list[ToolConfig]:
         """Get available tools for a language, optionally filtered by type."""
         tools = self._tools.get(language, [])
 
@@ -699,14 +699,14 @@ class ToolRegistry:
         available_tools = [t for t in tools if self.is_tool_available(t.name)]
         return sorted(available_tools, key=lambda t: t.priority)
 
-    def get_tools_for_file(self, file_path: str, tool_type: Optional[ToolType] = None) -> List[ToolConfig]:
+    def get_tools_for_file(self, file_path: str, tool_type: ToolType | None = None) -> list[ToolConfig]:
         """Get available tools for a specific file."""
         language = self.get_language_for_file(file_path)
         if not language:
             return []
         return self.get_tools_for_language(language, tool_type)
 
-    def _validate_file_path(self, file_path: str, cwd: Optional[str] = None) -> str:
+    def _validate_file_path(self, file_path: str, cwd: str | None = None) -> str:
         """Validate and sanitize file path to prevent injection attacks.
 
         Security measures:
@@ -784,8 +784,8 @@ class ToolRegistry:
         self,
         tool: ToolConfig,
         file_path: str,
-        cwd: Optional[str] = None,
-        extra_args: Optional[List[str]] = None,
+        cwd: str | None = None,
+        extra_args: list[str] | None = None,
     ) -> ToolResult:
         """Run a tool on a file and return the result.
 
@@ -886,7 +886,7 @@ class ToolRegistry:
 
 
 # Global registry instance
-_registry: Optional[ToolRegistry] = None
+_registry: ToolRegistry | None = None
 
 
 def get_tool_registry() -> ToolRegistry:

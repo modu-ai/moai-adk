@@ -145,3 +145,84 @@ class TestTimeoutContext:
         # Should not timeout and complete normally
         with timeout_context(-1):
             pass
+
+
+class TestTimeoutCallbackExecution:
+    """Test callback execution in timeout handlers."""
+
+    def test_callback_executed_on_windows_timeout(self):
+        """Test callback is executed before Windows timeout exception."""
+        callback_called = []
+
+        def test_callback():
+            callback_called.append(True)
+
+        timeout = CrossPlatformTimeout(0.01, callback=test_callback)
+        timeout._is_windows = True
+        timeout.start()
+
+        # Wait for timeout to occur
+        import time
+
+        time.sleep(0.02)
+
+        # Callback should have been called
+        assert len(callback_called) > 0, "Callback should be executed on timeout"
+        timeout.cancel()
+
+    @patch("signal.signal")
+    @patch("signal.alarm")
+    def test_callback_executed_on_unix_signal_handler(self, mock_alarm, mock_signal):
+        """Test callback is executed in Unix signal handler."""
+        callback_called = []
+
+        def test_callback():
+            callback_called.append(True)
+
+        timeout = CrossPlatformTimeout(1, callback=test_callback)
+        timeout._is_windows = False
+
+        # Start timeout to trigger signal handler setup
+        timeout.start()
+
+        # The signal handler should be set up with callback
+        assert mock_signal.called, "Signal handler should be set up"
+
+        # Get the signal handler function that was registered
+        signal_handler = mock_signal.call_args[0][1]
+
+        # Simulate the signal being triggered
+        try:
+            signal_handler(None, None)
+        except TimeoutError:
+            pass
+
+        # Callback should have been called
+        assert len(callback_called) > 0, "Callback should be executed in signal handler"
+
+        # Cleanup
+        timeout.cancel()
+
+    @patch("signal.signal")
+    @patch("signal.alarm")
+    def test_callback_exception_doesnt_prevent_timeout_error(self, mock_alarm, mock_signal):
+        """Test that callback exceptions are ignored and timeout still raised."""
+
+        def failing_callback():
+            raise ValueError("Callback error")
+
+        timeout = CrossPlatformTimeout(1, callback=failing_callback)
+        timeout._is_windows = False
+
+        # Start timeout to trigger signal handler setup
+        timeout.start()
+
+        # Get the signal handler function
+        signal_handler = mock_signal.call_args[0][1]
+
+        # Simulate signal - should handle callback exception and still raise TimeoutError
+        with pytest.raises(TimeoutError):
+            signal_handler(None, None)
+
+        # Cleanup
+        timeout.cancel()

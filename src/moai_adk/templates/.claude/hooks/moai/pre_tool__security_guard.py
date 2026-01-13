@@ -25,7 +25,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, List, Tuple
 
 # Patterns for files that should NEVER be modified
 DENY_PATTERNS = [
@@ -103,7 +103,7 @@ SENSITIVE_CONTENT_PATTERNS = [
 ]
 
 
-def compile_patterns(patterns: List[str]) -> List[re.Pattern]:
+def compile_patterns(patterns: list[str]) -> List[re.Pattern]:
     """Compile regex patterns for efficient matching."""
     return [re.compile(p, re.IGNORECASE) for p in patterns]
 
@@ -233,7 +233,7 @@ def main() -> None:
                 reason = f"Content contains secrets: {secret_reason}"
 
     # Build output based on decision
-    output: Dict[str, Any] = {}
+    output: dict[str, Any] = {}
 
     if decision == "deny":
         output = {

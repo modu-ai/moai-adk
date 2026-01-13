@@ -76,7 +76,6 @@
       "mcp__context7__get-library-docs",
       "mcp__context7__resolve-library-id",
       "mcp__sequential-thinking__*",
-
       "Bash(git status:*)",
       "Bash(git log:*)",
       "Bash(git diff:*)",
@@ -99,7 +98,6 @@
       "Bash(gh issue:*)",
       "Bash(gh pr:*)",
       "Bash(gh repo view:*)",
-
       "Bash(ls:*)",
       "Bash(cat:*)",
       "Bash(less:*)",
@@ -121,17 +119,14 @@
       "Bash(dirname:*)",
       "Bash(realpath:*)",
       "Bash(readlink:*)",
-
       "Bash(cp:*)",
       "Bash(mv:*)",
       "Bash(mkdir:*)",
       "Bash(touch:*)",
       "Bash(rsync:*)",
-
       "Bash(curl:*)",
       "Bash(jq:*)",
       "Bash(yq:*)",
-
       "Bash(python:*)",
       "Bash(python3:*)",
       "Bash(node:*)",
@@ -140,7 +135,6 @@
       "Bash(uv:*)",
       "Bash(pip:*)",
       "Bash(pip3:*)",
-
       "Bash(black:*)",
       "Bash(ruff:*)",
       "Bash(pylint:*)",
@@ -148,15 +142,12 @@
       "Bash(mypy:*)",
       "Bash(eslint:*)",
       "Bash(prettier:*)",
-
       "Bash(pytest:*)",
       "Bash(coverage:*)",
       "Bash(make:*)",
-
       "Bash(ast-grep:*)",
       "Bash(sg:*)",
       "Bash(rg:*)",
-
       "Bash(echo:*)",
       "Bash(printf:*)",
       "Bash(test:*)",
@@ -169,7 +160,6 @@
       "Bash(lsof:*)",
       "Bash(time:*)",
       "Bash(xargs:*)",
-
       "Bash(moai-adk:*)",
       "Bash(moai:*)"
     ],
@@ -202,7 +192,6 @@
       "Glob(~/.ssh/**)",
       "Glob(~/.aws/**)",
       "Glob(~/.config/gcloud/**)",
-
       "Bash(rm -rf /:*)",
       "Bash(rm -rf /*:*)",
       "Bash(rm -rf ~:*)",
@@ -211,7 +200,6 @@
       "Bash(rm -rf C\\:/*:*)",
       "Bash(del /S /Q C\\:/:*)",
       "Bash(rmdir /S /Q C\\:/:*)",
-
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
       "Bash(git push --force-with-lease:*)",
@@ -219,7 +207,6 @@
       "Bash(git clean -fd:*)",
       "Bash(git clean -fdx:*)",
       "Bash(git rebase -i:*)",
-
       "Bash(format:*)",
       "Bash(chmod -R 777:*)",
       "Bash(chmod 777:*)",
@@ -232,7 +219,6 @@
       "Bash(systemctl:*)",
       "Bash(kill -9:*)",
       "Bash(killall:*)",
-
       "Bash(DROP DATABASE:*)",
       "Bash(DROP TABLE:*)",
       "Bash(TRUNCATE:*)",
@@ -251,7 +237,7 @@
     "padding": 0,
     "refreshInterval": 300
   },
-  "outputStyle": "Mr. Alfred",
+  "outputStyle": "Mr.Alfred",
   "cleanupPeriodDays": 30,
   "env": {
     "MOAI_CONFIG_SOURCE": "sections",

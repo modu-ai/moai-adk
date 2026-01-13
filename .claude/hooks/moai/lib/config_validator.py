@@ -17,7 +17,7 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Tuple
 
 
 class ValidationLevel(Enum):
@@ -36,8 +36,8 @@ class ValidationIssue:
     level: ValidationLevel
     path: str
     message: str
-    suggestion: Optional[str] = None
-    current_value: Optional[str] = None
+    suggestion: str] = None
+    current_value: str] = None
 
 
 @dataclass
@@ -109,7 +109,7 @@ class ConfigurationValidator:
             },
         }
 
-    def validate_config(self, config: Dict[str, Any]) -> Tuple[bool, List[ValidationIssue]]:
+    def validate_config(self, config: dict[str, Any]) -> Tuple[bool, List[ValidationIssue]]:
         """Validate complete configuration and return issues"""
         issues = []
 
@@ -135,7 +135,7 @@ class ConfigurationValidator:
         is_valid = not any(issue.level in [ValidationLevel.ERROR, ValidationLevel.CRITICAL] for issue in issues)
         return is_valid, issues
 
-    def _validate_structure(self, config: Dict[str, Any]) -> List[ValidationIssue]:
+    def _validate_structure(self, config: dict[str, Any]) -> List[ValidationIssue]:
         """Validate top-level configuration structure"""
         issues = []
 
@@ -159,7 +159,7 @@ class ConfigurationValidator:
 
         return issues
 
-    def _validate_timeout_manager(self, timeout_config: Dict[str, Any]) -> List[ValidationIssue]:
+    def _validate_timeout_manager(self, timeout_config: dict[str, Any]) -> List[ValidationIssue]:
         """Validate timeout manager configuration"""
         issues = []
         base_path = ".timeout_manager"
@@ -238,7 +238,7 @@ class ConfigurationValidator:
 
         return issues
 
-    def _validate_hook_configs(self, hook_configs: Dict[str, Any]) -> List[ValidationIssue]:
+    def _validate_hook_configs(self, hook_configs: dict[str, Any]) -> List[ValidationIssue]:
         """Validate hook-specific configurations"""
         issues = []
         base_path = ".hook_configs"
@@ -249,7 +249,7 @@ class ConfigurationValidator:
 
         return issues
 
-    def _validate_single_hook_config(self, hook_name: str, config: Dict[str, Any], path: str) -> List[ValidationIssue]:
+    def _validate_single_hook_config(self, hook_name: str, config: dict[str, Any], path: str) -> List[ValidationIssue]:
         """Validate configuration for a single hook"""
         issues = []
 
@@ -360,7 +360,7 @@ class ConfigurationValidator:
 
         return issues
 
-    def _validate_resources(self, resource_config: Dict[str, Any]) -> List[ValidationIssue]:
+    def _validate_resources(self, resource_config: dict[str, Any]) -> List[ValidationIssue]:
         """Validate resource configuration"""
         issues = []
         base_path = ".resources"
@@ -422,7 +422,7 @@ class ConfigurationValidator:
 
         return issues
 
-    def _validate_performance(self, performance_config: Dict[str, Any]) -> List[ValidationIssue]:
+    def _validate_performance(self, performance_config: dict[str, Any]) -> List[ValidationIssue]:
         """Validate performance-related configuration"""
         issues = []
         base_path = ".performance"
@@ -474,7 +474,7 @@ class ConfigurationValidator:
         policy_timeouts = {"fast": 2000, "normal": 5000, "slow": 15000, "custom": 5000}
         return policy_timeouts.get(policy, 5000)
 
-    def normalize_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
+    def normalize_config(self, config: dict[str, Any]) -> Dict[str, Any]:
         """Normalize and apply defaults to configuration"""
         normalized = config.copy()
 
@@ -534,7 +534,7 @@ class ConfigurationValidator:
 
         return normalized
 
-    def generate_report(self, issues: List[ValidationIssue]) -> str:
+    def generate_report(self, issues: list[ValidationIssue]) -> str:
         """Generate human-readable validation report"""
         if not issues:
             return "✅ Configuration validation passed with no issues found."
@@ -542,7 +542,7 @@ class ConfigurationValidator:
         lines = ["📋 Configuration Validation Report", ""]
 
         # Group issues by severity
-        by_level: Dict[ValidationLevel, List[ValidationIssue]] = {}
+        by_level: dict[ValidationLevel, List[ValidationIssue]] = {}
         for issue in issues:
             if issue.level not in by_level:
                 by_level[issue.level] = []
@@ -616,7 +616,7 @@ def get_config_validator() -> ConfigurationValidator:
 
 # Convenience functions
 def validate_hook_config(
-    config_path: Optional[Path] = None,
+    config_path: Path] = None,
 ) -> Tuple[bool, List[ValidationIssue]]:
     """Validate hooks configuration"""
     validator = get_config_validator()

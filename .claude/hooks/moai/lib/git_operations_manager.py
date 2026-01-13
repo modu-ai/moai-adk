@@ -45,7 +45,7 @@ class GitCommand:
     """Git command specification"""
 
     operation_type: GitOperationType
-    args: List[str]
+    args: list[str]
     cache_ttl_seconds: int = 60
     retry_count: int = 2
     timeout_seconds: int = 10
@@ -62,8 +62,8 @@ class GitResult:
     execution_time: float = 0.0
     cached: bool = False
     cache_hit: bool = False
-    operation_type: Optional[GitOperationType] = None
-    command: List[str] = field(default_factory=list)
+    operation_type: GitOperationType] = None
+    command: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -82,7 +82,7 @@ class GitOperationError(Exception):
     def __init__(
         self,
         message: str,
-        command: List[str] = None,
+        command: list[str] = None,
         return_code: int = -1,
         stderr: str = "",
         execution_time: float = 0.0,
@@ -113,7 +113,7 @@ class GitOperationsManager:
         self._semaphore = threading.Semaphore(max_workers)  # Limit concurrent Git operations
 
         # Cache management
-        self._cache: Dict[str, CacheEntry] = {}
+        self._cache: dict[str, CacheEntry] = {}
         self._cache_lock = threading.RLock()
         self._cache_size_limit = cache_size_limit
 
@@ -129,7 +129,7 @@ class GitOperationsManager:
 
         # Git command queue for sequential operations when needed
         self._command_queue: "Queue[Any]" = Queue()
-        self._queue_processor_thread: Optional[threading.Thread] = None
+        self._queue_processor_thread: threading.Thread] = None
         self._queue_active = True
 
         # Start queue processor thread
@@ -163,7 +163,7 @@ class GitOperationsManager:
         self._queue_processor_thread = threading.Thread(target=process_queue, daemon=True)
         self._queue_processor_thread.start()
 
-    def _generate_cache_key(self, operation_type: GitOperationType, args: List[str]) -> str:
+    def _generate_cache_key(self, operation_type: GitOperationType, args: list[str]) -> str:
         """Generate cache key for Git operation"""
         # Include current working directory and branch for context-aware caching
         try:
@@ -320,7 +320,7 @@ class GitOperationsManager:
                 command=full_command.copy(),
             )
 
-    def execute_git_command(self, command: Union[GitCommand, str], *args) -> GitResult:
+    def execute_git_command(self, command: GitCommand, str], *args) -> GitResult:
         """Execute Git command with caching and retry logic"""
         # Convert string command to GitCommand
         if isinstance(command, str):
@@ -374,7 +374,7 @@ class GitOperationsManager:
 
         return last_result or GitResult(success=False, stderr="Unknown error")
 
-    def execute_parallel(self, commands: List[GitCommand]) -> List[GitResult]:
+    def execute_parallel(self, commands: list[GitCommand]) -> List[GitResult]:
         """Execute multiple Git commands in parallel with controlled concurrency"""
         futures = []
         results = []
@@ -466,7 +466,7 @@ class GitOperationsManager:
     def queue_command(
         self,
         command: GitCommand,
-        callback: Optional[Callable[[GitResult], None]] = None,
+        callback: Callable[[GitResult], None]] = None,
     ) -> None:
         """Queue a Git command for background execution"""
         try:
@@ -504,7 +504,7 @@ class GitOperationsManager:
                 "queue": {"pending": self._command_queue.qsize()},
             }
 
-    def clear_cache(self, operation_type: Optional[GitOperationType] = None) -> int:
+    def clear_cache(self, operation_type: GitOperationType] = None) -> int:
         """Clear cache entries, optionally filtered by operation type"""
         with self._cache_lock:
             if operation_type is None:
@@ -575,7 +575,7 @@ def get_git_info(use_cache: bool = True) -> Dict[str, Any]:
 
 def run_git_command(
     operation_type: GitOperationType,
-    args: List[str],
+    args: list[str],
     cache_ttl: int = 60,
     timeout: int = 10,
 ) -> GitResult:

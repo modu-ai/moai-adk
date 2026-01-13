@@ -100,6 +100,28 @@ class TestUpdateChecker:
                 f"API called {call_count_after_second - call_count_after_first} more times (cache not working)"
             )
 
+    def test_version_comparison_exception_handling(self):
+        """
+        GIVEN: 버전 비교 중 예외 발생
+        WHEN: check_for_update() 호출 시 버전 비교 실패
+        THEN: available=False 반환 (예외 처리)
+        """
+        from moai_adk.statusline.update_checker import UpdateChecker
+
+        checker = UpdateChecker()
+
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            # Mock PyPI API response with invalid version format
+            mock_response = MagicMock()
+            mock_response.read.return_value = b'{"info": {"version": "invalid.version.format.with.too.many.parts"}}'
+            mock_response.__enter__.return_value = mock_response
+            mock_urlopen.return_value = mock_response
+
+            update_info = checker.check_for_update("0.20.1")
+
+            # Should handle exception gracefully
+            assert update_info.available is False
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

@@ -59,3 +59,28 @@ class TestEventDetector:
         normal_files = ["src/module.py", "tests/test_something.py", "README.md"]
         for file in normal_files:
             assert detector.is_critical_file(Path(file)) is False
+
+    # TEST-CHECKPOINT-EVENT-004: 레거시 모놀리식 config 파일 감지
+    def test_should_detect_legacy_monolithic_config_json(self, detector):
+        """.moai/config/config.json 경로는 중요 파일로 감지해야 한다."""
+        # Unix-style path
+        assert detector.is_critical_file(Path(".moai/config/config.json")) is True
+        assert detector.is_critical_file(Path("project/.moai/config/config.json")) is True
+
+    def test_should_detect_legacy_monolithic_config_yaml(self, detector):
+        """.moai/config/config.yaml 경로는 중요 파일로 감지해야 한다."""
+        # Unix-style path
+        assert detector.is_critical_file(Path(".moai/config/config.yaml")) is True
+        assert detector.is_critical_file(Path("project/.moai/config/config.yaml")) is True
+
+    def test_should_detect_windows_style_legacy_config(self, detector):
+        """Windows 스타일 경로도 중요 파일로 감지해야 한다."""
+        # The method internally checks for both Unix and Windows separators
+        windows_paths = [
+            ".moai\\config\\config.json",
+            ".moai\\config\\config.yaml",
+            "project\\.moai\\config\\config.json",
+        ]
+        for path_str in windows_paths:
+            # Convert to Path object (method converts back to string for checking)
+            assert detector.is_critical_file(Path(path_str)) is True

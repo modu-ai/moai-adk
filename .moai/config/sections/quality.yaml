@@ -3,16 +3,53 @@
 
 constitution:
   # TRUST 5 quality framework enforcement
-  enforce_tdd: true           # Enable TRUST 5 quality principles
-  test_coverage_target: 85    # Test-first: minimum coverage (recommended: 85%)
+  enforce_tdd: true                   # Enable TRUST 5 quality principles
+  test_coverage_target: 100            # Target: 100% coverage for AI-assisted TDD
+
+  # TDD enforcement mode
+  tdd_mode: warn                       # warn | enforce | off
+  # warn: Show reminder when test file missing (allows code write)
+  # enforce: Require test file before code write (asks user confirmation)
+  # off: Disable TDD hooks
+
+  # Per-language TDD settings (optional, overrides global tdd_mode)
+  tdd_by_language:
+    Python: warn
+    TypeScript: warn
+    JavaScript: warn
+    # Go: enforce
+    # Rust: enforce
+
+  # Coverage exemptions (discouraged - use sparingly with justification)
+  coverage_exemptions:
+    enabled: false                     # Allow coverage exemptions (default: false)
+    require_justification: true        # Require justification for exemptions
+    max_exempt_percentage: 5           # Maximum 5% of codebase can be exempted
+
+  # Test quality criteria (Quality > Numbers principle)
+  test_quality:
+    specification_based: true          # Tests must verify specified behavior
+    meaningful_assertions: true         # Assertions must have clear purpose
+    avoid_implementation_coupling: true # Tests should not couple to implementation details
+    mutation_testing_enabled: false    # Optional: mutation testing for effectiveness validation
 
   # Simplicity principles (separate from TRUST 5)
   principles:
     simplicity:
-      max_parallel_tasks: 5   # Maximum parallel operations for focus (NOT concurrent projects)
+      max_parallel_tasks: 10           # Maximum parallel operations for focus (NOT concurrent projects)
 
 report_generation:
   enabled: true               # Enable report generation
   auto_create: false          # Auto-create full reports (false = minimal)
   warn_user: true             # Ask before generating reports
   user_choice: Minimal        # Default: Minimal, Full, None
+
+# TAG System v2.0 Configuration (SPEC-TAG-001)
+tag_validation:
+  enabled: true               # Enable TAG validation in pre-commit hooks
+  mode: warn                  # Validation mode: warn | enforce | off
+                              # warn: Show warnings but allow commit
+                              # enforce: Block commit on validation failure
+                              # off: Disable TAG validation
+  check_spec_exists: true     # Check if referenced SPEC documents exist
+  max_tags_per_file: 100      # Maximum TAGs per file (prevents abuse)

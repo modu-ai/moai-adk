@@ -89,3 +89,9 @@ class TestBranchManager:
         assert len(timestamp_part) == 2
         assert len(timestamp_part[0]) == 8  # YYYYMMDD
         assert len(timestamp_part[1]) == 6  # HHMMSS
+
+    def test_has_remote_tracking_handles_invalid_branch(self, manager):
+        """has_remote_tracking should handle invalid branch names gracefully."""
+        # Test with a non-existent branch name
+        result = manager.has_remote_tracking("nonexistent-branch")
+        assert result is False

@@ -66,11 +66,26 @@ src/moai_adk/templates/.moai/config/presets/        # Configuration presets
 ## 3. Code Standards
 
 ### Language: English Only
+
+**Source Code:**
 - All code, comments, docstrings in English
 - Variable names: camelCase or snake_case
 - Class names: PascalCase
 - Constants: UPPER_SNAKE_CASE
 - Commit messages: English
+
+**Configuration Files (English ONLY):**
+- Command files (.claude/commands/**/*.md): English only
+- Agent definitions (.claude/agents/**/*.md): English only
+- Skill definitions (.claude/skills/**/*.md): English only
+- Hook scripts (.claude/hooks/**/*.py): English only
+- CLAUDE.md: English only
+
+**Why**: Command/agent/skill files are code, not user-facing content. They are read by Claude Code (English-based) and must be in English for consistent behavior.
+
+**User-facing vs Internal:**
+- User-facing: README, CHANGELOG, documentation (can be localized)
+- Internal: Commands, agents, skills, hooks (MUST be English)
 
 ### Forbidden
 ```python
@@ -405,6 +420,18 @@ DO NOT:
 - [HARD] Never commit `{{PROJECT_DIR}}` in local files (breaks runtime resolution)
 - [HARD] Never use `$CLAUDE_PROJECT_DIR` without quotes (causes parsing errors)
 
+### Extension to Local Agent/Skill Files
+
+**Local agents/skills** (`.claude/agents/**/*.md`, `.claude/skills/**/*.md`):
+- Uses: `$CLAUDE_PROJECT_DIR` environment variable
+- Purpose: Runtime path resolution for hook commands
+- Why: These files are executed directly by Claude Code in the local environment
+
+**Template agents/skills** (`src/moai_adk/templates/.claude/agents/**/*.md`):
+- Uses: `{{PROJECT_DIR}}` placeholder
+- Purpose: Replaced during package distribution
+- Why: Ensures new projects get correct paths after initialization
+
 ### Verification
 
 Check your settings.json path variables:
@@ -574,6 +601,64 @@ grep -r "X.Y.Z" pyproject.toml README.md CHANGELOG.md
 
 ---
 
+## 17. User Communication Guidelines
+
+### Standard Update Instructions
+
+When responding to issues or comments that require users to update MoAI-ADK, ALWAYS use the following format:
+
+[HARD] Use `uv tool update moai-adk` as the primary update method.
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+```
+
+Alternative methods (only if user requests):
+
+```bash
+# Using pipx (alternative)
+pipx upgrade moai-adk
+
+# Using pip (not recommended for tool installation)
+pip install --upgrade moai-adk
+```
+
+### Prohibited Practices
+
+- [HARD] NEVER recommend `pip install --upgrade moai-adk` as primary method
+- [HARD] NEVER recommend `uv pip install --upgrade moai-adk` (wrong usage pattern)
+- [HARD] ALWAYS use `uv tool update moai-adk` for uv-based installations
+
+WHY: `uv tool` is the correct command for updating uv-installed tools. `uv pip` is for package management, not tool management.
+
+### Issue Response Template
+
+When resolving issues, include this standard update instruction:
+
+```
+### How to Apply the Fix
+
+Update to the latest version:
+
+```bash
+uv tool update moai-adk
+```
+
+After updating, the issue will be resolved.
+```
+
+### Communication Standards
+
+All user-facing communication should follow these standards:
+
+- Language: English for GitHub issues and pull requests
+- Tone: Professional, helpful, and concise
+- Code blocks: Always use proper markdown syntax
+- Links: Verify all URLs before including
+
+---
+
 **Status**: Active (Local Development)
-**Version**: 3.0.0 (Added Version Management, Plugin Development, Sandboxing, Headless Mode, Documentation Standards)
+**Version**: 3.1.0 (Added User Communication Guidelines)
 **Last Updated**: 2026-01-13

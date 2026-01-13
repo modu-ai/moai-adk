@@ -12,10 +12,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from typing import List
+# Import atomic_write from lib directory (go up two levels from shared/utils/)
+import sys
+from pathlib import Path as _Path
+_lib_path = _Path(__file__).parent.parent.parent / "lib"
+if str(_lib_path) not in sys.path:
+    sys.path.insert(0, str(_lib_path))
+from atomic_write import atomic_write_json
 
 # Default language if not configured
 DEFAULT_LANGUAGE = "en"
@@ -70,7 +74,7 @@ def get_announcements_path(project_path: Path | str) -> Path:
     return project_path / ".moai" / "announcements"
 
 
-def load_announcements_from_file(announcements_file: Path) -> List[str]:
+def load_announcements_from_file(announcements_file: Path) -> list[str]:
     """Load announcements from a JSON file.
 
     Args:
@@ -90,7 +94,7 @@ def load_announcements_from_file(announcements_file: Path) -> List[str]:
         return []
 
 
-def translate_announcements(language: str, project_path: Path | str) -> List[str]:
+def translate_announcements(language: str, project_path: Path | str) -> list[str]:
     """Get announcements for the specified language.
 
     Args:
@@ -122,7 +126,7 @@ def translate_announcements(language: str, project_path: Path | str) -> List[str
     return get_default_announcements()
 
 
-def get_default_announcements() -> List[str]:
+def get_default_announcements() -> list[str]:
     """Get default English announcements as fallback.
 
     Returns:
@@ -170,9 +174,8 @@ def update_settings_announcements(project_path: Path | str) -> bool:
         # Update announcements
         settings["companyAnnouncements"] = announcements
 
-        # Write back
-        with open(settings_file, "w", encoding="utf-8") as f:
-            json.dump(settings, f, indent=2, ensure_ascii=False)
+        # Write back using atomic write (H3)
+        atomic_write_json(settings_file, settings, indent=2, ensure_ascii=False)
 
         return True
 

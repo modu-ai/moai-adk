@@ -281,6 +281,69 @@ class TestLanguageConfigMigration:
         assert has_conversation_language, "New config has nested structure"
 
 
+class TestLanguageConfigModuleEdgeCases:
+    """Test edge cases in language_config module functions."""
+
+    def test_get_english_name_returns_fallback_for_invalid_code(self) -> None:
+        """Test get_english_name returns 'English' for unknown language code."""
+        from moai_adk.core.language_config import get_english_name
+
+        # Act
+        result = get_english_name("invalid_code")
+
+        # Assert
+        assert result == "English", "Should return English fallback for unknown code"
+
+    def test_get_language_family_returns_none_for_invalid_code(self) -> None:
+        """Test get_language_family returns None for unknown language code."""
+        from moai_adk.core.language_config import get_language_family
+
+        # Act
+        result = get_language_family("invalid_code")
+
+        # Assert
+        assert result is None, "Should return None for unknown language code"
+
+    def test_is_rtl_language_case_insensitive(self) -> None:
+        """Test is_rtl_language is case-insensitive."""
+        from moai_adk.core.language_config import is_rtl_language
+
+        # Assert - Arabic should be RTL
+        assert is_rtl_language("AR") is True
+        assert is_rtl_language("ar") is True
+        assert is_rtl_language("Ar") is True
+
+    def test_is_rtl_language_returns_false_for_ltr(self) -> None:
+        """Test is_rtl_language returns False for LTR languages."""
+        from moai_adk.core.language_config import is_rtl_language
+
+        # Assert
+        assert is_rtl_language("en") is False
+        assert is_rtl_language("ko") is False
+        assert is_rtl_language("zh") is False
+
+    def test_get_translation_priority_returns_copy(self) -> None:
+        """Test get_translation_priority returns a copy of the list."""
+        from moai_adk.core.language_config import TRANSLATION_PRIORITY, get_translation_priority
+
+        # Act
+        result = get_translation_priority()
+
+        # Assert - Should be a copy, not the same object
+        assert result == TRANSLATION_PRIORITY
+        assert result is not TRANSLATION_PRIORITY
+
+    def test_get_optimal_model_returns_default_for_unknown_language(self) -> None:
+        """Test get_optimal_model returns default model for unknown language."""
+        from moai_adk.core.language_config import get_optimal_model
+
+        # Act
+        result = get_optimal_model("unknown_language")
+
+        # Assert
+        assert result == "claude-sonnet-4-5-20250929"
+
+
 # Test execution
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

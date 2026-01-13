@@ -445,6 +445,7 @@ Through the Red-Green-Refactor cycle, writes tests first and implements code to 
 ### 📚 `/moai:3-sync` - Documentation Sync
 
 ```bash
+> /clear  # Always run clear before sync to reset session and run quality checks
 > /moai:3-sync SPEC-001
 ```
 

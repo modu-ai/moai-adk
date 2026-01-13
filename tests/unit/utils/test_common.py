@@ -155,6 +155,13 @@ class TestUtilityFunctions:
         assert is_valid_url("") is False
         assert is_valid_url("example.com") is False
 
+    def test_is_valid_url_exception_handling(self):
+        """Test is_valid_url handles exceptions gracefully."""
+        # Mock urlparse to raise an exception
+        with patch("moai_adk.utils.common.urlparse", side_effect=Exception("Test error")):
+            result = is_valid_url("https://example.com")
+            assert result is False
+
     def test_extract_links_from_text_markdown(self):
         """Test extracting markdown links."""
         text = "[Click here](https://example.com) and [Visit](https://another.com)"

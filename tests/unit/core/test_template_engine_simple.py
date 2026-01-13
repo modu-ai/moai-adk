@@ -279,6 +279,35 @@ class TestRenderFile:
             assert output_file.exists()
 
 
+class TestRenderFileEdgeCases:
+    """Test edge cases for render_file method."""
+
+    def test_render_file_with_jinja_template_not_found(self):
+        """Test render_file when Jinja2 TemplateNotFound is raised."""
+        # This tests the exception handler at line 161
+        # Arrange
+        from unittest.mock import MagicMock, patch
+
+        from jinja2 import TemplateNotFound
+
+        engine = TemplateEngine()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            template_dir = Path(tmpdir)
+            template_file = template_dir / "test.txt"
+            template_file.write_text("Hello {{name}}!")
+            variables = {"name": "World"}
+
+            # Create a mock environment that raises TemplateNotFound on get_template
+            mock_env = MagicMock()
+            mock_env.get_template.side_effect = TemplateNotFound("test.txt")
+
+            # Mock _get_file_environment to return our mock environment
+            with patch("moai_adk.core.template_engine._get_file_environment", return_value=mock_env):
+                # Act & Assert - Should convert TemplateNotFound to FileNotFoundError
+                with pytest.raises(FileNotFoundError):
+                    engine.render_file(template_file, variables)
+
+
 class TestRenderDirectory:
     """Test render_directory method."""
 

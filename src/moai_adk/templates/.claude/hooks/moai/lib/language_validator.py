@@ -6,9 +6,13 @@ Provides detailed diagnostics for language-related issues.
 """
 
 import json
+import logging
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
+
+# Configure logger for language validator (H4: structured logging)
+logger = logging.getLogger(__name__)
 
 try:
     import yaml
@@ -38,7 +42,7 @@ def _load_yaml_file(file_path: Path) -> Dict[str, Any]:
         return {}
 
 
-def _merge_configs(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+def _merge_configs(base: dict[str, Any], override: dict[str, Any]) -> Dict[str, Any]:
     """Recursively merge two configuration dictionaries.
 
     Args:
@@ -71,7 +75,7 @@ def load_config() -> Dict[str, Any]:
     config_dir = Path(".moai/config")
     sections_dir = config_dir / "sections"
 
-    config: Dict[str, Any] = {}
+    config: dict[str, Any] = {}
 
     # Try section-based configuration first (new approach)
     if sections_dir.exists() and sections_dir.is_dir():
@@ -116,7 +120,7 @@ def load_config() -> Dict[str, Any]:
     return {"error": "Configuration file not found"}
 
 
-def validate_language_config(config: Dict[str, Any]) -> Dict[str, Any]:
+def validate_language_config(config: dict[str, Any]) -> Dict[str, Any]:
     """Validate language configuration
 
     Args:
@@ -125,9 +129,9 @@ def validate_language_config(config: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Validation result with status and details
     """
-    warnings: List[str] = []
-    errors: List[str] = []
-    result: Dict[str, Any] = {
+    warnings: list[str] = []
+    errors: list[str] = []
+    result: dict[str, Any] = {
         "valid": True,
         "warnings": warnings,
         "errors": errors,
@@ -195,8 +199,8 @@ def validate_output_style_compatibility() -> Dict[str, Any]:
     Returns:
         Compatibility check results
     """
-    recommendations: List[str] = []
-    result: Dict[str, Any] = {
+    recommendations: list[str] = []
+    result: dict[str, Any] = {
         "r2d2_exists": False,
         "language_support_present": False,
         "config_reading_present": False,
@@ -249,8 +253,8 @@ def validate_session_start_hook() -> Dict[str, Any]:
     Returns:
         Hook validation results
     """
-    recommendations: List[str] = []
-    result: Dict[str, Any] = {
+    recommendations: list[str] = []
+    result: dict[str, Any] = {
         "hook_exists": False,
         "language_display_present": False,
         "recommendations": recommendations,
@@ -384,22 +388,28 @@ def generate_validation_report() -> str:
 def main() -> None:
     """Main entry point for language configuration validator"""
     try:
+        logger.info("Starting language configuration validation")
         report = generate_validation_report()
-        print(report)
+        print(report)  # Keep print for CLI output
+        logger.info("Validation completed")
 
         # Exit with appropriate code
         config = load_config()
         if "error" in config:
+            logger.error("Configuration error detected")
             sys.exit(2)  # Config error
         else:
             validation = validate_language_config(config)
             if not validation["valid"]:
+                logger.warning("Language configuration validation failed")
                 sys.exit(1)  # Config invalid
             else:
+                logger.info("Language configuration is valid")
                 sys.exit(0)  # Success
 
     except Exception as e:
-        print(f"❌ Language validation error: {e}")
+        logger.error(f"Language validation error: {e}", exc_info=True)
+        print(f"❌ Language validation error: {e}")  # Keep print for CLI error output
         sys.exit(3)
 
 

@@ -446,6 +446,7 @@ Red-Green-Refactor 사이클을 통해 테스트 먼저 작성하고, 이를 통
 ### 📚 `/moai:3-sync` - 문서 동기화
 
 ```bash
+> /clear  # 항상 sync 전에 clear 실행해서 세션 초기화 후 품질 검사 실행
 > /moai:3-sync SPEC-001
 ```
 
@@ -1378,18 +1379,18 @@ moai-wt clean --merged-only
 
 ### 📊 Worktree 명령어
 
-| 명령어                   | 설명                             | 사용 예시                        |
-| ------------------------ | -------------------------------- | -------------------------------- |
-| `moai-wt new SPEC-ID`    | 새 Worktree 생성                 | `moai-wt new SPEC-AUTH-001`      |
-| `moai-wt go SPEC-ID`     | Worktree 진입 (새 셸 열기)       | `moai-wt go SPEC-AUTH-001`       |
-| `moai-wt list`           | Worktree 목록 확인               | `moai-wt list`                   |
-| `moai-wt done SPEC-ID`   | 병합 후 정리 (checkout→merge→rm) | `moai-wt done SPEC-AUTH-001`     |
-| `moai-wt remove SPEC-ID` | Worktree 제거                    | `moai-wt remove SPEC-AUTH-001`   |
-| `moai-wt status`         | Worktree 상태 및 레지스트리 확인 | `moai-wt status`                 |
-| `moai-wt sync [SPEC-ID]` | Worktree 동기화                  | `moai-wt sync --all`             |
-| `moai-wt clean`          | 병합된 Worktree 정리             | `moai-wt clean --merged-only`    |
-| `moai-wt recover`        | 디스크에서 레지스트리 복구       | `moai-wt recover`                |
-| `moai-wt config`         | Worktree 설정 확인               | `moai-wt config root`            |
+| 명령어                   | 설명                             | 사용 예시                      |
+| ------------------------ | -------------------------------- | ------------------------------ |
+| `moai-wt new SPEC-ID`    | 새 Worktree 생성                 | `moai-wt new SPEC-AUTH-001`    |
+| `moai-wt go SPEC-ID`     | Worktree 진입 (새 셸 열기)       | `moai-wt go SPEC-AUTH-001`     |
+| `moai-wt list`           | Worktree 목록 확인               | `moai-wt list`                 |
+| `moai-wt done SPEC-ID`   | 병합 후 정리 (checkout→merge→rm) | `moai-wt done SPEC-AUTH-001`   |
+| `moai-wt remove SPEC-ID` | Worktree 제거                    | `moai-wt remove SPEC-AUTH-001` |
+| `moai-wt status`         | Worktree 상태 및 레지스트리 확인 | `moai-wt status`               |
+| `moai-wt sync [SPEC-ID]` | Worktree 동기화                  | `moai-wt sync --all`           |
+| `moai-wt clean`          | 병합된 Worktree 정리             | `moai-wt clean --merged-only`  |
+| `moai-wt recover`        | 디스크에서 레지스트리 복구       | `moai-wt recover`              |
+| `moai-wt config`         | Worktree 설정 확인               | `moai-wt config root`          |
 
 ---
 
@@ -1416,15 +1417,15 @@ MoAI-ADK 설치 후 프로젝트 루트에 생성되는 `CLAUDE.md`는 **Alfred(
 
 ### CLAUDE.md 핵심 구조
 
-| 섹션 | 설명 | 주요 내용 |
-|------|------|----------|
-| **Core Identity** | Alfred의 역할 정의 | 전략적 오케스트레이터, HARD 규칙 |
-| **Request Processing Pipeline** | 요청 처리 흐름 | Analyze → Route → Execute → Report |
-| **Command Reference** | 명령어 분류 | Type A (Workflow), Type B (Utility), Type C (Feedback) |
-| **Agent Catalog** | 서브에이전트 목록 | Manager 8개, Expert 8개, Builder 4개 |
-| **SPEC-Based Workflow** | SPEC 기반 개발 | Plan → Run → Sync 흐름 |
-| **Quality Gates** | 품질 검증 규칙 | HARD/SOFT 규칙 체크리스트 |
-| **Configuration Reference** | 설정 참조 | 언어, 출력 형식 규칙 |
+| 섹션                            | 설명               | 주요 내용                                              |
+| ------------------------------- | ------------------ | ------------------------------------------------------ |
+| **Core Identity**               | Alfred의 역할 정의 | 전략적 오케스트레이터, HARD 규칙                       |
+| **Request Processing Pipeline** | 요청 처리 흐름     | Analyze → Route → Execute → Report                     |
+| **Command Reference**           | 명령어 분류        | Type A (Workflow), Type B (Utility), Type C (Feedback) |
+| **Agent Catalog**               | 서브에이전트 목록  | Manager 8개, Expert 8개, Builder 4개                   |
+| **SPEC-Based Workflow**         | SPEC 기반 개발     | Plan → Run → Sync 흐름                                 |
+| **Quality Gates**               | 품질 검증 규칙     | HARD/SOFT 규칙 체크리스트                              |
+| **Configuration Reference**     | 설정 참조          | 언어, 출력 형식 규칙                                   |
 
 ### 사용 방법: 수정하지 마세요
 
@@ -1474,13 +1475,13 @@ touch CLAUDE.local.md
 
 ### CLAUDE.md vs CLAUDE.local.md
 
-| 구분 | CLAUDE.md | CLAUDE.local.md |
-|------|-----------|-----------------|
-| **목적** | Alfred 실행 지침 | 개인/프로젝트 추가 지침 |
-| **수정** | 비권장 | 자유롭게 수정 |
-| **업데이트** | MoAI가 자동 관리 | 사용자가 직접 관리 |
-| **Git** | 커밋 대상 | 선택 (.gitignore 가능) |
-| **우선순위** | 기본 규칙 | 추가/오버라이드 규칙 |
+| 구분         | CLAUDE.md        | CLAUDE.local.md         |
+| ------------ | ---------------- | ----------------------- |
+| **목적**     | Alfred 실행 지침 | 개인/프로젝트 추가 지침 |
+| **수정**     | 비권장           | 자유롭게 수정           |
+| **업데이트** | MoAI가 자동 관리 | 사용자가 직접 관리      |
+| **Git**      | 커밋 대상        | 선택 (.gitignore 가능)  |
+| **우선순위** | 기본 규칙        | 추가/오버라이드 규칙    |
 
 ### 핵심 규칙 (HARD Rules)
 

@@ -96,6 +96,25 @@ class TestVersionImportBehavior:
         assert hasattr(version_module, "TEMPLATE_VERSION")
 
 
+class TestVersionFallbackBehavior:
+    """Test version fallback behavior when package not found."""
+
+    @patch("moai_adk.version.pkg_version", side_effect=PackageNotFoundError())
+    def test_fallback_version_assigned_on_exception(self, mock_pkg_version):
+        """Test that fallback version is assigned when PackageNotFoundError raised."""
+        # Re-import the module to trigger the exception path
+        import importlib
+
+        import moai_adk.version as version_module
+
+        # Force reload to test the exception path
+        importlib.reload(version_module)
+
+        # After reload with mocked exception, version should be fallback
+        assert version_module.MOAI_VERSION == "1.1.0"
+        assert version_module.TEMPLATE_VERSION == "3.0.0"
+
+
 class TestVersionWithMocking:
     """Test version module with mocking to verify both paths."""
 

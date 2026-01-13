@@ -14,12 +14,14 @@ Enhanced Features:
 - Risk assessment with performance metrics
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # =============================================================================
 # Windows UTF-8 Encoding Fix (Issue #249)
@@ -67,6 +69,7 @@ if str(LIB_DIR) not in sys.path:
     sys.path.insert(0, str(LIB_DIR))
 
 # Import path utils for project root resolution
+from lib.file_utils import check_file_size, safe_read_text  # noqa: E402
 from lib.path_utils import find_project_root  # noqa: E402
 
 # Import unified timeout manager and Git operations manager
@@ -250,6 +253,13 @@ except ImportError:
         """Load a YAML file using PyYAML or simple parser."""
         if not file_path.exists():
             return {}
+
+        # Check file size before reading (H2: 10MB limit)
+        is_safe, error_msg = check_file_size(file_path)
+        if not is_safe:
+            # File too large or other error, skip loading
+            return {}
+
         try:
             content = file_path.read_text(encoding="utf-8")
             if HAS_YAML_FALLBACK:
@@ -280,9 +290,14 @@ except ImportError:
         if not config:
             json_config_path = config_dir / "config.json"
             if json_config_path.exists():
-                try:
-                    config = json.loads(json_config_path.read_text(encoding="utf-8"))
-                except (json.JSONDecodeError, OSError):
+                # Check file size before reading (H2: 10MB limit)
+                is_safe, _ = check_file_size(json_config_path)
+                if is_safe:
+                    try:
+                        config = json.loads(json_config_path.read_text(encoding="utf-8"))
+                    except (json.JSONDecodeError, OSError):
+                        config = {}
+                else:
                     config = {}
 
         # Merge section files (they take priority for their specific keys)
@@ -419,7 +434,7 @@ def check_git_initialized() -> bool:
         return False
 
 
-def get_git_info() -> Dict[str, Any]:
+def get_git_info() -> dict[str, Any]:
     """Get comprehensive git information using optimized Git operations manager
 
     FIXED: Handles git not initialized state properly
@@ -1028,7 +1043,7 @@ def main() -> None:
         session_output = format_session_output() if show_messages else ""
 
         # Return as system message
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "continue": True,
             "systemMessage": session_output,
             "performance": {
@@ -1054,7 +1069,7 @@ def main() -> None:
 
         except HookTimeoutError as e:
             # Enhanced timeout error handling
-            timeout_response: Dict[str, Any] = {
+            timeout_response: dict[str, Any] = {
                 "continue": True,
                 "systemMessage": "⚠️ Session start timeout - continuing without project info",
                 "error_details": {
@@ -1070,7 +1085,7 @@ def main() -> None:
 
         except Exception as e:
             # Enhanced error handling with context
-            error_response: Dict[str, Any] = {
+            error_response: dict[str, Any] = {
                 "continue": True,
                 "systemMessage": "⚠️ Session start encountered an error - continuing",
                 "error_details": {
@@ -1100,7 +1115,7 @@ def main() -> None:
 
             except PlatformTimeoutError:
                 # Timeout - return minimal valid response
-                timeout_response_legacy: Dict[str, Any] = {
+                timeout_response_legacy: dict[str, Any] = {
                     "continue": True,
                     "systemMessage": "⚠️ Session start timeout - continuing without project info",
                 }
@@ -1132,7 +1147,7 @@ def main() -> None:
 
         except json.JSONDecodeError as e:
             # JSON parse error
-            json_error_response: Dict[str, Any] = {
+            json_error_response: dict[str, Any] = {
                 "continue": True,
                 "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
             }
@@ -1142,7 +1157,7 @@ def main() -> None:
 
         except Exception as e:
             # Unexpected error
-            general_error_response: Dict[str, Any] = {
+            general_error_response: dict[str, Any] = {
                 "continue": True,
                 "hookSpecificOutput": {"error": f"SessionStart error: {e}"},
             }

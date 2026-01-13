@@ -28,7 +28,7 @@ PROJECT_ROOT_MARKERS = [
 ]
 
 # Cache for project root to avoid repeated filesystem traversals
-_project_root_cache: Optional[Path] = None
+_project_root_cache: Path | None = None
 
 
 def get_project_root_from_env() -> Optional[Path]:
@@ -58,7 +58,7 @@ def get_project_root_from_env() -> Optional[Path]:
     return None
 
 
-def find_project_root(start_path: Optional[Path] = None) -> Path:
+def find_project_root(start_path: Path | None = None) -> Path:
     """Find project root by locating project markers.
 
     Search order:

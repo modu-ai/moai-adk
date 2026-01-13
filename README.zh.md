@@ -445,6 +445,7 @@ moai update --manual
 ### 📚 `/moai:3-sync` - 文档同步
 
 ```bash
+> /clear  # 同步前始终运行clear以重置会话并运行质量检查
 > /moai:3-sync SPEC-001
 ```
 

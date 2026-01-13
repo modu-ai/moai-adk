@@ -11,12 +11,16 @@ Hook Protocol:
 """
 
 import json
+import logging
 import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
+
+# Configure logger for AST-Grep scanner (H4: structured logging)
+logger = logging.getLogger(__name__)
 
 # Supported extensions for AST-Grep scanning
 SUPPORTED_EXTENSIONS = {
@@ -81,9 +85,11 @@ def is_scannable_file(file_path: str) -> bool:
     return ext in SUPPORTED_EXTENSIONS
 
 
-def run_ast_grep_scan(file_path: str, config_path: Optional[Path] = None) -> dict:
+def run_ast_grep_scan(file_path: str, config_path: Optional[Path] = None) -> dict[str, Any]:
     """Run AST-Grep scan on a file and return results."""
-    result = {
+    logger.debug(f"Starting AST-Grep scan for: {file_path}")
+
+    result: dict[str, Any] = {
         "scanned": False,
         "issues_found": 0,
         "error_count": 0,
@@ -96,6 +102,7 @@ def run_ast_grep_scan(file_path: str, config_path: Optional[Path] = None) -> dic
     # Check if sg (ast-grep) is available
     if not shutil.which("sg"):
         result["error"] = "ast-grep (sg) not installed"
+        logger.warning("AST-Grep (sg) not installed, skipping scan")
         return result
 
     try:
@@ -104,10 +111,12 @@ def run_ast_grep_scan(file_path: str, config_path: Optional[Path] = None) -> dic
 
         if config_path and config_path.exists():
             cmd.extend(["--config", str(config_path)])
+            logger.debug(f"Using config: {config_path}")
 
         cmd.append(file_path)
 
         # Run scan with timeout
+        logger.debug(f"Running AST-Grep command: {' '.join(cmd)}")
         proc = subprocess.run(
             cmd,
             capture_output=True,
@@ -142,21 +151,32 @@ def run_ast_grep_scan(file_path: str, config_path: Optional[Path] = None) -> dic
                         )
 
                     result["issues_found"] = len(findings)
+                    if result["issues_found"] > 0:
+                        logger.info(
+                            f"AST-Grep found {result['issues_found']} issues "
+                            f"({result['error_count']} errors, {result['warning_count']} warnings)"
+                        )
+                    else:
+                        logger.debug("AST-Grep scan completed: no issues found")
             except json.JSONDecodeError:
                 # Non-JSON output (possibly no issues found)
+                logger.debug("AST-Grep returned non-JSON output")
                 pass
 
     except subprocess.TimeoutExpired:
         result["error"] = "AST-Grep scan timed out"
+        logger.warning(f"AST-Grep scan timed out for: {file_path}")
     except FileNotFoundError:
         result["error"] = "ast-grep (sg) command not found"
+        logger.error("ast-grep (sg) command not found")
     except Exception as e:
         result["error"] = str(e)
+        logger.error(f"AST-Grep scan error: {e}", exc_info=True)
 
     return result
 
 
-def format_scan_result(result: dict, file_path: str) -> str:
+def format_scan_result(result: dict[str, Any], file_path: str) -> str:
     """Format scan result for Claude's additional context."""
     if result.get("error"):
         return f"AST-Grep scan skipped: {result['error']}"
