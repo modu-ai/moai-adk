@@ -1,0 +1,24 @@
+# Pytest ignore patterns
+# Prevent pytest from discovering tests in these directories
+
+.venv
+.venv/*
+.git
+.git/*
+build
+build/*
+dist
+dist/*
+*.egg-info
+*.egg-info/*
+.pytest_cache
+.pytest_cache/*
+node_modules
+node_modules/*
+.moai-backups
+.moai-backups/*
+
+# Ignore template hooks tests
+src/moai_adk/templates/.claude
+
+# Only run tests from the tests/ directory
