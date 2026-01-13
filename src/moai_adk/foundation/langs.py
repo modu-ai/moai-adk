@@ -120,7 +120,9 @@ class LanguageVersionManager:
 
     def detect(self, language_version_str: str) -> LanguageInfo:
         """Detect language and version from string."""
-        match = re.match(r"(\w+(?:\s+\w+)?)\s+([\d.]+|ES\d{4}|\w+\d+)", language_version_str)
+        match = re.match(
+            r"(\w+(?:\s+\w+)?)\s+([\d.]+|ES\d{4}|\w+\d+)", language_version_str
+        )
         if not match:
             return LanguageInfo(name="Unknown", version="unknown", is_supported=False)
 
@@ -232,12 +234,16 @@ class PatternAnalyzer:
         },
     }
 
-    def identify_pattern(self, code: str, language: Optional[str] = None) -> Optional[Pattern]:
+    def identify_pattern(
+        self, code: str, language: Optional[str] = None
+    ) -> Optional[Pattern]:
         """Identify pattern type and return Pattern object."""
         code_lower = code.lower()
 
         # Async/await pattern
-        if any(kw in code_lower for kw in ["async ", "await ", "async def", "async fn"]):
+        if any(
+            kw in code_lower for kw in ["async ", "await ", "async def", "async fn"]
+        ):
             return Pattern(
                 pattern_type="best_practice",
                 language=language or "Multi-language",
@@ -247,7 +253,11 @@ class PatternAnalyzer:
             )
 
         # Type hints (Python, TypeScript)
-        if (":" in code and "->" in code) or ("type " in code_lower) or ("interface " in code_lower):
+        if (
+            (":" in code and "->" in code)
+            or ("type " in code_lower)
+            or ("interface " in code_lower)
+        ):
             return Pattern(
                 pattern_type="best_practice",
                 language=language or "Python/TypeScript",
@@ -299,7 +309,9 @@ class AntiPatternDetector:
         },
     }
 
-    def detect_anti_pattern(self, code: str, language: Optional[str] = None) -> Optional[Pattern]:
+    def detect_anti_pattern(
+        self, code: str, language: Optional[str] = None
+    ) -> Optional[Pattern]:
         """Detect anti-pattern and return Pattern object."""
         code_lower = code.lower()
 
@@ -328,7 +340,9 @@ class AntiPatternDetector:
             )
 
         # SQL injection detection
-        if ("f'" in code or 'f"' in code) and ("SELECT" in code.upper() or "FROM" in code.upper()):
+        if ("f'" in code or 'f"' in code) and (
+            "SELECT" in code.upper() or "FROM" in code.upper()
+        ):
             return Pattern(
                 pattern_type="anti_pattern",
                 language=language or "Python",

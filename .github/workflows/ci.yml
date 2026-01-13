@@ -43,15 +43,7 @@ jobs:
 
       - name: Test
         run: |
-          PYTHONPATH=${{ github.workspace }}/src uv run pytest tests/ --tb=short || {
-            exit_code=$?
-            if [ $exit_code -eq 2 ]; then
-              echo "Exit code 2 (pytest internal) - treating as success if tests passed"
-              exit 0
-            else
-              exit $exit_code
-            fi
-          }
+          PYTHONPATH=${{ github.workspace }}/src uv run pytest tests/ -n auto --tb=short
 
       - name: Build
         run: uv build

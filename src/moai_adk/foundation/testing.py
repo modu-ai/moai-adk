@@ -469,9 +469,15 @@ class CoverageAnalyzer:
             "thresholds_set": True,
             "new_thresholds": self.coverage_thresholds,
             "validation": {
-                "line_coverage_threshold": self.coverage_thresholds["min_line_coverage"],
-                "branch_coverage_threshold": self.coverage_thresholds["min_branch_coverage"],
-                "function_coverage_threshold": self.coverage_thresholds["min_function_coverage"],
+                "line_coverage_threshold": self.coverage_thresholds[
+                    "min_line_coverage"
+                ],
+                "branch_coverage_threshold": self.coverage_thresholds[
+                    "min_branch_coverage"
+                ],
+                "function_coverage_threshold": self.coverage_thresholds[
+                    "min_function_coverage"
+                ],
             },
         }
 
@@ -1267,14 +1273,20 @@ class TestingMetricsCollector:
         weighted_scores = {
             "coverage_score": raw_scores["coverage"] * weights["coverage"],
             "code_quality_score": raw_scores["code_quality"] * weights["code_quality"],
-            "test_reliability_score": raw_scores["test_reliability"] * weights["test_reliability"],
+            "test_reliability_score": raw_scores["test_reliability"]
+            * weights["test_reliability"],
             "performance_score": raw_scores["performance"] * weights["performance"],
-            "maintainability_score": raw_scores["maintainability"] * weights["maintainability"],
+            "maintainability_score": raw_scores["maintainability"]
+            * weights["maintainability"],
         }
 
         overall_score = sum(weighted_scores.values())
 
-        grade = "A" if overall_score >= 90 else "B" if overall_score >= 80 else "C" if overall_score >= 70 else "D"
+        grade = (
+            "A"
+            if overall_score >= 90
+            else "B" if overall_score >= 80 else "C" if overall_score >= 70 else "D"
+        )
 
         recommendations = [
             "Improve maintainability score (82.0) - focus on code refactoring",
@@ -1457,13 +1469,21 @@ def validate_test_configuration(config: Dict[str, Any]) -> Dict[str, Any]:
         test_paths = config["test_paths"]
         for path in test_paths:
             if not os.path.exists(path):
-                validation_results["warnings"].append(f"Test path does not exist: {path}")
+                validation_results["warnings"].append(
+                    f"Test path does not exist: {path}"
+                )
 
     # Generate recommendations
     if validation_results["is_valid"]:
-        validation_results["recommendations"].append("Configuration is valid and ready for use")
-        validation_results["recommendations"].append("Consider adding performance monitoring for production")
-        validation_results["recommendations"].append("Implement test result archiving for compliance")
+        validation_results["recommendations"].append(
+            "Configuration is valid and ready for use"
+        )
+        validation_results["recommendations"].append(
+            "Consider adding performance monitoring for production"
+        )
+        validation_results["recommendations"].append(
+            "Implement test result archiving for compliance"
+        )
 
     return validation_results
 
@@ -1498,7 +1518,9 @@ def main():
 
     print("\n4. CI Pipeline Configuration:")
     ci_config = automation_orchestrator.setup_ci_pipeline()
-    print(f"CI pipeline: {len(ci_config['pipeline_config']['stages'])} stages configured")
+    print(
+        f"CI pipeline: {len(ci_config['pipeline_config']['stages'])} stages configured"
+    )
 
     print("\n5. Test Reporting:")
     test_report = reporting_specialist.generate_test_reports()

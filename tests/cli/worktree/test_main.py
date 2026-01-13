@@ -29,7 +29,9 @@ class TestMainFunction:
         mock_worktree.assert_called_once_with(standalone_mode=False)
 
     @patch("moai_adk.cli.worktree.__main__.worktree")
-    def test_main_calls_worktree_with_standalone_mode_false(self, mock_worktree: MagicMock) -> None:
+    def test_main_calls_worktree_with_standalone_mode_false(
+        self, mock_worktree: MagicMock
+    ) -> None:
         """Test that main() calls worktree with standalone_mode=False."""
         mock_worktree.return_value = None
 
@@ -49,7 +51,9 @@ class TestMainFunction:
 
     @patch("moai_adk.cli.worktree.__main__.worktree")
     @patch("sys.stderr", new_callable=MagicMock)
-    def test_main_prints_error_to_stderr(self, mock_stderr: MagicMock, mock_worktree: MagicMock) -> None:
+    def test_main_prints_error_to_stderr(
+        self, mock_stderr: MagicMock, mock_worktree: MagicMock
+    ) -> None:
         """Test that main() prints error message to stderr on exception."""
         # Mock worktree to raise an exception
         error_message = "Worktree not found"
@@ -142,7 +146,9 @@ class TestMainEdgeCases:
         assert result == 1
 
     @patch("moai_adk.cli.worktree.__main__.worktree")
-    def test_main_with_unicode_exception_message(self, mock_worktree: MagicMock) -> None:
+    def test_main_with_unicode_exception_message(
+        self, mock_worktree: MagicMock
+    ) -> None:
         """Test main() with exception that has Unicode characters."""
         unicode_message = "错误：工作树未找到"
         mock_worktree.side_effect = Exception(unicode_message)
@@ -152,7 +158,9 @@ class TestMainEdgeCases:
         assert result == 1
 
     @patch("moai_adk.cli.worktree.__main__.worktree")
-    def test_main_with_special_characters_in_exception(self, mock_worktree: MagicMock) -> None:
+    def test_main_with_special_characters_in_exception(
+        self, mock_worktree: MagicMock
+    ) -> None:
         """Test main() with exception containing special characters."""
         special_message = "Error: file<script>.py has issues: <>&\"'"
         mock_worktree.side_effect = Exception(special_message)
@@ -250,7 +258,9 @@ class TestMainErrorOutputFormat:
 
     @patch("moai_adk.cli.worktree.__main__.worktree")
     @patch("sys.stderr", new_callable=MagicMock)
-    def test_error_output_starts_with_error_prefix(self, mock_stderr: MagicMock, mock_worktree: MagicMock) -> None:
+    def test_error_output_starts_with_error_prefix(
+        self, mock_stderr: MagicMock, mock_worktree: MagicMock
+    ) -> None:
         """Test that error output starts with 'Error: ' prefix."""
         mock_worktree.side_effect = Exception("Something went wrong")
 
@@ -262,7 +272,9 @@ class TestMainErrorOutputFormat:
 
     @patch("moai_adk.cli.worktree.__main__.worktree")
     @patch("sys.stderr", new_callable=MagicMock)
-    def test_error_output_includes_exception_message(self, mock_stderr: MagicMock, mock_worktree: MagicMock) -> None:
+    def test_error_output_includes_exception_message(
+        self, mock_stderr: MagicMock, mock_worktree: MagicMock
+    ) -> None:
         """Test that error output includes the exception message."""
         error_msg = "Worktree for SPEC-001 not found"
         mock_worktree.side_effect = Exception(error_msg)
@@ -294,7 +306,9 @@ class TestMainStandaloneMode:
     """Test standalone_mode behavior."""
 
     @patch("moai_adk.cli.worktree.__main__.worktree")
-    def test_standalone_mode_false_allows_exception_handling(self, mock_worktree: MagicMock) -> None:
+    def test_standalone_mode_false_allows_exception_handling(
+        self, mock_worktree: MagicMock
+    ) -> None:
         """Test that standalone_mode=False allows exceptions to be caught."""
         mock_worktree.side_effect = Exception("Handled error")
 
@@ -304,7 +318,9 @@ class TestMainStandaloneMode:
         assert result == 1
 
     @patch("moai_adk.cli.worktree.__main__.worktree")
-    def test_standalone_mode_false_prevents_system_exit(self, mock_worktree: MagicMock) -> None:
+    def test_standalone_mode_false_prevents_system_exit(
+        self, mock_worktree: MagicMock
+    ) -> None:
         """Test that standalone_mode=False prevents Click from calling sys.exit."""
         # When standalone_mode=False, Click should not call sys.exit
         # Instead, it should raise ClickException or return normally
@@ -370,14 +386,18 @@ class TestMainWithWorktreeExceptions:
         """Test handling of MergeConflictError."""
         from moai_adk.cli.worktree.exceptions import MergeConflictError
 
-        mock_worktree.side_effect = MergeConflictError("SPEC-001", ["file1.py", "file2.py"])
+        mock_worktree.side_effect = MergeConflictError(
+            "SPEC-001", ["file1.py", "file2.py"]
+        )
 
         result = __main__.main()
 
         assert result == 1
 
     @patch("moai_adk.cli.worktree.__main__.worktree")
-    def test_handles_registry_inconsistency_error(self, mock_worktree: MagicMock) -> None:
+    def test_handles_registry_inconsistency_error(
+        self, mock_worktree: MagicMock
+    ) -> None:
         """Test handling of RegistryInconsistencyError."""
         from moai_adk.cli.worktree.exceptions import RegistryInconsistencyError
 
