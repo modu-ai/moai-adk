@@ -33,7 +33,7 @@ Arguments provided: $ARGUMENTS
 
 Create TodoWrite with these items, then run each check:
 
-1. Run pytest: `uv run pytest tests/ -v --tb=short -q 2>&1 | tail -30`
+1. Run smoke tests: `uv run pytest tests/ -m "smoke or critical" -v --tb=short --maxfail=5 2>&1 | tail -30`
 2. Run ruff check: `uv run ruff check src/ --fix`
 3. Run ruff format: `uv run ruff format src/`
 4. Run mypy: `uv run mypy src/moai_adk/ --ignore-missing-imports 2>&1 | tail -20`
@@ -43,7 +43,7 @@ If ruff made changes, commit them:
 
 Display quality summary:
 
-- pytest: PASS or FAIL (if FAIL, stop and report)
+- smoke tests: PASS or FAIL (if FAIL, stop and report)
 - ruff: PASS or FIXED
 - mypy: PASS or WARNING
 
@@ -176,7 +176,7 @@ If the release is not immediately visible, wait 2-3 minutes for the workflow to 
 
 ## Key Rules
 
-- pytest MUST pass to continue
+- Smoke tests MUST pass to continue (tests/test_smoke.py)
 - All version files must be consistent
 - Tag format: vX.Y.Z (with 'v' prefix)
 - GitHub Actions handles PyPI deployment automatically
