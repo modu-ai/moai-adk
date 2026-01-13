@@ -175,9 +175,7 @@ class UnifiedTimeoutManager:
             self._logger.warning(f"Failed to load timeout config: {e}")
         return {}
 
-    def get_timeout_config(
-        self, hook_name: str, custom_config: HookTimeoutConfig | None = None
-    ) -> HookTimeoutConfig:
+    def get_timeout_config(self, hook_name: str, custom_config: HookTimeoutConfig | None = None) -> HookTimeoutConfig:
         """Get timeout configuration for a specific hook"""
         if custom_config:
             return custom_config

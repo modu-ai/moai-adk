@@ -207,9 +207,7 @@ class LinkageManager:
             file_key = str(file_path)
 
             # Remove all TAGs for this file
-            data["tags"] = [
-                tag for tag in data["tags"] if tag["file_path"] != file_key
-            ]
+            data["tags"] = [tag for tag in data["tags"] if tag["file_path"] != file_key]
 
             # Remove file index
             if file_key in data["files"]:
@@ -316,9 +314,7 @@ class LinkageManager:
         data = self._load_database()
         tags = data.get("tags", [])
 
-        orphans = [
-            tag for tag in tags if not spec_document_exists(tag["spec_id"])
-        ]
+        orphans = [tag for tag in tags if not spec_document_exists(tag["spec_id"])]
 
         return orphans
 

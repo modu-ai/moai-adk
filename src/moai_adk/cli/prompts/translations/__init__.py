@@ -209,12 +209,10 @@ TRANSLATIONS: dict[str, InitTranslations] = {
             "문서 중심 개발을 유도하고 품질을 유지합니다."
         ),
         "tag_yes_recommendation": (
-            "TAG 활성화를 권장합니다. TDD 사이클에서 코드와 문서의\n"
-            "일치성을 유지하여 품질과 유지보수성을 향상시킵니다."
+            "TAG 활성화를 권장합니다. TDD 사이클에서 코드와 문서의\n일치성을 유지하여 품질과 유지보수성을 향상시킵니다."
         ),
         "tag_no_warning": (
-            "TAG를 비활성화하면 코드와 문서 간의 추적 가능성이\n"
-            "손실되어 TDD 사이클을 따르기 어려워집니다."
+            "TAG를 비활성화하면 코드와 문서 간의 추적 가능성이\n손실되어 TDD 사이클을 따르기 어려워집니다."
         ),
         "tag_mode_guide_title": "TAG 검증 모드 안내",
         "tag_mode_guide_subtitle": (
@@ -435,12 +433,10 @@ TRANSLATIONS: dict[str, InitTranslations] = {
             "文書主導開発を促進し品質を維持します。"
         ),
         "tag_yes_recommendation": (
-            "TAG有効化を推奨します。TDDサイクルでコードと文書の\n"
-            "一貫性を維持して品質と保守性を向上させます。"
+            "TAG有効化を推奨します。TDDサイクルでコードと文書の\n一貫性を維持して品質と保守性を向上させます。"
         ),
         "tag_no_warning": (
-            "TAGを無効にするとコードと文書間の追跡可能性が失われ、\n"
-            "TDDサイクルに従うことが難しくなります。"
+            "TAGを無効にするとコードと文書間の追跡可能性が失われ、\nTDDサイクルに従うことが難しくなります。"
         ),
         "tag_mode_guide_title": "TAG検証モードガイド",
         "tag_mode_guide_subtitle": (
@@ -547,14 +543,8 @@ TRANSLATIONS: dict[str, InitTranslations] = {
             "清晰追踪每个代码文件实现哪个SPEC，促进\n"
             "文档驱动开发并保持质量。"
         ),
-        "tag_yes_recommendation": (
-            "推荐启用TAG。在TDD周期中保持代码与文档的\n"
-            "一致性，提高质量和可维护性。"
-        ),
-        "tag_no_warning": (
-            "禁用TAG会失去代码和文档之间的可追溯性，\n"
-            "难以遵循TDD周期。"
-        ),
+        "tag_yes_recommendation": ("推荐启用TAG。在TDD周期中保持代码与文档的\n一致性，提高质量和可维护性。"),
+        "tag_no_warning": ("禁用TAG会失去代码和文档之间的可追溯性，\n难以遵循TDD周期。"),
         "tag_mode_guide_title": "TAG验证模式指南",
         "tag_mode_guide_subtitle": (
             "• warn: 开发期间发出警告 (默认，推荐)\n"
