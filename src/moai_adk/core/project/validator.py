@@ -32,8 +32,9 @@ class ProjectValidator:
     ]
 
     # Required files
+    # Note: .moai/config/config.yaml is no longer required (replaced by section-based YAML files)
+    # Section files are now in .moai/config/sections/ and are validated separately
     REQUIRED_FILES = [
-        ".moai/config/config.yaml",
         "CLAUDE.md",
     ]
 
@@ -114,6 +115,20 @@ class ProjectValidator:
         if missing_commands:
             missing_list = ", ".join(missing_commands)
             raise ValidationError(f"Required Alfred command files not found: {missing_list}")
+
+        # Verify required section files (section-based configuration replaces config.yaml)
+        sections_dir = project_path / ".moai" / "config" / "sections"
+        if sections_dir.exists():
+            required_sections = ["system.yaml", "language.yaml", "user.yaml", "project.yaml"]
+            missing_sections = []
+            for section in required_sections:
+                section_path = sections_dir / section
+                if not section_path.exists():
+                    missing_sections.append(section)
+
+            if missing_sections:
+                missing_list = ", ".join(missing_sections)
+                raise ValidationError(f"Required section files not found: {missing_list}")
 
     def _is_inside_moai_package(self, project_path: Path) -> bool:
         """Determine whether the path is inside the MoAI-ADK package.

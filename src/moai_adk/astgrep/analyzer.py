@@ -217,6 +217,9 @@ class MoAIASTGrepAnalyzer:
             data = json.loads(output)
             if isinstance(data, list):
                 for item in data:
+                    # Skip null or None items
+                    if item is None:
+                        continue
                     match = self._parse_sg_match(item, file_path)
                     if match:
                         matches.append(match)
@@ -235,15 +238,26 @@ class MoAIASTGrepAnalyzer:
         Returns:
             ASTMatch object or None if parsing fails.
         """
+        # Validate item is a dictionary
+        if not isinstance(item, dict):
+            return None
+
         try:
             rule_id = item.get("ruleId", item.get("rule_id", "custom-pattern"))
             severity = item.get("severity", "warning")
             message = item.get("message", "Pattern match found")
 
-            # Parse range
-            range_data = item.get("range", {})
+            # Parse range - validate it's a dict
+            range_data = item.get("range")
+            if not isinstance(range_data, dict):
+                return None
+
             start = range_data.get("start", {"line": 0, "column": 0})
             end = range_data.get("end", {"line": 0, "column": 0})
+
+            # Validate start and end are dicts
+            if not isinstance(start, dict) or not isinstance(end, dict):
+                return None
 
             match_range = Range(
                 start=Position(
@@ -266,7 +280,7 @@ class MoAIASTGrepAnalyzer:
                 range=match_range,
                 suggested_fix=suggested_fix,
             )
-        except (KeyError, TypeError):
+        except (KeyError, TypeError, AttributeError):
             return None
 
     def scan_project(self, project_path: str, config: ScanConfig | None = None) -> ProjectScanResult:

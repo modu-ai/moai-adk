@@ -1,3 +1,51 @@
+# v1.1.1 - Test Coverage Enhancement for Core Modules (2026-01-13)
+
+## Summary
+
+Patch release adding comprehensive TDD tests for core modules to improve code quality and reliability. This release adds 179 new tests covering edge cases, error handling, and type safety across analyzer, rules, models, CLI, and statusline modules.
+
+## Added
+
+- **test(astgrep)**: Add comprehensive edge case tests for core modules
+  - `tests/astgrep/test_analyzer_edge_cases.py` - 52 tests for subprocess execution, timeout handling, and error paths
+  - `tests/astgrep/test_rules_advanced.py` - 25 tests for Unicode YAML, duplicate rules, and language aliases
+  - `tests/astgrep/test_models_edge_cases.py` - 32 tests for dataclass validation and type safety
+  - `tests/cli/test_main_exception_handling.py` - 19 tests for CLI exception handling and lazy loading
+  - `tests/statusline/test_main_edge_cases.py` - 51 tests for renderer constraints and fallback behavior
+
+## Quality
+
+- All 179 new tests passing (100% pass rate)
+- Comprehensive edge case coverage for boundary conditions
+- Error path validation for exception handling
+- Type safety verification through input validation tests
+- Platform-specific behavior tests documented
+
+## Documentation
+
+- Updated SPEC-COVERAGE-003 with implementation summary
+- Documented testing approach (mocked unit tests vs integration tests)
+- Noted future coverage improvement opportunities with integration-style tests
+
+## Installation & Update
+
+```bash
+# Update to latest version
+uv tool update moai-adk
+
+# Or using pip
+pip install --upgrade moai-adk
+
+# Verify version
+moai --version
+```
+
+## Notes
+
+The new tests use extensive mocking for isolated unit testing. While all tests pass and verify edge cases and error handling, they don't significantly increase code coverage because mocked code isn't executed. Future coverage improvements would require integration-style tests that execute actual code paths.
+
+---
+
 # v1.1.0 - Parallel Execution & Performance Optimization (2026-01-13)
 
 ## Summary

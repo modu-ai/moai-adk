@@ -454,6 +454,10 @@ class RollbackManager:
         config_backup_path = rollback_dir / "config"
         config_backup_path.mkdir(parents=True, exist_ok=True)
 
+        # Skip backing up actual project files during pytest execution
+        # to prevent modification of user's working directory
+        is_pytest_env = os.getenv("PYTEST_CURRENT_TEST") is not None
+
         # Backup legacy monolithic config files
         for config_name in ["config.json", "config.yaml"]:
             config_file = self.project_root / ".moai" / "config" / config_name
@@ -467,14 +471,18 @@ class RollbackManager:
             shutil.copytree(sections_dir, sections_backup_path, dirs_exist_ok=True)
 
         # Backup .claude/settings.json
-        settings_file = self.project_root / ".claude" / "settings.json"
-        if settings_file.exists():
-            shutil.copy2(settings_file, config_backup_path / "settings.json")
+        # Skip during pytest to prevent creating .backup files in user's project
+        if not is_pytest_env:
+            settings_file = self.project_root / ".claude" / "settings.json"
+            if settings_file.exists():
+                shutil.copy2(settings_file, config_backup_path / "settings.json")
 
         # Backup .claude/settings.local.json
-        local_settings_file = self.project_root / ".claude" / "settings.local.json"
-        if local_settings_file.exists():
-            shutil.copy2(local_settings_file, config_backup_path / "settings.local.json")
+        # Skip during pytest to prevent creating .backup files in user's project
+        if not is_pytest_env:
+            local_settings_file = self.project_root / ".claude" / "settings.local.json"
+            if local_settings_file.exists():
+                shutil.copy2(local_settings_file, config_backup_path / "settings.local.json")
 
         return str(config_backup_path)
 

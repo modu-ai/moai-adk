@@ -1,7 +1,7 @@
 # MoAI-ADK Technology Stack
 
-> **Last Updated**: 2026-01-10
-> **Version**: 0.41.2
+> **Last Updated**: 2026-01-13
+> **Version**: 1.1.1
 
 ---
 
@@ -236,6 +236,12 @@ ignore_missing_imports = true
 - Quick reference for simple tasks
 - Context compaction for long sessions
 
+### Parallel Execution (v1.1.0+)
+- All independent tasks execute in parallel by default
+- Use `--sequential` flag for sequential execution when needed
+- 3-4x faster workflow performance for multi-step operations
+- Better utilization of system resources
+
 ### Build Performance
 - Parallel test execution (pytest-xdist)
 - Incremental type checking (mypy)
@@ -245,3 +251,4 @@ ignore_missing_imports = true
 - Async operations where possible
 - Caching with configurable TTL
 - Lazy loading of resources
+- Background git hooks for faster session startup/exit

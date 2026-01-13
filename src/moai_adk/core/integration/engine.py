@@ -43,7 +43,7 @@ class TestEngine:
         return f"test_{self._test_counter:04d}"
 
     def execute_test(
-        self, test_func: Callable, test_name: str = None, components: List[str] = None
+        self, test_func: Callable, test_name: Optional[str] = None, components: Optional[List[str]] = None
     ) -> IntegrationTestResult:
         """
         Execute a single integration test.
@@ -88,7 +88,7 @@ class TestEngine:
         return result
 
     async def execute_test_async(
-        self, test_func: Callable, test_name: str = None, components: List[str] = None
+        self, test_func: Callable, test_name: Optional[str] = None, components: Optional[List[str]] = None
     ) -> IntegrationTestResult:
         """
         Execute a single integration test asynchronously.

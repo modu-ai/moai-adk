@@ -66,7 +66,7 @@ class IntegrationTester:
         return self.analyzer.get_execution_stats(self.test_results)
 
     def run_test(
-        self, test_func: Callable, test_name: str = None, components: List[str] = None
+        self, test_func: Callable, test_name: Optional[str] = None, components: Optional[List[str]] = None
     ) -> IntegrationTestResult:
         """
         Run a single integration test.
@@ -84,7 +84,7 @@ class IntegrationTester:
         return result
 
     async def run_test_async(
-        self, test_func: Callable, test_name: str = None, components: List[str] = None
+        self, test_func: Callable, test_name: Optional[str] = None, components: Optional[List[str]] = None
     ) -> IntegrationTestResult:
         """
         Run a single integration test asynchronously.
@@ -117,7 +117,7 @@ class IntegrationTester:
             """Placeholder test function"""
             return True
 
-        for test_case_name in test_suite.test_cases:
+        for test_case_name in test_suite.test_cases or []:
             # This is a simplified implementation
             # In practice, you would map test case names to actual test functions
             result = self.run_test(
@@ -185,7 +185,7 @@ class IntegrationTester:
         """
         return TestEnvironment(temp_dir)
 
-    def export_results(self, format: str = "dict") -> Union[Dict, str]:
+    def export_results(self, format: str = "dict") -> Union[List[Dict[str, Any]], Dict[str, Any]]:
         """
         Export test results in specified format.
 
@@ -193,7 +193,7 @@ class IntegrationTester:
             format: Export format ("dict", "json", "summary")
 
         Returns:
-            Exported results
+            Exported results (list of dicts for "dict" format, summary dict for "summary")
         """
         if format == "dict":
             return [vars(result) for result in self.test_results]  # type: ignore[return-value]

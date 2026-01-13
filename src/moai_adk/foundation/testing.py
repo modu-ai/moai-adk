@@ -1498,7 +1498,7 @@ def main():
 
     print("\n4. CI Pipeline Configuration:")
     ci_config = automation_orchestrator.setup_ci_pipeline()
-    print(f"CI pipeline: {len(ci_config['stages'])} stages configured")
+    print(f"CI pipeline: {len(ci_config['pipeline_config']['stages'])} stages configured")
 
     print("\n5. Test Reporting:")
     test_report = reporting_specialist.generate_test_reports()

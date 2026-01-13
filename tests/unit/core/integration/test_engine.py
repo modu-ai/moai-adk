@@ -82,7 +82,7 @@ class TestEngine:
         result = engine.execute_test(slow_test, "slow_test")
 
         assert result.passed is False
-        assert "timed out" in result.error_message.lower()
+        assert result.error_message is not None and "timed out" in result.error_message.lower()
         assert result.status == TestStatus.FAILED
 
     def test_execute_test_with_defaults(self):
@@ -218,3 +218,31 @@ class TestEngine:
         assert execution_time < 0.3  # Allow some overhead
         assert len(results) == 4
         assert all(result.passed for result in results)
+
+    def test_run_concurrent_tests_empty_test_list(self):
+        """Test handling of empty test list"""
+        engine = IntegrationTestEngine()
+
+        results = engine.run_concurrent_tests([])
+
+        assert results == []
+
+    def test_run_concurrent_tests_malformed_test_tuple(self):
+        """Test handling of malformed test tuple that causes unpacking error"""
+        engine = IntegrationTestEngine()
+
+        def test_func():
+            return True
+
+        # Create a test with missing elements (should default to None)
+        # This will cause execute_test to be called with incomplete args
+        tests = [
+            (test_func,),  # Missing test_name and components
+        ]
+
+        results = engine.run_concurrent_tests(tests)
+
+        # Should still get a result, execute_test handles None for test_name
+        assert len(results) == 1
+        # test_name will be auto-generated
+        assert results[0].test_name.startswith("test_")

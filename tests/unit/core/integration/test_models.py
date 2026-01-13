@@ -56,6 +56,15 @@ class TestIntegrationTestResult:
         assert result.components_tested == []
         assert result.status == TestStatusEnum.PASSED
 
+    def test_result_pending_status(self):
+        """Test result with pending status (line 42 coverage)"""
+        # Test case where passed=False and error_message=None => PENDING status
+        result = IntegrationTestResult(test_name="test_pending", passed=False)
+
+        assert result.passed is False
+        assert result.error_message is None
+        assert result.status == TestStatusEnum.PENDING
+
 
 class TestComponent:
     """Test TestComponent class"""

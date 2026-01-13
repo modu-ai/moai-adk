@@ -1,7 +1,7 @@
 # MoAI-ADK Product Description
 
-> **Last Updated**: 2026-01-10
-> **Version**: 0.41.2
+> **Last Updated**: 2026-01-13
+> **Version**: 1.1.1
 
 ---
 
@@ -63,7 +63,14 @@ MoAI-ADK provides:
 - 100% documentation freshness
 - Eliminates manual doc writing
 
-### 7. TRUST 5 Quality
+### 7. TAG System v2.0
+- Code-to-SPEC bidirectional traceability with `@SPEC` and `@TEST` tags
+- Context-aware validation (warn/enforce/off modes)
+- Flexible TAG types: impl, verify, related, depends, @TEST
+- Automatic linkage database for SPEC-to-code mapping
+- Pre-commit hook validation with auto-synchronization
+
+### 8. TRUST 5 Quality
 - Test, Readable, Unified, Secured, Trackable
 - Enterprise-grade quality assurance
 - 99% reduction in post-deployment emergency patches
@@ -100,9 +107,10 @@ MoAI-ADK provides:
 ## Product Metrics
 
 - **20 Specialized Agents**: Backend, Frontend, Database, Security, TDD, etc.
-- **47 Skills**: Domain knowledge and best practices
+- **48 Skills**: Domain knowledge and best practices
 - **4 Language Support**: English, Korean, Japanese, Chinese
 - **85% Coverage Target**: Default test coverage threshold
+- **179 New Tests (v1.1.1)**: Comprehensive edge case and error handling tests
 - **Python 3.11-3.14**: Supported Python versions
 
 ---

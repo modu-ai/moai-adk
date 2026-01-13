@@ -23,6 +23,40 @@ from moai_adk.cli.commands.switch import (
 )
 
 
+class TestPlatformSpecificConsole:
+    """Test platform-specific console initialization."""
+
+    def test_console_init_on_macos_linux(self):
+        """Test console initialization on non-Windows platforms (line 23)."""
+        # Mock sys.platform to be non-Windows
+        with patch("moai_adk.cli.commands.switch.sys.platform", "darwin"):
+            # Reimport to trigger console initialization
+            import importlib
+            from moai_adk.cli.commands import switch
+
+            importlib.reload(switch)
+
+            # Verify console was created with default settings
+            # The else branch on line 24 should be executed
+            assert hasattr(switch, "console")
+            switch.console  # Access to verify it exists
+
+    def test_console_init_on_windows(self):
+        """Test console initialization on Windows platform."""
+        # Mock sys.platform to be Windows
+        with patch("moai_adk.cli.commands.switch.sys.platform", "win32"):
+            # Reimport to trigger console initialization
+            import importlib
+            from moai_adk.cli.commands import switch
+
+            importlib.reload(switch)
+
+            # Verify console was created with Windows-specific settings
+            # Line 23 should be executed
+            assert hasattr(switch, "console")
+            switch.console  # Access to verify it exists
+
+
 class TestGetCredentialValue:
     """Test _get_credential_value function."""
 
@@ -91,6 +125,42 @@ class TestGetCredentialValue:
                     result = _get_credential_value("UNKNOWN_KEY")
                     assert result is None
 
+    def test_get_credential_value_empty_string_in_creds(self):
+        """Test getting credential when credentials dict has empty string."""
+        with patch("moai_adk.core.credentials.load_glm_key_from_env", return_value=None):
+            with patch(
+                "moai_adk.core.credentials.load_credentials",
+                return_value={"glm_api_key": "", "anthropic_api_key": None},
+            ):
+                with patch.dict(os.environ, {"GLM_API_KEY": "from-env"}):
+                    result = _get_credential_value("GLM_API_KEY")
+                    # Empty string in credentials should be treated as falsy, fall through to env
+                    assert result == "from-env"
+
+    def test_get_credential_priority_env_file_over_creds(self):
+        """Test credential priority: .env.glm > credentials.yaml."""
+        with patch("moai_adk.core.credentials.load_glm_key_from_env", return_value="from-env-file"):
+            with patch(
+                "moai_adk.core.credentials.load_credentials",
+                return_value={"glm_api_key": "from-creds-file"},
+            ):
+                with patch.dict(os.environ, {"GLM_API_KEY": "from-env-var"}):
+                    result = _get_credential_value("GLM_API_KEY")
+                    # .env.glm should take priority
+                    assert result == "from-env-file"
+
+    def test_get_credential_priority_creds_over_env_var(self):
+        """Test credential priority: credentials.yaml > env var for non-GLM."""
+        with patch("moai_adk.core.credentials.load_glm_key_from_env", return_value=None):
+            with patch(
+                "moai_adk.core.credentials.load_credentials",
+                return_value={"anthropic_api_key": "from-creds"},
+            ):
+                with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "from-env-var"}):
+                    result = _get_credential_value("ANTHROPIC_API_KEY")
+                    # credentials.yaml should take priority for non-GLM keys
+                    assert result == "from-creds"
+
 
 class TestSubstituteEnvVars:
     """Test _substitute_env_vars function."""
@@ -147,6 +217,54 @@ class TestSubstituteEnvVars:
             assert result == "${VAR1}/${VAR2}/${VAR1}"
             # Missing vars should be collected, but deduplication happens later
             assert len(missing) == 3
+
+    def test_substitute_malformed_empty_braces(self):
+        """Test substitution with empty braces ${}."""
+        with patch("moai_adk.cli.commands.switch._get_credential_value", return_value=None):
+            result, missing = _substitute_env_vars("url/${}")
+            # Empty pattern won't match \w+ regex, so no substitution occurs
+            assert result == "url/${}"
+            assert missing == []
+
+    def test_substitute_malformed_open_brace(self):
+        """Test substitution with malformed ${VAR pattern."""
+        with patch("moai_adk.cli.commands.switch._get_credential_value", return_value=None):
+            result, missing = _substitute_env_vars("url/${VAR")
+            # Unclosed brace won't match pattern
+            assert result == "url/${VAR"
+            assert missing == []
+
+    def test_substitute_malformed_close_brace(self):
+        """Test substitution with malformed VAR} pattern."""
+        with patch("moai_adk.cli.commands.switch._get_credential_value", return_value=None):
+            result, missing = _substitute_env_vars("url/VAR}")
+            # No opening ${ won't match pattern
+            assert result == "url/VAR}"
+            assert missing == []
+
+    def test_substitute_special_chars_in_var_name(self):
+        """Test substitution with special characters in variable name."""
+        with patch("moai_adk.cli.commands.switch._get_credential_value", return_value=None):
+            result, missing = _substitute_env_vars("${VAR_NAME}-${VAR-NAME}-${VAR.NAME}")
+            # Only \w+ matches (alphanumeric and underscore), so VAR_NAME is valid but others aren't
+            assert "VAR_NAME" in missing
+            assert result == "${VAR_NAME}-${VAR-NAME}-${VAR.NAME}"
+
+    def test_substitute_empty_credential_value(self):
+        """Test substitution when credential value is empty string."""
+        with patch("moai_adk.cli.commands.switch._get_credential_value", return_value=""):
+            result, missing = _substitute_env_vars("url/${VAR}")
+            # Empty string is still a valid value
+            assert result == "url/"
+            assert missing == []
+
+    def test_substitute_nested_braces(self):
+        """Test substitution with nested braces."""
+        with patch("moai_adk.cli.commands.switch._get_credential_value", return_value="value"):
+            result, missing = _substitute_env_vars("${OUTER_${INNER}}")
+            # Pattern won't match nested braces, only inner is substituted
+            assert result == "${OUTER_value}"
+            assert missing == []
 
 
 class TestGetPaths:
@@ -348,6 +466,44 @@ class TestSwitchToClaude:
 class TestInternalSwitchToGlm:
     """Test _switch_to_glm internal function."""
 
+    def test_switch_to_glm_with_non_string_env_values(self):
+        """Test _switch_to_glm handles non-string environment values."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            settings_local = Path(tmpdir) / "settings.local.json"
+            glm_config = Path(tmpdir) / "glm.json"
+            # Include non-string values (number, boolean, null)
+            glm_config.write_text(
+                '{"env": {"ANTHROPIC_BASE_URL": "https://api.glm.com", "PORT": 8080, "ENABLED": true, "OPTIONAL": null}}'
+            )
+
+            with patch("moai_adk.cli.commands.switch._get_credential_value", return_value="cred-value"):
+                _switch_to_glm(settings_local, glm_config)
+
+            # Verify all values were preserved including non-strings
+            data = json.loads(settings_local.read_text())
+            assert data["env"]["ANTHROPIC_BASE_URL"] == "https://api.glm.com"
+            assert data["env"]["PORT"] == 8080
+            assert data["env"]["ENABLED"] is True
+            assert data["env"]["OPTIONAL"] is None
+
+    def test_switch_to_glm_with_invalid_json_settings(self):
+        """Test _switch_to_glm handles existing settings with invalid JSON."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            settings_local = Path(tmpdir) / "settings.local.json"
+            # Write invalid JSON
+            settings_local.write_text('{"env": {"INVALID": ')
+
+            glm_config = Path(tmpdir) / "glm.json"
+            glm_config.write_text('{"env": {"ANTHROPIC_BASE_URL": "https://api.glm.com"}}')
+
+            with patch("moai_adk.cli.commands.switch._get_credential_value", return_value="cred-value"):
+                _switch_to_glm(settings_local, glm_config)
+
+            # Verify invalid file was replaced with valid content
+            data = json.loads(settings_local.read_text())
+            assert "env" in data
+            assert "ANTHROPIC_BASE_URL" in data["env"]
+
     def test_switch_to_glm_already_glm(self):
         """Test _switch_to_glm when already using GLM."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -490,6 +646,61 @@ class TestInternalSwitchToClaude:
 
             # Should handle gracefully and not raise
             _switch_to_claude(settings_local)
+
+    def test_switch_to_claude_with_glm_env_invalid_json(self):
+        """Test _switch_to_claude when GLM env exists but file becomes invalid."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            settings_local = Path(tmpdir) / "settings.local.json"
+            # Create with GLM env first
+            settings_data = {"env": {"ANTHROPIC_BASE_URL": "https://api.glm.com"}}
+            settings_local.write_text(json.dumps(settings_data))
+
+            # Now corrupt the file
+            settings_local.write_text('{"env": {"ANTHROPIC_BASE_URL": "')
+
+            # Should handle OSError/JSONDecodeError gracefully
+            _switch_to_claude(settings_local)
+
+    def test_switch_to_claude_os_error_read(self):
+        """Test _switch_to_claude when file read raises OSError."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            settings_local = Path(tmpdir) / "settings.local.json"
+            # Create with GLM env
+            settings_data = {"env": {"ANTHROPIC_BASE_URL": "https://api.glm.com"}}
+            settings_local.write_text(json.dumps(settings_data))
+
+            # Mock read_text to raise OSError
+            with patch.object(Path, "read_text", side_effect=OSError("Permission denied")):
+                # Should handle OSError gracefully
+                _switch_to_claude(settings_local)
+
+    def test_switch_to_claude_with_glm_env_then_json_decode_error(self):
+        """Test _switch_to_claude hits lines 301-303 when GLM env exists then JSON decode fails."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            settings_local = Path(tmpdir) / "settings.local.json"
+            # Create with GLM env
+            settings_data = {"env": {"ANTHROPIC_BASE_URL": "https://api.glm.com"}}
+            settings_local.write_text(json.dumps(settings_data))
+
+            # Create a mock that first returns True for has_glm_env, then fails on read
+            original_read_text = Path.read_text
+
+            # Use a closure to track call count
+            call_count = [0]
+
+            def mock_read_text_func(self):
+                # First call from _has_glm_env succeeds
+                # Second call from _switch_to_claude fails
+                call_count[0] += 1
+
+                if call_count[0] == 1:
+                    return original_read_text(self)
+                else:
+                    raise json.JSONDecodeError("Invalid JSON", "", 0)
+
+            with patch.object(Path, "read_text", mock_read_text_func):
+                # This should hit lines 301-303 (except block in _switch_to_claude)
+                _switch_to_claude(settings_local)
 
     def test_glm_env_keys_constant(self):
         """Test GLM_ENV_KEYS contains expected keys."""

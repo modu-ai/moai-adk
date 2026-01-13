@@ -626,3 +626,192 @@ class TestCustomElementScannerIntegration:
 
                             assert len(result1["agents"]) == len(result2["agents"])
                             assert result1["agents"] == result2["agents"]
+
+
+class TestCustomElementScannerEdgeCases:
+    """Additional tests to improve coverage to 85%+."""
+
+    def test_scan_custom_agents_includes_root_level_files(self, tmp_path):
+        """Test that root-level .md agent files are included."""
+        # Create a root-level agent file (not in any subdirectory)
+        agents_dir = tmp_path / ".claude" / "agents"
+        agents_dir.mkdir(parents=True)
+        root_agent = agents_dir / "root-agent.md"
+        root_agent.write_text("# Root Agent")
+
+        scanner = CustomElementScanner(tmp_path)
+        result = scanner._scan_custom_agents()
+
+        assert len(result) == 1
+        assert "root-agent.md" in result[0].name
+
+    def test_scan_custom_commands_includes_root_level_files(self, tmp_path):
+        """Test that root-level .md command files are included."""
+        commands_dir = tmp_path / ".claude" / "commands"
+        commands_dir.mkdir(parents=True)
+        root_cmd = commands_dir / "root-command.md"
+        root_cmd.write_text("# Root Command")
+
+        scanner = CustomElementScanner(tmp_path)
+        result = scanner._scan_custom_commands()
+
+        assert len(result) == 1
+        assert "root-command.md" in result[0].name
+
+    def test_scan_custom_commands_skips_moai_subdir(self, tmp_path):
+        """Test that moai/ subdirectory is skipped in commands."""
+        commands_dir = tmp_path / ".claude" / "commands"
+        commands_dir.mkdir(parents=True)
+
+        # Create moai subdirectory
+        moai_dir = commands_dir / "moai"
+        moai_dir.mkdir()
+        moai_cmd = moai_dir / "00-plan.md"
+        moai_cmd.write_text("# Plan")
+
+        # Create custom subdirectory
+        custom_dir = commands_dir / "custom"
+        custom_dir.mkdir()
+        custom_cmd = custom_dir / "my-cmd.md"
+        custom_cmd.write_text("# My Command")
+
+        scanner = CustomElementScanner(tmp_path)
+        result = scanner._scan_custom_commands()
+
+        # Should only include custom command, not moai command
+        assert len(result) == 1
+        assert "my-cmd.md" in result[0].name
+
+    def test_scan_custom_skills_empty_dir(self, tmp_path):
+        """Test scanning skills when directory doesn't exist."""
+        # Don't create skills directory
+        scanner = CustomElementScanner(tmp_path)
+        result = scanner._scan_custom_skills()
+
+        assert result == []
+
+    def test_scan_custom_hooks_includes_root_level_files(self, tmp_path):
+        """Test that root-level .py hook files are included."""
+        hooks_dir = tmp_path / ".claude" / "hooks"
+        hooks_dir.mkdir(parents=True)
+        root_hook = hooks_dir / "root-hook.py"
+        root_hook.write_text("# Root Hook")
+
+        scanner = CustomElementScanner(tmp_path)
+        result = scanner._scan_custom_hooks()
+
+        assert len(result) == 1
+        assert "root-hook.py" in result[0].name
+
+    def test_scan_custom_hooks_skips_moai_subdir(self, tmp_path):
+        """Test that moai/ subdirectory is skipped in hooks."""
+        hooks_dir = tmp_path / ".claude" / "hooks"
+        hooks_dir.mkdir(parents=True)
+
+        # Create moai subdirectory
+        moai_dir = hooks_dir / "moai"
+        moai_dir.mkdir()
+        moai_hook = moai_dir / "pre_tool_use.py"
+        moai_hook.write_text("# Pre Tool Use")
+
+        # Create custom subdirectory
+        custom_dir = hooks_dir / "custom"
+        custom_dir.mkdir()
+        custom_hook = custom_dir / "my-hook.py"
+        custom_hook.write_text("# My Hook")
+
+        scanner = CustomElementScanner(tmp_path)
+        result = scanner._scan_custom_hooks()
+
+        # Should only include custom hook, not moai hook
+        assert len(result) == 1
+        assert "my-hook.py" in result[0].name
+
+    def test_scan_custom_agents_with_mixed_structure(self, tmp_path):
+        """Test scanning agents with both subdirectories and root files."""
+        agents_dir = tmp_path / ".claude" / "agents"
+        agents_dir.mkdir(parents=True)
+
+        # Create root-level file
+        root_agent = agents_dir / "root-agent.md"
+        root_agent.write_text("# Root Agent")
+
+        # Create custom subdirectory with agent
+        custom_dir = agents_dir / "custom"
+        custom_dir.mkdir()
+        custom_agent = custom_dir / "custom-agent.md"
+        custom_agent.write_text("# Custom Agent")
+
+        # Create moai subdirectory (should be skipped)
+        moai_dir = agents_dir / "moai"
+        moai_dir.mkdir()
+        moai_agent = moai_dir / "manager-tdd.md"
+        moai_agent.write_text("# TDD Manager")
+
+        scanner = CustomElementScanner(tmp_path)
+        result = scanner._scan_custom_agents()
+
+        # Should include root and custom, but not moai
+        assert len(result) == 2
+        agent_names = [p.name for p in result]
+        assert "root-agent.md" in agent_names
+        assert "custom-agent.md" in agent_names
+        assert "manager-tdd.md" not in agent_names
+
+    def test_scan_custom_commands_with_mixed_structure(self, tmp_path):
+        """Test scanning commands with both subdirectories and root files."""
+        commands_dir = tmp_path / ".claude" / "commands"
+        commands_dir.mkdir(parents=True)
+
+        # Create root-level file
+        root_cmd = commands_dir / "root-cmd.md"
+        root_cmd.write_text("# Root Command")
+
+        # Create custom subdirectory with command
+        custom_dir = commands_dir / "custom"
+        custom_dir.mkdir()
+        custom_cmd = custom_dir / "my-cmd.md"
+        custom_cmd.write_text("# My Command")
+
+        # Create moai subdirectory (should be skipped)
+        moai_dir = commands_dir / "moai"
+        moai_dir.mkdir()
+        (moai_dir / "00-plan.md").write_text("# Plan")
+
+        scanner = CustomElementScanner(tmp_path)
+        result = scanner._scan_custom_commands()
+
+        # Should include root and custom, but not moai
+        assert len(result) == 2
+        cmd_names = [p.name for p in result]
+        assert "root-cmd.md" in cmd_names
+        assert "my-cmd.md" in cmd_names
+
+    def test_scan_custom_hooks_with_mixed_structure(self, tmp_path):
+        """Test scanning hooks with both subdirectories and root files."""
+        hooks_dir = tmp_path / ".claude" / "hooks"
+        hooks_dir.mkdir(parents=True)
+
+        # Create root-level file
+        root_hook = hooks_dir / "root-hook.py"
+        root_hook.write_text("# Root Hook")
+
+        # Create custom subdirectory with hook
+        custom_dir = hooks_dir / "custom"
+        custom_dir.mkdir()
+        custom_hook = custom_dir / "my-hook.py"
+        custom_hook.write_text("# My Hook")
+
+        # Create moai subdirectory (should be skipped)
+        moai_dir = hooks_dir / "moai"
+        moai_dir.mkdir()
+        (moai_dir / "session_start.py").write_text("# Session Start")
+
+        scanner = CustomElementScanner(tmp_path)
+        result = scanner._scan_custom_hooks()
+
+        # Should include root and custom, but not moai
+        assert len(result) == 2
+        hook_names = [p.name for p in result]
+        assert "root-hook.py" in hook_names
+        assert "my-hook.py" in hook_names

@@ -11,7 +11,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Tuple
 
-
 # TAG pattern: @SPEC SPEC-ID [verb]
 # SPEC-ID format: SPEC-{DOMAIN}-{NUMBER}
 # DOMAIN: Uppercase letters and digits, at least 1 char

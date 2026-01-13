@@ -518,3 +518,108 @@ class TestSessionAnalyzerIntegration:
             with patch.object(analyzer, "claude_projects", claude_projects):
                 analyzer.parse_sessions()
                 assert analyzer.patterns["total_sessions"] >= 1
+
+
+class TestSessionAnalyzerVerboseMode:
+    """Test SessionAnalyzer verbose mode for 100% coverage."""
+
+    @patch.object(Path, "exists")
+    def test_verbose_mode_no_directory(self, mock_exists):
+        """Test verbose mode output when directory doesn't exist (line 57)."""
+        mock_exists.return_value = False
+        analyzer = SessionAnalyzer(verbose=True)
+        with patch("builtins.print") as mock_print:
+            result = analyzer.parse_sessions()
+            assert result == analyzer.patterns
+            # Verbose: should print warning about missing directory
+            mock_print.assert_called()
+            args = str(mock_print.call_args)
+            assert "Claude projects directory not found" in args or "⚠️" in args
+
+    def test_verbose_mode_session_files_found(self):
+        """Test verbose mode shows session files count (line 68)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            claude_projects = Path(tmpdir)
+            project_dir = claude_projects / "test-project"
+            project_dir.mkdir(parents=True, exist_ok=True)
+
+            session_file = project_dir / "session-001.json"
+            session_file.write_text(json.dumps({"events": []}))
+
+            analyzer = SessionAnalyzer(verbose=True)
+            with patch.object(analyzer, "claude_projects", claude_projects):
+                with patch("builtins.print") as mock_print:
+                    analyzer.parse_sessions()
+                    # Verbose: should print session files found
+                    mock_print.assert_called()
+                    args = str(mock_print.call_args)
+                    assert "Found" in args or "session file" in args.lower()
+
+    def test_verbose_mode_jsonl_parse_error(self):
+        """Test verbose mode handles JSONL parse errors (lines 87-89)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            claude_projects = Path(tmpdir)
+            project_dir = claude_projects / "test-project"
+            project_dir.mkdir(parents=True, exist_ok=True)
+
+            session_file = project_dir / "session.jsonl"
+            # Create JSONL with invalid JSON on line 2
+            session_file.write_text('{"type": "summary", "summary": "Valid"}\ninvalid json here\n')
+
+            analyzer = SessionAnalyzer(verbose=True)
+            with patch.object(analyzer, "claude_projects", claude_projects):
+                with patch("builtins.print") as mock_print:
+                    analyzer.parse_sessions()
+                    # Verbose: should print JSON decode error
+                    print_calls = [str(call) for call in mock_print.call_args_list]
+                    assert any("Error reading line" in call or "⚠️" in call for call in print_calls)
+
+    def test_verbose_mode_file_read_error(self):
+        """Test verbose mode handles file read errors (line 103)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            claude_projects = Path(tmpdir)
+            project_dir = claude_projects / "test-project"
+            project_dir.mkdir(parents=True, exist_ok=True)
+
+            session_file = project_dir / "session-001.json"
+            session_file.write_text("{ invalid json content")
+
+            analyzer = SessionAnalyzer(verbose=True)
+            with patch.object(analyzer, "claude_projects", claude_projects):
+                with patch("builtins.print") as mock_print:
+                    analyzer.parse_sessions()
+                    # Verbose: should print file read error
+                    print_calls = [str(call) for call in mock_print.call_args_list]
+                    assert any("Error reading" in call or "⚠️" in call for call in print_calls)
+
+    def test_verbose_mode_save_report_confirmation(self):
+        """Test verbose mode confirms report save (lines 372, 382)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_path = Path(tmpdir)
+            analyzer = SessionAnalyzer(verbose=True)
+
+            with patch("builtins.print") as mock_print:
+                report_path = analyzer.save_report(project_path=project_path)
+
+                assert report_path.exists()
+                # Verbose: should print save confirmation
+                mock_print.assert_called()
+                args = str(mock_print.call_args)
+                assert "Report saved" in args or "📄" in args
+
+    def test_verbose_mode_save_report_default_path(self):
+        """Test verbose mode with default path parameters (line 372)."""
+        analyzer = SessionAnalyzer(verbose=True)
+
+        with patch("builtins.print") as mock_print:
+            with patch("pathlib.Path.cwd") as mock_cwd:
+                # Mock Path.cwd() to return temp directory
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    mock_cwd.return_value = Path(tmpdir)
+                    report_path = analyzer.save_report()
+
+                    assert report_path.exists()
+                    # Verbose: should print save confirmation
+                    mock_print.assert_called()
+                    args = str(mock_print.call_args)
+                    assert "Report saved" in args or "📄" in args

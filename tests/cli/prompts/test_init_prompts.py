@@ -231,83 +231,119 @@ class TestPromptProjectSetup:
         from moai_adk.cli.prompts.init_prompts import prompt_project_setup
 
         # Mock all the prompts
-        with patch("moai_adk.cli.prompts.init_prompts._prompt_select", return_value="en"):
-            with patch("moai_adk.cli.prompts.init_prompts._prompt_text", return_value="test-user"):
-                with patch("moai_adk.cli.prompts.init_prompts._prompt_password_optional", return_value=""):
-                    with patch("moai_adk.core.credentials.glm_env_exists", return_value=False):
-                        with patch("moai_adk.cli.prompts.init_prompts.console"):
-                            with patch("moai_adk.cli.prompts.init_prompts.get_translation") as mock_t:
-                                mock_t.return_value = {
-                                    "user_setup": "User Setup",
-                                    "q_user_name": "Your name:",
-                                    "api_key_input": "API Key",
-                                    "q_api_key_glm": "GLM Key:",
-                                    "msg_api_key_stored": "Stored",
-                                    "msg_glm_key_skip_guidance": "Skip guidance",
-                                    "project_setup": "Project Setup",
-                                    "q_project_name": "Project name:",
-                                    "git_setup": "Git Setup",
-                                    "q_git_mode": "Git mode:",
-                                    "opt_manual": "Manual",
-                                    "desc_manual": "Manual desc",
-                                    "opt_personal": "Personal",
-                                    "desc_personal": "Personal desc",
-                                    "opt_team": "Team",
-                                    "desc_team": "Team desc",
-                                    "q_github_username": "GitHub username:",
-                                    "output_language": "Output Language",
-                                    "q_commit_lang": "Commit language:",
-                                    "q_comment_lang": "Comment language:",
-                                    "q_doc_lang": "Doc language:",
-                                    "msg_setup_complete": "Complete",
-                                    "msg_cancelled": "Cancelled",
-                                }
+        with patch("moai_adk.cli.prompts.init_prompts._prompt_confirm", return_value=True):
+            with patch("moai_adk.cli.prompts.init_prompts._prompt_select", return_value="en"):
+                with patch("moai_adk.cli.prompts.init_prompts._prompt_text", return_value="test-user"):
+                    with patch("moai_adk.cli.prompts.init_prompts._prompt_password_optional", return_value=""):
+                        with patch("moai_adk.core.credentials.glm_env_exists", return_value=False):
+                            with patch("moai_adk.cli.prompts.init_prompts.console"):
+                                with patch("moai_adk.cli.prompts.init_prompts.get_translation") as mock_t:
+                                    mock_t.return_value = {
+                                        "user_setup": "User Setup",
+                                        "q_user_name": "Your name:",
+                                        "api_key_input": "API Key",
+                                        "q_api_key_glm": "GLM Key:",
+                                        "msg_api_key_stored": "Stored",
+                                        "msg_glm_key_skip_guidance": "Skip guidance",
+                                        "project_setup": "Project Setup",
+                                        "q_project_name": "Project name:",
+                                        "git_setup": "Git Setup",
+                                        "q_git_mode": "Git mode:",
+                                        "opt_manual": "Manual",
+                                        "desc_manual": "Manual desc",
+                                        "opt_personal": "Personal",
+                                        "desc_personal": "Personal desc",
+                                        "opt_team": "Team",
+                                        "desc_team": "Team desc",
+                                        "q_github_username": "GitHub username:",
+                                        "output_language": "Output Language",
+                                        "q_commit_lang": "Commit language:",
+                                        "q_comment_lang": "Comment language:",
+                                        "q_doc_lang": "Doc language:",
+                                        "msg_setup_complete": "Complete",
+                                        "msg_cancelled": "Cancelled",
+                                        "tag_setup": "TAG Setup",
+                                        "q_tag_enable": "Enable TAG?",
+                                        "opt_tag_warn": "Warn",
+                                        "opt_tag_enforce": "Enforce",
+                                        "opt_tag_off": "Off",
+                                        "desc_tag_warn": "Warning mode",
+                                        "desc_tag_enforce": "Enforce mode",
+                                        "desc_tag_off": "Off mode",
+                                        "tag_system_intro": "TAG system introduction",
+                                        "tag_yes_recommendation": "Recommendation",
+                                        "tag_no_warning": "Warning",
+                                        "tag_mode_guide_title": "Mode guide",
+                                        "tag_mode_guide_subtitle": "Subtitle",
+                                        "msg_tag_enabled": "TAG enabled",
+                                        "msg_tag_disabled": "TAG disabled",
+                                        "msg_tag_mode_selected": "Mode selected",
+                                        "q_tag_mode": "TAG mode:",
+                                    }
 
-                                result = prompt_project_setup(initial_locale="en")
-                                assert result["locale"] == "en"
+                                    result = prompt_project_setup(initial_locale="en")
+                                    assert result["locale"] == "en"
 
     def test_prompt_project_setup_default_values(self):
         """Test prompt_project_setup uses correct default values."""
         from moai_adk.cli.prompts.init_prompts import prompt_project_setup
 
-        with patch("moai_adk.cli.prompts.init_prompts._prompt_select") as mock_select:
-            # First call is for language, return "en"
-            mock_select.return_value = "en"
+        with patch("moai_adk.cli.prompts.init_prompts._prompt_confirm", return_value=True):
+            with patch("moai_adk.cli.prompts.init_prompts._prompt_select") as mock_select:
+                # First call is for language, return "en"
+                mock_select.return_value = "en"
 
-            with patch("moai_adk.cli.prompts.init_prompts._prompt_text", return_value="user"):
-                with patch("moai_adk.cli.prompts.init_prompts._prompt_password_optional", return_value=""):
-                    with patch("moai_adk.core.credentials.glm_env_exists", return_value=False):
-                        with patch("moai_adk.cli.prompts.init_prompts.console"):
-                            with patch("moai_adk.cli.prompts.init_prompts.get_translation") as mock_t:
-                                mock_t.return_value = {
-                                    "user_setup": "User",
-                                    "q_user_name": "Name:",
-                                    "api_key_input": "API",
-                                    "q_api_key_glm": "Key:",
-                                    "msg_api_key_stored": "Stored",
-                                    "msg_glm_key_skip_guidance": "Guidance",
-                                    "project_setup": "Project",
-                                    "q_project_name": "Name:",
-                                    "git_setup": "Git",
-                                    "q_git_mode": "Mode:",
-                                    "opt_manual": "Manual",
-                                    "desc_manual": "Desc",
-                                    "opt_personal": "Personal",
-                                    "desc_personal": "PD",
-                                    "opt_team": "Team",
-                                    "desc_team": "TD",
-                                    "q_github_username": "User:",
-                                    "output_language": "Lang",
-                                    "q_commit_lang": "Commit:",
-                                    "q_comment_lang": "Comment:",
-                                    "q_doc_lang": "Doc:",
-                                    "msg_setup_complete": "Done",
-                                    "msg_cancelled": "Cancel",
-                                }
+                with patch("moai_adk.cli.prompts.init_prompts._prompt_text", return_value="user"):
+                    with patch("moai_adk.cli.prompts.init_prompts._prompt_password_optional", return_value=""):
+                        with patch("moai_adk.core.credentials.glm_env_exists", return_value=False):
+                            with patch("moai_adk.cli.prompts.init_prompts.console"):
+                                with patch("moai_adk.cli.prompts.init_prompts.get_translation") as mock_t:
+                                    mock_t.return_value = {
+                                        "user_setup": "User",
+                                        "q_user_name": "Name:",
+                                        "api_key_input": "API",
+                                        "q_api_key_glm": "Key:",
+                                        "msg_api_key_stored": "Stored",
+                                        "msg_glm_key_skip_guidance": "Guidance",
+                                        "project_setup": "Project",
+                                        "q_project_name": "Name:",
+                                        "git_setup": "Git",
+                                        "q_git_mode": "Mode:",
+                                        "opt_manual": "Manual",
+                                        "desc_manual": "Desc",
+                                        "opt_personal": "Personal",
+                                        "desc_personal": "PD",
+                                        "opt_team": "Team",
+                                        "desc_team": "TD",
+                                        "q_github_username": "User:",
+                                        "output_language": "Lang",
+                                        "q_commit_lang": "Commit:",
+                                        "q_comment_lang": "Comment:",
+                                        "q_doc_lang": "Doc:",
+                                        "msg_setup_complete": "Done",
+                                        "msg_cancelled": "Cancel",
+                                        "tag_setup": "TAG Setup",
+                                        "q_tag_enable": "Enable TAG?",
+                                        "opt_tag_warn": "Warn",
+                                        "opt_tag_enforce": "Enforce",
+                                        "opt_tag_off": "Off",
+                                        "desc_tag_warn": "Warning mode",
+                                        "desc_tag_enforce": "Enforce mode",
+                                        "desc_tag_off": "Off mode",
+                                        "tag_system_intro": "TAG system introduction",
+                                        "tag_yes_recommendation": "Recommendation",
+                                        "tag_no_warning": "Warning",
+                                        "tag_mode_guide_title": "Mode guide",
+                                        "tag_mode_guide_subtitle": "Subtitle",
+                                        "msg_tag_enabled": "TAG enabled",
+                                        "msg_tag_disabled": "TAG disabled",
+                                        "msg_tag_mode_selected": "Mode selected",
+                                        "q_tag_mode": "TAG mode:",
+                                    }
 
-                                prompt_project_setup()
-                                # Verify _prompt_select was called with default "en"
-                                assert mock_select.call_count >= 1  # At least language selection
+                                    prompt_project_setup()
+                                    # Verify _prompt_select was called with default "en"
+                                    assert mock_select.call_count >= 1  # At least language selection
 
 
 class TestProjectSetupAnswers:

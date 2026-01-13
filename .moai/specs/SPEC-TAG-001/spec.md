@@ -1,12 +1,13 @@
 ---
 id: SPEC-TAG-001
-version: "1.0.0"
-status: "draft"
+version: "2.0.0"
+status: "Implemented"
 created: "2026-01-13"
 updated: "2026-01-13"
+completed: "2026-01-13"
 author: "Alfred"
 priority: "HIGH"
-tags: [tag-system, traceability, tdd-integration, code-spec-mapping, pre-commit]
+tags: [tag-system, traceability, tdd-integration, code-spec-mapping, pre-commit, @test-tag, context-aware-validation]
 ---
 
 # SPEC-TAG-001: TAG System v2.0 Phase 1 Implementation
@@ -15,6 +16,7 @@ tags: [tag-system, traceability, tdd-integration, code-spec-mapping, pre-commit]
 
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
+| 2.0.0 | 2026-01-13 | Implemented - TAG System v2.0 with @TEST tag support and context-aware validation | Alfred |
 | 1.0.0 | 2026-01-13 | Initial SPEC creation | Alfred |
 
 ---
@@ -223,6 +225,151 @@ MoAI-ADK implements SPEC-First TDD methodology where all development begins with
 
 - **Where possible**, the system **should** support per-file-type TAG validation settings
 - **Where possible**, the system **should** provide `tag_validation.exceptions` for specific files
+
+---
+
+## @TEST Tag Specification (v2.0)
+
+### Purpose
+
+The `@TEST` tag provides independent test identification for test files, allowing tests to exist without requiring SPEC linkage. This supports both TDD workflows (where tests verify SPECs) and independent test scenarios (where tests exist standalone).
+
+### Format
+
+`@TEST TEST-{DOMAIN}-{NUMBER}`
+
+- **Prefix**: `@TEST` (required)
+- **Format**: `TEST-{DOMAIN}-{NUMBER}`
+- **Example**: `@TEST TEST-AUTH-001`
+
+### Location
+
+**Test files only**:
+- `test_*.py` files
+- `*_test.py` files
+- Files in `tests/` directory
+
+### Usage Patterns
+
+#### Pattern 1: TDD with SPEC (Recommended)
+
+```python
+# @SPEC SPEC-AUTH-001 verify
+# @TEST TEST-AUTH-001
+def test_login():
+    pass
+```
+
+**Purpose**: Tests verify a SPEC while having independent test ID
+
+#### Pattern 2: Independent Test (No SPEC)
+
+```python
+# @TEST TEST-AUTH-001
+def test_login():
+    pass
+```
+
+**Purpose**: Test exists independently without SPEC linkage
+
+### @TEST vs @SPEC verify Selection
+
+| Distinction | @TEST                    | @SPEC verify               |
+| ----------- | ------------------------ | -------------------------- |
+| **Purpose** | Test identification      | SPEC verification          |
+| **SPEC link**| Optional                 | Required                   |
+| **Usage**   | Independent tests        | TDD (SPEC → impl → test)  |
+| **Combined** | `@SPEC verify` + `@TEST` | Standalone                 |
+
+### Validation Behavior
+
+| File Type    | @TEST Only          | @TEST + @SPEC verify | @SPEC verify Only |
+| ------------ | ------------------- | -------------------- | ----------------- |
+| Test file    | ✅ Allowed          | ✅ Allowed            | ✅ Allowed         |
+| Implementation file | ⚠️ Invalid   | ⚠️ Invalid            | ⚠️ Checked        |
+
+---
+
+## Context-Aware Validation (v2.0)
+
+### Problem Solved
+
+TAG System v2.0's **Context-Aware Validation** allows flexible development workflows while maintaining SPEC-First TDD benefits.
+
+### Validation Matrix
+
+| Situation              | TAG Type                  | Commit Behavior            | Mode Required     |
+| ---------------------- | ------------------------- | -------------------------- | ----------------- |
+| **Simple fixes**       | `related` (all files)     | ✅ Allowed (hint only)     | All modes         |
+| **Write tests first**  | `verify` or `@TEST` (test files) | ✅ Allowed (warn mode)  | warn/enforce      |
+| **Implementation code**| `impl` (implementation files) | ⚠️ Warning (warn) / ❌ Blocked (enforce) | warn/enforce |
+| **Show dependencies**  | `depends` (all files)     | ✅ Allowed (hint only)     | All modes         |
+
+### TAG Selection Decision Tree
+
+```
+Is this a test file?
+├── Yes
+│   ├── SPEC exists and needs verification? → @SPEC verify
+│   ├── Independent test identification? → @TEST
+│   └── Need both? → @SPEC verify + @TEST
+└── No (implementation code)
+    ├── SPEC exists and implementation? → @SPEC impl
+    ├── Simple fix? → @SPEC related
+    └── Depends on other SPEC? → @SPEC depends
+```
+
+### Mode-Specific Behavior
+
+| Mode            | impl TAG (no SPEC) | verify/@TEST TAG (test file) | related TAG | depends TAG |
+| --------------- | ------------------ | ----------------------------- | ----------- | ----------- |
+| **warn** (default) | Warn then allow     | Warn then allow               | Hint only   | Hint only   |
+| **enforce**      | Block commit        | Allow                         | Hint only   | Hint only   |
+| **off**          | No check            | No check                      | No check    | No check    |
+
+### Configuration
+
+```yaml
+# .moai/config/sections/quality.yaml
+tag_validation:
+  enabled: true           # Enable TAG checking
+  mode: warn              # warn | enforce | off
+  check_spec_exists: true # Check SPEC document exists
+  max_tags_per_file: 100  # Maximum TAGs per file
+```
+
+---
+
+## Implementation Summary
+
+### Phase 2 (TDD) Completion
+
+**Date**: 2026-01-13
+
+**Implementation Components**:
+
+1. **TAG Parser**: Comment extraction using `ast-comments` library
+2. **Pre-commit Hook**: Automated TAG format validation and SPEC existence verification
+3. **Linkage Manager**: Bidirectional TAG↔CODE mapping database in `.moai/cache/tag-linkage.json`
+4. **Quality Configuration**: Integration with `.moai/config/sections/quality.yaml`
+
+### TAG Types Implemented
+
+1. **@SPEC** tags with verbs:
+   - `impl`: Implementation code links to SPEC
+   - `verify`: Test code verifies SPEC
+   - `related`: Simple fixes or relationships
+   - `depends`: Dependency on other SPEC
+
+2. **@TEST** tags:
+   - Independent test identification
+   - Can be combined with `@SPEC verify`
+
+### Pre-commit Hook Behavior
+
+- **warn mode** (default): Warnings displayed but commits allowed
+- **enforce mode**: Blocks commits for `impl` tags without SPEC
+- **off mode**: No TAG validation
 
 ---
 

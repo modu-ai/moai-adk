@@ -193,27 +193,31 @@ class TestInitInteractiveMode:
             "git_commit_lang": "en",
             "code_comment_lang": "en",
             "doc_lang": "en",
+            "tag_enabled": True,  # NEW - SPEC-TAG-002
+            "tag_mode": "warn",  # NEW - SPEC-TAG-002
         }
 
         with patch("moai_adk.cli.commands.init.prompt_project_setup") as mock_prompt:
             mock_prompt.return_value = mock_answers
 
-            with patch("moai_adk.cli.commands.init.ProjectInitializer") as mock_init:
-                mock_init.return_value.is_initialized.return_value = False
-                mock_init.return_value.initialize.return_value = InstallationResult(
-                    success=True,
-                    project_path=str(tmp_path),
-                    language="auto",  # Language detection happens in /moai:0-project
-                    mode="personal",  # Mapped from git_mode
-                    locale="ja",
-                    duration=100,
-                    created_files=[".moai/"],
-                )
+            # Create a mock instance with proper callable methods
+            mock_instance = Mock()
+            mock_instance.is_initialized.return_value = False
+            mock_instance.initialize.return_value = InstallationResult(
+                success=True,
+                project_path=str(tmp_path),
+                language="auto",  # Language detection happens in /moai:0-project
+                mode="personal",  # Mapped from git_mode
+                locale="ja",
+                duration=100,
+                created_files=[".moai/"],
+            )
 
+            with patch("moai_adk.cli.commands.init.ProjectInitializer", return_value=mock_instance):
                 runner.invoke(init, [str(tmp_path)])
 
                 # Verify initialize was called with prompt answers
-                init_call = mock_init.return_value.initialize.call_args
+                init_call = mock_instance.initialize.call_args
                 # git_mode is mapped to mode="personal" for backward compatibility
                 assert init_call.kwargs["mode"] == "personal"
                 assert init_call.kwargs["locale"] == "ja"
@@ -235,27 +239,31 @@ class TestInitInteractiveMode:
             "git_commit_lang": "en",
             "code_comment_lang": "en",
             "doc_lang": "en",
+            "tag_enabled": True,  # NEW - SPEC-TAG-002
+            "tag_mode": "warn",  # NEW - SPEC-TAG-002
         }
 
         with patch("moai_adk.cli.commands.init.prompt_project_setup") as mock_prompt:
             mock_prompt.return_value = mock_answers
 
-            with patch("moai_adk.cli.commands.init.ProjectInitializer") as mock_init:
-                mock_init.return_value.is_initialized.return_value = False
-                mock_init.return_value.initialize.return_value = InstallationResult(
-                    success=True,
-                    project_path=str(tmp_path),
-                    language="auto",
-                    mode="personal",
-                    locale="en",
-                    duration=100,
-                    created_files=[".moai/"],
-                )
+            # Create a mock instance with proper callable methods
+            mock_instance = Mock()
+            mock_instance.is_initialized.return_value = False
+            mock_instance.initialize.return_value = InstallationResult(
+                success=True,
+                project_path=str(tmp_path),
+                language="auto",
+                mode="personal",
+                locale="en",
+                duration=100,
+                created_files=[".moai/"],
+            )
 
+            with patch("moai_adk.cli.commands.init.ProjectInitializer", return_value=mock_instance):
                 runner.invoke(init, [str(tmp_path)])
 
                 # Verify initialize was called
-                init_call = mock_init.return_value.initialize.call_args
+                init_call = mock_instance.initialize.call_args
                 assert init_call.kwargs["mode"] == "personal"
                 assert init_call.kwargs["locale"] == "en"
 
@@ -314,30 +322,34 @@ class TestInitInteractiveMode:
             "git_commit_lang": "ko",
             "code_comment_lang": "en",
             "doc_lang": "ko",
+            "tag_enabled": True,  # NEW - SPEC-TAG-002
+            "tag_mode": "warn",  # NEW - SPEC-TAG-002
         }
 
         with patch("moai_adk.cli.commands.init.prompt_project_setup") as mock_prompt:
             mock_prompt.return_value = mock_answers
 
-            with patch("moai_adk.cli.commands.init.ProjectInitializer") as mock_init:
-                mock_init.return_value.is_initialized.return_value = False
-                mock_init.return_value.initialize.return_value = InstallationResult(
-                    success=True,
-                    project_path=str(tmp_path),
-                    language="auto",
-                    mode="personal",
-                    locale="ko",
-                    duration=100,
-                    created_files=[".moai/"],
-                )
+            # Create a mock instance with proper callable methods
+            mock_instance = Mock()
+            mock_instance.is_initialized.return_value = False
+            mock_instance.initialize.return_value = InstallationResult(
+                success=True,
+                project_path=str(tmp_path),
+                language="auto",
+                mode="personal",
+                locale="ko",
+                duration=100,
+                created_files=[".moai/"],
+            )
 
+            with patch("moai_adk.cli.commands.init.ProjectInitializer", return_value=mock_instance):
                 # Interactive mode without --locale flag (locale=None)
                 result = runner.invoke(init, [str(tmp_path)])
 
                 assert result.exit_code == 0
 
                 # Verify locale from answers was used
-                init_call = mock_init.return_value.initialize.call_args
+                init_call = mock_instance.initialize.call_args
                 assert init_call.kwargs["locale"] == "ko"
 
 
@@ -386,23 +398,27 @@ class TestInitReinitializationFlow:
             "git_commit_lang": "en",
             "code_comment_lang": "en",
             "doc_lang": "en",
+            "tag_enabled": True,  # NEW - SPEC-TAG-002
+            "tag_mode": "warn",  # NEW - SPEC-TAG-002
         }
 
         with patch("moai_adk.cli.commands.init.prompt_project_setup") as mock_prompt:
             mock_prompt.return_value = mock_answers
 
-            with patch("moai_adk.cli.commands.init.ProjectInitializer") as mock_init:
-                mock_init.return_value.is_initialized.return_value = True
-                mock_init.return_value.initialize.return_value = InstallationResult(
-                    success=True,
-                    project_path=str(tmp_path),
-                    language="auto",
-                    mode="personal",
-                    locale="en",
-                    duration=100,
-                    created_files=[".moai/"],
-                )
+            # Create a mock instance with proper callable methods
+            mock_instance = Mock()
+            mock_instance.is_initialized.return_value = True
+            mock_instance.initialize.return_value = InstallationResult(
+                success=True,
+                project_path=str(tmp_path),
+                language="auto",
+                mode="personal",
+                locale="en",
+                duration=100,
+                created_files=[".moai/"],
+            )
 
+            with patch("moai_adk.cli.commands.init.ProjectInitializer", return_value=mock_instance):
                 result = runner.invoke(init, [str(tmp_path)])
 
                 assert result.exit_code == 0

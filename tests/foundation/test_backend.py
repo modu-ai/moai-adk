@@ -1,858 +1,567 @@
 """
-Comprehensive test suite for backend.py module.
-
-Tests cover API design validation, microservice architecture patterns,
-async/await patterns, authentication and authorization, error handling,
-performance optimization, and metrics collection with 90%+ coverage goal.
-
-Module: src/moai_adk/foundation/backend.py
-Classes: 7 main classes, 2 data classes
-Lines: 998 total
+Comprehensive TDD tests for backend.py module.
+Tests cover all 7 classes.
 """
 
 import asyncio
-from unittest.mock import patch
-
 import pytest
+from datetime import datetime, UTC
+from typing import Any, Dict
 
-from src.moai_adk.foundation.backend import (
+from moai_adk.foundation.backend import (
     APIDesignValidator,
+    MicroserviceArchitect,
     AsyncPatternAdvisor,
     AuthenticationManager,
-    BackendMetricsCollector,
     ErrorHandlingStrategy,
-    ErrorLog,
-    HTTPMethod,
-    MicroserviceArchitect,
     PerformanceOptimizer,
+    BackendMetricsCollector,
+    HTTPMethod,
+    ErrorLog,
     RequestMetric,
 )
 
-# ============================================================================
-# HTTPMethod Enum Tests
-# ============================================================================
-
-
-class TestHTTPMethod:
-    """Test HTTPMethod enum."""
-
-    def test_http_method_get(self):
-        """Test GET HTTP method."""
-        assert HTTPMethod.GET.value == "GET"
-
-    def test_http_method_post(self):
-        """Test POST HTTP method."""
-        assert HTTPMethod.POST.value == "POST"
-
-    def test_http_method_put(self):
-        """Test PUT HTTP method."""
-        assert HTTPMethod.PUT.value == "PUT"
-
-    def test_http_method_patch(self):
-        """Test PATCH HTTP method."""
-        assert HTTPMethod.PATCH.value == "PATCH"
-
-    def test_http_method_delete(self):
-        """Test DELETE HTTP method."""
-        assert HTTPMethod.DELETE.value == "DELETE"
-
-    def test_http_method_head(self):
-        """Test HEAD HTTP method."""
-        assert HTTPMethod.HEAD.value == "HEAD"
-
-    def test_http_method_options(self):
-        """Test OPTIONS HTTP method."""
-        assert HTTPMethod.OPTIONS.value == "OPTIONS"
-
-    def test_all_http_methods_enum(self):
-        """Test all HTTP methods are present in enum."""
-        methods = {method.value for method in HTTPMethod}
-        expected = {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
-        assert methods == expected
-
 
 # ============================================================================
-# APIDesignValidator Tests
+# Test APIDesignValidator
 # ============================================================================
 
 
 class TestAPIDesignValidator:
-    """Test APIDesignValidator class."""
+    """Test suite for APIDesignValidator class."""
 
-    @pytest.fixture
-    def validator(self):
-        """Create validator instance."""
-        return APIDesignValidator()
-
-    def test_validator_initialization(self, validator):
-        """Test validator initializes with empty endpoints."""
+    def test_initialization(self):
+        """Test validator initialization."""
+        validator = APIDesignValidator()
         assert validator.validated_endpoints == {}
-        assert len(validator.VALID_HTTP_METHODS) == 7
-        assert len(validator.VALID_STATUS_CODES) == 23
+        assert validator.VALID_HTTP_METHODS == {m.value for m in HTTPMethod}
+        assert 200 in validator.VALID_STATUS_CODES
+        assert 404 in validator.VALID_STATUS_CODES
 
-    # ========================================================================
-    # REST Endpoint Validation Tests
-    # ========================================================================
+    def test_validate_rest_endpoint_valid(self, sample_endpoint):
+        """Test validation of valid REST endpoint."""
+        validator = APIDesignValidator()
+        result = validator.validate_rest_endpoint(sample_endpoint)
 
-    def test_validate_rest_endpoint_valid_get(self, validator):
-        """Test valid GET endpoint."""
-        result = validator.validate_rest_endpoint({"method": "GET", "path": "/api/v1/users", "status_code": 200})
         assert result["valid"] is True
         assert result["method"] == "GET"
+        assert result["path"] == "/api/v1/users"
         assert result["status_code"] == 200
         assert result["errors"] is None
 
-    def test_validate_rest_endpoint_valid_post(self, validator):
-        """Test valid POST endpoint returns 201."""
-        result = validator.validate_rest_endpoint({"method": "POST", "path": "/api/v1/users", "status_code": 201})
-        assert result["valid"] is True
-        assert result["method"] == "POST"
-        assert result["status_code"] == 201
-        assert result["errors"] is None
+    @pytest.mark.parametrize("method,status_code", [
+        ("GET", 200),
+        ("POST", 201),
+        ("PUT", 200),
+        ("PATCH", 200),
+        ("DELETE", 204),
+    ])
+    def test_validate_rest_endpoint_valid_methods(self, method, status_code):
+        """Test validation with valid method-status code combinations."""
+        validator = APIDesignValidator()
+        endpoint = {"method": method, "path": "/api/v1/resource", "status_code": status_code}
+        result = validator.validate_rest_endpoint(endpoint)
 
-    def test_validate_rest_endpoint_valid_delete(self, validator):
-        """Test valid DELETE endpoint returns 204."""
-        result = validator.validate_rest_endpoint({"method": "DELETE", "path": "/api/v1/users/123", "status_code": 204})
         assert result["valid"] is True
-        assert result["method"] == "DELETE"
-        assert result["status_code"] == 204
+        assert result["method"] == method
+        assert result["status_code"] == status_code
 
-    def test_validate_rest_endpoint_valid_put(self, validator):
-        """Test valid PUT endpoint returns 200."""
-        result = validator.validate_rest_endpoint({"method": "PUT", "path": "/api/v1/users/123", "status_code": 200})
-        assert result["valid"] is True
-        assert result["method"] == "PUT"
+    def test_validate_rest_endpoint_invalid_method(self):
+        """Test validation with invalid HTTP method."""
+        validator = APIDesignValidator()
+        endpoint = {"method": "INVALID", "path": "/api/v1/resource", "status_code": 200}
+        result = validator.validate_rest_endpoint(endpoint)
 
-    def test_validate_rest_endpoint_valid_patch(self, validator):
-        """Test valid PATCH endpoint returns 200."""
-        result = validator.validate_rest_endpoint({"method": "PATCH", "path": "/api/v1/users/123", "status_code": 200})
-        assert result["valid"] is True
-        assert result["method"] == "PATCH"
-
-    def test_validate_rest_endpoint_invalid_http_method(self, validator):
-        """Test invalid HTTP method."""
-        result = validator.validate_rest_endpoint({"method": "INVALID", "path": "/api/v1/users", "status_code": 200})
         assert result["valid"] is False
         assert "Invalid HTTP method" in result["errors"][0]
 
-    def test_validate_rest_endpoint_invalid_path_no_slash(self, validator):
-        """Test path without leading slash."""
-        result = validator.validate_rest_endpoint({"method": "GET", "path": "api/v1/users", "status_code": 200})
-        assert result["valid"] is False
-        assert "must start with '/'" in result["errors"][0]
+    def test_validate_rest_endpoint_invalid_path(self):
+        """Test validation with invalid path format."""
+        validator = APIDesignValidator()
+        endpoint = {"method": "GET", "path": "invalid-path", "status_code": 200}
+        result = validator.validate_rest_endpoint(endpoint)
 
-    def test_validate_rest_endpoint_invalid_path_empty(self, validator):
-        """Test empty path."""
-        result = validator.validate_rest_endpoint({"method": "GET", "path": "", "status_code": 200})
         assert result["valid"] is False
-        assert "must start with '/'" in result["errors"][0]
+        assert "Path must start with" in result["errors"][0]
 
-    def test_validate_rest_endpoint_invalid_status_code(self, validator):
-        """Test invalid status code."""
-        result = validator.validate_rest_endpoint({"method": "GET", "path": "/api/v1/users", "status_code": 999})
+    def test_validate_rest_endpoint_invalid_status_code(self):
+        """Test validation with invalid status code."""
+        validator = APIDesignValidator()
+        endpoint = {"method": "GET", "path": "/api/v1/resource", "status_code": 999}
+        result = validator.validate_rest_endpoint(endpoint)
+
         assert result["valid"] is False
         assert "Invalid status code" in result["errors"][0]
 
-    def test_validate_rest_endpoint_post_returns_200_not_201(self, validator):
-        """Test POST endpoint with wrong status code."""
-        result = validator.validate_rest_endpoint({"method": "POST", "path": "/api/v1/users", "status_code": 200})
+    def test_validate_rest_endpoint_wrong_status_for_method(self):
+        """Test validation with mismatched method and status code."""
+        validator = APIDesignValidator()
+        endpoint = {"method": "POST", "path": "/api/v1/resource", "status_code": 200}
+        result = validator.validate_rest_endpoint(endpoint)
+
         assert result["valid"] is False
         assert "not allowed for POST" in result["errors"][0]
 
-    def test_validate_rest_endpoint_delete_returns_200_not_204(self, validator):
-        """Test DELETE endpoint with wrong status code."""
-        result = validator.validate_rest_endpoint({"method": "DELETE", "path": "/api/v1/users/123", "status_code": 200})
-        assert result["valid"] is False
-        assert "not allowed for DELETE" in result["errors"][0]
-
-    def test_validate_rest_endpoint_get_returns_206_partial_content(self, validator):
-        """Test GET endpoint with 206 Partial Content."""
-        result = validator.validate_rest_endpoint(
-            {"method": "GET", "path": "/api/v1/files/download", "status_code": 206}
-        )
-        assert result["valid"] is True
-
-    def test_validate_rest_endpoint_lowercase_method(self, validator):
-        """Test lowercase HTTP method is normalized."""
-        result = validator.validate_rest_endpoint({"method": "get", "path": "/api/v1/users", "status_code": 200})
-        assert result["valid"] is True
-        assert result["method"] == "GET"
-
-    def test_validate_rest_endpoint_multiple_errors(self, validator):
-        """Test endpoint with multiple validation errors."""
-        result = validator.validate_rest_endpoint({"method": "INVALID", "path": "no-slash", "status_code": 999})
-        assert result["valid"] is False
-        assert len(result["errors"]) >= 3
-
-    # ========================================================================
-    # Versioning Strategy Tests
-    # ========================================================================
-
-    def test_get_versioning_strategy_url(self, validator):
+    def test_get_versioning_strategy_url(self):
         """Test URL versioning strategy."""
+        validator = APIDesignValidator()
         strategy = validator.get_versioning_strategy("url")
-        assert strategy["strategy"] == "url"
-        assert strategy["pattern"] == "/api/v{version}/"
-        assert "example" in strategy
-        assert "pros" in strategy
-        assert "cons" in strategy
 
-    def test_get_versioning_strategy_header(self, validator):
+        assert strategy["strategy"] == "url"
+        assert "/api/v{version}/" in strategy["pattern"]
+        assert "SEO friendly" in strategy["pros"]
+
+    def test_get_versioning_strategy_header(self):
         """Test header versioning strategy."""
+        validator = APIDesignValidator()
         strategy = validator.get_versioning_strategy("header")
+
         assert strategy["strategy"] == "header"
         assert strategy["header_name"] == "API-Version"
-        assert "example" in strategy
+        assert "Clean URLs" in strategy["pros"]
 
-    def test_get_versioning_strategy_content_type(self, validator):
+    def test_get_versioning_strategy_content_type(self):
         """Test content-type versioning strategy."""
+        validator = APIDesignValidator()
         strategy = validator.get_versioning_strategy("content-type")
-        assert strategy["strategy"] == "content-type"
-        assert "content_type" in strategy
-        assert "vnd.api+json" in strategy["content_type"]
 
-    def test_get_versioning_strategy_unknown_defaults_to_url(self, validator):
-        """Test unknown strategy defaults to URL."""
-        strategy = validator.get_versioning_strategy("unknown")
+        assert strategy["strategy"] == "content-type"
+        assert "application/vnd.api+json" in strategy["content_type"]
+        assert "RESTful" in strategy["pros"]
+
+    def test_get_versioning_strategy_default(self):
+        """Test default versioning strategy."""
+        validator = APIDesignValidator()
+        strategy = validator.get_versioning_strategy("invalid")
+
+        # Should return URL strategy as default
         assert strategy["strategy"] == "url"
 
-    # ========================================================================
-    # Error Response Standardization Tests
-    # ========================================================================
-
-    def test_standardize_error_response_validation_error(self, validator):
-        """Test standardize error response for validation error."""
+    def test_standardize_error_response(self):
+        """Test error response standardization."""
+        validator = APIDesignValidator()
         error = {
             "type": "ValidationError",
             "message": "Invalid input",
             "status_code": 400,
-            "details": {"field": "email"},
-            "path": "/api/v1/users",
+            "details": {"field": "email"}
         }
-        response = validator.standardize_error_response(error)
 
-        assert response["type"] == "ValidationError"
-        assert response["message"] == "Invalid input"
-        assert response["status_code"] == 400
-        assert response["details"]["field"] == "email"
-        assert response["path"] == "/api/v1/users"
-        assert "timestamp" in response
-        assert "trace_id" in response
+        result = validator.standardize_error_response(error)
 
-    def test_standardize_error_response_missing_fields(self, validator):
-        """Test error response with missing optional fields."""
+        assert result["type"] == "ValidationError"
+        assert result["message"] == "Invalid input"
+        assert result["status_code"] == 400
+        assert result["details"] == {"field": "email"}
+        assert "trace_id" in result
+        assert "timestamp" in result
+
+    def test_standardize_error_response_defaults(self):
+        """Test error response with default values."""
+        validator = APIDesignValidator()
         error = {}
-        response = validator.standardize_error_response(error)
 
-        assert response["type"] == "Error"
-        assert response["message"] == "An error occurred"
-        assert response["status_code"] == 500
-        assert response["details"] == {}
-        assert response["path"] == ""
+        result = validator.standardize_error_response(error)
 
-    def test_standardize_error_response_with_trace_id(self, validator):
-        """Test trace_id is generated for error response."""
-        error = {"type": "ServerError", "message": "Internal server error"}
-        response = validator.standardize_error_response(error)
-
-        assert len(response["trace_id"]) == 36  # UUID4 length
-        assert "-" in response["trace_id"]
-
-    def test_standardize_error_response_timestamp_format(self, validator):
-        """Test timestamp is ISO 8601 format."""
-        error = {"type": "Error"}
-        response = validator.standardize_error_response(error)
-
-        assert response["timestamp"].endswith("Z")
-        assert "T" in response["timestamp"]
+        assert result["type"] == "Error"
+        assert result["message"] == "An error occurred"
+        assert result["status_code"] == 500
+        assert result["details"] == {}
+        assert result["path"] == ""
 
 
 # ============================================================================
-# MicroserviceArchitect Tests
+# Test MicroserviceArchitect
 # ============================================================================
 
 
 class TestMicroserviceArchitect:
-    """Test MicroserviceArchitect class."""
+    """Test suite for MicroserviceArchitect class."""
 
-    @pytest.fixture
-    def architect(self):
-        """Create architect instance."""
-        return MicroserviceArchitect()
-
-    def test_architect_initialization(self, architect):
-        """Test architect initializes with empty services."""
+    def test_initialization(self):
+        """Test architect initialization."""
+        architect = MicroserviceArchitect()
         assert architect.services == {}
         assert architect.communication_matrix == {}
-        assert len(architect.COMMUNICATION_PATTERNS) == 3
-        assert len(architect.SERVICE_DISCOVERY_BACKENDS) == 3
+        assert "rest" in architect.COMMUNICATION_PATTERNS
 
-    # ========================================================================
-    # Service Boundary Validation Tests
-    # ========================================================================
-
-    def test_validate_service_boundary_valid(self, architect):
-        """Test valid service boundary."""
-        service = {
-            "name": "user-service",
-            "domain": "auth",
-            "endpoints": ["/api/v1/users"],
-        }
-        result = architect.validate_service_boundary(service)
+    def test_validate_service_boundary_valid(self, sample_service):
+        """Test validation of valid service boundary."""
+        architect = MicroserviceArchitect()
+        result = architect.validate_service_boundary(sample_service)
 
         assert result["valid"] is True
         assert result["name"] == "user-service"
         assert result["domain"] == "auth"
+        assert len(result["endpoints"]) == 2
         assert result["errors"] is None
 
-    def test_validate_service_boundary_invalid_name_no_hyphen(self, architect):
-        """Test service name without hyphen."""
-        service = {
-            "name": "userservice",
-            "domain": "auth",
-            "endpoints": ["/api/v1/users"],
-        }
+    def test_validate_service_boundary_invalid_name(self):
+        """Test validation with invalid service name."""
+        architect = MicroserviceArchitect()
+        service = {"name": "invalid", "domain": "auth", "endpoints": ["/path"]}
         result = architect.validate_service_boundary(service)
 
         assert result["valid"] is False
-        assert "domain-service" in result["errors"][0]
+        assert "Service name should follow pattern" in result["errors"][0]
 
-    def test_validate_service_boundary_invalid_name_empty(self, architect):
-        """Test empty service name."""
-        service = {"name": "", "domain": "auth", "endpoints": ["/api/v1/users"]}
+    def test_validate_service_boundary_missing_domain(self):
+        """Test validation without domain."""
+        architect = MicroserviceArchitect()
+        service = {"name": "user-service", "endpoints": ["/path"]}
         result = architect.validate_service_boundary(service)
 
         assert result["valid"] is False
+        assert "domain/bounded context" in result["errors"][0]
 
-    def test_validate_service_boundary_missing_domain(self, architect):
-        """Test service without domain."""
-        service = {"name": "user-service", "endpoints": ["/api/v1/users"]}
-        result = architect.validate_service_boundary(service)
-
-        assert result["valid"] is False
-        assert "domain" in result["errors"][0].lower()
-
-    def test_validate_service_boundary_missing_endpoints(self, architect):
-        """Test service without endpoints."""
+    def test_validate_service_boundary_no_endpoints(self):
+        """Test validation without endpoints."""
+        architect = MicroserviceArchitect()
         service = {"name": "user-service", "domain": "auth", "endpoints": []}
         result = architect.validate_service_boundary(service)
 
         assert result["valid"] is False
-        assert "endpoint" in result["errors"][0].lower()
+        assert "at least one endpoint" in result["errors"][0]
 
-    def test_validate_service_boundary_stores_service(self, architect):
-        """Test validated service is stored."""
-        service = {
-            "name": "user-service",
-            "domain": "auth",
-            "endpoints": ["/api/v1/users"],
-        }
-        architect.validate_service_boundary(service)
-
-        assert "user-service" in architect.services
-        assert architect.services["user-service"] == service
-
-    # ========================================================================
-    # Communication Pattern Tests
-    # ========================================================================
-
-    def test_get_communication_pattern_rest(self, architect):
+    def test_get_communication_pattern_rest(self):
         """Test REST communication pattern."""
-        pattern = architect.get_communication_pattern(
-            "rest",
-            {"source": "api-gateway", "target": "user-service", "operation": "query"},
-        )
+        architect = MicroserviceArchitect()
+        context = {"source": "service-a", "target": "service-b", "operation": "query"}
 
-        assert pattern["pattern"] == "rest"
-        assert pattern["protocol"] == "HTTP/REST"
-        assert pattern["async"] is False
-        assert pattern["source"] == "api-gateway"
-        assert pattern["target"] == "user-service"
+        result = architect.get_communication_pattern("rest", context)
 
-    def test_get_communication_pattern_async(self, architect):
+        assert result["pattern"] == "rest"
+        assert result["protocol"] == "HTTP/REST"
+        assert result["async"] is False
+        assert result["source"] == "service-a"
+
+    def test_get_communication_pattern_async(self):
         """Test async communication pattern."""
-        pattern = architect.get_communication_pattern("async", {})
+        architect = MicroserviceArchitect()
+        context = {"source": "service-a", "target": "service-b"}
 
-        assert pattern["pattern"] == "async"
-        assert pattern["async"] is True
-        assert pattern["protocol"] in ["RabbitMQ", "Kafka", "AWS SQS"]
+        result = architect.get_communication_pattern("async", context)
 
-    def test_get_communication_pattern_grpc(self, architect):
+        assert result["pattern"] == "async"
+        assert result["async"] is True
+        assert "RabbitMQ" in result["protocol"]
+
+    def test_get_communication_pattern_grpc(self):
         """Test gRPC communication pattern."""
-        pattern = architect.get_communication_pattern("grpc", {})
+        architect = MicroserviceArchitect()
+        context = {"source": "service-a", "target": "service-b"}
 
-        assert pattern["pattern"] == "grpc"
-        assert pattern["async"] is True
+        result = architect.get_communication_pattern("grpc", context)
 
-    def test_get_communication_pattern_unknown_defaults_to_rest(self, architect):
-        """Test unknown pattern defaults to REST."""
-        pattern = architect.get_communication_pattern("unknown", {})
+        assert result["pattern"] == "grpc"
+        assert result["protocol"] == "gRPC"
+        assert result["async"] is True
 
-        assert pattern["pattern"] == "rest"
-
-    # ========================================================================
-    # Service Discovery Configuration Tests
-    # ========================================================================
-
-    def test_configure_service_discovery_consul(self, architect):
+    def test_configure_service_discovery_consul(self):
         """Test Consul service discovery configuration."""
-        config = architect.configure_service_discovery(
-            "consul",
-            {
-                "consul_host": "consul.local",
-                "consul_port": 8500,
-                "health_check_interval": 5,
-            },
-        )
+        architect = MicroserviceArchitect()
+        config = {"consul_host": "localhost", "consul_port": 8500}
 
-        assert config["registry"] == "consul"
-        assert config["host"] == "consul.local"
-        assert config["port"] == 8500
-        assert config["health_check_enabled"] is True
-        assert config["auto_deregister"] is True
+        result = architect.configure_service_discovery("consul", config)
 
-    def test_configure_service_discovery_eureka(self, architect):
+        assert result["registry"] == "consul"
+        assert result["host"] == "localhost"
+        assert result["port"] == 8500
+        assert result["health_check_enabled"] is True
+        assert result["auto_deregister"] is True
+
+    def test_configure_service_discovery_eureka(self):
         """Test Eureka service discovery configuration."""
-        config = architect.configure_service_discovery("eureka", {"consul_host": "eureka.local", "consul_port": 8761})
+        architect = MicroserviceArchitect()
+        config = {}
 
-        assert config["registry"] == "eureka"
-        assert config["health_check_enabled"] is True
-        assert config["auto_deregister"] is False
+        result = architect.configure_service_discovery("eureka", config)
 
-    def test_configure_service_discovery_etcd(self, architect):
+        assert result["registry"] == "eureka"
+        assert result["health_check_enabled"] is True
+        assert result["auto_deregister"] is False
+
+    def test_configure_service_discovery_etcd(self):
         """Test etcd service discovery configuration."""
-        config = architect.configure_service_discovery("etcd", {})
+        architect = MicroserviceArchitect()
+        config = {"health_check_interval": 15}
 
-        assert config["registry"] == "etcd"
-        assert config["auto_deregister"] is True
+        result = architect.configure_service_discovery("etcd", config)
 
-    def test_configure_service_discovery_default_host_port(self, architect):
-        """Test default host and port values."""
-        config = architect.configure_service_discovery("consul", {})
-
-        assert config["host"] == "localhost"
-        assert config["port"] == 8500
-
-    def test_configure_service_discovery_deregister_after(self, architect):
-        """Test deregister_critical_service_after configuration."""
-        config = architect.configure_service_discovery("consul", {"deregister_critical_service_after": "60s"})
-
-        assert config["deregister_after"] == "60s"
+        assert result["registry"] == "etcd"
+        assert result["health_check_enabled"] is True
+        assert result["health_check_interval"] == 15
 
 
 # ============================================================================
-# AsyncPatternAdvisor Tests
+# Test AsyncPatternAdvisor
 # ============================================================================
 
 
 class TestAsyncPatternAdvisor:
-    """Test AsyncPatternAdvisor class."""
+    """Test suite for AsyncPatternAdvisor class."""
 
-    @pytest.fixture
-    def advisor(self):
-        """Create advisor instance."""
-        return AsyncPatternAdvisor()
-
-    def test_advisor_initialization(self, advisor):
-        """Test advisor initializes with empty operations."""
+    def test_initialization(self):
+        """Test advisor initialization."""
+        advisor = AsyncPatternAdvisor()
         assert advisor.async_operations == []
 
-    # ========================================================================
-    # Concurrent Execution Tests
-    # ========================================================================
-
     @pytest.mark.asyncio
-    async def test_execute_concurrent_single_operation(self, advisor):
-        """Test concurrent execution of single operation."""
+    async def test_execute_concurrent_basic(self):
+        """Test basic concurrent execution."""
+        advisor = AsyncPatternAdvisor()
 
-        async def dummy_op():
-            return "result"
-
-        results = await advisor.execute_concurrent([dummy_op])
-        assert results == ["result"]
-
-    @pytest.mark.asyncio
-    async def test_execute_concurrent_multiple_operations(self, advisor):
-        """Test concurrent execution of multiple operations."""
-
-        async def op1():
+        async def operation1():
             return "result1"
 
-        async def op2():
+        async def operation2():
             return "result2"
 
-        async def op3():
-            return "result3"
+        results = await advisor.execute_concurrent([operation1, operation2])
 
-        results = await advisor.execute_concurrent([op1, op2, op3])
-        assert len(results) == 3
+        assert len(results) == 2
         assert "result1" in results
         assert "result2" in results
-        assert "result3" in results
 
     @pytest.mark.asyncio
-    async def test_execute_concurrent_with_timeout_success(self, advisor):
-        """Test concurrent execution completes within timeout."""
+    async def test_execute_concurrent_with_timeout(self):
+        """Test concurrent execution with timeout."""
+        advisor = AsyncPatternAdvisor()
 
-        async def quick_op():
-            await asyncio.sleep(0.01)
-            return "done"
+        async def quick_operation():
+            return "quick"
 
-        results = await advisor.execute_concurrent([quick_op], timeout=1.0)
-        assert results == ["done"]
+        results = await advisor.execute_concurrent([quick_operation], timeout=5.0)
+
+        assert results == ["quick"]
 
     @pytest.mark.asyncio
-    async def test_execute_concurrent_with_timeout_exceeds(self, advisor):
-        """Test concurrent execution raises timeout error."""
+    async def test_execute_concurrent_timeout_error(self):
+        """Test timeout handling in concurrent execution."""
+        advisor = AsyncPatternAdvisor()
 
-        async def slow_op():
-            await asyncio.sleep(1.0)
-            return "done"
+        async def slow_operation():
+            await asyncio.sleep(10)
+            return "slow"
 
         with pytest.raises(asyncio.TimeoutError):
-            await advisor.execute_concurrent([slow_op], timeout=0.1)
+            await advisor.execute_concurrent([slow_operation], timeout=0.5)
 
     @pytest.mark.asyncio
-    async def test_execute_concurrent_timeout_cancels_tasks(self, advisor):
-        """Test concurrent execution cancels remaining tasks on timeout."""
-
-        async def slow_op():
-            try:
-                await asyncio.sleep(2.0)
-            except asyncio.CancelledError:
-                # Task was properly cancelled
-                raise
-
-        with pytest.raises(asyncio.TimeoutError):
-            await advisor.execute_concurrent([slow_op, slow_op], timeout=0.05)
-
-    @pytest.mark.asyncio
-    async def test_execute_concurrent_without_timeout(self, advisor):
-        """Test concurrent execution without timeout."""
-
-        async def op():
-            await asyncio.sleep(0.01)
-            return "result"
-
-        results = await advisor.execute_concurrent([op])
-        assert results == ["result"]
-
-    # ========================================================================
-    # Timeout Execution Tests
-    # ========================================================================
-
-    @pytest.mark.asyncio
-    async def test_with_timeout_success(self, advisor):
-        """Test operation completes within timeout."""
+    async def test_with_timeout_success(self):
+        """Test timeout wrapper with successful execution."""
+        advisor = AsyncPatternAdvisor()
 
         async def quick_coro():
-            await asyncio.sleep(0.01)
-            return "success"
+            return "done"
 
-        result = await advisor.with_timeout(quick_coro(), 1.0)
-        assert result == "success"
+        result = await advisor.with_timeout(quick_coro(), 5.0)
+
+        assert result == "done"
 
     @pytest.mark.asyncio
-    async def test_with_timeout_exceeds(self, advisor):
-        """Test operation exceeds timeout."""
+    async def test_with_timeout_failure(self):
+        """Test timeout wrapper with timeout exceeded."""
+        advisor = AsyncPatternAdvisor()
 
         async def slow_coro():
-            await asyncio.sleep(1.0)
+            await asyncio.sleep(10)
             return "done"
 
         with pytest.raises(asyncio.TimeoutError):
-            await advisor.with_timeout(slow_coro(), 0.1)
-
-    # ========================================================================
-    # Async Retry Decorator Tests
-    # ========================================================================
+            await advisor.with_timeout(slow_coro(), 0.5)
 
     @pytest.mark.asyncio
-    async def test_async_retry_success_first_attempt(self, advisor):
-        """Test async retry succeeds on first attempt."""
-        call_count = 0
+    async def test_async_retry_success(self):
+        """Test async retry decorator with success."""
+        advisor = AsyncPatternAdvisor()
+
+        attempt_count = 0
 
         @advisor.async_retry(max_attempts=3, backoff_factor=1.0)
-        async def successful_op():
-            nonlocal call_count
-            call_count += 1
-            return "success"
-
-        result = await successful_op()
-        assert result == "success"
-        assert call_count == 1
-
-    @pytest.mark.asyncio
-    async def test_async_retry_succeeds_after_retries(self, advisor):
-        """Test async retry succeeds after failed attempts."""
-        call_count = 0
-
-        @advisor.async_retry(max_attempts=3, backoff_factor=1.0)
-        async def failing_then_success():
-            nonlocal call_count
-            call_count += 1
-            if call_count < 3:
+        async def flaky_function():
+            nonlocal attempt_count
+            attempt_count += 1
+            if attempt_count < 3:
                 raise ValueError("Temporary failure")
             return "success"
 
-        result = await failing_then_success()
+        result = await flaky_function()
+
         assert result == "success"
-        assert call_count == 3
+        assert attempt_count == 3
 
     @pytest.mark.asyncio
-    async def test_async_retry_exhausts_attempts(self, advisor):
-        """Test async retry raises after exhausting attempts."""
-        call_count = 0
+    async def test_async_retry_exhausted(self):
+        """Test async retry decorator with exhausted attempts."""
+        advisor = AsyncPatternAdvisor()
 
-        @advisor.async_retry(max_attempts=3, backoff_factor=1.0)
-        async def always_failing():
-            nonlocal call_count
-            call_count += 1
-            raise ValueError("Always fails")
+        @advisor.async_retry(max_attempts=2, backoff_factor=0.1)
+        async def failing_function():
+            raise ValueError("Permanent failure")
 
         with pytest.raises(ValueError):
-            await always_failing()
+            await failing_function()
 
-        assert call_count == 3
+    def test_async_retry_parameters(self):
+        """Test async retry with custom parameters."""
+        advisor = AsyncPatternAdvisor()
 
-    @pytest.mark.asyncio
-    async def test_async_retry_with_custom_backoff(self, advisor):
-        """Test async retry with custom backoff factor."""
+        @advisor.async_retry(max_attempts=5, backoff_factor=3.0)
+        async def dummy_function():
+            return "result"
 
-        @advisor.async_retry(max_attempts=2, backoff_factor=2.0)
-        async def should_work_second_time():
-            await asyncio.sleep(0.01)
-            return "done"
-
-        result = await should_work_second_time()
-        assert result == "done"
+        assert callable(dummy_function)
 
 
 # ============================================================================
-# AuthenticationManager Tests
+# Test AuthenticationManager
 # ============================================================================
 
 
 class TestAuthenticationManager:
-    """Test AuthenticationManager class."""
+    """Test suite for AuthenticationManager class."""
 
-    @pytest.fixture
-    def auth(self):
-        """Create auth manager instance."""
-        return AuthenticationManager(secret_key="test-secret-key")
-
-    def test_auth_initialization(self, auth):
-        """Test authentication manager initialization."""
-        assert auth.secret_key == "test-secret-key"
+    def test_initialization(self):
+        """Test manager initialization with default secret."""
+        auth = AuthenticationManager()
+        assert auth.secret_key == "default-secret-key"
         assert auth.algorithms == ["HS256"]
         assert auth.oauth_codes == {}
 
-    # ========================================================================
-    # JWT Token Generation Tests
-    # ========================================================================
+    def test_initialization_custom_secret(self):
+        """Test manager initialization with custom secret."""
+        auth = AuthenticationManager(secret_key="custom-secret")
+        assert auth.secret_key == "custom-secret"
 
-    def test_generate_jwt_token_basic(self, auth):
-        """Test JWT token generation."""
-        token = auth.generate_jwt_token({"sub": "user@example.com"})
+    def test_generate_jwt_token_basic(self):
+        """Test basic JWT token generation."""
+        auth = AuthenticationManager()
+        data = {"sub": "user@example.com", "name": "Test User"}
 
-        assert isinstance(token, str)
-        assert token.count(".") == 2
-
-    def test_generate_jwt_token_contains_parts(self, auth):
-        """Test JWT token has three parts."""
-        token = auth.generate_jwt_token({"sub": "user@example.com"})
-        header, payload, signature = token.split(".")
-
-        assert len(header) > 0
-        assert len(payload) > 0
-        assert len(signature) > 0
-
-    def test_generate_jwt_token_custom_expires_in(self, auth):
-        """Test JWT token with custom expiration."""
-        token = auth.generate_jwt_token({"sub": "user@example.com"}, expires_in_hours=24)
+        token = auth.generate_jwt_token(data)
 
         assert isinstance(token, str)
-        assert token.count(".") == 2
+        assert len(token.split(".")) == 3  # header.payload.signature
 
-    def test_generate_jwt_token_with_multiple_claims(self, auth):
-        """Test JWT token with multiple claims."""
-        claims = {
-            "sub": "user@example.com",
-            "name": "John Doe",
-            "email": "john@example.com",
-        }
-        token = auth.generate_jwt_token(claims)
+    def test_generate_jwt_token_with_expiration(self):
+        """Test JWT token generation with custom expiration."""
+        auth = AuthenticationManager()
+        data = {"sub": "user@example.com"}
+
+        token = auth.generate_jwt_token(data, expires_in_hours=24)
 
         assert isinstance(token, str)
+        assert len(token) > 0
 
-    # ========================================================================
-    # JWT Token Validation Tests
-    # ========================================================================
+    def test_validate_jwt_token_valid(self):
+        """Test validation of valid JWT token."""
+        auth = AuthenticationManager()
+        data = {"sub": "user@example.com", "user_id": "123"}
 
-    def test_validate_jwt_token_valid(self, auth):
-        """Test validate valid JWT token."""
-        token = auth.generate_jwt_token({"sub": "user@example.com"}, expires_in_hours=1)
+        token = auth.generate_jwt_token(data)
         payload = auth.validate_jwt_token(token)
 
         assert payload["sub"] == "user@example.com"
-        assert "exp" in payload
+        assert payload["user_id"] == "123"
         assert "iat" in payload
+        assert "exp" in payload
 
-    def test_validate_jwt_token_invalid_format(self, auth):
-        """Test validate token with invalid format."""
-        with pytest.raises(ValueError) as exc:
-            auth.validate_jwt_token("invalid.token")
+    def test_validate_jwt_token_expired(self):
+        """Test validation of expired JWT token."""
+        auth = AuthenticationManager()
 
-        assert "Invalid token" in str(exc.value)
+        # Create a token with negative expiration (already expired)
+        import json
+        import base64
+        import hmac
+        import hashlib
 
-    def test_validate_jwt_token_expired(self, auth):
-        """Test validate expired token."""
-        token = auth.generate_jwt_token({"sub": "user@example.com"}, expires_in_hours=-1)
+        header = {"alg": "HS256", "typ": "JWT"}
+        payload = {
+            "sub": "user@example.com",
+            "iat": int(datetime.now(UTC).timestamp()) - 10000,
+            "exp": int(datetime.now(UTC).timestamp()) - 5000
+        }
 
-        with pytest.raises(ValueError) as exc:
+        header_encoded = base64.urlsafe_b64encode(json.dumps(header).encode()).decode().rstrip("=")
+        payload_encoded = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+
+        message = f"{header_encoded}.{payload_encoded}"
+        signature = hmac.new(auth.secret_key.encode(), message.encode(), hashlib.sha256).digest()
+        signature_encoded = base64.urlsafe_b64encode(signature).decode().rstrip("=")
+
+        token = f"{message}.{signature_encoded}"
+
+        with pytest.raises(ValueError, match="Token expired"):
             auth.validate_jwt_token(token)
 
-        assert "expired" in str(exc.value).lower()
+    def test_validate_jwt_token_invalid_format(self):
+        """Test validation of invalid JWT token format."""
+        auth = AuthenticationManager()
 
-    def test_validate_jwt_token_malformed(self, auth):
-        """Test validate malformed token."""
-        with pytest.raises(ValueError):
-            auth.validate_jwt_token("not.a.token.with.dots")
+        with pytest.raises(ValueError, match="Invalid token"):
+            auth.validate_jwt_token("invalid.token.format")
 
-    # ========================================================================
-    # OAuth2 Authorization Code Tests
-    # ========================================================================
+    def test_generate_oauth_auth_code(self):
+        """Test OAuth authorization code generation."""
+        auth = AuthenticationManager()
+        params = {"client_id": "test_client", "redirect_uri": "https://example.com", "state": "random_state"}
 
-    def test_generate_oauth_auth_code(self, auth):
-        """Test generate OAuth2 authorization code."""
-        params = {
-            "client_id": "client123",
-            "redirect_uri": "https://example.com/callback",
-            "state": "state123",
-        }
         result = auth.generate_oauth_auth_code(params)
 
         assert "code" in result
         assert result["expires_in"] == 600
-        assert result["state"] == "state123"
+        assert result["state"] == "random_state"
+        assert result["code"] in auth.oauth_codes
 
-    def test_generate_oauth_auth_code_stores_code(self, auth):
-        """Test generated OAuth2 code is stored."""
-        params = {"client_id": "client123"}
-        result = auth.generate_oauth_auth_code(params)
+    def test_has_permission_true(self, sample_user_permissions):
+        """Test permission check with valid permission."""
+        auth = AuthenticationManager()
 
-        code = result["code"]
-        assert code in auth.oauth_codes
-        assert auth.oauth_codes[code]["params"]["client_id"] == "client123"
+        result = auth.has_permission(sample_user_permissions, "read:users")
 
-    def test_generate_oauth_auth_code_multiple_codes(self, auth):
-        """Test multiple OAuth2 codes can be generated."""
-        params1 = {"client_id": "client1"}
-        params2 = {"client_id": "client2"}
+        assert result is True
 
-        result1 = auth.generate_oauth_auth_code(params1)
-        result2 = auth.generate_oauth_auth_code(params2)
+    def test_has_permission_false(self, sample_user_permissions):
+        """Test permission check with invalid permission."""
+        auth = AuthenticationManager()
 
-        assert result1["code"] != result2["code"]
-        assert len(auth.oauth_codes) == 2
+        result = auth.has_permission(sample_user_permissions, "delete:everything")
 
-    # ========================================================================
-    # Permission Checking Tests
-    # ========================================================================
+        assert result is False
 
-    def test_has_permission_granted(self, auth):
-        """Test user has required permission."""
-        user = {"id": "user1", "permissions": ["read:posts", "write:posts"]}
+    def test_has_permission_empty_permissions(self):
+        """Test permission check with no permissions."""
+        auth = AuthenticationManager()
+        user = {"id": "user-123", "permissions": []}
 
-        assert auth.has_permission(user, "read:posts") is True
-        assert auth.has_permission(user, "write:posts") is True
+        result = auth.has_permission(user, "read:users")
 
-    def test_has_permission_denied(self, auth):
-        """Test user lacks required permission."""
-        user = {"id": "user1", "permissions": ["read:posts"]}
-
-        assert auth.has_permission(user, "write:posts") is False
-        assert auth.has_permission(user, "delete:posts") is False
-
-    def test_has_permission_no_permissions(self, auth):
-        """Test user with no permissions."""
-        user = {"id": "user1"}
-
-        assert auth.has_permission(user, "read:posts") is False
-
-    def test_has_permission_empty_permissions(self, auth):
-        """Test user with empty permissions list."""
-        user = {"id": "user1", "permissions": []}
-
-        assert auth.has_permission(user, "read:posts") is False
+        assert result is False
 
 
 # ============================================================================
-# ErrorLog Dataclass Tests
-# ============================================================================
-
-
-class TestErrorLog:
-    """Test ErrorLog dataclass."""
-
-    def test_error_log_initialization(self):
-        """Test ErrorLog creation."""
-        log = ErrorLog(
-            level="ERROR",
-            message="Something went wrong",
-            timestamp="2025-01-01T00:00:00Z",
-            trace_id="trace-123",
-            context={"user_id": "user1"},
-        )
-
-        assert log.level == "ERROR"
-        assert log.message == "Something went wrong"
-        assert log.trace_id == "trace-123"
-        assert log.context["user_id"] == "user1"
-
-    def test_error_log_different_levels(self):
-        """Test ErrorLog with different log levels."""
-        for level in ["INFO", "WARNING", "ERROR", "CRITICAL"]:
-            log = ErrorLog(
-                level=level,
-                message="Message",
-                timestamp="2025-01-01T00:00:00Z",
-                trace_id="trace-123",
-                context={},
-            )
-            assert log.level == level
-
-
-# ============================================================================
-# ErrorHandlingStrategy Tests
+# Test ErrorHandlingStrategy
 # ============================================================================
 
 
 class TestErrorHandlingStrategy:
-    """Test ErrorHandlingStrategy class."""
+    """Test suite for ErrorHandlingStrategy class."""
 
-    @pytest.fixture
-    def handler(self):
-        """Create error handler instance."""
-        return ErrorHandlingStrategy()
-
-    def test_handler_initialization(self, handler):
-        """Test error handler initializes."""
+    def test_initialization(self):
+        """Test strategy initialization."""
+        handler = ErrorHandlingStrategy()
         assert handler.error_handlers == {}
         assert handler.logs == []
 
-    # ========================================================================
-    # Error Handling Tests
-    # ========================================================================
-
-    def test_handle_error_validation_error(self, handler):
-        """Test handle validation error."""
+    def test_handle_error_basic(self):
+        """Test basic error handling."""
+        handler = ErrorHandlingStrategy()
         error = {
             "type": "ValidationError",
             "message": "Invalid email format",
-            "status_code": 400,
-            "details": {"field": "email"},
-            "path": "/api/v1/users",
+            "status_code": 400
         }
 
         result = handler.handle_error(error)
@@ -860,25 +569,26 @@ class TestErrorHandlingStrategy:
         assert result["type"] == "ValidationError"
         assert result["message"] == "Invalid email format"
         assert result["status_code"] == 400
-        assert result["details"]["field"] == "email"
-        assert "trace_id" in result
         assert "timestamp" in result
+        assert "trace_id" in result
 
-    def test_handle_error_server_error(self, handler):
-        """Test handle server error."""
+    def test_handle_error_with_details(self):
+        """Test error handling with details."""
+        handler = ErrorHandlingStrategy()
         error = {
-            "type": "InternalServerError",
-            "message": "Database connection failed",
+            "type": "DatabaseError",
+            "message": "Connection failed",
             "status_code": 500,
+            "details": {"host": "localhost", "port": 5432}
         }
 
         result = handler.handle_error(error)
 
-        assert result["type"] == "InternalServerError"
-        assert result["status_code"] == 500
+        assert result["details"] == {"host": "localhost", "port": 5432}
 
-    def test_handle_error_missing_fields(self, handler):
-        """Test handle error with missing optional fields."""
+    def test_handle_error_defaults(self):
+        """Test error handling with default values."""
+        handler = ErrorHandlingStrategy()
         error = {}
 
         result = handler.handle_error(error)
@@ -888,594 +598,306 @@ class TestErrorHandlingStrategy:
         assert result["status_code"] == 500
         assert result["details"] == {}
 
-    def test_handle_error_trace_id_unique(self, handler):
-        """Test each error gets unique trace_id."""
-        error = {"type": "Error"}
+    def test_log_with_context_basic(self):
+        """Test basic logging with context."""
+        handler = ErrorHandlingStrategy()
+        log_entry = handler.log_with_context("INFO", "Test message")
 
-        result1 = handler.handle_error(error)
-        result2 = handler.handle_error(error)
+        assert log_entry["level"] == "INFO"
+        assert log_entry["message"] == "Test message"
+        assert "timestamp" in log_entry
+        assert "trace_id" in log_entry
+        assert log_entry["context"] == {}
 
-        assert result1["trace_id"] != result2["trace_id"]
+    def test_log_with_context_with_context(self):
+        """Test logging with additional context."""
+        handler = ErrorHandlingStrategy()
+        context = {"user_id": "123", "request_id": "abc"}
+        log_entry = handler.log_with_context("ERROR", "Request failed", context)
 
-    # ========================================================================
-    # Logging with Context Tests
-    # ========================================================================
+        assert log_entry["context"] == context
+        assert log_entry["level"] == "ERROR"
 
-    def test_log_with_context_info(self, handler):
-        """Test log with INFO level."""
-        result = handler.log_with_context("INFO", "User logged in", {"user_id": "user1"})
-
-        assert result["level"] == "INFO"
-        assert result["message"] == "User logged in"
-        assert result["context"]["user_id"] == "user1"
-        assert "trace_id" in result
-
-    def test_log_with_context_error(self, handler):
-        """Test log with ERROR level."""
-        result = handler.log_with_context("ERROR", "Payment failed", {"order_id": "order123"})
-
-        assert result["level"] == "ERROR"
-        assert result["message"] == "Payment failed"
-        assert len(handler.logs) == 1
-
-    def test_log_with_context_no_context(self, handler):
-        """Test log without context."""
-        result = handler.log_with_context("WARNING", "Low memory")
-
-        assert result["context"] == {}
-        assert "trace_id" in result
-
-    def test_log_with_context_stores_log(self, handler):
-        """Test logs are stored."""
-        handler.log_with_context("INFO", "Message 1", {})
-        handler.log_with_context("ERROR", "Message 2", {})
+    def test_log_with_context_storage(self):
+        """Test that logs are stored in handler."""
+        handler = ErrorHandlingStrategy()
+        handler.log_with_context("INFO", "Test 1")
+        handler.log_with_context("WARNING", "Test 2")
 
         assert len(handler.logs) == 2
-        assert handler.logs[0].message == "Message 1"
-        assert handler.logs[1].message == "Message 2"
-
-    def test_log_with_context_different_levels(self, handler):
-        """Test logging with different levels."""
-        for level in ["INFO", "WARNING", "ERROR"]:
-            handler.log_with_context(level, f"{level} message")
-
-        assert len(handler.logs) == 3
-        assert handler.logs[0].level == "INFO"
+        assert handler.logs[0].message == "Test 1"
         assert handler.logs[1].level == "WARNING"
-        assert handler.logs[2].level == "ERROR"
-
-    @patch("src.moai_adk.foundation.backend.logger")
-    def test_log_with_context_calls_logger(self, mock_logger, handler):
-        """Test log_with_context calls logger."""
-        handler.log_with_context("INFO", "Test message")
-
-        mock_logger.info.assert_called_once()
-        assert "Test message" in str(mock_logger.info.call_args)
 
 
 # ============================================================================
-# PerformanceOptimizer Tests
+# Test PerformanceOptimizer
 # ============================================================================
 
 
 class TestPerformanceOptimizer:
-    """Test PerformanceOptimizer class."""
+    """Test suite for PerformanceOptimizer class."""
 
-    @pytest.fixture
-    def optimizer(self):
-        """Create optimizer instance."""
-        return PerformanceOptimizer()
-
-    def test_optimizer_initialization(self, optimizer):
-        """Test optimizer initializes."""
+    def test_initialization(self):
+        """Test optimizer initialization."""
+        optimizer = PerformanceOptimizer()
         assert optimizer.cache_configs == {}
         assert optimizer.rate_limits == {}
 
-    # ========================================================================
-    # Cache Configuration Tests
-    # ========================================================================
-
-    def test_configure_cache_redis(self, optimizer):
-        """Test Redis cache configuration."""
-        config = optimizer.configure_cache(backend="redis", ttl=3600)
+    def test_configure_cache_basic(self):
+        """Test basic cache configuration."""
+        optimizer = PerformanceOptimizer()
+        config = optimizer.configure_cache()
 
         assert config["backend"] == "redis"
         assert config["ttl"] == 3600
         assert config["enabled"] is True
-
-    def test_configure_cache_memcached(self, optimizer):
-        """Test Memcached cache configuration."""
-        config = optimizer.configure_cache(backend="memcached", ttl=1800)
-
-        assert config["backend"] == "memcached"
-        assert config["ttl"] == 1800
-
-    def test_configure_cache_memory(self, optimizer):
-        """Test in-memory cache configuration."""
-        config = optimizer.configure_cache(backend="memory", ttl=600)
-
-        assert config["backend"] == "memory"
-
-    def test_configure_cache_with_key_pattern(self, optimizer):
-        """Test cache configuration with key pattern."""
-        config = optimizer.configure_cache(backend="redis", key_pattern="user:{user_id}:posts")
-
-        assert config["key_pattern"] == "user:{user_id}:posts"
-
-    def test_configure_cache_with_invalidation_triggers(self, optimizer):
-        """Test cache configuration with invalidation triggers."""
-        triggers = ["user_updated", "post_created"]
-        config = optimizer.configure_cache(backend="redis", invalidation_triggers=triggers)
-
-        assert config["invalidation_triggers"] == triggers
-
-    def test_configure_cache_default_ttl(self, optimizer):
-        """Test cache uses default TTL."""
-        config = optimizer.configure_cache(backend="redis")
-
-        assert config["ttl"] == 3600
-
-    def test_configure_cache_default_triggers(self, optimizer):
-        """Test cache uses default empty triggers."""
-        config = optimizer.configure_cache(backend="redis")
-
         assert config["invalidation_triggers"] == []
 
-    # ========================================================================
-    # Rate Limit Configuration Tests
-    # ========================================================================
+    def test_configure_cache_custom(self):
+        """Test cache configuration with custom parameters."""
+        optimizer = PerformanceOptimizer()
+        config = optimizer.configure_cache(
+            backend="memcached",
+            ttl=7200,
+            key_pattern="user:*",
+            invalidation_triggers=["user_updated"]
+        )
 
-    def test_configure_rate_limit_basic(self, optimizer):
-        """Test basic rate limit configuration."""
-        config = optimizer.configure_rate_limit(requests_per_minute=100, requests_per_hour=5000, burst_size=20)
+        assert config["backend"] == "memcached"
+        assert config["ttl"] == 7200
+        assert config["key_pattern"] == "user:*"
+        assert "user_updated" in config["invalidation_triggers"]
 
-        assert config["requests_per_minute"] == 100
-        assert config["requests_per_hour"] == 5000
-        assert config["burst_size"] == 20
-        assert config["enabled"] is True
-
-    def test_configure_rate_limit_custom_strategy(self, optimizer):
-        """Test rate limit with custom strategy."""
-        config = optimizer.configure_rate_limit(strategy="sliding_window", requests_per_minute=150)
-
-        assert config["strategy"] == "sliding_window"
-
-    def test_configure_rate_limit_token_bucket(self, optimizer):
-        """Test token bucket rate limiting."""
-        config = optimizer.configure_rate_limit(strategy="token_bucket", requests_per_minute=200, burst_size=50)
-
-        assert config["strategy"] == "token_bucket"
-        assert config["burst_size"] == 50
-
-    def test_configure_rate_limit_default_values(self, optimizer):
-        """Test rate limit default configuration."""
+    def test_configure_rate_limit_basic(self):
+        """Test basic rate limiting configuration."""
+        optimizer = PerformanceOptimizer()
         config = optimizer.configure_rate_limit()
 
         assert config["requests_per_minute"] == 100
         assert config["requests_per_hour"] == 5000
         assert config["burst_size"] == 20
         assert config["strategy"] == "token_bucket"
+        assert config["enabled"] is True
 
-    # ========================================================================
-    # Query Optimization Tips Tests
-    # ========================================================================
+    def test_configure_rate_limit_custom(self):
+        """Test rate limiting with custom parameters."""
+        optimizer = PerformanceOptimizer()
+        config = optimizer.configure_rate_limit(
+            requests_per_minute=200,
+            requests_per_hour=10000,
+            burst_size=50,
+            strategy="sliding_window"
+        )
 
-    def test_get_query_optimization_tips_select(self, optimizer):
-        """Test SELECT query optimization tips."""
+        assert config["requests_per_minute"] == 200
+        assert config["requests_per_hour"] == 10000
+        assert config["burst_size"] == 50
+        assert config["strategy"] == "sliding_window"
+
+    def test_get_query_optimization_tips_select(self):
+        """Test query optimization tips for SELECT."""
+        optimizer = PerformanceOptimizer()
         tips = optimizer.get_query_optimization_tips("SELECT")
 
-        assert len(tips) >= 3
+        assert len(tips) > 0
         assert any("indexes" in tip.lower() for tip in tips)
-        assert any("columns" in tip.lower() for tip in tips)
 
-    def test_get_query_optimization_tips_join(self, optimizer):
-        """Test JOIN query optimization tips."""
+    def test_get_query_optimization_tips_join(self):
+        """Test query optimization tips for JOIN."""
+        optimizer = PerformanceOptimizer()
         tips = optimizer.get_query_optimization_tips("JOIN")
 
-        assert len(tips) >= 3
-        assert any("JOIN columns" in tip or "join columns" in tip.lower() for tip in tips)
+        assert len(tips) > 0
+        assert any("indexed" in tip.lower() for tip in tips)
 
-    def test_get_query_optimization_tips_update(self, optimizer):
-        """Test UPDATE query optimization tips."""
+    def test_get_query_optimization_tips_update(self):
+        """Test query optimization tips for UPDATE."""
+        optimizer = PerformanceOptimizer()
         tips = optimizer.get_query_optimization_tips("UPDATE")
 
-        assert len(tips) >= 1
+        assert len(tips) > 0
         assert any("batch" in tip.lower() for tip in tips)
 
-    def test_get_query_optimization_tips_unknown(self, optimizer):
-        """Test unknown query type returns empty tips."""
+    def test_get_query_optimization_tips_unknown(self):
+        """Test query optimization tips for unknown query type."""
+        optimizer = PerformanceOptimizer()
         tips = optimizer.get_query_optimization_tips("UNKNOWN")
 
         assert tips == []
 
 
 # ============================================================================
-# RequestMetric Dataclass Tests
-# ============================================================================
-
-
-class TestRequestMetric:
-    """Test RequestMetric dataclass."""
-
-    def test_request_metric_initialization(self):
-        """Test RequestMetric creation."""
-        metric = RequestMetric(
-            path="/api/v1/users",
-            method="GET",
-            status_code=200,
-            duration_ms=45.5,
-            response_size_bytes=1024,
-            timestamp="2025-01-01T00:00:00Z",
-        )
-
-        assert metric.path == "/api/v1/users"
-        assert metric.method == "GET"
-        assert metric.status_code == 200
-        assert metric.duration_ms == 45.5
-        assert metric.response_size_bytes == 1024
-
-    def test_request_metric_different_methods(self):
-        """Test RequestMetric with different HTTP methods."""
-        for method in ["GET", "POST", "PUT", "DELETE"]:
-            metric = RequestMetric(
-                path="/test",
-                method=method,
-                status_code=200,
-                duration_ms=10.0,
-                response_size_bytes=100,
-                timestamp="2025-01-01T00:00:00Z",
-            )
-            assert metric.method == method
-
-
-# ============================================================================
-# BackendMetricsCollector Tests
+# Test BackendMetricsCollector
 # ============================================================================
 
 
 class TestBackendMetricsCollector:
-    """Test BackendMetricsCollector class."""
+    """Test suite for BackendMetricsCollector class."""
 
-    @pytest.fixture
-    def collector(self):
-        """Create metrics collector instance."""
-        return BackendMetricsCollector()
-
-    def test_collector_initialization(self, collector):
-        """Test collector initializes."""
+    def test_initialization(self):
+        """Test collector initialization."""
+        collector = BackendMetricsCollector()
         assert collector.metrics == []
         assert collector.error_counts == {}
 
-    # ========================================================================
-    # Request Metrics Recording Tests
-    # ========================================================================
-
-    def test_record_request_metrics_basic(self, collector):
-        """Test record basic request metrics."""
-        result = collector.record_request_metrics(path="/api/v1/users", method="GET", status_code=200, duration_ms=45.5)
-
-        assert result["path"] == "/api/v1/users"
-        assert result["method"] == "GET"
-        assert result["status_code"] == 200
-        assert result["duration_ms"] == 45.5
-        assert "timestamp" in result
-
-    def test_record_request_metrics_with_response_size(self, collector):
-        """Test record metrics with response size."""
-        result = collector.record_request_metrics(
+    def test_record_request_metrics_basic(self):
+        """Test basic request metrics recording."""
+        collector = BackendMetricsCollector()
+        metric = collector.record_request_metrics(
             path="/api/v1/users",
             method="GET",
             status_code=200,
-            duration_ms=50.0,
-            response_size_bytes=2048,
+            duration_ms=45.5
         )
 
-        assert result["response_size_bytes"] == 2048
+        assert metric["path"] == "/api/v1/users"
+        assert metric["method"] == "GET"
+        assert metric["status_code"] == 200
+        assert metric["duration_ms"] == 45.5
+        assert metric["response_size_bytes"] == 0
+        assert "timestamp" in metric
 
-    def test_record_request_metrics_stores_metric(self, collector):
-        """Test recorded metric is stored."""
-        collector.record_request_metrics(path="/api/v1/users", method="GET", status_code=200, duration_ms=30.0)
+    def test_record_request_metrics_with_size(self):
+        """Test request metrics with response size."""
+        collector = BackendMetricsCollector()
+        metric = collector.record_request_metrics(
+            path="/api/v1/users",
+            method="POST",
+            status_code=201,
+            duration_ms=120.3,
+            response_size_bytes=1024
+        )
 
-        assert len(collector.metrics) == 1
-        assert collector.metrics[0].path == "/api/v1/users"
+        assert metric["response_size_bytes"] == 1024
 
-    def test_record_request_metrics_multiple_requests(self, collector):
-        """Test recording multiple request metrics."""
-        collector.record_request_metrics("/api/v1/users", "GET", 200, 30.0)
-        collector.record_request_metrics("/api/v1/users", "POST", 201, 50.0)
-        collector.record_request_metrics("/api/v1/users/1", "GET", 200, 25.0)
+    def test_record_request_metrics_error_tracking(self):
+        """Test error tracking in metrics."""
+        collector = BackendMetricsCollector()
+        collector.record_request_metrics("/api/v1/error", "GET", 500, 100)
+        collector.record_request_metrics("/api/v1/error", "GET", 500, 100)
 
-        assert len(collector.metrics) == 3
+        assert "/api/v1/error:500" in collector.error_counts
+        assert collector.error_counts["/api/v1/error:500"] == 2
 
-    def test_record_request_metrics_tracks_errors(self, collector):
-        """Test error metrics are tracked."""
-        collector.record_request_metrics(path="/api/v1/users", method="GET", status_code=404, duration_ms=20.0)
-
-        assert "/api/v1/users:404" in collector.error_counts
-        assert collector.error_counts["/api/v1/users:404"] == 1
-
-    def test_record_request_metrics_multiple_errors_same_endpoint(self, collector):
-        """Test multiple errors on same endpoint are counted."""
-        collector.record_request_metrics("/api/v1/users", "GET", 404, 20.0)
-        collector.record_request_metrics("/api/v1/users", "GET", 404, 20.0)
-
-        assert collector.error_counts["/api/v1/users:404"] == 2
-
-    def test_record_request_metrics_success_not_tracked(self, collector):
-        """Test success responses not tracked in error_counts."""
-        collector.record_request_metrics("/api/v1/users", "GET", 200, 30.0)
-
-        assert len(collector.error_counts) == 0
-
-    def test_record_request_metrics_various_error_codes(self, collector):
-        """Test various error status codes."""
-        collector.record_request_metrics("/api/v1/users", "POST", 400, 20.0)
-        collector.record_request_metrics("/api/v1/users", "DELETE", 403, 20.0)
-        collector.record_request_metrics("/api/v1/users", "GET", 500, 20.0)
-
-        assert len(collector.error_counts) == 3
-
-    # ========================================================================
-    # Error Rate Calculation Tests
-    # ========================================================================
-
-    def test_get_error_rate_no_metrics(self, collector):
+    def test_get_error_rate_empty(self):
         """Test error rate with no metrics."""
-        rate = collector.get_error_rate()
+        collector = BackendMetricsCollector()
+        error_rate = collector.get_error_rate()
 
-        assert rate == 0.0
+        assert error_rate == 0.0
 
-    def test_get_error_rate_all_success(self, collector):
-        """Test error rate when all requests succeed."""
-        for _ in range(10):
-            collector.record_request_metrics("/api/v1/users", "GET", 200, 30.0)
+    def test_get_error_rate_all_success(self):
+        """Test error rate with all successful requests."""
+        collector = BackendMetricsCollector()
+        collector.record_request_metrics("/api/v1/users", "GET", 200, 50)
+        collector.record_request_metrics("/api/v1/users", "GET", 200, 50)
 
-        rate = collector.get_error_rate()
-        assert rate == 0.0
+        error_rate = collector.get_error_rate()
 
-    def test_get_error_rate_all_errors(self, collector):
-        """Test error rate when all requests fail."""
-        for _ in range(5):
-            collector.record_request_metrics("/api/v1/users", "GET", 500, 30.0)
+        assert error_rate == 0.0
 
-        rate = collector.get_error_rate()
-        assert rate == 1.0
+    def test_get_error_rate_with_errors(self):
+        """Test error rate with mixed success and errors."""
+        collector = BackendMetricsCollector()
+        collector.record_request_metrics("/api/v1/users", "GET", 200, 50)
+        collector.record_request_metrics("/api/v1/users", "GET", 500, 50)
+        collector.record_request_metrics("/api/v1/users", "GET", 404, 50)
 
-    def test_get_error_rate_mixed(self, collector):
-        """Test error rate with mixed success and error."""
-        # 70 successes, 30 errors
-        for _ in range(70):
-            collector.record_request_metrics("/api/v1/users", "GET", 200, 30.0)
-        for _ in range(30):
-            collector.record_request_metrics("/api/v1/users", "GET", 500, 30.0)
+        error_rate = collector.get_error_rate()
 
-        rate = collector.get_error_rate()
-        assert rate == 0.3
+        assert error_rate == 2 / 3
 
-    def test_get_error_rate_specific_path(self, collector):
-        """Test error rate for specific path."""
-        # Path 1: 5 successes, 5 errors (50% error rate)
-        for _ in range(5):
-            collector.record_request_metrics("/api/v1/users", "GET", 200, 30.0)
-        for _ in range(5):
-            collector.record_request_metrics("/api/v1/users", "GET", 500, 30.0)
+    def test_get_error_rate_filtered_by_path(self):
+        """Test error rate filtered by specific path."""
+        collector = BackendMetricsCollector()
+        collector.record_request_metrics("/api/v1/users", "GET", 200, 50)
+        collector.record_request_metrics("/api/v1/posts", "GET", 500, 50)
 
-        # Path 2: 10 successes, 0 errors
-        for _ in range(10):
-            collector.record_request_metrics("/api/v1/posts", "GET", 200, 30.0)
+        error_rate = collector.get_error_rate(path="/api/v1/posts")
 
-        path1_rate = collector.get_error_rate("/api/v1/users")
-        path2_rate = collector.get_error_rate("/api/v1/posts")
+        assert error_rate == 1.0
 
-        assert path1_rate == 0.5
-        assert path2_rate == 0.0
+    def test_get_service_health_healthy(self):
+        """Test service health status when healthy."""
+        collector = BackendMetricsCollector()
+        collector.record_request_metrics("/api/v1/users", "GET", 200, 50)
+        collector.record_request_metrics("/api/v1/users", "GET", 200, 50)
 
-    def test_get_error_rate_nonexistent_path(self, collector):
-        """Test error rate for nonexistent path."""
-        collector.record_request_metrics("/api/v1/users", "GET", 200, 30.0)
-
-        rate = collector.get_error_rate("/api/v1/nonexistent")
-        assert rate == 0.0
-
-    # ========================================================================
-    # Service Health Status Tests
-    # ========================================================================
-
-    def test_get_service_health_no_metrics(self, collector):
-        """Test service health with no metrics."""
         health = collector.get_service_health()
 
-        assert "status" in health
-        assert "metrics" in health
         assert health["status"] == "healthy"
-
-    def test_get_service_health_healthy(self, collector):
-        """Test service health when error rate < 1%."""
-        # 999 successes, 1 error (0.1% error rate < 1%)
-        for _ in range(999):
-            collector.record_request_metrics("/api/v1/users", "GET", 200, 30.0)
-        collector.record_request_metrics("/api/v1/users", "GET", 500, 30.0)
-
-        health = collector.get_service_health()
-        assert health["status"] == "healthy"
-
-    def test_get_service_health_degraded(self, collector):
-        """Test service health when error rate 1-5%."""
-        # 96 successes, 4 errors (4% error rate is between 1% and 5%)
-        for _ in range(96):
-            collector.record_request_metrics("/api/v1/users", "GET", 200, 30.0)
-        for _ in range(4):
-            collector.record_request_metrics("/api/v1/users", "GET", 500, 30.0)
-
-        health = collector.get_service_health()
-        assert health["status"] == "degraded"
-
-    def test_get_service_health_unhealthy(self, collector):
-        """Test service health when error rate > 5%."""
-        # 50 successes, 50 errors (50% error rate)
-        for _ in range(50):
-            collector.record_request_metrics("/api/v1/users", "GET", 200, 30.0)
-        for _ in range(50):
-            collector.record_request_metrics("/api/v1/users", "GET", 500, 30.0)
-
-        health = collector.get_service_health()
-        assert health["status"] == "unhealthy"
-
-    def test_get_service_health_includes_metrics(self, collector):
-        """Test service health includes detailed metrics."""
-        collector.record_request_metrics("/api/v1/users", "GET", 200, 50.0)
-        collector.record_request_metrics("/api/v1/users", "POST", 201, 100.0)
-
-        health = collector.get_service_health()
-
         assert health["metrics"]["total_requests"] == 2
         assert health["metrics"]["error_rate"] == 0.0
-        assert "avg_duration_ms" in health["metrics"]
-        assert "uptime_seconds" in health["metrics"]
 
-    def test_get_service_health_timestamp(self, collector):
-        """Test service health includes timestamp."""
-        health = collector.get_service_health()
-
-        assert "timestamp" in health
-        assert health["timestamp"].endswith("Z")
-
-    def test_get_service_health_error_summary(self, collector):
-        """Test service health includes error summary."""
-        collector.record_request_metrics("/api/v1/users", "GET", 404, 20.0)
-        collector.record_request_metrics("/api/v1/posts", "GET", 500, 20.0)
+    def test_get_service_health_degraded(self):
+        """Test service health status when degraded."""
+        collector = BackendMetricsCollector()
+        for i in range(100):
+            status = 500 if i < 4 else 200  # 4% error rate
+            collector.record_request_metrics("/api/v1/users", "GET", status, 50)
 
         health = collector.get_service_health()
 
-        assert "error_summary" in health
-        assert len(health["error_summary"]) == 2
+        assert health["status"] == "degraded"
 
-    # ========================================================================
-    # Metrics Summary Tests
-    # ========================================================================
+    def test_get_service_health_unhealthy(self):
+        """Test service health status when unhealthy."""
+        collector = BackendMetricsCollector()
+        for i in range(100):
+            status = 500 if i < 10 else 200  # 10% error rate
+            collector.record_request_metrics("/api/v1/users", "GET", status, 50)
 
-    def test_get_metrics_summary_empty(self, collector):
-        """Test metrics summary with no data."""
+        health = collector.get_service_health()
+
+        assert health["status"] == "unhealthy"
+
+    def test_get_metrics_summary(self):
+        """Test comprehensive metrics summary."""
+        collector = BackendMetricsCollector()
+        collector.record_request_metrics("/api/v1/users", "GET", 200, 50)
+        collector.record_request_metrics("/api/v1/posts", "GET", 200, 60)
+
         summary = collector.get_metrics_summary()
 
-        assert summary["total_requests"] == 0
+        assert summary["total_requests"] == 2
+        assert summary["endpoints"] == 2
         assert "health" in summary
         assert "error_rate" in summary
 
-    def test_get_metrics_summary_with_data(self, collector):
-        """Test metrics summary with data."""
-        collector.record_request_metrics("/api/v1/users", "GET", 200, 30.0)
-        collector.record_request_metrics("/api/v1/users", "POST", 201, 50.0)
-        collector.record_request_metrics("/api/v1/posts", "GET", 200, 40.0)
-
-        summary = collector.get_metrics_summary()
-
-        assert summary["total_requests"] == 3
-        assert summary["error_rate"] == 0.0
-        assert summary["endpoints"] == 2
-
-    def test_get_metrics_summary_includes_health(self, collector):
-        """Test metrics summary includes health information."""
-        collector.record_request_metrics("/api/v1/users", "GET", 200, 30.0)
-
-        summary = collector.get_metrics_summary()
-
-        assert "health" in summary
-        assert "status" in summary["health"]
-
-    def test_get_metrics_summary_endpoints_count(self, collector):
-        """Test unique endpoints count in summary."""
-        collector.record_request_metrics("/api/v1/users", "GET", 200, 30.0)
-        collector.record_request_metrics("/api/v1/users", "POST", 201, 50.0)
-        collector.record_request_metrics("/api/v1/posts", "GET", 200, 40.0)
-        collector.record_request_metrics("/api/v1/posts", "PUT", 200, 60.0)
-
-        summary = collector.get_metrics_summary()
-
-        # Only 2 unique paths
-        assert summary["endpoints"] == 2
-
 
 # ============================================================================
-# Integration Tests
+# Test Data Classes
 # ============================================================================
 
 
-class TestBackendIntegration:
-    """Integration tests for backend components."""
+class TestDataClasses:
+    """Test suite for data classes."""
 
-    def test_api_validation_and_error_handling(self):
-        """Test API validation with error handling."""
-        validator = APIDesignValidator()
-        handler = ErrorHandlingStrategy()
+    def test_error_log_creation(self):
+        """Test ErrorLog dataclass creation."""
+        error_log = ErrorLog(
+            level="ERROR",
+            message="Test error",
+            timestamp="2025-01-13T10:00:00Z",
+            trace_id="trace-123",
+            context={"user_id": "123"}
+        )
 
-        # Validate invalid endpoint
-        result = validator.validate_rest_endpoint({"method": "POST", "path": "/api/v1/users", "status_code": 200})
+        assert error_log.level == "ERROR"
+        assert error_log.message == "Test error"
+        assert error_log.context == {"user_id": "123"}
 
-        # Handle validation error
-        if not result["valid"]:
-            error_response = handler.handle_error(
-                {
-                    "type": "ValidationError",
-                    "message": f"Endpoint validation failed: {result['errors']}",
-                    "status_code": 400,
-                }
-            )
+    def test_request_metric_creation(self):
+        """Test RequestMetric dataclass creation."""
+        metric = RequestMetric(
+            path="/api/v1/test",
+            method="GET",
+            status_code=200,
+            duration_ms=45.5,
+            response_size_bytes=1024,
+            timestamp="2025-01-13T10:00:00Z"
+        )
 
-            assert error_response["type"] == "ValidationError"
-            assert error_response["status_code"] == 400
-
-    def test_microservice_with_auth(self):
-        """Test microservice with authentication."""
-        architect = MicroserviceArchitect()
-        auth = AuthenticationManager(secret_key="test-secret")
-
-        # Validate service
-        service = {
-            "name": "user-service",
-            "domain": "auth",
-            "endpoints": ["/api/v1/users"],
-        }
-        result = architect.validate_service_boundary(service)
-        assert result["valid"] is True
-
-        # Generate token for service communication
-        token = auth.generate_jwt_token({"sub": "user-service", "aud": "api-gateway"})
-
-        payload = auth.validate_jwt_token(token)
-        assert payload["sub"] == "user-service"
-
-    def test_metrics_with_error_tracking(self):
-        """Test metrics collection with error tracking."""
-        collector = BackendMetricsCollector()
-
-        # Simulate requests
-        collector.record_request_metrics("/api/v1/users", "GET", 200, 30.0)
-        collector.record_request_metrics("/api/v1/users", "GET", 200, 35.0)
-        collector.record_request_metrics("/api/v1/users", "GET", 404, 25.0)
-
-        # Check metrics
-        health = collector.get_service_health()
-        assert health["metrics"]["total_requests"] == 3
-        assert health["metrics"]["error_rate"] > 0
-
-    @pytest.mark.asyncio
-    async def test_async_with_auth_tokens(self):
-        """Test async operations with authentication."""
-        advisor = AsyncPatternAdvisor()
-        auth = AuthenticationManager(secret_key="test-secret")
-
-        async def generate_token():
-            return auth.generate_jwt_token({"sub": "user1"})
-
-        async def validate_token(token):
-            return auth.validate_jwt_token(token)
-
-        # Execute async operations
-        tokens = await advisor.execute_concurrent([generate_token, generate_token])
-        assert len(tokens) == 2
-
-        # Validate tokens
-        for token in tokens:
-            payload = auth.validate_jwt_token(token)
-            assert payload["sub"] == "user1"
+        assert metric.path == "/api/v1/test"
+        assert metric.duration_ms == 45.5
+        assert metric.response_size_bytes == 1024

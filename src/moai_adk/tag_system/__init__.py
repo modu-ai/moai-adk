@@ -4,15 +4,9 @@ Provides TAG annotation, validation, parsing, and linkage management
 for SPEC-First TDD workflow.
 """
 
-from .validator import (
-    TAG,
-    DEFAULT_VERB,
-    VALID_VERBS,
-    get_default_verb,
-    parse_tag_string,
-    validate_spec_id_format,
-    validate_tag,
-    validate_verb,
+from .linkage import (
+    LinkageManager,
+    spec_document_exists,
 )
 from .parser import (
     extract_tags_from_directory,
@@ -20,9 +14,15 @@ from .parser import (
     extract_tags_from_files,
     extract_tags_from_source,
 )
-from .linkage import (
-    LinkageManager,
-    spec_document_exists,
+from .validator import (
+    DEFAULT_VERB,
+    TAG,
+    VALID_VERBS,
+    get_default_verb,
+    parse_tag_string,
+    validate_spec_id_format,
+    validate_tag,
+    validate_verb,
 )
 
 __all__ = [

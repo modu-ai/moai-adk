@@ -69,7 +69,7 @@ if str(LIB_DIR) not in sys.path:
     sys.path.insert(0, str(LIB_DIR))
 
 # Import path utils for project root resolution
-from lib.file_utils import check_file_size, safe_read_text  # noqa: E402
+from lib.file_utils import check_file_size  # noqa: E402
 from lib.path_utils import find_project_root  # noqa: E402
 
 # Import unified timeout manager and Git operations manager

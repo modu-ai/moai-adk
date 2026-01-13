@@ -67,6 +67,23 @@ class TestComponentDiscovery:
         assert dependency_map["comp2"] == ["dep3"]
         assert dependency_map["comp3"] == []
 
+    def test_resolve_dependencies_with_exception(self):
+        """Test dependency resolution with exception (lines 73-74)"""
+        components = [
+            TestComponent("comp1", "type1", "1.0.0", ["dep1", "dep2"]),
+            TestComponent("comp2", "type2", "2.0.0", ["dep3"]),
+        ]
+
+        discovery = ComponentDiscovery()
+
+        # Mock _analyze_imports to raise an exception
+        with patch.object(ComponentDiscovery, "_analyze_imports", side_effect=Exception("Analysis failed")):
+            dependency_map = discovery.resolve_dependencies(components)
+
+            # Should fall back to component dependencies
+            assert dependency_map["comp1"] == ["dep1", "dep2"]
+            assert dependency_map["comp2"] == ["dep3"]
+
 
 class TestResultAnalyzer:
     """Test TestResultAnalyzer class"""
@@ -224,6 +241,7 @@ class TestTestEnvironmentUtil:
             assert path3.endswith("file3.txt")
 
             # All paths should be within the temp directory
+            assert env.temp_dir is not None
             assert path1.startswith(env.temp_dir)
             assert path2.startswith(env.temp_dir)
             assert path3.startswith(env.temp_dir)

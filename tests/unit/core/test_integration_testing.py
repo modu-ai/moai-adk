@@ -6,6 +6,7 @@ Test cases for integration testing functionality.
 
 import tempfile
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -243,7 +244,7 @@ class TestIntegrationTester:
         tester.add_test_result(IntegrationTestResult("test1", True, execution_time=1.0))
         tester.add_test_result(IntegrationTestResult("test2", False, error_message="Error"))
 
-        exported = tester.export_results("dict")
+        exported: list[dict[str, object]] = tester.export_results("dict")  # type: ignore[assignment]
 
         assert len(exported) == 2
         assert exported[0]["test_name"] == "test1"
@@ -259,14 +260,16 @@ class TestIntegrationTester:
         tester.add_test_result(IntegrationTestResult("test1", True))
         tester.add_test_result(IntegrationTestResult("test2", False, error_message="Error"))
 
-        exported = tester.export_results("summary")
+        exported: dict[str, object] = tester.export_results("summary")  # type: ignore[assignment]
 
         assert "stats" in exported
         assert "failed_tests" in exported
-        assert exported["stats"]["total"] == 2
-        assert exported["stats"]["passed"] == 1
-        assert exported["stats"]["failed"] == 1
-        assert len(exported["failed_tests"]) == 1
+        stats = exported["stats"]  # type: ignore[index]
+        assert stats["total"] == 2  # type: ignore[index]
+        assert stats["passed"] == 1  # type: ignore[index]
+        assert stats["failed"] == 1  # type: ignore[index]
+        failed_tests = exported["failed_tests"]  # type: ignore[index]
+        assert len(failed_tests) == 1  # type: ignore[arg-type]
 
     def test_export_results_invalid_format(self):
         """Test exporting results with invalid format."""
@@ -288,3 +291,30 @@ class TestIntegrationTester:
 
         assert len(warnings) == 1
         assert "Low success rate" in warnings[0]
+
+    def test_validate_test_environment_no_results(self):
+        """Test validating environment with no test results."""
+        tester = IntegrationTester()
+
+        warnings = tester.validate_test_environment()
+
+        # Both warnings should be present: no results AND low success rate (0%)
+        assert len(warnings) == 2
+        assert "No test results found" in warnings[0]
+        assert "Low success rate: 0.0%" in warnings[1]
+
+    def test_validate_test_environment_good_success_rate(self):
+        """Test validating environment with good success rate (line 219 coverage)."""
+        tester = IntegrationTester()
+
+        # Add mostly passing tests for high success rate (>80%)
+        tester.add_test_result(IntegrationTestResult("test1", True))
+        tester.add_test_result(IntegrationTestResult("test2", True))
+        tester.add_test_result(IntegrationTestResult("test3", True))
+        tester.add_test_result(IntegrationTestResult("test4", True))
+        tester.add_test_result(IntegrationTestResult("test5", False))  # 80% success rate
+
+        warnings = tester.validate_test_environment()
+
+        # No warnings should be returned (line 219: return warnings)
+        assert len(warnings) == 0

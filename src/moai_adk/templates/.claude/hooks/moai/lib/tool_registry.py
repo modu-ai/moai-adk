@@ -18,7 +18,6 @@ from enum import Enum
 from pathlib import Path
 
 
-
 class ToolType(Enum):
     """Tool type classification."""
 

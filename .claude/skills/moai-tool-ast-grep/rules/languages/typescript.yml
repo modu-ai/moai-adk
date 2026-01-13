@@ -17,8 +17,7 @@ language: typescript
 severity: info
 message: "Prefer 'as' syntax for type assertions"
 rule:
-  pattern: <$TYPE>$EXPR
-fix: $EXPR as $TYPE
+  pattern: "<$TYPE>$EXPR"
 
 ---
 id: use-optional-chaining
@@ -27,7 +26,6 @@ severity: info
 message: "Use optional chaining instead of && chain"
 rule:
   pattern: $OBJ && $OBJ.$PROP
-fix: $OBJ?.$PROP
 
 ---
 id: use-nullish-coalescing
@@ -36,9 +34,8 @@ severity: info
 message: "Use nullish coalescing operator"
 rule:
   any:
-    - pattern: $VAR !== null && $VAR !== undefined ? $VAR : $DEFAULT
-    - pattern: $VAR != null ? $VAR : $DEFAULT
-fix: $VAR ?? $DEFAULT
+    - pattern: "$VAR !== null && $VAR !== undefined ? $VAR : $DEFAULT"
+    - pattern: "$VAR != null ? $VAR : $DEFAULT"
 
 ---
 id: prefer-const

@@ -11,9 +11,10 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from . import tag_validator
+
 # Import atomic_write functions directly
 from .atomic_write import atomic_write_json, atomic_write_text
-from . import tag_validator
 
 logger = logging.getLogger(__name__)
 
