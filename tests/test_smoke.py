@@ -37,16 +37,18 @@ class TestSmokeCore:
     @pytest.mark.critical
     def test_core_modules_importable(self):
         """Test that core modules can be imported."""
-        from moai_adk.foundation import core
-        from moai_adk.project import configuration
-        from moai_adk.cli import commands
+        from moai_adk import cli
+        from moai_adk import core
+        from moai_adk import foundation
+        from moai_adk import project
         # If we get here without ImportError, the test passes
 
     @pytest.mark.critical
     def test_template_directory_exists(self):
         """Test that template directory structure is intact."""
         import moai_adk
-        moai_root = Path(moai_adk.__file__).parent.parent.parent / "templates"
+        # Templates are in src/moai_adk/templates/
+        moai_root = Path(moai_adk.__file__).parent / "templates"
         assert moai_root.exists()
         assert (moai_root / ".claude").exists()
         assert (moai_root / ".moai").exists()
