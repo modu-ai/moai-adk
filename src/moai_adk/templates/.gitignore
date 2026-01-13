@@ -157,52 +157,6 @@ secret-*.*
 .claude/skills/*/*/*token*
 
 # ===========================================
-# .moai/ Directory Management
-# ===========================================
-# Exclude all .moai/* by default
-.moai/*
-
-# Include tracked directories
-!.moai/config/
-!.moai/config/**
-!.moai/memory/
-!.moai/memory/**
-!.moai/project/
-!.moai/project/**
-!.moai/scripts/
-!.moai/scripts/**
-!.moai/specs/
-!.moai/specs/**
-!.moai/llm-configs/
-!.moai/llm-configs/**
-!.moai/announcements/
-!.moai/announcements/**
-
-# Legacy config format (migrated to YAML in v0.32.0)
-.moai/config/config.json
-
-# Exclude local-only directories
-.moai/cache/
-.moai/logs/
-.moai/docs/
-.moai/reports/
-.moai/analytics/
-.moai/archive/
-.moai/archived-skills/
-.moai/backups/
-.moai/error_logs/
-.moai/temp/
-.moai/work/
-
-# Exclude local development scripts
-.moai/scripts/phase*.py
-.moai/scripts/phase*.sh
-.moai/scripts/sync-*.sh
-.moai/scripts/sync-*.py
-.moai/scripts/*sync*.sh
-.moai/scripts/__pycache__/
-
-# ===========================================
 # Node.js (for docs/Nextra)
 # ===========================================
 node_modules/
@@ -224,5 +178,3 @@ dist-ssr/
 .vercel/
 .netlify/
 .firebase/
-.github/workflows/*.yml.bak
-.gitlab-ci.yml.bak
