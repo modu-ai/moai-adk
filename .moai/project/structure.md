@@ -1,7 +1,7 @@
 # MoAI-ADK Project Structure
 
-> **Last Updated**: 2026-01-10
-> **Version**: 0.41.2
+> **Last Updated**: 2026-01-13
+> **Version**: 1.1.1
 
 ---
 
@@ -49,9 +49,12 @@ src/moai_adk/
 │   └── ...                   # Additional core modules
 │
 ├── foundation/               # Foundation components
+│   ├── __init__.py           # Package initialization
 │   ├── claude.py             # Claude Code integration
 │   ├── core.py               # Core principles
-│   └── quality.py            # Quality framework
+│   ├── git/                  # Git operations module (directory structure since v1.1.1)
+│   ├── quality.py            # Quality framework
+│   └── testing.py            # TDD framework utilities
 │
 ├── loop/                     # Feedback loop system
 │   ├── controller.py         # Loop controller
@@ -133,7 +136,7 @@ src/moai_adk/
 │       └── yoda.md           # Yoda style
 │
 └── skills/                   # Domain knowledge
-    └── moai/                 # MoAI skills (47 skills)
+    └── moai/                 # MoAI skills (48 skills)
         ├── moai-foundation-*.md
         ├── moai-domain-*.md
         ├── moai-lang-*.md
@@ -193,23 +196,85 @@ src/moai_adk/
 ```
 tests/
 ├── unit/                     # Unit tests
-│   ├── test_core/
-│   ├── test_cli/
-│   └── test_utils/
+│   ├── test_core/            # Core module tests
+│   ├── test_cli/             # CLI command tests
+│   ├── test_utils/           # Utility tests
+│   ├── test_statusline/      # Statusline tests
+│   └── test_hooks/           # Hook tests
+│
+├── astgrep/                  # AST-grep integration tests (v1.1.1)
+│   ├── test_analyzer_edge_cases.py      # 52 tests
+│   ├── test_analyzer_full_coverage.py   # Coverage tests
+│   ├── test_analyzer_exception_coverage.py # Exception handling tests
+│   ├── test_models_edge_cases.py         # 32 tests
+│   ├── test_rules_advanced.py            # 25 tests
+│   └── test_rules_*.py                   # Additional rule tests
+│
+├── cli/                      # CLI tests (v1.1.1)
+│   ├── commands/            # CLI command tests
+│   │   ├── test_analyze_enhanced.py
+│   │   ├── test_switch.py
+│   │   ├── test_rank_comprehensive.py
+│   │   ├── test_update_complete_coverage.py
+│   │   └── test_*.py
+│   ├── prompts/             # Prompt tests
+│   │   ├── test_init_prompts_enhanced.py
+│   │   └── test_*.py
+│   ├── ui/                   # UI tests
+│   │   ├── test_progress.py
+│   │   └── test_*.py
+│   ├── worktree/             # Worktree tests (v1.1.1)
+│   │   ├── test_cli.py
+│   │   ├── test_manager_enhanced.py
+│   │   ├── test_exceptions_enhanced.py
+│   │   ├── test_main.py
+│   │   ├── test_models.py
+│   │   ├── test_registry.py
+│   │   └── test_*.py
+│   ├── test_main_exception_handling.py # 19 tests
+│   └── test_*.py
+│
+├── foundation/               # Foundation tests (v1.1.1)
+│   ├── conftest.py
+│   ├── test_backend.py
+│   ├── test_commit_templates.py
+│   ├── test_database.py
+│   ├── test_devops.py
+│   ├── test_frontend.py
+│   ├── test_git.py
+│   ├── test_ears_tdd.py
+│   ├── test_langs_tdd.py
+│   ├── test_testing_tdd.py
+│   └── trust/               # TRUST 5 framework tests
+│       └── test_trust_principles.py
 │
 ├── integration/              # Integration tests
-│   ├── test_workflow/
-│   └── test_agents/
+│   ├── cli/                  # CLI integration tests (v1.1.1)
+│   ├── test_core/            # Core integration tests
+│   └── test_workflow/        # Workflow tests
 │
-├── e2e/                      # End-to-end tests
-│   └── test_full_cycle/
-│
-├── web/                      # Web API tests
-│   └── test_*_router.py
+├── unit/                     # Additional unit tests (v1.1.1)
+│   ├── cli/                  # CLI unit tests
+│   │   └── commands/         # Command-specific unit tests
+│   ├── core/                 # Core module unit tests
+│   │   ├── analysis/
+│   │   ├── integration/
+│   │   ├── migration/
+│   │   ├── project/
+│   │   └── statusline/
+│   ├── hooks/                # Hook unit tests
+│   │   └── moai/
+│   ├── statusline/           # Statusline unit tests
+│   │   └── test_main_edge_cases.py # 51 tests
+│   ├── tag_system/           # TAG System v2.0 tests
+│   │   └── test_*.py
+│   └── test_entry_points.py
 │
 ├── conftest.py               # Pytest configuration
 └── fixtures/                 # Test fixtures
 ```
+
+**Note**: v1.1.1 added 179 new comprehensive tests covering edge cases, error handling, and type safety across core modules.
 
 ---
 
