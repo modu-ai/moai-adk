@@ -725,6 +725,31 @@ addopts =
 
 This configuration helps prevent accidental file modifications, but **always run tests from an isolated directory** to be safe.
 
+### Parallel Test Execution with pytest-xdist
+
+[HARD] Always use parallel execution for faster test runs:
+
+```bash
+# ✅ CORRECT: Parallel execution (auto-detects CPU cores)
+pytest -n auto
+
+# ✅ CORRECT: Parallel execution with coverage
+pytest -n auto --cov=src/moai_adk --cov-report=term-missing
+
+# ✅ CORRECT: Specify number of workers explicitly
+pytest -n 10
+
+# ❌ AVOID: Sequential execution (slow)
+pytest
+```
+
+WHY:
+- Speed: Tests run ~N times faster (where N = number of CPU cores)
+- Efficiency: Uses all available CPU resources
+- Standard practice: Modern CI/CD pipelines expect parallel execution
+
+NOTE: When measuring coverage, pytest-cov works with pytest-xdist using shared data directory. Coverage results are automatically aggregated from all workers.
+
 ### Root Cause of settings.json Modifications
 
 **Historical Issue**: Commit `42db79e4` (`test(coverage): achieve 88.12% coverage...`) accidentally modified `.claude/settings.json` with test data because tests were run from the project root.
