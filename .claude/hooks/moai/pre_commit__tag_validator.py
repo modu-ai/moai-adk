@@ -33,6 +33,7 @@ except ImportError:
         # Final fallback - try relative import from parent
         import sys
         from pathlib import Path
+
         sys.path.insert(0, str(Path(__file__).parent.parent))
         from hooks.moai.lib import (
             extract_tags_from_file,
@@ -43,6 +44,25 @@ except ImportError:
         from hooks.moai.lib.tag_validator import TAG
 
 logger = logging.getLogger(__name__)
+
+
+def get_file_context(file_path: Path) -> dict:
+    """Get file context for flexible TAG validation.
+
+    Args:
+        file_path: Path to analyze
+
+    Returns:
+        Context dict with file type information
+    """
+    import re
+
+    file_str = str(file_path)
+
+    return {
+        "is_test_file": bool(re.search(r"test_\w+\.py|_\w+_test\.py|tests?/", file_str)),
+        "is_impl_file": not bool(re.search(r"test_\w+\.py|_\w+_test\.py|tests?/", file_str)),
+    }
 
 
 def load_tag_validation_config() -> dict:
@@ -113,6 +133,7 @@ def validate_file_tags(file_path: Path, config: dict) -> tuple[int, list[str]]:
         Tuple of (exit_code, error_messages)
     """
     errors = []
+    file_context = get_file_context(file_path)
 
     # Extract TAGs from file
     tags = extract_tags_from_file(file_path)
@@ -129,28 +150,54 @@ def validate_file_tags(file_path: Path, config: dict) -> tuple[int, list[str]]:
             for error in format_errors:
                 errors.append(f"{file_path}:{tag.line}: {error}")
 
-        # Check SPEC existence
+        # Check SPEC existence with context-aware validation
         if not check_spec_exists(tag.spec_id):
             mode = config.get("mode", "warn")
-            if mode == "enforce":
+
+            # `related` verb: always allow, just show hint
+            if tag.verb == "related":
                 errors.append(
-                    f"{file_path}:{tag.line}: SPEC document not found: {tag.spec_id} "
-                    "(commit blocked in enforce mode)"
+                    f"{file_path}:{tag.line}: Hint: Consider creating SPEC for {tag.spec_id} "
+                    "(related TAG - no SPEC required)"
                 )
-            else:
-                # Warn mode - show warning but allow commit
+                continue  # Allow commit
+
+            # TEST file with `verify` verb: allow with warning
+            if file_context["is_test_file"] and tag.verb == "verify":
                 errors.append(
-                    f"{file_path}:{tag.line}: Warning: SPEC document not found: {tag.spec_id} "
-                    "(commit allowed in warn mode)"
+                    f"{file_path}:{tag.line}: Warning: TEST references missing SPEC: {tag.spec_id} "
+                    "(verify TAG in test file - commit allowed)"
                 )
+                continue  # Allow commit
+
+            # Implementation file with `impl` verb: strict validation
+            if file_context["is_impl_file"] and tag.verb == "impl":
+                if mode == "enforce":
+                    errors.append(
+                        f"{file_path}:{tag.line}: Error: Implementation references missing SPEC: {tag.spec_id} "
+                        "(commit blocked in enforce mode)"
+                    )
+                else:
+                    errors.append(
+                        f"{file_path}:{tag.line}: Warning: Implementation references missing SPEC: {tag.spec_id} "
+                        "(commit allowed in warn mode)"
+                    )
+                continue
+
+            # Default: warn but allow
+            errors.append(
+                f"{file_path}:{tag.line}: Warning: SPEC document not found: {tag.spec_id} (commit allowed in warn mode)"
+            )
 
     # Determine exit code
     if errors:
         mode = config.get("mode", "warn")
         if mode == "enforce":
-            return 1, errors  # Block commit
-        else:
-            return 1, errors  # Warning code but commit allowed
+            # Check if any errors are blocking (not hints/warnings)
+            blocking_errors = [e for e in errors if "Error:" in e]
+            if blocking_errors:
+                return 1, errors  # Block commit
+        return 1, errors  # Warning code but commit allowed
     else:
         return 0, []  # Success
 
@@ -194,9 +241,7 @@ def main() -> int:
         staged_files = result.stdout.strip().splitlines()
 
         # Filter for Python files only
-        python_files = [
-            Path(f) for f in staged_files if f.endswith(".py") and Path(f).exists()
-        ]
+        python_files = [Path(f) for f in staged_files if f.endswith(".py") and Path(f).exists()]
 
         if not python_files:
             # No Python files staged
