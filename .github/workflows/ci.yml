@@ -42,9 +42,7 @@ jobs:
         run: uv run mypy src/moai_adk/ --ignore-missing-imports
 
       - name: Test
-        run: |
-          export PYTHONPATH=${{ github.workspace }}/src
-          uv run pytest tests/ --tb=short --cov=src/moai_adk --cov-report=term-missing --cov-report=xml -q
+        run: PYTHONPATH=${{ github.workspace }}/src uv run pytest tests/ --tb=short --cov=src/moai_adk --cov-report=term-missing --cov-report=xml -q
 
       - name: Build
         run: uv build
