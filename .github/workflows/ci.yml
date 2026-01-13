@@ -15,23 +15,28 @@ concurrency:
 
 jobs:
   test:
-    name: Test
+    name: Test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: ${{ matrix.python-version }}
 
       - uses: astral-sh/setup-uv@v2
         with:
           enable-cache: true
 
       - name: Install
-        run: uv sync
+        run: uv sync --all-extras
 
       - name: Lint
         run: |
@@ -41,9 +46,40 @@ jobs:
       - name: Type check
         run: uv run mypy src/moai_adk/ --ignore-missing-imports
 
+      - name: Security scan
+        run: |
+          uv run bandit -r src/ -ll -f json -o bandit-report.json || true
+          uv run bandit -r src/ -ll || echo "⚠️ Security issues found (non-blocking)"
+
       - name: Test
         run: |
-          PYTHONPATH=${{ github.workspace }}/src uv run pytest tests/ -n auto --tb=short
+          PYTHONPATH=${{ github.workspace }}/src uv run pytest tests/ -n auto --tb=short --cov=src/moai_adk --cov-report=xml --cov-report=term-missing --cov-fail-under=85
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+          verbose: true
+
+      - name: Benchmark
+        run: |
+          PYTHONPATH=${{ github.workspace }}/src uv run pytest tests/ -k benchmark --benchmark-only --benchmark-json=benchmark.json
+        continue-on-error: true
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-py${{ matrix.python-version }}
+          path: benchmark.json
+        if: always()
 
       - name: Build
         run: uv build
+
+      - name: Upload security scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report-py${{ matrix.python-version }}
+          path: bandit-report.json
+        if: always()
