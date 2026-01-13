@@ -659,6 +659,80 @@ All user-facing communication should follow these standards:
 
 ---
 
+## 17. Testing Guidelines
+
+### ⚠️ IMPORTANT: Prevent Accidental File Modifications
+
+When running tests, **always execute from an isolated directory** to prevent tests from modifying project files like `.claude/settings.json`.
+
+### Recommended Test Execution
+
+```bash
+# ✅ CORRECT: Run from isolated directory
+cd /tmp/moai-test && pytest /Users/goos/MoAI/MoAI-ADK
+
+# ❌ WRONG: Run from project root (may modify settings.json)
+pytest
+```
+
+### Why This Matters
+
+Some tests use `Path.cwd()` to access the current working directory. When run from the project root, these tests can:
+- Modify `.claude/settings.json` with test data
+- Overwrite user configurations
+- Cause git diff noise
+
+### Verification
+
+After running tests, check if project files were modified:
+
+```bash
+git status
+```
+
+If `.claude/settings.json` appears as modified, restore it from git:
+
+```bash
+git checkout .claude/settings.json
+```
+
+### Continuous Integration
+
+CI/CD pipelines should always run tests from isolated directories:
+
+```yaml
+# Example GitHub Actions
+- name: Run tests
+  run: |
+    cd /tmp/moai-test
+    pytest $GITHUB_WORKSPACE
+```
+
+### pytest.ini Configuration
+
+The project includes `pytest.ini` with test isolation settings:
+
+```ini
+[pytest]
+testpaths = tests
+addopts =
+    -v
+    --cov=src/moai_adk
+    --cov-report=html
+    --cov-report=term-missing
+    --strict-markers
+```
+
+This configuration helps prevent accidental file modifications, but **always run tests from an isolated directory** to be safe.
+
+### Root Cause of settings.json Modifications
+
+**Historical Issue**: Commit `42db79e4` (`test(coverage): achieve 88.12% coverage...`) accidentally modified `.claude/settings.json` with test data because tests were run from the project root.
+
+**Prevention**: The `pytest.ini` file and this guideline are added to prevent future occurrences.
+
+---
+
 **Status**: Active (Local Development)
-**Version**: 3.1.0 (Added User Communication Guidelines)
+**Version**: 3.2.0 (Added Testing Guidelines)
 **Last Updated**: 2026-01-13
