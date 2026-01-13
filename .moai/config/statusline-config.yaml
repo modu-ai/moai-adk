@@ -49,12 +49,12 @@ statusline:
     version: false               # 🗿 MoAI-ADK version (disabled - context window replaces it)
     context_window: true         # 💰 Context window usage (15K/200K)
     output_style: true           # 💬 Output style (R2-D2, Yoda, etc.)
-    memory_usage: false          # 💾 Session memory usage (disabled)
+    memory_usage: true           # 💾 Session memory usage
     todo_count: false            # 📋 Active TODO items count (disabled)
     branch: true                 # 🔀 Git branch
     git_status: true             # 📊 +0 M25 ?3 Git changes status
     duration: false              # ⏱️ Session elapsed time (disabled)
-    directory: false             # 📁 Project name/directory (disabled)
+    directory: true              # 📁 Project name/directory
     active_task: true            # 🎯 Alfred active task
     update_indicator: true       # 🔄 Update notification
 

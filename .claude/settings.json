@@ -237,7 +237,7 @@
     "padding": 0,
     "refreshInterval": 300
   },
-  "outputStyle": "Mr. Alfred",
+  "outputStyle": "Mr.Alfred",
   "cleanupPeriodDays": 30,
   "env": {
     "MOAI_CONFIG_SOURCE": "sections",
