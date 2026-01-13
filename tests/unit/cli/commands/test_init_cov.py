@@ -644,6 +644,8 @@ class TestInitInteractiveMode:
                 "git_commit_lang": "en",
                 "code_comment_lang": "en",
                 "doc_lang": "en",
+                "tag_enabled": True,
+                "tag_mode": "warn",
             }
 
             mock_initializer = MagicMock()
@@ -694,6 +696,8 @@ class TestInitInteractiveMode:
                 "git_commit_lang": "en",
                 "code_comment_lang": "en",
                 "doc_lang": "en",
+                "tag_enabled": True,
+                "tag_mode": "warn",
             }
 
             mock_initializer = MagicMock()

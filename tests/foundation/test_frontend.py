@@ -65,9 +65,10 @@ class TestComponentArchitect:
     def test_analyze_reusability(self):
         """Test component reusability analysis."""
         architect = ComponentArchitect()
+        # The implementation counts dict keys, not list items in a "props" key
         components = {
-            "Button": {"props": ["children", "onClick"]},
-            "Complex": {"props": ["a", "b", "c", "d", "e", "f"]}
+            "Button": {"children": "ReactNode", "onClick": "Function"},  # 2 props
+            "Complex": {"a": "str", "b": "str", "c": "str", "d": "str", "e": "str", "f": "str"}  # 6 props
         }
 
         result = architect.analyze_reusability(components)

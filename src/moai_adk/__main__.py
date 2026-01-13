@@ -127,12 +127,36 @@ def init(
 
 
 @cli.command()
+@click.option(
+    "--verbose",
+    "-v",
+    is_flag=True,
+    help="Show detailed tool versions and language detection",
+)
+@click.option("--fix", is_flag=True, help="Suggest fixes for missing tools")
+@click.option("--export", type=click.Path(), help="Export diagnostics to JSON file")
+@click.option("--check", type=str, help="Check specific tool only")
+@click.option("--check-commands", is_flag=True, help="Diagnose slash command loading issues")
 @click.pass_context
-def doctor(ctx: click.Context, **kwargs) -> None:
+def doctor(
+    ctx: click.Context,
+    verbose: bool,
+    fix: bool,
+    export: str | None,
+    check: str | None,
+    check_commands: bool,
+) -> None:
     """Run system diagnostics"""
     from moai_adk.cli.commands.doctor import doctor as _doctor
 
-    ctx.invoke(_doctor, **kwargs)
+    ctx.invoke(
+        _doctor,
+        verbose=verbose,
+        fix=fix,
+        export=export,
+        check=check,
+        check_commands=check_commands,
+    )
 
 
 @cli.command()
@@ -267,6 +291,18 @@ def _load_rank_group():
 
 # Register rank command group
 cli.add_command(_load_rank_group(), name="rank")
+
+
+# Worktree command group (lazy-loaded)
+def _load_worktree_group():
+    """Lazy load the worktree command group."""
+    from moai_adk.cli.worktree.cli import worktree
+
+    return worktree
+
+
+# Register worktree command group
+cli.add_command(_load_worktree_group(), name="worktree")
 
 
 def main() -> int:

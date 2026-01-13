@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import shutil
 import subprocess
 import sys
@@ -2201,7 +2202,11 @@ def update(
         - Guide:  .moai/guides/merge-guide.md (manual merge only)
     """
     try:
-        project_path = Path(path).resolve()
+        # Use os.getcwd() for consistent path resolution in test environments
+        if path == ".":
+            project_path = Path(os.getcwd()).resolve()
+        else:
+            project_path = Path(path).resolve()
 
         # Verify the project is initialized
         if not (project_path / ".moai").exists():

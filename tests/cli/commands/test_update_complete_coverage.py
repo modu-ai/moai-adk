@@ -1051,20 +1051,22 @@ class TestRestoreCustomFilesUncovered:
 class TestUpdateCommandUncoveredPaths:
     """Test uncovered execution paths in update command"""
 
-    def test_update_check_mode_upgrade_available(self, tmp_path):
+    def test_update_check_mode_upgrade_available(self):
         """Given: --check flag with upgrade available
         When: update() is called
         Then: Shows update available message
         """
+        import os
         runner = CliRunner()
 
-        with runner.isolated_filesystem(temp_dir=tmp_path):
+        with runner.isolated_filesystem():
             # Create .moai directory inside isolated filesystem
             from pathlib import Path
             moai_dir = Path.cwd() / ".moai"
             moai_dir.mkdir()
 
             with (
+                patch("os.getcwd", return_value=str(Path.cwd())),
                 patch("moai_adk.cli.commands.update._get_current_version", return_value="0.6.0"),
                 patch("moai_adk.cli.commands.update._get_latest_version", return_value="0.7.0"),
             ):
@@ -1074,20 +1076,22 @@ class TestUpdateCommandUncoveredPaths:
                 assert "Update available" in result.output
                 assert "0.6.0 → 0.7.0" in result.output
 
-    def test_update_check_mode_dev_version(self, tmp_path):
+    def test_update_check_mode_dev_version(self):
         """Given: Current version > latest (dev version)
         When: update() with --check is called
         Then: Shows dev version message
         """
+        import os
         runner = CliRunner()
 
-        with runner.isolated_filesystem(temp_dir=tmp_path):
+        with runner.isolated_filesystem():
             # Create .moai directory inside isolated filesystem
             from pathlib import Path
             moai_dir = Path.cwd() / ".moai"
             moai_dir.mkdir()
 
             with (
+                patch("os.getcwd", return_value=str(Path.cwd())),
                 patch("moai_adk.cli.commands.update._get_current_version", return_value="0.8.0"),
                 patch("moai_adk.cli.commands.update._get_latest_version", return_value="0.7.0"),
             ):
@@ -1096,20 +1100,22 @@ class TestUpdateCommandUncoveredPaths:
                 assert result.exit_code == 0
                 assert "Dev version" in result.output
 
-    def test_update_check_mode_up_to_date(self, tmp_path):
+    def test_update_check_mode_up_to_date(self):
         """Given: Current version == latest version
         When: update() with --check is called
         Then: Shows up to date message
         """
+        import os
         runner = CliRunner()
 
-        with runner.isolated_filesystem(temp_dir=tmp_path):
+        with runner.isolated_filesystem():
             # Create .moai directory inside isolated filesystem
             from pathlib import Path
             moai_dir = Path.cwd() / ".moai"
             moai_dir.mkdir()
 
             with (
+                patch("os.getcwd", return_value=str(Path.cwd())),
                 patch("moai_adk.cli.commands.update._get_current_version", return_value="0.7.0"),
                 patch("moai_adk.cli.commands.update._get_latest_version", return_value="0.7.0"),
             ):
@@ -1118,20 +1124,22 @@ class TestUpdateCommandUncoveredPaths:
                 assert result.exit_code == 0
                 assert "Already up to date" in result.output
 
-    def test_update_spinner_import_error(self, tmp_path):
+    def test_update_spinner_import_error(self):
         """Given: SpinnerContext import fails
         When: update() checks versions
         Then: Falls back to simple console output
         """
+        import os
         runner = CliRunner()
 
-        with runner.isolated_filesystem(temp_dir=tmp_path):
+        with runner.isolated_filesystem():
             # Create .moai directory inside isolated filesystem
             from pathlib import Path
             moai_dir = Path.cwd() / ".moai"
             moai_dir.mkdir()
 
             with (
+                patch("os.getcwd", return_value=str(Path.cwd())),
                 patch("moai_adk.cli.commands.update._get_current_version", return_value="0.7.0"),
                 patch("moai_adk.cli.commands.update._get_latest_version", return_value="0.7.0"),
                 patch("moai_adk.cli.ui.progress.SpinnerContext", side_effect=ImportError),
@@ -1141,20 +1149,22 @@ class TestUpdateCommandUncoveredPaths:
 
                 assert result.exit_code == 0
 
-    def test_update_upgrade_user_cancels(self, tmp_path):
+    def test_update_upgrade_user_cancels(self):
         """Given: Upgrade needed but user cancels
         When: update() is called
         Then: Exits without upgrading
         """
+        import os
         runner = CliRunner()
 
-        with runner.isolated_filesystem(temp_dir=tmp_path):
+        with runner.isolated_filesystem():
             # Create .moai directory INSIDE isolated filesystem
             from pathlib import Path
             moai_dir = Path.cwd() / ".moai"
             moai_dir.mkdir()
 
             with (
+                patch("os.getcwd", return_value=str(Path.cwd())),
                 patch("moai_adk.cli.commands.update._get_current_version", return_value="0.6.0"),
                 patch("moai_adk.cli.commands.update._get_latest_version", return_value="0.7.0"),
                 patch(
@@ -1168,52 +1178,60 @@ class TestUpdateCommandUncoveredPaths:
                 assert result.exit_code == 0
                 assert "Cancelled" in result.output
 
-    def test_update_templates_only_sync_error(self, tmp_path):
+    def test_update_templates_only_sync_error(self):
         """Given: --templates-only with sync error
         When: update() is called
         Then: Shows error message and aborts
         """
+        import os
         runner = CliRunner()
 
-        with runner.isolated_filesystem(temp_dir=tmp_path):
+        with runner.isolated_filesystem():
             # Create .moai directory INSIDE isolated filesystem
             from pathlib import Path
             moai_dir = Path.cwd() / ".moai"
             moai_dir.mkdir()
 
-            with patch("moai_adk.cli.commands.update._sync_templates", return_value=False):
+            with (
+                patch("os.getcwd", return_value=str(Path.cwd())),
+                patch("moai_adk.cli.commands.update._sync_templates", return_value=False),
+            ):
                 result = runner.invoke(update, ["--templates-only"])
 
                 assert result.exit_code != 0
                 assert "Template sync failed" in result.output
 
-    def test_update_edit_config_mode(self, tmp_path):
+    def test_update_edit_config_mode(self):
         """Given: --config / -c flag
         When: update() is called
         Then: Calls _edit_configuration and returns
         """
+        import os
         runner = CliRunner()
 
-        with runner.isolated_filesystem(temp_dir=tmp_path):
+        with runner.isolated_filesystem():
             # Create .moai directory INSIDE isolated filesystem
             from pathlib import Path
             moai_dir = Path.cwd() / ".moai"
             moai_dir.mkdir()
 
-            with patch("moai_adk.cli.commands.update._edit_configuration") as mock_edit:
+            with (
+                patch("os.getcwd", return_value=str(Path.cwd())),
+                patch("moai_adk.cli.commands.update._edit_configuration") as mock_edit,
+            ):
                 result = runner.invoke(update, ["--config"])
 
                 assert result.exit_code == 0
                 mock_edit.assert_called_once()
 
-    def test_update_project_not_initialized(self, tmp_path):
+    def test_update_project_not_initialized(self):
         """Given: No .moai directory exists
         When: update() is called
         Then: Shows error and aborts
         """
         runner = CliRunner()
 
-        with runner.isolated_filesystem(temp_dir=tmp_path):
+        with runner.isolated_filesystem():
             result = runner.invoke(update, [])
 
             assert result.exit_code != 0

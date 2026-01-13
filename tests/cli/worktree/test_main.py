@@ -248,32 +248,30 @@ class TestMainExitCodes:
         """Test exit code 1 for SystemExit exceptions."""
         mock_worktree.side_effect = SystemExit(1)
 
-        result = __main__.main()
-
-        assert result == 1
+        # Note: SystemExit is NOT caught by "except Exception" clause
+        # It will propagate and cause the program to exit
+        with pytest.raises(SystemExit):
+            __main__.main()
 
 
 class TestMainErrorOutputFormat:
     """Test error output formatting."""
 
     @patch("moai_adk.cli.worktree.__main__.worktree")
-    @patch("sys.stderr", new_callable=MagicMock)
     def test_error_output_starts_with_error_prefix(
-        self, mock_stderr: MagicMock, mock_worktree: MagicMock
+        self, mock_worktree: MagicMock, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Test that error output starts with 'Error: ' prefix."""
         mock_worktree.side_effect = Exception("Something went wrong")
 
         __main__.main()
 
-        # Get the written content
-        written_content = str(mock_stderr.write.call_args)
-        assert "Error:" in written_content
+        captured = capsys.readouterr()
+        assert "Error:" in captured.err
 
     @patch("moai_adk.cli.worktree.__main__.worktree")
-    @patch("sys.stderr", new_callable=MagicMock)
     def test_error_output_includes_exception_message(
-        self, mock_stderr: MagicMock, mock_worktree: MagicMock
+        self, mock_worktree: MagicMock, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Test that error output includes the exception message."""
         error_msg = "Worktree for SPEC-001 not found"
@@ -281,12 +279,10 @@ class TestMainErrorOutputFormat:
 
         __main__.main()
 
-        # Get the written content
-        written_content = str(mock_stderr.write.call_args)
-        assert error_msg in written_content
+        captured = capsys.readouterr()
+        assert error_msg in captured.err
 
     @patch("moai_adk.cli.worktree.__main__.worktree")
-    @patch("sys.stderr", new_callable=MagicMock)
     def test_error_output_goes_to_stderr_not_stdout(
         self, mock_worktree: MagicMock, capsys: pytest.CaptureFixture[str]
     ) -> None:

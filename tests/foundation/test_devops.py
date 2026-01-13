@@ -1,10 +1,10 @@
 """
 Comprehensive TDD tests for devops.py module.
-Tests cover all 7 classes.
+Tests cover all 7 classes with corrected method signatures.
 """
 
 import pytest
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from moai_adk.foundation.devops import (
     CICDPipelineOrchestrator,
     InfrastructureManager,
@@ -14,8 +14,12 @@ from moai_adk.foundation.devops import (
     SecurityHardener,
     DevOpsMetricsCollector,
     CICDWorkflowConfig,
-    DeploymentConfig,
+    InfrastructureConfig,
+    ContainerConfig,
+    MonitoringConfig,
     SecurityConfig,
+    DeploymentConfig,
+    DevOpsMetrics,
 )
 
 
@@ -30,64 +34,58 @@ class TestCICDPipelineOrchestrator:
     def test_initialization(self):
         """Test orchestrator initialization."""
         orchestrator = CICDPipelineOrchestrator()
-        assert orchestrator.pipelines == {}
-        assert "GitHub Actions" in orchestrator.SUPPORTED_PLATFORMS
+        assert orchestrator.supported_platforms == ["github", "gitlab", "jenkins", "azure-pipelines"]
+        assert orchestrator.default_environments == ["dev", "staging", "prod"]
 
     def test_orchestrate_github_actions_basic(self):
         """Test basic GitHub Actions orchestration."""
         orchestrator = CICDPipelineOrchestrator()
         config = orchestrator.orchestrate_github_actions(
-            repo_name="test-repo",
-            stages=["build", "test", "deploy"]
+            config={"name": "test-app", "runtime": "python", "framework": "fastapi"}
         )
 
-        assert config["platform"] == "GitHub Actions"
-        assert config["repo_name"] == "test-repo"
-        assert len(config["stages"]) == 3
-        assert "yaml_content" in config
+        assert config["name"] == "test-app"
+        assert "jobs" in config
+        assert "test" in config["jobs"]
+        assert "build" in config["jobs"]
+        assert "deploy" in config["jobs"]
 
     def test_orchestrate_gitlab_ci_with_docker(self):
         """Test GitLab CI orchestration with Docker."""
         orchestrator = CICDPipelineOrchestrator()
         config = orchestrator.orchestrate_gitlab_ci(
-            project_name="test-project",
-            docker_image="python:3.13",
-            stages=["build", "test", "deploy"]
+            config={
+                "stages": ["build", "test", "deploy"],
+                "docker_image": "python:3.13"
+            }
         )
 
-        assert config["platform"] == "GitLab CI"
-        assert config["docker_image"] == "python:3.13"
-        assert len(config["stages"]) == 3
+        assert config["stages"] == ["build", "test", "deploy"]
+        assert config["image"] == "python:3.13"
+        assert "build" in config
+        assert "test" in config
 
     def test_orchestrate_jenkins_pipeline(self):
         """Test Jenkins pipeline orchestration."""
         orchestrator = CICDPipelineOrchestrator()
-        config = orchestrator.orchestrate_jenkins_pipeline(
-            job_name="test-job",
-            stages=["build", "test", "deploy"]
+        config = orchestrator.orchestrate_jenkins(
+            config={"stages": ["Build", "Test", "Deploy"]}
         )
 
-        assert config["platform"] == "Jenkins"
-        assert config["job_name"] == "test-job"
-        assert "jenkinsfile_content" in config
+        assert "pipeline" in config
+        assert config["pipeline"]["agent"] == "any"
+        assert len(config["pipeline"]["stages"]) == 3
 
-    def test_add_stage_to_pipeline(self):
-        """Test adding stage to pipeline."""
+    def test_optimize_build_pipeline(self):
+        """Test build pipeline optimization."""
         orchestrator = CICDPipelineOrchestrator()
-        pipeline = orchestrator.orchestrate_github_actions("test-repo", ["build"])
-        updated = orchestrator.add_stage(pipeline, "test")
+        config = orchestrator.optimize_build_pipeline(
+            config={"base_image": "python:3.11-slim"}
+        )
 
-        assert "test" in [s["name"] for s in updated["stages"]]
-
-    def test_validate_pipeline_valid(self):
-        """Test validation of valid pipeline."""
-        orchestrator = CICDPipelineOrchestrator()
-        pipeline = orchestrator.orchestrate_github_actions("test-repo", ["build", "test"])
-
-        result = orchestrator.validate_pipeline(pipeline)
-
-        assert result["valid"] is True
-        assert len(result["errors"]) == 0
+        assert config["multi_stage_build"] is True
+        assert config["layer_caching"] is True
+        assert config["base_image"] == "python:3.11-slim"
 
 
 # ============================================================================
@@ -99,47 +97,59 @@ class TestInfrastructureManager:
     """Test suite for InfrastructureManager class."""
 
     def test_initialization(self):
-        """Test manager initialization."""
+        """Test infrastructure manager initialization."""
         manager = InfrastructureManager()
-        assert manager.infrastructure == {}
+        assert manager.supported_providers == ["aws", "gcp", "azure", "kubernetes"]
+        assert manager.default_region == "us-west-2"
 
-    def test_terraform_basic_configuration(self):
-        """Test basic Terraform configuration."""
+    def test_generate_kubernetes_manifests(self):
+        """Test Kubernetes manifests generation."""
         manager = InfrastructureManager()
-        config = manager.terraform_basic_configuration(
-            provider="aws",
-            region="us-east-1"
+        manifests = manager.generate_kubernetes_manifests(
+            app_config={"name": "test-app", "namespace": "production", "replicas": 5}
         )
 
-        assert config["provider"] == "aws"
-        assert config["region"] == "us-east-1"
-        assert "terraform_content" in config
+        assert "deployment" in manifests
+        assert "service" in manifests
+        assert "configmap" in manifests
+        assert manifests["deployment"]["spec"]["replicas"] == 5
 
-    def test_configure_vpc_aws(self):
-        """Test AWS VPC configuration."""
+    def test_create_helm_charts(self):
+        """Test Helm chart creation."""
         manager = InfrastructureManager()
-        vpc = manager.configure_vpc(
-            provider="aws",
-            cidr_block="10.0.0.0/16",
-            subnet_count=3
+        charts = manager.create_helm_charts(
+            chart_config={"name": "test-chart", "version": "1.0.0"}
         )
 
-        assert vpc["provider"] == "aws"
-        assert vpc["cidr_block"] == "10.0.0.0/16"
-        assert vpc["subnet_count"] == 3
+        assert "Chart.yaml" in charts
+        assert "values.yaml" in charts
+        assert "templates" in charts
+        assert charts["Chart.yaml"]["name"] == "test-chart"
 
-    def test_configure_load_balancer(self):
-        """Test load balancer configuration."""
+    def test_design_terraform_modules(self):
+        """Test Terraform module design."""
         manager = InfrastructureManager()
-        lb = manager.configure_load_balancer(
-            provider="aws",
-            lb_type="application",
-            target_groups=["web", "api"]
+        modules = manager.design_terraform_modules(
+            module_config={
+                "provider": "aws",
+                "region": "us-east-1",
+                "resources": {"vpc": {"cidr": "10.0.0.0/16"}}
+            }
         )
 
-        assert lb["provider"] == "aws"
-        assert lb["type"] == "application"
-        assert len(lb["target_groups"]) == 2
+        assert "provider" in modules
+        assert "variables" in modules
+        assert "outputs" in modules
+        assert modules["provider"]["region"] == "us-east-1"
+
+    def test_validate_infrastructure(self):
+        """Test infrastructure validation."""
+        manager = InfrastructureManager()
+        result = manager.validate_infrastructure()
+
+        assert "compliance_score" in result
+        assert "validations" in result
+        assert result["compliance_score"] >= 0
 
 
 # ============================================================================
@@ -151,61 +161,54 @@ class TestContainerOrchestrator:
     """Test suite for ContainerOrchestrator class."""
 
     def test_initialization(self):
-        """Test orchestrator initialization."""
+        """Test container orchestrator initialization."""
         orchestrator = ContainerOrchestrator()
-        assert orchestrator.containers == {}
-        assert "Kubernetes" in orchestrator.SUPPORTED_PLATFORMS
+        assert "docker" in orchestrator.supported_runtimes
+        assert "python" in orchestrator.default_base_images
 
-    def test_deploy_kubernetes_deployment(self):
-        """Test Kubernetes deployment configuration."""
+    def test_optimize_dockerfile(self):
+        """Test Dockerfile optimization."""
         orchestrator = ContainerOrchestrator()
-        config = orchestrator.deploy_kubernetes_deployment(
-            name="test-app",
-            image="test-image:latest",
-            replicas=3
+        config = orchestrator.optimize_dockerfile(
+            dockerfile_config={"base_image": "python:3.11-slim", "workdir": "/app"}
         )
 
-        assert config["platform"] == "Kubernetes"
-        assert config["name"] == "test-app"
-        assert config["replicas"] == 3
-        assert "yaml_content" in config
+        assert config["multi_stage"] is True
+        assert config["security_features"]["non_root_user"] is True
+        assert config["base_image"] == "python:3.11-slim"
 
-    def test_deploy_kubernetes_service(self):
-        """Test Kubernetes service configuration."""
+    def test_scan_container_security(self):
+        """Test container security scanning."""
         orchestrator = ContainerOrchestrator()
-        config = orchestrator.deploy_kubernetes_service(
-            name="test-service",
-            selector={"app": "test"},
-            port=80
+        results = orchestrator.scan_container_security(
+            image_name="nginx:latest",
+            security_config={"scan_level": "standard"}
         )
 
-        assert config["name"] == "test-service"
-        assert config["port"] == 80
+        assert "vulnerabilities" in results
+        assert "security_score" in results
+        assert results["scan_metadata"]["image_name"] == "nginx:latest"
 
-    def test_deploy_docker_compose(self):
-        """Test Docker Compose deployment."""
+    def test_plan_kubernetes_deployment(self):
+        """Test Kubernetes deployment planning."""
         orchestrator = ContainerOrchestrator()
-        services = {
-            "web": {"image": "nginx", "ports": ["80:80"]},
-            "api": {"image": "api", "ports": ["8000:8000"]}
-        }
-
-        config = orchestrator.deploy_docker_compose(services)
-
-        assert "yaml_content" in config
-        assert len(config["services"]) == 2
-
-    def test_configure_helm_chart(self):
-        """Test Helm chart configuration."""
-        orchestrator = ContainerOrchestrator()
-        chart = orchestrator.configure_helm_chart(
-            name="test-chart",
-            version="1.0.0",
-            values={"replicas": 3}
+        plan = orchestrator.plan_kubernetes_deployment(
+            deployment_config={"app_name": "test-app", "replicas": 3}
         )
 
-        assert chart["name"] == "test-chart"
-        assert chart["version"] == "1.0.0"
+        assert "deployment_yaml" in plan
+        assert "service_yaml" in plan
+        assert "ingress_yaml" in plan
+        assert plan["deployment_yaml"]["spec"]["replicas"] == 3
+
+    def test_configure_service_mesh(self):
+        """Test service mesh configuration."""
+        orchestrator = ContainerOrchestrator()
+        config = orchestrator.configure_service_mesh()
+
+        assert "istio" in config
+        assert "cilium" in config
+        assert config["istio"]["enabled"] is True
 
 
 # ============================================================================
@@ -217,46 +220,55 @@ class TestMonitoringArchitect:
     """Test suite for MonitoringArchitect class."""
 
     def test_initialization(self):
-        """Test architect initialization."""
+        """Test monitoring architect initialization."""
         architect = MonitoringArchitect()
-        assert architect.monitors == {}
+        assert architect.default_scrape_interval == "15s"
+        assert architect.default_evaluation_interval == "15s"
 
-    def test_setup_prometheus_metrics(self):
-        """Test Prometheus metrics setup."""
+    def test_setup_prometheus(self):
+        """Test Prometheus setup."""
         architect = MonitoringArchitect()
-        config = architect.setup_prometheus_metrics(
-            service_name="test-service",
-            port=9090,
-            metrics=["http_requests", "response_time"]
+        config = architect.setup_prometheus(
+            metrics_config={"app_name": "test-app", "scrape_interval": "30s"}
         )
 
-        assert config["monitoring_system"] == "Prometheus"
-        assert config["service_name"] == "test-service"
-        assert config["port"] == 9090
+        assert "prometheus_config" in config
+        assert "scrape_interval" in config
+        assert config["scrape_interval"] == "30s"
 
-    def test_setup_grafana_dashboard(self):
-        """Test Grafana dashboard setup."""
+    def test_design_grafana_dashboards(self):
+        """Test Grafana dashboard design."""
         architect = MonitoringArchitect()
-        dashboard = architect.setup_grafana_dashboard(
-            dashboard_name="test-dashboard",
-            panels=[{"title": "Request Rate", "query": "rate(http_requests[5m])"}]
+        config = architect.design_grafana_dashboards(
+            dashboard_config={
+                "dashboard_name": "Test Dashboard",
+                "panels": [{"title": "CPU Usage", "metric": "cpu_usage"}]
+            }
         )
 
-        assert dashboard["dashboard_name"] == "test-dashboard"
-        assert len(dashboard["panels"]) == 1
+        assert "dashboard_json" in config
+        assert config["dashboard_json"]["title"] == "Test Dashboard"
+        assert len(config["dashboard_json"]["panels"]) == 1
 
-    def test_configure_alerts(self):
-        """Test alert configuration."""
+    def test_configure_logging(self):
+        """Test ELK logging configuration."""
         architect = MonitoringArchitect()
-        alerts = architect.configure_alerts(
-            alert_name="high_error_rate",
-            condition="error_rate > 0.05",
-            duration="5m"
+        config = architect.configure_logging(
+            logging_config={"app_name": "test-app", "environment": "production"}
         )
 
-        assert alerts["alert_name"] == "high_error_rate"
-        assert alerts["condition"] == "error_rate > 0.05"
-        assert alerts["duration"] == "5m"
+        assert "elasticsearch_config" in config
+        assert "logstash_config" in config
+        assert "filebeat_config" in config
+
+    def test_setup_alerting(self):
+        """Test alerting setup."""
+        architect = MonitoringArchitect()
+        config = architect.setup_alerting()
+
+        assert "alertmanager" in config
+        assert "alert_rules" in config
+        assert len(config["alert_rules"]) > 0
 
 
 # ============================================================================
@@ -268,49 +280,57 @@ class TestDeploymentStrategist:
     """Test suite for DeploymentStrategist class."""
 
     def test_initialization(self):
-        """Test strategist initialization."""
+        """Test deployment strategist initialization."""
         strategist = DeploymentStrategist()
-        assert "blue_green" in strategist.DEPLOYMENT_STRATEGIES
+        assert "blue_green" in strategist.supported_strategies
+        assert "canary" in strategist.supported_strategies
 
-    def test_blue_green_deployment(self):
-        """Test blue-green deployment configuration."""
+    def test_plan_continuous_deployment(self):
+        """Test continuous deployment planning."""
         strategist = DeploymentStrategist()
-        config = strategist.blue_green_deployment(
-            service_name="test-service",
-            blue_version="v1.0",
-            green_version="v2.0"
+        plan = strategist.plan_continuous_deployment(
+            cd_config={"environments": ["staging", "production"], "gates": ["tests", "security"]}
         )
 
-        assert config["strategy"] == "blue_green"
-        assert config["blue_version"] == "v1.0"
-        assert config["green_version"] == "v2.0"
+        assert "pipeline_stages" in plan
+        assert "quality_gates" in plan
+        assert len(plan["pipeline_stages"]) == 2
 
-    def test_canary_deployment(self):
-        """Test canary deployment configuration."""
+    def test_design_canary_deployment(self):
+        """Test canary deployment design."""
         strategist = DeploymentStrategist()
-        config = strategist.canary_deployment(
-            service_name="test-service",
-            stable_version="v1.0",
-            canary_version="v2.0",
-            canary_percentage=10
+        config = strategist.design_canary_deployment(
+            canary_config={"canary_percentage": 20, "monitoring_duration": "15m"}
         )
 
-        assert config["strategy"] == "canary"
-        assert config["canary_percentage"] == 10
+        assert "canary_config" in config
+        assert "traffic_splitting" in config
+        assert config["canary_config"]["initial_percentage"] == 20
 
-    def test_rolling_deployment(self):
-        """Test rolling deployment configuration."""
+    def test_implement_blue_green_deployment(self):
+        """Test blue-green deployment implementation."""
         strategist = DeploymentStrategist()
-        config = strategist.rolling_deployment(
-            service_name="test-service",
-            new_version="v2.0",
-            batch_size=2,
-            pause_seconds=30
+        config = strategist.implement_blue_green_deployment(
+            bg_config={
+                "blue_environment": "prod-blue",
+                "green_environment": "prod-green"
+            }
         )
 
-        assert config["strategy"] == "rolling"
-        assert config["batch_size"] == 2
-        assert config["pause_seconds"] == 30
+        assert "environment_config" in config
+        assert "traffic_switch" in config
+        assert config["environment_config"]["blue"]["active"] is True
+
+    def test_integrate_automated_testing(self):
+        """Test automated testing integration."""
+        strategist = DeploymentStrategist()
+        config = strategist.integrate_automated_testing(
+            testing_config={"test_types": ["unit", "integration"], "parallel_execution": True}
+        )
+
+        assert "test_matrix" in config
+        assert "coverage_requirements" in config
+        assert len(config["test_matrix"]["tests"]) == 2
 
 
 # ============================================================================
@@ -322,54 +342,47 @@ class TestSecurityHardener:
     """Test suite for SecurityHardener class."""
 
     def test_initialization(self):
-        """Test hardener initialization."""
+        """Test security hardener initialization."""
         hardener = SecurityHardener()
-        assert hardener.security_policies == {}
+        assert "cis_aws" in hardener.supported_standards
+        assert "pci_dss" in hardener.supported_standards
+
+    def test_scan_docker_images(self):
+        """Test Docker image security scanning."""
+        hardener = SecurityHardener()
+        results = hardener.scan_docker_images(image_name="nginx:latest")
+
+        assert "vulnerabilities" in results
+        assert "security_score" in results
+        assert results["image_name"] == "nginx:latest"
 
     def test_configure_secrets_management(self):
         """Test secrets management configuration."""
         hardener = SecurityHardener()
-        config = hardener.configure_secrets_management(
-            provider="aws",
-            secret_name="test-secret"
-        )
+        config = hardener.configure_secrets_management()
 
-        assert config["provider"] == "aws"
-        assert config["secret_name"] == "test-secret"
+        assert "vault" in config
+        assert "kubernetes_secrets" in config
+        assert "rotation_policy" in config
 
-    def test_enable_network_policies(self):
-        """Test network policies enablement."""
+    def test_setup_network_policies(self):
+        """Test network policies setup."""
         hardener = SecurityHardener()
-        policies = hardener.enable_network_policies(
-            platform="kubernetes",
-            default_action="deny"
-        )
+        policies = hardener.setup_network_policies()
 
-        assert policies["platform"] == "kubernetes"
-        assert policies["default_action"] == "deny"
+        assert "default_deny" in policies
+        assert "allow_same_namespace" in policies
+        assert "allow_dns" in policies
 
-    def test_scan_vulnerabilities(self):
-        """Test vulnerability scanning."""
+    def test_audit_compliance(self):
+        """Test compliance audit."""
         hardener = SecurityHardener()
-        report = hardener.scan_vulnerabilities(
-            image="test-image:latest",
-            severity_threshold="high"
-        )
+        report = hardener.audit_compliance()
 
-        assert "scan_results" in report
-        assert "vulnerabilities" in report
-
-    def test_enforce_pod_security(self):
-        """Test pod security enforcement."""
-        hardener = SecurityHardener()
-        policy = hardener.enforce_pod_security(
-            policy_level="restricted",
-            run_as_non_root=True,
-            drop_capabilities=["ALL"]
-        )
-
-        assert policy["policy_level"] == "restricted"
-        assert policy["run_as_non_root"] is True
+        assert "audit_timestamp" in report
+        assert "compliance_standards" in report
+        assert "overall_score" in report
+        assert report["overall_score"] >= 0
 
 
 # ============================================================================
@@ -381,55 +394,57 @@ class TestDevOpsMetricsCollector:
     """Test suite for DevOpsMetricsCollector class."""
 
     def test_initialization(self):
-        """Test collector initialization."""
+        """Test metrics collector initialization."""
         collector = DevOpsMetricsCollector()
-        assert collector.metrics == {}
+        assert collector.metrics_window_days == 30
 
-    def test_record_deployment_frequency(self):
-        """Test deployment frequency recording."""
+    def test_collect_deployment_metrics(self):
+        """Test deployment metrics collection."""
         collector = DevOpsMetricsCollector()
-        collector.record_deployment(
-            service="test-service",
-            version="v1.0",
-            environment="production"
+        metrics = collector.collect_deployment_metrics(
+            deployment_info={"start_time": "2024-01-01T00:00:00Z", "end_time": "2024-01-01T00:15:00Z"}
         )
 
-        deployments = collector.get_deployment_frequency("test-service")
+        assert "deployment_duration" in metrics
+        assert "success_rate" in metrics
+        assert "deployment_frequency" in metrics
 
-        assert deployments["count"] == 1
-
-    def test_calculate_lead_time(self):
-        """Test lead time calculation."""
+    def test_track_pipeline_performance(self):
+        """Test pipeline performance tracking."""
         collector = DevOpsMetricsCollector()
-        lead_time = collector.calculate_lead_time(
-            service="test-service",
-            commit_date="2025-01-01",
-            deploy_date="2025-01-03"
+        metrics = collector.track_pipeline_performance(
+            pipeline_data={
+                "execution_times": {"build": 120, "test": 180, "deploy": 60},
+                "success_rate": 95.5
+            }
         )
 
-        assert lead_time["days"] == 2
+        assert "total_execution_time" in metrics
+        assert "stage_performance" in metrics
+        assert "bottleneck_analysis" in metrics
 
-    def test_calculate_change_failure_rate(self):
-        """Test change failure rate calculation."""
+    def test_monitor_resource_usage(self):
+        """Test resource usage monitoring."""
         collector = DevOpsMetricsCollector()
-        collector.record_deployment("test-service", "v1.0", "production", success=True)
-        collector.record_deployment("test-service", "v1.1", "production", success=False)
+        metrics = collector.monitor_resource_usage(
+            resource_config={"monitoring_period": "24h", "metrics": ["cpu", "memory"]}
+        )
 
-        metrics = collector.get_dora_metrics("test-service")
+        assert "cpu_utilization" in metrics
+        assert "memory_usage" in metrics
+        assert "cost_metrics" in metrics
 
-        assert metrics["change_failure_rate"] == 0.5
-
-    def test_get_dora_metrics_summary(self):
-        """Test DORA metrics summary."""
+    def test_get_devops_health_status(self):
+        """Test DevOps health status retrieval."""
         collector = DevOpsMetricsCollector()
-        collector.record_deployment("test-service", "v1.0", "production")
-        collector.record_deployment("test-service", "v1.1", "production")
+        status = collector.get_devops_health_status(
+            health_config={"health_threshold": {"deployment_success": 95, "uptime": 99.9}}
+        )
 
-        summary = collector.get_dora_metrics_summary()
-
-        assert "deployment_frequency" in summary
-        assert "lead_time" in summary
-        assert "change_failure_rate" in summary
+        assert "overall_health_score" in status
+        assert "category_scores" in status
+        assert "recommendations" in status
+        assert status["overall_health_score"] >= 0
 
 
 # ============================================================================
@@ -438,38 +453,90 @@ class TestDevOpsMetricsCollector:
 
 
 class TestDataClasses:
-    """Test suite for DevOps data classes."""
+    """Test suite for DevOps dataclasses."""
 
-    def test_pipeline_stage_creation(self):
-        """Test CICDWorkflowConfig dataclass creation."""
-        stage = CICDWorkflowConfig(
-            name="test",
-            command="pytest",
-            timeout=300
+    def test_cicd_workflow_config(self):
+        """Test CICDWorkflowConfig dataclass."""
+        config = CICDWorkflowConfig(
+            name="test-workflow",
+            triggers=["push", "pull_request"],
+            jobs={"build": {"steps": ["echo 'Building'"]}},
+            variables={"ENV": "test"}
         )
 
-        assert stage.name == "test"
-        assert stage.timeout == 300
+        assert config.name == "test-workflow"
+        assert len(config.triggers) == 2
+        assert config.variables["ENV"] == "test"
 
-    def test_deployment_config_creation(self):
-        """Test DeploymentConfig dataclass creation."""
+    def test_infrastructure_config(self):
+        """Test InfrastructureConfig dataclass."""
+        config = InfrastructureConfig(
+            provider="aws",
+            region="us-west-2",
+            resources={"vpc": {"cidr": "10.0.0.0/16"}},
+            variables={"environment": "production"},
+            version="1.0.0"
+        )
+
+        assert config.provider == "aws"
+        assert config.version == "1.0.0"
+
+    def test_container_config(self):
+        """Test ContainerConfig dataclass."""
+        config = ContainerConfig(
+            image="nginx:latest",
+            ports=[80, 443],
+            environment={"ENV": "production"},
+            resources={"cpu": "500m"},
+            security={"non_root": True}
+        )
+
+        assert config.image == "nginx:latest"
+        assert len(config.ports) == 2
+
+    def test_monitoring_config(self):
+        """Test MonitoringConfig dataclass."""
+        config = MonitoringConfig(
+            scrape_interval="30s",
+            targets=[{"job": "app", "target": "localhost:9000"}],
+            alert_rules=[{"name": "HighErrorRate", "expr": "rate > 0.1"}],
+            dashboards=[{"name": "Main", "panels": []}]
+        )
+
+        assert config.scrape_interval == "30s"
+        assert len(config.alert_rules) == 1
+
+    def test_security_config(self):
+        """Test SecurityConfig dataclass."""
+        config = SecurityConfig(
+            policies=[{"name": "network-policy", "rules": []}],
+            compliance_standards=["cis_aws", "pci_dss"],
+            audit_settings={"enabled": True, "frequency": "daily"}
+        )
+
+        assert len(config.compliance_standards) == 2
+        assert config.audit_settings["enabled"] is True
+
+    def test_deployment_config(self):
+        """Test DeploymentConfig dataclass."""
         config = DeploymentConfig(
-            service="test-service",
-            version="v1.0",
-            replicas=3
+            strategy="blue_green",
+            phases=[{"name": "deploy", "steps": []}],
+            rollback_config={"enabled": True, "timeout": "5m"},
+            health_checks={"endpoint": "/health", "interval": "30s"}
         )
 
-        assert config.service == "test-service"
-        assert config.replicas == 3
+        assert config.strategy == "blue_green"
+        assert config.rollback_config["enabled"] is True
 
-    def test_security_report_creation(self):
-        """Test SecurityConfig dataclass creation."""
-        report = SecurityConfig(
-            scan_date="2025-01-13",
-            critical_count=0,
-            high_count=1,
-            medium_count=3
+    def test_devops_metrics(self):
+        """Test DevOpsMetrics dataclass."""
+        metrics = DevOpsMetrics(
+            deployment_frequency={"daily": 2.5, "weekly": 17.5},
+            lead_time_for_changes={"avg_minutes": 45},
+            change_failure_rate={"percentage": 2.5},
+            mean_time_to_recovery={"avg_minutes": 15}
         )
 
-        assert report.critical_count == 0
-        assert report.high_count == 1
+        assert metrics.deployment_frequency["daily"] == 2.5
+        assert metrics.change_failure_rate["percentage"] == 2.5

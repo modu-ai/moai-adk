@@ -5,6 +5,7 @@ Analyze command for MoAI-ADK
 Analyze Claude Code sessions and generate improvement suggestions.
 """
 
+import os
 import sys
 from pathlib import Path
 from typing import Optional
@@ -53,7 +54,9 @@ def analyze(
         moai-adk analyze session --output /path/to/report.md
     """
     if project_path is None:
-        project_path = Path.cwd()
+        project_path = Path(os.getcwd())
+    elif isinstance(project_path, str):
+        project_path = Path(project_path)
 
     # Validate project path
     if not (project_path / ".moai").exists():

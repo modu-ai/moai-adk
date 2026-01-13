@@ -504,13 +504,14 @@ class TestGitOperationsIntegration:
 
     def test_git_repo_detected_by_doctor(self, cli_runner, real_git_repo):
         """Test that doctor detects Git repository."""
-        result = cli_runner.invoke(cli, ["doctor"], cwd=str(real_git_repo))
+        with patch("pathlib.Path.cwd", return_value=real_git_repo):
+            result = cli_runner.invoke(cli, ["doctor"])
 
-        # Should execute
-        assert result.exit_code in [0, 1]
+            # Should execute
+            assert result.exit_code in [0, 1]
 
-        # Should check Git
-        assert "git" in result.output.lower()
+            # Should check Git
+            assert "git" in result.output.lower()
 
     def test_git_status_shown_in_status_command(self, cli_runner, moai_project_in_git_repo):
         """Test that Git status is shown in status command."""
@@ -533,10 +534,11 @@ class TestGitOperationsIntegration:
             capture_output=True,
         )
 
-        result = cli_runner.invoke(cli, ["doctor"], cwd=str(real_git_repo))
+        with patch("pathlib.Path.cwd", return_value=real_git_repo):
+            result = cli_runner.invoke(cli, ["doctor"])
 
-        # Should execute
-        assert result.exit_code in [0, 1]
+            # Should execute
+            assert result.exit_code in [0, 1]
 
     def test_git_dirty_state_detection(self, cli_runner, real_git_repo):
         """Test detection of dirty Git state."""

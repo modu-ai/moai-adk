@@ -28,15 +28,15 @@ class TestPromptProjectSetup:
     @patch("moai_adk.cli.prompts.init_prompts._prompt_text")
     def test_setup_current_directory_no_name_input(self, mock_text, mock_select, mock_confirm, mock_password, mock_glm_exists):
         """Test setup with current directory uses dirname."""
-        # Arrange - current flow needs 5 select values:
-        # 1. locale, 2. git_mode, 3. git_commit_lang, 4. code_comment_lang, 5. doc_lang
+        # Arrange - current flow needs 6 select values when TAG is enabled:
+        # 1. locale, 2. git_mode, 3. git_commit_lang, 4. code_comment_lang, 5. doc_lang, 6. tag_mode
         mock_select.side_effect = [
             "en",  # locale
             "manual",  # git_mode
             "en",  # git_commit_lang
-            "warn",  # tag_mode
             "en",  # code_comment_lang
             "en",  # doc_lang
+            "warn",  # tag_mode
         ]
         mock_text.return_value = "my-project"  # user_name and project_name
 
@@ -55,20 +55,16 @@ class TestPromptProjectSetup:
     @patch("moai_adk.cli.prompts.init_prompts._prompt_text")
     def test_setup_provided_project_name(self, mock_text, mock_select, mock_confirm, mock_password, mock_glm_exists):
         """Test setup with provided project name."""
-        # Arrange - current flow needs 5 select values
+        # Arrange - current flow needs 6 select values when TAG is enabled:
+        # 1. locale, 2. git_mode, 3. git_commit_lang, 4. code_comment_lang, 5. doc_lang, 6. tag_mode
         mock_select.side_effect = [
-
             "ko",  # locale
             "manual",  # git_mode
             "ko",  # git_commit_lang
             "en",  # code_comment_lang
-            "ko",  # doc_lang,
-
-        "warn",  # tag_mode
-
+            "ko",  # doc_lang
+            "warn",  # tag_mode
         ]
-
-        
         mock_text.return_value = "test-project"
 
         # Act
@@ -107,21 +103,16 @@ class TestPromptProjectSetup:
     @patch("moai_adk.cli.prompts.init_prompts._prompt_text")
     def test_setup_language_korean(self, mock_text, mock_select, mock_confirm, mock_password, mock_glm_exists):
         """Test setup with Korean language selection."""
-        # Arrange - current flow needs 5 select values:
-        # 1. locale, 2. git_mode, 3. git_commit_lang, 4. code_comment_lang, 5. doc_lang
+        # Arrange - current flow needs 6 select values when TAG is enabled:
+        # 1. locale, 2. git_mode, 3. git_commit_lang, 4. code_comment_lang, 5. doc_lang, 6. tag_mode
         mock_select.side_effect = [
-
             "ko",  # locale
             "manual",  # git_mode
             "ko",  # git_commit_lang
             "en",  # code_comment_lang
-            "ko",  # doc_lang,
-
-        "warn",  # tag_mode
-
+            "ko",  # doc_lang
+            "warn",  # tag_mode
         ]
-
-        
         mock_text.return_value = "test"  # user_name and project_name
 
         # Act
@@ -184,8 +175,8 @@ class TestPromptProjectSetup:
     @patch("moai_adk.cli.prompts.init_prompts._prompt_text")
     def test_setup_glm_api_key(self, mock_text, mock_select, mock_confirm, mock_password, mock_glm_exists):
         """Test setup with GLM API key input."""
-        # Arrange - current flow needs 5 select values:
-        # 1. locale, 2. git_mode, 3. git_commit_lang, 4. code_comment_lang, 5. doc_lang
+        # Arrange - current flow needs 6 select values when TAG is enabled:
+        # 1. locale, 2. git_mode, 3. git_commit_lang, 4. code_comment_lang, 5. doc_lang, 6. tag_mode
         mock_select.side_effect = [
             "zh",  # locale
             "manual",  # git_mode
@@ -315,15 +306,15 @@ class TestPromptProjectSetup:
         """Test setup returns proper ProjectSetupAnswers dict."""
         # Arrange
         mock_text.return_value = "test-project"
-        # Current flow needs 5 select values:
-        # 1. locale, 2. git_mode, 3. git_commit_lang, 4. code_comment_lang, 5. doc_lang
+        # Current flow needs 6 select values when TAG is enabled:
+        # 1. locale, 2. git_mode, 3. git_commit_lang, 4. code_comment_lang, 5. doc_lang, 6. tag_mode
         mock_select.side_effect = [
             "en",  # locale
             "manual",  # git_mode
             "en",  # git_commit_lang
-            "warn",  # tag_mode
             "en",  # code_comment_lang
             "en",  # doc_lang
+            "warn",  # tag_mode
         ]
 
         # Act

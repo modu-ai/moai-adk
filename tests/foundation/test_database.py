@@ -17,6 +17,8 @@ from moai_adk.foundation.database import (
     ValidationResult,
     IndexRecommendation,
     PoolConfiguration,
+    MigrationPlan,
+    ACIDCompliance,
 )
 
 
@@ -28,92 +30,124 @@ from moai_adk.foundation.database import (
 class TestSchemaNormalizer:
     """Test suite for SchemaNormalizer class."""
 
-    def test_initialization(self):
-        """Test normalizer initialization."""
-        normalizer = SchemaNormalizer()
-        assert normalizer.schemas == {}
-        assert normalizer.NORMALIZATION_LEVELS == ["1NF", "2NF", "3NF", "BCNF"]
-
-    def test_normalize_1nf_valid(self, sample_database_schema):
-        """Test 1NF normalization with valid schema."""
-        normalizer = SchemaNormalizer()
-        result = normalizer.normalize_1nf(sample_database_schema)
-
-        assert result["level"] == "1NF"
-        assert result["atomic_values"] is True
-        assert result["no_repeating_groups"] is True
-        assert result["errors"] is None
-
-    def test_normalize_1nf_with_repeating_groups(self):
-        """Test 1NF normalization failure with repeating groups."""
+    def test_validate_1nf_valid(self):
+        """Test 1NF validation with valid schema."""
         normalizer = SchemaNormalizer()
         schema = {
             "users": {
                 "id": "INTEGER",
                 "name": "VARCHAR(100)",
-                "emails": "VARCHAR(255)[]"  # Array - repeating group
+                "email": "VARCHAR(255)",
+                "PRIMARY KEY": "id"
             }
         }
-        result = normalizer.normalize_1nf(schema)
+        result = normalizer.validate_1nf(schema)
 
-        assert result["level"] == "1NF"
-        assert result["atomic_values"] is False
-        assert "repeating groups" in result["errors"][0].lower()
+        assert result["is_valid"] is True
+        assert result["normalization_level"] == "1NF"
+        assert len(result["violations"]) == 0
 
-    def test_normalize_2nf_valid(self, sample_database_schema):
-        """Test 2NF normalization with valid schema."""
-        normalizer = SchemaNormalizer()
-        result = normalizer.normalize_2nf(sample_database_schema)
-
-        assert result["level"] == "2NF"
-        assert result["no_partial_dependencies"] is True
-
-    def test_normalize_2nf_with_partial_dependencies(self):
-        """Test 2NF normalization failure with partial dependencies."""
-        normalizer = SchemaNormalizer()
-        schema = {
-            "order_items": {
-                "order_id": "INTEGER",  # Part of composite key
-                "product_id": "INTEGER",  # Part of composite key
-                "product_name": "VARCHAR(100)",  # Depends only on product_id
-                "quantity": "INTEGER"
-            }
-        }
-        result = normalizer.normalize_2nf(schema)
-
-        assert result["level"] == "2NF"
-        assert result["no_partial_dependencies"] is False
-        assert "partial dependency" in result["errors"][0].lower()
-
-    def test_normalize_3nf_valid(self, sample_database_schema):
-        """Test 3NF normalization with valid schema."""
-        normalizer = SchemaNormalizer()
-        result = normalizer.normalize_3nf(sample_database_schema)
-
-        assert result["level"] == "3NF"
-        assert result["no_transitive_dependencies"] is True
-
-    def test_normalize_3nf_with_transitive_dependencies(self):
-        """Test 3NF normalization failure with transitive dependencies."""
+    def test_validate_1nf_with_repeating_groups(self):
+        """Test 1NF validation failure with repeating groups."""
         normalizer = SchemaNormalizer()
         schema = {
             "users": {
-                "id": "INTEGER PRIMARY KEY",
+                "id": "INTEGER",
                 "name": "VARCHAR(100)",
-                "city": "VARCHAR(100)",
-                "state": "VARCHAR(50)",
-                "zip": "VARCHAR(10)"  # Transitive: id -> city -> zip
+                "email_list": "VARCHAR(255)",  # Multi-value attribute
+                "PRIMARY KEY": "id"
             }
         }
-        result = normalizer.normalize_3nf(schema)
+        result = normalizer.validate_1nf(schema)
 
-        assert result["level"] == "3NF"
-        assert result["no_transitive_dependencies"] is False
+        assert result["is_valid"] is False
+        assert result["normalization_level"] == "0NF"
+        assert len(result["violations"]) > 0
+        assert "email_list" in result["violations"][0]
 
-    def test_get_normalization_recommendations(self, sample_database_schema):
+    def test_validate_2nf_valid(self):
+        """Test 2NF validation with valid schema."""
+        normalizer = SchemaNormalizer()
+        schema = {
+            "users": {
+                "id": "INTEGER",
+                "name": "VARCHAR(100)",
+                "email": "VARCHAR(255)",
+                "PRIMARY KEY": "id"
+            }
+        }
+        result = normalizer.validate_2nf(schema)
+
+        assert result["is_valid"] is True
+        assert result["normalization_level"] == "2NF"
+
+    def test_validate_2nf_with_partial_dependencies(self):
+        """Test 2NF validation failure with partial dependencies."""
+        normalizer = SchemaNormalizer()
+        schema = {
+            "order_items": {
+                "order_id": "INTEGER",
+                "product_id": "INTEGER",
+                "product_name": "VARCHAR(100)",  # Partial dependency on product_id
+                "quantity": "INTEGER",
+                "PRIMARY KEY": "(order_id, product_id)"
+            }
+        }
+        result = normalizer.validate_2nf(schema)
+
+        assert result["is_valid"] is False
+        assert result["normalization_level"] == "1NF"
+        assert len(result["violations"]) > 0
+
+    def test_validate_3nf_valid(self):
+        """Test 3NF validation with valid schema."""
+        normalizer = SchemaNormalizer()
+        schema = {
+            "users": {
+                "id": "INTEGER",
+                "name": "VARCHAR(100)",
+                "email": "VARCHAR(255)",
+                "PRIMARY KEY": "id"
+            }
+        }
+        result = normalizer.validate_3nf(schema)
+
+        assert result["is_valid"] is True
+        assert result["normalization_level"] == "3NF"
+
+    def test_validate_3nf_with_transitive_dependencies(self):
+        """Test 3NF validation failure with transitive dependencies."""
+        normalizer = SchemaNormalizer()
+        schema = {
+            "users": {
+                "id": "INTEGER",
+                "name": "VARCHAR(100)",
+                "customer_id": "INTEGER",  # Foreign key
+                "customer_name": "VARCHAR(100)",  # Transitive: depends on customer_id
+                "customer_email": "VARCHAR(255)",  # Transitive: depends on customer_id
+                "PRIMARY KEY": "id"
+            }
+        }
+        result = normalizer.validate_3nf(schema)
+
+        assert result["is_valid"] is False
+        assert result["normalization_level"] == "2NF"
+        assert len(result["violations"]) > 0
+
+    def test_recommend_normalization(self):
         """Test normalization recommendations."""
         normalizer = SchemaNormalizer()
-        recommendations = normalizer.get_normalization_recommendations(sample_database_schema)
+        schema = {
+            "users": {
+                "id": "INTEGER",
+                "name": "VARCHAR(100)",
+                "email_list": "VARCHAR(255)",  # Violates 1NF
+                "city": "VARCHAR(100)",
+                "city_state": "VARCHAR(50)",  # Violates 3NF
+                "PRIMARY KEY": "id"
+            }
+        }
+        recommendations = normalizer.recommend_normalization(schema)
 
         assert isinstance(recommendations, list)
         assert len(recommendations) > 0
@@ -127,79 +161,58 @@ class TestSchemaNormalizer:
 class TestDatabaseSelector:
     """Test suite for DatabaseSelector class."""
 
-    def test_initialization(self):
-        """Test selector initialization."""
-        selector = DatabaseSelector()
-        assert selector.recommendations == {}
-
-    def test_select_database_for_read_heavy(self):
-        """Test database selection for read-heavy workload."""
+    def test_select_database_for_acid_compliance(self):
+        """Test database selection for ACID compliance."""
         selector = DatabaseSelector()
         result = selector.select_database(
-            workload_type="read_heavy",
-            data_volume="medium",
-            consistency_requirement="eventual"
+            requirements={"acid_compliance": True}
         )
 
-        assert result["database_type"] == "PostgreSQL"
-        assert result["recommended"] is True
-        assert "read_heavy" in result["workload_type"]
+        assert result["database"] == "PostgreSQL"
+        assert result["version"] == "17"
+        assert "ACID" in result["reasoning"]
+        assert isinstance(result["alternatives"], list)
 
-    def test_select_database_for_write_heavy(self):
-        """Test database selection for write-heavy workload."""
+    def test_select_database_for_flexible_schema(self):
+        """Test database selection for flexible schema."""
         selector = DatabaseSelector()
         result = selector.select_database(
-            workload_type="write_heavy",
-            data_volume="large",
-            consistency_requirement="strong"
+            requirements={"schema_flexibility": "high"}
         )
 
-        assert result["database_type"] in ["PostgreSQL", "MySQL"]
-        assert result["recommended"] is True
+        assert result["database"] == "MongoDB"
+        assert result["version"] == "8.0"
+        assert "flexible" in result["reasoning"].lower()
 
-    def test_select_database_for_analytical(self):
-        """Test database selection for analytical workload."""
+    def test_select_database_for_caching(self):
+        """Test database selection for caching."""
         selector = DatabaseSelector()
         result = selector.select_database(
-            workload_type="analytical",
-            data_volume="large",
-            consistency_requirement="eventual"
+            requirements={"use_case": "caching"}
         )
 
-        assert result["database_type"] in ["ClickHouse", "BigQuery"]
-        assert result["recommended"] is True
+        assert result["database"] == "Redis"
+        assert result["version"] == "7.4"
+        assert "cache" in result["reasoning"].lower()
 
-    def test_select_database_for_time_series(self):
-        """Test database selection for time-series data."""
+    def test_select_database_for_legacy_support(self):
+        """Test database selection for legacy support."""
         selector = DatabaseSelector()
         result = selector.select_database(
-            workload_type="time_series",
-            data_volume="large",
-            consistency_requirement="eventual"
+            requirements={"legacy_support": True}
         )
 
-        assert "InfluxDB" in result["database_type"] or "TimescaleDB" in result["database_type"]
+        assert result["database"] == "MySQL"
+        assert result["version"] == "8.4"
+        assert "legacy" in result["reasoning"].lower()
 
-    def test_select_database_for_graph(self):
-        """Test database selection for graph data."""
+    def test_select_database_default(self):
+        """Test default database selection."""
         selector = DatabaseSelector()
-        result = selector.select_database(
-            workload_type="graph",
-            data_volume="medium",
-            consistency_requirement="strong"
-        )
+        result = selector.select_database(requirements={})
 
-        assert "Neo4j" in result["database_type"]
-
-    def test_get_database_comparison(self):
-        """Test database comparison matrix."""
-        selector = DatabaseSelector()
-        comparison = selector.get_database_comparison()
-
-        assert "PostgreSQL" in comparison
-        assert "MySQL" in comparison
-        assert "MongoDB" in comparison
-        assert comparison["PostgreSQL"]["type"] == "Relational"
+        assert result["database"] == "PostgreSQL"
+        assert result["version"] == "17"
 
 
 # ============================================================================
@@ -210,74 +223,83 @@ class TestDatabaseSelector:
 class TestIndexingOptimizer:
     """Test suite for IndexingOptimizer class."""
 
-    def test_initialization(self):
-        """Test optimizer initialization."""
+    def test_recommend_index_for_equality(self):
+        """Test index recommendation for equality queries."""
         optimizer = IndexingOptimizer()
-        assert optimizer.indexes == {}
-
-    def test_recommend_indexes_for_primary_key(self, sample_database_schema):
-        """Test index recommendation for primary key."""
-        optimizer = IndexingOptimizer()
-        result = optimizer.recommend_indexes(sample_database_schema)
-
-        assert len(result) > 0
-        assert any(idx["type"] == "PRIMARY" for idx in result)
-
-    def test_recommend_indexes_for_foreign_keys(self):
-        """Test index recommendation for foreign keys."""
-        optimizer = IndexingOptimizer()
-        schema = {
-            "orders": {
-                "id": "INTEGER PRIMARY KEY",
-                "user_id": "INTEGER",  # Foreign key
-                "product_id": "INTEGER"  # Foreign key
+        result = optimizer.recommend_index(
+            query_pattern={
+                "columns": ["email"],
+                "conditions": ["email = 'test@example.com'"]
             }
-        }
-        result = optimizer.recommend_indexes(schema)
-
-        assert any(idx["column"] == "user_id" and idx["type"] == "INDEX" for idx in result)
-
-    def test_recommend_indexes_for_frequent_queries(self):
-        """Test index recommendation for frequent queries."""
-        optimizer = IndexingOptimizer()
-        schema = {
-            "users": {
-                "id": "INTEGER PRIMARY KEY",
-                "email": "VARCHAR(255)",
-                "name": "VARCHAR(100)"
-            }
-        }
-        query_patterns = ["SELECT * FROM users WHERE email = ?", "SELECT * FROM users WHERE name = ?"]
-        result = optimizer.recommend_indexes(schema, query_patterns)
-
-        assert any(idx["column"] == "email" for idx in result)
-
-    def test_create_composite_index(self):
-        """Test composite index creation."""
-        optimizer = IndexingOptimizer()
-        index = optimizer.create_composite_index(
-            table="orders",
-            columns=["user_id", "created_at"],
-            unique=False
         )
 
-        assert index["table"] == "orders"
-        assert index["columns"] == ["user_id", "created_at"]
-        assert index["type"] == "COMPOSITE"
-        assert index["unique"] is False
+        assert result["index_type"] == "HASH"
+        assert result["columns"] == ["email"]
+        assert "equality" in result["reasoning"].lower()
 
-    def test_create_unique_index(self):
-        """Test unique index creation."""
+    def test_recommend_index_for_range(self):
+        """Test index recommendation for range queries."""
         optimizer = IndexingOptimizer()
-        index = optimizer.create_unique_index(
-            table="users",
-            column="email"
+        result = optimizer.recommend_index(
+            query_pattern={
+                "columns": ["created_at"],
+                "conditions": ["created_at > '2024-01-01'"]
+            }
         )
 
-        assert index["table"] == "users"
-        assert index["column"] == "email"
-        assert index["type"] == "UNIQUE"
-        assert index["unique"] is True
+        assert result["index_type"] == "BTREE"
+        assert result["columns"] == ["created_at"]
+        assert "range" in result["reasoning"].lower()
+
+    def test_recommend_index_for_composite(self):
+        """Test composite index recommendation."""
+        optimizer = IndexingOptimizer()
+        result = optimizer.recommend_index(
+            query_pattern={
+                "columns": ["user_id", "created_at"],
+                "conditions": ["user_id = 1", "created_at > '2024-01-01'"]
+            }
+        )
+
+        assert result["index_type"] == "COMPOSITE"
+        assert len(result["columns"]) == 2
+        assert result["columns"][0] == "user_id"  # Equality column first
+
+    def test_recommend_index_default(self):
+        """Test default index recommendation."""
+        optimizer = IndexingOptimizer()
+        result = optimizer.recommend_index(
+            query_pattern={
+                "columns": ["name"],
+                "conditions": []
+            }
+        )
+
+        assert result["index_type"] == "BTREE"
+
+    def test_detect_redundant_indexes(self):
+        """Test redundant index detection."""
+        optimizer = IndexingOptimizer()
+        existing_indexes = [
+            {"name": "idx_user_email", "columns": ["email"]},
+            {"name": "idx_user_email_name", "columns": ["email", "name"]},
+            {"name": "idx_user_email_dup", "columns": ["email"]}
+        ]
+        redundant = optimizer.detect_redundant_indexes(existing_indexes)
+
+        assert len(redundant) > 0
+        assert any("Redundant with composite" in r["reason"] for r in redundant)
+
+    def test_detect_redundant_indexes_no_duplicates(self):
+        """Test redundant index detection with no duplicates."""
+        optimizer = IndexingOptimizer()
+        existing_indexes = [
+            {"name": "idx_user_email", "columns": ["email"]},
+            {"name": "idx_user_name", "columns": ["name"]}
+        ]
+        redundant = optimizer.detect_redundant_indexes(existing_indexes)
+
+        assert len(redundant) == 0
 
 
 # ============================================================================
@@ -288,72 +310,81 @@ class TestIndexingOptimizer:
 class TestConnectionPoolManager:
     """Test suite for ConnectionPoolManager class."""
 
-    def test_initialization(self):
-        """Test manager initialization."""
+    def test_calculate_optimal_pool_size_default(self):
+        """Test pool size calculation with defaults."""
         manager = ConnectionPoolManager()
-        assert manager.pools == {}
-        assert manager.DEFAULT_POOL_SIZE == 10
+        config = manager.calculate_optimal_pool_size(server_config={})
 
-    def test_create_pool_config_default(self):
-        """Test pool configuration with defaults."""
+        assert "min_size" in config
+        assert "max_size" in config
+        assert config["min_size"] >= 5
+        assert config["max_size"] > config["min_size"]
+
+    def test_calculate_optimal_pool_size_custom(self):
+        """Test pool size calculation with custom config."""
         manager = ConnectionPoolManager()
-        config = manager.create_pool_config("test_db")
-
-        assert config["database"] == "test_db"
-        assert config["pool_size"] == 10
-        assert config["max_overflow"] == 5
-        assert config["timeout"] == 30
-        assert config["recycle"] == 3600
-
-    def test_create_pool_config_custom(self):
-        """Test pool configuration with custom values."""
-        manager = ConnectionPoolManager()
-        config = manager.create_pool_config(
-            database="test_db",
-            pool_size=20,
-            max_overflow=10,
-            timeout=60,
-            recycle=7200
+        config = manager.calculate_optimal_pool_size(
+            server_config={
+                "cpu_cores": 8,
+                "max_connections": 200,
+                "expected_concurrency": 50
+            }
         )
 
-        assert config["pool_size"] == 20
-        assert config["max_overflow"] == 10
-        assert config["timeout"] == 60
-        assert config["recycle"] == 7200
+        assert config["min_size"] == 16  # 8 * 2
+        assert config["max_size"] <= 160  # 200 * 0.8
 
-    def test_get_pool_status_empty(self):
-        """Test pool status with no pools."""
+    def test_monitor_pool_health_healthy(self):
+        """Test pool health monitoring for healthy pool."""
         manager = ConnectionPoolManager()
-        status = manager.get_pool_status("test_db")
+        stats = {
+            "active_connections": 10,
+            "idle_connections": 20,
+            "max_connections": 100,
+            "wait_time_avg_ms": 50
+        }
+        health = manager.monitor_pool_health(stats)
 
-        assert status["active_connections"] == 0
-        assert status["idle_connections"] == 0
-        assert status["pool_size"] == 0
+        assert health["is_saturated"] is False
+        assert health["saturation_level"] < 0.5
+        assert len(health["warnings"]) == 0
 
-    def test_optimize_pool_size_for_read_heavy(self):
-        """Test pool size optimization for read-heavy workload."""
+    def test_monitor_pool_health_saturated(self):
+        """Test pool health monitoring for saturated pool."""
         manager = ConnectionPoolManager()
-        optimized = manager.optimize_pool_size(
-            database="test_db",
-            workload_type="read_heavy",
-            concurrent_users=100
-        )
+        stats = {
+            "active_connections": 90,
+            "idle_connections": 5,
+            "max_connections": 100,
+            "wait_time_avg_ms": 150
+        }
+        health = manager.monitor_pool_health(stats)
 
-        assert optimized["workload_type"] == "read_heavy"
-        assert optimized["recommended_pool_size"] > 10
-        assert optimized["concurrent_users"] == 100
+        assert health["is_saturated"] is True
+        assert health["saturation_level"] >= 0.90
+        assert len(health["warnings"]) > 0
 
-    def test_optimize_pool_size_for_write_heavy(self):
-        """Test pool size optimization for write-heavy workload."""
+    def test_recommend_adjustments_increase(self):
+        """Test recommendation to increase pool size."""
         manager = ConnectionPoolManager()
-        optimized = manager.optimize_pool_size(
-            database="test_db",
-            workload_type="write_heavy",
-            concurrent_users=50
-        )
+        current_config = {"max_size": 20}
+        metrics = {"avg_wait_time_ms": 250, "saturation_events_per_hour": 15}
 
-        assert optimized["workload_type"] == "write_heavy"
-        assert optimized["recommended_pool_size"] > 10
+        recommendation = manager.recommend_adjustments(current_config, metrics)
+
+        assert recommendation["suggested_max_size"] > current_config["max_size"]
+        assert recommendation["priority"] == "high"
+
+    def test_recommend_adjustments_decrease(self):
+        """Test recommendation to decrease pool size."""
+        manager = ConnectionPoolManager()
+        current_config = {"max_size": 100}
+        metrics = {"avg_wait_time_ms": 10, "idle_time_percent": 85}
+
+        recommendation = manager.recommend_adjustments(current_config, metrics)
+
+        assert recommendation["suggested_max_size"] < current_config["max_size"]
+        assert recommendation["priority"] == "low"
 
 
 # ============================================================================
@@ -364,76 +395,83 @@ class TestConnectionPoolManager:
 class TestMigrationPlanner:
     """Test suite for MigrationPlanner class."""
 
-    def test_initialization(self):
-        """Test planner initialization."""
+    def test_generate_migration_plan_add_column(self):
+        """Test migration plan for adding column."""
         planner = MigrationPlanner()
-        assert planner.migrations == {}
-        assert planner.applied_migrations == []
-
-    def test_create_migration_basic(self):
-        """Test basic migration creation."""
-        planner = MigrationPlanner()
-        migration = planner.create_migration(
-            name="add_users_table",
-            operations=["CREATE TABLE users (id INTEGER PRIMARY KEY, name VARCHAR(100))"]
+        plan = planner.generate_migration_plan(
+            change_request={
+                "operation": "add_column",
+                "table": "users",
+                "column": {
+                    "name": "email",
+                    "type": "VARCHAR(255)",
+                    "default": "''"
+                }
+            }
         )
 
-        assert migration["name"] == "add_users_table"
-        assert migration["version"] is not None
-        assert len(migration["operations"]) == 1
-        assert "created_at" in migration
+        assert plan["reversible"] is True
+        assert len(plan["steps"]) > 0
+        assert len(plan["rollback_steps"]) > 0
+        assert "estimated_duration" in plan
 
-    def test_create_migration_with_dependencies(self):
-        """Test migration creation with dependencies."""
+    def test_generate_migration_plan_drop_column(self):
+        """Test migration plan for dropping column."""
         planner = MigrationPlanner()
-        migration = planner.create_migration(
-            name="add_posts_table",
-            operations=["CREATE TABLE posts (id INTEGER PRIMARY KEY, user_id INTEGER)"],
-            dependencies=["add_users_table"]
+        plan = planner.generate_migration_plan(
+            change_request={
+                "operation": "drop_column",
+                "table": "users",
+                "column": "old_field"
+            }
         )
 
-        assert "add_users_table" in migration["dependencies"]
+        assert plan["reversible"] is True
+        assert any("Backup" in step for step in plan["steps"])
 
-    def test_validate_migration_safe(self):
-        """Test safe migration validation."""
+    def test_validate_safety_safe_operation(self):
+        """Test safety validation for safe operation."""
         planner = MigrationPlanner()
         migration = {
-            "name": "add_column",
-            "operations": ["ALTER TABLE users ADD COLUMN email VARCHAR(255)"]
+            "operation": "add_column",
+            "table": "users",
+            "column": {"name": "email", "type": "VARCHAR(255)"}
         }
 
-        result = planner.validate_migration(migration)
+        safety = planner.validate_safety(migration)
 
-        assert result["safe"] is True
-        assert result["destructive"] is False
+        assert safety["is_safe"] is True
+        assert "risks" in safety
 
-    def test_validate_migration_destructive(self):
-        """Test destructive migration validation."""
+    def test_validate_safety_unsafe_operation(self):
+        """Test safety validation for unsafe operation."""
         planner = MigrationPlanner()
         migration = {
-            "name": "drop_column",
-            "operations": ["ALTER TABLE users DROP COLUMN email"]
+            "operation": "drop_column",
+            "table": "users",
+            "column": "email"
         }
 
-        result = planner.validate_migration(migration)
+        safety = planner.validate_safety(migration)
 
-        assert result["safe"] is False
-        assert result["destructive"] is True
-        assert "DROP" in result["warnings"][0]
+        assert safety["is_safe"] is False
+        assert safety["requires_backup"] is True
 
-    def test_rollback_migration(self):
-        """Test migration rollback."""
+    def test_detect_breaking_changes(self):
+        """Test breaking changes detection."""
         planner = MigrationPlanner()
         migration = {
-            "name": "add_column",
-            "operations": ["ALTER TABLE users ADD COLUMN email VARCHAR(255)"],
-            "rollback_operations": ["ALTER TABLE users DROP COLUMN email"]
+            "operation": "change_column_type",
+            "column": "age",
+            "old_type": "VARCHAR(10)",
+            "new_type": "INTEGER"
         }
 
-        rollback = planner.rollback_migration(migration)
+        analysis = planner.detect_breaking_changes(migration)
 
-        assert rollback["operations"] == migration["rollback_operations"]
-        assert "rolled_back_at" in rollback
+        assert analysis["has_breaking_changes"] is True
+        assert analysis["impact_level"] == "high"
+        assert len(analysis["changes"]) > 0
 
 
 # ============================================================================
@@ -444,60 +482,83 @@ class TestMigrationPlanner:
 class TestTransactionManager:
     """Test suite for TransactionManager class."""
 
-    def test_initialization(self):
-        """Test manager initialization."""
+    def test_validate_acid_compliance_valid(self):
+        """Test ACID compliance validation with valid isolation."""
         manager = TransactionManager()
-        assert manager.transactions == {}
-        assert manager.ISOLATION_LEVELS == ["READ_UNCOMMITTED", "READ_COMMITTED", "REPEATABLE_READ", "SERIALIZABLE"]
+        config = {
+            "isolation_level": "READ_COMMITTED"
+        }
 
-    def test_begin_transaction(self):
-        """Test transaction begin."""
+        compliance = manager.validate_acid_compliance(config)
+
+        assert compliance["atomicity"] is True
+        assert compliance["consistency"] is True
+        assert compliance["isolation"] is True
+        assert compliance["durability"] is True
+
+    def test_validate_acid_compliance_invalid_isolation(self):
+        """Test ACID compliance validation with invalid isolation."""
         manager = TransactionManager()
-        tx_id = manager.begin_transaction(isolation_level="READ_COMMITTED")
+        config = {
+            "isolation_level": "INVALID_LEVEL"
+        }
 
-        assert tx_id is not None
-        assert tx_id in manager.transactions
-        assert manager.transactions[tx_id]["status"] == "active"
+        compliance = manager.validate_acid_compliance(config)
 
-    def test_begin_transaction_default_isolation(self):
-        """Test transaction begin with default isolation level."""
+        assert compliance["isolation"] is False
+
+    def test_detect_deadlock_with_cycle(self):
+        """Test deadlock detection with circular wait."""
         manager = TransactionManager()
-        tx_id = manager.begin_transaction()
+        transactions = [
+            {"id": "tx1", "locks": ["resource1"], "waiting_for": "resource2"},
+            {"id": "tx2", "locks": ["resource2"], "waiting_for": "resource1"}
+        ]
 
-        assert manager.transactions[tx_id]["isolation_level"] == "READ_COMMITTED"
+        result = manager.detect_deadlock(transactions)
 
-    def test_commit_transaction(self):
-        """Test transaction commit."""
+        assert result["deadlock_detected"] is True
+        assert len(result["involved_transactions"]) > 0
+        assert result["resolution_strategy"] is not None
+
+    def test_detect_deadlock_no_cycle(self):
+        """Test deadlock detection without circular wait."""
         manager = TransactionManager()
-        tx_id = manager.begin_transaction()
-        result = manager.commit_transaction(tx_id)
+        transactions = [
+            {"id": "tx1", "locks": ["resource1"], "waiting_for": None},
+            {"id": "tx2", "locks": ["resource2"], "waiting_for": None}
+        ]
 
-        assert result["success"] is True
-        assert result["transaction_id"] == tx_id
-        assert manager.transactions[tx_id]["status"] == "committed"
+        result = manager.detect_deadlock(transactions)
 
-    def test_rollback_transaction(self):
-        """Test transaction rollback."""
+        assert result["deadlock_detected"] is False
+        assert len(result["involved_transactions"]) == 0
+
+    def test_generate_retry_plan_default(self):
+        """Test retry plan generation with defaults."""
         manager = TransactionManager()
-        tx_id = manager.begin_transaction()
-        result = manager.rollback_transaction(tx_id)
+        config = {}
 
-        assert result["success"] is True
-        assert result["transaction_id"] == tx_id
-        assert manager.transactions[tx_id]["status"] == "rolled_back"
+        plan = manager.generate_retry_plan(config)
 
-    def test_validate_transaction_acyd_compliance(self):
-        """Test ACID compliance validation."""
+        assert "retry_delays" in plan
+        assert len(plan["retry_delays"]) == 3  # default max_retries
+        assert plan["strategy"] == "exponential_backoff"
+
+    def test_generate_retry_plan_custom(self):
+        """Test retry plan generation with custom config."""
         manager = TransactionManager()
-        tx_id = manager.begin_transaction(isolation_level="SERIALIZABLE")
+        config = {
+            "max_retries": 5,
+            "initial_backoff_ms": 50,
+            "backoff_multiplier": 3.0
+        }
 
-        result = manager.validate_transaction(tx_id)
+        plan = manager.generate_retry_plan(config)
 
-        assert result["acid_compliant"] is True
-        assert result["atomicity"] is True
-        assert result["consistency"] is True
-        assert result["isolation"] is True
-        assert result["durability"] is True
+        assert len(plan["retry_delays"]) == 5
+        assert plan["retry_delays"][0] == 50
+        assert plan["total_max_time_ms"] > 0
 
 
 # ============================================================================
@@ -508,77 +569,91 @@ class TestTransactionManager:
 class TestPerformanceMonitor:
     """Test suite for PerformanceMonitor class."""
 
-    def test_initialization(self):
-        """Test monitor initialization."""
+    def test_analyze_query_performance_excellent(self):
+        """Test query performance analysis for excellent performance."""
         monitor = PerformanceMonitor()
-        assert monitor.metrics == []
-        assert monitor.slow_queries == []
+        stats = {
+            "avg_execution_time_ms": 50,
+            "max_execution_time_ms": 100,
+            "call_count": 1000
+        }
 
-    def test_monitor_query_performance(self):
-        """Test query performance monitoring."""
+        analysis = monitor.analyze_query_performance(stats)
+
+        assert analysis["performance_rating"] == "excellent"
+        assert analysis["avg_time_ms"] == 50
+        assert analysis["optimization_priority"] == "low"
+
+    def test_analyze_query_performance_poor(self):
+        """Test query performance analysis for poor performance."""
         monitor = PerformanceMonitor()
-        result = monitor.monitor_query(
-            query="SELECT * FROM users",
-            execution_time_ms=150.5,
-            rows_returned=1000
-        )
+        stats = {
+            "avg_execution_time_ms": 1500,
+            "max_execution_time_ms": 5000,
+            "call_count": 100
+        }
 
-        assert result["query"] == "SELECT * FROM users"
-        assert result["execution_time_ms"] == 150.5
-        assert result["rows_returned"] == 1000
-        assert result["performance"] == "acceptable"
-        assert "timestamp" in result
+        analysis = monitor.analyze_query_performance(stats)
 
-    def test_monitor_query_performance_slow(self):
-        """Test slow query detection."""
+        assert analysis["performance_rating"] == "poor"
+        assert len(analysis["recommendations"]) > 0
+        assert analysis["optimization_priority"] == "high"
+
+    def test_analyze_query_performance_needs_improvement(self):
+        """Test query performance analysis for needs improvement."""
         monitor = PerformanceMonitor()
-        result = monitor.monitor_query(
-            query="SELECT * FROM large_table",
-            execution_time_ms=5500,  # 5.5 seconds - slow
-            rows_returned=10000
-        )
+        stats = {
+            "avg_execution_time_ms": 600,
+            "max_execution_time_ms": 1000,
+            "call_count": 500
+        }
 
-        assert result["performance"] == "slow"
-        assert result["slow_query"] is True
+        analysis = monitor.analyze_query_performance(stats)
 
-    def test_get_slow_queries(self):
-        """Test slow queries retrieval."""
+        assert analysis["performance_rating"] == "needs_improvement"
+
+    def test_monitor_connection_usage_healthy(self):
+        """Test connection usage monitoring for healthy state."""
         monitor = PerformanceMonitor()
-        monitor.monitor_query("SELECT 1", 100, 1)
-        monitor.monitor_query("SELECT * FROM large_table", 5500, 10000)
+        metrics = {
+            "active_connections": 30,
+            "max_connections": 100,
+            "failed_connection_attempts": 0
+        }
 
-        slow_queries = monitor.get_slow_queries(threshold_ms=1000)
+        health = monitor.monitor_connection_usage(metrics)
 
-        assert len(slow_queries) == 1
-        assert slow_queries[0]["execution_time_ms"] == 5500
+        assert health["health_status"] == "healthy"
+        assert health["usage_ratio"] < 0.5
 
-    def test_get_performance_summary(self):
-        """Test performance summary."""
+    def test_monitor_connection_usage_critical(self):
+        """Test connection usage monitoring for critical state."""
         monitor = PerformanceMonitor()
-        monitor.monitor_query("SELECT 1", 50, 1)
-        monitor.monitor_query("SELECT 2", 75, 1)
+        metrics = {
+            "active_connections": 95,
+            "max_connections": 100,
+            "failed_connection_attempts": 5
+        }
 
-        summary = monitor.get_performance_summary()
+        health = monitor.monitor_connection_usage(metrics)
 
-        assert summary["total_queries"] == 2
-        assert summary["average_time_ms"] > 0
-        assert summary["slow_query_count"] == 0
+        assert health["health_status"] == "critical"
+        assert health["usage_ratio"] > 0.90
+        assert len(health["recommendations"]) > 0
 
-    def test_identify_missing_indexes(self):
-        """Test missing index identification."""
+    def test_monitor_connection_usage_warning(self):
+        """Test connection usage monitoring for warning state."""
         monitor = PerformanceMonitor()
-        # Simulate slow query with table scan
-        monitor.monitor_query(
-            query="SELECT * FROM users WHERE email = 'test@example.com'",
-            execution_time_ms=3000,
-            rows_returned=1,
-            rows_scanned=100000
-        )
+        metrics = {
+            "active_connections": 78,
+            "max_connections": 100,
+            "failed_connection_attempts": 2
+        }
 
-        recommendations = monitor.identify_missing_indexes()
+        health = monitor.monitor_connection_usage(metrics)
 
-        assert len(recommendations) > 0
-        assert "users" in recommendations[0]["table"]
+        assert health["health_status"] == "warning"
+        assert 0.75 < health["usage_ratio"] < 0.90
 
 
 # ============================================================================
@@ -589,40 +664,68 @@ class TestPerformanceMonitor:
 class TestDataClasses:
     """Test suite for database data classes."""
 
-    def test_table_schema_creation(self):
+    def test_validation_result_creation(self):
         """Test ValidationResult dataclass creation."""
-        schema = ValidationResult(
-            table_name="users",
-            columns={"id": "INTEGER", "name": "VARCHAR(100)"},
-            primary_key="id"
+        result = ValidationResult(
+            is_valid=True,
+            violations=[],
+            normalization_level="3NF",
+            suggestions=["No issues found"]
         )
 
-        assert schema.table_name == "users"
-        assert schema.columns["id"] == "INTEGER"
-        assert schema.primary_key == "id"
+        assert result.is_valid is True
+        assert result.normalization_level == "3NF"
+        assert len(result.violations) == 0
 
-    def test_index_config_creation(self):
+    def test_index_recommendation_creation(self):
         """Test IndexRecommendation dataclass creation."""
         index = IndexRecommendation(
-            table="users",
-            column="email",
-            index_type="UNIQUE",
-            unique=True
+            index_type="BTREE",
+            columns=["email"],
+            reasoning="B-tree for range queries",
+            estimated_improvement=0.75
         )
 
-        assert index.table == "users"
-        assert index.column == "email"
-        assert index.unique is True
+        assert index.index_type == "BTREE"
+        assert index.columns == ["email"]
+        assert index.estimated_improvement == 0.75
 
-    def test_pool_config_creation(self):
+    def test_pool_configuration_creation(self):
         """Test PoolConfiguration dataclass creation."""
         config = PoolConfiguration(
-            database="test_db",
-            pool_size=20,
-            max_overflow=10,
-            timeout=30
+            min_size=10,
+            max_size=50,
+            timeout_seconds=30,
+            idle_timeout=600
         )
 
-        assert config.database == "test_db"
-        assert config.pool_size == 20
-        assert config.max_overflow == 10
+        assert config.min_size == 10
+        assert config.max_size == 50
+        assert config.idle_timeout == 600
+
+    def test_migration_plan_creation(self):
+        """Test MigrationPlan dataclass creation."""
+        plan = MigrationPlan(
+            steps=["Add column", "Verify"],
+            reversible=True,
+            rollback_steps=["Drop column"],
+            estimated_duration="5 minutes"
+        )
+
+        assert plan.reversible is True
+        assert len(plan.steps) == 2
+        assert len(plan.rollback_steps) == 1
+
+    def test_acid_compliance_creation(self):
+        """Test ACIDCompliance dataclass creation."""
+        compliance = ACIDCompliance(
+            atomicity=True,
+            consistency=True,
+            isolation=True,
+            durability=True
+        )
+
+        assert compliance.atomicity is True
+        assert compliance.consistency is True
+        assert compliance.isolation is True
+        assert compliance.durability is True

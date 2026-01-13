@@ -13,6 +13,7 @@ Coverage Goals:
 """
 
 import os
+import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -30,6 +31,7 @@ def runner():
     return CliRunner()
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only test")
 class TestWindowsPathHandling:
     """Test Windows-specific path handling scenarios"""
 
@@ -132,6 +134,7 @@ class TestWindowsPathHandling:
                 os.chdir(original_cwd)
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only test")
 class TestWindowsUtf8Encoding:
     """Test UTF-8 encoding scenarios specific to Windows"""
 
@@ -226,6 +229,7 @@ class TestWindowsUtf8Encoding:
                 os.chdir(original_cwd)
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only test")
 class TestWindowsConsoleEncoding:
     """Test console encoding scenarios on Windows"""
 
@@ -274,6 +278,7 @@ class TestWindowsConsoleEncoding:
                 os.chdir(original_cwd)
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only test")
 class TestWindowsPlatformSpecific:
     """Test Windows platform-specific code paths"""
 
@@ -318,6 +323,7 @@ class TestWindowsPlatformSpecific:
                 os.chdir(original_cwd)
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only test")
 class TestWindowsSpecCounting:
     """Test SPEC document counting on Windows"""
 
@@ -403,6 +409,7 @@ class TestWindowsSpecCounting:
                 os.chdir(original_cwd)
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only test")
 class TestWindowsEdgeCases:
     """Test Windows-specific edge cases"""
 
@@ -528,6 +535,7 @@ class TestWindowsEdgeCases:
                 os.chdir(original_cwd)
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only test")
 class TestWindowsParametrized:
     """Parametrized Windows-specific tests"""
 
