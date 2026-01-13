@@ -303,4 +303,4 @@ docs/
 theme.config.tsx
 
 # Keep local development guide tracked
-!CLAUDE.local.md
+CLAUDE.local.md
