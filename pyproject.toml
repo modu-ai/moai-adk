@@ -59,6 +59,7 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
+norecursedirs = [".venv", ".git", "build", "dist", "*.egg-info"]
 addopts = "-v --cov=src/moai_adk --cov-report=html --cov-report=term-missing"
 markers = [
     "e2e: End-to-end workflow tests",
