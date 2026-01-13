@@ -270,13 +270,12 @@ jobs:
           echo "✅ Package built successfully"
           ls -lh dist/
 
-      - name: 🧪 Run quick tests
+      - name: 🧪 Run smoke tests (blocking for deployment)
         run: |
-          echo "🧪 Running quick pre-deployment tests..."
+          echo "🧪 Running smoke tests (blocking for deployment)..."
           uv sync
-          uv run pytest tests/ -x --tb=short -q --maxfail=5 || echo "⚠️ Tests failed (non-blocking for deployment)"
-          echo "✅ Build verification completed"
-        continue-on-error: true
+          uv run pytest tests/ -m "smoke or critical" -v --tb=short --maxfail=5
+          echo "✅ Smoke tests passed"
 
       - name: 📦 Package integrity verification
         run: |
