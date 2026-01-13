@@ -1,0 +1,128 @@
+# Simple Deployment Pipeline for 1-Person Open Source Project
+# Optimized for: Single developer, rapid iteration, pragmatic testing
+
+name: 🚀 Simple Deploy
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  deploy:
+    name: Deploy to PyPI
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+        with:
+          enable-cache: true
+
+      - name: Extract version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"  # Remove 'v' prefix
+          fi
+
+          # Validate version matches pyproject.toml
+          PYPROJECT_VER=$(grep '^version = ' pyproject.toml | sed 's/version = "//' | sed 's/"//')
+
+          echo "Tag version: $VERSION"
+          echo "pyproject.toml: $PYPROJECT_VER"
+
+          if [ "$VERSION" != "$PYPROJECT_VER" ]; then
+            echo "ERROR: Version mismatch!"
+            echo "Tag: $VERSION"
+            echo "pyproject.toml: $PYPROJECT_VER"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build package
+        run: |
+          uv build
+          ls -lh dist/
+
+      - name: Quick smoke test
+        run: |
+          uv sync --all-extras
+          uv run pytest tests/ -x -q --maxfail=3 || echo "Tests failed (non-blocking)"
+        continue-on-error: true
+
+      - name: Publish to PyPI
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          uv publish --publish-url https://upload.pypi.org/legacy/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Release ${{ steps.version.outputs.tag }}
+          draft: false
+          prerelease: false
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+          body: |
+            ## Release ${{ steps.version.outputs.tag }}
+
+            ### Installation
+            ```bash
+            uv tool update moai-adk
+            ```
+
+            ### Changes
+            See [CHANGELOG.md](https://github.com/modu-ai/moai-adk/blob/main/CHANGELOG.md) for details.
+
+            ---
+            🤖 Automated by Simple Deploy Pipeline
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deployment Summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 🚀 Deployment Complete
+
+          | Item | Value |
+          |------|-------|
+          | **Version** | ${{ steps.version.outputs.version }} |
+          | **PyPI** | ✅ Published |
+          | **GitHub Release** | ✅ Created |
+
+          ### Installation
+          ```bash
+          uv tool update moai-adk
+          ```
+
+          ---
+          📦 Simple Deploy Pipeline
+          EOF

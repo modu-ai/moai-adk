@@ -163,9 +163,14 @@ jobs:
             fi
           fi
 
-          # Check .moai/config/config.yaml
+          # Check .moai/config/config.yaml (nested structure: moai.version)
           if [ -f ".moai/config/config.yaml" ]; then
-            CONFIG_VER=$(grep 'version:' .moai/config/config.yaml | head -1 | sed 's/.*version: "//' | sed 's/".*//')
+            # Use Python to parse YAML correctly (handles nested structures)
+            CONFIG_VER=$(python3 -c "import yaml; f=open('.moai/config/config.yaml'); d=yaml.safe_load(f); print(d.get('moai', {}).get('version', ''))" 2>/dev/null || echo "")
+            if [ -z "$CONFIG_VER" ]; then
+              # Fallback to grep if PyYAML not available
+              CONFIG_VER=$(grep -A1 '^moai:' .moai/config/config.yaml | grep 'version:' | head -1 | sed 's/.*version: "//' | sed 's/".*//')
+            fi
             if [ "$CONFIG_VER" != "$VERSION" ]; then
               echo "   ⚠️  config.yaml: $CONFIG_VER (expected: $VERSION)"
               ERRORS=$((ERRORS + 1))
@@ -174,9 +179,13 @@ jobs:
             fi
           fi
 
-          # Check .moai/config/sections/system.yaml
+          # Check .moai/config/sections/system.yaml (nested structure: moai.version)
           if [ -f ".moai/config/sections/system.yaml" ]; then
-            SYSTEM_VER=$(grep 'version:' .moai/config/sections/system.yaml | head -1 | sed 's/.*version: "//' | sed 's/".*//')
+            SYSTEM_VER=$(python3 -c "import yaml; f=open('.moai/config/sections/system.yaml'); d=yaml.safe_load(f); print(d.get('moai', {}).get('version', ''))" 2>/dev/null || echo "")
+            if [ -z "$SYSTEM_VER" ]; then
+              # Fallback to grep
+              SYSTEM_VER=$(grep -A1 '^moai:' .moai/config/sections/system.yaml | grep 'version:' | head -1 | sed 's/.*version: "//' | sed 's/".*//')
+            fi
             if [ "$SYSTEM_VER" != "$VERSION" ]; then
               echo "   ⚠️  system.yaml: $SYSTEM_VER (expected: $VERSION)"
               ERRORS=$((ERRORS + 1))
