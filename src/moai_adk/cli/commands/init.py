@@ -27,6 +27,7 @@ Project initialization command (interactive/non-interactive):
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Sequence
@@ -177,6 +178,8 @@ def init(
             console.print(f"\n[cyan]🚀 Initializing project at {project_path}...[/cyan]\n")
             project_name = project_path.name if is_current_dir else path
             locale = locale or "en"
+            # Read GLM API key from environment variable in non-interactive mode
+            glm_api_key = os.getenv("MOAI_GLM_API_KEY") or os.getenv("GLM_API_KEY")
             # Language detection happens in /moai:0-project, so default to None here
             # This will become "generic" internally, but Summary will show more helpful message
             if not language:
@@ -335,24 +338,31 @@ def init(
                 tag_mode=tag_mode,  # NEW - SPEC-TAG-002
             )
 
-        # 5.5. Save additional configuration from interactive mode
-        if result.success and not non_interactive:
-            _save_additional_config(
-                project_path=project_path,
-                project_name=project_name,
-                locale=locale,
-                user_name=user_name,
-                service_type=service_type,
-                pricing_plan=pricing_plan,
-                glm_pricing_plan=glm_pricing_plan,
-                anthropic_api_key=anthropic_api_key,
-                glm_api_key=glm_api_key,
-                git_mode=git_mode,
-                github_username=github_username,
-                git_commit_lang=git_commit_lang,
-                code_comment_lang=code_comment_lang,
-                doc_lang=doc_lang,
-            )
+        # 5.5. Save additional configuration (both interactive and non-interactive)
+        if result.success:
+            # In non-interactive mode, only save API keys if provided via environment
+            if non_interactive:
+                # Only save GLM key if provided via environment variable
+                if glm_api_key:
+                    _save_glm_key(glm_api_key)
+            else:
+                # Interactive mode: save all additional config
+                _save_additional_config(
+                    project_path=project_path,
+                    project_name=project_name,
+                    locale=locale,
+                    user_name=user_name,
+                    service_type=service_type,
+                    pricing_plan=pricing_plan,
+                    glm_pricing_plan=glm_pricing_plan,
+                    anthropic_api_key=anthropic_api_key,
+                    glm_api_key=glm_api_key,
+                    git_mode=git_mode,
+                    github_username=github_username,
+                    git_commit_lang=git_commit_lang,
+                    code_comment_lang=code_comment_lang,
+                    doc_lang=doc_lang,
+                )
 
         # 6. Output results
         if result.success:
@@ -442,6 +452,33 @@ def init(
     finally:
         # Explicitly flush output buffer
         console.file.flush()
+
+
+def _save_glm_key(glm_api_key: str) -> None:
+    """Save GLM API key to .env.glm file.
+
+    Args:
+        glm_api_key: The GLM API key to save
+    """
+    import os
+
+    from moai_adk.core.credentials import (
+        get_env_glm_path,
+        remove_glm_key_from_shell_config,
+        save_glm_key_to_env,
+    )
+
+    save_glm_key_to_env(glm_api_key)
+    console.print(f"[green]✓[/green] GLM API key saved to [cyan]{get_env_glm_path()}[/cyan]")
+
+    # Automatically remove GLM_API_KEY from shell config if present
+    if os.environ.get("GLM_API_KEY"):
+        results = remove_glm_key_from_shell_config()
+        modified = [name for name, mod in results.items() if mod]
+        if modified:
+            files_str = ", ~/.".join(modified)
+            console.print(f"[green]✓[/green] Removed GLM_API_KEY from: [cyan]~/.{files_str}[/cyan]")
+            console.print("[dim]Backup: .moai-backup | Run 'source ~/.zshrc' to apply[/dim]")
 
 
 def _save_additional_config(
