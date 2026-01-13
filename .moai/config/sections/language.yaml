@@ -2,8 +2,8 @@
 # This file is auto-loaded by CLAUDE.md for language configuration
 
 language:
-  conversation_language: "{{CONVERSATION_LANGUAGE}}"            # User-facing responses (ko, en, ja, es, zh, fr, de)
-  conversation_language_name: "{{CONVERSATION_LANGUAGE_NAME}}"  # Display name (auto-updated)
+  conversation_language: ko            # User-facing responses (ko, en, ja, es, zh, fr, de)
+  conversation_language_name: 한국어   # Display name (auto-updated)
   agent_prompt_language: en            # Internal agent instructions
   git_commit_messages: en              # Git commit message language
   code_comments: en                    # Source code comment language

@@ -224,6 +224,45 @@ GLM CodePlan API key (optional - press Enter to skip)
 
 ---
 
+#### Step 10: TAG 系统激活
+
+🎯 TAG 系统：TDD 的代码 ↔ 文档追踪
+
+TAG 系统维护代码与 SPEC 文档之间的可追溯性，
+以支持 TDD（测试驱动开发）循环。
+
+TDD 目的:
+•  RED (编写测试) → @SPEC SPEC-XXX verify
+•  GREEN (实现代码) → @SPEC SPEC-XXX impl
+•  REFACTOR (改进) → @SPEC SPEC-XXX impl 或 related
+
+清晰追踪每个代码文件实现哪个 SPEC，
+促进文档驱动开发并保持质量。
+
+💡 推荐激活 TAG。在 TDD 循环中保持代码与文档的
+一致性，提高质量和可维护性。
+
+```text
+? 是否启用 TAG 系统？ (TDD 推荐) (Y/n)
+```
+
+---
+
+**TAG 验证模式指南**
+
+• warn: 开发期间警告提示 (默认值，推荐)
+• enforce: TAG 缺失时阻止提交 (严格质量控制)
+• off: 跳过验证 (不推荐)
+
+```text
+❯ 选择 TAG 验证模式: [↑↓] Navigate  [Enter] Select
+❯ warn (警告) - 仅显示缺失 TAG 的警告。开发中灵活处理
+  enforce (强制) - TAG 缺失时阻止提交。严格质量控制
+  off (关闭) - 跳过 TAG 验证。不推荐
+```
+
+---
+
 #### 安装完成
 
 所有设置完成后，5步安装自动进行:
@@ -487,38 +526,157 @@ moai update --manual
 > /moai:alfred "功能描述"
 ```
 
-用户提出目标，AI自行执行探索、计划、实现、验证。通过并行探索分析代码库，通过自主循环自行修复问题。检测到完成标记(`<moai>DONE</moai>`)时自动终止，开发者只需确认最终结果。
+**「从目标到完成，AI全自动执行」**
 
-**一次性执行**:
+用户只需提出目标，Alfred AI自行执行探索、规划、实现、验证。通过并行探索快速分析代码库，通过自主循环自动修复问题。检测到完成标记(`<moai>DONE</moai>`)时自动终止，开发者只需确认最终结果。
 
-1. **阶段0**: 并行探索 (Explore + Research + Quality)
-2. **阶段1**: SPEC生成 (EARS格式)
-3. **阶段2**: TDD实现 (自主循环)
-4. **阶段3**: 文档同步
+---
 
-**选项**:
+#### 🎯 工作流程
 
-- `--loop`: 启用自主重复修复 (AI自行解决问题)
-- `--max N`: 指定最大重复次数 (默认: 100)
-- `--sequential` / `--seq`: 顺序探索 (用于调试) - 并行为默认值
-- `--branch`: 自动创建功能分支
-- `--pr`: 完成后创建Pull Request
-- `--resume SPEC`: 继续
+```mermaid
+flowchart TB
+    Start[用户提出目标] --> Parallel[并行探索阶段]
 
-> **性能**: 并行探索已成为默认设置，可实现3-4倍更快的分析。`--sequential`仅用于调试。
+    Parallel --> Explore[Explore Agent<br/>代码库分析]
+    Parallel --> Research[Research Agent<br/>文档研究]
+    Parallel --> Quality[Quality Agent<br/>质量检查]
 
-**示例**:
+    Explore --> Synthesize[综合分析结果]
+    Research --> Synthesize
+    Quality --> Synthesize
+
+    Synthesize --> Plan[阶段1: SPEC生成<br/>EARS格式]
+    Plan --> Implement[阶段2: TDD实现<br/>Red-Green-Refactor]
+
+    Implement --> Loop{是否需要<br/>循环修复?}
+    Loop -->|是| AutoLoop[自主循环<br/>诊断→修复→验证]
+    Loop -->|否| Sync
+    AutoLoop --> Done{检测到<br/>完成标记?}
+    Done -->|是| Sync[阶段3: 文档同步]
+    Done -->|否| AutoLoop
+
+    Sync --> Complete[完成: 最终确认]
+
+    style Start fill:#e1f5ff
+    style Complete fill:#c8e6c9
+    style Parallel fill:#ffecb3
+    style AutoLoop fill:#fff9c4
+    style Done fill:#b2dfdb
+```
+
+---
+
+#### 📋 阶段详解
+
+**阶段0: 并行探索 (快速启动)**
+
+- **Explore Agent**: 分析代码库结构和模式
+- **Research Agent**: 搜索相关文档和最佳实践
+- **Quality Agent**: 检查当前质量状态
+
+并行执行速度提升 **3-4倍**。
+
+**阶段1: SPEC生成 (明确规划)**
+
+- 使用EARS格式创建清晰SPEC文档
+- 定义验收标准和测试要求
+- 架构设计和技术选型
+
+**阶段2: TDD实现 (质量保证)**
+
+- 红灯: 编写失败测试
+- 绿灯: 实现最小代码通过测试
+- 重构: 优化代码结构
+- 可选启用自主循环自动修复问题
+
+**阶段3: 文档同步 (保持最新)**
+
+- 自动更新README
+- 同步API文档
+- 更新架构文档
+- 提交Pull Request (可选)
+
+---
+
+#### 🔄 自主循环
+
+启用 `--loop` 选项时，Alfred在阶段2自动执行以下循环:
+
+```mermaid
+flowchart LR
+    Start[循环开始] --> Diagnose[并行诊断]
+    Diagnose --> LSP[LSP错误]
+    Diagnose --> AST[AST-grep检查]
+    Diagnose --> Test[测试失败]
+    Diagnose --> Cover[覆盖率不足]
+
+    LSP --> TODO[生成TODO列表]
+    AST --> TODO
+    Test --> TODO
+    Cover --> TODO
+
+    TODO --> Execute[逐项修复]
+    Execute --> Verify[验证修复]
+    Verify --> Check{是否解决?}
+    Check -->|否| Diagnose
+    Check -->|是| Done[检测完成标记]
+
+    Done --> Complete{检测到<br/><moai>DONE</moai>?}
+    Complete -->|是| End[终止循环]
+    Complete -->|否| Diagnose
+
+    style Diagnose fill:#fff3e0
+    style TODO fill:#e1f5e4
+    style Execute fill:#c8e6c9
+    style End fill:#b2dfdb
+```
+
+**循环终止条件**:
+
+- 检测到 `<moai>DONE</moai>` 标记 (自动检测)
+- 达到最大重复次数 (默认: 100)
+- 用户手动取消
+
+---
+
+#### 🎬 何时使用
+
+| 场景                | 推荐命令          | 理由                           |
+| ------------------- | ----------------- | ------------------------------ |
+| 新功能完整开发      | `/moai:alfred`    | 从SPEC到实现的全自动流程       |
+| Bug修复            | `/moai:loop`      | 快速诊断和修复循环             |
+| 文档更新           | `/moai:3-sync`    | 仅文档同步                     |
+| 代码质量改进       | `/moai:fix`       | 单次修复问题                   |
+| 完整工作流程       | `/moai:alfred --loop` | 包含自动循环的完全自主化     |
+
+---
+
+#### 🛠️ 选项和示例
 
 ```bash
 # 基本自主执行 (并行为默认值)
-> /moai:alfred "JWT认证添加"
+> /moai:alfred "添加JWT认证"
 
-# 自动循环 + 顺序探索 (用于调试)
-> /moai:alfred "JWT认证" --loop --seq
+# 启用自动循环
+> /moai:alfred "JWT认证" --loop
 
-# 继续
+# 限制最大重复次数
+> /moai:alfred "JWT认证" --loop --max 50
+
+# 顺序探索 (用于调试)
+> /moai:alfred "JWT认证" --seq
+
+# 自动创建分支和PR
+> /moai:alfred "JWT认证" --branch --pr
+
+# 恢复之前的SPEC
 > /moai:alfred resume SPEC-AUTH-001
 ```
+
+---
+
+> **💡 性能**: 并行探索已成为默认设置，可实现3-4倍更快的分析。`--sequential`仅用于调试。
 
 ---
 
@@ -528,15 +686,238 @@ moai update --manual
 > /moai:loop
 ```
 
-AI自行诊断LSP错误、测试失败、覆盖率不足并重复修复。通过并行诊断同时执行LSP、AST-grep、Tests、Coverage，快3-4倍解决问题。检测到完成标记或达到最大重复次数时自主执行。
+**「自主诊断、修复、验证，循环直到完成」**
 
-**自主循环流程**:
+AI自动诊断LSP错误、测试失败、覆盖率不足等问题并重复修复。通过并行诊断同时执行LSP、AST-grep、Tests、Coverage，快3-4倍解决问题。检测到完成标记(`<moai>DONE</moai>`)或达到最大重复次数时自动终止。
 
-```text
-并行诊断 → 生成TODO → 执行修复 → 验证 → 重复
-    ↓
-检测完成标记 → <moai>DONE</moai>
+---
+
+#### 🎯 工作流程
+
+```mermaid
+flowchart TB
+    Start[启动 /moai:loop] --> Diagnose[并行诊断阶段]
+
+    Diagnose --> LSP[LSP诊断<br/>实时代码分析]
+    Diagnose --> AST[AST-grep检查<br/>结构代码分析]
+    Diagnose --> Test[测试执行<br/>失败测试分析]
+    Diagnose --> Cover[覆盖率检查<br/>85%目标验证]
+
+    LSP --> Analyze[问题分析]
+    AST --> Analyze
+    Test --> Analyze
+    Cover --> Analyze
+
+    Analyze --> Filter{检测到问题?}
+    Filter -->|否| Done[检测完成标记]
+    Filter -->|是| TODO[生成TODO列表<br/>优先级排序]
+
+    TODO --> Execute[逐项修复<br/>Red-Green-Refactor]
+    Execute --> Verify[验证修复<br/>运行测试]
+
+    Verify --> Check{问题解决?}
+    Check -->|否| Diagnose
+    Check -->|是| Remaining{还有问题?}
+
+    Remaining -->|是| Diagnose
+    Remaining -->|否| Done
+
+    Done --> Complete{检测到<br/><moai>DONE</moai>?}
+    Complete -->|是| End[循环完成]
+    Complete -->|否| Diagnose
+
+    style Start fill:#e1f5ff
+    style End fill:#c8e6c9
+    style Diagnose fill:#fff3e0
+    style TODO fill:#e1f5e4
+    style Execute fill:#c8e6c9
 ```
+
+---
+
+#### 🔍 并行诊断详解
+
+**4种诊断工具并行执行，速度提升3.75倍**。
+
+```mermaid
+flowchart TB
+    Start[并行诊断启动] --> Parallel[并行执行]
+
+    Parallel --> LSP[LSP诊断<br/>-------------------<br/>• TypeScript错误<br/>• Python类型错误<br/>• 未定义变量<br/>• 导入错误]
+    Parallel --> AST[AST-grep检查<br/>-------------------<br/>• 安全漏洞<br/>• 代码异味<br/>• 反模式<br/>• 结构问题]
+    Parallel --> Test[测试执行<br/>-------------------<br/>• 失败测试<br/>• 测试错误<br/>• 断言失败<br/>• 跳过测试]
+    Parallel --> Cover[覆盖率检查<br/>-------------------<br/>• 行覆盖率<br/>• 分支覆盖率<br/>• 未覆盖区域<br/>• 85%目标]
+
+    LSP --> Merge[结果合并]
+    AST --> Merge
+    Test --> Merge
+    Cover --> Merge
+
+    Merge --> Analyze[统一分析]
+
+    Analyze --> Report[诊断报告:<br/>• LSP: 8个问题<br/>• AST: 5个问题<br/>• Test: 3个失败<br/>• Cover: 12%未覆盖<br/><br/>总计: 16个问题]
+
+    Report --> Classify[分类与优先级:<br/>• 关键: 5个<br/>• 高: 6个<br/>• 中: 4个<br/>• 低: 1个]
+
+    Classify --> End[生成TODO列表]
+
+    style Start fill:#e1f5ff
+    style End fill:#c8e6c9
+    style LSP fill:#fff3e0
+    style AST fill:#ffe0b2
+    style Test fill:#c8e6c9
+    style Cover fill:#e1bee7
+    style Parallel fill:#ffecb3
+    style Merge fill:#b2dfdb
+```
+
+**并行执行性能提升**:
+
+- 顺序执行: 150秒 (LSP 45s + AST 35s + Test 40s + Coverage 30s)
+- 并行执行: 40秒 (最慢工具的时间)
+- **速度提升**: 3.75倍
+
+---
+
+#### 📖 AST-grep是什么？
+
+> **"grep查找文本，但AST-grep查找代码结构"**
+
+**概念**:
+
+AST-grep是**结构代码检查工具**。与普通grep或正则表达式搜索文本不同，AST-grep分析代码的**抽象语法树**(Abstract Syntax Tree)来检查代码的**结构和模式**。
+
+**对比表**:
+
+| 特性           | grep/正则表达式        | AST-grep               |
+| -------------- | ---------------------- | ---------------------- |
+| 搜索目标       | 文本模式              | 代码结构              |
+| 理解能力       | 仅字符串匹配          | 理解语法和语义        |
+| 语言支持       | 有限(需要不同正则)    | 40+ 语言统一规则      |
+| 误报率         | 高(匹配注释、字符串)  | 低(仅匹配代码结构)    |
+| 复杂查询       | 难以实现              | 自然表达              |
+| 重构支持       | 不支持                | 原生支持              |
+
+**工作原理**:
+
+```mermaid
+flowchart LR
+    Source[源代码] --> Parser[语言解析器<br/>-------------<br/>Python/TS/Go/Rust<br/>等40+语言]
+    Parser --> AST[抽象语法树<br/>-------------<br/>代码结构表示<br/>语法+语义信息]
+
+    AST --> Matcher[模式匹配器<br/>-------------<br/>结构规则匹配<br/>语义分析]
+    Matcher --> Detect[检测引擎<br/>-------------<br/>• 安全漏洞<br/>• 代码异味<br/>• 反模式<br/>• 最佳实践]
+
+    Detect --> Result[检测结果<br/>-------------<br/>精确位置<br/>上下文信息<br/>修复建议]
+
+    style Source fill:#e1f5ff
+    style AST fill:#fff9c4
+    style Detect fill:#ffe0b2
+    style Result fill:#c8e6c9
+```
+
+**检测能力**:
+
+1. **安全漏洞**:
+   - SQL注入模式
+   - 硬编码密钥
+   - 不安全的随机数生成
+   - XSS漏洞模式
+
+2. **代码异味**:
+   - 重复代码
+   - 过长函数
+   - 复杂条件
+   - 死代码
+
+3. **反模式**:
+   - 空异常捕获
+   - 资源泄漏
+   - 竞争条件
+   - 不当类型转换
+
+4. **最佳实践违反**:
+   - 缺少错误处理
+   - 不当命名
+   - 缺少文档
+   - 测试覆盖不足
+
+**示例场景**:
+
+```python
+# 检测: 硬编码密钥
+api_key = "sk-1234567890"  # ❌ AST-grep检测到
+
+# 检测: SQL注入
+query = f"SELECT * FROM users WHERE id={user_input}"  # ❌ AST-grep检测到
+
+# 检测: 空异常捕获
+try:
+    risky_operation()
+except:
+    pass  # ❌ AST-grep检测到
+```
+
+**为什么重要**:
+
+1. **超越文本搜索**: 理解代码结构，不是简单匹配文本
+2. **减少误报**: 仅匹配实际代码，忽略注释和字符串
+3. **跨语言统一**: 40+语言使用相同的检查规则
+4. **精确修复**: 提供基于AST的精确修复建议
+5. **实时反馈**: 集成到LSP，实时显示问题
+
+**MoAI-ADK集成**:
+
+```mermaid
+flowchart LR
+    Loop[/moai:loop] --> Diagnose[并行诊断]
+    Diagnose --> AST[AST-grep<br/>结构检查]
+    AST --> Pattern[模式匹配:<br/>• 安全规则<br/>• 代码质量<br/>• 最佳实践]
+    Pattern --> Result[结构化问题报告]
+    Result --> Fix[精确修复建议]
+    Fix --> Apply[自动应用修复]
+
+    style Loop fill:#e1f5ff
+    style AST fill:#ffe0b2
+    style Result fill:#c8e6c9
+```
+
+---
+
+#### 📋 修复级别和过程
+
+**修复级别**:
+
+| 级别 | 类型      | 批准   | 说明                          |
+| ---- | --------- | ------ | ----------------------------- |
+| 1    | 立即修复  | 不需要 | import排序、空白、格式       |
+| 2    | 安全修复  | 仅日志 | 变量重命名、类型添加          |
+| 3    | 需要批准  | 需要   | 逻辑变更、API修改、方法替换   |
+| 4    | 手动需要  | 不可   | 安全、架构、设计决策          |
+
+**修复过程**:
+
+1. **并行诊断执行**: 同时运行LSP、AST-grep、Tests、Coverage
+2. **问题合并**: 合并所有诊断结果并去重
+3. **TODO生成**: 按优先级和依赖关系排序
+4. **逐项修复**:
+   - 按优先级处理每个问题
+   - 每次修复后验证
+   - 失败时重新诊断
+5. **重复或完成**:
+   - 全部问题解决时 `<moai>DONE</moai>` 标记
+   - 最多重复100次后保存快照
+
+---
+
+#### 🎬 何时使用
+
+| 场景             | 说明                         | 示例                          |
+| ---------------- | ---------------------------- | ----------------------------- |
+| **实现后质量保证** | 代码编写后自动质量改进       | 功能实现后运行 `/moai:loop`   |
+| **测试失败修复**  | 自动分析和修复测试失败       | 测试运行后失败时执行          |
+| **覆盖率提升**    | 自动达到85%目标              | 新代码编写后执行              |
+| **重构维护**      | 持续改进代码质量             | 定期运行以保持代码质量        |
 
 **选项**:
 
@@ -544,7 +925,7 @@ AI自行诊断LSP错误、测试失败、覆盖率不足并重复修复。通过
 - `--auto`: 启用自动修复 (Level 1-3)
 - `--sequential` / `--seq`: 顺序诊断 (用于调试) - 并行为默认值
 - `--errors`: 仅修复错误
-- `--coverage`: 包含覆盖率 (目标85%)
+- `--coverage`: 包含覆盖率 (100%目标)
 - `--resume ID`: 恢复快照
 
 > **性能**: 并行诊断已成为默认设置，可同时执行LSP、AST-grep、Tests、Coverage (快3.75倍)。
@@ -573,53 +954,225 @@ AI自行诊断LSP错误、测试失败、覆盖率不足并重复修复。通过
 > /moai:fix
 ```
 
-并行扫描LSP错误、linting问题并一次性修复。Level 1-2立即修复，Level 3需用户批准后修复，Level 4报告需要手动修复。使用`--dry`选项预览后应用实际修复。
+**「一次执行，一次性修复」**
 
-**并行扫描**:
+并行扫描LSP错误、linting问题、AST-grep模式，检测到的问题在一次执行中一次性修复。Level 1-2立即修复，Level 3需用户批准后修复，Level 4报告需要手动修复。使用`--dry`选项预览确认后应用实际修复。
 
-```text
-LSP ├─┐
-    ├─→ 综合结果 (快3.75倍)
-AST ├─┤
-    ├─┘
-Linter
+---
+
+#### 🎯 概念和工作流程
+
+`/moai:fix`是**一次执行完成单次修复**的命令。与自主循环的`/moai:loop`不同，按扫描→修复→报告的顺序仅执行一次。
+
+```mermaid
+flowchart TB
+    Start[/moai:fix 开始] --> Scan[并行扫描执行]
+
+    Scan --> LSP[LSP诊断]
+    Scan --> AST[AST-grep检查]
+    Scan --> Linter[Linter执行]
+    Scan --> Test[测试执行]
+
+    LSP --> Gather[结果收集]
+    AST --> Gather
+    Linter --> Gather
+    Test --> Gather
+
+    Gather --> Analyze[问题分析和分类]
+
+    Analyze --> Level1{Level判定}
+    Level1 -->|Level 1<br/>立即修复| Fix1[自动修复]
+    Level1 -->|Level 2<br/>安全修复| Fix2[日志记录后修复]
+    Level1 -->|Level 3<br/>需要批准| Ask{用户批准}
+    Level1 -->|Level 4<br/>手动需要| Report[仅报告]
+
+    Ask -->|批准| Fix3[修复执行]
+    Ask -->|拒绝| Skip[跳过]
+
+    Fix1 --> Verify[修复验证]
+    Fix2 --> Verify
+    Fix3 --> Verify
+    Skip --> Verify
+    Report --> End[完成报告]
+
+    Verify --> TestCheck{测试执行?}
+    TestCheck -->|是| TestRun[测试执行]
+    TestCheck -->|否| End
+    TestRun --> TestPass{通过?}
+    TestPass -->|是| End
+    TestPass -->|否| Ask
+
+    style Start fill:#e1f5ff
+    style End fill:#c8e6c9
+    style LSP fill:#fff3e0
+    style AST fill:#fff3e0
+    style Linter fill:#fff3e0
+    style Test fill:#fff3e0
+    style Fix1 fill:#c8e6c9
+    style Fix2 fill:#c8e6c9
+    style Fix3 fill:#c8e6c9
+    style Report fill:#ffcdd2
+    style Ask fill:#fff9c4
 ```
 
-**修复级别**:
+---
 
-| Level | 说明     | 批准   | 示例              |
-| ----- | -------- | ------ | ----------------- |
-| 1     | 立即修复 | 不需要 | import排序、空白  |
-| 2     | 安全修复 | 仅日志 | 变量名、类型添加  |
-| 3     | 需要批准 | 需要   | 逻辑变更、API修改 |
-| 4     | 手动需要 | 不可能 | 安全、架构        |
+#### 🔍 并行扫描详解
 
-**选项**:
+**并行执行4种诊断工具，扫描速度快3.75倍**。
 
-- `--dry`: 仅预览 (无实际修复)
-- `--sequential` / `--seq`: 顺序扫描 (用于调试) - 并行为默认值
-- `--level N`: 最大修复级别 (默认: 3)
-- `--errors`: 仅修复错误
-- `--security`: 包含安全检查
-- `--no-fmt`: 跳过格式化
+```mermaid
+flowchart TB
+    Start[并行扫描开始] --> Parallel[并行执行]
 
-> **性能**: 并行扫描已成为默认设置，可同时执行LSP、AST-grep、Linter (快3.75倍)。
+    Parallel --> LSP[LSP诊断<br/>-------------------<br/>• TypeScript错误<br/>• Python类型错误<br/>• 未定义变量<br/>• 导入错误]
+    Parallel --> AST[AST-grep检查<br/>-------------------<br/>• 安全漏洞<br/>• 代码异味<br/>• 反模式<br/>• 结构问题]
+    Parallel --> Linter[Linter执行<br/>-------------------<br/>• 代码风格<br/>• 格式化<br/>• 未使用导入<br/>• 命名规则]
+    Parallel --> Test[测试检查<br/>-------------------<br/>• 失败测试<br/>• 覆盖率不足<br/>• 测试错误<br/>• 跳过测试]
 
-**示例**:
+    LSP --> Merge[结果合并]
+    AST --> Merge
+    Linter --> Merge
+    Test --> Merge
+
+    Merge --> Result[合并结果报告]
+
+    Result --> Stats[统计: <br/>• LSP: 12个检测<br/>• AST: 5个检测<br/>• Linter: 8个检测<br/>• Test: 3个检测<br/><br/>总计: 28个]
+
+    Stats --> Classify[级别分类:<br/>• Level 1: 15个<br/>• Level 2: 8个<br/>• Level 3: 4个<br/>• Level 4: 1个]
+
+    Classify --> End[修复开始]
+
+    style Start fill:#e1f5ff
+    style End fill:#c8e6c9
+    style LSP fill:#fff3e0
+    style AST fill:#ffe0b2
+    style Linter fill:#e1bee7
+    style Test fill:#c8e6c9
+    style Parallel fill:#ffecb3
+    style Merge fill:#b2dfdb
+```
+
+**并行执行性能提升**:
+
+- 顺序执行: 150秒 (LSP 45s + AST 35s + Linter 40s + Test 30s)
+- 并行执行: 40秒 (最慢工具的时间)
+- **速度提升**: 3.75倍
+
+---
+
+#### 📋 修复级别和过程
+
+每个问题根据复杂度分为4个级别。
+
+| Level | 说明           | 批准   | 示例                                   | 自动修复可否 |
+| ----- | -------------- | ------ | -------------------------------------- | ------------ |
+| 1     | 立即修复       | 不需要 | 导入排序、空白、格式化                 | ✅ 可        |
+| 2     | 安全修复       | 仅日志 | 变量重命名、类型添加、简单重构          | ✅ 可        |
+| 3     | 需要批准       | 需要   | 逻辑变更、API修改、方法替换            | ⚠️ 批准后    |
+| 4     | 手动需要       | 不可   | 安全、架构                             | ❌ 不可      |
+
+**修复过程**:
+
+1. **并行扫描执行**: 同时运行LSP、AST-grep、Linter、Test
+2. **结果合并**: 合并所有诊断结果并去重
+3. **级别分类**: 每个问题分为Level 1-4
+4. **修复执行**:
+   - Level 1: 立即修复（仅记录日志）
+   - Level 2: 安全修复（记录变更内容）
+   - Level 3: 用户批准后修复
+   - Level 4: 报告需要手动修复
+5. **验证**: 修复后运行测试进行回归验证
+6. **完成报告**: 报告修复内容和统计
+
+---
+
+#### 🎬 何时使用
+
+| 场景                         | 推荐命令       | 理由                                           |
+| ---------------------------- | -------------- | ---------------------------------------------- |
+| 日常代码质量维护             | `/moai:fix`    | 快速单次修复，无需循环                         |
+| CI失败原因一次性修复         | `/moai:fix`    | 一次执行修复所有问题                           |
+| 新功能实现后清理             | `/moai:fix`    | 批量格式化和风格修复                           |
+| 复杂反复出现的Bug            | `/moai:loop`   | 需要持续修复和验证                             |
+| 大规模重构                   | `/moai:loop`   | 需要多阶段修复和渐进式验证                     |
+| PR创建前最终检查             | `/moai:fix`    | 一次执行清理                                   |
+| 遗留代码大幅改善             | `/moai:loop`   | 需要多次反复逐步改善                           |
+
+---
+
+#### 🔀 `/moai:fix` vs `/moai:loop` 选择指南
+
+**不确定使用哪个时，通过此流程图决定**。
+
+```mermaid
+flowchart TB
+    Start[发现问题] --> Q1{问题性质是?}
+
+    Q1 -->|简单错误<br/>格式化<br/>风格| SimpleCheck{修复次数是?}
+    Q1 -->|复杂逻辑<br/>反复出现<br/>多文件| ComplexCheck{需要验证?}
+
+    SimpleCheck -->|1次完成| Fix[**/moai:fix**<br/>单次修复]
+    SimpleCheck -->|多次需要| Loop[**/moai:loop**<br/>自主重复]
+
+    ComplexCheck -->|需要持续验证| Loop
+    ComplexCheck -->|仅一次| Complexity{复杂度是?}
+
+    Complexity -->|架构变更| Manual[手动修复]
+    Complexity -->|常规范围| Fix
+
+    Fix --> FixExample[例:<br/>• 导入排序<br/>• 格式化<br/>• 类型错误修复<br/>• 删除未使用变量<br/>• LSP错误修复]
+    Loop --> LoopExample[例:<br/>• 复杂bug修复<br/>• 大规模重构<br/>• 反复出现的问题<br/>• 多阶段改善<br/>• 需要持续验证]
+    Manual --> ManualExample[例:<br/>• 安全修复<br/>• 架构变更<br/>• API设计变更]
+
+    style Start fill:#e1f5ff
+    style Fix fill:#c8e6c9
+    style Loop fill:#fff9c4
+    style Manual fill:#ffcdd2
+    style FixExample fill:#e8f5e9
+    style LoopExample fill:#fffde7
+    style ManualExample fill:#ffebee
+```
+
+**总结**:
+
+- **`/moai:fix`**: 一次执行完成，适用于日常问题修复
+- **`/moai:loop`**: 需要持续修复和验证的复杂问题
+- **手动修复**: 架构变更或安全修复等需要人工判断
+
+---
+
+#### 🛠️ 选项和示例
 
 ```bash
-# 基本修复 (并行为默认值)
+# 基本修复（并行为默认值）
 > /moai:fix
 
-# 顺序扫描 (用于调试)
+# 仅预览（无实际修复）
+> /moai:fix --dry
+
+# 顺序扫描（用于调试）
 > /moai:fix --seq
 
-# 预览
-> /moai:fix --dry
+# 仅修复Level 3以下
+> /moai:fix --level 3
+
+# 仅修复错误
+> /moai:fix --errors
+
+# 包含安全检查
+> /moai:fix --security
 
 # 特定文件
 > /moai:fix src/auth.py
+
+# 跳过格式化
+> /moai:fix --no-fmt
 ```
+
+---
+
+> **💡 性能**: 并行扫描已成为默认设置，可同时执行LSP、AST-grep、Linter（快3.75倍）。
 
 ---
 

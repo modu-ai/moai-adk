@@ -224,6 +224,45 @@ Gitコミットメッセージに使用する言語を選択します。
 
 ---
 
+#### Step 10: TAGシステムの有効化
+
+🎯 TAGシステム: TDDのためのコード↔ドキュメント追跡
+
+TAGシステムはコードとSPECドキュメント間の追跡可能性を維持して
+TDD(Test-Driven Development)サイクルをサポートします。
+
+TDD目的:
+•  RED (テスト作成) → @SPEC SPEC-XXX verify
+•  GREEN (コード実装) → @SPEC SPEC-XXX impl
+•  REFACTOR (改善) → @SPEC SPEC-XXX implまたはrelated
+
+各コードファイルがどのSPECを実装するか明確に追跡して
+ドキュメント中心開発を促進し品質を維持します。
+
+💡 TAGの有効化を推奨します。TDDサイクルでコードとドキュメントの
+一貫性を維持して品質と保守性を向上させます。
+
+```text
+? TAGシステムを有効にしますか？ (TDD推奨) (Y/n)
+```
+
+---
+
+**TAG検証モードガイド**
+
+• warn: 開発中に警告で通知 (デフォルト、推奨)
+• enforce: TAG未満時コミット拒否 (厳格な品質管理)
+• off: 検証スキップ (推奨しない)
+
+```text
+❯ TAG検証モードを選択してください: [↑↓] Navigate  [Enter] Select
+❯ warn (警告) - 不足したTAGについて警告のみ表示します。開発中に柔軟対応
+  enforce (強制) - TAGが不足するとコミットを拒否します。厳格な品質管理
+  off (オフ) - TAG検証をスキップします。推奨しません
+```
+
+---
+
 #### インストール完了
 
 すべての設定が完了すると5段階インストールが自動進行します:
@@ -489,12 +528,83 @@ Red-Green-Refactorサイクルを通じてテストを先に書き、それを�
 
 ユーザーが目標を提示するとAIが自ら探索、計画、実装、検証をすべて行います。並列探索でコードベースを分析し、自律ループを通じて問題を自ら修正します。完了マーカー(`<moai>DONE</moai>`)を検知すると自動終了して開発者は最終結果のみ確認すれば良いです。
 
+#### コンセプトとワークフロー
+
+```mermaid
+flowchart TB
+    Start([ユーザーリクエスト<br/>/moai:alfred '機能説明']) --> Phase0[Phase 0: 並列探索]
+
+    Phase0 --> Explore[🔍 Explore Agent<br/>コードベース構造分析]
+    Phase0 --> Research[📚 Research Agent<br/>技術文書調査]
+    Phase0 --> Quality[✅ Quality Agent<br/>品質状態評価]
+
+    Explore --> Phase1[Phase 1: SPEC作成]
+    Research --> Phase1
+    Quality --> Phase1
+
+    Phase1 --> Spec[📋 EARS形式SPEC文書<br/>要件仕様書]
+
+    Spec --> Phase2[Phase 2: TDD実装]
+
+    Phase2 --> Red[🔴 RED: 失敗テスト作成]
+    Red --> Green[🟢 GREEN: 最小実装]
+    Green --> Refactor[🔵 REFACTOR: コード改善]
+
+    Refactor --> Check{品質検証<br/>TRUST 5}
+
+    Check -->|通過| Phase3[Phase 3: ドキュメント同期]
+    Check -->|失敗| Loop[🔄 自律ループ<br/>問題自動修正]
+
+    Loop --> Red
+
+    Phase3 --> Docs[📚 README、APIドキュメント<br/>自動更新]
+
+    Docs --> Done{<moai>DONE</moai><br/>完了マーカー検知}
+
+    Done -->|はい| End([✅ 完了<br/>結果のみ伝達])
+    Done -->|いいえ| Loop
+
+    style Phase0 fill:#e1f5fe
+    style Phase1 fill:#fff3e0
+    style Phase2 fill:#f3e5f5
+    style Phase3 fill:#e8f5e9
+    style Done fill:#c8e6c9
+    style End fill:#4caf50,color:#fff
+```
+
+#### 詳細プロセス
+
 **一度に実行**:
 
-1. **Phase 0**: 並列探索 (Explore + Research + Quality)
-2. **Phase 1**: SPEC生成 (EARS形式)
-3. **Phase 2**: TDD実装 (自律ループ)
-4. **Phase 3**: ドキュメント同期
+1. **Phase 1: 並列探索** (3-4倍高速分析)
+   - **Explore Agent**: コードベース構造、パターン、関連ファイル分析
+   - **Research Agent**: 技術文書、ベストプラクティス調査
+   - **Quality Agent**: 現在の品質状態、潜在的問題特定
+
+2. **Phase 2: SPEC作成** (EARS形式)
+   - 明確な要件定義
+   - 受諾基準仕様書
+   - ユーザーストーリー作成
+
+3. **Phase 3: TDD実装** (自律ループ)
+   - **RED**: 失敗するテストを先に記述
+   - **GREEN**: テスト通過最小実装
+   - **REFACTOR**: コード品質改善
+   - **ループ**: 品質検証失敗時自動問題修正
+
+4. **Phase 4: ドキュメント同期**
+   - README、APIドキュメント自動更新
+   - CHANGELOG自動生成
+   - ユーザーガイド最新化
+
+#### いつ使用するか？
+
+| 状況                 | 説明                               | 例                       |
+| -------------------- | ---------------------------------- | ------------------------ |
+| **新機能開発**       | 最初から最後までAIが自動処理     | "JWT認証システム追加"     |
+| **複雑なリファクタリング** | 複数ファイルに影響大きな変更     | "データベース層再構成"    |
+| **バグ修正**         | 原因特定から修正まで自動化       | "ログイン失敗バグ修正"    |
+| **SPECベース開発**    | SPEC文書のある機能実装          | `/moai:alfred SPEC-AUTH-001` |
 
 **オプション**:
 
@@ -530,13 +640,221 @@ Red-Green-Refactorサイクルを通じてテストを先に書き、それを�
 
 AIが自らLSPエラー、テスト失敗、カバレッジ不足を診断して修正を反復します。並列診断でLSP、AST-grep、Tests、Coverageを同時実行して3-4倍速く問題を解決します。完了マーカーを検知または最大反復回数に到達するまで自律的に実行されます。
 
+#### コンセプトとワークフロー
+
+```mermaid
+flowchart TB
+    Start([ユーザーリクエスト<br/>/moai:loop]) --> Parallel[並列診断]
+
+    Parallel --> LSP[LSP診断<br/>タイプエラー、未定義]
+    Parallel --> AST[AST-grep<br/>パターン検査、セキュリティ]
+    Parallel --> Tests[テスト実行<br/>単体、統合]
+    Parallel --> Coverage[カバレッジ<br/>85%目標]
+
+    LSP --> Collect[問題収集]
+    AST --> Collect
+    Tests --> Collect
+    Coverage --> Collect
+
+    Collect --> HasIssues{問題あり?}
+
+    HasIssues -->|いいえ| Done[<moai>DONE</moai><br/>完了マーカー]
+    HasIssues -->|はい| CreateTODO[TODO生成<br/>優先順位別ソート]
+
+    CreateTODO --> Process[順次処理]
+
+    Process --> Fix1[Level 1: 即時修正<br/>import整列、空白]
+    Process --> Fix2[Level 2: 安全修正<br/>変数名、タイプ]
+    Process --> Fix3[Level 3: 承認修正<br/>ロジック変更]
+
+    Fix1 --> Validate[検証]
+    Fix2 --> Validate
+    Fix3 --> Validate
+
+    Validate --> ReCheck{再診断?}
+
+    ReCheck -->|はい| Parallel
+    ReCheck -->|いいえ| MaxIter{最大反復<br/>100回到達?}
+
+    MaxIter -->|いいえ| Parallel
+    MaxIter -->|はい| Snapshot[スナップショット保存<br/>後で再開可能]
+
+    Done --> End([✅ 完了])
+    Snapshot --> End([⏸️ 一時停止])
+
+    style Parallel fill:#e1f5fe
+    style Collect fill:#fff3e0
+    style Process fill:#f3e5f5
+    style Validate fill:#e8f5e9
+    style Done fill:#c8e6c9
+    style End fill:#4caf50,color:#fff
+```
+
+#### 並列診断詳細
+
+**並列診断** (3.75倍高速):
+
+```mermaid
+flowchart TB
+    Start([並列診断開始]) --> Parallel
+
+    subgraph Parallel[同時実行]
+        direction TB
+        LSP[LSP診断]
+        AST[AST-grep検査]
+        TESTS[テスト実行]
+        COVERAGE[カバレッジ確認]
+    end
+
+    LSP --> Collect[問題統合と優先順位<br/>Level 1 → 2 → 3順序処理]
+    AST --> Collect
+    TESTS --> Collect
+    COVERAGE --> Collect
+
+    style Start fill:#e3f2fd
+    style Parallel fill:#f3f4f6
+    style LSP fill:#fff9c4
+    style AST fill:#ffccbc
+    style TESTS fill:#c8e6c9
+    style COVERAGE fill:#b2dfdb
+    style Collect fill:#e1bee7
+```
+
+#### 📖 AST-grepとは？
+
+> **"grepはテキストを探すが、AST-grepはコード構造を探す"**
+
+**概念**:
+
+AST-grepは**構造的コード検査ツール**です。通常のgrepや正規表現がテキストを検索するのとは異なり、AST-grepはコードの**抽象構文木(Abstract Syntax Tree)**を分析してコードの**構造とパターン**を検査します。
+
+**テキスト検索 vs 構造検索**:
+
+| 特徴        | grep/正規表現                 | AST-grep         |
+| ----------- | ------------------------------ | ----------------- |
+| 検索対象    | テキスト文字列                | コード構造 (AST)  |
+| 例          | `print("hello")`             | `print(__)`       |
+| 意味         | "print"という文字列検索       | print関数呼び出しパターン検索 |
+| 空白感応    | はい (空白、インデント重要)    | いいえ (構造のみ分析) |
+| 変数区別    | 困難 (例: `x=1`, `y=1`は別)  | 可能 (全変数代入パターン) |
+
+**動作原理**:
+
+```mermaid
+flowchart LR
+    Source[ソースコード<br/>def foo x:<br/>    return x + 1] --> AST[AST分析]
+
+    AST --> |変換| Tree[抽象構文木<br/>Function<br/> Call<br/>]
+
+    Tree --> Pattern[パターンマッチング]
+
+    Pattern --> Result1[✓ 関数定義]
+    Pattern --> Result2[✓ return文]
+    Pattern --> Result3[✓ 加算演算]
+
+    style Source fill:#e3f2fd
+    style AST fill:#fff3e0
+    style Tree fill:#f3e5f5
+    style Pattern fill:#e8f5e9
+    style Result1 fill:#c8e6c9
+    style Result2 fill:#c8e6c9
+    style Result3 fill:#c8e6c9
+```
+
+**AST-grepが検知すること**:
+
+1. **セキュリティ脆弱性**
+   - SQLインジェクションパターン: `execute(f"SELECT * FROM users WHERE id={user_input}")`
+   - ハードコードされたパスワード: `password = "123456"`
+   - 安全でない関数使用: `eval(user_input)`
+
+2. **コードスメル (Code Smells)**
+   - 重複コード: 類似構造の反復
+   - 長い関数: 複雑すぎる
+   - マジックナンバー: `if x == 42` (意味のない数字)
+
+3. **アンチパターン (Anti-patterns)**
+   - 空のexceptブロック: `except: pass`
+   - 大域変数修正
+   - 循環依存
+
+4. **ベストプラクティス違反**
+   - タイプヒント欠如
+   - ドキュメント化欠如
+   - エラー処理欠如
+
+**例シナリオ**:
+
+```python
+# AST-grepが問題を見つけるコード例
+def process_user_input(user_input):
+    # ⚠️ 警告: eval使用 (セキュリティ脆弱性)
+    result = eval(user_input)
+
+    # ⚠️ 警告: 空のexcept (アンチパターン)
+    try:
+        save_to_database(result)
+    except:
+        pass
+
+    # ⚠️ 警告: マジックナンバー (コードスメル)
+    if result > 42:
+        return True
+```
+
+**なぜ重要か？**
+
+- **正確性**: コードの意味を理解して検査するので誤検知(False Positive)が少ない
+- **40言語サポート**: Python、TypeScript、Go、Rust、Javaなど多様な言語で動作
+- **自動修正可能**: パターンを見つけるだけでなく自動修正提案も生成
+- **セキュリティ強化**: OWASP Top 10などセキュリティ脆弱性を自動検知
+
+**MoAI-ADKでの活用**:
+
+`/moai:loop`と`/moai:fix`コマンドでAST-grepは並列診断の中核構成要素として動作します:
+
+- **LSP**: タイプエラー、定義検索
+- **AST-grep**: 構造的パターン、セキュリティ脆弱性 ← **これが私たちの関心事!**
+- **Tests**: テスト失敗
+- **Coverage**: カバレッジ不足
+
+この4つが**同時実行**されてコード品質を3.75倍速く診断します。
+
+---
+
+#### 詳細プロセス
+
 **自律ループフロー**:
 
-```text
-並列診断 → TODO生成 → 修正実行 → 検証 → 反復
-    ↓
-完了マーカー検知 → <moai>DONE</moai>
-```
+1. **並列診断** (同時実行)
+   - **LSP**: タイプエラー、未定義、潜在的バグ
+   - **AST-grep**: コードパターン検査、セキュリティ脆弱性
+   - **Tests**: 単体テスト、統合テスト実行
+   - **Coverage**: 85%カバレッジ目標達成確認
+
+2. **TODO生成** (優先順位別)
+   - Level 1: 即時修正 (import整列、空白、フォーマット)
+   - Level 2: 安全修正 (変数名、タイプ追加)
+   - Level 3: 承認修正 (ロジック変更、API修正)
+   - Level 4: 手動必要 (セキュリティ、アーキテクチャ)
+
+3. **順次修正**
+   - TODO項目を一つずつ処理
+   - 各修正後検証
+   - 失敗時再診断
+
+4. **反復または完了**
+   - 全問題解決時 `<moai>DONE</moai>` マーカー
+   - 最大100回反復後スナップショット保存
+
+#### いつ使用するか？
+
+| 状況                  | 説明                             | 例                           |
+| --------------------- | -------------------------------- | ---------------------------- |
+| **実装後品質確保**     | コード作成後自動品質改善       | 機能実装後 `/moai:loop` 実行 |
+| **テスト失敗修正**      | テスト失敗を自動分析修正       | テスト実行後失敗時          |
+| **カバレッジ向上**      | 85%目標を自動達成             | 新コード作成後               |
+| **リファクタリング**     | コード品質を継続的に改善       | 定期的実行で保守             |
 
 **オプション**:
 
@@ -544,7 +862,7 @@ AIが自らLSPエラー、テスト失敗、カバレッジ不足を診断して
 - `--auto`: 自動修正活性化 (Level 1-3)
 - `--sequential` / `--seq`: 順次診断 (デバッグ用) - 並列がデフォルト
 - `--errors`: エラーのみ修正
-- `--coverage`: カバレッジ包含 (85%目標)
+- `--coverage`: カバレッジ包含 (100%目標)
 - `--resume ID`: スナップショット復元
 
 > **パフォーマンス**: 並列診断がデフォルトになり、LSP、AST-grep、Tests、Coverageを同時実行します (3.75倍高速)。
@@ -573,53 +891,225 @@ AIが自らLSPエラー、テスト失敗、カバレッジ不足を診断して
 > /moai:fix
 ```
 
-LSPエラー、linting問題を並列でスキャンして一度に修正します。Level 1-2は即時修正し、Level 3はユーザー承認後修正し、Level 4は手動修正が必要だと報告します。`--dry`オプションでプレビュー確認後実際の修正を適用できます。
+**「一回の実行で、一度に修正」**
 
-**並列スキャン**:
+LSPエラー、linting問題、AST-grepパターンを並列でスキャンして、検出された問題を一回の実行で一度に修正します。Level 1-2は即時修正し、Level 3はユーザー承認後修正し、Level 4は手動修正が必要だと報告します。`--dry`オプションでプレビュー確認後、実際の修正を適用できます。
 
-```text
-LSP ├─┐
-    ├─→ 統合結果 (3.75倍高速)
-AST ├─┤
-    ├─┘
-Linter
+---
+
+#### 🎯 コンセプトとワークフロー
+
+`/moai:fix`は**一回の実行で終わる単発修正**コマンドです。自律的にループする`/moai:loop`とは異なり、スキャン→修正→報告の順序で一度だけ実行します。
+
+```mermaid
+flowchart TB
+    Start[/moai:fix 開始] --> Scan[並列スキャン実行]
+
+    Scan --> LSP[LSP診断]
+    Scan --> AST[AST-grep検査]
+    Scan --> Linter[Linter実行]
+    Scan --> Test[テスト実行]
+
+    LSP --> Gather[結果収集]
+    AST --> Gather
+    Linter --> Gather
+    Test --> Gather
+
+    Gather --> Analyze[問題分析と分類]
+
+    Analyze --> Level1{Level判定}
+    Level1 -->|Level 1<br/>即時修正| Fix1[自動修正]
+    Level1 -->|Level 2<br/>安全修正| Fix2[ログ記録後修正]
+    Level1 -->|Level 3<br/>承認必要| Ask{ユーザー承認}
+    Level1 -->|Level 4<br/>手動必要| Report[報告のみ]
+
+    Ask -->|承認| Fix3[修正実行]
+    Ask -->|拒否| Skip[スキップ]
+
+    Fix1 --> Verify[修正検証]
+    Fix2 --> Verify
+    Fix3 --> Verify
+    Skip --> Verify
+    Report --> End[完了報告]
+
+    Verify --> TestCheck{テスト実行?}
+    TestCheck -->|是| TestRun[テスト実行]
+    TestCheck -->|否| End
+    TestRun --> TestPass{パス?}
+    TestPass -->|是| End
+    TestPass -->|否| Ask
+
+    style Start fill:#e1f5ff
+    style End fill:#c8e6c9
+    style LSP fill:#fff3e0
+    style AST fill:#fff3e0
+    style Linter fill:#fff3e0
+    style Test fill:#fff3e0
+    style Fix1 fill:#c8e6c9
+    style Fix2 fill:#c8e6c9
+    style Fix3 fill:#c8e6c9
+    style Report fill:#ffcdd2
+    style Ask fill:#fff9c4
 ```
 
-**修正レベル**:
+---
 
-| Level | 説明     | 承認     | 例                           |
-| ----- | -------- | -------- | ---------------------------- |
-| 1     | 即時修正 | 不要     | import整列、空白             |
-| 2     | 安全修正 | ログのみ | 変数名、タイプ追加           |
-| 3     | 承認必要 | 必要     | ロジック変更、API修正        |
-| 4     | 手動必要 | 不可     | セキュリティ、アーキテクチャ |
+#### 🔍 並列スキャン詳細
 
-**オプション**:
+**4つの診断ツールを並列実行して、3.75倍高速にスキャンします**。
 
-- `--dry`: プレビューのみ (実際修正なし)
-- `--sequential` / `--seq`: 順次スキャン (デバッグ用) - 並列がデフォルト
-- `--level N`: 最大修正レベル (デフォルト: 3)
-- `--errors`: エラーのみ修正
-- `--security`: セキュリティ検査包含
-- `--no-fmt`: フォーマットスキップ
+```mermaid
+flowchart TB
+    Start[並列スキャン開始] --> Parallel[並列実行]
 
-> **パフォーマンス**: 並列スキャンがデフォルトになり、LSP、AST-grep、Linterを同時実行します (3.75倍高速)。
+    Parallel --> LSP[LSP診断<br/>-------------------<br/>• TypeScriptエラー<br/>• Pythonタイプエラー<br/>• 未定義変数<br/>• インポートエラー]
+    Parallel --> AST[AST-grep検査<br/>-------------------<br/>• セキュリティ脆弱性<br/>• コードスメル<br/>• アンチパターン<br/>• 構造的問題]
+    Parallel --> Linter[Linter実行<br/>-------------------<br/>• コードスタイル<br/>• フォーマット<br/>• 未使用インポート<br/>• 命名規則]
+    Parallel --> Test[テスト検査<br/>-------------------<br/>• 失敗テスト<br/>• カバレッジ不足<br/>• テストエラー<br/>• スキップテスト]
 
-**例**:
+    LSP --> Merge[結果統合]
+    AST --> Merge
+    Linter --> Merge
+    Test --> Merge
+
+    Merge --> Result[統合結果レポート]
+
+    Result --> Stats[統計: <br/>• LSP: 12件検出<br/>• AST: 5件検出<br/>• Linter: 8件検出<br/>• Test: 3件検出<br/><br/>合計: 28件]
+
+    Stats --> Classify[レベル分類:<br/>• Level 1: 15件<br/>• Level 2: 8件<br/>• Level 3: 4件<br/>• Level 4: 1件]
+
+    Classify --> End[修正開始]
+
+    style Start fill:#e1f5ff
+    style End fill:#c8e6c9
+    style LSP fill:#fff3e0
+    style AST fill:#ffe0b2
+    style Linter fill:#e1bee7
+    style Test fill:#c8e6c9
+    style Parallel fill:#ffecb3
+    style Merge fill:#b2dfdb
+```
+
+**並列実行によるパフォーマンス向上**:
+
+- 順次実行: 150秒 (LSP 45s + AST 35s + Linter 40s + Test 30s)
+- 並列実行: 40秒 (最も遅いツールの時間)
+- **高速化**: 3.75倍向上
+
+---
+
+#### 📋 修正レベルとプロセス
+
+各問題は複雑度に応じて4つのレベルに分類されます。
+
+| Level | 説明           | 承認   | 例                                   | 自動修正可否 |
+| ----- | -------------- | ------ | ------------------------------------ | ------------ |
+| 1     | 即時修正       | 不要   | インポート整列、空白、フォーマット    | ✅ 可能      |
+| 2     | 安全修正       | ログのみ | 変数名、タイプ追加、単純なリファクタ | ✅ 可能      |
+| 3     | 承認必要       | 必要   | ロジック変更、API修正、メソッド置換  | ⚠️ 承認後    |
+| 4     | 手動必要       | 不可   | セキュリティ、アーキテクチャ         | ❌ 不可能    |
+
+**修正プロセス**:
+
+1. **スキャン並列実行**: LSP、AST-grep、Linter、Testを同時に実行
+2. **結果統合**: すべての診断結果を統合して重複排除
+3. **レベル分類**: 各問題をレベル1-4に分類
+4. **修正実行**:
+   - Level 1: 即時修正（ログのみ記録）
+   - Level 2: 安全修正（変更内容をログ記録）
+   - Level 3: ユーザー承認後修正
+   - Level 4: 手動修正が必要と報告
+5. **検証**: 修正後にテスト実行して回帰検証
+6. **完了報告**: 修正内容と統計を報告
+
+---
+
+#### 🎬 いつ使うべきか
+
+| 状況                           | 推奨コマンド    | 理由                                           |
+| ------------------------------ | --------------- | ---------------------------------------------- |
+| 日常的なコード品質維持         | `/moai:fix`     | 迅速な単発修正、ループ不要                     |
+| CI失敗の原因を一括修正         | `/moai:fix`     | 一回の実行で全問題修正                         |
+| 新機能実装後のクリーンアップ   | `/moai:fix`     | 一括フォーマットとスタイル修正                 |
+| 複雑な再発するバグ             | `/moai:loop`    | 継続的な修正と検証が必要                       |
+| 大規模リファクタリング         | `/moai:loop`    | 多段階修正と段階的検証が必要                   |
+| PR作成前の最終確認             | `/moai:fix`     | 1回の実行でクリーンアップ                     |
+| レガシーコードの大幅改善       | `/moai:loop`    | 何度も反復して段階的に改善                     |
+
+---
+
+#### 🔀 `/moai:fix` vs `/moai:loop` 選択ガイド
+
+**どちらを使うか迷ったら、このフローチャートで決定できます**。
+
+```mermaid
+flowchart TB
+    Start[問題発見] --> Q1{問題の性質は?}
+
+    Q1 -->|単純なエラー<br/>フォーマット<br/>スタイル| SimpleCheck{修正回数は?}
+    Q1 -->|複雑なロジック<br/>再発する問題<br/>複数ファイル| ComplexCheck{検証が必要?}
+
+    SimpleCheck -->|1回で完了| Fix[**/moai:fix**<br/>単発修正]
+    SimpleCheck -->|複数回必要| Loop[**/moai:loop**<br/>自律反復]
+
+    ComplexCheck -->|継続的検証が必要| Loop
+    ComplexCheck -->|一度だけ| Complexity{複雑度は?}
+
+    Complexity -->|アーキテクチャ変更| Manual[手動修正]
+    Complexity -->|通常範囲| Fix
+
+    Fix --> FixExample[例:<br/>• import整列<br/>• フォーマット<br/>• タイプエラー修正<br/>• 未使用変数削除<br/>• LSPエラー修正]
+    Loop --> LoopExample[例:<br/>• 複雑なバグ修正<br/>• 大規模リファクタ<br/>• 再発する問題<br/>• 多段階改善<br/>• 継続的検証が必要]
+    Manual --> ManualExample[例:<br/>• セキュリティ修正<br/>• アーキテクチャ変更<br/>• API設計変更]
+
+    style Start fill:#e1f5ff
+    style Fix fill:#c8e6c9
+    style Loop fill:#fff9c4
+    style Manual fill:#ffcdd2
+    style FixExample fill:#e8f5e9
+    style LoopExample fill:#fffde7
+    style ManualExample fill:#ffebee
+```
+
+**要約**:
+
+- **`/moai:fix`**: 一回の実行で終わる、日常的な問題修正に最適
+- **`/moai:loop`**: 継続的な修正と検証が必要な複雑な問題に最適
+- **手動修正**: アーキテクチャ変更やセキュリティ修正など、人的判断が必要
+
+---
+
+#### 🛠️ オプションと使用例
 
 ```bash
-# 基本修正 (並列がデフォルト)
+# 基本修正（並列がデフォルト）
 > /moai:fix
 
-# 順次スキャン (デバッグ用)
+# プレビューのみ（実際修正なし）
+> /moai:fix --dry
+
+# 順次スキャン（デバッグ用）
 > /moai:fix --seq
 
-# プレビュー
-> /moai:fix --dry
+# レベル3以下のみ修正
+> /moai:fix --level 3
+
+# エラーのみ修正
+> /moai:fix --errors
+
+# セキュリティ検査包含
+> /moai:fix --security
 
 # 特定ファイル
 > /moai:fix src/auth.py
+
+# フォーマットスキップ
+> /moai:fix --no-fmt
 ```
+
+---
+
+> **💡 パフォーマンス**: 並列スキャンがデフォルトになり、LSP、AST-grep、Linterを同時実行します（3.75倍高速）。
 
 ---
 

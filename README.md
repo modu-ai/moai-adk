@@ -224,6 +224,45 @@ Select the language for documentation.
 
 ---
 
+#### Step 10: TAG System Activation
+
+🎯 TAG System: Code ↔ Documentation Tracking for TDD
+
+The TAG system maintains traceability between code and SPEC documents
+to support the TDD (Test-Driven Development) cycle.
+
+TDD Purpose:
+•  RED (Write tests) → @SPEC SPEC-XXX verify
+•  GREEN (Implement code) → @SPEC SPEC-XXX impl
+•  REFACTOR (Improve) → @SPEC SPEC-XXX impl or related
+
+Clearly tracks which SPEC each code file implements,
+promoting documentation-driven development and maintaining quality.
+
+💡 TAG activation is recommended. Maintains consistency between code and
+documentation in the TDD cycle, improving quality and maintainability.
+
+```text
+? Enable TAG system? (TDD recommended) (Y/n)
+```
+
+---
+
+**TAG Validation Mode Guide**
+
+• warn: Warn during development (default, recommended)
+• enforce: Block commit on missing TAG (strict quality control)
+• off: Skip validation (not recommended)
+
+```text
+❯ Select TAG validation mode: [↑↓] Navigate  [Enter] Select
+❯ warn (Warning) - Show warnings for missing TAGs only. Flexible during development
+  enforce (Enforce) - Block commits if TAGs are missing. Strict quality control
+  off (Off) - Skip TAG validation. Not recommended
+```
+
+---
+
 #### Installation Complete
 
 When all settings are complete, 5-phase installation runs automatically:
@@ -489,12 +528,83 @@ Performs quality verification followed by documentation synchronization, Git com
 
 User presents the goal and AI autonomously performs exploration, planning, implementation, and verification. Analyzes codebase through parallel exploration and self-corrects issues through autonomous loops. Automatically terminates when completion marker (`<moai>DONE</moai>`) is detected, so developer only needs to verify final result.
 
+#### Concept and Workflow
+
+```mermaid
+flowchart TB
+    Start([User Request<br/>/moai:alfred 'feature description']) --> Phase0[Phase 0: Parallel Exploration]
+
+    Phase0 --> Explore[🔍 Explore Agent<br/>Analyze codebase structure]
+    Phase0 --> Research[📚 Research Agent<br/>Research technical docs]
+    Phase0 --> Quality[✅ Quality Agent<br/>Assess quality state]
+
+    Explore --> Phase1[Phase 1: SPEC Creation]
+    Research --> Phase1
+    Quality --> Phase1
+
+    Phase1 --> Spec[📋 EARS format SPEC doc<br/>Requirements specification]
+
+    Spec --> Phase2[Phase 2: TDD Implementation]
+
+    Phase2 --> Red[🔴 RED: Write failing test]
+    Red --> Green[🟢 GREEN: Minimal implementation]
+    Green --> Refactor[🔵 REFACTOR: Code improvement]
+
+    Refactor --> Check{Quality Check<br/>TRUST 5}
+
+    Check -->|Pass| Phase3[Phase 3: Documentation Sync]
+    Check -->|Fail| Loop[🔄 Autonomous Loop<br/>Auto-fix issues]
+
+    Loop --> Red
+
+    Phase3 --> Docs[📚 README, API docs<br/>Auto-update]
+
+    Docs --> Done{<moai>DONE</moai><br/>Completion marker detected}
+
+    Done -->|Yes| End([✅ Complete<br/>Deliver result only])
+    Done -->|No| Loop
+
+    style Phase0 fill:#e1f5fe
+    style Phase1 fill:#fff3e0
+    style Phase2 fill:#f3e5f5
+    style Phase3 fill:#e8f5e9
+    style Done fill:#c8e6c9
+    style End fill:#4caf50,color:#fff
+```
+
+#### Detailed Process
+
 **Single Execution**:
 
-1. **Phase 0**: Parallel exploration (Explore + Research + Quality)
-2. **Phase 1**: SPEC generation (EARS format)
-3. **Phase 2**: TDD implementation (autonomous loop)
-4. **Phase 3**: Documentation sync
+1. **Phase 1: Parallel Exploration** (3-4x faster analysis)
+   - **Explore Agent**: Codebase structure, patterns, related files
+   - **Research Agent**: Technical docs, best practices
+   - **Quality Agent**: Current quality state, potential issues
+
+2. **Phase 2: SPEC Creation** (EARS format)
+   - Clear requirement definitions
+   - Acceptance criteria specification
+   - User story writing
+
+3. **Phase 3: TDD Implementation** (Autonomous loop)
+   - **RED**: Write failing test first
+   - **GREEN**: Minimal implementation to pass test
+   - **REFACTOR**: Improve code quality
+   - **Loop**: Auto-fix if quality check fails
+
+4. **Phase 4: Documentation Sync**
+   - README, API docs auto-update
+   - CHANGELOG auto-generation
+   - User guide update
+
+#### When to use?
+
+| Situation                | Description                              | Example                         |
+| ------------------------ | ---------------------------------------- | ------------------------------- |
+| **New feature development** | AI handles everything from start to finish | "Add JWT authentication system" |
+| **Complex refactoring**  | Large changes affecting multiple files   | "Database layer restructure"    |
+| **Bug fixing**           | Automate from root cause analysis to fix | "Fix login failure bug"         |
+| **SPEC-based development** | Implement features with SPEC documents  | `/moai:alfred SPEC-AUTH-001`    |
 
 **Options**:
 
@@ -530,13 +640,221 @@ User presents the goal and AI autonomously performs exploration, planning, imple
 
 AI autonomously diagnoses and fixes LSP errors, test failures, and coverage deficiencies. Parallel diagnosis executes LSP, AST-grep, Tests, and Coverage simultaneously, resolving issues 3-4x faster. Runs autonomously until completion marker is detected or max iterations reached.
 
-**Autonomous Loop Flow**:
+#### Concept and Workflow
 
-```text
-Parallel diagnosis → TODO creation → Fix execution → Verification → Repeat
-    ↓
-Completion marker detected → <moai>DONE</moai>
+```mermaid
+flowchart TB
+    Start([User Request<br/>/moai:loop]) --> Parallel[Parallel Diagnosis]
+
+    Parallel --> LSP[LSP Diagnosis<br/>Type errors, not found]
+    Parallel --> AST[AST-grep<br/>Pattern check, security]
+    Parallel --> Tests[Test Execution<br/>Unit, integration]
+    Parallel --> Coverage[Coverage<br/>85% target]
+
+    LSP --> Collect[Issue Collection]
+    AST --> Collect
+    Tests --> Collect
+    Coverage --> Collect
+
+    Collect --> HasIssues{Has Issues?}
+
+    HasIssues -->|No| Done[<moai>DONE</moai><br/>Completion marker]
+    HasIssues -->|Yes| CreateTODO[TODO Creation<br/>Priority sorted]
+
+    CreateTODO --> Process[Sequential Processing]
+
+    Process --> Fix1[Level 1: Immediate fix<br/>Import sort, whitespace]
+    Process --> Fix2[Level 2: Safe fix<br/>Variable name, type]
+    Process --> Fix3[Level 3: Approval fix<br/>Logic change]
+
+    Fix1 --> Validate[Verification]
+    Fix2 --> Validate
+    Fix3 --> Validate
+
+    Validate --> ReCheck{Diagnose again?}
+
+    ReCheck -->|Yes| Parallel
+    ReCheck -->|No| MaxIter{Max iteration<br/>100 reached?}
+
+    MaxIter -->|No| Parallel
+    MaxIter -->|Yes| Snapshot[Snapshot saved<br/>Can resume later]
+
+    Done --> End([✅ Complete])
+    Snapshot --> End([⏸️ Paused])
+
+    style Parallel fill:#e1f5fe
+    style Collect fill:#fff3e0
+    style Process fill:#f3e5f5
+    style Validate fill:#e8f5e9
+    style Done fill:#c8e6c9
+    style End fill:#4caf50,color:#fff
 ```
+
+#### Parallel Diagnosis Details
+
+**Parallel diagnosis** (3.75x faster):
+
+```mermaid
+flowchart TB
+    Start([Parallel diagnosis start]) --> Parallel
+
+    subgraph Parallel[Concurrent execution]
+        direction TB
+        LSP[LSP diagnosis]
+        AST[AST-grep inspection]
+        TESTS[Test execution]
+        COVERAGE[Coverage check]
+    end
+
+    LSP --> Collect[Issue integration and priority<br/>Level 1 → 2 → 3 order]
+    AST --> Collect
+    TESTS --> Collect
+    COVERAGE --> Collect
+
+    style Start fill:#e3f2fd
+    style Parallel fill:#f3f4f6
+    style LSP fill:#fff9c4
+    style AST fill:#ffccbc
+    style TESTS fill:#c8e6c9
+    style COVERAGE fill:#b2dfdb
+    style Collect fill:#e1bee7
+```
+
+#### 📖 What is AST-grep?
+
+> **"grep finds text, but AST-grep finds code structure."**
+
+**Concept**:
+
+AST-grep is a **structural code inspection tool**. Unlike normal grep or regex that searches for text, AST-grep analyzes the **Abstract Syntax Tree (AST)** of code to inspect code **structure and patterns**.
+
+**Text search vs Structure search**:
+
+| Feature      | grep/regex                    | AST-grep            |
+| ------------ | ----------------------------- | ------------------- |
+| Search target| Text strings                  | Code structure (AST)|
+| Example      | `print("hello")`              | `print(__)`         |
+| Meaning      | Find "print" characters       | Find print function call pattern |
+| Space sensitive? | Yes (whitespace, indent matters) | No (structure only) |
+| Variable distinguish | Hard (e.g., `x=1`, `y=1` are different) | Possible (all variable assignment patterns) |
+
+**How it works**:
+
+```mermaid
+flowchart LR
+    Source[Source code<br/>def foo x:<br/>    return x + 1] --> AST[AST analysis]
+
+    AST --> |transform| Tree[Abstract syntax tree<br/>Function<br/> Call<br/>]
+
+    Tree --> Pattern[Pattern matching]
+
+    Pattern --> Result1[✓ Function definition]
+    Pattern --> Result2[✓ Return statement]
+    Pattern --> Result3[✓ Addition operation]
+
+    style Source fill:#e3f2fd
+    style AST fill:#fff3e0
+    style Tree fill:#f3e5f5
+    style Pattern fill:#e8f5e9
+    style Result1 fill:#c8e6c9
+    style Result2 fill:#c8e6c9
+    style Result3 fill:#c8e6c9
+```
+
+**What AST-grep detects**:
+
+1. **Security vulnerabilities**
+   - SQL injection patterns: `execute(f"SELECT * FROM users WHERE id={user_input}")`
+   - Hardcoded passwords: `password = "123456"`
+   - Unsafe function usage: `eval(user_input)`
+
+2. **Code smells**
+   - Duplicate code: Repetition of similar structures
+   - Long functions: Too much complexity
+   - Magic numbers: `if x == 42` (meaningless numbers)
+
+3. **Anti-patterns**
+   - Empty except blocks: `except: pass`
+   - Global variable modification
+   - Circular dependencies
+
+4. **Best practice violations**
+   - Missing type hints
+   - Missing documentation
+   - Missing error handling
+
+**Example scenario**:
+
+```python
+# Example code where AST-grep finds problems
+def process_user_input(user_input):
+    # ⚠️ Warning: eval usage (security vulnerability)
+    result = eval(user_input)
+
+    # ⚠️ Warning: empty except (anti-pattern)
+    try:
+        save_to_database(result)
+    except:
+        pass
+
+    # ⚠️ Warning: magic number (code smell)
+    if result > 42:
+        return True
+```
+
+**Why is it important?**
+
+- **Accuracy**: Understands code meaning, so fewer false positives
+- **40 language support**: Works on Python, TypeScript, Go, Rust, Java, etc.
+- **Auto-fix possible**: Not just finds patterns, but generates fix suggestions
+- **Security enhancement**: Automatically detects security vulnerabilities like OWASP Top 10
+
+**Usage in MoAI-ADK**:
+
+In `/moai:loop` and `/moai:fix` commands, AST-grep operates as a core component of parallel diagnosis:
+
+- **LSP**: Type errors, find definitions
+- **AST-grep**: Structural patterns, security vulnerabilities ← **This is our focus!**
+- **Tests**: Test failures
+- **Coverage**: Coverage deficiency
+
+These four run **simultaneously** to diagnose code quality 3.75x faster.
+
+---
+
+#### Detailed Process
+
+**Autonomous loop flow**:
+
+1. **Parallel diagnosis** (concurrent execution)
+   - **LSP**: Type errors, definitions not found, potential bugs
+   - **AST-grep**: Code pattern check, security vulnerabilities
+   - **Tests**: Unit tests, integration tests
+   - **Coverage**: 85% coverage target achievement
+
+2. **TODO creation** (by priority)
+   - Level 1: Immediate fix (import sort, whitespace, formatting)
+   - Level 2: Safe fix (variable names, type addition)
+   - Level 3: Approval fix (logic change, API modification)
+   - Level 4: Manual needed (security, architecture)
+
+3. **Sequential fixing**
+   - Process TODO items one by one
+   - Verify after each fix
+   - Re-diagnose on failure
+
+4. **Repeat or complete**
+   - `<moai>DONE</moai>` marker when all issues resolved
+   - Save snapshot after max 100 iterations
+
+#### When to use?
+
+| Situation                 | Description                             | Example                              |
+| ------------------------ | ---------------------------------------- | ------------------------------------ |
+| **Quality after implementation** | Automatically improve quality after coding | Run `/moai:loop` after feature implementation |
+| **Test failure fix**     | Automatically analyze and fix test failures | Run after test execution on failure  |
+| **Coverage improvement**  | Automatically achieve 85% target          | After writing new code               |
+| **Refactoring**          | Continuously improve code quality         | Periodic execution for maintenance   |
 
 **Options**:
 
@@ -544,7 +862,7 @@ Completion marker detected → <moai>DONE</moai>
 - `--auto`: Enable auto-fix (Level 1-3)
 - `--sequential` / `--seq`: Sequential diagnosis (for debugging) - parallel is default
 - `--errors`: Fix errors only
-- `--coverage`: Include coverage (85% target)
+- `--coverage`: Include coverage (100% target)
 - `--resume ID`: Restore snapshot
 
 > **Performance**: Parallel diagnosis is now the default, executing LSP, AST-grep, Tests, and Coverage simultaneously (3.75x faster).
@@ -575,17 +893,153 @@ Completion marker detected → <moai>DONE</moai>
 
 Scans LSP errors and linting issues in parallel and fixes them at once. Level 1-2 fixes immediately, Level 3 fixes after user approval, Level 4 reports as requiring manual fix. Use `--dry` option to preview before applying actual fixes.
 
-**Parallel Scan**:
+#### Concept and Workflow
 
-```text
-LSP ├─┐
-    ├─→ Combined result (3.75x faster)
-AST ├─┤
-    ├─┘
-Linter
+```mermaid
+flowchart
+    Start([User Request<br/>/moai:fix]) --> Dry{--dry mode?}
+
+    Dry -->|Yes| ScanOnly[Scan only<br/>No fixes]
+    Dry -->|No| Scan[Parallel scan]
+
+    Scan --> LSP[LSP diagnosis<br/>Type, definition errors]
+    Scan --> AST[AST-grep<br/>Patterns, security]
+    Scan --> Linter[Linter<br/>Style, format]
+
+    LSP --> Collect[Issue collection]
+    AST --> Collect
+    Linter --> Collect
+
+    ScanOnly --> Report[Report output<br/>Expected fix content]
+
+    Collect --> Categorize[Level classification]
+
+    Categorize --> L1[Level 1<br/>Immediate fix]
+    Categorize --> L2[Level 2<br/>Safe fix]
+    Categorize --> L3[Level 3<br/>Approval needed]
+    Categorize --> L4[Level 4<br/>Manual needed]
+
+    L1 --> AutoFix1[Auto fix]
+    L2 --> AutoFix2[Auto fix+log]
+    L3 --> Approve{User approval?}
+
+    Approve -->|Yes| AutoFix3[Execute fix]
+    Approve -->|No| Skip[Skip]
+
+    L4 --> Manual[Report manual fix needed]
+
+    AutoFix1 --> Validate[Verification]
+    AutoFix2 --> Validate
+    AutoFix3 --> Validate
+    Skip --> Validate
+
+    Validate --> Results[Result summary]
+
+    Manual --> Results
+    Report --> End([✅ Complete])
+    Results --> End
+
+    style Scan fill:#e1f5fe
+    style Collect fill:#fff3e0
+    style AutoFix1 fill:#c8e6c9
+    style AutoFix2 fill:#c8e6c9
+    style AutoFix3 fill:#fff9c4
+    style Manual fill:#ffccbc
+    style End fill:#4caf50,color:#fff
 ```
 
-**Fix Levels**:
+#### Parallel Scan Details
+
+**Parallel scan** (3.75x faster):
+
+```mermaid
+flowchart TB
+    Start([Parallel scan start]) --> Parallel
+
+    subgraph Parallel[Concurrent execution]
+        direction TB
+        LSP[LSP diagnosis]
+        AST[AST-grep inspection]
+        Linter[Linter inspection]
+    end
+
+    LSP --> Collect[Issue integration and level classification<br/>Level 1 → 2 → 3 → 4]
+    AST --> Collect
+    Linter --> Collect
+
+    style Start fill:#e3f2fd
+    style Parallel fill:#f3f4f6
+    style LSP fill:#fff9c4
+    style AST fill:#ffccbc
+    style Linter fill:#c8e6c9
+    style Collect fill:#e1bee7
+```
+
+#### Detailed Process
+
+**Fix level processing**:
+
+| Level | Description     | Risk    | Approval | Auto   | Example                         |
+| ----- | --------------- | ------- | -------- | ------ | ------------------------------- |
+| 1     | Immediate fix   | Low     | Not needed | ✅      | import sorting, whitespace      |
+| 2     | Safe fix        | Low     | Log only   | ✅      | variable names, type addition   |
+| 3     | Approval needed | Medium  | Needed    | ⚠️      | logic changes, API modification |
+| 4     | Manual needed   | High    | Impossible | ❌      | security, architecture          |
+
+**One-time execution process**:
+
+1. **Parallel scan** (concurrent execution)
+   - **LSP**: Type errors, definitions not found, serious bugs
+   - **AST-grep**: Code patterns, security vulnerabilities
+   - **Linter**: Style, formatting, naming
+
+2. **Issue collection and classification**
+   - Classify all issues by level
+   - Priority: Level 1 → 2 → 3 → 4
+
+3. **Batch fix** (execute at once)
+   - Level 1-2: Auto-fix immediately
+   - Level 3: Fix after user approval
+   - Level 4: Report manual fix needed
+
+4. **Verification and results**
+   - Run tests after fixes
+   - Report summary of changes
+
+#### When to use?
+
+| Situation                  | Description                             | Example                              |
+| ------------------------ | ---------------------------------------- | ------------------------------------ |
+| **Clean up after coding** | Clean up style, formatting all at once  | Run `/moai:fix` after coding         |
+| **Pre-commit inspection**  | Resolve LSP errors, linting in advance   | Run before `git commit`              |
+| **Quick fix**             | Solve at once without repetitive fixes   | When fixing simple issues            |
+| **Preview confirmation**  | Check fix content before applying       | Run `/moai:fix --dry`                |
+
+#### `/moai:fix` vs `/moai:loop` Selection Guide
+
+```mermaid
+flowchart
+    Start([Code quality issue occurred]) --> Question{Need repetitive<br/>fixing?}
+
+    Question -->|Yes| Loop[🔄 /moai:loop<br/>Autonomous iterative fixing]
+    Question -->|No| Fix{Can solve<br/>at once?}
+
+    Fix -->|Yes| FixCmd[🔧 /moai:fix<br/>One-shot auto fix]
+    Fix -->|No| Loop
+
+    Loop --> LoopDesc[Complex issues<br/>Multiple files affected<br/>Repeated test failures]
+    FixCmd --> FixDesc[Simple issues<br/>Style, format<br/>LSP errors]
+
+    LoopDesc --> When1[Usage timing:<br/>Quality after implementation]
+    FixDesc --> When2[Usage timing:<br/>Quick clean up before commit]
+
+    style Loop fill:#f3e5f5
+    style FixCmd fill:#e8f5e9
+    style LoopDesc fill:#fff3e0
+    style FixDesc fill:#e1f5fe
+```
+
+**Fix levels**:
 
 | Level | Description     | Approval   | Example                         |
 | ----- | --------------- | ---------- | ------------------------------- |
@@ -967,7 +1421,357 @@ graph TD
 
 ---
 
-## 8. Automated Quality Checks
+## 8. TAG System v2.0 - Code-to-Documentation Traceability
+
+TAG System v2.0 provides bidirectional traceability between code and SPEC documents. Use `@SPEC` tags to automatically link code to documentation and documentation to code.
+
+### Core Problem Solved: "What if I write code without a SPEC first?"
+
+TAG System v2.0's **Context-Aware Validation** perfectly solves this:
+
+| Situation              | TAG Type                  | Commit without SPEC? | Description                      |
+| ---------------------- | ------------------------- | -------------------- | -------------------------------- |
+| **Simple fixes**       | `related` (all files)     | ✅ Allowed           | Shows relationship only         |
+| **Write tests first**  | `verify` or `@TEST` (test files) | ✅ Allowed | Supports TDD workflow        |
+| **Implementation code**| `impl` (implementation files) | ⚠️ Warning/block    | Depends on warn/enforce mode  |
+| **Show dependencies**  | `depends` (all files)     | ✅ Allowed           | Shows dependency only          |
+
+### TAG Overview
+
+MoAI-ADK supports two TAG types:
+
+| TAG Type | Purpose         | Format                    | Location     |
+| -------- | --------------- | ------------------------- | ------------ |
+| **@SPEC** | Code-to-SPEC link| `@SPEC SPEC-XXX [verb]` | All files    |
+| **@TEST** | Test ID         | `@TEST TEST-XXX`          | Test files only |
+
+### TAG Usage Guide
+
+#### 1. @SPEC TAG Verb Selection Guide
+
+| Verb      | When to use?              | Usage Example                  |
+| --------- | ------------------------- | ------------------------------ |
+| **impl**  | Implementation code links | `# @SPEC SPEC-AUTH-001 impl`    |
+| **verify**| Verify SPEC in tests      | `# @SPEC SPEC-AUTH-001 verify`  |
+| **related**| Simple fixes/relationships | `# @SPEC SPEC-AUTH-001 related` |
+| **depends**| Dependency on other SPEC  | `# @SPEC SPEC-DB-004 depends`   |
+
+#### 2. @TEST vs @SPEC verify Selection Guide
+
+| Distinction | @TEST                    | @SPEC verify               |
+| ----------- | ------------------------ | -------------------------- |
+| **Purpose** | Test identification      | SPEC verification          |
+| **SPEC link**| Optional                 | Required                   |
+| **Usage**   | Independent tests        | TDD (SPEC → impl → test)  |
+| **Combined** | `@SPEC verify` + `@TEST` | Standalone                 |
+
+#### 3. Recommended Usage Patterns
+
+```python
+# Pattern 1: TDD (SPEC exists)
+# @SPEC SPEC-AUTH-001 verify
+# @TEST TEST-AUTH-001
+def test_login():
+    pass
+
+# Pattern 2: Independent test (no SPEC)
+# @TEST TEST-AUTH-001
+def test_login():
+    pass
+
+# Pattern 3: Implementation code
+# @SPEC SPEC-AUTH-001 impl
+def login():
+    pass
+```
+
+### Summary: TAG Selection Decision Tree
+
+```
+Is this a test file?
+├── Yes
+│   ├── SPEC exists and needs verification? → @SPEC verify
+│   ├── Independent test identification? → @TEST
+│   └── Need both? → @SPEC verify + @TEST
+└── No (implementation code)
+    ├── SPEC exists and implementation? → @SPEC impl
+    ├── Simple fix? → @SPEC related
+    └── Depends on other SPEC? → @SPEC depends
+```
+
+### TAG Syntax
+
+Add @TAG in code comments. Recommended to place above the function:
+
+```python
+# Basic format
+@SPEC SPEC-{DOMAIN}-{NUMBER} [verb] # General code
+@TEST TEST-{DOMAIN}-{NUMBER}       # Test code
+
+# Example
+# @SPEC SPEC-AUTH-001 impl
+def login(): ...
+
+# @SPEC SPEC-AUTH-001 verify
+# @TEST TEST-AUTH-001
+def test_login(): ...
+```
+
+### Real-World Workflow
+
+#### Scenario 1: Simple Bug Fix (no SPEC)
+
+```python
+# auth.py
+# @SPEC SPEC-AUTH-001 related
+def fix_login_bug():
+    """Login bug fix
+
+    No related SPEC exists, using related
+    """
+    pass
+```
+
+**Pre-commit Hook Result**:
+```
+TAG Validation Results:
+==================================================
+  auth.py:10: Hint: Consider creating SPEC for SPEC-AUTH-001
+  (related TAG - SPEC not required)
+==================================================
+
+Commit allowed with warning (warn mode)
+```
+
+✅ **Commit Allowed**: related TAG allows commit without SPEC
+
+#### Scenario 2: Write Tests First (TDD)
+
+```python
+# test_auth.py
+# @SPEC SPEC-AUTH-002 verify
+# @TEST TEST-AUTH-002
+def test_login_success():
+    """Login success test
+
+    Tests written first, impl later
+    """
+    pass
+```
+
+**Pre-commit Hook Result**:
+```
+TAG Validation Results:
+==================================================
+  test_auth.py:15: Warning: Test references non-existent SPEC: SPEC-AUTH-002
+  (verify TAG in test file - commit allowed)
+==================================================
+
+Commit allowed with warning (warn mode)
+```
+
+✅ **Commit Allowed**: verify TAG in test files allows commit without SPEC
+
+#### Scenario 3: Official Development (SPEC first)
+
+```bash
+# 1. Create SPEC first
+> /moai:1-plan "user authentication system"
+# → SPEC-AUTH-003 created
+
+# 2. Write implementation code
+# @SPEC SPEC-AUTH-003 impl
+def login(username, password):
+    """User login
+
+    Official development uses impl TAG
+    """
+    pass
+
+# 3. Write test code
+# @SPEC SPEC-AUTH-003 verify
+# @TEST TEST-AUTH-003
+def test_login():
+    """Login test"""
+    pass
+```
+
+**Pre-commit Hook Result** (SPEC exists):
+```
+TAG Validation: All TAGs valid
+```
+
+✅ **Commit Allowed**: SPEC existence confirmed
+
+**Pre-commit Hook Result** (SPEC doesn't exist, enforce mode):
+```
+TAG Validation Results:
+==================================================
+  auth.py:25: Error: Implementation references non-existent SPEC: SPEC-AUTH-003
+  (commit blocked in enforce mode)
+==================================================
+
+Commit blocked due to TAG validation error (enforce mode)
+```
+
+❌ **Commit Blocked**: enforce mode blocks impl TAG without SPEC
+
+### Configuration Options
+
+Configure TAG validation behavior in `.moai/config/sections/quality.yaml`:
+
+```yaml
+tag_validation:
+  enabled: true           # Enable TAG checking
+  mode: warn              # warn | enforce | off
+  check_spec_exists: true # Check SPEC document exists
+  max_tags_per_file: 100  # Maximum TAGs per file
+```
+
+### Mode-Specific Behavior
+
+| Mode            | impl TAG (no SPEC) | verify/@TEST TAG (test file) | related TAG | depends TAG |
+| --------------- | ------------------ | ----------------------------- | ----------- | ----------- |
+| **warn** (default) | Warn then allow     | Warn then allow               | Hint only   | Hint only   |
+| **enforce**      | Block commit        | Allow                         | Hint only   | Hint only   |
+| **off**          | No check            | No check                      | No check    | No check    |
+
+### Recommended TAG Usage Strategy
+
+| Development Type | Recommended Strategy                       | TAG Example                                                                            |
+| ---------------- | ------------------------------------------- | ----------------------------------------------------------------------------------- |
+| **Hotfix**       | Use `related`                               | `@SPEC SPEC-XXX related`                                                            |
+| **Test-first**   | `verify` or `@TEST` first, then `impl`      | Tests: `@SPEC SPEC-XXX verify` or `@TEST TEST-XXX` → Impl: `@SPEC SPEC-XXX impl` |
+| **Official dev** | Create SPEC first, use `impl`              | `/moai:1-plan` → `@SPEC SPEC-XXX impl`                                              |
+| **Refactoring**  | Keep existing TAGs                          | No changes                                                                          |
+| **Documentation** | Use `related` to show relationship       | `@SPEC SPEC-XXX related`                                                            |
+| **Dependency**    | Use `depends` to show dependency            | `@SPEC SPEC-YYY depends` (depends on other SPEC)                                    |
+
+### Pre-commit Hook Automatic Validation
+
+All Git commits automatically validate TAG:
+
+```bash
+# Attempt commit
+git commit -m "Add login feature"
+
+# Automatic execution
+TAG Validation Results:
+==================================================
+  auth.py:10: Hint: Consider creating SPEC for SPEC-AUTH-001
+  (related TAG - SPEC not required)
+==================================================
+
+Commit allowed with warning (warn mode)
+```
+
+### TAG Linkage Database
+
+TAG System stores bidirectional mapping in `.moai/cache/tag-linkage.json`:
+
+```json
+{
+  "tags": [
+    {
+      "spec_id": "SPEC-AUTH-001",
+      "verb": "impl",
+      "file_path": "src/auth.py",
+      "line": 10
+    }
+  ],
+  "files": {
+    "src/auth.py": ["SPEC-AUTH-001"]
+  }
+}
+```
+
+**Auto-update**:
+- Automatically extracts and saves TAGs on commit
+- Automatically removes TAGs when files are deleted
+- Detects orphaned TAGs (references to deleted SPECs)
+
+### Advanced Features
+
+#### SPEC-ID Format Validation
+
+```python
+# Correct format
+@SPEC SPEC-AUTH-001    # ✅
+@SPEC SPEC-PAY-002     # ✅
+@SPEC SPEC-UI-003      # ✅
+
+# Incorrect format
+@SPEC AUTH-001         # ❌ SPEC- prefix missing
+@SPEC SPEC-001         # ❌ Domain missing
+@SPEC SPEC-AUTH-1      # ❌ 3-digit number required
+```
+
+#### File Type Auto-Detection
+
+TAG System auto-detects by file pattern:
+- **Test files**: `test_*.py`, `*_test.py`, `tests/` directory
+- **Implementation files**: All other Python files
+
+### Getting Started
+
+```bash
+# 1. TAG System already enabled
+cat .moai/config/sections/quality.yaml
+
+# 2. Add TAGs to your code
+# auth.py (implementation file)
+# @SPEC SPEC-AUTH-001 impl
+def login():
+    pass
+
+# test_auth.py (test file)
+# @SPEC SPEC-AUTH-001 verify
+# @TEST TEST-AUTH-001
+def test_login():
+    pass
+
+# 3. Automatic validation on commit
+git add .
+git commit -m "Add login feature"
+# → TAG Validation runs automatically
+```
+
+### Troubleshooting
+
+**Q: Skip TAG validation**
+```bash
+git commit --no-verify
+```
+
+**Q: Temporarily commit in enforce mode**
+```yaml
+# quality.yaml (temporary change)
+tag_validation:
+  mode: warn  # enforce → warn
+```
+
+**Q: Find orphaned TAGs**
+```bash
+# Orphaned TAGs = TAGs referencing non-existent SPECs
+# Automatically detected by Pre-commit Hook
+```
+
+### Core Innovations of TAG System v2.0
+
+| Problem                  | TAG System v1     | TAG System v2                          |
+| ------------------------ | ----------------- | -------------------------------------- |
+| Write code without SPEC  | ❌ Impossible     | ✅ Possible with `related`/`verify`     |
+| Write tests first        | ❌ Impossible     | ✅ Test file `verify`/`@TEST` allowed   |
+| Flexible validation      | ❌ All or nothing  | ✅ warn/enforce/off modes               |
+| File type awareness      | ❌ None            | ✅ Auto-detects (test/implementation)   |
+| Show dependencies        | ❌ Not supported   | ✅ `depends` shows SPEC dependencies    |
+| Test identification TAG  | ❌ Not supported   | ✅ `@TEST` for independent test IDs       |
+
+**TAG System v2.0**: Maintains SPEC-First TDD benefits while perfectly supporting real-world development flexibility.
+
+---
+
+## 10. Automated Quality Checks
 
 ### 🔍 AST-Grep Based Structural Inspection
 
@@ -1002,7 +1806,7 @@ Code writing
 
 ---
 
-## 9. 📊 Statusline Customization
+## 11. 📊 Statusline Customization
 
 MoAI-ADK provides a **customizable statusline** that displays real-time project information in Claude Code.
 
@@ -1067,7 +1871,7 @@ export MOAI_STATUSLINE_MODE=extended
 
 ---
 
-## 10. 🌳 Worktree Parallel Development
+## 12. 🌳 Worktree Parallel Development
 
 MoAI-ADK's core innovation: **Worktree for complete isolation, unlimited parallel development**
 
@@ -1227,7 +2031,7 @@ moai-wt clean --merged-only
 
 ---
 
-## 11. Understanding CLAUDE.md
+## 13. Understanding CLAUDE.md
 
 The `CLAUDE.md` file generated in your project root after MoAI-ADK installation is **Alfred's (AI Orchestrator) execution directive**. This file defines how Claude Code behaves in your project.
 
@@ -1328,7 +2132,7 @@ These rules cannot be overridden even by `CLAUDE.local.md`.
 
 ---
 
-## 12. MoAI Rank Introduction
+## 14. MoAI Rank Introduction
 
 **A new dimension of agentic coding**: Track your coding journey and compete with global developers!
 
@@ -1498,7 +2302,7 @@ moai rank list-excluded
 
 ---
 
-## 13. FAQ 5 Questions
+## 15. FAQ 7 Questions
 
 ### Q1: Is SPEC Always Required?
 
@@ -1510,7 +2314,18 @@ moai rank list-excluded
 | New feature addition | Recommended         |
 | Bug fix              | Optional            |
 
-### Q2: Is MCP Server Installation Required?
+### Q2: What TAG Should I Use When Writing Code Without a SPEC?
+
+TAG System v2.0 supports flexible development:
+
+| Situation              | Recommended TAG      | SPEC Required? |
+| ---------------------- | -------------------- | -------------- |
+| Hotfix                 | `@SPEC SPEC-XXX related` | No            |
+| Write tests first      | `@TEST TEST-XXX` or `@SPEC SPEC-XXX verify` | No |
+| Implementation code    | `@SPEC SPEC-XXX impl` | Yes (in enforce mode) |
+| Show dependency        | `@SPEC SPEC-XXX depends` | No            |
+
+### Q3: Is MCP Server Installation Required?
 
 **Required (2)**:
 
@@ -1522,21 +2337,30 @@ moai rank list-excluded
 - Playwright: Web automation testing
 - Figma: Design system
 
-### Q3: Does MoAI Rank Cost Money?
+### Q4: What's the Difference Between @TEST and @SPEC verify?
+
+| Distinction | @TEST                    | @SPEC verify               |
+| ----------- | ------------------------ | -------------------------- |
+| **Purpose** | Test identification      | SPEC verification          |
+| **SPEC link**| Optional                 | Required                   |
+| **Usage**   | Independent tests        | TDD (SPEC → impl → test)  |
+| **Combined** | `@SPEC verify` + `@TEST` | Standalone                 |
+
+### Q5: Does MoAI Rank Cost Money?
 
 It's free. Only automatically collects session data.
 
-### Q4: Is GLM Configuration Required?
+### Q6: Is GLM Configuration Required?
 
 No. You can use Claude only. However, it's recommended for cost savings.
 
-### Q5: Can It Be Applied to Existing Projects?
+### Q7: Can It Be Applied to Existing Projects?
 
 Yes. `moai init .` preserves existing files.
 
 ---
 
-## 14. Community & Support
+## 16. Community & Support
 
 ### 🌐 Participate
 
@@ -1559,7 +2383,7 @@ Copyleft License (COPYLEFT-3.0) - [LICENSE](./LICENSE)
 
 ## 🙏 Made with ❤️ by MoAI-ADK Team
 
-**Last Updated:** 2026-01-11
+**Last Updated:** 2026-01-13
 **Philosophy**: SPEC-First TDD + Agent Orchestration + Hybrid LLM
 **MoAI**: MoAI means "Modu-ui AI" (AI for Everyone).
 

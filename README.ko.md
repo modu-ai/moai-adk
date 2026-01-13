@@ -224,6 +224,45 @@ Git 커밋 메시지에 사용할 언어를 선택합니다.
 
 ---
 
+#### Step 10: TAG 시스템 활성화
+
+🎯 TAG 시스템: TDD를 위한 코드 ↔ 문서 추적
+
+TAG 시스템은 코드와 SPEC 문서 간의 추적 가능성을 유지하여
+TDD(Test-Driven Development) 사이클을 지원합니다.
+
+TDD 목적:
+•  RED (테스트 작성) → @SPEC SPEC-XXX verify
+•  GREEN (코드 구현) → @SPEC SPEC-XXX impl
+•  REFACTOR (개선) → @SPEC SPEC-XXX impl 또는 related
+
+각 코드 파일이 어떤 SPEC을 구현하는지 명확히 추적하여
+문서 중심 개발을 유도하고 품질을 유지합니다.
+
+💡 TAG 활성화를 권장합니다. TDD 사이클에서 코드와 문서의
+일치성을 유지하여 품질과 유지보수성을 향상시킵니다.
+
+```text
+? TAG 시스템을 활성화하시겠습니까? (TDD 권장) (Y/n)
+```
+
+---
+
+**TAG 검증 모드 안내**
+
+• warn: 개발 중 경고로 알림 (기본값, 권장)
+• enforce: TAG 누락 시 커밋 차단 (엄격한 품질 관리)
+• off: 검증 건너뜀 (권장하지 않음)
+
+```text
+❯ TAG 검증 모드를 선택하세요: [↑↓] Navigate  [Enter] Select
+❯ warn (경고) - 누락된 TAG에 대해 경고만 표시합니다. 개발 중 유연하게 대처
+  enforce (강제) - 누락된 TAG가 있으면 커밋을 차단합니다. 엄격한 품질 관리
+  off (끔) - TAG 검증을 건너뜁니다. 추천하지 않음
+```
+
+---
+
 #### 설치 완료
 
 모든 설정이 완료되면 5단계 설치가 자동 진행됩니다:
@@ -341,7 +380,7 @@ moai update --manual
 
 ---
 
-## 2. 프로젝트 문서 생성 (선택 사항)
+## 2. 프로젝트 문서 생성 (필수 사항)
 
 신규 프로젝트나 기존 프로젝트에서 **Claude Code가 프로젝트를 이해하는 데 도움**이 되는 프로젝 문서를 자동 생성할 수 있습니다:
 
@@ -422,10 +461,11 @@ EARS 형식을 사용하여 모호함 없는 명세서를 자동으로 생성합
 ### 💻 `/moai:2-run` - TDD 구현
 
 ```bash
+> /clear  # 항상 코드 생성 전에 clear 실행해서 세션 초기화 
 > /moai:2-run SPEC-001
 ```
 
-Red-Green-Refactor 사이클을 통해 테스트 먼저 작성하고, 이를 통과하는 코드를 구현합니다. 모든 구현은 85% 이상의 테스트 커버리지와 린팅, 타입 검사, 보안 검사를 통과해야 합니다. TRUST 5 품질 원칙을 자동으로 검증하여 안정적인 코드만 커밋됩니다.
+Red-Green-Refactor 사이클을 통해 테스트 먼저 작성하고, 이를 통과하는 코드를 구현합니다. 모든 구현은 100%의 테스트 커버리지와 린팅, 타입 검사, 보안 검사를 통과해야 합니다. TRUST 5 품질 원칙을 자동으로 검증하여 안정적인 코드만 커밋됩니다.
 
 **자동 실행**:
 
@@ -436,7 +476,7 @@ Red-Green-Refactor 사이클을 통해 테스트 먼저 작성하고, 이를 통
 
 **검증 항목**:
 
-- 테스트 커버리지 >= 85%
+- 테스트 커버리지 = 100%
 - 린팅 통과
 - 타입 검사 통과
 - 보안 검사 통과
@@ -490,12 +530,83 @@ Red-Green-Refactor 사이클을 통해 테스트 먼저 작성하고, 이를 통
 
 사용자가 목표를 제시하면 AI가 스스로 탐색, 계획, 구현, 검증을 모두 수행합니다. 병렬 탐색으로 코드베이스를 분석하고, 자율 루프를 통해 이슈를 스스로 수정합니다. 완료 마커(`<moai>DONE</moai>`)를 감지하면 자동으로 종료되어 개발자는 최종 결과만 확인하면 됩니다.
 
+#### 개념과 워크플로우
+
+```mermaid
+flowchart TB
+    Start([사용자 요청<br/>/moai:alfred '기능 설명']) --> Phase0[Phase 0: 병렬 탐색]
+
+    Phase0 --> Explore[🔍 Explore Agent<br/>코드베이스 구조 분석]
+    Phase0 --> Research[📚 Research Agent<br/>기술 문서 조사]
+    Phase0 --> Quality[✅ Quality Agent<br/>품질 상태 평가]
+
+    Explore --> Phase1[Phase 1: SPEC 생성]
+    Research --> Phase1
+    Quality --> Phase1
+
+    Phase1 --> Spec[📋 EARS 형식 SPEC 문서<br/>요구사항 명세화]
+
+    Spec --> Phase2[Phase 2: TDD 구현]
+
+    Phase2 --> Red[🔴 RED: 실패 테스트 작성]
+    Red --> Green[🟢 GREEN: 최소 구현]
+    Green --> Refactor[🔵 REFACTOR: 코드 개선]
+
+    Refactor --> Check{품질 검증<br/>TRUST 5}
+
+    Check -->|통과| Phase3[Phase 3: 문서 동기화]
+    Check -->|실패| Loop[🔄 자율 루프<br/>이슈 자동 수정]
+
+    Loop --> Red
+
+    Phase3 --> Docs[📚 README, API 문서<br/>자동 업데이트]
+
+    Docs --> Done{<moai>DONE</moai><br/>완료 마커 감지}
+
+    Done -->|예| End([✅ 완료<br/>사용자에게 결과만 전달])
+    Done -->|아니오| Loop
+
+    style Phase0 fill:#e1f5fe
+    style Phase1 fill:#fff3e0
+    style Phase2 fill:#f3e5f5
+    style Phase3 fill:#e8f5e9
+    style Done fill:#c8e6c9
+    style End fill:#4caf50,color:#fff
+```
+
+#### 상세 프로세스
+
 **한 번에 실행**:
 
-1. **Phase 0**: 병렬 탐색 (Explore + Research + Quality)
-2. **Phase 1**: SPEC 생성 (EARS 형식)
-3. **Phase 2**: TDD 구현 (자율 루프)
-4. **Phase 3**: 문서 동기화
+1. **Phase 1: 병렬 탐색** (3-4배 빠른 분석)
+   - **Explore Agent**: 코드베이스 구조, 패턴, 관련 파일 분석
+   - **Research Agent**: 기술 문서, 베스트 프랙티스 조사
+   - **Quality Agent**: 현재 품질 상태, 잠재 이슈 식별
+
+2. **Phase 2: SPEC 생성** (EARS 형식)
+   - 명확한 요구사항 정의
+   - 수용 조건 명세
+   - 사용자 스토리 작성
+
+3. **Phase 3: TDD 구현** (자율 루프)
+   - **RED**: 실패하는 테스트 먼저 작성
+   - **GREEN**: 테스트 통과하는 최소 구현
+   - **REFACTOR**: 코드 품질 개선
+   - **루프**: 품질 검증 실패 시 자동으로 이슈 수정 반복
+
+4. **Phase 4: 문서 동기화**
+   - README, API 문서 자동 업데이트
+   - CHANGELOG 자동 생성
+   - 사용자 가이드 최신화
+
+#### 언제 사용하나요?
+
+| 상황                 | 설명                               | 예시                         |
+| -------------------- | ---------------------------------- | ---------------------------- |
+| **새로운 기능 개발** | 처음부터 끝까지 AI가 자동으로 처리 | "JWT 인증 시스템 추가"       |
+| **복잡한 리팩토링**  | 여러 파일에 영향이 있는 큰 변경    | "데이터베이스 계층 재구성"   |
+| **버그 수정**        | 원인 파악부터 수정까지 자동화      | "로그인 실패 버그 수정"      |
+| **SPEC 기반 개발**   | SPEC 문서가 있는 기능 구현         | `/moai:alfred SPEC-AUTH-001` |
 
 **옵션**:
 
@@ -531,13 +642,221 @@ Red-Green-Refactor 사이클을 통해 테스트 먼저 작성하고, 이를 통
 
 AI가 스스로 LSP 오류, 테스트 실패, 커버리지 부족을 진단하고 수정을 반복합니다. 병렬 진단으로 LSP, AST-grep, Tests, Coverage를 동시에 실행하여 3-4배 빠르게 이슈를 해결합니다. 완료 마커를 감지하거나 최대 반복 횟수에 도달할 때까지 자율적으로 실행됩니다.
 
+#### 개념과 워크플로우
+
+```mermaid
+flowchart TB
+    Start([사용자 요청<br/>/moai:loop]) --> Parallel[병렬 진단]
+
+    Parallel --> LSP[LSP 진단<br/>타입 오류, 정의 못 찾음]
+    Parallel --> AST[AST-grep<br/>패턴 검사, 보안]
+    Parallel --> Tests[테스트 실행<br/>단위, 통합]
+    Parallel --> Coverage[커버리지<br/>85% 목표]
+
+    LSP --> Collect[이슈 수집]
+    AST --> Collect
+    Tests --> Collect
+    Coverage --> Collect
+
+    Collect --> HasIssues{이슈 있음?}
+
+    HasIssues -->|아니오| Done[<moai>DONE</moai><br/>완료 마커]
+    HasIssues -->|예| CreateTODO[TODO 생성<br/>우선순위별 정렬]
+
+    CreateTODO --> Process[순차적 처리]
+
+    Process --> Fix1[Level 1: 즉시 수정<br/>import 정렬, 공백]
+    Process --> Fix2[Level 2: 안전 수정<br/>변수 이름, 타입]
+    Process --> Fix3[Level 3: 승인 수정<br/>로직 변경]
+
+    Fix1 --> Validate[검증]
+    Fix2 --> Validate
+    Fix3 --> Validate
+
+    Validate --> ReCheck{다시 진단?}
+
+    ReCheck -->|예| Parallel
+    ReCheck -->|아니오| MaxIter{최대 반복<br/>100회 도달?}
+
+    MaxIter -->|아니오| Parallel
+    MaxIter -->|예| Snapshot[스냅샷 저장<br/>나중에 재개 가능]
+
+    Done --> End([✅ 완료])
+    Snapshot --> End([⏸️ 일시 중지])
+
+    style Parallel fill:#e1f5fe
+    style Collect fill:#fff3e0
+    style Process fill:#f3e5f5
+    style Validate fill:#e8f5e9
+    style Done fill:#c8e6c9
+    style End fill:#4caf50,color:#fff
+```
+
+#### 병렬 진단 상세
+
+**병렬 진단** (3.75배 빠름):
+
+```mermaid
+flowchart TB
+    Start([병렬 진단 시작]) --> Parallel
+
+    subgraph Parallel[동시 실행]
+        direction TB
+        LSP[LSP 진단]
+        AST[AST-grep 검사]
+        TESTS[테스트 실행]
+        COVERAGE[커버리지 확인]
+    end
+
+    LSP --> Collect[이슈 통합 및 우선순위<br/>Level 1 → 2 → 3 순서 처리]
+    AST --> Collect
+    TESTS --> Collect
+    COVERAGE --> Collect
+
+    style Start fill:#e3f2fd
+    style Parallel fill:#f3f4f6
+    style LSP fill:#fff9c4
+    style AST fill:#ffccbc
+    style TESTS fill:#c8e6c9
+    style COVERAGE fill:#b2dfdb
+    style Collect fill:#e1bee7
+```
+
+#### 📖 AST-grep이란?
+
+> **"grep은 텍스트를 찾지만, AST-grep은 코드 구조를 찾습니다."**
+
+**개념**:
+
+AST-grep은 **구조적 코드 검사 도구**입니다. 일반 grep이나 정규식이 텍스트를 검색하는 것과 달리, AST-grep은 코드의 **추상 구문 트리**(Abstract Syntax Tree)를 분석하여 코드의 **구조와 패턴**을 검사합니다.
+
+**텍스트 검색 vs 구조 검색**:
+
+| 특징        | grep/정규식                      | AST-grep                   |
+| ----------- | -------------------------------- | -------------------------- |
+| 검색 대상   | 텍스트 문자열                    | 코드 구조 (AST)            |
+| 예시        | `print("hello")`                 | `print(__)`                |
+| 의미        | "print"라는 글자 찾기            | print 함수 호출 패턴 찾기  |
+| 공백 민감도 | 예 (공백, 들여쓰기 중요)         | 아니오 (구조만 분석)       |
+| 변수 구분   | 어려움 (예: `x=1`, `y=1`은 다름) | 가능 (모든 변수 할당 패턴) |
+
+**작동 원리**:
+
+```mermaid
+flowchart LR
+    Source[소스 코드<br/>def foo x:<br/>    return x + 1] --> AST[AST 분석]
+
+    AST --> |변환| Tree[추상 구문 트리<br/>Function<br/> Call<br/>]
+
+    Tree --> Pattern[패턴 매칭]
+
+    Pattern --> Result1[✓ 함수 정의]
+    Pattern --> Result2[✓ return 문]
+    Pattern --> Result3[✓ 덧셈 연산]
+
+    style Source fill:#e3f2fd
+    style AST fill:#fff3e0
+    style Tree fill:#f3e5f5
+    style Pattern fill:#e8f5e9
+    style Result1 fill:#c8e6c9
+    style Result2 fill:#c8e6c9
+    style Result3 fill:#c8e6c9
+```
+
+**AST-grep이 감지하는 것**:
+
+1. **보안 취약점**
+   - SQL 인젝션 패턴: `execute(f"SELECT * FROM users WHERE id={user_input}")`
+   - 하드코딩된 비밀번호: `password = "123456"`
+   - 안전하지 않은 함수 사용: `eval(user_input)`
+
+2. **코드 스멀 (Code Smells)**
+   - 중복 코드: 유사한 구조의 반복
+   - 긴 함수: 너무 많은 복잡도
+   - 매직 넘버: `if x == 42` (의미 없는 숫자)
+
+3. **안티 패턴 (Anti-patterns)**
+   - 빈 except 블록: `except: pass`
+   - 전역 변수 수정
+   - 순환 의존성
+
+4. **모범 사례 위반**
+   - 타입 힌트 누락
+   - 문서화 누락
+   - 에러 처리 누락
+
+**예시 시나리오**:
+
+```python
+# AST-grep가 문제를 찾는 코드 예시
+def process_user_input(user_input):
+    # ⚠️ 경고: eval 사용 (보안 취약점)
+    result = eval(user_input)
+
+    # ⚠️ 경고: 빈 except (안티 패턴)
+    try:
+        save_to_database(result)
+    except:
+        pass
+
+    # ⚠️ 경고: 매직 넘버 (코드 스멀)
+    if result > 42:
+        return True
+```
+
+**왜 중요한가요?**
+
+- **정확성**: 코드의 의미를 이해하고 검사하므로 오탐(False Positive)이 적습니다
+- **40개 언어 지원**: Python, TypeScript, Go, Rust, Java 등 다양한 언어에서 작동
+- **자동 수정 가능**: 패턴을 찾을 뿐만 아니라 자동으로 수정 제안도 생성
+- **보안 강화**: OWASP Top 10 등 보안 취약점을 자동으로 탐지
+
+**MoAI-ADK에서의 활용**:
+
+`/moai:loop`와 `/moai:fix` 명령어에서 AST-grep은 병렬 진단의 핵심 구성 요소로 작동합니다:
+
+- **LSP**: 타입 오류, 정의 찾기
+- **AST-grep**: 구조적 패턴, 보안 취약점 ← **이것이 우리의 관심사!**
+- **Tests**: 테스트 실패
+- **Coverage**: 커버리지 부족
+
+이 네 가지가 **동시에 실행**되어 3.75배 더 빠르게 코드 품질을 진단합니다.
+
+---
+
+#### 상세 프로세스
+
 **자율 루프 흐름**:
 
-```text
-병렬 진단 → TODO 생성 → 수정 실행 → 검증 → 반복
-    ↓
-완료 마커 감지 → <moai>DONE</moai>
-```
+1. **병렬 진단** (동시 실행)
+   - **LSP**: 타입 오류, 정의 못 찾음, 잠재적 버그
+   - **AST-grep**: 코드 패턴 검사, 보안 취약점
+   - **Tests**: 단위 테스트, 통합 테스트 실행
+   - **Coverage**: 85% 커버리지 목표 달성 확인
+
+2. **TODO 생성** (우선순위별)
+   - Level 1: 즉시 수정 (import 정렬, 공백, 포맷팅)
+   - Level 2: 안전 수정 (변수 이름, 타입 추가)
+   - Level 3: 승인 수정 (로직 변경, API 수정)
+   - Level 4: 수동 필요 (보안, 아키텍처)
+
+3. **순차적 수정**
+   - TODO 항목을 하나씩 처리
+   - 각 수정 후 검증
+   - 실패 시 다시 진단
+
+4. **반복 또는 완료**
+   - 모든 이슈 해결 시 `<moai>DONE</moai>` 마커
+   - 최대 100회 반복 후 스냅샷 저장
+
+#### 언제 사용하나요?
+
+| 상황                  | 설명                             | 예시                           |
+| --------------------- | -------------------------------- | ------------------------------ |
+| **구현 후 품질 확보** | 코드 작성 후 자동으로 품질 개선  | 기능 구현 후 `/moai:loop` 실행 |
+| **테스트 실패 수정**  | 테스트 실패를 자동으로 분석 수정 | 테스트 실행 후 실패 시         |
+| **커버리지 향상**     | 85% 목표를 자동으로 달성         | 새 코드 작성 후                |
+| **리팩토링**          | 코드 품질을 지속적으로 개선      | 주기적 실행으로 유지보수       |
 
 **옵션**:
 
@@ -545,7 +864,7 @@ AI가 스스로 LSP 오류, 테스트 실패, 커버리지 부족을 진단하�
 - `--auto`: 자동 수정 활성화 (Level 1-3)
 - `--sequential` / `--seq`: 순차 진단 (디버깅용) - 병렬이 기본값
 - `--errors`: 에러만 수정
-- `--coverage`: 커버리지 포함 (85% 목표)
+- `--coverage`: 커버리지 포함 (100% 목표)
 - `--resume ID`: 스냅샷 복구
 
 > **성능**: 병렬 진단이 기본값으로 변경되어 LSP, AST-grep, Tests, Coverage를 동시에 실행합니다 (3.75배 빠름).
@@ -576,14 +895,150 @@ AI가 스스로 LSP 오류, 테스트 실패, 커버리지 부족을 진단하�
 
 LSP 오류, linting 이슈를 병렬로 스캔하고 한 번에 수정합니다. Level 1-2는 즉시 수정하고, Level 3은 사용자 승인 후 수정하며, Level 4는 수동 수정이 필요하다고 보고합니다. `--dry` 옵션으로 미리보기를 확인 후 실제 수정을 적용할 수 있습니다.
 
-**병렬 스캔**:
+#### 개념과 워크플로우
 
-```text
-LSP ├─┐
-    ├─→ 통합 결과 (3.75배 빠름)
-AST ├─┤
-    ├─┘
-Linter
+```mermaid
+flowchart 
+    Start([사용자 요청<br/>/moai:fix]) --> Dry{--dry 모드?}
+
+    Dry -->|예| ScanOnly[스캔만 수행<br/>수정 없음]
+    Dry -->|아니오| Scan[병렬 스캔]
+
+    Scan --> LSP[LSP 진단<br/>타입, 정의 오류]
+    Scan --> AST[AST-grep<br/>패턴, 보안]
+    Scan --> Linter[Linter<br/>스타일, 포맷]
+
+    LSP --> Collect[이슈 수집]
+    AST --> Collect
+    Linter --> Collect
+
+    ScanOnly --> Report[보고서 출력<br/>수정 예상 내용]
+
+    Collect --> Categorize[레벨 분류]
+
+    Categorize --> L1[Level 1<br/>즉시 수정]
+    Categorize --> L2[Level 2<br/>안전 수정]
+    Categorize --> L3[Level 3<br/>승인 필요]
+    Categorize --> L4[Level 4<br/>수동 필요]
+
+    L1 --> AutoFix1[자동 수정]
+    L2 --> AutoFix2[자동 수정+로그]
+    L3 --> Approve{사용자 승인?}
+
+    Approve -->|예| AutoFix3[수정 실행]
+    Approve -->|아니오| Skip[건너뛰기]
+
+    L4 --> Manual[수동 수정 보고]
+
+    AutoFix1 --> Validate[검증]
+    AutoFix2 --> Validate
+    AutoFix3 --> Validate
+    Skip --> Validate
+
+    Validate --> Results[결과 요약]
+
+    Manual --> Results
+    Report --> End([✅ 완료])
+    Results --> End
+
+    style Scan fill:#e1f5fe
+    style Collect fill:#fff3e0
+    style AutoFix1 fill:#c8e6c9
+    style AutoFix2 fill:#c8e6c9
+    style AutoFix3 fill:#fff9c4
+    style Manual fill:#ffccbc
+    style End fill:#4caf50,color:#fff
+```
+
+#### 병렬 스캔 상세
+
+**병렬 스캔** (3.75배 빠름):
+
+```mermaid
+flowchart TB
+    Start([병렬 스캔 시작]) --> Parallel
+
+    subgraph Parallel[동시 실행]
+        direction TB
+        LSP[LSP 진단]
+        AST[AST-grep 검사]
+        Linter[Linter 검사]
+    end
+
+    LSP --> Collect[이슈 통합 및 레벨 분류<br/>Level 1 → 2 → 3 → 4]
+    AST --> Collect
+    Linter --> Collect
+
+    style Start fill:#e3f2fd
+    style Parallel fill:#f3f4f6
+    style LSP fill:#fff9c4
+    style AST fill:#ffccbc
+    style Linter fill:#c8e6c9
+    style Collect fill:#e1bee7
+```
+
+#### 상세 프로세스
+
+**수정 레벨별 처리**:
+
+| Level | 설명      | 위험도 | 승인   | 자동화 | 예시                 |
+| ----- | --------- | ------ | ------ | ------ | -------------------- |
+| 1     | 즉시 수정 | 낮음   | 불필요 | ✅      | import 정렬, 공백    |
+| 2     | 안전 수정 | 낮음   | 로그만 | ✅      | 변수 이름, 타입 추가 |
+| 3     | 승인 필요 | 중간   | 필요   | ⚠️      | 로직 변경, API 수정  |
+| 4     | 수동 필요 | 높음   | 불가능 | ❌      | 보안, 아키텍처       |
+
+**1회 실행 과정**:
+
+1. **병렬 스캔** (동시 실행)
+   - **LSP**: 타입 오류, 정의 못 찾음, 심각한 버그
+   - **AST-grep**: 코드 패턴, 보안 취약점
+   - **Linter**: 스타일, 포맷팅, 네이밍
+
+2. **이슈 수집 및 분류**
+   - 모든 이슈를 레벨별로 분류
+   - 우선순위: Level 1 → 2 → 3 → 4
+
+3. **일괄 수정** (한 번에 실행)
+   - Level 1-2: 자동으로 즉시 수정
+   - Level 3: 사용자 승인 후 수정
+   - Level 4: 수동 수정 필요 사항 보고
+
+4. **검증 및 결과**
+   - 수정 후 테스트 실행
+   - 변경 사항 요약 보고
+
+#### 언제 사용하나요?
+
+| 상황                  | 설명                             | 예시                          |
+| --------------------- | -------------------------------- | ----------------------------- |
+| **코드 작성 후 정리** | 스타일, 포맷팅 한 번에 정리      | 코드 작성 후 `/moai:fix` 실행 |
+| **커밋 전 검사**      | LSP 오류, linting 이슈 사전 해결 | `git commit` 전 실행          |
+| **빠른 수정**         | 반복 수정 없이 한 번에 해결      | 간단한 이슈 수정 시           |
+| **미리보기 확인**     | 수정 내용 미리 확인 후 결정      | `/moai:fix --dry` 실행        |
+
+#### `/moai:fix` vs `/moai:loop` 선택 가이드
+
+```mermaid
+flowchart
+    Start([코드 품질 이슈 발생]) --> Question{반복 수정이<br/>필요한가?}
+
+    Question -->|예| Loop[🔄 /moai:loop<br/>자율 반복 수정]
+    Question -->|아니오| Fix{한 번에<br/>해결 가능?}
+
+    Fix -->|예| FixCmd[🔧 /moai:fix<br/>단발 자동 수정]
+    Fix -->|아니오| Loop
+
+    Loop --> LoopDesc[복잡한 이슈<br/>여러 파일 영향<br/>테스트 실패 반복]
+    FixCmd --> FixDesc[간단한 이슈<br/>스타일, 포맷<br/>LSP 오류]
+
+    LoopDesc --> When1[사용 시점:<br/>구현 후 품질 확보]
+    FixDesc --> When2[사용 시점:<br/>커밋 전 빠른 정리]
+
+    style Loop fill:#f3e5f5
+    style FixCmd fill:#e8f5e9
+    style LoopDesc fill:#fff3e0
+    style FixDesc fill:#e1f5fe
 ```
 
 **수정 레벨**:
@@ -709,249 +1164,7 @@ Linter
 
 ---
 
-## 4. All is Well - 에이전틱 자율 자동화
-
-MoAI-ADK의 핵심 워크플로우 세 가지 명령어를 완전하게 분석했습니다.
-
----
-
-### 1. `/moai:fix` - 단발성 자동 수정
-
-#### 📋 메타데이터
-
-| 항목    | 값                                                         |
-| ------- | ---------------------------------------------------------- |
-| Type    | utility                                                    |
-| Version | 2.1.0                                                      |
-| Tools   | Task, AskUserQuestion, Bash, Read, Write, Edit, Glob, Grep |
-| Purpose | 한 번의 스캔으로 이슈 감지 및 자율 수정                    |
-
-#### 🔄 워크플로우
-
-```text
-START: /moai:fix [--seq] [--dry]
-  ↓
-PARALLEL SCAN (병렬이 기본값, --seq로 순차)
-  ├── LSP 진단
-  ├── AST-grep (보안)
-  └── Linter (ruff 등)
-  ↓
-CLASSIFICATION (자율 분류)
-  ├── Level 1: import, 공백 (즉시)
-  ├── Level 2: 변수명, 타입 (안전)
-  ├── Level 3: 로직, API (승인필요)
-  └── Level 4: 보안 (수동필요)
-  ↓
-AUTO-FIX (Level 1-2 자동 수정)
-  → Level 3: AskUserQuestion
-  ↓
-VERIFY → REPORT (증거 포함)
-  ↓
-END (한 번 실행 후 종료)
-```
-
-#### 🎯 핵심 특징
-
-- **1회성 실행**: 한 번 스캔/수정 후 종료
-- **증거 기반**: 모든 수정에 출처 명시
-- **--dry 모드**: 미리보기만 가능
-
----
-
-### 2. `/moai:loop` - 자율 반복 수정 루프
-
-#### 📋 메타데이터
-
-| 항목    | 값                                                        |
-| ------- | --------------------------------------------------------- |
-| Type    | utility                                                   |
-| Version | 2.1.0                                                     |
-| Tools   | Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit |
-| Purpose | 완료될 때까지 자율적으로 반복 수정                        |
-
-#### 🔄 워크플로우
-
-```text
-START: /moai:loop [--max N] [--seq]
-  ↓
-PARALLEL DIAGNOSTICS (병렬이 기본값, --seq로 순차)
-  ├── LSP: 에러/경고
-  ├── AST-grep: 보안 이슈
-  ├── Tests: 테스트 실행
-  └── Coverage: 커버리지 측정
-  ↓
-완료 마커 감지?
-  ├── YES → COMPLETE 🎉
-  └── NO  ↓
-TODO 즉시 생성 (TODO-Obsessive Rule)
-  ↓
-AUTO-FIX (레벨별 수정)
-  ├── Level 1: 즉시 수정
-  ├── Level 2: 안전 수정
-  └── Level 3: 승인 요청
-  ↓
-VERIFY (검증)
-  ↓
-max 도달?
-  ├── YES → STOP (스냅샷 저장)
-  └── NO  → 🔄 반복 (처음으로)
-  ↓
-END: <moai>DONE</moai>
-```
-
-#### 🎯 핵심 특징
-
-- **자율 반복**: max 도달 또는 완료 마커까지 계속
-- **완료 마커**: `<moai:DONE</moai>` 감지 시 종료
-- **스냅샷**: 상태 저장/복구 가능
-- **취소**: `/moai:cancel-loop`으로 중단 가능
-
----
-
-### 3. `/moai:alfred` - 완전 자율 자동화
-
-#### 📋 메타데이터
-
-| 항목    | 값                                                  |
-| ------- | --------------------------------------------------- |
-| Type    | workflow                                            |
-| Version | 3.1.0                                               |
-| Tools   | Task, AskUserQuestion, TodoWrite, Skill, Glob, Bash |
-| Purpose | 목표 → SPEC → 구현 → 검증 전체 자율화               |
-
-#### 🔄 워크플로우
-
-```text
-START: /moai:alfred "JWT 인증 추가"
-  ↓
-PHASE 0: 병렬 탐색 (자율)
-  ├── Explore Agent: 코드베이스 분석
-  ├── Research Agent: 문서/이슈 검색
-  └── Quality Agent: 현재 상태 진단
-  ↓
-통합 → 실행 계획 생성
-  ↓
-PHASE 1: SPEC 생성
-  └── EARS 형식 작성
-  ↓
-👤 사용자 승인 (AskUserQuestion)
-  ↓
-PHASE 2: TDD 구현 (자율 루프)
-  │
-  └── WHILE (issues && iter < max):
-       ├── 진단 (LSP + Tests)
-       ├── TODO 생성
-       ├── 수정 실행
-       ├── 검증
-       └── 완료 마커? → BREAK
-  ↓
-PHASE 3: 문서 동기화
-  └── 마커 추가
-  ↓
-END: <moai>DONE</moai>
-```
-
-#### 🎯 핵심 특징
-
-- **전체 워크플로우**: 목표 → SPEC → 구현 → 문서
-- **전문가 위임**: 단일 도메인은 expert-* 에이전트에 직접 위임
-- **LLM 모드**: opus-only, hybrid, glm-only 지원
-- **이어서 하기**: `resume SPEC-XXX`로 중단점부터 재개
-
----
-
-### 📊 세 명령어 비교
-
-| 구분          | `/moai:fix` | `/moai:loop`   | `/moai:alfred`   |
-| ------------- | ----------- | -------------- | ---------------- |
-| **범위**      | 코드 수정만 | 코드 수정 반복 | 전체 개발 사이클 |
-| **반복**      | 1회         | max까지 반복   | Phase 2에서 반복 |
-| **SPEC**      | ❌           | ❌              | ✅ 생성           |
-| **승인**      | Level 3만   | Level 3만      | SPEC 승인        |
-| **Type**      | utility     | utility        | workflow         |
-| **완료 조건** | 1회 실행    | 마커 감지      | 마커 감지        |
-
-**MoAI-ADK의 가장 강력한 기능**: AI가 완료 마커가 감지될 때까지 스스로 탐색, 계획, 구현, 검증을 수행합니다.
-
-### 핵심 개념
-
-```text
-사용자: "인증 기능 추가해줘"
-  ↓
-AI: 탐색 → 계획 → 구현 → 검증 → 반복
-  ↓
-AI: 모든 이슈 해결
-  ↓
-AI: <moai>DONE</moai>  ← 완료 마커
-```
-
-### 세 가지 명령어 계층
-
-MoAI-ADK는 세 단계의 자율 자동화를 제공합니다:
-
-| 명령어         | 범위             | 반복          | 목적                      |
-| -------------- | ---------------- | ------------- | ------------------------- |
-| `/moai:fix`    | 코드 수정만      | 1회           | 단일 스캔 + 자동 수정     |
-| `/moai:loop`   | 코드 수정        | 마커/최대까지 | 자율 반복 수정            |
-| `/moai:alfred` | 전체 개발 사이클 | 마커/최대까지 | 목표 → SPEC → 구현 → 문서 |
-
-### 명령어 체인 관계
-
-```text
-/moai:alfred (전체 자동화)
-     │
-     ├── Phase 0: 병렬 탐색
-     ├── Phase 1: SPEC 생성
-     ├── Phase 2: 구현 ←─┬── /moai:loop (반복)
-     │                   │        │
-     │                   │        └── /moai:fix (단발)
-     └── Phase 3: 문서 동기화
-```
-
-### 완료 마커
-
-AI는 작업 완료를 알리기 위해 완료 마커를 사용합니다:
-
-```markdown
-## 작업 완료
-
-모든 구현 완료, 테스트 통과, 문서 업데이트. <moai>DONE</moai>
-```
-
-**지원 마커**:
-- `<moai>DONE</moai>` - 작업 완료
-- `<moai>COMPLETE</moai>` - 전체 완료
-- `<moai:done />` - XML 형식
-
-### 자동 수정 레벨
-
-| 레벨 | 설명      | 승인      | 예시                   |
-| ---- | --------- | --------- | ---------------------- |
-| 1    | 즉시 수정 | 불필요    | import 정렬, 공백      |
-| 2    | 안전 수정 | 로그만    | 변수명 변경, 타입 힌트 |
-| 3    | 승인 필요 | 필요      | 로직 변경, API 수정    |
-| 4    | 수동 필요 | 자동 불가 | 보안, 아키텍처         |
-
-### 빠른 시작 예시
-
-```bash
-# 단일 스캔 및 수정 (병렬이 기본값)
-> /moai:fix
-
-# 해결될 때까지 자율 루프
-> /moai:loop --max 50
-
-# 전체 자율 개발 (병렬이 기본값)
-> /moai:alfred "JWT 인증 추가" --loop
-```
-
-### 왜 "All is Well"인가?
-
-이름은 철학을 반영합니다: **목표를 설정하고 AI를 믿으세요**. MoAI-ADK의 에이전틱 자동화는 전체 개발 사이클을 자율적으로 처리합니다. `<moai>DONE</moai>`을 보면, 정말로 모든 것이 잘 된 것입니다.
-
----
-
-## 5. Mr.Alfred와 Sub-Agents
+## 4. Mr.Alfred와 Sub-Agents
 
 ### 🎩 Mr.Alfred - Super Agent (수석 오케스트레이터)
 
@@ -1018,7 +1231,7 @@ Alfred는 4개 언어 요청을 자동으로 인식하고 올바른 에이전트
 
 ---
 
-## 6. Agent-Skills
+## 5. Agent-Skills
 
 ### 📚 스킬 라이브러리 구조
 
@@ -1054,7 +1267,7 @@ Skill("moai-lang-python")
 
 ---
 
-## 7. TRUST 5 품질 원칙
+## 6. TRUST 5 품질 원칙
 
 MoAI-ADK의 모든 프로젝트는 **TRUST 5** 품질 프레임워크를 따릅니다.
 
@@ -1128,7 +1341,7 @@ graph TD
 
 ---
 
-## 8. 자동 품질 검사
+## 7. 자동 품질 검사
 
 ### 🔍 AST-Grep 기반 구조적 검사
 
@@ -1160,6 +1373,356 @@ graph TD
    Pattern: execute(f"SELECT * FROM users WHERE id={user_id}")
    Suggestion: execute("SELECT * FROM users WHERE id=%s", (user_id,))
 ```
+
+---
+
+## 8. TAG System v2.0 - 코드 ↔ 문서 추적 동기화
+
+TAG System v2.0은 코드와 SPEC 문서 간의 양방향 추적 가능성을 제공하는 강력한 시스템입니다. `@SPEC` 태그를 사용하여 코드에서 문서를, 문서에서 코드를 자동으로 연결합니다.
+
+### 핵심 문제 해결: "SPEC 없이 코드를 먼저 작성하면 어떡하나요?"
+
+TAG System v2.0의 **상황 인식 유효성 검사**(Context-Aware Validation)로 이 문제를 완벽하게 해결했습니다:
+
+| 상황                 | TAG 타입                            | SPEC 없이 커밋? | 설명                          |
+| -------------------- | ----------------------------------- | --------------- | ----------------------------- |
+| **간단한 수정**      | `related`(모든 파일)                | ✅ 허용          | 관련성만 표시, SPEC 불필요    |
+| **테스트 먼저 작성** | `verify` 또는 `@TEST` (테스트 파일) | ✅ 허용          | 테스트 주도 개발 지원         |
+| **구현 코드**        | `impl` (구현 파일)                  | ⚠️ 경고/차단     | warn/enforce 모드에 따라 다름 |
+| **의존성 표시**      | `depends` (모든 파일)               | ✅ 허용          | 의존성만 표시, SPEC 불필요    |
+
+### TAG 개요
+
+MoAI-ADK는 두 가지 TAG 유형을 지원합니다:
+
+| TAG 타입  | 목적             | 형식                    | 사용 위치        |
+| --------- | ---------------- | ----------------------- | ---------------- |
+| **@SPEC** | 코드 ↔ SPEC 연결 | `@SPEC SPEC-XXX [verb]` | 모든 파일        |
+| **@TEST** | 테스트 식별      | `@TEST TEST-XXX`        | 테스트 파일 전용 |
+
+### TAG 사용 가이드
+
+#### 1. @SPEC TAG 동사 선택 가이드
+
+| 동사        | 언제 사용?                | 사용 예시                       |
+| ----------- | ------------------------- | ------------------------------- |
+| **impl**    | 구현 코드에서 SPEC 연결   | `# @SPEC SPEC-AUTH-001 impl`    |
+| **verify**  | 테스트에서 해당 SPEC 검증 | `# @SPEC SPEC-AUTH-001 verify`  |
+| **related** | 간단한 수정/관련성 표시   | `# @SPEC SPEC-AUTH-001 related` |
+| **depends** | 다른 SPEC에 의존성 표시   | `# @SPEC SPEC-DB-004 depends`   |
+
+#### 2. @TEST vs @SPEC verify 선택 가이드
+
+| 구분          | @TEST                    | @SPEC verify               |
+| ------------- | ------------------------ | -------------------------- |
+| **목적**      | 테스트 식별              | SPEC 검증                  |
+| **SPEC 연결** | 선택사항                 | 필수                       |
+| **사용처**    | 독립 테스트              | TDD (SPEC → 구현 → 테스트) |
+| **결합 사용** | `@SPEC verify` + `@TEST` | 단독 사용                  |
+
+#### 3. 추천 사용 패턴
+
+```python
+# 패턴 1: TDD (SPEC 있음)
+# @SPEC SPEC-AUTH-001 verify
+# @TEST TEST-AUTH-001
+def test_login():
+    pass
+
+# 패턴 2: 독립 테스트 (SPEC 없음)
+# @TEST TEST-AUTH-001
+def test_login():
+    pass
+
+# 패턴 3: 구현 코드
+# @SPEC SPEC-AUTH-001 impl
+def login():
+    pass
+```
+
+### 요약: TAG 선택 결정 트리
+
+```
+테스트 파일인가?
+├── 예
+│   ├── SPEC 있고 검증 필요? → @SPEC verify
+│   ├── 독립 테스트 식별? → @TEST
+│   └── 둘 다 필요? → @SPEC verify + @TEST
+└── 아니오 (구현 코드)
+    ├── SPEC 있고 구현? → @SPEC impl
+    ├── 간단한 수정? → @SPEC related
+    └── 다른 SPEC 의존? → @SPEC depends
+```
+
+### TAG 구문
+
+코드 주석에 다음과 @TAG를 표기합니다. 함수 위에 명시하는 것을 권장합니다:
+
+```python
+# 기본 형식
+@SPEC SPEC-{DOMAIN}-{NUMBER} [verb] # 일반 코드
+@TEST TEST-{DOMAIN}-{NUMBER}       # 테스트 코드
+
+# 예시
+# @SPEC SPEC-AUTH-001 impl
+def login(): ...
+
+# @SPEC SPEC-AUTH-001 verify
+# @TEST TEST-AUTH-001
+def test_login(): ...
+```
+
+### 실전 워크플로우
+
+#### 시나리오 1: 간단한 버그 수정 (SPEC 없이)
+
+```python
+# auth.py
+# @SPEC SPEC-AUTH-001 related
+def fix_login_bug():
+    """로그인 버그 수정
+
+    관련 SPEC이 없으니 related 사용
+    """
+    pass
+```
+
+**Pre-commit Hook 결과**:
+```
+TAG 유효성 검사 결과:
+==================================================
+  auth.py:10: 힌트: SPEC-AUTH-001에 대한 SPEC 생성을 고려하세요
+  (related TAG - SPEC 불필요)
+==================================================
+
+경고와 함께 커밋 허용 (warn 모드)
+```
+
+✅ **커밋 허용**: related 태그는 SPEC 없이 허용
+
+#### 시나리오 2: 테스트 먼저 작성 (TDD)
+
+```python
+# test_auth.py
+# @SPEC SPEC-AUTH-002 verify
+# @TEST TEST-AUTH-002
+def test_login_success():
+    """로그인 성공 테스트
+
+    테스트 먼저 작성, impl은 나중에
+    """
+    pass
+```
+
+**Pre-commit Hook 결과**:
+```
+TAG 유효성 검사 결과:
+==================================================
+  test_auth.py:15: 경고: 테스트가 존재하지 않는 SPEC 참조: SPEC-AUTH-002
+  (테스트 파일의 verify TAG - 커밋 허용됨)
+==================================================
+
+경고와 함께 커밋 허용 (warn 모드)
+```
+
+✅ **커밋 허용**: 테스트 파일의 verify 태그는 SPEC 없이 허용
+
+#### 시나리오 3: 공식 개발 (SPEC 먼저)
+
+```bash
+# 1. SPEC 먼저 생성
+> /moai:1-plan "사용자 인증 시스템"
+# → SPEC-AUTH-003 생성
+
+# 2. 구현 코드 작성
+# @SPEC SPEC-AUTH-003 impl
+def login(username, password):
+    """사용자 로그인
+
+    공식 개발은 impl 태그 사용
+    """
+    pass
+
+# 3. 테스트 코드 작성
+# @SPEC SPEC-AUTH-003 verify
+# @TEST TEST-AUTH-003
+def test_login():
+    """로그인 테스트"""
+    pass
+```
+
+**Pre-commit Hook 결과** (SPEC 있음):
+```
+TAG 유효성 검사: 모든 TAG 유효함
+```
+
+✅ **커밋 허용**: SPEC 존재 확인
+
+**Pre-commit Hook 결과** (SPEC 없음, enforce 모드):
+```
+TAG 유효성 검사 결과:
+==================================================
+  auth.py:25: 오류: 구현이 존재하지 않는 SPEC 참조: SPEC-AUTH-003
+  (enforce 모드에서 커밋 차단됨)
+==================================================
+
+TAG 유효성 검사 오류로 커밋 차단됨 (enforce 모드)
+```
+
+❌ **커밋 차단**: enforce 모드에서 impl 태그에 SPEC 없음
+
+### 설정 옵션
+
+`.moai/config/sections/quality.yaml`에서 TAG 유효성 검사 동작을 설정:
+
+```yaml
+tag_validation:
+  enabled: true           # 태그 검사 활성화
+  mode: warn              # warn | enforce | off
+  check_spec_exists: true # SPEC 문서 존재 확인
+  max_tags_per_file: 100  # 파일당 최대 태그 수
+```
+
+### 모드별 동작
+
+| 모드              | impl 태그 (SPEC 없음) | verify/@TEST 태그 (테스트 파일) | related 태그 | depends 태그 |
+| ----------------- | --------------------- | ------------------------------- | ------------ | ------------ |
+| **warn** (기본값) | 경고 후 허용          | 경고 후 허용                    | 힌트만 표시  | 힌트만 표시  |
+| **enforce**       | 커밋 차단             | 허용                            | 힌트만 표시  | 힌트만 표시  |
+| **off**           | 검사 없음             | 검사 없음                       | 검사 없음    | 검사 없음    |
+
+### 추천 TAG 사용 전략
+
+| 개발 유형       | 추천 전략                                 | TAG 예시                                                                            |
+| --------------- | ----------------------------------------- | ----------------------------------------------------------------------------------- |
+| **핫픽스**      | `related` 사용                            | `@SPEC SPEC-XXX related`                                                            |
+| **테스트 주도** | `verify` 또는 `@TEST` 먼저, 나중에 `impl` | 테스트: `@SPEC SPEC-XXX verify` 또는 `@TEST TEST-XXX` → 구현: `@SPEC SPEC-XXX impl` |
+| **공식 개발**   | SPEC 먼저 생성, `impl` 사용               | `/moai:1-plan` → `@SPEC SPEC-XXX impl`                                              |
+| **리팩토링**    | 기존 TAG 유지                             | 변경 없음                                                                           |
+| **문서화**      | `related`로 관계 표시                     | `@SPEC SPEC-XXX related`                                                            |
+| **의존성 표시** | `depends`로 의존성 명시                   | `@SPEC SPEC-YYY depends` (다른 SPEC 의존)                                           |
+
+### Pre-commit Hook 자동 검사
+
+모든 Git 커밋 시 자동으로 TAG 유효성을 검사합니다:
+
+```bash
+# 커밋 시도
+git commit -m "Add login feature"
+
+# 자동 실행
+TAG 유효성 검사 결과:
+==================================================
+  auth.py:10: 힌트: SPEC-AUTH-001에 대한 SPEC 생성을 고려하세요
+  (related TAG - SPEC 불필요)
+==================================================
+
+경고와 함께 커밋 허용 (warn 모드)
+```
+
+### TAG 연계 데이터베이스
+
+TAG System은 `.moai/cache/tag-linkage.json`에 양방향 매핑을 저장:
+
+```json
+{
+  "tags": [
+    {
+      "spec_id": "SPEC-AUTH-001",
+      "verb": "impl",
+      "file_path": "src/auth.py",
+      "line": 10
+    }
+  ],
+  "files": {
+    "src/auth.py": ["SPEC-AUTH-001"]
+  }
+}
+```
+
+**자동 업데이트**:
+- 커밋 시 자동으로 TAG 추출 및 저장
+- 파일 삭제 시 해당 파일의 TAG 자동 제거
+- 고아 TAG(삭제된 SPEC 참조) 감지
+
+### 고급 기능
+
+#### SPEC-ID 형식 검사
+
+```python
+# 올바른 형식
+@SPEC SPEC-AUTH-001    # ✅
+@SPEC SPEC-PAY-002     # ✅
+@SPEC SPEC-UI-003      # ✅
+
+# 잘못된 형식
+@SPEC AUTH-001         # ❌ SPEC- 접두사 누락
+@SPEC SPEC-001         # ❌ 도메인 누락
+@SPEC SPEC-AUTH-1      # ❌ 3자리 숫자 필요
+```
+
+#### 파일 타입 자동 감지
+
+TAG System은 파일 패턴으로 자동 감지:
+- **테스트 파일**: `test_*.py`, `*_test.py`, `tests/` 디렉토리
+- **구현 파일**: 그 외 모든 Python 파일
+
+### 시작하기
+
+```bash
+# 1. TAG System은 이미 활성화되어 있습니다
+cat .moai/config/sections/quality.yaml
+
+# 2. 코드에 TAG 추가
+# auth.py (구현 파일)
+# @SPEC SPEC-AUTH-001 impl
+def login():
+    pass
+
+# test_auth.py (테스트 파일)
+# @SPEC SPEC-AUTH-001 verify
+# @TEST TEST-AUTH-001
+def test_login():
+    pass
+
+# 3. 커밋 시 자동 검사
+git add .
+git commit -m "Add login feature"
+# → TAG Validation 자동 실행
+```
+
+### 문제 해결
+
+**Q: TAG 검사를 건너뛰고 싶어요**
+```bash
+git commit --no-verify
+```
+
+**Q: enforce 모드에서 일시적으로 커밋하고 싶어요**
+```yaml
+# quality.yaml (일시적 변경)
+tag_validation:
+  mode: warn  # enforce → warn
+```
+
+**Q: 고아 TAG를 찾고 싶어요**
+```bash
+# 고아 TAG = 존재하지 않는 SPEC을 참조하는 TAG
+# 자동으로 Pre-commit Hook에서 감지
+```
+
+### TAG System v2.0의 핵심 혁신
+
+| 문제                | TAG System v1 | TAG System v2                          |
+| ------------------- | ------------- | -------------------------------------- |
+| SPEC 없이 코드 작성 | ❌ 불가능      | ✅ `related`/`verify`로 가능            |
+| 테스트 먼저 작성    | ❌ 불가능      | ✅ 테스트 파일 `verify`/`@TEST` 허용    |
+| 유연한 검사         | ❌ 전체 차단   | ✅ warn/enforce/off 모드                |
+| 파일 타입 인식      | ❌ 없음        | ✅ 자동 감지 (테스트/구현)              |
+| 의존성 표시         | ❌ 미지원      | ✅ `depends`로 SPEC 간 의존성 표시 가능 |
+| 테스트 식별 TAG     | ❌ 미지원      | ✅ `@TEST`로 독립적인 테스트 식별 지원  |
+
+**TAG System v2.0**: SPEC-First TDD의 이점을 유지하면서, 실전 개발의 유연성을 완벽하게 지원합니다.
 
 ---
 
@@ -1665,7 +2228,7 @@ moai rank list-excluded
 
 ---
 
-## 13. FAQ 5개
+## 13. FAQ
 
 ### Q1: SPEC는 항상 필요한가요?
 
@@ -1677,27 +2240,37 @@ moai rank list-excluded
 | 새 기능 추가  | 권장             |
 | 버그 수정     | 선택             |
 
-### Q2: MCP 서버 설치가 필요한가요?
+### Q2: @TEST와 @SPEC verify의 차이는 무엇인가요?
 
-**필수 (2개)**:
+| 구분          | @TEST                    | @SPEC verify               |
+| ------------- | ------------------------ | -------------------------- |
+| **목적**      | 테스트 식별              | SPEC 검증                  |
+| **SPEC 연결** | 선택사항                 | 필수                       |
+| **사용처**    | 독립 테스트              | TDD (SPEC → 구현 → 테스트) |
+| **결합 사용** | `@SPEC verify` + `@TEST` | 단독 사용                  |
 
-- **Context7**: 최신 라이브러리 문서, Skill 래퍼런스 생성시 사용
+- **@TEST만 사용**: 독립적인 테스트 식별이 필요할 때
+- **@SPEC verify만 사용**: SPEC 문서와 테스트를 연결할 때
+- **둘 다 사용**: TDD로 개발하고 테스트 식별도 필요할 때
 
-**선택**:
+### Q3: MCP 서버 설치가 필요한가요?
 
-- claude-in-chrome: 브라우저에서 Claude 사용 및 웹 자동화 테스트
-- Playwright: 웹 자동화 테스트
-- Figma: 디자인 시스템
+**선택사항**:
 
-### Q3: MoAI Rank는 비용이 드나요?
+- **Context7**: 최신 라이브러리 문서 조회 (권장)
+- **claude-in-chrome**: 브라우저 자동화 테스트
+- **Playwright**: E2E 테스트
+- **Figma**: 디자인 시스템
+
+### Q4: MoAI Rank는 비용이 드나요?
 
 무료입니다. 세션 데이터만 자동 수집합니다.
 
-### Q4: GLM 설정은 필수인가요?
+### Q5: GLM 설정은 필수인가요?
 
 아닙니다. Claude만 사용해도 됩니다. 다만 비용 절감을 위해 권장합니다.
 
-### Q5: 기존 프로젝트에도 적용 가능한가요?
+### Q6: 기존 프로젝트에도 적용 가능한가요?
 
 네. `moai init .`으로 기존 파일은 그대로 유지됩니다.
 
@@ -1718,19 +2291,19 @@ moai rank list-excluded
 
 ---
 
-## Star History
+## 15. Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=date&legend=top-left)](https://www.star-history.com/#modu-ai/moai-adk&type=date&legend=top-left)
 
 ---
 
-## 📝 라이선스
+## 16. 라이선스
 
 Copyleft License (COPYLEFT-3.0) - [LICENSE](./LICENSE)
 
 ---
 
-## 🙏 Made with ❤️ by MoAI-ADK Team
+## 17. 🙏 Made with ❤️ by MoAI-ADK Team
 
 **Last Updated:** 2026-01-11
 **Philosophy**: SPEC-First TDD + Agent Orchestration + Hybrid LLM
