@@ -302,21 +302,12 @@ def calculate_compliance_score(all_skills: List[SkillMetadata]) -> float:
 
 # ===== PYTEST CONFIGURATION =====
 def pytest_configure(config):
-    """Configure pytest to handle KeyboardInterrupt gracefully.
-
-    This hook prevents test cases that intentionally raise KeyboardInterrupt
-    (like test_exit_code_one_keyboard_interrupt) from affecting pytest's
-    signal handling and causing spurious KeyboardInterrupt exceptions.
-
-    The issue occurs when:
-    1. A test case sets side_effect = KeyboardInterrupt on a mock
-    2. The test catches and handles the exception correctly
-    3. But pytest still receives a KeyboardInterrupt signal at teardown
-
-    This hook ensures that KeyboardInterrupt from test cases is isolated
-    to the test scope and doesn't propagate to pytest itself.
-    """
+    """Configure pytest markers and exception handling."""
     import sys
+
+    # Register custom markers
+    config.addinivalue_line("markers", "smoke: Critical smoke tests (blocking for deployment)")
+    config.addinivalue_line("markers", "critical: Critical functionality tests (blocking for deployment)")
 
     # Store original excepthook
     original_excepthook = sys.excepthook
