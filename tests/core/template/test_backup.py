@@ -36,6 +36,12 @@ def tmp_project(tmp_path: Path) -> Path:
     (tmp_path / ".moai" / "reports").mkdir()
     (tmp_path / ".moai" / "reports" / "report.md").write_text("# Report")
 
+    # Create additional protected directories (v2.0.0)
+    (tmp_path / ".moai" / "project").mkdir()
+    (tmp_path / ".moai" / "project" / "product.md").write_text("# Product")
+    (tmp_path / ".moai" / "config" / "sections").mkdir()
+    (tmp_path / ".moai" / "config" / "sections" / "user.yaml").write_text("name: test")
+
     return tmp_path
 
 
@@ -160,6 +166,24 @@ class TestCreateBackup:
 
         # reports should not be backed up
         assert not (backup_path / ".moai" / "reports").exists()
+
+    def test_create_backup_excludes_project_directory(self, tmp_project: Path) -> None:
+        """Should exclude project directory from backup"""
+        backup = TemplateBackup(tmp_project)
+        backup_path = backup.create_backup()
+
+        # project should not be backed up
+        assert not (backup_path / ".moai" / "project").exists()
+
+    def test_create_backup_excludes_config_sections_directory(self, tmp_project: Path) -> None:
+        """Should exclude config/sections directory from backup"""
+        backup = TemplateBackup(tmp_project)
+        backup_path = backup.create_backup()
+
+        # config/sections should not be backed up
+        assert not (backup_path / ".moai" / "config" / "sections").exists()
+        # But config.json should still be backed up
+        assert (backup_path / ".moai" / "config" / "config.json").exists()
 
     def test_create_backup_creates_unique_timestamps(self, tmp_project: Path) -> None:
         """Should create unique timestamped directories"""
@@ -491,3 +515,100 @@ class TestBackupIntegration:
         assert "# Version 2" in content
         assert "# Version 1" not in content
         assert "# Current" not in content
+
+
+class TestListBackups:
+    """Test list_backups method"""
+
+    def test_list_backups_returns_empty_list_when_no_backups(self, tmp_project: Path) -> None:
+        """Should return empty list when no backups exist"""
+        backup = TemplateBackup(tmp_project)
+        backups = backup.list_backups()
+        assert backups == []
+
+    def test_list_backups_returns_all_timestamped_backups(self, tmp_project: Path) -> None:
+        """Should return all timestamped backups sorted by timestamp"""
+        backup = TemplateBackup(tmp_project)
+
+        with patch("moai_adk.core.template.backup.datetime") as mock_datetime:
+            # Create multiple backups
+            mock_datetime.now.return_value.strftime.return_value = "20241201_143022"
+            backup.create_backup()
+            mock_datetime.now.return_value.strftime.return_value = "20241201_143025"
+            backup.create_backup()
+            mock_datetime.now.return_value.strftime.return_value = "20241201_143020"
+            backup.create_backup()
+
+        backups = backup.list_backups()
+        assert len(backups) == 3
+        # Should be sorted newest first
+        assert backups[0].name == "20241201_143025"
+        assert backups[1].name == "20241201_143022"
+        assert backups[2].name == "20241201_143020"
+
+    def test_list_backups_ignores_non_timestamped_directories(self, tmp_project: Path) -> None:
+        """Should ignore directories that don't match timestamp pattern"""
+        backup = TemplateBackup(tmp_project)
+
+        # Create a valid backup
+        backup.create_backup()
+
+        # Create a directory that doesn't match the pattern
+        (tmp_project / ".moai-backups" / "not-a-backup").mkdir()
+        (tmp_project / ".moai-backups" / "sync-2024-01-01").mkdir()
+
+        backups = backup.list_backups()
+        assert len(backups) == 1
+        assert backups[0].name.startswith("20")
+
+
+class TestCleanupOldBackups:
+    """Test cleanup_old_backups method"""
+
+    def test_cleanup_old_backups_returns_zero_when_no_backups(self, tmp_project: Path) -> None:
+        """Should return 0 when no backups exist"""
+        backup = TemplateBackup(tmp_project)
+        deleted = backup.cleanup_old_backups(keep_count=5)
+        assert deleted == 0
+
+    def test_cleanup_old_backups_keeps_recent_backups(self, tmp_project: Path) -> None:
+        """Should keep specified number of recent backups"""
+        backup = TemplateBackup(tmp_project)
+
+        with patch("moai_adk.core.template.backup.datetime") as mock_datetime:
+            # Create 3 backups
+            mock_datetime.now.return_value.strftime.return_value = "20241201_143020"
+            backup.create_backup()
+            mock_datetime.now.return_value.strftime.return_value = "20241201_143022"
+            backup.create_backup()
+            mock_datetime.now.return_value.strftime.return_value = "20241201_143025"
+            backup.create_backup()
+
+        # Keep 2, should delete 1
+        deleted = backup.cleanup_old_backups(keep_count=2)
+        assert deleted == 1
+
+        # Verify only 2 backups remain
+        backups = backup.list_backups()
+        assert len(backups) == 2
+        assert backups[0].name == "20241201_143025"
+        assert backups[1].name == "20241201_143022"
+
+    def test_cleanup_old_backups_keeps_all_when_within_limit(self, tmp_project: Path) -> None:
+        """Should not delete when backups are within keep limit"""
+        backup = TemplateBackup(tmp_project)
+
+        # Create 2 backups with different timestamps
+        with patch("moai_adk.core.template.backup.datetime") as mock_datetime:
+            mock_datetime.now.return_value.strftime.return_value = "20241201_143020"
+            backup.create_backup()
+            mock_datetime.now.return_value.strftime.return_value = "20241201_143025"
+            backup.create_backup()
+
+        # Keep 5, should delete 0
+        deleted = backup.cleanup_old_backups(keep_count=5)
+        assert deleted == 0
+
+        # Verify both backups still exist
+        backups = backup.list_backups()
+        assert len(backups) == 2

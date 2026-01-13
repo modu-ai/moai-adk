@@ -359,6 +359,13 @@ class UnifiedConfigManager:
             "tdd": "quality.yaml",
             "hooks": "system.yaml",
             "session": "system.yaml",
+            # New in v1.1.0: Multi-LLM, pricing, and Ralph sections
+            "llm": "llm.yaml",
+            "pricing": "pricing.yaml",
+            "ralph": "ralph.yaml",
+            "service": "pricing.yaml",  # Alias for pricing
+            # Document management (from config.yaml)
+            "document_management": "system.yaml",
         }
 
         # Group config data by section file

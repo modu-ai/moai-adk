@@ -2426,6 +2426,14 @@ def update(
                 processor = TemplateProcessor(project_path)
                 backup_path = processor.create_backup()
                 console.print(f"   [green]✓ Backup: {backup_path.relative_to(project_path)}/[/green]")
+
+                # Clean up old backups (keep last 5)
+                from moai_adk.core.template.backup import TemplateBackup
+
+                backup_manager = TemplateBackup(project_path)
+                deleted_count = backup_manager.cleanup_old_backups(keep_count=5)
+                if deleted_count > 0:
+                    console.print(f"   [cyan]🧹 Cleaned up {deleted_count} old backup(s)[/cyan]")
             except Exception as e:
                 console.print(f"   [yellow]⚠ Backup failed: {e}[/yellow]")
                 console.print("   [yellow]⚠ Continuing without backup...[/yellow]")

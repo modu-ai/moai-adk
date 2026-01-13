@@ -25,10 +25,12 @@ BACKUP_TARGETS = [
     ".git-hooks/",  # Custom git hooks
 ]
 
-# User data protection paths (excluded from backups)
+# User data protection paths (excluded from backups) - MUST match TemplateProcessor.PROTECTED_PATHS
 PROTECTED_PATHS = [
     ".moai/specs/",
     ".moai/reports/",
+    ".moai/project/",
+    ".moai/config/sections/",
 ]
 
 

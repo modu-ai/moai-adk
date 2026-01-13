@@ -1,0 +1,55 @@
+# Ralph Engine Settings
+# Automated feedback loop with LSP diagnostics and AST-grep integration
+# Reference: SPEC-RALPH-001 Phase 4
+
+ralph:
+  enabled: true
+
+  # LSP Diagnostics Configuration
+  lsp:
+    auto_start: true              # Auto-start LSP servers when needed
+    timeout_seconds: 30           # Timeout for LSP operations
+    poll_interval_ms: 500         # Polling interval for diagnostics
+    graceful_degradation: true    # Continue if LSP unavailable
+
+    # Supported languages (auto-detected from file extensions)
+    # Configuration loaded from .lsp.json if present
+
+  # AST-grep Security Scanning Configuration
+  ast_grep:
+    enabled: true
+    config_path: ".claude/skills/moai-tool-ast-grep/rules/sgconfig.yml"
+    security_scan: true           # Enable security vulnerability scanning
+    quality_scan: true            # Enable code quality pattern scanning
+    auto_fix: false               # Do not auto-fix without confirmation
+
+  # Loop Controller Configuration
+  loop:
+    max_iterations: 10            # Maximum feedback loop iterations
+    auto_fix: false               # Require confirmation before auto-fixing
+    require_confirmation: true    # Ask user before applying fixes
+    cooldown_seconds: 2           # Minimum time between loop iterations
+
+    # Completion conditions (all must be true to complete)
+    completion:
+      zero_errors: true           # No LSP errors
+      zero_warnings: false        # Warnings allowed (configurable)
+      tests_pass: true            # All tests must pass
+      coverage_threshold: 85      # Minimum test coverage percentage
+
+  # Git Integration (respects git-strategy.yaml settings)
+  git:
+    auto_branch: false            # Use git-strategy settings instead
+    auto_pr: false                # Use git-strategy settings instead
+    # Note: Branch/PR creation follows git_strategy.mode configuration
+
+  # Hook Behavior
+  hooks:
+    post_tool_lsp:
+      enabled: true               # Enable LSP diagnostic hook
+      trigger_on: ["Write", "Edit"]
+      severity_threshold: "error" # Minimum severity to report: error, warning, info
+
+    stop_loop_controller:
+      enabled: true               # Enable loop controller hook
+      check_completion: true      # Check completion conditions on each response

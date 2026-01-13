@@ -1,0 +1,18 @@
+{
+  "companyAnnouncements": [
+    "🗿 MoAI-ADK: 48个Skills与Context7集成的SPEC-First TDD",
+    "⚡ /moai:alfred: 一站式 Plan→Run→Sync 自动化（智能路由）",
+    "🌳 moai-worktree: 并行SPEC开发 - 同时处理多个功能",
+    "🤖 Expert Agents: backend, frontend, security, devops, performance, debug, testing, refactoring",
+    "🤖 Manager Agents: git, spec, tdd, docs, quality, project, strategy, claude-code",
+    "🤖 Builder Agents: agent, command, skill, plugin - 创建自定义扩展",
+    "📋 工作流程: /moai:1-plan (SPEC) → /moai:2-run (TDD) → /moai:3-sync (Docs)",
+    "✅ 质量: TRUST 5 + 85%+ 覆盖率 + Ralph Engine (LSP + AST-grep)",
+    "🔄 Git策略: 3-Mode (Manual/Personal/Team) + Smart Merge配置更新",
+    "📚 提示: moai update --templates-only 同步最新的skills和agents",
+    "📚 提示: moai-wt new SPEC-XXX 创建并行开发的worktree",
+    "💡 混合模式: Plan使用Claude (Opus/Sonnet)，Run/Sync使用GLM节省成本",
+    "💡 并行开发: 终端1运行Claude，终端2+运行 'moai switch glm && claude' 并行执行",
+    "🏆 moai rank: 追踪Claude令牌使用量，在rank.mo.ai.kr排行榜上竞争"
+  ]
+}
