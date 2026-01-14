@@ -1,3 +1,75 @@
+# v1.2.0 - Enhanced Planning Experience & Bug Fixes (2025-01-15)
+
+## Summary
+
+This release introduces an enhanced PHASE 0 planning experience with x.com style interview format (v7.0.0) and includes important bug fixes for hook library syntax errors.
+
+## Changes
+
+### Added
+- **feat(plan)**: Enhance PHASE 0 with x.com style interview (v7.0.0)
+  - Modern interview-style requirements gathering
+  - Improved user interaction flow
+  - Enhanced documentation for planning workflow
+
+### Fixed
+- **fix(hooks)**: Correct syntax errors in hook library files
+  - Fixed syntax issues in config_validator.py
+  - Fixed syntax issues in git_operations_manager.py
+  - Fixed syntax issues in timeout.py and unified_timeout_manager.py
+  - Updated documentation for affected hooks
+
+### Security
+- Added new security guard hook for enhanced tool validation
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Or using pipx
+pipx upgrade moai-adk
+```
+
+---
+
+# v1.2.0 - 향상된 계획 수립 경험 및 버그 수정 (2025-01-15)
+
+## 요약
+
+이 릴리스는 x.com 스타일 인터뷰 형식(v7.0.0)을 도입한 향상된 PHASE 0 계획 수립 경험을 제공하며, 훅 라이브러리 문법 오류에 대한 중요한 버그 수정을 포함합니다.
+
+## 변경 사항
+
+### 추가됨
+- **feat(plan)**: x.com 스타일 인터뷰로 PHASE 0 강화 (v7.0.0)
+  - 현대적인 인터뷰 스타일 요구사항 수집
+  - 개선된 사용자 상호작용 흐름
+  - 계획 수립 워크플로우를 위한 향상된 문서
+
+### 수정됨
+- **fix(hooks)**: 훅 라이브러리 파일의 문법 오류 수정
+  - config_validator.py 문법 이슈 수정
+  - git_operations_manager.py 문법 이슈 수정
+  - timeout.py 및 unified_timeout_manager.py 문법 이슈 수정
+  - 영향받는 훅의 문서 업데이트
+
+### 보안
+- 향상된 도구 검증을 위한 새로운 보안 가드 훅 추가
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 또는 pipx 사용
+pipx upgrade moai-adk
+```
+
+---
+
 # v1.1.0 - Comprehensive Enhancement: Backup System, TAG System v2.0, Performance & Quality (2026-01-13)
 
 ## Summary
