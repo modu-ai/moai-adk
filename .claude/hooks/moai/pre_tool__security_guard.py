@@ -57,6 +57,16 @@ DENY_PATTERNS = [
     r"auth\.json$",
 ]
 
+# Patterns for files that are ALWAYS allowed (security exceptions)
+ALLOW_PATTERNS = [
+    # Plan mode files (Claude Code plan directory)
+    r"\.claude/plans/.*",
+    # User's home directory .claude structure
+    r"/Users/[^/]+/\.claude/plans/.*",
+    r"/home/[^/]+/\.claude/plans/.*",
+    r"~\.claude/plans/.*",
+]
+
 # Patterns for files that require user confirmation
 ASK_PATTERNS = [
     # Lock files
@@ -109,6 +119,7 @@ def compile_patterns(patterns: list[str]) -> List[re.Pattern]:
 
 
 DENY_COMPILED = compile_patterns(DENY_PATTERNS)
+ALLOW_COMPILED = compile_patterns(ALLOW_PATTERNS)
 ASK_COMPILED = compile_patterns(ASK_PATTERNS)
 SENSITIVE_COMPILED = compile_patterns(SENSITIVE_CONTENT_PATTERNS)
 
@@ -132,6 +143,7 @@ def check_file_path(file_path: str) -> Tuple[str, str]:
     - Resolves symlinks and '..' components to prevent path traversal
     - Checks both original and resolved paths against patterns
     - Validates path is within project boundaries
+    - Allows specific patterns for security exceptions (e.g., plan files)
 
     Args:
         file_path: Path to check
@@ -152,6 +164,13 @@ def check_file_path(file_path: str) -> Tuple[str, str]:
     # Normalize original path for pattern matching (keeps relative structure visible)
     normalized_original = file_path.replace("\\", "/")
     normalized_resolved = resolved_str.replace("\\", "/")
+
+    # Check ALLOW patterns FIRST (security exceptions)
+    # This allows plan files and other explicitly permitted paths
+    for pattern in ALLOW_COMPILED:
+        if pattern.search(normalized_original) or pattern.search(normalized_resolved):
+            # Path matches ALLOW pattern - skip all other checks
+            return "allow", ""
 
     # Check project boundary (optional but recommended)
     project_root = get_project_root()

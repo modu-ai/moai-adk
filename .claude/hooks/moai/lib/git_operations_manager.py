@@ -62,7 +62,7 @@ class GitResult:
     execution_time: float = 0.0
     cached: bool = False
     cache_hit: bool = False
-    operation_type: GitOperationType] = None
+    operation_type: GitOperationType | None = None
     command: list[str] = field(default_factory=list)
 
 
@@ -129,7 +129,7 @@ class GitOperationsManager:
 
         # Git command queue for sequential operations when needed
         self._command_queue: "Queue[Any]" = Queue()
-        self._queue_processor_thread: threading.Thread] = None
+        self._queue_processor_thread: threading.Thread | None = None
         self._queue_active = True
 
         # Start queue processor thread
@@ -320,7 +320,7 @@ class GitOperationsManager:
                 command=full_command.copy(),
             )
 
-    def execute_git_command(self, command: GitCommand, str], *args) -> GitResult:
+    def execute_git_command(self, command: GitCommand | str, *args) -> GitResult:
         """Execute Git command with caching and retry logic"""
         # Convert string command to GitCommand
         if isinstance(command, str):
@@ -466,7 +466,7 @@ class GitOperationsManager:
     def queue_command(
         self,
         command: GitCommand,
-        callback: Callable[[GitResult], None]] = None,
+        callback: Callable[[GitResult], None] | None = None,
     ) -> None:
         """Queue a Git command for background execution"""
         try:
@@ -504,7 +504,7 @@ class GitOperationsManager:
                 "queue": {"pending": self._command_queue.qsize()},
             }
 
-    def clear_cache(self, operation_type: GitOperationType] = None) -> int:
+    def clear_cache(self, operation_type: GitOperationType | None = None) -> int:
         """Clear cache entries, optionally filtered by operation type"""
         with self._cache_lock:
             if operation_type is None:

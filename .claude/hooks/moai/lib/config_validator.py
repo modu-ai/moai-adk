@@ -36,8 +36,8 @@ class ValidationIssue:
     level: ValidationLevel
     path: str
     message: str
-    suggestion: str] = None
-    current_value: str] = None
+    suggestion: str | None = None
+    current_value: str | None = None
 
 
 @dataclass
@@ -616,7 +616,7 @@ def get_config_validator() -> ConfigurationValidator:
 
 # Convenience functions
 def validate_hook_config(
-    config_path: Path] = None,
+    config_path: Path | None = None,
 ) -> Tuple[bool, List[ValidationIssue]]:
     """Validate hooks configuration"""
     validator = get_config_validator()

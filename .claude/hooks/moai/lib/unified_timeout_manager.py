@@ -48,12 +48,12 @@ class HookTimeoutConfig:
     """Configuration for hook timeout behavior"""
 
     policy: TimeoutPolicy = TimeoutPolicy.NORMAL
-    custom_timeout_ms: int] = None
+    custom_timeout_ms: int | None = None
     retry_count: int = 0
     retry_delay_ms: int = 100
     graceful_degradation: bool = True
-    memory_limit_mb: int] = None
-    on_timeout_callback: Callable] = None
+    memory_limit_mb: int | None = None
+    on_timeout_callback: Callable | None = None
 
 
 @dataclass
@@ -64,7 +64,7 @@ class TimeoutSession:
     start_time: datetime
     timeout_seconds: float
     thread_id: int
-    callback: Callable] = None
+    callback: Callable | None = None
     completed: bool = False
     cleanup_actions: list = field(default_factory=list)
 
@@ -104,7 +104,7 @@ class UnifiedTimeoutManager:
     """
 
     # Global singleton instance
-    _instance: "UnifiedTimeoutManager"] = None
+    _instance: "UnifiedTimeoutManager" | None = None
     _lock = threading.Lock()
 
     def __new__(cls) -> "UnifiedTimeoutManager":
@@ -130,7 +130,7 @@ class UnifiedTimeoutManager:
         self._is_windows = platform.system() == "Windows"
 
         # Signal management for Unix
-        self._original_signal_handler: Callable] = None
+        self._original_signal_handler: Callable | None = None
         self._signal_lock = threading.Lock()
 
         # Resource monitoring
@@ -173,9 +173,7 @@ class UnifiedTimeoutManager:
             self._logger.warning(f"Failed to load timeout config: {e}")
         return {}
 
-    def get_timeout_config(
-        self, hook_name: str, custom_config: HookTimeoutConfig] = None
-    ) -> HookTimeoutConfig:
+    def get_timeout_config(self, hook_name: str, custom_config: HookTimeoutConfig | None = None) -> HookTimeoutConfig:
         """Get timeout configuration for a specific hook"""
         if custom_config:
             return custom_config
@@ -206,7 +204,7 @@ class UnifiedTimeoutManager:
         else:
             return self._default_configs[TimeoutPolicy.NORMAL]
 
-    def create_timeout_session(self, hook_name: str, config: HookTimeoutConfig] = None) -> TimeoutSession:
+    def create_timeout_session(self, hook_name: str, config: HookTimeoutConfig | None = None) -> TimeoutSession:
         """Create a new timeout session for a hook"""
         if not config:
             config = self.get_timeout_config(hook_name)
@@ -350,14 +348,14 @@ class UnifiedTimeoutManager:
         hook_name: str,
         func: Callable,
         *args,
-        config: HookTimeoutConfig] = None,
+        config: HookTimeoutConfig | None = None,
         **kwargs,
     ) -> Any:
         """Execute a function with timeout management and retry logic"""
         if not config:
             config = self.get_timeout_config(hook_name)
 
-        last_exception: Exception] = None
+        last_exception: Exception | None = None
 
         for attempt in range(config.retry_count + 1):
             session = self.create_timeout_session(hook_name, config)
@@ -519,7 +517,7 @@ def get_timeout_manager() -> UnifiedTimeoutManager:
 
 
 @contextlib.contextmanager
-def hook_timeout_context(hook_name: str, config: HookTimeoutConfig] = None):
+def hook_timeout_context(hook_name: str, config: HookTimeoutConfig | None = None):
     """Context manager for hook execution with timeout management
 
     Usage:

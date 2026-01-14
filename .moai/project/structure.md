@@ -1,142 +1,143 @@
-# MoAI-ADK Project Structure
+# MoAI-ADK 프로젝트 구조
 
-> **Last Updated**: 2026-01-13
-> **Version**: 1.1.1
+> **최종 업데이트**: 2026-01-15
+> **버전**: 4.1.0
 
 ---
 
-## Repository Overview
+## 저장소 개요
 
 ```
 MoAI-ADK/
-├── src/moai_adk/             # Python package source
-├── tests/                    # Test suite
-├── docs/                     # Documentation site (Nextra)
-├── assets/                   # Images and resources
-├── .claude/                  # Claude Code configuration (synced from templates)
-├── .moai/                    # MoAI-ADK configuration (synced from templates)
-├── .github/                  # GitHub workflows and scripts
-├── CLAUDE.md                 # Alfred execution directives
-├── CLAUDE.local.md           # Local development guide (git-ignored)
-├── pyproject.toml            # Package configuration (Single Source of Truth for version)
-└── README.md                 # Project documentation
+├── src/moai_adk/             # Python 패키지 소스
+├── tests/                    # 테스트 스위트
+├── docs/                     # 문서 사이트 (Nextra)
+├── assets/                   # 이미지 및 리소스
+├── .claude/                  # Claude Code 설정 (templates에서 동기화)
+├── .moai/                    # MoAI-ADK 설정 (templates에서 동기화)
+├── .github/                  # GitHub 워크플로우 및 스크립트
+├── CLAUDE.md                 # Alfred 실행 지시문
+├── CLAUDE.local.md           # 로컬 개발 가이드 (git-ignored)
+├── pyproject.toml            # 패키지 설정 (버전의 단일 출처)
+└── README.md                 # 프로젝트 문서화
 ```
 
 ---
 
-## Package Structure (src/moai_adk/)
+## 패키지 구조 (src/moai_adk/)
 
 ```
 src/moai_adk/
-├── __init__.py               # Package initialization
-├── __main__.py               # CLI entry point
-├── version.py                # Version management (reads pyproject.toml)
+├── __init__.py               # 패키지 초기화
+├── __main__.py               # CLI 진입점
+├── version.py                # 버전 관리 (pyproject.toml 읽기)
 │
-├── astgrep/                  # AST-grep integration
-│   ├── checker.py            # Syntax checker
-│   ├── patterns.py           # Pattern definitions
-│   └── scanner.py            # Security scanner
+├── astgrep/                  # AST-grep 통합
+│   ├── checker.py            # 구문 검사기
+│   ├── patterns.py           # 패턴 정의
+│   └── scanner.py            # 보안 스캐너
 │
-├── cli/                      # CLI commands
-│   ├── init.py               # Project initialization
-│   ├── worktree/             # Git worktree management
-│   └── commands/             # CLI subcommands
+├── cli/                      # CLI 명령
+│   ├── init.py               # 프로젝트 초기화
+│   ├── worktree/             # Git worktree 관리
+│   └── commands/             # CLI 하위명령
 │
-├── core/                     # Core modules (45 files)
-│   ├── config.py             # Configuration management
-│   ├── spec_manager.py       # SPEC document handling
-│   ├── tdd_engine.py         # TDD workflow
-│   └── ...                   # Additional core modules
+├── core/                     # 핵심 모듈 (45개 파일)
+│   ├── config.py             # 설정 관리
+│   ├── spec_manager.py       # SPEC 문서 처리
+│   ├── tdd_engine.py         # TDD 워크플로우
+│   ├── analysis/             # 코드 분석 모듈
+│   ├── integration/          # 통합 모듈
+│   ├── migration/            # 마이그레이션 모듈
+│   ├── project/              # 프로젝트 관리
+│   └── statusline/           # 상태줄 모듈
 │
-├── foundation/               # Foundation components
-│   ├── __init__.py           # Package initialization
-│   ├── claude.py             # Claude Code integration
-│   ├── core.py               # Core principles
-│   ├── git/                  # Git operations module (directory structure since v1.1.1)
-│   ├── quality.py            # Quality framework
-│   └── testing.py            # TDD framework utilities
+├── foundation/               # 파운데이션 구성요소
+│   ├── __init__.py           # 패키지 초기화
+│   ├── claude.py             # Claude Code 통합
+│   ├── core.py               # 핵심 원칙
+│   ├── git/                  # Git 작업 모듈 (디렉토리 구조)
+│   ├── quality.py            # 품질 프레임워크
+│   └── testing.py            # TDD 프레임워크 유틸리티
 │
-├── loop/                     # Feedback loop system
-│   ├── controller.py         # Loop controller
-│   ├── processor.py          # Error processor
-│   └── hooks.py              # Hook integration
+├── loop/                     # 피드백 루프 시스템
+│   ├── controller.py         # 루프 컨트롤러
+│   ├── processor.py          # 오류 프로세서
+│   └── hooks.py              # 후크 통합
 │
-├── lsp/                      # LSP (Language Server Protocol) integration
-│   ├── client.py             # LSP client
-│   ├── diagnostics.py        # Diagnostic handler
-│   └── provider.py           # LSP provider
+├── lsp/                      # LSP (Language Server Protocol) 통합
+│   ├── client.py             # LSP 클라이언트
+│   ├── diagnostics.py        # 진단 핸들러
+│   └── provider.py           # LSP 공급자
 │
-├── project/                  # Project management
-│   ├── manager.py            # Project manager
-│   ├── template.py           # Template handling
-│   └── config.py             # Project configuration
+├── project/                  # 프로젝트 관리
+│   ├── manager.py            # 프로젝트 매니저
+│   ├── template.py           # 템플릿 처리
+│   └── config.py             # 프로젝트 설정
 │
-├── ralph/                    # Ralph Engine (feedback automation)
-│   ├── engine.py             # Main engine
-│   ├── analyzer.py           # Error analyzer
-│   └── fixer.py              # Auto-fixer
+├── ralph/                    # Ralph 엔진 (피드백 자동화)
+│   ├── engine.py             # 메인 엔진
+│   ├── analyzer.py           # 오류 분석기
+│   └── fixer.py              # 자동 수정기
 │
-├── statusline/               # Claude Code statusline
-│   ├── display.py            # Status display
-│   ├── formatter.py          # Output formatter
-│   └── config.py             # Statusline configuration
+├── statusline/               # Claude Code 상태줄
+│   ├── display.py            # 상태 표시
+│   ├── formatter.py          # 출력 포맷터
+│   └── config.py             # 상태줄 설정
 │
-├── templates/                # Distribution templates
-│   ├── .claude/              # Claude Code templates
-│   ├── .moai/                # MoAI configuration templates
-│   └── CLAUDE.md             # Alfred directives template
+├── tag_system/               # TAG 시스템 v2.0
+│   ├── parser.py             # 태그 파서
+│   ├── validator.py          # 태그 유효성 검사기
+│   ├── sync.py               # 동기화 모듈
+│   └── database.py           # 링크 데이터베이스
 │
-├── utils/                    # Utility modules
-│   ├── file_ops.py           # File operations
-│   ├── git_ops.py            # Git operations
-│   └── yaml_ops.py           # YAML handling
+├── templates/                # 배포 템플릿
+│   ├── .claude/              # Claude Code 템플릿
+│   ├── .moai/                # MoAI 설정 템플릿
+│   └── CLAUDE.md             # Alfred 지시문 템플릿
 │
-├── web/                      # Web UI backend (FastAPI)
-│   ├── api/                  # API routes
-│   ├── services/             # Business logic
-│   └── models/               # Data models
-│
-└── web-ui/                   # Web UI frontend (Next.js/React)
-    ├── src/                  # React components
-    ├── public/               # Static assets
-    └── package.json          # Node dependencies
+├── utils/                    # 유틸리티 모듈
+│   ├── file_ops.py           # 파일 작업
+│   ├── git_ops.py            # Git 작업
+│   └── yaml_ops.py           # YAML 처리
 ```
 
 ---
 
-## Configuration Structure (.claude/)
+## 설정 구조 (.claude/)
 
 ```
 .claude/
-├── settings.json             # Claude Code settings
-├── settings.local.json       # Local settings (git-ignored)
+├── settings.json             # Claude Code 설정
+├── settings.local.json       # 로컬 설정 (git-ignored)
 │
-├── agents/                   # Sub-agent definitions
-│   └── moai/                 # MoAI agents (20 agents)
-│       ├── expert-*.md       # Expert agents (8)
-│       ├── manager-*.md      # Manager agents (8)
-│       └── builder-*.md      # Builder agents (4)
+├── agents/                   # 하위 에이전트 정의
+│   └── moai/                 # MoAI 에이전트 (21개)
+│       ├── expert-*.md       # 전문가 에이전트 (8개)
+│       ├── manager-*.md      # 매니저 에이전트 (8개)
+│       └── builder-*.md      # 빌더 에이전트 (4개)
 │
-├── commands/                 # Slash commands
-│   └── moai/                 # MoAI commands
-│       ├── 0-project.md      # Project initialization
-│       ├── 1-plan.md         # SPEC planning
-│       ├── 2-run.md          # TDD execution
-│       ├── 3-sync.md         # Documentation sync
-│       └── ...               # Additional commands
+├── commands/                 # 슬래시 명령
+│   └── moai/                 # MoAI 명령
+│       ├── 0-project.md      # 프로젝트 초기화
+│       ├── 1-plan.md         # SPEC 계획
+│       ├── 2-run.md          # TDD 실행
+│       ├── 3-sync.md         # 문서화 동기화
+│       ├── 9-feedback.md     # 피드백 제출
+│       └── ...               # 추가 명령
 │
-├── hooks/                    # Automation hooks
-│   └── moai/                 # MoAI hooks
+├── hooks/                    # 자동화 후크
+│   └── moai/                 # MoAI 후크
 │       ├── session_start_*.py
-│       └── lib/              # Hook libraries
+│       └── lib/              # 후크 라이브러리
 │
-├── output-styles/            # Output formatting
+├── output-styles/            # 출력 포맷팅
 │   └── moai/
-│       ├── r2d2.md           # R2-D2 style
-│       └── yoda.md           # Yoda style
+│       ├── r2d2.md           # R2-D2 스타일
+│       └── yoda.md           # Yoda 스타일
 │
-└── skills/                   # Domain knowledge
-    └── moai/                 # MoAI skills (48 skills)
+└── skills/                   # 도메인 지식
+    └── moai/                 # MoAI 스킬 (48개)
         ├── moai-foundation-*.md
         ├── moai-domain-*.md
         ├── moai-lang-*.md
@@ -147,15 +148,15 @@ src/moai_adk/
 
 ---
 
-## MoAI Configuration Structure (.moai/)
+## MoAI 설정 구조 (.moai/)
 
 ```
 .moai/
-├── config/                   # Configuration files
-│   ├── config.yaml           # Main configuration
+├── config/                   # 설정 파일
+│   ├── config.yaml           # 메인 설정
 │   ├── statusline-config.yaml
 │   ├── multilingual-triggers.yaml
-│   ├── sections/             # Modular sections
+│   ├── sections/             # 모듈형 섹션
 │   │   ├── user.yaml
 │   │   ├── language.yaml
 │   │   ├── project.yaml
@@ -163,7 +164,7 @@ src/moai_adk/
 │   │   ├── quality.yaml
 │   │   ├── system.yaml
 │   │   └── ralph.yaml
-│   └── questions/            # Configuration UI
+│   └── questions/            # 설정 UI
 │       ├── _schema.yaml
 │       ├── tab0-init.yaml
 │       ├── tab1-user.yaml
@@ -172,70 +173,50 @@ src/moai_adk/
 │       ├── tab4-quality.yaml
 │       └── tab5-system.yaml
 │
-├── specs/                    # SPEC documents
-│   └── SPEC-*.md             # Individual specifications
+├── specs/                    # SPEC 문서
+│   └── SPEC-*.md             # 개별 명세서
 │
-├── project/                  # Project documentation
-│   ├── product.md            # Product description
-│   ├── structure.md          # Project structure (this file)
-│   └── tech.md               # Technology stack
+├── project/                  # 프로젝트 문서
+│   ├── product.md            # 제품 설명
+│   ├── structure.md          # 프로젝트 구조 (이 파일)
+│   └── tech.md               # 기술 스택
 │
-├── memory/                   # Session memory (runtime)
-├── cache/                    # Cache data (runtime)
-├── logs/                     # Log files (runtime)
-├── error_logs/               # Error logs (runtime)
-├── rollbacks/                # Rollback data (runtime)
-├── analytics/                # Usage analytics (runtime)
-└── web/                      # Web UI data (runtime)
+├── memory/                   # 세션 메모리 (런타임)
+├── cache/                    # 캐시 데이터 (런타임)
+├── logs/                     # 로그 파일 (런타임)
+├── error_logs/               # 오류 로그 (런타임)
+├── rollbacks/                # 롤백 데이터 (런타임)
+├── analytics/                # 사용 분석 (런타임)
+└── web/                      # 웹 UI 데이터 (런타임)
 ```
 
 ---
 
-## Test Structure (tests/)
+## 테스트 구조 (tests/)
 
 ```
 tests/
-├── unit/                     # Unit tests
-│   ├── test_core/            # Core module tests
-│   ├── test_cli/             # CLI command tests
-│   ├── test_utils/           # Utility tests
-│   ├── test_statusline/      # Statusline tests
-│   └── test_hooks/           # Hook tests
+├── unit/                     # 단위 테스트
+│   ├── test_core/            # 핵심 모듈 테스트
+│   ├── test_cli/             # CLI 명령 테스트
+│   ├── test_utils/           # 유틸리티 테스트
+│   ├── test_statusline/      # 상태줄 테스트
+│   └── test_hooks/           # 후크 테스트
 │
-├── astgrep/                  # AST-grep integration tests (v1.1.1)
-│   ├── test_analyzer_edge_cases.py      # 52 tests
-│   ├── test_analyzer_full_coverage.py   # Coverage tests
-│   ├── test_analyzer_exception_coverage.py # Exception handling tests
-│   ├── test_models_edge_cases.py         # 32 tests
-│   ├── test_rules_advanced.py            # 25 tests
-│   └── test_rules_*.py                   # Additional rule tests
-│
-├── cli/                      # CLI tests (v1.1.1)
-│   ├── commands/            # CLI command tests
-│   │   ├── test_analyze_enhanced.py
-│   │   ├── test_switch.py
-│   │   ├── test_rank_comprehensive.py
-│   │   ├── test_update_complete_coverage.py
-│   │   └── test_*.py
-│   ├── prompts/             # Prompt tests
-│   │   ├── test_init_prompts_enhanced.py
-│   │   └── test_*.py
-│   ├── ui/                   # UI tests
-│   │   ├── test_progress.py
-│   │   └── test_*.py
-│   ├── worktree/             # Worktree tests (v1.1.1)
-│   │   ├── test_cli.py
-│   │   ├── test_manager_enhanced.py
-│   │   ├── test_exceptions_enhanced.py
-│   │   ├── test_main.py
-│   │   ├── test_models.py
-│   │   ├── test_registry.py
-│   │   └── test_*.py
-│   ├── test_main_exception_handling.py # 19 tests
+├── astgrep/                  # AST-grep 통합 테스트
+│   ├── test_analyzer_edge_cases.py
+│   ├── test_models_edge_cases.py
+│   ├── test_rules_advanced.py
 │   └── test_*.py
 │
-├── foundation/               # Foundation tests (v1.1.1)
-│   ├── conftest.py
+├── cli/                      # CLI 테스트
+│   ├── commands/             # CLI 명령 테스트
+│   ├── prompts/              # 프롬프트 테스트
+│   ├── ui/                   # UI 테스트
+│   ├── worktree/             # 워크트리 테스트
+│   └── test_*.py
+│
+├── foundation/               # 파운데이션 테스트
 │   ├── test_backend.py
 │   ├── test_commit_templates.py
 │   ├── test_database.py
@@ -245,70 +226,58 @@ tests/
 │   ├── test_ears_tdd.py
 │   ├── test_langs_tdd.py
 │   ├── test_testing_tdd.py
-│   └── trust/               # TRUST 5 framework tests
-│       └── test_trust_principles.py
+│   └── trust/                # TRUST 5 프레임워크 테스트
 │
-├── integration/              # Integration tests
-│   ├── cli/                  # CLI integration tests (v1.1.1)
-│   ├── test_core/            # Core integration tests
-│   └── test_workflow/        # Workflow tests
+├── integration/              # 통합 테스트
+│   ├── cli/                  # CLI 통합 테스트
+│   ├── test_core/            # 핵심 통합 테스트
+│   └── test_workflow/        # 워크플로우 테스트
 │
-├── unit/                     # Additional unit tests (v1.1.1)
-│   ├── cli/                  # CLI unit tests
-│   │   └── commands/         # Command-specific unit tests
-│   ├── core/                 # Core module unit tests
-│   │   ├── analysis/
-│   │   ├── integration/
-│   │   ├── migration/
-│   │   ├── project/
-│   │   └── statusline/
-│   ├── hooks/                # Hook unit tests
-│   │   └── moai/
-│   ├── statusline/           # Statusline unit tests
-│   │   └── test_main_edge_cases.py # 51 tests
-│   ├── tag_system/           # TAG System v2.0 tests
-│   │   └── test_*.py
+├── unit/                     # 추가 단위 테스트
+│   ├── cli/                  # CLI 단위 테스트
+│   ├── core/                 # 핵심 모듈 단위 테스트
+│   ├── hooks/                # 후크 단위 테스트
+│   ├── statusline/           # 상태줄 단위 테스트
+│   ├── tag_system/           # TAG 시스템 v2.0 테스트
 │   └── test_entry_points.py
 │
-├── conftest.py               # Pytest configuration
-└── fixtures/                 # Test fixtures
+├── conftest.py               # Pytest 설정
+└── fixtures/                 # 테스트 픽스처
 ```
-
-**Note**: v1.1.1 added 179 new comprehensive tests covering edge cases, error handling, and type safety across core modules.
 
 ---
 
-## Documentation Structure (docs/)
+## 문서화 구조 (docs/)
 
 ```
 docs/
-├── app/                      # Nextra documentation
-│   ├── agents/               # Agent documentation
-│   ├── commands/             # Command documentation
-│   ├── skills/               # Skill documentation
-│   └── workflows/            # Workflow guides
+├── app/                      # Nextra 문서화
+│   ├── agents/               # 에이전트 문서
+│   ├── commands/             # 명령 문서
+│   ├── skills/               # 스킬 문서
+│   └── workflows/            # 워크플로우 가이드
 │
-├── public/                   # Static assets
-└── next.config.mjs           # Next.js configuration
+├── public/                   # 정적 자산
+└── next.config.mjs           # Next.js 설정
 ```
 
 ---
 
-## Key Files
+## 핵심 파일
 
-| File | Purpose |
+| 파일 | 목적 |
 |------|---------|
-| `pyproject.toml` | Single Source of Truth for package version and dependencies |
-| `CLAUDE.md` | Alfred execution directives (Mr. Alfred orchestration rules) |
-| `CLAUDE.local.md` | Local development guide (git-ignored) |
-| `.moai/config/config.yaml` | Main MoAI configuration |
-| `src/moai_adk/version.py` | Version reader (reads from pyproject.toml) |
+| `pyproject.toml` | 패키지 버전 및 의존성의 단일 출처 |
+| `CLAUDE.md` | Alfred 실행 지시문 (Mr. Alfred 오케스트레이션 규칙) |
+| `CLAUDE.local.md` | 로컬 개발 가이드 (git-ignored) |
+| `.moai/config/config.yaml` | 메인 MoAI 설정 |
+| `src/moai_adk/version.py` | 버전 리더 (pyproject.toml에서 읽기) |
 
 ---
 
-## Sync Mechanism
+## 동기화 메커니즘
 
-Templates flow from `src/moai_adk/templates/` to root directories:
+템플릿은 `src/moai_adk/templates/`에서 루트 디렉토리로 흐릅니다:
 
 ```
 src/moai_adk/templates/.claude/  →  .claude/
@@ -316,7 +285,8 @@ src/moai_adk/templates/.moai/    →  .moai/
 src/moai_adk/templates/CLAUDE.md →  ./CLAUDE.md
 ```
 
-Local-only files (never synced):
+로컬 전용 파일 (동기화되지 않음):
 - `.claude/settings.local.json`
 - `CLAUDE.local.md`
 - `.moai/cache/`, `.moai/memory/`, `.moai/logs/`
+- `.moai/project/`, `.moai/specs/` (사용자 데이터 보호)

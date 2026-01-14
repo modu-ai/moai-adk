@@ -44,7 +44,7 @@ class CrossPlatformTimeout:
             timeout.cancel()
     """
 
-    def __init__(self, timeout_seconds: float, callback: Callable] = None):
+    def __init__(self, timeout_seconds: float, callback: Callable | None = None):
         """Initialize timeout with duration in seconds.
 
         Args:
@@ -55,9 +55,9 @@ class CrossPlatformTimeout:
         self.timeout_seconds = timeout_seconds
         self.timeout_seconds_int = max(1, int(timeout_seconds))  # signal.alarm requires >=1
         self.callback = callback
-        self.timer: threading.Timer] = None
+        self.timer: threading.Timer | None = None
         self._is_windows = platform.system() == "Windows"
-        self._old_handler: signal.Handlers | Callable[[int, Any], Any]] = None
+        self._old_handler: signal.Handlers | Callable[[int, Any], Any] | None = None
 
     def start(self) -> None:
         """Start timeout countdown."""
@@ -138,7 +138,7 @@ class CrossPlatformTimeout:
 
 
 @contextmanager
-def timeout_context(timeout_seconds: float, callback: Callable] = None):
+def timeout_context(timeout_seconds: float, callback: Callable | None = None):
     """Decorator/context manager for timeout.
 
     Usage:
