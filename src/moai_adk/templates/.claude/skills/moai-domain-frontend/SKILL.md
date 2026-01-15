@@ -73,6 +73,12 @@ Performance Optimization in modules/performance-optimization.md:
 
 - Code splitting, Dynamic imports, Image optimization, Memoization
 
+Vercel React Best Practices in modules/vercel-react-best-practices.md:
+
+- 45 rules across 8 categories from Vercel Engineering
+- Eliminating waterfalls, bundle optimization, server-side performance
+- Client-side data fetching, re-render optimization, rendering performance
+
 ---
 
 ## Implementation Quickstart

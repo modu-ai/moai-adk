@@ -52,6 +52,7 @@ Module Organization:
 - Accessibility: modules/accessibility-wcag.md (WCAG 2.2 compliance, testing, navigation)
 - Icons: modules/icon-libraries.md (10+ libraries, selection guide, performance optimization)
 - Theming: modules/theming-system.md (theme system, CSS variables, brand customization)
+- Web Interface Guidelines: modules/web-interface-guidelines.md (Vercel Labs comprehensive UI/UX compliance)
 - Examples: examples.md (practical implementation examples)
 - Reference: reference.md (external documentation links)
 
@@ -226,6 +227,7 @@ Official Resources:
 - Style Dictionary: https://styledictionary.com
 - Lucide Icons: https://lucide.dev
 - Iconify: https://iconify.design
+- Vercel Web Interface Guidelines: https://github.com/vercel-labs/web-interface-guidelines
 
 ---
 
