@@ -20,19 +20,22 @@ This release introduces platform-specific settings.json templates to resolve Win
 
 ### Added
 - **feat(skills)**: Vercel React Best Practices module
-  - Comprehensive guide for production-ready React applications on Vercel
-  - Performance optimization patterns
-  - Deployment best practices
+  - 45 rules across 8 categories from Vercel Engineering
+  - Covers async patterns, bundle optimization, server/client performance
   - 1,131+ lines of detailed guidance
+  - Added to `moai-domain-frontend/modules/vercel-react-best-practices.md`
 
 - **feat(skills)**: Web Interface Guidelines module
-  - Modern web interface design principles
-  - UX best practices
+  - Comprehensive web interface guidelines from Vercel Labs
+  - Covers HTML, accessibility, forms, animation, typography, performance
   - 687+ lines of comprehensive guidelines
+  - Added to `moai-domain-uiux/modules/web-interface-guidelines.md`
 
-- **feat(skills)**: Import Agent Skills documentation
-  - Examples and reference documentation for agent skill import system
-  - 1,400+ lines of new documentation
+- **feat(skills)**: Import Agent Skills (`moai-import-agent-skills`)
+  - New skill for converting agent-skills format to MoAI skills
+  - Complete documentation with examples and reference
+  - Added `examples.md` (829+ lines) and `reference.md` (370+ lines)
+  - Facilitates easy migration from external agent skill formats
 
 ### Changed
 - Updated system configuration templates
@@ -76,19 +79,22 @@ Windows users should update and run `moai-adk update` to apply the new Windows-s
 
 ### 추가됨
 - **feat(skills)**: Vercel React Best Practices 모듈
-  - Vercel에서 프로덕션 준비 React 애플리케이션을 위한 종합 가이드
-  - 성능 최적화 패턴
-  - 배포 모범 사례
+  - Vercel Engineering의 8개 카테고리 45개 규칙
+  - 비동기 패턴, 번들 최적화, 서버/클라이언트 성능 포괄
   - 1,131줄 이상의 상세 가이드
+  - `moai-domain-frontend/modules/vercel-react-best-practices.md`에 추가
 
 - **feat(skills)**: Web Interface Guidelines 모듈
-  - 현대적 웹 인터페이스 디자인 원칙
-  - UX 모범 사례
+  - Vercel Labs의 종합 웹 인터페이스 가이드라인
+  - HTML, 접근성, 폼, 애니메이션, 타이포그래피, 성능 포괄
   - 687줄 이상의 종합 가이드라인
+  - `moai-domain-uiux/modules/web-interface-guidelines.md`에 추가
 
-- **feat(skills)**: Import Agent Skills 문서
-  - 에이전트 스킬 임포트 시스템을 위한 예제 및 레퍼런스 문서
-  - 1,400줄 이상의 새로운 문서
+- **feat(skills)**: Import Agent Skills (`moai-import-agent-skills`)
+  - agent-skills 형식을 MoAI 스킬로 변환하는 새로운 스킬
+  - 예제 및 레퍼런스를 포함한 완전한 문서
+  - `examples.md` (829줄 이상) 및 `reference.md` (370줄 이상) 추가
+  - 외부 에이전트 스킬 형식에서의 쉬운 마이그레이션 지원
 
 ### 변경됨
 - 시스템 구성 템플릿 업데이트

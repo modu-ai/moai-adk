@@ -304,5 +304,5 @@ docs/
 .venv_issue43_py313
 theme.config.tsx
 
-# Keep local development guide tracked
+# Local development guide (excluded from git)
 CLAUDE.local.md
