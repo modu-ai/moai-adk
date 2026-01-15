@@ -927,7 +927,8 @@ class TemplateProcessor:
                         all_warnings.extend(file_warnings)
                     if not silent:
                         console.print(
-                            f"   🔄 settings.json merged (from {item.name}, Hook paths configured for {platform.system()})"
+                            f"   🔄 settings.json merged (from {item.name}, "
+                            f"Hook paths configured for {platform.system()})"
                         )
                 # Smart merge for config.json
                 elif item.name == "config.json":
