@@ -1,3 +1,115 @@
+# v1.2.0 - Platform-Specific Templates & Enhanced Skills (2025-01-15)
+
+## Summary
+
+This release introduces platform-specific settings.json templates to resolve Windows hook compatibility issues, along with enhanced frontend and UI/UX skills including Vercel React Best Practices and Web Interface Guidelines.
+
+## Changes
+
+### Fixed
+- **fix(windows)**: Use relative paths with backslash for Windows hooks
+  - Windows now uses `.\.claude\hooks\...` (relative paths with backslash)
+  - Unix/macOS continues using `$CLAUDE_PROJECT_DIR/.claude/hooks/...` (environment variables)
+  - Resolves hook execution failures on Windows due to Claude Code not expanding `%CLAUDE_PROJECT_DIR%`
+  - Automatic platform detection ensures correct template selection
+
+- **feat(platform)**: Add platform-specific settings.json templates
+  - Separate templates for Windows (`settings.json.windows`) and Unix (`settings.json.unix`)
+  - Template processor automatically selects appropriate file based on OS
+  - Eliminates cross-platform path separator issues
+
+### Added
+- **feat(skills)**: Vercel React Best Practices module
+  - Comprehensive guide for production-ready React applications on Vercel
+  - Performance optimization patterns
+  - Deployment best practices
+  - 1,131+ lines of detailed guidance
+
+- **feat(skills)**: Web Interface Guidelines module
+  - Modern web interface design principles
+  - UX best practices
+  - 687+ lines of comprehensive guidelines
+
+- **feat(skills)**: Import Agent Skills documentation
+  - Examples and reference documentation for agent skill import system
+  - 1,400+ lines of new documentation
+
+### Changed
+- Updated system configuration templates
+- Improved template processor with platform-aware file selection
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Apply platform-specific templates to your project
+moai-adk update
+```
+
+## Notes for Windows Users
+
+Windows users should update and run `moai-adk update` to apply the new Windows-specific template with relative paths. This resolves hook execution issues caused by Claude Code not expanding environment variables on Windows.
+
+---
+
+# v1.2.0 - 플랫폼별 템플릿 및 향상된 스킬 (2025-01-15)
+
+## 요약
+
+이 릴리스는 Windows 훅 호환성 문제를 해결하기 위한 플랫폼별 settings.json 템플릿을 도입하며, Vercel React Best Practices와 Web Interface Guidelines를 포함한 향상된 프론트엔드 및 UI/UX 스킬을 제공합니다.
+
+## 변경 사항
+
+### 수정됨
+- **fix(windows)**: Windows 훅을 위한 상대 경로 및 백슬래시 사용
+  - Windows는 이제 `.\.claude\hooks\...` (백슬래시가 포함된 상대 경로) 사용
+  - Unix/macOS는 계속 `$CLAUDE_PROJECT_DIR/.claude/hooks/...` (환경 변수) 사용
+  - Claude Code가 Windows에서 `%CLAUDE_PROJECT_DIR%` 확장하지 않는 문제로 인한 훅 실행 실패 해결
+  - 자동 플랫폼 감지로 올바른 템플릿 선택 보장
+
+- **feat(platform)**: 플랫폼별 settings.json 템플릿 추가
+  - Windows용 (`settings.json.windows`)과 Unix용 (`settings.json.unix`) 별도 템플릿
+  - 템플릿 프로세서가 OS에 따라 적절한 파일 자동 선택
+  - 크로스 플랫폼 경로 구분자 문제 해결
+
+### 추가됨
+- **feat(skills)**: Vercel React Best Practices 모듈
+  - Vercel에서 프로덕션 준비 React 애플리케이션을 위한 종합 가이드
+  - 성능 최적화 패턴
+  - 배포 모범 사례
+  - 1,131줄 이상의 상세 가이드
+
+- **feat(skills)**: Web Interface Guidelines 모듈
+  - 현대적 웹 인터페이스 디자인 원칙
+  - UX 모범 사례
+  - 687줄 이상의 종합 가이드라인
+
+- **feat(skills)**: Import Agent Skills 문서
+  - 에이전트 스킬 임포트 시스템을 위한 예제 및 레퍼런스 문서
+  - 1,400줄 이상의 새로운 문서
+
+### 변경됨
+- 시스템 구성 템플릿 업데이트
+- 플랫폼 인식 파일 선택을 위한 템플릿 프로세서 개선
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트에 플랫폼별 템플릿 적용
+moai-adk update
+```
+
+## Windows 사용자 참고사항
+
+Windows 사용자는 업데이트 후 `moai-adk update`를 실행하여 상대 경로를 사용하는 새 Windows용 템플릿을 적용해야 합니다. 이것은 Claude Code가 Windows에서 환경 변수를 확장하지 않는 문제로 인한 훅 실행 문제를 해결합니다.
+
+---
+
 # v1.2.0 - Enhanced Planning Experience & Bug Fixes (2025-01-15)
 
 ## Summary
