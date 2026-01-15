@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+import platform
 import re
 import shutil
 from dataclasses import dataclass
@@ -896,9 +897,28 @@ class TemplateProcessor:
                 continue
 
             if item.is_file():
-                # Smart merge for settings.json
-                if item.name == "settings.json":
-                    self._merge_settings_json(item, dst_item)
+                # Smart merge for settings.json (platform-specific file selection)
+                # Priority: settings.json.windows > settings.json.unix > settings.json
+                is_settings_file = False
+                settings_src = None
+
+                if item.name == "settings.json.windows" and platform.system() == "Windows":
+                    is_settings_file = True
+                    settings_src = item
+                elif item.name == "settings.json.unix" and platform.system() != "Windows":
+                    is_settings_file = True
+                    settings_src = item
+                elif item.name == "settings.json":
+                    # Fallback: only use if platform-specific file doesn't exist
+                    windows_file = item.parent / "settings.json.windows"
+                    unix_file = item.parent / "settings.json.unix"
+                    if not windows_file.exists() and not unix_file.exists():
+                        is_settings_file = True
+                        settings_src = item
+
+                if is_settings_file and settings_src:
+                    # Merge to settings.json (destination always has same name)
+                    self._merge_settings_json(settings_src, dst_item)
                     # Apply variable substitution to merged settings.json (for cross-platform Hook paths)
                     if self.context:
                         content = dst_item.read_text(encoding="utf-8")
@@ -906,7 +926,9 @@ class TemplateProcessor:
                         dst_item.write_text(content, encoding="utf-8")
                         all_warnings.extend(file_warnings)
                     if not silent:
-                        console.print("   🔄 settings.json merged (Hook paths configured for your OS)")
+                        console.print(
+                            f"   🔄 settings.json merged (from {item.name}, Hook paths configured for {platform.system()})"
+                        )
                 # Smart merge for config.json
                 elif item.name == "config.json":
                     self._merge_config_json(item, dst_item)
