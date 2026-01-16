@@ -1,5 +1,5 @@
 ---
-description: "Execute TDD implementation cycle"
+description: "Execute implementation cycle (TDD or DDR based on configuration)"
 argument-hint: 'SPEC-ID - All with SPEC ID to implement (e.g. SPEC-001) or all "SPEC Implementation"'
 type: workflow
 allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
@@ -16,17 +16,30 @@ model: inherit
 ## Essential Files
 
 @.moai/config/config.yaml
+@.moai/config/sections/quality.yaml
 @.moai/specs/
 
 ---
 
-# MoAI-ADK Step 2: Execute Implementation (Run) - TDD Implementation
+# MoAI-ADK Step 2: Execute Implementation (Run) - TDD/DDR Implementation
 
 **User Interaction Architecture**: AskUserQuestion must be used at COMMAND level only. Subagents via Task() are stateless and cannot interact with users. Collect all approvals BEFORE delegating phase execution.
 
 **Execution Model**: Commands orchestrate through `Task()` tool only. No direct tool usage.
 
-**Delegation Pattern**: Sequential phase-based agent delegation with 5 phases (SDD 2025 Standard):
+**Development Mode Selection**: This command supports two development methodologies based on `constitution.development_mode` in quality.yaml:
+
+- **TDD Mode** (development_mode: tdd): For new feature development using RED-GREEN-REFACTOR cycle
+- **DDR Mode** (development_mode: ddr): For refactoring using ANALYZE-PRESERVE-IMPROVE cycle
+
+**Mode Detection**:
+
+- Read `.moai/config/sections/quality.yaml`
+- Check `constitution.development_mode` value
+- If `tdd` (default): Use manager-tdd for Phase 2
+- If `ddr`: Use manager-ddr for Phase 2
+
+**Delegation Pattern (TDD Mode)**: Sequential phase-based agent delegation with 5 phases (SDD 2025 Standard):
 
 - Phase 1: SPEC analysis and execution plan creation
 - Phase 1.5: Tasks decomposition (SDD 2025 - explicit task breakdown)
@@ -35,15 +48,26 @@ model: inherit
 - Phase 3: Git commit management
 - Phase 4: Completion and next steps guidance
 
+**Delegation Pattern (DDR Mode)**: Sequential phase-based agent delegation with 5 phases:
+
+- Phase 1: SPEC analysis and refactoring scope identification
+- Phase 1.5: Refactoring targets decomposition
+- Phase 2: DDR implementation (ANALYZE → PRESERVE → IMPROVE)
+- Phase 2.5: Quality validation (behavior preservation + TRUST 5)
+- Phase 3: Git commit management
+- Phase 4: Completion and next steps guidance
+
 ---
 
 ## Command Purpose
 
-Execute TDD implementation of SPEC requirements through complete agent delegation.
+Execute implementation of SPEC requirements through complete agent delegation, using either TDD or DDR methodology based on project configuration.
 
 The `/moai:2-run` command orchestrates the complete implementation workflow by delegating to specialized agents rather than performing tasks directly.
 
 **SPEC ID Parameter**: Supply via `$ARGUMENTS` (e.g., `/moai:2-run SPEC-001`)
+
+**Mode Override**: Users can override the default mode at runtime if needed. When presenting the execution plan in Phase 1, offer mode selection if the detected mode doesn't match the SPEC type.
 
 ---
 
@@ -125,13 +149,20 @@ Agent delegation is recommended for complex tasks that benefit from specialized 
   - Input: SPEC ID and content
   - Output: Execution strategy with phased approach and success criteria
 
-- **manager-tdd**: Implements code through RED-GREEN-REFACTOR cycle
+- **manager-tdd** (TDD Mode): Implements code through RED-GREEN-REFACTOR cycle
   - Input: Approved execution plan from Phase 1
   - Output: Code with passing tests (≥85% coverage)
+  - When: development_mode == tdd (new feature development)
+
+- **manager-ddr** (DDR Mode): Refactors code through ANALYZE-PRESERVE-IMPROVE cycle
+  - Input: Approved refactoring plan from Phase 1
+  - Output: Refactored code with identical behavior and improved structure
+  - When: development_mode == ddr (legacy code refactoring)
 
 - **manager-quality**: Validates TRUST 5 principles and quality gates
   - Input: Implemented code and test suite
   - Output: Quality assessment (PASS/WARNING/CRITICAL)
+  - Note: In DDR mode, also validates behavior preservation
 
 - **manager-git**: Creates feature branch and commits with meaningful messages
   - Input: Implementation context and changes
@@ -150,33 +181,45 @@ Command implements strict sequential chaining through 5 phases:
 Phase Flow:
 
 - Phase 1: Analysis & Planning (manager-strategy subagent)
-- Phase 2: TDD Implementation (manager-tdd subagent with RED-GREEN-REFACTOR)
+- Phase 2: Implementation (mode-dependent):
+  - TDD Mode: manager-tdd subagent with RED-GREEN-REFACTOR
+  - DDR Mode: manager-ddr subagent with ANALYZE-PRESERVE-IMPROVE
 - Phase 2.5: Quality Validation (manager-quality subagent with TRUST 5 assessment)
 - Phase 3: Git Operations (manager-git subagent for commits and branch)
 - Phase 4: Completion Guidance (AskUserQuestion for next steps)
 
 Each phase receives outputs from all previous phases as context.
 
-WHY: Sequential execution ensures TDD discipline and quality gates
+WHY: Sequential execution ensures methodology discipline and quality gates
 
 - Phase 2 requires approved execution plan from Phase 1
 - Phase 2.5 validates Phase 2 implementation before git operations
+  - TDD Mode: Validates test coverage and code quality
+  - DDR Mode: Additionally validates behavior preservation
 - Phase 3 requires validated code from Phase 2.5
 - Phase 4 provides guidance based on complete implementation status
 
-IMPACT: Skipping phases or parallel execution would violate TDD cycle and bypass quality gates
+IMPACT: Skipping phases or parallel execution would violate TDD/DDR cycle and bypass quality gates
 
 ### Parallel Execution FAIL
 
-Not applicable - TDD workflow requires sequential execution
+Not applicable - TDD/DDR workflows require sequential execution
 
-WHY: Test-Driven Development mandates specific ordering
+WHY: Both TDD and DDR methodologies mandate specific ordering
+
+TDD (RED-GREEN-REFACTOR):
 
 - Cannot write tests in parallel with implementation (RED phase first)
 - Cannot validate quality before implementation completes
 - Cannot commit code before quality validation passes
 
-IMPACT: Parallel execution would break TDD discipline and compromise code quality
+DDR (ANALYZE-PRESERVE-IMPROVE):
+
+- Cannot preserve without analyzing first
+- Cannot improve without establishing safety net
+- Cannot commit without verifying behavior preservation
+
+IMPACT: Parallel execution would break methodology discipline and compromise code quality
 
 ### Resumable Agent Support PASS
 
@@ -284,7 +327,13 @@ Expected Output:
   - acceptance: Verification criteria (for example, POST /api/users returns 201 with user data)
 - coverage_verified: true
 
-### Phase 2: TDD Implementation
+### Phase 2: Implementation (Mode-Dependent)
+
+**Agent**: manager-tdd (TDD Mode) OR manager-ddr (DDR Mode)
+
+Select agent based on `constitution.development_mode` in quality.yaml.
+
+#### TDD Mode (development_mode: tdd)
 
 **Agent**: manager-tdd
 
@@ -306,12 +355,45 @@ Expected Output:
   - WHY: Prevents incomplete implementations from advancing
   - IMPACT: Ensures Phase 3 commits have known good state
 
-Expected Output:
+Expected Output (TDD):
 
 - files_created: List of implementation files
 - tests_created: List of test files
 - test_results: All passing (count)
 - coverage_percentage: 85% or higher coverage
+
+#### DDR Mode (development_mode: ddr)
+
+**Agent**: manager-ddr
+
+**Requirements** [HARD]:
+
+- Initialize TodoWrite for task tracking across refactoring
+  - WHY: Maintains visible progress through multi-step DDR cycle
+  - IMPACT: Enables recovery if refactoring is interrupted
+
+- Execute complete ANALYZE → PRESERVE → IMPROVE cycle
+  - ANALYZE: Identify domain boundaries, coupling metrics, refactoring targets
+  - PRESERVE: Verify existing tests, create characterization tests for safety net
+  - IMPROVE: Apply incremental transformations with continuous verification
+  - WHY: Ensures behavior preservation during structural changes
+  - IMPACT: Reduces risk of introducing regressions
+
+- Verify all existing tests pass after each transformation
+  - WHY: Behavior preservation is the golden rule of DDR
+  - IMPACT: Immediate detection of unintended behavior changes
+
+- Create characterization tests for uncovered code paths
+  - WHY: Establishes safety net before making changes
+  - IMPACT: Captures current behavior as baseline for verification
+
+Expected Output (DDR):
+
+- files_modified: List of refactored files
+- characterization_tests_created: List of new characterization tests
+- test_results: All passing (existing + characterization)
+- behavior_preserved: true
+- structural_metrics: Before/after coupling and cohesion comparison
 
 ### Phase 2.5: Quality Validation
 
@@ -339,6 +421,17 @@ Expected Output:
 - Verify test coverage is at least 85%
   - WHY: Ensures critical paths are tested
   - IMPACT: Confidence that feature works under expected conditions
+
+- **DDR Mode Additional Validation**:
+  - Verify behavior preservation: All existing tests must pass unchanged
+    - WHY: Core DDR principle - no functional changes during refactoring
+    - IMPACT: Ensures refactoring didn't introduce regressions
+  - Verify characterization tests pass: Behavior snapshots must match
+    - WHY: Confirms current behavior is preserved
+    - IMPACT: Detects subtle behavioral changes
+  - Verify structural improvement: Coupling/cohesion metrics improved
+    - WHY: Refactoring should result in better code structure
+    - IMPACT: Validates that refactoring achieved its goals
 
 - Return clear assessment status (PASS/WARNING/CRITICAL)
   - WHY: Explicit signal for Phase 3 decision point
