@@ -16,7 +16,7 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/pre_tool__security_guard.py"
+          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/pre_tool__security_guard.py"
           timeout: 30
 ---
 

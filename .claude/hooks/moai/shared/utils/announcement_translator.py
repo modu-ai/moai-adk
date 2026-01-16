@@ -11,15 +11,16 @@ Fallback: en (English)
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 # Import atomic_write from lib directory (go up two levels from shared/utils/)
 import sys
+from pathlib import Path
 from pathlib import Path as _Path
+
 _lib_path = _Path(__file__).parent.parent.parent / "lib"
 if str(_lib_path) not in sys.path:
     sys.path.insert(0, str(_lib_path))
-from atomic_write import atomic_write_json
+from atomic_write import atomic_write_json  # noqa: E402
 
 # Default language if not configured
 DEFAULT_LANGUAGE = "en"

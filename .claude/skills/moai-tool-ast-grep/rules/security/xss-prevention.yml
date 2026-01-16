@@ -1,19 +1,19 @@
 # XSS Prevention Rules
 
 id: xss-dangerouslySetInnerHTML
-language: tsx
+language: typescriptreact
 severity: warning
 message: "XSS risk: Sanitize content before using dangerouslySetInnerHTML"
 rule:
-  pattern: dangerouslySetInnerHTML = $X
+  pattern: dangerouslySetInnerHTML={{ __html: $CONTENT }}
 
 ---
 id: xss-dangerouslySetInnerHTML-jsx
-language: jsx
+language: javascript
 severity: warning
 message: "XSS risk: Sanitize content before using dangerouslySetInnerHTML"
 rule:
-  pattern: dangerouslySetInnerHTML = $X
+  pattern: dangerouslySetInnerHTML={{ __html: $CONTENT }}
 
 ---
 id: xss-innerHTML
@@ -45,3 +45,6 @@ rule:
     - pattern: new Function($CODE)
     - pattern: setTimeout($CODE, $DELAY)
     - pattern: setInterval($CODE, $DELAY)
+  constraints:
+    CODE:
+      kind: string

@@ -219,160 +219,13 @@ Command Scope: Only executes Steps 1-2. Steps 3-4 are executed by `/moai:2-run` 
 
 ---
 
-## The Command Has FOUR Execution Phases
+## The Command Has THREE Execution Phases
 
-1. PHASE 0: Interview-First Context Extraction (NEW - Before STEP 1)
-2. PHASE 1: Project Analysis & SPEC Planning (STEP 1)
-3. PHASE 2: SPEC Document Creation (STEP 2)
-4. PHASE 3: Git Branch & PR Setup (STEP 2 continuation)
+1. PHASE 1: Project Analysis & SPEC Planning (STEP 1)
+2. PHASE 2: SPEC Document Creation (STEP 2)
+3. PHASE 3: Git Branch & PR Setup (STEP 2 continuation)
 
 Each phase contains explicit step-by-step instructions.
-
----
-
-## PHASE 0: User Interview (REQUIRED - x.com Style)
-
-### PHASE 0 Overview
-
-[HARD] PHASE 0 MUST execute before any exploration or planning.
-
-WHY: User requirements are often vague or incomplete. Direct interview prevents misunderstandings and ensures SPEC quality.
-
-IMPACT: Skipping interview creates unfocused SPECs that don't address actual user needs.
-
-Interview Structure (3 Stages):
-
-1. Intent Understanding: What problem does this solve? Why now?
-2. Technical Details: What constraints? What integration points?
-3. Implementation Agreement: What approach? What's the MVP?
-
-### Step 0.1: Intent Understanding (의도 파악)
-
-Goal: Understand the WHY before the WHAT.
-
-AskUserQuestion:
-Question: Why is this feature needed? What problem does it solve?
-Header: Intent
-multiSelect: false
-Options:
-- label: User Pain Point
-  description: Solve specific user frustration or workflow issue
-- label: Business Requirement
-  description: Implement critical business functionality
-- label: Technical Debt
-  description: Address code quality, performance, or maintenance issues
-- label: Innovation
-  description: Explore new technology or competitive differentiation
-
-Store answer as user_intent variable.
-
-AskUserQuestion:
-Question: Who will benefit from this feature?
-Header: Stakeholders
-multiSelect: true
-Options:
-- label: End Users
-  description: Direct users of the product or service
-- label: Developers
-  description: Internal development team productivity
-- label: Business
-  description: Revenue, cost savings, or operational efficiency
-- label: System
-  description: Performance, security, or stability improvements
-
-Store answer as stakeholders variable.
-
-### Step 0.2: Technical Details (기술적 세부사항)
-
-Goal: Understand constraints and integration points.
-
-AskUserQuestion:
-Question: What are the technical constraints or requirements?
-Header: Constraints
-multiSelect: true
-Options:
-- label: Performance
-  description: Response time, throughput, or resource constraints
-- label: Security
-  description: Authentication, authorization, or data protection requirements
-- label: Compatibility
-  description: Must work with existing systems or APIs
-- label: Scalability
-  description: Must handle growth in users or data volume
-
-Store answer as technical_constraints variable.
-
-AskUserQuestion:
-Question: How should this integrate with existing code?
-Header: Integration
-multiSelect: false
-Options:
-- label: Standalone
-  description: New feature with minimal existing code dependencies
-- label: Extension
-  description: Extends or enhances existing functionality
-- label: Replacement
-  description: Replaces or refactors existing implementation
-- label: Integration
-  description: Connects multiple existing components or services
-
-Store answer as integration_approach variable.
-
-### Step 0.3: Implementation Agreement (구현 방향 합의)
-
-Goal: Agree on approach and scope before planning.
-
-AskUserQuestion:
-Question: What is the minimum viable implementation?
-Header: MVP Scope
-multiSelect: false
-Options:
-- label: Proof of Concept
-  description: Validate technical feasibility with minimal functionality
-- label: Core Feature
-  description: Essential functionality with basic polish
-- label: Production Ready
-  description: Full feature with error handling and testing
-- label: Incremental
-  description: Start small, plan iterative enhancements
-
-Store answer as mvp_scope variable.
-
-AskUserQuestion:
-Question: What are the success criteria?
-Header: Success Criteria
-multiSelect: true
-Options:
-- label: Functional
-  description: Feature works as specified for primary use cases
-- label: Performance
-  description: Meets specific performance benchmarks
-- label: Quality
-  description: Passes tests and code quality standards
-- label: Adoption
-  description: Users actually use and benefit from the feature
-
-Store answer as success_criteria variable.
-
-### Step 0.4: Prepare Interview Context for Agents
-
-Create comprehensive context object for manager-spec agent:
-
-interview_context = {
-    "user_intent": user_intent,
-    "stakeholders": stakeholders,
-    "technical_constraints": technical_constraints,
-    "integration_approach": integration_approach,
-    "mvp_scope": mvp_scope,
-    "success_criteria": success_criteria
-}
-
-Log interview completion:
-
-- Print: "Interview complete. User intent: {user_intent}, MVP scope: {mvp_scope}"
-- Proceed to PHASE 1 (Project Analysis and SPEC Planning)
-
-Pass interview_context to manager-spec agent in PHASE 1B.
 
 ---
 
@@ -483,17 +336,8 @@ Analyze project and create SPEC plan for: $ARGUMENTS
 
 Context Handling:
 
-- [HARD] Pass interview_context from PHASE 0 to manager-spec agent
-- If Phase 1A was executed: Include exploration results + interview_context
-- If Phase 1A was skipped: Include interview_context with user request: "$ARGUMENTS"
-
-Critical: interview_context contains:
-- user_intent: Why this feature is needed
-- stakeholders: Who will benefit
-- technical_constraints: What constraints exist
-- integration_approach: How to integrate with existing code
-- mvp_scope: Minimum viable implementation scope
-- success_criteria: What defines success
+- If Phase 1A was executed: Continue from project exploration results
+- If Phase 1A was skipped: Start fresh analysis based on user request: "$ARGUMENTS"
 
 Language Configuration:
 
@@ -1366,21 +1210,18 @@ IMPACT: Using XML for user output degrades user experience
 Progress reports must use Markdown with clear sections:
 
 **Analysis Output**:
-
 - **Context**: Current project state and relevant files discovered
 - **Findings**: SPEC candidates identified with rationale
 - **Assessment**: Technical constraints and implementation feasibility
 - **Recommendations**: Next steps and decision options
 
 **Plan Output**:
-
 - **Requirements**: Approved SPEC title, ID, priority, and scope
 - **Architecture**: Technical stack, dependencies, and integration points
 - **Decomposition**: Task breakdown and implementation sequence
 - **Validation**: Quality criteria and acceptance conditions
 
 **Implementation Output**:
-
 - **Status**: Phase completion status and artifacts created
 - **Artifacts**: Location and format of created SPEC files
 - **Validation**: Quality gate results and compliance verification
@@ -1406,35 +1247,16 @@ IMPACT: Unstructured output prevents downstream automation and creates manual ov
 Before you consider this command complete, verify:
 
 ### AskUserQuestion Compliance (HARD Rules)
-
-- [ ] PHASE 0 Interview Complete: All 6 interview questions asked at command level
 - [ ] SPEC Creation Approval: AskUserQuestion used before creating SPEC files
 - [ ] Development Environment Selection: AskUserQuestion used for worktree/branch/current choice
 - [ ] Next Action Selection: AskUserQuestion used after SPEC creation completes
 
-### PHASE 0 Checklist
-
-- [ ] PHASE 0 executed: User interview completed BEFORE any exploration or planning
-- [ ] Intent Understanding (Step 0.1):
-  - [ ] User intent collected: Why is this feature needed?
-  - [ ] Stakeholders collected: Who will benefit?
-- [ ] Technical Details (Step 0.2):
-  - [ ] Technical constraints collected: What are the constraints?
-  - [ ] Integration approach collected: How does it integrate?
-- [ ] Implementation Agreement (Step 0.3):
-  - [ ] MVP scope collected: What is the minimum viable implementation?
-  - [ ] Success criteria collected: What defines success?
-- [ ] Interview context prepared: interview_context object created with all 6 variables
-- [ ] Interview completion logged: User confirmed interview results
-
 ### PHASE 1 Checklist
-
 - [ ] PHASE 1 executed: manager-spec analyzed project and proposed SPEC candidates
 - [ ] Progress report displayed: User shown detailed progress report with analysis results
 - [ ] User approval obtained: User explicitly approved SPEC creation (via AskUserQuestion)
 
 ### PHASE 2 Checklist
-
 - [ ] PHASE 2 executed: manager-spec created all 3 SPEC files (spec.md, plan.md, acceptance.md)
 - [ ] Directory naming correct: `.moai/specs/SPEC-{ID}/` format followed
 - [ ] YAML frontmatter valid: All 7 required fields present
@@ -1442,7 +1264,6 @@ Before you consider this command complete, verify:
 - [ ] EARS structure complete: All 5 requirement types included
 
 ### PHASE 3 Checklist
-
 - [ ] PHASE 3 executed: Appropriate action taken based on flags/user choice:
   - [ ] If --worktree: SPEC committed BEFORE worktree creation (HARD rule)
   - [ ] If --worktree: WorktreeManager created isolated worktree environment
@@ -1542,21 +1363,10 @@ SPEC Documents Directory:
 - Format: EARS structure with YAML frontmatter + HISTORY section
 - Language: All content in user's conversation_language
 
-Version: 7.0.0 (x.com Style Interview)
-Last Updated: 2026-01-15
+Version: 5.1.0 (4-Step Agent-Based Workflow + Worktree Integration)
+Last Updated: 2025-11-28
 Architecture: Commands → Agents → Skills (Complete delegation)
-PHASE 0: Comprehensive 3-stage user interview (Intent → Technical → Agreement)
 NEW: WorktreeManager integration for parallel SPEC development
-
-Changes from v6.1.0:
-
-- Enhanced: PHASE 0 expanded from 2 questions to 6 comprehensive interview questions
-- Enhanced: 3-stage interview structure (Intent Understanding, Technical Details, Implementation Agreement)
-- Enhanced: Interview context object with 6 variables for manager-spec agent
-- Enhanced: Detailed checklist for PHASE 0 compliance validation
-- Benefit: Better user requirement understanding before SPEC creation
-- Benefit: Reduced miscommunication and rework during implementation
-- Philosophy: x.com style interview - understand WHY before WHAT
 
 ---
 

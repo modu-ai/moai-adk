@@ -253,16 +253,12 @@ def main() -> int:
 
     # Validate TAGs in all staged Python files
     all_errors = []
-    exit_code = 0
 
     for file_path in python_files:
-        file_exit_code, file_errors = validate_file_tags(file_path, config)
+        _, file_errors = validate_file_tags(file_path, config)
 
         if file_errors:
             all_errors.extend(file_errors)
-
-        if file_exit_code != 0:
-            exit_code = file_exit_code
 
     # Display errors
     if all_errors:

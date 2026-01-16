@@ -11,9 +11,10 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from . import tag_validator
+
 # Import atomic_write functions directly
 from .atomic_write import atomic_write_json, atomic_write_text
-from . import tag_validator
 
 logger = logging.getLogger(__name__)
 
@@ -204,9 +205,7 @@ class LinkageManager:
             file_key = str(file_path)
 
             # Remove all TAGs for this file
-            data["tags"] = [
-                tag for tag in data["tags"] if tag["file_path"] != file_key
-            ]
+            data["tags"] = [tag for tag in data["tags"] if tag["file_path"] != file_key]
 
             # Remove file index
             if file_key in data["files"]:
@@ -313,9 +312,7 @@ class LinkageManager:
         data = self._load_database()
         tags = data.get("tags", [])
 
-        orphans = [
-            tag for tag in tags if not spec_document_exists(tag["spec_id"])
-        ]
+        orphans = [tag for tag in tags if not spec_document_exists(tag["spec_id"])]
 
         return orphans
 

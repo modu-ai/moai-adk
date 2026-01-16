@@ -67,74 +67,6 @@ When documentation files already exist:
 
 ---
 
-## PHASE 0: Project Context Collection (Simplified)
-
-### PHASE 0 Overview
-
-PHASE 0 collects basic project context before codebase analysis to improve documentation quality.
-
-### Step 0.1: Collect Project Context
-
-Use AskUserQuestion directly to gather 3-4 key pieces of project information.
-
-Ask question 1: Project goal
-
-AskUserQuestion:
-Question: What is the primary purpose of this project?
-Header: Project Goal
-multiSelect: false
-Options: - label: Web Application
-description: Full-stack web application with user interface - label: API/Backend Service
-description: RESTful API or backend microservice - label: Library/SDK
-description: Reusable library or software development kit - label: Data Processing/ML
-description: Data pipeline, analytics, or machine learning
-
-Store answer as project_goal variable.
-
-Ask question 2: Target audience
-
-AskUserQuestion:
-Question: Who is the primary target audience for this project?
-Header: Target Audience
-multiSelect: false
-Options: - label: General Public
-description: Consumer-facing application or service - label: Developers
-description: Tools, libraries, or developer APIs - label: Enterprise/B2B
-description: Business-to-business solutions - label: Internal Team
-description: Internal tools or infrastructure
-
-Store answer as target_audience variable.
-
-Ask question 3: Project scale
-
-AskUserQuestion:
-Question: What is the scale and timeline for this project?
-Header: Project Scale
-multiSelect: false
-Options: - label: Small/Personal
-description: Individual project, short timeline - label: Medium/Team
-description: Small team project, medium timeline - label: Large/Enterprise
-description: Enterprise project, long-term maintenance - label: Open Source
-description: Community-driven, ongoing development
-
-Store answer as project_scale variable.
-
-### Step 0.2: Prepare Context for Agents
-
-Create simple context object for documentation agents:
-
-project_context = {
-"project_goal": project_goal,
-"target_audience": target_audience,
-"project_scale": project_scale
-}
-
-Pass this context to Explore agent (PHASE 1) and Manager-docs agent (PHASE 3).
-
-Proceed to PHASE 1 (Codebase Analysis).
-
----
-
 ## PHASE 1: Codebase Analysis
 
 Goal: Understand the project structure and technology stack.
@@ -472,18 +404,9 @@ Associated Skills:
 
 ---
 
-Version: 4.1.0 (Simplified Project Context Collection)
-Last Updated: 2026-01-15
+Version: 3.1.0 (LSP Server Check Integration)
+Last Updated: 2026-01-10
 Architecture: Commands to Agents to Skills (Complete delegation)
-PHASE 0: Simplified project context collection using AskUserQuestion directly (no Python modules)
-
-Changes from v4.0.0:
-
-- Removed: Complex interview state management system (interview_state.py, adaptive_questions.py, interview_completion.py)
-- Removed: 7 YAML interview templates (project.yaml, backend.yaml, frontend.yaml, database.yaml, devops.yaml, security.yaml, testing.yaml)
-- Simplified: PHASE 0 now uses AskUserQuestion directly for 3 basic questions
-- Simplified: No interview state persistence or adaptive question selection
-- Benefit: Reduced complexity from 206 lines to 76 lines in PHASE 0
 
 Changes from v3.0.0:
 

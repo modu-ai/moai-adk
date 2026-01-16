@@ -11,7 +11,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Tuple
 
-
 # TAG pattern: @SPEC SPEC-ID [verb]
 # SPEC-ID format: SPEC-{DOMAIN}-{NUMBER}
 # DOMAIN: Uppercase letters, at least 1 char
@@ -123,10 +122,7 @@ def validate_tag(tag: TAG) -> Tuple[bool, List[str]]:
 
     # Validate verb
     if not validate_verb(tag.verb):
-        errors.append(
-            f"Invalid verb: '{tag.verb}'. "
-            f"Valid verbs: {', '.join(sorted(VALID_VERBS))}"
-        )
+        errors.append(f"Invalid verb: '{tag.verb}'. Valid verbs: {', '.join(sorted(VALID_VERBS))}")
 
     return len(errors) == 0, errors
 

@@ -6,7 +6,6 @@ Provides common file operations with safety checks.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 # Default maximum file size for reading operations (10MB)
@@ -41,10 +40,7 @@ def check_file_size(file_path: Path | str, max_size: int = MAX_FILE_SIZE) -> tup
         if file_size > max_size:
             size_mb = file_size / (1024 * 1024)
             max_mb = max_size / (1024 * 1024)
-            return (
-                False,
-                f"File too large: {size_mb:.2f}MB (max: {max_mb:.0f}MB): {file_path}"
-            )
+            return (False, f"File too large: {size_mb:.2f}MB (max: {max_mb:.0f}MB): {file_path}")
     except OSError as e:
         return False, f"Cannot check file size: {e}"
 
@@ -67,7 +63,7 @@ def safe_read_text(file_path: Path | str, max_size: int = MAX_FILE_SIZE) -> str 
 
     try:
         return Path(file_path).read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError) as e:
+    except (OSError, UnicodeDecodeError):
         return None
 
 

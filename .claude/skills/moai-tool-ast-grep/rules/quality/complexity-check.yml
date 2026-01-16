@@ -40,7 +40,7 @@ language: python
 severity: warning
 message: "Function has too many parameters. Consider using **kwargs or a config object."
 rule:
-  pattern: "def $NAME($$$ARGS):"
+  pattern: def $NAME($P1, $P2, $P3, $P4, $P5, $P6, $$$REST):
 
 ---
 id: callback-hell
@@ -56,6 +56,26 @@ rule:
         })
       })
     })
+
+---
+id: empty-catch-block
+language: javascript
+severity: warning
+message: "Empty catch block. Handle or log the error."
+rule:
+  pattern: |
+    catch ($ERR) {
+    }
+
+---
+id: empty-catch-block-python
+language: python
+severity: warning
+message: "Empty except block. Handle or log the exception."
+rule:
+  pattern: |
+    except $EXC:
+        pass
 
 ---
 id: console-log-in-production
