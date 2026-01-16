@@ -56,7 +56,8 @@ moai glm YOUR_API_KEY
 
 - **🎯 SPEC-First**: 90% reduction in rework with clear specifications
 - **🔴 TDD Enforcement**: Automatic guarantee of 85%+ test coverage
-- **🤖 AI Orchestration**: 20 specialized agents + 48 skills
+- **🔵 DDR Support**: Domain-Driven Refactoring for existing codebase improvement
+- **🤖 AI Orchestration**: 21 specialized agents + 49 skills
 - **🌐 Multilingual Routing**: Automatic support for Korean/English/Japanese/Chinese
 - **🌳 Worktree Parallel Development**: Unlimited parallel work in completely isolated environments
 - **🏆 MoAI Rank**: Motivation through vibe coding leaderboard
@@ -457,27 +458,31 @@ Automatically generates unambiguous specifications using EARS format. Includes r
 
 ---
 
-### 💻 `/moai:2-run` - TDD Implementation
+### 💻 `/moai:2-run` - Implementation (TDD or DDR)
 
 ```bash
 > /moai:2-run SPEC-001
 ```
 
-Through the Red-Green-Refactor cycle, writes tests first and implements code to pass them. All implementations must pass 85%+ test coverage, linting, type checking, and security checks. Automatically validates TRUST 5 quality principles to ensure only stable code is committed.
+Routes to either TDD or DDR based on `development_mode` in `.moai/config/sections/quality.yaml`:
 
-**Auto-executed**:
-
+**TDD Mode** (default, for new features):
 - 🔴 Write tests first (Red)
 - 🟢 Pass tests with code (Green)
 - 🔵 Refactor (Refactor)
-- ✅ TRUST 5 validation
 
-**Verification items**:
+**DDR Mode** (for refactoring existing code):
+- 🔍 Analyze domain boundaries and coupling
+- 🛡️ Preserve behavior with characterization tests
+- ✨ Improve structure incrementally
+
+**Verification items** (both modes):
 
 - Test coverage >= 85%
 - Pass linting
 - Pass type checking
 - Pass security checks
+- ✅ TRUST 5 validation
 
 ---
 
@@ -1285,18 +1290,19 @@ Alfred automatically recognizes 4 language requests and invokes the correct agen
 
 ---
 
-### 🎯 Tier 2: Workflow Managers (8)
+### 🎯 Tier 2: Workflow Managers (9)
 
-| Agent                   | Role                             | Auto Invocation Timing          |
-| ----------------------- | -------------------------------- | ------------------------------- |
-| **manager-spec**        | SPEC writing (EARS)              | `/moai:1-plan`                  |
-| **manager-tdd**         | TDD auto execution               | `/moai:2-run`                   |
-| **manager-docs**        | Documentation auto generation    | `/moai:3-sync`                  |
-| **manager-quality**     | TRUST 5 verification             | After implementation completion |
-| **manager-strategy**    | Execution strategy establishment | Complex planning                |
-| **manager-project**     | Project initialization           | `/moai:0-project`               |
-| **manager-git**         | Git workflow                     | Branch/PR management            |
-| **manager-claude-code** | Claude Code integration          | Settings optimization           |
+| Agent                   | Role                             | Auto Invocation Timing                  |
+| ----------------------- | -------------------------------- | --------------------------------------- |
+| **manager-spec**        | SPEC writing (EARS)              | `/moai:1-plan`                          |
+| **manager-tdd**         | TDD auto execution               | `/moai:2-run` (when development_mode: tdd) |
+| **manager-ddr**         | DDR refactoring execution        | `/moai:2-run` (when development_mode: ddr) |
+| **manager-docs**        | Documentation auto generation    | `/moai:3-sync`                          |
+| **manager-quality**     | TRUST 5 verification             | After implementation completion         |
+| **manager-strategy**    | Execution strategy establishment | Complex planning                        |
+| **manager-project**     | Project initialization           | `/moai:0-project`                       |
+| **manager-git**         | Git workflow                     | Branch/PR management                    |
+| **manager-claude-code** | Claude Code integration          | Settings optimization                   |
 
 ---
 
