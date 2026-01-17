@@ -1,3 +1,21 @@
+# v1.3.1 - Bugfix Release (2026-01-17)
+
+## Summary
+
+This patch release fixes the SessionStart hook error display issue (#263) and removes hardcoded user settings from templates.
+
+## Fixed
+
+- **fix(hooks)**: Correct SessionStart/SessionEnd hook structure (#263)
+  - Fixed nested "hooks" array causing "hook error" display despite successful execution
+  - Simplified hook configuration format for Claude Code compatibility
+
+- **fix(templates)**: Remove hardcoded user name from user.yaml template
+  - Template now defaults to empty string for proper user personalization
+  - Users can set their own name in `.moai/config/sections/user.yaml`
+
+---
+
 # v1.3.0 - DDD-Only Methodology & Progressive Disclosure (2026-01-17)
 
 ## Summary
