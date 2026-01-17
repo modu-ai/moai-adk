@@ -6,6 +6,7 @@ import pytest
 import requests
 
 from moai_adk.rank.client import (
+    INT32_MAX,
     ApiError,
     ApiStatus,
     AuthenticationError,
@@ -443,3 +444,88 @@ class TestRankClientErrors:
         assert str(error) == "API failed"
         assert error.status_code == 400
         assert error.details == details
+
+
+class TestCacheReadTokensCapping:
+    """Test INT32_MAX capping for cache_read_tokens (Issue #264)."""
+
+    def test_int32_max_constant(self):
+        """Test INT32_MAX constant value."""
+        assert INT32_MAX == 2_147_483_647
+
+    def test_submit_session_caps_cache_read_tokens(self):
+        """Test that submit_session caps cache_read_tokens at INT32_MAX."""
+        client = RankClient(api_key="test_key")
+        # Create session with cache_read_tokens exceeding INT32_MAX
+        session = SessionSubmission(
+            session_hash="hash123",
+            ended_at="2024-01-01T00:00:00Z",
+            input_tokens=1000,
+            output_tokens=500,
+            cache_creation_tokens=100,
+            cache_read_tokens=5_000_000_000,  # Exceeds INT32_MAX
+        )
+
+        with patch.object(client, "_make_request") as mock_make_request:
+            mock_make_request.return_value = {"success": True, "sessionId": "sess_123"}
+            client.submit_session(session)
+
+            # Verify the request was made with capped value
+            mock_make_request.assert_called_once()
+            call_args = mock_make_request.call_args
+            request_data = call_args[1]["data"]
+            assert request_data["cacheReadTokens"] == INT32_MAX
+
+    def test_submit_session_preserves_normal_cache_read_tokens(self):
+        """Test that submit_session preserves normal cache_read_tokens values."""
+        client = RankClient(api_key="test_key")
+        session = SessionSubmission(
+            session_hash="hash123",
+            ended_at="2024-01-01T00:00:00Z",
+            input_tokens=1000,
+            output_tokens=500,
+            cache_creation_tokens=100,
+            cache_read_tokens=100_000_000,  # Normal value, under INT32_MAX
+        )
+
+        with patch.object(client, "_make_request") as mock_make_request:
+            mock_make_request.return_value = {"success": True, "sessionId": "sess_123"}
+            client.submit_session(session)
+
+            call_args = mock_make_request.call_args
+            request_data = call_args[1]["data"]
+            assert request_data["cacheReadTokens"] == 100_000_000
+
+    def test_submit_sessions_batch_caps_cache_read_tokens(self):
+        """Test that submit_sessions_batch caps cache_read_tokens at INT32_MAX."""
+        client = RankClient(api_key="test_key")
+        sessions = [
+            SessionSubmission(
+                session_hash="hash1",
+                ended_at="2024-01-01T00:00:00Z",
+                input_tokens=1000,
+                output_tokens=500,
+                cache_read_tokens=5_000_000_000,  # Exceeds INT32_MAX
+            ),
+            SessionSubmission(
+                session_hash="hash2",
+                ended_at="2024-01-01T01:00:00Z",
+                input_tokens=800,
+                output_tokens=400,
+                cache_read_tokens=100_000_000,  # Normal value
+            ),
+        ]
+
+        with patch.object(client, "_make_request") as mock_make_request:
+            mock_make_request.return_value = {
+                "success": True,
+                "processed": 2,
+                "succeeded": 2,
+                "failed": 0,
+            }
+            client.submit_sessions_batch(sessions)
+
+            call_args = mock_make_request.call_args
+            request_data = call_args[1]["data"]
+            assert request_data["sessions"][0]["cacheReadTokens"] == INT32_MAX
+            assert request_data["sessions"][1]["cacheReadTokens"] == 100_000_000

@@ -15,6 +15,10 @@ import requests
 
 from moai_adk.rank.config import RankConfig
 
+# Maximum value for 32-bit signed integer (server DB constraint)
+# See: https://github.com/modu-ai/moai-adk/issues/264
+INT32_MAX = 2_147_483_647
+
 
 @dataclass
 class RankInfo:
@@ -424,7 +428,8 @@ class RankClient:
             "inputTokens": session.input_tokens,
             "outputTokens": session.output_tokens,
             "cacheCreationTokens": session.cache_creation_tokens,
-            "cacheReadTokens": session.cache_read_tokens,
+            # Cap to INT32_MAX to avoid server validation error (issue #264)
+            "cacheReadTokens": min(session.cache_read_tokens, INT32_MAX),
         }
 
         if session.model_name:
@@ -484,7 +489,8 @@ class RankClient:
                 "inputTokens": session.input_tokens,
                 "outputTokens": session.output_tokens,
                 "cacheCreationTokens": session.cache_creation_tokens,
-                "cacheReadTokens": session.cache_read_tokens,
+                # Cap to INT32_MAX to avoid server validation error (issue #264)
+                "cacheReadTokens": min(session.cache_read_tokens, INT32_MAX),
             }
 
             if session.model_name:
