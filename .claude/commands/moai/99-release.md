@@ -80,11 +80,16 @@ If no VERSION argument:
 - Read current version from pyproject.toml
 - Use AskUserQuestion to ask: patch/minor/major
 
-Calculate new version and update:
+Calculate new version and update ALL version files:
 
 1. Edit pyproject.toml version field
-2. Edit src/moai_adk/version.py MOAI_VERSION
-3. Commit: `git add pyproject.toml src/moai_adk/version.py && git commit -m "chore: Bump version to X.Y.Z"`
+2. Edit src/moai_adk/version.py _FALLBACK_VERSION
+3. Edit .moai/config/config.yaml moai.version
+4. Edit .moai/config/sections/system.yaml moai.version
+5. Commit: `git add pyproject.toml src/moai_adk/version.py .moai/config/config.yaml .moai/config/sections/system.yaml && git commit -m "chore: Bump version to X.Y.Z"`
+
+IMPORTANT: All 4 version files MUST be updated for release workflow to succeed.
+The Unified Release Pipeline validates version consistency across all config files.
 
 ---
 
