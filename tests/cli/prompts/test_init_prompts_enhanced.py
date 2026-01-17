@@ -115,6 +115,13 @@ def mock_translations():
         "msg_tag_enabled": "TAG system enabled",
         "msg_tag_disabled": "TAG system disabled",
         "msg_tag_mode_selected": "TAG mode: {mode}",
+        # Development Methodology (DDR support)
+        "dev_mode_setup": "Development Methodology",
+        "dev_mode_intro": "Choose your development methodology:",
+        "q_dev_mode": "Select development methodology:",
+        "desc_tdd": "Test-Driven Development (RED-GREEN-REFACTOR)",
+        "desc_ddr": "Domain-Driven Refactoring (ANALYZE-PRESERVE-IMPROVE)",
+        "dev_mode_recommendation": "TDD for new features, DDR for refactoring",
     }
 
 
@@ -126,8 +133,8 @@ class TestPromptProjectSetupGLMKeyHandling:
         mock_existing_key = "sk-existing-key-1234567890"
 
         with patch("moai_adk.cli.prompts.init_prompts._prompt_select") as mock_select:
-            # Sequence: language, git_mode, commit_lang, comment_lang, doc_lang, tag_mode
-            mock_select.side_effect = ["en", "manual", "en", "en", "en", "warn"]
+            # Sequence: language, git_mode, commit_lang, comment_lang, doc_lang, tag_mode, dev_mode
+            mock_select.side_effect = ["en", "manual", "en", "en", "en", "warn", "tdd"]
 
             with patch("moai_adk.cli.prompts.init_prompts._prompt_text", return_value="test-user"):
                 with patch("moai_adk.cli.prompts.init_prompts._prompt_password_optional", return_value=""):
@@ -147,8 +154,8 @@ class TestPromptProjectSetupGLMKeyHandling:
         new_key = "sk-new-key-0987654321"
 
         with patch("moai_adk.cli.prompts.init_prompts._prompt_select") as mock_select:
-            # Sequence: language, git_mode, commit_lang, comment_lang, doc_lang, tag_mode
-            mock_select.side_effect = ["en", "manual", "en", "en", "en", "warn"]
+            # Sequence: language, git_mode, commit_lang, comment_lang, doc_lang, tag_mode, dev_mode
+            mock_select.side_effect = ["en", "manual", "en", "en", "en", "warn", "tdd"]
 
             with patch("moai_adk.cli.prompts.init_prompts._prompt_text", return_value="test-user"):
                 with patch("moai_adk.cli.prompts.init_prompts._prompt_password_optional", return_value=new_key):
@@ -167,8 +174,8 @@ class TestPromptProjectSetupGLMKeyHandling:
     def test_glm_api_key_skipped_no_existing(self, tmp_path: Path, mock_translations: dict) -> None:
         """Test GLM API key prompt when user skips with no existing key."""
         with patch("moai_adk.cli.prompts.init_prompts._prompt_select") as mock_select:
-            # Sequence: language, git_mode, commit_lang, comment_lang, doc_lang, tag_mode
-            mock_select.side_effect = ["en", "manual", "en", "en", "en", "warn"]
+            # Sequence: language, git_mode, commit_lang, comment_lang, doc_lang, tag_mode, dev_mode
+            mock_select.side_effect = ["en", "manual", "en", "en", "en", "warn", "tdd"]
 
             with patch("moai_adk.cli.prompts.init_prompts._prompt_text", return_value="test-user"):
                 with patch("moai_adk.cli.prompts.init_prompts._prompt_password_optional", return_value=""):
@@ -189,8 +196,8 @@ class TestPromptProjectSetupGitHubUsername:
     def test_git_mode_personal_prompts_username(self, tmp_path: Path, mock_translations: dict) -> None:
         """Test that personal git mode prompts for GitHub username."""
         with patch("moai_adk.cli.prompts.init_prompts._prompt_select") as mock_select:
-            # Sequence: language, personal, commit_lang, comment_lang, doc_lang, tag_mode
-            mock_select.side_effect = ["en", "personal", "en", "en", "en", "warn"]
+            # Sequence: language, personal, commit_lang, comment_lang, doc_lang, tag_mode, dev_mode
+            mock_select.side_effect = ["en", "personal", "en", "en", "en", "warn", "tdd"]
 
             # Create a text prompt mock that returns values sequentially
             text_values = ["test-user", "test-project", "mygithub"]
@@ -245,8 +252,8 @@ class TestPromptProjectSetupEdgeCases:
     def test_empty_user_name_allowed(self, tmp_path: Path, mock_translations: dict) -> None:
         """Test that empty user name is allowed (optional field)."""
         with patch("moai_adk.cli.prompts.init_prompts._prompt_select") as mock_select:
-            # Sequence: language, manual, commit_lang, comment_lang, doc_lang, tag_mode
-            mock_select.side_effect = ["en", "manual", "en", "en", "en", "warn"]
+            # Sequence: language, manual, commit_lang, comment_lang, doc_lang, tag_mode, dev_mode
+            mock_select.side_effect = ["en", "manual", "en", "en", "en", "warn", "tdd"]
 
             # Create a text prompt mock that returns values sequentially
             text_values = ["", "test-project"]

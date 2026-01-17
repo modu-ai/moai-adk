@@ -12,6 +12,8 @@ Architecture:
 - Graceful degradation with retry mechanisms
 """
 
+from __future__ import annotations
+
 import contextlib
 import logging
 import platform
@@ -22,7 +24,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Set
+from typing import Any, Callable, Dict, Set
 
 import yaml
 
@@ -104,7 +106,7 @@ class UnifiedTimeoutManager:
     """
 
     # Global singleton instance
-    _instance: "UnifiedTimeoutManager" | None = None
+    _instance: "UnifiedTimeoutManager | None" = None
     _lock = threading.Lock()
 
     def __new__(cls) -> "UnifiedTimeoutManager":

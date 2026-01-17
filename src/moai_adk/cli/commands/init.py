@@ -172,6 +172,7 @@ def init(
         doc_lang = "en"
         tag_enabled = True  # NEW - SPEC-TAG-002
         tag_mode = "warn"  # NEW - SPEC-TAG-002
+        development_mode = "tdd"  # NEW - DDR support
 
         if non_interactive:
             # Non-Interactive Mode
@@ -208,6 +209,7 @@ def init(
             doc_lang = answers["doc_lang"]
             tag_enabled = answers["tag_enabled"]  # NEW - SPEC-TAG-002
             tag_mode = answers["tag_mode"]  # NEW - SPEC-TAG-002
+            development_mode = answers["development_mode"]  # NEW - DDR support
 
             # GLM-only defaults (not prompted in simplified flow)
             service_type = "glm"
@@ -362,6 +364,7 @@ def init(
                     git_commit_lang=git_commit_lang,
                     code_comment_lang=code_comment_lang,
                     doc_lang=doc_lang,
+                    development_mode=development_mode,
                 )
 
         # 6. Output results
@@ -496,6 +499,7 @@ def _save_additional_config(
     git_commit_lang: str,
     code_comment_lang: str,
     doc_lang: str,
+    development_mode: str = "tdd",
 ) -> None:
     """Save additional configuration from interactive mode.
 
@@ -514,6 +518,7 @@ def _save_additional_config(
         git_commit_lang: Commit message language
         code_comment_lang: Code comment language
         doc_lang: Documentation language
+        development_mode: Development methodology (tdd or ddr)
     """
     sections_dir = project_path / ".moai" / "config" / "sections"
     # Ensure sections directory exists
@@ -675,6 +680,30 @@ def _save_additional_config(
     with open(user_yaml_path, "w", encoding="utf-8") as f:
         yaml.safe_dump(
             user_data,
+            f,
+            default_flow_style=False,
+            allow_unicode=True,
+            sort_keys=False,
+        )
+
+    # 7. Update quality.yaml with development mode
+    quality_yaml_path = sections_dir / "quality.yaml"
+    if quality_yaml_path.exists():
+        try:
+            quality_data = yaml.safe_load(quality_yaml_path.read_text()) or {}
+        except Exception:
+            quality_data = {}
+    else:
+        quality_data = {}
+
+    if "constitution" not in quality_data:
+        quality_data["constitution"] = {}
+
+    quality_data["constitution"]["development_mode"] = development_mode
+
+    with open(quality_yaml_path, "w", encoding="utf-8") as f:
+        yaml.safe_dump(
+            quality_data,
             f,
             default_flow_style=False,
             allow_unicode=True,

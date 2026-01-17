@@ -140,10 +140,11 @@ Allowed Tools: Full access (all tools)
 4. Workflow coordination needed? Use the manager-[workflow] subagent
 5. Complex multi-step tasks? Use the manager-strategy subagent
 
-### Manager Agents (8)
+### Manager Agents (9)
 
 - manager-spec: SPEC document creation, EARS format, requirements analysis
 - manager-tdd: Test-driven development, RED-GREEN-REFACTOR cycle, coverage validation
+- manager-ddr: Domain-driven refactoring, ANALYZE-PRESERVE-IMPROVE cycle, behavior preservation
 - manager-docs: Documentation generation, Nextra integration, markdown optimization
 - manager-quality: Quality gates, TRUST 5 validation, code review
 - manager-project: Project configuration, structure management, initialization
@@ -173,11 +174,38 @@ Allowed Tools: Full access (all tools)
 
 ## 5. SPEC-Based Workflow
 
+### Development Mode Selection
+
+MoAI supports two development methodologies configured in quality.yaml:
+
+- TDD (Test-Driven Development): RED-GREEN-REFACTOR cycle for new feature development
+- DDR (Domain-Driven Refactoring): ANALYZE-PRESERVE-IMPROVE cycle for refactoring existing code
+
+Configuration: @.moai/config/sections/quality.yaml (constitution.development_mode: tdd | ddr)
+
 ### MoAI Command Flow
 
 - /moai:1-plan "description" leads to Use the manager-spec subagent
-- /moai:2-run SPEC-001 leads to Use the manager-tdd subagent
+- /moai:2-run SPEC-001 routes based on development_mode:
+  - If TDD mode: Use the manager-tdd subagent (RED-GREEN-REFACTOR)
+  - If DDR mode: Use the manager-ddr subagent (ANALYZE-PRESERVE-IMPROVE)
 - /moai:3-sync SPEC-001 leads to Use the manager-docs subagent
+
+### When to Use TDD vs DDR
+
+Use TDD (manager-tdd) when:
+
+- Creating new functionality from scratch
+- Behavior specification drives development
+- No existing code to preserve
+- New tests define expected behavior
+
+Use DDR (manager-ddr) when:
+
+- Code already exists with defined behavior
+- Goal is structure improvement, not feature addition
+- Existing tests should pass unchanged
+- Technical debt reduction is the primary objective
 
 ### Agent Chain for SPEC Execution
 
@@ -344,16 +372,19 @@ MoAI-ADK implements a 3-level Progressive Disclosure system for efficient skill 
 ### Three Levels
 
 **Level 1: Metadata Only (~100 tokens per skill)**
+
 - Loaded during agent initialization
 - Contains YAML frontmatter with triggers
 - Always loaded for skills listed in agent frontmatter
 
 **Level 2: Skill Body (~5K tokens per skill)**
+
 - Loaded when trigger conditions match
 - Contains full markdown documentation
 - Triggered by keywords, phases, agents, or languages
 
 **Level 3+: Bundled Files (unlimited)**
+
 - Loaded on-demand by Claude
 - Includes reference.md, modules/, examples/
 - Claude decides when to access
@@ -463,8 +494,8 @@ budget = estimate_progressive_budget(
 
 ---
 
-Version: 10.0.0 (Alfred-Centric Redesign)
-Last Updated: 2026-01-13
+Version: 10.2.0 (DDR Support + Progressive Disclosure)
+Last Updated: 2026-01-17
 Language: English
 Core Rule: Alfred is an orchestrator; direct implementation is prohibited
 

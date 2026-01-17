@@ -13,6 +13,8 @@ Features:
 - Cross-platform compatibility
 """
 
+from __future__ import annotations
+
 import hashlib
 import logging
 import subprocess
@@ -25,7 +27,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from queue import Empty, Queue
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional
 
 
 class GitOperationType(Enum):
@@ -320,7 +322,7 @@ class GitOperationsManager:
                 command=full_command.copy(),
             )
 
-    def execute_git_command(self, command: GitCommand | str, *args) -> GitResult:
+    def execute_git_command(self, command: GitCommand | str, *args: str) -> GitResult:
         """Execute Git command with caching and retry logic"""
         # Convert string command to GitCommand
         if isinstance(command, str):

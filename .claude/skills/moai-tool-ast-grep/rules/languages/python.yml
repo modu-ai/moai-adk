@@ -6,8 +6,8 @@ severity: info
 message: "Consider using f-strings for string formatting"
 rule:
   any:
-    - pattern: $STR.format($$$ARGS)
-    - pattern: $STR % $ARGS
+    - pattern: "$$$STR".format($$$ARGS)
+    - pattern: "$$$STR" % $ARGS
 
 ---
 id: use-pathlib
@@ -27,7 +27,23 @@ language: python
 severity: warning
 message: "Use context manager (with statement) for file operations"
 rule:
-  pattern: open($$$ARGS)
+  pattern: |
+    $FILE = open($PATH)
+    $$$BODY
+    $FILE.close()
+fix: |
+  with open($PATH) as $FILE:
+      $$$BODY
+
+---
+id: bare-except
+language: python
+severity: warning
+message: "Avoid bare except clauses. Catch specific exceptions."
+rule:
+  pattern: |
+    except:
+        $$$BODY
 
 ---
 id: mutable-default-argument
@@ -36,8 +52,8 @@ severity: warning
 message: "Mutable default argument. Use None and initialize inside function."
 rule:
   any:
-    - pattern: "def $FUNC($$$ARGS, $PARAM = [], $$$REST):"
-    - pattern: "def $FUNC($$$ARGS, $PARAM = {}, $$$REST):"
+    - pattern: def $FUNC($$$ARGS, $PARAM=[], $$$REST):
+    - pattern: def $FUNC($$$ARGS, $PARAM={}, $$$REST):
 
 ---
 id: type-comparison
@@ -46,6 +62,7 @@ severity: warning
 message: "Use isinstance() instead of type comparison"
 rule:
   pattern: type($OBJ) == $TYPE
+fix: isinstance($OBJ, $TYPE)
 
 ---
 id: dict-get-default
@@ -53,7 +70,12 @@ language: python
 severity: info
 message: "Use dict.get() with default instead of conditional"
 rule:
-  pattern: $DICT.get($$$ARGS)
+  pattern: |
+    if $KEY in $DICT:
+        $VAR = $DICT[$KEY]
+    else:
+        $VAR = $DEFAULT
+fix: $VAR = $DICT.get($KEY, $DEFAULT)
 
 ---
 id: list-comprehension-opportunity
@@ -61,7 +83,10 @@ language: python
 severity: info
 message: "Consider using list comprehension"
 rule:
-  pattern: $RESULT.append($$$ARGS)
+  pattern: |
+    $RESULT = []
+    for $ITEM in $ITER:
+        $RESULT.append($EXPR)
 
 ---
 id: use-enumerate
@@ -69,4 +94,8 @@ language: python
 severity: info
 message: "Use enumerate() instead of manual index tracking"
 rule:
-  pattern: enumerate($$$ARGS)
+  pattern: |
+    $IDX = 0
+    for $ITEM in $ITER:
+        $$$BODY
+        $IDX += 1

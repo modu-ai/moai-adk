@@ -38,6 +38,9 @@ class ProjectSetupAnswers(TypedDict):
     tag_enabled: bool  # Q7.1: Enable TAG validation
     tag_mode: str  # Q7.2: TAG validation mode (warn | enforce | off)
 
+    # Development Methodology
+    development_mode: str  # tdd | ddr (NEW - DDR support)
+
 
 def prompt_project_setup(
     project_name: str | None = None,
@@ -80,6 +83,7 @@ def prompt_project_setup(
         "doc_lang": "en",
         "tag_enabled": True,
         "tag_mode": "warn",
+        "development_mode": "tdd",  # Default to TDD for new projects
     }
 
     try:
@@ -354,6 +358,44 @@ def prompt_project_setup(
         else:
             answers["tag_mode"] = "off"
             console.print(f"[dim]{t['tag_no_warning']}[/dim]")
+
+        # ========================================
+        # Q8: Development Methodology Selection
+        # ========================================
+        console.print(f"\n[blue]{t.get('dev_mode_setup', 'Development Methodology')}[/blue]")
+
+        # Display methodology introduction
+        console.print(f"\n[dim]{t.get('dev_mode_intro', 'Choose your primary development methodology:')}[/dim]\n")
+
+        dev_mode_choices = [
+            {
+                "name": f"TDD - {t.get('desc_tdd', 'Test-Driven Development (RED-GREEN-REFACTOR)')}",
+                "value": "tdd",
+            },
+            {
+                "name": f"DDR - {t.get('desc_ddr', 'Domain-Driven Refactoring (ANALYZE-PRESERVE-IMPROVE)')}",
+                "value": "ddr",
+            },
+        ]
+
+        # Display recommendation based on project type
+        default_recommendation = "TDD recommended for new features, DDR for refactoring"
+        console.print(f"[cyan]💡 {t.get('dev_mode_recommendation', default_recommendation)}[/cyan]\n")
+
+        dev_mode_choice = _prompt_select(
+            t.get("q_dev_mode", "Select development methodology:"),
+            choices=dev_mode_choices,
+            default="tdd",
+        )
+
+        if dev_mode_choice is None:
+            raise KeyboardInterrupt
+
+        answers["development_mode"] = dev_mode_choice
+        mode_display = (
+            "TDD (Test-Driven Development)" if dev_mode_choice == "tdd" else "DDR (Domain-Driven Refactoring)"
+        )
+        console.print(f"[#DA7756]Development Mode:[/#DA7756] {mode_display}")
 
         console.print(f"\n[green]{t['msg_setup_complete']}[/green]")
 
