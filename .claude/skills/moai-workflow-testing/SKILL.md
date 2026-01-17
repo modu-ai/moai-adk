@@ -11,6 +11,19 @@ tags: ['workflow', 'testing', 'debugging', 'performance', 'quality', 'tdd', 'rev
 updated: 2026-01-11
 status: "active"
 author: "MoAI-ADK Team"
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["TDD", "test-driven development", "debugging", "performance optimization", "code review", "PR review", "quality assurance", "testing", "CI/CD", "TRUST 5"]
+  phases: ["run", "sync"]
+  agents: ["manager-tdd", "expert-testing", "expert-debug", "expert-performance", "manager-quality"]
+
 allowed-tools:
   - Read
   - Write

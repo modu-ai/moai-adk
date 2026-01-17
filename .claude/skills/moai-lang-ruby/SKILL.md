@@ -4,6 +4,18 @@ description: "Ruby 3.3+ development specialist covering Rails 7.2, ActiveRecord,
 version: 1.1.0
 category: "language"
 modularized: true
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: ~100
+  level2_tokens: ~5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["Ruby", "Rails", "ActiveRecord", "Hotwire", "Turbo", "RSpec", ".rb", "Gemfile", "Rakefile", "config.ru"]
+  languages: ["ruby"]
+
 user-invocable: false
 tags: ["language", "ruby", "rails", "activerecord", "hotwire", "turbo", "rspec"]
 updated: 2026-01-11

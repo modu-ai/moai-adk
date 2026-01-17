@@ -18,6 +18,19 @@ tags:
 status: "active"
 replaces: moai-core-code-templates, moai-core-feedback-templates, moai-project-template-optimizer
 updated: 2026-01-11
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["template", "boilerplate", "scaffolding", "code template", "project template", "feedback template", "GitHub issue", "template optimization"]
+  phases: ["plan"]
+  agents: ["manager-project", "builder-command", "builder-skill"]
+
 allowed-tools:
   - Read
   - Write

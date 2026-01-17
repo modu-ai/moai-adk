@@ -391,8 +391,8 @@ class TestProjectInitializer:
             assert isinstance(result.duration, int)
 
     @patch("moai_adk.core.project.initializer.PhaseExecutor")
-    def test_initialize_sets_enforce_tdd_in_config(self, mock_executor):
-        """Test initialize sets enforce_tdd to True in constitution."""
+    def test_initialize_sets_development_mode_in_config(self, mock_executor):
+        """Test initialize sets development_mode to ddd in constitution."""
         # Arrange
         with tempfile.TemporaryDirectory() as temp_dir:
             initializer = ProjectInitializer(temp_dir)
@@ -419,4 +419,4 @@ class TestProjectInitializer:
 
             # Assert
             assert config_arg is not None
-            assert config_arg["constitution"]["enforce_tdd"] is True
+            assert config_arg["constitution"]["development_mode"] == "ddd"

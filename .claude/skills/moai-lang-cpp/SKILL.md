@@ -4,6 +4,18 @@ description: "Modern C++ (C++23/C++20) development specialist covering RAII, sma
 version: 1.1.0
 category: "language"
 modularized: true
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: ~100
+  level2_tokens: ~5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["C++", "cpp", "CMake", "RAII", "smart pointer", "concept", "range", ".cpp", ".hpp", "CMakeLists.txt", "vcpkg", "conan"]
+  languages: ["cpp", "c++"]
+
 user-invocable: false
 tags:
   [

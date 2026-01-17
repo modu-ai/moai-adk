@@ -85,12 +85,6 @@ src/moai_adk/
 │   ├── formatter.py          # 출력 포맷터
 │   └── config.py             # 상태줄 설정
 │
-├── tag_system/               # TAG 시스템 v2.0
-│   ├── parser.py             # 태그 파서
-│   ├── validator.py          # 태그 유효성 검사기
-│   ├── sync.py               # 동기화 모듈
-│   └── database.py           # 링크 데이터베이스
-│
 ├── templates/                # 배포 템플릿
 │   ├── .claude/              # Claude Code 템플릿
 │   ├── .moai/                # MoAI 설정 템플릿
@@ -238,7 +232,6 @@ tests/
 │   ├── core/                 # 핵심 모듈 단위 테스트
 │   ├── hooks/                # 후크 단위 테스트
 │   ├── statusline/           # 상태줄 단위 테스트
-│   ├── tag_system/           # TAG 시스템 v2.0 테스트
 │   └── test_entry_points.py
 │
 ├── conftest.py               # Pytest 설정

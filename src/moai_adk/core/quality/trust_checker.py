@@ -151,7 +151,7 @@ class TrustChecker:
                 continue
 
             try:
-                content = py_file.read_text()
+                content = py_file.read_text(encoding="utf-8")
                 tree = ast.parse(content)
                 lines = content.splitlines()
 
@@ -201,7 +201,7 @@ class TrustChecker:
                 continue
 
             try:
-                tree = ast.parse(py_file.read_text())
+                tree = ast.parse(py_file.read_text(encoding="utf-8"))
                 for node in ast.walk(tree):
                     if isinstance(node, ast.FunctionDef):
                         param_count = len(node.args.args)
@@ -242,7 +242,7 @@ class TrustChecker:
                 continue
 
             try:
-                tree = ast.parse(py_file.read_text())
+                tree = ast.parse(py_file.read_text(encoding="utf-8"))
                 for node in ast.walk(tree):
                     if isinstance(node, ast.FunctionDef):
                         complexity = self._calculate_complexity(node)
@@ -369,7 +369,7 @@ class TrustChecker:
                     pass  # Use default
             elif json_config_path.exists():
                 try:
-                    config = json.loads(json_config_path.read_text())
+                    config = json.loads(json_config_path.read_text(encoding="utf-8"))
                     language = config.get("project", {}).get("language", "python")
                 except (json.JSONDecodeError, OSError):
                     pass  # Use default

@@ -17,6 +17,8 @@ allowed-tools:
   - mcp__context7__get-library-docs
 status: "active"
 author: "MoAI-ADK Team"
+triggers:
+  keywords: ["serialization", "data format", "json", "yaml", "toon", "validation", "schema", "optimization"]
 ---
 
 # Data Format Specialist

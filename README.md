@@ -10,7 +10,7 @@
 
 > **"The purpose of vibe coding is not rapid productivity but code quality."**
 
-MoAI-ADK provides an **AI development environment for quality code**. SPEC-First TDD, test-driven development, continuous refactoring, and 20 specialized AI agents work together.
+MoAI-ADK provides an **AI development environment for quality code**. SPEC-First DDD (Domain-Driven Development), continuous refactoring with behavior preservation, and 20 specialized AI agents work together.
 
 ---
 
@@ -55,9 +55,8 @@ moai glm YOUR_API_KEY
 ## 🌟 Core Values
 
 - **🎯 SPEC-First**: 90% reduction in rework with clear specifications
-- **🔴 TDD Enforcement**: Automatic guarantee of 85%+ test coverage
-- **🔵 DDD Support**: Domain-Driven Development for existing codebase improvement
-- **🤖 AI Orchestration**: 21 specialized agents + 49 skills
+- **🔵 DDD (Domain-Driven Development)**: ANALYZE-PRESERVE-IMPROVE cycle with behavior preservation
+- **🤖 AI Orchestration**: 20 specialized agents + 49 skills
 - **🌐 Multilingual Routing**: Automatic support for Korean/English/Japanese/Chinese
 - **🌳 Worktree Parallel Development**: Unlimited parallel work in completely isolated environments
 - **🏆 MoAI Rank**: Motivation through vibe coding leaderboard
@@ -222,45 +221,6 @@ Select the language for documentation.
 > **Reason**: Non-English languages consume **12-20% additional tokens** in Claude. When infinite agent loops are frequent, this significantly impacts costs and weekly token limits, so MoAI fixes internal agent instructions in English and **provides user conversations only in the user's language**.
 >
 > This is MoAI's **effort to reduce token waste**.
-
----
-
-#### Step 10: TAG System Activation
-
-🎯 TAG System: Code ↔ Documentation Tracking for TDD
-
-The TAG system maintains traceability between code and SPEC documents
-to support the TDD (Test-Driven Development) cycle.
-
-TDD Purpose:
-•  RED (Write tests) → @SPEC SPEC-XXX verify
-•  GREEN (Implement code) → @SPEC SPEC-XXX impl
-•  REFACTOR (Improve) → @SPEC SPEC-XXX impl or related
-
-Clearly tracks which SPEC each code file implements,
-promoting documentation-driven development and maintaining quality.
-
-💡 TAG activation is recommended. Maintains consistency between code and
-documentation in the TDD cycle, improving quality and maintainability.
-
-```text
-? Enable TAG system? (TDD recommended) (Y/n)
-```
-
----
-
-**TAG Validation Mode Guide**
-
-• warn: Warn during development (default, recommended)
-• enforce: Block commit on missing TAG (strict quality control)
-• off: Skip validation (not recommended)
-
-```text
-❯ Select TAG validation mode: [↑↓] Navigate  [Enter] Select
-❯ warn (Warning) - Show warnings for missing TAGs only. Flexible during development
-  enforce (Enforce) - Block commits if TAGs are missing. Strict quality control
-  off (Off) - Skip TAG validation. Not recommended
-```
 
 ---
 
@@ -458,25 +418,21 @@ Automatically generates unambiguous specifications using EARS format. Includes r
 
 ---
 
-### 💻 `/moai:2-run` - Implementation (TDD or DDD)
+### 💻 `/moai:2-run` - Implementation (DDD)
 
 ```bash
 > /moai:2-run SPEC-001
 ```
 
-Routes to either TDD or DDD based on `development_mode` in `.moai/config/sections/quality.yaml`:
+Implements SPEC using DDD (Domain-Driven Development) methodology with the ANALYZE-PRESERVE-IMPROVE cycle:
 
-**TDD Mode** (default, for new features):
-- 🔴 Write tests first (Red)
-- 🟢 Pass tests with code (Green)
-- 🔵 Refactor (Refactor)
+**DDD Cycle**:
 
-**DDD Mode** (for refactoring existing code):
-- 🔍 Analyze domain boundaries and coupling
-- 🛡️ Preserve behavior with characterization tests
-- ✨ Improve structure incrementally
+- 🔍 **ANALYZE**: Analyze domain boundaries, coupling, and existing behavior
+- 🛡️ **PRESERVE**: Create characterization tests to preserve existing behavior
+- ✨ **IMPROVE**: Incrementally improve structure with test validation
 
-**Verification items** (both modes):
+**Verification items**:
 
 - Test coverage >= 85%
 - Pass linting
@@ -549,18 +505,18 @@ flowchart TB
 
     Phase1 --> Spec[📋 EARS format SPEC doc<br/>Requirements specification]
 
-    Spec --> Phase2[Phase 2: TDD Implementation]
+    Spec --> Phase2[Phase 2: DDD Implementation]
 
-    Phase2 --> Red[🔴 RED: Write failing test]
-    Red --> Green[🟢 GREEN: Minimal implementation]
-    Green --> Refactor[🔵 REFACTOR: Code improvement]
+    Phase2 --> Analyze[🔍 ANALYZE: Domain analysis]
+    Analyze --> Preserve[🛡️ PRESERVE: Characterization tests]
+    Preserve --> Improve[✨ IMPROVE: Incremental improvement]
 
-    Refactor --> Check{Quality Check<br/>TRUST 5}
+    Improve --> Check{Quality Check<br/>TRUST 5}
 
     Check -->|Pass| Phase3[Phase 3: Documentation Sync]
     Check -->|Fail| Loop[🔄 Autonomous Loop<br/>Auto-fix issues]
 
-    Loop --> Red
+    Loop --> Analyze
 
     Phase3 --> Docs[📚 README, API docs<br/>Auto-update]
 
@@ -591,10 +547,10 @@ flowchart TB
    - Acceptance criteria specification
    - User story writing
 
-3. **Phase 3: TDD Implementation** (Autonomous loop)
-   - **RED**: Write failing test first
-   - **GREEN**: Minimal implementation to pass test
-   - **REFACTOR**: Improve code quality
+3. **Phase 3: DDD Implementation** (Autonomous loop)
+   - **ANALYZE**: Analyze domain boundaries and existing behavior
+   - **PRESERVE**: Create characterization tests for behavior preservation
+   - **IMPROVE**: Incrementally improve code structure
    - **Loop**: Auto-fix if quality check fails
 
 4. **Phase 4: Documentation Sync**
@@ -604,12 +560,12 @@ flowchart TB
 
 #### When to use?
 
-| Situation                | Description                              | Example                         |
-| ------------------------ | ---------------------------------------- | ------------------------------- |
+| Situation                   | Description                                | Example                         |
+| --------------------------- | ------------------------------------------ | ------------------------------- |
 | **New feature development** | AI handles everything from start to finish | "Add JWT authentication system" |
-| **Complex refactoring**  | Large changes affecting multiple files   | "Database layer restructure"    |
-| **Bug fixing**           | Automate from root cause analysis to fix | "Fix login failure bug"         |
-| **SPEC-based development** | Implement features with SPEC documents  | `/moai:alfred SPEC-AUTH-001`    |
+| **Complex refactoring**     | Large changes affecting multiple files     | "Database layer restructure"    |
+| **Bug fixing**              | Automate from root cause analysis to fix   | "Fix login failure bug"         |
+| **SPEC-based development**  | Implement features with SPEC documents     | `/moai:alfred SPEC-AUTH-001`    |
 
 **Options**:
 
@@ -735,12 +691,12 @@ AST-grep is a **structural code inspection tool**. Unlike normal grep or regex t
 
 **Text search vs Structure search**:
 
-| Feature      | grep/regex                    | AST-grep            |
-| ------------ | ----------------------------- | ------------------- |
-| Search target| Text strings                  | Code structure (AST)|
-| Example      | `print("hello")`              | `print(__)`         |
-| Meaning      | Find "print" characters       | Find print function call pattern |
-| Space sensitive? | Yes (whitespace, indent matters) | No (structure only) |
+| Feature              | grep/regex                              | AST-grep                                    |
+| -------------------- | --------------------------------------- | ------------------------------------------- |
+| Search target        | Text strings                            | Code structure (AST)                        |
+| Example              | `print("hello")`                        | `print(__)`                                 |
+| Meaning              | Find "print" characters                 | Find print function call pattern            |
+| Space sensitive?     | Yes (whitespace, indent matters)        | No (structure only)                         |
 | Variable distinguish | Hard (e.g., `x=1`, `y=1` are different) | Possible (all variable assignment patterns) |
 
 **How it works**:
@@ -854,12 +810,12 @@ These four run **simultaneously** to diagnose code quality 3.75x faster.
 
 #### When to use?
 
-| Situation                 | Description                             | Example                              |
-| ------------------------ | ---------------------------------------- | ------------------------------------ |
-| **Quality after implementation** | Automatically improve quality after coding | Run `/moai:loop` after feature implementation |
-| **Test failure fix**     | Automatically analyze and fix test failures | Run after test execution on failure  |
-| **Coverage improvement**  | Automatically achieve 85% target          | After writing new code               |
-| **Refactoring**          | Continuously improve code quality         | Periodic execution for maintenance   |
+| Situation                        | Description                                 | Example                                       |
+| -------------------------------- | ------------------------------------------- | --------------------------------------------- |
+| **Quality after implementation** | Automatically improve quality after coding  | Run `/moai:loop` after feature implementation |
+| **Test failure fix**             | Automatically analyze and fix test failures | Run after test execution on failure           |
+| **Coverage improvement**         | Automatically achieve 85% target            | After writing new code                        |
+| **Refactoring**                  | Continuously improve code quality           | Periodic execution for maintenance            |
 
 **Options**:
 
@@ -984,12 +940,12 @@ flowchart TB
 
 **Fix level processing**:
 
-| Level | Description     | Risk    | Approval | Auto   | Example                         |
-| ----- | --------------- | ------- | -------- | ------ | ------------------------------- |
-| 1     | Immediate fix   | Low     | Not needed | ✅      | import sorting, whitespace      |
-| 2     | Safe fix        | Low     | Log only   | ✅      | variable names, type addition   |
-| 3     | Approval needed | Medium  | Needed    | ⚠️      | logic changes, API modification |
-| 4     | Manual needed   | High    | Impossible | ❌      | security, architecture          |
+| Level | Description     | Risk   | Approval   | Auto | Example                         |
+| ----- | --------------- | ------ | ---------- | ---- | ------------------------------- |
+| 1     | Immediate fix   | Low    | Not needed | ✅   | import sorting, whitespace      |
+| 2     | Safe fix        | Low    | Log only   | ✅   | variable names, type addition   |
+| 3     | Approval needed | Medium | Needed     | ⚠️   | logic changes, API modification |
+| 4     | Manual needed   | High   | Impossible | ❌   | security, architecture          |
 
 **One-time execution process**:
 
@@ -1013,12 +969,12 @@ flowchart TB
 
 #### When to use?
 
-| Situation                  | Description                             | Example                              |
-| ------------------------ | ---------------------------------------- | ------------------------------------ |
-| **Clean up after coding** | Clean up style, formatting all at once  | Run `/moai:fix` after coding         |
-| **Pre-commit inspection**  | Resolve LSP errors, linting in advance   | Run before `git commit`              |
-| **Quick fix**             | Solve at once without repetitive fixes   | When fixing simple issues            |
-| **Preview confirmation**  | Check fix content before applying       | Run `/moai:fix --dry`                |
+| Situation                 | Description                            | Example                      |
+| ------------------------- | -------------------------------------- | ---------------------------- |
+| **Clean up after coding** | Clean up style, formatting all at once | Run `/moai:fix` after coding |
+| **Pre-commit inspection** | Resolve LSP errors, linting in advance | Run before `git commit`      |
+| **Quick fix**             | Solve at once without repetitive fixes | When fixing simple issues    |
+| **Preview confirmation**  | Check fix content before applying      | Run `/moai:fix --dry`        |
 
 #### `/moai:fix` vs `/moai:loop` Selection Guide
 
@@ -1187,11 +1143,11 @@ AI: <moai>DONE</moai>  ← Completion Marker
 
 MoAI-ADK provides three levels of autonomous automation:
 
-| Command | Scope | Iteration | Purpose |
-|---------|-------|-----------|---------|
-| `/moai:fix` | Code fixes only | 1 time | Single scan + auto-fix |
-| `/moai:loop` | Code fixes | Until marker/max | Autonomous iterative fixing |
-| `/moai:alfred` | Full dev cycle | Until marker/max | Goal → SPEC → Implement → Docs |
+| Command        | Scope           | Iteration        | Purpose                        |
+| -------------- | --------------- | ---------------- | ------------------------------ |
+| `/moai:fix`    | Code fixes only | 1 time           | Single scan + auto-fix         |
+| `/moai:loop`   | Code fixes      | Until marker/max | Autonomous iterative fixing    |
+| `/moai:alfred` | Full dev cycle  | Until marker/max | Goal → SPEC → Implement → Docs |
 
 ### Command Chain Relationship
 
@@ -1217,18 +1173,19 @@ All implementations done, tests passing, docs updated. <moai>DONE</moai>
 ```
 
 **Supported Markers**:
+
 - `<moai>DONE</moai>` - Task complete
 - `<moai>COMPLETE</moai>` - Full completion
 - `<moai:done />` - XML format
 
 ### Auto-Fix Levels
 
-| Level | Description | Approval | Examples |
-|-------|-------------|----------|----------|
-| 1 | Immediate fix | Not required | import sorting, whitespace |
-| 2 | Safe fix | Log only | variable rename, type hints |
-| 3 | Approval needed | Required | logic changes, API modifications |
-| 4 | Manual required | Cannot auto | security, architecture |
+| Level | Description     | Approval     | Examples                         |
+| ----- | --------------- | ------------ | -------------------------------- |
+| 1     | Immediate fix   | Not required | import sorting, whitespace       |
+| 2     | Safe fix        | Log only     | variable rename, type hints      |
+| 3     | Approval needed | Required     | logic changes, API modifications |
+| 4     | Manual required | Cannot auto  | security, architecture           |
 
 ### Quick Start Examples
 
@@ -1290,19 +1247,18 @@ Alfred automatically recognizes 4 language requests and invokes the correct agen
 
 ---
 
-### 🎯 Tier 2: Workflow Managers (9)
+### 🎯 Tier 2: Workflow Managers (8)
 
-| Agent                   | Role                             | Auto Invocation Timing                  |
-| ----------------------- | -------------------------------- | --------------------------------------- |
-| **manager-spec**        | SPEC writing (EARS)              | `/moai:1-plan`                          |
-| **manager-tdd**         | TDD auto execution               | `/moai:2-run` (when development_mode: tdd) |
-| **manager-ddd**         | DDD refactoring execution        | `/moai:2-run` (when development_mode: ddd) |
-| **manager-docs**        | Documentation auto generation    | `/moai:3-sync`                          |
-| **manager-quality**     | TRUST 5 verification             | After implementation completion         |
-| **manager-strategy**    | Execution strategy establishment | Complex planning                        |
-| **manager-project**     | Project initialization           | `/moai:0-project`                       |
-| **manager-git**         | Git workflow                     | Branch/PR management                    |
-| **manager-claude-code** | Claude Code integration          | Settings optimization                   |
+| Agent                   | Role                             | Auto Invocation Timing          |
+| ----------------------- | -------------------------------- | ------------------------------- |
+| **manager-spec**        | SPEC writing (EARS)              | `/moai:1-plan`                  |
+| **manager-ddd**         | DDD implementation execution     | `/moai:2-run`                   |
+| **manager-docs**        | Documentation auto generation    | `/moai:3-sync`                  |
+| **manager-quality**     | TRUST 5 verification             | After implementation completion |
+| **manager-strategy**    | Execution strategy establishment | Complex planning                |
+| **manager-project**     | Project initialization           | `/moai:0-project`               |
+| **manager-git**         | Git workflow                     | Branch/PR management            |
+| **manager-claude-code** | Claude Code integration          | Settings optimization           |
 
 ---
 
@@ -1361,7 +1317,7 @@ All MoAI-ADK projects follow the **TRUST 5** quality framework.
 
 ```mermaid
 graph TD
-    T1["🔴 T: Test-First<br/>━━━━━━━━<br/>• TDD Red-Green-Refactor<br/>• 85%+ coverage<br/>• Automated testing"]
+    T1["🔴 T: Tested<br/>━━━━━━━━<br/>• DDD with tests<br/>• 85%+ coverage<br/>• Behavior preserved"]
     R["📖 R: Readable<br/>━━━━━━━━<br/>• Clear naming<br/>• Code comments<br/>• Linter compliance"]
     U["🔄 U: Unified<br/>━━━━━━━━<br/>• Consistent style<br/>• Standard patterns<br/>• Error handling"]
     S["🔒 S: Secured<br/>━━━━━━━━<br/>• OWASP Top 10<br/>• Vulnerability scan<br/>• Encryption policy"]
@@ -1370,16 +1326,16 @@ graph TD
     T1 --> R --> U --> S --> T2 --> Deploy["✅ Production Ready"]
 ```
 
-### T - Test-First
+### T - Tested
 
-**Principle**: All implementation starts with tests
+**Principle**: All implementation is validated with tests
 
 **Verification**:
 
 - Test coverage >= 85%
-- Write failing tests first (Red)
-- Pass tests with code (Green)
-- Refactor
+- Characterization tests for existing code
+- Behavior preservation verified
+- Incremental improvements
 
 ### R - Readable
 
@@ -1427,357 +1383,7 @@ graph TD
 
 ---
 
-## 8. TAG System v2.0 - Code-to-Documentation Traceability
-
-TAG System v2.0 provides bidirectional traceability between code and SPEC documents. Use `@SPEC` tags to automatically link code to documentation and documentation to code.
-
-### Core Problem Solved: "What if I write code without a SPEC first?"
-
-TAG System v2.0's **Context-Aware Validation** perfectly solves this:
-
-| Situation              | TAG Type                  | Commit without SPEC? | Description                      |
-| ---------------------- | ------------------------- | -------------------- | -------------------------------- |
-| **Simple fixes**       | `related` (all files)     | ✅ Allowed           | Shows relationship only         |
-| **Write tests first**  | `verify` or `@TEST` (test files) | ✅ Allowed | Supports TDD workflow        |
-| **Implementation code**| `impl` (implementation files) | ⚠️ Warning/block    | Depends on warn/enforce mode  |
-| **Show dependencies**  | `depends` (all files)     | ✅ Allowed           | Shows dependency only          |
-
-### TAG Overview
-
-MoAI-ADK supports two TAG types:
-
-| TAG Type | Purpose         | Format                    | Location     |
-| -------- | --------------- | ------------------------- | ------------ |
-| **@SPEC** | Code-to-SPEC link| `@SPEC SPEC-XXX [verb]` | All files    |
-| **@TEST** | Test ID         | `@TEST TEST-XXX`          | Test files only |
-
-### TAG Usage Guide
-
-#### 1. @SPEC TAG Verb Selection Guide
-
-| Verb      | When to use?              | Usage Example                  |
-| --------- | ------------------------- | ------------------------------ |
-| **impl**  | Implementation code links | `# @SPEC SPEC-AUTH-001 impl`    |
-| **verify**| Verify SPEC in tests      | `# @SPEC SPEC-AUTH-001 verify`  |
-| **related**| Simple fixes/relationships | `# @SPEC SPEC-AUTH-001 related` |
-| **depends**| Dependency on other SPEC  | `# @SPEC SPEC-DB-004 depends`   |
-
-#### 2. @TEST vs @SPEC verify Selection Guide
-
-| Distinction | @TEST                    | @SPEC verify               |
-| ----------- | ------------------------ | -------------------------- |
-| **Purpose** | Test identification      | SPEC verification          |
-| **SPEC link**| Optional                 | Required                   |
-| **Usage**   | Independent tests        | TDD (SPEC → impl → test)  |
-| **Combined** | `@SPEC verify` + `@TEST` | Standalone                 |
-
-#### 3. Recommended Usage Patterns
-
-```python
-# Pattern 1: TDD (SPEC exists)
-# @SPEC SPEC-AUTH-001 verify
-# @TEST TEST-AUTH-001
-def test_login():
-    pass
-
-# Pattern 2: Independent test (no SPEC)
-# @TEST TEST-AUTH-001
-def test_login():
-    pass
-
-# Pattern 3: Implementation code
-# @SPEC SPEC-AUTH-001 impl
-def login():
-    pass
-```
-
-### Summary: TAG Selection Decision Tree
-
-```
-Is this a test file?
-├── Yes
-│   ├── SPEC exists and needs verification? → @SPEC verify
-│   ├── Independent test identification? → @TEST
-│   └── Need both? → @SPEC verify + @TEST
-└── No (implementation code)
-    ├── SPEC exists and implementation? → @SPEC impl
-    ├── Simple fix? → @SPEC related
-    └── Depends on other SPEC? → @SPEC depends
-```
-
-### TAG Syntax
-
-Add @TAG in code comments. Recommended to place above the function:
-
-```python
-# Basic format
-@SPEC SPEC-{DOMAIN}-{NUMBER} [verb] # General code
-@TEST TEST-{DOMAIN}-{NUMBER}       # Test code
-
-# Example
-# @SPEC SPEC-AUTH-001 impl
-def login(): ...
-
-# @SPEC SPEC-AUTH-001 verify
-# @TEST TEST-AUTH-001
-def test_login(): ...
-```
-
-### Real-World Workflow
-
-#### Scenario 1: Simple Bug Fix (no SPEC)
-
-```python
-# auth.py
-# @SPEC SPEC-AUTH-001 related
-def fix_login_bug():
-    """Login bug fix
-
-    No related SPEC exists, using related
-    """
-    pass
-```
-
-**Pre-commit Hook Result**:
-```
-TAG Validation Results:
-==================================================
-  auth.py:10: Hint: Consider creating SPEC for SPEC-AUTH-001
-  (related TAG - SPEC not required)
-==================================================
-
-Commit allowed with warning (warn mode)
-```
-
-✅ **Commit Allowed**: related TAG allows commit without SPEC
-
-#### Scenario 2: Write Tests First (TDD)
-
-```python
-# test_auth.py
-# @SPEC SPEC-AUTH-002 verify
-# @TEST TEST-AUTH-002
-def test_login_success():
-    """Login success test
-
-    Tests written first, impl later
-    """
-    pass
-```
-
-**Pre-commit Hook Result**:
-```
-TAG Validation Results:
-==================================================
-  test_auth.py:15: Warning: Test references non-existent SPEC: SPEC-AUTH-002
-  (verify TAG in test file - commit allowed)
-==================================================
-
-Commit allowed with warning (warn mode)
-```
-
-✅ **Commit Allowed**: verify TAG in test files allows commit without SPEC
-
-#### Scenario 3: Official Development (SPEC first)
-
-```bash
-# 1. Create SPEC first
-> /moai:1-plan "user authentication system"
-# → SPEC-AUTH-003 created
-
-# 2. Write implementation code
-# @SPEC SPEC-AUTH-003 impl
-def login(username, password):
-    """User login
-
-    Official development uses impl TAG
-    """
-    pass
-
-# 3. Write test code
-# @SPEC SPEC-AUTH-003 verify
-# @TEST TEST-AUTH-003
-def test_login():
-    """Login test"""
-    pass
-```
-
-**Pre-commit Hook Result** (SPEC exists):
-```
-TAG Validation: All TAGs valid
-```
-
-✅ **Commit Allowed**: SPEC existence confirmed
-
-**Pre-commit Hook Result** (SPEC doesn't exist, enforce mode):
-```
-TAG Validation Results:
-==================================================
-  auth.py:25: Error: Implementation references non-existent SPEC: SPEC-AUTH-003
-  (commit blocked in enforce mode)
-==================================================
-
-Commit blocked due to TAG validation error (enforce mode)
-```
-
-❌ **Commit Blocked**: enforce mode blocks impl TAG without SPEC
-
-### Configuration Options
-
-Configure TAG validation behavior in `.moai/config/sections/quality.yaml`:
-
-```yaml
-tag_validation:
-  enabled: true           # Enable TAG checking
-  mode: warn              # warn | enforce | off
-  check_spec_exists: true # Check SPEC document exists
-  max_tags_per_file: 100  # Maximum TAGs per file
-```
-
-### Mode-Specific Behavior
-
-| Mode            | impl TAG (no SPEC) | verify/@TEST TAG (test file) | related TAG | depends TAG |
-| --------------- | ------------------ | ----------------------------- | ----------- | ----------- |
-| **warn** (default) | Warn then allow     | Warn then allow               | Hint only   | Hint only   |
-| **enforce**      | Block commit        | Allow                         | Hint only   | Hint only   |
-| **off**          | No check            | No check                      | No check    | No check    |
-
-### Recommended TAG Usage Strategy
-
-| Development Type | Recommended Strategy                       | TAG Example                                                                            |
-| ---------------- | ------------------------------------------- | ----------------------------------------------------------------------------------- |
-| **Hotfix**       | Use `related`                               | `@SPEC SPEC-XXX related`                                                            |
-| **Test-first**   | `verify` or `@TEST` first, then `impl`      | Tests: `@SPEC SPEC-XXX verify` or `@TEST TEST-XXX` → Impl: `@SPEC SPEC-XXX impl` |
-| **Official dev** | Create SPEC first, use `impl`              | `/moai:1-plan` → `@SPEC SPEC-XXX impl`                                              |
-| **Refactoring**  | Keep existing TAGs                          | No changes                                                                          |
-| **Documentation** | Use `related` to show relationship       | `@SPEC SPEC-XXX related`                                                            |
-| **Dependency**    | Use `depends` to show dependency            | `@SPEC SPEC-YYY depends` (depends on other SPEC)                                    |
-
-### Pre-commit Hook Automatic Validation
-
-All Git commits automatically validate TAG:
-
-```bash
-# Attempt commit
-git commit -m "Add login feature"
-
-# Automatic execution
-TAG Validation Results:
-==================================================
-  auth.py:10: Hint: Consider creating SPEC for SPEC-AUTH-001
-  (related TAG - SPEC not required)
-==================================================
-
-Commit allowed with warning (warn mode)
-```
-
-### TAG Linkage Database
-
-TAG System stores bidirectional mapping in `.moai/cache/tag-linkage.json`:
-
-```json
-{
-  "tags": [
-    {
-      "spec_id": "SPEC-AUTH-001",
-      "verb": "impl",
-      "file_path": "src/auth.py",
-      "line": 10
-    }
-  ],
-  "files": {
-    "src/auth.py": ["SPEC-AUTH-001"]
-  }
-}
-```
-
-**Auto-update**:
-- Automatically extracts and saves TAGs on commit
-- Automatically removes TAGs when files are deleted
-- Detects orphaned TAGs (references to deleted SPECs)
-
-### Advanced Features
-
-#### SPEC-ID Format Validation
-
-```python
-# Correct format
-@SPEC SPEC-AUTH-001    # ✅
-@SPEC SPEC-PAY-002     # ✅
-@SPEC SPEC-UI-003      # ✅
-
-# Incorrect format
-@SPEC AUTH-001         # ❌ SPEC- prefix missing
-@SPEC SPEC-001         # ❌ Domain missing
-@SPEC SPEC-AUTH-1      # ❌ 3-digit number required
-```
-
-#### File Type Auto-Detection
-
-TAG System auto-detects by file pattern:
-- **Test files**: `test_*.py`, `*_test.py`, `tests/` directory
-- **Implementation files**: All other Python files
-
-### Getting Started
-
-```bash
-# 1. TAG System already enabled
-cat .moai/config/sections/quality.yaml
-
-# 2. Add TAGs to your code
-# auth.py (implementation file)
-# @SPEC SPEC-AUTH-001 impl
-def login():
-    pass
-
-# test_auth.py (test file)
-# @SPEC SPEC-AUTH-001 verify
-# @TEST TEST-AUTH-001
-def test_login():
-    pass
-
-# 3. Automatic validation on commit
-git add .
-git commit -m "Add login feature"
-# → TAG Validation runs automatically
-```
-
-### Troubleshooting
-
-**Q: Skip TAG validation**
-```bash
-git commit --no-verify
-```
-
-**Q: Temporarily commit in enforce mode**
-```yaml
-# quality.yaml (temporary change)
-tag_validation:
-  mode: warn  # enforce → warn
-```
-
-**Q: Find orphaned TAGs**
-```bash
-# Orphaned TAGs = TAGs referencing non-existent SPECs
-# Automatically detected by Pre-commit Hook
-```
-
-### Core Innovations of TAG System v2.0
-
-| Problem                  | TAG System v1     | TAG System v2                          |
-| ------------------------ | ----------------- | -------------------------------------- |
-| Write code without SPEC  | ❌ Impossible     | ✅ Possible with `related`/`verify`     |
-| Write tests first        | ❌ Impossible     | ✅ Test file `verify`/`@TEST` allowed   |
-| Flexible validation      | ❌ All or nothing  | ✅ warn/enforce/off modes               |
-| File type awareness      | ❌ None            | ✅ Auto-detects (test/implementation)   |
-| Show dependencies        | ❌ Not supported   | ✅ `depends` shows SPEC dependencies    |
-| Test identification TAG  | ❌ Not supported   | ✅ `@TEST` for independent test IDs       |
-
-**TAG System v2.0**: Maintains SPEC-First TDD benefits while perfectly supporting real-world development flexibility.
-
----
-
-## 10. Automated Quality Checks
+## 8. Automated Quality Checks
 
 ### 🔍 AST-Grep Based Structural Inspection
 
@@ -1812,7 +1418,7 @@ Code writing
 
 ---
 
-## 11. 📊 Statusline Customization
+## 9. 📊 Statusline Customization
 
 MoAI-ADK provides a **customizable statusline** that displays real-time project information in Claude Code.
 
@@ -1824,16 +1430,16 @@ MoAI-ADK provides a **customizable statusline** that displays real-time project 
 
 ### Statusline Components
 
-| Icon | Component | Description | Config Key |
-|------|-----------|-------------|------------|
-| 🤖 | **Model** | Claude model (Opus, Sonnet, etc.) | `model` |
-| 💰 | **Context** | Context window usage (e.g., 77K/200K) | `context_window` |
-| 💬 | **Style** | Active output style (e.g., Mr. Alfred) | `output_style` |
-| 📁 | **Directory** | Current project name | `directory` |
-| 📊 | **Git Status** | Staged/Modified/Untracked files | `git_status` |
-| 💾 | **Memory** | Process memory usage | `memory_usage` |
-| 🔀 | **Branch** | Current Git branch | `branch` |
-| 🔅 | **Version** | Claude Code version (optional) | `version` |
+| Icon | Component      | Description                            | Config Key       |
+| ---- | -------------- | -------------------------------------- | ---------------- |
+| 🤖   | **Model**      | Claude model (Opus, Sonnet, etc.)      | `model`          |
+| 💰   | **Context**    | Context window usage (e.g., 77K/200K)  | `context_window` |
+| 💬   | **Style**      | Active output style (e.g., Mr. Alfred) | `output_style`   |
+| 📁   | **Directory**  | Current project name                   | `directory`      |
+| 📊   | **Git Status** | Staged/Modified/Untracked files        | `git_status`     |
+| 💾   | **Memory**     | Process memory usage                   | `memory_usage`   |
+| 🔀   | **Branch**     | Current Git branch                     | `branch`         |
+| 🔅   | **Version**    | Claude Code version (optional)         | `version`        |
 
 ### Configuration
 
@@ -1841,15 +1447,15 @@ Edit `.moai/config/statusline-config.yaml`:
 
 ```yaml
 display:
-  model: true           # 🤖 Claude model
-  context_window: true  # 💰 Context window
-  output_style: true    # 💬 Output style
-  directory: true       # 📁 Project name
-  git_status: true      # 📊 Git status
-  memory_usage: true    # 💾 Memory usage
-  branch: true          # 🔀 Git branch
-  version: 1.1.0        # 🔅 Version (optional)
-  active_task: true     # Active task
+  model: true # 🤖 Claude model
+  context_window: true # 💰 Context window
+  output_style: true # 💬 Output style
+  directory: true # 📁 Project name
+  git_status: true # 📊 Git status
+  memory_usage: true # 💾 Memory usage
+  branch: true # 🔀 Git branch
+  version: 1.1.0 # 🔅 Version (optional)
+  active_task: true # Active task
 ```
 
 ### Memory Collector
@@ -1863,11 +1469,11 @@ When `memory_usage` is enabled, MoAI-ADK uses `psutil` to collect real-time memo
 
 ### Display Modes
 
-| Mode | Max Length | Use Case |
-|------|------------|----------|
-| `compact` | 80 chars | Standard terminal |
-| `extended` | 120 chars | Wide terminal |
-| `minimal` | 40 chars | Narrow terminal |
+| Mode       | Max Length | Use Case          |
+| ---------- | ---------- | ----------------- |
+| `compact`  | 80 chars   | Standard terminal |
+| `extended` | 120 chars  | Wide terminal     |
+| `minimal`  | 40 chars   | Narrow terminal   |
 
 Set mode:
 
@@ -1877,7 +1483,7 @@ export MOAI_STATUSLINE_MODE=extended
 
 ---
 
-## 12. 🌳 Worktree Parallel Development
+## 10. 🌳 Worktree Parallel Development
 
 MoAI-ADK's core innovation: **Worktree for complete isolation, unlimited parallel development**
 
@@ -1928,7 +1534,7 @@ MoAI-ADK's core innovation: **Worktree for complete isolation, unlimited paralle
 │                                                                  │
 │  $ claude                                                        │
 │  > /moai:2-run SPEC-AUTH-001                                     │
-│  🔄 TDD 실행 중... (Red → Green → Refactor)                       │
+│  🔄 DDD Running... (Analyze → Preserve → Improve)                 │
 │  ✅ 구현 완료!                                                   │
 │  ✅ 테스트 통과 (Coverage: 92%)                                  │
 │                                                                  │
@@ -2022,22 +1628,22 @@ moai-wt clean --merged-only
 
 ### 📊 Worktree Commands
 
-| Command                  | Description                        | Usage Example                    |
-| ------------------------ | ---------------------------------- | -------------------------------- |
-| `moai-wt new SPEC-ID`    | Create new Worktree                | `moai-wt new SPEC-AUTH-001`      |
-| `moai-wt go SPEC-ID`     | Enter Worktree (open new shell)    | `moai-wt go SPEC-AUTH-001`       |
-| `moai-wt list`           | List Worktrees                     | `moai-wt list`                   |
-| `moai-wt done SPEC-ID`   | Merge and cleanup (checkout→merge) | `moai-wt done SPEC-AUTH-001`     |
-| `moai-wt remove SPEC-ID` | Remove Worktree                    | `moai-wt remove SPEC-AUTH-001`   |
-| `moai-wt status`         | Check Worktree status and registry | `moai-wt status`                 |
-| `moai-wt sync [SPEC-ID]` | Synchronize Worktree               | `moai-wt sync --all`             |
-| `moai-wt clean`          | Clean merged Worktrees             | `moai-wt clean --merged-only`    |
-| `moai-wt recover`        | Recover registry from disk         | `moai-wt recover`                |
-| `moai-wt config`         | Check Worktree settings            | `moai-wt config root`            |
+| Command                  | Description                        | Usage Example                  |
+| ------------------------ | ---------------------------------- | ------------------------------ |
+| `moai-wt new SPEC-ID`    | Create new Worktree                | `moai-wt new SPEC-AUTH-001`    |
+| `moai-wt go SPEC-ID`     | Enter Worktree (open new shell)    | `moai-wt go SPEC-AUTH-001`     |
+| `moai-wt list`           | List Worktrees                     | `moai-wt list`                 |
+| `moai-wt done SPEC-ID`   | Merge and cleanup (checkout→merge) | `moai-wt done SPEC-AUTH-001`   |
+| `moai-wt remove SPEC-ID` | Remove Worktree                    | `moai-wt remove SPEC-AUTH-001` |
+| `moai-wt status`         | Check Worktree status and registry | `moai-wt status`               |
+| `moai-wt sync [SPEC-ID]` | Synchronize Worktree               | `moai-wt sync --all`           |
+| `moai-wt clean`          | Clean merged Worktrees             | `moai-wt clean --merged-only`  |
+| `moai-wt recover`        | Recover registry from disk         | `moai-wt recover`              |
+| `moai-wt config`         | Check Worktree settings            | `moai-wt config root`          |
 
 ---
 
-## 13. Understanding CLAUDE.md
+## 11. Understanding CLAUDE.md
 
 The `CLAUDE.md` file generated in your project root after MoAI-ADK installation is **Alfred's (AI Orchestrator) execution directive**. This file defines how Claude Code behaves in your project.
 
@@ -2060,21 +1666,22 @@ The `CLAUDE.md` file generated in your project root after MoAI-ADK installation 
 
 ### CLAUDE.md Core Structure
 
-| Section | Description | Key Content |
-|---------|-------------|-------------|
-| **Core Identity** | Alfred's role definition | Strategic orchestrator, HARD rules |
-| **Request Processing Pipeline** | Request handling flow | Analyze → Route → Execute → Report |
-| **Command Reference** | Command classification | Type A (Workflow), Type B (Utility), Type C (Feedback) |
-| **Agent Catalog** | Sub-agent listing | 8 Managers, 8 Experts, 4 Builders |
-| **SPEC-Based Workflow** | SPEC-driven development | Plan → Run → Sync flow |
-| **Quality Gates** | Quality validation rules | HARD/SOFT rules checklist |
-| **Configuration Reference** | Settings reference | Language, output format rules |
+| Section                         | Description              | Key Content                                            |
+| ------------------------------- | ------------------------ | ------------------------------------------------------ |
+| **Core Identity**               | Alfred's role definition | Strategic orchestrator, HARD rules                     |
+| **Request Processing Pipeline** | Request handling flow    | Analyze → Route → Execute → Report                     |
+| **Command Reference**           | Command classification   | Type A (Workflow), Type B (Utility), Type C (Feedback) |
+| **Agent Catalog**               | Sub-agent listing        | 8 Managers, 8 Experts, 4 Builders                      |
+| **SPEC-Based Workflow**         | SPEC-driven development  | Plan → Run → Sync flow                                 |
+| **Quality Gates**               | Quality validation rules | HARD/SOFT rules checklist                              |
+| **Configuration Reference**     | Settings reference       | Language, output format rules                          |
 
 ### Usage: Don't Modify It
 
 > **Recommendation**: Use `CLAUDE.md` **as-is without modification**.
 
 **Reasons**:
+
 - Automatically replaced with the latest version during MoAI-ADK updates
 - Modifications may cause update conflicts
 - Ensures consistent behavior across agents
@@ -2099,32 +1706,36 @@ touch CLAUDE.local.md
 # Project Local Directives
 
 ## Coding Style
+
 - Type hints required for all functions
 - Use Google-style docstrings
 
 ## Project-Specific Rules
+
 - API responses always use snake_case
-- Test files must have test_ prefix
+- Test files must have test\_ prefix
 
 ## Prohibited
+
 - No console.log (use logger)
 - No any type usage
 ```
 
 **Benefits**:
+
 - No conflicts with `CLAUDE.md` updates
 - Project-specific customization
 - Can add to `.gitignore` for personal settings
 
 ### CLAUDE.md vs CLAUDE.local.md
 
-| Aspect | CLAUDE.md | CLAUDE.local.md |
-|--------|-----------|-----------------|
-| **Purpose** | Alfred execution directives | Personal/project additional directives |
-| **Modification** | Not recommended | Freely modifiable |
-| **Updates** | Managed by MoAI | Managed by user |
-| **Git** | Committed | Optional (.gitignore possible) |
-| **Priority** | Base rules | Additional/override rules |
+| Aspect           | CLAUDE.md                   | CLAUDE.local.md                        |
+| ---------------- | --------------------------- | -------------------------------------- |
+| **Purpose**      | Alfred execution directives | Personal/project additional directives |
+| **Modification** | Not recommended             | Freely modifiable                      |
+| **Updates**      | Managed by MoAI             | Managed by user                        |
+| **Git**          | Committed                   | Optional (.gitignore possible)         |
+| **Priority**     | Base rules                  | Additional/override rules              |
 
 ### Core Rules (HARD Rules)
 
@@ -2138,7 +1749,7 @@ These rules cannot be overridden even by `CLAUDE.local.md`.
 
 ---
 
-## 14. MoAI Rank Introduction
+## 12. MoAI Rank Introduction
 
 **A new dimension of agentic coding**: Track your coding journey and compete with global developers!
 
@@ -2308,7 +1919,7 @@ moai rank list-excluded
 
 ---
 
-## 15. FAQ 7 Questions
+## 13. FAQ 5 Questions
 
 ### Q1: Is SPEC Always Required?
 
@@ -2320,20 +1931,9 @@ moai rank list-excluded
 | New feature addition | Recommended         |
 | Bug fix              | Optional            |
 
-### Q2: What TAG Should I Use When Writing Code Without a SPEC?
+### Q2: Is MCP Server Installation Required?
 
-TAG System v2.0 supports flexible development:
-
-| Situation              | Recommended TAG      | SPEC Required? |
-| ---------------------- | -------------------- | -------------- |
-| Hotfix                 | `@SPEC SPEC-XXX related` | No            |
-| Write tests first      | `@TEST TEST-XXX` or `@SPEC SPEC-XXX verify` | No |
-| Implementation code    | `@SPEC SPEC-XXX impl` | Yes (in enforce mode) |
-| Show dependency        | `@SPEC SPEC-XXX depends` | No            |
-
-### Q3: Is MCP Server Installation Required?
-
-**Required (2)**:
+**Required (1)**:
 
 - **Context7**: For latest library documentation and Skill reference generation
 
@@ -2343,30 +1943,21 @@ TAG System v2.0 supports flexible development:
 - Playwright: Web automation testing
 - Figma: Design system
 
-### Q4: What's the Difference Between @TEST and @SPEC verify?
-
-| Distinction | @TEST                    | @SPEC verify               |
-| ----------- | ------------------------ | -------------------------- |
-| **Purpose** | Test identification      | SPEC verification          |
-| **SPEC link**| Optional                 | Required                   |
-| **Usage**   | Independent tests        | TDD (SPEC → impl → test)  |
-| **Combined** | `@SPEC verify` + `@TEST` | Standalone                 |
-
-### Q5: Does MoAI Rank Cost Money?
+### Q3: Does MoAI Rank Cost Money?
 
 It's free. Only automatically collects session data.
 
-### Q6: Is GLM Configuration Required?
+### Q4: Is GLM Configuration Required?
 
 No. You can use Claude only. However, it's recommended for cost savings.
 
-### Q7: Can It Be Applied to Existing Projects?
+### Q5: Can It Be Applied to Existing Projects?
 
 Yes. `moai init .` preserves existing files.
 
 ---
 
-## 16. Community & Support
+## 14. Community & Support
 
 ### 🌐 Participate
 
@@ -2390,7 +1981,7 @@ Copyleft License (COPYLEFT-3.0) - [LICENSE](./LICENSE)
 ## 🙏 Made with ❤️ by MoAI-ADK Team
 
 **Last Updated:** 2026-01-13
-**Philosophy**: SPEC-First TDD + Agent Orchestration + Hybrid LLM
+**Philosophy**: SPEC-First DDD + Agent Orchestration + Hybrid LLM
 **MoAI**: MoAI means "Modu-ui AI" (AI for Everyone).
 
 > **"Infinite Possibilism - AI for All"**

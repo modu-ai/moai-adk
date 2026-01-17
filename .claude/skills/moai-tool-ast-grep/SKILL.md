@@ -18,6 +18,8 @@ allowed-tools:
   - Bash
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
+triggers:
+  keywords: ["ast", "refactoring", "code search", "lint", "structural search", "security", "codemod", "ast-grep"]
 ---
 
 # AST-Grep Integration

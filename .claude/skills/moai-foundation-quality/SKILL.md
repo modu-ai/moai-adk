@@ -15,6 +15,51 @@ allowed-tools:
   - Glob
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: ~100
+  level2_tokens: ~5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords:
+    - "quality"
+    - "testing"
+    - "test"
+    - "validation"
+    - "trust-5"
+    - "best practice"
+    - "code review"
+    - "linting"
+    - "coverage"
+    - "pytest"
+    - "security"
+    - "ci/cd"
+    - "quality gate"
+    - "proactive"
+    - "code smell"
+    - "technical debt"
+    - "refactoring"
+  agents:
+    - "manager-quality"
+    - "manager-tdd"
+    - "expert-testing"
+    - "expert-security"
+    - "expert-refactoring"
+  phases:
+    - "run"
+    - "sync"
+  languages:
+    - "python"
+    - "javascript"
+    - "typescript"
+    - "java"
+    - "go"
+    - "rust"
+    - "cpp"
+    - "csharp"
 ---
 
 # Enterprise Code Quality Orchestrator

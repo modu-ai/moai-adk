@@ -224,21 +224,16 @@ def _create_tab1_quick_start() -> Dict[str, Any]:
                         "options": [],
                     },
                     {
-                        "id": "enforce_tdd",
-                        "question": "Enforce TDD?",
+                        "id": "development_mode",
+                        "question": "Development methodology?",
                         "type": "select_single",
                         "required": True,
-                        "smart_default": True,
+                        "smart_default": "ddd",
                         "options": [
                             {
-                                "label": "Yes",
-                                "value": True,
-                                "description": "Strict TDD",
-                            },
-                            {
-                                "label": "No",
-                                "value": False,
-                                "description": "Optional TDD",
+                                "label": "DDD",
+                                "value": "ddd",
+                                "description": "Domain-Driven Development",
                             },
                         ],
                     },

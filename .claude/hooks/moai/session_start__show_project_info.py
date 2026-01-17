@@ -666,7 +666,7 @@ def check_version_update() -> tuple[str, bool]:
 
         if version_cache_file.exists():
             try:
-                cache_data = json.loads(version_cache_file.read_text())
+                cache_data = json.loads(version_cache_file.read_text(encoding="utf-8"))
                 latest_version = cache_data.get("latest")
             except (json.JSONDecodeError, OSError, UnicodeDecodeError):
                 # Cache file read or JSON parsing errors

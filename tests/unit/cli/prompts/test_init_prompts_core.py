@@ -26,7 +26,9 @@ class TestPromptProjectSetup:
     @patch("moai_adk.cli.prompts.init_prompts._prompt_confirm", return_value=True)
     @patch("moai_adk.cli.prompts.init_prompts._prompt_select")
     @patch("moai_adk.cli.prompts.init_prompts._prompt_text")
-    def test_setup_current_directory_no_name_input(self, mock_text, mock_select, mock_confirm, mock_password, mock_glm_exists):
+    def test_setup_current_directory_no_name_input(
+        self, mock_text, mock_select, mock_confirm, mock_password, mock_glm_exists
+    ):
         """Test setup with current directory uses dirname."""
         # Arrange - current flow needs 5 select values:
         # 1. locale, 2. git_mode, 3. git_commit_lang, 4. code_comment_lang, 5. doc_lang
@@ -34,7 +36,6 @@ class TestPromptProjectSetup:
             "en",  # locale
             "manual",  # git_mode
             "en",  # git_commit_lang
-            "warn",  # tag_mode
             "en",  # code_comment_lang
             "en",  # doc_lang
         ]
@@ -57,18 +58,13 @@ class TestPromptProjectSetup:
         """Test setup with provided project name."""
         # Arrange - current flow needs 5 select values
         mock_select.side_effect = [
-
             "ko",  # locale
             "manual",  # git_mode
             "ko",  # git_commit_lang
             "en",  # code_comment_lang
             "ko",  # doc_lang,
-
-        "warn",  # tag_mode
-
         ]
 
-        
         mock_text.return_value = "test-project"
 
         # Act
@@ -110,18 +106,13 @@ class TestPromptProjectSetup:
         # Arrange - current flow needs 5 select values:
         # 1. locale, 2. git_mode, 3. git_commit_lang, 4. code_comment_lang, 5. doc_lang
         mock_select.side_effect = [
-
             "ko",  # locale
             "manual",  # git_mode
             "ko",  # git_commit_lang
             "en",  # code_comment_lang
             "ko",  # doc_lang,
-
-        "warn",  # tag_mode
-
         ]
 
-        
         mock_text.return_value = "test"  # user_name and project_name
 
         # Act
@@ -143,7 +134,7 @@ class TestPromptProjectSetup:
     def test_setup_language_japanese(self, mock_text, mock_select, mock_confirm, mock_password, mock_glm_exists):
         """Test setup with Japanese language selection."""
         # Arrange
-        mock_select.side_effect = ["ja", "manual", "ja", "en", "ja", "warn"]
+        mock_select.side_effect = ["ja", "manual", "ja", "en", "ja"]
         mock_text.return_value = "test"
 
         # Act
@@ -164,7 +155,7 @@ class TestPromptProjectSetup:
     def test_setup_language_chinese(self, mock_text, mock_select, mock_confirm, mock_password, mock_glm_exists):
         """Test setup with Chinese language selection."""
         # Arrange
-        mock_select.side_effect = ["zh", "manual", "zh", "en", "zh", "warn"]
+        mock_select.side_effect = ["zh", "manual", "zh", "en", "zh"]
         mock_text.return_value = "test"
 
         # Act
@@ -192,7 +183,6 @@ class TestPromptProjectSetup:
             "zh",  # git_commit_lang
             "en",  # code_comment_lang
             "zh",  # doc_lang
-            "warn",  # tag_mode
         ]
         mock_text.return_value = "test"  # user_name and project_name
         mock_password.return_value = "glm-api-key"  # GLM API key
@@ -217,7 +207,7 @@ class TestPromptProjectSetup:
     def test_setup_with_initial_locale(self, mock_text, mock_select, mock_confirm, mock_password, mock_glm_exists):
         """Test setup respects initial_locale preference."""
         # Arrange
-        mock_select.side_effect = ["ja", "manual", "ja", "en", "ja", "warn"]
+        mock_select.side_effect = ["ja", "manual", "ja", "en", "ja"]
         mock_text.return_value = "test"
 
         # Act
@@ -321,7 +311,6 @@ class TestPromptProjectSetup:
             "en",  # locale
             "manual",  # git_mode
             "en",  # git_commit_lang
-            "warn",  # tag_mode
             "en",  # code_comment_lang
             "en",  # doc_lang
         ]

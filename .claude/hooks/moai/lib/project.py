@@ -368,7 +368,7 @@ def count_specs(cwd: str) -> dict[str, int]:
 
         # Parse YAML front matter
         try:
-            content = spec_file.read_text()
+            content = spec_file.read_text(encoding="utf-8")
             if content.startswith("---"):
                 yaml_end = content.find("---", 3)
                 if yaml_end > 0:
@@ -407,7 +407,7 @@ def get_project_language(cwd: str) -> str:
     config_path = project_root / ".moai" / "config" / "config.yaml"
     if config_path.exists():
         try:
-            config = yaml.safe_load(config_path.read_text()) or {}
+            config = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
             lang = config.get("language", "")
             if lang:
                 return lang
@@ -471,7 +471,7 @@ def get_version_check_config(cwd: str) -> dict[str, Any]:
         return defaults
 
     try:
-        config = yaml.safe_load(config_path.read_text()) or {}
+        config = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
 
         # Extract moai.version_check section
         moai_config = config.get("moai", {})

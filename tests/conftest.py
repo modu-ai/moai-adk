@@ -217,7 +217,6 @@ def isolate_path_cwd(tmp_path: Path, mocker, monkeypatch):
         "moai_adk.statusline.enhanced_output_style_detector.Path",
         "moai_adk.statusline.version_reader.Path",
         "moai_adk.project.configuration.Path",
-        "moai_adk.tag_system.linkage.Path",
         "moai_adk.core.config.unified.Path",
         "moai_adk.core.session_manager.Path",
         "moai_adk.core.language_config_resolver.Path",
@@ -339,5 +338,6 @@ def pytest_runtest_teardown(item, nextitem):
     and doesn't affect subsequent tests or pytest itself.
     """
     import sys
+
     # Reset any pending interrupts
-    sys.exc_clear() if hasattr(sys, 'exc_clear') else None
+    sys.exc_clear() if hasattr(sys, "exc_clear") else None

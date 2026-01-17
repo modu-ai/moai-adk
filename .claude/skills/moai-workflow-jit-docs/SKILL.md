@@ -16,6 +16,19 @@ tags:
   ]
 status: "active"
 updated: 2026-01-08
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["documentation", "docs", "API reference", "how to", "implement", "best practices", "technology guide", "framework documentation"]
+  phases: ["plan", "run", "sync"]
+  agents: ["manager-docs", "manager-spec", "expert-backend", "expert-frontend"]
+
 allowed-tools:
   - Read
   - Grep

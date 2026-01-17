@@ -644,8 +644,7 @@ class TestInitInteractiveMode:
                 "git_commit_lang": "en",
                 "code_comment_lang": "en",
                 "doc_lang": "en",
-                "tag_enabled": True,
-                "tag_mode": "warn",
+                "development_mode": "ddd",  # DDD is the only methodology
             }
 
             mock_initializer = MagicMock()
@@ -696,8 +695,7 @@ class TestInitInteractiveMode:
                 "git_commit_lang": "en",
                 "code_comment_lang": "en",
                 "doc_lang": "en",
-                "tag_enabled": True,
-                "tag_mode": "warn",
+                "development_mode": "ddd",  # DDD is the only methodology
             }
 
             mock_initializer = MagicMock()

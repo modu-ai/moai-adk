@@ -972,7 +972,7 @@ def install_hook(project_path: Optional[Path] = None) -> bool:
     hook_file = hooks_dir / "session_end__rank_submit.py"
 
     try:
-        hook_file.write_text(create_global_hook_script())
+        hook_file.write_text(create_global_hook_script(), encoding="utf-8")
         hook_file.chmod(0o755)  # Make executable
 
         # Register hook in settings.json

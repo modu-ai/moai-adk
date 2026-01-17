@@ -18,6 +18,29 @@ allowed-tools:
   - mcp__context7__get-library-docs
 status: "active"
 author: "MoAI-ADK Team"
+triggers:
+  keywords:
+    - backend
+    - API
+    - server
+    - authentication
+    - authorization
+    - REST
+    - GraphQL
+    - gRPC
+    - microservices
+    - database
+    - endpoint
+    - middleware
+    - FastAPI
+    - Express
+    - Django
+    - Flask
+    - serverless
+    - caching
+    - Redis
+    - PostgreSQL
+    - MongoDB
 ---
 
 # Backend Development Specialist

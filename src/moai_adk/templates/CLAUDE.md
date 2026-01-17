@@ -58,7 +58,7 @@ Direct Agent Requests: Immediate delegation when user explicitly requests an age
 Execute using explicit agent invocation:
 
 - "Use the expert-backend subagent to develop the API"
-- "Use the manager-tdd subagent to implement with TDD approach"
+- "Use the manager-ddd subagent to implement with DDD approach"
 - "Use the Explore subagent to analyze the codebase structure"
 
 Execution Patterns:
@@ -140,11 +140,10 @@ Allowed Tools: Full access (all tools)
 4. Workflow coordination needed? Use the manager-[workflow] subagent
 5. Complex multi-step tasks? Use the manager-strategy subagent
 
-### Manager Agents (9)
+### Manager Agents (8)
 
 - manager-spec: SPEC document creation, EARS format, requirements analysis
-- manager-tdd: Test-driven development, RED-GREEN-REFACTOR cycle, coverage validation
-- manager-ddd: Domain-driven refactoring, ANALYZE-PRESERVE-IMPROVE cycle, behavior preservation
+- manager-ddd: Domain-driven development, ANALYZE-PRESERVE-IMPROVE cycle, behavior preservation
 - manager-docs: Documentation generation, Nextra integration, markdown optimization
 - manager-quality: Quality gates, TRUST 5 validation, code review
 - manager-project: Project configuration, structure management, initialization
@@ -174,38 +173,30 @@ Allowed Tools: Full access (all tools)
 
 ## 5. SPEC-Based Workflow
 
-### Development Mode Selection
+### Development Methodology
 
-MoAI supports two development methodologies configured in quality.yaml:
+MoAI uses DDD (Domain-Driven Development) as its development methodology:
 
-- TDD (Test-Driven Development): RED-GREEN-REFACTOR cycle for new feature development
-- DDD (Domain-Driven Development): ANALYZE-PRESERVE-IMPROVE cycle for refactoring existing code
+- ANALYZE-PRESERVE-IMPROVE cycle for all development
+- Behavior preservation through characterization tests
+- Incremental improvements with existing test validation
 
-Configuration: @.moai/config/sections/quality.yaml (constitution.development_mode: tdd | ddd)
+Configuration: @.moai/config/sections/quality.yaml (constitution.development_mode: ddd)
 
 ### MoAI Command Flow
 
 - /moai:1-plan "description" leads to Use the manager-spec subagent
-- /moai:2-run SPEC-001 routes based on development_mode:
-  - If TDD mode: Use the manager-tdd subagent (RED-GREEN-REFACTOR)
-  - If DDD mode: Use the manager-ddd subagent (ANALYZE-PRESERVE-IMPROVE)
+- /moai:2-run SPEC-001 leads to Use the manager-ddd subagent (ANALYZE-PRESERVE-IMPROVE)
 - /moai:3-sync SPEC-001 leads to Use the manager-docs subagent
 
-### When to Use TDD vs DDD
+### DDD Development Approach
 
-Use TDD (manager-tdd) when:
+Use manager-ddd for:
 
-- Creating new functionality from scratch
-- Behavior specification drives development
-- No existing code to preserve
-- New tests define expected behavior
-
-Use DDD (manager-ddd) when:
-
-- Code already exists with defined behavior
-- Goal is structure improvement, not feature addition
-- Existing tests should pass unchanged
-- Technical debt reduction is the primary objective
+- Creating new functionality with behavior preservation focus
+- Refactoring and improving existing code structure
+- Technical debt reduction with test validation
+- Incremental feature development with characterization tests
 
 ### Agent Chain for SPEC Execution
 
@@ -494,7 +485,7 @@ budget = estimate_progressive_budget(
 
 ---
 
-Version: 10.2.0 (DDD Support + Progressive Disclosure)
+Version: 10.3.0 (DDD Only + Progressive Disclosure)
 Last Updated: 2026-01-17
 Language: English
 Core Rule: Alfred is an orchestrator; direct implementation is prohibited

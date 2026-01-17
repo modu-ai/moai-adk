@@ -18,6 +18,8 @@ allowed-tools:
   - Glob
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
+triggers:
+  keywords: ["neon", "serverless", "postgresql", "database branching", "auto-scaling", "pitr", "connection pooling"]
 ---
 
 # moai-platform-neon: Neon Serverless PostgreSQL Specialist

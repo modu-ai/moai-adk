@@ -10,7 +10,7 @@
 # - sections/language.yaml: Language preferences
 # - sections/project.yaml: Project metadata
 # - sections/git-strategy.yaml: Git workflow configuration
-# - sections/quality.yaml: TDD and quality settings
+# - sections/quality.yaml: DDD and quality settings
 # - sections/system.yaml: MoAI system settings (includes document_management)
 # - sections/llm.yaml: Multi-LLM routing settings
 # - sections/pricing.yaml: Service and pricing configuration

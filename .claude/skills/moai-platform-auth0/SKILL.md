@@ -18,6 +18,8 @@ allowed-tools:
   - WebSearch
   - Bash
 context7-libraries: "/auth0/docs"
+triggers:
+  keywords: ["auth0", "authentication", "oauth", "sso", "identity", "mfa", "token security"]
 ---
 
 # Auth0 Security Specialist

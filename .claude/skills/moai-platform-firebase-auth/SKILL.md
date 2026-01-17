@@ -18,6 +18,8 @@ allowed-tools:
   - Glob
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
+triggers:
+  keywords: ["firebase", "google auth", "social auth", "phone auth", "mobile authentication", "anonymous auth"]
 ---
 
 # Firebase Authentication Specialist

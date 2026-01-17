@@ -16,6 +16,8 @@ allowed-tools:
   - Bash
   - Grep
   - Glob
+triggers:
+  keywords: ["clerk", "webauthn", "passkeys", "passwordless", "modern auth", "biometric"]
 ---
 
 # Clerk Modern Authentication Specialist

@@ -16,6 +16,28 @@ allowed-tools:
   - mcp__context7__get-library-docs
 status: "active"
 author: "MoAI-ADK Team"
+triggers:
+  keywords:
+    - frontend
+    - UI
+    - component
+    - React
+    - Next.js
+    - Vue
+    - user interface
+    - responsive
+    - TypeScript
+    - JavaScript
+    - state management
+    - hooks
+    - props
+    - JSX
+    - TSX
+    - client-side
+    - browser
+    - DOM
+    - CSS
+    - Tailwind
 ---
 
 # Frontend Development Specialist

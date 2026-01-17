@@ -4,6 +4,18 @@ description: "Kotlin 2.0+ development specialist covering Ktor, coroutines, Comp
 version: 1.1.0
 category: "language"
 modularized: false
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: ~100
+  level2_tokens: ~5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["Kotlin", "Ktor", "coroutine", "Flow", "Compose", "Android", ".kt", ".kts", "build.gradle.kts"]
+  languages: ["kotlin"]
+
 user-invocable: false
 tags: ['kotlin', 'ktor', 'coroutines', 'compose', 'android', 'multiplatform']
 context7-libraries: "/ktorio/ktor, /jetbrains/compose-multiplatform, /jetbrains/exposed"

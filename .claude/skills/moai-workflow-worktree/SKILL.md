@@ -8,6 +8,19 @@ user-invocable: false
 tags: ['git', 'worktree', 'parallel', 'development', 'spec', 'isolation']
 updated: 2026-01-08
 status: "active"
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["worktree", "git worktree", "parallel development", "isolated workspace", "multiple SPECs", "branch isolation", "feature branch"]
+  phases: ["plan", "run"]
+  agents: ["manager-git", "manager-spec", "manager-project"]
+
 allowed-tools:
   - Read
   - Write

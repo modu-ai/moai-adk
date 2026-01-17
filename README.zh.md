@@ -10,7 +10,7 @@
 
 > **"Vibe Coding的目的不是快速生产力，而是代码质量。"**
 
-MoAI-ADK提供**高质量代码的AI开发环境**。SPEC-First TDD、测试驱动开发、持续重构和20个专业AI智能体协同工作。
+MoAI-ADK提供**高质量代码的AI开发环境**。SPEC-First DDD（领域驱动开发）、通过行为保存进行持续重构和20个专业AI智能体协同工作。
 
 ---
 
@@ -55,9 +55,8 @@ moai glm YOUR_API_KEY
 ## 🌟 核心价值
 
 - **🎯 SPEC-First**: 清晰的规格说明减少90%返工
-- **🔴 TDD强制**: 自动保证85%+测试覆盖率
-- **🔵 DDD支持**: 面向领域驱动重构改进现有代码库
-- **🤖 AI编排**: 21个专业智能体 + 49个技能
+- **🔵 DDD方法论**: 分析-保存-改进循环，通过行为保存实现持续重构
+- **🤖 AI编排**: 20个专业智能体 + 49个技能
 - **🌐 多语言路由**: 自动支持韩语/英语/日语/中文
 - **🌳 Worktree并行开发**: 完全隔离环境中无限并行工作
 - **🏆 MoAI Rank**: 通过Vibe Coding排行榜获得动力
@@ -222,45 +221,6 @@ GLM CodePlan API key (optional - press Enter to skip)
 > **原因**: 非英语语言在Claude中**额外消耗12%~20%令牌**。当无限重复的智能体工作增多时，会对成本和每周令牌限制产生重大影响，因此MoAI将内部智能体指导固定为英语，**仅用用户语言提供一般对话**。
 >
 > 这是MoAI**减少令牌浪费的努力**。
-
----
-
-#### Step 10: TAG 系统激活
-
-🎯 TAG 系统：TDD 的代码 ↔ 文档追踪
-
-TAG 系统维护代码与 SPEC 文档之间的可追溯性，
-以支持 TDD（测试驱动开发）循环。
-
-TDD 目的:
-•  RED (编写测试) → @SPEC SPEC-XXX verify
-•  GREEN (实现代码) → @SPEC SPEC-XXX impl
-•  REFACTOR (改进) → @SPEC SPEC-XXX impl 或 related
-
-清晰追踪每个代码文件实现哪个 SPEC，
-促进文档驱动开发并保持质量。
-
-💡 推荐激活 TAG。在 TDD 循环中保持代码与文档的
-一致性，提高质量和可维护性。
-
-```text
-? 是否启用 TAG 系统？ (TDD 推荐) (Y/n)
-```
-
----
-
-**TAG 验证模式指南**
-
-• warn: 开发期间警告提示 (默认值，推荐)
-• enforce: TAG 缺失时阻止提交 (严格质量控制)
-• off: 跳过验证 (不推荐)
-
-```text
-❯ 选择 TAG 验证模式: [↑↓] Navigate  [Enter] Select
-❯ warn (警告) - 仅显示缺失 TAG 的警告。开发中灵活处理
-  enforce (强制) - TAG 缺失时阻止提交。严格质量控制
-  off (关闭) - 跳过 TAG 验证。不推荐
-```
 
 ---
 
@@ -458,25 +418,21 @@ moai update --manual
 
 ---
 
-### 💻 `/moai:2-run` - 实现 (TDD或DDD)
+### 💻 `/moai:2-run` - 实现 (DDD)
 
 ```bash
 > /moai:2-run SPEC-001
 ```
 
-根据`.moai/config/sections/quality.yaml`中的`development_mode`设置路由到TDD或DDD:
+使用DDD（领域驱动开发）方法论实现SPEC:
 
-**TDD模式** (默认，用于新功能开发):
-- 🔴 先编写测试 (Red)
-- 🟢 测试通过代码 (Green)
-- 🔵 重构 (Refactor)
+**DDD循环** (分析-保存-改进):
 
-**DDD模式** (用于重构现有代码):
-- 🔍 分析领域边界和耦合度
-- 🛡️ 用特征测试保持行为
-- ✨ 渐进式结构改进
+- 🔍 **分析**: 分析领域边界和耦合度
+- 🛡️ **保存**: 用特征测试保持现有行为
+- ✨ **改进**: 渐进式结构改进
 
-**验证项目** (两种模式通用):
+**验证项目**:
 
 - 测试覆盖率 >= 85%
 - Linting通过
@@ -552,7 +508,7 @@ flowchart TB
     Quality --> Synthesize
 
     Synthesize --> Plan[阶段1: SPEC生成<br/>EARS格式]
-    Plan --> Implement[阶段2: TDD实现<br/>Red-Green-Refactor]
+    Plan --> Implement[阶段2: DDD实现<br/>分析-保存-改进]
 
     Implement --> Loop{是否需要<br/>循环修复?}
     Loop -->|是| AutoLoop[自主循环<br/>诊断→修复→验证]
@@ -588,11 +544,11 @@ flowchart TB
 - 定义验收标准和测试要求
 - 架构设计和技术选型
 
-**阶段2: TDD实现 (质量保证)**
+**阶段2: DDD实现 (质量保证)**
 
-- 红灯: 编写失败测试
-- 绿灯: 实现最小代码通过测试
-- 重构: 优化代码结构
+- 分析: 理解领域边界和现有行为
+- 保存: 创建特征测试保护现有行为
+- 改进: 渐进式重构优化代码结构
 - 可选启用自主循环自动修复问题
 
 **阶段3: 文档同步 (保持最新)**
@@ -647,13 +603,13 @@ flowchart LR
 
 #### 🎬 何时使用
 
-| 场景                | 推荐命令          | 理由                           |
-| ------------------- | ----------------- | ------------------------------ |
-| 新功能完整开发      | `/moai:alfred`    | 从SPEC到实现的全自动流程       |
-| Bug修复            | `/moai:loop`      | 快速诊断和修复循环             |
-| 文档更新           | `/moai:3-sync`    | 仅文档同步                     |
-| 代码质量改进       | `/moai:fix`       | 单次修复问题                   |
-| 完整工作流程       | `/moai:alfred --loop` | 包含自动循环的完全自主化     |
+| 场景           | 推荐命令              | 理由                     |
+| -------------- | --------------------- | ------------------------ |
+| 新功能完整开发 | `/moai:alfred`        | 从SPEC到实现的全自动流程 |
+| Bug修复        | `/moai:loop`          | 快速诊断和修复循环       |
+| 文档更新       | `/moai:3-sync`        | 仅文档同步               |
+| 代码质量改进   | `/moai:fix`           | 单次修复问题             |
+| 完整工作流程   | `/moai:alfred --loop` | 包含自动循环的完全自主化 |
 
 ---
 
@@ -717,7 +673,7 @@ flowchart TB
     Filter -->|否| Done[检测完成标记]
     Filter -->|是| TODO[生成TODO列表<br/>优先级排序]
 
-    TODO --> Execute[逐项修复<br/>Red-Green-Refactor]
+    TODO --> Execute[逐项修复<br/>分析-保存-改进]
     Execute --> Verify[验证修复<br/>运行测试]
 
     Verify --> Check{问题解决?}
@@ -794,14 +750,14 @@ AST-grep是**结构代码检查工具**。与普通grep或正则表达式搜索�
 
 **对比表**:
 
-| 特性           | grep/正则表达式        | AST-grep               |
-| -------------- | ---------------------- | ---------------------- |
-| 搜索目标       | 文本模式              | 代码结构              |
-| 理解能力       | 仅字符串匹配          | 理解语法和语义        |
-| 语言支持       | 有限(需要不同正则)    | 40+ 语言统一规则      |
-| 误报率         | 高(匹配注释、字符串)  | 低(仅匹配代码结构)    |
-| 复杂查询       | 难以实现              | 自然表达              |
-| 重构支持       | 不支持                | 原生支持              |
+| 特性     | grep/正则表达式      | AST-grep           |
+| -------- | -------------------- | ------------------ |
+| 搜索目标 | 文本模式             | 代码结构           |
+| 理解能力 | 仅字符串匹配         | 理解语法和语义     |
+| 语言支持 | 有限(需要不同正则)   | 40+ 语言统一规则   |
+| 误报率   | 高(匹配注释、字符串) | 低(仅匹配代码结构) |
+| 复杂查询 | 难以实现             | 自然表达           |
+| 重构支持 | 不支持               | 原生支持           |
 
 **工作原理**:
 
@@ -893,12 +849,12 @@ flowchart LR
 
 **修复级别**:
 
-| 级别 | 类型      | 批准   | 说明                          |
-| ---- | --------- | ------ | ----------------------------- |
-| 1    | 立即修复  | 不需要 | import排序、空白、格式       |
-| 2    | 安全修复  | 仅日志 | 变量重命名、类型添加          |
-| 3    | 需要批准  | 需要   | 逻辑变更、API修改、方法替换   |
-| 4    | 手动需要  | 不可   | 安全、架构、设计决策          |
+| 级别 | 类型     | 批准   | 说明                        |
+| ---- | -------- | ------ | --------------------------- |
+| 1    | 立即修复 | 不需要 | import排序、空白、格式      |
+| 2    | 安全修复 | 仅日志 | 变量重命名、类型添加        |
+| 3    | 需要批准 | 需要   | 逻辑变更、API修改、方法替换 |
+| 4    | 手动需要 | 不可   | 安全、架构、设计决策        |
 
 **修复过程**:
 
@@ -917,12 +873,12 @@ flowchart LR
 
 #### 🎬 何时使用
 
-| 场景             | 说明                         | 示例                          |
-| ---------------- | ---------------------------- | ----------------------------- |
-| **实现后质量保证** | 代码编写后自动质量改进       | 功能实现后运行 `/moai:loop`   |
-| **测试失败修复**  | 自动分析和修复测试失败       | 测试运行后失败时执行          |
-| **覆盖率提升**    | 自动达到85%目标              | 新代码编写后执行              |
-| **重构维护**      | 持续改进代码质量             | 定期运行以保持代码质量        |
+| 场景               | 说明                   | 示例                        |
+| ------------------ | ---------------------- | --------------------------- |
+| **实现后质量保证** | 代码编写后自动质量改进 | 功能实现后运行 `/moai:loop` |
+| **测试失败修复**   | 自动分析和修复测试失败 | 测试运行后失败时执行        |
+| **覆盖率提升**     | 自动达到85%目标        | 新代码编写后执行            |
+| **重构维护**       | 持续改进代码质量       | 定期运行以保持代码质量      |
 
 **选项**:
 
@@ -1070,12 +1026,12 @@ flowchart TB
 
 每个问题根据复杂度分为4个级别。
 
-| Level | 说明           | 批准   | 示例                                   | 自动修复可否 |
-| ----- | -------------- | ------ | -------------------------------------- | ------------ |
-| 1     | 立即修复       | 不需要 | 导入排序、空白、格式化                 | ✅ 可        |
-| 2     | 安全修复       | 仅日志 | 变量重命名、类型添加、简单重构          | ✅ 可        |
-| 3     | 需要批准       | 需要   | 逻辑变更、API修改、方法替换            | ⚠️ 批准后    |
-| 4     | 手动需要       | 不可   | 安全、架构                             | ❌ 不可      |
+| Level | 说明     | 批准   | 示例                           | 自动修复可否 |
+| ----- | -------- | ------ | ------------------------------ | ------------ |
+| 1     | 立即修复 | 不需要 | 导入排序、空白、格式化         | ✅ 可        |
+| 2     | 安全修复 | 仅日志 | 变量重命名、类型添加、简单重构 | ✅ 可        |
+| 3     | 需要批准 | 需要   | 逻辑变更、API修改、方法替换    | ⚠️ 批准后    |
+| 4     | 手动需要 | 不可   | 安全、架构                     | ❌ 不可      |
 
 **修复过程**:
 
@@ -1094,15 +1050,15 @@ flowchart TB
 
 #### 🎬 何时使用
 
-| 场景                         | 推荐命令       | 理由                                           |
-| ---------------------------- | -------------- | ---------------------------------------------- |
-| 日常代码质量维护             | `/moai:fix`    | 快速单次修复，无需循环                         |
-| CI失败原因一次性修复         | `/moai:fix`    | 一次执行修复所有问题                           |
-| 新功能实现后清理             | `/moai:fix`    | 批量格式化和风格修复                           |
-| 复杂反复出现的Bug            | `/moai:loop`   | 需要持续修复和验证                             |
-| 大规模重构                   | `/moai:loop`   | 需要多阶段修复和渐进式验证                     |
-| PR创建前最终检查             | `/moai:fix`    | 一次执行清理                                   |
-| 遗留代码大幅改善             | `/moai:loop`   | 需要多次反复逐步改善                           |
+| 场景                 | 推荐命令     | 理由                       |
+| -------------------- | ------------ | -------------------------- |
+| 日常代码质量维护     | `/moai:fix`  | 快速单次修复，无需循环     |
+| CI失败原因一次性修复 | `/moai:fix`  | 一次执行修复所有问题       |
+| 新功能实现后清理     | `/moai:fix`  | 批量格式化和风格修复       |
+| 复杂反复出现的Bug    | `/moai:loop` | 需要持续修复和验证         |
+| 大规模重构           | `/moai:loop` | 需要多阶段修复和渐进式验证 |
+| PR创建前最终检查     | `/moai:fix`  | 一次执行清理               |
+| 遗留代码大幅改善     | `/moai:loop` | 需要多次反复逐步改善       |
 
 ---
 
@@ -1283,11 +1239,11 @@ AI: <moai>DONE</moai>  ← 完成标记
 
 ### 三个命令层级
 
-| 命令           | 类型     | 说明                                    |
-| -------------- | -------- | --------------------------------------- |
-| `/moai:fix`    | 单次     | 1次扫描 + 自动修复                      |
-| `/moai:loop`   | 自主循环 | 重复修复直到完成标记或最大次数          |
-| `/moai:alfred` | 完全自主 | 目标 → SPEC → 实现 → 文档全过程自动化   |
+| 命令           | 类型     | 说明                                  |
+| -------------- | -------- | ------------------------------------- |
+| `/moai:fix`    | 单次     | 1次扫描 + 自动修复                    |
+| `/moai:loop`   | 自主循环 | 重复修复直到完成标记或最大次数        |
+| `/moai:alfred` | 完全自主 | 目标 → SPEC → 实现 → 文档全过程自动化 |
 
 ### 命令链关系
 
@@ -1295,7 +1251,7 @@ AI: <moai>DONE</moai>  ← 完成标记
 /moai:alfred
   ├── Phase 0: 并行探索 (Explore + Research + Quality)
   ├── Phase 1: /moai:1-plan (SPEC生成)
-  ├── Phase 2: /moai:2-run (TDD实现)
+  ├── Phase 2: /moai:2-run (DDD实现)
   │     └── /moai:loop (自主循环)
   │           └── /moai:fix (单次修复) × N次
   └── Phase 3: /moai:3-sync (文档同步)
@@ -1305,11 +1261,11 @@ AI: <moai>DONE</moai>  ← 完成标记
 
 AI完成工作时添加标记，自主循环终止:
 
-| 标记                      | 说明     |
-| ------------------------- | -------- |
-| `<moai>DONE</moai>`       | 任务完成 |
-| `<moai>COMPLETE</moai>`   | 全部完成 |
-| `<moai:done />`           | XML格式  |
+| 标记                    | 说明     |
+| ----------------------- | -------- |
+| `<moai>DONE</moai>`     | 任务完成 |
+| `<moai>COMPLETE</moai>` | 全部完成 |
+| `<moai:done />`         | XML格式  |
 
 ### 自动修复级别
 
@@ -1379,19 +1335,18 @@ Alfred自动识别4种语言请求并调用正确的智能体:
 
 ---
 
-### 🎯 Tier 2: 工作流管理器 (9个)
+### 🎯 Tier 2: 工作流管理器 (8个)
 
-| 智能体               | 角色             | 自动调用时机                                |
-| -------------------- | ---------------- | ------------------------------------------- |
-| **manager-spec**     | SPEC编写 (EARS)  | `/moai:1-plan`                              |
-| **manager-tdd**      | TDD自动执行      | `/moai:2-run` (development_mode: tdd 时)    |
-| **manager-ddd**      | DDD重构执行      | `/moai:2-run` (development_mode: ddd 时)    |
-| **manager-docs**     | 文档自动生成     | `/moai:3-sync`                              |
-| **manager-quality**  | TRUST 5验证      | 实现完成后                                  |
-| **manager-strategy** | 执行策略建立     | 复杂规划时                                  |
-| **manager-project**  | 项目初始化       | `/moai:0-project`                           |
-| **manager-git**      | Git工作流        | 分支/PR管理                                 |
-| **manager-claude**   | Claude Code集成  | 设置优化                                    |
+| 智能体               | 角色            | 自动调用时机      |
+| -------------------- | --------------- | ----------------- |
+| **manager-spec**     | SPEC编写 (EARS) | `/moai:1-plan`    |
+| **manager-ddd**      | DDD开发执行     | `/moai:2-run`     |
+| **manager-docs**     | 文档自动生成    | `/moai:3-sync`    |
+| **manager-quality**  | TRUST 5验证     | 实现完成后        |
+| **manager-strategy** | 执行策略建立    | 复杂规划时        |
+| **manager-project**  | 项目初始化      | `/moai:0-project` |
+| **manager-git**      | Git工作流       | 分支/PR管理       |
+| **manager-claude**   | Claude Code集成 | 设置优化          |
 
 ---
 
@@ -1450,7 +1405,7 @@ MoAI-ADK的所有项目遵循**TRUST 5**质量框架。
 
 ```mermaid
 graph TD
-    T1["🔴 T: Test-First<br/>━━━━━━━━<br/>• TDD Red-Green-Refactor<br/>• 85%+覆盖率<br/>• 自动测试"]
+    T1["🔴 T: Test-First<br/>━━━━━━━━<br/>• DDD 分析-保存-改进<br/>• 85%+覆盖率<br/>• 自动测试"]
     R["📖 R: Readable<br/>━━━━━━━━<br/>• 清晰命名<br/>• 代码注释<br/>• Linter符合"]
     U["🔄 U: Unified<br/>━━━━━━━━<br/>• 一致风格<br/>• 标准模式<br/>• 错误处理"]
     S["🔒 S: Secured<br/>━━━━━━━━<br/>• OWASP Top 10<br/>• 漏洞扫描<br/>• 加密政策"]
@@ -1563,16 +1518,16 @@ MoAI-ADK提供可定制的statusline，在Claude Code终端中显示实时状态
 
 ### 可用组件
 
-| 图标 | 组件   | 说明                                    | 配置键           |
-| ---- | ------ | --------------------------------------- | ---------------- |
-| 🤖   | 模型   | Claude模型 (Opus, Sonnet等)             | `model`          |
-| 💰   | 上下文 | 上下文窗口使用量 (例: 77K/200K)         | `context_window` |
-| 💬   | 风格   | 活动输出风格 (例: Mr. Alfred)           | `output_style`   |
-| 📁   | 目录   | 当前项目名称                            | `directory`      |
-| 📊   | Git状态| 暂存/修改/未跟踪文件数                  | `git_status`     |
-| 💾   | 内存   | 进程内存使用量                          | `memory_usage`   |
-| 🔀   | 分支   | 当前Git分支                             | `branch`         |
-| 🔅   | 版本   | Claude Code版本 (可选)                  | `version`        |
+| 图标 | 组件    | 说明                            | 配置键           |
+| ---- | ------- | ------------------------------- | ---------------- |
+| 🤖   | 模型    | Claude模型 (Opus, Sonnet等)     | `model`          |
+| 💰   | 上下文  | 上下文窗口使用量 (例: 77K/200K) | `context_window` |
+| 💬   | 风格    | 活动输出风格 (例: Mr. Alfred)   | `output_style`   |
+| 📁   | 目录    | 当前项目名称                    | `directory`      |
+| 📊   | Git状态 | 暂存/修改/未跟踪文件数          | `git_status`     |
+| 💾   | 内存    | 进程内存使用量                  | `memory_usage`   |
+| 🔀   | 分支    | 当前Git分支                     | `branch`         |
+| 🔅   | 版本    | Claude Code版本 (可选)          | `version`        |
 
 ### 配置
 
@@ -1580,15 +1535,15 @@ MoAI-ADK提供可定制的statusline，在Claude Code终端中显示实时状态
 
 ```yaml
 display:
-  model: true           # 🤖 Claude模型
-  context_window: true  # 💰 上下文窗口
-  output_style: true    # 💬 输出风格
-  directory: true       # 📁 项目名称
-  git_status: true      # 📊 Git状态
-  memory_usage: true    # 💾 内存使用量
-  branch: true          # 🔀 Git分支
-  version: 1.1.0        # 🔅 版本 (可选)
-  active_task: true     # 活动任务
+  model: true # 🤖 Claude模型
+  context_window: true # 💰 上下文窗口
+  output_style: true # 💬 输出风格
+  directory: true # 📁 项目名称
+  git_status: true # 📊 Git状态
+  memory_usage: true # 💾 内存使用量
+  branch: true # 🔀 Git分支
+  version: 1.1.0 # 🔅 版本 (可选)
+  active_task: true # 活动任务
 ```
 
 ### 内存收集器
@@ -1602,11 +1557,11 @@ display:
 
 ### 显示模式
 
-| 模式       | 最大长度 | 使用场景   |
-| ---------- | -------- | ---------- |
-| `compact`  | 80字符   | 标准终端   |
-| `extended` | 120字符  | 宽屏终端   |
-| `minimal`  | 40字符   | 窄屏终端   |
+| 模式       | 最大长度 | 使用场景 |
+| ---------- | -------- | -------- |
+| `compact`  | 80字符   | 标准终端 |
+| `extended` | 120字符  | 宽屏终端 |
+| `minimal`  | 40字符   | 窄屏终端 |
 
 设置模式:
 
@@ -1667,7 +1622,7 @@ MoAI-ADK的核心创新: **通过Worktree完全隔离、无限并行开发**
 │                                                                  │
 │  $ claude                                                        │
 │  > /moai:2-run SPEC-AUTH-001                                     │
-│  🔄 TDD执行中... (Red → Green → Refactor)                         │
+│  🔄 DDD执行中... (分析 → 保存 → 改进)                              │
 │  ✅ 实现完成!                                                    │
 │  ✅ 测试通过 (Coverage: 92%)                                     │
 │                                                                  │
@@ -1761,18 +1716,18 @@ moai-wt clean --merged-only
 
 ### 📊 Worktree命令
 
-| 命令                     | 说明                         | 使用示例                         |
-| ------------------------ | ---------------------------- | -------------------------------- |
-| `moai-wt new SPEC-ID`    | 创建新Worktree               | `moai-wt new SPEC-AUTH-001`      |
-| `moai-wt go SPEC-ID`     | 进入Worktree (打开新shell)   | `moai-wt go SPEC-AUTH-001`       |
-| `moai-wt list`           | 查看Worktree列表             | `moai-wt list`                   |
-| `moai-wt done SPEC-ID`   | 合并后清理 (checkout→merge)  | `moai-wt done SPEC-AUTH-001`     |
-| `moai-wt remove SPEC-ID` | 删除Worktree                 | `moai-wt remove SPEC-AUTH-001`   |
-| `moai-wt status`         | 查看Worktree状态和注册表     | `moai-wt status`                 |
-| `moai-wt sync [SPEC-ID]` | 同步Worktree                 | `moai-wt sync --all`             |
-| `moai-wt clean`          | 清理已合并的Worktree         | `moai-wt clean --merged-only`    |
-| `moai-wt recover`        | 从磁盘恢复注册表             | `moai-wt recover`                |
-| `moai-wt config`         | 查看Worktree配置             | `moai-wt config root`            |
+| 命令                     | 说明                        | 使用示例                       |
+| ------------------------ | --------------------------- | ------------------------------ |
+| `moai-wt new SPEC-ID`    | 创建新Worktree              | `moai-wt new SPEC-AUTH-001`    |
+| `moai-wt go SPEC-ID`     | 进入Worktree (打开新shell)  | `moai-wt go SPEC-AUTH-001`     |
+| `moai-wt list`           | 查看Worktree列表            | `moai-wt list`                 |
+| `moai-wt done SPEC-ID`   | 合并后清理 (checkout→merge) | `moai-wt done SPEC-AUTH-001`   |
+| `moai-wt remove SPEC-ID` | 删除Worktree                | `moai-wt remove SPEC-AUTH-001` |
+| `moai-wt status`         | 查看Worktree状态和注册表    | `moai-wt status`               |
+| `moai-wt sync [SPEC-ID]` | 同步Worktree                | `moai-wt sync --all`           |
+| `moai-wt clean`          | 清理已合并的Worktree        | `moai-wt clean --merged-only`  |
+| `moai-wt recover`        | 从磁盘恢复注册表            | `moai-wt recover`              |
+| `moai-wt config`         | 查看Worktree配置            | `moai-wt config root`          |
 
 ---
 
@@ -1799,21 +1754,22 @@ MoAI-ADK安装后在项目根目录生成的`CLAUDE.md`是**Alfred（AI编排器
 
 ### CLAUDE.md核心结构
 
-| 章节 | 说明 | 主要内容 |
-|------|------|----------|
-| **Core Identity** | Alfred角色定义 | 战略编排器、HARD规则 |
-| **Request Processing Pipeline** | 请求处理流程 | Analyze → Route → Execute → Report |
-| **Command Reference** | 命令分类 | Type A (Workflow), Type B (Utility), Type C (Feedback) |
-| **Agent Catalog** | 子代理列表 | Manager 8个, Expert 8个, Builder 4个 |
-| **SPEC-Based Workflow** | SPEC驱动开发 | Plan → Run → Sync 流程 |
-| **Quality Gates** | 质量验证规则 | HARD/SOFT规则检查列表 |
-| **Configuration Reference** | 配置参考 | 语言、输出格式规则 |
+| 章节                            | 说明           | 主要内容                                               |
+| ------------------------------- | -------------- | ------------------------------------------------------ |
+| **Core Identity**               | Alfred角色定义 | 战略编排器、HARD规则                                   |
+| **Request Processing Pipeline** | 请求处理流程   | Analyze → Route → Execute → Report                     |
+| **Command Reference**           | 命令分类       | Type A (Workflow), Type B (Utility), Type C (Feedback) |
+| **Agent Catalog**               | 子代理列表     | Manager 8个, Expert 8个, Builder 4个                   |
+| **SPEC-Based Workflow**         | SPEC驱动开发   | Plan → Run → Sync 流程                                 |
+| **Quality Gates**               | 质量验证规则   | HARD/SOFT规则检查列表                                  |
+| **Configuration Reference**     | 配置参考       | 语言、输出格式规则                                     |
 
 ### 使用方法：不要修改
 
 > **建议**：`CLAUDE.md`请**原样使用，不要修改**。
 
 **原因**：
+
 - MoAI-ADK更新时会自动替换为最新版本
 - 修改可能导致更新冲突
 - 确保代理间行为一致性
@@ -1838,32 +1794,36 @@ touch CLAUDE.local.md
 # 项目本地指令
 
 ## 编码风格
+
 - 所有函数必须有类型提示
 - 使用Google风格的docstring
 
 ## 项目特定规则
+
 - API响应始终使用snake_case
-- 测试文件必须有test_前缀
+- 测试文件必须有test\_前缀
 
 ## 禁止事项
+
 - 禁止使用console.log（使用logger）
 - 禁止使用any类型
 ```
 
 **优点**：
+
 - 与`CLAUDE.md`更新不冲突
 - 可按项目自定义设置
 - 可添加到`.gitignore`保持个人设置
 
 ### CLAUDE.md vs CLAUDE.local.md
 
-| 对比 | CLAUDE.md | CLAUDE.local.md |
-|------|-----------|-----------------|
-| **目的** | Alfred执行指令 | 个人/项目附加指令 |
-| **修改** | 不建议 | 自由修改 |
-| **更新** | MoAI自动管理 | 用户自行管理 |
-| **Git** | 提交对象 | 可选（可.gitignore） |
-| **优先级** | 基本规则 | 附加/覆盖规则 |
+| 对比       | CLAUDE.md      | CLAUDE.local.md      |
+| ---------- | -------------- | -------------------- |
+| **目的**   | Alfred执行指令 | 个人/项目附加指令    |
+| **修改**   | 不建议         | 自由修改             |
+| **更新**   | MoAI自动管理   | 用户自行管理         |
+| **Git**    | 提交对象       | 可选（可.gitignore） |
+| **优先级** | 基本规则       | 附加/覆盖规则        |
 
 ### 核心规则（HARD Rules）
 
@@ -2109,7 +2069,7 @@ Copyleft License (COPYLEFT-3.0) - [LICENSE](./LICENSE)
 ## 🙏 由MoAI-ADK团队用❤️制作
 
 **最后更新:** 2026-01-11
-**哲学**: SPEC-First TDD + 智能体编排 + 混合LLM
+**哲学**: SPEC-First DDD + 智能体编排 + 混合LLM
 **MoAI**: MoAI意为"所有人的AI (Modu-ui AI)"。
 
 > **"无限可能主义 - 所有人的AI"**

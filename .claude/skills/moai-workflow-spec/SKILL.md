@@ -11,6 +11,19 @@ tags: ['workflow', 'spec', 'ears', 'requirements', 'moai-adk', 'planning']
 updated: 2026-01-08
 status: "active"
 author: "MoAI-ADK Team"
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["SPEC", "requirement", "EARS", "acceptance criteria", "user story", "planning", "specification", "requirements gathering"]
+  phases: ["plan"]
+  agents: ["manager-spec", "manager-strategy", "Plan"]
+
 allowed-tools:
   - Read
   - Write

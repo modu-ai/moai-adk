@@ -2,7 +2,7 @@
 
 ## Summary
 
-This release marks a major architectural shift to Domain-Driven Development (DDD) methodology exclusively, removing the TAG System entirely. It introduces Progressive Disclosure for 67% token reduction in skill loading and adds MCP (Model Context Protocol) server development support.
+This release marks a major architectural shift to Domain-Driven Development (DDD) methodology exclusively, removing the TAG System entirely. It introduces Progressive Disclosure for 67% token reduction in skill loading.
 
 ## Changes
 
@@ -24,13 +24,6 @@ This release marks a major architectural shift to Domain-Driven Development (DDD
   - 67% reduction in initial token load (from ~90K to ~600 tokens for manager-spec)
   - Automatic trigger-based loading via keywords, phases, agents, languages
   - Integration with JIT Context Loader
-
-- **feat(skill)**: Add moai-protocol-mcp skill
-  - MCP server development support
-  - Client integration patterns
-  - Transport protocol configuration
-  - Security and authorization guidelines
-  - 2,000+ lines of comprehensive MCP documentation
 
 - **feat(builder)**: Enhance agent/skill/command builder definitions
   - Improved builder-agent, builder-skill, builder-command
@@ -90,7 +83,6 @@ moai --version
 
 - All skills now support Progressive Disclosure (automatic, no action needed)
 - CLAUDE.md updated to v10.3.0 (templates auto-sync on update)
-- MCP server development support via moai-protocol-mcp skill
 
 ## Quality
 
@@ -104,7 +96,6 @@ moai --version
 - Updated CLAUDE.md to v10.3.0 (DDD Only + Progressive Disclosure)
 - Updated README files (EN/KO/JA/ZH) with DDD terminology
 - Added Progressive Disclosure documentation
-- Added moai-protocol-mcp skill documentation
 
 ---
 
@@ -112,7 +103,7 @@ moai --version
 
 ## 요약
 
-이 릴리스는 Domain-Driven Development (DDD) 방법론으로 전환하는 주요 아키텍처 변경을 표시하며, TAG 시스템을 완전히 제거합니다. 스킬 로딩에서 67% 토큰 절감을 위한 Progressive Disclosure를 도입하고 MCP (Model Context Protocol) 서버 개발 지원을 추가합니다.
+이 릴리스는 Domain-Driven Development (DDD) 방법론으로 전환하는 주요 아키텍처 변경을 표시하며, TAG 시스템을 완전히 제거합니다. 스킬 로딩에서 67% 토큰 절감을 위한 Progressive Disclosure를 도입합니다.
 
 ## 변경 사항
 
@@ -134,13 +125,6 @@ moai --version
   - 초기 토큰 로드 67% 절감 (manager-spec의 경우 ~90K → ~600 토큰)
   - 키워드, 단계, 에이전트, 언어를 통한 자동 트리거 기반 로딩
   - JIT Context Loader와 통합
-
-- **feat(skill)**: moai-protocol-mcp 스킬 추가
-  - MCP 서버 개발 지원
-  - 클라이언트 통합 패턴
-  - 전송 프로토콜 구성
-  - 보안 및 인증 가이드라인
-  - 2,000줄 이상의 포괄적인 MCP 문서
 
 - **feat(builder)**: 에이전트/스킬/명령어 빌더 정의 강화
   - builder-agent, builder-skill, builder-command 개선
@@ -200,7 +184,6 @@ moai --version
 
 - 모든 스킬이 이제 Progressive Disclosure를 지원합니다 (자동, 조치 불필요)
 - CLAUDE.md가 v10.3.0으로 업데이트되었습니다 (업데이트 시 템플릿 자동 동기화)
-- moai-protocol-mcp 스킬을 통한 MCP 서버 개발 지원
 
 ## 품질
 
@@ -214,7 +197,6 @@ moai --version
 - CLAUDE.md를 v10.3.0으로 업데이트 (DDD Only + Progressive Disclosure)
 - DDD 용어로 README 파일 업데이트 (EN/KO/JA/ZH)
 - Progressive Disclosure 문서 추가
-- moai-protocol-mcp 스킬 문서 추가
 
 ---
 

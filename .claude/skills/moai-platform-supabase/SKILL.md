@@ -16,6 +16,8 @@ allowed-tools:
   - Glob
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
+triggers:
+  keywords: ["supabase", "postgresql", "pgvector", "real-time", "rls", "row level security", "edge functions"]
 ---
 
 # moai-platform-supabase: Supabase Platform Specialist

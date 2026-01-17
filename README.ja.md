@@ -10,7 +10,7 @@
 
 > **"バイブコーディングの目的は迅速な生産性ではなく、コード品質である"**
 
-MoAI-ADKは**高品質なコードを作成するAI開発環境**を提供します。SPEC-First TDD、テスト駆動開発、継続的リファクタリング、そして20個の専門AIエージェントが一緒に働きます。
+MoAI-ADKは**高品質なコードを作成するAI開発環境**を提供します。SPEC-First DDD (Domain-Driven Development)、動作保存による継続的リファクタリング、そして20個の専門AIエージェントが一緒に働きます。
 
 ---
 
@@ -55,9 +55,8 @@ moai glm YOUR_API_KEY
 ## 🌟 核心価値
 
 - **🎯 SPEC-First**: 明確な仕様書で90%再作業削減
-- **🔴 TDD強制**: 85%+テストカバレッジ自動保証
-- **🔵 DDDサポート**: 既存コードベース改善のためのドメイン駆動リファクタリング
-- **🤖 AIオーケストレーション**: 21個専門エージェント + 49個スキル
+- **🔵 DDD (Domain-Driven Development)**: 分析-保存-改善サイクルによる動作保存リファクタリング
+- **🤖 AIオーケストレーション**: 20個専門エージェント + 49個スキル
 - **🌐 多言語ルーティング**: 韓国語/英語/日本語/中国語自動サポート
 - **🌳 Worktree並列開発**: 完全分離環境で無制限並列作業
 - **🏆 MoAI Rank**: バイブコーディングリーダーボードでモチベーション
@@ -222,45 +221,6 @@ Gitコミットメッセージに使用する言語を選択します。
 > **理由**: 非英語圏言語はClaudeで**12%~20%トークンを追加消費**します。無限反復エージェント作業が多くなるとコストと週次トークンリミットに大きな影響を与えるため、MoAIは内部エージェント指示は英語で固定し**一般対話のみユーザー言語で提供**します。
 >
 > これがMoAIの**トークン浪費を減らすための取り組み**です。
-
----
-
-#### Step 10: TAGシステムの有効化
-
-🎯 TAGシステム: TDDのためのコード↔ドキュメント追跡
-
-TAGシステムはコードとSPECドキュメント間の追跡可能性を維持して
-TDD(Test-Driven Development)サイクルをサポートします。
-
-TDD目的:
-•  RED (テスト作成) → @SPEC SPEC-XXX verify
-•  GREEN (コード実装) → @SPEC SPEC-XXX impl
-•  REFACTOR (改善) → @SPEC SPEC-XXX implまたはrelated
-
-各コードファイルがどのSPECを実装するか明確に追跡して
-ドキュメント中心開発を促進し品質を維持します。
-
-💡 TAGの有効化を推奨します。TDDサイクルでコードとドキュメントの
-一貫性を維持して品質と保守性を向上させます。
-
-```text
-? TAGシステムを有効にしますか？ (TDD推奨) (Y/n)
-```
-
----
-
-**TAG検証モードガイド**
-
-• warn: 開発中に警告で通知 (デフォルト、推奨)
-• enforce: TAG未満時コミット拒否 (厳格な品質管理)
-• off: 検証スキップ (推奨しない)
-
-```text
-❯ TAG検証モードを選択してください: [↑↓] Navigate  [Enter] Select
-❯ warn (警告) - 不足したTAGについて警告のみ表示します。開発中に柔軟対応
-  enforce (強制) - TAGが不足するとコミットを拒否します。厳格な品質管理
-  off (オフ) - TAG検証をスキップします。推奨しません
-```
 
 ---
 
@@ -458,25 +418,21 @@ EARS形式を使用して曖昧さのない仕様書を自動生成します。�
 
 ---
 
-### 💻 `/moai:2-run` - 実装 (TDDまたはDDD)
+### 💻 `/moai:2-run` - 実装 (DDD)
 
 ```bash
 > /moai:2-run SPEC-001
 ```
 
-`.moai/config/sections/quality.yaml`の`development_mode`設定に従ってTDDまたはDDDにルーティングされます：
+DDD (Domain-Driven Development) 方法論で実装を実行します：
 
-**TDDモード** (デフォルト、新機能開発用):
-- 🔴 テスト先作成 (Red)
-- 🟢 テスト通過コード (Green)
-- 🔵 リファクタリング (Refactor)
+**DDDサイクル** (ANALYZE-PRESERVE-IMPROVE):
 
-**DDDモード** (既存コードリファクタリング用):
-- 🔍 ドメイン境界と結合度分析
-- 🛡️ 特性テストで動作保存
-- ✨ 漸進的構造改善
+- 🔍 **ANALYZE**: ドメイン境界と結合度分析
+- 🛡️ **PRESERVE**: 特性テストで動作保存
+- ✨ **IMPROVE**: 漸進的構造改善
 
-**検証項目** (両モード共通):
+**検証項目**:
 
 - テストカバレッジ >= 85%
 - リンティング通過
@@ -549,18 +505,18 @@ flowchart TB
 
     Phase1 --> Spec[📋 EARS形式SPEC文書<br/>要件仕様書]
 
-    Spec --> Phase2[Phase 2: TDD実装]
+    Spec --> Phase2[Phase 2: DDD実装]
 
-    Phase2 --> Red[🔴 RED: 失敗テスト作成]
-    Red --> Green[🟢 GREEN: 最小実装]
-    Green --> Refactor[🔵 REFACTOR: コード改善]
+    Phase2 --> Analyze[🔍 ANALYZE: ドメイン分析]
+    Analyze --> Preserve[🛡️ PRESERVE: 動作保存]
+    Preserve --> Improve[✨ IMPROVE: 漸進的改善]
 
-    Refactor --> Check{品質検証<br/>TRUST 5}
+    Improve --> Check{品質検証<br/>TRUST 5}
 
     Check -->|通過| Phase3[Phase 3: ドキュメント同期]
     Check -->|失敗| Loop[🔄 自律ループ<br/>問題自動修正]
 
-    Loop --> Red
+    Loop --> Analyze
 
     Phase3 --> Docs[📚 README、APIドキュメント<br/>自動更新]
 
@@ -591,10 +547,10 @@ flowchart TB
    - 受諾基準仕様書
    - ユーザーストーリー作成
 
-3. **Phase 3: TDD実装** (自律ループ)
-   - **RED**: 失敗するテストを先に記述
-   - **GREEN**: テスト通過最小実装
-   - **REFACTOR**: コード品質改善
+3. **Phase 3: DDD実装** (自律ループ)
+   - **ANALYZE**: ドメイン境界と結合度分析
+   - **PRESERVE**: 特性テストで動作保存
+   - **IMPROVE**: 漸進的コード品質改善
    - **ループ**: 品質検証失敗時自動問題修正
 
 4. **Phase 4: ドキュメント同期**
@@ -604,12 +560,12 @@ flowchart TB
 
 #### いつ使用するか？
 
-| 状況                 | 説明                               | 例                       |
-| -------------------- | ---------------------------------- | ------------------------ |
-| **新機能開発**       | 最初から最後までAIが自動処理     | "JWT認証システム追加"     |
-| **複雑なリファクタリング** | 複数ファイルに影響大きな変更     | "データベース層再構成"    |
-| **バグ修正**         | 原因特定から修正まで自動化       | "ログイン失敗バグ修正"    |
-| **SPECベース開発**    | SPEC文書のある機能実装          | `/moai:alfred SPEC-AUTH-001` |
+| 状況                       | 説明                         | 例                           |
+| -------------------------- | ---------------------------- | ---------------------------- |
+| **新機能開発**             | 最初から最後までAIが自動処理 | "JWT認証システム追加"        |
+| **複雑なリファクタリング** | 複数ファイルに影響大きな変更 | "データベース層再構成"       |
+| **バグ修正**               | 原因特定から修正まで自動化   | "ログイン失敗バグ修正"       |
+| **SPECベース開発**         | SPEC文書のある機能実装       | `/moai:alfred SPEC-AUTH-001` |
 
 **オプション**:
 
@@ -735,13 +691,13 @@ AST-grepは**構造的コード検査ツール**です。通常のgrepや正規�
 
 **テキスト検索 vs 構造検索**:
 
-| 特徴        | grep/正規表現                 | AST-grep         |
-| ----------- | ------------------------------ | ----------------- |
-| 検索対象    | テキスト文字列                | コード構造 (AST)  |
-| 例          | `print("hello")`             | `print(__)`       |
-| 意味         | "print"という文字列検索       | print関数呼び出しパターン検索 |
-| 空白感応    | はい (空白、インデント重要)    | いいえ (構造のみ分析) |
-| 変数区別    | 困難 (例: `x=1`, `y=1`は別)  | 可能 (全変数代入パターン) |
+| 特徴     | grep/正規表現               | AST-grep                      |
+| -------- | --------------------------- | ----------------------------- |
+| 検索対象 | テキスト文字列              | コード構造 (AST)              |
+| 例       | `print("hello")`            | `print(__)`                   |
+| 意味     | "print"という文字列検索     | print関数呼び出しパターン検索 |
+| 空白感応 | はい (空白、インデント重要) | いいえ (構造のみ分析)         |
+| 変数区別 | 困難 (例: `x=1`, `y=1`は別) | 可能 (全変数代入パターン)     |
 
 **動作原理**:
 
@@ -854,12 +810,12 @@ def process_user_input(user_input):
 
 #### いつ使用するか？
 
-| 状況                  | 説明                             | 例                           |
-| --------------------- | -------------------------------- | ---------------------------- |
-| **実装後品質確保**     | コード作成後自動品質改善       | 機能実装後 `/moai:loop` 実行 |
-| **テスト失敗修正**      | テスト失敗を自動分析修正       | テスト実行後失敗時          |
-| **カバレッジ向上**      | 85%目標を自動達成             | 新コード作成後               |
-| **リファクタリング**     | コード品質を継続的に改善       | 定期的実行で保守             |
+| 状況                 | 説明                     | 例                           |
+| -------------------- | ------------------------ | ---------------------------- |
+| **実装後品質確保**   | コード作成後自動品質改善 | 機能実装後 `/moai:loop` 実行 |
+| **テスト失敗修正**   | テスト失敗を自動分析修正 | テスト実行後失敗時           |
+| **カバレッジ向上**   | 85%目標を自動達成        | 新コード作成後               |
+| **リファクタリング** | コード品質を継続的に改善 | 定期的実行で保守             |
 
 **オプション**:
 
@@ -1007,12 +963,12 @@ flowchart TB
 
 各問題は複雑度に応じて4つのレベルに分類されます。
 
-| Level | 説明           | 承認   | 例                                   | 自動修正可否 |
-| ----- | -------------- | ------ | ------------------------------------ | ------------ |
-| 1     | 即時修正       | 不要   | インポート整列、空白、フォーマット    | ✅ 可能      |
-| 2     | 安全修正       | ログのみ | 変数名、タイプ追加、単純なリファクタ | ✅ 可能      |
-| 3     | 承認必要       | 必要   | ロジック変更、API修正、メソッド置換  | ⚠️ 承認後    |
-| 4     | 手動必要       | 不可   | セキュリティ、アーキテクチャ         | ❌ 不可能    |
+| Level | 説明     | 承認     | 例                                   | 自動修正可否 |
+| ----- | -------- | -------- | ------------------------------------ | ------------ |
+| 1     | 即時修正 | 不要     | インポート整列、空白、フォーマット   | ✅ 可能      |
+| 2     | 安全修正 | ログのみ | 変数名、タイプ追加、単純なリファクタ | ✅ 可能      |
+| 3     | 承認必要 | 必要     | ロジック変更、API修正、メソッド置換  | ⚠️ 承認後    |
+| 4     | 手動必要 | 不可     | セキュリティ、アーキテクチャ         | ❌ 不可能    |
 
 **修正プロセス**:
 
@@ -1031,15 +987,15 @@ flowchart TB
 
 #### 🎬 いつ使うべきか
 
-| 状況                           | 推奨コマンド    | 理由                                           |
-| ------------------------------ | --------------- | ---------------------------------------------- |
-| 日常的なコード品質維持         | `/moai:fix`     | 迅速な単発修正、ループ不要                     |
-| CI失敗の原因を一括修正         | `/moai:fix`     | 一回の実行で全問題修正                         |
-| 新機能実装後のクリーンアップ   | `/moai:fix`     | 一括フォーマットとスタイル修正                 |
-| 複雑な再発するバグ             | `/moai:loop`    | 継続的な修正と検証が必要                       |
-| 大規模リファクタリング         | `/moai:loop`    | 多段階修正と段階的検証が必要                   |
-| PR作成前の最終確認             | `/moai:fix`     | 1回の実行でクリーンアップ                     |
-| レガシーコードの大幅改善       | `/moai:loop`    | 何度も反復して段階的に改善                     |
+| 状況                         | 推奨コマンド | 理由                           |
+| ---------------------------- | ------------ | ------------------------------ |
+| 日常的なコード品質維持       | `/moai:fix`  | 迅速な単発修正、ループ不要     |
+| CI失敗の原因を一括修正       | `/moai:fix`  | 一回の実行で全問題修正         |
+| 新機能実装後のクリーンアップ | `/moai:fix`  | 一括フォーマットとスタイル修正 |
+| 複雑な再発するバグ           | `/moai:loop` | 継続的な修正と検証が必要       |
+| 大規模リファクタリング       | `/moai:loop` | 多段階修正と段階的検証が必要   |
+| PR作成前の最終確認           | `/moai:fix`  | 1回の実行でクリーンアップ      |
+| レガシーコードの大幅改善     | `/moai:loop` | 何度も反復して段階的に改善     |
 
 ---
 
@@ -1221,11 +1177,11 @@ AI: <moai>DONE</moai>  ← 完了マーカー
 
 ### 3つのコマンド階層
 
-| コマンド             | タイプ      | 説明                                          |
-| -------------------- | ----------- | --------------------------------------------- |
-| `/moai:fix`          | 単発        | 1回スキャン + 自動修正                        |
-| `/moai:loop`         | 自律ループ  | 完了マーカー または 最大回数まで繰り返し修正  |
-| `/moai:alfred`       | 完全自律    | 目標 → SPEC → 実装 → ドキュメント全過程自動化 |
+| コマンド       | タイプ     | 説明                                          |
+| -------------- | ---------- | --------------------------------------------- |
+| `/moai:fix`    | 単発       | 1回スキャン + 自動修正                        |
+| `/moai:loop`   | 自律ループ | 完了マーカー または 最大回数まで繰り返し修正  |
+| `/moai:alfred` | 完全自律   | 目標 → SPEC → 実装 → ドキュメント全過程自動化 |
 
 ### コマンドチェーン関係
 
@@ -1233,7 +1189,7 @@ AI: <moai>DONE</moai>  ← 完了マーカー
 /moai:alfred
   ├── Phase 0: 並列探索 (Explore + Research + Quality)
   ├── Phase 1: /moai:1-plan (SPEC生成)
-  ├── Phase 2: /moai:2-run (TDD実装)
+  ├── Phase 2: /moai:2-run (DDD実装)
   │     └── /moai:loop (自律ループ)
   │           └── /moai:fix (単発修正) × N回
   └── Phase 3: /moai:3-sync (ドキュメント同期)
@@ -1243,11 +1199,11 @@ AI: <moai>DONE</moai>  ← 完了マーカー
 
 AIが作業完了時にマーカーを追加して自律ループが終了します:
 
-| マーカー               | 説明       |
-| ---------------------- | ---------- |
-| `<moai>DONE</moai>`    | 作業完了   |
-| `<moai>COMPLETE</moai>`| 全体完了   |
-| `<moai:done />`        | XML形式    |
+| マーカー                | 説明     |
+| ----------------------- | -------- |
+| `<moai>DONE</moai>`     | 作業完了 |
+| `<moai>COMPLETE</moai>` | 全体完了 |
+| `<moai:done />`         | XML形式  |
 
 ### 自動修正レベル
 
@@ -1317,19 +1273,18 @@ Alfredは4つの言語リクエストを自動認識して正しいエージェ�
 
 ---
 
-### 🎯 Tier 2: ワークフロー管理者 (9個)
+### 🎯 Tier 2: ワークフロー管理者 (8個)
 
-| エージェント            | 役割                   | 自動呼出時期                                   |
-| ----------------------- | ---------------------- | ---------------------------------------------- |
-| **manager-spec**        | SPEC作成 (EARS)        | `/moai:1-plan`                                 |
-| **manager-tdd**         | TDD自動実行            | `/moai:2-run` (development_mode: tdd の時)     |
-| **manager-ddd**         | DDDリファクタリング実行 | `/moai:2-run` (development_mode: ddd の時)     |
-| **manager-docs**        | ドキュメント自動生成   | `/moai:3-sync`                                 |
-| **manager-quality**     | TRUST 5検証            | 実装完了後                                     |
-| **manager-strategy**    | 実行戦略策立           | 複雑な企画時                                   |
-| **manager-project**     | プロジェクト初期化     | `/moai:0-project`                              |
-| **manager-git**         | Gitワークフロー        | ブランチ/PR管理                                |
-| **manager-claude-code** | Claude Code統合        | 設定最適化                                     |
+| エージェント            | 役割                 | 自動呼出時期      |
+| ----------------------- | -------------------- | ----------------- |
+| **manager-spec**        | SPEC作成 (EARS)      | `/moai:1-plan`    |
+| **manager-ddd**         | DDD実装実行          | `/moai:2-run`     |
+| **manager-docs**        | ドキュメント自動生成 | `/moai:3-sync`    |
+| **manager-quality**     | TRUST 5検証          | 実装完了後        |
+| **manager-strategy**    | 実行戦略策立         | 複雑な企画時      |
+| **manager-project**     | プロジェクト初期化   | `/moai:0-project` |
+| **manager-git**         | Gitワークフロー      | ブランチ/PR管理   |
+| **manager-claude-code** | Claude Code統合      | 設定最適化        |
 
 ---
 
@@ -1388,7 +1343,7 @@ MoAI-ADKのすべてプロジェクトは**TRUST 5**品質フレームワーク�
 
 ```mermaid
 graph TD
-    T1["🔴 T: Test-First<br/>━━━━━━━━<br/>• TDD Red-Green-Refactor<br/>• 85%+ カバレッジ<br/>• 自動テスト"]
+    T1["🔴 T: Test-First<br/>━━━━━━━━<br/>• DDD Analyze-Preserve-Improve<br/>• 85%+ カバレッジ<br/>• 自動テスト"]
     R["📖 R: Readable<br/>━━━━━━━━<br/>• 明確な命名<br/>• コードコメント<br/>• リンター準拠"]
     U["🔄 U: Unified<br/>━━━━━━━━<br/>• 一貫したスタイル<br/>• 標準パターン<br/>• エラー処理"]
     S["🔒 S: Secured<br/>━━━━━━━━<br/>• OWASP Top 10<br/>• 脆弱性スキャン<br/>• 暗号化ポリシー"]
@@ -1404,9 +1359,9 @@ graph TD
 **検証**:
 
 - テストカバレッジ >= 85%
-- 失敗するテスト先作成 (Red)
-- テスト通過コード (Green)
-- リファクタリング (Refactor)
+- ドメイン境界分析 (Analyze)
+- 動作保存テスト (Preserve)
+- 漸進的改善 (Improve)
 
 ### R - Readable (可読性)
 
@@ -1501,16 +1456,16 @@ MoAI-ADKはClaude Codeターミナルにリアルタイム状態情報を表示�
 
 ### 使用可能なコンポーネント
 
-| アイコン | コンポーネント | 説明 | 設定キー |
-| -------- | -------------- | ---- | -------- |
-| 🤖 | モデル | Claudeモデル (Opus, Sonnet等) | `model` |
-| 💰 | コンテキスト | コンテキストウィンドウ使用量 (例: 77K/200K) | `context_window` |
-| 💬 | スタイル | アクティブアウトプットスタイル (例: Mr. Alfred) | `output_style` |
-| 📁 | ディレクトリ | 現在のプロジェクト名 | `directory` |
-| 📊 | Git状態 | ステージング/修正/追跡されないファイル数 | `git_status` |
-| 💾 | メモリ | プロセスメモリ使用量 | `memory_usage` |
-| 🔀 | ブランチ | 現在のGitブランチ | `branch` |
-| 🔅 | バージョン | Claude Codeバージョン (オプション) | `version` |
+| アイコン | コンポーネント | 説明                                            | 設定キー         |
+| -------- | -------------- | ----------------------------------------------- | ---------------- |
+| 🤖       | モデル         | Claudeモデル (Opus, Sonnet等)                   | `model`          |
+| 💰       | コンテキスト   | コンテキストウィンドウ使用量 (例: 77K/200K)     | `context_window` |
+| 💬       | スタイル       | アクティブアウトプットスタイル (例: Mr. Alfred) | `output_style`   |
+| 📁       | ディレクトリ   | 現在のプロジェクト名                            | `directory`      |
+| 📊       | Git状態        | ステージング/修正/追跡されないファイル数        | `git_status`     |
+| 💾       | メモリ         | プロセスメモリ使用量                            | `memory_usage`   |
+| 🔀       | ブランチ       | 現在のGitブランチ                               | `branch`         |
+| 🔅       | バージョン     | Claude Codeバージョン (オプション)              | `version`        |
 
 ### 設定
 
@@ -1518,15 +1473,15 @@ MoAI-ADKはClaude Codeターミナルにリアルタイム状態情報を表示�
 
 ```yaml
 display:
-  model: true           # 🤖 Claudeモデル
-  context_window: true  # 💰 コンテキストウィンドウ
-  output_style: true    # 💬 アウトプットスタイル
-  directory: true       # 📁 プロジェクト名
-  git_status: true      # 📊 Git状態
-  memory_usage: true    # 💾 メモリ使用量
-  branch: true          # 🔀 Gitブランチ
-  version: 1.1.0        # 🔅 バージョン (オプション)
-  active_task: true     # アクティブタスク
+  model: true # 🤖 Claudeモデル
+  context_window: true # 💰 コンテキストウィンドウ
+  output_style: true # 💬 アウトプットスタイル
+  directory: true # 📁 プロジェクト名
+  git_status: true # 📊 Git状態
+  memory_usage: true # 💾 メモリ使用量
+  branch: true # 🔀 Gitブランチ
+  version: 1.1.0 # 🔅 バージョン (オプション)
+  active_task: true # アクティブタスク
 ```
 
 ### メモリコレクター
@@ -1540,11 +1495,11 @@ display:
 
 ### ディスプレイモード
 
-| モード | 最大長 | 使用ケース |
-| ------ | ------ | ---------- |
-| `compact` | 80文字 | 標準ターミナル |
+| モード     | 最大長  | 使用ケース       |
+| ---------- | ------- | ---------------- |
+| `compact`  | 80文字  | 標準ターミナル   |
 | `extended` | 120文字 | ワイドターミナル |
-| `minimal` | 40文字 | 狭いターミナル |
+| `minimal`  | 40文字  | 狭いターミナル   |
 
 モード設定:
 
@@ -1605,7 +1560,7 @@ MoAI-ADKの核心革新: **Worktreeで完全分離、無制限並列開発**
 │                                                                  │
 │  $ claude                                                        │
 │  > /moai:2-run SPEC-AUTH-001                                     │
-│  🔄 TDD実行中... (Red → Green → Refactor)                       │
+│  🔄 DDD実行中... (Analyze → Preserve → Improve)                 │
 │  ✅ 実装完了!                                                   │
 │  ✅ テスト通過 (Coverage: 92%)                                  │
 │                                                                  │
@@ -1699,18 +1654,18 @@ moai-wt clean --merged-only
 
 ### 📊 Worktreeコマンド
 
-| コマンド                 | 説明                           | 使用例                           |
-| ------------------------ | ------------------------------ | -------------------------------- |
-| `moai-wt new SPEC-ID`    | 新Worktree生成                 | `moai-wt new SPEC-AUTH-001`      |
-| `moai-wt go SPEC-ID`     | Worktree進入 (新シェル開く)    | `moai-wt go SPEC-AUTH-001`       |
-| `moai-wt list`           | Worktreeリスト確認             | `moai-wt list`                   |
-| `moai-wt done SPEC-ID`   | マージ後整理 (checkout→merge)  | `moai-wt done SPEC-AUTH-001`     |
-| `moai-wt remove SPEC-ID` | Worktree削除                   | `moai-wt remove SPEC-AUTH-001`   |
-| `moai-wt status`         | Worktree状態及びレジストリ確認 | `moai-wt status`                 |
-| `moai-wt sync [SPEC-ID]` | Worktree同期                   | `moai-wt sync --all`             |
-| `moai-wt clean`          | マージWorktree整理             | `moai-wt clean --merged-only`    |
-| `moai-wt recover`        | ディスクからレジストリ復復     | `moai-wt recover`                |
-| `moai-wt config`         | Worktree設定確認               | `moai-wt config root`            |
+| コマンド                 | 説明                           | 使用例                         |
+| ------------------------ | ------------------------------ | ------------------------------ |
+| `moai-wt new SPEC-ID`    | 新Worktree生成                 | `moai-wt new SPEC-AUTH-001`    |
+| `moai-wt go SPEC-ID`     | Worktree進入 (新シェル開く)    | `moai-wt go SPEC-AUTH-001`     |
+| `moai-wt list`           | Worktreeリスト確認             | `moai-wt list`                 |
+| `moai-wt done SPEC-ID`   | マージ後整理 (checkout→merge)  | `moai-wt done SPEC-AUTH-001`   |
+| `moai-wt remove SPEC-ID` | Worktree削除                   | `moai-wt remove SPEC-AUTH-001` |
+| `moai-wt status`         | Worktree状態及びレジストリ確認 | `moai-wt status`               |
+| `moai-wt sync [SPEC-ID]` | Worktree同期                   | `moai-wt sync --all`           |
+| `moai-wt clean`          | マージWorktree整理             | `moai-wt clean --merged-only`  |
+| `moai-wt recover`        | ディスクからレジストリ復復     | `moai-wt recover`              |
+| `moai-wt config`         | Worktree設定確認               | `moai-wt config root`          |
 
 ---
 
@@ -1737,21 +1692,22 @@ MoAI-ADKインストール後、プロジェクトルートに生成される`CL
 
 ### CLAUDE.mdコア構造
 
-| セクション | 説明 | 主要内容 |
-|-----------|------|---------|
-| **Core Identity** | Alfredの役割定義 | 戦略的オーケストレーター、HARDルール |
-| **Request Processing Pipeline** | リクエスト処理フロー | Analyze → Route → Execute → Report |
-| **Command Reference** | コマンド分類 | Type A (Workflow), Type B (Utility), Type C (Feedback) |
-| **Agent Catalog** | サブエージェントリスト | Manager 8個, Expert 8個, Builder 4個 |
-| **SPEC-Based Workflow** | SPEC基盤開発 | Plan → Run → Sync フロー |
-| **Quality Gates** | 品質検証ルール | HARD/SOFTルールチェックリスト |
-| **Configuration Reference** | 設定参照 | 言語、出力形式ルール |
+| セクション                      | 説明                   | 主要内容                                               |
+| ------------------------------- | ---------------------- | ------------------------------------------------------ |
+| **Core Identity**               | Alfredの役割定義       | 戦略的オーケストレーター、HARDルール                   |
+| **Request Processing Pipeline** | リクエスト処理フロー   | Analyze → Route → Execute → Report                     |
+| **Command Reference**           | コマンド分類           | Type A (Workflow), Type B (Utility), Type C (Feedback) |
+| **Agent Catalog**               | サブエージェントリスト | Manager 8個, Expert 8個, Builder 4個                   |
+| **SPEC-Based Workflow**         | SPEC基盤開発           | Plan → Run → Sync フロー                               |
+| **Quality Gates**               | 品質検証ルール         | HARD/SOFTルールチェックリスト                          |
+| **Configuration Reference**     | 設定参照               | 言語、出力形式ルール                                   |
 
 ### 使用方法：変更しないでください
 
 > **推奨**：`CLAUDE.md`は**変更せずそのまま使用**してください。
 
 **理由**：
+
 - MoAI-ADKアップデート時に自動的に最新バージョンに置き換えられます
 - 変更するとアップデート時に競合が発生する可能性があります
 - エージェント間の一貫した動作を保証します
@@ -1776,32 +1732,36 @@ touch CLAUDE.local.md
 # プロジェクトローカル指示
 
 ## コーディングスタイル
+
 - すべての関数に型ヒント必須
 - docstringはGoogleスタイル使用
 
 ## プロジェクト特殊ルール
+
 - APIレスポンスは常にsnake_case使用
-- テストファイルはtest_プレフィックス必須
+- テストファイルはtest\_プレフィックス必須
 
 ## 禁止事項
+
 - console.log使用禁止（logger使用）
 - any型使用禁止
 ```
 
 **利点**：
+
 - `CLAUDE.md`アップデートと競合なし
 - プロジェクト別カスタム設定可能
 - `.gitignore`に追加して個人設定維持可能
 
 ### CLAUDE.md vs CLAUDE.local.md
 
-| 区分 | CLAUDE.md | CLAUDE.local.md |
-|------|-----------|-----------------|
-| **目的** | Alfred実行指示 | 個人/プロジェクト追加指示 |
-| **変更** | 非推奨 | 自由に変更可能 |
-| **アップデート** | MoAIが自動管理 | ユーザーが直接管理 |
-| **Git** | コミット対象 | 選択（.gitignore可能） |
-| **優先順位** | 基本ルール | 追加/オーバーライドルール |
+| 区分             | CLAUDE.md      | CLAUDE.local.md           |
+| ---------------- | -------------- | ------------------------- |
+| **目的**         | Alfred実行指示 | 個人/プロジェクト追加指示 |
+| **変更**         | 非推奨         | 自由に変更可能            |
+| **アップデート** | MoAIが自動管理 | ユーザーが直接管理        |
+| **Git**          | コミット対象   | 選択（.gitignore可能）    |
+| **優先順位**     | 基本ルール     | 追加/オーバーライドルール |
 
 ### コアルール（HARD Rules）
 
@@ -2046,8 +2006,8 @@ Copyleft License (COPYLEFT-3.0) - [LICENSE](./LICENSE)
 
 ## 🙏 Made with ❤️ by MoAI-ADK Team
 
-**Last Updated:** 2026-01-11
-**Philosophy**: SPEC-First TDD + Agent Orchestration + Hybrid LLM
+**Last Updated:** 2026-01-17
+**Philosophy**: SPEC-First DDD + Agent Orchestration + Hybrid LLM
 **MoAI**: MoAIは"みんなのためのAI (Modu-ui AI)"を意味します。
 
 > **"無限可能主義 - みんなのAI"**

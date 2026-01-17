@@ -18,6 +18,8 @@ allowed-tools:
   - Glob
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
+triggers:
+  keywords: ["convex", "real-time", "reactive", "optimistic updates", "collaborative", "server functions"]
 ---
 
 # Convex Real-time Backend Specialist

@@ -14,6 +14,41 @@ allowed-tools:
   - Glob
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: ~100
+  level2_tokens: ~5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords:
+    - "trust-5"
+    - "spec-first"
+    - "tdd"
+    - "delegation"
+    - "agent"
+    - "token"
+    - "progressive disclosure"
+    - "modular"
+    - "workflow"
+    - "orchestration"
+    - "quality gate"
+    - "spec"
+    - "ears format"
+  agents:
+    - "manager-spec"
+    - "manager-tdd"
+    - "manager-strategy"
+    - "manager-quality"
+    - "builder-agent"
+    - "builder-command"
+    - "builder-skill"
+  phases:
+    - "plan"
+    - "run"
+    - "sync"
 ---
 
 # MoAI Foundation Core

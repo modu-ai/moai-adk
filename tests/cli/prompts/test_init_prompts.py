@@ -262,23 +262,6 @@ class TestPromptProjectSetup:
                                         "q_doc_lang": "Doc language:",
                                         "msg_setup_complete": "Complete",
                                         "msg_cancelled": "Cancelled",
-                                        "tag_setup": "TAG Setup",
-                                        "q_tag_enable": "Enable TAG?",
-                                        "opt_tag_warn": "Warn",
-                                        "opt_tag_enforce": "Enforce",
-                                        "opt_tag_off": "Off",
-                                        "desc_tag_warn": "Warning mode",
-                                        "desc_tag_enforce": "Enforce mode",
-                                        "desc_tag_off": "Off mode",
-                                        "tag_system_intro": "TAG system introduction",
-                                        "tag_yes_recommendation": "Recommendation",
-                                        "tag_no_warning": "Warning",
-                                        "tag_mode_guide_title": "Mode guide",
-                                        "tag_mode_guide_subtitle": "Subtitle",
-                                        "msg_tag_enabled": "TAG enabled",
-                                        "msg_tag_disabled": "TAG disabled",
-                                        "msg_tag_mode_selected": "Mode selected",
-                                        "q_tag_mode": "TAG mode:",
                                     }
 
                                     result = prompt_project_setup(initial_locale="en")
@@ -322,23 +305,6 @@ class TestPromptProjectSetup:
                                         "q_doc_lang": "Doc:",
                                         "msg_setup_complete": "Done",
                                         "msg_cancelled": "Cancel",
-                                        "tag_setup": "TAG Setup",
-                                        "q_tag_enable": "Enable TAG?",
-                                        "opt_tag_warn": "Warn",
-                                        "opt_tag_enforce": "Enforce",
-                                        "opt_tag_off": "Off",
-                                        "desc_tag_warn": "Warning mode",
-                                        "desc_tag_enforce": "Enforce mode",
-                                        "desc_tag_off": "Off mode",
-                                        "tag_system_intro": "TAG system introduction",
-                                        "tag_yes_recommendation": "Recommendation",
-                                        "tag_no_warning": "Warning",
-                                        "tag_mode_guide_title": "Mode guide",
-                                        "tag_mode_guide_subtitle": "Subtitle",
-                                        "msg_tag_enabled": "TAG enabled",
-                                        "msg_tag_disabled": "TAG disabled",
-                                        "msg_tag_mode_selected": "Mode selected",
-                                        "q_tag_mode": "TAG mode:",
                                     }
 
                                     prompt_project_setup()
@@ -361,6 +327,7 @@ class TestProjectSetupAnswers:
             "git_commit_lang": "en",
             "code_comment_lang": "en",
             "doc_lang": "en",
+            "development_mode": "ddd",
         }
         assert answers["project_name"] == "test-project"
         assert answers["locale"] == "en"
@@ -378,6 +345,7 @@ class TestProjectSetupAnswers:
             "git_commit_lang": "ko",
             "code_comment_lang": "en",
             "doc_lang": "ko",
+            "development_mode": "ddd",
         }
         assert answers["glm_api_key"] is None
         assert answers["github_username"] is None

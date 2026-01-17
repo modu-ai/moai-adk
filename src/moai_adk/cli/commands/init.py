@@ -170,9 +170,7 @@ def init(
         git_commit_lang = "en"
         code_comment_lang = "en"
         doc_lang = "en"
-        tag_enabled = True  # NEW - SPEC-TAG-002
-        tag_mode = "warn"  # NEW - SPEC-TAG-002
-        development_mode = "tdd"  # NEW - DDD support
+        development_mode = "ddd"  # DDD is the only methodology
 
         if non_interactive:
             # Non-Interactive Mode
@@ -207,9 +205,7 @@ def init(
             git_commit_lang = answers["git_commit_lang"]
             code_comment_lang = answers["code_comment_lang"]
             doc_lang = answers["doc_lang"]
-            tag_enabled = answers["tag_enabled"]  # NEW - SPEC-TAG-002
-            tag_mode = answers["tag_mode"]  # NEW - SPEC-TAG-002
-            development_mode = answers["development_mode"]  # NEW - DDD support
+            development_mode = "ddd"  # DDD is the only methodology
 
             # GLM-only defaults (not prompted in simplified flow)
             service_type = "glm"
@@ -336,8 +332,6 @@ def init(
                 backup_enabled=True,
                 progress_callback=callback,
                 reinit=True,  # Always allow reinit (force mode by default)
-                tag_enabled=tag_enabled,  # NEW - SPEC-TAG-002
-                tag_mode=tag_mode,  # NEW - SPEC-TAG-002
             )
 
         # 5.5. Save additional configuration (both interactive and non-interactive)
@@ -560,7 +554,7 @@ def _save_additional_config(
     pricing_path = sections_dir / "pricing.yaml"
     if pricing_path.exists():
         try:
-            pricing_data = yaml.safe_load(pricing_path.read_text()) or {}
+            pricing_data = yaml.safe_load(pricing_path.read_text(encoding="utf-8")) or {}
         except Exception:
             pricing_data = {}
     else:
@@ -588,7 +582,7 @@ def _save_additional_config(
     language_path = sections_dir / "language.yaml"
     if language_path.exists():
         try:
-            lang_data = yaml.safe_load(language_path.read_text()) or {}
+            lang_data = yaml.safe_load(language_path.read_text(encoding="utf-8")) or {}
         except Exception:
             lang_data = {}
     else:
@@ -618,7 +612,7 @@ def _save_additional_config(
     git_path = sections_dir / "git-strategy.yaml"
     if git_path.exists():
         try:
-            git_data = yaml.safe_load(git_path.read_text()) or {}
+            git_data = yaml.safe_load(git_path.read_text(encoding="utf-8")) or {}
         except Exception:
             git_data = {}
     else:
@@ -636,7 +630,7 @@ def _save_additional_config(
     project_yaml_path = sections_dir / "project.yaml"
     if project_yaml_path.exists():
         try:
-            project_data = yaml.safe_load(project_yaml_path.read_text()) or {}
+            project_data = yaml.safe_load(project_yaml_path.read_text(encoding="utf-8")) or {}
         except Exception:
             project_data = {}
     else:
@@ -666,7 +660,7 @@ def _save_additional_config(
     user_yaml_path = sections_dir / "user.yaml"
     if user_yaml_path.exists():
         try:
-            user_data = yaml.safe_load(user_yaml_path.read_text()) or {}
+            user_data = yaml.safe_load(user_yaml_path.read_text(encoding="utf-8")) or {}
         except Exception:
             user_data = {}
     else:
@@ -690,7 +684,7 @@ def _save_additional_config(
     quality_yaml_path = sections_dir / "quality.yaml"
     if quality_yaml_path.exists():
         try:
-            quality_data = yaml.safe_load(quality_yaml_path.read_text()) or {}
+            quality_data = yaml.safe_load(quality_yaml_path.read_text(encoding="utf-8")) or {}
         except Exception:
             quality_data = {}
     else:

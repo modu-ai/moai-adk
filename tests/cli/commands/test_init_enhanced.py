@@ -193,8 +193,7 @@ class TestInitInteractiveMode:
             "git_commit_lang": "en",
             "code_comment_lang": "en",
             "doc_lang": "en",
-            "tag_enabled": True,  # NEW - SPEC-TAG-002
-            "tag_mode": "warn",  # NEW - SPEC-TAG-002
+            "development_mode": "ddd",  # DDD is the only methodology
         }
 
         with patch("moai_adk.cli.commands.init.prompt_project_setup") as mock_prompt:
@@ -239,8 +238,7 @@ class TestInitInteractiveMode:
             "git_commit_lang": "en",
             "code_comment_lang": "en",
             "doc_lang": "en",
-            "tag_enabled": True,  # NEW - SPEC-TAG-002
-            "tag_mode": "warn",  # NEW - SPEC-TAG-002
+            "development_mode": "ddd",  # DDD is the only methodology
         }
 
         with patch("moai_adk.cli.commands.init.prompt_project_setup") as mock_prompt:
@@ -322,8 +320,7 @@ class TestInitInteractiveMode:
             "git_commit_lang": "ko",
             "code_comment_lang": "en",
             "doc_lang": "ko",
-            "tag_enabled": True,  # NEW - SPEC-TAG-002
-            "tag_mode": "warn",  # NEW - SPEC-TAG-002
+            "development_mode": "ddd",  # DDD is the only methodology
         }
 
         with patch("moai_adk.cli.commands.init.prompt_project_setup") as mock_prompt:
@@ -398,8 +395,7 @@ class TestInitReinitializationFlow:
             "git_commit_lang": "en",
             "code_comment_lang": "en",
             "doc_lang": "en",
-            "tag_enabled": True,  # NEW - SPEC-TAG-002
-            "tag_mode": "warn",  # NEW - SPEC-TAG-002
+            "development_mode": "ddd",  # DDD is the only methodology
         }
 
         with patch("moai_adk.cli.commands.init.prompt_project_setup") as mock_prompt:

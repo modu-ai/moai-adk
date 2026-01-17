@@ -208,7 +208,7 @@ def _has_glm_env(settings_local: Path) -> bool:
     if not settings_local.exists():
         return False
     try:
-        data = json.loads(settings_local.read_text())
+        data = json.loads(settings_local.read_text(encoding="utf-8"))
         env = data.get("env", {})
         return "ANTHROPIC_BASE_URL" in env
     except (json.JSONDecodeError, OSError):
@@ -232,7 +232,7 @@ def _switch_to_glm(settings_local: Path, glm_config_source: Path) -> None:
         raise click.Abort()
 
     # Load GLM config
-    glm_data = json.loads(glm_config_source.read_text())
+    glm_data = json.loads(glm_config_source.read_text(encoding="utf-8"))
     glm_env = glm_data.get("env", {})
 
     # Substitute environment variables in GLM env values
@@ -262,7 +262,7 @@ def _switch_to_glm(settings_local: Path, glm_config_source: Path) -> None:
     # Load or create settings.local.json
     if settings_local.exists():
         try:
-            local_data = json.loads(settings_local.read_text())
+            local_data = json.loads(settings_local.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             local_data = {}
     else:
@@ -274,7 +274,7 @@ def _switch_to_glm(settings_local: Path, glm_config_source: Path) -> None:
     local_data["env"].update(substituted_env)
 
     # Write back
-    settings_local.write_text(json.dumps(local_data, indent=2) + "\n")
+    settings_local.write_text(json.dumps(local_data, indent=2) + "\n", encoding="utf-8")
 
     console.print(
         Panel(
@@ -297,7 +297,7 @@ def _switch_to_claude(settings_local: Path) -> None:
 
     # Load settings.local.json
     try:
-        local_data = json.loads(settings_local.read_text())
+        local_data = json.loads(settings_local.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         console.print("[yellow]Already using Claude backend.[/yellow]")
         return
@@ -312,7 +312,7 @@ def _switch_to_claude(settings_local: Path) -> None:
             del local_data["env"]
 
     # Write back
-    settings_local.write_text(json.dumps(local_data, indent=2) + "\n")
+    settings_local.write_text(json.dumps(local_data, indent=2) + "\n", encoding="utf-8")
 
     console.print(
         Panel(

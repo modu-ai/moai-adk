@@ -19,10 +19,10 @@ from moai_adk.cli.prompts.init_prompts import (
 )
 
 
-# Fixture: Complete mock translation dictionary with TAG keys
+# Fixture: Complete mock translation dictionary
 @pytest.fixture
 def mock_translations():
-    """Provide complete mock translation dictionary including TAG keys."""
+    """Provide complete mock translation dictionary."""
     return {
         # Headers
         "user_setup": "User Setup",
@@ -93,35 +93,6 @@ def mock_translations():
         "msg_cancelled": "Cancelled",
         "msg_current_dir": "(current directory)",
         "msg_skip_same_lang": "Set to same as conversation language",
-        # TAG System (NEW - SPEC-TAG-002)
-        "tag_setup": "TAG System Setup",
-        "q_tag_enable": "Enable TAG validation?",
-        "q_tag_mode": "Select TAG mode:",
-        "opt_tag_yes": "Yes, enable TAG",
-        "opt_tag_no": "No, disable TAG",
-        "opt_tag_warn": "warn (warning)",
-        "opt_tag_enforce": "enforce (strict)",
-        "opt_tag_off": "off (disabled)",
-        "desc_tag_yes": "Use TAG for traceability",
-        "desc_tag_no": "Do not use TAG validation",
-        "desc_tag_warn": "Warn about missing TAGs",
-        "desc_tag_enforce": "Block commits on missing TAGs",
-        "desc_tag_off": "Skip TAG validation",
-        "tag_system_intro": "TAG system maintains traceability",
-        "tag_yes_recommendation": "TAG activation is recommended",
-        "tag_no_warning": "Disabling TAG loses traceability",
-        "tag_mode_guide_title": "TAG Validation Mode Guide",
-        "tag_mode_guide_subtitle": "Mode selection guide",
-        "msg_tag_enabled": "TAG system enabled",
-        "msg_tag_disabled": "TAG system disabled",
-        "msg_tag_mode_selected": "TAG mode: {mode}",
-        # Development Methodology (DDD support)
-        "dev_mode_setup": "Development Methodology",
-        "dev_mode_intro": "Choose your development methodology:",
-        "q_dev_mode": "Select development methodology:",
-        "desc_tdd": "Test-Driven Development (RED-GREEN-REFACTOR)",
-        "desc_ddd": "Domain-Driven Development (ANALYZE-PRESERVE-IMPROVE)",
-        "dev_mode_recommendation": "TDD for new features, DDD for refactoring",
     }
 
 
@@ -133,8 +104,8 @@ class TestPromptProjectSetupGLMKeyHandling:
         mock_existing_key = "sk-existing-key-1234567890"
 
         with patch("moai_adk.cli.prompts.init_prompts._prompt_select") as mock_select:
-            # Sequence: language, git_mode, commit_lang, comment_lang, doc_lang, tag_mode, dev_mode
-            mock_select.side_effect = ["en", "manual", "en", "en", "en", "warn", "tdd"]
+            # Sequence: language, git_mode, commit_lang, comment_lang, doc_lang
+            mock_select.side_effect = ["en", "manual", "en", "en", "en"]
 
             with patch("moai_adk.cli.prompts.init_prompts._prompt_text", return_value="test-user"):
                 with patch("moai_adk.cli.prompts.init_prompts._prompt_password_optional", return_value=""):
@@ -154,8 +125,8 @@ class TestPromptProjectSetupGLMKeyHandling:
         new_key = "sk-new-key-0987654321"
 
         with patch("moai_adk.cli.prompts.init_prompts._prompt_select") as mock_select:
-            # Sequence: language, git_mode, commit_lang, comment_lang, doc_lang, tag_mode, dev_mode
-            mock_select.side_effect = ["en", "manual", "en", "en", "en", "warn", "tdd"]
+            # Sequence: language, git_mode, commit_lang, comment_lang, doc_lang
+            mock_select.side_effect = ["en", "manual", "en", "en", "en"]
 
             with patch("moai_adk.cli.prompts.init_prompts._prompt_text", return_value="test-user"):
                 with patch("moai_adk.cli.prompts.init_prompts._prompt_password_optional", return_value=new_key):
@@ -174,8 +145,8 @@ class TestPromptProjectSetupGLMKeyHandling:
     def test_glm_api_key_skipped_no_existing(self, tmp_path: Path, mock_translations: dict) -> None:
         """Test GLM API key prompt when user skips with no existing key."""
         with patch("moai_adk.cli.prompts.init_prompts._prompt_select") as mock_select:
-            # Sequence: language, git_mode, commit_lang, comment_lang, doc_lang, tag_mode, dev_mode
-            mock_select.side_effect = ["en", "manual", "en", "en", "en", "warn", "tdd"]
+            # Sequence: language, git_mode, commit_lang, comment_lang, doc_lang
+            mock_select.side_effect = ["en", "manual", "en", "en", "en"]
 
             with patch("moai_adk.cli.prompts.init_prompts._prompt_text", return_value="test-user"):
                 with patch("moai_adk.cli.prompts.init_prompts._prompt_password_optional", return_value=""):
@@ -196,8 +167,8 @@ class TestPromptProjectSetupGitHubUsername:
     def test_git_mode_personal_prompts_username(self, tmp_path: Path, mock_translations: dict) -> None:
         """Test that personal git mode prompts for GitHub username."""
         with patch("moai_adk.cli.prompts.init_prompts._prompt_select") as mock_select:
-            # Sequence: language, personal, commit_lang, comment_lang, doc_lang, tag_mode, dev_mode
-            mock_select.side_effect = ["en", "personal", "en", "en", "en", "warn", "tdd"]
+            # Sequence: language, personal, commit_lang, comment_lang, doc_lang
+            mock_select.side_effect = ["en", "personal", "en", "en", "en"]
 
             # Create a text prompt mock that returns values sequentially
             text_values = ["test-user", "test-project", "mygithub"]
@@ -252,8 +223,8 @@ class TestPromptProjectSetupEdgeCases:
     def test_empty_user_name_allowed(self, tmp_path: Path, mock_translations: dict) -> None:
         """Test that empty user name is allowed (optional field)."""
         with patch("moai_adk.cli.prompts.init_prompts._prompt_select") as mock_select:
-            # Sequence: language, manual, commit_lang, comment_lang, doc_lang, tag_mode, dev_mode
-            mock_select.side_effect = ["en", "manual", "en", "en", "en", "warn", "tdd"]
+            # Sequence: language, manual, commit_lang, comment_lang, doc_lang
+            mock_select.side_effect = ["en", "manual", "en", "en", "en"]
 
             # Create a text prompt mock that returns values sequentially
             text_values = ["", "test-project"]

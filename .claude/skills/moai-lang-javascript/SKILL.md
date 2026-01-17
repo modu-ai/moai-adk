@@ -4,6 +4,18 @@ description: "JavaScript ES2024+ development specialist covering Node.js 22 LTS,
 version: 1.2.0
 category: "language"
 modularized: false
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: ~100
+  level2_tokens: ~5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["JavaScript", "Node.js", "Bun", "Deno", "Express", "Fastify", "Hono", "Vitest", "Jest", "ESLint", ".js", "package.json"]
+  languages: ["javascript", "js"]
+
 user-invocable: false
 tags:
   [

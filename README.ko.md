@@ -10,7 +10,7 @@
 
 > **"바이브 코딩의 목적은 빠른 생산성이 아니라 코드 품질이다."**
 
-MoAI-ADK는 **품질 있는 코드를 만드는 AI 개발 환경**을 제공합니다. SPEC-First TDD, 테스트 주도 개발, 지속적 리팩토링과 20개 전문 AI 에이전트가 함께합니다.
+MoAI-ADK는 **품질 있는 코드를 만드는 AI 개발 환경**을 제공합니다. SPEC-First DDD (Domain-Driven Development), 동작 보존을 통한 지속적 리팩토링과 20개 전문 AI 에이전트가 함께합니다.
 
 ---
 
@@ -22,8 +22,8 @@ MoAI-ADK는 **z.ai GLM 4.7**과 파트너십을 통해 개발자들에게 경제
 
 ### 🚀 GLM 4.7 특별 혜택
 
-| 혜택                 | 설명                                           |
-| -------------------- | ---------------------------------------------- |
+| 혜택                  | 설명                                           |
+| --------------------- | ---------------------------------------------- |
 | **💰 70% 비용 절감**  | Claude 대비 1/7 가격으로 동등한 성능           |
 | **⚡ 빠른 응답 속도** | 최적화된 인프라로 저지연 응답 제공             |
 | **🔄 호환성**         | Claude Code와 완벽 호환, 별도 코드 수정 불필요 |
@@ -55,9 +55,8 @@ moai glm YOUR_API_KEY
 ## 🌟 핵심 가치
 
 - **🎯 SPEC-First**: 명확한 명세서로 90% 재작업 감소
-- **🔴 TDD 강제**: 85%+ 테스트 커버리지 자동 보장
-- **🔵 DDD 지원**: 기존 코드베이스 개선을 위한 Domain-Driven Development
-- **🤖 AI 오케스트레이션**: 21개 전문 에이전트 + 49개 스킬
+- **🔵 DDD**: ANALYZE-PRESERVE-IMPROVE 사이클로 동작 보존 리팩토링
+- **🤖 AI 오케스트레이션**: 20개 전문 에이전트 + 49개 스킬
 - **🌐 다국어 라우팅**: 한국어/영어/일본어/중국어 자동 지원
 - **🌳 Worktree 병렬 개발**: 완전 격리 환경에서 무제한 병렬 작업
 - **🏆 MoAI Rank**: 바이브 코딩 리더보드로 동기부여
@@ -86,7 +85,7 @@ uv tool install moai-adk
 
 ### 🎨 대화형 설정 마법사
 
-`moai init` 명령어 실행 시 **9단계 대화형 마법사**가 시작됩니다:
+`moai init` 명령어 실행 시 대화형 마법사가 시작됩니다:
 
 ![MoAI-ADK Init Wizard](./assets/images/readme/init-wizard-banner.png)
 
@@ -222,45 +221,6 @@ Git 커밋 메시지에 사용할 언어를 선택합니다.
 > **이유**: 비영어권 언어는 Claude에서 **12%~20% 토큰을 추가 소모**합니다. 무한 반복 에이전트 작업이 많아지면 비용과 주간 토큰 리밋에 큰 영향을 주기 때문에, MoAI는 내부 에이전트 지시는 영어로 고정하고 **일반 대화만 사용자 언어로 제공**합니다.
 >
 > 이것이 MoAI의 **토큰 낭비를 줄이기 위한 노력**입니다.
-
----
-
-#### Step 10: TAG 시스템 활성화
-
-🎯 TAG 시스템: TDD를 위한 코드 ↔ 문서 추적
-
-TAG 시스템은 코드와 SPEC 문서 간의 추적 가능성을 유지하여
-TDD(Test-Driven Development) 사이클을 지원합니다.
-
-TDD 목적:
-•  RED (테스트 작성) → @SPEC SPEC-XXX verify
-•  GREEN (코드 구현) → @SPEC SPEC-XXX impl
-•  REFACTOR (개선) → @SPEC SPEC-XXX impl 또는 related
-
-각 코드 파일이 어떤 SPEC을 구현하는지 명확히 추적하여
-문서 중심 개발을 유도하고 품질을 유지합니다.
-
-💡 TAG 활성화를 권장합니다. TDD 사이클에서 코드와 문서의
-일치성을 유지하여 품질과 유지보수성을 향상시킵니다.
-
-```text
-? TAG 시스템을 활성화하시겠습니까? (TDD 권장) (Y/n)
-```
-
----
-
-**TAG 검증 모드 안내**
-
-• warn: 개발 중 경고로 알림 (기본값, 권장)
-• enforce: TAG 누락 시 커밋 차단 (엄격한 품질 관리)
-• off: 검증 건너뜀 (권장하지 않음)
-
-```text
-❯ TAG 검증 모드를 선택하세요: [↑↓] Navigate  [Enter] Select
-❯ warn (경고) - 누락된 TAG에 대해 경고만 표시합니다. 개발 중 유연하게 대처
-  enforce (강제) - 누락된 TAG가 있으면 커밋을 차단합니다. 엄격한 품질 관리
-  off (끔) - TAG 검증을 건너뜁니다. 추천하지 않음
-```
 
 ---
 
@@ -459,26 +419,22 @@ EARS 형식을 사용하여 모호함 없는 명세서를 자동으로 생성합
 
 ---
 
-### 💻 `/moai:2-run` - 구현 (TDD 또는 DDD)
+### 💻 `/moai:2-run` - DDD 구현
 
 ```bash
-> /clear  # 항상 코드 생성 전에 clear 실행해서 세션 초기화 
+> /clear  # 항상 코드 생성 전에 clear 실행해서 세션 초기화
 > /moai:2-run SPEC-001
 ```
 
-`.moai/config/sections/quality.yaml`의 `development_mode` 설정에 따라 TDD 또는 DDD로 라우팅됩니다:
+DDD (Domain-Driven Development) 방법론으로 ANALYZE-PRESERVE-IMPROVE 사이클을 실행합니다:
 
-**TDD 모드** (기본값, 새 기능 개발용):
-- 🔴 테스트 먼저 작성 (Red)
-- 🟢 테스트 통과 코드 (Green)
-- 🔵 리팩토링 (Refactor)
+**DDD 사이클**:
 
-**DDD 모드** (기존 코드 리팩토링용):
-- 🔍 도메인 경계 및 결합도 분석
-- 🛡️ 특성 테스트로 동작 보존
-- ✨ 점진적 구조 개선
+- 🔍 **ANALYZE**: 도메인 경계 및 결합도 분석
+- 🛡️ **PRESERVE**: 특성 테스트로 동작 보존
+- ✨ **IMPROVE**: 점진적 구조 개선
 
-**검증 항목** (모든 모드):
+**검증 항목**:
 
 - 테스트 커버리지 >= 85%
 - 린팅 통과
@@ -551,18 +507,18 @@ flowchart TB
 
     Phase1 --> Spec[📋 EARS 형식 SPEC 문서<br/>요구사항 명세화]
 
-    Spec --> Phase2[Phase 2: TDD 구현]
+    Spec --> Phase2[Phase 2: DDD 구현]
 
-    Phase2 --> Red[🔴 RED: 실패 테스트 작성]
-    Red --> Green[🟢 GREEN: 최소 구현]
-    Green --> Refactor[🔵 REFACTOR: 코드 개선]
+    Phase2 --> Analyze[🔍 ANALYZE: 도메인 분석]
+    Analyze --> Preserve[🛡️ PRESERVE: 동작 보존]
+    Preserve --> Improve[✨ IMPROVE: 점진적 개선]
 
-    Refactor --> Check{품질 검증<br/>TRUST 5}
+    Improve --> Check{품질 검증<br/>TRUST 5}
 
     Check -->|통과| Phase3[Phase 3: 문서 동기화]
     Check -->|실패| Loop[🔄 자율 루프<br/>이슈 자동 수정]
 
-    Loop --> Red
+    Loop --> Analyze
 
     Phase3 --> Docs[📚 README, API 문서<br/>자동 업데이트]
 
@@ -593,10 +549,10 @@ flowchart TB
    - 수용 조건 명세
    - 사용자 스토리 작성
 
-3. **Phase 3: TDD 구현** (자율 루프)
-   - **RED**: 실패하는 테스트 먼저 작성
-   - **GREEN**: 테스트 통과하는 최소 구현
-   - **REFACTOR**: 코드 품질 개선
+3. **Phase 3: DDD 구현** (자율 루프)
+   - **ANALYZE**: 도메인 경계 및 결합도 분석
+   - **PRESERVE**: 특성 테스트로 동작 보존
+   - **IMPROVE**: 점진적 구조 개선
    - **루프**: 품질 검증 실패 시 자동으로 이슈 수정 반복
 
 4. **Phase 4: 문서 동기화**
@@ -903,7 +859,7 @@ LSP 오류, linting 이슈를 병렬로 스캔하고 한 번에 수정합니다.
 #### 개념과 워크플로우
 
 ```mermaid
-flowchart 
+flowchart
     Start([사용자 요청<br/>/moai:fix]) --> Dry{--dry 모드?}
 
     Dry -->|예| ScanOnly[스캔만 수행<br/>수정 없음]
@@ -988,10 +944,10 @@ flowchart TB
 
 | Level | 설명      | 위험도 | 승인   | 자동화 | 예시                 |
 | ----- | --------- | ------ | ------ | ------ | -------------------- |
-| 1     | 즉시 수정 | 낮음   | 불필요 | ✅      | import 정렬, 공백    |
-| 2     | 안전 수정 | 낮음   | 로그만 | ✅      | 변수 이름, 타입 추가 |
-| 3     | 승인 필요 | 중간   | 필요   | ⚠️      | 로직 변경, API 수정  |
-| 4     | 수동 필요 | 높음   | 불가능 | ❌      | 보안, 아키텍처       |
+| 1     | 즉시 수정 | 낮음   | 불필요 | ✅     | import 정렬, 공백    |
+| 2     | 안전 수정 | 낮음   | 로그만 | ✅     | 변수 이름, 타입 추가 |
+| 3     | 승인 필요 | 중간   | 필요   | ⚠️     | 로직 변경, API 수정  |
+| 4     | 수동 필요 | 높음   | 불가능 | ❌     | 보안, 아키텍처       |
 
 **1회 실행 과정**:
 
@@ -1210,19 +1166,18 @@ Alfred는 4개 언어 요청을 자동으로 인식하고 올바른 에이전트
 
 ---
 
-### 🎯 Tier 2: 워크플로우 관리자 (9개)
+### 🎯 Tier 2: 워크플로우 관리자 (8개)
 
-| 에이전트                | 역할                   | 자동 호출 시점                               |
-| ----------------------- | ---------------------- | -------------------------------------------- |
-| **manager-spec**        | SPEC 작성 (EARS)       | `/moai:1-plan`                               |
-| **manager-tdd**         | TDD 자동 실행          | `/moai:2-run` (development_mode: tdd 일 때)  |
-| **manager-ddd**         | DDD 리팩토링 실행      | `/moai:2-run` (development_mode: ddd 일 때)  |
-| **manager-docs**        | 문서 자동 생성         | `/moai:3-sync`                               |
-| **manager-quality**     | TRUST 5 검증           | 구현 완료 후                                 |
-| **manager-strategy**    | 실행 전략 수립         | 복잡한 기획 시                               |
-| **manager-project**     | 프로젝트 초기화        | `/moai:0-project`                            |
-| **manager-git**         | Git 워크플로우         | 브랜치/PR 관리                               |
-| **manager-claude-code** | Claude Code 통합       | 설정 최적화                                  |
+| 에이전트                | 역할             | 자동 호출 시점    |
+| ----------------------- | ---------------- | ----------------- |
+| **manager-spec**        | SPEC 작성 (EARS) | `/moai:1-plan`    |
+| **manager-ddd**         | DDD 구현 실행    | `/moai:2-run`     |
+| **manager-docs**        | 문서 자동 생성   | `/moai:3-sync`    |
+| **manager-quality**     | TRUST 5 검증     | 구현 완료 후      |
+| **manager-strategy**    | 실행 전략 수립   | 복잡한 기획 시    |
+| **manager-project**     | 프로젝트 초기화  | `/moai:0-project` |
+| **manager-git**         | Git 워크플로우   | 브랜치/PR 관리    |
+| **manager-claude-code** | Claude Code 통합 | 설정 최적화       |
 
 ---
 
@@ -1281,7 +1236,7 @@ MoAI-ADK의 모든 프로젝트는 **TRUST 5** 품질 프레임워크를 따릅�
 
 ```mermaid
 graph TD
-    T1["🔴 T: Test-First<br/>━━━━━━━━<br/>• TDD Red-Green-Refactor<br/>• 85%+ 커버리지<br/>• 자동 테스트"]
+    T1["🔴 T: Tested<br/>━━━━━━━━<br/>• DDD with tests<br/>• 85%+ 커버리지<br/>• 동작 보존"]
     R["📖 R: Readable<br/>━━━━━━━━<br/>• 명확한 명명<br/>• 코드 주석<br/>• 린터 준수"]
     U["🔄 U: Unified<br/>━━━━━━━━<br/>• 일관된 스타일<br/>• 표준 패턴<br/>• 에러 처리"]
     S["🔒 S: Secured<br/>━━━━━━━━<br/>• OWASP Top 10<br/>• 취약점 스캔<br/>• 암호화 정책"]
@@ -1290,16 +1245,16 @@ graph TD
     T1 --> R --> U --> S --> T2 --> Deploy["✅ Production Ready"]
 ```
 
-### T - Test-First (테스트 우선)
+### T - Tested (테스트 검증됨)
 
-**원칙**: 모든 구현은 테스트부터 시작
+**원칙**: 모든 구현은 테스트로 검증
 
 **검증**:
 
 - 테스트 커버리지 >= 85%
-- 실패하는 테스트 먼저 작성 (Red)
-- 테스트 통과 코드 (Green)
-- 리팩토링 (Refactor)
+- 기존 코드에 대한 특성화 테스트
+- 동작 보존 검증
+- 점진적 개선
 
 ### R - Readable (가독성)
 
@@ -1382,357 +1337,7 @@ graph TD
 
 ---
 
-## 8. TAG System v2.0 - 코드 ↔ 문서 추적 동기화
-
-TAG System v2.0은 코드와 SPEC 문서 간의 양방향 추적 가능성을 제공하는 강력한 시스템입니다. `@SPEC` 태그를 사용하여 코드에서 문서를, 문서에서 코드를 자동으로 연결합니다.
-
-### 핵심 문제 해결: "SPEC 없이 코드를 먼저 작성하면 어떡하나요?"
-
-TAG System v2.0의 **상황 인식 유효성 검사**(Context-Aware Validation)로 이 문제를 완벽하게 해결했습니다:
-
-| 상황                 | TAG 타입                            | SPEC 없이 커밋? | 설명                          |
-| -------------------- | ----------------------------------- | --------------- | ----------------------------- |
-| **간단한 수정**      | `related`(모든 파일)                | ✅ 허용          | 관련성만 표시, SPEC 불필요    |
-| **테스트 먼저 작성** | `verify` 또는 `@TEST` (테스트 파일) | ✅ 허용          | 테스트 주도 개발 지원         |
-| **구현 코드**        | `impl` (구현 파일)                  | ⚠️ 경고/차단     | warn/enforce 모드에 따라 다름 |
-| **의존성 표시**      | `depends` (모든 파일)               | ✅ 허용          | 의존성만 표시, SPEC 불필요    |
-
-### TAG 개요
-
-MoAI-ADK는 두 가지 TAG 유형을 지원합니다:
-
-| TAG 타입  | 목적             | 형식                    | 사용 위치        |
-| --------- | ---------------- | ----------------------- | ---------------- |
-| **@SPEC** | 코드 ↔ SPEC 연결 | `@SPEC SPEC-XXX [verb]` | 모든 파일        |
-| **@TEST** | 테스트 식별      | `@TEST TEST-XXX`        | 테스트 파일 전용 |
-
-### TAG 사용 가이드
-
-#### 1. @SPEC TAG 동사 선택 가이드
-
-| 동사        | 언제 사용?                | 사용 예시                       |
-| ----------- | ------------------------- | ------------------------------- |
-| **impl**    | 구현 코드에서 SPEC 연결   | `# @SPEC SPEC-AUTH-001 impl`    |
-| **verify**  | 테스트에서 해당 SPEC 검증 | `# @SPEC SPEC-AUTH-001 verify`  |
-| **related** | 간단한 수정/관련성 표시   | `# @SPEC SPEC-AUTH-001 related` |
-| **depends** | 다른 SPEC에 의존성 표시   | `# @SPEC SPEC-DB-004 depends`   |
-
-#### 2. @TEST vs @SPEC verify 선택 가이드
-
-| 구분          | @TEST                    | @SPEC verify               |
-| ------------- | ------------------------ | -------------------------- |
-| **목적**      | 테스트 식별              | SPEC 검증                  |
-| **SPEC 연결** | 선택사항                 | 필수                       |
-| **사용처**    | 독립 테스트              | TDD (SPEC → 구현 → 테스트) |
-| **결합 사용** | `@SPEC verify` + `@TEST` | 단독 사용                  |
-
-#### 3. 추천 사용 패턴
-
-```python
-# 패턴 1: TDD (SPEC 있음)
-# @SPEC SPEC-AUTH-001 verify
-# @TEST TEST-AUTH-001
-def test_login():
-    pass
-
-# 패턴 2: 독립 테스트 (SPEC 없음)
-# @TEST TEST-AUTH-001
-def test_login():
-    pass
-
-# 패턴 3: 구현 코드
-# @SPEC SPEC-AUTH-001 impl
-def login():
-    pass
-```
-
-### 요약: TAG 선택 결정 트리
-
-```
-테스트 파일인가?
-├── 예
-│   ├── SPEC 있고 검증 필요? → @SPEC verify
-│   ├── 독립 테스트 식별? → @TEST
-│   └── 둘 다 필요? → @SPEC verify + @TEST
-└── 아니오 (구현 코드)
-    ├── SPEC 있고 구현? → @SPEC impl
-    ├── 간단한 수정? → @SPEC related
-    └── 다른 SPEC 의존? → @SPEC depends
-```
-
-### TAG 구문
-
-코드 주석에 다음과 @TAG를 표기합니다. 함수 위에 명시하는 것을 권장합니다:
-
-```python
-# 기본 형식
-@SPEC SPEC-{DOMAIN}-{NUMBER} [verb] # 일반 코드
-@TEST TEST-{DOMAIN}-{NUMBER}       # 테스트 코드
-
-# 예시
-# @SPEC SPEC-AUTH-001 impl
-def login(): ...
-
-# @SPEC SPEC-AUTH-001 verify
-# @TEST TEST-AUTH-001
-def test_login(): ...
-```
-
-### 실전 워크플로우
-
-#### 시나리오 1: 간단한 버그 수정 (SPEC 없이)
-
-```python
-# auth.py
-# @SPEC SPEC-AUTH-001 related
-def fix_login_bug():
-    """로그인 버그 수정
-
-    관련 SPEC이 없으니 related 사용
-    """
-    pass
-```
-
-**Pre-commit Hook 결과**:
-```
-TAG 유효성 검사 결과:
-==================================================
-  auth.py:10: 힌트: SPEC-AUTH-001에 대한 SPEC 생성을 고려하세요
-  (related TAG - SPEC 불필요)
-==================================================
-
-경고와 함께 커밋 허용 (warn 모드)
-```
-
-✅ **커밋 허용**: related 태그는 SPEC 없이 허용
-
-#### 시나리오 2: 테스트 먼저 작성 (TDD)
-
-```python
-# test_auth.py
-# @SPEC SPEC-AUTH-002 verify
-# @TEST TEST-AUTH-002
-def test_login_success():
-    """로그인 성공 테스트
-
-    테스트 먼저 작성, impl은 나중에
-    """
-    pass
-```
-
-**Pre-commit Hook 결과**:
-```
-TAG 유효성 검사 결과:
-==================================================
-  test_auth.py:15: 경고: 테스트가 존재하지 않는 SPEC 참조: SPEC-AUTH-002
-  (테스트 파일의 verify TAG - 커밋 허용됨)
-==================================================
-
-경고와 함께 커밋 허용 (warn 모드)
-```
-
-✅ **커밋 허용**: 테스트 파일의 verify 태그는 SPEC 없이 허용
-
-#### 시나리오 3: 공식 개발 (SPEC 먼저)
-
-```bash
-# 1. SPEC 먼저 생성
-> /moai:1-plan "사용자 인증 시스템"
-# → SPEC-AUTH-003 생성
-
-# 2. 구현 코드 작성
-# @SPEC SPEC-AUTH-003 impl
-def login(username, password):
-    """사용자 로그인
-
-    공식 개발은 impl 태그 사용
-    """
-    pass
-
-# 3. 테스트 코드 작성
-# @SPEC SPEC-AUTH-003 verify
-# @TEST TEST-AUTH-003
-def test_login():
-    """로그인 테스트"""
-    pass
-```
-
-**Pre-commit Hook 결과** (SPEC 있음):
-```
-TAG 유효성 검사: 모든 TAG 유효함
-```
-
-✅ **커밋 허용**: SPEC 존재 확인
-
-**Pre-commit Hook 결과** (SPEC 없음, enforce 모드):
-```
-TAG 유효성 검사 결과:
-==================================================
-  auth.py:25: 오류: 구현이 존재하지 않는 SPEC 참조: SPEC-AUTH-003
-  (enforce 모드에서 커밋 차단됨)
-==================================================
-
-TAG 유효성 검사 오류로 커밋 차단됨 (enforce 모드)
-```
-
-❌ **커밋 차단**: enforce 모드에서 impl 태그에 SPEC 없음
-
-### 설정 옵션
-
-`.moai/config/sections/quality.yaml`에서 TAG 유효성 검사 동작을 설정:
-
-```yaml
-tag_validation:
-  enabled: true           # 태그 검사 활성화
-  mode: warn              # warn | enforce | off
-  check_spec_exists: true # SPEC 문서 존재 확인
-  max_tags_per_file: 100  # 파일당 최대 태그 수
-```
-
-### 모드별 동작
-
-| 모드              | impl 태그 (SPEC 없음) | verify/@TEST 태그 (테스트 파일) | related 태그 | depends 태그 |
-| ----------------- | --------------------- | ------------------------------- | ------------ | ------------ |
-| **warn** (기본값) | 경고 후 허용          | 경고 후 허용                    | 힌트만 표시  | 힌트만 표시  |
-| **enforce**       | 커밋 차단             | 허용                            | 힌트만 표시  | 힌트만 표시  |
-| **off**           | 검사 없음             | 검사 없음                       | 검사 없음    | 검사 없음    |
-
-### 추천 TAG 사용 전략
-
-| 개발 유형       | 추천 전략                                 | TAG 예시                                                                            |
-| --------------- | ----------------------------------------- | ----------------------------------------------------------------------------------- |
-| **핫픽스**      | `related` 사용                            | `@SPEC SPEC-XXX related`                                                            |
-| **테스트 주도** | `verify` 또는 `@TEST` 먼저, 나중에 `impl` | 테스트: `@SPEC SPEC-XXX verify` 또는 `@TEST TEST-XXX` → 구현: `@SPEC SPEC-XXX impl` |
-| **공식 개발**   | SPEC 먼저 생성, `impl` 사용               | `/moai:1-plan` → `@SPEC SPEC-XXX impl`                                              |
-| **리팩토링**    | 기존 TAG 유지                             | 변경 없음                                                                           |
-| **문서화**      | `related`로 관계 표시                     | `@SPEC SPEC-XXX related`                                                            |
-| **의존성 표시** | `depends`로 의존성 명시                   | `@SPEC SPEC-YYY depends` (다른 SPEC 의존)                                           |
-
-### Pre-commit Hook 자동 검사
-
-모든 Git 커밋 시 자동으로 TAG 유효성을 검사합니다:
-
-```bash
-# 커밋 시도
-git commit -m "Add login feature"
-
-# 자동 실행
-TAG 유효성 검사 결과:
-==================================================
-  auth.py:10: 힌트: SPEC-AUTH-001에 대한 SPEC 생성을 고려하세요
-  (related TAG - SPEC 불필요)
-==================================================
-
-경고와 함께 커밋 허용 (warn 모드)
-```
-
-### TAG 연계 데이터베이스
-
-TAG System은 `.moai/cache/tag-linkage.json`에 양방향 매핑을 저장:
-
-```json
-{
-  "tags": [
-    {
-      "spec_id": "SPEC-AUTH-001",
-      "verb": "impl",
-      "file_path": "src/auth.py",
-      "line": 10
-    }
-  ],
-  "files": {
-    "src/auth.py": ["SPEC-AUTH-001"]
-  }
-}
-```
-
-**자동 업데이트**:
-- 커밋 시 자동으로 TAG 추출 및 저장
-- 파일 삭제 시 해당 파일의 TAG 자동 제거
-- 고아 TAG(삭제된 SPEC 참조) 감지
-
-### 고급 기능
-
-#### SPEC-ID 형식 검사
-
-```python
-# 올바른 형식
-@SPEC SPEC-AUTH-001    # ✅
-@SPEC SPEC-PAY-002     # ✅
-@SPEC SPEC-UI-003      # ✅
-
-# 잘못된 형식
-@SPEC AUTH-001         # ❌ SPEC- 접두사 누락
-@SPEC SPEC-001         # ❌ 도메인 누락
-@SPEC SPEC-AUTH-1      # ❌ 3자리 숫자 필요
-```
-
-#### 파일 타입 자동 감지
-
-TAG System은 파일 패턴으로 자동 감지:
-- **테스트 파일**: `test_*.py`, `*_test.py`, `tests/` 디렉토리
-- **구현 파일**: 그 외 모든 Python 파일
-
-### 시작하기
-
-```bash
-# 1. TAG System은 이미 활성화되어 있습니다
-cat .moai/config/sections/quality.yaml
-
-# 2. 코드에 TAG 추가
-# auth.py (구현 파일)
-# @SPEC SPEC-AUTH-001 impl
-def login():
-    pass
-
-# test_auth.py (테스트 파일)
-# @SPEC SPEC-AUTH-001 verify
-# @TEST TEST-AUTH-001
-def test_login():
-    pass
-
-# 3. 커밋 시 자동 검사
-git add .
-git commit -m "Add login feature"
-# → TAG Validation 자동 실행
-```
-
-### 문제 해결
-
-**Q: TAG 검사를 건너뛰고 싶어요**
-```bash
-git commit --no-verify
-```
-
-**Q: enforce 모드에서 일시적으로 커밋하고 싶어요**
-```yaml
-# quality.yaml (일시적 변경)
-tag_validation:
-  mode: warn  # enforce → warn
-```
-
-**Q: 고아 TAG를 찾고 싶어요**
-```bash
-# 고아 TAG = 존재하지 않는 SPEC을 참조하는 TAG
-# 자동으로 Pre-commit Hook에서 감지
-```
-
-### TAG System v2.0의 핵심 혁신
-
-| 문제                | TAG System v1 | TAG System v2                          |
-| ------------------- | ------------- | -------------------------------------- |
-| SPEC 없이 코드 작성 | ❌ 불가능      | ✅ `related`/`verify`로 가능            |
-| 테스트 먼저 작성    | ❌ 불가능      | ✅ 테스트 파일 `verify`/`@TEST` 허용    |
-| 유연한 검사         | ❌ 전체 차단   | ✅ warn/enforce/off 모드                |
-| 파일 타입 인식      | ❌ 없음        | ✅ 자동 감지 (테스트/구현)              |
-| 의존성 표시         | ❌ 미지원      | ✅ `depends`로 SPEC 간 의존성 표시 가능 |
-| 테스트 식별 TAG     | ❌ 미지원      | ✅ `@TEST`로 독립적인 테스트 식별 지원  |
-
-**TAG System v2.0**: SPEC-First TDD의 이점을 유지하면서, 실전 개발의 유연성을 완벽하게 지원합니다.
-
----
-
-## 9. 📊 Statusline 커스터마이징
+## 8. 📊 Statusline 커스터마이징
 
 MoAI-ADK는 Claude Code 터미널에 실시간 상태 정보를 표시하는 사용자 정의 가능한 statusline을 제공합니다.
 
@@ -1746,14 +1351,14 @@ MoAI-ADK는 Claude Code 터미널에 실시간 상태 정보를 표시하는 사
 
 | 아이콘 | 컴포넌트 | 설명                                  | 설정 키          |
 | ------ | -------- | ------------------------------------- | ---------------- |
-| 🤖      | 모델     | Claude 모델 (Opus, Sonnet 등)         | `model`          |
-| 💰      | 컨텍스트 | 컨텍스트 윈도우 사용량 (예: 77K/200K) | `context_window` |
-| 💬      | 스타일   | 활성 아웃풋 스타일 (예: Mr. Alfred)   | `output_style`   |
-| 📁      | 디렉토리 | 현재 프로젝트 이름                    | `directory`      |
-| 📊      | Git 상태 | 스테이징/수정/추적되지 않은 파일 수   | `git_status`     |
-| 💾      | 메모리   | 프로세스 메모리 사용량                | `memory_usage`   |
-| 🔀      | 브랜치   | 현재 Git 브랜치                       | `branch`         |
-| 🔅      | 버전     | Claude Code 버전 (선택적)             | `version`        |
+| 🤖     | 모델     | Claude 모델 (Opus, Sonnet 등)         | `model`          |
+| 💰     | 컨텍스트 | 컨텍스트 윈도우 사용량 (예: 77K/200K) | `context_window` |
+| 💬     | 스타일   | 활성 아웃풋 스타일 (예: Mr. Alfred)   | `output_style`   |
+| 📁     | 디렉토리 | 현재 프로젝트 이름                    | `directory`      |
+| 📊     | Git 상태 | 스테이징/수정/추적되지 않은 파일 수   | `git_status`     |
+| 💾     | 메모리   | 프로세스 메모리 사용량                | `memory_usage`   |
+| 🔀     | 브랜치   | 현재 Git 브랜치                       | `branch`         |
+| 🔅     | 버전     | Claude Code 버전 (선택적)             | `version`        |
 
 ### 설정
 
@@ -1761,15 +1366,15 @@ MoAI-ADK는 Claude Code 터미널에 실시간 상태 정보를 표시하는 사
 
 ```yaml
 display:
-  model: true           # 🤖 Claude 모델
-  context_window: true  # 💰 컨텍스트 윈도우
-  output_style: true    # 💬 아웃풋 스타일
-  directory: true       # 📁 프로젝트 이름
-  git_status: true      # 📊 Git 상태
-  memory_usage: true    # 💾 메모리 사용량
-  branch: true          # 🔀 Git 브랜치
-  version: 1.1.0        # 🔅 버전 (선택적)
-  active_task: true     # 활성 작업
+  model: true # 🤖 Claude 모델
+  context_window: true # 💰 컨텍스트 윈도우
+  output_style: true # 💬 아웃풋 스타일
+  directory: true # 📁 프로젝트 이름
+  git_status: true # 📊 Git 상태
+  memory_usage: true # 💾 메모리 사용량
+  branch: true # 🔀 Git 브랜치
+  version: 1.1.0 # 🔅 버전 (선택적)
+  active_task: true # 활성 작업
 ```
 
 ### 메모리 수집기
@@ -1797,7 +1402,7 @@ export MOAI_STATUSLINE_MODE=extended
 
 ---
 
-## 10. 🌳 Worktree 병렬 개발
+## 9. 🌳 Worktree 병렬 개발
 
 MoAI-ADK의 핵심 혁신: **Worktree로 완전 격리, 무제한 병렬 개발**
 
@@ -1848,7 +1453,7 @@ MoAI-ADK의 핵심 혁신: **Worktree로 완전 격리, 무제한 병렬 개발*
 │                                                                  │
 │  $ claude                                                        │
 │  > /moai:2-run SPEC-AUTH-001                                     │
-│  🔄 TDD 실행 중... (Red → Green → Refactor)                       │
+│  🔄 DDD 실행 중... (Analyze → Preserve → Improve)                 │
 │  ✅ 구현 완료!                                                   │
 │  ✅ 테스트 통과 (Coverage: 92%)                                  │
 │                                                                  │
@@ -1963,7 +1568,7 @@ moai-wt clean --merged-only
 
 ---
 
-## 11. CLAUDE.md 이해하기
+## 10. CLAUDE.md 이해하기
 
 MoAI-ADK 설치 후 프로젝트 루트에 생성되는 `CLAUDE.md`는 **Alfred(AI 오케스트레이터)의 실행 지침서**입니다. 이 파일은 Claude Code가 프로젝트에서 어떻게 동작할지 정의합니다.
 
@@ -2001,6 +1606,7 @@ MoAI-ADK 설치 후 프로젝트 루트에 생성되는 `CLAUDE.md`는 **Alfred(
 > **권장**: `CLAUDE.md`는 **수정하지 않고 그대로 사용**하세요.
 
 **이유**:
+
 - MoAI-ADK 업데이트 시 자동으로 최신 버전으로 교체됩니다
 - 수정하면 업데이트 충돌이 발생할 수 있습니다
 - 에이전트 간 일관된 동작을 보장합니다
@@ -2025,19 +1631,23 @@ touch CLAUDE.local.md
 # 프로젝트 로컬 지침
 
 ## 코딩 스타일
+
 - 모든 함수에 타입 힌트 필수
 - docstring은 Google 스타일 사용
 
 ## 프로젝트 특수 규칙
+
 - API 응답은 항상 snake_case 사용
-- 테스트 파일은 test_ 접두사 필수
+- 테스트 파일은 test\_ 접두사 필수
 
 ## 금지 사항
+
 - console.log 사용 금지 (logger 사용)
 - any 타입 사용 금지
 ```
 
 **장점**:
+
 - `CLAUDE.md` 업데이트와 충돌 없음
 - 프로젝트별 맞춤 설정 가능
 - `.gitignore`에 추가하여 개인 설정 유지 가능
@@ -2070,8 +1680,8 @@ touch CLAUDE.local.md
 
 ### 왜 MoAI Rank인가?
 
-| 기능                   | 설명                       |
-| ---------------------- | -------------------------- |
+| 기능                    | 설명                       |
+| ----------------------- | -------------------------- |
 | **📊 토큰 트래킹**      | 세션별 AI 사용량 자동 기록 |
 | **🏆 글로벌 리더보드**  | 일간/주간/월간/전체 순위   |
 | **🎭 코딩 스타일 분석** | 당신만의 개발 패턴 발견    |
@@ -2234,7 +1844,7 @@ moai rank list-excluded
 
 ---
 
-## 13. FAQ
+## 12. FAQ
 
 ### Q1: SPEC는 항상 필요한가요?
 
@@ -2246,20 +1856,7 @@ moai rank list-excluded
 | 새 기능 추가  | 권장             |
 | 버그 수정     | 선택             |
 
-### Q2: @TEST와 @SPEC verify의 차이는 무엇인가요?
-
-| 구분          | @TEST                    | @SPEC verify               |
-| ------------- | ------------------------ | -------------------------- |
-| **목적**      | 테스트 식별              | SPEC 검증                  |
-| **SPEC 연결** | 선택사항                 | 필수                       |
-| **사용처**    | 독립 테스트              | TDD (SPEC → 구현 → 테스트) |
-| **결합 사용** | `@SPEC verify` + `@TEST` | 단독 사용                  |
-
-- **@TEST만 사용**: 독립적인 테스트 식별이 필요할 때
-- **@SPEC verify만 사용**: SPEC 문서와 테스트를 연결할 때
-- **둘 다 사용**: TDD로 개발하고 테스트 식별도 필요할 때
-
-### Q3: MCP 서버 설치가 필요한가요?
+### Q2: MCP 서버 설치가 필요한가요?
 
 **선택사항**:
 
@@ -2268,21 +1865,21 @@ moai rank list-excluded
 - **Playwright**: E2E 테스트
 - **Figma**: 디자인 시스템
 
-### Q4: MoAI Rank는 비용이 드나요?
+### Q3: MoAI Rank는 비용이 드나요?
 
 무료입니다. 세션 데이터만 자동 수집합니다.
 
-### Q5: GLM 설정은 필수인가요?
+### Q4: GLM 설정은 필수인가요?
 
 아닙니다. Claude만 사용해도 됩니다. 다만 비용 절감을 위해 권장합니다.
 
-### Q6: 기존 프로젝트에도 적용 가능한가요?
+### Q5: 기존 프로젝트에도 적용 가능한가요?
 
 네. `moai init .`으로 기존 파일은 그대로 유지됩니다.
 
 ---
 
-## 14. 커뮤니티 & 지원
+## 13. 커뮤니티 & 지원
 
 ### 🌐 참여하기
 
@@ -2297,22 +1894,22 @@ moai rank list-excluded
 
 ---
 
-## 15. Star History
+## 14. Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=date&legend=top-left)](https://www.star-history.com/#modu-ai/moai-adk&type=date&legend=top-left)
 
 ---
 
-## 16. 라이선스
+## 15. 라이선스
 
 Copyleft License (COPYLEFT-3.0) - [LICENSE](./LICENSE)
 
 ---
 
-## 17. 🙏 Made with ❤️ by MoAI-ADK Team
+## 16. 🙏 Made with ❤️ by MoAI-ADK Team
 
 **Last Updated:** 2026-01-11
-**Philosophy**: SPEC-First TDD + Agent Orchestration + Hybrid LLM
+**Philosophy**: SPEC-First DDD + Agent Orchestration + Hybrid LLM
 **MoAI**: MoAI는 "모두를 위한 AI (Modu-ui AI)"를 의미합니다.
 
 > **"무한가능주의 - 모두의 AI"**

@@ -4,6 +4,18 @@ description: "Flutter 3.24+ / Dart 3.5+ development specialist covering Riverpod
 version: 1.1.0
 category: "language"
 modularized: false
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: ~100
+  level2_tokens: ~5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["Flutter", "Dart", "Riverpod", "go_router", "widget", ".dart", "pubspec.yaml", "cross-platform", "mobile"]
+  languages: ["dart", "flutter"]
+
 user-invocable: false
 tags: ['flutter', 'dart', 'riverpod', 'cross-platform', 'mobile', 'desktop']
 context7-libraries: ['/flutter/flutter', '/rrousselgit/riverpod', '/flutter/packages']

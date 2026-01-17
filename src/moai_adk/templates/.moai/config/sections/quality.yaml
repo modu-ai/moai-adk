@@ -1,36 +1,24 @@
 # Quality & Constitution Settings
-# TRUST 5 Framework: Test-first, Readable, Unified, Secured, Trackable
+# TRUST 5 Framework: Tested, Readable, Unified, Secured, Trackable
 
 constitution:
-  # Development methodology selection
-  development_mode: tdd               # tdd | ddd
-  # tdd: Test-Driven Development (RED-GREEN-REFACTOR) - for new features
-  # ddd: Domain-Driven Development (ANALYZE-PRESERVE-IMPROVE) - for refactoring
+  # Development methodology - DDD only
+  development_mode: ddd
+  # ddd: Domain-Driven Development (ANALYZE-PRESERVE-IMPROVE)
+  # - Refactoring with behavior preservation
+  # - Characterization tests for legacy code
+  # - Incremental improvements
 
   # TRUST 5 quality framework enforcement
-  enforce_tdd: true                   # Enable TRUST 5 quality principles
-  test_coverage_target: 100            # Target: 100% coverage for AI-assisted TDD
+  enforce_quality: true               # Enable TRUST 5 quality principles
+  test_coverage_target: 100           # Target: 100% coverage for AI-assisted development
 
-  # TDD enforcement mode (applies when development_mode: tdd)
-  tdd_mode: warn                       # warn | enforce | off
-  # warn: Show reminder when test file missing (allows code write)
-  # enforce: Require test file before code write (asks user confirmation)
-  # off: Disable TDD hooks
-
-  # DDD settings (applies when development_mode: ddd)
+  # DDD settings (Domain-Driven Development)
   ddd_settings:
     require_existing_tests: true      # Require existing tests before refactoring
     characterization_tests: true      # Create characterization tests for uncovered code
     behavior_snapshots: true          # Use snapshot testing for complex outputs
     max_transformation_size: small    # small | medium | large - controls change granularity
-
-  # Per-language TDD settings (optional, overrides global tdd_mode)
-  tdd_by_language:
-    Python: warn
-    TypeScript: warn
-    JavaScript: warn
-    # Go: enforce
-    # Rust: enforce
 
   # Coverage exemptions (discouraged - use sparingly with justification)
   coverage_exemptions:
@@ -41,7 +29,7 @@ constitution:
   # Test quality criteria (Quality > Numbers principle)
   test_quality:
     specification_based: true          # Tests must verify specified behavior
-    meaningful_assertions: true         # Assertions must have clear purpose
+    meaningful_assertions: true        # Assertions must have clear purpose
     avoid_implementation_coupling: true # Tests should not couple to implementation details
     mutation_testing_enabled: false    # Optional: mutation testing for effectiveness validation
 
@@ -55,13 +43,3 @@ report_generation:
   auto_create: false          # Auto-create full reports (false = minimal)
   warn_user: true             # Ask before generating reports
   user_choice: Minimal        # Default: Minimal, Full, None
-
-# TAG System v2.0 Configuration (SPEC-TAG-001)
-tag_validation:
-  enabled: true               # Enable TAG validation in pre-commit hooks
-  mode: warn                  # Validation mode: warn | enforce | off
-                              # warn: Show warnings but allow commit
-                              # enforce: Block commit on validation failure
-                              # off: Disable TAG validation
-  check_spec_exists: true     # Check if referenced SPEC documents exist
-  max_tags_per_file: 100      # Maximum TAGs per file (prevents abuse)

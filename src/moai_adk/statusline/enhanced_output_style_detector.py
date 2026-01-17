@@ -163,7 +163,7 @@ class OutputStyleDetector:
             # Check for TODO/task tracking patterns
             todo_file = cwd / ".moai" / "current_session_todo.txt"
             if todo_file.exists():
-                content = todo_file.read_text()
+                content = todo_file.read_text(encoding="utf-8")
                 if "plan" in content.lower() or "phase" in content.lower():
                     return "Explanatory"
 

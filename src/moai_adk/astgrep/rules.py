@@ -70,7 +70,7 @@ class RuleLoader:
             raise FileNotFoundError(f"Rule file not found: {config_path}")
 
         try:
-            content = path.read_text()
+            content = path.read_text(encoding="utf-8")
             documents = list(yaml.safe_load_all(content))
         except yaml.YAMLError as e:
             raise ValueError(f"Invalid YAML in {config_path}: {e}") from e
