@@ -30,12 +30,12 @@ Use Cases:
 ---
 
 ### 2. spec-first-tdd.md (866 lines)
-Specification-Driven Development - EARS format requirements with RED-GREEN-REFACTOR TDD cycles.
+Specification-Driven Development - EARS format requirements with ANALYZE-PRESERVE-IMPROVE DDD cycles.
 
 Quick Access:
 - SPEC generation (/moai:1-plan)
 - EARS format patterns
-- TDD implementation (/moai:2-run)
+- DDD implementation (/moai:2-run)
 - Documentation sync (/moai:3-sync)
 
 Use Cases:
@@ -67,7 +67,7 @@ Use Cases:
 Budget Management - Efficient 200K token budget through strategic context management.
 
 Quick Access:
-- Phase-based allocation (SPEC 30K | TDD 180K | Docs 40K)
+- Phase-based allocation (SPEC 30K | DDD 180K | Docs 40K)
 - /clear execution rules
 - Selective file loading
 - Model selection strategy
@@ -132,12 +132,12 @@ Use Cases:
 ---
 
 ### 8. commands-reference.md (NEW)
-Command Catalog - Complete reference for MoAI-ADK's 6 core commands in SPEC-First TDD workflow.
+Command Catalog - Complete reference for MoAI-ADK's 6 core commands in SPEC-First DDD workflow.
 
 Quick Access:
 - /moai:0-project (Project init)
 - /moai:1-plan (SPEC generation)
-- /moai:2-run (TDD implementation)
+- /moai:2-run (DDD implementation)
 - /moai:3-sync (Documentation)
 - /moai:9-feedback (Improvement)
 - /moai:99-release (Deployment)
@@ -259,7 +259,7 @@ Detailed Reference: [TRUST 5 Framework Module](modules/trust-5-framework.md)
 | Module | Lines | Topics Covered | Use Cases |
 |--------|-------|----------------|-----------|
 | trust-5-framework | 982 | Quality gates, CI/CD, validation | 4 |
-| spec-first-tdd | 866 | SPEC, EARS, TDD, docs | 4 |
+| spec-first-tdd | 866 | SPEC, EARS, DDD, docs | 4 |
 | delegation-patterns | 757 | Sequential, parallel, conditional | 4 |
 | token-optimization | 656 | Budget, /clear, loading, models | 4 |
 | progressive-disclosure | 576 | 3 levels, 500-line limit, splitting | 4 |
@@ -284,8 +284,8 @@ Agents:
 - quality-gate (validation)
 
 Commands:
-- /moai:1-plan (SPEC-First TDD)
-- /moai:2-run (TDD implementation)
+- /moai:1-plan (SPEC-First DDD)
+- /moai:2-run (DDD implementation)
 - /moai:3-sync (Documentation)
 - /clear (Token optimization)
 

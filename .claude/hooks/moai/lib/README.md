@@ -108,7 +108,7 @@ Location: `.moai/config/sections/`
 - `language.yaml` - Language preferences
 - `project.yaml` - Project metadata
 - `git-strategy.yaml` - Git workflow
-- `quality.yaml` - TDD settings
+- `quality.yaml` - DDD settings
 
 ## Hook Data Flow
 
