@@ -1,3 +1,129 @@
+# v1.3.5 - Worktree CLI Enhancement & DDD Migration (2026-01-17)
+
+## Summary
+
+This patch release improves the worktree CLI with cross-project search capabilities and better error handling, while completing the TDD→DDD naming migration in test files.
+
+## Fixed
+
+- **fix(worktree)**: Enhance CLI with cross-project search and improved error messages
+  - `moai-wt go` now searches across all projects if worktree not found in current project
+  - `moai-wt remove` applies the same cross-project search improvement
+  - Added path existence validation with helpful recovery suggestions
+  - Added `assert` type guard for `spec_id` None safety in `sync_worktree`
+  - Fixed `cleaned` variable initialization in `clean_worktrees` to prevent mypy errors
+  - Improved error messages showing available worktrees when not found
+
+- **fix(tests)**: Update TDD→DDD naming in test files
+  - Renamed `TDDCommitPhase` → `DDDCommitPhase`
+  - Renamed `TDD_PHASES` → `DDD_PHASES`
+  - Renamed `format_tdd_commit` → `format_ddd_commit`
+  - Updated test files: `tests/foundation/test_git.py`, `tests/unit/foundation/test_git.py`
+  - Fixed worktree test to create directory for path.exists() validation
+
+## Quality
+
+- Smoke tests: 6 passed (100% pass rate)
+- Worktree tests: 131 passed (100% pass rate)
+- Ruff: All checks passed
+- Mypy: No issues found
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Or using pipx
+pipx upgrade moai-adk
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.3.5 - Worktree CLI 개선 및 DDD 마이그레이션 (2026-01-17)
+
+## 요약
+
+이 패치 릴리스는 worktree CLI를 전 프로젝트 검색 기능과 향상된 오류 처리로 개선하며, 테스트 파일의 TDD→DDD 네이밍 마이그레이션을 완료합니다.
+
+## 수정됨
+
+- **fix(worktree)**: 전 프로젝트 검색 및 향상된 오류 메시지로 CLI 개선
+  - `moai-wt go`가 현재 프로젝트에서 worktree를 찾지 못하면 모든 프로젝트에서 검색
+  - `moai-wt remove`에 동일한 전 프로젝트 검색 개선 적용
+  - 유용한 복구 제안과 함께 경로 존재 여부 검증 추가
+  - `sync_worktree`에서 `spec_id` None 안전성을 위한 `assert` 타입 가드 추가
+  - mypy 오류 방지를 위해 `clean_worktrees`의 `cleaned` 변수 초기화 수정
+  - worktree를 찾지 못할 때 사용 가능한 worktree를 표시하는 향상된 오류 메시지
+
+- **fix(tests)**: 테스트 파일에서 TDD→DDD 네이밍 업데이트
+  - `TDDCommitPhase` → `DDDCommitPhase`로 이름 변경
+  - `TDD_PHASES` → `DDD_PHASES`로 이름 변경
+  - `format_tdd_commit` → `format_ddd_commit`로 이름 변경
+  - 테스트 파일 업데이트: `tests/foundation/test_git.py`, `tests/unit/foundation/test_git.py`
+  - path.exists() 검증을 위해 디렉토리를 생성하도록 worktree 테스트 수정
+
+## 품질
+
+- Smoke 테스트: 6개 통과 (100% 통과율)
+- Worktree 테스트: 131개 통과 (100% 통과율)
+- Ruff: 모든 검사 통과
+- Mypy: 문제 없음
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 또는 pipx 사용
+pipx upgrade moai-adk
+
+# 버전 확인
+moai --version
+```
+
+---
+
+# v1.3.2 - Hooks Format Fix (2026-01-17)
+
+## Summary
+
+This patch release fixes the Claude Code hooks format by adding required `matcher: {}` field to SessionStart and SessionEnd hooks.
+
+## Fixed
+
+- **fix(hooks)**: Add required `matcher: {}` field to SessionStart and SessionEnd hooks
+  - Claude Code now requires `matcher` field even for hooks without conditions
+  - Fixed "Expected array, but received undefined" error in settings validation
+  - Updated all settings.json templates (unix/windows variants)
+
+- **fix(tests)**: Fix mock function signature in test_switch.py
+  - Added missing `encoding` parameter to mock_read_text_func
+
+---
+
+# v1.3.2 - Hooks 형식 수정 (2026-01-17)
+
+## 요약
+
+이 패치 릴리스는 SessionStart 및 SessionEnd hooks에 필수 `matcher: {}` 필드를 추가하여 Claude Code hooks 형식을 수정합니다.
+
+## 수정됨
+
+- **fix(hooks)**: SessionStart 및 SessionEnd hooks에 필수 `matcher: {}` 필드 추가
+  - Claude Code가 이제 조건이 없는 hooks에도 `matcher` 필드를 요구함
+  - settings 유효성 검사에서 "Expected array, but received undefined" 오류 수정
+  - 모든 settings.json 템플릿(unix/windows 변형) 업데이트
+
+- **fix(tests)**: test_switch.py의 mock 함수 시그니처 수정
+  - mock_read_text_func에 누락된 `encoding` 매개변수 추가
+
+---
+
 # v1.3.1 - Bugfix Release (2026-01-17)
 
 ## Summary
