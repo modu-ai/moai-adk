@@ -41,13 +41,13 @@ class ValidateResult:
 
 
 @dataclass
-class TDDCommitPhase:
-    """TDD commit phase information."""
+class DDDCommitPhase:
+    """DDD commit phase information."""
 
-    phase_name: str  # "RED", "GREEN", or "REFACTOR"
-    commit_type: str  # "test", "feat", "refactor"
+    phase_name: str  # "ANALYZE", "PRESERVE", or "IMPROVE"
+    commit_type: str  # "chore", "test", "refactor"
     description: str
-    test_status: str  # "failing", "passing", or "optimizing"
+    test_status: str  # "analyzing", "preserving", or "improving"
 
 
 class GitVersionDetector:
@@ -235,23 +235,23 @@ class BranchingStrategySelector:
 
 
 class GitWorkflowManager:
-    """Manages Git workflow operations for SPEC-first TDD."""
+    """Manages Git workflow operations for SPEC-first DDD."""
 
-    TDD_PHASES = {
-        "RED": {
+    DDD_PHASES = {
+        "ANALYZE": {
+            "commit_type": "chore",
+            "description": "Analyze existing code and behavior",
+            "tests_status": "analyzing",
+        },
+        "PRESERVE": {
             "commit_type": "test",
-            "description": "Write failing tests",
-            "tests_status": "failing",
+            "description": "Create characterization tests",
+            "tests_status": "preserving",
         },
-        "GREEN": {
-            "commit_type": "feat",
-            "description": "Implement to pass tests",
-            "tests_status": "passing",
-        },
-        "REFACTOR": {
+        "IMPROVE": {
             "commit_type": "refactor",
-            "description": "Optimize implementation",
-            "tests_status": "passing",
+            "description": "Refactor with behavior preservation",
+            "tests_status": "improving",
         },
     }
 
@@ -261,15 +261,15 @@ class GitWorkflowManager:
             return f"git switch -c {branch_name}"
         return f"git checkout -b {branch_name}"
 
-    def format_tdd_commit(self, commit_type: str, scope: str, subject: str, phase: str) -> str:
-        """Format TDD phase commit message."""
+    def format_ddd_commit(self, commit_type: str, scope: str, subject: str, phase: str) -> str:
+        """Format DDD phase commit message."""
         base_msg = f"{commit_type}({scope}): {subject}"
 
         # Add phase indicator
         phase_indicators = {
-            "RED": "(RED phase)",
-            "GREEN": "(GREEN phase)",
-            "REFACTOR": "(REFACTOR phase)",
+            "ANALYZE": "(ANALYZE phase)",
+            "PRESERVE": "(PRESERVE phase)",
+            "IMPROVE": "(IMPROVE phase)",
         }
 
         phase_indicator = phase_indicators.get(phase, f"({phase})")
@@ -282,18 +282,18 @@ class GitWorkflowManager:
         if strategy == "feature_branch":
             commands = [
                 f"git switch -c feature/{spec_id}",
-                "# RED phase: git commit -m 'test(...): add tests'",
-                "# GREEN phase: git commit -m 'feat(...): implement'",
-                "# REFACTOR phase: git commit -m 'refactor(...): optimize'",
+                "# ANALYZE phase: git commit -m 'chore(...): analyze existing code'",
+                "# PRESERVE phase: git commit -m 'test(...): add characterization tests'",
+                "# IMPROVE phase: git commit -m 'refactor(...): improve with behavior preservation'",
                 "gh pr create --base develop --generate-description",
                 f"gh pr merge {spec_id} --auto --squash",
             ]
         elif strategy == "direct_commit":
             commands = [
                 "git switch develop",
-                "# RED phase: git commit -m 'test(...): add tests'",
-                "# GREEN phase: git commit -m 'feat(...): implement'",
-                "# REFACTOR phase: git commit -m 'refactor(...): optimize'",
+                "# ANALYZE phase: git commit -m 'chore(...): analyze existing code'",
+                "# PRESERVE phase: git commit -m 'test(...): add characterization tests'",
+                "# IMPROVE phase: git commit -m 'refactor(...): improve with behavior preservation'",
                 "git push origin develop",
             ]
 
@@ -367,7 +367,7 @@ class GitPerformanceOptimizer:
 __all__ = [
     "GitInfo",
     "ValidateResult",
-    "TDDCommitPhase",
+    "DDDCommitPhase",
     "GitVersionDetector",
     "ConventionalCommitValidator",
     "BranchingStrategySelector",
