@@ -1,3 +1,79 @@
+# v1.3.6 - MoAI Rank Session Sync Fix (2026-01-17)
+
+## Summary
+
+This patch release fixes a critical bug in MoAI Rank session synchronization where sessions with extremely high `cacheReadTokens` values (exceeding ~2.1 billion) were failing server-side validation.
+
+## Fixed
+
+- **fix(rank)**: Cap cacheReadTokens to INT32_MAX to prevent server validation error (#264)
+  - Sessions with `cache_read_tokens` exceeding 2,147,483,647 (INT32_MAX) now have values capped before submission
+  - Prevents `VALIDATION_ERROR: Cache read tokens exceed limit` errors from MoAI Rank server
+  - Affects heavy Claude Code users with long sessions that accumulate massive prompt caching tokens
+  - Client-side workaround until server-side INT type constraint is upgraded
+  - Normal values (< INT32_MAX) are preserved unchanged
+  - Added 4 comprehensive test cases for capping logic validation
+
+## Quality
+
+- Smoke tests: 6 passed (100% pass rate)
+- Rank tests: 114 passed (100% pass rate, +4 new tests)
+- Ruff: All checks passed
+- Mypy: No issues found in 169 source files
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Or using pipx
+pipx upgrade moai-adk
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.3.6 - MoAI Rank 세션 동기화 수정 (2026-01-17)
+
+## 요약
+
+이 패치 릴리스는 `cacheReadTokens` 값이 극단적으로 높은 세션(약 21억 초과)이 서버 측 유효성 검사에 실패하는 MoAI Rank 세션 동기화의 중요한 버그를 수정합니다.
+
+## 수정됨
+
+- **fix(rank)**: 서버 유효성 검사 오류 방지를 위해 cacheReadTokens를 INT32_MAX로 제한 (#264)
+  - `cache_read_tokens`가 2,147,483,647(INT32_MAX)을 초과하는 세션의 값을 제출 전에 캡핑
+  - MoAI Rank 서버의 `VALIDATION_ERROR: Cache read tokens exceed limit` 오류 방지
+  - 긴 세션에서 대량의 프롬프트 캐싱 토큰을 축적하는 헤비 Claude Code 사용자에게 영향
+  - 서버 측 INT 타입 제약이 업그레이드될 때까지의 클라이언트 측 임시 해결책
+  - 정상 값(< INT32_MAX)은 변경 없이 보존됨
+  - 캡핑 로직 검증을 위한 4개의 포괄적인 테스트 케이스 추가
+
+## 품질
+
+- Smoke 테스트: 6개 통과 (100% 통과율)
+- Rank 테스트: 114개 통과 (100% 통과율, +4개 신규 테스트)
+- Ruff: 모든 검사 통과
+- Mypy: 169개 소스 파일에서 문제 없음
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 또는 pipx 사용
+pipx upgrade moai-adk
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.3.5 - Worktree CLI Enhancement & DDD Migration (2026-01-17)
 
 ## Summary
