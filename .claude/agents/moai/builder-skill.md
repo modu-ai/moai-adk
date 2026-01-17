@@ -196,6 +196,10 @@ If SKILL.md exceeds 500 lines:
 
 File Structure Standards:
 
+[HARD] Skills MUST be created in `.claude/skills/` directory, NEVER in `.moai/skills/`
+WHY: Claude Code official standard requires skills in `.claude/skills/` for proper discovery and activation
+IMPACT: Skills created in wrong directory will not be discovered or activated by Claude Code
+
 Organize skill files in this directory structure:
 .claude/skills/skill-name/
 ├── SKILL.md (mandatory, <500 lines)
@@ -205,6 +209,11 @@ Organize skill files in this directory structure:
 │ └── helper.sh (optional, utility scripts)
 └── templates/
 └── template.md (optional, templates)
+
+CRITICAL PATH VERIFICATION:
+- Correct: `.claude/skills/my-skill/SKILL.md`
+- WRONG: `.moai/skills/my-skill/SKILL.md`
+- WRONG: `skills/my-skill/SKILL.md`
 
 Frontmatter Requirements:
 
@@ -660,6 +669,10 @@ All created skills for agent-to-agent communication MUST follow this output form
 </skill_delivery>
 
 ### Required Output Elements
+
+[HARD] Skills MUST be written to `.claude/skills/` directory path
+WHY: Claude Code only discovers skills in `.claude/skills/` directory
+IMPACT: Skills written to other paths like `.moai/skills/` will not be activated
 
 [HARD] Include complete skill_delivery XML wrapper with all child elements
 WHY: Standardized output format ensures reliable delivery and integration

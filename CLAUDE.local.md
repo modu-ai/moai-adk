@@ -1,4 +1,4 @@
-# MoAI-ADK Local Development Guide
+/out# MoAI-ADK Local Development Guide
 
 > **Purpose**: Essential guide for local MoAI-ADK development
 > **Audience**: GOOS (local developer only)

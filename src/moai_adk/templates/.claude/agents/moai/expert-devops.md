@@ -10,9 +10,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, WebFetch, Bash, TodoWrite, mcp__github__create-or-update-file, mcp__github__push-files, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-
-# Progressive Disclosure: Skills listed below will be automatically available when this agent is invoked.
-skills: - moai-foundation-claude, - moai-workflow-project, - moai-workflow-jit-docs, - moai-platform-vercel, - moai-platform-railway
+skills: moai-foundation-claude, moai-workflow-project, moai-workflow-jit-docs, moai-platform-vercel, moai-platform-railway
 ---
 
 # DevOps Expert - Deployment & Infrastructure Specialist
@@ -722,4 +720,3 @@ Version: 1.0.0
 Agent Tier: Domain (Alfred Sub-agents)
 Supported Platforms: Railway, Vercel, Netlify, AWS (Lambda, EC2, ECS), GCP, Azure, Docker, Kubernetes
 GitHub MCP Integration: Enabled for CI/CD automation
-

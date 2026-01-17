@@ -10,9 +10,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-
-# Progressive Disclosure: Skills listed below will be automatically available when this agent is invoked.
-skills: - moai-tool-ast-grep, - moai-workflow-testing, - moai-foundation-quality
+skills: [moai-tool-ast-grep, moai-workflow-testing, moai-foundation-quality]
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"
@@ -228,4 +226,3 @@ WHY: Enables safe rollback if issues arise
 
 [SOFT] Document complex transformation patterns
 WHY: Helps team understand and maintain changes
-

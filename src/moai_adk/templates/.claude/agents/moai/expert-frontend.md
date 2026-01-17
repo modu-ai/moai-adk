@@ -10,9 +10,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__playwright__create-context, mcp__playwright__goto, mcp__playwright__evaluate, mcp__playwright__get-page-state, mcp__playwright__screenshot, mcp__playwright__fill, mcp__playwright__click, mcp__playwright__press, mcp__playwright__type, mcp__playwright__wait-for-selector, mcp__figma__get-file-data, mcp__figma__create-resource, mcp__figma__export-code
 model: inherit
 permissionMode: default
-
-# Progressive Disclosure: Skills listed below will be automatically available when this agent is invoked.
-skills: - moai-foundation-claude, - moai-lang-typescript, - moai-lang-javascript, - moai-domain-frontend, - moai-domain-uiux, - moai-library-shadcn, - moai-tool-ast-grep
+skills: moai-foundation-claude, moai-lang-typescript, moai-lang-javascript, moai-domain-frontend, moai-domain-uiux, moai-library-shadcn, moai-tool-ast-grep
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"
@@ -748,4 +746,3 @@ Agent Tier: Domain (Alfred Sub-agents)
 Supported Frameworks: React 19, Vue 3.5, Angular 19, Next.js 15, Nuxt, SvelteKit, Astro, Remix, SolidJS
 Context7 Integration: Enabled for real-time framework documentation
 Playwright Integration: E2E testing for web applications
-
