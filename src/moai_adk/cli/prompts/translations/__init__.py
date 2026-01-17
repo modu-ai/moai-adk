@@ -110,6 +110,7 @@ class InitTranslations(TypedDict):
     msg_tag_enabled: str  # Message: TAG enabled
     msg_tag_disabled: str  # Message: TAG disabled
     msg_tag_mode_selected: str  # Message: TAG mode selected
+    tag_ddd_skip: str  # Message: TAG skipped for DDD mode
 
     # Development Methodology (NEW - DDD support)
     dev_mode_setup: str  # Header for development methodology
@@ -231,12 +232,13 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "msg_tag_enabled": "TAG 시스템이 활성화되었습니다",
         "msg_tag_disabled": "TAG 시스템이 비활성화되었습니다",
         "msg_tag_mode_selected": "TAG 모드: {mode}",
+        "tag_ddd_skip": "TAG 시스템 건너뜀 (DDD 리팩토링에는 적용되지 않음)",
         # Development Methodology (NEW - DDD support)
         "dev_mode_setup": "🔧 개발 방법론",
         "dev_mode_intro": "프로젝트에 적합한 개발 방법론을 선택하세요:",
         "q_dev_mode": "개발 방법론을 선택하세요:",
-        "desc_tdd": "테스트 주도 개발 (RED-GREEN-REFACTOR) - 새 기능 개발용",
-        "desc_ddd": "도메인 주도 리팩토링 (ANALYZE-PRESERVE-IMPROVE) - 기존 코드 리팩토링용",
+        "desc_tdd": "테스트 주도 개발 (RED-GREEN-REFACTOR) - 새로운 프로젝트",
+        "desc_ddd": "도메인 주도 리팩토링 (ANALYZE-PRESERVE-IMPROVE) - 기존 프로젝트",
         "dev_mode_recommendation": "TDD는 새 기능 개발에, DDD은 기존 코드 리팩토링에 권장됩니다",
     },
     "en": {
@@ -351,12 +353,13 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "msg_tag_enabled": "TAG system enabled",
         "msg_tag_disabled": "TAG system disabled",
         "msg_tag_mode_selected": "TAG mode: {mode}",
+        "tag_ddd_skip": "TAG system skipped (not applicable for DDD refactoring)",
         # Development Methodology (NEW - DDD support)
         "dev_mode_setup": "🔧 Development Methodology",
         "dev_mode_intro": "Choose your primary development methodology:",
         "q_dev_mode": "Select development methodology:",
-        "desc_tdd": "Test-Driven Development (RED-GREEN-REFACTOR) - for new features",
-        "desc_ddd": "Domain-Driven Development (ANALYZE-PRESERVE-IMPROVE) - for refactoring",
+        "desc_tdd": "Test-Driven Development (RED-GREEN-REFACTOR) - New Project",
+        "desc_ddd": "Domain-Driven Development (ANALYZE-PRESERVE-IMPROVE) - Existing Project",
         "dev_mode_recommendation": "TDD recommended for new features, DDD for refactoring existing code",
     },
     "ja": {
@@ -469,12 +472,13 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "msg_tag_enabled": "TAGシステムが有効になりました",
         "msg_tag_disabled": "TAGシステムが無効になりました",
         "msg_tag_mode_selected": "TAGモード: {mode}",
+        "tag_ddd_skip": "TAGシステムをスキップ（DDDリファクタリングには適用されません）",
         # Development Methodology (NEW - DDD support)
         "dev_mode_setup": "🔧 開発方法論",
         "dev_mode_intro": "プロジェクトに適した開発方法論を選択してください:",
         "q_dev_mode": "開発方法論を選択してください:",
-        "desc_tdd": "テスト駆動開発 (RED-GREEN-REFACTOR) - 新機能開発用",
-        "desc_ddd": "ドメイン駆動リファクタリング (ANALYZE-PRESERVE-IMPROVE) - リファクタリング用",
+        "desc_tdd": "テスト駆動開発 (RED-GREEN-REFACTOR) - 新規プロジェクト",
+        "desc_ddd": "ドメイン駆動リファクタリング (ANALYZE-PRESERVE-IMPROVE) - 既存プロジェクト",
         "dev_mode_recommendation": "TDDは新機能開発に、DDDは既存コードのリファクタリングに推奨",
     },
     "zh": {
@@ -583,12 +587,13 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "msg_tag_enabled": "TAG系统已启用",
         "msg_tag_disabled": "TAG系统已禁用",
         "msg_tag_mode_selected": "TAG模式: {mode}",
+        "tag_ddd_skip": "TAG系统已跳过（不适用于DDD重构）",
         # Development Methodology (NEW - DDD support)
         "dev_mode_setup": "🔧 开发方法论",
         "dev_mode_intro": "选择适合项目的开发方法论:",
         "q_dev_mode": "选择开发方法论:",
-        "desc_tdd": "测试驱动开发 (RED-GREEN-REFACTOR) - 新功能开发",
-        "desc_ddd": "领域驱动重构 (ANALYZE-PRESERVE-IMPROVE) - 重构现有代码",
+        "desc_tdd": "测试驱动开发 (RED-GREEN-REFACTOR) - 新项目",
+        "desc_ddd": "领域驱动重构 (ANALYZE-PRESERVE-IMPROVE) - 现有项目",
         "dev_mode_recommendation": "TDD推荐用于新功能开发，DDD推荐用于重构现有代码",
     },
 }

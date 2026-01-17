@@ -296,71 +296,7 @@ def prompt_project_setup(
         answers["doc_lang"] = doc_lang
 
         # ========================================
-        # Q7: TAG System Configuration (NEW - SPEC-TAG-002)
-        # ========================================
-        console.print(f"\n[blue]{t['tag_setup']}[/blue]")
-
-        # Display TAG system introduction with TDD purpose
-        console.print(f"\n[dim]{t['tag_system_intro']}[/dim]\n")
-
-        # Display recommendation
-        console.print(f"[cyan]💡 {t['tag_yes_recommendation']}[/cyan]\n")
-
-        # Q7.1: Enable TAG validation
-        tag_enabled_choice = _prompt_confirm(
-            t["q_tag_enable"],
-            default=True,
-        )
-
-        if tag_enabled_choice is None:
-            raise KeyboardInterrupt
-
-        answers["tag_enabled"] = tag_enabled_choice
-
-        # Display result
-        if tag_enabled_choice:
-            console.print(f"[green]{t['msg_tag_enabled']}[/green]")
-        else:
-            console.print(f"[dim]{t['msg_tag_disabled']}[/dim]")
-
-        # Conditional Q7.2: TAG validation mode
-        if tag_enabled_choice:
-            # Display mode guide
-            console.print(f"\n[dim]{t['tag_mode_guide_title']}[/dim]")
-            console.print(f"[dim]{t['tag_mode_guide_subtitle']}[/dim]\n")
-
-            tag_mode_choices = [
-                {
-                    "name": f"{t['opt_tag_warn']} - {t['desc_tag_warn']}",
-                    "value": "warn",
-                },
-                {
-                    "name": f"{t['opt_tag_enforce']} - {t['desc_tag_enforce']}",
-                    "value": "enforce",
-                },
-                {
-                    "name": f"{t['opt_tag_off']} - {t['desc_tag_off']}",
-                    "value": "off",
-                },
-            ]
-
-            tag_mode_choice = _prompt_select(
-                t["q_tag_mode"],
-                choices=tag_mode_choices,
-                default="warn",
-            )
-
-            if tag_mode_choice is None:
-                raise KeyboardInterrupt
-
-            answers["tag_mode"] = tag_mode_choice
-            console.print(f"[#DA7756]TAG Mode:[/#DA7756] {tag_mode_choice}")
-        else:
-            answers["tag_mode"] = "off"
-            console.print(f"[dim]{t['tag_no_warning']}[/dim]")
-
-        # ========================================
-        # Q8: Development Methodology Selection
+        # Q7: Development Methodology Selection (FIRST)
         # ========================================
         console.print(f"\n[blue]{t.get('dev_mode_setup', 'Development Methodology')}[/blue]")
 
@@ -396,6 +332,80 @@ def prompt_project_setup(
             "TDD (Test-Driven Development)" if dev_mode_choice == "tdd" else "DDD (Domain-Driven Development)"
         )
         console.print(f"[#DA7756]Development Mode:[/#DA7756] {mode_display}")
+
+        # ========================================
+        # Q8: TAG System Configuration (TDD only)
+        # TAG system is only relevant for TDD methodology
+        # DDD focuses on refactoring existing code, not spec tracking
+        # ========================================
+        if dev_mode_choice == "tdd":
+            console.print(f"\n[blue]{t['tag_setup']}[/blue]")
+
+            # Display TAG system introduction with TDD purpose
+            console.print(f"\n[dim]{t['tag_system_intro']}[/dim]\n")
+
+            # Display recommendation
+            console.print(f"[cyan]💡 {t['tag_yes_recommendation']}[/cyan]\n")
+
+            # Q8.1: Enable TAG validation
+            tag_enabled_choice = _prompt_confirm(
+                t["q_tag_enable"],
+                default=True,
+            )
+
+            if tag_enabled_choice is None:
+                raise KeyboardInterrupt
+
+            answers["tag_enabled"] = tag_enabled_choice
+
+            # Display result
+            if tag_enabled_choice:
+                console.print(f"[green]{t['msg_tag_enabled']}[/green]")
+            else:
+                console.print(f"[dim]{t['msg_tag_disabled']}[/dim]")
+
+            # Conditional Q8.2: TAG validation mode
+            if tag_enabled_choice:
+                # Display mode guide
+                console.print(f"\n[dim]{t['tag_mode_guide_title']}[/dim]")
+                console.print(f"[dim]{t['tag_mode_guide_subtitle']}[/dim]\n")
+
+                tag_mode_choices = [
+                    {
+                        "name": f"{t['opt_tag_warn']} - {t['desc_tag_warn']}",
+                        "value": "warn",
+                    },
+                    {
+                        "name": f"{t['opt_tag_enforce']} - {t['desc_tag_enforce']}",
+                        "value": "enforce",
+                    },
+                    {
+                        "name": f"{t['opt_tag_off']} - {t['desc_tag_off']}",
+                        "value": "off",
+                    },
+                ]
+
+                tag_mode_choice = _prompt_select(
+                    t["q_tag_mode"],
+                    choices=tag_mode_choices,
+                    default="warn",
+                )
+
+                if tag_mode_choice is None:
+                    raise KeyboardInterrupt
+
+                answers["tag_mode"] = tag_mode_choice
+                console.print(f"[#DA7756]TAG Mode:[/#DA7756] {tag_mode_choice}")
+            else:
+                answers["tag_mode"] = "off"
+                console.print(f"[dim]{t['tag_no_warning']}[/dim]")
+        else:
+            # DDD mode: TAG system is disabled (not relevant for refactoring)
+            answers["tag_enabled"] = False
+            answers["tag_mode"] = "off"
+            console.print(
+                f"\n[dim]{t.get('tag_ddd_skip', 'TAG system skipped (not applicable for DDD refactoring)')}[/dim]"
+            )
 
         console.print(f"\n[green]{t['msg_setup_complete']}[/green]")
 

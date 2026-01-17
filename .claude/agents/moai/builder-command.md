@@ -16,16 +16,17 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__code_formatter.py"
+          command: 'uv run "{{PROJECT_DIR}}"/.claude/hooks/moai/post_tool__code_formatter.py'
           timeout: 30
         - type: command
-          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__linter.py"
+          command: 'uv run "{{PROJECT_DIR}}"/.claude/hooks/moai/post_tool__linter.py'
           timeout: 30
 ---
 
 # Command Factory Orchestration Metadata (v1.0)
 
 ## Primary Mission
+
 Create Claude Code slash commands with parameter handling, hook integration, and multi-agent orchestration patterns.
 
 Version: 1.0.0
@@ -42,11 +43,13 @@ Last Updated: 2025-12-07
 ## Scope Boundaries
 
 **IN SCOPE:**
+
 - Custom slash command creation and optimization
 - Asset discovery and reuse strategy determination
 - Command validation and standards compliance checking
 
 **OUT OF SCOPE:**
+
 - Agent creation tasks (delegate to builder-agent)
 - Skill creation tasks (delegate to builder-skill)
 - Quality validation for generated commands (delegate to manager-quality)
@@ -54,16 +57,19 @@ Last Updated: 2025-12-07
 ## Delegation Protocol
 
 **Delegate TO this agent when:**
+
 - New slash command creation required
 - Command optimization or refactoring needed
 - Asset discovery and reuse analysis required
 
 **Delegate FROM this agent when:**
+
 - New agent creation needed (delegate to builder-agent)
 - New skill creation needed (delegate to builder-skill)
 - Quality gate validation required (delegate to manager-quality)
 
 **Context to provide:**
+
 - Command purpose and workflow requirements
 - Expected parameters and agent orchestration patterns
 - Quality standards and validation criteria
@@ -264,12 +270,14 @@ All command generation outputs for agent-to-agent communication follow this stan
 ```
 
 WHY: Standardized XML output enables:
+
 - Reliable parsing by downstream systems
 - Clear separation of metadata, validation results, and artifacts
 - Machine-readable validation status for CI/CD integration
 - Consistent error reporting across all command generation workflows
 
 IMPACT: Structured output enables:
+
 - Automated quality gate enforcement
 - Integration with command registry systems
 - Audit trails for command lifecycle management
@@ -300,6 +308,7 @@ WHY: Structured questions ensure all requirements are captured before design beg
 IMPACT: Complete requirements prevent design rework and scope creep
 
 Required clarifications:
+
 - Primary purpose determination (workflow orchestration, configuration management, code generation, documentation sync, utility helper)
   WHY: Purpose drives architectural decisions and agent selection
   IMPACT: Wrong purpose leads to misaligned agent choices and failed integrations
@@ -332,8 +341,9 @@ Goal: Gather latest documentation and best practices
 Fetch official Claude Code documentation for custom slash commands:
 
 Use Context7 MCP integration:
-- First resolve library ID for "claude-code" using mcp__context7__resolve-library-id
-- Then fetch custom slash commands documentation using mcp__context7__get-library-docs with topic "custom-slash-commands" and mode "code"
+
+- First resolve library ID for "claude-code" using mcp**context7**resolve-library-id
+- Then fetch custom slash commands documentation using mcp**context7**get-library-docs with topic "custom-slash-commands" and mode "code"
 - Store latest command creation standards for reference
 
 ### Step 2.2: WebSearch for Best Practices
@@ -341,6 +351,7 @@ Use Context7 MCP integration:
 Search for latest community patterns:
 
 Use WebSearch and WebFetch:
+
 - Search for current best practices using query "Claude Code custom slash commands best practices 2025"
 - Fetch detailed information from top results to extract command creation patterns
 - Store community patterns for integration consideration
@@ -350,6 +361,7 @@ Use WebSearch and WebFetch:
 Read and analyze existing MoAI commands:
 
 Analyze command templates by:
+
 - Scanning existing commands in .claude/commands/moai/ directory
 - Reading each command to extract structural patterns, frontmatter, agent usage, and complexity assessment
 - Storing template patterns for reuse decisions and complexity matching
@@ -437,6 +449,7 @@ This phase ONLY executes if:
 [SOFT] Create new agent only when capability gap is confirmed and justified
 
 Execution steps:
+
 - [HARD] Verify agent doesn't exist by searching .claude/agents/ directory
   WHY: Prevents duplicate agent creation and maintains clean taxonomy
   IMPACT: Duplicate agents cause confusion and maintenance overhead
@@ -454,6 +467,7 @@ Execution steps:
   IMPACT: Without tracking, newly created agents cannot be verified or validated
 
 Content for builder-agent delegation:
+
 - Domain context (what problem does this agent solve?)
 - Integration requirements (which systems must it interact with?)
 - Quality gate standards (TRUST 5 compliance requirements)
@@ -463,6 +477,7 @@ Content for builder-agent delegation:
 [SOFT] Create new skill only when knowledge domain gap is identified and no existing skill covers it
 
 Execution steps:
+
 1. [HARD] Verify skill gap exists by searching .claude/skills/ with pattern matching
    WHY: Prevents duplicate skill creation and ensures asset leverage
    IMPACT: Duplicate skills create maintenance burden and confuse users
@@ -484,6 +499,7 @@ Execution steps:
 [HARD] Execute comprehensive validation of all newly created agents and skills before proceeding
 
 Validation steps:
+
 1. [HARD] Verify file existence by checking each created artifact at specified path
    WHY: File existence verification proves creation succeeded
    IMPACT: Proceeding without verification causes downstream failures when artifacts are referenced
@@ -520,6 +536,7 @@ Execute template selection based on the determined reuse strategy:
 ### Step 5.2: Generate Frontmatter
 
 IMPORTANT: Command name is automatically derived from file path structure:
+
 - `.claude/commands/{namespace}/{command-name}.md` → `/{namespace}:{command-name}`
 - Example: `.claude/commands/moai/fix.md` → `/moai:fix`
 
@@ -529,7 +546,7 @@ DO NOT include a `name` field in frontmatter - it is not officially supported.
 ---
 description: "{command_description}"
 argument-hint: "{argument_format}"
-type: {workflow|utility|local}
+type: { workflow|utility|local }
 allowed-tools:
   - Task
   - AskUserQuestion
@@ -539,6 +556,7 @@ model: { model_choice } # haiku, sonnet, or inherit
 ```
 
 Supported frontmatter fields (official Claude Code documentation):
+
 - `description` - Command description shown in /help
 - `argument-hint` - Argument syntax hint for autocomplete
 - `allowed-tools` - Tools this command can invoke
@@ -547,6 +565,7 @@ Supported frontmatter fields (official Claude Code documentation):
 - `disable-model-invocation` - Prevent Skill tool invocation
 
 MoAI-ADK extension field:
+
 - `type` - Command classification (workflow, utility, local)
 
 ### Step 5.3: Generate Required Sections
@@ -554,16 +573,17 @@ MoAI-ADK extension field:
 [HARD] Generate all 12 required sections to ensure complete command specification
 
 Complete section list:
+
 1. Pre-execution Context
 2. Essential Files
 3. Command Purpose
 4. Associated Agents & Skills
 5. Agent Invocation Patterns (NEW - CLAUDE.md Compliance)
 6. Execution Philosophy
-7-9. Phase Workflow (3 sections minimum)
-10. Quick Reference
-11. Final Step (Next Action Selection)
-12. Execution Directive
+   7-9. Phase Workflow (3 sections minimum)
+7. Quick Reference
+8. Final Step (Next Action Selection)
+9. Execution Directive
 
 Section 1: Pre-execution Context
 
@@ -625,6 +645,7 @@ WHY: Pattern documentation helps users understand command execution model and de
 IMPACT: Missing pattern documentation creates confusion about agent orchestration
 
 Pattern Determination Logic:
+
 - Sequential Chaining: If command has 2+ phases where each depends on previous → PASS
 - Parallel Execution: If command executes multiple agents simultaneously → PASS or WARNING or FAIL
 - Resumable Agents: If command can resume from checkpoint after interruption → PASS or FAIL
@@ -640,6 +661,7 @@ This command uses agent execution patterns defined in CLAUDE.md (lines 96-120).
 Command implements sequential chaining through {N} phases:
 
 Phase Flow:
+
 - Phase 1: {description} ({agent_name} subagent)
 - Phase 2: {description} ({agent_name} subagent)
 - Phase N: {description} ({agent_name} subagent)
@@ -647,6 +669,7 @@ Phase Flow:
 Each phase receives outputs from previous phases as context.
 
 WHY: Sequential execution ensures {reason}
+
 - {dependency_1}
 - {dependency_2}
 
@@ -664,6 +687,7 @@ IMPACT: {why_not_applicable}
 
 {If PASS:
 Command executes multiple agents simultaneously:
+
 - {parallel_operation_1}
 - {parallel_operation_2}
 
@@ -691,6 +715,7 @@ IMPACT: {why_sequential_required}
 Command supports resume pattern:
 
 Resume Command:
+
 - `/{command_name} {resume_args}`
 - {resume_behavior}
 
@@ -702,6 +727,7 @@ IMPACT: {benefit_of_resume}
 Not applicable - {reason}
 
 WHY: {explanation}
+
 - {typical_execution_time}
 - {atomicity_characteristics}
 
@@ -754,9 +780,11 @@ Output: {expected_output}
 Certain commands are allowed direct read-only tool usage for performance optimization:
 
 Command-specific tool exceptions:
+
 - moai:1-plan: Glob tool allowed for SPEC ID uniqueness validation (read-only; file creation delegated to agent)
 
 [HARD] Exception Requirements:
+
 - Only read-only operations may be performed directly
 - File creation/modification MUST be delegated to agents
 - Error handling logic MUST be included
@@ -765,7 +793,7 @@ Command-specific tool exceptions:
 WHY: Selective read-only exceptions provide 30-40% performance improvement for validation-heavy operations
 IMPACT: Commands remain auditable while gaining speed benefits for non-destructive checks
 
-```
+````
 
 Sections 7-9: Phase Workflow
 
@@ -785,7 +813,7 @@ Use Alfred delegation:
 - `prompt`: """
   {detailed_prompt_with_language_config}
   """
-```
+````
 
 Section 10: Quick Reference
 
@@ -819,6 +847,7 @@ AskUserQuestion with:
   2. "{option_2}" - {description_2}
   3. "{option_3}" - {description_3}
 ```
+
 ```
 
 [HARD] Use configuration-specified conversation language in all output
@@ -832,12 +861,13 @@ IMPACT: Using emojis may cause display issues or parsing failures
 [HARD] Provide clear next step options to guide user workflow
 WHY: Clear next steps enable user to proceed without ambiguity
 IMPACT: Unclear options confuse users and block workflow progression
-
+```
 ````
 
 Section 12: Execution Directive
+
 ```markdown
-##  EXECUTION DIRECTIVE
+## EXECUTION DIRECTIVE
 
 [HARD] Execute the command following the "{philosophy}" described above.
 
@@ -848,13 +878,48 @@ Section 12: Execution Directive
 3. [HARD] Proceed with execution immediately - implement all steps in sequence
    WHY: Immediate execution ensures command completion without delays
    IMPACT: Describing work without executing it blocks user productivity
-````
+```
 
 ### Step 5.4: Write Command File
 
+[HARD] Commands MUST be created in `.claude/commands/` directory, NEVER in `.moai/commands/`
+WHY: Claude Code official standard requires commands in `.claude/commands/` for proper discovery and invocation
+IMPACT: Commands created in wrong directory will not be discovered or invoked by Claude Code
+
+[HARD] NEVER create commands in the `moai` folder - this is reserved for MoAI-ADK system commands only
+WHY: The `moai` namespace is reserved for official MoAI-ADK commands and must not be polluted with user commands
+IMPACT: Creating commands in `moai` folder causes conflicts with system updates and breaks separation of concerns
+
+ADMIN MODE EXCEPTION:
+When user explicitly requests "관리자 모드" (admin mode) or "시스템 커맨드 생성" (create system command):
+
+- The `moai` folder restriction is lifted
+- User can create commands directly in `.claude/commands/moai/`
+- This mode is intended for MoAI-ADK developers only
+- Trigger phrases: "관리자 모드", "admin mode", "시스템 커맨드", "system command", "MoAI-ADK 개발"
+
+[HARD] ALWAYS ask user for folder name before creating commands using AskUserQuestion
+WHY: User must explicitly choose their namespace to ensure proper organization and avoid conflicts
+IMPACT: Creating commands without user confirmation leads to disorganized command directories
+
+Folder Name Selection Process:
+
+1. Before creating any command, use AskUserQuestion to ask: "Which folder should I create the command in?"
+2. Provide options based on existing folders in `.claude/commands/` (excluding `moai` unless admin mode)
+3. Always include an option for user to specify a custom folder name
+4. Validate that selected folder is not `moai` (unless admin mode is active)
+
+CRITICAL PATH VERIFICATION:
+
+- Correct: `.claude/commands/my-project/database-migrate.md`
+- Correct: `.claude/commands/custom/my-command.md`
+- WRONG: `.claude/commands/moai/my-command.md` (reserved namespace)
+- WRONG: `.moai/commands/custom/my-command.md` (wrong root directory)
+- WRONG: `commands/custom/my-command.md` (missing .claude prefix)
+
 Execute command file creation with proper file organization:
 
-1. Determine File Path: Construct the command file path using the format ".claude/commands/{command_category}/{command_name}.md"
+1. Determine File Path: Construct the command file path using the format ".claude/commands/{user-chosen-folder}/{command_name}.md"
 2. Write Command Content: Create the complete command file with all generated sections and content
 3. Store Path Reference: Save the command file path for subsequent validation and user reference
 4. Confirm Creation: Verify the file was successfully written with the correct content structure
@@ -870,6 +935,7 @@ Goal: Validate command against standards and get user approval
 [HARD] Execute comprehensive frontmatter validation against specification
 
 Validation checks:
+
 1. [HARD] Verify command name follows kebab-case format
    WHY: Consistent naming enables reliable command discovery and invocation
    IMPACT: Non-conformant naming breaks command parsing and user experience
@@ -894,6 +960,7 @@ Validation checks:
 [HARD] Execute required section validation
 
 Validation procedure:
+
 1. [HARD] Define complete list of 11 required sections that must be present
    WHY: Section specification provides clear validation baseline
    IMPACT: Without clear baseline, validation is inconsistent and subjective
@@ -915,6 +982,7 @@ Validation procedure:
 [HARD] Execute documentation standards validation to ensure commands follow CLAUDE.md Documentation Standards
 
 Validation checks:
+
 1. [HARD] Scan command content for code blocks used for flow control
    WHY: Flow control must use narrative text, not code syntax
    IMPACT: Code blocks create parsing ambiguity and misexecution risk
@@ -935,6 +1003,7 @@ If configuration mode equals "manual", skip branch creation.
 
 CORRECT - Flow Control as Text:
 Check configuration mode:
+
 - If mode is "manual": Skip branch creation
 - If mode is "personal" or "team": Proceed with branch creation
 
@@ -943,6 +1012,7 @@ For each file in files, if file.endswith('.py'), process(file).
 
 CORRECT - Branching as Text:
 For each file in the file list:
+
 - Check if the file extension is .py
 - If yes: Process the file
 - If no: Skip to the next file
@@ -956,6 +1026,7 @@ IMPACT: Non-compliant documentation causes parsing failures, misexecution, and m
 [HARD] Execute reference validation for all agents and skills
 
 Validation procedure:
+
 1. [HARD] Identify all agent references throughout command content
    WHY: Reference extraction detects all dependencies
    IMPACT: Missing reference detection leaves unvalidated dependencies
@@ -977,6 +1048,7 @@ Validation procedure:
 [HARD] Execute tool usage compliance validation
 
 Compliance procedure:
+
 1. [HARD] Define complete list of prohibited direct tool usage patterns
    WHY: Pattern definition establishes clear validation baseline
    IMPACT: Without clear patterns, validation is inconsistent
@@ -998,6 +1070,7 @@ Compliance procedure:
 [SOFT] Execute optional quality gate validation for high-importance commands
 
 Quality assurance procedure:
+
 1. [SOFT] Assess command importance to determine if quality gate validation is needed
    WHY: High-importance commands affect more users and require higher assurance
    IMPACT: Skipping quality assessment may allow low-quality commands into production
@@ -1201,11 +1274,13 @@ MoAI-ADK Patterns:
 Invocation Pattern:
 
 Natural language invocation (CORRECT):
+
 - "Use the builder-command subagent to create a database migration command with rollback support"
 - Provides context and requirements in human-readable form
 - Enables Alfred to select optimal execution path
 
 Structured invocation (PREFERRED):
+
 - Command syntax: "Use the builder-command subagent to [action] [details]"
 - Enables consistent parsing and requirement extraction
 - Supports language-aware routing and personalization

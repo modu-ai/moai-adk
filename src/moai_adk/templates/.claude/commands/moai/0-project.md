@@ -46,28 +46,111 @@ Note: Project configuration (language, service, pricing, git mode) is handled by
 
 ---
 
-## Execution Modes
+## PHASE 0: Project Type Detection
 
-### Mode 1: Fresh Documentation (Default)
+Goal: Determine if user is starting a new project or documenting an existing codebase.
 
-When `.moai/project/` directory is empty or missing:
+### Step 1: Ask Project Type
+
+[HARD] Use AskUserQuestion FIRST before any analysis.
+
+Question: What type of project are you working on?
+
+Options (in user's conversation_language):
+
+- New Project: Starting a new project from scratch (will collect project information)
+- Existing Project: Documenting an existing codebase (will analyze code)
+
+### Step 2: Route Based on Selection
+
+If user selects "New Project":
+
+- Proceed to PHASE 0.5: New Project Information Collection
+- Skip codebase analysis (no existing code to analyze)
+
+If user selects "Existing Project":
+
+- Proceed to PHASE 1: Codebase Analysis
+- Analyze existing code structure
+
+WHY: Users installing MoAI-ADK into an empty directory need to describe their project. Users with existing code need automatic analysis.
+
+---
+
+## PHASE 0.5: New Project Information Collection (New Projects Only)
+
+Goal: Collect project information from user when no existing code to analyze.
+
+### Step 1: Collect Project Details
+
+Use AskUserQuestion to gather essential project information:
+
+Question 1: What is the primary purpose of this project?
+
+Options:
+
+- Web Application: Frontend, backend, or full-stack web app
+- API Service: REST API, GraphQL, or microservices
+- CLI Tool: Command-line utility or automation tool
+- Library/Package: Reusable code library or SDK
+
+Question 2: What is your primary programming language?
+
+Options:
+
+- Python: Backend, data science, automation
+- TypeScript/JavaScript: Web, Node.js, frontend
+- Go: High-performance services, CLI tools
+- Other: Rust, Java, Ruby, etc. (will ask for details)
+
+Question 3: Briefly describe your project (use text input):
+
+- Project name
+- Main features or goals
+- Target users
+
+### Step 2: Generate Documentation from User Input
+
+Use the collected information to generate initial documentation:
+
+- product.md: Based on user's project description and purpose
+- structure.md: Suggest recommended directory structure for the project type
+- tech.md: Based on selected language and project type
+
+WHY: New projects have no code to analyze, so user input is required.
+
+---
+
+## Execution Modes (After PHASE 0)
+
+### Mode 1: Fresh Documentation (Existing Project)
+
+When user selects "Existing Project" and `.moai/project/` is empty:
 
 1. Analyze codebase using Explore agent
 2. Generate all three documentation files
 3. Confirm completion to user
 
-### Mode 2: Update Documentation
+### Mode 2: Update Documentation (Existing Project)
 
-When documentation files already exist:
+When user selects "Existing Project" and documentation files already exist:
 
 1. Read existing documentation
 2. Analyze codebase for changes
 3. Ask user which files to regenerate
 4. Update selected files while preserving manual edits
 
+### Mode 3: New Project Setup
+
+When user selects "New Project":
+
+1. Collect project information via AskUserQuestion
+2. Generate starter documentation based on user input
+3. Suggest next steps for project setup
+
 ---
 
-## PHASE 1: Codebase Analysis
+## PHASE 1: Codebase Analysis (Existing Projects Only)
 
 Goal: Understand the project structure and technology stack.
 
@@ -404,9 +487,16 @@ Associated Skills:
 
 ---
 
-Version: 3.1.0 (LSP Server Check Integration)
-Last Updated: 2026-01-10
+Version: 4.0.0 (Project Type Detection)
+Last Updated: 2026-01-17
 Architecture: Commands to Agents to Skills (Complete delegation)
+
+Changes from v3.1.0:
+
+- Added: PHASE 0 Project Type Detection (New/Existing project question)
+- Added: PHASE 0.5 New Project Information Collection
+- Changed: Existing codebase analysis now requires user confirmation
+- Changed: New projects collect info via AskUserQuestion instead of auto-analysis
 
 Changes from v3.0.0:
 
@@ -415,24 +505,20 @@ Changes from v3.0.0:
 - Added: Installation guidance with language-specific commands
 - Added: Auto-install option via expert-devops agent
 
-Changes from v2.0.0:
-
-- Removed: All configuration and settings functionality (moved to moai-adk init CLI)
-- Removed: Tab-based question system (handled by CLI)
-- Removed: Mode detection for SETTINGS, UPDATE, GLM_CONFIGURATION
-- Simplified: Focus on documentation generation only
-- Simplified: Two-agent chain (Explore + Manager-docs)
-- Reduced: From 1400+ lines to approximately 250 lines
-
 ---
 
 ## EXECUTION DIRECTIVE
 
 You must NOW execute the command following the phases described above.
 
-1. Invoke Explore subagent to analyze codebase
-2. Present analysis results via AskUserQuestion
-3. Invoke Manager-docs subagent to generate documentation
-4. Confirm completion and offer next steps
+1. [PHASE 0] Ask user: New Project or Existing Project?
+2. If New Project: Collect project info via AskUserQuestion (PHASE 0.5)
+3. If Existing Project: Invoke Explore subagent to analyze codebase (PHASE 1)
+4. Present results via AskUserQuestion (PHASE 2)
+5. Invoke Manager-docs subagent to generate documentation (PHASE 3)
+6. Check LSP server status (PHASE 3.5)
+7. Confirm completion and offer next steps (PHASE 4)
+
+[HARD] ALWAYS start with PHASE 0 - Ask project type FIRST before any analysis.
 
 Do NOT just describe what you will do. DO IT.
