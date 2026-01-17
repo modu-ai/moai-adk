@@ -16,6 +16,26 @@ This patch release fixes the SessionStart hook error display issue (#263) and re
 
 ---
 
+# v1.3.1 - 버그 수정 릴리스 (2026-01-17)
+
+## 요약
+
+이 패치 릴리스는 SessionStart 훅 오류 표시 문제 (#263)를 수정하고 템플릿에서 하드코딩된 사용자 설정을 제거합니다.
+
+## 수정됨
+
+- **fix(hooks)**: SessionStart/SessionEnd 훅 구조 수정 (#263)
+  - 성공적인 실행에도 불구하고 "hook error"가 표시되는 중첩된 "hooks" 배열 수정
+  - Claude Code 호환성을 위한 훅 설정 형식 단순화
+
+- **fix(templates)**: user.yaml 템플릿에서 하드코딩된 사용자 이름 제거
+  - 템플릿이 이제 적절한 사용자 개인화를 위해 빈 문자열을 기본값으로 사용
+  - 사용자는 `.moai/config/sections/user.yaml`에서 자신의 이름을 설정할 수 있습니다
+
+---
+
+
+
 # v1.3.0 - DDD-Only Methodology & Progressive Disclosure (2026-01-17)
 
 ## Summary
