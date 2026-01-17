@@ -7,7 +7,7 @@ from moai_adk.foundation.git import (
     GitPerformanceOptimizer,
     GitVersionDetector,
     GitWorkflowManager,
-    TDDCommitPhase,
+    DDDCommitPhase,
     ValidateResult,
 )
 
@@ -58,12 +58,12 @@ class TestValidateResult:
         assert len(result.errors) > 0
 
 
-class TestTDDCommitPhase:
-    """Test TDDCommitPhase dataclass."""
+class TestDDDCommitPhase:
+    """Test DDDCommitPhase dataclass."""
 
     def test_tdd_commit_phase_red(self):
-        """Test TDDCommitPhase for RED phase."""
-        phase = TDDCommitPhase(
+        """Test DDDCommitPhase for RED phase."""
+        phase = DDDCommitPhase(
             phase_name="RED",
             commit_type="test",
             description="Write failing tests",
@@ -215,24 +215,24 @@ class TestGitWorkflowManager:
         command = manager.create_branch_command("feature/test", use_modern=False)
         assert "git checkout -b" in command
 
-    def test_format_tdd_commit_red(self):
-        """Test format_tdd_commit for RED phase."""
+    def test_format_ddd_commit_red(self):
+        """Test format_ddd_commit for RED phase."""
         manager = GitWorkflowManager()
-        commit = manager.format_tdd_commit("test", "auth", "add login tests", "RED")
+        commit = manager.format_ddd_commit("test", "auth", "add login tests", "RED")
         assert "test(auth): add login tests" in commit
         assert "RED phase" in commit
 
-    def test_format_tdd_commit_green(self):
-        """Test format_tdd_commit for GREEN phase."""
+    def test_format_ddd_commit_green(self):
+        """Test format_ddd_commit for GREEN phase."""
         manager = GitWorkflowManager()
-        commit = manager.format_tdd_commit("feat", "auth", "implement login", "GREEN")
+        commit = manager.format_ddd_commit("feat", "auth", "implement login", "GREEN")
         assert "feat(auth): implement login" in commit
         assert "GREEN phase" in commit
 
-    def test_format_tdd_commit_refactor(self):
-        """Test format_tdd_commit for REFACTOR phase."""
+    def test_format_ddd_commit_refactor(self):
+        """Test format_ddd_commit for REFACTOR phase."""
         manager = GitWorkflowManager()
-        commit = manager.format_tdd_commit("refactor", "auth", "improve performance", "REFACTOR")
+        commit = manager.format_ddd_commit("refactor", "auth", "improve performance", "REFACTOR")
         assert "refactor(auth): improve performance" in commit
         assert "REFACTOR phase" in commit
 

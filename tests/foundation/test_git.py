@@ -1,5 +1,5 @@
 """
-Comprehensive TDD tests for git.py module.
+Comprehensive DDD tests for git.py module.
 Tests cover all 5 classes.
 """
 
@@ -7,7 +7,7 @@ import pytest
 from moai_adk.foundation.git import (
     GitInfo,
     ValidateResult,
-    TDDCommitPhase,
+    DDDCommitPhase,
     GitVersionDetector,
     ConventionalCommitValidator,
     BranchingStrategySelector,
@@ -54,8 +54,8 @@ class TestDataClasses:
         assert result.scope == "auth"
 
     def test_tdd_commit_phase_creation(self):
-        """Test TDDCommitPhase dataclass creation."""
-        phase = TDDCommitPhase(
+        """Test DDDCommitPhase dataclass creation."""
+        phase = DDDCommitPhase(
             phase_name="RED",
             commit_type="test",
             description="Write failing tests",
@@ -316,9 +316,9 @@ class TestGitWorkflowManager:
     def test_initialization(self):
         """Test manager initialization."""
         manager = GitWorkflowManager()
-        assert "RED" in manager.TDD_PHASES
-        assert "GREEN" in manager.TDD_PHASES
-        assert "REFACTOR" in manager.TDD_PHASES
+        assert "RED" in manager.DDD_PHASES
+        assert "GREEN" in manager.DDD_PHASES
+        assert "REFACTOR" in manager.DDD_PHASES
 
     def test_create_branch_command_modern(self):
         """Test branch creation command with modern Git."""
@@ -334,10 +334,10 @@ class TestGitWorkflowManager:
 
         assert command == "git checkout -b feature/SPEC-001"
 
-    def test_format_tdd_commit_red(self):
+    def test_format_ddd_commit_red(self):
         """Test TDD commit formatting for RED phase."""
         manager = GitWorkflowManager()
-        commit_msg = manager.format_tdd_commit(
+        commit_msg = manager.format_ddd_commit(
             commit_type="test",
             scope="auth",
             subject="add authentication tests",
@@ -346,10 +346,10 @@ class TestGitWorkflowManager:
 
         assert commit_msg == "test(auth): add authentication tests (RED phase)"
 
-    def test_format_tdd_commit_green(self):
+    def test_format_ddd_commit_green(self):
         """Test TDD commit formatting for GREEN phase."""
         manager = GitWorkflowManager()
-        commit_msg = manager.format_tdd_commit(
+        commit_msg = manager.format_ddd_commit(
             commit_type="feat",
             scope="auth",
             subject="implement authentication",
@@ -358,10 +358,10 @@ class TestGitWorkflowManager:
 
         assert commit_msg == "feat(auth): implement authentication (GREEN phase)"
 
-    def test_format_tdd_commit_refactor(self):
+    def test_format_ddd_commit_refactor(self):
         """Test TDD commit formatting for REFACTOR phase."""
         manager = GitWorkflowManager()
-        commit_msg = manager.format_tdd_commit(
+        commit_msg = manager.format_ddd_commit(
             commit_type="refactor",
             scope="auth",
             subject="improve authentication code",

@@ -392,9 +392,12 @@ class TestGoWorktreeCommand:
 
     def test_go_to_worktree(self, runner: CliRunner, mock_manager: Mock, tmp_path: Path) -> None:
         """Test navigating to a worktree."""
+        worktree_path = tmp_path / "worktree"
+        worktree_path.mkdir(parents=True, exist_ok=True)  # Create the directory for path.exists() check
+
         mock_info = WorktreeInfo(
             spec_id="SPEC-001",
-            path=tmp_path / "worktree",
+            path=worktree_path,
             branch="feature/SPEC-001",
             created_at="2025-01-13T10:00:00Z",
             last_accessed="2025-01-13T10:00:00Z",

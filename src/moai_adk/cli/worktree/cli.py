@@ -66,6 +66,9 @@ def get_manager(
 def _detect_worktree_root(repo_path: Path) -> Path:
     """Auto-detect the most appropriate worktree root directory.
 
+    The worktree root is located inside the project's .moai directory:
+    {repo_path}/.moai/worktrees/{project-name}/{SPEC-ID}
+
     Args:
         repo_path: Path to the Git repository.
 
@@ -75,17 +78,44 @@ def _detect_worktree_root(repo_path: Path) -> Path:
     # Special handling: if we're in a worktree, find the main repo
     main_repo_path = _find_main_repository(repo_path)
 
-    # Strategy 1: Look for existing registry files in common locations
-    potential_roots = [
-        Path.home() / "moai" / "worktrees",  # MoAI worktrees directory (highest priority)
-        Path.home() / "worktrees",  # User's worktrees directory
-        Path.home() / "moai" / "worktrees" / main_repo_path.name,  # MoAI project-specific
-        main_repo_path.parent / "worktrees",  # Project-level worktrees
-        Path("/Users") / Path.home().name / "worktrees",  # macOS user worktrees
-        Path.home() / "worktrees" / main_repo_path.name,  # Alternative organization
+    # Priority 1: Project-local .moai/worktrees (NEW - highest priority)
+    project_local_root = main_repo_path / ".moai" / "worktrees"
+
+    # Check if project-local registry exists
+    project_registry = project_local_root / ".moai-worktree-registry.json"
+    if project_registry.exists():
+        try:
+            with open(project_registry, "r") as f:
+                content = f.read().strip()
+                if content and content != "{}":
+                    return project_local_root
+        except Exception:
+            pass
+
+    # Check if there are existing worktrees in project-local directory
+    if project_local_root.exists():
+        try:
+            for item in project_local_root.iterdir():
+                if item.is_dir() and (item / ".git").exists():
+                    return project_local_root
+                # Also check for project namespace directories
+                if item.is_dir():
+                    for sub_item in item.iterdir():
+                        if sub_item.is_dir() and (sub_item / ".git").exists():
+                            return project_local_root
+        except Exception:
+            pass
+
+    # Priority 2: Legacy locations (for backward compatibility)
+    legacy_roots = [
+        Path.home() / "moai" / "worktrees",  # Legacy MoAI worktrees
+        Path.home() / "worktrees",  # Legacy user worktrees
+        Path.home() / "moai" / "worktrees" / main_repo_path.name,
+        main_repo_path.parent / "worktrees",
+        Path.home() / "worktrees" / main_repo_path.name,
     ]
 
-    for root in potential_roots:
+    for root in legacy_roots:
         registry_path = root / ".moai-worktree-registry.json"
         if registry_path.exists():
             try:
@@ -96,22 +126,18 @@ def _detect_worktree_root(repo_path: Path) -> Path:
             except Exception:
                 pass
 
-    # Strategy 2: Check if there are actual worktrees in standard locations
-    for root in potential_roots:
-        if root.exists() and any(root.iterdir()):
-            # Look for directories that might be worktrees
-            for item in root.iterdir():
-                if item.is_dir() and (item / ".git").exists():
-                    return root
+    # Check for actual worktrees in legacy locations
+    for root in legacy_roots:
+        if root.exists():
+            try:
+                for item in root.iterdir():
+                    if item.is_dir() and (item / ".git").exists():
+                        return root
+            except Exception:
+                pass
 
-    # Strategy 3: Create a sensible default based on user's system
-    # Prefer ~/moai/worktrees for MoAI projects
-    default_root = Path.home() / "moai" / "worktrees"
-    if default_root.exists() or default_root.parent.exists():
-        return default_root
-
-    # Fallback to user worktrees
-    return Path.home() / "worktrees"
+    # Default: Use project-local .moai/worktrees (NEW default)
+    return project_local_root
 
 
 def _find_main_repository(start_path: Path) -> Path:
@@ -312,10 +338,33 @@ def go_worktree(spec_id: str, repo: str | None, worktree_root: str | None) -> No
         wt_root = Path(worktree_root) if worktree_root else None
 
         manager = get_manager(repo_path, wt_root)
+
+        # First try with current project_name
         info = manager.registry.get(spec_id, project_name=manager.project_name)
 
+        # If not found, try searching across all projects
+        if not info:
+            info = manager.registry.get(spec_id, project_name=None)
+
+        # Still not found, show helpful message
         if not info:
             console.print(f"[red]✗[/red] Worktree not found: {spec_id}")
+            console.print()
+            # List available worktrees to help user
+            all_worktrees = manager.registry.list_all(project_name=None)
+            if all_worktrees:
+                console.print("[yellow]Available worktrees:[/yellow]")
+                for wt in all_worktrees:
+                    console.print(f"  - {wt.spec_id} ({wt.branch})")
+            else:
+                console.print("[yellow]No worktrees found. Create one with:[/yellow]")
+                console.print(f"  moai-wt new {spec_id}")
+            raise click.Abort()
+
+        # Check if path exists
+        if not info.path.exists():
+            console.print(f"[red]✗[/red] Worktree path does not exist: {info.path}")
+            console.print("[yellow]Try running 'moai-wt recover' to update the registry[/yellow]")
             raise click.Abort()
 
         import os
@@ -325,6 +374,8 @@ def go_worktree(spec_id: str, repo: str | None, worktree_root: str | None) -> No
         console.print(f"[green]→[/green] Opening new shell in {info.path}")
         subprocess.call([shell], cwd=str(info.path))
 
+    except click.Abort:
+        raise
     except Exception as e:
         console.print(f"[red]✗[/red] Error: {e}")
         raise click.Abort()
@@ -349,6 +400,24 @@ def remove_worktree(spec_id: str, force: bool, repo: str | None, worktree_root: 
         wt_root = Path(worktree_root) if worktree_root else None
 
         manager = get_manager(repo_path, wt_root)
+
+        # First check if worktree exists in current project
+        info = manager.registry.get(spec_id, project_name=manager.project_name)
+
+        # If not found in current project, check across all projects
+        if not info:
+            info = manager.registry.get(spec_id, project_name=None)
+
+        if not info:
+            console.print(f"[red]✗[/red] Worktree not found: {spec_id}")
+            # List available worktrees to help user
+            all_worktrees = manager.registry.list_all(project_name=None)
+            if all_worktrees:
+                console.print("[yellow]Available worktrees:[/yellow]")
+                for wt in all_worktrees:
+                    console.print(f"  - {wt.spec_id} ({wt.branch})")
+            raise click.Abort()
+
         manager.remove(spec_id=spec_id, force=force)
 
         console.print(f"[green]✓[/green] Worktree removed: {spec_id}")
@@ -495,7 +564,8 @@ def sync_worktree(
             console.print()
             console.print(f"[green]Summary:[/green] {success_count} synced, {conflict_count} failed")
         else:
-            # Sync single worktree
+            # Sync single worktree (spec_id is guaranteed non-None by guard at line 508-510)
+            assert spec_id is not None, "spec_id should be set when not using --all"
             manager.sync(
                 spec_id=spec_id,
                 base_branch=base,
@@ -533,6 +603,8 @@ def clean_worktrees(merged_only: bool, interactive: bool, repo: str | None, work
         wt_root = Path(worktree_root) if worktree_root else None
 
         manager = get_manager(repo_path, wt_root)
+
+        cleaned: list[str] = []
 
         if merged_only:
             # Only clean merged branches (default behavior)
