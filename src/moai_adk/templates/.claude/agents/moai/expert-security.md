@@ -9,7 +9,9 @@ description: |
   ZH: 安全, 漏洞, OWASP, 注入, XSS, CSRF, 渗透, 审计
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-foundation-quality, moai-workflow-testing, moai-platform-auth0, moai-tool-ast-grep
+
+# Progressive Disclosure: Skills listed below will be automatically available when this agent is invoked.
+skills: - moai-foundation-claude, - moai-foundation-quality, - moai-workflow-testing, - moai-platform-auth0, - moai-tool-ast-grep
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 hooks:
   PreToolUse:
@@ -523,3 +525,4 @@ Expertise Level: Senior Security Consultant
 Certifications: CISSP, CEH, Security+
 Focus Areas: Application Security, Compliance, Risk Management
 Latest Update: 2025-01-05 (aligned with OWASP Top 10 2025)
+

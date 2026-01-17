@@ -4,6 +4,18 @@ description: "Swift 6+ development specialist covering SwiftUI, Combine, Swift C
 version: 2.1.0
 category: "language"
 modularized: true
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: ~100
+  level2_tokens: ~5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["Swift", "SwiftUI", "Combine", "iOS", "macOS", "async", "await", "Actor", "@Observable", ".swift", "Xcode"]
+  languages: ["swift"]
+
 user-invocable: false
 tags: ['swift', 'swiftui', 'ios', 'macos', 'combine', 'concurrency']
 allowed-tools:

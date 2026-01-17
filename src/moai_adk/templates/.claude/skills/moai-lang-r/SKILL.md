@@ -4,6 +4,18 @@ description: "R 4.4+ development specialist covering tidyverse, ggplot2, Shiny, 
 version: 1.1.0
 category: "language"
 modularized: true
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: ~100
+  level2_tokens: ~5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["R", "tidyverse", "ggplot2", "Shiny", "dplyr", "data science", ".R", ".Rmd", ".qmd", "DESCRIPTION", "renv.lock"]
+  languages: ["r"]
+
 user-invocable: false
 tags:
   ["language", "r", "tidyverse", "ggplot2", "shiny", "dplyr", "data-science"]

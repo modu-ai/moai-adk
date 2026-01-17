@@ -18,6 +18,8 @@ allowed-tools:
   - Glob
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
+triggers:
+  keywords: ["vercel", "edge", "nextjs", "isr", "preview deployment", "cdn", "edge functions"]
 ---
 
 # moai-platform-vercel: Vercel Edge Deployment Specialist

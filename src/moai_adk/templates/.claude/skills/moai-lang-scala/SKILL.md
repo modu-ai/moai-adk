@@ -4,6 +4,18 @@ description: "Scala 3.4+ development specialist covering Akka, Cats Effect, ZIO,
 version: 2.1.0
 category: "language"
 modularized: true
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: ~100
+  level2_tokens: ~5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["Scala", "Akka", "Cats Effect", "ZIO", "Spark", ".scala", ".sc", "build.sbt", "sbt"]
+  languages: ["scala"]
+
 user-invocable: false
 tags: ["language", "scala", "akka", "cats-effect", "zio", "spark", "sbt"]
 status: "active"

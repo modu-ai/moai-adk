@@ -23,6 +23,28 @@ allowed-tools:
   - Glob
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
+triggers:
+  keywords:
+    - UI/UX
+    - design system
+    - accessibility
+    - WCAG
+    - ARIA
+    - icon
+    - theming
+    - dark mode
+    - design tokens
+    - component library
+    - Radix UI
+    - shadcn
+    - Storybook
+    - Figma
+    - design tokens
+    - Style Dictionary
+    - Lucide
+    - Iconify
+    - responsive design
+    - user experience
 ---
 
 ## Quick Reference

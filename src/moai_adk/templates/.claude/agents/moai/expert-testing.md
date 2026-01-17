@@ -10,7 +10,9 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__playwright__evaluate, mcp__playwright__screenshot
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-workflow-testing, moai-foundation-quality, moai-tool-ast-grep
+
+# Progressive Disclosure: Skills listed below will be automatically available when this agent is invoked.
+skills: - moai-foundation-claude, - moai-lang-python, - moai-lang-typescript, - moai-lang-javascript, - moai-workflow-testing, - moai-foundation-quality, - moai-tool-ast-grep
 ---
 
 # Testing Expert
@@ -735,3 +737,4 @@ Agent Tier: Domain (Alfred Sub-agents)
 Supported Frameworks: Jest, Vitest, Playwright, Cypress, pytest, JUnit, Go test
 Supported Languages: Python, TypeScript, JavaScript, Go, Rust, Java, PHP
 MCP Integration: Context7 for documentation, Playwright for browser automation
+

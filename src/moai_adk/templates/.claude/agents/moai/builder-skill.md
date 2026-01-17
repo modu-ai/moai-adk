@@ -10,7 +10,8 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: bypassPermissions
-skills: moai-foundation-claude, moai-workflow-project
+# Progressive Disclosure: Skills load on-demand via Skill() when needed
+skills: - moai-foundation-claude, - moai-workflow-project
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"

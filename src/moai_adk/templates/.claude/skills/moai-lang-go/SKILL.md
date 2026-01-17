@@ -4,6 +4,18 @@ description: "Go 1.23+ development specialist covering Fiber, Gin, GORM, and con
 version: 1.1.0
 category: "language"
 modularized: false
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: ~100
+  level2_tokens: ~5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["Go", "Golang", "Fiber", "Gin", "GORM", "Echo", "Chi", ".go", "go.mod", "goroutine", "channel"]
+  languages: ["go", "golang"]
+
 user-invocable: false
 tags: ['go', 'golang', 'fiber', 'gin', 'concurrency', 'microservices']
 context7-libraries: ['/gofiber/fiber', '/gin-gonic/gin', '/go-gorm/gorm']

@@ -14,6 +14,43 @@ allowed-tools:
   - Glob
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: ~100
+  level2_tokens: ~5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords:
+    - "architecture"
+    - "architecture decision"
+    - "technology selection"
+    - "trade-off"
+    - "strategic"
+    - "decision"
+    - "analysis"
+    - "design thinking"
+    - "first principles"
+    - "five whys"
+    - "assumption"
+    - "alternative"
+    - "cognitive bias"
+    - "root cause"
+    - "framework selection"
+    - "library selection"
+    - "database selection"
+    - "performance vs maintainability"
+    - "breaking change"
+  agents:
+    - "manager-strategy"
+    - "manager-spec"
+    - "expert-backend"
+    - "expert-frontend"
+    - "expert-devops"
+  phases:
+    - "plan"
 ---
 
 # MoAI Foundation Philosopher

@@ -9,6 +9,19 @@ tags: ["workflow", "project", "documentation", "initialization", "templates"]
 updated: 2026-01-08
 status: "active"
 aliases: ["moai-workflow-project"]
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["project setup", "initialization", "project initialization", "project configuration", "project documentation", "multilingual", "language initialization"]
+  phases: ["plan", "run"]
+  agents: ["manager-project", "manager-docs"]
+
 allowed-tools:
   - Read
   - Write

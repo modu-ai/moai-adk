@@ -24,6 +24,41 @@ allowed-tools:
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
 replaces: moai-core-context-budget, moai-core-session-state
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: ~100
+  level2_tokens: ~5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords:
+    - "token"
+    - "context"
+    - "session"
+    - "budget"
+    - "optimization"
+    - "handoff"
+    - "state"
+    - "memory"
+    - "/clear"
+    - "context window"
+    - "token limit"
+    - "session persistence"
+    - "context management"
+    - "multi-agent"
+  agents:
+    - "manager-spec"
+    - "manager-tdd"
+    - "manager-strategy"
+    - "manager-quality"
+    - "manager-docs"
+    - "manager-project"
+  phases:
+    - "plan"
+    - "run"
+    - "sync"
 ---
 
 ## Quick Reference

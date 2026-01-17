@@ -18,6 +18,8 @@ allowed-tools:
   - Glob
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
+triggers:
+  keywords: ["firestore", "nosql", "real-time", "offline", "mobile database", "security rules", "sync"]
 ---
 
 # moai-platform-firestore: Firebase Firestore Specialist

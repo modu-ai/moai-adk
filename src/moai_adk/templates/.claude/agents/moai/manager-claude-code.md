@@ -10,6 +10,11 @@ description: |
 tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: bypassPermissions
+
+# Progressive Disclosure: 3-Level Skill Loading
+# Skills are loaded at Level 1 (metadata only) by default (~100 tokens per skill)
+# Full skill body (Level 2, ~5K tokens) is loaded when triggers match
+# Reference skills (Level 3+) are loaded on-demand by Claude
 skills: moai-foundation-claude, moai-workflow-project
 ---
 

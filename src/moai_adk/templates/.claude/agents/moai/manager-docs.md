@@ -10,7 +10,12 @@ description: |
 tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: acceptEdits
-skills: moai-foundation-claude, moai-foundation-core, moai-library-mermaid, moai-library-nextra, moai-formats-data, moai-docs-generation, moai-workflow-jit-docs
+
+# Progressive Disclosure: 3-Level Skill Loading
+# Skills are loaded at Level 1 (metadata only) by default (~100 tokens per skill)
+# Full skill body (Level 2, ~5K tokens) is loaded when triggers match
+# Reference skills (Level 3+) are loaded on-demand by Claude
+skills: moai-foundation-claude, moai-foundation-core, moai-docs-generation, moai-library-mermaid, moai-library-nextra, moai-formats-data, moai-workflow-jit-docs
 ---
 
 # Documentation Manager Expert

@@ -10,7 +10,8 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: bypassPermissions
-skills: moai-foundation-claude, moai-workflow-project
+# Progressive Disclosure: Skills load on-demand via Skill() when needed
+skills: - moai-foundation-claude, - moai-workflow-project
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"
@@ -761,3 +762,4 @@ Updated: 2026-01-06
 Pattern: Comprehensive 7-Phase Plugin Creation Workflow
 Compliance: Claude Code Official Plugin Standards + MoAI-ADK Conventions
 Changes: Added PHASE 6 for marketplace creation; Added marketplace keywords to description; Updated scope to include marketplace distribution; Previous: Added PostToolUseFailure, SubagentStart, Notification, PreCompact hook events; Added agent hook type; Added LSP server advanced options; Added Plugin Caching and Security section; Added managed installation scope
+

@@ -4,6 +4,18 @@ description: "Python 3.13+ development specialist covering FastAPI, Django, asyn
 version: 1.1.0
 category: "language"
 modularized: false
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: ~100
+  level2_tokens: ~5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["Python", "Django", "FastAPI", "Flask", "asyncio", "pytest", "pyproject.toml", "requirements.txt", ".py"]
+  languages: ["python"]
+
 user-invocable: false
 tags:
   ["language", "python", "fastapi", "django", "pytest", "async", "data-science"]

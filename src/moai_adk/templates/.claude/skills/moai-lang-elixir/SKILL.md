@@ -4,6 +4,18 @@ description: "Elixir 1.17+ development specialist covering Phoenix 1.7, LiveView
 version: 1.1.0
 category: "language"
 modularized: true
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: ~100
+  level2_tokens: ~5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["Elixir", "Phoenix", "LiveView", "Ecto", "OTP", "GenServer", ".ex", ".exs", "mix.exs"]
+  languages: ["elixir"]
+
 user-invocable: false
 tags: ["language", "elixir", "phoenix", "liveview", "ecto", "otp", "genserver"]
 updated: 2026-01-11

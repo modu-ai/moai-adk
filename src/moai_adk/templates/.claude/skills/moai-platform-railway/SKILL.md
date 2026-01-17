@@ -18,6 +18,8 @@ allowed-tools:
   - Glob
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
+triggers:
+  keywords: ["railway", "docker", "containers", "multi-service", "auto-scaling", "persistent volumes"]
 ---
 
 # moai-platform-railway: Container Deployment Specialist

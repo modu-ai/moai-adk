@@ -4,6 +4,18 @@ description: "C# 12 / .NET 8 development specialist covering ASP.NET Core, Entit
 version: 2.1.0
 category: "language"
 modularized: true
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: ~100
+  level2_tokens: ~5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["C#", "Csharp", ".NET", "ASP.NET", "Entity Framework", "Blazor", ".cs", ".csproj", ".sln", "dotnet"]
+  languages: ["csharp", "c#"]
+
 user-invocable: false
 tags:
   ["language", "csharp", "dotnet", "aspnet-core", "entity-framework", "blazor"]

@@ -10,7 +10,9 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-domain-backend, moai-domain-database, moai-platform-supabase, moai-platform-neon, moai-tool-ast-grep
+
+# Progressive Disclosure: Skills listed below will be automatically available when this agent is invoked.
+skills: - moai-foundation-claude, - moai-lang-python, - moai-lang-typescript, - moai-lang-javascript, - moai-domain-backend, - moai-domain-database, - moai-platform-supabase, - moai-platform-neon, - moai-tool-ast-grep
 hooks:
   PreToolUse:
     - matcher: "Write|Edit"
@@ -961,3 +963,4 @@ Agent Tier: Domain (Alfred Sub-agents)
 Supported Frameworks: FastAPI, Flask, Django, Express, Fastify, NestJS, Sails, Gin, Beego, Axum, Rocket, Spring Boot, Laravel, Symfony
 Supported Languages: Python, TypeScript, Go, Rust, Java, Scala, PHP
 Context7 Integration: Enabled for real-time framework documentation
+

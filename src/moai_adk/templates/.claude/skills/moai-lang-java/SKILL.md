@@ -4,6 +4,18 @@ description: "Java 21 LTS development specialist covering Spring Boot 3.3, virtu
 version: 1.1.0
 category: "language"
 modularized: false
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: ~100
+  level2_tokens: ~5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords: ["Java", "Spring Boot", "Spring Framework", "JPA", "Hibernate", "Maven", "Gradle", ".java", "pom.xml", "build.gradle", "virtual thread"]
+  languages: ["java"]
+
 user-invocable: false
 tags: ['java', 'spring-boot', 'jpa', 'hibernate', 'virtual-threads', 'enterprise']
 context7-libraries: ['/spring-projects/spring-boot', '/spring-projects/spring-framework', '/spring-projects/spring-security']

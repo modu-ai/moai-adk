@@ -18,6 +18,28 @@ allowed-tools:
   - mcp__context7__get-library-docs
 status: "active"
 author: "MoAI-ADK Team"
+triggers:
+  keywords:
+    - database
+    - PostgreSQL
+    - MongoDB
+    - Redis
+    - SQL
+    - NoSQL
+    - query
+    - schema
+    - migration
+    - indexing
+    - ORM
+    - ODM
+    - SQLAlchemy
+    - Mongoose
+    - Prisma
+    - Drizzle
+    - connection pool
+    - transaction
+    - data modeling
+    - aggregation
 ---
 
 # Database Domain Specialist

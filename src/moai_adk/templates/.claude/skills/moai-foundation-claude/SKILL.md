@@ -31,6 +31,40 @@ tags:
   ]
 updated: 2026-01-11
 status: "active"
+
+# Progressive Disclosure Configuration
+progressive_disclosure:
+  enabled: true
+  level1_tokens: ~100
+  level2_tokens: ~5000
+
+# Trigger Conditions for Level 2 Loading
+triggers:
+  keywords:
+    - "skill"
+    - "agent"
+    - "plugin"
+    - "slash command"
+    - "hook"
+    - "sandbox"
+    - "headless"
+    - "memory"
+    - "settings"
+    - "claude code"
+    - "sub-agent"
+    - "agent pattern"
+    - "orchestration"
+    - "delegation"
+  agents:
+    - "builder-agent"
+    - "builder-command"
+    - "builder-skill"
+    - "builder-plugin"
+    - "manager-claude-code"
+  phases:
+    - "plan"
+    - "run"
+    - "sync"
 ---
 
 # Claude Code Authoring Kit

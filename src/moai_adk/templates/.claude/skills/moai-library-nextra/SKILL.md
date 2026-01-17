@@ -18,6 +18,8 @@ aliases:
 category: library
 tags: ["library", "nextra", "nextjs", "documentation", "mdx", "static-site"]
 status: "active"
+triggers:
+  keywords: ["documentation", "nextra", "docs site", "knowledge base", "api reference", "mdx", "static site"]
 ---
 
 ## Quick Reference

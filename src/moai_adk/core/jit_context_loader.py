@@ -4,6 +4,11 @@ JIT Context Loading System
 
 Phase-based token optimization system that achieves 85%+ efficiency through
 intelligent context loading, skill filtering, and budget management.
+
+Integrated with Progressive Disclosure for 3-level skill loading:
+- Level 1: Metadata only (~100 tokens) - Always loaded
+- Level 2: Skill body (~5K tokens) - Loaded when triggered
+- Level 3+: Bundled files (unlimited) - Loaded on-demand
 """
 
 import hashlib
@@ -20,6 +25,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import psutil
+
+from .skill_loading_system import (
+    ProgressiveDisclosureLevel,
+    SkillLoader,
+    load_agent_skills,
+    parse_agent_skills,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -954,3 +966,154 @@ def initialize_jit_system():
     logger.info(f"Cache configured: {stats['cache']['entries']} entries, {stats['cache']['memory_usage_mb']:.1f}MB")
 
     return True
+
+
+# =============================================================================
+# Progressive Disclosure Integration
+# =============================================================================
+
+
+class ProgressiveDisclosureJITLoader:
+    """JIT Loader with Progressive Disclosure integration for 3-level skill loading"""
+
+    def __init__(self):
+        self.skill_loader = SkillLoader()
+        self.phase_detector = PhaseDetector()
+        self.context_cache: Dict[str, Tuple[Any, datetime]] = {}
+
+    def load_skills_for_phase(
+        self,
+        agent_skills: List[str],
+        phase: Phase,
+        context: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Load skills for a specific phase using Progressive Disclosure
+
+        Args:
+            agent_skills: List of skill names from agent frontmatter
+            phase: Current development phase
+            context: Current context with prompt, phase, agent, language
+
+        Returns:
+            Dict of skill_name -> SkillData at appropriate level
+        """
+        # Map Phase to trigger phase string
+        phase_map = {
+            Phase.SPEC: "plan",
+            Phase.PLANNING: "plan",
+            Phase.RED: "run",
+            Phase.GREEN: "run",
+            Phase.REFACTOR: "run",
+            Phase.SYNC: "sync",
+            Phase.DEBUG: "run",
+        }
+
+        context_with_phase = {
+            **context,
+            "phase": phase_map.get(phase, "run"),
+        }
+
+        # Load skills with Progressive Disclosure
+        loaded_skills = load_agent_skills(agent_skills, context_with_phase)
+
+        logger.info(f"Progressive Disclosure: Loaded {len(loaded_skills)} skills for phase {phase.value}")
+        for skill_name, skill_data in loaded_skills.items():
+            level = skill_data.loaded_level.name
+            logger.info(f"  - {skill_name}: Level {level}")
+
+        return loaded_skills
+
+    def estimate_token_budget(
+        self,
+        agent_skills: List[str],
+        phase: Phase,
+        context: Dict[str, Any],
+    ) -> Dict[str, int]:
+        """Estimate token budget for loading skills with Progressive Disclosure
+
+        Args:
+            agent_skills: List of skill names from agent frontmatter
+            phase: Current development phase
+            context: Current context
+
+        Returns:
+            Dict with level1_tokens, level2_tokens, total_tokens
+        """
+        level1_tokens = 0
+        level2_tokens = 0
+
+        context_with_phase = {
+            **context,
+            "phase": phase.value,
+        }
+
+        for skill_name in agent_skills:
+            try:
+                skill_data = self.skill_loader.load_skill_at_level(skill_name, ProgressiveDisclosureLevel.METADATA_ONLY)
+                level1_tokens += skill_data.estimate_tokens_at_level(ProgressiveDisclosureLevel.METADATA_ONLY)
+
+                # Check if skill would trigger Level 2
+                if self.skill_loader.check_trigger_match(skill_name, context_with_phase):
+                    level2_tokens += skill_data.estimate_tokens_at_level(ProgressiveDisclosureLevel.BODY_ONLY)
+            except Exception as e:
+                logger.warning(f"Failed to estimate tokens for {skill_name}: {e}")
+
+        return {
+            "level1_tokens": level1_tokens,
+            "level2_tokens": level2_tokens,
+            "total_tokens": level1_tokens + level2_tokens,
+            "skill_count": len(agent_skills),
+        }
+
+
+# Global Progressive Disclosure JIT loader instance
+progressive_disclosure_loader = ProgressiveDisclosureJITLoader()
+
+
+def load_skills_progressive(
+    agent_skills: List[str],
+    phase: Phase,
+    context: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Load skills using Progressive Disclosure JIT pattern
+
+    Args:
+        agent_skills: Comma-separated skill list or list of skill names
+        phase: Current development phase
+        context: Optional context dict
+
+    Returns:
+        Dict of loaded skills at appropriate levels
+    """
+    if context is None:
+        context = {}
+
+    # Convert comma-separated string to list if needed
+    if isinstance(agent_skills, str):
+        agent_skills = parse_agent_skills(agent_skills)
+
+    return progressive_disclosure_loader.load_skills_for_phase(agent_skills, phase, context)
+
+
+def estimate_progressive_budget(
+    agent_skills: List[str],
+    phase: Phase,
+    context: Optional[Dict[str, Any]] = None,
+) -> Dict[str, int]:
+    """Estimate token budget with Progressive Disclosure
+
+    Args:
+        agent_skills: Comma-separated skill list or list of skill names
+        phase: Current development phase
+        context: Optional context dict
+
+    Returns:
+        Dict with token budget estimates
+    """
+    if context is None:
+        context = {}
+
+    if isinstance(agent_skills, str):
+        agent_skills = parse_agent_skills(agent_skills)
+
+    return progressive_disclosure_loader.estimate_token_budget(agent_skills, phase, context)

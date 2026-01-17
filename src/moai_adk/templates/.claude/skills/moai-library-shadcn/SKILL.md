@@ -15,6 +15,8 @@ allowed-tools:
   - Glob
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
+triggers:
+  keywords: ["shadcn", "component library", "design system", "radix", "tailwind", "ui components"]
 ---
 
 ## Quick Reference

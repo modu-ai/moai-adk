@@ -3,6 +3,11 @@ MoAI-ADK Skill Loading System
 
 Formal skill loading architecture with validation, dependency management, and caching
 for MoAI-ADK's modular documentation system.
+
+Supports 3-level Progressive Disclosure:
+- Level 1: YAML Metadata (~100 tokens) - Always loaded
+- Level 2: SKILL.md Body (~5K tokens) - Loaded when triggered
+- Level 3+: Bundled files (unlimited) - Loaded on-demand by Claude
 """
 
 import logging
@@ -12,6 +17,7 @@ import threading
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import yaml
@@ -19,6 +25,14 @@ import yaml
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+class ProgressiveDisclosureLevel(Enum):
+    """Progressive Disclosure loading levels"""
+
+    METADATA_ONLY = 1  # Load YAML frontmatter only (~100 tokens)
+    BODY_ONLY = 2  # Load SKILL.md markdown body (~5K tokens)
+    FULL = 3  # Load all content (metadata + body + bundled files)
 
 
 class SkillLoadingError(Exception):
@@ -54,6 +68,8 @@ class SkillData:
     content: str
     loaded_at: datetime
     applied_filters: List[str] = field(default_factory=list)
+    loaded_level: ProgressiveDisclosureLevel = ProgressiveDisclosureLevel.FULL
+    bundled_files: Dict[str, str] = field(default_factory=dict)
 
     def get_capability(self, capability_name: str) -> Any:
         """Get specific capability from skill content"""
@@ -69,6 +85,27 @@ class SkillData:
         if filter_type not in self.applied_filters:
             self.content = self._filter_content(self.content, filter_type)
             self.applied_filters.append(filter_type)
+
+    def get_triggers(self) -> Dict[str, Any]:
+        """Get trigger conditions for Level 2 loading"""
+        return self.frontmatter.get("triggers", {})
+
+    def is_progressive_disclosure_enabled(self) -> bool:
+        """Check if Progressive Disclosure is enabled for this skill"""
+        progressive_config = self.frontmatter.get("progressive_disclosure", {})
+        return progressive_config.get("enabled", False)
+
+    def estimate_tokens_at_level(self, level: ProgressiveDisclosureLevel) -> int:
+        """Estimate token cost for a given level"""
+        progressive_config = self.frontmatter.get("progressive_disclosure", {})
+
+        if level == ProgressiveDisclosureLevel.METADATA_ONLY:
+            return progressive_config.get("level1_tokens", 100)
+        elif level == ProgressiveDisclosureLevel.BODY_ONLY:
+            return progressive_config.get("level2_tokens", 5000)
+        else:
+            # Full load includes all levels
+            return progressive_config.get("level1_tokens", 100) + progressive_config.get("level2_tokens", 5000)
 
     def _filter_content(self, content: str, filter_type: str) -> str:
         """Filter content based on effort level"""
@@ -426,17 +463,178 @@ class SkillLoader:
         # Return the first path even if it doesn't exist (for error messages)
         return possible_paths[0]
 
-    def _parse_skill_file(self, content: str) -> tuple[Dict[str, Any], str]:
-        """Parse skill file into frontmatter and content"""
+    def _parse_skill_file(
+        self, content: str, level: ProgressiveDisclosureLevel = ProgressiveDisclosureLevel.FULL
+    ) -> tuple[Dict[str, Any], str]:
+        """Parse skill file into frontmatter and content at specified level"""
         if content.startswith("---"):
             try:
                 _, frontmatter, content = content.split("---", 2)
                 frontmatter_data = yaml.safe_load(frontmatter.strip())
+
+                # Progressive Disclosure: Return metadata only if requested
+                if level == ProgressiveDisclosureLevel.METADATA_ONLY:
+                    return frontmatter_data or {}, ""
+
                 return frontmatter_data or {}, content.strip()
             except Exception as e:
                 logger.warning(f"Failed to parse frontmatter: {e}")
 
         return {}, content
+
+    def load_skill_at_level(
+        self,
+        skill_name: str,
+        level: ProgressiveDisclosureLevel = ProgressiveDisclosureLevel.FULL,
+        force_reload: bool = False,
+    ) -> SkillData:
+        """Load skill at specified Progressive Disclosure level
+
+        Args:
+            skill_name: Name of the skill to load
+            level: Progressive Disclosure level (METADATA_ONLY, BODY_ONLY, FULL)
+            force_reload: Force reload from filesystem
+
+        Returns:
+            SkillData with content at specified level
+        """
+        cache_key = f"{skill_name}_L{level.value}"
+
+        # Check cache first (unless force_reload)
+        if not force_reload:
+            cached_skill = self.cache.get(cache_key)
+            if cached_skill:
+                return cached_skill
+
+        # Load from filesystem
+        skill_path = self._get_skill_path(skill_name)
+
+        if not os.path.exists(skill_path):
+            raise SkillNotFoundError(f"Skill file not found: {skill_path}")
+
+        try:
+            with open(skill_path, "r", encoding="utf-8") as f:
+                full_content = f.read()
+
+            # Parse at requested level
+            frontmatter, content = self._parse_skill_file(full_content, level)
+
+            skill_data = SkillData(
+                name=skill_name,
+                frontmatter=frontmatter,
+                content=content,
+                loaded_at=datetime.now(),
+                loaded_level=level,
+            )
+
+            # Load bundled files if FULL level requested
+            if level == ProgressiveDisclosureLevel.FULL:
+                skill_data.bundled_files = self._load_bundled_files(skill_name)
+
+            # Cache the loaded skill
+            self.cache.set(cache_key, skill_data)
+
+            logger.info(f"Successfully loaded skill: {skill_name} at level {level.name}")
+            return skill_data
+
+        except Exception as e:
+            raise SkillLoadingError(f"Failed to parse skill file {skill_path}: {e}")
+
+    def check_trigger_match(self, skill_name: str, context: Dict[str, Any]) -> bool:
+        """Check if skill triggers match the current context
+
+        Args:
+            skill_name: Name of the skill to check
+            context: Context dict with 'prompt', 'phase', 'agent', 'language' keys
+
+        Returns:
+            True if any trigger matches
+        """
+        # Load metadata only to check triggers
+        try:
+            skill_data = self.load_skill_at_level(skill_name, ProgressiveDisclosureLevel.METADATA_ONLY)
+        except SkillLoadingError:
+            return False
+
+        triggers = skill_data.get_triggers()
+        if not triggers:
+            return False
+
+        # Check keyword triggers
+        keywords = triggers.get("keywords", [])
+        if keywords:
+            prompt = context.get("prompt", "").lower()
+            for keyword in keywords:
+                if keyword.lower() in prompt:
+                    logger.debug(f"Skill {skill_name} triggered by keyword: {keyword}")
+                    return True
+
+        # Check phase triggers
+        phases = triggers.get("phases", [])
+        if phases and context.get("phase") in phases:
+            logger.debug(f"Skill {skill_name} triggered by phase: {context.get('phase')}")
+            return True
+
+        # Check agent triggers
+        agents = triggers.get("agents", [])
+        if agents and context.get("agent") in agents:
+            logger.debug(f"Skill {skill_name} triggered by agent: {context.get('agent')}")
+            return True
+
+        # Check language triggers
+        languages = triggers.get("languages", [])
+        if languages and context.get("language") in languages:
+            logger.debug(f"Skill {skill_name} triggered by language: {context.get('language')}")
+            return True
+
+        return False
+
+    def _load_bundled_files(self, skill_name: str) -> Dict[str, str]:
+        """Load bundled files for Level 3 loading
+
+        Args:
+            skill_name: Name of the skill
+
+        Returns:
+            Dict mapping filename to content
+        """
+        bundled_files: Dict[str, str] = {}
+
+        # Get skill directory
+        possible_paths = [
+            f".claude/skills/{skill_name}",
+            f"src/moai_adk/.claude/skills/{skill_name}",
+            f"{os.path.expanduser('~')}/.claude/skills/{skill_name}",
+        ]
+
+        skill_dir = None
+        for path in possible_paths:
+            if os.path.exists(path):
+                skill_dir = path
+                break
+
+        if not skill_dir:
+            return bundled_files
+
+        # Load common bundled files
+        common_files = [
+            "examples.md",
+            "reference.md",
+            "modules/patterns.md",
+            "modules/examples.md",
+            "modules/reference.md",
+        ]
+
+        for file_path in common_files:
+            full_path = os.path.join(skill_dir, file_path)
+            if os.path.exists(full_path):
+                try:
+                    with open(full_path, "r", encoding="utf-8") as f:
+                        bundled_files[file_path] = f.read()
+                except Exception as e:
+                    logger.warning(f"Failed to load bundled file {file_path}: {e}")
+
+        return bundled_files
 
     def _apply_effort_parameter(self, skill_data: SkillData, effort: int) -> SkillData:
         """Apply effort parameter customization to skill data"""
@@ -499,6 +697,78 @@ def clear_skill_cache() -> None:
     """Clear all cached skills"""
     SKILL_LOADER.cache.clear()
     logger.info("Skill cache cleared")
+
+
+def load_agent_skills(
+    skills_list: List[str],
+    context: Optional[Dict[str, Any]] = None,
+    force_reload: bool = False,
+) -> Dict[str, SkillData]:
+    """Load agent skills with Progressive Disclosure
+
+    Args:
+        skills_list: List of skill names from agent frontmatter (e.g., "skill1, skill2")
+        context: Current context with 'prompt', 'phase', 'agent', 'language' keys
+        force_reload: Force reload from filesystem
+
+    Returns:
+        Dict mapping skill name to SkillData at appropriate level
+
+    Progressive Disclosure Logic:
+    - Level 1 (METADATA_ONLY): All skills loaded at metadata level (~100 tokens each)
+    - Level 2 (BODY_ONLY): Skills with matching triggers loaded at body level (~5K tokens)
+    - Level 3 (FULL): Bundled files loaded on-demand by Claude
+    """
+    if context is None:
+        context = {}
+
+    loaded_skills: Dict[str, SkillData] = {}
+
+    for skill_name in skills_list:
+        try:
+            # Load all skills at Level 1 (metadata only) first
+            skill_data = SKILL_LOADER.load_skill_at_level(
+                skill_name,
+                ProgressiveDisclosureLevel.METADATA_ONLY,
+                force_reload=force_reload,
+            )
+            loaded_skills[skill_name] = skill_data
+
+            # Check if skill triggers match for Level 2 loading
+            if SKILL_LOADER.check_trigger_match(skill_name, context):
+                logger.info(f"Progressive Disclosure: Loading {skill_name} at Level 2 (triggered)")
+                skill_data_level2 = SKILL_LOADER.load_skill_at_level(
+                    skill_name,
+                    ProgressiveDisclosureLevel.BODY_ONLY,
+                    force_reload=force_reload,
+                )
+                loaded_skills[skill_name] = skill_data_level2
+
+        except SkillLoadingError as e:
+            logger.warning(f"Failed to load skill {skill_name}: {e}")
+
+    return loaded_skills
+
+
+def parse_agent_skills(skills_field: str) -> List[str]:
+    """Parse agent skills field from YAML frontmatter
+
+    Args:
+        skills_field: Comma-separated skill list (e.g., "skill1, skill2, skill3")
+
+    Returns:
+        List of skill names
+
+    Example:
+        >>> parse_agent_skills("moai-foundation-core, moai-workflow-spec")
+        ['moai-foundation-core', 'moai-workflow-spec']
+    """
+    if not skills_field:
+        return []
+
+    # Split by comma and strip whitespace
+    skills = [skill.strip() for skill in skills_field.split(",")]
+    return [skill for skill in skills if skill]
 
 
 # Enhanced Task function with automatic skill loading

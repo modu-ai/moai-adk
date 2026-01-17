@@ -24,6 +24,8 @@ allowed-tools:
   - Bash
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
+triggers:
+  keywords: ["diagram", "flowchart", "sequence", "architecture", "mermaid", "visualization", "chart", "graph"]
 ---
 
 ## Quick Reference

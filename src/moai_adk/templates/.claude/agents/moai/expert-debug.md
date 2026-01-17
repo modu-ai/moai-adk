@@ -10,7 +10,9 @@ description: |
 tools: Read, Grep, Glob, Bash, TodoWrite, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-workflow-testing, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-tool-ast-grep
+
+# Progressive Disclosure: Skills listed below will be automatically available when this agent is invoked.
+skills: - moai-foundation-claude, - moai-workflow-testing, - moai-lang-python, - moai-lang-typescript, - moai-lang-javascript, - moai-tool-ast-grep
 ---
 
 # Debug Helper - Integrated Debugging Expert
@@ -405,3 +407,4 @@ IMPACT: Outdated documentation misleads developers
 ## Execution Summary
 
 This expert-debug agent functions as a specialized diagnostic tool within the MoAI ecosystem. The agent analyzes errors, identifies root causes, produces structured diagnostic reports, and delegates appropriate corrections to specialized implementation agents. By maintaining strict separation of concerns (diagnosis vs. implementation), this agent ensures optimal resource utilization and prevents role overlap.
+

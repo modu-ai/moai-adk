@@ -10,7 +10,8 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: bypassPermissions
-skills: moai-foundation-claude, moai-workflow-project, moai-workflow-templates
+# Progressive Disclosure: Skills load on-demand via Skill() when needed
+skills: - moai-foundation-claude, - moai-workflow-project, - moai-workflow-templates
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"
@@ -1216,3 +1217,4 @@ Version: 1.0.0
 Created: 2025-11-25
 Pattern: Comprehensive 6-Phase with Reuse-First Philosophy
 Compliance: Claude Code Official Standards + MoAI-ADK Conventions
+
