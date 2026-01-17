@@ -215,26 +215,26 @@ class TestGitWorkflowManager:
         command = manager.create_branch_command("feature/test", use_modern=False)
         assert "git checkout -b" in command
 
-    def test_format_ddd_commit_red(self):
-        """Test format_ddd_commit for RED phase."""
+    def test_format_ddd_commit_analyze(self):
+        """Test format_ddd_commit for ANALYZE phase."""
         manager = GitWorkflowManager()
-        commit = manager.format_ddd_commit("test", "auth", "add login tests", "RED")
-        assert "test(auth): add login tests" in commit
-        assert "RED phase" in commit
+        commit = manager.format_ddd_commit("chore", "auth", "analyze authentication code", "ANALYZE")
+        assert "chore(auth): analyze authentication code" in commit
+        assert "ANALYZE phase" in commit
 
-    def test_format_ddd_commit_green(self):
-        """Test format_ddd_commit for GREEN phase."""
+    def test_format_ddd_commit_preserve(self):
+        """Test format_ddd_commit for PRESERVE phase."""
         manager = GitWorkflowManager()
-        commit = manager.format_ddd_commit("feat", "auth", "implement login", "GREEN")
-        assert "feat(auth): implement login" in commit
-        assert "GREEN phase" in commit
+        commit = manager.format_ddd_commit("test", "auth", "add characterization tests", "PRESERVE")
+        assert "test(auth): add characterization tests" in commit
+        assert "PRESERVE phase" in commit
 
-    def test_format_ddd_commit_refactor(self):
-        """Test format_ddd_commit for REFACTOR phase."""
+    def test_format_ddd_commit_improve(self):
+        """Test format_ddd_commit for IMPROVE phase."""
         manager = GitWorkflowManager()
-        commit = manager.format_ddd_commit("refactor", "auth", "improve performance", "REFACTOR")
-        assert "refactor(auth): improve performance" in commit
-        assert "REFACTOR phase" in commit
+        commit = manager.format_ddd_commit("refactor", "auth", "improve authentication code", "IMPROVE")
+        assert "refactor(auth): improve authentication code" in commit
+        assert "IMPROVE phase" in commit
 
     def test_get_workflow_commands_feature_branch(self):
         """Test get_workflow_commands for feature_branch strategy."""

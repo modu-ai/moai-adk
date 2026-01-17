@@ -53,17 +53,17 @@ class TestDataClasses:
         assert result.commit_type == "feat"
         assert result.scope == "auth"
 
-    def test_tdd_commit_phase_creation(self):
+    def test_ddd_commit_phase_creation(self):
         """Test DDDCommitPhase dataclass creation."""
         phase = DDDCommitPhase(
-            phase_name="RED",
-            commit_type="test",
-            description="Write failing tests",
-            test_status="failing"
+            phase_name="ANALYZE",
+            commit_type="chore",
+            description="Analyze existing code",
+            test_status="analyzing"
         )
 
-        assert phase.phase_name == "RED"
-        assert phase.test_status == "failing"
+        assert phase.phase_name == "ANALYZE"
+        assert phase.test_status == "analyzing"
 
 
 # ============================================================================
@@ -316,9 +316,9 @@ class TestGitWorkflowManager:
     def test_initialization(self):
         """Test manager initialization."""
         manager = GitWorkflowManager()
-        assert "RED" in manager.DDD_PHASES
-        assert "GREEN" in manager.DDD_PHASES
-        assert "REFACTOR" in manager.DDD_PHASES
+        assert "ANALYZE" in manager.DDD_PHASES
+        assert "PRESERVE" in manager.DDD_PHASES
+        assert "IMPROVE" in manager.DDD_PHASES
 
     def test_create_branch_command_modern(self):
         """Test branch creation command with modern Git."""
@@ -334,41 +334,41 @@ class TestGitWorkflowManager:
 
         assert command == "git checkout -b feature/SPEC-001"
 
-    def test_format_ddd_commit_red(self):
-        """Test TDD commit formatting for RED phase."""
+    def test_format_ddd_commit_analyze(self):
+        """Test DDD commit formatting for ANALYZE phase."""
+        manager = GitWorkflowManager()
+        commit_msg = manager.format_ddd_commit(
+            commit_type="chore",
+            scope="auth",
+            subject="analyze authentication code",
+            phase="ANALYZE"
+        )
+
+        assert commit_msg == "chore(auth): analyze authentication code (ANALYZE phase)"
+
+    def test_format_ddd_commit_preserve(self):
+        """Test DDD commit formatting for PRESERVE phase."""
         manager = GitWorkflowManager()
         commit_msg = manager.format_ddd_commit(
             commit_type="test",
             scope="auth",
-            subject="add authentication tests",
-            phase="RED"
+            subject="add characterization tests",
+            phase="PRESERVE"
         )
 
-        assert commit_msg == "test(auth): add authentication tests (RED phase)"
+        assert commit_msg == "test(auth): add characterization tests (PRESERVE phase)"
 
-    def test_format_ddd_commit_green(self):
-        """Test TDD commit formatting for GREEN phase."""
-        manager = GitWorkflowManager()
-        commit_msg = manager.format_ddd_commit(
-            commit_type="feat",
-            scope="auth",
-            subject="implement authentication",
-            phase="GREEN"
-        )
-
-        assert commit_msg == "feat(auth): implement authentication (GREEN phase)"
-
-    def test_format_ddd_commit_refactor(self):
-        """Test TDD commit formatting for REFACTOR phase."""
+    def test_format_ddd_commit_improve(self):
+        """Test DDD commit formatting for IMPROVE phase."""
         manager = GitWorkflowManager()
         commit_msg = manager.format_ddd_commit(
             commit_type="refactor",
             scope="auth",
             subject="improve authentication code",
-            phase="REFACTOR"
+            phase="IMPROVE"
         )
 
-        assert commit_msg == "refactor(auth): improve authentication code (REFACTOR phase)"
+        assert commit_msg == "refactor(auth): improve authentication code (IMPROVE phase)"
 
     def test_get_workflow_commands_feature_branch(self):
         """Test workflow commands for feature branch strategy."""
@@ -377,7 +377,7 @@ class TestGitWorkflowManager:
 
         assert len(commands) > 0
         assert "git switch -c feature/SPEC-001" in commands[0]
-        assert "# RED phase:" in commands[1]
+        assert "# ANALYZE phase:" in commands[1]
 
     def test_get_workflow_commands_direct_commit(self):
         """Test workflow commands for direct commit strategy."""
