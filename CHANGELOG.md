@@ -1,3 +1,83 @@
+# v1.3.7 - DDD Terminology Complete Migration (2026-01-17)
+
+## Summary
+
+This patch release completes the TDD to DDD (Domain-Driven Development) terminology migration across all test files and documentation.
+
+## Changed
+
+- **refactor(git)**: Complete TDD to DDD terminology migration in git module
+  - Renamed `TDDCommitPhase` to `DDDCommitPhase`
+  - Updated phase names: RED→ANALYZE, GREEN→PRESERVE, REFACTOR→IMPROVE
+  - Updated `format_tdd_commit` to `format_ddd_commit`
+  - Updated `TDD_PHASES` to `DDD_PHASES`
+- **test(git)**: Updated all git tests with DDD terminology
+  - `tests/foundation/test_git.py`
+  - `tests/unit/foundation/test_git.py`
+- **docs(release)**: Added config version files to release checklist
+  - All 4 version files must be updated: pyproject.toml, version.py, config.yaml, system.yaml
+
+## Quality
+
+- All 73 git tests: PASSED
+- Smoke tests: 6 passed (100% pass rate)
+- Ruff: All checks passed
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Or using pipx
+pipx upgrade moai-adk
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.3.7 - DDD 용어 완전 마이그레이션 (2026-01-17)
+
+## 요약
+
+이 패치 릴리스는 모든 테스트 파일과 문서에서 TDD에서 DDD(도메인 주도 개발) 용어로의 마이그레이션을 완료합니다.
+
+## 변경됨
+
+- **refactor(git)**: git 모듈의 TDD to DDD 용어 마이그레이션 완료
+  - `TDDCommitPhase`를 `DDDCommitPhase`로 이름 변경
+  - 단계 이름 업데이트: RED→ANALYZE, GREEN→PRESERVE, REFACTOR→IMPROVE
+  - `format_tdd_commit`을 `format_ddd_commit`으로 업데이트
+  - `TDD_PHASES`를 `DDD_PHASES`로 업데이트
+- **test(git)**: 모든 git 테스트를 DDD 용어로 업데이트
+  - `tests/foundation/test_git.py`
+  - `tests/unit/foundation/test_git.py`
+- **docs(release)**: 릴리스 체크리스트에 config 버전 파일 추가
+  - 4개 버전 파일 모두 업데이트 필요: pyproject.toml, version.py, config.yaml, system.yaml
+
+## 품질
+
+- 모든 73개 git 테스트: 통과
+- Smoke 테스트: 6개 통과 (100% 통과율)
+- Ruff: 모든 검사 통과
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 또는 pipx 사용
+pipx upgrade moai-adk
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.3.6 - MoAI Rank Session Sync Fix (2026-01-17)
 
 ## Summary
