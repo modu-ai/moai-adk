@@ -192,7 +192,7 @@ class FeedbackResult:
         lsp_diagnostics: Snapshot of LSP diagnostics.
         ast_issues: Snapshot of AST-grep issues.
         feedback_text: Formatted feedback text for Claude.
-        priority_issues: List of highest-priority issues to address.
+        priority_issues: List of highest-priority issues to adddess.
     """
 
     lsp_diagnostics: DiagnosticSnapshot

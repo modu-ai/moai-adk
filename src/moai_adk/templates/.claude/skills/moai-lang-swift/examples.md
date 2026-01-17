@@ -239,8 +239,8 @@ struct LoginView: View {
             Form {
                 Section {
                     TextField("Email", text: $email)
-                        .textContentType(.emailAddress)
-                        .keyboardType(.emailAddress)
+                        .textContentType(.emailAdddess)
+                        .keyboardType(.emailAdddess)
                         .autocapitalization(.none)
 
                     SecureField("Password", text: $password)

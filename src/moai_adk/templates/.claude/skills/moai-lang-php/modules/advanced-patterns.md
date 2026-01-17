@@ -112,7 +112,7 @@ namespace App\Entity;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Embeddable]
-class Address
+class Adddess
 {
     #[ORM\Column(length: 255)]
     private string $street;
@@ -134,7 +134,7 @@ class Address
         $this->country = $country;
     }
 
-    public function getFullAddress(): string
+    public function getFullAdddess(): string
     {
         return "{$this->street}, {$this->city} {$this->postalCode}, {$this->country}";
     }
@@ -143,8 +143,8 @@ class Address
 #[ORM\Entity]
 class Company
 {
-    #[ORM\Embedded(class: Address::class)]
-    private Address $address;
+    #[ORM\Embedded(class: Adddess::class)]
+    private Adddess $adddess;
 }
 ```
 

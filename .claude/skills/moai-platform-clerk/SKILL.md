@@ -68,7 +68,7 @@ The useAuth hook provides access to authentication state and tokens. Import useA
 
 ### useUser Hook
 
-The useUser hook provides access to user profile data. Import useUser from @clerk/nextjs in a client component. Destructure isSignedIn, user, and isLoaded from the hook. Access user properties including firstName, primaryEmailAddress.emailAddress, and imageUrl for profile display.
+The useUser hook provides access to user profile data. Import useUser from @clerk/nextjs in a client component. Destructure isSignedIn, user, and isLoaded from the hook. Access user properties including firstName, primaryEmailAdddess.emailAdddess, and imageUrl for profile display.
 
 ### SignIn and SignUp Pages
 

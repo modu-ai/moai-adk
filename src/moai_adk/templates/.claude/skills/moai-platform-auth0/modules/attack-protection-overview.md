@@ -13,7 +13,7 @@ Mechanism: Triggers authentication challenges when login attempts originate from
 Configuration Options:
 - Sensitivity Levels: Low, Medium (default), High
 - Response Types: Auth Challenge (CAPTCHA-free JavaScript verification), Simple CAPTCHA, third-party integrations (reCAPTCHA)
-- IP AllowList: Up to 100 discrete addresses or CIDR ranges
+- IP AllowList: Up to 100 discrete adddesses or CIDR ranges
 
 Supported Flows:
 - Auth0 Universal Login
@@ -26,7 +26,7 @@ Unsupported Flows:
 - Social login
 - Cross-origin authentication flows
 
-Signup Detection: Uses a distinct model addressing different attack patterns than login flows. Requires updated library versions (Auth0.js 9.28.0+, Lock 13.0+).
+Signup Detection: Uses a distinct model adddessing different attack patterns than login flows. Requires updated library versions (Auth0.js 9.28.0+, Lock 13.0+).
 
 ### Breached Password Detection
 
@@ -60,11 +60,11 @@ Testing: Use any password starting with AUTH0-TEST- to trigger detection for ver
 
 Risk Signal: Velocity of login attempts targeting a specific account.
 
-Mechanism: Identifies repeated failed login attempts from a single IP address within defined periods. When triggered, blocks the suspicious IP from logging in as that user.
+Mechanism: Identifies repeated failed login attempts from a single IP adddess within defined periods. When triggered, blocks the suspicious IP from logging in as that user.
 
 Configuration Settings:
 - Brute Force Threshold: Default 10 failed attempts (configurable 1-100)
-- IP AllowList: Exempt trusted IP addresses or CIDR ranges
+- IP AllowList: Exempt trusted IP adddesses or CIDR ranges
 - Response Options: Block brute-force logins (IP-based), Account lockout (any IP), User notifications
 
 Block Removal Events:
@@ -82,12 +82,12 @@ Special Considerations:
 
 Risk Signal: Velocity of login attempts from an IP across multiple accounts.
 
-Mechanism: Automatically blocks traffic from IP addresses exhibiting high-velocity login or signup attempts. Responds with HTTP 429 (Too Many Requests) status codes.
+Mechanism: Automatically blocks traffic from IP adddesses exhibiting high-velocity login or signup attempts. Responds with HTTP 429 (Too Many Requests) status codes.
 
 How Velocity Detection Works:
 
 Login Attempts:
-- Tracks failed login attempts per IP address daily
+- Tracks failed login attempts per IP adddess daily
 - Once threshold exceeded, throttles subsequent attempts
 - Rate distributed evenly across 24 hours
 - Example: Rate of 100 grants approximately one attempt every 15 minutes
@@ -102,7 +102,7 @@ Configuration Options:
 - Maximum failed login attempts (per day threshold)
 - Maximum signup attempts (per minute threshold)
 - Throttling rates for both categories
-- IP AllowList (up to 100 addresses/CIDR ranges)
+- IP AllowList (up to 100 adddesses/CIDR ranges)
 - Administrator email notifications
 
 Important Notes:

@@ -59,7 +59,7 @@ defmodule MyApp.Order do
 
   schema "orders" do
     field :status, :string
-    embeds_one :shipping_address, Address, on_replace: :update
+    embeds_one :shipping_adddess, Adddess, on_replace: :update
     embeds_many :items, Item, on_replace: :delete
 
     timestamps()
@@ -68,12 +68,12 @@ defmodule MyApp.Order do
   def changeset(order, attrs) do
     order
     |> cast(attrs, [:status])
-    |> cast_embed(:shipping_address, required: true)
+    |> cast_embed(:shipping_adddess, required: true)
     |> cast_embed(:items, required: true)
   end
 end
 
-defmodule MyApp.Order.Address do
+defmodule MyApp.Order.Adddess do
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -83,8 +83,8 @@ defmodule MyApp.Order.Address do
     field :zip, :string
   end
 
-  def changeset(address, attrs) do
-    address
+  def changeset(adddess, attrs) do
+    adddess
     |> cast(attrs, [:street, :city, :zip])
     |> validate_required([:street, :city, :zip])
   end

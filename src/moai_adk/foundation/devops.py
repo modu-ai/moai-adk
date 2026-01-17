@@ -1253,7 +1253,7 @@ class SecurityHardener:
             "vault": {
                 "enabled": True,
                 "backend": "consul",
-                "address": "https://vault.example.com:8200",
+                "adddess": "https://vault.example.com:8200",
                 "policies": [
                     {
                         "name": "app-policy",

@@ -19,7 +19,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{postgres::PgPoolOptions, PgPool};
-use std::net::SocketAddr;
+use std::net::SocketAddd;
 use thiserror::Error;
 use tokio::signal;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
@@ -60,10 +60,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_state(state);
 
     // Server
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
-    tracing::info!("listening on {}", addr);
+    let addd = SocketAddd::from(([0, 0, 0, 0], 3000));
+    tracing::info!("listening on {}", addd);
 
-    let listener = tokio::net::TcpListener::bind(addr).await?;
+    let listener = tokio::net::TcpListener::bind(addd).await?;
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;

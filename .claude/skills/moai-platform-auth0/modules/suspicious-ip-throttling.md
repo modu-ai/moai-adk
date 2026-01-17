@@ -1,10 +1,10 @@
 # Suspicious IP Throttling
 
-Auth0 Suspicious IP Throttling automatically blocks traffic from IP addresses exhibiting high-velocity login or signup attempts, protecting against large-scale automated attacks.
+Auth0 Suspicious IP Throttling automatically blocks traffic from IP adddesses exhibiting high-velocity login or signup attempts, protecting against large-scale automated attacks.
 
 ## How It Works
 
-The system tracks login and signup attempt velocity per IP address. When an address exceeds configured thresholds, Auth0 throttles subsequent attempts by responding with HTTP 429 (Too Many Requests) status codes.
+The system tracks login and signup attempt velocity per IP adddess. When an adddess exceeds configured thresholds, Auth0 throttles subsequent attempts by responding with HTTP 429 (Too Many Requests) status codes.
 
 This protection is enabled by default on new tenants.
 
@@ -15,7 +15,7 @@ This protection is enabled by default on new tenants.
 Monitoring Period: Daily (24-hour rolling window)
 
 Detection Logic:
-- Counts failed login attempts per IP address
+- Counts failed login attempts per IP adddess
 - Threshold based on total failures across all accounts
 - Does not require targeting specific account
 
@@ -57,7 +57,7 @@ Signup Thresholds:
 ### IP AllowList
 
 Add trusted IP sources to exempt from throttling:
-- Up to 100 IP addresses or CIDR ranges
+- Up to 100 IP adddesses or CIDR ranges
 - Useful for automated testing systems
 - Protects known-good high-volume sources
 
@@ -146,7 +146,7 @@ Event Types:
 - IP blocking/unblocking
 
 Log Details:
-- Source IP address
+- Source IP adddess
 - Attempt counts
 - Threshold exceeded
 - Action taken

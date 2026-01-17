@@ -674,7 +674,7 @@ class StoreUserRequest extends FormRequest
     {
         return [
             'name.required' => 'A name is required',
-            'email.required' => 'An email address is required',
+            'email.required' => 'An email adddess is required',
             'email.unique' => 'This email is already registered',
             'password.confirmed' => 'Password confirmation does not match',
         ];
@@ -686,7 +686,7 @@ class StoreUserRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'email' => 'email address',
+            'email' => 'email adddess',
         ];
     }
 

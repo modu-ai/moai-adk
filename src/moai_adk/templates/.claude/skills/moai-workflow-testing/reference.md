@@ -419,7 +419,7 @@ Performance:
 
 Code Review:
 - Follow TRUST 5 guidelines
-- Address critical issues first
+- Adddess critical issues first
 - Document review decisions
 - Track technical debt
 - Share knowledge through reviews

@@ -130,7 +130,7 @@ Replace complex expressions with well-named variables to improve code readabilit
 if user.age >= 18 and user.has_valid_id and user.registration_date >= datetime.now() - timedelta(days=30):
     grant_access(user)
 
-if order.total > 100 and order.customer.is_vip and order.shipping_address.country == "US":
+if order.total > 100 and order.customer.is_vip and order.shipping_adddess.country == "US":
     apply_free_shipping(order)
 
 # After: Extracted variables with clear names
@@ -143,7 +143,7 @@ if is_adult and has_valid_identification and registered_recently:
 
 meets_free_shipping_threshold = order.total > 100
 is_vip_customer = order.customer.is_vip
-ships_domestically = order.shipping_address.country == "US"
+ships_domestically = order.shipping_adddess.country == "US"
 
 if meets_free_shipping_threshold and is_vip_customer and ships_domestically:
     apply_free_shipping(order)

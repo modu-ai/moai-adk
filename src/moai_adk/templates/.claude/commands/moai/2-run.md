@@ -1,5 +1,5 @@
 ---
-description: "Execute implementation cycle (TDD or DDR based on configuration)"
+description: "Execute implementation cycle (TDD or DDD based on configuration)"
 argument-hint: 'SPEC-ID - All with SPEC ID to implement (e.g. SPEC-001) or all "SPEC Implementation"'
 type: workflow
 allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
@@ -21,7 +21,7 @@ model: inherit
 
 ---
 
-# MoAI-ADK Step 2: Execute Implementation (Run) - TDD/DDR Implementation
+# MoAI-ADK Step 2: Execute Implementation (Run) - TDD/DDD Implementation
 
 **User Interaction Architecture**: AskUserQuestion must be used at COMMAND level only. Subagents via Task() are stateless and cannot interact with users. Collect all approvals BEFORE delegating phase execution.
 
@@ -30,14 +30,14 @@ model: inherit
 **Development Mode Selection**: This command supports two development methodologies based on `constitution.development_mode` in quality.yaml:
 
 - **TDD Mode** (development_mode: tdd): For new feature development using RED-GREEN-REFACTOR cycle
-- **DDR Mode** (development_mode: ddr): For refactoring using ANALYZE-PRESERVE-IMPROVE cycle
+- **DDD Mode** (development_mode: ddd): For refactoring using ANALYZE-PRESERVE-IMPROVE cycle
 
 **Mode Detection**:
 
 - Read `.moai/config/sections/quality.yaml`
 - Check `constitution.development_mode` value
 - If `tdd` (default): Use manager-tdd for Phase 2
-- If `ddr`: Use manager-ddr for Phase 2
+- If `ddd`: Use manager-ddd for Phase 2
 
 **Delegation Pattern (TDD Mode)**: Sequential phase-based agent delegation with 5 phases (SDD 2025 Standard):
 
@@ -48,11 +48,11 @@ model: inherit
 - Phase 3: Git commit management
 - Phase 4: Completion and next steps guidance
 
-**Delegation Pattern (DDR Mode)**: Sequential phase-based agent delegation with 5 phases:
+**Delegation Pattern (DDD Mode)**: Sequential phase-based agent delegation with 5 phases:
 
 - Phase 1: SPEC analysis and refactoring scope identification
 - Phase 1.5: Refactoring targets decomposition
-- Phase 2: DDR implementation (ANALYZE → PRESERVE → IMPROVE)
+- Phase 2: DDD implementation (ANALYZE → PRESERVE → IMPROVE)
 - Phase 2.5: Quality validation (behavior preservation + TRUST 5)
 - Phase 3: Git commit management
 - Phase 4: Completion and next steps guidance
@@ -61,7 +61,7 @@ model: inherit
 
 ## Command Purpose
 
-Execute implementation of SPEC requirements through complete agent delegation, using either TDD or DDR methodology based on project configuration.
+Execute implementation of SPEC requirements through complete agent delegation, using either TDD or DDD methodology based on project configuration.
 
 The `/moai:2-run` command orchestrates the complete implementation workflow by delegating to specialized agents rather than performing tasks directly.
 
@@ -154,15 +154,15 @@ Agent delegation is recommended for complex tasks that benefit from specialized 
   - Output: Code with passing tests (≥85% coverage)
   - When: development_mode == tdd (new feature development)
 
-- **manager-ddr** (DDR Mode): Refactors code through ANALYZE-PRESERVE-IMPROVE cycle
+- **manager-ddd** (DDD Mode): Refactors code through ANALYZE-PRESERVE-IMPROVE cycle
   - Input: Approved refactoring plan from Phase 1
   - Output: Refactored code with identical behavior and improved structure
-  - When: development_mode == ddr (legacy code refactoring)
+  - When: development_mode == ddd (legacy code refactoring)
 
 - **manager-quality**: Validates TRUST 5 principles and quality gates
   - Input: Implemented code and test suite
   - Output: Quality assessment (PASS/WARNING/CRITICAL)
-  - Note: In DDR mode, also validates behavior preservation
+  - Note: In DDD mode, also validates behavior preservation
 
 - **manager-git**: Creates feature branch and commits with meaningful messages
   - Input: Implementation context and changes
@@ -183,7 +183,7 @@ Phase Flow:
 - Phase 1: Analysis & Planning (manager-strategy subagent)
 - Phase 2: Implementation (mode-dependent):
   - TDD Mode: manager-tdd subagent with RED-GREEN-REFACTOR
-  - DDR Mode: manager-ddr subagent with ANALYZE-PRESERVE-IMPROVE
+  - DDD Mode: manager-ddd subagent with ANALYZE-PRESERVE-IMPROVE
 - Phase 2.5: Quality Validation (manager-quality subagent with TRUST 5 assessment)
 - Phase 3: Git Operations (manager-git subagent for commits and branch)
 - Phase 4: Completion Guidance (AskUserQuestion for next steps)
@@ -195,17 +195,17 @@ WHY: Sequential execution ensures methodology discipline and quality gates
 - Phase 2 requires approved execution plan from Phase 1
 - Phase 2.5 validates Phase 2 implementation before git operations
   - TDD Mode: Validates test coverage and code quality
-  - DDR Mode: Additionally validates behavior preservation
+  - DDD Mode: Additionally validates behavior preservation
 - Phase 3 requires validated code from Phase 2.5
 - Phase 4 provides guidance based on complete implementation status
 
-IMPACT: Skipping phases or parallel execution would violate TDD/DDR cycle and bypass quality gates
+IMPACT: Skipping phases or parallel execution would violate TDD/DDD cycle and bypass quality gates
 
 ### Parallel Execution FAIL
 
-Not applicable - TDD/DDR workflows require sequential execution
+Not applicable - TDD/DDD workflows require sequential execution
 
-WHY: Both TDD and DDR methodologies mandate specific ordering
+WHY: Both TDD and DDD methodologies mandate specific ordering
 
 TDD (RED-GREEN-REFACTOR):
 
@@ -213,7 +213,7 @@ TDD (RED-GREEN-REFACTOR):
 - Cannot validate quality before implementation completes
 - Cannot commit code before quality validation passes
 
-DDR (ANALYZE-PRESERVE-IMPROVE):
+DDD (ANALYZE-PRESERVE-IMPROVE):
 
 - Cannot preserve without analyzing first
 - Cannot improve without establishing safety net
@@ -329,7 +329,7 @@ Expected Output:
 
 ### Phase 2: Implementation (Mode-Dependent)
 
-**Agent**: manager-tdd (TDD Mode) OR manager-ddr (DDR Mode)
+**Agent**: manager-tdd (TDD Mode) OR manager-ddd (DDD Mode)
 
 Select agent based on `constitution.development_mode` in quality.yaml.
 
@@ -362,14 +362,14 @@ Expected Output (TDD):
 - test_results: All passing (count)
 - coverage_percentage: 85% or higher coverage
 
-#### DDR Mode (development_mode: ddr)
+#### DDD Mode (development_mode: ddd)
 
-**Agent**: manager-ddr
+**Agent**: manager-ddd
 
 **Requirements** [HARD]:
 
 - Initialize TodoWrite for task tracking across refactoring
-  - WHY: Maintains visible progress through multi-step DDR cycle
+  - WHY: Maintains visible progress through multi-step DDD cycle
   - IMPACT: Enables recovery if refactoring is interrupted
 
 - Execute complete ANALYZE → PRESERVE → IMPROVE cycle
@@ -380,14 +380,14 @@ Expected Output (TDD):
   - IMPACT: Reduces risk of introducing regressions
 
 - Verify all existing tests pass after each transformation
-  - WHY: Behavior preservation is the golden rule of DDR
+  - WHY: Behavior preservation is the golden rule of DDD
   - IMPACT: Immediate detection of unintended behavior changes
 
 - Create characterization tests for uncovered code paths
   - WHY: Establishes safety net before making changes
   - IMPACT: Captures current behavior as baseline for verification
 
-Expected Output (DDR):
+Expected Output (DDD):
 
 - files_modified: List of refactored files
 - characterization_tests_created: List of new characterization tests
@@ -422,9 +422,9 @@ Expected Output (DDR):
   - WHY: Ensures critical paths are tested
   - IMPACT: Confidence that feature works under expected conditions
 
-- **DDR Mode Additional Validation**:
+- **DDD Mode Additional Validation**:
   - Verify behavior preservation: All existing tests must pass unchanged
-    - WHY: Core DDR principle - no functional changes during refactoring
+    - WHY: Core DDD principle - no functional changes during refactoring
     - IMPACT: Ensures refactoring didn't introduce regressions
   - Verify characterization tests pass: Behavior snapshots must match
     - WHY: Confirms current behavior is preserved

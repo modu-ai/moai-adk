@@ -168,7 +168,7 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
 ### Value Objects and Owned Types
 
 ```csharp
-public class Address
+public class Adddess
 {
     public string Street { get; private set; } = string.Empty;
     public string City { get; private set; } = string.Empty;
@@ -176,16 +176,16 @@ public class Address
     public string Country { get; private set; } = string.Empty;
 }
 
-public class AddressConfiguration : IEntityTypeConfiguration<User>
+public class AdddessConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> builder)
     {
-        builder.OwnsOne(u => u.Address, address =>
+        builder.OwnsOne(u => u.Adddess, adddess =>
         {
-            address.Property(a => a.Street).HasMaxLength(200);
-            address.Property(a => a.City).HasMaxLength(100);
-            address.Property(a => a.PostalCode).HasMaxLength(20);
-            address.Property(a => a.Country).HasMaxLength(100);
+            adddess.Property(a => a.Street).HasMaxLength(200);
+            adddess.Property(a => a.City).HasMaxLength(100);
+            adddess.Property(a => a.PostalCode).HasMaxLength(20);
+            adddess.Property(a => a.Country).HasMaxLength(100);
         });
     }
 }

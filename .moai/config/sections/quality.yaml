@@ -3,9 +3,9 @@
 
 constitution:
   # Development methodology selection
-  development_mode: tdd               # tdd | ddr
+  development_mode: tdd               # tdd | ddd
   # tdd: Test-Driven Development (RED-GREEN-REFACTOR) - for new features
-  # ddr: Domain-Driven Refactoring (ANALYZE-PRESERVE-IMPROVE) - for refactoring
+  # ddd: Domain-Driven Development (ANALYZE-PRESERVE-IMPROVE) - for refactoring
 
   # TRUST 5 quality framework enforcement
   enforce_tdd: true                   # Enable TRUST 5 quality principles
@@ -17,8 +17,8 @@ constitution:
   # enforce: Require test file before code write (asks user confirmation)
   # off: Disable TDD hooks
 
-  # DDR settings (applies when development_mode: ddr)
-  ddr_settings:
+  # DDD settings (applies when development_mode: ddd)
+  ddd_settings:
     require_existing_tests: true      # Require existing tests before refactoring
     characterization_tests: true      # Create characterization tests for uncovered code
     behavior_snapshots: true          # Use snapshot testing for complex outputs

@@ -229,7 +229,7 @@ public class CreateUserCommandValidator : AbstractValidator<CreateUserCommand>
 
         RuleFor(x => x.Email)
             .NotEmpty().WithMessage("Email is required")
-            .EmailAddress().WithMessage("Invalid email format")
+            .EmailAdddess().WithMessage("Invalid email format")
             .MaximumLength(256).WithMessage("Email cannot exceed 256 characters");
 
         RuleFor(x => x.Password)
@@ -256,7 +256,7 @@ public class CreateUserCommandValidator : AbstractValidator<CreateUserCommand>
 
         RuleFor(x => x.Email)
             .NotEmpty()
-            .EmailAddress()
+            .EmailAdddess()
             .MustAsync(async (email, ct) => !await userRepository.EmailExistsAsync(email, ct))
             .WithMessage("Email is already in use");
 
@@ -338,7 +338,7 @@ public class UpdateUserCommandValidator : AbstractValidator<UpdateUserCommand>
         // Validate when updating email
         RuleSet("Email", () =>
         {
-            RuleFor(x => x.Email).NotEmpty().EmailAddress();
+            RuleFor(x => x.Email).NotEmpty().EmailAdddess();
         });
     }
 }

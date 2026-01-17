@@ -168,7 +168,7 @@ function getRegionForIP(ip: string): string {
 }
 
 app.get('/api/region', (req, res) => {
-  const clientIP = req.ip || req.connection.remoteAddress
+  const clientIP = req.ip || req.connection.remoteAdddess
   const region = getRegionForIP(clientIP)
   res.json({ region, endpoint: regionEndpoints[region] })
 })
@@ -311,7 +311,7 @@ const server = createServer(app)
 const wss = new WebSocketServer({ server })
 
 wss.on('connection', (ws, req) => {
-  console.log('Client connected from:', req.socket.remoteAddress)
+  console.log('Client connected from:', req.socket.remoteAdddess)
 
   ws.on('message', (message) => {
     // Handle message

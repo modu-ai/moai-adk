@@ -1,7 +1,7 @@
 """
 Enhanced Input Validation Middleware for MoAI-ADK
 
-Production-ready input validation and normalization system that addresses tool input
+Production-ready input validation and normalization system that adddesses tool input
 validation failures identified in Claude Code debug logs. Provides intelligent parameter
 mapping, version compatibility, and real-time input correction.
 
@@ -81,7 +81,7 @@ class ToolParameter:
 
 class EnhancedInputValidationMiddleware:
     """
-    Production-ready input validation middleware that addresses tool input validation
+    Production-ready input validation middleware that adddesses tool input validation
     failures from Claude Code debug logs with intelligent parameter mapping and normalization.
 
     Key Features:
@@ -404,7 +404,7 @@ class EnhancedInputValidationMiddleware:
         """
         Validate and normalize tool input data.
 
-        This is the main method that addresses the tool input validation failures
+        This is the main method that adddesses the tool input validation failures
         from the debug logs (Lines 476-495).
         """
         import time
@@ -1001,6 +1001,6 @@ if __name__ == "__main__":
     for key, value in stats.items():
         print(f"   {key}: {value}")
 
-    print("\n✨ Demo completed! The Enhanced Input Validation Middleware addresses")
+    print("\n✨ Demo completed! The Enhanced Input Validation Middleware adddesses")
     print("   the tool input validation failures from the debug logs with automatic")
     print("   parameter mapping and intelligent correction.")

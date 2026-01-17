@@ -56,7 +56,7 @@ moai glm YOUR_API_KEY
 
 - **🎯 SPEC-First**: 90% reduction in rework with clear specifications
 - **🔴 TDD Enforcement**: Automatic guarantee of 85%+ test coverage
-- **🔵 DDR Support**: Domain-Driven Refactoring for existing codebase improvement
+- **🔵 DDD Support**: Domain-Driven Development for existing codebase improvement
 - **🤖 AI Orchestration**: 21 specialized agents + 49 skills
 - **🌐 Multilingual Routing**: Automatic support for Korean/English/Japanese/Chinese
 - **🌳 Worktree Parallel Development**: Unlimited parallel work in completely isolated environments
@@ -458,20 +458,20 @@ Automatically generates unambiguous specifications using EARS format. Includes r
 
 ---
 
-### 💻 `/moai:2-run` - Implementation (TDD or DDR)
+### 💻 `/moai:2-run` - Implementation (TDD or DDD)
 
 ```bash
 > /moai:2-run SPEC-001
 ```
 
-Routes to either TDD or DDR based on `development_mode` in `.moai/config/sections/quality.yaml`:
+Routes to either TDD or DDD based on `development_mode` in `.moai/config/sections/quality.yaml`:
 
 **TDD Mode** (default, for new features):
 - 🔴 Write tests first (Red)
 - 🟢 Pass tests with code (Green)
 - 🔵 Refactor (Refactor)
 
-**DDR Mode** (for refactoring existing code):
+**DDD Mode** (for refactoring existing code):
 - 🔍 Analyze domain boundaries and coupling
 - 🛡️ Preserve behavior with characterization tests
 - ✨ Improve structure incrementally
@@ -1296,7 +1296,7 @@ Alfred automatically recognizes 4 language requests and invokes the correct agen
 | ----------------------- | -------------------------------- | --------------------------------------- |
 | **manager-spec**        | SPEC writing (EARS)              | `/moai:1-plan`                          |
 | **manager-tdd**         | TDD auto execution               | `/moai:2-run` (when development_mode: tdd) |
-| **manager-ddr**         | DDR refactoring execution        | `/moai:2-run` (when development_mode: ddr) |
+| **manager-ddd**         | DDD refactoring execution        | `/moai:2-run` (when development_mode: ddd) |
 | **manager-docs**        | Documentation auto generation    | `/moai:3-sync`                          |
 | **manager-quality**     | TRUST 5 verification             | After implementation completion         |
 | **manager-strategy**    | Execution strategy establishment | Complex planning                        |

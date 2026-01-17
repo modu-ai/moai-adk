@@ -93,7 +93,7 @@ Create a UserService class that initializes with an AsyncIOMotorClient. Set up t
 
 Service Discovery with Consul:
 
-Create a ServiceRegistry class that connects to Consul. Implement register_service method that registers a service with name, id, port, and health check endpoint. Implement discover_service method that queries healthy services and returns list of address:port strings.
+Create a ServiceRegistry class that connects to Consul. Implement register_service method that registers a service with name, id, port, and health check endpoint. Implement discover_service method that queries healthy services and returns list of adddess:port strings.
 
 Event-Driven Architecture:
 

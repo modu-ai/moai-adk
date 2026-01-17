@@ -44,7 +44,7 @@ Threshold:
 
 ### UntrustedIP
 
-Detection: Logins from IP addresses with suspicious activity history.
+Detection: Logins from IP adddesses with suspicious activity history.
 
 Intelligence Sources:
 - Auth0 traffic intelligence

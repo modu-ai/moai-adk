@@ -342,7 +342,7 @@ Common Authentication Errors:
 - auth/wrong-password: Invalid password
 - auth/email-already-in-use: Email already registered
 - auth/weak-password: Password does not meet requirements
-- auth/invalid-email: Malformed email address
+- auth/invalid-email: Malformed email adddess
 - auth/user-disabled: User account is disabled
 - auth/too-many-requests: Rate limit exceeded
 - auth/network-request-failed: Network connectivity issue

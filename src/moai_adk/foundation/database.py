@@ -142,7 +142,7 @@ class SchemaNormalizer:
                     "categories",
                     "numbers",
                     "emails",
-                    "addresses",
+                    "adddesses",
                 ]
                 if any(pattern in column_name.lower() for pattern in multi_value_patterns):
                     if "VARCHAR" in column_type or "TEXT" in column_type:

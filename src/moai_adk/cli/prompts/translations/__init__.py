@@ -111,12 +111,12 @@ class InitTranslations(TypedDict):
     msg_tag_disabled: str  # Message: TAG disabled
     msg_tag_mode_selected: str  # Message: TAG mode selected
 
-    # Development Methodology (NEW - DDR support)
+    # Development Methodology (NEW - DDD support)
     dev_mode_setup: str  # Header for development methodology
     dev_mode_intro: str  # Introduction text
     q_dev_mode: str  # Question: Select development methodology
     desc_tdd: str  # Description for TDD
-    desc_ddr: str  # Description for DDR
+    desc_ddd: str  # Description for DDD
     dev_mode_recommendation: str  # Recommendation text
 
 
@@ -231,13 +231,13 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "msg_tag_enabled": "TAG 시스템이 활성화되었습니다",
         "msg_tag_disabled": "TAG 시스템이 비활성화되었습니다",
         "msg_tag_mode_selected": "TAG 모드: {mode}",
-        # Development Methodology (NEW - DDR support)
+        # Development Methodology (NEW - DDD support)
         "dev_mode_setup": "🔧 개발 방법론",
         "dev_mode_intro": "프로젝트에 적합한 개발 방법론을 선택하세요:",
         "q_dev_mode": "개발 방법론을 선택하세요:",
         "desc_tdd": "테스트 주도 개발 (RED-GREEN-REFACTOR) - 새 기능 개발용",
-        "desc_ddr": "도메인 주도 리팩토링 (ANALYZE-PRESERVE-IMPROVE) - 기존 코드 리팩토링용",
-        "dev_mode_recommendation": "TDD는 새 기능 개발에, DDR은 기존 코드 리팩토링에 권장됩니다",
+        "desc_ddd": "도메인 주도 리팩토링 (ANALYZE-PRESERVE-IMPROVE) - 기존 코드 리팩토링용",
+        "dev_mode_recommendation": "TDD는 새 기능 개발에, DDD은 기존 코드 리팩토링에 권장됩니다",
     },
     "en": {
         # Headers
@@ -351,13 +351,13 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "msg_tag_enabled": "TAG system enabled",
         "msg_tag_disabled": "TAG system disabled",
         "msg_tag_mode_selected": "TAG mode: {mode}",
-        # Development Methodology (NEW - DDR support)
+        # Development Methodology (NEW - DDD support)
         "dev_mode_setup": "🔧 Development Methodology",
         "dev_mode_intro": "Choose your primary development methodology:",
         "q_dev_mode": "Select development methodology:",
         "desc_tdd": "Test-Driven Development (RED-GREEN-REFACTOR) - for new features",
-        "desc_ddr": "Domain-Driven Refactoring (ANALYZE-PRESERVE-IMPROVE) - for refactoring",
-        "dev_mode_recommendation": "TDD recommended for new features, DDR for refactoring existing code",
+        "desc_ddd": "Domain-Driven Development (ANALYZE-PRESERVE-IMPROVE) - for refactoring",
+        "dev_mode_recommendation": "TDD recommended for new features, DDD for refactoring existing code",
     },
     "ja": {
         # Headers
@@ -469,13 +469,13 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "msg_tag_enabled": "TAGシステムが有効になりました",
         "msg_tag_disabled": "TAGシステムが無効になりました",
         "msg_tag_mode_selected": "TAGモード: {mode}",
-        # Development Methodology (NEW - DDR support)
+        # Development Methodology (NEW - DDD support)
         "dev_mode_setup": "🔧 開発方法論",
         "dev_mode_intro": "プロジェクトに適した開発方法論を選択してください:",
         "q_dev_mode": "開発方法論を選択してください:",
         "desc_tdd": "テスト駆動開発 (RED-GREEN-REFACTOR) - 新機能開発用",
-        "desc_ddr": "ドメイン駆動リファクタリング (ANALYZE-PRESERVE-IMPROVE) - リファクタリング用",
-        "dev_mode_recommendation": "TDDは新機能開発に、DDRは既存コードのリファクタリングに推奨",
+        "desc_ddd": "ドメイン駆動リファクタリング (ANALYZE-PRESERVE-IMPROVE) - リファクタリング用",
+        "dev_mode_recommendation": "TDDは新機能開発に、DDDは既存コードのリファクタリングに推奨",
     },
     "zh": {
         # Headers
@@ -583,13 +583,13 @@ TRANSLATIONS: dict[str, InitTranslations] = {
         "msg_tag_enabled": "TAG系统已启用",
         "msg_tag_disabled": "TAG系统已禁用",
         "msg_tag_mode_selected": "TAG模式: {mode}",
-        # Development Methodology (NEW - DDR support)
+        # Development Methodology (NEW - DDD support)
         "dev_mode_setup": "🔧 开发方法论",
         "dev_mode_intro": "选择适合项目的开发方法论:",
         "q_dev_mode": "选择开发方法论:",
         "desc_tdd": "测试驱动开发 (RED-GREEN-REFACTOR) - 新功能开发",
-        "desc_ddr": "领域驱动重构 (ANALYZE-PRESERVE-IMPROVE) - 重构现有代码",
-        "dev_mode_recommendation": "TDD推荐用于新功能开发，DDR推荐用于重构现有代码",
+        "desc_ddd": "领域驱动重构 (ANALYZE-PRESERVE-IMPROVE) - 重构现有代码",
+        "dev_mode_recommendation": "TDD推荐用于新功能开发，DDD推荐用于重构现有代码",
     },
 }
 

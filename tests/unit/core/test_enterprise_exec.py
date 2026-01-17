@@ -232,7 +232,7 @@ class TestAuditLog:
             action="deploy",
             resource="api_v2",
             details={"version": "2.0.0"},
-            ip_address="192.168.1.1",
+            ip_adddess="192.168.1.1",
             user_agent="curl/7.64.1",
             severity="info",
         )
@@ -253,7 +253,7 @@ class TestAuditLog:
             resource="config",
         )
 
-        assert log.ip_address == ""
+        assert log.ip_adddess == ""
         assert log.user_agent == ""
         assert log.severity == "info"
         assert log.compliance_standards == []
@@ -290,7 +290,7 @@ class TestAuditLog:
             user_id="user-admin",
             action="access_denied",
             resource="admin_panel",
-            ip_address="203.0.113.45",
+            ip_adddess="203.0.113.45",
             severity="critical",
         )
 

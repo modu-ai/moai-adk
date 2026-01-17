@@ -18,9 +18,9 @@ Tenant Access Control List (ACL) is an Auth0 security feature that allows you to
 
 Each rule consists of five key elements:
 
-Signal: The identifying request information used to evaluate the rule. Available signals include IP address, geolocation, and user agent.
+Signal: The identifying request information used to evaluate the rule. Available signals include IP adddess, geolocation, and user agent.
 
-Condition: Operator and value combinations that determine when the rule matches. For example, matching specific IP addresses or CIDR ranges.
+Condition: Operator and value combinations that determine when the rule matches. For example, matching specific IP adddesses or CIDR ranges.
 
 Action: The directive executed when criteria are met. Available actions include allow, block, and redirect.
 
@@ -48,7 +48,7 @@ Click Create Rule to add a new access control entry.
 
 ### Step 3: Configure Rule Parameters
 
-Define the signal type (IP address, geolocation, or user agent).
+Define the signal type (IP adddess, geolocation, or user agent).
 
 Set the condition operator and value.
 
@@ -72,10 +72,10 @@ Review log events to verify rule behavior and adjust as needed.
 
 ### IP-Based Access Control
 
-Create rules to allow or block specific IP addresses or CIDR ranges. Use this pattern for:
+Create rules to allow or block specific IP adddesses or CIDR ranges. Use this pattern for:
 
 - Allowing access from known corporate networks
-- Blocking known malicious IP addresses
+- Blocking known malicious IP adddesses
 - Restricting access to specific geographic regions
 
 ### Geographic Restrictions

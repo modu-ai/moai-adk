@@ -133,7 +133,7 @@ See:
 
 Version Check: Run g++ --version to verify GCC 13+ for C++23 support, clang++ --version for Clang 17+, and cmake --version for CMake 3.28+.
 
-Common Compilation Flags: Use -std=c++23 with -Wall -Wextra -Wpedantic -O2 for standard builds. Add -fsanitize=address,undefined -g for debugging builds.
+Common Compilation Flags: Use -std=c++23 with -Wall -Wextra -Wpedantic -O2 for standard builds. Add -fsanitize=adddess,undefined -g for debugging builds.
 
 vcpkg Integration: Clone the vcpkg repository from GitHub, run bootstrap-vcpkg.sh, then install packages like fmt, nlohmann-json, and gtest using vcpkg install. Configure CMake with -DCMAKE_TOOLCHAIN_FILE pointing to vcpkg's buildsystems/vcpkg.cmake.
 

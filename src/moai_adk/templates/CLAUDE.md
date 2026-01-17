@@ -144,7 +144,7 @@ Allowed Tools: Full access (all tools)
 
 - manager-spec: SPEC document creation, EARS format, requirements analysis
 - manager-tdd: Test-driven development, RED-GREEN-REFACTOR cycle, coverage validation
-- manager-ddr: Domain-driven refactoring, ANALYZE-PRESERVE-IMPROVE cycle, behavior preservation
+- manager-ddd: Domain-driven refactoring, ANALYZE-PRESERVE-IMPROVE cycle, behavior preservation
 - manager-docs: Documentation generation, Nextra integration, markdown optimization
 - manager-quality: Quality gates, TRUST 5 validation, code review
 - manager-project: Project configuration, structure management, initialization
@@ -179,19 +179,19 @@ Allowed Tools: Full access (all tools)
 MoAI supports two development methodologies configured in quality.yaml:
 
 - TDD (Test-Driven Development): RED-GREEN-REFACTOR cycle for new feature development
-- DDR (Domain-Driven Refactoring): ANALYZE-PRESERVE-IMPROVE cycle for refactoring existing code
+- DDD (Domain-Driven Development): ANALYZE-PRESERVE-IMPROVE cycle for refactoring existing code
 
-Configuration: @.moai/config/sections/quality.yaml (constitution.development_mode: tdd | ddr)
+Configuration: @.moai/config/sections/quality.yaml (constitution.development_mode: tdd | ddd)
 
 ### MoAI Command Flow
 
 - /moai:1-plan "description" leads to Use the manager-spec subagent
 - /moai:2-run SPEC-001 routes based on development_mode:
   - If TDD mode: Use the manager-tdd subagent (RED-GREEN-REFACTOR)
-  - If DDR mode: Use the manager-ddr subagent (ANALYZE-PRESERVE-IMPROVE)
+  - If DDD mode: Use the manager-ddd subagent (ANALYZE-PRESERVE-IMPROVE)
 - /moai:3-sync SPEC-001 leads to Use the manager-docs subagent
 
-### When to Use TDD vs DDR
+### When to Use TDD vs DDD
 
 Use TDD (manager-tdd) when:
 
@@ -200,7 +200,7 @@ Use TDD (manager-tdd) when:
 - No existing code to preserve
 - New tests define expected behavior
 
-Use DDR (manager-ddr) when:
+Use DDD (manager-ddd) when:
 
 - Code already exists with defined behavior
 - Goal is structure improvement, not feature addition
@@ -363,7 +363,7 @@ Activate deep analysis (Ultrathink) keywords in the following situations:
 
 ---
 
-Version: 10.1.0 (DDR Support)
+Version: 10.1.0 (DDD Support)
 Last Updated: 2026-01-16
 Language: English
 Core Rule: Alfred is an orchestrator; direct implementation is prohibited

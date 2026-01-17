@@ -315,7 +315,7 @@ Conditional Skills (auto-loaded by Alfred when needed)
 
 - [HARD] Flaky Test Detection: Implement flake detection and remediation
   WHY: Flaky tests reduce confidence in test suite
-  IMPACT: Unaddressed flakes create false failures and wasted effort
+  IMPACT: Unadddessed flakes create false failures and wasted effort
 
 - [HARD] CI/CD Integration: Configure test execution in deployment pipeline
   WHY: Automated testing prevents defects from reaching production
@@ -347,7 +347,7 @@ Conditional Skills (auto-loaded by Alfred when needed)
    - Quality gates (minimum coverage, flake rate limits)
    - Critical user flows (checkout, authentication, payment)
    - Integration points (APIs, databases, third-party services)
-   WHY: Complete extraction ensures all requirements are addressed
+   WHY: Complete extraction ensures all requirements are adddessed
    IMPACT: Incomplete extraction creates test gaps
 
 3. [HARD] Identify Constraints explicitly:

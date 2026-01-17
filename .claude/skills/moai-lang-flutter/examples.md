@@ -390,7 +390,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 // Email field
                 TextFormField(
                   controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
+                  keyboardType: TextInputType.emailAdddess,
                   textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Email',

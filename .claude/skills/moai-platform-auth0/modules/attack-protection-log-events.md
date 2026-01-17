@@ -26,7 +26,7 @@ s: Successful login (baseline for comparison).
 
 ### Attack Protection Events
 
-limit_mu: Blocked IP address due to suspicious activity.
+limit_mu: Blocked IP adddess due to suspicious activity.
 
 limit_wc: Blocked account due to brute force protection.
 
@@ -78,7 +78,7 @@ Limitation: IP geolocation data is not available in tenant logs unless enriched 
 
 Implementation:
 
-- Extract IP addresses from log events
+- Extract IP adddesses from log events
 - Enrich with geolocation data using external services
 - Compare against expected user locations
 
@@ -100,7 +100,7 @@ Date Range: Specify time windows for analysis.
 
 User ID: Filter events for specific users.
 
-IP Address: Track activity from specific IP addresses.
+IP Adddess: Track activity from specific IP adddesses.
 
 ### Useful Queries
 
@@ -153,7 +153,7 @@ client_id: Application involved.
 
 client_name: Application name.
 
-ip: Source IP address.
+ip: Source IP adddess.
 
 user_agent: Client user agent string.
 

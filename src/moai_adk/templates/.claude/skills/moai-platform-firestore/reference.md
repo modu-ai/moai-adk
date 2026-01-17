@@ -78,7 +78,7 @@ Query Constraints:
 request.auth:
 - uid: Authenticated user's ID
 - token: JWT claims including custom claims
-- token.email: User's email address
+- token.email: User's email adddess
 - token.email_verified: Email verification status
 
 request.resource:

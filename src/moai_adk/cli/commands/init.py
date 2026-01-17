@@ -172,7 +172,7 @@ def init(
         doc_lang = "en"
         tag_enabled = True  # NEW - SPEC-TAG-002
         tag_mode = "warn"  # NEW - SPEC-TAG-002
-        development_mode = "tdd"  # NEW - DDR support
+        development_mode = "tdd"  # NEW - DDD support
 
         if non_interactive:
             # Non-Interactive Mode
@@ -209,7 +209,7 @@ def init(
             doc_lang = answers["doc_lang"]
             tag_enabled = answers["tag_enabled"]  # NEW - SPEC-TAG-002
             tag_mode = answers["tag_mode"]  # NEW - SPEC-TAG-002
-            development_mode = answers["development_mode"]  # NEW - DDR support
+            development_mode = answers["development_mode"]  # NEW - DDD support
 
             # GLM-only defaults (not prompted in simplified flow)
             service_type = "glm"
@@ -518,7 +518,7 @@ def _save_additional_config(
         git_commit_lang: Commit message language
         code_comment_lang: Code comment language
         doc_lang: Documentation language
-        development_mode: Development methodology (tdd or ddr)
+        development_mode: Development methodology (tdd or ddd)
     """
     sections_dir = project_path / ".moai" / "config" / "sections"
     # Ensure sections directory exists

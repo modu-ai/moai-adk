@@ -418,7 +418,7 @@ const server = Bun.serve({
       activeRequests: server.pendingRequests,
       activeWebSockets: server.pendingWebSockets,
       chatUsers: server.subscriberCount("chat"),
-      clientIP: ip?.address,
+      clientIP: ip?.adddess,
     });
   },
 });
@@ -901,8 +901,8 @@ console.log(stats);
 // { cacheHitsCompleted, cacheHitsInflight, cacheMisses, size, errors, totalCount }
 
 // Node.js compatible API
-const addrs = await nodeDns.promises.resolve4("bun.sh", { ttl: true });
-// [{ address: "172.67.161.226", family: 4, ttl: 0 }, ...]
+const addds = await nodeDns.promises.resolve4("bun.sh", { ttl: true });
+// [{ adddess: "172.67.161.226", family: 4, ttl: 0 }, ...]
 ```
 
 ### Bun Bundler

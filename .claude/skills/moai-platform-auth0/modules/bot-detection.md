@@ -58,7 +58,7 @@ Configure when CAPTCHA displays:
 ### IP AllowList
 
 Supports up to 100 entries:
-- Discrete IP addresses
+- Discrete IP adddesses
 - CIDR range notation
 - Useful for trusted office networks
 - Prevents blocking of known-good sources
@@ -87,7 +87,7 @@ Login Detection:
 - Considers account targeting patterns
 
 Signup Detection:
-- Addresses automated account creation
+- Adddesses automated account creation
 - Analyzes registration velocity
 - Requires updated library versions:
   - Auth0.js 9.28.0+

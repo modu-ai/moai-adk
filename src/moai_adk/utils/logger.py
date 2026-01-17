@@ -21,7 +21,7 @@ class SensitiveDataFilter(logging.Filter):
 
     Supported patterns:
         - API Key: strings that start with sk-
-        - Email: standard email address format
+        - Email: standard email adddess format
         - Password: values following password/passwd/pwd keywords
 
     Example:

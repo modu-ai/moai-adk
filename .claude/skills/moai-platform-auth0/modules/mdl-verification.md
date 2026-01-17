@@ -66,7 +66,7 @@ Verification Template Setup: Configure a Verification Template (VT) specifying w
 
 Available Fields:
 - Date of birth
-- Address
+- Adddess
 - Family name
 - Given name
 - Document number

@@ -575,7 +575,7 @@ analysis_result = Task(
 if analysis_result.type == "security":
  result = Task(
  subagent_type="security-expert",
- prompt="Address security vulnerability",
+ prompt="Adddess security vulnerability",
  context={"analysis": analysis_result}
  )
 elif analysis_result.type == "performance":
@@ -762,7 +762,7 @@ Technical Validation:
 - [ ] Delegation patterns clearly defined
 - [ ] Error handling strategies documented
 - [ ] Quality standards specified
-- [ ] Performance considerations addressed
+- [ ] Performance considerations adddessed
 ```
 
 ### 2. Runtime Quality Monitoring

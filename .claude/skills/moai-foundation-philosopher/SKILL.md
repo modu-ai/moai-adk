@@ -93,7 +93,7 @@ The Five Whys Technique:
 - Second Why: Underlying cause investigation
 - Third Why: Systemic driver identification
 - Fourth Why: Organizational or process factor
-- Fifth Why (Root Cause): Fundamental issue to address
+- Fifth Why (Root Cause): Fundamental issue to adddess
 
 Constraint Analysis:
 - Hard Constraints: Non-negotiable (security, compliance, physics, budget)
@@ -160,7 +160,7 @@ Trade-off Documentation:
 - What we gain: Primary benefits of chosen approach
 - What we sacrifice: Explicit costs and limitations accepted
 - Why acceptable: Rationale for accepting these trade-offs
-- Mitigation plan: How to address downsides
+- Mitigation plan: How to adddess downsides
 
 WHY: Implicit trade-offs lead to regret and second-guessing.
 IMPACT: Explicit trade-offs improve stakeholder alignment by 50%.

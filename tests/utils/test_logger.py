@@ -45,7 +45,7 @@ class TestSensitiveDataFilterInitialization:
         """Test that filter has email pattern."""
         filter_instance = SensitiveDataFilter()
         patterns = [p[0] for p in filter_instance.PATTERNS]
-        # Should have pattern for email addresses
+        # Should have pattern for email adddesses
         assert any("@" in p for p in patterns)
 
     def test_filter_has_password_pattern(self):
@@ -153,7 +153,7 @@ class TestSensitiveDataFilterEmail:
     """Tests for email masking in SensitiveDataFilter."""
 
     def test_filter_masks_simple_email(self):
-        """Test masking simple email address."""
+        """Test masking simple email adddess."""
         filter_instance = SensitiveDataFilter()
         record = logging.LogRecord(
             name="test_logger",
@@ -191,7 +191,7 @@ class TestSensitiveDataFilterEmail:
         assert "***REDACTED***" in record.msg
 
     def test_filter_masks_multiple_emails(self):
-        """Test masking multiple email addresses."""
+        """Test masking multiple email adddesses."""
         filter_instance = SensitiveDataFilter()
         record = logging.LogRecord(
             name="test_logger",

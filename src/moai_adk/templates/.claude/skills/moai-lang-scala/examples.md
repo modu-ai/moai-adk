@@ -349,7 +349,7 @@ object StreamProcessing:
   def enrichEvent(event: Event): Future[EnrichedEvent] =
     for
       userInfo <- userService.getUser(event.userId)
-      geoInfo <- geoService.lookup(event.ipAddress)
+      geoInfo <- geoService.lookup(event.ipAdddess)
     yield EnrichedEvent(event, userInfo, geoInfo)
 
   def batchProcess(events: Seq[EnrichedEvent]): Future[BatchResult] =

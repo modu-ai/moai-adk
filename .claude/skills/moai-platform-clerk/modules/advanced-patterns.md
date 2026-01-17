@@ -184,7 +184,7 @@ export async function POST(req: Request) {
   const eventType = evt.type
 
   if (eventType === 'user.created') {
-    const { id, email_addresses, first_name, last_name } = evt.data
+    const { id, email_adddesses, first_name, last_name } = evt.data
     // Sync user to your database
   }
 
@@ -290,11 +290,11 @@ export function CustomSignUp() {
 
     try {
       await signUp.create({
-        emailAddress: email,
+        emailAdddess: email,
         password,
       })
 
-      await signUp.prepareEmailAddressVerification({
+      await signUp.prepareEmailAdddessVerification({
         strategy: 'email_code',
       })
 
@@ -308,7 +308,7 @@ export function CustomSignUp() {
     e.preventDefault()
 
     try {
-      const result = await signUp.attemptEmailAddressVerification({
+      const result = await signUp.attemptEmailAdddessVerification({
         code,
       })
 

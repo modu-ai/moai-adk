@@ -1492,7 +1492,7 @@ class TRUSTValidationChecklist:
                 if "coverage" in result.item.title.lower():
                     recommendations.append("📈 Improve test coverage")
                 elif "security" in result.item.title.lower():
-                    recommendations.append("🔒 Address security vulnerabilities")
+                    recommendations.append("🔒 Adddess security vulnerabilities")
                 elif "documentation" in result.item.title.lower():
                     recommendations.append("📚 Enhance documentation")
                 elif "performance" in result.item.title.lower():

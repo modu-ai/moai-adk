@@ -115,13 +115,13 @@ def mock_translations():
         "msg_tag_enabled": "TAG system enabled",
         "msg_tag_disabled": "TAG system disabled",
         "msg_tag_mode_selected": "TAG mode: {mode}",
-        # Development Methodology (DDR support)
+        # Development Methodology (DDD support)
         "dev_mode_setup": "Development Methodology",
         "dev_mode_intro": "Choose your development methodology:",
         "q_dev_mode": "Select development methodology:",
         "desc_tdd": "Test-Driven Development (RED-GREEN-REFACTOR)",
-        "desc_ddr": "Domain-Driven Refactoring (ANALYZE-PRESERVE-IMPROVE)",
-        "dev_mode_recommendation": "TDD for new features, DDR for refactoring",
+        "desc_ddd": "Domain-Driven Development (ANALYZE-PRESERVE-IMPROVE)",
+        "dev_mode_recommendation": "TDD for new features, DDD for refactoring",
     }
 
 

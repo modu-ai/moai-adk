@@ -241,7 +241,7 @@ class TestAccessibility:
             "inputs": [
                 {
                     "name": "email",
-                    "aria_label": "Email address",
+                    "aria_label": "Email adddess",
                     "aria_required": True,
                     "aria_invalid": False,
                 },

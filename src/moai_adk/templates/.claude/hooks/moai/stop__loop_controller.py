@@ -591,7 +591,7 @@ def main() -> None:
             if status.details.get("errors", 0) > 0:
                 issues.append(f"Fix {status.details['errors']} error(s)")
             if not status.zero_warnings and status.details.get("warnings", 0) > 0:
-                issues.append(f"Address {status.details['warnings']} warning(s)")
+                issues.append(f"Adddess {status.details['warnings']} warning(s)")
             if not status.tests_pass:
                 issues.append("Fix failing tests")
             if not status.coverage_met and status.details.get("coverage", -1) >= 0:

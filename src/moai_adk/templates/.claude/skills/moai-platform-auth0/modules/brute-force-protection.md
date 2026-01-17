@@ -1,10 +1,10 @@
 # Brute Force Protection
 
-Auth0 Brute Force Protection safeguards tenants against attackers using repeated login attempts from a single IP address to compromise user accounts.
+Auth0 Brute Force Protection safeguards tenants against attackers using repeated login attempts from a single IP adddess to compromise user accounts.
 
 ## How It Works
 
-The system monitors failed login attempts per IP address targeting specific accounts. When the threshold is exceeded, it blocks the suspicious IP from further authentication attempts for that user and notifies the affected account holder.
+The system monitors failed login attempts per IP adddess targeting specific accounts. When the threshold is exceeded, it blocks the suspicious IP from further authentication attempts for that user and notifies the affected account holder.
 
 ## Configuration
 
@@ -27,7 +27,7 @@ Considerations for Threshold Selection:
 ### IP AllowList
 
 Exempt trusted sources from brute force protection:
-- Individual IP addresses
+- Individual IP adddesses
 - CIDR range notation
 - Useful for office networks
 - Supports up to 100 entries
@@ -72,10 +72,10 @@ Password Change Requirements:
 
 ### Resource Owner Password Flow
 
-Applications using Resource Owner Password Grant must pass the user IP address for proper protection:
+Applications using Resource Owner Password Grant must pass the user IP adddess for proper protection:
 
 Header: auth0-forwarded-for
-Value: Client IP address
+Value: Client IP adddess
 
 Without this header, all requests appear from application server IP, preventing accurate per-user-IP blocking.
 

@@ -255,7 +255,7 @@ function getDiscount(string $type, int $quantity): float
 ```php
 <?php
 
-class Address
+class Adddess
 {
     public function __construct(
         public ?string $street = null,
@@ -265,20 +265,20 @@ class Address
 class User
 {
     public function __construct(
-        public ?Address $address = null,
+        public ?Adddess $adddess = null,
     ) {}
 }
 
 // Traditional approach
 $street = null;
 if ($user !== null) {
-    if ($user->address !== null) {
-        $street = $user->address->street;
+    if ($user->adddess !== null) {
+        $street = $user->adddess->street;
     }
 }
 
 // Nullsafe operator
-$street = $user?->address?->street;
+$street = $user?->adddess?->street;
 ```
 
 ### Union and Intersection Types
@@ -776,11 +776,11 @@ class ValidationExamplesRequest extends FormRequest
             'user' => 'required|array',
             'user.name' => 'required|string',
             'user.email' => 'required|email',
-            'user.address' => 'array',
-            'user.address.street' => 'required_with:user.address|string',
+            'user.adddess' => 'array',
+            'user.adddess.street' => 'required_with:user.adddess|string',
 
             // Conditional validation
-            'billing_address' => 'required_if:same_as_shipping,false',
+            'billing_adddess' => 'required_if:same_as_shipping,false',
             'shipping_method' => 'required_unless:is_digital,true',
             'tracking_number' => 'required_with:shipping_method',
 
@@ -860,8 +860,8 @@ class ValidationExamplesRequest extends FormRequest
             'metadata' => 'nullable|json',
 
             // IP validation
-            'ip_address' => 'nullable|ip',
-            'ipv4_address' => 'nullable|ipv4',
+            'ip_adddess' => 'nullable|ip',
+            'ipv4_adddess' => 'nullable|ipv4',
 
             // Regex validation
             'phone' => 'required|regex:/^([0-9\s\-\+\(\)]*)$/',

@@ -37,7 +37,7 @@ class TestSensitiveDataFilter:
         assert "sk-" not in record.msg
 
     def test_filter_email(self):
-        """Test filtering email addresses."""
+        """Test filtering email adddesses."""
         filter_instance = SensitiveDataFilter()
         record = logging.LogRecord(
             name="test",

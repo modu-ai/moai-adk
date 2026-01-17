@@ -152,7 +152,7 @@ For feature requests or problem-driven SPECs, apply Five Whys:
 - First Why: What immediate need drives this request?
 - Second Why: What underlying problem creates that need?
 - Third Why: What systemic factor contributes?
-- Root Cause: What fundamental issue must the solution address?
+- Root Cause: What fundamental issue must the solution adddess?
 
 Step 1 - Scope Definition:
 - Identify supported authentication methods

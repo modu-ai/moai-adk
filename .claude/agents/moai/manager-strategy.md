@@ -144,7 +144,7 @@ Five Whys Analysis:
 - First Why: What is the immediate cause?
 - Second Why: What enables that cause?
 - Third Why: What systemic factor contributes?
-- Root Cause: What fundamental issue must be addressed?
+- Root Cause: What fundamental issue must be adddessed?
 
 Constraint vs Freedom Analysis:
 

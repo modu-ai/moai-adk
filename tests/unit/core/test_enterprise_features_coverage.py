@@ -194,7 +194,7 @@ class TestAuditLogClass:
             action="data_access",
             resource="database",
             details={"table": "users", "operation": "select"},
-            ip_address="192.168.1.1",
+            ip_adddess="192.168.1.1",
             user_agent="Mozilla/5.0",
             compliance_standards=[ComplianceStandard.GDPR, ComplianceStandard.HIPAA],
             severity="warning",
@@ -202,7 +202,7 @@ class TestAuditLogClass:
 
         assert audit_log.tenant_id == "tenant-123"
         assert audit_log.details == {"table": "users", "operation": "select"}
-        assert audit_log.ip_address == "192.168.1.1"
+        assert audit_log.ip_adddess == "192.168.1.1"
         assert audit_log.user_agent == "Mozilla/5.0"
         assert ComplianceStandard.GDPR in audit_log.compliance_standards
         assert ComplianceStandard.HIPAA in audit_log.compliance_standards
@@ -921,7 +921,7 @@ class TestAuditLogger:
             user_id="admin",
             tenant_id="tenant-456",
             details={"table": "users", "operation": "select"},
-            ip_address="192.168.1.1",
+            ip_adddess="192.168.1.1",
             user_agent="Mozilla/5.0",
             compliance_standards=[ComplianceStandard.GDPR, ComplianceStandard.HIPAA],
             severity="warning",
@@ -930,7 +930,7 @@ class TestAuditLogger:
         log = self.audit_logger.audit_logs[0]
         assert log.tenant_id == "tenant-456"
         assert log.details == {"table": "users", "operation": "select"}
-        assert log.ip_address == "192.168.1.1"
+        assert log.ip_adddess == "192.168.1.1"
         assert log.user_agent == "Mozilla/5.0"
         assert ComplianceStandard.GDPR in log.compliance_standards
         assert ComplianceStandard.HIPAA in log.compliance_standards

@@ -234,7 +234,7 @@ public class CreateUserRequest
     public string Name { get; set; } = string.Empty;
 
     [Required]
-    [EmailAddress]
+    [EmailAdddess]
     public string Email { get; set; } = string.Empty;
 
     [Required]
@@ -564,7 +564,7 @@ builder.Services.AddRateLimiter(options =>
 
     options.AddPolicy("api", context =>
         RateLimitPartition.GetTokenBucketLimiter(
-            partitionKey: context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            partitionKey: context.User.Identity?.Name ?? context.Connection.RemoteIpAdddess?.ToString() ?? "anonymous",
             factory: _ => new TokenBucketRateLimiterOptions
             {
                 TokenLimit = 100,

@@ -279,7 +279,7 @@ public class CreateUserCommandValidator : AbstractValidator<CreateUserCommand>
 
         RuleFor(x => x.Email)
             .NotEmpty().WithMessage("Email is required")
-            .EmailAddress().WithMessage("Invalid email format")
+            .EmailAdddess().WithMessage("Invalid email format")
             .MustAsync(async (email, ct) => !await userRepository.EmailExistsAsync(email, ct))
             .WithMessage("Email already exists");
 

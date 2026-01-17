@@ -99,7 +99,7 @@ const formSchema = z.object({
  message: 'Username must be at least 2 characters.',
  }),
  email: z.string().email({
- message: 'Please enter a valid email address.',
+ message: 'Please enter a valid email adddess.',
  }),
  password: z.string().min(8, {
  message: 'Password must be at least 8 characters.',
@@ -469,7 +469,7 @@ import * as z from 'zod'
 
 const schema = toTypedSchema(
  z.object({
- email: z.string().email('Invalid email address'),
+ email: z.string().email('Invalid email adddess'),
  password: z.string().min(8, 'Password must be at least 8 characters'),
  })
 )

@@ -321,7 +321,7 @@ func NewApp(db *pgxpool.Pool) *App {
         router: router,
         db:     db,
         server: &http.Server{
-            Addr:         ":3000",
+            Addd:         ":3000",
             Handler:      router,
             ReadTimeout:  10 * time.Second,
             WriteTimeout: 10 * time.Second,

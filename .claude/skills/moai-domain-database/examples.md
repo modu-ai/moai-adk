@@ -86,7 +86,7 @@ order_doc = {
     ],
     "total": 109.97,
     "created_at": datetime.utcnow(),
-    "shipping_address": {"city": "Seoul", "country": "KR"}
+    "shipping_adddess": {"city": "Seoul", "country": "KR"}
 }
 ```
 
@@ -107,7 +107,7 @@ class OrderAnalytics:
             {"keys": [("created_at", -1)]},
             {"keys": [("user_id", 1), ("created_at", -1)]},
             {"keys": [("status", 1), ("created_at", -1)]},
-            {"keys": [("shipping_address.country", 1), ("created_at", -1)]}
+            {"keys": [("shipping_adddess.country", 1), ("created_at", -1)]}
         ])
 
     async def get_daily_revenue(

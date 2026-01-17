@@ -88,7 +88,7 @@ def register_user(email: str, password: str) -> RegistrationResult:
     Implements SPEC-001-REQ-01: User Registration (Ubiquitous)
 
     Args:
-        email: User email address (must be valid format)
+        email: User email adddess (must be valid format)
         password: User password (≥8 chars, mixed case, numbers, symbols)
 
     Returns:

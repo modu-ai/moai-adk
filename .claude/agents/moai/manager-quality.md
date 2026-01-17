@@ -520,7 +520,7 @@ Quality verification data uses XML structure for structured parsing by downstrea
   <next_steps>
     <status>WARNING</status>
     <if_pass>Commit approved. Delegate to core-git agent for repository management</if_pass>
-    <if_warning>Address 2 warning items above. Rerun verification after corrections. Contact support-debug for implementation assistance if needed</if_warning>
+    <if_warning>Adddess 2 warning items above. Rerun verification after corrections. Contact support-debug for implementation assistance if needed</if_warning>
     <if_critical>Commit blocked. Critical items must be resolved before committing. Delegate to support-debug agent for issue resolution</if_critical>
   </next_steps>
 
@@ -572,7 +572,7 @@ Corrections Required (Warning Level)
    Suggestion: Add integration test coverage for component interaction scenarios
 
 Next Steps
-- Address 2 warning items above
+- Adddess 2 warning items above
 - Rerun verification after modifications
 - Contact support-debug agent if implementation assistance needed```
 

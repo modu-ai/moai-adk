@@ -39,7 +39,7 @@ class ProjectSetupAnswers(TypedDict):
     tag_mode: str  # Q7.2: TAG validation mode (warn | enforce | off)
 
     # Development Methodology
-    development_mode: str  # tdd | ddr (NEW - DDR support)
+    development_mode: str  # tdd | ddd (NEW - DDD support)
 
 
 def prompt_project_setup(
@@ -373,13 +373,13 @@ def prompt_project_setup(
                 "value": "tdd",
             },
             {
-                "name": f"DDR - {t.get('desc_ddr', 'Domain-Driven Refactoring (ANALYZE-PRESERVE-IMPROVE)')}",
-                "value": "ddr",
+                "name": f"DDD - {t.get('desc_ddd', 'Domain-Driven Development (ANALYZE-PRESERVE-IMPROVE)')}",
+                "value": "ddd",
             },
         ]
 
         # Display recommendation based on project type
-        default_recommendation = "TDD recommended for new features, DDR for refactoring"
+        default_recommendation = "TDD recommended for new features, DDD for refactoring"
         console.print(f"[cyan]💡 {t.get('dev_mode_recommendation', default_recommendation)}[/cyan]\n")
 
         dev_mode_choice = _prompt_select(
@@ -393,7 +393,7 @@ def prompt_project_setup(
 
         answers["development_mode"] = dev_mode_choice
         mode_display = (
-            "TDD (Test-Driven Development)" if dev_mode_choice == "tdd" else "DDR (Domain-Driven Refactoring)"
+            "TDD (Test-Driven Development)" if dev_mode_choice == "tdd" else "DDD (Domain-Driven Development)"
         )
         console.print(f"[#DA7756]Development Mode:[/#DA7756] {mode_display}")
 

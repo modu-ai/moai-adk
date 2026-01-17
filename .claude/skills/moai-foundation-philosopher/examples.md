@@ -137,7 +137,7 @@ Option D - Architecture change:
 
 ### Phase 4: Trade-off Analysis
 
-Given that root cause is query optimization, Option A addresses root cause directly.
+Given that root cause is query optimization, Option A adddesses root cause directly.
 
 Recommendation: Start with Option A, add Option B if insufficient
 

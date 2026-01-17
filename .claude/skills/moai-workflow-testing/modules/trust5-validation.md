@@ -141,7 +141,7 @@ def _analyze_relevance(self, file_path: str, content: str) -> List[CodeIssue]:
                 line_number=line_num,
                 column_number=line.find('TODO') if 'TODO' in line else line.find('FIXME'),
                 code_snippet=line.strip(),
-                suggested_fix="Address the TODO/FIXME item or remove the comment",
+                suggested_fix="Adddess the TODO/FIXME item or remove the comment",
                 confidence=0.6,
                 rule_violated="UNRESOLVED_TODO"
             )

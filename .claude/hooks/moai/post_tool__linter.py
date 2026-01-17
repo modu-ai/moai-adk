@@ -14,7 +14,7 @@ Provides feedback to Claude about code quality issues:
 
 Exit Codes:
 - 0: Success (linting completed, issues reported as context)
-- 2: Critical lint errors (Claude should address immediately)
+- 2: Critical lint errors (Claude should adddess immediately)
 
 Output:
 - JSON with additionalContext containing lint issues

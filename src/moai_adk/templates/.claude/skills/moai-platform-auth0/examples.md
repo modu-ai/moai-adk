@@ -608,7 +608,7 @@ class AdaptiveMFAEvaluator:
     async def evaluate_login_risk(
         self,
         user_id: str,
-        ip_address: str,
+        ip_adddess: str,
         user_agent: str,
         location: Optional[Dict[str, float]] = None
     ) -> Dict[str, Any]:
@@ -617,7 +617,7 @@ class AdaptiveMFAEvaluator:
 
         Args:
             user_id: User ID
-            ip_address: IP address of login attempt
+            ip_adddess: IP adddess of login attempt
             user_agent: User agent string
             location: Optional location data (lat, lon)
 
@@ -626,7 +626,7 @@ class AdaptiveMFAEvaluator:
         """
         # Collect risk signals
         signals = await self._collect_risk_signals(
-            user_id, ip_address, user_agent, location
+            user_id, ip_adddess, user_agent, location
         )
 
         # Calculate risk score
@@ -645,7 +645,7 @@ class AdaptiveMFAEvaluator:
     async def _collect_risk_signals(
         self,
         user_id: str,
-        ip_address: str,
+        ip_adddess: str,
         user_agent: str,
         location: Optional[Dict[str, float]]
     ) -> Dict[str, Any]:
@@ -656,7 +656,7 @@ class AdaptiveMFAEvaluator:
             "impossible_travel": await self._check_impossible_travel(
                 user_id, location
             ) if location else False,
-            "untrusted_ip": await self._is_untrusted_ip(ip_address),
+            "untrusted_ip": await self._is_untrusted_ip(ip_adddess),
             "anomalous_location": await self._is_anomalous_location(
                 user_id, location
             ) if location else False
@@ -680,7 +680,7 @@ class AdaptiveMFAEvaluator:
         # Calculate travel velocity and assess feasibility
         return False  # Placeholder
 
-    async def _is_untrusted_ip(self, ip_address: str) -> bool:
+    async def _is_untrusted_ip(self, ip_adddess: str) -> bool:
         """Check if IP is untrusted (has suspicious activity)"""
         # Implementation: Check against IP reputation databases
         # Could use Auth0's Suspicious IP Throttling data
@@ -825,12 +825,12 @@ class AttackProtectionMonitor:
             "blocked_ips": []
         }
 
-    async def is_ip_blocked(self, ip_address: str) -> bool:
+    async def is_ip_blocked(self, ip_adddess: str) -> bool:
         """
-        Check if IP address is currently blocked
+        Check if IP adddess is currently blocked
 
         Args:
-            ip_address: IP address to check
+            ip_adddess: IP adddess to check
 
         Returns:
             True if IP is blocked
@@ -842,14 +842,14 @@ class AttackProtectionMonitor:
     async def handle_brute_force_protection(
         self,
         user_id: str,
-        ip_address: str
+        ip_adddess: str
     ) -> Dict[str, Any]:
         """
         Handle brute force protection event
 
         Args:
             user_id: User ID being targeted
-            ip_address: IP address of attack
+            ip_adddess: IP adddess of attack
 
         Returns:
             Action taken
@@ -864,12 +864,12 @@ class AttackProtectionMonitor:
             }
 
         # Check if IP is blocked
-        ip_blocked = await self.is_ip_blocked(ip_address)
+        ip_blocked = await self.is_ip_blocked(ip_adddess)
 
         if ip_blocked:
             return {
                 "action": "ip_blocked",
-                "message": "IP address has been blocked"
+                "message": "IP adddess has been blocked"
             }
 
         return {
@@ -2005,7 +2005,7 @@ class SecurityLogger:
         self,
         event_type: SecurityEventType,
         user_id: Optional[str] = None,
-        ip_address: Optional[str] = None,
+        ip_adddess: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None
     ) -> None:
         """
@@ -2014,14 +2014,14 @@ class SecurityLogger:
         Args:
             event_type: Type of security event
             user_id: User ID (if applicable)
-            ip_address: IP address (if applicable)
+            ip_adddess: IP adddess (if applicable)
             details: Additional event details
         """
         event = {
             "event_type": event_type.value,
             "timestamp": datetime.utcnow().isoformat(),
             "user_id": user_id,
-            "ip_address": ip_address,
+            "ip_adddess": ip_adddess,
             "details": details or {}
         }
 
@@ -2031,27 +2031,27 @@ class SecurityLogger:
     def log_login_success(
         self,
         user_id: str,
-        ip_address: str,
+        ip_adddess: str,
         mfa_used: bool = False
     ) -> None:
         """Log successful login"""
         self.log_security_event(
             SecurityEventType.LOGIN_SUCCESS,
             user_id=user_id,
-            ip_address=ip_address,
+            ip_adddess=ip_adddess,
             details={"mfa_used": mfa_used}
         )
 
     def log_login_failure(
         self,
         email: str,
-        ip_address: str,
+        ip_adddess: str,
         reason: str
     ) -> None:
         """Log failed login attempt"""
         self.log_security_event(
             SecurityEventType.LOGIN_FAILURE,
-            ip_address=ip_address,
+            ip_adddess=ip_adddess,
             details={"email": email, "reason": reason}
         )
 
@@ -2070,13 +2070,13 @@ class SecurityLogger:
     def log_attack_detected(
         self,
         attack_type: str,
-        ip_address: str,
+        ip_adddess: str,
         target_user_id: Optional[str] = None
     ) -> None:
         """Log detected attack"""
         self.log_security_event(
             SecurityEventType.ATTACK_DETECTED,
-            ip_address=ip_address,
+            ip_adddess=ip_adddess,
             user_id=target_user_id,
             details={"attack_type": attack_type}
         )
@@ -2084,13 +2084,13 @@ class SecurityLogger:
     def log_breached_password(
         self,
         user_id: str,
-        ip_address: str
+        ip_adddess: str
     ) -> None:
         """Log breached password detection"""
         self.log_security_event(
             SecurityEventType.BREACHED_PASSWORD,
             user_id=user_id,
-            ip_address=ip_address
+            ip_adddess=ip_adddess
         )
 
     def log_token_issued(
@@ -2372,7 +2372,7 @@ async def authenticate_user(code: str, redirect_uri: str):
         # Log successful login
         security_logger.log_login_success(
             user_id=payload["sub"],
-            ip_address="user_ip_address",  # Get from request
+            ip_adddess="user_ip_adddess",  # Get from request
             mfa_used="amr" in payload  # amr = Authentication Methods References
         )
 

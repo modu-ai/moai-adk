@@ -15,7 +15,7 @@ Continuous Session Protection provides:
 ### Session Information Access
 
 Available Data:
-- IP addresses
+- IP adddesses
 - ASN (Autonomous System Number)
 - Device details
 - User agent information
@@ -32,7 +32,7 @@ Use Cases:
 ### Proactive Risk Detection
 
 Detectable Anomalies:
-- IP address changes
+- IP adddess changes
 - Geographic impossibilities
 - Device changes
 - Unusual access patterns
@@ -109,7 +109,7 @@ Possible Actions:
 
 ## Risk Detection Patterns
 
-### IP Address Monitoring
+### IP Adddess Monitoring
 
 Detection:
 - Track IP changes within session

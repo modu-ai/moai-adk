@@ -152,7 +152,7 @@ class AuditLog:
     action: str
     resource: str
     details: Dict[str, Any] = field(default_factory=dict)
-    ip_address: str = ""
+    ip_adddess: str = ""
     user_agent: str = ""
     compliance_standards: List[ComplianceStandard] = field(default_factory=list)
     severity: str = "info"  # info, warning, error, critical
@@ -167,7 +167,7 @@ class AuditLog:
             "action": self.action,
             "resource": self.resource,
             "details": self.details,
-            "ip_address": self.ip_address,
+            "ip_adddess": self.ip_adddess,
             "user_agent": self.user_agent,
             "compliance_standards": [c.value for c in self.compliance_standards],
             "severity": self.severity,
@@ -947,7 +947,7 @@ class AuditLogger:
         user_id: str,
         tenant_id: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
-        ip_address: str = "",
+        ip_adddess: str = "",
         user_agent: str = "",
         compliance_standards: Optional[List[ComplianceStandard]] = None,
         severity: str = "info",
@@ -963,7 +963,7 @@ class AuditLogger:
             action=action,
             resource=resource,
             details=details or {},
-            ip_address=ip_address,
+            ip_adddess=ip_adddess,
             user_agent=user_agent,
             compliance_standards=compliance_standards or [],
             severity=severity,

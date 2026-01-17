@@ -1,7 +1,7 @@
 """
 Unified Permission Manager for MoAI-ADK
 
-Production-ready permission management system that addresses agent permission validation
+Production-ready permission management system that adddesses agent permission validation
 errors identified in Claude Code debug logs. Provides automatic correction, validation,
 and monitoring of agent permissions and access control.
 
@@ -91,7 +91,7 @@ class PermissionAudit:
 
 class UnifiedPermissionManager:
     """
-    Production-ready permission management system that addresses Claude Code
+    Production-ready permission management system that adddesses Claude Code
     agent permission validation errors with automatic correction and monitoring.
 
     Key Features:
@@ -203,7 +203,7 @@ class UnifiedPermissionManager:
         """
         Validate and auto-correct agent permission configuration.
 
-        Addresses the permissionMode validation errors from debug logs:
+        Adddesses the permissionMode validation errors from debug logs:
         - Lines 50-80: Multiple agents with invalid permission modes ('ask', 'auto')
         """
         self.stats["validations_performed"] += 1
@@ -264,7 +264,7 @@ class UnifiedPermissionManager:
         """
         Suggest appropriate permission mode based on agent name and function.
 
-        This addresses the core issue from the debug logs where agents had
+        This adddesses the core issue from the debug logs where agents had
         invalid permission modes like 'ask' and 'auto'.
         """
         # Check if agent name matches known patterns
@@ -381,7 +381,7 @@ class UnifiedPermissionManager:
         """
         Validate Claude Code configuration file for security and compliance.
 
-        This addresses the configuration security gaps identified in the analysis.
+        This adddesses the configuration security gaps identified in the analysis.
         """
         config_to_validate = config_path or self.config_path
         result = ValidationResult(valid=True)
@@ -495,7 +495,7 @@ class UnifiedPermissionManager:
         """
         Automatically fix agent permission configuration.
 
-        This is the main method to address the permissionMode errors
+        This is the main method to adddess the permissionMode errors
         from the debug logs (Lines 50-80).
         """
         # Get current agent configuration
@@ -741,5 +741,5 @@ if __name__ == "__main__":
     for key, value in stats.items():
         print(f"  {key}: {value}")
 
-    print("\n✨ Demo completed! The Unified Permission Manager addresses")
+    print("\n✨ Demo completed! The Unified Permission Manager adddesses")
     print("   the agent permission validation errors from the debug logs.")

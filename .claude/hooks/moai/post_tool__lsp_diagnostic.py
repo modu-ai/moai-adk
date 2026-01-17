@@ -10,7 +10,7 @@ LSP diagnostic information after each Write or Edit operation.
 
 Exit Codes:
 - 0: Success (no errors found or LSP unavailable)
-- 2: Attention needed (errors found, Claude should address)
+- 2: Attention needed (errors found, Claude should adddess)
 
 Output:
 - JSON with hookSpecificOutput containing diagnostic summary

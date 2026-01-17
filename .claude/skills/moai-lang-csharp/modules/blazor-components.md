@@ -336,7 +336,7 @@ Comprehensive guide to Blazor development including Server, WASM, InteractiveSer
         public string Name { get; set; } = "";
 
         [Required]
-        [EmailAddress]
+        [EmailAdddess]
         public string Email { get; set; } = "";
 
         [Required]
@@ -372,7 +372,7 @@ public class RegisterModelValidator : AbstractValidator<RegisterModel>
 
         RuleFor(x => x.Email)
             .NotEmpty()
-            .EmailAddress();
+            .EmailAdddess();
 
         RuleFor(x => x.Password)
             .NotEmpty()

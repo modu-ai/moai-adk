@@ -634,7 +634,7 @@ export function UserProfileDisplay() {
         <div>
           <dt className="font-medium">Email:</dt>
           <dd className="text-gray-600">
-            {user.primaryEmailAddress?.emailAddress}
+            {user.primaryEmailAdddess?.emailAdddess}
           </dd>
         </div>
 
@@ -1092,10 +1092,10 @@ export async function POST(req: Request) {
 
   switch (eventType) {
     case "user.created":
-      const { id, email_addresses, first_name, last_name } = evt.data;
+      const { id, email_adddesses, first_name, last_name } = evt.data;
       console.log("User created:", {
         id,
-        email_addresses,
+        email_adddesses,
         first_name,
         last_name,
       });
@@ -1147,7 +1147,7 @@ export async function syncUserToDatabase(userId: string) {
   // Your database sync logic
   const userData = {
     id: user.id,
-    email: user.emailAddresses[0]?.emailAddress,
+    email: user.emailAdddesses[0]?.emailAdddess,
     firstName: user.firstName,
     lastName: user.lastName,
     imageUrl: user.imageUrl,
@@ -1237,7 +1237,7 @@ describe("ProtectedComponent", () => {
         id: "user_123",
         firstName: "John",
         lastName: "Doe",
-        emailAddresses: [{ emailAddress: "john@example.com" }],
+        emailAdddesses: [{ emailAdddess: "john@example.com" }],
       },
     } as any);
 

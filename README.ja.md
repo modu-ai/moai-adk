@@ -56,7 +56,7 @@ moai glm YOUR_API_KEY
 
 - **🎯 SPEC-First**: 明確な仕様書で90%再作業削減
 - **🔴 TDD強制**: 85%+テストカバレッジ自動保証
-- **🔵 DDRサポート**: 既存コードベース改善のためのドメイン駆動リファクタリング
+- **🔵 DDDサポート**: 既存コードベース改善のためのドメイン駆動リファクタリング
 - **🤖 AIオーケストレーション**: 21個専門エージェント + 49個スキル
 - **🌐 多言語ルーティング**: 韓国語/英語/日本語/中国語自動サポート
 - **🌳 Worktree並列開発**: 完全分離環境で無制限並列作業
@@ -458,20 +458,20 @@ EARS形式を使用して曖昧さのない仕様書を自動生成します。�
 
 ---
 
-### 💻 `/moai:2-run` - 実装 (TDDまたはDDR)
+### 💻 `/moai:2-run` - 実装 (TDDまたはDDD)
 
 ```bash
 > /moai:2-run SPEC-001
 ```
 
-`.moai/config/sections/quality.yaml`の`development_mode`設定に従ってTDDまたはDDRにルーティングされます：
+`.moai/config/sections/quality.yaml`の`development_mode`設定に従ってTDDまたはDDDにルーティングされます：
 
 **TDDモード** (デフォルト、新機能開発用):
 - 🔴 テスト先作成 (Red)
 - 🟢 テスト通過コード (Green)
 - 🔵 リファクタリング (Refactor)
 
-**DDRモード** (既存コードリファクタリング用):
+**DDDモード** (既存コードリファクタリング用):
 - 🔍 ドメイン境界と結合度分析
 - 🛡️ 特性テストで動作保存
 - ✨ 漸進的構造改善
@@ -1323,7 +1323,7 @@ Alfredは4つの言語リクエストを自動認識して正しいエージェ�
 | ----------------------- | ---------------------- | ---------------------------------------------- |
 | **manager-spec**        | SPEC作成 (EARS)        | `/moai:1-plan`                                 |
 | **manager-tdd**         | TDD自動実行            | `/moai:2-run` (development_mode: tdd の時)     |
-| **manager-ddr**         | DDRリファクタリング実行 | `/moai:2-run` (development_mode: ddr の時)     |
+| **manager-ddd**         | DDDリファクタリング実行 | `/moai:2-run` (development_mode: ddd の時)     |
 | **manager-docs**        | ドキュメント自動生成   | `/moai:3-sync`                                 |
 | **manager-quality**     | TRUST 5検証            | 実装完了後                                     |
 | **manager-strategy**    | 実行戦略策立           | 複雑な企画時                                   |

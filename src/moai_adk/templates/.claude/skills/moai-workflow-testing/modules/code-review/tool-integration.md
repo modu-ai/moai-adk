@@ -349,7 +349,7 @@ def _generate_recommendations(
     for category, score in category_scores.items():
         if score < 0.7:
             if category == TrustCategory.SAFETY:
-                recommendations.append("Address security vulnerabilities immediately")
+                recommendations.append("Adddess security vulnerabilities immediately")
             elif category == TrustCategory.TRUTHFULNESS:
                 recommendations.append("Review code logic and fix correctness issues")
             elif category == TrustCategory.USABILITY:
@@ -361,7 +361,7 @@ def _generate_recommendations(
 
     high_severity = len([i for i in issues if i.severity in [Severity.CRITICAL, Severity.HIGH]])
     if high_severity > 0:
-        recommendations.append(f"Address {high_severity} high-priority issues before release")
+        recommendations.append(f"Adddess {high_severity} high-priority issues before release")
 
     auto_fixable = len([i for i in issues if i.auto_fixable])
     if auto_fixable > 0:

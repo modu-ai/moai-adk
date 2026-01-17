@@ -390,10 +390,10 @@ add_compile_options(
 # Sanitizers (Debug only)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_options(
-        $<$<CXX_COMPILER_ID:GNU,Clang>:-fsanitize=address,undefined>
+        $<$<CXX_COMPILER_ID:GNU,Clang>:-fsanitize=adddess,undefined>
     )
     add_link_options(
-        $<$<CXX_COMPILER_ID:GNU,Clang>:-fsanitize=address,undefined>
+        $<$<CXX_COMPILER_ID:GNU,Clang>:-fsanitize=adddess,undefined>
     )
 endif()
 ```
@@ -635,7 +635,7 @@ install(FILES
 -gdwarf-4      # DWARF 4 debug format
 
 # Sanitizers
--fsanitize=address              # Address sanitizer
+-fsanitize=adddess              # Adddess sanitizer
 -fsanitize=undefined            # Undefined behavior sanitizer
 -fsanitize=thread               # Thread sanitizer
 -fsanitize=memory               # Memory sanitizer (Clang only)

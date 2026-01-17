@@ -274,7 +274,7 @@ Create evaluations BEFORE writing extensive documentation to ensure your Skill s
 1. Identify gaps: Run Claude on representative tasks without a Skill, document specific failures
 2. Create evaluations: Build three scenarios that test these gaps
 3. Establish baseline: Measure Claude's performance without the Skill
-4. Write minimal instructions: Create just enough content to address gaps and pass evaluations
+4. Write minimal instructions: Create just enough content to adddess gaps and pass evaluations
 5. Iterate: Execute evaluations, compare against baseline, refine
 
 ### Develop Skills Iteratively with Claude

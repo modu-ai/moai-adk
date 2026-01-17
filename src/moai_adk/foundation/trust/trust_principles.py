@@ -491,7 +491,7 @@ class TrustPrinciplesValidator:
 
             # Generate recommendations
             if high_risk_patterns > 0:
-                recommendations.append("Address high-risk security patterns immediately")
+                recommendations.append("Adddess high-risk security patterns immediately")
                 issues.extend(security_issues[:5])  # Add first 5 issues
 
             if security_patterns_found < 10:

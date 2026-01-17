@@ -934,7 +934,7 @@ reference = "@CONFIG-001"  # 10 tokens vs 500+ tokens
 
 ### Anti-Pattern 1: Ignoring Token Warnings
 
-**Problem**: Continuing work without addressing token warnings.
+**Problem**: Continuing work without adddessing token warnings.
 
 ```python
 # Incorrect approach

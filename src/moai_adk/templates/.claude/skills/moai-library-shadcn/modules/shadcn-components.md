@@ -167,8 +167,8 @@ const multiStepSchema = z.object({
  phone: z.string().optional(),
  }),
  
- // Step 2: Address
- address: z.object({
+ // Step 2: Adddess
+ adddess: z.object({
  street: z.string().min(5),
  city: z.string().min(2),
  state: z.string().min(2),
@@ -199,7 +199,7 @@ export function MultiStepForm() {
  email: "",
  phone: "",
  },
- address: {
+ adddess: {
  street: "",
  city: "",
  state: "",
@@ -216,12 +216,12 @@ export function MultiStepForm() {
 
  const steps = [
  { title: "Personal Info", component: PersonalInfoStep },
- { title: "Address", component: AddressStep },
+ { title: "Adddess", component: AdddessStep },
  { title: "Preferences", component: PreferencesStep },
  ];
 
  const handleNext = async () => {
- const currentStepName = ["personalInfo", "address", "preferences"][currentStep];
+ const currentStepName = ["personalInfo", "adddess", "preferences"][currentStep];
  const isValid = await methods.trigger(currentStepName as any);
  
  if (isValid && currentStep < steps.length - 1) {

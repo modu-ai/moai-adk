@@ -1,17 +1,17 @@
 ---
-name: "moai-workflow-ddr"
-description: "Domain-Driven Refactoring workflow specialist using ANALYZE-PRESERVE-IMPROVE cycle for behavior-preserving code transformation"
+name: "moai-workflow-ddd"
+description: "Domain-Driven Development workflow specialist using ANALYZE-PRESERVE-IMPROVE cycle for behavior-preserving code transformation"
 version: 1.0.0
 category: "workflow"
 modularized: true
 user-invocable: false
 context: fork
-agent: manager-ddr
+agent: manager-ddd
 tags:
   [
     "workflow",
     "refactoring",
-    "ddr",
+    "ddd",
     "domain-driven",
     "behavior-preservation",
     "ast-grep",
@@ -33,11 +33,11 @@ allowed-tools:
   - mcp__context7__get-library-docs
 ---
 
-# Domain-Driven Refactoring (DDR) Workflow
+# Domain-Driven Development (DDD) Workflow
 
 ## Quick Reference
 
-Domain-Driven Refactoring provides a systematic approach for refactoring existing codebases where behavior preservation is paramount. Unlike TDD which creates new functionality, DDR improves structure without changing behavior.
+Domain-Driven Development provides a systematic approach for refactoring existing codebases where behavior preservation is paramount. Unlike TDD which creates new functionality, DDD improves structure without changing behavior.
 
 Core Cycle - ANALYZE-PRESERVE-IMPROVE:
 
@@ -45,7 +45,7 @@ Core Cycle - ANALYZE-PRESERVE-IMPROVE:
 - PRESERVE: Characterization tests, behavior snapshots, test safety net verification
 - IMPROVE: Incremental structural changes with continuous behavior validation
 
-When to Use DDR:
+When to Use DDD:
 
 - Refactoring legacy code with existing tests
 - Improving code structure without functional changes
@@ -54,7 +54,7 @@ When to Use DDR:
 - Code modernization projects
 - When TDD is not applicable because code already exists
 
-When NOT to Use DDR:
+When NOT to Use DDD:
 
 - New feature development (use TDD instead)
 - Greenfield projects (use TDD instead)
@@ -64,7 +64,7 @@ When NOT to Use DDR:
 
 ## Core Philosophy
 
-### DDR vs TDD Comparison
+### DDD vs TDD Comparison
 
 TDD Approach (for new features):
 
@@ -74,7 +74,7 @@ TDD Approach (for new features):
 - Test Type: Specification tests that define expected behavior
 - Outcome: New working code with test coverage
 
-DDR Approach (for refactoring):
+DDD Approach (for refactoring):
 
 - Cycle: ANALYZE-PRESERVE-IMPROVE
 - Goal: Improve structure without behavior change
@@ -84,7 +84,7 @@ DDR Approach (for refactoring):
 
 ### Behavior Preservation Principle
 
-The golden rule of DDR is that observable behavior must remain identical before and after refactoring. This means:
+The golden rule of DDD is that observable behavior must remain identical before and after refactoring. This means:
 
 - All existing tests must pass unchanged
 - API contracts remain identical
@@ -226,11 +226,11 @@ After each transformation:
 
 ---
 
-## DDR Workflow Execution
+## DDD Workflow Execution
 
-### Standard DDR Session
+### Standard DDD Session
 
-When executing DDR through moai:2-run in DDR mode:
+When executing DDD through moai:2-run in DDD mode:
 
 Step 1 - Initial Assessment:
 
@@ -266,20 +266,20 @@ Step 5 - Validation and Completion:
 - Verify all behavior snapshots match
 - Generate refactoring report
 
-### DDR Loop Pattern
+### DDD Loop Pattern
 
 For complex refactoring requiring multiple iterations:
 
 - Set maximum loop iterations based on scope
 - Each loop focuses on one refactoring target
-- Exit conditions: all targets addressed or iteration limit reached
+- Exit conditions: all targets adddessed or iteration limit reached
 - Progress tracking through TODO list updates
 
 ---
 
 ## Quality Metrics
 
-### DDR Success Criteria
+### DDD Success Criteria
 
 Behavior Preservation (Required):
 
@@ -295,9 +295,9 @@ Structure Improvement (Goals):
 - Reduced code complexity
 - Better separation of concerns
 
-### DDR-Specific TRUST Validation
+### DDD-Specific TRUST Validation
 
-Apply TRUST 5 framework with DDR focus:
+Apply TRUST 5 framework with DDD focus:
 
 - Testability: Characterization test coverage adequate
 - Readability: Naming and structure improvements verified
@@ -311,7 +311,7 @@ Apply TRUST 5 framework with DDR focus:
 
 ### With AST-Grep Skill
 
-DDR relies heavily on AST-grep for:
+DDD relies heavily on AST-grep for:
 
 - Structural code analysis
 - Pattern identification
@@ -322,7 +322,7 @@ Load moai-tool-ast-grep for detailed pattern syntax and rule creation.
 
 ### With Testing Workflow
 
-DDR complements testing workflow:
+DDD complements testing workflow:
 
 - Uses characterization tests from testing patterns
 - Integrates with mutation testing for safety net validation
@@ -330,7 +330,7 @@ DDR complements testing workflow:
 
 ### With Quality Framework
 
-DDR outputs feed into quality assessment:
+DDD outputs feed into quality assessment:
 
 - Before/after metrics comparison
 - TRUST 5 validation for changes
@@ -365,7 +365,7 @@ Performance Degradation:
 
 ### Recovery Procedures
 
-When DDR session encounters issues:
+When DDD session encounters issues:
 
 - Save current state with git stash
 - Reset to last successful commit

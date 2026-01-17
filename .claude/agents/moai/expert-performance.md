@@ -315,7 +315,7 @@ Conditional Skills (auto-loaded by Alfred when needed)
    - Throughput expectations (requests per second, concurrent users)
    - Resource constraints (memory limits, CPU budget)
    - Compliance requirements (data residency, audit logging)
-   WHY: Complete extraction ensures all requirements are addressed
+   WHY: Complete extraction ensures all requirements are adddessed
    IMPACT: Incomplete extraction creates blind spots in profiling
 
 3. [HARD] Identify Constraints explicitly:

@@ -118,7 +118,7 @@ Process:
 2. Assume it has failed spectacularly
 3. Write down all the reasons for failure
 4. Evaluate which failure modes are most likely
-5. Address highest-risk failure modes proactively
+5. Adddess highest-risk failure modes proactively
 
 Benefits:
 - Legitimizes dissent and concern-raising
@@ -136,7 +136,7 @@ Process:
 Guidelines:
 - Devil's advocate should prepare thoroughly
 - Arguments should be substantive, not token
-- Response should address arguments, not dismiss
+- Response should adddess arguments, not dismiss
 
 ### Outside View
 
@@ -190,7 +190,7 @@ Timing of bias checks:
 
 Documentation:
 - Record which biases were checked
-- Note any biases identified and how addressed
+- Note any biases identified and how adddessed
 - Document remaining uncertainty
 
 ---

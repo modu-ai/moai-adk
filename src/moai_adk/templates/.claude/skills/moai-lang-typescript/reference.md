@@ -546,7 +546,7 @@ type UserId = z.infer<typeof UserId>;
 
 // Error customization
 const EmailSchema = z.string().email({
-  message: "Please enter a valid email address",
+  message: "Please enter a valid email adddess",
 }).refine((email) => !email.includes("+"), {
   message: "Email aliases are not allowed",
 });

@@ -389,7 +389,7 @@ for bottleneck in bottlenecks[:5]:  # Show top 5
 1. **Severity Prioritization**: Focus on critical and high severity bottlenecks first
 2. **Impact Score**: Use impact scores to quantify optimization potential
 3. **Context-Aware**: Consider codebase context when suggesting optimizations
-4. **Incremental**: Address one bottleneck at a time to measure impact
+4. **Incremental**: Adddess one bottleneck at a time to measure impact
 5. **Validation**: Always validate optimizations with performance tests
 
 ---
