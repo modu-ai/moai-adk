@@ -267,9 +267,7 @@ class MoAILSPClient:
         self._sessions[language] = session
 
         # Start the response reader task
-        session._response_reader_task = asyncio.create_task(
-            self._response_reader(session)
-        )
+        session._response_reader_task = asyncio.create_task(self._response_reader(session))
 
         # Initialize the server
         await self._initialize_server(session)
@@ -657,9 +655,7 @@ class MoAILSPClient:
             logger.warning(f"References request failed: {e}")
             return []
 
-    async def _request_rename(
-        self, file_path: str, position: Position, new_name: str
-    ) -> dict[str, Any]:
+    async def _request_rename(self, file_path: str, position: Position, new_name: str) -> dict[str, Any]:
         """Request rename from the LSP server.
 
         Args:
@@ -942,10 +938,7 @@ class MoAILSPClient:
             contents = contents.get("value", "")
         # Handle array format
         elif isinstance(contents, list):
-            contents = "\n".join(
-                c.get("value", str(c)) if isinstance(c, dict) else str(c)
-                for c in contents
-            )
+            contents = "\n".join(c.get("value", str(c)) if isinstance(c, dict) else str(c) for c in contents)
 
         range_data = raw.get("range")
         hover_range = self._parse_range(range_data) if range_data else None
