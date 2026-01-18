@@ -922,15 +922,16 @@ def _register_hook_in_settings() -> bool:
         # Check if SessionEnd hook already exists
         if "SessionEnd" in settings["hooks"]:
             # Check if our hook is already registered
+            # SessionEnd uses flat structure: {"type": "command", "command": "..."}
             for hook_config in settings["hooks"]["SessionEnd"]:
-                for hook in hook_config.get("hooks", []):
-                    if "session_end__rank_submit.py" in hook.get("command", ""):
-                        return True  # Already registered
+                if "session_end__rank_submit.py" in hook_config.get("command", ""):
+                    return True  # Already registered
 
-        # Add SessionEnd hook
+        # Add SessionEnd hook (flat structure - no matcher, no nested hooks array)
+        # SessionStart/SessionEnd hooks use direct format unlike PreToolUse/PostToolUse
         session_end_config = {
-            "matcher": ".*",
-            "hooks": [{"type": "command", "command": hook_command}],
+            "type": "command",
+            "command": hook_command,
         }
 
         if "SessionEnd" not in settings["hooks"]:

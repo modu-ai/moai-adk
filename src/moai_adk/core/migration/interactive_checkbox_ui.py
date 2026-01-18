@@ -183,6 +183,14 @@ class InteractiveCheckboxUI:
             # Initialize curses with adaptive colors
             curses.curs_set(0)  # Hide cursor
 
+            # Set ESC key delay to 25ms for faster response (default is 1000ms)
+            # This prevents terminal freeze when ESC is pressed
+            try:
+                curses.set_escdelay(25)
+            except AttributeError:
+                # set_escdelay not available in all curses versions
+                pass
+
             # Enable default terminal colors (transparent background)
             curses.use_default_colors()
 
@@ -215,8 +223,9 @@ class InteractiveCheckboxUI:
                     # Confirm selection
                     if self._confirm_selection(stdscr, elements):
                         return self.selected_indices
-                elif key == ord("q") or key == ord("Q") or key == 27:  # 27 = ESC
-                    # Quit
+                elif key == ord("q") or key == ord("Q") or key == 27:
+                    # Quit: Q key or ESC key (ASCII 27)
+                    # ESC delay is set to 25ms via curses.set_escdelay() for fast response
                     return None
 
         # Run curses interface

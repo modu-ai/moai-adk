@@ -53,12 +53,21 @@ When to Use DDD:
 - API migration and deprecation handling
 - Code modernization projects
 - When TDD is not applicable because code already exists
+- Greenfield projects (with adapted cycle - see below)
 
 When NOT to Use DDD:
 
-- New feature development (use TDD instead)
-- Greenfield projects (use TDD instead)
 - When behavior changes are required (modify SPEC first)
+
+Greenfield Project Adaptation:
+
+For new projects without existing code, DDD adapts its cycle:
+
+- ANALYZE: Requirements analysis instead of code analysis
+- PRESERVE: Define intended behavior through specification tests (test-first)
+- IMPROVE: Implement code to satisfy the defined tests
+
+This makes DDD a superset of TDD - it includes TDD's test-first approach while also supporting refactoring scenarios.
 
 ---
 
