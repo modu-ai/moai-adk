@@ -1,3 +1,89 @@
+# v1.4.0 - Version Display Fix and Update Command Enhancement (2026-01-18)
+
+## Summary
+
+This minor release resolves a critical version display bug where `moai` command showed stale version "1.1.0" instead of the actual installed version. It also enhances the `moai update` command to automatically sync templates after package upgrade, eliminating the need for manual re-run.
+
+## Fixed
+
+- **fix(version)**: Resolve version display showing stale 1.1.0 instead of actual version
+  - Implemented 3-tier version resolution with pyproject.toml priority reading
+  - Priority chain: pyproject.toml → importlib.metadata → fallback constant
+  - Fixes editable install metadata cache issue that returns outdated version
+  - Added `_get_version_from_pyproject()` function using Python 3.11+ `tomllib`
+  - File: `src/moai_adk/version.py` (lines 18-62)
+
+- **feat(update)**: Auto-run template sync after package upgrade
+  - Automatically executes `moai update --templates-only` via subprocess after package upgrade
+  - Eliminates manual re-run requirement for template synchronization
+  - Includes 5-minute timeout protection and graceful error handling
+  - Preserves `--yes` flag for CI/CD automation
+  - File: `src/moai_adk/cli/commands/update.py` (lines 2350-2381)
+
+## Quality
+
+- Smoke tests: 6 passed (100% pass rate)
+- Ruff: All checks passed (1 file reformatted)
+- Mypy: Success (no issues found in 169 source files)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Or using pipx
+pipx upgrade moai-adk
+
+# Verify version (should now show 1.4.0)
+moai --version
+```
+
+---
+
+# v1.4.0 - 버전 표시 수정 및 업데이트 명령 개선 (2026-01-18)
+
+## 요약
+
+이 마이너 릴리스는 `moai` 명령이 실제 설치된 버전 대신 오래된 버전 "1.1.0"을 표시하는 중요한 버그를 해결합니다. 또한 `moai update` 명령을 개선하여 패키지 업그레이드 후 자동으로 템플릿을 동기화하므로 수동 재실행이 필요 없습니다.
+
+## 수정됨
+
+- **fix(version)**: 실제 버전 대신 오래된 1.1.0이 표시되는 버전 표시 문제 해결
+  - pyproject.toml 우선 읽기를 사용한 3단계 버전 해결 구현
+  - 우선순위 체인: pyproject.toml → importlib.metadata → 폴백 상수
+  - 오래된 버전을 반환하는 editable install 메타데이터 캐시 문제 수정
+  - Python 3.11+ `tomllib`을 사용하는 `_get_version_from_pyproject()` 함수 추가
+  - 파일: `src/moai_adk/version.py` (18-62행)
+
+- **feat(update)**: 패키지 업그레이드 후 템플릿 동기화 자동 실행
+  - 패키지 업그레이드 후 subprocess를 통해 `moai update --templates-only` 자동 실행
+  - 템플릿 동기화를 위한 수동 재실행 요구사항 제거
+  - 5분 타임아웃 보호 및 우아한 오류 처리 포함
+  - CI/CD 자동화를 위한 `--yes` 플래그 보존
+  - 파일: `src/moai_adk/cli/commands/update.py` (2350-2381행)
+
+## 품질
+
+- Smoke 테스트: 6개 통과 (100% 통과율)
+- Ruff: 모든 검사 통과 (1개 파일 형식 수정)
+- Mypy: 성공 (169개 소스 파일에서 문제 없음)
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 또는 pipx 사용
+pipx upgrade moai-adk
+
+# 버전 확인 (이제 1.4.0으로 표시되어야 함)
+moai --version
+```
+
+---
+
 # v1.3.10 - Critical Bug Fixes for Worktree, Template Variables, and Hooks (2026-01-18)
 
 ## Summary
