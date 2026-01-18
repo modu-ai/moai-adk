@@ -244,18 +244,25 @@ WHY: Claude Code official standard requires skills in `.claude/skills/` for prop
 IMPACT: Skills created in wrong directory will not be discovered or activated by Claude Code
 
 Organize skill files in this directory structure:
+```
 .claude/skills/skill-name/
 ├── SKILL.md (mandatory, <500 lines)
 ├── reference.md (optional, extended documentation)
 ├── examples.md (optional, working code examples)
+├── modules/ (optional, for modularized skills)
+│   ├── getting-started.md
+│   ├── development.md
+│   └── ...
 ├── scripts/
-│ └── helper.sh (optional, utility scripts)
+│   └── helper.sh (optional, utility scripts)
 └── templates/
-└── template.md (optional, templates)
+    └── template.md (optional, templates)
+```
 
 CRITICAL PATH VERIFICATION:
 
 - Correct: `.claude/skills/my-skill/SKILL.md`
+- Correct: `.claude/skills/moai-platform-appintoss/SKILL.md`
 - WRONG: `.moai/skills/my-skill/SKILL.md`
 - WRONG: `skills/my-skill/SKILL.md`
 
@@ -755,6 +762,39 @@ Next Steps:
 1. Test skill activation with sample prompts
 2. Verify integration with related skills
 3. Add to skill catalog documentation
+```
+
+Modularized Skill Report Example:
+
+```
+Skill Creation Report: moai-platform-appintoss
+
+Skill Structure:
+- SKILL.md: 195 lines (within 500-line limit)
+- modules/getting-started.md: 197 lines
+- modules/development.md: 435 lines
+- modules/authentication.md: 499 lines
+- modules/payment.md: 425 lines
+- modules/marketing.md: 435 lines
+- modules/launch.md: 290 lines
+- modules/monetization.md: 249 lines
+- design-guide.md: 698 lines
+- reference.md: 1102 lines
+- Total: 4,525 lines (10 files)
+
+Validation Results:
+- SKILL.md Line Count: PASS (195/500)
+- Modularized Structure: PASS (modularized: true)
+- Module Index: PASS (9 modules listed)
+- Progressive Disclosure: PASS
+- YAML Frontmatter: PASS
+
+File Location: .claude/skills/moai-platform-appintoss/SKILL.md
+
+Next Steps:
+1. Verify module loading in Claude Code
+2. Test trigger keyword activation
+3. Update skill catalog
 ```
 
 - [HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.

@@ -897,8 +897,15 @@ class TemplateProcessor:
                 continue
 
             if item.is_file():
+                # Skip platform-specific settings files that don't match current OS
+                # These files should only be processed when they match the current platform
+                if item.name == "settings.json.windows" and platform.system() != "Windows":
+                    continue  # Skip Windows-specific file on non-Windows
+                if item.name == "settings.json.unix" and platform.system() == "Windows":
+                    continue  # Skip Unix-specific file on Windows
+
                 # Smart merge for settings.json (platform-specific file selection)
-                # Priority: settings.json.windows > settings.json.unix > settings.json
+                # Priority: settings.json.windows (on Windows) > settings.json.unix (on Unix) > settings.json
                 is_settings_file = False
                 settings_src = None
 
@@ -917,13 +924,14 @@ class TemplateProcessor:
                         settings_src = item
 
                 if is_settings_file and settings_src:
-                    # Merge to settings.json (destination always has same name)
-                    self._merge_settings_json(settings_src, dst_item)
+                    # Destination is always settings.json (not the platform-specific name)
+                    settings_dst = dst / "settings.json"
+                    self._merge_settings_json(settings_src, settings_dst)
                     # Apply variable substitution to merged settings.json (for cross-platform Hook paths)
                     if self.context:
-                        content = dst_item.read_text(encoding="utf-8")
+                        content = settings_dst.read_text(encoding="utf-8")
                         content, file_warnings = self._substitute_variables(content)
-                        dst_item.write_text(content, encoding="utf-8")
+                        settings_dst.write_text(content, encoding="utf-8")
                         all_warnings.extend(file_warnings)
                     if not silent:
                         console.print(
