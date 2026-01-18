@@ -2367,13 +2367,11 @@ def update(
                 )
                 if sync_result.returncode != 0:
                     console.print(
-                        "[yellow]⚠️  Template sync failed. "
-                        "Please run 'moai update --templates-only' manually.[/yellow]"
+                        "[yellow]⚠️  Template sync failed. Please run 'moai update --templates-only' manually.[/yellow]"
                     )
             except subprocess.TimeoutExpired:
                 console.print(
-                    "[yellow]⚠️  Template sync timed out. "
-                    "Please run 'moai update --templates-only' manually.[/yellow]"
+                    "[yellow]⚠️  Template sync timed out. Please run 'moai update --templates-only' manually.[/yellow]"
                 )
             except Exception as e:
                 console.print(f"[yellow]⚠️  Auto re-run failed: {e}[/yellow]")
