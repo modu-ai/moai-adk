@@ -1,3 +1,117 @@
+# v1.3.8 - Critical Bug Fixes for Hooks and ESC Key (2026-01-18)
+
+## Summary
+
+This patch release resolves critical issues reported in GitHub issues #265, #266, #267, and #268, including hooks schema incompatibility with Claude Code, ESC key terminal freeze, and DDD documentation clarity for Greenfield projects.
+
+## Fixed
+
+- **fix(hooks)**: Resolve SessionStart/SessionEnd hook format incompatibility (#265, #266)
+  - Fixed SessionEnd hook schema to use flat structure (no matcher, no nested hooks array)
+  - SessionStart/SessionEnd hooks now correctly use `{"type": "command", "command": "..."}` format
+  - PreToolUse/PostToolUse continue to use matcher-based nested structure
+  - Resolves "Expected array, but received undefined" validation errors in Claude Code
+  - File: `src/moai_adk/rank/hook.py` (function: `_register_hook_in_settings()`)
+
+- **fix(ui)**: Improve ESC key handling to prevent terminal freeze (#268)
+  - Added `curses.set_escdelay(25)` to reduce ESC key response delay from 1000ms to 25ms
+  - Prevents terminal input freeze when ESC key is pressed during migration UI
+  - Enhanced terminal compatibility across different environments
+  - File: `src/moai_adk/core/migration/interactive_checkbox_ui.py`
+
+- **fix(docs)**: Clarify DDD support for Greenfield projects (#267)
+  - Updated DDD documentation to explicitly include Greenfield project support
+  - DDD adapts its cycle for new projects: ANALYZE (requirements) → PRESERVE (test-first) → IMPROVE (implement)
+  - DDD is now documented as a superset of TDD, supporting both refactoring and new development
+  - Removed "Greenfield projects (use TDD instead)" from exclusions
+  - Files: `.claude/skills/moai-workflow-ddd/SKILL.md`, `src/moai_adk/templates/.claude/skills/moai-workflow-ddd/SKILL.md`
+
+- **feat(database)**: Add Oracle support to moai-domain-database skill
+  - Comprehensive Oracle Database support documentation
+  - Covers Oracle-specific features, performance optimization, and security best practices
+  - File: `.claude/skills/moai-domain-database/modules/oracle.md`
+
+## Quality
+
+- Smoke tests: 6 passed (100% pass rate)
+- Hook integration tests: 59 passed (100% pass rate)
+- Rank tests: 197 passed (100% pass rate)
+- Migration UI tests: 380 passed (100% pass rate)
+- Ruff: All checks passed
+- Mypy: Success (no issues found)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Or using pipx
+pipx upgrade moai-adk
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.3.8 - Hooks 및 ESC 키 중요 버그 수정 (2026-01-18)
+
+## 요약
+
+이 패치 릴리스는 GitHub 이슈 #265, #266, #267, #268에서 보고된 중요한 문제들을 해결합니다. Claude Code와의 hooks 스키마 비호환성, ESC 키 터미널 프리즈, Greenfield 프로젝트를 위한 DDD 문서 명확화가 포함됩니다.
+
+## 수정됨
+
+- **fix(hooks)**: SessionStart/SessionEnd hook 형식 비호환성 해결 (#265, #266)
+  - SessionEnd hook 스키마를 flat 구조로 수정 (matcher 없음, 중첩 hooks 배열 없음)
+  - SessionStart/SessionEnd hook이 이제 `{"type": "command", "command": "..."}` 형식을 올바르게 사용
+  - PreToolUse/PostToolUse는 계속 matcher 기반 중첩 구조 사용
+  - Claude Code에서 "Expected array, but received undefined" 유효성 검사 오류 해결
+  - 파일: `src/moai_adk/rank/hook.py` (함수: `_register_hook_in_settings()`)
+
+- **fix(ui)**: 터미널 프리즈 방지를 위한 ESC 키 처리 개선 (#268)
+  - ESC 키 응답 지연을 1000ms에서 25ms로 줄이기 위해 `curses.set_escdelay(25)` 추가
+  - migration UI에서 ESC 키 누를 때 터미널 입력 프리즈 방지
+  - 다양한 환경에서 향상된 터미널 호환성
+  - 파일: `src/moai_adk/core/migration/interactive_checkbox_ui.py`
+
+- **fix(docs)**: Greenfield 프로젝트를 위한 DDD 지원 명확화 (#267)
+  - DDD 문서를 업데이트하여 Greenfield 프로젝트 지원을 명시적으로 포함
+  - DDD가 새 프로젝트를 위해 사이클 적응: ANALYZE (요구사항) → PRESERVE (test-first) → IMPROVE (구현)
+  - DDD가 이제 TDD의 상위 집합으로 문서화되어 리팩토링과 새 개발 모두 지원
+  - 제외 목록에서 "Greenfield 프로젝트 (TDD 사용)" 제거
+  - 파일: `.claude/skills/moai-workflow-ddd/SKILL.md`, `src/moai_adk/templates/.claude/skills/moai-workflow-ddd/SKILL.md`
+
+- **feat(database)**: moai-domain-database 스킬에 Oracle 지원 추가
+  - 포괄적인 Oracle Database 지원 문서
+  - Oracle 특정 기능, 성능 최적화, 보안 모범 사례 포함
+  - 파일: `.claude/skills/moai-domain-database/modules/oracle.md`
+
+## 품질
+
+- Smoke 테스트: 6개 통과 (100% 통과율)
+- Hook 통합 테스트: 59개 통과 (100% 통과율)
+- Rank 테스트: 197개 통과 (100% 통과율)
+- Migration UI 테스트: 380개 통과 (100% 통과율)
+- Ruff: 모든 검사 통과
+- Mypy: 성공 (문제 없음)
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 또는 pipx 사용
+pipx upgrade moai-adk
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.3.7 - DDD Terminology Complete Migration (2026-01-17)
 
 ## Summary
@@ -1050,13 +1164,13 @@ Breaking change 없음. 기존 워크플로우는 다음 기능의 혜택을 자
 
 ## Summary
 
-Initial production-ready release of MoAI-ADK, featuring SPEC-First TDD workflow with Alfred SuperAgent, unified moai-core-\* skills, and comprehensive project management capabilities.
+Initial production-ready release of MoAI-ADK, featuring SPEC-First TDD workflow with Alfred SuperAgent, unified moai-core-* skills, and comprehensive project management capabilities.
 
 ## Added
 
 - ** Alfred SuperAgent **: Strategic orchestration engine for automated SPEC-Plan-Run-Sync workflow
 - ** SPEC-First TDD **: Complete Test-Driven Development methodology with EARS format requirements
-- ** moai-core-\* Skills **: Unified skill system for domain-specific expertise
+- ** moai-core-* Skills **: Unified skill system for domain-specific expertise
 - ** Project Management **: Full project lifecycle management from init to documentation
 - ** Multilingual Support **: KO/EN/JA/ZH language support
 - ** CI/CD Integration **: GitHub Actions workflows for automated testing and deployment
@@ -1074,13 +1188,13 @@ uv tool install moai-adk
 
 ## 요약
 
-MoAI-ADK의 초기 프로덕션 준비 릴리스입니다. Alfred SuperAgent를 통한 자동화된 SPEC-Plan-Run-Sync 워크플로우, 통합 moai-core-\* 스킬, 포괄적인 프로젝트 관리 기능을 특징으로 합니다.
+MoAI-ADK의 초기 프로덕션 준비 릴리스입니다. Alfred SuperAgent를 통한 자동화된 SPEC-Plan-Run-Sync 워크플로우, 통합 moai-core-* 스킬, 포괄적인 프로젝트 관리 기능을 특징으로 합니다.
 
 ## 추가됨
 
 - ** Alfred SuperAgent **: 자동화된 SPEC-Plan-Run-Sync 워크플로우를 위한 전략적 오케스트레이션 엔진
 - ** SPEC-First TDD **: EARS 형식 요구사항을 포함한 완전한 테스트 주도 개발 방법론
-- ** moai-core-\* 스킬 **: 도메인별 전문 지식을 위한 통합 스킬 시스템
+- ** moai-core-* 스킬 **: 도메인별 전문 지식을 위한 통합 스킬 시스템
 - ** 프로젝트 관리 **: init부터 문서화까지 전체 프로젝트 라이프사이클 관리
 - ** 다국어 지원 **: KO/EN/JA/ZH 언어 지원
 - ** CI/CD 통합 **: 자동화된 테스트 및 배포를 위한 GitHub Actions 워크플로우
