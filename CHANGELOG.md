@@ -1,3 +1,121 @@
+# v1.3.10 - Critical Bug Fixes for Worktree, Template Variables, and Hooks (2026-01-18)
+
+## Summary
+
+This patch release resolves critical bugs reported in GitHub issues #270 and #269, including worktree path duplication, template variable substitution failures, and hook import errors. Additionally, it improves Windows compatibility with UTF-8 encoding and consolidates loop control commands.
+
+## Fixed
+
+- **fix(worktree)**: Resolve path duplication bug in moai-worktree (#270)
+  - Removed project name from `legacy_roots` in `_detect_worktree_root()` function
+  - Prevents duplicate project names in worktree paths (e.g., `~/worktrees/iRMS/iRMS/SPEC-XXX` → `~/worktrees/iRMS/SPEC-XXX`)
+  - Updated legacy root detection to exclude paths with `main_repo_path.name`
+  - File: `src/moai_adk/cli/worktree/cli.py` (lines 109-117)
+
+- **fix(hooks)**: Resolve ToolType NameError in linter hook (#269)
+  - Added explicit `from tool_registry import ToolType` to prevent NameError
+  - ToolType is now properly defined in module scope regardless of import success
+  - Fixes Windows linting hook failures with "NameError: name 'ToolType' is not defined"
+  - File: `src/moai_adk/templates/.claude/hooks/moai/post_tool__linter.py` (line 40)
+
+- **fix(template)**: Fix PROJECT_DIR_UNIX template variable not substituted in moai init
+  - Added `PROJECT_DIR_WIN` and `PROJECT_DIR_UNIX` variable definitions in `execute_resource_phase()`
+  - Both variables are now properly included in template substitution context
+  - Resolves hook execution failures due to unsubstituted `{{PROJECT_DIR_UNIX}}` placeholders
+  - File: `src/moai_adk/core/project/phase_executor.py` (lines 315-359)
+
+- **fix(encoding)**: Add UTF-8 encoding to file operations for Windows compatibility
+  - Explicitly specify `encoding="utf-8"` for worktree registry file reads
+  - Prevents cp949 encoding errors on Korean Windows systems
+  - File: `src/moai_adk/cli/worktree/cli.py` (lines 88, 122)
+
+- **refactor(commands)**: Remove /moai:cancel-loop command (functionality merged into /moai:loop)
+  - Simplified loop control by consolidating cancel functionality into main loop command
+  - Users can now cancel loops directly from `/moai:loop` command
+  - Removed 163 lines of redundant command code
+  - File: `.claude/commands/moai/cancel-loop.md` (removed)
+
+## Quality
+
+- Smoke tests: 6 passed (100% pass rate)
+- Worktree tests: 131 passed (100% pass rate)
+- Ruff: All checks passed (1 file reformatted)
+- Mypy: Success (no issues found in 169 source files)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Or using pipx
+pipx upgrade moai-adk
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.3.10 - Worktree, 템플릿 변수, Hooks 중요 버그 수정 (2026-01-18)
+
+## 요약
+
+이 패치 릴리스는 GitHub 이슈 #270, #269에서 보고된 중요한 버그들을 해결합니다. 워크트리 경로 중복, 템플릿 변수 치환 실패, hook import 오류가 포함됩니다. 추가로 UTF-8 인코딩으로 Windows 호환성을 개선하고 루프 제어 명령을 통합했습니다.
+
+## 수정됨
+
+- **fix(worktree)**: moai-worktree 경로 중복 버그 해결 (#270)
+  - `_detect_worktree_root()` 함수의 `legacy_roots`에서 프로젝트 이름 제거
+  - 워크트리 경로에서 프로젝트 이름 중복 방지 (예: `~/worktrees/iRMS/iRMS/SPEC-XXX` → `~/worktrees/iRMS/SPEC-XXX`)
+  - `main_repo_path.name`이 포함된 경로를 제외하도록 legacy root 탐지 업데이트
+  - 파일: `src/moai_adk/cli/worktree/cli.py` (109-117행)
+
+- **fix(hooks)**: linter hook의 ToolType NameError 해결 (#269)
+  - NameError 방지를 위해 명시적으로 `from tool_registry import ToolType` 추가
+  - import 성공 여부와 관계없이 ToolType이 모듈 스코프에서 올바르게 정의됨
+  - "NameError: name 'ToolType' is not defined" Windows linting hook 실패 수정
+  - 파일: `src/moai_adk/templates/.claude/hooks/moai/post_tool__linter.py` (40행)
+
+- **fix(template)**: moai init에서 PROJECT_DIR_UNIX 템플릿 변수 치환 안 되는 문제 수정
+  - `execute_resource_phase()`에 `PROJECT_DIR_WIN` 및 `PROJECT_DIR_UNIX` 변수 정의 추가
+  - 두 변수 모두 템플릿 치환 컨텍스트에 올바르게 포함됨
+  - 치환되지 않은 `{{PROJECT_DIR_UNIX}}` placeholder로 인한 hook 실행 실패 해결
+  - 파일: `src/moai_adk/core/project/phase_executor.py` (315-359행)
+
+- **fix(encoding)**: Windows 호환성을 위한 파일 작업에 UTF-8 인코딩 추가
+  - worktree registry 파일 읽기에 `encoding="utf-8"` 명시적 지정
+  - 한국어 Windows 시스템에서 cp949 인코딩 오류 방지
+  - 파일: `src/moai_adk/cli/worktree/cli.py` (88, 122행)
+
+- **refactor(commands)**: /moai:cancel-loop 명령 제거 (기능은 /moai:loop에 통합)
+  - cancel 기능을 main loop 명령에 통합하여 루프 제어 간소화
+  - 사용자가 이제 `/moai:loop` 명령에서 직접 루프 취소 가능
+  - 중복된 명령 코드 163줄 제거
+  - 파일: `.claude/commands/moai/cancel-loop.md` (제거됨)
+
+## 품질
+
+- Smoke 테스트: 6개 통과 (100% 통과율)
+- Worktree 테스트: 131개 통과 (100% 통과율)
+- Ruff: 모든 검사 통과 (1개 파일 형식 수정)
+- Mypy: 성공 (169개 소스 파일에서 문제 없음)
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 또는 pipx 사용
+pipx upgrade moai-adk
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.3.9 - OS-Specific Settings Installation Fix (2026-01-18)
 
 ## Summary
