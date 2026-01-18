@@ -2347,9 +2347,37 @@ def update(
                 _show_upgrade_failure_help(installer_cmd)
                 raise click.Abort()
 
-            # Prompt re-run
-            console.print("\n[green]✓ Upgrade complete![/green]")
-            console.print("[cyan]📢 Run 'moai-adk update' again to sync templates[/cyan]")
+            # Auto re-run template sync with upgraded package
+            console.print("\n[green]✓ Package upgrade complete![/green]")
+            console.print("[cyan]📢 Auto-running template sync with upgraded package...[/cyan]\n")
+
+            try:
+                # Use subprocess to run with the newly upgraded package
+                # This ensures the new package code is used for template sync
+                sync_cmd = [sys.executable, "-m", "moai_adk", "update", "--templates-only"]
+                if yes:
+                    sync_cmd.append("--yes")
+                sync_cmd.append(str(project_path))
+
+                sync_result = subprocess.run(
+                    sync_cmd,
+                    capture_output=False,
+                    text=True,
+                    timeout=300,  # 5 minutes timeout
+                )
+                if sync_result.returncode != 0:
+                    console.print(
+                        "[yellow]⚠️  Template sync failed. "
+                        "Please run 'moai update --templates-only' manually.[/yellow]"
+                    )
+            except subprocess.TimeoutExpired:
+                console.print(
+                    "[yellow]⚠️  Template sync timed out. "
+                    "Please run 'moai update --templates-only' manually.[/yellow]"
+                )
+            except Exception as e:
+                console.print(f"[yellow]⚠️  Auto re-run failed: {e}[/yellow]")
+                console.print("[cyan]💡 Please run 'moai update --templates-only' manually.[/cyan]")
             return
 
         # Stage 1.5: Migration Check (NEW in v0.24.0)
