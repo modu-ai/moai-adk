@@ -984,13 +984,7 @@ constraints:
          coverage_threshold: 85 # Set to 0 to disable
    ```
 
-3. Manually cancel loop:
-
-   ```bash
-   /moai:cancel-loop
-   ```
-
-4. Delete state file:
+3. Delete state file:
    ```bash
    rm .moai/cache/.moai_loop_state.json
    ```

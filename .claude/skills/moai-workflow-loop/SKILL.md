@@ -42,7 +42,6 @@ Commands:
 - /moai:alfred: One-click Plan-Run-Sync automation
 - /moai:loop: Start feedback loop
 - /moai:fix: One-time auto-fix
-- /moai:cancel-loop: Stop active loop
 
 When to Use:
 
@@ -137,7 +136,7 @@ Check LSP server configuration in .lsp.json file. Verify the language server is 
 
 ### Loop Stuck
 
-Review the max_iterations setting to ensure it allows sufficient iterations. Review completion conditions to verify they are achievable. Use /moai:cancel-loop command to reset the loop state.
+Review the max_iterations setting to ensure it allows sufficient iterations. Review completion conditions to verify they are achievable. Send any message to interrupt the loop, or delete the state file (.moai/cache/.moai_loop_state.json) to reset.
 
 ## Works Well With
 

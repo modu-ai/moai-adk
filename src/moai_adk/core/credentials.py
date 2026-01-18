@@ -149,7 +149,7 @@ def save_credentials(
         data_to_save["glm_api_key"] = final_glm
 
     # Write with secure permissions
-    creds_path.write_text(yaml.safe_dump(data_to_save, default_flow_style=False), encoding="utf-8")
+    creds_path.write_text(yaml.safe_dump(data_to_save, default_flow_style=False, allow_unicode=True), encoding="utf-8")
 
     # Set file permissions to owner-only (chmod 600)
     os.chmod(creds_path, stat.S_IRUSR | stat.S_IWUSR)

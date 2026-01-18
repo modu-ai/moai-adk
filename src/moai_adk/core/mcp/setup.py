@@ -79,8 +79,8 @@ class MCPSetupManager:
                 adapted_config = self._adapt_mcp_config_for_platform(mcp_config)
 
                 # Write adapted config to project
-                with open(project_mcp_path, "w") as f:
-                    json.dump(adapted_config, f, indent=2)
+                with open(project_mcp_path, "w", encoding="utf-8") as f:
+                    json.dump(adapted_config, f, indent=2, ensure_ascii=False)
 
                 server_names = list(adapted_config.get("mcpServers", {}).keys())
                 console.print("✅ MCP configuration copied and adapted for platform")

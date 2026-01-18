@@ -326,7 +326,7 @@ class WorktreeManager:
                                                         elif not in_conflict:
                                                             cleaned_lines.append(line)
 
-                                                    with open(file_full_path, "w") as f:
+                                                    with open(file_full_path, "w", encoding="utf-8") as f:
                                                         f.write("\n".join(cleaned_lines))
 
                                                     worktree_repo.git.add(file_path)
@@ -483,7 +483,7 @@ class WorktreeManager:
                                     elif not in_conflict:
                                         cleaned_lines.append(line)
 
-                                with open(file_full_path, "w") as f:
+                                with open(file_full_path, "w", encoding="utf-8") as f:
                                     f.write("\n".join(cleaned_lines))
 
                                 worktree_repo.git.add(file_path)

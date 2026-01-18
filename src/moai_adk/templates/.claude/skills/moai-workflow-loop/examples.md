@@ -1048,7 +1048,7 @@ Check:
   - Max iterations setting
   - Completion conditions
   - Error count not decreasing
-Solution: /moai:cancel-loop then review errors manually
+Solution: Send any message to stop loop, then review errors manually
 
 Issue: Loop completes too early
 Check:

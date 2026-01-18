@@ -104,7 +104,7 @@ Type C 反馈命令：用于改进和错误报告的用户反馈命令。
 
 定义：用于快速修复和自动化的命令，优先考虑速度。
 
-命令：/moai:alfred、/moai:fix、/moai:loop、/moai:cancel-loop
+命令：/moai:alfred、/moai:fix、/moai:loop
 
 允许的工具：Task、AskUserQuestion、TodoWrite、Bash、Read、Write、Edit、Glob、Grep
 

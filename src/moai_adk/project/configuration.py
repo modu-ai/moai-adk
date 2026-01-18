@@ -70,7 +70,7 @@ class ConfigurationManager:
                 if self.config_path.suffix in (".yaml", ".yml"):
                     yaml.safe_dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
                 else:
-                    json.dump(config, f, indent=2)
+                    json.dump(config, f, indent=2, ensure_ascii=False)
 
             # Atomic rename
             temp_path.replace(self.config_path)
@@ -198,7 +198,7 @@ class ConfigurationManager:
         if self.config_path.exists():
             backup_path = self.config_path.with_suffix(".backup")
             with open(self.config_path, "r") as src:
-                with open(backup_path, "w") as dst:
+                with open(backup_path, "w", encoding="utf-8") as dst:
                     dst.write(src.read())
 
 

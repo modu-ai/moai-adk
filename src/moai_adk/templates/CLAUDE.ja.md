@@ -104,7 +104,7 @@ Type C フィードバックコマンド: 改善とバグレポートのため�
 
 定義: 速度を優先する迅速な修正と自動化のためのコマンドです。
 
-コマンド: /moai:alfred, /moai:fix, /moai:loop, /moai:cancel-loop
+コマンド: /moai:alfred, /moai:fix, /moai:loop
 
 許可ツール: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 

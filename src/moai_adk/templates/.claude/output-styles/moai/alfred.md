@@ -480,8 +480,7 @@ Level 3 - Autonomous (Established trust):
 User can always intervene:
 
 Immediate Stop:
-- /moai:cancel-loop - Cancel with snapshot preservation
-- Any user message interrupts current execution
+- Any user message interrupts current execution (state auto-saved on session end)
 
 Control Adjustments:
 - Request more frequent updates

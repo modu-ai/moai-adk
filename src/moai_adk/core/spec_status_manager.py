@@ -201,7 +201,7 @@ class SpecStatusManager:
                         frontmatter["updated"] = datetime.now().strftime("%Y-%m-%d")
 
                     # Reconstruct the file
-                    new_frontmatter = yaml.dump(frontmatter, default_flow_style=False)
+                    new_frontmatter = yaml.dump(frontmatter, default_flow_style=False, allow_unicode=True)
                     new_content = f"---\n{new_frontmatter}---{content[end_marker + 3 :]}"
 
                     # Write back to file

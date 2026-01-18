@@ -165,7 +165,7 @@ def save_loop_state(state: LoopState) -> None:
         fd, temp_path = tempfile.mkstemp(dir=state_path.parent, prefix=".tmp_", suffix=".json")
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as f:
-                json.dump(state.to_dict(), f, indent=2)
+                json.dump(state.to_dict(), f, indent=2, ensure_ascii=False)
             # Atomic rename (on POSIX systems)
             os.replace(temp_path, state_path)
         except Exception:

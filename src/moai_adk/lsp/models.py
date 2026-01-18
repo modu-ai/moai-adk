@@ -259,3 +259,63 @@ class HoverInfo:
 
     contents: str
     range: Range | None = None
+
+
+class SymbolKind(IntEnum):
+    """Symbol kinds as defined by LSP specification.
+
+    Values match LSP 3.17 specification.
+    """
+
+    FILE = 1
+    MODULE = 2
+    NAMESPACE = 3
+    PACKAGE = 4
+    CLASS = 5
+    METHOD = 6
+    PROPERTY = 7
+    FIELD = 8
+    CONSTRUCTOR = 9
+    ENUM = 10
+    INTERFACE = 11
+    FUNCTION = 12
+    VARIABLE = 13
+    CONSTANT = 14
+    STRING = 15
+    NUMBER = 16
+    BOOLEAN = 17
+    ARRAY = 18
+    OBJECT = 19
+    KEY = 20
+    NULL = 21
+    ENUM_MEMBER = 22
+    STRUCT = 23
+    EVENT = 24
+    OPERATOR = 25
+    TYPE_PARAMETER = 26
+
+
+@dataclass
+class DocumentSymbol:
+    """Represents a symbol in a document.
+
+    Represents programming constructs like variables, classes, interfaces etc.
+    that appear in a document. Document symbols can be hierarchical and they
+    have two ranges: one that encloses its definition and one that points to
+    its most interesting range, e.g. the range of an identifier.
+
+    Attributes:
+        name: The name of this symbol.
+        kind: The kind of this symbol.
+        range: The range enclosing this symbol.
+        selection_range: The range that should be selected when this symbol is navigated to.
+        detail: More detail for this symbol, e.g. the signature of a function.
+        children: Children of this symbol (for hierarchical structure).
+    """
+
+    name: str
+    kind: SymbolKind
+    range: Range
+    selection_range: Range
+    detail: str | None = None
+    children: list["DocumentSymbol"] = field(default_factory=list)

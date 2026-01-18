@@ -104,7 +104,7 @@ WHY: Flexibility enables efficient execution while maintaining quality through a
 
 Definition: Commands for rapid fixes and automation where speed is prioritized.
 
-Commands: /moai:alfred, /moai:fix, /moai:loop, /moai:cancel-loop
+Commands: /moai:alfred, /moai:fix, /moai:loop
 
 Allowed Tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 

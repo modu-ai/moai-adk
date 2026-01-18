@@ -104,7 +104,7 @@ Type C 피드백 명령: 개선 사항 및 버그 보고를 위한 사용자 피
 
 정의: 속도가 우선시되는 빠른 수정 및 자동화를 위한 명령입니다.
 
-명령: /moai:alfred, /moai:fix, /moai:loop, /moai:cancel-loop
+명령: /moai:alfred, /moai:fix, /moai:loop
 
 허용 도구: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 

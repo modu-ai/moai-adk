@@ -272,13 +272,7 @@ Fixing...
 
 ## Cancellation
 
-```bash
-# Cancel (save snapshot)
-/moai:cancel-loop --snapshot
-
-# Force cancel
-/moai:cancel-loop --force
-```
+Simply send any message to interrupt the loop. The loop state is automatically saved when the session ends via the `session_end` hook.
 
 ## Quick Reference
 

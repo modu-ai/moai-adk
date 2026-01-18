@@ -782,8 +782,8 @@ def save_rank_config(config: dict[str, Any]) -> bool:
                 existing = yaml.safe_load(f) or {}
 
         existing["rank"] = config
-        with open(config_file, "w") as f:
-            yaml.safe_dump(existing, f, default_flow_style=False)
+        with open(config_file, "w", encoding="utf-8") as f:
+            yaml.safe_dump(existing, f, default_flow_style=False, allow_unicode=True)
         return True
     except (OSError, yaml.YAMLError):
         return False
@@ -941,7 +941,7 @@ def _register_hook_in_settings() -> bool:
 
         # Write back
         with open(settings_file, "w", encoding="utf-8") as f:
-            json.dump(settings, f, indent=2)
+            json.dump(settings, f, indent=2, ensure_ascii=False)
 
         return True
 
@@ -1020,7 +1020,7 @@ def _unregister_hook_from_settings() -> bool:
 
         # Write back
         with open(settings_file, "w", encoding="utf-8") as f:
-            json.dump(settings, f, indent=2)
+            json.dump(settings, f, indent=2, ensure_ascii=False)
 
         return True
 

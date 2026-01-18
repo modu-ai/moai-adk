@@ -6,13 +6,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from moai_adk.lsp.client import MoAILSPClient
+from moai_adk.lsp.client import LanguageSession, MoAILSPClient
 from moai_adk.lsp.models import (
     Diagnostic,
     DiagnosticSeverity,
+    DocumentSymbol,
     HoverInfo,
     Location,
     Position,
+    SymbolKind,
     WorkspaceEdit,
 )
 
@@ -245,11 +247,17 @@ class TestMoAILSPClientServerManagement:
         """Client should start server for a language."""
         client = MoAILSPClient(project_root="/project")
 
-        with patch.object(client.server_manager, "start_server", new_callable=AsyncMock) as mock_start:
-            mock_server = MagicMock()
-            mock_start.return_value = mock_server
+        # Mock _get_or_create_session to avoid complex initialization
+        mock_session = MagicMock(spec=LanguageSession)
+        mock_session.language = "python"
+        mock_session.initialized = True
+
+        with patch.object(
+            client, "_get_or_create_session", new_callable=AsyncMock
+        ) as mock_get_session:
+            mock_get_session.return_value = mock_session
             await client.ensure_server_running("python")
-            mock_start.assert_called_once_with("python")
+            mock_get_session.assert_called_once_with("python")
 
     async def test_stop_all_servers(self):
         """Client should stop all servers on cleanup."""
@@ -308,3 +316,165 @@ class TestMoAILSPClientHelpers:
         loc = client._parse_location(raw)
         assert loc.uri == "file:///project/test.py"
         assert loc.range.start.line == 10
+
+
+@pytest.mark.asyncio
+class TestMoAILSPClientGoToDefinition:
+    """Tests for go to definition functionality."""
+
+    async def test_go_to_definition(self):
+        """Client should return definition locations."""
+        client = MoAILSPClient(project_root="/project")
+
+        mock_definition = {
+            "uri": "file:///project/src/module.py",
+            "range": {"start": {"line": 15, "character": 0}, "end": {"line": 15, "character": 20}},
+        }
+
+        with patch.object(client, "_request_definition", new_callable=AsyncMock) as mock_req:
+            mock_req.return_value = mock_definition
+            locations = await client.go_to_definition(
+                "/project/src/main.py", Position(line=10, character=5)
+            )
+
+        assert len(locations) == 1
+        assert isinstance(locations[0], Location)
+        assert locations[0].uri == "file:///project/src/module.py"
+        assert locations[0].range.start.line == 15
+
+    async def test_go_to_definition_list_response(self):
+        """Client should handle list response from definition."""
+        client = MoAILSPClient(project_root="/project")
+
+        mock_definitions = [
+            {
+                "uri": "file:///project/src/module.py",
+                "range": {"start": {"line": 15, "character": 0}, "end": {"line": 15, "character": 20}},
+            },
+            {
+                "uri": "file:///project/src/other.py",
+                "range": {"start": {"line": 5, "character": 0}, "end": {"line": 5, "character": 10}},
+            },
+        ]
+
+        with patch.object(client, "_request_definition", new_callable=AsyncMock) as mock_req:
+            mock_req.return_value = mock_definitions
+            locations = await client.go_to_definition(
+                "/project/src/main.py", Position(line=10, character=5)
+            )
+
+        assert len(locations) == 2
+        assert all(isinstance(loc, Location) for loc in locations)
+        assert locations[0].uri == "file:///project/src/module.py"
+        assert locations[1].uri == "file:///project/src/other.py"
+
+    async def test_go_to_definition_empty(self):
+        """Client should return empty list when no definition found."""
+        client = MoAILSPClient(project_root="/project")
+
+        with patch.object(client, "_request_definition", new_callable=AsyncMock) as mock_req:
+            mock_req.return_value = []
+            locations = await client.go_to_definition(
+                "/project/src/main.py", Position(line=1, character=0)
+            )
+
+        assert locations == []
+
+
+@pytest.mark.asyncio
+class TestMoAILSPClientDocumentSymbols:
+    """Tests for document symbols functionality."""
+
+    async def test_get_document_symbols(self):
+        """Client should return document symbols."""
+        client = MoAILSPClient(project_root="/project")
+
+        mock_symbols = [
+            {
+                "name": "MyClass",
+                "kind": 5,  # Class
+                "range": {"start": {"line": 5, "character": 0}, "end": {"line": 20, "character": 0}},
+                "selectionRange": {"start": {"line": 5, "character": 6}, "end": {"line": 5, "character": 13}},
+                "detail": "class MyClass",
+                "children": [
+                    {
+                        "name": "my_method",
+                        "kind": 6,  # Method
+                        "range": {"start": {"line": 10, "character": 4}, "end": {"line": 15, "character": 4}},
+                        "selectionRange": {"start": {"line": 10, "character": 8}, "end": {"line": 10, "character": 17}},
+                    }
+                ],
+            },
+            {
+                "name": "helper_function",
+                "kind": 12,  # Function
+                "range": {"start": {"line": 25, "character": 0}, "end": {"line": 30, "character": 0}},
+                "selectionRange": {"start": {"line": 25, "character": 4}, "end": {"line": 25, "character": 19}},
+            },
+        ]
+
+        with patch.object(client, "_request_document_symbols", new_callable=AsyncMock) as mock_req:
+            mock_req.return_value = mock_symbols
+            symbols = await client.get_document_symbols("/project/src/main.py")
+
+        assert len(symbols) == 2
+        assert all(isinstance(s, DocumentSymbol) for s in symbols)
+        assert symbols[0].name == "MyClass"
+        assert symbols[0].kind == SymbolKind.CLASS
+        assert len(symbols[0].children) == 1
+        assert symbols[0].children[0].name == "my_method"
+        assert symbols[0].children[0].kind == SymbolKind.METHOD
+        assert symbols[1].name == "helper_function"
+        assert symbols[1].kind == SymbolKind.FUNCTION
+
+    async def test_get_document_symbols_empty(self):
+        """Client should return empty list when no symbols."""
+        client = MoAILSPClient(project_root="/project")
+
+        with patch.object(client, "_request_document_symbols", new_callable=AsyncMock) as mock_req:
+            mock_req.return_value = []
+            symbols = await client.get_document_symbols("/project/src/empty.py")
+
+        assert symbols == []
+
+    async def test_get_document_symbols_nested(self):
+        """Client should handle deeply nested symbols."""
+        client = MoAILSPClient(project_root="/project")
+
+        mock_symbols = [
+            {
+                "name": "OuterClass",
+                "kind": 5,
+                "range": {"start": {"line": 0, "character": 0}, "end": {"line": 50, "character": 0}},
+                "selectionRange": {"start": {"line": 0, "character": 6}, "end": {"line": 0, "character": 16}},
+                "children": [
+                    {
+                        "name": "InnerClass",
+                        "kind": 5,
+                        "range": {"start": {"line": 10, "character": 4}, "end": {"line": 40, "character": 4}},
+                        "selectionRange": {"start": {"line": 10, "character": 10}, "end": {"line": 10, "character": 20}},
+                        "children": [
+                            {
+                                "name": "inner_method",
+                                "kind": 6,
+                                "range": {"start": {"line": 20, "character": 8}, "end": {"line": 30, "character": 8}},
+                                "selectionRange": {"start": {"line": 20, "character": 12}, "end": {"line": 20, "character": 24}},
+                            }
+                        ],
+                    }
+                ],
+            }
+        ]
+
+        with patch.object(client, "_request_document_symbols", new_callable=AsyncMock) as mock_req:
+            mock_req.return_value = mock_symbols
+            symbols = await client.get_document_symbols("/project/src/nested.py")
+
+        assert len(symbols) == 1
+        outer = symbols[0]
+        assert outer.name == "OuterClass"
+        assert len(outer.children) == 1
+        inner = outer.children[0]
+        assert inner.name == "InnerClass"
+        assert len(inner.children) == 1
+        assert inner.children[0].name == "inner_method"

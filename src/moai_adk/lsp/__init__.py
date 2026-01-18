@@ -8,14 +8,22 @@ This module provides:
 - LSP client interface for diagnostics, references, and more
 """
 
-from moai_adk.lsp.client import LSPClientError, MoAILSPClient
+from moai_adk.lsp.client import (
+    LanguageSession,
+    LSPClientError,
+    LSPServerNotInitializedError,
+    LSPTimeoutError,
+    MoAILSPClient,
+)
 from moai_adk.lsp.models import (
     Diagnostic,
     DiagnosticSeverity,
+    DocumentSymbol,
     HoverInfo,
     Location,
     Position,
     Range,
+    SymbolKind,
     TextDocumentIdentifier,
     TextDocumentPositionParams,
     TextEdit,
@@ -42,6 +50,9 @@ __all__ = [
     # Client
     "MoAILSPClient",
     "LSPClientError",
+    "LSPTimeoutError",
+    "LSPServerNotInitializedError",
+    "LanguageSession",
     # Models
     "Position",
     "Range",
@@ -53,6 +64,8 @@ __all__ = [
     "TextEdit",
     "WorkspaceEdit",
     "HoverInfo",
+    "DocumentSymbol",
+    "SymbolKind",
     # Protocol
     "LSPProtocol",
     "JsonRpcRequest",

@@ -1402,8 +1402,8 @@ class ErrorRecoverySystem:
         """Save error history to file"""
         history_file = self.error_log_dir / "error_history.json"
         try:
-            with open(history_file, "w") as f:
-                json.dump([asdict(e) for e in self.error_history], f, indent=2, default=str)
+            with open(history_file, "w", encoding="utf-8") as f:
+                json.dump([asdict(e) for e in self.error_history], f, indent=2, default=str, ensure_ascii=False)
         except Exception as e:
             logger.error(f"Failed to save error history: {str(e)}")
 
