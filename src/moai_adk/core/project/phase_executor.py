@@ -313,7 +313,21 @@ class PhaseExecutor:
                 language_config = legacy_lang if isinstance(legacy_lang, dict) else {}
 
             # Detect OS for cross-platform Hook path configuration
-            hook_project_dir = "%CLAUDE_PROJECT_DIR%" if platform.system() == "Windows" else "$CLAUDE_PROJECT_DIR"
+            # PROJECT_DIR: Legacy variable (without trailing separator)
+            # PROJECT_DIR_WIN: Windows backslash path (currently non-functional due to Claude Code bug #6023)
+            # PROJECT_DIR_UNIX: Forward slash path (works on all platforms)
+            is_windows = platform.system() == "Windows"
+
+            # PROJECT_DIR_WIN: Uses Windows environment variable and backslash separator
+            # Note: Currently non-functional due to Claude Code bug #6023
+            hook_project_dir_win = "%CLAUDE_PROJECT_DIR%\\" if is_windows else "$CLAUDE_PROJECT_DIR/"
+
+            # PROJECT_DIR_UNIX: Uses appropriate environment variable with forward slash
+            # Forward slash works on Windows too
+            hook_project_dir_unix = "%CLAUDE_PROJECT_DIR%/" if is_windows else "$CLAUDE_PROJECT_DIR/"
+
+            # PROJECT_DIR: Legacy variable (deprecated in favor of platform-specific versions)
+            hook_project_dir = "%CLAUDE_PROJECT_DIR%" if is_windows else "$CLAUDE_PROJECT_DIR"
 
             # Detect OS for cross-platform statusline command
             # Windows: Use python -m for better PATH compatibility
@@ -339,6 +353,8 @@ class PhaseExecutor:
                 "CONVERSATION_LANGUAGE_NAME": language_config.get("conversation_language_name", "English"),
                 "CODEBASE_LANGUAGE": config.get("language", "generic"),
                 "PROJECT_DIR": hook_project_dir,
+                "PROJECT_DIR_WIN": hook_project_dir_win,
+                "PROJECT_DIR_UNIX": hook_project_dir_unix,
                 "STATUSLINE_COMMAND": statusline_command,
             }
             processor.set_context(context)

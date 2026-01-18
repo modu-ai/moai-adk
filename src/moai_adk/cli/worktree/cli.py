@@ -85,7 +85,7 @@ def _detect_worktree_root(repo_path: Path) -> Path:
     project_registry = project_local_root / ".moai-worktree-registry.json"
     if project_registry.exists():
         try:
-            with open(project_registry, "r") as f:
+            with open(project_registry, "r", encoding="utf-8") as f:
                 content = f.read().strip()
                 if content and content != "{}":
                     return project_local_root
@@ -107,19 +107,20 @@ def _detect_worktree_root(repo_path: Path) -> Path:
             pass
 
     # Priority 2: Legacy locations (for backward compatibility)
+    # Note: Do NOT include paths with project name (main_repo_path.name)
+    # as manager.py adds project_name to worktree_root, causing duplication
+    # See: https://github.com/modu-ai/moai-adk/issues/270
     legacy_roots = [
         Path.home() / "moai" / "worktrees",  # Legacy MoAI worktrees
         Path.home() / "worktrees",  # Legacy user worktrees
-        Path.home() / "moai" / "worktrees" / main_repo_path.name,
         main_repo_path.parent / "worktrees",
-        Path.home() / "worktrees" / main_repo_path.name,
     ]
 
     for root in legacy_roots:
         registry_path = root / ".moai-worktree-registry.json"
         if registry_path.exists():
             try:
-                with open(registry_path, "r") as f:
+                with open(registry_path, "r", encoding="utf-8") as f:
                     content = f.read().strip()
                     if content and content != "{}":
                         return root

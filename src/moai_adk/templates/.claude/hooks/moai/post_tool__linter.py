@@ -37,6 +37,7 @@ if str(LIB_DIR) not in sys.path:
 # Try importing tool_registry, with fallback
 try:
     import tool_registry  # noqa: F401
+    from tool_registry import ToolType  # noqa: F401
 
     TOOL_REGISTRY_AVAILABLE = True
 except ImportError:
