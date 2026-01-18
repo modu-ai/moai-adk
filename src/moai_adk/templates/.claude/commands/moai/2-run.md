@@ -217,7 +217,7 @@ Refer to CLAUDE.md "Agent Chaining Patterns" (lines 96-120) for complete pattern
   - IMPACT: Prevents incomplete or incorrect implementations
 
 - Create detailed execution strategy with phased approach
-  - WHY: Provides clear roadmap for TDD implementation
+  - WHY: Provides clear roadmap for DDD implementation
   - IMPACT: Improves communication and enables early risk detection
 
 - Identify success criteria and acceptance tests
@@ -268,7 +268,7 @@ IMPACT: Clear task boundaries enable focused, reviewable changes and better prog
 
 Task Granularity:
 
-- Each task should be completable in a single TDD cycle (RED-GREEN-REFACTOR)
+- Each task should be completable in a single DDD cycle (ANALYZE-PRESERVE-IMPROVE)
 - Tasks should produce testable, committable units of work
 - Maximum 10 tasks per SPEC (split SPEC if more needed)
 

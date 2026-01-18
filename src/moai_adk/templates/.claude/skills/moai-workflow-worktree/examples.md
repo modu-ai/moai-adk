@@ -19,7 +19,7 @@ Scenario: Creating a new SPEC with automatic worktree setup
 
 # Output:
 # SPEC created: SPEC-AUTH-001
-# Worktree created: ~/workflows/MoAI-ADK/SPEC-AUTH-001
+# Worktree created: .moai/worktrees/MoAI-ADK/SPEC-AUTH-001
 #
 # Next steps:
 # 1. Switch to worktree: moai-worktree switch SPEC-AUTH-001
@@ -70,7 +70,7 @@ moai-worktree clean --merged-only
 
 ### Example 3: Worktree in Development Commands
 
-Scenario: Using worktree-aware TDD implementation
+Scenario: Using worktree-aware DDD implementation
 
 ```bash
 # /moai:2-run automatically detects worktree environment
@@ -79,7 +79,7 @@ Scenario: Using worktree-aware TDD implementation
 # Command behavior in worktree:
 # - Detects worktree: SPEC-AUTH-001
 # - Loads worktree-specific configuration
-# - Executes TDD in isolated environment
+# - Executes DDD in isolated environment
 # - Updates worktree metadata
 
 # Manual worktree management during development
@@ -104,7 +104,7 @@ Skill("moai-worktree") # Load worktree patterns
 project_config = {
  "name": "User Authentication System",
  "worktree_enabled": True,
- "worktree_root": "~/workflows/UserAuth",
+ "worktree_root": ".moai/worktrees/UserAuth",
  "auto_create_worktree": True
 }
 
@@ -193,7 +193,7 @@ if moai-worktree list --format json | jq -r ".worktrees[\"$SPEC_ID\"]" > /dev/nu
 
  # Development loop
  while true; do
- echo " Running TDD implementation..."
+ echo " Running DDD implementation..."
  /moai:2-run "$SPEC_ID"
 
  echo " Continue development? (y/n)"
@@ -240,7 +240,7 @@ PROJECT_NAME="$2"
 echo " Setting up team worktree configuration for $TEAM_NAME"
 
 # Create shared worktree root
-WORKTREE_ROOT="~/workflows/$PROJECT_NAME"
+WORKTREE_ROOT=".moai/worktrees/$PROJECT_NAME"
 mkdir -p "$WORKTREE_ROOT"
 
 # Configure team registry
@@ -583,7 +583,7 @@ moai-worktree sync SPEC-CONFLICT-001 --force
 echo " Repairing worktree registry..."
 
 # Backup current registry
-cp ~/.workflows/PROJECT/.moai-worktree-registry.json ~/.workflows/PROJECT/.moai-worktree-registry.json.backup
+cp .moai/worktrees/PROJECT/.moai-worktree-registry.json .moai/worktrees/PROJECT/.moai-worktree-registry.json.backup
 
 # Rebuild registry from worktree directories
 moai-worktree config set registry_rebuild true
@@ -593,10 +593,10 @@ moai-worktree list --rebuild-registry
 echo " Fixing permission issues..."
 
 # Check worktree permissions
-ls -la ~/workflows/PROJECT/
+ls -la .moai/worktrees/PROJECT/
 
 # Fix permissions
-chmod -R 755 ~/workflows/PROJECT/
+chmod -R 755 .moai/worktrees/PROJECT/
 ```
 
 ---

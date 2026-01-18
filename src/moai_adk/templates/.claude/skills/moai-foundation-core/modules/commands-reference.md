@@ -1,6 +1,6 @@
 # Commands Reference - MoAI-ADK Core Commands
 
-Purpose: Complete reference for MoAI-ADK's 6 core commands used in SPEC-First TDD workflow.
+Purpose: Complete reference for MoAI-ADK's 6 core commands used in SPEC-First DDD workflow.
 
 Last Updated: 2025-11-25
 Version: 2.0.0
@@ -9,7 +9,7 @@ Version: 2.0.0
 
 ## Quick Reference (30 seconds)
 
-MoAI-ADK provides 6 core commands for SPEC-First TDD execution:
+MoAI-ADK provides 6 core commands for SPEC-First DDD execution:
 
 | Command            | Purpose                | Phase         |
 | ------------------ | ---------------------- | ------------- |
@@ -416,7 +416,7 @@ Skills:
 - [moai-foundation-context](../../moai-foundation-context/SKILL.md) - Token budget management
 
 Other Modules:
-- [spec-first-tdd.md](spec-first-tdd.md) - Detailed SPEC-First TDD process
+- [spec-first-ddd.md](spec-first-ddd.md) - Detailed SPEC-First DDD process
 - [token-optimization.md](token-optimization.md) - /clear execution strategies
 - [agents-reference.md](agents-reference.md) - Agent catalog
 

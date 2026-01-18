@@ -1,32 +1,33 @@
-# TDD with Context7 - Core Classes
+# DDD with Context7 - Core Classes
 
-> Sub-module: Core class implementations for TDD workflow management
-> Parent: [TDD with Context7](../tdd-context7.md)
+> Sub-module: Core class implementations for DDD workflow management
+> Parent: [DDD with Context7](../ddd-context7.md)
 
 ## Enumerations
 
-### TDDPhase Enum
+### DDDPhase Enum
 
 ```python
-class TDDPhase(Enum):
-    """Phases of the TDD cycle."""
-    RED = "red"        # Writing failing test
-    GREEN = "green"    # Making test pass
-    REFACTOR = "refactor"  # Improving code
-    REVIEW = "review"  # Validation and documentation
+class DDDPhase(Enum):
+    """Phases of the DDD cycle."""
+    ANALYZE = "analyze"        # Analyzing existing code and behavior
+    PRESERVE = "preserve"      # Creating characterization tests
+    IMPROVE = "improve"        # Refactoring with behavior preservation
+    REVIEW = "review"          # Validation and documentation
 ```
 
 ### TestType Enum
 
 ```python
 class TestType(Enum):
-    """Types of tests in TDD workflow."""
+    """Types of tests in DDD workflow."""
     UNIT = "unit"
     INTEGRATION = "integration"
     ACCEPTANCE = "acceptance"
     PERFORMANCE = "performance"
     SECURITY = "security"
     REGRESSION = "regression"
+    CHARACTERIZATION = "characterization"
 ```
 
 ### TestStatus Enum
@@ -80,15 +81,15 @@ class TestCase:
     coverage_impact: float = 0.0
 ```
 
-### TDDSession
+### DDDSession
 
 ```python
 @dataclass
-class TDDSession:
-    """TDD session tracking all cycle activities."""
+class DDDSession:
+    """DDD session tracking all cycle activities."""
     id: str
     project_path: str
-    current_phase: TDDPhase
+    current_phase: DDDPhase
     test_cases: List[TestCase]
     implementation_files: List[str]
     metrics: Dict[str, Any]
@@ -97,51 +98,52 @@ class TDDSession:
     last_activity: float
 ```
 
-### TDDCycleResult
+### DDDCycleResult
 
 ```python
 @dataclass
-class TDDCycleResult:
-    """Results of a complete TDD cycle."""
+class DDDCycleResult:
+    """Results of a complete DDD cycle."""
     session_id: str
     test_specification: TestSpecification
     test_file_path: str
     implementation_file_path: str
-    red_phase_result: Dict[str, Any]
-    green_phase_result: Dict[str, Any]
-    refactor_phase_result: Dict[str, Any]
+    analyze_phase_result: Dict[str, Any]
+    preserve_phase_result: Dict[str, Any]
+    improve_phase_result: Dict[str, Any]
     final_coverage: float
     total_time: float
     context7_patterns_applied: List[str]
+    behavior_preserved: bool
 ```
 
-## TDDManager Class
+## DDDManager Class
 
 ```python
-class TDDManager:
-    """Manages TDD workflow with Context7 integration."""
+class DDDManager:
+    """Manages DDD workflow with Context7 integration."""
 
     def __init__(self, project_path: str, context7_client=None):
         self.project_path = project_path
         self.context7 = context7_client
-        self.context7_integration = Context7TDDIntegration(context7_client)
+        self.context7_integration = Context7DDDIntegration(context7_client)
         self.test_generator = TestGenerator(context7_client)
-        self.current_session: Optional[TDDSession] = None
+        self.current_session: Optional[DDDSession] = None
 
-    async def start_tdd_session(self, feature_name: str) -> TDDSession:
-        """Start a new TDD session."""
-        session_id = f"tdd_{feature_name}_{int(time.time())}"
+    async def start_ddd_session(self, feature_name: str) -> DDDSession:
+        """Start a new DDD session."""
+        session_id = f"ddd_{feature_name}_{int(time.time())}"
 
         # Load Context7 patterns
-        patterns = await self.context7_integration.load_tdd_patterns()
+        patterns = await self.context7_integration.load_ddd_patterns()
 
-        session = TDDSession(
+        session = DDDSession(
             id=session_id,
             project_path=self.project_path,
-            current_phase=TDDPhase.RED,
+            current_phase=DDDPhase.ANALYZE,
             test_cases=[],
             implementation_files=[],
-            metrics={'red_phases': 0, 'green_phases': 0, 'refactor_phases': 0},
+            metrics={'analyze_phases': 0, 'preserve_phases': 0, 'improve_phases': 0},
             context7_patterns=patterns,
             started_at=time.time(),
             last_activity=time.time()
@@ -150,65 +152,96 @@ class TDDManager:
         self.current_session = session
         return session
 
-    async def run_full_tdd_cycle(
+    async def run_full_ddd_cycle(
         self,
         specification: TestSpecification,
         target_function: str
-    ) -> TDDCycleResult:
-        """Run complete RED-GREEN-REFACTOR cycle."""
+    ) -> DDDCycleResult:
+        """Run complete ANALYZE-PRESERVE-IMPROVE cycle."""
         if not self.current_session:
-            self.current_session = await self.start_tdd_session("default")
+            self.current_session = await self.start_ddd_session("default")
 
         cycle_start = time.time()
         context7_patterns_applied = []
 
-        # RED Phase - Write failing test
-        red_result = await self._execute_red_phase(specification)
-        self.current_session.metrics['red_phases'] += 1
+        # ANALYZE Phase - Understand existing code and behavior
+        analyze_result = await self._execute_analyze_phase(specification)
+        self.current_session.metrics['analyze_phases'] += 1
 
-        # GREEN Phase - Make test pass
-        green_result = await self._execute_green_phase(
-            specification, target_function, red_result
+        # PRESERVE Phase - Create characterization tests
+        preserve_result = await self._execute_preserve_phase(
+            specification, target_function, analyze_result
         )
-        self.current_session.metrics['green_phases'] += 1
+        self.current_session.metrics['preserve_phases'] += 1
 
-        # REFACTOR Phase - Improve code
-        refactor_result = await self._execute_refactor_phase(
-            specification, green_result
+        # IMPROVE Phase - Refactor with behavior preservation
+        improve_result = await self._execute_improve_phase(
+            specification, preserve_result
         )
-        self.current_session.metrics['refactor_phases'] += 1
-        context7_patterns_applied.extend(refactor_result.get('patterns_applied', []))
+        self.current_session.metrics['improve_phases'] += 1
+        context7_patterns_applied.extend(improve_result.get('patterns_applied', []))
 
         # Run final coverage
         coverage = await self._run_coverage_analysis()
 
-        return TDDCycleResult(
+        return DDDCycleResult(
             session_id=self.current_session.id,
             test_specification=specification,
-            test_file_path=red_result.get('test_file_path', ''),
-            implementation_file_path=green_result.get('implementation_file_path', ''),
-            red_phase_result=red_result,
-            green_phase_result=green_result,
-            refactor_phase_result=refactor_result,
+            test_file_path=preserve_result.get('test_file_path', ''),
+            implementation_file_path=improve_result.get('implementation_file_path', ''),
+            analyze_phase_result=analyze_result,
+            preserve_phase_result=preserve_result,
+            improve_phase_result=improve_result,
             final_coverage=coverage.get('total_coverage', 0.0),
             total_time=time.time() - cycle_start,
-            context7_patterns_applied=context7_patterns_applied
+            context7_patterns_applied=context7_patterns_applied,
+            behavior_preserved=improve_result.get('behavior_preserved', True)
         )
 ```
 
 ## Phase Execution Methods
 
-### RED Phase
+### ANALYZE Phase
 
 ```python
-async def _execute_red_phase(
+async def _execute_analyze_phase(
     self, specification: TestSpecification
 ) -> Dict[str, Any]:
-    """Execute RED phase - write failing test."""
-    self.current_session.current_phase = TDDPhase.RED
+    """Execute ANALYZE phase - understand existing code and behavior."""
+    self.current_session.current_phase = DDDPhase.ANALYZE
 
-    # Generate test from specification
-    test_code = await self.test_generator.generate_test(specification)
+    # Analyze existing code structure
+    code_analysis = await self._analyze_existing_code(specification)
+
+    # Identify behavior patterns
+    behavior_patterns = await self._identify_behavior_patterns(code_analysis)
+
+    # Determine refactoring targets
+    refactoring_targets = await self._identify_refactoring_targets(code_analysis)
+
+    return {
+        'code_analysis': code_analysis,
+        'behavior_patterns': behavior_patterns,
+        'refactoring_targets': refactoring_targets,
+        'phase_success': True
+    }
+```
+
+### PRESERVE Phase
+
+```python
+async def _execute_preserve_phase(
+    self, specification: TestSpecification,
+    target_function: str,
+    analyze_result: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Execute PRESERVE phase - create characterization tests."""
+    self.current_session.current_phase = DDDPhase.PRESERVE
+
+    # Generate characterization tests for existing behavior
+    test_code = await self.test_generator.generate_characterization_test(
+        specification, analyze_result['behavior_patterns']
+    )
 
     # Determine test file path
     test_file_path = self._get_test_file_path(specification)
@@ -216,7 +249,7 @@ async def _execute_red_phase(
     # Write test to file
     self._write_test_file(test_file_path, test_code)
 
-    # Run test - should fail
+    # Run test - should pass (testing existing behavior)
     test_result = await self._run_tests(test_file_path)
 
     # Create test case record
@@ -225,9 +258,9 @@ async def _execute_red_phase(
         name=specification.name,
         file_path=test_file_path,
         line_number=1,
-        test_type=specification.test_type,
+        test_type=TestType.CHARACTERIZATION,
         specification=specification,
-        status=TestStatus.FAILED if test_result['failed'] > 0 else TestStatus.PASSED,
+        status=TestStatus.PASSED if test_result['failed'] == 0 else TestStatus.FAILED,
         execution_time=test_result.get('execution_time', 0),
         code=test_code
     )
@@ -239,96 +272,60 @@ async def _execute_red_phase(
         'test_file_path': test_file_path,
         'test_result': test_result,
         'test_case': test_case,
-        'phase_success': test_result['failed'] > 0  # Should fail in RED phase
+        'phase_success': test_result['failed'] == 0  # Should pass in PRESERVE phase
     }
 ```
 
-### GREEN Phase
+### IMPROVE Phase
 
 ```python
-async def _execute_green_phase(
+async def _execute_improve_phase(
     self, specification: TestSpecification,
-    target_function: str,
-    red_result: Dict[str, Any]
+    preserve_result: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Execute GREEN phase - make test pass."""
-    self.current_session.current_phase = TDDPhase.GREEN
+    """Execute IMPROVE phase - refactor with behavior preservation."""
+    self.current_session.current_phase = DDDPhase.IMPROVE
 
-    # Generate minimum implementation
-    implementation = await self._generate_minimum_implementation(
-        specification, target_function
-    )
-
-    # Determine implementation file path
-    impl_file_path = self._get_implementation_file_path(target_function)
-
-    # Write implementation
-    self._write_implementation_file(impl_file_path, implementation)
-    self.current_session.implementation_files.append(impl_file_path)
-
-    # Run tests - should pass
-    test_result = await self._run_tests(red_result['test_file_path'])
-
-    # Update test case status
-    for tc in self.current_session.test_cases:
-        if tc.name == specification.name:
-            tc.status = TestStatus.PASSED if test_result['passed'] > 0 else TestStatus.FAILED
-
-    return {
-        'implementation': implementation,
-        'implementation_file_path': impl_file_path,
-        'test_result': test_result,
-        'phase_success': test_result['failed'] == 0  # All tests should pass
-    }
-```
-
-### REFACTOR Phase
-
-```python
-async def _execute_refactor_phase(
-    self, specification: TestSpecification,
-    green_result: Dict[str, Any]
-) -> Dict[str, Any]:
-    """Execute REFACTOR phase - improve code quality."""
-    self.current_session.current_phase = TDDPhase.REFACTOR
-
-    # Get refactoring patterns from Context7
-    refactor_patterns = await self.context7_integration.get_refactoring_patterns()
+    # Get improvement patterns from Context7
+    improve_patterns = await self.context7_integration.get_improvement_patterns()
 
     # Generate improvements
     improvements = await self._generate_improvements(
-        green_result['implementation'],
-        refactor_patterns
+        preserve_result.get('implementation', ''),
+        improve_patterns
     )
 
     patterns_applied = []
-    successful_refactorings = []
+    successful_improvements = []
+    behavior_preserved = True
 
     for improvement in improvements:
         # Apply improvement
-        refactored = await self._apply_refactoring(
-            green_result['implementation_file_path'],
+        improved = await self._apply_improvement(
+            preserve_result.get('implementation_file_path', ''),
             improvement
         )
 
-        if refactored['success']:
-            # Run tests after refactoring
-            test_result = await self._run_tests(specification.name)
+        if improved['success']:
+            # Run characterization tests to verify behavior preservation
+            test_result = await self._run_tests(preserve_result['test_file_path'])
 
             if test_result['failed'] == 0:
-                successful_refactorings.append(improvement)
+                successful_improvements.append(improvement)
                 patterns_applied.append(improvement.get('pattern', 'custom'))
             else:
-                # Rollback failed refactoring
-                await self._rollback_refactoring(
-                    green_result['implementation_file_path']
+                # Rollback failed improvement - behavior not preserved
+                await self._rollback_improvement(
+                    preserve_result.get('implementation_file_path', '')
                 )
+                behavior_preserved = False
 
     return {
         'improvements_suggested': len(improvements),
-        'improvements_applied': len(successful_refactorings),
+        'improvements_applied': len(successful_improvements),
         'patterns_applied': patterns_applied,
-        'phase_success': True
+        'behavior_preserved': behavior_preserved,
+        'phase_success': behavior_preserved
     }
 ```
 
@@ -394,4 +391,4 @@ async def _run_coverage_analysis(self) -> Dict[str, Any]:
 
 ---
 
-Sub-module: `modules/tdd/core-classes.md`
+Sub-module: `modules/ddd/core-classes.md`

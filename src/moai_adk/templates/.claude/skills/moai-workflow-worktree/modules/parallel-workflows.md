@@ -42,7 +42,7 @@ Phase 2 - Initialize Each Environment:
 
 Phase 3 - Parallel Development:
 - Work on each SPEC in separate terminal sessions
-- Run /moai:2-run for TDD implementation
+- Run /moai:2-run for DDD implementation
 - Switch between worktrees as needed
 
 Phase 4 - Integration:

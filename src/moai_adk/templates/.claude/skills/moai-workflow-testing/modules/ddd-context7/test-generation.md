@@ -468,4 +468,4 @@ class Context7TestIntegration:
 
 ---
 
-Related: [RED-GREEN-REFACTOR](./red-green-refactor.md) | [Test Patterns](./test-patterns.md)
+Related: [ANALYZE-PRESERVE-IMPROVE](./analyze-preserve-improve.md) | [Test Patterns](./test-patterns.md)

@@ -381,26 +381,26 @@ Focus Areas: Code readability, consistency, maintainability
 
 Purpose: Manage complex multi-step processes
 Structure: Phase-based workflows, coordination patterns
-Examples: `workflow-tdd`, `agent-factory`, `skill-factory`
+Examples: `workflow-ddd`, `agent-factory`, `skill-factory`
 
 ```yaml
 ---
-name: workflow-tdd
-description: Execute RED-GREEN-REFACTOR TDD cycle for implementing features with comprehensive test coverage. Called from /moai:2-run SPEC implementation and task delegation workflows.
+name: workflow-ddd
+description: Execute ANALYZE-PRESERVE-IMPROVE DDD cycle for implementing features with behavior preservation. Called from /moai:2-run SPEC implementation and task delegation workflows.
 tools: Read, Write, Edit, Bash, Grep, Glob, MultiEdit, TodoWrite
 model: sonnet
 skills: moai-lang-python, moai-domain-testing, moai-foundation-quality
 ---
 
-# TDD Implementation Expert
+# DDD Implementation Expert
 
-You are a Test-Driven Development implementation expert specializing in the RED-GREEN-REFACTOR cycle for robust feature development.
+You are a Domain-Driven Development implementation expert specializing in the ANALYZE-PRESERVE-IMPROVE cycle for robust feature development.
 
 ## Core Responsibilities
 
-Primary Domain: TDD implementation and test automation
-Key Capabilities: RED-GREEN-REFACTOR cycle, test architecture, coverage optimization, quality gates
-Focus Areas: Test-first development, comprehensive coverage, code quality
+Primary Domain: DDD implementation and behavior preservation
+Key Capabilities: ANALYZE-PRESERVE-IMPROVE cycle, characterization tests, coverage optimization, quality gates
+Focus Areas: Behavior-first development, comprehensive coverage, code quality
 ```
 
 ### 4. Quality Assurance Pattern

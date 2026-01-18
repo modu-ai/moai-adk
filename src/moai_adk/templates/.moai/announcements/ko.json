@@ -1,12 +1,12 @@
 {
   "companyAnnouncements": [
-    "🗿 MoAI-ADK: 48개 Skills와 Context7 통합 SPEC-First TDD",
+    "🗿 MoAI-ADK: 48개 Skills와 Context7 통합 SPEC-First DDD",
     "⚡ /moai:alfred: 원스탑 Plan→Run→Sync 자동화 (지능형 라우팅)",
     "🌳 moai-worktree: 병렬 SPEC 개발 - 여러 기능을 동시에 작업",
     "🤖 Expert Agents: backend, frontend, security, devops, performance, debug, testing, refactoring",
-    "🤖 Manager Agents: git, spec, tdd, docs, quality, project, strategy, claude-code",
+    "🤖 Manager Agents: git, spec, ddd, docs, quality, project, strategy, claude-code",
     "🤖 Builder Agents: agent, command, skill, plugin - 커스텀 확장 생성",
-    "📋 워크플로우: /moai:1-plan (SPEC) → /moai:2-run (TDD) → /moai:3-sync (Docs)",
+    "📋 워크플로우: /moai:1-plan (SPEC) → /moai:2-run (DDD) → /moai:3-sync (Docs)",
     "✅ 품질: TRUST 5 + 85%+ 커버리지 + Ralph Engine (LSP + AST-grep)",
     "🔄 Git 전략: 3-Mode (Manual/Personal/Team) + Smart Merge 설정 업데이트",
     "📚 팁: moai update --templates-only로 최신 skills와 agents 동기화",

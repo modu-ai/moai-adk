@@ -4,7 +4,7 @@ Purpose: Comprehensive guide to Easy Approach to Requirements Syntax (EARS) patt
 
 Version: 1.0.0
 Last Updated: 2026-01-06
-Parent: [spec-first-tdd.md](spec-first-tdd.md)
+Parent: [spec-first-ddd.md](spec-first-ddd.md)
 
 ---
 
@@ -191,8 +191,8 @@ complexity_metrics:
 
 ## Works Well With
 
-- [spec-first-tdd.md](spec-first-tdd.md) - Main workflow overview
-- [spec-tdd-implementation.md](spec-tdd-implementation.md) - TDD patterns
+- [spec-first-ddd.md](spec-first-ddd.md) - Main workflow overview
+- [spec-ddd-implementation.md](spec-ddd-implementation.md) - TDD patterns
 
 ---
 

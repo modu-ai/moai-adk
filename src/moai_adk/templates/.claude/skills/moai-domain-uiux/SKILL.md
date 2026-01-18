@@ -223,7 +223,7 @@ Agents:
 
 Commands:
 
-- /moai:2-run - TDD implementation cycle
+- /moai:2-run - DDD implementation cycle
 - /moai:3-sync - Documentation generation
 
 ---

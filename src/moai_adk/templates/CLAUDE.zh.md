@@ -58,7 +58,7 @@ Type C 反馈命令：用于改进和错误报告的用户反馈命令。
 使用显式代理调用执行：
 
 - "Use the expert-backend subagent to develop the API"
-- "Use the manager-tdd subagent to implement with TDD approach"
+- "Use the manager-ddd subagent to implement with DDD approach"
 - "Use the Explore subagent to analyze the codebase structure"
 
 执行模式：

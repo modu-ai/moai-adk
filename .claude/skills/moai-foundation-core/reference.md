@@ -14,7 +14,7 @@ TRUST 5 Framework:
 - Integration: Pre-commit hooks, CI/CD pipelines, agent workflows
 - Validation: Automated checks with configurable thresholds
 
-SPEC-First TDD:
+SPEC-First DDD:
 - Purpose: Specification-driven development workflow
 - Phases: SPEC (Plan), TDD (Run), Docs (Sync)
 - Format: EARS (Event-Action-Response-State) specifications
@@ -182,14 +182,14 @@ def pre_commit_validation(staged_files: List[str]) -> bool:
     return all_passed
 ```
 
-### Pattern 2: SPEC-First TDD Workflow
+### Pattern 2: SPEC-First DDD Workflow
 
 ```python
-# Complete SPEC-First TDD cycle implementation
+# Complete SPEC-First DDD cycle implementation
 from moai_foundation_core import SPECManager, TDDExecutor, DocsGenerator
 
 async def spec_first_workflow(requirements: str):
-    """Execute complete SPEC-First TDD workflow."""
+    """Execute complete SPEC-First DDD workflow."""
 
     # Phase 1: SPEC Generation (30K tokens)
     spec_manager = SPECManager()
@@ -407,12 +407,12 @@ diagnose.verify_module_structure()
 
 - MoAI-ADK Documentation: See project README
 - Claude Code Skills Guide: https://docs.anthropic.com/claude-code/skills
-- EARS Specification Format: See `modules/spec-first-tdd.md`
+- EARS Specification Format: See `modules/spec-first-ddd.md`
 
 ### Module References
 
 - TRUST 5 Framework: `modules/trust-5-framework.md`
-- SPEC-First TDD: `modules/spec-first-tdd.md`
+- SPEC-First DDD: `modules/spec-first-ddd.md`
 - Delegation Patterns: `modules/delegation-patterns.md`
 - Token Optimization: `modules/token-optimization.md`
 - Progressive Disclosure: `modules/progressive-disclosure.md`

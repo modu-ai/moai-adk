@@ -23,8 +23,8 @@ class WorktreeManager:
     This class provides high-level operations for creating, removing,
     switching, and maintaining Git worktrees. It integrates with
     GitPython for Git operations and WorktreeRegistry for metadata
-    persistence. Worktrees are organized by project name namespace to
-    support multiple projects: /worktrees/{project-name}/{SPEC-ID}
+    persistence. Worktrees are organized inside the project's .moai directory:
+    {repo}/.moai/worktrees/{project-name}/{SPEC-ID}
     """
 
     def __init__(self, repo_path: Path, worktree_root: Path, project_name: str | None = None) -> None:

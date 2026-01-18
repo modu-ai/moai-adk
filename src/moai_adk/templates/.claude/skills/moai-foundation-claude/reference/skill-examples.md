@@ -307,11 +307,11 @@ status: active
 
 # Python Testing Expert
 
-Complete Python testing solution with pytest expertise, mocking strategies, test automation, and TDD patterns for production-ready code quality.
+Complete Python testing solution with pytest expertise, mocking strategies, test automation, and DDD testing patterns for production-ready code quality.
 
 ## Quick Reference (30 seconds)
 
-Design and implement comprehensive Python test suites using pytest, unittest, mocking frameworks, and TDD methodologies for reliable, maintainable code.
+Design and implement comprehensive Python test suites using pytest, unittest, mocking frameworks, and comprehensive testing methodologies for reliable, maintainable code.
 
 ## Implementation Guide
 
@@ -425,7 +425,7 @@ pytest --cov=src --cov-report=html # With coverage report
 ## Works Well With
 
 - [`moai-lang-python`](../moai-lang-python/SKILL.md) - Python language patterns
-- [`moai-tdd-implementer`](../moai-tdd-implementer/SKILL.md) - TDD methodology
+- [`moai-workflow-ddd`](../moai-workflow-ddd/SKILL.md) - DDD methodology
 - [`moai-quality-gate`](../moai-quality-gate/SKILL.md) - Quality validation
 
 ## Advanced Features

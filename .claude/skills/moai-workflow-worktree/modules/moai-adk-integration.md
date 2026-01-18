@@ -1,6 +1,6 @@
 # MoAI-ADK Integration Module
 
-Purpose: Detailed integration patterns for moai-worktree with MoAI-ADK Plan-Run-Sync workflow including plan phase automation, TDD integration, and cleanup workflows.
+Purpose: Detailed integration patterns for moai-worktree with MoAI-ADK Plan-Run-Sync workflow including plan phase automation, DDD integration, and cleanup workflows.
 
 Version: 1.0.0
 Last Updated: 2026-01-06
@@ -11,7 +11,7 @@ Last Updated: 2026-01-06
 
 MoAI-ADK Integration Points:
 - /moai:1-plan: Automatic worktree creation after SPEC generation
-- /moai:2-run: TDD execution in isolated worktree environment
+- /moai:2-run: DDD execution in isolated worktree environment
 - /moai:3-sync: Worktree sync with documentation updates
 - Cleanup: Automatic removal of merged worktrees
 
@@ -28,7 +28,7 @@ Branch Naming Convention:
 - Example: SPEC-001 with title "User Auth" becomes feature/SPEC-001-user-auth
 
 Worktree Path Pattern:
-- Default: ~/workflows/{project-name}/SPEC-{id}
+- Default: {repo}/.moai/worktrees/{project-name}/SPEC-{id}
 - Configurable via worktree_root setting
 
 Creation Workflow:
@@ -58,24 +58,24 @@ Template Configuration Structure:
 
 ## Development Phase Integration (/moai:2-run)
 
-### Worktree-Aware TDD
+### Worktree-Aware DDD
 
-The TDD manager detects worktree environments and adapts its behavior accordingly.
+The DDD manager detects worktree environments and adapts its behavior accordingly.
 
 Worktree Detection:
 - Checks if current directory name starts with SPEC-
-- Looks for worktrees directory in path hierarchy
+- Looks for .moai/worktrees directory in path hierarchy
 - Validates against registry for accurate identification
 
-TDD Execution Benefits:
-- Independent test results per worktree
+DDD Execution Benefits:
+- Independent development results per worktree
 - Isolated dependency environments
 - No cross-contamination between SPECs
 - Automatic metadata updates in registry
 
 Registry Updates During Development:
 - last_accessed timestamp updated on each worktree access
-- last_tdd_result stored for progress tracking
+- last_ddd_result stored for progress tracking
 - operation_status recorded for debugging
 
 ### Development Server Isolation
@@ -195,7 +195,7 @@ worktree section:
 - auto_create: Enable automatic worktree creation (default: true)
 - auto_sync: Enable automatic synchronization (default: true)
 - cleanup_merged: Remove worktrees for merged branches (default: true)
-- worktree_root: Base directory for worktrees (default: ~/workflows/{project})
+- worktree_root: Base directory for worktrees (default: {repo}/.moai/worktrees)
 - default_base: Default base branch (default: main)
 - sync_strategy: Sync method - merge, rebase, or squash (default: merge)
 - registry_type: local or team (default: local)

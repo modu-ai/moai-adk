@@ -58,7 +58,7 @@ Type C フィードバックコマンド: 改善とバグレポートのため�
 明示的なエージェント呼び出しを使用して実行します:
 
 - "Use the expert-backend subagent to develop the API"
-- "Use the manager-tdd subagent to implement with TDD approach"
+- "Use the manager-ddd subagent to implement with DDD approach"
 - "Use the Explore subagent to analyze the codebase structure"
 
 実行パターン:

@@ -1,12 +1,12 @@
 {
   "companyAnnouncements": [
-    "🗿 MoAI-ADK: 48个Skills与Context7集成的SPEC-First TDD",
+    "🗿 MoAI-ADK: 48个Skills与Context7集成的SPEC-First DDD",
     "⚡ /moai:alfred: 一站式 Plan→Run→Sync 自动化（智能路由）",
     "🌳 moai-worktree: 并行SPEC开发 - 同时处理多个功能",
     "🤖 Expert Agents: backend, frontend, security, devops, performance, debug, testing, refactoring",
-    "🤖 Manager Agents: git, spec, tdd, docs, quality, project, strategy, claude-code",
+    "🤖 Manager Agents: git, spec, ddd, docs, quality, project, strategy, claude-code",
     "🤖 Builder Agents: agent, command, skill, plugin - 创建自定义扩展",
-    "📋 工作流程: /moai:1-plan (SPEC) → /moai:2-run (TDD) → /moai:3-sync (Docs)",
+    "📋 工作流程: /moai:1-plan (SPEC) → /moai:2-run (DDD) → /moai:3-sync (Docs)",
     "✅ 质量: TRUST 5 + 85%+ 覆盖率 + Ralph Engine (LSP + AST-grep)",
     "🔄 Git策略: 3-Mode (Manual/Personal/Team) + Smart Merge配置更新",
     "📚 提示: moai update --templates-only 同步最新的skills和agents",

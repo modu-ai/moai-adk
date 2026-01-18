@@ -1,6 +1,6 @@
 """MoAI Agentic Development Kit
 
-SPEC-First TDD Framework with Alfred SuperAgent
+SPEC-First DDD Framework with Alfred SuperAgent
 """
 
 from moai_adk.version import MOAI_VERSION

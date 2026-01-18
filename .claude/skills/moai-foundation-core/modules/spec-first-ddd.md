@@ -1,28 +1,28 @@
-# SPEC-First TDD - Specification-Driven Development
+# SPEC-First DDD - Specification-Driven Development
 
-Purpose: Specification-driven test-driven development workflow ensuring clear requirements before implementation through EARS format and RED-GREEN-REFACTOR cycles.
+Purpose: Specification-driven domain-driven development workflow ensuring clear requirements before implementation through EARS format and ANALYZE-PRESERVE-IMPROVE cycles.
 
-Version: 2.0.0 (Modular Split)
-Last Updated: 2026-01-06
+Version: 3.0.0 (DDD Migration)
+Last Updated: 2026-01-17
 
 ---
 
 ## Quick Reference (30 seconds)
 
-SPEC-First TDD is MoAI-ADK's development methodology combining:
+SPEC-First DDD is MoAI-ADK's development methodology combining:
 
 1. SPEC Generation - EARS format requirements (/moai:1-plan)
-2. Test-Driven Development - RED-GREEN-REFACTOR (/moai:2-run)
+2. Domain-Driven Development - ANALYZE-PRESERVE-IMPROVE (/moai:2-run)
 3. Documentation Sync - Auto-generated docs (/moai:3-sync)
 
 Three-Phase Workflow:
 ```
 Phase 1: SPEC → spec-builder → .moai/specs/SPEC-XXX/spec.md
-Phase 2: TDD  → tdd-implementer → Code + Tests (≥85% coverage)
+Phase 2: DDD  → ddd-implementer → Code + Tests (≥85% coverage)
 Phase 3: Docs → docs-manager → API docs + diagrams
 ```
 
-Token Budget: SPEC 30K | TDD 180K | Docs 40K | Total 250K
+Token Budget: SPEC 30K | DDD 180K | Docs 40K | Total 250K
 
 Key Practice: Execute `/clear` after Phase 1 to save 45-50K tokens.
 
@@ -35,7 +35,7 @@ EARS Patterns:
 
 Extended Documentation:
 - [EARS Format Reference](spec-ears-format.md) - Detailed EARS patterns and examples
-- [TDD Implementation](spec-tdd-implementation.md) - RED-GREEN-REFACTOR workflows
+- [DDD Implementation](spec-ddd-implementation.md) - ANALYZE-PRESERVE-IMPROVE workflows
 
 ---
 
@@ -88,27 +88,35 @@ Test Coverage Target: ≥90%
 
 ---
 
-### Phase 2: Test-Driven Development
+### Phase 2: Domain-Driven Development
 
-RED-GREEN-REFACTOR Cycle:
+ANALYZE-PRESERVE-IMPROVE Cycle:
 
 ```python
-# RED: Write failing test first
-def test_register_user():
+# ANALYZE: Understand existing code and behavior
+def analyze_existing_registration():
+    """Analyze current registration implementation.
+
+    - Identify existing behavior patterns
+    - Document current test coverage
+    - Map dependencies and side effects
+    """
+    pass
+
+# PRESERVE: Create characterization tests
+def test_register_user_existing_behavior():
+    """Characterization test for existing behavior."""
     result = register_user("user@example.com", "SecureP@ssw0rd")
-    assert result.success is True  # Fails - function doesn't exist
+    assert result.success is True  # Documents existing behavior
 
-# GREEN: Minimal implementation
-def register_user(email, password):
-    return RegistrationResult(success=True, user=User())
-
-# REFACTOR: Improve quality
+# IMPROVE: Refactor with behavior preservation
 def register_user(email: str, password: str) -> RegistrationResult:
     """Register new user with email and password.
 
     Implements SPEC-001-REQ-01
+    Behavior preserved from existing implementation.
     """
-    # Validation, hashing, database operations
+    # Improved validation, hashing, database operations
     return RegistrationResult(success=True, user=user)
 ```
 
@@ -143,7 +151,7 @@ Workflow:
 For comprehensive implementation patterns including MFA examples, iterative SPEC refinement, and CI/CD integration, see:
 
 - [EARS Format Reference](spec-ears-format.md) - All EARS patterns with examples
-- [TDD Implementation](spec-tdd-implementation.md) - Advanced TDD workflows
+- [DDD Implementation](spec-ddd-implementation.md) - Advanced DDD workflows
 
 ---
 
@@ -151,7 +159,7 @@ For comprehensive implementation patterns including MFA examples, iterative SPEC
 
 Agents:
 - spec-builder - EARS format SPEC generation
-- tdd-implementer - RED-GREEN-REFACTOR execution
+- ddd-implementer - ANALYZE-PRESERVE-IMPROVE execution
 - quality-gate - TRUST 5 validation
 - docs-manager - Documentation generation
 
@@ -160,12 +168,12 @@ Skills:
 
 Commands:
 - /moai:1-plan - SPEC generation (Phase 1)
-- /moai:2-run - TDD implementation (Phase 2)
+- /moai:2-run - DDD implementation (Phase 2)
 - /moai:3-sync - Documentation sync (Phase 3)
 - /clear - Token optimization between phases
 
 ---
 
-Version: 2.0.0
-Last Updated: 2026-01-06
+Version: 3.0.0
+Last Updated: 2026-01-17
 Status: Production Ready

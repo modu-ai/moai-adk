@@ -73,7 +73,7 @@ Six essential principles that ensure quality, efficiency, and scalability in AI-
 Quick Access:
 
 - Quality standards in modules/trust-5-framework.md
-- Development workflow in modules/spec-first-tdd.md
+- Development workflow in modules/spec-first-ddd.md
 - Agent coordination in modules/delegation-patterns.md
 - Budget management in modules/token-optimization.md
 - Content structure in modules/progressive-disclosure.md
@@ -135,7 +135,7 @@ Token Budget: SPEC takes 30K, TDD takes 180K, Docs takes 40K, Total is 250K.
 
 Key Practice: Execute /clear after Phase 1 to initialize context.
 
-Detailed Reference: modules/spec-first-tdd.md
+Detailed Reference: modules/spec-first-ddd.md
 
 ---
 
@@ -271,7 +271,7 @@ Budget: Primary principle is Token Optimization. Supporting principles are Progr
 
 Docs: Primary principle is Progressive and Modular. Supporting principle is Token Optimization.
 
-Module Deep Dives: modules/trust-5-framework.md, modules/spec-first-tdd.md, modules/delegation-patterns.md, modules/token-optimization.md, modules/progressive-disclosure.md, modules/modular-system.md, modules/agents-reference.md, modules/commands-reference.md, modules/execution-rules.md.
+Module Deep Dives: modules/trust-5-framework.md, modules/spec-first-ddd.md, modules/delegation-patterns.md, modules/token-optimization.md, modules/progressive-disclosure.md, modules/modular-system.md, modules/agents-reference.md, modules/commands-reference.md, modules/execution-rules.md.
 
 Full Examples: examples.md
 External Resources: reference.md

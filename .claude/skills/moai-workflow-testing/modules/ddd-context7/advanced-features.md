@@ -1,4 +1,4 @@
-# Advanced TDD Features with Context7
+# Advanced DDD Features with Context7
 
 > Module: AI-powered comprehensive test suite generation and analysis
 > Complexity: Expert
@@ -318,7 +318,7 @@ class Context7EnhancedTesting:
 
         return {
             'suggestions': [
-                "Write tests before implementation (TDD)",
+                "Analyze existing behavior before refactoring (DDD)",
                 "Aim for high test coverage (80%+)",
                 "Test both positive and negative cases",
                 "Use mocking for external dependencies",
@@ -429,7 +429,7 @@ class MutationTesting:
 
 ```python
 class ContinuousTesting:
-    """Continuous testing integration for TDD workflow."""
+    """Continuous testing integration for DDD workflow."""
 
     def __init__(self, project_path: str):
         self.project_path = Path(project_path)
@@ -491,4 +491,4 @@ class ContinuousTesting:
 
 ---
 
-Related: [RED-GREEN-REFACTOR](./red-green-refactor.md) | [Test Generation](./test-generation.md) | [Test Patterns](./test-patterns.md)
+Related: [ANALYZE-PRESERVE-IMPROVE](./analyze-preserve-improve.md) | [Test Generation](./test-generation.md) | [Test Patterns](./test-patterns.md)

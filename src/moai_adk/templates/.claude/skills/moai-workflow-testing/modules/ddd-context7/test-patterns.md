@@ -5,20 +5,20 @@
 > Time: 15+ minutes
 > Dependencies: Python 3.8+, pytest, Context7 MCP, unittest.mock
 
-## Context7 TDD Integration
+## Context7 DDD Integration
 
 ```python
-class Context7TDDIntegration:
-    """Integration with Context7 for TDD patterns and best practices."""
+class Context7DDDIntegration:
+    """Integration with Context7 for DDD patterns and best practices."""
 
     def __init__(self, context7_client=None):
         self.context7 = context7_client
         self.pattern_cache = {}
 
-    async def load_tdd_patterns(self, language: str = "python") -> Dict[str, Any]:
-        """Load TDD patterns and best practices from Context7."""
+    async def load_ddd_patterns(self, language: str = "python") -> Dict[str, Any]:
+        """Load DDD patterns and best practices from Context7."""
 
-        cache_key = f"tdd_patterns_{language}"
+        cache_key = f"ddd_patterns_{language}"
         if cache_key in self.pattern_cache:
             return self.pattern_cache[cache_key]
 
@@ -26,13 +26,13 @@ class Context7TDDIntegration:
 
         if self.context7:
             try:
-                # Load TDD best practices
-                tdd_patterns = await self.context7.get_library_docs(
+                # Load DDD best practices
+                ddd_patterns = await self.context7.get_library_docs(
                     context7_library_id="/testing/pytest",
-                    topic="TDD RED-GREEN-REFACTOR patterns best practices 2025",
+                    topic="DDD ANALYZE-PRESERVE-IMPROVE patterns best practices 2025",
                     tokens=4000
                 )
-                patterns['tdd_best_practices'] = tdd_patterns
+                patterns['ddd_best_practices'] = ddd_patterns
 
                 # Load test patterns for specific language
                 if language == "python":
@@ -69,26 +69,26 @@ class Context7TDDIntegration:
         return patterns
 
     def _get_default_patterns(self) -> Dict[str, Any]:
-        """Get default TDD patterns when Context7 is unavailable."""
+        """Get default DDD patterns when Context7 is unavailable."""
         return {
-            'tdd_best_practices': {
-                'red_phase': [
-                    "Write the simplest possible failing test",
-                    "Test one specific behavior or requirement",
-                    "Ensure test clearly expresses intent",
-                    "Make test fail for the right reason"
+            'ddd_best_practices': {
+                'analyze_phase': [
+                    "Understand existing code structure and patterns",
+                    "Identify current behavior through code reading",
+                    "Document dependencies and side effects",
+                    "Map test coverage gaps"
                 ],
-                'green_phase': [
-                    "Write the simplest code to make test pass",
-                    "Don't worry about code quality yet",
-                    "Focus on making the test green quickly",
-                    "Avoid premature optimization"
+                'preserve_phase': [
+                    "Write characterization tests for existing behavior",
+                    "Capture current behavior as the golden standard",
+                    "Ensure tests pass with current implementation",
+                    "Create behavior snapshots for complex outputs"
                 ],
-                'refactor_phase': [
-                    "Improve code design while keeping tests green",
-                    "Remove duplication and improve readability",
-                    "Apply design patterns appropriately",
-                    "Ensure all tests still pass"
+                'improve_phase': [
+                    "Refactor code while keeping tests green",
+                    "Make small, incremental changes",
+                    "Run tests after each change",
+                    "Maintain behavior preservation"
                 ]
             },
             'python_testing': {
@@ -368,4 +368,4 @@ exclude_lines =
 
 ---
 
-Related: [RED-GREEN-REFACTOR](./red-green-refactor.md) | [Test Generation](./test-generation.md)
+Related: [ANALYZE-PRESERVE-IMPROVE](./analyze-preserve-improve.md) | [Test Generation](./test-generation.md)

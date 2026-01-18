@@ -86,7 +86,7 @@ Example modules/ structure:
 ```
 modules/
  trust-5-framework.md # Quality assurance deep dive
- spec-first-tdd.md # TDD workflow detailed guide
+ spec-first-ddd.md # DDD workflow detailed guide
  delegation-patterns.md # Agent orchestration patterns
  token-optimization.md # Budget management strategies
  progressive-disclosure.md # Content architecture
@@ -325,7 +325,7 @@ Pattern 2: Section Anchors:
 <!-- In SKILL.md -->
 Quick Access:
 - Quality framework → [TRUST 5](modules/trust-5-framework.md#quick-reference)
-- TDD workflow → [SPEC-First](modules/spec-first-tdd.md#phase-2-test-driven-development)
+- DDD workflow → [SPEC-First](modules/spec-first-ddd.md#phase-2-test-driven-development)
 - Agent patterns → [Delegation](modules/delegation-patterns.md#pattern-1-sequential-delegation)
 
 <!-- In module -->

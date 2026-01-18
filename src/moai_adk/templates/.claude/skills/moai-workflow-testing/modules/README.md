@@ -54,18 +54,18 @@ Key Features:
 - Continuous monitoring with alerting capabilities
 - Performance regression detection and prevention
 
-### [TDD with Context7](./tdd-context7.md)
+### [DDD with Context7](./ddd-context7.md)
 Complexity: Advanced | Time: 25+ minutes | Dependencies: Python 3.8+, pytest, Context7 MCP
 
-- RED-GREEN-REFACTOR cycle automation with AI assistance
+- ANALYZE-PRESERVE-IMPROVE cycle automation with AI assistance
 - Context7-enhanced test generation and pattern matching
-- Intelligent test case generation from specifications
+- Intelligent characterization test generation from specifications
 - Automated test suite optimization and maintenance
 
 Key Features:
 - Context7 testing patterns and best practices
-- AI-powered test case generation with coverage optimization
-- Comprehensive test specification management
+- AI-powered characterization test generation with coverage optimization
+- Comprehensive behavior preservation management
 - Automated test execution with quality validation
 
 ### [Automated Code Review](./automated-code-review.md)
@@ -118,16 +118,16 @@ AI-powered refactoring workflows.
 - `ai-workflows.md` - AI refactoring workflows
 - `patterns.md` - Refactoring patterns
 
-#### [TDD with Context7](./tdd-context7/)
-Test-driven development with Context7 integration.
-- `advanced-features.md` - Advanced TDD features
-- `red-green-refactor.md` - RED-GREEN-REFACTOR cycle
+#### [DDD with Context7](./ddd-context7/)
+Domain-driven development with Context7 integration.
+- `advanced-features.md` - Advanced DDD features
+- `analyze-preserve-improve.md` - ANALYZE-PRESERVE-IMPROVE cycle
 - `test-generation.md` - Automated test generation
-- `test-patterns.md` - TDD testing patterns
+- `test-patterns.md` - DDD testing patterns
 
-#### [Core TDD](./tdd/)
-Core TDD documentation.
-- `core-classes.md` - Core TDD classes and patterns
+#### [Core DDD](./ddd/)
+Core DDD documentation.
+- `core-classes.md` - Core DDD classes and patterns
 
 ## Module Integration
 
@@ -173,7 +173,7 @@ results = await workflow.execute_complete_workflow()
 - Performance Optimization: cProfile, memory_profiler, psutil, line_profiler
 - Smart Refactoring: Rope, AST, Context7 patterns
 - Automated Code Review: pylint, flake8, bandit, mypy
-- TDD: pytest, unittest, coverage, Context7 testing patterns
+- DDD: pytest, unittest, coverage, Context7 testing patterns
 
 ## Best Practices
 

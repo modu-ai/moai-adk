@@ -596,7 +596,7 @@ Effective Cross-Linking:
 
 Quick Access:
 - TRUST 5 Framework → [Module](modules/trust-5-framework.md)
-- SPEC-First TDD → [Module](modules/spec-first-tdd.md)
+- SPEC-First DDD → [Module](modules/spec-first-ddd.md)
 - Delegation Patterns → [Module](modules/delegation-patterns.md)
 
 Detailed Examples: [examples.md](examples.md)
@@ -618,7 +618,7 @@ Brief Introduction: Advanced patterns split to dedicated modules for depth.
 
 Available Modules:
 - [trust-5-framework.md](modules/trust-5-framework.md) - Quality assurance
-- [spec-first-tdd.md](modules/spec-first-tdd.md) - Development workflow
+- [spec-first-ddd.md](modules/spec-first-ddd.md) - Development workflow
 - [delegation-patterns.md](modules/delegation-patterns.md) - Agent orchestration
 - [token-optimization.md](modules/token-optimization.md) - Budget management
 - [progressive-disclosure.md](modules/progressive-disclosure.md) - Content structure

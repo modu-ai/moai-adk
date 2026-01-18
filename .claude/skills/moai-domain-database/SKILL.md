@@ -1,11 +1,11 @@
 ---
 name: "moai-domain-database"
-description: "Database specialist covering PostgreSQL, MongoDB, Redis, and advanced data patterns for modern applications"
+description: "Database specialist covering PostgreSQL, MongoDB, Redis, Oracle, and advanced data patterns for modern applications"
 version: 1.0.0
 category: "domain"
 modularized: true
 user-invocable: false
-tags: ['database', 'postgresql', 'mongodb', 'redis', 'data-patterns', 'performance']
+tags: ['database', 'postgresql', 'mongodb', 'redis', 'oracle', 'data-patterns', 'performance']
 updated: 2026-01-11
 allowed-tools:
   - Read
@@ -24,8 +24,10 @@ triggers:
     - PostgreSQL
     - MongoDB
     - Redis
+    - Oracle
     - SQL
     - NoSQL
+    - PL/SQL
     - query
     - schema
     - migration
@@ -36,23 +38,28 @@ triggers:
     - Mongoose
     - Prisma
     - Drizzle
+    - python-oracledb
+    - cx_Oracle
     - connection pool
     - transaction
     - data modeling
     - aggregation
+    - partitioning
+    - hierarchical query
 ---
 
 # Database Domain Specialist
 
 ## Quick Reference
 
-Enterprise Database Expertise - Comprehensive database patterns and implementations covering PostgreSQL, MongoDB, Redis, and advanced data management for scalable modern applications.
+Enterprise Database Expertise - Comprehensive database patterns and implementations covering PostgreSQL, MongoDB, Redis, Oracle, and advanced data management for scalable modern applications.
 
 Core Capabilities:
 
 - PostgreSQL: Advanced relational patterns, optimization, and scaling
 - MongoDB: Document modeling, aggregation, and NoSQL performance tuning
 - Redis: In-memory caching, real-time analytics, and distributed systems
+- Oracle: Enterprise patterns, PL/SQL, partitioning, and hierarchical queries
 - Multi-Database: Hybrid architectures and data integration patterns
 - Performance: Query optimization, indexing strategies, and scaling
 - Operations: Connection management, migrations, and monitoring
@@ -105,6 +112,14 @@ Redis Module:
 - Pub/sub messaging and streams
 - Advanced data structures including HyperLogLog and Geo
 
+Oracle Module:
+
+- Hierarchical and recursive query patterns (CONNECT BY)
+- PL/SQL procedures, packages, and batch operations
+- Partitioning strategies (range, list, hash, composite)
+- Enterprise features and statement caching
+- LOB handling and large data processing
+
 ---
 
 ## Advanced Patterns
@@ -113,7 +128,7 @@ Redis Module:
 
 Polyglot Persistence Pattern:
 
-Create a DataRouter class that initializes connections to PostgreSQL, MongoDB, and Redis. Implement get_user_profile method that retrieves structured user data from PostgreSQL, flexible profile data from MongoDB, and real-time status from Redis, then merges all data sources. Implement update_user_data method that routes structured data updates to PostgreSQL, profile data updates to MongoDB, and real-time data updates to Redis, followed by cache invalidation.
+Create a DataRouter class that initializes connections to PostgreSQL, MongoDB, Redis, and Oracle. Implement get_user_profile method that retrieves structured user data from PostgreSQL or Oracle, flexible profile data from MongoDB, and real-time status from Redis, then merges all data sources. Implement update_user_data method that routes structured data updates to PostgreSQL/Oracle, profile data updates to MongoDB, and real-time data updates to Redis, followed by cache invalidation.
 
 Data Synchronization:
 
@@ -146,8 +161,9 @@ Technology Integration:
 
 - ORMs and ODMs including SQLAlchemy, Mongoose, and TypeORM
 - Connection pooling with PgBouncer and connection pools
-- Migration tools including Alembic and Flyway
-- Monitoring with pg_stat_statements and MongoDB Atlas
+- Migration tools including Alembic, Flyway, and Data Pump
+- Monitoring with pg_stat_statements, MongoDB Atlas, and Oracle AWR
+- python-oracledb for Oracle connectivity and PL/SQL execution
 - Cache invalidation and synchronization
 
 ---
@@ -173,6 +189,13 @@ In-Memory Database:
 - Redis Stack for advanced features
 - Clustering and high availability
 - Advanced data structures
+
+Enterprise Database:
+
+- Oracle 19c+ / 21c+ for enterprise workloads
+- python-oracledb (successor to cx_Oracle)
+- PL/SQL procedures and packages
+- Partitioning and advanced analytics
 
 Supporting Tools:
 

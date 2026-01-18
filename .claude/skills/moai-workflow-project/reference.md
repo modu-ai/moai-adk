@@ -243,7 +243,7 @@ print(f"Warnings: {status.warnings}")
 
 - MoAI-ADK Documentation: https://github.com/moai-adk/docs
 - Claude Code Skills Guide: https://docs.anthropic.com/claude-code/skills
-- SPEC-First TDD Methodology: See `moai-foundation-core/modules/spec-first-tdd.md`
+- SPEC-First DDD Methodology: See `moai-foundation-core/modules/spec-first-ddd.md`
 
 ### Related Skills
 

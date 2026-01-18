@@ -58,7 +58,7 @@ Type C 피드백 명령: 개선 사항 및 버그 보고를 위한 사용자 피
 명시적 에이전트 호출을 사용하여 실행합니다:
 
 - "Use the expert-backend subagent to develop the API"
-- "Use the manager-tdd subagent to implement with TDD approach"
+- "Use the manager-ddd subagent to implement with DDD approach"
 - "Use the Explore subagent to analyze the codebase structure"
 
 실행 패턴:

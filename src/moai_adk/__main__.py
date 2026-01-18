@@ -63,7 +63,7 @@ def show_logo() -> None:
 def cli(ctx: click.Context) -> None:
     """MoAI Agentic Development Kit
 
-    SPEC-First TDD Framework with Alfred SuperAgent
+    SPEC-First DDD Framework with Alfred SuperAgent
     """
     # Display the logo when no subcommand is invoked
     if ctx.invoked_subcommand is None:

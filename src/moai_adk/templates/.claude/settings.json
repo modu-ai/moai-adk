@@ -2,14 +2,22 @@
   "hooks": {
     "SessionStart": [
       {
-        "type": "command",
-        "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/session_start__show_project_info.py"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/session_start__show_project_info.py"
+          }
+        ]
       }
     ],
     "SessionEnd": [
       {
-        "type": "command",
-        "command": "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/session_end__auto_cleanup.py &"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/session_end__auto_cleanup.py &"
+          }
+        ]
       }
     ],
     "PostToolUse": [

@@ -42,7 +42,7 @@ Autonomously execute the full MoAI workflow:
 
 1. **Parallel Exploration** (Explore + Research simultaneously)
 2. **SPEC Generation** (after user approval)
-3. **TDD Implementation** (auto iterative fixing)
+3. **DDD Implementation** (auto iterative fixing)
 4. **Documentation Sync**
 5. **Completion Marker Detection** (`<moai>DONE</moai>`)
 
@@ -107,7 +107,7 @@ PHASE 1: SPEC Generation
   ↓
 User Approval
   ↓
-PHASE 2: TDD Implementation (autonomous loop)
+PHASE 2: DDD Implementation (autonomous loop)
   │
   └── WHILE (issues_exist AND iteration < max):
        ├── Diagnostics (LSP + Tests + Coverage)
@@ -315,7 +315,7 @@ Single domain tasks are delegated directly to expert agents:
 8. Execute Phase 1 - SPEC Generation:
    - Use manager-spec subagent to create EARS-format SPEC document
 
-9. Execute Phase 2 - TDD Implementation Loop:
+9. Execute Phase 2 - DDD Implementation Loop:
 
    IF --loop flag OR ralph.yaml loop.enabled is true:
 

@@ -1,14 +1,14 @@
-# TDD Implementation Patterns
+# DDD Implementation Patterns
 
-Purpose: Advanced RED-GREEN-REFACTOR workflows and test implementation patterns for SPEC-First TDD.
+Purpose: Advanced ANALYZE-PRESERVE-IMPROVE workflows and implementation patterns for SPEC-First DDD.
 
-Version: 1.0.0
-Last Updated: 2026-01-06
-Parent: [spec-first-tdd.md](spec-first-tdd.md)
+Version: 2.0.0 (DDD Migration)
+Last Updated: 2026-01-17
+Parent: [spec-first-ddd.md](spec-first-ddd.md)
 
 ---
 
-## Complete TDD Example
+## Complete DDD Example
 
 ### User Registration Implementation
 
@@ -22,25 +22,25 @@ class TestUserRegistration:
     """Test suite for SPEC-001-REQ-01: User Registration."""
 
     def test_register_user_success(self):
-        """Test successful registration with valid data."""
+        """Characterization test: successful registration with valid data."""
         result = register_user("user@example.com", "SecureP@ssw0rd")
         assert result.success is True
         assert result.user.email == "user@example.com"
         assert result.confirmation_sent is True
 
     def test_register_user_invalid_email(self):
-        """Test registration fails with invalid email format."""
+        """Characterization test: registration fails with invalid email format."""
         with pytest.raises(ValidationError, match="Invalid email format"):
             register_user("invalid-email", "SecureP@ssw0rd")
 
     def test_register_user_duplicate_email(self):
-        """Test registration fails with duplicate email."""
+        """Characterization test: registration fails with duplicate email."""
         register_user("user@example.com", "SecureP@ssw0rd")
         with pytest.raises(ValidationError, match="Email already registered"):
             register_user("user@example.com", "AnotherP@ssw0rd")
 
     def test_register_user_weak_password(self):
-        """Test registration fails with weak password."""
+        """Characterization test: registration fails with weak password."""
         weak_passwords = [
             "short",            # Too short
             "alllowercase1",    # No uppercase
@@ -54,7 +54,7 @@ class TestUserRegistration:
                 register_user("user@example.com", weak_pwd)
 
     def test_register_user_password_hashing(self):
-        """Test password is properly hashed (not stored plain text)."""
+        """Characterization test: password is properly hashed (not stored plain text)."""
         result = register_user("user@example.com", "SecureP@ssw0rd")
         assert result.user.password_hash != "SecureP@ssw0rd"
         assert result.user.password_hash.startswith("$2b$")
@@ -62,7 +62,7 @@ class TestUserRegistration:
 
 ---
 
-## Refactored Implementation
+## Improved Implementation
 
 ```python
 # src/auth/registration.py
@@ -86,6 +86,7 @@ def register_user(email: str, password: str) -> RegistrationResult:
     """Register new user with email and password.
 
     Implements SPEC-001-REQ-01: User Registration (Ubiquitous)
+    Behavior preserved from existing implementation.
 
     Args:
         email: User email adddess (must be valid format)
@@ -144,9 +145,18 @@ def _is_password_strong(password: str) -> bool:
 ## MFA Implementation Example
 
 ```python
-# RED PHASE: Complex test scenario
+# ANALYZE PHASE: Understand existing MFA behavior
+def analyze_mfa_implementation():
+    """Document current MFA verification behavior for SPEC-002-REQ-03."""
+    # - Current code uses TOTP algorithm
+    # - 30-second code window
+    # - No rate limiting exists
+    # - No expiry handling
+    pass
+
+# PRESERVE PHASE: Create characterization tests
 def test_mfa_verification_with_valid_code():
-    """SPEC-002-REQ-03: MFA verification happy path."""
+    """SPEC-002-REQ-03: MFA verification happy path (characterization test)."""
     user = create_user_with_mfa_enabled()
     login_attempt = initiate_login(user.email, user.password)
     totp_code = get_pending_totp_code(user.id)
@@ -158,7 +168,7 @@ def test_mfa_verification_with_valid_code():
     assert result.mfa_verified is True
 
 def test_mfa_verification_with_expired_code():
-    """SPEC-002-REQ-03: MFA code expiry."""
+    """SPEC-002-REQ-03: MFA code expiry (characterization test)."""
     user = create_user_with_mfa_enabled()
     totp_code = get_pending_totp_code(user.id)
 
@@ -170,8 +180,9 @@ def test_mfa_verification_with_expired_code():
     assert result.success is False
     assert result.error == "Code expired"
 
+# IMPROVE PHASE: Add rate limiting with behavior preservation
 def test_mfa_rate_limiting():
-    """SPEC-002-REQ-03: Rate limiting after failed attempts."""
+    """SPEC-002-REQ-03: Rate limiting after failed attempts (new requirement)."""
     user = create_user_with_mfa_enabled()
 
     for _ in range(3):
@@ -191,7 +202,7 @@ def test_mfa_rate_limiting():
 # Initial SPEC (v1.0.0)
 # SPEC-003-REQ-01: File upload with size limit (10MB)
 
-# Implementation reveals edge case
+# ANALYZE: Implementation reveals edge case
 # → User uploads 9.9MB file successfully
 # → But total storage exceeds user quota
 
@@ -201,9 +212,16 @@ def test_mfa_rate_limiting():
 # - User quota limit: 100MB total
 # - Validation: Check both limits before accepting upload
 
-# Updated test
+# PRESERVE: Characterization test for existing behavior
+def test_file_upload_within_size_limit():
+    """SPEC-003-REQ-01: Existing behavior - size limit only."""
+    user = create_user(quota_limit_mb=100)
+    result = upload_file(user, file_size_mb=9)
+    assert result.success is True  # Documents existing behavior
+
+# IMPROVE: Add quota validation while preserving existing checks
 def test_file_upload_exceeds_quota():
-    """SPEC-003-REQ-01 v1.1.0: Quota validation."""
+    """SPEC-003-REQ-01 v1.1.0: Quota validation (improvement)."""
     user = create_user(quota_limit_mb=100)
     upload_files(user, total_size_mb=95)
 
@@ -218,8 +236,8 @@ def test_file_upload_exceeds_quota():
 ## CI/CD Pipeline Integration
 
 ```yaml
-# .github/workflows/spec-tdd-pipeline.yml
-name: SPEC-First TDD Pipeline
+# .github/workflows/spec-ddd-pipeline.yml
+name: SPEC-First DDD Pipeline
 
 on:
   push:
@@ -239,20 +257,20 @@ jobs:
       - name: Check requirement traceability
         run: python .moai/scripts/check_traceability.py
 
-  tdd-implementation:
-    name: "Phase 2: TDD Implementation"
+  ddd-implementation:
+    name: "Phase 2: DDD Implementation"
     needs: spec-validation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run RED phase tests
-        run: pytest tests/ -v --tb=short || true
+      - name: Run characterization tests
+        run: pytest tests/ -v --tb=short
       - name: Verify tests exist for all requirements
         run: python .moai/scripts/verify_test_coverage_mapping.py
 
   quality-gates:
     name: "Phase 3: Quality Gates"
-    needs: tdd-implementation
+    needs: ddd-implementation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -266,10 +284,10 @@ jobs:
 
 ## Works Well With
 
-- [spec-first-tdd.md](spec-first-tdd.md) - Main workflow overview
+- [spec-first-ddd.md](spec-first-ddd.md) - Main workflow overview
 - [spec-ears-format.md](spec-ears-format.md) - EARS patterns
 
 ---
 
-Version: 1.0.0
-Last Updated: 2026-01-06
+Version: 2.0.0
+Last Updated: 2026-01-17

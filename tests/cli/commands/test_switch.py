@@ -688,13 +688,13 @@ class TestInternalSwitchToClaude:
             # Use a closure to track call count
             call_count = [0]
 
-            def mock_read_text_func(self):
+            def mock_read_text_func(self, encoding=None):
                 # First call from _has_glm_env succeeds
                 # Second call from _switch_to_claude fails
                 call_count[0] += 1
 
                 if call_count[0] == 1:
-                    return original_read_text(self)
+                    return original_read_text(self, encoding=encoding)
                 else:
                     raise json.JSONDecodeError("Invalid JSON", "", 0)
 

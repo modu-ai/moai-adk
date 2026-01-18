@@ -17,7 +17,7 @@ Integration Points:
 
 Core Integration Pattern:
 
-The basic integration workflow follows three phases. During the Plan Phase, the /moai:1-plan command auto-creates a worktree for the SPEC. During the Development Phase, use the moai-worktree go command to navigate to the isolated environment and run /moai:2-run for TDD implementation. During the Sync Phase, use moai-worktree sync to update the worktree and /moai:3-sync for documentation synchronization.
+The basic integration workflow follows three phases. During the Plan Phase, the /moai:1-plan command auto-creates a worktree for the SPEC. During the Development Phase, use the moai-worktree go command to navigate to the isolated environment and run /moai:2-run for DDD implementation. During the Sync Phase, use moai-worktree sync to update the worktree and /moai:3-sync for documentation synchronization.
 
 ---
 
@@ -52,7 +52,7 @@ Plan Phase (/moai:1-plan):
 - Worktree-specific configuration files created
 
 Development Phase (/moai:2-run):
-- TDD execution in isolated worktree context
+- DDD execution in isolated worktree context
 - Independent dependency management
 - Automatic registry updates for access tracking
 - Development server isolation per worktree
@@ -129,7 +129,7 @@ For team collaboration with shared registries, configure team registry settings 
 
 MoAI-ADK Integration (moai-adk-integration.md):
 - Complete /moai:1-plan integration patterns
-- TDD-aware /moai:2-run integration
+- DDD-aware /moai:2-run integration
 - Sync Phase automation with /moai:3-sync
 - Post-PR cleanup workflows
 - Team collaboration patterns

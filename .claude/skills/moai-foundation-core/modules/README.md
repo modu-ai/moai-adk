@@ -29,7 +29,7 @@ Use Cases:
 
 ---
 
-### 2. spec-first-tdd.md (866 lines)
+### 2. spec-first-ddd.md (866 lines)
 Specification-Driven Development - EARS format requirements with ANALYZE-PRESERVE-IMPROVE DDD cycles.
 
 Quick Access:
