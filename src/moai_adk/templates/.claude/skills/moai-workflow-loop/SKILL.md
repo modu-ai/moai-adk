@@ -144,7 +144,7 @@ Skills:
 
 - moai-foundation-quality: TRUST 5 validation
 - moai-tool-ast-grep: Security scanning patterns
-- moai-workflow-testing: TDD integration
+- moai-workflow-testing: DDD integration
 - moai-lang-python: Python-specific patterns
 - moai-lang-typescript: TypeScript patterns
 

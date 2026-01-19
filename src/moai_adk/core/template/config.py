@@ -21,7 +21,7 @@ Configuration sources (in priority order):
        - project.yaml: Project metadata
        - system.yaml: MoAI system settings
        - git-strategy.yaml: Git workflow settings
-       - quality.yaml: Quality and TDD settings
+       - quality.yaml: Quality and DDD settings
     2. Monolithic config.yaml: .moai/config/config.yaml (legacy)
     3. Monolithic config.json: .moai/config/config.json (legacy fallback)
 

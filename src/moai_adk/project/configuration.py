@@ -133,7 +133,7 @@ class ConfigurationManager:
             "git_team_auto_pr": ("git_strategy", "team", "auto_pr"),
             "git_team_draft_pr": ("git_strategy", "team", "draft_pr"),
             "test_coverage_target": ("constitution", "test_coverage_target"),
-            "enforce_tdd": ("constitution", "enforce_tdd"),
+            "enforce_quality": ("constitution", "enforce_quality"),
             "documentation_mode": ("project", "documentation_mode"),
             "documentation_depth": ("project", "documentation_depth"),
         }
@@ -171,7 +171,7 @@ class ConfigurationManager:
             "project.name",
             "git_strategy.mode",
             "constitution.test_coverage_target",
-            "constitution.enforce_tdd",
+            "constitution.enforce_quality",
             "project.documentation_mode",
         ]
         # Note: github.profile_name is optional (can be set later)
@@ -230,7 +230,7 @@ class SmartDefaultsEngine:
             "git_strategy.team.auto_pr": False,
             "git_strategy.team.draft_pr": False,
             "constitution.test_coverage_target": 85,
-            "constitution.enforce_tdd": True,
+            "constitution.enforce_quality": True,
             "language.agent_prompt_language": "en",
             "project.description": "",
             "language.conversation_language_name": "",  # Will be detected
@@ -513,7 +513,7 @@ class ConfigurationCoverageValidator:
             "project.description",
             "git_strategy.mode",
             "constitution.test_coverage_target",
-            "constitution.enforce_tdd",
+            "constitution.enforce_quality",
             "project.documentation_mode",
         ]
 
@@ -537,7 +537,7 @@ class ConfigurationCoverageValidator:
             "git_strategy.team.auto_pr",
             "git_strategy.team.draft_pr",
             "constitution.test_coverage_target",
-            "constitution.enforce_tdd",
+            "constitution.enforce_quality",
             "language.agent_prompt_language",
             "project.description",
             "git_strategy.mode",

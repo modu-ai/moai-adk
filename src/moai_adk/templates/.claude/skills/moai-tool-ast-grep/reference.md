@@ -252,7 +252,7 @@ sg scan --config sgconfig.yml --json > results.json
 
 ### Related Skills
 
-- **moai-workflow-testing** - TDD integration, test pattern detection
+- **moai-workflow-testing** - DDD integration, test pattern detection
 - **moai-foundation-quality** - TRUST 5 compliance, code quality gates
 - **moai-domain-backend** - API pattern detection, security scanning
 - **moai-domain-frontend** - React/Vue pattern optimization

@@ -674,7 +674,7 @@ Test automation architecture with page objects, fixtures, mocks, and helper util
 </automation>
 
 <collaboration>
-Cross-team coordination details for TDD, backend, frontend, DevOps teams with specific test deliverables
+Cross-team coordination details for DDD, backend, frontend, DevOps teams with specific test deliverables
 </collaboration>
 
 WHY: Semantic XML sections provide structure, enable parsing for automation, and ensure consistent delivery format
