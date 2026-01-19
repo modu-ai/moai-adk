@@ -198,7 +198,7 @@ from moai_workflow_testing import TDDManager, TestSpecification, TestType
 async def implement_feature_tdd(feature_spec: dict, context7_client):
     """Implement feature using TDD with Context7 patterns."""
 
-    tdd = TDDManager("/project/src", context7_client=context7_client)
+    ddd = DDDManager("/project/src", context7_client=context7_client)
 
     # Create test specification from feature
     test_spec = TestSpecification(
@@ -210,19 +210,19 @@ async def implement_feature_tdd(feature_spec: dict, context7_client):
     )
 
     # RED: Generate failing test
-    failing_test = await tdd.generate_test(test_spec)
-    assert await tdd.run_tests() == False  # Should fail
+    failing_test = await ddd.generate_test(test_spec)
+    assert await ddd.run_tests() == False  # Should fail
 
     # GREEN: Implement minimum code
-    implementation = await tdd.generate_implementation(test_spec)
-    assert await tdd.run_tests() == True  # Should pass
+    implementation = await ddd.generate_implementation(test_spec)
+    assert await ddd.run_tests() == True  # Should pass
 
     # REFACTOR: Optimize with Context7 patterns
-    refactored = await tdd.refactor_with_patterns(implementation)
-    assert await tdd.run_tests() == True  # Still passes
+    refactored = await ddd.refactor_with_patterns(implementation)
+    assert await ddd.run_tests() == True  # Still passes
 
     # Coverage check
-    coverage = await tdd.calculate_coverage()
+    coverage = await ddd.calculate_coverage()
     assert coverage >= 0.85
 
     return {
@@ -316,7 +316,7 @@ Issue: Context7 connection timeout:
 
 Issue: Test coverage below threshold:
 - Cause: Insufficient test cases or uncovered code paths
-- Solution: Use `tdd.identify_uncovered_paths()` to find gaps
+- Solution: Use `ddd.identify_uncovered_paths()` to find gaps
 - Prevention: Run coverage check before commits
 
 Issue: Performance profiler high overhead:
@@ -391,7 +391,7 @@ print(f"Reviewer: {report.reviewer_status}")
 - AI Debugging: `modules/ai-debugging.md`
 - Smart Refactoring: `modules/smart-refactoring.md`
 - Performance Optimization: `modules/performance-optimization.md`
-- TDD with Context7: `modules/tdd-context7.md`
+- DDD with Context7: `modules/ddd-context7.md`
 - Automated Code Review: `modules/automated-code-review.md`
 
 ### Best Practices

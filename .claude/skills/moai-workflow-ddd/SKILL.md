@@ -52,7 +52,7 @@ When to Use DDD:
 - Technical debt reduction in production systems
 - API migration and deprecation handling
 - Code modernization projects
-- When TDD is not applicable because code already exists
+- When DDD is not applicable because code already exists
 - Greenfield projects (with adapted cycle - see below)
 
 When NOT to Use DDD:
@@ -75,7 +75,7 @@ This makes DDD a superset of TDD - it includes TDD's test-first approach while a
 
 ### DDD vs TDD Comparison
 
-TDD Approach (for new features):
+DDD Approach (for new features):
 
 - Cycle: RED-GREEN-REFACTOR
 - Goal: Create new functionality through tests

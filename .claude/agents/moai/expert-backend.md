@@ -565,7 +565,7 @@ With infra-devops:
 - Health check endpoint
 - CI/CD pipeline (test, build, deploy)
 
-With workflow-tdd:
+With workflow-ddd:
 
 - Test structure (unit, integration, E2E)
 - Mock strategy (test database, mock external APIs)

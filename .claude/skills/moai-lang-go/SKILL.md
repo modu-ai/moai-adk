@@ -177,7 +177,7 @@ Spawn goroutine calling app.Listen. Create quit channel for os.Signal with buffe
 - moai-lang-rust for systems programming companion
 - moai-quality-security for security hardening
 - moai-essentials-debug for performance profiling
-- moai-workflow-tdd for test-driven development
+- moai-workflow-ddd for domain-driven development
 
 ---
 

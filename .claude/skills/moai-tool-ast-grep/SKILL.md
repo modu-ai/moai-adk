@@ -174,7 +174,7 @@ For JSON output suitable for CI/CD, execute sg scan with config and json flag, r
 
 ## Works Well With
 
-- moai-workflow-testing: TDD integration and test pattern detection
+- moai-workflow-testing: DDD integration and test pattern detection
 - moai-foundation-quality: TRUST 5 compliance and code quality gates
 - moai-domain-backend: API pattern detection and security scanning
 - moai-domain-frontend: React/Vue pattern optimization

@@ -490,11 +490,11 @@ Coordinate with infra-devops:
 - Environment variables (API base URL, features)
 - Build strategy (SSR, SSG, SPA)
 
-[HARD] Establish testing standards with workflow-tdd agent
+[HARD] Establish testing standards with workflow-ddd agent
 WHY: Shared testing standards ensure consistent quality and team alignment
 IMPACT: Inconsistent testing approaches reduce coverage and increase maintenance
 
-Coordinate with workflow-tdd:
+Coordinate with workflow-ddd:
 
 - Component test structure (Given-When-Then)
 - Mock strategy (MSW for API)
@@ -552,10 +552,10 @@ Next steps:
 3. Both verify deployment in staging
 ```
 
-### With workflow-tdd (Component Testing)
+### With workflow-ddd (Component Testing)
 
 ```markdown
-To: workflow-tdd
+To: workflow-ddd
 From: code-frontend
 Re: Test Strategy for SPEC-UI-{ID}
 

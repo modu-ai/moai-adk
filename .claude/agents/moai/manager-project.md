@@ -856,7 +856,7 @@ Build & Deployment Workflow:
 
 4. Assess TRUST 5 principle adoption via AskUserQuestion (multi-select) [HARD]:
 
-- Options: Test-First (TDD/BDD), Readable (code style), Unified (design patterns), Secured (security scanning), Trackable (SPEC linking)
+- Options: Test-First (DDD), Readable (code style), Unified (design patterns), Secured (security scanning), Trackable (SPEC linking)
 - Document TRUST 5 adoption status for each principle
 - WHY: Establishes quality and reliability standards aligned with MoAI framework
 - IMPACT: Enables systematic quality improvement and team alignment

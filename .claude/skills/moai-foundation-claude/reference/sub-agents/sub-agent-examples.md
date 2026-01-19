@@ -871,7 +871,7 @@ class DebuggingKnowledgeBase:
 
 ```yaml
 ---
-name: workflow-tdd
+name: workflow-ddd
 description: Execute RED-GREEN-REFACTOR TDD cycle for implementing features with comprehensive test coverage. Called from /moai:2-run SPEC implementation and task delegation workflows.
 tools: Read, Write, Edit, Bash, Grep, Glob, MultiEdit, TodoWrite
 model: sonnet

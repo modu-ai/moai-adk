@@ -162,7 +162,7 @@ Purpose: Skill discovery and categorization
 Examples:
 ```yaml
 tags: [documentation, claude-code, formatting]
-tags: [python, testing, tdd]
+tags: [python, testing, ddd]
 tags: [security, owasp, validation]
 ```
 

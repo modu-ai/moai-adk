@@ -300,7 +300,7 @@ name: moai-python-testing-expert
 description: Comprehensive Python testing expertise covering pytest, unittest, mocking, and test-driven development patterns. Use when writing tests, setting up test infrastructure, or improving test coverage and quality.
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 version: 1.1.0
-tags: [python, testing, pytest, tdd, quality]
+tags: [python, testing, pytest, ddd, quality]
 updated: 2025-11-25
 status: active
 ---

@@ -1,19 +1,19 @@
 # Development Workflow Testing Examples
 
-실용적인 예시를 통해 TDD, 디버깅, 성능 최적화, 코드 리뷰 워크플로우를 학습합니다.
+실용적인 예시를 통해 DDD, 디버깅, 성능 최적화, 코드 리뷰 워크플로우를 학습합니다.
 
 ---
 
-## Example 1: TDD 사이클 실행 (RED-GREEN-REFACTOR)
+## Example 1: DDD 사이클 실행 (RED-GREEN-REFACTOR)
 
-**Scenario**: 사용자 인증 기능을 TDD 방식으로 개발
+**Scenario**: 사용자 인증 기능을 DDD 방식으로 개발
 
 **Input**:
 ```python
-from moai_workflow_testing import TDDManager, TestSpecification, TestType
+from moai_workflow_testing import DDDManager, TestSpecification, TestType
 
-# TDD 매니저 초기화
-tdd_manager = TDDManager(
+# DDD 매니저 초기화
+ddd_manager = DDDManager(
     project_path="/project/src",
     context7_client=context7
 )
@@ -35,8 +35,8 @@ test_spec = TestSpecification(
     ]
 )
 
-# TDD 사이클 실행
-cycle_results = await tdd_manager.run_full_tdd_cycle(
+# DDD 사이클 실행
+cycle_results = await ddd_manager.run_full_ddd_cycle(
     specification=test_spec,
     target_function="authenticate_user"
 )
@@ -152,7 +152,7 @@ class TestAuthentication:
             )
 ```
 
-**Explanation**: TDD 매니저는 Context7에서 최신 패턴을 가져와 RED(실패하는 테스트 생성) → GREEN(테스트 통과하는 구현) → REFACTOR(코드 개선) 사이클을 자동으로 수행합니다. 커버리지 85% 이상을 보장합니다.
+**Explanation**: DDD 매니저는 Context7에서 최신 패턴을 가져와 RED(실패하는 테스트 생성) → GREEN(테스트 통과하는 구현) → REFACTOR(코드 개선) 사이클을 자동으로 수행합니다. 커버리지 85% 이상을 보장합니다.
 
 ---
 
@@ -523,10 +523,10 @@ def refactor_auth_module():
     # → 동작 변경 감지 불가
 ```
 
-**Solution**: TDD 사이클 내에서 리팩토링
+**Solution**: DDD 사이클 내에서 리팩토링
 
 ```python
-# 올바른 예시 - TDD 기반
+# 올바른 예시 - DDD 기반
 async def refactor_auth_module():
     # 1. 기존 테스트 확인
     existing_tests = await run_tests("tests/test_auth.py")
@@ -647,7 +647,7 @@ moai-workflow execute --project /project/src --mode full
 moai-workflow debug --file app.py --error "AttributeError"
 moai-workflow refactor --directory src/ --max-risk medium
 moai-workflow profile --target function_name --types cpu,memory
-moai-workflow test --spec user_auth.spec --mode tdd
+moai-workflow test --spec user_auth.spec --mode ddd
 moai-workflow review --project /project/src --trust-score-min 0.8
 
 # CI 모드
