@@ -12,12 +12,13 @@ Target: 100% line coverage
 """
 
 import pytest
+
 from moai_adk.foundation.ears import (
+    EARSAnalyzer,
+    EARSParser,
     EARSPatternType,
     EARSResult,
-    EARSParser,
     EARSValidator,
-    EARSAnalyzer,
 )
 
 

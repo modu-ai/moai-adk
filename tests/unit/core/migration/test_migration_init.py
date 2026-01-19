@@ -3,7 +3,6 @@
 Tests cover module exports and imports with 100% coverage.
 """
 
-import pytest
 
 
 class TestModuleImports:
@@ -44,8 +43,8 @@ class TestModuleImports:
 
     def test_all_exports_match_imports(self):
         """Test __all__ exports match actual imports."""
-        from moai_adk.core.migration import __all__
         import moai_adk.core.migration as migration_module
+        from moai_adk.core.migration import __all__
 
         # Verify each export in __all__ can be imported
         for export in __all__:
@@ -71,8 +70,9 @@ class TestModuleStructure:
 
     def test_module_exports_are_classes(self):
         """Test all exports are class types."""
-        from moai_adk.core.migration import __all__
         import inspect
+
+        from moai_adk.core.migration import __all__
 
         for export in __all__:
             from moai_adk.core.migration import (

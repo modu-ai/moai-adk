@@ -3,9 +3,10 @@
 GREEN PHASE: Assign category tiers and create 5 new essential skills
 """
 
-import yaml
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
+import yaml
 
 PROJECT_ROOT = Path("/Users/goos/MoAI/MoAI-ADK")
 SKILLS_DIR = PROJECT_ROOT / ".claude" / "skills"
@@ -417,7 +418,7 @@ def create_new_skills():
         except Exception as e:
             print(f"✗ Error creating {skill['name']}: {e}")
 
-    print(f"\nNew skills creation complete!")
+    print("\nNew skills creation complete!")
 
 
 def main():

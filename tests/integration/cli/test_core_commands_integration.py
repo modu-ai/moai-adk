@@ -15,7 +15,6 @@ Key Requirements:
 
 import json
 import subprocess
-import tempfile
 from pathlib import Path
 from typing import Generator
 from unittest.mock import patch

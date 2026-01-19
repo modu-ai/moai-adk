@@ -4,8 +4,7 @@ Tests for lines not covered by existing tests.
 """
 
 import json
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from moai_adk.core.template.merger import TemplateMerger
 

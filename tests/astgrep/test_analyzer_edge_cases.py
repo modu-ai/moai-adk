@@ -453,7 +453,6 @@ class TestScanFileEdgeCases:
             mock_exists.return_value = True
 
             with patch("subprocess.run") as mock_run:
-                import subprocess
 
                 mock_run.side_effect = PermissionError("Permission denied")
 

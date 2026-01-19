@@ -15,7 +15,6 @@ Key Requirements:
 - Test both success and failure paths
 """
 
-import json
 import subprocess
 import tempfile
 from pathlib import Path
@@ -23,7 +22,6 @@ from typing import Generator
 
 import pytest
 import yaml
-from click.testing import CliRunner
 
 from moai_adk.__main__ import cli
 

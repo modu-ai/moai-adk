@@ -4,23 +4,22 @@ Tests cover all 7 classes.
 """
 
 import asyncio
+from datetime import UTC, datetime
+
 import pytest
-from datetime import datetime, UTC
-from typing import Any, Dict
 
 from moai_adk.foundation.backend import (
     APIDesignValidator,
-    MicroserviceArchitect,
     AsyncPatternAdvisor,
     AuthenticationManager,
-    ErrorHandlingStrategy,
-    PerformanceOptimizer,
     BackendMetricsCollector,
-    HTTPMethod,
+    ErrorHandlingStrategy,
     ErrorLog,
+    HTTPMethod,
+    MicroserviceArchitect,
+    PerformanceOptimizer,
     RequestMetric,
 )
-
 
 # ============================================================================
 # Test APIDesignValidator
@@ -472,10 +471,10 @@ class TestAuthenticationManager:
         auth = AuthenticationManager()
 
         # Create a token with negative expiration (already expired)
-        import json
         import base64
-        import hmac
         import hashlib
+        import hmac
+        import json
 
         header = {"alg": "HS256", "typ": "JWT"}
         payload = {

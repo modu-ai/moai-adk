@@ -7,23 +7,18 @@ These tests cover fallback behavior, error handling, and edge cases.
 
 from __future__ import annotations
 
-import json
-import os
-from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from moai_adk.statusline.main import (
     build_statusline_data,
     extract_context_window,
     format_token_count,
+    safe_check_update,
     safe_collect_alfred_task,
     safe_collect_duration,
     safe_collect_git_info,
     safe_collect_memory,
     safe_collect_version,
-    safe_check_update,
 )
 
 

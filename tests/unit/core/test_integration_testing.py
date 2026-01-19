@@ -6,7 +6,6 @@ Test cases for integration testing functionality.
 
 import tempfile
 from pathlib import Path
-from typing import cast
 
 import pytest
 

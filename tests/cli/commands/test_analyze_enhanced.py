@@ -777,9 +777,9 @@ class TestPlatformSpecificBehavior:
     @patch("moai_adk.cli.commands.analyze.SessionAnalyzer")
     def test_analyze_uses_windows_console_on_win32_platform(self, mock_analyzer_class):
         """Should use Windows-specific console configuration when platform is win32 (covers line 21)"""
+        import importlib
         import sys
         from unittest.mock import patch
-        import importlib
 
         # Save original platform
         original_platform = sys.platform

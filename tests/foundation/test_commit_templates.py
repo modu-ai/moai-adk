@@ -19,14 +19,12 @@ Target: 100% coverage
 Test Framework: pytest
 """
 
-import pytest
 
 from src.moai_adk.foundation.git.commit_templates import (
     CommitCategory,
     CommitTemplate,
     CommitTemplates,
 )
-
 
 # ============================================================================
 # Enum Tests

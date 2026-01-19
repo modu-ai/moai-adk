@@ -5,9 +5,7 @@ Tests for lines not covered by existing tests.
 
 import stat
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from moai_adk.core.project.initializer import ProjectInitializer
 

@@ -6,9 +6,7 @@ Tests for uncovered lines in renderer.py:
 - Fallback to minimal rendering (line 210)
 """
 
-from unittest.mock import MagicMock, patch
 
-import pytest
 
 from moai_adk.statusline.config import StatuslineConfig
 from moai_adk.statusline.renderer import StatuslineData, StatuslineRenderer

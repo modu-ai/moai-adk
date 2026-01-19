@@ -15,35 +15,29 @@ Test Coverage Strategy:
 """
 
 import json
-import subprocess
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch, call
-from datetime import datetime
+from unittest.mock import Mock, patch
 
 import pytest
 import yaml
 from click.testing import CliRunner
 
 from moai_adk.cli.commands.update import (
+    _build_template_context,
+    _cleanup_cli_redesign_obsolete_files,
+    _cleanup_legacy_presets,
+    _edit_configuration,
+    _handle_custom_element_restoration,
+    _load_current_settings,
+    _migrate_config_json_to_yaml,
     # Import all functions to test
     _migrate_legacy_logs,
-    _build_template_context,
-    _migrate_config_json_to_yaml,
     _migrate_preset_files_to_yaml,
-    _load_current_settings,
-    _show_current_config,
-    _edit_configuration,
     _preserve_project_metadata,
-    _cleanup_legacy_presets,
-    _cleanup_cli_redesign_obsolete_files,
-    _handle_custom_element_restoration,
     _prompt_custom_files_restore,
     _prompt_skill_restore,
-    update,
-    _get_template_command_names,
-    _get_template_agent_names,
-    _get_template_hook_names,
     _restore_custom_files,
+    _show_current_config,
+    update,
 )
 
 
@@ -1056,7 +1050,6 @@ class TestUpdateCommandUncoveredPaths:
         When: update() is called
         Then: Shows update available message
         """
-        import os
         runner = CliRunner()
 
         with runner.isolated_filesystem():
@@ -1081,7 +1074,6 @@ class TestUpdateCommandUncoveredPaths:
         When: update() with --check is called
         Then: Shows dev version message
         """
-        import os
         runner = CliRunner()
 
         with runner.isolated_filesystem():
@@ -1105,7 +1097,6 @@ class TestUpdateCommandUncoveredPaths:
         When: update() with --check is called
         Then: Shows up to date message
         """
-        import os
         runner = CliRunner()
 
         with runner.isolated_filesystem():
@@ -1129,7 +1120,6 @@ class TestUpdateCommandUncoveredPaths:
         When: update() checks versions
         Then: Falls back to simple console output
         """
-        import os
         runner = CliRunner()
 
         with runner.isolated_filesystem():
@@ -1154,7 +1144,6 @@ class TestUpdateCommandUncoveredPaths:
         When: update() is called
         Then: Exits without upgrading
         """
-        import os
         runner = CliRunner()
 
         with runner.isolated_filesystem():
@@ -1183,7 +1172,6 @@ class TestUpdateCommandUncoveredPaths:
         When: update() is called
         Then: Shows error message and aborts
         """
-        import os
         runner = CliRunner()
 
         with runner.isolated_filesystem():
@@ -1206,7 +1194,6 @@ class TestUpdateCommandUncoveredPaths:
         When: update() is called
         Then: Calls _edit_configuration and returns
         """
-        import os
         runner = CliRunner()
 
         with runner.isolated_filesystem():

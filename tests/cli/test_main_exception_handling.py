@@ -142,8 +142,9 @@ class TestCliGroupBehavior:
 
     def test_cli_invokes_subcommand_via_context(self) -> None:
         """Test CLI properly invokes subcommands through context."""
-        from moai_adk.__main__ import cli, init
         from click.testing import CliRunner
+
+        from moai_adk.__main__ import cli
 
         runner = CliRunner()
 
@@ -163,8 +164,9 @@ class TestCliGroupBehavior:
 
     def test_cli_version_option_configured(self) -> None:
         """Test CLI has version option configured."""
-        from moai_adk.__main__ import cli
         from click.testing import CliRunner
+
+        from moai_adk.__main__ import cli
 
         runner = CliRunner()
         result = runner.invoke(cli, ["--version"])
@@ -212,8 +214,9 @@ class TestLazyLoadingImports:
 
     def test_commands_imported_inside_functions(self) -> None:
         """Test that heavy libraries are imported inside functions, not at module level."""
-        import moai_adk.__main__ as main_module
         import inspect
+
+        import moai_adk.__main__ as main_module
 
         # Get source code
         source = inspect.getsource(main_module)
@@ -237,8 +240,9 @@ class TestLazyLoadingImports:
 
     def test_pyfiglet_imported_inside_show_logo(self) -> None:
         """Test that pyfiglet is imported inside show_logo function."""
-        import moai_adk.__main__ as main_module
         import inspect
+
+        import moai_adk.__main__ as main_module
 
         # Get show_logo source
         show_logo_source = inspect.getsource(main_module.show_logo)
@@ -252,8 +256,9 @@ class TestCliErrorScenarios:
 
     def test_cli_handles_missing_command_gracefully(self) -> None:
         """Test CLI provides helpful error for missing commands."""
-        from moai_adk.__main__ import cli
         from click.testing import CliRunner
+
+        from moai_adk.__main__ import cli
 
         runner = CliRunner()
         result = runner.invoke(cli, ["nonexistent-command"])
@@ -263,8 +268,9 @@ class TestCliErrorScenarios:
 
     def test_cli_handles_invalid_option(self) -> None:
         """Test CLI handles invalid options gracefully."""
-        from moai_adk.__main__ import cli
         from click.testing import CliRunner
+
+        from moai_adk.__main__ import cli
 
         runner = CliRunner()
         result = runner.invoke(cli, ["--invalid-option"])

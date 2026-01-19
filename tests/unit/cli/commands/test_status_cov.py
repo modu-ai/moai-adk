@@ -4,7 +4,6 @@ Focus on uncovered code paths with mocked dependencies.
 Tests actual code paths without side effects.
 """
 
-import tempfile
 from pathlib import Path
 from unittest.mock import patch
 

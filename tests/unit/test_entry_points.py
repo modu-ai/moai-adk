@@ -8,23 +8,15 @@ from unittest.mock import MagicMock, Mock, patch
 
 import click
 from click.testing import CliRunner
-import pytest
 
 import moai_adk
 from moai_adk.__main__ import (
     _load_rank_group,
-    cc,
-    claude,
     cli,
-    glm,
     get_console,
-    init,
     main,
     show_logo,
-    statusline,
-    update,
 )
-
 
 # ============================================================================
 # Tests for moai_adk/__init__.py

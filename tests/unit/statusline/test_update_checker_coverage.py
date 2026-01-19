@@ -7,8 +7,6 @@ Tests for uncovered lines in update_checker.py:
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from moai_adk.statusline.update_checker import UpdateChecker, UpdateInfo
 
 

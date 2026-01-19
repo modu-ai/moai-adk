@@ -3,11 +3,11 @@
 from moai_adk.foundation.git import (
     BranchingStrategySelector,
     ConventionalCommitValidator,
+    DDDCommitPhase,
     GitInfo,
     GitPerformanceOptimizer,
     GitVersionDetector,
     GitWorkflowManager,
-    DDDCommitPhase,
     ValidateResult,
 )
 

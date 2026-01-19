@@ -430,7 +430,6 @@ def test_main_entry_point():
 def test_show_logo_renders_version():
     """Test show_logo renders version information."""
     import moai_adk.__main__ as main_module
-    from moai_adk import __version__
 
     main_module._console = None
 

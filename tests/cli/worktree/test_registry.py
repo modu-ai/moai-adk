@@ -12,9 +12,7 @@ Test Coverage Strategy:
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, Mock
-
-import pytest
+from unittest.mock import Mock
 
 from moai_adk.cli.worktree.models import WorktreeInfo
 from moai_adk.cli.worktree.registry import WorktreeRegistry

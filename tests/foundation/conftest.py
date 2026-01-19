@@ -7,9 +7,9 @@ This conftest.py provides:
 - Common test data and utilities
 """
 
-import pytest
 from typing import Any, Dict
 
+import pytest
 
 # ============================================================================
 # Sample Data Fixtures

@@ -4,11 +4,10 @@ GREEN PHASE: Metadata Normalization Implementation
 Adds missing metadata fields to all skills
 """
 
-import os
-import re
-import yaml
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
+import yaml
 
 PROJECT_ROOT = Path("/Users/goos/MoAI/MoAI-ADK")
 SKILLS_DIR = PROJECT_ROOT / ".claude" / "skills"
@@ -218,7 +217,7 @@ def main():
             modified_count += 1
             print(f"✓ Normalized: {skill_dir.name}")
 
-    print(f"\nMetadata normalization complete!")
+    print("\nMetadata normalization complete!")
     print(f"Modified: {modified_count}/{total_count} skills")
 
 

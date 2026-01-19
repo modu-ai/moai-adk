@@ -7,8 +7,6 @@ import json
 import sys
 from pathlib import Path
 
-import pytest
-
 # The module is in the templates directory
 sys.path.insert(
     0,

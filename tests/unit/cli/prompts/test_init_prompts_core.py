@@ -13,7 +13,6 @@ import pytest
 from moai_adk.cli.prompts.init_prompts import (
     _prompt_select,
     _prompt_text,
-    _prompt_confirm,
     prompt_project_setup,
 )
 

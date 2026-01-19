@@ -3,11 +3,8 @@
 Tests for lines not covered by existing tests.
 """
 
-import asyncio
-import json
 import os
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -113,8 +110,9 @@ class TestVersionReaderDebugModeLogging:
         reader.config.debug_mode = True
 
         # Set up cache
-        from moai_adk.statusline.version_reader import CacheEntry
         from datetime import datetime
+
+        from moai_adk.statusline.version_reader import CacheEntry
 
         entry = CacheEntry(version="1.0.0", timestamp=datetime.now(), source=VersionSource.CONFIG_FILE)
         reader._cache[str(reader._config_path)] = entry

@@ -3,15 +3,10 @@
 Tests for lines not covered by existing tests.
 """
 
-import json
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from moai_adk.statusline.enhanced_output_style_detector import (
     OutputStyleDetector,
-    safe_collect_output_style,
 )
 
 

@@ -3,18 +3,16 @@ Comprehensive DDD tests for git.py module.
 Tests cover all 5 classes.
 """
 
-import pytest
 from moai_adk.foundation.git import (
-    GitInfo,
-    ValidateResult,
-    DDDCommitPhase,
-    GitVersionDetector,
-    ConventionalCommitValidator,
     BranchingStrategySelector,
-    GitWorkflowManager,
+    ConventionalCommitValidator,
+    DDDCommitPhase,
+    GitInfo,
     GitPerformanceOptimizer,
+    GitVersionDetector,
+    GitWorkflowManager,
+    ValidateResult,
 )
-
 
 # ============================================================================
 # Test Data Classes

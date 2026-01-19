@@ -11,14 +11,12 @@ in doctor.py but not exposed through the main CLI wrapper in __main__.py.
 This test file focuses on testing the functionality that IS exposed.
 """
 
-import json
 import subprocess
 from pathlib import Path
 from typing import Generator
 from unittest.mock import patch
 
 import pytest
-import yaml
 from click.testing import CliRunner
 
 from moai_adk.__main__ import cli

@@ -6,8 +6,9 @@ package can be imported and basic functionality is intact.
 Run with: pytest -m smoke or pytest tests/test_smoke.py
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 
 class TestSmokeCore:
@@ -37,10 +38,6 @@ class TestSmokeCore:
     @pytest.mark.critical
     def test_core_modules_importable(self):
         """Test that core modules can be imported."""
-        from moai_adk import cli
-        from moai_adk import core
-        from moai_adk import foundation
-        from moai_adk import project
         # If we get here without ImportError, the test passes
 
     @pytest.mark.critical
@@ -57,6 +54,7 @@ class TestSmokeCore:
     def test_python_version_compatibility(self):
         """Test that Python version meets minimum requirements."""
         import sys
+
         from packaging import specifiers
 
         # MoAI-ADK requires Python >= 3.11

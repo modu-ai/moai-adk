@@ -16,11 +16,8 @@ from unittest.mock import patch
 import pytest
 
 from moai_adk.utils.common import (
-    HTTPClient,
     HTTPResponse,
     RateLimiter,
-    RateLimitError,
-    create_report_path,
     extract_links_from_text,
     format_duration,
     get_graceful_degradation,
@@ -30,17 +27,15 @@ from moai_adk.utils.common import (
 )
 from moai_adk.utils.link_validator import LinkValidator, ValidationResult, validate_readme_links
 from moai_adk.utils.safe_file_reader import SafeFileReader, safe_glob_read, safe_read_file, safe_read_lines
-from moai_adk.utils.timeout import CrossPlatformTimeout, TimeoutError, timeout_context
+from moai_adk.utils.timeout import CrossPlatformTimeout
 from moai_adk.utils.toon_utils import (
-    _is_tabular,
     _encode_value,
-    compare_formats,
+    _is_tabular,
     migrate_json_to_toon,
     toon_decode,
     toon_encode,
     toon_load,
     toon_save,
-    validate_roundtrip,
 )
 
 

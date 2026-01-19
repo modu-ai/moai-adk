@@ -3,14 +3,13 @@
 This module tests model allocation based on pricing plans and service types.
 """
 
-import pytest
 from moai_adk.core.model_allocator import (
+    CLAUDE_API_ALLOCATIONS,
+    CLAUDE_SUBSCRIPTION_ALLOCATIONS,
+    GLM_ALLOCATIONS,
     ModelAllocation,
     get_agent_model,
     get_model_allocation,
-    CLAUDE_SUBSCRIPTION_ALLOCATIONS,
-    CLAUDE_API_ALLOCATIONS,
-    GLM_ALLOCATIONS,
 )
 
 

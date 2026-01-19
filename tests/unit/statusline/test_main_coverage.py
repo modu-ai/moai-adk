@@ -12,20 +12,16 @@ Tests for uncovered lines in main.py:
 import os
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from moai_adk.statusline.main import (
     build_statusline_data,
     extract_context_window,
     format_token_count,
     main,
     read_session_context,
+    safe_check_update,
     safe_collect_alfred_task,
-    safe_collect_duration,
-    safe_collect_git_info,
     safe_collect_memory,
     safe_collect_version,
-    safe_check_update,
 )
 
 

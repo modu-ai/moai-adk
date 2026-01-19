@@ -10,30 +10,29 @@ Test Coverage Strategy:
 - MoAISpinnerColumn: Custom spinner rendering
 """
 
-from contextlib import contextmanager
-from typing import Generator, Iterator
-from unittest.mock import MagicMock, Mock, patch
+from typing import Iterator
+from unittest.mock import Mock
 
 import pytest
 from rich.console import Console
-from rich.progress import Progress, TaskID
+from rich.progress import Progress
 from rich.status import Status
 from rich.text import Text
 
 from moai_adk.cli.ui.progress import (
-    MoAISpinnerColumn,
-    create_progress_bar,
-    create_spinner,
-    ProgressContext,
-    SpinnerContext,
-    progress_steps,
-    print_step,
-    console,
     CLAUDE_STYLE,
-    SUCCESS_STYLE,
     ERROR_STYLE,
     INFO_STYLE,
+    SUCCESS_STYLE,
     WARNING_STYLE,
+    MoAISpinnerColumn,
+    ProgressContext,
+    SpinnerContext,
+    console,
+    create_progress_bar,
+    create_spinner,
+    print_step,
+    progress_steps,
 )
 
 

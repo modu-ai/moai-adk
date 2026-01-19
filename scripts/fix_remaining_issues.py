@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """GREEN PHASE: Fix remaining issues"""
 
-import yaml
 from pathlib import Path
+
+import yaml
 
 SKILLS_DIR = Path("/Users/goos/MoAI/MoAI-ADK/.claude/skills")
 
@@ -91,7 +92,7 @@ agent_coverage: []
 [Guide for when to use Google Nano models vs other options]
 """
         (skill_dir / "SKILL.md").write_text(content)
-        print(f"✓ Created new skill: moai-google-nano-banana")
+        print("✓ Created new skill: moai-google-nano-banana")
 
 
 def main():

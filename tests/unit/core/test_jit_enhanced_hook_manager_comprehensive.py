@@ -16,33 +16,27 @@ This test suite covers:
 Coverage Target: 100%
 """
 
-import asyncio
-import json
 import time
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, Mock, patch, MagicMock
-from pathlib import Path
+
 import pytest
 
 from moai_adk.core.jit_enhanced_hook_manager import (
-    HookEvent,
-    HookPriority,
-    HookMetadata,
-    HookExecutionResult,
-    CircuitBreakerState,
     CircuitBreaker,
-    HookResultCache,
+    CircuitBreakerState,
     ConnectionPool,
-    RetryPolicy,
-    ResourceUsageMetrics,
+    HookEvent,
+    HookExecutionResult,
+    HookMetadata,
     HookPerformanceMetrics,
-    ResourceMonitor,
-    HealthChecker,
+    HookPriority,
+    HookResultCache,
     JITEnhancedHookManager,
     Phase,
-    _JIT_AVAILABLE,
+    ResourceMonitor,
+    ResourceUsageMetrics,
+    RetryPolicy,
 )
-
 
 # =============================================================================
 # ENUM TESTS

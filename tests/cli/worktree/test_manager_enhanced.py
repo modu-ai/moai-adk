@@ -10,7 +10,6 @@ This module provides additional test coverage for:
 - Done workflow (merge to base and remove)
 """
 
-import json
 from pathlib import Path
 from typing import Generator
 from unittest.mock import MagicMock, patch

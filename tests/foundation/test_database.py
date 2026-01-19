@@ -3,24 +3,21 @@ Comprehensive TDD tests for database.py module.
 Tests cover all 7 classes.
 """
 
-import pytest
-from typing import Any, Dict
 
 from moai_adk.foundation.database import (
-    SchemaNormalizer,
+    ACIDCompliance,
+    ConnectionPoolManager,
     DatabaseSelector,
     IndexingOptimizer,
-    ConnectionPoolManager,
-    MigrationPlanner,
-    TransactionManager,
-    PerformanceMonitor,
-    ValidationResult,
     IndexRecommendation,
-    PoolConfiguration,
     MigrationPlan,
-    ACIDCompliance,
+    MigrationPlanner,
+    PerformanceMonitor,
+    PoolConfiguration,
+    SchemaNormalizer,
+    TransactionManager,
+    ValidationResult,
 )
-
 
 # ============================================================================
 # Test SchemaNormalizer

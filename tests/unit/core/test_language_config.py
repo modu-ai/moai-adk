@@ -4,7 +4,6 @@ Comprehensive tests for language_config module.
 Tests language configuration, language info retrieval, and related utilities.
 """
 
-import pytest
 
 from moai_adk.core.language_config import (
     LANGUAGE_CONFIG,

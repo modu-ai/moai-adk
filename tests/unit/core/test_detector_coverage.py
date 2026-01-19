@@ -3,7 +3,6 @@
 Tests for lines not covered by existing tests.
 """
 
-from pathlib import Path
 
 from moai_adk.core.project.detector import LanguageDetector
 

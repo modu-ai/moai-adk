@@ -11,10 +11,7 @@ Tests for uncovered lines in config.py:
 - Config getters with default values (lines 325-326, 336-337, 371-372)
 """
 
-from pathlib import Path
-from unittest.mock import MagicMock, mock_open, patch
-
-import pytest
+from unittest.mock import patch
 
 from moai_adk.statusline.config import (
     CacheConfig,

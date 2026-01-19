@@ -11,6 +11,7 @@ Test Coverage Strategy:
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from moai_adk.cli.worktree import __main__
 
 
@@ -334,9 +335,9 @@ class TestMainWithWorktreeExceptions:
     @patch("moai_adk.cli.worktree.__main__.worktree")
     def test_handles_worktree_exists_error(self, mock_worktree: MagicMock) -> None:
         """Test handling of WorktreeExistsError."""
-        from moai_adk.cli.worktree.exceptions import WorktreeExistsError
-
         from pathlib import Path
+
+        from moai_adk.cli.worktree.exceptions import WorktreeExistsError
 
         mock_worktree.side_effect = WorktreeExistsError("SPEC-001", Path("/path"))
 

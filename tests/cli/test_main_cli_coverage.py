@@ -7,7 +7,6 @@ import sys
 from unittest.mock import MagicMock, patch
 
 import click
-import pytest
 from click.testing import CliRunner
 
 

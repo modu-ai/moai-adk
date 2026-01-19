@@ -14,7 +14,6 @@ import pytest
 import yaml
 from click.testing import CliRunner
 
-
 # ===== PATH SETUP =====
 # Add project root to sys.path for imports
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent

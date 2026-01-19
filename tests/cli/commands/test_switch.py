@@ -32,6 +32,7 @@ class TestPlatformSpecificConsole:
         with patch("moai_adk.cli.commands.switch.sys.platform", "darwin"):
             # Reimport to trigger console initialization
             import importlib
+
             from moai_adk.cli.commands import switch
 
             importlib.reload(switch)
@@ -47,6 +48,7 @@ class TestPlatformSpecificConsole:
         with patch("moai_adk.cli.commands.switch.sys.platform", "win32"):
             # Reimport to trigger console initialization
             import importlib
+
             from moai_adk.cli.commands import switch
 
             importlib.reload(switch)

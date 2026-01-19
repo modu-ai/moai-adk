@@ -8,11 +8,9 @@ Tests end-to-end execution of the doctor command including:
 """
 
 import json
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from click.testing import CliRunner
 
 from moai_adk.cli.commands.doctor import doctor
 

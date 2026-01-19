@@ -18,27 +18,25 @@ Coverage Target: 100%
 """
 
 import asyncio
-import time
 from datetime import datetime
-from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
 
-from moai_adk.core.phase_optimized_hook_scheduler import (
-    SchedulingStrategy,
-    SchedulingDecision,
-    HookSchedulingContext,
-    ScheduledHook,
-    SchedulingResult,
-    ExecutionGroup,
-    PhaseOptimizedHookScheduler,
-)
 from moai_adk.core.jit_enhanced_hook_manager import (
     HookEvent,
     HookMetadata,
     HookPriority,
     Phase,
 )
-
+from moai_adk.core.phase_optimized_hook_scheduler import (
+    ExecutionGroup,
+    HookSchedulingContext,
+    PhaseOptimizedHookScheduler,
+    ScheduledHook,
+    SchedulingDecision,
+    SchedulingResult,
+    SchedulingStrategy,
+)
 
 # =============================================================================
 # ENUM TESTS
