@@ -1,10 +1,18 @@
-# v1.5.0 - Template Cleanup and Analytics Enhancement (2026-01-20)
+# v1.5.0 - Template Cleanup, Analytics Enhancement, and GLM Performance Optimization (2026-01-20)
 
 ## Summary
 
-This minor release focuses on template configuration cleanup and analytics enhancement. It removes redundant platform-specific settings files, adds anonymous project ID tracking for improved analytics, and includes code style improvements.
+This minor release focuses on template configuration cleanup, analytics enhancement, and GLM model performance optimization. It removes redundant platform-specific settings files, adds anonymous project ID tracking for improved analytics, optimizes agent model tiers with GLM-4.7-FlashX for faster operations, and includes code style improvements.
 
 ## Changed
+
+- **feat(llm)**: Add GLM-4.7-FlashX haiku tier optimization
+  - Update haiku model mapping: `glm-4.7` → `glm-4.7-flashx` for speed-focused tasks
+  - Convert `expert-debug` agent to haiku tier for faster debugging (SWE-bench 59.2, τ²-Bench 79.5 scores)
+  - Convert `manager-git` agent to haiku tier for faster git operations
+  - Update GLM environment config with FlashX for `HAIKU_MODEL`
+  - Performance benefits: Faster response times for procedural tasks while maintaining quality
+  - Files: `.claude/agents/moai/expert-debug.md`, `.claude/agents/moai/manager-git.md`, `.moai/config/sections/llm.yaml`, `.moai/llm-configs/glm.json`
 
 - **refactor(template)**: Remove redundant base settings.json files
   - Removed `.claude/settings.json.unix` (249 lines)
@@ -46,13 +54,21 @@ moai --version
 
 ---
 
-# v1.5.0 - 템플릿 정리 및 분석 기능 향상 (2026-01-20)
+# v1.5.0 - 템플릿 정리, 분석 기능 향상 및 GLM 성능 최적화 (2026-01-20)
 
 ## 요약
 
-이 마이너 릴리스는 템플릿 구성 정리와 분석 기능 향상에 중점을 둡니다. 중복된 플랫폼별 설정 파일을 제거하고, 개선된 분석을 위한 익명 프로젝트 ID 추적을 추가하며, 코드 스타일 개선을 포함합니다.
+이 마이너 릴리스는 템플릿 구성 정리, 분석 기능 향상 및 GLM 모델 성능 최적화에 중점을 둡니다. 중복된 플랫폼별 설정 파일을 제거하고, 개선된 분석을 위한 익명 프로젝트 ID 추적을 추가하며, GLM-4.7-FlashX로 에이전트 모델 티어를 최적화하여 더 빠른 작업을 가능하게 하고, 코드 스타일 개선을 포함합니다.
 
 ## 변경됨
+
+- **feat(llm)**: GLM-4.7-FlashX haiku 티어 최적화 추가
+  - 속도 중심 작업을 위한 haiku 모델 매핑 업데이트: `glm-4.7` → `glm-4.7-flashx`
+  - 더 빠른 디버깅을 위해 `expert-debug` 에이전트를 haiku 티어로 전환 (SWE-bench 59.2, τ²-Bench 79.5 점수)
+  - 더 빠른 git 작업을 위해 `manager-git` 에이전트를 haiku 티어로 전환
+  - `HAIKU_MODEL`용 GLM 환경 구성을 FlashX로 업데이트
+  - 성능 이점: 품질 유지하면서 절차적 작업의 응답 시간 단축
+  - 파일: `.claude/agents/moai/expert-debug.md`, `.claude/agents/moai/manager-git.md`, `.moai/config/sections/llm.yaml`, `.moai/llm-configs/glm.json`
 
 - **refactor(template)**: 중복된 기본 settings.json 파일 제거
   - `.claude/settings.json.unix` 제거 (249줄)
