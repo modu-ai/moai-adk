@@ -202,7 +202,7 @@ class TemplateMerger:
         }
 
         # Preserve user customizations for specific fields (if exist in backup/existing)
-        preserve_fields = ["outputStyle", "spinnerTipsEnabled"]
+        preserve_fields = ["outputStyle", "spinnerTipsEnabled", "statusLine"]
         for field in preserve_fields:
             if field in user_data:
                 merged[field] = user_data[field]
