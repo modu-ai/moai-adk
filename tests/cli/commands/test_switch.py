@@ -475,7 +475,8 @@ class TestInternalSwitchToGlm:
             glm_config = Path(tmpdir) / "glm.json"
             # Include non-string values (number, boolean, null)
             glm_config.write_text(
-                '{"env": {"ANTHROPIC_BASE_URL": "https://api.glm.com", "PORT": 8080, "ENABLED": true, "OPTIONAL": null}}'
+                '{"env": {"ANTHROPIC_BASE_URL": "https://api.glm.com", '
+                '"PORT": 8080, "ENABLED": true, "OPTIONAL": null}}'
             )
 
             with patch("moai_adk.cli.commands.switch._get_credential_value", return_value="cred-value"):

@@ -808,7 +808,7 @@ wheels = [
 
 [[package]]
 name = "moai-adk"
-version = "1.6.2"
+version = "1.4.5"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },

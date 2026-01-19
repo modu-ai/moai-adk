@@ -85,7 +85,7 @@ class TestMainFunctionExceptionHandling:
             mock_console.file = mock_file
 
             with patch("moai_adk.__main__.cli"):
-                exit_code = main()
+                _ = main()
 
                 # Verify flush was called
                 mock_file.flush.assert_called_once()

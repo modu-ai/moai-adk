@@ -46,6 +46,9 @@ from typing import Any, Dict, Optional, Union
 
 import yaml  # PyYAML is required for section-based config
 
+YAML_AVAILABLE = True
+YAMLError = yaml.YAMLError
+
 logger = logging.getLogger(__name__)
 
 
