@@ -95,7 +95,7 @@ class SessionSubmission:
     cache_creation_tokens: int = 0
     cache_read_tokens: int = 0
     model_name: Optional[str] = None
-
+    anonymous_project_id: Optional[str] = None
     # Dashboard fields for activity visualization
     started_at: Optional[str] = None
     duration_seconds: int = 0
@@ -435,6 +435,8 @@ class RankClient:
         if session.model_name:
             data["modelName"] = session.model_name
 
+        if session.anonymous_project_id:
+            data["anonymousProjectId"] = session.anonymous_project_id
         # Dashboard fields (optional)
         if session.started_at:
             data["startedAt"] = session.started_at
@@ -496,6 +498,8 @@ class RankClient:
             if session.model_name:
                 session_data["modelName"] = session.model_name
 
+            if session.anonymous_project_id:
+                session_data["anonymousProjectId"] = session.anonymous_project_id
             if session.started_at:
                 session_data["startedAt"] = session.started_at
 

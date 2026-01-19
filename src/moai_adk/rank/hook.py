@@ -480,6 +480,10 @@ def parse_session_data(session_data: dict[str, Any]) -> Optional[dict[str, Any]]
         # Get project path from cwd
         project_path = session_data.get("cwd")
 
+        # Compute anonymous project ID
+        anonymous_project_id = None
+        if project_path:
+            anonymous_project_id = compute_anonymous_project_id(project_path)
         # Generate ended_at timestamp
         from datetime import datetime as dt
         from datetime import timezone
@@ -493,6 +497,7 @@ def parse_session_data(session_data: dict[str, Any]) -> Optional[dict[str, Any]]
             "cache_read_tokens": usage.cache_read_tokens,
             "model_name": usage.model_name,
             "project_path": project_path,
+            "anonymous_project_id": anonymous_project_id,
             "ended_at": ended_at,
             "cost_usd": usage.cost_usd,
             "session_id": session_data.get("session_id"),
@@ -553,6 +558,7 @@ def parse_transcript_to_submission(
             cache_creation_tokens=parsed["cache_creation_tokens"],
             cache_read_tokens=parsed["cache_read_tokens"],
             model_name=parsed["model_name"],
+            anonymous_project_id=parsed.get("anonymous_project_id"),
             started_at=parsed.get("started_at"),
             duration_seconds=parsed.get("duration_seconds", 0),
             turn_count=parsed.get("turn_count", 0),
@@ -627,7 +633,7 @@ def submit_session_hook(session_data: dict[str, Any]) -> dict[str, Any]:
             cache_creation_tokens=parsed["cache_creation_tokens"],
             cache_read_tokens=parsed["cache_read_tokens"],
             model_name=parsed["model_name"],
-            # Dashboard fields
+            anonymous_project_id=parsed.get("anonymous_project_id"),  # Dashboard fields
             started_at=parsed.get("started_at"),
             duration_seconds=parsed.get("duration_seconds", 0),
             turn_count=parsed.get("turn_count", 0),
