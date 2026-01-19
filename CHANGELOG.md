@@ -1,3 +1,75 @@
+# v1.6.2 - Windows MCP Configuration Platform Adaptation (2026-01-19)
+
+## Summary
+
+This release adds automatic Windows platform adaptation for MCP configuration files. The `moai init` and `moai update` commands now automatically convert `npx` commands to `cmd /c npx` format on Windows systems, resolving MCP server initialization errors.
+
+## Fixed
+
+- **fix(windows)**: Add MCP config platform adaptation for Windows
+  - Added `_adapt_mcp_config_for_windows()` method to `TemplateProcessor`
+  - Automatically converts `npx` commands to `cmd /c npx` format on Windows
+  - Fixes Issue #272: Windows MCP config warning ("Windows requires 'cmd /c' wrapper to execute npx")
+  - Applied after both fresh copy and merge operations
+  - File: `src/moai_adk/core/template/processor.py` (lines 1524-1558)
+
+## Quality
+
+- Smoke tests: 6 passed (100% pass rate)
+- Ruff: All checks passed
+- Mypy: Success (no issues found in 169 source files)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Or using pipx
+pipx upgrade moai-adk
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.6.2 - Windows MCP 설정 플랫폼 적응 (2026-01-19)
+
+## 요약
+
+이 릴리스는 MCP 설정 파일에 대한 자동 Windows 플랫폼 적응을 추가합니다. `moai init` 및 `moai update` 명령이 이제 Windows 시스템에서 `npx` 명령을 자동으로 `cmd /c npx` 형식으로 변환하여 MCP 서버 초기화 오류를 해결합니다.
+
+## 수정됨
+
+- **fix(windows)**: Windows용 MCP 설정 플랫폼 적응 추가
+  - `TemplateProcessor`에 `_adapt_mcp_config_for_windows()` 메서드 추가
+  - Windows에서 `npx` 명령을 자동으로 `cmd /c npx` 형식으로 변환
+  - Issue #272 수정: Windows MCP config 경고 ("Windows requires 'cmd /c' wrapper to execute npx")
+  - 새로운 복사 및 병합 작업 모두에 적용
+  - 파일: `src/moai_adk/core/template/processor.py` (1524-1558행)
+
+## 품질
+
+- Smoke 테스트: 6개 통과 (100% 통과율)
+- Ruff: 모든 검사 통과
+- Mypy: 성공 (169개 소스 파일에서 문제 없음)
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 또는 pipx 사용
+pipx upgrade moai-adk
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.4.1 - Alfred Agent Delegation and Git Strategy Improvements (2026-01-19)
 
 ## Summary
