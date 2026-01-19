@@ -55,7 +55,7 @@ class TokenBudgetManager:
  
  PHASE_BUDGETS = {
  "spec": 30_000,
- "tdd": 180_000,
+ "ddd": 180_000,
  "docs": 40_000
  }
  
@@ -66,7 +66,7 @@ class TokenBudgetManager:
  self.current_phase = None
  self.phase_usage = {
  "spec": 0,
- "tdd": 0,
+ "ddd": 0,
  "docs": 0
  }
  
@@ -122,9 +122,9 @@ print(budget.remaining_budget("spec")) # 5,000 tokens remaining
 # Execute /clear
 execute_clear()
 
-# Phase 2: TDD
-budget.track_usage("tdd", 85_000)
-budget.track_usage("tdd", 75_000)
+# Phase 2: DDD
+budget.track_usage("ddd", 85_000)
+budget.track_usage("ddd", 75_000)
 print(budget.total_usage()) # 185,000 (triggers warning)
 ```
 
@@ -404,10 +404,10 @@ class ModelCostCalculator:
  feature_token_budget["spec"]["input"],
  feature_token_budget["spec"]["output"]
  ),
- "tdd": self.calculate_cost(
- "haiku-4.5", # Haiku for TDD
- feature_token_budget["tdd"]["input"],
- feature_token_budget["tdd"]["output"]
+ "ddd": self.calculate_cost(
+ "haiku-4.5", # Haiku for DDD
+ feature_token_budget["ddd"]["input"],
+ feature_token_budget["ddd"]["output"]
  ),
  "docs": self.calculate_cost(
  "haiku-4.5", # Haiku for docs
@@ -432,7 +432,7 @@ calculator = ModelCostCalculator()
 
 feature_budget = {
  "spec": {"input": 20_000, "output": 10_000},
- "tdd": {"input": 100_000, "output": 80_000},
+ "ddd": {"input": 100_000, "output": 80_000},
  "docs": {"input": 30_000, "output": 10_000}
 }
 
@@ -666,9 +666,9 @@ monitor = TokenMonitor(total_budget=250_000)
 monitor.record_usage("spec", "generate_spec", 25_000)
 monitor.record_usage("spec", "validate_spec", 5_000)
 # Execute /clear here
-monitor.record_usage("tdd", "red_phase", 40_000)
-monitor.record_usage("tdd", "green_phase", 80_000)
-monitor.record_usage("tdd", "refactor_phase", 60_000)
+monitor.record_usage("ddd", "analyze_phase", 40_000)
+monitor.record_usage("ddd", "preserve_phase", 80_000)
+monitor.record_usage("ddd", "improve_phase", 60_000)
 monitor.record_usage("docs", "generate_docs", 30_000)
 
 # Generate report

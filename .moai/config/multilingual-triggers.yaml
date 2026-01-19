@@ -74,12 +74,12 @@ expert-uiux:
 # MANAGER AGENTS - Workflow orchestration
 # ============================================================================
 
-manager-tdd:
+manager-ddd:
   triggers:
-    en: ["TDD", "RED-GREEN-REFACTOR", "test-driven", "unit test", "test first"]
-    ko: ["TDD", "레드그린리팩터", "테스트주도개발", "유닛테스트", "테스트먼저"]
-    ja: ["TDD", "レッドグリーンリファクタリング", "テスト駆動開発", "ユニットテスト", "テストファースト"]
-    zh: ["TDD", "红绿重构", "测试驱动开发", "单元测试", "测试优先"]
+    en: ["DDD", "ANALYZE-PRESERVE-IMPROVE", "domain-driven", "behavior preservation", "characterization test"]
+    ko: ["DDD", "분석보존개선", "도메인주도개발", "행동보존", "특성화테스트"]
+    ja: ["DDD", "分析保存改善", "ドメイン駆動開発", "振る舞い保存", "特性化テスト"]
+    zh: ["DDD", "分析保存改进", "领域驱动开发", "行为保存", "特征化测试"]
 
 manager-spec:
   triggers:

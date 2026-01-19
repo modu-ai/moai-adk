@@ -39,7 +39,7 @@ MoAI-ADK는 다음을 제공합니다:
 - 요구사항 변경으로 인한 재작업 90% 감소
 
 ### 2. TDD 강제화
-- manager-tdd 에이전트를 통한 자동화된 Red-Green-Refactor 사이클
+- manager-ddd 에이전트를 통한 자동화된 ANALYZE-PRESERVE-IMPROVE 사이클
 - 85%+ 커버리지로 버그 70% 감소
 - 전체 개발 시간 15% 단축
 

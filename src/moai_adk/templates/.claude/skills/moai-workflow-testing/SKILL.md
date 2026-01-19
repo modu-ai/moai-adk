@@ -7,7 +7,7 @@ modularized: true
 user-invocable: false
 context: fork
 agent: expert-testing
-tags: ['workflow', 'testing', 'debugging', 'performance', 'quality', 'tdd', 'review', 'pr-review']
+tags: ['workflow', 'testing', 'debugging', 'performance', 'quality', 'ddd', 'review', 'pr-review']
 updated: 2026-01-11
 status: "active"
 author: "MoAI-ADK Team"

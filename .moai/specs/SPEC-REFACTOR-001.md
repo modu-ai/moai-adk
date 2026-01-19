@@ -50,7 +50,7 @@ Tasks:
 Owner: builder-agent subagent
 
 Priority Groups:
-1. Core Managers (7): manager-tdd, manager-spec, manager-git, manager-quality, manager-project, manager-docs, manager-strategy, manager-claude-code
+1. Core Managers (7): manager-ddd, manager-spec, manager-git, manager-quality, manager-project, manager-docs, manager-strategy, manager-claude-code
 2. Domain Experts (8): expert-backend, expert-frontend, expert-database, expert-security, expert-testing, expert-performance, expert-debug, expert-devops, expert-uiux
 3. Builders (4): builder-agent, builder-skill, builder-command, builder-plugin
 4. MCP Integrations (5): mcp-context7, mcp-playwright, mcp-figma, mcp-notion, mcp-sequential-thinking

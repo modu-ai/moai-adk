@@ -8,7 +8,7 @@ Title: MoAI Ralph Engine - LSP + AST-grep + Loop 통합 시스템
 Created: 2026-01-09
 Status: Completed
 Priority: HIGH
-Assigned: manager-tdd
+Assigned: manager-ddd
 Related-SPECs: []
 Epic: MoAI-ADK Core Enhancement
 Labels: [lsp, ast-grep, automation, feedback-loop, code-quality]

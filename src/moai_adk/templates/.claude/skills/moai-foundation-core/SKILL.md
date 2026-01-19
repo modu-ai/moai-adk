@@ -26,7 +26,7 @@ triggers:
   keywords:
     - "trust-5"
     - "spec-first"
-    - "tdd"
+    - "ddd"
     - "delegation"
     - "agent"
     - "token"
