@@ -247,11 +247,22 @@ No changes (--dry).
 
 7. [HARD] Before each fix, call TodoWrite to change item to in_progress
 
-8. Execute Level 1-2 fixes automatically
+8. [HARD] AGENT DELEGATION MANDATE for Fix Execution:
+   - ALL fix tasks MUST be delegated to specialized agents
+   - NEVER execute fixes directly, even after auto compact
+   - WHY: Specialized agents have domain expertise; direct execution violates orchestrator role
+   - This rule applies regardless of session state or context recovery
+
+   Agent Selection by Fix Level:
+   - Level 1 (import, formatting): Use expert-backend or expert-frontend subagent
+   - Level 2 (rename, type): Use expert-refactoring subagent
+   - Level 3 (logic, API): Use expert-debug or expert-backend subagent
+
+   Execute Level 1-2 fixes via agent delegation automatically
 
 9. [HARD] After each fix completion, call TodoWrite to change item to completed
 
-10. Request approval for Level 3 fixes via AskUserQuestion
+10. Request approval for Level 3 fixes via AskUserQuestion, then delegate to appropriate agent
 
 11. Verify fixes by re-running affected diagnostics
 

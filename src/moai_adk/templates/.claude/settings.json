@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run {{PROJECT_DIR}}/.claude/hooks/moai/session_start__show_project_info.py"
+            "command": "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/session_start__show_project_info.py"
           }
         ]
       }

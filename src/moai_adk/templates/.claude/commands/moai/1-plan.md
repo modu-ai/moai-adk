@@ -127,6 +127,12 @@ Phase 1B: Specialized Analysis
 
 ## Agent Invocation Patterns (CLAUDE.md Compliance)
 
+[HARD] AGENT DELEGATION MANDATE:
+- ALL planning tasks MUST be delegated to specialized agents (Explore, manager-spec, manager-git)
+- NEVER execute planning or SPEC creation directly, even after auto compact
+- WHY: Specialized agents have domain expertise for EARS format, Git workflow, and codebase analysis
+- This rule applies regardless of session state or context recovery
+
 This command uses agent execution patterns defined in CLAUDE.md (lines 96-120).
 
 ### Sequential Phase-Based Chaining PASS
@@ -887,7 +893,7 @@ Branch creation skipped:
 - SPEC files created on current branch
 - NO manager-git agent invoked
 - Ready for /moai:2-run implementation
-- Commits will be made directly to current branch during TDD cycle
+- Commits will be made directly to current branch during DDD cycle
 
 ---
 
@@ -1062,7 +1068,7 @@ Display status based on configuration and execution result:
 1.  Review SPEC in `.moai/specs/SPEC-{SPEC_ID}/`
 2.  Execute `/moai:2-run SPEC-{SPEC_ID}` to begin implementation
 3.  All commits will be made directly to current branch
-4.  Follow TDD: RED → GREEN → REFACTOR cycles
+4.  Follow DDD: ANALYZE → PRESERVE → IMPROVE cycles
 ```
 
 ---
@@ -1085,7 +1091,7 @@ Display status based on configuration and execution result:
 1.  Review SPEC in `.moai/specs/SPEC-{SPEC_ID}/`
 2.  Execute `/moai:2-run SPEC-{SPEC_ID}` to begin implementation
 3.  Make commits directly to current branch
-4.  Follow TDD: RED → GREEN → REFACTOR cycles
+4.  Follow DDD: ANALYZE → PRESERVE → IMPROVE cycles
 ```
 
 ---
@@ -1120,7 +1126,7 @@ Would you like to enable automatic branch creation for future SPEC creations?
 1.  Review SPEC in `.moai/specs/SPEC-{SPEC_ID}/`
 2.  Execute `/moai:2-run SPEC-{SPEC_ID}` to begin implementation
 3.  Make commits directly to current branch
-4.  Follow TDD: RED → GREEN → REFACTOR cycles
+4.  Follow DDD: ANALYZE → PRESERVE → IMPROVE cycles
 5.  Create PR in `/moai:3-sync` when implementation complete
 ```
 
@@ -1171,7 +1177,7 @@ Would you like to enable automatic branch creation for future SPEC creations?
  SPEC Committed: feat(spec): Add SPEC-{SPEC_ID} - {title}
 
  Isolated Worktree Created:
-- Path: ~/worktrees/MoAI-ADK/SPEC-{SPEC_ID}/
+- Path: .moai/worktrees/MoAI-ADK/SPEC-{SPEC_ID}/
 - Branch: feature/SPEC-{SPEC_ID}
 - Base Commit: Contains committed SPEC files
 - Status: Ready for parallel development
@@ -1180,7 +1186,7 @@ Would you like to enable automatic branch creation for future SPEC creations?
 1.  Switch to worktree: `moai-worktree switch SPEC-{SPEC_ID}`
 2.  Or use shell eval: `eval $(moai-worktree go SPEC-{SPEC_ID})`
 3.  Review SPEC documents in worktree: `.moai/specs/SPEC-{SPEC_ID}/`
-4.  Execute `/moai:2-run SPEC-{SPEC_ID}` to begin TDD implementation
+4.  Execute `/moai:2-run SPEC-{SPEC_ID}` to begin DDD implementation
 5.  Work on isolated environment without affecting other SPECs
 
  Benefits of Worktree Development:
@@ -1428,7 +1434,7 @@ Header: Next Steps
 MultiSelect: false
 Options:
 
-- Start Implementation - Execute /moai:2-run to begin TDD development
+- Start Implementation - Execute /moai:2-run to begin DDD development
 - Modify Plan - Modify and enhance SPEC content
 - Add New Feature - Create additional SPEC document
 

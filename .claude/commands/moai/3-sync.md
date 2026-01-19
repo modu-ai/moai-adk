@@ -113,6 +113,12 @@ Command usage examples:
 
 ## Agent Invocation Patterns (CLAUDE.md Compliance)
 
+[HARD] AGENT DELEGATION MANDATE:
+- ALL synchronization tasks MUST be delegated to specialized agents (manager-docs, manager-quality, manager-git)
+- NEVER execute documentation sync directly, even after auto compact
+- WHY: Specialized agents have domain expertise for Living Document patterns, TRUST 5 validation, and Git operations
+- This rule applies regardless of session state or context recovery
+
 This command uses agent execution patterns defined in CLAUDE.md (lines 96-120).
 
 ### Sequential Phase-Based Chaining PASS

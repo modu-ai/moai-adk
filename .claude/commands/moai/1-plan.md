@@ -127,6 +127,12 @@ Phase 1B: Specialized Analysis
 
 ## Agent Invocation Patterns (CLAUDE.md Compliance)
 
+[HARD] AGENT DELEGATION MANDATE:
+- ALL planning tasks MUST be delegated to specialized agents (Explore, manager-spec, manager-git)
+- NEVER execute planning or SPEC creation directly, even after auto compact
+- WHY: Specialized agents have domain expertise for EARS format, Git workflow, and codebase analysis
+- This rule applies regardless of session state or context recovery
+
 This command uses agent execution patterns defined in CLAUDE.md (lines 96-120).
 
 ### Sequential Phase-Based Chaining PASS

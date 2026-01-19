@@ -108,11 +108,14 @@ Commands: /moai:alfred, /moai:fix, /moai:loop
 
 Allowed Tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 
-- [SOFT] Direct tool access is permitted for efficiency
-- Agent delegation optional but recommended for complex operations
+- [HARD] Agent delegation MANDATORY for all implementation/fix tasks
+  - Direct tool access permitted ONLY for diagnostics (LSP, tests, linters)
+  - ALL code modifications MUST be delegated to specialized agents
+  - This rule applies even after auto compact or session recovery
+  - WHY: Prevents quality degradation when session context is lost
 - User retains responsibility for reviewing changes
 
-WHY: Quick, targeted operations where agent overhead is unnecessary.
+WHY: Ensures consistent quality through agent expertise regardless of session state.
 
 ### Type C: Feedback Command
 
