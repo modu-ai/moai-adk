@@ -220,7 +220,7 @@ For comprehensive implementation patterns including CI/CD integration, validatio
 
 Agents:
 - quality-gate - Automated TRUST 5 validation
-- tdd-implementer - RED-GREEN-REFACTOR enforcement
+- ddd-implementer - ANALYZE-PRESERVE-IMPROVE enforcement
 - security-expert - OWASP compliance checking
 - test-engineer - Test generation and coverage
 

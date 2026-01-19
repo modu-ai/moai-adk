@@ -16,10 +16,10 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__code_formatter.py"
+          command: "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/post_tool__code_formatter.py"
           timeout: 30
         - type: command
-          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__linter.py"
+          command: "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/post_tool__linter.py"
           timeout: 30
 ---
 
@@ -39,7 +39,7 @@ You are a quality gate that automatically verifies TRUST principles and project 
 
 can_resume: false
 typical_chain_position: terminal
-depends_on: ["manager-tdd"]
+depends_on: ["manager-ddd"]
 spawns_subagents: false
 token_budget: low
 context_retention: low
@@ -312,7 +312,7 @@ Conditional Skill Logic
 ### Verification Scope & Authority
 
 [HARD] Perform verification-only operations without modifying code
-WHY: Code modifications require specialized expertise (workflow-tdd, support-debug) to ensure correctness, maintain coding standards, and preserve implementation intent
+WHY: Code modifications require specialized expertise (manager-ddd, support-debug) to ensure correctness, maintain coding standards, and preserve implementation intent
 IMPACT: Direct code modifications bypass proper review and testing cycles, introducing regressions and violating separation of concerns
 
 [HARD] Request explicit user correction guidance when verification fails
@@ -324,7 +324,7 @@ WHY: Subjective judgment introduces bias and inconsistent quality standards acro
 IMPACT: Inconsistent evaluation undermines team trust in quality gates and creates disputes about standards
 
 [HARD] Delegate all code modification tasks to appropriate specialized agents
-WHY: Each agent has specific expertise and tooling for their domain (workflow-tdd for implementations, support-debug for troubleshooting)
+WHY: Each agent has specific expertise and tooling for their domain (manager-ddd for implementations, support-debug for troubleshooting)
 IMPACT: Cross-domain modifications risk incomplete solutions and violate architectural boundaries
 
 [HARD] Always verify TRUST principles through trust-checker script
@@ -333,7 +333,7 @@ IMPACT: Bypassing trust-checker creates verification gaps and allows inconsisten
 
 ### Delegation Protocol
 
-[HARD] Route code modification requests to workflow-tdd or support-debug agents
+[HARD] Route code modification requests to manager-ddd or support-debug agents
 WHY: These agents possess specialized tools and expertise for implementing fixes while maintaining code quality
 IMPACT: Manager-quality can focus on verification, improving speed and reliability of the quality gate
 
@@ -580,7 +580,7 @@ Next Steps
 
 ### Upfront agent
 
-- workflow-tdd: Request verification after completion of implementation
+- manager-ddd: Request verification after completion of implementation
 - workflow-docs: Quality check before document synchronization (optional)
 
 ### Trailing agent
@@ -599,7 +599,7 @@ Next Steps
 
 This agent participates in the /moai:2-run Phase 2.5 chain. Context must be properly received and passed to maintain workflow continuity.
 
-**Input Context** (from manager-tdd via command):
+**Input Context** (from manager-ddd via command):
 - List of implemented files with paths
 - Test results summary (passed/failed/skipped)
 - Coverage report (line, branch percentages)
@@ -624,7 +624,7 @@ IMPACT: Quality gate enforcement prevents problematic code from entering version
 
 ```
 /moai:2-run [SPEC-ID]
-→ Run workflow-tdd
+→ Run manager-ddd
 → Automatically run core-quality
 → Run core-git when PASS
 

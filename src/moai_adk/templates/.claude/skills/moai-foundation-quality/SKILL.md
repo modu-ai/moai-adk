@@ -44,7 +44,7 @@ triggers:
     - "refactoring"
   agents:
     - "manager-quality"
-    - "manager-tdd"
+    - "manager-ddd"
     - "expert-testing"
     - "expert-security"
     - "expert-refactoring"

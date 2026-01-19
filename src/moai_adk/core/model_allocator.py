@@ -20,7 +20,7 @@ class ModelAllocation(TypedDict):
     expert_backend: str
     expert_frontend: str
     expert_database: str
-    manager_tdd: str
+    manager_ddd: str
     manager_spec: str
     manager_docs: str
     manager_quality: str
@@ -44,7 +44,7 @@ CLAUDE_SUBSCRIPTION_ALLOCATIONS: dict[str, ModelAllocation] = {
         "expert_backend": "sonnet",
         "expert_frontend": "sonnet",
         "expert_database": "sonnet",
-        "manager_tdd": "sonnet",
+        "manager_ddd": "sonnet",
         "manager_spec": "sonnet",
         "manager_docs": "sonnet",
         "manager_quality": "sonnet",
@@ -64,7 +64,7 @@ CLAUDE_SUBSCRIPTION_ALLOCATIONS: dict[str, ModelAllocation] = {
         "expert_backend": "sonnet",
         "expert_frontend": "sonnet",
         "expert_database": "sonnet",
-        "manager_tdd": "sonnet",
+        "manager_ddd": "sonnet",
         "manager_spec": "sonnet",
         "manager_docs": "sonnet",
         "manager_quality": "sonnet",
@@ -84,7 +84,7 @@ CLAUDE_SUBSCRIPTION_ALLOCATIONS: dict[str, ModelAllocation] = {
         "expert_backend": "opus",
         "expert_frontend": "opus",
         "expert_database": "opus",
-        "manager_tdd": "opus",
+        "manager_ddd": "opus",
         "manager_spec": "opus",
         "manager_docs": "sonnet",  # Docs don't need opus
         "manager_quality": "opus",
@@ -109,7 +109,7 @@ GLM_ALLOCATIONS: dict[str, ModelAllocation] = {
         "expert_backend": "glm-basic",
         "expert_frontend": "glm-basic",
         "expert_database": "glm-basic",
-        "manager_tdd": "glm-basic",
+        "manager_ddd": "glm-basic",
         "manager_spec": "glm-basic",
         "manager_docs": "glm-basic",
         "manager_quality": "glm-basic",
@@ -126,7 +126,7 @@ GLM_ALLOCATIONS: dict[str, ModelAllocation] = {
         "expert_backend": "glm-pro",
         "expert_frontend": "glm-pro",
         "expert_database": "glm-pro",
-        "manager_tdd": "glm-pro",
+        "manager_ddd": "glm-pro",
         "manager_spec": "glm-pro",
         "manager_docs": "glm-basic",
         "manager_quality": "glm-pro",
@@ -143,7 +143,7 @@ GLM_ALLOCATIONS: dict[str, ModelAllocation] = {
         "expert_backend": "glm-enterprise",
         "expert_frontend": "glm-enterprise",
         "expert_database": "glm-enterprise",
-        "manager_tdd": "glm-enterprise",
+        "manager_ddd": "glm-enterprise",
         "manager_spec": "glm-enterprise",
         "manager_docs": "glm-pro",
         "manager_quality": "glm-enterprise",
@@ -223,7 +223,7 @@ def get_agent_model(
     if key.startswith("expert_"):
         return allocation.get("expert_backend", "sonnet")
     if key.startswith("manager_"):
-        return allocation.get("manager_tdd", "sonnet")
+        return allocation.get("manager_ddd", "sonnet")
     if key.startswith("builder_"):
         return allocation.get("general_purpose", "sonnet")
 

@@ -294,9 +294,15 @@ def main() -> None:
             print(json.dumps(output))
             sys.exit(0)
         else:
-            # Issues need attention - use exit code 2 to alert Claude
-            print(f"Lint issues found: {issue_summary}", file=sys.stderr)
-            sys.exit(2)
+            # Issues need attention - provide context but don't block
+            output = {
+                "hookSpecificOutput": {
+                    "hookEventName": "PostToolUse",
+                    "additionalContext": f"⚠️ Lint issues: {issue_summary}",
+                }
+            }
+            print(json.dumps(output))
+            sys.exit(0)
 
     elif result.get("linted"):
         # Linting passed with no issues

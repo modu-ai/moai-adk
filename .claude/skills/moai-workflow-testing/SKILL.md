@@ -22,7 +22,7 @@ progressive_disclosure:
 triggers:
   keywords: ["TDD", "test-driven development", "debugging", "performance optimization", "code review", "PR review", "quality assurance", "testing", "CI/CD", "TRUST 5"]
   phases: ["run", "sync"]
-  agents: ["manager-tdd", "expert-testing", "expert-debug", "expert-performance", "manager-quality"]
+  agents: ["manager-ddd", "expert-testing", "expert-debug", "expert-performance", "manager-quality"]
 
 allowed-tools:
   - Read

@@ -23,7 +23,7 @@ Last Updated: 2025-12-07
 
 can_resume: false
 typical_chain_position: terminal
-depends_on: ["manager-tdd", "manager-quality"]
+depends_on: ["manager-ddd", "manager-quality"]
 spawns_subagents: false
 token_budget: medium
 context_retention: low
@@ -566,7 +566,7 @@ Expected Impact: Transform technical codebases into accessible, professional doc
 ## Works Well With
 
 Upstream Agents (typically call this agent):
-- workflow-tdd: Documentation generation after TDD implementation completes
+- manager-ddd: Documentation generation after DDD implementation completes
 - core-quality: Documentation validation as part of quality gates
 
 Downstream Agents (this agent typically calls):

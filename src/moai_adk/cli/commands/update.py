@@ -2987,7 +2987,7 @@ def _edit_configuration(project_path: Path) -> None:
         git_commit_lang=answers.get("git_commit_lang", "en"),
         code_comment_lang=answers.get("code_comment_lang", "en"),
         doc_lang=answers.get("doc_lang", "en"),
-        development_mode=answers.get("development_mode", "tdd"),  # DDD support
+        development_mode=answers.get("development_mode", "ddd"),  # DDD default
     )
 
     console.print("\n[green]✓ Configuration updated successfully![/green]")

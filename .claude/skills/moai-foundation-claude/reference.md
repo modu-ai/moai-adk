@@ -23,7 +23,7 @@ Task Invocation:
 
 Available Sub-agent Types:
 - `spec-builder`: EARS format specification generation
-- `tdd-implementer`: RED-GREEN-REFACTOR TDD execution
+- `ddd-implementer`: ANALYZE-PRESERVE-IMPROVE DDD execution
 - `backend-expert`: Backend architecture and API development
 - `frontend-expert`: Frontend UI implementation
 - `security-expert`: Security analysis and validation

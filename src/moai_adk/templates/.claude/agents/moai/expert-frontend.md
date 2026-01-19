@@ -120,7 +120,7 @@ When to delegate:
 - UI/UX design decisions: Delegate to expert-uiux subagent
 - Performance profiling: Delegate to expert-debug subagent
 - Security review: Delegate to expert-security subagent
-- TDD implementation: Delegate to manager-tdd subagent
+- DDD implementation: Delegate to manager-ddd subagent
 
 Context passing:
 

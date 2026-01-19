@@ -139,7 +139,7 @@ When to delegate:
 - Database-specific optimization: Delegate to expert-database subagent
 - Security audit required: Delegate to expert-security subagent
 - DevOps deployment: Delegate to expert-devops subagent
-- TDD implementation: Delegate to manager-tdd subagent
+- DDD implementation: Delegate to manager-ddd subagent
 
 Context passing:
 

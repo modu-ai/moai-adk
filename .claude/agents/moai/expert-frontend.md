@@ -16,10 +16,10 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__code_formatter.py"
+          command: "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/post_tool__code_formatter.py"
           timeout: 30
         - type: command
-          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__linter.py"
+          command: "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/post_tool__linter.py"
           timeout: 30
 ---
 
@@ -120,7 +120,7 @@ When to delegate:
 - UI/UX design decisions: Delegate to expert-uiux subagent
 - Performance profiling: Delegate to expert-debug subagent
 - Security review: Delegate to expert-security subagent
-- TDD implementation: Delegate to manager-tdd subagent
+- DDD implementation: Delegate to manager-ddd subagent
 
 Context passing:
 
@@ -490,11 +490,11 @@ Coordinate with infra-devops:
 - Environment variables (API base URL, features)
 - Build strategy (SSR, SSG, SPA)
 
-[HARD] Establish testing standards with workflow-tdd agent
+[HARD] Establish testing standards with manager-ddd agent
 WHY: Shared testing standards ensure consistent quality and team alignment
 IMPACT: Inconsistent testing approaches reduce coverage and increase maintenance
 
-Coordinate with workflow-tdd:
+Coordinate with manager-ddd:
 
 - Component test structure (Given-When-Then)
 - Mock strategy (MSW for API)
@@ -552,10 +552,10 @@ Next steps:
 3. Both verify deployment in staging
 ```
 
-### With workflow-tdd (Component Testing)
+### With manager-ddd (Component Testing)
 
 ```markdown
-To: workflow-tdd
+To: manager-ddd
 From: code-frontend
 Re: Test Strategy for SPEC-UI-{ID}
 

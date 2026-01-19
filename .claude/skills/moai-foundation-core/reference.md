@@ -202,23 +202,23 @@ async def spec_first_workflow(requirements: str):
     # Critical: Clear context before Phase 2
     await execute_clear()  # Saves 45-50K tokens
 
-    # Phase 2: TDD Implementation (180K tokens)
-    tdd = TDDExecutor(spec.id)
+    # Phase 2: DDD Implementation (180K tokens)
+    ddd = DDDExecutor(spec.id)
 
-    # RED: Create failing tests
-    tests = await tdd.generate_tests()
-    assert await tdd.run_tests() == "FAIL"
+    # ANALYZE: Create characterization tests
+    tests = await ddd.analyze_and_test()
+    assert await ddd.run_tests() == "PASS"
 
-    # GREEN: Implement to pass
-    implementation = await tdd.implement()
-    assert await tdd.run_tests() == "PASS"
+    # PRESERVE: Implement with behavior preservation
+    implementation = await ddd.implement()
+    assert await ddd.run_tests() == "PASS"
 
-    # REFACTOR: Optimize
-    refactored = await tdd.refactor()
-    assert await tdd.run_tests() == "PASS"
+    # IMPROVE: Optimize
+    improved = await ddd.improve()
+    assert await ddd.run_tests() == "PASS"
 
     # Validate coverage
-    coverage = await tdd.get_coverage()
+    coverage = await ddd.get_coverage()
     assert coverage >= 0.85
 
     # Phase 3: Documentation (40K tokens)

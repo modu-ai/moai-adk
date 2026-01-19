@@ -62,7 +62,7 @@ IMPACT: Displaying XML to users reduces readability and professional appearance.
 
 can_resume: false
 typical_chain_position: terminal
-depends_on: ["manager-quality", "manager-tdd"]
+depends_on: ["manager-quality", "manager-ddd"]
 spawns_subagents: false
 token_budget: low
 context_retention: low

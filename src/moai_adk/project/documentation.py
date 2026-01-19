@@ -20,7 +20,7 @@ class DocumentationGenerator:
     - structure.md: System architecture and components
     - tech.md: Technology stack, trade-offs, performance, security
 
-    Used by project-manager, tdd-implementer, and domain expert agents.
+    Used by project-manager, ddd-implementer, and domain expert agents.
 
     Example:
         >>> generator = DocumentationGenerator()
@@ -531,11 +531,11 @@ class AgentContextInjector:
         return config
 
     @staticmethod
-    def inject_tdd_implementer_context(
+    def inject_ddd_implementer_context(
         agent_config: Dict[str, Any],
         base_path: Path = Path(".moai/project"),
     ) -> Dict[str, Any]:
-        """Inject structure.md into tdd-implementer agent"""
+        """Inject structure.md into ddd-implementer agent"""
         config = deepcopy(agent_config)
 
         doc_path = base_path / "structure.md"

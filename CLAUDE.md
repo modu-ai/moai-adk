@@ -67,6 +67,44 @@ Sequential Chaining: First use expert-debug to identify issues, then use expert-
 
 Parallel Execution: Use expert-backend to develop the API while simultaneously using expert-frontend to create the UI
 
+### Task Decomposition (Auto-Parallel)
+
+When receiving complex tasks, Alfred automatically decomposes and parallelizes:
+
+**Trigger Conditions:**
+
+- Task involves 2+ distinct domains (backend, frontend, testing, docs)
+- Task description contains multiple deliverables
+- Keywords: "implement", "create", "build" with compound requirements
+
+**Decomposition Process:**
+
+1. Analyze: Identify independent subtasks by domain
+2. Map: Assign each subtask to optimal agent
+3. Execute: Launch agents in parallel (single message, multiple Task calls)
+4. Integrate: Consolidate results into unified response
+
+**Example:**
+
+```
+User: "Implement authentication system"
+
+Alfred Decomposition:
+├─ expert-backend  → JWT token, login/logout API (parallel)
+├─ expert-backend  → User model, database schema  (parallel)
+├─ expert-frontend → Login form, auth context     (parallel)
+└─ expert-testing  → Auth test cases              (after impl)
+
+Execution: 3 agents parallel → 1 agent sequential
+```
+
+**Parallel Execution Rules:**
+
+- Independent domains: Always parallel
+- Same domain, no dependency: Parallel
+- Sequential dependency: Chain with "after X completes"
+- Max parallel agents: 5 (prevent context fragmentation)
+
 Context Optimization:
 
 - Pass minimal context to agents (spec_id, key requirements as max 3 bullet points, architecture summary under 200 chars)
@@ -488,8 +526,8 @@ budget = estimate_progressive_budget(
 
 ---
 
-Version: 10.3.0 (DDD Only + Progressive Disclosure)
-Last Updated: 2026-01-17
+Version: 10.4.0 (DDD + Progressive Disclosure + Auto-Parallel Task Decomposition)
+Last Updated: 2026-01-19
 Language: English
 Core Rule: Alfred is an orchestrator; direct implementation is prohibited
 

@@ -84,7 +84,7 @@ Architecture Diagram: Created (docs/diagrams/auth-flow.mermaid)
 Token Usage: 35K/40K
 ```
 
-**Explanation**: SPEC-First TDD는 3단계로 진행됩니다. Phase 1에서 EARS 형식으로 요구사항을 정의하고, Phase 2에서 RED-GREEN-REFACTOR 사이클로 구현하며, Phase 3에서 문서를 생성합니다. 각 Phase 사이에 /clear를 실행하여 토큰을 절약합니다.
+**Explanation**: SPEC-First DDD는 3단계로 진행됩니다. Phase 1에서 EARS 형식으로 요구사항을 정의하고, Phase 2에서 ANALYZE-PRESERVE-IMPROVE 사이클로 구현하며, Phase 3에서 문서를 생성합니다. 각 Phase 사이에 /clear를 실행하여 토큰을 절약합니다.
 
 ---
 

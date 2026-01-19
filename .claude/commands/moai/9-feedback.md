@@ -261,7 +261,82 @@ Feedback Types:
 - Question: Clarifications or help needed
 - Other: General feedback
 
-Version: 1.0.0 (Agent-Delegated Pattern)
+---
+
+## Feedback Templates
+
+### Bug Report Template
+
+```markdown
+## Bug Report
+
+**Description**
+[Clear description of what went wrong]
+
+**Steps to Reproduce**
+1. [First step]
+2. [Second step]
+3. [Expected vs actual result]
+
+**Environment**
+- MoAI-ADK Version: [version]
+- OS: [operating system]
+- Claude Code Version: [version]
+
+**Error Messages**
+```
+[Paste any error messages here]
+```
+
+**Additional Context**
+[Any other relevant information]
+```
+
+### Feature Request Template
+
+```markdown
+## Feature Request
+
+**Problem Statement**
+[What problem does this feature solve?]
+
+**Proposed Solution**
+[How should this feature work?]
+
+**Alternatives Considered**
+[Other approaches you've thought about]
+
+**Use Case**
+[Specific scenario where this would be useful]
+
+**Priority**
+- [ ] Critical - Blocking my workflow
+- [ ] High - Significantly impacts productivity
+- [ ] Medium - Would be nice to have
+- [ ] Low - Minor improvement
+```
+
+### Question Template
+
+```markdown
+## Question
+
+**Topic**
+[Brief topic of your question]
+
+**Context**
+[Background information relevant to your question]
+
+**Specific Question**
+[Your detailed question]
+
+**What I've Tried**
+[Steps you've already taken to find an answer]
+```
+
+---
+
+Version: 1.1.0 (Agent-Delegated Pattern)
 Last Updated: 2025-11-25
 Architecture: Commands → Agents → Skills (Complete delegation)
 

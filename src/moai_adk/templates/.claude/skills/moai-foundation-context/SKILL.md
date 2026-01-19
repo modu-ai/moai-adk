@@ -50,7 +50,7 @@ triggers:
     - "multi-agent"
   agents:
     - "manager-spec"
-    - "manager-tdd"
+    - "manager-ddd"
     - "manager-strategy"
     - "manager-quality"
     - "manager-docs"

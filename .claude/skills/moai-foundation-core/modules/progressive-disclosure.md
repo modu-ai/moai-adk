@@ -82,7 +82,7 @@ Example - Quality Framework:
 
 TRUST 5 is MoAI-ADK's comprehensive quality assurance framework enforcing five pillars:
 
-1. Test-first(T) - ≥85% coverage, RED-GREEN-REFACTOR cycle
+1. Test-first(T) - ≥85% coverage, ANALYZE-PRESERVE-IMPROVE cycle
 2. Readable(R) - Clear naming, ≤10 cyclomatic complexity
 3. Unified(U) - Consistent patterns, architecture compliance
 4. Secured(S) - OWASP Top 10 compliance, security validation
@@ -215,21 +215,21 @@ Test Coverage Target: ≥90%
 
 ---
 
-### Phase 2: Test-Driven Development
+### Phase 2: Domain-Driven Development
 
-RED-GREEN-REFACTOR Cycle:
+ANALYZE-PRESERVE-IMPROVE Cycle:
 
 ```python
-# RED: Write failing test first
+# ANALYZE: Create characterization test first
 def test_register_user():
  result = register_user("user@example.com", "SecureP@ssw0rd")
  assert result.success is True
 
-# GREEN: Minimal implementation
+# PRESERVE: Minimal implementation preserving behavior
 def register_user(email, password):
  return RegistrationResult(success=True, user=User())
 
-# REFACTOR: Improve quality
+# IMPROVE: Enhance quality
 def register_user(email: str, password: str) -> RegistrationResult:
  """Register new user with email and password.
  

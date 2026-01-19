@@ -152,7 +152,7 @@ async def spec_then_implement():
  
  # Phase 2: Implementation (fresh context)
  impl = await Task(
- subagent_type="tdd-implementer",
+ subagent_type="ddd-implementer",
  prompt="Implement SPEC-001",
  context={
  "spec_id": "SPEC-001", # Minimal reference

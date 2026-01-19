@@ -4,6 +4,7 @@ argument-hint: "[VERSION] - optional target version (e.g., 0.35.0)"
 type: local
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, AskUserQuestion
 model: sonnet
+version: 1.0.0
 ---
 
 ## EXECUTION DIRECTIVE - START IMMEDIATELY
@@ -179,12 +180,85 @@ If the release is not immediately visible, wait 2-3 minutes for the workflow to 
 
 ---
 
+## Output Format
+
+### Phase Progress
+
+```markdown
+## Release: Phase 3/7 - Version Selection
+
+### Quality Gates
+- smoke tests: PASS (25/25)
+- ruff: FIXED (3 issues auto-corrected)
+- mypy: WARNING (2 type hints missing)
+
+### Version Update
+- Current: 1.4.0
+- Target: 1.5.0 (minor)
+
+Updating version files...
+```
+
+### Complete
+
+```markdown
+## Release: COMPLETE
+
+### Summary
+- Version: 1.4.0 → 1.5.0
+- Commits: 12 commits included
+- Quality: All gates passed
+
+### Links
+- GitHub Release: https://github.com/modu-ai/moai-adk/releases/tag/v1.5.0
+- PyPI: https://pypi.org/project/moai-adk/1.5.0/
+
+<moai>DONE</moai>
+```
+
+---
+
 ## Key Rules
 
 - Smoke tests MUST pass to continue (tests/test_smoke.py)
 - All version files must be consistent
 - Tag format: vX.Y.Z (with 'v' prefix)
 - GitHub Actions handles PyPI deployment automatically
+
+---
+
+## State Management & Recovery
+
+Release state is saved for recovery if interrupted:
+
+```
+# Snapshot location
+.moai/cache/release-snapshots/
+├── release-20260119-143052.json    # Timestamp-based snapshot
+└── latest.json                      # Symlink to most recent
+
+# Snapshot contents
+{
+  "timestamp": "2026-01-19T14:30:52Z",
+  "target_version": "1.5.0",
+  "current_phase": 3,
+  "quality_results": {...},
+  "commits_included": [...],
+  "version_files_updated": [...]
+}
+```
+
+Recovery Commands:
+
+```bash
+# Resume from latest snapshot (if release was interrupted)
+/moai:99-release --resume
+
+# Check release status
+/moai:99-release --status
+```
+
+WHY: Release process involves multiple steps; recovery prevents partial releases.
 
 ---
 

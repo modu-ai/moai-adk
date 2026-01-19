@@ -150,13 +150,13 @@ Skills:
 
 Agents:
 
-- manager-tdd: TDD implementation
+- manager-ddd: DDD implementation
 - manager-quality: Quality validation
 - expert-debug: Complex debugging
 
 Commands:
 
-- /moai:2-run: TDD implementation
+- /moai:2-run: DDD implementation
 - /moai:3-sync: Documentation sync
 
 ## Reference

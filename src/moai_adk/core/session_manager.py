@@ -119,7 +119,7 @@ class SessionManager:
         "Results flow through main conversation thread"
 
         Args:
-            agent_name: Name of the agent (e.g., "tdd-implementer")
+            agent_name: Name of the agent (e.g., "ddd-implementer")
             agent_id: Unique agentId returned from Task() execution
             result: Result data from agent execution
             chain_id: Optional workflow chain identifier (e.g., "SPEC-AUTH-001-implementation")
@@ -558,12 +558,12 @@ if __name__ == "__main__":
     summary = manager.get_chain_summary("SPEC-AUTH-001-planning")
     print(f"Chain summary: {json.dumps(summary, indent=2)}")
 
-    # Example 2: Resume Pattern (tdd-implementer continues work)
+    # Example 2: Resume Pattern (ddd-implementer continues work)
     print("\n=== Example 2: Resume Pattern ===")
 
     manager.create_chain(
         chain_id="SPEC-AUTH-001-implementation",
-        agent_sequence=["tdd-implementer"],
+        agent_sequence=["ddd-implementer"],
     )
 
     # First execution: Implementation phase 1
@@ -575,23 +575,23 @@ if __name__ == "__main__":
     }
 
     manager.register_agent_result(
-        agent_name="tdd-implementer",
-        agent_id="tdd-ghi789",
+        agent_name="ddd-implementer",
+        agent_id="ddd-ghi789",
         result=implementation_001_result,
         chain_id="SPEC-AUTH-001-implementation",
     )
 
     # Get resume ID for continuing work
     resume_id = manager.get_resume_id(
-        agent_name="tdd-implementer",
+        agent_name="ddd-implementer",
         chain_id="SPEC-AUTH-001-implementation",
     )
 
-    print(f"Resume ID for tdd-implementer: {resume_id}")
+    print(f"Resume ID for ddd-implementer: {resume_id}")
 
     # Should resume? (continuing user auth flow)
     should_resume_decision = manager.should_resume(
-        agent_name="tdd-implementer",
+        agent_name="ddd-implementer",
         current_task="Implement user login endpoint",
         previous_task="Implement user registration endpoint",
     )

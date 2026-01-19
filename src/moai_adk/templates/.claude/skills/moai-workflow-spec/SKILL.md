@@ -202,8 +202,8 @@ PLAN Phase (/moai:1-plan):
 - Git Worktree setup (optional --worktree flag)
 
 RUN Phase (/moai:2-run):
-- manager-tdd agent loads SPEC document
-- RED-GREEN-REFACTOR TDD cycle execution
+- manager-ddd agent loads SPEC document
+- ANALYZE-PRESERVE-IMPROVE DDD cycle execution
 - moai-workflow-testing skill reference for test patterns
 - Domain Expert agent delegation (expert-backend, expert-frontend, etc.)
 - Quality validation through manager-quality agent
@@ -310,11 +310,11 @@ Validation Checklist:
 ### Works Well With
 
 - moai-foundation-core: SPEC-First TDD methodology and TRUST 5 framework
-- moai-workflow-testing: TDD implementation and test automation
+- moai-workflow-testing: DDD implementation and test automation
 - moai-workflow-project: Project initialization and configuration
 - moai-worktree: Git Worktree management for parallel development
 - manager-spec: SPEC creation and requirement analysis agent
-- manager-tdd: TDD implementation based on SPEC requirements
+- manager-ddd: DDD implementation based on SPEC requirements
 - manager-quality: TRUST 5 quality validation and gate enforcement
 
 ### Integration Examples

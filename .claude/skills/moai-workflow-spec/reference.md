@@ -16,7 +16,7 @@ This document provides comprehensive reference information for SPEC workflow man
 Created: YYYY-MM-DD
 Status: Planned
 Priority: Medium
-Assigned: manager-tdd
+Assigned: manager-ddd
 
 ## Description
 [Brief description of the feature]
@@ -67,7 +67,7 @@ Business:
 Created: YYYY-MM-DD
 Status: Planned
 Priority: High
-Assigned: manager-tdd
+Assigned: manager-ddd
 Related SPECs: SPEC-YYY, SPEC-ZZZ
 
 ## Description
@@ -269,7 +269,7 @@ Technical:
 - Low: Enhancement or optional feature
 
 **Assigned Agents**:
-- manager-tdd: TDD-based implementation
+- manager-ddd: DDD-based implementation (ANALYZE-PRESERVE-IMPROVE)
 - manager-spec: SPEC refinement and updates
 - expert-backend: Backend-specific features
 - expert-frontend: Frontend-specific features
@@ -530,7 +530,7 @@ manager-spec creates SPEC-001
     ↓
 /moai:2-run SPEC-001
     ↓
-manager-tdd implements with RED-GREEN-REFACTOR
+manager-ddd implements with ANALYZE-PRESERVE-IMPROVE
     ↓
 /moai:3-sync SPEC-001
     ↓
@@ -615,7 +615,7 @@ Full Stack Feature Complete
 
 **RUN Phase Token Usage** (~60% of 200K):
 - SPEC document loading: 5K tokens
-- TDD cycle execution: 100K tokens
+- DDD cycle execution: 100K tokens
 - Code generation: 20K tokens
 - Test execution and debugging: 15K tokens
 - Quality validation: 10K tokens
@@ -689,7 +689,7 @@ Full Stack Feature Complete
 - MoAI-ADK Plan-Run-Sync Workflow: Core methodology documentation
 - TRUST 5 Framework: Quality assurance and validation framework
 - Git Worktree Documentation: Parallel development environment setup
-- TDD Best Practices: Test-Driven Development implementation guide
+- DDD Best Practices: Domain-Driven Development implementation guide
 
 ### Tool Integration
 

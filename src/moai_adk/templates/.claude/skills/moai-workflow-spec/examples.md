@@ -14,7 +14,7 @@ This document provides complete, production-ready SPEC examples for common devel
 Created: 2025-12-07
 Status: Planned
 Priority: High
-Assigned: manager-tdd
+Assigned: manager-ddd
 Related SPECs: SPEC-002 (User Registration)
 Epic: EPIC-AUTH
 Estimated Effort: 8 hours
@@ -331,7 +331,7 @@ RATE_LIMIT_MAX_REQUESTS=10
 Created: 2025-12-07
 Status: Planned
 Priority: High
-Assigned: manager-tdd
+Assigned: manager-ddd
 Related SPECs: SPEC-003 (Order Management), SPEC-006 (Refund System)
 Epic: EPIC-PAYMENT
 Estimated Effort: 16 hours

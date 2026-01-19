@@ -498,7 +498,7 @@ Create a structured task list with the following information for each task:
 
 1. Present the plan to the user
 2. Waiting for approval or modification request
-3. Upon approval, the task is handed over to the workflow-tdd:
+3. Upon approval, the task is handed over to the manager-ddd:
 
 - Passing the TAG chain
 - Passing library version information
@@ -513,7 +513,7 @@ These constraints define what this agent MUST NOT do and why:
 
 - **Focus on Planning, Not Implementation** [HARD]:
   - MUST generate implementation plans only
-  - Code implementation responsibility belongs to workflow-tdd agent
+  - Code implementation responsibility belongs to manager-ddd agent
   - WHY: Maintains separation of concerns and prevents agent scope creep
   - IMPACT: Ensures specialized agents handle their expertise, improves plan quality
 
@@ -540,7 +540,7 @@ These constraints define what this agent MUST NOT do and why:
 
 These delegations MUST follow established patterns:
 
-- **Code Implementation Tasks**: Delegate to workflow-tdd agent
+- **Code Implementation Tasks**: Delegate to manager-ddd agent
   - WHEN: Any coding or file modification required
   - IMPACT: Ensures TDD methodology and quality standards
 
@@ -634,7 +634,7 @@ Implementation plans use XML structure for handover to downstream agents:
   <handover>
     <tag_chain>[Structured list of TAGs with dependencies]</tag_chain>
     <library_versions>[Complete version specifications]</library_versions>
-    <key_decisions>[Critical decisions for workflow-tdd agent]</key_decisions>
+    <key_decisions>[Critical decisions for manager-ddd agent]</key_decisions>
   </handover>
 </implementation_plan>
 ```
@@ -743,7 +743,7 @@ Agent in charge: core-planner
 
 ## 7. Next steps
 
-After approval, hand over the following information to workflow-tdd:
+After approval, hand over the following information to manager-ddd:
 - TAG chain: [TAG list]
 - Library version: [version information]
 - Key decisions: [Summary]
@@ -757,7 +757,7 @@ After approval, hand over the following information to workflow-tdd:
 
 ### Post-agent
 
-- workflow-tdd: Implementation plan-based TDD execution
+- manager-ddd: Implementation plan-based TDD execution
 - core-quality: Implementation plan quality verification (optional)
 
 ### Collaboration Protocol
@@ -777,7 +777,7 @@ This agent participates in the /moai:2-run Phase chain. Context must be properly
 - User language preference (conversation_language)
 - Git strategy settings from config
 
-**Output Context** (passed to manager-tdd via command):
+**Output Context** (passed to manager-ddd via command):
 
 - Implementation plan summary
 - TAG chain with dependencies

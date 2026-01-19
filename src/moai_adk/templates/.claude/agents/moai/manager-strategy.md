@@ -777,7 +777,7 @@ This agent participates in the /moai:2-run Phase chain. Context must be properly
 - User language preference (conversation_language)
 - Git strategy settings from config
 
-**Output Context** (passed to manager-tdd via command):
+**Output Context** (passed to manager-ddd via command):
 
 - Implementation plan summary
 - TAG chain with dependencies

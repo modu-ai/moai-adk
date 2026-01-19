@@ -493,7 +493,7 @@ def _save_additional_config(
     git_commit_lang: str,
     code_comment_lang: str,
     doc_lang: str,
-    development_mode: str = "tdd",
+    development_mode: str = "ddd",
 ) -> None:
     """Save additional configuration from interactive mode.
 

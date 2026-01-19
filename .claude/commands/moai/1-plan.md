@@ -218,7 +218,7 @@ This command implements the first 2 steps of Alfred's 4-step workflow:
 
 1. STEP 1: Intent Understanding (Clarify user requirements)
 2. STEP 2: Plan Creation (Create execution strategy with agent delegation)
-3. STEP 3: Task Execution (Execute via manager-tdd - NOT in this command)
+3. STEP 3: Task Execution (Execute via manager-ddd - NOT in this command)
 4. STEP 4: Report & Commit (Documentation and git operations - NOT in this command)
 
 Command Scope: Only executes Steps 1-2. Steps 3-4 are executed by `/moai:2-run` and `/moai:3-sync`.
@@ -1443,6 +1443,48 @@ Important:
 - Use conversation language from config
 - No emojis in any AskUserQuestion fields
 - Always provide clear next step options
+
+---
+
+## State Management & Draft Recovery
+
+SPEC drafts are saved for recovery if planning is interrupted:
+
+```
+# Draft location
+.moai/specs/drafts/
+├── SPEC-AUTH-001-draft.md          # Named draft
+├── SPEC-AUTH-001-draft.json        # Draft metadata
+└── latest-draft.json               # Symlink to most recent
+
+# Draft metadata contents
+{
+  "timestamp": "2026-01-19T14:30:52Z",
+  "spec_id": "SPEC-AUTH-001",
+  "title": "JWT Authentication",
+  "phase": "requirements",
+  "exploration_results": {...},
+  "ears_requirements": [...],
+  "acceptance_criteria": [...]
+}
+```
+
+Recovery Commands:
+
+```bash
+# Resume from latest draft
+/moai:1-plan --resume
+
+# Resume specific draft
+/moai:1-plan --resume SPEC-AUTH-001
+
+# List all drafts
+/moai:1-plan --list-drafts
+```
+
+WHY: SPEC planning involves multiple phases; recovery prevents loss of exploration and requirement gathering work.
+
+---
 
 ## EXECUTION DIRECTIVE
 

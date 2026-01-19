@@ -39,7 +39,7 @@ triggers:
     - "ears format"
   agents:
     - "manager-spec"
-    - "manager-tdd"
+    - "manager-ddd"
     - "manager-strategy"
     - "manager-quality"
     - "builder-agent"
@@ -169,7 +169,7 @@ Budget Allocation:
 
 SPEC Phase takes 30K tokens. Strategy is to load requirements only and execute /clear after completion. Specification phase requires minimal context for requirement analysis. Saves 45-50K tokens for implementation phase.
 
-TDD Phase takes 180K tokens. Strategy is selective file loading, load only implementation-relevant files. Implementation requires deep context but not full codebase. Enables 70 percent larger implementations within budget.
+DDD Phase takes 180K tokens. Strategy is selective file loading, load only implementation-relevant files. Implementation requires deep context but not full codebase. Enables 70 percent larger implementations within budget.
 
 Docs Phase takes 40K tokens. Strategy is result caching and template reuse. Documentation builds on completed work artifacts. Reduces redundant file reads by 60 percent.
 
@@ -245,13 +245,13 @@ Detailed Reference: examples.md for working code samples
 
 ## Works Well With
 
-Agents: agent-factory for creating agents with foundation principles, skill-factory for generating skills with modular architecture, core-quality for automated TRUST 5 validation, workflow-spec for EARS format specification, workflow-tdd for RED-GREEN-REFACTOR execution, workflow-docs for documentation with progressive disclosure.
+Agents: agent-factory for creating agents with foundation principles, skill-factory for generating skills with modular architecture, core-quality for automated TRUST 5 validation, workflow-spec for EARS format specification, manager-ddd for DDD ANALYZE-PRESERVE-IMPROVE execution, workflow-docs for documentation with progressive disclosure.
 
 Skills: moai-cc-claude-md for CLAUDE.md with foundation patterns, moai-cc-configuration for config with TRUST 5, moai-cc-memory for token optimization, moai-context7-integration for MCP integration.
 
 Tools: AskUserQuestion for direct user interaction and clarification needs.
 
-Commands: /moai:1-plan for SPEC-First Phase 1, /moai:2-run for TDD Phase 2, /moai:3-sync for Documentation Phase 3, /moai:9-feedback for continuous improvement, /clear for token management.
+Commands: /moai:1-plan for SPEC-First Phase 1, /moai:2-run for DDD Phase 2, /moai:3-sync for Documentation Phase 3, /moai:9-feedback for continuous improvement, /clear for token management.
 
 Foundation Modules (Extended Documentation): modules/agents-reference.md for 26-agent catalog with 7-tier hierarchy, modules/commands-reference.md for 6 core commands workflow, modules/execution-rules.md for security, Git strategy, and compliance.
 

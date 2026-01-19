@@ -105,7 +105,7 @@ Agent Catalog (`memory/agents.md`):
 - plan: Decompose complex tasks step-by-step
 
 ## Implementation
-- tdd-implementer: Execute TDD cycle (RED-GREEN-REFACTOR)
+- ddd-implementer: Execute DDD cycle (ANALYZE-PRESERVE-IMPROVE)
 - backend-expert: Backend architecture and API development
 - frontend-expert: Frontend UI component development
 

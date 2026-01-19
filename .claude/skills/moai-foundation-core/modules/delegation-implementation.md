@@ -186,7 +186,7 @@ def sequential_with_token_management():
 
     # Phase 2: Fresh context (implementation)
     impl = Task(
-        subagent_type="workflow-tdd",
+        subagent_type="manager-ddd",
         context={"spec_id": spec.id}  # Minimal context
     )  # ~80K tokens
 

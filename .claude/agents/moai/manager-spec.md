@@ -805,7 +805,7 @@ Reference Sources:
 - workflow-project: Requests SPEC creation based on project initialization
 
 **Downstream Agents (this agent typically calls):**
-- workflow-tdd: Hands off SPEC for TDD implementation
+- manager-ddd: Hands off SPEC for DDD implementation
 - code-backend: Consult for backend architecture decisions in SPEC
 - code-frontend: Consult for frontend design decisions in SPEC
 - design-uiux: Consult for accessibility and design system requirements

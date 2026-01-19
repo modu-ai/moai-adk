@@ -144,19 +144,19 @@ Skills:
 
 - moai-foundation-quality: TRUST 5 validation
 - moai-tool-ast-grep: Security scanning patterns
-- moai-workflow-testing: TDD integration
+- moai-workflow-testing: DDD and testing integration
 - moai-lang-python: Python-specific patterns
 - moai-lang-typescript: TypeScript patterns
 
 Agents:
 
-- manager-tdd: TDD implementation
+- manager-ddd: DDD implementation
 - manager-quality: Quality validation
 - expert-debug: Complex debugging
 
 Commands:
 
-- /moai:2-run: TDD implementation
+- /moai:2-run: DDD implementation
 - /moai:3-sync: Documentation sync
 
 ## Reference

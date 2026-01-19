@@ -264,7 +264,7 @@ analysis = Task(
 
 # Phase 2: Implementation (passes analysis results)
 implementation = Task(
- subagent_type="tdd-implementer",
+ subagent_type="ddd-implementer",
  prompt="Implement based on analysis",
  context={"analysis": analysis, "spec_id": analysis.spec_id}
 )
@@ -487,9 +487,9 @@ fi
 
 ### Phase 4: Feature Implementation
 ```python
-# GREEN phase: Implement feature
+# IMPROVE phase: Implement feature
 implementation_result = Task(
- subagent_type="tdd-implementer",
+ subagent_type="ddd-implementer",
  prompt="Implement feature for $spec_id",
  context={
  "spec_id": spec_id,

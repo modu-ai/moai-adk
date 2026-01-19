@@ -287,7 +287,7 @@ Option 4 - Need More Context: Clarify requirements before routing
 Core MoAI Commands:
 - /moai:0-project - Project initialization and configuration
 - /moai:1-plan "description" - SPEC generation with EARS format
-- /moai:2-run SPEC-ID - TDD implementation cycle
+- /moai:2-run SPEC-ID - DDD implementation cycle
 - /moai:3-sync SPEC-ID - Documentation and PR automation
 - /moai:alfred "description" - Full autonomous automation
 - /moai:fix - One-shot auto-fix
@@ -298,7 +298,7 @@ Core MoAI Commands:
 Manager Agents (8):
 - manager-git: Git workflow and branch management
 - manager-spec: SPEC writing with EARS format
-- manager-tdd: TDD Red-Green-Refactor cycle
+- manager-ddd: DDD ANALYZE-PRESERVE-IMPROVE cycle
 - manager-docs: Documentation auto-generation
 - manager-quality: TRUST 5 validation
 - manager-project: Project initialization
@@ -372,8 +372,8 @@ Phase 1: Planning
 - Deliverable: SPEC document with EARS format
 
 Phase 2: Implementation
-- Agent: manager-tdd (with expert delegation)
-- Deliverable: Production code with tests
+- Agent: manager-ddd (with expert delegation)
+- Deliverable: Production code with behavior preservation
 
 Phase 3: Documentation
 - Agent: manager-docs
@@ -414,12 +414,12 @@ Phase 3: Documentation
 | Agent          | Task               | Status   | Progress |
 | -------------- | ------------------ | -------- | -------- |
 | expert-backend | JWT implementation | ⏳ Active | 65%      |
-| manager-tdd    | Test generation    | 🔜 Queued | -        |
+| manager-ddd    | DDD implementation | 🔜 Queued | -        |
 | manager-docs   | API documentation  | 🔜 Queued | -        |
 
 💡 DELEGATION RATIONALE:
 - Backend expert selected for authentication domain expertise
-- TDD manager queued for test coverage requirement
+- DDD manager queued for implementation with behavior preservation
 - Docs manager scheduled for API documentation
 
 ### Phase 6: Mission Complete
@@ -445,7 +445,7 @@ Phase 3: Documentation
 
 🔄 AGENTS UTILIZED:
 - expert-backend: Core implementation
-- manager-tdd: Test coverage
+- manager-ddd: DDD implementation
 - manager-docs: Documentation
 
 ❓ NEXT STEPS: Use AskUserQuestion to determine next actions including deployment preparation, additional features, code review request, and project completion confirmation.
@@ -653,7 +653,7 @@ Task(subagent_type="Explore"): Codebase analysis
 Task(subagent_type="expert-backend"): API and database design
 Task(subagent_type="expert-frontend"): UI implementation
 Task(subagent_type="expert-security"): Security architecture
-Task(subagent_type="manager-tdd"): TDD implementation
+Task(subagent_type="manager-ddd"): DDD implementation
 Task(subagent_type="manager-quality"): TRUST 5 validation
 Task(subagent_type="manager-docs"): Documentation generation
 

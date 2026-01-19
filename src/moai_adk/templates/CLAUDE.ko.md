@@ -67,6 +67,44 @@ Type C 피드백 명령: 개선 사항 및 버그 보고를 위한 사용자 피
 
 병렬 실행: expert-backend로 API를 개발하면서 동시에 expert-frontend로 UI를 생성합니다
 
+### 작업 분해 (자동 병렬화)
+
+복잡한 작업을 받으면 Alfred가 자동으로 분해하고 병렬화합니다:
+
+**트리거 조건:**
+
+- 작업이 2개 이상의 서로 다른 도메인을 포함 (backend, frontend, testing, docs)
+- 작업 설명에 여러 결과물이 포함됨
+- 키워드: "구현", "생성", "빌드" + 복합 요구사항
+
+**분해 프로세스:**
+
+1. 분석: 도메인별 독립적인 하위 작업 식별
+2. 매핑: 각 하위 작업을 최적의 에이전트에 할당
+3. 실행: 에이전트를 병렬로 실행 (단일 메시지, 다중 Task 호출)
+4. 통합: 결과를 통합된 응답으로 합침
+
+**예시:**
+
+```
+User: "Implement authentication system"
+
+Alfred 분해:
+├─ expert-backend  → JWT 토큰, 로그인/로그아웃 API (병렬)
+├─ expert-backend  → User 모델, 데이터베이스 스키마 (병렬)
+├─ expert-frontend → 로그인 폼, 인증 컨텍스트     (병렬)
+└─ expert-testing  → 인증 테스트 케이스           (구현 후)
+
+실행: 3개 에이전트 병렬 → 1개 에이전트 순차
+```
+
+**병렬 실행 규칙:**
+
+- 독립 도메인: 항상 병렬
+- 같은 도메인, 의존성 없음: 병렬
+- 순차 의존성: "X 완료 후"로 체이닝
+- 최대 병렬 에이전트: 5개 (컨텍스트 분산 방지)
+
 컨텍스트 최적화:
 
 - 에이전트에게 최소한의 컨텍스트를 전달합니다 (spec_id, 최대 3개 항목의 주요 요구사항, 200자 이하의 아키텍처 요약)
@@ -143,7 +181,7 @@ Type C 피드백 명령: 개선 사항 및 버그 보고를 위한 사용자 피
 ### Manager 에이전트 (8개)
 
 - manager-spec: SPEC 문서 생성, EARS 형식, 요구사항 분석
-- manager-tdd: 테스트 주도 개발, RED-GREEN-REFACTOR 사이클, 커버리지 검증
+- manager-ddd: 도메인 주도 개발, ANALYZE-PRESERVE-IMPROVE 사이클, 동작 보존
 - manager-docs: 문서 생성, Nextra 통합, 마크다운 최적화
 - manager-quality: 품질 게이트, TRUST 5 검증, 코드 리뷰
 - manager-project: 프로젝트 구성, 구조 관리, 초기화
@@ -176,7 +214,7 @@ Type C 피드백 명령: 개선 사항 및 버그 보고를 위한 사용자 피
 ### MoAI 명령 흐름
 
 - /moai:1-plan "description"은 manager-spec 하위 에이전트 사용으로 이어집니다
-- /moai:2-run SPEC-001은 manager-tdd 하위 에이전트 사용으로 이어집니다
+- /moai:2-run SPEC-001은 manager-ddd 하위 에이전트 사용으로 이어집니다 (ANALYZE-PRESERVE-IMPROVE)
 - /moai:3-sync SPEC-001은 manager-docs 하위 에이전트 사용으로 이어집니다
 
 ### SPEC 실행을 위한 에이전트 체인
@@ -335,8 +373,8 @@ agentId를 사용하여 중단된 에이전트 작업을 재개합니다:
 
 ---
 
-Version: 10.0.0 (Alfred-Centric Redesign)
-Last Updated: 2026-01-13
+Version: 10.4.0 (DDD + Progressive Disclosure + Auto-Parallel Task Decomposition)
+Last Updated: 2026-01-19
 Language: Korean (한국어)
 핵심 규칙: Alfred는 오케스트레이터입니다; 직접 구현은 금지됩니다
 

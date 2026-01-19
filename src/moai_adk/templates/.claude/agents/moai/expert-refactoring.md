@@ -120,7 +120,7 @@ OUT OF SCOPE:
 
 Delegate TO:
 - expert-debug: If refactoring introduces errors
-- manager-tdd: To run tests after refactoring
+- manager-ddd: To run tests after refactoring
 - manager-quality: To validate code quality post-refactoring
 - expert-security: If security patterns need review
 

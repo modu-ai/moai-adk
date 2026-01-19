@@ -67,6 +67,44 @@ Type C フィードバックコマンド: 改善とバグレポートのため�
 
 並列実行: expert-backend で API を開発しながら、同時に expert-frontend で UI を作成します
 
+### タスク分解（自動並列化）
+
+複雑なタスクを受け取ると、Alfred が自動的に分解して並列化します:
+
+**トリガー条件:**
+
+- タスクが 2 つ以上の異なるドメインを含む (backend、frontend、testing、docs)
+- タスク説明に複数の成果物が含まれる
+- キーワード: 「実装」「作成」「ビルド」+ 複合要件
+
+**分解プロセス:**
+
+1. 分析: ドメインごとに独立したサブタスクを識別
+2. マッピング: 各サブタスクを最適なエージェントに割り当て
+3. 実行: エージェントを並列で起動（単一メッセージ、複数 Task 呼び出し）
+4. 統合: 結果を統一されたレスポンスに統合
+
+**例:**
+
+```
+User: "Implement authentication system"
+
+Alfred 分解:
+├─ expert-backend  → JWT トークン、ログイン/ログアウト API (並列)
+├─ expert-backend  → User モデル、データベーススキーマ    (並列)
+├─ expert-frontend → ログインフォーム、認証コンテキスト  (並列)
+└─ expert-testing  → 認証テストケース                    (実装後)
+
+実行: 3 エージェント並列 → 1 エージェント順次
+```
+
+**並列実行ルール:**
+
+- 独立ドメイン: 常に並列
+- 同一ドメイン、依存関係なし: 並列
+- 順次依存: 「X 完了後」でチェーン
+- 最大並列エージェント: 5（コンテキスト分散防止）
+
 コンテキスト最適化:
 
 - エージェントに最小限のコンテキストを渡す（spec_id、最大3つの箇条書きとしての主要要件、200文字以下のアーキテクチャ概要）
@@ -143,7 +181,7 @@ Type C フィードバックコマンド: 改善とバグレポートのため�
 ### Manager エージェント（8種類）
 
 - manager-spec: SPEC ドキュメント作成、EARS フォーマット、要件分析
-- manager-tdd: テスト駆動開発、RED-GREEN-REFACTOR サイクル、カバレッジ検証
+- manager-ddd: ドメイン駆動開発、ANALYZE-PRESERVE-IMPROVE サイクル、動作保存
 - manager-docs: ドキュメント生成、Nextra 統合、markdown 最適化
 - manager-quality: 品質ゲート、TRUST 5 検証、コードレビュー
 - manager-project: プロジェクト設定、構造管理、初期化
@@ -176,7 +214,7 @@ Type C フィードバックコマンド: 改善とバグレポートのため�
 ### MoAI コマンドフロー
 
 - /moai:1-plan "description" は manager-spec サブエージェントの使用につながります
-- /moai:2-run SPEC-001 は manager-tdd サブエージェントの使用につながります
+- /moai:2-run SPEC-001 は manager-ddd サブエージェントの使用につながります (ANALYZE-PRESERVE-IMPROVE)
 - /moai:3-sync SPEC-001 は manager-docs サブエージェントの使用につながります
 
 ### SPEC 実行のためのエージェントチェーン
@@ -335,8 +373,8 @@ agentId を使用して中断されたエージェント作業を再開します
 
 ---
 
-Version: 10.0.0 (Alfred-Centric Redesign)
-Last Updated: 2026-01-13
+Version: 10.4.0 (DDD + Progressive Disclosure + Auto-Parallel Task Decomposition)
+Last Updated: 2026-01-19
 Language: Japanese (日本語)
 コアルール: Alfred はオーケストレーターです。直接実装は禁止されています
 

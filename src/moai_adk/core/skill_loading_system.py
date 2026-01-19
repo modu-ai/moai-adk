@@ -777,7 +777,7 @@ def detect_required_skills(subagent_type: str, prompt: str) -> List[str]:
     skill_mapping = {
         "expert-backend": ["moai-lang-unified", "moai-domain-backend"],
         "expert-frontend": ["moai-lang-unified", "moai-domain-frontend"],
-        "manager-tdd": ["moai-workflow-testing", "moai-foundation-quality"],
+        "manager-ddd": ["moai-workflow-ddd", "moai-foundation-quality"],
         "manager-spec": ["moai-foundation-claude", "moai-workflow-docs"],
         "security-expert": ["moai-quality-security", "moai-foundation-context"],
         "expert-devops": ["moai-system-universal", "moai-platform-baas"],

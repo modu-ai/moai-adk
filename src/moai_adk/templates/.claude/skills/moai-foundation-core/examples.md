@@ -115,7 +115,7 @@ async def develop_microservice():
             context={"design": design}
         ),
         Task(
-            subagent_type="tdd-implementer",
+            subagent_type="ddd-implementer",
             prompt="Generate integration tests",
             context={"design": design}
         )
@@ -148,7 +148,7 @@ Phase 2 (Parallel - 3 agents):
 - frontend-expert: Completed in 90s
   - 6 React components created
   - Admin dashboard ready
-- tdd-implementer: Completed in 75s
+- ddd-implementer: Completed in 75s
   - 24 integration tests generated
   - Mock data prepared
 
@@ -177,8 +177,8 @@ Efficiency Gain: 41%
 Task(subagent_type="workflow-spec", prompt="Create SPEC")
 # → SPEC 완료 후 반드시 /clear 실행 (45-50K 절약)
 
-# TDD Phase: 180K 예산
-Task(subagent_type="tdd-implementer", prompt="Implement with TDD")
+# DDD Phase: 180K 예산
+Task(subagent_type="ddd-implementer", prompt="Implement with DDD")
 # → 선택적 파일 로딩, 필요한 파일만 로드
 
 # Docs Phase: 40K 예산

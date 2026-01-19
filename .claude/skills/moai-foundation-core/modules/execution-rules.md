@@ -147,7 +147,7 @@ Data Protection Rules:
 | Level | Name | Access | Use Case |
 |-------|------|--------|----------|
 | 1 | Read-only | File exploration, code analysis | `Explore`, `Plan` |
-| 2 | Validated Write | File creation with validation | `workflow-tdd`, `workflow-docs` |
+| 2 | Validated Write | File creation with validation | `manager-ddd`, `workflow-docs` |
 | 3 | System | Limited system operations | `infra-devops`, `core-git` |
 | 4 | Security | Security analysis and enforcement | `security-expert`, `core-quality` |
 

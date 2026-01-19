@@ -67,6 +67,44 @@ Type C 反馈命令：用于改进和错误报告的用户反馈命令。
 
 并行执行：使用 expert-backend 开发 API，同时使用 expert-frontend 创建 UI
 
+### 任务分解（自动并行化）
+
+收到复杂任务时，Alfred 会自动分解并并行化：
+
+**触发条件：**
+
+- 任务涉及 2 个以上不同领域 (backend、frontend、testing、docs)
+- 任务描述包含多个交付物
+- 关键词："实现"、"创建"、"构建" + 复合需求
+
+**分解流程：**
+
+1. 分析：按领域识别独立的子任务
+2. 映射：将每个子任务分配给最优代理
+3. 执行：并行启动代理（单条消息，多个 Task 调用）
+4. 整合：将结果合并为统一响应
+
+**示例：**
+
+```
+User: "Implement authentication system"
+
+Alfred 分解：
+├─ expert-backend  → JWT 令牌、登录/登出 API (并行)
+├─ expert-backend  → User 模型、数据库架构   (并行)
+├─ expert-frontend → 登录表单、认证上下文   (并行)
+└─ expert-testing  → 认证测试用例           (实现后)
+
+执行：3 个代理并行 → 1 个代理顺序
+```
+
+**并行执行规则：**
+
+- 独立领域：始终并行
+- 同一领域，无依赖：并行
+- 顺序依赖：用"X 完成后"链接
+- 最大并行代理：5 个（防止上下文分散）
+
 上下文优化：
 
 - 向代理传递最小上下文（spec_id、最多 3 个要点的关键需求、200 字符以内的架构摘要）
@@ -143,7 +181,7 @@ Type C 反馈命令：用于改进和错误报告的用户反馈命令。
 ### Manager 代理（8 个）
 
 - manager-spec：SPEC 文档创建、EARS 格式、需求分析
-- manager-tdd：测试驱动开发、RED-GREEN-REFACTOR 循环、覆盖率验证
+- manager-ddd：领域驱动开发、ANALYZE-PRESERVE-IMPROVE 循环、行为保存
 - manager-docs：文档生成、Nextra 集成、Markdown 优化
 - manager-quality：质量门禁、TRUST 5 验证、代码审查
 - manager-project：项目配置、结构管理、初始化
@@ -176,7 +214,7 @@ Type C 反馈命令：用于改进和错误报告的用户反馈命令。
 ### MoAI 命令流程
 
 - /moai:1-plan "description" 导向 Use the manager-spec subagent
-- /moai:2-run SPEC-001 导向 Use the manager-tdd subagent
+- /moai:2-run SPEC-001 导向 Use the manager-ddd subagent (ANALYZE-PRESERVE-IMPROVE)
 - /moai:3-sync SPEC-001 导向 Use the manager-docs subagent
 
 ### SPEC 执行的代理链
@@ -335,8 +373,8 @@ MoAI-ADK 错误：当发生 MoAI-ADK 特定错误（工作流失败、代理问�
 
 ---
 
-Version: 10.0.0 (Alfred-Centric Redesign)
-Last Updated: 2026-01-13
+Version: 10.4.0 (DDD + Progressive Disclosure + Auto-Parallel Task Decomposition)
+Last Updated: 2026-01-19
 Language: Chinese (简体中文)
 核心规则：Alfred 是协调者；禁止直接实现
 

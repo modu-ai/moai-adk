@@ -324,7 +324,7 @@ Implement robust authentication security following these principles:
 - Security requirement clarification
 - Security testing strategy
 
-### With TDD Implementer
+### With DDD Implementer
 - Security test case development
 - Secure coding practices
 - Security-first implementation approach

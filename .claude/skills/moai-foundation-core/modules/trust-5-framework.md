@@ -11,7 +11,7 @@ Last Updated: 2026-01-06
 
 TRUST 5 is MoAI-ADK's comprehensive quality assurance framework enforcing five pillars:
 
-1. Test-first(T) - ≥85% coverage, RED-GREEN-REFACTOR cycle
+1. Test-first(T) - ≥85% coverage, ANALYZE-PRESERVE-IMPROVE cycle
 2. Readable(R) - Clear naming, ≤10 cyclomatic complexity
 3. Unified(U) - Consistent patterns, architecture compliance
 4. Secured(S) - OWASP Top 10 compliance, security validation
@@ -44,20 +44,20 @@ Extended Documentation:
 
 ### Principle 1: Test-First (T)
 
-RED-GREEN-REFACTOR Cycle:
+ANALYZE-PRESERVE-IMPROVE Cycle:
 
 ```
-RED Phase: Write failing test
-    Test defines requirement
-    Code doesn't exist yet
-    Test fails as expected
+ANALYZE Phase: Understand and test current behavior
+    Create characterization tests
+    Document existing behavior
+    Tests capture current state
 
-GREEN Phase: Write minimal code
-    Simplest code to pass test
-    Focus on making test pass
-    Test now passes
+PRESERVE Phase: Implement with behavior preservation
+    Minimal changes to preserve behavior
+    Focus on maintaining test validity
+    All tests continue to pass
 
-REFACTOR Phase: Improve quality
+IMPROVE Phase: Enhance quality
     Extract functions/classes
     Optimize performance
     Add documentation
@@ -220,7 +220,7 @@ For comprehensive implementation patterns including CI/CD integration, validatio
 
 Agents:
 - quality-gate - Automated TRUST 5 validation
-- tdd-implementer - RED-GREEN-REFACTOR enforcement
+- manager-ddd - ANALYZE-PRESERVE-IMPROVE enforcement
 - security-expert - OWASP compliance checking
 - test-engineer - Test generation and coverage
 

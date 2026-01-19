@@ -39,7 +39,7 @@ triggers:
     - "ears format"
   agents:
     - "manager-spec"
-    - "manager-tdd"
+    - "manager-ddd"
     - "manager-strategy"
     - "manager-quality"
     - "builder-agent"

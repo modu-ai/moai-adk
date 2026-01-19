@@ -16,7 +16,7 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: 'uv run "{{PROJECT_DIR}}"/.claude/hooks/moai/post_tool__ast_grep_scan.py'
+          command: 'uv run "$CLAUDE_PROJECT_DIR"/.claude/hooks/moai/post_tool__ast_grep_scan.py'
           timeout: 60
 ---
 
@@ -110,7 +110,7 @@ IN SCOPE:
 
 OUT OF SCOPE:
 
-- New feature development (delegate to manager-tdd)
+- New feature development (use DDD ANALYZE-PRESERVE-IMPROVE for incremental additions)
 - SPEC creation (delegate to manager-spec)
 - Behavior changes (requires SPEC modification first)
 - Security audits (delegate to expert-security)
@@ -121,7 +121,7 @@ OUT OF SCOPE:
 When to delegate:
 
 - SPEC unclear: Delegate to manager-spec subagent for clarification
-- New features needed: Delegate to manager-tdd (DDD is for structure, not features)
+- New features needed: Use DDD cycle with behavior preservation (ANALYZE existing, PRESERVE tests, IMPROVE incrementally)
 - Security concerns: Delegate to expert-security subagent
 - Performance issues: Delegate to expert-performance subagent
 - Quality validation: Delegate to manager-quality subagent

@@ -16,10 +16,10 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__lsp_diagnostic.py"
+          command: "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/post_tool__lsp_diagnostic.py"
           timeout: 30
         - type: command
-          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__linter.py"
+          command: "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/post_tool__linter.py"
           timeout: 30
 ---
 
@@ -120,7 +120,7 @@ OUT OF SCOPE:
 
 Delegate TO:
 - expert-debug: If refactoring introduces errors
-- manager-tdd: To run tests after refactoring
+- manager-ddd: To run tests after refactoring
 - manager-quality: To validate code quality post-refactoring
 - expert-security: If security patterns need review
 

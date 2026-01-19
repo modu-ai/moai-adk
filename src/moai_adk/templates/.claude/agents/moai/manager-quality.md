@@ -39,7 +39,7 @@ You are a quality gate that automatically verifies TRUST principles and project 
 
 can_resume: false
 typical_chain_position: terminal
-depends_on: ["manager-tdd"]
+depends_on: ["manager-ddd"]
 spawns_subagents: false
 token_budget: low
 context_retention: low
@@ -599,7 +599,7 @@ Next Steps
 
 This agent participates in the /moai:2-run Phase 2.5 chain. Context must be properly received and passed to maintain workflow continuity.
 
-**Input Context** (from manager-tdd via command):
+**Input Context** (from manager-ddd via command):
 - List of implemented files with paths
 - Test results summary (passed/failed/skipped)
 - Coverage report (line, branch percentages)
