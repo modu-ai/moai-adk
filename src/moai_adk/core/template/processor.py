@@ -1518,6 +1518,45 @@ class TemplateProcessor:
             if not silent:
                 console.print("   ✅ .mcp.json copy complete")
 
+        # Apply Windows platform adaptation after copy/merge
+        self._adapt_mcp_config_for_windows(dst, silent)
+
+    def _adapt_mcp_config_for_windows(self, mcp_path: Path, silent: bool = False) -> None:
+        """Adapt MCP config for Windows platform (convert npx to cmd /c npx).
+
+        Args:
+            mcp_path: Path to .mcp.json file.
+            silent: If True, suppress output messages.
+        """
+        is_windows = platform.system().lower() == "windows"
+        if not is_windows:
+            return
+
+        if not mcp_path.exists():
+            return
+
+        try:
+            mcp_data = json.loads(mcp_path.read_text(encoding="utf-8"))
+            modified = False
+
+            if "mcpServers" in mcp_data:
+                for _, server_config in mcp_data["mcpServers"].items():
+                    if server_config.get("command") == "npx":
+                        # Convert "command": "npx", "args": ["-y", "pkg"]
+                        # to "command": "cmd", "args": ["/c", "npx", "-y", "pkg"]
+                        server_config["command"] = "cmd"
+                        server_config["args"] = ["/c", "npx"] + server_config.get("args", [])
+                        modified = True
+
+            if modified:
+                mcp_path.write_text(json.dumps(mcp_data, indent=2, ensure_ascii=False), encoding="utf-8")
+                if not silent:
+                    console.print("   🪟 .mcp.json adapted for Windows (npx → cmd /c npx)")
+
+        except (json.JSONDecodeError, OSError) as e:
+            if not silent:
+                console.print(f"[yellow]⚠️ Failed to adapt .mcp.json for Windows: {e}[/yellow]")
+
     def _merge_mcp_json(self, src: Path, dst: Path) -> None:
         """Smart merge for .mcp.json (preserve user-added MCP servers).
 
