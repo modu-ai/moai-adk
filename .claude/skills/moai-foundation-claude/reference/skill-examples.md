@@ -425,7 +425,7 @@ pytest --cov=src --cov-report=html # With coverage report
 ## Works Well With
 
 - [`moai-lang-python`](../moai-lang-python/SKILL.md) - Python language patterns
-- [`moai-tdd-implementer`](../moai-tdd-implementer/SKILL.md) - TDD methodology
+- [`moai-workflow-testing`](../moai-workflow-testing/SKILL.md) - DDD methodology
 - [`moai-quality-gate`](../moai-quality-gate/SKILL.md) - Quality validation
 
 ## Advanced Features

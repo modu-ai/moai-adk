@@ -317,7 +317,7 @@ Sub-agent Settings:
  "taskTimeout": 300000,
  "allowedSubagents": [
  "spec-builder",
- "tdd-implementer",
+ "ddd-implementer",
  "security-expert",
  "backend-expert",
  "frontend-expert"

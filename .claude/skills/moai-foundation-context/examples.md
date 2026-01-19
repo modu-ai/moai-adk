@@ -469,7 +469,7 @@ import hashlib
 
 class AgentType(Enum):
     SPEC_BUILDER = "spec-builder"
-    TDD_IMPLEMENTER = "tdd-implementer"
+    DDD_IMPLEMENTER = "ddd-implementer"
     BACKEND_EXPERT = "backend-expert"
     FRONTEND_EXPERT = "frontend-expert"
     DOCS_MANAGER = "docs-manager"
@@ -479,11 +479,11 @@ class AgentType(Enum):
 # Agent compatibility matrix
 AGENT_COMPATIBILITY = {
     AgentType.SPEC_BUILDER: [
-        AgentType.TDD_IMPLEMENTER,
+        AgentType.DDD_IMPLEMENTER,
         AgentType.BACKEND_EXPERT,
         AgentType.FRONTEND_EXPERT
     ],
-    AgentType.TDD_IMPLEMENTER: [
+    AgentType.DDD_IMPLEMENTER: [
         AgentType.QUALITY_GATE,
         AgentType.DOCS_MANAGER
     ],
@@ -684,7 +684,7 @@ class HandoffManager:
 # Usage example
 manager = HandoffManager()
 
-# Create handoff from spec-builder to tdd-implementer
+# Create handoff from spec-builder to ddd-implementer
 session_ctx = SessionContext(
     session_id="sess_abc123",
     model="claude-sonnet-4-5-20250929",
@@ -713,7 +713,7 @@ recovery = RecoveryInfo(
 try:
     handoff = manager.create_handoff(
         from_agent=AgentType.SPEC_BUILDER,
-        to_agent=AgentType.TDD_IMPLEMENTER,
+        to_agent=AgentType.DDD_IMPLEMENTER,
         session_context=session_ctx,
         task_context=task_ctx,
         recovery_info=recovery
@@ -1029,7 +1029,7 @@ restore_from_checkpoint(clear_context)
 
 # Phase 2: Implementation (fresh 200K budget)
 implementation = Task(
-    subagent_type="tdd-implementer",
+    subagent_type="ddd-implementer",
     prompt=f"Implement: {clear_context['spec_id']}"
 )
 session.update_work_state(phase=SessionPhase.IMPLEMENTATION)
