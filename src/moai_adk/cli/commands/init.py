@@ -512,7 +512,7 @@ def _save_additional_config(
         git_commit_lang: Commit message language
         code_comment_lang: Code comment language
         doc_lang: Documentation language
-        development_mode: Development methodology (tdd or ddd)
+        development_mode: Development methodology (ddd)
     """
     sections_dir = project_path / ".moai" / "config" / "sections"
     # Ensure sections directory exists

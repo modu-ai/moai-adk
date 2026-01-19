@@ -647,7 +647,7 @@ moai-workflow execute --project /project/src --mode full
 moai-workflow debug --file app.py --error "AttributeError"
 moai-workflow refactor --directory src/ --max-risk medium
 moai-workflow profile --target function_name --types cpu,memory
-moai-workflow test --spec user_auth.spec --mode tdd
+moai-workflow test --spec user_auth.spec --mode ddd
 moai-workflow review --project /project/src --trust-score-min 0.8
 
 # CI 모드

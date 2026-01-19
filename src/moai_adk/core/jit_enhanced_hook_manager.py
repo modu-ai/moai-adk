@@ -820,7 +820,7 @@ class JITEnhancedHookManager:
             relevance[Phase.SPEC] = default_relevance
 
         # RED phase relevance (testing)
-        if any(keyword in filename for keyword in ["test", "red", "tdd", "assert"]):
+        if any(keyword in filename for keyword in ["test", "red", "ddd", "assert"]):
             relevance[Phase.RED] = 1.0
         else:
             relevance[Phase.RED] = default_relevance

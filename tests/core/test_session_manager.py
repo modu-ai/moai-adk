@@ -958,12 +958,12 @@ class TestComplexWorkflows:
     """Tests for complex workflow scenarios"""
 
     def test_linear_chain_workflow(self, session_manager):
-        """Test a linear chain: spec-builder → implementation-planner → tdd-implementer"""
+        """Test a linear chain: spec-builder → implementation-planner → ddd-implementer"""
         chain_id = "SPEC-AUTH-001-workflow"
 
         session_manager.create_chain(
             chain_id,
-            ["spec-builder", "implementation-planner", "tdd-implementer"],
+            ["spec-builder", "implementation-planner", "ddd-implementer"],
         )
 
         # Spec builder completes
@@ -984,7 +984,7 @@ class TestComplexWorkflows:
 
         # TDD implementer starts and finishes
         session_manager.register_agent_result(
-            agent_name="tdd-implementer",
+            agent_name="ddd-implementer",
             agent_id="tdd-ghi789",
             result={"files_created": 5},
             chain_id=chain_id,

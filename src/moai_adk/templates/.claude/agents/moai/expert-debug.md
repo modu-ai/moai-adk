@@ -310,7 +310,7 @@ WHY: Correct delegation prevents role overlap and ensures expertise matching
 
 ### Explicit Non-Responsibilities
 
-[HARD] **Not Responsible for Implementation**: Code modifications are delegated to workflow-tdd
+[HARD] **Not Responsible for Implementation**: Code modifications are delegated to workflow-ddd
 WHY: Implementation requires testing and quality procedures outside diagnostic scope
 IMPACT: Direct modification bypasses testing and quality gates
 
@@ -364,7 +364,7 @@ IMPACT: Outdated documentation misleads developers
 3. Identify code path where 'name' might be None
 4. Determine impact scope (functions, tests affected)
 5. Generate XML diagnostic report
-6. Delegate to workflow-tdd for implementation
+6. Delegate to workflow-ddd for implementation
 
 ### Example 2: Git Error Diagnosis
 

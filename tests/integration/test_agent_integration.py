@@ -1,7 +1,7 @@
-# # REMOVED_ORPHAN_TEST:LANG-003 | SPEC: SPEC-LANGUAGE-DETECTION-001.md | CODE: .claude/agents/alfred/tdd-implementer.md
-"""Integration tests for tdd-implementer agent language detection.
+# # REMOVED_ORPHAN_TEST:LANG-003 | SPEC: SPEC-LANGUAGE-DETECTION-001.md | CODE: .claude/agents/alfred/ddd-implementer.md
+"""Integration tests for ddd-implementer agent language detection.
 
-Tests that tdd-implementer correctly detects project language and selects
+Tests that ddd-implementer correctly detects project language and selects
 appropriate workflow templates for CI/CD generation.
 """
 
@@ -9,7 +9,7 @@ from moai_adk.core.project.detector import LanguageDetector
 
 
 def test_tdd_implementer_detects_python_project(tmp_path):
-    """Test: tdd-implementer detects Python project and selects python workflow"""
+    """Test: ddd-implementer detects Python project and selects python workflow"""
     # Setup: Create mock Python project structure
     project_dir = tmp_path / "test_python_project"
     project_dir.mkdir()
@@ -17,7 +17,7 @@ def test_tdd_implementer_detects_python_project(tmp_path):
     (project_dir / ".moai").mkdir()
     (project_dir / ".moai/config.json").write_text('{"project": {"language": "python"}}')
 
-    # Action: Simulate tdd-implementer workflow generation
+    # Action: Simulate ddd-implementer workflow generation
     detector = LanguageDetector()
     language = detector.detect(project_dir)
     template_path = detector.get_workflow_template_path(language)
@@ -29,7 +29,7 @@ def test_tdd_implementer_detects_python_project(tmp_path):
 
 
 def test_tdd_implementer_detects_javascript_project(tmp_path):
-    """Test: tdd-implementer detects JavaScript project and selects javascript workflow"""
+    """Test: ddd-implementer detects JavaScript project and selects javascript workflow"""
     # Setup: Create mock JavaScript project
     project_dir = tmp_path / "test_js_project"
     project_dir.mkdir()
@@ -46,7 +46,7 @@ def test_tdd_implementer_detects_javascript_project(tmp_path):
 
 
 def test_tdd_implementer_detects_typescript_project(tmp_path):
-    """Test: tdd-implementer correctly handles TypeScript (priority over JS)"""
+    """Test: ddd-implementer correctly handles TypeScript (priority over JS)"""
     # Setup: Both package.json and tsconfig.json present
     project_dir = tmp_path / "test_ts_project"
     project_dir.mkdir()
@@ -81,7 +81,7 @@ def test_tdd_implementer_wrong_workflow_never_applied(tmp_path):
 
 
 def test_tdd_implementer_detects_go_project(tmp_path):
-    """Test: tdd-implementer detects Go project"""
+    """Test: ddd-implementer detects Go project"""
     # Setup: Go project with go.mod
     project_dir = tmp_path / "test_go_project"
     project_dir.mkdir()

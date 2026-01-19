@@ -121,13 +121,13 @@ class TestAgentRegistration:
 
             result_data = {"status": "success", "files": ["test.py"]}
             manager.register_agent_result(
-                agent_name="tdd-implementer",
+                agent_name="ddd-implementer",
                 agent_id="agent-abc123",
                 result=result_data,
                 chain_id="SPEC-001-impl",
             )
 
-            assert manager._sessions["tdd-implementer"] == "agent-abc123"
+            assert manager._sessions["ddd-implementer"] == "agent-abc123"
             assert manager._results["agent-abc123"]["result"] == result_data
             assert "SPEC-001-impl" in manager._chains
             assert "agent-abc123" in manager._chains["SPEC-001-impl"]
@@ -166,7 +166,7 @@ class TestAgentRegistration:
 
             # Register second agent in same chain
             manager.register_agent_result(
-                agent_name="tdd-implementer",
+                agent_name="ddd-implementer",
                 agent_id="impl-001",
                 result={"code_written": True},
                 chain_id=chain_id,
@@ -186,13 +186,13 @@ class TestResumeLogic:
             manager = SessionManager(session_file=session_file)
 
             manager.register_agent_result(
-                agent_name="tdd-implementer",
+                agent_name="ddd-implementer",
                 agent_id="tdd-xyz789",
                 result={"phase": "1"},
                 chain_id="SPEC-001-impl",
             )
 
-            resume_id = manager.get_resume_id(agent_name="tdd-implementer", chain_id="SPEC-001-impl")
+            resume_id = manager.get_resume_id(agent_name="ddd-implementer", chain_id="SPEC-001-impl")
 
             assert resume_id == "tdd-xyz789"
 
@@ -246,10 +246,10 @@ class TestResumeLogic:
             session_file = Path(tmpdir) / "sessions.json"
             manager = SessionManager(session_file=session_file)
 
-            manager.register_agent_result(agent_name="tdd-implementer", agent_id="tdd1", result={})
+            manager.register_agent_result(agent_name="ddd-implementer", agent_id="tdd1", result={})
 
             result = manager.should_resume(
-                agent_name="tdd-implementer",
+                agent_name="ddd-implementer",
                 current_task="Implement user login endpoint",
                 previous_task="Implement user registration endpoint",
             )
@@ -316,7 +316,7 @@ class TestChainManagement:
 
             manager.create_chain(
                 chain_id="SPEC-001-workflow",
-                agent_sequence=["spec-builder", "tdd-implementer", "quality-checker"],
+                agent_sequence=["spec-builder", "ddd-implementer", "quality-checker"],
                 metadata={"spec_id": "SPEC-001"},
             )
 
@@ -359,7 +359,7 @@ class TestChainManagement:
 
             manager.register_agent_result(agent_name="spec-builder", agent_id="id1", result={}, chain_id=chain_id)
             manager.register_agent_result(
-                agent_name="tdd-implementer",
+                agent_name="ddd-implementer",
                 agent_id="id2",
                 result={},
                 chain_id=chain_id,

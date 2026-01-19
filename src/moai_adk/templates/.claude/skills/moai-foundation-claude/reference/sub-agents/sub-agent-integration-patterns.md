@@ -41,7 +41,7 @@ def sequential_workflow(user_request):
 
  # Phase 2: Implementation (passes spec as context)
  implementation_result = Task(
- subagent_type="workflow-tdd",
+ subagent_type="workflow-ddd",
  prompt="Implement from specification",
  context={
  "specification": spec_result,
@@ -306,7 +306,7 @@ Focus Areas: End-to-end process automation, team coordination, quality assurance
 
 ### Phase 2: Development Coordination
 1. Coordinate specification creation with workflow-spec
-2. Manage implementation with workflow-tdd
+2. Manage implementation with workflow-ddd
 3. Oversee quality validation with core-quality
 4. Handle documentation generation with workflow-docs
 
@@ -347,7 +347,7 @@ class DevelopmentOrchestrator:
  'dependencies': []
  },
  'implementation': {
- 'agent': 'workflow-tdd',
+ 'agent': 'workflow-ddd',
  'inputs': ['specification'],
  'outputs': ['code', 'tests'],
  'dependencies': ['specification']
@@ -435,7 +435,7 @@ class ErrorHandler:
  'max_retries': 3,
  'fallback_agents': {
  'workflow-spec': 'requirements-analyst',
- 'workflow-tdd': 'code-developer',
+ 'workflow-ddd': 'code-developer',
  'core-quality': 'manual-review'
  }
  },
@@ -848,7 +848,7 @@ class AdaptiveWorkflowAgent:
  'complexity_threshold': 7,
  'task_types': ['specification', 'requirements', 'planning']
  },
- 'workflow-tdd': {
+ 'workflow-ddd': {
  'complexity_threshold': 5,
  'task_types': ['implementation', 'development', 'coding']
  },

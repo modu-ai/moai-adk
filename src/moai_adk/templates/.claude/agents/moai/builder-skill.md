@@ -740,7 +740,7 @@ Validation Results:
 - Cross-Model Compatibility: PASS (Haiku and Sonnet verified)
 
 Integration Points:
-- Works Well With: moai-lang-python, moai-workflow-tdd, pytest-patterns
+- Works Well With: moai-lang-python, moai-workflow-ddd, pytest-patterns
 - Dependencies: pytest, pytest-cov, pytest-asyncio
 - Trigger Scenarios: "testing", "pytest", "unit test", "test coverage"
 

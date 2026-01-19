@@ -307,7 +307,7 @@ With code-frontend:
 - API endpoint configuration (base URL, CORS)
 - Environment variables for frontend
 
-With workflow-tdd:
+With workflow-ddd:
 - CI/CD test execution (unit, integration, E2E)
 - Test coverage enforcement
 - Performance testing

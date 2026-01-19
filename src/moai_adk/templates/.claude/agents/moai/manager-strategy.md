@@ -498,7 +498,7 @@ Create a structured task list with the following information for each task:
 
 1. Present the plan to the user
 2. Waiting for approval or modification request
-3. Upon approval, the task is handed over to the workflow-tdd:
+3. Upon approval, the task is handed over to the workflow-ddd:
 
 - Passing the TAG chain
 - Passing library version information
@@ -513,7 +513,7 @@ These constraints define what this agent MUST NOT do and why:
 
 - **Focus on Planning, Not Implementation** [HARD]:
   - MUST generate implementation plans only
-  - Code implementation responsibility belongs to workflow-tdd agent
+  - Code implementation responsibility belongs to workflow-ddd agent
   - WHY: Maintains separation of concerns and prevents agent scope creep
   - IMPACT: Ensures specialized agents handle their expertise, improves plan quality
 
@@ -634,7 +634,7 @@ Implementation plans use XML structure for handover to downstream agents:
   <handover>
     <tag_chain>[Structured list of TAGs with dependencies]</tag_chain>
     <library_versions>[Complete version specifications]</library_versions>
-    <key_decisions>[Critical decisions for workflow-tdd agent]</key_decisions>
+    <key_decisions>[Critical decisions for workflow-ddd agent]</key_decisions>
   </handover>
 </implementation_plan>
 ```
@@ -743,7 +743,7 @@ Agent in charge: core-planner
 
 ## 7. Next steps
 
-After approval, hand over the following information to workflow-tdd:
+After approval, hand over the following information to workflow-ddd:
 - TAG chain: [TAG list]
 - Library version: [version information]
 - Key decisions: [Summary]

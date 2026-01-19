@@ -162,7 +162,7 @@ class TestGetTemplateAgentNames:
             with patch("pathlib.Path.rglob") as mock_rglob:
                 # Create mock agent files
                 moai_agent1 = MagicMock(spec=Path)
-                moai_agent1.name = "manager-tdd.md"
+                moai_agent1.name = "manager-ddd.md"
                 moai_agent1.parent.name = "moai"
 
                 moai_agent2 = MagicMock(spec=Path)
@@ -178,7 +178,7 @@ class TestGetTemplateAgentNames:
                 result = _get_template_agent_names()
 
                 assert isinstance(result, set)
-                assert "manager-tdd.md" in result
+                assert "manager-ddd.md" in result
                 assert "expert-debug.md" in result
                 assert "custom-agent.md" not in result
 

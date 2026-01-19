@@ -315,15 +315,15 @@ class FileMigrator:
             sections["git-strategy"]["git"] = git_data
 
         # Map quality settings
-        quality_keys = ["tdd_enabled", "test_framework", "coverage_threshold"]
+        quality_keys = ["ddd_enabled", "test_framework", "coverage_threshold"]
         quality_data = {}
         for key in quality_keys:
             if key in config_data:
                 quality_data[key] = config_data[key]
         if "quality" in config_data:
             quality_data.update(config_data["quality"])
-        if "tdd" in config_data:
-            quality_data["tdd"] = config_data["tdd"]
+        if "ddd" in config_data:
+            quality_data["ddd"] = config_data["ddd"]
         if quality_data:
             sections["quality"]["quality"] = quality_data
 

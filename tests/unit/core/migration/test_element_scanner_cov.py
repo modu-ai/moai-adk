@@ -745,7 +745,7 @@ class TestCustomElementScannerEdgeCases:
         # Create moai subdirectory (should be skipped)
         moai_dir = agents_dir / "moai"
         moai_dir.mkdir()
-        moai_agent = moai_dir / "manager-tdd.md"
+        moai_agent = moai_dir / "manager-ddd.md"
         moai_agent.write_text("# TDD Manager")
 
         scanner = CustomElementScanner(tmp_path)
@@ -756,7 +756,7 @@ class TestCustomElementScannerEdgeCases:
         agent_names = [p.name for p in result]
         assert "root-agent.md" in agent_names
         assert "custom-agent.md" in agent_names
-        assert "manager-tdd.md" not in agent_names
+        assert "manager-ddd.md" not in agent_names
 
     def test_scan_custom_commands_with_mixed_structure(self, tmp_path):
         """Test scanning commands with both subdirectories and root files."""

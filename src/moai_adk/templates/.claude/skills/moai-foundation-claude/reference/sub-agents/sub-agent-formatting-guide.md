@@ -503,7 +503,7 @@ System Prompt Development:
 
 Pattern: Agent A completes → Agent B continues
 Use Case: Multi-phase workflows with dependencies
-Example: `workflow-spec` → `workflow-tdd` → `workflow-docs`
+Example: `workflow-spec` → `workflow-ddd` → `workflow-docs`
 
 ```python
 # Sequential delegation example
@@ -515,7 +515,7 @@ spec_result = Task(
 
 # Phase 2: Implementation (passes spec as context)
 implementation_result = Task(
- subagent_type="workflow-tdd",
+ subagent_type="workflow-ddd",
  prompt="Implement user authentication from specification",
  context={"specification": spec_result}
 )

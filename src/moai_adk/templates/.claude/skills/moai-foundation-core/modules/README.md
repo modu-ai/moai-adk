@@ -259,7 +259,7 @@ Detailed Reference: [TRUST 5 Framework Module](modules/trust-5-framework.md)
 | Module | Lines | Topics Covered | Use Cases |
 |--------|-------|----------------|-----------|
 | trust-5-framework | 982 | Quality gates, CI/CD, validation | 4 |
-| spec-first-tdd | 866 | SPEC, EARS, DDD, docs | 4 |
+| spec-first-ddd | 866 | SPEC, EARS, DDD, docs | 4 |
 | delegation-patterns | 757 | Sequential, parallel, conditional | 4 |
 | token-optimization | 656 | Budget, /clear, loading, models | 4 |
 | progressive-disclosure | 576 | 3 levels, 500-line limit, splitting | 4 |

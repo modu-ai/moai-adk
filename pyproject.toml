@@ -8,7 +8,7 @@ license = {text = "COPYLEFT-3.0"}
 authors = [
     {name = "MoAI Team", email = "support@moduai.kr"}
 ]
-keywords = ["agentic", "ai", "claude", "tdd", "spec-first", "alfred", "development", "toolkit"]
+keywords = ["agentic", "ai", "claude", "ddd", "spec-first", "alfred", "development", "toolkit"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",

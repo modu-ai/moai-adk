@@ -184,7 +184,7 @@ class TestPromptProjectSetup:
             "zh",  # doc_lang
         ]
         mock_text.return_value = "test"  # user_name and project_name
-        mock_password.return_value = "glm-api-key"  # GLM API key
+        mock_password.return_value = "test-glm-key-12345"  # GLM API key (test placeholder)
 
         # Act
         result = prompt_project_setup(
@@ -195,7 +195,7 @@ class TestPromptProjectSetup:
 
         # Assert
         assert result["locale"] == "zh"
-        assert result["glm_api_key"] == "glm-api-key"
+        assert result["glm_api_key"] == "test-glm-key-12345"
         mock_text.assert_called()
 
     @patch("moai_adk.core.credentials.glm_env_exists", return_value=False)

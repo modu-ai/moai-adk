@@ -356,7 +356,7 @@ class UnifiedConfigManager:
             "github": "system.yaml",
             "git": "git-strategy.yaml",
             "quality": "quality.yaml",
-            "tdd": "quality.yaml",
+            "ddd": "quality.yaml",
             "hooks": "system.yaml",
             "session": "system.yaml",
             # New in v1.1.0: Multi-LLM, pricing, and Ralph sections

@@ -115,14 +115,14 @@ class PhaseDetector:
             Phase.RED: [
                 r"/moai:2-run.*RED",
                 r"test.*fail|failing.*test",
-                r"red.*phase|tdd.*red",
+                r"red.*phase|ddd.*red",
                 r"2-run.*RED|write.*test",
                 r"create.*test.*failure",
             ],
             Phase.GREEN: [
                 r"/moai:2-run.*GREEN",
                 r"test.*pass|passing.*test",
-                r"green.*phase|tdd.*green",
+                r"green.*phase|ddd.*green",
                 r"2-run.*GREEN|minimal.*implementation",
                 r"make.*test.*pass|implement.*minimum",
             ],
