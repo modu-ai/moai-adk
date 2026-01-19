@@ -922,6 +922,10 @@ class TemplateProcessor:
                     if not windows_file.exists() and not unix_file.exists():
                         is_settings_file = True
                         settings_src = item
+                    else:
+                        # Platform-specific file exists, skip this fallback file
+                        # to prevent overwriting the merged result
+                        continue
 
                 if is_settings_file and settings_src:
                     # Destination is always settings.json (not the platform-specific name)
