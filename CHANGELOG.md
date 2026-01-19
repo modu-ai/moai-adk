@@ -1,3 +1,107 @@
+# v1.4.5 - StatusLine Preservation & Critical Bug Fixes (2026-01-19)
+
+## Summary
+
+This patch release resolves critical issues reported in GitHub issues #274 and #275, preserving user statusLine configuration during template updates. Additionally, it includes Windows MCP platform adaptation and various bug fixes.
+
+## Fixed
+
+- **fix(template)**: Preserve user statusLine configuration during template updates
+  - Added `statusLine` to `preserve_fields` in merger.py
+  - Fixes Issue #274: Windows statusLine loading issues
+  - Fixes Issue #275: Template overwrites user's statusLine setting (claude-hud, etc.)
+  - Users' custom statusLine settings now preserved across `moai update`
+  - File: `src/moai_adk/core/template/merger.py` (line 205)
+
+- **fix(windows)**: Add MCP config platform adaptation for Windows
+  - Added `_adapt_mcp_config_for_windows()` method to `TemplateProcessor`
+  - Automatically converts `npx` commands to `cmd /c npx` format on Windows
+  - Fixes Issue #272: Windows MCP config warning
+  - File: `src/moai_adk/core/template/processor.py` (lines 1524-1558)
+
+- **fix(template)**: Prevent settings.json fallback from overwriting platform-specific file
+  - Fixed template merge logic to respect platform-specific settings files
+  - Prevents Unix settings from overwriting Windows settings and vice versa
+  - File: `src/moai_adk/core/template/processor.py`
+
+- **fix(hooks)**: Use $CLAUDE_PROJECT_DIR env var instead of {{PROJECT_DIR}}
+  - Fixed hook environment variable resolution
+  - Ensures consistent path resolution across different contexts
+  - File: Hook configuration files
+
+- **fix(docs)**: Correct install URLs and Windows instructions
+  - Updated installation documentation with correct URLs
+  - Fixed Windows-specific installation instructions
+
+## Quality
+
+- Smoke tests: 6 passed (100% pass rate)
+- Ruff: All checks passed
+- Mypy: Success (no issues found in 169 source files)
+
+## Installation & Update
+
+```bash
+# In your project folder, run:
+moai update
+
+# This will update both the MoAI-ADK package and your project templates
+```
+
+---
+
+# v1.4.5 - statusLine 설정 보존 및 중요 버그 수정 (2026-01-19)
+
+## 요약
+
+이 패치 릴리스는 GitHub 이슈 #274, #275에서 보고된 중요한 문제들을 해결하여 템플릿 업데이트 중 사용자 statusLine 설정을 보존합니다. 또한 Windows MCP 플랫폼 적응과 다양한 버그 수정이 포함됩니다.
+
+## 수정됨
+
+- **fix(template)**: 템플릿 업데이트 중 사용자 statusLine 설정 보존
+  - merger.py의 `preserve_fields`에 `statusLine` 추가
+  - Issue #274 수정: Windows statusLine 로딩 문제
+  - Issue #275 수정: 템플릿이 사용자의 statusLine 설정 덮어쓰기 (claude-hud 등)
+  - 사용자의 커스텀 statusLine 설정이 `moai update` 시 보존됨
+  - 파일: `src/moai_adk/core/template/merger.py` (205행)
+
+- **fix(windows)**: Windows용 MCP 설정 플랫폼 적응 추가
+  - `TemplateProcessor`에 `_adapt_mcp_config_for_windows()` 메서드 추가
+  - Windows에서 `npx` 명령을 자동으로 `cmd /c npx` 형식으로 변환
+  - Issue #272 수정: Windows MCP config 경고
+  - 파일: `src/moai_adk/core/template/processor.py` (1524-1558행)
+
+- **fix(template)**: settings.json fallback이 플랫폼별 파일 덮어쓰기 방지
+  - 플랫폼별 설정 파일을尊重하도록 템플릿 병합 로직 수정
+  - Unix 설정이 Windows 설정을 덮어쓰는 것과 그 반대를 방지
+  - 파일: `src/moai_adk/core/template/processor.py`
+
+- **fix(hooks)**: {{PROJECT_DIR}} 대신 $CLAUDE_PROJECT_DIR 환경 변수 사용
+  - Hook 환경 변수 해결 수정
+  - 다양한 컨텍스트에서 일관된 경로 해결 보장
+  - 파일: Hook 설정 파일
+
+- **fix(docs)**: 설치 URL 및 Windows 지침 수정
+  - 올바른 URL로 설치 문서 업데이트
+  - Windows별 설치 지침 수정
+
+## 품질
+
+- Smoke 테스트: 6개 통과 (100% 통과율)
+- Ruff: 모든 검사 통과
+- Mypy: 성공 (169개 소스 파일에서 문제 없음)
+
+## 설치 및 업데이트
+
+```bash
+# 프로젝트 폴더에서 다음을 실행하세요:
+moai update
+
+# 이 명령은 MoAI-ADK 패키지와 프로젝트 템플릿을 모두 업데이트합니다
+```
+
+---
+
 # v1.6.2 - TDD to DDD Migration & StatusLine Preservation (2026-01-19)
 
 ## Summary
