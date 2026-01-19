@@ -440,7 +440,7 @@ parameters:
 # Feature Implementation Workflow
 
 ## Quick Reference
-Complete DDD-based feature implementation from specification to deployment.
+Complete TDD-based feature implementation from specification to deployment.
 
 ## Implementation
 
@@ -487,7 +487,7 @@ fi
 
 ### Phase 4: Feature Implementation
 ```python
-# PRESERVE phase: Implement feature with behavior preservation
+# IMPROVE phase: Implement feature
 implementation_result = Task(
  subagent_type="ddd-implementer",
  prompt="Implement feature for $spec_id",

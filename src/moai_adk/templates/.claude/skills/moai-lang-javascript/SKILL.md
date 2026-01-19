@@ -161,7 +161,7 @@ For Node.js documentation, use context7 get library docs with nodejs/node and to
 - moai-lang-typescript for TypeScript integration and type checking with JSDoc
 - moai-domain-backend for API design and microservices architecture
 - moai-domain-database for database integration and ORM patterns
-- moai-workflow-testing for TDD workflows and testing strategies
+- moai-workflow-testing for DDD workflows and testing strategies
 - moai-foundation-quality for code quality standards
 - moai-essentials-debug for debugging JavaScript applications
 

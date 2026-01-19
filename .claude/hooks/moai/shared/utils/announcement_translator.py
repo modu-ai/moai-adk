@@ -134,11 +134,11 @@ def get_default_announcements() -> list[str]:
         List of default announcement strings in English
     """
     return [
-        "🗿 MoAI-ADK: SPEC-First TDD with 48 Skills and Context7 integration",
+        "🗿 MoAI-ADK: SPEC-First DDD with 48 Skills and Context7 integration",
         "⚡ /moai:alfred: One-stop Plan→Run→Sync automation with intelligent routing",
         "🌳 moai-worktree: Parallel SPEC development - work on multiple features simultaneously",
         "🤖 20 Agents: 8 Expert + 8 Manager + 4 Builder for specialized tasks",
-        "📋 Workflow: /moai:1-plan (SPEC) → /moai:2-run (TDD) → /moai:3-sync (Docs)",
+        "📋 Workflow: /moai:1-plan (SPEC) → /moai:2-run (DDD) → /moai:3-sync (Docs)",
         "✅ Quality: TRUST 5 + ≥85% coverage + Ralph Engine (LSP + AST-grep)",
         "📚 Tip: moai update --templates-only syncs latest skills and agents",
         "🏆 moai rank: Track your Claude token usage on rank.mo.ai.kr",

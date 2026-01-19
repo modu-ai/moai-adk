@@ -121,7 +121,7 @@ Alfred: SPEC-001 generated successfully.
 
 Purpose: Execute ANALYZE-PRESERVE-IMPROVE cycle
 
-Agent Delegation: `manager-ddd`
+Agent Delegation: `workflow-ddd`
 
 Usage:
 ```bash
@@ -132,27 +132,28 @@ Usage:
 What It Does:
 1. Reads SPEC document
 2. Executes DDD cycle in 3 phases:
- - ANALYZE: Understand existing behavior with characterization tests
- - PRESERVE: Ensure existing functionality is maintained
- - IMPROVE: Implement changes with test validation
+ - ANALYZE: Understand requirements and existing behavior
+ - PRESERVE: Ensure existing behavior is protected with tests
+ - IMPROVE: Implement improvements incrementally
 3. Validates TRUST 5 quality gates
 4. Generates implementation report
 
 DDD Process:
 ```
 Phase 1 (ANALYZE):
- - Analyze existing code and behavior
- - Create characterization tests for uncovered code
- - Document current state
+ - Understand requirements from SPEC
+ - Analyze existing codebase behavior
+ - Identify areas of change
 
 Phase 2 (PRESERVE):
- - Ensure all existing tests pass
- - Validate behavior preservation
+ - Create characterization tests for existing behavior
+ - Ensure all tests pass before changes
  - Run tests → ALL PASS
 
 Phase 3 (IMPROVE):
- - Implement new functionality or refactoring
- - Validate with existing and new tests
+ - Implement changes incrementally
+ - Validate behavior preservation
+ - Optimize code structure
  - Run tests → ALL PASS (maintained)
 ```
 
@@ -168,11 +169,11 @@ Example:
 User: /moai:2-run SPEC-001
 Alfred: DDD implementation cycle started for SPEC-001.
 
- ANALYZE: Existing behavior documented
- PRESERVE: All existing tests passing
- IMPROVE: Implementation complete with new tests
+ ANALYZE: Requirements analyzed, 12 acceptance criteria identified
+ PRESERVE: Existing behavior protected, characterization tests created
+ IMPROVE: Implementation complete, all tests passing
 
- Test Coverage: 92% (meets 85% threshold)
+ Test Coverage: 92% ( meets 85% threshold)
  TRUST 5: All gates passed
 ```
 
@@ -313,7 +314,7 @@ Each command delegates to a specific agent:
 | ------------------ | ------------------ | ----------------------- |
 | `/moai:0-project`  | `workflow-project` | Tier 1 (Always Active)  |
 | `/moai:1-plan`     | `workflow-spec`    | Tier 1 (Always Active)  |
-| `/moai:2-run`      | `manager-ddd`      | Tier 1 (Always Active)  |
+| `/moai:2-run`      | `workflow-ddd`     | Tier 1 (Always Active)  |
 | `/moai:3-sync`     | `workflow-docs`    | Tier 1 (Always Active)  |
 | `/moai:9-feedback` | `core-quality`     | Tier 2 (Auto-triggered) |
 | `/moai:99-release` | `infra-devops`     | Tier 3 (Lazy-loaded)    |
@@ -358,7 +359,7 @@ Common Errors:
 | "Project not initialized" | `/moai:1-plan`         | Run `/moai:0-project` first                 |
 | "SPEC not found"          | `/moai:2-run SPEC-999` | Verify SPEC ID exists                       |
 | "Token limit exceeded"    | Any                    | Execute `/clear` immediately                |
-| "Test coverage < 85%"     | `/moai:2-run`          | `manager-quality` auto-generates missing tests |
+| "Test coverage < 85%"     | `/moai:2-run`          | `core-quality` auto-generates missing tests |
 
 Recovery Pattern:
 ```bash
@@ -424,7 +425,7 @@ Other Modules:
 Agents:
 - [workflow-project](agents-reference.md#tier-1-command-processors) - `/moai:0-project`
 - [workflow-spec](agents-reference.md#tier-1-command-processors) - `/moai:1-plan`
-- [manager-ddd](agents-reference.md#tier-1-command-processors) - `/moai:2-run`
+- [workflow-ddd](agents-reference.md#tier-1-command-processors) - `/moai:2-run`
 - [workflow-docs](agents-reference.md#tier-1-command-processors) - `/moai:3-sync`
 
 ---

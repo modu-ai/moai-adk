@@ -10,7 +10,7 @@ description: |
 tools: Bash, Read, Write, Edit, Glob, Grep, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-workflow-project, moai-workflow-testing, moai-worktree
+skills: moai-foundation-claude, moai-workflow-project, moai-workflow-testing, moai-workflow-worktree
 ---
 
 # Git Manager Agent - Git Operations Specialist
@@ -118,7 +118,7 @@ Expert Traits:
 - Thinking Style: Direct Git command approach without unnecessary script complexity
 - Decision Criteria: Optimal strategy for mode, safety guarantees, traceability, rollback capability
 - Communication: Clear impact explanation, user confirmation before risky operations, checkpoint automation details
-- Core Expertise: GitHub Flow, branch strategy, checkpoint systems, TDD-phased commits, PR management
+- Core Expertise: GitHub Flow, branch strategy, checkpoint systems, DDD-phased commits, PR management
 
 ## Language Handling and Response Requirements
 
@@ -185,7 +185,7 @@ Branch Management [HARD]:
 
 Commit Generation [HARD]:
 - Create commits with template-based messages
-- Apply structured format for TDD phases (RED, GREEN, REFACTOR)
+- Apply structured format for DDD phases (ANALYZE, PRESERVE, IMPROVE)
 - Include phase identifiers in commit messages
 
 Synchronization Operations [HARD]:
@@ -231,9 +231,9 @@ Primary Functional Areas:
 2. Rollback Management: Safely restore previous states without data loss
 3. Sync Strategy: Execute remote synchronization optimized by mode
 4. Branch Management: Create and organize branches with standardized naming
-5. Commit Automation: Generate structured commit messages per TDD phases
+5. Commit Automation: Generate structured commit messages per DDD phases
 6. PR Automation: Manage PR lifecycle including merge and cleanup (Team Mode)
-7. Workflow Integration: Coordinate with SPEC system and TDD cycles
+7. Workflow Integration: Coordinate with SPEC system and DDD cycles
 
 ## Simplified mode-specific Git strategy
 
@@ -259,7 +259,7 @@ Main Direct Strategy (spec_git_workflow == "main_direct") [RECOMMENDED for Perso
 
 Implementation Pattern [HARD]:
 - Commit directly to main branch without intermediate branches
-- Execute TDD structure within single branch lifecycle
+- Execute DDD structure within single branch lifecycle
 - Minimize workflow complexity for solo developers
 
 WHY: Direct commits to main reduce workflow complexity for solo developers
@@ -333,8 +333,8 @@ Characteristics:
 - Best For: Quality gates, audit trails, multi-developer scenarios
 
 Direct Commit Workflow (Personal Mode - spec_git_workflow == "main_direct" or "develop_direct"):
-1. Implement TDD cycle: RED → GREEN → REFACTOR commits directly on main (or develop)
-2. Commit with TDD structure: Separate commits for RED/GREEN/REFACTOR phases
+1. Implement DDD cycle: ANALYZE → PRESERVE → IMPROVE commits directly on main (or develop)
+2. Commit with DDD structure: Separate commits for ANALYZE/PRESERVE/IMPROVE phases
 3. Push to remote: `git push origin main` (or `git push origin develop` for develop_direct)
 4. CI/CD runs automatically on push
 5. Deployment triggered on main push
@@ -342,7 +342,7 @@ Direct Commit Workflow (Personal Mode - spec_git_workflow == "main_direct" or "d
 
 Feature Development Workflow (Personal Mode - with branches):
 1. Create feature branch: `git checkout main && git checkout -b feature/SPEC-001`
-2. Implement TDD cycle: RED → GREEN → REFACTOR commits
+2. Implement DDD cycle: ANALYZE → PRESERVE → IMPROVE commits
 3. Push and create PR: `git push origin feature/SPEC-001 && gh pr create`
 4. Wait for CI/CD: GitHub Actions validates automatically
 5. Self-review & optional peer review: Check diff and results
@@ -428,17 +428,17 @@ Workflow: Feature Branch + PR (GitHub Flow standard for all projects):
 - Follow standardized naming convention for feature branches
 - Set draft status to indicate work-in-progress specifications
 
-2. When implementing TDD (`/moai:2-run`):
+2. When implementing DDD (`/moai:2-run`):
 
-**RED-GREEN-REFACTOR Commit Pattern:**
-- **RED phase**: Create failing test with descriptive commit message
-- **GREEN phase**: Implement minimal code to pass tests with clear description
-- **REFACTOR phase**: Improve code quality and structure with improvement notes
+**ANALYZE-PRESERVE-IMPROVE Commit Pattern:**
+- **ANALYZE phase**: Document existing behavior with descriptive commit message
+- **PRESERVE phase**: Create characterization tests to preserve behavior
+- **IMPROVE phase**: Improve code quality and structure with improvement notes
 
 **Commit Message Standards:**
-- Use emoji indicators for TDD phase identification (🔴🟢♻)
+- Use emoji indicators for DDD phase identification (🔴🟢♻)
 - Provide descriptive text explaining the specific changes made
-- Maintain atomic commits for each TDD cycle phase
+- Maintain atomic commits for each DDD cycle phase
 - Ensure commit messages clearly communicate development progress
 
 3. When synchronization completes (`/moai:3-sync`):
@@ -624,7 +624,7 @@ IMPACT: Soft resets leave staging area inconsistent
 Commit Message Strategy [HARD]:
 
 - Always generate commit messages in English regardless of project locale
-- Apply TDD phase indicators (RED, GREEN, REFACTOR)
+- Apply DDD phase indicators (ANALYZE, PRESERVE, IMPROVE)
 - Include SPEC ID for traceability
 
 WHY: English commit messages ensure cross-team comprehension and CI/CD parsing
@@ -638,33 +638,33 @@ Step 1: Read Configuration
 
 Step 2: Select Message Template
 - Use English template regardless of locale setting
-- Apply TDD phase structure (RED/GREEN/REFACTOR)
+- Apply DDD phase structure (ANALYZE/PRESERVE/IMPROVE)
 - Include SPEC ID reference
 
 Step 3: Create Commit
 - Execute: `git commit -m "[message]"`
 - Reference project.locale only for documentation formatting, not message language
 
-TDD Phase Commit Formats [HARD]:
+DDD Phase Commit Formats [HARD]:
 
-RED Phase (Test Creation):
-- Format: "🔴 RED: [feature description]"
-- Include SPEC ID: "RED:[SPEC_ID]-TEST"
-- Message: Describe failing test scenario
+ANALYZE Phase (Behavior Documentation):
+- Format: "🔴 ANALYZE: [behavior description]"
+- Include SPEC ID: "ANALYZE:[SPEC_ID]-DOC"
+- Message: Describe existing behavior analysis
 
-GREEN Phase (Implementation):
-- Format: "🟢 GREEN: [implementation description]"
-- Include SPEC ID: "GREEN:[SPEC_ID]-IMPL"
-- Message: Describe minimal implementation
+PRESERVE Phase (Characterization Tests):
+- Format: "🟢 PRESERVE: [test description]"
+- Include SPEC ID: "PRESERVE:[SPEC_ID]-TEST"
+- Message: Describe behavior preservation tests
 
-REFACTOR Phase (Improvement):
-- Format: "♻ REFACTOR: [improvement description]"
-- Include SPEC ID: "REFACTOR:[SPEC_ID]-CLEAN"
+IMPROVE Phase (Code Enhancement):
+- Format: "♻ IMPROVE: [improvement description]"
+- Include SPEC ID: "IMPROVE:[SPEC_ID]-CLEAN"
 - Message: Describe code quality improvements
 
 Supported Languages Configuration:
 - ko (Korean): Documentation only, commit messages always English
-- en (English): Standard TDD format
+- en (English): Standard DDD format
 - ja (Japanese): Documentation only, commit messages always English
 - zh (Chinese): Documentation only, commit messages always English
 
@@ -846,21 +846,21 @@ Backup Strategies:
 
 ## MoAI Workflow Integration
 
-### TDD Step-by-Step Automatic Commit
+### DDD Step-by-Step Automatic Commit
 
-TDD Phase Commits [HARD]:
+DDD Phase Commits [HARD]:
 
 Three-Stage Commit Pattern [HARD]:
-1. RED commit (failing test creation)
-2. GREEN commit (minimum implementation)
-3. REFACTOR commit (code quality improvement)
+1. ANALYZE commit (behavior documentation)
+2. PRESERVE commit (characterization tests)
+3. IMPROVE commit (code quality improvement)
 
-WHY: TDD phases create clear change history and enable rollback to specific phases
-IMPACT: Squashing TDD phases removes development context and complicates debugging
+WHY: DDD phases create clear change history and enable rollback to specific phases
+IMPACT: Squashing DDD phases removes development context and complicates debugging
 
 Commit Execution:
-- Create separate commits for each TDD phase
-- Use phase-specific messages with indicators (🔴 RED, 🟢 GREEN, ♻ REFACTOR)
+- Create separate commits for each DDD phase
+- Use phase-specific messages with indicators (🔴 ANALYZE, 🟢 PRESERVE, ♻ IMPROVE)
 - Include SPEC ID for traceability
 - Push to remote after each phase completion
 
@@ -979,7 +979,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 This signature applies to all Git operations:
 
-- TDD phase commits (RED, GREEN, REFACTOR)
+- DDD phase commits (ANALYZE, PRESERVE, IMPROVE)
 - Release commits
 - Hotfix commits
 - Merge commits

@@ -171,7 +171,7 @@ Example:
 
 Automatic Core Skills (from YAML frontmatter Line 7)
 
-- moai-foundation-core – EARS patterns, SPEC-first TDD workflow, TRUST 5 framework, execution rules
+- moai-foundation-core – EARS patterns, SPEC-first DDD workflow, TRUST 5 framework, execution rules
 - moai-workflow-spec – SPEC creation and validation workflows
 - moai-workflow-project – Project management and configuration patterns
 - moai-lang-python – Python framework patterns for tech stack decisions
@@ -805,7 +805,7 @@ Reference Sources:
 - workflow-project: Requests SPEC creation based on project initialization
 
 **Downstream Agents (this agent typically calls):**
-- workflow-tdd: Hands off SPEC for TDD implementation
+- workflow-ddd: Hands off SPEC for DDD implementation
 - code-backend: Consult for backend architecture decisions in SPEC
 - code-frontend: Consult for frontend design decisions in SPEC
 - design-uiux: Consult for accessibility and design system requirements

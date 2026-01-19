@@ -79,7 +79,7 @@ async def implement_feature_sequential(feature_description: str):
     # Phase 3: Implementation (depends on API design)
     backend_result = await Task(
         subagent_type="code-backend",
-        prompt="Implement backend with TDD",
+        prompt="Implement backend with DDD",
         context={"spec_id": spec_result.spec_id, "api_design": api_result}
     )
 
@@ -208,7 +208,7 @@ For comprehensive implementation patterns including context optimization, error 
 
 Agents (Delegation Targets):
 - workflow-spec - SPEC generation
-- workflow-tdd - TDD implementation
+- workflow-ddd - DDD implementation
 - code-backend - Backend development
 - code-frontend - Frontend development
 - security-expert - Security analysis

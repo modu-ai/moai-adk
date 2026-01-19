@@ -615,7 +615,7 @@ Full Stack Feature Complete
 
 **RUN Phase Token Usage** (~60% of 200K):
 - SPEC document loading: 5K tokens
-- TDD cycle execution: 100K tokens
+- DDD cycle execution: 100K tokens
 - Code generation: 20K tokens
 - Test execution and debugging: 15K tokens
 - Quality validation: 10K tokens
@@ -689,7 +689,7 @@ Full Stack Feature Complete
 - MoAI-ADK Plan-Run-Sync Workflow: Core methodology documentation
 - TRUST 5 Framework: Quality assurance and validation framework
 - Git Worktree Documentation: Parallel development environment setup
-- TDD Best Practices: Test-Driven Development implementation guide
+- DDD Best Practices: Domain-Driven Development implementation guide
 
 ### Tool Integration
 

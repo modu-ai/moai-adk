@@ -1,14 +1,14 @@
 ---
 name: "moai-platform-vercel"
 description: "Vercel edge deployment specialist covering Edge Functions, Next.js optimization, preview deployments, ISR, and storage solutions. Use when deploying Next.js applications, implementing edge computing, or configuring Vercel platform features."
-version: 2.2.0
+version: 2.1.0
 category: "platform"
 modularized: true
 user-invocable: false
-tags: ['vercel', 'edge', 'nextjs', 'isr', 'preview', 'cdn', 'kv', 'blob', 'postgres', 'deploy', 'deployment']
+tags: ['vercel', 'edge', 'nextjs', 'isr', 'preview', 'cdn', 'kv', 'blob', 'postgres']
 context7-libraries: "/vercel/next.js, /vercel/vercel"
 related-skills: "moai-platform-railway, moai-lang-typescript, moai-domain-frontend"
-updated: 2026-01-18
+updated: 2026-01-11
 status: "active"
 allowed-tools:
   - Read
@@ -19,7 +19,7 @@ allowed-tools:
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
 triggers:
-  keywords: ["vercel", "edge", "nextjs", "isr", "preview deployment", "cdn", "edge functions", "deploy", "deployment", "preview"]
+  keywords: ["vercel", "edge", "nextjs", "isr", "preview deployment", "cdn", "edge functions"]
 ---
 
 # moai-platform-vercel: Vercel Edge Deployment Specialist
@@ -39,8 +39,6 @@ Preview Deployments provide automatic PR-based preview URLs with branch-specific
 ISR (Incremental Static Regeneration) enables on-demand revalidation for dynamic content with stale-while-revalidate caching strategy. Features include tag-based cache invalidation and background regeneration without user impact.
 
 Managed Storage includes Vercel KV for Redis-compatible key-value store, Vercel Blob for object storage for files, and Vercel Postgres for managed PostgreSQL database.
-
-Instant Deployment enables zero-authentication deployment to Vercel's global CDN. Features include automatic framework detection for 40+ frameworks, claimable deployment URLs for account transfer, and support for static HTML projects.
 
 ### Quick Decision Guide
 
@@ -72,10 +70,6 @@ Module at modules/analytics-speed.md covers Vercel Analytics integration, Speed 
 
 Module at modules/kv-storage.md covers Vercel KV for Redis-compatible storage, Vercel Blob for object storage, Vercel Postgres for managed database, edge-compatible usage patterns, and common storage patterns.
 
-### Deployment
-
-Module at modules/deploy.md covers instant deployment without authentication, automatic framework detection for 40+ frameworks, claimable deployment URLs, static HTML project handling, and troubleshooting deployment issues. Deploy script available at scripts/deploy.sh.
-
 ---
 
 ## Implementation Guide
@@ -95,10 +89,6 @@ For ISR implementation, export revalidate constant set to the revalidation inter
 ### Analytics Integration
 
 For Analytics integration in the root layout, import Analytics from @vercel/analytics/react and SpeedInsights from @vercel/speed-insights/next. In the RootLayout component body, render children followed by Analytics and SpeedInsights components.
-
-### Instant Deploy Quick Start
-
-For instant deployment without authentication, run the deploy script with the project path. The script packages the project, auto-detects the framework, and returns preview and claim URLs. Example: bash .claude/skills/moai-platform-vercel/scripts/deploy.sh /path/to/project. Output includes previewUrl for immediate access and claimUrl for transferring to your Vercel account.
 
 ---
 
@@ -140,5 +130,5 @@ Step 2: Fetch documentation using mcp__context7__get-library-docs with resolved 
 ---
 
 Status: Production Ready
-Version: 2.2.0
-Updated: 2026-01-18
+Version: 2.1.0
+Updated: 2026-01-11

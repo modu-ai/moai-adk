@@ -16,13 +16,13 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/pre_tool__security_guard.py"
+          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/pre_tool__security_guard.py"
           timeout: 30
   PostToolUse:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/post_tool__ast_grep_scan.py"
+          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__ast_grep_scan.py"
           timeout: 60
 ---
 
@@ -565,7 +565,7 @@ With infra-devops:
 - Health check endpoint
 - CI/CD pipeline (test, build, deploy)
 
-With manager-ddd:
+With workflow-tdd:
 
 - Test structure (unit, integration, E2E)
 - Mock strategy (test database, mock external APIs)

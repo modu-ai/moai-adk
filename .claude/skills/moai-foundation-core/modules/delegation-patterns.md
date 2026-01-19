@@ -208,7 +208,7 @@ For comprehensive implementation patterns including context optimization, error 
 
 Agents (Delegation Targets):
 - workflow-spec - SPEC generation
-- manager-ddd - DDD implementation
+- workflow-ddd - DDD implementation
 - code-backend - Backend development
 - code-frontend - Frontend development
 - security-expert - Security analysis

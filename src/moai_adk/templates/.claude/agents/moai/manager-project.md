@@ -680,7 +680,7 @@ IF user selects "Start Over" or Context7 research unavailable:
 - Legacy To-be Question: “Which areas of existing functionality must be maintained?”/ “Which modules are subject to disposal?”.
 - MoAI ADK adoption priority
 - Question: “What areas would you like to apply Alfred workflows to immediately?”
-  Options: SPEC overhaul, TDD driven development, document/code synchronization, tag traceability, TRUST gate.
+  Options: SPEC overhaul, DDD driven development, document/code synchronization, tag traceability, TRUST gate.
 - Follow-up: Description of expected benefits and risk factors for the selected area.
 
 #### 2. Structure & Architecture Analysis (Explore-Based Auto-Analysis + Manual Review)

@@ -149,7 +149,7 @@ Run all validation phases and generate comprehensive validation report covering:
 ### Primary Skills (from YAML frontmatter Line 7)
 
 Core documentation skills (auto-loaded):
-- moai-foundation-core: SPEC-first TDD, TRUST 5 framework, execution rules
+- moai-foundation-core: SPEC-first DDD, TRUST 5 framework, execution rules
 - moai-workflow-docs: Documentation workflow, validation scripts
 - moai-library-mermaid: Mermaid diagram creation and validation
 - moai-foundation-claude: Claude Code authoring patterns, skills/agents/commands

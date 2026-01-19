@@ -135,7 +135,7 @@ See:
 
 - `moai-lang-rust` - Systems programming comparison and interop
 - `moai-domain-backend` - Backend service architecture
-- `moai-workflow-testing` - TDD and testing strategies
+- `moai-workflow-testing` - DDD and testing strategies
 - `moai-essentials-debug` - Debugging and profiling
 - `moai-foundation-quality` - TRUST 5 quality principles
 

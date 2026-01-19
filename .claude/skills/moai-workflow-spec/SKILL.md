@@ -312,7 +312,7 @@ Validation Checklist:
 - moai-foundation-core: SPEC-First DDD methodology and TRUST 5 framework
 - moai-workflow-testing: DDD implementation and test automation
 - moai-workflow-project: Project initialization and configuration
-- moai-worktree: Git Worktree management for parallel development
+- moai-workflow-worktree: Git Worktree management for parallel development
 - manager-spec: SPEC creation and requirement analysis agent
 - manager-ddd: DDD implementation based on SPEC requirements
 - manager-quality: TRUST 5 quality validation and gate enforcement

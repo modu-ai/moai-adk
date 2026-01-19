@@ -13,10 +13,10 @@ def format_commit_message(
     locale: str = "ko",
 ) -> str:
     """
-    Generate a commit message for each TDD stage.
+    Generate a commit message for each DDD stage.
 
     Args:
-        stage: TDD stage (red, green, refactor, docs).
+        stage: DDD stage (analyze, preserve, improve, docs).
         description: Commit description text.
         locale: Language code (ko, en, ja, zh).
 

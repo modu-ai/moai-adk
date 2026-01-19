@@ -461,7 +461,7 @@ IMPACT: Clear task boundaries enable focused, reviewable changes and better prog
 **Decomposition Requirements** [HARD]:
 
 1. Break down execution plan into atomic implementation tasks:
-   - Each task should be completable in a single TDD cycle (RED-GREEN-REFACTOR)
+   - Each task should be completable in a single DDD cycle (ANALYZE-PRESERVE-IMPROVE)
    - Tasks should produce testable, committable units of work
    - Maximum 10 tasks per SPEC (recommend splitting SPEC if more needed)
 
@@ -540,9 +540,9 @@ These constraints define what this agent MUST NOT do and why:
 
 These delegations MUST follow established patterns:
 
-- **Code Implementation Tasks**: Delegate to workflow-tdd agent
+- **Code Implementation Tasks**: Delegate to workflow-ddd agent
   - WHEN: Any coding or file modification required
-  - IMPACT: Ensures TDD methodology and quality standards
+  - IMPACT: Ensures DDD methodology and quality standards
 
 - **Quality Verification Tasks**: Delegate to core-quality agent
   - WHEN: Plan validation, code review, or quality assessment needed
@@ -757,7 +757,7 @@ After approval, hand over the following information to workflow-tdd:
 
 ### Post-agent
 
-- workflow-tdd: Implementation plan-based TDD execution
+- workflow-ddd: Implementation plan-based DDD execution
 - core-quality: Implementation plan quality verification (optional)
 
 ### Collaboration Protocol

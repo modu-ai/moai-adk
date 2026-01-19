@@ -281,10 +281,6 @@ Single domain tasks are delegated directly to expert agents:
 
 ## EXECUTION DIRECTIVE
 
-Execute this workflow NOW. Do NOT describe what you will do - actually DO IT.
-
-### Steps
-
 1. Parse $ARGUMENTS (extract --loop, --max, --sequential, --branch, --pr, --resume flags)
 
 2. IF --resume flag with SPEC ID: Load existing SPEC and continue from last state
@@ -349,10 +345,6 @@ Execute this workflow NOW. Do NOT describe what you will do - actually DO IT.
     - Use manager-docs subagent to synchronize documentation
 
 11. Terminate with completion marker: Add marker when all tasks complete successfully
-
-### BEGIN EXECUTION
-
-Start Phase 0 (Parallel Exploration) immediately. Launch the three Task tools in parallel.
 
 ---
 

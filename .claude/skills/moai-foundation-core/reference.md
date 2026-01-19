@@ -16,9 +16,9 @@ TRUST 5 Framework:
 
 SPEC-First DDD:
 - Purpose: Specification-driven development workflow
-- Phases: SPEC (Plan), TDD (Run), Docs (Sync)
+- Phases: SPEC (Plan), DDD (Run), Docs (Sync)
 - Format: EARS (Event-Action-Response-State) specifications
-- Token Budget: 30K (SPEC) + 180K (TDD) + 40K (Docs) = 250K total
+- Token Budget: 30K (SPEC) + 180K (DDD) + 40K (Docs) = 250K total
 
 Delegation Patterns:
 - Purpose: Task orchestration via specialized agents
@@ -94,8 +94,8 @@ token_budget:
       strategy: "minimal_context"
       clear_after: true          # Execute /clear after phase
 
-    tdd:
-      budget: 180000             # 180K for TDD phase
+    ddd:
+      budget: 180000             # 180K for DDD phase
       strategy: "selective_loading"
       file_priority: ["tests", "src", "config"]
 
@@ -186,7 +186,7 @@ def pre_commit_validation(staged_files: List[str]) -> bool:
 
 ```python
 # Complete SPEC-First DDD cycle implementation
-from moai_foundation_core import SPECManager, TDDExecutor, DocsGenerator
+from moai_foundation_core import SPECManager, DDDExecutor, DocsGenerator
 
 async def spec_first_workflow(requirements: str):
     """Execute complete SPEC-First DDD workflow."""
@@ -205,15 +205,15 @@ async def spec_first_workflow(requirements: str):
     # Phase 2: DDD Implementation (180K tokens)
     ddd = DDDExecutor(spec.id)
 
-    # ANALYZE: Create characterization tests
-    tests = await ddd.analyze_and_test()
+    # ANALYZE: Understand requirements and existing behavior
+    analysis = await ddd.analyze()
+    assert analysis.requirements_complete == True
+
+    # PRESERVE: Ensure existing behavior is protected
+    characterization = await ddd.preserve()
     assert await ddd.run_tests() == "PASS"
 
-    # PRESERVE: Implement with behavior preservation
-    implementation = await ddd.implement()
-    assert await ddd.run_tests() == "PASS"
-
-    # IMPROVE: Optimize
+    # IMPROVE: Implement improvements incrementally
     improved = await ddd.improve()
     assert await ddd.run_tests() == "PASS"
 

@@ -461,7 +461,7 @@ IMPACT: Clear task boundaries enable focused, reviewable changes and better prog
 **Decomposition Requirements** [HARD]:
 
 1. Break down execution plan into atomic implementation tasks:
-   - Each task should be completable in a single TDD cycle (RED-GREEN-REFACTOR)
+   - Each task should be completable in a single DDD cycle (ANALYZE-PRESERVE-IMPROVE)
    - Tasks should produce testable, committable units of work
    - Maximum 10 tasks per SPEC (recommend splitting SPEC if more needed)
 
@@ -498,7 +498,7 @@ Create a structured task list with the following information for each task:
 
 1. Present the plan to the user
 2. Waiting for approval or modification request
-3. Upon approval, the task is handed over to the manager-ddd:
+3. Upon approval, the task is handed over to the workflow-tdd:
 
 - Passing the TAG chain
 - Passing library version information
@@ -513,7 +513,7 @@ These constraints define what this agent MUST NOT do and why:
 
 - **Focus on Planning, Not Implementation** [HARD]:
   - MUST generate implementation plans only
-  - Code implementation responsibility belongs to manager-ddd agent
+  - Code implementation responsibility belongs to workflow-tdd agent
   - WHY: Maintains separation of concerns and prevents agent scope creep
   - IMPACT: Ensures specialized agents handle their expertise, improves plan quality
 
@@ -540,9 +540,9 @@ These constraints define what this agent MUST NOT do and why:
 
 These delegations MUST follow established patterns:
 
-- **Code Implementation Tasks**: Delegate to manager-ddd agent
+- **Code Implementation Tasks**: Delegate to workflow-ddd agent
   - WHEN: Any coding or file modification required
-  - IMPACT: Ensures TDD methodology and quality standards
+  - IMPACT: Ensures DDD methodology and quality standards
 
 - **Quality Verification Tasks**: Delegate to core-quality agent
   - WHEN: Plan validation, code review, or quality assessment needed
@@ -634,7 +634,7 @@ Implementation plans use XML structure for handover to downstream agents:
   <handover>
     <tag_chain>[Structured list of TAGs with dependencies]</tag_chain>
     <library_versions>[Complete version specifications]</library_versions>
-    <key_decisions>[Critical decisions for manager-ddd agent]</key_decisions>
+    <key_decisions>[Critical decisions for workflow-tdd agent]</key_decisions>
   </handover>
 </implementation_plan>
 ```
@@ -743,7 +743,7 @@ Agent in charge: core-planner
 
 ## 7. Next steps
 
-After approval, hand over the following information to manager-ddd:
+After approval, hand over the following information to workflow-tdd:
 - TAG chain: [TAG list]
 - Library version: [version information]
 - Key decisions: [Summary]
@@ -757,7 +757,7 @@ After approval, hand over the following information to manager-ddd:
 
 ### Post-agent
 
-- manager-ddd: Implementation plan-based TDD execution
+- workflow-ddd: Implementation plan-based DDD execution
 - core-quality: Implementation plan quality verification (optional)
 
 ### Collaboration Protocol

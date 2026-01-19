@@ -269,7 +269,7 @@ Technical:
 - Low: Enhancement or optional feature
 
 **Assigned Agents**:
-- manager-ddd: DDD-based implementation (ANALYZE-PRESERVE-IMPROVE)
+- manager-ddd: DDD-based implementation
 - manager-spec: SPEC refinement and updates
 - expert-backend: Backend-specific features
 - expert-frontend: Frontend-specific features

@@ -147,7 +147,7 @@ Data Protection Rules:
 | Level | Name | Access | Use Case |
 |-------|------|--------|----------|
 | 1 | Read-only | File exploration, code analysis | `Explore`, `Plan` |
-| 2 | Validated Write | File creation with validation | `workflow-tdd`, `workflow-docs` |
+| 2 | Validated Write | File creation with validation | `workflow-ddd`, `workflow-docs` |
 | 3 | System | Limited system operations | `infra-devops`, `core-git` |
 | 4 | Security | Security analysis and enforcement | `security-expert`, `core-quality` |
 
@@ -207,7 +207,7 @@ Alfred's Behavior (prompt_always=true):
 1. When running `/moai:1-plan`, user prompted: "Create branch?"
  - Auto create → Creates feature/SPEC-001
  - Use current branch → Continues on current branch
-2. All TDD commits saved locally only (automatic)
+2. All DDD commits saved locally only (automatic)
 3. Push performed manually
 
 Configuration (auto skip):
@@ -250,7 +250,7 @@ Alfred's Behavior (prompt_always=true):
 1. When running `/moai:1-plan`, user prompted: "Create branch?"
  - Auto create → Creates feature/SPEC-002 + auto push
  - Use current branch → Commits directly on current branch
-2. Running `/moai:2-run`: TDD commits + auto push
+2. Running `/moai:2-run`: DDD commits + auto push
 3. Running `/moai:3-sync`: Doc commits + suggest PR creation (user choice)
 
 Configuration (auto after approval):
@@ -288,7 +288,7 @@ Configuration (full automation):
 Alfred's Behavior (prompt_always=false, auto_enabled=true):
 - Automatically creates feature/SPEC-XXX branch for every SPEC
 - No user prompts (full automation)
-- All TDD and documentation commits auto-pushed to feature branch
+- All DDD and documentation commits auto-pushed to feature branch
 
 Use Case: Personal GitHub projects, fast development speed needed
 
@@ -313,7 +313,7 @@ Alfred's Behavior (prompt_always=true):
 1. When running `/moai:1-plan`, user prompted: "Create branch?"
  - Auto create → Creates feature/SPEC-003 + auto create Draft PR
  - Use current branch → Proceeds on current branch (not recommended)
-2. Running `/moai:2-run`: TDD commits + auto push (to feature branch)
+2. Running `/moai:2-run`: DDD commits + auto push (to feature branch)
 3. Running `/moai:3-sync`: Doc commits + prepare PR
 4. Team code review required (minimum 1 reviewer)
 5. After approval: Merge (Squash or Merge)
@@ -353,7 +353,7 @@ Configuration (full automation):
 Alfred's Behavior (prompt_always=false, auto_enabled=true):
 - Automatically creates feature/SPEC-XXX branch + Draft PR for every SPEC
 - No user prompts (full automation)
-- All TDD and documentation commits auto-pushed to feature branch
+- All DDD and documentation commits auto-pushed to feature branch
 - Maintains Draft PR status (until team review complete)
 
 Use Case: Team projects, code review required, quality management needed

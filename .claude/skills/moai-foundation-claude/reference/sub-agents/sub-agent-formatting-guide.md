@@ -381,26 +381,26 @@ Focus Areas: Code readability, consistency, maintainability
 
 Purpose: Manage complex multi-step processes
 Structure: Phase-based workflows, coordination patterns
-Examples: `manager-ddd`, `agent-factory`, `skill-factory`
+Examples: `workflow-ddd`, `agent-factory`, `skill-factory`
 
 ```yaml
 ---
-name: manager-ddd
+name: workflow-ddd
 description: Execute ANALYZE-PRESERVE-IMPROVE DDD cycle for implementing features with behavior preservation. Called from /moai:2-run SPEC implementation and task delegation workflows.
 tools: Read, Write, Edit, Bash, Grep, Glob, MultiEdit, TodoWrite
 model: sonnet
-skills: moai-lang-python, moai-workflow-testing, moai-foundation-quality
+skills: moai-lang-python, moai-domain-testing, moai-foundation-quality
 ---
 
 # DDD Implementation Expert
 
-You are a Domain-Driven Development implementation expert specializing in the ANALYZE-PRESERVE-IMPROVE cycle for robust feature development with behavior preservation.
+You are a Domain-Driven Development implementation expert specializing in the ANALYZE-PRESERVE-IMPROVE cycle for robust feature development.
 
 ## Core Responsibilities
 
-Primary Domain: DDD implementation with behavior preservation
-Key Capabilities: ANALYZE-PRESERVE-IMPROVE cycle, characterization tests, incremental improvement, quality gates
-Focus Areas: Behavior preservation, incremental development, code quality
+Primary Domain: DDD implementation and behavior preservation
+Key Capabilities: ANALYZE-PRESERVE-IMPROVE cycle, characterization tests, coverage optimization, quality gates
+Focus Areas: Behavior-first development, comprehensive coverage, code quality
 ```
 
 ### 4. Quality Assurance Pattern
@@ -503,7 +503,7 @@ System Prompt Development:
 
 Pattern: Agent A completes → Agent B continues
 Use Case: Multi-phase workflows with dependencies
-Example: `workflow-spec` → `manager-ddd` → `workflow-docs`
+Example: `workflow-spec` → `workflow-tdd` → `workflow-docs`
 
 ```python
 # Sequential delegation example
@@ -515,7 +515,7 @@ spec_result = Task(
 
 # Phase 2: Implementation (passes spec as context)
 implementation_result = Task(
- subagent_type="manager-ddd",
+ subagent_type="workflow-tdd",
  prompt="Implement user authentication from specification",
  context={"specification": spec_result}
 )

@@ -141,10 +141,10 @@ def detect_language(cwd: str) -> str:
         >>> detect_language("/path/to/unknown/project")
         'Unknown Language'
 
-    TDD History:
-        - RED: Write a 21 items language detection test (20 items language + 1 items unknown)
-        - GREEN: 20 items language + unknown implementation, all tests passed
-        - REFACTOR: Optimize file inspection order, apply TypeScript priority principle
+    DDD History:
+        - ANALYZE: Write a 21 items language detection test (20 items language + 1 items unknown)
+        - PRESERVE: 20 items language + unknown implementation, all tests passed
+        - IMPROVE: Optimize file inspection order, apply TypeScript priority principle
     """
     cwd_path = Path(cwd)
 
@@ -218,10 +218,10 @@ def _run_git_command(args: list[str], cwd: str, timeout: int = 2) -> str:
         >>> _run_git_command(["branch", "--show-current"], ".")
         'main'
 
-    TDD History:
-        - RED: Git command hang scenario test
-        - GREEN: SIGALRM-based timeout implementation
-        - REFACTOR: Exception conversion to subprocess.TimeoutExpired
+    DDD History:
+        - ANALYZE: Git command hang scenario test
+        - PRESERVE: SIGALRM-based timeout implementation
+        - IMPROVE: Exception conversion to subprocess.TimeoutExpired
     """
     try:
         with timeout_handler(timeout):
@@ -275,10 +275,10 @@ def get_git_info(cwd: str) -> dict[str, Any]:
         - Error handling: Returns an empty dictionary in case of all exceptions
         - Commit message limited to 50 characters for display purposes
 
-    TDD History:
-        - RED: 3 items scenario test (Git repo, non-Git, error)
-        - GREEN: Implementation of subprocess-based Git command execution
-        - REFACTOR: Add timeout (2 seconds), strengthen exception handling, remove duplicates with helper function
+    DDD History:
+        - ANALYZE: 3 items scenario test (Git repo, non-Git, error)
+        - PRESERVE: Implementation of subprocess-based Git command execution
+        - IMPROVE: Add timeout (2 seconds), strengthen exception handling, remove duplicates with helper function
         - UPDATE: Added last_commit message field for SessionStart display
     """
     try:
@@ -340,10 +340,10 @@ def count_specs(cwd: str) -> dict[str, int]:
         - If parsing fails, the SPEC is considered incomplete.
         - Automatically finds project root to locate .moai/specs/
 
-    TDD History:
-        - RED: 5 items scenario test (0/0, 2/5, 5/5, no directory, parsing error)
-        - GREEN: SPEC search with Path.iterdir(), YAML parsing implementation
-        - REFACTOR: Strengthened exception handling, improved percentage calculation safety
+    DDD History:
+        - ANALYZE: 5 items scenario test (0/0, 2/5, 5/5, no directory, parsing error)
+        - PRESERVE: SPEC search with Path.iterdir(), YAML parsing implementation
+        - IMPROVE: Strengthened exception handling, improved percentage calculation safety
         - UPDATE: Add project root detection for consistent path resolution
     """
     # Find project root to ensure we read specs from correct location
@@ -453,10 +453,10 @@ def get_version_check_config(cwd: str) -> dict[str, Any]:
         - "weekly": 168 hours (7 days)
         - "never": infinity (never check)
 
-    TDD History:
-        - RED: 8 test scenarios (defaults, custom, disabled, TTL, etc.)
-        - GREEN: Minimal config reading with defaults
-        - REFACTOR: Add validation and error handling
+    DDD History:
+        - ANALYZE: 8 test scenarios (defaults, custom, disabled, TTL, etc.)
+        - PRESERVE: Minimal config reading with defaults
+        - IMPROVE: Add validation and error handling
     """
     # TTL mapping by frequency
     ttl_by_frequency = {"always": 0, "daily": 24, "weekly": 168, "never": float("inf")}
@@ -524,10 +524,10 @@ def is_network_available(timeout_seconds: float = 0.1) -> bool:
         >>> is_network_available(timeout_seconds=0.001)
         False  # Timeout too short, returns False
 
-    TDD History:
-        - RED: 3 test scenarios (success, failure, timeout)
-        - GREEN: Minimal socket.create_connection implementation
-        - REFACTOR: Add error handling for all exception types
+    DDD History:
+        - ANALYZE: 3 test scenarios (success, failure, timeout)
+        - PRESERVE: Minimal socket.create_connection implementation
+        - IMPROVE: Add error handling for all exception types
     """
     try:
         # Try connecting to Google's public DNS server (8.8.8.8:53)
@@ -565,10 +565,10 @@ def is_major_version_change(current: str, latest: str) -> bool:
         >>> is_major_version_change("dev", "1.0.0")
         False  # Invalid versions return False
 
-    TDD History:
-        - RED: 4 test scenarios (0→1, 1→2, minor, invalid)
-        - GREEN: Minimal version parsing and comparison
-        - REFACTOR: Improve error handling for invalid versions
+    DDD History:
+        - ANALYZE: 4 test scenarios (0→1, 1→2, minor, invalid)
+        - PRESERVE: Minimal version parsing and comparison
+        - IMPROVE: Improve error handling for invalid versions
     """
     try:
         # Parse version strings into integer components
@@ -620,10 +620,10 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
         - Network timeout: Returns current + "unknown" latest (~50ms) ✓
         - Any exception: Always returns current version ✓
 
-    TDD History:
-        - RED: 5 test scenarios (network detection, cache integration, offline mode)
-        - GREEN: Integrate VersionCache with network detection
-        - REFACTOR: Extract cache directory constant, improve error handling
+    DDD History:
+        - ANALYZE: 5 test scenarios (network detection, cache integration, offline mode)
+        - PRESERVE: Integrate VersionCache with network detection
+        - IMPROVE: Extract cache directory constant, improve error handling
     """
     import importlib.util
     import urllib.error

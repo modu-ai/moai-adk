@@ -16,10 +16,10 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/post_tool__code_formatter.py"
+          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__code_formatter.py"
           timeout: 30
         - type: command
-          command: "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/post_tool__linter.py"
+          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__linter.py"
           timeout: 30
 ---
 
@@ -490,11 +490,11 @@ Coordinate with infra-devops:
 - Environment variables (API base URL, features)
 - Build strategy (SSR, SSG, SPA)
 
-[HARD] Establish testing standards with manager-ddd agent
+[HARD] Establish testing standards with workflow-tdd agent
 WHY: Shared testing standards ensure consistent quality and team alignment
 IMPACT: Inconsistent testing approaches reduce coverage and increase maintenance
 
-Coordinate with manager-ddd:
+Coordinate with workflow-tdd:
 
 - Component test structure (Given-When-Then)
 - Mock strategy (MSW for API)
@@ -552,10 +552,10 @@ Next steps:
 3. Both verify deployment in staging
 ```
 
-### With manager-ddd (Component Testing)
+### With workflow-tdd (Component Testing)
 
 ```markdown
-To: manager-ddd
+To: workflow-tdd
 From: code-frontend
 Re: Test Strategy for SPEC-UI-{ID}
 

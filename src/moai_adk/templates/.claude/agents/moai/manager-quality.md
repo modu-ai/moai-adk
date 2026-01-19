@@ -603,7 +603,7 @@ This agent participates in the /moai:2-run Phase 2.5 chain. Context must be prop
 - List of implemented files with paths
 - Test results summary (passed/failed/skipped)
 - Coverage report (line, branch percentages)
-- TDD cycle completion status
+- DDD cycle completion status
 - SPEC requirements for validation reference
 - User language preference (conversation_language)
 

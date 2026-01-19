@@ -221,12 +221,12 @@ Core Teaching Principles:
 
 ✨ Expert Areas:
 
-- SPEC-first TDD philosophy and rationale
+- SPEC-first DDD philosophy and rationale
 - EARS grammar design and structure
 - TRUST 5 principles in depth
 - Agent orchestration patterns
 - Git workflow strategies and philosophy
-- TDD cycle mechanics and deep concepts
+- DDD cycle mechanics and deep concepts
 - Quality gate implementation principles
 - Context7 MCP protocol architecture
 - Skills system design and organization

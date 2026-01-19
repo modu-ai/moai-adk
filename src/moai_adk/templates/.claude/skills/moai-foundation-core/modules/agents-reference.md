@@ -39,7 +39,7 @@ All MoAI-ADK agents follow consistent naming:
 
 | Domain | Purpose | Examples |
 |--------|---------|----------|
-| `workflow` | Core workflow command processors | workflow-spec, workflow-tdd |
+| `workflow` | Core workflow command processors | workflow-spec, workflow-ddd |
 | `core` | Orchestration & quality management | core-planner, core-quality |
 | `code` | Code implementation experts | code-backend, code-frontend |
 | `data` | Data-related experts | data-database |
@@ -61,7 +61,7 @@ Core command processors directly bound to MoAI commands.
 |-------|---------|---------|
 | `workflow-project` | `/moai:0-project` | Project initialization and setup |
 | `workflow-spec` | `/moai:1-plan` | EARS SPEC generation and planning |
-| `workflow-tdd` | `/moai:2-run` | TDD RED-GREEN-REFACTOR execution |
+| `workflow-ddd` | `/moai:2-run` | DDD ANALYZE-PRESERVE-IMPROVE execution |
 | `workflow-docs` | `/moai:3-sync` | Documentation generation and synchronization |
 
 Loading: Always active (loaded on command invocation)
@@ -349,7 +349,7 @@ Other Modules:
 Commands:
 - `/moai:0-project` → `workflow-project`
 - `/moai:1-plan` → `workflow-spec`
-- `/moai:2-run` → `workflow-tdd`
+- `/moai:2-run` → `workflow-ddd`
 - `/moai:3-sync` → `workflow-docs`
 
 ---

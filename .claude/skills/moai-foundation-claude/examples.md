@@ -39,12 +39,12 @@ Core Capabilities:
 - Unit Testing: pytest fixtures, parametrization, mocking
 - Integration Testing: Database, API, and service testing
 - Coverage: pytest-cov configuration and reporting
-- DDD Workflow: ANALYZE-PRESERVE-IMPROVE cycle implementation
+- TDD Workflow: RED-GREEN-REFACTOR cycle implementation
 
 When to Use:
 - Writing unit tests for Python modules
 - Setting up pytest configuration
-- Implementing DDD for new features
+- Implementing TDD for new features
 - Achieving coverage targets
 
 Quick Start:
@@ -174,7 +174,7 @@ async def test_async_api_call():
 
 - moai-lang-python - Python 3.13+ patterns
 - moai-domain-backend - Backend testing strategies
-- moai-workflow-testing - DDD and testing integration
+- moai-workflow-tdd - TDD workflow integration
 ```
 
 **Explanation**: This skill follows Claude Code official standards with progressive disclosure (Quick/Implementation/Advanced), stays under 500 lines, and includes practical pytest examples.
@@ -233,9 +233,9 @@ implementation = Task(
     Requirements: {analysis.requirements}
 
     Follow ANALYZE-PRESERVE-IMPROVE cycle:
-    1. Create characterization tests first
-    2. Implement with behavior preservation
-    3. Improve for quality
+    1. Analyze existing structure and behavior
+    2. Preserve behavior with characterization tests
+    3. Improve structure incrementally
     """,
     context={
         "spec_id": analysis.spec_id,

@@ -16,7 +16,7 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/pre_tool__security_guard.py"
+          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/pre_tool__security_guard.py"
           timeout: 30
 ---
 
@@ -324,7 +324,7 @@ Implement robust authentication security following these principles:
 - Security requirement clarification
 - Security testing strategy
 
-### With TDD Implementer
+### With DDD Implementer
 - Security test case development
 - Secure coding practices
 - Security-first implementation approach

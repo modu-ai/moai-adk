@@ -191,7 +191,7 @@ Essential library mappings for quality analysis tools and frameworks. See [Best 
 Agents:
 
 - core-planner - Quality requirements planning
-- manager-ddd - DDD implementation validation
+- workflow-tdd - TDD implementation validation
 - security-expert - Security vulnerability analysis
 - code-backend - Backend code quality
 - code-frontend - Frontend code quality
@@ -199,7 +199,7 @@ Agents:
 Skills:
 
 - moai-foundation-core - TRUST 5 framework reference
-- moai-workflow-testing - DDD workflow validation
+- moai-tdd-implementation - TDD workflow validation
 - moai-security-owasp - Security compliance
 - moai-context7-integration - Context7 best practices
 - moai-performance-optimization - Performance analysis

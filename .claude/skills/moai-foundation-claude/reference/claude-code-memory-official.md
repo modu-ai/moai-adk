@@ -134,7 +134,7 @@ Settings Management (`config/config.json`):
  },
  "constitution": {
  "test_coverage_target": 90,
- "enforce_ddd": true,
+ "enforce_tdd": true,
  "quality_gates": ["test-first", "readable", "unified", "secured", "trackable"]
  },
  "git_strategy": {
@@ -154,7 +154,7 @@ Command References (`memory/commands.md`):
 ## Core MoAI Commands
 - /moai:0-project: Initialize project structure
 - /moai:1-plan: Generate SPEC document
-- /moai:2-run: Execute DDD implementation
+- /moai:2-run: Execute TDD implementation
 - /moai:3-sync: Generate documentation
 - /moai:9-feedback: Collect improvement feedback
 

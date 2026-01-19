@@ -334,8 +334,8 @@ IMPACT: Outdated documentation misleads developers
 
 [HARD] Delegate discovered issues to specialized agents following this mapping:
 
-- **Runtime Errors**: Delegate to workflow-tdd when code modifications are needed
-  BECAUSE: Implementation requires TDD cycle with testing
+- **Runtime Errors**: Delegate to workflow-ddd when code modifications are needed
+  BECAUSE: Implementation requires DDD cycle with testing
 
 - **Code Quality Issues**: Delegate to core-quality for TRUST principle verification
   BECAUSE: Quality verification requires specialized knowledge

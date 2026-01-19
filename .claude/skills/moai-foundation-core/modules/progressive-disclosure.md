@@ -174,7 +174,7 @@ solution_b()
 [Repeat structure]
 ```
 
-Example - TDD Workflow:
+Example - DDD Workflow:
 
 ```markdown
 ## Implementation Guide (5 minutes)
@@ -220,16 +220,16 @@ Test Coverage Target: ≥90%
 ANALYZE-PRESERVE-IMPROVE Cycle:
 
 ```python
-# ANALYZE: Create characterization test first
+# RED: Write failing test first
 def test_register_user():
  result = register_user("user@example.com", "SecureP@ssw0rd")
  assert result.success is True
 
-# PRESERVE: Minimal implementation preserving behavior
+# GREEN: Minimal implementation
 def register_user(email, password):
  return RegistrationResult(success=True, user=User())
 
-# IMPROVE: Enhance quality
+# REFACTOR: Improve quality
 def register_user(email: str, password: str) -> RegistrationResult:
  """Register new user with email and password.
  

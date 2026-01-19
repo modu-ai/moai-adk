@@ -265,7 +265,10 @@ def main() -> None:
     # Output JSON
     print(json.dumps(output))
 
-    # Always exit 0 to avoid blocking - issues reported via additionalContext
+    # Exit with attention code if errors found
+    if result.get("error_count", 0) > 0:
+        sys.exit(2)
+
     sys.exit(0)
 
 

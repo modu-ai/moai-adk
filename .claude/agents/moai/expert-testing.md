@@ -111,7 +111,7 @@ IN SCOPE:
 - Flaky test detection and remediation
 
 OUT OF SCOPE:
-- TDD unit test implementation (delegate to manager-ddd)
+- Unit test implementation (delegate to manager-ddd)
 - Production deployment (delegate to expert-devops)
 - Security penetration testing (delegate to expert-security)
 - Performance load testing execution (delegate to expert-performance)
@@ -330,7 +330,7 @@ Conditional Skills (auto-loaded by Alfred when needed)
 - Backend: API integration tests, contract testing, database test fixtures
 - Frontend: Component tests, E2E user flows, visual regression
 - DevOps: CI/CD pipeline integration, test environment provisioning
-- TDD: Unit test patterns, mocking strategies, coverage targets
+- DDD: Unit test patterns, mocking strategies, coverage targets
 
 ## Workflow Steps
 
@@ -480,7 +480,7 @@ Create `.moai/docs/test-strategy-{SPEC-ID}.md`:
 With manager-ddd:
 - Unit test patterns and coverage targets
 - Mock strategy and test fixture design
-- TDD workflow integration
+- DDD workflow integration
 
 With expert-backend:
 - API integration test strategy

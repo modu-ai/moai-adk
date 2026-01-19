@@ -82,7 +82,7 @@ Example - Quality Framework:
 
 TRUST 5 is MoAI-ADK's comprehensive quality assurance framework enforcing five pillars:
 
-1. Test-first(T) - ≥85% coverage, RED-GREEN-REFACTOR cycle
+1. Test-first(T) - ≥85% coverage, ANALYZE-PRESERVE-IMPROVE cycle
 2. Readable(R) - Clear naming, ≤10 cyclomatic complexity
 3. Unified(U) - Consistent patterns, architecture compliance
 4. Secured(S) - OWASP Top 10 compliance, security validation
@@ -174,7 +174,7 @@ solution_b()
 [Repeat structure]
 ```
 
-Example - TDD Workflow:
+Example - DDD Workflow:
 
 ```markdown
 ## Implementation Guide (5 minutes)
@@ -215,9 +215,9 @@ Test Coverage Target: ≥90%
 
 ---
 
-### Phase 2: Test-Driven Development
+### Phase 2: Domain-Driven Development
 
-RED-GREEN-REFACTOR Cycle:
+ANALYZE-PRESERVE-IMPROVE Cycle:
 
 ```python
 # RED: Write failing test first

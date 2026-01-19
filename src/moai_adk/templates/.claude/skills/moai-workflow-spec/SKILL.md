@@ -78,7 +78,7 @@ SPEC-First Development Philosophy:
 - EARS format ensures unambiguous requirements
 - Requirement clarification prevents scope creep
 - Systematic validation through test scenarios
-- Integration with TDD workflow for implementation
+- Integration with DDD workflow for implementation
 - Quality gates enforce completion criteria
 - Constitution reference ensures project-wide consistency
 
@@ -309,10 +309,10 @@ Validation Checklist:
 
 ### Works Well With
 
-- moai-foundation-core: SPEC-First TDD methodology and TRUST 5 framework
+- moai-foundation-core: SPEC-First DDD methodology and TRUST 5 framework
 - moai-workflow-testing: DDD implementation and test automation
 - moai-workflow-project: Project initialization and configuration
-- moai-worktree: Git Worktree management for parallel development
+- moai-workflow-worktree: Git Worktree management for parallel development
 - manager-spec: SPEC creation and requirement analysis agent
 - manager-ddd: DDD implementation based on SPEC requirements
 - manager-quality: TRUST 5 quality validation and gate enforcement

@@ -119,7 +119,7 @@ async def implement_feature_sequential(feature_description: str):
     # Phase 3: Backend Implementation
     backend_result = await Task(
         subagent_type="code-backend",
-        prompt="Implement backend with TDD",
+        prompt="Implement backend with DDD",
         context={
             "spec_id": spec_result.spec_id,
             "api_design": api_result.openapi_spec,
@@ -186,7 +186,7 @@ def sequential_with_token_management():
 
     # Phase 2: Fresh context (implementation)
     impl = Task(
-        subagent_type="workflow-tdd",
+        subagent_type="workflow-ddd",
         context={"spec_id": spec.id}  # Minimal context
     )  # ~80K tokens
 

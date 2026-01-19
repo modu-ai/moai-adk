@@ -39,16 +39,16 @@ Overall Status: APPROVED for merge
 
 ---
 
-## Example 2: SPEC-First TDD 3단계 워크플로우
+## Example 2: SPEC-First DDD 3단계 워크플로우
 
-**Scenario**: 사용자 인증 기능을 SPEC-First TDD 방식으로 개발하는 전체 과정
+**Scenario**: 사용자 인증 기능을 SPEC-First DDD 방식으로 개발하는 전체 과정
 
 **Input**:
 ```bash
 # Phase 1: SPEC 생성
 /moai:1-plan "JWT 기반 사용자 인증 시스템 구현"
 
-# Phase 2: TDD 실행 (Phase 1 완료 후 /clear 실행)
+# Phase 2: DDD 실행 (Phase 1 완료 후 /clear 실행)
 /clear
 /moai:2-run SPEC-001
 
@@ -71,9 +71,9 @@ Token Usage: 28K/30K
 
 Phase 2 Result:
 ===============
-RED: 5 failing tests created (test_login, test_register, test_token_validation...)
-GREEN: All tests passing after implementation
-REFACTOR: Code optimized, duplications removed
+ANALYZE: Requirements analyzed, 5 acceptance criteria identified
+PRESERVE: Existing behavior protected, characterization tests created
+IMPROVE: Implementation complete, code optimized
 Coverage: 92% (threshold: 85%)
 Token Usage: 165K/180K
 
@@ -265,7 +265,7 @@ await Task(
 
 ### Anti-Pattern 2: Phase 간 /clear 누락
 
-**Problem**: SPEC Phase 완료 후 /clear 없이 TDD Phase 진행하여 토큰 낭비
+**Problem**: SPEC Phase 완료 후 /clear 없이 DDD Phase 진행하여 토큰 낭비
 
 ```bash
 # 잘못된 예시
@@ -348,7 +348,7 @@ else:
 | Phase | 예산 | 전략 |
 |-------|------|------|
 | SPEC | 30K | 요구사항만 로드 |
-| TDD | 180K | 선택적 파일 로딩 |
+| DDD | 180K | 선택적 파일 로딩 |
 | Docs | 40K | 결과 캐싱 |
 | Total | 250K | Phase 분리 |
 

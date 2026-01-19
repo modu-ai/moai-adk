@@ -7,7 +7,7 @@ modularized: true
 user-invocable: false
 context: fork
 agent: expert-testing
-tags: ['workflow', 'testing', 'debugging', 'performance', 'quality', 'tdd', 'review', 'pr-review']
+tags: ['workflow', 'testing', 'debugging', 'performance', 'quality', 'ddd', 'review', 'pr-review']
 updated: 2026-01-11
 status: "active"
 author: "MoAI-ADK Team"
@@ -20,7 +20,7 @@ progressive_disclosure:
 
 # Trigger Conditions for Level 2 Loading
 triggers:
-  keywords: ["TDD", "test-driven development", "debugging", "performance optimization", "code review", "PR review", "quality assurance", "testing", "CI/CD", "TRUST 5"]
+  keywords: ["DDD", "domain-driven development", "debugging", "performance optimization", "code review", "PR review", "quality assurance", "testing", "CI/CD", "TRUST 5"]
   phases: ["run", "sync"]
   agents: ["manager-ddd", "expert-testing", "expert-debug", "expert-performance", "manager-quality"]
 

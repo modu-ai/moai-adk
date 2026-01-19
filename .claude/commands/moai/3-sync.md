@@ -4,7 +4,6 @@ argument-hint: "Mode target path - Mode: auto (default)|force|status|project, ta
 type: workflow
 allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 model: inherit
-version: 3.4.0
 ---
 
 ## Pre-execution Context
@@ -1312,19 +1311,7 @@ Exit command with code 0.
 
 ## Quick Reference
 
-### Command Options
-
-| Option | Alias | Description | Default |
-|--------|-------|-------------|---------|
-| `auto` | - | Smart selective sync (changed files only) | Yes |
-| `force` | - | Full project re-sync | No |
-| `status` | - | Read-only health check | No |
-| `project` | - | Project-wide integrated sync | No |
-| `--auto-merge` | - | Auto-merge PR after sync | No |
-| `--skip-qv` | - | Skip Phase 0.5 quality verification | No |
-| `--no-commit` | - | Skip git commit step | No |
-
-### Workflow Scenarios
+Workflow Scenarios:
 
 - **Daily development** (auto mode)
   - Entry Point: `/moai:3-sync`

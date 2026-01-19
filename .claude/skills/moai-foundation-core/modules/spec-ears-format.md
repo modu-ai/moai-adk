@@ -192,7 +192,7 @@ complexity_metrics:
 ## Works Well With
 
 - [spec-first-ddd.md](spec-first-ddd.md) - Main workflow overview
-- [spec-ddd-implementation.md](spec-ddd-implementation.md) - TDD patterns
+- [spec-ddd-implementation.md](spec-ddd-implementation.md) - DDD patterns
 
 ---
 

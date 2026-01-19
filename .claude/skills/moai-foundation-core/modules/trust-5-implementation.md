@@ -10,20 +10,20 @@ Parent: [trust-5-framework.md](trust-5-framework.md)
 
 ## Test-First Implementation
 
-### ANALYZE-PRESERVE-IMPROVE Example
+### RED-GREEN-REFACTOR Example
 
 ```python
-# ANALYZE: Create characterization test first
+# RED: Write failing test first
 def test_calculate_total_price_with_tax():
     item = ShoppingItem(name="Widget", price=10.00)
     total = calculate_total_with_tax(item, tax_rate=0.10)
-    assert total == 11.00  # Captures expected behavior
+    assert total == 11.00  # Fails - function doesn't exist
 
-# PRESERVE: Minimal implementation preserving behavior
+# GREEN: Minimal implementation
 def calculate_total_with_tax(item, tax_rate):
     return item.price * (1 + tax_rate)
 
-# IMPROVE: Enhance code quality
+# REFACTOR: Improve code quality
 def calculate_total_with_tax(item: ShoppingItem, tax_rate: float) -> float:
     """Calculate total price including tax.
 

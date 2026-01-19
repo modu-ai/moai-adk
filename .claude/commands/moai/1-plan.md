@@ -1444,48 +1444,6 @@ Important:
 - No emojis in any AskUserQuestion fields
 - Always provide clear next step options
 
----
-
-## State Management & Draft Recovery
-
-SPEC drafts are saved for recovery if planning is interrupted:
-
-```
-# Draft location
-.moai/specs/drafts/
-├── SPEC-AUTH-001-draft.md          # Named draft
-├── SPEC-AUTH-001-draft.json        # Draft metadata
-└── latest-draft.json               # Symlink to most recent
-
-# Draft metadata contents
-{
-  "timestamp": "2026-01-19T14:30:52Z",
-  "spec_id": "SPEC-AUTH-001",
-  "title": "JWT Authentication",
-  "phase": "requirements",
-  "exploration_results": {...},
-  "ears_requirements": [...],
-  "acceptance_criteria": [...]
-}
-```
-
-Recovery Commands:
-
-```bash
-# Resume from latest draft
-/moai:1-plan --resume
-
-# Resume specific draft
-/moai:1-plan --resume SPEC-AUTH-001
-
-# List all drafts
-/moai:1-plan --list-drafts
-```
-
-WHY: SPEC planning involves multiple phases; recovery prevents loss of exploration and requirement gathering work.
-
----
-
 ## EXECUTION DIRECTIVE
 
 You must NOW execute the command following the "The 4-Step Agent-Based Workflow Command Logic" described above.

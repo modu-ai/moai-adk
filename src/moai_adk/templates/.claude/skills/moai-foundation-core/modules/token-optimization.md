@@ -13,7 +13,7 @@ Token Budget: 200K per feature (250K with overhead)
 
 Phase Allocation:
 - SPEC Generation: 30K tokens
-- TDD Implementation: 180K tokens
+- DDD Implementation: 180K tokens
 - Documentation: 40K tokens
 
 /clear Execution Rules:
@@ -43,7 +43,7 @@ Standard Feature Budget (250K tokens):
 |-------|--------|---------|-----------|
 | Phase 1: SPEC | 30K | Requirements definition | EARS format, acceptance criteria, complexity |
 | /clear | - | Context reset | Saves 45-50K tokens |
-| Phase 2: TDD | 180K | Implementation + tests | RED (40K) + GREEN (80K) + REFACTOR (60K) |
+| Phase 2: DDD | 180K | Implementation + tests | ANALYZE (40K) + PRESERVE (80K) + IMPROVE (60K) |
 | Phase 3: Docs | 40K | Documentation | API docs, architecture, reports |
 | Total | 250K | Complete feature | 60-70% efficiency vs manual |
 
@@ -360,7 +360,7 @@ Decision Matrix:
 | SPEC generation | Sonnet 4.5 | High-quality design | $$$ | Slower |
 | Security review | Sonnet 4.5 | Precise analysis | $$$ | Slower |
 | Architecture design | Sonnet 4.5 | Complex reasoning | $$$ | Slower |
-| TDD implementation | Haiku 4.5 | Fast execution | $ | 3x faster |
+| DDD implementation | Haiku 4.5 | Fast execution | $ | 3x faster |
 | Simple edits | Haiku 4.5 | Minimal complexity | $ | 3x faster |
 | Test generation | Haiku 4.5 | Pattern-based | $ | 3x faster |
 | Documentation | Haiku 4.5 | Template-based | $ | 3x faster |
@@ -694,7 +694,7 @@ Commands:
 - /clear - Context reset (mandatory after /moai:1-plan)
 - /context - Check current token usage
 - /moai:1-plan - SPEC generation (30K budget)
-- /moai:2-run - TDD implementation (180K budget)
+- /moai:2-run - DDD implementation (180K budget)
 - /moai:3-sync - Documentation (40K budget)
 
 Memory:
