@@ -24,7 +24,7 @@
 # This config.yaml is kept for legacy project support
 
 moai:
-  version: "1.6.2"
+  version: "1.4.5"
   initialized: true
   initialized_at: "2025-12-19T00:00:00Z"
 
