@@ -1,3 +1,99 @@
+# v1.5.0 - Template Cleanup and Analytics Enhancement (2026-01-20)
+
+## Summary
+
+This minor release focuses on template configuration cleanup and analytics enhancement. It removes redundant platform-specific settings files, adds anonymous project ID tracking for improved analytics, and includes code style improvements.
+
+## Changed
+
+- **refactor(template)**: Remove redundant base settings.json files
+  - Removed `.claude/settings.json.unix` (249 lines)
+  - Removed `.claude/settings.json.windows` (249 lines)
+  - Removed `templates/.claude/settings.json` (237 lines)
+  - Consolidated settings configuration to reduce maintenance overhead
+  - Files: `.claude/settings.json.unix`, `.claude/settings.json.windows`, `src/moai_adk/templates/.claude/settings.json` (all removed)
+
+- **feat(rank)**: Add anonymous project ID tracking for analytics
+  - Added `anonymous_project_id` field to SessionSubmission data model
+  - Compute project hash from project path for privacy-preserving analytics
+  - Enables project-level activity tracking without exposing sensitive information
+  - Files: `src/moai_adk/rank/client.py`, `src/moai_adk/rank/hook.py`
+
+- **style**: Auto-fix lint and format issues
+  - Applied ruff format to improve code consistency
+  - All linting checks passed
+  - Files: Multiple files reformatted
+
+## Quality
+
+- Smoke tests: 6 passed (100% pass rate)
+- Ruff: All checks passed
+- Mypy: Success (no issues found in 169 source files)
+- Code coverage: Maintained at previous levels
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.5.0 - 템플릿 정리 및 분석 기능 향상 (2026-01-20)
+
+## 요약
+
+이 마이너 릴리스는 템플릿 구성 정리와 분석 기능 향상에 중점을 둡니다. 중복된 플랫폼별 설정 파일을 제거하고, 개선된 분석을 위한 익명 프로젝트 ID 추적을 추가하며, 코드 스타일 개선을 포함합니다.
+
+## 변경됨
+
+- **refactor(template)**: 중복된 기본 settings.json 파일 제거
+  - `.claude/settings.json.unix` 제거 (249줄)
+  - `.claude/settings.json.windows` 제거 (249줄)
+  - `templates/.claude/settings.json` 제거 (237줄)
+  - 유지보수 오버헤드를 줄이기 위해 설정 구성 통합
+  - 파일: `.claude/settings.json.unix`, `.claude/settings.json.windows`, `src/moai_adk/templates/.claude/settings.json` (모두 제거됨)
+
+- **feat(rank)**: 분석을 위한 익명 프로젝트 ID 추적 추가
+  - SessionSubmission 데이터 모델에 `anonymous_project_id` 필드 추가
+  - 개인정보 보호 분석을 위해 프로젝트 경로에서 프로젝트 해시 계산
+  - 민감한 정보 노출 없이 프로젝트 수준 활동 추적 가능
+  - 파일: `src/moai_adk/rank/client.py`, `src/moai_adk/rank/hook.py`
+
+- **style**: 린트 및 포맷 문제 자동 수정
+  - ruff format을 적용하여 코드 일관성 개선
+  - 모든 린팅 검사 통과
+  - 파일: 여러 파일 재포맷됨
+
+## 품질
+
+- Smoke 테스트: 6개 통과 (100% 통과율)
+- Ruff: 모든 검사 통과
+- Mypy: 성공 (169개 소스 파일에서 문제 없음)
+- 코드 커버리지: 이전 수준 유지
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.4.6 - StatusLine Configuration Preservation (2026-01-19)
 
 ## Summary
