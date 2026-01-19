@@ -29,8 +29,9 @@ detect_platform() {
         Linux*)     OS="linux";;
         Darwin*)    OS="macos";;
         MINGW*|MSYS*|CYGWIN*)
-            echo "${YELLOW}⚠️  Windows detected: Please use install.ps1 (PowerShell)${NC}"
-            echo "Download: https://moai-adk.github.io/MoAI-ADK/install.ps1"
+            echo "${YELLOW}⚠️  Windows detected: Please use UV installer (PowerShell)${NC}"
+            echo "Run: powershell -c \"irm https://astral.sh/uv/install.ps1 | iex\""
+            echo "Then: uv tool install moai-adk"
             exit 1
             ;;
         *)
