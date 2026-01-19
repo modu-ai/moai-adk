@@ -1,3 +1,89 @@
+# v1.4.6 - StatusLine Configuration Preservation (2026-01-19)
+
+## Summary
+
+This patch release includes critical fixes for preserving user statusLine configuration during template updates, along with configuration cleanup and documentation improvements.
+
+## Fixed
+
+- **fix(template)**: Preserve user statusLine configuration during template updates
+  - Added `statusLine` to `preserve_fields` in merger.py
+  - Users' custom statusLine settings now preserved across `moai update`
+  - File: `src/moai_adk/core/template/merger.py`
+
+## Changed
+
+- **chore(config)**: Configuration cleanup and optimization
+  - Removed duplicate content from config section files
+  - Streamlined git-strategy, pricing, and quality configurations
+  - Improved template merge behavior
+
+- **docs(release)**: Updated installation instructions in CHANGELOG
+
+## Quality
+
+- Smoke tests: 6 passed (100% pass rate)
+- Ruff: All checks passed
+- Mypy: Success (no issues found in 169 source files)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.4.6 - statusLine 설정 보존 (2026-01-19)
+
+## 요약
+
+이 패치 릴리스는 템플릿 업데이트 중 사용자 statusLine 설정을 보존하는 중요한 수정을 포함하며, 구성 정리 및 문서 개선이 포함됩니다.
+
+## 수정됨
+
+- **fix(template)**: 템플릿 업데이트 중 사용자 statusLine 설정 보존
+  - merger.py의 `preserve_fields`에 `statusLine` 추가
+  - 사용자의 커스텀 statusLine 설정이 `moai update` 시 보존됨
+  - 파일: `src/moai_adk/core/template/merger.py`
+
+## 변경됨
+
+- **chore(config)**: 구성 정리 및 최적화
+  - 구성 섹션 파일에서 중복 내용 제거
+  - git-strategy, pricing, quality 구성 간소화
+  - 템플릿 병합 동작 개선
+
+- **docs(release)**: CHANGELOG의 설치 지침 업데이트
+
+## 품질
+
+- Smoke 테스트: 6개 통과 (100% 통과율)
+- Ruff: 모든 검사 통과
+- Mypy: 성공 (169개 소스 파일에서 문제 없음)
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.4.5 - StatusLine Preservation & Critical Bug Fixes (2026-01-19)
 
 ## Summary
