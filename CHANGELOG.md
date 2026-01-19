@@ -1,3 +1,109 @@
+# v1.4.1 - Alfred Agent Delegation and Git Strategy Improvements (2026-01-19)
+
+## Summary
+
+This patch release strengthens Alfred's agent orchestration rules to ensure consistent delegation after auto compact, adds resume capability to the fix command for better session recovery, and refines personal mode git strategy defaults to be more conservative and user-friendly.
+
+## Added
+
+- **feat(fix)**: Add Resume pattern support to fix command
+  - Implemented snapshot-based recovery system in `.moai/cache/fix-snapshots/`
+  - Added `--resume [ID]` argument to resume from latest or specific snapshot
+  - Preserves fix state including issues_found, issues_fixed, issues_pending, and todo_state
+  - Enables seamless continuation after auto compact or session interruption
+  - Files: `.claude/commands/moai/fix.md`, `src/moai_adk/templates/.claude/commands/moai/fix.md`
+
+## Fixed
+
+- **fix(alfred)**: Add AGENT DELEGATION MANDATE to prevent direct execution after auto compact
+  - Added explicit [HARD] rules to Type A commands (1-plan, 2-run, 3-sync) requiring agent delegation
+  - Added explicit [HARD] rules to Type B commands (alfred, fix, loop) for agent delegation
+  - Prevents Alfred from executing implementation directly after context recovery
+  - WHY: Auto compact recovery was causing Alfred to violate orchestrator role by implementing directly
+  - Files: `.claude/commands/moai/1-plan.md`, `2-run.md`, `3-sync.md`, `alfred.md`, `fix.md`, `loop.md`, `CLAUDE.md`
+
+- **fix(git-strategy)**: Disable auto-branch and auto-push in personal mode by default
+  - Changed `branch_creation.prompt_always`: false → true (ask before creating)
+  - Changed `branch_creation.auto_enabled`: true → false (disabled by default)
+  - Changed `automation.auto_branch`: true → false (disabled by default)
+  - Changed `automation.auto_push`: true → false (disabled by default)
+  - More conservative defaults prevent unintended branch creation and remote pushes
+  - Files: `.moai/config/sections/git-strategy.yaml`, `src/moai_adk/templates/.moai/config/sections/git-strategy.yaml`
+
+## Quality
+
+- Smoke tests: 6 passed (100% pass rate)
+- Ruff: All checks passed
+- Mypy: Success (no issues found in 169 source files)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Or using pipx
+pipx upgrade moai-adk
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.4.1 - Alfred 에이전트 위임 및 Git 전략 개선 (2026-01-19)
+
+## 요약
+
+이 패치 릴리스는 auto compact 후 일관된 위임을 보장하기 위해 Alfred의 에이전트 오케스트레이션 규칙을 강화하고, 세션 복구를 개선하기 위해 fix 명령에 재개 기능을 추가하며, personal 모드 git 전략 기본값을 보다 보수적이고 사용자 친화적으로 개선합니다.
+
+## 추가됨
+
+- **feat(fix)**: fix 명령에 Resume 패턴 지원 추가
+  - `.moai/cache/fix-snapshots/`에 스냅샷 기반 복구 시스템 구현
+  - 최신 또는 특정 스냅샷에서 재개하기 위한 `--resume [ID]` 인자 추가
+  - issues_found, issues_fixed, issues_pending, todo_state를 포함한 fix 상태 보존
+  - auto compact 또는 세션 중단 후 원활한 계속 가능
+  - 파일: `.claude/commands/moai/fix.md`, `src/moai_adk/templates/.claude/commands/moai/fix.md`
+
+## 수정됨
+
+- **fix(alfred)**: auto compact 후 직접 실행 방지를 위한 AGENT DELEGATION MANDATE 추가
+  - Type A 명령(1-plan, 2-run, 3-sync)에 에이전트 위임을 요구하는 명시적 [HARD] 규칙 추가
+  - Type B 명령(alfred, fix, loop)에 에이전트 위임을 위한 명시적 [HARD] 규칙 추가
+  - 컨텍스트 복구 후 Alfred가 직접 구현을 실행하는 것 방지
+  - WHY: Auto compact 복구가 Alfred가 오케스트레이터 역할을 위반하고 직접 구현하도록 야기
+  - 파일: `.claude/commands/moai/1-plan.md`, `2-run.md`, `3-sync.md`, `alfred.md`, `fix.md`, `loop.md`, `CLAUDE.md`
+
+- **fix(git-strategy)**: personal 모드에서 auto-branch 및 auto-push 기본 비활성화
+  - `branch_creation.prompt_always`: false → true로 변경 (생성 전 물어봄)
+  - `branch_creation.auto_enabled`: true → false로 변경 (기본 비활성화)
+  - `automation.auto_branch`: true → false로 변경 (기본 비활성화)
+  - `automation.auto_push`: true → false로 변경 (기본 비활성화)
+  - 더 보수적인 기본값으로 의도하지 않은 브랜치 생성 및 원격 push 방지
+  - 파일: `.moai/config/sections/git-strategy.yaml`, `src/moai_adk/templates/.moai/config/sections/git-strategy.yaml`
+
+## 품질
+
+- Smoke 테스트: 6개 통과 (100% 통과율)
+- Ruff: 모든 검사 통과
+- Mypy: 성공 (169개 소스 파일에서 문제 없음)
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 또는 pipx 사용
+pipx upgrade moai-adk
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.4.0 - Version Display Fix and Update Command Enhancement (2026-01-18)
 
 ## Summary
