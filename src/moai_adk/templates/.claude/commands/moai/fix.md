@@ -1,6 +1,6 @@
 ---
 description: "Agentic auto-fix - Parallel scan with autonomous correction"
-argument-hint: "[--dry] [--sequential] [--level N] [file_path]"
+argument-hint: "[--dry] [--sequential] [--level N] [file_path] | --resume [ID]"
 type: utility
 allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 model: inherit
@@ -60,6 +60,12 @@ Target: $ARGUMENTS
 
 # Limit fix level
 /moai:fix --level 2
+
+# Resume from last snapshot
+/moai:fix --resume
+
+# Resume from specific snapshot
+/moai:fix --resume fix-20260119-143052
 ```
 
 ## Command Options
@@ -72,6 +78,7 @@ Target: $ARGUMENTS
 | `--errors` | --errors-only | Fix errors only | All |
 | `--security` | --include-security | Include security issues | Exclude |
 | `--no-fmt` | --no-format | Skip formatting | Include |
+| `--resume [ID]` | --resume-from | Resume from snapshot | Latest |
 
 ## Parallel Scan
 
@@ -268,8 +275,50 @@ No changes (--dry).
 
 12. Report with evidence (file:line changes made)
 
+13. Save fix snapshot to .moai/cache/fix-snapshots/ for potential resume
+
 ---
 
-Version: 2.1.0
-Last Updated: 2026-01-11
-Core: Agentic AI Auto-Fix
+## State & Snapshot
+
+Fix state is saved for resume capability:
+
+```
+# Snapshot location
+.moai/cache/fix-snapshots/
+├── fix-20260119-143052.json    # Timestamp-based snapshot
+├── fix-20260119-150230.json
+└── latest.json                  # Symlink to most recent
+
+# Snapshot contents
+{
+  "timestamp": "2026-01-19T14:30:52Z",
+  "target_path": "src/",
+  "issues_found": 15,
+  "issues_fixed": 8,
+  "issues_pending": 7,
+  "current_level": 2,
+  "todo_state": [...],
+  "scan_results": {...}
+}
+```
+
+Resume Commands:
+
+```bash
+# Resume from latest snapshot
+/moai:fix --resume
+
+# Resume from specific snapshot
+/moai:fix --resume fix-20260119-143052
+```
+
+WHY: Resume capability prevents loss of fix progress after auto compact or session interruption.
+
+IMPACT: Users can continue fixing from where they left off without re-scanning.
+
+---
+
+Version: 2.2.0
+Last Updated: 2026-01-19
+Core: Agentic AI Auto-Fix with Resume Support
