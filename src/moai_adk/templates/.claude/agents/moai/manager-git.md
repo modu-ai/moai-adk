@@ -8,7 +8,7 @@ description: |
   JA: git, コミット, プッシュ, プル, ブランチ, PR, プルリクエスト, マージ, リリース
   ZH: git, 提交, 推送, 拉取, 分支, PR, 拉取请求, 合并, 发布
 tools: Bash, Read, Write, Edit, Glob, Grep, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: inherit
+model: haiku
 permissionMode: default
 skills: moai-foundation-claude, moai-workflow-project, moai-workflow-testing, moai-workflow-worktree
 ---
