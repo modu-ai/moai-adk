@@ -1,17 +1,64 @@
-# v1.6.2 - Windows MCP Configuration Platform Adaptation (2026-01-19)
+# v1.6.2 - TDD to DDD Migration & StatusLine Preservation (2026-01-19)
 
 ## Summary
 
-This release adds automatic Windows platform adaptation for MCP configuration files. The `moai init` and `moai update` commands now automatically convert `npx` commands to `cmd /c npx` format on Windows systems, resolving MCP server initialization errors.
+This release completes the comprehensive migration from TDD (Test-Driven Development) to DDD (Domain-Driven Development) methodology across the entire codebase, enhances Alfred as a professional orchestrator, and fixes critical issues with template settings merge behavior. Additionally, it includes Windows MCP platform adaptation and various bug fixes.
+
+## Changed
+
+- **refactor(methodology)**: Complete TDD to DDD migration across entire codebase
+  - Migrated all development workflows from TDD to DDD methodology
+  - Updated all test files to use DDD patterns (ANALYZE-PRESERVE-IMPROVE)
+  - Removed ~50,000 lines of redundant coverage test files
+  - DDD now supports both refactoring (legacy) and new development (Greenfield)
+  - Files: All test files, methodology documentation, skills
+
+- **refactor(alfred)**: Redesign Alfred as professional orchestrator
+  - Removed manager-claude-code agent (functionality consolidated into Alfred)
+  - Enhanced agent delegation patterns with progressive disclosure
+  - Improved task decomposition and auto-parallel execution
+  - Added comprehensive agent catalog management
+  - Files: `.claude/agents/alfred.md`, `CLAUDE.md`
+
+- **refactor(tests)**: Remove redundant coverage test files
+  - Removed 18 redundant test coverage files (enhanced, comprehensive variants)
+  - Consolidated test organization into single source of truth
+  - Improved test maintainability and reduced CI/CD execution time
+  - Files: Multiple test files removed
+
+- **docs(skills)**: Update foundation skill examples and references
+  - Updated skill documentation with modern examples
+  - Improved cross-references between related skills
+  - Enhanced progressive disclosure configuration
 
 ## Fixed
+
+- **fix(template)**: Preserve user statusLine configuration during template updates
+  - Added `statusLine` to `preserve_fields` in merger.py
+  - Fixes Issue #274: Windows statusLine loading issues
+  - Fixes Issue #275: Template overwrites user's statusLine setting (claude-hud, etc.)
+  - Users' custom statusLine settings now preserved across `moai update`
+  - File: `src/moai_adk/core/template/merger.py` (line 205)
 
 - **fix(windows)**: Add MCP config platform adaptation for Windows
   - Added `_adapt_mcp_config_for_windows()` method to `TemplateProcessor`
   - Automatically converts `npx` commands to `cmd /c npx` format on Windows
-  - Fixes Issue #272: Windows MCP config warning ("Windows requires 'cmd /c' wrapper to execute npx")
-  - Applied after both fresh copy and merge operations
+  - Fixes Issue #272: Windows MCP config warning
   - File: `src/moai_adk/core/template/processor.py` (lines 1524-1558)
+
+- **fix(template)**: Prevent settings.json fallback from overwriting platform-specific file
+  - Fixed template merge logic to respect platform-specific settings files
+  - Prevents Unix settings from overwriting Windows settings and vice versa
+  - File: `src/moai_adk/core/template/processor.py`
+
+- **fix(hooks)**: Use $CLAUDE_PROJECT_DIR env var instead of {{PROJECT_DIR}}
+  - Fixed hook environment variable resolution
+  - Ensures consistent path resolution across different contexts
+  - File: Hook configuration files
+
+- **fix(docs)**: Correct install URLs and Windows instructions
+  - Updated installation documentation with correct URLs
+  - Fixed Windows-specific installation instructions
 
 ## Quality
 
@@ -22,32 +69,75 @@ This release adds automatic Windows platform adaptation for MCP configuration fi
 ## Installation & Update
 
 ```bash
-# Update to the latest version
-uv tool update moai-adk
+# In your project folder, run:
+moai update
 
-# Or using pipx
-pipx upgrade moai-adk
-
-# Verify version
-moai --version
+# This will update both the MoAI-ADK package and your project templates
 ```
 
 ---
 
-# v1.6.2 - Windows MCP 설정 플랫폼 적응 (2026-01-19)
+# v1.6.2 - TDD에서 DDD로 마이그레이션 및 statusLine 설정 보존 (2026-01-19)
 
 ## 요약
 
-이 릴리스는 MCP 설정 파일에 대한 자동 Windows 플랫폼 적응을 추가합니다. `moai init` 및 `moai update` 명령이 이제 Windows 시스템에서 `npx` 명령을 자동으로 `cmd /c npx` 형식으로 변환하여 MCP 서버 초기화 오류를 해결합니다.
+이 릴리스는 전체 코드베이스에서 TDD(테스트 주도 개발)에서 DDD(도메인 주도 개발) 방법론으로의 포괄적인 마이그레이션을 완료하고, Alfred를 전문 오케스트레이터로 개선하며, 템플릿 설정 병합 동작의 중요한 문제들을 수정합니다. 또한 Windows MCP 플랫폼 적응과 다양한 버그 수정이 포함됩니다.
+
+## 변경됨
+
+- **refactor(methodology)**: 전체 코드베이스의 TDD에서 DDD로 마이그레이션 완료
+  - 모든 개발 워크플로우를 TDD에서 DDD 방법론으로 마이그레이션
+  - 모든 테스트 파일을 DDD 패턴(ANALYZE-PRESERVE-IMPROVE)으로 업데이트
+  - 약 50,000줄의 중복된 커버리지 테스트 파일 제거
+  - DDD가 이제 리팩토링(레거시)과 새 개발(Greenfield)을 모두 지원
+  - 파일: 모든 테스트 파일, 방법론 문서, 스킬
+
+- **refactor(alfred)**: 전문 오케스트레이터로 Alfred 재설계
+  - manager-claude-code 에이전트 제거 (기능이 Alfred에 통합됨)
+  - 점진적 공개를 통한 에이전트 위임 패턴 개선
+  - 작업 분해 및 자동 병렬 실행 개선
+  - 포괄적인 에이전트 카탈로그 관리 추가
+  - 파일: `.claude/agents/alfred.md`, `CLAUDE.md`
+
+- **refactor(tests)**: 중복된 커버리지 테스트 파일 제거
+  - 18개의 중복된 테스트 커버리지 파일 제거 (enhanced, comprehensive 변형)
+  - 테스트 조직을 단일 정보 소스로 통합
+  - 테스트 유지보수성 개선 및 CI/CD 실행 시간 단축
+  - 파일: 여러 테스트 파일 제거됨
+
+- **docs(skills)**: Foundation 스킬 예제 및 참조 업데이트
+  - 최신 예제로 스킬 문서 업데이트
+  - 관련 스킬 간의 상호 참조 개선
+  - 점진적 공개 구성 개선
 
 ## 수정됨
+
+- **fix(template)**: 템플릿 업데이트 중 사용자 statusLine 설정 보존
+  - merger.py의 `preserve_fields`에 `statusLine` 추가
+  - Issue #274 수정: Windows statusLine 로딩 문제
+  - Issue #275 수정: 템플릿이 사용자의 statusLine 설정 덮어쓰기 (claude-hud 등)
+  - 사용자의 커스텀 statusLine 설정이 `moai update` 시 보존됨
+  - 파일: `src/moai_adk/core/template/merger.py` (205행)
 
 - **fix(windows)**: Windows용 MCP 설정 플랫폼 적응 추가
   - `TemplateProcessor`에 `_adapt_mcp_config_for_windows()` 메서드 추가
   - Windows에서 `npx` 명령을 자동으로 `cmd /c npx` 형식으로 변환
-  - Issue #272 수정: Windows MCP config 경고 ("Windows requires 'cmd /c' wrapper to execute npx")
-  - 새로운 복사 및 병합 작업 모두에 적용
+  - Issue #272 수정: Windows MCP config 경고
   - 파일: `src/moai_adk/core/template/processor.py` (1524-1558행)
+
+- **fix(template)**: settings.json fallback이 플랫폼별 파일 덮어쓰기 방지
+  - 플랫폼별 설정 파일을尊重하도록 템플릿 병합 로직 수정
+  - Unix 설정이 Windows 설정을 덮어쓰는 것과 그 반대를 방지
+  - 파일: `src/moai_adk/core/template/processor.py`
+
+- **fix(hooks)**: {{PROJECT_DIR}} 대신 $CLAUDE_PROJECT_DIR 환경 변수 사용
+  - Hook 환경 변수 해결 수정
+  - 다양한 컨텍스트에서 일관된 경로 해결 보장
+  - 파일: Hook 설정 파일
+
+- **fix(docs)**: 설치 URL 및 Windows 지침 수정
+  - 올바른 URL로 설치 문서 업데이트
+  - Windows별 설치 지침 수정
 
 ## 품질
 
@@ -58,14 +148,10 @@ moai --version
 ## 설치 및 업데이트
 
 ```bash
-# 최신 버전으로 업데이트
-uv tool update moai-adk
+# 프로젝트 폴더에서 다음을 실행하세요:
+moai update
 
-# 또는 pipx 사용
-pipx upgrade moai-adk
-
-# 버전 확인
-moai --version
+# 이 명령은 MoAI-ADK 패키지와 프로젝트 템플릿을 모두 업데이트합니다
 ```
 
 ---
@@ -111,14 +197,8 @@ This patch release strengthens Alfred's agent orchestration rules to ensure cons
 ## Installation & Update
 
 ```bash
-# Update to the latest version
-uv tool update moai-adk
-
-# Or using pipx
-pipx upgrade moai-adk
-
-# Verify version
-moai --version
+# In your project folder, run:
+moai update
 ```
 
 ---
@@ -164,14 +244,8 @@ moai --version
 ## 설치 및 업데이트
 
 ```bash
-# 최신 버전으로 업데이트
-uv tool update moai-adk
-
-# 또는 pipx 사용
-pipx upgrade moai-adk
-
-# 버전 확인
-moai --version
+# 프로젝트 폴더에서 다음을 실행하세요:
+moai update
 ```
 
 ---
@@ -207,14 +281,8 @@ This minor release resolves a critical version display bug where `moai` command 
 ## Installation & Update
 
 ```bash
-# Update to the latest version
-uv tool update moai-adk
-
-# Or using pipx
-pipx upgrade moai-adk
-
-# Verify version (should now show 1.4.0)
-moai --version
+# In your project folder, run:
+moai update
 ```
 
 ---
@@ -250,14 +318,8 @@ moai --version
 ## 설치 및 업데이트
 
 ```bash
-# 최신 버전으로 업데이트
-uv tool update moai-adk
-
-# 또는 pipx 사용
-pipx upgrade moai-adk
-
-# 버전 확인 (이제 1.4.0으로 표시되어야 함)
-moai --version
+# 프로젝트 폴더에서 다음을 실행하세요:
+moai update
 ```
 
 ---
@@ -309,14 +371,8 @@ This patch release resolves critical bugs reported in GitHub issues #270 and #26
 ## Installation & Update
 
 ```bash
-# Update to the latest version
-uv tool update moai-adk
-
-# Or using pipx
-pipx upgrade moai-adk
-
-# Verify version
-moai --version
+# In your project folder, run:
+moai update
 ```
 
 ---
@@ -368,14 +424,8 @@ moai --version
 ## 설치 및 업데이트
 
 ```bash
-# 최신 버전으로 업데이트
-uv tool update moai-adk
-
-# 또는 pipx 사용
-pipx upgrade moai-adk
-
-# 버전 확인
-moai --version
+# 프로젝트 폴더에서 다음을 실행하세요:
+moai update
 ```
 
 ---
@@ -411,14 +461,8 @@ This patch release fixes the OS-specific settings.json installation logic in the
 ## Installation & Update
 
 ```bash
-# Update to the latest version
-uv tool update moai-adk
-
-# Or using pipx
-pipx upgrade moai-adk
-
-# Verify version
-moai --version
+# In your project folder, run:
+moai update
 ```
 
 ---
@@ -454,14 +498,8 @@ moai --version
 ## 설치 및 업데이트
 
 ```bash
-# 최신 버전으로 업데이트
-uv tool update moai-adk
-
-# 또는 pipx 사용
-pipx upgrade moai-adk
-
-# 버전 확인
-moai --version
+# 프로젝트 폴더에서 다음을 실행하세요:
+moai update
 ```
 
 ---
@@ -511,14 +549,8 @@ This patch release resolves critical issues reported in GitHub issues #265, #266
 ## Installation & Update
 
 ```bash
-# Update to the latest version
-uv tool update moai-adk
-
-# Or using pipx
-pipx upgrade moai-adk
-
-# Verify version
-moai --version
+# In your project folder, run:
+moai update
 ```
 
 ---
@@ -568,14 +600,8 @@ moai --version
 ## 설치 및 업데이트
 
 ```bash
-# 최신 버전으로 업데이트
-uv tool update moai-adk
-
-# 또는 pipx 사용
-pipx upgrade moai-adk
-
-# 버전 확인
-moai --version
+# 프로젝트 폴더에서 다음을 실행하세요:
+moai update
 ```
 
 ---
