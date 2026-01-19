@@ -109,7 +109,17 @@ Section 1 - English:
 ## Changes
 [English changes]
 ## Installation & Update
-[English instructions]
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
 ---
 ```
 
@@ -122,7 +132,17 @@ Section 2 - Korean (immediately after English section):
 ## 변경 사항
 [Korean changes]
 ## 설치 및 업데이트
-[Korean instructions]
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
 ---
 ```
 
