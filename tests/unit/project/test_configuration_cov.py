@@ -82,7 +82,7 @@ class TestConfigurationManagerSave:
                     "documentation_mode": "full",
                 },
                 "git_strategy": {"mode": "manual"},
-                "constitution": {"test_coverage_target": 90, "enforce_tdd": True},
+                "constitution": {"test_coverage_target": 90, "enforce_quality": True},
             }
 
             # Act
@@ -115,7 +115,7 @@ class TestConfigurationManagerSave:
                     "documentation_mode": "full",
                 },
                 "git_strategy": {"mode": "manual"},
-                "constitution": {"test_coverage_target": 90, "enforce_tdd": True},
+                "constitution": {"test_coverage_target": 90, "enforce_quality": True},
             }
 
             # Act
@@ -646,7 +646,7 @@ class TestConfigurationManagerWriteConfig:
                     "documentation_mode": "full",
                 },
                 "git_strategy": {"mode": "manual"},
-                "constitution": {"test_coverage_target": 90, "enforce_tdd": True},
+                "constitution": {"test_coverage_target": 90, "enforce_quality": True},
             }
 
             # Act

@@ -121,7 +121,7 @@ class TestCreateTab1QuickStart:
 
         assert len(batch4["questions"]) == 2
         assert batch4["questions"][0]["id"] == "test_coverage_target"
-        assert batch4["questions"][1]["id"] == "enforce_tdd"
+        assert batch4["questions"][1]["id"] == "enforce_quality"
 
     def test_tab1_question_has_required_fields(self):
         """Test that questions have required fields."""

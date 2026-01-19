@@ -1,8 +1,8 @@
 """
-Comprehensive TDD test suite for TRUST Principles module.
+Comprehensive DDD test suite for TRUST Principles module.
 
 This test suite provides comprehensive coverage for the trust_principles.py module,
-following the RED-GREEN-REFACTOR TDD cycle.
+following the ANALYZE-PRESERVE-IMPROVE DDD cycle.
 
 Coverage Goals:
 - 100% line coverage

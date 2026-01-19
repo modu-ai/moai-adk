@@ -1,8 +1,8 @@
 """
-Comprehensive TDD test suite for Commit Templates module.
+Comprehensive DDD test suite for Commit Templates module.
 
 This test suite provides comprehensive coverage for the commit_templates.py module,
-following the RED-GREEN-REFACTOR TDD cycle.
+following the ANALYZE-PRESERVE-IMPROVE DDD cycle.
 
 Coverage Goals:
 - 100% line coverage
@@ -18,7 +18,6 @@ Test Categories:
 Target: 100% coverage
 Test Framework: pytest
 """
-
 
 from src.moai_adk.foundation.git.commit_templates import (
     CommitCategory,

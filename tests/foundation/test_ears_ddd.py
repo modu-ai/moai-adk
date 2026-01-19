@@ -1,5 +1,5 @@
 """
-TDD tests for EARS (Event-Agent-Result-Scenario) Implementation.
+DDD tests for EARS (Event-Agent-Result-Scenario) Implementation.
 
 Comprehensive test suite covering:
 - EARSPatternType enum

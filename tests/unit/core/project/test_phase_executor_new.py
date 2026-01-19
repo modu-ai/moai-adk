@@ -212,7 +212,7 @@ class TestPhaseExecutor:
             config = {
                 "project": {"name": "test-project"},
                 "language": {"conversation_language": "en"},
-                "constitution": {"enforce_tdd": True},
+                "constitution": {"enforce_quality": True},
             }
 
             # Act

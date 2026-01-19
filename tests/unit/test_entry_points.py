@@ -1,4 +1,4 @@
-"""Comprehensive TDD tests for MoAI-ADK entry points.
+"""Comprehensive DDD tests for MoAI-ADK entry points.
 
 Tests package initialization (__init__.py) and main entry point (__main__.py).
 Goal: 100% coverage of entry point functionality.

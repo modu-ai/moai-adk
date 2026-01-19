@@ -1,5 +1,5 @@
 """
-Comprehensive TDD tests for backend.py module.
+Comprehensive DDD tests for backend.py module.
 Tests cover all 7 classes.
 """
 
@@ -48,13 +48,16 @@ class TestAPIDesignValidator:
         assert result["status_code"] == 200
         assert result["errors"] is None
 
-    @pytest.mark.parametrize("method,status_code", [
-        ("GET", 200),
-        ("POST", 201),
-        ("PUT", 200),
-        ("PATCH", 200),
-        ("DELETE", 204),
-    ])
+    @pytest.mark.parametrize(
+        "method,status_code",
+        [
+            ("GET", 200),
+            ("POST", 201),
+            ("PUT", 200),
+            ("PATCH", 200),
+            ("DELETE", 204),
+        ],
+    )
     def test_validate_rest_endpoint_valid_methods(self, method, status_code):
         """Test validation with valid method-status code combinations."""
         validator = APIDesignValidator()
@@ -143,7 +146,7 @@ class TestAPIDesignValidator:
             "type": "ValidationError",
             "message": "Invalid input",
             "status_code": 400,
-            "details": {"field": "email"}
+            "details": {"field": "email"},
         }
 
         result = validator.standardize_error_response(error)
@@ -480,7 +483,7 @@ class TestAuthenticationManager:
         payload = {
             "sub": "user@example.com",
             "iat": int(datetime.now(UTC).timestamp()) - 10000,
-            "exp": int(datetime.now(UTC).timestamp()) - 5000
+            "exp": int(datetime.now(UTC).timestamp()) - 5000,
         }
 
         header_encoded = base64.urlsafe_b64encode(json.dumps(header).encode()).decode().rstrip("=")
@@ -557,11 +560,7 @@ class TestErrorHandlingStrategy:
     def test_handle_error_basic(self):
         """Test basic error handling."""
         handler = ErrorHandlingStrategy()
-        error = {
-            "type": "ValidationError",
-            "message": "Invalid email format",
-            "status_code": 400
-        }
+        error = {"type": "ValidationError", "message": "Invalid email format", "status_code": 400}
 
         result = handler.handle_error(error)
 
@@ -578,7 +577,7 @@ class TestErrorHandlingStrategy:
             "type": "DatabaseError",
             "message": "Connection failed",
             "status_code": 500,
-            "details": {"host": "localhost", "port": 5432}
+            "details": {"host": "localhost", "port": 5432},
         }
 
         result = handler.handle_error(error)
@@ -656,10 +655,7 @@ class TestPerformanceOptimizer:
         """Test cache configuration with custom parameters."""
         optimizer = PerformanceOptimizer()
         config = optimizer.configure_cache(
-            backend="memcached",
-            ttl=7200,
-            key_pattern="user:*",
-            invalidation_triggers=["user_updated"]
+            backend="memcached", ttl=7200, key_pattern="user:*", invalidation_triggers=["user_updated"]
         )
 
         assert config["backend"] == "memcached"
@@ -682,10 +678,7 @@ class TestPerformanceOptimizer:
         """Test rate limiting with custom parameters."""
         optimizer = PerformanceOptimizer()
         config = optimizer.configure_rate_limit(
-            requests_per_minute=200,
-            requests_per_hour=10000,
-            burst_size=50,
-            strategy="sliding_window"
+            requests_per_minute=200, requests_per_hour=10000, burst_size=50, strategy="sliding_window"
         )
 
         assert config["requests_per_minute"] == 200
@@ -742,12 +735,7 @@ class TestBackendMetricsCollector:
     def test_record_request_metrics_basic(self):
         """Test basic request metrics recording."""
         collector = BackendMetricsCollector()
-        metric = collector.record_request_metrics(
-            path="/api/v1/users",
-            method="GET",
-            status_code=200,
-            duration_ms=45.5
-        )
+        metric = collector.record_request_metrics(path="/api/v1/users", method="GET", status_code=200, duration_ms=45.5)
 
         assert metric["path"] == "/api/v1/users"
         assert metric["method"] == "GET"
@@ -760,11 +748,7 @@ class TestBackendMetricsCollector:
         """Test request metrics with response size."""
         collector = BackendMetricsCollector()
         metric = collector.record_request_metrics(
-            path="/api/v1/users",
-            method="POST",
-            status_code=201,
-            duration_ms=120.3,
-            response_size_bytes=1024
+            path="/api/v1/users", method="POST", status_code=201, duration_ms=120.3, response_size_bytes=1024
         )
 
         assert metric["response_size_bytes"] == 1024
@@ -879,7 +863,7 @@ class TestDataClasses:
             message="Test error",
             timestamp="2025-01-13T10:00:00Z",
             trace_id="trace-123",
-            context={"user_id": "123"}
+            context={"user_id": "123"},
         )
 
         assert error_log.level == "ERROR"
@@ -894,7 +878,7 @@ class TestDataClasses:
             status_code=200,
             duration_ms=45.5,
             response_size_bytes=1024,
-            timestamp="2025-01-13T10:00:00Z"
+            timestamp="2025-01-13T10:00:00Z",
         )
 
         assert metric.path == "/api/v1/test"

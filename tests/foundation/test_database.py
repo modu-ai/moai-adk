@@ -1,8 +1,7 @@
 """
-Comprehensive TDD tests for database.py module.
+Comprehensive DDD tests for database.py module.
 Tests cover all 7 classes.
 """
-
 
 from moai_adk.foundation.database import (
     ACIDCompliance,
@@ -30,14 +29,7 @@ class TestSchemaNormalizer:
     def test_validate_1nf_valid(self):
         """Test 1NF validation with valid schema."""
         normalizer = SchemaNormalizer()
-        schema = {
-            "users": {
-                "id": "INTEGER",
-                "name": "VARCHAR(100)",
-                "email": "VARCHAR(255)",
-                "PRIMARY KEY": "id"
-            }
-        }
+        schema = {"users": {"id": "INTEGER", "name": "VARCHAR(100)", "email": "VARCHAR(255)", "PRIMARY KEY": "id"}}
         result = normalizer.validate_1nf(schema)
 
         assert result["is_valid"] is True
@@ -52,7 +44,7 @@ class TestSchemaNormalizer:
                 "id": "INTEGER",
                 "name": "VARCHAR(100)",
                 "email_list": "VARCHAR(255)",  # Multi-value attribute
-                "PRIMARY KEY": "id"
+                "PRIMARY KEY": "id",
             }
         }
         result = normalizer.validate_1nf(schema)
@@ -65,14 +57,7 @@ class TestSchemaNormalizer:
     def test_validate_2nf_valid(self):
         """Test 2NF validation with valid schema."""
         normalizer = SchemaNormalizer()
-        schema = {
-            "users": {
-                "id": "INTEGER",
-                "name": "VARCHAR(100)",
-                "email": "VARCHAR(255)",
-                "PRIMARY KEY": "id"
-            }
-        }
+        schema = {"users": {"id": "INTEGER", "name": "VARCHAR(100)", "email": "VARCHAR(255)", "PRIMARY KEY": "id"}}
         result = normalizer.validate_2nf(schema)
 
         assert result["is_valid"] is True
@@ -87,7 +72,7 @@ class TestSchemaNormalizer:
                 "product_id": "INTEGER",
                 "product_name": "VARCHAR(100)",  # Partial dependency on product_id
                 "quantity": "INTEGER",
-                "PRIMARY KEY": "(order_id, product_id)"
+                "PRIMARY KEY": "(order_id, product_id)",
             }
         }
         result = normalizer.validate_2nf(schema)
@@ -99,14 +84,7 @@ class TestSchemaNormalizer:
     def test_validate_3nf_valid(self):
         """Test 3NF validation with valid schema."""
         normalizer = SchemaNormalizer()
-        schema = {
-            "users": {
-                "id": "INTEGER",
-                "name": "VARCHAR(100)",
-                "email": "VARCHAR(255)",
-                "PRIMARY KEY": "id"
-            }
-        }
+        schema = {"users": {"id": "INTEGER", "name": "VARCHAR(100)", "email": "VARCHAR(255)", "PRIMARY KEY": "id"}}
         result = normalizer.validate_3nf(schema)
 
         assert result["is_valid"] is True
@@ -122,7 +100,7 @@ class TestSchemaNormalizer:
                 "customer_id": "INTEGER",  # Foreign key
                 "customer_name": "VARCHAR(100)",  # Transitive: depends on customer_id
                 "customer_email": "VARCHAR(255)",  # Transitive: depends on customer_id
-                "PRIMARY KEY": "id"
+                "PRIMARY KEY": "id",
             }
         }
         result = normalizer.validate_3nf(schema)
@@ -141,7 +119,7 @@ class TestSchemaNormalizer:
                 "email_list": "VARCHAR(255)",  # Violates 1NF
                 "city": "VARCHAR(100)",
                 "city_state": "VARCHAR(50)",  # Violates 3NF
-                "PRIMARY KEY": "id"
+                "PRIMARY KEY": "id",
             }
         }
         recommendations = normalizer.recommend_normalization(schema)
@@ -161,9 +139,7 @@ class TestDatabaseSelector:
     def test_select_database_for_acid_compliance(self):
         """Test database selection for ACID compliance."""
         selector = DatabaseSelector()
-        result = selector.select_database(
-            requirements={"acid_compliance": True}
-        )
+        result = selector.select_database(requirements={"acid_compliance": True})
 
         assert result["database"] == "PostgreSQL"
         assert result["version"] == "17"
@@ -173,9 +149,7 @@ class TestDatabaseSelector:
     def test_select_database_for_flexible_schema(self):
         """Test database selection for flexible schema."""
         selector = DatabaseSelector()
-        result = selector.select_database(
-            requirements={"schema_flexibility": "high"}
-        )
+        result = selector.select_database(requirements={"schema_flexibility": "high"})
 
         assert result["database"] == "MongoDB"
         assert result["version"] == "8.0"
@@ -184,9 +158,7 @@ class TestDatabaseSelector:
     def test_select_database_for_caching(self):
         """Test database selection for caching."""
         selector = DatabaseSelector()
-        result = selector.select_database(
-            requirements={"use_case": "caching"}
-        )
+        result = selector.select_database(requirements={"use_case": "caching"})
 
         assert result["database"] == "Redis"
         assert result["version"] == "7.4"
@@ -195,9 +167,7 @@ class TestDatabaseSelector:
     def test_select_database_for_legacy_support(self):
         """Test database selection for legacy support."""
         selector = DatabaseSelector()
-        result = selector.select_database(
-            requirements={"legacy_support": True}
-        )
+        result = selector.select_database(requirements={"legacy_support": True})
 
         assert result["database"] == "MySQL"
         assert result["version"] == "8.4"
@@ -224,10 +194,7 @@ class TestIndexingOptimizer:
         """Test index recommendation for equality queries."""
         optimizer = IndexingOptimizer()
         result = optimizer.recommend_index(
-            query_pattern={
-                "columns": ["email"],
-                "conditions": ["email = 'test@example.com'"]
-            }
+            query_pattern={"columns": ["email"], "conditions": ["email = 'test@example.com'"]}
         )
 
         assert result["index_type"] == "HASH"
@@ -238,10 +205,7 @@ class TestIndexingOptimizer:
         """Test index recommendation for range queries."""
         optimizer = IndexingOptimizer()
         result = optimizer.recommend_index(
-            query_pattern={
-                "columns": ["created_at"],
-                "conditions": ["created_at > '2024-01-01'"]
-            }
+            query_pattern={"columns": ["created_at"], "conditions": ["created_at > '2024-01-01'"]}
         )
 
         assert result["index_type"] == "BTREE"
@@ -254,7 +218,7 @@ class TestIndexingOptimizer:
         result = optimizer.recommend_index(
             query_pattern={
                 "columns": ["user_id", "created_at"],
-                "conditions": ["user_id = 1", "created_at > '2024-01-01'"]
+                "conditions": ["user_id = 1", "created_at > '2024-01-01'"],
             }
         )
 
@@ -265,12 +229,7 @@ class TestIndexingOptimizer:
     def test_recommend_index_default(self):
         """Test default index recommendation."""
         optimizer = IndexingOptimizer()
-        result = optimizer.recommend_index(
-            query_pattern={
-                "columns": ["name"],
-                "conditions": []
-            }
-        )
+        result = optimizer.recommend_index(query_pattern={"columns": ["name"], "conditions": []})
 
         assert result["index_type"] == "BTREE"
 
@@ -280,7 +239,7 @@ class TestIndexingOptimizer:
         existing_indexes = [
             {"name": "idx_user_email", "columns": ["email"]},
             {"name": "idx_user_email_name", "columns": ["email", "name"]},
-            {"name": "idx_user_email_dup", "columns": ["email"]}
+            {"name": "idx_user_email_dup", "columns": ["email"]},
         ]
         redundant = optimizer.detect_redundant_indexes(existing_indexes)
 
@@ -292,7 +251,7 @@ class TestIndexingOptimizer:
         optimizer = IndexingOptimizer()
         existing_indexes = [
             {"name": "idx_user_email", "columns": ["email"]},
-            {"name": "idx_user_name", "columns": ["name"]}
+            {"name": "idx_user_name", "columns": ["name"]},
         ]
         redundant = optimizer.detect_redundant_indexes(existing_indexes)
 
@@ -321,11 +280,7 @@ class TestConnectionPoolManager:
         """Test pool size calculation with custom config."""
         manager = ConnectionPoolManager()
         config = manager.calculate_optimal_pool_size(
-            server_config={
-                "cpu_cores": 8,
-                "max_connections": 200,
-                "expected_concurrency": 50
-            }
+            server_config={"cpu_cores": 8, "max_connections": 200, "expected_concurrency": 50}
         )
 
         assert config["min_size"] == 16  # 8 * 2
@@ -334,12 +289,7 @@ class TestConnectionPoolManager:
     def test_monitor_pool_health_healthy(self):
         """Test pool health monitoring for healthy pool."""
         manager = ConnectionPoolManager()
-        stats = {
-            "active_connections": 10,
-            "idle_connections": 20,
-            "max_connections": 100,
-            "wait_time_avg_ms": 50
-        }
+        stats = {"active_connections": 10, "idle_connections": 20, "max_connections": 100, "wait_time_avg_ms": 50}
         health = manager.monitor_pool_health(stats)
 
         assert health["is_saturated"] is False
@@ -349,12 +299,7 @@ class TestConnectionPoolManager:
     def test_monitor_pool_health_saturated(self):
         """Test pool health monitoring for saturated pool."""
         manager = ConnectionPoolManager()
-        stats = {
-            "active_connections": 90,
-            "idle_connections": 5,
-            "max_connections": 100,
-            "wait_time_avg_ms": 150
-        }
+        stats = {"active_connections": 90, "idle_connections": 5, "max_connections": 100, "wait_time_avg_ms": 150}
         health = manager.monitor_pool_health(stats)
 
         assert health["is_saturated"] is True
@@ -399,11 +344,7 @@ class TestMigrationPlanner:
             change_request={
                 "operation": "add_column",
                 "table": "users",
-                "column": {
-                    "name": "email",
-                    "type": "VARCHAR(255)",
-                    "default": "''"
-                }
+                "column": {"name": "email", "type": "VARCHAR(255)", "default": "''"},
             }
         )
 
@@ -416,11 +357,7 @@ class TestMigrationPlanner:
         """Test migration plan for dropping column."""
         planner = MigrationPlanner()
         plan = planner.generate_migration_plan(
-            change_request={
-                "operation": "drop_column",
-                "table": "users",
-                "column": "old_field"
-            }
+            change_request={"operation": "drop_column", "table": "users", "column": "old_field"}
         )
 
         assert plan["reversible"] is True
@@ -429,11 +366,7 @@ class TestMigrationPlanner:
     def test_validate_safety_safe_operation(self):
         """Test safety validation for safe operation."""
         planner = MigrationPlanner()
-        migration = {
-            "operation": "add_column",
-            "table": "users",
-            "column": {"name": "email", "type": "VARCHAR(255)"}
-        }
+        migration = {"operation": "add_column", "table": "users", "column": {"name": "email", "type": "VARCHAR(255)"}}
 
         safety = planner.validate_safety(migration)
 
@@ -443,11 +376,7 @@ class TestMigrationPlanner:
     def test_validate_safety_unsafe_operation(self):
         """Test safety validation for unsafe operation."""
         planner = MigrationPlanner()
-        migration = {
-            "operation": "drop_column",
-            "table": "users",
-            "column": "email"
-        }
+        migration = {"operation": "drop_column", "table": "users", "column": "email"}
 
         safety = planner.validate_safety(migration)
 
@@ -461,7 +390,7 @@ class TestMigrationPlanner:
             "operation": "change_column_type",
             "column": "age",
             "old_type": "VARCHAR(10)",
-            "new_type": "INTEGER"
+            "new_type": "INTEGER",
         }
 
         analysis = planner.detect_breaking_changes(migration)
@@ -482,9 +411,7 @@ class TestTransactionManager:
     def test_validate_acid_compliance_valid(self):
         """Test ACID compliance validation with valid isolation."""
         manager = TransactionManager()
-        config = {
-            "isolation_level": "READ_COMMITTED"
-        }
+        config = {"isolation_level": "READ_COMMITTED"}
 
         compliance = manager.validate_acid_compliance(config)
 
@@ -496,9 +423,7 @@ class TestTransactionManager:
     def test_validate_acid_compliance_invalid_isolation(self):
         """Test ACID compliance validation with invalid isolation."""
         manager = TransactionManager()
-        config = {
-            "isolation_level": "INVALID_LEVEL"
-        }
+        config = {"isolation_level": "INVALID_LEVEL"}
 
         compliance = manager.validate_acid_compliance(config)
 
@@ -509,7 +434,7 @@ class TestTransactionManager:
         manager = TransactionManager()
         transactions = [
             {"id": "tx1", "locks": ["resource1"], "waiting_for": "resource2"},
-            {"id": "tx2", "locks": ["resource2"], "waiting_for": "resource1"}
+            {"id": "tx2", "locks": ["resource2"], "waiting_for": "resource1"},
         ]
 
         result = manager.detect_deadlock(transactions)
@@ -523,7 +448,7 @@ class TestTransactionManager:
         manager = TransactionManager()
         transactions = [
             {"id": "tx1", "locks": ["resource1"], "waiting_for": None},
-            {"id": "tx2", "locks": ["resource2"], "waiting_for": None}
+            {"id": "tx2", "locks": ["resource2"], "waiting_for": None},
         ]
 
         result = manager.detect_deadlock(transactions)
@@ -545,11 +470,7 @@ class TestTransactionManager:
     def test_generate_retry_plan_custom(self):
         """Test retry plan generation with custom config."""
         manager = TransactionManager()
-        config = {
-            "max_retries": 5,
-            "initial_backoff_ms": 50,
-            "backoff_multiplier": 3.0
-        }
+        config = {"max_retries": 5, "initial_backoff_ms": 50, "backoff_multiplier": 3.0}
 
         plan = manager.generate_retry_plan(config)
 
@@ -569,11 +490,7 @@ class TestPerformanceMonitor:
     def test_analyze_query_performance_excellent(self):
         """Test query performance analysis for excellent performance."""
         monitor = PerformanceMonitor()
-        stats = {
-            "avg_execution_time_ms": 50,
-            "max_execution_time_ms": 100,
-            "call_count": 1000
-        }
+        stats = {"avg_execution_time_ms": 50, "max_execution_time_ms": 100, "call_count": 1000}
 
         analysis = monitor.analyze_query_performance(stats)
 
@@ -584,11 +501,7 @@ class TestPerformanceMonitor:
     def test_analyze_query_performance_poor(self):
         """Test query performance analysis for poor performance."""
         monitor = PerformanceMonitor()
-        stats = {
-            "avg_execution_time_ms": 1500,
-            "max_execution_time_ms": 5000,
-            "call_count": 100
-        }
+        stats = {"avg_execution_time_ms": 1500, "max_execution_time_ms": 5000, "call_count": 100}
 
         analysis = monitor.analyze_query_performance(stats)
 
@@ -599,11 +512,7 @@ class TestPerformanceMonitor:
     def test_analyze_query_performance_needs_improvement(self):
         """Test query performance analysis for needs improvement."""
         monitor = PerformanceMonitor()
-        stats = {
-            "avg_execution_time_ms": 600,
-            "max_execution_time_ms": 1000,
-            "call_count": 500
-        }
+        stats = {"avg_execution_time_ms": 600, "max_execution_time_ms": 1000, "call_count": 500}
 
         analysis = monitor.analyze_query_performance(stats)
 
@@ -612,11 +521,7 @@ class TestPerformanceMonitor:
     def test_monitor_connection_usage_healthy(self):
         """Test connection usage monitoring for healthy state."""
         monitor = PerformanceMonitor()
-        metrics = {
-            "active_connections": 30,
-            "max_connections": 100,
-            "failed_connection_attempts": 0
-        }
+        metrics = {"active_connections": 30, "max_connections": 100, "failed_connection_attempts": 0}
 
         health = monitor.monitor_connection_usage(metrics)
 
@@ -626,11 +531,7 @@ class TestPerformanceMonitor:
     def test_monitor_connection_usage_critical(self):
         """Test connection usage monitoring for critical state."""
         monitor = PerformanceMonitor()
-        metrics = {
-            "active_connections": 95,
-            "max_connections": 100,
-            "failed_connection_attempts": 5
-        }
+        metrics = {"active_connections": 95, "max_connections": 100, "failed_connection_attempts": 5}
 
         health = monitor.monitor_connection_usage(metrics)
 
@@ -641,11 +542,7 @@ class TestPerformanceMonitor:
     def test_monitor_connection_usage_warning(self):
         """Test connection usage monitoring for warning state."""
         monitor = PerformanceMonitor()
-        metrics = {
-            "active_connections": 78,
-            "max_connections": 100,
-            "failed_connection_attempts": 2
-        }
+        metrics = {"active_connections": 78, "max_connections": 100, "failed_connection_attempts": 2}
 
         health = monitor.monitor_connection_usage(metrics)
 
@@ -664,10 +561,7 @@ class TestDataClasses:
     def test_validation_result_creation(self):
         """Test ValidationResult dataclass creation."""
         result = ValidationResult(
-            is_valid=True,
-            violations=[],
-            normalization_level="3NF",
-            suggestions=["No issues found"]
+            is_valid=True, violations=[], normalization_level="3NF", suggestions=["No issues found"]
         )
 
         assert result.is_valid is True
@@ -677,10 +571,7 @@ class TestDataClasses:
     def test_index_recommendation_creation(self):
         """Test IndexRecommendation dataclass creation."""
         index = IndexRecommendation(
-            index_type="BTREE",
-            columns=["email"],
-            reasoning="B-tree for range queries",
-            estimated_improvement=0.75
+            index_type="BTREE", columns=["email"], reasoning="B-tree for range queries", estimated_improvement=0.75
         )
 
         assert index.index_type == "BTREE"
@@ -689,12 +580,7 @@ class TestDataClasses:
 
     def test_pool_configuration_creation(self):
         """Test PoolConfiguration dataclass creation."""
-        config = PoolConfiguration(
-            min_size=10,
-            max_size=50,
-            timeout_seconds=30,
-            idle_timeout=600
-        )
+        config = PoolConfiguration(min_size=10, max_size=50, timeout_seconds=30, idle_timeout=600)
 
         assert config.min_size == 10
         assert config.max_size == 50
@@ -706,7 +592,7 @@ class TestDataClasses:
             steps=["Add column", "Verify"],
             reversible=True,
             rollback_steps=["Drop column"],
-            estimated_duration="5 minutes"
+            estimated_duration="5 minutes",
         )
 
         assert plan.reversible is True
@@ -715,12 +601,7 @@ class TestDataClasses:
 
     def test_acid_compliance_creation(self):
         """Test ACIDCompliance dataclass creation."""
-        compliance = ACIDCompliance(
-            atomicity=True,
-            consistency=True,
-            isolation=True,
-            durability=True
-        )
+        compliance = ACIDCompliance(atomicity=True, consistency=True, isolation=True, durability=True)
 
         assert compliance.atomicity is True
         assert compliance.consistency is True

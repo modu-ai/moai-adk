@@ -1,5 +1,5 @@
 """
-Comprehensive TDD tests for frontend.py module.
+Comprehensive DDD tests for frontend.py module.
 Tests cover all 7 classes.
 """
 
@@ -36,7 +36,7 @@ class TestComponentArchitect:
             "atoms": ["Button", "Input"],
             "molecules": ["FormInput"],
             "organisms": ["Header"],
-            "pages": ["HomePage"]
+            "pages": ["HomePage"],
         }
 
         result = architect.validate_atomic_structure(components)
@@ -49,9 +49,7 @@ class TestComponentArchitect:
     def test_validate_atomic_structure_invalid(self):
         """Test validation with invalid structure."""
         architect = ComponentArchitect()
-        components = {
-            "invalid_level": ["Component"]
-        }
+        components = {"invalid_level": ["Component"]}
 
         result = architect.validate_atomic_structure(components)
 
@@ -63,7 +61,7 @@ class TestComponentArchitect:
         # The implementation counts dict keys, not list items in a "props" key
         components = {
             "Button": {"children": "ReactNode", "onClick": "Function"},  # 2 props
-            "Complex": {"a": "str", "b": "str", "c": "str", "d": "str", "e": "str", "f": "str"}  # 6 props
+            "Complex": {"a": "str", "b": "str", "c": "str", "d": "str", "e": "str", "f": "str"},  # 6 props
         }
 
         result = architect.analyze_reusability(components)
@@ -75,10 +73,7 @@ class TestComponentArchitect:
     def test_validate_composition_patterns(self):
         """Test composition pattern validation."""
         architect = ComponentArchitect()
-        patterns = {
-            "render_props": "Use render props for flexibility",
-            "hooks": "Use React hooks"
-        }
+        patterns = {"render_props": "Use render props for flexibility", "hooks": "Use React hooks"}
 
         result = architect.validate_composition_patterns(patterns)
 
@@ -88,11 +83,7 @@ class TestComponentArchitect:
     def test_generate_prop_schema(self):
         """Test TypeScript prop schema generation."""
         architect = ComponentArchitect()
-        schema = {
-            "name": str,
-            "age": int,
-            "active": bool
-        }
+        schema = {"name": str, "age": int, "active": bool}
 
         result = architect.generate_prop_schema(schema)
 
@@ -117,11 +108,7 @@ class TestStateManagementAdvisor:
     def test_recommend_solution_small_app(self):
         """Test recommendation for small app."""
         advisor = StateManagementAdvisor()
-        metrics = {
-            "complexity": "small",
-            "components": 20,
-            "async_actions": False
-        }
+        metrics = {"complexity": "small", "components": 20, "async_actions": False}
 
         result = advisor.recommend_solution(metrics)
 
@@ -131,11 +118,7 @@ class TestStateManagementAdvisor:
     def test_recommend_solution_medium_app(self):
         """Test recommendation for medium app."""
         advisor = StateManagementAdvisor()
-        metrics = {
-            "complexity": "medium",
-            "components": 60,
-            "async_actions": False
-        }
+        metrics = {"complexity": "medium", "components": 60, "async_actions": False}
 
         result = advisor.recommend_solution(metrics)
 
@@ -145,11 +128,7 @@ class TestStateManagementAdvisor:
     def test_recommend_solution_large_app(self):
         """Test recommendation for large app."""
         advisor = StateManagementAdvisor()
-        metrics = {
-            "complexity": "large",
-            "components": 200,
-            "async_actions": True
-        }
+        metrics = {"complexity": "large", "components": 200, "async_actions": True}
 
         result = advisor.recommend_solution(metrics)
 
@@ -159,10 +138,7 @@ class TestStateManagementAdvisor:
     def test_validate_context_pattern_valid(self):
         """Test valid context pattern."""
         advisor = StateManagementAdvisor()
-        pattern = {
-            "splitting": True,
-            "actions": ["setState", "dispatch"]
-        }
+        pattern = {"splitting": True, "actions": ["setState", "dispatch"]}
 
         result = advisor.validate_context_pattern(pattern)
 
@@ -171,10 +147,7 @@ class TestStateManagementAdvisor:
     def test_validate_context_pattern_no_splitting(self):
         """Test context pattern without splitting."""
         advisor = StateManagementAdvisor()
-        pattern = {
-            "splitting": False,
-            "actions": ["action1", "action2", "action3", "action4", "action5", "action6"]
-        }
+        pattern = {"splitting": False, "actions": ["action1", "action2", "action3", "action4", "action5", "action6"]}
 
         result = advisor.validate_context_pattern(pattern)
 
@@ -188,7 +161,7 @@ class TestStateManagementAdvisor:
             "selectors": ["useUser", "usePosts"],
             "devtools_enabled": True,
             "persist_enabled": True,
-            "actions": ["fetchUser", "updateUser"]
+            "actions": ["fetchUser", "updateUser"],
         }
 
         result = advisor.validate_zustand_design(design)
@@ -199,12 +172,7 @@ class TestStateManagementAdvisor:
     def test_validate_redux_design(self):
         """Test Redux slice design validation."""
         advisor = StateManagementAdvisor()
-        slices = {
-            "user": {
-                "actions": ["login", "logout"],
-                "async_thunks": ["fetchUser"]
-            }
-        }
+        slices = {"user": {"actions": ["login", "logout"], "async_thunks": ["fetchUser"]}}
 
         result = advisor.validate_redux_design(slices)
 
@@ -230,11 +198,7 @@ class TestAccessibilityValidator:
     def test_validate_wcag_compliance_aa(self):
         """Test WCAG AA compliance validation."""
         validator = AccessibilityValidator()
-        component = {
-            "color_contrast_ratio": 4.5,
-            "aria_label": "Submit form",
-            "keyboard_accessible": True
-        }
+        component = {"color_contrast_ratio": 4.5, "aria_label": "Submit form", "keyboard_accessible": True}
 
         result = validator.validate_wcag_compliance(component, "AA")
 
@@ -245,11 +209,7 @@ class TestAccessibilityValidator:
     def test_validate_wcag_compliance_aaa(self):
         """Test WCAG AAA compliance validation."""
         validator = AccessibilityValidator()
-        component = {
-            "color_contrast_ratio": 7.0,
-            "aria_label": "Submit form",
-            "keyboard_accessible": True
-        }
+        component = {"color_contrast_ratio": 7.0, "aria_label": "Submit form", "keyboard_accessible": True}
 
         result = validator.validate_wcag_compliance(component, "AAA")
 
@@ -259,11 +219,7 @@ class TestAccessibilityValidator:
     def test_validate_wcag_compliance_failures(self):
         """Test WCAG compliance with failures."""
         validator = AccessibilityValidator()
-        component = {
-            "color_contrast_ratio": 2.5,
-            "aria_label": None,
-            "keyboard_accessible": False
-        }
+        component = {"color_contrast_ratio": 2.5, "aria_label": None, "keyboard_accessible": False}
 
         result = validator.validate_wcag_compliance(component, "AA")
 
@@ -276,11 +232,9 @@ class TestAccessibilityValidator:
         component = {
             "inputs": [
                 {"aria_label": "Name", "aria_required": "true"},
-                {"aria_label": "Email", "aria_describedby": "email-hint"}
+                {"aria_label": "Email", "aria_describedby": "email-hint"},
             ],
-            "buttons": [
-                {"aria_label": "Submit"}
-            ]
+            "buttons": [{"aria_label": "Submit"}],
         }
 
         result = validator.validate_aria_implementation(component)
@@ -296,7 +250,7 @@ class TestAccessibilityValidator:
             "tab_order_correct": True,
             "focus_trap": True,
             "escape_key_handler": True,
-            "focus_restoration": True
+            "focus_restoration": True,
         }
 
         result = validator.validate_keyboard_navigation(component)
@@ -323,14 +277,9 @@ class TestPerformanceOptimizer:
         """Test valid code splitting."""
         optimizer = PerformanceOptimizer()
         strategy = {
-            "chunks": {
-                "vendor": "vendor.js",
-                "main": "main.js",
-                "runtime": "runtime.js",
-                "polyfills": "polyfills.js"
-            },
+            "chunks": {"vendor": "vendor.js", "main": "main.js", "runtime": "runtime.js", "polyfills": "polyfills.js"},
             "dynamic_imports": 10,
-            "route_based_splitting": True
+            "route_based_splitting": True,
         }
 
         result = optimizer.validate_code_splitting(strategy)
@@ -345,7 +294,7 @@ class TestPerformanceOptimizer:
         strategy = {
             "render_count_baseline": 100,
             "render_count_optimized": 20,
-            "memo_components": ["UserList", "ProductCard"]
+            "memo_components": ["UserList", "ProductCard"],
         }
 
         result = optimizer.validate_memoization(strategy)
@@ -356,12 +305,7 @@ class TestPerformanceOptimizer:
     def test_validate_performance_metrics_good(self):
         """Test validation of good performance metrics."""
         optimizer = PerformanceOptimizer()
-        metrics = {
-            "lcp_seconds": 1.8,
-            "fid_milliseconds": 45,
-            "cls_value": 0.08,
-            "gzip_size_kb": 50
-        }
+        metrics = {"lcp_seconds": 1.8, "fid_milliseconds": 45, "cls_value": 0.08, "gzip_size_kb": 50}
 
         result = optimizer.validate_performance_metrics(metrics)
 
@@ -373,12 +317,7 @@ class TestPerformanceOptimizer:
     def test_validate_performance_metrics_needs_improvement(self):
         """Test validation of metrics needing improvement."""
         optimizer = PerformanceOptimizer()
-        metrics = {
-            "lcp_seconds": 3.5,
-            "fid_milliseconds": 250,
-            "cls_value": 0.3,
-            "gzip_size_kb": 100
-        }
+        metrics = {"lcp_seconds": 3.5, "fid_milliseconds": 250, "cls_value": 0.3, "gzip_size_kb": 100}
 
         result = optimizer.validate_performance_metrics(metrics)
 
@@ -404,16 +343,7 @@ class TestDesignSystemBuilder:
     def test_define_design_tokens(self):
         """Test design token definition."""
         builder = DesignSystemBuilder()
-        tokens = {
-            "colors": {
-                "primary": "#0ea5e9",
-                "secondary": "#6366f1"
-            },
-            "spacing": {
-                "sm": "0.5rem",
-                "md": "1rem"
-            }
-        }
+        tokens = {"colors": {"primary": "#0ea5e9", "secondary": "#6366f1"}, "spacing": {"sm": "0.5rem", "md": "1rem"}}
 
         result = builder.define_design_tokens(tokens)
 
@@ -425,10 +355,7 @@ class TestDesignSystemBuilder:
     def test_generate_css_variables(self):
         """Test CSS variable generation."""
         builder = DesignSystemBuilder()
-        tokens = {
-            "colors": {"primary": "#0ea5e9"},
-            "spacing": {"sm": "0.5rem"}
-        }
+        tokens = {"colors": {"primary": "#0ea5e9"}, "spacing": {"sm": "0.5rem"}}
 
         result = builder.define_design_tokens(tokens)
 
@@ -453,14 +380,7 @@ class TestResponsiveLayoutPlanner:
     def test_validate_breakpoints_valid(self):
         """Test valid breakpoint validation."""
         planner = ResponsiveLayoutPlanner()
-        breakpoints = {
-            "mobile": 0,
-            "mobile_first": True,
-            "sm": 640,
-            "md": 768,
-            "lg": 1024,
-            "xl": 1280
-        }
+        breakpoints = {"mobile": 0, "mobile_first": True, "sm": 640, "md": 768, "lg": 1024, "xl": 1280}
 
         result = planner.validate_breakpoints(breakpoints)
 
@@ -477,7 +397,7 @@ class TestResponsiveLayoutPlanner:
             "responsive_typography": True,
             "responsive_images": True,
             "aspect_ratio_preserved": True,
-            "grid_columns_responsive": {"sm": 1, "md": 2, "lg": 3}
+            "grid_columns_responsive": {"sm": 1, "md": 2, "lg": 3},
         }
 
         result = planner.validate_fluid_layout(layout_config)
@@ -496,7 +416,7 @@ class TestResponsiveLayoutPlanner:
             "image_optimization": True,
             "webp_format": True,
             "placeholder_strategy": True,
-            "breakpoint_images": {"mobile": "small.jpg", "desktop": "large.jpg"}
+            "breakpoint_images": {"mobile": "small.jpg", "desktop": "large.jpg"},
         }
 
         result = planner.validate_image_strategy(strategy)
@@ -524,15 +444,7 @@ class TestFrontendMetricsCollector:
     def test_collect_metrics(self):
         """Test metrics collection."""
         collector = FrontendMetricsCollector()
-        metrics_dict = {
-            "lcp": 1.8,
-            "fid": 45,
-            "cls": 0.08,
-            "ttfb": 300,
-            "fcp": 1.2,
-            "tti": 2.5,
-            "bundle_size": 150
-        }
+        metrics_dict = {"lcp": 1.8, "fid": 45, "cls": 0.08, "ttfb": 300, "fcp": 1.2, "tti": 2.5, "bundle_size": 150}
 
         metrics = collector.collect_metrics(metrics_dict)
 
@@ -544,15 +456,7 @@ class TestFrontendMetricsCollector:
     def test_analyze_metrics_good(self):
         """Test analysis of good metrics."""
         collector = FrontendMetricsCollector()
-        metrics = PerformanceMetrics(
-            lcp=1.8,
-            fid=45,
-            cls=0.08,
-            ttfb=300,
-            fcp=1.2,
-            tti=2.5,
-            bundle_size=150
-        )
+        metrics = PerformanceMetrics(lcp=1.8, fid=45, cls=0.08, ttfb=300, fcp=1.2, tti=2.5, bundle_size=150)
 
         result = collector.analyze_metrics(metrics)
 
@@ -565,15 +469,7 @@ class TestFrontendMetricsCollector:
     def test_analyze_metrics_poor(self):
         """Test analysis of poor metrics."""
         collector = FrontendMetricsCollector()
-        metrics = PerformanceMetrics(
-            lcp=3.5,
-            fid=250,
-            cls=0.3,
-            ttfb=600,
-            fcp=2.0,
-            tti=4.0,
-            bundle_size=250
-        )
+        metrics = PerformanceMetrics(lcp=3.5, fid=250, cls=0.3, ttfb=600, fcp=2.0, tti=4.0, bundle_size=250)
 
         result = collector.analyze_metrics(metrics)
 
@@ -584,15 +480,7 @@ class TestFrontendMetricsCollector:
     def test_generate_recommendations(self):
         """Test recommendations generation."""
         collector = FrontendMetricsCollector()
-        metrics = PerformanceMetrics(
-            lcp=3.5,
-            fid=150,
-            cls=0.2,
-            ttfb=300,
-            fcp=1.2,
-            tti=2.5,
-            bundle_size=250
-        )
+        metrics = PerformanceMetrics(lcp=3.5, fid=150, cls=0.2, ttfb=300, fcp=1.2, tti=2.5, bundle_size=250)
 
         result = collector.analyze_metrics(metrics)
 
@@ -611,15 +499,7 @@ class TestDataClasses:
 
     def test_performance_metrics_creation(self):
         """Test PerformanceMetrics dataclass creation."""
-        metrics = PerformanceMetrics(
-            lcp=1.8,
-            fid=45,
-            cls=0.08,
-            ttfb=300,
-            fcp=1.2,
-            tti=2.5,
-            bundle_size=150
-        )
+        metrics = PerformanceMetrics(lcp=1.8, fid=45, cls=0.08, ttfb=300, fcp=1.2, tti=2.5, bundle_size=150)
 
         assert metrics.lcp == 1.8
         assert metrics.fid == 45

@@ -8,7 +8,7 @@ appropriate workflow templates for CI/CD generation.
 from moai_adk.core.project.detector import LanguageDetector
 
 
-def test_tdd_implementer_detects_python_project(tmp_path):
+def test_ddd_implementer_detects_python_project(tmp_path):
     """Test: ddd-implementer detects Python project and selects python workflow"""
     # Setup: Create mock Python project structure
     project_dir = tmp_path / "test_python_project"
@@ -28,7 +28,7 @@ def test_tdd_implementer_detects_python_project(tmp_path):
     # Note: Template existence checked in template tests, not here
 
 
-def test_tdd_implementer_detects_javascript_project(tmp_path):
+def test_ddd_implementer_detects_javascript_project(tmp_path):
     """Test: ddd-implementer detects JavaScript project and selects javascript workflow"""
     # Setup: Create mock JavaScript project
     project_dir = tmp_path / "test_js_project"
@@ -45,7 +45,7 @@ def test_tdd_implementer_detects_javascript_project(tmp_path):
     assert "javascript-tag-validation.yml" in template_path
 
 
-def test_tdd_implementer_detects_typescript_project(tmp_path):
+def test_ddd_implementer_detects_typescript_project(tmp_path):
     """Test: ddd-implementer correctly handles TypeScript (priority over JS)"""
     # Setup: Both package.json and tsconfig.json present
     project_dir = tmp_path / "test_ts_project"
@@ -63,7 +63,7 @@ def test_tdd_implementer_detects_typescript_project(tmp_path):
     assert "typescript-tag-validation.yml" in template_path
 
 
-def test_tdd_implementer_wrong_workflow_never_applied(tmp_path):
+def test_ddd_implementer_wrong_workflow_never_applied(tmp_path):
     """Test: Python workflow never applied to JavaScript project"""
     # Setup: JavaScript project
     project_dir = tmp_path / "test_js_project"
@@ -80,7 +80,7 @@ def test_tdd_implementer_wrong_workflow_never_applied(tmp_path):
     assert "javascript-tag-validation.yml" in template_path
 
 
-def test_tdd_implementer_detects_go_project(tmp_path):
+def test_ddd_implementer_detects_go_project(tmp_path):
     """Test: ddd-implementer detects Go project"""
     # Setup: Go project with go.mod
     project_dir = tmp_path / "test_go_project"

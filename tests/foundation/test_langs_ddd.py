@@ -1,5 +1,5 @@
 """
-TDD tests for Programming Language Ecosystem Implementation.
+DDD tests for Programming Language Ecosystem Implementation.
 
 Comprehensive test suite covering:
 - LanguageInfo dataclass with __contains__ method

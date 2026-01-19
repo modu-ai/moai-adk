@@ -106,7 +106,7 @@ class TestConfigurationManager:
             "language": {"conversation_language": "en", "agent_prompt_language": "en"},
             "project": {"name": "P1", "owner": "Owner", "documentation_mode": "full"},
             "git_strategy": {"mode": "personal"},
-            "constitution": {"test_coverage_target": 90, "enforce_tdd": True},
+            "constitution": {"test_coverage_target": 90, "enforce_quality": True},
         }
         result = manager._validate_complete(config)
         assert result is True

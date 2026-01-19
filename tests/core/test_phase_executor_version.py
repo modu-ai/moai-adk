@@ -96,7 +96,7 @@ class TestPhaseExecutorVersion:
         # New config being passed to phase 4
         new_config = {
             "project": {"mode": "team", "test_coverage_target": 85},
-            "constitution": {"enforce_tdd": True},
+            "constitution": {"enforce_quality": True},
         }
 
         # Execute phase 4
@@ -325,7 +325,7 @@ class TestPhaseExecutorVersion:
                 "version_check": {"enabled": False},
             },
             "project": {"name": "TestProject", "language": "python"},
-            "constitution": {"enforce_tdd": True, "test_coverage_target": 80},
+            "constitution": {"enforce_quality": True, "test_coverage_target": 80},
         }
         config_path.write_text(json.dumps(existing_config, indent=2, ensure_ascii=False))
 
@@ -337,7 +337,7 @@ class TestPhaseExecutorVersion:
         new_config = {
             "project": {"name": "TestProject", "mode": "team", "locale": "en"},
             "constitution": {
-                "enforce_tdd": True,
+                "enforce_quality": True,
                 "test_coverage_target": 85,
             },  # Changed from 80 to 85
             "language": {"conversation_language": "en"},

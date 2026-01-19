@@ -201,16 +201,22 @@ def agents_count(agents) -> int:
 # ===== CRITICAL: Prevent tests from modifying project files =====
 @pytest.fixture(autouse=True)
 def isolate_path_cwd(tmp_path: Path, mocker, monkeypatch):
-    """Automatically mock Path.cwd() to prevent modifying project files.
+    """Automatically mock Path.cwd() and Path.home() to prevent modifying project files.
 
     This prevents tests from accidentally modifying project files like
-    .claude/settings.json by ensuring Path.cwd() returns a temporary directory.
+    .claude/settings.json or ~/.moai/glm by ensuring:
+    - Path.cwd() returns a temporary directory
+    - Path.home() returns a temporary directory for GLM credentials
 
     This fixture is automatically applied to all tests (autouse=True).
     """
     # Set PYTEST_CURRENT_TEST environment variable
     # This is used by rollback_manager.py and other modules to skip backup operations
     monkeypatch.setenv("PYTEST_CURRENT_TEST", "test")
+
+    # Create temporary home directory
+    tmp_home = tmp_path / "home"
+    tmp_home.mkdir(parents=True, exist_ok=True)
 
     # Mock Path.cwd() in the main modules that use it
     modules_to_patch = [
@@ -231,6 +237,18 @@ def isolate_path_cwd(tmp_path: Path, mocker, monkeypatch):
             original_cwds[module_path] = patcher
         except (ImportError, AttributeError):
             # Module may not be importable in all test contexts
+            pass
+
+    # Mock Path.home() for credentials module to prevent ~/.moai access
+    home_modules_to_patch = [
+        "moai_adk.core.credentials.Path",
+        "pathlib.Path",  # Global pathlib.Path.home()
+    ]
+
+    for module_path in home_modules_to_patch:
+        try:
+            mocker.patch(module_path + ".home", return_value=tmp_home)
+        except (ImportError, AttributeError):
             pass
 
     yield

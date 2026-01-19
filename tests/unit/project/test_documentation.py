@@ -264,9 +264,9 @@ class TestAgentContextInjector:
             # Check that project documentation was injected
             assert "Project Documentation" in result["system_context"] or "Build fast API" in result["system_context"]
 
-    def test_inject_tdd_implementer_context(self):
-        """Test injecting TDD implementer context."""
-        agent_config = {"system_prompt": "You are a TDD implementer"}
+    def test_inject_ddd_implementer_context(self):
+        """Test injecting DDD implementer context."""
+        agent_config = {"system_prompt": "You are a DDD implementer"}
 
         with TemporaryDirectory() as tmpdir:
             base_path = Path(tmpdir)
@@ -275,7 +275,7 @@ class TestAgentContextInjector:
             # Create a structure.md file
             (base_path / "structure.md").write_text("# Architecture\nMicroservices")
 
-            result = AgentContextInjector.inject_tdd_implementer_context(agent_config, base_path)
+            result = AgentContextInjector.inject_ddd_implementer_context(agent_config, base_path)
 
             assert "architecture_context" in result
 

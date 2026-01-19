@@ -470,13 +470,13 @@ class TestAgentContextInjector:
             assert "Existing context" in result["system_context"]
             assert "Project Documentation" in result["system_context"]
 
-    def test_inject_tdd_implementer_context(self):
-        """Test inject_tdd_implementer_context."""
-        agent_config = {"name": "tdd_implementer"}
+    def test_inject_ddd_implementer_context(self):
+        """Test inject_ddd_implementer_context."""
+        agent_config = {"name": "ddd_implementer"}
 
         with tempfile.TemporaryDirectory() as tmpdir:
             base_path = Path(tmpdir)
-            result = AgentContextInjector.inject_tdd_implementer_context(agent_config, base_path)
+            result = AgentContextInjector.inject_ddd_implementer_context(agent_config, base_path)
 
             assert result is not agent_config
             assert isinstance(result, dict)

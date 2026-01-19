@@ -1,5 +1,5 @@
 """
-Comprehensive TDD tests for devops.py module.
+Comprehensive DDD tests for devops.py module.
 Tests cover all 7 classes with corrected method signatures.
 """
 
@@ -51,10 +51,7 @@ class TestCICDPipelineOrchestrator:
         """Test GitLab CI orchestration with Docker."""
         orchestrator = CICDPipelineOrchestrator()
         config = orchestrator.orchestrate_gitlab_ci(
-            config={
-                "stages": ["build", "test", "deploy"],
-                "docker_image": "python:3.13"
-            }
+            config={"stages": ["build", "test", "deploy"], "docker_image": "python:3.13"}
         )
 
         assert config["stages"] == ["build", "test", "deploy"]
@@ -65,9 +62,7 @@ class TestCICDPipelineOrchestrator:
     def test_orchestrate_jenkins_pipeline(self):
         """Test Jenkins pipeline orchestration."""
         orchestrator = CICDPipelineOrchestrator()
-        config = orchestrator.orchestrate_jenkins(
-            config={"stages": ["Build", "Test", "Deploy"]}
-        )
+        config = orchestrator.orchestrate_jenkins(config={"stages": ["Build", "Test", "Deploy"]})
 
         assert "pipeline" in config
         assert config["pipeline"]["agent"] == "any"
@@ -76,9 +71,7 @@ class TestCICDPipelineOrchestrator:
     def test_optimize_build_pipeline(self):
         """Test build pipeline optimization."""
         orchestrator = CICDPipelineOrchestrator()
-        config = orchestrator.optimize_build_pipeline(
-            config={"base_image": "python:3.11-slim"}
-        )
+        config = orchestrator.optimize_build_pipeline(config={"base_image": "python:3.11-slim"})
 
         assert config["multi_stage_build"] is True
         assert config["layer_caching"] is True
@@ -114,9 +107,7 @@ class TestInfrastructureManager:
     def test_create_helm_charts(self):
         """Test Helm chart creation."""
         manager = InfrastructureManager()
-        charts = manager.create_helm_charts(
-            chart_config={"name": "test-chart", "version": "1.0.0"}
-        )
+        charts = manager.create_helm_charts(chart_config={"name": "test-chart", "version": "1.0.0"})
 
         assert "Chart.yaml" in charts
         assert "values.yaml" in charts
@@ -127,11 +118,7 @@ class TestInfrastructureManager:
         """Test Terraform module design."""
         manager = InfrastructureManager()
         modules = manager.design_terraform_modules(
-            module_config={
-                "provider": "aws",
-                "region": "us-east-1",
-                "resources": {"vpc": {"cidr": "10.0.0.0/16"}}
-            }
+            module_config={"provider": "aws", "region": "us-east-1", "resources": {"vpc": {"cidr": "10.0.0.0/16"}}}
         )
 
         assert "provider" in modules
@@ -178,8 +165,7 @@ class TestContainerOrchestrator:
         """Test container security scanning."""
         orchestrator = ContainerOrchestrator()
         results = orchestrator.scan_container_security(
-            image_name="nginx:latest",
-            security_config={"scan_level": "standard"}
+            image_name="nginx:latest", security_config={"scan_level": "standard"}
         )
 
         assert "vulnerabilities" in results
@@ -189,9 +175,7 @@ class TestContainerOrchestrator:
     def test_plan_kubernetes_deployment(self):
         """Test Kubernetes deployment planning."""
         orchestrator = ContainerOrchestrator()
-        plan = orchestrator.plan_kubernetes_deployment(
-            deployment_config={"app_name": "test-app", "replicas": 3}
-        )
+        plan = orchestrator.plan_kubernetes_deployment(deployment_config={"app_name": "test-app", "replicas": 3})
 
         assert "deployment_yaml" in plan
         assert "service_yaml" in plan
@@ -225,9 +209,7 @@ class TestMonitoringArchitect:
     def test_setup_prometheus(self):
         """Test Prometheus setup."""
         architect = MonitoringArchitect()
-        config = architect.setup_prometheus(
-            metrics_config={"app_name": "test-app", "scrape_interval": "30s"}
-        )
+        config = architect.setup_prometheus(metrics_config={"app_name": "test-app", "scrape_interval": "30s"})
 
         assert "prometheus_config" in config
         assert "scrape_interval" in config
@@ -239,7 +221,7 @@ class TestMonitoringArchitect:
         config = architect.design_grafana_dashboards(
             dashboard_config={
                 "dashboard_name": "Test Dashboard",
-                "panels": [{"title": "CPU Usage", "metric": "cpu_usage"}]
+                "panels": [{"title": "CPU Usage", "metric": "cpu_usage"}],
             }
         )
 
@@ -250,9 +232,7 @@ class TestMonitoringArchitect:
     def test_configure_logging(self):
         """Test ELK logging configuration."""
         architect = MonitoringArchitect()
-        config = architect.configure_logging(
-            logging_config={"app_name": "test-app", "environment": "production"}
-        )
+        config = architect.configure_logging(logging_config={"app_name": "test-app", "environment": "production"})
 
         assert "elasticsearch_config" in config
         assert "logstash_config" in config
@@ -308,10 +288,7 @@ class TestDeploymentStrategist:
         """Test blue-green deployment implementation."""
         strategist = DeploymentStrategist()
         config = strategist.implement_blue_green_deployment(
-            bg_config={
-                "blue_environment": "prod-blue",
-                "green_environment": "prod-green"
-            }
+            bg_config={"blue_environment": "prod-blue", "green_environment": "prod-green"}
         )
 
         assert "environment_config" in config
@@ -410,10 +387,7 @@ class TestDevOpsMetricsCollector:
         """Test pipeline performance tracking."""
         collector = DevOpsMetricsCollector()
         metrics = collector.track_pipeline_performance(
-            pipeline_data={
-                "execution_times": {"build": 120, "test": 180, "deploy": 60},
-                "success_rate": 95.5
-            }
+            pipeline_data={"execution_times": {"build": 120, "test": 180, "deploy": 60}, "success_rate": 95.5}
         )
 
         assert "total_execution_time" in metrics
@@ -458,7 +432,7 @@ class TestDataClasses:
             name="test-workflow",
             triggers=["push", "pull_request"],
             jobs={"build": {"steps": ["echo 'Building'"]}},
-            variables={"ENV": "test"}
+            variables={"ENV": "test"},
         )
 
         assert config.name == "test-workflow"
@@ -472,7 +446,7 @@ class TestDataClasses:
             region="us-west-2",
             resources={"vpc": {"cidr": "10.0.0.0/16"}},
             variables={"environment": "production"},
-            version="1.0.0"
+            version="1.0.0",
         )
 
         assert config.provider == "aws"
@@ -485,7 +459,7 @@ class TestDataClasses:
             ports=[80, 443],
             environment={"ENV": "production"},
             resources={"cpu": "500m"},
-            security={"non_root": True}
+            security={"non_root": True},
         )
 
         assert config.image == "nginx:latest"
@@ -497,7 +471,7 @@ class TestDataClasses:
             scrape_interval="30s",
             targets=[{"job": "app", "target": "localhost:9000"}],
             alert_rules=[{"name": "HighErrorRate", "expr": "rate > 0.1"}],
-            dashboards=[{"name": "Main", "panels": []}]
+            dashboards=[{"name": "Main", "panels": []}],
         )
 
         assert config.scrape_interval == "30s"
@@ -508,7 +482,7 @@ class TestDataClasses:
         config = SecurityConfig(
             policies=[{"name": "network-policy", "rules": []}],
             compliance_standards=["cis_aws", "pci_dss"],
-            audit_settings={"enabled": True, "frequency": "daily"}
+            audit_settings={"enabled": True, "frequency": "daily"},
         )
 
         assert len(config.compliance_standards) == 2
@@ -520,7 +494,7 @@ class TestDataClasses:
             strategy="blue_green",
             phases=[{"name": "deploy", "steps": []}],
             rollback_config={"enabled": True, "timeout": "5m"},
-            health_checks={"endpoint": "/health", "interval": "30s"}
+            health_checks={"endpoint": "/health", "interval": "30s"},
         )
 
         assert config.strategy == "blue_green"
@@ -532,7 +506,7 @@ class TestDataClasses:
             deployment_frequency={"daily": 2.5, "weekly": 17.5},
             lead_time_for_changes={"avg_minutes": 45},
             change_failure_rate={"percentage": 2.5},
-            mean_time_to_recovery={"avg_minutes": 15}
+            mean_time_to_recovery={"avg_minutes": 15},
         )
 
         assert metrics.deployment_frequency["daily"] == 2.5

@@ -982,10 +982,10 @@ class TestComplexWorkflows:
             chain_id=chain_id,
         )
 
-        # TDD implementer starts and finishes
+        # DDD implementer starts and finishes
         session_manager.register_agent_result(
             agent_name="ddd-implementer",
-            agent_id="tdd-ghi789",
+            agent_id="ddd-ghi789",
             result={"files_created": 5},
             chain_id=chain_id,
         )

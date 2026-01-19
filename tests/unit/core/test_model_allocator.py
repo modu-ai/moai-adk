@@ -244,7 +244,7 @@ class TestModelAllocationConstants:
             "expert_backend",
             "expert_frontend",
             "expert_database",
-            "manager_tdd",
+            "manager_ddd",
             "manager_spec",
             "manager_docs",
             "manager_quality",
@@ -298,7 +298,7 @@ class TestModelAllocationConstants:
         assert max20["expert_backend"] == "opus"
         assert max20["expert_frontend"] == "opus"
         assert max20["expert_database"] == "opus"
-        assert max20["manager_tdd"] == "opus"
+        assert max20["manager_ddd"] == "opus"
         assert max20["manager_spec"] == "opus"
         assert max20["manager_quality"] == "opus"
 
@@ -339,7 +339,7 @@ class TestModelAllocationEdgeCases:
         # Most agents should be the same
         assert hybrid["plan"] == claude["plan"]
         assert hybrid["expert_backend"] == claude["expert_backend"]
-        assert hybrid["manager_tdd"] == claude["manager_tdd"]
+        assert hybrid["manager_ddd"] == claude["manager_ddd"]
 
         # Except explore and expert_debug which are overridden
         assert hybrid["explore"] != claude["explore"]

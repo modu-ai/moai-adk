@@ -342,7 +342,7 @@ This is a test project with version {{MOAI_VERSION}}.
   },
   "constitution": {
     "test_coverage_target": 85,
-    "enforce_tdd": true
+    "enforce_quality": true
   }
 }
 """
@@ -363,7 +363,7 @@ This is a test project with version {{MOAI_VERSION}}.
         assert config["constitution"]["test_coverage_target"] == 85, (
             "constitution.test_coverage_target should be preserved"
         )
-        assert config["constitution"]["enforce_tdd"] is True, "constitution.enforce_tdd should be preserved"
+        assert config["constitution"]["enforce_quality"] is True, "constitution.enforce_quality should be preserved"
 
     def test_version_substitution_error_handling(self) -> None:
         """

@@ -9,10 +9,10 @@ This file covers remaining uncovered code paths:
 - User selection UI functions
 - Advanced config management
 
-TDD Approach: RED-GREEN-REFACTOR cycle
-1. Write failing tests (RED)
-2. Implement minimum code to pass (GREEN)
-3. Refactor for maintainability
+DDD Approach: ANALYZE-PRESERVE-IMPROVE cycle
+1. Analyze existing behavior
+2. Preserve working functionality
+3. Improve implementation incrementally
 """
 
 import json

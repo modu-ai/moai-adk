@@ -187,14 +187,14 @@ class TestResumeLogic:
 
             manager.register_agent_result(
                 agent_name="ddd-implementer",
-                agent_id="tdd-xyz789",
+                agent_id="ddd-xyz789",
                 result={"phase": "1"},
                 chain_id="SPEC-001-impl",
             )
 
             resume_id = manager.get_resume_id(agent_name="ddd-implementer", chain_id="SPEC-001-impl")
 
-            assert resume_id == "tdd-xyz789"
+            assert resume_id == "ddd-xyz789"
 
     def test_get_resume_id_no_previous_session(self):
         """Test getting resume ID when no previous session exists."""
@@ -246,7 +246,7 @@ class TestResumeLogic:
             session_file = Path(tmpdir) / "sessions.json"
             manager = SessionManager(session_file=session_file)
 
-            manager.register_agent_result(agent_name="ddd-implementer", agent_id="tdd1", result={})
+            manager.register_agent_result(agent_name="ddd-implementer", agent_id="ddd1", result={})
 
             result = manager.should_resume(
                 agent_name="ddd-implementer",

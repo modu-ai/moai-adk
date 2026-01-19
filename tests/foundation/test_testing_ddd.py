@@ -1,5 +1,5 @@
 """
-TDD tests for MoAI Domain Testing Framework.
+DDD tests for MoAI Domain Testing Framework.
 
 Comprehensive test suite covering:
 - TestStatus enum

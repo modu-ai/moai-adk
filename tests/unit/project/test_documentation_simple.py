@@ -401,27 +401,27 @@ class TestAgentContextInjectorSimple:
             # Either the context should contain the doc content or a reference
             assert "system_context" in result
 
-    def test_inject_tdd_implementer_context_adds_architecture_context(self):
-        """Test TDD implementer context adds architecture_context."""
+    def test_inject_ddd_implementer_context_adds_architecture_context(self):
+        """Test DDD implementer context adds architecture_context."""
         config = {"prompt": "test"}
 
         with TemporaryDirectory() as tmpdir:
             base_path = Path(tmpdir)
             (base_path / "structure.md").write_text("# Architecture\nContent")
 
-            result = AgentContextInjector.inject_tdd_implementer_context(config, base_path)
+            result = AgentContextInjector.inject_ddd_implementer_context(config, base_path)
 
             assert "architecture_context" in result
 
-    def test_inject_tdd_implementer_context_preserves_original(self):
-        """Test TDD injection doesn't modify original."""
+    def test_inject_ddd_implementer_context_preserves_original(self):
+        """Test DDD injection doesn't modify original."""
         original = {"prompt": "test"}
 
         with TemporaryDirectory() as tmpdir:
             base_path = Path(tmpdir)
             (base_path / "structure.md").write_text("# Arch")
 
-            AgentContextInjector.inject_tdd_implementer_context(original, base_path)
+            AgentContextInjector.inject_ddd_implementer_context(original, base_path)
 
             # Original unchanged
             assert original == {"prompt": "test"}
@@ -484,7 +484,7 @@ class TestAgentContextInjectorSimple:
             base_path = Path(tmpdir)
             (base_path / "structure.md").write_text("# New")
 
-            AgentContextInjector.inject_tdd_implementer_context(config, base_path)
+            AgentContextInjector.inject_ddd_implementer_context(config, base_path)
 
             # Original should not be modified
             assert config == {"architecture_context": "Existing"}

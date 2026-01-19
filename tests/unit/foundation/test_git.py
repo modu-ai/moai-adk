@@ -61,7 +61,7 @@ class TestValidateResult:
 class TestDDDCommitPhase:
     """Test DDDCommitPhase dataclass."""
 
-    def test_tdd_commit_phase_red(self):
+    def test_ddd_commit_phase_red(self):
         """Test DDDCommitPhase for RED phase."""
         phase = DDDCommitPhase(
             phase_name="RED",
