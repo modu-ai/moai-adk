@@ -1,10 +1,10 @@
 ---
-description: "MoAI-ADK release with Claude Code review and tag-based auto deployment"
+description: "MoAI-ADK release with agent delegation for git operations and quality validation"
 argument-hint: "[VERSION] - optional target version (e.g., 0.35.0)"
 type: local
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, AskUserQuestion, Task
 model: sonnet
-version: 1.0.0
+version: 1.1.0
 ---
 
 ## EXECUTION DIRECTIVE - START IMMEDIATELY
@@ -47,6 +47,13 @@ Display quality summary:
 - smoke tests: PASS or FAIL (if FAIL, stop and report)
 - ruff: PASS or FIXED
 - mypy: PASS or WARNING
+
+### Error Handling
+
+If any quality gate FAILS or encounters unexpected errors:
+- **Use the expert-debug subagent** to diagnose and resolve the issue
+- Example: `Use the expert-debug subagent to investigate why smoke tests are failing`
+- Resume release workflow only after all gates pass
 
 ---
 
@@ -169,31 +176,70 @@ Use AskUserQuestion:
 
 ---
 
-## PHASE 6: Tag and Push
+## PHASE 6: Tag and Push (AGENT DELEGATION REQUIRED)
+
+**IMPORTANT: ALL git operations MUST be delegated to manager-git agent.**
 
 If approved:
 
-1. Create tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z"`
-2. Push: `git push origin main --tags`
-3. Wait 5 seconds for GitHub Actions to start
-4. Verify GitHub Actions workflow started: `gh run list --limit 3`
-5. Display completion message
+### DO NOT execute git commands directly
+
+Instead, delegate to manager-git subagent with this prompt:
+
+```
+## Mission: Release Git Operations for Version X.Y.Z
+
+### Context
+- Target version: X.Y.Z
+- Current state: [describe current git state]
+- Quality gates: All passed
+- Commits included: [list commit count and summary]
+
+### Required Actions
+
+1. **Check remote status**: Verify if tag X.Y.Z exists on remote (origin)
+2. **Handle tag conflicts**:
+   - If remote does NOT have v{X.Y.Z}: Create tag and push
+   - If remote already has v{X.Y.Z}: Report situation with options
+3. **Execute push**: `git push origin main --tags`
+4. **Verify GitHub Actions**: Check if release workflow started
+
+### Expected Output
+Report back with:
+1. Remote tag status
+2. Action taken (pushed/recreated/recommended)
+3. GitHub Actions workflow status
+4. Release links (if successful)
+```
+
+Example delegation:
+```
+Use the manager-git subagent to handle release git operations for version 1.5.0
+
+Context:
+- Local tag v1.5.0 already exists
+- 6 commits included since v1.4.6
+- All quality gates passed
+
+The agent should:
+1. Check if v1.5.0 exists on remote
+2. Push tag to remote or handle conflicts
+3. Verify GitHub Actions workflow started
+4. Report release status with links
+```
 
 ---
 
-## PHASE 7: Release Verification
+## PHASE 7: Release Verification (HANDLED BY MANAGER-GIT)
 
-After push completes:
-
+The manager-git agent will:
 1. Check release workflow: `gh run list --workflow=release.yml --limit 1`
 2. Verify GitHub Release: `gh release list --limit 3`
 3. Display release information: `gh release view vX.Y.Z`
-
-Display final summary with links:
-
-- GitHub Release: https://github.com/modu-ai/moai-adk/releases/tag/vX.Y.Z
-- GitHub Actions: https://github.com/modu-ai/moai-adk/actions
-- PyPI: https://pypi.org/project/moai-adk/
+4. Report final summary with links:
+   - GitHub Release: https://github.com/modu-ai/moai-adk/releases/tag/vX.Y.Z
+   - GitHub Actions: https://github.com/modu-ai/moai-adk/actions
+   - PyPI: https://pypi.org/project/moai-adk/
 
 Note: GitHub Release is created automatically by release.yml workflow.
 If the release is not immediately visible, wait 2-3 minutes for the workflow to complete.
@@ -244,6 +290,44 @@ Updating version files...
 - All version files must be consistent
 - Tag format: vX.Y.Z (with 'v' prefix)
 - GitHub Actions handles PyPI deployment automatically
+- **[HARD] ALL git operations MUST be delegated to manager-git agent**
+  - Direct git commands (tag, push) are PROHIBITED
+  - Use Task tool with manager-git subagent for all git operations
+- **[HARD] Quality gate failures MUST be delegated to expert-debug agent**
+  - Use Task tool with expert-debug subagent for diagnostics
+  - Resume only after all gates pass
+
+## Agent Delegation Pattern
+
+**For git operations (Phase 6 & 7):**
+```bash
+Use the manager-git subagent to handle release git operations for version X.Y.Z
+
+Context:
+- [current git state]
+- [commit summary]
+- [quality gate results]
+
+The agent should:
+1. Check remote tag status
+2. Handle conflicts appropriately
+3. Push tag to remote
+4. Verify GitHub Actions workflow
+5. Report release status with links
+```
+
+**For quality gate failures (Phase 1):**
+```bash
+Use the expert-debug subagent to diagnose quality gate failures
+
+Issue: [describe failure]
+Context: [test/lint/mypy output]
+
+The agent should:
+1. Analyze root cause
+2. Propose fixes
+3. Verify resolution
+```
 
 ---
 
