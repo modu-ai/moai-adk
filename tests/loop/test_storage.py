@@ -34,7 +34,7 @@ class TestLoopStorageInit:
     def test_storage_creates_subdirectories(self, tmp_path: Path):
         """LoopStorage should create necessary subdirectories."""
         storage_dir = tmp_path / ".moai" / "loop"
-        storage = LoopStorage(storage_dir=str(storage_dir))
+        LoopStorage(storage_dir=str(storage_dir))
         # The storage should create the directory
         assert storage_dir.exists()
 

@@ -23,10 +23,7 @@ from moai_adk.cli.worktree.exceptions import (
 )
 from moai_adk.cli.worktree.models import WorktreeInfo
 
-try:
-    from git import Repo
-except ImportError:
-    Repo = None
+# Repo import removed - not used in tests
 
 
 @pytest.fixture
@@ -103,7 +100,7 @@ class TestGetManager:
             mock_instance = Mock()
             MockManager.return_value = mock_instance
 
-            result = cli.get_manager(repo_path=repo_path, project_name=None)
+            _ = cli.get_manager(repo_path=repo_path, project_name=None)
 
             MockManager.assert_called_once()
             call_kwargs = MockManager.call_args[1]
@@ -125,7 +122,7 @@ class TestDetectWorktreeRoot:
 
         # Don't mock Path.home - let it use actual home directory
         # Instead, test that the function returns the registry path
-        result = cli._detect_worktree_root(main_repo)
+        result = cli._detect_worktree_root(main_repo, project_name="test-project")
         # Result should be some path (either our worktree_root or a default location)
         assert isinstance(result, Path)
 
@@ -135,7 +132,7 @@ class TestDetectWorktreeRoot:
         main_repo.mkdir()
 
         # Just test that the function returns a valid Path
-        result = cli._detect_worktree_root(main_repo)
+        result = cli._detect_worktree_root(main_repo, project_name="test-project")
         assert isinstance(result, Path)
         assert "worktrees" in str(result).lower()
 
@@ -150,8 +147,7 @@ class TestFindMainRepository:
         (main_repo / ".git").mkdir()
         (main_repo / ".git" / "objects").mkdir()
 
-        result = cli._find_main_repository(main_repo)
-        assert result == main_repo.resolve()
+        assert cli._find_main_repository(main_repo) == main_repo.resolve()
 
     def test_detects_worktree(self, tmp_path: Path) -> None:
         """Test detects worktree and finds main repo."""
@@ -409,7 +405,7 @@ class TestGoWorktreeCommand:
 
         with patch("moai_adk.cli.worktree.cli.get_manager", return_value=mock_manager):
             with patch("subprocess.call") as mock_call:
-                result = runner.invoke(cli.worktree, ["go", "SPEC-001"])
+                _ = runner.invoke(cli.worktree, ["go", "SPEC-001"])
 
                 # The command exits after opening shell, so we check it was called
                 assert mock_manager.registry.get.called

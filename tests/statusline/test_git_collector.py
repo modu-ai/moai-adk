@@ -70,7 +70,15 @@ class TestGitCollector:
         with patch("subprocess.run") as mock_run:
             # A = added (staged), M = modified, ?? = untracked
             mock_run.return_value = MagicMock(
-                stdout="## develop...origin/develop\nA  file1.py\nA  file2.py\nA  file3.py\nM  file4.py\nM  file5.py\n?? file6.py\n",
+                stdout=(
+                    "## develop...origin/develop\n"
+                    "A  file1.py\n"
+                    "A  file2.py\n"
+                    "A  file3.py\n"
+                    "M  file4.py\n"
+                    "M  file5.py\n"
+                    "?? file6.py\n"
+                ),
                 stderr="",
                 returncode=0,
             )

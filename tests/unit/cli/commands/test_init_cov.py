@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 from click.testing import CliRunner
-from rich.progress import Progress
+from rich.progress import Progress, TaskID
 
 from moai_adk.cli.commands.init import create_progress_callback, init
 
@@ -23,7 +23,7 @@ class TestCreateProgressCallback:
         """Test callback function creation."""
         # Arrange
         progress = MagicMock(spec=Progress)
-        task_ids = [1, 2, 3]
+        task_ids = [TaskID(1), TaskID(2), TaskID(3)]
 
         # Act
         callback = create_progress_callback(progress, task_ids)
@@ -36,7 +36,7 @@ class TestCreateProgressCallback:
         """Test callback updates progress correctly."""
         # Arrange
         progress = MagicMock(spec=Progress)
-        task_ids = [1, 2, 3]
+        task_ids = [TaskID(1), TaskID(2), TaskID(3)]
         callback = create_progress_callback(progress, task_ids)
 
         # Act
@@ -49,7 +49,7 @@ class TestCreateProgressCallback:
         """Test callback updates second task correctly."""
         # Arrange
         progress = MagicMock(spec=Progress)
-        task_ids = [1, 2, 3]
+        task_ids = [TaskID(1), TaskID(2), TaskID(3)]
         callback = create_progress_callback(progress, task_ids)
 
         # Act
@@ -62,7 +62,7 @@ class TestCreateProgressCallback:
         """Test callback ignores invalid phase numbers."""
         # Arrange
         progress = MagicMock(spec=Progress)
-        task_ids = [1, 2, 3]
+        task_ids = [TaskID(1), TaskID(2), TaskID(3)]
         callback = create_progress_callback(progress, task_ids)
 
         # Act
@@ -75,7 +75,7 @@ class TestCreateProgressCallback:
         """Test callback ignores out of range phase numbers."""
         # Arrange
         progress = MagicMock(spec=Progress)
-        task_ids = [1, 2, 3]
+        task_ids = [TaskID(1), TaskID(2), TaskID(3)]
         callback = create_progress_callback(progress, task_ids)
 
         # Act
@@ -88,7 +88,7 @@ class TestCreateProgressCallback:
         """Test callback with multiple phase updates."""
         # Arrange
         progress = MagicMock(spec=Progress)
-        task_ids = [1, 2, 3]
+        task_ids = [TaskID(1), TaskID(2), TaskID(3)]
         callback = create_progress_callback(progress, task_ids)
 
         # Act
@@ -112,7 +112,7 @@ class TestInitCommand:
     @patch("moai_adk.cli.commands.init.ProjectInitializer")
     @patch("moai_adk.cli.commands.init.print_banner")
     @patch("moai_adk.cli.commands.init.VersionReader")
-    def test_init_non_interactive_minimal(self, mock_version_reader_class, mock_print_banner, mock_initializer_class):
+    def test_init_non_interactive_minimal(self, mock_version_reader_class, _mock_print_banner, mock_initializer_class):
         """Test init command in non-interactive mode with minimal setup."""
         # Arrange
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -145,7 +145,7 @@ class TestInitCommand:
     @patch("moai_adk.cli.commands.init.ProjectInitializer")
     @patch("moai_adk.cli.commands.init.print_banner")
     @patch("moai_adk.cli.commands.init.VersionReader")
-    def test_init_with_mode_option(self, mock_version_reader_class, mock_print_banner, mock_initializer_class):
+    def test_init_with_mode_option(self, mock_version_reader_class, _mock_print_banner, mock_initializer_class):
         """Test init command with mode option."""
         # Arrange
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -178,7 +178,7 @@ class TestInitCommand:
     @patch("moai_adk.cli.commands.init.ProjectInitializer")
     @patch("moai_adk.cli.commands.init.print_banner")
     @patch("moai_adk.cli.commands.init.VersionReader")
-    def test_init_with_locale_option(self, mock_version_reader_class, mock_print_banner, mock_initializer_class):
+    def test_init_with_locale_option(self, mock_version_reader_class, _mock_print_banner, mock_initializer_class):
         """Test init command with locale option."""
         # Arrange
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -211,7 +211,7 @@ class TestInitCommand:
     @patch("moai_adk.cli.commands.init.ProjectInitializer")
     @patch("moai_adk.cli.commands.init.print_banner")
     @patch("moai_adk.cli.commands.init.VersionReader")
-    def test_init_with_language_option(self, mock_version_reader_class, mock_print_banner, mock_initializer_class):
+    def test_init_with_language_option(self, mock_version_reader_class, _mock_print_banner, mock_initializer_class):
         """Test init command with language option."""
         # Arrange
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -245,7 +245,7 @@ class TestInitCommand:
     @patch("moai_adk.cli.commands.init.print_banner")
     @patch("moai_adk.cli.commands.init.VersionReader")
     def test_init_reinitialization_without_backup(
-        self, mock_version_reader_class, mock_print_banner, mock_initializer_class
+        self, mock_version_reader_class, _mock_print_banner, mock_initializer_class
     ):
         """Test init command on already initialized project."""
         # Arrange
@@ -279,7 +279,7 @@ class TestInitCommand:
     @patch("moai_adk.cli.commands.init.ProjectInitializer")
     @patch("moai_adk.cli.commands.init.print_banner")
     @patch("moai_adk.cli.commands.init.VersionReader")
-    def test_init_failure_handling(self, mock_version_reader_class, mock_print_banner, mock_initializer_class):
+    def test_init_failure_handling(self, mock_version_reader_class, _mock_print_banner, mock_initializer_class):
         """Test init command handles initialization failure."""
         # Arrange
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -305,7 +305,7 @@ class TestInitCommand:
     @patch("moai_adk.cli.commands.init.ProjectInitializer")
     @patch("moai_adk.cli.commands.init.print_banner")
     @patch("moai_adk.cli.commands.init.VersionReader")
-    def test_init_keyboard_interrupt(self, mock_version_reader_class, mock_print_banner, mock_initializer_class):
+    def test_init_keyboard_interrupt(self, mock_version_reader_class, _mock_print_banner, mock_initializer_class):
         """Test init command handles keyboard interrupt."""
         # Arrange
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -323,7 +323,7 @@ class TestInitCommand:
     @patch("moai_adk.cli.commands.init.ProjectInitializer")
     @patch("moai_adk.cli.commands.init.print_banner")
     @patch("moai_adk.cli.commands.init.VersionReader")
-    def test_init_config_update_on_reinit(self, mock_version_reader_class, mock_print_banner, mock_initializer_class):
+    def test_init_config_update_on_reinit(self, mock_version_reader_class, _mock_print_banner, mock_initializer_class):
         """Test init updates config.json on reinitialization."""
         # Arrange
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -372,7 +372,7 @@ class TestInitCommand:
     @patch("moai_adk.cli.commands.init.ProjectInitializer")
     @patch("moai_adk.cli.commands.init.print_banner")
     @patch("moai_adk.cli.commands.init.VersionReader")
-    def test_init_generic_language_display(self, mock_version_reader_class, mock_print_banner, mock_initializer_class):
+    def test_init_generic_language_display(self, mock_version_reader_class, _mock_print_banner, mock_initializer_class):
         """Test init displays 'Auto-detect' for generic language."""
         # Arrange
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -404,7 +404,7 @@ class TestInitCommand:
     @patch("moai_adk.cli.commands.init.ProjectInitializer")
     @patch("moai_adk.cli.commands.init.print_banner")
     @patch("moai_adk.cli.commands.init.VersionReader")
-    def test_init_current_directory_default(self, mock_version_reader_class, mock_print_banner, mock_initializer_class):
+    def test_init_current_directory_default(self, mock_version_reader_class, _mock_print_banner, mock_initializer_class):
         """Test init uses current directory as default."""
         # Arrange
         mock_version_reader = MagicMock()
@@ -434,7 +434,7 @@ class TestInitCommand:
     @patch("moai_adk.cli.commands.init.ProjectInitializer")
     @patch("moai_adk.cli.commands.init.print_banner")
     @patch("moai_adk.cli.commands.init.VersionReader")
-    def test_init_removes_old_hook_files(self, mock_version_reader_class, mock_print_banner, mock_initializer_class):
+    def test_init_removes_old_hook_files(self, mock_version_reader_class, _mock_print_banner, mock_initializer_class):
         """Test init removes deprecated hook files on reinitialization."""
         # Arrange
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -483,7 +483,7 @@ class TestInitCommand:
     @patch("moai_adk.cli.commands.init.print_banner")
     @patch("moai_adk.cli.commands.init.VersionReader")
     def test_init_version_read_error_recovery(
-        self, mock_version_reader_class, mock_print_banner, mock_initializer_class
+        self, mock_version_reader_class, _mock_print_banner, mock_initializer_class
     ):
         """Test init recovers from version read errors."""
         # Arrange
@@ -516,7 +516,7 @@ class TestInitCommand:
     @patch("moai_adk.cli.commands.init.ProjectInitializer")
     @patch("moai_adk.cli.commands.init.print_banner")
     @patch("moai_adk.cli.commands.init.VersionReader")
-    def test_init_backup_info_display(self, mock_version_reader_class, mock_print_banner, mock_initializer_class):
+    def test_init_backup_info_display(self, mock_version_reader_class, _mock_print_banner, mock_initializer_class):
         """Test init displays backup info on reinitialization."""
         # Arrange
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -567,7 +567,7 @@ class TestInitEdgeCases:
     @patch("moai_adk.cli.commands.init.ProjectInitializer")
     @patch("moai_adk.cli.commands.init.print_banner")
     @patch("moai_adk.cli.commands.init.VersionReader")
-    def test_init_with_all_options(self, mock_version_reader_class, mock_print_banner, mock_initializer_class):
+    def test_init_with_all_options(self, mock_version_reader_class, _mock_print_banner, mock_initializer_class):
         """Test init with all options specified."""
         # Arrange
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -625,7 +625,7 @@ class TestInitInteractiveMode:
         mock_initializer_class,
         mock_prompt_project_setup,
         mock_version_reader_class,
-        mock_print_banner,
+        _mock_print_banner,
     ):
         """Test init in interactive mode with successful user prompts."""
         # Arrange
@@ -676,7 +676,7 @@ class TestInitInteractiveMode:
         mock_initializer_class,
         mock_prompt_project_setup,
         mock_version_reader_class,
-        mock_print_banner,
+        _mock_print_banner,
     ):
         """Test init in interactive mode with Korean locale."""
         # Arrange
@@ -725,7 +725,7 @@ class TestInitInteractiveMode:
         mock_initializer_class,
         mock_prompt_project_setup,
         mock_version_reader_class,
-        mock_print_banner,
+        _mock_print_banner,
     ):
         """Test that --non-interactive flag skips prompts."""
         # Arrange
@@ -1228,7 +1228,7 @@ class TestSaveAdditionalConfigErrors:
             assert sections_dir.exists()
 
 
-class TestInitEdgeCases:
+class TestInitEdgeCasesV2:
     """Test init command edge cases and config migration."""
 
     @patch("moai_adk.cli.commands.init.print_banner")
@@ -1238,7 +1238,7 @@ class TestInitEdgeCases:
         self,
         mock_initializer_class,
         mock_version_reader_class,
-        mock_print_banner,
+        _mock_print_banner,
     ):
         """Test reinitialization with YAML to JSON config migration."""
         # Arrange
@@ -1271,7 +1271,7 @@ class TestInitEdgeCases:
         self,
         mock_initializer_class,
         mock_version_reader_class,
-        mock_print_banner,
+        _mock_print_banner,
     ):
         """Test reinitialization with JSON to YAML config migration."""
         # Arrange

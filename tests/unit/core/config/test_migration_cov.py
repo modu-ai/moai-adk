@@ -243,7 +243,7 @@ class TestGetConversationLanguageName:
                 assert isinstance(result, str)
 
 
-class TestMigrateConfigSchemaV0_17_0:
+class TestMigrateConfigSchemaV0170:
     """Test schema migration for v0.17.0."""
 
     def test_adds_report_generation_section(self):

@@ -178,7 +178,7 @@ Alfred 分解:
 4. ワークフロー調整が必要ですか？ manager-[workflow] サブエージェントを使用します
 5. 複雑なマルチステップタスクですか？ manager-strategy サブエージェントを使用します
 
-### Manager エージェント（8種類）
+### Manager エージェント（7種類）
 
 - manager-spec: SPEC ドキュメント作成、EARS フォーマット、要件分析
 - manager-ddd: ドメイン駆動開発、ANALYZE-PRESERVE-IMPROVE サイクル、動作保存
@@ -187,7 +187,6 @@ Alfred 分解:
 - manager-project: プロジェクト設定、構造管理、初期化
 - manager-strategy: システム設計、アーキテクチャ決定、トレードオフ分析
 - manager-git: Git 操作、ブランチ戦略、マージ管理
-- manager-claude-code: Claude Code 設定、スキル、エージェント、コマンド
 
 ### Expert エージェント（8種類）
 

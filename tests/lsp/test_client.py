@@ -35,7 +35,7 @@ class TestMoAILSPClientCreation:
     def test_client_loads_lsp_config(self):
         """Client should load .lsp.json on init."""
         with patch.object(MoAILSPClient, "_load_config") as mock_load:
-            client = MoAILSPClient(project_root="/project")
+            MoAILSPClient(project_root="/project")
             mock_load.assert_called_once()
 
 
@@ -226,6 +226,8 @@ class TestMoAILSPClientHover:
         with patch.object(client, "_request_hover", return_value=mock_hover):
             hover = await client.get_hover_info("/project/src/main.py", Position(line=10, character=5))
 
+        if hover is None:
+            raise AssertionError("hover should not be None")
         assert hover.contents == "Some documentation"
         assert hover.range is None
 
@@ -252,9 +254,7 @@ class TestMoAILSPClientServerManagement:
         mock_session.language = "python"
         mock_session.initialized = True
 
-        with patch.object(
-            client, "_get_or_create_session", new_callable=AsyncMock
-        ) as mock_get_session:
+        with patch.object(client, "_get_or_create_session", new_callable=AsyncMock) as mock_get_session:
             mock_get_session.return_value = mock_session
             await client.ensure_server_running("python")
             mock_get_session.assert_called_once_with("python")
@@ -333,9 +333,7 @@ class TestMoAILSPClientGoToDefinition:
 
         with patch.object(client, "_request_definition", new_callable=AsyncMock) as mock_req:
             mock_req.return_value = mock_definition
-            locations = await client.go_to_definition(
-                "/project/src/main.py", Position(line=10, character=5)
-            )
+            locations = await client.go_to_definition("/project/src/main.py", Position(line=10, character=5))
 
         assert len(locations) == 1
         assert isinstance(locations[0], Location)
@@ -359,9 +357,7 @@ class TestMoAILSPClientGoToDefinition:
 
         with patch.object(client, "_request_definition", new_callable=AsyncMock) as mock_req:
             mock_req.return_value = mock_definitions
-            locations = await client.go_to_definition(
-                "/project/src/main.py", Position(line=10, character=5)
-            )
+            locations = await client.go_to_definition("/project/src/main.py", Position(line=10, character=5))
 
         assert len(locations) == 2
         assert all(isinstance(loc, Location) for loc in locations)
@@ -374,9 +370,7 @@ class TestMoAILSPClientGoToDefinition:
 
         with patch.object(client, "_request_definition", new_callable=AsyncMock) as mock_req:
             mock_req.return_value = []
-            locations = await client.go_to_definition(
-                "/project/src/main.py", Position(line=1, character=0)
-            )
+            locations = await client.go_to_definition("/project/src/main.py", Position(line=1, character=0))
 
         assert locations == []
 
@@ -451,14 +445,26 @@ class TestMoAILSPClientDocumentSymbols:
                     {
                         "name": "InnerClass",
                         "kind": 5,
-                        "range": {"start": {"line": 10, "character": 4}, "end": {"line": 40, "character": 4}},
-                        "selectionRange": {"start": {"line": 10, "character": 10}, "end": {"line": 10, "character": 20}},
+                        "range": {
+                            "start": {"line": 10, "character": 4},
+                            "end": {"line": 40, "character": 4},
+                        },
+                        "selectionRange": {
+                            "start": {"line": 10, "character": 10},
+                            "end": {"line": 10, "character": 20},
+                        },
                         "children": [
                             {
                                 "name": "inner_method",
                                 "kind": 6,
-                                "range": {"start": {"line": 20, "character": 8}, "end": {"line": 30, "character": 8}},
-                                "selectionRange": {"start": {"line": 20, "character": 12}, "end": {"line": 20, "character": 24}},
+                                "range": {
+                                    "start": {"line": 20, "character": 8},
+                                    "end": {"line": 30, "character": 8},
+                                },
+                                "selectionRange": {
+                                    "start": {"line": 20, "character": 12},
+                                    "end": {"line": 20, "character": 24},
+                                },
                             }
                         ],
                     }

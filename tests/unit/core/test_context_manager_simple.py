@@ -144,7 +144,7 @@ class TestCleanupTempFile:
 
             # File should be removed
             assert not os.path.exists(path)
-        except:
+        except Exception:
             if os.path.exists(path):
                 os.unlink(path)
 
@@ -158,7 +158,7 @@ class TestCleanupTempFile:
 
             # File should be removed
             assert not os.path.exists(path)
-        except:
+        except Exception:
             if os.path.exists(path):
                 os.unlink(path)
 

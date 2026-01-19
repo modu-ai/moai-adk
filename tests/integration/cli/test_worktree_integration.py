@@ -938,7 +938,8 @@ class TestWorktreeErrorHandling:
     def test_worktree_with_invalid_repo_path(self, cli_runner, worktree_root):
         """Test worktree commands with invalid repository path."""
         result = cli_runner.invoke(
-            cli, ["worktree", "new", "SPEC-ERROR-001", "--repo", "/nonexistent/path", "--worktree-root", str(worktree_root)]
+            cli,
+            ["worktree", "new", "SPEC-ERROR-001", "--repo", "/nonexistent/path", "--worktree-root", str(worktree_root)],
         )
 
         # Should fail gracefully

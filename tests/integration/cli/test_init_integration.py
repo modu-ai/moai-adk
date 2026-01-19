@@ -203,7 +203,8 @@ class TestInitReinitialization:
         # Only test reinit if first init succeeded
         if result1.exit_code == 0:
             # Modify a file to check backup
-            config_yaml = project_dir / ".moai" / "config" / "config.yaml"
+            config_yaml_path = project_dir / ".moai" / "config" / "config.yaml"
+            _ = config_yaml_path  # Mark as intentionally unused for verification
 
             # Second init (reinit)
             result2 = cli_runner.invoke(init, [str(project_dir), "--non-interactive"])

@@ -114,6 +114,8 @@ class TestMemoryCollector:
 
                 result = collector.get_memory_info(force_refresh=True)
                 # Should have collected fresh info (cache time updated)
+                if result is None:
+                    raise AssertionError("result should not be None")
                 assert result.process_rss_mb == 100.0
 
     def test_get_memory_info_cache_expired(self):
@@ -151,6 +153,8 @@ class TestMemoryCollector:
                 collector._cache_time = datetime.now() - timedelta(seconds=15)
 
                 result = collector.get_memory_info()
+                if result is None:
+                    raise AssertionError("result should not be None")
                 assert result.process_rss_mb == 200.0
 
     def test_get_display_string_process_mode(self):
@@ -333,6 +337,8 @@ class TestMemoryCollector:
         collector._cache_time = datetime.now() - timedelta(seconds=5)
 
         age = collector.get_cache_age_seconds()
+        if age is None:
+            raise AssertionError("age should not be None")
         assert age >= 5.0
         assert age < 6.0  # Should be close to 5 seconds
 
@@ -349,7 +355,7 @@ class TestModuleFunctions:
 
     def test_get_memory_display_process(self):
         """Test get_memory_display in process mode."""
-        mock_info = MemoryInfo(
+        MemoryInfo(
             process_rss_mb=128.0,
             process_vms_mb=500.0,
             system_total_mb=16000.0,

@@ -88,13 +88,13 @@ class TestDetectWorktreeRootFunction:
         """Test _detect_worktree_root returns a Path object."""
         with tempfile.TemporaryDirectory() as tmpdir:
             repo_path = Path(tmpdir)
-            result = _detect_worktree_root(repo_path)
+            result = _detect_worktree_root(repo_path, project_name="test-project")
             assert isinstance(result, Path)
 
     def test_detect_worktree_root_nonexistent_path(self):
         """Test _detect_worktree_root handles nonexistent path."""
         nonexistent = Path("/nonexistent/path/repo")
-        result = _detect_worktree_root(nonexistent)
+        result = _detect_worktree_root(nonexistent, project_name="test-project")
         assert isinstance(result, Path)
 
     @patch("moai_adk.cli.worktree.cli._find_main_repository")
@@ -107,7 +107,7 @@ class TestDetectWorktreeRootFunction:
 
             mock_find_main.return_value = main_repo
 
-            _detect_worktree_root(repo_path)
+            _detect_worktree_root(repo_path, project_name="test-project")
             mock_find_main.assert_called_once()
 
 

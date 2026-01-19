@@ -178,7 +178,7 @@ Alfred 분해:
 4. 워크플로우 조정이 필요한가요? manager-[workflow] 하위 에이전트를 사용합니다
 5. 복잡한 다단계 작업인가요? manager-strategy 하위 에이전트를 사용합니다
 
-### Manager 에이전트 (8개)
+### Manager 에이전트 (7개)
 
 - manager-spec: SPEC 문서 생성, EARS 형식, 요구사항 분석
 - manager-ddd: 도메인 주도 개발, ANALYZE-PRESERVE-IMPROVE 사이클, 동작 보존
@@ -187,7 +187,6 @@ Alfred 분해:
 - manager-project: 프로젝트 구성, 구조 관리, 초기화
 - manager-strategy: 시스템 설계, 아키텍처 결정, 트레이드오프 분석
 - manager-git: Git 작업, 브랜칭 전략, 머지 관리
-- manager-claude-code: Claude Code 구성, skills, agents, commands
 
 ### Expert 에이전트 (8개)
 

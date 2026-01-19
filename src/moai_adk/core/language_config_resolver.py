@@ -25,8 +25,11 @@ try:
     import yaml
 
     YAML_AVAILABLE = True
+    YAMLError = yaml.YAMLError
 except ImportError:
     YAML_AVAILABLE = False
+    # Define YAMLError as Exception for type checking
+    YAMLError = Exception  # type: ignore[misc,assignment]
 
 
 class LanguageConfigResolver:
@@ -268,7 +271,7 @@ class LanguageConfigResolver:
 
         except (
             json.JSONDecodeError,
-            yaml.YAMLError if YAML_AVAILABLE else Exception,
+            YAMLError,
             IOError,
             KeyError,
         ) as e:

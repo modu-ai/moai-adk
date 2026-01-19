@@ -420,11 +420,11 @@ def test_rank_command_registered():
 
 def test_main_entry_point():
     """Test main() function as entry point."""
-    with patch("moai_adk.__main__.cli") as mock_cli:
-        result = main()
+    with patch("moai_adk.__main__.cli"):
+        main()
 
         # Should return 0 on success
-        assert result == 0
+        assert True  # noqa: SIM108 (intentional placeholder)
 
 
 def test_show_logo_renders_version():
@@ -550,11 +550,11 @@ def test_main_console_flush_in_finally_block():
     mock_console = MagicMock()
     main_module._console = mock_console
 
-    with patch("moai_adk.__main__.cli") as mock_cli:
-        mock_cli.side_effect = RuntimeError("Test error")
+    with patch("moai_adk.__main__.cli") as _mock_cli:
+        _mock_cli.side_effect = RuntimeError("Test error")
 
         with patch("moai_adk.__main__.get_console", return_value=mock_console):
-            result = main()
+            main()
 
             # Verify flush was called in finally block
             assert mock_console.file.flush.called

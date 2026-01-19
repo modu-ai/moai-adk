@@ -178,7 +178,7 @@ Allowed Tools: Full access (all tools)
 4. Workflow coordination needed? Use the manager-[workflow] subagent
 5. Complex multi-step tasks? Use the manager-strategy subagent
 
-### Manager Agents (8)
+### Manager Agents (7)
 
 - manager-spec: SPEC document creation, EARS format, requirements analysis
 - manager-ddd: Domain-driven development, ANALYZE-PRESERVE-IMPROVE cycle, behavior preservation
@@ -187,7 +187,6 @@ Allowed Tools: Full access (all tools)
 - manager-project: Project configuration, structure management, initialization
 - manager-strategy: System design, architecture decisions, trade-off analysis
 - manager-git: Git operations, branching strategy, merge management
-- manager-claude-code: Claude Code configuration, skills, agents, commands
 
 ### Expert Agents (8)
 

@@ -107,7 +107,7 @@ class TestDetectWorktreeRoot:
             with patch.object(Path, "exists", return_value=True):
                 with patch.object(Path, "iterdir", return_value=[]):
                     # Act
-                    _detect_worktree_root(Path("/test/repo"))
+                    _detect_worktree_root(Path("/test/repo"), project_name="test-project")
 
                     # Assert - would find moai directory if it existed
                     # The actual logic is complex due to path operations
@@ -125,7 +125,7 @@ class TestDetectWorktreeRoot:
             with patch.object(Path, "exists", return_value=False):
                 # Act - this function has complex logic, we test the interface
                 try:
-                    result = _detect_worktree_root(repo_path)
+                    result = _detect_worktree_root(repo_path, project_name="test-project")
                     # Result should be a Path
                     assert isinstance(result, Path)
                 except Exception:
@@ -254,8 +254,8 @@ class TestWorktreeManagerIntegration:
         # Act
         get_manager(repo_path=repo_path, worktree_root=None)
 
-        # Assert
-        mock_detect.assert_called_once_with(repo_path)
+        # Assert - project_name is auto-detected from repo_path.name ('repo')
+        mock_detect.assert_called_once_with(repo_path, "repo")
         mock_manager_class.assert_called_once()
         call_kwargs = mock_manager_class.call_args[1]
         assert call_kwargs["worktree_root"] == detected_root
@@ -279,7 +279,7 @@ class TestDetectWorktreeRootStrategies:
                 mock_open.return_value.__enter__.return_value.read.return_value = "{}"
 
                 try:
-                    result = _detect_worktree_root(Path("/test/repo"))
+                    result = _detect_worktree_root(Path("/test/repo"), project_name="test-project")
                     # Function returns a Path
                     assert isinstance(result, Path)
                 except Exception:

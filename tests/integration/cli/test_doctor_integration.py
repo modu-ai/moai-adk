@@ -77,6 +77,7 @@ class TestDoctorCheckCommands:
 
     def test_doctor_check_commands_with_valid_commands(self, cli_runner, temp_moai_commands_dir):
         """Test --check-commands with valid command files."""
+        # temp_moai_commands_dir fixture provides command files for testing
         result = cli_runner.invoke(doctor, ["--check-commands"])
 
         # Should execute
@@ -87,6 +88,7 @@ class TestDoctorCheckCommands:
 
     def test_doctor_check_commands_counts_files(self, cli_runner, temp_moai_commands_dir):
         """Test that --check-commands counts command files."""
+        # temp_moai_commands_dir fixture provides command files for testing
         result = cli_runner.invoke(doctor, ["--check-commands"])
 
         # Should show counts
@@ -135,7 +137,7 @@ class TestDoctorExport:
         """Test that exported JSON contains diagnostic data."""
         export_file = tmp_path / "doctor-diagnostics.json"
 
-        result = cli_runner.invoke(doctor, ["--export", str(export_file)])
+        _ = cli_runner.invoke(doctor, ["--export", str(export_file)])
 
         if export_file.exists():
             content = export_file.read_text(encoding="utf-8")
@@ -151,7 +153,7 @@ class TestDoctorExport:
         """Test --export with -v includes language data."""
         export_file = tmp_path / "doctor-verbose.json"
 
-        result = cli_runner.invoke(doctor, ["-v", "--export", str(export_file)])
+        cli_runner.invoke(doctor, ["-v", "--export", str(export_file)])
 
         if export_file.exists():
             content = export_file.read_text(encoding="utf-8")

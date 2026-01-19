@@ -30,6 +30,8 @@ class TestMoAILoopControllerInit:
 
     def test_create_controller_without_storage(self, tmp_path: Path):
         """MoAILoopController should create default storage if not provided."""
+        # tmp_path is intentionally unused - test parameter for fixture consistency
+        _ = tmp_path
         with patch("moai_adk.loop.controller.LoopStorage") as mock_storage_class:
             mock_storage_class.return_value = MagicMock()
             controller = MoAILoopController()
@@ -400,7 +402,7 @@ class TestMoAILoopControllerMaxIterations:
     def test_cannot_continue_at_max_iterations(self, tmp_path: Path):
         """MoAILoopController should enforce max iteration limit."""
         storage = LoopStorage(storage_dir=str(tmp_path / ".moai" / "loop"))
-        controller = MoAILoopController(storage=storage)
+        MoAILoopController(storage=storage)
 
         now = datetime.now(timezone.utc)
         state = LoopState(
@@ -487,6 +489,8 @@ class TestMoAILoopControllerIntegration:
 
         # 3. Check completion
         updated_state = controller.get_loop_status(state.loop_id)
+        if updated_state is None:
+            raise AssertionError("updated_state should not be None")
         completion = controller.check_completion(updated_state)
 
         # Should be complete with no issues

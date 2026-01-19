@@ -921,7 +921,7 @@ class TestConvenienceFunctions:
             result = await schedule_session_start_hooks(context)
             # Function should work even if no hooks registered
             assert isinstance(result, SchedulingResult)
-        except:
+        except Exception:
             # If it fails due to missing hooks, that's okay - we're testing it runs
             pass
 
@@ -941,7 +941,7 @@ class TestConvenienceFunctions:
             result = await schedule_pre_tool_hooks(context)
             # Function should work even if no hooks registered
             assert isinstance(result, SchedulingResult)
-        except:
+        except Exception:
             # If it fails due to missing hooks, that's okay - we're testing it runs
             pass
 

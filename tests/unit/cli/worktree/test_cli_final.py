@@ -50,7 +50,7 @@ class TestDetectWorktreeRoot:
             mock_open.return_value.__enter__.return_value.read.return_value = "{}"
 
             # Act
-            result = _detect_worktree_root(Path("/test/repo"))
+            result = _detect_worktree_root(Path("/test/repo"), project_name="test-project")
 
             # Assert - Should return a path
             assert result is not None
@@ -65,7 +65,7 @@ class TestDetectWorktreeRoot:
         mock_path_class.home = MagicMock(return_value=home)
 
         # Act
-        result = _detect_worktree_root(Path("/test/repo"))
+        result = _detect_worktree_root(Path("/test/repo"), project_name="test-project")
 
         # Assert - Should return some valid path
         assert result is not None
@@ -80,7 +80,7 @@ class TestDetectWorktreeRoot:
         mock_path_class.home = MagicMock(return_value=Path("/home/user"))
 
         # Act
-        result = _detect_worktree_root(Path("/test/worktree/path"))
+        result = _detect_worktree_root(Path("/test/worktree/path"), project_name="test-project")
 
         # Assert
         assert result is not None
@@ -477,7 +477,7 @@ class TestDetectWorktreeRootWithExistingWorktrees:
         mock_path_class.home = MagicMock(return_value=home)
 
         # Act
-        result = _detect_worktree_root(Path("/test/repo"))
+        result = _detect_worktree_root(Path("/test/repo"), project_name="test-project")
 
         # Assert
         assert result is not None

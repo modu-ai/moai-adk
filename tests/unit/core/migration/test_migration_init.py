@@ -4,7 +4,6 @@ Tests cover module exports and imports with 100% coverage.
 """
 
 
-
 class TestModuleImports:
     """Test module can import all expected classes."""
 
@@ -201,7 +200,7 @@ class TestModuleEdgeCases:
         """Test importing non-existent export raises ImportError."""
         # Use a try/except to verify the import error behavior
         try:
-            from moai_adk.core.migration import NonExistentClass  # type: ignore
+            from moai_adk.core.migration import NonExistentClass  # type: ignore # noqa: F401
 
             assert False, "Expected ImportError but import succeeded"
         except ImportError:

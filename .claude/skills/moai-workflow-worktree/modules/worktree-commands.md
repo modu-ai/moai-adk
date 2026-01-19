@@ -234,12 +234,13 @@ Actions:
 - edit: Open configuration in editor
 
 Configuration Keys:
-- worktree_root: Root directory for worktrees
+- worktree_root: Root directory for worktrees (default: ~/.moai/worktrees/{project-name})
 - auto_sync: Enable automatic sync (true/false)
 - cleanup_merged: Auto-cleanup merged worktrees (true/false)
 - default_base: Default base branch (main/develop)
 - template_dir: Directory for worktree templates
 - sync_strategy: Sync strategy (merge, rebase, squash)
+- detected_legacy_path: Path to detected legacy registry (read-only)
 
 Examples:
 - List all: moai-worktree config list

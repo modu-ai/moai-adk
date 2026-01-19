@@ -123,13 +123,6 @@ manager-project:
     ja: ["プロジェクトセットアップ", "初期化", ".moai", "プロジェクト構成", "スキャフォールド"]
     zh: ["项目设置", "初始化", ".moai", "项目配置", "脚手架"]
 
-manager-claude-code:
-  triggers:
-    en: ["Claude Code", "configuration", "settings.json", "MCP", "agent orchestration"]
-    ko: ["Claude Code", "설정", "settings.json", "MCP", "에이전트오케스트레이션"]
-    ja: ["Claude Code", "設定", "settings.json", "MCP", "エージェントオーケストレーション"]
-    zh: ["Claude Code", "配置", "settings.json", "MCP", "代理编排"]
-
 # ============================================================================
 # BUILDER AGENTS - Creation and generation
 # ============================================================================

@@ -184,7 +184,7 @@ class TestSavePhaseResult:
                         with patch("moai_adk.core.context_manager.os.fdopen", create=True):
                             try:
                                 save_phase_result(data, target_path)
-                            except:
+                            except Exception:
                                 pass
                             # Verify mkstemp was called
                             assert mock_mkstemp.called
@@ -451,6 +451,7 @@ class TestContextManager:
 
             loaded = cm.load_latest_phase()
 
+            assert loaded is not None
             assert loaded["phase"] == "2-run"
 
     def test_load_latest_phase_empty_dir(self):

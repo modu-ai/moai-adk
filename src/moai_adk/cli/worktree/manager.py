@@ -85,7 +85,14 @@ class WorktreeManager:
             branch_name = f"feature/{spec_id}"
 
         # Create worktree path with project_name namespace
-        worktree_path = self.worktree_root / self.project_name / spec_id
+        # Check if worktree_root already contains project_name to avoid duplication
+        if self.project_name in self.worktree_root.parts:
+            # worktree_root already includes project_name (e.g., ~/.moai/worktrees/MoAI-ADK)
+            worktree_path = self.worktree_root / spec_id
+        else:
+            # Legacy compatibility: worktree_root does not include project_name
+            # Add project_name to path (e.g., {repo}/.moai/worktrees/MoAI-ADK)
+            worktree_path = self.worktree_root / self.project_name / spec_id
 
         try:
             # Create parent directory if needed (including project_name namespace)

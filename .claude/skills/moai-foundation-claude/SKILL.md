@@ -60,7 +60,6 @@ triggers:
     - "builder-command"
     - "builder-skill"
     - "builder-plugin"
-    - "manager-claude-code"
   phases:
     - "plan"
     - "run"

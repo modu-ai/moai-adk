@@ -1063,7 +1063,6 @@ description: "Generate usage documentation"
 - builder-agent - Create new agents for commands
 - builder-skill - Create new skills for commands
 - manager-quality - Validate command quality
-- manager-claude-code - Settings and configuration validation
 
 ### Downstream Agents (builder-command calls)
 

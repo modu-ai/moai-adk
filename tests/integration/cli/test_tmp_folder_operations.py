@@ -130,7 +130,7 @@ class TestTmpInitOperations:
             config_yaml = tmp_dir_path / ".moai" / "config" / "config.yaml"
             if config_yaml.exists():
                 with open(config_yaml, "r", encoding="utf-8") as f:
-                    original_content = f.read()
+                    f.read()  # Read file content
 
                 # Second init (reinit)
                 result2 = cli_runner.invoke(cli, ["init", str(tmp_dir_path), "--non-interactive"])
@@ -147,7 +147,7 @@ class TestTmpInitOperations:
     def test_init_in_tmp_cleanup_after_test(self, cli_runner, tmp_dir_path):
         """Test that tmp directory is cleaned up after test."""
         # Run init
-        result = cli_runner.invoke(cli, ["init", str(tmp_dir_path), "--non-interactive"])
+        _ = cli_runner.invoke(cli, ["init", str(tmp_dir_path), "--non-interactive"])
 
         # Directory should exist during test
         assert tmp_dir_path.exists()
@@ -284,6 +284,7 @@ class TestTmpWorkflows:
     def test_init_then_status_in_tmp(self, cli_runner, tmp_dir_path):
         """Test init followed by status command in tmp."""
         import os
+
         # Initialize
         init_result = cli_runner.invoke(cli, ["init", str(tmp_dir_path), "--non-interactive"])
 
@@ -301,6 +302,7 @@ class TestTmpWorkflows:
     def test_init_then_doctor_in_tmp(self, cli_runner, tmp_dir_path):
         """Test init followed by doctor command in tmp."""
         import os
+
         # Initialize
         init_result = cli_runner.invoke(cli, ["init", str(tmp_dir_path), "--non-interactive"])
 

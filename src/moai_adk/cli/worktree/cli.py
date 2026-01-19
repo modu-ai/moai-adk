@@ -52,25 +52,27 @@ def get_manager(
         if repo_path is None:
             repo_path = Path.cwd()
 
-    # 2. Auto-detect worktree root if not specified
-    if worktree_root is None:
-        worktree_root = _detect_worktree_root(repo_path)
-
-    # 3. Auto-detect project_name if not specified
+    # 2. Auto-detect project_name if not specified (must be before worktree_root detection)
     if project_name is None:
-        project_name = repo_path.name
+        # Type assertion: repo_path is always a valid Path at this point
+        project_name = str(repo_path.name) if repo_path.name else "default-project"
+
+    # 3. Auto-detect worktree root if not specified
+    if worktree_root is None:
+        worktree_root = _detect_worktree_root(repo_path, project_name)
 
     return WorktreeManager(repo_path=repo_path, worktree_root=worktree_root, project_name=project_name)
 
 
-def _detect_worktree_root(repo_path: Path) -> Path:
+def _detect_worktree_root(repo_path: Path, project_name: str) -> Path:
     """Auto-detect the most appropriate worktree root directory.
 
-    The worktree root is located inside the project's .moai directory:
-    {repo_path}/.moai/worktrees/{project-name}/{SPEC-ID}
+    The worktree root is located in the user's home directory:
+    ~/.moai/worktrees/{project-name}/{SPEC-ID}
 
     Args:
         repo_path: Path to the Git repository.
+        project_name: Project name for namespace organization.
 
     Returns:
         Detected worktree root path.
@@ -78,10 +80,32 @@ def _detect_worktree_root(repo_path: Path) -> Path:
     # Special handling: if we're in a worktree, find the main repo
     main_repo_path = _find_main_repository(repo_path)
 
-    # Priority 1: Project-local .moai/worktrees (NEW - highest priority)
-    project_local_root = main_repo_path / ".moai" / "worktrees"
+    # Priority 1: New default ~/.moai/worktrees/{project-name}
+    default_root = Path.home() / ".moai" / "worktrees" / project_name
 
-    # Check if project-local registry exists
+    # Check for existing registry in new location
+    default_registry = default_root / ".moai-worktree-registry.json"
+    if default_registry.exists():
+        try:
+            with open(default_registry, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                if content and content != "{}":
+                    return default_root
+        except Exception:
+            pass
+
+    # Check if there are existing worktrees in new location
+    if default_root.exists():
+        try:
+            for item in default_root.iterdir():
+                if item.is_dir() and (item / ".git").exists():
+                    return default_root
+        except Exception:
+            pass
+
+    # Priority 2: Legacy locations (for backward compatibility)
+    # Check project-local .moai/worktrees first
+    project_local_root = main_repo_path / ".moai" / "worktrees"
     project_registry = project_local_root / ".moai-worktree-registry.json"
     if project_registry.exists():
         try:
@@ -106,7 +130,7 @@ def _detect_worktree_root(repo_path: Path) -> Path:
         except Exception:
             pass
 
-    # Priority 2: Legacy locations (for backward compatibility)
+    # Priority 3: Other legacy locations
     # Note: Do NOT include paths with project name (main_repo_path.name)
     # as manager.py adds project_name to worktree_root, causing duplication
     # See: https://github.com/modu-ai/moai-adk/issues/270
@@ -137,8 +161,8 @@ def _detect_worktree_root(repo_path: Path) -> Path:
             except Exception:
                 pass
 
-    # Default: Use project-local .moai/worktrees (NEW default)
-    return project_local_root
+    # Default: Use new ~/.moai/worktrees/{project-name}
+    return default_root
 
 
 def _find_main_repository(start_path: Path) -> Path:

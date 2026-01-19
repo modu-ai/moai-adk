@@ -403,7 +403,7 @@ class TestShowPostUpdateGuidance:
         _show_post_update_guidance(backup_path)
 
         # Assert
-        captured = capsys.readouterr()
+        capsys.readouterr()
         # Should display guidance about CLAUDE.local.md
         # Note: Actual output verification depends on implementation
 
@@ -419,7 +419,7 @@ class TestShowPostUpdateGuidance:
         _show_post_update_guidance(backup_path)
 
         # Assert - CLAUDE.local.md may be created
-        local_file = project_path / "CLAUDE.local.md"
+        project_path / "CLAUDE.local.md"
         # File may or may not exist depending on implementation
 
 
@@ -703,7 +703,7 @@ class TestUpdateCommandFlagCombinations:
                 mock_prompt.return_value = {"language": {"language": {"conversation_language": "en"}}}
 
                 # Act
-                result = runner.invoke(update, ["--config"])
+                _ = runner.invoke(update, ["--config"])
 
                 # Assert
                 # Should call prompt setup

@@ -295,7 +295,7 @@ Core MoAI Commands:
 
 ### Available Agents Quick Reference
 
-Manager Agents (8):
+Manager Agents (7):
 - manager-git: Git workflow and branch management
 - manager-spec: SPEC writing with EARS format
 - manager-ddd: DDD ANALYZE-PRESERVE-IMPROVE cycle
@@ -303,7 +303,6 @@ Manager Agents (8):
 - manager-quality: TRUST 5 validation
 - manager-project: Project initialization
 - manager-strategy: Execution strategy planning
-- manager-claude-code: Claude Code integration
 
 Expert Agents (8):
 - expert-backend: API design, database, authentication

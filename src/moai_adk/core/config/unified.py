@@ -44,12 +44,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
-try:
-    import yaml
-
-    YAML_AVAILABLE = True
-except ImportError:
-    YAML_AVAILABLE = False
+import yaml  # PyYAML is required for section-based config
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +153,7 @@ class UnifiedConfigManager:
 
         except (
             json.JSONDecodeError,
-            yaml.YAMLError if YAML_AVAILABLE else Exception,
+            YAMLError,
             OSError,
             UnicodeDecodeError,
         ) as e:

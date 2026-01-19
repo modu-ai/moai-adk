@@ -178,7 +178,7 @@ Alfred 分解：
 4. 需要工作流协调？使用 manager-[workflow] 子代理
 5. 复杂的多步骤任务？使用 manager-strategy 子代理
 
-### Manager 代理（8 个）
+### Manager 代理（7 个）
 
 - manager-spec：SPEC 文档创建、EARS 格式、需求分析
 - manager-ddd：领域驱动开发、ANALYZE-PRESERVE-IMPROVE 循环、行为保存
@@ -187,7 +187,6 @@ Alfred 分解：
 - manager-project：项目配置、结构管理、初始化
 - manager-strategy：系统设计、架构决策、权衡分析
 - manager-git：Git 操作、分支策略、合并管理
-- manager-claude-code：Claude Code 配置、技能、代理、命令
 
 ### Expert 代理（8 个）
 

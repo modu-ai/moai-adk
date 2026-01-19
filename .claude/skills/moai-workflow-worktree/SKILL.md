@@ -85,7 +85,44 @@ The registry file stores worktree metadata in JSON format. Each worktree entry c
 
 File Structure:
 
-The worktree system creates a dedicated directory structure inside the project's .moai directory. At the worktree root ({repo}/.moai/worktrees/{ProjectName}/), you will find the central registry JSON file and individual directories for each SPEC. Each SPEC directory contains a .git file for worktree metadata and a complete copy of all project files.
+The worktree system creates a dedicated directory structure for each project. At the worktree root (~/.moai/worktrees/{project-name}/), you will find the central registry JSON file and individual directories for each SPEC. Each SPEC directory contains a .git file for worktree metadata and a complete copy of all project files.
+
+Example structure:
+```
+~/.moai/worktrees/
+├── {project-name}/
+│   ├── {SPEC-ID}/
+│   │   ├── .git (worktree link)
+│   │   └── (project files)
+│   └── .moai-worktree-registry.json
+```
+
+Legacy Compatibility:
+
+The system automatically detects and supports existing worktree installations at these legacy paths:
+- {repo}/.moai/worktrees/ (previous default)
+- ~/moai/worktrees/ (early version location)
+- ~/worktrees/ (original location)
+
+Path Detection:
+
+When you run worktree commands, the system automatically:
+1. Checks for existing registry files in legacy locations
+2. Uses the detected path for the current session
+3. Migrates new worktrees to the new default path (~/.moai/worktrees/{project-name}/)
+4. Maintains full compatibility with existing worktrees at legacy paths
+
+Optional Migration:
+
+To migrate existing worktrees to the new path structure, use the migration utility:
+```
+moai-wt migrate --from ~/moai/worktrees --to ~/.moai/worktrees/{project-name}
+```
+
+For detailed path configuration, run:
+```
+moai-wt config get worktree_root
+```
 
 Detailed Reference: Refer to Worktree Management Module at modules/worktree-management.md
 
