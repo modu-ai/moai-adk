@@ -1,3 +1,113 @@
+# v1.5.4 - SPEC Validation Guidelines Enhancement (2026-01-21)
+
+## Summary
+
+This patch release enhances SPEC creation guidelines with comprehensive validation rules, classification logic, and migration guides to prevent common SPEC organization issues. Also includes a minor bug fix for missing import in rank command.
+
+## Added
+
+- **docs(spec)**: Add SPEC validation and classification guidelines (f5115252)
+  - Added PHASE 1.5 Pre-Creation Validation Gate to `1-plan.md`
+    - SPEC Type Classification (SPEC vs Report vs Documentation)
+    - Pre-Creation Validation Checklist (4 mandatory checks)
+    - Allowed Domain Names (6 categories, 25+ domains)
+    - Validation Failure Responses
+  - Added SPEC vs Report Classification to `manager-spec.md`
+    - Document Type Decision Matrix
+    - Classification Algorithm (3-step process)
+    - Report Creation Guidelines
+    - Flat File Rejection (Enhanced)
+  - Added SPEC Scope and Migration Guide to `SKILL.md`
+    - What Belongs / Does NOT Belong in `.moai/specs/`
+    - Migration scenarios for legacy files (4 scenarios)
+    - Validation script reference
+  - Files: `.claude/commands/moai/1-plan.md`, `.claude/agents/moai/manager-spec.md`, `.claude/skills/moai-workflow-spec/SKILL.md`
+  - Package templates updated in `src/moai_adk/templates/.claude/`
+
+## Fixed
+
+- **fix(rank)**: Add missing import for `_safe_run_subprocess` (889a9f31)
+  - Added import: `from moai_adk.core.claude_integration import _safe_run_subprocess`
+  - Resolves F821 undefined name error
+  - File: `src/moai_adk/cli/commands/rank.py`
+
+## Quality
+
+- Smoke tests: 6/6 passed (100% pass rate)
+- Ruff: All checks passed (1 issue auto-fixed)
+- Ruff format: 215 files unchanged
+- Mypy: Success (no issues found in 169 source files)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.5.4 - SPEC 검증 가이드라인 강화 (2026-01-21)
+
+## 요약
+
+이 패치 릴리스는 SPEC 생성 가이드라인을 포괄적인 검증 규칙, 분류 로직, 마이그레이션 가이드로 강화하여 일반적인 SPEC 조직 문제를 방지합니다. rank 명령어의 누락된 import에 대한 소규모 버그 수정도 포함됩니다.
+
+## 추가됨
+
+- **docs(spec)**: SPEC 검증 및 분류 가이드라인 추가 (f5115252)
+  - `1-plan.md`에 PHASE 1.5 Pre-Creation Validation Gate 추가
+    - SPEC 타입 분류 (SPEC vs Report vs Documentation)
+    - Pre-Creation 검증 체크리스트 (4가지 필수 검사)
+    - 허용된 도메인 이름 (6개 카테고리, 25개 이상 도메인)
+    - 검증 실패 응답
+  - `manager-spec.md`에 SPEC vs Report 분류 추가
+    - 문서 타입 의사결정 매트릭스
+    - 분류 알고리즘 (3단계 프로세스)
+    - Report 생성 가이드라인
+    - 플랫 파일 거부 (강화됨)
+  - `SKILL.md`에 SPEC 범위 및 마이그레이션 가이드 추가
+    - `.moai/specs/`에 포함되어야 할/포함되지 말아야 할 항목
+    - 레거시 파일을 위한 마이그레이션 시나리오 (4가지 시나리오)
+    - 검증 스크립트 참조
+  - 파일: `.claude/commands/moai/1-plan.md`, `.claude/agents/moai/manager-spec.md`, `.claude/skills/moai-workflow-spec/SKILL.md`
+  - `src/moai_adk/templates/.claude/`의 패키지 템플릿 업데이트됨
+
+## 수정됨
+
+- **fix(rank)**: `_safe_run_subprocess`에 대한 누락된 import 추가 (889a9f31)
+  - import 추가: `from moai_adk.core.claude_integration import _safe_run_subprocess`
+  - F821 정의되지 않은 이름 오류 해결
+  - 파일: `src/moai_adk/cli/commands/rank.py`
+
+## 품질
+
+- Smoke 테스트: 6/6 통과 (100% 통과율)
+- Ruff: 모든 검사 통과 (1개 이슈 자동 수정됨)
+- Ruff format: 215개 파일 변경 없음
+- Mypy: 성공 (169개 소스 파일에서 문제 없음)
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.5.3 - Memory Leak Fixes and Critical Bug Fixes (2026-01-20)
 
 ## Summary
