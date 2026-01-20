@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+from .claude_integration import _safe_run_subprocess
+
 
 class IssueType(Enum):
     """Supported GitHub issue types."""
@@ -31,7 +33,7 @@ class IssuePriority(Enum):
 
 
 @dataclass
-class IssueConfig:
+class IssueConfig:  # type: ignore[misc]
     """Configuration for issue creation."""
 
     issue_type: IssueType

@@ -69,7 +69,6 @@ def register(no_sync: bool, background_sync: bool) -> None:
     Opens your browser to authorize with GitHub.
     Your API key will be stored securely in ~/.moai/rank/credentials.json
     """
-    import subprocess
     import sys
 
     from moai_adk.rank.auth import OAuthHandler

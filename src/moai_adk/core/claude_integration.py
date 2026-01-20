@@ -8,15 +8,17 @@ and multi-language support for commands, agents, and output styles.
 import json
 import logging
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from .language_config import get_language_info
 from .template_engine import TemplateEngine
 
 logger = logging.getLogger(__name__)
+
+# Constants for subprocess output limits
+MAX_LINES = 1000  # Default maximum lines for output truncation
 
 
 def _safe_run_subprocess(
@@ -55,26 +57,27 @@ def _safe_run_subprocess(
         result = subprocess.run(cmd, capture_output=capture_output, timeout=timeout, cwd=cwd, **kwargs)
 
         if capture_output and result.stdout:
-            result.stdout = _truncate_output(result.stdout, max_output_size, "stdout")
+            result.stdout = _truncate_output(result.stdout, max_output_size, MAX_LINES, "stdout")
 
         if capture_output and result.stderr:
-            result.stderr = _truncate_output(result.stderr, max_output_size, "stderr")
+            result.stderr = _truncate_output(result.stderr, max_output_size, MAX_LINES, "stderr")
 
         return result
 
     except subprocess.TimeoutExpired as e:
         logger.warning(f"Subprocess timeout after {timeout}s: {cmd}")
         if e.stderr:
-            e.stderr = _truncate_output(e.stderr, max_output_size, "stderr")
+            e.stderr = _truncate_output(str(e.stderr) if e.stderr else "", max_output_size, MAX_LINES, "stderr")  # type: ignore[assignment]
         raise
 
 
-def _truncate_output(output: str, max_size: int, source: str) -> str:
+def _truncate_output(output: str, max_size: int, max_lines: int = 1000, source: str = "output") -> str:
     """Truncate output string if it exceeds max size.
 
     Args:
         output: Output string to truncate
         max_size: Maximum allowed size in bytes
+        max_lines: Maximum allowed lines (default: 1000)
         source: Source name for logging (e.g., "stdout", "stderr")
 
     Returns:
@@ -85,16 +88,14 @@ def _truncate_output(output: str, max_size: int, source: str) -> str:
     except UnicodeEncodeError:
         encoded_size = output.encode("utf-8", errors="replace")
 
-    if len(encoded_size) > max_size:
+    if len(encoded_size) > max_size or output.count("\n") >= max_lines:
         truncated = encoded_size[:max_size].decode("utf-8", errors="replace")
-        warning = f"\n\n[WARNING: Output from {source} truncated to {max_size} bytes]"
+        line_count = output.count("\n") + 1
+        warning = f"\n\n[WARNING: Output from {source} truncated to {max_size} bytes ({line_count} lines)]"
         logger.warning(f"Output from {source} truncated (size: {len(encoded_size)}, limit: {max_size})")
         return truncated + warning
 
     return output
-
-
-
 
 
 class ClaudeCLIIntegration:
@@ -182,7 +183,9 @@ class ClaudeCLIIntegration:
             cmd_parts.append(processed_command)
 
             # Execute Claude CLI
-            result = subprocess.run(cmd_parts, capture_output=True, text=True, encoding="utf-8")
+            result = _safe_run_subprocess(
+                cmd_parts, timeout=60, max_output_size=1024 * 1024, max_lines=1000, capture_output=True
+            )
 
             # Cleanup settings file
             try:
@@ -423,10 +426,11 @@ Translation:"""
                     encoding="utf-8",
                 )
 
-                stdout_lines = []
-                stderr_lines = []
+                stdout_lines: List[str] = []
+                stderr_lines: List[str] = []
 
                 # Stream output in real-time
+                max_lines = 1000  # Limit to prevent memory exhaustion
                 while True:
                     stdout_line = process.stdout.readline()
                     stderr_line = process.stderr.readline()
@@ -435,17 +439,22 @@ Translation:"""
                         break
 
                     if stdout_line:
-                        stdout_lines.append(stdout_line.strip())
-                        # You can process each line here for real-time handling
+                        if len(stdout_lines) < max_lines:
+                            stdout_lines.append(stdout_line.strip())
+                        # Truncate if limit reached
 
                     if stderr_line:
-                        stderr_lines.append(stderr_line.strip())
+                        if len(stderr_lines) < max_lines:
+                            stderr_lines.append(stderr_line.strip())
+                        # Truncate if limit reached
 
                 returncode = process.poll()
 
             else:
                 # Non-streaming execution
-                result = subprocess.run(cmd_parts, capture_output=True, text=True, encoding="utf-8")
+                result = _safe_run_subprocess(
+                    cmd_parts, timeout=60, max_output_size=1024 * 1024, max_lines=1000, capture_output=True
+                )
 
                 stdout_lines = result.stdout.strip().split("\n") if result.stdout else []
                 stderr_lines = result.stderr.strip().split("\n") if result.stderr else []
