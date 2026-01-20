@@ -128,6 +128,7 @@ Phase 1B: Specialized Analysis
 ## Agent Invocation Patterns (CLAUDE.md Compliance)
 
 [HARD] AGENT DELEGATION MANDATE:
+
 - ALL planning tasks MUST be delegated to specialized agents (Explore, manager-spec, manager-git)
 - NEVER execute planning or SPEC creation directly, even after auto compact
 - WHY: Specialized agents have domain expertise for EARS format, Git workflow, and codebase analysis
@@ -510,6 +511,199 @@ IF user selected "Cancel":
 
 1. Print to user: "Plan discarded. No files created."
 2. End command execution (stop here)
+
+---
+
+## PHASE 1.5: Pre-Creation Validation Gate (NEW)
+
+This phase executes BEFORE PHASE 2 to prevent common SPEC creation errors.
+
+### Step 1.5.1: SPEC Type Classification
+
+Before creating any document, classify the requested content type:
+
+[HARD] Document Type Classification Requirement:
+
+Requirement: Determine if the request is for a SPEC, Report, or Documentation
+WHY: Misclassified documents cause organizational chaos and discovery failures
+IMPACT: Reports in SPEC directories break automated SPEC scanning and workflow integration
+
+Classification Algorithm:
+
+Step 1: Detect Keywords in User Request
+
+Report Keywords (route to .moai/reports/):
+
+- "report", "analysis", "assessment", "audit", "review", "evaluation"
+- "retrospective", "post-mortem", "findings", "recommendations"
+- "summary", "overview", "status", "progress"
+- Korean: "보고서", "분석", "평가", "리뷰", "검토", "요약", "현황"
+- Japanese: "レポート", "分析", "評価", "レビュー", "概要"
+
+SPEC Keywords (route to .moai/specs/):
+
+- "feature", "requirement", "implementation", "functionality"
+- "user story", "acceptance criteria", "EARS", "specification"
+- "add", "create", "implement", "build", "develop"
+- Korean: "기능", "요구사항", "구현", "스펙", "개발"
+- Japanese: "機能", "要件", "実装", "スペック", "開発"
+
+Documentation Keywords (route to .moai/docs/):
+
+- "documentation", "guide", "manual", "reference", "tutorial"
+- "README", "API docs", "changelog"
+- Korean: "문서", "가이드", "매뉴얼", "참조"
+- Japanese: "ドキュメント", "ガイド", "マニュアル"
+
+Step 2: Apply Classification Rules
+
+IF report_keywords detected AND NOT spec_keywords:
+
+- Route to: `.moai/reports/{REPORT-TYPE}/`
+- Example: `.moai/reports/security-audit-2025-01/`
+- DO NOT create in .moai/specs/
+
+ELSE IF documentation_keywords detected AND NOT spec_keywords:
+
+- Route to: `.moai/docs/`
+- Example: `.moai/docs/api-reference.md`
+- DO NOT create in .moai/specs/
+
+ELSE:
+
+- Route to: `.moai/specs/SPEC-{DOMAIN}-{NUMBER}/`
+- Continue to Step 1.5.2
+
+### Step 1.5.2: Pre-Creation Validation Checklist
+
+[HARD] Pre-Creation Validation Requirement:
+
+Before creating ANY SPEC directory or file, complete ALL of these checks:
+
+Check 1: ID Format Validation
+
+- Pattern: `SPEC-{DOMAIN}-{NUMBER}`
+- DOMAIN: Uppercase letters only (AUTH, API, UI, DB, etc.)
+- NUMBER: 3-digit zero-padded number (001, 002, etc.)
+- Valid: `SPEC-AUTH-001`, `SPEC-API-002`, `SPEC-UI-003`
+- Invalid: `SPEC-001`, `AUTH-001`, `SPEC-auth-001`, `SPEC-AUTH-1`
+- WHY: Consistent format enables automated scanning and sorting
+- IMPACT: Invalid format breaks tooling and discovery
+
+Check 2: Domain Name Validation
+
+- Use ONLY domains from the Allowed Domain Names list (Step 1.5.3)
+- Maximum 2 domains in composite names (e.g., `UPDATE-REFACTOR`)
+- WHY: Standardized domains enable cross-project consistency
+- IMPACT: Random domains cause categorization failures
+
+Check 3: ID Uniqueness Verification
+
+- Execute: `find .moai/specs -name "SPEC-{DOMAIN}-{NUMBER}" -type d`
+- If found: Increment number (001 → 002) or modify domain
+- WHY: Duplicate IDs cause version conflicts
+- IMPACT: Duplicate SPECs create implementation ambiguity
+
+Check 4: Directory Structure Enforcement
+
+- MUST create directory: `.moai/specs/SPEC-{DOMAIN}-{NUMBER}/`
+- MUST create all 3 files: `spec.md`, `plan.md`, `acceptance.md`
+- NEVER create flat files like `.moai/specs/SPEC-AUTH-001.md`
+- WHY: Directory structure enables multi-file organization
+- IMPACT: Flat files break SPEC discovery and metadata storage
+
+Validation Output:
+
+- all_checks_passed: Boolean (true only if ALL 4 checks pass)
+- failed_checks: Array of check numbers that failed
+- recommendation: Action to resolve failures
+
+### Step 1.5.3: Allowed Domain Names
+
+[HARD] Domain Name Restriction:
+
+SPEC domains MUST be selected from this approved list. Custom domains require justification.
+
+Authentication & Authorization:
+
+- AUTH: User authentication (login, logout, session)
+- AUTHZ: Authorization and permissions
+- SSO: Single sign-on integration
+- MFA: Multi-factor authentication
+
+API & Backend:
+
+- API: REST/GraphQL endpoints
+- BACKEND: Server-side logic
+- SERVICE: Microservice implementation
+- WEBHOOK: Webhook handlers
+
+Frontend & UI:
+
+- UI: User interface components
+- FRONTEND: Client-side logic
+- COMPONENT: Reusable UI components
+- PAGE: Page-level features
+
+Data & Database:
+
+- DB: Database schema changes
+- DATA: Data processing
+- MIGRATION: Schema migrations
+- CACHE: Caching implementation
+
+Infrastructure & DevOps:
+
+- INFRA: Infrastructure changes
+- DEVOPS: CI/CD and deployment
+- MONITOR: Monitoring and logging
+- SECURITY: Security improvements
+
+General Development:
+
+- REFACTOR: Code refactoring
+- FIX: Bug fixes
+- UPDATE: Feature updates
+- PERF: Performance optimization
+- TEST: Test infrastructure
+- DOCS: Documentation improvements
+
+Composite Domain Rules:
+
+- [SOFT] Maximum 2 domains recommended: `UPDATE-REFACTOR-001`
+- [HARD] Maximum 3 domains allowed: `UPDATE-REFACTOR-FIX-001`
+- WHY: Excessive domains indicate scope creep
+- IMPACT: Complex domains signal SPECs that should be split
+
+### Step 1.5.4: Validation Failure Responses
+
+[HARD] Error Response Requirement:
+
+When validation fails, provide specific error messages and remediation:
+
+Error Type 1: Invalid ID Format
+
+- Message: "SPEC ID format invalid: '{provided_id}'"
+- Expected: "SPEC-{DOMAIN}-{NUMBER} (e.g., SPEC-AUTH-001)"
+- Action: "Correct the ID format before proceeding"
+
+Error Type 2: Invalid Domain Name
+
+- Message: "Domain '{domain}' not in allowed list"
+- Suggestion: "Use one of: AUTH, API, UI, DB, REFACTOR, FIX, UPDATE, ..."
+- Action: "Select an approved domain or provide justification for custom domain"
+
+Error Type 3: Duplicate SPEC ID
+
+- Message: "SPEC ID '{id}' already exists at: {path}"
+- Suggestion: "Use '{next_available_id}' instead"
+- Action: "Choose unique ID or update existing SPEC"
+
+Error Type 4: Flat File Attempt
+
+- Message: "Cannot create flat SPEC file: '{path}'"
+- Expected: "Directory structure: .moai/specs/SPEC-{ID}/"
+- Action: "Create directory with spec.md, plan.md, acceptance.md"
 
 ---
 
@@ -1216,18 +1410,21 @@ IMPACT: Using XML for user output degrades user experience
 Progress reports must use Markdown with clear sections:
 
 **Analysis Output**:
+
 - **Context**: Current project state and relevant files discovered
 - **Findings**: SPEC candidates identified with rationale
 - **Assessment**: Technical constraints and implementation feasibility
 - **Recommendations**: Next steps and decision options
 
 **Plan Output**:
+
 - **Requirements**: Approved SPEC title, ID, priority, and scope
 - **Architecture**: Technical stack, dependencies, and integration points
 - **Decomposition**: Task breakdown and implementation sequence
 - **Validation**: Quality criteria and acceptance conditions
 
 **Implementation Output**:
+
 - **Status**: Phase completion status and artifacts created
 - **Artifacts**: Location and format of created SPEC files
 - **Validation**: Quality gate results and compliance verification
@@ -1253,16 +1450,19 @@ IMPACT: Unstructured output prevents downstream automation and creates manual ov
 Before you consider this command complete, verify:
 
 ### AskUserQuestion Compliance (HARD Rules)
+
 - [ ] SPEC Creation Approval: AskUserQuestion used before creating SPEC files
 - [ ] Development Environment Selection: AskUserQuestion used for worktree/branch/current choice
 - [ ] Next Action Selection: AskUserQuestion used after SPEC creation completes
 
 ### PHASE 1 Checklist
+
 - [ ] PHASE 1 executed: manager-spec analyzed project and proposed SPEC candidates
 - [ ] Progress report displayed: User shown detailed progress report with analysis results
 - [ ] User approval obtained: User explicitly approved SPEC creation (via AskUserQuestion)
 
 ### PHASE 2 Checklist
+
 - [ ] PHASE 2 executed: manager-spec created all 3 SPEC files (spec.md, plan.md, acceptance.md)
 - [ ] Directory naming correct: `.moai/specs/SPEC-{ID}/` format followed
 - [ ] YAML frontmatter valid: All 7 required fields present
@@ -1270,6 +1470,7 @@ Before you consider this command complete, verify:
 - [ ] EARS structure complete: All 5 requirement types included
 
 ### PHASE 3 Checklist
+
 - [ ] PHASE 3 executed: Appropriate action taken based on flags/user choice:
   - [ ] If --worktree: SPEC committed BEFORE worktree creation (HARD rule)
   - [ ] If --worktree: WorktreeManager created isolated worktree environment
