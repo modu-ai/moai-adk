@@ -1,3 +1,61 @@
+# v1.5.1 - Documentation Update: pip/uv Conflict Resolution (2026-01-20)
+
+## Summary
+
+This patch release adds comprehensive documentation for pip and uv tool installation conflicts. It addresses a common issue where users experience version conflicts when both pip and uv tool are used to install MoAI-ADK, particularly on Windows systems.
+
+## Added
+
+- **docs**: Add pip/uv conflict resolution section to all README files
+  - Add "Known Issues & Solutions" section with detailed troubleshooting
+  - Cover symptoms, root causes, and three resolution options
+  - Include platform-specific instructions for macOS/Linux/Windows
+  - Emphasize Windows-specific issues due to Python environment differences
+  - Prevention guidelines to avoid future conflicts
+  - Files: `README.md`, `README.ko.md`, `README.ja.md`, `README.zh.md`
+
+- **docs(installation)**: Create comprehensive installation guide
+  - Platform-specific installation instructions (macOS, Linux, Windows)
+  - Prerequisites and required software
+  - Multiple installation methods (quick install, manual install, pip fallback)
+  - Post-installation setup and verification
+  - Troubleshooting common installation issues
+  - Uninstallation procedures
+  - File: `docs/INSTALLATION.md`
+
+- **docs(troubleshooting)**: Create dedicated troubleshooting guide
+  - Common installation issues (command not found, permission denied)
+  - pip/uv tool conflict resolution (detailed)
+  - Runtime issues (hook execution, module import errors)
+  - Git integration issues
+  - Claude Code integration issues
+  - Platform-specific issues (macOS, Linux, Windows)
+  - Performance issues
+  - Diagnostic commands and getting help
+  - File: `docs/TROUBLESHOOTING.md`
+
+## Fixed
+
+- **docs**: Address PyYAML import error in hooks
+  - Document root cause: pip-installed version missing dependencies
+  - Provide solution: use uv tool installation exclusively
+  - Add diagnostic commands for users to identify active installation
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool install moai-adk --reinstall
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
 # v1.5.0 - Template Cleanup, Analytics Enhancement, and GLM Performance Optimization (2026-01-20)
 
 ## Summary

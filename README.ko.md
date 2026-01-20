@@ -341,6 +341,85 @@ moai update --manual
 
 ---
 
+## ⚠️ 알려진 문제 및 해결 방안
+
+### pip와 uv tool 충돌
+
+**문제점**: pip와 uv tool을 함께 사용하여 MoAI-ADK를 설치한 경우 버전 충돌이 발생할 수 있습니다.
+
+**증상**:
+```bash
+# moai update는 최신 버전을 표시
+moai update
+✓ Package already up to date (1.5.0)
+
+# 하지만 실제 명령어는 구버전 사용
+which moai
+~/.pyenv/shims/moai  # pip 버전 사용 (예: 1.1.0)
+
+# hook에서 import 오류
+ModuleNotFoundError: No module named 'yaml'
+```
+
+**근본 원인**:
+- `uv tool install`은 `~/.local/bin/moai`에 설치
+- `pip install`은 `~/.pyenv/shims/moai`에 설치
+- PATH 우선순위에 따라 사용 버전이 결정됨
+- **Windows 사용자는 Python 환경 차이로 더 심각한 문제 발생 가능**
+
+**해결 방법**:
+
+#### 옵션 1: uv tool만 사용 (권장)
+
+```bash
+# pip 버전 제거
+pip uninstall moai-adk -y
+
+# uv tool이 PATH에서 우선하도록 설정
+export PATH="$HOME/.local/bin:$PATH"
+
+# 확인
+which moai  # ~/.local/bin/moai가 표시되어야 함
+moai --version  # 최신 버전 표시되어야 함
+```
+
+#### 옵션 2: 쉘 설정 업데이트
+
+**macOS/Linux (~/.zshrc 또는 ~/.bashrc)**:
+```bash
+# pyenv 초기화 이후에 추가
+# ===== UV Tool Priority =====
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+**Windows (PowerShell $PROFILE)**:
+```powershell
+# $PROFILE에 추가
+$env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
+```
+
+#### 옵션 3: uv로 강제 재설치
+
+```bash
+# 모든 버전 제거
+pip uninstall moai-adk -y
+uv tool uninstall moai-adk
+
+# uv로 재설치
+uv tool install moai-adk
+
+# 확인
+uv tool list
+moai --version
+```
+
+**예방**:
+- 항상 `uv tool install moai-adk`로 설치
+- pip와 uv를 혼용하지 않기
+- 정기적으로 `which moai`로 활성 설치 확인
+
+---
+
 ## 2. 프로젝트 문서 생성 (필수 사항)
 
 신규 프로젝트나 기존 프로젝트에서 **Claude Code가 프로젝트를 이해하는 데 도움**이 되는 프로젝 문서를 자동 생성할 수 있습니다:

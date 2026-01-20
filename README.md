@@ -341,6 +341,85 @@ moai update --manual
 
 ---
 
+## ⚠️ Known Issues & Solutions
+
+### pip and uv tool Conflict
+
+**Problem**: When both pip and uv tool are used to install MoAI-ADK, version conflicts can occur.
+
+**Symptoms**:
+```bash
+# moai update shows latest version
+moai update
+✓ Package already up to date (1.5.0)
+
+# But actual command uses old version
+which moai
+~/.pyenv/shims/moai  # Uses pip version (e.g., 1.1.0)
+
+# Import errors in hooks
+ModuleNotFoundError: No module named 'yaml'
+```
+
+**Root Cause**:
+- `uv tool install` installs to `~/.local/bin/moai`
+- `pip install` installs to `~/.pyenv/shims/moai`
+- PATH priority determines which version is used
+- Windows users may experience more severe issues due to Python environment differences
+
+**Solutions**:
+
+#### Option 1: Use uv tool only (Recommended)
+
+```bash
+# Uninstall pip version
+pip uninstall moai-adk -y
+
+# Ensure uv tool is prioritized in PATH
+export PATH="$HOME/.local/bin:$PATH"
+
+# Verify
+which moai  # Should show ~/.local/bin/moai
+moai --version  # Should show latest version
+```
+
+#### Option 2: Update shell configuration
+
+**For macOS/Linux (~/.zshrc or ~/.bashrc)**:
+```bash
+# Add after pyenv initialization
+# ===== UV Tool Priority =====
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+**For Windows (PowerShell $PROFILE)**:
+```powershell
+# Add to $PROFILE
+$env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
+```
+
+#### Option 3: Force reinstall with uv
+
+```bash
+# Uninstall all versions
+pip uninstall moai-adk -y
+uv tool uninstall moai-adk
+
+# Reinstall with uv
+uv tool install moai-adk
+
+# Verify
+uv tool list
+moai --version
+```
+
+**Prevention**:
+- Always use `uv tool install moai-adk` for installation
+- Avoid mixing pip and uv for the same package
+- Regularly check `which moai` to verify active installation
+
+---
+
 ## 2. Project Documentation Generation (Optional)
 
 For new or existing projects, you can automatically generate **project documentation to help Claude Code understand your project**:
