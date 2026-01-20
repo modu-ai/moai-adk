@@ -1,3 +1,75 @@
+# v1.5.5 - StatusLine Config Protection (2026-01-21)
+
+## Summary
+
+This patch release fixes an issue where user statusline settings (token usage display) were overwritten during `moai update`. The fix ensures that `statusline-config.yaml` is now protected from template overwrites, preserving user customizations.
+
+## Fixed
+
+- **fix(update)**: Protect statusline-config.yaml from overwrite during moai update (b8cf28dd)
+  - Added `statusline-config.yaml` to `template_protected_paths` in template processor
+  - User statusline settings (token usage display 💰, etc.) now preserved during `moai update`
+  - Resolves issue where statusline customizations were lost after updates
+  - File: `src/moai_adk/core/template/processor.py`
+
+## Quality
+
+- Smoke tests: 6/6 passed (100% pass rate)
+- Ruff: All checks passed
+- Ruff format: 215 files unchanged
+- Mypy: Success (no issues found in 169 source files)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.5.5 - StatusLine 설정 보호 (2026-01-21)
+
+## 요약
+
+이 패치 릴리스는 `moai update` 실행 시 사용자 statusline 설정(토큰 사용량 표시)이 덮어써지는 문제를 수정합니다. 이제 `statusline-config.yaml`이 템플릿 덮어쓰기로부터 보호되어 사용자 커스터마이징이 보존됩니다.
+
+## 수정됨
+
+- **fix(update)**: moai update 시 statusline-config.yaml 덮어쓰기 방지 (b8cf28dd)
+  - 템플릿 프로세서의 `template_protected_paths`에 `statusline-config.yaml` 추가
+  - 사용자 statusline 설정(토큰 사용량 표시 💰 등)이 `moai update` 시 보존됨
+  - 업데이트 후 statusline 커스터마이징이 사라지던 문제 해결
+  - 파일: `src/moai_adk/core/template/processor.py`
+
+## 품질
+
+- Smoke 테스트: 6/6 통과 (100% 통과율)
+- Ruff: 모든 검사 통과
+- Ruff format: 215개 파일 변경 없음
+- Mypy: 성공 (169개 소스 파일에서 문제 없음)
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.5.4 - SPEC Validation Guidelines Enhancement (2026-01-21)
 
 ## Summary
