@@ -64,6 +64,7 @@ class DisplayConfig:
     model: bool = True  # 🤖 Model name (glm-4.6, claude-3.5-sonnet, etc.)
     version: bool = True  # 🗿 MoAI-ADK version (0.23.0, etc.)
     output_style: bool = True  # ✍️ Output style (Explanatory, Concise, etc.)
+    context_window: bool = True  # 🪟 Context window (token usage) display
     memory_usage: bool = True  # 💾 Session memory usage
     todo_count: bool = True  # 📋 Active TODO items count
     branch: bool = True  # 🔀 Git branch
@@ -257,6 +258,7 @@ class StatuslineConfig:
                     "model": True,  # 🤖 Model name (glm-4.6, claude-3.5-sonnet, etc.)
                     "version": True,  # 🗿 MoAI-ADK version (0.23.0, etc.)
                     "output_style": True,  # ✍️ Output style (Explanatory, Concise, etc.)
+                    "context_window": True,  # 🪟 Context window (token usage) display
                     "memory_usage": True,  # 💾 Session memory usage
                     "todo_count": True,  # 📋 Active TODO items count
                     "branch": True,  # 🔀 Git branch
@@ -347,6 +349,7 @@ class StatuslineConfig:
             model=display_data.get("model", True),
             version=display_data.get("version", True),
             output_style=display_data.get("output_style", True),
+            context_window=display_data.get("context_window", True),
             memory_usage=display_data.get("memory_usage", True),
             todo_count=display_data.get("todo_count", True),
             branch=display_data.get("branch", True),
