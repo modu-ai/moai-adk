@@ -286,7 +286,10 @@ dist-ssr/
 *.local
 
 # Documentation build output (Nextra)
-docs/
+# Keep docs/ tracked, only ignore build artifacts
+docs/.next/
+docs/node_modules/
+docs/out/
 
 # ===========================================
 # Deployment & CI/CD
