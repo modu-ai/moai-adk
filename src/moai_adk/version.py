@@ -9,7 +9,7 @@ from pathlib import Path
 
 # MoAI Framework Version
 # Fallback version (only used when all other methods fail)
-_FALLBACK_VERSION = "1.5.3"
+_FALLBACK_VERSION = "1.5.4"
 
 # Template Schema Version
 TEMPLATE_VERSION = "3.0.0"
