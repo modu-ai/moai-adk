@@ -17,6 +17,8 @@ from rich.columns import Columns
 from rich.console import Console
 from rich.panel import Panel
 
+from moai_adk.core.claude_integration import _safe_run_subprocess
+
 # Force UTF-8 encoding for Windows compatibility
 if sys.platform == "win32":
     console = Console(force_terminal=True, legacy_windows=False)
