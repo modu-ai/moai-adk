@@ -1022,11 +1022,12 @@ class TemplateProcessor:
                 console.print("⚠️ .moai/ template not found")
             return
 
-        # Paths excluded from template copying (specs/, reports/, sections/)
+        # Paths excluded from template copying (specs/, reports/, sections/, statusline)
         template_protected_paths = [
             "specs",
             "reports",
             "config/sections",  # User section YAML files
+            "config/statusline-config.yaml",  # User statusline settings
         ]
 
         all_warnings = []
