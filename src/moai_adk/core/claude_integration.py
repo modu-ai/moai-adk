@@ -6,13 +6,95 @@ and multi-language support for commands, agents, and output styles.
 """
 
 import json
+import logging
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 from .language_config import get_language_info
 from .template_engine import TemplateEngine
+
+logger = logging.getLogger(__name__)
+
+
+def _safe_run_subprocess(
+    cmd: list[str],
+    *,
+    timeout: int = 60,
+    max_output_size: int = 1024 * 1024,  # 1MB
+    capture_output: bool = True,
+    check: bool = False,
+    cwd: Optional[Path] = None,
+    **kwargs: Any,
+) -> subprocess.CompletedProcess:
+    """Safely run subprocess command with memory protection.
+
+    Args:
+        cmd: Command list to execute
+        timeout: Maximum execution time in seconds (default: 60s)
+        max_output_size: Maximum output size in bytes (default: 1MB)
+        capture_output: Whether to capture stdout/stderr
+        check: Whether to raise CalledProcessError on non-zero exit
+        cwd: Working directory
+        **kwargs: Additional arguments passed to subprocess.run
+
+    Returns:
+        CompletedProcess with captured output (possibly truncated)
+
+    Raises:
+        subprocess.TimeoutExpired: If command exceeds timeout
+        subprocess.CalledProcessError: If check=True and command fails
+    """
+    if capture_output:
+        kwargs.setdefault("text", True)
+        kwargs.setdefault("encoding", "utf-8")
+
+    try:
+        result = subprocess.run(cmd, capture_output=capture_output, timeout=timeout, cwd=cwd, **kwargs)
+
+        if capture_output and result.stdout:
+            result.stdout = _truncate_output(result.stdout, max_output_size, "stdout")
+
+        if capture_output and result.stderr:
+            result.stderr = _truncate_output(result.stderr, max_output_size, "stderr")
+
+        return result
+
+    except subprocess.TimeoutExpired as e:
+        logger.warning(f"Subprocess timeout after {timeout}s: {cmd}")
+        if e.stderr:
+            e.stderr = _truncate_output(e.stderr, max_output_size, "stderr")
+        raise
+
+
+def _truncate_output(output: str, max_size: int, source: str) -> str:
+    """Truncate output string if it exceeds max size.
+
+    Args:
+        output: Output string to truncate
+        max_size: Maximum allowed size in bytes
+        source: Source name for logging (e.g., "stdout", "stderr")
+
+    Returns:
+        Truncated output with warning if truncation occurred
+    """
+    try:
+        encoded_size = output.encode("utf-8")
+    except UnicodeEncodeError:
+        encoded_size = output.encode("utf-8", errors="replace")
+
+    if len(encoded_size) > max_size:
+        truncated = encoded_size[:max_size].decode("utf-8", errors="replace")
+        warning = f"\n\n[WARNING: Output from {source} truncated to {max_size} bytes]"
+        logger.warning(f"Output from {source} truncated (size: {len(encoded_size)}, limit: {max_size})")
+        return truncated + warning
+
+    return output
+
+
+
 
 
 class ClaudeCLIIntegration:

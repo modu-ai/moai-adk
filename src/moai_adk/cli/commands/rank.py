@@ -136,9 +136,10 @@ def register(no_sync: bool, background_sync: bool) -> None:
             elif background_sync:
                 console.print()
                 console.print("[cyan]Starting background sync...[/cyan]")
-                subprocess.Popen(
+                _safe_run_subprocess(
                     [sys.executable, "-m", "moai_adk.cli.commands.rank", "sync", "--background"],
-                    start_new_session=True,
+                    capture_output=False,  # Background process, don't capture output
+                    timeout=300,  # 5 minutes for background sync
                 )
             else:
                 console.print()

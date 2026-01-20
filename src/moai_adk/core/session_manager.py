@@ -45,6 +45,8 @@ class SessionManager:
         self,
         session_file: Optional[Path] = None,
         transcript_dir: Optional[Path] = None,
+        max_results: int = 100,
+        max_result_size_mb: int = 10,
     ):
         """
         Initialize SessionManager.
@@ -54,6 +56,8 @@ class SessionManager:
                          (default: .moai/memory/agent-sessions.json)
             transcript_dir: Directory for agent transcripts
                            (default: .moai/logs/agent-transcripts/)
+            max_results: Maximum number of results to store in memory (default: 100)
+            max_result_size_mb: Maximum size of each result in MB (default: 10MB)
         """
         # Default paths
         project_root = Path.cwd()
@@ -64,11 +68,18 @@ class SessionManager:
         self._session_file.parent.mkdir(parents=True, exist_ok=True)
         self._transcript_dir.mkdir(parents=True, exist_ok=True)
 
+        # Memory limits
+        self._max_results = max_results
+        self._max_result_size_bytes = max_result_size_mb * 1024 * 1024  # Convert to bytes
+
         # In-memory storage
         self._sessions: Dict[str, str] = {}  # agent_name → current agentId
         self._results: Dict[str, Any] = {}  # agentId → result data
         self._chains: Dict[str, List[str]] = {}  # chain_name → [agentIds]
         self._metadata: Dict[str, Dict[str, Any]] = {}  # agentId → metadata
+
+        # Track result order for LRU eviction
+        self._result_order: List[str] = []  # Track insertion order
 
         # Load existing sessions
         self._load_sessions()
@@ -118,6 +129,10 @@ class SessionManager:
         This method implements the official pattern:
         "Results flow through main conversation thread"
 
+        Memory Protection:
+        - Results larger than max_result_size_bytes are truncated
+        - Oldest results are evicted when max_results is exceeded
+
         Args:
             agent_name: Name of the agent (e.g., "ddd-implementer")
             agent_id: Unique agentId returned from Task() execution
@@ -127,13 +142,42 @@ class SessionManager:
         # Store agent ID mapping
         self._sessions[agent_name] = agent_id
 
-        # Store result data
-        self._results[agent_id] = {
+        # Check result size and truncate if necessary
+        result_data = {
             "agent_name": agent_name,
             "result": result,
             "timestamp": datetime.now().isoformat(),
             "chain_id": chain_id,
         }
+
+        # Calculate result size
+        try:
+            import sys
+
+            result_size = sys.getsizeof(result_data)
+            if result_size > self._max_result_size_bytes:
+                logger.warning(
+                    f"Result size ({result_size / 1024 / 1024:.2f}MB) exceeds limit "
+                    f"({self._max_result_size_bytes / 1024 / 1024}MB), truncating"
+                )
+                # Truncate result - keep only summary
+                result_data["result"] = self._truncate_result(result)
+                result_data["truncated"] = True
+        except Exception as e:
+            logger.debug(f"Could not calculate result size: {e}")
+
+        # Evict oldest results if at capacity
+        if len(self._results) >= self._max_results and agent_id not in self._results:
+            oldest_id = self._result_order.pop(0)
+            if oldest_id in self._results:
+                del self._results[oldest_id]
+                if oldest_id in self._metadata:
+                    del self._metadata[oldest_id]
+                logger.debug(f"Evicted oldest result: {oldest_id[:8]}...")
+
+        # Store result data
+        self._results[agent_id] = result_data
+        self._result_order.append(agent_id)
 
         # Track in workflow chain
         if chain_id:
@@ -153,6 +197,34 @@ class SessionManager:
         self._save_sessions()
 
         logger.info(f"Registered agent result: {agent_name} (agentId: {agent_id[:8]}..., chain: {chain_id})")
+
+    def _truncate_result(self, result: Any) -> Dict[str, Any]:
+        """
+        Truncate large result to a manageable summary.
+
+        Args:
+            result: Result data to truncate
+
+        Returns:
+            Truncated summary dictionary
+        """
+        summary = {"truncated": True, "original_type": str(type(result).__name__)}
+
+        if isinstance(result, dict):
+            # Keep first few keys with truncated values
+            summary["keys_count"] = len(result)
+            summary["sample_keys"] = list(result.keys())[:5]
+            summary["preview"] = str(result)[:1000]
+        elif isinstance(result, (list, tuple)):
+            summary["length"] = len(result)
+            summary["first_items"] = list(result[:3])
+        elif isinstance(result, str):
+            summary["length"] = len(result)
+            summary["preview"] = result[:1000]
+        else:
+            summary["preview"] = str(result)[:1000]
+
+        return summary
 
     def get_resume_id(
         self,

@@ -156,7 +156,7 @@ class PhaseDetector:
         self.phase_history = []
         self.max_history = 10
 
-    def detect_phase(self, user_input: str, conversation_history: List[str] = None) -> Phase:
+    def detect_phase(self, user_input: str, conversation_history: List[str] | None = None) -> Phase:
         """Detect current phase from user input and conversation context"""
         import re
 
@@ -177,7 +177,7 @@ class PhaseDetector:
 
         # Find phase with highest score
         if phase_scores:
-            best_phase = max(phase_scores, key=phase_scores.get)
+            best_phase = max(phase_scores.keys(), key=lambda k: phase_scores[k])
         else:
             best_phase = self.last_phase
 
@@ -398,7 +398,7 @@ class SkillFilterEngine:
             logger.error(f"Error analyzing skill {skill_file}: {e}")
             return None
 
-    def filter_skills(self, phase: Phase, token_budget: int, context: Dict[str, Any] = None) -> List[SkillInfo]:
+    def filter_skills(self, phase: Phase, token_budget: int, context: Dict[str, Any] | None = None) -> List[SkillInfo]:
         """Filter skills based on phase, token budget, and context"""
         phase_name = phase.value
         preferences = self.phase_preferences.get(phase_name, {})
@@ -552,23 +552,67 @@ class TokenBudgetManager:
 
 
 class ContextCache:
-    """LRU Cache for context entries with phase-aware eviction"""
+    """LRU Cache for context entries with phase-aware eviction and memory limits"""
 
-    def __init__(self, max_size: int = 100, max_memory_mb: int = 50):
+    def __init__(
+        self,
+        max_size: int = 100,
+        max_memory_mb: int = 100,
+        max_entry_memory_mb: int = 10,
+    ):
         self.max_size = max_size
         self.max_memory_bytes = max_memory_mb * 1024 * 1024
+        self.max_entry_memory_bytes = max_entry_memory_mb * 1024 * 1024
         self.cache: OrderedDict[str, ContextEntry] = OrderedDict()
         self.current_memory = 0
         self.hits = 0
         self.misses = 0
         self.evictions = 0
+        self.memory_evictions = 0
+        self.entry_rejections = 0
 
     def _calculate_memory_usage(self, entry: ContextEntry) -> int:
-        """Calculate memory usage of a cache entry"""
+        """Calculate memory usage of a cache entry with proper string content sizing"""
 
-        # Rough estimation of memory usage
-        content_size = sys.getsizeof(entry.content)
-        entry_overhead = sys.getsizeof(entry.key) + sys.getsizeof(str(entry.token_count))
+        # Calculate actual content size based on type
+        content_size = 0
+
+        if isinstance(entry.content, str):
+            # For strings, sys.getsizeof only gives object overhead
+            # We need to account for actual character data (1 byte per char for latin1, up to 4 for UTF-8)
+            content_size = len(entry.content) * 2  # Average 2 bytes per char (UTF-16-ish)
+        elif isinstance(entry.content, dict):
+            # For dicts, calculate size recursively
+            content_size = sys.getsizeof(entry.content)
+            for key, value in entry.content.items():
+                content_size += sys.getsizeof(key)
+                if isinstance(value, str):
+                    content_size += len(value) * 2
+                elif isinstance(value, (dict, list)):
+                    content_size += sys.getsizeof(value)
+                else:
+                    content_size += sys.getsizeof(value)
+        elif isinstance(entry.content, list):
+            # For lists, calculate element sizes
+            content_size = sys.getsizeof(entry.content)
+            for item in entry.content:
+                if isinstance(item, str):
+                    content_size += len(item) * 2
+                else:
+                    content_size += sys.getsizeof(item)
+        else:
+            # Fallback to sys.getsizeof for other types
+            content_size = sys.getsizeof(entry.content)
+
+        # Add entry metadata overhead
+        entry_overhead = (
+            sys.getsizeof(entry.key)
+            + sys.getsizeof(str(entry.token_count))
+            + sys.getsizeof(entry.created_at)
+            + sys.getsizeof(entry.last_accessed)
+            + sys.getsizeof(entry.access_count)
+        )
+
         total_size = content_size + entry_overhead
 
         return total_size
@@ -587,7 +631,7 @@ class ContextCache:
         return None
 
     def put(self, key: str, content: Any, token_count: int, phase: Optional[str] = None):
-        """Put entry in cache with LRU eviction"""
+        """Put entry in cache with LRU eviction and memory limits"""
         entry = ContextEntry(
             key=key,
             content=content,
@@ -599,19 +643,48 @@ class ContextCache:
 
         entry_memory = self._calculate_memory_usage(entry)
 
-        # Check if we need to evict entries
+        # Check per-entry memory limit
+        if entry_memory > self.max_entry_memory_bytes:
+            self.entry_rejections += 1
+            logger.warning(
+                f"ContextCache: Rejected entry '{key}' exceeding per-entry limit "
+                f"({entry_memory / (1024 * 1024):.1f}MB > {self.max_entry_memory_bytes / (1024 * 1024):.1f}MB)"
+            )
+            return
+
+        # Check if we need to evict entries due to size or memory limits
+        evicted_count = 0
         while len(self.cache) >= self.max_size or self.current_memory + entry_memory > self.max_memory_bytes:
             if not self.cache:
                 break
 
             oldest_key = next(iter(self.cache))
             oldest_entry = self.cache.pop(oldest_key)
-            self.current_memory -= self._calculate_memory_usage(oldest_entry)
+            oldest_memory = self._calculate_memory_usage(oldest_entry)
+            self.current_memory -= oldest_memory
             self.evictions += 1
+            evicted_count += 1
+
+        if evicted_count > 0:
+            self.memory_evictions += evicted_count
+            memory_usage_mb = self.current_memory / (1024 * 1024)
+            limit_mb = self.max_memory_bytes / (1024 * 1024)
+            logger.info(
+                f"ContextCache: Evicted {evicted_count} entries due to memory limit "
+                f"({memory_usage_mb:.1f}MB / {limit_mb:.1f}MB used)"
+            )
 
         # Add new entry
         self.cache[key] = entry
         self.current_memory += entry_memory
+
+        # Log warning when approaching memory limit
+        memory_usage_percent = (self.current_memory / self.max_memory_bytes) * 100
+        if memory_usage_percent > 90:
+            logger.warning(
+                f"ContextCache: Memory usage at {memory_usage_percent:.1f}% "
+                f"({self.current_memory / (1024 * 1024):.1f}MB / {self.max_memory_bytes / (1024 * 1024):.1f}MB)"
+            )
 
     def clear_phase(self, phase: str):
         """Clear all entries for a specific phase"""
@@ -634,21 +707,31 @@ class ContextCache:
             "entries": len(self.cache),
             "memory_usage_bytes": self.current_memory,
             "memory_usage_mb": self.current_memory / (1024 * 1024),
+            "memory_limit_mb": self.max_memory_bytes / (1024 * 1024),
+            "entry_memory_limit_mb": self.max_entry_memory_bytes / (1024 * 1024),
+            "memory_usage_percent": (self.current_memory / self.max_memory_bytes) * 100,
             "hit_rate": hit_rate,
             "hits": self.hits,
             "misses": self.misses,
             "evictions": self.evictions,
+            "memory_evictions": self.memory_evictions,
+            "entry_rejections": self.entry_rejections,
         }
 
 
 class JITContextLoader:
     """Main JIT Context Loading System orchestrator"""
 
-    def __init__(self, cache_size: int = 100, cache_memory_mb: int = 50):
+    def __init__(
+        self,
+        cache_size: int = 100,
+        cache_memory_mb: int = 100,
+        cache_entry_memory_mb: int = 10,
+    ):
         self.phase_detector = PhaseDetector()
         self.skill_filter = SkillFilterEngine()
         self.token_manager = TokenBudgetManager()
-        self.context_cache = ContextCache(cache_size, cache_memory_mb)
+        self.context_cache = ContextCache(cache_size, cache_memory_mb, cache_entry_memory_mb)
 
         self.metrics_history: List[ContextMetrics] = []
         self.current_phase = Phase.SPEC
@@ -664,8 +747,8 @@ class JITContextLoader:
     async def load_context(
         self,
         user_input: str,
-        conversation_history: List[str] = None,
-        context: Dict[str, Any] = None,
+        conversation_history: List[str] | None = None,
+        context: Dict[str, Any] | None = None,
     ) -> Tuple[Dict[str, Any], ContextMetrics]:
         """Load optimized context based on current phase and requirements"""
         start_time = time.time()
@@ -936,8 +1019,8 @@ jit_context_loader = JITContextLoader()
 # Convenience functions
 async def load_optimized_context(
     user_input: str,
-    conversation_history: List[str] = None,
-    context: Dict[str, Any] = None,
+    conversation_history: List[str] | None = None,
+    context: Dict[str, Any] | None = None,
 ) -> Tuple[Dict[str, Any], ContextMetrics]:
     """Load optimized context using global JIT loader instance"""
     return await jit_context_loader.load_context(user_input, conversation_history, context)

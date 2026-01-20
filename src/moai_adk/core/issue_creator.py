@@ -100,7 +100,7 @@ class GitHubIssueCreator:
             RuntimeError: If `gh` CLI is not found or not authenticated.
         """
         try:
-            result = subprocess.run(["gh", "auth", "status"], capture_output=True, text=True, timeout=5)
+            result = _safe_run_subprocess(["gh", "auth", "status"], timeout=5)
             if result.returncode != 0:
                 raise RuntimeError("GitHub CLI (gh) is not authenticated. Run `gh auth login` to authenticate.")
         except FileNotFoundError:
@@ -164,7 +164,7 @@ class GitHubIssueCreator:
             gh_command.extend(["--assignee", ",".join(config.assignees)])
 
         try:
-            result = subprocess.run(gh_command, capture_output=True, text=True, timeout=30)
+            result = _safe_run_subprocess(gh_command, timeout=30)
 
             if result.returncode != 0:
                 error_msg = result.stderr or result.stdout
