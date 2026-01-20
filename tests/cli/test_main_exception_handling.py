@@ -114,6 +114,8 @@ class TestMainFunctionExceptionHandling:
 
                 exit_code = main()
 
+                # Verify exit code is 1 for generic exceptions
+                assert exit_code == 1
                 # Verify error was printed with proper formatting
                 assert mock_console.print.called
                 print_args = mock_console.print.call_args[0]

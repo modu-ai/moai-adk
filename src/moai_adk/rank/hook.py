@@ -1012,12 +1012,12 @@ def _unregister_hook_from_settings() -> bool:
             return True  # Nothing to remove
 
         # Filter out our hook
+        # SessionEnd uses flat structure: {"type": "command", "command": "..."}
+        # NOT nested structure like PreToolUse/PostToolUse
         settings["hooks"]["SessionEnd"] = [
             hook_config
             for hook_config in settings["hooks"]["SessionEnd"]
-            if not any(
-                "session_end__rank_submit.py" in hook.get("command", "") for hook in hook_config.get("hooks", [])
-            )
+            if "session_end__rank_submit.py" not in hook_config.get("command", "")
         ]
 
         # Remove empty SessionEnd array

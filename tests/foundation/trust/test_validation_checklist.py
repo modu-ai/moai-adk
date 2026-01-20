@@ -1286,7 +1286,7 @@ class TestEdgeCasesAndErrors:
                 temp_project_dir, "docstring_coverage >= 0.5"
             )
             assert isinstance(passed, bool)
-        except:
+        except Exception:
             pytest.fail("Should handle malformed Python files gracefully")
 
 

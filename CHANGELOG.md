@@ -1,3 +1,107 @@
+# v1.5.2 - Critical Bug Fixes for Windows StatusLine, Hook Uninstall, and Feedback Language (2026-01-20)
+
+## Summary
+
+This patch release resolves critical issues reported in GitHub issues #276, #277, and #280, including Windows statusLine command failure, hook uninstall logic bug, and feedback command language setting enforcement. Additionally, it corrects the update command documentation to use proper uv tool syntax.
+
+## Fixed
+
+- **fix(windows)**: Resolve statusLine command not working on Windows (#276)
+  - Changed statusline command from `python -m moai_adk statusline` to `moai statusline` in Windows template
+  - Uses CLI tool entry point instead of Python module invocation for better reliability
+  - File: `src/moai_adk/templates/.claude/settings.json.windows` (line 236)
+
+- **fix(hooks)**: Fix hook uninstall logic for SessionEnd hooks (#277)
+  - Fixed flat vs nested structure confusion in hook filter logic
+  - SessionEnd hooks use flat structure: `{"type": "command", "command": "..."}`
+  - Previous code incorrectly expected nested structure like PreToolUse/PostToolUse
+  - File: `src/moai_adk/rank/hook.py` (lines 126-134)
+
+- **fix(feedback)**: Add documentation language setting to feedback command (#280)
+  - Added `{{DOCUMENTATION_LANGUAGE}}` context to /moai:9-feedback command
+  - GitHub issue body now respects language.yaml documentation setting
+  - Enforced with [HARD] rule: GitHub 이슈 본문은 language.yaml의 documentation 설정 언어로 작성
+  - File: `.claude/commands/moai/9-feedback.md` (lines 140-146)
+
+- **docs(changelog)**: Correct update command in CHANGELOG (#278)
+  - Fixed incorrect command: `uv tool install moai-adk --reinstall` → `uv tool update moai-adk`
+  - Clarified: `uv tool install --reinstall` is for reinstall, `uv tool update` is for updates
+  - Files: All previous CHANGELOG entries with update instructions
+
+## Quality
+
+- Smoke tests: 6 passed (100% pass rate)
+- Ruff: All checks passed
+- Ruff Format: 215 files left unchanged
+- Mypy: Success (no issues found in 169 source files)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.5.2 - Windows statusLine, Hook 제거, 피드백 언어 중요 버그 수정 (2026-01-20)
+
+## 요약
+
+이 패치 릴리스는 GitHub 이슈 #276, #277, #280에서 보고된 중요한 문제들을 해결합니다. Windows statusLine 명령 실패, hook 제거 로직 버그, 피드백 명령 언어 설정 강제가 포함됩니다. 추가로 적절한 uv tool 구문을 사용하도록 업데이트 명령 문서를 수정합니다.
+
+## 수정됨
+
+- **fix(windows)**: Windows에서 statusLine 명령 작동 안 하는 문제 해결 (#276)
+  - Windows 템플릿에서 statusline 명령을 `python -m moai_adk statusline`에서 `moai statusline`으로 변경
+  - 더 나은 신뢰성을 위해 Python 모듈 호출 대신 CLI tool 진입점 사용
+  - 파일: `src/moai_adk/templates/.claude/settings.json.windows` (236행)
+
+- **fix(hooks)**: SessionEnd hooks용 hook 제거 로직 수정 (#277)
+  - hook 필터 로직에서 flat vs 중첩 구조 혼동 수정
+  - SessionEnd hook은 flat 구조 사용: `{"type": "command", "command": "..."}`
+  - 이전 코드는 PreToolUse/PostToolUse처럼 중첩 구조를 잘못 기대함
+  - 파일: `src/moai_adk/rank/hook.py` (126-134행)
+
+- **fix(feedback)**: 피드백 명령에 documentation 언어 설정 추가 (#280)
+  - /moai:9-feedback 명령에 `{{DOCUMENTATION_LANGUAGE}}` 컨텍스트 추가
+  - GitHub 이슈 본문이 이제 language.yaml documentation 설정을 존중
+  - [HARD] 규칙으로 강제: GitHub 이슈 본문은 language.yaml의 documentation 설정 언어로 작성
+  - 파일: `.claude/commands/moai/9-feedback.md` (140-146행)
+
+- **docs(changelog)**: CHANGELOG의 업데이트 명령 수정 (#278)
+  - 잘못된 명령 수정: `uv tool install moai-adk --reinstall` → `uv tool update moai-adk`
+  - 명확화: `uv tool install --reinstall`은 재설치용, `uv tool update`는 업데이트용
+  - 파일: 업데이트 지침이 포함된 모든 이전 CHANGELOG 항목
+
+## 품질
+
+- Smoke 테스트: 6개 통과 (100% 통과율)
+- Ruff: 모든 검사 통과
+- Ruff Format: 215개 파일 변경 없음
+- Mypy: 성공 (169개 소스 파일에서 문제 없음)
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.5.1 - Documentation Update: pip/uv Conflict Resolution (2026-01-20)
 
 ## Summary
@@ -45,7 +149,7 @@ This patch release adds comprehensive documentation for pip and uv tool installa
 
 ```bash
 # Update to the latest version
-uv tool install moai-adk --reinstall
+uv tool update moai-adk
 
 # Update project templates
 moai update

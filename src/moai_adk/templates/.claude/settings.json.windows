@@ -233,7 +233,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "python -m moai_adk statusline",
+    "command": "moai statusline",
     "padding": 0,
     "refreshInterval": 300
   },

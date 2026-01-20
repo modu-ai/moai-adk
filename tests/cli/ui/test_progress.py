@@ -172,7 +172,7 @@ class TestProgressContext:
         """Test adding a task."""
         ctx = ProgressContext("Test")
         ctx.__enter__()
-        task_id = ctx.add_task("Task 1", total=100)  # type: ignore[assignment]
+        ctx.add_task("Task 1", total=100)  # noqa: F841
         assert "Task 1" in ctx.tasks
         ctx.__exit__(None, None, None)
 
@@ -180,7 +180,7 @@ class TestProgressContext:
         """Test adding task with default parameters."""
         ctx = ProgressContext("Test")
         ctx.__enter__()
-        task_id = ctx.add_task("Task 1")  # type: ignore[assignment]
+        ctx.add_task("Task 1")  # noqa: F841
         assert "Task 1" in ctx.tasks
         ctx.__exit__(None, None, None)
 
@@ -354,7 +354,7 @@ class TestProgressSteps:
         """Test that progress is tracked through steps."""
         steps = ["Step 1", "Step 2", "Step 3"]
         with progress_steps(steps, "Testing") as step_iter:
-            for step in step_iter:
+            for _ in step_iter:  # noqa: F841
                 # Should not raise
                 pass
 
@@ -362,7 +362,7 @@ class TestProgressSteps:
         """Test progress_steps with custom title."""
         steps = ["Step 1"]
         with progress_steps(steps, "Custom Title") as step_iter:
-            for step in step_iter:
+            for _ in step_iter:  # noqa: F841
                 # Should not raise
                 pass
 
@@ -419,8 +419,8 @@ class TestProgressBarIntegration:
     def test_multiple_tasks_tracking(self) -> None:
         """Test tracking multiple tasks simultaneously."""
         with ProgressContext("Multi-task") as ctx:
-            task1 = ctx.add_task("Task 1", total=100)
-            task2 = ctx.add_task("Task 2", total=50)
+            ctx.add_task("Task 1", total=100)  # noqa: F841
+            ctx.add_task("Task 2", total=50)  # noqa: F841
             ctx.advance("Task 1", 25)
             ctx.advance("Task 2", 10)
             # Should not raise
@@ -429,7 +429,7 @@ class TestProgressBarIntegration:
         """Test complete task flow from start to finish."""
         with ProgressContext("Flow") as ctx:
             ctx.add_task("Step 1", total=10)
-            for i in range(10):
+            for _ in range(10):  # noqa: F841
                 ctx.advance("Step 1")
             ctx.complete_task("Step 1")
 
@@ -446,17 +446,17 @@ class TestProgressBarIntegration:
         """Test tracking with sequential operations."""
         with ProgressContext("Nested") as ctx:
             # Task 1
-            task1 = ctx.add_task("Setup", total=3)
+            ctx.add_task("Setup", total=3)  # noqa: F841
             for _ in range(3):
                 ctx.advance("Setup")
 
             # Task 2
-            task2 = ctx.add_task("Process", total=5)
+            ctx.add_task("Process", total=5)  # noqa: F841
             for _ in range(5):
                 ctx.advance("Process")
 
             # Task 3
-            task3 = ctx.add_task("Cleanup", total=2)
+            ctx.add_task("Cleanup", total=2)  # noqa: F841
             for _ in range(2):
                 ctx.advance("Cleanup")
 
@@ -562,7 +562,7 @@ class TestEdgeCases:
     def test_zero_total_progress(self) -> None:
         """Test progress bar with zero total."""
         with create_progress_bar(total=0) as progress:
-            task = progress.add_task("Empty", total=0)
+            _task = progress.add_task("Empty", total=0)
             # Should not raise
 
     def test_very_large_total(self) -> None:

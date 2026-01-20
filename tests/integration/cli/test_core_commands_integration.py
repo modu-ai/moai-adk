@@ -256,10 +256,10 @@ class TestStatusCommandIntegration:
             assert result.exit_code == 0
 
             # Should show mode
-            assert "mode" in result.output.lower() or "personal" in result.output.lower() or "team" in result.output.lower()
-
-    def test_status_shows_locale(self, cli_runner, temp_project_dir):
-        """Test that status displays locale setting."""
+            mode_check = "mode" in result.output.lower()
+            personal_check = "personal" in result.output.lower()
+            team_check = "team" in result.output.lower()
+            assert mode_check or personal_check or team_check
         with patch("pathlib.Path.cwd", return_value=temp_project_dir):
             result = cli_runner.invoke(cli, ["status"])
 
@@ -328,16 +328,16 @@ class TestStatusCommandIntegration:
             assert result.exit_code != 0
 
             # Should show error or warning
-            assert "moai" in result.output.lower() or "not found" in result.output.lower() or "no" in result.output.lower()
-
-    def test_status_with_missing_config_file(self, cli_runner, temp_project_dir):
-        """Test status with missing config.yaml (should fail)."""
-        # Remove config.yaml
+            moai_check = "moai" in result.output.lower()
+            not_found_check = "not found" in result.output.lower()
+            no_check = "no" in result.output.lower()
+            assert moai_check or not_found_check or no_check
+        assert moai_check or not_found_check or no_check
+        temp_project_dir = tmp_path / "test_project"
+        temp_project_dir.mkdir()
         config_file = temp_project_dir / ".moai" / "config" / "config.yaml"
         if config_file.exists():
             config_file.unlink()
-
-        with patch("pathlib.Path.cwd", return_value=temp_project_dir):
             result = cli_runner.invoke(cli, ["status"])
 
             # Should fail
@@ -460,7 +460,7 @@ class TestFileSystemOperations:
         if init_result.exit_code == 0:
             # Record initial state
             config_yaml = project_dir / ".moai" / "config" / "config.yaml"
-            initial_content = config_yaml.read_text(encoding="utf-8") if config_yaml.exists() else ""
+            _ = config_yaml.read_text(encoding="utf-8") if config_yaml.exists() else ""
 
             # Run update
             update_result = cli_runner.invoke(cli, ["update", "--path", str(project_dir), "--yes"])

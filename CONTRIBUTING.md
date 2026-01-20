@@ -40,7 +40,7 @@ Found a bug? Please create an issue with the following information:
 
 **Required Information**:
 
-```markdown
+````markdown
 ## 🐛 Bug Description
 
 Provide a clear and concise description of what the bug is.
@@ -73,11 +73,13 @@ Please attach error messages, screenshots, or logs if possible.
 Error: Cannot find module '...'
     at Function.Module._resolveFilename ...
 ```
+````
 
 ## 🔍 Additional Information
 
 Provide any additional context or information related to the bug.
-```
+
+````
 
 **Example**:
 
@@ -95,7 +97,7 @@ Executing `/moai:2-run` command fails during the implementation validation step.
 
 ## 💥 Expected vs Actual Behavior
 
-- **Expected Behavior**: TDD cycle should complete successfully
+- **Expected Behavior**: DDD cycle should complete successfully
 - **Actual Behavior**: Implementation validation failed
 
 ## 🖥️ Environment Information
@@ -109,8 +111,9 @@ Executing `/moai:2-run` command fails during the implementation validation step.
 ```bash
 Error: Implementation validation failed
 Please ensure all tests are passing before proceeding
-```
-```
+````
+
+````
 
 ---
 
@@ -139,7 +142,7 @@ Describe in detail how the feature should work.
 ```bash
 # Command example
 python -m moai_adk new-feature --option
-```
+````
 
 ## 🔄 Considered Alternatives
 
@@ -148,7 +151,8 @@ Have you considered other alternatives or solutions?
 ## 📚 Additional Information
 
 Are there relevant documentation, references, or similar tools that provide this feature?
-```
+
+````
 
 **Example**:
 
@@ -173,7 +177,7 @@ python -m moai_adk export SPEC-AUTH-001 --format pdf
 
 # Export all SPECs to PDF
 python -m moai_adk export --all --format pdf --output ./exports
-```
+````
 
 ## 🔄 Considered Alternatives
 
@@ -183,7 +187,8 @@ python -m moai_adk export --all --format pdf --output ./exports
 ## 📚 Additional Information
 
 Reference: [Pandoc Markdown to PDF](https://pandoc.org/MANUAL.html#creating-a-pdf)
-```
+
+````
 
 ---
 
@@ -194,7 +199,7 @@ Before submitting a Pull Request, please verify the following:
 ### PR Submission Checklist
 
 - [ ] **SPEC Written**: Is there a SPEC document for the changes? (`/moai:1-plan`)
-- [ ] **TDD Completed**: Have you completed the RED-GREEN-REFACTOR cycle? (`/moai:2-run`)
+- [ ] **DDD Completed**: Have you completed the ANALYZE-PRESERVE-IMPROVE cycle? (`/moai:2-run`)
 - [ ] **Documentation Synchronized**: Has the Living Document been updated? (`/moai:3-sync`)
 - [ ] **TRUST 5 Principles Followed**:
   - [ ] **T**est: Are tests written? (Coverage ≥85%)
@@ -221,26 +226,30 @@ The `/moai:3-sync` command automatically fills in most of the information.
 ```bash
 git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk
-```
+````
 
 ### 2. Install uv Package Manager (if needed)
 
 **Windows Users (RECOMMENDED)**:
+
 ```powershell
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
 **macOS/Linux Users**:
+
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 **WSL Users (Windows Subsystem for Linux)**:
+
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 **Platform Notes**:
+
 - 🟢 **Windows (PowerShell)**: Recommended for Windows users - most stable
 - 🟡 **WSL**: Works but has environment setup overhead
 - ✅ **macOS/Linux**: Use native bash installation
@@ -282,21 +291,23 @@ The core of MoAI-ADK is **Alfred** (MoAI SuperAgent). Alfred's behavior is defin
 
 #### 📄 Essential Reading: 4-Document Architecture
 
-| Document | Size | When to Read | Key Content |
-|----------|------|-------------|-------------|
-| **CLAUDE.md** | ~7kb | Before starting development | Alfred's identity, core directives, 3-step workflow |
-| **CLAUDE-AGENTS-GUIDE.md** | ~14kb | When you need a specific Agent | 19 Sub-agent team structure, 55 Skills classification |
-| **CLAUDE-RULES.md** | ~17kb | When understanding decision rules | Skill invocation rules, user question rules, TRUST 5 gates |
-| **CLAUDE-PRACTICES.md** | ~8kb | When you want real workflow examples | JIT context patterns, practical workflows |
+| Document                   | Size  | When to Read                         | Key Content                                                |
+| -------------------------- | ----- | ------------------------------------ | ---------------------------------------------------------- |
+| **CLAUDE.md**              | ~7kb  | Before starting development          | Alfred's identity, core directives, 3-step workflow        |
+| **CLAUDE-AGENTS-GUIDE.md** | ~14kb | When you need a specific Agent       | 19 Sub-agent team structure, 55 Skills classification      |
+| **CLAUDE-RULES.md**        | ~17kb | When understanding decision rules    | Skill invocation rules, user question rules, TRUST 5 gates |
+| **CLAUDE-PRACTICES.md**    | ~8kb  | When you want real workflow examples | JIT context patterns, practical workflows                  |
 
 #### 🎯 Key Developer Knowledge (Summary)
 
 **Alfred's 3 Core Responsibilities**:
+
 1. **SPEC-First**: Define requirements before code
-2. **Automated TDD**: Execute RED → GREEN → REFACTOR cycle
+2. **Automated DDD**: Execute ANALYZE → PRESERVE → IMPROVE cycle
 3. **Automatic Document Sync**: Keep code and docs synchronized
 
 **Understand the 4-Layer Architecture**:
+
 - 📌 **Commands** (`/moai:0-3`): Workflow entry points
 - 🤖 **Sub-agents** (19): Specialists for each phase
 - 📚 **Skills** (55): Reusable knowledge base
@@ -326,13 +337,15 @@ MoAI-ADK follows the **SPEC-First TDD** methodology. All code changes must follo
 - Creates `.moai/specs/SPEC-{ID}/spec.md`
 - Automatically creates feature branch
 
-#### Step 2: Execute TDD (`/moai:2-run`)
+#### Step 2: Execute DDD (`/moai:2-run`)
 
 ```bash
 /moai:2-run SPEC-{ID}
 ```
 
-- **REFACTOR**: Improve code quality
+- **ANALYZE**: Understand existing behavior
+- **PRESERVE**: Protect behavior with tests
+- **IMPROVE**: Enhance implementation
 
 #### Step 3: Synchronize Documentation (`/moai:3-sync`)
 
@@ -346,6 +359,7 @@ MoAI-ADK follows the **SPEC-First TDD** methodology. All code changes must follo
 ### Code Style Guide
 
 **TypeScript Code**:
+
 - Function: ≤50 LOC
 - File: ≤300 LOC
 - Parameters: ≤5
@@ -360,14 +374,15 @@ export class AuthService {
 ```
 
 **Writing Tests**:
+
 ```typescript
-describe('AuthService', () => {
-  it('should authenticate valid credentials', async () => {
+describe("AuthService", () => {
+  it("should authenticate valid credentials", async () => {
     // Given
     const authService = new AuthService();
 
     // When
-    const token = await authService.login('user', 'pass');
+    const token = await authService.login("user", "pass");
 
     // Then
     expect(token).toBeDefined();
@@ -390,12 +405,14 @@ describe('AuthService', () => {
 The MoAI-ADK project is committed to creating an environment that is open and welcoming to all.
 
 **What We Encourage**:
+
 - ✅ Respectful and considerate behavior
 - ✅ Constructive feedback
 - ✅ Collaborative problem-solving
 - ✅ Diversity and inclusion
 
 **What Is Not Acceptable**:
+
 - ❌ Offensive or aggressive language
 - ❌ Harassment or discrimination
 - ❌ Disrespectful or unprofessional behavior
@@ -439,7 +456,7 @@ MoAI-ADK 프로젝트에 기여해주셔서 감사합니다! 이 문서는 프�
 
 **필수 포함 사항**:
 
-```markdown
+````markdown
 ## 🐛 버그 설명
 
 버그에 대한 명확하고 간결한 설명을 작성해주세요.
@@ -472,11 +489,13 @@ MoAI-ADK 프로젝트에 기여해주셔서 감사합니다! 이 문서는 프�
 Error: Cannot find module '...'
     at Function.Module._resolveFilename ...
 ```
+````
 
 ## 🔍 추가 정보
 
 버그와 관련된 추가 정보나 컨텍스트를 제공해주세요.
-```
+
+````
 
 **예시**:
 
@@ -494,7 +513,7 @@ Error: Cannot find module '...'
 
 ## 💥 예상 동작 vs 실제 동작
 
-- **예상 동작**: TDD 사이클이 정상적으로 완료되어야 함
+- **예상 동작**: DDD 사이클이 정상적으로 완료되어야 함
 
 ## 🖥️ 환경 정보
 
@@ -507,8 +526,9 @@ Error: Cannot find module '...'
 ```bash
 Error: Implementation validation failed
 Please ensure all tests are passing before proceeding
-```
-```
+````
+
+````
 
 ---
 
@@ -537,7 +557,7 @@ Please ensure all tests are passing before proceeding
 ```bash
 # 명령어 예시
 python -m moai_adk new-feature --option
-```
+````
 
 ## 🔄 대안 고려
 
@@ -546,7 +566,8 @@ python -m moai_adk new-feature --option
 ## 📚 추가 정보
 
 관련 문서, 레퍼런스, 또는 유사한 기능을 제공하는 도구가 있나요?
-```
+
+````
 
 **예시**:
 
@@ -571,7 +592,7 @@ python -m moai_adk export SPEC-AUTH-001 --format pdf
 
 # 모든 SPEC을 PDF로 내보내기
 python -m moai_adk export --all --format pdf --output ./exports
-```
+````
 
 ## 🔄 대안 고려
 
@@ -581,7 +602,8 @@ python -m moai_adk export --all --format pdf --output ./exports
 ## 📚 추가 정보
 
 참고: [Pandoc Markdown to PDF](https://pandoc.org/MANUAL.html#creating-a-pdf)
-```
+
+````
 
 ---
 
@@ -592,7 +614,7 @@ Pull Request를 제출하기 전에 다음 사항을 확인해주세요:
 ### PR 제출 체크리스트
 
 - [ ] **SPEC 작성**: 변경 사항에 대한 SPEC 문서가 있습니까? (`/moai:1-plan`)
-- [ ] **TDD 완료**: RED-GREEN-REFACTOR 사이클을 완료했습니까? (`/moai:2-run`)
+- [ ] **DDD 완료**: ANALYZE-PRESERVE-IMPROVE 사이클을 완료했습니까? (`/moai:2-run`)
 - [ ] **문서 동기화**: Living Document가 업데이트되었습니까? (`/moai:3-sync`)
 - [ ] **TRUST 5원칙 준수**:
   - [ ] **T**est: 테스트가 작성되었습니까? (커버리지 ≥85%)
@@ -619,26 +641,30 @@ MoAI-ADK는 [자동 PR 템플릿](.github/PULL_REQUEST_TEMPLATE.md)을 사용합
 ```bash
 git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk
-```
+````
 
 ### 2. uv 패키지 관리자 설치 (필요할 경우)
 
 **Windows 사용자 (권장)**:
+
 ```powershell
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
 **macOS/Linux 사용자**:
+
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 **WSL 사용자 (Windows Subsystem for Linux)**:
+
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 **플랫폼별 주의사항**:
+
 - 🟢 **Windows (PowerShell)**: Windows 사용자를 위한 권장 방법 - 가장 안정적
 - 🟡 **WSL**: 작동하지만 환경 설정 오버헤드 발생
 - ✅ **macOS/Linux**: 기본 bash 설치 사용
@@ -680,21 +706,23 @@ MoAI-ADK의 핵심은 **Alfred** (MoAI SuperAgent)입니다. Alfred의 동작 �
 
 #### 📄 필수 읽기: 4-Document Architecture
 
-| 문서 | 크기 | 언제 읽을까? | 주요 내용 |
-|------|------|-----------|----------|
-| **CLAUDE.md** | ~7kb | 개발 시작 시 | Alfred의 정체성, 핵심 지령, 3단계 워크플로우 |
-| **CLAUDE-AGENTS-GUIDE.md** | ~14kb | 어떤 Agent가 필요할 때 | 19개 Sub-agent 팀 구조, 55개 Skills 분류 |
-| **CLAUDE-RULES.md** | ~17kb | 의사결정 규칙을 이해하고 싶을 때 | Skill 호출 규칙, 사용자 질문 규칙, TRUST 5 게이트 |
-| **CLAUDE-PRACTICES.md** | ~8kb | 실제 워크플로우 예제를 원할 때 | JIT 컨텍스트 패턴, 실전 워크플로우 |
+| 문서                       | 크기  | 언제 읽을까?                     | 주요 내용                                         |
+| -------------------------- | ----- | -------------------------------- | ------------------------------------------------- |
+| **CLAUDE.md**              | ~7kb  | 개발 시작 시                     | Alfred의 정체성, 핵심 지령, 3단계 워크플로우      |
+| **CLAUDE-AGENTS-GUIDE.md** | ~14kb | 어떤 Agent가 필요할 때           | 19개 Sub-agent 팀 구조, 55개 Skills 분류          |
+| **CLAUDE-RULES.md**        | ~17kb | 의사결정 규칙을 이해하고 싶을 때 | Skill 호출 규칙, 사용자 질문 규칙, TRUST 5 게이트 |
+| **CLAUDE-PRACTICES.md**    | ~8kb  | 실제 워크플로우 예제를 원할 때   | JIT 컨텍스트 패턴, 실전 워크플로우                |
 
 #### 🎯 개발자가 알아야 할 것 (요약)
 
 **Alfred의 3가지 핵심 의무**:
+
 1. **SPEC-First**: 코드 전에 요구사항 정의
-2. **TDD 자동 실행**: RED → GREEN → REFACTOR 순환
+2. **DDD 자동 실행**: ANALYZE → PRESERVE → IMPROVE 순환
 3. **문서 자동 동기화**: 코드와 문서 항상 일치
 
 **4개 계층 구조를 이해하세요**:
+
 - 📌 **Commands** (`/moai:0-3`): 워크플로우 진입점
 - 🤖 **Sub-agents** (19명): 각 단계별 전문가
 - 📚 **Skills** (55개): 재사용 가능한 지식 기지
@@ -712,7 +740,7 @@ MoAI-ADK의 핵심은 **Alfred** (MoAI SuperAgent)입니다. Alfred의 동작 �
 
 ### MoAI-ADK 3단계 워크플로우 따르기
 
-MoAI-ADK는 **SPEC-First TDD** 방법론을 따릅니다. 모든 코드 변경은 다음 단계를 거쳐야 합니다:
+MoAI-ADK는 **SPEC-First DDD** 방법론을 따릅니다. 모든 코드 변경은 다음 단계를 거쳐야 합니다:
 
 #### 1단계: Plan & SPEC 작성 (`/moai:1-plan`)
 
@@ -724,13 +752,15 @@ MoAI-ADK는 **SPEC-First TDD** 방법론을 따릅니다. 모든 코드 변경�
 - `.moai/specs/SPEC-{ID}/spec.md` 생성
 - feature 브랜치 자동 생성
 
-#### 2단계: TDD 실행 (`/moai:2-run`)
+#### 2단계: DDD 실행 (`/moai:2-run`)
 
 ```bash
 /moai:2-run SPEC-{ID}
 ```
 
-- **REFACTOR**: 코드 품질 개선
+- **ANALYZE**: 기존 동작 이해
+- **PRESERVE**: 테스트로 동작 보호
+- **IMPROVE**: 구현 개선
 
 #### 3단계: 문서 동기화 (`/moai:3-sync`)
 
@@ -744,6 +774,7 @@ MoAI-ADK는 **SPEC-First TDD** 방법론을 따릅니다. 모든 코드 변경�
 ### 코드 스타일 가이드
 
 **TypeScript 코드**:
+
 - 함수: ≤50 LOC
 - 파일: ≤300 LOC
 - 매개변수: ≤5개
@@ -758,14 +789,15 @@ export class AuthService {
 ```
 
 **테스트 작성**:
+
 ```typescript
-describe('AuthService', () => {
-  it('should authenticate valid credentials', async () => {
+describe("AuthService", () => {
+  it("should authenticate valid credentials", async () => {
     // Given
     const authService = new AuthService();
 
     // When
-    const token = await authService.login('user', 'pass');
+    const token = await authService.login("user", "pass");
 
     // Then
     expect(token).toBeDefined();
@@ -788,12 +820,14 @@ describe('AuthService', () => {
 MoAI-ADK 프로젝트는 모두에게 열려 있고 환영받는 환경을 만들기 위해 노력합니다.
 
 **우리가 지향하는 것**:
+
 - ✅ 존중하고 배려하는 태도
 - ✅ 건설적인 피드백
 - ✅ 협력적인 문제 해결
 - ✅ 다양성과 포용성
 
 **허용되지 않는 것**:
+
 - ❌ 모욕적이거나 공격적인 언어
 - ❌ 괴롭힘이나 차별
 - ❌ 무례하거나 비전문적인 행동

@@ -404,7 +404,8 @@ class TestInitCommand:
     @patch("moai_adk.cli.commands.init.ProjectInitializer")
     @patch("moai_adk.cli.commands.init.print_banner")
     @patch("moai_adk.cli.commands.init.VersionReader")
-    def test_init_current_directory_default(self, mock_version_reader_class, _mock_print_banner, mock_initializer_class):
+    def test_init_current_directory_default(
+        self, mock_version_reader_class, _mock_print_banner, mock_initializer_class):
         """Test init uses current directory as default."""
         # Arrange
         mock_version_reader = MagicMock()

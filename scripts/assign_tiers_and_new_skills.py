@@ -342,7 +342,10 @@ def create_new_skills():
     new_skills = [
         {
             "name": "moai-core-code-templates",
-            "description": "Code templates and boilerplates for common patterns and frameworks like FastAPI, React, and Vue",
+            "description": (
+                "Code templates and boilerplates for common patterns and "
+                "frameworks like FastAPI, React, and Vue"
+            ),
             "tier": 4,
             "keywords": [
                 "template",
@@ -356,7 +359,10 @@ def create_new_skills():
         },
         {
             "name": "moai-security-api-versioning",
-            "description": "API versioning strategies for REST, GraphQL and gRPC with backward compatibility and deprecation management",
+            "description": (
+                "API versioning strategies for REST, GraphQL and gRPC with "
+                "backward compatibility and deprecation management"
+            ),
             "tier": 3,
             "keywords": [
                 "api",
@@ -370,7 +376,10 @@ def create_new_skills():
         },
         {
             "name": "moai-essentials-testing-integration",
-            "description": "Integration and E2E testing patterns using Playwright, Cypress, Jest and pytest for comprehensive test coverage",
+            "description": (
+                "Integration and E2E testing patterns using Playwright, "
+                "Cypress, Jest and pytest for comprehensive test coverage"
+            ),
             "tier": 8,
             "keywords": [
                 "testing",
@@ -384,7 +393,10 @@ def create_new_skills():
         },
         {
             "name": "moai-essentials-performance-profiling",
-            "description": "Performance profiling tools and techniques for CPU, memory and latency analysis across Python, Node.js and Go",
+            "description": (
+                "Performance profiling tools and techniques for CPU, memory "
+                "and latency analysis across Python, Node.js and Go"
+            ),
             "tier": 8,
             "keywords": [
                 "performance",
@@ -397,7 +409,10 @@ def create_new_skills():
         },
         {
             "name": "moai-security-accessibility-wcag3",
-            "description": "WCAG 3.0 accessibility compliance validation using axe-core, Pa11y and automated A11y testing",
+            "description": (
+                "WCAG 3.0 accessibility compliance validation using "
+                "axe-core, Pa11y and automated A11y testing"
+            ),
             "tier": 3,
             "keywords": [
                 "accessibility",

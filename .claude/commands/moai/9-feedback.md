@@ -139,6 +139,11 @@ Context:
 
 - Feedback Type: $ARGUMENTS (default to 'issue' if empty)
 - Conversation Language: {{CONVERSATION_LANGUAGE}}
+- Documentation Language: {{DOCUMENTATION_LANGUAGE}}
+
+[HARD] GitHub 이슈 본문은 language.yaml의 documentation 설정 언어로 작성
+WHY: 프로젝트 언어 정책 일관성 유지
+IMPACT: 설정 무시 시 사용자 기대와 다른 언어로 작성됨
 
 Instructions:
 

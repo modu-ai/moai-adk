@@ -153,10 +153,10 @@ class TestStatusCommandIntegration:
             assert result.exit_code == 0
 
             # Should show mode
-            assert "mode" in result.output.lower() or "personal" in result.output.lower() or "team" in result.output.lower()
-
-    def test_status_shows_locale(self, cli_runner, temp_project_dir):
-        """Test that status displays locale setting."""
+            mode_check = "mode" in result.output.lower()
+            personal_check = "personal" in result.output.lower()
+            team_check = "team" in result.output.lower()
+            assert mode_check or personal_check or team_check
         with patch("pathlib.Path.cwd", return_value=temp_project_dir):
             result = cli_runner.invoke(cli, ["status"])
 
@@ -209,10 +209,10 @@ class TestStatusCommandIntegration:
             assert result.exit_code != 0
 
             # Should show error or warning
-            assert "moai" in result.output.lower() or "not found" in result.output.lower() or "no" in result.output.lower()
-
-
-@pytest.mark.integration
+            moai_check = "moai" in result.output.lower()
+            not_found_check = "not found" in result.output.lower()
+            no_check = "no" in result.output.lower()
+            assert moai_check or not_found_check or no_check
 class TestDoctorAndStatusTogether:
     """Tests for combined doctor and status workflows."""
 

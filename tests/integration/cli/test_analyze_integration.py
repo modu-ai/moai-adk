@@ -43,9 +43,9 @@ class TestAnalyzeBasicExecution:
             result = cli_runner.invoke(analyze)
 
             # Should show progress message
-            output_lower = result.output.lower()
-            assert "analyzing" in output_lower or "session" in output_lower
-
+            _ = result.output.lower()
+            _ = result.output.lower()
+            assert ("analyzing" in result.output.lower() or "session" in result.output.lower())
 
 @pytest.mark.integration
 class TestAnalyzeWithSessionFiles:
@@ -60,9 +60,9 @@ class TestAnalyzeWithSessionFiles:
             assert result.exit_code in [0, 1]
 
             # Should mention sessions
-            output_lower = result.output.lower()
-            assert "session" in output_lower or "analyz" in output_lower
-
+            _ = result.output.lower()
+            _ = result.output.lower()
+            assert ("session" in result.output.lower() or "analyz" in result.output.lower())
     def test_analyze_counts_events(self, cli_runner, temp_project_dir, temp_session_file):
         """Test that analyze counts events from sessions."""
         with patch("pathlib.Path.cwd", return_value=temp_project_dir):
@@ -145,9 +145,9 @@ class TestAnalyzeDaysOption:
             assert result.exit_code in [0, 1]
 
             # Should mention the time period
-            output_lower = result.output.lower()
-            assert "30" in result.output or "day" in output_lower
-
+            _ = result.output.lower()
+            _ = result.output.lower()
+            assert "30" in result.output or "day" in result.output.lower()
     def test_analyze_with_one_day(self, cli_runner, temp_project_dir):
         """Test analyze with 1 day period."""
         with patch("pathlib.Path.cwd", return_value=temp_project_dir):
@@ -256,10 +256,10 @@ class TestAnalyzeStatisticsCalculation:
             # Should execute
             assert result.exit_code in [0, 1]
 
-            # Should show session count
-            output_lower = result.output.lower()
-            assert "session" in output_lower
-
+            _ = result.output.lower()
+            assert "session" in result.output.lower()
+            _ = result.output.lower()
+            assert "event" in result.output.lower() or "analyz" in result.output.lower()
     def test_analyze_calculates_total_events(self, cli_runner, temp_project_dir, temp_session_file):
         """Test that analyze calculates total events."""
         with patch("pathlib.Path.cwd", return_value=temp_project_dir):
@@ -268,10 +268,10 @@ class TestAnalyzeStatisticsCalculation:
             # Should execute
             assert result.exit_code in [0, 1]
 
-            # Should show event count
-            output_lower = result.output.lower()
-            assert "event" in output_lower or "analyz" in output_lower
-
+            _ = result.output.lower()
+            assert "event" in result.output.lower() or "analyz" in result.output.lower()
+            _ = result.output.lower()
+            assert "event" in result.output.lower() or "analyz" in result.output.lower()
     def test_analyze_shows_success_rate(self, cli_runner, temp_project_dir, temp_session_file):
         """Test that analyze shows success rate."""
         with patch("pathlib.Path.cwd", return_value=temp_project_dir):
@@ -335,7 +335,7 @@ class TestAnalyzeSuggestions:
             assert result.exit_code in [0, 1]
 
             # May display suggestions section
-            output_lower = result.output.lower()
+            _ = result.output.lower()
 
 
 @pytest.mark.integration
@@ -371,7 +371,7 @@ class TestAnalyzeErrorHandling:
     def test_analyze_handles_negative_days(self, cli_runner, temp_project_dir):
         """Test analyze handles negative days value."""
         with patch("pathlib.Path.cwd", return_value=temp_project_dir):
-            result = cli_runner.invoke(analyze, ["--days", "-1"])
+            _ = cli_runner.invoke(analyze, ["--days", "-1"])
 
             # Should fail or handle gracefully
             # (Click may reject this)
