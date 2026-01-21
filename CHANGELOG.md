@@ -1,3 +1,73 @@
+# v1.6.4 - GLM API Endpoint Update (2026-01-22)
+
+## Summary
+
+This patch release updates the GLM API endpoint to the official BigModel API domain for improved service reliability and compatibility.
+
+## Changed
+
+- **fix(config)**: Update GLM API endpoint to official BigModel domain
+  - Changed base URL: `https://api.z.ai/api/anthropic` → `https://open.bigmodel.cn/api/anthropic`
+  - Ensures compatibility with latest GLM API infrastructure
+  - Updated in both local and template configuration files
+
+## Quality
+
+- Smoke tests: 6/6 passed (100% pass rate)
+- Ruff: All checks passed
+- Ruff format: 216 files unchanged
+- Mypy: Warning (3 minor type hint issues in non-critical code)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.6.4 - GLM API 엔드포인트 업데이트 (2026-01-22)
+
+## 요약
+
+이 패치 릴리스는 GLM API 엔드포인트를 공식 BigModel 도메인으로 업데이트하여 서비스 안정성과 호환성을 개선합니다.
+
+## 변경됨
+
+- **fix(config)**: 공식 BigModel 도메인으로 GLM API 엔드포인트 업데이트
+  - 베이스 URL 변경: `https://api.z.ai/api/anthropic` → `https://open.bigmodel.cn/api/anthropic`
+  - 최신 GLM API 인프라와의 호환성 보장
+  - 로컬 및 템플릿 구성 파일 모두 업데이트
+
+## 품질
+
+- Smoke 테스트: 6/6 통과 (100% 통과율)
+- Ruff: 모든 검사 통과
+- Ruff format: 216개 파일 변경 없음
+- Mypy: 경고 (비임계 코드 3개의 사소한 타입 힌트 문제)
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.6.3 - GLM API Endpoint Update (2026-01-22)
 
 ## Summary
