@@ -2,7 +2,7 @@
 description: "Agentic auto-fix - Parallel scan with autonomous correction"
 argument-hint: "[--dry] [--sequential] [--level N] [file_path] | --resume [ID]"
 type: utility
-allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
+allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep, mcp__sequential-thinking__sequential_thinking
 model: inherit
 ---
 

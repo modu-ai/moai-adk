@@ -431,12 +431,18 @@ Each sub-agent execution gets a unique agentId stored in agent-{agentId}.jsonl f
 
 ---
 
-## 11. Strategic Thinking
+## 11. Sequential Thinking
 
 ### Activation Triggers
 
-Activate deep analysis (Ultrathink) keywords in the following situations:
+Use the Sequential Thinking MCP tool in the following situations:
 
+- Breaking down complex problems into steps
+- Planning and design with room for revision
+- Analysis that might need course correction
+- Problems where the full scope might not be clear initially
+- Tasks that need to maintain context over multiple steps
+- Situations where irrelevant information needs to be filtered out
 - Architecture decisions affect 3+ files
 - Technology selection between multiple options
 - Performance vs maintainability trade-offs
@@ -445,13 +451,78 @@ Activate deep analysis (Ultrathink) keywords in the following situations:
 - Multiple approaches exist to solve the same problem
 - Repetitive errors occur
 
-### Thinking Process
+### Tool Parameters
 
-- Phase 1 - Prerequisite Check: Use AskUserQuestion to confirm implicit prerequisites
-- Phase 2 - First Principles: Apply Five Whys, distinguish hard constraints from preferences
-- Phase 3 - Alternative Generation: Generate 2-3 different approaches (conservative, balanced, aggressive)
-- Phase 4 - Trade-off Analysis: Evaluate across Performance, Maintainability, Cost, Risk, Scalability
-- Phase 5 - Bias Check: Verify not fixated on first solution, review contrary evidence
+The sequential_thinking tool accepts the following parameters:
+
+Required Parameters:
+- thought (string): The current thinking step content
+- nextThoughtNeeded (boolean): Whether another thought step is needed after this one
+- thoughtNumber (integer): Current thought number (starts from 1)
+- totalThoughts (integer): Estimated total thoughts needed for the analysis
+
+Optional Parameters:
+- isRevision (boolean): Whether this thought revises previous thinking (default: false)
+- revisesThought (integer): Which thought number is being reconsidered (used with isRevision: true)
+- branchFromThought (integer): Branching point thought number for alternative reasoning paths
+- branchId (string): Identifier for the reasoning branch
+- needsMoreThoughts (boolean): If more thoughts are needed beyond current estimate
+
+### Sequential Thinking Process
+
+The Sequential Thinking MCP tool provides structured reasoning with:
+
+- Step-by-step breakdown of complex problems
+- Context maintenance across multiple reasoning steps
+- Ability to revise and adjust thinking based on new information
+- Filtering of irrelevant information for focus on key issues
+- Course correction during analysis when needed
+
+### Usage Pattern
+
+When encountering complex decisions that require deep analysis, use the Sequential Thinking MCP tool:
+
+Step 1: Initial Call
+```
+thought: "Analyzing the problem: [describe problem]"
+nextThoughtNeeded: true
+thoughtNumber: 1
+totalThoughts: 5
+```
+
+Step 2: Continue Analysis
+```
+thought: "Breaking down: [sub-problem 1]"
+nextThoughtNeeded: true
+thoughtNumber: 2
+totalThoughts: 5
+```
+
+Step 3: Revision (if needed)
+```
+thought: "Revising thought 2: [corrected analysis]"
+isRevision: true
+revisesThought: 2
+thoughtNumber: 3
+totalThoughts: 5
+nextThoughtNeeded: true
+```
+
+Step 4: Final Conclusion
+```
+thought: "Conclusion: [final answer based on analysis]"
+thoughtNumber: 5
+totalThoughts: 5
+nextThoughtNeeded: false
+```
+
+### Usage Guidelines
+
+1. Start with reasonable totalThoughts estimate, adjust with needsMoreThoughts if needed
+2. Use isRevision when correcting or refining previous thoughts
+3. Maintain thoughtNumber sequence for context tracking
+4. Set nextThoughtNeeded to false only when analysis is complete
+5. Use branching (branchFromThought, branchId) for exploring alternative approaches
 
 ---
 

@@ -380,12 +380,18 @@ MoAI-ADK 错误：当发生 MoAI-ADK 特定错误（工作流失败、代理问�
 
 ---
 
-## 11. 战略思维
+## 11. 顺序思考
 
 ### 激活触发器
 
-在以下情况下使用深度分析（Ultrathink）关键词激活：
+在以下情况下使用 Sequential Thinking MCP 工具：
 
+- 将复杂问题分解为步骤时
+- 进行有修订余地的规划和设计时
+- 进行可能需要课程修正的分析时
+- 处理最初范围不明确的问题时
+- 需要在多个步骤中保持上下文的任务
+- 需要过滤无关信息的情况
 - 架构决策影响 3+ 个文件
 - 多个选项之间的技术选择
 - 性能与可维护性的权衡
@@ -394,13 +400,78 @@ MoAI-ADK 错误：当发生 MoAI-ADK 特定错误（工作流失败、代理问�
 - 存在多种方法解决同一问题
 - 发生重复性错误
 
-### 思维过程
+### 工具参数
 
-1阶段 - 前提条件检查：使用 AskUserQuestion 确认隐含的前提条件
-2阶段 - 第一性原理：应用五个为什么，区分必须约束和优先事项
-3阶段 - 替代方案生成：生成 2-3 个不同的方法（保守、平衡、积极）
-4阶段 - 权衡分析：从性能、可维护性、成本、风险、可扩展性角度进行评估
-5阶段 - 偏见检查：确认未固执于第一个解决方案，并审查相反的依据
+sequential_thinking 工具接受以下参数：
+
+必需参数：
+- thought (string): 当前思考步骤内容
+- nextThoughtNeeded (boolean): 是否需要下一个思考步骤
+- thoughtNumber (integer): 当前思考编号 (从1开始)
+- totalThoughts (integer): 分析所需的估计总思考数
+
+可选参数：
+- isRevision (boolean): 是否修正之前的思考 (默认: false)
+- revisesThought (integer): 被重新考虑的思考编号 (与 isRevision: true 一起使用)
+- branchFromThought (integer): 替代推理路径的分支点思考编号
+- branchId (string): 推理分支标识符
+- needsMoreThoughts (boolean): 是否需要比当前估计更多的思考
+
+### 顺序思考过程
+
+Sequential Thinking MCP 工具提供以下结构化推理：
+
+- 复杂问题的逐步分解
+- 跨多个推理步骤的上下文维护
+- 基于新信息修改和调整思考的能力
+- 过滤无关信息以专注于关键问题
+- 必要时在分析过程中进行课程修正
+
+### 使用模式
+
+当遇到需要深入分析的复杂决策时，使用 Sequential Thinking MCP 工具：
+
+步骤 1: 初始调用
+```
+thought: "问题分析: [问题描述]"
+nextThoughtNeeded: true
+thoughtNumber: 1
+totalThoughts: 5
+```
+
+步骤 2: 继续分析
+```
+thought: "分解: [子问题1]"
+nextThoughtNeeded: true
+thoughtNumber: 2
+totalThoughts: 5
+```
+
+步骤 3: 修正 (如需要)
+```
+thought: "修正思考2: [修正后的分析]"
+isRevision: true
+revisesThought: 2
+thoughtNumber: 3
+totalThoughts: 5
+nextThoughtNeeded: true
+```
+
+步骤 4: 最终结论
+```
+thought: "结论: [基于分析的最终答案]"
+thoughtNumber: 5
+totalThoughts: 5
+nextThoughtNeeded: false
+```
+
+### 使用指南
+
+1. 以合理的 totalThoughts 估计开始，必要时用 needsMoreThoughts 调整
+2. 修正或改进先前思考时使用 isRevision
+3. 保持 thoughtNumber 序列以进行上下文跟踪
+4. 仅在分析完成时将 nextThoughtNeeded 设置为 false
+5. 使用分支 (branchFromThought, branchId) 探索替代方法
 
 ---
 

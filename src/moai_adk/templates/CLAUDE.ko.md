@@ -380,12 +380,18 @@ agentId를 사용하여 중단된 에이전트 작업을 재개할 수 있습니
 
 ---
 
-## 11. 전략적 사고
+## 11. 순차적 사고
 
 ### 활성화 트리거
 
-다음 상황에서 심층 분석(Ultrathink)을 활성화합니다:
+다음 상황에서 Sequential Thinking MCP 도구를 사용합니다:
 
+- 복잡한 문제를 단계로 나눌 때
+- 수정이 가능한 계획 및 설계를 할 때
+- 코스 교정이 필요할 수 있는 분석을 할 때
+- 초기에 전체 범위가 명확하지 않은 문제를 다룰 때
+- 여러 단계에 걸쳐 컨텍스트를 유지해야 하는 작업을 할 때
+- 관련 없는 정보를 필터링해야 하는 상황에서
 - 아키텍처 결정이 3개 이상의 파일에 영향을 미칠 때
 - 여러 옵션 간의 기술 선택이 필요할 때
 - 성능 대 유지보수성 트레이드오프가 있을 때
@@ -394,13 +400,78 @@ agentId를 사용하여 중단된 에이전트 작업을 재개할 수 있습니
 - 동일한 문제를 해결하기 위한 여러 접근 방식이 있을 때
 - 반복적인 오류가 발생할 때
 
-### 사고 프로세스
+### 도구 매개변수
 
-1단계 - 전제조건 점검: AskUserQuestion을 사용하여 암묵적인 전제조건들을 확인합니다
-2단계 - 제1원칙: 5 Whys를 적용하고, 필수 제약조건과 선호사항을 구분합니다
-3단계 - 대안 생성: 2-3개의 서로 다른 접근 방식을 생성합니다 (보수적, 균형적, 적극적)
-4단계 - 트레이드오프 분석: 성능, 유지보수성, 비용, 위험, 확장성 관점에서 평가합니다
-5단계 - 편향 점검: 첫 번째 해결책에 집착하지 않는지 확인하고, 반대 근거도 검토합니다
+sequential_thinking 도구는 다음 매개변수를 받습니다:
+
+필수 매개변수:
+- thought (string): 현재 생각 단계 내용
+- nextThoughtNeeded (boolean): 다음 생각 단계가 필요한지 여부
+- thoughtNumber (integer): 현재 생각 번호 (1부터 시작)
+- totalThoughts (integer): 분석에 필요한 추정 총 생각 수
+
+선택적 매개변수:
+- isRevision (boolean): 이전 생각을 수정하는지 여부 (기본값: false)
+- revisesThought (integer): 재고 대상인 생각 번호 (isRevision: true와 함께 사용)
+- branchFromThought (integer): 대체 추론 경로를 위한 분기 지점 생각 번호
+- branchId (string): 추론 분기 식별자
+- needsMoreThoughts (boolean): 현재 추정보다 더 많은 생각이 필요한지 여부
+
+### 순차적 사고 프로세스
+
+Sequential Thinking MCP 도구는 다음과 같은 구조화된 추론을 제공합니다:
+
+- 복잡한 문제의 단계별 분해
+- 여러 추론 단계에 걸친 컨텍스트 유지
+- 새로운 정보를 기반으로 생각 수정 및 조정 능력
+- 핵심 문제에 대한 집중을 위한 관련 없는 정보 필터링
+- 필요시 분석 중 코스 교정
+
+### 사용 패턴
+
+심층 분석이 필요한 복잡한 결정에 직면하면 Sequential Thinking MCP 도구를 사용합니다:
+
+1단계: 초기 호출
+```
+thought: "문제 분석: [문제 설명]"
+nextThoughtNeeded: true
+thoughtNumber: 1
+totalThoughts: 5
+```
+
+2단계: 분석 계속
+```
+thought: "분해: [하위 문제 1]"
+nextThoughtNeeded: true
+thoughtNumber: 2
+totalThoughts: 5
+```
+
+3단계: 수정 (필요한 경우)
+```
+thought: "생각 2 수정: [수정된 분석]"
+isRevision: true
+revisesThought: 2
+thoughtNumber: 3
+totalThoughts: 5
+nextThoughtNeeded: true
+```
+
+4단계: 최종 결론
+```
+thought: "결론: [분석 기반 최종 답변]"
+thoughtNumber: 5
+totalThoughts: 5
+nextThoughtNeeded: false
+```
+
+### 사용 가이드라인
+
+1. 합리적인 totalThoughts 추정으로 시작, 필요시 needsMoreThoughts로 조정
+2. 이전 생각을 수정하거나 정제할 때 isRevision 사용
+3. 컨텍스트 추적을 위해 thoughtNumber 순서 유지
+4. 분석 완료 시에만 nextThoughtNeeded를 false로 설정
+5. 대체 접근 방식 탐색을 위해 분기 (branchFromThought, branchId) 사용
 
 ---
 

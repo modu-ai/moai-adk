@@ -2,7 +2,7 @@
 description: "Agentic AI automation - From SPEC to code with autonomous loop"
 argument-hint: '"task description" [--loop] [--max N] [--seq] | resume SPEC-XXX'
 type: utility
-allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
+allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep, mcp__sequential-thinking__sequential_thinking
 model: inherit
 ---
 

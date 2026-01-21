@@ -7,7 +7,7 @@ description: |
   KO: 품질, TRUST 5, 코드리뷰, 준수, 품질게이트, 린트, 코드품질
   JA: 品質, TRUST 5, コードレビュー, コンプライアンス, 品質ゲート, リント
   ZH: 质量, TRUST 5, 代码审查, 合规, 质量门, lint
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential-thinking__sequential_thinking
 model: inherit
 permissionMode: bypassPermissions
 skills: moai-foundation-claude, moai-workflow-testing, moai-foundation-quality, moai-tool-ast-grep

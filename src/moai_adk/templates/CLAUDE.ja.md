@@ -380,12 +380,18 @@ agentId を使用して中断されたエージェント作業を再開できま
 
 ---
 
-## 11. 戦略的思考
+## 11. 逐次的思考
 
 ### アクティベーショントリガー
 
-以下の状況で深い分析（Ultrathink）を活性化します:
+以下の状況で Sequential Thinking MCP ツールを使用します:
 
+- 複雑な問題をステップに分解する場合
+- 修正の余地がある計画と設計を行う場合
+- コース修正が必要な分析を行う場合
+- 最初に全範囲が明確ではない問題に対処する場合
+- 複数ステップにわたってコンテキストを維持する必要があるタスク
+- 関連しない情報をフィルタリングする必要がある状況
 - アーキテクチャ決定が3つ以上のファイルに影響する
 - 複数のオプション間での技術選択
 - パフォーマンスと保守性のトレードオフ
@@ -394,13 +400,78 @@ agentId を使用して中断されたエージェント作業を再開できま
 - 同じ問題を解決するための複数のアプローチが存在する
 - 繰り返しエラーが発生する
 
-### 思考プロセス
+### ツールパラメータ
 
-1フェーズ - 前提条件の確認: AskUserQuestion を使用して暗黙の前提条件を確認します
-2フェーズ - 第一原理: 5つのなぜを適用し、必須制約と優先事項を区別します
-3フェーズ - 代替案生成: 2-3の異なるアプローチを生成します（保守的、バランス型、積極的）
-4フェーズ - トレードオフ分析: パフォーマンス、保守性、コスト、リスク、スケーラビリティの観点で評価します
-5フェーズ - バイアス確認: 最初の解決策に固執していないか確認し、反対の根拠も検討します
+sequential_thinking ツールは以下のパラメータを受け取ります:
+
+必須パラメータ:
+- thought (string): 現在の思考ステップ内容
+- nextThoughtNeeded (boolean): 次の思考ステップが必要かどうか
+- thoughtNumber (integer): 現在の思考番号 (1から開始)
+- totalThoughts (integer): 分析に必要な推定総思考数
+
+オプションパラメータ:
+- isRevision (boolean): 以前の思考を修正するかどうか (デフォルト: false)
+- revisesThought (integer): 再考対象の思考番号 (isRevision: trueと共に使用)
+- branchFromThought (integer): 代替推論パスのための分岐点思考番号
+- branchId (string): 推論分岐の識別子
+- needsMoreThoughts (boolean): 現在の推定より多くの思考が必要かどうか
+
+### 逐次的思考プロセス
+
+Sequential Thinking MCP ツールは以下のような構造化された推論を提供します:
+
+- 複雑な問題の段階的な分解
+- 複数の推論ステップにわたるコンテキスト維持
+- 新しい情報に基づく思考の修正と調整能力
+- 主要な問題への集中のための関連しない情報のフィルタリング
+- 必要に応じた分析中のコース修正
+
+### 使用パターン
+
+深い分析が必要な複雑な決定に直面した場合、Sequential Thinking MCP ツールを使用します:
+
+ステップ 1: 初期呼び出し
+```
+thought: "問題分析: [問題説明]"
+nextThoughtNeeded: true
+thoughtNumber: 1
+totalThoughts: 5
+```
+
+ステップ 2: 分析継続
+```
+thought: "分解: [サブ問題1]"
+nextThoughtNeeded: true
+thoughtNumber: 2
+totalThoughts: 5
+```
+
+ステップ 3: 修正 (必要な場合)
+```
+thought: "思考2の修正: [修正された分析]"
+isRevision: true
+revisesThought: 2
+thoughtNumber: 3
+totalThoughts: 5
+nextThoughtNeeded: true
+```
+
+ステップ 4: 最終結論
+```
+thought: "結論: [分析に基づく最終回答]"
+thoughtNumber: 5
+totalThoughts: 5
+nextThoughtNeeded: false
+```
+
+### 使用ガイドライン
+
+1. 合理的な totalThoughts 推定で開始、必要に応じて needsMoreThoughts で調整
+2. 以前の思考を修正または洗練するとき isRevision を使用
+3. コンテキスト追跡のため thoughtNumber 順序を維持
+4. 分析完了時のみ nextThoughtNeeded を false に設定
+5. 代替アプローチの探索のため分岐 (branchFromThought, branchId) を使用
 
 ---
 

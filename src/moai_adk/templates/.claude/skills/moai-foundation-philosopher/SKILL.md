@@ -14,6 +14,7 @@ allowed-tools:
   - Glob
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
+  - mcp__sequential-thinking__sequential_thinking
 
 # Progressive Disclosure Configuration
 progressive_disclosure:
