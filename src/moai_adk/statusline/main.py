@@ -210,14 +210,16 @@ def extract_context_window(session_context: dict) -> dict:
 
     Returns:
         Dict with:
-        - used_percentage: 42.5 (from Claude Code or calculated)
-        - remaining_percentage: 57.5 (from Claude Code or calculated)
+        - used_percentage: Percentage of context window used (0.0-100.0)
+        - remaining_percentage: Percentage of context window remaining (0.0-100.0)
 
     Note:
-        Priority:
-        1. Use Claude Code's pre-calculated percentages (if available)
-        2. Fallback to calculation from current_usage tokens
-        3. Final fallback to 0% used / 100% remaining
+        Priority (following Claude Code documentation):
+        1. Calculate from current_usage tokens (most accurate)
+        2. If current_usage is null/empty, return 0% (session start state)
+
+        This follows the "Advanced Approach" from Claude Code docs which
+        explicitly returns 0% when current_usage is not available.
 
     Reference: https://code.claude.com/docs/en/statusline
     """
@@ -225,49 +227,36 @@ def extract_context_window(session_context: dict) -> dict:
     context_info = session_context.get("context_window") or session_context.get("context_window_info", {})
 
     if not context_info:
-        return {"used_percentage": 0, "remaining_percentage": 100}
+        return {"used_percentage": 0.0, "remaining_percentage": 100.0}
 
-    # Try Claude Code's pre-calculated percentages first
-    used_pct = context_info.get("used_percentage")
-    remaining_pct = context_info.get("remaining_percentage")
+    # Get context window size for calculation
+    context_size = context_info.get("context_window_size", 200000)
+    current_usage = context_info.get("current_usage")
 
-    # FALLBACK: Calculate from tokens if percentages not provided
-    # Reference: https://code.claude.com/docs/en/statusline (Advanced approach)
-    if used_pct is None or remaining_pct is None:
-        context_size = context_info.get("context_window_size", 200000)
-        current_usage = context_info.get("current_usage")
+    # Primary method: Calculate from current_usage tokens (most accurate)
+    # Reference: Claude Code docs "Advanced Approach"
+    if current_usage and isinstance(current_usage, dict):
+        # Calculate from actual tokens
+        # Note: Claude Code docs use input_tokens + cache tokens (not output_tokens)
+        input_tokens = current_usage.get("input_tokens") or 0
+        cache_creation = current_usage.get("cache_creation_input_tokens") or 0
+        cache_read = current_usage.get("cache_read_input_tokens") or 0
+        current_tokens = input_tokens + cache_creation + cache_read
 
-        if current_usage and isinstance(current_usage, dict):
-            # Calculate current context from current_usage fields
-            # Include ALL token types: input + output + cache creation + cache read
-            # Reference: https://code.claude.com/docs/en/statusline
-            input_tokens = current_usage.get("input_tokens", 0)
-            output_tokens = current_usage.get("output_tokens", 0)
-            cache_creation = current_usage.get("cache_creation_input_tokens", 0)
-            cache_read = current_usage.get("cache_read_input_tokens", 0)
-            current_tokens = input_tokens + output_tokens + cache_creation + cache_read
-
-            if context_size > 0:
-                used_pct = (current_tokens / context_size) * 100
-                remaining_pct = 100 - used_pct
-            else:
-                used_pct = 0
-                remaining_pct = 100
+        if context_size > 0:
+            used_pct = (current_tokens / context_size) * 100.0
         else:
-            # No current_usage data available
-            used_pct = 0
-            remaining_pct = 100
+            used_pct = 0.0
 
-    # Ensure values are not None
-    if used_pct is None:
-        used_pct = 0
-    if remaining_pct is None:
-        remaining_pct = 100 - used_pct
+        return {
+            "used_percentage": used_pct,
+            "remaining_percentage": 100.0 - used_pct,
+        }
 
-    return {
-        "used_percentage": used_pct,
-        "remaining_percentage": remaining_pct,
-    }
+    # Fallback: If current_usage is null/empty, return 0%
+    # This follows Claude Code docs: "echo '[$MODEL] Context: 0%'" when USAGE is null
+    # Session start state = no tokens used yet
+    return {"used_percentage": 0.0, "remaining_percentage": 100.0}
 
 
 def build_statusline_data(session_context: dict, mode: str = "compact") -> str:

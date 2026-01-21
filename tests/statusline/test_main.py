@@ -68,33 +68,44 @@ class TestFormatTokenCount:
 
 
 class TestExtractContextWindow:
-    """Test extract_context_window function."""
+    """Test extract_context_window function.
+
+    The function now returns a dictionary with:
+    - used_percentage: Percentage of context window used (0.0-100.0)
+    - remaining_percentage: Percentage of context window remaining (0.0-100.0)
+
+    Following Claude Code documentation "Advanced Approach":
+    - If current_usage is available, calculate from tokens
+    - If current_usage is null/empty, return 0% (session start state)
+    """
 
     def test_empty_context(self):
-        """Test extracting from empty context."""
+        """Test extracting from empty context returns 0% used."""
         result = extract_context_window({})
-        assert result == ""
+        assert result == {"used_percentage": 0.0, "remaining_percentage": 100.0}
 
     def test_no_context_window_info(self):
-        """Test when context_window info is missing."""
+        """Test when context_window info is missing returns 0% used."""
         session_context = {"model": "claude-opus"}
         result = extract_context_window(session_context)
-        assert result == ""
+        assert result == {"used_percentage": 0.0, "remaining_percentage": 100.0}
 
     def test_no_context_window_size(self):
-        """Test when context_window_size is missing."""
+        """Test when context_window_size is missing uses default 200K."""
         session_context = {"context_window": {"other_key": "value"}}
         result = extract_context_window(session_context)
-        assert result == ""
+        # No current_usage means 0% used (session start state)
+        assert result == {"used_percentage": 0.0, "remaining_percentage": 100.0}
 
     def test_no_current_usage(self):
-        """Test when current_usage is missing."""
+        """Test when current_usage is missing returns 0% (session start)."""
         session_context = {"context_window": {"context_window_size": 200000, "total_input_tokens": 15000}}
         result = extract_context_window(session_context)
-        assert result == "15K/200K"
+        # Per Claude Code docs: If current_usage is null, return 0%
+        assert result == {"used_percentage": 0.0, "remaining_percentage": 100.0}
 
     def test_with_current_usage(self):
-        """Test with complete current_usage data."""
+        """Test with complete current_usage data calculates percentage correctly."""
         session_context = {
             "context_window": {
                 "context_window_size": 200000,
@@ -106,13 +117,31 @@ class TestExtractContextWindow:
             }
         }
         result = extract_context_window(session_context)
-        assert result == "15K/200K"
+        # 15000 / 200000 = 7.5%
+        assert result["used_percentage"] == 7.5
+        assert result["remaining_percentage"] == 92.5
 
     def test_zero_current_tokens(self):
-        """Test when current_tokens is zero."""
+        """Test when current_usage is empty dict returns 0% used."""
         session_context = {"context_window": {"context_window_size": 200000, "current_usage": {}}}
         result = extract_context_window(session_context)
-        assert result == ""
+        # Empty dict means 0 tokens, so 0% used
+        assert result == {"used_percentage": 0.0, "remaining_percentage": 100.0}
+
+    def test_with_context_window_alt_key(self):
+        """Test with context_window_info alternative key."""
+        session_context = {
+            "context_window_info": {
+                "context_window_size": 100000,
+                "current_usage": {
+                    "input_tokens": 50000,
+                },
+            }
+        }
+        result = extract_context_window(session_context)
+        # 50000 / 100000 = 50%
+        assert result["used_percentage"] == 50.0
+        assert result["remaining_percentage"] == 50.0
 
 
 class TestSafeCollectGitInfo:

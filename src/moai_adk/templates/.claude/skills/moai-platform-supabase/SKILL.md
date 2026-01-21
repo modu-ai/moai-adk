@@ -116,7 +116,7 @@ Migration: Use Supabase CLI with supabase migration new and supabase db push com
 - moai-lang-typescript for TypeScript patterns for Supabase client
 - moai-domain-backend for backend architecture integration
 - moai-foundation-quality for security and RLS best practices
-- moai-workflow-testing for test-driven development with Supabase
+- moai-workflow-testing for DDD testing with Supabase (characterization tests for legacy, specification tests for new features)
 
 ---
 

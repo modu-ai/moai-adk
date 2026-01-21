@@ -14,7 +14,6 @@ allowed-tools:
   - Glob
   - mcp__context7__resolve-library-id
   - mcp__context7__get-library-docs
-  - mcp__sequential-thinking__sequential_thinking
 
 # Progressive Disclosure Configuration
 progressive_disclosure:
@@ -243,9 +242,10 @@ SPEC Phase Integration:
 - Include alternative approaches considered in plan.md
 - Define validation criteria in acceptance.md
 
-TDD Phase Integration:
+DDD Phase Integration:
 - Use First Principles to identify core test scenarios
-- Generate test alternatives for edge cases
+- Generate characterization test alternatives for legacy code
+- Generate specification test alternatives for new features
 - Apply Trade-off Analysis for test coverage decisions
 
 Quality Phase Integration:

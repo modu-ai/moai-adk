@@ -134,7 +134,12 @@ class VersionReader:
         else:
             base_dir = Path.cwd()
 
-        self._config_path = base_dir / ".moai" / "config" / "config.yaml"
+        # Config paths to check (in order of priority)
+        self._config_paths = [
+            base_dir / ".moai" / "config" / "sections" / "system.yaml",  # New sections format
+            base_dir / ".moai" / "config" / "config.yaml",  # Legacy format
+        ]
+        self._config_path = self._config_paths[0]  # Default for compatibility
 
         # Enhanced caching with LRU support
         self._cache: Dict[str, CacheEntry] = {}
@@ -441,23 +446,34 @@ class VersionReader:
 
     def _read_version_from_config_sync(self) -> str:
         """
-        Synchronous version of reading from .moai/config/config.yaml.
+        Synchronous version of reading from config files.
+
+        Checks multiple config paths in order of priority:
+        1. .moai/config/sections/system.yaml (new sections format)
+        2. .moai/config/config.yaml (legacy format)
 
         Returns:
             Version string or empty string if not found
         """
         try:
-            if not self._config_path.exists():
-                logger.debug(f"Config file not found: {self._config_path}")
-                return ""
+            # Try each config path in order
+            for config_path in self._config_paths:
+                if not config_path.exists():
+                    logger.debug(f"Config file not found: {config_path}")
+                    continue
 
-            try:
-                config_data = self._read_config_sync(self._config_path)
-                version = self._extract_version_from_config(config_data)
-                return version if version else ""
-            except (json.JSONDecodeError, yaml.YAMLError) as e:
-                logger.error(f"Invalid config in {self._config_path}: {e}")
-                return ""
+                try:
+                    config_data = self._read_config_sync(config_path)
+                    version = self._extract_version_from_config(config_data)
+                    if version:
+                        logger.debug(f"Found version {version} in {config_path}")
+                        return version
+                except (json.JSONDecodeError, yaml.YAMLError) as e:
+                    logger.error(f"Invalid config in {config_path}: {e}")
+                    continue
+
+            logger.debug("No version found in any config file")
+            return ""
 
         except Exception as e:
             logger.error(f"Error reading version from config: {e}")
@@ -465,22 +481,34 @@ class VersionReader:
 
     async def _read_version_from_config_async(self) -> str:
         """
-        Read version from .moai/config/config.yaml asynchronously.
+        Read version from config files asynchronously.
+
+        Checks multiple config paths in order of priority:
+        1. .moai/config/sections/system.yaml (new sections format)
+        2. .moai/config/config.yaml (legacy format)
 
         Returns:
             Version string or empty string if not found
         """
         try:
-            if not await self._file_exists_async(self._config_path):
-                logger.debug(f"Config file not found: {self._config_path}")
-                return ""
+            # Try each config path in order
+            for config_path in self._config_paths:
+                if not await self._file_exists_async(config_path):
+                    logger.debug(f"Config file not found: {config_path}")
+                    continue
 
-            try:
-                config_data = await self._read_config_async(self._config_path)
-                return self._extract_version_from_config(config_data)
-            except (json.JSONDecodeError, yaml.YAMLError) as e:
-                logger.error(f"Invalid config in {self._config_path}: {e}")
-                return ""
+                try:
+                    config_data = await self._read_config_async(config_path)
+                    version = self._extract_version_from_config(config_data)
+                    if version:
+                        logger.debug(f"Found version {version} in {config_path}")
+                        return version
+                except (json.JSONDecodeError, yaml.YAMLError) as e:
+                    logger.error(f"Invalid config in {config_path}: {e}")
+                    continue
+
+            logger.debug("No version found in any config file")
+            return ""
 
         except Exception as e:
             logger.error(f"Error reading version from config: {e}")

@@ -2,7 +2,7 @@
 description: "Agentic autonomous loop - Auto-fix until completion marker"
 argument-hint: "[--max N] [--auto] [--seq] | --resume snapshot"
 type: utility
-allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep, mcp__sequential-thinking__sequential_thinking
+allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 model: inherit
 ---
 

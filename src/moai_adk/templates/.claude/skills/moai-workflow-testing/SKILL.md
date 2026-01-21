@@ -1,14 +1,14 @@
 ---
 name: "moai-workflow-testing"
-description: "Comprehensive development workflow specialist combining TDD, debugging, performance optimization, code review, PR review, and quality assurance into unified development workflows"
-version: 2.3.0
+description: "Comprehensive development workflow specialist combining DDD testing, debugging, performance optimization, code review, PR review, and quality assurance into unified development workflows"
+version: 2.4.0
 category: "workflow"
 modularized: true
 user-invocable: false
 context: fork
-agent: expert-testing
-tags: ['workflow', 'testing', 'debugging', 'performance', 'quality', 'ddd', 'review', 'pr-review']
-updated: 2026-01-11
+agent: manager-ddd
+tags: ['workflow', 'ddd', 'testing', 'debugging', 'performance', 'quality', 'review', 'pr-review']
+updated: 2026-01-21
 status: "active"
 author: "MoAI-ADK Team"
 
@@ -20,7 +20,7 @@ progressive_disclosure:
 
 # Trigger Conditions for Level 2 Loading
 triggers:
-  keywords: ["DDD", "domain-driven development", "debugging", "performance optimization", "code review", "PR review", "quality assurance", "testing", "CI/CD", "TRUST 5"]
+  keywords: ["DDD", "domain-driven development", "characterization tests", "behavior preservation", "debugging", "performance optimization", "code review", "PR review", "quality assurance", "testing", "CI/CD", "TRUST 5"]
   phases: ["run", "sync"]
   agents: ["manager-ddd", "expert-testing", "expert-debug", "expert-performance", "manager-quality"]
 
@@ -39,11 +39,11 @@ allowed-tools:
 
 ## Quick Reference
 
-Unified Development Workflow provides comprehensive development lifecycle management combining TDD, AI-powered debugging, performance optimization, automated code review, and quality assurance into integrated workflows.
+Unified Development Workflow provides comprehensive development lifecycle management combining DDD testing, AI-powered debugging, performance optimization, automated code review, and quality assurance into integrated workflows.
 
 Core Capabilities:
 
-- Test-Driven Development: RED-GREEN-REFACTOR cycle with best practice patterns
+- DDD Testing: Characterization tests for legacy code, specification tests for greenfield projects, behavior snapshots
 - AI-Powered Debugging: Intelligent error analysis and solution recommendations
 - Performance Optimization: Profiling and bottleneck detection guidance
 - Automated Code Review: TRUST 5 validation framework for quality analysis
@@ -85,7 +85,7 @@ Component 2 - Smart Refactoring: The refactoring component performs technical de
 
 Component 3 - Performance Optimization: The performance component provides real-time monitoring guidance and bottleneck detection. It helps identify CPU-intensive operations, memory leaks, and I/O bottlenecks, then recommends specific optimization strategies based on the identified issues.
 
-Component 4 - TDD Cycle Management: The TDD component guides the RED-GREEN-REFACTOR cycle with enhanced test generation. It helps write failing tests first, implement minimal code to pass, then refactor while maintaining test coverage.
+Component 4 - DDD Testing Management: The DDD testing component provides specialized testing approaches aligned with domain-driven development. For legacy code, it uses characterization tests to capture current behavior before refactoring (PRESERVE phase). For greenfield projects, it uses specification tests derived from domain requirements. Behavior snapshots ensure behavioral consistency during transformations, and TRUST 5 validation ensures quality standards are maintained.
 
 Component 5 - Automated Code Review: The code review component applies TRUST 5 framework validation with AI-powered quality analysis. It evaluates code against five trust dimensions and provides actionable improvement recommendations.
 
@@ -134,11 +134,25 @@ Performance Optimization Process:
 - Step 5: Apply optimizations in isolation to measure individual effects
 - Step 6: Validate overall performance improvement
 
-TDD Cycle Process:
+DDD Testing Process:
 
-- RED Phase: Write a failing test that defines the desired behavior. The test should clearly express what the code should do, not how it should do it. Run the test to confirm it fails for the expected reason.
-- GREEN Phase: Write the minimum code necessary to make the test pass. Avoid over-engineering or premature optimization. Focus solely on satisfying the test requirements.
-- REFACTOR Phase: Improve the code structure while keeping all tests passing. Apply design patterns, extract common functionality, and improve naming. Run tests after each refactoring step.
+Legacy Code Testing (PRESERVE Phase):
+
+- Step 1: Write characterization tests that capture the current behavior of the system. These tests document what the code actually does, not what it should do.
+- Step 2: Organize characterization tests by domain concepts and business rules. Group related behaviors to identify potential domain boundaries.
+- Step 3: Use behavior snapshots to record input-output pairs for complex scenarios. These serve as regression safeguards during refactoring.
+- Step 4: Verify that all characterization tests pass before making any changes. This establishes a baseline of current behavior.
+- Step 5: Apply refactoring transformations while continuously running characterization tests to ensure behavior preservation.
+- Step 6: After refactoring, run TRUST 5 validation to ensure code quality standards are maintained.
+
+Greenfield Development Testing:
+
+- Step 1: Derive specification tests directly from domain requirements and use cases. Each test should express a business rule or domain invariant.
+- Step 2: Organize tests by domain concepts (aggregates, entities, value objects) following DDD principles.
+- Step 3: Write tests that specify domain behavior in business language, avoiding implementation details.
+- Step 4: Implement domain logic to satisfy specification tests while maintaining ubiquitous language.
+- Step 5: Verify behavior with integration tests that validate domain interactions and invariants.
+- Step 6: Apply TRUST 5 validation to ensure testability, readability, and understandability of domain code.
 
 Code Review Process:
 
@@ -277,6 +291,6 @@ The containerized workflow ensures consistent execution environments across deve
 ---
 
 Status: Production Ready
-Last Updated: 2026-01-11
+Last Updated: 2026-01-21
 Maintained by: MoAI-ADK Development Workflow Team
-Version: 2.3.0 (CLAUDE.md Documentation Standards Compliance)
+Version: 2.4.0 (DDD Testing Methodology)

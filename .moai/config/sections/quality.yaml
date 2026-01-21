@@ -1,26 +1,45 @@
+# Quality & Constitution Settings
+# TRUST 5 Framework: Tested, Readable, Unified, Secured, Trackable
+
 constitution:
+  # Development methodology - DDD only
   development_mode: ddd
-  enforce_quality: true
-  test_coverage_target: 100
+  # ddd: Domain-Driven Development (ANALYZE-PRESERVE-IMPROVE)
+  # - Refactoring with behavior preservation
+  # - Characterization tests for legacy code
+  # - Incremental improvements
+
+  # TRUST 5 quality framework enforcement
+  enforce_quality: true # Enable TRUST 5 quality principles
+  test_coverage_target: 85 # Target: 85% coverage for AI-assisted development
+
+  # DDD settings (Domain-Driven Development)
   ddd_settings:
-    require_existing_tests: true
-    characterization_tests: true
-    behavior_snapshots: true
-    max_transformation_size: small
+    require_existing_tests: true # Require existing tests before refactoring
+    characterization_tests: true # Create characterization tests for uncovered code
+    behavior_snapshots: true # Use snapshot testing for complex outputs
+    max_transformation_size: small # small | medium | large - controls change granularity
+
+  # Coverage exemptions (discouraged - use sparingly with justification)
   coverage_exemptions:
-    enabled: false
-    require_justification: true
-    max_exempt_percentage: 5
+    enabled: false # Allow coverage exemptions (default: false)
+    require_justification: true # Require justification for exemptions
+    max_exempt_percentage: 5 # Maximum 5% of codebase can be exempted
+
+  # Test quality criteria (Quality > Numbers principle)
   test_quality:
-    specification_based: true
-    meaningful_assertions: true
-    avoid_implementation_coupling: true
-    mutation_testing_enabled: false
+    specification_based: true # Tests must verify specified behavior
+    meaningful_assertions: true # Assertions must have clear purpose
+    avoid_implementation_coupling: true # Tests should not couple to implementation details
+    mutation_testing_enabled: false # Optional: mutation testing for effectiveness validation
+
+  # Simplicity principles (separate from TRUST 5)
   principles:
     simplicity:
-      max_parallel_tasks: 10
+      max_parallel_tasks: 10 # Maximum parallel operations for focus (NOT concurrent projects)
+
 report_generation:
-  enabled: true
-  auto_create: false
-  warn_user: true
-  user_choice: Minimal
+  enabled: true # Enable report generation
+  auto_create: false # Auto-create full reports (false = minimal)
+  warn_user: true # Ask before generating reports
+  user_choice: Minimal # Default: Minimal, Full, None

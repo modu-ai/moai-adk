@@ -2,14 +2,16 @@
 """PreToolUse Hook: Security Guard
 
 Claude Code Event: PreToolUse
-Matcher: Write|Edit
-Purpose: Protect sensitive files and prevent dangerous modifications
+Matcher: Write|Edit|Bash
+Purpose: Protect sensitive files and prevent dangerous operations
 
 Security Features:
-- Block modifications to .env and secret files
+- Block modifications to secret/credential files
 - Protect lock files (package-lock.json, yarn.lock)
 - Guard .git directory
 - Prevent accidental overwrites of critical configs
+- Block dangerous database deletion commands (Supabase, Neon, etc.)
+- Block dangerous file deletion commands (rm -rf critical paths)
 - Support Claude Code Plan Mode with configurable plans directory
 
 Exit Codes:
@@ -30,10 +32,7 @@ from typing import Any, List, Tuple
 
 # Patterns for files that should NEVER be modified
 DENY_PATTERNS = [
-    # Environment and secrets
-    r"\.env$",
-    r"\.env\.[^/]+$",  # .env.local, .env.production, etc.
-    r"\.envrc$",
+    # Secrets and credentials (NOT .env - developers need to edit these)
     r"secrets?\.(json|ya?ml|toml)$",
     r"credentials?\.(json|ya?ml|toml)$",
     r"\.secrets/.*",
@@ -56,6 +55,87 @@ DENY_PATTERNS = [
     r"\.token$",
     r"\.tokens/.*",
     r"auth\.json$",
+]
+
+# Dangerous Bash commands that should NEVER be executed (Unix + Windows)
+DANGEROUS_BASH_PATTERNS = [
+    # Database deletion commands - Supabase
+    r"supabase\s+db\s+reset",
+    r"supabase\s+projects?\s+delete",
+    r"supabase\s+functions?\s+delete",
+    # Database deletion commands - Neon
+    r"neon\s+database\s+delete",
+    r"neon\s+projects?\s+delete",
+    r"neon\s+branch\s+delete",
+    # Database deletion commands - PlanetScale
+    r"pscale\s+database\s+delete",
+    r"pscale\s+branch\s+delete",
+    # Database deletion commands - Railway
+    r"railway\s+delete",
+    r"railway\s+environment\s+delete",
+    # Database deletion commands - Vercel
+    r"vercel\s+env\s+rm",
+    r"vercel\s+projects?\s+rm",
+    # SQL dangerous commands
+    r"DROP\s+DATABASE",
+    r"DROP\s+SCHEMA",
+    r"TRUNCATE\s+TABLE",
+    # === Unix dangerous file operations ===
+    r"rm\s+-rf\s+/",  # rm -rf /
+    r"rm\s+-rf\s+~",  # rm -rf ~
+    r"rm\s+-rf\s+\*",  # rm -rf *
+    r"rm\s+-rf\s+\.\*",  # rm -rf .*
+    r"rm\s+-rf\s+\.git\b",  # rm -rf .git
+    r"rm\s+-rf\s+node_modules\s*$",  # rm -rf node_modules (without reinstall intent)
+    # === Windows dangerous file operations (CMD) ===
+    r"rd\s+/s\s+/q\s+[A-Za-z]:\\",  # rd /s /q C:\
+    r"rmdir\s+/s\s+/q\s+[A-Za-z]:\\",  # rmdir /s /q C:\
+    r"del\s+/f\s+/q\s+[A-Za-z]:\\",  # del /f /q C:\
+    r"rd\s+/s\s+/q\s+\\\\",  # rd /s /q \\ (network paths)
+    r"rd\s+/s\s+/q\s+\.git\b",  # rd /s /q .git
+    r"del\s+/s\s+/q\s+\*\.\*",  # del /s /q *.*
+    r"format\s+[A-Za-z]:",  # format C:
+    # === Windows dangerous file operations (PowerShell) ===
+    r"Remove-Item\s+.*-Recurse\s+.*-Force\s+[A-Za-z]:\\",  # Remove-Item -Recurse -Force C:\
+    r"Remove-Item\s+.*-Recurse\s+.*-Force\s+~",  # Remove-Item -Recurse -Force ~
+    r"Remove-Item\s+.*-Recurse\s+.*-Force\s+\$env:",  # Remove-Item with env vars
+    r"Remove-Item\s+.*-Recurse\s+.*-Force\s+\.git\b",  # Remove-Item .git
+    r"Clear-Content\s+.*-Force",  # Clear-Content -Force (file wipe)
+    # Git dangerous commands (cross-platform)
+    r"git\s+push\s+.*--force\s+origin\s+(main|master)",
+    r"git\s+branch\s+-D\s+(main|master)",
+    # Cloud infrastructure deletion
+    r"terraform\s+destroy",
+    r"pulumi\s+destroy",
+    r"aws\s+.*\s+delete-",
+    r"gcloud\s+.*\s+delete\b",
+    # Azure CLI dangerous commands
+    r"az\s+group\s+delete",
+    r"az\s+storage\s+account\s+delete",
+    r"az\s+sql\s+server\s+delete",
+    # Docker dangerous commands
+    r"docker\s+system\s+prune\s+(-a|--all)",  # docker system prune -a
+    r"docker\s+image\s+prune\s+(-a|--all)",  # docker image prune -a
+    r"docker\s+container\s+prune",  # docker container prune
+    r"docker\s+volume\s+prune",  # docker volume prune (data loss risk)
+    r"docker\s+network\s+prune",  # docker network prune
+    r"docker\s+builder\s+prune\s+(-a|--all)",  # docker builder prune -a
+]
+
+# Bash commands that require user confirmation
+ASK_BASH_PATTERNS = [
+    # Database reset/migration (may be intentional)
+    r"prisma\s+migrate\s+reset",
+    r"prisma\s+db\s+push\s+--force",
+    r"drizzle-kit\s+push",
+    # Git force operations (non-main branches)
+    r"git\s+push\s+.*--force",
+    r"git\s+reset\s+--hard",
+    r"git\s+clean\s+-fd",
+    # Package manager cache clear
+    r"npm\s+cache\s+clean",
+    r"yarn\s+cache\s+clean",
+    r"pnpm\s+store\s+prune",
 ]
 
 # Patterns for files that require user confirmation
@@ -112,6 +192,8 @@ def compile_patterns(patterns: list[str]) -> List[re.Pattern]:
 DENY_COMPILED = compile_patterns(DENY_PATTERNS)
 ASK_COMPILED = compile_patterns(ASK_PATTERNS)
 SENSITIVE_COMPILED = compile_patterns(SENSITIVE_CONTENT_PATTERNS)
+DANGEROUS_BASH_COMPILED = compile_patterns(DANGEROUS_BASH_PATTERNS)
+ASK_BASH_COMPILED = compile_patterns(ASK_BASH_PATTERNS)
 
 
 def get_project_root() -> Path:
@@ -241,6 +323,29 @@ def check_content_for_secrets(content: str) -> Tuple[bool, str]:
     return False, ""
 
 
+def check_bash_command(command: str) -> Tuple[str, str]:
+    """Check if Bash command is dangerous or requires confirmation.
+
+    Args:
+        command: Bash command to check
+
+    Returns:
+        Tuple of (decision, reason)
+        decision: "allow", "deny", or "ask"
+    """
+    # Check for dangerous commands that should be blocked
+    for pattern in DANGEROUS_BASH_COMPILED:
+        if pattern.search(command):
+            return "deny", f"Dangerous command blocked: {pattern.pattern}"
+
+    # Check for commands that require user confirmation
+    for pattern in ASK_BASH_COMPILED:
+        if pattern.search(command):
+            return "ask", "This command may have significant effects. Please confirm."
+
+    return "allow", ""
+
+
 def main() -> None:
     """Main entry point for PreToolUse security guard hook.
 
@@ -258,26 +363,35 @@ def main() -> None:
     tool_name = input_data.get("tool_name", "")
     tool_input = input_data.get("tool_input", {})
 
-    # Only process Write and Edit tools
-    if tool_name not in ("Write", "Edit"):
+    # Only process Write, Edit, and Bash tools
+    if tool_name not in ("Write", "Edit", "Bash"):
         sys.exit(0)
 
-    # Get file path from tool input
-    file_path = tool_input.get("file_path", "")
-    if not file_path:
-        sys.exit(0)
+    decision = "allow"
+    reason = ""
 
-    # Check file path against patterns
-    decision, reason = check_file_path(file_path)
+    # Handle Bash commands
+    if tool_name == "Bash":
+        command = tool_input.get("command", "")
+        if command:
+            decision, reason = check_bash_command(command)
+    else:
+        # Handle Write and Edit tools
+        file_path = tool_input.get("file_path", "")
+        if not file_path:
+            sys.exit(0)
 
-    # For Write operations, also check content for secrets
-    if tool_name == "Write" and decision == "allow":
-        content = tool_input.get("content", "")
-        if content:
-            has_secrets, secret_reason = check_content_for_secrets(content)
-            if has_secrets:
-                decision = "deny"
-                reason = f"Content contains secrets: {secret_reason}"
+        # Check file path against patterns
+        decision, reason = check_file_path(file_path)
+
+        # For Write operations, also check content for secrets
+        if tool_name == "Write" and decision == "allow":
+            content = tool_input.get("content", "")
+            if content:
+                has_secrets, secret_reason = check_content_for_secrets(content)
+                if has_secrets:
+                    decision = "deny"
+                    reason = f"Content contains secrets: {secret_reason}"
 
     # Build output based on decision
     output: dict[str, Any] = {}

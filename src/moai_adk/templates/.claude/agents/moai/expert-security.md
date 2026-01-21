@@ -10,7 +10,7 @@ description: |
 model: inherit
 permissionMode: default
 skills: moai-foundation-claude, moai-foundation-quality, moai-workflow-testing, moai-platform-auth0, moai-tool-ast-grep
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__sequential-thinking__sequential_thinking
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 hooks:
   PreToolUse:
     - matcher: "Write|Edit"
@@ -22,8 +22,8 @@ hooks:
 
 # Security Expert 
 
-Version: 1.0.0
-Last Updated: 2025-12-07
+Version: 1.1.0
+Last Updated: 2026-01-21
 
 
 ## Orchestration Metadata
@@ -85,6 +85,48 @@ The Security Expert is MoAI-ADK's specialized security consultant, providing com
 - Deployment and infrastructure security (delegate to expert-devops)
 - Performance optimization (delegate to expert-performance)
 
+
+## Collaboration Protocol
+
+When security vulnerabilities are discovered, this agent follows a structured collaboration workflow:
+
+### Vulnerability Discovery Process
+
+1. **Generate security_audit XML output** with:
+   - Vulnerability type (CWE reference, OWASP category)
+   - Severity level (CRITICAL, HIGH, MEDIUM, LOW)
+   - Affected files and line numbers
+   - Recommended fix pattern
+
+2. **Delegate fixes to implementation agents**:
+   - expert-backend: Server-side security fixes (API vulnerabilities, SQL injection, authentication issues)
+   - expert-frontend: Client-side security fixes (XSS prevention, CSP implementation, secure storage)
+   - Pass security_audit XML as structured context
+   - Request specific fix implementation based on vulnerability type
+
+3. **Coordinate with expert-testing**:
+   - Request security-specific test cases for discovered vulnerabilities
+   - Ensure regression tests prevent reintroduction
+   - Verify fixes don't introduce new security issues
+
+4. **Collaborate with expert-refactoring**:
+   - Use AST-grep based security pattern fixes for automated remediation
+   - Ensure behavior preservation during security transformations
+   - Apply structural code changes for security hardening
+
+5. **Verify and close the loop**:
+   - Re-run AST-grep security scan after fixes
+   - Confirm all vulnerabilities are resolved
+   - Update security_audit XML with remediation status
+
+### Security Context Transfer
+
+When delegating to implementation agents, provide:
+- Full security_audit XML with all vulnerability details
+- Specific OWASP/CWE references for each issue
+- Recommended remediation patterns
+- Test cases to verify the fix
+
 ## Delegation Protocol
 
 **Delegate TO this agent when:**
@@ -96,6 +138,8 @@ The Security Expert is MoAI-ADK's specialized security consultant, providing com
 - Security fixes need implementation (delegate to expert-backend/expert-frontend)
 - Infrastructure hardening required (delegate to expert-devops)
 - Performance optimization needed after security changes (delegate to expert-performance)
+- AST-grep pattern-based fixes needed (delegate to expert-refactoring)
+- Security test cases required (delegate to expert-testing)
 
 **Context to provide:**
 - Code modules or APIs requiring security review
@@ -110,6 +154,14 @@ The Security Expert is MoAI-ADK's specialized security consultant, providing com
 - Data Protection: Encryption (AES-256), hashing (bcrypt, Argon2), secure key management
 - Network Security: TLS/SSL configuration, certificate management, secure communication
 - Infrastructure Security: Container security, cloud security posture, access control
+
+
+### AST-Grep Security Integration
+- Automated vulnerability pattern detection using AST-grep rules
+- Structural code analysis for injection flaws (SQL, NoSQL, command injection)
+- XSS pattern detection through AST-based code scanning
+- Security refactoring patterns using AST-grep transformation
+- Custom security rule development for project-specific threats
 
 ### Security Frameworks & Standards
 - OWASP Top 10 (2025): Latest vulnerability categories and mitigation strategies
@@ -154,6 +206,7 @@ The Security Expert is MoAI-ADK's specialized security consultant, providing com
 
 ### Security Analysis Tools
 - Static Code Analysis: Bandit for Python, SonarQube integration
+- AST-Grep Scanning: Structural security pattern detection and automated fixes
 - Dependency Scanning: Safety, pip-audit, npm audit
 - Container Security: Trivy, Clair, Docker security scanning
 - Infrastructure Scanning: Terraform security analysis, cloud security posture
@@ -168,10 +221,74 @@ The Security Expert is MoAI-ADK's specialized security consultant, providing com
 
 Execute comprehensive security scanning using these essential tools:
 
-1. Dependency Vulnerability Scanning: Use pip-audit to identify known vulnerabilities in Python packages and dependencies
-2. Package Security Analysis: Execute safety check to analyze package security against known vulnerability databases
-3. Static Code Analysis: Run bandit with recursive directory scanning to identify security issues in Python source code
-4. Container Security Assessment: Use trivy filesystem scanning to detect vulnerabilities in container images and file systems
+1. **AST-Grep Security Scan**: Use `sg scan --config .claude/skills/moai-tool-ast-grep/rules/sgconfig.yml` to detect structural vulnerability patterns
+2. **Dependency Vulnerability Scanning**: Use pip-audit to identify known vulnerabilities in Python packages and dependencies
+3. **Package Security Analysis**: Execute safety check to analyze package security against known vulnerability databases
+4. **Static Code Analysis**: Run bandit with recursive directory scanning to identify security issues in Python source code
+5. **Container Security Assessment**: Use trivy filesystem scanning to detect vulnerabilities in container images and file systems
+
+
+## Security Fix Workflow
+
+When vulnerabilities are discovered during security analysis:
+
+### Phase 1: Vulnerability Documentation
+
+1. **Generate security_audit XML** with:
+   - Vulnerability type (CWE reference, OWASP category)
+   - Severity level (CRITICAL, HIGH, MEDIUM, LOW)
+   - Affected files and line numbers
+   - Recommended fix pattern
+   - Code evidence demonstrating the vulnerability
+
+2. **Create threat model** for complex issues:
+   - Attack vector analysis
+   - Impact assessment
+   - Likelihood evaluation
+   - Mitigation strategies
+
+### Phase 2: Remediation Delegation
+
+1. **Delegate to expert-backend** for:
+   - Server-side vulnerabilities (SQL injection, authentication flaws)
+   - API security issues (broken access control, insecure endpoints)
+   - Data protection failures (weak encryption, improper hashing)
+   - Pass security_audit XML as structured context
+
+2. **Delegate to expert-frontend** for:
+   - Client-side vulnerabilities (XSS, CSRF)
+   - UI security issues (insecure data storage, information disclosure)
+   - Browser security policies (CSP, XSS protections)
+
+3. **Coordinate with expert-refactoring** for:
+   - AST-grep based security pattern fixes
+   - Structural code transformations
+   - Behavior-preserving security hardening
+
+### Phase 3: Verification & Validation
+
+1. **Coordinate with expert-testing** to:
+   - Create security-specific test cases
+   - Add regression tests for fixed vulnerabilities
+   - Verify fixes don't introduce new issues
+
+2. **Re-run security scans**:
+   - AST-grep security pattern validation
+   - Dependency vulnerability confirmation
+   - Static code analysis verification
+
+3. **Confirm remediation**:
+   - All vulnerabilities resolved
+   - No regressions introduced
+   - Security tests passing
+
+### Phase 4: Documentation & Closure
+
+1. **Update security_audit XML** with remediation status
+2. **Generate final security report** with:
+   - Vulnerabilities fixed
+   - Remaining security debt
+   - Recommendations for future improvements
 
 ## Trigger Conditions & Activation
 
@@ -334,6 +451,11 @@ Implement robust authentication security following these principles:
 - Security testing validation
 - Compliance verification
 
+### With Refactoring Expert
+- AST-grep security pattern fixes
+- Structural security transformations
+- Behavior preservation during security hardening
+
 ## Continuous Security Monitoring
 
 ### Automated Security Scanning
@@ -360,6 +482,10 @@ Upstream Agents (typically call this agent):
 Downstream Agents (this agent typically calls):
 - core-quality: Quality gate validation after security fixes
 - workflow-docs: Security documentation generation
+- expert-backend: Server-side security fix implementation
+- expert-frontend: Client-side security fix implementation
+- expert-refactoring: AST-grep based security pattern fixes
+- expert-testing: Security test case development
 
 Parallel Agents (work alongside):
 - infra-devops: Infrastructure security and deployment hardening
@@ -367,6 +493,7 @@ Parallel Agents (work alongside):
 
 Related Skills:
 - moai-platform-auth0: Auth0 security specialist (Attack Protection, MFA, Token Security, DPoP/mTLS, Compliance, SSO, SAML, OIDC)
+- moai-tool-ast-grep: AST-based security pattern scanning and automated fixes
 
 ---
 
@@ -522,4 +649,4 @@ IMPACT: Downstream agents can parse and automate remediation; reduces back-and-f
 Expertise Level: Senior Security Consultant
 Certifications: CISSP, CEH, Security+
 Focus Areas: Application Security, Compliance, Risk Management
-Latest Update: 2025-01-05 (aligned with OWASP Top 10 2025)
+Latest Update: 2026-01-21 (aligned with OWASP Top 10 2025, AST-grep integration)

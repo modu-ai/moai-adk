@@ -40,7 +40,7 @@ language: python
 severity: warning
 message: "Function has too many parameters. Consider using **kwargs or a config object."
 rule:
-  pattern: def $NAME($P1, $P2, $P3, $P4, $P5, $P6, $$$REST):
+  pattern: 'def $NAME($P1, $P2, $P3, $P4, $P5, $P6, $$$REST):'
 
 ---
 id: callback-hell

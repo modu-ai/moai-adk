@@ -37,11 +37,9 @@ ralph:
       tests_pass: true            # All tests must pass
       coverage_threshold: 85      # Minimum test coverage percentage
 
-  # Git Integration (respects git-strategy.yaml settings)
-  git:
-    auto_branch: false            # Use git-strategy settings instead
-    auto_pr: false                # Use git-strategy settings instead
-    # Note: Branch/PR creation follows git_strategy.mode configuration
+  # Git Integration
+  # Note: All git automation settings are managed in git-strategy.yaml
+  # Ralph respects the git_strategy.mode configuration for branch/PR creation
 
   # Hook Behavior
   hooks:

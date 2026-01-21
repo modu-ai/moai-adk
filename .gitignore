@@ -286,27 +286,15 @@ out/
 dist-ssr/
 *.local
 
-# Documentation build output (Nextra)
-# Keep docs/ tracked, only ignore build artifacts
-docs/.next/
-docs/node_modules/
-docs/out/
-
 # ===========================================
 # Deployment & CI/CD
 # ===========================================
 .vercel/
 .netlify/
 .firebase/
-.github/workflows/*.yml.bak
-.gitlab-ci.yml.bak
 
 # ===========================================
 # Miscellaneous
 # ===========================================
 .playwright-mcp
-.venv_issue43_py313
 theme.config.tsx
-
-# Purpose: Essential patterns for user projects
-# FIXED: Issue #237 - Replaced overly broad *key* and *secret* patterns

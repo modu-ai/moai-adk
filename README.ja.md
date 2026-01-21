@@ -1439,6 +1439,60 @@ graph TD
 
 ---
 
+### 🛡️ セキュリティガード - コマンド保護
+
+MoAI-ADKには危険な操作から保護する**セキュリティガードフック**が含まれています：
+
+| カテゴリ | 保護対象コマンド | プラットフォーム |
+|----------|------------------|------------------|
+| **データベース削除** | `supabase db reset`, `neon database delete`, `pscale database delete` | 全て |
+| **SQL危険コマンド** | `DROP DATABASE`, `DROP SCHEMA`, `TRUNCATE TABLE` | 全て |
+| **ファイル削除** | `rm -rf /`, `rm -rf ~`, `rm -rf .git` | Unix |
+| **ファイル削除** | `rd /s /q C:\`, `Remove-Item -Recurse -Force` | Windows |
+| **Git危険コマンド** | `git push --force origin main`, `git branch -D main` | 全て |
+| **クラウドインフラ** | `terraform destroy`, `az group delete`, `aws delete-*` | 全て |
+| **Dockerクリーンアップ** | `docker system prune -a`, `docker volume prune`, `docker image prune -a` | 全て |
+
+**保護レベル**：
+
+| レベル | 動作 | 例 |
+|--------|------|-----|
+| **拒否** | 即座にブロック | `rm -rf /`, `DROP DATABASE`, `docker system prune -a` |
+| **確認** | ユーザー確認が必要 | `git reset --hard`, `prisma migrate reset` |
+| **許可** | 正常に進行 | 安全な操作 |
+
+**動作方式**：
+
+```text
+ユーザーがコマンドを実行
+    ↓
+[Hook] セキュリティガードスキャン
+    ↓
+⚠️  危険パターン検出 → ブロックまたは確認
+    ↓
+✅ 安全に進行
+```
+
+> **注意**: セキュリティガードはプラットフォーム固有のコマンドパターンでUnix（macOS/Linux）とWindowsの両方のユーザーを保護します。
+
+**手動実行**: 実際にこれらのコマンドが必要な場合は、ターミナルで直接実行してください：
+
+```bash
+# Dockerクリーンアップ（必要時に手動実行）
+docker system prune -a        # 未使用のイメージ、コンテナ、ネットワークを全て削除
+docker volume prune           # 未使用ボリュームを削除（⚠️ データ損失リスク）
+docker image prune -a         # 未使用イメージを全て削除
+
+# データベース操作（必要時に手動実行）
+supabase db reset             # ローカルデータベースをリセット
+DROP DATABASE dbname;         # SQL: データベースを削除
+
+# ファイル操作（必要時に手動実行）
+rm -rf node_modules           # node_modulesを削除
+```
+
+---
+
 ## 9. 📊 Statuslineカスタマイズ
 
 MoAI-ADKはClaude Codeターミナルにリアルタイム状態情報を表示するカスタマイズ可能なstatuslineを提供します。

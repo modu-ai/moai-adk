@@ -1,11 +1,11 @@
 # XSS Prevention Rules
 
 id: xss-dangerouslySetInnerHTML
-language: typescriptreact
+language: tsx
 severity: warning
 message: "XSS risk: Sanitize content before using dangerouslySetInnerHTML"
 rule:
-  pattern: dangerouslySetInnerHTML={{ __html: $CONTENT }}
+  pattern: 'dangerouslySetInnerHTML={{ __html: $CONTENT }}'
 
 ---
 id: xss-dangerouslySetInnerHTML-jsx
@@ -13,7 +13,7 @@ language: javascript
 severity: warning
 message: "XSS risk: Sanitize content before using dangerouslySetInnerHTML"
 rule:
-  pattern: dangerouslySetInnerHTML={{ __html: $CONTENT }}
+  pattern: 'dangerouslySetInnerHTML={{ __html: $CONTENT }}'
 
 ---
 id: xss-innerHTML
@@ -22,9 +22,9 @@ severity: warning
 message: "Potential XSS: innerHTML assignment with user input"
 rule:
   any:
-    - pattern: $EL.innerHTML = $CONTENT
-    - pattern: document.write($CONTENT)
-    - pattern: $EL.outerHTML = $CONTENT
+    - pattern: '$EL.innerHTML = $CONTENT'
+    - pattern: 'document.write($CONTENT)'
+    - pattern: '$EL.outerHTML = $CONTENT'
 
 ---
 id: xss-document-write
@@ -32,7 +32,7 @@ language: javascript
 severity: error
 message: "document.write is a security risk and bad practice"
 rule:
-  pattern: document.write($CONTENT)
+  pattern: 'document.write($CONTENT)'
 
 ---
 id: xss-eval-usage
@@ -41,10 +41,7 @@ severity: error
 message: "eval() is dangerous and can lead to code injection"
 rule:
   any:
-    - pattern: eval($CODE)
-    - pattern: new Function($CODE)
-    - pattern: setTimeout($CODE, $DELAY)
-    - pattern: setInterval($CODE, $DELAY)
-  constraints:
-    CODE:
-      kind: string
+    - pattern: 'eval($CODE)'
+    - pattern: 'new Function($CODE)'
+    - pattern: 'setTimeout($CODE, $DELAY)'
+    - pattern: 'setInterval($CODE, $DELAY)'

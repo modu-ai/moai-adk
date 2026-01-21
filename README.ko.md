@@ -1332,6 +1332,60 @@ graph TD
 
 ---
 
+### 🛡️ 보안 가드 - 명령어 보호
+
+MoAI-ADK는 위험한 작업으로부터 보호하는 **보안 가드 훅**을 포함합니다:
+
+| 카테고리 | 보호 대상 명령어 | 플랫폼 |
+|----------|------------------|--------|
+| **데이터베이스 삭제** | `supabase db reset`, `neon database delete`, `pscale database delete` | 전체 |
+| **SQL 위험 명령** | `DROP DATABASE`, `DROP SCHEMA`, `TRUNCATE TABLE` | 전체 |
+| **파일 삭제** | `rm -rf /`, `rm -rf ~`, `rm -rf .git` | Unix |
+| **파일 삭제** | `rd /s /q C:\`, `Remove-Item -Recurse -Force` | Windows |
+| **Git 위험 명령** | `git push --force origin main`, `git branch -D main` | 전체 |
+| **클라우드 인프라** | `terraform destroy`, `az group delete`, `aws delete-*` | 전체 |
+| **Docker 정리** | `docker system prune -a`, `docker volume prune`, `docker image prune -a` | 전체 |
+
+**보호 수준**:
+
+| 수준 | 동작 | 예시 |
+|------|------|------|
+| **차단** | 즉시 차단 | `rm -rf /`, `DROP DATABASE`, `docker system prune -a` |
+| **확인** | 사용자 확인 필요 | `git reset --hard`, `prisma migrate reset` |
+| **허용** | 정상 진행 | 안전한 작업 |
+
+**작동 방식**:
+
+```text
+사용자가 명령 실행
+    ↓
+[Hook] 보안 가드 검사
+    ↓
+⚠️  위험 패턴 감지 → 차단 또는 확인 요청
+    ↓
+✅ 안전하게 진행
+```
+
+> **참고**: 보안 가드는 플랫폼별 명령 패턴으로 Unix(macOS/Linux)와 Windows 사용자 모두를 보호합니다.
+
+**수동 실행**: 실제로 이러한 명령이 필요할 때는 터미널에서 직접 실행하세요:
+
+```bash
+# Docker 정리 (필요시 수동 실행)
+docker system prune -a        # 미사용 이미지, 컨테이너, 네트워크 모두 삭제
+docker volume prune           # 미사용 볼륨 삭제 (⚠️ 데이터 손실 위험)
+docker image prune -a         # 미사용 이미지 모두 삭제
+
+# 데이터베이스 작업 (필요시 수동 실행)
+supabase db reset             # 로컬 데이터베이스 초기화
+DROP DATABASE dbname;         # SQL: 데이터베이스 삭제
+
+# 파일 작업 (필요시 수동 실행)
+rm -rf node_modules           # node_modules 삭제
+```
+
+---
+
 ## 8. 📊 Statusline 커스터마이징
 
 MoAI-ADK는 Claude Code 터미널에 실시간 상태 정보를 표시하는 사용자 정의 가능한 statusline을 제공합니다.

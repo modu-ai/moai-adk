@@ -2,7 +2,7 @@
 description: "Execute implementation cycle (DDD methodology)"
 argument-hint: 'SPEC-ID - All with SPEC ID to implement (e.g. SPEC-001) or all "SPEC Implementation"'
 type: workflow
-allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep, mcp__sequential-thinking__sequential_thinking
+allowed-tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 model: inherit
 ---
 

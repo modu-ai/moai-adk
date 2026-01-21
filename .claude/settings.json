@@ -233,7 +233,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "moai-adk statusline",
+    "command": "PYTHONPATH=\"$CLAUDE_PROJECT_DIR/src\" python3 -m moai_adk.statusline.main",
     "padding": 0,
     "refreshInterval": 300
   },

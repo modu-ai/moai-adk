@@ -1502,6 +1502,60 @@ graph TD
 
 ---
 
+### 🛡️ 安全守卫 - 命令保护
+
+MoAI-ADK包含**安全守卫钩子**，可防止危险操作：
+
+| 类别 | 受保护命令 | 平台 |
+|------|-----------|------|
+| **数据库删除** | `supabase db reset`, `neon database delete`, `pscale database delete` | 全部 |
+| **SQL危险命令** | `DROP DATABASE`, `DROP SCHEMA`, `TRUNCATE TABLE` | 全部 |
+| **文件删除** | `rm -rf /`, `rm -rf ~`, `rm -rf .git` | Unix |
+| **文件删除** | `rd /s /q C:\`, `Remove-Item -Recurse -Force` | Windows |
+| **Git危险命令** | `git push --force origin main`, `git branch -D main` | 全部 |
+| **云基础设施** | `terraform destroy`, `az group delete`, `aws delete-*` | 全部 |
+| **Docker清理** | `docker system prune -a`, `docker volume prune`, `docker image prune -a` | 全部 |
+
+**保护级别**：
+
+| 级别 | 操作 | 示例 |
+|------|------|------|
+| **拒绝** | 立即阻止 | `rm -rf /`, `DROP DATABASE`, `docker system prune -a` |
+| **询问** | 需要用户确认 | `git reset --hard`, `prisma migrate reset` |
+| **允许** | 正常进行 | 安全操作 |
+
+**工作方式**：
+
+```text
+用户执行命令
+    ↓
+[Hook] 安全守卫扫描
+    ↓
+⚠️  检测到危险模式 → 阻止或询问
+    ↓
+✅ 安全继续
+```
+
+> **注意**: 安全守卫使用平台特定的命令模式保护Unix（macOS/Linux）和Windows用户。
+
+**手动执行**: 当您确实需要运行这些命令时，请在终端中直接执行：
+
+```bash
+# Docker清理（需要时手动执行）
+docker system prune -a        # 删除所有未使用的镜像、容器、网络
+docker volume prune           # 删除未使用的卷（⚠️ 数据丢失风险）
+docker image prune -a         # 删除所有未使用的镜像
+
+# 数据库操作（需要时手动执行）
+supabase db reset             # 重置本地数据库
+DROP DATABASE dbname;         # SQL: 删除数据库
+
+# 文件操作（需要时手动执行）
+rm -rf node_modules           # 删除node_modules
+```
+
+---
+
 ## 9. 📊 Statusline 定制
 
 MoAI-ADK提供可定制的statusline，在Claude Code终端中显示实时状态信息。

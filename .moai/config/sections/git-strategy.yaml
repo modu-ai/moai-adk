@@ -50,18 +50,12 @@ git_strategy:
       prompt_always: true         # Ask before creating branch (default: prompt)
       auto_enabled: false         # Do not auto-create branches (default: disabled)
 
-    # Automation settings (duplicated for clarity, matches top-level auto_*)
+    # Automation settings
     automation:
       auto_branch: false          # Do not auto-create branches (default: disabled)
       auto_commit: true
       auto_pr: false              # Manual PR for review (default: disabled)
       auto_push: false            # Do not auto-push (default: disabled)
-
-    # Convenience aliases (backward compatibility)
-    auto_branch: false            # Do not auto-create branches (default: disabled)
-    auto_commit: true
-    auto_pr: false
-    auto_push: false              # Do not auto-push (default: disabled)
 
     # Git hooks policy
     hooks:
@@ -97,12 +91,6 @@ git_strategy:
       auto_commit: true
       auto_pr: true
       auto_push: true
-
-    # Convenience aliases (backward compatibility)
-    auto_branch: true
-    auto_commit: true
-    auto_pr: true
-    auto_push: true
 
     # Git hooks policy
     hooks:

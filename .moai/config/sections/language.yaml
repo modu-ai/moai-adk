@@ -3,7 +3,7 @@
 
 language:
   conversation_language: ko            # User-facing responses (ko, en, ja, es, zh, fr, de)
-  conversation_language_name: 한국어   # Display name (auto-updated)
+  conversation_language_name: Korean (한국어)   # Display name (auto-updated)
   agent_prompt_language: en            # Internal agent instructions
   git_commit_messages: en              # Git commit message language
   code_comments: en                    # Source code comment language

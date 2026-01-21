@@ -45,7 +45,7 @@ src/moai_adk/templates/CLAUDE.md   → ./CLAUDE.md
 
 ### Local-Only Files (Never Sync)
 ```
-.claude/commands/moai/99-release.md  # Local release command
+.claude/commands/moai/99-release.md  # Local release command (NOT in template)
 .claude/settings.local.json          # Personal settings
 CLAUDE.local.md                      # This file
 .moai/cache/                         # Cache
@@ -54,6 +54,8 @@ CLAUDE.local.md                      # This file
 .moai/project/                       # Project docs (protected from deletion)
 .moai/specs/                         # SPEC documents (protected from deletion)
 ```
+
+**Note on 99-release.md**: This file is intentionally kept local-only and is NOT distributed with the template. It provides developer-specific release workflow automation that should not be part of the public distribution.
 
 ### Template-Only Files (Distribution)
 ```
@@ -540,15 +542,41 @@ MoAI-ADK/
 ### Sync Commands
 ```bash
 # Sync from template to local
-# IMPORTANT: --exclude prevents deletion of protected directories
-rsync -avz --delete src/moai_adk/templates/.claude/ .claude/
-rsync -avz --delete --exclude='project/' --exclude='specs/' src/moai_adk/templates/.moai/ .moai/
+# IMPORTANT: --exclude prevents deletion of local-only files and protected directories
+rsync -avz --delete \
+  --exclude='commands/moai/99-release.md' \
+  --exclude='settings.json' \
+  --exclude='settings.json.unix' \
+  --exclude='settings.json.windows' \
+  --exclude='plans/' \
+  src/moai_adk/templates/.claude/ .claude/
+
+rsync -avz --delete \
+  --exclude='project/' \
+  --exclude='specs/' \
+  --exclude='cache/' \
+  --exclude='logs/' \
+  --exclude='memory/' \
+  src/moai_adk/templates/.moai/ .moai/
+
 cp src/moai_adk/templates/CLAUDE.md ./CLAUDE.md
 
-# Alternative: One-liner for all sync (with protection)
-rsync -avz --delete src/moai_adk/templates/.claude/ .claude/ && \
-rsync -avz --delete --exclude='project/' --exclude='specs/' src/moai_adk/templates/.moai/ .moai/ && \
-cp src/moai_adk/templates/CLAUDE.md ./CLAUDE.md
+# Post-sync: Replace template variables with local development values
+# {{PROJECT_DIR_UNIX}} -> $CLAUDE_PROJECT_DIR (runtime variable for local)
+# {{MOAI_VERSION}} -> actual version from pyproject.toml
+# {{CONVERSATION_LANGUAGE}} -> ko (Korean for local development)
+# {{CONVERSATION_LANGUAGE_NAME}} -> Korean (한국어)
+
+# Replace PROJECT_DIR_UNIX in agents, skills, commands
+find .claude/agents -name "*.md" -exec sed -i '' 's|{{PROJECT_DIR_UNIX}}|$CLAUDE_PROJECT_DIR|g' {} \;
+find .claude/skills -name "*.md" -exec sed -i '' 's|{{PROJECT_DIR_UNIX}}|$CLAUDE_PROJECT_DIR|g' {} \;
+find .claude/commands -name "*.md" -exec sed -i '' 's|{{PROJECT_DIR_UNIX}}|$CLAUDE_PROJECT_DIR|g' {} \;
+
+# Replace version and language settings
+VERSION=$(grep -m1 'version = ' pyproject.toml | cut -d'"' -f2)
+sed -i '' "s|{{MOAI_VERSION}}|$VERSION|g" .moai/config/sections/system.yaml
+sed -i '' 's|{{CONVERSATION_LANGUAGE}}|ko|g' .moai/config/sections/language.yaml
+sed -i '' 's|{{CONVERSATION_LANGUAGE_NAME}}|Korean (한국어)|g' .moai/config/sections/language.yaml
 ```
 
 ### Validation Commands

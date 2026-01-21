@@ -1411,6 +1411,58 @@ Code writing
    Suggestion: execute("SELECT * FROM users WHERE id=%s", (user_id,))
 ```
 
+### 🛡️ Security Guard - Command Protection
+
+MoAI-ADK includes a **Security Guard hook** that protects against dangerous operations:
+
+| Category | Protected Commands | Platform |
+|----------|-------------------|----------|
+| **Database Deletion** | `supabase db reset`, `neon database delete`, `pscale database delete` | All |
+| **SQL Dangerous** | `DROP DATABASE`, `DROP SCHEMA`, `TRUNCATE TABLE` | All |
+| **File Deletion** | `rm -rf /`, `rm -rf ~`, `rm -rf .git` | Unix |
+| **File Deletion** | `rd /s /q C:\`, `Remove-Item -Recurse -Force` | Windows |
+| **Git Dangerous** | `git push --force origin main`, `git branch -D main` | All |
+| **Cloud Infra** | `terraform destroy`, `az group delete`, `aws delete-*` | All |
+| **Docker Cleanup** | `docker system prune -a`, `docker volume prune`, `docker image prune -a` | All |
+
+**Protection Levels**:
+
+| Level | Action | Example |
+|-------|--------|---------|
+| **Deny** | Blocked immediately | `rm -rf /`, `DROP DATABASE`, `docker system prune -a` |
+| **Ask** | Requires user confirmation | `git reset --hard`, `prisma migrate reset` |
+| **Allow** | Proceeds normally | Safe operations |
+
+**How it works**:
+
+```text
+User executes command
+    ↓
+[Hook] Security Guard scan
+    ↓
+⚠️  Dangerous pattern detected → Block or Ask
+    ↓
+✅ Safe to proceed
+```
+
+> **Note**: The security guard protects both Unix (macOS/Linux) and Windows users with platform-specific command patterns.
+
+**Manual Execution**: When you actually need to run these commands, execute them directly in your terminal:
+
+```bash
+# Docker cleanup (run manually when needed)
+docker system prune -a        # Remove all unused images, containers, networks
+docker volume prune           # Remove unused volumes (⚠️ data loss risk)
+docker image prune -a         # Remove all unused images
+
+# Database operations (run manually when needed)
+supabase db reset             # Reset local database
+DROP DATABASE dbname;         # SQL: Drop database
+
+# File operations (run manually when needed)
+rm -rf node_modules           # Remove node_modules
+```
+
 ---
 
 ## 9. 📊 Statusline Customization

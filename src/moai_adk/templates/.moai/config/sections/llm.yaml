@@ -9,15 +9,16 @@ llm:
   # - glm-only: Use GLM for all phases (lowest cost)
   mode: claude-only
 
-  # Environment variable name for GLM API token
+  # Environment variable name for GLM API key
   # User must set this in their shell profile (~/.zshrc, ~/.bashrc)
-  glm_env_var: GLM_API_TOKEN
+  # Matches pricing.yaml: GLM_API_KEY
+  glm_env_var: GLM_API_KEY
 
   # Auto worktree settings
   # When hybrid mode is enabled, automatically create worktree with GLM config
   auto_worktree:
-    enabled: false          # Enable auto-worktree for hybrid mode
-    copy_glm_config: true   # Copy GLM settings.local.json to worktree
+    enabled: false # Enable auto-worktree for hybrid mode
+    copy_glm_config: true # Copy GLM settings.local.json to worktree
 
   # GLM API Configuration
   # These values are used in .moai/llm-configs/glm.json template
@@ -35,7 +36,7 @@ llm:
 
     # Threshold for parallel SPEC decomposition
     # If estimated tasks > threshold, decompose into multiple SPECs
-    parallel_threshold: 5
+    parallel_threshold: 10
 
     # Always ask before creating worktree (when hybrid mode)
     confirm_worktree: false
