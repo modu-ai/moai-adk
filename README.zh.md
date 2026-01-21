@@ -57,6 +57,7 @@ moai glm YOUR_API_KEY
 - **🎯 SPEC-First**: 清晰的规格说明减少90%返工
 - **🔵 DDD方法论**: 分析-保存-改进循环，通过行为保存实现持续重构
 - **🤖 AI编排**: 20个专业智能体 + 49个技能
+- **🧠 Sequential Thinking MCP**: 逐步推理的结构化问题解决
 - **🌐 多语言路由**: 自动支持韩语/英语/日语/中文
 - **🌳 Worktree并行开发**: 完全隔离环境中无限并行工作
 - **🏆 MoAI Rank**: 通过Vibe Coding排行榜获得动力
@@ -2018,7 +2019,8 @@ moai rank list-excluded
 
 **必需 (2个)**:
 
-- **Context7**: 最新库文档、Skill参考生成时使用
+- **Context7**: 最新库文档、技能参考生成
+- **Sequential Thinking**: 复杂任务中的结构化问题解决和逐步推理
 
 **可选**:
 

@@ -57,6 +57,7 @@ moai glm YOUR_API_KEY
 - **🎯 SPEC-First**: 明確な仕様書で90%再作業削減
 - **🔵 DDD (Domain-Driven Development)**: 分析-保存-改善サイクルによる動作保存リファクタリング
 - **🤖 AIオーケストレーション**: 20個専門エージェント + 49個スキル
+- **🧠 Sequential Thinking MCP**: 段階的推論による構造化された問題解決
 - **🌐 多言語ルーティング**: 韓国語/英語/日本語/中国語自動サポート
 - **🌳 Worktree並列開発**: 完全分離環境で無制限並列作業
 - **🏆 MoAI Rank**: バイブコーディングリーダーボードでモチベーション
@@ -1955,7 +1956,8 @@ moai rank list-excluded
 
 **必須 (2個)**:
 
-- **Context7**: 最新ライブラリドキュメント、Skillラッパンス生成時使用
+- **Context7**: 最新ライブラリドキュメント、Skill参照生成
+- **Sequential Thinking**: 複雑なタスクでの構造化された問題解決と段階的推論
 
 **選択**:
 

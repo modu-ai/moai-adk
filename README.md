@@ -57,6 +57,7 @@ moai glm YOUR_API_KEY
 - **🎯 SPEC-First**: 90% reduction in rework with clear specifications
 - **🔵 DDD (Domain-Driven Development)**: ANALYZE-PRESERVE-IMPROVE cycle with behavior preservation
 - **🤖 AI Orchestration**: 20 specialized agents + 49 skills
+- **🧠 Sequential Thinking MCP**: Structured problem-solving with step-by-step reasoning
 - **🌐 Multilingual Routing**: Automatic support for Korean/English/Japanese/Chinese
 - **🌳 Worktree Parallel Development**: Unlimited parallel work in completely isolated environments
 - **🏆 MoAI Rank**: Motivation through vibe coding leaderboard
@@ -1927,9 +1928,10 @@ moai rank list-excluded
 
 ### Q2: Is MCP Server Installation Required?
 
-**Required (1)**:
+**Required (2)**:
 
 - **Context7**: For latest library documentation and Skill reference generation
+- **Sequential Thinking**: For structured problem-solving and step-by-step reasoning in complex tasks
 
 **Optional**:
 
@@ -1974,7 +1976,7 @@ Copyleft License (COPYLEFT-3.0) - [LICENSE](./LICENSE)
 
 ## 🙏 Made with ❤️ by MoAI-ADK Team
 
-**Last Updated:** 2026-01-21
+**Last Updated:** 2026-01-22
 **Philosophy**: SPEC-First DDD + Agent Orchestration + Hybrid LLM
 **MoAI**: MoAI means "Modu-ui AI" (AI for Everyone).
 

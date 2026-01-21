@@ -57,6 +57,7 @@ moai glm YOUR_API_KEY
 - **🎯 SPEC-First**: 명확한 명세서로 90% 재작업 감소
 - **🔵 DDD**: ANALYZE-PRESERVE-IMPROVE 사이클로 동작 보존 리팩토링
 - **🤖 AI 오케스트레이션**: 20개 전문 에이전트 + 49개 스킬
+- **🧠 Sequential Thinking MCP**: 단계별 추론을 통한 구조화된 문제 해결
 - **🌐 다국어 라우팅**: 한국어/영어/일본어/중국어 자동 지원
 - **🌳 Worktree 병렬 개발**: 완전 격리 환경에서 무제한 병렬 작업
 - **🏆 MoAI Rank**: 바이브 코딩 리더보드로 동기부여
@@ -1852,9 +1853,13 @@ moai rank list-excluded
 
 ### Q2: MCP 서버 설치가 필요한가요?
 
+**필수 (2개)**:
+
+- **Context7**: 최신 라이브러리 문서 및 스킬 참조 생성
+- **Sequential Thinking**: 복잡한 작업에서 구조화된 문제 해결 및 단계별 추론
+
 **선택사항**:
 
-- **Context7**: 최신 라이브러리 문서 조회 (권장)
 - **claude-in-chrome**: 브라우저 자동화 테스트
 - **Playwright**: E2E 테스트
 - **Figma**: 디자인 시스템
