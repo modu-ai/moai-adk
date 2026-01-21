@@ -211,23 +211,22 @@ def extract_context_window(session_context: dict) -> dict:
     Returns:
         Dict with:
         - formatted: "15K/200K" string
-        - used_percentage: 42.5 (from Claude Code)
-        - remaining_percentage: 57.5 (from Claude Code)
+        - used_percentage: 42.5 (calculated from tokens or from Claude Code)
+        - remaining_percentage: 57.5 (calculated from tokens or from Claude Code)
         - current_usage: detailed breakdown
 
     Note:
         Context window size is capped at 200K for display consistency.
         Some models may report larger sizes (e.g., 268K), but we display
         the standard 200K limit for consistency.
+
+        If Claude Code doesn't provide percentages, we calculate them
+        from current_tokens / context_window_size.
     """
     context_info = session_context.get("context_window", {})
 
     if not context_info:
         return {"formatted": "", "used_percentage": 0, "remaining_percentage": 100}
-
-    # Use pre-calculated percentages from Claude Code
-    used_pct = context_info.get("used_percentage", 0)
-    remaining_pct = context_info.get("remaining_percentage", 100)
 
     # Get context window size (cap at 200K for display consistency)
     # Some models (like GLM-4.7) report larger context windows (268K+)
@@ -252,6 +251,19 @@ def extract_context_window(session_context: dict) -> dict:
     else:
         # Fallback to total tokens or 0 if not available
         current_tokens = context_info.get("total_input_tokens", 0)
+
+    # Try to use Claude Code's pre-calculated percentages first
+    used_pct = context_info.get("used_percentage")
+    remaining_pct = context_info.get("remaining_percentage")
+
+    # If percentages not provided, calculate from tokens
+    if used_pct is None or remaining_pct is None:
+        if display_size > 0:
+            used_pct = (current_tokens / display_size) * 100
+            remaining_pct = 100 - used_pct
+        else:
+            used_pct = 0
+            remaining_pct = 100
 
     # Always show context window, even when current_tokens is 0 (e.g., new session)
     # Format: "0/200K" for empty sessions, "88K/200K" for active sessions
