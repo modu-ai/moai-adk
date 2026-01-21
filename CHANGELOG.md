@@ -1,3 +1,75 @@
+# v1.6.2 - GLM Model Name Standardization (2026-01-22)
+
+## Summary
+
+This patch release standardizes GLM model names to use lowercase naming convention for consistency with the API specification. The model names `GLM-4.7-FlashX`, `GLM-4.7` have been updated to `glm-4.7-flashx`, `glm-4.7` respectively.
+
+## Changed
+
+- **fix(config)**: Update GLM model names to lowercase (e31114cd)
+  - Changed `GLM-4.7-FlashX` → `glm-4.7-flashx`
+  - Changed `GLM-4.7` → `glm-4.7`
+  - Ensures consistency with API specification
+  - Updated in both local and template configuration files
+
+## Quality
+
+- Smoke tests: 6/6 passed (100% pass rate)
+- Ruff: All checks passed
+- Ruff format: 216 files unchanged
+- Mypy: Warning (3 minor type hint issues in non-critical code)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.6.2 - GLM 모델명 표준화 (2026-01-22)
+
+## 요약
+
+이 패치 릴리스는 API 사양과의 일관성을 위해 GLM 모델명을 소문자 명명 규칙으로 표준화합니다. `GLM-4.7-FlashX`, `GLM-4.7` 모델명이 각각 `glm-4.7-flashx`, `glm-4.7`로 업데이트되었습니다.
+
+## 변경됨
+
+- **fix(config)**: GLM 모델명을 소문자로 업데이트 (e31114cd)
+  - `GLM-4.7-FlashX` → `glm-4.7-flashx` 변경
+  - `GLM-4.7` → `glm-4.7` 변경
+  - API 사양과의 일관성 보장
+  - 로컬 및 템플릿 구성 파일 모두 업데이트
+
+## 품질
+
+- Smoke 테스트: 6/6 통과 (100% 통과율)
+- Ruff: 모든 검사 통과
+- Ruff format: 216개 파일 변경 없음
+- Mypy: 경고 (비임계 코드 3개의 사소한 타입 힌트 문제)
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.6.1 - StatusLine Command Simplification (2026-01-22)
 
 ## Summary
