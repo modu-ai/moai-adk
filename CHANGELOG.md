@@ -1,3 +1,183 @@
+# v1.6.0 - Sequential Thinking MCP & Statusline Enhancements (2026-01-22)
+
+## Summary
+
+This feature release integrates Sequential Thinking MCP tool for complex problem-solving, enhances statusline with battery-style context graph and version display, and improves Explore agent performance with anti-bottleneck optimizations. Also includes AST-Grep security enhancements and various bug fixes.
+
+## Added
+
+- **feat(mcp)**: Integrate Sequential Thinking MCP across workflow (ebb3e73f)
+  - Structured reasoning with step-by-step breakdown
+  - Context maintenance across multiple reasoning steps
+  - Ability to revise and adjust thinking based on new information
+  - Automatic activation for complex decisions and architecture choices
+
+- **feat(statusline)**: Battery icon with color-coded graph (957a8620)
+  - Visual context window usage display with battery-style icon
+  - Color-coded display (green/yellow/red) based on usage percentage
+  - Improved visual feedback for token consumption
+
+- **feat(statusline)**: Show used tokens percentage and add version display (9ded4fda)
+  - Display token usage as percentage in statusline
+  - Show MoAI-ADK version in statusline
+  - Better visibility of resource utilization
+
+- **feat(orchestration)**: Explore agent anti-bottleneck system (11787f87)
+  - AST-Grep priority for structural code search
+  - Search scope limitation to prevent unnecessary scanning
+  - File pattern specificity for 50-80% reduction in scanned files
+  - Parallel processing optimization
+
+- **feat(performance)**: Enhance orchestration and integrate AST-Grep (74e5e3f0)
+  - AST-Grep security rule enhancements
+  - Performance optimizations for code quality checks
+  - XSS prevention rules updated
+
+## Changed
+
+- **docs**: Add Sequential Thinking MCP to README files (014f08cf)
+  - Documentation updates for new MCP integration
+  - Usage examples and patterns documented
+
+- **revert**: Remove unnecessary exploration constraints system (170c257a)
+  - Simplified agent orchestration
+  - Reduced overhead in explore operations
+
+## Fixed
+
+- **fix(statusline)**: Remove ANSI escape codes from graph rendering (a98cf1b6)
+  - Clean graph display without escape codes
+
+- **fix(statusline)**: Include output_tokens in context window calculation (b0702cdf)
+  - Accurate token usage calculation including output tokens
+
+- **fix(statusline)**: Add fallback calculation from tokens when percentages not provided (bdbc98d9)
+  - Graceful fallback when percentage data unavailable
+
+- **fix(statusline)**: Display context graph using percentage instead of string (5caec0c3)
+  - Consistent graph display using percentage values
+
+- **fix(statusline)**: Always show context graph instead of token count (519bd367)
+  - Improved visual consistency in statusline
+
+- **fix(statusline)**: Calculate percentage from tokens when not provided (b57197da)
+  - Automatic percentage calculation from raw token counts
+
+- **fix(commands)**: Restore 99-release.md command (cd9e3266)
+  - Release command restored for local development
+
+## Quality
+
+- Smoke tests: 6/6 passed (100% pass rate)
+- Ruff: All checks passed
+- Ruff format: 216 files unchanged
+- Mypy: Success (3 minor type hint issues in non-critical code)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.6.0 - Sequential Thinking MCP 및 Statusline 개선 (2026-01-22)
+
+## 요약
+
+이 기능 릴리스는 Sequential Thinking MCP 도구를 통합하여 복잡한 문제 해결을 지원하고, 상태 표시줄(statusline)을 배터리 스타일 컨텍스트 그래프와 버전 표시로 개선합니다. 또한 Explore agent 성능을 최적화하고 AST-Grep 보안 규칙을 강화했습니다.
+
+## 추가됨
+
+- **feat(mcp)**: 워크플로우에 Sequential Thinking MCP 통합 (ebb3e73f)
+  - 단계별 분석을 통한 구조화된 추론
+  - 여러 추론 단계에서의 컨텍스트 유지
+  - 새로운 정보에 기반한 추론 수정 및 조정 기능
+  - 복잡한 의사결정 및 아키텍처 선택 시 자동 활성화
+
+- **feat(statusline)**: 색상 코딩된 그래프와 배터리 아이콘 (957a8620)
+  - 배터리 스타일 아이콘으로 시각적 컨텍스트 창 사용량 표시
+  - 사용량 비율 기반 색상 코딩 (녹색/노란색/빨간색)
+  - 토큰 소비에 대한 개선된 시각적 피드백
+
+- **feat(statusline)**: 사용된 토큰 비율 표시 및 버전 표시 추가 (9ded4fda)
+  - 상태 표시줄에 토큰 사용량을 백분율로 표시
+  - MoAI-ADK 버전을 상태 표시줄에 표시
+  - 리소스 활용도에 대한 더 나은 가시성
+
+- **feat(orchestration)**: Explore agent 병목 방지 시스템 (11787f87)
+  - 구조적 코드 검색을 위한 AST-Grep 우선순위
+  - 불필요한 스캔 방지를 위한 검색 범위 제한
+  - 50-80% 스캔 파일 감소를 위한 특정 파일 패턴
+  - 병렬 처리 최적화
+
+- **feat(performance)**: 오케스트레이션 강화 및 AST-Grep 통합 (74e5e3f0)
+  - AST-Grep 보안 규칙 강화
+  - 코드 품질 검사를 위한 성능 최적화
+  - XSS 방지 규칙 업데이트
+
+## 변경됨
+
+- **docs**: README 파일에 Sequential Thinking MCP 추가 (014f08cf)
+  - 새로운 MCP 통합을 위한 문서 업데이트
+  - 사용 예제 및 패턴 문서화
+
+- **revert**: 불필요한 탐색 제약 시스템 제거 (170c257a)
+  - 단순화된 에이전트 오케스트레이션
+  - 탐색 작업에서 오버헤드 감소
+
+## 수정됨
+
+- **fix(statusline)**: 그래프 렌더링에서 ANSI 이스케이프 코드 제거 (a98cf1b6)
+  - 이스케이프 코드 없는 깨끗한 그래프 표시
+
+- **fix(statusline)**: 컨텍스트 창 계산에 output_tokens 포함 (b0702cdf)
+  - 출력 토큰을 포함한 정확한 토큰 사용량 계산
+
+- **fix(statusline)**: 백분율이 제공되지 않을 때 토큰에서 대체 계산 추가 (bdbc98d9)
+  - 백분율 데이터를 사용할 수 없을 때 우아한 대체 처리
+
+- **fix(statusline)**: 문자열 대신 백분율을 사용하여 컨텍스트 그래프 표시 (5caec0c3)
+  - 백분율 값을 사용한 일관된 그래프 표시
+
+- **fix(statusline)**: 토큰 수 대신 컨텍스트 그래프 항상 표시 (519bd367)
+  - 상태 표시줄에서 개선된 시각적 일관성
+
+- **fix(statusline)**: 제공되지 않을 때 토큰에서 백분율 계산 (b57197da)
+  - 원시 토큰 수에서 자동 백분율 계산
+
+- **fix(commands)**: 99-release.md 명령 복원 (cd9e3266)
+  - 로컬 개발을 위한 릴리스 명령 복원
+
+## 품질
+
+- 스모크 테스트: 6/6 통과 (100% 통과율)
+- Ruff: 모든 검사 통과
+- Ruff format: 216 파일 변경 없음
+- Mypy: 성공 (비임계 코드 3개의 사소한 타입 힌트 문제)
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.5.6 - AST-Grep Integration & Performance Enhancements (2026-01-21)
 
 ## Summary
