@@ -1,8 +1,0 @@
-id: utf8-encoding-needs-errors-parameter
-language: python
-severity: warning
-message: "open() with encoding='utf-8' should include errors='replace' to handle surrogate characters"
-rule:
-  pattern: open($$$ARGS, encoding="utf-8")
-  not:
-    has: errors=$$_

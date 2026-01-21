@@ -182,7 +182,7 @@ def log_checkpoint(cwd: str, branch_name: str, operation_type: str) -> None:
             "operation": operation_type,
         }
 
-        with log_file.open("a", encoding="utf-8") as f:
+        with log_file.open("a", encoding="utf-8", errors="replace") as f:
             f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
 
     except (OSError, PermissionError):

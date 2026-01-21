@@ -62,7 +62,7 @@ def safe_read_text(file_path: Path | str, max_size: int = MAX_FILE_SIZE) -> str 
         return None
 
     try:
-        return Path(file_path).read_text(encoding="utf-8")
+        return Path(file_path).read_text(encoding="utf-8", errors="replace")
     except (OSError, UnicodeDecodeError):
         return None
 

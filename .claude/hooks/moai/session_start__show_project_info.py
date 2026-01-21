@@ -261,7 +261,7 @@ except ImportError:
             return {}
 
         try:
-            content = file_path.read_text(encoding="utf-8")
+            content = file_path.read_text(encoding="utf-8", errors="replace")
             if HAS_YAML_FALLBACK:
                 return yaml_fallback.safe_load(content) or {}
             else:
@@ -294,7 +294,7 @@ except ImportError:
                 is_safe, _ = check_file_size(json_config_path)
                 if is_safe:
                     try:
-                        config = json.loads(json_config_path.read_text(encoding="utf-8"))
+                        config = json.loads(json_config_path.read_text(encoding="utf-8", errors="replace"))
                     except (json.JSONDecodeError, OSError):
                         config = {}
                 else:
@@ -343,7 +343,7 @@ except ImportError:
 
                 try:
                     # Read spec.md content
-                    content = spec_file.read_text(encoding="utf-8")
+                    content = spec_file.read_text(encoding="utf-8", errors="replace")
 
                     # Parse YAML frontmatter (between --- delimiters)
                     if content.startswith("---"):
@@ -666,7 +666,7 @@ def check_version_update() -> tuple[str, bool]:
 
         if version_cache_file.exists():
             try:
-                cache_data = json.loads(version_cache_file.read_text(encoding="utf-8"))
+                cache_data = json.loads(version_cache_file.read_text(encoding="utf-8", errors="replace"))
                 latest_version = cache_data.get("latest")
             except (json.JSONDecodeError, OSError, UnicodeDecodeError):
                 # Cache file read or JSON parsing errors

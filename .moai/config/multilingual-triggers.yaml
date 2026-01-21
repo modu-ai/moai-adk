@@ -77,9 +77,9 @@ expert-uiux:
 manager-ddd:
   triggers:
     en: ["DDD", "ANALYZE-PRESERVE-IMPROVE", "domain-driven", "behavior preservation", "characterization test"]
-    ko: ["DDD", "분석보존개선", "도메인주도개발", "행동보존", "특성화테스트"]
-    ja: ["DDD", "分析保存改善", "ドメイン駆動開発", "振る舞い保存", "特性化テスト"]
-    zh: ["DDD", "分析保存改进", "领域驱动开发", "行为保存", "特征化测试"]
+    ko: ["DDD", "분석-보존-개선", "도메인주도개발", "동작보존", "특성테스트"]
+    ja: ["DDD", "分析-保存-改善", "ドメイン駆動開発", "動作保存", "特性テスト"]
+    zh: ["DDD", "分析-保存-改进", "领域驱动开发", "行为保存", "特性测试"]
 
 manager-spec:
   triggers:
@@ -122,13 +122,6 @@ manager-project:
     ko: ["프로젝트설정", "초기화", ".moai", "프로젝트구성", "스캐폴드"]
     ja: ["プロジェクトセットアップ", "初期化", ".moai", "プロジェクト構成", "スキャフォールド"]
     zh: ["项目设置", "初始化", ".moai", "项目配置", "脚手架"]
-
-manager-claude-code:
-  triggers:
-    en: ["Claude Code", "configuration", "settings.json", "MCP", "agent orchestration"]
-    ko: ["Claude Code", "설정", "settings.json", "MCP", "에이전트오케스트레이션"]
-    ja: ["Claude Code", "設定", "settings.json", "MCP", "エージェントオーケストレーション"]
-    zh: ["Claude Code", "配置", "settings.json", "MCP", "代理编排"]
 
 # ============================================================================
 # BUILDER AGENTS - Creation and generation

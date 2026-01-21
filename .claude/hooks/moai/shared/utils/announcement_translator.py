@@ -47,7 +47,7 @@ def get_language_from_config(project_path: Path | str) -> str:
     try:
         import yaml
 
-        with open(language_file, encoding="utf-8") as f:
+        with open(language_file, encoding="utf-8", errors="replace") as f:
             config = yaml.safe_load(f)
 
         language = config.get("language", {}).get("conversation_language", DEFAULT_LANGUAGE)
@@ -88,7 +88,7 @@ def load_announcements_from_file(announcements_file: Path) -> list[str]:
         return []
 
     try:
-        with open(announcements_file, encoding="utf-8") as f:
+        with open(announcements_file, encoding="utf-8", errors="replace") as f:
             data = json.load(f)
         return data.get("companyAnnouncements", [])
     except Exception:
@@ -165,7 +165,7 @@ def update_settings_announcements(project_path: Path | str) -> bool:
 
     try:
         # Load current settings
-        with open(settings_file, encoding="utf-8") as f:
+        with open(settings_file, encoding="utf-8", errors="replace") as f:
             settings = json.load(f)
 
         # Get language and announcements

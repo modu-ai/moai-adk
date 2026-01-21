@@ -2,9 +2,12 @@
   "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/.mcp.schema.json",
   "mcpServers": {
     "context7": {
-      "$comment": "Cross-platform: Use 'moai init --force' on Windows to auto-configure cmd /c wrapper",
+      "$comment": "Cross-platform MCP configuration - see .mcp.windows.json for Windows",
       "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp@latest"]
+      "args": [
+        "-y",
+        "@upstash/context7-mcp@latest"
+      ]
     }
   },
   "staggeredStartup": {

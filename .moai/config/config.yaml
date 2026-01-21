@@ -1,64 +1,36 @@
-# MoAI-ADK Configuration
-# Format: YAML (modular section-based configuration)
-#
-# This is the main configuration file that references modular section files.
-# Each section is stored in a separate file under .moai/config/sections/
-# for better maintainability and token efficiency.
-#
-# Section Files:
-# - sections/user.yaml: User personalization settings
-# - sections/language.yaml: Language preferences
-# - sections/project.yaml: Project metadata
-# - sections/git-strategy.yaml: Git workflow configuration
-# - sections/quality.yaml: DDD and quality settings
-# - sections/system.yaml: MoAI system settings (includes document_management)
-# - sections/llm.yaml: Multi-LLM routing settings
-# - sections/pricing.yaml: Service and pricing configuration
-# - sections/ralph.yaml: Ralph Engine settings
-#
-# CLAUDE.md automatically loads:
-# @.moai/config/sections/user.yaml
-# @.moai/config/sections/language.yaml
-#
-# Note: document_management is now available in sections/system.yaml
-# This config.yaml is kept for legacy project support
-
 moai:
-  version: "1.5.5"
+  version: 1.5.5
   initialized: true
-  initialized_at: "2025-12-19T00:00:00Z"
-
-# Document Management System
-# Prevents project root pollution by enforcing .moai/ hierarchy for all internal files
+  initialized_at: '2025-12-19T00:00:00Z'
 document_management:
   enabled: true
   enforce_structure: true
   block_root_pollution: true
-
-  # Separation policy between logs and docs
   separation_policy:
     strict_separation: true
-    description: Clear separation between logs (runtime data) and docs (documentation content)
+    description: Clear separation between logs (runtime data) and docs (documentation
+      content)
     logs_scope: runtime sessions, errors, execution traces, agent transcripts
     docs_scope: reports, analysis, validation, sync, inspection, documentation files
-
-  # Directory structure and retention policies
   directories:
-    # Documentation files
     docs:
       base: .moai/docs/
-      retention_days: null # Keep indefinitely
-    # Log files (runtime data)
+      retention_days: null
     logs:
       base: .moai/logs/
       retention_days: 30
-    # Temporary files
     temp:
       base: .moai/temp/
       retention_days: 7
       auto_cleanup: true
-    # Cache files
     cache:
       base: .moai/cache/
       retention_days: 30
       auto_cleanup: true
+project:
+  name: MoAI-ADK
+  mode: personal
+  description: ''
+  created_at: '2026-01-21 16:08:03'
+  template_version: 1.5.5
+  optimized: false

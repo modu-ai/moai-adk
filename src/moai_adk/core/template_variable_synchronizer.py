@@ -285,7 +285,8 @@ class TemplateVariableSynchronizer:
             if updated_vars:
                 settings_file.write_text(
                     json.dumps(settings_data, indent=2, ensure_ascii=False) + "\n",
-                    encoding="utf-8", errors="replace",
+                    encoding="utf-8",
+                    errors="replace",
                 )
                 results["files_updated"] += 1
                 results["variables_updated"].extend(updated_vars)

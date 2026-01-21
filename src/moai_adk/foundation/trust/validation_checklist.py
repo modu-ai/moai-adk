@@ -24,9 +24,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 
-
-
-
 def _rglob_with_depth(path: Path, pattern: str, max_depth: int = 10) -> List[Path]:
     """Wrapper for rglob with depth limit to prevent excessive traversal.
 
@@ -48,7 +45,6 @@ def _rglob_with_depth(path: Path, pattern: str, max_depth: int = 10) -> List[Pat
             # Path is not relative to root, skip
             continue
     return results
-
 
 
 class ChecklistType(Enum):

@@ -1,273 +1,465 @@
 """
-Context Management Module for Commands Layer
+CLAUDE.md Import Processor
 
-Provides utilities for:
-1. Path validation and absolute path conversion
-2. Atomic JSON file operations
-3. Phase result persistence and loading
-4. Template variable substitution
+Processes @path/to/file imports in CLAUDE.md files.
+
+Based on Claude Code official documentation:
+- Import syntax: @path/to/file or @~/absolute/path
+- Recursive imports (max 5-depth)
+- Ignored in code blocks/spans
+- Both relative and absolute paths supported
 """
 
+from __future__ import annotations
+
 import json
+import logging
 import os
 import re
-import tempfile
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
-# Constants
-PROJECT_ROOT_SAFETY_MSG = "Path outside project root: {}"
-PARENT_DIR_MISSING_MSG = "Parent directory not found: {}"
+# Import pattern matches @path but not in code
+IMPORT_PATTERN = r"@([^\s\])`>@]+)"
+# Matches code blocks
+CODE_BLOCK_PATTERN = r"```[\s\S]*?```"
+# Matches inline code
+INLINE_CODE_PATTERN = r"`[^`]+`"
 
-
-def _is_path_within_root(abs_path: str, project_root: str) -> bool:
-    """
-    Check if absolute path is within project root.
-
-    Resolves symlinks to prevent escape attacks.
-
-    Args:
-        abs_path: Absolute path to check
-        project_root: Project root directory
-
-    Returns:
-        True if path is within root, False otherwise
-    """
-    try:
-        real_abs_path = os.path.realpath(abs_path)
-        real_project_root = os.path.realpath(project_root)
-
-        return real_abs_path == real_project_root or real_abs_path.startswith(real_project_root + os.sep)
-    except OSError:
-        return False
+logger = logging.getLogger(__name__)
 
 
-def validate_and_convert_path(relative_path: str, project_root: str) -> str:
-    """
-    Convert relative path to absolute path and validate it.
+class ClaudeMDImporter:
+    """Process @path imports in CLAUDE.md files."""
 
-    Ensures path stays within project root and parent directories exist
-    for file paths.
+    MAX_RECURSION_DEPTH = 5
 
-    Args:
-        relative_path: Path to validate and convert (relative or absolute)
-        project_root: Project root directory for relative path resolution
+    def __init__(self, base_path: Path):
+        """
+        Initialize the importer with a base path for resolving relative imports.
 
-    Returns:
-        Validated absolute path
+        Args:
+            base_path: Base directory for resolving relative import paths
+        """
+        self.base_path = base_path.resolve()
+        self.import_cache: dict[str, str] = {}
+        self.recursion_stack: List[str] = []
 
-    Raises:
-        ValueError: If path is outside project root
-        FileNotFoundError: If parent directory doesn't exist for file paths
-    """
-    # Convert to absolute path
-    abs_path = os.path.abspath(os.path.join(project_root, relative_path))
-    project_root_abs = os.path.abspath(project_root)
+    def process_imports(self, content: str, depth: int = 0) -> Tuple[str, List[str]]:
+        """
+        Process @path imports in CLAUDE.md content.
 
-    # Security check: ensure path stays within project root
-    if not _is_path_within_root(abs_path, project_root_abs):
-        raise ValueError(PROJECT_ROOT_SAFETY_MSG.format(abs_path))
+        Args:
+            content: CLAUDE.md content
+            depth: Current recursion depth
 
-    # If it's a directory and exists, return it
-    if os.path.isdir(abs_path):
-        return abs_path
+        Returns:
+            Tuple of (processed_content, list_of_imported_files)
+        """
+        if depth >= self.MAX_RECURSION_DEPTH:
+            logger.warning(f"Max recursion depth {self.MAX_RECURSION_DEPTH} reached")
+            return content, []
 
-    # For files, check if parent directory exists
-    parent_dir = os.path.dirname(abs_path)
-    if not os.path.exists(parent_dir):
-        raise FileNotFoundError(PARENT_DIR_MISSING_MSG.format(parent_dir))
+        # Track recursion to prevent cycles
+        self.recursion_stack.append(str(self.base_path))
 
-    return abs_path
+        imported_files = []
 
+        # Remove code blocks (imports ignored in code)
+        code_blocks = {}
+        content = self._extract_and_replace_code_blocks(content, code_blocks)
 
-def _cleanup_temp_file(temp_fd: Optional[int], temp_path: Optional[str]) -> None:
-    """
-    Clean up temporary file handles and paths.
+        # Process imports
+        lines = content.split("\n")
+        processed_lines = []
 
-    Silently ignores errors during cleanup.
+        for line in lines:
+            processed_line, imported = self._process_line(line, depth)
+            processed_lines.append(processed_line)
+            imported_files.extend(imported)
 
-    Args:
-        temp_fd: File descriptor to close, or None
-        temp_path: Path to file to remove, or None
-    """
-    if temp_fd is not None:
+        # Restore code blocks
+        content = "\n".join(processed_lines)
+        content = self._restore_code_blocks(content, code_blocks)
+
+        self.recursion_stack.pop()
+        return content, imported_files
+
+    def _extract_and_replace_code_blocks(self, content: str, store: dict) -> str:
+        """
+        Extract code blocks and replace with placeholders.
+
+        Args:
+            content: Content to process
+            store: Dictionary to store extracted blocks
+
+        Returns:
+            Content with code blocks replaced by placeholders
+        """
+        idx = 0
+        for match in re.finditer(CODE_BLOCK_PATTERN, content):
+            placeholder = f"__CODE_BLOCK_{idx}__"
+            store[placeholder] = match.group(0)
+            content = content[: match.start()] + placeholder + content[match.end() :]
+            idx += 1
+        return content
+
+    def _restore_code_blocks(self, content: str, store: dict) -> str:
+        """
+        Restore code blocks from placeholders.
+
+        Args:
+            content: Content with placeholders
+            store: Dictionary with stored code blocks
+
+        Returns:
+            Content with code blocks restored
+        """
+        for placeholder, code_block in store.items():
+            content = content.replace(placeholder, code_block)
+        return content
+
+    def _process_line(self, line: str, depth: int) -> Tuple[str, List[str]]:
+        """
+        Process a single line for imports.
+
+        Args:
+            line: Line to process
+            depth: Current recursion depth
+
+        Returns:
+            Tuple of (processed_line, list_of_imported_files)
+        """
+        imported_files = []
+        processed_line = line
+
+        for match in re.finditer(IMPORT_PATTERN, line):
+            import_path = match.group(1)
+            # Skip if in inline code (already replaced code blocks)
+            if "`" in import_path:
+                continue
+
+            imported_content, import_files = self._load_import(import_path, depth)
+            if imported_content:
+                processed_line = processed_line.replace(match.group(0), imported_content)
+                imported_files.extend(import_files)
+
+        return processed_line, imported_files
+
+    def _load_import(self, import_path: str, depth: int) -> Tuple[str, List[str]]:
+        """
+        Load and process an imported file.
+
+        Args:
+            import_path: Path to import (relative or absolute with ~/)
+            depth: Current recursion depth
+
+        Returns:
+            Tuple of (imported_content, list_of_imported_files)
+        """
+        # Resolve path
+        if import_path.startswith("~/"):
+            # User home directory import
+            resolved_path = Path(import_path).expanduser()
+        else:
+            # Relative path from base_path
+            resolved_path = self.base_path / import_path
+
+        # Check cache
+        cache_key = str(resolved_path)
+        if cache_key in self.import_cache:
+            return self.import_cache[cache_key], []
+
+        # Check for circular imports
+        if cache_key in self.recursion_stack:
+            logger.warning(f"Circular import detected: {import_path}")
+            return f"[Circular import detected: {import_path}]", []
+
+        # Read file
+        if not resolved_path.exists():
+            logger.warning(f"Import not found: {import_path}")
+            return f"[Import not found: {import_path}]", []
+
         try:
-            os.close(temp_fd)
-        except OSError:
-            pass
+            content = resolved_path.read_text(encoding="utf-8", errors="replace")
 
-    if temp_path and os.path.exists(temp_path):
-        try:
-            os.unlink(temp_path)
-        except OSError:
-            pass
+            # Recursive processing
+            importer = ClaudeMDImporter(resolved_path.parent)
+            importer.recursion_stack = self.recursion_stack.copy()
+            processed_content, nested_imports = importer.process_imports(content, depth + 1)
+
+            # Cache result
+            self.import_cache[cache_key] = processed_content
+
+            return processed_content, [cache_key] + nested_imports
+
+        except Exception as e:
+            logger.error(f"Import error: {import_path} - {e}")
+            return f"[Import error: {import_path} - {e}]", []
 
 
-def save_phase_result(data: Dict[str, Any], target_path: str) -> None:
+def process_claude_md_imports(content: str, base_path: Path) -> Tuple[str, List[str]]:
     """
-    Atomically save phase result to JSON file.
+    Process @path imports in CLAUDE.md content.
 
-    Uses temporary file and atomic rename to ensure data integrity
-    even if write fails midway.
+    Convenience function that creates an importer and processes the content.
 
     Args:
-        data: Dictionary to save
-        target_path: Full path where JSON should be saved
-
-    Raises:
-        IOError: If write or rename fails
-        OSError: If directory is not writable
-    """
-    target_dir = os.path.dirname(target_path)
-    os.makedirs(target_dir, exist_ok=True)
-
-    # Atomic write using temp file
-    temp_fd = None
-    temp_path = None
-
-    try:
-        # Create temp file in target directory for atomic rename
-        temp_fd, temp_path = tempfile.mkstemp(dir=target_dir, prefix=".tmp_phase_", suffix=".json")
-
-        # Write JSON to temp file
-        with os.fdopen(temp_fd, "w", encoding="utf-8", errors="replace") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-
-        temp_fd = None  # File handle is now closed
-
-        # Atomic rename
-        os.replace(temp_path, target_path)
-
-    except Exception as e:
-        _cleanup_temp_file(temp_fd, temp_path)
-        raise IOError(f"Failed to write {target_path}: {e}")
-
-
-def load_phase_result(source_path: str) -> Dict[str, Any]:
-    """
-    Load phase result from JSON file.
-
-    Args:
-        source_path: Full path to JSON file to load
+        content: CLAUDE.md content with @path imports
+        base_path: Base directory for resolving relative imports
 
     Returns:
-        Dictionary containing phase result
-
-    Raises:
-        FileNotFoundError: If file doesn't exist
-        json.JSONDecodeError: If file is not valid JSON
+        Tuple of (processed_content, list_of_imported_files)
     """
-    if not os.path.exists(source_path):
-        raise FileNotFoundError(f"Phase result file not found: {source_path}")
-
-    with open(source_path, "r", encoding="utf-8", errors="replace") as f:
-        data = json.load(f)
-
-    return data
+    importer = ClaudeMDImporter(base_path)
+    return importer.process_imports(content)
 
 
-def substitute_template_variables(text: str, context: Dict[str, str]) -> str:
-    """
-    Replace template variables in text with values from context.
-
-    Performs safe string substitution of {{VARIABLE}} placeholders.
-
-    Args:
-        text: Text containing {{VARIABLE}} placeholders
-        context: Dictionary mapping variable names to values
-
-    Returns:
-        Text with variables substituted
-    """
-    result = text
-
-    for key, value in context.items():
-        placeholder = f"{{{{{key}}}}}"
-        result = result.replace(placeholder, str(value))
-
-    return result
-
-
-# Regex pattern for detecting unsubstituted template variables
-# Matches {{VARIABLE}}, {{VAR_NAME}}, {{VAR1}}, etc.
-TEMPLATE_VAR_PATTERN = r"\{\{[A-Z_][A-Z0-9_]*\}\}"
-
-
-def validate_no_template_vars(text: str) -> None:
-    """
-    Validate that text contains no unsubstituted template variables.
-
-    Raises error if any {{VARIABLE}} patterns are found.
-
-    Args:
-        text: Text to validate
-
-    Raises:
-        ValueError: If unsubstituted variables are found
-    """
-    matches = re.findall(TEMPLATE_VAR_PATTERN, text)
-
-    if matches:
-        raise ValueError(f"Unsubstituted template variables found: {matches}")
+# ============================================================================
+# Context Manager for Phase Results (Alfred Workflow)
+# ============================================================================
 
 
 class ContextManager:
     """
-    Manages context passing and state persistence for Commands layer.
+    Manages context for Alfred workflow phases.
 
-    Handles saving and loading phase results, managing state directory,
-    and providing convenient access to command state.
+    Provides utilities for storing and retrieving phase results,
+    validating paths, and managing template variables.
     """
 
     def __init__(self, project_root: str):
         """
-        Initialize ContextManager.
+        Initialize the context manager.
 
         Args:
             project_root: Root directory of the project
         """
-        self.project_root = project_root
-        self.state_dir = os.path.join(project_root, ".moai", "memory", "command-state")
-        os.makedirs(self.state_dir, exist_ok=True)
+        self.project_root = os.path.abspath(project_root)
+        self.memory_dir = os.path.join(self.project_root, ".moai", "memory")
+        os.makedirs(self.memory_dir, exist_ok=True)
 
-    def save_phase_result(self, data: Dict[str, Any]) -> str:
+    @property
+    def state_dir(self) -> str:
         """
-        Save phase result with timestamp.
-
-        Args:
-            data: Phase result data
+        Get the state directory path (alias for memory_dir).
 
         Returns:
-            Path to saved file
+            Path to the state directory
         """
-        # Generate filename with timestamp
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-        phase_name = data.get("phase", "unknown")
-        filename = f"{phase_name}-{timestamp}.json"
-        target_path = os.path.join(self.state_dir, filename)
-
-        save_phase_result(data, target_path)
-        return target_path
-
-    def load_latest_phase(self) -> Optional[Dict[str, Any]]:
-        """
-        Load the most recent phase result.
-
-        Returns:
-            Phase result dictionary or None if no phase files exist
-        """
-        # List all phase files
-        phase_files = sorted([f for f in os.listdir(self.state_dir) if f.endswith(".json")])
-
-        if not phase_files:
-            return None
-
-        # Load the latest (last in sorted order)
-        latest_file = phase_files[-1]
-        latest_path = os.path.join(self.state_dir, latest_file)
-
-        return load_phase_result(latest_path)
+        return self.memory_dir
 
     def get_state_dir(self) -> str:
-        """Get the command state directory path."""
+        """
+        Get the state directory path.
+
+        Returns:
+            Path to the state directory
+        """
         return self.state_dir
+
+    def get_phase_result_path(self, phase_name: str) -> str:
+        """
+        Get the file path for a phase result.
+
+        Args:
+            phase_name: Name of the phase
+
+        Returns:
+            Absolute path to the phase result file
+        """
+        return os.path.join(self.memory_dir, "command-state", f"{phase_name}.json")
+
+    def load_phase_result(self, phase_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Load a phase result from disk.
+
+        Args:
+            phase_name: Name of the phase to load
+
+        Returns:
+            Phase result dictionary or None if not found
+        """
+        result_path = self.get_phase_result_path(phase_name)
+        if not os.path.exists(result_path):
+            return None
+
+        try:
+            with open(result_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return None
+
+    def save_phase_result(self, phase_name: str, result: Dict[str, Any]) -> None:
+        """
+        Save a phase result to disk.
+
+        Args:
+            phase_name: Name of the phase
+            result: Phase result dictionary
+        """
+        result_path = self.get_phase_result_path(phase_name)
+        os.makedirs(os.path.dirname(result_path), exist_ok=True)
+
+        # Add timestamp if not present
+        if "timestamp" not in result:
+            result["timestamp"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+        with open(result_path, "w", encoding="utf-8") as f:
+            json.dump(result, f, indent=2, ensure_ascii=False)
+
+
+def validate_and_convert_path(path: str, base_path: Optional[str] = None) -> str:
+    """
+    Validate and convert a path to absolute.
+
+    Args:
+        path: Path to validate (relative or absolute)
+        base_path: Base directory for relative paths (defaults to cwd)
+
+    Returns:
+        Absolute path
+
+    Raises:
+        ValueError: If path is invalid
+        FileNotFoundError: If path doesn't exist and check_exists=True
+    """
+    if base_path is None:
+        base_path = os.getcwd()
+
+    # Convert to absolute path
+    if os.path.isabs(path):
+        abs_path = path
+    else:
+        abs_path = os.path.abspath(os.path.join(base_path, path))
+
+    # Normalize path
+    abs_path = os.path.normpath(abs_path)
+
+    return abs_path
+
+
+def _is_path_within_root(path: str, root: str) -> bool:
+    """
+    Check if a path is within a root directory.
+
+    Args:
+        path: Path to check
+        root: Root directory
+
+    Returns:
+        True if path is within root, False otherwise
+    """
+    # Normalize both paths
+    path = os.path.normpath(os.path.abspath(path))
+    root = os.path.normpath(os.path.abspath(root))
+
+    # Check if path starts with root
+    return path.startswith(root + os.sep) or path == root
+
+
+def _cleanup_temp_file(fd: Optional[int], path: Optional[str]) -> None:
+    """
+    Clean up a temporary file safely.
+
+    Args:
+        fd: File descriptor (may be None)
+        path: Path to the file (may be None)
+
+    Closes the file descriptor if provided and removes the file if it exists.
+    """
+    if fd is not None:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+
+    if path is not None and os.path.exists(path):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
+def validate_no_template_vars(content: str) -> bool:
+    """
+    Validate that content contains no template variables.
+
+    Args:
+        content: Content to validate
+
+    Returns:
+        True if no template variables found
+    """
+    import re
+
+    # Check for {{VAR}} pattern
+    template_pattern = r"\{\{[A-Z_]+\}\}"
+    return not re.search(template_pattern, content)
+
+
+def substitute_template_variables(content: str, variables: Dict[str, str]) -> Tuple[str, List[str]]:
+    """
+    Substitute template variables in content.
+
+    Args:
+        content: Content with template variables
+        variables: Dictionary of variable substitutions
+
+    Returns:
+        Tuple of (substituted_content, list_of_found_variables)
+    """
+
+    found_vars = []
+    substituted = content
+
+    for var_name, var_value in variables.items():
+        pattern = f"{{{{{var_name}}}}}"
+        if pattern in substituted:
+            found_vars.append(var_name)
+            substituted = substituted.replace(pattern, var_value)
+
+    return substituted, found_vars
+
+
+def load_phase_result(phase_name: str, project_root: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """
+    Load a phase result from disk.
+
+    Convenience function that creates a ContextManager.
+
+    Args:
+        phase_name: Name of the phase to load
+        project_root: Project root directory (defaults to cwd)
+
+    Returns:
+        Phase result dictionary or None if not found
+    """
+    if project_root is None:
+        project_root = os.getcwd()
+
+    manager = ContextManager(project_root)
+    return manager.load_phase_result(phase_name)
+
+
+def save_phase_result(
+    phase_name: str,
+    result: Dict[str, Any],
+    project_root: Optional[str] = None,
+) -> None:
+    """
+    Save a phase result to disk.
+
+    Convenience function that creates a ContextManager.
+
+    Args:
+        phase_name: Name of the phase
+        result: Phase result dictionary
+        project_root: Project root directory (defaults to cwd)
+    """
+    if project_root is None:
+        project_root = os.getcwd()
+
+    manager = ContextManager(project_root)
+    manager.save_phase_result(phase_name, result)

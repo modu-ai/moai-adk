@@ -10,21 +10,10 @@ Last Updated: 2026-01-06
 ## Quick Reference (30 seconds)
 
 Registry Components:
-- File Location: ~/.moai/worktrees/{project-name}/.moai-worktree-registry.json (default)
+- File Location: {repo}/.moai/worktrees/.moai-worktree-registry.json
 - Format: JSON with versioned schema
 - Operations: Atomic updates with backup and rollback
 - Concurrency: File-based locking for multi-process safety
-- Legacy Support: Automatic detection of existing registry files
-
-Path Resolution Priority:
-
-The system searches for registry files in this order:
-1. ~/.moai/worktrees/{project-name}/.moai-worktree-registry.json (new default)
-2. {repo}/.moai/worktrees/.moai-worktree-registry.json (previous default)
-3. ~/moai/worktrees/.moai-worktree-registry.json (early version)
-4. ~/worktrees/.moai-worktree-registry.json (original location)
-
-The first detected registry is used for the current session. New registries are created at the default location (~/.moai/worktrees/{project-name}/) when no existing registry is found.
 
 ---
 
@@ -40,29 +29,13 @@ Version and Timestamps:
 - last_updated: ISO 8601 timestamp of most recent modification
 
 Configuration Section:
-- worktree_root: Absolute path to worktree base directory (default: ~/.moai/worktrees/{project-name})
+- worktree_root: Absolute path to worktree base directory
 - auto_sync: Boolean flag for automatic synchronization
 - cleanup_merged: Boolean flag for automatic cleanup
 - default_base: Default base branch name
 - sync_strategy: Preferred sync method (merge, rebase, squash)
 - registry_type: local or team mode
 - max_worktrees: Maximum allowed worktrees
-- detected_legacy_path: Path to detected legacy registry (if applicable)
-
-Example Configuration:
-```json
-{
-  "config": {
-    "worktree_root": "/Users/username/.moai/worktrees/MoAI-ADK",
-    "auto_sync": false,
-    "cleanup_merged": false,
-    "default_base": "main",
-    "sync_strategy": "merge",
-    "registry_type": "local",
-    "max_worktrees": 10
-  }
-}
-```
 
 Worktrees Map:
 - Key: SPEC ID (e.g., "SPEC-001")

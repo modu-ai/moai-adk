@@ -16,10 +16,10 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__code_formatter.py"
+          command: "uv run \"{{PROJECT_DIR_UNIX}}\"/.claude/hooks/moai/post_tool__code_formatter.py"
           timeout: 30
         - type: command
-          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__linter.py"
+          command: "uv run \"{{PROJECT_DIR_UNIX}}\"/.claude/hooks/moai/post_tool__linter.py"
           timeout: 30
 ---
 
@@ -191,7 +191,7 @@ Optional Fields:
 Path Rules:
 - All paths are relative to plugin root
 - All paths must start with "./"
-- Available environment variables: ${CLAUDE_PLUGIN_ROOT}, ${CLAUDE_PROJECT_DIR}
+- Available environment variables: ${CLAUDE_PLUGIN_ROOT}, ${CLAUDE_PROJECT_DIR_UNIX}
 
 ---
 

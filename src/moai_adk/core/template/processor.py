@@ -1207,13 +1207,18 @@ class TemplateProcessor:
             console.print("   🔄 .github/ merged (user workflows preserved, variables substituted)")
 
     def _copy_claude_md(self, silent: bool = False) -> None:
-        """Copy CLAUDE.md with complete replacement (no merge).
+        """Copy CLAUDE.md with @path import processing and complete replacement (no merge).
 
         Selects language-specific CLAUDE.md based on conversation_language setting:
         - CLAUDE.ko.md for Korean
         - CLAUDE.ja.md for Japanese
         - CLAUDE.zh.md for Chinese
         - CLAUDE.md for English (default)
+
+        Processes @path/to/file imports (max 5-depth recursion):
+        - Supports relative paths: @docs/guide.md
+        - Supports absolute paths: @~/instructions.md
+        - Ignores imports in code blocks/spans
         """
         # Get language from context (set by set_context())
         language = self.context.get("CONVERSATION_LANGUAGE", "en") if self.context else "en"
@@ -1236,11 +1241,34 @@ class TemplateProcessor:
                 console.print("⚠️ CLAUDE.md template not found")
             return
 
-        # Simple copy with substitution (no merge)
-        self._copy_file_with_substitution(src, dst)
+        # Read template content
+        content = src.read_text(encoding="utf-8", errors="replace")
+
+        # Process @path imports (using Claude Code import syntax)
+        try:
+            from moai_adk.core.context_manager import ClaudeMDImporter
+
+            importer = ClaudeMDImporter(self.template_root)
+            content, imported_files = importer.process_imports(content)
+
+            if imported_files and not silent:
+                console.print(f"   📎 Processed {len(imported_files)} @path import(s)")
+
+        except ImportError:
+            # Import processor not available, skip import processing
+            pass
+        except Exception as e:
+            if not silent:
+                console.print(f"[yellow]⚠️ Import processing skipped: {e}[/yellow]")
+
+        # Apply variable substitution
+        if self.context:
+            content, _ = self._substitute_variables(content)
+
+        dst.write_text(content, encoding="utf-8", errors="replace")
 
         if not silent:
-            console.print("   ✅ CLAUDE.md replaced (use CLAUDE.local.md for personal instructions)")
+            console.print("   ✅ CLAUDE.md replaced with @path imports (use CLAUDE.local.md for personal instructions)")
 
     def _merge_claude_md(self, src: Path, dst: Path) -> None:
         """Delegate the smart merge for CLAUDE.md.
@@ -1291,7 +1319,7 @@ class TemplateProcessor:
         import os
 
         try:
-            import yaml  # type: ignore[import-not-found]
+            import yaml  # noqa: F401  # Optional import
 
             yaml_available = True
         except ImportError:

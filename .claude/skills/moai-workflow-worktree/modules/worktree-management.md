@@ -141,23 +141,7 @@ Detailed Reference: Refer to resource-optimization.md for optimization patterns
 
 The registry is the central database tracking all worktrees and their metadata.
 
-Default Storage Location: ~/.moai/worktrees/{project-name}/.moai-worktree-registry.json
-
-Legacy Path Support:
-
-The system automatically detects and supports existing installations at these locations:
-- ~/.moai/worktrees/{project-name}/.moai-worktree-registry.json (new default)
-- {repo}/.moai/worktrees/.moai-worktree-registry.json (previous default)
-- ~/moai/worktrees/.moai-worktree-registry.json (early version)
-- ~/worktrees/.moai-worktree-registry.json (original location)
-
-Automatic Path Detection:
-
-When the worktree system initializes, it:
-1. Scans for existing registry files in all known locations
-2. Uses the first detected registry for the current session
-3. Creates new registries at the default location if none exist
-4. Maintains full backward compatibility with legacy paths
+Storage Location: ~/.worktrees/{PROJECT_NAME}/.moai-worktree-registry.json
 
 Registry Contents:
 - version: Schema version for compatibility
