@@ -178,42 +178,96 @@ def format_token_count(tokens: int) -> str:
     return str(tokens)
 
 
-def extract_context_window(session_context: dict) -> str:
+def extract_cost_info(session_context: dict) -> dict:
     """
-    Extract and format context window usage from session context.
+    Extract cost information from session context.
 
     Args:
         session_context: Context passed from Claude Code via stdin
 
     Returns:
-        Formatted context window string (e.g., "15K/200K")
+        Dict with cost information (empty if not available)
     """
-    context_info = session_context.get("context_window", {})
+    cost_info = session_context.get("cost", {})
+    if not cost_info:
+        return {}
+
+    return {
+        "total_cost_usd": cost_info.get("total_cost_usd", 0.0),
+        "total_duration_ms": cost_info.get("total_duration_ms", 0),
+        "total_api_duration_ms": cost_info.get("total_api_duration_ms", 0),
+        "total_lines_added": cost_info.get("total_lines_added", 0),
+        "total_lines_removed": cost_info.get("total_lines_removed", 0),
+    }
+
+
+def extract_context_window(session_context: dict) -> dict:
+    """
+    Extract context window usage from session context.
+
+    Args:
+        session_context: Context passed from Claude Code via stdin
+
+    Returns:
+        Dict with:
+        - used_percentage: 42.5 (from Claude Code or calculated)
+        - remaining_percentage: 57.5 (from Claude Code or calculated)
+
+    Note:
+        Priority:
+        1. Use Claude Code's pre-calculated percentages (if available)
+        2. Fallback to calculation from current_usage tokens
+        3. Final fallback to 0% used / 100% remaining
+
+    Reference: https://code.claude.com/docs/en/statusline
+    """
+    # Support both "context_window" and "context_window_info" keys
+    context_info = session_context.get("context_window") or session_context.get("context_window_info", {})
 
     if not context_info:
-        return ""
+        return {"used_percentage": 0, "remaining_percentage": 100}
 
-    # Get context window size
-    context_size = context_info.get("context_window_size", 0)
-    if not context_size:
-        return ""
+    # Try Claude Code's pre-calculated percentages first
+    used_pct = context_info.get("used_percentage")
+    remaining_pct = context_info.get("remaining_percentage")
 
-    # Get current usage
-    current_usage = context_info.get("current_usage", {})
-    if current_usage:
-        # Calculate total current tokens
-        input_tokens = current_usage.get("input_tokens", 0)
-        cache_creation = current_usage.get("cache_creation_input_tokens", 0)
-        cache_read = current_usage.get("cache_read_input_tokens", 0)
-        current_tokens = input_tokens + cache_creation + cache_read
-    else:
-        # Fallback to total tokens
-        current_tokens = context_info.get("total_input_tokens", 0)
+    # FALLBACK: Calculate from tokens if percentages not provided
+    # Reference: https://code.claude.com/docs/en/statusline (Advanced approach)
+    if used_pct is None or remaining_pct is None:
+        context_size = context_info.get("context_window_size", 200000)
+        current_usage = context_info.get("current_usage")
 
-    if current_tokens > 0:
-        return f"{format_token_count(current_tokens)}/{format_token_count(context_size)}"
+        if current_usage and isinstance(current_usage, dict):
+            # Calculate current context from current_usage fields
+            # Include ALL token types: input + output + cache creation + cache read
+            # Reference: https://code.claude.com/docs/en/statusline
+            input_tokens = current_usage.get("input_tokens", 0)
+            output_tokens = current_usage.get("output_tokens", 0)
+            cache_creation = current_usage.get("cache_creation_input_tokens", 0)
+            cache_read = current_usage.get("cache_read_input_tokens", 0)
+            current_tokens = input_tokens + output_tokens + cache_creation + cache_read
 
-    return ""
+            if context_size > 0:
+                used_pct = (current_tokens / context_size) * 100
+                remaining_pct = 100 - used_pct
+            else:
+                used_pct = 0
+                remaining_pct = 100
+        else:
+            # No current_usage data available
+            used_pct = 0
+            remaining_pct = 100
+
+    # Ensure values are not None
+    if used_pct is None:
+        used_pct = 0
+    if remaining_pct is None:
+        remaining_pct = 100 - used_pct
+
+    return {
+        "used_percentage": used_pct,
+        "remaining_percentage": remaining_pct,
+    }
 
 
 def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
@@ -256,8 +310,12 @@ def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
         # Extract output style from session context
         output_style = session_context.get("output_style", {}).get("name", "")
 
-        # Extract context window usage
-        context_window = extract_context_window(session_context)
+        # Extract context window usage (returns dict with percentages only)
+        context_window_data = extract_context_window(session_context)
+        context_used_pct = context_window_data.get("used_percentage", 0.0)
+
+        # Extract cost information (from Claude Code session context)
+        cost_data = extract_cost_info(session_context)
 
         # Collect all information from local sources
         branch, git_status = safe_collect_git_info()
@@ -281,7 +339,13 @@ def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
             output_style=output_style,
             update_available=update_available,
             latest_version=latest_version,
-            context_window=context_window,
+            context_window="",
+            context_used_percentage=context_used_pct,
+            # Cost tracking fields
+            cost_total_usd=cost_data.get("total_cost_usd", 0.0),
+            cost_lines_added=cost_data.get("total_lines_added", 0),
+            cost_lines_removed=cost_data.get("total_lines_removed", 0),
+            cost_duration_ms=cost_data.get("total_duration_ms", 0),
         )
 
         # Render statusline with labeled sections

@@ -29,6 +29,12 @@ class StatuslineData:
     update_available: bool = False
     latest_version: str = ""
     context_window: str = ""  # Context window usage (e.g., "15K/200K")
+    context_used_percentage: float = 0.0  # Context window used percentage (0.0-100.0)
+    # Cost tracking fields (from Claude Code session context)
+    cost_total_usd: float = 0.0  # Total API cost in USD
+    cost_lines_added: int = 0  # Total lines added
+    cost_lines_removed: int = 0  # Total lines removed
+    cost_duration_ms: int = 0  # Total session duration in milliseconds
 
 
 class StatuslineRenderer:
@@ -68,7 +74,7 @@ class StatuslineRenderer:
 
     def _render_compact(self, data: StatuslineData) -> str:
         """
-        Render compact mode: 🤖 Model | 💰 Context | 💬 Style | 📁 Directory | 📊 Changes | 💾 Memory | 🔀 Branch
+        Render compact mode: 🤖 Model | 💰 Context | 💬 Style | 📁 Directory | 📊 Changes | 🔅 Version | 🔀 Branch
         Constraint: <= 80 characters
 
         Args:
@@ -92,7 +98,7 @@ class StatuslineRenderer:
     def _build_compact_parts(self, data: StatuslineData) -> List[str]:
         """
         Build parts list for compact mode with labeled sections
-        Format: 🤖 Model | 💰 Context | 💬 Style | 📁 Directory | 📊 Changes | 💾 Memory | 🔀 Branch
+        Format: 🤖 Model | 🔋/🪫 Context Graph | 💬 Style | 📁 Directory | 📊 Changes | 🔅 Version | 🔀 Branch
 
         Args:
             data: StatuslineData instance
@@ -106,9 +112,13 @@ class StatuslineRenderer:
         if self._display_config.model:
             parts.append(f"🤖 {data.model}")
 
-        # 2. Add context window usage if available
-        if data.context_window:
-            parts.append(f"💰 {data.context_window}")
+        # 2. Add context window usage with graph (always show graph if percentage is available)
+        if data.context_used_percentage >= 0:
+            # Determine battery icon based on usage
+            # 🔋 (70% or less used, 30%+ remaining) | 🪫 (over 70% used, less than 30% remaining)
+            icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
+            graph = self._render_context_graph(data.context_used_percentage)
+            parts.append(f"{icon} {graph}")
 
         # 3. Add output style if not empty
         if data.output_style:
@@ -122,9 +132,9 @@ class StatuslineRenderer:
         if self._display_config.git_status and data.git_status:
             parts.append(f"📊 {data.git_status}")
 
-        # 6. Add memory usage if display enabled
-        if self._display_config.memory_usage and data.memory_usage:
-            parts.append(f"💾 {data.memory_usage}")
+        # 6. Add version if display enabled
+        if self._display_config.version and data.version:
+            parts.append(f"🔅 {data.version}")
 
         # 7. Add Git branch (development context)
         if self._display_config.branch:
@@ -139,7 +149,7 @@ class StatuslineRenderer:
     def _fit_to_constraint(self, data: StatuslineData, max_length: int) -> str:
         """
         Fit statusline to character constraint by truncating
-        Format: 🤖 Model | 💰 Context | 💬 Style | 📁 Directory | 📊 Changes | 💾 Memory | 🔀 Branch
+        Format: 🤖 Model | 🔋/🪫 Context Graph | 💬 Style | 📁 Directory | 📊 Changes | 🔅 Version | 🔀 Branch
 
         Args:
             data: StatuslineData instance
@@ -155,8 +165,9 @@ class StatuslineRenderer:
 
         parts.append(f"🤖 {data.model}")
 
-        if data.context_window:
-            parts.append(f"💰 {data.context_window}")
+        if data.context_used_percentage >= 0:
+            icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
+            parts.append(f"{icon} {self._render_context_graph(data.context_used_percentage)}")
 
         if data.output_style:
             parts.append(f"💬 {data.output_style}")
@@ -167,8 +178,8 @@ class StatuslineRenderer:
         if self._display_config.git_status and data.git_status:
             parts.append(f"📊 {data.git_status}")
 
-        if self._display_config.memory_usage and data.memory_usage:
-            parts.append(f"💾 {data.memory_usage}")
+        if self._display_config.version and data.version:
+            parts.append(f"🔅 {data.version}")
 
         parts.append(f"🔀 {truncated_branch}")
 
@@ -182,24 +193,29 @@ class StatuslineRenderer:
             truncated_branch = self._truncate_branch(data.branch, max_length=12)
             parts = []
             parts.append(f"🤖 {data.model}")
-            if data.context_window:
-                parts.append(f"💰 {data.context_window}")
+            if data.context_used_percentage >= 0:
+                icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
+                parts.append(f"{icon} {self._render_context_graph(data.context_used_percentage)}")
             if data.output_style:
                 parts.append(f"💬 {data.output_style}")
             if self._display_config.directory and data.directory:
                 parts.append(f"📁 {data.directory}")
             if data.git_status:
                 parts.append(f"📊 {data.git_status}")
-            if self._display_config.memory_usage and data.memory_usage:
-                parts.append(f"💾 {data.memory_usage}")
+            if self._display_config.version and data.version:
+                parts.append(f"🔅 {data.version}")
             parts.append(f"🔀 {truncated_branch}")
             result = self._format_config.separator.join(parts)
 
-        # If still too long, remove output_style and memory_usage
+        # If still too long, remove output_style and version
         if len(result) > max_length:
             parts = [f"🤖 {data.model}"]
             if data.context_window:
-                parts.append(f"💰 {data.context_window}")
+                if data.context_used_percentage > 0:
+                    icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
+                    parts.append(f"{icon} {self._render_context_graph(data.context_used_percentage)}")
+                else:
+                    parts.append(f"🔋 {data.context_window}")
             if data.git_status:
                 parts.append(f"📊 {data.git_status}")
             parts.append(f"🔀 {truncated_branch}")
@@ -215,7 +231,7 @@ class StatuslineRenderer:
         """
         Render extended mode: Full path and detailed info with labels
         Constraint: <= 120 characters
-        Format: 🤖 Model | 💰 Context | 💬 Style | 📁 Directory | 📊 Changes | 💾 Memory | 🔀 Branch
+        Format: 🤖 Model | 🔋/🪫 Context Graph | 💬 Style | 📁 Directory | 📊 Changes | 🔅 Version | 🔀 Branch
 
         Args:
             data: StatuslineData instance
@@ -232,9 +248,10 @@ class StatuslineRenderer:
         if self._display_config.model:
             parts.append(f"🤖 {data.model}")
 
-        # 2. Context window
-        if data.context_window:
-            parts.append(f"💰 {data.context_window}")
+        # 2. Context window with graph
+        if data.context_used_percentage >= 0:
+            icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
+            parts.append(f"{icon} {self._render_context_graph(data.context_used_percentage)}")
 
         # 3. Output style
         if data.output_style:
@@ -248,9 +265,9 @@ class StatuslineRenderer:
         if self._display_config.git_status and data.git_status:
             parts.append(f"📊 {data.git_status}")
 
-        # 6. Memory usage
-        if self._display_config.memory_usage and data.memory_usage:
-            parts.append(f"💾 {data.memory_usage}")
+        # 6. Version
+        if self._display_config.version and data.version:
+            parts.append(f"🔅 {data.version}")
 
         # 7. Git branch
         if self._display_config.branch:
@@ -268,16 +285,17 @@ class StatuslineRenderer:
             parts = []
             if self._display_config.model:
                 parts.append(f"🤖 {data.model}")
-            if data.context_window:
-                parts.append(f"💰 {data.context_window}")
+            if data.context_used_percentage >= 0:
+                icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
+                parts.append(f"{icon} {self._render_context_graph(data.context_used_percentage)}")
             if data.output_style:
                 parts.append(f"💬 {data.output_style}")
             if self._display_config.directory and data.directory:
                 parts.append(f"📁 {data.directory}")
             if data.git_status:
                 parts.append(f"📊 {data.git_status}")
-            if self._display_config.memory_usage and data.memory_usage:
-                parts.append(f"💾 {data.memory_usage}")
+            if self._display_config.version and data.version:
+                parts.append(f"🔅 {data.version}")
             parts.append(f"🔀 {branch}")
             result = self._format_config.separator.join(parts)
 
@@ -287,7 +305,7 @@ class StatuslineRenderer:
         """
         Render minimal mode: Extreme space constraint with minimal labels
         Constraint: <= 40 characters
-        Format: 🤖 Model | 💰 Context
+        Format: 🤖 Model | 🔋/🪫 Context Graph
 
         Args:
             data: StatuslineData instance
@@ -301,9 +319,10 @@ class StatuslineRenderer:
         if self._display_config.model:
             parts.append(f"🤖 {data.model}")
 
-        # Add context window usage if available (💰 icon)
-        if data.context_window:
-            parts.append(f"💰 {data.context_window}")
+        # Add context window with graph if available
+        if data.context_used_percentage >= 0:
+            icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
+            parts.append(f"{icon} {self._render_context_graph(data.context_used_percentage)}")
 
         result = self._format_config.separator.join(parts)
 
@@ -357,3 +376,44 @@ class StatuslineRenderer:
         if version.startswith("v"):
             return version[1:]
         return version
+
+    @staticmethod
+    def _render_context_graph(used_pct: float, width: int = 12) -> str:
+        """
+        Render context window usage graph using Unicode characters.
+
+        Note: ANSI escape codes are NOT supported in Claude Code statusline.
+        Reference: https://github.com/anthropics/claude-code/issues/6635
+
+        Args:
+            used_pct: Context window usage percentage (0.0-100.0)
+            width: Total width of the graph bar in characters
+
+        Returns:
+            Formatted graph string using Unicode block characters
+            Format: [████████░░░░] 58% (used percentage shown)
+
+        Visual scheme:
+        - Full block (█) for used portion
+        - Light block (░) for remaining space
+        - Battery icon changes based on usage level (handled in caller)
+        """
+        # Clamp percentage to 0-100 range
+        used_pct = max(0.0, min(100.0, used_pct))
+
+        # Calculate filled blocks (based on used percentage)
+        filled = int((used_pct / 100.0) * width)
+        empty = width - filled
+
+        # Build graph bar using Unicode block characters (no ANSI codes)
+        filled_char = "█"  # Full block for used
+        empty_char = "░"  # Light block for remaining
+
+        # Construct the bar without any ANSI escape codes
+        bar = f"{filled_char * filled}{empty_char * empty}"
+
+        # Format used percentage (round to nearest integer)
+        used_int = int(round(used_pct))
+
+        # Return formatted graph with used percentage
+        return f"[{bar}] {used_int}%"

@@ -74,7 +74,7 @@ class StatuslineRenderer:
 
     def _render_compact(self, data: StatuslineData) -> str:
         """
-        Render compact mode: 🤖 Model | 💰 Context | 💬 Style | 📁 Directory | 📊 Changes | 💾 Memory | 🔀 Branch
+        Render compact mode: 🤖 Model | 💰 Context | 💬 Style | 📁 Directory | 📊 Changes | 🔅 Version | 🔀 Branch
         Constraint: <= 80 characters
 
         Args:
@@ -98,7 +98,7 @@ class StatuslineRenderer:
     def _build_compact_parts(self, data: StatuslineData) -> List[str]:
         """
         Build parts list for compact mode with labeled sections
-        Format: 🤖 Model | 🔋/🪫 Context Graph | 💬 Style | 📁 Directory | 📊 Changes | 💾 Memory | 🔀 Branch
+        Format: 🤖 Model | 🔋/🪫 Context Graph | 💬 Style | 📁 Directory | 📊 Changes | 🔅 Version | 🔀 Branch
 
         Args:
             data: StatuslineData instance
@@ -132,9 +132,9 @@ class StatuslineRenderer:
         if self._display_config.git_status and data.git_status:
             parts.append(f"📊 {data.git_status}")
 
-        # 6. Add memory usage if display enabled
-        if self._display_config.memory_usage and data.memory_usage:
-            parts.append(f"💾 {data.memory_usage}")
+        # 6. Add version if display enabled
+        if self._display_config.version and data.version:
+            parts.append(f"🔅 {data.version}")
 
         # 7. Add Git branch (development context)
         if self._display_config.branch:
@@ -149,7 +149,7 @@ class StatuslineRenderer:
     def _fit_to_constraint(self, data: StatuslineData, max_length: int) -> str:
         """
         Fit statusline to character constraint by truncating
-        Format: 🤖 Model | 🔋/🪫 Context Graph | 💬 Style | 📁 Directory | 📊 Changes | 💾 Memory | 🔀 Branch
+        Format: 🤖 Model | 🔋/🪫 Context Graph | 💬 Style | 📁 Directory | 📊 Changes | 🔅 Version | 🔀 Branch
 
         Args:
             data: StatuslineData instance
@@ -178,8 +178,8 @@ class StatuslineRenderer:
         if self._display_config.git_status and data.git_status:
             parts.append(f"📊 {data.git_status}")
 
-        if self._display_config.memory_usage and data.memory_usage:
-            parts.append(f"💾 {data.memory_usage}")
+        if self._display_config.version and data.version:
+            parts.append(f"🔅 {data.version}")
 
         parts.append(f"🔀 {truncated_branch}")
 
@@ -202,12 +202,12 @@ class StatuslineRenderer:
                 parts.append(f"📁 {data.directory}")
             if data.git_status:
                 parts.append(f"📊 {data.git_status}")
-            if self._display_config.memory_usage and data.memory_usage:
-                parts.append(f"💾 {data.memory_usage}")
+            if self._display_config.version and data.version:
+                parts.append(f"🔅 {data.version}")
             parts.append(f"🔀 {truncated_branch}")
             result = self._format_config.separator.join(parts)
 
-        # If still too long, remove output_style and memory_usage
+        # If still too long, remove output_style and version
         if len(result) > max_length:
             parts = [f"🤖 {data.model}"]
             if data.context_window:
@@ -231,7 +231,7 @@ class StatuslineRenderer:
         """
         Render extended mode: Full path and detailed info with labels
         Constraint: <= 120 characters
-        Format: 🤖 Model | 🔋/🪫 Context Graph | 💬 Style | 📁 Directory | 📊 Changes | 💾 Memory | 🔀 Branch
+        Format: 🤖 Model | 🔋/🪫 Context Graph | 💬 Style | 📁 Directory | 📊 Changes | 🔅 Version | 🔀 Branch
 
         Args:
             data: StatuslineData instance
@@ -265,9 +265,9 @@ class StatuslineRenderer:
         if self._display_config.git_status and data.git_status:
             parts.append(f"📊 {data.git_status}")
 
-        # 6. Memory usage
-        if self._display_config.memory_usage and data.memory_usage:
-            parts.append(f"💾 {data.memory_usage}")
+        # 6. Version
+        if self._display_config.version and data.version:
+            parts.append(f"🔅 {data.version}")
 
         # 7. Git branch
         if self._display_config.branch:
@@ -294,8 +294,8 @@ class StatuslineRenderer:
                 parts.append(f"📁 {data.directory}")
             if data.git_status:
                 parts.append(f"📊 {data.git_status}")
-            if self._display_config.memory_usage and data.memory_usage:
-                parts.append(f"💾 {data.memory_usage}")
+            if self._display_config.version and data.version:
+                parts.append(f"🔅 {data.version}")
             parts.append(f"🔀 {branch}")
             result = self._format_config.separator.join(parts)
 
@@ -380,50 +380,40 @@ class StatuslineRenderer:
     @staticmethod
     def _render_context_graph(used_pct: float, width: int = 12) -> str:
         """
-        Render ANSI color-coded context window usage graph.
+        Render context window usage graph using Unicode characters.
+
+        Note: ANSI escape codes are NOT supported in Claude Code statusline.
+        Reference: https://github.com/anthropics/claude-code/issues/6635
 
         Args:
             used_pct: Context window usage percentage (0.0-100.0)
             width: Total width of the graph bar in characters
 
         Returns:
-            Formatted graph string with ANSI colors
-            Format: [████████░░░░] 58% (remaining percentage only)
+            Formatted graph string using Unicode block characters
+            Format: [████████░░░░] 58% (used percentage shown)
 
-        Color scheme:
-        - Orange (208) for 0-70% usage
-        - Red (196) for over 70% usage (warning)
-        - Gray (240) for remaining space
+        Visual scheme:
+        - Full block (█) for used portion
+        - Light block (░) for remaining space
+        - Battery icon changes based on usage level (handled in caller)
         """
         # Clamp percentage to 0-100 range
         used_pct = max(0.0, min(100.0, used_pct))
-        remaining_pct = 100.0 - used_pct
 
         # Calculate filled blocks (based on used percentage)
         filled = int((used_pct / 100.0) * width)
         empty = width - filled
 
-        # ANSI color codes - change to red when over 70% used
-        if used_pct > 70:
-            used_color = "\033[38;5;196m"  # Red for high usage (warning)
-        else:
-            used_color = "\033[38;5;208m"  # Orange for normal usage
-        reset = "\033[0m"
+        # Build graph bar using Unicode block characters (no ANSI codes)
+        filled_char = "█"  # Full block for used
+        empty_char = "░"  # Light block for remaining
 
-        # Build graph bar
-        filled_char = "█"
-        empty_char = "░"
+        # Construct the bar without any ANSI escape codes
+        bar = f"{filled_char * filled}{empty_char * empty}"
 
-        if filled > 0:
-            bar = f"{used_color}{filled_char * filled}{reset}"
-        else:
-            bar = ""
+        # Format used percentage (round to nearest integer)
+        used_int = int(round(used_pct))
 
-        if empty > 0:
-            bar += f"\033[38;5;240m{empty_char * empty}{reset}"
-
-        # Format remaining percentage (round to nearest integer)
-        remaining_int = int(round(remaining_pct))
-
-        # Return formatted graph with remaining percentage only
-        return f"[{bar}] {remaining_int}%"
+        # Return formatted graph with used percentage
+        return f"[{bar}] {used_int}%"

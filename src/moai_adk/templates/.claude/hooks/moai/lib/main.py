@@ -221,7 +221,8 @@ def extract_context_window(session_context: dict) -> dict:
 
     Reference: https://code.claude.com/docs/en/statusline
     """
-    context_info = session_context.get("context_window", {})
+    # Support both "context_window" and "context_window_info" keys
+    context_info = session_context.get("context_window") or session_context.get("context_window_info", {})
 
     if not context_info:
         return {"used_percentage": 0, "remaining_percentage": 100}
