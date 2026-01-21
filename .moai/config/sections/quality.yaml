@@ -1,26 +1,83 @@
+# Quality & Constitution Settings
+# TRUST 5 Framework: Tested, Readable, Unified, Secured, Trackable
+
 constitution:
+  # Development methodology - DDD only
   development_mode: ddd
-  enforce_quality: true
-  test_coverage_target: 100
+  # ddd: Domain-Driven Development (ANALYZE-PRESERVE-IMPROVE)
+  # - Refactoring with behavior preservation
+  # - Characterization tests for legacy code
+  # - Incremental improvements
+
+  # TRUST 5 quality framework enforcement
+  enforce_quality: true               # Enable TRUST 5 quality principles
+  test_coverage_target: 100           # Target: 100% coverage for AI-assisted development
+
+  # DDD settings (Domain-Driven Development)
   ddd_settings:
-    require_existing_tests: true
-    characterization_tests: true
-    behavior_snapshots: true
-    max_transformation_size: small
+    require_existing_tests: true      # Require existing tests before refactoring
+    characterization_tests: true      # Create characterization tests for uncovered code
+    behavior_snapshots: true          # Use snapshot testing for complex outputs
+    max_transformation_size: small    # small | medium | large - controls change granularity
+
+  # Coverage exemptions (discouraged - use sparingly with justification)
   coverage_exemptions:
-    enabled: false
-    require_justification: true
-    max_exempt_percentage: 5
+    enabled: false                     # Allow coverage exemptions (default: false)
+    require_justification: true        # Require justification for exemptions
+    max_exempt_percentage: 5           # Maximum 5% of codebase can be exempted
+
+  # Test quality criteria (Quality > Numbers principle)
   test_quality:
-    specification_based: true
-    meaningful_assertions: true
-    avoid_implementation_coupling: true
-    mutation_testing_enabled: false
+    specification_based: true          # Tests must verify specified behavior
+    meaningful_assertions: true        # Assertions must have clear purpose
+    avoid_implementation_coupling: true # Tests should not couple to implementation details
+    mutation_testing_enabled: false    # Optional: mutation testing for effectiveness validation
+
+  # Simplicity principles (separate from TRUST 5)
   principles:
     simplicity:
-      max_parallel_tasks: 10
+      max_parallel_tasks: 10           # Maximum parallel operations for focus (NOT concurrent projects)
+
+# Exploration limits (Anti-Bottleneck System)
+# Prevents Explore agents from over-exploring and causing execution delays
+exploration_limits:
+  enabled: true                        # Enable exploration constraints
+
+  # Tool call limits per agent type
+  max_tool_calls:
+    explore: 30                        # Max tool calls for Explore agent (default: 30)
+    plan: 20                           # Max tool calls for Plan agent (default: 20)
+
+  # File reading limits
+  max_files_to_read: 10                # Maximum files to read per exploration
+
+  # Skip directories (prevent wasted calls)
+  skip_directories:
+    - __pycache__
+    - .pytest_cache
+    - node_modules
+    - .git
+    - dist
+    - build
+    - "*.egg-info"
+
+  # Prefer efficient tools
+  prefer_glob_over_find: true          # Use Glob instead of find/exec commands
+
+  # Exploration depth levels
+  depth_levels:
+    quick:                             # Level 1: File listing only
+      max_files: 0                     # No file reads
+      use_glob_only: true
+    targeted:                          # Level 2: Top N files
+      max_files: 10                    # Read top 10 files
+      use_glob_only: false
+    deep:                              # Level 3: Full analysis
+      max_files: null                  # No limit (use carefully)
+      use_glob_only: false
+
 report_generation:
-  enabled: true
-  auto_create: false
-  warn_user: true
-  user_choice: Minimal
+  enabled: true               # Enable report generation
+  auto_create: false          # Auto-create full reports (false = minimal)
+  warn_user: true             # Ask before generating reports
+  user_choice: Minimal        # Default: Minimal, Full, None

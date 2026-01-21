@@ -38,6 +38,44 @@ constitution:
     simplicity:
       max_parallel_tasks: 10           # Maximum parallel operations for focus (NOT concurrent projects)
 
+# Exploration limits (Anti-Bottleneck System)
+# Prevents Explore agents from over-exploring and causing execution delays
+exploration_limits:
+  enabled: true                        # Enable exploration constraints
+
+  # Tool call limits per agent type
+  max_tool_calls:
+    explore: 30                        # Max tool calls for Explore agent (default: 30)
+    plan: 20                           # Max tool calls for Plan agent (default: 20)
+
+  # File reading limits
+  max_files_to_read: 10                # Maximum files to read per exploration
+
+  # Skip directories (prevent wasted calls)
+  skip_directories:
+    - __pycache__
+    - .pytest_cache
+    - node_modules
+    - .git
+    - dist
+    - build
+    - "*.egg-info"
+
+  # Prefer efficient tools
+  prefer_glob_over_find: true          # Use Glob instead of find/exec commands
+
+  # Exploration depth levels
+  depth_levels:
+    quick:                             # Level 1: File listing only
+      max_files: 0                     # No file reads
+      use_glob_only: true
+    targeted:                          # Level 2: Top N files
+      max_files: 10                    # Read top 10 files
+      use_glob_only: false
+    deep:                              # Level 3: Full analysis
+      max_files: null                  # No limit (use carefully)
+      use_glob_only: false
+
 report_generation:
   enabled: true               # Enable report generation
   auto_create: false          # Auto-create full reports (false = minimal)
