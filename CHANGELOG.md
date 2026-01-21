@@ -1,3 +1,81 @@
+# v1.6.1 - StatusLine Command Simplification (2026-01-22)
+
+## Summary
+
+This patch release simplifies the statusline command configuration by using the `moai statusline` subcommand instead of the complex PYTHONPATH-based invocation. This makes the configuration more portable and easier to maintain across projects.
+
+## Changed
+
+- **refactor(config)**: Simplify statusline command to use subcommand (ae954835)
+  - Changed from: `PYTHONPATH="$CLAUDE_PROJECT_DIR/src" python3 -m moai_adk.statusline.main`
+  - Changed to: `moai statusline`
+  - Benefits:
+    - Removes `$CLAUDE_PROJECT_DIR` dependency
+    - Works consistently across all projects
+    - Only requires `uv tool install moai-adk`
+    - Simpler and more maintainable configuration
+
+## Quality
+
+- Smoke tests: 6/6 passed (100% pass rate)
+- Ruff: All checks passed
+- Ruff format: 216 files unchanged
+- Mypy: Warning (3 minor type hint issues in non-critical code)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.6.1 - StatusLine 명령어 단순화 (2026-01-22)
+
+## 요약
+
+이 패치 릴리스는 복잡한 PYTHONPATH 기반 호출 대신 `moai statusline` 서브명령어를 사용하여 statusline 명령 설정을 단순화합니다. 이를 통해 설정이 더욱 이식성 있고 프로젝트 간 유지보수가 쉬워집니다.
+
+## 변경됨
+
+- **refactor(config)**: statusline 명령어를 서브명령어로 단순화 (ae954835)
+  - 변경 전: `PYTHONPATH="$CLAUDE_PROJECT_DIR/src" python3 -m moai_adk.statusline.main`
+  - 변경 후: `moai statusline`
+  - 장점:
+    - `$CLAUDE_PROJECT_DIR` 의존성 제거
+    - 모든 프로젝트에서 일관되게 동작
+    - `uv tool install moai-adk`만 필요
+    - 더 간단하고 유지보수하기 쉬운 설정
+
+## 품질
+
+- Smoke 테스트: 6/6 통과 (100% 통과율)
+- Ruff: 모든 검사 통과
+- Ruff format: 216개 파일 변경 없음
+- Mypy: 경고 (비임계 코드 3개의 사소한 타입 힌트 문제)
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.6.0 - Sequential Thinking MCP & Statusline Enhancements (2026-01-22)
 
 ## Summary
