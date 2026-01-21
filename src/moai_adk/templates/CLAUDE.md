@@ -172,53 +172,11 @@ Allowed Tools: Full access (all tools)
 
 ### Selection Decision Tree
 
-1. Read-only codebase exploration? Use the Explore subagent (WITH exploration constraints)
+1. Read-only codebase exploration? Use the Explore subagent
 2. External documentation or API research needed? Use WebSearch, WebFetch, Context7 MCP tools
 3. Domain expertise needed? Use the expert-[domain] subagent
 4. Workflow coordination needed? Use the manager-[workflow] subagent
 5. Complex multi-step tasks? Use the manager-strategy subagent
-
-### Explore Agent Constraints (ANTI-BOTTLENECK)
-
-When using the Explore subagent, ALWAYS apply these constraints to prevent over-exploration:
-
-**Mandatory Prompt Additions:**
-
-```
-Exploration Constraints (CRITICAL - must include):
-- Max 30 tool calls total
-- Use Glob for file discovery (NOT find/ls loops)
-- Read ONLY top 10 most relevant files
-- Skip: __pycache__, .pytest_cache, node_modules, .git
-- Target: Quick assessment (not exhaustive analysis)
-
-Expected output:
-1. Summary of findings (3-5 bullet points)
-2. Key files with paths
-3. Next step recommendations
-```
-
-**Exploration Depth Levels:**
-
-- Level 1 (Quick): File listing only via Glob pattern matching
-- Level 2 (Targeted): Read top 10 files based on relevance score
-- Level 3 (Deep): Full analysis (ONLY for specific, narrow scope)
-
-**Prompt Template for Explore Agent:**
-
-```
-Use the Explore subagent with Level 1 thoroughness to:
-[Specific task description - e.g., "Identify modules with < 60% test coverage in src/moai_adk/core/"]
-
-Constraints:
-- Max 20 tool calls
-- Use Glob patterns: "**/*.py", "**/*.md"
-- Skip test files, __pycache__
-- Return: List of modules with file paths and sizes
-- Focus: Quick structural assessment (< 2 minutes target)
-```
-
-**WHY:** Prevents bottlenecks where Explore agents make 70+ tool calls analyzing entire codebase while other parallel agents wait.
 
 ### Manager Agents (7)
 
