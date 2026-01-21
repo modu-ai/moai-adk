@@ -210,28 +210,53 @@ def extract_context_window(session_context: dict) -> dict:
 
     Returns:
         Dict with:
-        - used_percentage: 42.5 (from Claude Code only)
-        - remaining_percentage: 57.5 (from Claude Code only)
+        - used_percentage: 42.5 (from Claude Code or calculated)
+        - remaining_percentage: 57.5 (from Claude Code or calculated)
 
     Note:
-        Uses only Claude Code's pre-calculated percentages.
-        If not provided, defaults to 0% used / 100% remaining.
+        Priority:
+        1. Use Claude Code's pre-calculated percentages (if available)
+        2. Fallback to calculation from current_usage tokens
+        3. Final fallback to 0% used / 100% remaining
+
+    Reference: https://code.claude.com/docs/en/statusline
     """
     context_info = session_context.get("context_window", {})
 
     if not context_info:
         return {"used_percentage": 0, "remaining_percentage": 100}
 
-    # Use Claude Code's pre-calculated percentages (trust the source)
-    # Reference: https://code.claude.com/docs/en/statusline
-    used_pct = context_info.get("used_percentage", 0)
-    remaining_pct = context_info.get("remaining_percentage", 100)
+    # Try Claude Code's pre-calculated percentages first
+    used_pct = context_info.get("used_percentage")
+    remaining_pct = context_info.get("remaining_percentage")
 
-    # If used_pct is explicitly None, treat as 0
+    # FALLBACK: Calculate from tokens if percentages not provided
+    # Reference: https://code.claude.com/docs/en/statusline (Advanced approach)
+    if used_pct is None or remaining_pct is None:
+        context_size = context_info.get("context_window_size", 200000)
+        current_usage = context_info.get("current_usage")
+
+        if current_usage and isinstance(current_usage, dict):
+            # Calculate current context from current_usage fields
+            input_tokens = current_usage.get("input_tokens", 0)
+            cache_creation = current_usage.get("cache_creation_input_tokens", 0)
+            cache_read = current_usage.get("cache_read_input_tokens", 0)
+            current_tokens = input_tokens + cache_creation + cache_read
+
+            if context_size > 0:
+                used_pct = (current_tokens / context_size) * 100
+                remaining_pct = 100 - used_pct
+            else:
+                used_pct = 0
+                remaining_pct = 100
+        else:
+            # No current_usage data available
+            used_pct = 0
+            remaining_pct = 100
+
+    # Ensure values are not None
     if used_pct is None:
         used_pct = 0
-
-    # If remaining_pct is explicitly None, calculate from used_pct
     if remaining_pct is None:
         remaining_pct = 100 - used_pct
 
