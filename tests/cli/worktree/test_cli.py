@@ -62,13 +62,13 @@ class TestGetManager:
         repo_path.mkdir()
         wt_root = tmp_path / "worktrees"
 
-        with patch("moai_adk.cli.worktree.cli.WorktreeManager") as MockManager:
+        with patch("moai_adk.cli.worktree.cli.WorktreeManager") as mock_manager:
             mock_instance = Mock()
-            MockManager.return_value = mock_instance
+            mock_manager.return_value = mock_instance
 
             result = cli.get_manager(repo_path=repo_path, worktree_root=wt_root)
 
-            MockManager.assert_called_once_with(
+            mock_manager.assert_called_once_with(
                 repo_path=repo_path,
                 worktree_root=wt_root,
                 project_name="repo",
@@ -82,9 +82,9 @@ class TestGetManager:
             # Create .git directory to simulate repo
             (tmp_path / ".git").mkdir()
 
-            with patch("moai_adk.cli.worktree.cli.WorktreeManager") as MockManager:
+            with patch("moai_adk.cli.worktree.cli.WorktreeManager") as mock_manager:
                 mock_instance = Mock()
-                MockManager.return_value = mock_instance
+                mock_manager.return_value = mock_instance
 
                 result = cli.get_manager()
 
@@ -96,14 +96,14 @@ class TestGetManager:
         repo_path = tmp_path / "my-project"
         repo_path.mkdir()
 
-        with patch("moai_adk.cli.worktree.cli.WorktreeManager") as MockManager:
+        with patch("moai_adk.cli.worktree.cli.WorktreeManager") as mock_manager:
             mock_instance = Mock()
-            MockManager.return_value = mock_instance
+            mock_manager.return_value = mock_instance
 
             _ = cli.get_manager(repo_path=repo_path, project_name=None)
 
-            MockManager.assert_called_once()
-            call_kwargs = MockManager.call_args[1]
+            mock_manager.assert_called_once()
+            call_kwargs = mock_manager.call_args[1]
             assert call_kwargs["project_name"] == "my-project"
 
 

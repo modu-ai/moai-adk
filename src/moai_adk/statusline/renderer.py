@@ -112,17 +112,13 @@ class StatuslineRenderer:
         if self._display_config.model:
             parts.append(f"🤖 {data.model}")
 
-        # 2. Add context window usage with graph if available
+        # 2. Add context window usage with graph (always show graph)
         if data.context_window:
-            if data.context_used_percentage > 0:
-                # Determine battery icon based on usage
-                # 🔋 (70% or less used, 30%+ remaining) | 🪫 (over 70% used, less than 30% remaining)
-                icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
-                graph = self._render_context_graph(data.context_used_percentage)
-                parts.append(f"{icon} {graph}")
-            else:
-                # Show token count when percentage is not available: 🔋 88K/200K
-                parts.append(f"🔋 {data.context_window}")
+            # Determine battery icon based on usage
+            # 🔋 (70% or less used, 30%+ remaining) | 🪫 (over 70% used, less than 30% remaining)
+            icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
+            graph = self._render_context_graph(data.context_used_percentage)
+            parts.append(f"{icon} {graph}")
 
         # 3. Add output style if not empty
         if data.output_style:
@@ -170,11 +166,8 @@ class StatuslineRenderer:
         parts.append(f"🤖 {data.model}")
 
         if data.context_window:
-            if data.context_used_percentage > 0:
-                icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
-                parts.append(f"{icon} {self._render_context_graph(data.context_used_percentage)}")
-            else:
-                parts.append(f"🔋 {data.context_window}")
+            icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
+            parts.append(f"{icon} {self._render_context_graph(data.context_used_percentage)}")
 
         if data.output_style:
             parts.append(f"💬 {data.output_style}")
@@ -260,11 +253,8 @@ class StatuslineRenderer:
 
         # 2. Context window with graph
         if data.context_window:
-            if data.context_used_percentage > 0:
-                icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
-                parts.append(f"{icon} {self._render_context_graph(data.context_used_percentage)}")
-            else:
-                parts.append(f"🔋 {data.context_window}")
+            icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
+            parts.append(f"{icon} {self._render_context_graph(data.context_used_percentage)}")
 
         # 3. Output style
         if data.output_style:
@@ -337,11 +327,8 @@ class StatuslineRenderer:
 
         # Add context window with graph if available
         if data.context_window:
-            if data.context_used_percentage > 0:
-                icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
-                parts.append(f"{icon} {self._render_context_graph(data.context_used_percentage)}")
-            else:
-                parts.append(f"🔋 {data.context_window}")
+            icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
+            parts.append(f"{icon} {self._render_context_graph(data.context_used_percentage)}")
 
         result = self._format_config.separator.join(parts)
 

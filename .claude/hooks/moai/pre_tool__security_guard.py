@@ -135,7 +135,6 @@ def get_plans_directory() -> Path | None:
     Returns:
         Path to plans directory if configured, None otherwise
     """
-    import os
 
     project_root = get_project_root()
     settings_file = project_root / ".claude" / "settings.json"

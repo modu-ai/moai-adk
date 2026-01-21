@@ -49,10 +49,8 @@ class TestProjectInfoDisplay:
             mock_subprocess.return_value = MagicMock(returncode=0, stdout="feature/test-branch\n", stderr="")
 
             # Simulate getting git info
-            from unittest.mock import MagicMock as MM
-
             with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MM(returncode=0, stdout="feature/test-branch\n")
+                mock_run.return_value = MagicMock(returncode=0, stdout="feature/test-branch\n")
 
                 result = subprocess.run(["git", "branch", "--show-current"], capture_output=True, text=True)
 

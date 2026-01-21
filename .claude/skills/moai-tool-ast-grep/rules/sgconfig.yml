@@ -7,7 +7,10 @@ ruleDirs:
   - languages
 
 testConfigs:
-  - ./**/__tests__/*.yml
+  - name: "rule-tests"
+    testDir: "./**/__tests__/"
+    testFiles: "./**/__tests__/*.yml"
+    testTargets: "./**/rules/*.yml"
 
 languageGlobs:
   python:
