@@ -380,20 +380,23 @@ class StatuslineRenderer:
     @staticmethod
     def _render_context_graph(used_pct: float, width: int = 12) -> str:
         """
-        Render ANSI color-coded context window usage graph.
+        Render context window usage graph using Unicode characters.
+
+        Note: ANSI escape codes are NOT supported in Claude Code statusline.
+        Reference: https://github.com/anthropics/claude-code/issues/6635
 
         Args:
             used_pct: Context window usage percentage (0.0-100.0)
             width: Total width of the graph bar in characters
 
         Returns:
-            Formatted graph string with ANSI colors
-            Format: [████████░░░░] 58% (remaining percentage only)
+            Formatted graph string using Unicode block characters
+            Format: [████████░░░░] 58% (remaining percentage shown)
 
-        Color scheme:
-        - Orange (208) for 0-70% usage
-        - Red (196) for over 70% usage (warning)
-        - Gray (240) for remaining space
+        Visual scheme:
+        - Full block (█) for used portion
+        - Light block (░) for remaining space
+        - Battery icon changes based on usage level (handled in caller)
         """
         # Clamp percentage to 0-100 range
         used_pct = max(0.0, min(100.0, used_pct))
@@ -403,27 +406,15 @@ class StatuslineRenderer:
         filled = int((used_pct / 100.0) * width)
         empty = width - filled
 
-        # ANSI color codes - change to red when over 70% used
-        if used_pct > 70:
-            used_color = "\033[38;5;196m"  # Red for high usage (warning)
-        else:
-            used_color = "\033[38;5;208m"  # Orange for normal usage
-        reset = "\033[0m"
+        # Build graph bar using Unicode block characters (no ANSI codes)
+        filled_char = "█"  # Full block for used
+        empty_char = "░"  # Light block for remaining
 
-        # Build graph bar
-        filled_char = "█"
-        empty_char = "░"
-
-        if filled > 0:
-            bar = f"{used_color}{filled_char * filled}{reset}"
-        else:
-            bar = ""
-
-        if empty > 0:
-            bar += f"\033[38;5;240m{empty_char * empty}{reset}"
+        # Construct the bar without any ANSI escape codes
+        bar = f"{filled_char * filled}{empty_char * empty}"
 
         # Format remaining percentage (round to nearest integer)
         remaining_int = int(round(remaining_pct))
 
-        # Return formatted graph with remaining percentage only
+        # Return formatted graph with remaining percentage
         return f"[{bar}] {remaining_int}%"
