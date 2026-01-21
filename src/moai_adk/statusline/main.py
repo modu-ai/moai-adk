@@ -227,55 +227,42 @@ def extract_context_window(session_context: dict) -> dict:
     if not context_info:
         return {"used_percentage": 0, "remaining_percentage": 100}
 
-    # Calculate from tokens (most accurate method)
-    # Priority: Always calculate from current_usage for accuracy
-    # Reference: https://code.claude.com/docs/en/statusline
-    context_size = context_info.get("context_window_size", 200000)
-    current_usage = context_info.get("current_usage")
+    # Try Claude Code's pre-calculated percentages first
+    used_pct = context_info.get("used_percentage")
+    remaining_pct = context_info.get("remaining_percentage")
 
-    # Debug logging
-    import sys
+    # FALLBACK: Calculate from tokens if percentages not provided
+    # Reference: https://code.claude.com/docs/en/statusline (Advanced approach)
+    if used_pct is None or remaining_pct is None:
+        context_size = context_info.get("context_window_size", 200000)
+        current_usage = context_info.get("current_usage")
 
-    sys.stderr.write(f"[DEBUG] context_info: {context_info}\n")
-    sys.stderr.write(f"[DEBUG] current_usage: {current_usage}\n")
+        if current_usage and isinstance(current_usage, dict):
+            # Calculate current context from current_usage fields
+            # Include ALL token types: input + output + cache creation + cache read
+            # Reference: https://code.claude.com/docs/en/statusline
+            input_tokens = current_usage.get("input_tokens", 0)
+            output_tokens = current_usage.get("output_tokens", 0)
+            cache_creation = current_usage.get("cache_creation_input_tokens", 0)
+            cache_read = current_usage.get("cache_read_input_tokens", 0)
+            current_tokens = input_tokens + output_tokens + cache_creation + cache_read
 
-    if current_usage and isinstance(current_usage, dict):
-        # Calculate current context from current_usage fields
-        # Include ALL token types: input + output + cache creation + cache read
-        input_tokens = current_usage.get("input_tokens", 0)
-        output_tokens = current_usage.get("output_tokens", 0)
-        cache_creation = current_usage.get("cache_creation_input_tokens", 0)
-        cache_read = current_usage.get("cache_read_input_tokens", 0)
-        current_tokens = input_tokens + output_tokens + cache_creation + cache_read
-
-        sys.stderr.write(
-            f"[DEBUG] tokens: input={input_tokens}, output={output_tokens}, "
-            f"cache_creation={cache_creation}, cache_read={cache_read}, total={current_tokens}\n"
-        )
-
-        if context_size > 0:
-            used_pct = (current_tokens / context_size) * 100
+            if context_size > 0:
+                used_pct = (current_tokens / context_size) * 100
+                remaining_pct = 100 - used_pct
+            else:
+                used_pct = 0
+                remaining_pct = 100
         else:
+            # No current_usage data available
             used_pct = 0
-        sys.stderr.write(f"[DEBUG] calculated used_pct: {used_pct}%\n")
-    else:
-        # FALLBACK: Use Claude Code's pre-calculated percentages if current_usage not available
-        pre_used = context_info.get("used_percentage")
-        pre_remaining = context_info.get("remaining_percentage")
-        sys.stderr.write(
-            f"[DEBUG] No current_usage, using pre-calculated: used={pre_used}, remaining={pre_remaining}\n"
-        )
-        # If remaining_percentage is available, calculate used from it
-        if pre_remaining is not None:
-            used_pct = 100 - pre_remaining
-        elif pre_used is not None:
-            used_pct = pre_used
-        else:
-            used_pct = 0.0
+            remaining_pct = 100
 
-    remaining_pct = 100 - used_pct
-    sys.stderr.write(f"[DEBUG] Final: used_pct={used_pct}%, remaining_pct={remaining_pct}%\n")
-    sys.stderr.flush()
+    # Ensure values are not None
+    if used_pct is None:
+        used_pct = 0
+    if remaining_pct is None:
+        remaining_pct = 100 - used_pct
 
     return {
         "used_percentage": used_pct,

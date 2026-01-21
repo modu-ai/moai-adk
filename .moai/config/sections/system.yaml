@@ -2,7 +2,7 @@
 # MoAI system configuration and GitHub automation
 
 moai:
-  version: "1.5.5"
+  version: "1.6.0"
   update_check_frequency: daily
   version_check:
     enabled: true
@@ -11,17 +11,16 @@ moai:
 github:
   enable_trust_5: true        # Include TRUST 5 in PR templates
   auto_delete_branches: true  # Delete branches after merge
-
   # SPEC Git Workflow Options:
   # ┌─────────────────────┬────────────────────────────────────────────────────────────┐
   # │ main_direct         │ Commit directly to main branch (simple personal projects)  │
   # │ main_feature        │ Create feature branch from main, merge back to main        │
-  # │                     │ (personal projects with branch management)                 │
   # │ develop_direct      │ Commit directly to develop branch (traditional git-flow)   │
   # │ feature_branch      │ Create feature branch, PR to develop (team projects)       │
   # │ per_spec            │ Create dedicated branch per SPEC                           │
   # └─────────────────────┴────────────────────────────────────────────────────────────┘
   spec_git_workflow: main_direct
+  # Note: Git automation settings (auto_branch, auto_commit, etc.) are managed in git-strategy.yaml
 
 # Document Management System
 # Prevents project root pollution by enforcing .moai/ hierarchy for all internal files

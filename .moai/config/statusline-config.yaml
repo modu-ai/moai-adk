@@ -46,7 +46,7 @@ statusline:
   # Format: 🤖 Model | 🔅 Version | 💰 Context | 💬 Style | 📊 Changes | 🔀 Branch
   display:
     model: true                  # 🤖 Model name (Opus 4.5, Sonnet, etc.)
-    version: true                # 🔅 MoAI-ADK version (1.5.5, etc.)
+    version: true                # 🔅 MoAI-ADK version (1.6.0, etc.)
     context_window: true         # 💰 Context window usage (15K/200K)
     output_style: true           # 💬 Output style (R2-D2, Yoda, etc.)
     memory_usage: false          # 💾 Session memory usage (disabled)
