@@ -238,10 +238,13 @@ def extract_context_window(session_context: dict) -> dict:
 
         if current_usage and isinstance(current_usage, dict):
             # Calculate current context from current_usage fields
+            # Include ALL token types: input + output + cache creation + cache read
+            # Reference: https://code.claude.com/docs/en/statusline
             input_tokens = current_usage.get("input_tokens", 0)
+            output_tokens = current_usage.get("output_tokens", 0)
             cache_creation = current_usage.get("cache_creation_input_tokens", 0)
             cache_read = current_usage.get("cache_read_input_tokens", 0)
-            current_tokens = input_tokens + cache_creation + cache_read
+            current_tokens = input_tokens + output_tokens + cache_creation + cache_read
 
             if context_size > 0:
                 used_pct = (current_tokens / context_size) * 100
