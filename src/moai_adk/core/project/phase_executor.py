@@ -458,7 +458,7 @@ class PhaseExecutor:
         import yaml
 
         try:
-            with open(yaml_path, "r", encoding="utf-8") as f:
+            with open(yaml_path, "r", encoding="utf-8", errors="replace") as f:
                 content = yaml.safe_load(f) or {}
 
             for dotted_key, value in updates.items():
@@ -470,7 +470,7 @@ class PhaseExecutor:
                     current = current[key]
                 current[keys[-1]] = value
 
-            with open(yaml_path, "w", encoding="utf-8") as f:
+            with open(yaml_path, "w", encoding="utf-8", errors="replace") as f:
                 yaml.dump(content, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
         except Exception as e:
@@ -629,7 +629,7 @@ class PhaseExecutor:
             config_path.parent.mkdir(parents=True, exist_ok=True)
 
             # Write with enhanced formatting
-            with open(config_path, "w", encoding="utf-8") as f:
+            with open(config_path, "w", encoding="utf-8", errors="replace") as f:
                 json.dump(config, f, indent=2, ensure_ascii=False)
 
             logger.info(f"Configuration successfully written to {config_path}")

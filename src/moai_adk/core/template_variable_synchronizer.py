@@ -200,7 +200,7 @@ class TemplateVariableSynchronizer:
             return []
 
         try:
-            content = file_path.read_text(encoding="utf-8")
+            content = file_path.read_text(encoding="utf-8", errors="replace")
             original_content = content
 
             # Track which variables were updated
@@ -217,7 +217,7 @@ class TemplateVariableSynchronizer:
 
             # Only write if content changed
             if content != original_content:
-                file_path.write_text(content, encoding="utf-8")
+                file_path.write_text(content, encoding="utf-8", errors="replace")
 
             return updated_vars
 
@@ -256,7 +256,7 @@ class TemplateVariableSynchronizer:
             results: Results dictionary to update
         """
         try:
-            settings_data = json.loads(settings_file.read_text(encoding="utf-8"))
+            settings_data = json.loads(settings_file.read_text(encoding="utf-8", errors="replace"))
 
             # Define environment variable mappings
             env_mappings = {
@@ -285,7 +285,7 @@ class TemplateVariableSynchronizer:
             if updated_vars:
                 settings_file.write_text(
                     json.dumps(settings_data, indent=2, ensure_ascii=False) + "\n",
-                    encoding="utf-8",
+                    encoding="utf-8", errors="replace",
                 )
                 results["files_updated"] += 1
                 results["variables_updated"].extend(updated_vars)
@@ -319,7 +319,7 @@ class TemplateVariableSynchronizer:
 
             for file_path in files_with_variables:
                 try:
-                    content = file_path.read_text(encoding="utf-8")
+                    content = file_path.read_text(encoding="utf-8", errors="replace")
                     file_inconsistencies: List[str] = []
 
                     # Check each template variable
@@ -375,7 +375,7 @@ class TemplateVariableSynchronizer:
 
             for file_path in files_with_variables:
                 try:
-                    content = file_path.read_text(encoding="utf-8")
+                    content = file_path.read_text(encoding="utf-8", errors="replace")
                     relative_path = str(file_path.relative_to(self.project_root))
 
                     # Check for each template variable pattern

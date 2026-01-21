@@ -10,6 +10,7 @@ Security Features:
 - Protect lock files (package-lock.json, yarn.lock)
 - Guard .git directory
 - Prevent accidental overwrites of critical configs
+- Support Claude Code Plan Mode with configurable plans directory
 
 Exit Codes:
 - 0: Success (with JSON output for permission decision)
@@ -125,13 +126,43 @@ def get_project_root() -> Path:
     return Path(project_dir).resolve()
 
 
+def get_plans_directory() -> Path | None:
+    """Get the configured plans directory from Claude Code settings.
+
+    Reads from .claude/settings.json in the project root.
+    Returns None if not configured or file doesn't exist.
+
+    Returns:
+        Path to plans directory if configured, None otherwise
+    """
+    import os
+
+    project_root = get_project_root()
+    settings_file = project_root / ".claude" / "settings.json"
+
+    if not settings_file.exists():
+        return None
+
+    try:
+        with open(settings_file, "r") as f:
+            settings = json.load(f)
+            plans_dir = settings.get("plansDirectory")
+            if plans_dir:
+                # Resolve relative to project root
+                return (project_root / plans_dir).resolve()
+    except (json.JSONDecodeError, OSError):
+        pass
+
+    return None
+
+
 def check_file_path(file_path: str) -> Tuple[str, str]:
     """Check if file path matches any security patterns.
 
     Security measures:
     - Resolves symlinks and '..' components to prevent path traversal
     - Checks both original and resolved paths against patterns
-    - Validates path is within project boundaries
+    - Validates path is within project boundaries or configured plans directory
 
     Args:
         file_path: Path to check
@@ -153,12 +184,29 @@ def check_file_path(file_path: str) -> Tuple[str, str]:
     normalized_original = file_path.replace("\\", "/")
     normalized_resolved = resolved_str.replace("\\", "/")
 
-    # Check project boundary (optional but recommended)
+    # Check project boundary and plans directory
     project_root = get_project_root()
+    is_within_project = False
+    is_within_plans_dir = False
+
+    # Check if path is within project directory
     try:
         resolved_path.relative_to(project_root)
+        is_within_project = True
     except ValueError:
-        # Path is outside project directory - potential path traversal attack
+        pass
+
+    # Check if path is within configured plans directory
+    plans_dir = get_plans_directory()
+    if plans_dir:
+        try:
+            resolved_path.relative_to(plans_dir)
+            is_within_plans_dir = True
+        except ValueError:
+            pass
+
+    # If path is outside both project and plans directory, deny
+    if not is_within_project and not is_within_plans_dir:
         return "deny", "Path traversal detected: file is outside project directory"
 
     # Check deny patterns against BOTH original and resolved paths

@@ -152,7 +152,7 @@ class UnifiedPermissionManager:
         """Load configuration from file with error handling"""
         try:
             if os.path.exists(self.config_path):
-                with open(self.config_path, "r", encoding="utf-8") as f:
+                with open(self.config_path, "r", encoding="utf-8", errors="replace") as f:
                     config = json.load(f)
 
                 if self.enable_logging:
@@ -387,7 +387,7 @@ class UnifiedPermissionManager:
         result = ValidationResult(valid=True)
 
         try:
-            with open(config_to_validate, "r", encoding="utf-8") as f:
+            with open(config_to_validate, "r", encoding="utf-8", errors="replace") as f:
                 config = json.load(f)
         except FileNotFoundError:
             result.errors.append(f"Configuration file not found: {config_to_validate}")
@@ -589,7 +589,7 @@ class UnifiedPermissionManager:
                     logger.info(f"Created configuration backup: {backup_path}")
 
             # Save updated configuration
-            with open(self.config_path, "w", encoding="utf-8") as f:
+            with open(self.config_path, "w", encoding="utf-8", errors="replace") as f:
                 json.dump(self.config, f, indent=2, ensure_ascii=False)
 
             if self.enable_logging:
@@ -659,7 +659,7 @@ class UnifiedPermissionManager:
             ],
         }
 
-        with open(output_path, "w", encoding="utf-8") as f:
+        with open(output_path, "w", encoding="utf-8", errors="replace") as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
 
         if self.enable_logging:

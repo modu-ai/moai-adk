@@ -681,7 +681,7 @@ class TemplateProcessor:
         # Text files: read, substitute, write
         if self._is_text_file(src) and self.context:
             try:
-                content = src.read_text(encoding="utf-8")
+                content = src.read_text(encoding="utf-8", errors="replace")
                 content, file_warnings = self._substitute_variables(content)
 
                 # Apply description localization for command/output-style files
@@ -689,7 +689,7 @@ class TemplateProcessor:
                     lang = self.context.get("CONVERSATION_LANGUAGE", "en")
                     content = self._localize_yaml_description(content, lang)
 
-                dst.write_text(content, encoding="utf-8")
+                dst.write_text(content, encoding="utf-8", errors="replace")
                 warnings.extend(file_warnings)
             except UnicodeDecodeError:
                 # Binary file fallback
@@ -933,9 +933,9 @@ class TemplateProcessor:
                     self._merge_settings_json(settings_src, settings_dst)
                     # Apply variable substitution to merged settings.json (for cross-platform Hook paths)
                     if self.context:
-                        content = settings_dst.read_text(encoding="utf-8")
+                        content = settings_dst.read_text(encoding="utf-8", errors="replace")
                         content, file_warnings = self._substitute_variables(content)
-                        settings_dst.write_text(content, encoding="utf-8")
+                        settings_dst.write_text(content, encoding="utf-8", errors="replace")
                         all_warnings.extend(file_warnings)
                     if not silent:
                         console.print(
@@ -1133,11 +1133,11 @@ class TemplateProcessor:
                 # Existing file: smart merge (add new fields only)
                 try:
                     # Load template data
-                    template_content = template_file.read_text(encoding="utf-8")
+                    template_content = template_file.read_text(encoding="utf-8", errors="replace")
                     template_data = yaml.safe_load(template_content) or {}
 
                     # Load project data (user's current values)
-                    project_content = project_file.read_text(encoding="utf-8")
+                    project_content = project_file.read_text(encoding="utf-8", errors="replace")
                     project_data = yaml.safe_load(project_content) or {}
 
                     # Deep merge: preserve user values, add new template keys
@@ -1145,7 +1145,7 @@ class TemplateProcessor:
 
                     if new_keys:
                         # Write merged data back
-                        with open(project_file, "w", encoding="utf-8") as f:
+                        with open(project_file, "w", encoding="utf-8", errors="replace") as f:
                             yaml.dump(
                                 merged_data,
                                 f,
@@ -1162,7 +1162,7 @@ class TemplateProcessor:
         system_yaml = project_sections / "system.yaml"
         if system_yaml.exists() and current_version:
             try:
-                content = system_yaml.read_text(encoding="utf-8")
+                content = system_yaml.read_text(encoding="utf-8", errors="replace")
                 data = yaml.safe_load(content) or {}
 
                 # Update moai.version
@@ -1172,7 +1172,7 @@ class TemplateProcessor:
                     data["moai"]["version"] = current_version
 
                     # Write back
-                    with open(system_yaml, "w", encoding="utf-8") as f:
+                    with open(system_yaml, "w", encoding="utf-8", errors="replace") as f:
                         yaml.dump(data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
                     if not silent:
@@ -1291,7 +1291,7 @@ class TemplateProcessor:
         import os
 
         try:
-            import yaml  # noqa: F401 # pyright: ignore[reportUnusedImport]
+            import yaml  # type: ignore[import-not-found]
 
             yaml_available = True
         except ImportError:
@@ -1308,7 +1308,7 @@ class TemplateProcessor:
         # Fallback to legacy config.json merging
         # Load template config
         try:
-            template_config = json.loads(src.read_text(encoding="utf-8"))
+            template_config = json.loads(src.read_text(encoding="utf-8", errors="replace"))
         except (json.JSONDecodeError, FileNotFoundError) as e:
             console.print(f"⚠️ Warning: Could not read template config.json: {e}")
             return
@@ -1319,7 +1319,7 @@ class TemplateProcessor:
             backup_config_path = latest_backup / ".moai" / "config" / "config.json"
             if backup_config_path.exists():
                 try:
-                    json.loads(backup_config_path.read_text(encoding="utf-8"))
+                    json.loads(backup_config_path.read_text(encoding="utf-8", errors="replace"))
                 except json.JSONDecodeError as e:
                     console.print(f"⚠️ Warning: Could not read backup config.json: {e}")
 
@@ -1327,7 +1327,7 @@ class TemplateProcessor:
         existing_config = {}
         if dst.exists():
             try:
-                existing_config = json.loads(dst.read_text(encoding="utf-8"))
+                existing_config = json.loads(dst.read_text(encoding="utf-8", errors="replace"))
             except json.JSONDecodeError as e:
                 console.print(f"⚠️ Warning: Could not read existing config.json: {e}")
 
@@ -1383,6 +1383,7 @@ class TemplateProcessor:
             dst.write_text(
                 json.dumps(merged_config, indent=2, ensure_ascii=False) + "\n",
                 encoding="utf-8",
+                errors="replace",
             )
 
         except ImportError:
@@ -1397,6 +1398,7 @@ class TemplateProcessor:
             dst.write_text(
                 json.dumps(merged_config, indent=2, ensure_ascii=False) + "\n",
                 encoding="utf-8",
+                errors="replace",
             )
             console.print("   ⚠️ Warning: Using simple merge (LanguageConfigResolver not available)")
 
@@ -1436,7 +1438,7 @@ class TemplateProcessor:
         for section_file in sections_dir.glob("*.yaml"):
             try:
                 # Read existing section content
-                with open(section_file, "r", encoding="utf-8") as f:
+                with open(section_file, "r", encoding="utf-8", errors="replace") as f:
                     section_data = yaml.safe_load(f) or {}
 
                 modified = False
@@ -1466,7 +1468,7 @@ class TemplateProcessor:
 
                 # Write back only if modifications were made
                 if modified or section_file.name in env_mappings:
-                    with open(section_file, "w", encoding="utf-8") as f:
+                    with open(section_file, "w", encoding="utf-8", errors="replace") as f:
                         yaml.safe_dump(
                             section_data,
                             f,
@@ -1541,7 +1543,7 @@ class TemplateProcessor:
             return
 
         try:
-            mcp_data = json.loads(mcp_path.read_text(encoding="utf-8"))
+            mcp_data = json.loads(mcp_path.read_text(encoding="utf-8", errors="replace"))
             modified = False
 
             if "mcpServers" in mcp_data:
@@ -1554,7 +1556,8 @@ class TemplateProcessor:
                         modified = True
 
             if modified:
-                mcp_path.write_text(json.dumps(mcp_data, indent=2, ensure_ascii=False), encoding="utf-8")
+                mcp_json_content = json.dumps(mcp_data, indent=2, ensure_ascii=False)
+                mcp_path.write_text(mcp_json_content, encoding="utf-8", errors="replace")
                 if not silent:
                     console.print("   🪟 .mcp.json adapted for Windows (npx → cmd /c npx)")
 
@@ -1570,8 +1573,8 @@ class TemplateProcessor:
             dst: Project .mcp.json.
         """
         try:
-            src_data = json.loads(src.read_text(encoding="utf-8"))
-            dst_data = json.loads(dst.read_text(encoding="utf-8"))
+            src_data = json.loads(src.read_text(encoding="utf-8", errors="replace"))
+            dst_data = json.loads(dst.read_text(encoding="utf-8", errors="replace"))
 
             # Merge mcpServers: preserve user servers, update template servers
             if "mcpServers" in src_data:
@@ -1581,7 +1584,7 @@ class TemplateProcessor:
                 dst_data["mcpServers"].update(src_data["mcpServers"])
 
             # Write merged result back
-            dst.write_text(json.dumps(dst_data, indent=2, ensure_ascii=False), encoding="utf-8")
+            dst.write_text(json.dumps(dst_data, indent=2, ensure_ascii=False), encoding="utf-8", errors="replace")
         except json.JSONDecodeError as e:
             console.print(f"[yellow]⚠️ Failed to merge .mcp.json: {e}[/yellow]")
 

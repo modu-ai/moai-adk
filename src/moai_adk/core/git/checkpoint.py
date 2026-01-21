@@ -130,5 +130,5 @@ is_safety: {is_safety}
 """
 
         # Append the entry to the log
-        with open(self.log_file, "a", encoding="utf-8") as f:
+        with open(self.log_file, "a", encoding="utf-8", errors="replace") as f:
             f.write(log_entry)

@@ -629,7 +629,7 @@ class VersionReader:
 
     def _read_json_sync(self, path: Path) -> Dict[str, Any]:
         """Synchronous JSON file reading"""
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
             return json.load(f)
 
     async def _read_config_async(self, path: Path) -> Dict[str, Any]:
@@ -639,7 +639,7 @@ class VersionReader:
 
     def _read_config_sync(self, path: Path) -> Dict[str, Any]:
         """Synchronous config file reading (supports YAML and JSON)"""
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
             if path.suffix in (".yaml", ".yml"):
                 return yaml.safe_load(f) or {}
             else:

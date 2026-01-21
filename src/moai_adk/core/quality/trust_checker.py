@@ -113,7 +113,7 @@ class TrustChecker:
                 continue
 
             try:
-                lines = py_file.read_text(encoding="utf-8").splitlines()
+                lines = py_file.read_text(encoding="utf-8", errors="replace").splitlines()
                 loc = len(lines)
 
                 if loc > MAX_FILE_LINES_OF_CODE:
@@ -151,7 +151,7 @@ class TrustChecker:
                 continue
 
             try:
-                content = py_file.read_text(encoding="utf-8")
+                content = py_file.read_text(encoding="utf-8", errors="replace")
                 tree = ast.parse(content)
                 lines = content.splitlines()
 
@@ -201,7 +201,7 @@ class TrustChecker:
                 continue
 
             try:
-                tree = ast.parse(py_file.read_text(encoding="utf-8"))
+                tree = ast.parse(py_file.read_text(encoding="utf-8", errors="replace"))
                 for node in ast.walk(tree):
                     if isinstance(node, ast.FunctionDef):
                         param_count = len(node.args.args)
@@ -242,7 +242,7 @@ class TrustChecker:
                 continue
 
             try:
-                tree = ast.parse(py_file.read_text(encoding="utf-8"))
+                tree = ast.parse(py_file.read_text(encoding="utf-8", errors="replace"))
                 for node in ast.walk(tree):
                     if isinstance(node, ast.FunctionDef):
                         complexity = self._calculate_complexity(node)
@@ -350,7 +350,7 @@ class TrustChecker:
         project_section_path = project_path / ".moai" / "config" / "sections" / "project.yaml"
         if project_section_path.exists():
             try:
-                with open(project_section_path, encoding="utf-8") as f:
+                with open(project_section_path, encoding="utf-8", errors="replace") as f:
                     project_config = yaml.safe_load(f) or {}
                 language = project_config.get("project", {}).get("language", "python")
             except (yaml.YAMLError, OSError):
@@ -362,14 +362,14 @@ class TrustChecker:
 
             if yaml_config_path.exists():
                 try:
-                    with open(yaml_config_path, encoding="utf-8") as f:
+                    with open(yaml_config_path, encoding="utf-8", errors="replace") as f:
                         config = yaml.safe_load(f) or {}
                     language = config.get("project", {}).get("language", "python")
                 except (yaml.YAMLError, OSError):
                     pass  # Use default
             elif json_config_path.exists():
                 try:
-                    config = json.loads(json_config_path.read_text(encoding="utf-8"))
+                    config = json.loads(json_config_path.read_text(encoding="utf-8", errors="replace"))
                     language = config.get("project", {}).get("language", "python")
                 except (json.JSONDecodeError, OSError):
                     pass  # Use default

@@ -77,7 +77,7 @@ class SessionAnalyzer:
                 if session_file.suffix == ".jsonl":
                     # JSONL format: read line by line
                     sessions = []
-                    with open(session_file, encoding="utf-8") as f:
+                    with open(session_file, encoding="utf-8", errors="replace") as f:
                         for line_num, line in enumerate(f, 1):
                             line = line.strip()
                             if line:
@@ -94,7 +94,7 @@ class SessionAnalyzer:
                         self.sessions_data.append(session)
                 else:
                     # JSON format: single session per file
-                    with open(session_file, encoding="utf-8") as f:
+                    with open(session_file, encoding="utf-8", errors="replace") as f:
                         session = json.load(f)
                         self._analyze_session(session)
                         self.sessions_data.append(session)
@@ -376,7 +376,7 @@ class SessionAnalyzer:
             output_path = output_dir / f"daily-{datetime.now().strftime('%Y-%m-%d')}.md"
 
         report = self.generate_report()
-        output_path.write_text(report, encoding="utf-8")
+        output_path.write_text(report, encoding="utf-8", errors="replace")
 
         if self.verbose:
             print(f"📄 Report saved: {output_path}")

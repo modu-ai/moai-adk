@@ -307,5 +307,5 @@ docs/out/
 .venv_issue43_py313
 theme.config.tsx
 
-# Local development guide (excluded from git)
-CLAUDE.local.md
+# Purpose: Essential patterns for user projects
+# FIXED: Issue #237 - Replaced overly broad *key* and *secret* patterns

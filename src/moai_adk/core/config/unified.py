@@ -190,7 +190,7 @@ class UnifiedConfigManager:
 
         for section_file in section_files:
             try:
-                with open(section_file, "r", encoding="utf-8") as f:
+                with open(section_file, "r", encoding="utf-8", errors="replace") as f:
                     section_data = yaml.safe_load(f) or {}
                     merged_config = self._deep_merge(merged_config, section_data)
                     logger.debug(f"Loaded section: {section_file.name}")
@@ -214,7 +214,7 @@ class UnifiedConfigManager:
             return
 
         # Load from file (auto-detect format)
-        with open(self._config_path, "r", encoding="utf-8") as f:
+        with open(self._config_path, "r", encoding="utf-8", errors="replace") as f:
             if self._config_path.suffix == ".yaml" or self._config_path.suffix == ".yml":
                 if not YAML_AVAILABLE:
                     raise ImportError("PyYAML is required for YAML config files. Install with: pip install pyyaml")
@@ -379,7 +379,7 @@ class UnifiedConfigManager:
             section_path = self._config_path / section_file
             temp_path = section_path.with_suffix(".tmp")
 
-            with open(temp_path, "w", encoding="utf-8") as f:
+            with open(temp_path, "w", encoding="utf-8", errors="replace") as f:
                 yaml.safe_dump(
                     data,
                     f,
@@ -414,7 +414,7 @@ class UnifiedConfigManager:
         temp_path = self._config_path.with_suffix(".tmp")
 
         # Write to temp file (auto-detect format)
-        with open(temp_path, "w", encoding="utf-8") as f:
+        with open(temp_path, "w", encoding="utf-8", errors="replace") as f:
             if self._config_path.suffix == ".yaml" or self._config_path.suffix == ".yml":
                 if not YAML_AVAILABLE:
                     raise ImportError("PyYAML is required for YAML config files. Install with: pip install pyyaml")

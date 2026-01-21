@@ -168,7 +168,7 @@ class UnifiedTimeoutManager:
         try:
             config_file = Path(".moai/config/config.yaml")
             if config_file.exists():
-                with open(config_file, "r", encoding="utf-8") as f:
+                with open(config_file, "r", encoding="utf-8", errors="replace") as f:
                     config = yaml.safe_load(f) or {}
                     return config.get("hooks", {}).get("timeout_manager", {})
         except Exception as e:

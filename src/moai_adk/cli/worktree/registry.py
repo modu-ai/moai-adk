@@ -201,7 +201,7 @@ class WorktreeRegistry:
     def _save(self) -> None:
         """Save registry to disk."""
         self.registry_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(self.registry_path, "w", encoding="utf-8") as f:
+        with open(self.registry_path, "w", encoding="utf-8", errors="replace") as f:
             json.dump(self._data, f, indent=2, ensure_ascii=False)
 
     def register(self, info: WorktreeInfo, project_name: str | None = None) -> None:

@@ -40,7 +40,7 @@ class TemplateMerger:
             existing_path: Existing CLAUDE.md.
         """
         # Extract the existing project information section
-        existing_content = existing_path.read_text(encoding="utf-8")
+        existing_content = existing_path.read_text(encoding="utf-8", errors="replace")
         project_info_start, _ = self._find_project_info_section(existing_content)
         project_info = ""
         if project_info_start != -1:
@@ -48,7 +48,7 @@ class TemplateMerger:
             project_info = existing_content[project_info_start:]
 
         # Load template content
-        template_content = template_path.read_text(encoding="utf-8")
+        template_content = template_path.read_text(encoding="utf-8", errors="replace")
 
         # Merge when project info exists
         if project_info:
@@ -59,7 +59,7 @@ class TemplateMerger:
 
             # Merge template content with the preserved section
             merged_content = f"{template_content}\n\n{project_info}"
-            existing_path.write_text(merged_content, encoding="utf-8")
+            existing_path.write_text(merged_content, encoding="utf-8", errors="replace")
         else:
             # No project info; copy the template as-is
             shutil.copy2(template_path, existing_path)
@@ -84,13 +84,13 @@ class TemplateMerger:
             template_path: Template .gitignore file.
             existing_path: Existing .gitignore file.
         """
-        template_lines = set(template_path.read_text(encoding="utf-8").splitlines())
-        existing_lines = existing_path.read_text(encoding="utf-8").splitlines()
+        template_lines = set(template_path.read_text(encoding="utf-8", errors="replace").splitlines())
+        existing_lines = existing_path.read_text(encoding="utf-8", errors="replace").splitlines()
 
         # Merge while removing duplicates
         merged_lines = existing_lines + [line for line in template_lines if line not in existing_lines]
 
-        existing_path.write_text("\n".join(merged_lines) + "\n", encoding="utf-8")
+        existing_path.write_text("\n".join(merged_lines) + "\n", encoding="utf-8", errors="replace")
 
     def merge_config(self, detected_language: str | None = None) -> dict[str, str]:
         """Smart merge for configuration using section YAML files with JSON fallback.
@@ -124,8 +124,8 @@ class TemplateMerger:
             # Load from section YAML files
             for section_file in sections_dir.glob("*.yaml"):
                 try:
-                    with open(section_file, "r", encoding="utf-8") as f:
-                        section_data = yaml.safe_load(f) or {}
+                    with open(section_file, "r", encoding="utf-8", errors="replace") as f:
+                        section_data = yaml.safe_load(f) if yaml_available else {}
                         existing_config.update(section_data)
                 except Exception:
                     pass  # Skip unreadable section files
@@ -133,7 +133,7 @@ class TemplateMerger:
             # Fallback to legacy config.json
             config_path = self.target_path / ".moai" / "config" / "config.json"
             if config_path.exists():
-                with open(config_path, encoding="utf-8") as f:
+                with open(config_path, encoding="utf-8", errors="replace") as f:
                     existing_config = json.load(f)
 
         # Extract project-related settings from nested structure
@@ -164,14 +164,14 @@ class TemplateMerger:
             backup_path: Backup settings.json (optional, for user settings extraction).
         """
         # Load template
-        template_data = json.loads(template_path.read_text(encoding="utf-8"))
+        template_data = json.loads(template_path.read_text(encoding="utf-8", errors="replace"))
 
         # Load backup or existing for user settings
         user_data: dict[str, Any] = {}
         if backup_path and backup_path.exists():
-            user_data = json.loads(backup_path.read_text(encoding="utf-8"))
+            user_data = json.loads(backup_path.read_text(encoding="utf-8", errors="replace"))
         elif existing_path.exists():
-            user_data = json.loads(existing_path.read_text(encoding="utf-8"))
+            user_data = json.loads(existing_path.read_text(encoding="utf-8", errors="replace"))
 
         # Merge env (shallow merge, user variables preserved)
         merged_env = {**template_data.get("env", {}), **user_data.get("env", {})}
@@ -207,7 +207,8 @@ class TemplateMerger:
             if field in user_data:
                 merged[field] = user_data[field]
 
-        existing_path.write_text(json.dumps(merged, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        json_content = json.dumps(merged, indent=2, ensure_ascii=False) + "\n"
+        existing_path.write_text(json_content, encoding="utf-8", errors="replace")
 
     def merge_github_workflows(self, template_dir: Path, existing_dir: Path) -> None:
         """Smart merge for .github/workflows/ directory.

@@ -1074,17 +1074,17 @@ class EventDrivenHookSystem:
             pending_file = self.persistence_path / "pending_events.json"
             pending_data = {event_id: event.to_dict() for event_id, event in self._pending_events.items()}
 
-            with open(pending_file, "w", encoding="utf-8") as f:
+            with open(pending_file, "w", encoding="utf-8", errors="replace") as f:
                 json.dump(pending_data, f, indent=2, ensure_ascii=False)
 
             # Persist processed events
             processed_file = self.persistence_path / "processed_events.json"
-            with open(processed_file, "w", encoding="utf-8") as f:
+            with open(processed_file, "w", encoding="utf-8", errors="replace") as f:
                 json.dump(list(self._processed_events), f, indent=2, ensure_ascii=False)
 
             # Persist system metrics
             metrics_file = self.persistence_path / "system_metrics.json"
-            with open(metrics_file, "w", encoding="utf-8") as f:
+            with open(metrics_file, "w", encoding="utf-8", errors="replace") as f:
                 json.dump(self._system_metrics, f, indent=2, ensure_ascii=False)
 
         except Exception as e:

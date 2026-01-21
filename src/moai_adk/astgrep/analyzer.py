@@ -175,7 +175,7 @@ class MoAIASTGrepAnalyzer:
 
         Args:
             file_path: Path to scan.
-            language: Programming language.
+            language: Programming language (used for language-specific rules).
             config: Scan configuration.
 
         Returns:
@@ -185,6 +185,10 @@ class MoAIASTGrepAnalyzer:
 
         if config.rules_path:
             cmd.extend(["--config", config.rules_path])
+
+        # Add language-specific option if supported
+        if language and language != "unknown":
+            cmd.extend(["--lang", language])
 
         try:
             result = subprocess.run(
@@ -201,12 +205,13 @@ class MoAIASTGrepAnalyzer:
 
         return []
 
-    def _parse_sg_output(self, output: str, file_path: str) -> list[ASTMatch]:
+    def _parse_sg_output(self, output: str, file_path: str, language: str = "unknown") -> list[ASTMatch]:
         """Parse sg JSON output into ASTMatch objects.
 
         Args:
             output: JSON output from sg command.
             file_path: Path to the scanned file.
+            language: Programming language of the file.
 
         Returns:
             List of ASTMatch objects.
@@ -228,12 +233,13 @@ class MoAIASTGrepAnalyzer:
 
         return matches
 
-    def _parse_sg_match(self, item: dict[str, Any], file_path: str) -> ASTMatch | None:
+    def _parse_sg_match(self, item: dict[str, Any], file_path: str, language: str = "unknown") -> ASTMatch | None:
         """Parse a single match from sg output.
 
         Args:
             item: Match dictionary from sg output.
             file_path: Path to the file.
+            language: Programming language of the file.
 
         Returns:
             ASTMatch object or None if parsing fails.
@@ -311,31 +317,39 @@ class MoAIASTGrepAnalyzer:
             "hint": 0,
         }
         total_matches = 0
+        files_scanned = 0
 
-        # Find all files to scan
-        for file_path in path.rglob("*"):
-            if not file_path.is_file():
-                continue
+        # Find all files to scan using glob patterns for supported extensions
+        # This is more efficient than rglob("*") with manual filtering
+        supported_extensions = set(EXTENSION_TO_LANGUAGE.keys())
 
-            if not self._should_include_file(file_path, scan_config):
-                continue
+        for ext in supported_extensions:
+            # Search for files with each supported extension
+            for file_path in path.rglob(f"*{ext}"):
+                if not file_path.is_file():
+                    continue
 
-            result = self.scan_file(str(file_path), scan_config)
+                files_scanned += 1
 
-            if result.matches:
-                results_by_file[str(file_path)] = result
-                total_matches += len(result.matches)
+                if not self._should_include_file(file_path, scan_config):
+                    continue
 
-                for match in result.matches:
-                    severity = match.severity.lower()
-                    if severity in summary_by_severity:
-                        summary_by_severity[severity] += 1
+                result = self.scan_file(str(file_path), scan_config)
+
+                if result.matches:
+                    results_by_file[str(file_path)] = result
+                    total_matches += len(result.matches)
+
+                    for match in result.matches:
+                        severity = match.severity.lower()
+                        if severity in summary_by_severity:
+                            summary_by_severity[severity] += 1
 
         scan_time_ms = (time.time() - start_time) * 1000
 
         return ProjectScanResult(
             project_path=project_path,
-            files_scanned=len(list(path.rglob("*"))),
+            files_scanned=files_scanned,
             total_matches=total_matches,
             results_by_file=results_by_file,
             summary_by_severity=summary_by_severity,

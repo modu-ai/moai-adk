@@ -258,7 +258,7 @@ def load_hook_timeout() -> int:
         if not config_path.exists():
             return 5000  # Default value
 
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, "r", encoding="utf-8", errors="replace") as f:
             config = yaml.safe_load(f) or {}
 
         # Get timeout_ms value from hooks section
@@ -283,7 +283,7 @@ def get_graceful_degradation() -> bool:
         if not config_path.exists():
             return True  # Default value
 
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, "r", encoding="utf-8", errors="replace") as f:
             config = yaml.safe_load(f) or {}
 
         # Get graceful_degradation value from hooks section

@@ -177,7 +177,7 @@ class LanguageConfigResolver:
             # Load user.yaml
             user_file = sections_dir / "user.yaml"
             if user_file.exists():
-                with open(user_file, "r", encoding="utf-8") as f:
+                with open(user_file, "r", encoding="utf-8", errors="replace") as f:
                     user_data = yaml.safe_load(f) or {}
                     user_config = user_data.get("user", {})
                     if "name" in user_config:
@@ -186,7 +186,7 @@ class LanguageConfigResolver:
             # Load language.yaml
             language_file = sections_dir / "language.yaml"
             if language_file.exists():
-                with open(language_file, "r", encoding="utf-8") as f:
+                with open(language_file, "r", encoding="utf-8", errors="replace") as f:
                     lang_data = yaml.safe_load(f) or {}
                     language_config = lang_data.get("language", {})
 
@@ -222,7 +222,7 @@ class LanguageConfigResolver:
             if not self.config_file_path.exists():
                 return None
 
-            with open(self.config_file_path, "r", encoding="utf-8") as f:
+            with open(self.config_file_path, "r", encoding="utf-8", errors="replace") as f:
                 if self.config_file_path.suffix in [".yaml", ".yml"]:
                     if not YAML_AVAILABLE:
                         print(f"Warning: PyYAML not available, skipping {self.config_file_path}")

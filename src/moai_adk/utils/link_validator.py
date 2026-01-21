@@ -220,7 +220,7 @@ def validate_readme_links(readme_path: Optional[Path] = None) -> ValidationResul
     # Generate and save report
     report = validator.generate_report(result)
     report_path = create_report_path(Path("."), "link_validation")
-    report_path.write_text(report, encoding="utf-8")
+    report_path.write_text(report, encoding="utf-8", errors="replace")
     logger.info(f"Report saved to: {report_path}")
 
     return result
@@ -237,5 +237,5 @@ if __name__ == "__main__":
 
     # Save to file
     report_path = Path("link_validation_report.md")
-    report_path.write_text(report, encoding="utf-8")
+    report_path.write_text(report, encoding="utf-8", errors="replace")
     print(f"\nReport saved to: {report_path}")

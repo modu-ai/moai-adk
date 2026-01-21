@@ -78,7 +78,7 @@ class RankConfig:
         temp_file = cls.CREDENTIALS_FILE.with_suffix(".tmp")
 
         try:
-            with open(temp_file, "w", encoding="utf-8") as f:
+            with open(temp_file, "w", encoding="utf-8", errors="replace") as f:
                 json.dump(creds_data, f, indent=2, ensure_ascii=False)
 
             # Set file permissions to owner-only (600) before renaming

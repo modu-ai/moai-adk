@@ -41,7 +41,7 @@ def validate_command_file(file_path: Path) -> dict:
             return {"valid": False, "errors": ["File not found"]}
 
         # Read file content
-        content = file_path.read_text(encoding="utf-8")
+        content = file_path.read_text(encoding="utf-8", errors="replace")
 
         # Check front matter delimiter
         if not content.startswith("---"):

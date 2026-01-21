@@ -55,7 +55,7 @@ class SpecStatusManager:
                 if spec_file.exists():
                     try:
                         # Read frontmatter to check status
-                        with open(spec_file, "r", encoding="utf-8") as f:
+                        with open(spec_file, "r", encoding="utf-8", errors="replace") as f:
                             content = f.read()
 
                         frontmatter = None
@@ -138,7 +138,7 @@ class SpecStatusManager:
             has_tests = len(test_files) > 0
 
             # Check if SPEC has acceptance criteria
-            with open(spec_file, "r", encoding="utf-8") as f:
+            with open(spec_file, "r", encoding="utf-8", errors="replace") as f:
                 spec_content = f.read()
             has_acceptance_criteria = "Acceptance Criteria" in spec_content
 
@@ -170,7 +170,7 @@ class SpecStatusManager:
             return False
 
         try:
-            with open(spec_file, "r", encoding="utf-8") as f:
+            with open(spec_file, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
 
             # Extract and update frontmatter
@@ -205,7 +205,7 @@ class SpecStatusManager:
                     new_content = f"---\n{new_frontmatter}---{content[end_marker + 3 :]}"
 
                     # Write back to file
-                    with open(spec_file, "w", encoding="utf-8") as f:
+                    with open(spec_file, "w", encoding="utf-8", errors="replace") as f:
                         f.write(new_content)
 
                     logger.info(f"Updated SPEC {spec_id} status to {new_status}")
@@ -382,7 +382,7 @@ class SpecStatusManager:
             True if acceptance criteria present
         """
         try:
-            with open(spec_file, "r", encoding="utf-8") as f:
+            with open(spec_file, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
 
             # Look for acceptance criteria section

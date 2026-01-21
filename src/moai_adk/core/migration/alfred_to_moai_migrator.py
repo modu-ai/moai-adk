@@ -68,7 +68,7 @@ class AlfredToMoaiMigrator:
             return {}
 
         try:
-            return json.loads(self.config_path.read_text(encoding="utf-8"))
+            return json.loads(self.config_path.read_text(encoding="utf-8", errors="replace"))
         except Exception as e:
             logger.warning(f"Failed to load config.json: {e}")
             return {}
@@ -241,7 +241,7 @@ class AlfredToMoaiMigrator:
 
         try:
             # Read settings.json
-            with open(self.settings_path, "r", encoding="utf-8") as f:
+            with open(self.settings_path, "r", encoding="utf-8", errors="replace") as f:
                 settings_content = f.read()
 
             # Replace all alfred references with moai
@@ -251,11 +251,11 @@ class AlfredToMoaiMigrator:
             updated_content = updated_content.replace(".claude/agents/alfred/", ".claude/agents/moai/")
 
             # Write back to file
-            with open(self.settings_path, "w", encoding="utf-8") as f:
+            with open(self.settings_path, "w", encoding="utf-8", errors="replace") as f:
                 f.write(updated_content)
 
             # Verify JSON validity
-            with open(self.settings_path, "r", encoding="utf-8") as f:
+            with open(self.settings_path, "r", encoding="utf-8", errors="replace") as f:
                 json.load(f)  # This will raise if JSON is invalid
 
             logger.debug("settings.json update and verification completed")
@@ -287,7 +287,7 @@ class AlfredToMoaiMigrator:
         # Check settings.json hooks paths (ignore pattern matching strings like "Bash(alfred:*)")
         if self.settings_path.exists():
             try:
-                with open(self.settings_path, "r", encoding="utf-8") as f:
+                with open(self.settings_path, "r", encoding="utf-8", errors="replace") as f:
                     settings_content = f.read()
 
                 # Only check for hooks/alfred paths, not pattern strings

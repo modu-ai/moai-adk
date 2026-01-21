@@ -87,7 +87,7 @@ def _detect_worktree_root(repo_path: Path, project_name: str) -> Path:
     default_registry = default_root / ".moai-worktree-registry.json"
     if default_registry.exists():
         try:
-            with open(default_registry, "r", encoding="utf-8") as f:
+            with open(default_registry, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read().strip()
                 if content and content != "{}":
                     return default_root
@@ -109,7 +109,7 @@ def _detect_worktree_root(repo_path: Path, project_name: str) -> Path:
     project_registry = project_local_root / ".moai-worktree-registry.json"
     if project_registry.exists():
         try:
-            with open(project_registry, "r", encoding="utf-8") as f:
+            with open(project_registry, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read().strip()
                 if content and content != "{}":
                     return project_local_root
@@ -144,7 +144,7 @@ def _detect_worktree_root(repo_path: Path, project_name: str) -> Path:
         registry_path = root / ".moai-worktree-registry.json"
         if registry_path.exists():
             try:
-                with open(registry_path, "r", encoding="utf-8") as f:
+                with open(registry_path, "r", encoding="utf-8", errors="replace") as f:
                     content = f.read().strip()
                     if content and content != "{}":
                         return root

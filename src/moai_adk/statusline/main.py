@@ -178,7 +178,30 @@ def format_token_count(tokens: int) -> str:
     return str(tokens)
 
 
-def extract_context_window(session_context: dict) -> str:
+def extract_cost_info(session_context: dict) -> dict:
+    """
+    Extract cost information from session context.
+
+    Args:
+        session_context: Context passed from Claude Code via stdin
+
+    Returns:
+        Dict with cost information (empty if not available)
+    """
+    cost_info = session_context.get("cost", {})
+    if not cost_info:
+        return {}
+
+    return {
+        "total_cost_usd": cost_info.get("total_cost_usd", 0.0),
+        "total_duration_ms": cost_info.get("total_duration_ms", 0),
+        "total_api_duration_ms": cost_info.get("total_api_duration_ms", 0),
+        "total_lines_added": cost_info.get("total_lines_added", 0),
+        "total_lines_removed": cost_info.get("total_lines_removed", 0),
+    }
+
+
+def extract_context_window(session_context: dict) -> dict:
     """
     Extract and format context window usage from session context.
 
@@ -186,34 +209,60 @@ def extract_context_window(session_context: dict) -> str:
         session_context: Context passed from Claude Code via stdin
 
     Returns:
-        Formatted context window string (e.g., "15K/200K")
+        Dict with:
+        - formatted: "15K/200K" string
+        - used_percentage: 42.5 (from Claude Code)
+        - remaining_percentage: 57.5 (from Claude Code)
+        - current_usage: detailed breakdown
+
+    Note:
+        Context window size is capped at 200K for display consistency.
+        Some models may report larger sizes (e.g., 268K), but we display
+        the standard 200K limit for consistency.
     """
     context_info = session_context.get("context_window", {})
 
     if not context_info:
-        return ""
+        return {"formatted": "", "used_percentage": 0, "remaining_percentage": 100}
 
-    # Get context window size
-    context_size = context_info.get("context_window_size", 0)
-    if not context_size:
-        return ""
+    # Use pre-calculated percentages from Claude Code
+    used_pct = context_info.get("used_percentage", 0)
+    remaining_pct = context_info.get("remaining_percentage", 100)
+
+    # Get context window size (cap at 200K for display consistency)
+    # Some models (like GLM-4.7) report larger context windows (268K+)
+    max_context_size = 200000  # 200K standard cap
+    reported_size = context_info.get("context_window_size", max_context_size)
+
+    # If reported_size is 0 or missing, default to 200K for display
+    if reported_size <= 0:
+        display_size = max_context_size
+    else:
+        # Cap display size at 200K for consistency
+        display_size = min(reported_size, max_context_size)
 
     # Get current usage
     current_usage = context_info.get("current_usage", {})
     if current_usage:
-        # Calculate total current tokens
+        # Use only input_tokens to avoid double-counting cached files
+        # Cache files are already included in input_tokens calculation
+        # Fix for: https://github.com/anthropics/moai-adk/issues/XXX
         input_tokens = current_usage.get("input_tokens", 0)
-        cache_creation = current_usage.get("cache_creation_input_tokens", 0)
-        cache_read = current_usage.get("cache_read_input_tokens", 0)
-        current_tokens = input_tokens + cache_creation + cache_read
+        current_tokens = input_tokens
     else:
-        # Fallback to total tokens
+        # Fallback to total tokens or 0 if not available
         current_tokens = context_info.get("total_input_tokens", 0)
 
-    if current_tokens > 0:
-        return f"{format_token_count(current_tokens)}/{format_token_count(context_size)}"
+    # Always show context window, even when current_tokens is 0 (e.g., new session)
+    # Format: "0/200K" for empty sessions, "88K/200K" for active sessions
+    formatted = f"{format_token_count(current_tokens)}/{format_token_count(display_size)}"
 
-    return ""
+    return {
+        "formatted": formatted,
+        "used_percentage": used_pct,
+        "remaining_percentage": remaining_pct,
+        "current_usage": current_usage,
+    }
 
 
 def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
@@ -256,8 +305,13 @@ def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
         # Extract output style from session context
         output_style = session_context.get("output_style", {}).get("name", "")
 
-        # Extract context window usage
-        context_window = extract_context_window(session_context)
+        # Extract context window usage (returns dict with formatted, percentages)
+        context_window_data = extract_context_window(session_context)
+        context_window = context_window_data.get("formatted", "")
+        context_used_pct = context_window_data.get("used_percentage", 0.0)
+
+        # Extract cost information (from Claude Code session context)
+        cost_data = extract_cost_info(session_context)
 
         # Collect all information from local sources
         branch, git_status = safe_collect_git_info()
@@ -282,6 +336,12 @@ def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
             update_available=update_available,
             latest_version=latest_version,
             context_window=context_window,
+            context_used_percentage=context_used_pct,
+            # Cost tracking fields
+            cost_total_usd=cost_data.get("total_cost_usd", 0.0),
+            cost_lines_added=cost_data.get("total_lines_added", 0),
+            cost_lines_removed=cost_data.get("total_lines_removed", 0),
+            cost_duration_ms=cost_data.get("total_duration_ms", 0),
         )
 
         # Render statusline with labeled sections

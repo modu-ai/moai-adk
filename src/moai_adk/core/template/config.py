@@ -100,7 +100,7 @@ class ConfigManager:
         if not self.config_path.exists():
             return self.DEFAULT_CONFIG.copy()
 
-        with open(self.config_path, encoding="utf-8") as f:
+        with open(self.config_path, encoding="utf-8", errors="replace") as f:
             data: dict[str, Any] = json.load(f)
             return data
 
@@ -121,7 +121,7 @@ class ConfigManager:
 
         # Fallback to direct file access
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(self.config_path, "w", encoding="utf-8") as f:
+        with open(self.config_path, "w", encoding="utf-8", errors="replace") as f:
             json.dump(config, f, ensure_ascii=False, indent=2)
 
     def update(self, updates: dict[str, Any]) -> None:
@@ -194,7 +194,7 @@ class ConfigManager:
         # Read current config
         config_dict: dict[str, Any]
         if config_path.exists():
-            with open(config_path, "r", encoding="utf-8") as f:
+            with open(config_path, "r", encoding="utf-8", errors="replace") as f:
                 config_dict = json.load(f)
         else:
             config_dict = {}
@@ -211,5 +211,5 @@ class ConfigManager:
         current[keys[-1]] = value
 
         # Atomic write
-        with open(config_path, "w", encoding="utf-8") as f:
+        with open(config_path, "w", encoding="utf-8", errors="replace") as f:
             json.dump(config_dict, f, ensure_ascii=False, indent=2)

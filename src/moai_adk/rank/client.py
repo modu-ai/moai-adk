@@ -15,8 +15,10 @@ import requests
 
 from moai_adk.rank.config import RankConfig
 
-# Maximum value for 32-bit signed integer (server DB constraint)
-# See: https://github.com/modu-ai/moai-adk/issues/264
+# Server-side validation limit for token fields (issue #285)
+MAX_TOKENS_PER_FIELD = 100_000_000
+
+# For backward compatibility (deprecated, use MAX_TOKENS_PER_FIELD)
 INT32_MAX = 2_147_483_647
 
 
@@ -425,11 +427,11 @@ class RankClient:
         data = {
             "sessionHash": session.session_hash,
             "endedAt": session.ended_at,
-            "inputTokens": session.input_tokens,
-            "outputTokens": session.output_tokens,
-            "cacheCreationTokens": session.cache_creation_tokens,
-            # Cap to INT32_MAX to avoid server validation error (issue #264)
-            "cacheReadTokens": min(session.cache_read_tokens, INT32_MAX),
+            # Cap all token fields to server validation limit (issue #285)
+            "inputTokens": min(session.input_tokens, MAX_TOKENS_PER_FIELD),
+            "outputTokens": min(session.output_tokens, MAX_TOKENS_PER_FIELD),
+            "cacheCreationTokens": min(session.cache_creation_tokens, MAX_TOKENS_PER_FIELD),
+            "cacheReadTokens": min(session.cache_read_tokens, MAX_TOKENS_PER_FIELD),
         }
 
         if session.model_name:
@@ -488,11 +490,11 @@ class RankClient:
             session_data = {
                 "sessionHash": session.session_hash,
                 "endedAt": session.ended_at,
-                "inputTokens": session.input_tokens,
-                "outputTokens": session.output_tokens,
-                "cacheCreationTokens": session.cache_creation_tokens,
-                # Cap to INT32_MAX to avoid server validation error (issue #264)
-                "cacheReadTokens": min(session.cache_read_tokens, INT32_MAX),
+                # Cap all token fields to server validation limit (issue #285)
+                "inputTokens": min(session.input_tokens, MAX_TOKENS_PER_FIELD),
+                "outputTokens": min(session.output_tokens, MAX_TOKENS_PER_FIELD),
+                "cacheCreationTokens": min(session.cache_creation_tokens, MAX_TOKENS_PER_FIELD),
+                "cacheReadTokens": min(session.cache_read_tokens, MAX_TOKENS_PER_FIELD),
             }
 
             if session.model_name:

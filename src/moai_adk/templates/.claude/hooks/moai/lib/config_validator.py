@@ -576,7 +576,7 @@ class ConfigurationValidator:
     def validate_and_fix_config_file(self, config_path: Path) -> Tuple[bool, Dict[str, Any], List[ValidationIssue]]:
         """Validate and optionally fix a configuration file"""
         try:
-            with open(config_path, "r", encoding="utf-8") as f:
+            with open(config_path, "r", encoding="utf-8", errors="replace") as f:
                 config = json.load(f)
 
             # Validate configuration

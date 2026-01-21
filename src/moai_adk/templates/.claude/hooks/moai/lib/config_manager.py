@@ -111,7 +111,7 @@ class ConfigManager:
         config = {}
         if self.config_path.exists():
             try:
-                with open(self.config_path, "r", encoding="utf-8") as f:
+                with open(self.config_path, "r", encoding="utf-8", errors="replace") as f:
                     if self.config_path.suffix in [".yaml", ".yml"]:
                         if not YAML_AVAILABLE:
                             # Fall back to defaults if YAML not available

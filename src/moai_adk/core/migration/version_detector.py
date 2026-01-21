@@ -49,7 +49,7 @@ class VersionDetector:
         """
         try:
             if file_path.exists():
-                with open(file_path, "r", encoding="utf-8") as f:
+                with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                     return yaml.safe_load(f)
         except Exception as e:
             logger.warning(f"Failed to read YAML file {file_path}: {e}")
@@ -86,7 +86,7 @@ class VersionDetector:
         # Check if already migrated to v0.24.0+ (intermediate config.json)
         if self.intermediate_config.exists():
             try:
-                with open(self.intermediate_config, "r", encoding="utf-8") as f:
+                with open(self.intermediate_config, "r", encoding="utf-8", errors="replace") as f:
                     config_data = json.load(f)
                     if "moai_version" in config_data:
                         return config_data["moai_version"]
@@ -98,7 +98,7 @@ class VersionDetector:
         # Check if v0.23.0 or earlier (old config.json at .moai/config.json)
         if self.old_config.exists():
             try:
-                with open(self.old_config, "r", encoding="utf-8") as f:
+                with open(self.old_config, "r", encoding="utf-8", errors="replace") as f:
                     config_data = json.load(f)
                     # Try to get version from config
                     if "moai_version" in config_data:

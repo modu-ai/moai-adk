@@ -102,7 +102,7 @@ class TemplateBackup:
         }
 
         metadata_path = backup_path / "backup_metadata.json"
-        with open(metadata_path, "w", encoding="utf-8") as f:
+        with open(metadata_path, "w", encoding="utf-8", errors="replace") as f:
             json.dump(metadata, f, indent=2, ensure_ascii=False)
 
         return backup_path

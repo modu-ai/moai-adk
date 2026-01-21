@@ -204,7 +204,7 @@ class VersionMigrator:
         if sections_dir.exists() and system_yaml.exists():
             # Verify system.yaml is valid
             try:
-                with open(system_yaml, "r", encoding="utf-8") as f:
+                with open(system_yaml, "r", encoding="utf-8", errors="replace") as f:
                     data = yaml.safe_load(f)
                     if data and "moai" in data:
                         logger.debug("Section YAML format verification passed")
@@ -216,7 +216,7 @@ class VersionMigrator:
         intermediate_config = self.project_root / ".moai" / "config" / "config.json"
         if intermediate_config.exists():
             try:
-                with open(intermediate_config, "r", encoding="utf-8") as f:
+                with open(intermediate_config, "r", encoding="utf-8", errors="replace") as f:
                     json.load(f)
                     logger.debug("Intermediate config.json verification passed")
                     return True

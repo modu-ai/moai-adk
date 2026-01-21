@@ -316,7 +316,7 @@ def parse_transcript_for_usage(transcript_path: str) -> Optional[TokenUsage]:
         return len([line for line in text.split("\n") if line.strip()])
 
     try:
-        with open(transcript_file, encoding="utf-8") as f:
+        with open(transcript_file, encoding="utf-8", errors="replace") as f:
             for line in f:
                 line = line.strip()
                 if not line:
@@ -788,7 +788,7 @@ def save_rank_config(config: dict[str, Any]) -> bool:
                 existing = yaml.safe_load(f) or {}
 
         existing["rank"] = config
-        with open(config_file, "w", encoding="utf-8") as f:
+        with open(config_file, "w", encoding="utf-8", errors="replace") as f:
             yaml.safe_dump(existing, f, default_flow_style=False, allow_unicode=True)
         return True
     except (OSError, yaml.YAMLError):
@@ -916,7 +916,7 @@ def _register_hook_in_settings() -> bool:
     try:
         # Load existing settings or create new
         if settings_file.exists():
-            with open(settings_file, encoding="utf-8") as f:
+            with open(settings_file, encoding="utf-8", errors="replace") as f:
                 settings = json.load(f)
         else:
             settings = {}
@@ -946,7 +946,7 @@ def _register_hook_in_settings() -> bool:
         settings["hooks"]["SessionEnd"].append(session_end_config)
 
         # Write back
-        with open(settings_file, "w", encoding="utf-8") as f:
+        with open(settings_file, "w", encoding="utf-8", errors="replace") as f:
             json.dump(settings, f, indent=2, ensure_ascii=False)
 
         return True
@@ -979,7 +979,7 @@ def install_hook(project_path: Optional[Path] = None) -> bool:
     hook_file = hooks_dir / "session_end__rank_submit.py"
 
     try:
-        hook_file.write_text(create_global_hook_script(), encoding="utf-8")
+        hook_file.write_text(create_global_hook_script(), encoding="utf-8", errors="replace")
         hook_file.chmod(0o755)  # Make executable
 
         # Register hook in settings.json
@@ -1005,7 +1005,7 @@ def _unregister_hook_from_settings() -> bool:
         if not settings_file.exists():
             return True  # Nothing to remove
 
-        with open(settings_file, encoding="utf-8") as f:
+        with open(settings_file, encoding="utf-8", errors="replace") as f:
             settings = json.load(f)
 
         if "hooks" not in settings or "SessionEnd" not in settings["hooks"]:
@@ -1025,7 +1025,7 @@ def _unregister_hook_from_settings() -> bool:
             del settings["hooks"]["SessionEnd"]
 
         # Write back
-        with open(settings_file, "w", encoding="utf-8") as f:
+        with open(settings_file, "w", encoding="utf-8", errors="replace") as f:
             json.dump(settings, f, indent=2, ensure_ascii=False)
 
         return True
@@ -1077,7 +1077,7 @@ def is_hook_installed() -> bool:
         if not settings_file.exists():
             return False
 
-        with open(settings_file, encoding="utf-8") as f:
+        with open(settings_file, encoding="utf-8", errors="replace") as f:
             settings = json.load(f)
 
         if "hooks" not in settings or "SessionEnd" not in settings["hooks"]:
@@ -1165,7 +1165,21 @@ def find_all_transcripts() -> list[Path]:
         return []
 
     transcripts = []
+    # Use depth-limited search for better performance
+    # Claude projects structure is typically: projects/<project>/sessions/*.jsonl
+    # Limit depth to avoid unnecessary traversal
+    max_depth = 4  # projects/ + project_name/ + sessions/ + *.jsonl
+
     for jsonl_file in claude_dir.rglob("*.jsonl"):
+        # Calculate depth relative to claude_dir
+        try:
+            relative_path = jsonl_file.relative_to(claude_dir)
+            if len(relative_path.parts) > max_depth:
+                continue
+        except ValueError:
+            # Paths on different drives on Windows
+            continue
+
         # Skip subagent transcripts
         if "subagents" in str(jsonl_file):
             continue

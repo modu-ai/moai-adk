@@ -667,7 +667,7 @@ class UserBehaviorAnalytics:
                 }
 
             prefs_file = self.storage_path / "user_preferences.json"
-            with open(prefs_file, "w", encoding="utf-8") as f:
+            with open(prefs_file, "w", encoding="utf-8", errors="replace") as f:
                 json.dump(prefs_data, f, indent=2, ensure_ascii=False)
 
             logger.info(f"Saved preferences for {len(self.user_preferences)} users")
@@ -703,7 +703,7 @@ class UserBehaviorAnalytics:
                     "session_count": len(self.user_sessions),
                 }
 
-            with open(output_path, "w", encoding="utf-8") as f:
+            with open(output_path, "w", encoding="utf-8", errors="replace") as f:
                 json.dump(export_data, f, indent=2, ensure_ascii=False)
 
             return True

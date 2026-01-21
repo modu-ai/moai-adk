@@ -17,8 +17,61 @@ import json
 import os
 import sys
 import time
+from collections import OrderedDict
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
+
+
+class BoundedCache:
+    """
+    Fixed-size cache with LRU (Least Recently Used) eviction policy.
+
+    This cache prevents unbounded memory growth by automatically evicting
+    the oldest entries when the maximum size is exceeded. Uses OrderedDict
+    for O(1) access and efficient LRU tracking.
+
+    Args:
+        maxsize: Maximum number of entries to store. Defaults to 128.
+    """
+
+    def __init__(self, maxsize: int = 128):
+        self.cache: OrderedDict = OrderedDict()
+        self.maxsize = maxsize
+
+    def __contains__(self, key: Any) -> bool:
+        """Check if key exists in cache (updates position for LRU)."""
+        if key in self.cache:
+            # Move to end to mark as recently used
+            self.cache.move_to_end(key)
+            return True
+        return False
+
+    def __getitem__(self, key: Any) -> Tuple[str, float]:
+        """Get item from cache (updates position for LRU)."""
+        if key in self.cache:
+            # Move to end to mark as recently used
+            self.cache.move_to_end(key)
+            return self.cache[key]
+        raise KeyError(key)
+
+    def __setitem__(self, key: Any, value: Tuple[str, float]) -> None:
+        """Set item in cache with LRU eviction when full."""
+        if key in self.cache:
+            # Update existing item and move to end
+            self.cache.move_to_end(key)
+        self.cache[key] = value
+
+        # Evict oldest entry if over limit
+        if len(self.cache) > self.maxsize:
+            self.cache.popitem(last=False)  # Remove oldest (first) item
+
+    def __len__(self) -> int:
+        """Return current cache size."""
+        return len(self.cache)
+
+    def clear(self) -> None:
+        """Clear all entries from cache."""
+        self.cache.clear()
 
 
 class OutputStyleDetector:
@@ -57,7 +110,7 @@ class OutputStyleDetector:
     }
 
     def __init__(self):
-        self.cache = {}
+        self.cache = BoundedCache(maxsize=128)  # Bounded cache with LRU eviction
         self.cache_ttl: float = 5.0  # Cache for 5 seconds to balance performance and accuracy
 
     def detect_from_session_context(self, session_data: Dict[str, Any]) -> Optional[str]:
@@ -145,8 +198,22 @@ class OutputStyleDetector:
             # Check for active Yoda session indicators
             moai_dir = cwd / ".moai"
             if moai_dir.exists():
-                # Look for recent Yoda-related activity
-                yoda_files = list(moai_dir.rglob("*yoda*"))
+                # Look for recent Yoda-related activity with depth limit for performance
+                # Use specific patterns to reduce search space
+                yoda_patterns = ["*yoda*.md", "*yoda*.txt", "*yoda*.yaml", "*yoda*.json"]
+                yoda_files = []
+                max_depth = 3  # Limit search depth
+
+                for pattern in yoda_patterns:
+                    for yoda_file in moai_dir.rglob(pattern):
+                        try:
+                            # Check depth
+                            relative = yoda_file.relative_to(moai_dir)
+                            if len(relative.parts) <= max_depth:
+                                yoda_files.append(yoda_file)
+                        except ValueError:
+                            continue
+
                 if yoda_files:
                     # Check if any Yoda files are recently modified
                     recent_yoda = any(f.stat().st_mtime > (time.time() - 300) for f in yoda_files)  # Last 5 minutes
@@ -154,16 +221,27 @@ class OutputStyleDetector:
                         return "🧙 Yoda Master"
 
             # Check for extensive documentation (might indicate Explanatory mode)
+            # Use depth-limited search for better performance
             docs_dir = cwd / "docs"
             if docs_dir.exists():
-                md_files = list(docs_dir.rglob("*.md"))
+                md_files = []
+                max_depth = 5  # Limit depth for docs directory
+
+                for md_file in docs_dir.rglob("*.md"):
+                    try:
+                        relative = md_file.relative_to(docs_dir)
+                        if len(relative.parts) <= max_depth:
+                            md_files.append(md_file)
+                    except ValueError:
+                        continue
+
                 if len(md_files) > 10:  # Heuristic threshold
                     return "Explanatory"
 
             # Check for TODO/task tracking patterns
             todo_file = cwd / ".moai" / "current_session_todo.txt"
             if todo_file.exists():
-                content = todo_file.read_text(encoding="utf-8")
+                content = todo_file.read_text(encoding="utf-8", errors="replace")
                 if "plan" in content.lower() or "phase" in content.lower():
                     return "Explanatory"
 
@@ -181,7 +259,7 @@ class OutputStyleDetector:
         try:
             settings_path = Path.cwd() / ".claude" / "settings.json"
             if settings_path.exists():
-                with open(settings_path, "r", encoding="utf-8") as f:
+                with open(settings_path, "r", encoding="utf-8", errors="replace") as f:
                     settings = json.load(f)
                     output_style = settings.get("outputStyle", "")
 

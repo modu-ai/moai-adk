@@ -135,7 +135,7 @@ def _load_config(config_path: Path) -> dict[str, Any]:
         return {}
 
     is_yaml = config_path.suffix in (".yaml", ".yml")
-    content = config_path.read_text(encoding="utf-8")
+    content = config_path.read_text(encoding="utf-8", errors="replace")
 
     if is_yaml:
         return yaml.safe_load(content) or {}
@@ -151,7 +151,7 @@ def _save_config(config_path: Path, config_data: dict[str, Any]) -> None:
     else:
         content = json.dumps(config_data, indent=2, ensure_ascii=False) + "\n"
 
-    config_path.write_text(content, encoding="utf-8")
+    config_path.write_text(content, encoding="utf-8", errors="replace")
 
 
 def _is_installed_via_uv_tool() -> bool:
@@ -540,7 +540,7 @@ If you encounter merge conflicts or issues:
 **Generated**: {timestamp}
 """
 
-    guide_path.write_text(guide_content, encoding="utf-8")
+    guide_path.write_text(guide_content, encoding="utf-8", errors="replace")
     logger.info(f"✅ Merge guide created: {guide_path}")
     return guide_path
 
@@ -703,7 +703,7 @@ def _migrate_legacy_logs(project_path: Path, dry_run: bool = False) -> bool:
                 ],
             }
             json_content = json.dumps(migration_data, indent=2, ensure_ascii=False)
-            migration_log_path.write_text(json_content + "\n", encoding="utf-8")
+            migration_log_path.write_text(json_content + "\n", encoding="utf-8", errors="replace")
 
         # Display results
         if files_migrated > 0 or files_skipped > 0:
@@ -963,7 +963,7 @@ def _preserve_user_settings(project_path: Path) -> dict[str, Path | None]:
             backup_dir = project_path / ".moai-backups" / "settings-backup"
             backup_dir.mkdir(parents=True, exist_ok=True)
             backup_path = backup_dir / "settings.local.json"
-            backup_path.write_text(settings_local.read_text(encoding="utf-8"))
+            backup_path.write_text(settings_local.read_text(encoding="utf-8", errors="replace"))
             preserved["settings.local.json"] = backup_path
             console.print("   [cyan]💾 Backed up user settings[/cyan]")
         except Exception as e:
@@ -995,7 +995,7 @@ def _restore_user_settings(project_path: Path, preserved: dict[str, Path | None]
     if backup_path is not None:
         try:
             settings_local = claude_dir / "settings.local.json"
-            settings_local.write_text(backup_path.read_text(encoding="utf-8"))
+            settings_local.write_text(backup_path.read_text(encoding="utf-8", errors="replace"))
             console.print("   [cyan]✓ Restored user settings[/cyan]")
         except Exception as e:
             console.print(f"   [yellow]⚠️ Failed to restore settings.local.json: {e}[/yellow]")
@@ -1921,7 +1921,7 @@ def _apply_context_to_file(processor: TemplateProcessor, target_path: Path) -> N
         return
 
     try:
-        content = target_path.read_text(encoding="utf-8")
+        content = target_path.read_text(encoding="utf-8", errors="replace")
     except UnicodeDecodeError:
         return
 
@@ -1931,7 +1931,7 @@ def _apply_context_to_file(processor: TemplateProcessor, target_path: Path) -> N
         for warning in warnings:
             console.print(f"   {warning}")
 
-    target_path.write_text(substituted, encoding="utf-8")
+    target_path.write_text(substituted, encoding="utf-8", errors="replace")
 
 
 def _validate_template_substitution(project_path: Path) -> None:
@@ -1951,7 +1951,7 @@ def _validate_template_substitution(project_path: Path) -> None:
             continue
 
         try:
-            content = file_path.read_text(encoding="utf-8")
+            content = file_path.read_text(encoding="utf-8", errors="replace")
             # Look for unsubstituted template variables
             unsubstituted = re.findall(r"\{\{([A-Z_]+)\}\}", content)
             if unsubstituted:
@@ -1990,7 +1990,7 @@ def _validate_template_substitution_with_rollback(project_path: Path, backup_pat
             continue
 
         try:
-            content = file_path.read_text(encoding="utf-8")
+            content = file_path.read_text(encoding="utf-8", errors="replace")
             # Look for unsubstituted template variables
             unsubstituted = re.findall(r"\{\{([A-Z_]+)\}\}", content)
             if unsubstituted:
@@ -2754,11 +2754,11 @@ def _migrate_config_json_to_yaml(project_path: Path) -> bool:
     # Perform migration
     try:
         # Read JSON config
-        with open(json_path, "r", encoding="utf-8") as f:
+        with open(json_path, "r", encoding="utf-8", errors="replace") as f:
             config_data = json.load(f)
 
         # Write YAML config
-        with open(yaml_path, "w", encoding="utf-8") as f:
+        with open(yaml_path, "w", encoding="utf-8", errors="replace") as f:
             yaml.safe_dump(
                 config_data,
                 f,
@@ -2815,10 +2815,10 @@ def _migrate_preset_files_to_yaml(config_dir: Path) -> None:
 
         # Migrate JSON → YAML
         try:
-            with open(json_file, "r", encoding="utf-8") as f:
+            with open(json_file, "r", encoding="utf-8", errors="replace") as f:
                 preset_data = json.load(f)
 
-            with open(yaml_file, "w", encoding="utf-8") as f:
+            with open(yaml_file, "w", encoding="utf-8", errors="replace") as f:
                 yaml.safe_dump(
                     preset_data,
                     f,
@@ -2863,7 +2863,7 @@ def _load_current_settings(project_path: Path) -> dict[str, Any]:
         file_path = sections_dir / filename
         if file_path.exists():
             try:
-                data = yaml.safe_load(file_path.read_text(encoding="utf-8"))
+                data = yaml.safe_load(file_path.read_text(encoding="utf-8", errors="replace"))
                 if data:
                     settings[key] = data
             except yaml.YAMLError:

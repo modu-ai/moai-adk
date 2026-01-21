@@ -36,7 +36,7 @@ def _load_yaml_file(file_path: Path) -> Dict[str, Any]:
     if not YAML_AVAILABLE:
         return {}
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
             return yaml.safe_load(f) or {}
     except Exception:
         return {}
@@ -99,7 +99,7 @@ def load_config() -> Dict[str, Any]:
     yaml_config_path = config_dir / "config.yaml"
     if yaml_config_path.exists() and YAML_AVAILABLE:
         try:
-            with open(yaml_config_path, "r", encoding="utf-8") as f:
+            with open(yaml_config_path, "r", encoding="utf-8", errors="replace") as f:
                 config = yaml.safe_load(f) or {}
                 if config:
                     return config
@@ -110,7 +110,7 @@ def load_config() -> Dict[str, Any]:
     json_config_path = config_dir / "config.json"
     if json_config_path.exists():
         try:
-            with open(json_config_path, "r", encoding="utf-8") as f:
+            with open(json_config_path, "r", encoding="utf-8", errors="replace") as f:
                 return json.load(f)
         except json.JSONDecodeError as e:
             return {"error": f"JSON decode error: {e}"}
@@ -213,7 +213,7 @@ def validate_output_style_compatibility() -> Dict[str, Any]:
 
     if r2d2_path.exists():
         try:
-            with open(r2d2_path, "r", encoding="utf-8") as f:
+            with open(r2d2_path, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
 
             # Check for language support indicators
@@ -265,7 +265,7 @@ def validate_session_start_hook() -> Dict[str, Any]:
 
     if hook_path.exists():
         try:
-            with open(hook_path, "r", encoding="utf-8") as f:
+            with open(hook_path, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
 
             # Check for language display functionality

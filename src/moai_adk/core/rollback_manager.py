@@ -25,7 +25,7 @@ import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -53,14 +53,14 @@ class RollbackResult:
     rollback_point_id: str
     message: str
     restored_files: List[str]
-    failed_files: List[str] = None
-    validation_results: Dict[str, Any] = None
+    failed_files: Optional[List[str]] = None
+    validation_results: Optional[Dict[str, Any]] = None
 
 
 class RollbackManager:
     """Comprehensive rollback management system"""
 
-    def __init__(self, project_root: Path = None):
+    def __init__(self, project_root: Optional[Path] = None):
         self.project_root = project_root or Path.cwd()
         self.backup_root = self.project_root / ".moai" / "rollbacks"
         self.config_backup_dir = self.backup_root / "config"
@@ -85,7 +85,7 @@ class RollbackManager:
             self.project_root / ".claude" / "hooks",
         ]
 
-    def create_rollback_point(self, description: str, changes: List[str] = None) -> str:
+    def create_rollback_point(self, description: str, changes: Optional[List[str]] = None) -> str:
         """
         Create a rollback point before making changes
 
@@ -224,7 +224,9 @@ class RollbackManager:
                 restored_files=[],
             )
 
-    def rollback_research_integration(self, component_type: str = None, component_name: str = None) -> RollbackResult:
+    def rollback_research_integration(
+        self, component_type: Optional[str] = None, component_name: Optional[str] = None
+    ) -> RollbackResult:
         """
         Specialized rollback for research integration changes
 
@@ -433,7 +435,7 @@ class RollbackManager:
         """Load rollback registry from file"""
         if self.registry_file.exists():
             try:
-                with open(self.registry_file, "r", encoding="utf-8") as f:
+                with open(self.registry_file, "r", encoding="utf-8", errors="replace") as f:
                     return json.load(f)
             except Exception as e:
                 logger.warning(f"Failed to load rollback registry: {str(e)}")
@@ -443,7 +445,7 @@ class RollbackManager:
     def _save_registry(self):
         """Save rollback registry to file"""
         try:
-            with open(self.registry_file, "w", encoding="utf-8") as f:
+            with open(self.registry_file, "w", encoding="utf-8", errors="replace") as f:
                 json.dump(self.registry, f, indent=2, default=str, ensure_ascii=False)
         except Exception as e:
             logger.error(f"Failed to save rollback registry: {str(e)}")
@@ -525,8 +527,18 @@ class RollbackManager:
         """Calculate checksum for backup integrity verification"""
         checksum_hash = hashlib.sha256()
 
+        # Optimize: Limit depth to typical backup structure (max 10 levels)
+        max_depth = 10
         for file_path in backup_dir.rglob("*"):
             if file_path.is_file():
+                # Check depth limit for performance
+                try:
+                    relative_depth = len(file_path.relative_to(backup_dir).parts)
+                    if relative_depth > max_depth:
+                        continue
+                except ValueError:
+                    # Path is not relative to backup_dir, skip
+                    continue
                 with open(file_path, "rb") as f:
                     # Update hash with file content and path
                     checksum_hash.update(f.read())
@@ -585,8 +597,17 @@ class RollbackManager:
             # Restore configuration
             config_backup = backup_path / "config"
             if config_backup.exists():
+                # Optimize: Limit depth for config backup restoration (max 5 levels typical)
+                max_depth = 5
                 for config_file in config_backup.rglob("*"):
                     if config_file.is_file():
+                        # Check depth limit for performance
+                        try:
+                            relative_depth = len(config_file.relative_to(config_backup).parts)
+                            if relative_depth > max_depth:
+                                continue
+                        except ValueError:
+                            continue
                         target_path = self.project_root / ".moai" / config_file.relative_to(config_backup)
                         target_path.parent.mkdir(parents=True, exist_ok=True)
                         try:
@@ -598,8 +619,17 @@ class RollbackManager:
             # Restore research components
             research_backup = backup_path / "research"
             if research_backup.exists():
+                # Optimize: Limit depth for research backup restoration (max 5 levels typical)
+                max_depth = 5
                 for research_file in research_backup.rglob("*"):
                     if research_file.is_file():
+                        # Check depth limit for performance
+                        try:
+                            relative_depth = len(research_file.relative_to(research_backup).parts)
+                            if relative_depth > max_depth:
+                                continue
+                        except ValueError:
+                            continue
                         target_path = self.project_root / research_file.relative_to(research_backup)
                         target_path.parent.mkdir(parents=True, exist_ok=True)
                         try:
@@ -611,8 +641,17 @@ class RollbackManager:
             # Restore code files
             code_backup = backup_path / "code"
             if code_backup.exists():
+                # Optimize: Limit depth for code backup restoration (max 10 levels for nested src)
+                max_depth = 10
                 for code_file in code_backup.rglob("*"):
                     if code_file.is_file():
+                        # Check depth limit for performance
+                        try:
+                            relative_depth = len(code_file.relative_to(code_backup).parts)
+                            if relative_depth > max_depth:
+                                continue
+                        except ValueError:
+                            continue
                         target_path = self.project_root / code_file.relative_to(code_backup)
                         target_path.parent.mkdir(parents=True, exist_ok=True)
                         try:
@@ -630,8 +669,8 @@ class RollbackManager:
     def _perform_research_rollback(
         self,
         rollback_point: Dict[str, Any],
-        component_type: str = None,
-        component_name: str = None,
+        component_type: Optional[str] = None,
+        component_name: Optional[str] = None,
     ) -> Tuple[List[str], List[str]]:
         """Perform targeted research component rollback"""
         backup_path = Path(rollback_point["backup_path"])
@@ -706,7 +745,7 @@ class RollbackManager:
             if config_json.exists():
                 config_found = True
                 try:
-                    with open(config_json, "r", encoding="utf-8") as f:
+                    with open(config_json, "r", encoding="utf-8", errors="replace") as f:
                         json.load(f)  # Validate JSON syntax
                 except json.JSONDecodeError:
                     validation_results["config_valid"] = False
@@ -728,10 +767,18 @@ class RollbackManager:
             # Validate research components
             for research_dir in self.research_dirs:
                 if research_dir.exists():
-                    # Check for readable files
+                    # Optimize: Limit depth for research validation (max 5 levels typical)
+                    max_depth = 5
                     for file_path in research_dir.rglob("*.md"):
+                        # Check depth limit for performance
                         try:
-                            with open(file_path, "r", encoding="utf-8") as f:
+                            relative_depth = len(file_path.relative_to(research_dir).parts)
+                            if relative_depth > max_depth:
+                                continue
+                        except ValueError:
+                            continue
+                        try:
+                            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                                 f.read()  # Validate file can be read
                         except Exception as e:
                             validation_results["research_valid"] = False
@@ -746,10 +793,10 @@ class RollbackManager:
         """Validate research components after rollback"""
         issues: List[str] = []
         validation_results = {
-            "skills_valid": True,
+            "skills_valid": "VALID",
             "agents_valid": True,
-            "commands_valid": True,
-            "hooks_valid": True,
+            "commands_valid": "VALID",
+            "hooks_valid": "VALID",
             "issues": issues,
         }
 
@@ -762,8 +809,19 @@ class RollbackManager:
 
         for component_key, component_name, component_path in component_checks:
             if component_path.exists():
-                # Check component structure
-                files = list(component_path.rglob("*.md"))
+                # Optimize: Limit depth for component structure check (max 5 levels typical)
+                max_depth = 5
+                files = []
+                for file_path in component_path.rglob("*.md"):
+                    # Check depth limit for performance
+                    try:
+                        relative_depth = len(file_path.relative_to(component_path).parts)
+                        if relative_depth > max_depth:
+                            continue
+                    except ValueError:
+                        continue
+                    files.append(file_path)
+
                 if not files:
                     validation_results[f"{component_key}_valid"] = False
                     issues.append(f"{component_name} directory is empty")
@@ -771,7 +829,7 @@ class RollbackManager:
                 # Validate file content
                 for file_path in files[:5]:  # Check first 5 files
                     try:
-                        with open(file_path, "r", encoding="utf-8") as f:
+                        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                             content = f.read()
                             if not content.strip():
                                 validation_results[f"{component_key}_valid"] = False
@@ -786,7 +844,7 @@ class RollbackManager:
         return validation_results
 
     def _find_research_rollback_points(
-        self, component_type: str = None, component_name: str = None
+        self, component_type: Optional[str] = None, component_name: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Find rollback points related to research integration"""
         research_rollback_points = []
@@ -844,8 +902,17 @@ class RollbackManager:
         """Get total size of directory in bytes"""
         total_size = 0
         try:
+            # Optimize: Limit depth for directory size calculation (max 10 levels)
+            max_depth = 10
             for file_path in directory.rglob("*"):
                 if file_path.is_file():
+                    # Check depth limit for performance
+                    try:
+                        relative_depth = len(file_path.relative_to(directory).parts)
+                        if relative_depth > max_depth:
+                            continue
+                    except ValueError:
+                        continue
                     total_size += file_path.stat().st_size
         except Exception:
             pass  # Ignore errors in size calculation

@@ -7,6 +7,7 @@ import requests
 
 from moai_adk.rank.client import (
     INT32_MAX,
+    MAX_TOKENS_PER_FIELD,
     ApiError,
     ApiStatus,
     AuthenticationError,
@@ -446,38 +447,42 @@ class TestRankClientErrors:
         assert error.details == details
 
 
-class TestCacheReadTokensCapping:
-    """Test INT32_MAX capping for cache_read_tokens (Issue #264)."""
+class TestTokenFieldsCapping:
+    """Test MAX_TOKENS_PER_FIELD capping for all token fields (Issue #285)."""
 
-    def test_int32_max_constant(self):
-        """Test INT32_MAX constant value."""
+    def test_constants(self):
+        """Test MAX_TOKENS_PER_FIELD and INT32_MAX constants."""
+        assert MAX_TOKENS_PER_FIELD == 100_000_000
         assert INT32_MAX == 2_147_483_647
 
-    def test_submit_session_caps_cache_read_tokens(self):
-        """Test that submit_session caps cache_read_tokens at INT32_MAX."""
+    def test_submit_session_caps_all_token_fields(self):
+        """Test that submit_session caps all token fields at MAX_TOKENS_PER_FIELD."""
         client = RankClient(api_key="test_key")
-        # Create session with cache_read_tokens exceeding INT32_MAX
+        # Create session with all token fields exceeding MAX_TOKENS_PER_FIELD
         session = SessionSubmission(
             session_hash="hash123",
             ended_at="2024-01-01T00:00:00Z",
-            input_tokens=1000,
-            output_tokens=500,
-            cache_creation_tokens=100,
-            cache_read_tokens=5_000_000_000,  # Exceeds INT32_MAX
+            input_tokens=5_000_000_000,  # Exceeds MAX_TOKENS_PER_FIELD
+            output_tokens=3_000_000_000,  # Exceeds MAX_TOKENS_PER_FIELD
+            cache_creation_tokens=2_000_000_000,  # Exceeds MAX_TOKENS_PER_FIELD
+            cache_read_tokens=5_000_000_000,  # Exceeds MAX_TOKENS_PER_FIELD
         )
 
         with patch.object(client, "_make_request") as mock_make_request:
             mock_make_request.return_value = {"success": True, "sessionId": "sess_123"}
             client.submit_session(session)
 
-            # Verify the request was made with capped value
+            # Verify all token fields were capped
             mock_make_request.assert_called_once()
             call_args = mock_make_request.call_args
             request_data = call_args[1]["data"]
-            assert request_data["cacheReadTokens"] == INT32_MAX
+            assert request_data["inputTokens"] == MAX_TOKENS_PER_FIELD
+            assert request_data["outputTokens"] == MAX_TOKENS_PER_FIELD
+            assert request_data["cacheCreationTokens"] == MAX_TOKENS_PER_FIELD
+            assert request_data["cacheReadTokens"] == MAX_TOKENS_PER_FIELD
 
-    def test_submit_session_preserves_normal_cache_read_tokens(self):
-        """Test that submit_session preserves normal cache_read_tokens values."""
+    def test_submit_session_preserves_normal_token_values(self):
+        """Test that submit_session preserves normal token field values."""
         client = RankClient(api_key="test_key")
         session = SessionSubmission(
             session_hash="hash123",
@@ -485,7 +490,7 @@ class TestCacheReadTokensCapping:
             input_tokens=1000,
             output_tokens=500,
             cache_creation_tokens=100,
-            cache_read_tokens=100_000_000,  # Normal value, under INT32_MAX
+            cache_read_tokens=50_000_000,  # Normal value, under MAX_TOKENS_PER_FIELD
         )
 
         with patch.object(client, "_make_request") as mock_make_request:
@@ -494,25 +499,28 @@ class TestCacheReadTokensCapping:
 
             call_args = mock_make_request.call_args
             request_data = call_args[1]["data"]
-            assert request_data["cacheReadTokens"] == 100_000_000
+            assert request_data["inputTokens"] == 1000
+            assert request_data["outputTokens"] == 500
+            assert request_data["cacheCreationTokens"] == 100
+            assert request_data["cacheReadTokens"] == 50_000_000
 
-    def test_submit_sessions_batch_caps_cache_read_tokens(self):
-        """Test that submit_sessions_batch caps cache_read_tokens at INT32_MAX."""
+    def test_submit_sessions_batch_caps_all_token_fields(self):
+        """Test that submit_sessions_batch caps all token fields at MAX_TOKENS_PER_FIELD."""
         client = RankClient(api_key="test_key")
         sessions = [
             SessionSubmission(
                 session_hash="hash1",
                 ended_at="2024-01-01T00:00:00Z",
-                input_tokens=1000,
-                output_tokens=500,
-                cache_read_tokens=5_000_000_000,  # Exceeds INT32_MAX
+                input_tokens=5_000_000_000,  # Exceeds MAX_TOKENS_PER_FIELD
+                output_tokens=3_000_000_000,  # Exceeds MAX_TOKENS_PER_FIELD
+                cache_read_tokens=5_000_000_000,  # Exceeds MAX_TOKENS_PER_FIELD
             ),
             SessionSubmission(
                 session_hash="hash2",
                 ended_at="2024-01-01T01:00:00Z",
                 input_tokens=800,
                 output_tokens=400,
-                cache_read_tokens=100_000_000,  # Normal value
+                cache_read_tokens=50_000_000,  # Normal value
             ),
         ]
 
@@ -527,5 +535,11 @@ class TestCacheReadTokensCapping:
 
             call_args = mock_make_request.call_args
             request_data = call_args[1]["data"]
-            assert request_data["sessions"][0]["cacheReadTokens"] == INT32_MAX
-            assert request_data["sessions"][1]["cacheReadTokens"] == 100_000_000
+            # First session: all capped
+            assert request_data["sessions"][0]["inputTokens"] == MAX_TOKENS_PER_FIELD
+            assert request_data["sessions"][0]["outputTokens"] == MAX_TOKENS_PER_FIELD
+            assert request_data["sessions"][0]["cacheReadTokens"] == MAX_TOKENS_PER_FIELD
+            # Second session: values preserved
+            assert request_data["sessions"][1]["inputTokens"] == 800
+            assert request_data["sessions"][1]["outputTokens"] == 400
+            assert request_data["sessions"][1]["cacheReadTokens"] == 50_000_000

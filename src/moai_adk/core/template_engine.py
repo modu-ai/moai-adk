@@ -154,7 +154,7 @@ class TemplateEngine:
 
             if output_path:
                 output_path.parent.mkdir(parents=True, exist_ok=True)
-                output_path.write_text(rendered, encoding="utf-8")
+                output_path.write_text(rendered, encoding="utf-8", errors="replace")
 
             return rendered
         except TemplateNotFound:

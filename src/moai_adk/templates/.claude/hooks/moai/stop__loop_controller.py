@@ -134,7 +134,7 @@ def load_loop_state() -> LoopState:
         if file_size > MAX_STATE_FILE_SIZE:
             return LoopState()  # File too large, return default
 
-        with open(state_path, encoding="utf-8") as f:
+        with open(state_path, encoding="utf-8", errors="replace") as f:
             data = json.load(f)
             return LoopState.from_dict(data)
     except FileNotFoundError:
@@ -164,7 +164,7 @@ def save_loop_state(state: LoopState) -> None:
         # This prevents partial writes from corrupting state
         fd, temp_path = tempfile.mkstemp(dir=state_path.parent, prefix=".tmp_", suffix=".json")
         try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
+            with os.fdopen(fd, "w", encoding="utf-8", errors="replace") as f:
                 json.dump(state.to_dict(), f, indent=2, ensure_ascii=False)
             # Atomic rename (on POSIX systems)
             os.replace(temp_path, state_path)
@@ -346,7 +346,7 @@ def check_coverage(threshold: int = 85) -> tuple[bool, float]:
     try:
         file_size = coverage_json.stat().st_size
         if file_size <= max_coverage_file_size:
-            with open(coverage_json, encoding="utf-8") as f:
+            with open(coverage_json, encoding="utf-8", errors="replace") as f:
                 data = json.load(f)
                 total = data.get("totals", {}).get("percent_covered", 0)
                 return total >= threshold, total

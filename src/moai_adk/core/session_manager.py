@@ -88,7 +88,7 @@ class SessionManager:
         """Load session data from persistent storage."""
         if self._session_file.exists():
             try:
-                with open(self._session_file, "r", encoding="utf-8") as f:
+                with open(self._session_file, "r", encoding="utf-8", errors="replace") as f:
                     data = json.load(f)
                     self._sessions = data.get("sessions", {})
                     self._chains = data.get("chains", {})
@@ -110,7 +110,7 @@ class SessionManager:
         }
 
         try:
-            with open(self._session_file, "w", encoding="utf-8") as f:
+            with open(self._session_file, "w", encoding="utf-8", errors="replace") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
             logger.debug(f"Saved sessions to {self._session_file}")
         except IOError as e:
@@ -489,14 +489,14 @@ class SessionManager:
         chains_file = self._session_file.parent / "workflow-chains.json"
 
         if chains_file.exists():
-            with open(chains_file, "r", encoding="utf-8") as f:
+            with open(chains_file, "r", encoding="utf-8", errors="replace") as f:
                 chains_data = json.load(f)
         else:
             chains_data = {}
 
         chains_data[chain_id] = chain_metadata
 
-        with open(chains_file, "w", encoding="utf-8") as f:
+        with open(chains_file, "w", encoding="utf-8", errors="replace") as f:
             json.dump(chains_data, f, indent=2, ensure_ascii=False)
 
         logger.info(f"Created workflow chain: {chain_id} with {len(agent_sequence)} agents")

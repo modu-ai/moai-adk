@@ -145,7 +145,7 @@ class TrustPrinciplesValidator:
 
             for file_path in python_files:
                 try:
-                    content = file_path.read_text(encoding="utf-8")
+                    content = file_path.read_text(encoding="utf-8", errors="replace")
 
                     for pattern_name, pattern in self.test_patterns.items():
                         total_test_patterns += 1
@@ -223,7 +223,7 @@ class TrustPrinciplesValidator:
 
             for file_path in python_files:
                 try:
-                    content = file_path.read_text(encoding="utf-8")
+                    content = file_path.read_text(encoding="utf-8", errors="replace")
                     content.split("\n")
 
                     # Analyze functions
@@ -349,7 +349,7 @@ class TrustPrinciplesValidator:
 
             for file_path in python_files:
                 try:
-                    content = file_path.read_text(encoding="utf-8")
+                    content = file_path.read_text(encoding="utf-8", errors="replace")
 
                     # Check unified patterns
                     for pattern_name, pattern in self.unified_patterns.items():
@@ -440,7 +440,7 @@ class TrustPrinciplesValidator:
 
             for file_path in python_files:
                 try:
-                    content = file_path.read_text(encoding="utf-8")
+                    content = file_path.read_text(encoding="utf-8", errors="replace")
 
                     # Check for security patterns
                     for pattern_name, pattern in self.security_patterns.items():

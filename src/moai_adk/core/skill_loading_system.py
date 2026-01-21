@@ -312,7 +312,7 @@ class SkillRegistry:
 
     def _parse_skill_metadata(self, skill_path: str) -> Dict[str, Any]:
         """Parse skill metadata from SKILL.md file"""
-        with open(skill_path, "r", encoding="utf-8") as f:
+        with open(skill_path, "r", encoding="utf-8", errors="replace") as f:
             content = f.read()
 
         # Parse YAML frontmatter
@@ -432,7 +432,7 @@ class SkillLoader:
             raise SkillNotFoundError(f"Skill file not found: {skill_path}")
 
         try:
-            with open(skill_path, "r", encoding="utf-8") as f:
+            with open(skill_path, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
 
             # Parse frontmatter and content
@@ -513,7 +513,7 @@ class SkillLoader:
             raise SkillNotFoundError(f"Skill file not found: {skill_path}")
 
         try:
-            with open(skill_path, "r", encoding="utf-8") as f:
+            with open(skill_path, "r", encoding="utf-8", errors="replace") as f:
                 full_content = f.read()
 
             # Parse at requested level
@@ -629,7 +629,7 @@ class SkillLoader:
             full_path = os.path.join(skill_dir, file_path)
             if os.path.exists(full_path):
                 try:
-                    with open(full_path, "r", encoding="utf-8") as f:
+                    with open(full_path, "r", encoding="utf-8", errors="replace") as f:
                         bundled_files[file_path] = f.read()
                 except Exception as e:
                     logger.warning(f"Failed to load bundled file {file_path}: {e}")

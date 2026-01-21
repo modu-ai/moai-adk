@@ -168,13 +168,13 @@ class MergeAnalyzer:
 
             if backup_file.exists():
                 try:
-                    backup_content = backup_file.read_text(encoding="utf-8")
+                    backup_content = backup_file.read_text(encoding="utf-8", errors="replace")
                 except Exception as e:
                     logger.warning(f"Failed to read backup file {backup_file}: {e}")
 
             if template_file.exists():
                 try:
-                    template_content = template_file.read_text(encoding="utf-8")
+                    template_content = template_file.read_text(encoding="utf-8", errors="replace")
                 except Exception as e:
                     logger.warning(f"Failed to read template file {template_file}: {e}")
 

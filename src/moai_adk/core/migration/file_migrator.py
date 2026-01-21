@@ -222,7 +222,7 @@ class FileMigrator:
 
         try:
             # Read the source JSON
-            with open(source_json, "r", encoding="utf-8") as f:
+            with open(source_json, "r", encoding="utf-8", errors="replace") as f:
                 config_data = json.load(f)
 
             # Ensure target directory exists
@@ -240,7 +240,7 @@ class FileMigrator:
                         logger.debug(f"Section file already exists, skipping: {yaml_file}")
                         continue
 
-                    with open(yaml_file, "w", encoding="utf-8") as f:
+                    with open(yaml_file, "w", encoding="utf-8", errors="replace") as f:
                         # Add header comment
                         f.write(f"# {section_name.replace('-', ' ').title()} Settings\n")
                         f.write("# Migrated from config.json\n\n")

@@ -138,7 +138,7 @@ def setup_logger(
     logger.addHandler(console_handler)
 
     log_file = log_path / "moai.log"
-    file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    file_handler = logging.FileHandler(log_file, encoding="utf-8", errors="replace")
     file_handler.setLevel(level)
     file_handler.setFormatter(formatter)
     file_handler.addFilter(SensitiveDataFilter())

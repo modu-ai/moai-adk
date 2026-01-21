@@ -87,7 +87,7 @@ def render_template(template_path, variables_file, output, language):
     """Render template with variables and language support."""
     try:
         # Load variables
-        with open(variables_file, "r", encoding="utf-8") as f:
+        with open(variables_file, "r", encoding="utf-8", errors="replace") as f:
             variables = json.load(f)
 
         # Add language info if specified
@@ -128,7 +128,7 @@ def translate_descriptions(base_description, target_languages, output):
         descriptions = claude_integration.generate_multilingual_descriptions({"base": base_description}, languages)
 
         if output:
-            with open(output, "w", encoding="utf-8") as f:
+            with open(output, "w", encoding="utf-8", errors="replace") as f:
                 json.dump(descriptions, f, indent=2, ensure_ascii=False)
             console.print(f"[green]Descriptions saved to: {output}[/green]")
         else:
@@ -151,7 +151,7 @@ def execute(prompt_template, variables, language, output_format, dry_run):
         # Load or create variables
         template_vars = {}
         if variables:
-            with open(variables, "r", encoding="utf-8") as f:
+            with open(variables, "r", encoding="utf-8", errors="replace") as f:
                 template_vars = json.load(f)
 
         if language:
@@ -202,7 +202,7 @@ def execute(prompt_template, variables, language, output_format, dry_run):
 def validate_config(config_file, validate_languages):
     """Validate language configuration in MoAI-ADK config file."""
     try:
-        with open(config_file, "r", encoding="utf-8") as f:
+        with open(config_file, "r", encoding="utf-8", errors="replace") as f:
             config = json.load(f)
 
         console.print(f"[bold]Validating config: {config_file}[/bold]")

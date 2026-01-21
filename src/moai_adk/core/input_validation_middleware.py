@@ -880,7 +880,7 @@ class EnhancedInputValidationMiddleware:
             "parameter_mappings": self.parameter_mappings,
         }
 
-        with open(output_path, "w", encoding="utf-8") as f:
+        with open(output_path, "w", encoding="utf-8", errors="replace") as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
 
 

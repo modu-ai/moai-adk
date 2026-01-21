@@ -81,7 +81,7 @@ def update_spec_status(spec_id: str, new_status: str, reason: str = "") -> Dict[
             log_dir.mkdir(parents=True, exist_ok=True)
             log_file = log_dir / "spec_status_changes.jsonl"
 
-            with open(log_file, "a", encoding="utf-8") as f:
+            with open(log_file, "a", encoding="utf-8", errors="replace") as f:
                 f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
 
             return {
@@ -150,7 +150,7 @@ def batch_update_completed_specs() -> Dict[str, Any]:
         log_dir.mkdir(parents=True, exist_ok=True)
         log_file = log_dir / "spec_status_changes.jsonl"
 
-        with open(log_file, "a", encoding="utf-8") as f:
+        with open(log_file, "a", encoding="utf-8", errors="replace") as f:
             f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
 
         return {

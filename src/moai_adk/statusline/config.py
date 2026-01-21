@@ -190,7 +190,7 @@ class StatuslineConfig:
         try:
             import yaml
 
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
                 data = yaml.safe_load(f)
             return data or {}
         except ImportError:
@@ -211,7 +211,7 @@ class StatuslineConfig:
         import json
 
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
                 return json.load(f)
         except Exception as e:
             logger.debug(f"JSON fallback failed: {e}")

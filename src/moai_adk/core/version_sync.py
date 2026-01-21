@@ -203,7 +203,7 @@ class VersionSynchronizer:
             return None
 
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
 
             if source == VersionSource.PYPROJECT_TOML:
@@ -284,7 +284,7 @@ class VersionSynchronizer:
         try:
             new_content = self._update_version_in_content(current_info.raw_content, source, target_version)
 
-            with open(file_path, "w", encoding="utf-8") as f:
+            with open(file_path, "w", encoding="utf-8", errors="replace") as f:
                 f.write(new_content)
 
             return True

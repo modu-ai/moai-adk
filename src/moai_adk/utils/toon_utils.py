@@ -125,7 +125,7 @@ def toon_save(data: Any, path: Path | str, strict: bool = False) -> None:
     try:
         toon_str = toon_encode(data, strict=strict)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(toon_str, encoding="utf-8")
+        path.write_text(toon_str, encoding="utf-8", errors="replace")
     except ValueError:
         raise
     except IOError as e:
@@ -152,7 +152,7 @@ def toon_load(path: Path | str, strict: bool = False) -> Any:
     """
     path = Path(path)
     try:
-        toon_str = path.read_text(encoding="utf-8")
+        toon_str = path.read_text(encoding="utf-8", errors="replace")
         return toon_decode(toon_str, strict=strict)
     except ValueError:
         raise
@@ -247,7 +247,7 @@ def migrate_json_to_toon(json_path: Path | str, toon_path: Path | str | None = N
     toon_path = Path(toon_path)
 
     try:
-        data = json.loads(json_path.read_text(encoding="utf-8"))
+        data = json.loads(json_path.read_text(encoding="utf-8", errors="replace"))
         toon_save(data, toon_path)
         return toon_path
     except json.JSONDecodeError as e:

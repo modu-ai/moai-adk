@@ -145,7 +145,7 @@ class ProjectValidator:
             pyproject = current / "pyproject.toml"
             if pyproject.exists():
                 try:
-                    content = pyproject.read_text(encoding="utf-8")
+                    content = pyproject.read_text(encoding="utf-8", errors="replace")
                     if 'name = "moai-adk"' in content or 'name = "moai-adk"' in content:
                         return True
                 except Exception:

@@ -333,7 +333,12 @@ class WorktreeManager:
                                                         elif not in_conflict:
                                                             cleaned_lines.append(line)
 
-                                                    with open(file_full_path, "w", encoding="utf-8") as f:
+                                                    with open(
+                                                        file_full_path,
+                                                        "w",
+                                                        encoding="utf-8",
+                                                        errors="replace",
+                                                    ) as f:
                                                         f.write("\n".join(cleaned_lines))
 
                                                     worktree_repo.git.add(file_path)
@@ -490,7 +495,7 @@ class WorktreeManager:
                                     elif not in_conflict:
                                         cleaned_lines.append(line)
 
-                                with open(file_full_path, "w", encoding="utf-8") as f:
+                                with open(file_full_path, "w", encoding="utf-8", errors="replace") as f:
                                     f.write("\n".join(cleaned_lines))
 
                                 worktree_repo.git.add(file_path)
@@ -632,7 +637,7 @@ class WorktreeManager:
             claude_dir.mkdir(parents=True, exist_ok=True)
 
             # Read template config
-            with open(llm_config_path, "r", encoding="utf-8") as f:
+            with open(llm_config_path, "r", encoding="utf-8", errors="replace") as f:
                 config_content = f.read()
 
             # Substitute environment variables (${VAR_NAME} pattern)
@@ -645,7 +650,7 @@ class WorktreeManager:
 
             # Write to worktree
             target_path = claude_dir / "settings.local.json"
-            with open(target_path, "w", encoding="utf-8") as f:
+            with open(target_path, "w", encoding="utf-8", errors="replace") as f:
                 f.write(config_content)
 
         except Exception as e:

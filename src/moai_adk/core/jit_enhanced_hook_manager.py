@@ -1443,7 +1443,7 @@ class JITEnhancedHookManager:
         }
 
         try:
-            with open(self._performance_log_path, "a", encoding="utf-8") as f:
+            with open(self._performance_log_path, "a", encoding="utf-8", errors="replace") as f:
                 f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
         except Exception:
             pass  # Silently fail on logging
@@ -1678,7 +1678,7 @@ class JITEnhancedHookManager:
             }
 
             # Save metrics
-            with open(metrics_file, "w", encoding="utf-8") as f:
+            with open(metrics_file, "w", encoding="utf-8", errors="replace") as f:
                 json.dump(metrics_data, f, indent=2, ensure_ascii=False)
 
             # Save state for recovery
@@ -1699,7 +1699,7 @@ class JITEnhancedHookManager:
                 },
             }
 
-            with open(state_file, "w", encoding="utf-8") as f:
+            with open(state_file, "w", encoding="utf-8", errors="replace") as f:
                 json.dump(state_data, f, indent=2, ensure_ascii=False)
 
         except Exception as e:

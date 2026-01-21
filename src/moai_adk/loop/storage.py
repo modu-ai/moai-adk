@@ -52,7 +52,7 @@ class LoopStorage:
         """
         state_file = self.storage_dir / f"{state.loop_id}.json"
         data = self._serialize_state(state)
-        with open(state_file, "w", encoding="utf-8") as f:
+        with open(state_file, "w", encoding="utf-8", errors="replace") as f:
             json.dump(data, f, indent=2, default=str, ensure_ascii=False)
 
     def load_state(self, loop_id: str) -> LoopState | None:
@@ -71,7 +71,7 @@ class LoopStorage:
         if not state_file.exists():
             return None
 
-        with open(state_file, "r", encoding="utf-8") as f:
+        with open(state_file, "r", encoding="utf-8", errors="replace") as f:
             data = json.load(f)
 
         return self._deserialize_state(data)

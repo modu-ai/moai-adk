@@ -28,7 +28,7 @@ class ConfigurationManager:
     def load(self) -> Dict[str, Any]:
         """Load configuration from file (supports YAML and JSON)"""
         if self.config_path.exists():
-            with open(self.config_path, "r", encoding="utf-8") as f:
+            with open(self.config_path, "r", encoding="utf-8", errors="replace") as f:
                 if self.config_path.suffix in (".yaml", ".yml"):
                     self._config_cache = yaml.safe_load(f) or {}
                 else:
@@ -66,7 +66,7 @@ class ConfigurationManager:
         # Write atomically (supports YAML and JSON based on file extension)
         temp_path = self.config_path.with_suffix(".tmp")
         try:
-            with open(temp_path, "w", encoding="utf-8") as f:
+            with open(temp_path, "w", encoding="utf-8", errors="replace") as f:
                 if self.config_path.suffix in (".yaml", ".yml"):
                     yaml.safe_dump(config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
                 else:
@@ -198,7 +198,7 @@ class ConfigurationManager:
         if self.config_path.exists():
             backup_path = self.config_path.with_suffix(".backup")
             with open(self.config_path, "r") as src:
-                with open(backup_path, "w", encoding="utf-8") as dst:
+                with open(backup_path, "w", encoding="utf-8", errors="replace") as dst:
                     dst.write(src.read())
 
 

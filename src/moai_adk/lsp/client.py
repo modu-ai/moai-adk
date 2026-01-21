@@ -503,7 +503,7 @@ class MoAILSPClient:
 
         # Read file contents
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                 text = f.read()
         except Exception as e:
             logger.warning(f"Failed to read file {file_path}: {e}")

@@ -24,6 +24,33 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 
+
+
+
+def _rglob_with_depth(path: Path, pattern: str, max_depth: int = 10) -> List[Path]:
+    """Wrapper for rglob with depth limit to prevent excessive traversal.
+
+    Args:
+        path: Root path to search
+        pattern: Glob pattern (e.g., "*.py")
+        max_depth: Maximum directory depth to search
+
+    Returns:
+        List of matching Path objects within depth limit
+    """
+    results = []
+    for item in path.rglob(pattern):
+        try:
+            relative_depth = len(item.relative_to(path).parts)
+            if relative_depth <= max_depth:
+                results.append(item)
+        except ValueError:
+            # Path is not relative to root, skip
+            continue
+    return results
+
+
+
 class ChecklistType(Enum):
     """Checklist type enumeration"""
 
@@ -827,7 +854,7 @@ class TRUSTValidationChecklist:
             target_ratio = float(rule.split(">=")[-1].strip())
 
             # Simple coverage check - count test files vs source files
-            python_files = list(project_dir.rglob("*.py"))
+            python_files = _rglob_with_depth(project_dir, "*.py", max_depth=15)
             test_files = [f for f in python_files if f.name.startswith("test_")]
             source_files = [
                 f
@@ -854,8 +881,8 @@ class TRUSTValidationChecklist:
                 return False, {"error": "No tests directory found"}
 
             # Check for proper test organization
-            init_files = list(test_dir.rglob("__init__.py"))
-            test_modules = [f for f in test_dir.rglob("test_*.py")]
+            init_files = _rglob_with_depth(test_dir, "__init__.py", max_depth=10)
+            test_modules = [f for f in _rglob_with_depth(test_dir, "test_*.py", max_depth=10)]
 
             return len(test_modules) > 0 and len(init_files) > 0, {
                 "result": "Test structure valid",
@@ -869,11 +896,11 @@ class TRUSTValidationChecklist:
     def _check_integration_tests(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check for integration tests"""
         try:
-            python_files = list(project_dir.rglob("*.py"))
+            python_files = _rglob_with_depth(project_dir, "*.py", max_depth=15)
 
             integration_tests = []
             for file_path in python_files:
-                content = file_path.read_text(encoding="utf-8")
+                content = file_path.read_text(encoding="utf-8", errors="replace")
                 if re.search(
                     r"integration|@integration_test|test_integration",
                     content,
@@ -893,7 +920,7 @@ class TRUSTValidationChecklist:
         try:
             target_ratio = float(rule.split(">=")[-1].strip())
 
-            python_files = list(project_dir.rglob("test_*.py"))
+            python_files = _rglob_with_depth(project_dir, "test_*.py", max_depth=15)
             if not python_files:
                 return False, {"error": "No test files found"}
 
@@ -902,7 +929,7 @@ class TRUSTValidationChecklist:
 
             for file_path in python_files:
                 try:
-                    content = file_path.read_text(encoding="utf-8")
+                    content = file_path.read_text(encoding="utf-8", errors="replace")
                     tree = ast.parse(content)
 
                     for node in ast.walk(tree):
@@ -927,14 +954,14 @@ class TRUSTValidationChecklist:
     def _check_assertion_quality(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check assertion quality"""
         try:
-            python_files = list(project_dir.rglob("test_*.py"))
+            python_files = _rglob_with_depth(project_dir, "test_*.py", max_depth=15)
 
             meaningful_assertions = 0
             total_assertions = 0
 
             for file_path in python_files:
                 try:
-                    content = file_path.read_text(encoding="utf-8")
+                    content = file_path.read_text(encoding="utf-8", errors="replace")
 
                     # Look for meaningful assertions
                     meaningful_patterns = [
@@ -973,14 +1000,14 @@ class TRUSTValidationChecklist:
     def _check_test_data_isolation(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check test data isolation"""
         try:
-            python_files = list(project_dir.rglob("test_*.py"))
+            python_files = _rglob_with_depth(project_dir, "test_*.py", max_depth=15)
 
             isolation_patterns = 0
             fixtures_count = 0
 
             for file_path in python_files:
                 try:
-                    content = file_path.read_text(encoding="utf-8")
+                    content = file_path.read_text(encoding="utf-8", errors="replace")
 
                     # Look for isolation patterns
                     isolation_patterns += len(re.findall(r"@pytest\.fixture|setUp|tearDown", content))
@@ -1000,14 +1027,14 @@ class TRUSTValidationChecklist:
     def _check_mock_usage(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check mock usage appropriateness"""
         try:
-            python_files = list(project_dir.rglob("test_*.py"))
+            python_files = _rglob_with_depth(project_dir, "test_*.py", max_depth=15)
 
             mock_usage = 0
             test_functions = 0
 
             for file_path in python_files:
                 try:
-                    content = file_path.read_text(encoding="utf-8")
+                    content = file_path.read_text(encoding="utf-8", errors="replace")
 
                     mock_usage += len(re.findall(r"mock\.|Mock\(|@patch\(", content))
                     test_functions += len(re.findall(r"def\s+test_", content))
@@ -1029,13 +1056,13 @@ class TRUSTValidationChecklist:
     def _check_performance_tests(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check for performance tests"""
         try:
-            python_files = list(project_dir.rglob("*.py"))
+            python_files = _rglob_with_depth(project_dir, "*.py", max_depth=15)
 
             performance_tests = 0
 
             for file_path in python_files:
                 try:
-                    content = file_path.read_text(encoding="utf-8")
+                    content = file_path.read_text(encoding="utf-8", errors="replace")
 
                     performance_patterns = [
                         r"performance|benchmark|@mark\.slow|@pytest\.mark\.performance",
@@ -1098,8 +1125,8 @@ class TRUSTValidationChecklist:
             for pattern in ci_patterns:
                 if pattern.endswith("/"):
                     if (project_dir / pattern).exists():
-                        ci_files.extend(list((project_dir / pattern).rglob("*.yml")))
-                        ci_files.extend(list((project_dir / pattern).rglob("*.yaml")))
+                        ci_files.extend(_rglob_with_depth(project_dir / pattern, "*.yml", max_depth=5))
+                        ci_files.extend(_rglob_with_depth(project_dir / pattern, "*.yaml", max_depth=5))
                 else:
                     if (project_dir / pattern).exists():
                         ci_files.append(Path(pattern))
@@ -1116,13 +1143,13 @@ class TRUSTValidationChecklist:
         try:
             max_length = int(rule.split("<=")[-1].strip())
 
-            python_files = list(project_dir.rglob("*.py"))
+            python_files = _rglob_with_depth(project_dir, "*.py", max_depth=15)
             long_functions = 0
             total_functions = 0
 
             for file_path in python_files:
                 try:
-                    with open(file_path, "r", encoding="utf-8") as f:
+                    with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                         lines = f.readlines()
 
                     in_function = False
@@ -1177,13 +1204,13 @@ class TRUSTValidationChecklist:
         try:
             max_length = int(rule.split("<=")[-1].strip())
 
-            python_files = list(project_dir.rglob("*.py"))
+            python_files = _rglob_with_depth(project_dir, "*.py", max_depth=15)
             long_classes = 0
             total_classes = 0
 
             for file_path in python_files:
                 try:
-                    with open(file_path, "r", encoding="utf-8") as f:
+                    with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                         lines = f.readlines()
 
                     in_class = False
@@ -1229,14 +1256,14 @@ class TRUSTValidationChecklist:
     def _check_naming_conventions(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check naming conventions consistency"""
         try:
-            python_files = list(project_dir.rglob("*.py"))
+            python_files = _rglob_with_depth(project_dir, "*.py", max_depth=15)
 
             violations = 0
             total_checks = 0
 
             for file_path in python_files:
                 try:
-                    content = file_path.read_text(encoding="utf-8")
+                    content = file_path.read_text(encoding="utf-8", errors="replace")
 
                     # Check for snake_case functions and variables
                     snake_case_violations = len(re.findall(r"def\s+[A-Z]", content))
@@ -1265,13 +1292,13 @@ class TRUSTValidationChecklist:
         try:
             target_ratio = float(rule.split(">=")[-1].strip())
 
-            python_files = list(project_dir.rglob("*.py"))
+            python_files = _rglob_with_depth(project_dir, "*.py", max_depth=15)
             total_items = 0
             docstringed_items = 0
 
             for file_path in python_files:
                 try:
-                    with open(file_path, "r", encoding="utf-8") as f:
+                    with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                         content = f.read()
 
                     tree = ast.parse(content)
@@ -1299,13 +1326,13 @@ class TRUSTValidationChecklist:
         try:
             target_ratio = float(rule.split(">=")[-1].strip())
 
-            python_files = list(project_dir.rglob("*.py"))
+            python_files = _rglob_with_depth(project_dir, "*.py", max_depth=15)
             total_functions = 0
             hinted_functions = 0
 
             for file_path in python_files:
                 try:
-                    with open(file_path, "r", encoding="utf-8") as f:
+                    with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                         content = f.read()
 
                     tree = ast.parse(content)
@@ -1446,7 +1473,9 @@ class TRUSTValidationChecklist:
 
     def _check_documentation(self, project_dir: Path) -> Tuple[bool, Dict[str, Any]]:
         """Check documentation"""
-        doc_files = list(project_dir.rglob("*.md")) + list(project_dir.rglob("*.rst"))
+        doc_files = _rglob_with_depth(project_dir, "*.md", max_depth=10) + _rglob_with_depth(
+            project_dir, "*.rst", max_depth=10
+        )
         return len(doc_files) > 0, {
             "result": len(doc_files),
             "documentation_files": len(doc_files),

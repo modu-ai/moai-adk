@@ -1117,7 +1117,7 @@ class ErrorRecoverySystem:
         # Log to file
         error_file = self.error_log_dir / f"error_{error_report.id}.json"
         try:
-            with open(error_file, "w", encoding="utf-8") as f:
+            with open(error_file, "w", encoding="utf-8", errors="replace") as f:
                 json.dump(asdict(error_report), f, indent=2, default=str, ensure_ascii=False)
         except Exception as e:
             logger.error(f"Failed to log error to file: {str(e)}")
@@ -1327,7 +1327,7 @@ class ErrorRecoverySystem:
     def _validate_skill_file(self, skill_file: Path) -> bool:
         """Validate skill file format"""
         try:
-            with open(skill_file, "r", encoding="utf-8") as f:
+            with open(skill_file, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
 
             # Basic validation
@@ -1338,7 +1338,7 @@ class ErrorRecoverySystem:
     def _validate_agent_file(self, agent_file: Path) -> bool:
         """Validate agent file format"""
         try:
-            with open(agent_file, "r", encoding="utf-8") as f:
+            with open(agent_file, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
 
             return "role:" in content and len(content) > 200
@@ -1348,7 +1348,7 @@ class ErrorRecoverySystem:
     def _validate_command_file(self, command_file: Path) -> bool:
         """Validate command file format"""
         try:
-            with open(command_file, "r", encoding="utf-8") as f:
+            with open(command_file, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
 
             return "name:" in content and "allowed-tools:" in content
@@ -1359,13 +1359,13 @@ class ErrorRecoverySystem:
         """Attempt to repair skill file"""
         try:
             # Basic repair - ensure file has minimum required content
-            with open(skill_file, "r", encoding="utf-8") as f:
+            with open(skill_file, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
 
             if not content.startswith("---"):
                 content = f"---\nname: {skill_file.stem}\ndescription: Repaired skill file\n---\n\n{content}"
 
-            with open(skill_file, "w", encoding="utf-8") as f:
+            with open(skill_file, "w", encoding="utf-8", errors="replace") as f:
                 f.write(content)
 
             return True
@@ -1402,7 +1402,7 @@ class ErrorRecoverySystem:
         """Save error history to file"""
         history_file = self.error_log_dir / "error_history.json"
         try:
-            with open(history_file, "w", encoding="utf-8") as f:
+            with open(history_file, "w", encoding="utf-8", errors="replace") as f:
                 json.dump([asdict(e) for e in self.error_history], f, indent=2, default=str, ensure_ascii=False)
         except Exception as e:
             logger.error(f"Failed to save error history: {str(e)}")

@@ -365,7 +365,7 @@ class SkillFilterEngine:
             stat = skill_file.stat()
 
             # Read skill content to extract categories
-            with open(skill_file, "r", encoding="utf-8") as f:
+            with open(skill_file, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
 
             # Extract skill name from directory
@@ -871,7 +871,7 @@ class JITContextLoader:
     async def _load_skill_content(self, skill: SkillInfo) -> Optional[str]:
         """Load content of a skill file"""
         try:
-            with open(skill.path, "r", encoding="utf-8") as f:
+            with open(skill.path, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
             return content
         except Exception as e:
@@ -889,7 +889,7 @@ class JITContextLoader:
             )
 
             if os.path.exists(formatted_path):
-                with open(formatted_path, "r", encoding="utf-8") as f:
+                with open(formatted_path, "r", encoding="utf-8", errors="replace") as f:
                     content = f.read()
 
                 return {

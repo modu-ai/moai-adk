@@ -17,11 +17,28 @@ from typing import Any
 MAX_STATE_FILE_SIZE = 1024 * 1024  # 1MB
 
 
+def _sanitize_surrogates(text: str) -> str:
+    """Remove or replace surrogate characters that cannot be encoded in UTF-8.
+
+    Surrogate characters (U+D800-U+DFFF) are used in UTF-16 but cannot be
+    encoded in UTF-8. This function filters them out to prevent encoding errors.
+
+    Args:
+        text: Input text that may contain surrogate characters
+
+    Returns:
+        Text with surrogates replaced with the Unicode replacement character (U+FFFD)
+    """
+    # Replace surrogates with replacement character
+    return text.encode("utf-8", errors="replace").decode("utf-8")
+
+
 def atomic_write_text(
     file_path: Path | str,
     content: str,
     encoding: str = "utf-8",
     make_dirs: bool = True,
+    sanitize_surrogates: bool = True,
 ) -> bool:
     """Atomically write text content to a file.
 
@@ -33,6 +50,7 @@ def atomic_write_text(
         content: Content to write
         encoding: File encoding (default: utf-8)
         make_dirs: Create parent directories if needed (default: True)
+        sanitize_surrogates: Remove surrogate characters before writing (default: True)
 
     Returns:
         True if write succeeded, False otherwise
@@ -42,13 +60,16 @@ def atomic_write_text(
     if make_dirs:
         path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Sanitize content to remove surrogates if requested
+    write_content = _sanitize_surrogates(content) if sanitize_surrogates else content
+
     try:
         # Write to temporary file first
         fd, temp_path = tempfile.mkstemp(dir=path.parent, prefix=".tmp_", suffix=path.suffix or ".tmp")
         try:
-            # Write content to temp file
-            with os.fdopen(fd, "w", encoding=encoding) as f:
-                f.write(content)
+            # Write content to temp file with error handling for surrogates
+            with os.fdopen(fd, "w", encoding=encoding, errors="replace") as f:
+                f.write(write_content)
 
             # Atomic rename (overwrites target if exists)
             os.replace(temp_path, path)
@@ -71,6 +92,7 @@ def atomic_write_json(
     encoding: str = "utf-8",
     ensure_ascii: bool = True,
     make_dirs: bool = True,
+    sanitize_surrogates: bool = True,
 ) -> bool:
     """Atomically write JSON data to a file.
 
@@ -84,6 +106,7 @@ def atomic_write_json(
         encoding: File encoding (default: utf-8)
         ensure_ascii: Escape non-ASCII characters (default: True)
         make_dirs: Create parent directories if needed (default: True)
+        sanitize_surrogates: Remove surrogate characters before writing (default: True)
 
     Returns:
         True if write succeeded, False otherwise
@@ -94,12 +117,19 @@ def atomic_write_json(
         path.parent.mkdir(parents=True, exist_ok=True)
 
     try:
+        # Serialize JSON to string first (allows us to sanitize)
+        json_str = json.dumps(data, indent=indent, ensure_ascii=ensure_ascii)
+
+        # Sanitize to remove surrogates if requested
+        if sanitize_surrogates:
+            json_str = _sanitize_surrogates(json_str)
+
         # Write to temporary file first
         fd, temp_path = tempfile.mkstemp(dir=path.parent, prefix=".tmp_", suffix=".json")
         try:
-            # Write JSON to temp file
-            with os.fdopen(fd, "w", encoding=encoding) as f:
-                json.dump(data, f, indent=indent, ensure_ascii=ensure_ascii)
+            # Write JSON to temp file with error handling for surrogates
+            with os.fdopen(fd, "w", encoding=encoding, errors="replace") as f:
+                f.write(json_str)
 
             # Atomic rename (overwrites target if exists)
             os.replace(temp_path, path)

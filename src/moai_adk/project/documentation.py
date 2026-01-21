@@ -309,7 +309,7 @@ class DocumentationGenerator:
         for doc_type, filename in file_mapping.items():
             if doc_type in documents:
                 filepath = base_path / filename
-                filepath.write_text(documents[doc_type], encoding="utf-8")
+                filepath.write_text(documents[doc_type], encoding="utf-8", errors="replace")
 
     def load_document(self, doc_name: str, base_path: Path = Path(".moai/project")) -> Optional[str]:
         """Load a generated document from disk.
@@ -332,7 +332,7 @@ class DocumentationGenerator:
         """
         filepath = base_path / doc_name
         if filepath.exists():
-            return filepath.read_text(encoding="utf-8")
+            return filepath.read_text(encoding="utf-8", errors="replace")
         return None
 
     def create_minimal_templates(self, base_path: Path = Path(".moai/project")) -> None:
@@ -389,7 +389,7 @@ class DocumentationGenerator:
 
         for filename, content in minimal_templates.items():
             filepath = base_path / filename
-            filepath.write_text(content, encoding="utf-8")
+            filepath.write_text(content, encoding="utf-8", errors="replace")
 
 
 class BrainstormQuestionGenerator:
@@ -523,7 +523,7 @@ class AgentContextInjector:
 
         doc_path = base_path / "product.md"
         if doc_path.exists():
-            content = doc_path.read_text(encoding="utf-8")
+            content = doc_path.read_text(encoding="utf-8", errors="replace")
             if "system_context" not in config:
                 config["system_context"] = ""
             config["system_context"] += f"\n\n## Project Documentation\n{content}"
@@ -540,7 +540,7 @@ class AgentContextInjector:
 
         doc_path = base_path / "structure.md"
         if doc_path.exists():
-            content = doc_path.read_text(encoding="utf-8")
+            content = doc_path.read_text(encoding="utf-8", errors="replace")
             if "architecture_context" not in config:
                 config["architecture_context"] = ""
             config["architecture_context"] += f"\n\n## Architecture Reference\n{content}"
@@ -558,7 +558,7 @@ class AgentContextInjector:
 
         doc_path = base_path / "tech.md"
         if doc_path.exists():
-            content = doc_path.read_text(encoding="utf-8")
+            content = doc_path.read_text(encoding="utf-8", errors="replace")
             if "tech_context" not in config:
                 config["tech_context"] = ""
             config["tech_context"] += f"\n\n## Technology Stack Reference\n{content}"

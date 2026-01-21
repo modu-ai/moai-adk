@@ -263,7 +263,7 @@ def init(
 
             if config_path.exists():
                 try:
-                    with open(config_path, "r", encoding="utf-8") as f:
+                    with open(config_path, "r", encoding="utf-8", errors="replace") as f:
                         if is_yaml:
                             config_data = yaml.safe_load(f) or {}
                         else:
@@ -291,7 +291,7 @@ def init(
                         config_data["project"] = {}
                     config_data["project"]["optimized"] = False
 
-                    with open(config_path, "w", encoding="utf-8") as f:
+                    with open(config_path, "w", encoding="utf-8", errors="replace") as f:
                         if is_yaml:
                             yaml.safe_dump(
                                 config_data,
@@ -554,7 +554,7 @@ def _save_additional_config(
     pricing_path = sections_dir / "pricing.yaml"
     if pricing_path.exists():
         try:
-            pricing_data = yaml.safe_load(pricing_path.read_text(encoding="utf-8")) or {}
+            pricing_data = yaml.safe_load(pricing_path.read_text(encoding="utf-8", errors="replace")) or {}
         except Exception:
             pricing_data = {}
     else:
@@ -569,7 +569,7 @@ def _save_additional_config(
     if glm_pricing_plan:
         pricing_data["service"]["glm_pricing_plan"] = glm_pricing_plan
 
-    with open(pricing_path, "w", encoding="utf-8") as f:
+    with open(pricing_path, "w", encoding="utf-8", errors="replace") as f:
         yaml.safe_dump(
             pricing_data,
             f,
@@ -582,7 +582,7 @@ def _save_additional_config(
     language_path = sections_dir / "language.yaml"
     if language_path.exists():
         try:
-            lang_data = yaml.safe_load(language_path.read_text(encoding="utf-8")) or {}
+            lang_data = yaml.safe_load(language_path.read_text(encoding="utf-8", errors="replace")) or {}
         except Exception:
             lang_data = {}
     else:
@@ -605,14 +605,14 @@ def _save_additional_config(
     lang_data["language"]["code_comments"] = code_comment_lang
     lang_data["language"]["documentation"] = doc_lang
 
-    with open(language_path, "w", encoding="utf-8") as f:
+    with open(language_path, "w", encoding="utf-8", errors="replace") as f:
         yaml.safe_dump(lang_data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
     # 4. Update git-strategy.yaml with git mode
     git_path = sections_dir / "git-strategy.yaml"
     if git_path.exists():
         try:
-            git_data = yaml.safe_load(git_path.read_text(encoding="utf-8")) or {}
+            git_data = yaml.safe_load(git_path.read_text(encoding="utf-8", errors="replace")) or {}
         except Exception:
             git_data = {}
     else:
@@ -623,14 +623,14 @@ def _save_additional_config(
 
     git_data["git_strategy"]["mode"] = git_mode
 
-    with open(git_path, "w", encoding="utf-8") as f:
+    with open(git_path, "w", encoding="utf-8", errors="replace") as f:
         yaml.safe_dump(git_data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
     # 5. Update project.yaml with project name and GitHub username
     project_yaml_path = sections_dir / "project.yaml"
     if project_yaml_path.exists():
         try:
-            project_data = yaml.safe_load(project_yaml_path.read_text(encoding="utf-8")) or {}
+            project_data = yaml.safe_load(project_yaml_path.read_text(encoding="utf-8", errors="replace")) or {}
         except Exception:
             project_data = {}
     else:
@@ -647,7 +647,7 @@ def _save_additional_config(
             project_data["github"] = {}
         project_data["github"]["profile_name"] = github_username
 
-    with open(project_yaml_path, "w", encoding="utf-8") as f:
+    with open(project_yaml_path, "w", encoding="utf-8", errors="replace") as f:
         yaml.safe_dump(
             project_data,
             f,
@@ -660,7 +660,7 @@ def _save_additional_config(
     user_yaml_path = sections_dir / "user.yaml"
     if user_yaml_path.exists():
         try:
-            user_data = yaml.safe_load(user_yaml_path.read_text(encoding="utf-8")) or {}
+            user_data = yaml.safe_load(user_yaml_path.read_text(encoding="utf-8", errors="replace")) or {}
         except Exception:
             user_data = {}
     else:
@@ -671,7 +671,7 @@ def _save_additional_config(
 
     user_data["user"]["name"] = user_name
 
-    with open(user_yaml_path, "w", encoding="utf-8") as f:
+    with open(user_yaml_path, "w", encoding="utf-8", errors="replace") as f:
         yaml.safe_dump(
             user_data,
             f,
@@ -684,7 +684,7 @@ def _save_additional_config(
     quality_yaml_path = sections_dir / "quality.yaml"
     if quality_yaml_path.exists():
         try:
-            quality_data = yaml.safe_load(quality_yaml_path.read_text(encoding="utf-8")) or {}
+            quality_data = yaml.safe_load(quality_yaml_path.read_text(encoding="utf-8", errors="replace")) or {}
         except Exception:
             quality_data = {}
     else:
@@ -695,7 +695,7 @@ def _save_additional_config(
 
     quality_data["constitution"]["development_mode"] = development_mode
 
-    with open(quality_yaml_path, "w", encoding="utf-8") as f:
+    with open(quality_yaml_path, "w", encoding="utf-8", errors="replace") as f:
         yaml.safe_dump(
             quality_data,
             f,

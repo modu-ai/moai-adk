@@ -163,7 +163,7 @@ class OutputStyleDetector:
             # Check for TODO/task tracking patterns
             todo_file = cwd / ".moai" / "current_session_todo.txt"
             if todo_file.exists():
-                content = todo_file.read_text(encoding="utf-8")
+                content = todo_file.read_text(encoding="utf-8", errors="replace")
                 if "plan" in content.lower() or "phase" in content.lower():
                     return "Explanatory"
 
@@ -181,7 +181,7 @@ class OutputStyleDetector:
         try:
             settings_path = Path.cwd() / ".claude" / "settings.json"
             if settings_path.exists():
-                with open(settings_path, "r", encoding="utf-8") as f:
+                with open(settings_path, "r", encoding="utf-8", errors="replace") as f:
                     settings = json.load(f)
                     output_style = settings.get("outputStyle", "")
 
