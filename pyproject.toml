@@ -93,6 +93,8 @@ ignore = ["N999"]  # Allow hyphenated module names for skills (moai-workflow-pro
 
 [tool.mypy]
 python_version = "3.14"
+mypy_path = "src"
+explicit_package_bases = true
 warn_return_any = false
 warn_unused_configs = true
 warn_redundant_casts = true

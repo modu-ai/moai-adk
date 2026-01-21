@@ -84,32 +84,18 @@ Type C 反馈命令：用于改进和错误报告的用户反馈命令。
 3. 执行：并行启动代理（单条消息，多个 Task 调用）
 4. 整合：将结果合并为统一响应
 
-**示例：**
-
-```
-User: "Implement authentication system"
-
-Alfred 分解：
-├─ expert-backend  → JWT 令牌、登录/登出 API (并行)
-├─ expert-backend  → User 模型、数据库架构   (并行)
-├─ expert-frontend → 登录表单、认证上下文   (并行)
-└─ expert-testing  → 认证测试用例           (实现后)
-
-执行：3 个代理并行 → 1 个代理顺序
-```
-
 **并行执行规则：**
 
 - 独立领域：始终并行
 - 同一领域，无依赖：并行
 - 顺序依赖：用"X 完成后"链接
-- 最大并行代理：5 个（防止上下文分散）
+- 最大并行代理：为提高吞吐量最多同时处理10个代理
 
 上下文优化：
 
-- 向代理传递最小上下文（spec_id、最多 3 个要点的关键需求、200 字符以内的架构摘要）
-- 排除背景信息、推理和非必要细节
-- 每个代理获得独立的 200K token 会话
+- 向代理传递全面的上下文（spec_id、扩展的要点形式的关键需求、详细的架构摘要）
+- 包含背景信息、推理过程和相关细节以提供更好的理解
+- 每个代理获得具有充分上下文的独立 200K token 会话
 
 ### 阶段 4：报告
 
@@ -156,15 +142,16 @@ Alfred 分解：
 
 定义：用于改进和错误报告的用户反馈命令。
 
-命令：/moai:9-feedback
+命令：/moai:9-feedback [issue|suggestion|question]
 
-用途：当用户遇到错误或有改进建议时，此命令会自动在 MoAI-ADK 仓库中创建 GitHub issue。
+用途：当用户遇到错误或有改进建议时，此命令使用 moai-workflow-templates 技能通过结构化模板在 MoAI-ADK 仓库中创建 GitHub issue。反馈使用用户的 conversation_language 自动格式化，并根据反馈类型自动应用标签。
 
 允许的工具：完全访问（所有工具）
 
 - 工具使用无限制
-- 自动格式化并提交反馈到 GitHub
-- 质量门禁是可选的
+- 反馈模板确保一致的 issue 格式
+- 根据反馈类型自动应用标签
+- 包含重现步骤、环境详细信息、预期结果的完整信息创建 GitHub issue
 
 ---
 
@@ -208,22 +195,72 @@ Alfred 分解：
 
 ---
 
+## 4.1. 探索工具的性能优化
+
+### 防瓶颈原则
+
+使用 Explore 代理或直接探索工具（Grep、Glob、Read）时，应用以下优化以防止 GLM 模型的性能瓶颈：
+
+**原则 1：AST-Grep 优先**
+
+在基于文本的搜索（Grep）之前使用结构搜索（ast-grep）。AST-Grep 理解代码语法从而防止误报。对于复杂的模式匹配，加载 moai-tool-ast-grep 技能。例如，搜索 Python 类继承模式时，ast-grep 比 grep 更准确、更快速。
+
+**原则 2：搜索范围限制**
+
+始终使用 path 参数来限制搜索范围。避免不必要地搜索整个代码库。例如，仅在核心模块中搜索时，指定 src/moai_adk/core/ 路径。
+
+**原则 3：文件模式具体性**
+
+使用具体的 Glob 模式而不是通配符。例如，指定 src/moai_adk/core/*.py 这样的特定目录的 Python 文件，可以将扫描文件数减少 50-80%。
+
+**原则 4：并行处理**
+
+并行执行独立的搜索。使用单条消息多个工具调用。例如，同时在 Python 文件中搜索 import，在 TypeScript 文件中搜索类型。为防止上下文分散，最多限制 5 个并行搜索。
+
+### 彻底度基于的工具选择
+
+调用 Explore 代理或直接使用探索工具时，根据彻底度选择工具：
+
+**quick（目标：10秒）**使用 Glob 进行文件检测，仅使用具有具体 path 参数的 Grep，跳过不必要的 Read 操作。
+
+**medium（目标：30秒）**使用具有 path 限制的 Glob 和 Grep，有选择性地 Read 关键文件，必要时加载 moai-tool-ast-grep。
+
+**very thorough（目标：2分钟）**使用包括 ast-grep 在内的所有工具，通过结构分析探索整个代码库，在多个域中执行并行搜索。
+
+### Explore 代理委派时机
+
+在以下情况使用 Explore 代理：只读代码库探索、测试多个搜索模式、代码结构分析、性能瓶颈分析。
+
+在以下情况允许直接工具使用：读取单个文件、在已知位置搜索特定模式、快速验证任务。
+
+---
+
 ## 5. 基于 SPEC 的工作流
 
-### MoAI 命令流程
+### 开发方法论
 
-- /moai:1-plan "description" 导向 Use the manager-spec subagent
-- /moai:2-run SPEC-001 导向 Use the manager-ddd subagent (ANALYZE-PRESERVE-IMPROVE)
-- /moai:3-sync SPEC-001 导向 Use the manager-docs subagent
+MoAI 使用 DDD（Domain-Driven Development）作为开发方法论。对所有开发应用 ANALYZE-PRESERVE-IMPROVE 循环，通过特性化测试实现行为保存，通过现有测试验证实现渐进式改进。
+
+配置文件：.moai/config/sections/quality.yaml (constitution.development_mode: ddd)
+
+### MoAI 命令流
+
+- /moai:1-plan "description" 导向使用 manager-spec 子代理
+- /moai:2-run SPEC-001 导向使用 manager-ddd 子代理 (ANALYZE-PRESERVE-IMPROVE)
+- /moai:3-sync SPEC-001 导向使用 manager-docs 子代理
+
+### DDD 开发方法
+
+manager-ddd 用于：以行为保存为重点创建新功能、重构和改进现有代码结构、通过测试验证减少技术债务、通过特性化测试实现渐进式功能开发。
 
 ### SPEC 执行的代理链
 
-- 阶段 1：Use the manager-spec subagent to understand requirements
-- 阶段 2：Use the manager-strategy subagent to create system design
-- 阶段 3：Use the expert-backend subagent to implement core features
-- 阶段 4：Use the expert-frontend subagent to create user interface
-- 阶段 5：Use the manager-quality subagent to ensure quality standards
-- 阶段 6：Use the manager-docs subagent to create documentation
+1阶段：使用 manager-spec 子代理理解需求
+2阶段：使用 manager-strategy 子代理创建系统设计
+3阶段：使用 expert-backend 子代理实现核心功能
+4阶段：使用 expert-frontend 子代理创建用户界面
+5阶段：使用 manager-quality 子代理确保质量标准
+6阶段：使用 manager-docs 子代理创建文档
 
 ---
 
@@ -265,11 +302,11 @@ Alfred 分解：
 
 ### 正确的工作流模式
 
-- 步骤 1：Alfred 使用 AskUserQuestion 收集用户偏好
-- 步骤 2：Alfred 使用提示中的用户选择调用 Task()
-- 步骤 3：子代理根据提供的参数执行，无用户交互
-- 步骤 4：子代理返回包含结果的结构化响应
-- 步骤 5：Alfred 根据代理响应使用 AskUserQuestion 进行下一个决策
+1步骤：Alfred 使用 AskUserQuestion 收集用户偏好
+2步骤：Alfred 使用提示中的用户选择调用 Task()
+3步骤：子代理基于提供的参数执行，无用户交互
+4步骤：子代理返回包含结果的结构化响应
+5步骤：Alfred 基于代理响应使用 AskUserQuestion 进行下一个决策
 
 ### AskUserQuestion 约束
 
@@ -283,8 +320,8 @@ Alfred 分解：
 
 用户和语言配置自动从以下位置加载：
 
-@.moai/config/sections/user.yaml
-@.moai/config/sections/language.yaml
+.moai/config/sections/user.yaml
+.moai/config/sections/language.yaml
 
 ### 语言规则
 
@@ -327,24 +364,19 @@ Alfred 分解：
 
 ### 错误恢复
 
-代理执行错误：Use the expert-debug subagent to troubleshoot issues
+代理执行错误：使用 expert-debug 子代理解决问题
 
 Token 限制错误：执行 /clear 刷新上下文，然后引导用户恢复工作
 
 权限错误：手动检查 settings.json 和文件权限
 
-集成错误：Use the expert-devops subagent to resolve issues
+集成错误：使用 expert-devops 子代理解决问题
 
 MoAI-ADK 错误：当发生 MoAI-ADK 特定错误（工作流失败、代理问题、命令问题）时，建议用户运行 /moai:9-feedback 报告问题
 
 ### 可恢复的代理
 
-使用 agentId 恢复中断的代理工作：
-
-- "Resume agent abc123 and continue the security analysis"
-- "Continue with the frontend development using the existing context"
-
-每个子代理执行获得一个唯一的 agentId，存储在 agent-{agentId}.jsonl 格式中。
+使用 agentId 恢复中断的代理工作。每个子代理执行获得唯一的 agentId，以 agent-{agentId}.jsonl 格式存储。例如，使用"Resume agent abc123 and continue the security analysis"。
 
 ---
 
@@ -364,11 +396,47 @@ MoAI-ADK 错误：当发生 MoAI-ADK 特定错误（工作流失败、代理问�
 
 ### 思维过程
 
-- 阶段 1 - 前提条件检查：使用 AskUserQuestion 确认隐含的前提条件
-- 阶段 2 - 第一性原理：应用五个为什么，区分必须约束和优先事项
-- 阶段 3 - 替代方案生成：生成 2-3 个不同的方法（保守、平衡、积极）
-- 阶段 4 - 权衡分析：从性能、可维护性、成本、风险、可扩展性角度进行评估
-- 阶段 5 - 偏见检查：确认未固执于第一个解决方案，并审查相反的依据
+1阶段 - 前提条件检查：使用 AskUserQuestion 确认隐含的前提条件
+2阶段 - 第一性原理：应用五个为什么，区分必须约束和优先事项
+3阶段 - 替代方案生成：生成 2-3 个不同的方法（保守、平衡、积极）
+4阶段 - 权衡分析：从性能、可维护性、成本、风险、可扩展性角度进行评估
+5阶段 - 偏见检查：确认未固执于第一个解决方案，并审查相反的依据
+
+---
+
+## 12. 渐进式公开系统
+
+### 概述
+
+MoAI-ADK 实现了用于高效技能加载的 3 级渐进式公开系统。这遵循 Anthropic 的官方模式，在保持完整功能的同时将初始 token 消耗减少 67% 以上。
+
+### 三个级别
+
+级别 1 仅加载元数据，每个技能消耗约 100 token。在代理初始化时加载，包含包含触发器的 YAML frontmatter。代理 frontmatter 中列出的技能始终加载。
+
+级别 2 加载技能正文，每个技能消耗约 5K token。当触发条件匹配时加载，包含完整的 markdown 文档。通过关键字、阶段、代理、语言触发。
+
+级别 3+ 按需加载捆绑文件。Claude 根据需要加载，包含 reference.md、modules/、examples/。Claude 决定何时访问。
+
+### 代理 Frontmatter 格式
+
+代理使用官方 Anthropic skills 格式。skills 字段中列出的技能默认在级别 1（仅元数据）加载，触发器匹配时在级别 2（完整正文）加载。参考技能在级别 3+ 以上由 Claude 按需加载。
+
+### SKILL.md Frontmatter 格式
+
+技能定义渐进式公开行为。在 progressive_disclosure 部分设置启用状态、token 估计值。在 triggers 部分定义关键字、阶段、代理、语言特定的触发条件。
+
+### 使用方法
+
+技能加载系统基于当前上下文（提示、阶段、代理、语言）将技能加载到适当的级别。JIT 上下文加载器基于代理技能和阶段估计 token 预算。
+
+### 好处
+
+将初始 token 加载减少 67%（manager-spec 从约 90K 减少到 600 token）。仅在需要时按需加载完整技能内容。与现有代理和技能定义向后兼容。与基于阶段的加载无缝集成。
+
+### 实现状态
+
+18 个代理使用 skills 格式更新，48 个 SKILL.md 文件定义了触发器。skill_loading_system.py 实现了 3 级解析器，jit_context_loader.py 集成了渐进式公开。
 
 ---
 

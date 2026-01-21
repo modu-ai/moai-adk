@@ -1,3 +1,115 @@
+# v1.5.6 - AST-Grep Integration & Performance Enhancements (2026-01-21)
+
+## Summary
+
+This feature release integrates AST-Grep structural code analysis into all quality check commands (`/moai:loop`, `/moai:fix`) and adds the `moai glm` shortcut command for quick LLM backend switching. Also includes statusline enhancements with visual context graph display.
+
+## Added
+
+- **feat(performance)**: Integrate AST-Grep into parallel diagnosis (11787f87)
+  - AST-Grep now runs alongside LSP, Tests, and Coverage in parallel
+  - 3.75x faster code quality diagnosis with concurrent structural analysis
+  - Detects security vulnerabilities, code smells, anti-patterns, and best practice violations
+  - Supports 40+ programming languages (Python, TypeScript, Go, Rust, Java, etc.)
+  - Integration points: `/moai:loop`, `/moai:fix`, and `/moai:alfred` workflows
+
+- **feat(ux)**: Add `moai glm` shortcut command for quick backend switching
+  - Quick switch to GLM backend: `moai glm`
+  - Update API key: `moai glm <your-api-key>`
+  - Switch back to Claude: `moai claude`
+  - Useful for Worktree parallel development workflows
+
+## Changed
+
+- **feat(statusline)**: Enhanced visual context graph display (519bd367)
+  - Context window usage now shown as visual graph bar
+  - Battery-style color-coded display (green/yellow/red based on usage)
+  - Simplified statusline with focus on context visualization
+  - ANSI graph support for terminal compatibility
+
+## Fixed
+
+- **fix(update)**: Protect statusline-config.yaml from overwrite during moai update (b8cf28dd)
+  - User statusline settings now preserved during updates
+
+## Quality
+
+- Smoke tests: 6/6 passed (100% pass rate)
+- Ruff: All checks passed
+- Ruff format: 215 files unchanged
+- Mypy: Success (no issues found in 169 source files)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.5.6 - AST-Grep 통합 및 성능 향상 (2026-01-21)
+
+## 요약
+
+이 기능 릴리스는 AST-Grep 구조적 코드 분석을 모든 품질 검사 명령어(`/moai:loop`, `/moai:fix`)에 통합하고 빠른 LLM 백엔드 전환을 위한 `moai glm` 단축 명령어를 추가합니다. 또한 시각적 컨텍스트 그래프 표시로 statusline을 향상시킵니다.
+
+## 추가됨
+
+- **feat(performance)**: 병렬 진단에 AST-Grep 통합 (11787f87)
+  - AST-Grep이 이제 LSP, Tests, Coverage와 함께 병렬로 실행됨
+  - 동시 구조 분석으로 3.75배 더 빠른 코드 품질 진단
+  - 보안 취약점, 코드 스멀, 안티 패턴, 모범 사례 위반 감지
+  - 40개 이상의 프로그래밍 언어 지원 (Python, TypeScript, Go, Rust, Java 등)
+  - 통합 지점: `/moai:loop`, `/moai:fix`, `/moai:alfred` 워크플로우
+
+- **feat(ux)**: 빠른 백엔드 전환을 위한 `moai glm` 단축 명령어 추가
+  - GLM 백엔드로 빠른 전환: `moai glm`
+  - API 키 업데이트: `moai glm <your-api-key>`
+  - Claude로 다시 전환: `moai claude`
+  - Worktree 병렬 개발 워크플로우에 유용
+
+## 변경됨
+
+- **feat(statusline)**: 향상된 시각적 컨텍스트 그래프 표시 (519bd367)
+  - 컨텍스트 윈도우 사용량이 시각적 그래프 바로 표시됨
+  - 배터리 스타일 색상 코딩 디스플레이 (사용량 기반 green/yellow/red)
+  - 컨텍스트 시각화에 집중한 단순화된 statusline
+  - 터미널 호환성을 위한 ANSI 그래프 지원
+
+## 수정됨
+
+- **fix(update)**: moai update 중 statusline-config.yaml 덮어쓰기 방지 (b8cf28dd)
+  - 업데이트 중 사용자 statusline 설정 보존
+
+## 품질
+
+- Smoke 테스트: 6/6 통과 (100% 통과율)
+- Ruff: 모든 검사 통과
+- Ruff format: 215개 파일 변경 없음
+- Mypy: 성공 (169개 소스 파일에서 문제 없음)
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.5.5 - StatusLine Config Protection (2026-01-21)
 
 ## Summary

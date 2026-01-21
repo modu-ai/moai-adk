@@ -103,13 +103,13 @@ Execution: 3 agents parallel → 1 agent sequential
 - Independent domains: Always parallel
 - Same domain, no dependency: Parallel
 - Sequential dependency: Chain with "after X completes"
-- Max parallel agents: 5 (prevent context fragmentation)
+- Max parallel agents: Up to 10 agents for better throughput
 
 Context Optimization:
 
-- Pass minimal context to agents (spec_id, key requirements as max 3 bullet points, architecture summary under 200 chars)
-- Exclude background information, reasoning, and non-essential details
-- Each agent gets independent 200K token session
+- Pass comprehensive context to agents (spec_id, key requirements as extended bullet points, detailed architecture summary)
+- Include background information, reasoning process, and relevant details for better understanding
+- Each agent gets independent 200K token session with sufficient context
 
 ### Phase 4: Report
 
@@ -205,6 +205,70 @@ Allowed Tools: Full access (all tools)
 - builder-command: Create new slash commands
 - builder-skill: Create new skills
 - builder-plugin: Create new plugins
+
+---
+
+## 4.1. Performance Optimization for Exploration Tools
+
+### Anti-Bottleneck Principles
+
+When using Explore agent or direct exploration tools (Grep, Glob, Read), apply these optimizations to prevent performance bottlenecks with GLM models:
+
+**Principle 1: AST-Grep Priority**
+- Use structural search (ast-grep) before text-based search (Grep)
+- AST-Grep understands code syntax and eliminates false positives
+- Load moai-tool-ast-grep skill for complex pattern matching
+- Example: `sg -p 'class $X extends Service' --lang python` is faster than `grep -r "class.*extends.*Service"`
+
+**Principle 2: Search Scope Limitation**
+- Always use `path` parameter to limit search scope
+- Avoid searching entire codebase unnecessarily
+- Example: `Grep(pattern="async def", path="src/moai_adk/core/")` instead of `Grep(pattern="async def")`
+
+**Principle 3: File Pattern Specificity**
+- Use specific Glob patterns instead of wildcards
+- Example: `Glob(pattern="src/moai_adk/core/*.py")` instead of `Glob(pattern="src/**/*.py")`
+- Reduces files scanned by 50-80%
+
+**Principle 4: Parallel Processing**
+- Execute independent searches in parallel (single message, multiple tool calls)
+- Example: Search for imports in Python files AND search for types in TypeScript files simultaneously
+- Maximum 5 parallel searches to prevent context fragmentation
+
+### Thoroughness-Based Tool Selection
+
+When invoking Explore agent or using exploration tools directly:
+
+**quick** (target: 10 seconds):
+- Use Glob for file discovery
+- Use Grep with specific path parameter only
+- Skip Read operations unless necessary
+- Example: `Glob("src/moai_adk/core/*.py") + Grep("async def", path="src/moai_adk/core/")`
+
+**medium** (target: 30 seconds):
+- Use Glob + Grep with path limitation
+- Use Read selectively for key files only
+- Load moai-tool-ast-grep for structural search if needed
+- Example: `Glob("src/**/*.py") + Grep("class Service") + Read("src/moai_adk/core/service.py")`
+
+**very thorough** (target: 2 minutes):
+- Use all tools including ast-grep
+- Explore full codebase with structural analysis
+- Use parallel searches across multiple domains
+- Example: `Glob + Grep + ast-grep + parallel Read of key files`
+
+### When to Delegate to Explore Agent
+
+Use the Explore agent when:
+- Read-only codebase exploration is needed
+- Multiple search patterns need to be tested
+- Code structure analysis is required
+- Performance bottleneck analysis is needed
+
+Direct tool usage is acceptable when:
+- Single file needs to be read
+- Specific pattern search in known location
+- Quick verification task
 
 ---
 
@@ -399,126 +463,31 @@ MoAI-ADK implements a 3-level Progressive Disclosure system for efficient skill 
 
 ### Three Levels
 
-**Level 1: Metadata Only (~100 tokens per skill)**
+Level 1 loads metadata only, consuming approximately 100 tokens per skill. It loads during agent initialization, includes YAML frontmatter with triggers, and is always loaded for skills listed in agent frontmatter.
 
-- Loaded during agent initialization
-- Contains YAML frontmatter with triggers
-- Always loaded for skills listed in agent frontmatter
+Level 2 loads the skill body, consuming approximately 5K tokens per skill. It loads when trigger conditions match, contains the full markdown documentation, and is triggered by keywords, phases, agents, or languages.
 
-**Level 2: Skill Body (~5K tokens per skill)**
-
-- Loaded when trigger conditions match
-- Contains full markdown documentation
-- Triggered by keywords, phases, agents, or languages
-
-**Level 3+: Bundled Files (unlimited)**
-
-- Loaded on-demand by Claude
-- Includes reference.md, modules/, examples/
-- Claude decides when to access
+Level 3+ loads bundled files on-demand. Claude loads as needed, includes reference.md, modules/, examples/, and Claude decides when to access.
 
 ### Agent Frontmatter Format
 
-Agents use the official Anthropic `skills:` format:
-
-```yaml
----
-name: manager-spec
-description: SPEC creation specialist
-tools: Read, Write, Edit, ...
-model: inherit
-permissionMode: default
-
-# Progressive Disclosure: 3-Level Skill Loading
-# Skills are loaded at Level 1 (metadata only) by default (~100 tokens per skill)
-# Full skill body (Level 2, ~5K tokens) is loaded when triggers match
-# Reference skills (Level 3+) are loaded on-demand by Claude
-skills: moai-foundation-claude, moai-foundation-core, moai-workflow-spec
----
-```
+Agents use the official Anthropic skills format. The skills field lists skills that are loaded at Level 1 (metadata only) by default, then at Level 2 (full body) when triggers match. Reference skills are loaded at Level 3+ on-demand by Claude.
 
 ### SKILL.md Frontmatter Format
 
-Skills define their Progressive Disclosure behavior:
+Skills define their Progressive Disclosure behavior. The progressive_disclosure section sets enabled status and token estimates. The triggers section defines keyword, phase, agent, and language-specific trigger conditions.
 
-```yaml
----
-name: moai-workflow-spec
-description: SPEC workflow specialist
-version: 1.0.0
+### Usage
 
-# Progressive Disclosure Configuration
-progressive_disclosure:
-  enabled: true
-  level1_tokens: ~100
-  level2_tokens: ~5000
-
-# Trigger Conditions for Level 2 Loading
-triggers:
-  keywords: ["SPEC", "requirement", "EARS", "planning"]
-  phases: ["plan"]
-  agents: ["manager-spec", "manager-strategy"]
-  languages: ["python", "typescript"]
----
-```
-
-### Usage Examples
-
-**Loading skills with Progressive Disclosure:**
-
-```python
-from src.moai_adk.core.skill_loading_system import (
-    load_agent_skills,
-    ProgressiveDisclosureLevel,
-)
-
-# Load skills for current context
-context = {
-    "prompt": "Create a SPEC document for user authentication",
-    "phase": "plan",
-    "agent": "manager-spec",
-    "language": "python"
-}
-
-skills_list = [
-    "moai-foundation-claude",
-    "moai-foundation-core",
-    "moai-workflow-spec"
-]
-
-loaded = load_agent_skills(skills_list, context)
-# Returns skills at appropriate levels based on triggers
-```
-
-**Estimating token budget:**
-
-```python
-from src.moai_adk.core.jit_context_loader import (
-    estimate_progressive_budget,
-    Phase,
-)
-
-budget = estimate_progressive_budget(
-    agent_skills="moai-foundation-claude, moai-workflow-spec",
-    phase=Phase.SPEC,
-    context={"prompt": "Create SPEC"}
-)
-# Returns: {"level1_tokens": 200, "level2_tokens": 5000, "total_tokens": 5200}
-```
+The skill loading system loads skills at appropriate levels based on current context (prompt, phase, agent, language). The JIT context loader estimates token budgets based on agent skills and phase.
 
 ### Benefits
 
-- **67% reduction** in initial token load (from ~90K to ~600 tokens for manager-spec)
-- **On-demand loading**: Full skill content only when needed
-- **Backward compatible**: Works with existing agent/skill definitions
-- **JIT integration**: Seamlessly integrates with phase-based loading
+Achieves 67% reduction in initial token load (from ~90K to ~600 tokens for manager-spec). Provides on-demand loading of full skill content only when needed. Maintains backward compatibility with existing agent and skill definitions. Integrates seamlessly with phase-based loading.
 
 ### Implementation Status
 
-- ✅ 18 agents updated with `skills:` format
-- ✅ 48 SKILL.md files with triggers defined
-- ✅ skill_loading_system.py with 3-level parsing
-- ✅ jit_context_loader.py with Progressive Disclosure integration
+18 agents updated with skills format, 48 SKILL.md files with triggers defined, skill_loading_system.py with 3-level parsing, jit_context_loader.py with Progressive Disclosure integration.
 
 ---
 

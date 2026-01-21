@@ -148,6 +148,7 @@ secret-*.*
 .claude/settings.local.*.json
 .claude/.env.local*
 .claude/local/
+.claude/plans/
 
 # Skill-specific credentials
 .claude/skills/*/.env*

@@ -200,6 +200,27 @@ Worker agents: Execute focused tasks, return condensed summaries
 - Clear parameter names (user_id not user)
 - Instructive error messages with examples
 
+### Explore/Search Performance Optimization
+
+When using Explore agent or direct exploration tools (Grep, Glob, Read), apply these optimizations to prevent performance bottlenecks with GLM models:
+
+**AST-Grep Priority**
+- Use structural search (ast-grep) before text-based search (Grep)
+- Load moai-tool-ast-grep skill for complex pattern matching
+- Example: `sg -p 'class $X extends Service' --lang python` is faster than `grep -r "class.*extends.*Service"`
+
+**Search Scope Limitation**
+- Always use `path` parameter to limit search scope
+- Example: `Grep(pattern="async def", path="src/moai_adk/core/")` instead of `Grep(pattern="async def")`
+
+**File Pattern Specificity**
+- Use specific Glob patterns instead of wildcards
+- Example: `Glob(pattern="src/moai_adk/core/*.py")` instead of `Glob(pattern="src/**/*.py")`
+
+**Parallel Processing**
+- Execute independent searches in parallel (single message, multiple tool calls)
+- Maximum 5 parallel searches to prevent context fragmentation
+
 ## Workflow: Explore-Plan-Code-Commit
 
 Phase 1 Explore: Read files, understand structure, map dependencies

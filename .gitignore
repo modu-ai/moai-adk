@@ -201,6 +201,7 @@ mock_api_response_*.json
 .claude/.venv/
 .claude/.pytest_cache/
 .claude/.env.local*
+.claude/plans/
 
 # Skill-specific credentials
 .claude/skills/*/.env*

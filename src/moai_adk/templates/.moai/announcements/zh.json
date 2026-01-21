@@ -12,7 +12,7 @@
     "📚 提示: moai update --templates-only 同步最新的skills和agents",
     "📚 提示: moai-wt new SPEC-XXX 创建并行开发的worktree",
     "💡 混合模式: Plan使用Claude (Opus/Sonnet)，Run/Sync使用GLM节省成本",
-    "💡 并行开发: 终端1运行Claude，终端2+运行 'moai switch glm && claude' 并行执行",
+    "💡 并行开发: 终端1运行Claude，终端2+运行 'moai glm && claude' 并行执行",
     "🏆 moai rank: 追踪Claude令牌使用量，在rank.mo.ai.kr排行榜上竞争"
   ]
 }

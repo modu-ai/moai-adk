@@ -1974,7 +1974,7 @@ Copyleft License (COPYLEFT-3.0) - [LICENSE](./LICENSE)
 
 ## 🙏 Made with ❤️ by MoAI-ADK Team
 
-**Last Updated:** 2026-01-13
+**Last Updated:** 2026-01-21
 **Philosophy**: SPEC-First DDD + Agent Orchestration + Hybrid LLM
 **MoAI**: MoAI means "Modu-ui AI" (AI for Everyone).
 
