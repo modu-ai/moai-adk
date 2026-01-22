@@ -1297,6 +1297,34 @@ Alfred automatically recognizes 4 language requests and invokes the correct agen
 
 ---
 
+### 🧠 Sequential Thinking MCP Support
+
+All agents support `--ultrathink` flag for deep analysis using Sequential Thinking MCP:
+
+**Usage**:
+```bash
+> /moai:alfred "Add JWT authentication" --ultrathink
+```
+
+**Agent-Specific UltraThink Examples**:
+
+| Agent Type          | UltraThink Deep Analysis Focus                          |
+| ------------------- | ------------------------------------------------------ |
+| **expert-backend**  | API design patterns, database schema, query optimization |
+| **expert-frontend** | Component architecture, state management, UI/UX design   |
+| **expert-security** | Threat analysis, vulnerability patterns, OWASP compliance |
+| **expert-devops**   | Deployment strategies, CI/CD pipelines, infrastructure    |
+| **manager-ddd**     | Refactoring strategy, behavior preservation, legacy code |
+| **manager-spec**    | Requirements analysis, acceptance criteria, user stories |
+
+When `--ultrathink` is appended to any agent invocation, the agent activates Sequential Thinking MCP to:
+- Break down complex problems into manageable steps
+- Analyze domain-specific patterns and best practices
+- Map subtasks to appropriate execution strategies
+- Generate optimal implementation plans
+
+---
+
 ## 6. Agent-Skills
 
 ### 📚 Skill Library Structure

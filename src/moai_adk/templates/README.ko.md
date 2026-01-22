@@ -1216,6 +1216,34 @@ Alfred는 4개 언어 요청을 자동으로 인식하고 올바른 에이전트
 
 ---
 
+### 🧠 Sequential Thinking MCP 지원
+
+모든 에이전트는 깊은 분석을 위해 Sequential Thinking MCP를 사용하는 `--ultrathink` 플래그를 지원합니다:
+
+**사용법**:
+```bash
+> /moai:alfred "JWT 인증 추가" --ultrathink
+```
+
+**에이전트별 UltraThink 예제**:
+
+| 에이전트 타입       | UltraThink 심층 분석 초점                              |
+| ------------------- | ----------------------------------------------------- |
+| **expert-backend**  | API 설계 패턴, 데이터베이스 스키마, 쿼리 최적화        |
+| **expert-frontend** | 컴포넌트 아키텍처, 상태 관리, UI/UX 설계                |
+| **expert-security** | 위협 분석, 취약점 패턴, OWASP 준수                     |
+| **expert-devops**   | 배포 전략, CI/CD 파이프라인, 인프라                     |
+| **manager-ddd**     | 리팩토링 전략, 동작 보존, 레거시 코드                    |
+| **manager-spec**    | 요구사항 분석, 인수 조건, 사용자 스토리                  |
+
+`--ultrathink`가 에이전트 호출에 추가되면, 에이전트는 Sequential Thinking MCP를 활성화하여:
+- 복잡한 문제를 관리 가능한 단계로 분해
+- 도메인별 패턴과 모범 사례 분석
+- 적절한 실행 전략에 하위 작업 매핑
+- 최적의 구현 계획 생성
+
+---
+
 ## 5. Agent-Skills
 
 ### 📚 스킬 라이브러리 구조
