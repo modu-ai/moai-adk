@@ -1,6 +1,6 @@
 [project]
 name = "moai-adk"
-version = "1.6.4"
+version = "1.7.0"
 description = "MoAI Agentic Development Kit - SPEC-First DDD with Alfred SuperAgent & Unified moai-core-* Skills"
 readme = "README.md"
 requires-python = ">=3.11"
