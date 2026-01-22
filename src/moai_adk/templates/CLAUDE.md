@@ -541,6 +541,165 @@ nextThoughtNeeded: false
 
 ---
 
+## 11.1. UltraThink Mode
+
+### Overview
+
+UltraThink mode is an enhanced analysis mode that automatically applies Sequential Thinking MCP to deeply analyze user requests and generate optimal execution plans. When users append `--ultrathink` to their requests, Alfred activates structured reasoning to break down complex problems.
+
+### Activation
+
+Users can activate UltraThink mode by adding `--ultrathink` flag to any request:
+
+```
+"Implement authentication system --ultrathink"
+"Refactor the API layer --ultrathink"
+"Debug the database connection issue --ultrathink"
+```
+
+### UltraThink Process
+
+When `--ultrathink` is detected in user request:
+
+**Step 1: Request Analysis**
+- Identify the core task and requirements
+- Detect technical keywords for agent matching
+- Recognize complexity level and scope
+
+**Step 2: Sequential Thinking Activation**
+- Load the Sequential Thinking MCP tool
+- Begin structured reasoning with estimated thought count
+- Break down the problem into manageable steps
+
+**Step 3: Execution Planning**
+- Map each subtask to appropriate agents
+- Identify parallel vs sequential execution opportunities
+- Generate optimal agent delegation strategy
+
+**Step 4: Execution**
+- Launch agents according to the plan
+- Monitor and integrate results
+- Report consolidated findings in user's conversation_language
+
+### Sequential Thinking Parameters
+
+When using UltraThink mode, apply these parameter patterns:
+
+**Initial Analysis Call:**
+```
+thought: "Analyzing user request: [request content]"
+nextThoughtNeeded: true
+thoughtNumber: 1
+totalThoughts: [estimated number based on complexity]
+```
+
+**Subtask Decomposition:**
+```
+thought: "Breaking down into subtasks: 1) [subtask1] 2) [subtask2] 3) [subtask3]"
+nextThoughtNeeded: true
+thoughtNumber: 2
+totalThoughts: [current estimate]
+```
+
+**Agent Mapping:**
+```
+thought: "Mapping subtasks to agents: [subtask1] → expert-backend, [subtask2] → expert-frontend"
+nextThoughtNeeded: true
+thoughtNumber: 3
+totalThoughts: [current estimate]
+```
+
+**Execution Strategy:**
+```
+thought: "Execution strategy: [subtasks1,2] can run in parallel, [subtask3] depends on [subtask1]"
+nextThoughtNeeded: true
+thoughtNumber: 4
+totalThoughts: [current estimate]
+```
+
+**Final Plan:**
+```
+thought: "Final execution plan: Launch [agent1, agent2] in parallel, then [agent3]"
+thoughtNumber: [final number]
+totalThoughts: [final number]
+nextThoughtNeeded: false
+```
+
+### Best Practices
+
+**When to Use UltraThink:**
+- Complex multi-domain tasks (backend + frontend + testing)
+- Architecture decisions affecting multiple files
+- Performance optimization requiring analysis
+- Security review needs
+- Refactoring with behavior preservation
+
+**UltraThink Advantages:**
+- Structured decomposition of complex problems
+- Explicit agent-task mapping with justification
+- Identification of parallel execution opportunities
+- Context maintenance throughout reasoning
+- Revision capability when approaches need adjustment
+
+### Example UltraThink Session
+
+**User Request:** "Implement authentication system --ultrathink"
+
+**Sequential Thinking Process:**
+
+```
+thought: "Analyzing request: User wants to implement an authentication system. This involves multiple domains: user model (backend), login/logout API (backend), login form UI (frontend), authentication context (frontend), and test cases (testing)."
+nextThoughtNeeded: true
+thoughtNumber: 1
+totalThoughts: 5
+```
+
+```
+thought: "Subtask decomposition: 1) User model and database schema (expert-backend), 2) JWT token handling and login/logout API endpoints (expert-backend), 3) Login form UI component (expert-frontend), 4) Authentication context/state management (expert-frontend), 5) Authentication test cases (expert-testing)."
+nextThoughtNeeded: true
+thoughtNumber: 2
+totalThoughts: 5
+```
+
+```
+thought: "Agent mapping: Subtasks 1 and 2 are independent backend tasks → expert-backend (parallel), Subtasks 3 and 4 are frontend tasks but 4 depends on API from 2 → expert-frontend (sequential after backend), Subtask 5 requires implementation completion → expert-testing (sequential)."
+nextThoughtNeeded: true
+thoughtNumber: 3
+totalThoughts: 5
+```
+
+```
+thought: "Execution strategy: Phase 1 - Launch two expert-backend agents in parallel for user model and API endpoints. Phase 2 - After Phase 1 completes, launch expert-frontend for login form and auth context. Phase 3 - After implementation completes, launch expert-testing for test cases."
+nextThoughtNeeded: true
+thoughtNumber: 4
+totalThoughts: 5
+```
+
+```
+thought: "Final execution plan: Use the expert-backend subagent (parallel: user model + API), then Use the expert-frontend subagent (login form + auth context), then Use the expert-testing subagent (auth test cases)."
+thoughtNumber: 5
+totalThoughts: 5
+nextThoughtNeeded: false
+```
+
+**Result:** Alfred launches agents in the planned sequence, with proper parallelization of independent tasks.
+
+### Integration with Existing Workflow
+
+UltraThink mode seamlessly integrates with Alfred's existing delegation patterns:
+
+**Without UltraThink:** Direct agent delegation based on request analysis
+**With UltraThink:** Structured reasoning before delegation, then execution
+
+UltraThink enhances decision-making for:
+- Complex multi-domain tasks
+- Ambiguous requirements needing clarification
+- Performance vs maintainability trade-offs
+- Technology selection decisions
+- Breaking changes under consideration
+
+---
+
 ## 12. Progressive Disclosure System
 
 ### Overview
@@ -606,25 +765,11 @@ Achieves 67% reduction in initial token load (from ~90K to ~600 tokens for manag
 
 **Mandatory Tools for Implementation Agents**:
 
-All agents that perform code modifications MUST include these tools:
-
-```yaml
-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, ...
-```
+All agents that perform code modifications MUST include Read, Write, Edit, Grep, Glob, Bash, and TodoWrite tools.
 
 **Why**: Without Edit/Write tools, agents fall back to Bash commands which may fail due to platform differences (e.g., macOS BSD sed vs GNU sed).
 
-**Verification**:
-
-```bash
-# Check all agent definitions have required tools
-for agent in .claude/agents/moai/*.md; do
-  tools=$(grep "^tools:" "$agent" || echo "")
-  if [[ ! "$tools" =~ "Edit" ]] || [[ ! "$tools" =~ "Write" ]]; then
-    echo "WARNING: $agent missing Edit or Write tool"
-  fi
-done
-```
+**Verification**: Verify each agent definition includes the required tools in the tools field of the YAML frontmatter.
 
 ### Loop Prevention Guards
 
@@ -634,60 +779,22 @@ done
 
 **Retry Strategy**:
 
-1. **Maximum Retries**: 3 attempts per operation
-2. **Failure Pattern Detection**: Detect repeated failures on same file/operation
-3. **Fallback Chain**: Edit → Python script → Bash (with platform detection)
-4. **User Intervention**: After 3 failed attempts, request user guidance
+1. **Maximum Retries**: Limit operations to 3 attempts per operation
+2. **Failure Pattern Detection**: Detect repeated failures on same file or operation
+3. **Fallback Chain**: Use Edit tool first, then platform-specific alternatives if needed
+4. **User Intervention**: After 3 failed attempts, request user guidance instead of continuing retries
 
-**Example Anti-Pattern** (DO NOT DO THIS):
-
-```
-retry:
-  attempt_edit()
-  if failed:
-    git_restore()
-    goto retry  # ← INFINITE LOOP
-```
-
-**Example Correct Pattern**:
-
-```
-attempt = 0
-while attempt < 3:
-  if attempt_edit():
-    break
-  attempt += 1
-  if attempt == 3:
-    return error_report("Max retries exceeded")
-```
+**Anti-Pattern to Avoid**: Retry loops that restore state and attempt the same operation without changing the approach.
 
 ### Platform Compatibility
 
 **macOS vs Linux Command Differences**:
 
-| Command    | Linux (GNU)             | macOS (BSD)                | Solution                |
-| ---------- | ----------------------- | -------------------------- | ----------------------- |
-| sed inline | `sed -i 's/a/b/g' file` | `sed -i '' 's/a/b/g' file` | Use Edit tool instead   |
-| date       | `date -d '1 day ago'`   | `date -v-1d`               | Use Python datetime     |
-| grep       | `grep -P` (Perl regex)  | Not supported              | Use `grep -E` or Python |
+Platform differences exist between GNU tools (Linux) and BSD tools (macOS). For example, sed inline editing has different syntax: Linux uses `sed -i` while macOS requires `sed -i ''`.
 
-**Best Practice**: Always prefer Edit tool over sed/awk for file modifications. Only use Bash for commands that cannot be done with Edit/Read/Write tools.
+**Best Practice**: Always prefer Edit tool over sed/awk for file modifications. The Edit tool is cross-platform and avoids platform-specific syntax issues. Only use Bash for commands that cannot be done with Edit/Read/Write tools.
 
-### Platform Detection Pattern
-
-When Bash is unavoidable, use platform detection:
-
-```python
-import platform
-
-def get_sed_command():
-    if platform.system() == "Darwin":
-        return "sed -i ''"
-    else:
-        return "sed -i"
-```
-
-**Even Better**: Don't use sed at all. Use Edit tool which works cross-platform.
+**Platform Detection**: When Bash commands are unavoidable, detect the platform and use appropriate syntax for each operating system.
 
 ---
 
