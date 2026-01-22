@@ -8,7 +8,7 @@ ralph:
   # LSP Diagnostics Configuration
   lsp:
     auto_start: true              # Auto-start LSP servers when needed
-    timeout_seconds: 30           # Timeout for LSP operations
+    timeout_seconds: 15           # Timeout for LSP operations (reduced from 30 for faster failure)
     poll_interval_ms: 500         # Polling interval for diagnostics
     graceful_degradation: true    # Continue if LSP unavailable
 
