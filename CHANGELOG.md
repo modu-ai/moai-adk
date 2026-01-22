@@ -1,3 +1,119 @@
+# v1.7.0 - UltraThink Mode Enhancement (2026-01-22)
+
+## Summary
+
+This minor release introduces **UltraThink mode** (`--ultrathink`), an enhanced analysis feature that automatically applies Sequential Thinking MCP for deep request analysis and optimal execution planning. Additionally, this release includes important agent tool permission updates and parallel execution safeguards for improved reliability.
+
+## Added
+
+- **feat(command)**: Add `--ultrathink` keyword guidance to complex commands
+  - UltraThink mode automatically activates Sequential Thinking MCP for deep analysis
+  - Applied to 6 commands: `/moai:alfred`, `/moai:0-project`, `/moai:1-plan`, `/moai:2-run`, `/moai:3-sync`, `/moai:99-release`
+  - Each command includes WHY/IMPACT documentation for the guidance
+- **docs(claude)**: Add Parallel Execution Safeguards section
+  - File write conflict prevention mechanisms
+  - Agent tool requirements documentation
+  - Loop prevention guards
+  - Platform compatibility guidelines
+- **docs**: Add Sequential Thinking MCP Support section to README files
+  - UltraThink mode documentation for all language versions
+  - Agent-specific UltraThink examples
+
+## Fixed
+
+- **fix(agent)**: Update all agent tool permissions to full access
+  - All agents now have Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Task, Skill tools
+  - Ensures agents can perform code modifications without platform-specific issues
+- **fix(agent)**: Add Edit and Write tools to expert-debug agent
+  - Prevents fallback to Bash commands that may fail on different platforms
+  - Enables cross-platform code editing capabilities
+
+## Changed
+
+- **chore(build)**: Exclude template README files from package distribution
+  - Template README files are now local-only (not distributed in package)
+  - Prevents confusion between template and user README files
+
+## Quality
+
+- Smoke tests: 6/6 passed (100% pass rate)
+- Ruff: All checks passed
+- Ruff format: 216 files unchanged
+- Mypy: Warning (3 minor type hint issues in non-critical code)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.7.0 - UltraThink 모드 기능 강화 (2026-01-22)
+
+## 요약
+
+이 마이너 릴리스는 **UltraThink 모드**(`--ultrathink`)를 도입하여, Sequential Thinking MCP를 자동으로 적용하는 심층 분석 기능을 추가합니다. 또한 에이전트 도구 권한 업데이트 및 병렬 실행 안전장치를 포함하여 신뢰성을 개선했습니다.
+
+## 추가됨
+
+- **feat(command)**: 복잡한 커맨드에 `--ultrathink` 키워드 가이드 추가
+  - UltraThink 모드는 심층 분석을 위해 Sequential Thinking MCP를 자동 활성화
+  - 6개 커맨드에 적용: `/moai:alfred`, `/moai:0-project`, `/moai:1-plan`, `/moai:2-run`, `/moai:3-sync`, `/moai:99-release`
+  - 각 커맨드에는 WHY/IMPACT 문서 포함
+- **docs(claude)**: 병렬 실행 안전장치 섹션 추가
+  - 파일 쓰기 충돌 방지 메커니즘
+  - 에이전트 도구 요구사항 문서화
+  - 루프 방지 가드
+  - 플랫폼 호환성 가이드라인
+- **docs**: README 파일에 Sequential Thinking MCP 지원 섹션 추가
+  - 모든 언어 버전의 UltraThink 모드 문서
+  - 에이전트별 UltraThink 예제
+
+## 수정됨
+
+- **fix(agent)**: 모든 에이전트 도구 권한을 전체 액세스로 업데이트
+  - 모든 에이전트가 Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Task, Skill 도구 보유
+  - 플랫폼별 문제 없이 코드 수정 수행 가능
+- **fix(agent)**: expert-debug 에이전트에 Edit 및 Write 도구 추가
+  - 다른 플랫폼에서 실패할 수 있는 Bash 명령 대체 방지
+  - 크로스 플랫폼 코드 편집 기능 활성화
+
+## 변경됨
+
+- **chore(build)**: 패키지 배포에서 템플릿 README 파일 제외
+  - 템플릿 README 파일은 이제 로컬 전용 (패키지에 미포함)
+  - 템플릿과 사용자 README 파일 간의 혼선 방지
+
+## 품질
+
+- Smoke tests: 6/6 통과 (100% 통과율)
+- Ruff: 모든 검사 통과
+- Ruff format: 216 파일 변경 없음
+- Mypy: 경고 (3개의 사소한 타입 힌트 문제)
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.6.4 - GLM API Endpoint Update (2026-01-22)
 
 ## Summary
