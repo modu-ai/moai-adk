@@ -61,6 +61,47 @@ moai glm YOUR_API_KEY
 - **🌐 多言語ルーティング**: 韓国語/英語/日本語/中国語自動サポート
 - **🌳 Worktree並列開発**: 完全分離環境で無制限並列作業
 - **🏆 MoAI Rank**: バイブコーディングリーダーボードでモチベーション
+- **🔗 Ralph-Style LSP統合 (NEW v1.9.0)**: リアルタイム品質フィードバックのためのLSPベース自律ワークフロー
+
+---
+
+## 🎯 Ralph-Style LSP統合 (NEW v1.9.0)
+
+### LSP統合概要
+
+MoAI-ADKは、LSP（Language Server Protocol）診断統合によるRalphスタイル自律ワークフローをサポートするようになりました。システムはワークフロー開始時にLSP診断状態をキャプチャし、実行中に診断状態をモニタリングし、品質しきい値が満たされると自動的にフェーズを完了します。
+
+### 主な機能
+
+**LSPベースラインキャプチャ**:
+- フェーズ開始時の自動LSP診断キャプチャ
+- エラー、警告、タイプエラー、リントエラーの追跡
+- 回帰検出のためのベースライン使用
+
+**完了マーカー**:
+- Planフェーズ: SPEC作成完了、ベースライン記録
+- Runフェーズ: 0エラー、0タイプエラー、カバレッジ >= 85%
+- Syncフェーズ: 0エラー、<10警告
+
+**実行モード**:
+- Interactive（デフォルト）: 各ステップで手動承認
+- Autonomous（選択可能）: 完了まで連続ループ
+
+**ループ防止**:
+- 最大100回反復
+- 進捗なし検出（5回反復）
+- 停滞時の代替戦略
+
+**構成**:
+```yaml
+# .moai/config/sections/workflow.yaml
+execution_mode:
+  autonomous:
+    user_approval_required: false
+    continuous_loop: true
+    completion_marker_based: true
+    lsp_feedback_integration: true
+```
 
 ---
 

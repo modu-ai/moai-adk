@@ -347,6 +347,27 @@ The following actions constitute violations:
 
 Enforcement: When specialized expertise is needed, Alfred SHOULD invoke corresponding agent for optimal results.
 
+### LSP Quality Gates
+
+MoAI-ADK implements LSP-based quality gates for automated code quality validation:
+
+**Phase-Specific Thresholds:**
+
+- **plan**: Capture LSP baseline at phase start
+- **run**: Zero errors, zero type errors, zero lint errors required; regression from baseline not allowed
+- **sync**: Zero errors, max 10 warnings, clean LSP required before sync/PR
+
+**LSP State Tracking:**
+
+- Capture points: phase_start, post_transformation, pre_sync
+- Baseline comparison: phase_start as baseline
+- Regression threshold: Any error increase is regression
+- Logging: State changes, regression detection, completion markers tracked
+
+**Configuration:** @.moai/config/sections/quality.yaml (lsp_quality_gates, lsp_state_tracking)
+
+**Implementation:** .claude/hooks/moai/quality_gate_with_lsp.py (289 lines, Ralph-style autonomous workflow)
+
 ---
 
 ## 7. User Interaction Architecture

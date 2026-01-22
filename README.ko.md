@@ -61,6 +61,47 @@ moai glm YOUR_API_KEY
 - **🌐 다국어 라우팅**: 한국어/영어/일본어/중국어 자동 지원
 - **🌳 Worktree 병렬 개발**: 완전 격리 환경에서 무제한 병렬 작업
 - **🏆 MoAI Rank**: 바이브 코딩 리더보드로 동기부여
+- **🔗 Ralph-Style LSP 통합 (NEW v1.9.0)**: 실시간 품질 피드백을 위한 LSP 기반 자율 워크플로우
+
+---
+
+## 🎯 Ralph-Style LSP 통합 (NEW v1.9.0)
+
+### LSP 통합 개요
+
+MoAI-ADK는 이제 LSP(Language Server Protocol) 진단 통합을 통해 Ralph 스타일 자율 워크플로우를 지원합니다. 시스템은 워크플로우 진입 시 LSP 진단 상태를 캡처하고, 실행 중 진단 상태를 모니터링하며, 품질 임계값이 충족되면 자동으로 단계를 완료합니다.
+
+### 주요 기능
+
+**LSP 베이스라인 캡처**:
+- 단계 시작 시 자동 LSP 진단 캡처
+- 오류, 경고, 타입 오류, 린트 오류 추적
+- 회귀 감지를 위한 베이스라인 사용
+
+**완료 마커**:
+- Plan 단계: SPEC 생성 완료, 베이스라인 기록
+- Run 단계: 0 오류, 0 타입 오류, 커버리지 >= 85%
+- Sync 단계: 0 오류, <10 경고
+
+**실행 모드**:
+- Interactive (기본값): 각 단계마다 수동 승인
+- Autonomous (선택사항): 완료 시까지 연속 루프
+
+**루프 방지**:
+- 최대 100회 반복
+- 진전 없음 감지 (5회 반복)
+- 교착 시 대안 전략
+
+**구성**:
+```yaml
+# .moai/config/sections/workflow.yaml
+execution_mode:
+  autonomous:
+    user_approval_required: false
+    continuous_loop: true
+    completion_marker_based: true
+    lsp_feedback_integration: true
+```
 
 ---
 
@@ -506,6 +547,8 @@ EARS 형식을 사용하여 모호함 없는 명세서를 자동으로 생성합
 > /moai:2-run SPEC-001
 ```
 
+**NEW v1.9.0**: 완료 마커 기반 LSP 강화 DDD 사이클
+
 DDD (Domain-Driven Development) 방법론으로 ANALYZE-PRESERVE-IMPROVE 사이클을 실행합니다:
 
 **DDD 사이클**:
@@ -513,6 +556,12 @@ DDD (Domain-Driven Development) 방법론으로 ANALYZE-PRESERVE-IMPROVE 사이�
 - 🔍 **ANALYZE**: 도메인 경계 및 결합도 분석
 - 🛡️ **PRESERVE**: 특성 테스트로 동작 보존
 - ✨ **IMPROVE**: 점진적 구조 개선
+
+**LSP 강화 품질 게이트 (NEW v1.9.0)**:
+- 단계 시작 시 LSP 베이스라인 캡처
+- 실시간 회귀 감지
+- 0 errors, 0 type errors, coverage >= 85% 시 자동 완료
+- 완료 마커 감지: `<moai>DONE</moai>`
 
 **검증 항목**:
 
@@ -569,7 +618,21 @@ DDD (Domain-Driven Development) 방법론으로 ANALYZE-PRESERVE-IMPROVE 사이�
 > /moai:alfred "기능 설명"
 ```
 
+**NEW v1.9.0**: LSP 통합 자율 실행 모드
+
 사용자가 목표를 제시하면 AI가 스스로 탐색, 계획, 구현, 검증을 모두 수행합니다. 병렬 탐색으로 코드베이스를 분석하고, 자율 루프를 통해 이슈를 스스로 수정합니다. 완료 마커(`<moai>DONE</moai>`)를 감지하면 자동으로 종료되어 개발자는 최종 결과만 확인하면 됩니다.
+
+#### LSP 강화 자율 모드 (NEW v1.9.0)
+
+**자율 모드**:
+- 시작 시 LSP 베이스라인 캡처
+- 각 변환 후 즉시 회귀 감지
+- 완료 마커 만족 시 자동 완료
+- 루프 방지 가드
+
+**인터랙티브 모드** (기본값):
+- 각 단계별 수동 승인
+- 기존 워크플로우와 호환
 
 #### 개념과 워크플로우
 
@@ -1244,7 +1307,86 @@ Alfred는 4개 언어 요청을 자동으로 인식하고 올바른 에이전트
 
 ---
 
-## 5. Agent-Skills
+## 5. Ralph-Style LSP 통합 워크플로우 (NEW v1.9.0)
+
+### LSP 기반 자율 개발
+
+MoAI-ADK는 LSP 진단 통합으로 Ralph 스타일 자율 워크플로우를 구현합니다. 시스템은 워크플로우 진입 시 LSP 상태를 캡처하고, 실행 중 모니터링하며, 품질 임계값이 충족되면 단계를 자동으로 완료합니다.
+
+### 워크플로우 단계
+
+```mermaid
+flowchart TB
+    Start([SPEC-001]) --> Plan[Plan Phase]
+
+    Plan --> PlanLSP[LSP Baseline Capture]
+    PlanLSP --> PlanCheck{0 errors?}
+    PlanCheck -->|Yes| Run[Run Phase]
+    PlanCheck -->|No| PlanFix[Fix issues]
+
+    Run --> RunLSP[LSP State Monitoring]
+    RunLSP --> RunCheck{0 errors<br/>0 type errors<br/>Coverage >= 85%?}
+    RunCheck -->|Yes| Sync[Sync Phase]
+    RunCheck -->|No| RunFix[Autonomous Loop]
+
+    RunFix --> RunLSP
+
+    Sync --> SyncLSP[Final LSP Check]
+    SyncLSP --> SyncCheck{0 errors<br/><10 warnings?}
+    SyncCheck -->|Yes| Done[<moai>DONE</moai>]
+    SyncCheck -->|No| SyncFix[Fix and retry]
+
+    SyncFix --> SyncLSP
+
+    Done --> End([Complete])
+
+    style Plan fill:#fff3e0
+    style Run fill:#f3e5f5
+    style Sync fill:#e8f5e9
+    style Done fill:#c8e6c9
+    style End fill:#4caf50,color:#fff
+```
+
+### 완료 마커
+
+**Plan Phase**:
+- SPEC 문서 생성 완료
+- LSP 베이스라인 기록
+- 차단 이슈 없음
+
+**Run Phase**:
+- 0 errors
+- 0 type errors
+- Coverage >= 85%
+- 테스트 통과
+
+**Sync Phase**:
+- 0 errors
+- < 10 warnings
+- 문서 동기화 완료
+
+### 설정
+
+```yaml
+# .moai/config/sections/workflow.yaml
+execution_mode:
+  autonomous:
+    user_approval_required: false
+    continuous_loop: true
+    completion_marker_based: true
+    lsp_feedback_integration: true
+```
+
+### 루프 방지
+
+- 최대 100회 반복
+- 진전 없음 감지 (5회 반복)
+- 정체 시 대안 전략
+- 재개 가능한 스냅샷 저장
+
+---
+
+## 6. Agent-Skills
 
 ### 📚 스킬 라이브러리 구조
 
@@ -1280,22 +1422,34 @@ Skill("moai-lang-python")
 
 ---
 
-## 6. TRUST 5 품질 원칙
+## 7. TRUST 5 품질 원칙
 
 MoAI-ADK의 모든 프로젝트는 **TRUST 5** 품질 프레임워크를 따릅니다.
 
 ### 🏆 TRUST 5 = Test + Readable + Unified + Secured + Trackable
 
+**NEW v1.9.0**: 품질 모니터링을 위한 LSP 통합
+
 ```mermaid
 graph TD
-    T1["🔴 T: Tested<br/>━━━━━━━━<br/>• DDD with tests<br/>• 85%+ 커버리지<br/>• 동작 보존"]
-    R["📖 R: Readable<br/>━━━━━━━━<br/>• 명확한 명명<br/>• 코드 주석<br/>• 린터 준수"]
-    U["🔄 U: Unified<br/>━━━━━━━━<br/>• 일관된 스타일<br/>• 표준 패턴<br/>• 에러 처리"]
-    S["🔒 S: Secured<br/>━━━━━━━━<br/>• OWASP Top 10<br/>• 취약점 스캔<br/>• 암호화 정책"]
-    T2["📋 T: Trackable<br/>━━━━━━━━<br/>• 명확한 커밋<br/>• 이슈 추적<br/>• CHANGELOG"]
+    T1["🔴 T: Tested<br/>━━━━━━━━<br/>• DDD with tests<br/>• 85%+ 커버리지<br/>• 동작 보존<br/>• LSP: 0 type errors"]
+    R["📖 R: Readable<br/>━━━━━━━━<br/>• 명확한 명명<br/>• 코드 주석<br/>• 린터 준수<br/>• LSP: 0 lint errors"]
+    U["🔄 U: Unified<br/>━━━━━━━━<br/>• 일관된 스타일<br/>• 표준 패턴<br/>• 에러 처리<br/>• LSP: <10 warnings"]
+    S["🔒 S: Secured<br/>━━━━━━━━<br/>• OWASP Top 10<br/>• 취약점 스캔<br/>• 암호화 정책<br/>• LSP: 0 security warnings"]
+    T2["📋 T: Trackable<br/>━━━━━━━━<br/>• 명확한 커밋<br/>• 이슈 추적<br/>• CHANGELOG<br/>• LSP: 상태 추적"]
 
     T1 --> R --> U --> S --> T2 --> Deploy["✅ Production Ready"]
 ```
+
+### TRUST 5와 LSP 통합 (NEW v1.9.0)
+
+| TRUST 5 기둥 | LSP 품질 지표 |
+| -------------- | ---------------------- |
+| **Tested** | 단위 테스트 통과, LSP type errors = 0 |
+| **Readable** | 린팅 청결, 명명 규칙 준수 |
+| **Unified** | 경고 < 임계값, 일관된 패턴 |
+| **Secured** | 보안 스캔 통과, 보안 경고 없음 |
+| **Trackable** | LSP 상태 변경 로그, 진단 추적 |
 
 ### T - Tested (테스트 검증됨)
 
@@ -1354,7 +1508,7 @@ graph TD
 
 ---
 
-## 7. 자동 품질 검사
+## 8. 자동 품질 검사
 
 ### 🔍 AST-Grep 기반 구조적 검사
 
@@ -1443,7 +1597,7 @@ rm -rf node_modules           # node_modules 삭제
 
 ---
 
-## 8. 📊 Statusline 커스터마이징
+## 9. 📊 Statusline 커스터마이징
 
 MoAI-ADK는 Claude Code 터미널에 실시간 상태 정보를 표시하는 사용자 정의 가능한 statusline을 제공합니다.
 
@@ -1508,7 +1662,7 @@ export MOAI_STATUSLINE_MODE=extended
 
 ---
 
-## 9. 🌳 Worktree 병렬 개발
+## 10. 🌳 Worktree 병렬 개발
 
 MoAI-ADK의 핵심 혁신: **Worktree로 완전 격리, 무제한 병렬 개발**
 
@@ -1674,7 +1828,7 @@ moai-wt clean --merged-only
 
 ---
 
-## 10. CLAUDE.md 이해하기
+## 11. CLAUDE.md 이해하기
 
 MoAI-ADK 설치 후 프로젝트 루트에 생성되는 `CLAUDE.md`는 **Alfred(AI 오케스트레이터)의 실행 지침서**입니다. 이 파일은 Claude Code가 프로젝트에서 어떻게 동작할지 정의합니다.
 
@@ -1950,7 +2104,7 @@ moai rank list-excluded
 
 ---
 
-## 12. FAQ
+## 13. FAQ
 
 ### Q1: SPEC는 항상 필요한가요?
 
@@ -1989,7 +2143,7 @@ moai rank list-excluded
 
 ---
 
-## 13. 커뮤니티 & 지원
+## 14. 커뮤니티 & 지원
 
 ### 🌐 참여하기
 
@@ -2004,21 +2158,21 @@ moai rank list-excluded
 
 ---
 
-## 14. Star History
+## 15. Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=date&legend=top-left)](https://www.star-history.com/#modu-ai/moai-adk&type=date&legend=top-left)
 
 ---
 
-## 15. 라이선스
+## 16. 라이선스
 
 Copyleft License (COPYLEFT-3.0) - [LICENSE](./LICENSE)
 
 ---
 
-## 16. 🙏 Made with ❤️ by MoAI-ADK Team
+## 17. 🙏 Made with ❤️ by MoAI-ADK Team
 
-**Last Updated:** 2026-01-11
+**Last Updated:** 2026-01-22
 **Philosophy**: SPEC-First DDD + Agent Orchestration + Hybrid LLM
 **MoAI**: MoAI는 "모두를 위한 AI (Modu-ui AI)"를 의미합니다.
 

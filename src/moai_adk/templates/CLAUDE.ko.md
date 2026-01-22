@@ -292,6 +292,27 @@ manager-ddd는 동작 보존 초점의 새로운 기능 생성, 기존 코드 �
 
 시행: 전문 지식이 필요할 때, Alfred는 최적의 결과를 위해 해당 에이전트를 호출해야 합니다.
 
+### LSP 품질 게이트
+
+MoAI-ADK는 자동화된 코드 품질 검증을 위한 LSP 기반 품질 게이트를 구현합니다:
+
+**단계별 임계값:**
+
+- **plan**: 단계 시작 시 LSP 베이스라인 캡처
+- **run**: 0 오류, 0 타입 오류, 0 린트 오류 필요; 베이스라인에서의 회귀 불가
+- **sync**: 0 오류, 최대 10 경고, sync/PR 전 깨끗한 LSP 필요
+
+**LSP 상태 추적:**
+
+- 캡처 지점: phase_start, post_transformation, pre_sync
+- 베이스라인 비교: phase_start를 베이스라인으로 사용
+- 회귀 임계값: 오류 증가는 회귀로 간주
+- 로깅: 상태 변경, 회귀 감지, 완료 마커 추적
+
+**구성:** @.moai/config/sections/quality.yaml (lsp_quality_gates, lsp_state_tracking)
+
+**구현:** .claude/hooks/moai/quality_gate_with_lsp.py (289줄, Ralph 스타일 자율 워크플로우)
+
 ---
 
 ## 7. 사용자 상호작용 아키텍처

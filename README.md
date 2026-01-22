@@ -61,6 +61,47 @@ moai glm YOUR_API_KEY
 - **🌐 Multilingual Routing**: Automatic support for Korean/English/Japanese/Chinese
 - **🌳 Worktree Parallel Development**: Unlimited parallel work in completely isolated environments
 - **🏆 MoAI Rank**: Motivation through vibe coding leaderboard
+- **🔗 Ralph-Style LSP Integration (NEW v1.9.0)**: LSP-based autonomous workflow with real-time quality feedback
+
+---
+
+## 🎯 Ralph-Style LSP Integration (NEW v1.9.0)
+
+### LSP Integration Overview
+
+MoAI-ADK now supports Ralph-style autonomous workflow with LSP (Language Server Protocol) diagnostics integration. The system captures LSP diagnostic state at workflow entry, monitors diagnostic state during execution, and automatically completes phases when quality thresholds are met.
+
+### Key Features
+
+**LSP Baseline Capture**:
+- Automatic LSP diagnostic capture at phase start
+- Tracks errors, warnings, type errors, lint errors
+- Baseline used for regression detection
+
+**Completion Markers**:
+- Plan Phase: SPEC created, baseline recorded
+- Run Phase: 0 errors, 0 type errors, coverage >= 85%
+- Sync Phase: 0 errors, <10 warnings
+
+**Execution Modes**:
+- Interactive (default): Manual approval at each step
+- Autonomous (optional): Continuous loop until completion
+
+**Loop Prevention**:
+- Maximum 100 iterations
+- No progress detection (5 iterations)
+- Alternative strategy on stall
+
+**Configuration**:
+```yaml
+# .moai/config/sections/workflow.yaml
+execution_mode:
+  autonomous:
+    user_approval_required: false
+    continuous_loop: true
+    completion_marker_based: true
+    lsp_feedback_integration: true
+```
 
 ---
 
@@ -504,6 +545,8 @@ Automatically generates unambiguous specifications using EARS format. Includes r
 > /moai:2-run SPEC-001
 ```
 
+**NEW v1.9.0**: LSP-enhanced DDD cycle with completion markers
+
 Implements SPEC using DDD (Domain-Driven Development) methodology with the ANALYZE-PRESERVE-IMPROVE cycle:
 
 **DDD Cycle**:
@@ -511,6 +554,12 @@ Implements SPEC using DDD (Domain-Driven Development) methodology with the ANALY
 - 🔍 **ANALYZE**: Analyze domain boundaries, coupling, and existing behavior
 - 🛡️ **PRESERVE**: Create characterization tests to preserve existing behavior
 - ✨ **IMPROVE**: Incrementally improve structure with test validation
+
+**LSP-Enhanced Quality Gates** (NEW v1.9.0):
+- LSP baseline capture at phase start
+- Real-time regression detection
+- Automatic completion at 0 errors, 0 type errors, coverage >= 85%
+- Completion marker detection: `<moai>DONE</moai>`
 
 **Verification items**:
 
@@ -567,7 +616,21 @@ Performs quality verification followed by documentation synchronization, Git com
 > /moai:alfred "feature description"
 ```
 
+**NEW v1.9.0**: LSP integration with autonomous mode
+
 User presents the goal and AI autonomously performs exploration, planning, implementation, and verification. Analyzes codebase through parallel exploration and self-corrects issues through autonomous loops. Automatically terminates when completion marker (`<moai>DONE</moai>`) is detected, so developer only needs to verify final result.
+
+#### LSP-Enhanced Autonomous Mode (NEW v1.9.0)
+
+**Autonomous Mode**:
+- LSP baseline capture at start
+- Real-time regression detection
+- Automatic completion when markers met
+- Loop prevention safeguards
+
+**Interactive Mode** (default):
+- Manual approval at each phase
+- Backward compatible with existing workflows
 
 #### Concept and Workflow
 
@@ -1325,6 +1388,85 @@ When `--ultrathink` is appended to any agent invocation, the agent activates Seq
 
 ---
 
+## 5. Ralph-Style LSP Integration Workflow (NEW v1.9.0)
+
+### LSP-Based Autonomous Development
+
+MoAI-ADK implements Ralph-style autonomous workflow with LSP diagnostics integration. The system captures LSP state at workflow entry, monitors during execution, and automatically completes phases when quality thresholds are met.
+
+### Workflow Phases
+
+```mermaid
+flowchart TB
+    Start([SPEC-001]) --> Plan[Plan Phase]
+
+    Plan --> PlanLSP[LSP Baseline Capture]
+    PlanLSP --> PlanCheck{0 errors?}
+    PlanCheck -->|Yes| Run[Run Phase]
+    PlanCheck -->|No| PlanFix[Fix issues]
+
+    Run --> RunLSP[LSP State Monitoring]
+    RunLSP --> RunCheck{0 errors<br/>0 type errors<br/>Coverage >= 85%?}
+    RunCheck -->|Yes| Sync[Sync Phase]
+    RunCheck -->|No| RunFix[Autonomous Loop]
+
+    RunFix --> RunLSP
+
+    Sync --> SyncLSP[Final LSP Check]
+    SyncLSP --> SyncCheck{0 errors<br/><10 warnings?}
+    SyncCheck -->|Yes| Done[<moai>DONE</moai>]
+    SyncCheck -->|No| SyncFix[Fix and retry]
+
+    SyncFix --> SyncLSP
+
+    Done --> End([Complete])
+
+    style Plan fill:#fff3e0
+    style Run fill:#f3e5f5
+    style Sync fill:#e8f5e9
+    style Done fill:#c8e6c9
+    style End fill:#4caf50,color:#fff
+```
+
+### Completion Markers
+
+**Plan Phase**:
+- SPEC document created
+- LSP baseline recorded
+- No blocking issues
+
+**Run Phase**:
+- 0 errors
+- 0 type errors
+- Coverage >= 85%
+- Tests passing
+
+**Sync Phase**:
+- 0 errors
+- < 10 warnings
+- Documentation synchronized
+
+### Configuration
+
+```yaml
+# .moai/config/sections/workflow.yaml
+execution_mode:
+  autonomous:
+    user_approval_required: false
+    continuous_loop: true
+    completion_marker_based: true
+    lsp_feedback_integration: true
+```
+
+### Loop Prevention
+
+- Maximum 100 iterations
+- No progress detection (5 iterations)
+- Alternative strategy on stall
+- Snapshot save for resume
+
+---
+
 ## 6. Agent-Skills
 
 ### 📚 Skill Library Structure
@@ -1367,16 +1509,28 @@ All MoAI-ADK projects follow the **TRUST 5** quality framework.
 
 ### 🏆 TRUST 5 = Test + Readable + Unified + Secured + Trackable
 
+**NEW v1.9.0**: LSP Integration for Quality Monitoring
+
 ```mermaid
 graph TD
-    T1["🔴 T: Tested<br/>━━━━━━━━<br/>• DDD with tests<br/>• 85%+ coverage<br/>• Behavior preserved"]
-    R["📖 R: Readable<br/>━━━━━━━━<br/>• Clear naming<br/>• Code comments<br/>• Linter compliance"]
-    U["🔄 U: Unified<br/>━━━━━━━━<br/>• Consistent style<br/>• Standard patterns<br/>• Error handling"]
-    S["🔒 S: Secured<br/>━━━━━━━━<br/>• OWASP Top 10<br/>• Vulnerability scan<br/>• Encryption policy"]
-    T2["📋 T: Trackable<br/>━━━━━━━━<br/>• Clear commits<br/>• Issue tracking<br/>• CHANGELOG"]
+    T1["🔴 T: Tested<br/>━━━━━━━━<br/>• DDD with tests<br/>• 85%+ coverage<br/>• Behavior preserved<br/>• LSP: 0 type errors"]
+    R["📖 R: Readable<br/>━━━━━━━━<br/>• Clear naming<br/>• Code comments<br/>• Linter compliance<br/>• LSP: 0 lint errors"]
+    U["🔄 U: Unified<br/>━━━━━━━━<br/>• Consistent style<br/>• Standard patterns<br/>• Error handling<br/>• LSP: <10 warnings"]
+    S["🔒 S: Secured<br/>━━━━━━━━<br/>• OWASP Top 10<br/>• Vulnerability scan<br/>• Encryption policy<br/>• LSP: 0 security warnings"]
+    T2["📋 T: Trackable<br/>━━━━━━━━<br/>• Clear commits<br/>• Issue tracking<br/>• CHANGELOG<br/>• LSP: State tracked"]
 
     T1 --> R --> U --> S --> T2 --> Deploy["✅ Production Ready"]
 ```
+
+### LSP Integration with TRUST 5 (NEW v1.9.0)
+
+| TRUST 5 Pillar | LSP Quality Indicators |
+| -------------- | ---------------------- |
+| **Tested** | Unit tests pass, LSP type errors = 0 |
+| **Readable** | Linting clean, naming conventions followed |
+| **Unified** | Warnings < threshold, consistent patterns |
+| **Secured** | Security scan pass, no security warnings |
+| **Trackable** | LSP state changes logged, diagnostics tracked |
 
 ### T - Tested
 

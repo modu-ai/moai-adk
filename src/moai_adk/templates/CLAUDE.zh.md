@@ -292,6 +292,27 @@ manager-ddd 用于：以行为保存为重点创建新功能、重构和改进�
 
 执行：当需要专业知识时，Alfred 应调用相应的代理以获得最佳结果。
 
+### LSP 质量门
+
+MoAI-ADK 实现了基于 LSP 的自动化代码质量验证质量门：
+
+**阶段特定阈值：**
+
+- **plan**：在阶段开始时捕获 LSP 基线
+- **run**：要求零错误、零类型错误、零检查错误；不允许基线回归
+- **sync**：要求零错误、最多 10 个警告，同步/PR 前 LSP 必须清洁
+
+**LSP 状态跟踪：**
+
+- 捕获点：phase_start、post_transformation、pre_sync
+- 基线比较：使用 phase_start 作为基线
+- 回归阈值：任何错误增加均为回归
+- 日志记录：状态变化、回归检测、完成标记跟踪
+
+**配置：** @.moai/config/sections/quality.yaml (lsp_quality_gates、lsp_state_tracking)
+
+**实现：** .claude/hooks/moai/quality_gate_with_lsp.py（289 行，Ralph 风格自主工作流）
+
 ---
 
 ## 7. 用户交互架构

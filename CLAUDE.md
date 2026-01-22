@@ -347,6 +347,27 @@ The following actions constitute violations:
 
 Enforcement: When specialized expertise is needed, Alfred SHOULD invoke corresponding agent for optimal results.
 
+### LSP Quality Gates
+
+MoAI-ADK implements LSP-based quality gates for automated code quality validation:
+
+**Phase-Specific Thresholds:**
+
+- **plan**: Capture LSP baseline at phase start
+- **run**: Zero errors, zero type errors, zero lint errors required; regression from baseline not allowed
+- **sync**: Zero errors, max 10 warnings, clean LSP required before sync/PR
+
+**LSP State Tracking:**
+
+- Capture points: phase_start, post_transformation, pre_sync
+- Baseline comparison: phase_start as baseline
+- Regression threshold: Any error increase is regression
+- Logging: State changes, regression detection, completion markers tracked
+
+**Configuration:** @.moai/config/sections/quality.yaml (lsp_quality_gates, lsp_state_tracking)
+
+**Implementation:** .claude/hooks/moai/quality_gate_with_lsp.py (289 lines, Ralph-style autonomous workflow)
+
 ---
 
 ## 7. User Interaction Architecture
@@ -562,21 +583,25 @@ Users can activate UltraThink mode by adding `--ultrathink` flag to any request:
 When `--ultrathink` is detected in user request:
 
 **Step 1: Request Analysis**
+
 - Identify the core task and requirements
 - Detect technical keywords for agent matching
 - Recognize complexity level and scope
 
 **Step 2: Sequential Thinking Activation**
+
 - Load the Sequential Thinking MCP tool
 - Begin structured reasoning with estimated thought count
 - Break down the problem into manageable steps
 
 **Step 3: Execution Planning**
+
 - Map each subtask to appropriate agents
 - Identify parallel vs sequential execution opportunities
 - Generate optimal agent delegation strategy
 
 **Step 4: Execution**
+
 - Launch agents according to the plan
 - Monitor and integrate results
 - Report consolidated findings in user's conversation_language
@@ -586,6 +611,7 @@ When `--ultrathink` is detected in user request:
 When using UltraThink mode, apply these parameter patterns:
 
 **Initial Analysis Call:**
+
 ```
 thought: "Analyzing user request: [request content]"
 nextThoughtNeeded: true
@@ -594,6 +620,7 @@ totalThoughts: [estimated number based on complexity]
 ```
 
 **Subtask Decomposition:**
+
 ```
 thought: "Breaking down into subtasks: 1) [subtask1] 2) [subtask2] 3) [subtask3]"
 nextThoughtNeeded: true
@@ -602,6 +629,7 @@ totalThoughts: [current estimate]
 ```
 
 **Agent Mapping:**
+
 ```
 thought: "Mapping subtasks to agents: [subtask1] → expert-backend, [subtask2] → expert-frontend"
 nextThoughtNeeded: true
@@ -610,6 +638,7 @@ totalThoughts: [current estimate]
 ```
 
 **Execution Strategy:**
+
 ```
 thought: "Execution strategy: [subtasks1,2] can run in parallel, [subtask3] depends on [subtask1]"
 nextThoughtNeeded: true
@@ -618,6 +647,7 @@ totalThoughts: [current estimate]
 ```
 
 **Final Plan:**
+
 ```
 thought: "Final execution plan: Launch [agent1, agent2] in parallel, then [agent3]"
 thoughtNumber: [final number]
@@ -628,6 +658,7 @@ nextThoughtNeeded: false
 ### Best Practices
 
 **When to Use UltraThink:**
+
 - Complex multi-domain tasks (backend + frontend + testing)
 - Architecture decisions affecting multiple files
 - Performance optimization requiring analysis
@@ -635,6 +666,7 @@ nextThoughtNeeded: false
 - Refactoring with behavior preservation
 
 **UltraThink Advantages:**
+
 - Structured decomposition of complex problems
 - Explicit agent-task mapping with justification
 - Identification of parallel execution opportunities
@@ -692,6 +724,7 @@ UltraThink mode seamlessly integrates with Alfred's existing delegation patterns
 **With UltraThink:** Structured reasoning before delegation, then execution
 
 UltraThink enhances decision-making for:
+
 - Complex multi-domain tasks
 - Ambiguous requirements needing clarification
 - Performance vs maintainability trade-offs
