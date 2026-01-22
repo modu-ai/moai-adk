@@ -1386,6 +1386,34 @@ Alfred自动识别4种语言请求并调用正确的智能体:
 
 ---
 
+### 🧠 Sequential Thinking MCP 支持
+
+所有智能体支持使用 Sequential Thinking MCP 进行深度分析的 `--ultrathink` 标志：
+
+**使用方法**:
+```bash
+> /moai:alfred "添加JWT认证" --ultrathink
+```
+
+**智能体特定 UltraThink 示例**:
+
+| 智能体类型         | UltraThink 深度分析重点                              |
+| ------------------- | ---------------------------------------------------- |
+| **expert-backend**  | API设计模式、数据库架构、查询优化                   |
+| **expert-frontend** | 组件架构、状态管理、UI/UX设计                       |
+| **expert-security** | 威胁分析、漏洞模式、OWASP合规                      |
+| **expert-devops**   | 部署策略、CI/CD管道、基础设施                       |
+| **manager-ddd**     | 重构策略、行为保留、遗留代码                        |
+| **manager-spec**    | 需求分析、验收标准、用户故事                        |
+
+当 `--ultrathink` 添加到任何智能体调用时，智能体将激活 Sequential Thinking MCP 以：
+- 将复杂问题分解为可管理的步骤
+- 分析领域特定模式和最佳实践
+- 将子任务映射到适当的执行策略
+- 生成最优实施计划
+
+---
+
 ## 6. Agent-Skills
 
 ### 📚 技能库结构
