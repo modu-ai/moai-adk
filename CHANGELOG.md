@@ -27,6 +27,19 @@ This minor release introduces **UltraThink mode** (`--ultrathink`), an enhanced 
 - **fix(agent)**: Add Edit and Write tools to expert-debug agent
   - Prevents fallback to Bash commands that may fail on different platforms
   - Enables cross-platform code editing capabilities
+- **fix(#288)**: session_start hook fails to detect moai-adk version with uv tool installation
+  - Replace Python import with subprocess call to `moai --version` CLI command
+  - Works correctly with uv tool isolated installations
+  - Graceful fallback to config if CLI command fails
+- **fix(#287)**: moai rank sync incorrectly counts duplicates as failed
+  - Add `_is_duplicate_error()` helper function with robust pattern matching
+  - Support 7 error patterns across 3 languages (EN, KO, ZH)
+  - Replace 3 duplicate detection locations with helper function
+  - Add 9 new tests for duplicate detection
+- **fix(alfred)**: Optimize LSP diagnostics to prevent infinite loops
+  - Reduce LSP timeout from 30 to 15 seconds for faster failure detection
+  - Increase poll interval from 500ms to 1000ms to reduce CPU usage
+  - Change GLM Haiku model from glm-4.7-flashx to glm-4.7
 
 ## Changed
 
@@ -85,6 +98,19 @@ moai --version
 - **fix(agent)**: expert-debug 에이전트에 Edit 및 Write 도구 추가
   - 다른 플랫폼에서 실패할 수 있는 Bash 명령 대체 방지
   - 크로스 플랫폼 코드 편집 기능 활성화
+- **fix(#288)**: session_start hook이 uv tool 설치 시 moai-adk 버전 감지 실패
+  - Python import를 `moai --version` CLI 명령 호출로 교체
+  - uv tool 격리 설치 환경에서 올바르게 작동
+  - CLI 실패 시 config로 우아한 fallback
+- **fix(#287)**: moai rank sync가 중복을 실패로 잘못 카운트
+  - 강건한 패턴 매칭을 위한 `_is_duplicate_error()` 헬퍼 함수 추가
+  - 3개 언어(EN, KO, ZH)의 7개 에러 패턴 지원
+  - 3곳의 중복 감지 위치를 헬퍼 함수로 통합
+  - 중복 감지 테스트 9개 추가
+- **fix(alfred)**: 무한 루프 방지를 위한 LSP 진단 최적화
+  - 더 빠른 실패 감지를 위해 LSP 타임아웃 30→15초 감소
+  - CPU 사용량 감소를 위해 폴링 간격 500→1000ms 증가
+  - GLM Haiku 모델 glm-4.7-flashx → glm-4.7로 변경
 
 ## 변경됨
 
