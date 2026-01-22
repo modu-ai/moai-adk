@@ -1740,19 +1740,22 @@ def _build_template_context(
     # Each platform-specific variable includes the appropriate path separator
     is_windows = platform.system() == "Windows"
 
-    # PROJECT_DIR_WIN: Uses Windows environment variable and backslash separator
-    # Note: Currently non-functional due to Claude Code bug #6023
+    # PROJECT_DIR: Cross-platform forward slash path (standard since v1.8.0)
+    # Works on all modern platforms (Windows 10+, macOS, Linux) with forward slash
+    # Note: Trailing slash included for path concatenation consistency
+    hook_project_dir = "%CLAUDE_PROJECT_DIR%/" if is_windows else "$CLAUDE_PROJECT_DIR/"
+
+    # PROJECT_DIR_WIN: Deprecated (v1.8.0) - Use PROJECT_DIR instead
+    # Uses Windows environment variable with backslash separator
+    # Kept for backward compatibility only - will be removed in v2.0.0
     # Windows: %CLAUDE_PROJECT_DIR%\
     # Unix: $CLAUDE_PROJECT_DIR/ (fallback for non-Windows platforms)
     hook_project_dir_win = "%CLAUDE_PROJECT_DIR%\\" if is_windows else "$CLAUDE_PROJECT_DIR/"
 
-    # PROJECT_DIR_UNIX: Uses appropriate environment variable with forward slash
-    # Windows: %CLAUDE_PROJECT_DIR%/ (forward slash works on Windows too)
-    # Unix: $CLAUDE_PROJECT_DIR/
+    # PROJECT_DIR_UNIX: Deprecated (v1.8.0) - Use PROJECT_DIR instead
+    # Uses appropriate environment variable with forward slash
+    # Kept for backward compatibility only - will be removed in v2.0.0
     hook_project_dir_unix = "%CLAUDE_PROJECT_DIR%/" if is_windows else "$CLAUDE_PROJECT_DIR/"
-
-    # PROJECT_DIR: Legacy variable (deprecated in favor of platform-specific versions)
-    hook_project_dir = "%CLAUDE_PROJECT_DIR%" if is_windows else "$CLAUDE_PROJECT_DIR"
 
     # Detect OS for cross-platform statusline command
     # Windows: Use python -m for better PATH compatibility

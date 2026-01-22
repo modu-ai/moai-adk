@@ -313,21 +313,25 @@ class PhaseExecutor:
                 language_config = legacy_lang if isinstance(legacy_lang, dict) else {}
 
             # Detect OS for cross-platform Hook path configuration
-            # PROJECT_DIR: Legacy variable (without trailing separator)
-            # PROJECT_DIR_WIN: Windows backslash path (currently non-functional due to Claude Code bug #6023)
-            # PROJECT_DIR_UNIX: Forward slash path (works on all platforms)
+            # PROJECT_DIR: Cross-platform forward slash path (works on Windows, macOS, Linux)
+            # PROJECT_DIR_WIN: Deprecated in v1.8.0 - use PROJECT_DIR (removal planned: v2.0.0)
+            # PROJECT_DIR_UNIX: Deprecated in v1.8.0 - use PROJECT_DIR (removal planned: v2.0.0)
             is_windows = platform.system() == "Windows"
 
-            # PROJECT_DIR_WIN: Uses Windows environment variable and backslash separator
-            # Note: Currently non-functional due to Claude Code bug #6023
+            # PROJECT_DIR: Cross-platform forward slash path with trailing separator
+            # Standard since v1.8.0 - works on all modern platforms (Windows 10+, macOS, Linux)
+            # Forward slash is industry standard (pytest, uv, ruff all use this pattern)
+            hook_project_dir = "%CLAUDE_PROJECT_DIR%/" if is_windows else "$CLAUDE_PROJECT_DIR/"
+
+            # PROJECT_DIR_WIN: Deprecated (v1.8.0) - Uses Windows environment variable and backslash separator
+            # BACKWARD COMPATIBILITY ONLY - Will be removed in v2.0.0
+            # Migration: Replace {{PROJECT_DIR_WIN}} with {{PROJECT_DIR}} in templates
             hook_project_dir_win = "%CLAUDE_PROJECT_DIR%\\" if is_windows else "$CLAUDE_PROJECT_DIR/"
 
-            # PROJECT_DIR_UNIX: Uses appropriate environment variable with forward slash
-            # Forward slash works on Windows too
+            # PROJECT_DIR_UNIX: Deprecated (v1.8.0) - Uses appropriate environment variable with forward slash
+            # BACKWARD COMPATIBILITY ONLY - Will be removed in v2.0.0
+            # Migration: Replace {{PROJECT_DIR_UNIX}} with {{PROJECT_DIR}} in templates
             hook_project_dir_unix = "%CLAUDE_PROJECT_DIR%/" if is_windows else "$CLAUDE_PROJECT_DIR/"
-
-            # PROJECT_DIR: Legacy variable (deprecated in favor of platform-specific versions)
-            hook_project_dir = "%CLAUDE_PROJECT_DIR%" if is_windows else "$CLAUDE_PROJECT_DIR"
 
             # Detect OS for cross-platform statusline command
             # Windows: Use python -m for better PATH compatibility

@@ -422,6 +422,30 @@ DO NOT:
 - [HARD] Never commit `{{PROJECT_DIR}}` in local files (breaks runtime resolution)
 - [HARD] Never use `$CLAUDE_PROJECT_DIR` without quotes (causes parsing errors)
 
+### Migration Notes (v1.8.0)
+
+**Historical Context:**
+
+Prior to v1.8.0, MoAI-ADK used platform-specific path variables:
+- `{{PROJECT_DIR_UNIX}}`: Forward slash path (worked on all platforms)
+- `{{PROJECT_DIR_WIN}}`: Backslash path (non-functional due to Claude Code bug #6023)
+- `{{PROJECT_DIR}}`: Legacy variable without trailing separator
+
+**v1.8.0 Consolidation:**
+
+All template variables were consolidated to a single `{{PROJECT_DIR}}` that:
+- Uses forward slash separators (works on Windows, macOS, Linux)
+- Includes trailing separator for consistency
+- Eliminates platform-specific variable confusion
+
+**Migration for Existing Projects:**
+
+If you have an existing project with deprecated variables:
+1. Search for `{{PROJECT_DIR_UNIX}}` and `{{PROJECT_DIR_WIN}}` in your `.claude/` directory
+2. Replace all occurrences with `{{PROJECT_DIR}}`
+3. Verify hook scripts execute correctly
+4. No changes needed to runtime `$CLAUDE_PROJECT_DIR` variable
+
 ### Extension to Local Agent/Skill Files
 
 **Local agents/skills** (`.claude/agents/**/*.md`, `.claude/skills/**/*.md`):
@@ -562,15 +586,15 @@ rsync -avz --delete \
 cp src/moai_adk/templates/CLAUDE.md ./CLAUDE.md
 
 # Post-sync: Replace template variables with local development values
-# {{PROJECT_DIR_UNIX}} -> $CLAUDE_PROJECT_DIR (runtime variable for local)
+# {{PROJECT_DIR}} -> $CLAUDE_PROJECT_DIR (runtime variable for local)
 # {{MOAI_VERSION}} -> actual version from pyproject.toml
 # {{CONVERSATION_LANGUAGE}} -> ko (Korean for local development)
 # {{CONVERSATION_LANGUAGE_NAME}} -> Korean (한국어)
 
-# Replace PROJECT_DIR_UNIX in agents, skills, commands
-find .claude/agents -name "*.md" -exec sed -i '' 's|{{PROJECT_DIR_UNIX}}|$CLAUDE_PROJECT_DIR|g' {} \;
-find .claude/skills -name "*.md" -exec sed -i '' 's|{{PROJECT_DIR_UNIX}}|$CLAUDE_PROJECT_DIR|g' {} \;
-find .claude/commands -name "*.md" -exec sed -i '' 's|{{PROJECT_DIR_UNIX}}|$CLAUDE_PROJECT_DIR|g' {} \;
+# Replace PROJECT_DIR in agents, skills, commands
+find .claude/agents -name "*.md" -exec sed -i '' 's|{{PROJECT_DIR}}|$CLAUDE_PROJECT_DIR|g' {} \;
+find .claude/skills -name "*.md" -exec sed -i '' 's|{{PROJECT_DIR}}|$CLAUDE_PROJECT_DIR|g' {} \;
+find .claude/commands -name "*.md" -exec sed -i '' 's|{{PROJECT_DIR}}|$CLAUDE_PROJECT_DIR|g' {} \;
 
 # Replace version and language settings
 VERSION=$(grep -m1 'version = ' pyproject.toml | cut -d'"' -f2)
@@ -786,6 +810,85 @@ NOTE: When measuring coverage, pytest-cov works with pytest-xdist using shared d
 
 ---
 
+---
+
+## 18. Memory Management Guidelines
+
+### Node.js V8 Heap Memory Limits
+
+Claude Code runs on Node.js, which has default V8 heap memory limits that can cause crashes during long-running agent sessions.
+
+**Default Heap Limits**:
+- 32-bit systems: ~512 MB
+- 64-bit systems: ~2 GB (typical crash point ~4 GB)
+
+**Symptoms of Memory Issues**:
+- Process crash with: `FATAL ERROR: Ineffective mark-compacts near heap limit`
+- Agent stops responding after extended execution
+- Session terminates unexpectedly after 20+ minutes
+
+### Workaround: Increase Node.js Heap Size
+
+For long-running workflows, you can increase the heap size:
+
+```bash
+# Set environment variable before running Claude Code
+export NODE_OPTIONS="--max-old-space-size=8192"  # 8 GB
+# Or
+export NODE_OPTIONS="--max-old-space-size=16384"  # 16 GB
+```
+
+**Note**: This is a temporary workaround. The root cause (context accumulation) is addressed by agent checkpoint/resume functionality.
+
+### Long-Running Agent Considerations
+
+The following agents are prone to memory issues during extended sessions:
+
+**manager-ddd**:
+- Token budget: high
+- Context retention: high
+- Typical use case: Large refactoring operations (30+ minutes)
+- Risk: High
+
+**manager-docs**:
+- Token budget: medium
+- Context retention: low
+- Typical use case: Large documentation generation
+- Risk: Medium
+
+### Best Practices for Long Workflows
+
+1. **Break Down Large Tasks**:
+   - Divide work into smaller SPEC files
+   - Run `/moai:2-run` separately for each SPEC
+   - Use `/moai:3-sync` after each implementation completes
+
+2. **Use Loop Mode Wisely**:
+   - `/moai:loop` maintains state across iterations
+   - Monitor memory usage for loops >100 iterations
+   - Consider using `--max` to limit iterations
+
+3. **Enable Resume Capability** (Coming Soon):
+   - Agents will support checkpoint-based recovery
+   - Work can resume from saved state after crash
+   - No need to restart from beginning
+
+### Current Limitations
+
+**Agents without Resume Support**:
+- manager-ddd: `can_resume: false`
+- manager-docs: `can_resume: false`
+
+**Impact**:
+- Cannot recover from memory crashes
+- Must restart work from beginning
+- Lost progress after crash
+
+**Future Improvements**:
+P1 priority tasks to add checkpoint/resume capability to these agents.
+
+---
+
 **Status**: Active (Local Development)
-**Version**: 3.2.0 (Added Testing Guidelines)
-**Last Updated**: 2026-01-13
+**Version**: 3.3.0 (Added Memory Management Guidelines)
+**Last Updated**: 2026-01-22
