@@ -215,22 +215,26 @@ Allowed Tools: Full access (all tools)
 When using Explore agent or direct exploration tools (Grep, Glob, Read), apply these optimizations to prevent performance bottlenecks with GLM models:
 
 **Principle 1: AST-Grep Priority**
+
 - Use structural search (ast-grep) before text-based search (Grep)
 - AST-Grep understands code syntax and eliminates false positives
 - Load moai-tool-ast-grep skill for complex pattern matching
 - Example: `sg -p 'class $X extends Service' --lang python` is faster than `grep -r "class.*extends.*Service"`
 
 **Principle 2: Search Scope Limitation**
+
 - Always use `path` parameter to limit search scope
 - Avoid searching entire codebase unnecessarily
 - Example: `Grep(pattern="async def", path="src/moai_adk/core/")` instead of `Grep(pattern="async def")`
 
 **Principle 3: File Pattern Specificity**
+
 - Use specific Glob patterns instead of wildcards
 - Example: `Glob(pattern="src/moai_adk/core/*.py")` instead of `Glob(pattern="src/**/*.py")`
 - Reduces files scanned by 50-80%
 
 **Principle 4: Parallel Processing**
+
 - Execute independent searches in parallel (single message, multiple tool calls)
 - Example: Search for imports in Python files AND search for types in TypeScript files simultaneously
 - Maximum 5 parallel searches to prevent context fragmentation
@@ -240,18 +244,21 @@ When using Explore agent or direct exploration tools (Grep, Glob, Read), apply t
 When invoking Explore agent or using exploration tools directly:
 
 **quick** (target: 10 seconds):
+
 - Use Glob for file discovery
 - Use Grep with specific path parameter only
 - Skip Read operations unless necessary
 - Example: `Glob("src/moai_adk/core/*.py") + Grep("async def", path="src/moai_adk/core/")`
 
 **medium** (target: 30 seconds):
+
 - Use Glob + Grep with path limitation
 - Use Read selectively for key files only
 - Load moai-tool-ast-grep for structural search if needed
 - Example: `Glob("src/**/*.py") + Grep("class Service") + Read("src/moai_adk/core/service.py")`
 
 **very thorough** (target: 2 minutes):
+
 - Use all tools including ast-grep
 - Explore full codebase with structural analysis
 - Use parallel searches across multiple domains
@@ -260,12 +267,14 @@ When invoking Explore agent or using exploration tools directly:
 ### When to Delegate to Explore Agent
 
 Use the Explore agent when:
+
 - Read-only codebase exploration is needed
 - Multiple search patterns need to be tested
 - Code structure analysis is required
 - Performance bottleneck analysis is needed
 
 Direct tool usage is acceptable when:
+
 - Single file needs to be read
 - Specific pattern search in known location
 - Quick verification task
@@ -456,12 +465,14 @@ Use the Sequential Thinking MCP tool in the following situations:
 The sequential_thinking tool accepts the following parameters:
 
 Required Parameters:
+
 - thought (string): The current thinking step content
 - nextThoughtNeeded (boolean): Whether another thought step is needed after this one
 - thoughtNumber (integer): Current thought number (starts from 1)
 - totalThoughts (integer): Estimated total thoughts needed for the analysis
 
 Optional Parameters:
+
 - isRevision (boolean): Whether this thought revises previous thinking (default: false)
 - revisesThought (integer): Which thought number is being reconsidered (used with isRevision: true)
 - branchFromThought (integer): Branching point thought number for alternative reasoning paths
@@ -483,6 +494,7 @@ The Sequential Thinking MCP tool provides structured reasoning with:
 When encountering complex decisions that require deep analysis, use the Sequential Thinking MCP tool:
 
 Step 1: Initial Call
+
 ```
 thought: "Analyzing the problem: [describe problem]"
 nextThoughtNeeded: true
@@ -491,6 +503,7 @@ totalThoughts: 5
 ```
 
 Step 2: Continue Analysis
+
 ```
 thought: "Breaking down: [sub-problem 1]"
 nextThoughtNeeded: true
@@ -499,6 +512,7 @@ totalThoughts: 5
 ```
 
 Step 3: Revision (if needed)
+
 ```
 thought: "Revising thought 2: [corrected analysis]"
 isRevision: true
@@ -509,6 +523,7 @@ nextThoughtNeeded: true
 ```
 
 Step 4: Final Conclusion
+
 ```
 thought: "Conclusion: [final answer based on analysis]"
 thoughtNumber: 5
@@ -562,8 +577,122 @@ Achieves 67% reduction in initial token load (from ~90K to ~600 tokens for manag
 
 ---
 
-Version: 10.4.0 (DDD + Progressive Disclosure + Auto-Parallel Task Decomposition)
-Last Updated: 2026-01-19
+## 13. Parallel Execution Safeguards
+
+### File Write Conflict Prevention
+
+**Problem**: When multiple agents operate in parallel, they may attempt to modify the same file simultaneously, causing conflicts and data loss.
+
+**Solution**: Dependency analysis before parallel execution
+
+**Pre-execution Checklist**:
+
+1. **File Access Analysis**:
+   - Collect all files to be accessed by each agent
+   - Identify overlapping file access patterns
+   - Detect read-write conflicts
+
+2. **Dependency Graph Construction**:
+   - Map agent-to-agent file dependencies
+   - Identify independent task sets (no shared files)
+   - Mark dependent task sets (shared files require sequential execution)
+
+3. **Execution Mode Selection**:
+   - **Parallel**: No file overlaps → Execute simultaneously
+   - **Sequential**: File overlaps detected → Execute in dependency order
+   - **Hybrid**: Partial overlaps → Group independent tasks, run groups sequentially
+
+### Agent Tool Requirements
+
+**Mandatory Tools for Implementation Agents**:
+
+All agents that perform code modifications MUST include these tools:
+
+```yaml
+tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, ...
+```
+
+**Why**: Without Edit/Write tools, agents fall back to Bash commands which may fail due to platform differences (e.g., macOS BSD sed vs GNU sed).
+
+**Verification**:
+
+```bash
+# Check all agent definitions have required tools
+for agent in .claude/agents/moai/*.md; do
+  tools=$(grep "^tools:" "$agent" || echo "")
+  if [[ ! "$tools" =~ "Edit" ]] || [[ ! "$tools" =~ "Write" ]]; then
+    echo "WARNING: $agent missing Edit or Write tool"
+  fi
+done
+```
+
+### Loop Prevention Guards
+
+**Problem**: Agents may enter infinite retry loops when repeatedly failing at the same operation (e.g., git checkout → failed edit → retry).
+
+**Solution**: Implement retry limits and failure pattern detection
+
+**Retry Strategy**:
+
+1. **Maximum Retries**: 3 attempts per operation
+2. **Failure Pattern Detection**: Detect repeated failures on same file/operation
+3. **Fallback Chain**: Edit → Python script → Bash (with platform detection)
+4. **User Intervention**: After 3 failed attempts, request user guidance
+
+**Example Anti-Pattern** (DO NOT DO THIS):
+
+```
+retry:
+  attempt_edit()
+  if failed:
+    git_restore()
+    goto retry  # ← INFINITE LOOP
+```
+
+**Example Correct Pattern**:
+
+```
+attempt = 0
+while attempt < 3:
+  if attempt_edit():
+    break
+  attempt += 1
+  if attempt == 3:
+    return error_report("Max retries exceeded")
+```
+
+### Platform Compatibility
+
+**macOS vs Linux Command Differences**:
+
+| Command    | Linux (GNU)             | macOS (BSD)                | Solution                |
+| ---------- | ----------------------- | -------------------------- | ----------------------- |
+| sed inline | `sed -i 's/a/b/g' file` | `sed -i '' 's/a/b/g' file` | Use Edit tool instead   |
+| date       | `date -d '1 day ago'`   | `date -v-1d`               | Use Python datetime     |
+| grep       | `grep -P` (Perl regex)  | Not supported              | Use `grep -E` or Python |
+
+**Best Practice**: Always prefer Edit tool over sed/awk for file modifications. Only use Bash for commands that cannot be done with Edit/Read/Write tools.
+
+### Platform Detection Pattern
+
+When Bash is unavoidable, use platform detection:
+
+```python
+import platform
+
+def get_sed_command():
+    if platform.system() == "Darwin":
+        return "sed -i ''"
+    else:
+        return "sed -i"
+```
+
+**Even Better**: Don't use sed at all. Use Edit tool which works cross-platform.
+
+---
+
+Version: 10.5.0 (DDD + Progressive Disclosure + Auto-Parallel + Safeguards)
+Last Updated: 2026-01-22
 Language: English
 Core Rule: Alfred is an orchestrator; direct implementation is prohibited
 
