@@ -188,10 +188,11 @@ Allowed Tools: Full access (all tools)
 - manager-strategy: System design, architecture decisions, trade-off analysis
 - manager-git: Git operations, branching strategy, merge management
 
-### Expert Agents (8)
+### Expert Agents (9)
 
 - expert-backend: API development, server-side logic, database integration
 - expert-frontend: React components, UI implementation, client-side code
+- expert-stitch: UI/UX design specialist using Google Stitch MCP for AI-powered design generation
 - expert-security: Security analysis, vulnerability assessment, OWASP compliance
 - expert-devops: CI/CD pipelines, infrastructure, deployment automation
 - expert-performance: Performance optimization, profiling, bottleneck analysis
