@@ -156,6 +156,10 @@ exclude = [
     "src/moai_adk/templates/.moai/temp",  # Temporary files
     "src/moai_adk/templates/.claude/commands/moai/99-release.md",  # Release command - local-only
     "src/moai_adk/templates/.moai/release",  # Release scripts - local-only
+    "src/moai_adk/templates/README.md",  # README files - local-only
+    "src/moai_adk/templates/README.ko.md",  # README files - local-only
+    "src/moai_adk/templates/README.ja.md",  # README files - local-only
+    "src/moai_adk/templates/README.zh.md",  # README files - local-only
 
     # ✅ INCLUDE: User-facing workflows (distributed to users)
     # - ci-universal.yml (Multi-language CI/CD)
