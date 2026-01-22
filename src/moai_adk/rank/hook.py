@@ -163,6 +163,37 @@ class TokenUsage:
     code_metrics: Optional[dict[str, int]] = None
 
 
+def _is_duplicate_error(error_msg: str) -> bool:
+    """Check if error message indicates duplicate session.
+
+    Supports multiple error message patterns and languages for robust
+    duplicate detection across different server responses.
+
+    Args:
+        error_msg: Error message string to check
+
+    Returns:
+        True if error indicates duplicate/already recorded session
+    """
+    if not error_msg:
+        return False
+
+    msg_lower = error_msg.lower()
+
+    # Multiple patterns for duplicate detection
+    duplicate_patterns = [
+        "duplicate",
+        "already",
+        "exists",
+        "conflict",
+        "previously recorded",
+        # Multilingual support
+        "중복",  # Korean
+        "重複",  # Chinese (traditional)
+        "重複",  # Chinese (simplified)
+    ]
+
+    return any(pattern in msg_lower for pattern in duplicate_patterns)
 def compute_anonymous_project_id(project_path: str) -> str:
     """Compute an anonymized project identifier.
 
@@ -1334,7 +1365,7 @@ def sync_all_sessions(
                         for result in response.get("results", []):
                             if not result.get("success"):
                                 error_msg = result.get("error", "").lower()
-                                if "duplicate" in error_msg or "already" in error_msg:
+                                if _is_duplicate_error(error_msg):
                                     batch_skipped += 1
                                     batch_failed -= 1
                     else:
@@ -1429,7 +1460,7 @@ def sync_all_sessions(
                     else:
                         # Check for duplicate/already recorded
                         msg = str(response.get("message", "")).lower()
-                        if "duplicate" in msg or "already" in msg:
+                        if _is_duplicate_error(msg):
                             stats["skipped"] += 1
                         else:
                             # Log unexpected failure
@@ -1440,7 +1471,7 @@ def sync_all_sessions(
 
                 except (ApiError, RankClientError) as e:
                     error_msg = str(e).lower()
-                    if "duplicate" in error_msg or "already" in error_msg:
+                    if _is_duplicate_error(error_msg):
                         stats["skipped"] += 1
                     elif "too soon" in error_msg or "rate limit" in error_msg:
                         # Rate limit hit - wait and retry

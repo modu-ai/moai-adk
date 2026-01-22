@@ -10,6 +10,7 @@ from moai_adk.rank.client import SessionSubmission
 from moai_adk.rank.config import RankConfig
 from moai_adk.rank.hook import (
     TokenUsage,
+    _is_duplicate_error,
     add_project_exclusion,
     calculate_cost,
     compute_anonymous_project_id,
@@ -611,3 +612,55 @@ class TestRankConfig:
 
                 config = load_rank_config()
                 assert "/test/project" not in config["exclude_projects"]
+
+class TestIsDuplicateError:
+    """Test _is_duplicate_error function."""
+
+    def test_duplicate_keyword(self):
+        """Test detection of 'duplicate' keyword."""
+        assert _is_duplicate_error("duplicate session")
+        assert _is_duplicate_error("Duplicate entry")
+        assert _is_duplicate_error("DUPLICATE")
+
+    def test_already_keyword(self):
+        """Test detection of 'already' keyword."""
+        assert _is_duplicate_error("already recorded")
+        assert _is_duplicate_error("Already exists")
+        assert _is_duplicate_error("ALREADY")
+
+    def test_exists_keyword(self):
+        """Test detection of 'exists' keyword."""
+        assert _is_duplicate_error("session exists")
+        assert _is_duplicate_error("Already exists")
+
+    def test_conflict_keyword(self):
+        """Test detection of 'conflict' keyword."""
+        assert _is_duplicate_error("conflict detected")
+        assert _is_duplicate_error("Conflict error")
+
+    def test_previously_recorded_keyword(self):
+        """Test detection of 'previously recorded' keyword."""
+        assert _is_duplicate_error("previously recorded")
+        assert _is_duplicate_error("Previously recorded session")
+
+    def test_multilingual_korean(self):
+        """Test detection of Korean '중복' keyword."""
+        assert _is_duplicate_error("중복된 세션")
+        assert _is_duplicate_error("Duplicate: 중복")
+
+    def test_multilingual_chinese(self):
+        """Test detection of Chinese '重複' keyword."""
+        assert _is_duplicate_error("重複的会话")
+        assert _is_duplicate_error("Duplicate: 重複")
+
+    def test_empty_string(self):
+        """Test handling of empty string."""
+        assert not _is_duplicate_error("")
+        assert not _is_duplicate_error(None)
+
+    def test_non_duplicate_errors(self):
+        """Test that non-duplicate errors return False."""
+        assert not _is_duplicate_error("network error")
+        assert not _is_duplicate_error("validation failed")
+        assert not _is_duplicate_error("server unavailable")
+        assert not _is_duplicate_error("rate limit exceeded")
