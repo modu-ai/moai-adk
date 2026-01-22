@@ -277,11 +277,15 @@ def status() -> None:
 
 @rank.command()
 def logout() -> None:
-    """Remove stored MoAI Rank credentials.
+    """Remove stored MoAI Rank credentials and uninstall hook.
 
-    This will delete your API key from ~/.moai/rank/credentials.json
+    This will:
+    - Delete your API key from ~/.moai/rank/credentials.json
+    - Remove SessionEnd hook from ~/.claude/settings.json
+    - Remove hook file from ~/.claude/hooks/moai/
     """
     from moai_adk.rank.config import RankConfig
+    from moai_adk.rank.hook import is_hook_installed, uninstall_hook
 
     if not RankConfig.has_credentials():
         console.print("[yellow]No credentials stored.[/yellow]")
@@ -290,8 +294,22 @@ def logout() -> None:
     creds = RankConfig.load_credentials()
     username = creds.username if creds else "unknown"
 
-    if click.confirm(f"Remove credentials for {username}?"):
+    # Check if hook is installed
+    hook_installed = is_hook_installed()
+
+    if click.confirm(f"Remove credentials for {username}?" + (" (and uninstall hook)" if hook_installed else "")):
+        # Remove credentials
         RankConfig.delete_credentials()
+
+        # Uninstall hook if it was installed
+        if hook_installed:
+            if uninstall_hook():
+                console.print("[cyan]Hook uninstalled successfully.[/cyan]")
+            else:
+                console.print("[yellow]⚠️ Failed to uninstall hook. You may need to remove it manually.[/yellow]")
+                console.print("[dim]Hook file: ~/.claude/hooks/moai/session_end__rank_submit.py[/dim]")
+                console.print("[dim]Settings: ~/.claude/settings.json (remove SessionEnd hook)[/dim]")
+
         console.print("[green]Credentials removed successfully.[/]")
     else:
         console.print("[dim]Cancelled.[/dim]")

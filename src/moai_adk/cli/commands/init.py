@@ -420,6 +420,15 @@ def init(
             else:
                 console.print("  [blue]2.[/blue] Start developing with MoAI-ADK!\n")
 
+            # Setup LSP environment for Claude Code
+            try:
+                from moai_adk.cli.commands.lsp_setup import setup_lsp_environment
+
+                console.print("\n[cyan]🔧 Configuring LSP environment...[/cyan]")
+                setup_lsp_environment(verbose=False)
+            except ImportError:
+                pass  # lsp_setup module not available
+
             # Prompt for MoAI Rank hook installation if eligible
             try:
                 from moai_adk.rank.hook import prompt_hook_installation

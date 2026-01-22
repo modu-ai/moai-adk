@@ -545,6 +545,62 @@ If you encounter merge conflicts or issues:
     return guide_path
 
 
+def _sync_global_hooks() -> bool:
+    """Sync global hook files to ~/.claude/hooks/moai/.
+
+    Copies session_end__rank_submit.py from template to global hooks directory.
+    This ensures that moai update keeps the global MoAI Rank hook up-to-date.
+
+    Returns:
+        True if sync succeeded, False otherwise
+    """
+    try:
+        # Get template path
+        template_path = Path(__file__).parent.parent.parent / "templates"
+        template_hook = template_path / ".claude" / "hooks" / "moai" / "session_end__rank_submit.py"
+
+        # Get global hooks path
+        global_hooks_dir = Path.home() / ".claude" / "hooks" / "moai"
+        global_hook = global_hooks_dir / "session_end__rank_submit.py"
+
+        # Check if template hook exists
+        if not template_hook.exists():
+            logger.debug(f"Template hook not found: {template_hook}")
+            return False
+
+        # Check if global hook directory exists (user has run moai-adk rank register)
+        if not global_hooks_dir.exists():
+            logger.debug("Global hooks directory does not exist (user not registered for MoAI Rank)")
+            return False
+
+        # Create backup of existing global hook
+        if global_hook.exists():
+            backup_dir = Path.home() / ".moai-backups" / "hooks"
+            backup_dir.mkdir(parents=True, exist_ok=True)
+            backup_path = backup_dir / f"session_end__rank_submit.py.{datetime.now().strftime('%Y%m%d_%H%M%S')}.bak"
+            try:
+                shutil.copy2(global_hook, backup_path)
+                logger.debug(f"Backed up global hook to: {backup_path}")
+            except Exception as e:
+                logger.warning(f"Failed to backup global hook: {e}")
+
+        # Copy template hook to global location
+        try:
+            global_hooks_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(template_hook, global_hook)
+            console.print("   [cyan]✓ Updated global MoAI Rank hook[/cyan]")
+            logger.info(f"Updated global hook: {global_hook}")
+            return True
+        except Exception as e:
+            console.print(f"   [yellow]⚠️ Failed to update global hook: {e}[/yellow]")
+            logger.warning(f"Failed to update global hook: {e}")
+            return False
+
+    except Exception as e:
+        logger.warning(f"Error syncing global hooks: {e}")
+        return False
+
+
 def _migrate_legacy_logs(project_path: Path, dry_run: bool = False) -> bool:
     """Migrate legacy log files to unified directory structure.
 
@@ -1596,6 +1652,10 @@ def _sync_templates(project_path: Path, force: bool = False, yes: bool = False) 
         # NEW: Interactive custom element restore using new system
         _handle_custom_element_restoration(project_path, backup_path, yes)
 
+        # NEW: Sync global hooks (MoAI Rank hook)
+        console.print("\n[cyan]🪝 Syncing global hooks...[/cyan]")
+        _sync_global_hooks()
+
         # NEW: Migrate legacy logs to unified structure
         console.print("\n[cyan]📁 Migrating legacy log files...[/cyan]")
         if not _migrate_legacy_logs(project_path):
@@ -2515,6 +2575,15 @@ def update(
         console.print("   [yellow]⚙️  Set optimized=false (optimization needed)[/yellow]")
 
         console.print("\n[green]✓ Update complete![/green]")
+
+        # Setup LSP environment for Claude Code
+        try:
+            from moai_adk.cli.commands.lsp_setup import setup_lsp_environment
+
+            console.print("\n[cyan]🔧 Configuring LSP environment...[/cyan]")
+            setup_lsp_environment(verbose=False)
+        except ImportError:
+            pass  # lsp_setup module not available
 
         # Prompt for MoAI Rank hook installation if eligible
         try:

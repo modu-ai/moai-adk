@@ -118,11 +118,8 @@ curl -LsSf https://modu-ai.github.io/moai-adk/install.sh | sh
 ### 🔧 Method 2: Manual Install
 
 ```bash
-# Step 1: Install uv (macOS/Linux)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Step 2: Install MoAI-ADK
-uv tool install moai-adk
+# Install MoAI-ADK
+claude install moai-adk
 ```
 
 ### 🎨 Interactive Setup Wizard
@@ -411,17 +408,13 @@ ModuleNotFoundError: No module named 'yaml'
 
 **Solutions**:
 
-#### Option 1: Use uv tool only (Recommended)
+#### Option 1: Use claude install (Recommended)
 
 ```bash
-# Uninstall pip version
-pip uninstall moai-adk -y
-
-# Ensure uv tool is prioritized in PATH
-export PATH="$HOME/.local/bin:$PATH"
+# Reinstall with claude install
+claude install moai-adk
 
 # Verify
-which moai  # Should show ~/.local/bin/moai
 moai --version  # Should show latest version
 ```
 
@@ -429,8 +422,7 @@ moai --version  # Should show latest version
 
 **For macOS/Linux (~/.zshrc or ~/.bashrc)**:
 ```bash
-# Add after pyenv initialization
-# ===== UV Tool Priority =====
+# Add to PATH
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
@@ -440,24 +432,8 @@ export PATH="$HOME/.local/bin:$PATH"
 $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
 ```
 
-#### Option 3: Force reinstall with uv
-
-```bash
-# Uninstall all versions
-pip uninstall moai-adk -y
-uv tool uninstall moai-adk
-
-# Reinstall with uv
-uv tool install moai-adk
-
-# Verify
-uv tool list
-moai --version
-```
-
 **Prevention**:
-- Always use `uv tool install moai-adk` for installation
-- Avoid mixing pip and uv for the same package
+- Always use `claude install moai-adk` for installation
 - Regularly check `which moai` to verify active installation
 
 ---

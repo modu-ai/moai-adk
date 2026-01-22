@@ -55,6 +55,22 @@
       }
     ]
   },
+  "statusLine": {
+    "type": "command",
+    "command": "uv run --no-sync moai-adk statusline",
+    "padding": 0,
+    "refreshInterval": 300
+  },
+  "plansDirectory": "./.claude/plans",
+  "outputStyle": "Mr.Alfred",
+  "cleanupPeriodDays": 30,
+  "env": {
+    "MOAI_CONFIG_SOURCE": "sections",
+    "ENABLE_TOOL_SEARCH": "1",
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "64000",
+    "MAX_THINKING_TOKENS": "31999",
+    "CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS": "64000"
+  },
   "permissions": {
     "defaultMode": "default",
     "allow": [
@@ -230,21 +246,5 @@
       "Bash(psql -c DROP:*)",
       "Bash(mysql -e DROP:*)"
     ]
-  },
-  "statusLine": {
-    "type": "command",
-    "command": "moai statusline",
-    "padding": 0,
-    "refreshInterval": 300
-  },
-  "plansDirectory": "./.claude/plans",
-  "outputStyle": "Mr.Alfred",
-  "cleanupPeriodDays": 30,
-  "env": {
-    "MOAI_CONFIG_SOURCE": "sections",
-    "ENABLE_TOOL_SEARCH": "1",
-    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "64000",
-    "MAX_THINKING_TOKENS": "31999",
-    "CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS": "64000"
   }
 }

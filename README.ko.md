@@ -118,11 +118,8 @@ curl -LsSf https://modu-ai.github.io/moai-adk/install.sh | sh
 ### 🔧 방법 2: 수동 설치
 
 ```bash
-# Step 1: uv 설치 (macOS/Linux)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Step 2: MoAI-ADK 설치
-uv tool install moai-adk
+# MoAI-ADK 설치
+claude install moai-adk
 ```
 
 ### 🎨 대화형 설정 마법사
@@ -411,17 +408,13 @@ ModuleNotFoundError: No module named 'yaml'
 
 **해결 방법**:
 
-#### 옵션 1: uv tool만 사용 (권장)
+#### 옵션 1: claude install 사용 (권장)
 
 ```bash
-# pip 버전 제거
-pip uninstall moai-adk -y
-
-# uv tool이 PATH에서 우선하도록 설정
-export PATH="$HOME/.local/bin:$PATH"
+# claude install로 재설치
+claude install moai-adk
 
 # 확인
-which moai  # ~/.local/bin/moai가 표시되어야 함
 moai --version  # 최신 버전 표시되어야 함
 ```
 
@@ -429,8 +422,7 @@ moai --version  # 최신 버전 표시되어야 함
 
 **macOS/Linux (~/.zshrc 또는 ~/.bashrc)**:
 ```bash
-# pyenv 초기화 이후에 추가
-# ===== UV Tool Priority =====
+# PATH에 추가
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
@@ -440,24 +432,8 @@ export PATH="$HOME/.local/bin:$PATH"
 $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
 ```
 
-#### 옵션 3: uv로 강제 재설치
-
-```bash
-# 모든 버전 제거
-pip uninstall moai-adk -y
-uv tool uninstall moai-adk
-
-# uv로 재설치
-uv tool install moai-adk
-
-# 확인
-uv tool list
-moai --version
-```
-
 **예방**:
-- 항상 `uv tool install moai-adk`로 설치
-- pip와 uv를 혼용하지 않기
+- 항상 `claude install moai-adk`로 설치
 - 정기적으로 `which moai`로 활성 설치 확인
 
 ---

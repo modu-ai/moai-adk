@@ -659,30 +659,20 @@ grep -r "X.Y.Z" pyproject.toml README.md CHANGELOG.md
 
 When responding to issues or comments that require users to update MoAI-ADK, ALWAYS use the following format:
 
-[HARD] Use `uv tool update moai-adk` as the primary update method.
+[HARD] Use `claude install moai-adk` as the primary installation method.
 
 ```bash
-# Update to the latest version
-uv tool update moai-adk
-```
-
-Alternative methods (only if user requests):
-
-```bash
-# Using pipx (alternative)
-pipx upgrade moai-adk
-
-# Using pip (not recommended for tool installation)
-pip install --upgrade moai-adk
+# Install or update to the latest version
+claude install moai-adk
 ```
 
 ### Prohibited Practices
 
 - [HARD] NEVER recommend `pip install --upgrade moai-adk` as primary method
 - [HARD] NEVER recommend `uv pip install --upgrade moai-adk` (wrong usage pattern)
-- [HARD] ALWAYS use `uv tool update moai-adk` for uv-based installations
+- [HARD] ALWAYS use `claude install` for Claude Code-based installations
 
-WHY: `uv tool` is the correct command for updating uv-installed tools. `uv pip` is for package management, not tool management.
+WHY: `claude install` is the correct command for installing Claude Code tools. `uv pip` is for package management, not tool management.
 
 ### Issue Response Template
 
@@ -694,7 +684,7 @@ When resolving issues, include this standard update instruction:
 Update to the latest version:
 
 ```bash
-uv tool update moai-adk
+claude install moai-adk
 ```
 
 After updating, the issue will be resolved.
