@@ -24,7 +24,7 @@ llm:
   # These values are used in .moai/llm-configs/glm.json template
   glm:
     # base_url: "https://api.z.ai/api/anthropic"
-    base_url: "https://open.bigmodel.cn/api/anthropic"
+    base_url: "https://api.z.ai/api/anthropic"
     models:
       haiku: "glm-4.7"
       sonnet: "glm-4.7"

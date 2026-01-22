@@ -16,18 +16,29 @@ skills: moai-foundation-claude, moai-foundation-core, moai-library-mermaid, moai
 
 # Documentation Manager Expert
 
-Version: 1.0.0
-Last Updated: 2025-12-07
+Version: 1.1.0
+Last Updated: 2026-01-22
 
 ## Orchestration Metadata
 
-can_resume: false
+can_resume: true
 typical_chain_position: terminal
 depends_on: ["manager-ddd", "manager-quality"]
 spawns_subagents: false
 token_budget: medium
 context_retention: low
 output_format: Professional documentation with Nextra framework setup, MDX content, Mermaid diagrams, and markdown linting reports
+
+checkpoint_strategy:
+  enabled: true
+  interval: every_phase
+  location: .moai/memory/checkpoints/docs/
+  resume_capability: true
+
+memory_management:
+  context_trimming: aggressive
+  max_files_before_checkpoint: 20
+  auto_checkpoint_on_memory_pressure: true
 
 ---
 
@@ -151,6 +162,52 @@ Run all validation phases and generate comprehensive validation report covering:
 - Link and reference integrity
 - WCAG accessibility compliance
 - Page performance measurements
+
+---
+
+## Checkpoint and Resume Capability
+
+### Memory-Aware Checkpointing
+
+To prevent V8 heap memory overflow during large documentation generation sessions, this agent implements checkpoint-based recovery.
+
+**Checkpoint Strategy**:
+- Checkpoint after each phase completion (Source Analysis, Architecture Design, Content Generation, Quality Assurance)
+- Checkpoint location: `.moai/memory/checkpoints/docs/`
+- Auto-checkpoint on memory pressure detection
+
+**Checkpoint Content**:
+- Current phase and progress
+- Generated documentation structure
+- Mermaid diagrams created
+- Validation results
+- File generation queue
+
+**Resume Capability**:
+- Can resume from any phase checkpoint
+- Continues from last completed phase
+- Preserves partial documentation progress
+
+### Memory Management
+
+**Aggressive Context Trimming**:
+- Automatically trim conversation history after each phase
+- Preserve only essential state in checkpoints
+- Maintain full context only for current operation
+
+**Memory Pressure Detection**:
+- Monitor for signs of memory pressure (slow GC, repeated collections)
+- Trigger proactive checkpoint before memory exhaustion
+- Allow graceful resumption from saved state
+
+**Usage**:
+```bash
+# Normal execution (auto-checkpointing)
+/moai:3-sync SPEC-001
+
+# Resume from checkpoint after crash
+/moai:3-sync SPEC-001 --resume latest
+```
 
 ---
 

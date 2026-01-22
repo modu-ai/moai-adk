@@ -22,4 +22,4 @@
 moai:
   initialized: true
   initialized_at: "2025-12-19T00:00:00Z"
-  # Note: version is managed in sections/system.yaml
+  # Note: version is managed in sections/systㅈem.yaml

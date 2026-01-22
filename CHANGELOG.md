@@ -1,3 +1,242 @@
+# v1.9.0 - Ralph-Style LSP Integration for Autonomous Workflow (2026-01-22)
+
+## Summary
+
+This feature release introduces Ralph-style LSP (Language Server Protocol) integration that enables autonomous workflow execution based on real-time code quality signals from IDE diagnostics. The system captures LSP baseline at workflow entry, monitors diagnostic state during execution, and automatically completes phases when quality thresholds are met, eliminating manual approval friction while maintaining code quality standards.
+
+**Reference**: SPEC-LSP-001 (LSP-Based Autonomous Workflow Completion)
+
+## Breaking Changes
+
+- **FEATURE**: New autonomous execution mode requires LSP-capable IDE for optimal functionality
+- Default execution mode remains **interactive** (backward compatible)
+- Workflow configuration file added: `.moai/config/sections/workflow.yaml`
+- New configuration section in `quality.yaml`: `lsp_quality_gates`
+
+## Migration Guide
+
+### For Existing Projects
+
+1. **Update MoAI-ADK**:
+   ```bash
+   uv tool update moai-adk
+   ```
+
+2. **Sync Templates** (adds new files):
+   ```bash
+   # Sync new configuration files
+   rsync -av src/moai_adk/templates/.moai/config/sections/workflow.yaml .moai/config/sections/
+
+   # Sync updated agent and configuration files
+   moai update
+   ```
+
+3. **Enable Autonomous Mode** (optional):
+   Edit `.moai/config/sections/workflow.yaml`:
+   ```yaml
+   execution_mode:
+     autonomous:
+       user_approval_required: false
+       continuous_loop: true
+       completion_marker_based: true
+       lsp_feedback_integration: true
+   ```
+
+### No Action Required for Interactive Mode
+
+If you prefer manual approval (current behavior), no configuration changes are needed. The default is `execution_mode.interactive.user_approval_required: true`.
+
+## Added
+
+### Core LSP Integration (SPEC-LSP-001 Implementation)
+
+- **feat(lsp)**: Add LSP-based completion marker system
+  - New module: `src/moai_adk/utils/completion_marker.py`
+  - `LSPState` dataclass: Captures diagnostic state (errors, warnings, type_errors, lint_errors)
+  - `CompletionMarker` class: Determines phase completion readiness
+  - `LoopPrevention` class: Prevents infinite loops in autonomous mode
+  - Integration with MCP tool: `mcp__ide__getDiagnostics`
+  - 100 unit tests with 100% coverage
+
+- **feat(config)**: Add workflow execution mode configuration
+  - New file: `.moai/config/sections/workflow.yaml`
+  - Interactive mode: Manual approval (default, backward compatible)
+  - Autonomous mode: Ralph-style continuous execution
+  - Completion markers per phase: plan, run, sync
+  - Loop prevention: max_iterations, no_progress_threshold, stale_detection
+
+- **feat(hooks)**: Add quality gate hook with LSP integration
+  - New file: `.claude/hooks/moai/quality_gate_with_lsp.py`
+  - Validates LSP diagnostics before sync phase
+  - Provides clear error summaries for remaining issues
+  - Exit codes: 0 (pass), 1 (fail), 2 (error)
+  - CLI interface for standalone execution
+
+- **feat(agent)**: Update manager-ddd agent for Ralph-style autonomous execution
+  - Updated: `.claude/agents/moai/manager-ddd.md` (v2.0.0)
+  - Autonomous execution mode documentation
+  - LSP completion marker integration
+  - Quality gate enforcement before sync
+  - Backward compatibility with manual approval mode
+
+- **feat(config)**: Add LSP quality gates to quality configuration
+  - Updated: `.moai/config/sections/quality.yaml`
+  - `lsp_quality_gates` section with phase-specific thresholds
+  - `lsp_integration` section with TRUST 5 alignment
+  - `lsp_state_tracking` section for observability
+
+### Documentation Enhancements
+
+- **docs(claude)**: Update CLAUDE.md with LSP integration documentation (v10.6.0)
+  - Autonomous Execution Mode section
+  - Ralph-style workflow documentation
+  - LSP quality gate enforcement
+  - Backward compatibility notes
+  - Troubleshooting guide
+
+- **docs(agent)**: Update all agents with LSP integration patterns
+  - 4 builder agents updated (builder-agent, builder-command, builder-plugin, builder-skill)
+  - 4 expert agents updated (expert-backend, expert-frontend, expert-refactoring, expert-security)
+  - 3 manager agents updated (manager-ddd, manager-docs, manager-quality)
+  - Updated: `.claude/commands/moai/loop.md` with LSP integration
+
+## Changed
+
+- **refactor(core)**: Enhance context manager for LSP state tracking
+  - Updated: `src/moai_adk/core/context_manager.py`
+  - LSP state capture at phase boundaries
+  - Baseline comparison for regression detection
+
+- **chore(utils)**: Export completion_marker module
+  - Updated: `src/moai_adk/utils/__init__.py`
+  - Public API: `from moai_adk.utils import LSPState, CompletionMarker, LoopPrevention`
+
+- **refactor(config)**: Add workflow configuration section loader
+  - Updated: `src/moai_adk/templates/.moai/config/config.yaml`
+  - Includes `workflow.yaml` section in main configuration
+
+- **chore(template)**: Sync template files to local project
+  - All template changes synced to local `.claude/` and `.moai/` directories
+
+## Technical Details
+
+### LSP State Tracking
+
+The system tracks LSP diagnostic state at multiple points:
+
+- **Phase Start**: Capture baseline diagnostic state
+- **Post-Transformation**: Compare current state against baseline
+- **Pre-Sync**: Validate all quality gates before PR
+
+### Completion Markers
+
+Each phase has specific completion criteria:
+
+**Plan Phase**:
+- SPEC document created
+- LSP baseline recorded
+
+**Run Phase**:
+- Tests passing
+- Behavior preserved (no regression from baseline)
+- LSP errors: 0 (configurable threshold)
+- Type errors: 0
+- Lint errors: 0
+
+**Sync Phase**:
+- Documentation generated
+- LSP clean (0 errors, 0 warnings for PR)
+- Quality gate passed
+
+### Loop Prevention
+
+Autonomous mode includes safeguards:
+
+- **Max Iterations**: 100 (configurable in `workflow.yaml`)
+- **No Progress Threshold**: 5 iterations without error reduction
+- **Stale Detection**: Same fix attempted twice, error count unchanged
+- **Regression Detection**: Significant error increase triggers stop
+
+### TRUST 5 Integration
+
+LSP diagnostics align with TRUST 5 quality framework:
+
+- **Tested**: Unit tests pass, type errors == 0
+- **Readable**: Naming conventions followed, lint errors == 0
+- **Unified**: Code formatted, warnings < threshold
+- **Secured**: Security scan pass, security warnings == 0
+- **Trackable**: LSP state changes logged, diagnostic history tracked
+
+## Quality
+
+- Unit Tests: 100 tests for `completion_marker.py` (100% coverage)
+- Smoke Tests: All passing
+- Ruff: All checks passed
+- Mypy: Success
+- Test Coverage: 88.12% overall (exceeds 85% target)
+
+## Configuration Examples
+
+### Strict Mode (Production)
+
+```yaml
+# .moai/config/sections/workflow.yaml
+execution_mode:
+  autonomous:
+    user_approval_required: false
+    continuous_loop: true
+
+completion_markers:
+  run:
+    lsp_errors: 0
+    type_errors: 0
+  sync:
+    lsp_clean: true
+```
+
+### Lenient Mode (Prototyping)
+
+```yaml
+# .moai/config/sections/workflow.yaml
+execution_mode:
+  autonomous:
+    user_approval_required: false
+
+completion_markers:
+  run:
+    lsp_errors: 5  # Allow some errors during prototyping
+  sync:
+    max_warnings: 50  # Allow more warnings
+```
+
+### Interactive Mode (Default)
+
+```yaml
+# .moai/config/sections/workflow.yaml
+execution_mode:
+  interactive:
+    user_approval_required: true
+```
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Enable autonomous mode (optional)
+edit .moai/config/sections/workflow.yaml
+```
+
+## Acknowledgments
+
+This feature implements SPEC-LSP-001 (LSP-Based Autonomous Workflow Completion) following the ANALYZE-PRESERVE-IMPROVE DDD methodology with comprehensive characterization tests ensuring backward compatibility.
+
+---
+
 # v1.8.0 - Path Variable Consolidation (2026-01-22)
 
 ## Summary

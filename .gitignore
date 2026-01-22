@@ -224,6 +224,10 @@ mock_api_response_*.json
 !/.moai/scripts/**
 !/.moai/llm-configs/
 !/.moai/llm-configs/**
+!/.moai/contexts/
+!/.moai/contexts/**
+!/.moai/rules/
+!/.moai/rules/**
 
 # CRITICAL: User data directories (NEVER track these)
 /.moai/project/

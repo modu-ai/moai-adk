@@ -487,3 +487,273 @@ def save_phase_result(
 
     manager = ContextManager(project_root)
     manager.save_phase_result(phase_name, result)
+
+
+# ============================================================================
+# Adaptive Context Trimming for Memory Management
+# ============================================================================
+
+
+class AdaptiveContextTrimmer:
+    """
+    Manages adaptive context trimming to prevent V8 heap memory overflow.
+
+    Monitors context size and automatically trims when approaching memory limits.
+    Preserves essential state in checkpoints for recovery.
+    """
+
+    # Memory pressure thresholds (estimated token counts)
+    WARNING_THRESHOLD = 150000  # Warning when approaching this
+    CRITICAL_THRESHOLD = 180000  # Critical - must trim now
+
+    # Session duration thresholds (seconds)
+    DURATION_WARNING = 1500  # 25 minutes
+    DURATION_CRITICAL = 1800  # 30 minutes
+
+    def __init__(self, project_root: str):
+        """
+        Initialize the adaptive context trimmer.
+
+        Args:
+            project_root: Root directory of the project
+        """
+        self.project_root = os.path.abspath(project_root)
+        self.checkpoint_dir = os.path.join(self.project_root, ".moai", "memory", "checkpoints")
+        os.makedirs(self.checkpoint_dir, exist_ok=True)
+        self.start_time = datetime.now(timezone.utc)
+        self.checkpoint_count = 0
+
+    def check_memory_pressure(self, iteration: int = 0, estimated_tokens: int = 0) -> Dict[str, Any]:
+        """
+        Check for memory pressure conditions.
+
+        Args:
+            iteration: Current iteration number (for detecting slowdown)
+            estimated_tokens: Estimated token count of current context
+
+        Returns:
+            Dictionary with pressure assessment
+        """
+        duration = (datetime.now(timezone.utc) - self.start_time).total_seconds()
+
+        pressure_level = "none"
+        actions = []
+
+        # Check duration-based pressure
+        if duration > self.DURATION_CRITICAL:
+            pressure_level = "critical"
+            actions.append("save_checkpoint")
+            actions.append("suggest_resume")
+        elif duration > self.DURATION_WARNING:
+            pressure_level = "warning"
+            actions.append("save_checkpoint")
+
+        # Check token-based pressure
+        if estimated_tokens > self.CRITICAL_THRESHOLD:
+            pressure_level = "critical"
+            actions.append("trim_context")
+            actions.append("save_checkpoint")
+            actions.append("suggest_resume")
+        elif estimated_tokens > self.WARNING_THRESHOLD:
+            pressure_level = max(pressure_level, "warning")
+            actions.append("save_checkpoint")
+
+        return {
+            "pressure_level": pressure_level,
+            "duration_seconds": duration,
+            "estimated_tokens": estimated_tokens,
+            "actions": actions,
+            "iteration": iteration,
+        }
+
+    def save_checkpoint(
+        self,
+        agent_name: str,
+        phase: str,
+        state: Dict[str, Any],
+        reason: str = "auto",
+    ) -> str:
+        """
+        Save a checkpoint for recovery.
+
+        Args:
+            agent_name: Name of the agent creating the checkpoint
+            phase: Current phase (e.g., "ANALYZE", "IMPROVE")
+            state: State to preserve (TODO progress, LSP baseline, etc.)
+            reason: Reason for checkpoint ("auto", "memory_pressure", "manual")
+
+        Returns:
+            Path to saved checkpoint
+        """
+        self.checkpoint_count += 1
+        checkpoint_name = f"{agent_name}_{phase}_{self.checkpoint_count:03d}_{reason}.json"
+        checkpoint_path = os.path.join(self.checkpoint_dir, checkpoint_name)
+
+        checkpoint_data = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "agent": agent_name,
+            "phase": phase,
+            "reason": reason,
+            "checkpoint_number": self.checkpoint_count,
+            "state": state,
+            "session_duration_seconds": (datetime.now(timezone.utc) - self.start_time).total_seconds(),
+        }
+
+        with open(checkpoint_path, "w", encoding="utf-8") as f:
+            json.dump(checkpoint_data, f, indent=2, ensure_ascii=False)
+
+        logger.info(f"Saved checkpoint: {checkpoint_path} (reason: {reason})")
+        return checkpoint_path
+
+    def load_latest_checkpoint(self, agent_name: str, phase: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """
+        Load the latest checkpoint for an agent.
+
+        Args:
+            agent_name: Name of the agent
+            phase: Optional phase filter
+
+        Returns:
+            Checkpoint data or None if not found
+        """
+        pattern = f"{agent_name}"
+        if phase:
+            pattern = f"{agent_name}_{phase}"
+
+        checkpoints = []
+        checkpoint_dir = self.checkpoint_dir
+
+        if os.path.exists(checkpoint_dir):
+            for filename in os.listdir(checkpoint_dir):
+                if filename.startswith(pattern) and filename.endswith(".json"):
+                    filepath = os.path.join(checkpoint_dir, filename)
+                    checkpoints.append(filepath)
+
+        if not checkpoints:
+            return None
+
+        # Sort by modification time, get latest
+        latest = max(checkpoints, key=os.path.getmtime)
+
+        try:
+            with open(latest, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return None
+
+    def should_trim_context(self, pressure_assessment: Dict[str, Any]) -> Tuple[bool, str]:
+        """
+        Determine if context should be trimmed based on pressure assessment.
+
+        Args:
+            pressure_assessment: Result from check_memory_pressure()
+
+        Returns:
+            Tuple of (should_trim, reason)
+        """
+        if pressure_assessment["pressure_level"] == "critical":
+            return True, "Critical memory pressure - trim context now"
+
+        if "trim_context" in pressure_assessment.get("actions", []):
+            return True, "Token limit approaching - trim context"
+
+        return False, ""
+
+    def generate_trim_recommendation(self, pressure_assessment: Dict[str, Any]) -> Optional[str]:
+        """
+        Generate user-facing recommendation for memory management.
+
+        Args:
+            pressure_assessment: Result from check_memory_pressure()
+
+        Returns:
+            Recommendation message or None
+        """
+        if pressure_assessment["pressure_level"] == "none":
+            return None
+
+        duration_min = int(pressure_assessment["duration_seconds"] / 60)
+
+        if pressure_assessment["pressure_level"] == "critical":
+            return f"""
+⚠️ Memory Pressure Detected
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Session duration: {duration_min} minutes
+Estimated context size: {pressure_assessment["estimated_tokens"]:,} tokens
+
+Action taken: Checkpoint saved for recovery
+
+To continue:
+1. Use --resume flag to recover checkpoint
+2. Or break work into smaller SPEC files
+3. Or increase Node.js heap size:
+   export NODE_OPTIONS="--max-old-space-size=8192"
+"""
+
+        elif pressure_assessment["pressure_level"] == "warning":
+            return f"""
+⚡ Memory Pressure Warning
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Session duration: {duration_min} minutes
+Checkpoint saved as precaution
+
+Consider breaking work into smaller tasks if this continues.
+"""
+
+        return None
+
+
+def check_memory_pressure(
+    project_root: Optional[str] = None,
+    iteration: int = 0,
+    estimated_tokens: int = 0,
+) -> Dict[str, Any]:
+    """
+    Check memory pressure conditions.
+
+    Convenience function that creates an AdaptiveContextTrimmer.
+
+    Args:
+        project_root: Project root directory (defaults to cwd)
+        iteration: Current iteration number
+        estimated_tokens: Estimated token count
+
+    Returns:
+        Dictionary with pressure assessment
+    """
+    if project_root is None:
+        project_root = os.getcwd()
+
+    trimmer = AdaptiveContextTrimmer(project_root)
+    return trimmer.check_memory_pressure(iteration, estimated_tokens)
+
+
+def save_checkpoint(
+    agent_name: str,
+    phase: str,
+    state: Dict[str, Any],
+    project_root: Optional[str] = None,
+    reason: str = "auto",
+) -> str:
+    """
+    Save a checkpoint for recovery.
+
+    Convenience function that creates an AdaptiveContextTrimmer.
+
+    Args:
+        agent_name: Name of the agent creating the checkpoint
+        phase: Current phase
+        state: State to preserve
+        project_root: Project root directory (defaults to cwd)
+        reason: Reason for checkpoint
+
+    Returns:
+        Path to saved checkpoint
+    """
+    if project_root is None:
+        project_root = os.getcwd()
+
+    trimmer = AdaptiveContextTrimmer(project_root)
+    return trimmer.save_checkpoint(agent_name, phase, state, reason)

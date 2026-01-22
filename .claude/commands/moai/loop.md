@@ -297,7 +297,7 @@ Simply send any message to interrupt the loop. The loop state is automatically s
 
 ## EXECUTION DIRECTIVE
 
-1. Parse $ARGUMENTS (extract --max, --auto, --sequential, --errors, --coverage, --resume flags)
+1. Parse $ARGUMENTS (extract --max, --auto, --sequential, --errors, --coverage, --resume, --memory-check flags)
 
 2. IF --resume flag: Load state from specified snapshot and continue from saved iteration
 
@@ -305,12 +305,25 @@ Simply send any message to interrupt the loop. The loop state is automatically s
 
 4. Initialize iteration counter to 0
 
-5. LOOP START (while iteration less than max):
+5. Initialize memory tracking:
+   - Record start time for memory pressure detection
+   - Set memory-safe iteration limit (default 50 for memory-aware mode)
+
+6. LOOP START (while iteration less than max):
 
    5a. Check for completion marker in previous response:
        - If DONE, COMPLETE, or done marker found: Exit loop with success
 
-   5b. Execute diagnostic scan:
+   5b. [NEW] Memory Pressure Check (if --memory-check enabled):
+       - Calculate session duration
+       - Check if iteration time increasing (GC pressure sign)
+       - IF session duration > 25 minutes OR iteration time doubling:
+         - Save proactive checkpoint to `.moai/cache/ralph-snapshots/memory-pressure.json`
+         - Warn user about memory pressure
+         - Suggest resuming with `/moai:loop --resume memory-pressure`
+         - IF memory-safe limit reached (50 iterations): Exit with checkpoint
+
+   5c. Execute diagnostic scan:
 
        IF --sequential flag is specified:
 
@@ -328,15 +341,15 @@ Simply send any message to interrupt the loop. The loop state is automatically s
 
        - Aggregate results into unified diagnostic report
 
-   5c. Check completion conditions:
+   5d. Check completion conditions:
        - Zero errors AND all tests passing AND coverage meets threshold
        - If all conditions met: Prompt user to add completion marker or continue
 
-   5d. [HARD] Call TodoWrite tool to add newly discovered issues with pending status
+   5e. [HARD] Call TodoWrite tool to add newly discovered issues with pending status
 
-   5e. [HARD] Before each fix, call TodoWrite to change item to in_progress
+   5f. [HARD] Before each fix, call TodoWrite to change item to in_progress
 
-   5f. [HARD] AGENT DELEGATION MANDATE for Fix Execution:
+   5g. [HARD] AGENT DELEGATION MANDATE for Fix Execution:
        - ALL fix tasks MUST be delegated to specialized agents
        - NEVER execute fixes directly, even after auto compact
        - WHY: Specialized agents have domain expertise; direct execution violates orchestrator role
@@ -351,20 +364,30 @@ Simply send any message to interrupt the loop. The loop state is automatically s
 
        Execute fixes via agent delegation based on --auto level (Level 1-3)
 
-   5g. [HARD] After each fix completion, call TodoWrite to change item to completed
+   5h. [HARD] After each fix completion, call TodoWrite to change item to completed
 
-   5h. Save iteration snapshot to .moai/cache/ralph-snapshots/
+   5i. Save iteration snapshot to .moai/cache/ralph-snapshots/
 
-   5i. Increment iteration counter
+   5j. Increment iteration counter
 
-6. LOOP END
+7. LOOP END
 
-7. IF max iterations reached without completion: Display remaining issues and options
+8. IF max iterations reached without completion: Display remaining issues and options
 
-8. Report final summary with evidence
+9. IF memory pressure checkpoint created: Display resume instructions
+
+10. Report final summary with evidence
 
 ---
 
-Version: 2.1.0
-Last Updated: 2026-01-11
-Core: Agentic AI Autonomous Loop
+Version: 2.2.0
+Last Updated: 2026-01-22
+Core: Agentic AI Autonomous Loop with Memory Management
+
+Changelog:
+- v2.2.0 (2026-01-22): Added memory pressure detection and adaptive iteration limits
+  - Memory-aware mode with automatic checkpoint on memory pressure
+  - Memory-safe iteration limit (50) for large codebases
+  - Proactive checkpoint before V8 heap overflow
+  - Session duration monitoring (25-minute threshold)
+- v2.1.0 (2026-01-11): Initial autonomous loop implementation

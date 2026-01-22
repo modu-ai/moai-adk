@@ -50,15 +50,25 @@ jobs:
   # 2️⃣ Smoke Tests (Blocking - Required for Merge)
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   smoke-test:
-    name: Smoke Test (Python ${{ matrix.python-version }})
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    name: Smoke Test (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     needs: lint
 
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest]
         python-version: ["3.11", "3.12", "3.13", "3.14"]
+        # Platform testing: Only run full matrix on PRs, Ubuntu only on direct commits
+        include:
+          # macOS and Windows tested only on latest Python for PR validation
+          - os: macos-latest
+            python-version: "3.13"
+            test_scope: "platform-validation"
+          - os: windows-latest
+            python-version: "3.13"
+            test_scope: "platform-validation"
 
     steps:
       - uses: actions/checkout@v4
@@ -87,16 +97,25 @@ jobs:
   # 3️⃣ Full Tests with Coverage (Non-Blocking - Information Only)
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   full-test:
-    name: Full Test + Coverage (Non-Blocking)
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    name: Full Test + Coverage (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
     needs: lint
     if: always()  # Run even if lint fails, for visibility
 
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest]
         python-version: ["3.13"]  # Only test on primary Python version
+        # Platform testing: macOS and Windows for coverage validation
+        include:
+          - os: macos-latest
+            python-version: "3.13"
+            test_scope: "platform-validation"
+          - os: windows-latest
+            python-version: "3.13"
+            test_scope: "platform-validation"
 
     steps:
       - uses: actions/checkout@v4
@@ -137,7 +156,7 @@ jobs:
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4
         with:
-          name: benchmark-results
+          name: benchmark-results-${{ matrix.os }}
           path: benchmark.json
         if: always()
 

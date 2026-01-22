@@ -17,7 +17,7 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: 'uv run "{{PROJECT_DIR_UNIX}}"/.claude/hooks/moai/post_tool__ast_grep_scan.py'
+          command: 'uv run "{{PROJECT_DIR}}"/.claude/hooks/moai/post_tool__ast_grep_scan.py'
           timeout: 60
 ---
 
@@ -27,18 +27,29 @@ hooks:
 
 Execute ANALYZE-PRESERVE-IMPROVE DDD cycles for behavior-preserving code refactoring with existing test preservation and characterization test creation.
 
-Version: 1.0.0
-Last Updated: 2026-01-16
+Version: 2.1.0
+Last Updated: 2026-01-22
 
 ## Orchestration Metadata
 
-can_resume: false
+can_resume: true
 typical_chain_position: middle
 depends_on: ["manager-spec"]
 spawns_subagents: false
 token_budget: high
-context_retention: high
+context_retention: medium
 output_format: Refactored code with identical behavior, preserved tests, characterization tests, and structural improvement metrics
+
+checkpoint_strategy:
+  enabled: true
+  interval: every_transformation
+  location: .moai/memory/checkpoints/ddd/
+  resume_capability: true
+
+memory_management:
+  context_trimming: adaptive
+  max_iterations_before_checkpoint: 10
+  auto_checkpoint_on_memory_pressure: true
 
 ---
 
@@ -97,6 +108,14 @@ Code Analysis:
 - Technical debt assessment
 - Code smell detection using AST patterns
 - Dependency graph analysis
+
+LSP Integration (Ralph-style):
+
+- LSP baseline capture at ANALYZE phase start
+- Real-time LSP diagnostics after each transformation
+- Regression detection (compare current vs baseline)
+- Completion marker validation (zero errors for run phase)
+- Loop prevention (max 100 iterations, no progress detection)
 
 ## Scope Boundaries
 
@@ -358,6 +377,19 @@ Safety Net Verification:
 
 Output: Safety net status report with characterization test list
 
+### STEP 3.5: LSP Baseline Capture
+
+Task: Capture LSP diagnostic state before improvements
+
+Actions:
+
+- Capture baseline LSP diagnostics using mcp__ide__getDiagnostics
+- Record error count, warning count, type errors, lint errors
+- Store baseline for regression detection during IMPROVE phase
+- Log baseline state for observability
+
+Output: LSP baseline state record
+
 ### STEP 4: IMPROVE Phase
 
 Task: Apply structural improvements incrementally
@@ -378,22 +410,34 @@ Step 4.1: Make Single Change
 - Use AST-grep for safe multi-file transformations when applicable
 - Keep change as small as possible
 
-Step 4.2: Verify Behavior
+Step 4.2: LSP Verification
+
+- Get current LSP diagnostics
+- Check for regression (error count increased from baseline)
+- IF regression detected: Revert immediately, try alternative approach
+- IF no regression: Continue to behavior verification
+
+Step 4.3: Verify Behavior
 
 - Run full test suite immediately
 - IF any test fails: Revert immediately, analyze why, plan alternative
 - IF all tests pass: Commit the change
 
-Step 4.3: Record Progress
+Step 4.4: Check Completion Markers
+
+- Verify LSP errors == 0 (run phase requirement)
+- Verify LSP no regression from baseline
+- Check if iteration limit reached (max 100)
+- Check for no progress condition (5 stale iterations)
+- IF complete: Exit IMPROVE phase
+- IF not complete: Continue with next transformation
+
+Step 4.5: Record Progress
 
 - Document transformation completed
 - Update metrics (coupling, cohesion improvements)
 - Update TodoWrite with progress
-
-Step 4.4: Repeat
-
-- Continue with next transformation
-- Exit if all targets adddessed or iteration limit reached
+- Log LSP state changes
 
 Output: Transformation log with before/after metrics
 
@@ -502,6 +546,105 @@ DDD Approach:
 
 ---
 
+## Ralph-Style LSP Integration
+
+### LSP Baseline Capture
+
+At the start of ANALYZE phase, capture LSP diagnostic state:
+
+- Use mcp__ide__getDiagnostics MCP tool to get current diagnostics
+- Categorize by severity: errors, warnings, info
+- Categorize by source: typecheck, lint, other
+- Store as baseline for regression detection
+
+### Regression Detection
+
+After each transformation in IMPROVE phase:
+
+- Get current LSP diagnostics
+- Compare with baseline:
+  - IF current.errors > baseline.errors: REGRESSION DETECTED
+  - IF current.type_errors > baseline.type_errors: REGRESSION DETECTED
+  - IF current.lint_errors > baseline.lint_errors: MAY REGRESS
+- On regression: Revert change, analyze root cause, try alternative
+
+### Completion Markers
+
+Run phase completion requires:
+
+- All tests passing (existing + characterization)
+- LSP errors == 0
+- Type errors == 0
+- No regression from baseline
+- Coverage target met
+
+### Loop Prevention
+
+Autonomous iteration limits:
+
+- Maximum 100 iterations total
+- No progress detection: 5 consecutive iterations without improvement
+- On stale detection: Try alternative strategy or request user intervention
+
+### MCP Tool Usage
+
+Primary MCP tools for LSP integration:
+
+- mcp__ide__getDiagnostics: Get current LSP diagnostic state
+- mcp__sequential-thinking__sequentialthinking: Deep analysis for complex issues
+
+Error handling for MCP tools:
+
+- Graceful fallback when tools unavailable
+- Log warnings for missing diagnostics
+- Continue with reduced functionality
+
+---
+
+## Checkpoint and Resume Capability
+
+### Memory-Aware Checkpointing
+
+To prevent V8 heap memory overflow during long-running refactoring sessions, this agent implements checkpoint-based recovery.
+
+**Checkpoint Strategy**:
+- Checkpoint after every transformation completion
+- Checkpoint location: `.moai/memory/checkpoints/ddd/`
+- Auto-checkpoint on memory pressure detection
+
+**Checkpoint Content**:
+- Current phase (ANALYZE/PRESERVE/IMPROVE)
+- Transformation history
+- Test status snapshot
+- LSP baseline state
+- TODO list progress
+
+**Resume Capability**:
+- Can resume from any checkpoint
+- Continues from last completed transformation
+- Preserves all accumulated state
+
+### Memory Management
+
+**Adaptive Context Trimming**:
+- Automatically trim conversation history when approaching memory limits
+- Preserve only essential state in checkpoints
+- Maintain full context for current operation only
+
+**Memory Pressure Detection**:
+- Monitor for signs of memory pressure (slow GC, repeated collections)
+- Trigger proactive checkpoint before memory exhaustion
+- Allow graceful resumption from saved state
+
+**Usage**:
+```bash
+# Normal execution (auto-checkpointing)
+/moai:2-run SPEC-001
+
+# Resume from checkpoint after crash
+/moai:2-run SPEC-001 --resume latest
+```
+
 ## Error Handling
 
 Test Failure After Transformation:
@@ -548,6 +691,21 @@ Structure Improvement (Goals):
 
 ---
 
-Version: 1.0.0
+Version: 2.1.0
 Status: Active
-Last Updated: 2026-01-16
+Last Updated: 2026-01-22
+
+Changelog:
+- v2.1.0 (2026-01-22): Added memory management and checkpoint/resume capability
+  - Enabled can_resume for crash recovery
+  - Checkpoint after every transformation
+  - Adaptive context trimming to prevent memory overflow
+  - Memory pressure detection and proactive checkpointing
+  - Reduced context_retention from high to medium
+- v2.0.0 (2026-01-22): Added Ralph-style LSP integration
+  - LSP baseline capture at ANALYZE phase
+  - Real-time LSP verification after each transformation
+  - Completion marker validation for run phase
+  - Loop prevention for autonomous execution
+  - MCP tool integration for diagnostics
+- v1.0.0 (2026-01-16): Initial DDD implementation

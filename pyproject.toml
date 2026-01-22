@@ -1,6 +1,6 @@
 [project]
 name = "moai-adk"
-version = "1.7.0"
+version = "1.9.0"
 description = "MoAI Agentic Development Kit - SPEC-First DDD with Alfred SuperAgent & Unified moai-core-* Skills"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -20,7 +20,12 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Software Development :: Quality Assurance",
-    "Topic :: Software Development :: Testing"
+    "Topic :: Software Development :: Testing",
+    "Operating System :: OS Independent",
+    "Operating System :: Microsoft :: Windows :: Windows 10",
+    "Operating System :: Microsoft :: Windows :: Windows 11",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS"
 ]
 dependencies = [
     "click>=8.1.0",

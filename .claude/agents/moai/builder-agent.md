@@ -17,10 +17,10 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/post_tool__code_formatter.py"
+          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__code_formatter.py"
           timeout: 30
         - type: command
-          command: "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/moai/post_tool__linter.py"
+          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__linter.py"
           timeout: 30
 ---
 
