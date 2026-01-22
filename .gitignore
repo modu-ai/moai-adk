@@ -298,3 +298,5 @@ dist-ssr/
 # ===========================================
 .playwright-mcp
 theme.config.tsx
+# Purpose: Essential patterns for user projects
+# FIXED: Issue #237 - Replaced overly broad *key* and *secret* patterns

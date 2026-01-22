@@ -194,6 +194,8 @@ def _is_duplicate_error(error_msg: str) -> bool:
     ]
 
     return any(pattern in msg_lower for pattern in duplicate_patterns)
+
+
 def compute_anonymous_project_id(project_path: str) -> str:
     """Compute an anonymized project identifier.
 

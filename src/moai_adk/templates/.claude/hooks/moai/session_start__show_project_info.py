@@ -932,15 +932,9 @@ def format_session_output() -> str:
 
     # Get MoAI version from CLI (works with uv tool installations)
     try:
-        result = subprocess.run(
-            ["moai", "--version"],
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=5
-        )
+        result = subprocess.run(["moai", "--version"], capture_output=True, text=True, check=True, timeout=5)
         # Extract version number from output (e.g., "MoAI version X.Y.Z" or "X.Y.Z")
-        version_match = re.search(r'(\d+\.\d+\.\d+)', result.stdout)
+        version_match = re.search(r"(\d+\.\d+\.\d+)", result.stdout)
         if version_match:
             moai_version = version_match.group(1)
         else:
