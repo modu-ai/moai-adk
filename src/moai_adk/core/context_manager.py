@@ -67,7 +67,7 @@ class ClaudeMDImporter:
         imported_files = []
 
         # Remove code blocks (imports ignored in code)
-        code_blocks = {}
+        code_blocks: dict[str, str] = {}
         content = self._extract_and_replace_code_blocks(content, code_blocks)
 
         # Process imports
@@ -308,6 +308,30 @@ class ContextManager:
 
         with open(result_path, "w", encoding="utf-8") as f:
             json.dump(result, f, indent=2, ensure_ascii=False)
+
+    def load_latest_phase(self) -> Optional[Dict[str, Any]]:
+        """
+        Load the most recent phase result.
+
+        Returns:
+            Phase result dictionary or None if no phases found
+        """
+        state_dir = os.path.join(self.memory_dir, "command-state")
+        if not os.path.exists(state_dir):
+            return None
+
+        try:
+            phase_files = [f for f in os.listdir(state_dir) if f.endswith(".json")]
+            if not phase_files:
+                return None
+
+            # Find most recently modified file
+            latest_file = max(phase_files, key=lambda f: os.path.getmtime(os.path.join(state_dir, f)))
+
+            phase_name = latest_file.replace(".json", "")
+            return self.load_phase_result(phase_name)
+        except (OSError, ValueError):
+            return None
 
 
 def validate_and_convert_path(path: str, base_path: Optional[str] = None) -> str:

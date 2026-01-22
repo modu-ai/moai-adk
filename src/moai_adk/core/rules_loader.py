@@ -94,7 +94,7 @@ class RulesLoader:
         Returns:
             List of applicable rules
         """
-        rules = []
+        rules: List[Rule] = []
 
         if not rules_dir.exists():
             return rules
