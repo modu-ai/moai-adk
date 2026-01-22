@@ -1,0 +1,424 @@
+# MoAI-ADK TRUST 5 Framework
+# Single Source of Truth for TRUST 5 Quality Framework
+# Version: 1.0.0
+# Last Updated: 2026-01-22
+
+---
+framework:
+  name: "TRUST 5"
+  version: "1.0.0"
+  description: "Automated quality gates ensuring code quality, security, and maintainability"
+  benefit: "Comprehensive quality assurance across five key dimensions"
+
+# Five Pillars
+pillars:
+  tested:
+    name: "Tested"
+    description: "Maintain comprehensive test coverage with characterization tests"
+    metrics:
+      target_coverage: 85
+      critical_threshold: 80
+      ideal_threshold: 90
+    validation:
+      tool: "pytest"
+      command: "pytest --cov=src --cov-report=term-missing"
+      failure_action: "block_merge"
+      auto_generate: true
+    characterization_tests:
+      purpose: "Capture current behavior for legacy code"
+      framework: "pytest"
+      preservation: "Behavior preservation during refactoring"
+    specification_tests:
+      purpose: "Validate domain requirements for new code"
+      framework: "pytest"
+      validation: "Domain-driven behavior validation"
+    benefits:
+      - "Code reliability assurance"
+      - "Production defect reduction"
+      - "Refactoring safety"
+      - "60-70% debugging time reduction"
+
+  readable:
+    name: "Readable"
+    description: "Use clear and descriptive naming conventions"
+    metrics:
+      target_score: 8.0
+      critical_threshold: 6.0
+      ideal_threshold: 9.0
+    validation:
+      tool: "ruff"
+      command: "ruff check src/ --select=N,Z"
+      failure_action: "warning"
+      auto_suggest: true
+    naming_conventions:
+      variables: "camelCase or snake_case"
+      functions: "snake_case"
+      classes: "PascalCase"
+      constants: "UPPER_SNAKE_CASE"
+      modules: "snake_case"
+    clarity_rules:
+      - "Descriptive variable names (no single letters except loop counters)"
+      - "Self-documenting function names (verb-noun pattern)"
+      - "Clear intent in naming (avoid abbreviations)"
+      - "Consistent naming patterns across codebase"
+    benefits:
+      - "Code comprehension improvement"
+      - "Team collaboration enhancement"
+      - "40% onboarding time reduction"
+      - "Maintenance velocity increase"
+
+  unified:
+    name: "Unified"
+    description: "Apply consistent formatting and import patterns"
+    metrics:
+      target_score: 100
+      critical_threshold: 95
+      ideal_threshold: 100
+    validation:
+      tool: "black, isort"
+      command: "black src/ && isort src/"
+      failure_action: "auto_format_or_warning"
+      auto_fix: true
+    formatting_rules:
+      line_length: 88
+      indent: 4
+      quote_style: "double"
+      import_order: "stdlib -> third_party -> local"
+    consistency_standards:
+      - "Eliminates style debates"
+      - "Prevents merge conflicts"
+      - "Standardizes code appearance"
+      - "Simplifies code review"
+    benefits:
+      - "30% code review time reduction"
+      - "Improved readability"
+      - "Consistent team output"
+      - "Automated formatting"
+
+  secured:
+    name: "Secured"
+    description: "Comply with OWASP security standards"
+    metrics:
+      target_score: 10
+      critical_threshold: 0  # Zero critical vulnerabilities
+      ideal_threshold: 0
+    validation:
+      tool: "expert-security agent"
+      command: "Use the expert-security subagent for security analysis"
+      failure_action: "block_merge"
+      require_review: true
+    owasp_compliance:
+      top_10:
+        - "A01: Broken Access Control"
+        - "A02: Cryptographic Failures"
+        - "A03: Injection"
+        - "A04: Insecure Design"
+        - "A05: Security Misconfiguration"
+        - "A06: Vulnerable Components"
+        - "A07: Authentication Failures"
+        - "A08: Software and Data Integrity Failures"
+        - "A09: Security Logging Failures"
+        - "A10: Server-Side Request Forgery"
+    security_checklist:
+      - "Input validation on all user inputs"
+      - "Output encoding to prevent XSS"
+      - "Parameterized queries to prevent SQL injection"
+      - "Proper authentication and authorization"
+      - "Secure session management"
+      - "Encryption of sensitive data"
+      - "Proper error handling without information leakage"
+      - "Security headers configuration"
+    benefits:
+      - "95+% common vulnerability prevention"
+      - "Legal and regulatory compliance"
+      - "Business risk mitigation"
+      - "Customer trust protection"
+
+  trackable:
+    name: "Trackable"
+    description: "Write clear and structured commit messages"
+    metrics:
+      target_score: 8.0
+      critical_threshold: 6.0
+      ideal_threshold: 9.0
+    validation:
+      tool: "Git hooks"
+      command: "Match commit message regex patterns"
+      failure_action: "suggest_format"
+      auto_correct: false
+    commit_message_format:
+      pattern: "^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\\(.+\\))?: .{10,80}"
+      structure: "type(scope): description"
+      types:
+        - "feat: New feature"
+        - "fix: Bug fix"
+        - "docs: Documentation changes"
+        - "style: Formatting changes"
+        - "refactor: Code refactoring"
+        - "test: Test additions or changes"
+        - "chore: Maintenance tasks"
+        - "perf: Performance improvements"
+        - "ci: CI/CD changes"
+        - "build: Build system changes"
+        - "revert: Revert previous commit"
+    clarity_rules:
+      - "Use imperative mood (add, not added)"
+      - "Limit to 72 characters for first line"
+      - "Reference issues in commit body"
+      - "Explain what and why, not how"
+    benefits:
+      - "50% issue investigation time reduction"
+      - "Better debugging capabilities"
+      - "Improved audit trail"
+      - "Enhanced collaboration"
+
+# Integration Points
+integration:
+  pre_commit_hooks:
+    - "pytest with coverage"
+    - "ruff linting"
+    - "black formatting"
+    - "isort import ordering"
+    - "commit message validation"
+
+  ci_cd_pipelines:
+    - "Quality gate enforcement"
+    - "Automated testing"
+    - "Security scanning"
+    - "Coverage reporting"
+    - "Build verification"
+
+  agent_workflows:
+    - "manager-quality for TRUST 5 validation"
+    - "expert-security for security analysis"
+    - "expert-testing for test coverage"
+    - "manager-ddd for behavior preservation"
+
+  documentation:
+    - "Quality metrics reporting"
+    - "TRUST 5 score dashboard"
+    - "Coverage trends"
+    - "Security audit reports"
+
+# Quality Gates
+quality_gates:
+  strict_mode:
+    trust_score_min: 0.85
+    critical_issues_max: 0
+    coverage_min: 0.85
+    complexity_max: 10
+    block_on_failure: true
+    description: "Strict quality enforcement for production code"
+
+  standard_mode:
+    trust_score_min: 0.75
+    critical_issues_max: 0
+    coverage_min: 0.75
+    complexity_max: 15
+    block_on_failure: false
+    warnings_allowed: true
+    description: "Standard quality enforcement for development code"
+
+  lenient_mode:
+    trust_score_min: 0.60
+    critical_issues_max: 5
+    coverage_min: 0.60
+    complexity_max: 20
+    block_on_failure: false
+    warnings_allowed: true
+    description: "Lenient quality enforcement for experimental code"
+
+# Validation Workflow
+validation_workflow:
+  phase1_trust5:
+    description: "Run TRUST 5 validation on codebase"
+    checks:
+      - "Test coverage analysis"
+      - "Code readability assessment"
+      - "Formatting consistency check"
+      - "Security vulnerability scan"
+      - "Commit message validation"
+    tools:
+      - "pytest"
+      - "ruff"
+      - "black"
+      - "isort"
+      - "expert-security agent"
+    threshold: 0.85
+
+  phase2_proactive:
+    description: "Perform proactive analysis scanning"
+    focus_areas:
+      - "Security vulnerabilities"
+      - "Performance bottlenecks"
+      - "Maintainability issues"
+      - "Testing gaps"
+    tools:
+      - "expert-security"
+      - "expert-performance"
+      - "expert-refactoring"
+      - "expert-testing"
+    priority: "high"
+
+  phase3_best_practices:
+    description: "Check best practices for specified languages"
+    languages:
+      - "python"
+      - "javascript"
+      - "typescript"
+      - "go"
+      - "java"
+    tools:
+      - "Context7 documentation lookup"
+      - "Best Practices Engine"
+      - "Language-specific linters"
+    context7_enabled: true
+
+  phase4_metrics:
+    description: "Collect comprehensive metrics"
+    metrics:
+      - "TRUST 5 overall score"
+      - "Individual pillar scores"
+      - "Coverage percentage"
+      - "Complexity measures"
+      - "Issue counts by severity"
+    output: "Quality report with recommendations"
+
+# Scoring Algorithm
+scoring:
+  overall_trust_score:
+    formula: "(Tested + Readable + Unified + Secured + Trackable) / 5"
+    weight: "equal weighting for all pillars"
+    range:
+      min: 0.0
+      max: 1.0
+    interpretation:
+      - "0.85-1.0: Excellent quality"
+      - "0.75-0.84: Good quality"
+      - "0.60-0.74: Acceptable quality"
+      - "0.00-0.59: Needs improvement"
+
+  pillar_scoring:
+    tested:
+      formula: "coverage / target_coverage"
+      max: 1.0
+      weights:
+        specification_tests: 0.7
+        characterization_tests: 0.3
+
+    readable:
+      formula: "naming_score + clarity_score"
+      max: 1.0
+      weights:
+        naming_conventions: 0.5
+        clarity_rules: 0.5
+
+    unified:
+      formula: "formatting_compliance * import_order_compliance"
+      max: 1.0
+      weights:
+        formatting: 0.6
+        imports: 0.4
+
+    secured:
+      formula: "1 - (critical_vulnerabilities / total_lines)"
+      max: 1.0
+      weights:
+        owasp_compliance: 0.8
+        security_checklist: 0.2
+
+    trackable:
+      formula: "commit_message_compliance"
+      max: 1.0
+      weights:
+        format_compliance: 0.7
+        clarity_rules: 0.3
+
+# Examples
+examples:
+  minimal_validation:
+    description: "Basic TRUST 5 validation"
+    config:
+      trust5_enabled: true
+      test_coverage_threshold: 0.85
+      readability_threshold: 0.80
+      security_threshold: 1.0  # No critical vulnerabilities
+    workflow:
+      - "Run pytest with coverage"
+      - "Run ruff for readability"
+      - "Run black and isort for formatting"
+      - "Run expert-security for vulnerabilities"
+      - "Validate commit messages"
+
+  comprehensive_validation:
+    description: "Full TRUST 5 validation with proactive analysis"
+    config:
+      trust5_enabled: true
+      proactive_analysis: true
+      best_practices_enforcement: true
+      context7_integration: true
+    workflow:
+      - "Phase 1: TRUST 5 validation"
+      - "Phase 2: Proactive analysis"
+      - "Phase 3: Best practices check"
+      - "Phase 4: Metrics collection"
+
+# Best Practices
+best_practices:
+  testing:
+    - "Write tests before implementation (TDD)"
+    - "Aim for 85%+ coverage"
+    - "Use characterization tests for legacy code"
+    - "Test behavior, not implementation"
+    - "Use pytest fixtures for setup"
+
+  readability:
+    - "Use descriptive names"
+    - "Keep functions under 50 lines"
+    - "Limit parameters to 4 or fewer"
+    - "Avoid nested complexity"
+    - "Document non-obvious logic"
+
+  consistency:
+    - "Run black formatter before commits"
+    - "Use isort for import ordering"
+    - "Follow PEP 8 style guide"
+    - "Use consistent patterns"
+    - "Automate formatting checks"
+
+  security:
+    - "Validate all inputs"
+    - "Use parameterized queries"
+    - "Implement proper authentication"
+    - "Encrypt sensitive data"
+    - "Keep dependencies updated"
+    - "Run security scans regularly"
+
+  trackability:
+    - "Write clear commit messages"
+    - "Reference issue numbers"
+    - "Explain what and why"
+    - "Use imperative mood"
+    - "Keep subject line under 72 characters"
+
+# Migration Guide
+migration:
+  from_no_quality:
+    steps:
+      1: "Add TRUST 5 validation to CI/CD pipeline"
+      2: "Configure pre-commit hooks for quality checks"
+      3: "Set up pytest with coverage reporting"
+      4: "Configure ruff, black, and isort"
+      5: "Integrate expert-security agent"
+      6: "Add commit message validation"
+      7: "Configure quality gates thresholds"
+
+  from_basic_quality:
+    steps:
+      1: "Add TRUST 5 framework to existing checks"
+      2: "Configure quality gate thresholds"
+      3: "Enable proactive analysis"
+      4: "Integrate Context7 documentation lookup"
+      5: "Set up quality metrics dashboard"
+      6: "Configure manager-quality agent"
+      7: "Enable automated fix suggestions"
