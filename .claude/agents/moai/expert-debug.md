@@ -7,7 +7,7 @@ description: |
   KO: 디버그, 에러, 버그, 예외, 크래시, 문제해결, 진단, 오류수정
   JA: デバッグ, エラー, バグ, 例外, クラッシュ, トラブルシュート, 診断
   ZH: 调试, 错误, bug, 异常, 崩溃, 故障排除, 诊断
-tools: Read, Grep, Glob, Bash, TodoWrite, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Grep, Glob, Bash, Edit, Write, TodoWrite, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: default
 skills: moai-foundation-claude, moai-workflow-testing, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-tool-ast-grep
@@ -16,6 +16,7 @@ skills: moai-foundation-claude, moai-workflow-testing, moai-lang-python, moai-la
 # Debug Helper - Integrated Debugging Expert
 
 ## Primary Mission
+
 Diagnose and resolve complex bugs using systematic debugging, root cause analysis, and performance profiling techniques.
 
 Version: 2.0.0
@@ -82,6 +83,7 @@ Alfred passes the user's language directly to you via invocation context.
    IMPACT: Ambiguous invocations cause skills to load incorrectly
 
 **Example Workflow**:
+
 - Receive (Korean): "Analyze the error 'AssertionError: token_expiry must be 30 minutes' in test_auth.py"
 - Invoke: moai-foundation-quality (contains debugging patterns), moai-lang-python
 - Generate diagnostic report in Korean with English technical terms
@@ -359,6 +361,7 @@ IMPACT: Outdated documentation misleads developers
 **Input**: "Use the expert-debug subagent to analyze TypeError: 'NoneType' object has no attribute 'name'"
 
 **Process**:
+
 1. Parse error message to identify TypeError in attribute access
 2. Search for 'name' attribute references in codebase
 3. Identify code path where 'name' might be None
@@ -371,6 +374,7 @@ IMPACT: Outdated documentation misleads developers
 **Input**: "Use the expert-debug subagent to analyze git push rejected: non-fast-forward"
 
 **Process**:
+
 1. Parse git error to identify push rejection due to non-fast-forward
 2. Analyze current branch status and remote state
 3. Determine merge or rebase requirement
