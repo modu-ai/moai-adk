@@ -307,7 +307,7 @@ Single domain tasks are delegated directly to expert agents:
 
    ELSE (default parallel mode):
 
-   4b. In a single response, invoke three Task tools simultaneously: - Task 1 (Explore): Codebase analysis with subagent_type="Explore" model="sonnet" - Task 2 (Research): Documentation research with subagent_type="Explore" model="sonnet" and WebSearch focus - Task 3 (Quality): Quality assessment with subagent_type="manager-quality" model="sonnet"
+   4b. In a single response, invoke three Task tools simultaneously: - Task 1 (Explore): Codebase analysis with subagent_type="Explore" - Task 2 (Research): Documentation research with subagent_type="Explore" and WebSearch focus - Task 3 (Quality): Quality assessment with subagent_type="manager-quality"
 
    4c. Collect and integrate results from all three agents
 

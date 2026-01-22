@@ -26,7 +26,7 @@ llm:
     # base_url: "https://api.z.ai/api/anthropic"
     base_url: "https://open.bigmodel.cn/api/anthropic"
     models:
-      haiku: "glm-4.7-flashx"
+      haiku: "glm-4.7"
       sonnet: "glm-4.7"
       opus: "glm-4.7"
 

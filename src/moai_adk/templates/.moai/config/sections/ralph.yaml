@@ -9,7 +9,7 @@ ralph:
   lsp:
     auto_start: true              # Auto-start LSP servers when needed
     timeout_seconds: 15           # Timeout for LSP operations (reduced from 30 for faster failure)
-    poll_interval_ms: 500         # Polling interval for diagnostics
+    poll_interval_ms: 1000        # Polling interval for diagnostics (increased from 500 to reduce CPU usage)
     graceful_degradation: true    # Continue if LSP unavailable
 
     # Supported languages (auto-detected from file extensions)
