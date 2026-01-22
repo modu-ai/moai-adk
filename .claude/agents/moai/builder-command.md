@@ -3,11 +3,12 @@ name: builder-command
 description: |
   Slash command creation specialist. Use PROACTIVELY for custom commands, command optimization, and workflow automation.
   MUST INVOKE when ANY of these keywords appear in user request:
+  --ultrathink flag: Activate Sequential Thinking MCP for deep analysis of command design, workflow automation, and command structure.
   EN: create command, slash command, custom command, command optimization, new command
   KO: 커맨드생성, 슬래시커맨드, 커스텀커맨드, 커맨드최적화, 새커맨드
   JA: コマンド作成, スラッシュコマンド, カスタムコマンド, コマンド最適化
   ZH: 创建命令, 斜杠命令, 自定义命令, 命令优化
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: bypassPermissions
 skills: moai-foundation-claude, moai-workflow-project, moai-workflow-templates

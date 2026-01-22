@@ -475,6 +475,164 @@ nextThoughtNeeded: false
 
 ---
 
+## 11.1. UltraThink 模式
+
+### 概述
+
+UltraThink 模式是一种增强的分析模式，自动应用 Sequential Thinking MCP 深入分析用户请求并生成最优执行计划。当用户在请求中添加 `--ultrathink` 时，Alfred 将激活结构化推理来分解复杂问题。
+
+### 激活
+
+用户可以通过在任何请求中添加 `--ultrathink` 标志来激活 UltraThink 模式：
+
+```
+User: "实现认证系统 --ultrathink"
+User: "/moai:alfred 重构代码库 --ultrathink"
+User: "设计微服务架构 --ultrathink"
+```
+
+### UltraThink 流程
+
+检测到 `--ultrathink` 时，Alfred 遵循以下增强分析工作流：
+
+**第1步：请求分析**
+- 分析用户请求以识别核心目标
+- 提取领域关键词和技术需求
+- 检测复杂度级别（简单、中等、复杂）
+
+**第2步：Sequential Thinking 激活**
+- 使用 `sequential_thinking` 工具分解问题
+- 估计所需思考数（复杂任务通常 5-15 个）
+- 生成结构化推理步骤
+
+**第3步：执行计划**
+- 识别最优代理委派策略
+- 确定并行还是顺序执行
+- 映射子任务之间的依赖关系
+
+**第4步：执行**
+- 根据优化计划启动代理
+- 必要时监控和调整
+- 将结果整合到统一响应中
+
+### UltraThink 的 Sequential Thinking 参数
+
+处理 `--ultrathink` 请求时，使用以下参数模式：
+
+**初始分析调用：**
+```
+thought: "分析用户请求: '[请求]'
+核心目标: [提取主要目标]
+复杂度: [简单|中等|复杂]
+领域: [检测到的技术领域]
+初步方法: [初始策略]"
+nextThoughtNeeded: true
+thoughtNumber: 1
+totalThoughts: [根据复杂度 5-15]
+```
+
+**分解调用：**
+```
+thought: "分解为子任务:
+1. [子任务1] → 代理: [代理类型]
+2. [子任务2] → 代理: [代理类型]
+3. [子任务3] → 代理: [代理类型]
+
+依赖关系: [描述依赖关系]
+并行化: [识别独立任务]"
+nextThoughtNeeded: true
+thoughtNumber: 2
+totalThoughts: [估计]
+```
+
+**策略选择调用：**
+```
+thought: "选择执行策略:
+- 主要代理: [代理列表]
+- 并行组: [组1: [代理], 组2: [代理]]
+- 顺序依赖: [依赖关系]
+- 风险缓解: [潜在问题和解决方案]"
+nextThoughtNeeded: true
+thoughtNumber: 3
+totalThoughts: [估计]
+```
+
+**最终计划调用：**
+```
+thought: "最终执行计划已确定:
+阶段1: [代理执行的操作]
+阶段2: [代理执行的操作]
+阶段3: [代理执行的操作]
+
+准备进行委派。"
+nextThoughtNeeded: false
+thoughtNumber: [最终]
+totalThoughts: [估计]
+```
+
+### UltraThink 最佳实践
+
+1. **首先分析**: 在所有工具调用之前完成顺序思考
+2. **全面分解**: 包含所有相关方面（技术栈、约束、依赖关系）
+3. **代理映射**: 明确识别处理每个子任务的代理
+4. **并行优化**: 识别可以同时运行的独立任务
+5. **风险评估**: 考虑潜在问题和缓解策略
+
+### UltraThink 会话示例
+
+```
+User: "使用 OAuth、JWT 刷新和会话管理添加用户认证 --ultrathink"
+
+Alfred Sequential Thinking:
+---
+思考1: "分析认证需求...
+核心: 实现完整的认证系统
+组件: OAuth 集成、JWT 令牌、刷新逻辑、会话
+复杂度: 高（3个以上组件，安全考虑）"
+
+思考2: "组件分解:
+1. OAuth 提供商集成 → expert-backend
+2. JWT 令牌生成/验证 → expert-security
+3. 刷新令牌轮换 → expert-backend
+4. 会话管理 → expert-backend
+5. 登录 UI → expert-frontend
+6. 认证测试 → expert-testing"
+
+思考3: "执行策略:
+并行组 1: OAuth + JWT 架构（无依赖）
+顺序链: OAuth → JWT → 刷新 → 会话
+测试: 实现完成后"
+
+思考4: "安全考虑:
+- OAuth 状态的 CSRF 保护
+- JWT 密钥管理
+- 刷新令牌轮换间隔
+- 会话过期策略"
+
+思考5: "最终计划完成。
+使用 expert-backend 开始执行 OAuth 设置..."
+---
+
+[然后继续代理委派]
+```
+
+### UltraThink 使用时机
+
+推荐用于：
+- 架构级决策（影响 3 个以上文件）
+- 多组件功能（后端 + 前端 + 测试）
+- 具有依赖关系的复杂重构
+- 需要分析的性能优化
+- 安全敏感实现
+
+不需要用于：
+- 简单错误修复
+- 单行更改
+- 文档更新
+- 常规文件操作
+
+---
+
 ## 12. 渐进式公开系统
 
 ### 概述

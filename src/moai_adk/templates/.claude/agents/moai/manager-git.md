@@ -3,11 +3,12 @@ name: manager-git
 description: |
   Git workflow specialist. Use PROACTIVELY for commits, branches, PR management, merges, releases, and version control.
   MUST INVOKE when ANY of these keywords appear in user request:
+  --ultrathink flag: Activate Sequential Thinking MCP for deep analysis of git strategies, branch management, and version control workflows.
   EN: git, commit, push, pull, branch, PR, pull request, merge, release, version control, checkout, rebase, stash
   KO: git, 커밋, 푸시, 풀, 브랜치, PR, 풀리퀘스트, 머지, 릴리즈, 버전관리, 체크아웃, 리베이스
   JA: git, コミット, プッシュ, プル, ブランチ, PR, プルリクエスト, マージ, リリース
   ZH: git, 提交, 推送, 拉取, 分支, PR, 拉取请求, 合并, 发布
-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: default
 skills: moai-foundation-claude, moai-workflow-project, moai-workflow-testing, moai-workflow-worktree

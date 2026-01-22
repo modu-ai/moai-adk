@@ -146,6 +146,7 @@ Agent delegation is recommended for complex tasks that benefit from specialized 
 ## Agent Invocation Patterns (CLAUDE.md Compliance)
 
 [HARD] AGENT DELEGATION MANDATE:
+
 - ALL implementation tasks MUST be delegated to specialized agents (manager-strategy, manager-ddd, manager-quality, manager-git)
 - NEVER execute implementation directly, even after auto compact
 - WHY: Specialized agents have domain expertise for DDD methodology, quality validation, and Git operations
@@ -215,6 +216,10 @@ Refer to CLAUDE.md "Agent Chaining Patterns" (lines 96-120) for complete pattern
 ### Phase 1: Analysis & Planning
 
 **Agent**: manager-strategy
+
+[SOFT] Apply --ultrathink keyword for comprehensive requirement analysis
+WHY: Implementation planning requires deep analysis of SPEC requirements, success criteria, and architectural impact
+IMPACT: Sequential thinking ensures thorough understanding before expensive implementation begins
 
 **Requirements** [HARD]:
 

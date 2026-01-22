@@ -66,14 +66,14 @@ Feature Description: $ARGUMENTS
 
 ## Command Options
 
-| Option | Alias | Description | Default |
-|--------|-------|-------------|---------|
-| `--loop` | - | Enable auto iterative fixing | ralph.yaml |
-| `--max N` | --max-iterations | Maximum iteration count | 100 |
-| `--sequential` | --seq | Sequential exploration (for debugging) | Parallel |
-| `--branch` | - | Auto-create feature branch | git-strategy |
-| `--pr` | - | Auto-create PR | git-strategy |
-| `--resume SPEC` | - | Resume previous work | - |
+| Option          | Alias            | Description                            | Default      |
+| --------------- | ---------------- | -------------------------------------- | ------------ |
+| `--loop`        | -                | Enable auto iterative fixing           | ralph.yaml   |
+| `--max N`       | --max-iterations | Maximum iteration count                | 100          |
+| `--sequential`  | --seq            | Sequential exploration (for debugging) | Parallel     |
+| `--branch`      | -                | Auto-create feature branch             | git-strategy |
+| `--pr`          | -                | Auto-create PR                         | git-strategy |
+| `--resume SPEC` | -                | Resume previous work                   | -            |
 
 ## Completion Promise
 
@@ -86,6 +86,7 @@ All implementation complete, tests passing, docs updated. <moai>DONE</moai>
 ```
 
 **Marker Types**:
+
 - `<moai>DONE</moai>` - Task complete
 - `<moai>COMPLETE</moai>` - Full completion
 - `<moai:done />` - XML format
@@ -96,6 +97,11 @@ All implementation complete, tests passing, docs updated. <moai>DONE</moai>
 START: /moai:alfred "task description"
 
 PHASE 0: Parallel Exploration (autonomous)
+
+[SOFT] Apply --ultrathink keyword for autonomous workflow orchestration
+WHY: Alfred must analyze task complexity, determine routing strategy, and select appropriate agents
+IMPACT: Sequential thinking ensures optimal agent delegation and execution strategy
+
   ┌── Explore Agent: Codebase analysis
   ├── Research Agent: Documentation/issue search
   └── Quality Agent: Current state diagnosis
@@ -171,11 +177,13 @@ Based on integrated findings:
 Step 4 - User Approval Checkpoint:
 
 Present integrated findings and proposed plan to user via AskUserQuestion:
+
 - Options: Proceed to SPEC creation, Modify approach, Cancel
 
 Error Handling:
 
 If any agent fails:
+
 - Continue with results from successful agents
 - Note missing information in plan
 - Offer to retry failed agent or proceed with partial information
@@ -203,11 +211,13 @@ WHY: Using TodoWrite tool allows users to track progress in real-time.
 ## Alfred: Phase 2 (Loop 3/100)
 
 ### TODO Status
+
 - [x] Implement JWT token generation
 - [x] Implement login endpoint
 - [ ] Token validation middleware ← in progress
 
 ### Issues
+
 - ERROR: src/auth.py:45 - undefined 'jwt_decode'
 - WARNING: tests/test_auth.py:12 - unused 'result'
 
@@ -220,6 +230,7 @@ Fixing...
 ## Alfred: COMPLETE
 
 ### Summary
+
 - SPEC: SPEC-AUTH-001
 - Files: 8 files modified
 - Tests: 25/25 passing
@@ -227,11 +238,12 @@ Fixing...
 - Loops: 7 iterations
 
 ### Changes
-+ JWT token generation
-+ Login endpoint
-+ Token validation middleware
-+ Unit tests (12 cases)
-+ API documentation
+
+- JWT token generation
+- Login endpoint
+- Token validation middleware
+- Unit tests (12 cases)
+- API documentation
 
 <moai>DONE</moai>
 ```
@@ -240,11 +252,11 @@ Fixing...
 
 Auto-routing based on `llm.yaml` settings:
 
-| Mode | Plan Phase | Run Phase |
-|------|------------|-----------|
+| Mode      | Plan Phase       | Run Phase        |
+| --------- | ---------------- | ---------------- |
 | opus-only | Claude (current) | Claude (current) |
-| hybrid | Claude (current) | GLM (worktree) |
-| glm-only | GLM (worktree) | GLM (worktree) |
+| hybrid    | Claude (current) | GLM (worktree)   |
+| glm-only  | GLM (worktree)   | GLM (worktree)   |
 
 ## Expert Delegation (Single Domain)
 
@@ -295,10 +307,7 @@ Single domain tasks are delegated directly to expert agents:
 
    ELSE (default parallel mode):
 
-   4b. In a single response, invoke three Task tools simultaneously:
-       - Task 1 (Explore): Codebase analysis with subagent_type="Explore"
-       - Task 2 (Research): Documentation research with subagent_type="Explore" and WebSearch focus
-       - Task 3 (Quality): Quality assessment with subagent_type="manager-quality"
+   4b. In a single response, invoke three Task tools simultaneously: - Task 1 (Explore): Codebase analysis with subagent_type="Explore" - Task 2 (Research): Documentation research with subagent_type="Explore" and WebSearch focus - Task 3 (Quality): Quality assessment with subagent_type="manager-quality"
 
    4c. Collect and integrate results from all three agents
 
@@ -333,13 +342,7 @@ Single domain tasks are delegated directly to expert agents:
 
    IF --loop flag OR ralph.yaml loop.enabled is true:
 
-   9a. WHILE (issues exist AND iteration less than max):
-       - [HARD] Before each task, call TodoWrite to change item to in_progress
-       - Execute diagnostics (parallel if enabled)
-       - [HARD] Delegate fix execution to appropriate expert agent (NEVER fix directly)
-       - [HARD] After each fix, call TodoWrite to change item to completed
-       - Check for completion marker
-       - IF marker found: Break loop
+   9a. WHILE (issues exist AND iteration less than max): - [HARD] Before each task, call TodoWrite to change item to in_progress - Execute diagnostics (parallel if enabled) - [HARD] Delegate fix execution to appropriate expert agent (NEVER fix directly) - [HARD] After each fix, call TodoWrite to change item to completed - Check for completion marker - IF marker found: Break loop
 
 10. Execute Phase 3 - Documentation Sync:
     - Use manager-docs subagent to synchronize documentation

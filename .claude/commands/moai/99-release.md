@@ -51,6 +51,7 @@ Display quality summary:
 ### Error Handling
 
 If any quality gate FAILS or encounters unexpected errors:
+
 - **Use the expert-debug subagent** to diagnose and resolve the issue
 - Example: `Use the expert-debug subagent to investigate why smoke tests are failing`
 - Resume release workflow only after all gates pass
@@ -58,6 +59,10 @@ If any quality gate FAILS or encounters unexpected errors:
 ---
 
 ## PHASE 2: Code Review (Execute Now)
+
+[SOFT] Apply --ultrathink keyword for comprehensive code review analysis
+WHY: Release requires careful analysis of changes for bugs, security issues, and breaking changes
+IMPACT: Sequential thinking ensures thorough risk assessment before version release
 
 Get commits since last tag:
 `git log $(git describe --tags --abbrev=0 2>/dev/null || echo HEAD~20)..HEAD --oneline`
@@ -91,7 +96,7 @@ If no VERSION argument:
 Calculate new version and update ALL version files:
 
 1. Edit pyproject.toml version field
-2. Edit src/moai_adk/version.py _FALLBACK_VERSION
+2. Edit src/moai_adk/version.py \_FALLBACK_VERSION
 3. Edit .moai/config/config.yaml moai.version
 4. Edit .moai/config/sections/system.yaml moai.version
 5. Commit: `git add pyproject.toml src/moai_adk/version.py .moai/config/config.yaml .moai/config/sections/system.yaml && git commit -m "chore: Bump version to X.Y.Z"`
@@ -109,7 +114,7 @@ IMPORTANT: Create TWO separate sections in CHANGELOG.md
 
 Section 1 - English:
 
-```
+````
 # vX.Y.Z - English Title (YYYY-MM-DD)
 ## Summary
 [English summary]
@@ -126,18 +131,26 @@ moai update
 
 # Verify version
 moai --version
-```
+````
+
 ---
+
 ```
 
 Section 2 - Korean (immediately after English section):
 
 ```
+
 # vX.Y.Z - Korean Title (YYYY-MM-DD)
+
 ## 요약
+
 [Korean summary]
+
 ## 변경 사항
+
 [Korean changes]
+
 ## 설치 및 업데이트
 
 ```bash
@@ -150,7 +163,9 @@ moai update
 # 버전 확인
 moai --version
 ```
+
 ---
+
 ```
 
 Both sections are REQUIRED for proper GitHub Release generation.
@@ -187,9 +202,11 @@ If approved:
 Instead, delegate to manager-git subagent with this prompt:
 
 ```
+
 ## Mission: Release Git Operations for Version X.Y.Z
 
 ### Context
+
 - Target version: X.Y.Z
 - Current state: [describe current git state]
 - Quality gates: All passed
@@ -205,28 +222,35 @@ Instead, delegate to manager-git subagent with this prompt:
 4. **Verify GitHub Actions**: Check if release workflow started
 
 ### Expected Output
+
 Report back with:
+
 1. Remote tag status
 2. Action taken (pushed/recreated/recommended)
 3. GitHub Actions workflow status
 4. Release links (if successful)
+
 ```
 
 Example delegation:
 ```
+
 Use the manager-git subagent to handle release git operations for version 1.5.0
 
 Context:
+
 - Local tag v1.5.0 already exists
 - 6 commits included since v1.4.6
 - All quality gates passed
 
 The agent should:
+
 1. Check if v1.5.0 exists on remote
 2. Push tag to remote or handle conflicts
 3. Verify GitHub Actions workflow started
 4. Report release status with links
-```
+
+````
 
 ---
 
@@ -263,7 +287,7 @@ If the release is not immediately visible, wait 2-3 minutes for the workflow to 
 - Target: 1.5.0 (minor)
 
 Updating version files...
-```
+````
 
 ### Complete
 
@@ -271,11 +295,13 @@ Updating version files...
 ## Release: COMPLETE
 
 ### Summary
+
 - Version: 1.4.0 → 1.5.0
 - Commits: 12 commits included
 - Quality: All gates passed
 
 ### Links
+
 - GitHub Release: https://github.com/modu-ai/moai-adk/releases/tag/v1.5.0
 - PyPI: https://pypi.org/project/moai-adk/1.5.0/
 
@@ -300,6 +326,7 @@ Updating version files...
 ## Agent Delegation Pattern
 
 **For git operations (Phase 6 & 7):**
+
 ```bash
 Use the manager-git subagent to handle release git operations for version X.Y.Z
 
@@ -317,6 +344,7 @@ The agent should:
 ```
 
 **For quality gate failures (Phase 1):**
+
 ```bash
 Use the expert-debug subagent to diagnose quality gate failures
 

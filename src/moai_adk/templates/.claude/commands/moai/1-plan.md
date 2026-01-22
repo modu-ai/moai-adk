@@ -337,6 +337,10 @@ Decision Logic: If user provided clear SPEC title (like "Add authentication modu
 
 #### Step 1B.1: Invoke manager-spec for project analysis
 
+[SOFT] Apply --ultrathink keyword for deep architectural analysis
+WHY: SPEC planning requires careful consideration of domain classification, technical constraints, and dependency analysis
+IMPACT: Sequential thinking ensures comprehensive requirement analysis and proper EARS structure design
+
 Use the manager-spec subagent to:
 
 Analyze project and create SPEC plan for: $ARGUMENTS

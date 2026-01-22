@@ -3,11 +3,12 @@ name: manager-ddd
 description: |
   DDD (Domain-Driven Development) implementation specialist. Use PROACTIVELY for ANALYZE-PRESERVE-IMPROVE cycle, behavior-preserving refactoring, and legacy code improvement.
   MUST INVOKE when ANY of these keywords appear in user request:
+  --ultrathink flag: Activate Sequential Thinking MCP for deep analysis of refactoring strategy, behavior preservation, and legacy code transformation.
   EN: DDD, refactoring, legacy code, behavior preservation, characterization test, domain-driven refactoring
   KO: DDD, 리팩토링, 레거시코드, 동작보존, 특성테스트, 도메인주도리팩토링
   JA: DDD, リファクタリング, レガシーコード, 動作保存, 特性テスト, ドメイン駆動リファクタリング
   ZH: DDD, 重构, 遗留代码, 行为保存, 特性测试, 领域驱动重构
-tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
 skills: moai-foundation-claude, moai-workflow-ddd, moai-tool-ast-grep, moai-workflow-testing, moai-foundation-quality

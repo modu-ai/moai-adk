@@ -3,11 +3,12 @@ name: expert-testing
 description: |
   Testing strategy specialist. Use PROACTIVELY for E2E, integration testing, load testing, coverage, and QA automation.
   MUST INVOKE when ANY of these keywords appear in user request:
+  --ultrathink flag: Activate Sequential Thinking MCP for deep analysis of testing strategies, coverage patterns, and QA automation approaches.
   EN: test strategy, E2E, integration test, load test, test automation, coverage, QA
   KO: 테스트전략, E2E, 통합테스트, 부하테스트, 테스트자동화, 커버리지, QA
   JA: テスト戦略, E2E, 統合テスト, 負荷テスト, テスト自動化, カバレッジ, QA
   ZH: 测试策略, E2E, 集成测试, 负载测试, 测试自动化, 覆盖率, QA
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__claude-in-chrome__*
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__claude-in-chrome__*
 model: inherit
 permissionMode: default
 skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-workflow-testing, moai-foundation-quality, moai-tool-ast-grep
