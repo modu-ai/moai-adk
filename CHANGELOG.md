@@ -1,14 +1,22 @@
-# v1.9.0 - Ralph-Style LSP Integration for Autonomous Workflow (2026-01-22)
+# v1.8.0 - Ralph-Style LSP Integration & Google Stitch MCP (2026-01-23)
 
 ## Summary
 
-This feature release introduces Ralph-style LSP (Language Server Protocol) integration that enables autonomous workflow execution based on real-time code quality signals from IDE diagnostics. The system captures LSP baseline at workflow entry, monitors diagnostic state during execution, and automatically completes phases when quality thresholds are met, eliminating manual approval friction while maintaining code quality standards.
+This major release introduces Ralph-style LSP integration for autonomous workflow execution, Google Stitch MCP integration for AI-powered UI/UX design generation, comprehensive language pattern support for 12 programming languages, and cross-platform path variable consolidation.
 
-**Reference**: SPEC-LSP-001 (LSP-Based Autonomous Workflow Completion)
+**Key Features**:
+- Ralph-style LSP integration with autonomous workflow completion
+- Google Stitch MCP integration with expert-stitch agent
+- Language patterns for 12+ programming languages
+- Cross-platform path variable consolidation (Windows/macOS/Linux)
+- Star History integration for GitHub repository visibility
+
+**Reference**: SPEC-LSP-001, SPEC-STITCH-001
 
 ## Breaking Changes
 
-- **FEATURE**: New autonomous execution mode requires LSP-capable IDE for optimal functionality
+- **Path Variables**: `{{PROJECT_DIR_UNIX}}` and `{{PROJECT_DIR_WIN}}` are deprecated, use `{{PROJECT_DIR}}` instead
+- **Autonomous Mode**: New execution mode requires LSP-capable IDE for optimal functionality
 - Default execution mode remains **interactive** (backward compatible)
 - Workflow configuration file added: `.moai/config/sections/workflow.yaml`
 - New configuration section in `quality.yaml`: `lsp_quality_gates`
@@ -47,6 +55,44 @@ This feature release introduces Ralph-style LSP (Language Server Protocol) integ
 If you prefer manual approval (current behavior), no configuration changes are needed. The default is `execution_mode.interactive.user_approval_required: true`.
 
 ## Added
+
+### Google Stitch MCP Integration (NEW)
+
+- **feat(stitch)**: Add Google Stitch MCP integration with expert-stitch agent
+  - New agent: `expert-stitch` for AI-powered UI/UX design generation
+  - MCP tools: `mcp__stitch__create_project`, `mcp__stitch__generate_screen_from_text`, `mcp__stitch__fetch_screen_code`
+  - Design DNA extraction and consistency checking
+  - Code export in React, Vue, Angular, and Flutter formats
+  - Added to Tier 1 Domain Experts (8 → 9 agents)
+
+- **feat(mcp)**: Add Stitch MCP configuration
+  - Updated `.mcp.json` with Google Stitch server configuration
+  - Added Windows-compatible configuration in `.mcp.windows.json`
+
+### Language Patterns (NEW)
+
+- **feat(lang)**: Add language-specific code patterns for 12 languages
+  - New files: `.moai/rules/language-patterns/*.yaml`
+  - Languages: C++, C#, Elixir, Flutter, Go, JavaScript, Kotlin, PHP, R, Ruby, Rust, Scala, Swift
+  - Framework-specific patterns for each language
+  - Security best practices and anti-patterns
+
+### Statusline Enhancement (NEW)
+
+- **feat(statusline)**: Update statusline format with cleaner output
+  - Improved version display format
+  - Better visual hierarchy for status information
+
+### Documentation (NEW)
+
+- **docs(readme)**: Add Star History section to all README files
+  - Added Star History chart for GitHub repository visibility
+  - Synced across EN, KO, JA, ZH versions
+  - Updated section numbering (License → 16, Made with → 17)
+
+- **docs(readme)**: Sync expert-stitch agent to README files
+  - Updated Tier 1 Domain Experts from 8 to 9
+  - Added expert-stitch description in all language versions
 
 ### Core LSP Integration (SPEC-LSP-001 Implementation)
 
@@ -237,157 +283,6 @@ This feature implements SPEC-LSP-001 (LSP-Based Autonomous Workflow Completion) 
 
 ---
 
-# v1.8.0 - Path Variable Consolidation (2026-01-22)
-
-## Summary
-
-This release consolidates multiple platform-specific path variables (`{{PROJECT_DIR_UNIX}}`, `{{PROJECT_DIR_WIN}}`) into a single cross-platform variable `{{PROJECT_DIR}}` that works universally across Windows, macOS, and Linux.
-
-## Breaking Changes
-
-- **BREAKING**: Path variable consolidation: `{{PROJECT_DIR_UNIX}}` → `{{PROJECT_DIR}}`
-- All template files now use unified `{{PROJECT_DIR}}` variable
-- Cross-platform forward slash path separator
-- Deprecated variables (`{{PROJECT_DIR_UNIX}}`, `{{PROJECT_DIR_WIN}}`) kept for backward compatibility
-
-## Migration Guide
-
-If you have an existing project with deprecated variables:
-
-1. Search for deprecated variables:
-   ```bash
-   grep -r "PROJECT_DIR_UNIX" .claude/
-   grep -r "PROJECT_DIR_WIN" .claude/
-   ```
-
-2. Replace all occurrences with `{{PROJECT_DIR}}`:
-   ```bash
-   find .claude/ -type f -exec sed -i '' 's/{{PROJECT_DIR_UNIX}}/{{PROJECT_DIR}}/g' {} \;
-   find .claude/ -type f -exec sed -i '' 's/{{PROJECT_DIR_WIN}}/{{PROJECT_DIR}}/g' {} \;
-   ```
-
-3. Verify hook scripts execute correctly:
-   ```bash
-   # Test that hooks still work
-   claude -p "Test hook execution"
-   ```
-
-4. No changes needed to runtime `$CLAUDE_PROJECT_DIR` variable
-
-## Changed
-
-- **refactor(variable)**: Consolidate platform-specific path variables to single `{{PROJECT_DIR}}`
-  - Updated `phase_executor.py` to use forward slash for `{{PROJECT_DIR}}`
-  - Replaced 12 template files to use `{{PROJECT_DIR}}` instead of `{{PROJECT_DIR_UNIX}}`
-  - Updated 2 settings templates (settings.json.unix, settings.json.windows)
-  - Updated 10 agent/skill/builder templates
-  - Added deprecation markers for old variables in code comments
-
-- **docs(local)**: Add migration notes to CLAUDE.local.md Section 10
-  - Document historical context of platform-specific variables
-  - Explain v1.8.0 consolidation rationale
-  - Provide step-by-step migration guide for existing projects
-
-- **test(platform)**: Update characterization tests for new variable behavior
-  - Updated test to validate `{{PROJECT_DIR}}` usage in templates
-  - Updated test summary to document deprecated variables
-  - All 11 characterization tests passing
-
-## Technical Details
-
-**Before:**
-- `{{PROJECT_DIR_UNIX}}`: Forward slash with trailing separator (worked on all platforms)
-- `{{PROJECT_DIR_WIN}}`: Backslash with trailing separator (non-functional)
-- `{{PROJECT_DIR}}`: No trailing separator (legacy)
-
-**After:**
-- `{{PROJECT_DIR}}`: Forward slash with trailing separator (works on all platforms)
-- `{{PROJECT_DIR_UNIX}}`: Deprecated - kept for backward compatibility
-- `{{PROJECT_DIR_WIN}}`: Deprecated - kept for backward compatibility
-
-**Rationale:**
-- Forward slashes work on all modern platforms (Windows 10+, macOS, Linux)
-- Eliminates confusing "UNIX" suffix for cross-platform variable
-- Simplifies template maintenance
-- Aligns with industry best practices (pytest, uv, ruff all use forward slashes on Windows)
-
-## Quality
-
-- Characterization tests: 11/11 passed (100%)
-- All template files updated and validated
-- No regressions in path resolution behavior
-
-## Installation & Update
-
-```bash
-# Update to the latest version
-uv tool update moai-adk
-
-# For existing projects: Run migration
-grep -r "PROJECT_DIR_UNIX" .claude/ && echo "Manual migration required"
-
-# Verify version
-moai --version
-```
-
----
-
-# v1.7.1 - Platform Support Enhancement (2026-01-22)
-
-## Summary
-
-This patch release adds official support for Windows and macOS platforms with cross-platform path handling, enhanced CI/CD testing, and platform-specific package classifiers.
-
-## Added
-
-- **feat(platform)**: Add official Windows and macOS platform support
-  - Fixed Unix template path separator bug (missing `/` before `.claude`)
-  - Updated Windows template to use cross-platform forward slashes
-  - Added OS classifiers to pyproject.toml (Windows 10/11, macOS, Linux)
-  - Enhanced CI/CD with macOS and Windows runner matrix
-  - Created 11 characterization tests for platform behavior validation
-  - Platform-specific CI/CD jobs on smoke-test and full-test workflows
-
-## Changed
-
-- **fix(template)**: Fix Unix template path separator in settings.json.unix
-  - Added missing `/` before `.claude` in hook command paths
-  - Before: `{{PROJECT_DIR_UNIX}}.claude/hooks/...`
-  - After: `{{PROJECT_DIR_UNIX}}/.claude/hooks/...`
-
-- **fix(template)**: Update Windows template to use forward slashes
-  - Replaced backslashes with industry-standard forward slashes
-  - Both Unix and Windows templates now use consistent path format
-  - Follows best practices from pytest, uv, and ruff
-
-- **docs(ci)**: Add multi-platform testing matrix to CI/CD
-  - Added macOS-latest runner for macOS validation
-  - Added windows-latest runner for Windows PowerShell validation
-  - Matrix strategy: Ubuntu (all Python versions), macOS/Windows (Python 3.13)
-
-## Quality
-
-- Smoke tests: 37/38 passed (97.4% pass rate)
-- Phase executor tests: 29/29 passed (100%)
-- Platform characterization tests: 11/11 passed (100%)
-- Ruff: All checks passed
-- Mypy: Success
-
-## Installation & Update
-
-```bash
-# Update to the latest version
-uv tool update moai-adk
-
-# Update project templates in your folder
-moai update
-
-# Verify version
-moai --version
-```
-
----
-
 # v1.7.0 - UltraThink Mode Enhancement (2026-01-22)
 
 ## Summary
@@ -459,46 +354,60 @@ moai --version
 
 ---
 
-# v1.7.1 - 플랫폼 지원 강화 (2026-01-22)
+# v1.8.0 - Ralph-Style LSP 통합 & Google Stitch MCP (2026-01-23)
 
 ## 요약
 
-이 패치 릴리스는 크로스 플랫폼 경로 처리, 향상된 CI/CD 테스트, 플랫폼별 패키지 분류자를 통해 Windows와 macOS 플랫폼에 대한 공식 지원을 추가합니다.
+이 메이저 릴리스는 자율 워크플로우 실행을 위한 Ralph-style LSP 통합, AI 기반 UI/UX 디자인 생성을 위한 Google Stitch MCP 통합, 12개 프로그래밍 언어에 대한 포괄적인 언어 패턴 지원, 크로스 플랫폼 경로 변수 통합을 도입합니다.
+
+**주요 기능**:
+- 자율 워크플로우 완료를 위한 Ralph-style LSP 통합
+- expert-stitch 에이전트와 Google Stitch MCP 통합
+- 12개 이상 프로그래밍 언어를 위한 언어 패턴
+- 크로스 플랫폼 경로 변수 통합 (Windows/macOS/Linux)
+- GitHub 저장소 가시성을 위한 Star History 통합
+
+**참조**: SPEC-LSP-001, SPEC-STITCH-001
+
+## Breaking Changes
+
+- **경로 변수**: `{{PROJECT_DIR_UNIX}}`와 `{{PROJECT_DIR_WIN}}`은 더 이상 사용되지 않으며, `{{PROJECT_DIR}}`를 사용하세요
+- **자율 모드**: 새로운 실행 모드는 최적의 기능을 위해 LSP 지원 IDE가 필요합니다
+- 기본 실행 모드는 **대화형** 유지 (하위 호환)
+- 워크플로우 구성 파일 추가: `.moai/config/sections/workflow.yaml`
+- `quality.yaml`에 새 구성 섹션: `lsp_quality_gates`
 
 ## 추가됨
 
-- **feat(platform)**: Windows 및 macOS 플랫폼 공식 지원 추가
-  - Unix 템플릿 경로 구분자 버그 수정 (`.claude` 앞에 누락된 `/` 추가)
-  - Windows 템플릿을 크로스 플랫폼 정방향 슬래시 사용하도록 업데이트
-  - pyproject.toml에 OS 분류자 추가 (Windows 10/11, macOS, Linux)
-  - macOS 및 Windows 러너 매트릭스로 CI/CD 강화
-  - 플랫폼 동작 검증을 위한 11개 특성 테스트 생성
-  - smoke-test 및 full-test 워크플로우에 플랫폼별 CI/CD 작업 추가
+### Google Stitch MCP 통합 (NEW)
 
-## 변경됨
+- **feat(stitch)**: expert-stitch 에이전트와 Google Stitch MCP 통합 추가
+  - AI 기반 UI/UX 디자인 생성을 위한 새 에이전트: `expert-stitch`
+  - MCP 도구: `mcp__stitch__create_project`, `mcp__stitch__generate_screen_from_text`, `mcp__stitch__fetch_screen_code`
+  - Design DNA 추출 및 일관성 검사
+  - React, Vue, Angular, Flutter 형식으로 코드 내보내기
+  - Tier 1 도메인 전문가에 추가 (8 → 9개 에이전트)
 
-- **fix(template)**: settings.json.unix에서 Unix 템플릿 경로 구분자 수정
-  - 후크 명령 경로에서 `.claude` 앞에 누락된 `/` 추가
-  - 변경 전: `{{PROJECT_DIR_UNIX}}.claude/hooks/...`
-  - 변경 후: `{{PROJECT_DIR_UNIX}}/.claude/hooks/...`
+### 언어 패턴 (NEW)
 
-- **fix(template)**: Windows 템플릿을 정방향 슬래시 사용하도록 업데이트
-  - 역슬래시를 업계 표준 정방향 슬래시로 교체
-  - Unix 및 Windows 템플릿이 이제 일관된 경로 형식 사용
-  - pytest, uv, ruff의 모범 사례 따름
+- **feat(lang)**: 12개 언어에 대한 언어별 코드 패턴 추가
+  - 새 파일: `.moai/rules/language-patterns/*.yaml`
+  - 언어: C++, C#, Elixir, Flutter, Go, JavaScript, Kotlin, PHP, R, Ruby, Rust, Scala, Swift
+  - 각 언어별 프레임워크 패턴
+  - 보안 모범 사례 및 안티패턴
 
-- **docs(ci)**: CI/CD에 멀티 플랫폼 테스트 매트릭스 추가
-  - macOS 검증을 위한 macOS-latest 러너 추가
-  - Windows PowerShell 검증을 위한 windows-latest 러너 추가
-  - 매트릭스 전략: Ubuntu (모든 Python 버전), macOS/Windows (Python 3.13)
+### LSP 통합 (SPEC-LSP-001)
 
-## 품질
+- **feat(lsp)**: LSP 기반 완료 마커 시스템 추가
+  - 새 모듈: `src/moai_adk/utils/completion_marker.py`
+  - 자율 모드에서 무한 루프 방지
+  - MCP 도구와 통합: `mcp__ide__getDiagnostics`
 
-- Smoke 테스트: 37/38 통과 (97.4% 통과율)
-- Phase executor 테스트: 29/29 통과 (100%)
-- 플랫폼 특성 테스트: 11/11 통과 (100%)
-- Ruff: 모든 검사 통과
-- Mypy: 성공
+### 문서 (NEW)
+
+- **docs(readme)**: 모든 README 파일에 Star History 섹션 추가
+  - EN, KO, JA, ZH 버전 동기화
+  - expert-stitch 에이전트 설명 추가
 
 ## 설치 및 업데이트
 
