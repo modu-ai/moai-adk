@@ -82,7 +82,7 @@ To find all console.log calls, run sg with pattern console.log($MSG) and lang ja
 
 To find all Python function definitions, run sg with pattern def $FUNC($$$ARGS): $$$BODY and lang python.
 
-To find React useState hooks, run sg with pattern useState($INIT) and lang typescriptreact.
+To find React useState hooks, run sg with pattern useState($INIT) and lang tsx.
 
 #### Explore/Search Performance Optimization
 
@@ -112,7 +112,7 @@ sg -p 'import fastapi' --lang python -r src/
 
 Find React hooks usage:
 ```bash
-sg -p 'useState($$)' --lang typescriptreact -r src/
+sg -p 'useState($$)' --lang tsx -r src/
 ```
 
 Find async function declarations:

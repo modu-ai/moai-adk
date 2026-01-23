@@ -1,6 +1,6 @@
 # MoAI-ADK 기술 스택
 
-> **최종 업데이트**: 2026-01-15
+> **최종 업데이트**: 2026-01-24
 > **버전**: 4.1.0
 
 ---
@@ -90,7 +90,7 @@
 - **도구**: ast-grep (sg CLI)
 - **목적**: 구조적 코드 검색 및 리팩토링
 - **언어**: 40개 이상 프로그래밍 언어 지원
-- **용도**: 보안 스캔, 코드 패턴 매칭, 대규모 리팩토링
+- **용도**: 보안 스캔, 코드 패턴 매칭, 대규모 리팩토링, Ralph 엔진 통합
 
 ### Claude Code
 - **플랫폼**: Anthropic Claude Code CLI
@@ -142,24 +142,27 @@ ignore_missing_imports = true
 ## 아키텍처 패턴
 
 ### 멀티레이어 모듈러 아키텍처
-1. **CLI 레이어**: Click 기반 명령형 인터페이스
-2. **코어 레이어**: 45개 모듈로 구성된 비즈니스 로직
+1. **CLI 레이어**: Click 기반 명령형 인터페이스 + Rich TUI
+2. **코어 레이어**: 50개 이상 모듈로 구성된 비즈니스 로직
 3. **파운데이션 레이어**: TRUST 5, Git 작업
-4. **Claude Code 통합 레이어**: 21개 에이전트, 48개 스킬
+4. **품질 보증 레이어**: Ralph 엔진, LSP 통합, AST-grep
+5. **자동화 레이어**: 루프 컨트롤러, 후크, 이벤트 시스템
+6. **Claude Code 통합 레이어**: 20개 에이전트, 48개 스킬
 
 ### 에이전트 아키텍처 (7-Tier)
 1. **Tier 0**: 코어 에이전트 (Alfred 오케스트레이터)
-2. **Tier 1**: 매니저 에이전트 (워크플로우 조정)
-3. **Tier 2**: 전문가 에이전트 (도메인 전문가)
-4. **Tier 3**: 빌더 에이전트 (생성 전문가)
+2. **Tier 1**: 매니저 에이전트 (워크플로우 조정) - 7개
+3. **Tier 2**: 전문가 에이전트 (도메인 전문가) - 9개
+4. **Tier 3**: 빌더 에이전트 (생성 전문가) - 4개
 5. **Tier 4**: 유틸리티 에이전트 (헬퍼 함수)
 
-### 스킬 아키텍처
-- **파운데이션 스킬**: 핵심 원칙 및 패턴
-- **도메인 스킬**: 프론트엔드, 백엔드, 데이터베이스
-- **언어 스킬**: Python, TypeScript, Go, Rust 등
-- **플랫폼 스킬**: Firebase, Supabase, Vercel 등
-- **워크플로우 스킬**: TDD, SPEC, 프로젝트 관리
+### 스킬 아키텍처 (Progressive Disclosure)
+- **파운데이션 스킬**: 핵심 원칙 및 패턴 (moai-foundation-*)
+- **도메인 스킬**: 프론트엔드, 백엔드, 데이터베이스 (moai-domain-*)
+- **언어 스킬**: Python, TypeScript, Go, Rust 등 (moai-lang-*)
+- **플랫폼 스킬**: Firebase, Supabase, Vercel 등 (moai-platform-*)
+- **워크플로우 스킬**: DDD, SPEC, 프로젝트 관리 (moai-workflow-*)
+- **라이브러리 스킬**: Nextra, Mermaid 등 (moai-library-*)
 
 ### 설정 아키텍처
 - **모듈형 섹션**: 관심사별 분리 (user, language, project, git, quality)
@@ -172,20 +175,21 @@ ignore_missing_imports = true
 ## 통합 지점
 
 ### Claude Code 통합
-- `.claude/agents/`의 사용자 정의 에이전트
+- `.claude/agents/`의 사용자 정의 에이전트 (20개)
 - `.claude/commands/`의 슬래시 명령
-- `.claude/hooks/`의 후크
-- `.claude/skills/`의 스킬
+- `.claude/hooks/`의 후크 (품질 게이트 포함)
+- `.claude/skills/`의 스킬 (48개)
 
 ### GitHub 통합
 - CI/CD용 워크플로우 템플릿
 - SPEC에서 GitHub 이슈로 동기화
 - 브랜치 보호 및 PR 자동화
 
-### LSP 통합
+### LSP 통합 (Ralph 엔진)
 - 진단용 Language Server Protocol
 - 실시간 오류 감지
 - 자동 수정 제안
+- 품질 게이트 검증 (plan, run, sync 단계별)
 
 ---
 
@@ -210,8 +214,9 @@ ignore_missing_imports = true
 
 ## 성능 최적화
 
-### 토큰 효율성 (v4.1.0)
-- 단순화된 컨텍스트 수집
+### 토큰 효율성 (Progressive Disclosure)
+- 3단계 지식 전달 (Quick, Implementation, Advanced)
+- 초기 토큰 소비 67% 감소
 - 조건부 스킬 자동 로딩
 - 간단한 작업용 빠른 참조
 - 긴 세션용 컨텍스트 압축
@@ -221,6 +226,7 @@ ignore_missing_imports = true
 - 필요시 순차 실행용 `--sequential` 플래그
 - 다단계 작업의 워크플로우 성능 3-4배 향상
 - 시스템 리소스의 더 나은 활용
+- 최대 10개 에이전트 동시 실행 지원
 
 ### 빌드 성능
 - 병렬 테스트 실행 (pytest-xdist)
@@ -261,7 +267,7 @@ ignore_missing_imports = true
 
 ### 운영 체제
 - Linux (Ubuntu 20.04+, Debian 11+, CentOS 8+)
-- macOS (12+ Monterey, 13+ Ventura, 14+ Sonoma)
+- macOS (12+ Monterey, 13+ Ventura, 14+ Sonoma, 15+ Sequoia)
 - Windows (10+, 11 with WSL2)
 
 ### Python 버전
@@ -291,3 +297,18 @@ ignore_missing_imports = true
 - 명령 사용 통계
 - 에이전트 성공률
 - `.moai/analytics/`에 저장
+
+---
+
+## LSP 품질 게이트
+
+### 단계별 임계값
+- **plan**: LSP 베이스라인 캡처
+- **run**: 0 오류, 0 타입 오류, 0 린트 오류 필수; 베이스라인 대비 회귀 불허
+- **sync**: 0 오류, 최대 10 경고, 깨끗한 LSP 필수
+
+### LSP 상태 추적
+- 캡처 시점: phase_start, post_transformation, pre_sync
+- 베이스라인 비교: phase_start 기준
+- 회귀 임계값: 오류 증가 시 회귀로 판정
+- 로깅: 상태 변경, 회귀 감지, 완료 마커 추적

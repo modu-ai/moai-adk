@@ -27,30 +27,6 @@ rule:
 fix: decodeURIComponent($STR)
 
 ---
-id: deprecated-component-will-mount
-language: typescriptreact
-severity: error
-message: "componentWillMount is deprecated. Use componentDidMount or useEffect."
-rule:
-  pattern: componentWillMount() { $$$BODY }
-
----
-id: deprecated-component-will-receive-props
-language: typescriptreact
-severity: error
-message: "componentWillReceiveProps is deprecated. Use getDerivedStateFromProps or useEffect."
-rule:
-  pattern: componentWillReceiveProps($PROPS) { $$$BODY }
-
----
-id: deprecated-find-dom-node
-language: typescriptreact
-severity: warning
-message: "findDOMNode is deprecated. Use refs instead."
-rule:
-  pattern: ReactDOM.findDOMNode($COMPONENT)
-
----
 id: deprecated-python-imp
 language: python
 severity: warning

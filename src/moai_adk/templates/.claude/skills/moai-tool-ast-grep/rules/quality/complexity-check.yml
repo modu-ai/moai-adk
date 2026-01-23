@@ -58,26 +58,6 @@ rule:
     })
 
 ---
-id: empty-catch-block
-language: javascript
-severity: warning
-message: "Empty catch block. Handle or log the error."
-rule:
-  pattern: |
-    catch ($ERR) {
-    }
-
----
-id: empty-catch-block-python
-language: python
-severity: warning
-message: "Empty except block. Handle or log the exception."
-rule:
-  pattern: |
-    except $EXC:
-        pass
-
----
 id: console-log-in-production
 language: javascript
 severity: info
