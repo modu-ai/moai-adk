@@ -92,11 +92,8 @@ cat >> CHANGELOG.entry.md << EOF
 
 #### 설치 방법
 \`\`\`bash
-# UV 사용 (권장)
-uv add moai-adk==$VERSION
-
-# pip 사용
-pip install moai-adk==$VERSION
+# UV Tool 사용 (권장)
+uv tool install moai-adk
 \`\`\`
 
 ---
@@ -141,11 +138,8 @@ cat >> CHANGELOG.entry.md << EOF
 
 #### Installation
 \`\`\`bash
-# UV (Recommended)
-uv add moai-adk==$VERSION
-
-# pip
-pip install moai-adk==$VERSION
+# UV Tool (Recommended)
+uv tool install moai-adk
 \`\`\`
 
 ---

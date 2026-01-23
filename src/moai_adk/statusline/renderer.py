@@ -30,6 +30,8 @@ class StatuslineData:
     latest_version: str = ""
     context_window: str = ""  # Context window usage (e.g., "15K/200K")
     context_used_percentage: float = 0.0  # Context window used percentage (0.0-100.0)
+    context_tokens_used: int = 0  # Actual tokens used (e.g., 100000)
+    context_tokens_max: int = 200000  # Maximum context window size (e.g., 200000)
     # Cost tracking fields (from Claude Code session context)
     cost_total_usd: float = 0.0  # Total API cost in USD
     cost_lines_added: int = 0  # Total lines added
@@ -112,12 +114,13 @@ class StatuslineRenderer:
         if self._display_config.model:
             parts.append(f"🤖 {data.model}")
 
-        # 2. Add context window usage with graph (always show graph if percentage is available)
-        if data.context_used_percentage >= 0:
+        # 2. Add context window usage with graph (always show if data is available)
+        if data.context_tokens_max > 0:
             # Determine battery icon based on usage
             # 🔋 (70% or less used, 30%+ remaining) | 🪫 (over 70% used, less than 30% remaining)
-            icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
-            graph = self._render_context_graph(data.context_used_percentage)
+            used_pct = (data.context_tokens_used / data.context_tokens_max * 100) if data.context_tokens_max > 0 else 0
+            icon = "🔋" if used_pct <= 70 else "🪫"
+            graph = self._render_context_graph(used_pct)
             parts.append(f"{icon} {graph}")
 
         # 3. Add output style if not empty
@@ -165,9 +168,10 @@ class StatuslineRenderer:
 
         parts.append(f"🤖 {data.model}")
 
-        if data.context_used_percentage >= 0:
-            icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
-            parts.append(f"{icon} {self._render_context_graph(data.context_used_percentage)}")
+        if data.context_tokens_max > 0:
+            used_pct = (data.context_tokens_used / data.context_tokens_max * 100) if data.context_tokens_max > 0 else 0
+            icon = "🔋" if used_pct <= 70 else "🪫"
+            parts.append(f"{icon} {self._render_context_graph(used_pct)}")
 
         if data.output_style:
             parts.append(f"💬 {data.output_style}")
@@ -193,9 +197,12 @@ class StatuslineRenderer:
             truncated_branch = self._truncate_branch(data.branch, max_length=12)
             parts = []
             parts.append(f"🤖 {data.model}")
-            if data.context_used_percentage >= 0:
-                icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
-                parts.append(f"{icon} {self._render_context_graph(data.context_used_percentage)}")
+            if data.context_tokens_max > 0:
+                used_pct = (
+                    (data.context_tokens_used / data.context_tokens_max * 100) if data.context_tokens_max > 0 else 0
+                )
+                icon = "🔋" if used_pct <= 70 else "🪫"
+                parts.append(f"{icon} {self._render_context_graph(used_pct)}")
             if data.output_style:
                 parts.append(f"💬 {data.output_style}")
             if self._display_config.directory and data.directory:
@@ -210,12 +217,12 @@ class StatuslineRenderer:
         # If still too long, remove output_style and version
         if len(result) > max_length:
             parts = [f"🤖 {data.model}"]
-            if data.context_window:
-                if data.context_used_percentage > 0:
-                    icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
-                    parts.append(f"{icon} {self._render_context_graph(data.context_used_percentage)}")
-                else:
-                    parts.append(f"🔋 {data.context_window}")
+            if data.context_tokens_max > 0:
+                used_pct = (
+                    (data.context_tokens_used / data.context_tokens_max * 100) if data.context_tokens_max > 0 else 0
+                )
+                icon = "🔋" if used_pct <= 70 else "🪫"
+                parts.append(f"{icon} {self._render_context_graph(used_pct)}")
             if data.git_status:
                 parts.append(f"📊 {data.git_status}")
             parts.append(f"🔀 {truncated_branch}")
@@ -249,9 +256,10 @@ class StatuslineRenderer:
             parts.append(f"🤖 {data.model}")
 
         # 2. Context window with graph
-        if data.context_used_percentage >= 0:
-            icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
-            parts.append(f"{icon} {self._render_context_graph(data.context_used_percentage)}")
+        if data.context_tokens_max > 0:
+            used_pct = (data.context_tokens_used / data.context_tokens_max * 100) if data.context_tokens_max > 0 else 0
+            icon = "🔋" if used_pct <= 70 else "🪫"
+            parts.append(f"{icon} {self._render_context_graph(used_pct)}")
 
         # 3. Output style
         if data.output_style:
@@ -285,9 +293,12 @@ class StatuslineRenderer:
             parts = []
             if self._display_config.model:
                 parts.append(f"🤖 {data.model}")
-            if data.context_used_percentage >= 0:
-                icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
-                parts.append(f"{icon} {self._render_context_graph(data.context_used_percentage)}")
+            if data.context_tokens_max > 0:
+                used_pct = (
+                    (data.context_tokens_used / data.context_tokens_max * 100) if data.context_tokens_max > 0 else 0
+                )
+                icon = "🔋" if used_pct <= 70 else "🪫"
+                parts.append(f"{icon} {self._render_context_graph(used_pct)}")
             if data.output_style:
                 parts.append(f"💬 {data.output_style}")
             if self._display_config.directory and data.directory:
@@ -320,9 +331,10 @@ class StatuslineRenderer:
             parts.append(f"🤖 {data.model}")
 
         # Add context window with graph if available
-        if data.context_used_percentage >= 0:
-            icon = "🔋" if data.context_used_percentage <= 70 else "🪫"
-            parts.append(f"{icon} {self._render_context_graph(data.context_used_percentage)}")
+        if data.context_tokens_max > 0:
+            used_pct = (data.context_tokens_used / data.context_tokens_max * 100) if data.context_tokens_max > 0 else 0
+            icon = "🔋" if used_pct <= 70 else "🪫"
+            parts.append(f"{icon} {self._render_context_graph(used_pct)}")
 
         result = self._format_config.separator.join(parts)
 
@@ -417,3 +429,40 @@ class StatuslineRenderer:
 
         # Return formatted graph with used percentage
         return f"[{bar}] {used_int}%"
+
+    @staticmethod
+    def _render_context_tokens(tokens_used: int, tokens_max: int) -> str:
+        """
+        Render context window usage as token count (e.g., "100k/200k").
+
+        This format works with both Claude API and GLM-4.7 since it shows
+        actual token numbers rather than relying on current_usage data.
+
+        Args:
+            tokens_used: Number of tokens used (e.g., 100000)
+            tokens_max: Maximum context window size (e.g., 200000)
+
+        Returns:
+            Formatted token string (e.g., "100k/200k")
+
+        Examples:
+            >>> _render_context_tokens(100000, 200000)
+            "100k/200k"
+            >>> _render_context_tokens(15234, 200000)
+            "15k/200k"
+            >>> _render_context_tokens(500, 200000)
+            "500/200k"
+        """
+        # Format used tokens
+        if tokens_used >= 1000:
+            used_str = f"{tokens_used // 1000}k"
+        else:
+            used_str = str(tokens_used)
+
+        # Format max tokens
+        if tokens_max >= 1000:
+            max_str = f"{tokens_max // 1000}k"
+        else:
+            max_str = str(tokens_max)
+
+        return f"{used_str}/{max_str}"

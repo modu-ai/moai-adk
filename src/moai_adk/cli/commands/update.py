@@ -2095,12 +2095,10 @@ def _show_installer_not_found_help() -> None:
     """Show help when installer not found."""
     console.print("[red]❌ Cannot detect package installer[/red]\n")
     console.print("Installation method not detected. To update manually:\n")
-    console.print("  • If installed via uv tool:")
-    console.print("    [cyan]uv tool upgrade moai-adk[/cyan]\n")
+    console.print("  • Recommended:")
+    console.print("    [cyan]uv tool install moai-adk[/cyan]\n")
     console.print("  • If installed via pipx:")
     console.print("    [cyan]pipx upgrade moai-adk[/cyan]\n")
-    console.print("  • If installed via pip:")
-    console.print("    [cyan]pip install --upgrade moai-adk[/cyan]\n")
     console.print("Then run:")
     console.print("  [cyan]moai-adk update --templates-only[/cyan]")
 

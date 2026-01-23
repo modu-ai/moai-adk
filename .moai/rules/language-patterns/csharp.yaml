@@ -1,0 +1,160 @@
+# C# Language Patterns
+# Common patterns for C# 12 / .NET 8 development
+# Version: 1.0.0
+# Last Updated: 2026-01-23
+
+---
+language: "csharp"
+version: "C# 12 / .NET 8"
+description: "Common patterns for modern C# development"
+
+# Language Features
+features:
+  primary_constructors:
+    name: "Primary Constructors"
+    description: "Simplified class initialization"
+    example: |
+      public class UserService(IUserRepository repository, ILogger<UserService> logger)
+      {
+          public async Task<User?> GetUserAsync(int id)
+          {
+              logger.LogInformation("Fetching user {Id}", id);
+              return await repository.GetByIdAsync(id);
+          }
+      }
+
+  collection_expressions:
+    name: "Collection Expressions"
+    description: "Unified collection initialization"
+    example: |
+      int[] numbers = [1, 2, 3, 4, 5];
+      List<string> names = ["Alice", "Bob", "Charlie"];
+      Dictionary<string, int> ages = new() { ["Alice"] = 30, ["Bob"] = 25 };
+
+      // Spread operator
+      int[] combined = [..numbers, 6, 7, 8];
+
+  pattern_matching:
+    name: "Pattern Matching"
+    description: "Advanced pattern matching"
+    example: |
+      public string GetDiscount(object customer) => customer switch
+      {
+          PremiumCustomer { Years: > 5 } => "30% off",
+          PremiumCustomer => "20% off",
+          RegularCustomer { Orders: > 10 } => "10% off",
+          _ => "No discount"
+      };
+
+# Web Framework Patterns
+web_frameworks:
+  aspnet_core:
+    name: "ASP.NET Core 8"
+    patterns:
+      minimal_api:
+        description: "Minimal API pattern"
+        example: |
+          var builder = WebApplication.CreateBuilder(args);
+          builder.Services.AddEndpointsApiExplorer();
+          builder.Services.AddSwaggerGen();
+
+          var app = builder.Build();
+
+          app.MapGet("/users/{id}", async (int id, IUserService service) =>
+              await service.GetUserAsync(id) is User user
+                  ? Results.Ok(user)
+                  : Results.NotFound());
+
+          app.Run();
+
+      dependency_injection:
+        description: "DI with keyed services"
+        example: |
+          builder.Services.AddKeyedScoped<ICache, RedisCache>("redis");
+          builder.Services.AddKeyedScoped<ICache, MemoryCache>("memory");
+
+          public class UserService([FromKeyedServices("redis")] ICache cache)
+          {
+              // Uses Redis cache
+          }
+
+# Database Patterns
+database:
+  entity_framework:
+    name: "Entity Framework Core 8"
+    patterns:
+      dbcontext:
+        description: "DbContext configuration"
+        example: |
+          public class AppDbContext(DbContextOptions<AppDbContext> options)
+              : DbContext(options)
+          {
+              public DbSet<User> Users => Set<User>();
+
+              protected override void OnModelCreating(ModelBuilder modelBuilder)
+              {
+                  modelBuilder.Entity<User>(entity =>
+                  {
+                      entity.HasIndex(e => e.Email).IsUnique();
+                      entity.Property(e => e.Name).HasMaxLength(100);
+                  });
+              }
+          }
+
+      repository_pattern:
+        description: "Generic repository pattern"
+        example: |
+          public interface IRepository<T> where T : class
+          {
+              Task<T?> GetByIdAsync(int id);
+              Task<IEnumerable<T>> GetAllAsync();
+              Task AddAsync(T entity);
+              Task UpdateAsync(T entity);
+              Task DeleteAsync(int id);
+          }
+
+# Testing Patterns
+testing:
+  xunit:
+    name: "xUnit"
+    patterns:
+      async_tests:
+        description: "Async test patterns"
+        example: |
+          public class UserServiceTests
+          {
+              private readonly Mock<IUserRepository> _mockRepo;
+              private readonly UserService _service;
+
+              public UserServiceTests()
+              {
+                  _mockRepo = new Mock<IUserRepository>();
+                  _service = new UserService(_mockRepo.Object);
+              }
+
+              [Fact]
+              public async Task GetUser_ReturnsUser_WhenExists()
+              {
+                  _mockRepo.Setup(r => r.GetByIdAsync(1))
+                      .ReturnsAsync(new User { Id = 1, Name = "Test" });
+
+                  var result = await _service.GetUserAsync(1);
+
+                  Assert.NotNull(result);
+                  Assert.Equal("Test", result.Name);
+              }
+          }
+
+# Best Practices
+best_practices:
+  code_style:
+    - "Use file-scoped namespaces"
+    - "Use primary constructors"
+    - "Use collection expressions"
+    - "Prefer records for DTOs"
+
+  async_patterns:
+    - "Use async/await consistently"
+    - "Use CancellationToken"
+    - "Avoid async void except for event handlers"
+    - "Use ValueTask for hot paths"

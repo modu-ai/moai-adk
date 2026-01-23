@@ -1,0 +1,157 @@
+# Rust Language Patterns
+# Common patterns for Rust 1.80+ development
+# Version: 1.0.0
+# Last Updated: 2026-01-23
+
+---
+language: "rust"
+version: "1.80+"
+description: "Common patterns for modern Rust development"
+
+# Language Features
+features:
+  async_traits:
+    name: "Async Traits (Stable)"
+    description: "Native async fn in traits"
+    example: |
+      trait Repository {
+          async fn find(&self, id: u64) -> Option<Entity>;
+          async fn save(&self, entity: Entity) -> Result<(), Error>;
+      }
+
+  impl_trait_in_return:
+    name: "impl Trait in return position"
+    example: |
+      fn create_handler() -> impl Fn(Request) -> Response {
+          |req| Response::new(200, req.body())
+      }
+
+# Web Framework Patterns
+web_frameworks:
+  axum:
+    name: "Axum 0.7+"
+    patterns:
+      router_setup:
+        description: "Router with state and middleware"
+        example: |
+          use axum::{Router, routing::get, Extension};
+          use tower_http::cors::CorsLayer;
+
+          #[derive(Clone)]
+          struct AppState {
+              db: PgPool,
+          }
+
+          let app = Router::new()
+              .route("/users/:id", get(get_user))
+              .layer(CorsLayer::permissive())
+              .with_state(AppState { db });
+
+      extractors:
+        description: "Custom extractors pattern"
+        example: |
+          use axum::{extract::{Path, State, Json}, response::IntoResponse};
+
+          async fn get_user(
+              Path(id): Path<u64>,
+              State(state): State<AppState>,
+          ) -> impl IntoResponse {
+              let user = state.db.get_user(id).await?;
+              Json(user)
+          }
+
+# Database Patterns
+database:
+  sqlx:
+    name: "SQLx"
+    patterns:
+      query_macro:
+        description: "Compile-time checked queries"
+        example: |
+          let user = sqlx::query_as!(
+              User,
+              r#"SELECT id, name, email FROM users WHERE id = $1"#,
+              id
+          )
+          .fetch_one(&pool)
+          .await?;
+
+      transactions:
+        description: "Transaction pattern"
+        example: |
+          let mut tx = pool.begin().await?;
+          sqlx::query!("INSERT INTO users (name) VALUES ($1)", name)
+              .execute(&mut *tx)
+              .await?;
+          tx.commit().await?;
+
+# Error Handling
+error_handling:
+  thiserror:
+    name: "thiserror for library errors"
+    example: |
+      use thiserror::Error;
+
+      #[derive(Error, Debug)]
+      pub enum AppError {
+          #[error("Database error: {0}")]
+          Database(#[from] sqlx::Error),
+          #[error("Not found: {0}")]
+          NotFound(String),
+      }
+
+  anyhow:
+    name: "anyhow for application errors"
+    example: |
+      use anyhow::{Context, Result};
+
+      fn read_config() -> Result<Config> {
+          let content = std::fs::read_to_string("config.toml")
+              .context("Failed to read config file")?;
+          toml::from_str(&content)
+              .context("Failed to parse config")
+      }
+
+# Testing Patterns
+testing:
+  unit_tests:
+    description: "Unit test module pattern"
+    example: |
+      #[cfg(test)]
+      mod tests {
+          use super::*;
+
+          #[tokio::test]
+          async fn test_get_user() {
+              let pool = setup_test_db().await;
+              let user = get_user(&pool, 1).await.unwrap();
+              assert_eq!(user.name, "Test");
+          }
+      }
+
+  integration_tests:
+    description: "Integration test with test containers"
+    example: |
+      use testcontainers::{clients::Cli, images::postgres::Postgres};
+
+      #[tokio::test]
+      async fn test_database_operations() {
+          let docker = Cli::default();
+          let postgres = docker.run(Postgres::default());
+          let pool = setup_pool(&postgres.get_host_port_ipv4(5432)).await;
+          // Run tests...
+      }
+
+# Best Practices
+best_practices:
+  code_style:
+    - "Use clippy for linting"
+    - "Use rustfmt for formatting"
+    - "Prefer Result over panic"
+    - "Use thiserror for library, anyhow for apps"
+
+  async_patterns:
+    - "Use tokio as async runtime"
+    - "Prefer async/await over futures combinators"
+    - "Use tower for middleware"
+    - "Handle cancellation properly"

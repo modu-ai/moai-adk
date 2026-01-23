@@ -1,0 +1,170 @@
+# JavaScript Language Patterns
+# Common patterns for JavaScript ES2024+ development
+# Version: 1.0.0
+# Last Updated: 2026-01-23
+
+---
+language: "javascript"
+version: "ES2024+"
+description: "Common patterns for modern JavaScript development"
+
+# Runtime Environments
+runtimes:
+  node:
+    name: "Node.js 22 LTS"
+    features:
+      - "Native fetch API"
+      - "WebStreams API"
+      - "Built-in test runner"
+      - "Permission model"
+
+  bun:
+    name: "Bun 1.x"
+    features:
+      - "Built-in bundler"
+      - "Native SQLite"
+      - "S3 client"
+      - "Shell scripting"
+      - "Fast test runner"
+
+  deno:
+    name: "Deno 2.x"
+    features:
+      - "Secure by default"
+      - "Built-in TypeScript"
+      - "Standard library"
+      - "npm compatibility"
+
+# Web Framework Patterns
+web_frameworks:
+  express:
+    name: "Express.js 5.x"
+    patterns:
+      async_handler:
+        description: "Async error handling middleware"
+        example: |
+          const asyncHandler = (fn) => (req, res, next) =>
+            Promise.resolve(fn(req, res, next)).catch(next);
+
+          app.get('/users/:id', asyncHandler(async (req, res) => {
+            const user = await User.findById(req.params.id);
+            res.json(user);
+          }));
+
+  fastify:
+    name: "Fastify 5.x"
+    patterns:
+      plugin_pattern:
+        description: "Encapsulated plugin pattern"
+        example: |
+          async function userRoutes(fastify, options) {
+            fastify.get('/users/:id', async (request, reply) => {
+              const user = await fastify.db.users.find(request.params.id);
+              return user;
+            });
+          }
+
+          fastify.register(userRoutes, { prefix: '/api/v1' });
+
+  hono:
+    name: "Hono 4.x"
+    patterns:
+      middleware_chain:
+        description: "Middleware chain pattern"
+        example: |
+          import { Hono } from 'hono';
+          import { cors } from 'hono/cors';
+          import { jwt } from 'hono/jwt';
+
+          const app = new Hono();
+          app.use('/*', cors());
+          app.use('/api/*', jwt({ secret: 'secret' }));
+
+          app.get('/api/users', (c) => c.json({ users: [] }));
+
+# Testing Patterns
+testing:
+  vitest:
+    name: "Vitest"
+    patterns:
+      async_tests:
+        description: "Async test patterns"
+        example: |
+          import { describe, it, expect, vi } from 'vitest';
+
+          describe('UserService', () => {
+            it('should fetch user by id', async () => {
+              const mockUser = { id: 1, name: 'Test' };
+              vi.spyOn(api, 'getUser').mockResolvedValue(mockUser);
+
+              const result = await userService.getUser(1);
+              expect(result).toEqual(mockUser);
+            });
+          });
+
+  jest:
+    name: "Jest"
+    patterns:
+      mock_modules:
+        description: "Module mocking pattern"
+        example: |
+          jest.mock('./database', () => ({
+            query: jest.fn().mockResolvedValue([{ id: 1 }])
+          }));
+
+          test('fetches data from database', async () => {
+            const result = await fetchData();
+            expect(result).toHaveLength(1);
+          });
+
+# Linting
+linting:
+  eslint:
+    name: "ESLint 9 Flat Config"
+    example: |
+      import js from '@eslint/js';
+      import globals from 'globals';
+
+      export default [
+        js.configs.recommended,
+        {
+          languageOptions: {
+            ecmaVersion: 2024,
+            globals: { ...globals.node }
+          },
+          rules: {
+            'no-unused-vars': 'error',
+            'prefer-const': 'error'
+          }
+        }
+      ];
+
+  biome:
+    name: "Biome"
+    example: |
+      {
+        "linter": {
+          "enabled": true,
+          "rules": {
+            "recommended": true
+          }
+        },
+        "formatter": {
+          "indentStyle": "space",
+          "indentWidth": 2
+        }
+      }
+
+# Best Practices
+best_practices:
+  code_style:
+    - "Use ESLint 9 flat config or Biome"
+    - "Prefer const over let"
+    - "Use optional chaining (?.) and nullish coalescing (??)"
+    - "Use async/await over callbacks"
+
+  testing:
+    - "Use Vitest for modern projects"
+    - "Mock external dependencies"
+    - "Test async code properly"
+    - "Aim for 85%+ coverage"

@@ -1,0 +1,169 @@
+# Scala Language Patterns
+# Common patterns for Scala 3.4+ development
+# Version: 1.0.0
+# Last Updated: 2026-01-23
+
+---
+language: "scala"
+version: "3.4+"
+description: "Common patterns for modern Scala development"
+
+# Language Features
+features:
+  new_syntax:
+    name: "Scala 3 Syntax"
+    description: "Optional braces and significant indentation"
+    example: |
+      def processUsers(users: List[User]): List[String] =
+        users
+          .filter(_.isActive)
+          .map: user =>
+            s"${user.name} <${user.email}>"
+
+  enums:
+    name: "Enums"
+    description: "ADT-style enums"
+    example: |
+      enum Result[+T]:
+        case Success(value: T)
+        case Failure(error: String)
+
+        def map[U](f: T => U): Result[U] = this match
+          case Success(v) => Success(f(v))
+          case Failure(e) => Failure(e)
+
+  extension_methods:
+    name: "Extension Methods"
+    description: "Add methods to existing types"
+    example: |
+      extension (s: String)
+        def toSlug: String =
+          s.toLowerCase.replaceAll("\\s+", "-")
+
+        def truncate(maxLen: Int): String =
+          if s.length <= maxLen then s
+          else s.take(maxLen - 3) + "..."
+
+      "Hello World".toSlug  // "hello-world"
+
+  given_using:
+    name: "Given/Using"
+    description: "Contextual abstractions"
+    example: |
+      trait JsonEncoder[T]:
+        def encode(value: T): String
+
+      given JsonEncoder[User] with
+        def encode(user: User): String =
+          s"""{"name": "${user.name}", "email": "${user.email}"}"""
+
+      def toJson[T](value: T)(using encoder: JsonEncoder[T]): String =
+        encoder.encode(value)
+
+# Functional Patterns
+functional:
+  cats_effect:
+    name: "Cats Effect"
+    description: "Functional effect system"
+    example: |
+      import cats.effect.*
+
+      def fetchUser(id: Int): IO[User] =
+        IO.blocking(database.findUser(id))
+
+      def program: IO[Unit] =
+        for
+          user <- fetchUser(1)
+          _ <- IO.println(s"Found user: ${user.name}")
+        yield ()
+
+  zio:
+    name: "ZIO"
+    description: "Type-safe functional effects"
+    example: |
+      import zio.*
+
+      def fetchUser(id: Int): ZIO[Database, DbError, User] =
+        ZIO.serviceWithZIO[Database](_.findUser(id))
+
+      val program: ZIO[Database, DbError, Unit] =
+        for
+          user <- fetchUser(1)
+          _ <- Console.printLine(s"Found: ${user.name}")
+        yield ()
+
+# Web Framework Patterns
+web_frameworks:
+  http4s:
+    name: "http4s"
+    patterns:
+      routes:
+        description: "Functional HTTP routes"
+        example: |
+          import org.http4s.*
+          import org.http4s.dsl.io.*
+
+          def userRoutes(userService: UserService): HttpRoutes[IO] =
+            HttpRoutes.of[IO]:
+              case GET -> Root / "users" / IntVar(id) =>
+                userService.findById(id).flatMap:
+                  case Some(user) => Ok(user.asJson)
+                  case None => NotFound()
+
+              case req @ POST -> Root / "users" =>
+                for
+                  dto <- req.as[CreateUserDTO]
+                  user <- userService.create(dto)
+                  resp <- Created(user.asJson)
+                yield resp
+
+# Testing Patterns
+testing:
+  scalatest:
+    name: "ScalaTest"
+    patterns:
+      async_spec:
+        description: "Async test specification"
+        example: |
+          class UserServiceSpec extends AsyncFlatSpec with Matchers:
+
+            "UserService" should "find user by id" in:
+              val service = UserService(mockRepository)
+              for
+                user <- service.findById(1)
+              yield user.name shouldBe "Test"
+
+            it should "return None for invalid id" in:
+              val service = UserService(mockRepository)
+              for
+                result <- service.findById(-1)
+              yield result shouldBe None
+
+  munit:
+    name: "MUnit"
+    patterns:
+      cats_effect_suite:
+        description: "Cats Effect test suite"
+        example: |
+          import munit.CatsEffectSuite
+
+          class UserServiceSuite extends CatsEffectSuite:
+
+            test("finds user by id"):
+              val service = UserService(testDb)
+              service.findById(1).map: user =>
+                assertEquals(user.name, "Test")
+
+# Best Practices
+best_practices:
+  code_style:
+    - "Use Scala 3 syntax (optional braces)"
+    - "Prefer immutable data structures"
+    - "Use enums for ADTs"
+    - "Use extension methods over implicit classes"
+
+  functional:
+    - "Use Cats Effect or ZIO for effects"
+    - "Prefer pure functions"
+    - "Use for-comprehensions for monadic composition"
+    - "Handle errors with typed effects"

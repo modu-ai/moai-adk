@@ -1491,7 +1491,90 @@ Skill("moai-lang-python")
 
 ---
 
-## 7. TRUST 5质量原则
+## 7. Google Stitch MCP - AI驱动UI/UX设计
+
+### 概述
+
+**Google Stitch**是通过文本描述生成UI界面的AI驱动设计工具。MoAI-ADK通过Stitch MCP集成实现设计上下文提取、界面生成、代码导出的自动化。
+
+### 核心功能
+
+| 功能                          | 说明                                        |
+| ----------------------------- | ------------------------------------------- |
+| `generate_screen_from_text`   | 通过文本描述生成UI界面                      |
+| `extract_design_context`      | 从现有界面提取"Design DNA"（颜色、字体、布局）|
+| `fetch_screen_code`           | 下载生成界面的HTML/CSS/JS代码               |
+| `fetch_screen_image`          | 下载界面截图                                |
+| `create_project` / `list_projects` | Stitch项目管理                         |
+
+### 快速开始
+
+**1. Google Cloud设置**:
+
+```bash
+# 启用Stitch API
+gcloud beta services mcp enable stitch.googleapis.com
+
+# 认证
+gcloud auth application-default login
+
+# 设置环境变量 (.bashrc 或 .zshrc)
+export GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"
+```
+
+**2. MCP设置** (`.claude/.mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "stitch": {
+      "command": "npx",
+      "args": ["-y", "stitch-mcp"],
+      "env": {
+        "GOOGLE_CLOUD_PROJECT": "YOUR_PROJECT_ID"
+      }
+    }
+  }
+}
+```
+
+### 使用示例
+
+**登录界面生成**:
+
+```text
+> 创建登录界面。包含邮箱输入、密码输入（显示/隐藏切换）、
+> 登录按钮、忘记密码链接、社交登录（Google、Apple）。
+> 移动端：垂直堆叠。桌面端：400px卡片居中。
+```
+
+**设计一致性工作流**:
+
+1. `extract_design_context`: 从现有界面提取设计令牌
+2. `generate_screen_from_text`: 使用提取的上下文生成新界面
+3. `fetch_screen_code`: 导出生产代码
+
+### 提示词编写技巧
+
+| 项目 | 建议 |
+| ---- | ---- |
+| **组件** | 明确指定按钮、输入框、卡片等所需UI元素 |
+| **布局** | 指定single-column、grid、sidebar等 |
+| **响应式** | 明确移动端/桌面端行为 |
+| **样式** | 指定颜色、字体、悬停效果 |
+
+> **注意**: 一次只请求一个界面和一两个修改是获得最佳结果的方法。
+
+### 详细文档
+
+完整提示词模板、错误处理、高级模式请参考技能文档:
+
+- **技能**: `.claude/skills/moai-platform-stitch/SKILL.md`
+- **智能体**: `expert-stitch` (UI/UX设计专家智能体)
+
+---
+
+## 8. TRUST 5质量原则
 
 MoAI-ADK的所有项目遵循**TRUST 5**质量框架。
 
@@ -1565,7 +1648,7 @@ graph TD
 
 ---
 
-## 8. 自动质量检查
+## 9. 自动质量检查
 
 ### 🔍 AST-Grep结构化检查
 
@@ -1654,7 +1737,7 @@ rm -rf node_modules           # 删除node_modules
 
 ---
 
-## 9. 📊 Statusline 定制
+## 10. 📊 Statusline 定制
 
 MoAI-ADK提供可定制的statusline，在Claude Code终端中显示实时状态信息。
 
@@ -1719,7 +1802,7 @@ export MOAI_STATUSLINE_MODE=extended
 
 ---
 
-## 10. 🌳 Worktree并行开发
+## 11. 🌳 Worktree并行开发
 
 MoAI-ADK的核心创新: **通过Worktree完全隔离、无限并行开发**
 
@@ -1879,7 +1962,7 @@ moai-wt clean --merged-only
 
 ---
 
-## 11. 理解CLAUDE.md
+## 12. 理解CLAUDE.md
 
 MoAI-ADK安装后在项目根目录生成的`CLAUDE.md`是**Alfred（AI编排器）的执行指令书**。此文件定义Claude Code在项目中如何运行。
 
@@ -1985,7 +2068,7 @@ touch CLAUDE.local.md
 
 ---
 
-## 12. MoAI Rank介绍
+## 13. MoAI Rank介绍
 
 **智能体编程的新维度**: 追踪您的编程之旅，与全球开发者竞争!
 
@@ -2155,7 +2238,7 @@ moai rank list-excluded
 
 ---
 
-## 13. FAQ 5个
+## 14. FAQ 5个
 
 ### Q1: SPEC总是必需的吗?
 
@@ -2194,7 +2277,7 @@ moai rank list-excluded
 
 ---
 
-## 14. 社区 & 支持
+## 15. 社区 & 支持
 
 ### 🌐 参与
 

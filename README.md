@@ -119,7 +119,7 @@ curl -LsSf https://modu-ai.github.io/moai-adk/install.sh | sh
 
 ```bash
 # Install MoAI-ADK
-claude install moai-adk
+uv tool install moai-adk
 ```
 
 ### 🎨 Interactive Setup Wizard
@@ -408,11 +408,15 @@ ModuleNotFoundError: No module named 'yaml'
 
 **Solutions**:
 
-#### Option 1: Use claude install (Recommended)
+#### Option 1: Clean reinstall with uv tool (Recommended)
 
 ```bash
-# Reinstall with claude install
-claude install moai-adk
+# Uninstall any existing installation
+pip uninstall moai-adk -y
+uv tool uninstall moai-adk
+
+# Reinstall with uv tool
+uv tool install moai-adk
 
 # Verify
 moai --version  # Should show latest version
@@ -433,7 +437,7 @@ $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
 ```
 
 **Prevention**:
-- Always use `claude install moai-adk` for installation
+- Always use `uv tool install moai-adk` for installation
 - Regularly check `which moai` to verify active installation
 
 ---
@@ -1479,7 +1483,90 @@ Skill("moai-lang-python")
 
 ---
 
-## 7. TRUST 5 Quality Principles
+## 7. Google Stitch MCP - AI-Powered UI/UX Design
+
+### Overview
+
+**Google Stitch** is an AI-powered design tool that generates UI screens from text descriptions. MoAI-ADK automates design context extraction, screen generation, and code export through Stitch MCP integration.
+
+### Key Features
+
+| Feature                       | Description                                              |
+| ----------------------------- | -------------------------------------------------------- |
+| `generate_screen_from_text`   | Generate UI screens from text descriptions               |
+| `extract_design_context`      | Extract "Design DNA" from existing screens (colors, fonts, layout) |
+| `fetch_screen_code`           | Download generated screen HTML/CSS/JS code               |
+| `fetch_screen_image`          | Download screen screenshots                              |
+| `create_project` / `list_projects` | Manage Stitch projects                              |
+
+### Quick Start
+
+**1. Google Cloud Setup**:
+
+```bash
+# Enable Stitch API
+gcloud beta services mcp enable stitch.googleapis.com
+
+# Authenticate
+gcloud auth application-default login
+
+# Set environment variable (.bashrc or .zshrc)
+export GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"
+```
+
+**2. MCP Configuration** (`.claude/.mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "stitch": {
+      "command": "npx",
+      "args": ["-y", "stitch-mcp"],
+      "env": {
+        "GOOGLE_CLOUD_PROJECT": "YOUR_PROJECT_ID"
+      }
+    }
+  }
+}
+```
+
+### Usage Example
+
+**Generate Login Screen**:
+
+```text
+> Create a login screen with email input, password input (show/hide toggle),
+> login button, forgot password link, and social login (Google, Apple).
+> Mobile: vertical stack. Desktop: 400px centered card.
+```
+
+**Design Consistency Workflow**:
+
+1. `extract_design_context`: Extract design tokens from existing screen
+2. `generate_screen_from_text`: Generate new screen with extracted context
+3. `fetch_screen_code`: Export production-ready code
+
+### Prompt Writing Tips
+
+| Item | Recommendation |
+| ---- | -------------- |
+| **Components** | Specify required UI elements like buttons, inputs, cards |
+| **Layout** | Specify single-column, grid, sidebar, etc. |
+| **Responsive** | Describe mobile/desktop behavior |
+| **Style** | Define colors, fonts, hover effects |
+
+> **Note**: Requesting one screen at a time with one or two modifications yields the best results.
+
+### Detailed Documentation
+
+For complete prompt templates, error handling, and advanced patterns, see the skill documentation:
+
+- **Skill**: `.claude/skills/moai-platform-stitch/SKILL.md`
+- **Agent**: `expert-stitch` (UI/UX design specialist agent)
+
+---
+
+## 8. TRUST 5 Quality Principles
 
 All MoAI-ADK projects follow the **TRUST 5** quality framework.
 
@@ -1565,7 +1652,7 @@ graph TD
 
 ---
 
-## 8. Automated Quality Checks
+## 9. Automated Quality Checks
 
 ### 🔍 AST-Grep Based Structural Inspection
 
@@ -1652,7 +1739,7 @@ rm -rf node_modules           # Remove node_modules
 
 ---
 
-## 9. 📊 Statusline Customization
+## 10. 📊 Statusline Customization
 
 MoAI-ADK provides a **customizable statusline** that displays real-time project information in Claude Code.
 
@@ -1717,7 +1804,7 @@ export MOAI_STATUSLINE_MODE=extended
 
 ---
 
-## 10. 🌳 Worktree Parallel Development
+## 11. 🌳 Worktree Parallel Development
 
 MoAI-ADK's core innovation: **Worktree for complete isolation, unlimited parallel development**
 
@@ -1877,7 +1964,7 @@ moai-wt clean --merged-only
 
 ---
 
-## 11. Understanding CLAUDE.md
+## 12. Understanding CLAUDE.md
 
 The `CLAUDE.md` file generated in your project root after MoAI-ADK installation is **Alfred's (AI Orchestrator) execution directive**. This file defines how Claude Code behaves in your project.
 
@@ -1983,7 +2070,7 @@ These rules cannot be overridden even by `CLAUDE.local.md`.
 
 ---
 
-## 12. MoAI Rank Introduction
+## 13. MoAI Rank Introduction
 
 **A new dimension of agentic coding**: Track your coding journey and compete with global developers!
 
@@ -2153,7 +2240,7 @@ moai rank list-excluded
 
 ---
 
-## 13. FAQ 5 Questions
+## 14. FAQ 5 Questions
 
 ### Q1: Is SPEC Always Required?
 
@@ -2192,7 +2279,7 @@ Yes. `moai init .` preserves existing files.
 
 ---
 
-## 14. Community & Support
+## 15. Community & Support
 
 ### 🌐 Participate
 

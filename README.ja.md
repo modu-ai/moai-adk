@@ -1428,7 +1428,90 @@ Skill("moai-lang-python")
 
 ---
 
-## 7. TRUST 5品質原則
+## 7. Google Stitch MCP - AI駆動UI/UXデザイン
+
+### 概要
+
+**Google Stitch**はテキスト説明からUI画面を生成するAI駆動デザインツールです。MoAI-ADKはStitch MCP統合を通じてデザインコンテキスト抽出、画面生成、コードエクスポートを自動化します。
+
+### 主要機能
+
+| 機能                          | 説明                                        |
+| ----------------------------- | ------------------------------------------- |
+| `generate_screen_from_text`   | テキスト説明からUI画面を生成                |
+| `extract_design_context`      | 既存画面から"Design DNA"を抽出 (色、フォント、レイアウト) |
+| `fetch_screen_code`           | 生成された画面のHTML/CSS/JSコードをダウンロード     |
+| `fetch_screen_image`          | 画面スクリーンショットをダウンロード                      |
+| `create_project` / `list_projects` | Stitchプロジェクト管理                   |
+
+### クイックスタート
+
+**1. Google Cloud設定**:
+
+```bash
+# Stitch API有効化
+gcloud beta services mcp enable stitch.googleapis.com
+
+# 認証
+gcloud auth application-default login
+
+# 環境変数設定 (.bashrc または .zshrc)
+export GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"
+```
+
+**2. MCP設定** (`.claude/.mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "stitch": {
+      "command": "npx",
+      "args": ["-y", "stitch-mcp"],
+      "env": {
+        "GOOGLE_CLOUD_PROJECT": "YOUR_PROJECT_ID"
+      }
+    }
+  }
+}
+```
+
+### 使用例
+
+**ログイン画面の生成**:
+
+```text
+> ログイン画面を作成してください。メール入力、パスワード入力（表示/非表示トグル）、
+> ログインボタン、パスワードリセットリンク、ソーシャルログイン（Google、Apple）を含みます。
+> モバイル: 縦スタック。デスクトップ: 400pxカード中央配置。
+```
+
+**デザイン一貫性維持ワークフロー**:
+
+1. `extract_design_context`: 既存画面からデザイントークンを抽出
+2. `generate_screen_from_text`: 抽出されたコンテキストで新画面を生成
+3. `fetch_screen_code`: プロダクションコードをエクスポート
+
+### プロンプト作成のコツ
+
+| 項目 | 推奨 |
+| ---- | ---- |
+| **コンポーネント** | ボタン、入力、カードなど必要なUI要素を明示 |
+| **レイアウト** | single-column、grid、sidebarなどを指定 |
+| **レスポンシブ** | モバイル/デスクトップ動作を明示 |
+| **スタイル** | 色、フォント、ホバー効果を指定 |
+
+> **注意**: 一度に一つの画面、一つか二つの修正のみをリクエストすることが最良の結果を得る方法です。
+
+### 詳細ドキュメント
+
+完全なプロンプトテンプレート、エラー処理、高度なパターンについてはスキルドキュメントを参照してください:
+
+- **スキル**: `.claude/skills/moai-platform-stitch/SKILL.md`
+- **エージェント**: `expert-stitch` (UI/UXデザイン専門エージェント)
+
+---
+
+## 8. TRUST 5品質原則
 
 MoAI-ADKのすべてプロジェクトは**TRUST 5**品質フレームワークに従います。
 
@@ -1502,7 +1585,7 @@ graph TD
 
 ---
 
-## 8. 自動品質検査
+## 9. 自動品質検査
 
 ### 🔍 AST-Grep基盤構造的検査
 
@@ -1591,7 +1674,7 @@ rm -rf node_modules           # node_modulesを削除
 
 ---
 
-## 9. 📊 Statuslineカスタマイズ
+## 10. 📊 Statuslineカスタマイズ
 
 MoAI-ADKはClaude Codeターミナルにリアルタイム状態情報を表示するカスタマイズ可能なstatuslineを提供します。
 
@@ -1656,7 +1739,7 @@ export MOAI_STATUSLINE_MODE=extended
 
 ---
 
-## 10. 🌳 Worktree並列開発
+## 11. 🌳 Worktree並列開発
 
 MoAI-ADKの核心革新: **Worktreeで完全分離、無制限並列開発**
 
@@ -1816,7 +1899,7 @@ moai-wt clean --merged-only
 
 ---
 
-## 11. CLAUDE.mdの理解
+## 12. CLAUDE.mdの理解
 
 MoAI-ADKインストール後、プロジェクトルートに生成される`CLAUDE.md`は**Alfred（AIオーケストレーター）の実行指示書**です。このファイルはClaude Codeがプロジェクトでどのように動作するかを定義します。
 
@@ -1922,7 +2005,7 @@ touch CLAUDE.local.md
 
 ---
 
-## 12. MoAI Rank 紹介
+## 13. MoAI Rank 紹介
 
 **エージェンティックコーディングの新次元**: あなたのコーディング旅を追跡して、グローバル開発者たちと競争してください！
 
@@ -2092,7 +2175,7 @@ moai rank list-excluded
 
 ---
 
-## 13. FAQ 5個
+## 14. FAQ 5個
 
 ### Q1: SPECは常に必要ですか？
 
@@ -2131,7 +2214,7 @@ moai rank list-excluded
 
 ---
 
-## 14. コミュニティ & サポート
+## 15. コミュニティ & サポート
 
 ### 🌐 参加する
 

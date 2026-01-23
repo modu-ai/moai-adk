@@ -162,8 +162,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pylint flake8 bandit mypy
-          pip install moai-adk
+          uv tool install pylint flake8 bandit mypy moai-adk
 
       - name: Run automated code review
         run: |
@@ -235,7 +234,7 @@ code_review:
   stage: review
   image: python:3.10
   script:
-    - pip install pylint flake8 bandit mypy moai-adk
+    - uv tool install pylint flake8 bandit mypy moai-adk
     - python -m moai_adk.code_review --path . --output review-report.json --format json
   artifacts:
     paths:
@@ -252,7 +251,7 @@ quality_gate:
   stage: report
   image: python:3.10
   script:
-    - pip install moai-adk
+    - uv tool install moai-adk
     - python -m moai_adk.quality_gate --report review-report.json --fail-on-violation
   dependencies:
     - code_review

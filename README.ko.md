@@ -61,47 +61,7 @@ moai glm YOUR_API_KEY
 - **🌐 다국어 라우팅**: 한국어/영어/일본어/중국어 자동 지원
 - **🌳 Worktree 병렬 개발**: 완전 격리 환경에서 무제한 병렬 작업
 - **🏆 MoAI Rank**: 바이브 코딩 리더보드로 동기부여
-- **🔗 Ralph-Style LSP 통합 (NEW v1.9.0)**: 실시간 품질 피드백을 위한 LSP 기반 자율 워크플로우
-
----
-
-## 🎯 Ralph-Style LSP 통합 (NEW v1.9.0)
-
-### LSP 통합 개요
-
-MoAI-ADK는 이제 LSP(Language Server Protocol) 진단 통합을 통해 Ralph 스타일 자율 워크플로우를 지원합니다. 시스템은 워크플로우 진입 시 LSP 진단 상태를 캡처하고, 실행 중 진단 상태를 모니터링하며, 품질 임계값이 충족되면 자동으로 단계를 완료합니다.
-
-### 주요 기능
-
-**LSP 베이스라인 캡처**:
-- 단계 시작 시 자동 LSP 진단 캡처
-- 오류, 경고, 타입 오류, 린트 오류 추적
-- 회귀 감지를 위한 베이스라인 사용
-
-**완료 마커**:
-- Plan 단계: SPEC 생성 완료, 베이스라인 기록
-- Run 단계: 0 오류, 0 타입 오류, 커버리지 >= 85%
-- Sync 단계: 0 오류, <10 경고
-
-**실행 모드**:
-- Interactive (기본값): 각 단계마다 수동 승인
-- Autonomous (선택사항): 완료 시까지 연속 루프
-
-**루프 방지**:
-- 최대 100회 반복
-- 진전 없음 감지 (5회 반복)
-- 교착 시 대안 전략
-
-**구성**:
-```yaml
-# .moai/config/sections/workflow.yaml
-execution_mode:
-  autonomous:
-    user_approval_required: false
-    continuous_loop: true
-    completion_marker_based: true
-    lsp_feedback_integration: true
-```
+- **🔗 Ralph-Style LSP 통합**: 실시간 품질 피드백을 위한 LSP 기반 자율 워크플로우
 
 ---
 
@@ -119,7 +79,7 @@ curl -LsSf https://modu-ai.github.io/moai-adk/install.sh | sh
 
 ```bash
 # MoAI-ADK 설치
-claude install moai-adk
+uv tool install moai-adk
 ```
 
 ### 🎨 대화형 설정 마법사
@@ -408,11 +368,15 @@ ModuleNotFoundError: No module named 'yaml'
 
 **해결 방법**:
 
-#### 옵션 1: claude install 사용 (권장)
+#### 옵션 1: uv tool로 깨끗하게 재설치 (권장)
 
 ```bash
-# claude install로 재설치
-claude install moai-adk
+# 기존 설치 제거
+pip uninstall moai-adk -y
+uv tool uninstall moai-adk
+
+# uv tool로 재설치
+uv tool install moai-adk
 
 # 확인
 moai --version  # 최신 버전 표시되어야 함
@@ -433,20 +397,22 @@ $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
 ```
 
 **예방**:
-- 항상 `claude install moai-adk`로 설치
+- 항상 `uv tool install moai-adk`로 설치
 - 정기적으로 `which moai`로 활성 설치 확인
 
 ---
 
-## 2. 프로젝트 문서 생성 (필수 사항)
+## 2. 핵심 명령어 모음
 
-신규 프로젝트나 기존 프로젝트에서 **Claude Code가 프로젝트를 이해하는 데 도움**이 되는 프로젝 문서를 자동 생성할 수 있습니다:
+### 🎯 `/moai:0-project` - 프로젝트 문서 생성
 
-```text
+```bash
 > /moai:0-project
 ```
 
-### 생성되는 3개 파일
+신규 프로젝트나 기존 프로젝트에서 **Claude Code가 프로젝트를 이해하는 데 도움**이 되는 프로젝트 문서를 자동 생성합니다. 프로젝트의 현재 상태를 분석하여 구조, 기술 스택, 제품 정보를 문서화합니다.
+
+**생성되는 3개 파일**:
 
 | 파일                         | 목적          | 주요 내용                                                  |
 | ---------------------------- | ------------- | ---------------------------------------------------------- |
@@ -454,7 +420,7 @@ $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
 | `.moai/project/structure.md` | **구조 분석** | 디렉토리 트리, 주요 폴더 목적, 핵심 파일 위치, 모듈 구성   |
 | `.moai/project/tech.md`      | **기술 스택** | 사용 기술, 프레임워크 선택 이유, 개발 환경, 빌드/배포 설정 |
 
-### 왜 필요한가요?
+**왜 필요한가요?**
 
 - **컨텍스트 제공**: Claude Code가 프로젝트 맥락을 빠르게 파악
 - **일관성 유지**: 팀원 간 프로젝트 이해도 공유
@@ -462,27 +428,6 @@ $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
 - **AI 협업 최적화**: 더 정확한 코드 제안과 리뷰 가능
 
 > 💡 **팁**: 프로젝트 초기 또는 구조 변경 시 `/moai:0-project`를 실행하면 최신 상태로 문서가 갱신됩니다.
-
----
-
-## 3. 핵심 명령어 모음
-
-### 🎯 `/moai:0-project` - 프로젝트 초기화
-
-```bash
-> /moai:0-project
-```
-
-프로젝트의 현재 상태를 자동으로 분석하여 최적의 개발 환경을 구성합니다. 프로그래밍 언어와 프레임워크를 감지하고, Git 워크플로우와 품질 보증 기준을 자동으로 설정합니다. 모든 구성이 완료되면 즉시 개발을 시작할 수 있는 준비 상태가 됩니다.
-
-**작업 내용**:
-
-- ✅ 프로젝트 구조 분석
-- ✅ 프로그래밍 언어/프레임워크 감지
-- ✅ `.moai/config/config.yaml` 생성
-- ✅ Git 워크플로우 설정
-- ✅ 세션 메모리 시스템 구성
-- ✅ 품질 보증 기준 설정
 
 ---
 
@@ -523,8 +468,6 @@ EARS 형식을 사용하여 모호함 없는 명세서를 자동으로 생성합
 > /moai:2-run SPEC-001
 ```
 
-**NEW v1.9.0**: 완료 마커 기반 LSP 강화 DDD 사이클
-
 DDD (Domain-Driven Development) 방법론으로 ANALYZE-PRESERVE-IMPROVE 사이클을 실행합니다:
 
 **DDD 사이클**:
@@ -533,7 +476,7 @@ DDD (Domain-Driven Development) 방법론으로 ANALYZE-PRESERVE-IMPROVE 사이�
 - 🛡️ **PRESERVE**: 특성 테스트로 동작 보존
 - ✨ **IMPROVE**: 점진적 구조 개선
 
-**LSP 강화 품질 게이트 (NEW v1.9.0)**:
+**LSP 강화 품질 게이트**:
 - 단계 시작 시 LSP 베이스라인 캡처
 - 실시간 회귀 감지
 - 0 errors, 0 type errors, coverage >= 85% 시 자동 완료
@@ -594,11 +537,9 @@ DDD (Domain-Driven Development) 방법론으로 ANALYZE-PRESERVE-IMPROVE 사이�
 > /moai:alfred "기능 설명"
 ```
 
-**NEW v1.9.0**: LSP 통합 자율 실행 모드
-
 사용자가 목표를 제시하면 AI가 스스로 탐색, 계획, 구현, 검증을 모두 수행합니다. 병렬 탐색으로 코드베이스를 분석하고, 자율 루프를 통해 이슈를 스스로 수정합니다. 완료 마커(`<moai>DONE</moai>`)를 감지하면 자동으로 종료되어 개발자는 최종 결과만 확인하면 됩니다.
 
-#### LSP 강화 자율 모드 (NEW v1.9.0)
+#### LSP 강화 자율 모드
 
 **자율 모드**:
 - 시작 시 LSP 베이스라인 캡처
@@ -1188,7 +1129,7 @@ flowchart
 
 ---
 
-## 4. Mr.Alfred와 Sub-Agents
+## 3. Mr.Alfred와 Sub-Agents
 
 ### 🎩 Mr.Alfred - Super Agent (수석 오케스트레이터)
 
@@ -1214,18 +1155,19 @@ Alfred는 4개 언어 요청을 자동으로 인식하고 올바른 에이전트
 
 ---
 
-### 🔧 Tier 1: 도메인 전문가 (8개)
+### 🔧 Tier 1: 도메인 전문가 (9개)
 
-| 에이전트               | 전문 분야                | 사용 예시              |
-| ---------------------- | ------------------------ | ---------------------- |
-| **expert-backend**     | FastAPI, Django, DB 설계 | API 설계, 쿼리 최적화  |
-| **expert-frontend**    | React, Vue, Next.js      | UI 컴포넌트, 상태 관리 |
-| **expert-security**    | 보안 분석, OWASP         | 보안 감사, 취약점 분석 |
-| **expert-devops**      | Docker, K8s, CI/CD       | 배포 자동화, 인프라    |
-| **expert-debug**       | 버그 분석, 성능          | 문제 진단, 병목 해결   |
-| **expert-performance** | 프로파일링, 최적화       | 응답 시간 개선         |
-| **expert-refactoring** | 코드 리팩토링, AST-Grep  | 대규모 코드 변환       |
-| **expert-testing**     | 테스트 전략, E2E         | 테스트 계획, 커버리지  |
+| 에이전트               | 전문 분야                  | 사용 예시              |
+| ---------------------- | -------------------------- | ---------------------- |
+| **expert-backend**     | FastAPI, Django, DB 설계   | API 설계, 쿼리 최적화  |
+| **expert-frontend**    | React, Vue, Next.js        | UI 컴포넌트, 상태 관리 |
+| **expert-stitch**      | Google Stitch, UI/UX 디자인 | AI 기반 UI 생성        |
+| **expert-security**    | 보안 분석, OWASP           | 보안 감사, 취약점 분석 |
+| **expert-devops**      | Docker, K8s, CI/CD         | 배포 자동화, 인프라    |
+| **expert-debug**       | 버그 분석, 성능            | 문제 진단, 병목 해결   |
+| **expert-performance** | 프로파일링, 최적화         | 응답 시간 개선         |
+| **expert-refactoring** | 코드 리팩토링, AST-Grep    | 대규모 코드 변환       |
+| **expert-testing**     | 테스트 전략, E2E           | 테스트 계획, 커버리지  |
 
 ---
 
@@ -1283,7 +1225,7 @@ Alfred는 4개 언어 요청을 자동으로 인식하고 올바른 에이전트
 
 ---
 
-## 5. Ralph-Style LSP 통합 워크플로우 (NEW v1.9.0)
+## 4. Ralph-Style LSP 통합 워크플로우
 
 ### LSP 기반 자율 개발
 
@@ -1362,7 +1304,7 @@ execution_mode:
 
 ---
 
-## 6. Agent-Skills
+## 5. Agent-Skills
 
 ### 📚 스킬 라이브러리 구조
 
@@ -1398,13 +1340,94 @@ Skill("moai-lang-python")
 
 ---
 
+## 6. Google Stitch MCP - AI 기반 UI/UX 디자인
+
+### 개요
+
+**Google Stitch**는 텍스트 설명으로 UI 화면을 생성하는 AI 기반 디자인 도구입니다. MoAI-ADK는 Stitch MCP 통합을 통해 디자인 컨텍스트 추출, 화면 생성, 코드 내보내기를 자동화합니다.
+
+### 핵심 기능
+
+| 기능                          | 설명                                        |
+| ----------------------------- | ------------------------------------------- |
+| `generate_screen_from_text`   | 텍스트 설명으로 UI 화면 생성                |
+| `extract_design_context`      | 기존 화면에서 "Design DNA" 추출 (색상, 폰트, 레이아웃) |
+| `fetch_screen_code`           | 생성된 화면의 HTML/CSS/JS 코드 다운로드     |
+| `fetch_screen_image`          | 화면 스크린샷 다운로드                      |
+| `create_project` / `list_projects` | Stitch 프로젝트 관리                   |
+
+### 빠른 시작
+
+**1. Google Cloud 설정**:
+
+```bash
+# Stitch API 활성화
+gcloud beta services mcp enable stitch.googleapis.com
+
+# 인증
+gcloud auth application-default login
+
+# 환경 변수 설정 (.bashrc 또는 .zshrc)
+export GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"
+```
+
+**2. MCP 설정** (`.claude/.mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "stitch": {
+      "command": "npx",
+      "args": ["-y", "stitch-mcp"],
+      "env": {
+        "GOOGLE_CLOUD_PROJECT": "YOUR_PROJECT_ID"
+      }
+    }
+  }
+}
+```
+
+### 사용 예시
+
+**로그인 화면 생성**:
+
+```text
+> 로그인 화면을 만들어줘. 이메일 입력, 비밀번호 입력(보기/숨기기 토글),
+> 로그인 버튼, 비밀번호 찾기 링크, 소셜 로그인(Google, Apple) 포함.
+> 모바일: 세로 스택. 데스크톱: 400px 카드 중앙 배치.
+```
+
+**디자인 일관성 유지 워크플로우**:
+
+1. `extract_design_context`: 기존 화면에서 디자인 토큰 추출
+2. `generate_screen_from_text`: 추출된 컨텍스트로 새 화면 생성
+3. `fetch_screen_code`: 프로덕션 코드 내보내기
+
+### 프롬프트 작성 팁
+
+| 항목 | 권장 |
+| ---- | ---- |
+| **컴포넌트** | 버튼, 입력, 카드 등 필요한 UI 요소 명시 |
+| **레이아웃** | single-column, grid, sidebar 등 지정 |
+| **반응형** | 모바일/데스크톱 동작 명시 |
+| **스타일** | 색상, 폰트, 호버 효과 지정 |
+
+> **참고**: 한 번에 하나의 화면, 한두 가지 수정만 요청하는 것이 최선의 결과를 얻는 방법입니다.
+
+### 상세 문서
+
+전체 프롬프트 템플릿, 에러 처리, 고급 패턴은 스킬 문서를 참조하세요:
+
+- **스킬**: `.claude/skills/moai-platform-stitch/SKILL.md`
+- **에이전트**: `expert-stitch` (UI/UX 디자인 전문 에이전트)
+
+---
+
 ## 7. TRUST 5 품질 원칙
 
 MoAI-ADK의 모든 프로젝트는 **TRUST 5** 품질 프레임워크를 따릅니다.
 
 ### 🏆 TRUST 5 = Test + Readable + Unified + Secured + Trackable
-
-**NEW v1.9.0**: 품질 모니터링을 위한 LSP 통합
 
 ```mermaid
 graph TD
@@ -1417,7 +1440,7 @@ graph TD
     T1 --> R --> U --> S --> T2 --> Deploy["✅ Production Ready"]
 ```
 
-### TRUST 5와 LSP 통합 (NEW v1.9.0)
+### TRUST 5와 LSP 통합
 
 | TRUST 5 기둥 | LSP 품질 지표 |
 | -------------- | ---------------------- |
@@ -1580,21 +1603,20 @@ MoAI-ADK는 Claude Code 터미널에 실시간 상태 정보를 표시하는 사
 ### 기본 레이아웃
 
 ```text
-🤖 Opus 4.5 | 💰 152K/200K | 💬 Mr. Alfred | 📁 MoAI-ADK | 📊 +0 M58 ?5 | 💾 57.7MB | 🔀 main
+🤖 Opus 4.5 | 🔋 [████████░░░░] 67% | 💬 Mr.Alfred | 📁 MoAI-ADK | 📊 +0 M26 ?4 | 🔅 1.9.0 | 🔀 main
 ```
 
 ### 사용 가능한 컴포넌트
 
-| 아이콘 | 컴포넌트 | 설명                                  | 설정 키          |
-| ------ | -------- | ------------------------------------- | ---------------- |
-| 🤖     | 모델     | Claude 모델 (Opus, Sonnet 등)         | `model`          |
-| 💰     | 컨텍스트 | 컨텍스트 윈도우 사용량 (예: 77K/200K) | `context_window` |
-| 💬     | 스타일   | 활성 아웃풋 스타일 (예: Mr. Alfred)   | `output_style`   |
-| 📁     | 디렉토리 | 현재 프로젝트 이름                    | `directory`      |
-| 📊     | Git 상태 | 스테이징/수정/추적되지 않은 파일 수   | `git_status`     |
-| 💾     | 메모리   | 프로세스 메모리 사용량                | `memory_usage`   |
-| 🔀     | 브랜치   | 현재 Git 브랜치                       | `branch`         |
-| 🔅     | 버전     | Claude Code 버전 (선택적)             | `version`        |
+| 아이콘 | 컴포넌트 | 설명                                            | 설정 키          |
+| ------ | -------- | ----------------------------------------------- | ---------------- |
+| 🤖     | 모델     | Claude 모델 (Opus, Sonnet 등)                   | `model`          |
+| 🔋     | 컨텍스트 | 컨텍스트 윈도우 사용량 (프로그레스 바 + 퍼센트) | `context_window` |
+| 💬     | 스타일   | 활성 아웃풋 스타일 (예: Mr.Alfred)              | `output_style`   |
+| 📁     | 디렉토리 | 현재 프로젝트 이름                              | `directory`      |
+| 📊     | Git 상태 | 스테이징/수정/추적되지 않은 파일 수             | `git_status`     |
+| 🔅     | 버전     | MoAI-ADK 버전                                   | `version`        |
+| 🔀     | 브랜치   | 현재 Git 브랜치                                 | `branch`         |
 
 ### 설정
 
@@ -1603,24 +1625,13 @@ MoAI-ADK는 Claude Code 터미널에 실시간 상태 정보를 표시하는 사
 ```yaml
 display:
   model: true # 🤖 Claude 모델
-  context_window: true # 💰 컨텍스트 윈도우
+  context_window: true # 🔋 컨텍스트 윈도우 (프로그레스 바)
   output_style: true # 💬 아웃풋 스타일
   directory: true # 📁 프로젝트 이름
   git_status: true # 📊 Git 상태
-  memory_usage: true # 💾 메모리 사용량
+  version: true # 🔅 MoAI-ADK 버전
   branch: true # 🔀 Git 브랜치
-  version: 1.1.0 # 🔅 버전 (선택적)
-  active_task: true # 활성 작업
 ```
-
-### 메모리 수집기
-
-`memory_usage`가 활성화되면 MoAI-ADK는 `psutil`을 사용하여 실시간 메모리 사용량을 수집합니다:
-
-- **프로세스 메모리**: 현재 Python 프로세스의 RSS (상주 세트 크기)
-- **캐싱**: 10초 TTL로 성능 최적화
-- **크로스 플랫폼**: macOS, Linux, Windows 지원
-- **우아한 저하**: psutil을 사용할 수 없으면 "N/A" 표시
 
 ### 디스플레이 모드
 
@@ -2101,6 +2112,7 @@ moai rank list-excluded
 
 **선택사항**:
 
+- **Google Stitch**: AI 기반 UI/UX 디자인 생성 (Section 7 참조)
 - **claude-in-chrome**: 브라우저 자동화 테스트
 - **Playwright**: E2E 테스트
 - **Figma**: 디자인 시스템

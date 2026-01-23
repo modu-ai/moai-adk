@@ -1,0 +1,187 @@
+# Swift Language Patterns
+# Common patterns for Swift 6+ development
+# Version: 1.0.0
+# Last Updated: 2026-01-23
+
+---
+language: "swift"
+version: "6+"
+description: "Common patterns for modern Swift development"
+
+# Language Features
+features:
+  swift_concurrency:
+    name: "Swift Concurrency"
+    description: "Async/await and actors"
+    example: |
+      actor UserCache {
+          private var cache: [Int: User] = [:]
+
+          func get(_ id: Int) -> User? {
+              cache[id]
+          }
+
+          func set(_ user: User) {
+              cache[user.id] = user
+          }
+      }
+
+      func fetchUser(id: Int) async throws -> User {
+          if let cached = await userCache.get(id) {
+              return cached
+          }
+          let user = try await api.getUser(id)
+          await userCache.set(user)
+          return user
+      }
+
+  result_builders:
+    name: "Result Builders"
+    description: "DSL construction"
+    example: |
+      @resultBuilder
+      struct ArrayBuilder<Element> {
+          static func buildBlock(_ components: Element...) -> [Element] {
+              components
+          }
+      }
+
+      func makeArray<T>(@ArrayBuilder<T> content: () -> [T]) -> [T] {
+          content()
+      }
+
+  macros:
+    name: "Swift Macros"
+    description: "Compile-time code generation"
+    example: |
+      @Observable
+      class UserViewModel {
+          var name: String = ""
+          var email: String = ""
+      }
+
+      // Generates observation tracking code automatically
+
+# SwiftUI Patterns
+swiftui:
+  mvvm:
+    name: "MVVM Pattern"
+    description: "Model-View-ViewModel architecture"
+    example: |
+      @Observable
+      class UserListViewModel {
+          var users: [User] = []
+          var isLoading = false
+          var error: Error?
+
+          func loadUsers() async {
+              isLoading = true
+              defer { isLoading = false }
+              do {
+                  users = try await userService.fetchAll()
+              } catch {
+                  self.error = error
+              }
+          }
+      }
+
+      struct UserListView: View {
+          @State private var viewModel = UserListViewModel()
+
+          var body: some View {
+              List(viewModel.users) { user in
+                  UserRow(user: user)
+              }
+              .task { await viewModel.loadUsers() }
+          }
+      }
+
+  navigation:
+    name: "Navigation Stack"
+    description: "Type-safe navigation"
+    example: |
+      enum Route: Hashable {
+          case userDetail(User)
+          case settings
+      }
+
+      struct ContentView: View {
+          @State private var path = NavigationPath()
+
+          var body: some View {
+              NavigationStack(path: $path) {
+                  UserListView()
+                      .navigationDestination(for: Route.self) { route in
+                          switch route {
+                          case .userDetail(let user):
+                              UserDetailView(user: user)
+                          case .settings:
+                              SettingsView()
+                          }
+                      }
+              }
+          }
+      }
+
+# Networking Patterns
+networking:
+  async_networking:
+    description: "Modern async networking"
+    example: |
+      protocol APIClient {
+          func request<T: Decodable>(_ endpoint: Endpoint) async throws -> T
+      }
+
+      struct URLSessionAPIClient: APIClient {
+          func request<T: Decodable>(_ endpoint: Endpoint) async throws -> T {
+              let (data, response) = try await URLSession.shared.data(for: endpoint.urlRequest)
+              guard let httpResponse = response as? HTTPURLResponse,
+                    (200...299).contains(httpResponse.statusCode) else {
+                  throw APIError.invalidResponse
+              }
+              return try JSONDecoder().decode(T.self, from: data)
+          }
+      }
+
+# Testing Patterns
+testing:
+  swift_testing:
+    name: "Swift Testing Framework"
+    example: |
+      import Testing
+
+      @Suite("User Service Tests")
+      struct UserServiceTests {
+          let service: UserService
+
+          init() {
+              service = UserService(repository: MockUserRepository())
+          }
+
+          @Test("Fetches user by ID")
+          func fetchUser() async throws {
+              let user = try await service.getUser(id: 1)
+              #expect(user.name == "Test")
+          }
+
+          @Test("Throws error for invalid ID", arguments: [-1, 0])
+          func invalidId(id: Int) async {
+              await #expect(throws: UserError.invalidId) {
+                  try await service.getUser(id: id)
+              }
+          }
+      }
+
+# Best Practices
+best_practices:
+  code_style:
+    - "Use Swift 6 strict concurrency"
+    - "Prefer value types (structs) over reference types"
+    - "Use @Observable for SwiftUI state"
+    - "Use Swift Testing framework"
+
+  concurrency:
+    - "Use actors for shared mutable state"
+    - "Mark async boundaries explicitly"
+    - "Use task groups for parallel work"
+    - "Handle cancellation properly"

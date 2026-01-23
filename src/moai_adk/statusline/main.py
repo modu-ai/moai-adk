@@ -227,7 +227,7 @@ def extract_context_window(session_context: dict) -> dict:
     context_info = session_context.get("context_window") or session_context.get("context_window_info", {})
 
     if not context_info:
-        return {"used_percentage": 0.0, "remaining_percentage": 100.0}
+        return {"used_percentage": 0.0, "remaining_percentage": 100.0, "tokens_used": 0, "tokens_max": 200000}
 
     # Get context window size for calculation
     context_size = context_info.get("context_window_size", 200000)
@@ -251,12 +251,14 @@ def extract_context_window(session_context: dict) -> dict:
         return {
             "used_percentage": used_pct,
             "remaining_percentage": 100.0 - used_pct,
+            "tokens_used": current_tokens,
+            "tokens_max": context_size,
         }
 
     # Fallback: If current_usage is null/empty, return 0%
     # This follows Claude Code docs: "echo '[$MODEL] Context: 0%'" when USAGE is null
     # Session start state = no tokens used yet
-    return {"used_percentage": 0.0, "remaining_percentage": 100.0}
+    return {"used_percentage": 0.0, "remaining_percentage": 100.0, "tokens_used": 0, "tokens_max": context_size}
 
 
 def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
@@ -299,9 +301,11 @@ def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
         # Extract output style from session context
         output_style = session_context.get("output_style", {}).get("name", "")
 
-        # Extract context window usage (returns dict with percentages only)
+        # Extract context window usage (returns dict with percentages and tokens)
         context_window_data = extract_context_window(session_context)
         context_used_pct = context_window_data.get("used_percentage", 0.0)
+        context_tokens_used = context_window_data.get("tokens_used", 0)
+        context_tokens_max = context_window_data.get("tokens_max", 200000)
 
         # Extract cost information (from Claude Code session context)
         cost_data = extract_cost_info(session_context)
@@ -330,6 +334,8 @@ def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
             latest_version=latest_version,
             context_window="",
             context_used_percentage=context_used_pct,
+            context_tokens_used=context_tokens_used,
+            context_tokens_max=context_tokens_max,
             # Cost tracking fields
             cost_total_usd=cost_data.get("total_cost_usd", 0.0),
             cost_lines_added=cost_data.get("total_lines_added", 0),
