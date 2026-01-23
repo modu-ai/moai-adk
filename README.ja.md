@@ -1323,18 +1323,19 @@ Alfredは4つの言語リクエストを自動認識して正しいエージェ�
 
 ---
 
-### 🔧 Tier 1: ドメイン専門家 (8個)
+### 🔧 Tier 1: ドメイン専門家 (9個)
 
-| エージェント           | 専門分野                         | 使用例                       |
-| ---------------------- | -------------------------------- | ---------------------------- |
-| **expert-backend**     | FastAPI, Django, DB設計          | API設計、クエリ最適化        |
-| **expert-frontend**    | React, Vue, Next.js              | UIコンポーネント、状態管理   |
-| **expert-security**    | セキュリティ分析、OWASP          | セキュリティ監査、脆弱性分析 |
-| **expert-devops**      | Docker, K8s, CI/CD               | デプロイ自動化、インフラ     |
-| **expert-debug**       | バグ分析、性能                   | 問題診断、ボトルネック解決   |
-| **expert-performance** | プロファイリング、最適化         | 応答時間改善                 |
-| **expert-refactoring** | コードリファクタリング、AST-Grep | 大規模コード変換             |
-| **expert-testing**     | テスト戦略、E2E                  | テスト計画、カバレッジ       |
+| エージェント           | 専門分野                          | 使用例                       |
+| ---------------------- | --------------------------------- | ---------------------------- |
+| **expert-backend**     | FastAPI, Django, DB設計           | API設計、クエリ最適化        |
+| **expert-frontend**    | React, Vue, Next.js               | UIコンポーネント、状態管理   |
+| **expert-stitch**      | Google Stitch, UI/UXデザイン      | AI駆動UI生成                 |
+| **expert-security**    | セキュリティ分析、OWASP           | セキュリティ監査、脆弱性分析 |
+| **expert-devops**      | Docker, K8s, CI/CD                | デプロイ自動化、インフラ     |
+| **expert-debug**       | バグ分析、性能                    | 問題診断、ボトルネック解決   |
+| **expert-performance** | プロファイリング、最適化          | 応答時間改善                 |
+| **expert-refactoring** | コードリファクタリング、AST-Grep  | 大規模コード変換             |
+| **expert-testing**     | テスト戦略、E2E                   | テスト計画、カバレッジ       |
 
 ---
 
@@ -2229,15 +2230,21 @@ moai rank list-excluded
 
 ---
 
-## 📝 ライセンス
+## 15. Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=date&legend=top-left)](https://www.star-history.com/#modu-ai/moai-adk&type=date&legend=top-left)
+
+---
+
+## 16. ライセンス
 
 Copyleft License (COPYLEFT-3.0) - [LICENSE](./LICENSE)
 
 ---
 
-## 🙏 Made with ❤️ by MoAI-ADK Team
+## 17. 🙏 Made with ❤️ by MoAI-ADK Team
 
-**Last Updated:** 2026-01-17
+**Last Updated:** 2026-01-22
 **Philosophy**: SPEC-First DDD + Agent Orchestration + Hybrid LLM
 **MoAI**: MoAIは"みんなのためのAI (Modu-ui AI)"を意味します。
 

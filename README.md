@@ -1299,18 +1299,19 @@ Alfred automatically recognizes 4 language requests and invokes the correct agen
 
 ---
 
-### 🔧 Tier 1: Domain Experts (8)
+### 🔧 Tier 1: Domain Experts (9)
 
-| Agent                  | Expertise                  | Usage Example                            |
-| ---------------------- | -------------------------- | ---------------------------------------- |
-| **expert-backend**     | FastAPI, Django, DB design | API design, query optimization           |
-| **expert-frontend**    | React, Vue, Next.js        | UI components, state management          |
-| **expert-security**    | Security analysis, OWASP   | Security audit, vulnerability analysis   |
-| **expert-devops**      | Docker, K8s, CI/CD         | Deployment automation, infrastructure    |
-| **expert-debug**       | Bug analysis, performance  | Problem diagnosis, bottleneck resolution |
-| **expert-performance** | Profiling, optimization    | Response time improvement                |
-| **expert-refactoring** | Code refactoring, AST-Grep | Large-scale code transformation          |
-| **expert-testing**     | Test strategy, E2E         | Test planning, coverage                  |
+| Agent                  | Expertise                   | Usage Example                            |
+| ---------------------- | --------------------------- | ---------------------------------------- |
+| **expert-backend**     | FastAPI, Django, DB design  | API design, query optimization           |
+| **expert-frontend**    | React, Vue, Next.js         | UI components, state management          |
+| **expert-stitch**      | Google Stitch, UI/UX design | AI-powered UI generation                 |
+| **expert-security**    | Security analysis, OWASP    | Security audit, vulnerability analysis   |
+| **expert-devops**      | Docker, K8s, CI/CD          | Deployment automation, infrastructure    |
+| **expert-debug**       | Bug analysis, performance   | Problem diagnosis, bottleneck resolution |
+| **expert-performance** | Profiling, optimization     | Response time improvement                |
+| **expert-refactoring** | Code refactoring, AST-Grep  | Large-scale code transformation          |
+| **expert-testing**     | Test strategy, E2E          | Test planning, coverage                  |
 
 ---
 
@@ -2294,13 +2295,19 @@ Yes. `moai init .` preserves existing files.
 
 ---
 
-## 📝 License
+## 15. Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=date&legend=top-left)](https://www.star-history.com/#modu-ai/moai-adk&type=date&legend=top-left)
+
+---
+
+## 16. License
 
 Copyleft License (COPYLEFT-3.0) - [LICENSE](./LICENSE)
 
 ---
 
-## 🙏 Made with ❤️ by MoAI-ADK Team
+## 17. 🙏 Made with ❤️ by MoAI-ADK Team
 
 **Last Updated:** 2026-01-22
 **Philosophy**: SPEC-First DDD + Agent Orchestration + Hybrid LLM

@@ -1386,18 +1386,19 @@ Alfred自动识别4种语言请求并调用正确的智能体:
 
 ---
 
-### 🔧 Tier 1: 领域专家 (8个)
+### 🔧 Tier 1: 领域专家 (9个)
 
-| 智能体              | 专业领域                | 使用示例             |
-| ------------------- | ----------------------- | -------------------- |
-| **expert-backend**  | FastAPI, Django, DB设计 | API设计、查询优化    |
-| **expert-frontend** | React, Vue, Next.js     | UI组件、状态管理     |
-| **expert-security** | 安全分析、OWASP         | 安全审计、漏洞分析   |
-| **expert-devops**   | Docker, K8s, CI/CD      | 部署自动化、基础设施 |
-| **expert-debug**    | Bug分析、性能           | 问题诊断、瓶颈解决   |
-| **expert-perf**     | 性能分析、优化          | 响应时间改善         |
-| **expert-refactor** | 代码重构、AST-Grep      | 大规模代码转换       |
-| **expert-testing**  | 测试策略、E2E           | 测试计划、覆盖率     |
+| 智能体                 | 专业领域                 | 使用示例             |
+| ---------------------- | ------------------------ | -------------------- |
+| **expert-backend**     | FastAPI, Django, DB设计  | API设计、查询优化    |
+| **expert-frontend**    | React, Vue, Next.js      | UI组件、状态管理     |
+| **expert-stitch**      | Google Stitch, UI/UX设计 | AI驱动UI生成         |
+| **expert-security**    | 安全分析、OWASP          | 安全审计、漏洞分析   |
+| **expert-devops**      | Docker, K8s, CI/CD       | 部署自动化、基础设施 |
+| **expert-debug**       | Bug分析、性能            | 问题诊断、瓶颈解决   |
+| **expert-performance** | 性能分析、优化           | 响应时间改善         |
+| **expert-refactoring** | 代码重构、AST-Grep       | 大规模代码转换       |
+| **expert-testing**     | 测试策略、E2E            | 测试计划、覆盖率     |
 
 ---
 
@@ -2292,15 +2293,21 @@ moai rank list-excluded
 
 ---
 
-## 📝 许可证
+## 15. Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=date&legend=top-left)](https://www.star-history.com/#modu-ai/moai-adk&type=date&legend=top-left)
+
+---
+
+## 16. 许可证
 
 Copyleft License (COPYLEFT-3.0) - [LICENSE](./LICENSE)
 
 ---
 
-## 🙏 由MoAI-ADK团队用❤️制作
+## 17. 🙏 由MoAI-ADK团队用❤️制作
 
-**最后更新:** 2026-01-11
+**最后更新:** 2026-01-22
 **哲学**: SPEC-First DDD + 智能体编排 + 混合LLM
 **MoAI**: MoAI意为"所有人的AI (Modu-ui AI)"。
 
