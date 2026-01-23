@@ -4,7 +4,7 @@ argument-hint: "[VERSION] - optional target version (e.g., 0.35.0)"
 type: local
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, AskUserQuestion, Task
 model: sonnet
-version: 1.1.0
+version: 1.2.0
 ---
 
 ## EXECUTION DIRECTIVE - START IMMEDIATELY
@@ -110,19 +110,53 @@ The Unified Release Pipeline validates version consistency across all config fil
 
 Get commits: `git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s (%h)"`
 
-IMPORTANT: Create TWO separate sections in CHANGELOG.md
+### CRITICAL: CHANGELOG Structure Rule
 
-Section 1 - English:
+**[HARD] Each version MUST have Korean section IMMEDIATELY after English section.**
 
-````
+Correct structure (English → Korean per version):
+```
 # vX.Y.Z - English Title (YYYY-MM-DD)
+[English content]
+---
+# vX.Y.Z - Korean Title (YYYY-MM-DD)
+[Korean content]
+---
+# vX-1.Y.Z - Previous English
+[Previous English content]
+---
+# vX-1.Y.Z - Previous Korean
+[Previous Korean content]
+```
+
+**WRONG structure (all English then all Korean):**
+```
+# vX.Y.Z - English
+# vX-1.Y.Z - English  ← WRONG: Korean should come before this
+# vX.Y.Z - Korean
+# vX-1.Y.Z - Korean
+```
+
+### Section 1 - English:
+
+```markdown
+# vX.Y.Z - English Title (YYYY-MM-DD)
+
 ## Summary
-[English summary]
-## Changes
-[English changes]
+[English summary with key features as bullet list]
+
+## Breaking Changes
+[List breaking changes if any]
+
+## Added
+[New features grouped by category]
+
+## Changed
+[Modified features]
+
 ## Installation & Update
 
-```bash
+\`\`\`bash
 # Update to the latest version
 uv tool update moai-adk
 
@@ -131,29 +165,28 @@ moai update
 
 # Verify version
 moai --version
-````
+\`\`\`
+```
 
 ---
 
-```
+### Section 2 - Korean (IMMEDIATELY after English, BEFORE previous version):
 
-Section 2 - Korean (immediately after English section):
-
-```
-
+```markdown
 # vX.Y.Z - Korean Title (YYYY-MM-DD)
 
 ## 요약
-
 [Korean summary]
 
-## 변경 사항
+## Breaking Changes
+[Korean breaking changes]
 
-[Korean changes]
+## 추가됨
+[Korean additions]
 
 ## 설치 및 업데이트
 
-```bash
+\`\`\`bash
 # 최신 버전으로 업데이트
 uv tool update moai-adk
 
@@ -162,13 +195,15 @@ moai update
 
 # 버전 확인
 moai --version
+\`\`\`
 ```
 
 ---
 
-```
-
-Both sections are REQUIRED for proper GitHub Release generation.
+Both sections are REQUIRED. Verify structure before committing:
+- [ ] English vX.Y.Z section exists
+- [ ] Korean vX.Y.Z section IMMEDIATELY follows English vX.Y.Z
+- [ ] Previous version (vX-1.Y.Z) comes AFTER Korean vX.Y.Z
 
 Prepend both sections to CHANGELOG.md and commit:
 `git add CHANGELOG.md && git commit -m "docs: Update CHANGELOG for vX.Y.Z"`
@@ -254,19 +289,82 @@ The agent should:
 
 ---
 
-## PHASE 7: Release Verification (HANDLED BY MANAGER-GIT)
+## PHASE 7: Release Verification & Notes Update
 
-The manager-git agent will:
-1. Check release workflow: `gh run list --workflow=release.yml --limit 1`
-2. Verify GitHub Release: `gh release list --limit 3`
-3. Display release information: `gh release view vX.Y.Z`
-4. Report final summary with links:
+### Step 1: Verify GitHub Actions Workflow
+
+Check if release workflow started:
+`gh run list --workflow=release.yml --limit 3`
+
+Wait for workflow completion (typically 2-5 minutes).
+
+### Step 2: Verify GitHub Release Created
+
+`gh release view vX.Y.Z`
+
+If release exists but has minimal notes, proceed to Step 3.
+
+### Step 3: Update GitHub Release Notes with CHANGELOG Content
+
+**[HARD] GitHub Release notes MUST include full CHANGELOG content (English + Korean).**
+
+The automated release workflow creates a basic release. Update it with full CHANGELOG:
+
+```bash
+gh release edit vX.Y.Z --notes "$(cat <<'RELEASE_EOF'
+# vX.Y.Z - English Title (YYYY-MM-DD)
+
+## Summary
+[Copy from CHANGELOG.md English section]
+
+## Breaking Changes
+[Copy breaking changes]
+
+## Added
+[Copy additions - can be summarized]
+
+## Installation & Update
+
+\`\`\`bash
+uv tool update moai-adk
+moai update
+moai --version
+\`\`\`
+
+---
+
+# vX.Y.Z - Korean Title (YYYY-MM-DD)
+
+## 요약
+[Copy from CHANGELOG.md Korean section]
+
+## Breaking Changes
+[Copy Korean breaking changes]
+
+## 추가됨
+[Copy Korean additions]
+
+## 설치 및 업데이트
+
+\`\`\`bash
+uv tool update moai-adk
+moai update
+moai --version
+\`\`\`
+RELEASE_EOF
+)"
+```
+
+### Step 4: Final Verification
+
+1. Verify release notes updated: `gh release view vX.Y.Z | head -50`
+2. Check PyPI package: https://pypi.org/project/moai-adk/
+3. Report final summary with links:
    - GitHub Release: https://github.com/modu-ai/moai-adk/releases/tag/vX.Y.Z
    - GitHub Actions: https://github.com/modu-ai/moai-adk/actions
    - PyPI: https://pypi.org/project/moai-adk/
 
-Note: GitHub Release is created automatically by release.yml workflow.
-If the release is not immediately visible, wait 2-3 minutes for the workflow to complete.
+**Note**: GitHub Release notes should match CHANGELOG structure (English → Korean).
 
 ---
 
