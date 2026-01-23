@@ -1,3 +1,103 @@
+# v1.8.1 - AST-Grep Parsing Fix & Documentation Improvements (2026-01-24)
+
+## Summary
+
+This patch release resolves ast-grep parsing errors by removing problematic multi-line patterns and improves CHANGELOG structure guidelines for consistent bilingual documentation.
+
+**Key Changes**:
+- Fixed ast-grep parsing errors in Python and TypeScript rules
+- Improved CHANGELOG structure with clear English → Korean ordering
+- Updated release workflow documentation
+
+## Fixed
+
+### AST-Grep Parsing Issues
+
+- **fix(ast-grep)**: Resolve parsing errors by removing multi-line patterns (83fd640b)
+  - Removed complex multi-line patterns from `rules/languages/python.yml`
+  - Simplified TypeScript patterns in `rules/languages/typescript.yml`
+  - Removed unused patterns from `rules/quality/complexity-check.yml` and `deprecated-apis.yml`
+  - Updated `sgconfig.yml` with cleaner rule configuration
+  - Resolves parsing errors that prevented ast-grep from functioning correctly
+
+## Changed
+
+### Documentation
+
+- **docs(release)**: Improve CHANGELOG structure and GitHub Release notes guidelines (425f3935)
+  - Added [HARD] rule: Each version MUST have Korean section IMMEDIATELY after English section
+  - Clarified correct structure: English vX.Y.Z → Korean vX.Y.Z → Previous versions
+  - Updated GitHub Release notes update instructions with bilingual format
+  
+- **docs**: Fix CHANGELOG structure - Korean follows English per section (12391fe1)
+  - Ensured proper ordering: English section → Korean section for each version
+  - Prevents structure violations where all English sections come before all Korean sections
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.8.1 - AST-Grep 파싱 수정 및 문서화 개선 (2026-01-24)
+
+## 요약
+
+이번 패치 릴리즈는 문제가 있던 멀티라인 패턴을 제거하여 ast-grep 파싱 에러를 해결하고, 일관된 이중 언어 문서화를 위한 CHANGELOG 구조 가이드라인을 개선합니다.
+
+**주요 변경사항**:
+- Python 및 TypeScript 규칙의 ast-grep 파싱 에러 수정
+- 영어 → 한국어 순서를 명확히 한 CHANGELOG 구조 개선
+- 릴리즈 워크플로우 문서 업데이트
+
+## 수정됨
+
+### AST-Grep 파싱 이슈
+
+- **fix(ast-grep)**: 멀티라인 패턴 제거로 파싱 에러 해결 (83fd640b)
+  - `rules/languages/python.yml`에서 복잡한 멀티라인 패턴 제거
+  - `rules/languages/typescript.yml`의 TypeScript 패턴 단순화
+  - `rules/quality/complexity-check.yml` 및 `deprecated-apis.yml`의 미사용 패턴 제거
+  - 더 깔끔한 규칙 설정으로 `sgconfig.yml` 업데이트
+  - ast-grep이 올바르게 작동하지 않던 파싱 에러 해결
+
+## 변경됨
+
+### 문서화
+
+- **docs(release)**: CHANGELOG 구조 및 GitHub Release 노트 가이드라인 개선 (425f3935)
+  - [HARD] 규칙 추가: 각 버전은 영어 섹션 바로 다음에 한국어 섹션이 있어야 함
+  - 올바른 구조 명시: 영어 vX.Y.Z → 한국어 vX.Y.Z → 이전 버전들
+  - 이중 언어 형식으로 GitHub Release 노트 업데이트 지침 개선
+  
+- **docs**: CHANGELOG 구조 수정 - 각 섹션마다 한국어가 영어 뒤에 옴 (12391fe1)
+  - 각 버전별로 적절한 순서 보장: 영어 섹션 → 한국어 섹션
+  - 모든 영어 섹션이 모든 한국어 섹션보다 먼저 오는 구조 위반 방지
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.8.0 - Ralph-Style LSP Integration & Google Stitch MCP (2026-01-23)
 
 ## Summary
