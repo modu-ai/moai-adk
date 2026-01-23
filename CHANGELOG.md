@@ -283,6 +283,76 @@ This feature implements SPEC-LSP-001 (LSP-Based Autonomous Workflow Completion) 
 
 ---
 
+# v1.8.0 - Ralph-Style LSP 통합 & Google Stitch MCP (2026-01-23)
+
+## 요약
+
+이 메이저 릴리스는 자율 워크플로우 실행을 위한 Ralph-style LSP 통합, AI 기반 UI/UX 디자인 생성을 위한 Google Stitch MCP 통합, 12개 프로그래밍 언어에 대한 포괄적인 언어 패턴 지원, 크로스 플랫폼 경로 변수 통합을 도입합니다.
+
+**주요 기능**:
+- 자율 워크플로우 완료를 위한 Ralph-style LSP 통합
+- expert-stitch 에이전트와 Google Stitch MCP 통합
+- 12개 이상 프로그래밍 언어를 위한 언어 패턴
+- 크로스 플랫폼 경로 변수 통합 (Windows/macOS/Linux)
+- GitHub 저장소 가시성을 위한 Star History 통합
+
+**참조**: SPEC-LSP-001, SPEC-STITCH-001
+
+## Breaking Changes
+
+- **경로 변수**: `{{PROJECT_DIR_UNIX}}`와 `{{PROJECT_DIR_WIN}}`은 더 이상 사용되지 않으며, `{{PROJECT_DIR}}`를 사용하세요
+- **자율 모드**: 새로운 실행 모드는 최적의 기능을 위해 LSP 지원 IDE가 필요합니다
+- 기본 실행 모드는 **대화형** 유지 (하위 호환)
+- 워크플로우 구성 파일 추가: `.moai/config/sections/workflow.yaml`
+- `quality.yaml`에 새 구성 섹션: `lsp_quality_gates`
+
+## 추가됨
+
+### Google Stitch MCP 통합 (NEW)
+
+- **feat(stitch)**: expert-stitch 에이전트와 Google Stitch MCP 통합 추가
+  - AI 기반 UI/UX 디자인 생성을 위한 새 에이전트: `expert-stitch`
+  - MCP 도구: `mcp__stitch__create_project`, `mcp__stitch__generate_screen_from_text`, `mcp__stitch__fetch_screen_code`
+  - Design DNA 추출 및 일관성 검사
+  - React, Vue, Angular, Flutter 형식으로 코드 내보내기
+  - Tier 1 도메인 전문가에 추가 (8 → 9개 에이전트)
+
+### 언어 패턴 (NEW)
+
+- **feat(lang)**: 12개 언어에 대한 언어별 코드 패턴 추가
+  - 새 파일: `.moai/rules/language-patterns/*.yaml`
+  - 언어: C++, C#, Elixir, Flutter, Go, JavaScript, Kotlin, PHP, R, Ruby, Rust, Scala, Swift
+  - 각 언어별 프레임워크 패턴
+  - 보안 모범 사례 및 안티패턴
+
+### LSP 통합 (SPEC-LSP-001)
+
+- **feat(lsp)**: LSP 기반 완료 마커 시스템 추가
+  - 새 모듈: `src/moai_adk/utils/completion_marker.py`
+  - 자율 모드에서 무한 루프 방지
+  - MCP 도구와 통합: `mcp__ide__getDiagnostics`
+
+### 문서 (NEW)
+
+- **docs(readme)**: 모든 README 파일에 Star History 섹션 추가
+  - EN, KO, JA, ZH 버전 동기화
+  - expert-stitch 에이전트 설명 추가
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.7.0 - UltraThink Mode Enhancement (2026-01-22)
 
 ## Summary
@@ -349,76 +419,6 @@ uv tool update moai-adk
 moai update
 
 # Verify version
-moai --version
-```
-
----
-
-# v1.8.0 - Ralph-Style LSP 통합 & Google Stitch MCP (2026-01-23)
-
-## 요약
-
-이 메이저 릴리스는 자율 워크플로우 실행을 위한 Ralph-style LSP 통합, AI 기반 UI/UX 디자인 생성을 위한 Google Stitch MCP 통합, 12개 프로그래밍 언어에 대한 포괄적인 언어 패턴 지원, 크로스 플랫폼 경로 변수 통합을 도입합니다.
-
-**주요 기능**:
-- 자율 워크플로우 완료를 위한 Ralph-style LSP 통합
-- expert-stitch 에이전트와 Google Stitch MCP 통합
-- 12개 이상 프로그래밍 언어를 위한 언어 패턴
-- 크로스 플랫폼 경로 변수 통합 (Windows/macOS/Linux)
-- GitHub 저장소 가시성을 위한 Star History 통합
-
-**참조**: SPEC-LSP-001, SPEC-STITCH-001
-
-## Breaking Changes
-
-- **경로 변수**: `{{PROJECT_DIR_UNIX}}`와 `{{PROJECT_DIR_WIN}}`은 더 이상 사용되지 않으며, `{{PROJECT_DIR}}`를 사용하세요
-- **자율 모드**: 새로운 실행 모드는 최적의 기능을 위해 LSP 지원 IDE가 필요합니다
-- 기본 실행 모드는 **대화형** 유지 (하위 호환)
-- 워크플로우 구성 파일 추가: `.moai/config/sections/workflow.yaml`
-- `quality.yaml`에 새 구성 섹션: `lsp_quality_gates`
-
-## 추가됨
-
-### Google Stitch MCP 통합 (NEW)
-
-- **feat(stitch)**: expert-stitch 에이전트와 Google Stitch MCP 통합 추가
-  - AI 기반 UI/UX 디자인 생성을 위한 새 에이전트: `expert-stitch`
-  - MCP 도구: `mcp__stitch__create_project`, `mcp__stitch__generate_screen_from_text`, `mcp__stitch__fetch_screen_code`
-  - Design DNA 추출 및 일관성 검사
-  - React, Vue, Angular, Flutter 형식으로 코드 내보내기
-  - Tier 1 도메인 전문가에 추가 (8 → 9개 에이전트)
-
-### 언어 패턴 (NEW)
-
-- **feat(lang)**: 12개 언어에 대한 언어별 코드 패턴 추가
-  - 새 파일: `.moai/rules/language-patterns/*.yaml`
-  - 언어: C++, C#, Elixir, Flutter, Go, JavaScript, Kotlin, PHP, R, Ruby, Rust, Scala, Swift
-  - 각 언어별 프레임워크 패턴
-  - 보안 모범 사례 및 안티패턴
-
-### LSP 통합 (SPEC-LSP-001)
-
-- **feat(lsp)**: LSP 기반 완료 마커 시스템 추가
-  - 새 모듈: `src/moai_adk/utils/completion_marker.py`
-  - 자율 모드에서 무한 루프 방지
-  - MCP 도구와 통합: `mcp__ide__getDiagnostics`
-
-### 문서 (NEW)
-
-- **docs(readme)**: 모든 README 파일에 Star History 섹션 추가
-  - EN, KO, JA, ZH 버전 동기화
-  - expert-stitch 에이전트 설명 추가
-
-## 설치 및 업데이트
-
-```bash
-# 최신 버전으로 업데이트
-uv tool update moai-adk
-
-# 프로젝트 폴더 템플릿 업데이트
-moai update
-
-# 버전 확인
 moai --version
 ```
 
