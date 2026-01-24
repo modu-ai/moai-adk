@@ -7,6 +7,18 @@ SPEC: .moai/specs/SPEC-CHECKPOINT-EVENT-001/spec.md
 from pathlib import Path
 
 
+def normalize_path(path: str) -> str:
+    """Normalize path separators to forward slash for consistent comparison.
+
+    Args:
+        path: Path string with potentially mixed separators
+
+    Returns:
+        Path string with all backslashes replaced by forward slashes
+    """
+    return path.replace("\\", "/")
+
+
 class EventDetector:
     """Detect potentially risky operations."""
 
@@ -73,18 +85,18 @@ class EventDetector:
         if file_path.name in self.CRITICAL_FILES:
             return True
 
-        # Convert to string for further checks
-        path_str = str(file_path)
+        # Normalize path separators for consistent comparison (cross-platform)
+        path_str = normalize_path(str(file_path))
 
         # Detect .moai/config/config.{json,yaml} paths (legacy monolithic)
-        if ".moai/config/config.json" in path_str or ".moai\\config\\config.json" in path_str:
+        if ".moai/config/config.json" in path_str:
             return True
-        if ".moai/config/config.yaml" in path_str or ".moai\\config\\config.yaml" in path_str:
+        if ".moai/config/config.yaml" in path_str:
             return True
 
         # Detect files inside critical directories (.moai/memory, .moai/config/sections)
         for critical_dir in self.CRITICAL_DIRS:
-            if critical_dir in path_str or critical_dir.replace("/", "\\") in path_str:
+            if critical_dir in path_str:
                 return True
 
         return False

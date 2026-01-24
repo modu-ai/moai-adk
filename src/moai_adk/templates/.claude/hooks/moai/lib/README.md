@@ -137,6 +137,76 @@ Claude Code
 }
 ```
 
+## Hook Development Best Practices
+
+### Shebang in Hook Scripts
+
+**Important:** Hook scripts include shebang (`#!/usr/bin/env python3`) for documentation and IDE compatibility, but **shebang is not used during execution**.
+
+#### How Hooks Are Executed
+
+Hooks are **always executed via `uv run`** by Claude Code, as configured in `settings.json`:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [{
+      "type": "command",
+      "command": "uv run \"{{PROJECT_DIR}}/.claude/hooks/moai/post_tool__linter.py\""
+    }]
+  }
+}
+```
+
+#### Platform Behavior
+
+- **macOS/Linux**: Shebang is ignored (executed via `uv run`)
+- **Windows**: Shebang is ignored (Windows doesn't recognize shebang)
+- **All platforms**: `uv run` determines the Python interpreter
+
+#### Testing Hooks Manually
+
+**Do not execute hook scripts directly.** Always use `uv run`:
+
+```bash
+# ✅ CORRECT: Use uv run (all platforms)
+uv run .claude/hooks/moai/session_start__show_project_info.py
+
+# ❌ WRONG: Direct execution (may fail on Windows)
+./.claude/hooks/moai/session_start__show_project_info.py
+```
+
+#### Why Shebang Is Included
+
+1. **Documentation**: Indicates the script is Python
+2. **IDE Support**: Editors recognize the file type
+3. **Direct Execution (Unix only)**: Works if user makes script executable manually
+
+**Best Practice**: Keep shebang for documentation, but rely on `uv run` for execution.
+
+### Cross-Platform Compatibility
+
+When developing hooks:
+
+1. **Use `pathlib.Path`** instead of string concatenation
+2. **Normalize paths** with `path_utils.normalize_path()` for comparisons
+3. **Test on multiple platforms** (macOS, Linux, Windows PowerShell)
+4. **Avoid platform-specific commands** in subprocess calls
+
+Example:
+
+```python
+from pathlib import Path
+from lib.path_utils import find_project_root
+
+# ✅ CORRECT: Cross-platform
+root = find_project_root()
+config_file = root / ".moai" / "config" / "config.yaml"
+
+# ❌ WRONG: Platform-specific
+config_file = f"{root}/.moai/config/config.yaml"
+```
+
 ## Version
 
 - Library Version: 1.0.0

@@ -293,8 +293,27 @@ def get_permission_fix_message(path: str) -> str:
         path: Path to fix permissions for.
 
     Returns:
-        Platform-specific fix instructions.
+        Platform-specific fix instructions with actionable steps.
     """
     if platform.system() == "Windows":
-        return f"Run with administrator privileges or verify permissions in the properties of the '{path}' directory"
-    return f"Run 'chmod 755 {path}' and try again"
+        return (
+            f"Permission denied for '{path}'\n\n"
+            "Solutions (choose one):\n"
+            "  1. Right-click the directory → Properties → Security tab\n"
+            "     - Click 'Edit' to change permissions\n"
+            "     - Ensure your user account has 'Full control'\n"
+            "     - Click 'Apply' and 'OK'\n\n"
+            "  2. Run PowerShell as Administrator:\n"
+            "     - Right-click PowerShell → 'Run as administrator'\n"
+            "     - Navigate to project directory and retry\n\n"
+            "  3. Check if the directory is read-only:\n"
+            "     - Right-click directory → Properties\n"
+            "     - Uncheck 'Read-only' if checked\n"
+        )
+    return (
+        f"Permission denied for '{path}'\n\n"
+        "Solution:\n"
+        f"  chmod 755 {path}\n\n"
+        "If that doesn't work, try:\n"
+        f"  sudo chmod 755 {path}\n"
+    )
