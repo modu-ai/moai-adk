@@ -109,7 +109,7 @@ execution_mode:
 
 ## 1. 30-Second Installation
 
-> **⚠️ Windows Users**: MoAI-ADK supports **PowerShell only**. Command Prompt (cmd.exe) is not supported. Please use PowerShell or Windows Terminal with PowerShell.
+> **⚠️ Windows Users**: MoAI-ADK supports **PowerShell only**. WSL (Windows Subsystem for Linux) and Command Prompt (cmd.exe) are **not supported**. Please use PowerShell or Windows Terminal with PowerShell.
 
 ### 🚀 Method 1: Quick Install (Recommended)
 

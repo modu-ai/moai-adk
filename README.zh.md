@@ -109,7 +109,7 @@ execution_mode:
 
 ## 1. 30秒安装
 
-> **⚠️ Windows用户**: MoAI-ADK **仅支持PowerShell**。不支持命令提示符(cmd.exe)。请使用PowerShell或Windows Terminal中的PowerShell。
+> **⚠️ Windows用户**: MoAI-ADK **仅支持PowerShell**。**不支持** WSL(Windows Subsystem for Linux)和命令提示符(cmd.exe)。请使用PowerShell或Windows Terminal中的PowerShell。
 
 ### 🚀 方法1: 快速安装 (推荐)
 

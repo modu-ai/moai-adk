@@ -109,7 +109,7 @@ execution_mode:
 
 ## 1. 30秒インストール
 
-> **⚠️ Windowsユーザー**: MoAI-ADKは**PowerShellのみをサポート**しています。コマンドプロンプト(cmd.exe)はサポートされていません。PowerShellまたはWindows TerminalでPowerShellを使用してください。
+> **⚠️ Windowsユーザー**: MoAI-ADKは**PowerShellのみをサポート**しています。WSL(Windows Subsystem for Linux)とコマンドプロンプト(cmd.exe)は**サポートされていません**。PowerShellまたはWindows TerminalでPowerShellを使用してください。
 
 ### 🚀 方法1: クイックインストール (推奨)
 

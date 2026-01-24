@@ -69,7 +69,7 @@ moai glm YOUR_API_KEY
 
 ## 1. 30초 설치
 
-> **⚠️ Windows 사용자**: MoAI-ADK는 **PowerShell만 지원**합니다. 명령 프롬프트(cmd.exe)는 지원하지 않습니다. PowerShell 또는 Windows Terminal에서 PowerShell을 사용해주세요.
+> **⚠️ Windows 사용자**: MoAI-ADK는 **PowerShell만 지원**합니다. WSL(Windows Subsystem for Linux)과 명령 프롬프트(cmd.exe)는 **지원하지 않습니다**. PowerShell 또는 Windows Terminal에서 PowerShell을 사용해주세요.
 
 ### 🚀 방법 1: 빠른 설치 (권장)
 
