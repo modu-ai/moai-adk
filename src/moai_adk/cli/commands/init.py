@@ -28,6 +28,7 @@ Project initialization command (interactive/non-interactive):
 
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 from typing import Sequence
@@ -137,6 +138,31 @@ def init(
     if not is_supported:
         console.print("\n[bold red]✗ Shell Not Supported[/bold red]\n")
         console.print(f"[yellow]{error_msg}[/yellow]\n")
+        sys.exit(1)
+
+    # Verify uv is available in PATH
+    uv_path = shutil.which("uv")
+    if uv_path is None:
+        console.print("\n[bold red]✗ uv Not Found in PATH[/bold red]\n")
+        console.print("[yellow]MoAI-ADK requires uv to be installed and available in your PATH.[/yellow]\n")
+
+        if sys.platform == "win32":
+            console.print("[cyan]Installation steps for Windows:[/cyan]")
+            console.print("  1. Run in PowerShell:")
+            console.print('     [bold]powershell -c "irm https://astral.sh/uv/install.ps1 | iex"[/bold]\n')
+            console.print("  2. Restart PowerShell to refresh PATH\n")
+            console.print("  3. Verify installation:")
+            console.print("     [bold]uv --version[/bold]\n")
+        else:
+            console.print("[cyan]Installation steps for macOS/Linux:[/cyan]")
+            console.print("  1. Run in terminal:")
+            console.print("     [bold]curl -LsSf https://astral.sh/uv/install.sh | sh[/bold]\n")
+            console.print("  2. Restart terminal or run:")
+            console.print("     [bold]source $HOME/.cargo/env[/bold]\n")
+            console.print("  3. Verify installation:")
+            console.print("     [bold]uv --version[/bold]\n")
+
+        console.print("More info: [link=https://docs.astral.sh/uv/]https://docs.astral.sh/uv/[/link]\n")
         sys.exit(1)
 
     try:

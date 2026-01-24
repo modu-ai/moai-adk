@@ -372,8 +372,13 @@ class PhaseExecutor:
         if scripts_dir.exists():
             logger.debug(f"Processing shell scripts in {scripts_dir}")
             for script_file in scripts_dir.glob("*.sh"):
+                # Skip chmod on Windows (execution permissions not supported)
+                if platform.system() == "Windows":
+                    logger.debug(f"Skipping chmod on Windows for {script_file}")
+                    continue
+
                 try:
-                    # Add execute permission for user, group, and others
+                    # Add execute permission for user, group, and others (Unix only)
                     current_mode = script_file.stat().st_mode
                     new_mode = current_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
                     script_file.chmod(new_mode)

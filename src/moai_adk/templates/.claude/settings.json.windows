@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run \"{{PROJECT_DIR}}/.claude/hooks/moai/session_end__auto_cleanup.py\" &"
+            "command": "uv run \"{{PROJECT_DIR}}/.claude/hooks/moai/session_end__auto_cleanup.py\""
           }
         ]
       }
@@ -217,6 +217,9 @@
       "Bash(rm -rf C\\:/*:*)",
       "Bash(del /S /Q C\\:/:*)",
       "Bash(rmdir /S /Q C\\:/:*)",
+      "Bash(Remove-Item -Recurse -Force C\\:/:*)",
+      "Bash(Clear-Disk:*)",
+      "Bash(Format-Volume:*)",
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
       "Bash(git push --force-with-lease:*)",
