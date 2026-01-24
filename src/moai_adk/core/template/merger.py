@@ -173,8 +173,17 @@ class TemplateMerger:
         elif existing_path.exists():
             user_data = json.loads(existing_path.read_text(encoding="utf-8", errors="replace"))
 
-        # Merge env (shallow merge, user variables preserved)
-        merged_env = {**template_data.get("env", {}), **user_data.get("env", {})}
+        # Merge env (template priority for known keys, preserve user-added custom keys)
+        template_env = template_data.get("env", {})
+        user_env = user_data.get("env", {})
+
+        # Template values take precedence for known keys
+        # Only preserve user-added custom keys not in template
+        merged_env = template_env.copy()
+        for key, value in user_env.items():
+            if key not in template_env:
+                # User added a custom env key, preserve it
+                merged_env[key] = value
 
         # Merge permissions.allow (deduplicated array merge)
         template_allow = set(template_data.get("permissions", {}).get("allow", []))
