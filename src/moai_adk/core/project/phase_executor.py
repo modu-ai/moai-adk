@@ -302,8 +302,41 @@ class PhaseExecutor:
         # Copy resources via TemplateProcessor in silent mode
         processor = TemplateProcessor(project_path)
 
-        # Set template variable context (if provided)
+        # Detect OS for cross-platform Hook path configuration (ALWAYS, not just when config exists)
+        # PROJECT_DIR: Cross-platform forward slash path (works on Windows, macOS, Linux)
+        # PROJECT_DIR_WIN: Deprecated in v1.8.0 - use PROJECT_DIR (removal planned: v2.0.0)
+        # PROJECT_DIR_UNIX: Deprecated in v1.8.0 - use PROJECT_DIR (removal planned: v2.0.0)
+        is_windows = platform.system() == "Windows"
+
+        # PROJECT_DIR: Cross-platform forward slash path with trailing separator
+        # Standard since v1.8.0 - works on all modern platforms (Windows 10+, macOS, Linux)
+        # Forward slash is industry standard (pytest, uv, ruff all use this pattern)
+        hook_project_dir = "%CLAUDE_PROJECT_DIR%/" if is_windows else "$CLAUDE_PROJECT_DIR/"
+
+        # PROJECT_DIR_WIN: Deprecated (v1.8.0) - Uses Windows environment variable and backslash separator
+        # BACKWARD COMPATIBILITY ONLY - Will be removed in v2.0.0
+        # Migration: Replace {{PROJECT_DIR_WIN}} with {{PROJECT_DIR}} in templates
+        hook_project_dir_win = "%CLAUDE_PROJECT_DIR%\\" if is_windows else "$CLAUDE_PROJECT_DIR/"
+
+        # PROJECT_DIR_UNIX: Deprecated (v1.8.0) - Uses appropriate environment variable with forward slash
+        # BACKWARD COMPATIBILITY ONLY - Will be removed in v2.0.0
+        # Migration: Replace {{PROJECT_DIR_UNIX}} with {{PROJECT_DIR}} in templates
+        hook_project_dir_unix = "%CLAUDE_PROJECT_DIR%/" if is_windows else "$CLAUDE_PROJECT_DIR/"
+
+        # Detect OS for cross-platform statusline command
+        # Windows: Use python -m for better PATH compatibility
+        # Unix: Use moai-adk directly (assumes installed via uv tool)
+        if platform.system() == "Windows":
+            statusline_command = "python -m moai_adk statusline"
+        else:
+            statusline_command = "moai-adk statusline"
+
+        # Get enhanced version context with fallback strategies (ALWAYS)
+        version_context = self._get_enhanced_version_context()
+
+        # Build template substitution context (ALWAYS, with or without config)
         if config:
+            # Full context with project configuration
             # Get language settings from 'language_settings' key (dict)
             # Falls back to 'language' key for backwards compatibility
             language_config: dict[str, Any] = config.get("language_settings") or {}
@@ -311,38 +344,6 @@ class PhaseExecutor:
                 # Backwards compatibility: try 'language' key as dict
                 legacy_lang = config.get("language", {})
                 language_config = legacy_lang if isinstance(legacy_lang, dict) else {}
-
-            # Detect OS for cross-platform Hook path configuration
-            # PROJECT_DIR: Cross-platform forward slash path (works on Windows, macOS, Linux)
-            # PROJECT_DIR_WIN: Deprecated in v1.8.0 - use PROJECT_DIR (removal planned: v2.0.0)
-            # PROJECT_DIR_UNIX: Deprecated in v1.8.0 - use PROJECT_DIR (removal planned: v2.0.0)
-            is_windows = platform.system() == "Windows"
-
-            # PROJECT_DIR: Cross-platform forward slash path with trailing separator
-            # Standard since v1.8.0 - works on all modern platforms (Windows 10+, macOS, Linux)
-            # Forward slash is industry standard (pytest, uv, ruff all use this pattern)
-            hook_project_dir = "%CLAUDE_PROJECT_DIR%/" if is_windows else "$CLAUDE_PROJECT_DIR/"
-
-            # PROJECT_DIR_WIN: Deprecated (v1.8.0) - Uses Windows environment variable and backslash separator
-            # BACKWARD COMPATIBILITY ONLY - Will be removed in v2.0.0
-            # Migration: Replace {{PROJECT_DIR_WIN}} with {{PROJECT_DIR}} in templates
-            hook_project_dir_win = "%CLAUDE_PROJECT_DIR%\\" if is_windows else "$CLAUDE_PROJECT_DIR/"
-
-            # PROJECT_DIR_UNIX: Deprecated (v1.8.0) - Uses appropriate environment variable with forward slash
-            # BACKWARD COMPATIBILITY ONLY - Will be removed in v2.0.0
-            # Migration: Replace {{PROJECT_DIR_UNIX}} with {{PROJECT_DIR}} in templates
-            hook_project_dir_unix = "%CLAUDE_PROJECT_DIR%/" if is_windows else "$CLAUDE_PROJECT_DIR/"
-
-            # Detect OS for cross-platform statusline command
-            # Windows: Use python -m for better PATH compatibility
-            # Unix: Use moai-adk directly (assumes installed via uv tool)
-            if platform.system() == "Windows":
-                statusline_command = "python -m moai_adk statusline"
-            else:
-                statusline_command = "moai-adk statusline"
-
-            # Get enhanced version context with fallback strategies
-            version_context = self._get_enhanced_version_context()
 
             context = {
                 **version_context,
@@ -361,7 +362,29 @@ class PhaseExecutor:
                 "PROJECT_DIR_UNIX": hook_project_dir_unix,
                 "STATUSLINE_COMMAND": statusline_command,
             }
-            processor.set_context(context)
+        else:
+            # Minimal context for template substitution (when config is not provided)
+            # This ensures template variables like {{PROJECT_DIR}} are always substituted
+            context = {
+                **version_context,
+                "CREATION_TIMESTAMP": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "PROJECT_NAME": "unknown",
+                "PROJECT_DESCRIPTION": "",
+                "PROJECT_MODE": "personal",
+                "PROJECT_VERSION": "0.1.0",
+                "PROJECT_OWNER": "@user",
+                "AUTHOR": "@user",
+                "CONVERSATION_LANGUAGE": "en",
+                "CONVERSATION_LANGUAGE_NAME": "English",
+                "CODEBASE_LANGUAGE": "generic",
+                "PROJECT_DIR": hook_project_dir,
+                "PROJECT_DIR_WIN": hook_project_dir_win,
+                "PROJECT_DIR_UNIX": hook_project_dir_unix,
+                "STATUSLINE_COMMAND": statusline_command,
+            }
+
+        # ALWAYS set context (critical for template variable substitution in settings.json)
+        processor.set_context(context)
 
         processor.copy_templates(backup=False, silent=True)  # Avoid progress bar conflicts
 
