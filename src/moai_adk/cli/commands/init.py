@@ -45,6 +45,7 @@ from moai_adk.statusline.version_reader import (
     VersionReader,
 )
 from moai_adk.utils.banner import print_banner, print_welcome_message
+from moai_adk.utils.shell_validator import validate_shell
 
 # Force UTF-8 encoding for Windows compatibility
 # Windows PowerShell/Console uses 'charmap' by default, which can't encode emojis
@@ -131,6 +132,13 @@ def init(
         mcp_auto: Auto-install all recommended MCP servers
         force: Force reinitialize without confirmation
     """
+    # Validate shell environment (Windows only)
+    is_supported, error_msg = validate_shell()
+    if not is_supported:
+        console.print("\n[bold red]✗ Shell Not Supported[/bold red]\n")
+        console.print(f"[yellow]{error_msg}[/yellow]\n")
+        sys.exit(1)
+
     try:
         # 1. Print banner with enhanced version info
         print_banner(__version__)
