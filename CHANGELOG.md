@@ -1,3 +1,130 @@
+# v1.8.11 - Hook & StatusLine Cross-Platform Fixes (2026-01-25)
+
+## Summary
+
+Patch release focused on cross-platform hook command fixes. This release fixes MoAI Rank hook failures and ensures statusLine commands are automatically updated during `moai update`.
+
+**Key Fixes**:
+- Fixed SessionEnd hook failure: "env: bash: No such file or directory"
+- Automatic statusLine command format update during `moai update`
+- Cross-platform shell wrapper support (Windows, macOS, Linux, WSL)
+
+**Impact**:
+- MoAI Rank hook now works reliably across all platforms
+- statusLine updates correctly when upgrading from older versions
+- No manual intervention needed after `moai update`
+
+## Breaking Changes
+
+None. This release is backward compatible with v1.8.10.
+
+## Fixed
+
+### MoAI Rank Hook Cross-Platform Support
+
+- **fix(rank)**: Fix cross-platform rank hook command format (cd4cf688)
+  - Fixed SessionEnd hook failure on systems where `bash` is not in PATH
+  - Use `${SHELL:-/bin/bash}` instead of hardcoded `bash` for Unix platforms
+  - Added `uv run` for proper module resolution
+  - Added `validate_and_fix_hook()` function for automatic hook validation
+  - Updated `moai init` and `moai update` to validate hooks on execution
+  - Supports Windows (direct execution), macOS/Linux/WSL (login shell wrapper)
+  - Files:
+    - `src/moai_adk/rank/hook.py`: Hook registration and validation
+    - `src/moai_adk/cli/commands/init.py`: Hook validation on init
+    - `src/moai_adk/cli/commands/update.py`: Hook validation on update
+
+### StatusLine Command Auto-Update
+
+- **fix(update)**: Add statusLine command auto-update during moai update (8db8085e)
+  - Added `_update_statusline_command()` function to update.py
+  - Automatically fixes statusLine command format during `moai update`
+  - Detects outdated patterns:
+    - Unsubstituted template variables (`{{HOOK_SHELL_PREFIX}}`, etc.)
+    - Missing shell wrapper on Unix platforms
+  - Applies correct cross-platform format:
+    - Windows: `uv run --no-sync moai-adk statusline`
+    - macOS/Linux: `${SHELL:-/bin/bash} -l -c 'uv run --no-sync moai-adk statusline'`
+  - Files: `src/moai_adk/cli/commands/update.py`
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.8.11 - Hook 및 StatusLine 크로스 플랫폼 수정 (2026-01-25)
+
+## 요약
+
+크로스 플랫폼 hook 명령어 수정에 집중한 패치 릴리스입니다. MoAI Rank hook 실패 문제를 수정하고 `moai update` 실행 시 statusLine 명령어를 자동으로 업데이트합니다.
+
+**주요 수정사항**:
+- SessionEnd hook 실패 문제 수정: "env: bash: No such file or directory"
+- `moai update` 실행 시 statusLine 명령어 형식 자동 업데이트
+- 크로스 플랫폼 셸 래퍼 지원 (Windows, macOS, Linux, WSL)
+
+**영향**:
+- MoAI Rank hook이 모든 플랫폼에서 안정적으로 작동
+- 이전 버전에서 업그레이드 시 statusLine이 올바르게 업데이트됨
+- `moai update` 후 수동 조치 불필요
+
+## Breaking Changes
+
+없음. v1.8.10과 완전히 호환됩니다.
+
+## 수정됨
+
+### MoAI Rank Hook 크로스 플랫폼 지원
+
+- **fix(rank)**: 크로스 플랫폼 rank hook 명령어 형식 수정 (cd4cf688)
+  - `bash`가 PATH에 없는 시스템에서 SessionEnd hook 실패 문제 수정
+  - Unix 플랫폼에서 하드코딩된 `bash` 대신 `${SHELL:-/bin/bash}` 사용
+  - 올바른 모듈 해석을 위해 `uv run` 추가
+  - 자동 hook 검증을 위한 `validate_and_fix_hook()` 함수 추가
+  - `moai init` 및 `moai update` 실행 시 hook 검증 수행
+  - Windows (직접 실행), macOS/Linux/WSL (로그인 셸 래퍼) 지원
+  - 수정된 파일:
+    - `src/moai_adk/rank/hook.py`: Hook 등록 및 검증
+    - `src/moai_adk/cli/commands/init.py`: Init 시 hook 검증
+    - `src/moai_adk/cli/commands/update.py`: Update 시 hook 검증
+
+### StatusLine 명령어 자동 업데이트
+
+- **fix(update)**: moai update 시 statusLine 명령어 자동 업데이트 추가 (8db8085e)
+  - update.py에 `_update_statusline_command()` 함수 추가
+  - `moai update` 실행 시 statusLine 명령어 형식을 자동으로 수정
+  - 오래된 패턴 감지:
+    - 치환되지 않은 템플릿 변수 (`{{HOOK_SHELL_PREFIX}}` 등)
+    - Unix 플랫폼에서 누락된 셸 래퍼
+  - 올바른 크로스 플랫폼 형식 적용:
+    - Windows: `uv run --no-sync moai-adk statusline`
+    - macOS/Linux: `${SHELL:-/bin/bash} -l -c 'uv run --no-sync moai-adk statusline'`
+  - 수정된 파일: `src/moai_adk/cli/commands/update.py`
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
 # v1.8.10 - Performance Optimization & Cross-Platform Fixes (2026-01-25)
 
 ## Summary
