@@ -17,10 +17,10 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "bash -l -c 'uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__code_formatter.py"'"
+          command: "bash -l -c 'uv run \"$CLAUDE_PROJECT_DIR/\"/.claude/hooks/moai/post_tool__code_formatter.py'""
           timeout: 30
         - type: command
-          command: "bash -l -c 'uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__linter.py"'"
+          command: "bash -l -c 'uv run \"$CLAUDE_PROJECT_DIR/\"/.claude/hooks/moai/post_tool__linter.py'""
           timeout: 30
 ---
 
@@ -940,7 +940,7 @@ Check configuration mode:
 - If mode is "personal" or "team": Proceed with branch creation
 
 VIOLATION - Branching as Code:
-For each file in files, if file.endswith('.py"'), process(file).
+For each file in files, if file.endswith('.py'"), process(file).
 
 CORRECT - Branching as Text:
 For each file in the file list:

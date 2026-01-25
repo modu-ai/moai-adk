@@ -17,10 +17,10 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "bash -l -c 'uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__lsp_diagnostic.py"'"
+          command: "bash -l -c 'uv run \"$CLAUDE_PROJECT_DIR/\"/.claude/hooks/moai/post_tool__lsp_diagnostic.py'""
           timeout: 30
         - type: command
-          command: "bash -l -c 'uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__linter.py"'"
+          command: "bash -l -c 'uv run \"$CLAUDE_PROJECT_DIR/\"/.claude/hooks/moai/post_tool__linter.py'""
           timeout: 30
 ---
 
