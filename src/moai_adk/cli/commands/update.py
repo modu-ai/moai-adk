@@ -1098,6 +1098,50 @@ def _restore_user_settings(project_path: Path, preserved: dict[str, Path | None]
     return success
 
 
+def _clean_deprecated_settings(project_path: Path) -> bool:
+    """Remove deprecated settings from .claude/settings.json.
+
+    Removes obsolete configuration keys that are no longer supported:
+    - CLAUDE_CODE_MAX_OUTPUT_TOKENS: Deprecated in favor of Claude Code's internal settings
+
+    Args:
+        project_path: Project directory path
+
+    Returns:
+        True if settings were cleaned successfully, False otherwise
+    """
+    settings_file = project_path / ".claude" / "settings.json"
+    if not settings_file.exists():
+        return True  # No settings file to clean
+
+    try:
+        with open(settings_file, encoding="utf-8", errors="replace") as f:
+            settings = json.load(f)
+
+        # List of deprecated keys to remove
+        deprecated_keys = ["CLAUDE_CODE_MAX_OUTPUT_TOKENS"]
+        removed_keys = []
+
+        for key in deprecated_keys:
+            if key in settings:
+                del settings[key]
+                removed_keys.append(key)
+
+        if removed_keys:
+            # Save cleaned settings
+            with open(settings_file, "w", encoding="utf-8") as f:
+                json.dump(settings, f, indent=2, ensure_ascii=False)
+            console.print(f"   [cyan]✓ Removed deprecated settings: {', '.join(removed_keys)}[/cyan]")
+            logger.info(f"Removed deprecated settings from settings.json: {removed_keys}")
+
+        return True
+
+    except Exception as e:
+        logger.warning(f"Failed to clean deprecated settings: {e}")
+        # Don't fail the whole operation if cleaning fails
+        return False
+
+
 def _get_template_skill_names() -> set[str]:
     """Get set of skill folder names from installed template.
 
@@ -2428,6 +2472,9 @@ def update(
             # Restore user-specific settings after sync
             _restore_user_settings(project_path, preserved_settings)
 
+            # Clean deprecated settings from settings.json
+            _clean_deprecated_settings(project_path)
+
             console.print("   [green]✅ .claude/ update complete[/green]")
             console.print("   [green]✅ .moai/ update complete (specs/reports preserved)[/green]")
             console.print("   [green]🔄 CLAUDE.md merge complete[/green]")
@@ -2621,6 +2668,7 @@ def update(
             if not _sync_templates(project_path, force, yes):
                 raise TemplateSyncError("Template sync returned False")
             _restore_user_settings(project_path, preserved_settings)
+            _clean_deprecated_settings(project_path)
             console.print("   [green]✓ Template sync complete[/green]")
         except TemplateSyncError:
             console.print("[red]Error: Template sync failed[/red]")
