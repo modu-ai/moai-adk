@@ -944,7 +944,7 @@ def _register_hook_in_settings() -> bool:
     import json
 
     settings_file = Path.home() / ".claude" / "settings.json"
-    hook_command = f"python3 {Path.home()}/.claude/hooks/moai/session_end__rank_submit.py"
+    hook_command = f"bash -l -c 'python3 {Path.home()}/.claude/hooks/moai/session_end__rank_submit.py'"
 
     try:
         # Load existing settings or create new
