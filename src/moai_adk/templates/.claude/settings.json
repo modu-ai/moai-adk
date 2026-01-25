@@ -59,7 +59,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "uv run --no-sync moai-adk statusline",
+    "command": "{{HOOK_SHELL_PREFIX}}uv run --no-sync moai-adk statusline{{HOOK_SHELL_SUFFIX}}",
     "padding": 0,
     "refreshInterval": 300
   },
