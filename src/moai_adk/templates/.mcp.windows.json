@@ -17,12 +17,7 @@
     },
     "stitch": {
       "command": "cmd",
-      "args": [
-        "/c",
-        "npx",
-        "-y",
-        "stitch-mcp"
-      ],
+      "args": ["/c", "npx", "-y", "stitch-mcp"],
       "env": {
         "GOOGLE_CLOUD_PROJECT": "YOUR_PROJECT_ID"
       }
