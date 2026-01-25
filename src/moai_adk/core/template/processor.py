@@ -547,8 +547,10 @@ class TemplateProcessor:
 
         # Note: {{ }} patterns are handled by sanitization, not validation
 
-        # Check for empty values
-        if not value.strip():
+        # Check for empty values (except for special hook variables that can be empty)
+        # HOOK_SHELL_PREFIX and HOOK_SHELL_SUFFIX are intentionally empty on Windows
+        empty_allowed_vars = {"HOOK_SHELL_PREFIX", "HOOK_SHELL_SUFFIX"}
+        if not value.strip() and key not in empty_allowed_vars:
             return False
 
         return True
@@ -1503,8 +1505,22 @@ class TemplateProcessor:
         self.merger.merge_gitignore(src, dst)
 
     def _copy_mcp_json(self, silent: bool = False) -> None:
-        """.mcp.json copy (smart merge with existing MCP server configuration)."""
-        src = self.template_root / ".mcp.json"
+        """.mcp.json copy (smart merge with existing MCP server configuration).
+
+        On Windows, uses .mcp.windows.json template which has correct cmd /c args format.
+        On Unix, uses .mcp.json template which has correct shell -l -c args format.
+        """
+        is_windows = platform.system().lower() == "windows"
+
+        # Select appropriate template based on platform
+        if is_windows:
+            src = self.template_root / ".mcp.windows.json"
+            if not src.exists():
+                # Fallback to regular .mcp.json if Windows-specific doesn't exist
+                src = self.template_root / ".mcp.json"
+        else:
+            src = self.template_root / ".mcp.json"
+
         dst = self.target_path / ".mcp.json"
 
         if not src.exists():
@@ -1531,16 +1547,19 @@ class TemplateProcessor:
             try:
                 self._merge_mcp_json(tmp_path, dst)
                 if not silent:
-                    console.print("   🔄 .mcp.json merged (user MCP servers preserved)")
+                    platform_note = "Windows" if is_windows else "Unix"
+                    console.print(f"   🔄 .mcp.json merged ({platform_note} format, user MCP servers preserved)")
             finally:
                 tmp_path.unlink(missing_ok=True)
         else:
             # Write substituted content directly
             dst.write_text(substituted_content, encoding="utf-8", errors="replace")
             if not silent:
-                console.print("   ✅ .mcp.json copy complete")
+                platform_note = "Windows" if is_windows else "Unix"
+                console.print(f"   ✅ .mcp.json copy complete ({platform_note} format)")
 
-        # Apply Windows platform adaptation after copy/merge
+        # Legacy: Apply Windows platform adaptation for npx commands (backward compatibility)
+        # This handles cases where template still uses "command": "npx" directly
         self._adapt_mcp_config_for_windows(dst, silent)
 
     def _adapt_mcp_config_for_windows(self, mcp_path: Path, silent: bool = False) -> None:
