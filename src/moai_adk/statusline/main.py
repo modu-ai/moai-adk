@@ -212,14 +212,15 @@ def extract_context_window(session_context: dict) -> dict:
         Dict with:
         - used_percentage: Percentage of context window used (0.0-100.0)
         - remaining_percentage: Percentage of context window remaining (0.0-100.0)
+        - tokens_used: Estimated tokens used
+        - tokens_max: Context window size
 
     Note:
         Priority (following Claude Code documentation):
-        1. Calculate from current_usage tokens (most accurate)
-        2. If current_usage is null/empty, return 0% (session start state)
-
-        This follows the "Advanced Approach" from Claude Code docs which
-        explicitly returns 0% when current_usage is not available.
+        1. Use pre-calculated used_percentage/remaining_percentage from Claude Code
+           (most accurate - accounts for auto-compact, output token reservation, etc.)
+        2. If not available, calculate from current_usage tokens
+        3. If current_usage is null/empty, return 0% (session start state)
 
     Reference: https://code.claude.com/docs/en/statusline
     """
@@ -229,12 +230,32 @@ def extract_context_window(session_context: dict) -> dict:
     if not context_info:
         return {"used_percentage": 0.0, "remaining_percentage": 100.0, "tokens_used": 0, "tokens_max": 200000}
 
-    # Get context window size for calculation
+    # Get context window size
     context_size = context_info.get("context_window_size", 200000)
+
+    # Priority 1: Use pre-calculated percentages from Claude Code
+    # These values already account for auto-compact thresholds, output token reservation, etc.
+    pre_calc_used = context_info.get("used_percentage")
+    pre_calc_remaining = context_info.get("remaining_percentage")
+
+    if pre_calc_used is not None:
+        # Claude Code provided pre-calculated values - use them (most accurate)
+        used_pct = float(pre_calc_used)
+        remaining_pct = float(pre_calc_remaining) if pre_calc_remaining is not None else (100.0 - used_pct)
+
+        # Estimate tokens from percentage (for display purposes)
+        tokens_used = int(context_size * used_pct / 100.0)
+
+        return {
+            "used_percentage": used_pct,
+            "remaining_percentage": remaining_pct,
+            "tokens_used": tokens_used,
+            "tokens_max": context_size,
+        }
+
+    # Priority 2: Calculate from current_usage tokens
     current_usage = context_info.get("current_usage")
 
-    # Primary method: Calculate from current_usage tokens (most accurate)
-    # Reference: Claude Code docs "Advanced Approach"
     if current_usage and isinstance(current_usage, dict):
         # Calculate from actual tokens
         # Note: Claude Code docs use input_tokens + cache tokens (not output_tokens)
@@ -255,8 +276,7 @@ def extract_context_window(session_context: dict) -> dict:
             "tokens_max": context_size,
         }
 
-    # Fallback: If current_usage is null/empty, return 0%
-    # This follows Claude Code docs: "echo '[$MODEL] Context: 0%'" when USAGE is null
+    # Priority 3: Fallback - If nothing available, return 0%
     # Session start state = no tokens used yet
     return {"used_percentage": 0.0, "remaining_percentage": 100.0, "tokens_used": 0, "tokens_max": context_size}
 
