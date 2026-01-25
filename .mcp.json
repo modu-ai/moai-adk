@@ -2,17 +2,17 @@
   "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/.mcp.schema.json",
   "mcpServers": {
     "context7": {
-      "$comment": "Cross-platform MCP configuration - see .mcp.windows.json for Windows",
-      "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp@latest"]
+      "$comment": "Using shell wrapper to load PATH (fixes npx bash function issue). Use .mcp.windows.json for Windows.",
+      "command": "${SHELL:-/bin/bash}",
+      "args": ["-l", "-c", "exec npx -y @upstash/context7-mcp@latest"]
     },
     "sequential-thinking": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+      "command": "${SHELL:-/bin/bash}",
+      "args": ["-l", "-c", "exec npx -y @modelcontextprotocol/server-sequential-thinking"]
     },
     "stitch": {
-      "command": "npx",
-      "args": ["-y", "stitch-mcp"],
+      "command": "${SHELL:-/bin/bash}",
+      "args": ["-l", "-c", "exec npx -y stitch-mcp"],
       "env": {
         "GOOGLE_CLOUD_PROJECT": "moai-adk"
       }
