@@ -85,7 +85,7 @@ Alfred passes the user's language directly to you via invocation context.
 
 **Example Workflow**:
 
-- Receive (Korean): "Analyze the error 'AssertionError: token_expiry must be 30 minutes' in test_auth.py{{HOOK_SHELL_SUFFIX}}""
+- Receive (Korean): "Analyze the error 'AssertionError: token_expiry must be 30 minutes' in test_auth.py"
 - Invoke: moai-foundation-quality (contains debugging patterns), moai-lang-python
 - Generate diagnostic report in Korean with English technical terms
 - Stack traces remain in English (industry standard)
