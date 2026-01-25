@@ -1,3 +1,81 @@
+# v1.8.13 - Statusline Context Window Fix (2026-01-26)
+
+## Summary
+
+Patch release improving statusline context window calculation accuracy.
+
+**Key Fix**:
+- Fixed statusline context window percentage to use Claude Code's pre-calculated values
+
+**Impact**:
+- Context window display now accounts for auto-compact and output token reservation
+- More accurate remaining token information
+
+## Fixed
+
+### Statusline Context Window Calculation
+
+- **fix(statusline)**: Use Claude Code's pre-calculated context percentages (2dacecb7)
+  - Priority 1: Use `used_percentage`/`remaining_percentage` from Claude Code (most accurate)
+  - Priority 2: Calculate from `current_usage` tokens (fallback)
+  - Priority 3: Return 0% when no data available (session start)
+  - Ensures accuracy when auto-compact is enabled or output tokens are reserved
+  - Files: `src/moai_adk/statusline/main.py`
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.8.13 - Statusline Context Window 수정 (2026-01-26)
+
+## 요약
+
+Statusline context window 계산 정확도 개선 패치 릴리즈.
+
+**주요 수정**:
+- Statusline context window 퍼센티지가 Claude Code의 사전 계산 값을 사용하도록 수정
+
+**영향**:
+- Context window 표시가 auto-compact와 출력 토큰 예약을 고려
+- 더 정확한 남은 토큰 정보 제공
+
+## 수정됨
+
+### Statusline Context Window 계산
+
+- **fix(statusline)**: Claude Code의 사전 계산된 context percentage 사용 (2dacecb7)
+  - 우선순위 1: Claude Code의 `used_percentage`/`remaining_percentage` 사용 (가장 정확)
+  - 우선순위 2: `current_usage` 토큰으로 계산 (fallback)
+  - 우선순위 3: 데이터 없을 때 0% 반환 (세션 시작)
+  - Auto-compact 활성화 또는 출력 토큰 예약 시 정확도 보장
+  - 파일: `src/moai_adk/statusline/main.py`
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.8.12 - Hook Format Update & Login Command (2026-01-26)
 
 ## Summary
