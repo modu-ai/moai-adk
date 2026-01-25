@@ -2041,7 +2041,8 @@ The `CLAUDE.md` file generated in your project root after MoAI-ADK installation 
 ├── CLAUDE.md              ← Alfred execution directive (don't modify)
 ├── CLAUDE.local.md        ← Personal custom directives (optional)
 ├── .claude/
-│   ├── settings.json      ← Claude Code settings
+│   ├── settings.json      ← Claude Code settings (overwritten on update)
+│   ├── settings.local.json← Personal settings (optional, not overwritten)
 │   ├── agents/            ← Sub-agent definitions
 │   ├── commands/          ← Slash commands
 │   └── skills/            ← Skill definitions
@@ -2121,6 +2122,49 @@ touch CLAUDE.local.md
 | **Updates**      | Managed by MoAI             | Managed by user                        |
 | **Git**          | Committed                   | Optional (.gitignore possible)         |
 | **Priority**     | Base rules                  | Additional/override rules              |
+
+### Settings Customization: Use settings.local.json
+
+Since v1.8.12, `.claude/settings.json` is **always overwritten** during `moai update`. For personal customizations, create a **`settings.local.json`** file.
+
+```bash
+# Create settings.local.json in .claude/ directory
+touch .claude/settings.local.json
+```
+
+**settings.local.json Example**:
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1",
+    "MY_CUSTOM_VAR": "value"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(docker:*)",
+      "Bash(kubectl:*)"
+    ]
+  }
+}
+```
+
+**Benefits**:
+
+- No conflicts with `settings.json` updates
+- Personal environment variables and permissions
+- Can add to `.gitignore` for private settings
+
+### settings.json vs settings.local.json
+
+| Aspect           | settings.json               | settings.local.json                    |
+| ---------------- | --------------------------- | -------------------------------------- |
+| **Purpose**      | MoAI default settings       | Personal/project additional settings   |
+| **Modification** | Not recommended             | Freely modifiable                      |
+| **Updates**      | Overwritten by MoAI         | Managed by user                        |
+| **Git**          | Committed                   | Optional (.gitignore possible)         |
+| **Priority**     | Base settings               | Merged on top (higher priority)        |
 
 ### Core Rules (HARD Rules)
 

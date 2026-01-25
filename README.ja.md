@@ -1974,7 +1974,8 @@ MoAI-ADKインストール後、プロジェクトルートに生成される`CL
 ├── CLAUDE.md              ← Alfred実行指示書（変更非推奨）
 ├── CLAUDE.local.md        ← 個人カスタム指示（オプション）
 ├── .claude/
-│   ├── settings.json      ← Claude Code設定
+│   ├── settings.json      ← Claude Code設定（更新時に上書き）
+│   ├── settings.local.json← 個人設定（オプション、上書きなし）
 │   ├── agents/            ← サブエージェント定義
 │   ├── commands/          ← スラッシュコマンド
 │   └── skills/            ← スキル定義
@@ -2054,6 +2055,49 @@ touch CLAUDE.local.md
 | **アップデート** | MoAIが自動管理 | ユーザーが直接管理        |
 | **Git**          | コミット対象   | 選択（.gitignore可能）    |
 | **優先順位**     | 基本ルール     | 追加/オーバーライドルール |
+
+### 設定カスタマイズ：settings.local.jsonの使用
+
+v1.8.12から、`.claude/settings.json`は`moai update`実行時に**常に上書き**されます。個人設定が必要な場合は**`settings.local.json`**ファイルを作成してください。
+
+```bash
+# .claude/ディレクトリにsettings.local.jsonを作成
+touch .claude/settings.local.json
+```
+
+**settings.local.json例**：
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1",
+    "MY_CUSTOM_VAR": "value"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(docker:*)",
+      "Bash(kubectl:*)"
+    ]
+  }
+}
+```
+
+**利点**：
+
+- `settings.json`アップデートと競合なし
+- 個人環境変数と権限設定可能
+- `.gitignore`に追加してプライベート設定維持可能
+
+### settings.json vs settings.local.json
+
+| 区分             | settings.json     | settings.local.json          |
+| ---------------- | ----------------- | ---------------------------- |
+| **目的**         | MoAIデフォルト設定 | 個人/プロジェクト追加設定    |
+| **変更**         | 非推奨            | 自由に変更可能               |
+| **アップデート** | MoAIが上書き      | ユーザーが直接管理           |
+| **Git**          | コミット対象      | 選択（.gitignore可能）       |
+| **優先順位**     | 基本設定          | マージ（高い優先順位）       |
 
 ### コアルール（HARD Rules）
 

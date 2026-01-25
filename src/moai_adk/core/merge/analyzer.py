@@ -7,7 +7,6 @@ This module replaces the previous Claude Code headless implementation
 with a pure Python approach that works without API keys.
 """
 
-import json
 import logging
 import re
 from difflib import unified_diff
@@ -301,14 +300,13 @@ class MergeAnalyzer:
         }
 
     def _analyze_settings_json(self, file_name: str, info: dict[str, Any]) -> dict[str, Any]:
-        """Analyze settings.json with JSON structure comparison
+        """Analyze settings.json - always use template (overwrite strategy)
 
-        Focuses on permissions, env variables, and hooks.
+        Since v1.8.12, settings.json is always overwritten from template.
+        Users should use settings.local.json for personal customizations.
         """
-        risk_score = 0
-        notes = []
-        recommendation = "use_template"
-
+        # Always use template - no merge needed
+        # User customizations should go in settings.local.json
         if not info["backup_exists"]:
             return {
                 "filename": file_name,
@@ -329,68 +327,16 @@ class MergeAnalyzer:
                 "note": "Critical: settings.json removed from template",
             }
 
-        # Parse JSON
-        try:
-            backup_json = json.loads(info["backup_content"]) if info["backup_content"] else {}
-            template_json = json.loads(info["template_content"]) if info["template_content"] else {}
-        except json.JSONDecodeError as e:
-            logger.warning(f"JSON parse error in {file_name}: {e}")
-            return {
-                "filename": file_name,
-                "changes": "JSON parse error",
-                "recommendation": "smart_merge",
-                "conflict_severity": "high",
-                "risk_score": self.RISK_FACTORS["breaking_schema_change"],
-                "note": f"JSON parse error: {e}",
-            }
-
-        # Compare critical keys
-        critical_changes = []
-
-        # Check env variables
-        backup_env = backup_json.get("env", {})
-        template_env = template_json.get("env", {})
-
-        removed_env = set(backup_env.keys()) - set(template_env.keys())
-        if removed_env:
-            critical_changes.append(f"Env vars removed: {', '.join(removed_env)}")
-            risk_score += self.RISK_FACTORS["env_variable_removed"] * len(removed_env)
-
-        # Check permissions
-        backup_deny = set(backup_json.get("permissions", {}).get("deny", []))
-        template_deny = set(template_json.get("permissions", {}).get("deny", []))
-
-        if backup_deny != template_deny:
-            critical_changes.append("Permission deny list changed")
-            risk_score += self.RISK_FACTORS["permission_change"]
-
-        # Check hooks
-        backup_hooks = backup_json.get("hooks", {})
-        template_hooks = template_json.get("hooks", {})
-
-        if backup_hooks != template_hooks:
-            critical_changes.append("Hooks configuration changed")
-            risk_score += 1
-
-        # Determine recommendation
-        if critical_changes:
-            recommendation = "smart_merge"
-            notes.extend(critical_changes)
-        elif info["diff_lines"] > 20:
-            recommendation = "smart_merge"
-        else:
-            recommendation = "use_template"
-
-        severity = self._risk_score_to_severity(risk_score)
-
+        # Always recommend use_template - settings.json is always overwritten
+        # Personal settings should be in settings.local.json
         return {
             "filename": file_name,
-            "changes": f"{info['diff_lines']} lines changed",
-            "recommendation": recommendation,
-            "conflict_severity": severity,
-            "risk_score": risk_score,
-            "note": "; ".join(notes) if notes else "Settings update available",
-            "critical_changes": critical_changes,
+            "changes": f"{info['diff_lines']} lines changed" if info["diff_lines"] > 0 else "No changes",
+            "recommendation": "use_template",
+            "conflict_severity": "low",
+            "risk_score": 0,
+            "note": "Template will be applied (use settings.local.json for personal settings)",
+            "critical_changes": [],
         }
 
     def _analyze_config_yaml(self, file_name: str, info: dict[str, Any]) -> dict[str, Any]:

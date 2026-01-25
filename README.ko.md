@@ -1889,7 +1889,8 @@ MoAI-ADK 설치 후 프로젝트 루트에 생성되는 `CLAUDE.md`는 **Alfred(
 ├── CLAUDE.md              ← Alfred 실행 지침서 (수정 비권장)
 ├── CLAUDE.local.md        ← 개인 커스텀 지침 (선택사항)
 ├── .claude/
-│   ├── settings.json      ← Claude Code 설정
+│   ├── settings.json      ← Claude Code 설정 (업데이트 시 덮어쓰기)
+│   ├── settings.local.json← 개인 설정 (선택사항, 덮어쓰기 안됨)
 │   ├── agents/            ← 서브에이전트 정의
 │   ├── commands/          ← 슬래시 명령어
 │   └── skills/            ← 스킬 정의
@@ -1969,6 +1970,49 @@ touch CLAUDE.local.md
 | **업데이트** | MoAI가 자동 관리 | 사용자가 직접 관리      |
 | **Git**      | 커밋 대상        | 선택 (.gitignore 가능)  |
 | **우선순위** | 기본 규칙        | 추가/오버라이드 규칙    |
+
+### 설정 커스터마이징: settings.local.json 사용
+
+v1.8.12부터 `.claude/settings.json`은 `moai update` 실행 시 **항상 덮어쓰기**됩니다. 개인 설정이 필요한 경우 **`settings.local.json`** 파일을 생성하세요.
+
+```bash
+# .claude/ 디렉토리에 settings.local.json 생성
+touch .claude/settings.local.json
+```
+
+**settings.local.json 예시**:
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1",
+    "MY_CUSTOM_VAR": "value"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(docker:*)",
+      "Bash(kubectl:*)"
+    ]
+  }
+}
+```
+
+**장점**:
+
+- `settings.json` 업데이트와 충돌 없음
+- 개인 환경 변수 및 권한 설정 가능
+- `.gitignore`에 추가하여 비공개 설정 유지 가능
+
+### settings.json vs settings.local.json
+
+| 구분         | settings.json       | settings.local.json        |
+| ------------ | ------------------- | -------------------------- |
+| **목적**     | MoAI 기본 설정      | 개인/프로젝트 추가 설정    |
+| **수정**     | 비권장              | 자유롭게 수정              |
+| **업데이트** | MoAI가 덮어쓰기     | 사용자가 직접 관리         |
+| **Git**      | 커밋 대상           | 선택 (.gitignore 가능)     |
+| **우선순위** | 기본 설정           | 병합됨 (높은 우선순위)     |
 
 ### 핵심 규칙 (HARD Rules)
 
