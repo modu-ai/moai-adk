@@ -1,3 +1,281 @@
+# v1.8.8 - Cross-Platform Hook Compatibility & MoAI Rank Integration (2026-01-25)
+
+## Summary
+
+This patch release completes the cross-platform hook system by extending template variable substitution to `.mcp.json` files and unifying agent hook patterns. It also introduces the MoAI Rank session tracking system for optional token usage analytics.
+
+**Key Changes**:
+- MCP template variable substitution during `moai update`
+- Unified agent hook patterns with `{{HOOK_SHELL_PREFIX}}/{{HOOK_SHELL_SUFFIX}}`
+- MoAI Rank session submission hook (opt-in)
+- Improved release workflow documentation
+
+**Impact**:
+- `.mcp.json` now correctly applies `{{MCP_SHELL}}` substitution
+- All agent hooks use consistent cross-platform template variables
+- Optional token usage tracking with privacy protection
+
+## Breaking Changes
+
+None. This release is backward compatible with v1.8.7.
+
+## Fixed
+
+### Template Variable Substitution
+
+- **fix**: Apply template variable substitution to .mcp.json during copy (edebab9b)
+  - Modified `_copy_mcp_json()` in `processor.py` to apply `_substitute_variables()`
+  - Resolves issue where `{{MCP_SHELL}}` was not being replaced during `moai update`
+  - Ensures MCP server commands use correct shell wrapper on all platforms
+  - File: `src/moai_adk/core/template/processor.py`
+
+### Agent Hook Pattern Unification
+
+- **fix(template)**: Use HOOK_SHELL_PREFIX/SUFFIX template variables in agent hooks (991f68eb)
+  - Replaced hardcoded `bash -l -c` with `{{HOOK_SHELL_PREFIX}}` template variable
+  - Fixed path format: removed extra slash after `{{PROJECT_DIR}}`
+  - Removed incorrectly placed `{{HOOK_SHELL_SUFFIX}}` from documentation examples
+  - Affected agents: builder-agent, builder-command, builder-plugin, builder-skill, expert-debug, expert-frontend, expert-refactoring, manager-ddd, manager-quality
+  - Files: `src/moai_adk/templates/.claude/agents/moai/*.md` (9 agents)
+
+- **fix(local)**: Apply correct hook shell wrapper pattern to local agents (62c43e7e)
+  - Synced local agent files with template fixes
+  - Updated 11 local agent files with `${SHELL:-/bin/bash} -l -c` pattern
+  - Files: `.claude/agents/moai/*.md`
+
+## Added
+
+### MoAI Rank Integration
+
+- **feat(hook)**: Add MoAI Rank session submission hook (f3a5fbf3)
+  - New `session_end__rank_submit.py` hook for token usage tracking
+  - Privacy-preserving: Only submits token counts (input, output, cache)
+  - Project paths anonymized using one-way hashing
+  - No code or conversation content transmitted
+  - Opt-out via `~/.moai/rank/config.yaml` exclude_projects setting
+  - File: `.claude/hooks/moai/session_end__rank_submit.py`
+
+## Changed
+
+### Documentation
+
+- **docs(release)**: Improve version file checklist in 99-release command (cb9e0fc2)
+  - Updated version files checklist: 4 files → 5 files
+  - Added template `system.yaml` to checklist
+  - Included visual checklist for release verification
+  - File: `.claude/commands/moai/99-release.md`
+
+- **style**: Auto-fix lint and format issues (5dd388de)
+  - Automated formatting fixes via ruff
+  - 1 file reformatted, 221 files unchanged
+
+## Technical Details
+
+### Template Variable Substitution Flow
+
+**Before (v1.8.7 - Issue)**:
+```python
+# _copy_mcp_json() used direct file copy
+shutil.copy2(src, dst)  # No template substitution!
+```
+
+**After (v1.8.8 - Fixed)**:
+```python
+# _copy_mcp_json() applies template variable substitution
+template_content = src.read_text()
+substituted_content, warnings = self._substitute_variables(template_content)
+dst.write_text(substituted_content)
+```
+
+### Agent Hook Pattern Evolution
+
+**v1.8.7 Pattern (Inconsistent)**:
+```yaml
+hooks:
+  PostToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - command: "bash -l -c 'uv run \"{{PROJECT_DIR}}\"/.claude/hooks/...'"
+```
+
+**v1.8.8 Pattern (Unified)**:
+```yaml
+hooks:
+  PostToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - command: "{{HOOK_SHELL_PREFIX}}uv run \"{{PROJECT_DIR}}\".claude/hooks/...{{HOOK_SHELL_SUFFIX}}"
+```
+
+### Files Modified
+
+- `src/moai_adk/core/template/processor.py`: Template substitution logic
+- `src/moai_adk/templates/.claude/agents/moai/*.md`: 9 agent templates
+- `.claude/agents/moai/*.md`: 11 local agents
+- `.claude/hooks/moai/session_end__rank_submit.py`: New hook
+- `.claude/commands/moai/99-release.md`: Release workflow doc
+
+## Quality
+
+- Smoke Tests: 6/6 passed (100% pass rate)
+- Ruff check: All checks passed
+- Ruff format: 1 file reformatted
+- Mypy: Success (no issues found in 174 source files)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.8.8 - 크로스 플랫폼 후크 호환성 및 MoAI Rank 통합 (2026-01-25)
+
+## 요약
+
+이 패치 릴리스는 템플릿 변수 치환을 `.mcp.json` 파일로 확장하고 에이전트 후크 패턴을 통합하여 크로스 플랫폼 후크 시스템을 완성합니다. 또한 선택적 토큰 사용량 분석을 위한 MoAI Rank 세션 추적 시스템을 도입합니다.
+
+**주요 변경사항**:
+- `moai update` 시 MCP 템플릿 변수 치환
+- `{{HOOK_SHELL_PREFIX}}/{{HOOK_SHELL_SUFFIX}}`로 통합된 에이전트 후크 패턴
+- MoAI Rank 세션 제출 후크 (선택 사항)
+- 릴리스 워크플로우 문서 개선
+
+**영향**:
+- `.mcp.json`이 이제 `{{MCP_SHELL}}` 치환을 올바르게 적용
+- 모든 에이전트 후크가 일관된 크로스 플랫폼 템플릿 변수 사용
+- 개인정보 보호가 적용된 선택적 토큰 사용량 추적
+
+## Breaking Changes
+
+없음. 이 릴리스는 v1.8.7과 하위 호환됩니다.
+
+## 수정됨
+
+### 템플릿 변수 치환
+
+- **fix**: 복사 시 .mcp.json에 템플릿 변수 치환 적용 (edebab9b)
+  - `processor.py`의 `_copy_mcp_json()`을 수정하여 `_substitute_variables()` 적용
+  - `moai update` 시 `{{MCP_SHELL}}`이 대체되지 않던 문제 해결
+  - 모든 플랫폼에서 MCP 서버 명령이 올바른 셸 래퍼 사용 보장
+  - 파일: `src/moai_adk/core/template/processor.py`
+
+### 에이전트 후크 패턴 통합
+
+- **fix(template)**: 에이전트 후크에서 HOOK_SHELL_PREFIX/SUFFIX 템플릿 변수 사용 (991f68eb)
+  - 하드코딩된 `bash -l -c`를 `{{HOOK_SHELL_PREFIX}}` 템플릿 변수로 교체
+  - 경로 형식 수정: `{{PROJECT_DIR}}` 뒤의 불필요한 슬래시 제거
+  - 문서 예시에서 잘못 배치된 `{{HOOK_SHELL_SUFFIX}}` 제거
+  - 영향받는 에이전트: builder-agent, builder-command, builder-plugin, builder-skill, expert-debug, expert-frontend, expert-refactoring, manager-ddd, manager-quality
+  - 파일: `src/moai_adk/templates/.claude/agents/moai/*.md` (9개 에이전트)
+
+- **fix(local)**: 로컬 에이전트에 올바른 후크 셸 래퍼 패턴 적용 (62c43e7e)
+  - 템플릿 수정 사항으로 로컬 에이전트 파일 동기화
+  - `${SHELL:-/bin/bash} -l -c` 패턴으로 11개 로컬 에이전트 파일 업데이트
+  - 파일: `.claude/agents/moai/*.md`
+
+## 추가됨
+
+### MoAI Rank 통합
+
+- **feat(hook)**: MoAI Rank 세션 제출 후크 추가 (f3a5fbf3)
+  - 토큰 사용량 추적을 위한 새로운 `session_end__rank_submit.py` 후크
+  - 개인정보 보호: 토큰 카운트만 제출 (input, output, cache)
+  - 일방향 해싱을 사용한 프로젝트 경로 익명화
+  - 코드나 대화 내용 전송 안 함
+  - `~/.moai/rank/config.yaml` exclude_projects 설정으로 옵트아웃 가능
+  - 파일: `.claude/hooks/moai/session_end__rank_submit.py`
+
+## 변경됨
+
+### 문서
+
+- **docs(release)**: 99-release 명령의 버전 파일 체크리스트 개선 (cb9e0fc2)
+  - 버전 파일 체크리스트 업데이트: 4개 파일 → 5개 파일
+  - 체크리스트에 템플릿 `system.yaml` 추가
+  - 릴리스 검증을 위한 시각적 체크리스트 포함
+  - 파일: `.claude/commands/moai/99-release.md`
+
+- **style**: 린트 및 포맷 문제 자동 수정 (5dd388de)
+  - ruff를 통한 자동 포맷팅 수정
+  - 1개 파일 재포맷, 221개 파일 변경 없음
+
+## 기술 세부사항
+
+### 템플릿 변수 치환 흐름
+
+**이전 (v1.8.7 - 문제)**:
+```python
+# _copy_mcp_json()이 직접 파일 복사 사용
+shutil.copy2(src, dst)  # 템플릿 치환 없음!
+```
+
+**이후 (v1.8.8 - 수정됨)**:
+```python
+# _copy_mcp_json()이 템플릿 변수 치환 적용
+template_content = src.read_text()
+substituted_content, warnings = self._substitute_variables(template_content)
+dst.write_text(substituted_content)
+```
+
+### 에이전트 후크 패턴 진화
+
+**v1.8.7 패턴 (일관성 없음)**:
+```yaml
+hooks:
+  PostToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - command: "bash -l -c 'uv run \"{{PROJECT_DIR}}\"/.claude/hooks/...'"
+```
+
+**v1.8.8 패턴 (통합됨)**:
+```yaml
+hooks:
+  PostToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - command: "{{HOOK_SHELL_PREFIX}}uv run \"{{PROJECT_DIR}}\".claude/hooks/...{{HOOK_SHELL_SUFFIX}}"
+```
+
+### 수정된 파일
+
+- `src/moai_adk/core/template/processor.py`: 템플릿 치환 로직
+- `src/moai_adk/templates/.claude/agents/moai/*.md`: 9개 에이전트 템플릿
+- `.claude/agents/moai/*.md`: 11개 로컬 에이전트
+- `.claude/hooks/moai/session_end__rank_submit.py`: 새 후크
+- `.claude/commands/moai/99-release.md`: 릴리스 워크플로우 문서
+
+## 품질
+
+- Smoke 테스트: 6/6 통과 (100% 통과율)
+- Ruff check: 모든 검사 통과
+- Ruff format: 1개 파일 재포맷
+- Mypy: 성공 (174개 소스 파일에서 문제 없음)
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.8.7 - Dynamic Shell Detection for MCP Servers (2026-01-25)
 
 ## Summary
