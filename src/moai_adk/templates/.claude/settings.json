@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -l -c 'uv run \"{{PROJECT_DIR}}/.claude/hooks/moai/session_end__auto_cleanup.py\"'"
+            "command": "bash -l -c 'uv run \"{{PROJECT_DIR}}/.claude/hooks/moai/session_end__auto_cleanup.py\" &'"
           }
         ]
       }

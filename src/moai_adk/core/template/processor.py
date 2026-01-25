@@ -897,51 +897,18 @@ class TemplateProcessor:
                 continue
 
             if item.is_file():
-                # Skip platform-specific settings files that don't match current OS
-                # These files should only be processed when they match the current platform
-                if item.name == "settings.json.windows" and platform.system() != "Windows":
-                    continue  # Skip Windows-specific file on non-Windows
-                if item.name == "settings.json.unix" and platform.system() == "Windows":
-                    continue  # Skip Unix-specific file on Windows
-
-                # Smart merge for settings.json (platform-specific file selection)
-                # Priority: settings.json.windows (on Windows) > settings.json.unix (on Unix) > settings.json
-                is_settings_file = False
-                settings_src = None
-
-                if item.name == "settings.json.windows" and platform.system() == "Windows":
-                    is_settings_file = True
-                    settings_src = item
-                elif item.name == "settings.json.unix" and platform.system() != "Windows":
-                    is_settings_file = True
-                    settings_src = item
-                elif item.name == "settings.json":
-                    # Fallback: only use if platform-specific file doesn't exist
-                    windows_file = item.parent / "settings.json.windows"
-                    unix_file = item.parent / "settings.json.unix"
-                    if not windows_file.exists() and not unix_file.exists():
-                        is_settings_file = True
-                        settings_src = item
-                    else:
-                        # Platform-specific file exists, skip this fallback file
-                        # to prevent overwriting the merged result
-                        continue
-
-                if is_settings_file and settings_src:
-                    # Destination is always settings.json (not the platform-specific name)
+                # Smart merge for settings.json (cross-platform, unified file)
+                if item.name == "settings.json":
                     settings_dst = dst / "settings.json"
-                    self._merge_settings_json(settings_src, settings_dst)
-                    # Apply variable substitution to merged settings.json (for cross-platform Hook paths)
+                    self._merge_settings_json(item, settings_dst)
+                    # Apply variable substitution to merged settings.json
                     if self.context:
                         content = settings_dst.read_text(encoding="utf-8", errors="replace")
                         content, file_warnings = self._substitute_variables(content)
                         settings_dst.write_text(content, encoding="utf-8", errors="replace")
                         all_warnings.extend(file_warnings)
                     if not silent:
-                        console.print(
-                            f"   🔄 settings.json merged (from {item.name}, "
-                            f"Hook paths configured for {platform.system()})"
-                        )
+                        console.print("   🔄 settings.json merged (cross-platform)")
                 # Smart merge for config.json
                 elif item.name == "config.json":
                     self._merge_config_json(item, dst_item)
