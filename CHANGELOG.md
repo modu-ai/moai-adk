@@ -1,3 +1,163 @@
+# v1.8.7 - Dynamic Shell Detection for MCP Servers (2026-01-25)
+
+## Summary
+
+This patch release extends the shell wrapper system to MCP (Model Context Protocol) servers, fixing connection failures after `moai update` on systems where `npx` is defined as a bash function. The release also implements automatic cleanup of deprecated settings during updates.
+
+**Key Changes**:
+- Dynamic shell detection for MCP servers: `{{MCP_SHELL}}` template variable
+- Automatic removal of deprecated `CLAUDE_CODE_MAX_OUTPUT_TOKENS` setting
+- Runtime shell detection: `${SHELL:-/bin/bash}` (Unix) / `cmd` (Windows)
+
+**Impact**:
+- MCP server connection issues resolved on systems with npx bash function wrappers (nvm users)
+- Clean migration path for deprecated settings
+- Consistent shell behavior between hooks and MCP servers
+
+## Breaking Changes
+
+None. This release is backward compatible with v1.8.6.
+
+## Added
+
+### MCP Server Shell Wrapper System
+
+- **feat**: Implement dynamic shell detection for MCP servers (ee7e1adb)
+  - New template variable: `{{MCP_SHELL}}`
+  - Unix: `${SHELL:-/bin/bash}` (runtime shell detection)
+  - Windows: `cmd` (system PATH auto-loaded)
+  - Files: `src/moai_adk/cli/commands/update.py`, `src/moai_adk/templates/.mcp.json`
+
+- **feat(mcp)**: Apply MCP_SHELL template variable to Windows config (db6a10cc)
+  - Consistent template variable usage across platforms
+  - File: `src/moai_adk/templates/.mcp.windows.json`
+
+### Deprecated Settings Cleanup
+
+- **feat(update)**: Remove deprecated CLAUDE_CODE_MAX_OUTPUT_TOKENS setting (f3532755)
+  - Automatic cleanup during `moai update`
+  - Non-blocking: warns on failure but doesn't abort update
+  - Applies to both `--templates-only` and normal update paths
+  - File: `src/moai_adk/cli/commands/update.py`
+
+## Fixed
+
+### MCP Server Connection Issues
+
+- **fix(mcp)**: Use shell wrapper for MCP server npx commands to fix PATH issues (106f139d)
+  - Resolves "Failed to reconnect" errors after `moai update`
+  - Fixes npx bash function wrapper loading (nvm compatibility)
+  - Pattern: `/bin/bash -l -c "exec npx ..."`
+  - File: `src/moai_adk/templates/.mcp.json`
+
+## Changed
+
+### Documentation
+
+- **docs(mcp)**: Improve Windows MCP configuration comments and args format (3ea10c0f)
+  - Clarified PATH loading behavior on Windows
+  - Updated args format for consistency
+  - File: `src/moai_adk/templates/.mcp.windows.json`
+
+- **sync**: Apply dynamic shell detection to local .mcp.json (c1339e42)
+  - Updated local development environment to match template pattern
+  - File: `.mcp.json`
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.8.7 - MCP 서버 동적 셸 감지 (2026-01-25)
+
+## 요약
+
+이 패치 릴리스는 셸 래퍼 시스템을 MCP(Model Context Protocol) 서버로 확장하여, `npx`가 bash 함수로 정의된 시스템에서 `moai update` 후 발생하는 연결 실패 문제를 해결합니다. 또한 업데이트 시 deprecated 설정의 자동 정리 기능을 구현했습니다.
+
+**주요 변경사항**:
+- MCP 서버용 동적 셸 감지: `{{MCP_SHELL}}` 템플릿 변수
+- Deprecated `CLAUDE_CODE_MAX_OUTPUT_TOKENS` 설정 자동 제거
+- 런타임 셸 감지: `${SHELL:-/bin/bash}` (Unix) / `cmd` (Windows)
+
+**영향**:
+- npx bash 함수 래퍼가 있는 시스템(nvm 사용자)에서 MCP 서버 연결 문제 해결
+- Deprecated 설정에 대한 깔끔한 마이그레이션 경로
+- 후크와 MCP 서버 간 일관된 셸 동작
+
+## Breaking Changes
+
+없음. 이 릴리스는 v1.8.6과 하위 호환됩니다.
+
+## 추가됨
+
+### MCP 서버 셸 래퍼 시스템
+
+- **feat**: MCP 서버용 동적 셸 감지 구현 (ee7e1adb)
+  - 새 템플릿 변수: `{{MCP_SHELL}}`
+  - Unix: `${SHELL:-/bin/bash}` (런타임 셸 감지)
+  - Windows: `cmd` (시스템 PATH 자동 로드)
+  - 파일: `src/moai_adk/cli/commands/update.py`, `src/moai_adk/templates/.mcp.json`
+
+- **feat(mcp)**: Windows 설정에 MCP_SHELL 템플릿 변수 적용 (db6a10cc)
+  - 플랫폼 간 일관된 템플릿 변수 사용
+  - 파일: `src/moai_adk/templates/.mcp.windows.json`
+
+### Deprecated 설정 정리
+
+- **feat(update)**: Deprecated CLAUDE_CODE_MAX_OUTPUT_TOKENS 설정 제거 (f3532755)
+  - `moai update` 시 자동 정리
+  - Non-blocking: 실패 시 경고만 표시, 업데이트 중단 안 함
+  - `--templates-only` 및 일반 업데이트 경로 모두 적용
+  - 파일: `src/moai_adk/cli/commands/update.py`
+
+## 수정됨
+
+### MCP 서버 연결 문제
+
+- **fix(mcp)**: PATH 문제 해결을 위해 MCP 서버 npx 명령에 셸 래퍼 사용 (106f139d)
+  - `moai update` 후 "Failed to reconnect" 오류 해결
+  - npx bash 함수 래퍼 로딩 수정 (nvm 호환성)
+  - 패턴: `/bin/bash -l -c "exec npx ..."`
+  - 파일: `src/moai_adk/templates/.mcp.json`
+
+## 변경됨
+
+### 문서
+
+- **docs(mcp)**: Windows MCP 설정 주석 및 args 형식 개선 (3ea10c0f)
+  - Windows에서 PATH 로딩 동작 명확화
+  - 일관성을 위한 args 형식 업데이트
+  - 파일: `src/moai_adk/templates/.mcp.windows.json`
+
+- **sync**: 로컬 .mcp.json에 동적 셸 감지 적용 (c1339e42)
+  - 템플릿 패턴과 일치하도록 로컬 개발 환경 업데이트
+  - 파일: `.mcp.json`
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.8.6 - Universal Cross-Platform Shell Wrapper (2026-01-25)
 
 ## Summary
