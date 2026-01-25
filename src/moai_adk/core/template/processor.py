@@ -1510,13 +1510,32 @@ class TemplateProcessor:
         if not src.exists():
             return
 
+        # Read template content and apply variable substitution
+        template_content = src.read_text(encoding="utf-8", errors="replace")
+        substituted_content, warnings = self._substitute_variables(template_content)
+
+        # Show warnings if any
+        for warning in warnings:
+            if not silent:
+                console.print(f"[yellow]⚠️ {warning}[/yellow]")
+
         # Merge with existing .mcp.json when present (preserve user-added MCP servers)
         if dst.exists():
-            self._merge_mcp_json(src, dst)
-            if not silent:
-                console.print("   🔄 .mcp.json merged (user MCP servers preserved)")
+            # Write substituted template to temporary file for merging
+            import tempfile
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as tmp:
+                tmp.write(substituted_content)
+                tmp_path = Path(tmp.name)
+
+            try:
+                self._merge_mcp_json(tmp_path, dst)
+                if not silent:
+                    console.print("   🔄 .mcp.json merged (user MCP servers preserved)")
+            finally:
+                tmp_path.unlink(missing_ok=True)
         else:
-            shutil.copy2(src, dst)
+            # Write substituted content directly
+            dst.write_text(substituted_content, encoding="utf-8", errors="replace")
             if not silent:
                 console.print("   ✅ .mcp.json copy complete")
 
