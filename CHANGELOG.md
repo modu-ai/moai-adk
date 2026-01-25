@@ -1,3 +1,297 @@
+# v1.8.4 - Hook PATH Fix for WSL & Cross-Platform Compatibility (2026-01-25)
+
+## Summary
+
+This patch release completely resolves **Issue #296** (moai update PATH loading issues) by implementing login shell execution for all hooks, ensuring PATH environment variables are correctly loaded on WSL, macOS, Linux, and Windows Git Bash.
+
+**Key Changes**:
+- All hooks now use `bash -l -c` wrapper for PATH loading
+- MoAI Rank hooks automatically updated during `moai update`
+- Settings.json consolidation for simplified maintenance
+- Complete cross-platform compatibility (WSL/macOS/Linux/Windows)
+
+**Reference**: Issue #296
+
+## Fixed
+
+### Hook PATH Loading Issues
+
+- **fix(hooks)**: Use login shell for hooks to ensure PATH is loaded (e1777b94)
+  - All template hooks now use `bash -l -c` wrapper pattern
+  - Ensures `~/.bashrc`, `~/.zshrc`, and `.bash_profile` are loaded
+  - Resolves `command not found: uv` errors in non-interactive shells
+  - File: `src/moai_adk/templates/.claude/settings.json`
+
+- **fix(hooks)**: Update agent hooks to use login shell for PATH loading (80602d5d)
+  - Updated all agent hook commands with `bash -l -c` wrapper
+  - Affected agents: expert-frontend, expert-security, expert-backend, manager-quality, builder-*
+  - Files: `src/moai_adk/templates/.claude/agents/moai/*.md` (12 agents updated)
+
+- **fix(rank)**: Update moai rank SessionEnd hook to use bash login shell (84cf8f02)
+  - MoAI Rank installation now registers hooks with `bash -l -c` wrapper
+  - File: `src/moai_adk/rank/hook.py`
+
+## Changed
+
+### Settings Configuration
+
+- **refactor(settings)**: Consolidate platform-specific settings into unified settings.json (c3020305)
+  - Removed: `settings.json.unix`, `settings.json.windows`
+  - Unified: Single `settings.json` with cross-platform compatibility
+  - Simplifies maintenance and reduces duplication
+  - Files: `src/moai_adk/templates/.claude/settings.json`
+
+### Documentation
+
+- **docs(hooks)**: Add hook development guidelines and sync local agents (38cd4d6c)
+  - New section in `CLAUDE.local.md`: Hook Development Guidelines
+  - Documents bash -l -c pattern usage
+  - Provides examples for future hook development
+  - File: `CLAUDE.local.md`
+
+## Added
+
+### Automatic Hook Migration
+
+- **feat(update)**: Auto-update moai rank hook command during moai update (550be2f3)
+  - `moai update` now automatically converts old hook commands to `bash -l -c` format
+  - Existing users automatically benefit from PATH fix
+  - No manual re-installation required
+  - Displays confirmation message on successful update
+  - File: `src/moai_adk/cli/commands/update.py`
+
+## Technical Details
+
+### Hook Command Pattern
+
+**Before (Issue #296 - PATH not loaded)**:
+```json
+{
+  "command": "python3 ~/.claude/hooks/moai/session_end__rank_submit.py"
+}
+```
+
+**After (PATH correctly loaded)**:
+```json
+{
+  "command": "bash -l -c 'python3 ~/.claude/hooks/moai/session_end__rank_submit.py'"
+}
+```
+
+### Cross-Platform Compatibility
+
+| Platform | Shell | Loaded Files | Status |
+|----------|-------|--------------|--------|
+| macOS | bash | `.bash_profile`, `.bashrc` | ✅ Fixed |
+| macOS | zsh | `.zprofile`, `.zshenv` | ✅ Fixed |
+| Linux | bash | `.bash_profile`, `.bashrc` | ✅ Fixed |
+| WSL | bash | `.bash_profile`, `.bashrc` | ✅ Fixed |
+| Windows Git Bash | bash | `.bash_profile`, `.bashrc` | ✅ Fixed |
+
+### Files Modified
+
+- `src/moai_adk/templates/.claude/settings.json`: All hooks updated with `bash -l -c`
+- `src/moai_adk/templates/.claude/agents/moai/*.md`: 12 agents updated
+- `src/moai_adk/rank/hook.py`: MoAI Rank hook installation updated
+- `src/moai_adk/cli/commands/update.py`: Auto-migration logic added
+- `CLAUDE.local.md`: Hook development guidelines added
+
+## Migration Guide
+
+### For New Users (Fresh Install)
+
+```bash
+# Install MoAI-ADK
+uv tool install moai-adk
+
+# Initialize project
+moai init
+
+# MoAI Rank install (optional)
+moai rank install  # Hooks automatically use bash -l -c
+```
+
+### For Existing Users (Upgrade from v1.8.3 or earlier)
+
+```bash
+# Update MoAI-ADK
+uv tool install moai-adk
+
+# Update project templates - hooks automatically converted
+moai update
+```
+
+**Note**: No manual intervention required. The `moai update` command automatically updates existing hook commands to use the `bash -l -c` pattern.
+
+## Quality
+
+- Smoke Tests: 6/6 passed (100% pass rate)
+- Ruff: All checks passed
+- Ruff format: 222 files unchanged
+- Mypy: Success (no issues found in 174 source files)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool install moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.8.4 - WSL 및 크로스 플랫폼 호환성을 위한 Hook PATH 수정 (2026-01-25)
+
+## 요약
+
+이 패치 릴리스는 모든 hook에 로그인 셸 실행을 구현하여 **Issue #296** (moai update PATH 로딩 문제)을 완전히 해결하며, WSL, macOS, Linux, Windows Git Bash에서 PATH 환경 변수가 올바르게 로드되도록 보장합니다.
+
+**주요 변경사항**:
+- 모든 hook이 PATH 로딩을 위해 `bash -l -c` 래퍼 사용
+- `moai update` 실행 시 MoAI Rank hook 자동 업데이트
+- 유지보수 간소화를 위한 Settings.json 통합
+- 완전한 크로스 플랫폼 호환성 (WSL/macOS/Linux/Windows)
+
+**참조**: Issue #296
+
+## 수정됨
+
+### Hook PATH 로딩 문제
+
+- **fix(hooks)**: PATH 로딩을 위해 로그인 셸 사용 (e1777b94)
+  - 모든 템플릿 hook이 `bash -l -c` 래퍼 패턴 사용
+  - `~/.bashrc`, `~/.zshrc`, `.bash_profile` 로드 보장
+  - Non-interactive 셸에서 `command not found: uv` 에러 해결
+  - 파일: `src/moai_adk/templates/.claude/settings.json`
+
+- **fix(hooks)**: PATH 로딩을 위해 에이전트 hook을 로그인 셸로 업데이트 (80602d5d)
+  - 모든 에이전트 hook 명령을 `bash -l -c` 래퍼로 업데이트
+  - 영향받는 에이전트: expert-frontend, expert-security, expert-backend, manager-quality, builder-*
+  - 파일: `src/moai_adk/templates/.claude/agents/moai/*.md` (12개 에이전트 업데이트)
+
+- **fix(rank)**: bash 로그인 셸을 사용하도록 moai rank SessionEnd hook 업데이트 (84cf8f02)
+  - MoAI Rank 설치 시 `bash -l -c` 래퍼로 hook 등록
+  - 파일: `src/moai_adk/rank/hook.py`
+
+## 변경됨
+
+### Settings 구성
+
+- **refactor(settings)**: 플랫폼별 설정을 통합 settings.json으로 통합 (c3020305)
+  - 제거됨: `settings.json.unix`, `settings.json.windows`
+  - 통합됨: 크로스 플랫폼 호환성을 갖춘 단일 `settings.json`
+  - 유지보수 간소화 및 중복 제거
+  - 파일: `src/moai_adk/templates/.claude/settings.json`
+
+### 문서화
+
+- **docs(hooks)**: hook 개발 가이드라인 추가 및 로컬 에이전트 동기화 (38cd4d6c)
+  - `CLAUDE.local.md`에 새 섹션: Hook 개발 가이드라인
+  - bash -l -c 패턴 사용 문서화
+  - 향후 hook 개발을 위한 예제 제공
+  - 파일: `CLAUDE.local.md`
+
+## 추가됨
+
+### 자동 Hook 마이그레이션
+
+- **feat(update)**: moai update 실행 시 moai rank hook 명령 자동 업데이트 (550be2f3)
+  - `moai update`가 기존 hook 명령을 `bash -l -c` 형식으로 자동 변환
+  - 기존 사용자가 PATH 수정 자동 적용
+  - 수동 재설치 불필요
+  - 성공적인 업데이트 시 확인 메시지 표시
+  - 파일: `src/moai_adk/cli/commands/update.py`
+
+## 기술 세부사항
+
+### Hook 명령 패턴
+
+**이전 (Issue #296 - PATH 로드 안 됨)**:
+```json
+{
+  "command": "python3 ~/.claude/hooks/moai/session_end__rank_submit.py"
+}
+```
+
+**이후 (PATH 올바르게 로드됨)**:
+```json
+{
+  "command": "bash -l -c 'python3 ~/.claude/hooks/moai/session_end__rank_submit.py'"
+}
+```
+
+### 크로스 플랫폼 호환성
+
+| 플랫폼 | 셸 | 로드되는 파일 | 상태 |
+|--------|------|--------------|------|
+| macOS | bash | `.bash_profile`, `.bashrc` | ✅ 수정됨 |
+| macOS | zsh | `.zprofile`, `.zshenv` | ✅ 수정됨 |
+| Linux | bash | `.bash_profile`, `.bashrc` | ✅ 수정됨 |
+| WSL | bash | `.bash_profile`, `.bashrc` | ✅ 수정됨 |
+| Windows Git Bash | bash | `.bash_profile`, `.bashrc` | ✅ 수정됨 |
+
+### 수정된 파일
+
+- `src/moai_adk/templates/.claude/settings.json`: 모든 hook을 `bash -l -c`로 업데이트
+- `src/moai_adk/templates/.claude/agents/moai/*.md`: 12개 에이전트 업데이트
+- `src/moai_adk/rank/hook.py`: MoAI Rank hook 설치 업데이트
+- `src/moai_adk/cli/commands/update.py`: 자동 마이그레이션 로직 추가
+- `CLAUDE.local.md`: Hook 개발 가이드라인 추가
+
+## 마이그레이션 가이드
+
+### 새 사용자 (새로 설치)
+
+```bash
+# MoAI-ADK 설치
+uv tool install moai-adk
+
+# 프로젝트 초기화
+moai init
+
+# MoAI Rank 설치 (선택사항)
+moai rank install  # hook이 자동으로 bash -l -c 사용
+```
+
+### 기존 사용자 (v1.8.3 이하에서 업그레이드)
+
+```bash
+# MoAI-ADK 업데이트
+uv tool install moai-adk
+
+# 프로젝트 템플릿 업데이트 - hook 자동 변환
+moai update
+```
+
+**참고**: 수동 개입이 필요하지 않습니다. `moai update` 명령이 기존 hook 명령을 `bash -l -c` 패턴으로 자동 업데이트합니다.
+
+## 품질
+
+- Smoke 테스트: 6/6 통과 (100% 통과율)
+- Ruff: 모든 검사 통과
+- Ruff format: 222개 파일 변경 없음
+- Mypy: 성공 (174개 소스 파일에서 문제 없음)
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool install moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.8.3 - WSL Support Restoration & Cross-Platform Path Handling (2026-01-26)
 
 ## Summary
