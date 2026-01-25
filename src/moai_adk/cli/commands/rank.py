@@ -1,7 +1,7 @@
 """MoAI Rank CLI commands.
 
 Commands for interacting with the MoAI Rank leaderboard service:
-- register: Connect GitHub account via OAuth
+- login: Connect GitHub account via OAuth (alias: register)
 - status: Show current rank, statistics, and hook status
 - logout: Remove stored credentials
 - exclude: Exclude a project from session tracking (use --list to view)
@@ -57,16 +57,16 @@ def rank() -> None:
 @click.option(
     "--no-sync",
     is_flag=True,
-    help="Skip syncing existing sessions after registration",
+    help="Skip syncing existing sessions after login",
 )
 @click.option(
     "--background-sync",
     "-b",
     is_flag=True,
-    help="Sync existing sessions in background after registration",
+    help="Sync existing sessions in background after login",
 )
-def register(no_sync: bool, background_sync: bool) -> None:
-    """Register with MoAI Rank via GitHub OAuth.
+def login(no_sync: bool, background_sync: bool) -> None:
+    """Login to MoAI Rank via GitHub OAuth.
 
     Opens your browser to authorize with GitHub.
     Your API key will be stored securely in ~/.moai/rank/credentials.json
@@ -76,21 +76,21 @@ def register(no_sync: bool, background_sync: bool) -> None:
     from moai_adk.rank.auth import OAuthHandler
     from moai_adk.rank.config import RankConfig
 
-    # Check if already registered
+    # Check if already logged in
     if RankConfig.has_credentials():
         creds = RankConfig.load_credentials()
         if creds:
-            console.print(f"[yellow]Already registered as [bold]{creds.username}[/bold][/yellow]")
-            if not click.confirm("Do you want to re-register?"):
+            console.print(f"[yellow]Already logged in as [bold]{creds.username}[/bold][/yellow]")
+            if not click.confirm("Do you want to re-login?"):
                 return
 
     console.print()
     console.print(
         Panel(
-            "[cyan]MoAI Rank Registration[/cyan]\n\n"
+            "[cyan]MoAI Rank Login[/cyan]\n\n"
             "This will open your browser to authorize with GitHub.\n"
             "After authorization, your API key will be stored securely.",
-            title="[bold]Registration[/bold]",
+            title="[bold]Login[/bold]",
             border_style="cyan",
         )
     )
@@ -105,10 +105,10 @@ def register(no_sync: bool, background_sync: bool) -> None:
         console.print()
         console.print(
             Panel(
-                f"[green]Successfully registered as [bold]{creds.username}[/bold][/green]\n\n"
+                f"[green]Successfully logged in as [bold]{creds.username}[/bold][/green]\n\n"
                 f"API Key: [dim]{creds.api_key[:20]}...[/dim]\n"
                 f"Stored in: [dim]~/.moai/rank/credentials.json[/dim]",
-                title="[bold green]Registration Complete[/bold green]",
+                title="[bold green]Login Complete[/bold green]",
                 border_style="green",
             )
         )
@@ -156,13 +156,22 @@ def register(no_sync: bool, background_sync: bool) -> None:
         console.print("[dim]Run [cyan]moai rank status[/cyan] to see your stats.[/dim]")
 
     def on_error(error):
-        console.print(f"\n[red]Registration failed: {error}[/red]")
+        console.print(f"\n[red]Login failed: {error}[/red]")
 
     console.print("[cyan]Opening browser for GitHub authorization...[/cyan]")
     console.print("[dim]Waiting for authorization (timeout: 5 minutes)...[/dim]")
     console.print()
 
     handler.start_oauth_flow(on_success=on_success, on_error=on_error, timeout=300)
+
+
+# Alias for backward compatibility
+@rank.command(name="register", hidden=True)
+@click.option("--no-sync", is_flag=True, help="Skip syncing existing sessions after login")
+@click.option("--background-sync", "-b", is_flag=True, help="Sync existing sessions in background after login")
+def register_alias(no_sync: bool, background_sync: bool) -> None:
+    """Alias for 'login' command (deprecated, use 'moai rank login' instead)."""
+    login.callback(no_sync=no_sync, background_sync=background_sync)
 
 
 def _get_rank_medal(position: int) -> str:
@@ -196,7 +205,7 @@ def status() -> None:
 
     if not RankConfig.has_credentials():
         console.print("[yellow]Not registered with MoAI Rank.[/yellow]")
-        console.print("[dim]Run [cyan]moai rank register[/cyan] to connect your account.[/dim]")
+        console.print("[dim]Run [cyan]moai rank login[/cyan] to connect your account.[/dim]")
         return
 
     try:
@@ -266,11 +275,11 @@ def status() -> None:
         console.print(footer)
 
         if not is_hook_installed():
-            console.print("[dim]Run [cyan]moai rank register[/cyan] to install the hook.[/dim]")
+            console.print("[dim]Run [cyan]moai rank login[/cyan] to install the hook.[/dim]")
 
     except AuthenticationError as e:
         console.print(f"[red]Authentication failed: {e}[/red]")
-        console.print("[dim]Your API key may be invalid. Try [cyan]moai rank register[/cyan] again.[/dim]")
+        console.print("[dim]Your API key may be invalid. Try [cyan]moai rank login[/cyan] again.[/dim]")
     except RankClientError as e:
         console.print(f"[red]Failed to fetch status: {e}[/red]")
 
@@ -335,7 +344,7 @@ def sync(background: bool) -> None:
 
     if not RankConfig.has_credentials():
         console.print("[yellow]Not registered with MoAI Rank.[/yellow]")
-        console.print("[dim]Run [cyan]moai rank register[/cyan] first.[/dim]")
+        console.print("[dim]Run [cyan]moai rank login[/cyan] first.[/dim]")
         return
 
     if background:

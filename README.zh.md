@@ -2213,7 +2213,7 @@ Commands:
 ### 步骤1: GitHub OAuth注册
 
 ```bash
-❯ moai rank register
+❯ moai rank login
 
 ╭──────────────────────────── Registration ────────────────────────────╮
 │ MoAI Rank Registration                                               │

@@ -9,7 +9,7 @@ at rank.mo.ai.kr. It includes:
 - Session hook for automatic token usage submission
 
 Commands:
-- moai rank register: Register via GitHub OAuth
+- moai rank login: Register via GitHub OAuth
 - moai rank status: Show user's current rank and stats
 - moai rank leaderboard: Display the leaderboard
 """

@@ -1315,10 +1315,10 @@ def prompt_hook_installation(console: Any = None, confirm_func: Any = None) -> b
             console.print()
             return True
         else:
-            console.print("[yellow]⚠ Failed to install hook. You can try later with: moai rank register[/yellow]")
+            console.print("[yellow]⚠ Failed to install hook. You can try later with: moai rank login[/yellow]")
             return False
     else:
-        console.print("[dim]Skipped. You can install later with: moai rank register[/dim]")
+        console.print("[dim]Skipped. You can install later with: moai rank login[/dim]")
         return False
 
 

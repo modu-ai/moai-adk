@@ -2150,7 +2150,7 @@ Commands:
 ### Step 1: GitHub OAuth登録
 
 ```bash
-❯ moai rank register
+❯ moai rank login
 
 ╭──────────────────────────── Registration ────────────────────────────╮
 │ MoAI Rank Registration                                               │

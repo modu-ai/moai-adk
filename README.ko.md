@@ -2065,7 +2065,7 @@ Commands:
 ### Step 1: GitHub OAuth 등록
 
 ```bash
-❯ moai rank register
+❯ moai rank login
 
 ╭──────────────────────────── Registration ────────────────────────────╮
 │ MoAI Rank Registration                                               │
