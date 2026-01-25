@@ -942,9 +942,19 @@ def _register_hook_in_settings() -> bool:
         True if successfully registered, False otherwise
     """
     import json
+    import platform
 
     settings_file = Path.home() / ".claude" / "settings.json"
-    hook_command = f"bash -l -c 'python3 {Path.home()}/.claude/hooks/moai/session_end__rank_submit.py'"
+    hook_script = Path.home() / ".claude" / "hooks" / "moai" / "session_end__rank_submit.py"
+
+    # Cross-platform hook command (CLAUDE.local.md Section 19-20)
+    # Windows: Direct execution (PATH loaded from system environment)
+    # macOS/Linux: Use login shell to load PATH from shell config files
+    if platform.system() == "Windows":
+        hook_command = f'uv run python "{hook_script}"'
+    else:
+        # Use ${SHELL:-/bin/bash} to respect user's default shell (bash/zsh)
+        hook_command = f"${{SHELL:-/bin/bash}} -l -c 'uv run python \"{hook_script}\"'"
 
     try:
         # Load existing settings or create new
@@ -1126,6 +1136,93 @@ def is_hook_installed() -> bool:
 
     except (OSError, json.JSONDecodeError):
         return False
+
+
+def validate_and_fix_hook() -> tuple[bool, str]:
+    """Validate and fix the global rank hook configuration.
+
+    Checks if the hook is properly configured in ~/.claude/settings.json
+    and fixes any issues (e.g., incorrect shell command format).
+
+    This function should be called during `moai update` to ensure
+    the hook command uses the correct cross-platform format.
+
+    Returns:
+        Tuple of (was_fixed, message):
+        - was_fixed: True if the hook was fixed, False if no fix needed
+        - message: Description of what was done
+    """
+    import json
+    import platform
+
+    hook_file = Path.home() / ".claude" / "hooks" / "moai" / "session_end__rank_submit.py"
+    settings_file = Path.home() / ".claude" / "settings.json"
+
+    # Check if hook file exists
+    if not hook_file.exists():
+        return False, "Rank hook not installed"
+
+    # Check if settings.json exists
+    if not settings_file.exists():
+        return False, "Settings file not found"
+
+    try:
+        with open(settings_file, encoding="utf-8", errors="replace") as f:
+            settings = json.load(f)
+
+        if "hooks" not in settings or "SessionEnd" not in settings["hooks"]:
+            return False, "No SessionEnd hooks configured"
+
+        # Find our hook and check its command format
+        session_end_hooks = settings["hooks"]["SessionEnd"]
+        was_fixed = False
+
+        # Generate the correct command format
+        if platform.system() == "Windows":
+            correct_command = f'uv run python "{hook_file}"'
+        else:
+            correct_command = f"${{SHELL:-/bin/bash}} -l -c 'uv run python \"{hook_file}\"'"
+
+        for i, hook_config in enumerate(session_end_hooks):
+            command = hook_config.get("command", "")
+
+            # Check if this is our rank hook
+            if "session_end__rank_submit.py" not in command:
+                continue
+
+            # Check if the command format is incorrect
+            # Old formats that need fixing:
+            # - "bash -l -c 'python3 ...'"
+            # - "python3 ..."
+            needs_fix = False
+
+            if platform.system() != "Windows":
+                # On Unix, should use ${SHELL:-/bin/bash} and uv run
+                if "bash -l -c" in command and "${SHELL" not in command:
+                    needs_fix = True
+                elif "uv run" not in command:
+                    needs_fix = True
+            else:
+                # On Windows, should use uv run directly
+                if "bash" in command.lower():
+                    needs_fix = True
+                elif "uv run" not in command:
+                    needs_fix = True
+
+            if needs_fix:
+                session_end_hooks[i]["command"] = correct_command
+                was_fixed = True
+
+        if was_fixed:
+            # Write back the fixed settings
+            with open(settings_file, "w", encoding="utf-8", errors="replace") as f:
+                json.dump(settings, f, indent=2, ensure_ascii=False)
+            return True, "Fixed rank hook command format"
+
+        return False, "Rank hook already correctly configured"
+
+    except (OSError, json.JSONDecodeError) as e:
+        return False, f"Error checking hook: {e}"
 
 
 def prompt_hook_installation(console: Any = None, confirm_func: Any = None) -> bool:

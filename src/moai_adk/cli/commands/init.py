@@ -463,10 +463,16 @@ def init(
             except ImportError:
                 pass  # lsp_setup module not available
 
-            # Prompt for MoAI Rank hook installation if eligible
+            # Validate and fix MoAI Rank hook if installed, or prompt for installation
             try:
-                from moai_adk.rank.hook import prompt_hook_installation
+                from moai_adk.rank.hook import prompt_hook_installation, validate_and_fix_hook
 
+                # First, check and fix existing hook configuration
+                was_fixed, fix_message = validate_and_fix_hook()
+                if was_fixed:
+                    console.print(f"\n[cyan]🔧 {fix_message}[/cyan]")
+
+                # Then, prompt for installation if not installed
                 prompt_hook_installation(console=console)
             except ImportError:
                 pass  # rank module not available
