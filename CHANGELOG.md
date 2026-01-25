@@ -1,3 +1,117 @@
+# v1.8.10 - Performance Optimization & Cross-Platform Fixes (2026-01-25)
+
+## Summary
+
+Minor release focused on performance optimization and cross-platform compatibility improvements. This release adds Claude Code environment variables for cost reduction and fixes statusLine command PATH loading.
+
+**Key Features**:
+- Performance optimization environment variables (reduce network overhead and token costs)
+- statusLine shell wrapper for reliable PATH loading
+- Improved tool search efficiency
+
+**Impact**:
+- Reduced API costs through disabled non-essential model calls
+- Faster response times with blocked non-essential traffic
+- Reliable statusLine execution on macOS/Linux
+
+## Breaking Changes
+
+None. This release is backward compatible with v1.8.9.
+
+## Added
+
+### Performance Optimization Environment Variables
+
+- **feat(env)**: Add performance optimization environment variables (030a7ad5)
+  - `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`: Block non-essential traffic (autoupdater, bug reports, telemetry)
+  - `DISABLE_NON_ESSENTIAL_MODEL_CALLS=1`: Prevent flavor text model calls, reduce token costs
+  - `ENABLE_TOOL_SEARCH`: Changed from `"1"` to `"auto:5"` for better efficiency (trigger at 5% context usage)
+  - Files: `src/moai_adk/templates/.claude/settings.json`, `.claude/settings.json`
+
+## Fixed
+
+### statusLine Shell Wrapper
+
+- **fix(statusline)**: Add shell wrapper to statusLine command for PATH loading (16b52dc1)
+  - Template: Use `{{HOOK_SHELL_PREFIX}}...{{HOOK_SHELL_SUFFIX}}`
+  - Local: Use `${SHELL:-/bin/bash} -l -c '...'`
+  - Ensures `uv` is found via login shell on macOS/Linux
+  - Windows: Direct execution (empty prefix/suffix)
+  - Fixes statusLine failures when PATH not loaded
+  - Files: `src/moai_adk/templates/.claude/settings.json`, `.claude/settings.json`
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.8.10 - 성능 최적화 및 크로스 플랫폼 수정 (2026-01-25)
+
+## 요약
+
+성능 최적화와 크로스 플랫폼 호환성 개선에 중점을 둔 마이너 릴리스입니다. Claude Code 환경변수를 추가하여 비용 절감 및 statusLine 명령 PATH 로딩을 수정했습니다.
+
+**주요 기능**:
+- 성능 최적화 환경변수 (네트워크 오버헤드 및 토큰 비용 감소)
+- statusLine 셸 래퍼로 안정적인 PATH 로딩
+- 개선된 도구 검색 효율성
+
+**영향**:
+- 불필요한 모델 호출 비활성화로 API 비용 절감
+- 불필요한 트래픽 차단으로 응답 시간 단축
+- macOS/Linux에서 안정적인 statusLine 실행
+
+## Breaking Changes
+
+없음. 이 릴리스는 v1.8.9와 하위 호환됩니다.
+
+## 추가됨
+
+### 성능 최적화 환경변수
+
+- **feat(env)**: 성능 최적화 환경변수 추가 (030a7ad5)
+  - `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`: 불필요한 트래픽 차단 (자동 업데이트, 버그 리포트, 텔레메트리)
+  - `DISABLE_NON_ESSENTIAL_MODEL_CALLS=1`: Flavor text 모델 호출 방지, 토큰 비용 절감
+  - `ENABLE_TOOL_SEARCH`: `"1"`에서 `"auto:5"`로 변경하여 효율성 개선 (컨텍스트 5% 사용 시 검색 시작)
+  - 파일: `src/moai_adk/templates/.claude/settings.json`, `.claude/settings.json`
+
+## 수정됨
+
+### statusLine 셸 래퍼
+
+- **fix(statusline)**: statusLine 명령에 PATH 로딩용 셸 래퍼 추가 (16b52dc1)
+  - 템플릿: `{{HOOK_SHELL_PREFIX}}...{{HOOK_SHELL_SUFFIX}}` 사용
+  - 로컬: `${SHELL:-/bin/bash} -l -c '...'` 사용
+  - macOS/Linux에서 로그인 셸을 통해 `uv`를 찾도록 보장
+  - Windows: 직접 실행 (빈 prefix/suffix)
+  - PATH가 로드되지 않을 때 statusLine 실패 수정
+  - 파일: `src/moai_adk/templates/.claude/settings.json`, `.claude/settings.json`
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.8.9 - Windows Platform Bug Fixes (2026-01-25)
 
 ## Summary
