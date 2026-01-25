@@ -551,6 +551,9 @@ def _sync_global_hooks() -> bool:
     Copies session_end__rank_submit.py from template to global hooks directory.
     This ensures that moai update keeps the global MoAI Rank hook up-to-date.
 
+    Also updates ~/.claude/settings.json hook command to use bash -l -c wrapper
+    for consistent PATH loading across all platforms.
+
     Returns:
         True if sync succeeded, False otherwise
     """
@@ -590,11 +593,45 @@ def _sync_global_hooks() -> bool:
             shutil.copy2(template_hook, global_hook)
             console.print("   [cyan]✓ Updated global MoAI Rank hook[/cyan]")
             logger.info(f"Updated global hook: {global_hook}")
-            return True
         except Exception as e:
             console.print(f"   [yellow]⚠️ Failed to update global hook: {e}[/yellow]")
             logger.warning(f"Failed to update global hook: {e}")
             return False
+
+        # Update hook command in ~/.claude/settings.json to use bash -l -c wrapper
+        settings_file = Path.home() / ".claude" / "settings.json"
+        if settings_file.exists():
+            try:
+                with open(settings_file, encoding="utf-8", errors="replace") as f:
+                    settings = json.load(f)
+
+                if "hooks" in settings and "SessionEnd" in settings["hooks"]:
+                    updated = False
+                    for hook_config in settings["hooks"]["SessionEnd"]:
+                        command = hook_config.get("command", "")
+                        # Check if this is the rank hook and needs updating
+                        if "session_end__rank_submit.py" in command and not command.startswith("bash -l -c"):
+                            # Update to bash -l -c wrapper format
+                            new_command = (
+                                f"bash -l -c 'python3 {Path.home()}/.claude/hooks/moai/session_end__rank_submit.py'"
+                            )
+                            hook_config["command"] = new_command
+                            updated = True
+                            logger.info("Updated hook command to use bash -l -c wrapper")
+
+                    if updated:
+                        # Save updated settings
+                        with open(settings_file, "w", encoding="utf-8") as f:
+                            json.dump(settings, f, indent=2, ensure_ascii=False)
+                        console.print("   [cyan]✓ Updated MoAI Rank hook command format[/cyan]")
+                        logger.info("Successfully updated hook command in settings.json")
+
+            except Exception as e:
+                logger.warning(f"Failed to update hook command in settings.json: {e}")
+                # Don't fail the whole operation if settings update fails
+                pass
+
+        return True
 
     except Exception as e:
         logger.warning(f"Error syncing global hooks: {e}")
