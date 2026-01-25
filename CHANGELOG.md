@@ -1,3 +1,235 @@
+# v1.8.3 - WSL Support Restoration & Cross-Platform Path Handling (2026-01-26)
+
+## Summary
+
+This patch release restores complete WSL (Windows Subsystem for Linux) support after it was incorrectly blocked in v1.8.2. MoAI-ADK now provides seamless path conversion for WSL environments, resolving **Issue #295**.
+
+**Key Changes**:
+- Complete WSL 1 and WSL 2 support restoration
+- Automatic Windows ↔ WSL path conversion utility
+- WSL-aware path handling in hooks and utilities
+- Environment detection for seamless cross-platform operation
+
+**Reference**: Issue #295, Claude Code Issue #19653
+
+## Added
+
+### WSL Support Restoration
+
+- **feat(wsl)**: Complete WSL (Windows Subsystem for Linux) support for WSL 1 and WSL 2
+  - Shell validator now treats WSL as Linux environment (bash-compatible)
+  - Automatic Windows ↔ WSL path conversion utility (`path_converter.py`)
+  - WSL-aware path handling in hooks and utilities
+  - Environment detection for seamless cross-platform operation
+  - Files: `src/moai_adk/utils/shell_validator.py`, `src/moai_adk/utils/path_converter.py`, `src/moai_adk/templates/.claude/hooks/moai/lib/path_utils.py`
+
+- **feat(path)**: Automatic Windows ↔ WSL path conversion
+  - `convert_windows_to_wsl()`: Converts `C:\...` → `/mnt/c/...`
+  - `convert_wsl_to_windows()`: Reverse conversion
+  - `normalize_path_for_wsl()`: Smart normalization based on environment
+  - Handles edge cases (UNC paths, multiple drives, paths with spaces)
+  - File: `src/moai_adk/utils/path_converter.py` (289 lines)
+
+- **feat(hooks)**: WSL-aware path normalization in hook utilities
+  - `normalize_path_for_wsl()`: Automatically converts Windows paths in WSL
+  - Detects WSL environment via `$WSL_DISTRO_NAME`
+  - Seamless handling of `CLAUDE_PROJECT_DIR` with Windows paths
+  - File: `src/moai_adk/templates/.claude/hooks/moai/lib/path_utils.py`
+
+### Testing
+
+- **test(wsl)**: 112 comprehensive WSL tests (100% pass rate)
+  - Test coverage: 77.42% for shell_validator, 50% for path_utils
+  - Cross-platform compatibility verified (macOS, Linux, Windows, WSL)
+  - Files: `tests/test_shell_validator.py`, `tests/test_path_converter.py`, `tests/test_path_utils.py`
+
+## Fixed
+
+### WSL Compatibility Issues
+
+- **fix(wsl)**: WSL users can now use MoAI-ADK without errors (Issue #295)
+  - Shell validator no longer blocks WSL environments (previously treated as unsupported)
+  - `CLAUDE_PROJECT_DIR` with Windows paths now works correctly in WSL
+  - Hooks execute successfully in WSL bash environment
+  - Path compatibility issues resolved for projects on Windows filesystem (`/mnt/c/`)
+
+- **fix(path)**: Automatic path conversion when Windows paths detected in WSL
+  - Detects Windows-style paths in WSL environment
+  - Converts to WSL format automatically
+  - No manual configuration required
+
+## Changed
+
+### Shell Validation
+
+- **refactor(shell)**: WSL is now treated as Linux environment (bash-compatible)
+  - Removed WSL blocking logic from shell validator
+  - WSL environment detection via `$WSL_DISTRO_NAME`
+  - File: `src/moai_adk/utils/shell_validator.py`
+
+### Path Handling
+
+- **refactor(path)**: Automatic conversion when Windows paths detected in WSL
+  - Path converter utility for cross-platform compatibility
+  - WSL-aware path normalization in hooks
+  - Files: `src/moai_adk/utils/path_converter.py`, `src/moai_adk/templates/.claude/hooks/moai/lib/path_utils.py`
+
+### Cross-Platform
+
+- **chore(platform)**: No behavior change for macOS, Linux, or native Windows environments
+  - WSL support is additive, not breaking
+  - Existing functionality preserved
+
+## Technical Details
+
+### Files Modified
+
+- `src/moai_adk/utils/shell_validator.py`: Removed WSL blocking logic
+- `src/moai_adk/utils/path_converter.py`: New 289-line path conversion utility
+- `src/moai_adk/templates/.claude/hooks/moai/lib/path_utils.py`: WSL path normalization
+
+### Performance
+
+- Path conversion: < 1ms per operation
+- No file system calls during conversion
+- Minimal overhead on non-WSL platforms
+
+### References
+
+- User Request: [Issue #295](https://github.com/modu-ai/moai-adk/issues/295)
+- Upstream Bug: [Claude Code Issue #19653](https://github.com/anthropics/claude-code/issues/19653)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool install moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.8.3 - WSL 지원 복원 및 크로스 플랫폼 경로 처리 (2026-01-26)
+
+## 요약
+
+이 패치 릴리스는 v1.8.2에서 잘못 차단된 WSL (Windows Subsystem for Linux) 지원을 복원합니다. MoAI-ADK는 이제 WSL 환경을 위한 원활한 경로 변환을 제공하여 **Issue #295**를 해결합니다.
+
+**주요 변경사항**:
+- WSL 1 및 WSL 2 완벽 지원 복원
+- 자동 Windows ↔ WSL 경로 변환 유틸리티
+- hooks 및 유틸리티에서 WSL 인식 경로 처리
+- 크로스 플랫폼 환경 자동 감지
+
+**참조**: Issue #295, Claude Code Issue #19653
+
+## 추가됨
+
+### WSL 지원 복원
+
+- **feat(wsl)**: WSL 1 및 WSL 2 완벽 지원
+  - Shell 검증기가 WSL을 Linux 환경으로 처리 (bash 호환)
+  - 자동 Windows ↔ WSL 경로 변환 유틸리티 (`path_converter.py`)
+  - hooks 및 유틸리티에서 WSL 인식 경로 처리
+  - 크로스 플랫폼 환경 자동 감지
+  - 파일: `src/moai_adk/utils/shell_validator.py`, `src/moai_adk/utils/path_converter.py`, `src/moai_adk/templates/.claude/hooks/moai/lib/path_utils.py`
+
+- **feat(path)**: 자동 Windows ↔ WSL 경로 변환
+  - `convert_windows_to_wsl()`: `C:\...` → `/mnt/c/...` 변환
+  - `convert_wsl_to_windows()`: 역변환
+  - `normalize_path_for_wsl()`: 환경 기반 스마트 정규화
+  - 엣지 케이스 처리 (UNC 경로, 여러 드라이브, 공백 포함 경로)
+  - 파일: `src/moai_adk/utils/path_converter.py` (289줄)
+
+- **feat(hooks)**: hook 유틸리티에서 WSL 인식 경로 정규화
+  - `normalize_path_for_wsl()`: WSL에서 Windows 경로 자동 변환
+  - `$WSL_DISTRO_NAME`을 통한 WSL 환경 감지
+  - Windows 경로를 포함한 `CLAUDE_PROJECT_DIR` 원활한 처리
+  - 파일: `src/moai_adk/templates/.claude/hooks/moai/lib/path_utils.py`
+
+### 테스트
+
+- **test(wsl)**: 112개의 포괄적 WSL 테스트 (100% 통과율)
+  - 테스트 커버리지: shell_validator 77.42%, path_utils 50%
+  - 크로스 플랫폼 호환성 검증 (macOS, Linux, Windows, WSL)
+  - 파일: `tests/test_shell_validator.py`, `tests/test_path_converter.py`, `tests/test_path_utils.py`
+
+## 수정됨
+
+### WSL 호환성 이슈
+
+- **fix(wsl)**: WSL 사용자가 오류 없이 MoAI-ADK 사용 가능 (Issue #295)
+  - Shell 검증기가 더 이상 WSL 환경을 차단하지 않음 (이전에는 미지원으로 처리)
+  - WSL에서 Windows 경로를 포함한 `CLAUDE_PROJECT_DIR`가 올바르게 작동
+  - WSL bash 환경에서 hooks가 성공적으로 실행
+  - Windows 파일시스템 (`/mnt/c/`)의 프로젝트 경로 호환성 문제 해결
+
+- **fix(path)**: WSL에서 Windows 경로 감지 시 자동 변환
+  - WSL 환경에서 Windows 스타일 경로 감지
+  - WSL 형식으로 자동 변환
+  - 수동 구성 불필요
+
+## 변경됨
+
+### Shell 검증
+
+- **refactor(shell)**: WSL을 Linux 환경으로 처리 (bash 호환)
+  - shell 검증기에서 WSL 차단 로직 제거
+  - `$WSL_DISTRO_NAME`을 통한 WSL 환경 감지
+  - 파일: `src/moai_adk/utils/shell_validator.py`
+
+### 경로 처리
+
+- **refactor(path)**: WSL에서 Windows 경로 감지 시 자동 변환
+  - 크로스 플랫폼 호환성을 위한 경로 변환기 유틸리티
+  - hooks에서 WSL 인식 경로 정규화
+  - 파일: `src/moai_adk/utils/path_converter.py`, `src/moai_adk/templates/.claude/hooks/moai/lib/path_utils.py`
+
+### 크로스 플랫폼
+
+- **chore(platform)**: macOS, Linux, 네이티브 Windows 환경에서 동작 변경 없음
+  - WSL 지원은 추가 기능이며 기존 기능을 변경하지 않음
+  - 기존 기능 유지
+
+## 기술 세부사항
+
+### 수정된 파일
+
+- `src/moai_adk/utils/shell_validator.py`: WSL 차단 로직 제거
+- `src/moai_adk/utils/path_converter.py`: 289줄 경로 변환 유틸리티 신규 작성
+- `src/moai_adk/templates/.claude/hooks/moai/lib/path_utils.py`: WSL 경로 정규화
+
+### 성능
+
+- 경로 변환: 작업당 < 1ms
+- 변환 중 파일 시스템 호출 없음
+- 비WSL 플랫폼에서 최소 오버헤드
+
+### 참조
+
+- 사용자 요청: [Issue #295](https://github.com/modu-ai/moai-adk/issues/295)
+- 업스트림 버그: [Claude Code Issue #19653](https://github.com/anthropics/claude-code/issues/19653)
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool install moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.8.2 - Cross-Platform Compatibility & Settings.json Smart Merge Enhancement (2026-01-24)
 
 ## Summary

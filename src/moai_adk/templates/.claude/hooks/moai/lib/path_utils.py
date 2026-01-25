@@ -6,6 +6,10 @@ Prevents .moai directory creation outside of project root.
 Environment Variables:
 - MOAI_PROJECT_ROOT: Override project root detection (absolute path)
 - CLAUDE_PROJECT_DIR: Claude Code project directory (fallback)
+
+WSL Support:
+- Automatically normalizes Windows paths to WSL format when running in WSL
+- Handles CLAUDE_PROJECT_DIR with Windows path format (C:\...) in WSL environment
 """
 
 from __future__ import annotations
@@ -13,6 +17,37 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import Optional
+
+try:
+    from moai_adk.utils.path_converter import normalize_path_for_wsl, is_wsl
+except ImportError:
+    # Fallback for when moai_adk is not installed
+    def is_wsl() -> bool:
+        """Check if running in WSL (Windows Subsystem for Linux)."""
+        return (
+            "WSL_DISTRO_NAME" in os.environ
+            or "WSLENV" in os.environ
+            or "WSL_INTEROP" in os.environ
+        )
+
+    def normalize_path_for_wsl(path: str) -> str:
+        """Basic WSL path normalization fallback."""
+        import re
+
+        if not path or not is_wsl():
+            return path
+
+        # Check for Windows drive letter
+        drive_pattern = re.compile(r"^([a-zA-Z]):[/\\](.*)$")
+        match = drive_pattern.match(path)
+
+        if match:
+            drive = match.group(1).lower()
+            rest = match.group(2).replace("\\", "/")
+            return f"/mnt/{drive}/{rest}"
+
+        return path
+
 
 # Project root markers (files/dirs that indicate project root)
 PROJECT_ROOT_MARKERS = [
@@ -36,7 +71,12 @@ def get_project_root_from_env() -> Optional[Path]:
 
     Checks in order:
     1. MOAI_PROJECT_ROOT - explicit override
-    2. CLAUDE_PROJECT_DIR - Claude Code's project directory
+    2. CLAUDE_PROJECT_DIR - Claude Code's project directory (WSL-normalized)
+
+    WSL Support:
+        In WSL environment, CLAUDE_PROJECT_DIR may contain Windows path format
+        (C:\Users\...). This function automatically converts to WSL format
+        (/mnt/c/Users/...) for compatibility with bash hooks.
 
     Returns:
         Path if valid directory found, None otherwise
@@ -51,6 +91,12 @@ def get_project_root_from_env() -> Optional[Path]:
     # Check CLAUDE_PROJECT_DIR (Claude Code sets this)
     claude_dir = os.environ.get("CLAUDE_PROJECT_DIR")
     if claude_dir:
+        # WSL: Normalize Windows paths to WSL format
+        # This handles cases where Claude Code sets CLAUDE_PROJECT_DIR
+        # to Windows path (C:\Users\...) in WSL environment
+        if is_wsl():
+            claude_dir = normalize_path_for_wsl(claude_dir)
+
         root_path = Path(claude_dir).resolve()
         if root_path.is_dir():
             return root_path

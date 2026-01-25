@@ -109,7 +109,7 @@ execution_mode:
 
 ## 1. 30秒安装
 
-> **⚠️ Windows用户**: MoAI-ADK **仅支持PowerShell**。**不支持** WSL(Windows Subsystem for Linux)和命令提示符(cmd.exe)。请使用PowerShell或Windows Terminal中的PowerShell。
+> **⚠️ Windows用户**: MoAI-ADK支持**PowerShell**和**WSL (Windows Subsystem for Linux)**。**不支持**命令提示符(cmd.exe)。请使用PowerShell、Windows Terminal或WSL。
 
 ### 🚀 方法1: 快速安装 (推荐)
 
@@ -305,6 +305,65 @@ cd your-existing-project
 moai init .
 # 现有文件保持不变
 ```
+
+### WSL (Windows Subsystem for Linux) 支持
+
+MoAI-ADK完全支持Windows 10和Windows 11上的**WSL 1**和**WSL 2**。
+
+#### 在WSL上安装
+
+```bash
+# 在WSL中安装MoAI-ADK
+uv tool install moai-adk
+
+# 初始化项目
+cd your-project-directory
+moai-adk init
+```
+
+#### 路径处理
+
+MoAI-ADK自动转换Windows和WSL路径格式:
+
+- **Windows路径**: `C:\Users\goos\project` → **WSL路径**: `/mnt/c/Users/goos/project`
+- 无需手动配置
+- 在Linux文件系统(`/home/user/`)和Windows文件系统(`/mnt/c/`)中均可无缝运行
+
+#### 最佳实践
+
+**推荐**: 将项目放置在Linux文件系统中以获得最佳性能
+```bash
+# ✅ 最佳性能
+cd ~/projects
+moai-adk init
+```
+
+**也支持**: Windows文件系统上的项目
+```bash
+# ✅ 可以运行,但可能有轻微的性能开销
+cd /mnt/c/Users/YourName/projects
+moai-adk init
+```
+
+#### WSL故障排除
+
+**验证WSL环境:**
+```bash
+# 检查是否在WSL中运行
+echo $WSL_DISTRO_NAME
+
+# 验证CLAUDE_PROJECT_DIR (由Claude Code设置)
+echo $CLAUDE_PROJECT_DIR
+```
+
+**路径问题:**
+- 如果钩子失败,请验证`CLAUDE_PROJECT_DIR`是否设置正确
+- MoAI-ADK会自动将Windows路径转换为WSL格式
+- 检查`.claude/settings.json`中的路径引用是否正确
+
+**相关Issue:**
+- [Issue #295: WSL Support Request](https://github.com/modu-ai/moai-adk/issues/295)
+- [Claude Code Issue #19653: WSL Path Handling](https://github.com/anthropics/claude-code/issues/19653)
 
 ---
 

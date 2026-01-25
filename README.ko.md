@@ -69,7 +69,7 @@ moai glm YOUR_API_KEY
 
 ## 1. 30초 설치
 
-> **⚠️ Windows 사용자**: MoAI-ADK는 **PowerShell만 지원**합니다. WSL(Windows Subsystem for Linux)과 명령 프롬프트(cmd.exe)는 **지원하지 않습니다**. PowerShell 또는 Windows Terminal에서 PowerShell을 사용해주세요.
+> **⚠️ Windows 사용자**: MoAI-ADK는 **PowerShell**과 **WSL (Windows Subsystem for Linux)**을 지원합니다. 명령 프롬프트(cmd.exe)는 **지원하지 않습니다**. PowerShell, Windows Terminal 또는 WSL을 사용해주세요.
 
 ### 🚀 방법 1: 빠른 설치 (권장)
 
@@ -262,6 +262,65 @@ cd your-existing-project
 moai init .
 # 기존 파일은 그대로 유지됩니다
 ```
+
+### WSL (Windows Subsystem for Linux) 지원
+
+MoAI-ADK는 Windows 10과 Windows 11에서 **WSL 1**과 **WSL 2**를 완벽하게 지원합니다.
+
+#### WSL에 설치하기
+
+```bash
+# WSL에서 MoAI-ADK 설치
+uv tool install moai-adk
+
+# 프로젝트 초기화
+cd your-project-directory
+moai-adk init
+```
+
+#### 경로 처리
+
+MoAI-ADK는 Windows와 WSL 경로 형식을 자동으로 변환합니다:
+
+- **Windows 경로**: `C:\Users\goos\project` → **WSL 경로**: `/mnt/c/Users/goos/project`
+- 수동 설정 불필요
+- Linux 파일시스템(`/home/user/`)과 Windows 파일시스템(`/mnt/c/`) 모두에서 원활하게 동작
+
+#### 권장 사항
+
+**권장**: 최적의 성능을 위해 Linux 파일시스템에 프로젝트 배치
+```bash
+# ✅ 최고 성능
+cd ~/projects
+moai-adk init
+```
+
+**지원됨**: Windows 파일시스템의 프로젝트도 사용 가능
+```bash
+# ✅ 동작하지만 약간의 오버헤드 발생 가능
+cd /mnt/c/Users/YourName/projects
+moai-adk init
+```
+
+#### WSL 문제 해결
+
+**WSL 환경 확인:**
+```bash
+# WSL에서 실행 중인지 확인
+echo $WSL_DISTRO_NAME
+
+# CLAUDE_PROJECT_DIR 확인 (Claude Code가 설정)
+echo $CLAUDE_PROJECT_DIR
+```
+
+**경로 문제:**
+- 훅이 실패하는 경우, `CLAUDE_PROJECT_DIR`이 올바르게 설정되었는지 확인하세요
+- MoAI-ADK는 Windows 경로를 WSL 형식으로 자동 변환합니다
+- `.claude/settings.json`에서 경로 참조가 올바른지 확인하세요
+
+**관련 이슈:**
+- [Issue #295: WSL Support Request](https://github.com/modu-ai/moai-adk/issues/295)
+- [Claude Code Issue #19653: WSL Path Handling](https://github.com/anthropics/claude-code/issues/19653)
 
 ---
 

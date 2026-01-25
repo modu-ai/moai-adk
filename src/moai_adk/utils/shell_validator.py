@@ -1,7 +1,11 @@
 """Shell environment validator for MoAI-ADK
 
-MoAI-ADK supports PowerShell only on Windows.
-WSL (Windows Subsystem for Linux) and Command Prompt (cmd.exe) are not supported.
+MoAI-ADK supports:
+- PowerShell on Windows
+- Bash/Zsh on Linux and macOS
+- Bash on WSL (Windows Subsystem for Linux)
+
+Command Prompt (cmd.exe) is not supported.
 """
 
 import os
@@ -10,17 +14,23 @@ from typing import Tuple
 
 
 def is_wsl() -> bool:
-    """Check if running in WSL (Windows Subsystem for Linux)
+    """Check if running in WSL (Windows Subsystem for Linux).
+
+    Detects WSL via environment variables set by WSL runtime.
+    Works for both WSL 1 and WSL 2.
 
     Returns:
         True if running in WSL, False otherwise
     """
-    # WSL sets these environment variables
-    return "WSL_DISTRO_NAME" in os.environ or "WSLENV" in os.environ or "WSL_INTEROP" in os.environ
+    return (
+        "WSL_DISTRO_NAME" in os.environ
+        or "WSLENV" in os.environ
+        or "WSL_INTEROP" in os.environ
+    )
 
 
 def is_cmd() -> bool:
-    """Check if running in Command Prompt (not PowerShell)
+    """Check if running in Command Prompt (not PowerShell).
 
     Returns:
         True if running in cmd.exe, False otherwise
@@ -43,32 +53,41 @@ def is_cmd() -> bool:
 
 
 def validate_shell() -> Tuple[bool, str]:
-    """Validate if current shell environment is supported
+    """Validate if current shell environment is supported.
 
     Returns:
         Tuple of (is_supported, error_message)
         - is_supported: True if shell is supported, False otherwise
         - error_message: Empty string if supported, error message otherwise
     """
+    # Detect platform
+    current_os = platform.system()
+
+    # WSL is treated as Linux (supported)
     if is_wsl():
-        return (
-            False,
-            "WSL (Windows Subsystem for Linux) is not supported.\n"
-            "Please use PowerShell or Windows Terminal with PowerShell on Windows.",
-        )
+        current_os = "Linux"
 
-    if is_cmd():
-        return (
-            False,
-            "Command Prompt (cmd.exe) is not supported.\n"
-            "Please use PowerShell or Windows Terminal with PowerShell on Windows.",
-        )
+    # Linux and macOS: bash/zsh supported
+    if current_os in ("Linux", "Darwin"):
+        return (True, "")
 
-    return True, ""
+    # Windows: Check for Command Prompt (unsupported)
+    if current_os == "Windows":
+        if is_cmd():
+            return (
+                False,
+                "Command Prompt (cmd.exe) is not supported.\n"
+                "Please use PowerShell or Windows Terminal with PowerShell on Windows.",
+            )
+        # PowerShell is supported
+        return (True, "")
+
+    # Other platforms: assume supported
+    return (True, "")
 
 
 def get_shell_info() -> str:
-    """Get current shell environment information for debugging
+    """Get current shell environment information for debugging.
 
     Returns:
         String describing the current shell environment
@@ -77,7 +96,7 @@ def get_shell_info() -> str:
 
     if platform.system() == "Windows":
         if is_wsl():
-            info_parts.append("Shell: WSL (not supported)")
+            info_parts.append("Shell: WSL Bash (supported)")
         elif is_cmd():
             info_parts.append("Shell: Command Prompt (not supported)")
         elif "PSModulePath" in os.environ:
@@ -85,7 +104,10 @@ def get_shell_info() -> str:
         else:
             info_parts.append("Shell: Unknown Windows shell")
     else:
-        shell = os.environ.get("SHELL", "unknown")
-        info_parts.append(f"Shell: {shell}")
+        if is_wsl():
+            info_parts.append("Shell: WSL Bash (supported)")
+        else:
+            shell = os.environ.get("SHELL", "unknown")
+            info_parts.append(f"Shell: {shell}")
 
     return " | ".join(info_parts)

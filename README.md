@@ -444,6 +444,67 @@ $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
 
 ---
 
+### WSL (Windows Subsystem for Linux) Support
+
+MoAI-ADK fully supports **WSL 1** and **WSL 2** on Windows 10 and Windows 11.
+
+#### Installation on WSL
+
+```bash
+# Install MoAI-ADK in WSL
+uv tool install moai-adk
+
+# Initialize your project
+cd your-project-directory
+moai-adk init
+```
+
+#### Path Handling
+
+MoAI-ADK automatically converts between Windows and WSL path formats:
+
+- **Windows paths**: `C:\Users\goos\project` → **WSL paths**: `/mnt/c/Users/goos/project`
+- No manual configuration required
+- Works seamlessly with projects in both Linux filesystem (`/home/user/`) and Windows filesystem (`/mnt/c/`)
+
+#### Best Practices
+
+**Recommended**: Place projects in Linux filesystem for optimal performance
+```bash
+# ✅ Best performance
+cd ~/projects
+moai-adk init
+```
+
+**Also Supported**: Projects on Windows filesystem
+```bash
+# ✅ Works but may have slight overhead
+cd /mnt/c/Users/YourName/projects
+moai-adk init
+```
+
+#### Troubleshooting WSL
+
+**Verify WSL Environment:**
+```bash
+# Check if running in WSL
+echo $WSL_DISTRO_NAME
+
+# Verify CLAUDE_PROJECT_DIR (set by Claude Code)
+echo $CLAUDE_PROJECT_DIR
+```
+
+**Path Issues:**
+- If hooks fail, verify `CLAUDE_PROJECT_DIR` is set correctly
+- MoAI-ADK automatically converts Windows paths to WSL format
+- Check `.claude/settings.json` for correct path references
+
+**Related Issues:**
+- [Issue #295: WSL Support Request](https://github.com/modu-ai/moai-adk/issues/295)
+- [Claude Code Issue #19653: WSL Path Handling](https://github.com/anthropics/claude-code/issues/19653)
+
+---
+
 ## 2. Project Documentation Generation (Optional)
 
 For new or existing projects, you can automatically generate **project documentation to help Claude Code understand your project**:
