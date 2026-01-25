@@ -1,3 +1,105 @@
+# v1.8.9 - Windows Platform Bug Fixes (2026-01-25)
+
+## Summary
+
+Critical bug fix release addressing Windows platform compatibility issues discovered in v1.8.8. This patch fixes template variable validation and MCP configuration for Windows users.
+
+**Key Fixes**:
+- Empty string validation for `HOOK_SHELL_PREFIX` and `HOOK_SHELL_SUFFIX` on Windows
+- Platform-specific `.mcp.json` template selection (Windows vs Unix)
+
+**Impact**:
+- Windows users can now successfully run `moai update` without template substitution errors
+- MCP servers start correctly on Windows with proper `cmd /c` args format
+
+## Breaking Changes
+
+None. This release is backward compatible with v1.8.8.
+
+## Fixed
+
+### Windows Template Variable Validation
+
+- **fix(windows)**: Allow empty HOOK_SHELL variables and use platform-specific MCP template (9fefe762)
+  - Modified `_is_valid_template_variable()` to allow empty strings for `HOOK_SHELL_PREFIX` and `HOOK_SHELL_SUFFIX`
+  - These variables are intentionally empty on Windows (no shell wrapper needed)
+  - Previously rejected by validation, causing template substitution to fail
+  - File: `src/moai_adk/core/template/processor.py:550-554`
+
+### Platform-Specific MCP Template Selection
+
+- **fix(windows)**: Use platform-specific .mcp.json template (9fefe762)
+  - Windows: Uses `.mcp.windows.json` with correct `cmd /c` args format
+  - Unix: Uses `.mcp.json` with correct `shell -l -c` args format
+  - Fixes MCP server startup failures on Windows due to incompatible args
+  - File: `src/moai_adk/core/template/processor.py:1507-1563`
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.8.9 - Windows 플랫폼 버그 수정 (2026-01-25)
+
+## 요약
+
+v1.8.8에서 발견된 Windows 플랫폼 호환성 문제를 해결하는 중요 버그 수정 릴리스입니다. Windows 사용자를 위한 템플릿 변수 validation 및 MCP 설정을 수정했습니다.
+
+**주요 수정사항**:
+- Windows에서 `HOOK_SHELL_PREFIX`와 `HOOK_SHELL_SUFFIX` 빈 문자열 validation 수정
+- 플랫폼별 `.mcp.json` 템플릿 선택 (Windows vs Unix)
+
+**영향**:
+- Windows 사용자가 템플릿 치환 오류 없이 `moai update` 실행 가능
+- Windows에서 MCP 서버가 올바른 `cmd /c` args 형식으로 정상 시작
+
+## Breaking Changes
+
+없음. 이 릴리스는 v1.8.8과 하위 호환됩니다.
+
+## 수정됨
+
+### Windows 템플릿 변수 Validation
+
+- **fix(windows)**: 빈 HOOK_SHELL 변수 허용 및 플랫폼별 MCP 템플릿 사용 (9fefe762)
+  - `_is_valid_template_variable()`을 수정하여 `HOOK_SHELL_PREFIX`와 `HOOK_SHELL_SUFFIX`에 대해 빈 문자열 허용
+  - 이 변수들은 Windows에서 의도적으로 빈 문자열입니다 (shell wrapper 불필요)
+  - 이전에는 validation에서 거부되어 템플릿 치환 실패 발생
+  - 파일: `src/moai_adk/core/template/processor.py:550-554`
+
+### 플랫폼별 MCP 템플릿 선택
+
+- **fix(windows)**: 플랫폼별 .mcp.json 템플릿 사용 (9fefe762)
+  - Windows: 올바른 `cmd /c` args 형식의 `.mcp.windows.json` 사용
+  - Unix: 올바른 `shell -l -c` args 형식의 `.mcp.json` 사용
+  - 호환되지 않는 args로 인한 Windows의 MCP 서버 시작 실패 수정
+  - 파일: `src/moai_adk/core/template/processor.py:1507-1563`
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.8.8 - Cross-Platform Hook Compatibility & MoAI Rank Integration (2026-01-25)
 
 ## Summary
