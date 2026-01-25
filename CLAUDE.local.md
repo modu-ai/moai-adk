@@ -882,3 +882,128 @@ P1 priority tasks to add checkpoint/resume capability to these agents.
 **Status**: Active (Local Development)
 **Version**: 3.3.0 (Added Memory Management Guidelines)
 **Last Updated**: 2026-01-22
+
+---
+
+## 19. Hook Development Guidelines
+
+### [HARD] Always Use Login Shell for Hooks
+
+**Rule**: ALL hook commands MUST use `bash -l -c` to ensure PATH is loaded correctly.
+
+**WHY**: 
+- Claude Code executes hooks in non-interactive shells
+- Non-interactive shells don't load `.bashrc` / `.zshrc`
+- Commands like `uv`, `pytest`, `ruff` in `~/.local/bin` won't be found
+- Issue #296: bash users experienced hook failures due to missing PATH
+
+**Correct Pattern**:
+```json
+// ✅ CORRECT
+{
+  "type": "command",
+  "command": "bash -l -c 'uv run \"{{PROJECT_DIR}}/.claude/hooks/moai/session_start__show_project_info.py'"
+}
+```
+
+**Wrong Pattern**:
+```json
+// ❌ WRONG - PATH not loaded
+{
+  "type": "command",
+  "command": "uv run \"{{PROJECT_DIR}}/.claude/hooks/moai/session_start__show_project_info.py\""
+}
+```
+
+### File Locations
+
+**Template files** (use `{{PROJECT_DIR}}`):
+- `src/moai_adk/templates/.claude/settings.json`
+- `src/moai_adk/templates/.claude/agents/moai/*.md`
+
+**Local files** (use `$CLAUDE_PROJECT_DIR`):
+- `.claude/settings.json`
+- `.claude/agents/moai/*.md`
+
+### Quote Rules
+
+**Double-quoted command with single-quoted bash command**:
+```json
+{
+  "command": "bash -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/hook.py\"'"
+}
+```
+
+**Single-quoted command with double-quoted bash command**:
+```json
+{
+  'command': 'bash -l -c "uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/hook.py\"\"'
+}
+```
+
+### Cross-Platform Compatibility
+
+**Supported Platforms**:
+- ✅ macOS (bash/zsh)
+- ✅ Linux (bash/zsh)
+- ✅ WSL (bash/zsh)
+- ✅ Windows Git Bash
+
+**Login Shell Behavior**:
+| Platform | Shell | Login Shell Loads |
+|----------|-------|-------------------|
+| macOS    | bash  | `.bash_profile`, `.bashrc` |
+| macOS    | zsh   | `.zprofile`, `.zshenv` |
+| Linux    | bash  | `.bash_profile`, `.bashrc` |
+| Linux    | zsh   | `.zprofile`, `.zshenv` |
+| WSL      | bash  | `.bash_profile`, `.bashrc` |
+| WSL      | zsh   | `.zprofile`, `.zshenv` |
+
+### Testing Hook Commands
+
+```bash
+# Test if uv is found via login shell
+bash -l -c 'which uv'
+# Expected: /Users/goos/.local/bin/uv
+
+# Test hook execution
+bash -l -c 'CLAUDE_PROJECT_DIR=/Users/goos/MoAI/MoAI-ADK uv run "/Users/goos/MoAI/MoAI-ADK/.claude/hooks/moai/session_start__show_project_info.py"'
+# Expected: JSON output with session info
+```
+
+### Common Mistakes
+
+**❌ Forgetting Login Shell Flag**:
+```json
+// WRONG - non-login shell, PATH not loaded
+"command": "bash -c 'uv run ...'"
+```
+
+**❌ Missing Quote Escaping**:
+```json
+// WRONG - quote mismatch
+"command": "bash -l -c "uv run \"$CLAUDE_PROJECT_DIR/hook.py\"""
+```
+
+**❌ Using Absolute Path Instead of Login Shell**:
+```json
+// WRONG - brittle, assumes uv location
+"command": "$HOME/.local/bin/uv run ..."
+```
+
+### Related Commits
+
+- e1777b94: Initial fix for settings.json hooks
+- 80602d5d: Applied to all agent definitions
+- c3020305: Consolidated platform-specific settings
+
+### References
+
+- Issue #296: PATH loading problem with moai update
+- CLAUDE.md Section 13: Parallel Execution Safeguards
+
+---
+
+**Status**: Active (Local Development)
+**Version**: 3.4.0 (Added Hook Development Guidelines)
+**Last Updated**: 2026-01-25
