@@ -4,15 +4,15 @@
   "mcpServers": {
     "context7": {
       "$comment": "Windows uses cmd /c which loads PATH automatically (no shell wrapper needed)",
-      "command": "cmd",
+      "command": "{{MCP_SHELL}}",
       "args": ["/c", "npx -y @upstash/context7-mcp@latest"]
     },
     "sequential-thinking": {
-      "command": "cmd",
+      "command": "{{MCP_SHELL}}",
       "args": ["/c", "npx -y @modelcontextprotocol/server-sequential-thinking"]
     },
     "stitch": {
-      "command": "cmd",
+      "command": "{{MCP_SHELL}}",
       "args": ["/c", "npx -y stitch-mcp"],
       "env": {
         "GOOGLE_CLOUD_PROJECT": "YOUR_PROJECT_ID"
