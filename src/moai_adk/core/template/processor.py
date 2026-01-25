@@ -1523,7 +1523,8 @@ class TemplateProcessor:
         if dst.exists():
             # Write substituted template to temporary file for merging
             import tempfile
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as tmp:
+
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as tmp:
                 tmp.write(substituted_content)
                 tmp_path = Path(tmp.name)
 
