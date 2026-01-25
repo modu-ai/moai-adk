@@ -17,10 +17,10 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__code_formatter.py"
+          command: "bash -l -c 'uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__code_formatter.py"'"
           timeout: 30
         - type: command
-          command: "uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__linter.py"
+          command: "bash -l -c 'uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__linter.py"'"
           timeout: 30
 ---
 
@@ -460,7 +460,7 @@ Quality verification data uses XML structure for structured parsing by downstrea
       <errors>0</errors>
       <warnings>3</warnings>
       <details>
-        <item file="src/processor.py" line="120">Issue description</item>
+        <item file="src/processor.py"'" line="120">Issue description</item>
       </details>
     </linting>
     <formatting status="[PASS|WARNING|CRITICAL]">
@@ -475,7 +475,7 @@ Quality verification data uses XML structure for structured parsing by downstrea
     <function_coverage percentage="90.1%" threshold="80%" status="[PASS|WARNING|CRITICAL]"/>
     <line_coverage percentage="84.9%" threshold="80%" status="[PASS|WARNING|CRITICAL]"/>
     <gaps>
-      <gap file="src/feature.py" description="Missing edge case testing">Recommendation: Add tests for null input scenarios</gap>
+      <gap file="src/feature.py"'" description="Missing edge case testing">Recommendation: Add tests for null input scenarios</gap>
     </gaps>
   </test_coverage_verification>
 
@@ -505,7 +505,7 @@ Quality verification data uses XML structure for structured parsing by downstrea
     </critical_items>
     <warning_items>
       <count>2</count>
-      <item priority="high" file="src/processor.py" line="120">
+      <item priority="high" file="src/processor.py"'" line="120">
         <issue>Function complexity exceeds threshold (12 > 10)</issue>
         <suggestion>Refactor to reduce cyclomatic complexity through extraction of conditional logic</suggestion>
         <auto_fixable>false</auto_fixable>
