@@ -99,10 +99,18 @@ Calculate new version and update ALL version files:
 2. Edit src/moai_adk/version.py \_FALLBACK_VERSION
 3. Edit .moai/config/config.yaml moai.version
 4. Edit .moai/config/sections/system.yaml moai.version
-5. Commit: `git add pyproject.toml src/moai_adk/version.py .moai/config/config.yaml .moai/config/sections/system.yaml && git commit -m "chore: Bump version to X.Y.Z"`
+5. Edit src/moai_adk/templates/.moai/config/sections/system.yaml moai.version
+6. Commit: `git add pyproject.toml src/moai_adk/version.py .moai/config/config.yaml .moai/config/sections/system.yaml src/moai_adk/templates/.moai/config/sections/system.yaml && git commit -m "chore: Bump version to X.Y.Z"`
 
-IMPORTANT: All 4 version files MUST be updated for release workflow to succeed.
+IMPORTANT: All 5 version files MUST be updated for release workflow to succeed.
 The Unified Release Pipeline validates version consistency across all config files.
+
+Version files checklist:
+- [ ] pyproject.toml: version = "X.Y.Z"
+- [ ] src/moai_adk/version.py: _FALLBACK_VERSION = "X.Y.Z"
+- [ ] .moai/config/config.yaml: moai.version: "X.Y.Z"
+- [ ] .moai/config/sections/system.yaml: moai.version: "X.Y.Z"
+- [ ] src/moai_adk/templates/.moai/config/sections/system.yaml: moai.version: "X.Y.Z"
 
 ---
 
