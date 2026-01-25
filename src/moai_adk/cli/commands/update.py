@@ -45,6 +45,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -1139,6 +1140,82 @@ def _clean_deprecated_settings(project_path: Path) -> bool:
     except Exception as e:
         logger.warning(f"Failed to clean deprecated settings: {e}")
         # Don't fail the whole operation if cleaning fails
+        return False
+
+
+def _update_statusline_command(project_path: Path) -> bool:
+    """Update statusLine command in .claude/settings.json with cross-platform format.
+
+    Ensures the statusLine command uses the correct shell wrapper for the current platform:
+    - Windows: Direct execution (uv run --no-sync moai-adk statusline)
+    - macOS/Linux: Login shell wrapper (${SHELL:-/bin/bash} -l -c '...')
+
+    This is called during moai update to ensure statusLine works correctly.
+
+    Args:
+        project_path: Project directory path
+
+    Returns:
+        True if statusLine was updated successfully, False otherwise
+    """
+    settings_file = project_path / ".claude" / "settings.json"
+    if not settings_file.exists():
+        return True  # No settings file to update
+
+    try:
+        with open(settings_file, encoding="utf-8", errors="replace") as f:
+            settings = json.load(f)
+
+        # Check if statusLine exists
+        if "statusLine" not in settings:
+            return True  # No statusLine to update
+
+        statusline = settings["statusLine"]
+        current_command = statusline.get("command", "")
+
+        # Generate correct cross-platform command
+        is_windows = platform.system() == "Windows"
+        correct_command = (
+            "uv run --no-sync moai-adk statusline"
+            if is_windows
+            else "${SHELL:-/bin/bash} -l -c 'uv run --no-sync moai-adk statusline'"
+        )
+
+        # Check if update is needed
+        needs_update = False
+
+        # Patterns that indicate outdated format
+        outdated_patterns = [
+            "{{HOOK_SHELL_PREFIX}}",  # Template variable not substituted
+            "{{HOOK_SHELL_SUFFIX}}",
+            "{{STATUSLINE_COMMAND}}",
+        ]
+
+        # Check for outdated patterns
+        for pattern in outdated_patterns:
+            if pattern in current_command:
+                needs_update = True
+                break
+
+        # On Unix, check if command doesn't use login shell wrapper
+        if not is_windows and not needs_update:
+            if "moai-adk statusline" in current_command and "${SHELL" not in current_command:
+                needs_update = True
+
+        if needs_update:
+            statusline["command"] = correct_command
+            settings["statusLine"] = statusline
+
+            with open(settings_file, "w", encoding="utf-8") as f:
+                json.dump(settings, f, indent=2, ensure_ascii=False)
+            console.print("   [cyan]✓ Updated statusLine command format[/cyan]")
+            logger.info("Updated statusLine command in settings.json")
+
+        return True
+
+    except Exception as e:
+        logger.warning(f"Failed to update statusLine command: {e}")
+        # Don't fail the whole operation if update fails
         return False
 
 
@@ -2472,8 +2549,9 @@ def update(
             # Restore user-specific settings after sync
             _restore_user_settings(project_path, preserved_settings)
 
-            # Clean deprecated settings from settings.json
+            # Clean deprecated settings and update statusLine command
             _clean_deprecated_settings(project_path)
+            _update_statusline_command(project_path)
 
             console.print("   [green]✅ .claude/ update complete[/green]")
             console.print("   [green]✅ .moai/ update complete (specs/reports preserved)[/green]")
@@ -2670,6 +2748,7 @@ def update(
                 raise TemplateSyncError("Template sync returned False")
             _restore_user_settings(project_path, preserved_settings)
             _clean_deprecated_settings(project_path)
+            _update_statusline_command(project_path)
             console.print("   [green]✓ Template sync complete[/green]")
         except TemplateSyncError:
             console.print("[red]Error: Template sync failed[/red]")
