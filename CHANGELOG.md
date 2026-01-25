@@ -1,3 +1,68 @@
+# v1.8.12 - Hook Format Update & Login Command (2026-01-26)
+
+## Summary
+
+Patch release with Claude Code hook format compatibility fix and UX improvements.
+
+**Key Changes**:
+- Fixed Claude Code settings.json hook format (new matcher-based structure)
+- Renamed `moai rank register` to `moai rank login` (more intuitive)
+- settings.json now always overwritten on update; use settings.local.json for customizations
+
+**Impact**:
+- MoAI Rank hooks now work with latest Claude Code
+- `moai rank login` is the new primary command (register still works as alias)
+- User customizations preserved in settings.local.json
+
+## Breaking Changes
+
+None. `moai rank register` still works as a hidden alias.
+
+## Fixed
+
+### Claude Code Hook Format Compatibility
+
+- **fix(rank)**: Update hook format to Claude Code's new matcher-based structure (4925683a)
+  - Claude Code now requires hooks in format: `{"matcher": "", "hooks": [...]}`
+  - Updated `_register_hook_in_settings()` to create new format
+  - Updated `_unregister_hook_from_settings()` to handle nested hooks array
+  - Updated `validate_and_fix_hook()` with automatic migration from old flat format
+  - Simplified `sync_all_sessions()` to use batch API exclusively
+  - Files: `src/moai_adk/rank/hook.py`
+
+## Changed
+
+### Login Command Rename
+
+- **refactor(rank)**: Rename 'register' command to 'login' (09d6d3f5)
+  - `moai rank login` is now the primary command
+  - `moai rank register` remains as hidden alias for backward compatibility
+  - Updated all documentation and CLI messages
+  - Files: `src/moai_adk/cli/commands/rank.py`, README files
+
+### Settings Management
+
+- **feat(settings)**: Always overwrite settings.json on update (df1ea60d)
+  - settings.json is now always overwritten during `moai update`
+  - User customizations should be placed in settings.local.json
+  - Removed `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` and `DISABLE_NON_ESSENTIAL_MODEL_CALLS`
+  - Files: `src/moai_adk/cli/commands/update.py`, README files
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
 # v1.8.11 - Hook & StatusLine Cross-Platform Fixes (2026-01-25)
 
 ## Summary
