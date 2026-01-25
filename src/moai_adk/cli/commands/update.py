@@ -1856,6 +1856,17 @@ def _build_template_context(
         hook_shell_prefix = "${SHELL:-/bin/bash} -l -c '"
         hook_shell_suffix = "'"
 
+    # MCP_SHELL: Cross-platform shell for MCP server commands (v1.8.7+)
+    # Used in .mcp.json template for dynamic shell detection
+    # Windows: Uses cmd.exe (PATH loaded from system environment via cmd /c)
+    # Unix: Uses user's default shell with login mode to load PATH
+    if is_windows:
+        mcp_shell = "cmd"
+    else:
+        # ${SHELL:-/bin/bash}: Detect user's default shell, fallback to bash
+        # This will be expanded at runtime by the shell spawning MCP servers
+        mcp_shell = "${SHELL:-/bin/bash}"
+
     # PROJECT_DIR_WIN: Deprecated (v1.8.0) - Use PROJECT_DIR instead
     # Uses Windows environment variable with backslash separator
     # Kept for backward compatibility only - will be removed in v2.0.0
@@ -1960,6 +1971,7 @@ def _build_template_context(
         "PROJECT_DIR_UNIX": hook_project_dir_unix,
         "HOOK_SHELL_PREFIX": hook_shell_prefix,
         "HOOK_SHELL_SUFFIX": hook_shell_suffix,
+        "MCP_SHELL": mcp_shell,
         "CONVERSATION_LANGUAGE": language_config.get("conversation_language", "en"),
         "CONVERSATION_LANGUAGE_NAME": language_config.get("conversation_language_name", "English"),
         "AGENT_PROMPT_LANGUAGE": language_config.get("agent_prompt_language", "en"),

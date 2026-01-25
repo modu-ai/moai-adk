@@ -3,15 +3,15 @@
   "mcpServers": {
     "context7": {
       "$comment": "Using shell wrapper to load PATH (fixes npx bash function issue). Use .mcp.windows.json for Windows.",
-      "command": "/bin/bash",
+      "command": "{{MCP_SHELL}}",
       "args": ["-l", "-c", "exec npx -y @upstash/context7-mcp@latest"]
     },
     "sequential-thinking": {
-      "command": "/bin/bash",
+      "command": "{{MCP_SHELL}}",
       "args": ["-l", "-c", "exec npx -y @modelcontextprotocol/server-sequential-thinking"]
     },
     "stitch": {
-      "command": "/bin/bash",
+      "command": "{{MCP_SHELL}}",
       "args": ["-l", "-c", "exec npx -y stitch-mcp"],
       "env": {
         "GOOGLE_CLOUD_PROJECT": "YOUR_PROJECT_ID"
