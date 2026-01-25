@@ -22,11 +22,7 @@ def is_wsl() -> bool:
     Returns:
         True if running in WSL, False otherwise
     """
-    return (
-        "WSL_DISTRO_NAME" in os.environ
-        or "WSLENV" in os.environ
-        or "WSL_INTEROP" in os.environ
-    )
+    return "WSL_DISTRO_NAME" in os.environ or "WSLENV" in os.environ or "WSL_INTEROP" in os.environ
 
 
 def is_cmd() -> bool:

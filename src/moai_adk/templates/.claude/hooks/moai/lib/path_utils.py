@@ -1,4 +1,4 @@
-"""Path utility functions for MoAI-ADK hooks
+r"""Path utility functions for MoAI-ADK hooks
 
 Provides safe project root detection and .moai directory management.
 Prevents .moai directory creation outside of project root.
@@ -19,16 +19,12 @@ from pathlib import Path
 from typing import Optional
 
 try:
-    from moai_adk.utils.path_converter import normalize_path_for_wsl, is_wsl
+    from moai_adk.utils.path_converter import is_wsl, normalize_path_for_wsl
 except ImportError:
     # Fallback for when moai_adk is not installed
     def is_wsl() -> bool:
         """Check if running in WSL (Windows Subsystem for Linux)."""
-        return (
-            "WSL_DISTRO_NAME" in os.environ
-            or "WSLENV" in os.environ
-            or "WSL_INTEROP" in os.environ
-        )
+        return "WSL_DISTRO_NAME" in os.environ or "WSLENV" in os.environ or "WSL_INTEROP" in os.environ
 
     def normalize_path_for_wsl(path: str) -> str:
         """Basic WSL path normalization fallback."""
@@ -75,7 +71,7 @@ def get_project_root_from_env() -> Optional[Path]:
 
     WSL Support:
         In WSL environment, CLAUDE_PROJECT_DIR may contain Windows path format
-        (C:\Users\...). This function automatically converts to WSL format
+        (e.g., C:/Users/...). This function automatically converts to WSL format
         (/mnt/c/Users/...) for compatibility with bash hooks.
 
     Returns:

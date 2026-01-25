@@ -23,7 +23,6 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
-from typing import Optional
 
 
 def is_wsl() -> bool:
@@ -44,11 +43,7 @@ def is_wsl() -> bool:
         >>> is_wsl()
         False
     """
-    return (
-        "WSL_DISTRO_NAME" in os.environ
-        or "WSLENV" in os.environ
-        or "WSL_INTEROP" in os.environ
-    )
+    return "WSL_DISTRO_NAME" in os.environ or "WSLENV" in os.environ or "WSL_INTEROP" in os.environ
 
 
 def is_windows_path(path: str) -> bool:
