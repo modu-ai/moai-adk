@@ -17,13 +17,13 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "bash -l -c 'uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/pre_tool__security_guard.py"'"
+          command: "bash -l -c 'uv run \"{{PROJECT_DIR}}\".claude/hooks/moai/pre_tool__security_guard.py"'"
           timeout: 30
   PostToolUse:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "bash -l -c 'uv run \"{{PROJECT_DIR}}\"/.claude/hooks/moai/post_tool__ast_grep_scan.py"'"
+          command: "bash -l -c 'uv run \"{{PROJECT_DIR}}\".claude/hooks/moai/post_tool__ast_grep_scan.py"'"
           timeout: 60
 ---
 
