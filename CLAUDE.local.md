@@ -1007,3 +1007,215 @@ bash -l -c 'CLAUDE_PROJECT_DIR=/Users/goos/MoAI/MoAI-ADK uv run "/Users/goos/MoA
 **Status**: Active (Local Development)
 **Version**: 3.4.0 (Added Hook Development Guidelines)
 **Last Updated**: 2026-01-25
+
+---
+
+## 20. Cross-Platform Development Guidelines
+
+### Overview
+
+MoAI-ADK must work seamlessly across Windows, macOS, and Linux. This section provides guidelines for developing features that work on all platforms without modification.
+
+### Critical Rules
+
+[HARD] All hook commands MUST use cross-platform template variables:
+- Use `{{HOOK_SHELL_PREFIX}}` and `{{HOOK_SHELL_SUFFIX}}` for shell wrappers
+- Use `{{PROJECT_DIR}}` for paths (forward slash, works on all platforms)
+- NEVER hardcode `bash -l -c` or platform-specific shell commands
+
+[HARD] Test on all three platforms before releasing:
+- Windows: Test with Git Bash and PowerShell
+- macOS: Test with both bash and zsh
+- Linux: Test with bash (primary) and zsh (secondary)
+
+### Platform Differences
+
+**Shell Configuration Files**:
+- macOS (zsh default): `~/.zshenv`, `~/.zprofile`, `~/.zshrc`
+- macOS (bash): `~/.bash_profile`, `~/.bashrc`
+- Linux (bash): `~/.bash_profile`, `~/.bashrc`, `~/.profile`
+- Windows: System PATH (no shell config files)
+
+**PATH Loading Behavior**:
+- Windows: PATH loaded from system environment automatically
+- macOS/Linux: Requires login shell (`-l` flag) to load user PATH
+
+**Shell Wrapper Strategy** (implemented in v1.8.6):
+```python
+# update.py implementation
+if is_windows:
+    hook_shell_prefix = ""  # Direct execution
+    hook_shell_suffix = ""
+else:
+    # Use user's default shell, fallback to bash
+    hook_shell_prefix = '${SHELL:-/bin/bash} -l -c \''
+    hook_shell_suffix = '\''
+```
+
+### Template Variable Usage
+
+**Correct Usage** ✅:
+```json
+{
+  "command": "{{HOOK_SHELL_PREFIX}}uv run \"{{PROJECT_DIR}}.claude/hooks/moai/session_start.py\"{{HOOK_SHELL_SUFFIX}}"
+}
+```
+
+**Result After Substitution**:
+```bash
+# Windows
+uv run "%CLAUDE_PROJECT_DIR%/.claude/hooks/moai/session_start.py"
+
+# macOS/Linux (zsh user)
+${SHELL:-/bin/bash} -l -c 'uv run "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start.py"'
+```
+
+**Incorrect Usage** ❌:
+```json
+{
+  "command": "bash -l -c 'uv run \"{{PROJECT_DIR}}.claude/hooks/...\"'"
+}
+```
+
+WHY: Hardcoding `bash` breaks on Windows and forces bash on zsh users.
+
+### Testing Methodology
+
+**Local Testing** (macOS/Linux):
+```bash
+# Test with user's default shell
+$SHELL -l -c 'echo $PATH | grep -o "[^:]*local/bin[^:]*"'
+
+# Test with bash explicitly
+bash -l -c 'echo $PATH | grep -o "[^:]*local/bin[^:]*"'
+
+# Test with zsh explicitly
+zsh -l -c 'echo $PATH | grep -o "[^:]*local/bin[^:]*"'
+
+# Verify PATH priority (should be first)
+$SHELL -l -c 'echo $PATH' | tr ':' '\n' | head -3
+```
+
+**Expected Results**:
+- `~/.local/bin` should appear in PATH
+- For zsh: `~/.local/bin` should be FIRST (highest priority)
+- For bash: `~/.local/bin` may be at the end but still present
+
+**Windows Testing**:
+```powershell
+# Test PATH availability
+$env:PATH -split ';' | Select-String -Pattern 'local\\bin'
+
+# Test direct execution
+uv --version
+```
+
+### Common Pitfalls
+
+**Pitfall 1: Hardcoded Shell**
+```json
+// WRONG
+"command": "bash -l -c 'uv run ...'"
+
+// CORRECT
+"command": "{{HOOK_SHELL_PREFIX}}uv run ...{{HOOK_SHELL_SUFFIX}}"
+```
+
+**Pitfall 2: Path Separator Assumptions**
+```python
+# WRONG - assumes Unix separator
+path = f"{project_dir}/.claude/hooks"
+
+# CORRECT - use forward slash (works on all platforms since Windows 10)
+path = f"{project_dir}.claude/hooks"  # PROJECT_DIR includes trailing /
+```
+
+**Pitfall 3: Assuming PATH is Loaded**
+```json
+// WRONG - no shell wrapper
+"command": "uv run script.py"
+
+// CORRECT - uses shell wrapper to load PATH
+"command": "{{HOOK_SHELL_PREFIX}}uv run script.py{{HOOK_SHELL_SUFFIX}}"
+```
+
+### Platform-Specific Features
+
+When platform-specific code is unavoidable:
+
+```python
+import platform
+
+if platform.system() == "Windows":
+    # Windows-specific implementation
+    shell_prefix = ""
+elif platform.system() == "Darwin":  # macOS
+    # macOS-specific implementation (if needed)
+    shell_prefix = '${SHELL:-/bin/bash} -l -c \''
+else:  # Linux and others
+    # Linux implementation
+    shell_prefix = '${SHELL:-/bin/bash} -l -c \''
+```
+
+### Adding New Template Variables
+
+When adding new cross-platform template variables to `update.py`:
+
+1. **Detect Platform**:
+   ```python
+   is_windows = platform.system() == "Windows"
+   ```
+
+2. **Define Platform-Specific Values**:
+   ```python
+   if is_windows:
+       new_variable = "windows_value"
+   else:
+       new_variable = "unix_value"
+   ```
+
+3. **Add to Template Context**:
+   ```python
+   template_vars = {
+       ...
+       "NEW_VARIABLE": new_variable,
+   }
+   ```
+
+4. **Document in CLAUDE.local.md**:
+   - Add to this section
+   - Explain platform differences
+   - Provide usage examples
+
+### Verification Checklist
+
+Before releasing cross-platform features:
+
+- [ ] Tested on Windows (Git Bash or PowerShell)
+- [ ] Tested on macOS with zsh (default shell)
+- [ ] Tested on macOS with bash
+- [ ] Tested on Linux with bash
+- [ ] No hardcoded shell commands
+- [ ] No hardcoded path separators
+- [ ] Template variables used correctly
+- [ ] Documentation updated
+
+### Related Issues
+
+- Issue #296: PATH loading problem across platforms
+- v1.8.4: Fixed hooks with `bash -l -c` (macOS/Linux only)
+- v1.8.5: Fixed double slash in paths
+- v1.8.6: Implemented cross-platform shell wrapper (HOOK_SHELL_PREFIX/SUFFIX)
+
+### References
+
+- Update.py: Lines 1845-1857 (shell wrapper implementation)
+- Template: `src/moai_adk/templates/.claude/settings.json`
+- Agents: `src/moai_adk/templates/.claude/agents/moai/*.md`
+
+---
+
+**Status**: Active (Local Development)
+**Version**: 3.5.0 (Added Cross-Platform Development Guidelines)
+**Last Updated**: 2026-01-25
+

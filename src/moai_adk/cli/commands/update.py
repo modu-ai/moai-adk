@@ -1842,6 +1842,20 @@ def _build_template_context(
     # Note: Trailing slash included for path concatenation consistency
     hook_project_dir = "%CLAUDE_PROJECT_DIR%/" if is_windows else "$CLAUDE_PROJECT_DIR/"
 
+    # HOOK_SHELL_PREFIX & HOOK_SHELL_SUFFIX: Cross-platform shell wrapper for hook commands
+    # Ensures PATH is loaded correctly on all platforms (v1.8.6+)
+    # Windows: Direct execution (PATH loaded from system environment)
+    # Unix: Use user's default shell with login mode to load ~/.zshrc, ~/.bash_profile, etc.
+    if is_windows:
+        hook_shell_prefix = ""
+        hook_shell_suffix = ""
+    else:
+        # ${SHELL:-/bin/bash}: Use user's default shell, fallback to bash if SHELL not set
+        # -l: Login shell mode (loads ~/.zshenv, ~/.zprofile, ~/.bash_profile, etc.)
+        # -c: Execute command string
+        hook_shell_prefix = "${SHELL:-/bin/bash} -l -c '"
+        hook_shell_suffix = "'"
+
     # PROJECT_DIR_WIN: Deprecated (v1.8.0) - Use PROJECT_DIR instead
     # Uses Windows environment variable with backslash separator
     # Kept for backward compatibility only - will be removed in v2.0.0
@@ -1944,6 +1958,8 @@ def _build_template_context(
         "PROJECT_DIR": hook_project_dir,
         "PROJECT_DIR_WIN": hook_project_dir_win,
         "PROJECT_DIR_UNIX": hook_project_dir_unix,
+        "HOOK_SHELL_PREFIX": hook_shell_prefix,
+        "HOOK_SHELL_SUFFIX": hook_shell_suffix,
         "CONVERSATION_LANGUAGE": language_config.get("conversation_language", "en"),
         "CONVERSATION_LANGUAGE_NAME": language_config.get("conversation_language_name", "English"),
         "AGENT_PROMPT_LANGUAGE": language_config.get("agent_prompt_language", "en"),

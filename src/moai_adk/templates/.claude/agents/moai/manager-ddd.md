@@ -17,7 +17,7 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: 'bash -l -c "uv run "{{PROJECT_DIR}}".claude/hooks/moai/post_tool__ast_grep_scan.py"'
+          command: 'bash -l -c "uv run "{{PROJECT_DIR}}".claude/hooks/moai/post_tool__ast_grep_scan.py{{HOOK_SHELL_SUFFIX}}"
           timeout: 60
 ---
 
