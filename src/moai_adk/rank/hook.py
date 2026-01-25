@@ -968,19 +968,24 @@ def _register_hook_in_settings() -> bool:
         if "hooks" not in settings:
             settings["hooks"] = {}
 
-        # Check if SessionEnd hook already exists
+        # Check if SessionEnd hook already exists (new matcher-based format)
         if "SessionEnd" in settings["hooks"]:
-            # Check if our hook is already registered
-            # SessionEnd uses flat structure: {"type": "command", "command": "..."}
+            # Check if our hook is already registered in nested hooks array
             for hook_config in settings["hooks"]["SessionEnd"]:
-                if "session_end__rank_submit.py" in hook_config.get("command", ""):
-                    return True  # Already registered
+                for hook in hook_config.get("hooks", []):
+                    if "session_end__rank_submit.py" in hook.get("command", ""):
+                        return True  # Already registered
 
-        # Add SessionEnd hook (flat structure - no matcher, no nested hooks array)
-        # SessionStart/SessionEnd hooks use direct format unlike PreToolUse/PostToolUse
+        # Add SessionEnd hook (new matcher-based format required by Claude Code)
+        # All hooks now use: {"matcher": "", "hooks": [{"type": "command", "command": "..."}]}
         session_end_config = {
-            "type": "command",
-            "command": hook_command,
+            "matcher": "",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": hook_command,
+                }
+            ],
         }
 
         if "SessionEnd" not in settings["hooks"]:
@@ -1054,14 +1059,20 @@ def _unregister_hook_from_settings() -> bool:
         if "hooks" not in settings or "SessionEnd" not in settings["hooks"]:
             return True  # Nothing to remove
 
-        # Filter out our hook
-        # SessionEnd uses flat structure: {"type": "command", "command": "..."}
-        # NOT nested structure like PreToolUse/PostToolUse
-        settings["hooks"]["SessionEnd"] = [
-            hook_config
-            for hook_config in settings["hooks"]["SessionEnd"]
-            if "session_end__rank_submit.py" not in hook_config.get("command", "")
-        ]
+        # Filter out our hook from nested hooks array (new matcher-based format)
+        new_session_end = []
+        for hook_config in settings["hooks"]["SessionEnd"]:
+            # Filter hooks within each matcher config
+            filtered_hooks = [
+                hook
+                for hook in hook_config.get("hooks", [])
+                if "session_end__rank_submit.py" not in hook.get("command", "")
+            ]
+            # Keep the config only if it still has hooks
+            if filtered_hooks:
+                hook_config["hooks"] = filtered_hooks
+                new_session_end.append(hook_config)
+        settings["hooks"]["SessionEnd"] = new_session_end
 
         # Remove empty SessionEnd array
         if not settings["hooks"]["SessionEnd"]:
@@ -1183,41 +1194,71 @@ def validate_and_fix_hook() -> tuple[bool, str]:
         else:
             correct_command = f"${{SHELL:-/bin/bash}} -l -c 'uv run python \"{hook_file}\"'"
 
-        for i, hook_config in enumerate(session_end_hooks):
-            command = hook_config.get("command", "")
+        # Correct hook config structure (new matcher-based format)
+        correct_hook_config = {
+            "matcher": "",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": correct_command,
+                }
+            ],
+        }
 
-            # Check if this is our rank hook
-            if "session_end__rank_submit.py" not in command:
-                continue
+        new_session_end = []
 
-            # Check if the command format is incorrect
-            # Old formats that need fixing:
-            # - "bash -l -c 'python3 ...'"
-            # - "python3 ..."
-            needs_fix = False
+        for hook_config in session_end_hooks:
+            # Check if this is old flat format (needs migration)
+            if "type" in hook_config and "command" in hook_config and "hooks" not in hook_config:
+                command = hook_config.get("command", "")
+                if "session_end__rank_submit.py" in command:
+                    # Migrate old flat format to new matcher-based format
+                    new_session_end.append(correct_hook_config)
+                    was_fixed = True
+                else:
+                    # Migrate other flat hooks to new format
+                    new_session_end.append(
+                        {
+                            "matcher": "",
+                            "hooks": [hook_config],
+                        }
+                    )
+                    was_fixed = True
+            elif "hooks" in hook_config:
+                # New format - check hooks array
+                updated_hooks = []
+                for hook in hook_config.get("hooks", []):
+                    command = hook.get("command", "")
+                    if "session_end__rank_submit.py" in command:
+                        # Check if command needs fixing
+                        needs_fix = False
+                        if platform.system() != "Windows":
+                            if "bash -l -c" in command and "${SHELL" not in command:
+                                needs_fix = True
+                            elif "uv run" not in command:
+                                needs_fix = True
+                        else:
+                            if "bash" in command.lower():
+                                needs_fix = True
+                            elif "uv run" not in command:
+                                needs_fix = True
 
-            if platform.system() != "Windows":
-                # On Unix, should use ${SHELL:-/bin/bash} and uv run
-                if "bash -l -c" in command and "${SHELL" not in command:
-                    needs_fix = True
-                elif "uv run" not in command:
-                    needs_fix = True
+                        if needs_fix:
+                            hook["command"] = correct_command
+                            was_fixed = True
+                    updated_hooks.append(hook)
+                hook_config["hooks"] = updated_hooks
+                new_session_end.append(hook_config)
             else:
-                # On Windows, should use uv run directly
-                if "bash" in command.lower():
-                    needs_fix = True
-                elif "uv run" not in command:
-                    needs_fix = True
+                new_session_end.append(hook_config)
 
-            if needs_fix:
-                session_end_hooks[i]["command"] = correct_command
-                was_fixed = True
+        settings["hooks"]["SessionEnd"] = new_session_end
 
         if was_fixed:
             # Write back the fixed settings
             with open(settings_file, "w", encoding="utf-8", errors="replace") as f:
                 json.dump(settings, f, indent=2, ensure_ascii=False)
-            return True, "Fixed rank hook command format"
+            return True, "Fixed rank hook format and/or command"
 
         return False, "Rank hook already correctly configured"
 
@@ -1417,230 +1458,101 @@ def sync_all_sessions(
 
     client = RankClient()
 
-    # First, try to detect if batch API is available
-    batch_available = False
-    if submissions:
-        try:
-            # Try a small batch first
-            test_batch = submissions[:1]
-            client.submit_sessions_batch(test_batch)
-            batch_available = True
-        except Exception:
-            batch_available = False
+    # Use batch submission exclusively (fixes issue #3: session frequency validation bypass)
+    # Batch API does NOT have the 60-second session interval requirement
+    # that individual API has, making it the correct choice for bulk sync
+    from time import sleep
 
-    if batch_available:
-        # Use batch submission
-        batch_count = (len(submissions) + batch_size - 1) // batch_size
-        console.print()
-        console.print(f"[cyan]Phase 2: Submitting {len(submissions)} session(s) [dim](batch mode)[/dim][/cyan]")
-        console.print(f"[dim]Batch size: {batch_size} | Batches: {batch_count}[/dim]")
-        console.print()
+    batch_count = (len(submissions) + batch_size - 1) // batch_size
+    console.print()
+    console.print(f"[cyan]Phase 2: Submitting {len(submissions)} session(s) [dim](batch mode)[/dim][/cyan]")
+    console.print(f"[dim]Batch size: {batch_size} | Batches: {batch_count}[/dim]")
 
-        batch_submitted = 0
-        batch_skipped = 0
-        batch_failed = 0
+    # Estimate time: ~0.6 seconds per batch for rate limit safety
+    batch_delay = 0.6  # 600ms between batches (safe for 100 req/min API limit)
+    estimated_seconds = batch_count * batch_delay
+    console.print(f"[dim]Estimated time: ~{int(estimated_seconds)}s[/dim]")
+    console.print()
 
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-            TextColumn("[dim]({task.completed}/{task.total})[/dim]"),
-            console=console,
-        ) as progress:
-            task = progress.add_task("Submitting batches", total=batch_count)
+    batch_submitted = 0
+    batch_skipped = 0
+    batch_failed = 0
+    error_samples: list[str] = []
 
-            for i in range(0, len(submissions), batch_size):
-                batch = submissions[i : i + batch_size]
-
-                try:
-                    response = client.submit_sessions_batch(batch)
-
-                    if response.get("success"):
-                        batch_submitted += response.get("succeeded", 0)
-                        batch_failed += response.get("failed", 0)
-
-                        # Check individual results for duplicates/skipped
-                        for result in response.get("results", []):
-                            if not result.get("success"):
-                                error_msg = result.get("error", "").lower()
-                                if _is_duplicate_error(error_msg):
-                                    batch_skipped += 1
-                                    batch_failed -= 1
-                    else:
-                        batch_failed += len(batch)
-
-                except Exception:
-                    batch_failed += len(batch)
-
-                progress.update(task, advance=1)
-
-        stats["submitted"] = batch_submitted
-        stats["skipped"] += batch_skipped
-        stats["failed"] = batch_failed
-    else:
-        # Fall back to individual submissions (sequential)
-        console.print()
-        console.print(f"[cyan]Phase 2: Submitting {len(submissions)} session(s) [dim](individual mode)[/dim][/cyan]")
-        console.print()
-
-        from time import sleep
-
-        from moai_adk.rank.client import ApiError, RankClientError
-
-        # Track errors for debugging
-        error_samples: list[str] = []
-        error_type_counts: dict[str, int] = {}
-        error_lock = Lock()
-
-        # Ensure log directory exists and set up logging
-        RankConfig.ensure_config_dir()
-        log_file = RankConfig.CONFIG_DIR / "sync_errors.log"
-
-        # Clear previous log
-        if log_file.exists():
-            log_file.unlink()
-
-        import logging
-
-        logging.basicConfig(
-            filename=str(log_file),
-            level=logging.ERROR,
-            format="%(asctime)s - %(message)s",
-            force=True,
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TextColumn("[dim]({task.completed}/{task.total})[/dim]"),
+        TextColumn("[dim]|[/dim]"),
+        TextColumn("[green]✓ {task.fields[submitted]}[/green]"),
+        TextColumn("[dim]○ {task.fields[skipped]}[/dim]"),
+        TextColumn("[red]✗ {task.fields[failed]}[/red]"),
+        console=console,
+    ) as progress:
+        task = progress.add_task(
+            "Submitting batches",
+            total=batch_count,
+            submitted=0,
+            skipped=0,
+            failed=0,
         )
 
-        # Use sequential submission with rate limiting to avoid server limits
-        submission_delay = 0.1  # 100ms between submissions
+        for batch_idx, i in enumerate(range(0, len(submissions), batch_size)):
+            batch = submissions[i : i + batch_size]
 
-        console.print(f"[dim]Rate limit: {submission_delay}s between submissions[/dim]")
-        console.print()
+            try:
+                response = client.submit_sessions_batch(batch)
 
-        # Estimate time
-        estimated_seconds = len(submissions) * submission_delay
-        console.print(f"[dim]Estimated time: ~{int(estimated_seconds / 60)}m {int(estimated_seconds % 60)}s[/dim]")
-        console.print()
+                if response.get("success") or response.get("succeeded", 0) > 0:
+                    batch_submitted += response.get("succeeded", 0)
+                    failed_in_batch = response.get("failed", 0)
 
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-            TextColumn("[dim]({task.completed}/{task.total})[/dim]"),
-            TextColumn("[dim]|[/dim]"),
-            TextColumn("[green]✓ {task.fields[submitted]}[/green]"),
-            TextColumn("[dim]○ {task.fields[skipped]}[/dim]"),
-            TextColumn("[red]✗ {task.fields[failed]}[/red]"),
-            console=console,
-        ) as progress:
-            task = progress.add_task(
-                "Submitting sessions",
-                total=len(submissions),
-                submitted=0,
-                skipped=0,
-                failed=0,
+                    # Check individual results for duplicates/skipped
+                    for result in response.get("results", []):
+                        if not result.get("success"):
+                            error_msg = result.get("error", "").lower()
+                            if _is_duplicate_error(error_msg):
+                                batch_skipped += 1
+                                failed_in_batch -= 1
+
+                    batch_failed += max(0, failed_in_batch)
+                else:
+                    # Entire batch failed
+                    error_msg = response.get("error", "Unknown error")
+                    if len(error_samples) < 5:
+                        error_samples.append(f"Batch {batch_idx + 1}: {error_msg}")
+                    batch_failed += len(batch)
+
+            except Exception as e:
+                if len(error_samples) < 5:
+                    error_samples.append(f"Batch {batch_idx + 1}: {e}")
+                batch_failed += len(batch)
+
+            # Update progress
+            progress.update(
+                task,
+                advance=1,
+                submitted=batch_submitted,
+                skipped=batch_skipped,
+                failed=batch_failed,
             )
 
-            for idx, submission in enumerate(submissions):
-                try:
-                    response = client.submit_session(submission)
+            # Delay between batches to respect API rate limit (100 req/min)
+            if batch_idx < batch_count - 1:
+                sleep(batch_delay)
 
-                    # Handle nested response structure
-                    session_id: str | None = None
-                    if isinstance(response, dict):
-                        # Try direct access
-                        session_id = response.get("sessionId")
-                        # If not found, check nested data structure
-                        if not session_id and isinstance(response.get("data"), dict):
-                            session_id = response["data"].get("sessionId")
+    stats["submitted"] = batch_submitted
+    stats["skipped"] += batch_skipped
+    stats["failed"] = batch_failed
 
-                    if session_id:
-                        stats["submitted"] += 1
-                    else:
-                        # Check for duplicate/already recorded
-                        msg = str(response.get("message", "")).lower()
-                        if _is_duplicate_error(msg):
-                            stats["skipped"] += 1
-                        else:
-                            # Log unexpected failure
-                            with error_lock:
-                                if len(error_samples) < 5:
-                                    error_samples.append(f"No sessionId: {response}")
-                            stats["failed"] += 1
-
-                except (ApiError, RankClientError) as e:
-                    error_msg = str(e).lower()
-                    if _is_duplicate_error(error_msg):
-                        stats["skipped"] += 1
-                    elif "too soon" in error_msg or "rate limit" in error_msg:
-                        # Rate limit hit - wait and retry
-                        with error_lock:
-                            if len(error_samples) < 5:
-                                error_samples.append(f"Rate limited: {e}")
-                        sleep(2)  # Wait before retry
-                        try:
-                            response = client.submit_session(submission)
-                            session_id = None
-                            if isinstance(response, dict):
-                                session_id = response.get("sessionId")
-                                if not session_id and isinstance(response.get("data"), dict):
-                                    session_id = response["data"].get("sessionId")
-                            if session_id:
-                                stats["submitted"] += 1
-                            else:
-                                stats["failed"] += 1
-                        except Exception:
-                            stats["failed"] += 1
-                    else:
-                        # Log API errors
-                        with error_lock:
-                            if len(error_samples) < 20:
-                                error_samples.append(f"API Error: {e}")
-                            # Categorize error type
-                            err_str = str(e)
-                            if "too soon" in err_str.lower():
-                                error_type_counts["rate_limited"] = error_type_counts.get("rate_limited", 0) + 1
-                            elif "validation" in err_str.lower():
-                                error_type_counts["validation"] = error_type_counts.get("validation", 0) + 1
-                            else:
-                                error_type_counts["other_api"] = error_type_counts.get("other_api", 0) + 1
-                        logging.error(f"API Error: {e}")
-                        stats["failed"] += 1
-                except Exception as e:
-                    # Log unexpected errors
-                    with error_lock:
-                        if len(error_samples) < 20:
-                            error_samples.append(f"Unexpected: {e}")
-                        error_type_counts["unexpected"] = error_type_counts.get("unexpected", 0) + 1
-                    logging.error(f"Unexpected error: {e}")
-                    stats["failed"] += 1
-
-                # Update progress bar
-                progress.update(
-                    task,
-                    advance=1,
-                    submitted=stats["submitted"],
-                    skipped=stats["skipped"],
-                    failed=stats["failed"],
-                )
-
-                # Small delay to avoid rate limiting
-                if idx < len(submissions) - 1:
-                    sleep(submission_delay)
-
-        # Show error samples if there were failures
-        if error_samples:
-            console.print()
-            console.print("[yellow]Sample errors:[/yellow]")
-            for i, error in enumerate(error_samples, 1):
-                console.print(f"  [dim]{i}. {error}[/dim]")
-
-        # Show error type breakdown
-        if error_type_counts:
-            console.print()
-            console.print("[yellow]Error breakdown:[/yellow]")
-            for error_type, count in sorted(error_type_counts.items(), key=lambda x: -x[1]):
-                console.print(f"  [dim]{error_type}: {count}[/dim]")
+    # Show error samples if there were failures
+    if error_samples:
+        console.print()
+        console.print("[yellow]Sample errors:[/yellow]")
+        for i, error in enumerate(error_samples, 1):
+            console.print(f"  [dim]{i}. {error}[/dim]")
 
     # Print summary
     console.print()
