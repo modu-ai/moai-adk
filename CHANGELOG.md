@@ -50,6 +50,17 @@ None. All changes are backward compatible.
 
 ## Changed
 
+### CLAUDE.md Optimization
+
+- **refactor**: Major cleanup and modularization for v1.9.0 (4134e60d)
+  - Reduced CLAUDE.md from ~60k to ~30k characters (40k limit compliance)
+  - Moved detailed content to `.claude/rules/` for better organization
+  - Added `shell_validator.py` utility for cross-platform compatibility
+  - Enhanced CLI commands (doctor, init, update)
+  - Added `moai-workflow-thinking` skill
+  - Added bug-report.yml issue template
+  - Impact: Improved readability, maintainability, and Claude Code compatibility
+
 ### Rules System Migration
 
 - **feat**: Migrate from `.moai/rules/*.yaml` to `.claude/rules/*.md` (99ab5273)
@@ -134,6 +145,17 @@ moai --version
   - 16개 언어 파일 업데이트
 
 ## 변경됨
+
+### CLAUDE.md 최적화
+
+- **refactor**: v1.9.0을 위한 대규모 정리 및 모듈화 (4134e60d)
+  - CLAUDE.md를 ~60k에서 ~30k 문자로 축소 (40k 제한 준수)
+  - 상세 내용을 `.claude/rules/`로 이동하여 구성 개선
+  - 크로스 플랫폼 호환성을 위한 `shell_validator.py` 유틸리티 추가
+  - CLI 명령어 향상 (doctor, init, update)
+  - `moai-workflow-thinking` 스킬 추가
+  - bug-report.yml 이슈 템플릿 추가
+  - 영향: 가독성, 유지보수성, Claude Code 호환성 개선
 
 ### Rules 시스템 마이그레이션
 
