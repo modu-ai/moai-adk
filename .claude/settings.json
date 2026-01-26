@@ -63,7 +63,6 @@
     "padding": 0,
     "refreshInterval": 300
   },
-  "plansDirectory": "./.claude/plans",
   "outputStyle": "Mr.Alfred",
   "cleanupPeriodDays": 30,
   "env": {
