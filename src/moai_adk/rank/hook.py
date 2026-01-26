@@ -1504,13 +1504,15 @@ def sync_all_sessions(
 
             try:
                 response = client.submit_sessions_batch(batch)
+                # Extract nested data field (API returns {success, data: {succeeded, failed, results}})
+                data = response.get("data", {})
 
-                if response.get("success") or response.get("succeeded", 0) > 0:
-                    batch_submitted += response.get("succeeded", 0)
-                    failed_in_batch = response.get("failed", 0)
+                if response.get("success") or data.get("succeeded", 0) > 0:
+                    batch_submitted += data.get("succeeded", 0)
+                    failed_in_batch = data.get("failed", 0)
 
                     # Check individual results for duplicates/skipped
-                    for result in response.get("results", []):
+                    for result in data.get("results", []):
                         if not result.get("success"):
                             error_msg = result.get("error", "").lower()
                             if _is_duplicate_error(error_msg):
