@@ -56,7 +56,7 @@ moai glm YOUR_API_KEY
 
 - **🎯 SPEC-First**: 명확한 명세서로 90% 재작업 감소
 - **🔵 DDD**: ANALYZE-PRESERVE-IMPROVE 사이클로 동작 보존 리팩토링
-- **🤖 AI 오케스트레이션**: 20개 전문 에이전트 + 49개 스킬
+- **🤖 AI 오케스트레이션**: 20개 전문 에이전트 + 52개 스킬
 - **🧠 Sequential Thinking MCP**: 단계별 추론을 통한 구조화된 문제 해결
 - **🌐 다국어 라우팅**: 한국어/영어/일본어/중국어 자동 지원
 - **🌳 Worktree 병렬 개발**: 완전 격리 환경에서 무제한 병렬 작업
@@ -1370,13 +1370,16 @@ execution_mode:
 ### 📚 스킬 라이브러리 구조
 
 ```text
-🏗️ Foundation (5)    → 핵심 철학, 실행 규칙
+🏗️ Foundation (6)    → 핵심 철학, 실행 규칙
 🎯 Domain (4)        → 도메인 전문 지식
 💻 Language (16)     → 16개 프로그래밍 언어
 🚀 Platform (10)     → 클라우드/BaaS 통합
-📋 Workflow (7)      → 자동화 워크플로우
-📚 Library (4)       → 특수 라이브러리
+📋 Workflow (8)      → 자동화 워크플로우
+📚 Library (3)       → 특수 라이브러리
 🛠️ Tool (2)          → 개발 도구
+📑 Docs (1)          → 문서 생성
+📊 Formats (1)       → 데이터 포맷 처리
+🖥️ Framework (1)     → 애플리케이션 프레임워크
 ```
 
 ### 자주 쓰는 스킬 조합
@@ -1481,6 +1484,80 @@ export GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"
 
 - **스킬**: `.claude/skills/moai-platform-stitch/SKILL.md`
 - **에이전트**: `expert-stitch` (UI/UX 디자인 전문 에이전트)
+
+---
+
+## 6.1 Memory MCP - 세션 간 지속 저장소
+
+### 개요
+
+**Memory MCP**는 Claude Code 세션 간에 지속적인 저장소를 제공하여 Alfred가 사용자 선호도, 프로젝트 컨텍스트, 학습된 패턴을 기억할 수 있게 합니다.
+
+### 주요 기능
+
+| 기능 | 설명 |
+| --- | --- |
+| **사용자 선호도** | 대화 언어, 코딩 스타일, 명명 규칙 기억 |
+| **프로젝트 컨텍스트** | 기술 스택, 아키텍처 결정, 프로젝트 관례 저장 |
+| **학습된 패턴** | 자주 사용하는 라이브러리, 일반적인 오류 해결책 저장 |
+| **세션 상태** | 마지막 작업한 SPEC, 보류 중인 작업 추적 |
+
+### 메모리 카테고리
+
+| 접두사 | 카테고리 | 예시 |
+| --- | --- | --- |
+| `user_` | 사용자 선호도 | `user_language`, `user_coding_style` |
+| `project_` | 프로젝트 컨텍스트 | `project_tech_stack`, `project_architecture` |
+| `pattern_` | 학습된 패턴 | `pattern_preferred_libraries`, `pattern_error_resolutions` |
+| `session_` | 세션 상태 | `session_last_spec`, `session_pending_tasks` |
+
+### 설치
+
+Claude Code 설정에 Memory MCP를 추가하세요:
+
+```json
+// .claude/settings.local.json
+{
+  "mcpServers": {
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/memory-mcp-server"]
+    }
+  }
+}
+```
+
+### 사용 예시
+
+**사용자 선호도 저장**:
+```
+"대화는 한국어로 해줘"
+→ Alfred 저장: user_language = "ko"
+```
+
+**교정에서 학습**:
+```
+"Python 변수는 snake_case로 써줘"
+→ Alfred 저장: user_coding_style = "snake_case"
+```
+
+**컨텍스트 조회**:
+```
+"마지막으로 작업하던 SPEC이 뭐였지?"
+→ Alfred 조회: session_last_spec
+```
+
+### 모범 사례
+
+- 설명적이고 카테고리화된 키 이름 사용
+- 값은 간결하게 유지 (1000자 이하)
+- 민감한 자격 증명 저장 금지
+- 개인 데이터가 아닌 선호도 저장
+
+### 상세 문서
+
+- **스킬**: `.claude/skills/moai-foundation-memory/SKILL.md`
+- **CLAUDE.md**: Section 14 - Memory MCP Integration
 
 ---
 
@@ -2215,9 +2292,13 @@ moai rank list-excluded
 - **Context7**: 최신 라이브러리 문서 및 스킬 참조 생성
 - **Sequential Thinking**: 복잡한 작업에서 구조화된 문제 해결 및 단계별 추론
 
+**권장**:
+
+- **Memory MCP**: 세션 간 지속 저장소 (사용자 선호도, 프로젝트 컨텍스트, 학습된 패턴)
+
 **선택사항**:
 
-- **Google Stitch**: AI 기반 UI/UX 디자인 생성 (Section 7 참조)
+- **Google Stitch**: AI 기반 UI/UX 디자인 생성 (Section 6 참조)
 - **claude-in-chrome**: 브라우저 자동화 테스트
 - **Playwright**: E2E 테스트
 - **Figma**: 디자인 시스템

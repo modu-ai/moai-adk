@@ -56,7 +56,7 @@ moai glm YOUR_API_KEY
 
 - **🎯 SPEC-First**: 明確な仕様書で90%再作業削減
 - **🔵 DDD (Domain-Driven Development)**: 分析-保存-改善サイクルによる動作保存リファクタリング
-- **🤖 AIオーケストレーション**: 20個専門エージェント + 49個スキル
+- **🤖 AIオーケストレーション**: 20個専門エージェント + 52個スキル
 - **🧠 Sequential Thinking MCP**: 段階的推論による構造化された問題解決
 - **🌐 多言語ルーティング**: 韓国語/英語/日本語/中国語自動サポート
 - **🌳 Worktree並列開発**: 完全分離環境で無制限並列作業
@@ -1459,13 +1459,16 @@ Alfredは4つの言語リクエストを自動認識して正しいエージェ�
 ### 📚 スキルライブラリ構造
 
 ```text
-🏗️ Foundation (5)    → 核心哲学、実行ルール
+🏗️ Foundation (6)    → 核心哲学、実行ルール
 🎯 Domain (4)        → ドメイン専門知識
 💻 Language (16)     → 16個プログラミング言語
 🚀 Platform (10)     → クラウド/BaaS統合
-📋 Workflow (7)      → 自動化ワークフロー
-📚 Library (4)       → 特殊ライブラリ
+📋 Workflow (8)      → 自動化ワークフロー
+📚 Library (3)       → 特殊ライブラリ
 🛠️ Tool (2)          → 開発ツール
+📑 Docs (1)          → ドキュメント生成
+📊 Formats (1)       → データフォーマット処理
+🖥️ Framework (1)     → アプリケーションフレームワーク
 ```
 
 ### よく使うスキル組合せ
@@ -1570,6 +1573,80 @@ export GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"
 
 - **スキル**: `.claude/skills/moai-platform-stitch/SKILL.md`
 - **エージェント**: `expert-stitch` (UI/UXデザイン専門エージェント)
+
+---
+
+## 7.1 Memory MCP - セッション間永続ストレージ
+
+### 概要
+
+**Memory MCP**はClaude Codeセッション間に永続ストレージを提供し、Alfredがユーザー設定、プロジェクトコンテキスト、学習パターンを記憶できるようにします。
+
+### 主な機能
+
+| 機能 | 説明 |
+| --- | --- |
+| **ユーザー設定** | 会話言語、コーディングスタイル、命名規則を記憶 |
+| **プロジェクトコンテキスト** | 技術スタック、アーキテクチャ決定、プロジェクト慣習を保存 |
+| **学習パターン** | よく使用するライブラリ、一般的なエラー解決策を保存 |
+| **セッション状態** | 最後に作業したSPEC、保留中のタスクを追跡 |
+
+### メモリカテゴリ
+
+| 接頭辞 | カテゴリ | 例 |
+| --- | --- | --- |
+| `user_` | ユーザー設定 | `user_language`, `user_coding_style` |
+| `project_` | プロジェクトコンテキスト | `project_tech_stack`, `project_architecture` |
+| `pattern_` | 学習パターン | `pattern_preferred_libraries`, `pattern_error_resolutions` |
+| `session_` | セッション状態 | `session_last_spec`, `session_pending_tasks` |
+
+### インストール
+
+Claude Code設定にMemory MCPを追加:
+
+```json
+// .claude/settings.local.json
+{
+  "mcpServers": {
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/memory-mcp-server"]
+    }
+  }
+}
+```
+
+### 使用例
+
+**ユーザー設定の保存**:
+```
+「会話は日本語でお願いします」
+→ Alfred保存: user_language = "ja"
+```
+
+**修正から学習**:
+```
+「Python変数はsnake_caseで書いてください」
+→ Alfred保存: user_coding_style = "snake_case"
+```
+
+**コンテキストの取得**:
+```
+「最後に作業していたSPECは何でしたか？」
+→ Alfred取得: session_last_spec
+```
+
+### ベストプラクティス
+
+- 説明的でカテゴリ化されたキー名を使用
+- 値は簡潔に（1000文字以下）
+- 機密認証情報は保存しない
+- 個人データではなく設定を保存
+
+### 詳細ドキュメント
+
+- **スキル**: `.claude/skills/moai-foundation-memory/SKILL.md`
+- **CLAUDE.md**: Section 14 - Memory MCP Integration
 
 ---
 
@@ -2299,6 +2376,10 @@ moai rank list-excluded
 
 - **Context7**: 最新ライブラリドキュメント、Skill参照生成
 - **Sequential Thinking**: 複雑なタスクでの構造化された問題解決と段階的推論
+
+**推奨**:
+
+- **Memory MCP**: セッション間永続ストレージ（ユーザー設定、プロジェクトコンテキスト、学習パターン）
 
 **選択**:
 

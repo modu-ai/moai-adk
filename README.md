@@ -56,7 +56,7 @@ moai glm YOUR_API_KEY
 
 - **🎯 SPEC-First**: 90% reduction in rework with clear specifications
 - **🔵 DDD (Domain-Driven Development)**: ANALYZE-PRESERVE-IMPROVE cycle with behavior preservation
-- **🤖 AI Orchestration**: 20 specialized agents + 49 skills
+- **🤖 AI Orchestration**: 20 specialized agents + 52 skills
 - **🧠 Sequential Thinking MCP**: Structured problem-solving with step-by-step reasoning
 - **🌐 Multilingual Routing**: Automatic support for Korean/English/Japanese/Chinese
 - **🌳 Worktree Parallel Development**: Unlimited parallel work in completely isolated environments
@@ -1516,13 +1516,16 @@ execution_mode:
 ### 📚 Skill Library Structure
 
 ```text
-🏗️ Foundation (5)    → Core philosophy, execution rules
+🏗️ Foundation (6)    → Core philosophy, execution rules
 🎯 Domain (4)        → Domain expertise
 💻 Language (16)     → 16 programming languages
 🚀 Platform (10)     → Cloud/BaaS integration
-📋 Workflow (7)      → Automation workflows
-📚 Library (4)       → Special libraries
+📋 Workflow (8)      → Automation workflows
+📚 Library (3)       → Special libraries
 🛠️ Tool (2)          → Development tools
+📑 Docs (1)          → Documentation generation
+📊 Formats (1)       → Data format handling
+🖥️ Framework (1)     → Application frameworks
 ```
 
 ### Frequently Used Skill Combinations
@@ -1627,6 +1630,80 @@ For complete prompt templates, error handling, and advanced patterns, see the sk
 
 - **Skill**: `.claude/skills/moai-platform-stitch/SKILL.md`
 - **Agent**: `expert-stitch` (UI/UX design specialist agent)
+
+---
+
+## 7.1 Memory MCP - Persistent Storage Across Sessions
+
+### Overview
+
+**Memory MCP** enables persistent storage across Claude Code sessions, allowing Alfred to remember user preferences, project context, and learned patterns.
+
+### Key Features
+
+| Feature | Description |
+| --- | --- |
+| **User Preferences** | Remember conversation language, coding style, naming conventions |
+| **Project Context** | Persist tech stack, architecture decisions, project conventions |
+| **Learned Patterns** | Store frequently used libraries, common error resolutions |
+| **Session State** | Track last worked SPEC, pending tasks across sessions |
+
+### Memory Categories
+
+| Prefix | Category | Examples |
+| --- | --- | --- |
+| `user_` | User Preferences | `user_language`, `user_coding_style` |
+| `project_` | Project Context | `project_tech_stack`, `project_architecture` |
+| `pattern_` | Learned Patterns | `pattern_preferred_libraries`, `pattern_error_resolutions` |
+| `session_` | Session State | `session_last_spec`, `session_pending_tasks` |
+
+### Installation
+
+Add Memory MCP to your Claude Code configuration:
+
+```json
+// .claude/settings.local.json
+{
+  "mcpServers": {
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/memory-mcp-server"]
+    }
+  }
+}
+```
+
+### Usage Examples
+
+**Store User Preference**:
+```
+"Remember that I prefer Korean for conversations"
+→ Alfred stores: user_language = "ko"
+```
+
+**Learn from Corrections**:
+```
+"Use snake_case for Python variables"
+→ Alfred stores: user_coding_style = "snake_case"
+```
+
+**Retrieve Context**:
+```
+"What was the last SPEC I was working on?"
+→ Alfred retrieves: session_last_spec
+```
+
+### Best Practices
+
+- Use descriptive, categorized key names
+- Keep values concise (under 1000 characters)
+- Never store sensitive credentials
+- Store preferences, not personal data
+
+### Detailed Documentation
+
+- **Skill**: `.claude/skills/moai-foundation-memory/SKILL.md`
+- **CLAUDE.md**: Section 14 - Memory MCP Integration
 
 ---
 
@@ -2366,6 +2443,10 @@ moai rank list-excluded
 
 - **Context7**: For latest library documentation and Skill reference generation
 - **Sequential Thinking**: For structured problem-solving and step-by-step reasoning in complex tasks
+
+**Recommended**:
+
+- **Memory MCP**: Persistent storage across sessions for user preferences, project context, and learned patterns
 
 **Optional**:
 

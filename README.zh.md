@@ -56,7 +56,7 @@ moai glm YOUR_API_KEY
 
 - **🎯 SPEC-First**: 清晰的规格说明减少90%返工
 - **🔵 DDD方法论**: 分析-保存-改进循环，通过行为保存实现持续重构
-- **🤖 AI编排**: 20个专业智能体 + 49个技能
+- **🤖 AI编排**: 20个专业智能体 + 52个技能
 - **🧠 Sequential Thinking MCP**: 逐步推理的结构化问题解决
 - **🌐 多语言路由**: 自动支持韩语/英语/日语/中文
 - **🌳 Worktree并行开发**: 完全隔离环境中无限并行工作
@@ -1522,13 +1522,16 @@ Alfred自动识别4种语言请求并调用正确的智能体:
 ### 📚 技能库结构
 
 ```text
-🏗️ Foundation (5)    → 核心哲学、执行规则
+🏗️ Foundation (6)    → 核心哲学、执行规则
 🎯 Domain (4)        → 领域专业知识
 💻 Language (16)     → 16种编程语言
 🚀 Platform (10)     → 云/BaaS集成
-📋 Workflow (7)      → 自动化工作流
-📚 Library (4)       → 特殊库
-🛠️ Tool (2)         → 开发工具
+📋 Workflow (8)      → 自动化工作流
+📚 Library (3)       → 特殊库
+🛠️ Tool (2)          → 开发工具
+📑 Docs (1)          → 文档生成
+📊 Formats (1)       → 数据格式处理
+🖥️ Framework (1)     → 应用程序框架
 ```
 
 ### 常用技能组合
@@ -1633,6 +1636,80 @@ export GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"
 
 - **技能**: `.claude/skills/moai-platform-stitch/SKILL.md`
 - **智能体**: `expert-stitch` (UI/UX设计专家智能体)
+
+---
+
+## 7.1 Memory MCP - 跨会话持久存储
+
+### 概述
+
+**Memory MCP**为Claude Code会话提供持久存储，使Alfred能够记住用户偏好、项目上下文和学习模式。
+
+### 主要功能
+
+| 功能 | 描述 |
+| --- | --- |
+| **用户偏好** | 记住对话语言、编码风格、命名约定 |
+| **项目上下文** | 保存技术栈、架构决策、项目惯例 |
+| **学习模式** | 存储常用库、常见错误解决方案 |
+| **会话状态** | 跟踪最后工作的SPEC、待处理任务 |
+
+### 内存类别
+
+| 前缀 | 类别 | 示例 |
+| --- | --- | --- |
+| `user_` | 用户偏好 | `user_language`, `user_coding_style` |
+| `project_` | 项目上下文 | `project_tech_stack`, `project_architecture` |
+| `pattern_` | 学习模式 | `pattern_preferred_libraries`, `pattern_error_resolutions` |
+| `session_` | 会话状态 | `session_last_spec`, `session_pending_tasks` |
+
+### 安装
+
+在Claude Code配置中添加Memory MCP:
+
+```json
+// .claude/settings.local.json
+{
+  "mcpServers": {
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/memory-mcp-server"]
+    }
+  }
+}
+```
+
+### 使用示例
+
+**保存用户偏好**:
+```
+"请用中文对话"
+→ Alfred保存: user_language = "zh"
+```
+
+**从纠正中学习**:
+```
+"Python变量用snake_case"
+→ Alfred保存: user_coding_style = "snake_case"
+```
+
+**获取上下文**:
+```
+"我最后在做哪个SPEC？"
+→ Alfred获取: session_last_spec
+```
+
+### 最佳实践
+
+- 使用描述性、分类明确的键名
+- 值保持简洁（1000字符以下）
+- 不存储敏感凭证
+- 存储偏好，而非个人数据
+
+### 详细文档
+
+- **技能**: `.claude/skills/moai-foundation-memory/SKILL.md`
+- **CLAUDE.md**: Section 14 - Memory MCP Integration
 
 ---
 
@@ -2362,6 +2439,10 @@ moai rank list-excluded
 
 - **Context7**: 最新库文档、技能参考生成
 - **Sequential Thinking**: 复杂任务中的结构化问题解决和逐步推理
+
+**推荐**:
+
+- **Memory MCP**: 跨会话持久存储（用户偏好、项目上下文、学习模式）
 
 **可选**:
 
