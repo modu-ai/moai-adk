@@ -16,6 +16,11 @@
       "env": {
         "GOOGLE_CLOUD_PROJECT": "moai-adk"
       }
+    },
+    "memory": {
+      "$comment": "Persistent memory across sessions for user preferences, project context, and learned patterns",
+      "command": "${SHELL:-/bin/bash}",
+      "args": ["-l", "-c", "exec npx -y @modelcontextprotocol/server-memory"]
     }
   },
   "staggeredStartup": {

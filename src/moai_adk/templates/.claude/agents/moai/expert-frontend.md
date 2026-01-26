@@ -8,10 +8,10 @@ description: |
   KO: 프론트엔드, UI, 컴포넌트, 리액트, 뷰, 넥스트, CSS, 반응형, 상태관리, UI/UX, 디자인, 접근성, WCAG, 사용자경험, 디자인시스템, 와이어프레임
   JA: フロントエンド, UI, コンポーネント, リアクト, ビュー, CSS, レスポンシブ, 状態管理, UI/UX, デザイン, アクセシビリティ, WCAG, ユーザー体験, デザインシステム
   ZH: 前端, UI, 组件, React, Vue, CSS, 响应式, 状态管理, UI/UX, 设计, 可访问性, WCAG, 用户体验, 设计系统
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__claude-in-chrome__*, mcp__figma__get-file-data, mcp__figma__create-resource, mcp__figma__export-code
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__memory__*, mcp__claude-in-chrome__*, mcp__figma__get-file-data, mcp__figma__create-resource, mcp__figma__export-code
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-lang-typescript, moai-lang-javascript, moai-domain-frontend, moai-domain-uiux, moai-library-shadcn, moai-tool-ast-grep
+skills: moai-foundation-claude, moai-foundation-memory, moai-lang-typescript, moai-lang-javascript, moai-domain-frontend, moai-domain-uiux, moai-library-shadcn, moai-tool-ast-grep
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"

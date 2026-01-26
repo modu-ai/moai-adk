@@ -1215,7 +1215,117 @@ Before releasing cross-platform features:
 
 ---
 
+## 21. CLAUDE.md Size Management
+
+### 40k Character Limit
+
+[HARD] CLAUDE.md must not exceed 40,000 characters (approximately 40KB).
+
+**WHY**: Large CLAUDE.md files cause Claude to ignore instructions. Anthropic recommends keeping CLAUDE.md focused and modular.
+
+### Current Status
+
+- CLAUDE.md size: ~30.5KB (within limit)
+- Buffer remaining: ~9.5KB
+- Target: Stay under 35KB for safety margin
+
+### Size Monitoring
+
+Check CLAUDE.md size before commits:
+
+```bash
+# Check file size
+wc -c CLAUDE.md
+
+# Check character count
+cat CLAUDE.md | wc -m
+
+# Recommended: Keep under 35,000 characters
+```
+
+### Modularization Strategy
+
+When CLAUDE.md approaches limit:
+
+1. **Move detailed content to `.claude/rules/`**:
+   - Language-specific rules → `.claude/rules/languages/`
+   - Quality standards → `.claude/rules/core/`
+   - Workflow details → `.claude/rules/workflow/`
+
+2. **Use @import references**:
+   - `@.claude/rules/core/trust5-framework.md`
+   - `@.moai/config/sections/quality.yaml`
+
+3. **Keep CLAUDE.md for**:
+   - Core identity and hard rules
+   - Request processing pipeline
+   - Agent catalog (summary only)
+   - Configuration references
+
+### Content Priority
+
+When reducing CLAUDE.md size, remove in this order:
+
+1. Detailed examples (move to skills)
+2. Code blocks (move to rules)
+3. Repetitive explanations (consolidate)
+4. Historical context (move to docs)
+
+**NEVER remove**:
+- HARD rules
+- Agent invocation patterns
+- Quality gates checklist
+- Version and metadata
+
+### Sync with Template
+
+After editing CLAUDE.md:
+
+```bash
+# Sync to template
+cp CLAUDE.md src/moai_adk/templates/CLAUDE.md
+
+# Verify size
+wc -c src/moai_adk/templates/CLAUDE.md
+```
+
+### Rules Directory Structure
+
+Claude Code official rules location: `.claude/rules/`
+
+```
+.claude/rules/
+├── core/                    # Core framework rules
+│   ├── trust5-framework.md
+│   ├── documentation-standards.md
+│   └── quality-gates.md
+├── workflow/                # Workflow mode rules
+│   ├── progressive-disclosure.md
+│   ├── token-budget.md
+│   └── workflow-modes.md
+├── development/             # Development standards
+│   ├── skill-frontmatter.md
+│   ├── tool-permissions.md
+│   └── documentation-standards.md
+└── languages/               # Path-specific language rules
+    ├── python.md            # paths: **/*.py
+    ├── typescript.md        # paths: **/*.ts, **/*.tsx
+    └── ... (16 languages)
+```
+
+**Note**: Language rules use YAML frontmatter `paths` field for conditional loading.
+
+### Deprecated Directories
+
+The following directories were removed (non-standard):
+- `.moai/rules/` (YAML format, not Claude Code standard)
+- `.moai/contexts/` (custom pattern, not official)
+
+Use `.claude/rules/` (Markdown format) for all rule definitions.
+
+---
+
 **Status**: Active (Local Development)
-**Version**: 3.5.0 (Added Cross-Platform Development Guidelines)
-**Last Updated**: 2026-01-25
+**Version**: 3.6.0 (Added CLAUDE.md Size Management)
+**Last Updated**: 2026-01-26
 

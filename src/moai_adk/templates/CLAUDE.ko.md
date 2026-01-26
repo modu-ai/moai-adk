@@ -690,8 +690,109 @@ MoAI-ADK는 효율적인 스킬 로딩을 위한 3단계 점진적 공개 시스
 
 ---
 
-Version: 10.4.0 (DDD + Progressive Disclosure + Auto-Parallel Task Decomposition)
-Last Updated: 2026-01-19
+## 13. 병렬 실행 안전장치
+
+### 파일 쓰기 충돌 방지
+
+**문제**: 여러 에이전트가 병렬로 작동할 때 동일한 파일을 동시에 수정하여 충돌과 데이터 손실이 발생할 수 있습니다.
+
+**해결책**: 병렬 실행 전 의존성 분석
+
+**실행 전 체크리스트**:
+
+1. **파일 액세스 분석**: 각 에이전트가 액세스할 파일 수집, 중복 파일 액세스 패턴 식별, 읽기-쓰기 충돌 감지
+2. **의존성 그래프 구성**: 에이전트 간 파일 의존성 매핑, 독립 작업 집합 식별, 의존 작업 집합 표시
+3. **실행 모드 선택**: 병렬(파일 중복 없음), 순차(파일 중복 감지), 하이브리드(부분 중복)
+
+### 에이전트 도구 요구사항
+
+코드 수정을 수행하는 모든 에이전트는 Read, Write, Edit, Grep, Glob, Bash, TodoWrite 도구를 포함해야 합니다.
+
+### 루프 방지 가드
+
+**재시도 전략**: 작업당 최대 3회 재시도, 실패 패턴 감지, 폴백 체인 사용, 3회 실패 후 사용자 안내 요청
+
+### 플랫폼 호환성
+
+**모범 사례**: 파일 수정 시 sed/awk 대신 Edit 도구 사용을 선호합니다. Edit 도구는 크로스 플랫폼이며 플랫폼별 구문 문제를 방지합니다.
+
+---
+
+## 14. Memory MCP 통합
+
+### 개요
+
+MoAI-ADK는 세션 간 지속 저장을 위해 Memory MCP 서버를 사용합니다. 이를 통해 사용자 선호도 유지, 프로젝트 컨텍스트 보존, 학습된 패턴 저장이 가능합니다.
+
+### 메모리 카테고리
+
+**사용자 선호도** (접두사: `user_`):
+- `user_language`: 대화 언어
+- `user_coding_style`: 선호하는 코딩 규칙
+- `user_naming_convention`: 변수 네이밍 스타일
+
+**프로젝트 컨텍스트** (접두사: `project_`):
+- `project_tech_stack`: 사용 중인 기술
+- `project_architecture`: 아키텍처 결정
+- `project_conventions`: 프로젝트별 규칙
+
+**학습된 패턴** (접두사: `pattern_`):
+- `pattern_preferred_libraries`: 자주 사용하는 라이브러리
+- `pattern_error_resolutions`: 일반적인 오류 해결
+
+**세션 상태** (접두사: `session_`):
+- `session_last_spec`: 마지막 작업한 SPEC ID
+- `session_pending_tasks`: 미완료 작업
+
+### 사용 프로토콜
+
+**세션 시작 시:**
+1. `user_language` 조회 및 응답에 적용
+2. `project_tech_stack` 로드하여 컨텍스트 파악
+3. `session_last_spec` 확인하여 연속성 유지
+
+**상호작용 중:**
+1. 명시적으로 언급된 사용자 선호도 저장
+2. 수정 및 조정 내용 학습
+3. 결정 사항 발생 시 프로젝트 컨텍스트 업데이트
+
+### 메모리 작업
+
+`mcp__memory__*` 도구 사용:
+- `mcp__memory__store`: 키-값 쌍 저장
+- `mcp__memory__retrieve`: 저장된 값 조회
+- `mcp__memory__list`: 모든 키 목록
+- `mcp__memory__delete`: 키 삭제
+
+### 에이전트 간 컨텍스트 공유
+
+Memory MCP는 워크플로우 실행 중 에이전트 간 컨텍스트 공유를 가능하게 합니다.
+
+**핸드오프 키 스키마:**
+```
+handoff_{from_agent}_{to_agent}_{spec_id}
+context_{spec_id}_{category}
+```
+
+**카테고리:** `requirements`, `architecture`, `api`, `database`, `decisions`, `progress`
+
+**워크플로우 예시:**
+1. manager-spec이 저장: `context_SPEC-001_requirements`
+2. manager-ddd가 조회: `context_SPEC-001_requirements`
+3. expert-backend가 저장: `context_SPEC-001_api`
+4. expert-frontend가 조회: `context_SPEC-001_api`
+5. manager-docs가 모두 조회: `context_SPEC-001_*`
+
+**활성화된 에이전트:**
+- manager-spec, manager-ddd, manager-docs, manager-strategy
+- expert-backend, expert-frontend
+
+자세한 패턴은 Skill("moai-foundation-memory")을 참조하세요.
+
+---
+
+Version: 10.7.0 (DDD + Progressive Disclosure + Auto-Parallel + Safeguards + Official Rules + Memory MCP)
+Last Updated: 2026-01-26
 Language: Korean (한국어)
 핵심 규칙: Alfred는 오케스트레이터입니다; 직접 구현은 금지됩니다
 

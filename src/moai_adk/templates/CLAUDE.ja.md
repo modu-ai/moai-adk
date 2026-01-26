@@ -690,8 +690,109 @@ MoAI-ADK は効率的なスキルロードのための 3 レベル段階的開�
 
 ---
 
-Version: 10.4.0 (DDD + Progressive Disclosure + Auto-Parallel Task Decomposition)
-Last Updated: 2026-01-19
+## 13. 並列実行セーフガード
+
+### ファイル書き込み競合防止
+
+**問題**: 複数のエージェントが並列で動作する場合、同じファイルを同時に変更してデータの競合や損失が発生する可能性があります。
+
+**解決策**: 並列実行前の依存関係分析
+
+**実行前チェックリスト**:
+
+1. **ファイルアクセス分析**: 各エージェントがアクセスするファイルを収集、重複するファイルアクセスパターンを識別、読み取り-書き込み競合を検出
+2. **依存関係グラフ構築**: エージェント間のファイル依存関係をマッピング、独立タスクセットを識別、依存タスクセットをマーク
+3. **実行モード選択**: 並列（ファイル重複なし）、順次（ファイル重複検出）、ハイブリッド（部分的重複）
+
+### エージェントツール要件
+
+コード変更を行うすべてのエージェントは Read、Write、Edit、Grep、Glob、Bash、TodoWrite ツールを含む必要があります。
+
+### ループ防止ガード
+
+**リトライ戦略**: 操作あたり最大 3 回のリトライ、失敗パターン検出、フォールバックチェーン使用、3 回失敗後はユーザーガイダンスを要求
+
+### プラットフォーム互換性
+
+**ベストプラクティス**: ファイル変更には sed/awk の代わりに Edit ツールを使用することを推奨します。Edit ツールはクロスプラットフォームで、プラットフォーム固有の構文問題を回避します。
+
+---
+
+## 14. Memory MCP 統合
+
+### 概要
+
+MoAI-ADK は、セッション間で永続的なストレージを提供するために Memory MCP サーバーを使用します。これにより、ユーザー設定の保持、プロジェクトコンテキストの保存、学習パターンの保存が可能になります。
+
+### メモリカテゴリ
+
+**ユーザー設定** (プレフィックス: `user_`):
+- `user_language`: 会話言語
+- `user_coding_style`: 優先するコーディング規約
+- `user_naming_convention`: 変数命名スタイル
+
+**プロジェクトコンテキスト** (プレフィックス: `project_`):
+- `project_tech_stack`: 使用中の技術
+- `project_architecture`: アーキテクチャ決定
+- `project_conventions`: プロジェクト固有のルール
+
+**学習パターン** (プレフィックス: `pattern_`):
+- `pattern_preferred_libraries`: よく使用するライブラリ
+- `pattern_error_resolutions`: 一般的なエラー解決
+
+**セッション状態** (プレフィックス: `session_`):
+- `session_last_spec`: 最後に作業した SPEC ID
+- `session_pending_tasks`: 未完了タスク
+
+### 使用プロトコル
+
+**セッション開始時:**
+1. `user_language` を取得してレスポンスに適用
+2. `project_tech_stack` をロードしてコンテキストを把握
+3. `session_last_spec` を確認して継続性を維持
+
+**インタラクション中:**
+1. 明示的に述べられたユーザー設定を保存
+2. 修正と調整から学習
+3. 決定が行われたらプロジェクトコンテキストを更新
+
+### メモリ操作
+
+`mcp__memory__*` ツールを使用:
+- `mcp__memory__store`: キー値ペアを保存
+- `mcp__memory__retrieve`: 保存された値を取得
+- `mcp__memory__list`: すべてのキーをリスト
+- `mcp__memory__delete`: キーを削除
+
+### エージェント間コンテキスト共有
+
+Memory MCP はワークフロー実行中にエージェント間でコンテキストを共有できます。
+
+**ハンドオフキースキーマ:**
+```
+handoff_{from_agent}_{to_agent}_{spec_id}
+context_{spec_id}_{category}
+```
+
+**カテゴリ:** `requirements`, `architecture`, `api`, `database`, `decisions`, `progress`
+
+**ワークフロー例:**
+1. manager-spec が保存: `context_SPEC-001_requirements`
+2. manager-ddd が取得: `context_SPEC-001_requirements`
+3. expert-backend が保存: `context_SPEC-001_api`
+4. expert-frontend が取得: `context_SPEC-001_api`
+5. manager-docs がすべて取得: `context_SPEC-001_*`
+
+**有効なエージェント:**
+- manager-spec, manager-ddd, manager-docs, manager-strategy
+- expert-backend, expert-frontend
+
+詳細パターンについては、Skill("moai-foundation-memory") を参照してください。
+
+---
+
+Version: 10.7.0 (DDD + Progressive Disclosure + Auto-Parallel + Safeguards + Official Rules + Memory MCP)
+Last Updated: 2026-01-26
 Language: Japanese (日本語)
 コアルール: Alfred はオーケストレーターです。直接実装は禁止されています
 

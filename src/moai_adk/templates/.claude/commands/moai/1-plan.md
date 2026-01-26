@@ -73,24 +73,6 @@ Scenario 3: SPEC + Worktree (NEW)
 
 Flag Priority: --worktree takes precedence over --branch, which takes precedence over default (SPEC only)
 
-## CodeRabbit AI Integration (Local Only)
-
-This local environment includes CodeRabbit AI review integration for SPEC documents:
-
-Automatic workflows:
-
-- SPEC review: CodeRabbit analyzes SPEC metadata and EARS structure
-- GitHub Issue sync: SPEC files automatically create and update GitHub Issues
-- Auto-approval: Draft PRs are approved when quality meets standards (80%+)
-- SPEC quality validation: Checklist for metadata, structure, and content
-
-Scope:
-
-- Local environment: Full CodeRabbit integration with auto-approval
-- Published packages: Users get GitHub Issue sync only (no CodeRabbit)
-
-> See `.coderabbit.yaml` for detailed review rules and SPEC validation checklist
-
 ---
 
 ## Associated Agents and Skills

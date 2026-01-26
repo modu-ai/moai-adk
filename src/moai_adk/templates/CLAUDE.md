@@ -188,10 +188,11 @@ Allowed Tools: Full access (all tools)
 - manager-strategy: System design, architecture decisions, trade-off analysis
 - manager-git: Git operations, branching strategy, merge management
 
-### Expert Agents (8)
+### Expert Agents (9)
 
 - expert-backend: API development, server-side logic, database integration
 - expert-frontend: React components, UI implementation, client-side code
+- expert-stitch: UI/UX design specialist using Google Stitch MCP for AI-powered design generation
 - expert-security: Security analysis, vulnerability assessment, OWASP compliance
 - expert-devops: CI/CD pipelines, infrastructure, deployment automation
 - expert-performance: Performance optimization, profiling, bottleneck analysis
@@ -399,6 +400,17 @@ User and language configuration is automatically loaded from:
 @.moai/config/sections/user.yaml
 @.moai/config/sections/language.yaml
 
+### Project Rules
+
+MoAI-ADK uses Claude Code's official rules system at `.claude/rules/`:
+
+- **Core rules**: TRUST 5 framework, documentation standards, quality gates
+- **Workflow rules**: Progressive disclosure, token budget, workflow modes
+- **Development rules**: Skill frontmatter schema, tool permissions
+- **Language rules**: Path-specific rules for 16 programming languages
+
+Language rules use `paths` frontmatter for conditional loading (e.g., Python rules only apply to `**/*.py` files).
+
 ### Language Rules
 
 - User Responses: Always in user's conversation_language
@@ -583,21 +595,25 @@ Users can activate UltraThink mode by adding `--ultrathink` flag to any request:
 When `--ultrathink` is detected in user request:
 
 **Step 1: Request Analysis**
+
 - Identify the core task and requirements
 - Detect technical keywords for agent matching
 - Recognize complexity level and scope
 
 **Step 2: Sequential Thinking Activation**
+
 - Load the Sequential Thinking MCP tool
 - Begin structured reasoning with estimated thought count
 - Break down the problem into manageable steps
 
 **Step 3: Execution Planning**
+
 - Map each subtask to appropriate agents
 - Identify parallel vs sequential execution opportunities
 - Generate optimal agent delegation strategy
 
 **Step 4: Execution**
+
 - Launch agents according to the plan
 - Monitor and integrate results
 - Report consolidated findings in user's conversation_language
@@ -607,6 +623,7 @@ When `--ultrathink` is detected in user request:
 When using UltraThink mode, apply these parameter patterns:
 
 **Initial Analysis Call:**
+
 ```
 thought: "Analyzing user request: [request content]"
 nextThoughtNeeded: true
@@ -615,6 +632,7 @@ totalThoughts: [estimated number based on complexity]
 ```
 
 **Subtask Decomposition:**
+
 ```
 thought: "Breaking down into subtasks: 1) [subtask1] 2) [subtask2] 3) [subtask3]"
 nextThoughtNeeded: true
@@ -623,6 +641,7 @@ totalThoughts: [current estimate]
 ```
 
 **Agent Mapping:**
+
 ```
 thought: "Mapping subtasks to agents: [subtask1] → expert-backend, [subtask2] → expert-frontend"
 nextThoughtNeeded: true
@@ -631,6 +650,7 @@ totalThoughts: [current estimate]
 ```
 
 **Execution Strategy:**
+
 ```
 thought: "Execution strategy: [subtasks1,2] can run in parallel, [subtask3] depends on [subtask1]"
 nextThoughtNeeded: true
@@ -639,6 +659,7 @@ totalThoughts: [current estimate]
 ```
 
 **Final Plan:**
+
 ```
 thought: "Final execution plan: Launch [agent1, agent2] in parallel, then [agent3]"
 thoughtNumber: [final number]
@@ -649,6 +670,7 @@ nextThoughtNeeded: false
 ### Best Practices
 
 **When to Use UltraThink:**
+
 - Complex multi-domain tasks (backend + frontend + testing)
 - Architecture decisions affecting multiple files
 - Performance optimization requiring analysis
@@ -656,6 +678,7 @@ nextThoughtNeeded: false
 - Refactoring with behavior preservation
 
 **UltraThink Advantages:**
+
 - Structured decomposition of complex problems
 - Explicit agent-task mapping with justification
 - Identification of parallel execution opportunities
@@ -713,6 +736,7 @@ UltraThink mode seamlessly integrates with Alfred's existing delegation patterns
 **With UltraThink:** Structured reasoning before delegation, then execution
 
 UltraThink enhances decision-making for:
+
 - Complex multi-domain tasks
 - Ambiguous requirements needing clarification
 - Performance vs maintainability trade-offs
@@ -819,8 +843,94 @@ Platform differences exist between GNU tools (Linux) and BSD tools (macOS). For 
 
 ---
 
-Version: 10.5.0 (DDD + Progressive Disclosure + Auto-Parallel + Safeguards)
-Last Updated: 2026-01-22
+## 14. Memory MCP Integration
+
+### Overview
+
+MoAI-ADK uses the Memory MCP Server for persistent storage across sessions. This enables user preference retention, project context preservation, and learned pattern storage.
+
+### Memory Categories
+
+**User Preferences** (prefix: `user_`):
+- `user_language`: Conversation language
+- `user_coding_style`: Preferred coding conventions
+- `user_naming_convention`: Variable naming style
+
+**Project Context** (prefix: `project_`):
+- `project_tech_stack`: Technologies in use
+- `project_architecture`: Architecture decisions
+- `project_conventions`: Project-specific rules
+
+**Learned Patterns** (prefix: `pattern_`):
+- `pattern_preferred_libraries`: Frequently used libraries
+- `pattern_error_resolutions`: Common error fixes
+
+**Session State** (prefix: `session_`):
+- `session_last_spec`: Last worked SPEC ID
+- `session_pending_tasks`: Incomplete tasks
+
+### Usage Protocol
+
+**On Session Start:**
+1. Retrieve `user_language` and apply to responses
+2. Load `project_tech_stack` for context
+3. Check `session_last_spec` for continuity
+
+**During Interaction:**
+1. Store explicit user preferences when stated
+2. Learn from corrections and adjustments
+3. Update project context when decisions are made
+
+**When to Store:**
+- User explicitly states a preference
+- User corrects or adjusts Claude's output
+- Important project decision is made
+- New pattern is learned
+
+### Memory Operations
+
+Use `mcp__memory__*` tools:
+- `mcp__memory__store`: Store key-value pair
+- `mcp__memory__retrieve`: Get stored value
+- `mcp__memory__list`: List all keys
+- `mcp__memory__delete`: Remove a key
+
+### Best Practices
+
+- Use descriptive, categorized key names
+- Keep values concise (under 1000 characters)
+- Never store sensitive credentials
+- Store preferences, not personal data
+
+For detailed patterns, refer to Skill("moai-foundation-memory").
+
+### Agent-to-Agent Context Sharing
+
+Memory MCP enables context sharing between agents during workflow execution.
+
+**Handoff Key Schema:**
+```
+handoff_{from_agent}_{to_agent}_{spec_id}
+context_{spec_id}_{category}
+```
+
+**Categories:** `requirements`, `architecture`, `api`, `database`, `decisions`, `progress`
+
+**Workflow Example:**
+1. manager-spec stores: `context_SPEC-001_requirements`
+2. manager-ddd retrieves: `context_SPEC-001_requirements`
+3. expert-backend stores: `context_SPEC-001_api`
+4. expert-frontend retrieves: `context_SPEC-001_api`
+5. manager-docs retrieves all: `context_SPEC-001_*`
+
+**Enabled Agents:**
+- manager-spec, manager-ddd, manager-docs, manager-strategy
+- expert-backend, expert-frontend
+
+---
+
+Version: 10.7.0 (DDD + Progressive Disclosure + Auto-Parallel + Safeguards + Official Rules + Memory MCP)
+Last Updated: 2026-01-26
 Language: English
 Core Rule: Alfred is an orchestrator; direct implementation is prohibited
 
