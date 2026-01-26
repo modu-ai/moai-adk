@@ -63,12 +63,14 @@ else:
 @click.option("--export", type=click.Path(), help="Export diagnostics to JSON file")
 @click.option("--check", type=str, help="Check specific tool only")
 @click.option("--check-commands", is_flag=True, help="Diagnose slash command loading issues")
+@click.option("--shell", is_flag=True, help="Diagnose shell and PATH configuration (WSL/Linux)")
 def doctor(
     verbose: bool,
     fix: bool,
     export: str | None,
     check: str | None,
     check_commands: bool,
+    shell: bool,
 ) -> None:
     """Check system requirements and project health
 
@@ -79,7 +81,12 @@ def doctor(
     - Language-specific tool chains (20+ languages)
     """
     try:
-        # Handle --check-commands option first
+        # Handle --shell option first
+        if shell:
+            _check_shell_and_path(fix=fix)
+            return
+
+        # Handle --check-commands option
         if check_commands:
             _check_slash_commands()
             return
@@ -234,6 +241,91 @@ def _export_diagnostics(export_path: str, data: dict) -> None:
         console.print(f"\n[green]✓ Diagnostics exported to {export_path}[/green]")
     except Exception as e:
         console.print(f"\n[red]✗ Failed to export diagnostics: {e}[/red]")
+
+
+def _check_shell_and_path(fix: bool = False) -> None:
+    """Check shell environment and PATH configuration (helper)
+
+    Diagnoses common issues:
+    - WSL2 PATH not loading from ~/.bashrc
+    - ~/.local/bin not in PATH
+    - Shell configuration file issues
+    """
+    from moai_adk.utils.shell_validator import (
+        auto_fix_path,
+        diagnose_path,
+        get_shell_info,
+        is_wsl,
+    )
+
+    console.print("[cyan]Running shell and PATH diagnostics...[/cyan]\n")
+
+    # Get shell info
+    shell_info = get_shell_info()
+    console.print(f"[dim]{shell_info}[/dim]\n")
+
+    # Run PATH diagnostics
+    diag = diagnose_path()
+
+    # Build results table
+    table = Table(show_header=True, header_style="bold cyan", title="PATH Configuration")
+    table.add_column("Check", style="dim", width=35)
+    table.add_column("Status", justify="center", width=10)
+    table.add_column("Details", style="blue")
+
+    # ~/.local/bin exists
+    icon = "✓" if diag.local_bin_exists else "✗"
+    color = "green" if diag.local_bin_exists else "yellow"
+    table.add_row("~/.local/bin exists", f"[{color}]{icon}[/{color}]", "Required for MCP servers")
+
+    # ~/.local/bin in current PATH
+    icon = "✓" if diag.local_bin_in_path else "✗"
+    color = "green" if diag.local_bin_in_path else "red"
+    table.add_row("~/.local/bin in PATH", f"[{color}]{icon}[/{color}]", diag.shell_type)
+
+    # Login shell PATH (for WSL/Linux)
+    if diag.is_login_shell_env:
+        icon = "✓" if diag.in_login_shell_path else "✗"
+        color = "green" if diag.in_login_shell_path else "red"
+        table.add_row("Login shell PATH configured", f"[{color}]{icon}[/{color}]", diag.config_file)
+
+    console.print(table)
+    console.print()
+
+    # Show problem details if PATH is not configured
+    if not diag.local_bin_in_path:
+        console.print("[yellow]⚠ Problem Detected[/yellow]")
+        console.print("~/.local/bin is NOT in your PATH.")
+        console.print("This can cause MCP servers and CLI tools to fail.\n")
+
+        if is_wsl() and diag.shell_type == "bash":
+            console.print("[dim]WSL Explanation:[/dim]")
+            console.print("[dim]WSL uses login shell which reads ~/.profile, not ~/.bashrc.[/dim]")
+            console.print("[dim]Even if ~/.bashrc has PATH configured, it may not be loaded.[/dim]\n")
+
+        console.print("[cyan]Recommended Fix:[/cyan]")
+        console.print(f"  {diag.recommended_fix}\n")
+
+        # Offer auto-fix if available
+        if fix and diag.auto_fixable:
+            try:
+                proceed = questionary.confirm(
+                    "Would you like to automatically fix the PATH configuration?",
+                    default=True,
+                ).ask()
+            except Exception:
+                proceed = False
+
+            if proceed:
+                success, message = auto_fix_path()
+                if success:
+                    console.print(f"[green]✓ {message}[/green]")
+                else:
+                    console.print(f"[red]✗ {message}[/red]")
+        elif not fix:
+            console.print("[dim]Run with --fix to automatically configure PATH[/dim]")
+    else:
+        console.print("[green]✓ PATH configuration looks good![/green]")
 
 
 def _check_slash_commands() -> None:

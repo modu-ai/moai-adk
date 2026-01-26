@@ -137,6 +137,7 @@ def init(
 @click.option("--export", type=click.Path(), help="Export diagnostics to JSON file")
 @click.option("--check", type=str, help="Check specific tool only")
 @click.option("--check-commands", is_flag=True, help="Diagnose slash command loading issues")
+@click.option("--shell", is_flag=True, help="Diagnose shell and PATH configuration (WSL/Linux)")
 @click.pass_context
 def doctor(
     ctx: click.Context,
@@ -145,6 +146,7 @@ def doctor(
     export: str | None,
     check: str | None,
     check_commands: bool,
+    shell: bool,
 ) -> None:
     """Run system diagnostics"""
     from moai_adk.cli.commands.doctor import doctor as _doctor
@@ -156,6 +158,7 @@ def doctor(
         export=export,
         check=check,
         check_commands=check_commands,
+        shell=shell,
     )
 
 

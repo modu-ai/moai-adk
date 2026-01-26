@@ -10,6 +10,9 @@ Command Prompt (cmd.exe) is not supported.
 
 import os
 import platform
+import subprocess
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Tuple
 
 
@@ -107,3 +110,284 @@ def get_shell_info() -> str:
             info_parts.append(f"Shell: {shell}")
 
     return " | ".join(info_parts)
+
+
+# =============================================================================
+# PATH Diagnostics for WSL2/Linux
+# =============================================================================
+
+
+@dataclass
+class PathDiagnostics:
+    """PATH configuration diagnostics result."""
+
+    local_bin_in_path: bool
+    local_bin_exists: bool
+    shell_type: str  # bash, zsh, fish, unknown
+    config_file: str  # ~/.bashrc, ~/.profile, ~/.zshrc, etc.
+    is_login_shell_env: bool  # Whether current env uses login shell
+    in_login_shell_path: bool  # Whether ~/.local/bin is in login shell PATH
+    current_path: str
+    recommended_fix: str
+    auto_fixable: bool
+
+
+def get_user_shell() -> str:
+    """Get the user's default shell.
+
+    Returns:
+        Shell name: 'bash', 'zsh', 'fish', or 'unknown'
+    """
+    shell_path = os.environ.get("SHELL", "")
+    if "zsh" in shell_path:
+        return "zsh"
+    elif "bash" in shell_path:
+        return "bash"
+    elif "fish" in shell_path:
+        return "fish"
+    return "unknown"
+
+
+def get_shell_config_file(shell: str, prefer_login: bool = True) -> str:
+    """Get the appropriate shell configuration file.
+
+    Args:
+        shell: Shell type ('bash', 'zsh', 'fish')
+        prefer_login: Whether to prefer login shell config files (for WSL)
+
+    Returns:
+        Path to the shell configuration file
+    """
+    home = Path.home()
+
+    if shell == "zsh":
+        # zsh loads: .zshenv (always) -> .zprofile (login) -> .zshrc (interactive)
+        if prefer_login:
+            # For WSL/Linux, .zshenv is the most reliable
+            zshenv = home / ".zshenv"
+            if zshenv.exists():
+                return str(zshenv)
+            return str(home / ".zshrc")
+        return str(home / ".zshrc")
+
+    elif shell == "bash":
+        # bash loads: .bash_profile or .profile (login) -> .bashrc (interactive)
+        # WSL uses login shell, so .profile is more reliable
+        if prefer_login:
+            profile = home / ".profile"
+            if profile.exists():
+                return str(profile)
+            bash_profile = home / ".bash_profile"
+            if bash_profile.exists():
+                return str(bash_profile)
+        return str(home / ".bashrc")
+
+    elif shell == "fish":
+        return str(home / ".config" / "fish" / "config.fish")
+
+    # Default to .profile for unknown shells
+    return str(home / ".profile")
+
+
+def check_local_bin_in_path() -> bool:
+    """Check if ~/.local/bin is in the current PATH.
+
+    Returns:
+        True if ~/.local/bin is in PATH
+    """
+    path = os.environ.get("PATH", "")
+    local_bin = str(Path.home() / ".local" / "bin")
+
+    # Check both with and without trailing slash
+    path_parts = path.split(os.pathsep)
+    for part in path_parts:
+        if part.rstrip("/\\") == local_bin.rstrip("/\\"):
+            return True
+    return False
+
+
+def check_local_bin_in_login_shell() -> bool:
+    """Check if ~/.local/bin is in PATH when using login shell.
+
+    This runs a login shell to get the actual PATH.
+
+    Returns:
+        True if ~/.local/bin is in login shell PATH
+    """
+    shell = get_user_shell()
+
+    try:
+        if shell == "bash":
+            result = subprocess.run(
+                ["bash", "-l", "-c", "echo $PATH"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+        elif shell == "zsh":
+            result = subprocess.run(
+                ["zsh", "-l", "-c", "echo $PATH"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+        else:
+            return False
+
+        if result.returncode != 0:
+            return False
+
+        path = result.stdout.strip()
+        local_bin = str(Path.home() / ".local" / "bin")
+
+        path_parts = path.split(":")
+        for part in path_parts:
+            if part.rstrip("/") == local_bin.rstrip("/"):
+                return True
+        return False
+
+    except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+        return False
+
+
+def diagnose_path() -> PathDiagnostics:
+    """Diagnose PATH configuration issues.
+
+    This is the main diagnostic function that checks:
+    1. Whether ~/.local/bin exists
+    2. Whether it's in the current PATH
+    3. Whether it's in the login shell PATH
+    4. Recommends the appropriate fix
+
+    Returns:
+        PathDiagnostics with detailed information
+    """
+    home = Path.home()
+    local_bin = home / ".local" / "bin"
+
+    shell = get_user_shell()
+    config_file = get_shell_config_file(shell, prefer_login=is_wsl())
+
+    # Check current state
+    local_bin_exists = local_bin.exists()
+    in_current_path = check_local_bin_in_path()
+
+    # For WSL/Linux, also check login shell
+    is_login = is_wsl() or platform.system() == "Linux"
+    in_login_shell = check_local_bin_in_login_shell() if is_login else in_current_path
+
+    # Determine recommended fix
+    recommended_fix = ""
+    auto_fixable = False
+
+    if not in_current_path:
+        if is_wsl():
+            # WSL uses login shell, so need to configure .profile or .zshenv
+            if shell == "bash":
+                # .bashrc might have it but .profile doesn't source it
+                recommended_fix = "echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.profile && source ~/.profile"
+                config_file = str(home / ".profile")
+            elif shell == "zsh":
+                recommended_fix = "echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.zshenv && source ~/.zshenv"
+                config_file = str(home / ".zshenv")
+            else:
+                recommended_fix = "echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.profile && source ~/.profile"
+            auto_fixable = True
+        else:
+            # Regular Linux/macOS
+            recommended_fix = f"echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> {config_file} && source {config_file}"
+            auto_fixable = True
+
+    return PathDiagnostics(
+        local_bin_in_path=in_current_path,
+        local_bin_exists=local_bin_exists,
+        shell_type=shell,
+        config_file=config_file,
+        is_login_shell_env=is_login,
+        in_login_shell_path=in_login_shell,
+        current_path=os.environ.get("PATH", ""),
+        recommended_fix=recommended_fix,
+        auto_fixable=auto_fixable,
+    )
+
+
+def auto_fix_path(config_file: str | None = None) -> tuple[bool, str]:
+    """Automatically add ~/.local/bin to PATH in shell config.
+
+    Args:
+        config_file: Optional override for config file path
+
+    Returns:
+        Tuple of (success, message)
+    """
+    shell = get_user_shell()
+    if config_file is None:
+        config_file = get_shell_config_file(shell, prefer_login=is_wsl())
+
+    config_path = Path(config_file)
+    export_line = 'export PATH="$HOME/.local/bin:$PATH"'
+
+    try:
+        # Check if already configured
+        if config_path.exists():
+            content = config_path.read_text()
+            if ".local/bin" in content:
+                return (False, f"PATH already configured in {config_file}")
+
+        # Ensure parent directory exists
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Append export line
+        with open(config_path, "a") as f:
+            f.write(f"\n# Added by MoAI-ADK\n{export_line}\n")
+
+        return (True, f"Added PATH to {config_file}. Run 'source {config_file}' or restart terminal.")
+
+    except PermissionError:
+        return (False, f"Permission denied: Cannot write to {config_file}")
+    except Exception as e:
+        return (False, f"Failed to update {config_file}: {e}")
+
+
+def get_path_diagnostic_report() -> str:
+    """Get a formatted diagnostic report for PATH issues.
+
+    Returns:
+        Formatted string report
+    """
+    diag = diagnose_path()
+
+    lines = [
+        "=== PATH Diagnostics ===",
+        f"Platform: {platform.system()} {'(WSL)' if is_wsl() else ''}",
+        f"Shell: {diag.shell_type}",
+        f"Config file: {diag.config_file}",
+        f"~/.local/bin exists: {'Yes' if diag.local_bin_exists else 'No'}",
+        f"~/.local/bin in PATH: {'Yes' if diag.local_bin_in_path else 'No'}",
+    ]
+
+    if not diag.local_bin_in_path:
+        lines.extend(
+            [
+                "",
+                "=== Problem Detected ===",
+                "~/.local/bin is NOT in your PATH.",
+                "This can cause MCP servers and CLI tools to fail.",
+                "",
+                "=== Recommended Fix ===",
+                diag.recommended_fix,
+            ]
+        )
+
+        if is_wsl() and diag.shell_type == "bash":
+            lines.extend(
+                [
+                    "",
+                    "=== WSL Explanation ===",
+                    "WSL uses login shell which reads ~/.profile, not ~/.bashrc.",
+                    "Even if ~/.bashrc has PATH configured, it may not be loaded.",
+                    "The fix adds PATH to ~/.profile which is always sourced in WSL.",
+                ]
+            )
+
+    return "\n".join(lines)

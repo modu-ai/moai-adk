@@ -1,0 +1,206 @@
+name: 🐛 Bug Report
+description: Report a bug or unexpected behavior in MoAI-ADK
+title: "[Bug] "
+labels: ["bug", "triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🐛 Bug Report
+
+        Thank you for taking the time to report a bug. Please fill out the information below to help us diagnose and fix the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: "A clear and concise description of what the bug is."
+      placeholder: "When I run 'moai-adk init', the command fails with..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: "Steps to reproduce the behavior"
+      placeholder: |
+        1. Run 'moai-adk init'
+        2. Select options...
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: "A clear description of what you expected to happen."
+      placeholder: "The initialization should complete successfully."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: "What actually happened."
+      placeholder: "The command failed with the following error..."
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ## 🔧 Environment Information
+
+        Please run the following commands and paste the output below.
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment Information
+      description: |
+        Run `moai-adk doctor --verbose` and `moai-adk doctor --shell` to collect environment info.
+        If the commands fail, provide manual information.
+      placeholder: |
+        **moai-adk doctor --verbose output:**
+        ```
+        (paste output here)
+        ```
+
+        **moai-adk doctor --shell output:**
+        ```
+        (paste output here)
+        ```
+
+        **Or manual information:**
+        - OS: Windows 11 / macOS 14 / Ubuntu 22.04 / WSL2
+        - Shell: bash / zsh / PowerShell
+        - MoAI-ADK version: 1.9.0
+        - Python version: 3.13
+        - uv version: 0.5.x
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: "Select your operating system"
+      options:
+        - "Windows 11"
+        - "Windows 10"
+        - "WSL2 (Ubuntu)"
+        - "WSL2 (Debian)"
+        - "WSL2 (Other)"
+        - "macOS (Apple Silicon)"
+        - "macOS (Intel)"
+        - "Ubuntu"
+        - "Debian"
+        - "Fedora"
+        - "Other Linux"
+        - "Other"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: shell
+    attributes:
+      label: Shell Environment
+      description: "Select your shell"
+      options:
+        - "bash"
+        - "zsh"
+        - "PowerShell"
+        - "fish"
+        - "Other"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: MoAI-ADK Version
+      description: "Run `moai-adk --version` to get this"
+      placeholder: "1.9.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation Method
+      description: "How did you install MoAI-ADK?"
+      options:
+        - "uv tool install moai-adk"
+        - "claude install moai-adk"
+        - "pipx install moai-adk"
+        - "pip install moai-adk"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: error-logs
+    attributes:
+      label: Error Logs
+      description: "Paste any relevant error messages or logs"
+      render: shell
+      placeholder: |
+        Traceback (most recent call last):
+          File "...", line X, in ...
+            ...
+        Error: ...
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: "Please verify the following before submitting"
+      options:
+        - label: "I have searched existing issues for duplicates"
+          required: true
+        - label: "I have tried the latest version of MoAI-ADK"
+          required: true
+        - label: "I have run `moai-adk doctor --shell` to check PATH configuration"
+          required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: "Add any other context about the problem here (screenshots, related issues, etc.)"
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ## 💡 Common Solutions
+
+        Before submitting, please check these common solutions:
+
+        **PATH Issues (WSL/Linux):**
+        ```bash
+        # Run diagnostic
+        moai-adk doctor --shell --fix
+        ```
+
+        **Version Conflicts:**
+        ```bash
+        # Clean reinstall
+        pip uninstall moai-adk -y
+        uv tool uninstall moai-adk
+        uv tool install moai-adk
+        ```
+
+        **Hooks Not Working:**
+        ```bash
+        # Re-initialize project
+        moai-adk update
+        ```

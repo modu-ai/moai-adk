@@ -494,7 +494,57 @@ echo $WSL_DISTRO_NAME
 echo $CLAUDE_PROJECT_DIR
 ```
 
-**Path Issues:**
+**PATH Not Loaded (~/.local/bin not in PATH):**
+
+This is the most common issue in WSL. Even if you added PATH to `~/.bashrc`, it may not be loaded because WSL uses **login shell** which reads `~/.profile`, not `~/.bashrc`.
+
+**Symptoms:**
+```bash
+# Status line shows:
+"Native installation exists but ~/.local/bin is not in your PATH"
+
+# MCP servers fail to start
+# Commands like 'moai' or 'uv' not found
+```
+
+**Diagnosis:**
+```bash
+# Run the diagnostic command
+moai-adk doctor --shell
+
+# Or check manually
+echo $PATH | grep -o "$HOME/.local/bin"
+```
+
+**Solutions:**
+
+Option A: Use automatic fix (Recommended)
+```bash
+# Run with --fix flag
+moai-adk doctor --shell --fix
+```
+
+Option B: Manual fix for bash users
+```bash
+# Add to ~/.profile (NOT ~/.bashrc)
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.profile
+source ~/.profile
+```
+
+Option C: Manual fix for zsh users
+```bash
+# Add to ~/.zshenv (always sourced)
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshenv
+source ~/.zshenv
+```
+
+**Why ~/.profile instead of ~/.bashrc?**
+- WSL starts as a login shell
+- Login shell reads: `~/.profile` → `~/.bashrc` (if sourced)
+- By default, `~/.profile` doesn't source `~/.bashrc` for PATH
+- Adding PATH directly to `~/.profile` ensures it's always loaded
+
+**Hook/MCP Server Issues:**
 - If hooks fail, verify `CLAUDE_PROJECT_DIR` is set correctly
 - MoAI-ADK automatically converts Windows paths to WSL format
 - Check `.claude/settings.json` for correct path references

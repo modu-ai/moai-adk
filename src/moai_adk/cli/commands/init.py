@@ -165,6 +165,9 @@ def init(
         console.print("More info: [link=https://docs.astral.sh/uv/]https://docs.astral.sh/uv/[/link]\n")
         sys.exit(1)
 
+    # Check PATH configuration for WSL/Linux users
+    _check_and_fix_path(non_interactive)
+
     try:
         # 1. Print banner with enhanced version info
         print_banner(__version__)
@@ -752,3 +755,68 @@ def _save_additional_config(
             allow_unicode=True,
             sort_keys=False,
         )
+
+
+def _check_and_fix_path(non_interactive: bool) -> None:
+    """Check and optionally fix PATH configuration for WSL/Linux users.
+
+    Args:
+        non_interactive: If True, auto-fix without prompting
+    """
+    import platform
+
+    import questionary
+
+    from moai_adk.utils.shell_validator import auto_fix_path, diagnose_path, is_wsl
+
+    # Only check on WSL and Linux (not macOS which handles PATH differently)
+    if platform.system() == "Windows" and not is_wsl():
+        return  # Windows PowerShell handles PATH via system environment
+
+    if platform.system() == "Darwin":
+        return  # macOS usually handles PATH correctly
+
+    # Run PATH diagnostics
+    diag = diagnose_path()
+
+    # If PATH is already configured, no action needed
+    if diag.local_bin_in_path:
+        return
+
+    # Show warning
+    console.print("\n[yellow]⚠ PATH Configuration Issue Detected[/yellow]")
+    console.print("[dim]~/.local/bin is not in your PATH.[/dim]")
+    console.print("[dim]This may cause MCP servers and CLI tools to fail.[/dim]\n")
+
+    if is_wsl() and diag.shell_type == "bash":
+        console.print("[dim]Note: WSL uses login shell (~/.profile), not ~/.bashrc[/dim]\n")
+
+    if non_interactive:
+        # Auto-fix in non-interactive mode
+        console.print("[cyan]Automatically configuring PATH...[/cyan]")
+        success, message = auto_fix_path()
+        if success:
+            console.print(f"[green]✓ {message}[/green]\n")
+        else:
+            console.print(f"[yellow]⚠ {message}[/yellow]")
+            console.print("[dim]Run 'moai-adk doctor --shell' for manual fix instructions[/dim]\n")
+    else:
+        # Interactive mode: ask user
+        console.print(f"[cyan]Recommended fix:[/cyan] {diag.recommended_fix}\n")
+
+        try:
+            proceed = questionary.confirm(
+                "Would you like to automatically configure PATH?",
+                default=True,
+            ).ask()
+        except Exception:
+            proceed = False
+
+        if proceed:
+            success, message = auto_fix_path()
+            if success:
+                console.print(f"[green]✓ {message}[/green]\n")
+            else:
+                console.print(f"[red]✗ {message}[/red]\n")
+        else:
+            console.print("[dim]Skipped. Run 'moai-adk doctor --shell --fix' later to configure.[/dim]\n")
