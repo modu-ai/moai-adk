@@ -2,7 +2,7 @@
 # MoAI system configuration and GitHub automation
 
 moai:
-  version: "1.9.0"
+  version: "1.9.2"
   update_check_frequency: daily
   version_check:
     enabled: true
