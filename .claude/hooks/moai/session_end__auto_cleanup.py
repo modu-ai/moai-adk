@@ -52,6 +52,24 @@ from lib.path_utils import (  # noqa: E402
     get_safe_moai_path,
 )
 
+# Import context manager for session continuity
+try:
+    from lib.context_manager import (
+        collect_current_context,
+        save_context_snapshot,
+    )
+
+    HAS_CONTEXT_MANAGER = True
+except ImportError:
+    HAS_CONTEXT_MANAGER = False
+
+    def collect_current_context(project_root):
+        return {}
+
+    def save_context_snapshot(project_root, trigger, context, conversation_summary="", session_id=None):
+        return False
+
+
 # Import unified timeout manager and Git operations manager
 try:
     from lib.common import (  # noqa: E402
@@ -737,6 +755,32 @@ def execute_session_end_workflow() -> tuple[dict[str, Any], str]:
         # Add migration report to summary if violations exist
         if migration_report:
             results["migration_report"] = migration_report
+
+        # P1-4: Save context snapshot for session continuity
+        if HAS_CONTEXT_MANAGER:
+            try:
+                project_root = find_project_root()
+                context = collect_current_context(project_root)
+
+                # Generate summary from work state
+                specs = work_state.get("specs_in_progress", [])
+                summary_parts = []
+                if specs:
+                    summary_parts.append(f"Working on: {', '.join(specs)}")
+                if work_state.get("uncommitted_files", 0):
+                    summary_parts.append(f"{work_state['uncommitted_files']} uncommitted files")
+                conversation_summary = ". ".join(summary_parts) if summary_parts else "Session ended"
+
+                context_saved = save_context_snapshot(
+                    project_root=project_root,
+                    trigger="session_end",
+                    context=context,
+                    conversation_summary=conversation_summary,
+                )
+                results["context_saved"] = context_saved
+            except Exception as e:
+                logger.warning(f"Failed to save context snapshot: {e}")
+                results["context_saved"] = False
 
         # Record execution time
         execution_time = time.time() - start_time

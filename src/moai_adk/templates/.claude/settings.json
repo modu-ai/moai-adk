@@ -1,5 +1,17 @@
 {
   "hooks": {
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{HOOK_SHELL_PREFIX}}uv run \"{{PROJECT_DIR}}.claude/hooks/moai/pre_compact__save_context.py\"{{HOOK_SHELL_SUFFIX}}",
+            "timeout": 3000
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "matcher": "",

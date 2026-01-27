@@ -74,6 +74,28 @@ if str(LIB_DIR) not in sys.path:
 from lib.file_utils import check_file_size  # noqa: E402
 from lib.path_utils import find_project_root  # noqa: E402
 
+# Import context manager for session continuity
+try:
+    from lib.context_manager import (
+        archive_context_snapshot,
+        format_context_for_injection,
+        load_context_snapshot,
+    )
+
+    HAS_CONTEXT_MANAGER = True
+except ImportError:
+    HAS_CONTEXT_MANAGER = False
+
+    def load_context_snapshot(project_root):
+        return None
+
+    def format_context_for_injection(snapshot, language="en"):
+        return ""
+
+    def archive_context_snapshot(project_root):
+        return True
+
+
 # Import unified timeout manager and Git operations manager
 try:
     from lib.git_operations_manager import GitOperationType, get_git_manager
@@ -999,6 +1021,25 @@ def format_session_output() -> str:
 
     # Configuration source is now handled silently for cleaner output
     # Users can check configuration using dedicated tools if needed
+
+    # Check for previous session context (session continuity feature)
+    if HAS_CONTEXT_MANAGER:
+        try:
+            project_root = find_project_root()
+            snapshot = load_context_snapshot(project_root)
+
+            if snapshot:
+                # Format and append previous context
+                context_message = format_context_for_injection(snapshot, conv_lang)
+                if context_message:
+                    output.append(context_message)
+
+                # Archive the snapshot after loading (move to archive)
+                archive_context_snapshot(project_root)
+
+        except Exception as e:
+            # Non-critical error - just log and continue
+            logging.warning(f"Failed to load previous context: {e}")
 
     return "\n".join(output)
 
