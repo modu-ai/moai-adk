@@ -1064,10 +1064,16 @@ def format_session_output() -> str:
                     try:
                         tasks_data = json.loads(tasks_path.read_text(encoding="utf-8"))
                         task_list = tasks_data.get("tasks", [])
-                        if task_list:
+                        completed_list = tasks_data.get("completed_tasks", [])
+                        if task_list or completed_list:
                             active = [t for t in task_list if t.get("status") in ("in_progress", "pending")]
+                            parts = []
                             if active:
-                                output.append(f"[TASKS_BACKUP] {len(active)} active tasks found in backup")
+                                parts.append(f"{len(active)} active")
+                            if completed_list:
+                                parts.append(f"{len(completed_list)} completed")
+                            if parts:
+                                output.append(f"[TASKS_BACKUP] Tasks: {', '.join(parts)}")
                     except (json.JSONDecodeError, OSError):
                         pass
 
@@ -1121,6 +1127,8 @@ def main() -> None:
         if source == "clear" and transcript_path and HAS_CONTEXT_MANAGER:
             try:
                 from lib.context_manager import (
+                    load_spec_state,
+                    load_tasks_backup,
                     parse_transcript_context,
                     save_context_snapshot,
                     save_spec_state,
@@ -1139,6 +1147,16 @@ def main() -> None:
                     "current_branch": "",
                     "uncommitted_changes": False,
                 }
+
+                # Fallback: merge with persistent files when transcript is short
+                if not context["current_spec"].get("id"):
+                    prev_spec = load_spec_state(project_root)
+                    if prev_spec and prev_spec.get("id"):
+                        context["current_spec"] = prev_spec
+                if not context["active_tasks"]:
+                    prev_tasks = load_tasks_backup(project_root)
+                    if prev_tasks:
+                        context["active_tasks"] = prev_tasks
 
                 # Fill git info
                 try:
@@ -1186,8 +1204,12 @@ def main() -> None:
                 )
                 if spec_id:
                     save_spec_state(project_root, context["current_spec"])
-                if context["active_tasks"]:
-                    save_tasks_backup(project_root, context["active_tasks"])
+                if context["active_tasks"] or context.get("completed_tasks"):
+                    save_tasks_backup(
+                        project_root,
+                        context["active_tasks"],
+                        completed_tasks=context.get("completed_tasks", []),
+                    )
 
             except Exception as e:
                 logging.warning(f"Failed to save context on /clear: {e}")
