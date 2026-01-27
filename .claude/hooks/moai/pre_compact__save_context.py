@@ -18,7 +18,6 @@ from __future__ import annotations
 import json
 import logging
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -42,7 +41,10 @@ if str(LIB_DIR) not in sys.path:
 
 from lib.context_manager import (  # noqa: E402
     collect_current_context,
+    generate_memory_mcp_payload,
     save_context_snapshot,
+    save_spec_state,
+    save_tasks_backup,
 )
 from lib.path_utils import find_project_root  # noqa: E402
 
@@ -149,21 +151,37 @@ def execute_pre_compact():
         session_id=session_id,
     )
 
-    # Build result
-    result: dict[str, Any] = {
-        "continue": True,  # Allow compact to proceed
-        "hookSpecificOutput": {
-            "context_saved": success,
-            "snapshot_path": str(project_root / ".moai" / "memory" / "context-snapshot.json"),
-            "summary": summary,
-            "timestamp": datetime.now().isoformat(),
-        },
-    }
+    # Save SPEC state separately for quick access
+    spec_info = context.get("current_spec", {})
+    if spec_info.get("id"):
+        save_spec_state(project_root, spec_info)
+
+    # Save tasks backup separately for quick restoration
+    tasks = context.get("active_tasks", [])
+    if tasks:
+        save_tasks_backup(project_root, tasks)
+
+    # Generate Memory MCP payload for Alfred to consume on next session
+    mcp_payload = generate_memory_mcp_payload(project_root, context, summary)
+    try:
+        mcp_payload_path = project_root / ".moai" / "memory" / "mcp-payload.json"
+        mcp_payload_path.write_text(json.dumps(mcp_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass  # Non-critical
+
+    # Build result - NOTE: hookSpecificOutput not allowed for PreCompact event
+    # Only continue and systemMessage are valid for PreCompact hooks
+    snapshot_path = str(project_root / ".moai" / "memory" / "context-snapshot.json")
 
     if success:
-        result["systemMessage"] = "💾 Context saved. You can continue from this point in a new session."
+        system_message = f"💾 Context saved to {snapshot_path}. You can continue from this point in a new session."
     else:
-        result["systemMessage"] = "⚠️ Failed to save context. Some work state may be lost."
+        system_message = "⚠️ Failed to save context. Some work state may be lost."
+
+    result: dict[str, Any] = {
+        "continue": True,  # Allow compact to proceed
+        "systemMessage": system_message,
+    }
 
     return result
 

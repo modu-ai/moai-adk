@@ -1,17 +1,5 @@
 {
   "hooks": {
-    "PreCompact": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "{{HOOK_SHELL_PREFIX}}uv run \"{{PROJECT_DIR}}.claude/hooks/moai/pre_compact__save_context.py\"{{HOOK_SHELL_SUFFIX}}",
-            "timeout": 3000
-          }
-        ]
-      }
-    ],
     "SessionStart": [
       {
         "matcher": "",
@@ -19,6 +7,18 @@
           {
             "type": "command",
             "command": "{{HOOK_SHELL_PREFIX}}uv run \"{{PROJECT_DIR}}.claude/hooks/moai/session_start__show_project_info.py\"{{HOOK_SHELL_SUFFIX}}"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{HOOK_SHELL_PREFIX}}uv run \"{{PROJECT_DIR}}.claude/hooks/moai/pre_compact__save_context.py\"{{HOOK_SHELL_SUFFIX}}",
+            "timeout": 5000
           }
         ]
       }

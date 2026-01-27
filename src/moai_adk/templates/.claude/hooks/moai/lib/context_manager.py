@@ -351,14 +351,361 @@ def format_context_for_injection(snapshot: dict[str, Any], language: str = "en")
     return "\n".join(lines)
 
 
+def save_spec_state(project_root: Path, spec_data: dict[str, Any]) -> bool:
+    """Save active SPEC state for session continuity.
+
+    Args:
+        project_root: Project root directory
+        spec_data: Dictionary with spec_id, phase, progress, description
+
+    Returns:
+        True if save was successful
+    """
+    try:
+        memory_dir = project_root / ".moai" / "memory"
+        memory_dir.mkdir(parents=True, exist_ok=True)
+
+        state_path = memory_dir / "spec-state.json"
+        state = {
+            "version": CONTEXT_SNAPSHOT_VERSION,
+            "updated_at": datetime.now().isoformat(),
+            "active_spec": spec_data,
+        }
+        state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to save spec state: {e}")
+        return False
+
+
+def load_spec_state(project_root: Path) -> dict[str, Any] | None:
+    """Load active SPEC state.
+
+    Args:
+        project_root: Project root directory
+
+    Returns:
+        SPEC state dictionary or None
+    """
+    try:
+        state_path = project_root / ".moai" / "memory" / "spec-state.json"
+        if not state_path.exists():
+            return None
+        return json.loads(state_path.read_text(encoding="utf-8"))
+    except Exception as e:
+        logger.error(f"Failed to load spec state: {e}")
+        return None
+
+
+def save_tasks_backup(project_root: Path, tasks: list[dict[str, Any]]) -> bool:
+    """Save TodoWrite tasks backup for session continuity.
+
+    Args:
+        project_root: Project root directory
+        tasks: List of task dictionaries with id, subject, status, description
+
+    Returns:
+        True if save was successful
+    """
+    try:
+        memory_dir = project_root / ".moai" / "memory"
+        memory_dir.mkdir(parents=True, exist_ok=True)
+
+        backup_path = memory_dir / "tasks-backup.json"
+        backup = {
+            "version": CONTEXT_SNAPSHOT_VERSION,
+            "saved_at": datetime.now().isoformat(),
+            "tasks": tasks,
+        }
+        backup_path.write_text(json.dumps(backup, ensure_ascii=False, indent=2), encoding="utf-8")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to save tasks backup: {e}")
+        return False
+
+
+def load_tasks_backup(project_root: Path) -> list[dict[str, Any]]:
+    """Load TodoWrite tasks from backup.
+
+    Args:
+        project_root: Project root directory
+
+    Returns:
+        List of task dictionaries or empty list
+    """
+    try:
+        backup_path = project_root / ".moai" / "memory" / "tasks-backup.json"
+        if not backup_path.exists():
+            return []
+        data = json.loads(backup_path.read_text(encoding="utf-8"))
+        return data.get("tasks", [])
+    except Exception as e:
+        logger.error(f"Failed to load tasks backup: {e}")
+        return []
+
+
+def append_decision(project_root: Path, decision: dict[str, Any]) -> bool:
+    """Append a user decision to the decisions log.
+
+    Args:
+        project_root: Project root directory
+        decision: Dictionary with question, choice, context, timestamp
+
+    Returns:
+        True if append was successful
+    """
+    try:
+        memory_dir = project_root / ".moai" / "memory"
+        memory_dir.mkdir(parents=True, exist_ok=True)
+
+        decisions_path = memory_dir / "decisions.jsonl"
+        entry = {
+            "timestamp": datetime.now().isoformat(),
+            **decision,
+        }
+
+        with open(decisions_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+        return True
+    except Exception as e:
+        logger.error(f"Failed to append decision: {e}")
+        return False
+
+
+def load_recent_decisions(project_root: Path, limit: int = 10) -> list[dict[str, Any]]:
+    """Load recent decisions from the decisions log.
+
+    Args:
+        project_root: Project root directory
+        limit: Maximum number of recent decisions to return
+
+    Returns:
+        List of decision dictionaries (most recent first)
+    """
+    try:
+        decisions_path = project_root / ".moai" / "memory" / "decisions.jsonl"
+        if not decisions_path.exists():
+            return []
+
+        decisions = []
+        for line in decisions_path.read_text(encoding="utf-8").strip().split("\n"):
+            if line.strip():
+                try:
+                    decisions.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+
+        return decisions[-limit:][::-1]
+    except Exception as e:
+        logger.error(f"Failed to load decisions: {e}")
+        return []
+
+
+def generate_memory_mcp_payload(
+    project_root: Path,
+    context: dict[str, Any],
+    summary: str = "",
+) -> dict[str, Any]:
+    """Generate payload for Memory MCP entity creation.
+
+    This function creates structured data that Alfred can use to save
+    session state to Memory MCP. Since hooks cannot call MCP tools directly,
+    this generates the payload for Alfred to consume.
+
+    Args:
+        project_root: Project root directory
+        context: Current context dictionary
+        summary: Conversation summary
+
+    Returns:
+        Dictionary with entities and relations for Memory MCP
+    """
+    timestamp = datetime.now().isoformat()
+    entities = []
+    relations = []
+
+    # SessionState entity
+    spec_info = context.get("current_spec", {})
+    session_entity = {
+        "name": "session_current",
+        "entityType": "SessionState",
+        "observations": [
+            f"timestamp: {timestamp}",
+            f"summary: {summary}",
+        ],
+    }
+
+    if spec_info.get("id"):
+        session_entity["observations"].extend(
+            [
+                f"active_spec: {spec_info.get('id', '')}",
+                f"phase: {spec_info.get('phase', '')}",
+                f"progress: {spec_info.get('progress_percent', 0)}%",
+                f"spec_description: {spec_info.get('description', '')}",
+            ]
+        )
+
+    branch = context.get("current_branch", "")
+    if branch:
+        session_entity["observations"].append(f"branch: {branch}")
+
+    if context.get("uncommitted_changes"):
+        session_entity["observations"].append("has_uncommitted_changes: true")
+
+    entities.append(session_entity)
+
+    # ActiveTask entities
+    tasks = context.get("active_tasks", [])
+    for task in tasks[:5]:
+        task_entity = {
+            "name": f"task_{task.get('id', 'unknown')}",
+            "entityType": "ActiveTask",
+            "observations": [
+                f"subject: {task.get('subject', '')}",
+                f"status: {task.get('status', '')}",
+                f"timestamp: {timestamp}",
+            ],
+        }
+        if task.get("description"):
+            task_entity["observations"].append(f"description: {task.get('description', '')[:200]}")
+        entities.append(task_entity)
+
+        relations.append(
+            {
+                "from": "session_current",
+                "to": f"task_{task.get('id', 'unknown')}",
+                "relationType": "has_active_task",
+            }
+        )
+
+    # Recent decisions
+    decisions = context.get("key_decisions", [])
+    for i, decision in enumerate(decisions[:3]):
+        decision_entity = {
+            "name": f"decision_recent_{i}",
+            "entityType": "UserDecision",
+            "observations": [
+                f"summary: {decision}",
+                f"timestamp: {timestamp}",
+            ],
+        }
+        entities.append(decision_entity)
+
+        relations.append(
+            {
+                "from": "session_current",
+                "to": f"decision_recent_{i}",
+                "relationType": "made_decision",
+            }
+        )
+
+    return {
+        "entities": entities,
+        "relations": relations,
+        "generated_at": timestamp,
+    }
+
+
+def _extract_spec_description(spec_path: Path) -> str:
+    """Extract description from SPEC markdown file.
+
+    Looks for the first heading after the frontmatter or the '## 개요' section.
+
+    Args:
+        spec_path: Path to spec.md file
+
+    Returns:
+        Description string or empty string if not found
+    """
+    try:
+        content = spec_path.read_text(encoding="utf-8")
+        lines = content.split("\n")
+
+        # Skip YAML frontmatter
+        in_frontmatter = False
+        start_idx = 0
+        for i, line in enumerate(lines):
+            if i == 0 and line.strip() == "---":
+                in_frontmatter = True
+                continue
+            if in_frontmatter and line.strip() == "---":
+                start_idx = i + 1
+                break
+
+        # Find the first h1 heading (# Title) after frontmatter
+        for line in lines[start_idx:]:
+            if line.startswith("# "):
+                # Extract title without "# " prefix and SPEC ID
+                title = line[2:].strip()
+                # Remove SPEC ID prefix if present (e.g., "SPEC-XXX: Title" -> "Title")
+                if ":" in title:
+                    title = title.split(":", 1)[1].strip()
+                return title[:100]  # Limit length
+        return ""
+    except Exception:
+        return ""
+
+
+def _detect_spec_phase(project_root: Path, spec_id: str) -> tuple[str, int]:
+    """Detect current phase and progress for a SPEC.
+
+    Checks for existence of plan.md, acceptance.md to determine phase.
+
+    Args:
+        project_root: Project root directory
+        spec_id: SPEC ID (e.g., "SPEC-XXX")
+
+    Returns:
+        Tuple of (phase, progress_percent)
+    """
+    spec_dir = project_root / ".moai" / "specs" / spec_id
+
+    if not spec_dir.exists():
+        return "unknown", 0
+
+    has_spec = (spec_dir / "spec.md").exists()
+    has_plan = (spec_dir / "plan.md").exists()
+    has_acceptance = (spec_dir / "acceptance.md").exists()
+
+    # Check acceptance.md for completion markers
+    if has_acceptance:
+        try:
+            acceptance_content = (spec_dir / "acceptance.md").read_text(encoding="utf-8").lower()
+            # Count checked items [x] vs unchecked [ ]
+            checked = acceptance_content.count("[x]")
+            unchecked = acceptance_content.count("[ ]")
+            total = checked + unchecked
+
+            if total > 0:
+                progress = int((checked / total) * 100)
+                if progress >= 100:
+                    return "sync", 100
+                elif progress > 0:
+                    return "run", progress
+        except Exception:
+            pass
+
+    # Determine phase based on file existence
+    if has_plan and has_spec:
+        return "run", 30  # Default progress for run phase
+    elif has_spec:
+        return "plan", 50  # Plan phase, spec created
+    else:
+        return "plan", 10  # Early plan phase
+
+    return "plan", 0
+
+
 def collect_current_context(project_root: Path) -> dict[str, Any]:
     """Collect current working context from various sources.
 
     Gathers information from:
-    - SPEC documents
+    - SPEC documents (including description and phase detection)
     - TodoWrite state
     - Git status
     - Recent file modifications
+    - Decisions log
 
     Args:
         project_root: Project root directory
@@ -382,11 +729,16 @@ def collect_current_context(project_root: Path) -> dict[str, Any]:
             state = json.loads(state_file.read_text(encoding="utf-8"))
             specs = state.get("specs_in_progress", [])
             if specs:
+                spec_id = specs[0]
+                spec_path = project_root / ".moai" / "specs" / spec_id / "spec.md"
+                description = _extract_spec_description(spec_path) if spec_path.exists() else ""
+                phase, progress = _detect_spec_phase(project_root, spec_id)
+
                 context["current_spec"] = {
-                    "id": specs[0],
-                    "description": "",
-                    "phase": "run",
-                    "progress_percent": 0,
+                    "id": spec_id,
+                    "description": description,
+                    "phase": phase,
+                    "progress_percent": progress,
                 }
             context["current_branch"] = state.get("current_branch", "")
             context["uncommitted_changes"] = bool(state.get("uncommitted_files", 0))
@@ -425,5 +777,24 @@ def collect_current_context(project_root: Path) -> dict[str, Any]:
             context["recent_files"] = files[:10]  # Limit to 10 files
     except Exception as e:
         logger.warning(f"Failed to get recent files: {e}")
+
+    try:
+        # Get key decisions from decisions log file
+        # This file is written by Alfred when important decisions are made
+        decisions_file = project_root / ".moai" / "memory" / "decisions.jsonl"
+        if decisions_file.exists():
+            decisions = []
+            for line in decisions_file.read_text(encoding="utf-8").strip().split("\n"):
+                if line:
+                    try:
+                        decision = json.loads(line)
+                        # Only include recent decisions (last 5)
+                        decisions.append(decision.get("summary", decision.get("choice", "")))
+                    except json.JSONDecodeError:
+                        continue
+            # Keep last 5 decisions, most recent first
+            context["key_decisions"] = decisions[-5:][::-1]
+    except Exception as e:
+        logger.warning(f"Failed to load decisions: {e}")
 
     return context

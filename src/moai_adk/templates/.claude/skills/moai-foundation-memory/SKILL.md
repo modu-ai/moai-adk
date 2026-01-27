@@ -72,12 +72,69 @@ When to Use:
 - Track project milestones and progress
 - Store learned code patterns for reuse
 
-Key Operations:
+Key Operations (Knowledge Graph based):
 
-- `mcp__memory__store`: Store a key-value pair
-- `mcp__memory__retrieve`: Retrieve a stored value
-- `mcp__memory__list`: List all stored keys
-- `mcp__memory__delete`: Delete a stored key
+- `mcp__memory__create_entities`: Create entities with observations
+- `mcp__memory__add_observations`: Add observations to existing entities
+- `mcp__memory__create_relations`: Create relationships between entities
+- `mcp__memory__search_nodes`: Search entities by query
+- `mcp__memory__open_nodes`: Retrieve specific entities by name
+- `mcp__memory__read_graph`: Read entire knowledge graph
+- `mcp__memory__delete_entities`: Delete entities
+
+---
+
+## Session Continuity Protocol
+
+### Dual Storage Architecture
+
+MoAI-ADK uses two storage layers for session continuity:
+
+**Layer 1: File-based (Hook-managed)**
+- Location: `.moai/memory/context-snapshot.json`
+- Trigger: SessionEnd hook (auto-save on /clear or session end)
+- Content: SPEC state, tasks, files, git status
+- Load: SessionStart hook reads and provides via systemMessage
+
+**Layer 2: Memory MCP (Alfred-managed)**
+- Storage: Knowledge graph entities
+- Trigger: Alfred saves on important decisions
+- Content: User decisions, preferences, learned patterns
+- Load: Alfred queries on session start
+
+### Decision Saving Protocol
+
+When user makes important decisions via AskUserQuestion:
+
+**Step 1: Save to Memory MCP**
+```
+Entity: decision_{spec_id}_{timestamp}
+Type: UserDecision
+Observations:
+  - "question: Which authentication method?"
+  - "choice: JWT with refresh tokens"
+  - "spec: SPEC-001"
+  - "timestamp: 2026-01-27T10:30:00Z"
+```
+
+**Step 2: Save to File Backup**
+Append to `.moai/memory/decisions.jsonl`:
+```json
+{"spec_id":"SPEC-001","question":"...","choice":"...","timestamp":"..."}
+```
+
+### Session Recovery Flow
+
+**SessionStart Hook:**
+1. Reads `.moai/memory/context-snapshot.json`
+2. Formats context for systemMessage
+3. Includes SPEC state, tasks, files, decisions
+
+**Alfred on New Session:**
+1. Receives context via systemMessage
+2. Queries Memory MCP: `mcp__memory__search_nodes("session")`
+3. Offers user to continue previous work
+4. Loads relevant decisions for current SPEC
 
 ---
 
@@ -130,18 +187,21 @@ When user explicitly states a preference:
 
 ```
 User: "I prefer Korean responses"
-Action: Store using mcp__memory__store
-Key: "user_language"
-Value: "ko"
+Action: mcp__memory__create_entities
+Entity: {
+  name: "user_language",
+  entityType: "UserPreference",
+  observations: ["language: ko", "set_date: 2026-01-27"]
+}
 ```
 
 **Pattern 2: Retrieve Context on Session Start**
 
 At session initialization:
 
-1. Retrieve `user_language` for response language
-2. Retrieve `project_tech_stack` for context
-3. Retrieve `session_last_spec` for continuity
+1. `mcp__memory__search_nodes("user_")` for user preferences
+2. `mcp__memory__search_nodes("project_")` for project context
+3. `mcp__memory__search_nodes("session_")` for session state
 
 **Pattern 3: Learn from User Behavior**
 
@@ -149,9 +209,9 @@ When user corrects or adjusts output:
 
 ```
 User: "Use camelCase not snake_case"
-Action: Store pattern
-Key: "user_naming_convention"
-Value: "camelCase"
+Action: mcp__memory__create_entities or mcp__memory__add_observations
+Entity: "user_naming_convention"
+Observation: "style: camelCase"
 ```
 
 **Pattern 4: Project Knowledge Base**
@@ -159,8 +219,13 @@ Value: "camelCase"
 Store important project decisions:
 
 ```
-Key: "project_auth_decision"
-Value: "JWT with refresh tokens, stored in httpOnly cookies"
+Entity: "project_auth_decision"
+Type: "ProjectDecision"
+Observations: [
+  "decision: JWT with refresh tokens",
+  "storage: httpOnly cookies",
+  "date: 2026-01-27"
+]
 ```
 
 ### Best Practices

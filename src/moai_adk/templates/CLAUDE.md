@@ -326,23 +326,40 @@ Always prefer Edit tool over sed/awk for cross-platform compatibility.
 
 ## 14. Memory MCP Integration
 
-MoAI-ADK uses Memory MCP Server for persistent storage across sessions.
+MoAI-ADK uses a 3-Layer Memory Architecture for zero-loss session continuity.
 
-### Memory Categories
+### 3-Layer Architecture
 
-- **User Preferences** (prefix: `user_`): language, coding_style, naming_convention
-- **Project Context** (prefix: `project_`): tech_stack, architecture, conventions
-- **Learned Patterns** (prefix: `pattern_`): preferred_libraries, error_resolutions
-- **Session State** (prefix: `session_`): last_spec, pending_tasks
+**Layer 1 - Hot Memory (Memory MCP):** Real-time session state with instant access. Alfred manages entities: SessionState, ActiveTask, UserDecision, AgentHandoff.
 
-### Usage Protocol
+**Layer 2 - Warm Memory (File-based):** Hook-managed session data in `.moai/memory/`. Files: context-snapshot.json, spec-state.json, tasks-backup.json, decisions.jsonl, mcp-payload.json.
+
+**Layer 3 - Cold Memory (SPEC/Docs):** Long-term persistent documents in `.moai/specs/` and `.moai/project/`.
+
+### Hook Lifecycle
+
+**PreCompact hook** (before /clear or auto-compact): Saves context-snapshot.json, spec-state.json, tasks-backup.json, and mcp-payload.json for Memory MCP sync.
+
+**SessionStart hook:** Loads context-snapshot.json, provides SPEC state and tasks backup as fallback, signals Alfred when mcp-payload.json is available.
+
+**SessionEnd hook:** Archives context snapshot for history.
+
+### Alfred Memory Sync Protocol
 
 **On Session Start:**
-1. Retrieve `user_language` and apply
-2. Load `project_tech_stack` for context
-3. Check `session_last_spec` for continuity
+1. Check systemMessage for [MEMORY_MCP_SYNC] signal
+2. If found, read `.moai/memory/mcp-payload.json`
+3. Sync entities to Memory MCP: mcp__memory__create_entities
+4. Sync relations: mcp__memory__create_relations
+5. Query Memory MCP: mcp__memory__search_nodes("session") for continuity
+6. Offer user to continue previous work
 
-For detailed patterns, see Skill("moai-foundation-memory").
+**On Important Decisions (after AskUserQuestion):**
+1. Memory MCP: mcp__memory__create_entities with type UserDecision
+2. File backup: Append to `.moai/memory/decisions.jsonl`
+
+**Before /clear:**
+PreCompact hook auto-saves all state to `.moai/memory/`.
 
 ### Agent-to-Agent Context Sharing
 
@@ -356,10 +373,12 @@ context_{spec_id}_{category}
 
 **Categories:** requirements, architecture, api, database, decisions, progress
 
+For detailed patterns, see Skill("moai-foundation-memory").
+
 ---
 
-Version: 10.8.0 (Cleaned up duplicates, moved details to skills/rules)
-Last Updated: 2026-01-26
+Version: 10.9.0 (Session continuity and Memory MCP integration improvements)
+Last Updated: 2026-01-27
 Language: English
 Core Rule: Alfred is an orchestrator; direct implementation is prohibited
 
