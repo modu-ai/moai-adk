@@ -42,6 +42,7 @@ if str(LIB_DIR) not in sys.path:
 from lib.context_manager import (  # noqa: E402
     collect_current_context,
     generate_memory_mcp_payload,
+    parse_transcript_context,
     save_context_snapshot,
     save_spec_state,
     save_tasks_backup,
@@ -130,14 +131,30 @@ def execute_pre_compact():
     input_data = sys.stdin.read() if not sys.stdin.isatty() else "{}"
     payload = json.loads(input_data) if input_data.strip() else {}
 
-    # Get session ID if available
+    # Get session ID and transcript path from Claude Code payload
     session_id = payload.get("session_id", "")
+    transcript_path = payload.get("transcript_path", "")
 
     # Find project root
     project_root = find_project_root()
 
-    # Collect current context
+    # Collect file-based context (git status, recent files)
     context = collect_current_context(project_root)
+
+    # Enrich with transcript data (tasks, decisions, SPEC refs, edited files)
+    if transcript_path:
+        transcript_data = parse_transcript_context(transcript_path)
+        # Merge: transcript data takes priority over empty file-based data
+        if transcript_data.get("active_tasks"):
+            context["active_tasks"] = transcript_data["active_tasks"]
+        if transcript_data.get("recent_files"):
+            context["recent_files"] = transcript_data["recent_files"]
+        if transcript_data.get("key_decisions"):
+            context["key_decisions"] = transcript_data["key_decisions"]
+        if transcript_data.get("current_spec", {}).get("id"):
+            # Only override if file-based context has no SPEC
+            if not context.get("current_spec", {}).get("id"):
+                context["current_spec"] = transcript_data["current_spec"]
 
     # Generate conversation summary
     summary = generate_conversation_summary(context)

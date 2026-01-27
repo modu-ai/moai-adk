@@ -799,3 +799,133 @@ def collect_current_context(project_root: Path) -> dict[str, Any]:
         logger.warning(f"Failed to load decisions: {e}")
 
     return context
+
+
+def parse_transcript_context(
+    transcript_path: Path | str,
+    max_lines: int = 1000,
+) -> dict[str, Any]:
+    """Parse Claude Code transcript JSONL to extract rich session context.
+
+    Reads the last N lines of the transcript to extract:
+    - TaskCreate/TaskUpdate calls -> active_tasks
+    - Write/Edit file paths -> recent_files
+    - AskUserQuestion -> key_decisions
+    - SPEC-XXX references -> current_spec
+
+    Args:
+        transcript_path: Path to the session transcript JSONL file
+        max_lines: Maximum number of lines to read from end of file
+
+    Returns:
+        Context dictionary with extracted data
+    """
+    import re
+    from collections import deque
+
+    result: dict[str, Any] = {
+        "active_tasks": [],
+        "recent_files": [],
+        "key_decisions": [],
+        "current_spec": {},
+    }
+
+    tp = Path(transcript_path).expanduser()
+    if not tp.exists():
+        return result
+
+    try:
+        with open(tp, encoding="utf-8", errors="replace") as f:
+            lines = deque(f, maxlen=max_lines)
+    except OSError:
+        return result
+
+    # Track tasks by ID for final state resolution
+    tasks_by_id: dict[str, dict[str, str]] = {}
+    edited_files: list[str] = []
+    decisions: list[str] = []
+    spec_ids: set[str] = set()
+
+    # Pre-filter keywords for fast skip
+    tool_keywords = ("TaskCreate", "TaskUpdate", "Write", "Edit", "AskUserQuestion", "SPEC-")
+
+    for raw_line in lines:
+        raw_line = raw_line.strip()
+        if not raw_line:
+            continue
+
+        # Fast pre-filter: skip lines without any relevant keyword
+        if not any(kw in raw_line for kw in tool_keywords):
+            continue
+
+        try:
+            obj = json.loads(raw_line)
+        except json.JSONDecodeError:
+            continue
+
+        msg = obj.get("message", {})
+        content = msg.get("content", "")
+
+        if isinstance(content, list):
+            for block in content:
+                block_type = block.get("type", "")
+
+                if block_type == "tool_use":
+                    name = block.get("name", "")
+                    inp = block.get("input", {})
+
+                    if name == "TaskCreate":
+                        subject = inp.get("subject", "")
+                        if subject:
+                            tid = str(len(tasks_by_id) + 1)
+                            tasks_by_id[tid] = {
+                                "id": tid,
+                                "subject": subject,
+                                "status": "pending",
+                            }
+
+                    elif name == "TaskUpdate":
+                        tid = inp.get("taskId", "")
+                        status = inp.get("status", "")
+                        if tid and tid in tasks_by_id and status:
+                            tasks_by_id[tid]["status"] = status
+
+                    elif name in ("Write", "Edit"):
+                        fp = inp.get("file_path", "")
+                        if fp:
+                            # Normalize: strip project root prefix
+                            for marker in ("MoAI-ADK/", "MoAI/MoAI-ADK/"):
+                                if marker in fp:
+                                    fp = fp.split(marker)[-1]
+                                    break
+                            if fp not in edited_files:
+                                edited_files.append(fp)
+
+                    elif name == "AskUserQuestion":
+                        questions = inp.get("questions", [])
+                        for q in questions:
+                            qt = q.get("question", "")
+                            if qt:
+                                decisions.append(qt[:100])
+
+                if block_type == "text":
+                    text = block.get("text", "")
+                    if "SPEC-" in text:
+                        found = re.findall(r"SPEC-[A-Z]+-\d+", text)
+                        spec_ids.update(found)
+
+        elif isinstance(content, str) and "SPEC-" in content:
+            found = re.findall(r"SPEC-[A-Z]+-\d+", content)
+            spec_ids.update(found)
+
+    # Build result - only active/pending tasks
+    active_tasks = [t for t in tasks_by_id.values() if t.get("status") in ("in_progress", "pending")]
+    result["active_tasks"] = active_tasks[:10]
+    result["recent_files"] = edited_files[:20]
+    result["key_decisions"] = decisions[-5:]
+
+    if spec_ids:
+        latest_spec = sorted(spec_ids)[-1]
+        result["current_spec"] = {"id": latest_spec}
+
+    return result

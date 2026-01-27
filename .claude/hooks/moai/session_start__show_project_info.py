@@ -1111,11 +1111,86 @@ def main() -> None:
 
     def execute_session_start():
         """Execute session start logic with proper error handling"""
-        # Read JSON payload from stdin (for compatibility)
-        # Handle Docker/non-interactive environments by checking TTY
-        # Note: SessionStart hook receives session info but we don't need it currently
+        # Read JSON payload from stdin
         input_data = sys.stdin.read() if not sys.stdin.isatty() else "{}"
-        _ = json.loads(input_data) if input_data.strip() else {}  # Explicitly ignore
+        payload = json.loads(input_data) if input_data.strip() else {}
+
+        # Detect /clear: save context from transcript before restoration
+        source = payload.get("source", "")
+        transcript_path = payload.get("transcript_path", "")
+        if source == "clear" and transcript_path and HAS_CONTEXT_MANAGER:
+            try:
+                from lib.context_manager import (
+                    parse_transcript_context,
+                    save_context_snapshot,
+                    save_spec_state,
+                    save_tasks_backup,
+                )
+
+                project_root = find_project_root()
+                transcript_data = parse_transcript_context(transcript_path)
+
+                # Build context from transcript
+                context = {
+                    "current_spec": transcript_data.get("current_spec", {}),
+                    "active_tasks": transcript_data.get("active_tasks", []),
+                    "recent_files": transcript_data.get("recent_files", []),
+                    "key_decisions": transcript_data.get("key_decisions", []),
+                    "current_branch": "",
+                    "uncommitted_changes": False,
+                }
+
+                # Fill git info
+                try:
+                    branch_result = subprocess.run(
+                        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                        capture_output=True,
+                        text=True,
+                        timeout=3,
+                        cwd=str(project_root),
+                    )
+                    if branch_result.returncode == 0:
+                        context["current_branch"] = branch_result.stdout.strip()
+                    status_result = subprocess.run(
+                        ["git", "status", "--porcelain"],
+                        capture_output=True,
+                        text=True,
+                        timeout=3,
+                        cwd=str(project_root),
+                    )
+                    if status_result.returncode == 0:
+                        context["uncommitted_changes"] = bool(status_result.stdout.strip())
+                except Exception:
+                    pass
+
+                # Build summary
+                parts = []
+                spec_id = context["current_spec"].get("id", "")
+                if spec_id:
+                    parts.append(spec_id)
+                if context["active_tasks"]:
+                    parts.append(f"{len(context['active_tasks'])} active tasks")
+                if context["key_decisions"]:
+                    parts.append(f"{len(context['key_decisions'])} decisions")
+                if context["uncommitted_changes"]:
+                    parts.append("Has uncommitted changes")
+                summary = ". ".join(parts) if parts else "Session cleared"
+
+                # Save snapshot for format_session_output() to pick up
+                save_context_snapshot(
+                    project_root=project_root,
+                    trigger="clear",
+                    context=context,
+                    conversation_summary=summary,
+                    session_id=payload.get("session_id", ""),
+                )
+                if spec_id:
+                    save_spec_state(project_root, context["current_spec"])
+                if context["active_tasks"]:
+                    save_tasks_backup(project_root, context["active_tasks"])
+
+            except Exception as e:
+                logging.warning(f"Failed to save context on /clear: {e}")
 
         # Check if setup messages should be shown
         show_messages = should_show_setup_messages()
