@@ -6,9 +6,9 @@ MoAI's three-phase development workflow with token budget management.
 
 | Phase | Command | Agent | Token Budget | Purpose |
 |-------|---------|-------|--------------|---------|
-| Plan | /moai:1-plan | manager-spec | 30K | Create SPEC document |
-| Run | /moai:2-run | manager-ddd | 180K | DDD implementation |
-| Sync | /moai:3-sync | manager-docs | 40K | Documentation sync |
+| Plan | /moai plan | manager-spec | 30K | Create SPEC document |
+| Run | /moai run | manager-ddd | 180K | DDD implementation |
+| Sync | /moai sync | manager-docs | 40K | Documentation sync |
 
 ## Plan Phase
 
@@ -70,7 +70,7 @@ AI uses markers to signal task completion:
 ## Context Management
 
 /clear Strategy:
-- After /moai:1-plan completion (mandatory)
+- After /moai plan completion (mandatory)
 - When context exceeds 150K tokens
 - Before major phase transitions
 
@@ -83,8 +83,8 @@ Progressive Disclosure:
 
 Plan to Run:
 - Trigger: SPEC document approved
-- Action: Execute /clear, then /moai:2-run SPEC-XXX
+- Action: Execute /clear, then /moai run SPEC-XXX
 
 Run to Sync:
 - Trigger: Implementation complete, tests passing
-- Action: Execute /moai:3-sync SPEC-XXX
+- Action: Execute /moai sync SPEC-XXX

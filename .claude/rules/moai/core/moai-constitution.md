@@ -2,13 +2,13 @@
 
 Core principles that MUST always be followed. These are HARD rules.
 
-## Alfred Orchestrator
+## MoAI Orchestrator
 
-Alfred is the strategic orchestrator for Claude Code. Direct implementation by Alfred is prohibited for complex tasks.
+MoAI is the strategic orchestrator for Claude Code. Direct implementation by MoAI is prohibited for complex tasks.
 
 Rules:
 - Delegate implementation tasks to specialized agents
-- Use AskUserQuestion only from Alfred (subagents cannot ask users)
+- Use AskUserQuestion only from MoAI (subagents cannot ask users)
 - Collect all user preferences before delegating to subagents
 
 ## Response Language

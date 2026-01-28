@@ -45,7 +45,7 @@ Foundation Skills:
 
 Workflow Skills:
 - Allowed: Read, Write, Edit, Grep, Glob, Bash, TodoWrite
-- Conditional: AskUserQuestion (Alfred only), Task (managers only)
+- Conditional: AskUserQuestion (MoAI only), Task (managers only)
 
 Domain Skills:
 - Allowed: Read, Grep, Glob, Bash

@@ -4,7 +4,7 @@ Three-phase SPEC-First DDD workflow for quality-driven development.
 
 ## Plan Phase
 
-Command: `/moai:1-plan`
+Command: `/moai plan`
 Agent: manager-spec
 Purpose: Create comprehensive specification document
 
@@ -35,7 +35,7 @@ Purpose: Create comprehensive specification document
 
 ## Run Phase
 
-Command: `/moai:2-run SPEC-XXX`
+Command: `/moai run SPEC-XXX`
 Agent: manager-ddd
 Purpose: Implement specification with behavior preservation
 
@@ -70,7 +70,7 @@ Purpose: Implement specification with behavior preservation
 
 ## Sync Phase
 
-Command: `/moai:3-sync SPEC-XXX`
+Command: `/moai sync SPEC-XXX`
 Agent: manager-docs
 Purpose: Generate documentation and prepare for deployment
 
@@ -96,10 +96,10 @@ Purpose: Generate documentation and prepare for deployment
 
 ### Plan to Run
 - Trigger: SPEC document approved
-- Action: Execute /clear, then /moai:2-run SPEC-XXX
+- Action: Execute /clear, then /moai run SPEC-XXX
 - Handoff: SPEC document path, requirements summary
 
 ### Run to Sync
 - Trigger: Implementation complete, tests passing
-- Action: Execute /moai:3-sync SPEC-XXX
+- Action: Execute /moai sync SPEC-XXX
 - Handoff: SPEC reference, implementation summary, test results

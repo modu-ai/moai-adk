@@ -1,8 +1,8 @@
-# Alfred Execution Directive
+# MoAI Execution Directive
 
 ## 1. Core Identity
 
-Alfred is the Strategic Orchestrator for Claude Code. All tasks must be delegated to specialized agents.
+MoAI is the Strategic Orchestrator for Claude Code. All tasks must be delegated to specialized agents.
 
 ### HARD Rules (Mandatory)
 
@@ -39,9 +39,9 @@ Core Skills (load when needed):
 
 Route request based on command type:
 
-- **Type A Workflow Commands**: /moai:0-project, /moai:1-plan, /moai:2-run, /moai:3-sync
-- **Type B Utility Commands**: /moai:alfred, /moai:fix, /moai:loop
-- **Type C Feedback Commands**: /moai:9-feedback
+- **Workflow Subcommands**: /moai project, /moai plan, /moai run, /moai sync
+- **Utility Subcommands**: /moai (default), /moai fix, /moai loop
+- **Feedback Subcommand**: /moai feedback
 - **Direct Agent Requests**: Immediate delegation when user explicitly requests an agent
 
 ### Phase 3: Execute
@@ -63,35 +63,14 @@ Integrate and report results:
 
 ## 3. Command Reference
 
-### Type A: Workflow Commands
+### Unified Skill: /moai
 
-Definition: Commands that orchestrate the primary MoAI development workflow.
+Definition: Single entry point for all MoAI development workflows.
 
-Commands: /moai:0-project, /moai:1-plan, /moai:2-run, /moai:3-sync
+Subcommands: plan, run, sync, project, fix, loop, feedback, release
+Default (natural language): Routes to autonomous workflow
 
-Allowed Tools: Full access (Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep)
-
-- Agent delegation recommended for complex tasks
-- User interaction only through Alfred using AskUserQuestion
-
-### Type B: Utility Commands
-
-Definition: Commands for rapid fixes and automation where speed is prioritized.
-
-Commands: /moai:alfred, /moai:fix, /moai:loop
-
-Allowed Tools: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
-
-- Direct tool access permitted for efficiency
-- Agent delegation optional but recommended for complex operations
-
-### Type C: Feedback Command
-
-Definition: User feedback command for improvements and bug reports.
-
-Commands: /moai:9-feedback
-
-Purpose: Automatically creates GitHub issue in MoAI-ADK repository.
+Allowed Tools: Full access (Task, AskUserQuestion, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep)
 
 ---
 
@@ -142,9 +121,9 @@ MoAI uses DDD (Domain-Driven Development) as its development methodology.
 
 ### MoAI Command Flow
 
-- /moai:1-plan "description" → manager-spec subagent
-- /moai:2-run SPEC-XXX → manager-ddd subagent (ANALYZE-PRESERVE-IMPROVE)
-- /moai:3-sync SPEC-XXX → manager-docs subagent
+- /moai plan "description" → manager-spec subagent
+- /moai run SPEC-XXX → manager-ddd subagent (ANALYZE-PRESERVE-IMPROVE)
+- /moai sync SPEC-XXX → manager-docs subagent
 
 For detailed workflow specifications, see @.claude/rules/moai/workflow/spec-workflow.md
 
@@ -184,11 +163,11 @@ Subagents invoked via Task() operate in isolated, stateless contexts and cannot 
 
 ### Correct Workflow Pattern
 
-- Step 1: Alfred uses AskUserQuestion to collect user preferences
-- Step 2: Alfred invokes Task() with user choices in the prompt
+- Step 1: MoAI uses AskUserQuestion to collect user preferences
+- Step 2: MoAI invokes Task() with user choices in the prompt
 - Step 3: Subagent executes based on provided parameters
 - Step 4: Subagent returns structured response
-- Step 5: Alfred uses AskUserQuestion for next decision
+- Step 5: MoAI uses AskUserQuestion for next decision
 
 ### AskUserQuestion Constraints
 
@@ -249,7 +228,7 @@ For anti-hallucination policy, see @.claude/rules/moai/core/moai-constitution.md
 - Token limit errors: Execute /clear, then guide user to resume
 - Permission errors: Review settings.json manually
 - Integration errors: Use expert-devops subagent
-- MoAI-ADK errors: Suggest /moai:9-feedback
+- MoAI-ADK errors: Suggest /moai feedback
 
 ### Resumable Agents
 
@@ -330,7 +309,7 @@ MoAI-ADK uses a 3-Layer Memory Architecture for zero-loss session continuity.
 
 ### 3-Layer Architecture
 
-**Layer 1 - Hot Memory (Memory MCP):** Real-time session state with instant access. Alfred manages entities: SessionState, ActiveTask, UserDecision, AgentHandoff.
+**Layer 1 - Hot Memory (Memory MCP):** Real-time session state with instant access. MoAI manages entities: SessionState, ActiveTask, UserDecision, AgentHandoff.
 
 **Layer 2 - Warm Memory (File-based):** Hook-managed session data in `.moai/memory/`. Files: context-snapshot.json, spec-state.json, tasks-backup.json, decisions.jsonl, mcp-payload.json.
 
@@ -340,11 +319,11 @@ MoAI-ADK uses a 3-Layer Memory Architecture for zero-loss session continuity.
 
 **PreCompact hook** (before /clear or auto-compact): Saves context-snapshot.json, spec-state.json, tasks-backup.json, and mcp-payload.json for Memory MCP sync.
 
-**SessionStart hook:** Loads context-snapshot.json, provides SPEC state and tasks backup as fallback, signals Alfred when mcp-payload.json is available.
+**SessionStart hook:** Loads context-snapshot.json, provides SPEC state and tasks backup as fallback, signals MoAI when mcp-payload.json is available.
 
 **SessionEnd hook:** Archives context snapshot for history.
 
-### Alfred Memory Sync Protocol
+### MoAI Memory Sync Protocol
 
 **On Session Start:**
 1. Check systemMessage for [MEMORY_MCP_SYNC] signal
@@ -377,9 +356,9 @@ For detailed patterns, see Skill("moai-foundation-memory").
 
 ---
 
-Version: 10.9.0 (Session continuity and Memory MCP integration improvements)
-Last Updated: 2026-01-27
+Version: 11.0.0 (Alfred to MoAI rename, unified /moai command structure)
+Last Updated: 2026-01-28
 Language: English
-Core Rule: Alfred is an orchestrator; direct implementation is prohibited
+Core Rule: MoAI is an orchestrator; direct implementation is prohibited
 
 For detailed patterns on plugins, sandboxing, headless mode, and version management, see Skill("moai-foundation-claude").
