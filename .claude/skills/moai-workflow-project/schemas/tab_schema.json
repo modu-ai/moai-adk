@@ -289,28 +289,6 @@
               "required": true
             }
           ]
-        },
-        {
-          "batch_id": "2.2",
-          "label": "Auto-processed Locale Settings",
-          "conditional": false,
-          "questions": [],
-          "auto_processing": {
-            "enabled": true,
-            "description": "Automatically derived from language.conversation_language. No user input required.",
-            "fields": [
-              {
-                "field": "project.locale",
-                "derivation": "auto-map from conversation_language",
-                "mapping": {
-                  "ko": "ko_KR",
-                  "en": "en_US",
-                  "ja": "ja_JP",
-                  "es": "es_ES"
-                }
-              }
-            ]
-          }
         }
       ]
     },

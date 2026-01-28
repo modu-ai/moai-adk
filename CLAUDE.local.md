@@ -2,7 +2,7 @@
 
 > **Purpose**: Essential guide for local MoAI-ADK development
 > **Audience**: GOOS (local developer only)
-> **Last Updated**: 2026-01-13
+> **Last Updated**: 2026-01-28
 
 ---
 
@@ -45,7 +45,7 @@ src/moai_adk/templates/CLAUDE.md   → ./CLAUDE.md
 
 ### Local-Only Files (Never Sync)
 ```
-.claude/commands/moai/99-release.md  # Local release command (NOT in template)
+.claude/commands/moai/99-release.md  # Local release command (NOT in template, deprecated folder)
 .claude/settings.local.json          # Personal settings
 CLAUDE.local.md                      # This file
 .moai/cache/                         # Cache
@@ -56,6 +56,8 @@ CLAUDE.local.md                      # This file
 ```
 
 **Note on 99-release.md**: This file is intentionally kept local-only and is NOT distributed with the template. It provides developer-specific release workflow automation that should not be part of the public distribution.
+
+**Note on commands/moai/ deprecation (v1.10.0+)**: The `.claude/commands/moai/` folder is deprecated and automatically deleted during `moai-adk update` on target projects. Commands have been migrated to the skill system (`/moai` skill). The folder is backed up before deletion via `TemplateBackup.create_backup()`. On this local development project, update is not run, so `99-release.md` is unaffected.
 
 ### Template-Only Files (Distribution)
 ```
@@ -1323,6 +1325,6 @@ Use `.claude/rules/moai/` (Markdown format) for all rule definitions.
 ---
 
 **Status**: Active (Local Development)
-**Version**: 3.6.0 (Added CLAUDE.md Size Management)
-**Last Updated**: 2026-01-26
+**Version**: 3.7.0 (Update process improvements: deprecated folder cleanup, skill sync fix)
+**Last Updated**: 2026-01-28
 

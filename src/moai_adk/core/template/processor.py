@@ -850,6 +850,22 @@ class TemplateProcessor:
                 if not silent:
                     console.print(f"   ✅ .claude/{folder}/ overwritten")
 
+        # 1.1 Clean up deprecated folders (exist in project but removed from template)
+        # These folders are no longer distributed via template and should be removed
+        # to prevent stale files. Backup is already created by TemplateBackup.create_backup()
+        deprecated_folders = [
+            "commands/moai",  # Commands migrated to skill system (v1.10.0+)
+        ]
+
+        for folder in deprecated_folders:
+            src_folder = src / folder
+            dst_folder = dst / folder
+            # Only remove if it exists in project but NOT in template source
+            if dst_folder.exists() and not src_folder.exists():
+                shutil.rmtree(dst_folder)
+                if not silent:
+                    console.print(f"   🗑️ .claude/{folder}/ removed (deprecated, backed up)")
+
         # 1.5 Copy other subdirectories in parent folders (e.g., output-styles/moai, hooks/shared)
         # This ensures non-alfred subdirectories are also copied
         parent_folders_with_subdirs = ["output-styles", "hooks", "commands", "agents"]
@@ -933,12 +949,20 @@ class TemplateProcessor:
         if not silent:
             console.print("   ✅ .claude/ copy complete (variables substituted)")
 
+    @staticmethod
+    def _is_template_skill(name: str) -> bool:
+        """Check if a skill directory belongs to the MoAI template.
+
+        Matches both 'moai' (core orchestrator) and 'moai-*' (all other template skills).
+        """
+        return name == "moai" or name.startswith("moai-")
+
     def _sync_skills_selective(self, src: Path, dst: Path, silent: bool = False) -> None:
-        """Sync only moai-* template skills, preserve custom skills.
+        """Sync moai and moai-* template skills, preserve custom skills.
 
         This method ensures that:
-        - Template skills (moai-* prefix) are updated from source
-        - Custom skills (any other prefix) are preserved untouched
+        - Template skills ('moai' and 'moai-*') are updated from source
+        - Custom skills (any other name) are preserved untouched
 
         Args:
             src: Source .claude directory from template
@@ -953,13 +977,13 @@ class TemplateProcessor:
 
         skills_dst.mkdir(parents=True, exist_ok=True)
 
-        # Step 1: Identify template skills in source (moai-* prefix)
-        template_skills = {d.name for d in skills_src.iterdir() if d.is_dir() and d.name.startswith("moai-")}
+        # Step 1: Identify template skills in source ('moai' and 'moai-*')
+        template_skills = {d.name for d in skills_src.iterdir() if d.is_dir() and self._is_template_skill(d.name)}
 
         # Step 2: Delete only template skills in destination
         if skills_dst.exists():
             for skill_dir in list(skills_dst.iterdir()):
-                if skill_dir.is_dir() and skill_dir.name.startswith("moai-"):
+                if skill_dir.is_dir() and self._is_template_skill(skill_dir.name):
                     shutil.rmtree(skill_dir)
                     if not silent:
                         console.print(f"   [dim]Updating template skill: {skill_dir.name}[/dim]")
@@ -975,7 +999,7 @@ class TemplateProcessor:
 
         # Step 4: Report preserved custom skills
         if skills_dst.exists():
-            custom_skills = [d.name for d in skills_dst.iterdir() if d.is_dir() and not d.name.startswith("moai-")]
+            custom_skills = [d.name for d in skills_dst.iterdir() if d.is_dir() and not self._is_template_skill(d.name)]
             if custom_skills and not silent:
                 preview = ", ".join(sorted(custom_skills)[:3])
                 suffix = "..." if len(custom_skills) > 3 else ""

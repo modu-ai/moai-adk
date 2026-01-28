@@ -200,9 +200,9 @@ class CustomElementScanner:
 
         for skill_dir in skills_dir.iterdir():
             if skill_dir.is_dir():
-                # Skip moai-* template skills - they should be overwritten, not restored
-                # Only include user-created custom skills (non-moai-* prefix)
-                if skill_dir.name.startswith("moai-"):
+                # Skip moai template skills - they should be overwritten, not restored
+                # Excludes both "moai" (core skill) and "moai-*" prefixed skills
+                if skill_dir.name == "moai" or skill_dir.name.startswith("moai-"):
                     continue
 
                 relative_path = skill_dir.relative_to(self.project_path)

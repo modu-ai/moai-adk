@@ -283,7 +283,7 @@ Phase 5: Validation and finalization...   ████████████�
 
 📊 Summary:
   📁 Location:   /path/to/my-project
-  🌐 Language:   Auto-detect (use /moai:0-project)
+  🌐 Language:   Auto-detect (use /moai project)
   🔀 Git:        manual (github-flow, branch: manual)
   🌍 Locale:     ko
   📄 Files:      47 created
@@ -291,7 +291,7 @@ Phase 5: Validation and finalization...   ████████████�
 
 🚀 Next Steps:
   1. Run cd my-project to enter the project
-  2. Run /moai:0-project in Claude Code for full setup
+  2. Run /moai project in Claude Code for full setup
   3. Start developing with MoAI-ADK!
 ```
 
@@ -560,7 +560,7 @@ source ~/.zshenv
 For new or existing projects, you can automatically generate **project documentation to help Claude Code understand your project**:
 
 ```text
-> /moai:0-project
+> /moai project
 ```
 
 ### 3 Generated Files
@@ -578,16 +578,16 @@ For new or existing projects, you can automatically generate **project documenta
 - **Onboarding Acceleration**: Reduce new developer project ramp-up time
 - **AI Collaboration Optimization**: More accurate code suggestions and reviews
 
-> 💡 **Tip**: Running `/moai:0-project` at project start or after structure changes updates documentation to the latest state.
+> 💡 **Tip**: Running `/moai project` at project start or after structure changes updates documentation to the latest state.
 
 ---
 
 ## 3. Core Commands Collection
 
-### 🎯 `/moai:0-project` - Project Initialization
+### 🎯 `/moai project` - Project Initialization
 
 ```bash
-> /moai:0-project
+> /moai project
 ```
 
 Automatically analyzes your project's current state and configures the optimal development environment. Detects programming languages and frameworks, and automatically sets up Git workflows and quality assurance standards. Once all configuration is complete, you're ready to start development immediately.
@@ -603,10 +603,10 @@ Automatically analyzes your project's current state and configures the optimal d
 
 ---
 
-### 📋 `/moai:1-plan` - SPEC Writing
+### 📋 `/moai plan` - SPEC Writing
 
 ```bash
-> /moai:1-plan "feature description"
+> /moai plan "feature description"
 ```
 
 Automatically generates unambiguous specifications using EARS format. Includes requirements definition, success criteria, and test scenarios to clearly present development direction. The generated SPEC serves as a single source of truth that the development team and AI share the same understanding.
@@ -621,10 +621,10 @@ Automatically generates unambiguous specifications using EARS format. Includes r
 **Example**:
 
 ```bash
-> /moai:1-plan "user profile page"
+> /moai plan "user profile page"
 # → Creates SPEC-002
 
-> /moai:1-plan "payment API"
+> /moai plan "payment API"
 # → Creates SPEC-003
 ```
 
@@ -632,10 +632,10 @@ Automatically generates unambiguous specifications using EARS format. Includes r
 
 ---
 
-### 💻 `/moai:2-run` - Implementation (DDD)
+### 💻 `/moai run` - Implementation (DDD)
 
 ```bash
-> /moai:2-run SPEC-001
+> /moai run SPEC-001
 ```
 
 **NEW v1.9.0**: LSP-enhanced DDD cycle with completion markers
@@ -664,11 +664,11 @@ Implements SPEC using DDD (Domain-Driven Development) methodology with the ANALY
 
 ---
 
-### 📚 `/moai:3-sync` - Documentation Sync
+### 📚 `/moai sync` - Documentation Sync
 
 ```bash
 > /clear  # Always run clear before sync to reset session and run quality checks
-> /moai:3-sync SPEC-001
+> /moai sync SPEC-001
 ```
 
 Performs quality verification followed by documentation synchronization, Git commits, and PR automation. Automatically generates API documentation, architecture diagrams, README, and CHANGELOG, keeping them up to date. Automatically commits changes and converts PRs from Draft to Ready in team mode.
@@ -703,10 +703,10 @@ Performs quality verification followed by documentation synchronization, Git com
 
 ---
 
-### 🚀 `/moai:alfred` - Fully Autonomous Automation
+### 🚀 `/moai` - Fully Autonomous Automation
 
 ```bash
-> /moai:alfred "feature description"
+> /moai "feature description"
 ```
 
 **NEW v1.9.0**: LSP integration with autonomous mode
@@ -729,7 +729,7 @@ User presents the goal and AI autonomously performs exploration, planning, imple
 
 ```mermaid
 flowchart TB
-    Start([User Request<br/>/moai:alfred 'feature description']) --> Phase0[Phase 0: Parallel Exploration]
+    Start([User Request<br/>/moai 'feature description']) --> Phase0[Phase 0: Parallel Exploration]
 
     Phase0 --> Explore[🔍 Explore Agent<br/>Analyze codebase structure]
     Phase0 --> Research[📚 Research Agent<br/>Research technical docs]
@@ -801,7 +801,7 @@ flowchart TB
 | **New feature development** | AI handles everything from start to finish | "Add JWT authentication system" |
 | **Complex refactoring**     | Large changes affecting multiple files     | "Database layer restructure"    |
 | **Bug fixing**              | Automate from root cause analysis to fix   | "Fix login failure bug"         |
-| **SPEC-based development**  | Implement features with SPEC documents     | `/moai:alfred SPEC-AUTH-001`    |
+| **SPEC-based development**  | Implement features with SPEC documents     | `/moai SPEC-AUTH-001`           |
 
 **Options**:
 
@@ -818,21 +818,21 @@ flowchart TB
 
 ```bash
 # Basic autonomous execution (parallel by default)
-> /moai:alfred "Add JWT authentication"
+> /moai "Add JWT authentication"
 
 # Auto loop with sequential exploration (for debugging)
-> /moai:alfred "JWT authentication" --loop --seq
+> /moai "JWT authentication" --loop --seq
 
 # Resume
-> /moai:alfred resume SPEC-AUTH-001
+> /moai resume SPEC-AUTH-001
 
 # UltraThink mode (deep analysis with Sequential Thinking)
-> /moai:alfred "Add JWT authentication" --ultrathink
+> /moai "Add JWT authentication" --ultrathink
 ```
 
 **UltraThink Mode** (`--ultrathink`): Enhanced analysis mode that automatically applies Sequential Thinking MCP to deeply analyze requests and generate optimal execution plans.
 
-When `--ultrathink` is appended, Alfred activates structured reasoning to:
+When `--ultrathink` is appended, MoAI activates structured reasoning to:
 - Break down complex problems into manageable steps
 - Map each subtask to appropriate agents
 - Identify parallel vs sequential execution opportunities
@@ -858,10 +858,10 @@ Use `--ultrathink` for:
 
 ---
 
-### 🔁 `/moai:loop` - Autonomous Iterative Fixing
+### 🔁 `/moai loop` - Autonomous Iterative Fixing
 
 ```bash
-> /moai:loop
+> /moai loop
 ```
 
 AI autonomously diagnoses and fixes LSP errors, test failures, and coverage deficiencies. Parallel diagnosis executes LSP, AST-grep, Tests, and Coverage simultaneously, resolving issues 3-4x faster. Runs autonomously until completion marker is detected or max iterations reached.
@@ -870,7 +870,7 @@ AI autonomously diagnoses and fixes LSP errors, test failures, and coverage defi
 
 ```mermaid
 flowchart TB
-    Start([User Request<br/>/moai:loop]) --> Parallel[Parallel Diagnosis]
+    Start([User Request<br/>/moai loop]) --> Parallel[Parallel Diagnosis]
 
     Parallel --> LSP[LSP Diagnosis<br/>Type errors, not found]
     Parallel --> AST[AST-grep<br/>Pattern check, security]
@@ -1037,7 +1037,7 @@ def process_user_input(user_input):
 
 **Usage in MoAI-ADK**:
 
-In `/moai:loop` and `/moai:fix` commands, AST-grep operates as a core component of parallel diagnosis:
+In `/moai loop` and `/moai fix` commands, AST-grep operates as a core component of parallel diagnosis:
 
 - **LSP**: Type errors, find definitions
 - **AST-grep**: Structural patterns, security vulnerabilities ← **This is our focus!**
@@ -1077,7 +1077,7 @@ These four run **simultaneously** to diagnose code quality 3.75x faster.
 
 | Situation                        | Description                                 | Example                                       |
 | -------------------------------- | ------------------------------------------- | --------------------------------------------- |
-| **Quality after implementation** | Automatically improve quality after coding  | Run `/moai:loop` after feature implementation |
+| **Quality after implementation** | Automatically improve quality after coding  | Run `/moai loop` after feature implementation |
 | **Test failure fix**             | Automatically analyze and fix test failures | Run after test execution on failure           |
 | **Coverage improvement**         | Automatically achieve 85% target            | After writing new code                        |
 | **Refactoring**                  | Continuously improve code quality           | Periodic execution for maintenance            |
@@ -1097,24 +1097,24 @@ These four run **simultaneously** to diagnose code quality 3.75x faster.
 
 ```bash
 # Basic autonomous loop (parallel by default)
-> /moai:loop
+> /moai loop
 
 # Sequential + auto-fix (for debugging)
-> /moai:loop --seq --auto
+> /moai loop --seq --auto
 
 # Max 50 iterations
-> /moai:loop --max 50
+> /moai loop --max 50
 
 # Restore snapshot
-> /moai:loop --resume latest
+> /moai loop --resume latest
 ```
 
 ---
 
-### 🔧 `/moai:fix` - One-Shot Auto Fix
+### 🔧 `/moai fix` - One-Shot Auto Fix
 
 ```bash
-> /moai:fix
+> /moai fix
 ```
 
 Scans LSP errors and linting issues in parallel and fixes them at once. Level 1-2 fixes immediately, Level 3 fixes after user approval, Level 4 reports as requiring manual fix. Use `--dry` option to preview before applying actual fixes.
@@ -1123,7 +1123,7 @@ Scans LSP errors and linting issues in parallel and fixes them at once. Level 1-
 
 ```mermaid
 flowchart
-    Start([User Request<br/>/moai:fix]) --> Dry{--dry mode?}
+    Start([User Request<br/>/moai fix]) --> Dry{--dry mode?}
 
     Dry -->|Yes| ScanOnly[Scan only<br/>No fixes]
     Dry -->|No| Scan[Parallel scan]
@@ -1236,21 +1236,21 @@ flowchart TB
 
 | Situation                 | Description                            | Example                      |
 | ------------------------- | -------------------------------------- | ---------------------------- |
-| **Clean up after coding** | Clean up style, formatting all at once | Run `/moai:fix` after coding |
+| **Clean up after coding** | Clean up style, formatting all at once | Run `/moai fix` after coding |
 | **Pre-commit inspection** | Resolve LSP errors, linting in advance | Run before `git commit`      |
 | **Quick fix**             | Solve at once without repetitive fixes | When fixing simple issues    |
-| **Preview confirmation**  | Check fix content before applying      | Run `/moai:fix --dry`        |
+| **Preview confirmation**  | Check fix content before applying      | Run `/moai fix --dry`        |
 
-#### `/moai:fix` vs `/moai:loop` Selection Guide
+#### `/moai fix` vs `/moai loop` Selection Guide
 
 ```mermaid
 flowchart
     Start([Code quality issue occurred]) --> Question{Need repetitive<br/>fixing?}
 
-    Question -->|Yes| Loop[🔄 /moai:loop<br/>Autonomous iterative fixing]
+    Question -->|Yes| Loop[🔄 /moai loop<br/>Autonomous iterative fixing]
     Question -->|No| Fix{Can solve<br/>at once?}
 
-    Fix -->|Yes| FixCmd[🔧 /moai:fix<br/>One-shot auto fix]
+    Fix -->|Yes| FixCmd[🔧 /moai fix<br/>One-shot auto fix]
     Fix -->|No| Loop
 
     Loop --> LoopDesc[Complex issues<br/>Multiple files affected<br/>Repeated test failures]
@@ -1289,16 +1289,16 @@ flowchart
 
 ```bash
 # Basic fix (parallel by default)
-> /moai:fix
+> /moai fix
 
 # Sequential scan (for debugging)
-> /moai:fix --seq
+> /moai fix --seq
 
 # Preview
-> /moai:fix --dry
+> /moai fix --dry
 
 # Specific files
-> /moai:fix src/auth.py
+> /moai fix src/auth.py
 ```
 
 ---
@@ -1323,22 +1323,22 @@ AI: <moai>DONE</moai>  ← Completion Marker
 
 MoAI-ADK provides three levels of autonomous automation:
 
-| Command        | Scope           | Iteration        | Purpose                        |
-| -------------- | --------------- | ---------------- | ------------------------------ |
-| `/moai:fix`    | Code fixes only | 1 time           | Single scan + auto-fix         |
-| `/moai:loop`   | Code fixes      | Until marker/max | Autonomous iterative fixing    |
-| `/moai:alfred` | Full dev cycle  | Until marker/max | Goal → SPEC → Implement → Docs |
+| Command      | Scope           | Iteration        | Purpose                        |
+| ------------ | --------------- | ---------------- | ------------------------------ |
+| `/moai fix`  | Code fixes only | 1 time           | Single scan + auto-fix         |
+| `/moai loop` | Code fixes      | Until marker/max | Autonomous iterative fixing    |
+| `/moai`      | Full dev cycle  | Until marker/max | Goal → SPEC → Implement → Docs |
 
 ### Command Chain Relationship
 
 ```text
-/moai:alfred (Full Automation)
+/moai (Full Automation)
      │
      ├── Phase 0: Parallel Exploration
      ├── Phase 1: SPEC Generation
-     ├── Phase 2: Implementation ←─┬── /moai:loop (Iterative)
+     ├── Phase 2: Implementation ←─┬── /moai loop (Iterative)
      │                             │        │
-     │                             │        └── /moai:fix (Single)
+     │                             │        └── /moai fix (Single)
      └── Phase 3: Documentation
 ```
 
@@ -1371,13 +1371,13 @@ All implementations done, tests passing, docs updated. <moai>DONE</moai>
 
 ```bash
 # Single scan and fix (parallel by default)
-> /moai:fix
+> /moai fix
 
 # Autonomous loop until resolved
-> /moai:loop --max 50
+> /moai loop --max 50
 
 # Full autonomous development (parallel by default)
-> /moai:alfred "Add JWT authentication" --loop
+> /moai "Add JWT authentication" --loop
 ```
 
 ### Why "All is Well"?
@@ -1386,9 +1386,9 @@ The name reflects the philosophy: **set the goal and trust the AI**. MoAI-ADK's 
 
 ---
 
-## 5. Mr.Alfred and Sub-Agents
+## 5. MoAI Orchestrator and Sub-Agents
 
-### 🎩 Mr.Alfred - Super Agent (Chief Orchestrator)
+### 🎩 MoAI - Strategic Orchestrator
 
 **Role**: Analyze user requests and delegate to appropriate specialized agents
 
@@ -1401,7 +1401,7 @@ The name reflects the philosophy: **set the goal and trust the AI**. MoAI-ADK's 
 
 ### 🌐 Multilingual Automatic Routing (NEW)
 
-Alfred automatically recognizes 4 language requests and invokes the correct agent:
+MoAI automatically recognizes 4 language requests and invokes the correct agent:
 
 | Request Language | Example                     | Agent Invoked  |
 | ---------------- | --------------------------- | -------------- |
@@ -1432,12 +1432,12 @@ Alfred automatically recognizes 4 language requests and invokes the correct agen
 
 | Agent                   | Role                             | Auto Invocation Timing          |
 | ----------------------- | -------------------------------- | ------------------------------- |
-| **manager-spec**        | SPEC writing (EARS)              | `/moai:1-plan`                  |
-| **manager-ddd**         | DDD implementation execution     | `/moai:2-run`                   |
-| **manager-docs**        | Documentation auto generation    | `/moai:3-sync`                  |
+| **manager-spec**        | SPEC writing (EARS)              | `/moai plan`                    |
+| **manager-ddd**         | DDD implementation execution     | `/moai run`                     |
+| **manager-docs**        | Documentation auto generation    | `/moai sync`                    |
 | **manager-quality**     | TRUST 5 verification             | After implementation completion |
 | **manager-strategy**    | Execution strategy establishment | Complex planning                |
-| **manager-project**     | Project initialization           | `/moai:0-project`               |
+| **manager-project**     | Project initialization           | `/moai project`                 |
 | **manager-git**         | Git workflow                     | Branch/PR management            |
 | **manager-claude-code** | Claude Code integration          | Settings optimization           |
 
@@ -1460,7 +1460,7 @@ All agents support `--ultrathink` flag for deep analysis using Sequential Thinki
 
 **Usage**:
 ```bash
-> /moai:alfred "Add JWT authentication" --ultrathink
+> /moai "Add JWT authentication" --ultrathink
 ```
 
 **Agent-Specific UltraThink Examples**:
@@ -1593,9 +1593,9 @@ execution_mode:
 # Method 1: Direct call (Agent)
 Skill("moai-lang-python")
 
-# Method 2: Alfred auto selection (general user)
+# Method 2: MoAI auto selection (general user)
 "FastAPI server 만들어줘"
-→ Alfred automatically selects moai-lang-python
+→ MoAI automatically selects moai-lang-python
 ```
 
 ---
@@ -1687,7 +1687,7 @@ For complete prompt templates, error handling, and advanced patterns, see the sk
 
 ### Overview
 
-**Memory MCP** enables persistent storage across Claude Code sessions, allowing Alfred to remember user preferences, project context, and learned patterns.
+**Memory MCP** enables persistent storage across Claude Code sessions, allowing MoAI to remember user preferences, project context, and learned patterns.
 
 ### Key Features
 
@@ -1728,19 +1728,19 @@ Add Memory MCP to your Claude Code configuration:
 **Store User Preference**:
 ```
 "Remember that I prefer Korean for conversations"
-→ Alfred stores: user_language = "ko"
+→ MoAI stores: user_language = "ko"
 ```
 
 **Learn from Corrections**:
 ```
 "Use snake_case for Python variables"
-→ Alfred stores: user_coding_style = "snake_case"
+→ MoAI stores: user_coding_style = "snake_case"
 ```
 
 **Retrieve Context**:
 ```
 "What was the last SPEC I was working on?"
-→ Alfred retrieves: session_last_spec
+→ MoAI retrieves: session_last_spec
 ```
 
 ### Best Practices
@@ -1937,7 +1937,7 @@ MoAI-ADK provides a **customizable statusline** that displays real-time project 
 ### Default Statusline Layout
 
 ```text
-🤖 Opus 4.5 | 💰 152K/200K | 💬 Mr. Alfred | 📁 MoAI-ADK | 📊 +0 M58 ?5 | 💾 57.7MB | 🔀 main
+🤖 Opus 4.5 | 💰 152K/200K | 💬 MoAI | 📁 MoAI-ADK | 📊 +0 M58 ?5 | 💾 57.7MB | 🔀 main
 ```
 
 ### Statusline Components
@@ -1946,7 +1946,7 @@ MoAI-ADK provides a **customizable statusline** that displays real-time project 
 | ---- | -------------- | -------------------------------------- | ---------------- |
 | 🤖   | **Model**      | Claude model (Opus, Sonnet, etc.)      | `model`          |
 | 💰   | **Context**    | Context window usage (e.g., 77K/200K)  | `context_window` |
-| 💬   | **Style**      | Active output style (e.g., Mr. Alfred) | `output_style`   |
+| 💬   | **Style**      | Active output style (e.g., MoAI)       | `output_style`   |
 | 📁   | **Directory**  | Current project name                   | `directory`      |
 | 📊   | **Git Status** | Staged/Modified/Untracked files        | `git_status`     |
 | 💾   | **Memory**     | Process memory usage                   | `memory_usage`   |
@@ -2016,16 +2016,16 @@ MoAI-ADK's core innovation: **Worktree for complete isolation, unlimited paralle
 │  $ cd my-project                                                │
 │  $ claude                                                        │
 │                                                                  │
-│  > /moai:1-plan "사용자 인증 시스템" --worktree                   │
+│  > /moai plan "사용자 인증 시스템" --worktree                     │
 │  ✅ SPEC-AUTH-001 생성 완료                                      │
 │  ✅ Worktree 생성: ~/moai/worktrees/my-project/SPEC-AUTH-001     │
 │  ✅ Branch: feature/SPEC-AUTH-001                                │
 │                                                                  │
-│  > /moai:1-plan "결제 시스템" --worktree                          │
+│  > /moai plan "결제 시스템" --worktree                            │
 │  ✅ SPEC-PAY-002 생성 완료                                       │
 │  ✅ Worktree 생성: ~/moai/worktrees/my-project/SPEC-PAY-002      │
 │                                                                  │
-│  > /moai:1-plan "대시보드 UI" --worktree                         │
+│  > /moai plan "대시보드 UI" --worktree                           │
 │  ✅ SPEC-UI-003 생성 완료                                        │
 │  ✅ Worktree 생성: ~/moai/worktrees/my-project/SPEC-UI-003       │
 │                                                                  │
@@ -2045,12 +2045,12 @@ MoAI-ADK's core innovation: **Worktree for complete isolation, unlimited paralle
 │  ✅ Switched to GLM backend                                      │
 │                                                                  │
 │  $ claude                                                        │
-│  > /moai:2-run SPEC-AUTH-001                                     │
+│  > /moai run SPEC-AUTH-001                                       │
 │  🔄 DDD Running... (Analyze → Preserve → Improve)                 │
 │  ✅ 구현 완료!                                                   │
 │  ✅ 테스트 통과 (Coverage: 92%)                                  │
 │                                                                  │
-│  > /moai:3-sync SPEC-AUTH-001                                    │
+│  > /moai sync SPEC-AUTH-001                                      │
 │  ✅ 문서 동기화 완료                                             │
 │                                                                  │
 │  # After completion, merge                                       │
@@ -2066,7 +2066,7 @@ MoAI-ADK's core innovation: **Worktree for complete isolation, unlimited paralle
 │  $ moai glm                                                       │
 │  $ claude                                                        │
 │                                                                  │
-│  > /moai:alfred SPEC-PAY-002                                     │
+│  > /moai SPEC-PAY-002                                            │
 │  🔄 Plan → Run → Sync 자동 실행                                  │
 │  ✅ 완료!                                                        │
 │                                                                  │
@@ -2079,7 +2079,7 @@ MoAI-ADK's core innovation: **Worktree for complete isolation, unlimited paralle
 │  $ moai-wt go SPEC-UI-003                                        │
 │  $ moai glm                                                       │
 │  $ claude                                                        │
-│  > /moai:alfred SPEC-UI-003                                      │
+│  > /moai SPEC-UI-003                                             │
 │  ✅ 완료!                                                        │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -2091,7 +2091,7 @@ MoAI-ADK's core innovation: **Worktree for complete isolation, unlimited paralle
 #### Phase 1: Plan with Claude 4.5 Opus (Terminal 1)
 
 ```bash
-/moai:1-plan "feature description" --worktree
+/moai plan "feature description" --worktree
 ```
 
 - ✅ SPEC document generation
@@ -2104,8 +2104,8 @@ MoAI-ADK's core innovation: **Worktree for complete isolation, unlimited paralle
 moai-wt go SPEC-ID
 moai glm
 claude
-> /moai:2-run SPEC-ID
-> /moai:3-sync SPEC-ID
+> /moai run SPEC-ID
+> /moai sync SPEC-ID
 ```
 
 - ✅ Isolated work environment
@@ -2157,15 +2157,15 @@ moai-wt clean --merged-only
 
 ## 12. Understanding CLAUDE.md
 
-The `CLAUDE.md` file generated in your project root after MoAI-ADK installation is **Alfred's (AI Orchestrator) execution directive**. This file defines how Claude Code behaves in your project.
+The `CLAUDE.md` file generated in your project root after MoAI-ADK installation is **MoAI's (AI Orchestrator) execution directive**. This file defines how Claude Code behaves in your project.
 
 ### What is CLAUDE.md?
 
-`CLAUDE.md` is a project configuration file that Claude Code automatically reads at session start. In MoAI-ADK, this file defines the behavioral rules for the **Alfred orchestrator**.
+`CLAUDE.md` is a project configuration file that Claude Code automatically reads at session start. In MoAI-ADK, this file defines the behavioral rules for the **MoAI orchestrator**.
 
 ```text
 📁 Project Root
-├── CLAUDE.md              ← Alfred execution directive (don't modify)
+├── CLAUDE.md              ← MoAI execution directive (don't modify)
 ├── CLAUDE.local.md        ← Personal custom directives (optional)
 ├── .claude/
 │   ├── settings.json      ← Claude Code settings (overwritten on update)
@@ -2181,7 +2181,7 @@ The `CLAUDE.md` file generated in your project root after MoAI-ADK installation 
 
 | Section                         | Description              | Key Content                                            |
 | ------------------------------- | ------------------------ | ------------------------------------------------------ |
-| **Core Identity**               | Alfred's role definition | Strategic orchestrator, HARD rules                     |
+| **Core Identity**               | MoAI's role definition   | Strategic orchestrator, HARD rules                     |
 | **Request Processing Pipeline** | Request handling flow    | Analyze → Route → Execute → Report                     |
 | **Command Reference**           | Command classification   | Type A (Workflow), Type B (Utility), Type C (Feedback) |
 | **Agent Catalog**               | Sub-agent listing        | 8 Managers, 8 Experts, 4 Builders                      |
@@ -2244,7 +2244,7 @@ touch CLAUDE.local.md
 
 | Aspect           | CLAUDE.md                   | CLAUDE.local.md                        |
 | ---------------- | --------------------------- | -------------------------------------- |
-| **Purpose**      | Alfred execution directives | Personal/project additional directives |
+| **Purpose**      | MoAI execution directives   | Personal/project additional directives |
 | **Modification** | Not recommended             | Freely modifiable                      |
 | **Updates**      | Managed by MoAI             | Managed by user                        |
 | **Git**          | Committed                   | Optional (.gitignore possible)         |
@@ -2547,7 +2547,7 @@ Copyleft License (COPYLEFT-3.0) - [LICENSE](./LICENSE)
 
 ## 17. 🙏 Made with ❤️ by MoAI-ADK Team
 
-**Last Updated:** 2026-01-22
+**Last Updated:** 2026-01-28
 **Philosophy**: SPEC-First DDD + Agent Orchestration + Hybrid LLM
 **MoAI**: MoAI means "Modu-ui AI" (AI for Everyone).
 

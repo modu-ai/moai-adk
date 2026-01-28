@@ -393,11 +393,30 @@ class TestConfirmation:
                 yield InteractiveCheckboxUI(tmpdir)
 
     def test_confirm_selection_no_elements_selected(self, ui):
-        """Test confirmation with no elements selected."""
+        """Test confirmation with no elements selected shows skip dialog."""
         mock_stdscr = MagicMock()
+        mock_stdscr.getmaxyx.return_value = (24, 80)
+        mock_stdscr.getch.return_value = ord("y")
         elements = [{"type": "element", "name": "elem1"}]
 
-        result = ui._confirm_selection(mock_stdscr, elements)
+        with patch("moai_adk.core.migration.interactive_checkbox_ui.curses") as mock_curses:
+            mock_curses.A_BOLD = 0
+            mock_curses.color_pair.return_value = 0
+            result = ui._confirm_selection(mock_stdscr, elements)
+
+        assert result is True
+
+    def test_confirm_selection_no_elements_selected_decline(self, ui):
+        """Test declining skip dialog returns False."""
+        mock_stdscr = MagicMock()
+        mock_stdscr.getmaxyx.return_value = (24, 80)
+        mock_stdscr.getch.return_value = ord("n")
+        elements = [{"type": "element", "name": "elem1"}]
+
+        with patch("moai_adk.core.migration.interactive_checkbox_ui.curses") as mock_curses:
+            mock_curses.A_BOLD = 0
+            mock_curses.color_pair.return_value = 0
+            result = ui._confirm_selection(mock_stdscr, elements)
 
         assert result is False
 
@@ -623,14 +642,14 @@ class TestPromptUserSelection:
             assert result is None
 
     def test_prompt_user_selection_no_selection_made(self, ui):
-        """Test prompt when user doesn't select anything."""
+        """Test prompt when user doesn't select anything returns empty list."""
         ui.scanner = MagicMock()
         ui.scanner.scan_custom_elements.return_value = {"agents": ["/path/to/agent.py"]}
 
         with patch.object(ui, "_run_curses_interface", return_value=set()):
             result = ui.prompt_user_selection()
 
-            assert result is None
+            assert result == []
 
 
 class TestConfirmSelection:

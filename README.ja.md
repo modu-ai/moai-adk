@@ -286,7 +286,7 @@ Phase 5: Validation and finalization...   ████████████�
 
 📊 Summary:
   📁 Location:   /path/to/my-project
-  🌐 Language:   Auto-detect (use /moai:0-project)
+  🌐 Language:   Auto-detect (use /moai project)
   🔀 Git:        manual (github-flow, branch: manual)
   🌍 Locale:     ja
   📄 Files:      47 created
@@ -294,7 +294,7 @@ Phase 5: Validation and finalization...   ████████████�
 
 🚀 Next Steps:
   1. Run cd my-project to enter the project
-  2. Run /moai:0-project in Claude Code for full setup
+  2. Run /moai project in Claude Code for full setup
   3. Start developing with MoAI-ADK!
 ```
 
@@ -528,7 +528,7 @@ moai --version
 新規プロジェクトや既存プロジェクトで**Claude Codeがプロジェクトを理解するのを助ける**プロジェクトドキュメントを自動生成できます:
 
 ```text
-> /moai:0-project
+> /moai project
 ```
 
 ### 生成される3つのファイル
@@ -546,16 +546,16 @@ moai --version
 - **オンボーディング加速**: 新規開発者のプロジェクト把握時間短縮
 - **AI協業最適化**: より正確なコード提案とレビュー可能
 
-> 💡 **ヒント**: プロジェクト初期または構造変更時に`/moai:0-project`を実行すると最新状態でドキュメントが更新されます。
+> 💡 **ヒント**: プロジェクト初期または構造変更時に`/moai project`を実行すると最新状態でドキュメントが更新されます。
 
 ---
 
 ## 3. 核心コマンド集
 
-### 🎯 `/moai:0-project` - プロジェクト初期化
+### 🎯 `/moai project` - プロジェクト初期化
 
 ```bash
-> /moai:0-project
+> /moai project
 ```
 
 プロジェクトの現在状態を自動分析して最適の開発環境を構成します。プログラミング言語とフレームワークを検出し、Gitワークフローと品質保証基準を自動設定します。すべての構成が完了するとすぐに開発を開始できる準備状態になります。
@@ -571,10 +571,10 @@ moai --version
 
 ---
 
-### 📋 `/moai:1-plan` - SPEC作成
+### 📋 `/moai plan` - SPEC作成
 
 ```bash
-> /moai:1-plan "機能説明"
+> /moai plan "機能説明"
 ```
 
 EARS形式を使用して曖昧さのない仕様書を自動生成します。要求事項定義、成功基準、テストシナリオを含めて開発方向を明確に提示します。生成されたSPECは開発チームとAIが同一理解を共有する単一ソース（Source of Truth）として作動します。
@@ -589,10 +589,10 @@ EARS形式を使用して曖昧さのない仕様書を自動生成します。�
 **例**:
 
 ```bash
-> /moai:1-plan "ユーザープロフィールページ"
+> /moai plan "ユーザープロフィールページ"
 # → SPEC-002 生成
 
-> /moai:1-plan "決済API"
+> /moai plan "決済API"
 # → SPEC-003 生成
 ```
 
@@ -600,10 +600,10 @@ EARS形式を使用して曖昧さのない仕様書を自動生成します。�
 
 ---
 
-### 💻 `/moai:2-run` - 実装 (DDD)
+### 💻 `/moai run` - 実装 (DDD)
 
 ```bash
-> /moai:2-run SPEC-001
+> /moai run SPEC-001
 ```
 
 DDD (Domain-Driven Development) 方法論で実装を実行します：
@@ -624,11 +624,11 @@ DDD (Domain-Driven Development) 方法論で実装を実行します：
 
 ---
 
-### 📚 `/moai:3-sync` - ドキュメント同期
+### 📚 `/moai sync` - ドキュメント同期
 
 ```bash
 > /clear  # 同期前に常にclearを実行してセッション初期化後品質検査を実行
-> /moai:3-sync SPEC-001
+> /moai sync SPEC-001
 ```
 
 品質検証を開始にドキュメント同期、Gitコミット、PR自動化を行います。APIドキュメント、アーキテクチャ図、README、CHANGELOGを自動生成して最新状態を維持します。変更事項を自動コミットしてチームモードではPRをDraftからReadyに転換します。
@@ -663,10 +663,10 @@ DDD (Domain-Driven Development) 方法論で実装を実行します：
 
 ---
 
-### 🚀 `/moai:alfred` - 完全自律自動化
+### 🚀 `/moai` - 完全自律自動化
 
 ```bash
-> /moai:alfred "機能説明"
+> /moai "機能説明"
 ```
 
 ユーザーが目標を提示するとAIが自ら探索、計画、実装、検証をすべて行います。並列探索でコードベースを分析し、自律ループを通じて問題を自ら修正します。完了マーカー(`<moai>DONE</moai>`)を検知すると自動終了して開発者は最終結果のみ確認すれば良いです。
@@ -675,7 +675,7 @@ DDD (Domain-Driven Development) 方法論で実装を実行します：
 
 ```mermaid
 flowchart TB
-    Start([ユーザーリクエスト<br/>/moai:alfred '機能説明']) --> Phase0[Phase 0: 並列探索]
+    Start([ユーザーリクエスト<br/>/moai '機能説明']) --> Phase0[Phase 0: 並列探索]
 
     Phase0 --> Explore[🔍 Explore Agent<br/>コードベース構造分析]
     Phase0 --> Research[📚 Research Agent<br/>技術文書調査]
@@ -747,7 +747,7 @@ flowchart TB
 | **新機能開発**             | 最初から最後までAIが自動処理 | "JWT認証システム追加"        |
 | **複雑なリファクタリング** | 複数ファイルに影響大きな変更 | "データベース層再構成"       |
 | **バグ修正**               | 原因特定から修正まで自動化   | "ログイン失敗バグ修正"       |
-| **SPECベース開発**         | SPEC文書のある機能実装       | `/moai:alfred SPEC-AUTH-001` |
+| **SPECベース開発**         | SPEC文書のある機能実装       | `/moai SPEC-AUTH-001` |
 
 **オプション**:
 
@@ -764,21 +764,21 @@ flowchart TB
 
 ```bash
 # 基本自律実行 (並列がデフォルト)
-> /moai:alfred "JWT認証追加"
+> /moai "JWT認証追加"
 
 # 自動ループ + 順次探索 (デバッグ用)
-> /moai:alfred "JWT認証" --loop --seq
+> /moai "JWT認証" --loop --seq
 
 # 続きから
-> /moai:alfred resume SPEC-AUTH-001
+> /moai resume SPEC-AUTH-001
 
 # UltraThinkモード (Sequential Thinkingで深層分析)
-> /moai:alfred "JWT認証追加" --ultrathink
+> /moai "JWT認証追加" --ultrathink
 ```
 
 **UltraThinkモード** (`--ultrathink`): Sequential Thinking MCPを自動的に適用してリクエストを深層分析し、最適な実行プランを生成する強化された分析モードです。
 
-`--ultrathink`が追加されると、Alfredが構造化された推論を有効にして：
+`--ultrathink`が追加されると、MoAIが構造化された推論を有効にして：
 - 複雑な問題を管理可能なステップに分解
 - 各サブタスクを適切なエージェントにマッピング
 - 並列 vs 順次実行の機会を特定
@@ -804,10 +804,10 @@ thought: "最終プラン: Use the expert-backend subagent (parallel), then Use 
 
 ---
 
-### 🔁 `/moai:loop` - 自律反復修正
+### 🔁 `/moai loop` - 自律反復修正
 
 ```bash
-> /moai:loop
+> /moai loop
 ```
 
 AIが自らLSPエラー、テスト失敗、カバレッジ不足を診断して修正を反復します。並列診断でLSP、AST-grep、Tests、Coverageを同時実行して3-4倍速く問題を解決します。完了マーカーを検知または最大反復回数に到達するまで自律的に実行されます。
@@ -816,7 +816,7 @@ AIが自らLSPエラー、テスト失敗、カバレッジ不足を診断して
 
 ```mermaid
 flowchart TB
-    Start([ユーザーリクエスト<br/>/moai:loop]) --> Parallel[並列診断]
+    Start([ユーザーリクエスト<br/>/moai loop]) --> Parallel[並列診断]
 
     Parallel --> LSP[LSP診断<br/>タイプエラー、未定義]
     Parallel --> AST[AST-grep<br/>パターン検査、セキュリティ]
@@ -983,7 +983,7 @@ def process_user_input(user_input):
 
 **MoAI-ADKでの活用**:
 
-`/moai:loop`と`/moai:fix`コマンドでAST-grepは並列診断の中核構成要素として動作します:
+`/moai loop`と`/moai fix`コマンドでAST-grepは並列診断の中核構成要素として動作します:
 
 - **LSP**: タイプエラー、定義検索
 - **AST-grep**: 構造的パターン、セキュリティ脆弱性 ← **これが私たちの関心事!**
@@ -1023,7 +1023,7 @@ def process_user_input(user_input):
 
 | 状況                 | 説明                     | 例                           |
 | -------------------- | ------------------------ | ---------------------------- |
-| **実装後品質確保**   | コード作成後自動品質改善 | 機能実装後 `/moai:loop` 実行 |
+| **実装後品質確保**   | コード作成後自動品質改善 | 機能実装後 `/moai loop` 実行 |
 | **テスト失敗修正**   | テスト失敗を自動分析修正 | テスト実行後失敗時           |
 | **カバレッジ向上**   | 85%目標を自動達成        | 新コード作成後               |
 | **リファクタリング** | コード品質を継続的に改善 | 定期的実行で保守             |
@@ -1043,24 +1043,24 @@ def process_user_input(user_input):
 
 ```bash
 # 基本自律ループ (並列がデフォルト)
-> /moai:loop
+> /moai loop
 
 # 順次 + 自動修正 (デバッグ用)
-> /moai:loop --seq --auto
+> /moai loop --seq --auto
 
 # 最大50回反復
-> /moai:loop --max 50
+> /moai loop --max 50
 
 # スナップショット復元
-> /moai:loop --resume latest
+> /moai loop --resume latest
 ```
 
 ---
 
-### 🔧 `/moai:fix` - 単発自動修正
+### 🔧 `/moai fix` - 単発自動修正
 
 ```bash
-> /moai:fix
+> /moai fix
 ```
 
 **「一回の実行で、一度に修正」**
@@ -1071,11 +1071,11 @@ LSPエラー、linting問題、AST-grepパターンを並列でスキャンし�
 
 #### 🎯 コンセプトとワークフロー
 
-`/moai:fix`は**一回の実行で終わる単発修正**コマンドです。自律的にループする`/moai:loop`とは異なり、スキャン→修正→報告の順序で一度だけ実行します。
+`/moai fix`は**一回の実行で終わる単発修正**コマンドです。自律的にループする`/moai loop`とは異なり、スキャン→修正→報告の順序で一度だけ実行します。
 
 ```mermaid
 flowchart TB
-    Start[/moai:fix 開始] --> Scan[並列スキャン実行]
+    Start[/moai fix 開始] --> Scan[並列スキャン実行]
 
     Scan --> LSP[LSP診断]
     Scan --> AST[AST-grep検査]
@@ -1200,17 +1200,17 @@ flowchart TB
 
 | 状況                         | 推奨コマンド | 理由                           |
 | ---------------------------- | ------------ | ------------------------------ |
-| 日常的なコード品質維持       | `/moai:fix`  | 迅速な単発修正、ループ不要     |
-| CI失敗の原因を一括修正       | `/moai:fix`  | 一回の実行で全問題修正         |
-| 新機能実装後のクリーンアップ | `/moai:fix`  | 一括フォーマットとスタイル修正 |
-| 複雑な再発するバグ           | `/moai:loop` | 継続的な修正と検証が必要       |
-| 大規模リファクタリング       | `/moai:loop` | 多段階修正と段階的検証が必要   |
-| PR作成前の最終確認           | `/moai:fix`  | 1回の実行でクリーンアップ      |
-| レガシーコードの大幅改善     | `/moai:loop` | 何度も反復して段階的に改善     |
+| 日常的なコード品質維持       | `/moai fix`  | 迅速な単発修正、ループ不要     |
+| CI失敗の原因を一括修正       | `/moai fix`  | 一回の実行で全問題修正         |
+| 新機能実装後のクリーンアップ | `/moai fix`  | 一括フォーマットとスタイル修正 |
+| 複雑な再発するバグ           | `/moai loop` | 継続的な修正と検証が必要       |
+| 大規模リファクタリング       | `/moai loop` | 多段階修正と段階的検証が必要   |
+| PR作成前の最終確認           | `/moai fix`  | 1回の実行でクリーンアップ      |
+| レガシーコードの大幅改善     | `/moai loop` | 何度も反復して段階的に改善     |
 
 ---
 
-#### 🔀 `/moai:fix` vs `/moai:loop` 選択ガイド
+#### 🔀 `/moai fix` vs `/moai loop` 選択ガイド
 
 **どちらを使うか迷ったら、このフローチャートで決定できます**。
 
@@ -1221,8 +1221,8 @@ flowchart TB
     Q1 -->|単純なエラー<br/>フォーマット<br/>スタイル| SimpleCheck{修正回数は?}
     Q1 -->|複雑なロジック<br/>再発する問題<br/>複数ファイル| ComplexCheck{検証が必要?}
 
-    SimpleCheck -->|1回で完了| Fix[**/moai:fix**<br/>単発修正]
-    SimpleCheck -->|複数回必要| Loop[**/moai:loop**<br/>自律反復]
+    SimpleCheck -->|1回で完了| Fix[**/moai fix**<br/>単発修正]
+    SimpleCheck -->|複数回必要| Loop[**/moai loop**<br/>自律反復]
 
     ComplexCheck -->|継続的検証が必要| Loop
     ComplexCheck -->|一度だけ| Complexity{複雑度は?}
@@ -1245,8 +1245,8 @@ flowchart TB
 
 **要約**:
 
-- **`/moai:fix`**: 一回の実行で終わる、日常的な問題修正に最適
-- **`/moai:loop`**: 継続的な修正と検証が必要な複雑な問題に最適
+- **`/moai fix`**: 一回の実行で終わる、日常的な問題修正に最適
+- **`/moai loop`**: 継続的な修正と検証が必要な複雑な問題に最適
 - **手動修正**: アーキテクチャ変更やセキュリティ修正など、人的判断が必要
 
 ---
@@ -1255,28 +1255,28 @@ flowchart TB
 
 ```bash
 # 基本修正（並列がデフォルト）
-> /moai:fix
+> /moai fix
 
 # プレビューのみ（実際修正なし）
-> /moai:fix --dry
+> /moai fix --dry
 
 # 順次スキャン（デバッグ用）
-> /moai:fix --seq
+> /moai fix --seq
 
 # レベル3以下のみ修正
-> /moai:fix --level 3
+> /moai fix --level 3
 
 # エラーのみ修正
-> /moai:fix --errors
+> /moai fix --errors
 
 # セキュリティ検査包含
-> /moai:fix --security
+> /moai fix --security
 
 # 特定ファイル
-> /moai:fix src/auth.py
+> /moai fix src/auth.py
 
 # フォーマットスキップ
-> /moai:fix --no-fmt
+> /moai fix --no-fmt
 ```
 
 ---
@@ -1305,20 +1305,20 @@ AI: <moai>DONE</moai>  ← 完了マーカー
 
 | コマンド       | タイプ     | 説明                                          |
 | -------------- | ---------- | --------------------------------------------- |
-| `/moai:fix`    | 単発       | 1回スキャン + 自動修正                        |
-| `/moai:loop`   | 自律ループ | 完了マーカー または 最大回数まで繰り返し修正  |
-| `/moai:alfred` | 完全自律   | 目標 → SPEC → 実装 → ドキュメント全過程自動化 |
+| `/moai fix`    | 単発       | 1回スキャン + 自動修正                        |
+| `/moai loop`   | 自律ループ | 完了マーカー または 最大回数まで繰り返し修正  |
+| `/moai`        | 完全自律   | 目標 → SPEC → 実装 → ドキュメント全過程自動化 |
 
 ### コマンドチェーン関係
 
 ```text
-/moai:alfred
+/moai
   ├── Phase 0: 並列探索 (Explore + Research + Quality)
-  ├── Phase 1: /moai:1-plan (SPEC生成)
-  ├── Phase 2: /moai:2-run (DDD実装)
-  │     └── /moai:loop (自律ループ)
-  │           └── /moai:fix (単発修正) × N回
-  └── Phase 3: /moai:3-sync (ドキュメント同期)
+  ├── Phase 1: /moai plan (SPEC生成)
+  ├── Phase 2: /moai run (DDD実装)
+  │     └── /moai loop (自律ループ)
+  │           └── /moai fix (単発修正) × N回
+  └── Phase 3: /moai sync (ドキュメント同期)
 ```
 
 ### 完了マーカー
@@ -1344,23 +1344,23 @@ AIが作業完了時にマーカーを追加して自律ループが終了しま
 
 ```bash
 # 1回修正 (並列がデフォルト)
-> /moai:fix
+> /moai fix
 
 # 自律ループ (完了マーカーまで、並列がデフォルト)
-> /moai:loop --auto
+> /moai loop --auto
 
 # 完全自律自動化 (All is Well!、並列がデフォルト)
-> /moai:alfred "JWT認証追加" --loop
+> /moai "JWT認証追加" --loop
 
 # 続きから
-> /moai:alfred resume SPEC-AUTH-001
+> /moai resume SPEC-AUTH-001
 ```
 
 ---
 
-## 5. Mr.AlfredとSub-Agents
+## 5. MoAIオーケストレーターとSub-Agents
 
-### 🎩 Mr.Alfred - Super Agent (首席オーケストレーター)
+### 🎩 MoAI - Strategic Orchestrator (戦略的オーケストレーター)
 
 **役割**: ユーザーリクエストを分析して適切な専門エージェントに委任
 
@@ -1373,7 +1373,7 @@ AIが作業完了時にマーカーを追加して自律ループが終了しま
 
 ### 🌐 多言語自動ルーティング (NEW)
 
-Alfredは4つの言語リクエストを自動認識して正しいエージェントを呼び出します:
+MoAIは4つの言語リクエストを自動認識して正しいエージェントを呼び出します:
 
 | リクエスト言語 | 例                          | 呼出エージェント |
 | -------------- | --------------------------- | ---------------- |
@@ -1404,12 +1404,12 @@ Alfredは4つの言語リクエストを自動認識して正しいエージェ�
 
 | エージェント            | 役割                 | 自動呼出時期      |
 | ----------------------- | -------------------- | ----------------- |
-| **manager-spec**        | SPEC作成 (EARS)      | `/moai:1-plan`    |
-| **manager-ddd**         | DDD実装実行          | `/moai:2-run`     |
-| **manager-docs**        | ドキュメント自動生成 | `/moai:3-sync`    |
+| **manager-spec**        | SPEC作成 (EARS)      | `/moai plan`    |
+| **manager-ddd**         | DDD実装実行          | `/moai run`     |
+| **manager-docs**        | ドキュメント自動生成 | `/moai sync`    |
 | **manager-quality**     | TRUST 5検証          | 実装完了後        |
 | **manager-strategy**    | 実行戦略策立         | 複雑な企画時      |
-| **manager-project**     | プロジェクト初期化   | `/moai:0-project` |
+| **manager-project**     | プロジェクト初期化   | `/moai project` |
 | **manager-git**         | Gitワークフロー      | ブランチ/PR管理   |
 | **manager-claude-code** | Claude Code統合      | 設定最適化        |
 
@@ -1432,7 +1432,7 @@ Alfredは4つの言語リクエストを自動認識して正しいエージェ�
 
 **使用方法**:
 ```bash
-> /moai:alfred "JWT認証追加" --ultrathink
+> /moai "JWT認証追加" --ultrathink
 ```
 
 **エージェント別 UltraThink 例**:
@@ -1486,9 +1486,9 @@ Alfredは4つの言語リクエストを自動認識して正しいエージェ�
 # 方法1: 直接呼出 (Agent)
 Skill("moai-lang-python")
 
-# 方法2: Alfred自動選択 (一般ユーザー)
+# 方法2: MoAI自動選択 (一般ユーザー)
 "FastAPIサーバー作成して"
-→ Alfredが自動でmoai-lang-python選択
+→ MoAIが自動でmoai-lang-python選択
 ```
 
 ---
@@ -1580,7 +1580,7 @@ export GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"
 
 ### 概要
 
-**Memory MCP**はClaude Codeセッション間に永続ストレージを提供し、Alfredがユーザー設定、プロジェクトコンテキスト、学習パターンを記憶できるようにします。
+**Memory MCP**はClaude Codeセッション間に永続ストレージを提供し、MoAIがユーザー設定、プロジェクトコンテキスト、学習パターンを記憶できるようにします。
 
 ### 主な機能
 
@@ -1621,19 +1621,19 @@ Claude Code設定にMemory MCPを追加:
 **ユーザー設定の保存**:
 ```
 「会話は日本語でお願いします」
-→ Alfred保存: user_language = "ja"
+→ MoAI保存: user_language = "ja"
 ```
 
 **修正から学習**:
 ```
 「Python変数はsnake_caseで書いてください」
-→ Alfred保存: user_coding_style = "snake_case"
+→ MoAI保存: user_coding_style = "snake_case"
 ```
 
 **コンテキストの取得**:
 ```
 「最後に作業していたSPECは何でしたか？」
-→ Alfred取得: session_last_spec
+→ MoAI取得: session_last_spec
 ```
 
 ### ベストプラクティス
@@ -1820,7 +1820,7 @@ MoAI-ADKはClaude Codeターミナルにリアルタイム状態情報を表示�
 ### デフォルトレイアウト
 
 ```text
-🤖 Opus 4.5 | 💰 152K/200K | 💬 Mr. Alfred | 📁 MoAI-ADK | 📊 +0 M58 ?5 | 💾 57.7MB | 🔀 main
+🤖 Opus 4.5 | 💰 152K/200K | 💬 MoAI | 📁 MoAI-ADK | 📊 +0 M58 ?5 | 💾 57.7MB | 🔀 main
 ```
 
 ### 使用可能なコンポーネント
@@ -1829,7 +1829,7 @@ MoAI-ADKはClaude Codeターミナルにリアルタイム状態情報を表示�
 | -------- | -------------- | ----------------------------------------------- | ---------------- |
 | 🤖       | モデル         | Claudeモデル (Opus, Sonnet等)                   | `model`          |
 | 💰       | コンテキスト   | コンテキストウィンドウ使用量 (例: 77K/200K)     | `context_window` |
-| 💬       | スタイル       | アクティブアウトプットスタイル (例: Mr. Alfred) | `output_style`   |
+| 💬       | スタイル       | アクティブアウトプットスタイル (例: MoAI)       | `output_style`   |
 | 📁       | ディレクトリ   | 現在のプロジェクト名                            | `directory`      |
 | 📊       | Git状態        | ステージング/修正/追跡されないファイル数        | `git_status`     |
 | 💾       | メモリ         | プロセスメモリ使用量                            | `memory_usage`   |
@@ -1899,16 +1899,16 @@ MoAI-ADKの核心革新: **Worktreeで完全分離、無制限並列開発**
 │  $ cd my-project                                                │
 │  $ claude                                                        │
 │                                                                  │
-│  > /moai:1-plan "ユーザー認証システム" --worktree                   │
+│  > /moai plan "ユーザー認証システム" --worktree                   │
 │  ✅ SPEC-AUTH-001 生成完了                                      │
 │  ✅ Worktree生成: ~/moai/worktrees/my-project/SPEC-AUTH-001     │
 │  ✅ Branch: feature/SPEC-AUTH-001                                │
 │                                                                  │
-│  > /moai:1-plan "決済システム" --worktree                          │
+│  > /moai plan "決済システム" --worktree                          │
 │  ✅ SPEC-PAY-002 生成完了                                       │
 │  ✅ Worktree生成: ~/moai/worktrees/my-project/SPEC-PAY-002      │
 │                                                                  │
-│  > /moai:1-plan "ダッシュボードUI" --worktree                         │
+│  > /moai plan "ダッシュボードUI" --worktree                         │
 │  ✅ SPEC-UI-003 生成完                                        │
 │  ✅ Worktree生成: ~/moai/worktrees/my-project/SPEC-UI-003       │
 │                                                                  │
@@ -1928,12 +1928,12 @@ MoAI-ADKの核心革新: **Worktreeで完全分離、無制限並列開発**
 │  ✅ Switched to GLM backend                                      │
 │                                                                  │
 │  $ claude                                                        │
-│  > /moai:2-run SPEC-AUTH-001                                     │
+│  > /moai run SPEC-AUTH-001                                     │
 │  🔄 DDD実行中... (Analyze → Preserve → Improve)                 │
 │  ✅ 実装完了!                                                   │
 │  ✅ テスト通過 (Coverage: 92%)                                  │
 │                                                                  │
-│  > /moai:3-sync SPEC-AUTH-001                                    │
+│  > /moai sync SPEC-AUTH-001                                    │
 │  ✅ ドキュメント同期完了                                             │
 │                                                                  │
 │  # 完了後マージ                                                   │
@@ -1949,7 +1949,7 @@ MoAI-ADKの核心革新: **Worktreeで完全分離、無制限並列開発**
 │  $ moai glm                                                       │
 │  $ claude                                                        │
 │                                                                  │
-│  > /moai:alfred SPEC-PAY-002                                     │
+│  > /moai SPEC-PAY-002                                     │
 │  🔄 Plan → Run → Sync 自動実行                                  │
 │  ✅ 完了!                                                        │
 │                                                                  │
@@ -1962,7 +1962,7 @@ MoAI-ADKの核心革新: **Worktreeで完全分離、無制限並列開発**
 │  $ moai-wt go SPEC-UI-003                                        │
 │  $ moai glm                                                       │
 │  $ claude                                                        │
-│  > /moai:alfred SPEC-UI-003                                      │
+│  > /moai SPEC-UI-003                                      │
 │  ✅ 完了!                                                        │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -1974,7 +1974,7 @@ MoAI-ADKの核心革新: **Worktreeで完全分離、無制限並列開発**
 #### Phase 1: Claude 4.5 Opusで計画 (ターミナル1)
 
 ```bash
-/moai:1-plan "機能説明" --worktree
+/moai plan "機能説明" --worktree
 ```
 
 - ✅ SPECドキュメント生成
@@ -1987,8 +1987,8 @@ MoAI-ADKの核心革新: **Worktreeで完全分離、無制限並列開発**
 moai-wt go SPEC-ID
 moai glm
 claude
-> /moai:2-run SPEC-ID
-> /moai:3-sync SPEC-ID
+> /moai run SPEC-ID
+> /moai sync SPEC-ID
 ```
 
 - ✅ 独立した作業環境
@@ -2040,15 +2040,15 @@ moai-wt clean --merged-only
 
 ## 12. CLAUDE.mdの理解
 
-MoAI-ADKインストール後、プロジェクトルートに生成される`CLAUDE.md`は**Alfred（AIオーケストレーター）の実行指示書**です。このファイルはClaude Codeがプロジェクトでどのように動作するかを定義します。
+MoAI-ADKインストール後、プロジェクトルートに生成される`CLAUDE.md`は**MoAI（AIオーケストレーター）の実行指示書**です。このファイルはClaude Codeがプロジェクトでどのように動作するかを定義します。
 
 ### CLAUDE.mdとは？
 
-`CLAUDE.md`はClaude Codeがセッション開始時に自動的に読み込むプロジェクト設定ファイルです。MoAI-ADKではこのファイルを通じて**Alfredオーケストレーター**の行動規則を定義します。
+`CLAUDE.md`はClaude Codeがセッション開始時に自動的に読み込むプロジェクト設定ファイルです。MoAI-ADKではこのファイルを通じて**MoAIオーケストレーター**の行動規則を定義します。
 
 ```text
 📁 プロジェクトルート
-├── CLAUDE.md              ← Alfred実行指示書（変更非推奨）
+├── CLAUDE.md              ← MoAI実行指示書（変更非推奨）
 ├── CLAUDE.local.md        ← 個人カスタム指示（オプション）
 ├── .claude/
 │   ├── settings.json      ← Claude Code設定（更新時に上書き）
@@ -2064,7 +2064,7 @@ MoAI-ADKインストール後、プロジェクトルートに生成される`CL
 
 | セクション                      | 説明                   | 主要内容                                               |
 | ------------------------------- | ---------------------- | ------------------------------------------------------ |
-| **Core Identity**               | Alfredの役割定義       | 戦略的オーケストレーター、HARDルール                   |
+| **Core Identity**               | MoAIの役割定義         | 戦略的オーケストレーター、HARDルール                   |
 | **Request Processing Pipeline** | リクエスト処理フロー   | Analyze → Route → Execute → Report                     |
 | **Command Reference**           | コマンド分類           | Type A (Workflow), Type B (Utility), Type C (Feedback) |
 | **Agent Catalog**               | サブエージェントリスト | Manager 8個, Expert 8個, Builder 4個                   |
@@ -2127,7 +2127,7 @@ touch CLAUDE.local.md
 
 | 区分             | CLAUDE.md      | CLAUDE.local.md           |
 | ---------------- | -------------- | ------------------------- |
-| **目的**         | Alfred実行指示 | 個人/プロジェクト追加指示 |
+| **目的**         | MoAI実行指示   | 個人/プロジェクト追加指示 |
 | **変更**         | 非推奨         | 自由に変更可能            |
 | **アップデート** | MoAIが自動管理 | ユーザーが直接管理        |
 | **Git**          | コミット対象   | 選択（.gitignore可能）    |
@@ -2430,7 +2430,7 @@ Copyleft License (COPYLEFT-3.0) - [LICENSE](./LICENSE)
 
 ## 17. 🙏 Made with ❤️ by MoAI-ADK Team
 
-**Last Updated:** 2026-01-22
+**Last Updated:** 2026-01-28
 **Philosophy**: SPEC-First DDD + Agent Orchestration + Hybrid LLM
 **MoAI**: MoAIは"みんなのためのAI (Modu-ui AI)"を意味します。
 

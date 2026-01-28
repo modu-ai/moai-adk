@@ -87,10 +87,6 @@ class InteractiveCheckboxUI:
             if 0 <= idx < len(flattened_elements):
                 selected_paths.append(flattened_elements[idx]["path"])
 
-        if not selected_paths:
-            print("\n[WARNING] No elements selected for restoration.")
-            return None
-
         return selected_paths
 
     def _get_elements_by_category(self) -> Dict[str, List[Dict]]:
@@ -370,10 +366,20 @@ class InteractiveCheckboxUI:
             if 0 <= idx < len(elements) and elements[idx]["type"] == "element":
                 selected_paths.append(elements[idx]["name"])
 
-        if not selected_paths:
-            return False
-
         h, w = stdscr.getmaxyx()
+
+        # Handle zero selection: confirm skip restoration
+        if not selected_paths:
+            stdscr.erase()
+            title = "Skip Restoration"
+            stdscr.addstr(1, (w - len(title)) // 2, title, curses.A_BOLD)
+            stdscr.addstr(3, 2, "No elements selected.", curses.color_pair(4))
+            stdscr.addstr(4, 2, "Custom elements will NOT be restored.")
+            stdscr.addstr(6, 2, "Skip restoration? (Y/n): ")
+            stdscr.refresh()
+
+            key = stdscr.getch()
+            return key in [ord("y"), ord("Y"), ord("\n"), ord("\r")]
 
         # Clear screen for confirmation
         stdscr.erase()  # Use erase() instead of clear() to preserve background
