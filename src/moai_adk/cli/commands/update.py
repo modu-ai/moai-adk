@@ -1588,10 +1588,7 @@ def _sync_templates(project_path: Path, force: bool = False, yes: bool = False) 
         template_hooks = _get_template_hook_names()
         _detect_custom_hooks(project_path, template_hooks)
 
-        # Ask user for settings merge strategy
-        settings_strategy = _ask_settings_merge_strategy(yes)
-
-        processor = TemplateProcessor(project_path, settings_merge_strategy=settings_strategy)
+        processor = TemplateProcessor(project_path)
 
         # Create pre-sync backup for rollback
         if not force:
@@ -2005,6 +2002,7 @@ def _build_template_context(
         "MOAI_VERSION_SEMVER": format_semver_version(version_for_config),
         "MOAI_VERSION_VALID": "true" if version_for_config != "unknown" else "false",
         "MOAI_VERSION_SOURCE": "config_cached",
+        "MOAI_VERSION_CACHE_AGE": "0",
         "PROJECT_NAME": project_name,
         "PROJECT_MODE": project_mode,
         "PROJECT_DESCRIPTION": project_description,
