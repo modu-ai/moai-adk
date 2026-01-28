@@ -210,7 +210,9 @@ class TemplateMerger:
         }
 
         # Preserve user customizations for specific fields (if exist in backup/existing)
-        preserve_fields = ["outputStyle", "spinnerTipsEnabled", "statusLine"]
+        # Note: statusLine uses template priority for cross-platform shell wrapper compatibility
+        # {{HOOK_SHELL_PREFIX}} and {{HOOK_SHELL_SUFFIX}} must be substituted from template
+        preserve_fields = ["outputStyle", "spinnerTipsEnabled"]
         for field in preserve_fields:
             if field in user_data:
                 merged[field] = user_data[field]
