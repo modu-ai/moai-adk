@@ -28,7 +28,6 @@ from moai_adk.cli.commands.update import (
     TemplateSyncError,
     UpdateError,
     UpgradeError,
-    _ask_merge_strategy,
     _compare_versions,
     _detect_tool_installer,
     _get_current_version,
