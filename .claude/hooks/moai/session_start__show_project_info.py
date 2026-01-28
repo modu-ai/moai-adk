@@ -80,6 +80,7 @@ try:
         archive_context_snapshot,
         format_context_for_injection,
         load_context_snapshot,
+        read_claude_tasks_directory,
     )
 
     HAS_CONTEXT_MANAGER = True
@@ -94,6 +95,9 @@ except ImportError:
 
     def archive_context_snapshot(project_root):
         return True
+
+    def read_claude_tasks_directory(session_id=None, max_tasks=20):
+        return {"active_tasks": [], "completed_tasks": [], "session_id": ""}
 
 
 # Import unified timeout manager and Git operations manager
@@ -1140,17 +1144,25 @@ def main() -> None:
                 project_root = find_project_root()
                 transcript_data = parse_transcript_context(transcript_path)
 
-                # Build context from transcript
+                # ALSO read from ~/.claude/tasks/ directory (current session tasks)
+                session_id = payload.get("session_id", "")
+                claude_tasks = read_claude_tasks_directory(session_id=session_id)
+
+                # Build context from transcript AND Claude tasks directory
+                # Priority: Claude tasks (current) > transcript (historical)
                 context = {
                     "current_spec": transcript_data.get("current_spec", {}),
-                    "active_tasks": transcript_data.get("active_tasks", []),
+                    "active_tasks": claude_tasks.get("active_tasks", []) or transcript_data.get("active_tasks", []),
+                    "completed_tasks": claude_tasks.get("completed_tasks", [])
+                    or transcript_data.get("completed_tasks", []),
                     "recent_files": transcript_data.get("recent_files", []),
                     "key_decisions": transcript_data.get("key_decisions", []),
+                    "session_conclusion": transcript_data.get("session_conclusion", ""),
                     "current_branch": "",
                     "uncommitted_changes": False,
                 }
 
-                # Fallback: merge with persistent files when transcript is short
+                # Fallback: merge with persistent files when still empty
                 if not context["current_spec"].get("id"):
                     prev_spec = load_spec_state(project_root)
                     if prev_spec and prev_spec.get("id"):

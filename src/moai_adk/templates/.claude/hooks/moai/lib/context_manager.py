@@ -981,3 +981,92 @@ def parse_transcript_context(
         result["current_spec"] = {"id": latest_spec}
 
     return result
+
+
+def read_claude_tasks_directory(
+    session_id: str | None = None,
+    max_tasks: int = 20,
+) -> dict[str, Any]:
+    """Read Claude Code tasks from ~/.claude/tasks/ directory.
+
+    Args:
+        session_id: Specific session ID to read from (optional)
+        max_tasks: Maximum number of tasks to return
+
+    Returns:
+        Dictionary with active_tasks and completed_tasks lists
+    """
+    from pathlib import Path as PathlibPath
+
+    result: dict[str, Any] = {
+        "active_tasks": [],
+        "completed_tasks": [],
+        "session_id": session_id or "",
+    }
+
+    try:
+        tasks_dir = PathlibPath.home() / ".claude" / "tasks"
+
+        if not tasks_dir.exists():
+            return result
+
+        # If session_id specified, read that specific session
+        if session_id:
+            session_dir = tasks_dir / session_id
+            if not session_dir.exists():
+                return result
+            session_dirs = [session_dir]
+        else:
+            # Read all sessions, most recent first
+            all_dirs = [d for d in tasks_dir.iterdir() if d.is_dir()]
+            session_dirs = sorted(all_dirs, key=lambda p: p.stat().st_mtime, reverse=True)[:5]
+
+        # Read tasks from each session directory
+        seen_subjects = set()
+
+        for session_dir in session_dirs:
+            # Look for task files (JSONL format based on Claude Code patterns)
+            for task_file in session_dir.glob("*.jsonl"):
+                try:
+                    with open(task_file, "r", encoding="utf-8") as f:
+                        for line in f:
+                            if line.strip():
+                                try:
+                                    task_data = json.loads(line)
+                                    subject = task_data.get("subject", "")
+
+                                    # Skip duplicates
+                                    if subject in seen_subjects:
+                                        continue
+                                    seen_subjects.add(subject)
+
+                                    status = task_data.get("status", "pending")
+                                    task_info = {
+                                        "id": task_data.get("id", ""),
+                                        "subject": subject,
+                                        "status": status,
+                                        "description": task_data.get("description", ""),
+                                    }
+
+                                    if status == "completed":
+                                        result["completed_tasks"].append(task_info)
+                                    else:
+                                        result["active_tasks"].append(task_info)
+
+                                    if len(result["active_tasks"]) >= max_tasks:
+                                        break
+                                except json.JSONDecodeError:
+                                    continue
+                except Exception:
+                    continue
+
+            if len(result["active_tasks"]) >= max_tasks:
+                break
+
+        # Sort: in_progress first, then pending
+        result["active_tasks"].sort(key=lambda t: 0 if t.get("status") == "in_progress" else 1)
+
+    except Exception as e:
+        logger.warning(f"Failed to read Claude tasks directory: {e}")
+
+    return result
