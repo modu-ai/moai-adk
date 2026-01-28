@@ -4,6 +4,7 @@ description: Sequential Thinking MCP and UltraThink mode for deep analysis, comp
 version: 1.0.0
 category: workflow
 status: active
+user-invocable: false
 modularized: false
 allowed-tools:
   - Read
