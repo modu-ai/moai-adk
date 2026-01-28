@@ -1499,6 +1499,66 @@ def _show_post_update_guidance(backup_path: Path) -> None:
     console.print("[cyan]" + "=" * 60 + "[/cyan]\n")
 
 
+def _ask_settings_merge_strategy(yes: bool = False) -> str:
+    """Ask user for settings.json merge strategy.
+
+    Args:
+        yes: Auto-confirm flag (returns default 'smart' if True)
+
+    Returns:
+        Merge strategy: 'template', 'preserve', 'smart', or 'manual'
+    """
+    if yes:
+        return "smart"
+
+    console.print("\n[cyan]📋 Settings.json Merge Strategy[/cyan]")
+    console.print("Choose how to handle .claude/settings.json during update:\n")
+
+    console.print(
+        "  [bold green]1[/bold green]. [cyan]Use template[/cyan] - "
+        "Replace with template settings (recommended for version updates)"
+    )
+    console.print("  [bold green]2[/bold green]. [cyan]Preserve existing[/cyan] - Keep current settings unchanged")
+    console.print(
+        "  [bold green]3[/bold green]. [cyan]Smart merge[/cyan] - "
+        "Merge intelligently (preserves custom env vars and permissions)"
+    )
+    console.print(
+        "  [bold green]4[/bold green]. [cyan]Manual merge[/cyan] - Skip update, handle manually with diff tools\n"
+    )
+
+    while True:
+        try:
+            choice = click.prompt(
+                "Enter your choice",
+                type=click.Choice(["1", "2", "3", "4"], case_sensitive=False),
+                default="3",
+                show_choices=False,
+            )
+            break
+        except (click.Abort, EOFError):
+            console.print("\n[yellow]Using default: Smart merge[/yellow]")
+            return "smart"
+
+    strategy_map = {
+        "1": "template",
+        "2": "preserve",
+        "3": "smart",
+        "4": "manual",
+    }
+
+    strategy = strategy_map.get(choice, "smart")
+    strategy_names = {
+        "template": "Use template",
+        "preserve": "Preserve existing",
+        "smart": "Smart merge",
+        "manual": "Manual merge",
+    }
+
+    console.print(f"[green]✓ Selected: {strategy_names[strategy]}[/green]\n")
+    return strategy
+
+
 def _sync_templates(project_path: Path, force: bool = False, yes: bool = False) -> bool:
     """Sync templates to project with rollback mechanism.
 
@@ -1528,7 +1588,10 @@ def _sync_templates(project_path: Path, force: bool = False, yes: bool = False) 
         template_hooks = _get_template_hook_names()
         _detect_custom_hooks(project_path, template_hooks)
 
-        processor = TemplateProcessor(project_path)
+        # Ask user for settings merge strategy
+        settings_strategy = _ask_settings_merge_strategy(yes)
+
+        processor = TemplateProcessor(project_path, settings_merge_strategy=settings_strategy)
 
         # Create pre-sync backup for rollback
         if not force:

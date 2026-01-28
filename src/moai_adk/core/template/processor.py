@@ -938,8 +938,6 @@ class TemplateProcessor:
                             console.print("   ⏭️  settings.json preserved (skipped update)")
                     elif self.settings_merge_strategy == self.SETTINGS_MERGE_TEMPLATE:
                         # Use template settings completely (overwrite)
-                        import shutil
-
                         shutil.copy2(item, settings_dst)
                         # Apply variable substitution
                         if self.context:
