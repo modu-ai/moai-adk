@@ -144,7 +144,7 @@ class TestRankCommand:
         result = runner.invoke(rank, ["--help"])
         assert result.exit_code == 0
         assert "MoAI Rank" in result.output
-        assert "register" in result.output
+        assert "login" in result.output
         assert "status" in result.output
         assert "logout" in result.output
         assert "sync" in result.output
