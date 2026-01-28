@@ -1,3 +1,113 @@
+# v1.11.0 - Template Variable Substitution Fix (2026-01-29)
+
+## Summary
+
+Patch release fixing template variable substitution during project initialization.
+
+## 요약
+
+프로젝트 초기화 중 템플릿 변수 치환 문제를 수정하는 패치 릴리스입니다.
+
+**Key Fix**:
+- Fixed template variables not being substituted during `moai init`
+- Ensures proper cross-platform shell wrapper configuration
+
+**주요 수정**:
+- `moai init` 중 템플릿 변수가 치환되지 않는 문제 수정
+- 모든 플랫폼에서 셸 래퍼 구성이 올바르게 작동하도록 개선
+
+**Impact**:
+- All template variables now correctly substituted during initialization
+- Proper MCP server configuration on all platforms
+- Consistent settings.json structure across platforms
+
+**영향**:
+- 초기화 중 모든 템플릿 변수가 올바르게 치환됨
+- 모든 플랫폼에서 올바른 MCP 서버 구성
+- 플랫폼 간 일관된 settings.json 구조
+
+## Fixed / 수정됨
+
+### Template Variable Substitution / 템플릿 변수 치환
+
+- **fix(template)**: Resolve template variable substitution issue (#304) (25b87aef)
+  - Issue: `{{HOOK_SHELL_PREFIX}}`, `{{HOOK_SHELL_SUFFIX}}`, `{{MCP_SHELL}}` not substituted during `moai init`
+  - 문제: `moai init` 중 `{{HOOK_SHELL_PREFIX}}`, `{{HOOK_SHELL_SUFFIX}}`, `{{MCP_SHELL}}` 변수가 치환되지 않음
+  - Root cause: `_merge_settings_json` called before variable substitution in `_copy_claude` method
+  - 근본 원인: `_copy_claude` 메서드에서 변수 치환 전에 `_merge_settings_json`이 호출됨
+  - Fix: Apply variable substitution BEFORE merging settings.json
+  - 해결: settings.json 병합 전에 변수 치환 적용
+    - Read template content and substitute variables
+    - 템플릿 내용을 읽고 변수 치환
+    - Write to temporary file for merging
+    - 병합을 위해 임시 파일에 기록
+    - Apply additional substitution after merge for remaining variables
+    - 병합 후 남은 변수에 대해 추가 치환 적용
+  - Impact: All shell wrapper variables now correctly substituted on all platforms
+  - 영향: 모든 플랫폼에서 셸 래퍼 변수가 올바르게 치환됨
+  - Files affected:
+  - 영향을 받는 파일:
+    - `src/moai_adk/core/template/processor.py` (lines 958-992)
+    - `src/moai_adk/templates/.mcp.json` (formatting fix / 형식 수정)
+
+### Test Improvements / 테스트 개선
+
+- **test**: Fix pytest collection errors for release (1a63b4d8)
+  - Removed obsolete test file: `test_context_manager_session_recovery.py`
+  - 제거된 오래된 테스트 파일: `test_context_manager_session_recovery.py`
+  - Fixed import in: `test_update_final.py`
+  - 수정된 import: `test_update_final.py`
+
+## Changed / 변경됨
+
+### Documentation / 문서
+
+- **docs**: Migrate /moai: commands to unified /moai syntax (15ea1dd8)
+  - Deprecated `/moai:plan`, `/moai:run`, `/moai:sync` subcommands
+  - Migrated to unified `/moai plan`, `/moai run`, `/moai sync` syntax
+  - Updated all command references and skill definitions
+  - 영어 번역된 README 파일 제거 (README.ko.md, README.ja.md, README.zh.md)
+  - 모든 언어별 파일을 개별 리포지토리로 분리
+  - 문서 정리 및 일관성 개선
+
+- **docs**: Split CHANGELOG into separate language files (56fa9ecd)
+  - Separated English and Korean CHANGELOG files
+  - CHANGELOG.md (English), CHANGELOG.ko.md (Korean)
+  - 문서 관리 효율성 개선
+
+- **docs**: Remove Memory MCP section from translated CLAUDE files (02eb66c1)
+  - Memory MCP 기능이 통합 스킬 시스템으로 마이그레이션되어 제거
+  - Cleaned up obsolete references
+
+- **chore**: Remove localized files from project root (66214271)
+  - Removed: README.ko.md, README.ja.md, README.zh.md
+  - 제거됨: 다국어 README 파일 (개별 리포지토리로 분리)
+
+### Bug Fixes / 버그 수정
+
+- **fix(statusline)**: Use template priority for statusLine to enable shell wrapper substitution (119c5b1c)
+  - Fixed statusline template variable substitution
+  - 템플릿 우선순위를 사용하여 셸 래퍼 치환 활성화
+
+- **fix(types)**: Add type annotation for RTL_LANGUAGES (28713c33)
+  - Added proper type hints for RTL language support
+  - RTL 언어 지원을 위한 타입 힌트 추가
+
+## Installation & Update / 설치 및 업데이트
+
+```bash
+# Update to the latest version / 최신 버전으로 업데이트
+claude install moai-adk
+
+# Update project templates / 프로젝트 템플릿 업데이트
+moai update
+
+# Verify version / 버전 확인
+moai --version
+```
+
+---
+
 # v1.10.5 - Template Variable Substitution Fix (2026-01-29)
 
 ## Summary
