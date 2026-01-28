@@ -1,5 +1,7 @@
 # 🗿 MoAI-ADK: Agentic AI Development Framework
 
+![MoAI-ADK](./assets/images/readme/moai-adk-og.png)
+
 ![MoAI-ADK Hero Banner](./assets/images/readme/hero-banner-moai-adk.png)
 
 **Available Languages:** [🇰🇷 한국어](./README.ko.md) | [🇺🇸 English](./README.md) | [🇯🇵 日本語](./README.ja.md) | [🇨🇳 中文](./README.zh.md)

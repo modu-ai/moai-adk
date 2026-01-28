@@ -74,20 +74,6 @@ if str(LIB_DIR) not in sys.path:
 from lib.file_utils import check_file_size  # noqa: E402
 from lib.path_utils import find_project_root  # noqa: E402
 
-# Import context manager for session continuity (unused, kept for compatibility)
-try:
-    from lib.context_manager import (
-        archive_context_snapshot,
-    )
-
-    HAS_CONTEXT_MANAGER = True
-except ImportError:
-    HAS_CONTEXT_MANAGER = False
-
-    def archive_context_snapshot(project_root):
-        return True
-
-
 # Import unified timeout manager and Git operations manager
 try:
     from lib.git_operations_manager import GitOperationType, get_git_manager

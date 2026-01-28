@@ -303,40 +303,6 @@ Always prefer Edit tool over sed/awk for cross-platform compatibility.
 
 ---
 
-## 14. Memory MCP Integration
-
-MoAI-ADK uses a 3-Layer Memory Architecture for zero-loss session continuity.
-
-### 3-Layer Architecture
-
-**Layer 1 - Hot Memory (Memory MCP):** Real-time session state with instant access. MoAI manages entities: SessionState, ActiveTask, UserDecision, AgentHandoff.
-
-**Layer 2 - Warm Memory (File-based):** Hook-managed session data in `.moai/memory/`. Files: context-snapshot.json, spec-state.json, tasks-backup.json, decisions.jsonl, mcp-payload.json.
-
-**Layer 3 - Cold Memory (SPEC/Docs):** Long-term persistent documents in `.moai/specs/` and `.moai/project/`.
-
-### Hook Lifecycle
-
-**PreCompact hook** (before /clear or auto-compact): Archives existing snapshot, then saves context-snapshot.json, spec-state.json, tasks-backup.json, and mcp-payload.json.
-
-**SessionStart hook:** Displays enhanced project information on session start.
-
-### Agent-to-Agent Context Sharing
-
-Memory MCP enables context sharing between agents:
-
-**Handoff Key Schema:**
-```
-handoff_{from_agent}_{to_agent}_{spec_id}
-context_{spec_id}_{category}
-```
-
-**Categories:** requirements, architecture, api, database, decisions, progress
-
-For detailed patterns, see Skill("moai-foundation-memory").
-
----
-
 Version: 11.0.0 (Alfred to MoAI rename, unified /moai command structure)
 Last Updated: 2026-01-28
 Language: English

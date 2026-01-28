@@ -17,11 +17,6 @@
         "GOOGLE_CLOUD_PROJECT": "YOUR_PROJECT_ID"
       }
     },
-    "memory": {
-      "$comment": "Persistent memory across sessions for user preferences, project context, and learned patterns",
-      "command": "{{MCP_SHELL}}",
-      "args": ["-l", "-c", "exec npx -y @modelcontextprotocol/server-memory"]
-    }
   },
   "staggeredStartup": {
     "enabled": true,

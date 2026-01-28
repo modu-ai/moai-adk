@@ -21,6 +21,8 @@ Before execution, load these essential files:
 
 - .moai/config/config.yaml (git strategy, automation settings)
 - .moai/config/sections/quality.yaml (coverage targets, TRUST 5 settings)
+- .moai/config/sections/git-strategy.yaml (auto_branch, branch creation policy)
+- .moai/config/sections/language.yaml (git_commit_messages setting)
 - .moai/specs/SPEC-{ID}/ directory (spec.md, plan.md, acceptance.md)
 
 Pre-execution commands: git status, git branch, git log, git diff.

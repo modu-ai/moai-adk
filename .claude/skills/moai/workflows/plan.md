@@ -30,6 +30,8 @@ Flag priority: --worktree takes precedence over --branch, which takes precedence
 Before execution, load these essential files:
 
 - .moai/config/config.yaml (git strategy, language settings)
+- .moai/config/sections/git-strategy.yaml (auto_branch, branch creation policy)
+- .moai/config/sections/language.yaml (git_commit_messages setting)
 - .moai/project/product.md (product context)
 - .moai/project/structure.md (architecture context)
 - .moai/project/tech.md (technology context)

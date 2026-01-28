@@ -13,6 +13,7 @@ Test coverage includes 5-phase integration tests with backup, configuration, and
 
 import json
 import logging
+import os
 import platform
 import shutil
 import subprocess
@@ -326,12 +327,53 @@ class PhaseExecutor:
         # HOOK_SHELL_PREFIX & HOOK_SHELL_SUFFIX: Cross-platform shell wrapper for hook commands
         # Ensures PATH is loaded correctly on all platforms (v1.8.6+)
         # Windows: Direct execution (PATH loaded from system environment)
-        # Unix: Use user's default shell with login mode to load ~/.zshrc, ~/.bash_profile, etc.
+        # Unix: Detect actual shell path at runtime for Node.js compatibility
+        #
+        # NOTE: Shell parameter expansion (${SHELL:-/bin/bash}) doesn't work with Node.js child_process
+        # because the string is stored in JSON and passed directly to spawn() without shell expansion.
+        # We must resolve the actual shell path at template substitution time (not runtime).
         if is_windows:
             hook_shell_prefix = ""
             hook_shell_suffix = ""
         else:
-            hook_shell_prefix = "${SHELL:-/bin/bash} -l -c '"
+            # Detect actual shell path at template substitution time
+            # This ensures the hook command contains an absolute path that Node.js can execute
+
+            # Get user's default shell from environment
+            user_shell = os.environ.get("SHELL", "")
+
+            # Priority order for shell selection:
+            # 1. User's default shell (from $SHELL env var)
+            # 2. bash (most common login shell)
+            # 3. sh (POSIX standard, always available on Unix)
+            # 4. Fallback to /bin/sh (last resort)
+            actual_shell = None
+
+            # Verify user's shell exists and is executable
+            if user_shell and os.path.isfile(user_shell) and os.access(user_shell, os.X_OK):
+                actual_shell = user_shell
+            else:
+                # Try bash first (most common, supports -l flag)
+                bash_path = shutil.which("bash")
+                if bash_path:
+                    actual_shell = bash_path
+                else:
+                    # Try sh (POSIX standard, supports -l flag)
+                    sh_path = shutil.which("sh")
+                    if sh_path:
+                        actual_shell = sh_path
+                    else:
+                        # Last resort - check common paths
+                        for path in ["/bin/bash", "/bin/sh", "/usr/bin/bash", "/usr/bin/sh"]:
+                            if os.path.isfile(path) and os.access(path, os.X_OK):
+                                actual_shell = path
+                                break
+
+            # Ultimate fallback (shouldn't happen on Unix systems)
+            if not actual_shell:
+                actual_shell = "/bin/sh"
+
+            hook_shell_prefix = f"{actual_shell} -l -c '"
             hook_shell_suffix = "'"
 
         # MCP_SHELL: Cross-platform shell for MCP server commands (v1.8.7+)

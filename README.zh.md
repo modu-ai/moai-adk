@@ -1,5 +1,7 @@
 # 🗿 MoAI-ADK: AI 智能体开发框架
 
+![MoAI-ADK](./assets/images/readme/moai-adk-og.png)
+
 ![MoAI-ADK Hero Banner](./assets/images/readme/hero-banner-moai-adk.png)
 
 **可用语言:** [🇰🇷 한국어](./README.ko.md) | [🇺🇸 English](./README.md) | [🇯🇵 日本語](./README.ja.md) | [🇨🇳 中文](./README.zh.md)
