@@ -39,9 +39,9 @@ Alfred 是 Claude Code 的战略协调者。所有任务必须委派给专业代
 
 根据命令类型路由请求：
 
-- **Type A 工作流命令**: /moai:0-project, /moai:1-plan, /moai:2-run, /moai:3-sync
-- **Type B 实用程序命令**: /moai:alfred, /moai:fix, /moai:loop
-- **Type C 反馈命令**: /moai:9-feedback
+- **Type A 工作流命令**: /moai project, /moai plan, /moai run, /moai sync
+- **Type B 实用程序命令**: /moai, /moai fix, /moai loop
+- **Type C 反馈命令**: /moai feedback
 - **直接代理请求**: 当用户明确请求代理时立即委派
 
 ### 阶段 3：执行
@@ -67,7 +67,7 @@ Alfred 是 Claude Code 的战略协调者。所有任务必须委派给专业代
 
 定义：协调主要 MoAI 开发工作流的命令。
 
-命令：/moai:0-project, /moai:1-plan, /moai:2-run, /moai:3-sync
+命令：/moai project, /moai plan, /moai run, /moai sync
 
 允许的工具：完全访问 (Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep)
 
@@ -79,7 +79,7 @@ Alfred 是 Claude Code 的战略协调者。所有任务必须委派给专业代
 
 定义：用于快速修复和自动化的命令，优先考虑速度。
 
-命令：/moai:alfred, /moai:fix, /moai:loop
+命令：/moai, /moai fix, /moai loop
 
 允许的工具：Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 
@@ -90,7 +90,7 @@ Alfred 是 Claude Code 的战略协调者。所有任务必须委派给专业代
 
 定义：用于改进和错误报告的用户反馈命令。
 
-命令：/moai:9-feedback
+命令：/moai feedback
 
 用途：在 MoAI-ADK 仓库中自动创建 GitHub issue。
 
@@ -143,9 +143,9 @@ MoAI 使用 DDD（Domain-Driven Development）作为开发方法论。
 
 ### MoAI 命令流
 
-- /moai:1-plan "description" → manager-spec 子代理
-- /moai:2-run SPEC-XXX → manager-ddd 子代理 (ANALYZE-PRESERVE-IMPROVE)
-- /moai:3-sync SPEC-XXX → manager-docs 子代理
+- /moai plan "description" → manager-spec 子代理
+- /moai run SPEC-XXX → manager-ddd 子代理 (ANALYZE-PRESERVE-IMPROVE)
+- /moai sync SPEC-XXX → manager-docs 子代理
 
 详细的工作流规范请参阅 @.claude/rules/moai/workflow/spec-workflow.md
 
@@ -250,7 +250,7 @@ MoAI-ADK 使用 `.claude/rules/moai/` 的 Claude Code 官方规则系统:
 - Token 限制错误: 执行 /clear，然后引导用户恢复
 - 权限错误: 手动检查 settings.json
 - 集成错误: 使用 expert-devops 子代理
-- MoAI-ADK 错误: 建议 /moai:9-feedback
+- MoAI-ADK 错误: 建议 /moai feedback
 
 ### 可恢复的代理
 

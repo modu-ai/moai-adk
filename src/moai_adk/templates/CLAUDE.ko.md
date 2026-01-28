@@ -39,9 +39,9 @@ Alfred는 Claude Code의 전략적 오케스트레이터입니다. 모든 작업
 
 명령 유형에 따라 요청을 라우팅합니다:
 
-- **Type A 워크플로우 명령**: /moai:0-project, /moai:1-plan, /moai:2-run, /moai:3-sync
-- **Type B 유틸리티 명령**: /moai:alfred, /moai:fix, /moai:loop
-- **Type C 피드백 명령**: /moai:9-feedback
+- **Type A 워크플로우 명령**: /moai project, /moai plan, /moai run, /moai sync
+- **Type B 유틸리티 명령**: /moai, /moai fix, /moai loop
+- **Type C 피드백 명령**: /moai feedback
 - **직접 에이전트 요청**: 사용자가 명시적으로 에이전트를 요청할 때 즉시 위임합니다
 
 ### 3단계: 실행
@@ -67,7 +67,7 @@ Alfred는 Claude Code의 전략적 오케스트레이터입니다. 모든 작업
 
 정의: 주요 MoAI 개발 워크플로우를 오케스트레이션하는 명령입니다.
 
-명령: /moai:0-project, /moai:1-plan, /moai:2-run, /moai:3-sync
+명령: /moai project, /moai plan, /moai run, /moai sync
 
 허용 도구: 전체 접근 (Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep)
 
@@ -78,7 +78,7 @@ Alfred는 Claude Code의 전략적 오케스트레이터입니다. 모든 작업
 
 정의: 속도가 우선시되는 빠른 수정 및 자동화를 위한 명령입니다.
 
-명령: /moai:alfred, /moai:fix, /moai:loop
+명령: /moai, /moai fix, /moai loop
 
 허용 도구: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 
@@ -89,7 +89,7 @@ Alfred는 Claude Code의 전략적 오케스트레이터입니다. 모든 작업
 
 정의: 개선 사항 및 버그 보고를 위한 사용자 피드백 명령입니다.
 
-명령: /moai:9-feedback
+명령: /moai feedback
 
 목적: MoAI-ADK 저장소에 GitHub 이슈를 자동 생성합니다.
 
@@ -142,9 +142,9 @@ MoAI는 DDD(Domain-Driven Development)를 개발 방법론으로 사용합니다
 
 ### MoAI 명령 흐름
 
-- /moai:1-plan "description" → manager-spec 하위 에이전트
-- /moai:2-run SPEC-XXX → manager-ddd 하위 에이전트 (ANALYZE-PRESERVE-IMPROVE)
-- /moai:3-sync SPEC-XXX → manager-docs 하위 에이전트
+- /moai plan "description" → manager-spec 하위 에이전트
+- /moai run SPEC-XXX → manager-ddd 하위 에이전트 (ANALYZE-PRESERVE-IMPROVE)
+- /moai sync SPEC-XXX → manager-docs 하위 에이전트
 
 자세한 워크플로우 명세는 @.claude/rules/moai/workflow/spec-workflow.md 참조
 
@@ -249,7 +249,7 @@ MoAI-ADK는 `.claude/rules/moai/`에서 Claude Code의 공식 규칙 시스템�
 - 토큰 한도 오류: /clear 실행 후 사용자에게 재개 안내
 - 권한 오류: settings.json 수동 검토
 - 통합 오류: expert-devops 하위 에이전트 사용
-- MoAI-ADK 오류: /moai:9-feedback 제안
+- MoAI-ADK 오류: /moai feedback 제안
 
 ### 재개 가능한 에이전트
 

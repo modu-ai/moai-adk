@@ -39,9 +39,9 @@ Alfred は Claude Code の戦略的オーケストレーターです。すべて
 
 コマンドタイプに基づいてリクエストをルーティングします:
 
-- **Type A ワークフローコマンド**: /moai:0-project, /moai:1-plan, /moai:2-run, /moai:3-sync
-- **Type B ユーティリティコマンド**: /moai:alfred, /moai:fix, /moai:loop
-- **Type C フィードバックコマンド**: /moai:9-feedback
+- **Type A ワークフローコマンド**: /moai project, /moai plan, /moai run, /moai sync
+- **Type B ユーティリティコマンド**: /moai, /moai fix, /moai loop
+- **Type C フィードバックコマンド**: /moai feedback
 - **直接エージェントリクエスト**: ユーザーが明示的にエージェントを要求した場合は即座に委任
 
 ### フェーズ 3: 実行
@@ -67,7 +67,7 @@ Alfred は Claude Code の戦略的オーケストレーターです。すべて
 
 定義: 主要な MoAI 開発ワークフローをオーケストレートするコマンドです。
 
-コマンド: /moai:0-project, /moai:1-plan, /moai:2-run, /moai:3-sync
+コマンド: /moai project, /moai plan, /moai run, /moai sync
 
 許可ツール: フルアクセス (Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep)
 
@@ -79,7 +79,7 @@ Alfred は Claude Code の戦略的オーケストレーターです。すべて
 
 定義: 速度を優先する迅速な修正と自動化のためのコマンドです。
 
-コマンド: /moai:alfred, /moai:fix, /moai:loop
+コマンド: /moai, /moai fix, /moai loop
 
 許可ツール: Task, AskUserQuestion, TodoWrite, Bash, Read, Write, Edit, Glob, Grep
 
@@ -90,7 +90,7 @@ Alfred は Claude Code の戦略的オーケストレーターです。すべて
 
 定義: 改善とバグレポートのためのユーザーフィードバックコマンドです。
 
-コマンド: /moai:9-feedback
+コマンド: /moai feedback
 
 目的: MoAI-ADK リポジトリに GitHub issue を自動作成します。
 
@@ -143,9 +143,9 @@ MoAI は DDD（Domain-Driven Development）を開発方法論として使用し�
 
 ### MoAI コマンドフロー
 
-- /moai:1-plan "description" → manager-spec サブエージェント
-- /moai:2-run SPEC-XXX → manager-ddd サブエージェント (ANALYZE-PRESERVE-IMPROVE)
-- /moai:3-sync SPEC-XXX → manager-docs サブエージェント
+- /moai plan "description" → manager-spec サブエージェント
+- /moai run SPEC-XXX → manager-ddd サブエージェント (ANALYZE-PRESERVE-IMPROVE)
+- /moai sync SPEC-XXX → manager-docs サブエージェント
 
 詳細なワークフロー仕様については、@.claude/rules/moai/workflow/spec-workflow.md を参照してください。
 
@@ -250,7 +250,7 @@ MoAI-ADK は `.claude/rules/moai/` の Claude Code 公式ルールシステム�
 - トークン制限エラー: /clear を実行し、ユーザーに再開を案内
 - パーミッションエラー: settings.json を手動でレビュー
 - 統合エラー: expert-devops サブエージェントを使用
-- MoAI-ADK エラー: /moai:9-feedback を提案
+- MoAI-ADK エラー: /moai feedback を提案
 
 ### 再開可能なエージェント
 

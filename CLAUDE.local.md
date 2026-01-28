@@ -621,7 +621,7 @@ python .moai/tools/validate-docs.py
 ### Release Commands (Local Only)
 ```bash
 # Use the local release command
-/moai:99-release
+/moai release
 
 # Manual version sync
 .github/scripts/sync-versions.sh X.Y.Z
@@ -852,11 +852,11 @@ The following agents are prone to memory issues during extended sessions:
 
 1. **Break Down Large Tasks**:
    - Divide work into smaller SPEC files
-   - Run `/moai:2-run` separately for each SPEC
-   - Use `/moai:3-sync` after each implementation completes
+   - Run `/moai run` separately for each SPEC
+   - Use `/moai sync` after each implementation completes
 
 2. **Use Loop Mode Wisely**:
-   - `/moai:loop` maintains state across iterations
+   - `/moai loop` maintains state across iterations
    - Monitor memory usage for loops >100 iterations
    - Consider using `--max` to limit iterations
 
