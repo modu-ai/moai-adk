@@ -1,3 +1,56 @@
+# v1.10.5 - Template Variable Substitution Fix (2026-01-29)
+
+## Summary
+
+Patch release fixing template variable substitution during project initialization.
+
+**Key Fix**:
+- Fixed template variables not being substituted during `moai init`
+- Ensures proper cross-platform shell wrapper configuration
+
+**Impact**:
+- All template variables now correctly substituted during initialization
+- Proper MCP server configuration on all platforms
+- Consistent settings.json structure across platforms
+
+## Fixed
+
+### Template Variable Substitution
+
+- **fix(template)**: Resolve template variable substitution issue (#304) (25b87aef)
+  - Issue: `{{HOOK_SHELL_PREFIX}}`, `{{HOOK_SHELL_SUFFIX}}`, `{{MCP_SHELL}}` not substituted during `moai init`
+  - Root cause: `_merge_settings_json` called before variable substitution in `_copy_claude` method
+  - Fix: Apply variable substitution BEFORE merging settings.json
+    - Read template content and substitute variables
+    - Write to temporary file for merging
+    - Apply additional substitution after merge for remaining variables
+  - Impact: All shell wrapper variables now correctly substituted on all platforms
+  - Files affected:
+    - `src/moai_adk/core/template/processor.py` (lines 958-992)
+    - `src/moai_adk/templates/.mcp.json` (formatting fix)
+
+### Code Cleanup
+
+- **chore**: Remove unused hook library modules (25b87aef)
+  - Removed: `checkpoint.py`, `language_detector.py`, `language_validator.py`, `timeout.py`
+  - Consolidated into `unified_timeout_manager.py`
+  - Reduced codebase by ~1,000 lines
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
 # v1.9.0 - Memory MCP, SVG Skill, Rules Migration (2026-01-26)
 
 ## Summary
