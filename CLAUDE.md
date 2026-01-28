@@ -319,53 +319,7 @@ MoAI-ADK uses a 3-Layer Memory Architecture for zero-loss session continuity.
 
 **PreCompact hook** (before /clear or auto-compact): Archives existing snapshot, then saves context-snapshot.json, spec-state.json, tasks-backup.json, and mcp-payload.json.
 
-**SessionStart hook:** Loads context-snapshot.json and displays previous session context in systemMessage. Does NOT archive the snapshot (keeps it available for the session).
-
-### Session Recovery Protocol (HARD)
-
-**Detection Conditions** (ANY matches):
-- SystemMessage contains previous session context indicators (multilingual):
-  - "[이전 세션 컨텍스트]" (Korean)
-  - "[前回セッションコンテキスト]" (Japanese)
-  - "[上次会话上下文]" (Chinese)
-  - "[Previous Session Context]" (English)
-- SystemMessage contains [MEMORY_MCP_SYNC] signal
-- User input contains continuation keywords (multilingual):
-  - Korean: "이어서", "계속", "이어서 진행"
-  - Japanese: "続けて", "続きから", "続けてやる"
-  - Chinese: "继续", "接着做", "继续进行"
-  - English: "continue", "resume", "keep going"
-
-**When detected, MoAI MUST follow this protocol:**
-
-**Step 1 - Read file-based context (primary):**
-- Read `.moai/memory/context-snapshot.json` for full session state
-- Read `.moai/memory/tasks-backup.json` for task restoration
-- Read `.moai/memory/spec-state.json` for active SPEC
-
-**Step 2 - Sync to Memory MCP (if [MEMORY_MCP_SYNC] present):**
-- Read `.moai/memory/mcp-payload.json`
-- Call mcp__memory__create_entities with entities from payload
-- Call mcp__memory__create_relations with relations from payload
-
-**Step 3 - Restore tasks (with completion check):**
-- Read `.moai/memory/tasks-backup.json`
-- Parse `completed_tasks` array: Display summary ONLY, do NOT restore
-- Parse `tasks` array for each task:
-  - If status == "completed": Skip, do NOT restore
-  - If status == "pending": Ask user for restoration confirmation
-  - If status == "in_progress": Ask user for continuation confirmation
-- Only create TaskCreate entries after user confirmation
-- If all tasks completed, inform user and skip restoration
-
-**Step 4 - Continue work:**
-- If tasks were restored, identify the most recent incomplete task
-- Resume from where the previous session left off
-- Do NOT re-explore or re-analyze already completed work
-
-**On Important Decisions (after AskUserQuestion):**
-- Memory MCP: mcp__memory__create_entities with type UserDecision
-- File backup: Append to `.moai/memory/decisions.jsonl`
+**SessionStart hook:** Displays enhanced project information on session start.
 
 ### Agent-to-Agent Context Sharing
 
