@@ -164,7 +164,7 @@ def get_optimal_model(language_code: str) -> str:
 
 # RTL (Right-to-Left) language detection
 # System provides 4 languages: ko, en, ja, zh (no RTL languages)
-RTL_LANGUAGES = set()  # No RTL languages in supported set
+RTL_LANGUAGES: set[str] = set()  # No RTL languages in supported set
 
 
 def is_rtl_language(language_code: str) -> bool:
