@@ -1430,18 +1430,17 @@ MoAI automatically recognizes 4 language requests and invokes the correct agent:
 
 ---
 
-### 🎯 Tier 2: Workflow Managers (8)
+### 🎯 Tier 2: Workflow Managers (7)
 
-| Agent                   | Role                             | Auto Invocation Timing          |
-| ----------------------- | -------------------------------- | ------------------------------- |
-| **manager-spec**        | SPEC writing (EARS)              | `/moai plan`                    |
-| **manager-ddd**         | DDD implementation execution     | `/moai run`                     |
-| **manager-docs**        | Documentation auto generation    | `/moai sync`                    |
-| **manager-quality**     | TRUST 5 verification             | After implementation completion |
-| **manager-strategy**    | Execution strategy establishment | Complex planning                |
-| **manager-project**     | Project initialization           | `/moai project`                 |
-| **manager-git**         | Git workflow                     | Branch/PR management            |
-| **manager-claude-code** | Claude Code integration          | Settings optimization           |
+| Agent                | Role                             | Auto Invocation Timing          |
+| -------------------- | -------------------------------- | ------------------------------- |
+| **manager-spec**     | SPEC writing (EARS)              | `/moai plan`                    |
+| **manager-ddd**      | DDD implementation execution     | `/moai run`                     |
+| **manager-docs**     | Documentation auto generation    | `/moai sync`                    |
+| **manager-quality**  | TRUST 5 verification             | After implementation completion |
+| **manager-strategy** | Execution strategy establishment | Complex planning                |
+| **manager-project**  | Project initialization & settings | `/moai project`                 |
+| **manager-git**      | Git workflow                     | Branch/PR management            |
 
 ---
 
