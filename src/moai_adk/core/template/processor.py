@@ -17,6 +17,7 @@ import logging
 import platform
 import re
 import shutil
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -954,8 +955,36 @@ class TemplateProcessor:
                             console.print("      Use diff tools to compare template with existing")
                     else:
                         # Default: Smart merge
-                        self._merge_settings_json(item, settings_dst)
-                        # Apply variable substitution to merged settings.json
+                        # CRITICAL: Apply variable substitution BEFORE merging
+                        # The merger reads the template as JSON, so variables must be substituted first
+                        if self.context:
+                            # Read template content and substitute variables
+                            template_content = item.read_text(encoding="utf-8", errors="replace")
+                            (
+                                template_content,
+                                sub_warnings,
+                            ) = self._substitute_variables(template_content)
+                            all_warnings.extend(sub_warnings)
+                            # Write substituted content to a temporary location for merging
+                            with tempfile.NamedTemporaryFile(
+                                mode="w",
+                                suffix=".json",
+                                delete=False,
+                                encoding="utf-8",
+                            ) as tmp:
+                                tmp.write(template_content)
+                                tmp.flush()
+                                temp_path = Path(tmp.name)
+                            try:
+                                # Merge with substituted template
+                                self._merge_settings_json(temp_path, settings_dst)
+                            finally:
+                                # Clean up temporary file
+                                temp_path.unlink(missing_ok=True)
+                        else:
+                            # No context available, merge directly
+                            self._merge_settings_json(item, settings_dst)
+                        # Apply variable substitution to merged settings.json (for any remaining variables)
                         if self.context:
                             content = settings_dst.read_text(encoding="utf-8", errors="replace")
                             content, file_warnings = self._substitute_variables(content)

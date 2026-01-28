@@ -16,7 +16,7 @@
       "env": {
         "GOOGLE_CLOUD_PROJECT": "moai-adk"
       }
-    },
+    }
   },
   "staggeredStartup": {
     "enabled": true,

@@ -28,12 +28,119 @@ from typing import Any, Callable, Dict, Set
 
 import yaml
 
-# Import base TimeoutError from timeout module for exception hierarchy
-try:
-    from .timeout import TimeoutError as BaseTimeoutError
-except ImportError:
-    # Fallback if timeout module not available
-    BaseTimeoutError = Exception  # type: ignore
+# ============================================================================
+# Base Timeout Exception and Cross-Platform Timeout Handler
+# ============================================================================
+
+
+class TimeoutError(Exception):
+    """Base timeout exception raised when deadline exceeded.
+
+    This is the canonical timeout exception for the hooks system.
+    HookTimeoutError inherits from this for enhanced context.
+    """
+
+    pass
+
+
+class CrossPlatformTimeout:
+    """Lightweight cross-platform timeout handler for compatibility.
+
+    Windows: Uses threading.Timer to schedule timeout
+    Unix: Uses signal.SIGALRM for timeout handling
+
+    This is maintained for backward compatibility. For new code,
+    prefer using UnifiedTimeoutManager for advanced features.
+    """
+
+    def __init__(self, timeout_seconds: float, callback: Callable | None = None):
+        """Initialize timeout with duration in seconds.
+
+        Args:
+            timeout_seconds: Timeout duration in seconds (float or int)
+            callback: Optional callback to execute before raising TimeoutError
+        """
+        self.timeout_seconds = timeout_seconds
+        self.timeout_seconds_int = max(1, int(timeout_seconds))
+        self.callback = callback
+        self.timer: threading.Timer | None = None
+        self._is_windows = platform.system() == "Windows"
+        self._old_handler: Callable | None = None
+
+    def start(self) -> None:
+        """Start timeout countdown."""
+        if self.timeout_seconds <= 0:
+            if self.timeout_seconds == 0:
+                if self.callback:
+                    self.callback()
+                raise TimeoutError("Timeout of 0 seconds exceeded immediately")
+            return
+
+        if self._is_windows:
+            self._start_windows_timeout()
+        else:
+            self._start_unix_timeout()
+
+    def cancel(self) -> None:
+        """Cancel timeout (must call before timeout expires)."""
+        if self._is_windows:
+            self._cancel_windows_timeout()
+        else:
+            self._cancel_unix_timeout()
+
+    def _start_windows_timeout(self) -> None:
+        """Windows: Use threading.Timer to raise exception."""
+
+        def timeout_handler():
+            if self.callback:
+                self.callback()
+            raise TimeoutError(f"Operation exceeded {self.timeout_seconds}s timeout (Windows threading)")
+
+        self.timer = threading.Timer(self.timeout_seconds, timeout_handler)
+        self.timer.daemon = True
+        self.timer.start()
+
+    def _cancel_windows_timeout(self) -> None:
+        """Windows: Cancel timer thread."""
+        if self.timer:
+            self.timer.cancel()
+            self.timer = None
+
+    def _start_unix_timeout(self) -> None:
+        """Unix/POSIX: Use signal.SIGALRM for timeout."""
+
+        def signal_handler(signum, frame):
+            if self.callback:
+                try:
+                    self.callback()
+                except Exception:
+                    pass
+            raise TimeoutError(f"Operation exceeded {self.timeout_seconds}s timeout (Unix signal)")
+
+        self._old_handler = signal.signal(signal.SIGALRM, signal_handler)  # type: ignore[assignment]
+        signal.alarm(self.timeout_seconds_int)
+
+    def _cancel_unix_timeout(self) -> None:
+        """Unix/POSIX: Cancel alarm and restore old handler."""
+        signal.alarm(0)
+        if self._old_handler is not None:
+            signal.signal(signal.SIGALRM, self._old_handler)
+            self._old_handler = None
+
+    def __enter__(self):
+        """Context manager entry."""
+        self.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - always cancel."""
+        self.cancel()
+        return False
+
+
+# ============================================================================
+# Timeout Policy and Configuration
+# ============================================================================
 
 
 class TimeoutPolicy(Enum):
@@ -71,11 +178,11 @@ class TimeoutSession:
     cleanup_actions: list = field(default_factory=list)
 
 
-class HookTimeoutError(BaseTimeoutError):
+class HookTimeoutError(TimeoutError):
     """Enhanced timeout error with context.
 
-    Inherits from timeout.TimeoutError for consistent exception handling
-    across the hooks system. Adds hook-specific context like hook_id,
+    Inherits from TimeoutError for consistent exception handling across
+    the hooks system. Adds hook-specific context like hook_id,
     execution time, and retry information.
     """
 

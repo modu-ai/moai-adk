@@ -14,8 +14,7 @@ lib/
 ├── models.py             # Data structures (HookPayload, HookResult)
 ├── path_utils.py         # Project root detection, safe paths
 ├── project.py            # Project metadata (language, Git, SPEC)
-├── timeout.py            # Cross-platform timeout (Windows/Unix)
-├── unified_timeout_manager.py  # Advanced timeout with retry
+├── unified_timeout_manager.py  # Unified timeout management (basic + advanced)
 ├── git_operations_manager.py   # Optimized Git operations
 ├── checkpoint.py         # Risky operation detection
 ├── language_validator.py # Language config validation
@@ -69,16 +68,18 @@ config = ConfigManager().load_config()
 timeout = get_config("hooks.timeout_ms", default=5000)
 ```
 
-### Timeout Handling (`timeout.py`, `unified_timeout_manager.py`)
+### Timeout Handling (`unified_timeout_manager.py`)
+
+The unified timeout manager provides both basic and advanced timeout functionality:
 
 ```python
-# Basic timeout
-from lib.timeout import CrossPlatformTimeout
+# Basic timeout (lightweight cross-platform handler)
+from lib.unified_timeout_manager import CrossPlatformTimeout
 
 with CrossPlatformTimeout(5):
     long_running_operation()
 
-# Advanced timeout with retry
+# Advanced timeout with retry, memory monitoring, and graceful degradation
 from lib.unified_timeout_manager import get_timeout_manager
 
 manager = get_timeout_manager()

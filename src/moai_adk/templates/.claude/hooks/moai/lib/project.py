@@ -14,11 +14,11 @@ from typing import Any
 
 import yaml
 
-# Import TimeoutError from lib.timeout (canonical definition)
+# Import TimeoutError from lib.unified_timeout_manager (canonical definition)
 try:
-    from lib.timeout import TimeoutError  # noqa: F401
+    from lib.unified_timeout_manager import TimeoutError  # noqa: F401
 except ImportError:
-    # Fallback if lib.timeout not available
+    # Fallback if unified_timeout_manager not available
     class TimeoutError(Exception):  # type: ignore[no-redef]
         """Signal-based timeout exception"""
 

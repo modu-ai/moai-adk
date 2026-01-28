@@ -1752,11 +1752,6 @@ Add Memory MCP to your Claude Code configuration:
 - Never store sensitive credentials
 - Store preferences, not personal data
 
-### Detailed Documentation
-
-- **Skill**: `.claude/skills/moai-foundation-memory/SKILL.md`
-- **CLAUDE.md**: Section 14 - Memory MCP Integration
-
 ---
 
 ## 8. TRUST 5 Quality Principles

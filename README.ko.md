@@ -1556,11 +1556,6 @@ Claude Code 설정에 Memory MCP를 추가하세요:
 - 민감한 자격 증명 저장 금지
 - 개인 데이터가 아닌 선호도 저장
 
-### 상세 문서
-
-- **스킬**: `.claude/skills/moai-foundation-memory/SKILL.md`
-- **CLAUDE.md**: Section 14 - Memory MCP Integration
-
 ---
 
 ## 7. TRUST 5 품질 원칙

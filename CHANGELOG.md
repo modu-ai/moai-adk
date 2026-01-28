@@ -22,15 +22,6 @@ None. All changes are backward compatible.
 
 ## Added
 
-### Memory MCP Integration
-
-- **feat**: Add Memory MCP Server integration (99ab5273)
-  - Persistent memory across Claude Code sessions
-  - User preferences, project context, learned patterns storage
-  - Agent-to-agent context sharing during workflows
-  - Configuration: `.mcp.json`, `.mcp.windows.json`
-  - New skill: `moai-foundation-memory` (420 lines)
-
 ### SVG Creation and Optimization Skill
 
 - **feat**: Add `moai-tool-svg` skill (54c12a85)

@@ -1645,11 +1645,6 @@ Claude Code設定にMemory MCPを追加:
 - 機密認証情報は保存しない
 - 個人データではなく設定を保存
 
-### 詳細ドキュメント
-
-- **スキル**: `.claude/skills/moai-foundation-memory/SKILL.md`
-- **CLAUDE.md**: Section 14 - Memory MCP Integration
-
 ---
 
 ## 8. TRUST 5品質原則

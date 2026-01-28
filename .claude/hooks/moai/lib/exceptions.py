@@ -26,13 +26,13 @@ class HooksBaseError(Exception):
     pass
 
 
-# Re-export TimeoutError from timeout module for convenience
+# Re-export TimeoutError from unified_timeout_manager for convenience
 try:
-    from .timeout import TimeoutError
+    from .unified_timeout_manager import TimeoutError
 except ImportError:
 
     class TimeoutError(HooksBaseError):  # type: ignore[no-redef]
-        """Timeout exception (fallback if timeout module unavailable)."""
+        """Timeout exception (fallback if unified_timeout_manager unavailable)."""
 
         pass
 

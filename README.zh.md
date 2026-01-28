@@ -1708,11 +1708,6 @@ export GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"
 - 不存储敏感凭证
 - 存储偏好，而非个人数据
 
-### 详细文档
-
-- **技能**: `.claude/skills/moai-foundation-memory/SKILL.md`
-- **CLAUDE.md**: Section 14 - Memory MCP Integration
-
 ---
 
 ## 8. TRUST 5质量原则
