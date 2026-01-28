@@ -40,6 +40,7 @@ if str(LIB_DIR) not in sys.path:
     sys.path.insert(0, str(LIB_DIR))
 
 from lib.context_manager import (  # noqa: E402
+    archive_context_snapshot,
     collect_current_context,
     generate_memory_mcp_payload,
     parse_transcript_context,
@@ -176,6 +177,10 @@ def execute_pre_compact():
         if active_tasks:
             conclusion_parts.append(f"{len(active_tasks)} task(s) remaining")
         session_conclusion = ". ".join(conclusion_parts)
+
+    # Archive existing snapshot before saving new one
+    # (SessionStart no longer archives to keep snapshot available for the session)
+    archive_context_snapshot(project_root)
 
     # Save context snapshot
     success = save_context_snapshot(

@@ -67,8 +67,8 @@ Integrate and report results:
 
 Definition: Single entry point for all MoAI development workflows.
 
-Subcommands: plan, run, sync, project, fix, loop, feedback, release
-Default (natural language): Routes to autonomous workflow
+Subcommands: plan, run, sync, project, fix, loop, feedback
+Default (natural language): Routes to autonomous workflow (plan -> run -> sync pipeline)
 
 Allowed Tools: Full access (Task, AskUserQuestion, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep)
 

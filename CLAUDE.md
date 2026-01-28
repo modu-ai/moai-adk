@@ -67,8 +67,8 @@ Integrate and report results:
 
 Definition: Single entry point for all MoAI development workflows.
 
-Subcommands: plan, run, sync, project, fix, loop, feedback, release
-Default (natural language): Routes to autonomous workflow
+Subcommands: plan, run, sync, project, fix, loop, feedback
+Default (natural language): Routes to autonomous workflow (plan -> run -> sync pipeline)
 
 Allowed Tools: Full access (Task, AskUserQuestion, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep)
 
@@ -317,28 +317,36 @@ MoAI-ADK uses a 3-Layer Memory Architecture for zero-loss session continuity.
 
 ### Hook Lifecycle
 
-**PreCompact hook** (before /clear or auto-compact): Saves context-snapshot.json, spec-state.json, tasks-backup.json, and mcp-payload.json for Memory MCP sync.
+**PreCompact hook** (before /clear or auto-compact): Archives existing snapshot, then saves context-snapshot.json, spec-state.json, tasks-backup.json, and mcp-payload.json.
 
-**SessionStart hook:** Loads context-snapshot.json, provides SPEC state and tasks backup as fallback, signals MoAI when mcp-payload.json is available.
+**SessionStart hook:** Loads context-snapshot.json and displays previous session context in systemMessage. Does NOT archive the snapshot (keeps it available for the session).
 
-**SessionEnd hook:** Archives context snapshot for history.
+### Session Recovery Protocol (HARD)
 
-### MoAI Memory Sync Protocol
+When the SessionStart systemMessage contains previous session context or [MEMORY_MCP_SYNC] signal, and the user requests continuation (keywords: "이어서", "continue", "resume", "계속"), MoAI MUST follow this protocol:
 
-**On Session Start:**
-1. Check systemMessage for [MEMORY_MCP_SYNC] signal
-2. If found, read `.moai/memory/mcp-payload.json`
-3. Sync entities to Memory MCP: mcp__memory__create_entities
-4. Sync relations: mcp__memory__create_relations
-5. Query Memory MCP: mcp__memory__search_nodes("session") for continuity
-6. Offer user to continue previous work
+**Step 1 - Read file-based context (primary):**
+- Read `.moai/memory/context-snapshot.json` for full session state
+- Read `.moai/memory/tasks-backup.json` for pending tasks
+- Read `.moai/memory/spec-state.json` for active SPEC
+
+**Step 2 - Sync to Memory MCP (if [MEMORY_MCP_SYNC] present):**
+- Read `.moai/memory/mcp-payload.json`
+- Call mcp__memory__create_entities with entities from payload
+- Call mcp__memory__create_relations with relations from payload
+
+**Step 3 - Restore tasks:**
+- Create TaskCreate entries for each pending task from tasks-backup.json
+- Set in_progress tasks to in_progress status
+
+**Step 4 - Continue work:**
+- Identify the most recent incomplete task
+- Resume from where the previous session left off
+- Do NOT re-explore or re-analyze already completed work
 
 **On Important Decisions (after AskUserQuestion):**
-1. Memory MCP: mcp__memory__create_entities with type UserDecision
-2. File backup: Append to `.moai/memory/decisions.jsonl`
-
-**Before /clear:**
-PreCompact hook auto-saves all state to `.moai/memory/`.
+- Memory MCP: mcp__memory__create_entities with type UserDecision
+- File backup: Append to `.moai/memory/decisions.jsonl`
 
 ### Agent-to-Agent Context Sharing
 

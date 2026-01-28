@@ -3,7 +3,7 @@ name: moai
 description: >
   MoAI super agent - unified orchestrator for autonomous development.
   Routes natural language or explicit subcommands (plan, run, sync, fix,
-  loop, project, feedback, release) to specialized agents.
+  loop, project, feedback) to specialized agents.
   Use for any development task from planning to deployment.
 allowed-tools: Task, AskUserQuestion, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep
 argument-hint: "[subcommand] [args] | \"natural language task\""
@@ -45,15 +45,13 @@ Parse $ARGUMENTS to determine which workflow to execute.
 
 Match the first word of $ARGUMENTS against known subcommands:
 
-- **plan** (aliases: spec, 1-plan): SPEC document creation workflow
-- **run** (aliases: impl, 2-run): DDD implementation workflow
-- **sync** (aliases: docs, 3-sync, pr): Documentation synchronization and PR creation
-- **project** (aliases: init, 0-project): Project documentation generation
-- **feedback** (aliases: fb, bug, issue, 9-feedback): GitHub issue creation
-- **release** (aliases: rel, 99-release): Release management workflow
+- **plan** (aliases: spec): SPEC document creation workflow
+- **run** (aliases: impl): DDD implementation workflow
+- **sync** (aliases: docs, pr): Documentation synchronization and PR creation
+- **project** (aliases: init): Project documentation generation
+- **feedback** (aliases: fb, bug, issue): GitHub issue creation
 - **fix**: Auto-fix errors in a single pass
 - **loop**: Iterative auto-fix until completion marker detected
-- **alfred** (aliases: auto): Full autonomous workflow from planning to deployment
 
 ### Priority 2: SPEC-ID Detection
 
@@ -68,13 +66,13 @@ When no explicit subcommand or SPEC-ID is detected, classify the intent:
 - Iterative and repeat language (keep fixing, until done, repeat, iterate, all errors) routes to **loop**
 - Documentation language (document, sync, docs, readme, changelog, PR) routes to **sync** or **project**
 - Feedback and bug report language (report, feedback, suggestion, issue) routes to **feedback**
-- Implementation language (implement, build, create, add, develop) with clear scope routes to **alfred**
+- Implementation language (implement, build, create, add, develop) with clear scope routes to **moai** (default autonomous)
 
 ### Priority 4: Default Behavior
 
 If the intent remains ambiguous after all priority checks, use AskUserQuestion to present the top 2-3 matching workflows and let the user choose.
 
-If the intent is clearly a development task with no specific routing signal, default to the **alfred** workflow for full autonomous execution.
+If the intent is clearly a development task with no specific routing signal, default to the **moai** workflow (plan -> run -> sync pipeline) for full autonomous execution.
 
 ---
 
@@ -99,9 +97,9 @@ For detailed orchestration: Read workflows/run.md
 ### sync - Documentation Sync and PR
 
 Purpose: Synchronize documentation with code changes and prepare pull requests.
-Agents: manager-docs (primary), manager-git (PR creation)
+Agents: manager-docs (primary), manager-quality (verification), manager-git (PR creation)
 Phases: Phase 0.5 quality verification, documentation generation, README/CHANGELOG update, PR creation.
-Flags: auto (default), force, status, project
+Modes: auto (default), force, status, project. Flag: --merge (auto-merge PR)
 For detailed orchestration: Read workflows/sync.md
 
 ### fix - Auto-Fix Errors
@@ -120,13 +118,13 @@ Phases: Parallel diagnostics, TODO generation, autonomous fixing, iterative veri
 Flags: --max N (iteration limit, default 100), --auto, --seq
 For detailed orchestration: Read workflows/loop.md
 
-### alfred - Full Autonomous Workflow
+### (default) - MoAI Autonomous Workflow
 
-Purpose: Autonomously execute the complete MoAI workflow from exploration to documentation.
+Purpose: Full autonomous plan -> run -> sync pipeline. Default when no subcommand matches.
 Agents: Explore, manager-spec, manager-ddd, manager-quality, manager-docs, manager-git
-Phases: Parallel exploration, SPEC generation (after user approval), DDD implementation with auto-fix loop, documentation sync, completion marker.
-Flags: --loop (enable iterative fixing), --max N, --sequential, --branch, --pr, --resume SPEC-XXX
-For detailed orchestration: Read workflows/alfred.md
+Phases: Parallel exploration, SPEC generation (user approval), DDD implementation with optional auto-fix loop, documentation sync, completion marker.
+Flags: --loop (iterative fixing), --max N, --branch, --pr, --resume SPEC-XXX
+For detailed orchestration: Read workflows/moai.md
 
 ### project - Project Documentation
 
@@ -141,13 +139,6 @@ Purpose: Collect user feedback, bug reports, or feature suggestions and create G
 Agents: manager-quality (feedback collection and issue creation)
 Phases: Analyze feedback type, collect details, create GitHub issue.
 For detailed orchestration: Read workflows/feedback.md
-
-### release - Release Management
-
-Purpose: Execute release workflow with quality gates, version bumping, and publishing.
-Agents: manager-quality (quality gates), manager-git (tagging and release)
-Phases: Quality gates (tests, lint, type check), version selection, version sync, changelog update, git tag, publish.
-For detailed orchestration: Read workflows/release.md
 
 ---
 
@@ -297,15 +288,14 @@ Each phase must pass its results forward to the next phase. Include previous pha
 
 For detailed workflow orchestration steps, read the corresponding workflow file:
 
-- workflows/plan.md: Complete plan phase orchestration
-- workflows/run.md: Complete run phase orchestration
-- workflows/sync.md: Complete sync phase orchestration
-- workflows/fix.md: Complete fix workflow orchestration
-- workflows/loop.md: Complete loop workflow orchestration
-- workflows/alfred.md: Complete alfred workflow orchestration
-- workflows/project.md: Complete project documentation workflow
-- workflows/feedback.md: Complete feedback workflow
-- workflows/release.md: Complete release workflow
+- workflows/moai.md: Default autonomous workflow (plan -> run -> sync pipeline)
+- workflows/plan.md: SPEC document creation orchestration
+- workflows/run.md: DDD implementation orchestration
+- workflows/sync.md: Documentation sync and PR orchestration
+- workflows/fix.md: Auto-fix workflow orchestration
+- workflows/loop.md: Iterative fix loop orchestration
+- workflows/project.md: Project documentation workflow
+- workflows/feedback.md: Feedback and issue creation workflow
 
 For SPEC workflow overview: See .claude/rules/moai/workflow/spec-workflow.md
 For quality standards: See .claude/rules/moai/core/moai-constitution.md
@@ -317,7 +307,7 @@ For quality standards: See .claude/rules/moai/core/moai-constitution.md
 When this skill is activated, execute the following steps in order:
 
 Step 1 - Parse Arguments:
-Extract subcommand keywords and flags from $ARGUMENTS. Recognized flags include --loop, --max N, --worktree, --branch, --pr, --sequential (--seq), --auto, --resume SPEC-XXX, --dry, --level N.
+Extract subcommand keywords and flags from $ARGUMENTS. Recognized global flags: --resume [ID], --seq, --ultrathink. Workflow-specific flags: --loop, --max N, --worktree, --branch, --pr, --auto, --merge, --dry, --level N, --security. When --ultrathink is detected, activate Sequential Thinking MCP (mcp__sequential-thinking__sequentialthinking) for deep analysis before execution.
 
 Step 2 - Route to Workflow:
 Apply the Intent Router (Priority 1 through Priority 4) to determine the target workflow. If ambiguous, use AskUserQuestion to clarify with the user.
@@ -348,5 +338,5 @@ Use AskUserQuestion to present the user with logical next actions based on the c
 
 ---
 
-Version: 1.0.0
+Version: 1.1.0
 Last Updated: 2026-01-28

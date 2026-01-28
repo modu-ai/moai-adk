@@ -6,7 +6,7 @@ Implement SPEC requirements through Domain-Driven Development (DDD) methodology 
 
 ## Scope
 
-- Implements Step 3 of Alfred's 4-step workflow (Task Execution)
+- Implements Step 3 of MoAI's 4-step workflow (Task Execution)
 - Receives SPEC documents created by /moai plan
 - Hands off to /moai sync for documentation and PR
 

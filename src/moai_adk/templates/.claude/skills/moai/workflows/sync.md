@@ -6,7 +6,7 @@ Synchronize documentation with code changes, verify project quality, and finaliz
 
 ## Scope
 
-- Implements Step 4 of Alfred's 4-step workflow (Report and Commit)
+- Implements Step 4 of MoAI's 4-step workflow (Report and Commit)
 - Receives implementation artifacts from /moai run
 - Produces synchronized documentation, commits, and PR readiness
 
@@ -15,7 +15,7 @@ Synchronize documentation with code changes, verify project quality, and finaliz
 - $ARGUMENTS: Mode and optional path
   - Mode: auto (default), force, status, project
   - Path: Optional synchronization target path (e.g., src/auth/)
-  - Flags: --auto-merge, --worktree, --branch
+  - Flag: --merge
 
 ## Supported Modes
 
@@ -26,9 +26,7 @@ Synchronize documentation with code changes, verify project quality, and finaliz
 
 ## Supported Flags
 
-- --auto-merge: After sync, auto-merge PR and clean up branch
-- --worktree: Sync in worktree mode with worktree exit options
-- --branch: Sync in branch mode with branch management options
+- --merge: After sync, auto-merge PR and clean up branch. Worktree/branch environment is auto-detected from git context.
 
 ## Context Loading
 
@@ -204,7 +202,7 @@ Agent: manager-git subagent
 - Assign reviewers and labels if configured
 - If Personal mode: Skip
 
-#### Step 3.3: Auto-Merge (When --auto-merge flag set)
+#### Step 3.3: Auto-Merge (When --merge flag set)
 
 - Check CI/CD status via gh pr checks
 - Check merge conflicts via gh pr view --json mergeable
@@ -217,7 +215,7 @@ Agent: manager-git subagent
 
 Display summary: mode, scope, files updated and created, project improvements, documents updated, reports generated, backup location.
 
-#### Worktree Mode Next Steps (when --worktree flag or worktree detected)
+#### Worktree Mode Next Steps (auto-detected from git context)
 
 Tool: AskUserQuestion with options:
 
@@ -226,7 +224,7 @@ Tool: AskUserQuestion with options:
 - Switch to Another Worktree
 - Remove This Worktree
 
-#### Branch Mode Next Steps (when --branch flag or feature branch detected)
+#### Branch Mode Next Steps (auto-detected from git context)
 
 Tool: AskUserQuestion with options:
 

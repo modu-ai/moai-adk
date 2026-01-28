@@ -46,7 +46,7 @@ Combine parallel and sequential patterns within a single workflow.
 Use Cases:
 
 - Fix Workflow: Parallel diagnostic scan (LSP + linters + AST-grep), then sequential fix application based on combined results
-- Alfred Workflow: Parallel exploration phase, then sequential SPEC generation and DDD implementation
+- MoAI Workflow: Parallel exploration phase, then sequential SPEC generation and DDD implementation
 - Run Workflow: Parallel quality checks, then sequential implementation tasks
 
 Implementation:
@@ -72,9 +72,8 @@ Applicable Workflows:
 
 - plan --resume SPEC-XXX: Resume SPEC creation from last checkpoint
 - run --resume SPEC-XXX: Resume DDD implementation from last completed task
-- alfred --resume SPEC-XXX: Resume full autonomous workflow from last phase
+- moai --resume SPEC-XXX: Resume full autonomous workflow from last phase
 - fix --resume: Resume fix cycle from last diagnostic state
-- release --resume: Resume release from last completed phase (uses snapshot in .moai/cache/release-snapshots/)
 
 ---
 
@@ -102,8 +101,9 @@ Propagation Method:
 
 ### Global Flags (Available Across All Workflows)
 
-- --resume SPEC-XXX: Resume workflow from last checkpoint for the specified SPEC
-- --sequential (--seq): Force sequential execution instead of parallel where applicable
+- --resume [ID]: Resume workflow from last checkpoint (SPEC-ID or snapshot ID)
+- --seq: Force sequential execution instead of parallel where applicable
+- --ultrathink: Activate Sequential Thinking MCP for deep analysis before execution
 
 ### Plan Flags
 
@@ -117,38 +117,26 @@ Propagation Method:
 
 ### Sync Flags
 
-- auto: Default mode, generate documentation and PR automatically
-- force: Regenerate all documentation even if unchanged
-- status: Display sync status without performing operations
-- project: Sync project documentation only (product.md, structure.md, tech.md)
+- Modes (positional): auto (default), force, status, project
+- --merge: Auto-merge PR and clean up branch after sync
 
 ### Fix Flags
 
 - --dry: Preview detected issues without applying fixes
-- --sequential: Process fixes one at a time instead of in parallel
 - --level N: Control fix depth (Level 1: auto-fixable, Level 2: simple logic, Level 3: complex, Level 4: architectural)
-- --resume: Resume from last diagnostic state
+- --security: Include security issues in scan
 
 ### Loop Flags
 
 - --max N: Maximum iteration count (default: 100)
-- --auto: Skip user confirmation between iterations
-- --seq: Force sequential processing
+- --auto: Enable automatic fix application for Level 1-2
 
-### Alfred Flags
+### MoAI (Default) Flags
 
-- --loop: Enable iterative fixing after implementation
+- --loop: Enable iterative fixing during run phase
 - --max N: Maximum fix iterations when --loop is active
-- --sequential: Force sequential agent execution
 - --branch: Create feature branch before implementation
 - --pr: Create pull request after completion
-- --resume SPEC-XXX: Resume from last completed phase
-
-### Release Flags
-
-- VERSION argument: Specify target version directly (e.g., /moai release 0.35.0)
-- --resume: Resume release from last saved snapshot
-- --status: Check current release state
 
 ---
 
@@ -160,13 +148,12 @@ Previous /moai:X-Y command format mapped to new /moai subcommand format:
 - /moai:1-plan maps to /moai plan
 - /moai:2-run maps to /moai run
 - /moai:3-sync maps to /moai sync
-- /moai:9-feedback maps to /moai feedback (aliases: fb, bug, issue)
-- /moai:99-release maps to /moai release (aliases: rel)
+- /moai:9-feedback maps to /moai feedback
 - /moai:fix maps to /moai fix
 - /moai:loop maps to /moai loop
-- /moai:alfred maps to /moai alfred (aliases: auto)
+- /moai:alfred maps to /moai (default autonomous workflow)
 
-All legacy commands remain functional through alias resolution in the Intent Router.
+Note: /moai:99-release is a separate local-only command, not part of the /moai skill.
 
 ---
 
@@ -229,5 +216,5 @@ These markers enable automation detection and loop termination in the loop workf
 
 ---
 
-Version: 1.0.0
+Version: 1.1.0
 Last Updated: 2026-01-28

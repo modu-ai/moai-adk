@@ -6,7 +6,7 @@ Create comprehensive SPEC documents using EARS format as the first step of the P
 
 ## Scope
 
-- Implements Steps 1-2 of Alfred's 4-step workflow (Intent Understanding, Plan Creation)
+- Implements Steps 1-2 of MoAI's 4-step workflow (Intent Understanding, Plan Creation)
 - Steps 3-4 are handled by /moai run and /moai sync respectively
 
 ## Input

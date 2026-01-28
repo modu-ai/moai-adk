@@ -1,17 +1,16 @@
-# Workflow: Alfred - Autonomous Automation
+# Workflow: MoAI - Autonomous Development Orchestration
 
-Purpose: Full autonomous workflow from exploration to completion. User provides a goal, AI autonomously plans, implements, and verifies.
+Purpose: Full autonomous workflow. User provides a goal, MoAI autonomously executes plan -> run -> sync pipeline. This is the default workflow when no subcommand is specified.
 
-Flow: Explore -> Plan -> Implement -> Verify -> Repeat -> Done
+Flow: Explore -> Plan -> Run -> Sync -> Done
 
 ## Supported Flags
 
-- --loop: Enable auto iterative fixing (default from ralph.yaml)
-- --max N (alias --max-iterations): Maximum iteration count (default 100)
-- --sequential (alias --seq): Sequential exploration instead of parallel
-- --branch: Auto-create feature branch (default from git-strategy.yaml)
-- --pr: Auto-create pull request (default from git-strategy.yaml)
-- resume SPEC-XXX: Resume previous work from existing SPEC
+- --loop: Enable auto iterative fixing during run phase
+- --max N: Maximum iteration count for loop (default 100)
+- --branch: Auto-create feature branch
+- --pr: Auto-create pull request after completion
+- --resume SPEC-XXX: Resume previous work from existing SPEC
 
 ## Configuration Files
 
@@ -126,5 +125,5 @@ Auto-routing based on llm.yaml settings:
 
 ---
 
-Version: 1.0.0
-Source: alfred.md command v3.2.0
+Version: 1.1.0
+Source: Renamed from alfred.md. Unified plan->run->sync pipeline.
