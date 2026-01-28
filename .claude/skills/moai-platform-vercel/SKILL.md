@@ -1,23 +1,25 @@
 ---
-name: "moai-platform-vercel"
-description: "Vercel edge deployment specialist covering Edge Functions, Next.js optimization, preview deployments, ISR, and storage solutions. Use when deploying Next.js applications, implementing edge computing, or configuring Vercel platform features."
-version: 2.1.0
-category: "platform"
-modularized: true
-user-invocable: false
-tags: ['vercel', 'edge', 'nextjs', 'isr', 'preview', 'cdn', 'kv', 'blob', 'postgres']
-context7-libraries: "/vercel/next.js, /vercel/vercel"
-related-skills: "moai-platform-railway, moai-lang-typescript, moai-domain-frontend"
-updated: 2026-01-11
-status: "active"
-allowed-tools:
-  - Read
-  - Write
-  - Bash
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-platform-vercel
+description: >
+  Vercel edge deployment specialist covering Edge Functions, Next.js optimization,
+  preview deployments, ISR, and storage solutions. Use when deploying Next.js
+  applications, implementing edge computing, or configuring Vercel platform features.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Write Bash Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+
+metadata:
+  version: "2.1.0"
+  category: "platform"
+  modularized: "true"
+  user-invocable: "false"
+  status: "active"
+  updated: "2026-01-11"
+  tags: "vercel, edge, nextjs, isr, preview, cdn, kv, blob, postgres"
+  context7-libraries: "/vercel/next.js, /vercel/vercel"
+  related-skills: "moai-platform-railway, moai-lang-typescript, moai-domain-frontend"
+
+# MoAI Extension: Triggers
 triggers:
   keywords: ["vercel", "edge", "nextjs", "isr", "preview deployment", "cdn", "edge functions"]
 ---

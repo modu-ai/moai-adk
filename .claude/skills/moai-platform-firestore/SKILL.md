@@ -1,23 +1,25 @@
 ---
-name: "moai-platform-firestore"
-description: "Firebase Firestore specialist covering NoSQL patterns, real-time sync, offline caching, and Security Rules. Use when building mobile-first apps with offline support, implementing real-time listeners, or configuring Firestore security."
-version: 2.1.0
-category: "platform"
-modularized: true
-user-invocable: false
-tags: ['firestore', 'firebase', 'nosql', 'realtime', 'offline', 'mobile']
-updated: 2026-01-11
-status: "active"
-context7-libraries: ['/firebase/firebase-docs']
-related-skills: ['moai-platform-firebase-auth', 'moai-lang-flutter', 'moai-lang-typescript']
-allowed-tools:
-  - Read
-  - Write
-  - Bash
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-platform-firestore
+description: >
+  Firebase Firestore specialist covering NoSQL patterns, real-time sync, offline
+  caching, and Security Rules. Use when building mobile-first apps with offline
+  support, implementing real-time listeners, or configuring Firestore security.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Write Bash Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+
+metadata:
+  version: "2.1.0"
+  category: "platform"
+  status: "active"
+  updated: "2026-01-11"
+  modularized: "true"
+  user-invocable: "false"
+  tags: "firestore, firebase, nosql, realtime, offline, mobile"
+  context7-libraries: "/firebase/firebase-docs"
+  related-skills: "moai-platform-firebase-auth, moai-lang-flutter, moai-lang-typescript"
+
+# MoAI Extension: Triggers
 triggers:
   keywords: ["firestore", "nosql", "real-time", "offline", "mobile database", "security rules", "sync"]
 ---

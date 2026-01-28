@@ -1,24 +1,31 @@
 ---
-name: "moai-workflow-spec"
-description: "SPEC workflow orchestration with EARS format, requirement clarification, and Plan-Run-Sync integration for MoAI-ADK development methodology"
-version: 1.2.0
-category: "workflow"
-modularized: true
-user-invocable: false
-context: fork
-agent: Plan
-tags: ["workflow", "spec", "ears", "requirements", "moai-adk", "planning"]
-updated: 2026-01-08
-status: "active"
-author: "MoAI-ADK Team"
+name: moai-workflow-spec
+description: >
+  SPEC workflow orchestration with EARS format, requirement clarification,
+  and Plan-Run-Sync integration for MoAI-ADK development methodology
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Write Edit Bash Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
 
-# Progressive Disclosure Configuration
+metadata:
+  version: "1.2.0"
+  category: "workflow"
+  status: "active"
+  updated: "2026-01-08"
+  modularized: "true"
+  user-invocable: "false"
+  tags: "workflow, spec, ears, requirements, moai-adk, planning"
+  author: "MoAI-ADK Team"
+  context: "fork"
+  agent: "Plan"
+
+# MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
 
-# Trigger Conditions for Level 2 Loading
+# MoAI Extension: Triggers
 triggers:
   keywords:
     [
@@ -33,16 +40,6 @@ triggers:
     ]
   phases: ["plan"]
   agents: ["manager-spec", "manager-strategy", "Plan"]
-
-allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
 ---
 
 # SPEC Workflow Management

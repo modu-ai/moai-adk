@@ -1,27 +1,32 @@
 ---
-name: "moai-lang-flutter"
-description: "Flutter 3.24+ / Dart 3.5+ development specialist covering Riverpod, go_router, and cross-platform patterns. Use when building cross-platform mobile apps, desktop apps, or web applications with Flutter."
-version: 1.1.0
-category: "language"
-modularized: false
+name: moai-lang-flutter
+description: >
+  Flutter 3.24+ / Dart 3.5+ development specialist covering Riverpod,
+  go_router, and cross-platform patterns. Use when building cross-platform
+  mobile apps, desktop apps, or web applications with Flutter.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+metadata:
+  version: "1.1.0"
+  category: "language"
+  status: "active"
+  updated: "2026-01-11"
+  modularized: "false"
+  user-invocable: "false"
+  tags: "flutter, dart, riverpod, cross-platform, mobile, desktop"
+  context7-libraries: "/flutter/flutter, /rrousselgit/riverpod, /flutter/packages"
+  related-skills: "moai-lang-swift, moai-lang-kotlin"
 
-# Progressive Disclosure Configuration
+# MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
-  level1_tokens: ~100
-  level2_tokens: ~5000
+  level1_tokens: 100
+  level2_tokens: 5000
 
-# Trigger Conditions for Level 2 Loading
+# MoAI Extension: Triggers
 triggers:
   keywords: ["Flutter", "Dart", "Riverpod", "go_router", "widget", ".dart", "pubspec.yaml", "cross-platform", "mobile"]
   languages: ["dart", "flutter"]
-
-user-invocable: false
-tags: ['flutter', 'dart', 'riverpod', 'cross-platform', 'mobile', 'desktop']
-context7-libraries: ['/flutter/flutter', '/rrousselgit/riverpod', '/flutter/packages']
-related-skills: ['moai-lang-swift', 'moai-lang-kotlin']
-updated: 2026-01-11
-status: "active"
 ---
 
 ## Quick Reference (30 seconds)

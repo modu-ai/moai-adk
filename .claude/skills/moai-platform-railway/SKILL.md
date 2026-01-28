@@ -1,23 +1,25 @@
 ---
-name: "moai-platform-railway"
-description: "Railway container deployment specialist covering Docker, multi-service architectures, persistent volumes, and auto-scaling. Use when deploying containerized full-stack applications, configuring multi-region deployments, or setting up persistent storage."
-version: 2.1.0
-category: "platform"
-modularized: true
-user-invocable: false
-tags: ['railway', 'docker', 'containers', 'multi-service', 'auto-scaling']
-context7-libraries: ['/railwayapp/railway']
-related-skills: ['moai-platform-vercel', 'moai-domain-backend']
-updated: 2026-01-11
-status: "active"
-allowed-tools:
-  - Read
-  - Write
-  - Bash
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-platform-railway
+description: >
+  Railway container deployment specialist covering Docker, multi-service architectures,
+  persistent volumes, and auto-scaling. Use when deploying containerized full-stack
+  applications, configuring multi-region deployments, or setting up persistent storage.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Write Bash Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+
+metadata:
+  version: "2.1.0"
+  category: "platform"
+  modularized: "true"
+  user-invocable: "false"
+  status: "active"
+  updated: "2026-01-11"
+  tags: "railway, docker, containers, multi-service, auto-scaling"
+  context7-libraries: "/railwayapp/railway"
+  related-skills: "moai-platform-vercel, moai-domain-backend"
+
+# MoAI Extension: Triggers
 triggers:
   keywords: ["railway", "docker", "containers", "multi-service", "auto-scaling", "persistent volumes"]
 ---

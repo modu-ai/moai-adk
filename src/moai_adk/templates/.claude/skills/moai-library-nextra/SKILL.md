@@ -1,23 +1,23 @@
 ---
 name: moai-library-nextra
-description: Enterprise Nextra documentation framework with Next.js. Use when building documentation sites, knowledge bases, or API reference documentation.
-version: 2.2.0
-modularized: true
-user-invocable: false
-updated: 2026-01-11
-allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
-aliases:
-  - moai-library-nextra
-category: library
-tags: ["library", "nextra", "nextjs", "documentation", "mdx", "static-site"]
-status: "active"
+description: >
+  Enterprise Nextra documentation framework with Next.js. Use when building documentation
+  sites, knowledge bases, or API reference documentation.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Write Edit Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+
+metadata:
+  version: "2.2.0"
+  category: "library"
+  modularized: "true"
+  user-invocable: "false"
+  status: "active"
+  updated: "2026-01-11"
+  tags: "library, nextra, nextjs, documentation, mdx, static-site"
+  aliases: "moai-library-nextra"
+
+# MoAI Extension: Triggers
 triggers:
   keywords: ["documentation", "nextra", "docs site", "knowledge base", "api reference", "mdx", "static site"]
 ---

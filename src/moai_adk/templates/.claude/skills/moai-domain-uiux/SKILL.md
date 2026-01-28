@@ -1,28 +1,21 @@
 ---
-name: "moai-domain-uiux"
-description: "Domain UI/UX Expert - Enterprise design systems, component architecture, accessibility, icons, and theming integration"
-version: 2.0.0
-category: "domain"
-modularized: true
-user-invocable: false
-tags:
-  [
-    "domain",
-    "uiux",
-    "design-systems",
-    "accessibility",
-    "components",
-    "icons",
-    "theming",
-  ]
-updated: 2026-01-11
-status: "active"
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-domain-uiux
+description: >
+  Domain UI/UX Expert - Enterprise design systems, component architecture,
+  accessibility, icons, and theming integration.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+metadata:
+  version: "2.0.0"
+  category: "domain"
+  status: "active"
+  updated: "2026-01-11"
+  modularized: "true"
+  user-invocable: "false"
+  tags: "domain, uiux, design-systems, accessibility, components, icons, theming"
+
+# MoAI Extension: Triggers
 triggers:
   keywords:
     - UI/UX

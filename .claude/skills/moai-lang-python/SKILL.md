@@ -1,33 +1,29 @@
 ---
-name: "moai-lang-python"
-description: "Python 3.13+ development specialist covering FastAPI, Django, async patterns, data science, testing with pytest, and modern Python features. Use when developing Python APIs, web applications, data pipelines, or writing tests."
-version: 1.1.0
-category: "language"
-modularized: false
+name: moai-lang-python
+description: >
+  Python 3.13+ development specialist covering FastAPI, Django, async patterns, data science, testing with pytest, and modern Python features. Use when developing Python APIs, web applications, data pipelines, or writing tests.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Grep Glob Bash mcp__context7__resolve-library-id mcp__context7__get-library-docs
+metadata:
+  version: "1.1.0"
+  category: "language"
+  status: "active"
+  updated: "2026-01-11"
+  modularized: "false"
+  user-invocable: "false"
+  tags: "language, python, fastapi, django, pytest, async, data-science"
 
-# Progressive Disclosure Configuration
+# MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
-  level1_tokens: ~100
-  level2_tokens: ~5000
+  level1_tokens: 100
+  level2_tokens: 5000
 
-# Trigger Conditions for Level 2 Loading
+# MoAI Extension: Triggers
 triggers:
   keywords: ["Python", "Django", "FastAPI", "Flask", "asyncio", "pytest", "pyproject.toml", "requirements.txt", ".py"]
   languages: ["python"]
-
-user-invocable: false
-tags:
-  ["language", "python", "fastapi", "django", "pytest", "async", "data-science"]
-updated: 2026-01-11
-status: "active"
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - Bash
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
 ---
 
 ## Quick Reference (30 seconds)

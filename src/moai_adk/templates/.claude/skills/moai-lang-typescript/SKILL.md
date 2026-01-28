@@ -1,31 +1,29 @@
 ---
-name: "moai-lang-typescript"
-description: "TypeScript 5.9+ development specialist covering React 19, Next.js 16 App Router, type-safe APIs with tRPC, Zod validation, and modern TypeScript patterns. Use when developing TypeScript applications, React components, Next.js pages, or type-safe APIs."
-version: 1.1.0
-category: "language"
-modularized: false
+name: moai-lang-typescript
+description: >
+  TypeScript 5.9+ development specialist covering React 19, Next.js 16 App Router, type-safe APIs with tRPC, Zod validation, and modern TypeScript patterns. Use when developing TypeScript applications, React components, Next.js pages, or type-safe APIs.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+metadata:
+  version: "1.1.0"
+  category: "language"
+  status: "active"
+  updated: "2026-01-11"
+  modularized: "false"
+  user-invocable: "false"
+  tags: "typescript, react, nextjs, frontend, fullstack"
 
-# Progressive Disclosure Configuration
+# MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
-  level1_tokens: ~100
-  level2_tokens: ~5000
+  level1_tokens: 100
+  level2_tokens: 5000
 
-# Trigger Conditions for Level 2 Loading
+# MoAI Extension: Triggers
 triggers:
   keywords: ["TypeScript", "React", "Next.js", "tRPC", "Zod", ".ts", ".tsx", "tsconfig.json"]
   languages: ["typescript", "tsx"]
-
-user-invocable: false
-tags: ['typescript', 'react', 'nextjs', 'frontend', 'fullstack']
-updated: 2026-01-11
-status: "active"
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
 ---
 
 ## Quick Reference (30 seconds)

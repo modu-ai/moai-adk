@@ -1,36 +1,24 @@
 ---
-name: "moai-workflow-ddd"
-description: "Domain-Driven Development workflow specialist using ANALYZE-PRESERVE-IMPROVE cycle for behavior-preserving code transformation"
-version: 1.0.0
-category: "workflow"
-modularized: true
-user-invocable: false
-context: fork
-agent: manager-ddd
-tags:
-  [
-    "workflow",
-    "refactoring",
-    "ddd",
-    "domain-driven",
-    "behavior-preservation",
-    "ast-grep",
-    "characterization-tests",
-  ]
-related-skills:
-  ["moai-tool-ast-grep", "moai-workflow-testing", "moai-foundation-quality"]
-updated: 2026-01-16
-status: "active"
-author: "MoAI-ADK Team"
-allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-workflow-ddd
+description: >
+  Domain-Driven Development workflow specialist using ANALYZE-PRESERVE-IMPROVE
+  cycle for behavior-preserving code transformation
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Write Edit Bash Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+
+metadata:
+  version: "1.0.0"
+  category: "workflow"
+  status: "active"
+  updated: "2026-01-16"
+  modularized: "true"
+  user-invocable: "false"
+  tags: "workflow, refactoring, ddd, domain-driven, behavior-preservation, ast-grep, characterization-tests"
+  author: "MoAI-ADK Team"
+  context: "fork"
+  agent: "manager-ddd"
+  related-skills: "moai-tool-ast-grep, moai-workflow-testing, moai-foundation-quality"
 ---
 
 # Domain-Driven Development (DDD) Workflow

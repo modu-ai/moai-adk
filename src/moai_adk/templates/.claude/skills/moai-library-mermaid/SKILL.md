@@ -1,29 +1,22 @@
 ---
-name: "moai-library-mermaid"
-description: "Enterprise Mermaid diagramming skill for Claude Code using MCP Playwright. Use when creating architecture diagrams, flowcharts, sequence diagrams, or visual documentation."
-version: 7.1.0
-category: "library"
-modularized: true
-user-invocable: false
-updated: 2026-01-11
-tags:
-  [
-    "library",
-    "mermaid",
-    "diagrams",
-    "flowchart",
-    "sequence",
-    "visualization",
-    "documentation",
-  ]
-status: "active"
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - Bash
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-library-mermaid
+description: >
+  Enterprise Mermaid diagramming skill for Claude Code using MCP Playwright. Use when
+  creating architecture diagrams, flowcharts, sequence diagrams, or visual documentation.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Grep Glob Bash mcp__context7__resolve-library-id mcp__context7__get-library-docs
+
+metadata:
+  version: "7.1.0"
+  category: "library"
+  modularized: "true"
+  user-invocable: "false"
+  status: "active"
+  updated: "2026-01-11"
+  tags: "library, mermaid, diagrams, flowchart, sequence, visualization, documentation"
+
+# MoAI Extension: Triggers
 triggers:
   keywords: ["diagram", "flowchart", "sequence", "architecture", "mermaid", "visualization", "chart", "graph"]
 ---

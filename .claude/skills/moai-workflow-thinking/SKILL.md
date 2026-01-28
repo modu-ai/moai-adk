@@ -1,17 +1,26 @@
 ---
 name: moai-workflow-thinking
-description: Sequential Thinking MCP and UltraThink mode for deep analysis, complex problem decomposition, and structured reasoning workflows
-version: 1.0.0
-category: workflow
-status: active
-user-invocable: false
-modularized: false
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - mcp__sequential-thinking__sequentialthinking
+description: >
+  Sequential Thinking MCP and UltraThink mode for deep analysis, complex
+  problem decomposition, and structured reasoning workflows
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Grep Glob mcp__sequential-thinking__sequentialthinking
 
+metadata:
+  version: "1.0.0"
+  category: "workflow"
+  status: "active"
+  modularized: "false"
+  user-invocable: "false"
+
+# MoAI Extension: Progressive Disclosure
+progressive_disclosure:
+  enabled: true
+  level_1_tokens: 100
+  level_2_tokens: 3000
+
+# MoAI Extension: Triggers
 triggers:
   keywords:
     - sequential thinking
@@ -27,11 +36,6 @@ triggers:
   agents:
     - manager-strategy
     - manager-spec
-
-progressive_disclosure:
-  enabled: true
-  level_1_tokens: 100
-  level_2_tokens: 3000
 ---
 
 # Sequential Thinking & UltraThink

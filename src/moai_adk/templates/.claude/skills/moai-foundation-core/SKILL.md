@@ -1,27 +1,28 @@
 ---
-name: "moai-foundation-core"
-description: "MoAI-ADK's foundational principles - TRUST 5, SPEC-First DDD, delegation patterns, token optimization, progressive disclosure, modular architecture, agent catalog, command reference, and execution rules for building AI-powered development workflows"
-version: 2.5.0
-category: "foundation"
-modularized: true
-user-invocable: false
-tags: ['foundation', 'core', 'orchestration', 'agents', 'commands', 'trust-5', 'spec-first-ddd']
-updated: 2026-01-21
-status: "active"
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-foundation-core
+description: >
+  MoAI-ADK's foundational principles - TRUST 5, SPEC-First DDD, delegation patterns,
+  token optimization, progressive disclosure, modular architecture, agent catalog,
+  command reference, and execution rules for building AI-powered development workflows
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+metadata:
+  version: "2.5.0"
+  category: "foundation"
+  status: "active"
+  updated: "2026-01-21"
+  modularized: "true"
+  user-invocable: "false"
+  tags: "foundation, core, orchestration, agents, commands, trust-5, spec-first-ddd"
 
-# Progressive Disclosure Configuration
+# MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
-  level1_tokens: ~100
-  level2_tokens: ~5000
+  level1_tokens: 100
+  level2_tokens: 5000
 
-# Trigger Conditions for Level 2 Loading
+# MoAI Extension: Triggers
 triggers:
   keywords:
     - "trust-5"

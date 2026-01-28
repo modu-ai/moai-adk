@@ -1,31 +1,26 @@
 ---
 name: moai-framework-electron
-description: "Electron 33+ desktop app development specialist covering Main/Renderer process architecture, IPC communication, auto-update, packaging with Electron Forge and electron-builder, and security best practices. Use when building cross-platform desktop applications, implementing native OS integrations, or packaging Electron apps for distribution. [KO: Electron 데스크톱 앱, 크로스플랫폼 개발, IPC 통신] [JA: Electronデスクトップアプリ、クロスプラットフォーム開発] [ZH: Electron桌面应用、跨平台开发]"
-version: 2.0.0
-category: framework
-modularized: false
-user-invocable: false
-tags:
-  - electron
-  - desktop
-  - cross-platform
-  - nodejs
-  - chromium
-  - ipc
-  - auto-update
-  - electron-builder
-  - electron-forge
-context7-libraries:
-  - /electron/electron
-  - /electron/forge
-  - /electron-userland/electron-builder
-related-skills:
-  - moai-lang-typescript
-  - moai-domain-frontend
-  - moai-lang-javascript
-updated: 2026-01-10
-status: active
-allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+description: >
+  Electron 33+ desktop app development specialist covering Main/Renderer
+  process architecture, IPC communication, auto-update, packaging with
+  Electron Forge and electron-builder, and security best practices. Use when
+  building cross-platform desktop applications, implementing native OS
+  integrations, or packaging Electron apps for distribution. [KO: Electron
+  데스크톱 앱, 크로스플랫폼 개발, IPC 통신] [JA: Electronデスクトップアプリ、
+  クロスプラットフォーム開発] [ZH: Electron桌面应用、跨平台开发]
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+metadata:
+  version: "2.0.0"
+  category: "framework"
+  status: "active"
+  updated: "2026-01-10"
+  modularized: "false"
+  user-invocable: "false"
+  tags: "electron, desktop, cross-platform, nodejs, chromium, ipc, auto-update, electron-builder, electron-forge"
+  context7-libraries: "/electron/electron, /electron/forge, /electron-userland/electron-builder"
+  related-skills: "moai-lang-typescript, moai-domain-frontend, moai-lang-javascript"
 ---
 
 # Electron 33+ Desktop Development

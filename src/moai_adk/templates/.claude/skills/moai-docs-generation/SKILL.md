@@ -1,24 +1,23 @@
 ---
-name: "moai-docs-generation"
-description: "Documentation generation patterns for technical specs, API docs, user guides, and knowledge bases using real tools like Sphinx, MkDocs, TypeDoc, and Nextra. Use when creating docs from code, building doc sites, or automating documentation workflows."
-version: 2.1.0
-category: "workflow"
-modularized: true
-user-invocable: false
-context: fork
-agent: general-purpose
-tags: ['workflow', 'documentation', 'sphinx', 'mkdocs', 'typedoc', 'api-docs', 'static-sites']
-updated: 2026-01-08
-status: "active"
-allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - Grep
-  - Glob
-  - Bash
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-docs-generation
+description: >
+  Documentation generation patterns for technical specs, API docs, user guides,
+  and knowledge bases using real tools like Sphinx, MkDocs, TypeDoc, and Nextra.
+  Use when creating docs from code, building doc sites, or automating
+  documentation workflows.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Write Edit Grep Glob Bash mcp__context7__resolve-library-id mcp__context7__get-library-docs
+metadata:
+  version: "2.1.0"
+  category: "workflow"
+  status: "active"
+  updated: "2026-01-08"
+  modularized: "true"
+  user-invocable: "false"
+  tags: "workflow, documentation, sphinx, mkdocs, typedoc, api-docs, static-sites"
+  context: "fork"
+  agent: "general-purpose"
 ---
 
 # Documentation Generation Patterns

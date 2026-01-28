@@ -1,33 +1,30 @@
 ---
-name: "moai-lang-csharp"
-description: "C# 12 / .NET 8 development specialist covering ASP.NET Core, Entity Framework, Blazor, and modern C# patterns. Use when developing .NET APIs, web applications, or enterprise solutions."
-version: 2.1.0
-category: "language"
-modularized: true
+name: moai-lang-csharp
+description: >
+  C# 12 / .NET 8 development specialist covering ASP.NET Core, Entity Framework, Blazor, and modern C# patterns. Use when developing .NET APIs, web applications, or enterprise solutions.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+metadata:
+  version: "2.1.0"
+  category: "language"
+  status: "active"
+  updated: "2026-01-11"
+  modularized: "true"
+  user-invocable: "false"
+  tags: "language, csharp, dotnet, aspnet-core, entity-framework, blazor"
+  context7-libraries: "/dotnet/aspnetcore, /dotnet/efcore, /dotnet/runtime"
 
-# Progressive Disclosure Configuration
+# MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
-  level1_tokens: ~100
-  level2_tokens: ~5000
+  level1_tokens: 100
+  level2_tokens: 5000
 
-# Trigger Conditions for Level 2 Loading
+# MoAI Extension: Triggers
 triggers:
   keywords: ["C#", "Csharp", ".NET", "ASP.NET", "Entity Framework", "Blazor", ".cs", ".csproj", ".sln", "dotnet"]
   languages: ["csharp", "c#"]
-
-user-invocable: false
-tags:
-  ["language", "csharp", "dotnet", "aspnet-core", "entity-framework", "blazor"]
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
-context7-libraries: ["/dotnet/aspnetcore", "/dotnet/efcore", "/dotnet/runtime"]
-updated: 2026-01-11
-status: "active"
 ---
 
 # C# 12 / .NET 8 Development Specialist

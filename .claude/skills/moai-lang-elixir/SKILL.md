@@ -1,32 +1,31 @@
 ---
-name: "moai-lang-elixir"
-description: "Elixir 1.17+ development specialist covering Phoenix 1.7, LiveView, Ecto, and OTP patterns. Use when developing real-time applications, distributed systems, or Phoenix projects."
-version: 1.1.0
-category: "language"
-modularized: true
+name: moai-lang-elixir
+description: >
+  Elixir 1.17+ development specialist covering Phoenix 1.7, LiveView, Ecto,
+  and OTP patterns. Use when developing real-time applications, distributed
+  systems, or Phoenix projects.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Grep Glob Bash mcp__context7__resolve-library-id mcp__context7__get-library-docs
+metadata:
+  version: "1.1.0"
+  category: "language"
+  status: "active"
+  updated: "2026-01-11"
+  modularized: "true"
+  user-invocable: "false"
+  tags: "language, elixir, phoenix, liveview, ecto, otp, genserver"
 
-# Progressive Disclosure Configuration
+# MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
-  level1_tokens: ~100
-  level2_tokens: ~5000
+  level1_tokens: 100
+  level2_tokens: 5000
 
-# Trigger Conditions for Level 2 Loading
+# MoAI Extension: Triggers
 triggers:
   keywords: ["Elixir", "Phoenix", "LiveView", "Ecto", "OTP", "GenServer", ".ex", ".exs", "mix.exs"]
   languages: ["elixir"]
-
-user-invocable: false
-tags: ["language", "elixir", "phoenix", "liveview", "ecto", "otp", "genserver"]
-updated: 2026-01-11
-status: "active"
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - Bash
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
 ---
 
 ## Quick Reference (30 seconds)

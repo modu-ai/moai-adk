@@ -1,42 +1,29 @@
 ---
-name: "moai-lang-cpp"
-description: "Modern C++ (C++23/C++20) development specialist covering RAII, smart pointers, concepts, ranges, modules, and CMake. Use when developing high-performance applications, games, system software, or embedded systems."
-version: 1.1.0
-category: "language"
-modularized: true
+name: moai-lang-cpp
+description: >
+  Modern C++ (C++23/C++20) development specialist covering RAII, smart pointers, concepts, ranges, modules, and CMake. Use when developing high-performance applications, games, system software, or embedded systems.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Grep Glob Bash mcp__context7__resolve-library-id mcp__context7__get-library-docs
+metadata:
+  version: "1.1.0"
+  category: "language"
+  status: "active"
+  updated: "2026-01-11"
+  modularized: "true"
+  user-invocable: "false"
+  tags: "language, cpp, c++23, c++20, cmake, raii, smart-pointers, concepts"
 
-# Progressive Disclosure Configuration
+# MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
-  level1_tokens: ~100
-  level2_tokens: ~5000
+  level1_tokens: 100
+  level2_tokens: 5000
 
-# Trigger Conditions for Level 2 Loading
+# MoAI Extension: Triggers
 triggers:
   keywords: ["C++", "cpp", "CMake", "RAII", "smart pointer", "concept", "range", ".cpp", ".hpp", "CMakeLists.txt", "vcpkg", "conan"]
   languages: ["cpp", "c++"]
-
-user-invocable: false
-tags:
-  [
-    "language",
-    "cpp",
-    "c++23",
-    "c++20",
-    "cmake",
-    "raii",
-    "smart-pointers",
-    "concepts",
-  ]
-updated: 2026-01-11
-status: "active"
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - Bash
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
 ---
 
 ## Quick Reference (30 seconds)

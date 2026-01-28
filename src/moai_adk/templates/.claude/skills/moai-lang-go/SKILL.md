@@ -1,27 +1,30 @@
 ---
-name: "moai-lang-go"
-description: "Go 1.23+ development specialist covering Fiber, Gin, GORM, and concurrent programming patterns. Use when building high-performance microservices, CLI tools, or cloud-native applications."
-version: 1.1.0
-category: "language"
-modularized: false
+name: moai-lang-go
+description: >
+  Go 1.23+ development specialist covering Fiber, Gin, GORM, and concurrent programming patterns. Use when building high-performance microservices, CLI tools, or cloud-native applications.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+metadata:
+  version: "1.1.0"
+  category: "language"
+  status: "active"
+  updated: "2026-01-11"
+  modularized: "false"
+  user-invocable: "false"
+  tags: "go, golang, fiber, gin, concurrency, microservices"
+  context7-libraries: "/gofiber/fiber, /gin-gonic/gin, /go-gorm/gorm"
+  related-skills: "moai-lang-rust, moai-domain-backend"
 
-# Progressive Disclosure Configuration
+# MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
-  level1_tokens: ~100
-  level2_tokens: ~5000
+  level1_tokens: 100
+  level2_tokens: 5000
 
-# Trigger Conditions for Level 2 Loading
+# MoAI Extension: Triggers
 triggers:
   keywords: ["Go", "Golang", "Fiber", "Gin", "GORM", "Echo", "Chi", ".go", "go.mod", "goroutine", "channel"]
   languages: ["go", "golang"]
-
-user-invocable: false
-tags: ['go', 'golang', 'fiber', 'gin', 'concurrency', 'microservices']
-context7-libraries: ['/gofiber/fiber', '/gin-gonic/gin', '/go-gorm/gorm']
-related-skills: ['moai-lang-rust', 'moai-domain-backend']
-updated: 2026-01-11
-status: "active"
 ---
 
 ## Quick Reference (30 seconds)

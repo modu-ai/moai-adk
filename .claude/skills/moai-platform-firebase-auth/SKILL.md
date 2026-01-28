@@ -1,23 +1,25 @@
 ---
-name: "moai-platform-firebase-auth"
-description: "Firebase Authentication specialist covering Google ecosystem, social auth, phone auth, and mobile-first patterns. Use when building Firebase-backed or Google ecosystem apps, implementing social login, or adding phone verification."
-version: 2.1.0
-category: "platform"
-modularized: true
-user-invocable: false
-tags: ['firebase, google, social-auth, mobile, authentication']
-updated: 2026-01-11
-status: "active"
-context7-libraries: "/firebase/firebase-docs"
-related-skills: "moai-platform-firestore, moai-lang-flutter, moai-lang-typescript"
-allowed-tools:
-  - Read
-  - Write
-  - Bash
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-platform-firebase-auth
+description: >
+  Firebase Authentication specialist covering Google ecosystem, social auth,
+  phone auth, and mobile-first patterns. Use when building Firebase-backed or
+  Google ecosystem apps, implementing social login, or adding phone verification.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Write Bash Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+
+metadata:
+  version: "2.1.0"
+  category: "platform"
+  status: "active"
+  updated: "2026-01-11"
+  modularized: "true"
+  user-invocable: "false"
+  tags: "firebase, google, social-auth, mobile, authentication"
+  context7-libraries: "/firebase/firebase-docs"
+  related-skills: "moai-platform-firestore, moai-lang-flutter, moai-lang-typescript"
+
+# MoAI Extension: Triggers
 triggers:
   keywords: ["firebase", "google auth", "social auth", "phone auth", "mobile authentication", "anonymous auth"]
 ---

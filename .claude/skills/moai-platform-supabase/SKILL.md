@@ -1,21 +1,24 @@
 ---
-name: "moai-platform-supabase"
-description: "Supabase specialist covering PostgreSQL 16, pgvector, RLS, real-time subscriptions, and Edge Functions. Use when building full-stack apps with Supabase backend."
-version: 2.1.0
-category: "platform"
-modularized: true
-user-invocable: false
-tags: ['supabase', 'postgresql', 'pgvector', 'realtime', 'rls', 'edge-functions']
-context7-libraries: ['/supabase/supabase']
-related-skills: ['moai-platform-neon', 'moai-lang-typescript']
-updated: 2026-01-11
-status: "active"
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-platform-supabase
+description: >
+  Supabase specialist covering PostgreSQL 16, pgvector, RLS, real-time subscriptions,
+  and Edge Functions. Use when building full-stack apps with Supabase backend.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+
+metadata:
+  version: "2.1.0"
+  category: "platform"
+  status: "active"
+  updated: "2026-01-11"
+  modularized: "true"
+  user-invocable: "false"
+  tags: "supabase, postgresql, pgvector, realtime, rls, edge-functions"
+  context7-libraries: "/supabase/supabase"
+  related-skills: "moai-platform-neon, moai-lang-typescript"
+
+# MoAI Extension: Triggers
 triggers:
   keywords: ["supabase", "postgresql", "pgvector", "real-time", "rls", "row level security", "edge functions"]
 ---

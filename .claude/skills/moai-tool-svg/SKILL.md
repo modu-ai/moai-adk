@@ -1,16 +1,23 @@
 ---
 name: moai-tool-svg
-description: SVG creation, optimization, and transformation specialist. Use when creating vector graphics, optimizing SVG files with SVGO, implementing icon systems, building data visualizations, or adding SVG animations.
-version: 1.0.0
-category: tool
-modularized: true
-user-invocable: false
-status: active
-updated: 2026-01-26
-tags: ["svg", "vector", "graphics", "svgo", "optimization", "animation", "icons"]
-allowed-tools: Read, Grep, Glob, Bash, WebFetch
-related-skills: moai-domain-frontend, moai-docs-generation
-context7-libraries: /nicolo-ribaudo/svgo
+description: >
+  SVG creation, optimization, and transformation specialist. Use when creating vector
+  graphics, optimizing SVG files with SVGO, implementing icon systems, building data
+  visualizations, or adding SVG animations.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Grep Glob Bash WebFetch
+
+metadata:
+  version: "1.0.0"
+  category: "tool"
+  modularized: "true"
+  user-invocable: "false"
+  status: "active"
+  updated: "2026-01-26"
+  tags: "svg, vector, graphics, svgo, optimization, animation, icons"
+  related-skills: "moai-domain-frontend, moai-docs-generation"
+  context7-libraries: "/nicolo-ribaudo/svgo"
 ---
 
 # SVG Creation and Optimization Specialist

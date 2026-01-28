@@ -1,31 +1,25 @@
 ---
-name: "moai-platform-stitch"
-description: "Google Stitch MCP integration for AI-powered UI/UX design generation. Use when generating UI designs from text, extracting design context from screens, exporting screen code and images, or managing Stitch projects and screens."
-version: 1.1.0
-category: "platform"
-modularized: false
-user-invocable: false
-tags: ["stitch", "google", "ui", "ux", "design", "code-generation", "ai-design"]
-updated: 2026-01-23
-status: "active"
-context7-libraries: "/stitch/stitch-mcp"
-related-skills: "moai-domain-uiux, moai-domain-frontend, moai-foundation-claude"
-allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - Grep
-  - Glob
-  - mcp__stitch__extract_design_context
-  - mcp__stitch__fetch_screen_code
-  - mcp__stitch__fetch_screen_image
-  - mcp__stitch__generate_screen_from_text
-  - mcp__stitch__create_project
-  - mcp__stitch__list_projects
-  - mcp__stitch__list_screens
-  - mcp__stitch__get_project
-  - mcp__stitch__get_screen
+name: moai-platform-stitch
+description: >
+  Google Stitch MCP integration for AI-powered UI/UX design generation. Use when generating
+  UI designs from text, extracting design context from screens, exporting screen code and
+  images, or managing Stitch projects and screens.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Write Edit Bash Grep Glob mcp__stitch__extract_design_context mcp__stitch__fetch_screen_code mcp__stitch__fetch_screen_image mcp__stitch__generate_screen_from_text mcp__stitch__create_project mcp__stitch__list_projects mcp__stitch__list_screens mcp__stitch__get_project mcp__stitch__get_screen
+
+metadata:
+  version: "1.1.0"
+  category: "platform"
+  modularized: "false"
+  user-invocable: "false"
+  status: "active"
+  updated: "2026-01-23"
+  tags: "stitch, google, ui, ux, design, code-generation, ai-design"
+  context7-libraries: "/stitch/stitch-mcp"
+  related-skills: "moai-domain-uiux, moai-domain-frontend, moai-foundation-claude"
+
+# MoAI Extension: Triggers
 triggers:
   keywords:
     - UI design

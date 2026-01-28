@@ -1,44 +1,29 @@
 ---
 name: moai-foundation-claude
-aliases: [moai-foundation-claude]
-category: foundation
-description: Canonical Claude Code authoring kit covering Skills, sub-agents, plugins, slash commands, hooks, memory, settings, sandboxing, headless mode, and advanced agent patterns. Use when creating Claude Code extensions or configuring Claude Code features.
-version: 5.0.0
-modularized: false
-user-invocable: false
-allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
-tags:
-  [
-    "foundation",
-    "claude-code",
-    "skills",
-    "sub-agents",
-    "plugins",
-    "slash-commands",
-    "hooks",
-    "memory",
-    "settings",
-    "sandboxing",
-    "headless",
-    "agent-patterns",
-  ]
-updated: 2026-01-11
-status: "active"
+description: >
+  Canonical Claude Code authoring kit covering Skills, sub-agents, plugins, slash commands,
+  hooks, memory, settings, sandboxing, headless mode, and advanced agent patterns.
+  Use when creating Claude Code extensions or configuring Claude Code features.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Write Edit Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+metadata:
+  version: "5.0.0"
+  category: "foundation"
+  status: "active"
+  updated: "2026-01-11"
+  modularized: "false"
+  user-invocable: "false"
+  tags: "foundation, claude-code, skills, sub-agents, plugins, slash-commands, hooks, memory, settings, sandboxing, headless, agent-patterns"
+  aliases: "moai-foundation-claude"
 
-# Progressive Disclosure Configuration
+# MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
-  level1_tokens: ~100
-  level2_tokens: ~5000
+  level1_tokens: 100
+  level2_tokens: 5000
 
-# Trigger Conditions for Level 2 Loading
+# MoAI Extension: Triggers
 triggers:
   keywords:
     - "skill"

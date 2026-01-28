@@ -5,8 +5,12 @@ description: >
   Routes natural language or explicit subcommands (plan, run, sync, fix,
   loop, project, feedback) to specialized agents.
   Use for any development task from planning to deployment.
-allowed-tools: Task, AskUserQuestion, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep
-argument-hint: "[subcommand] [args] | \"natural language task\""
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Task AskUserQuestion TaskCreate TaskUpdate TaskList TaskGet Bash Read Write Edit Glob Grep
+metadata:
+  user-invocable: "true"
+  argument-hint: "[subcommand] [args] | \"natural language task\""
 ---
 
 ## Pre-execution Context

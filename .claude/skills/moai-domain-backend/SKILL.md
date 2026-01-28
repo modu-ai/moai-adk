@@ -1,23 +1,22 @@
 ---
-name: "moai-domain-backend"
-description: "Backend development specialist covering API design, database integration, microservices architecture, and modern backend patterns"
-version: 1.0.0
-category: "domain"
-modularized: false
-user-invocable: false
-tags: ['backend', 'api', 'database', 'microservices', 'architecture']
-updated: 2026-01-11
-allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
-status: "active"
-author: "MoAI-ADK Team"
+name: moai-domain-backend
+description: >
+  Backend development specialist covering API design, database integration,
+  microservices architecture, and modern backend patterns.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Write Edit Bash Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+metadata:
+  version: "1.0.0"
+  category: "domain"
+  status: "active"
+  updated: "2026-01-11"
+  modularized: "false"
+  user-invocable: "false"
+  tags: "backend, api, database, microservices, architecture"
+  author: "MoAI-ADK Team"
+
+# MoAI Extension: Triggers
 triggers:
   keywords:
     - backend

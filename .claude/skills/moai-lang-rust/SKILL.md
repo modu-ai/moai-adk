@@ -1,31 +1,29 @@
 ---
-name: "moai-lang-rust"
-description: "Rust 1.92+ development specialist covering Axum, Tokio, SQLx, and memory-safe systems programming. Use when building high-performance, memory-safe applications or WebAssembly."
-version: 1.2.0
-category: "language"
-modularized: false
+name: moai-lang-rust
+description: >
+  Rust 1.92+ development specialist covering Axum, Tokio, SQLx, and memory-safe systems programming. Use when building high-performance, memory-safe applications or WebAssembly.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+metadata:
+  version: "1.2.0"
+  category: "language"
+  status: "active"
+  updated: "2026-01-11"
+  modularized: "false"
+  user-invocable: "false"
+  tags: "language, rust, axum, tokio, sqlx, serde, wasm, cargo"
 
-# Progressive Disclosure Configuration
+# MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
-  level1_tokens: ~100
-  level2_tokens: ~5000
+  level1_tokens: 100
+  level2_tokens: 5000
 
-# Trigger Conditions for Level 2 Loading
+# MoAI Extension: Triggers
 triggers:
   keywords: ["Rust", "Axum", "Tokio", "SQLx", "serde", ".rs", "Cargo.toml", "async", "await", "lifetime", "trait"]
   languages: ["rust"]
-
-user-invocable: false
-tags: ["language", "rust", "axum", "tokio", "sqlx", "serde", "wasm", "cargo"]
-updated: 2026-01-11
-status: "active"
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
 ---
 
 ## Quick Reference (30 seconds)

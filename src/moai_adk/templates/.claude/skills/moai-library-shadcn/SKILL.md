@@ -1,20 +1,21 @@
 ---
-name: "moai-library-shadcn"
-description: "Moai Lib Shadcn Ui - Professional implementation guide"
-version: 2.1.0
-category: "library"
-modularized: true
-user-invocable: false
-tags: ['library', 'shadcn', 'enterprise', 'development', 'ui']
-aliases: ['moai-library-shadcn']
-updated: 2026-01-11
-status: "active"
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
+name: moai-library-shadcn
+description: Moai Lib Shadcn Ui - Professional implementation guide
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+
+metadata:
+  version: "2.1.0"
+  category: "library"
+  modularized: "true"
+  user-invocable: "false"
+  status: "active"
+  updated: "2026-01-11"
+  tags: "library, shadcn, enterprise, development, ui"
+  aliases: "moai-library-shadcn"
+
+# MoAI Extension: Triggers
 triggers:
   keywords: ["shadcn", "component library", "design system", "radix", "tailwind", "ui components"]
 ---

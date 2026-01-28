@@ -1,33 +1,31 @@
 ---
-name: "moai-lang-r"
-description: "R 4.4+ development specialist covering tidyverse, ggplot2, Shiny, and data science patterns. Use when developing data analysis pipelines, visualizations, or Shiny applications."
-version: 1.1.0
-category: "language"
-modularized: true
+name: moai-lang-r
+description: >
+  R 4.4+ development specialist covering tidyverse, ggplot2, Shiny, and data
+  science patterns. Use when developing data analysis pipelines,
+  visualizations, or Shiny applications.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Grep Glob Bash mcp__context7__resolve-library-id mcp__context7__get-library-docs
+metadata:
+  version: "1.1.0"
+  category: "language"
+  status: "active"
+  updated: "2026-01-11"
+  modularized: "true"
+  user-invocable: "false"
+  tags: "language, r, tidyverse, ggplot2, shiny, dplyr, data-science"
 
-# Progressive Disclosure Configuration
+# MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
-  level1_tokens: ~100
-  level2_tokens: ~5000
+  level1_tokens: 100
+  level2_tokens: 5000
 
-# Trigger Conditions for Level 2 Loading
+# MoAI Extension: Triggers
 triggers:
   keywords: ["R", "tidyverse", "ggplot2", "Shiny", "dplyr", "data science", ".R", ".Rmd", ".qmd", "DESCRIPTION", "renv.lock"]
   languages: ["r"]
-
-user-invocable: false
-tags:
-  ["language", "r", "tidyverse", "ggplot2", "shiny", "dplyr", "data-science"]
-updated: 2026-01-11
-status: "active"
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - Bash
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
 ---
 
 ## Quick Reference (30 seconds)

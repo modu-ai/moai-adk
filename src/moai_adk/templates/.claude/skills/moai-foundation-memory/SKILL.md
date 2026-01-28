@@ -1,36 +1,26 @@
 ---
 name: moai-foundation-memory
-aliases: [moai-foundation-memory, memory-mcp]
 description: Persistent memory across sessions using MCP Memory Server for user preferences, project context, and learned patterns
-version: 1.0.0
-modularized: false
-user-invocable: false
-category: foundation
-tags:
-  [
-    "foundation",
-    "memory",
-    "persistence",
-    "mcp",
-    "user-preferences",
-    "project-context",
-    "session-state",
-  ]
-updated: 2026-01-26
-status: "active"
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - mcp__memory__*
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Grep Glob mcp__memory__*
+metadata:
+  version: "1.0.0"
+  category: "foundation"
+  status: "active"
+  updated: "2026-01-26"
+  modularized: "false"
+  user-invocable: "false"
+  tags: "foundation, memory, persistence, mcp, user-preferences, project-context, session-state"
+  aliases: "moai-foundation-memory, memory-mcp"
 
-# Progressive Disclosure Configuration
+# MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
-  level1_tokens: ~100
-  level2_tokens: ~3000
+  level1_tokens: 100
+  level2_tokens: 3000
 
-# Trigger Conditions for Level 2 Loading
+# MoAI Extension: Triggers
 triggers:
   keywords:
     - "memory"

@@ -1,33 +1,33 @@
 ---
-name: "moai-lang-swift"
-description: "Swift 6+ development specialist covering SwiftUI, Combine, Swift Concurrency, and iOS patterns. Use when building iOS apps, macOS apps, or Apple platform applications."
-version: 2.1.0
-category: "language"
-modularized: true
+name: moai-lang-swift
+description: >
+  Swift 6+ development specialist covering SwiftUI, Combine, Swift
+  Concurrency, and iOS patterns. Use when building iOS apps, macOS apps, or
+  Apple platform applications.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+metadata:
+  version: "2.1.0"
+  category: "language"
+  status: "active"
+  updated: "2026-01-11"
+  modularized: "true"
+  user-invocable: "false"
+  tags: "swift, swiftui, ios, macos, combine, concurrency"
+  context7-libraries: "/apple/swift, /apple/swift-evolution"
+  related-skills: "moai-lang-kotlin, moai-lang-flutter"
 
-# Progressive Disclosure Configuration
+# MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
-  level1_tokens: ~100
-  level2_tokens: ~5000
+  level1_tokens: 100
+  level2_tokens: 5000
 
-# Trigger Conditions for Level 2 Loading
+# MoAI Extension: Triggers
 triggers:
   keywords: ["Swift", "SwiftUI", "Combine", "iOS", "macOS", "async", "await", "Actor", "@Observable", ".swift", "Xcode"]
   languages: ["swift"]
-
-user-invocable: false
-tags: ['swift', 'swiftui', 'ios', 'macos', 'combine', 'concurrency']
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - mcp__context7__resolve-library-id
-  - mcp__context7__get-library-docs
-context7-libraries: ['/apple/swift', '/apple/swift-evolution']
-related-skills: ['moai-lang-kotlin', 'moai-lang-flutter']
-updated: 2026-01-11
-status: "active"
 ---
 
 # Swift 6+ Development Specialist
