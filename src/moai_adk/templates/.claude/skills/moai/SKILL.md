@@ -313,10 +313,40 @@ When this skill is activated, execute the following steps in order:
 Step 1 - Parse Arguments:
 Extract subcommand keywords and flags from $ARGUMENTS. Recognized global flags: --resume [ID], --seq, --ultrathink. Workflow-specific flags: --loop, --max N, --worktree, --branch, --pr, --auto, --merge, --dry, --level N, --security. When --ultrathink is detected, activate Sequential Thinking MCP (mcp__sequential-thinking__sequentialthinking) for deep analysis before execution.
 
-Step 2 - Route to Workflow:
-Apply the Intent Router (Priority 1 through Priority 4) to determine the target workflow. If ambiguous, use AskUserQuestion to clarify with the user.
+Step 2 - Session Recovery (CRITICAL):
+Check for previous session context BEFORE routing to workflow.
 
-Step 3 - Load Workflow Details:
+**Detection Conditions** (ANY matches):
+- System message contains previous session context indicators (multilingual):
+  - "[이전 세션 컨텍스트]" (Korean)
+  - "[前回セッションコンテキスト]" (Japanese)
+  - "[上次会话上下文]" (Chinese)
+  - "[Previous Session Context]" (English)
+- System message contains "[MEMORY_MCP_SYNC]" signal
+- User input contains continuation keywords (multilingual):
+  - Korean: "이어서", "계속", "이어서 진행"
+  - Japanese: "続けて", "続きから", "続けてやる"
+  - Chinese: "继续", "接着做", "继续进行"
+  - English: "continue", "resume", "keep going"
+
+**Recovery Protocol:**
+1. Read `.moai/memory/tasks-backup.json`
+2. Check `completed_tasks` array: Display summary, do NOT restore
+3. Check `tasks` array for each task:
+   - status == "completed": Skip, do NOT restore
+   - status == "pending": Ask user for restoration confirmation
+   - status == "in_progress": Ask user for continuation confirmation
+4. Only create TaskCreate entries after user confirmation
+5. If all tasks completed, inform user and skip to Step 3
+6. If user declines restoration, proceed with normal workflow
+
+**IMPORTANT**: NEVER blindly restore tasks. Always check completion status first.
+
+Step 3 - Route to Workflow:
+Apply the Intent Router (Priority 1 through Priority 4) to determine the target workflow. If ambiguous, use AskUserQuestion to clarify with the user.
+Skip this step if session recovery is in progress and tasks were restored.
+
+Step 4 - Load Workflow Details:
 Read the corresponding workflows/<name>.md file for detailed orchestration instructions specific to the matched workflow.
 
 Step 4 - Read Configuration:
@@ -337,7 +367,7 @@ Display results to the user in their conversation_language using Markdown format
 Step 9 - Add Completion Marker:
 When all workflow phases complete successfully, add the appropriate completion marker (`<moai>DONE</moai>` or `<moai>COMPLETE</moai>`).
 
-Step 10 - Guide Next Steps:
+Step 11 - Guide Next Steps:
 Use AskUserQuestion to present the user with logical next actions based on the completed workflow.
 
 ---

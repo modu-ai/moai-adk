@@ -314,25 +314,33 @@ Step 1 - Parse Arguments:
 Extract subcommand keywords and flags from $ARGUMENTS. Recognized global flags: --resume [ID], --seq, --ultrathink. Workflow-specific flags: --loop, --max N, --worktree, --branch, --pr, --auto, --merge, --dry, --level N, --security. When --ultrathink is detected, activate Sequential Thinking MCP (mcp__sequential-thinking__sequentialthinking) for deep analysis before execution.
 
 Step 2 - Session Recovery (CRITICAL):
-Check for previous session context BEFORE routing to workflow:
+Check for previous session context BEFORE routing to workflow.
 
-**Detection Conditions** (ANY of these):
+**Detection Conditions** (ANY matches):
+- System message contains previous session context indicators:
+  - "[이전 세션 컨텍스트]" (Korean)
+  - "[前回セッションコンテキスト]" (Japanese)
+  - "[上次会话上下文]" (Chinese)
+  - "[Previous Session Context]" (English)
 - System message contains "[MEMORY_MCP_SYNC]" signal
-- System message contains "[이전 세션 컨텍스트]" or previous session summary
-- User input contains continuation keywords: "이어서", "continue", "resume", "계속"
+- User input contains continuation keywords (multilingual):
+  - Korean: "이어서", "계속", "이어서 진행"
+  - Japanese: "続けて", "続きから", "続けてやる"
+  - Chinese: "继续", "接着做", "继续进行"
+  - English: "continue", "resume", "keep going"
 
-**When detected, execute Session Recovery Protocol:**
+**Recovery Protocol:**
 1. Read `.moai/memory/tasks-backup.json`
-2. Parse `completed_tasks` array: Display summary ONLY, do NOT restore
-3. Parse `tasks` array:
-   - If status == "pending": Ask user if they want to restore
-   - If status == "in_progress": Ask user if they want to continue
-   - NEVER restore tasks that were marked "completed"
-4. If user confirms restoration, use TaskCreate with correct status
-5. If user declines, proceed with normal workflow routing
-6. If all tasks completed, inform user and skip to Step 3
+2. Check `completed_tasks` array: Display summary, do NOT restore
+3. Check `tasks` array for each task:
+   - status == "completed": Skip, do NOT restore
+   - status == "pending": Ask user for restoration confirmation
+   - status == "in_progress": Ask user for continuation confirmation
+4. Only create TaskCreate entries after user confirmation
+5. If all tasks completed, inform user and skip to Step 3
+6. If user declines restoration, proceed with normal workflow
 
-**IMPORTANT**: Always check task completion status BEFORE restoring. Do NOT blindly create TaskCreate entries from backup file.
+**IMPORTANT**: NEVER blindly restore tasks. Always check completion status first.
 
 Step 3 - Route to Workflow:
 Apply the Intent Router (Priority 1 through Priority 4) to determine the target workflow. If ambiguous, use AskUserQuestion to clarify with the user.
