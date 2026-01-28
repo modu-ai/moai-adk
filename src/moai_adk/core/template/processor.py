@@ -1265,15 +1265,14 @@ class TemplateProcessor:
             console.print("   🔄 .github/ merged (user workflows preserved, variables substituted)")
 
     def _copy_claude_md(self, silent: bool = False) -> None:
-        """Copy CLAUDE.md with @path import processing and complete replacement (no merge).
+        """Copy CLAUDE.md with variable substitution (no @path processing).
 
         Always uses English CLAUDE.md as the authoritative instruction document.
         Language-specific files are no longer supported (removed in v1.11.0).
 
-        Processes @path/to/file imports (max 5-depth recursion):
-        - Supports relative paths: @docs/guide.md
-        - Supports absolute paths: @~/instructions.md
-        - Ignores imports in code blocks/spans
+        Note: @path references are NOT processed during template copy.
+        Claude Code handles these references at runtime via <system-reminder> tags.
+        This prevents circular references and file corruption issues.
         """
         # Always use English CLAUDE.md (instruction documents should be English only)
         src = self.template_root / "CLAUDE.md"
@@ -1287,23 +1286,6 @@ class TemplateProcessor:
         # Read template content
         content = src.read_text(encoding="utf-8", errors="replace")
 
-        # Process @path imports (using Claude Code import syntax)
-        try:
-            from moai_adk.core.context_manager import ClaudeMDImporter
-
-            importer = ClaudeMDImporter(self.template_root)
-            content, imported_files = importer.process_imports(content)
-
-            if imported_files and not silent:
-                console.print(f"   📎 Processed {len(imported_files)} @path import(s)")
-
-        except ImportError:
-            # Import processor not available, skip import processing
-            pass
-        except Exception as e:
-            if not silent:
-                console.print(f"[yellow]⚠️ Import processing skipped: {e}[/yellow]")
-
         # Apply variable substitution
         if self.context:
             content, _ = self._substitute_variables(content)
@@ -1311,7 +1293,7 @@ class TemplateProcessor:
         dst.write_text(content, encoding="utf-8", errors="replace")
 
         if not silent:
-            console.print("   ✅ CLAUDE.md replaced (English only - use CLAUDE.local.md for personal instructions)")
+            console.print("   ✅ CLAUDE.md copied (English only - use CLAUDE.local.md for personal instructions)")
 
     def _merge_claude_md(self, src: Path, dst: Path) -> None:
         """Delegate the smart merge for CLAUDE.md.
