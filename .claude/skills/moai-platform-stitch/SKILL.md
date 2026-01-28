@@ -3,19 +3,20 @@ name: moai-platform-stitch
 description: >
   Google Stitch MCP integration for AI-powered UI/UX design generation. Use when generating
   UI designs from text, extracting design context from screens, exporting screen code and
-  images, or managing Stitch projects and screens.
+  images, managing Stitch projects and screens, or implementing autonomous build loops
+  with the baton system for continuous site development.
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Write Edit Bash Grep Glob mcp__stitch__extract_design_context mcp__stitch__fetch_screen_code mcp__stitch__fetch_screen_image mcp__stitch__generate_screen_from_text mcp__stitch__create_project mcp__stitch__list_projects mcp__stitch__list_screens mcp__stitch__get_project mcp__stitch__get_screen
 
 metadata:
-  version: "1.1.0"
+  version: "2.0.0"
   category: "platform"
   modularized: "false"
   user-invocable: "false"
   status: "active"
-  updated: "2026-01-23"
-  tags: "stitch, google, ui, ux, design, code-generation, ai-design"
+  updated: "2026-01-29"
+  tags: "stitch, google, ui, ux, design, code-generation, ai-design, build-loop, autonomous-frontend, ci-cd"
   context7-libraries: "/stitch/stitch-mcp"
   related-skills: "moai-domain-uiux, moai-domain-frontend, moai-foundation-claude"
 
@@ -36,6 +37,12 @@ triggers:
     - AI design generation
     - design to code
     - design tokens extraction
+    - build loop
+    - autonomous frontend
+    - baton system
+    - continuous site generation
+    - iterative design
+    - automated web development
 ---
 
 # Google Stitch MCP Integration
@@ -65,6 +72,7 @@ Quick Decision Tree:
 - Need production code from design? Use fetch_screen_code
 - Need screenshot of design? Use fetch_screen_image
 - Managing multiple designs? Use create_project, list_projects, list_screens
+- Autonomous site development? Use Build Loop pattern with baton system
 
 Common UI/UX Keywords:
 
@@ -347,6 +355,114 @@ Don't ignore brand colors and fonts. Extract design context from brand assets fi
 
 ## Advanced Patterns
 
+### The Build Loop Pattern (Autonomous Frontend Development)
+
+The Build Loop pattern enables continuous, autonomous website development through a "baton" system. Each iteration automatically:
+1. Reads the current task from a baton file (next-prompt.md)
+2. Generates a page using Stitch MCP tools
+3. Integrates the page into the site structure
+4. Writes the next task to the baton file for the next iteration
+
+Use Case: Continuous website development without manual intervention between iterations.
+
+Required Files:
+- DESIGN.md: Visual design system specification
+- SITE.md: Site vision, sitemap, and roadmap
+- next-prompt.md: Baton file containing next task
+- stitch.json: Stitch project identifier
+
+#### Baton System
+
+The next-prompt.md file acts as a relay baton between iterations:
+
+```yaml
+---
+page: about
+---
+A page describing how the tracking system works.
+
+**DESIGN SYSTEM (REQUIRED):**
+[Copy from DESIGN.md Section 6]
+
+**Page Structure:**
+1. Header with navigation
+2. Explanation of tracking methodology
+3. Footer with links
+```
+
+#### Execution Protocol
+
+Step 1: Read the Baton
+Parse next-prompt.md to extract:
+- Page name from the page frontmatter field
+- Prompt content from the markdown body
+
+Step 2: Consult Context Files
+Read SITE.md and DESIGN.md before generating to maintain consistency.
+
+Step 3: Generate with Stitch
+1. Discover namespace by running list_tools
+2. Get or create project (check for stitch.json)
+3. Generate screen with generate_screen_from_text
+4. Retrieve assets using get_screen
+
+Step 4: Integrate into Site
+1. Move generated HTML to site/public/{page}.html
+2. Fix asset paths to be relative to public folder
+3. Update navigation and wire real links
+4. Ensure consistent headers/footers
+
+Step 5: Visual Verification (Optional)
+If Chrome DevTools MCP is available:
+1. Start dev server with npx serve site/public
+2. Navigate to page
+3. Capture screenshot
+4. Compare against Stitch screenshot
+5. Stop server
+
+Step 6: Update Site Documentation
+Modify SITE.md:
+- Add new page to Section 4 (Sitemap)
+- Remove idea from Section 6 (Creative Freedom)
+- Update Section 5 (Roadmap) if completed
+
+Step 7: Prepare the Next Baton
+
+Critical: You MUST update next-prompt.md before completing.
+
+Decide the next page and write with proper YAML frontmatter including design system block.
+
+#### File Structure Reference
+
+```
+project/
+├── next-prompt.md      # The baton
+├── stitch.json         # Stitch project ID
+├── DESIGN.md           # Visual design system
+├── SITE.md             # Site vision, sitemap, roadmap
+├── queue/              # Staging area
+│   ├── {page}.html
+│   └── {page}.png
+└── site/public/        # Production pages
+    ├── index.html
+    └── {page}.html
+```
+
+#### Orchestration Options
+
+CI/CD: GitHub Actions triggers on next-prompt.md changes
+Human-in-loop: Developer reviews before continuing
+Agent chains: One agent dispatches to another
+Manual: Developer runs repeatedly
+
+#### Common Pitfalls
+
+- Forgetting to update next-prompt.md (breaks the loop)
+- Recreating existing pages
+- Not including the design system block
+- Leaving placeholder links
+- Forgetting to persist stitch.json
+
 ### Design System Migration
 
 Migrating from Figma to Stitch:
@@ -587,6 +703,6 @@ generate_screen_from_text(
 ---
 
 Status: Production Ready
-Version: 1.1.0
-Last Updated: 2026-01-23
+Version: 2.0.0
+Last Updated: 2026-01-29
 Platform Coverage: Google Stitch MCP Only
