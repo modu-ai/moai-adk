@@ -1324,13 +1324,21 @@ class TemplateProcessor:
             src: Template settings.json.
             dst: Project settings.json.
         """
-        # Find the latest backup for user settings extraction
+        # Check if there's an existing settings.json (preserve it)
+        existing_settings_path = dst
         backup_path = None
-        latest_backup = self.backup.get_latest_backup()
-        if latest_backup:
-            backup_settings = latest_backup / ".claude" / "settings.json"
-            if backup_settings.exists():
-                backup_path = backup_settings
+
+        # Find the latest backup for user settings extraction
+        # But first try to use existing settings if no backup found
+        if existing_settings_path.exists():
+            backup_path = existing_settings_path
+        else:
+            # Fallback to backup if existing file doesn't exist
+            latest_backup = self.backup.get_latest_backup()
+            if latest_backup:
+                backup_settings = latest_backup / ".claude" / "settings.json"
+                if backup_settings.exists():
+                    backup_path = backup_settings
 
         self.merger.merge_settings_json(src, dst, backup_path)
 
