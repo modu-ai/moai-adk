@@ -2145,11 +2145,8 @@ def _preserve_project_metadata(
         if isinstance(existing_project, dict) and "optimized" in existing_project:
             project_data["optimized"] = bool(existing_project["optimized"])
 
-    # Preserve locale and language preferences when possible
+    # Preserve language preferences when possible
     existing_project = _extract_project_section(existing_config)
-    locale = _coalesce(existing_project.get("locale"), existing_config.get("locale"))
-    if locale:
-        project_data["locale"] = locale
 
     language = _coalesce(existing_project.get("language"), existing_config.get("language"))
     if language:

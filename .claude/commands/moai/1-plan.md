@@ -334,14 +334,14 @@ Context Handling:
 
 Language Configuration:
 
-- conversation_language: {{CONVERSATION_LANGUAGE}}
-- language_name: {{CONVERSATION_LANGUAGE_NAME}}
+- conversation_language: ko
+- language_name: Korean
 
 Critical Language Rules:
 
 - Receive instructions in agent_prompt_language from config (default: English)
 - Respond in conversation_language from config (user's preferred language)
-- All SPEC documents content must be written in {{CONVERSATION_LANGUAGE}}
+- All SPEC documents content must be written in ko
 - Code examples and technical keywords remain in English (global standard)
 
 Task Instructions:
@@ -768,14 +768,14 @@ Context Continuity:
 
 Language Configuration:
 
-- conversation_language: {{CONVERSATION_LANGUAGE}}
-- language_name: {{CONVERSATION_LANGUAGE_NAME}}
+- conversation_language: ko
+- language_name: Korean
 
 Critical Language Rules:
 
 - Receive instructions in agent_prompt_language from config (default: English)
 - Respond in conversation_language from config (user's preferred language)
-- All SPEC documents content must be written in {{CONVERSATION_LANGUAGE}}
+- All SPEC documents content must be written in ko
 - Technical terms and function names remain in English (global standard)
 
 SPEC File Generation Rules (MANDATORY):

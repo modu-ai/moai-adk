@@ -143,7 +143,6 @@ class TemplateMerger:
         new_config: dict[str, str] = {
             "projectName": project_config.get("name", existing_config.get("projectName", self.target_path.name)),
             "mode": existing_config.get("mode", "personal"),
-            "locale": project_config.get("locale", existing_config.get("locale", "ko")),
             "language": existing_config.get("language", detected_language or "generic"),
         }
 

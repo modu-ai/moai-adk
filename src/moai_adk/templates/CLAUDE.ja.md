@@ -147,7 +147,7 @@ MoAI は DDD（Domain-Driven Development）を開発方法論として使用し�
 - /moai:2-run SPEC-XXX → manager-ddd サブエージェント (ANALYZE-PRESERVE-IMPROVE)
 - /moai:3-sync SPEC-XXX → manager-docs サブエージェント
 
-詳細なワークフロー仕様については、@.claude/rules/workflow/spec-workflow.md を参照してください。
+詳細なワークフロー仕様については、@.claude/rules/moai/workflow/spec-workflow.md を参照してください。
 
 ### SPEC 実行のためのエージェントチェーン
 
@@ -162,7 +162,7 @@ MoAI は DDD（Domain-Driven Development）を開発方法論として使用し�
 
 ## 6. 品質ゲート
 
-TRUST 5 フレームワークの詳細については、@.claude/rules/core/moai-constitution.md を参照してください。
+TRUST 5 フレームワークの詳細については、@.claude/rules/moai/core/moai-constitution.md を参照してください。
 
 ### LSP 品質ゲート
 
@@ -208,7 +208,7 @@ Task() を介して呼び出されたサブエージェントは、分離され�
 
 ### プロジェクトルール
 
-MoAI-ADK は `.claude/rules/` の Claude Code 公式ルールシステムを使用します:
+MoAI-ADK は `.claude/rules/moai/` の Claude Code 公式ルールシステムを使用します:
 
 - **コアルール**: TRUST 5 フレームワーク、ドキュメント標準
 - **ワークフロールール**: 段階的開示、トークン予算、ワークフローモード
@@ -226,7 +226,7 @@ MoAI-ADK は `.claude/rules/` の Claude Code 公式ルールシステムを使�
 
 ## 9. Web 検索プロトコル
 
-反ハルシネーションポリシーについては、@.claude/rules/core/moai-constitution.md を参照してください。
+反ハルシネーションポリシーについては、@.claude/rules/moai/core/moai-constitution.md を参照してください。
 
 ### 実行ステップ
 

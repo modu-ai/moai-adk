@@ -80,7 +80,8 @@ def status() -> None:
         # Read from project section (with legacy fallback)
         project = config.get("project", {})
         table.add_row("Mode", project.get("mode") or config.get("mode", "unknown"))
-        table.add_row("Locale", project.get("locale") or config.get("locale", "unknown"))
+        language = config.get("language", {})
+        table.add_row("Language", language.get("conversation_language", "unknown"))
         table.add_row("SPECs", str(spec_count))
 
         # Optionally include Git information

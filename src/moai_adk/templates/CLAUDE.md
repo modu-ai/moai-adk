@@ -146,7 +146,7 @@ MoAI uses DDD (Domain-Driven Development) as its development methodology.
 - /moai:2-run SPEC-XXX → manager-ddd subagent (ANALYZE-PRESERVE-IMPROVE)
 - /moai:3-sync SPEC-XXX → manager-docs subagent
 
-For detailed workflow specifications, see @.claude/rules/workflow/spec-workflow.md
+For detailed workflow specifications, see @.claude/rules/moai/workflow/spec-workflow.md
 
 ### Agent Chain for SPEC Execution
 
@@ -161,7 +161,7 @@ For detailed workflow specifications, see @.claude/rules/workflow/spec-workflow.
 
 ## 6. Quality Gates
 
-For TRUST 5 framework details, see @.claude/rules/core/moai-constitution.md
+For TRUST 5 framework details, see @.claude/rules/moai/core/moai-constitution.md
 
 ### LSP Quality Gates
 
@@ -207,7 +207,7 @@ User and language configuration:
 
 ### Project Rules
 
-MoAI-ADK uses Claude Code's official rules system at `.claude/rules/`:
+MoAI-ADK uses Claude Code's official rules system at `.claude/rules/moai/`:
 
 - **Core rules**: TRUST 5 framework, documentation standards
 - **Workflow rules**: Progressive disclosure, token budget, workflow modes
@@ -225,7 +225,7 @@ MoAI-ADK uses Claude Code's official rules system at `.claude/rules/`:
 
 ## 9. Web Search Protocol
 
-For anti-hallucination policy, see @.claude/rules/core/moai-constitution.md
+For anti-hallucination policy, see @.claude/rules/moai/core/moai-constitution.md
 
 ### Execution Steps
 

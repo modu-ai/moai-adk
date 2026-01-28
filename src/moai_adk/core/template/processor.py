@@ -846,7 +846,7 @@ class TemplateProcessor:
 
                 # Create parent directory if needed
                 dst_folder.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copytree(src_folder, dst_folder)
+                self._copy_dir_with_substitution(src_folder, dst_folder)
                 if not silent:
                     console.print(f"   ✅ .claude/{folder}/ overwritten")
 
@@ -873,8 +873,8 @@ class TemplateProcessor:
                     # For non-alfred directories, overwrite with merge if necessary
                     shutil.rmtree(dst_subdir)
 
-                # Copy the subdirectory
-                shutil.copytree(subdir, dst_subdir)
+                # Copy the subdirectory with variable substitution
+                self._copy_dir_with_substitution(subdir, dst_subdir)
                 if not silent:
                     console.print(f"   ✅ .claude/{rel_subdir}/ copied")
 
@@ -968,7 +968,7 @@ class TemplateProcessor:
         for skill_name in sorted(template_skills):
             src_skill = skills_src / skill_name
             dst_skill = skills_dst / skill_name
-            shutil.copytree(src_skill, dst_skill)
+            self._copy_dir_with_substitution(src_skill, dst_skill)
 
         if not silent and template_skills:
             console.print(f"   ✅ Synced {len(template_skills)} template skill(s)")

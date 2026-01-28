@@ -410,7 +410,7 @@ def init(
             console.print(f"  [dim]🌐 Language:[/dim]  {language_display}")
             # Show Git Strategy (default: manual = local-only, no auto-branch)
             console.print("  [dim]🔀 Git:[/dim]       manual (github-flow, branch: manual)")
-            console.print(f"  [dim]🌍 Locale:[/dim]    {result.locale}")
+            console.print(f"  [dim]🌍 Language:[/dim]   {result.locale}")
             console.print(f"  [dim]📄 Files:[/dim]     {len(result.created_files)} created")
             console.print(f"  [dim]⏱️  Duration:[/dim]  {result.duration}ms")
 

@@ -1247,13 +1247,13 @@ cat CLAUDE.md | wc -m
 
 When CLAUDE.md approaches limit:
 
-1. **Move detailed content to `.claude/rules/`**:
-   - Language-specific rules → `.claude/rules/languages/`
-   - Quality standards → `.claude/rules/core/`
-   - Workflow details → `.claude/rules/workflow/`
+1. **Move detailed content to `.claude/rules/moai/`**:
+   - Language-specific rules → `.claude/rules/moai/languages/`
+   - Quality standards → `.claude/rules/moai/core/`
+   - Workflow details → `.claude/rules/moai/workflow/`
 
 2. **Use @import references**:
-   - `@.claude/rules/core/trust5-framework.md`
+   - `@.claude/rules/moai/core/trust5-framework.md`
    - `@.moai/config/sections/quality.yaml`
 
 3. **Keep CLAUDE.md for**:
@@ -1291,26 +1291,23 @@ wc -c src/moai_adk/templates/CLAUDE.md
 
 ### Rules Directory Structure
 
-Claude Code official rules location: `.claude/rules/`
+Claude Code official rules location: `.claude/rules/moai/`
 
 ```
 .claude/rules/
-├── core/                    # Core framework rules
-│   ├── trust5-framework.md
-│   ├── documentation-standards.md
-│   └── quality-gates.md
-├── workflow/                # Workflow mode rules
-│   ├── progressive-disclosure.md
-│   ├── token-budget.md
-│   └── workflow-modes.md
-├── development/             # Development standards
-│   ├── skill-frontmatter.md
-│   ├── tool-permissions.md
-│   └── documentation-standards.md
-└── languages/               # Path-specific language rules
-    ├── python.md            # paths: **/*.py
-    ├── typescript.md        # paths: **/*.ts, **/*.tsx
-    └── ... (16 languages)
+└── moai/                        # MoAI-managed rules
+    ├── core/                    # Core framework rules
+    │   └── moai-constitution.md
+    ├── workflow/                # Workflow mode rules
+    │   ├── spec-workflow.md
+    │   └── workflow-modes.md
+    ├── development/             # Development standards
+    │   ├── coding-standards.md
+    │   └── skill-authoring.md
+    └── languages/               # Path-specific language rules
+        ├── python.md            # paths: **/*.py
+        ├── typescript.md        # paths: **/*.ts, **/*.tsx
+        └── ... (16 languages)
 ```
 
 **Note**: Language rules use YAML frontmatter `paths` field for conditional loading.
@@ -1321,7 +1318,7 @@ The following directories were removed (non-standard):
 - `.moai/rules/` (YAML format, not Claude Code standard)
 - `.moai/contexts/` (custom pattern, not official)
 
-Use `.claude/rules/` (Markdown format) for all rule definitions.
+Use `.claude/rules/moai/` (Markdown format) for all rule definitions.
 
 ---
 

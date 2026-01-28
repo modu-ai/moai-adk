@@ -24,7 +24,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # Context snapshot version for format compatibility
-CONTEXT_SNAPSHOT_VERSION = "1.0.0"
+CONTEXT_SNAPSHOT_VERSION = "1.1.0"
 
 # Maximum number of archived snapshots to keep
 MAX_ARCHIVED_SNAPSHOTS = 10
@@ -60,6 +60,7 @@ def save_context_snapshot(
     context: dict[str, Any],
     conversation_summary: str = "",
     session_id: str | None = None,
+    session_conclusion: str = "",
 ) -> bool:
     """Save a context snapshot for session continuity.
 
@@ -92,6 +93,7 @@ def save_context_snapshot(
             "session_id": session_id or "",
             "context": context,
             "conversation_summary": conversation_summary,
+            "session_conclusion": session_conclusion,
         }
 
         # Save snapshot
@@ -223,6 +225,8 @@ def format_context_for_injection(snapshot: dict[str, Any], language: str = "en")
             "decisions": "주요 결정",
             "branch": "브랜치",
             "uncommitted": "미커밋 변경",
+            "completed_tasks": "완료된 작업",
+            "session_conclusion": "세션 결과",
             "summary": "작업 요약",
             "saved_at": "저장 시간",
             "continue_prompt": "이전 세션을 이어서 진행하시겠습니까?",
@@ -240,6 +244,8 @@ def format_context_for_injection(snapshot: dict[str, Any], language: str = "en")
             "decisions": "主な決定",
             "branch": "ブランチ",
             "uncommitted": "未コミットの変更",
+            "completed_tasks": "完了したタスク",
+            "session_conclusion": "セッション結果",
             "summary": "作業概要",
             "saved_at": "保存時刻",
             "continue_prompt": "前回のセッションを続けますか？",
@@ -257,6 +263,8 @@ def format_context_for_injection(snapshot: dict[str, Any], language: str = "en")
             "decisions": "关键决策",
             "branch": "分支",
             "uncommitted": "未提交更改",
+            "completed_tasks": "已完成的任务",
+            "session_conclusion": "会话结论",
             "summary": "工作摘要",
             "saved_at": "保存时间",
             "continue_prompt": "是否继续上次会话？",
@@ -274,6 +282,8 @@ def format_context_for_injection(snapshot: dict[str, Any], language: str = "en")
             "decisions": "Key Decisions",
             "branch": "Branch",
             "uncommitted": "Uncommitted Changes",
+            "completed_tasks": "Completed Tasks",
+            "session_conclusion": "Session Result",
             "summary": "Work Summary",
             "saved_at": "Saved At",
             "continue_prompt": "Would you like to continue from the previous session?",
@@ -316,6 +326,12 @@ def format_context_for_injection(snapshot: dict[str, Any], language: str = "en")
             pending_subjects = [t.get("subject", "") for t in pending[:3]]
             lines.append(f"   - {lbl['pending_tasks']}: {', '.join(pending_subjects)}")
 
+    # Completed tasks (do not re-execute)
+    completed = context.get("completed_tasks", [])
+    if completed:
+        completed_subjects = [t.get("subject", "") for t in completed[:5]]
+        lines.append(f"   - {lbl['completed_tasks']}: {', '.join(completed_subjects)}")
+
     # Recent files
     recent_files = context.get("recent_files", [])
     if recent_files:
@@ -344,6 +360,11 @@ def format_context_for_injection(snapshot: dict[str, Any], language: str = "en")
     # Saved time
     if saved_at:
         lines.append(f"   - {lbl['saved_at']}: {saved_at}")
+
+    # Session conclusion
+    session_conclusion = snapshot.get("session_conclusion", "")
+    if session_conclusion:
+        lines.append(f"   - {lbl['session_conclusion']}: {session_conclusion}")
 
     # Continue prompt
     lines.append(f"\n{lbl['continue_prompt']}")
@@ -397,12 +418,17 @@ def load_spec_state(project_root: Path) -> dict[str, Any] | None:
         return None
 
 
-def save_tasks_backup(project_root: Path, tasks: list[dict[str, Any]]) -> bool:
+def save_tasks_backup(
+    project_root: Path,
+    tasks: list[dict[str, Any]],
+    completed_tasks: list[dict[str, Any]] | None = None,
+) -> bool:
     """Save TodoWrite tasks backup for session continuity.
 
     Args:
         project_root: Project root directory
-        tasks: List of task dictionaries with id, subject, status, description
+        tasks: List of active task dictionaries with id, subject, status
+        completed_tasks: List of completed task dictionaries from this session
 
     Returns:
         True if save was successful
@@ -416,6 +442,7 @@ def save_tasks_backup(project_root: Path, tasks: list[dict[str, Any]]) -> bool:
             "version": CONTEXT_SNAPSHOT_VERSION,
             "saved_at": datetime.now().isoformat(),
             "tasks": tasks,
+            "completed_tasks": completed_tasks or [],
         }
         backup_path.write_text(json.dumps(backup, ensure_ascii=False, indent=2), encoding="utf-8")
         return True
@@ -546,12 +573,20 @@ def generate_memory_mcp_payload(
             ]
         )
 
+    # Git state
     branch = context.get("current_branch", "")
     if branch:
         session_entity["observations"].append(f"branch: {branch}")
 
     if context.get("uncommitted_changes"):
         session_entity["observations"].append("has_uncommitted_changes: true")
+
+    # Completed tasks summary for session recovery awareness
+    completed_tasks = context.get("completed_tasks", [])
+    if completed_tasks:
+        session_entity["observations"].append(f"completed_tasks_count: {len(completed_tasks)}")
+        completed_subjects = [t.get("subject", "") for t in completed_tasks[:5]]
+        session_entity["observations"].append(f"completed_tasks_summary: {', '.join(completed_subjects)}")
 
     entities.append(session_entity)
 
@@ -716,6 +751,7 @@ def collect_current_context(project_root: Path) -> dict[str, Any]:
     context: dict[str, Any] = {
         "current_spec": {},
         "active_tasks": [],
+        "completed_tasks": [],
         "recent_files": [],
         "key_decisions": [],
         "current_branch": "",
@@ -756,6 +792,11 @@ def collect_current_context(project_root: Path) -> dict[str, Any]:
                 for t in tasks
                 if t.get("status") in ("in_progress", "pending")
             ][:10]  # Limit to 10 tasks
+            context["completed_tasks"] = [
+                {"id": t.get("id"), "subject": t.get("subject"), "status": t.get("status")}
+                for t in tasks
+                if t.get("status") == "completed"
+            ][-10:]  # Last 10 completed tasks
     except Exception as e:
         logger.warning(f"Failed to load todo state: {e}")
 
@@ -824,9 +865,11 @@ def parse_transcript_context(
 
     result: dict[str, Any] = {
         "active_tasks": [],
+        "completed_tasks": [],
         "recent_files": [],
         "key_decisions": [],
         "current_spec": {},
+        "session_conclusion": "",
     }
 
     tp = Path(transcript_path).expanduser()
@@ -917,11 +960,21 @@ def parse_transcript_context(
             found = re.findall(r"SPEC-[A-Z]+-\d+", content)
             spec_ids.update(found)
 
-    # Build result - only active/pending tasks
+    # Build result - separate active and completed tasks
     active_tasks = [t for t in tasks_by_id.values() if t.get("status") in ("in_progress", "pending")]
+    completed_tasks = [t for t in tasks_by_id.values() if t.get("status") == "completed"]
     result["active_tasks"] = active_tasks[:10]
+    result["completed_tasks"] = completed_tasks[-10:]
     result["recent_files"] = edited_files[:20]
     result["key_decisions"] = decisions[-5:]
+
+    # Build session conclusion from completed work
+    if completed_tasks:
+        completed_subjects = [t.get("subject", "") for t in completed_tasks[-5:]]
+        conclusion_parts = [f"Completed {len(completed_tasks)} task(s): {', '.join(completed_subjects)}"]
+        if active_tasks:
+            conclusion_parts.append(f"{len(active_tasks)} task(s) remaining")
+        result["session_conclusion"] = ". ".join(conclusion_parts)
 
     if spec_ids:
         latest_spec = sorted(spec_ids)[-1]

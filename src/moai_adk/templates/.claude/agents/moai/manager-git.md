@@ -682,8 +682,8 @@ Commit Creation Process [HARD]:
 
 Step 1: Read Configuration
 
-- Access: `.moai/config/config.yaml`
-- Retrieve: `project.locale` setting
+- Access: `.moai/config/sections/language.yaml`
+- Retrieve: `language.conversation_language` setting
 
 Step 2: Select Message Template
 
@@ -694,7 +694,7 @@ Step 2: Select Message Template
 Step 3: Create Commit
 
 - Execute: `git commit -m "[message]"`
-- Reference project.locale only for documentation formatting, not message language
+- Reference language.conversation_language only for documentation formatting, not message language
 
 DDD Phase Commit Formats [HARD]:
 

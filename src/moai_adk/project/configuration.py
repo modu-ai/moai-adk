@@ -45,7 +45,6 @@ class ConfigurationManager:
         """Get auto-detect field definitions"""
         return [
             {"field": "project.language", "type": "auto-detect"},
-            {"field": "project.locale", "type": "auto-detect"},
             {"field": "language.conversation_language_name", "type": "auto-detect"},
             {"field": "project.template_version", "type": "auto-detect"},
             {"field": "moai.version", "type": "auto-detect"},
@@ -237,7 +236,6 @@ class SmartDefaultsEngine:
             "project.template_version": "",  # Will be detected
             "moai.version": "",  # Will be detected
             "project.language": "",  # Will be detected
-            "project.locale": "",  # Will be detected
             "git_strategy.mode": "manual",  # 16th default (safety-first approach)
         }
 
@@ -343,11 +341,8 @@ class AutoDetectionEngine:
         # Detect project language
         config["project"]["language"] = self.detect_language()
 
-        # Detect locale from conversation language
-        conv_lang = config.get("language", {}).get("conversation_language", "en")
-        config["project"]["locale"] = self.detect_locale(conv_lang)
-
         # Detect language name
+        conv_lang = config.get("language", {}).get("conversation_language", "en")
         config["language"]["conversation_language_name"] = self.detect_language_name(conv_lang)
 
         # Detect template version
@@ -467,7 +462,7 @@ class ConfigurationCoverageValidator:
     - User Input (10): user.name, language.*, project.name/description,
                       github.profile_name, git_strategy.mode, constitution.*,
                       project.documentation_mode
-    - Auto-Detect (5): project.language, project.locale, language.conversation_language_name,
+    - Auto-Detect (4): project.language, language.conversation_language_name,
                        project.template_version, moai.version
     - Conditional (1): project.documentation_depth
     - Conditional Git (4): git_strategy.personal.*, git_strategy.team.*
@@ -520,7 +515,6 @@ class ConfigurationCoverageValidator:
         # Auto-detect fields (5) - detected from system/codebase
         auto_detect_fields = [
             "project.language",
-            "project.locale",
             "language.conversation_language_name",
             "project.template_version",
             "moai.version",

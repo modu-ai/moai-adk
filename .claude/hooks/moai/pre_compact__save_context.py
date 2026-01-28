@@ -113,6 +113,11 @@ def generate_conversation_summary(context: dict[str, Any]) -> str:
         if current_task:
             parts.append(f"Working on: {current_task}")
 
+    # Completed tasks
+    completed = context.get("completed_tasks", [])
+    if completed:
+        parts.append(f"Completed: {len(completed)} task(s)")
+
     # Key decisions
     decisions = context.get("key_decisions", [])
     if decisions:
@@ -155,9 +160,22 @@ def execute_pre_compact():
             # Only override if file-based context has no SPEC
             if not context.get("current_spec", {}).get("id"):
                 context["current_spec"] = transcript_data["current_spec"]
+        if transcript_data.get("completed_tasks"):
+            context["completed_tasks"] = transcript_data["completed_tasks"]
 
     # Generate conversation summary
     summary = generate_conversation_summary(context)
+
+    # Generate session conclusion from completed work
+    session_conclusion = ""
+    completed_tasks = context.get("completed_tasks", [])
+    active_tasks = context.get("active_tasks", [])
+    if completed_tasks:
+        completed_subjects = [t.get("subject", "") for t in completed_tasks[-5:]]
+        conclusion_parts = [f"Completed {len(completed_tasks)} task(s): {', '.join(completed_subjects)}"]
+        if active_tasks:
+            conclusion_parts.append(f"{len(active_tasks)} task(s) remaining")
+        session_conclusion = ". ".join(conclusion_parts)
 
     # Save context snapshot
     success = save_context_snapshot(
@@ -166,6 +184,7 @@ def execute_pre_compact():
         context=context,
         conversation_summary=summary,
         session_id=session_id,
+        session_conclusion=session_conclusion,
     )
 
     # Save SPEC state separately for quick access
@@ -175,8 +194,9 @@ def execute_pre_compact():
 
     # Save tasks backup separately for quick restoration
     tasks = context.get("active_tasks", [])
-    if tasks:
-        save_tasks_backup(project_root, tasks)
+    completed = context.get("completed_tasks", [])
+    if tasks or completed:
+        save_tasks_backup(project_root, tasks, completed_tasks=completed)
 
     # Generate Memory MCP payload for Alfred to consume on next session
     mcp_payload = generate_memory_mcp_payload(project_root, context, summary)

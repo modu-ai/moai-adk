@@ -323,6 +323,23 @@ class PhaseExecutor:
         # Migration: Replace {{PROJECT_DIR_UNIX}} with {{PROJECT_DIR}} in templates
         hook_project_dir_unix = "%CLAUDE_PROJECT_DIR%/" if is_windows else "$CLAUDE_PROJECT_DIR/"
 
+        # HOOK_SHELL_PREFIX & HOOK_SHELL_SUFFIX: Cross-platform shell wrapper for hook commands
+        # Ensures PATH is loaded correctly on all platforms (v1.8.6+)
+        # Windows: Direct execution (PATH loaded from system environment)
+        # Unix: Use user's default shell with login mode to load ~/.zshrc, ~/.bash_profile, etc.
+        if is_windows:
+            hook_shell_prefix = ""
+            hook_shell_suffix = ""
+        else:
+            hook_shell_prefix = "${SHELL:-/bin/bash} -l -c '"
+            hook_shell_suffix = "'"
+
+        # MCP_SHELL: Cross-platform shell for MCP server commands (v1.8.7+)
+        if is_windows:
+            mcp_shell = "cmd"
+        else:
+            mcp_shell = "${SHELL:-/bin/bash}"
+
         # Detect OS for cross-platform statusline command
         # Windows: Use python -m for better PATH compatibility
         # Unix: Use moai-adk directly (assumes installed via uv tool)
@@ -360,6 +377,9 @@ class PhaseExecutor:
                 "PROJECT_DIR": hook_project_dir,
                 "PROJECT_DIR_WIN": hook_project_dir_win,
                 "PROJECT_DIR_UNIX": hook_project_dir_unix,
+                "HOOK_SHELL_PREFIX": hook_shell_prefix,
+                "HOOK_SHELL_SUFFIX": hook_shell_suffix,
+                "MCP_SHELL": mcp_shell,
                 "STATUSLINE_COMMAND": statusline_command,
             }
         else:
@@ -380,6 +400,9 @@ class PhaseExecutor:
                 "PROJECT_DIR": hook_project_dir,
                 "PROJECT_DIR_WIN": hook_project_dir_win,
                 "PROJECT_DIR_UNIX": hook_project_dir_unix,
+                "HOOK_SHELL_PREFIX": hook_shell_prefix,
+                "HOOK_SHELL_SUFFIX": hook_shell_suffix,
+                "MCP_SHELL": mcp_shell,
                 "STATUSLINE_COMMAND": statusline_command,
             }
 

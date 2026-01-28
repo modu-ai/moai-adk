@@ -291,7 +291,7 @@ class FileMigrator:
             sections["language"]["language"] = language_data
 
         # Map project settings
-        project_keys = ["project_name", "project_type", "project_description", "locale", "created_at", "initialized"]
+        project_keys = ["project_name", "project_type", "project_description", "created_at", "initialized"]
         project_data = {}
         for key in project_keys:
             if key in config_data:

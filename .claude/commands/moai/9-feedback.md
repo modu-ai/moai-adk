@@ -138,7 +138,7 @@ Task: Collect user feedback and create a GitHub issue.
 Context:
 
 - Feedback Type: $ARGUMENTS (default to 'issue' if empty)
-- Conversation Language: {{CONVERSATION_LANGUAGE}}
+- Conversation Language: ko
 
 Instructions:
 

@@ -146,7 +146,7 @@ MoAI는 DDD(Domain-Driven Development)를 개발 방법론으로 사용합니다
 - /moai:2-run SPEC-XXX → manager-ddd 하위 에이전트 (ANALYZE-PRESERVE-IMPROVE)
 - /moai:3-sync SPEC-XXX → manager-docs 하위 에이전트
 
-자세한 워크플로우 명세는 @.claude/rules/workflow/spec-workflow.md 참조
+자세한 워크플로우 명세는 @.claude/rules/moai/workflow/spec-workflow.md 참조
 
 ### SPEC 실행을 위한 에이전트 체인
 
@@ -161,7 +161,7 @@ MoAI는 DDD(Domain-Driven Development)를 개발 방법론으로 사용합니다
 
 ## 6. 품질 게이트
 
-TRUST 5 프레임워크 세부 사항은 @.claude/rules/core/moai-constitution.md 참조
+TRUST 5 프레임워크 세부 사항은 @.claude/rules/moai/core/moai-constitution.md 참조
 
 ### LSP 품질 게이트
 
@@ -207,7 +207,7 @@ Task()를 통해 호출된 하위 에이전트는 격리된 무상태 컨텍스�
 
 ### 프로젝트 규칙
 
-MoAI-ADK는 `.claude/rules/`에서 Claude Code의 공식 규칙 시스템을 사용합니다:
+MoAI-ADK는 `.claude/rules/moai/`에서 Claude Code의 공식 규칙 시스템을 사용합니다:
 
 - **Core 규칙**: TRUST 5 프레임워크, 문서 표준
 - **Workflow 규칙**: 점진적 공개, 토큰 예산, 워크플로우 모드
@@ -225,7 +225,7 @@ MoAI-ADK는 `.claude/rules/`에서 Claude Code의 공식 규칙 시스템을 사
 
 ## 9. 웹 검색 프로토콜
 
-허위 정보 방지 정책은 @.claude/rules/core/moai-constitution.md 참조
+허위 정보 방지 정책은 @.claude/rules/moai/core/moai-constitution.md 참조
 
 ### 실행 단계
 

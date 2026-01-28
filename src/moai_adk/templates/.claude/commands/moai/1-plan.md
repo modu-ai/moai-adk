@@ -837,7 +837,7 @@ spec.md Requirements:
   - status: "draft"
   - created: "{{YYYY-MM-DD}}"
   - updated: "{{YYYY-MM-DD}}"
-  - author: "{{AUTHOR_NAME}}"
+  - author: "{{AUTHOR}}"
   - priority: "{{HIGH|MEDIUM|LOW}}"
 - HISTORY section immediately after frontmatter
 - Complete EARS structure with all 5 requirement types

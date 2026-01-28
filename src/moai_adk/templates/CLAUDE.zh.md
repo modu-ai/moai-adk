@@ -147,7 +147,7 @@ MoAI 使用 DDD（Domain-Driven Development）作为开发方法论。
 - /moai:2-run SPEC-XXX → manager-ddd 子代理 (ANALYZE-PRESERVE-IMPROVE)
 - /moai:3-sync SPEC-XXX → manager-docs 子代理
 
-详细的工作流规范请参阅 @.claude/rules/workflow/spec-workflow.md
+详细的工作流规范请参阅 @.claude/rules/moai/workflow/spec-workflow.md
 
 ### SPEC 执行的代理链
 
@@ -162,7 +162,7 @@ MoAI 使用 DDD（Domain-Driven Development）作为开发方法论。
 
 ## 6. 质量门禁
 
-TRUST 5 框架详情请参阅 @.claude/rules/core/moai-constitution.md
+TRUST 5 框架详情请参阅 @.claude/rules/moai/core/moai-constitution.md
 
 ### LSP 质量门
 
@@ -208,7 +208,7 @@ MoAI-ADK 实现了 LSP 基础的质量门:
 
 ### 项目规则
 
-MoAI-ADK 使用 `.claude/rules/` 的 Claude Code 官方规则系统:
+MoAI-ADK 使用 `.claude/rules/moai/` 的 Claude Code 官方规则系统:
 
 - **核心规则**: TRUST 5 框架、文档标准
 - **工作流规则**: 渐进式公开、token 预算、工作流模式
@@ -226,7 +226,7 @@ MoAI-ADK 使用 `.claude/rules/` 的 Claude Code 官方规则系统:
 
 ## 9. 网络搜索协议
 
-反幻觉政策请参阅 @.claude/rules/core/moai-constitution.md
+反幻觉政策请参阅 @.claude/rules/moai/core/moai-constitution.md
 
 ### 执行步骤
 
