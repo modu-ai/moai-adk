@@ -1,3 +1,109 @@
+# v1.11.1 - CLAUDE.md English Only (2026-01-29)
+
+## Summary
+
+Patch release simplifying CLAUDE.md handling to always use English version.
+
+**Key Change**:
+- CLAUDE.md is now always English (instruction document)
+- Removed language-specific CLAUDE files (ko/ja/zh)
+- Simplified template processing logic
+
+**Impact**:
+- Consistent English documentation across all projects
+- conversation_language setting still works for agent responses
+- Users can create CLAUDE.local.md for personal instructions
+
+## Breaking Changes
+
+### CLAUDE.md Language Behavior Changed
+
+- **Before**: `moai init` copies language-specific CLAUDE.md (ko/ja/zh) based on conversation_language
+- **After**: `moai init` ALWAYS copies English CLAUDE.md regardless of conversation_language
+- **Workaround**: Create CLAUDE.local.md for personalized instructions
+
+## Fixed
+
+### Template Processing
+
+- **fix(cli)**: CLAUDE.md always English only, remove language-specific files (#307, #309) (e1a015f9)
+  - Removed: CLAUDE.ko.md, CLAUDE.ja.md, CLAUDE.zh.md (998 lines)
+  - Simplified `_copy_claude_md()` to always use English template
+  - conversation_language config still works for agent responses
+  - Files affected:
+    - `src/moai_adk/core/template/processor.py` (lines 1267-1294)
+    - `src/moai_adk/templates/CLAUDE.ko.md` (deleted)
+    - `src/moai_adk/templates/CLAUDE.ja.md` (deleted)
+    - `src/moai_adk/templates/CLAUDE.zh.md` (deleted)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+claude install moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.11.1 - CLAUDE.md 영어 전용 (2026-01-29)
+
+## 요약
+
+CLAUDE.md 처리를 항상 영어 버전만 사용하도록 단순화하는 패치 릴리스입니다.
+
+**주요 변경**:
+- CLAUDE.md가 이제 항상 영어입니다 (지침 문서)
+- 언어별 CLAUDE 파일 삭제 (ko/ja/zh)
+- 템플릿 처리 로직 단순화
+
+**영향**:
+- 모든 프로젝트에서 일관된 영어 문서
+- conversation_language 설정은 에이전트 응답에 여전히 적용됨
+- CLAUDE.local.md를 사용하여 개인화된 지침 추가 가능
+
+## Breaking Changes
+
+### CLAUDE.md 언어 동작 변경
+
+- **이전**: conversation_language에 따라 언어별 CLAUDE.md (ko/ja/zh) 복사
+- **이후**: conversation_language 상관없이 항상 영어 CLAUDE.md 복사
+- **해결책**: CLAUDE.local.md를 생성하여 개인화된 지침 추가
+
+## 수정됨
+
+### 템플릿 처리
+
+- **fix(cli)**: CLAUDE.md 영어 전용, 언어별 파일 제거 (#307, #309) (e1a015f9)
+  - 제거됨: CLAUDE.ko.md, CLAUDE.ja.md, CLAUDE.zh.md (998줄)
+  - `_copy_claude_md()`를 단순화하여 항상 영어 템플릿 사용
+  - conversation_language 설정은 에이전트 응답에 여전히 적용됨
+  - 영향을 받는 파일:
+    - `src/moai_adk/core/template/processor.py` (1267-1294행)
+    - `src/moai_adk/templates/CLAUDE.ko.md` (삭제됨)
+    - `src/moai_adk/templates/CLAUDE.ja.md` (삭제됨)
+    - `src/moai_adk/templates/CLAUDE.zh.md` (삭제됨)
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+claude install moai-adk
+
+# 프로젝트 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.11.0 - Template Variable Substitution Fix (2026-01-29)
 
 ## Summary
