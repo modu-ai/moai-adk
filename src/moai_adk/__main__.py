@@ -189,18 +189,6 @@ def status(ctx: click.Context, **kwargs) -> None:
     is_flag=True,
     help="Edit project configuration (same as init wizard)",
 )
-@click.option(
-    "--merge",
-    "merge_strategy",
-    flag_value="auto",
-    help="Auto-merge: Apply template + preserve user changes",
-)
-@click.option(
-    "--manual",
-    "merge_strategy",
-    flag_value="manual",
-    help="Manual merge: Preserve backup, generate merge guide",
-)
 @click.pass_context
 def update(
     ctx: click.Context,
@@ -210,7 +198,6 @@ def update(
     templates_only: bool,
     yes: bool,
     edit_config: bool,
-    merge_strategy: str | None,
 ) -> None:
     """Update MoAI-ADK to latest version"""
     from moai_adk.cli.commands.update import update as _update
@@ -223,7 +210,6 @@ def update(
         templates_only=templates_only,
         yes=yes,
         edit_config=edit_config,
-        merge_strategy=merge_strategy,
     )
 
 
