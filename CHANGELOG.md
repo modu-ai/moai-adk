@@ -1,3 +1,89 @@
+# v1.11.2 - CLAUDE.md Reference Fix (2026-01-29)
+
+## Summary
+
+Patch release fixing CLAUDE.md corruption issue during project initialization.
+
+**Key Fix**:
+- Disabled @path import processing during template copy
+- @path references now preserved as-is in CLAUDE.md
+- Claude Code handles @path references at runtime via `<system-reminder>` tags
+
+**Impact**:
+- Fixes CLAUDE.md corruption during `moai init`
+- Aligns with Claude Code's standard @path reference behavior
+- Simplified template processing logic
+
+## Fixed
+
+### Template Processing
+
+- **fix(init)**: Disable @path import processing in CLAUDE.md copy (#308) (1f997b7a)
+  - Issue: CLAUDE.md corrupted due to @path import expansion during template copy
+  - Root cause: ClaudeMDImporter expanded @path references, causing circular/incomplete references
+  - Fix: Removed import processing, preserve @path references as-is
+  - Files affected:
+    - `src/moai_adk/core/template/processor.py` (lines 1267-1314)
+  - Impact: CLAUDE.md no longer corrupted, @path references work correctly at runtime
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+claude install moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.11.2 - CLAUDE.md 참조 수정 (2026-01-29)
+
+## 요약
+
+프로젝트 초기화 중 CLAUDE.md 손상 문제를 수정하는 패치 릴리스입니다.
+
+**주요 수정**:
+- 템플릿 복사 중 @path 가져오기 처리 비활성화
+- @path 참조가 CLAUDE.md에 그대로 유지됨
+- Claude Code가 런타임에 `<system-reminder>` 태그로 @path 참조 처리
+
+**영향**:
+- moai init 중 CLAUDE.md 손상 문제 해결
+- Claude Code 표준 @path 참조 동작과 정렬
+- 템플릿 처리 로직 단순화
+
+## 수정됨
+
+### 템플릿 처리
+
+- **fix(init)**: CLAUDE.md 복사 시 @path 가져오기 처리 비활성화 (#308) (1f997b7a)
+  - 문제: 템플릿 복사 중 @path 가져오기 확장으로 CLAUDE.md 손상 발생
+  - 근본 원인: ClaudeMDImporter가 @path 참조를 확장하여 순환/불완전 참조 발생
+  - 해결: 가져오기 처리 제거, @path 참조를 그대로 유지
+  - 영향을 받는 파일:
+    - `src/moai_adk/core/template/processor.py` (1267-1314행)
+  - 영향: CLAUDE.md 손상 문제 해결, 런타임에 @path 참조가 올바르게 작동
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+claude install moai-adk
+
+# 프로젝트 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.11.1 - CLAUDE.md English Only (2026-01-29)
 
 ## Summary
