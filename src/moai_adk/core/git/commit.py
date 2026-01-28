@@ -6,11 +6,15 @@ SPEC: .moai/specs/SPEC-CORE-GIT-001/spec.md
 
 from typing import Literal
 
+# Language configuration is read from .moai/config/sections/language.yaml
+# Default language for commit messages: git_commit_messages setting
+# Supported languages: ko, en, ja, zh (4 languages only)
+
 
 def format_commit_message(
     stage: Literal["red", "green", "refactor", "docs"],
     description: str,
-    locale: str = "ko",
+    locale: str | None = None,
 ) -> str:
     """
     Generate a commit message for each DDD stage.

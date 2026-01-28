@@ -738,7 +738,7 @@ class PhaseExecutor:
     def execute_validation_phase(
         self,
         project_path: Path,
-        mode: str = "personal",
+        mode: str | None = None,
         progress_callback: ProgressCallback | None = None,
     ) -> None:
         """Phase 5: validation and wrap-up.
@@ -746,7 +746,7 @@ class PhaseExecutor:
 
         Args:
             project_path: Project path.
-            mode: Project mode (personal/team).
+            mode: Project mode (personal/team/manual). Read from .moai/config/sections/git-strategy.yaml.
             progress_callback: Optional progress callback.
         """
         self.current_phase = 5

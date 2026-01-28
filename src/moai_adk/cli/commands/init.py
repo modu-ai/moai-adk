@@ -250,8 +250,14 @@ def init(
             pricing_plan = None
             anthropic_api_key = None
 
-            # Map git_mode to mode for backward compatibility
-            mode = "personal" if git_mode in ("personal", "team") else "personal"
+            # Map git_mode to mode
+            # System supports: personal, team (from .moai/config/sections/git-strategy.yaml)
+            if git_mode == "team":
+                mode = "team"
+            elif git_mode == "manual":
+                mode = "manual"
+            else:
+                mode = "personal"
 
             # Language detection happens in /moai:0-project
             language = None

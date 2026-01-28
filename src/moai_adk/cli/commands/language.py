@@ -122,7 +122,8 @@ def translate_descriptions(base_description, target_languages, output):
         if target_languages:
             languages = [lang.strip() for lang in target_languages.split(",")]
         else:
-            languages = ["en", "ko", "ja", "es", "fr", "de"]
+            # System provides 4 languages: en, ko, ja, zh
+            languages = ["en", "ko", "ja", "zh"]
 
         claude_integration = ClaudeCLIIntegration()
         descriptions = claude_integration.generate_multilingual_descriptions({"base": base_description}, languages)

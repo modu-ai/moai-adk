@@ -140,19 +140,13 @@ def get_language_family(language_code: str) -> Optional[str]:
 
 
 # Language to Claude model mapping for optimal performance
+# System provides 4 languages: ko, en, ja, zh
+# Model mappings are defined in .moai/config/sections/language.yaml
 LANGUAGE_MODEL_PREFERENCE: Dict[str, str] = {
     "en": "claude-sonnet-4-5-20250929",  # Best for English
     "ko": "claude-sonnet-4-5-20250929",  # Strong Korean support
     "ja": "claude-sonnet-4-5-20250929",  # Strong Japanese support
-    "es": "claude-sonnet-4-5-20250929",  # Strong Spanish support
-    "fr": "claude-sonnet-4-5-20250929",  # Strong French support
-    "de": "claude-sonnet-4-5-20250929",  # Strong German support
     "zh": "claude-sonnet-4-5-20250929",  # Strong Chinese support
-    "pt": "claude-sonnet-4-5-20250929",  # Portuguese support
-    "ru": "claude-sonnet-4-5-20250929",  # Russian support
-    "it": "claude-sonnet-4-5-20250929",  # Italian support
-    "ar": "claude-sonnet-4-5-20250929",  # Arabic support
-    "hi": "claude-sonnet-4-5-20250929",  # Hindi support
 }
 
 
@@ -169,7 +163,8 @@ def get_optimal_model(language_code: str) -> str:
 
 
 # RTL (Right-to-Left) language detection
-RTL_LANGUAGES = {"ar", "he", "fa", "ur"}
+# System provides 4 languages: ko, en, ja, zh (no RTL languages)
+RTL_LANGUAGES = set()  # No RTL languages in supported set
 
 
 def is_rtl_language(language_code: str) -> bool:
@@ -185,15 +180,13 @@ def is_rtl_language(language_code: str) -> bool:
 
 
 # Translation priorities for descriptions
+# System provides 4 languages: en, ko, ja, zh
+# Priority order is defined in .moai/config/sections/language.yaml
 TRANSLATION_PRIORITY = [
     "en",  # English base
     "ko",  # Korean
     "ja",  # Japanese
-    "es",  # Spanish
-    "fr",  # French
-    "de",  # German
     "zh",  # Chinese
-    "pt",  # Portuguese
 ]
 
 

@@ -1895,6 +1895,7 @@ def _build_template_context(
 
         user_name = existing_config.get("user", {}).get("name", "")
         conv_lang = language_config.get("conversation_language")
+        # Korean honorific suffix (configured in .moai/config/sections/language.yaml)
         personalized_greeting = f"{user_name}님" if user_name and conv_lang == "ko" else user_name
         config_source = "config_file"
 

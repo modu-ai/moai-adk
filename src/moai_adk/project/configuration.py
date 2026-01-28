@@ -396,7 +396,11 @@ class AutoDetectionEngine:
 
     @staticmethod
     def detect_locale(language_code: str) -> str:
-        """Map language code to locale"""
+        """Map language code to locale.
+
+        System provides 4 languages: ko, en, ja, zh.
+        Mappings are defined in .moai/config/sections/language.yaml.
+        """
         mapping = {
             "ko": "ko_KR",
             "en": "en_US",
@@ -407,7 +411,11 @@ class AutoDetectionEngine:
 
     @staticmethod
     def detect_language_name(language_code: str) -> str:
-        """Convert language code to language name"""
+        """Convert language code to language name.
+
+        System provides 4 languages: ko, en, ja, zh.
+        Mappings are defined in .moai/config/sections/language.yaml.
+        """
         mapping = {
             "ko": "Korean",
             "en": "English",

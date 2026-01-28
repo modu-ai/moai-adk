@@ -873,15 +873,13 @@ def load_user_personalization() -> dict:
         has_valid_name = user_name and not user_name.startswith("{{") and not user_name.endswith("}}")
 
         # Get language name
+        # System provides 4 languages: ko, en, ja, zh
+        # Language names are defined in .moai/config/sections/language.yaml
         lang_name_map = {
             "ko": "Korean",
             "en": "English",
             "ja": "Japanese",
             "zh": "Chinese",
-            "es": "Spanish",
-            "fr": "French",
-            "de": "German",
-            "ru": "Russian",
         }
         lang_name = lang_name_map.get(conversation_lang, "Unknown")
 

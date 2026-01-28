@@ -226,7 +226,8 @@ class ClaudeCLIIntegration:
         """
         if target_languages is None:
             # Auto-detect from variables or use common languages
-            target_languages = ["en", "ko", "ja", "es", "fr", "de"]
+            # System provides 4 languages: en, ko, ja, zh
+            target_languages = ["en", "ko", "ja", "zh"]
 
         multilingual = {}
 
@@ -287,7 +288,8 @@ Translation:"""
             Agent configuration dictionary
         """
         if target_languages is None:
-            target_languages = ["en", "ko", "ja", "es", "fr", "de"]
+            # System provides 4 languages: en, ko, ja, zh
+            target_languages = ["en", "ko", "ja", "zh"]
 
         # Generate multilingual descriptions
         descriptions = self.generate_multilingual_descriptions({agent_name: base_description}, target_languages)
@@ -326,7 +328,8 @@ Translation:"""
             Command configuration dictionary
         """
         if target_languages is None:
-            target_languages = ["en", "ko", "ja", "es", "fr", "de"]
+            # System provides 4 languages: en, ko, ja, zh
+            target_languages = ["en", "ko", "ja", "zh"]
 
         # Generate multilingual descriptions
         descriptions = self.generate_multilingual_descriptions({command_name: base_description}, target_languages)

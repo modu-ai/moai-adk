@@ -113,8 +113,8 @@ class ProjectInitializer:
 
     def initialize(
         self,
-        mode: str = "personal",
-        locale: str = "en",  # Changed from "ko" to "en" (will be configurable in /moai:0-project)
+        mode: str | None = None,
+        locale: str | None = None,
         language: str | None = None,
         custom_language: str | None = None,
         backup_enabled: bool = True,

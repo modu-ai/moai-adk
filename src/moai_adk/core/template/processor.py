@@ -112,12 +112,24 @@ class TemplateProcessor:
         "STATUSLINE_COMMAND": "Cross-platform statusline command (OS-specific)",
     }
 
-    def __init__(self, target_path: Path, config: Optional[TemplateProcessorConfig] = None) -> None:
+    # Settings merge strategies
+    SETTINGS_MERGE_TEMPLATE = "template"  # Use template settings completely (overwrite)
+    SETTINGS_MERGE_PRESERVE = "preserve"  # Keep existing settings (skip update)
+    SETTINGS_MERGE_SMART = "smart"  # Smart merge (default behavior)
+    SETTINGS_MERGE_MANUAL = "manual"  # Show diff and let user decide
+
+    def __init__(
+        self,
+        target_path: Path,
+        config: Optional[TemplateProcessorConfig] = None,
+        settings_merge_strategy: str = SETTINGS_MERGE_SMART,
+    ) -> None:
         """Initialize the processor with enhanced configuration.
 
         Args:
             target_path: Project path.
             config: Optional configuration for processor behavior.
+            settings_merge_strategy: Strategy for settings.json merge (template/preserve/smart/manual).
         """
         self.target_path = target_path.resolve()
         self.template_root = self._get_template_root()
@@ -131,6 +143,7 @@ class TemplateProcessor:
         ] = {}  # Cache for substitution results (key: hash, value: (content, warnings))
         self._variable_validation_cache: Dict[str, bool] = {}  # Cache for variable validation
         self.logger = logging.getLogger(__name__)
+        self.settings_merge_strategy = settings_merge_strategy
 
         if self.config.verbose_logging:
             self.logger.info(f"TemplateProcessor initialized with config: {self.config}")
@@ -918,15 +931,40 @@ class TemplateProcessor:
                 # Smart merge for settings.json (cross-platform, unified file)
                 if item.name == "settings.json":
                     settings_dst = dst / "settings.json"
-                    self._merge_settings_json(item, settings_dst)
-                    # Apply variable substitution to merged settings.json
-                    if self.context:
-                        content = settings_dst.read_text(encoding="utf-8", errors="replace")
-                        content, file_warnings = self._substitute_variables(content)
-                        settings_dst.write_text(content, encoding="utf-8", errors="replace")
-                        all_warnings.extend(file_warnings)
-                    if not silent:
-                        console.print("   🔄 settings.json merged (cross-platform)")
+                    # Apply merge strategy based on settings_merge_strategy
+                    if self.settings_merge_strategy == self.SETTINGS_MERGE_PRESERVE:
+                        # Keep existing settings (skip update)
+                        if not silent:
+                            console.print("   ⏭️  settings.json preserved (skipped update)")
+                    elif self.settings_merge_strategy == self.SETTINGS_MERGE_TEMPLATE:
+                        # Use template settings completely (overwrite)
+                        import shutil
+
+                        shutil.copy2(item, settings_dst)
+                        # Apply variable substitution
+                        if self.context:
+                            content = settings_dst.read_text(encoding="utf-8", errors="replace")
+                            content, file_warnings = self._substitute_variables(content)
+                            settings_dst.write_text(content, encoding="utf-8", errors="replace")
+                            all_warnings.extend(file_warnings)
+                        if not silent:
+                            console.print("   ✅ settings.json replaced with template")
+                    elif self.settings_merge_strategy == self.SETTINGS_MERGE_MANUAL:
+                        # Manual merge - skip and let user handle it
+                        if not silent:
+                            console.print("   ⚠️  settings.json manual merge required")
+                            console.print("      Use diff tools to compare template with existing")
+                    else:
+                        # Default: Smart merge
+                        self._merge_settings_json(item, settings_dst)
+                        # Apply variable substitution to merged settings.json
+                        if self.context:
+                            content = settings_dst.read_text(encoding="utf-8", errors="replace")
+                            content, file_warnings = self._substitute_variables(content)
+                            settings_dst.write_text(content, encoding="utf-8", errors="replace")
+                            all_warnings.extend(file_warnings)
+                        if not silent:
+                            console.print("   🔄 settings.json merged (cross-platform)")
                 # Smart merge for config.json
                 elif item.name == "config.json":
                     self._merge_config_json(item, dst_item)
