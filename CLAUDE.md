@@ -336,11 +336,16 @@ When the SessionStart systemMessage contains previous session context or [MEMORY
 - Call mcp__memory__create_relations with relations from payload
 
 **Step 3 - Restore tasks:**
-- Create TaskCreate entries for each pending task from tasks-backup.json
-- Set in_progress tasks to in_progress status
+- Read `.moai/memory/tasks-backup.json`
+- Parse `completed_tasks` array: Display summary ONLY, do NOT restore
+- Parse `tasks` array:
+  - If status == "pending": Create TaskCreate with pending status
+  - If status == "in_progress": Ask user if they want to continue, then restore
+  - NEVER restore tasks that were already completed
+- If all tasks are completed, inform user and skip restoration
 
 **Step 4 - Continue work:**
-- Identify the most recent incomplete task
+- If tasks were restored, identify the most recent incomplete task
 - Resume from where the previous session left off
 - Do NOT re-explore or re-analyze already completed work
 

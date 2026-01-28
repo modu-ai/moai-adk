@@ -313,31 +313,53 @@ When this skill is activated, execute the following steps in order:
 Step 1 - Parse Arguments:
 Extract subcommand keywords and flags from $ARGUMENTS. Recognized global flags: --resume [ID], --seq, --ultrathink. Workflow-specific flags: --loop, --max N, --worktree, --branch, --pr, --auto, --merge, --dry, --level N, --security. When --ultrathink is detected, activate Sequential Thinking MCP (mcp__sequential-thinking__sequentialthinking) for deep analysis before execution.
 
-Step 2 - Route to Workflow:
-Apply the Intent Router (Priority 1 through Priority 4) to determine the target workflow. If ambiguous, use AskUserQuestion to clarify with the user.
+Step 2 - Session Recovery (CRITICAL):
+Check for previous session context BEFORE routing to workflow:
 
-Step 3 - Load Workflow Details:
+**Detection Conditions** (ANY of these):
+- System message contains "[MEMORY_MCP_SYNC]" signal
+- System message contains "[이전 세션 컨텍스트]" or previous session summary
+- User input contains continuation keywords: "이어서", "continue", "resume", "계속"
+
+**When detected, execute Session Recovery Protocol:**
+1. Read `.moai/memory/tasks-backup.json`
+2. Parse `completed_tasks` array: Display summary ONLY, do NOT restore
+3. Parse `tasks` array:
+   - If status == "pending": Ask user if they want to restore
+   - If status == "in_progress": Ask user if they want to continue
+   - NEVER restore tasks that were marked "completed"
+4. If user confirms restoration, use TaskCreate with correct status
+5. If user declines, proceed with normal workflow routing
+6. If all tasks completed, inform user and skip to Step 3
+
+**IMPORTANT**: Always check task completion status BEFORE restoring. Do NOT blindly create TaskCreate entries from backup file.
+
+Step 3 - Route to Workflow:
+Apply the Intent Router (Priority 1 through Priority 4) to determine the target workflow. If ambiguous, use AskUserQuestion to clarify with the user.
+Skip this step if session recovery is in progress and tasks were restored.
+
+Step 4 - Load Workflow Details:
 Read the corresponding workflows/<name>.md file for detailed orchestration instructions specific to the matched workflow.
 
-Step 4 - Read Configuration:
+Step 5 - Read Configuration:
 Load relevant configuration from .moai/config/config.yaml and section files as needed by the workflow.
 
-Step 5 - Initialize Task Tracking:
+Step 6 - Initialize Task Tracking:
 Use TaskCreate to register discovered work items with pending status.
 
-Step 6 - Execute Workflow Phases:
+Step 7 - Execute Workflow Phases:
 Follow the workflow-specific phase instructions from the loaded workflow file. Delegate all implementation to appropriate agents via Task(). Collect user approvals at designated checkpoints via AskUserQuestion.
 
-Step 7 - Track Progress:
+Step 8 - Track Progress:
 Update task status using TaskUpdate as work progresses (pending to in_progress to completed).
 
-Step 8 - Present Results:
+Step 9 - Present Results:
 Display results to the user in their conversation_language using Markdown format. Include summary statistics, artifacts created, and next step options.
 
-Step 9 - Add Completion Marker:
+Step 10 - Add Completion Marker:
 When all workflow phases complete successfully, add the appropriate completion marker (`<moai>DONE</moai>` or `<moai>COMPLETE</moai>`).
 
-Step 10 - Guide Next Steps:
+Step 11 - Guide Next Steps:
 Use AskUserQuestion to present the user with logical next actions based on the completed workflow.
 
 ---
