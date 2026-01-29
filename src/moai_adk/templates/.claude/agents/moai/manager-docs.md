@@ -203,10 +203,10 @@ To prevent V8 heap memory overflow during large documentation generation session
 **Usage**:
 ```bash
 # Normal execution (auto-checkpointing)
-/moai:3-sync SPEC-001
+/moai sync SPEC-AUTH-001
 
 # Resume from checkpoint after crash
-/moai:3-sync SPEC-001 --resume latest
+/moai sync SPEC-AUTH-001 --resume latest
 ```
 
 ---

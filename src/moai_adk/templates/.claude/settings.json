@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "{{HOOK_SHELL_PREFIX}}uv run \"{{PROJECT_DIR}}.claude/hooks/moai/session_start__show_project_info.py\"{{HOOK_SHELL_SUFFIX}}"
+            "command": "{{HOOK_SHELL_PREFIX}}uv run --with pyyaml \"{{PROJECT_DIR}}.claude/hooks/moai/session_start__show_project_info.py\"{{HOOK_SHELL_SUFFIX}}"
           }
         ]
       }
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "{{HOOK_SHELL_PREFIX}}uv run \"{{PROJECT_DIR}}.claude/hooks/moai/pre_compact__save_context.py\"{{HOOK_SHELL_SUFFIX}}",
+            "command": "{{HOOK_SHELL_PREFIX}}uv run --with pyyaml \"{{PROJECT_DIR}}.claude/hooks/moai/pre_compact__save_context.py\"{{HOOK_SHELL_SUFFIX}}",
             "timeout": 5000
           }
         ]
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "{{HOOK_SHELL_PREFIX}}uv run \"{{PROJECT_DIR}}.claude/hooks/moai/session_end__auto_cleanup.py\" &{{HOOK_SHELL_SUFFIX}}"
+            "command": "{{HOOK_SHELL_PREFIX}}uv run --with pyyaml \"{{PROJECT_DIR}}.claude/hooks/moai/session_end__auto_cleanup.py\" &{{HOOK_SHELL_SUFFIX}}"
           }
         ]
       }
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "{{HOOK_SHELL_PREFIX}}uv run \"{{PROJECT_DIR}}.claude/hooks/moai/pre_tool__security_guard.py\"{{HOOK_SHELL_SUFFIX}}",
+            "command": "{{HOOK_SHELL_PREFIX}}uv run --with pyyaml \"{{PROJECT_DIR}}.claude/hooks/moai/pre_tool__security_guard.py\"{{HOOK_SHELL_SUFFIX}}",
             "timeout": 5000
           }
         ]
@@ -52,17 +52,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "{{HOOK_SHELL_PREFIX}}uv run \"{{PROJECT_DIR}}.claude/hooks/moai/post_tool__code_formatter.py\"{{HOOK_SHELL_SUFFIX}}",
+            "command": "{{HOOK_SHELL_PREFIX}}uv run --with pyyaml \"{{PROJECT_DIR}}.claude/hooks/moai/post_tool__code_formatter.py\"{{HOOK_SHELL_SUFFIX}}",
             "timeout": 30000
           },
           {
             "type": "command",
-            "command": "{{HOOK_SHELL_PREFIX}}uv run \"{{PROJECT_DIR}}.claude/hooks/moai/post_tool__linter.py\"{{HOOK_SHELL_SUFFIX}}",
+            "command": "{{HOOK_SHELL_PREFIX}}uv run --with pyyaml \"{{PROJECT_DIR}}.claude/hooks/moai/post_tool__linter.py\"{{HOOK_SHELL_SUFFIX}}",
             "timeout": 60000
           },
           {
             "type": "command",
-            "command": "{{HOOK_SHELL_PREFIX}}uv run \"{{PROJECT_DIR}}.claude/hooks/moai/post_tool__ast_grep_scan.py\"{{HOOK_SHELL_SUFFIX}}",
+            "command": "{{HOOK_SHELL_PREFIX}}uv run --with pyyaml \"{{PROJECT_DIR}}.claude/hooks/moai/post_tool__ast_grep_scan.py\"{{HOOK_SHELL_SUFFIX}}",
             "timeout": 30000
           }
         ]
@@ -97,6 +97,10 @@
       "Read",
       "Skill",
       "Task",
+      "TaskCreate",
+      "TaskGet",
+      "TaskList",
+      "TaskUpdate",
       "TodoWrite",
       "WebFetch",
       "WebSearch",

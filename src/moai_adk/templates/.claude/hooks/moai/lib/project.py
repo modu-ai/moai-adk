@@ -12,7 +12,16 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
-import yaml
+# Import yaml with helpful error message
+try:
+    import yaml
+except ImportError as e:
+    raise ImportError(
+        "PyYAML is required for MoAI-ADK hooks. "
+        "Install with: pip install pyyaml\n"
+        f"Or use: uv run --with pyyaml <hook_script>\n"
+        f"Original error: {e}"
+    ) from e
 
 # Import TimeoutError from lib.unified_timeout_manager (canonical definition)
 try:

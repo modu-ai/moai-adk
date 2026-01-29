@@ -173,14 +173,14 @@ Analyze user request to determine routing:
 
 Route request based on command type:
 
-**Type A Workflow Commands**: /moai:0-project, /moai:1-plan, /moai:2-run, /moai:3-sync
+**Type A Workflow Commands**: /moai project, /moai plan, /moai run, /moai sync
 - All tools available, agent delegation recommended for complex tasks
 
-**Type B Utility Commands**: /moai:alfred, /moai:fix, /moai:loop
+**Type B Utility Commands**: /moai (default), /moai fix, /moai loop
 - Direct tool access permitted for efficiency
 - Agent delegation MANDATORY for all implementation/fix tasks
 
-**Type C Feedback Commands**: /moai:9-feedback
+**Type C Feedback Commands**: /moai feedback
 - User feedback command for improvements and bug reports
 
 **Direct Agent Requests**: Immediate delegation when user explicitly requests an agent
@@ -210,30 +210,30 @@ Integrate and report results:
 
 ### Type A: Workflow Commands
 
-**/moai:0-project**
+**/moai project**
 - Purpose: Project initialization and configuration
 - Agent: manager-project
 - Use Case: Setting up new MoAI projects
 
-**/moai:1-plan "description"**
+**/moai plan "description"**
 - Purpose: SPEC generation with EARS format
 - Agent: manager-spec
 - Use Case: Creating specification documents
 
-**/moai:2-run SPEC-ID**
+**/moai run SPEC-ID**
 - Purpose: DDD implementation cycle
 - Agent: manager-ddd (with expert delegation)
 - Use Case: Implementing features with behavior preservation
 
-**/moai:3-sync SPEC-ID**
+**/moai sync SPEC-ID**
 - Purpose: Documentation and PR automation
 - Agent: manager-docs
 - Use Case: Generating documentation and creating PRs
 
 ### Type B: Utility Commands
 
-**/moai:alfred "description"**
-- Purpose: Full autonomous Plan-Run-Sync workflow
+**/moai "description"**
+- Purpose: Full autonomous Plan-Run-Sync workflow (default)
 - Agents: Multiple (manager-spec, manager-ddd, manager-docs)
 - Use Case: Complete feature implementation from description to deployment
 
@@ -249,7 +249,7 @@ Integrate and report results:
 
 ### Type C: Feedback Command
 
-**/moai:9-feedback**
+**/moai feedback**
 - Purpose: Submit feedback or bug reports
 - Action: Creates GitHub issue in MoAI-ADK repository
 - Use Case: Reporting bugs or suggesting improvements
@@ -431,7 +431,7 @@ When user provides plain text instructions without explicit commands or agent in
 
 **Detection Triggers:**
 
-- No slash command prefix (e.g., "/moai:alfred")
+- No slash command prefix (e.g., "/moai")
 - No explicit agent mention (e.g., "expert-backend")
 - Ambiguous scope or requirements
 - Multiple possible interpretations
@@ -525,15 +525,15 @@ MoAI uses DDD (Domain-Driven Development) as its development methodology:
 ### MoAI Command Flow
 
 ```
-/moai:1-plan "description"
+/moai plan "description"
     ↓ Use the manager-spec subagent
     ↓ Creates SPEC document with EARS format
 
-/moai:2-run SPEC-001
+/moai run SPEC-AUTH-001
     ↓ Use the manager-ddd subagent
     ↓ ANALYZE-PRESERVE-IMPROVE implementation
 
-/moai:3-sync SPEC-001
+/moai sync SPEC-AUTH-001
     ↓ Use the manager-docs subagent
     ↓ Generate documentation and create PR
 ```

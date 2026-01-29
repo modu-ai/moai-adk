@@ -2,8 +2,6 @@
 
 ![MoAI-ADK](./assets/images/readme/moai-adk-og.png)
 
-![MoAI-ADK Hero Banner](./assets/images/readme/hero-banner-moai-adk.png)
-
 **利用可能な言語:** [🇰🇷 한국어](./README.ko.md) | [🇺🇸 English](./README.md) | [🇯🇵 日本語](./README.ja.md) | [🇨🇳 中文](./README.zh.md)
 
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
@@ -112,6 +110,22 @@ execution_mode:
 ## 1. 30秒インストール
 
 > **⚠️ Windowsユーザー**: MoAI-ADKは**PowerShell**と**WSL (Windows Subsystem for Linux)**をサポートしています。コマンドプロンプト(cmd.exe)は**サポートされていません**。PowerShell、Windows Terminal、またはWSLを使用してください。
+
+### 📋 前提条件
+
+**必要な依存関係:**
+
+- **Python 3.11+**: MoAI-ADKにはPython 3.11以降が必要です
+- **PyYAML 6.0+**: Hookスクリプト実行に必要です（`uv run --with pyyaml`で自動インストール）
+- **uv**: Pythonパッケージャー（MoAI-ADKインストールに含まれています）
+
+**参考**: PyYAMLは以下の機能に必要です:
+- AST-grep マルチドキュメントYAMLパース
+- 設定ファイルの読み書き
+- SPECファイルYAMLフロントマatterパース
+- スキルメタデータ処理
+
+PyYAMLがない場合、Hookは自動的に`uv run --with pyyaml`を使用してインストールを試みます。
 
 ### 🚀 方法1: クイックインストール (推奨)
 

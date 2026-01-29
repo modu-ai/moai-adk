@@ -86,12 +86,12 @@ Loop behavior (when --loop or ralph.yaml loop.enabled is true):
 - Synchronize documentation with implementation
 - Add completion marker on success
 
-## TODO Management
+## Task Tracking
 
-[HARD] TodoWrite tool mandatory for all task tracking:
-- When issues discovered: TodoWrite with pending status
-- Before starting work: TodoWrite with in_progress status
-- After completing work: TodoWrite with completed status
+[HARD] Task management tools mandatory for all task tracking:
+- When issues discovered: TaskCreate with pending status
+- Before starting work: TaskUpdate with in_progress status
+- After completing work: TaskUpdate with completed status
 - Never output TODO lists as text
 
 ## Completion Markers
@@ -116,7 +116,7 @@ Auto-routing based on llm.yaml settings:
 3. Detect LLM mode from llm.yaml
 4. Execute Phase 0 (parallel or sequential exploration)
 5. Routing decision (single-domain direct delegation vs full workflow)
-6. TodoWrite for discovered tasks
+6. TaskCreate for discovered tasks
 7. User confirmation via AskUserQuestion
 8. Phase 1: SPEC generation via manager-spec
 9. Phase 2: DDD implementation loop via expert agents

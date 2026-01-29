@@ -47,11 +47,11 @@ Step 4 - Completion Condition Check:
 - Conditions: Zero errors AND all tests passing AND coverage meets threshold
 - If all conditions met: Prompt user to add completion marker or continue
 
-Step 5 - TODO Generation:
-- [HARD] TodoWrite for all newly discovered issues with pending status
+Step 5 - Task Generation:
+- [HARD] TaskCreate for all newly discovered issues with pending status
 
 Step 6 - Fix Execution:
-- [HARD] Before each fix: TodoWrite to change item to in_progress
+- [HARD] Before each fix: TaskUpdate to change item to in_progress
 - [HARD] Agent delegation mandate: ALL fix tasks MUST be delegated to specialized agents. NEVER execute fixes directly.
 
 Agent selection by issue type:
@@ -68,7 +68,7 @@ Fix levels applied per --auto setting:
 - Level 4 (Manual): Not auto-fixed. Security, architecture
 
 Step 7 - Verification:
-- [HARD] After each fix: TodoWrite to change item to completed
+- [HARD] After each fix: TaskUpdate to change item to completed
 
 Step 8 - Snapshot Save:
 - Save iteration snapshot to .moai/cache/ralph-snapshots/

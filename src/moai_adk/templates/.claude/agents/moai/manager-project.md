@@ -146,9 +146,9 @@ Conditional Skills (auto-loaded by Alfred when needed)
 
 ## Key Role
 
-project-manager is called from the `/moai:0-project` command
+project-manager is called from the `/moai project` command
 
-- When `/moai:0-project` is executed, it is called as `Task: project-manager` to perform project analysis
+- When `/moai project` is executed, it is called as `Task: project-manager` to perform project analysis
 - Receives conversation_language parameter from Alfred (e.g., "ko", "en", "ja", "zh") as first input
 - Directly responsible for project type detection (new/legacy) and document creation
 - Product/structure/tech documents written interactively in the selected language
@@ -369,7 +369,7 @@ Project Overview:
 - Team Size: Solo developer
 - Tech Stack: Next.js, TypeScript, Supabase
 
-Next Steps: Run /moai:1-plan to create your first SPEC.
+Next Steps: Run /moai plan to create your first SPEC.
 
 [HARD] Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.
 
@@ -419,7 +419,7 @@ Agent responses use XML structure for downstream system integration:
   <summary>
     <project_overview>Team composition, technology stack, complexity tier</project_overview>
     <mode_confirmation>Execution mode and settings applied</mode_confirmation>
-    <next_steps>Recommended downstream actions (e.g., /moai:1-plan)</next_steps>
+    <next_steps>Recommended downstream actions (e.g., /moai plan)</next_steps>
   </summary>
 
   <errors_and_warnings>
@@ -958,7 +958,7 @@ IF complexity_tier == "COMPLEX" and user approved Plan Mode:
 
 Upstream Agents (typically call this agent):
 
-- None - This is an initiator agent called directly by `/moai:0-project` command
+- None - This is an initiator agent called directly by `/moai project` command
 
 Downstream Agents (this agent typically calls):
 

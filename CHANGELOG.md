@@ -30,14 +30,20 @@ None. All changes are backward compatible.
 
 ### Hook Script Dependencies (#311)
 
-- **fix(hooks)**: Make PyYAML import optional in hook libraries (d855fa84)
+- **fix(hooks)**: Add PyYAML dependency to hook commands with `--with pyyaml` (d855fa84)
   - Issue: SessionStart hooks failed with `ModuleNotFoundError: No module named 'yaml'`
   - Root cause: Hook scripts imported PyYAML directly, which wasn't available in project without pyproject.toml
-  - Fix: Added try-except blocks for yaml import with `YAML_AVAILABLE` flag
+  - Fix: Added `--with pyyaml` flag to all hook commands in settings.json (auto-installs PyYAML via uv)
+  - Additional: Enhanced error messages with installation instructions when PyYAML import fails
   - Files affected:
-    - `.claude/hooks/moai/lib/version_reader.py`
-    - `.claude/hooks/moai/lib/project.py`
-    - `.claude/hooks/moai/lib/unified_timeout_manager.py`
+    - `.claude/settings.json` (all hook commands)
+    - `.claude/hooks/moai/lib/version_reader.py` (improved error messages)
+    - `.claude/hooks/moai/lib/project.py` (improved error messages)
+    - `.claude/hooks/moai/lib/unified_timeout_manager.py` (improved error messages)
+    - `src/moai_adk/templates/.claude/settings.json` (template update)
+    - `src/moai_adk/templates/.claude/hooks/moai/lib/*.py` (template updates)
+
+**Note**: PyYAML is required for MoAI-ADK hooks (AST-grep multi-document rules, config file I/O). The `--with pyyaml` flag ensures automatic installation when hooks run.
 
 ## Installation & Update
 

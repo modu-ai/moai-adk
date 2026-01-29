@@ -77,12 +77,12 @@ If --dry flag: Display preview of all classified issues and exit without changes
 - Confirm fixes resolved the targeted issues
 - Detect any regressions introduced by fixes
 
-## TODO Management
+## Task Tracking
 
-[HARD] TodoWrite tool mandatory:
-- All discovered issues added as pending via TodoWrite
-- Before each fix: change to in_progress via TodoWrite
-- After each fix: change to completed via TodoWrite
+[HARD] Task management tools mandatory:
+- All discovered issues added as pending via TaskCreate
+- Before each fix: change to in_progress via TaskUpdate
+- After each fix: change to completed via TaskUpdate
 
 ## Snapshot Save/Resume
 
@@ -108,7 +108,7 @@ Resume commands:
 4. Execute parallel scan (LSP + AST-grep + Linter)
 5. Aggregate results and remove duplicates
 6. Classify into Levels 1-4
-7. TodoWrite for all discovered issues
+7. TaskCreate for all discovered issues
 8. If --dry: Display preview and exit
 9. Apply Level 1-2 fixes via agent delegation
 10. Request approval for Level 3 fixes via AskUserQuestion

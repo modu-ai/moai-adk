@@ -86,13 +86,13 @@ Provide any additional context or information related to the bug.
 ```markdown
 ## 🐛 Bug Description
 
-Executing `/moai:2-run` command fails during the implementation validation step.
+Executing `/moai run` command fails during the implementation validation step.
 
 ## 🔄 Steps to Reproduce
 
-1. Initialize project with `python -m moai_adk init .`
-2. Run `/moai:1-plan "User Authentication"` to create Plan & SPEC
-3. Execute `/moai:2-run SPEC-AUTH-001`
+1. Initialize project with `moai init .`
+2. Run `/moai plan "User Authentication"` to create Plan & SPEC
+3. Execute `/moai run SPEC-AUTH-001`
 4. Error occurs during implementation validation step
 
 ## 💥 Expected vs Actual Behavior
@@ -141,7 +141,7 @@ Describe in detail how the feature should work.
 **Expected Usage**:
 ```bash
 # Command example
-python -m moai_adk new-feature --option
+moai new-feature --option
 ````
 
 ## 🔄 Considered Alternatives
@@ -168,15 +168,15 @@ Non-developer stakeholders find it difficult to read Markdown format.
 
 ## ✨ Proposed Solution
 
-Propose adding `python -m moai_adk export` command to export SPEC documents to PDF.
+Propose adding `moai export` command to export SPEC documents to PDF.
 
 **Expected Usage**:
 ```bash
 # Export specific SPEC to PDF
-python -m moai_adk export SPEC-AUTH-001 --format pdf
+moai export SPEC-AUTH-001 --format pdf
 
 # Export all SPECs to PDF
-python -m moai_adk export --all --format pdf --output ./exports
+moai export --all --format pdf --output ./exports
 ````
 
 ## 🔄 Considered Alternatives
@@ -198,9 +198,9 @@ Before submitting a Pull Request, please verify the following:
 
 ### PR Submission Checklist
 
-- [ ] **SPEC Written**: Is there a SPEC document for the changes? (`/moai:1-plan`)
-- [ ] **DDD Completed**: Have you completed the ANALYZE-PRESERVE-IMPROVE cycle? (`/moai:2-run`)
-- [ ] **Documentation Synchronized**: Has the Living Document been updated? (`/moai:3-sync`)
+- [ ] **SPEC Written**: Is there a SPEC document for the changes? (`/moai plan`)
+- [ ] **DDD Completed**: Have you completed the ANALYZE-PRESERVE-IMPROVE cycle? (`/moai run`)
+- [ ] **Documentation Synchronized**: Has the Living Document been updated? (`/moai sync`)
 - [ ] **TRUST 5 Principles Followed**:
   - [ ] **T**est: Are tests written? (Coverage ≥85%)
   - [ ] **R**eadable: Is code readable? (Function ≤50 LOC, File ≤300 LOC)
@@ -210,7 +210,7 @@ Before submitting a Pull Request, please verify the following:
 ### PR Template
 
 MoAI-ADK uses an [automatic PR template](.github/PULL_REQUEST_TEMPLATE.md).
-The `/moai:3-sync` command automatically fills in most of the information.
+The `/moai sync` command automatically fills in most of the information.
 
 **Parts you need to manually complete**:
 - Verify SPEC ID
@@ -268,10 +268,10 @@ pip install -e ".[dev]"
 
 ```bash
 # Check CLI version
-python -m moai_adk --version
+moai --version
 
 # Check help
-python -m moai_adk --help
+moai --help
 ```
 
 ### 5. Run in Development Mode
@@ -308,7 +308,7 @@ The core of MoAI-ADK is **Alfred** (MoAI SuperAgent). Alfred's behavior is defin
 
 **Understand the 4-Layer Architecture**:
 
-- 📌 **Commands** (`/moai:0-3`): Workflow entry points
+- 📌 **Commands** (`/moai {subcommand}`): Workflow entry points
 - 🤖 **Sub-agents** (19): Specialists for each phase
 - 📚 **Skills** (55): Reusable knowledge base
 - 🛡️ **Hooks**: Safety checks and validation
@@ -327,30 +327,30 @@ The core of MoAI-ADK is **Alfred** (MoAI SuperAgent). Alfred's behavior is defin
 
 MoAI-ADK follows the **SPEC-First TDD** methodology. All code changes must follow these steps:
 
-#### Step 1: Plan & Write SPEC (`/moai:1-plan`)
+#### Step 1: Plan & Write SPEC (`/moai plan`)
 
 ```bash
-/moai:1-plan "Feature description"
+/moai plan "Feature description"
 ```
 
 - Write requirements in EARS format
 - Creates `.moai/specs/SPEC-{ID}/spec.md`
 - Automatically creates feature branch
 
-#### Step 2: Execute DDD (`/moai:2-run`)
+#### Step 2: Execute DDD (`/moai run`)
 
 ```bash
-/moai:2-run SPEC-{ID}
+/moai run SPEC-{ID}
 ```
 
 - **ANALYZE**: Understand existing behavior
 - **PRESERVE**: Protect behavior with tests
 - **IMPROVE**: Enhance implementation
 
-#### Step 3: Synchronize Documentation (`/moai:3-sync`)
+#### Step 3: Synchronize Documentation (`/moai sync`)
 
 ```bash
-/moai:3-sync
+/moai sync
 ```
 
 - Update Living Document
@@ -502,13 +502,13 @@ Error: Cannot find module '...'
 ```markdown
 ## 🐛 버그 설명
 
-`/moai:2-run` 명령 실행 시 구현 검증 단계에서 오류가 발생합니다.
+`/moai run` 명령 실행 시 구현 검증 단계에서 오류가 발생합니다.
 
 ## 🔄 재현 단계
 
-1. `python -m moai_adk init .` 명령으로 프로젝트 초기화
-2. `/moai:1-plan "사용자 인증"` 실행하여 Plan & SPEC 생성
-3. `/moai:2-run SPEC-AUTH-001` 실행
+1. `moai init .` 명령으로 프로젝트 초기화
+2. `/moai plan "사용자 인증"` 실행하여 Plan & SPEC 생성
+3. `/moai run SPEC-AUTH-001` 실행
 4. 구현 검증 단계에서 오류 발생
 
 ## 💥 예상 동작 vs 실제 동작
@@ -556,7 +556,7 @@ Please ensure all tests are passing before proceeding
 **예상 사용 방법**:
 ```bash
 # 명령어 예시
-python -m moai_adk new-feature --option
+moai new-feature --option
 ````
 
 ## 🔄 대안 고려
@@ -583,15 +583,15 @@ SPEC 문서를 자동으로 PDF로 내보내는 기능
 
 ## ✨ 제안하는 해결 방법
 
-`python -m moai_adk export` 명령어로 SPEC 문서를 PDF로 내보낼 수 있도록 제안합니다.
+`moai export` 명령어로 SPEC 문서를 PDF로 내보낼 수 있도록 제안합니다.
 
 **예상 사용 방법**:
 ```bash
 # 특정 SPEC을 PDF로 내보내기
-python -m moai_adk export SPEC-AUTH-001 --format pdf
+moai export SPEC-AUTH-001 --format pdf
 
 # 모든 SPEC을 PDF로 내보내기
-python -m moai_adk export --all --format pdf --output ./exports
+moai export --all --format pdf --output ./exports
 ````
 
 ## 🔄 대안 고려
@@ -613,9 +613,9 @@ Pull Request를 제출하기 전에 다음 사항을 확인해주세요:
 
 ### PR 제출 체크리스트
 
-- [ ] **SPEC 작성**: 변경 사항에 대한 SPEC 문서가 있습니까? (`/moai:1-plan`)
-- [ ] **DDD 완료**: ANALYZE-PRESERVE-IMPROVE 사이클을 완료했습니까? (`/moai:2-run`)
-- [ ] **문서 동기화**: Living Document가 업데이트되었습니까? (`/moai:3-sync`)
+- [ ] **SPEC 작성**: 변경 사항에 대한 SPEC 문서가 있습니까? (`/moai plan`)
+- [ ] **DDD 완료**: ANALYZE-PRESERVE-IMPROVE 사이클을 완료했습니까? (`/moai run`)
+- [ ] **문서 동기화**: Living Document가 업데이트되었습니까? (`/moai sync`)
 - [ ] **TRUST 5원칙 준수**:
   - [ ] **T**est: 테스트가 작성되었습니까? (커버리지 ≥85%)
   - [ ] **R**eadable: 코드가 읽기 쉽습니까? (함수 ≤50 LOC, 파일 ≤300 LOC)
@@ -625,7 +625,7 @@ Pull Request를 제출하기 전에 다음 사항을 확인해주세요:
 ### PR 템플릿
 
 MoAI-ADK는 [자동 PR 템플릿](.github/PULL_REQUEST_TEMPLATE.md)을 사용합니다.
-`/moai:3-sync` 명령이 대부분의 정보를 자동으로 채워줍니다.
+`/moai sync` 명령이 대부분의 정보를 자동으로 채워줍니다.
 
 **수동으로 작성해야 할 부분**:
 - SPEC ID 확인
@@ -683,10 +683,10 @@ pip install -e ".[dev]"
 
 ```bash
 # CLI 버전 확인
-python -m moai_adk --version
+moai --version
 
 # 도움말 확인
-python -m moai_adk --help
+moai --help
 ```
 
 ### 5. 개발 모드 실행
@@ -723,7 +723,7 @@ MoAI-ADK의 핵심은 **Alfred** (MoAI SuperAgent)입니다. Alfred의 동작 �
 
 **4개 계층 구조를 이해하세요**:
 
-- 📌 **Commands** (`/moai:0-3`): 워크플로우 진입점
+- 📌 **Commands** (`/moai {subcommand}`): 워크플로우 진입점
 - 🤖 **Sub-agents** (19명): 각 단계별 전문가
 - 📚 **Skills** (55개): 재사용 가능한 지식 기지
 - 🛡️ **Hooks**: 안전장치 및 검증
@@ -742,30 +742,30 @@ MoAI-ADK의 핵심은 **Alfred** (MoAI SuperAgent)입니다. Alfred의 동작 �
 
 MoAI-ADK는 **SPEC-First DDD** 방법론을 따릅니다. 모든 코드 변경은 다음 단계를 거쳐야 합니다:
 
-#### 1단계: Plan & SPEC 작성 (`/moai:1-plan`)
+#### 1단계: Plan & SPEC 작성 (`/moai plan`)
 
 ```bash
-/moai:1-plan "기여하려는 기능 설명"
+/moai plan "기여하려는 기능 설명"
 ```
 
 - EARS 방식으로 요구사항 작성
 - `.moai/specs/SPEC-{ID}/spec.md` 생성
 - feature 브랜치 자동 생성
 
-#### 2단계: DDD 실행 (`/moai:2-run`)
+#### 2단계: DDD 실행 (`/moai run`)
 
 ```bash
-/moai:2-run SPEC-{ID}
+moai run SPEC-{ID}
 ```
 
 - **ANALYZE**: 기존 동작 이해
 - **PRESERVE**: 테스트로 동작 보호
 - **IMPROVE**: 구현 개선
 
-#### 3단계: 문서 동기화 (`/moai:3-sync`)
+#### 3단계: 문서 동기화 (`/moai sync`)
 
 ```bash
-/moai:3-sync
+moai sync
 ```
 
 - Living Document 업데이트

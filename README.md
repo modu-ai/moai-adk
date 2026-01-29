@@ -2,8 +2,6 @@
 
 ![MoAI-ADK](./assets/images/readme/moai-adk-og.png)
 
-![MoAI-ADK Hero Banner](./assets/images/readme/hero-banner-moai-adk.png)
-
 **Available Languages:** [🇰🇷 한국어](./README.ko.md) | [🇺🇸 English](./README.md) | [🇯🇵 日本語](./README.ja.md) | [🇨🇳 中文](./README.zh.md)
 
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
@@ -112,6 +110,22 @@ execution_mode:
 ## 1. 30-Second Installation
 
 > **⚠️ Windows Users**: MoAI-ADK supports **PowerShell only**. WSL (Windows Subsystem for Linux) and Command Prompt (cmd.exe) are **not supported**. Please use PowerShell or Windows Terminal with PowerShell.
+
+### 📋 Prerequisites
+
+**Required Dependencies**:
+
+- **Python 3.11+**: MoAI-ADK requires Python 3.11 or later
+- **PyYAML 6.0+**: Required for hook scripts (automatically installed via `uv run --with pyyaml`)
+- **uv**: Package installer for Python (included with MoAI-ADK installation)
+
+**Note**: PyYAML is required for:
+- AST-grep multi-document rule parsing
+- Configuration file read/write operations
+- SPEC file YAML frontmatter parsing
+- Skill metadata handling
+
+If PyYAML is not available, hooks will automatically attempt to install it using `uv run --with pyyaml`.
 
 ### 🚀 Method 1: Quick Install (Recommended)
 

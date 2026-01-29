@@ -1,12 +1,16 @@
 {
   "companyAnnouncements": [
+    "🔄 v1.12.0 命令格式更新: 移除冒号(:)使命令更简洁",
+    "  之前: /moai:1-plan, /moai:2-run SPEC-001, /moai:3-sync, /moai:0-project, /moai:alfred",
+    "  现在: /moai plan, /moai run SPEC-AUTH-001, /moai sync, /moai project, /moai",
+    "  SPEC ID格式也更改: SPEC-001 → SPEC-{DOMAIN}-{NUM} (例如: SPEC-AUTH-001, SPEC-API-001)",
     "🗿 MoAI-ADK: 48个Skills与Context7集成的SPEC-First DDD",
-    "⚡ /moai:alfred: 一站式 Plan→Run→Sync 自动化（智能路由）",
+    "⚡ /moai: 一站式 Plan→Run→Sync 自动化（智能路由）",
     "🌳 moai-worktree: 并行SPEC开发 - 同时处理多个功能",
     "🤖 Expert Agents: backend, frontend, security, devops, performance, debug, testing, refactoring",
     "🤖 Manager Agents: git, spec, ddd, docs, quality, project, strategy, claude-code",
     "🤖 Builder Agents: agent, command, skill, plugin - 创建自定义扩展",
-    "📋 工作流程: /moai:1-plan (SPEC) → /moai:2-run (DDD) → /moai:3-sync (Docs)",
+    "📋 工作流程: /moai plan (SPEC) → /moai run (DDD) → /moai sync (Docs)",
     "✅ 质量: TRUST 5 + 85%+ 覆盖率 + Ralph Engine (LSP + AST-grep)",
     "🔄 Git策略: 3-Mode (Manual/Personal/Team) + Smart Merge配置更新",
     "📚 提示: moai update --templates-only 同步最新的skills和agents",

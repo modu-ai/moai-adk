@@ -26,7 +26,16 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, Set
 
-import yaml
+# Import yaml with helpful error message
+try:
+    import yaml
+except ImportError as e:
+    raise ImportError(
+        "PyYAML is required for MoAI-ADK hooks. "
+        "Install with: pip install pyyaml\n"
+        f"Or use: uv run --with pyyaml <hook_script>\n"
+        f"Original error: {e}"
+    ) from e
 
 # ============================================================================
 # Base Timeout Exception and Cross-Platform Timeout Handler

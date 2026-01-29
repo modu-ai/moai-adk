@@ -289,7 +289,7 @@ MoAI-ADK implements a 3-level Progressive Disclosure system:
 
 ### Agent Tool Requirements
 
-All implementation agents MUST include: Read, Write, Edit, Grep, Glob, Bash, TodoWrite
+All implementation agents MUST include: Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet
 
 ### Loop Prevention Guards
 
