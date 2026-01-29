@@ -38,13 +38,10 @@ class ProjectValidator:
         "CLAUDE.md",
     ]
 
-    # Required Alfred command files (SPEC-INIT-004)
-    REQUIRED_ALFRED_COMMANDS = [
-        "0-project.md",
-        "1-plan.md",
-        "2-run.md",
-        "3-sync.md",
-    ]
+    # Required Alfred command files
+    # NOTE: Deprecated in v1.10.0+ - commands migrated to skill system
+    # See: .claude/skills/moai/workflows/ for plan.md, run.md, sync.md
+    REQUIRED_ALFRED_COMMANDS: list[str] = []
 
     def validate_system_requirements(self) -> None:
         """Verify system requirements.

@@ -12,7 +12,12 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
-import yaml
+try:
+    import yaml
+
+    YAML_AVAILABLE = True
+except ImportError:
+    YAML_AVAILABLE = False
 
 # Import TimeoutError from lib.unified_timeout_manager (canonical definition)
 try:

@@ -26,7 +26,12 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, Set
 
-import yaml
+try:
+    import yaml
+
+    YAML_AVAILABLE = True
+except ImportError:
+    YAML_AVAILABLE = False
 
 # ============================================================================
 # Base Timeout Exception and Cross-Platform Timeout Handler
