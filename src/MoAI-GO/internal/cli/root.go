@@ -24,6 +24,8 @@ application development.`,
 		NewStatuslineCommand(),
 		NewHookCommand(),
 		NewVersionCommand(),
+		NewSelfUpdateCommand(),
+		NewMigrateCommand(),
 	)
 
 	return rootCmd
