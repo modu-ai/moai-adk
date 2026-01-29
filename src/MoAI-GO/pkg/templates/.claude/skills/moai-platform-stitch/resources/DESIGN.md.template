@@ -1,0 +1,140 @@
+# Design System: {{PROJECT_NAME}}
+**Project ID:** {{PROJECT_ID}}
+
+## 1. Visual Theme & Atmosphere
+
+{{VISUAL_THEME_DESCRIPTION}}
+
+**Key Characteristics:**
+- {{KEY_CHARACTERISTIC_1}}
+- {{KEY_CHARACTERISTIC_2}}
+- {{KEY_CHARACTERISTIC_3}}
+- {{KEY_CHARACTERISTIC_4}}
+- {{KEY_CHARACTERISTIC_5}}
+- {{KEY_CHARACTERISTIC_6}}
+
+## 2. Color Palette & Roles
+
+### Primary Foundation
+- **{{PRIMARY_COLOR_NAME}}** ({{PRIMARY_COLOR_HEX}}) – {{PRIMARY_COLOR_PURPOSE}}
+- **{{SECONDARY_COLOR_NAME}}** ({{SECONDARY_COLOR_HEX}}) – {{SECONDARY_COLOR_PURPOSE}}
+
+### Accent & Interactive
+- **{{ACCENT_COLOR_NAME}}** ({{ACCENT_COLOR_HEX}}) – {{ACCENT_COLOR_PURPOSE}}
+
+### Typography & Text Hierarchy
+- **{{PRIMARY_TEXT_NAME}}** ({{PRIMARY_TEXT_HEX}}) – {{PRIMARY_TEXT_PURPOSE}}
+- **{{SECONDARY_TEXT_NAME}}** ({{SECONDARY_TEXT_HEX}}) – {{SECONDARY_TEXT_PURPOSE}}
+- **{{TERTIARY_COLOR_NAME}}** ({{TERTIARY_COLOR_HEX}}) – {{TERTIARY_COLOR_PURPOSE}}
+
+### Functional States (Reserved for system feedback)
+- **{{SUCCESS_COLOR_NAME}}** ({{SUCCESS_COLOR_HEX}}) – {{SUCCESS_COLOR_PURPOSE}}
+- **{{ALERT_COLOR_NAME}}** ({{ALERT_COLOR_HEX}}) – {{ALERT_COLOR_PURPOSE}}
+- **{{INFO_COLOR_NAME}}** ({{INFO_COLOR_HEX}}) – {{INFO_COLOR_PURPOSE}}
+
+## 3. Typography Rules
+
+**Primary Font Family:** {{FONT_FAMILY}}
+**Character:** {{FONT_CHARACTER}}
+
+### Hierarchy & Weights
+- **Display Headlines (H1):** {{H1_WEIGHT}} weight, {{H1_LETTER_SPACING}} letter-spacing, {{H1_SIZE}} size. {{H1_USAGE}}
+- **Section Headers (H2):** {{H2_WEIGHT}} weight, {{H2_LETTER_SPACING}} letter-spacing, {{H2_SIZE}} size. {{H2_USAGE}}
+- **Subsection Headers (H3):** {{H3_WEIGHT}} weight, {{H3_LETTER_SPACING}} letter-spacing, {{H3_SIZE}} size. {{H3_USAGE}}
+- **Body Text:** {{BODY_WEIGHT}} weight, {{BODY_LINE_HEIGHT}} line-height, {{BODY_SIZE}} size. {{BODY_USAGE}}
+- **Small Text/Meta:** {{SMALL_WEIGHT}} weight, {{SMALL_LINE_HEIGHT}} line-height, {{SMALL_SIZE}} size. {{SMALL_USAGE}}
+- **CTA Buttons:** {{CTA_WEIGHT}} weight, {{CTA_LETTER_SPACING}} letter-spacing, {{CTA_SIZE}} size. {{CTA_USAGE}}
+
+### Spacing Principles
+- {{SPACING_PRINCIPLE_1}}
+- {{SPACING_PRINCIPLE_2}}
+- {{SPACING_PRINCIPLE_3}}
+- {{SPACING_PRINCIPLE_4}}
+
+## 4. Component Stylings
+
+### Buttons
+- **Shape:** {{BUTTON_SHAPE_DESCRIPTION}}
+- **Primary CTA:** {{PRIMARY_CTA_DESCRIPTION}}
+- **Hover State:** {{BUTTON_HOVER_STATE}}
+- **Focus State:** {{BUTTON_FOCUS_STATE}}
+- **Secondary CTA (if needed):** {{SECONDARY_CTA_DESCRIPTION}}
+
+### Cards & Product Containers
+- **Corner Style:** {{CARD_CORNER_STYLE}}
+- **Background:** {{CARD_BACKGROUND_STYLE}}
+- **Shadow Strategy:** {{CARD_SHADOW_STRATEGY}}
+- **Border:** {{CARD_BORDER_STYLE}}
+- **Internal Padding:** {{CARD_INTERNAL_PADDING}}
+- {{CARD_ADDITIONAL_STYLING}}
+
+### Navigation
+- **Style:** {{NAVIGATION_STYLE}}
+- **Typography:** {{NAVIGATION_TYPOGRAPHY}}
+- **Default State:** {{NAVIGATION_DEFAULT_STATE}}
+- **Active/Hover State:** {{NAVIGATION_ACTIVE_STATE}}
+- **Active Indicator:** {{NAVIGATION_ACTIVE_INDICATOR}}
+- **Mobile:** {{NAVIGATION_MOBILE_BEHAVIOR}}
+
+### Inputs & Forms
+- **Stroke Style:** {{INPUT_STROKE_STYLE}}
+- **Background:** {{INPUT_BACKGROUND_STYLE}}
+- **Corner Style:** {{INPUT_CORNER_STYLE}}
+- **Focus State:** {{INPUT_FOCUS_STATE}}
+- **Padding:** {{INPUT_PADDING}}
+- **Placeholder Text:** {{INPUT_PLACEHOLDER_STYLE}}
+
+{{ADDITIONAL_COMPONENT_SECTIONS}}
+
+## 5. Layout Principles
+
+### Grid & Structure
+- **Max Content Width:** {{MAX_CONTENT_WIDTH}}
+- **Grid System:** {{GRID_SYSTEM_DESCRIPTION}}
+- **Breakpoints:**
+  - Mobile: {{MOBILE_BREAKPOINT}}
+  - Tablet: {{TABLET_BREAKPOINT}}
+  - Desktop: {{DESKTOP_BREAKPOINT}}
+  - Large Desktop: {{LARGE_DESKTOP_BREAKPOINT}}
+
+### Whitespace Strategy (Critical to the Design)
+- **Base Unit:** {{WHITESPACE_BASE_UNIT}}
+- **Vertical Rhythm:** {{VERTICAL_RHYTHM}}
+- **Section Margins:** {{SECTION_MARGINS}}
+- **Edge Padding:** {{EDGE_PADDING}}
+- {{ADDITIONAL_WHITESPACE_RULES}}
+
+### Alignment & Visual Balance
+- **Text Alignment:** {{TEXT_ALIGNMENT}}
+- **Image to Text Ratio:** {{IMAGE_TEXT_RATIO}}
+- **Asymmetric Balance:** {{ASYMMETRIC_BALANCE}}
+- **Visual Weight Distribution:** {{VISUAL_WEIGHT_DISTRIBUTION}}
+- **Reading Flow:** {{READING_FLOW}}
+
+### Responsive Behavior & Touch
+- **Mobile-First Foundation:** {{MOBILE_FIRST_FOUNDATION}}
+- **Progressive Enhancement:** {{PROGRESSIVE_ENHANCEMENT}}
+- **Touch Targets:** {{TOUCH_TARGETS}}
+- **Image Optimization:** {{IMAGE_OPTIMIZATION}}
+- **Collapsing Strategy:** {{COLLAPSING_STRATEGY}}
+
+## 6. Design System Notes for Stitch Generation
+
+When creating new screens for this project using Stitch, reference these specific instructions:
+
+### Language to Use
+- **Atmosphere:** "{{ATMOSPHERE_DESCRIPTION}}"
+- **Button Shapes:** "{{BUTTON_SHAPE_LANGUAGE}}"
+- **Shadows:** "{{SHADOW_LANGUAGE}}"
+- **Spacing:** "{{SPACING_LANGUAGE}}"
+
+### Color References
+Always use the descriptive names with hex codes:
+{{COLOR_REFERENCES}}
+
+### Component Prompts
+{{COMPONENT_PROMPTS}}
+
+### Incremental Iteration
+When refining existing screens:
+{{ITERATION_GUIDELINES}}

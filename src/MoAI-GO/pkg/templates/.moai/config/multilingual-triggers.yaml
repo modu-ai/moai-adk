@@ -1,0 +1,206 @@
+# Multilingual Agent Trigger Keywords
+# Version: 1.0.0
+# Purpose: Define trigger keywords for automatic agent routing in 4 languages
+# Languages: EN (English), KO (Korean), JA (Japanese), ZH (Chinese)
+
+# ============================================================================
+# EXPERT AGENTS - Domain-specific expertise
+# ============================================================================
+
+expert-backend:
+  triggers:
+    en: ["backend", "API", "server", "authentication", "database", "REST", "GraphQL", "microservices", "JWT", "OAuth"]
+    ko: ["백엔드", "API", "서버", "인증", "데이터베이스", "RESTful", "마이크로서비스", "토큰", "OAuth"]
+    ja: ["バックエンド", "API", "サーバー", "認証", "データベース", "マイクロサービス", "トークン"]
+    zh: ["后端", "API", "服务器", "认证", "数据库", "微服务", "令牌", "身份验证"]
+
+expert-frontend:
+  triggers:
+    en: ["frontend", "UI", "component", "React", "Vue", "Next.js", "CSS", "responsive", "state management"]
+    ko: ["프론트엔드", "UI", "컴포넌트", "리액트", "뷰", "넥스트", "CSS", "반응형", "상태관리"]
+    ja: ["フロントエンド", "UI", "コンポーネント", "リアクト", "ビュー", "CSS", "レスポンシブ", "状態管理"]
+    zh: ["前端", "UI", "组件", "React", "Vue", "CSS", "响应式", "状态管理"]
+
+expert-database:
+  triggers:
+    en: ["database", "SQL", "NoSQL", "PostgreSQL", "MongoDB", "Redis", "schema", "query", "index"]
+    ko: ["데이터베이스", "SQL", "NoSQL", "PostgreSQL", "MongoDB", "Redis", "스키마", "쿼리", "인덱스"]
+    ja: ["データベース", "SQL", "NoSQL", "PostgreSQL", "MongoDB", "Redis", "スキーマ", "クエリ", "インデックス"]
+    zh: ["数据库", "SQL", "NoSQL", "PostgreSQL", "MongoDB", "Redis", "架构", "查询", "索引"]
+
+expert-security:
+  triggers:
+    en: ["security", "vulnerability", "OWASP", "injection", "XSS", "CSRF", "penetration", "audit"]
+    ko: ["보안", "취약점", "OWASP", "인젝션", "XSS", "CSRF", "침투", "감사"]
+    ja: ["セキュリティ", "脆弱性", "OWASP", "インジェクション", "XSS", "CSRF", "ペネトレーション", "監査"]
+    zh: ["安全", "漏洞", "OWASP", "注入", "XSS", "CSRF", "渗透", "审计"]
+
+expert-testing:
+  triggers:
+    en: ["test", "E2E", "integration", "load test", "test automation", "coverage", "QA"]
+    ko: ["테스트", "E2E", "통합", "부하테스트", "테스트자동화", "커버리지", "QA"]
+    ja: ["テスト", "E2E", "統合", "負荷テスト", "テスト自動化", "カバレッジ", "QA"]
+    zh: ["测试", "E2E", "集成", "负载测试", "测试自动化", "覆盖率", "QA"]
+
+expert-performance:
+  triggers:
+    en: ["performance", "profiling", "optimization", "benchmark", "memory", "bundle", "latency"]
+    ko: ["성능", "프로파일링", "최적화", "벤치마크", "메모리", "번들", "지연시간"]
+    ja: ["パフォーマンス", "プロファイリング", "最適化", "ベンチマーク", "メモリ", "バンドル", "レイテンシ"]
+    zh: ["性能", "性能分析", "优化", "基准测试", "内存", "包体", "延迟"]
+
+expert-debug:
+  triggers:
+    en: ["debug", "error", "bug", "exception", "crash", "troubleshoot", "diagnose"]
+    ko: ["디버그", "에러", "버그", "예외", "크래시", "문제해결", "진단"]
+    ja: ["デバッグ", "エラー", "バグ", "例外", "クラッシュ", "トラブルシュート", "診断"]
+    zh: ["调试", "错误", "bug", "异常", "崩溃", "故障排除", "诊断"]
+
+expert-devops:
+  triggers:
+    en: ["DevOps", "CI/CD", "Docker", "Kubernetes", "deployment", "pipeline", "infrastructure"]
+    ko: ["데브옵스", "CI/CD", "도커", "쿠버네티스", "배포", "파이프라인", "인프라"]
+    ja: ["DevOps", "CI/CD", "Docker", "Kubernetes", "デプロイ", "パイプライン", "インフラ"]
+    zh: ["DevOps", "CI/CD", "Docker", "Kubernetes", "部署", "流水线", "基础设施"]
+
+expert-uiux:
+  triggers:
+    en: ["UI/UX", "design", "accessibility", "WCAG", "user experience", "design system", "wireframe"]
+    ko: ["UI/UX", "디자인", "접근성", "WCAG", "사용자경험", "디자인시스템", "와이어프레임"]
+    ja: ["UI/UX", "デザイン", "アクセシビリティ", "WCAG", "ユーザー体験", "デザインシステム", "ワイヤーフレーム"]
+    zh: ["UI/UX", "设计", "可访问性", "WCAG", "用户体验", "设计系统", "线框图"]
+
+# ============================================================================
+# MANAGER AGENTS - Workflow orchestration
+# ============================================================================
+
+manager-ddd:
+  triggers:
+    en: ["DDD", "ANALYZE-PRESERVE-IMPROVE", "domain-driven", "behavior preservation", "characterization test"]
+    ko: ["DDD", "분석-보존-개선", "도메인주도개발", "동작보존", "특성테스트"]
+    ja: ["DDD", "分析-保存-改善", "ドメイン駆動開発", "動作保存", "特性テスト"]
+    zh: ["DDD", "分析-保存-改进", "领域驱动开发", "行为保存", "特性测试"]
+
+manager-spec:
+  triggers:
+    en: ["SPEC", "requirement", "specification", "EARS", "acceptance criteria", "user story"]
+    ko: ["SPEC", "요구사항", "명세서", "EARS", "인수조건", "유저스토리"]
+    ja: ["SPEC", "要件", "仕様書", "EARS", "受入基準", "ユーザーストーリー"]
+    zh: ["SPEC", "需求", "规格书", "EARS", "验收标准", "用户故事"]
+
+manager-strategy:
+  triggers:
+    en: ["strategy", "implementation plan", "architecture decision", "technology evaluation"]
+    ko: ["전략", "구현계획", "아키텍처결정", "기술평가"]
+    ja: ["戦略", "実装計画", "アーキテクチャ決定", "技術評価"]
+    zh: ["策略", "实施计划", "架构决策", "技术评估"]
+
+manager-quality:
+  triggers:
+    en: ["quality", "TRUST 5", "code review", "compliance", "quality gate", "lint"]
+    ko: ["품질", "TRUST 5", "코드리뷰", "준수", "품질게이트", "린트"]
+    ja: ["品質", "TRUST 5", "コードレビュー", "コンプライアンス", "品質ゲート", "リント"]
+    zh: ["质量", "TRUST 5", "代码审查", "合规", "质量门", "lint"]
+
+manager-git:
+  triggers:
+    en: ["git", "commit", "branch", "PR", "pull request", "merge", "release"]
+    ko: ["git", "커밋", "브랜치", "PR", "풀리퀘스트", "머지", "릴리즈"]
+    ja: ["git", "コミット", "ブランチ", "PR", "プルリクエスト", "マージ", "リリース"]
+    zh: ["git", "提交", "分支", "PR", "拉取请求", "合并", "发布"]
+
+manager-docs:
+  triggers:
+    en: ["documentation", "README", "API docs", "Nextra", "markdown", "technical writing"]
+    ko: ["문서", "README", "API문서", "Nextra", "마크다운", "기술문서"]
+    ja: ["ドキュメント", "README", "APIドキュメント", "Nextra", "マークダウン", "技術文書"]
+    zh: ["文档", "README", "API文档", "Nextra", "markdown", "技术写作"]
+
+manager-project:
+  triggers:
+    en: ["project setup", "initialization", ".moai", "project configuration", "scaffold"]
+    ko: ["프로젝트설정", "초기화", ".moai", "프로젝트구성", "스캐폴드"]
+    ja: ["プロジェクトセットアップ", "初期化", ".moai", "プロジェクト構成", "スキャフォールド"]
+    zh: ["项目设置", "初始化", ".moai", "项目配置", "脚手架"]
+
+# ============================================================================
+# BUILDER AGENTS - Creation and generation
+# ============================================================================
+
+builder-agent:
+  triggers:
+    en: ["create agent", "new agent", "agent blueprint", "sub-agent", "agent definition"]
+    ko: ["에이전트생성", "새에이전트", "에이전트블루프린트", "서브에이전트", "에이전트정의"]
+    ja: ["エージェント作成", "新エージェント", "エージェントブループリント", "サブエージェント", "エージェント定義"]
+    zh: ["创建代理", "新代理", "代理蓝图", "子代理", "代理定义"]
+
+builder-skill:
+  triggers:
+    en: ["create skill", "new skill", "skill optimization", "knowledge domain", "YAML frontmatter"]
+    ko: ["스킬생성", "새스킬", "스킬최적화", "지식도메인", "YAML프론트매터"]
+    ja: ["スキル作成", "新スキル", "スキル最適化", "知識ドメイン", "YAMLフロントマター"]
+    zh: ["创建技能", "新技能", "技能优化", "知识领域", "YAML前置信息"]
+
+builder-command:
+  triggers:
+    en: ["create command", "slash command", "custom command", "command optimization"]
+    ko: ["커맨드생성", "슬래시커맨드", "커스텀커맨드", "커맨드최적화"]
+    ja: ["コマンド作成", "スラッシュコマンド", "カスタムコマンド", "コマンド最適化"]
+    zh: ["创建命令", "斜杠命令", "自定义命令", "命令优化"]
+
+builder-plugin:
+  triggers:
+    en: ["create plugin", "plugin", "plugin validation", "plugin structure", "marketplace"]
+    ko: ["플러그인생성", "플러그인", "플러그인검증", "플러그인구조", "마켓플레이스"]
+    ja: ["プラグイン作成", "プラグイン", "プラグイン検証", "プラグイン構造", "マーケットプレイス"]
+    zh: ["创建插件", "插件", "插件验证", "插件结构", "市场"]
+
+# ============================================================================
+# MCP AGENTS - External service integration
+# ============================================================================
+
+mcp-context7:
+  triggers:
+    en: ["documentation", "library", "API reference", "official docs", "version compatibility"]
+    ko: ["문서", "라이브러리", "API레퍼런스", "공식문서", "버전호환성"]
+    ja: ["ドキュメント", "ライブラリ", "APIリファレンス", "公式ドキュメント", "バージョン互換性"]
+    zh: ["文档", "库", "API参考", "官方文档", "版本兼容性"]
+
+mcp-playwright:
+  triggers:
+    en: ["browser automation", "E2E testing", "visual regression", "web scraping", "screenshot"]
+    ko: ["브라우저자동화", "E2E테스트", "시각적회귀", "웹스크래핑", "스크린샷"]
+    ja: ["ブラウザ自動化", "E2Eテスト", "ビジュアルリグレッション", "ウェブスクレイピング", "スクリーンショット"]
+    zh: ["浏览器自动化", "E2E测试", "视觉回归", "网页抓取", "截图"]
+
+mcp-figma:
+  triggers:
+    en: ["Figma", "design analysis", "design-to-code", "design token", "component library"]
+    ko: ["피그마", "디자인분석", "디자인투코드", "디자인토큰", "컴포넌트라이브러리"]
+    ja: ["Figma", "デザイン分析", "デザインtoコード", "デザイントークン", "コンポーネントライブラリ"]
+    zh: ["Figma", "设计分析", "设计转代码", "设计令牌", "组件库"]
+
+mcp-notion:
+  triggers:
+    en: ["Notion", "workspace", "database", "knowledge base", "content automation"]
+    ko: ["노션", "워크스페이스", "데이터베이스", "지식베이스", "콘텐츠자동화"]
+    ja: ["Notion", "ワークスペース", "データベース", "ナレッジベース", "コンテンツ自動化"]
+    zh: ["Notion", "工作区", "数据库", "知识库", "内容自动化"]
+
+mcp-sequential-thinking:
+  triggers:
+    en: ["complex reasoning", "architecture design", "strategic decision", "risk assessment", "deep analysis"]
+    ko: ["복잡한추론", "아키텍처설계", "전략적결정", "위험평가", "심층분석"]
+    ja: ["複雑な推論", "アーキテクチャ設計", "戦略的決定", "リスク評価", "深層分析"]
+    zh: ["复杂推理", "架构设计", "战略决策", "风险评估", "深度分析"]
+
+# ============================================================================
+# AI AGENTS - AI-powered content generation
+# ============================================================================
+
+ai-nano-banana:
+  triggers:
+    en: ["image generation", "visual content", "prompt optimization", "Gemini", "AI image"]
+    ko: ["이미지생성", "시각적콘텐츠", "프롬프트최적화", "제미나이", "AI이미지"]
+    ja: ["画像生成", "ビジュアルコンテンツ", "プロンプト最適化", "Gemini", "AI画像"]
+    zh: ["图像生成", "视觉内容", "提示词优化", "Gemini", "AI图像"]

@@ -1,0 +1,58 @@
+# System & GitHub Integration Settings
+# MoAI system configuration and GitHub automation
+
+moai:
+  version: "1.12.5"
+  update_check_frequency: daily
+  version_check:
+    enabled: true
+    cache_ttl_hours: 24
+
+github:
+  enable_trust_5: true        # Include TRUST 5 in PR templates
+  auto_delete_branches: true  # Delete branches after merge
+  # SPEC Git Workflow Options:
+  # ┌─────────────────────┬────────────────────────────────────────────────────────────┐
+  # │ main_direct         │ Commit directly to main branch (simple personal projects)  │
+  # │ main_feature        │ Create feature branch from main, merge back to main        │
+  # │ develop_direct      │ Commit directly to develop branch (traditional git-flow)   │
+  # │ feature_branch      │ Create feature branch, PR to develop (team projects)       │
+  # │ per_spec            │ Create dedicated branch per SPEC                           │
+  # └─────────────────────┴────────────────────────────────────────────────────────────┘
+  spec_git_workflow: main_direct
+  # Note: Git automation settings (auto_branch, auto_commit, etc.) are managed in git-strategy.yaml
+
+# Document Management System
+# Prevents project root pollution by enforcing .moai/ hierarchy for all internal files
+document_management:
+  enabled: true
+  enforce_structure: true
+  block_root_pollution: true
+
+  # Separation policy between logs and docs
+  separation_policy:
+    strict_separation: true
+    description: Clear separation between logs (runtime data) and docs (documentation content)
+    logs_scope: runtime sessions, errors, execution traces, agent transcripts
+    docs_scope: reports, analysis, validation, sync, inspection, documentation files
+
+  # Directory structure and retention policies
+  directories:
+    # Documentation files
+    docs:
+      base: .moai/docs/
+      retention_days: null # Keep indefinitely
+    # Log files (runtime data)
+    logs:
+      base: .moai/logs/
+      retention_days: 30
+    # Temporary files
+    temp:
+      base: .moai/temp/
+      retention_days: 7
+      auto_cleanup: true
+    # Cache files
+    cache:
+      base: .moai/cache/
+      retention_days: 30
+      auto_cleanup: true

@@ -1,0 +1,22 @@
+{
+  "companyAnnouncements": [
+    "🔄 v1.12.0 명령어 형식 개선: 콜론(:) 제거, 더 간결한 명령어",
+    "  이전: /moai:1-plan, /moai:2-run SPEC-001, /moai:3-sync, /moai:0-project, /moai:alfred",
+    "  변경: /moai plan, /moai run SPEC-AUTH-001, /moai sync, /moai project, /moai",
+    "  SPEC ID 형식도 변경: SPEC-001 → SPEC-{DOMAIN}-{NUM} (예: SPEC-AUTH-001, SPEC-API-001)",
+    "🗿 MoAI-ADK: 48개 Skills와 Context7 통합 SPEC-First DDD",
+    "⚡ /moai: 원스탑 Plan→Run→Sync 자동화 (지능형 라우팅)",
+    "🌳 moai-worktree: 병렬 SPEC 개발 - 여러 기능을 동시에 작업",
+    "🤖 Expert Agents: backend, frontend, security, devops, performance, debug, testing, refactoring",
+    "🤖 Manager Agents: git, spec, ddd, docs, quality, project, strategy, claude-code",
+    "🤖 Builder Agents: agent, command, skill, plugin - 커스텀 확장 생성",
+    "📋 워크플로우: /moai plan (SPEC) → /moai run (DDD) → /moai sync (Docs)",
+    "✅ 품질: TRUST 5 + 85%+ 커버리지 + Ralph Engine (LSP + AST-grep)",
+    "🔄 Git 전략: 3-Mode (Manual/Personal/Team) + Smart Merge 설정 업데이트",
+    "📚 팁: moai update --templates-only로 최신 skills와 agents 동기화",
+    "📚 팁: moai-wt new SPEC-XXX로 병렬 개발용 worktree 생성",
+    "💡 하이브리드 모드: Plan은 Claude (Opus/Sonnet), Run/Sync는 GLM으로 비용 절감",
+    "💡 병렬 개발: 터미널1은 Claude, 터미널2+는 'moai glm && claude'로 병렬 실행",
+    "🏆 moai rank: Claude 토큰 사용량 추적 및 rank.mo.ai.kr 리더보드 경쟁"
+  ]
+}

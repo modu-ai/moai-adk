@@ -1,0 +1,104 @@
+{
+  "hooks": {
+    "timeout_manager": {
+      "global_timeout_ms": 5000,
+      "default_retry_count": 1,
+      "default_retry_delay_ms": 200,
+      "graceful_degradation": true
+    },
+    "hook_configs": {
+      "session_start": {
+        "policy": "normal",
+        "timeout_ms": 5000,
+        "retry_count": 1,
+        "retry_delay_ms": 200,
+        "graceful_degradation": true,
+        "memory_limit_mb": 100
+      },
+      "session_end": {
+        "policy": "normal",
+        "timeout_ms": 5000,
+        "retry_count": 1,
+        "retry_delay_ms": 500,
+        "graceful_degradation": true,
+        "memory_limit_mb": 150
+      },
+      "pre_tool": {
+        "policy": "fast",
+        "timeout_ms": 2000,
+        "retry_count": 1,
+        "retry_delay_ms": 100,
+        "graceful_degradation": true,
+        "memory_limit_mb": 50
+      }
+    },
+    "resources": {
+      "memory_limits": {
+        "default_mb": 100,
+        "max_mb": 1000
+      },
+      "workers": {
+        "default_max_workers": 4,
+        "max_max_workers": 8
+      }
+    },
+    "performance": {
+      "cache": {
+        "size_limit": 100,
+        "ttl_seconds": 300
+      },
+      "monitoring": {
+        "enabled": true,
+        "log_performance": false
+      }
+    }
+  },
+  "document_management": {
+    "enabled": true,
+    "validation": {
+      "block_violations": false
+    },
+    "root_whitelist": [
+      "README.md",
+      "LICENSE",
+      ".gitignore",
+      ".claude",
+      ".moai",
+      "pyproject.toml",
+      "src"
+    ],
+    "directories": {
+      "temp": {
+        "base": ".moai/temp/"
+      },
+      "scripts": {
+        "base": ".moai/scripts/"
+      },
+      "work": {
+        "base": ".moai/temp/work/"
+      },
+      "dev": {
+        "base": ".moai/scripts/dev/"
+      }
+    },
+    "file_patterns": {
+      "temp": {
+        "work": ["*.tmp", "*.temp", "*.bak", "*.log"],
+        "cache": ["*.cache", "*.cache.*"]
+      },
+      "scripts": {
+        "dev": ["*.sh", "*.py", "*.js", "*.ts"],
+        "utils": ["*.py", "*.sh"]
+      },
+      "work": {
+        "drafts": ["*.md", "*.txt"],
+        "notes": ["*.md", "*.txt", "*.rst"]
+      }
+    }
+  },
+  "auto_cleanup": {
+    "enabled": true,
+    "cleanup_days": 7,
+    "max_cache_size_mb": 100
+  }
+}
