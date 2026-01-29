@@ -1,3 +1,115 @@
+# v1.12.1 - Init Validation & Hook Dependency Fixes (2026-01-29)
+
+## Summary
+
+Patch release fixing `moai init` validation error and hook script PyYAML dependency issue.
+
+**Key Fixes**:
+- **Issue #310**: Removed deprecated Alfred command files validation
+- **Issue #311**: Made PyYAML import optional in hook libraries
+- **Impact**: `moai init` now works correctly without requiring deprecated command files
+
+**Issues Resolved**:
+- `moai init` no longer fails with "Required Alfred command files not found"
+- SessionStart hooks no longer fail with `ModuleNotFoundError: No module named 'yaml'`
+
+## Breaking Changes
+
+None. All changes are backward compatible.
+
+## Fixed
+
+### Project Initialization (#310)
+
+- **fix(validator)**: Remove deprecated Alfred command files validation (d855fa84)
+  - Issue: `moai init` failed with "Required Alfred command files not found: 0-project.md, 1-plan.md, 2-run.md, 3-sync.md"
+  - Root cause: v1.10.0+ migrated `.claude/commands/moai/` to skill system, but validator.py wasn't updated
+  - Fix: Set `REQUIRED_ALFRED_COMMANDS` to empty list with deprecation note
+  - Files affected:
+    - `src/moai_adk/core/project/validator.py`
+
+### Hook Script Dependencies (#311)
+
+- **fix(hooks)**: Make PyYAML import optional in hook libraries (d855fa84)
+  - Issue: SessionStart hooks failed with `ModuleNotFoundError: No module named 'yaml'`
+  - Root cause: Hook scripts imported PyYAML directly, which wasn't available in project without pyproject.toml
+  - Fix: Added try-except blocks for yaml import with `YAML_AVAILABLE` flag
+  - Files affected:
+    - `.claude/hooks/moai/lib/version_reader.py`
+    - `.claude/hooks/moai/lib/project.py`
+    - `.claude/hooks/moai/lib/unified_timeout_manager.py`
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+claude install moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.12.1 - 초기화 검증 및 Hook 의존성 수정 (2026-01-29)
+
+## 요약
+
+`moai init` 검증 오류와 hook 스크립트 PyYAML 의존성 문제를 수정하는 패치 릴리스입니다.
+
+**주요 수정**:
+- **이슈 #310**: deprecated된 Alfred 명령 파일 검증 제거
+- **이슈 #311**: hook 라이브러리에서 PyYAML import optional 처리
+- **영향**: `moai init`가 더 이상 deprecated 명령 파일 요구로 실패하지 않음
+
+**해결된 문제**:
+- `moai init`가 "Required Alfred command files not found" 오류로 실패하지 않음
+- SessionStart hooks가 `ModuleNotFoundError: No module named 'yaml'`로 실패하지 않음
+
+## Breaking Changes
+
+없음. 모든 변경사항은 하위 호환됩니다.
+
+## 수정됨
+
+### 프로젝트 초기화 (#310)
+
+- **fix(validator)**: deprecated된 Alfred 명령 파일 검증 제거 (d855fa84)
+  - 문제: `moai init` 실행 중 "Required Alfred command files not found: 0-project.md, 1-plan.md, 2-run.md, 3-sync.md" 오류
+  - 근본 원인: v1.10.0+에서 `.claude/commands/moai/`가 skill 시스템으로 마이그레이션되었으나 validator.py가 업데이트되지 않음
+  - 해결: `REQUIRED_ALFRED_COMMANDS`를 빈 리스트로 변경하고 deprecation note 추가
+  - 영향을 받는 파일:
+    - `src/moai_adk/core/project/validator.py`
+
+### Hook 스크립트 의존성 (#311)
+
+- **fix(hooks)**: hook 라이브러리에서 PyYAML import optional 처리 (d855fa84)
+  - 문제: SessionStart hooks 실행 중 `ModuleNotFoundError: No module named 'yaml'` 오류
+  - 근본 원인: Hook 스크립트가 PyYAML를 직접 import했는데, pyproject.toml이 없는 프로젝트에서는 모듈을 찾지 못함
+  - 해결: yaml import에 try-except 블록 추가 및 `YAML_AVAILABLE` 플래그 사용
+  - 영향을 받는 파일:
+    - `.claude/hooks/moai/lib/version_reader.py`
+    - `.claude/hooks/moai/lib/project.py`
+    - `.claude/hooks/moai/lib/unified_timeout_manager.py`
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+claude install moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.12.0 - Google Stitch Build Loop & Documentation Updates (2026-01-29)
 
 ## Summary
@@ -1775,7 +1887,7 @@ Minor release launching SPEC (Specification) workflow.
 # Update to the latest version
 uv tool update moai-adk
 
-# Update project templates
+# Update project templates in your folder
 moai update
 
 # Verify version
@@ -1976,6 +2088,7 @@ moai --version
 
 | Version | Date | Type | Description |
 |---------|------|------|-------------|
+| v1.12.1 | 2026-01-29 | patch | Init Validation & Hook Dependency Fixes |
 | v1.12.0 | 2026-01-29 | minor | Google Stitch Build Loop & Documentation Updates |
 | v1.11.2 | 2026-01-29 | patch | CLAUDE.md Reference Fix |
 | v1.11.1 | 2026-01-29 | patch | CLAUDE.md English Only |
