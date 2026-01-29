@@ -1,3 +1,149 @@
+# v1.12.5 - PyYAML Documentation & Skill Frontmatter Improvements (2026-01-29)
+
+## Summary
+
+Documentation-focused release improving PyYAML dependency clarity and Agent Skills standard compliance.
+
+**Key Improvements**:
+- **PyYAML Documentation**: Added Prerequisites section to all README files explaining PyYAML requirement
+- **Error Messages**: Enhanced PyYAML import errors with helpful installation instructions
+- **Standard Compliance**: Moved `user-invocable` to top-level skill frontmatter (Agent Skills spec)
+- **Documentation Fix**: Corrected `moai update` command in CLAUDE.local.md
+
+## Breaking Changes
+
+None.
+
+## Added
+
+### PyYAML Dependency Documentation
+
+- **docs(readme)**: Add Prerequisites section to all README files (148edfe1)
+  - English (README.md)
+  - Korean (README.ko.md)
+  - Japanese (README.ja.md)
+  - Chinese (README.zh.md)
+  - Explains PyYAML requirement for AST-grep, config I/O, SPEC frontmatter, and skill metadata
+
+### Enhanced Error Messages
+
+- **docs(hooks)**: Improve PyYAML import error messages (148edfe1)
+  - `version_reader.py`: Helpful ImportError with installation commands
+  - `project.py`: Same error handling pattern
+  - `unified_timeout_manager.py`: Same error handling pattern
+  - Provides both `pip install pyyaml` and `uv run --with pyyaml` options
+
+### Agent Skills Standard Compliance
+
+- **fix(skills)**: Move `user-invocable` from metadata to top-level frontmatter (#313) (329f8076)
+  - Aligns with Agent Skills open standard specification
+  - Changes from string (`"true"/"false"`) to boolean (true/false)
+  - Affects all 60+ skill definition files
+  - Backward compatible (skill loading handles both locations)
+
+## Changed
+
+### Documentation Corrections
+
+- **docs**: Fix incorrect update command in CLAUDE.local.md (8da340ff)
+  - Changed: `moai-adk update` → `moai update`
+  - Fixes user confusion from incorrect command
+
+### CHANGELOG Accuracy
+
+- **docs(changelog)**: Update Hook Script Dependencies section with accurate PyYAML information (148edfe1)
+  - Clarifies PyYAML is required (not optional)
+  - Explains `--with pyyaml` flag purpose
+  - Documents multi-document YAML requirement
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+claude install moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.12.5 - PyYAML 문서화 및 Skill Frontmatter 개선 (2026-01-29)
+
+## 요약
+
+PyYAML 의존성 명확성 개선과 Agent Skills 표준 준수를 위한 문서 중심 릴리즈.
+
+**주요 개선사항**:
+- **PyYAML 문서화**: 모든 README 파일에 PyYAML 요구사항 설명 추가
+- **에러 메시지**: PyYAML import 에러 시 설치 안내 메시지 개선
+- **표준 준수**: `user-invocable` 필드를 skill frontmatter 최상위로 이동 (Agent Skills 사양)
+- **문서 수정**: CLAUDE.local.md의 잘못된 update 명령어 수정
+
+## Breaking Changes
+
+없음.
+
+## 추가됨
+
+### PyYAML 의존성 문서화
+
+- **docs(readme)**: 모든 README 파일에 필수 의존성 섹션 추가 (148edfe1)
+  - 영어 (README.md)
+  - 한국어 (README.ko.md)
+  - 일본어 (README.ja.md)
+  - 중국어 (README.zh.md)
+  - AST-grep, 설정 I/O, SPEC frontmatter, skill 메타데이터용 PyYAML 요구사항 설명
+
+### 향상된 에러 메시지
+
+- **docs(hooks)**: PyYAML import 에러 메시지 개선 (148edfe1)
+  - `version_reader.py`: 설치 명령어 포함 ImportError
+  - `project.py`: 동일한 에러 처리 패턴
+  - `unified_timeout_manager.py`: 동일한 에러 처리 패턴
+  - `pip install pyyaml`와 `uv run --with pyyaml` 옵션 제공
+
+### Agent Skills 표준 준수
+
+- **fix(skills)**: `user-invocable`을 metadata에서 최상위 frontmatter로 이동 (#313) (329f8076)
+  - Agent Skills 오픈 표준 사양 준수
+  - 문자열 (`"true"/"false"`)에서 불리언(true/false)으로 변경
+  - 60개 이상의 skill 정의 파일에 영향
+  - 하위 호환성 유지 (skill 로딩은 두 위치 모두 처리)
+
+## 변경됨
+
+### 문서 수정
+
+- **docs**: CLAUDE.local.md의 잘못된 update 명령어 수정 (8da340ff)
+  - 변경: `moai-adk update` → `moai update`
+  - 잘못된 명령어로 인한 사용자 혼란 수정
+
+### CHANGELOG 정확성
+
+- **docs(changelog)**: Hook Script Dependencies 섹션을 정확한 PyYAML 정보로 업데이트 (148edfe1)
+  - PyYAML이 필수임을 명확히 함
+  - `--with pyyaml` 플래그 목적 설명
+  - 다중 문서 YAML 요구사항 문서화
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+claude install moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.12.1 - Init Validation & Hook Dependency Fixes (2026-01-29)
 
 ## Summary
