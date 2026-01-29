@@ -5,13 +5,13 @@ description: >
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob Bash mcp__context7__resolve-library-id mcp__context7__get-library-docs
+user-invocable: false
 metadata:
   version: "1.2.0"
   category: "language"
   status: "active"
   updated: "2026-01-11"
   modularized: "false"
-  user-invocable: "false"
   tags: "language, javascript, nodejs, bun, deno, vitest, eslint, express"
 
 # MoAI Extension: Progressive Disclosure

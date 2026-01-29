@@ -9,14 +9,13 @@ description: >
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob WebFetch WebSearch mcp__context7__resolve-library-id mcp__context7__get-library-docs
-
+user-invocable: false
 metadata:
   version: "3.0.0"
   category: "workflow"
   status: "active"
   updated: "2026-01-08"
   modularized: "false"
-  user-invocable: "false"
   tags: "workflow, documentation, jit-loading, context-aware, caching, discovery"
 
 # MoAI Extension: Progressive Disclosure

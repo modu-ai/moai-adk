@@ -6,12 +6,11 @@ description: >
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob Bash mcp__context7__resolve-library-id mcp__context7__get-library-docs
-
+user-invocable: false
 metadata:
   version: "1.2.0"
   category: "tool"
   modularized: "true"
-  user-invocable: "false"
   status: "active"
   updated: "2026-01-11"
   tags: "ast, refactoring, code-search, lint, structural-search, security, codemod"

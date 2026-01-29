@@ -11,13 +11,13 @@ description: >
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+user-invocable: false
 metadata:
   version: "2.0.0"
   category: "framework"
   status: "active"
   updated: "2026-01-10"
   modularized: "false"
-  user-invocable: "false"
   tags: "electron, desktop, cross-platform, nodejs, chromium, ipc, auto-update, electron-builder, electron-forge"
   context7-libraries: "/electron/electron, /electron/forge, /electron-userland/electron-builder"
   related-skills: "moai-lang-typescript, moai-domain-frontend, moai-lang-javascript"

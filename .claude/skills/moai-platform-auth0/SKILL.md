@@ -8,14 +8,13 @@ description: >
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Write Edit Grep Glob WebFetch WebSearch Bash
-
+user-invocable: false
 metadata:
   version: "1.0.0"
   category: "security"
   status: "active"
   updated: "2026-01-08"
   modularized: "true"
-  user-invocable: "false"
   tags: "auth0, security, mfa, attack-protection, tokens, dpop, mtls, compliance, fapi, gdpr"
   context7-libraries: "/auth0/docs"
 

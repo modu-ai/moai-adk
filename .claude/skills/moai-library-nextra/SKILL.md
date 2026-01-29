@@ -6,12 +6,11 @@ description: >
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Write Edit Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
-
+user-invocable: false
 metadata:
   version: "2.2.0"
   category: "library"
   modularized: "true"
-  user-invocable: "false"
   status: "active"
   updated: "2026-01-11"
   tags: "library, nextra, nextjs, documentation, mdx, static-site"

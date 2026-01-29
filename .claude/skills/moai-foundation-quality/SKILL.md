@@ -4,13 +4,13 @@ description: Enterprise code quality orchestrator with TRUST 5 validation, proac
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+user-invocable: false
 metadata:
   version: "2.2.0"
   category: "foundation"
   status: "active"
   updated: "2026-01-11"
   modularized: "true"
-  user-invocable: "false"
   tags: "foundation, quality, testing, validation, trust-5, best-practices, code-review"
   aliases: "moai-foundation-quality"
 

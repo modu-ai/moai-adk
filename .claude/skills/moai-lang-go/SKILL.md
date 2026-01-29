@@ -4,13 +4,13 @@ description: >
   Go 1.23+ development specialist covering Fiber, Gin, GORM, and concurrent programming patterns. Use when building high-performance microservices, CLI tools, or cloud-native applications.
 license: Apache-2.0
 compatibility: Designed for Claude Code
+user-invocable: false
 metadata:
   version: "1.1.0"
   category: "language"
   status: "active"
   updated: "2026-01-11"
   modularized: "false"
-  user-invocable: "false"
   tags: "go, golang, fiber, gin, concurrency, microservices"
   context7-libraries: "/gofiber/fiber, /gin-gonic/gin, /go-gorm/gorm"
   related-skills: "moai-lang-rust, moai-domain-backend"

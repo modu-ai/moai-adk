@@ -6,14 +6,13 @@ description: >
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
-
+user-invocable: false
 metadata:
   version: "2.1.0"
   category: "platform"
   status: "active"
   updated: "2026-01-11"
   modularized: "true"
-  user-invocable: "false"
   tags: "supabase, postgresql, pgvector, realtime, rls, edge-functions"
   context7-libraries: "/supabase/supabase"
   related-skills: "moai-platform-neon, moai-lang-typescript"

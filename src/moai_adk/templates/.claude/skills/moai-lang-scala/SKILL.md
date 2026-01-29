@@ -7,13 +7,13 @@ description: >
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+user-invocable: false
 metadata:
   version: "2.1.0"
   category: "language"
   status: "active"
   updated: "2026-01-11"
   modularized: "true"
-  user-invocable: "false"
   tags: "language, scala, akka, cats-effect, zio, spark, sbt"
 
 # MoAI Extension: Progressive Disclosure

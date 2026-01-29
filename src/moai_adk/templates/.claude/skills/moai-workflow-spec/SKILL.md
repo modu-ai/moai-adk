@@ -6,14 +6,13 @@ description: >
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Write Edit Bash Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
-
+user-invocable: false
 metadata:
   version: "1.2.0"
   category: "workflow"
   status: "active"
   updated: "2026-01-08"
   modularized: "true"
-  user-invocable: "false"
   tags: "workflow, spec, ears, requirements, moai-adk, planning"
   author: "MoAI-ADK Team"
   context: "fork"

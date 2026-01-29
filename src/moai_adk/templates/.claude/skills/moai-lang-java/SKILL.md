@@ -4,13 +4,13 @@ description: >
   Java 21 LTS development specialist covering Spring Boot 3.3, virtual threads, pattern matching, and enterprise patterns. Use when building enterprise applications, microservices, or Spring projects.
 license: Apache-2.0
 compatibility: Designed for Claude Code
+user-invocable: false
 metadata:
   version: "1.1.0"
   category: "language"
   status: "active"
   updated: "2026-01-11"
   modularized: "false"
-  user-invocable: "false"
   tags: "java, spring-boot, jpa, hibernate, virtual-threads, enterprise"
   context7-libraries: "/spring-projects/spring-boot, /spring-projects/spring-framework, /spring-projects/spring-security"
   related-skills: "moai-lang-kotlin, moai-domain-backend"

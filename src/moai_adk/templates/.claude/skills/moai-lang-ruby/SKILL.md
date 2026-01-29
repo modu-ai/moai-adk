@@ -7,13 +7,13 @@ description: >
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob Bash mcp__context7__resolve-library-id mcp__context7__get-library-docs
+user-invocable: false
 metadata:
   version: "1.1.0"
   category: "language"
   status: "active"
   updated: "2026-01-11"
   modularized: "true"
-  user-invocable: "false"
   tags: "language, ruby, rails, activerecord, hotwire, turbo, rspec"
 
 # MoAI Extension: Progressive Disclosure

@@ -8,8 +8,8 @@ description: >
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Task AskUserQuestion TaskCreate TaskUpdate TaskList TaskGet Bash Read Write Edit Glob Grep
+user-invocable: true
 metadata:
-  user-invocable: "true"
   argument-hint: "[subcommand] [args] | \"natural language task\""
 ---
 

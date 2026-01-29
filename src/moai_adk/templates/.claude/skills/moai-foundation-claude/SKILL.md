@@ -7,13 +7,13 @@ description: >
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Write Edit Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+user-invocable: false
 metadata:
   version: "5.0.0"
   category: "foundation"
   status: "active"
   updated: "2026-01-11"
   modularized: "false"
-  user-invocable: "false"
   tags: "foundation, claude-code, skills, sub-agents, plugins, slash-commands, hooks, memory, settings, sandboxing, headless, agent-patterns"
   aliases: "moai-foundation-claude"
 

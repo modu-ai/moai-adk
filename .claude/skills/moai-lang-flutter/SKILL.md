@@ -6,13 +6,13 @@ description: >
   mobile apps, desktop apps, or web applications with Flutter.
 license: Apache-2.0
 compatibility: Designed for Claude Code
+user-invocable: false
 metadata:
   version: "1.1.0"
   category: "language"
   status: "active"
   updated: "2026-01-11"
   modularized: "false"
-  user-invocable: "false"
   tags: "flutter, dart, riverpod, cross-platform, mobile, desktop"
   context7-libraries: "/flutter/flutter, /rrousselgit/riverpod, /flutter/packages"
   related-skills: "moai-lang-swift, moai-lang-kotlin"

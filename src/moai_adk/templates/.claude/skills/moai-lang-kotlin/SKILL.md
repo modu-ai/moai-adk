@@ -6,13 +6,13 @@ description: >
   server apps, Android apps, or multiplatform projects.
 license: Apache-2.0
 compatibility: Designed for Claude Code
+user-invocable: false
 metadata:
   version: "1.1.0"
   category: "language"
   status: "active"
   updated: "2026-01-11"
   modularized: "false"
-  user-invocable: "false"
   tags: "kotlin, ktor, coroutines, compose, android, multiplatform"
   context7-libraries: "/ktorio/ktor, /jetbrains/compose-multiplatform, /jetbrains/exposed"
   related-skills: "moai-lang-java, moai-lang-swift"

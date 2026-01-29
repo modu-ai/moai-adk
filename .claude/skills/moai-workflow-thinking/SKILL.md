@@ -6,13 +6,12 @@ description: >
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob mcp__sequential-thinking__sequentialthinking
-
+user-invocable: false
 metadata:
   version: "1.0.0"
   category: "workflow"
   status: "active"
   modularized: "false"
-  user-invocable: "false"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:

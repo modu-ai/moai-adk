@@ -4,13 +4,13 @@ description: Enterprise context and session management with token budget optimiz
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+user-invocable: false
 metadata:
   version: "3.1.0"
   category: "foundation"
   status: "active"
   updated: "2026-01-11"
   modularized: "false"
-  user-invocable: "false"
   tags: "foundation, context, session, token-optimization, state-management, multi-agent"
   aliases: "moai-foundation-context"
   replaces: "moai-core-context-budget, moai-core-session-state"

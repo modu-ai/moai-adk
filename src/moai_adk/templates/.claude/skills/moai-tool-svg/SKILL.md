@@ -7,12 +7,11 @@ description: >
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob Bash WebFetch
-
+user-invocable: false
 metadata:
   version: "1.0.0"
   category: "tool"
   modularized: "true"
-  user-invocable: "false"
   status: "active"
   updated: "2026-01-26"
   tags: "svg, vector, graphics, svgo, optimization, animation, icons"

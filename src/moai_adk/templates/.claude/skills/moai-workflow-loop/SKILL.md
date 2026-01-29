@@ -8,13 +8,12 @@ description: >
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Write Edit Bash Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
-
+user-invocable: false
 metadata:
   version: "1.2.0"
   category: "workflow"
   status: "active"
   updated: "2026-01-11"
-  user-invocable: "false"
   tags: "lsp, ast-grep, feedback-loop, code-quality, automation, diagnostics, ralph"
 ---
 
@@ -39,9 +38,9 @@ Key Components:
 
 Commands:
 
-- /moai:alfred: One-click Plan-Run-Sync automation
-- /moai:loop: Start feedback loop
-- /moai:fix: One-time auto-fix
+- /moai: One-click Plan-Run-Sync automation (default)
+- /moai loop: Start feedback loop
+- /moai fix: One-time auto-fix
 
 When to Use:
 

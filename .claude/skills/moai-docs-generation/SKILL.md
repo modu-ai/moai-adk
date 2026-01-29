@@ -8,13 +8,13 @@ description: >
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Write Edit Grep Glob Bash mcp__context7__resolve-library-id mcp__context7__get-library-docs
+user-invocable: false
 metadata:
   version: "2.1.0"
   category: "workflow"
   status: "active"
   updated: "2026-01-08"
   modularized: "true"
-  user-invocable: "false"
   tags: "workflow, documentation, sphinx, mkdocs, typedoc, api-docs, static-sites"
   context: "fork"
   agent: "general-purpose"

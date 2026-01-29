@@ -6,14 +6,13 @@ description: >
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Write Bash Grep Glob
-
+user-invocable: false
 metadata:
   version: "2.1.0"
   category: "platform"
   status: "active"
   updated: "2026-01-11"
   modularized: "true"
-  user-invocable: "false"
   tags: "clerk, webauthn, passkeys, passwordless, authentication"
   context7-libraries: "/clerk/clerk-docs"
   related-skills: "moai-platform-auth0, moai-lang-typescript"

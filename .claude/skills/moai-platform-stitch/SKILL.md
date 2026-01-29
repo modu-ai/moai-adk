@@ -8,12 +8,11 @@ description: >
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Write Edit Bash Grep Glob mcp__stitch__extract_design_context mcp__stitch__fetch_screen_code mcp__stitch__fetch_screen_image mcp__stitch__generate_screen_from_text mcp__stitch__create_project mcp__stitch__list_projects mcp__stitch__list_screens mcp__stitch__get_project mcp__stitch__get_screen
-
+user-invocable: false
 metadata:
   version: "2.0.0"
   category: "platform"
   modularized: "false"
-  user-invocable: "false"
   status: "active"
   updated: "2026-01-29"
   tags: "stitch, google, ui, ux, design, code-generation, ai-design, build-loop, autonomous-frontend, ci-cd"

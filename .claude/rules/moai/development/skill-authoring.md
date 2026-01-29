@@ -16,6 +16,7 @@ Optional standard fields:
 - license: SPDX license identifier (default: Apache-2.0)
 - compatibility: Target platform description, max 500 characters (default: Designed for Claude Code)
 - allowed-tools: Space-delimited string of tool names the skill can use (experimental)
+- user-invocable: Boolean to control slash command menu visibility (default: true, set to false to hide from / menu)
 
 ### metadata Map
 
@@ -27,7 +28,6 @@ Common metadata keys:
 - status: active, experimental, deprecated
 - updated: ISO date as string (e.g., "2026-01-28")
 - modularized: Whether content is split into modules ("true" or "false")
-- user-invocable: Whether users can invoke via slash command ("true" or "false")
 - tags: Comma-separated tag list as single string
 - author: Skill author name
 - context7-libraries: Comma-separated library identifiers for Context7 MCP
@@ -63,13 +63,13 @@ description: >
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob Bash mcp__context7__resolve-library-id mcp__context7__get-library-docs
+user-invocable: false
 metadata:
   version: "1.0.0"
   category: "domain"
   status: "active"
   updated: "2026-01-28"
   modularized: "false"
-  user-invocable: "false"
   tags: "example, demo, template"
 
 # MoAI Extension: Progressive Disclosure
