@@ -14,8 +14,8 @@ func TestNewRootCommand(t *testing.T) {
 	}
 
 	// Check command properties
-	if cmd.Use != "moai-adk" {
-		t.Errorf("root command Use = %s, want 'moai-adk'", cmd.Use)
+	if cmd.Use != "moai" {
+		t.Errorf("root command Use = %s, want 'moai'", cmd.Use)
 	}
 
 	if cmd.Short == "" {

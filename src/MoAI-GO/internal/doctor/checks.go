@@ -20,7 +20,7 @@ type CheckResult struct {
 	Value   string
 }
 
-// Doctor performs health checks on the MoAI-ADK installation
+// Doctor performs health checks on the MoAI installation
 type Doctor struct {
 	projectDir string
 	results    []*CheckResult
@@ -36,7 +36,7 @@ func NewDoctor(projectDir string) *Doctor {
 
 // RunAllChecks runs all health checks
 func (d *Doctor) RunAllChecks() error {
-	fmt.Println(output.HeaderStyle.Render("MoAI-ADK Health Check"))
+	fmt.Println(output.HeaderStyle.Render("MoAI Health Check"))
 	fmt.Println()
 
 	// Run checks in order
@@ -72,7 +72,7 @@ func (d *Doctor) checkBinaryVersion() {
 	d.results = append(d.results, &CheckResult{
 		Name:    "Binary Version",
 		Status:  "success",
-		Message: fmt.Sprintf("moai-adk %s", version),
+		Message: fmt.Sprintf("moai %s", version),
 		Value:   binaryPath,
 	})
 }
@@ -165,7 +165,7 @@ func (d *Doctor) checkSettingsJSON() {
 		d.results = append(d.results, &CheckResult{
 			Name:    "settings.json",
 			Status:  "warning",
-			Message: "not found (run 'moai-adk init')",
+			Message: "not found (run 'moai init')",
 		})
 		return
 	}
@@ -207,7 +207,7 @@ func (d *Doctor) checkMoaiConfig() {
 		d.results = append(d.results, &CheckResult{
 			Name:    "config structure",
 			Status:  "warning",
-			Message: "not found (run 'moai-adk init')",
+			Message: "not found (run 'moai init')",
 		})
 		return
 	}

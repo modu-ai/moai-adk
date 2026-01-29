@@ -5,7 +5,7 @@ GO := go
 CGO_ENABLED := 0
 VERSION := $(shell git describe --tags --always 2>/dev/null || echo "dev")
 LDFLAGS := -s -w -X main.Version=$(VERSION)
-BINARY_NAME := moai-adk
+BINARY_NAME := moai
 BUILD_DIR := bin
 
 # Platform-specific binary names
@@ -16,7 +16,7 @@ else
 endif
 
 # Source directories
-CMD_DIR := ./cmd/moai-adk
+CMD_DIR := ./cmd/moai
 INTERNAL_DIRS := ./internal/...
 PKG_DIRS := ./pkg/...
 
