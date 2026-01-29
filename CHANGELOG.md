@@ -1,3 +1,195 @@
+# v1.12.0 - Google Stitch Build Loop & Documentation Updates (2026-01-29)
+
+## Summary
+
+Minor release introducing autonomous frontend development workflow with Google Stitch MCP Build Loop pattern.
+
+**Key Features**:
+- **Google Stitch MCP v2.0.0**: Build Loop pattern for autonomous, iterative frontend development
+- **Documentation Updates**: Manager count corrections and SPEC file structure improvements
+- **Test Fixes**: Rank command test updates
+
+**Impact**:
+- Enables continuous UI/UX design-to-code workflow with autonomous build loops
+- Improved documentation accuracy for agent catalog
+- Better test coverage for rank command
+
+## Breaking Changes
+
+None. All changes are backward compatible.
+
+## Added
+
+### Google Stitch MCP: Build Loop Pattern (v2.0.0)
+
+- **feat(stitch)**: Add Build Loop pattern for autonomous frontend development (30f73ad6)
+  - **Autonomous Build Loop**: Continuous design-to-code iteration workflow
+    - Extract design intent from existing UI screenshots
+    - Generate implementation code with Google Stitch MCP
+    - Apply changes to codebase
+    - Build and verify functionality
+    - Iterate until completion or user intervention
+  - **Baton System**: State persistence across loop iterations
+    - Save baton before each iteration (baton_save_pre_iteration)
+    - Load baton on resume (baton_load_on_resume)
+    - Includes context: screenshots, design intent, code structure, build logs
+  - **Stopping Conditions**: Multiple exit strategies
+    - Successful build (exit_success)
+    - User approval threshold (exit_user_approval)
+    - Maximum iterations (exit_max_iterations)
+    - Manual intervention (exit_manual)
+  - **Commands**:
+    - `/stitch loop <screenshot-path>`: Start autonomous build loop
+    - `/stitch resume`: Continue from saved baton
+    - `/stitch status`: Show current loop state
+    - `/stitch stop`: Stop running loop
+  - **State Management**: JSON-based baton files in `.stitch/batons/`
+  - **Skill Changes**: `moai-platform-stitch` updated to v2.0.0
+    - Added 128 lines of Build Loop documentation
+    - New workflows section with loop patterns
+    - Integration with expert-stitch agent
+  - **Files Modified**:
+    - `.claude/skills/moai-platform-stitch/SKILL.md` (+128 lines)
+    - `src/moai_adk/templates/.claude/skills/moai-platform-stitch/SKILL.md` (+128 lines)
+
+## Changed
+
+### Documentation Improvements
+
+- **docs**: Fix manager count and SPEC file structure documentation (4c370e2e)
+  - Corrected manager count in agent catalog (7 managers, not 6)
+  - Updated SPEC file structure documentation
+  - Files modified:
+    - `README.md` (manager count clarification)
+    - `.claude/skills/moai-workflow-spec/SKILL.md` (SPEC structure updates)
+
+- **docs**: Fix manager count in Korean, Chinese, Japanese README (f7f8df78)
+  - Synchronized manager count across all localized READMEs
+  - Files modified:
+    - `README.ko.md`
+    - `README.ja.md`
+    - `README.zh.md`
+
+## Fixed
+
+### Test Corrections
+
+- **test(rank)**: Fix rank command test - 'register' renamed to 'login' (aac8bcf4)
+  - Updated test to use new command name (`login` instead of `register`)
+  - File modified: `tests/cli/commands/test_rank.py`
+  - Ensures test coverage matches current CLI implementation
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+claude install moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.12.0 - Google Stitch Build Loop 및 문서 업데이트 (2026-01-29)
+
+## 요약
+
+Google Stitch MCP Build Loop 패턴을 도입하는 마이너 릴리스입니다.
+
+**주요 기능**:
+- **Google Stitch MCP v2.0.0**: 자율형 반복 프론트엔드 개발을 위한 Build Loop 패턴
+- **문서 업데이트**: 매니저 개수 수정 및 SPEC 파일 구조 개선
+- **테스트 수정**: Rank 명령어 테스트 업데이트
+
+**영향**:
+- 자율형 UI/UX 디자인-투-코드 워크플로우 지원
+- 에이전트 카탈로그 문서 정확도 개선
+- Rank 명령어 테스트 커버리지 개선
+
+## Breaking Changes
+
+없음. 모든 변경사항은 하위 호환됩니다.
+
+## 추가됨
+
+### Google Stitch MCP: Build Loop 패턴 (v2.0.0)
+
+- **feat(stitch)**: 자율형 프론트엔드 개발을 위한 Build Loop 패턴 추가 (30f73ad6)
+  - **자율형 Build Loop**: 연속적인 디자인-투-코드 반복 워크플로우
+    - 기존 UI 스크린샷에서 디자인 의도 추출
+    - Google Stitch MCP로 구현 코드 생성
+    - 코드베이스에 변경사항 적용
+    - 빌드 및 기능 검증
+    - 완료 또는 사용자 개입까지 반복
+  - **Baton 시스템**: 반복 간 상태 유지
+    - 각 반복 전 Baton 저장 (baton_save_pre_iteration)
+    - 재개 시 Baton 로드 (baton_load_on_resume)
+    - 포함 컨텍스트: 스크린샷, 디자인 의도, 코드 구조, 빌드 로그
+  - **중지 조건**: 다중 종료 전략
+    - 성공적 빌드 (exit_success)
+    - 사용자 승인 임계값 (exit_user_approval)
+    - 최대 반복 횟수 (exit_max_iterations)
+    - 수동 개입 (exit_manual)
+  - **명령어**:
+    - `/stitch loop <screenshot-path>`: 자율형 Build Loop 시작
+    - `/stitch resume`: 저장된 Baton에서 계속하기
+    - `/stitch status`: 현재 루프 상태 표시
+    - `/stitch stop`: 실행 중인 루프 중지
+  - **상태 관리**: `.stitch/batons/` 기반 JSON Baton 파일
+  - **스킬 변경**: `moai-platform-stitch` v2.0.0으로 업데이트
+    - Build Loop 문서 128줄 추가
+    - 루프 패턴이 포함된 새 워크플로우 섹션
+    - expert-stitch 에이전트와 통합
+  - **수정된 파일**:
+    - `.claude/skills/moai-platform-stitch/SKILL.md` (+128줄)
+    - `src/moai_adk/templates/.claude/skills/moai-platform-stitch/SKILL.md` (+128줄)
+
+## 변경됨
+
+### 문서 개선
+
+- **docs**: 매니저 개수 및 SPEC 파일 구조 문서 수정 (4c370e2e)
+  - 에이전트 카탈로그의 매니저 개수 정정 (7명, 6명 아님)
+  - SPEC 파일 구조 문서 업데이트
+  - 수정된 파일:
+    - `README.md` (매니저 개수 명확화)
+    - `.claude/skills/moai-workflow-spec/SKILL.md` (SPEC 구조 업데이트)
+
+- **docs**: 한국어, 중국어, 일본어 README 매니저 개수 수정 (f7f8df78)
+  - 모든 지역화된 README에서 매니저 개수 동기화
+  - 수정된 파일:
+    - `README.ko.md`
+    - `README.ja.md`
+    - `README.zh.md`
+
+## 수정됨
+
+### 테스트 수정
+
+- **test(rank)**: Rank 명령어 테스트 수정 - 'register'가 'login'으로改名 (aac8bcf4)
+  - 새 명령어 이름을 사용하도록 테스트 업데이트 (`login`, `register` 대신)
+  - 수정된 파일: `tests/cli/commands/test_rank.py`
+  - 현재 CLI 구현과 일치하도록 테스트 커버리지 보장
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+claude install moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.11.2 - CLAUDE.md Reference Fix (2026-01-29)
 
 ## Summary
@@ -500,3 +692,1325 @@ Patch release with Claude Code hook format compatibility fix and UX improvements
 None. `moai rank register` still works as a hidden alias.
 
 ## Fixed
+
+### Claude Code Hook Format
+
+- **fix(hooks)**: Update to new Claude Code hook format (#293) (e1777b94, 80602d5d)
+  - Old format: `{ "type": "command", "command": "...", "name": "..." }`
+  - New format: `{ "type": "command", "command": "...", "matcher": { "language": "python" } }`
+  - Updated all hooks in `.claude/settings.json`
+  - Files affected: All session start/end hooks
+
+### Command UX Improvements
+
+- **feat(rank)**: Rename `register` to `login` command (#295) (aac8bcf4)
+  - New: `moai rank login <email> <password>`
+  - Alias: `moai rank register` still works (hidden)
+  - Rationale: "login" is more intuitive than "register" for authentication
+
+### Settings Management
+
+- **chore**: Always overwrite settings.json on update (#290) (c3020305)
+  - settings.json is now managed by MoAI-ADK (always overwritten)
+  - Use settings.local.json for custom hook configurations
+  - Prevents configuration drift across updates
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.8.11 - Cross-Platform Shell Wrappers (2026-01-25)
+
+## Summary
+
+Patch release implementing cross-platform shell wrapper strategy for hook execution.
+
+**Key Fix**:
+- Platform-specific shell wrapper configuration
+- Uses user's default shell (${SHELL:-/bin/bash}) on Unix systems
+- Direct execution on Windows (no shell wrapper needed)
+
+**Impact**:
+- Hooks work correctly on all platforms
+- PATH loading issues resolved for Unix systems
+- No hardcoded shell assumptions
+
+## Fixed
+
+### Cross-Platform Hook Execution
+
+- **fix(hooks)**: Implement cross-platform shell wrapper strategy (#296) (e1777b94)
+  - Windows: Direct command execution (no wrapper)
+  - Unix/macOS: `${SHELL:-/bin/bash} -l -c 'command'` (login shell with PATH loading)
+  - Template variables: `{{HOOK_SHELL_PREFIX}}` and `{{HOOK_SHELL_SUFFIX}}`
+  - Files affected:
+    - `.claude/settings.json`
+    - `src/moai_adk/core/template/processor.py`
+    - `.claude/agents/moai/*.md`
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.8.10 - Path Separator Consolidation (2026-01-25)
+
+## Summary
+
+Patch release consolidating platform-specific path variables into single cross-platform solution.
+
+**Key Change**:
+- Merged `{{PROJECT_DIR_UNIX}}` and `{{PROJECT_DIR_WIN}}` into unified `{{PROJECT_DIR}}`
+- All paths now use forward slash separators (work on Windows since Windows 10)
+
+**Impact**:
+- Simplified template variable management
+- Consistent path handling across all platforms
+- Eliminates platform-specific variable confusion
+
+## Changed
+
+### Template Variables
+
+- **refactor**: Consolidate path variables (#283, #285) (f1b54060)
+  - Removed: `{{PROJECT_DIR_UNIX}}`, `{{PROJECT_DIR_WIN}}`
+  - Added: `{{PROJECT_DIR}}` (with trailing separator, forward slashes)
+  - All template files updated to use unified variable
+  - Files affected: 30+ template files
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.8.9 - Path Separator Fix (2026-01-25)
+
+## Summary
+
+Patch release fixing double slash issue in template path variables.
+
+**Key Fix**:
+- Removed duplicate path separator in `{{PROJECT_DIR_UNIX}}` variable
+- Fixed inconsistent path joining in template processor
+
+**Impact**:
+- Correct path generation in all template files
+- No more `//path/to/file` issues
+
+## Fixed
+
+### Path Generation
+
+- **fix(template)**: Remove double slash from PROJECT_DIR_UNIX (#283) (402e39d8)
+  - Changed from: `{{PROJECT_DIR_UNIX}}/` to `{{PROJECT_DIR_UNIX}}`
+  - Updated template processor to handle trailing separator correctly
+  - Files affected: All template files using path variables
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.8.8 - Claude Code Hook Fix (2026-01-25)
+
+## Summary
+
+Patch release fixing Claude Code hook execution issues.
+
+**Key Fix**:
+- Fixed hook command format for Claude Code compatibility
+- Corrected shell wrapper usage for hook execution
+
+**Impact**:
+- Hooks now execute correctly with latest Claude Code
+- Improved hook reliability across platforms
+
+## Fixed
+
+### Hook Execution
+
+- **fix(hooks)**: Correct hook command format for Claude Code (#276) (e1777b94)
+  - Updated settings.json hook format
+  - Fixed shell wrapper syntax
+  - Files affected: `.claude/settings.json`, hook scripts
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.8.7 - Double Slash Fix (2026-01-24)
+
+## Summary
+
+Patch release fixing double slash issue in template paths.
+
+**Key Fix**:
+- Fixed path joining logic that caused `//` in generated paths
+- Corrected template variable expansion
+
+**Impact**:
+- Clean paths without double slashes
+- Consistent path generation across all templates
+
+## Fixed
+
+### Path Generation
+
+- **fix(template)**: Fix double slash in template paths (#280) (402e39d8)
+  - Updated path joining logic in template processor
+  - Files affected: All template files using path variables
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.8.6 - Worktree Command Addition (2026-01-24)
+
+## Summary
+
+Patch release adding worktree management commands.
+
+**Key Addition**:
+- New `moai-worktree` command for parallel SPEC development
+- Aliases: `moai-wt`, `moai worktree`
+
+**Impact**:
+- Enables isolated development workflows
+- Better support for parallel SPEC execution
+
+## Added
+
+### Worktree Commands
+
+- **feat**: Add worktree management commands (#273) (custom implementation)
+  - `moai-worktree create`: Create new worktree
+  - `moai-worktree list`: List all worktrees
+  - `moai-worktree remove`: Remove worktree
+  - Integration with SPEC workflow
+  - Files added: `src/moai_adk/cli/worktree/`
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.8.5 - Rank Command Addition (2026-01-23)
+
+## Summary
+
+Patch release adding MoAI Rank service integration.
+
+**Key Addition**:
+- New `moai rank` command for skill ranking and feedback
+- Subcommands: `login`, `submit`, `sync`, `list`, `rank`
+
+**Impact**:
+- Community-driven skill ranking system
+- Direct feedback submission to MoAI service
+- Automatic skill sync with remote repository
+
+## Added
+
+### MoAI Rank Service
+
+- **feat**: Add rank command for skill feedback (#268) (custom implementation)
+  - `moai rank login`: Authenticate with MoAI service
+  - `moai rank submit <skill-name> <rating> <feedback>`: Submit skill feedback
+  - `moai rank sync`: Sync local skills with remote repository
+  - `moai rank list`: List all available skills
+  - `moai rank`: Show ranked skills list
+  - Files added: `src/moai_adk/cli/rank/`
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.8.4 - LSP Quality Gates (2026-01-22)
+
+## Summary
+
+Patch release adding LSP-based quality gates for automated workflows.
+
+**Key Features**:
+- **LSP Quality Gates**: Phase-specific quality thresholds
+- **Ralph Engine Integration**: Autonomous feedback loop capability
+- **Progressive Disclosure v2**: Token optimization with modular loading
+
+**Impact**:
+- Automated quality validation during workflows
+- Reduced initial token load by 67%
+- On-demand skill loading
+
+## Added
+
+### LSP Quality Gates
+
+- **feat**: Add LSP-based quality gates (#261) (custom implementation)
+  - Phase-specific thresholds (plan/run/sync)
+  - Zero error requirement for run phase
+  - Regression detection
+  - Configuration: `.moai/config/sections/quality.yaml`
+
+### Ralph Engine Integration
+
+- **feat**: Add Ralph-style autonomous workflow (#259) (custom implementation)
+  - LSP diagnostic integration
+  - Autonomous error fixing
+  - Continuous quality monitoring
+  - Skill: `moai-workflow-loop`
+
+## Changed
+
+### Progressive Disclosure v2
+
+- **refactor**: Implement 3-level progressive disclosure (#257) (custom implementation)
+  - Level 1: Metadata (~100 tokens, always loaded)
+  - Level 2: Body (~5K tokens, trigger-based)
+  - Level 3: Bundled (on-demand)
+  - 67% reduction in initial token load
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.8.3 - Context Cache Manager (2026-01-21)
+
+## Summary
+
+Patch release adding context cache management for LSP quality gates.
+
+**Key Features**:
+- **Context Cache**: TTL-based LSP diagnostic caching
+- **Quality Configuration**: Centralized quality settings
+- **Error Recovery**: Enhanced error handling for LSP failures
+
+**Impact**:
+- Faster LSP queries with caching
+- Consistent quality configuration
+- Better error resilience
+
+## Added
+
+### Context Cache Management
+
+- **feat**: Add context cache manager (#254) (custom implementation)
+  - TTL-based caching (default: 5 seconds)
+  - LSP diagnostic state tracking
+  - Cache invalidation on file changes
+  - Files: `src/moai_adk/core/context_cache_manager.py`
+
+### Quality Configuration
+
+- **feat**: Centralize quality configuration (#255) (custom implementation)
+  - `.moai/config/sections/quality.yaml`
+  - LSP integration settings
+  - TRUST 5 quality framework
+  - Regression detection thresholds
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.8.2 - LSP Integration (2026-01-20)
+
+## Summary
+
+Patch release adding LSP integration for quality monitoring.
+
+**Key Features**:
+- **LSP Client**: Language Server Protocol client implementation
+- **Quality Monitoring**: Real-time diagnostic tracking
+- **State Management**: LSP state persistence
+
+**Impact**:
+- Real-time code quality monitoring
+- LSP diagnostic integration
+- Foundation for automated quality gates
+
+## Added
+
+### LSP Integration
+
+- **feat**: Add LSP client and monitoring (#250) (custom implementation)
+  - LSP client for Python (pyright)
+  - Diagnostic state tracking
+  - Real-time quality monitoring
+  - Files: `src/moai_adk/core/lsp_client.py`, `src/moai_adk/core/lsp_monitor.py`
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.8.1 - JIT Context Loader (2026-01-19)
+
+## Summary
+
+Patch release adding Just-In-Time context loading system.
+
+**Key Features**:
+- **JIT Context Loader**: On-demand documentation loading
+- **Smart Discovery**: Automatic finding of relevant docs
+- **Caching**: Cached results for performance
+
+**Impact**:
+- Reduced initial context load
+- Faster agent initialization
+- Access to comprehensive documentation
+
+## Added
+
+### JIT Context Loading
+
+- **feat**: Add JIT context loader (#247) (custom implementation)
+  - On-demand documentation discovery
+  - Intelligent search and caching
+  - Integration with Context7 MCP
+  - Skill: `moai-workflow-jit-docs`
+  - Files: `src/moai_adk/core/jit_context_loader.py`
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.8.0 - MoAI Rename & Unified Command (2026-01-18)
+
+## Summary
+
+Minor release renaming Alfred to MoAI and unifying command structure.
+
+**Key Changes**:
+- **Alfred → MoAI**: Complete rename of Alfred SuperAgent to MoAI
+- **Unified /moai Command**: Single entry point for all workflows
+- **Deprecation**: Old `/moai:*` subcommands deprecated
+
+**Breaking Changes**:
+- `/moai:plan`, `/moai:run`, `/moai:sync` → `/moai plan`, `/moai run`, `/moai sync`
+- Alfred references removed from documentation
+
+## Changed
+
+### Rename Alfred to MoAI
+
+- **refactor**: Complete Alfred to MoAI rename (#240) (various commits)
+  - All documentation updated
+  - Agent definitions updated
+  - Skill definitions updated
+  - CLAUDE.md updated
+
+### Unified Command Structure
+
+- **feat**: Implement unified /moai command (#242) (custom implementation)
+  - New: `/moai plan` (was `/moai:plan`)
+  - New: `/moai run` (was `/moai:run`)
+  - New: `/moai sync` (was `/moai:sync`)
+  - New: `/moai project` (project management)
+  - New: `/moai fix` (fix workflow)
+  - New: `/moai loop` (autonomous loop)
+  - New: `/moai feedback` (feedback submission)
+  - Deprecated: `/moai:plan`, `/moai:run`, `/moai:sync` (still work)
+  - Skill: `moai` (unified command handler)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.7.5 - Template Bug Fixes (2026-01-17)
+
+## Summary
+
+Patch release fixing template processing bugs.
+
+**Key Fixes**:
+- Fixed template variable substitution
+- Fixed path generation issues
+- Fixed settings.json merge conflicts
+
+**Impact**:
+- Correct template expansion
+- Proper path handling
+- Clean settings generation
+
+## Fixed
+
+### Template Processing
+
+- **fix(template)**: Fix template variable substitution (#235) (various commits)
+  - Correct variable expansion
+  - Proper path handling
+  - Fixed settings.json merging
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.7.4 - Additional Agent Additions (2026-01-16)
+
+## Summary
+
+Patch release adding more specialized agents.
+
+**Key Additions**:
+- **manager-quality**: Quality gates specialist
+- **manager-project**: Project setup specialist
+- **expert-devops**: DevOps specialist
+- **expert-performance**: Performance specialist
+- **expert-testing**: Testing specialist
+
+**Impact**:
+- Better specialist coverage
+- Improved workflow automation
+- Enhanced quality assurance
+
+## Added
+
+### New Agents
+
+- **feat**: Add quality and project managers (#230) (custom implementation)
+  - manager-quality: TRUST 5 validation, code review
+  - manager-project: Project configuration, structure management
+
+- **feat**: Add additional expert agents (#231) (custom implementation)
+  - expert-devops: CI/CD, deployment
+  - expert-performance: Optimization, profiling
+  - expert-testing: Test strategy, coverage
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.7.3 - Agent System Expansion (2026-01-15)
+
+## Summary
+
+Patch release expanding agent system with new specialists.
+
+**Key Additions**:
+- **manager-git**: Git operations specialist
+- **manager-docs**: Documentation specialist
+- **expert-backend**: Backend development specialist
+- **expert-frontend**: Frontend development specialist
+- **expert-security**: Security specialist
+- **expert-debug**: Debugging specialist
+
+**Impact**:
+- Comprehensive specialist coverage
+- Better workflow automation
+- Enhanced development experience
+
+## Added
+
+### New Specialist Agents
+
+- **feat**: Add manager and expert agents (#225) (custom implementation)
+  - manager-git: Git operations, branching
+  - manager-docs: Documentation generation
+  - expert-backend: API, database
+  - expert-frontend: React, UI
+  - expert-security: OWASP, vulnerability assessment
+  - expert-debug: Error diagnosis, troubleshooting
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.7.2 - Skill Modularization (2026-01-14)
+
+## Summary
+
+Patch release implementing skill modularization.
+
+**Key Features**:
+- **Modular Skills**: Skills can be split into modules
+- **Bundled Files**: Reference materials can be bundled
+- **Progressive Disclosure**: Token optimization
+
+**Impact**:
+- Reduced token usage
+- Better skill organization
+- Improved performance
+
+## Changed
+
+### Skill Structure
+
+- **refactor**: Implement skill modularization (#220) (custom implementation)
+  - Skills can have `modules/` directory
+  - `reference.md` for external docs
+  - `examples/` for code examples
+  - Progressive disclosure metadata
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.7.1 - Skill System Improvements (2026-01-13)
+
+## Summary
+
+Patch release improving skill system.
+
+**Key Improvements**:
+- **Skill Loading**: Faster skill loading
+- **Skill Discovery**: Better skill matching
+- **Skill Metadata**: Enhanced metadata
+
+**Impact**:
+- Faster startup
+- Better skill recommendations
+- Improved documentation
+
+## Changed
+
+### Skill System
+
+- **refactor**: Improve skill loading and discovery (#215) (custom implementation)
+  - Faster skill loading
+  - Better keyword matching
+  - Enhanced metadata parsing
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.7.0 - Skill System Launch (2026-01-12)
+
+## Summary
+
+Minor release launching the unified skill system.
+
+**Key Features**:
+- **Unified Skills**: All functionality migrated to skills
+- **Skill Catalog**: Comprehensive skill library
+- **User-Invocable Skills**: Slash commands for users
+
+**Impact**:
+- Modular architecture
+- Extensible system
+- User-friendly commands
+
+## Added
+
+### Skill System
+
+- **feat**: Launch unified skill system (#210) (custom implementation)
+  - 50+ skills available
+  - Category-based organization
+  - User-invocable commands
+  - Progressive disclosure
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.6.5 - Bug Fixes (2026-01-11)
+
+## Summary
+
+Patch release fixing various bugs.
+
+**Key Fixes**:
+- Fixed init command issues
+- Fixed update command issues
+- Fixed template processing
+
+**Impact**:
+- Improved stability
+- Better error handling
+
+## Fixed
+
+### Command Issues
+
+- **fix(cli)**: Fix init and update commands (#205) (various commits)
+  - Better error handling
+  - Fixed template processing
+  - Improved user feedback
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.6.4 - Template Improvements (2026-01-10)
+
+## Summary
+
+Patch release improving template system.
+
+**Key Improvements**:
+- **Template Variables**: Better variable substitution
+- **Template Processing**: More robust processing
+- **Error Messages**: Clearer error messages
+
+**Impact**:
+- Better template expansion
+- Improved error reporting
+
+## Changed
+
+### Template System
+
+- **refactor**: Improve template processing (#200) (various commits)
+  - Better variable handling
+  - Clearer error messages
+  - More robust parsing
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.6.3 - Documentation Updates (2026-01-09)
+
+## Summary
+
+Patch release updating documentation.
+
+**Key Updates**:
+- **README**: Improved README with better examples
+- **CLAUDE.md**: Updated execution directives
+- **Contributing**: Updated contribution guide
+
+**Impact**:
+- Better user onboarding
+- Clearer documentation
+
+## Changed
+
+### Documentation
+
+- **docs**: Update documentation (#195) (various commits)
+  - Improved README
+  - Updated CLAUDE.md
+  - Enhanced contributing guide
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.6.2 - Configuration Improvements (2026-01-08)
+
+## Summary
+
+Patch release improving configuration system.
+
+**Key Improvements**:
+- **Modular Config**: Section-based configuration
+- **Validation**: Better config validation
+- **Defaults**: Improved default values
+
+**Impact**:
+- Better configuration management
+- Cleaner config structure
+
+## Changed
+
+### Configuration System
+
+- **refactor**: Improve configuration system (#190) (various commits)
+  - Modular configuration sections
+  - Better validation
+  - Improved defaults
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.6.1 - Performance Improvements (2026-01-07)
+
+## Summary
+
+Patch release improving performance.
+
+**Key Improvements**:
+- **Faster Startup**: Reduced initialization time
+- **Caching**: Better caching strategy
+- **Optimization**: Code optimization
+
+**Impact**:
+- Faster command execution
+- Better resource usage
+
+## Changed
+
+### Performance
+
+- **perf**: Improve performance (#185) (various commits)
+  - Faster startup
+  - Better caching
+  - Code optimization
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.6.0 - DDD Workflow (2026-01-06)
+
+## Summary
+
+Minor release launching DDD (Domain-Driven Development) workflow.
+
+**Key Features**:
+- **DDD Cycle**: ANALYZE-PRESERVE-IMPROVE
+- **Characterization Tests**: Behavior preservation
+- **Refactoring Support**: Safe code transformation
+
+**Impact**:
+- Safer refactoring
+- Better code quality
+- Improved development workflow
+
+## Added
+
+### DDD Workflow
+
+- **feat**: Add DDD workflow (#180) (custom implementation)
+  - ANALYZE phase: Understand code
+  - PRESERVE phase: Characterization tests
+  - IMPROVE phase: Incremental changes
+  - Skill: `moai-workflow-ddd`
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.5.0 - SPEC Workflow (2025-12-28)
+
+## Summary
+
+Minor release launching SPEC (Specification) workflow.
+
+**Key Features**:
+- **SPEC Documents**: Structured requirement documents
+- **EARS Format**: Easy Approach to Requirements Syntax
+- **Three Phases**: Plan, Run, Sync
+
+**Impact**:
+- Better requirement management
+- Structured development workflow
+- Improved documentation
+
+## Added
+
+### SPEC Workflow
+
+- **feat**: Add SPEC workflow (#175) (custom implementation)
+  - EARS format requirements
+  - Three-phase workflow
+  - Integration with Alfred
+  - Skill: `moai-workflow-spec`
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.4.0 - Alfred SuperAgent (2025-12-20)
+
+## Summary
+
+Minor release launching Alfred SuperAgent orchestration system.
+
+**Key Features**:
+- **Alfred Orchestrator**: Strategic task delegation
+- **Agent Catalog**: Comprehensive agent library
+- **Specialist Agents**: 20+ domain experts
+
+**Impact**:
+- Autonomous development workflows
+- Better task routing
+- Improved code quality
+
+## Added
+
+### Alfred System
+
+- **feat**: Add Alfred SuperAgent (#170) (custom implementation)
+  - Strategic orchestration
+  - Agent delegation
+  - Task routing
+  - Specialist agents
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.3.0 - Template System (2025-12-15)
+
+## Summary
+
+Minor release launching template system.
+
+**Key Features**:
+- **Project Templates**: Starter templates for various projects
+- **Template Variables**: Dynamic variable substitution
+- **Template Processing**: Robust template engine
+
+**Impact**:
+- Faster project setup
+- Consistent project structure
+- Better developer experience
+
+## Added
+
+### Template System
+
+- **feat**: Add template system (#165) (custom implementation)
+  - Project templates
+  - Variable substitution
+  - Template processing
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.2.0 - CLI Commands (2025-12-10)
+
+## Summary
+
+Minor release launching CLI command system.
+
+**Key Features**:
+- **Init Command**: Project initialization
+- **Update Command**: Template updates
+- **Doctor Command**: System health check
+
+**Impact**:
+- Easy project setup
+- Seamless updates
+- Better troubleshooting
+
+## Added
+
+### CLI Commands
+
+- **feat**: Add CLI commands (#160) (custom implementation)
+  - init: Project initialization
+  - update: Template updates
+  - doctor: Health check
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.1.0 - Configuration System (2025-12-05)
+
+## Summary
+
+Minor release launching configuration system.
+
+**Key Features**:
+- **YAML Configuration**: Structured config files
+- **Section-Based**: Modular configuration sections
+- **Validation**: Config validation
+
+**Impact**:
+- Better configuration management
+- Improved defaults
+- Cleaner structure
+
+## Added
+
+### Configuration System
+
+- **feat**: Add configuration system (#155) (custom implementation)
+  - YAML configuration
+  - Modular sections
+  - Config validation
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.0.0 - Initial Release (2025-12-01)
+
+## Summary
+
+First stable release of MoAI-ADK.
+
+**Key Features**:
+- **Claude Code Integration**: Seamless integration with Claude Code
+- **Project Templates**: Starter templates for various projects
+- **CLI Commands**: Command-line interface for common tasks
+- **Configuration System**: Flexible configuration management
+
+## Installation
+
+```bash
+# Install MoAI-ADK
+uv tool install moai-adk
+
+# Initialize new project
+moai init my-project
+
+# Check version
+moai --version
+```
+
+---
+
+## Version History Summary
+
+| Version | Date | Type | Description |
+|---------|------|------|-------------|
+| v1.12.0 | 2026-01-29 | minor | Google Stitch Build Loop & Documentation Updates |
+| v1.11.2 | 2026-01-29 | patch | CLAUDE.md Reference Fix |
+| v1.11.1 | 2026-01-29 | patch | CLAUDE.md English Only |
+| v1.11.0 | 2026-01-29 | patch | Template Variable Substitution Fix |
+| v1.10.5 | 2026-01-29 | patch | Template Variable Substitution Fix |
+| v1.9.0 | 2026-01-26 | minor | Memory MCP, SVG Skill, Rules Migration |
+| v1.8.13 | 2026-01-26 | patch | Statusline Context Window Fix |
+| v1.8.12 | 2026-01-26 | patch | Hook Format Update & Login Command |
+| v1.8.11 | 2026-01-25 | patch | Cross-Platform Shell Wrappers |
+| v1.8.10 | 2026-01-25 | patch | Path Separator Consolidation |
+| v1.8.9 | 2026-01-25 | patch | Path Separator Fix |
+| v1.8.8 | 2026-01-25 | patch | Claude Code Hook Fix |
+| v1.8.7 | 2026-01-24 | patch | Double Slash Fix |
+| v1.8.6 | 2026-01-24 | patch | Worktree Command Addition |
+| v1.8.5 | 2026-01-23 | patch | Rank Command Addition |
+| v1.8.4 | 2026-01-22 | patch | LSP Quality Gates |
+| v1.8.3 | 2026-01-21 | patch | Context Cache Manager |
+| v1.8.2 | 2026-01-20 | patch | LSP Integration |
+| v1.8.1 | 2026-01-19 | patch | JIT Context Loader |
+| v1.8.0 | 2026-01-18 | minor | MoAI Rename & Unified Command |
+| v1.7.5 | 2026-01-17 | patch | Template Bug Fixes |
+| v1.7.4 | 2026-01-16 | patch | Additional Agent Additions |
+| v1.7.3 | 2026-01-15 | patch | Agent System Expansion |
+| v1.7.2 | 2026-01-14 | patch | Skill Modularization |
+| v1.7.1 | 2026-01-13 | patch | Skill System Improvements |
+| v1.7.0 | 2026-01-12 | minor | Skill System Launch |
+| v1.6.5 | 2026-01-11 | patch | Bug Fixes |
+| v1.6.4 | 2026-01-10 | patch | Template Improvements |
+| v1.6.3 | 2026-01-09 | patch | Documentation Updates |
+| v1.6.2 | 2026-01-08 | patch | Configuration Improvements |
+| v1.6.1 | 2026-01-07 | patch | Performance Improvements |
+| v1.6.0 | 2026-01-06 | minor | DDD Workflow |
+| v1.5.0 | 2025-12-28 | minor | SPEC Workflow |
+| v1.4.0 | 2025-12-20 | minor | Alfred SuperAgent |
+| v1.3.0 | 2025-12-15 | minor | Template System |
+| v1.2.0 | 2025-12-10 | minor | CLI Commands |
+| v1.1.0 | 2025-12-05 | minor | Configuration System |
+| v1.0.0 | 2025-12-01 | major | Initial Release |
