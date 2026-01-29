@@ -1,11 +1,17 @@
 package cli
 
 import (
+	"fmt"
+	"os"
+
+	"github.com/anthropics/moai-adk-go/internal/statusline"
 	"github.com/spf13/cobra"
 )
 
 // NewStatuslineCommand creates the statusline command
 func NewStatuslineCommand() *cobra.Command {
+	var format string
+
 	cmd := &cobra.Command{
 		Use:   "statusline",
 		Short: "Display statusline",
@@ -13,11 +19,37 @@ func NewStatuslineCommand() *cobra.Command {
 AI session state, and development context. Useful for monitoring
 your development workflow.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// TODO: Implement statusline command
-			cmd.Println("statusline command: not yet implemented")
-			return nil
+			return runStatusline(format)
 		},
 	}
 
+	cmd.Flags().StringVar(&format, "format", "", "Custom format string")
+
 	return cmd
+}
+
+// runStatusline executes the statusline command logic
+func runStatusline(format string) error {
+	// Get current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("error getting current directory: %w", err)
+	}
+
+	// Get version (from build info or default)
+	version := "dev" // TODO: Get actual version from build info
+
+	// Create formatter
+	formatter := statusline.NewFormatter(cwd, version)
+
+	// Generate statusline
+	output, err := formatter.Format(format)
+	if err != nil {
+		return fmt.Errorf("error generating statusline: %w", err)
+	}
+
+	// Print statusline (no newline for integration purposes)
+	fmt.Print(output)
+
+	return nil
 }
