@@ -130,6 +130,7 @@ class PathDiagnostics:
     current_path: str
     recommended_fix: str
     auto_fixable: bool
+    in_system_path: bool = True  # macOS: whether ~/.local/bin is in /etc/paths.d/
 
 
 def get_user_shell() -> str:
@@ -250,6 +251,85 @@ def check_local_bin_in_login_shell() -> bool:
         return False
 
 
+def check_macos_system_path() -> bool:
+    """Check if ~/.local/bin is in macOS system PATH via /etc/paths or /etc/paths.d/.
+
+    On macOS, GUI apps (VS Code, Cursor) inherit PATH from launchd which reads
+    /etc/paths and /etc/paths.d/*. Shell config files (.zshrc, .zshenv) are NOT
+    read by GUI apps. Claude Code's Bun process uses this system PATH, so if
+    ~/.local/bin is missing, it shows a false positive PATH warning.
+
+    Returns:
+        True if ~/.local/bin is in system PATH files, or if not macOS
+    """
+    if platform.system() != "Darwin":
+        return True
+
+    local_bin = str(Path.home() / ".local" / "bin")
+
+    # Check /etc/paths
+    etc_paths = Path("/etc/paths")
+    if etc_paths.exists():
+        try:
+            for line in etc_paths.read_text().splitlines():
+                if line.strip() == local_bin:
+                    return True
+        except (PermissionError, OSError):
+            pass
+
+    # Check /etc/paths.d/*
+    paths_d = Path("/etc/paths.d")
+    if paths_d.exists():
+        try:
+            for f in paths_d.iterdir():
+                if f.is_file():
+                    try:
+                        for line in f.read_text().splitlines():
+                            if line.strip() == local_bin:
+                                return True
+                    except (PermissionError, OSError):
+                        pass
+        except (PermissionError, OSError):
+            pass
+
+    return False
+
+
+def fix_macos_system_path() -> tuple[bool, str]:
+    """Create /etc/paths.d/local-bin on macOS for GUI app PATH access.
+
+    GUI apps (VS Code, Cursor) inherit PATH from launchd which reads
+    /etc/paths.d/. Without this, Claude Code's process PATH is missing
+    ~/.local/bin, causing a false positive diagnostic warning.
+
+    Returns:
+        Tuple of (success, message)
+    """
+    if platform.system() != "Darwin":
+        return (False, "Not macOS")
+
+    if check_macos_system_path():
+        return (False, "/etc/paths.d/ already includes ~/.local/bin")
+
+    local_bin = str(Path.home() / ".local" / "bin")
+
+    try:
+        result = subprocess.run(
+            ["sudo", "tee", "/etc/paths.d/local-bin"],
+            input=local_bin + "\n",
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode == 0:
+            return (True, "Created /etc/paths.d/local-bin. Restart VS Code/terminal to apply.")
+        return (False, f"Failed: {result.stderr.strip()}")
+    except subprocess.TimeoutExpired:
+        return (False, "Timeout (sudo may need password)")
+    except Exception as e:
+        return (False, str(e))
+
+
 def diagnose_path() -> PathDiagnostics:
     """Diagnose PATH configuration issues.
 
@@ -276,6 +356,9 @@ def diagnose_path() -> PathDiagnostics:
     is_login = is_wsl() or platform.system() == "Linux"
     in_login_shell = check_local_bin_in_login_shell() if is_login else in_current_path
 
+    # macOS: check system PATH (/etc/paths.d/) for GUI app compatibility
+    in_sys_path = check_macos_system_path()
+
     # Determine recommended fix
     recommended_fix = ""
     auto_fixable = False
@@ -297,6 +380,11 @@ def diagnose_path() -> PathDiagnostics:
             # Regular Linux/macOS
             recommended_fix = f"echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> {config_file} && source {config_file}"
             auto_fixable = True
+    elif not in_sys_path and platform.system() == "Darwin":
+        # Shell PATH is fine but macOS system PATH is missing
+        local_bin_str = str(local_bin)
+        recommended_fix = f"sudo sh -c 'echo \"{local_bin_str}\" > /etc/paths.d/local-bin'"
+        auto_fixable = True
 
     return PathDiagnostics(
         local_bin_in_path=in_current_path,
@@ -308,6 +396,7 @@ def diagnose_path() -> PathDiagnostics:
         current_path=os.environ.get("PATH", ""),
         recommended_fix=recommended_fix,
         auto_fixable=auto_fixable,
+        in_system_path=in_sys_path,
     )
 
 
@@ -366,18 +455,26 @@ def get_path_diagnostic_report() -> str:
         f"~/.local/bin in PATH: {'Yes' if diag.local_bin_in_path else 'No'}",
     ]
 
-    if not diag.local_bin_in_path:
-        lines.extend(
-            [
-                "",
-                "=== Problem Detected ===",
-                "~/.local/bin is NOT in your PATH.",
-                "This can cause MCP servers and CLI tools to fail.",
-                "",
-                "=== Recommended Fix ===",
-                diag.recommended_fix,
-            ]
-        )
+    # macOS: show system PATH status
+    if platform.system() == "Darwin":
+        lines.append(f"~/.local/bin in /etc/paths.d/: {'Yes' if diag.in_system_path else 'No'}")
+
+    if not diag.local_bin_in_path or (not diag.in_system_path and platform.system() == "Darwin"):
+        lines.append("")
+        lines.append("=== Problem Detected ===")
+
+        if not diag.local_bin_in_path:
+            lines.append("~/.local/bin is NOT in your PATH.")
+            lines.append("This can cause MCP servers and CLI tools to fail.")
+
+        if not diag.in_system_path and platform.system() == "Darwin":
+            lines.append("~/.local/bin is NOT in /etc/paths.d/ (macOS system PATH).")
+            lines.append("GUI apps (VS Code, Cursor) will not see ~/.local/bin.")
+
+        if diag.recommended_fix:
+            lines.append("")
+            lines.append("=== Recommended Fix ===")
+            lines.append(diag.recommended_fix)
 
         if is_wsl() and diag.shell_type == "bash":
             lines.extend(

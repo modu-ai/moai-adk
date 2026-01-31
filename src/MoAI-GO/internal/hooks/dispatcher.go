@@ -13,6 +13,7 @@ import (
 // HookDispatcher routes hook events to appropriate handlers
 type HookDispatcher struct {
 	sessionStartHandler *handlers.SessionStartHandler
+	sessionEndHandler   *handlers.SessionEndHandler
 	preToolHandler      *handlers.PreToolHandler
 	postToolHandler     *handlers.PostToolHandler
 }
@@ -21,6 +22,7 @@ type HookDispatcher struct {
 func NewHookDispatcher() *HookDispatcher {
 	return &HookDispatcher{
 		sessionStartHandler: handlers.NewSessionStartHandler(),
+		sessionEndHandler:   handlers.NewSessionEndHandler(),
 		preToolHandler:      handlers.NewPreToolHandler(),
 		postToolHandler:     handlers.NewPostToolHandler(),
 	}
@@ -45,8 +47,7 @@ func (d *HookDispatcher) Dispatch(ctx context.Context, input *protocol.HookInput
 		return d.handlePostTool(ctx, input)
 
 	case protocol.EventSessionEnd:
-		// TODO: Implement session-end handler
-		return d.handleSimple(ctx, "Session end")
+		return d.handleSessionEnd(ctx, input)
 
 	case protocol.EventPreCompact:
 		return d.handleSimple(ctx, "Pre-compact")
@@ -77,6 +78,15 @@ func (d *HookDispatcher) Dispatch(ctx context.Context, input *protocol.HookInput
 // handleSessionStart handles session-start events
 func (d *HookDispatcher) handleSessionStart(ctx context.Context, input *protocol.HookInput) error {
 	response, err := d.sessionStartHandler.Handle(input)
+	if err != nil {
+		return d.handleError(ctx, err)
+	}
+	return response.WriteToStdout()
+}
+
+// handleSessionEnd handles session-end events
+func (d *HookDispatcher) handleSessionEnd(ctx context.Context, input *protocol.HookInput) error {
+	response, err := d.sessionEndHandler.Handle(input)
 	if err != nil {
 		return d.handleError(ctx, err)
 	}

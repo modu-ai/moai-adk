@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/anthropics/moai-adk-go/internal/output"
+	"github.com/anthropics/moai-adk-go/pkg/version"
 	"gopkg.in/yaml.v3"
 )
 
@@ -66,13 +67,13 @@ func (d *Doctor) checkBinaryVersion() {
 		return
 	}
 
-	// Get version from build info (simplified)
-	version := "dev" // TODO: Get actual version from build info
+	// Get version from build info (set via ldflags)
+	ver := version.GetVersion()
 
 	d.results = append(d.results, &CheckResult{
 		Name:    "Binary Version",
 		Status:  "success",
-		Message: fmt.Sprintf("moai %s", version),
+		Message: fmt.Sprintf("moai %s", ver),
 		Value:   binaryPath,
 	})
 }

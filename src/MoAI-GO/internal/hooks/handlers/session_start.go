@@ -47,33 +47,6 @@ func (h *SessionStartHandler) Handle(input *protocol.HookInput) (*protocol.HookR
 	return protocol.NewMessageResponse(strings.Join(output, "\n"), false), nil
 }
 
-// findProjectRoot finds the project root directory
-func findProjectRoot() string {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "."
-	}
-
-	// Search up for .git or .moai directory
-	maxDepth := 5
-	for i := 0; i < maxDepth; i++ {
-		if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
-			return dir
-		}
-		if _, err := os.Stat(filepath.Join(dir, ".moai")); err == nil {
-			return dir
-		}
-
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break
-		}
-		dir = parent
-	}
-
-	return "."
-}
-
 // getVersion gets the MoAI-ADK version
 func (h *SessionStartHandler) getVersion() string {
 	// Try to get version from moai-adk command

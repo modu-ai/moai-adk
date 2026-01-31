@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/anthropics/moai-adk-go/internal/statusline"
+	"github.com/anthropics/moai-adk-go/pkg/version"
 	"github.com/spf13/cobra"
 )
 
@@ -36,11 +37,11 @@ func runStatusline(format string) error {
 		return fmt.Errorf("error getting current directory: %w", err)
 	}
 
-	// Get version (from build info or default)
-	version := "dev" // TODO: Get actual version from build info
+	// Get version from build info (set via ldflags)
+	ver := version.GetVersion()
 
 	// Create formatter
-	formatter := statusline.NewFormatter(cwd, version)
+	formatter := statusline.NewFormatter(cwd, ver)
 
 	// Generate statusline
 	output, err := formatter.Format(format)

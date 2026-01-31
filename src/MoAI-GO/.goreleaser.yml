@@ -27,7 +27,7 @@ builds:
       - -s -w -X github.com/anthropics/moai-adk-go/pkg/version.Commit={{.Commit}}
       - -s -w -X github.com/anthropics/moai-adk-go/pkg/version.Date={{.Date}}
     main: ./cmd/moai/
-    binary: moai-adk-{{ .Os }}-{{ .Arch }}
+    binary: moai-go
 
 archives:
   - format: tar.gz

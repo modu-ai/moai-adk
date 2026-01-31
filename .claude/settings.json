@@ -18,7 +18,7 @@
           {
             "type": "command",
             "command": "${SHELL:-/bin/bash} -l -c 'uv run --with pyyaml \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_compact__save_context.py\"'",
-            "timeout": 5000
+            "timeout": 5
           }
         ]
       }
@@ -41,7 +41,7 @@
           {
             "type": "command",
             "command": "${SHELL:-/bin/bash} -l -c 'uv run --with pyyaml \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_tool__security_guard.py\"'",
-            "timeout": 5000
+            "timeout": 5
           }
         ]
       }
@@ -53,17 +53,17 @@
           {
             "type": "command",
             "command": "${SHELL:-/bin/bash} -l -c 'uv run --with pyyaml \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__code_formatter.py\"'",
-            "timeout": 30000
+            "timeout": 30
           },
           {
             "type": "command",
             "command": "${SHELL:-/bin/bash} -l -c 'uv run --with pyyaml \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__linter.py\"'",
-            "timeout": 60000
+            "timeout": 60
           },
           {
             "type": "command",
             "command": "${SHELL:-/bin/bash} -l -c 'uv run --with pyyaml \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__ast_grep_scan.py\"'",
-            "timeout": 30000
+            "timeout": 30
           }
         ]
       }

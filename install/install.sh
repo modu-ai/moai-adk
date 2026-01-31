@@ -134,9 +134,7 @@ print_success() {
 # Check PATH configuration
 check_path() {
     # Check if ~/.local/bin is in PATH
-    if echo ":$PATH:" | grep -q ":$HOME/.local/bin:"; then
-        return 0
-    else
+    if ! echo ":$PATH:" | grep -q ":$HOME/.local/bin:"; then
         echo ""
         echo "${YELLOW}⚠️  Note:${NC}"
         echo "Make sure ${BLUE}\$HOME/.local/bin${NC} is in your PATH."
@@ -149,6 +147,43 @@ check_path() {
         echo ""
         return 1
     fi
+
+    # macOS: check /etc/paths.d/ for GUI app compatibility (VS Code, Cursor)
+    # Claude Code's process inherits PATH from launchd, not shell config files
+    if [ "$OS" = "macos" ]; then
+        LOCAL_BIN="$HOME/.local/bin"
+        IN_PATHS_D=false
+
+        # Check /etc/paths
+        if [ -f /etc/paths ] && grep -q "^${LOCAL_BIN}$" /etc/paths 2>/dev/null; then
+            IN_PATHS_D=true
+        fi
+
+        # Check /etc/paths.d/*
+        if [ "$IN_PATHS_D" = "false" ] && [ -d /etc/paths.d ]; then
+            for f in /etc/paths.d/*; do
+                if [ -f "$f" ] && grep -q "^${LOCAL_BIN}$" "$f" 2>/dev/null; then
+                    IN_PATHS_D=true
+                    break
+                fi
+            done
+        fi
+
+        if [ "$IN_PATHS_D" = "false" ]; then
+            echo ""
+            echo "${YELLOW}⚠️  macOS System PATH Note:${NC}"
+            echo "~/.local/bin is not in /etc/paths.d/ (macOS system PATH)."
+            echo "GUI apps (VS Code, Cursor) may show false PATH warnings."
+            echo ""
+            echo "To fix, run:"
+            echo "  ${GREEN}sudo sh -c 'echo \"${LOCAL_BIN}\" > /etc/paths.d/local-bin'${NC}"
+            echo ""
+            echo "Then restart VS Code/terminal to apply."
+            echo ""
+        fi
+    fi
+
+    return 0
 }
 
 # Main installation flow

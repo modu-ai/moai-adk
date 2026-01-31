@@ -247,7 +247,7 @@ class ToolRegistry:
                 name="golangci-lint",
                 command="golangci-lint",
                 args=["run", "--fix"],
-                file_args_position="start",
+                file_args_position="end",
                 extensions=extensions,
                 tool_type=ToolType.LINTER,
                 priority=1,

@@ -28,186 +28,86 @@ Enterprise Policy → User Settings → Project Settings → Local Settings
 
 ### Complete Configuration Schema
 
-Base Settings Framework:
+Base Settings Framework (valid top-level fields):
 ```json
 {
- "model": "claude-3-5-sonnet-20241022",
- "permissionMode": "default",
- "maxFileSize": 10000000,
- "maxTokens": 200000,
- "temperature": 1.0,
- "environment": {},
+ "model": "claude-sonnet-4-5-20250929",
+ "permissions": {},
  "hooks": {},
- "plugins": {},
- "subagents": {},
- "mcpServers": {},
- "allowedTools": [],
- "toolRestrictions": {},
- "memory": {},
- "logging": {},
- "security": {}
+ "disableAllHooks": false,
+ "env": {},
+ "statusLine": {},
+ "outputStyle": "",
+ "cleanupPeriodDays": 30,
+ "sandbox": {},
+ "enabledPlugins": {},
+ "enabledMcpjsonServers": [],
+ "disabledMcpjsonServers": []
 }
 ```
 
 ### Essential Configuration Fields
 
-Model Configuration:
-```json
-{
- "model": "claude-3-5-sonnet-20241022",
- "maxTokens": 200000,
- "temperature": 1.0,
- "topP": 1.0,
- "topK": 0
-}
-```
-
-Permission Management:
-```json
-{
- "permissionMode": "default",
- "allowedTools": [
- "Read",
- "Write",
- "Edit",
- "Bash",
- "Grep",
- "Glob",
- "WebFetch",
- "AskUserQuestion"
- ],
- "toolRestrictions": {
- "Bash": "prompt",
- "Write": "prompt",
- "Edit": "prompt"
- }
-}
-```
+Key fields frequently used in settings.json:
+- `model`: Default model identifier
+- `permissions`: Tool allow/ask/deny lists
+- `hooks`: Lifecycle event hooks
+- `env`: Environment variables
+- `statusLine`: Status bar configuration
+- `outputStyle`: Output formatting style
+- `cleanupPeriodDays`: Session cleanup period
+- `sandbox`: Sandboxing configuration
 
 ## Detailed Configuration Sections
 
 ### Model Settings
 
-Available Models:
-- `claude-3-5-sonnet-20241022`: Balanced performance (default)
-- `claude-3-5-haiku-20241022`: Fast and cost-effective
-- `claude-3-opus-20240229`: Highest quality, higher cost
+The `model` field sets the default model. Only this single field is valid in settings.json for model selection.
 
-Model Configuration Examples:
 ```json
 {
- "model": "claude-3-5-sonnet-20241022",
- "maxTokens": 200000,
- "temperature": 0.7,
- "topP": 0.9,
- "topK": 40,
- "stopSequences": ["---", "##"],
- "timeout": 300000
-}
-```
-
-Model Selection Guidelines:
-```json
-{
- "modelProfiles": {
- "development": {
- "model": "claude-3-5-haiku-20241022",
- "temperature": 0.3,
- "maxTokens": 50000
- },
- "testing": {
- "model": "claude-3-5-sonnet-20241022",
- "temperature": 0.1,
- "maxTokens": 100000
- },
- "production": {
- "model": "claude-3-5-sonnet-20241022",
- "temperature": 0.0,
- "maxTokens": 200000
- }
- }
+ "model": "claude-sonnet-4-5-20250929"
 }
 ```
 
 ### Permission System
 
-Permission Modes:
-- `default`: Standard permission prompts for sensitive operations
-- `acceptEdits`: Automatically accept file edits without prompts
-- `dontAsk`: Suppress all permission dialogs
+Permission Modes: `default`, `plan`, `acceptEdits`, `dontAsk`, `bypassPermissions`.
 
-Tool-Specific Permissions:
+Permissions use allow/ask/deny lists with tool-path patterns:
 ```json
 {
- "allowedTools": [
+ "permissions": {
+ "defaultMode": "default",
+ "allow": [
  "Read",
- "Write",
- "Edit",
- "Bash",
- "Grep",
  "Glob",
- "WebFetch",
- "WebSearch",
- "AskUserQuestion",
- "TodoWrite",
- "Task",
- "Skill",
- "SlashCommand"
+ "Grep",
+ "Bash(git status:*)",
+ "Bash(git log:*)"
  ],
- "toolRestrictions": {
- "Read": {
- "allowedPaths": ["./", "~/.claude/"],
- "blockedPaths": [".env*", "*.key", "*.pem"]
- },
- "Bash": {
- "allowedCommands": ["git", "npm", "python", "make", "docker"],
- "blockedCommands": ["rm -rf", "sudo", "chmod 777", "dd", "mkfs"],
- "requireConfirmation": true
- },
- "Write": {
- "allowedExtensions": [".md", ".py", ".js", ".ts", ".json", ".yaml"],
- "blockedExtensions": [".exe", ".bat", ".sh", ".key"],
- "maxFileSize": 10000000
- },
- "WebFetch": {
- "allowedDomains": ["*.github.com", "*.npmjs.com", "docs.python.org"],
- "blockedDomains": ["*.malicious-site.com"],
- "requireConfirmation": false
- }
+ "ask": [
+ "Bash(rm:*)",
+ "Bash(sudo:*)"
+ ],
+ "deny": [
+ "Read(~/.ssh/**)",
+ "Bash(rm -rf /:*)"
+ ],
+ "additionalDirectories": []
  }
 }
 ```
 
 ### Environment Variables
 
-Environment Configuration:
+The `env` field sets environment variables for the Claude Code session:
 ```json
 {
- "environment": {
+ "env": {
  "NODE_ENV": "development",
  "PYTHONPATH": "./src",
- "API_KEY": "$ENV_VAR", // Environment variable reference
- "PROJECT_ROOT": ".", // Static value
- "DEBUG": "true",
- "LOG_LEVEL": "$DEFAULT_LOG_LEVEL"
- }
-}
-```
-
-Variable Resolution:
-```json
-{
- "environmentResolution": {
- "precedence": [
- "runtime_environment",
- "settings_json",
- "default_values"
- ],
- "validation": {
- "required": ["PROJECT_ROOT"],
- "optional": ["DEBUG", "LOG_LEVEL"],
- "typeChecking": true
- }
+ "DEBUG": "true"
  }
 }
 ```
@@ -264,6 +164,12 @@ MCP Permission Management:
 
 ### Hooks Configuration
 
+Hook events: SessionStart, UserPromptSubmit, PreToolUse, PermissionRequest, PostToolUse, PostToolUseFailure, Notification, SubagentStart, SubagentStop, Stop, PreCompact, SessionEnd.
+
+Hook handler types: "command" (shell command), "prompt" (LLM evaluation), "agent" (subagent with tool access).
+
+Timeout unit: seconds. Defaults: 600 for command, 30 for prompt, 60 for agent.
+
 Hooks Setup:
 ```json
 {
@@ -274,29 +180,31 @@ Hooks Setup:
  "hooks": [
  {
  "type": "command",
- "command": "echo 'Bash command: $COMMAND' >> ~/.claude/hooks.log"
+ "command": ".claude/hooks/block-rm.sh",
+ "timeout": 10
  }
  ]
  }
  ],
  "PostToolUse": [
  {
- "matcher": "*",
+ "matcher": "Write|Edit",
  "hooks": [
  {
  "type": "command",
- "command": "echo 'Tool executed: $TOOL_NAME' >> ~/.claude/activity.log"
+ "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/lint-check.sh",
+ "timeout": 30
  }
  ]
  }
  ],
- "UserPromptSubmit": [
+ "Stop": [
  {
  "hooks": [
  {
- "type": "validation",
- "pattern": "^[\\w\\s\\.\\?!]+$",
- "message": "Invalid characters in prompt"
+ "type": "prompt",
+ "prompt": "Check if all tasks are complete: $ARGUMENTS",
+ "timeout": 30
  }
  ]
  }

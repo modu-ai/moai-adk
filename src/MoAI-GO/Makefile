@@ -5,7 +5,7 @@ GO := go
 CGO_ENABLED := 0
 VERSION := $(shell git describe --tags --always 2>/dev/null || echo "dev")
 LDFLAGS := -s -w -X main.Version=$(VERSION)
-BINARY_NAME := moai
+BINARY_NAME := moai-go
 BUILD_DIR := bin
 
 # Platform-specific binary names
@@ -20,7 +20,7 @@ CMD_DIR := ./cmd/moai
 INTERNAL_DIRS := ./internal/...
 PKG_DIRS := ./pkg/...
 
-.PHONY: build test lint clean build-all help
+.PHONY: build test lint clean build-all install help
 
 # Default target
 all: build
@@ -31,6 +31,12 @@ build:
 	@mkdir -p $(BUILD_DIR)
 	CGO_ENABLED=$(CGO_ENABLED) $(GO) build -ldflags="$(LDFLAGS)" -o $(BINARY) $(CMD_DIR)/
 	@echo "Build complete: $(BINARY)"
+
+## install: Install the binary to ~/.local/bin
+install: build
+	@echo "Installing $(BINARY_NAME) to ~/.local/bin..."
+	@install -m 0755 $(BINARY) ~/.local/bin/$(BINARY_NAME)
+	@echo "Installed: ~/.local/bin/$(BINARY_NAME)"
 
 ## test: Run tests with coverage
 test:

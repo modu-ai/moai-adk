@@ -14,13 +14,18 @@ func NewInitCommand() *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
-		Use:   "init",
+		Use:   "init [path]",
 		Short: "Initialize MoAI project",
 		Long: `Initialize a new MoAI project with templates, configuration,
 and project structure. This command sets up the necessary files and directories
 for AI-powered development with Claude Code.`,
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runInit(force)
+			path := "."
+			if len(args) > 0 {
+				path = args[0]
+			}
+			return runInit(path, force)
 		},
 	}
 
@@ -30,26 +35,32 @@ for AI-powered development with Claude Code.`,
 }
 
 // runInit executes the init command logic
-func runInit(force bool) error {
-	// Get current working directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("error getting current directory: %w", err)
-	}
+func runInit(path string, force bool) error {
+	// Print banner with version info
+	output.PrintBanner("1.12.5")
 
-	// Display header
-	fmt.Println(output.HeaderStyle.Render("MoAI-ADK Project Initialization"))
-	fmt.Println()
+	// Print welcome message
+	output.PrintWelcomeMessage()
+
+	// Get project path
+	projectPath := path
+	if path == "." {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("error getting current directory: %w", err)
+		}
+		projectPath = cwd
+	}
 
 	// Detect existing project
 	detector := initializer.NewProjectDetector()
-	shouldProceed, err := detector.ShouldInit(cwd, force)
+	shouldProceed, err := detector.ShouldInit(projectPath, force)
 	if err != nil {
 		return err
 	}
 
 	if !shouldProceed && !force {
-		fmt.Println(output.ErrorStyle.Render("Initialization cancelled. Use --force to override."))
+		fmt.Println(output.ErrorStyle.Render("\n✗ Initialization cancelled. Use --force to override."))
 		return fmt.Errorf("directory not empty or existing project detected")
 	}
 
@@ -69,14 +80,27 @@ func runInit(force bool) error {
 	}
 
 	fmt.Println()
-	fmt.Println(output.InfoStyle.Render("Creating project structure..."))
+	fmt.Println(output.InfoStyle.Render("🚀 Starting installation..."))
 	fmt.Println()
+
+	// Create progress writer
+	progressWriter, _ := output.CreateProgressCallback()
+	progressWriter.Start()
+
+	// Phase 1: Preparation and backup
+	progressWriter.Update("Phase 1: Preparation and backup...")
+
+	// Phase 2: Create directory structure
+	progressWriter.Update("Phase 2: Creating directory structure...")
 
 	// Create extractor and extract templates
 	extractor := initializer.NewExtractor()
-	if err := extractor.ExtractTemplates(cwd); err != nil {
+	if err := extractor.ExtractTemplates(projectPath); err != nil {
 		return fmt.Errorf("error extracting templates: %w", err)
 	}
+
+	// Phase 3: Install resources
+	progressWriter.Update("Phase 3: Installing resources...")
 
 	// Generate settings.json with direct binary path
 	generator, err := initializer.NewSettingsGenerator()
@@ -84,12 +108,15 @@ func runInit(force bool) error {
 		return fmt.Errorf("error creating settings generator: %w", err)
 	}
 
-	if err := generator.WriteToFile(cwd); err != nil {
+	if err := generator.WriteToFile(projectPath); err != nil {
 		return fmt.Errorf("error writing settings.json: %w", err)
 	}
 
+	// Phase 4: Generate configurations
+	progressWriter.Update("Phase 4: Generating configurations...")
+
 	// Write configuration files
-	configWriter := initializer.NewConfigWriter(cwd)
+	configWriter := initializer.NewConfigWriter(projectPath)
 	if err := configWriter.WriteLanguageConfig(language); err != nil {
 		return fmt.Errorf("error writing language config: %w", err)
 	}
@@ -98,21 +125,30 @@ func runInit(force bool) error {
 		return fmt.Errorf("error writing user config: %w", err)
 	}
 
-	// Display success message
+	// Phase 5: Validation and finalization
+	progressWriter.Update("Phase 5: Validation and finalization...")
+
+	// Mark progress as complete
+	progressWriter.Complete()
+
+	// Display success message with Python-style layout
+	separator := output.MutedStyle.Render("────────────────────────────────────────────────────────────────")
 	fmt.Println()
-	fmt.Println(output.HeaderStyle.Render("✓ Project initialized successfully!"))
+	fmt.Println(output.SuccessStyle.Render("✅ Initialization Completed Successfully!"))
+	fmt.Println(separator)
 	fmt.Println()
-	fmt.Println(output.InfoStyle.Render("Binary path:"))
-	fmt.Println(output.MutedStyle.Render("  " + generator.GetBinaryPath()))
+	fmt.Println(output.InfoStyle.Render("📊 Summary:"))
+	fmt.Printf("  %s  %s\n", output.MutedStyle.Render("📁 Location:"), projectPath)
+	fmt.Printf("  %s  %s\n", output.MutedStyle.Render("🌐 Language:"), string(language))
+	fmt.Printf("  %s  %s\n", output.MutedStyle.Render("👤 User:"), userName)
+	fmt.Printf("  %s  %s\n", output.MutedStyle.Render("🔀 Git:"), "manual (github-flow, branch: manual)")
 	fmt.Println()
-	fmt.Println(output.InfoStyle.Render("Configuration:"))
-	fmt.Println(output.MutedStyle.Render("  Language: " + string(language)))
-	fmt.Println(output.MutedStyle.Render("  User: " + userName))
+	fmt.Println(separator)
 	fmt.Println()
-	fmt.Println(output.MutedStyle.Render("Next steps:"))
-	fmt.Println(output.MutedStyle.Render("  1. Review .claude/settings.json"))
-	fmt.Println(output.MutedStyle.Render("  2. Customize .moai/config/sections/"))
-	fmt.Println(output.MutedStyle.Render("  3. Start development with Claude Code"))
+	fmt.Println(output.InfoStyle.Render("🚀 Next Steps:"))
+	fmt.Printf("  %s %s\n", output.MutedStyle.Render("1."), "Review .claude/settings.json")
+	fmt.Printf("  %s %s\n", output.MutedStyle.Render("2."), "Customize .moai/config/sections/")
+	fmt.Printf("  %s %s\n", output.MutedStyle.Render("3."), "Start development with Claude Code")
 	fmt.Println()
 
 	return nil

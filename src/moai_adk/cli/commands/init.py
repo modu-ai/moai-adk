@@ -764,7 +764,11 @@ def _save_additional_config(
 
 
 def _check_and_fix_path(non_interactive: bool) -> None:
-    """Check and optionally fix PATH configuration for WSL/Linux users.
+    """Check and optionally fix PATH configuration on all platforms.
+
+    On macOS, also checks /etc/paths.d/ for GUI app (VS Code, Cursor)
+    compatibility. Claude Code's process inherits PATH from launchd via
+    GUI apps, not from shell config files.
 
     Args:
         non_interactive: If True, auto-fix without prompting
@@ -775,54 +779,76 @@ def _check_and_fix_path(non_interactive: bool) -> None:
 
     from moai_adk.utils.shell_validator import auto_fix_path, diagnose_path, is_wsl
 
-    # Only check on WSL and Linux (not macOS which handles PATH differently)
+    # Windows PowerShell handles PATH via system environment
     if platform.system() == "Windows" and not is_wsl():
-        return  # Windows PowerShell handles PATH via system environment
-
-    if platform.system() == "Darwin":
-        return  # macOS usually handles PATH correctly
-
-    # Run PATH diagnostics
-    diag = diagnose_path()
-
-    # If PATH is already configured, no action needed
-    if diag.local_bin_in_path:
         return
 
-    # Show warning
-    console.print("\n[yellow]⚠ PATH Configuration Issue Detected[/yellow]")
-    console.print("[dim]~/.local/bin is not in your PATH.[/dim]")
-    console.print("[dim]This may cause MCP servers and CLI tools to fail.[/dim]\n")
+    # Run PATH diagnostics (works on all platforms)
+    diag = diagnose_path()
 
-    if is_wsl() and diag.shell_type == "bash":
-        console.print("[dim]Note: WSL uses login shell (~/.profile), not ~/.bashrc[/dim]\n")
+    # Fix shell PATH if not configured (Linux/WSL)
+    if not diag.local_bin_in_path:
+        console.print("\n[yellow]⚠ PATH Configuration Issue Detected[/yellow]")
+        console.print("[dim]~/.local/bin is not in your PATH.[/dim]")
+        console.print("[dim]This may cause MCP servers and CLI tools to fail.[/dim]\n")
 
-    if non_interactive:
-        # Auto-fix in non-interactive mode
-        console.print("[cyan]Automatically configuring PATH...[/cyan]")
-        success, message = auto_fix_path()
-        if success:
-            console.print(f"[green]✓ {message}[/green]\n")
-        else:
-            console.print(f"[yellow]⚠ {message}[/yellow]")
-            console.print("[dim]Run 'moai-adk doctor --shell' for manual fix instructions[/dim]\n")
-    else:
-        # Interactive mode: ask user
-        console.print(f"[cyan]Recommended fix:[/cyan] {diag.recommended_fix}\n")
+        if is_wsl() and diag.shell_type == "bash":
+            console.print("[dim]Note: WSL uses login shell (~/.profile), not ~/.bashrc[/dim]\n")
 
-        try:
-            proceed = questionary.confirm(
-                "Would you like to automatically configure PATH?",
-                default=True,
-            ).ask()
-        except Exception:
-            proceed = False
-
-        if proceed:
+        if non_interactive:
+            console.print("[cyan]Automatically configuring PATH...[/cyan]")
             success, message = auto_fix_path()
             if success:
                 console.print(f"[green]✓ {message}[/green]\n")
             else:
-                console.print(f"[red]✗ {message}[/red]\n")
+                console.print(f"[yellow]⚠ {message}[/yellow]")
+                console.print("[dim]Run 'moai doctor --shell' for manual fix instructions[/dim]\n")
         else:
-            console.print("[dim]Skipped. Run 'moai-adk doctor --shell --fix' later to configure.[/dim]\n")
+            console.print(f"[cyan]Recommended fix:[/cyan] {diag.recommended_fix}\n")
+            try:
+                proceed = questionary.confirm(
+                    "Would you like to automatically configure PATH?",
+                    default=True,
+                ).ask()
+            except Exception:
+                proceed = False
+
+            if proceed:
+                success, message = auto_fix_path()
+                if success:
+                    console.print(f"[green]✓ {message}[/green]\n")
+                else:
+                    console.print(f"[red]✗ {message}[/red]\n")
+            else:
+                console.print("[dim]Skipped. Run 'moai doctor --shell --fix' later to configure.[/dim]\n")
+        return
+
+    # macOS: check /etc/paths.d/ for GUI app compatibility (VS Code, Cursor)
+    # Claude Code's Bun process inherits PATH from launchd (not shell config)
+    if platform.system() == "Darwin" and not diag.in_system_path:
+        from moai_adk.utils.shell_validator import fix_macos_system_path
+
+        console.print("\n[yellow]⚠ macOS System PATH Issue Detected[/yellow]")
+        console.print("[dim]~/.local/bin is not in /etc/paths.d/ (macOS system PATH).[/dim]")
+        console.print("[dim]GUI apps (VS Code, Cursor) may show false PATH warnings.[/dim]\n")
+
+        if non_interactive:
+            local_bin = str(Path.home() / ".local" / "bin")
+            console.print(f"[dim]Run: sudo sh -c 'echo \"{local_bin}\" > /etc/paths.d/local-bin'[/dim]\n")
+        else:
+            try:
+                proceed = questionary.confirm(
+                    "Create /etc/paths.d/local-bin? (requires sudo password)",
+                    default=True,
+                ).ask()
+            except Exception:
+                proceed = False
+
+            if proceed:
+                success, message = fix_macos_system_path()
+                if success:
+                    console.print(f"[green]✓ {message}[/green]\n")
+                else:
+                    console.print(f"[yellow]⚠ {message}[/yellow]\n")
+            else:
+                console.print("[dim]Skipped. Run 'moai doctor --shell --fix' later to configure.[/dim]\n")

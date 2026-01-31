@@ -26,6 +26,10 @@ application development.`,
 		NewVersionCommand(),
 		NewSelfUpdateCommand(),
 		NewMigrateCommand(),
+		NewClaudeCommand(),
+		NewGLMCommand(),
+		NewWorktreeCommand(),
+		NewRankCommand(),
 	)
 
 	return rootCmd

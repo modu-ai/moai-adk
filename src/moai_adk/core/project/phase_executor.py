@@ -13,7 +13,6 @@ Test coverage includes 5-phase integration tests with backup, configuration, and
 
 import json
 import logging
-import os
 import platform
 import shutil
 import subprocess
@@ -33,6 +32,7 @@ from moai_adk.core.project.backup_utils import (
 from moai_adk.core.project.validator import ProjectValidator
 from moai_adk.core.template.processor import TemplateProcessor
 from moai_adk.statusline.version_reader import VersionConfig, VersionReader
+from moai_adk.utils.hook_context import build_hook_context, build_template_context
 
 console = Console()
 
@@ -303,92 +303,11 @@ class PhaseExecutor:
         # Copy resources via TemplateProcessor in silent mode
         processor = TemplateProcessor(project_path)
 
-        # Detect OS for cross-platform Hook path configuration (ALWAYS, not just when config exists)
-        # PROJECT_DIR: Cross-platform forward slash path (works on Windows, macOS, Linux)
-        # PROJECT_DIR_WIN: Deprecated in v1.8.0 - use PROJECT_DIR (removal planned: v2.0.0)
-        # PROJECT_DIR_UNIX: Deprecated in v1.8.0 - use PROJECT_DIR (removal planned: v2.0.0)
-        is_windows = platform.system() == "Windows"
-
-        # PROJECT_DIR: Cross-platform forward slash path with trailing separator
-        # Standard since v1.8.0 - works on all modern platforms (Windows 10+, macOS, Linux)
-        # Forward slash is industry standard (pytest, uv, ruff all use this pattern)
-        hook_project_dir = "%CLAUDE_PROJECT_DIR%/" if is_windows else "$CLAUDE_PROJECT_DIR/"
-
-        # PROJECT_DIR_WIN: Deprecated (v1.8.0) - Uses Windows environment variable and backslash separator
-        # BACKWARD COMPATIBILITY ONLY - Will be removed in v2.0.0
-        # Migration: Replace {{PROJECT_DIR_WIN}} with {{PROJECT_DIR}} in templates
-        hook_project_dir_win = "%CLAUDE_PROJECT_DIR%\\" if is_windows else "$CLAUDE_PROJECT_DIR/"
-
-        # PROJECT_DIR_UNIX: Deprecated (v1.8.0) - Uses appropriate environment variable with forward slash
-        # BACKWARD COMPATIBILITY ONLY - Will be removed in v2.0.0
-        # Migration: Replace {{PROJECT_DIR_UNIX}} with {{PROJECT_DIR}} in templates
-        hook_project_dir_unix = "%CLAUDE_PROJECT_DIR%/" if is_windows else "$CLAUDE_PROJECT_DIR/"
-
-        # HOOK_SHELL_PREFIX & HOOK_SHELL_SUFFIX: Cross-platform shell wrapper for hook commands
-        # Ensures PATH is loaded correctly on all platforms (v1.8.6+)
-        # Windows: Direct execution (PATH loaded from system environment)
-        # Unix: Detect actual shell path at runtime for Node.js compatibility
-        #
-        # NOTE: Shell parameter expansion (${SHELL:-/bin/bash}) doesn't work with Node.js child_process
-        # because the string is stored in JSON and passed directly to spawn() without shell expansion.
-        # We must resolve the actual shell path at template substitution time (not runtime).
-        if is_windows:
-            hook_shell_prefix = ""
-            hook_shell_suffix = ""
-        else:
-            # Detect actual shell path at template substitution time
-            # This ensures the hook command contains an absolute path that Node.js can execute
-
-            # Get user's default shell from environment
-            user_shell = os.environ.get("SHELL", "")
-
-            # Priority order for shell selection:
-            # 1. User's default shell (from $SHELL env var)
-            # 2. bash (most common login shell)
-            # 3. sh (POSIX standard, always available on Unix)
-            # 4. Fallback to /bin/sh (last resort)
-            actual_shell = None
-
-            # Verify user's shell exists and is executable
-            if user_shell and os.path.isfile(user_shell) and os.access(user_shell, os.X_OK):
-                actual_shell = user_shell
-            else:
-                # Try bash first (most common, supports -l flag)
-                bash_path = shutil.which("bash")
-                if bash_path:
-                    actual_shell = bash_path
-                else:
-                    # Try sh (POSIX standard, supports -l flag)
-                    sh_path = shutil.which("sh")
-                    if sh_path:
-                        actual_shell = sh_path
-                    else:
-                        # Last resort - check common paths
-                        for path in ["/bin/bash", "/bin/sh", "/usr/bin/bash", "/usr/bin/sh"]:
-                            if os.path.isfile(path) and os.access(path, os.X_OK):
-                                actual_shell = path
-                                break
-
-            # Ultimate fallback (shouldn't happen on Unix systems)
-            if not actual_shell:
-                actual_shell = "/bin/sh"
-
-            hook_shell_prefix = f"{actual_shell} -l -c '"
-            hook_shell_suffix = "'"
-
-        # MCP_SHELL: Cross-platform shell for MCP server commands (v1.8.7+)
-        if is_windows:
-            mcp_shell = "cmd"
-        else:
-            mcp_shell = "${SHELL:-/bin/bash}"
-
-        # Detect OS for cross-platform statusline command
-        # Windows: Use python -m for better PATH compatibility
-        # Unix: Use moai-adk directly (assumes installed via uv tool)
-        if platform.system() == "Windows":
-            statusline_command = "python -m moai_adk statusline"
-        else:
-            statusline_command = "moai-adk statusline"
+        # Build cross-platform hook context (shared with update.py)
+        # Handles: platform detection, shell detection, WSL path normalization,
+        # PROJECT_DIR, HOOK_SHELL_PREFIX/SUFFIX, STATUSLINE_COMMAND, MCP_SHELL
+        hook_ctx = build_hook_context()
+        hook_vars = build_template_context(hook_ctx)
 
         # Get enhanced version context with fallback strategies (ALWAYS)
         version_context = self._get_enhanced_version_context()
@@ -406,6 +325,7 @@ class PhaseExecutor:
 
             context = {
                 **version_context,
+                **hook_vars,
                 "CREATION_TIMESTAMP": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "PROJECT_NAME": config.get("name", "unknown"),
                 "PROJECT_DESCRIPTION": config.get("description", ""),
@@ -416,19 +336,13 @@ class PhaseExecutor:
                 "CONVERSATION_LANGUAGE": language_config.get("conversation_language", "en"),
                 "CONVERSATION_LANGUAGE_NAME": language_config.get("conversation_language_name", "English"),
                 "CODEBASE_LANGUAGE": config.get("language", "generic"),
-                "PROJECT_DIR": hook_project_dir,
-                "PROJECT_DIR_WIN": hook_project_dir_win,
-                "PROJECT_DIR_UNIX": hook_project_dir_unix,
-                "HOOK_SHELL_PREFIX": hook_shell_prefix,
-                "HOOK_SHELL_SUFFIX": hook_shell_suffix,
-                "MCP_SHELL": mcp_shell,
-                "STATUSLINE_COMMAND": statusline_command,
             }
         else:
             # Minimal context for template substitution (when config is not provided)
             # This ensures template variables like {{PROJECT_DIR}} are always substituted
             context = {
                 **version_context,
+                **hook_vars,
                 "CREATION_TIMESTAMP": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "PROJECT_NAME": "unknown",
                 "PROJECT_DESCRIPTION": "",
@@ -439,13 +353,6 @@ class PhaseExecutor:
                 "CONVERSATION_LANGUAGE": "en",
                 "CONVERSATION_LANGUAGE_NAME": "English",
                 "CODEBASE_LANGUAGE": "generic",
-                "PROJECT_DIR": hook_project_dir,
-                "PROJECT_DIR_WIN": hook_project_dir_win,
-                "PROJECT_DIR_UNIX": hook_project_dir_unix,
-                "HOOK_SHELL_PREFIX": hook_shell_prefix,
-                "HOOK_SHELL_SUFFIX": hook_shell_suffix,
-                "MCP_SHELL": mcp_shell,
-                "STATUSLINE_COMMAND": statusline_command,
             }
 
         # ALWAYS set context (critical for template variable substitution in settings.json)
