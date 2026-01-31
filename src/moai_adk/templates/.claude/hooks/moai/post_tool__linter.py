@@ -28,6 +28,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
+# Ensure UTF-8 stdout/stderr on Windows (cp949 default breaks non-ASCII output)
+if sys.platform == "win32":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 # Setup import path for shared modules
 HOOKS_DIR = Path(__file__).parent
 LIB_DIR = HOOKS_DIR / "lib"

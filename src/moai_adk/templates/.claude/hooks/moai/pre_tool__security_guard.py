@@ -30,6 +30,13 @@ import sys
 from pathlib import Path
 from typing import Any, List, Tuple
 
+# Ensure UTF-8 stdout/stderr on Windows (cp949 default breaks non-ASCII output)
+if sys.platform == "win32":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 # Patterns for files that should NEVER be modified
 DENY_PATTERNS = [
     # Secrets and credentials (NOT .env - developers need to edit these)
@@ -225,7 +232,7 @@ def get_plans_directory() -> Path | None:
         return None
 
     try:
-        with open(settings_file, "r") as f:
+        with open(settings_file, "r", encoding="utf-8", errors="replace") as f:
             settings = json.load(f)
             plans_dir = settings.get("plansDirectory")
             if plans_dir:

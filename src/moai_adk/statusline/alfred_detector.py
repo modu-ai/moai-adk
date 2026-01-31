@@ -63,7 +63,7 @@ class AlfredDetector:
             if not self._session_state_path.exists():
                 return self._create_default_task()
 
-            with open(self._session_state_path, "r") as f:
+            with open(self._session_state_path, "r", encoding="utf-8", errors="replace") as f:
                 data = json.load(f)
 
             active_task = data.get("active_task")

@@ -184,7 +184,7 @@ def _find_main_repository(start_path: Path) -> Path:
             if git_path.is_file():
                 # This is a worktree - read the main repo path
                 try:
-                    with open(git_path, "r") as f:
+                    with open(git_path, "r", encoding="utf-8", errors="replace") as f:
                         for line in f:
                             if line.startswith("gitdir:"):
                                 gitdir_path = line[8:].strip()

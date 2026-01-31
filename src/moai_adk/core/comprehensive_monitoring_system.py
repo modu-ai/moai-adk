@@ -920,7 +920,7 @@ class ComprehensiveMonitoringSystem:
 
         if self.config_file.exists():
             try:
-                with open(self.config_file, "r") as f:
+                with open(self.config_file, "r", encoding="utf-8", errors="replace") as f:
                     config = json.load(f)
                 default_config.update(config)
             except Exception as e:

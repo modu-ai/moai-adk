@@ -1099,7 +1099,7 @@ class EventDrivenHookSystem:
             # Load pending events
             pending_file = self.persistence_path / "pending_events.json"
             if pending_file.exists():
-                with open(pending_file, "r") as f:
+                with open(pending_file, "r", encoding="utf-8", errors="replace") as f:
                     pending_data = json.load(f)
 
                 self._pending_events = {
@@ -1109,14 +1109,14 @@ class EventDrivenHookSystem:
             # Load processed events
             processed_file = self.persistence_path / "processed_events.json"
             if processed_file.exists():
-                with open(processed_file, "r") as f:
+                with open(processed_file, "r", encoding="utf-8", errors="replace") as f:
                     processed_data = json.load(f)
                 self._processed_events = set(processed_data)
 
             # Load system metrics
             metrics_file = self.persistence_path / "system_metrics.json"
             if metrics_file.exists():
-                with open(metrics_file, "r") as f:
+                with open(metrics_file, "r", encoding="utf-8", errors="replace") as f:
                     self._system_metrics = json.load(f)
 
         except Exception as e:

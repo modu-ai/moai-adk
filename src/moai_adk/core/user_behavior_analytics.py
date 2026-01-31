@@ -624,7 +624,7 @@ class UserBehaviorAnalytics:
             # Load user preferences
             prefs_file = self.storage_path / "user_preferences.json"
             if prefs_file.exists():
-                with open(prefs_file, "r") as f:
+                with open(prefs_file, "r", encoding="utf-8", errors="replace") as f:
                     prefs_data = json.load(f)
 
                 for user_id, prefs_dict in prefs_data.items():

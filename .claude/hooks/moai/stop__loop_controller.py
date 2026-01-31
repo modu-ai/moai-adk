@@ -28,6 +28,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+# Ensure UTF-8 output on Windows (cp949/cp1252 cannot encode emoji)
+if sys.platform == "win32":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 # Environment variables
 DISABLE_ENV_VAR = "MOAI_DISABLE_LOOP_CONTROLLER"
 LOOP_ACTIVE_ENV_VAR = "MOAI_LOOP_ACTIVE"

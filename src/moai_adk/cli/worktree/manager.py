@@ -310,7 +310,9 @@ class WorktreeManager:
                                                 # Simple conflict marker removal - keep both versions
                                                 file_full_path = info.path / file_path
                                                 if file_full_path.exists():
-                                                    with open(file_full_path, "r") as f:
+                                                    with open(
+                                                        file_full_path, "r", encoding="utf-8", errors="replace"
+                                                    ) as f:
                                                         content = f.read()
 
                                                     # Remove conflict markers and keep both versions
@@ -472,7 +474,7 @@ class WorktreeManager:
                             file_full_path = worktree_path / file_path
 
                             if file_full_path.exists():
-                                with open(file_full_path, "r") as f:
+                                with open(file_full_path, "r", encoding="utf-8", errors="replace") as f:
                                     content = f.read()
 
                                 # Remove conflict markers and keep both versions

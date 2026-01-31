@@ -209,7 +209,7 @@ class HooksTestSuite:
             example_config_path = hooks_dir / "example_config.json"
             assert example_config_path.exists(), "Example config should exist"
 
-            with open(example_config_path, "r") as f:
+            with open(example_config_path, "r", encoding="utf-8", errors="replace") as f:
                 config = json.load(f)
 
             # Validate configuration

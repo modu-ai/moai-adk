@@ -151,7 +151,7 @@ class WorktreeRegistry:
         """
         if self.registry_path.exists():
             try:
-                with open(self.registry_path, "r") as f:
+                with open(self.registry_path, "r", encoding="utf-8", errors="replace") as f:
                     content = f.read().strip()
                     if content:
                         raw_data = json.loads(content)
@@ -366,13 +366,13 @@ class WorktreeRegistry:
             try:
                 if git_path.is_file():
                     # It's a worktree - read the gitdir to find HEAD
-                    with open(git_path, "r") as f:
+                    with open(git_path, "r", encoding="utf-8", errors="replace") as f:
                         for line in f:
                             if line.startswith("gitdir:"):
                                 gitdir = Path(line[8:].strip())
                                 head_file = gitdir / "HEAD"
                                 if head_file.exists():
-                                    with open(head_file, "r") as hf:
+                                    with open(head_file, "r", encoding="utf-8", errors="replace") as hf:
                                         head_content = hf.read().strip()
                                         if head_content.startswith("ref: refs/heads/"):
                                             branch = head_content[16:]

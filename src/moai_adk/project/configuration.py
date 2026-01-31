@@ -196,7 +196,7 @@ class ConfigurationManager:
         """Create backup of existing config"""
         if self.config_path.exists():
             backup_path = self.config_path.with_suffix(".backup")
-            with open(self.config_path, "r") as src:
+            with open(self.config_path, "r", encoding="utf-8", errors="replace") as src:
                 with open(backup_path, "w", encoding="utf-8", errors="replace") as dst:
                     dst.write(src.read())
 

@@ -72,7 +72,7 @@ class MCPSetupManager:
                 project_mcp_path = self.project_path / ".mcp.json"
 
                 # Read template
-                with open(template_mcp_path, "r") as f:
+                with open(template_mcp_path, "r", encoding="utf-8", errors="replace") as f:
                     mcp_config = json.load(f)
 
                 # Adapt for platform

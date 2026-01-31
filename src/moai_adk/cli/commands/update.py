@@ -428,17 +428,38 @@ def _sync_global_hooks() -> bool:
 
                 if "hooks" in settings and "SessionEnd" in settings["hooks"]:
                     updated = False
-                    for hook_config in settings["hooks"]["SessionEnd"]:
-                        command = hook_config.get("command", "")
-                        # Check if this is the rank hook and needs updating
-                        if "session_end__rank_submit.py" in command and not command.startswith("bash -l -c"):
-                            # Update to bash -l -c wrapper format
-                            new_command = (
-                                f"bash -l -c 'python3 {Path.home()}/.claude/hooks/moai/session_end__rank_submit.py'"
-                            )
-                            hook_config["command"] = new_command
-                            updated = True
-                            logger.info("Updated hook command to use bash -l -c wrapper")
+                    session_end_hooks = settings["hooks"]["SessionEnd"]
+                    rank_script = Path.home() / ".claude" / "hooks" / "moai" / "session_end__rank_submit.py"
+                    wrapped_cmd = f"${{SHELL:-/bin/bash}} -l -c 'python3 {rank_script}'"
+                    if isinstance(session_end_hooks, list):
+                        for item in session_end_hooks:
+                            if not isinstance(item, dict):
+                                continue
+                            # Current format: matcher group with nested hooks
+                            if "hooks" in item:
+                                for hh in item.get("hooks", []):
+                                    if not isinstance(hh, dict):
+                                        continue
+                                    cmd = hh.get("command", "")
+                                    if (
+                                        "session_end__rank_submit.py" in cmd
+                                        and "bash -l -c" not in cmd
+                                        and "${SHELL:-" not in cmd
+                                    ):
+                                        hh["command"] = wrapped_cmd
+                                        updated = True
+                                        logger.info("Updated hook command to use login shell wrapper")
+                            # Legacy format: direct hook handler
+                            elif "command" in item:
+                                cmd = item.get("command", "")
+                                if (
+                                    "session_end__rank_submit.py" in cmd
+                                    and "bash -l -c" not in cmd
+                                    and "${SHELL:-" not in cmd
+                                ):
+                                    item["command"] = wrapped_cmd
+                                    updated = True
+                                    logger.info("Updated hook command to use login shell wrapper")
 
                     if updated:
                         # Save updated settings
@@ -877,7 +898,9 @@ def _preserve_user_settings(project_path: Path) -> dict[str, Path | None]:
             backup_dir = project_path / ".moai-backups" / "settings-backup"
             backup_dir.mkdir(parents=True, exist_ok=True)
             backup_path = backup_dir / "settings.local.json"
-            backup_path.write_text(settings_local.read_text(encoding="utf-8", errors="replace"))
+            backup_path.write_text(
+                settings_local.read_text(encoding="utf-8", errors="replace"), encoding="utf-8", errors="replace"
+            )
             preserved["settings.local.json"] = backup_path
             console.print("   [cyan]💾 Backed up user settings[/cyan]")
         except Exception as e:
@@ -909,7 +932,11 @@ def _restore_user_settings(project_path: Path, preserved: dict[str, Path | None]
     if backup_path is not None:
         try:
             settings_local = claude_dir / "settings.local.json"
-            settings_local.write_text(backup_path.read_text(encoding="utf-8", errors="replace"))
+            settings_local.write_text(
+                backup_path.read_text(encoding="utf-8", errors="replace"),
+                encoding="utf-8",
+                errors="replace",
+            )
             console.print("   [cyan]✓ Restored user settings[/cyan]")
         except Exception as e:
             console.print(f"   [yellow]⚠️ Failed to restore settings.local.json: {e}[/yellow]")
@@ -1803,7 +1830,6 @@ def _build_template_context(
     version_for_config: str,
 ) -> dict[str, str]:
     """Build substitution context for template files."""
-    import platform
 
     project_section = _extract_project_section(existing_config)
 
@@ -1834,98 +1860,13 @@ def _build_template_context(
         default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     )
 
-    # Detect OS for cross-platform Hook path configuration
-    # Each platform-specific variable includes the appropriate path separator
-    is_windows = platform.system() == "Windows"
+    # Build cross-platform hook context (shared with phase_executor.py)
+    # Handles: platform detection, shell detection, WSL path normalization,
+    # PROJECT_DIR, HOOK_SHELL_PREFIX/SUFFIX, STATUSLINE_COMMAND, MCP_SHELL
+    from moai_adk.utils.hook_context import build_hook_context, build_template_context
 
-    # PROJECT_DIR: Cross-platform forward slash path (standard since v1.8.0)
-    # Works on all modern platforms (Windows 10+, macOS, Linux) with forward slash
-    # Note: Trailing slash included for path concatenation consistency
-    hook_project_dir = "%CLAUDE_PROJECT_DIR%/" if is_windows else "$CLAUDE_PROJECT_DIR/"
-
-    # HOOK_SHELL_PREFIX & HOOK_SHELL_SUFFIX: Cross-platform shell wrapper for hook commands
-    # Ensures PATH is loaded correctly on all platforms (v1.8.6+)
-    # Windows: Direct execution (PATH loaded from system environment)
-    # Unix: Detect actual shell path at runtime for Node.js compatibility
-    #
-    # NOTE: Shell parameter expansion (${SHELL:-/bin/bash}) doesn't work with Node.js child_process
-    # because the string is stored in JSON and passed directly to spawn() without shell expansion.
-    # We must resolve the actual shell path at template substitution time (not runtime).
-    if is_windows:
-        hook_shell_prefix = ""
-        hook_shell_suffix = ""
-    else:
-        # Detect actual shell path at template substitution time
-        # This ensures the hook command contains an absolute path that Node.js can execute
-        import shutil
-
-        # Get user's default shell from environment
-        user_shell = os.environ.get("SHELL", "")
-
-        # Priority order for shell selection:
-        # 1. User's default shell (from $SHELL env var)
-        # 2. bash (most common login shell)
-        # 3. sh (POSIX standard, always available on Unix)
-        # 4. Fallback to /bin/sh (last resort)
-        actual_shell = None
-
-        # Verify user's shell exists and is executable
-        if user_shell and os.path.isfile(user_shell) and os.access(user_shell, os.X_OK):
-            actual_shell = user_shell
-        else:
-            # Try bash first (most common, supports -l flag)
-            bash_path = shutil.which("bash")
-            if bash_path:
-                actual_shell = bash_path
-            else:
-                # Try sh (POSIX standard, supports -l flag)
-                sh_path = shutil.which("sh")
-                if sh_path:
-                    actual_shell = sh_path
-                else:
-                    # Last resort - check common paths
-                    for path in ["/bin/bash", "/bin/sh", "/usr/bin/bash", "/usr/bin/sh"]:
-                        if os.path.isfile(path) and os.access(path, os.X_OK):
-                            actual_shell = path
-                            break
-
-        # Ultimate fallback (shouldn't happen on Unix systems)
-        if not actual_shell:
-            actual_shell = "/bin/sh"
-
-        hook_shell_prefix = f"{actual_shell} -l -c '"
-        hook_shell_suffix = "'"
-
-    # MCP_SHELL: Cross-platform shell for MCP server commands (v1.8.7+)
-    # Used in .mcp.json template for dynamic shell detection
-    # Windows: Uses cmd.exe (PATH loaded from system environment via cmd /c)
-    # Unix: Uses user's default shell with login mode to load PATH
-    if is_windows:
-        mcp_shell = "cmd"
-    else:
-        # ${SHELL:-/bin/bash}: Detect user's default shell, fallback to bash
-        # This will be expanded at runtime by the shell spawning MCP servers
-        mcp_shell = "${SHELL:-/bin/bash}"
-
-    # PROJECT_DIR_WIN: Deprecated (v1.8.0) - Use PROJECT_DIR instead
-    # Uses Windows environment variable with backslash separator
-    # Kept for backward compatibility only - will be removed in v2.0.0
-    # Windows: %CLAUDE_PROJECT_DIR%\
-    # Unix: $CLAUDE_PROJECT_DIR/ (fallback for non-Windows platforms)
-    hook_project_dir_win = "%CLAUDE_PROJECT_DIR%\\" if is_windows else "$CLAUDE_PROJECT_DIR/"
-
-    # PROJECT_DIR_UNIX: Deprecated (v1.8.0) - Use PROJECT_DIR instead
-    # Uses appropriate environment variable with forward slash
-    # Kept for backward compatibility only - will be removed in v2.0.0
-    hook_project_dir_unix = "%CLAUDE_PROJECT_DIR%/" if is_windows else "$CLAUDE_PROJECT_DIR/"
-
-    # Detect OS for cross-platform statusline command
-    # Windows: Use python -m for better PATH compatibility
-    # Unix: Use moai-adk directly (assumes installed via uv tool)
-    if platform.system() == "Windows":
-        statusline_command = "python -m moai_adk statusline"
-    else:
-        statusline_command = "moai-adk statusline"
+    hook_ctx = build_hook_context()
+    hook_vars = build_template_context(hook_ctx)
 
     # Extract and resolve language configuration using centralized resolver
     try:
@@ -1995,6 +1936,7 @@ def _build_template_context(
         return "0.0.0"
 
     return {
+        **hook_vars,
         "MOAI_VERSION": version_for_config,
         "MOAI_VERSION_SHORT": format_short_version(version_for_config),
         "MOAI_VERSION_DISPLAY": format_display_version(version_for_config),
@@ -2008,12 +1950,6 @@ def _build_template_context(
         "PROJECT_DESCRIPTION": project_description,
         "PROJECT_VERSION": project_version,
         "CREATION_TIMESTAMP": created_at,
-        "PROJECT_DIR": hook_project_dir,
-        "PROJECT_DIR_WIN": hook_project_dir_win,
-        "PROJECT_DIR_UNIX": hook_project_dir_unix,
-        "HOOK_SHELL_PREFIX": hook_shell_prefix,
-        "HOOK_SHELL_SUFFIX": hook_shell_suffix,
-        "MCP_SHELL": mcp_shell,
         "CONVERSATION_LANGUAGE": language_config.get("conversation_language", "en"),
         "CONVERSATION_LANGUAGE_NAME": language_config.get("conversation_language_name", "English"),
         "AGENT_PROMPT_LANGUAGE": language_config.get("agent_prompt_language", "en"),
@@ -2031,7 +1967,6 @@ def _build_template_context(
         "CODEBASE_LANGUAGE": project_section.get("language", "generic"),
         "PROJECT_OWNER": project_section.get("author", "@user"),
         "AUTHOR": project_section.get("author", "@user"),
-        "STATUSLINE_COMMAND": statusline_command,
     }
 
 
@@ -3126,65 +3061,92 @@ def _edit_configuration(project_path: Path) -> None:
 
 
 def _check_path_after_update(non_interactive: bool) -> None:
-    """Check PATH configuration for WSL/Linux users after update.
+    """Check and optionally fix PATH configuration on all platforms after update.
+
+    On macOS, also checks /etc/paths.d/ for GUI app (VS Code, Cursor)
+    compatibility. Claude Code's process inherits PATH from launchd via
+    GUI apps, not from shell config files.
 
     Args:
         non_interactive: If True, auto-fix without prompting
     """
     import platform
+    from pathlib import Path
 
     import questionary
 
     from moai_adk.utils.shell_validator import auto_fix_path, diagnose_path, is_wsl
 
-    # Only check on WSL and Linux (not macOS which handles PATH differently)
+    # Windows PowerShell handles PATH via system environment
     if platform.system() == "Windows" and not is_wsl():
-        return  # Windows PowerShell handles PATH via system environment
-
-    if platform.system() == "Darwin":
-        return  # macOS usually handles PATH correctly
-
-    # Run PATH diagnostics
-    diag = diagnose_path()
-
-    # If PATH is already configured, no action needed
-    if diag.local_bin_in_path:
         return
 
-    # Show warning
-    console.print("\n[yellow]⚠ PATH Configuration Issue Detected[/yellow]")
-    console.print("[dim]~/.local/bin is not in your PATH.[/dim]")
-    console.print("[dim]This may cause MCP servers and CLI tools to fail.[/dim]\n")
+    # Run PATH diagnostics (works on all platforms)
+    diag = diagnose_path()
 
-    if is_wsl() and diag.shell_type == "bash":
-        console.print("[dim]Note: WSL uses login shell (~/.profile), not ~/.bashrc[/dim]\n")
+    # Fix shell PATH if not configured (Linux/WSL)
+    if not diag.local_bin_in_path:
+        console.print("\n[yellow]⚠ PATH Configuration Issue Detected[/yellow]")
+        console.print("[dim]~/.local/bin is not in your PATH.[/dim]")
+        console.print("[dim]This may cause MCP servers and CLI tools to fail.[/dim]\n")
 
-    if non_interactive:
-        # Auto-fix in non-interactive mode
-        console.print("[cyan]Automatically configuring PATH...[/cyan]")
-        success, message = auto_fix_path()
-        if success:
-            console.print(f"[green]✓ {message}[/green]\n")
-        else:
-            console.print(f"[yellow]⚠ {message}[/yellow]")
-            console.print("[dim]Run 'moai-adk doctor --shell' for manual fix instructions[/dim]\n")
-    else:
-        # Interactive mode: ask user
-        console.print(f"[cyan]Recommended fix:[/cyan] {diag.recommended_fix}\n")
+        if is_wsl() and diag.shell_type == "bash":
+            console.print("[dim]Note: WSL uses login shell (~/.profile), not ~/.bashrc[/dim]\n")
 
-        try:
-            proceed = questionary.confirm(
-                "Would you like to automatically configure PATH?",
-                default=True,
-            ).ask()
-        except Exception:
-            proceed = False
-
-        if proceed:
+        if non_interactive:
+            console.print("[cyan]Automatically configuring PATH...[/cyan]")
             success, message = auto_fix_path()
             if success:
                 console.print(f"[green]✓ {message}[/green]\n")
             else:
-                console.print(f"[red]✗ {message}[/red]\n")
+                console.print(f"[yellow]⚠ {message}[/yellow]")
+                console.print("[dim]Run 'moai doctor --shell' for manual fix instructions[/dim]\n")
         else:
-            console.print("[dim]Skipped. Run 'moai-adk doctor --shell --fix' later to configure.[/dim]\n")
+            console.print(f"[cyan]Recommended fix:[/cyan] {diag.recommended_fix}\n")
+            try:
+                proceed = questionary.confirm(
+                    "Would you like to automatically configure PATH?",
+                    default=True,
+                ).ask()
+            except Exception:
+                proceed = False
+
+            if proceed:
+                success, message = auto_fix_path()
+                if success:
+                    console.print(f"[green]✓ {message}[/green]\n")
+                else:
+                    console.print(f"[red]✗ {message}[/red]\n")
+            else:
+                console.print("[dim]Skipped. Run 'moai doctor --shell --fix' later to configure.[/dim]\n")
+        return
+
+    # macOS: check /etc/paths.d/ for GUI app compatibility (VS Code, Cursor)
+    # Claude Code's Bun process inherits PATH from launchd (not shell config)
+    if platform.system() == "Darwin" and not diag.in_system_path:
+        from moai_adk.utils.shell_validator import fix_macos_system_path
+
+        console.print("\n[yellow]⚠ macOS System PATH Issue Detected[/yellow]")
+        console.print("[dim]~/.local/bin is not in /etc/paths.d/ (macOS system PATH).[/dim]")
+        console.print("[dim]GUI apps (VS Code, Cursor) may show false PATH warnings.[/dim]\n")
+
+        if non_interactive:
+            local_bin = str(Path.home() / ".local" / "bin")
+            console.print(f"[dim]Run: sudo sh -c 'echo \"{local_bin}\" > /etc/paths.d/local-bin'[/dim]\n")
+        else:
+            try:
+                proceed = questionary.confirm(
+                    "Create /etc/paths.d/local-bin? (requires sudo password)",
+                    default=True,
+                ).ask()
+            except Exception:
+                proceed = False
+
+            if proceed:
+                success, message = fix_macos_system_path()
+                if success:
+                    console.print(f"[green]✓ {message}[/green]\n")
+                else:
+                    console.print(f"[yellow]⚠ {message}[/yellow]\n")
+            else:
+                console.print("[dim]Skipped. Run 'moai doctor --shell --fix' later to configure.[/dim]\n")

@@ -28,6 +28,13 @@ import sys
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
+
+# Ensure UTF-8 output on Windows (cp949/cp1252 cannot encode emoji)
+if sys.platform == "win32":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 from typing import Any
 
 # =============================================================================
@@ -55,6 +62,8 @@ from lib.path_utils import (  # noqa: E402
 # Import unified timeout manager and Git operations manager
 try:
     from lib.common import (  # noqa: E402
+        format_duration,
+        get_summary_stats,
         is_root_whitelisted,
         suggest_moai_location,
     )
@@ -108,6 +117,29 @@ except ImportError:
         pass
 
     ConfigManager = None  # type: ignore
+    # Fallback implementations if module not found
+    import statistics
+
+    def format_duration(seconds):
+        """Format duration in seconds to readable string"""
+        if seconds < 60:
+            return f"{seconds:.1f}s"
+        minutes = seconds / 60
+        if minutes < 60:
+            return f"{minutes:.1f}m"
+        hours = minutes / 60
+        return f"{hours:.1f}h"
+
+    def get_summary_stats(values):
+        """Get summary statistics for a list of values"""
+        if not values:
+            return {"mean": 0, "min": 0, "max": 0, "std": 0}
+        return {
+            "mean": statistics.mean(values),
+            "min": min(values),
+            "max": max(values),
+            "std": statistics.stdev(values) if len(values) > 1 else 0,
+        }
 
 
 logger = logging.getLogger(__name__)
