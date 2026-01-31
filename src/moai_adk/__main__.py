@@ -18,6 +18,21 @@ import click
 
 from moai_adk import __version__
 
+
+def _ensure_utf8() -> None:
+    """Ensure UTF-8 encoding for stdout/stderr on Windows.
+
+    Windows PowerShell/Console uses system codepage (e.g., cp949, cp1252) by default,
+    which cannot encode emoji characters used in MoAI-ADK output.
+    This reconfigures stdout/stderr to use UTF-8 encoding with error replacement.
+    """
+    if sys.platform == "win32":
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        if hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+
 # Lazy-loaded console (created when needed)
 _console = None
 
@@ -28,7 +43,11 @@ def get_console():
     if _console is None:
         from rich.console import Console
 
-        _console = Console()
+        # Force UTF-8 compatible terminal on Windows
+        if sys.platform == "win32":
+            _console = Console(force_terminal=True, legacy_windows=False)
+        else:
+            _console = Console()
     return _console
 
 
@@ -296,6 +315,7 @@ cli.add_command(_load_worktree_group(), name="worktree")
 
 def main() -> int:
     """CLI entry point"""
+    _ensure_utf8()
     try:
         cli(standalone_mode=False)
         return 0

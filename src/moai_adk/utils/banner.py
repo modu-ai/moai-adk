@@ -3,9 +3,16 @@
 Render the MoAI-ADK ASCII art banner
 """
 
+import sys
+
 from rich.console import Console
 
-console = Console()
+# Force UTF-8 compatible terminal on Windows
+# Windows PowerShell/Console uses 'charmap' by default, which can't encode emojis
+if sys.platform == "win32":
+    console = Console(force_terminal=True, legacy_windows=False)
+else:
+    console = Console()
 
 # Claude Code official terra cotta color
 CLAUDE_TERRA_COTTA = "#DA7756"

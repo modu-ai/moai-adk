@@ -25,12 +25,18 @@ moai-lsp-setup
 import json
 import os
 import platform
+import sys
 from pathlib import Path
 from typing import List
 
 from rich.console import Console
 
-console = Console()
+# Force UTF-8 encoding for Windows compatibility
+# Windows PowerShell/Console uses 'charmap' by default, which can't encode emojis
+if sys.platform == "win32":
+    console = Console(force_terminal=True, legacy_windows=False)
+else:
+    console = Console()
 
 
 def get_nvm_paths() -> List[str]:
