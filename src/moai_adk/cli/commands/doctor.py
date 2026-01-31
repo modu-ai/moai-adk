@@ -237,7 +237,7 @@ def _export_diagnostics(export_path: str, data: dict) -> None:
     """Export diagnostic results to a JSON file (helper)"""
     try:
         output = Path(export_path)
-        output.write_text(json.dumps(data, indent=2))
+        output.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
         console.print(f"\n[green]✓ Diagnostics exported to {export_path}[/green]")
     except Exception as e:
         console.print(f"\n[red]✗ Failed to export diagnostics: {e}[/red]")

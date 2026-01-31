@@ -556,7 +556,11 @@ class TemplateProcessor:
             return False
 
         # Check value length
-        if len(value) > self.config.max_variable_length * 2:
+        # Hook-related variables are exempt from length validation because
+        # WSL HOOK_SHELL_PREFIX contains path normalization code (~170+ chars)
+        # and PATH augmentation that exceeds the default 100 char limit
+        length_exempt_vars = {"HOOK_SHELL_PREFIX", "HOOK_SHELL_SUFFIX", "STATUSLINE_COMMAND"}
+        if key not in length_exempt_vars and len(value) > self.config.max_variable_length * 2:
             return False
 
         # Note: {{ }} patterns are handled by sanitization, not validation

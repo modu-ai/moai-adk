@@ -850,7 +850,10 @@ def load_user_personalization() -> dict:
                 "resolved_at": datetime.now().isoformat(),
                 "config_source": config.get("config_source", "default"),
             }
-            personalization_cache_file.write_text(json.dumps(cache_data, ensure_ascii=False, indent=2))
+            personalization_cache_file.write_text(
+                json.dumps(cache_data, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
 
         except (OSError, PermissionError):
             # Cache write errors are non-critical
@@ -914,7 +917,10 @@ def load_user_personalization() -> dict:
         personalization_cache_file = find_project_root() / ".moai" / "cache" / "personalization.json"
         try:
             personalization_cache_file.parent.mkdir(parents=True, exist_ok=True)
-            personalization_cache_file.write_text(json.dumps(personalization, ensure_ascii=False, indent=2))
+            personalization_cache_file.write_text(
+                json.dumps(personalization, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
         except (OSError, PermissionError):
             # Cache write errors are non-critical
             pass
@@ -979,12 +985,12 @@ def format_session_output() -> str:
 
     if personalization.get("needs_setup", False):
         # Show setup guidance (based on conversation_language)
-        # Guide user to generate project documentation with /moai:0-project
+        # Guide user to generate project documentation with /moai project
         setup_messages = {
-            "ko": "   👋 환영합니다! '/moai:0-project' 명령어로 프로젝트 문서를 생성해주세요",
-            "ja": "   👋 ようこそ！'/moai:0-project' コマンドでプロジェクトドキュメントを生成してください",
-            "zh": "   👋 欢迎！请运行 '/moai:0-project' 命令生成项目文档",
-            "en": "   👋 Welcome! Please run '/moai:0-project' to generate project documentation",
+            "ko": "   👋 환영합니다! '/moai project' 명령어로 프로젝트 문서를 생성해주세요",
+            "ja": "   👋 ようこそ！'/moai project' コマンドでプロジェクトドキュメントを生成してください",
+            "zh": "   👋 欢迎！请运行 '/moai project' 命令生成项目文档",
+            "en": "   👋 Welcome! Please run '/moai project' to generate project documentation",
         }
         output.append(setup_messages.get(conv_lang, setup_messages["en"]))
     elif personalization["has_personalization"]:

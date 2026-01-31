@@ -106,7 +106,7 @@ class ProjectInitializer:
             print(f"[ProjectInitializer] Warning: Announcement module not available: {e}")
 
         settings_local_file = claude_dir / "settings.local.json"
-        settings_local_file.write_text(json.dumps(settings_local, indent=2, ensure_ascii=False))
+        settings_local_file.write_text(json.dumps(settings_local, indent=2, ensure_ascii=False), encoding="utf-8")
         created_files.append(str(settings_local_file))
 
         return created_files

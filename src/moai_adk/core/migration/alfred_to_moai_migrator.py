@@ -84,7 +84,7 @@ class AlfredToMoaiMigrator:
             Exception: If save fails
         """
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
-        self.config_path.write_text(json.dumps(config, indent=2, ensure_ascii=False))
+        self.config_path.write_text(json.dumps(config, indent=2, ensure_ascii=False), encoding="utf-8")
 
     def needs_migration(self) -> bool:
         """

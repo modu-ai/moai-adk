@@ -143,7 +143,7 @@ class ClaudeCLIIntegration:
             },
         }
 
-        output_path.write_text(json.dumps(settings, indent=2, ensure_ascii=False))
+        output_path.write_text(json.dumps(settings, indent=2, ensure_ascii=False), encoding="utf-8")
         return output_path
 
     def process_template_command(
