@@ -2027,7 +2027,8 @@ def _apply_context_to_file(processor: TemplateProcessor, target_path: Path) -> N
     except UnicodeDecodeError:
         return
 
-    substituted, warnings = processor._substitute_variables(content)  # pylint: disable=protected-access
+    json_safe = target_path.suffix == ".json"
+    substituted, warnings = processor._substitute_variables(content, json_safe=json_safe)  # pylint: disable=protected-access
     if warnings:
         console.print("[yellow]⚠ Template warnings:[/yellow]")
         for warning in warnings:

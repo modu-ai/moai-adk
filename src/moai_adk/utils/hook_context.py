@@ -85,7 +85,7 @@ def _detect_shell() -> str:
 # Ensures common binary directories (uv, cargo, homebrew) are in PATH
 # even if login shell profile doesn't include them.
 # This runs AFTER login shell profile (-l) so user PATH takes precedence.
-_PATH_AUGMENT = 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"; '
+_PATH_AUGMENT = "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH; "
 
 # WSL path normalization snippet (bash)
 # Converts Windows-format CLAUDE_PROJECT_DIR to WSL /mnt/ format

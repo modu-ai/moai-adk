@@ -456,12 +456,14 @@ class TemplateProcessor:
         package_root = current_file.parent.parent.parent
         return package_root / "templates"
 
-    def _substitute_variables(self, content: str) -> tuple[str, list[str]]:
+    def _substitute_variables(self, content: str, json_safe: bool = False) -> tuple[str, list[str]]:
         """
         Substitute template variables in content with enhanced validation and caching.
 
         Args:
             content: Content to substitute variables in
+            json_safe: If True, escape values for embedding in JSON strings
+                       (escapes backslashes, double quotes, etc.)
 
         Returns:
             Tuple of (substituted_content, warnings_list)
@@ -470,7 +472,7 @@ class TemplateProcessor:
         logger = logging.getLogger(__name__)
 
         # Check cache first if enabled
-        cache_key = hash((frozenset(self.context.items()), content[:1000]))
+        cache_key = hash((frozenset(self.context.items()), content[:1000], json_safe))
         if self.config.enable_caching and cache_key in self._substitution_cache:
             cached_result = self._substitution_cache[cache_key]
             if self.config.verbose_logging:
@@ -489,6 +491,10 @@ class TemplateProcessor:
                         continue
 
                 safe_value = self._sanitize_value(value)
+                if json_safe:
+                    # Escape value for embedding inside JSON strings
+                    # json.dumps produces '"escaped"' - strip surrounding quotes
+                    safe_value = json.dumps(safe_value)[1:-1]
                 content = content.replace(placeholder, safe_value)
                 substitution_count += 1
 
@@ -944,10 +950,10 @@ class TemplateProcessor:
                     elif self.settings_merge_strategy == self.SETTINGS_MERGE_TEMPLATE:
                         # Use template settings completely (overwrite)
                         shutil.copy2(item, settings_dst)
-                        # Apply variable substitution
+                        # Apply variable substitution (json_safe for JSON files)
                         if self.context:
                             content = settings_dst.read_text(encoding="utf-8", errors="replace")
-                            content, file_warnings = self._substitute_variables(content)
+                            content, file_warnings = self._substitute_variables(content, json_safe=True)
                             settings_dst.write_text(content, encoding="utf-8", errors="replace")
                             all_warnings.extend(file_warnings)
                         if not silent:
@@ -967,7 +973,7 @@ class TemplateProcessor:
                             (
                                 template_content,
                                 sub_warnings,
-                            ) = self._substitute_variables(template_content)
+                            ) = self._substitute_variables(template_content, json_safe=True)
                             all_warnings.extend(sub_warnings)
                             # Write substituted content to a temporary location for merging
                             with tempfile.NamedTemporaryFile(
@@ -991,7 +997,7 @@ class TemplateProcessor:
                         # Apply variable substitution to merged settings.json (for any remaining variables)
                         if self.context:
                             content = settings_dst.read_text(encoding="utf-8", errors="replace")
-                            content, file_warnings = self._substitute_variables(content)
+                            content, file_warnings = self._substitute_variables(content, json_safe=True)
                             settings_dst.write_text(content, encoding="utf-8", errors="replace")
                             all_warnings.extend(file_warnings)
                         if not silent:
