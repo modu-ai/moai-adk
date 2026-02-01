@@ -2,7 +2,7 @@
 # MoAI system configuration and GitHub automation
 
 moai:
-  version: "1.12.11"
+  version: "1.12.15"
   update_check_frequency: daily
   version_check:
     enabled: true
