@@ -1,3 +1,91 @@
+# v1.12.15 - Bug Fix: StatusLine Template Substitution (2026-02-01)
+
+## Summary
+
+Bug fix release resolving statusLine command overwrite issue during `moai-adk update`.
+
+**Key Fix**:
+- **StatusLine Update**: Fixed `_update_statusline_command()` incorrectly replacing template-substituted statusLine commands
+- **Impact**: StatusLine now consistently includes PATH augmentation, ensuring reliable `moai-adk statusline` execution
+- **Scope**: Template variable detection and command generation logic
+
+## Breaking Changes
+
+None. This is a backward-compatible bug fix.
+
+## Fixed
+
+### StatusLine Template Substitution Overwrite
+
+- **fix**: Resolve statusLine template substitution overwrite issue (2afba5d7)
+  - **Issue**: `_update_statusline_command()` replaced valid template-substituted commands
+  - **Root cause**: Detection logic only accepted `${SHELL}` literal, not actual shell paths like `/bin/zsh -l -c`
+  - **Fix**: Updated detection to accept both `${SHELL}` variable and login shell indicator (`-l -c`)
+  - **Enhancement**: Use `build_hook_context()` for command generation (same as hooks)
+  - **Consistency**: StatusLine now uses identical format to hooks (includes `_PATH_AUGMENT`)
+  - **Files modified**:
+    - `update.py`: Updated `_update_statusline_command()` detection and generation logic
+  - **Impact**: StatusLine commands now match hook format with proper PATH augmentation
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.12.15 - 버그 수정: StatusLine 템플릿 치환 (2026-02-01)
+
+## 요약
+
+`moai-adk update` 중 statusLine 명령 덮어쓰기 문제를 해결하는 버그 수정 릴리스입니다.
+
+**주요 수정**:
+- **StatusLine 업데이트**: `_update_statusline_command()`가 템플릿 치환된 statusLine 명령을 잘못 교체하는 문제 수정
+- **영향**: StatusLine이 이제 일관되게 PATH 보강을 포함하여 `moai-adk statusline` 실행 안정성 확보
+- **범위**: 템플릿 변수 감지 및 명령 생성 로직
+
+## Breaking Changes
+
+없음. 하위 호환 가능한 버그 수정입니다.
+
+## 수정됨
+
+### StatusLine 템플릿 치환 덮어쓰기
+
+- **fix**: StatusLine 템플릿 치환 덮어쓰기 이슈 해결 (2afba5d7)
+  - **문제**: `_update_statusline_command()`가 유효한 템플릿 치환 명령을 교체함
+  - **근본 원인**: 감지 로직이 `${SHELL}` 리터럴만 허용하고 `/bin/zsh -l -c` 같은 실제 쉘 경로는 거부
+  - **해결**: `${SHELL}` 변수와 로그인 쉘 표시자(`-l -c`) 모두 허용하도록 감지 로직 업데이트
+  - **개선**: 명령 생성에 `build_hook_context()` 사용 (hooks와 동일)
+  - **일관성**: StatusLine이 이제 hooks와 동일한 형식 사용 (`_PATH_AUGMENT` 포함)
+  - **수정된 파일**:
+    - `update.py`: `_update_statusline_command()` 감지 및 생성 로직 업데이트
+  - **영향**: StatusLine 명령이 이제 적절한 PATH 보강을 포함한 hook 형식과 일치
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.12.11 - Critical Bug Fix: Template Sync JSON Parsing Error (2026-02-01)
 
 ## Summary
