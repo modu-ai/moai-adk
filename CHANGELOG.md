@@ -1,3 +1,97 @@
+# v1.12.11 - Critical Bug Fix: Template Sync JSON Parsing Error (2026-02-01)
+
+## Summary
+
+Critical bug fix release resolving JSON parsing failure during `moai-adk update` on macOS, Linux, and WSL systems.
+
+**Key Fix**:
+- **Template Sync**: Fixed JSON parsing error when HOOK_SHELL_PREFIX contains shell syntax with quotes
+- **Impact**: All users on macOS/Linux/WSL can now run `moai update` successfully
+- **Scope**: Template variable substitution system
+
+## Breaking Changes
+
+None. This is a backward-compatible bug fix.
+
+## Fixed
+
+### Template Sync JSON Parsing Error
+
+- **fix**: Resolve JSON parsing error in template sync (058a9e46)
+  - **Issue**: `moai-adk update` failed with `Expecting ',' delimiter: line 9 column 55` error
+  - **Root cause**: Unescaped quotes in `_PATH_AUGMENT` (`export PATH="$HOME/..."`) broke JSON when substituted into settings.json
+  - **Fix**: Removed unnecessary quotes from `_PATH_AUGMENT` (PATH values have no spaces)
+  - **Enhancement**: Added `json_safe` parameter to `_substitute_variables()` for JSON-aware escaping using `json.dumps()`
+  - **WSL support**: Handles `_WSL_PATH_NORMALIZE` with quotes correctly
+  - **Files modified**: 
+    - `hook_context.py`: Simplified `_PATH_AUGMENT` from `'export PATH="$HOME/..."'` to `"export PATH=$HOME/..."`
+    - `processor.py`: Added JSON escaping with `json.dumps()[1:-1]` when `json_safe=True`
+    - `update.py`: Applied JSON-safe escaping to `.json` files
+  - **Testing**: 80/80 unit tests passing, verified with actual `HOOK_SHELL_PREFIX` values
+  - **Impact**: Template sync now works correctly on all platforms (macOS/Linux/WSL)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.12.11 - 중요 버그 수정: Template Sync JSON 파싱 오류 (2026-02-01)
+
+## 요약
+
+macOS, Linux, WSL 시스템에서 `moai-adk update` 실행 중 발생하는 JSON 파싱 실패를 해결하는 중요 버그 수정 릴리스입니다.
+
+**주요 수정**:
+- **Template Sync**: HOOK_SHELL_PREFIX에 따옴표가 포함된 셸 구문이 있을 때 발생하는 JSON 파싱 오류 수정
+- **영향**: macOS/Linux/WSL의 모든 사용자가 이제 `moai update`를 성공적으로 실행할 수 있음
+- **범위**: 템플릿 변수 치환 시스템
+
+## Breaking Changes
+
+없음. 하위 호환 가능한 버그 수정입니다.
+
+## 수정됨
+
+### Template Sync JSON 파싱 오류
+
+- **fix**: Template sync의 JSON 파싱 오류 해결 (058a9e46)
+  - **문제**: `moai-adk update` 실행 시 `Expecting ',' delimiter: line 9 column 55` 오류 발생
+  - **근본 원인**: `_PATH_AUGMENT`의 이스케이프되지 않은 따옴표 (`export PATH="$HOME/..."`)가 settings.json에 치환될 때 JSON을 손상시킴
+  - **해결**: `_PATH_AUGMENT`에서 불필요한 따옴표 제거 (PATH 값에는 공백이 없음)
+  - **개선**: `_substitute_variables()`에 JSON 인식 이스케이핑을 위한 `json_safe` 파라미터 추가 (`json.dumps()` 사용)
+  - **WSL 지원**: 따옴표가 포함된 `_WSL_PATH_NORMALIZE`를 올바르게 처리
+  - **수정된 파일**:
+    - `hook_context.py`: `_PATH_AUGMENT`를 `'export PATH="$HOME/..."'`에서 `"export PATH=$HOME/..."`로 단순화
+    - `processor.py`: `json_safe=True`일 때 `json.dumps()[1:-1]`를 사용한 JSON 이스케이핑 추가
+    - `update.py`: `.json` 파일에 JSON-safe 이스케이핑 적용
+  - **테스트**: 80/80 unit 테스트 통과, 실제 `HOOK_SHELL_PREFIX` 값으로 검증 완료
+  - **영향**: 모든 플랫폼 (macOS/Linux/WSL)에서 template sync가 올바르게 작동
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.12.10 - MoAI-GO Experimental Implementation & UTF-8 Encoding Fixes (2026-01-31)
 
 ## Summary
