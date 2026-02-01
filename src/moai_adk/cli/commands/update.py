@@ -993,9 +993,13 @@ def _clean_deprecated_settings(project_path: Path) -> bool:
 def _update_statusline_command(project_path: Path) -> bool:
     """Update statusLine command in .claude/settings.json with cross-platform format.
 
+    Safety net for cases where template variable substitution fails.
+    Uses build_hook_context() to generate the correct command, ensuring
+    consistency with hook commands (same shell prefix, PATH augmentation).
+
     Ensures the statusLine command uses the correct shell wrapper for the current platform:
     - Windows: Direct execution (uv run --no-sync moai-adk statusline)
-    - macOS/Linux: Login shell wrapper (${SHELL:-/bin/bash} -l -c '...')
+    - macOS/Linux: Login shell wrapper with PATH augmentation
 
     This is called during moai update to ensure statusLine works correctly.
 
@@ -1020,18 +1024,21 @@ def _update_statusline_command(project_path: Path) -> bool:
         statusline = settings["statusLine"]
         current_command = statusline.get("command", "")
 
-        # Generate correct cross-platform command
-        is_windows = platform.system() == "Windows"
+        # Generate correct cross-platform command using shared hook context
+        # This ensures statusLine uses the same format as hooks (detected shell + PATH_AUGMENT)
+        from moai_adk.utils.hook_context import build_hook_context
+
+        hook_ctx = build_hook_context()
         correct_command = (
-            "uv run --no-sync moai-adk statusline"
-            if is_windows
-            else "${SHELL:-/bin/bash} -l -c 'uv run --no-sync moai-adk statusline'"
+            hook_ctx.statusline_command
+            if hook_ctx.is_windows
+            else f"{hook_ctx.hook_shell_prefix}{hook_ctx.statusline_command}{hook_ctx.hook_shell_suffix}"
         )
 
         # Check if update is needed
         needs_update = False
 
-        # Patterns that indicate outdated format
+        # Patterns that indicate outdated format (unsubstituted template variables)
         outdated_patterns = [
             "{{HOOK_SHELL_PREFIX}}",  # Template variable not substituted
             "{{HOOK_SHELL_SUFFIX}}",
@@ -1045,9 +1052,12 @@ def _update_statusline_command(project_path: Path) -> bool:
                 break
 
         # On Unix, check if command doesn't use login shell wrapper
-        if not is_windows and not needs_update:
-            if "moai-adk statusline" in current_command and "${SHELL" not in current_command:
-                needs_update = True
+        # Accept both formats: detected shell path (/bin/zsh -l -c) and ${SHELL} variable
+        if not hook_ctx.is_windows and not needs_update:
+            if "moai-adk statusline" in current_command:
+                has_login_shell = "-l -c" in current_command
+                if not has_login_shell:
+                    needs_update = True
 
         if needs_update:
             statusline["command"] = correct_command
@@ -3071,7 +3081,6 @@ def _check_path_after_update(non_interactive: bool) -> None:
     Args:
         non_interactive: If True, auto-fix without prompting
     """
-    import platform
     from pathlib import Path
 
     import questionary
