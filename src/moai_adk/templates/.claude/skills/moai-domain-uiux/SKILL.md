@@ -31,7 +31,7 @@ triggers:
     - Radix UI
     - shadcn
     - Storybook
-    - Figma
+    - Pencil
     - design tokens
     - Style Dictionary
     - Lucide
@@ -46,7 +46,7 @@ Core UI/UX Foundation - Enterprise-grade UI/UX foundation integrating design sys
 
 Unified Capabilities:
 
-- Design Systems: W3C DTCG 2025.10 tokens, Style Dictionary 4.0, Figma MCP workflows
+- Design Systems: W3C DTCG 2025.10 tokens, Style Dictionary 4.0, Pencil MCP workflows
 - Component Architecture: Atomic Design, React 19, Vue 3.5, shadcn/ui, Radix UI primitives
 - Accessibility: WCAG 2.2 AA/AAA compliance, keyboard navigation, screen reader optimization
 - Icon Libraries: 10+ ecosystems (Lucide, React Icons 35K+, Tabler 5900+, Iconify 200K+)
@@ -63,7 +63,7 @@ When to Use:
 Module Organization:
 
 - Components: modules/component-architecture.md (Atomic Design, component patterns, props APIs)
-- Design Systems: modules/design-system-tokens.md (DTCG tokens, Style Dictionary, Figma MCP)
+- Design Systems: modules/design-system-tokens.md (DTCG tokens, Style Dictionary, Pencil MCP)
 - Accessibility: modules/accessibility-wcag.md (WCAG 2.2 compliance, testing, navigation)
 - Icons: modules/icon-libraries.md (10+ libraries, selection guide, performance optimization)
 - Theming: modules/theming-system.md (theme system, CSS variables, brand customization)
@@ -85,7 +85,7 @@ Core Technologies:
 - Radix UI for unstyled accessible primitives
 - W3C DTCG 2025.10 for design token specification
 - Style Dictionary 4.0 for token transformation
-- Figma MCP for design-to-code automation
+- Pencil MCP for design-to-code automation
 - Storybook 8.x for component documentation
 
 Quick Decision Guide:
@@ -211,7 +211,7 @@ Agents:
 
 - code-frontend - Frontend component implementation
 - design-uiux - Design system architecture
-- mcp-figma - Figma integration workflows
+- mcp-pencil - Pencil MCP design workflows
 - core-quality - Accessibility and quality validation
 
 Commands:
@@ -238,7 +238,7 @@ Official Resources:
 - Radix UI: https://www.radix-ui.com
 - shadcn/ui: https://ui.shadcn.com
 - Storybook: https://storybook.js.org
-- Figma MCP: https://help.figma.com/hc/en-us/articles/32132100833559
+- Pencil: https://docs.pencil.dev
 - Style Dictionary: https://styledictionary.com
 - Lucide Icons: https://lucide.dev
 - Iconify: https://iconify.design

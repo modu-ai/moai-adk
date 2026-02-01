@@ -611,7 +611,7 @@ docs = await mcp__context7__get-library_docs(
 
 Multi-MCP Integration:
 ```yaml
-allowed-tools: mcp__context7__*, mcp__playwright__*, mcp__figma__*
+allowed-tools: mcp__context7__*, mcp__playwright__*, mcp__pencil__*
 ```
 
 ---

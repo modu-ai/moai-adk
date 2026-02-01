@@ -315,7 +315,7 @@ During SPEC creation, identify domain-specific requirements and recommend expert
 
 **Design System and Accessibility Requirements:**
 
-- [HARD] Provide design-uiux expert consultation for SPEC containing design system, accessibility requirements, UX patterns, or Figma integration needs
+- [HARD] Provide design-uiux expert consultation for SPEC containing design system, accessibility requirements, UX patterns, or Pencil MCP integration needs
   WHY: Design experts ensure WCAG compliance, design consistency, and accessibility across all users
   IMPACT: Omitting design consultation violates accessibility standards and reduces user inclusivity
 
@@ -383,7 +383,7 @@ DevOps Expert Consultation Triggers:
 
 UI/UX Expert Consultation Triggers:
 
-- Keywords: design system, accessibility, a11y, WCAG, user research, persona, user flow, interaction, design, figma
+- Keywords: design system, accessibility, a11y, WCAG, user research, persona, user flow, interaction, design, pencil
 - When to recommend: Any SPEC with design system or accessibility requirements
 
 ---

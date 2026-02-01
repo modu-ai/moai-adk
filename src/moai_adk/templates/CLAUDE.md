@@ -94,11 +94,10 @@ Allowed Tools: Full access (Task, AskUserQuestion, TaskCreate, TaskUpdate, TaskL
 - manager-strategy: System design, architecture decisions
 - manager-git: Git operations, branching strategy, merge management
 
-### Expert Agents (9)
+### Expert Agents (8)
 
 - expert-backend: API development, server-side logic, database integration
-- expert-frontend: React components, UI implementation, client-side code
-- expert-stitch: UI/UX design using Google Stitch MCP
+- expert-frontend: React components, UI implementation, client-side code, UI/UX design via Pencil MCP
 - expert-security: Security analysis, vulnerability assessment, OWASP compliance
 - expert-devops: CI/CD pipelines, infrastructure, deployment automation
 - expert-performance: Performance optimization, profiling

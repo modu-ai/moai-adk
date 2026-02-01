@@ -173,12 +173,12 @@ mcp-playwright:
     ja: ["ブラウザ自動化", "E2Eテスト", "ビジュアルリグレッション", "ウェブスクレイピング", "スクリーンショット"]
     zh: ["浏览器自动化", "E2E测试", "视觉回归", "网页抓取", "截图"]
 
-mcp-figma:
+mcp-pencil:
   triggers:
-    en: ["Figma", "design analysis", "design-to-code", "design token", "component library"]
-    ko: ["피그마", "디자인분석", "디자인투코드", "디자인토큰", "컴포넌트라이브러리"]
-    ja: ["Figma", "デザイン分析", "デザインtoコード", "デザイントークン", "コンポーネントライブラリ"]
-    zh: ["Figma", "设计分析", "设计转代码", "设计令牌", "组件库"]
+    en: ["Pencil", "design analysis", "design-to-code", "design token", "component library", ".pen file"]
+    ko: ["펜슬", "디자인분석", "디자인투코드", "디자인토큰", "컴포넌트라이브러리", ".pen 파일"]
+    ja: ["Pencil", "デザイン分析", "デザインtoコード", "デザイントークン", "コンポーネントライブラリ", ".penファイル"]
+    zh: ["Pencil", "设计分析", "设计转代码", "设计令牌", "组件库", ".pen文件"]
 
 mcp-notion:
   triggers:

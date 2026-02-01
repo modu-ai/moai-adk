@@ -138,10 +138,10 @@ Comprehensive collection of official documentation, specifications, and resource
 
 ## Design-to-Code Tools
 
-### Figma MCP
-- Documentation: https://help.figma.com/hc/en-us/articles/32132100833559
-- Server Setup: Desktop + Remote server modes
-- Use Case: Design token extraction, component code generation
+### Pencil MCP
+- Documentation: https://docs.pencil.dev
+- Server Setup: Auto-starts with Pencil IDE extension or desktop app
+- Use Case: Design-as-Code with .pen files, design token management, component code generation
 
 ### Storybook 8.x
 - Documentation: https://storybook.js.org/docs

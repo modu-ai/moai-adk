@@ -114,7 +114,7 @@ External MCP server integrations with context continuity support.
 | Agent | MCP Server | Purpose |
 |-------|------------|---------|
 | `mcp-context7` | Context7 | Documentation research and API reference |
-| `mcp-figma` | Figma | Design system integration |
+| `mcp-pencil` | Pencil | Design system integration |
 | `mcp-notion` | Notion | Knowledge base integration |
 | `mcp-playwright` | Playwright | Browser automation and E2E testing |
 | `mcp-sequential-thinking` | Sequential-Thinking | Complex reasoning and strategic analysis |

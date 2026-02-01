@@ -226,7 +226,7 @@ Core documentation skills (auto-loaded):
 # Conditional skills (auto-loaded by Alfred when needed)
 
 conditional_skills = [
-"moai-domain-uiux", # WCAG compliance, accessibility patterns, Figma integration
+"moai-domain-uiux", # WCAG compliance, accessibility patterns, Pencil MCP integration
 "moai-lang-python", # Python documentation patterns
 "moai-lang-typescript", # TypeScript documentation patterns
 "moai-workflow-project", # Project documentation management
@@ -652,4 +652,4 @@ Downstream Agents (this agent typically calls):
 Parallel Agents (work alongside):
 
 - workflow-spec: Synchronize SPEC documentation with generated docs
-- design-uiux: Integrate design system documentation from Figma
+- design-uiux: Integrate design system documentation from Pencil

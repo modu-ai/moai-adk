@@ -10,13 +10,6 @@
     "sequential-thinking": {
       "command": "{{MCP_SHELL}}",
       "args": ["/c", "npx -y @modelcontextprotocol/server-sequential-thinking"]
-    },
-    "stitch": {
-      "command": "{{MCP_SHELL}}",
-      "args": ["/c", "npx -y stitch-mcp"],
-      "env": {
-        "GOOGLE_CLOUD_PROJECT": "YOUR_PROJECT_ID"
-      }
     }
   },
   "staggeredStartup": {

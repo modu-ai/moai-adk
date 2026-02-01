@@ -74,7 +74,7 @@ Allowed Tools (4 categories):
 | `Task()` | Agent delegation | `Task("code-backend", "Implement API")` |
 | `AskUserQuestion()` | User interaction | `AskUserQuestion(questions=[...])` |
 | `Skill()` | Knowledge invocation | `Skill("moai-foundation-core")` |
-| `MCP Servers` | External integrations | Context7, Playwright, Figma |
+| `MCP Servers` | External integrations | Context7, Playwright, Pencil |
 
 Forbidden Tools (Why?):
 
@@ -163,7 +163,7 @@ MCP Server Permissions:
 |------------|-------------|
 | Context7 | Library documentation access, API reference resolution, version checking |
 | Playwright | Browser automation, screenshot capture, UI simulation, E2E testing |
-| Figma | Design system access, component extraction, design-to-code, style guides |
+| Pencil | Design system access, .pen file editing, design-to-code, style guides, variables |
 
 ---
 

@@ -1466,8 +1466,7 @@ MoAI自动识别4种语言请求并调用正确的智能体:
 | 智能体                 | 专业领域                 | 使用示例             |
 | ---------------------- | ------------------------ | -------------------- |
 | **expert-backend**     | FastAPI, Django, DB设计  | API设计、查询优化    |
-| **expert-frontend**    | React, Vue, Next.js      | UI组件、状态管理     |
-| **expert-stitch**      | Google Stitch, UI/UX设计 | AI驱动UI生成         |
+| **expert-frontend**    | React, Vue, Next.js, Pencil MCP | UI组件、状态管理、AI驱动UI生成 |
 | **expert-security**    | 安全分析、OWASP          | 安全审计、漏洞分析   |
 | **expert-devops**      | Docker, K8s, CI/CD       | 部署自动化、基础设施 |
 | **expert-debug**       | Bug分析、性能            | 问题诊断、瓶颈解决   |
@@ -1569,52 +1568,39 @@ Skill("moai-lang-python")
 
 ---
 
-## 7. Google Stitch MCP - AI驱动UI/UX设计
+## 7. Pencil MCP - AI驱动UI/UX设计
 
 ### 概述
 
-**Google Stitch**是通过文本描述生成UI界面的AI驱动设计工具。MoAI-ADK通过Stitch MCP集成实现设计上下文提取、界面生成、代码导出的自动化。
+**Pencil**是基于Design-as-Code理念的AI驱动设计工具。使用`.pen`文件（JSON格式，Git友好）通过MCP协议实现设计创建、变量管理、代码导出的自动化。
 
 ### 核心功能
 
 | 功能                          | 说明                                        |
 | ----------------------------- | ------------------------------------------- |
-| `generate_screen_from_text`   | 通过文本描述生成UI界面                      |
-| `extract_design_context`      | 从现有界面提取"Design DNA"（颜色、字体、布局）|
-| `fetch_screen_code`           | 下载生成界面的HTML/CSS/JS代码               |
-| `fetch_screen_image`          | 下载界面截图                                |
-| `create_project` / `list_projects` | Stitch项目管理                         |
+| `batch_design`                | 创建、修改设计元素（插入、复制、更新、删除） |
+| `batch_get`                   | 读取节点、搜索模式匹配、检查组件结构        |
+| `get_screenshot`              | 渲染视觉预览、验证设计输出                  |
+| `get_variables` / `set_variables` | 设计令牌管理、主题切换                 |
+| `get_style_guide`             | 获取样式指南和UI套件                        |
 
 ### 快速开始
 
-**1. Google Cloud设置**:
+**1. 安装Pencil**:
+
+- VS Code/Cursor: 扩展市场搜索"Pencil"安装
+- 桌面应用: macOS (.dmg), Linux (.deb/.AppImage)
+
+**2. 认证Claude Code**:
 
 ```bash
-# 启用Stitch API
-gcloud beta services mcp enable stitch.googleapis.com
-
-# 认证
-gcloud auth application-default login
-
-# 设置环境变量 (.bashrc 或 .zshrc)
-export GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"
+# Claude Code CLI认证
+claude
 ```
 
-**2. MCP设置** (`.claude/.mcp.json`):
+**3. 开始设计**:
 
-```json
-{
-  "mcpServers": {
-    "stitch": {
-      "command": "npx",
-      "args": ["-y", "stitch-mcp"],
-      "env": {
-        "GOOGLE_CLOUD_PROJECT": "YOUR_PROJECT_ID"
-      }
-    }
-  }
-}
-```
+在项目中创建`.pen`文件，Pencil MCP服务器自动启动，无需手动MCP配置。
 
 ### 使用示例
 
@@ -1623,32 +1609,30 @@ export GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"
 ```text
 > 创建登录界面。包含邮箱输入、密码输入（显示/隐藏切换）、
 > 登录按钮、忘记密码链接、社交登录（Google、Apple）。
-> 移动端：垂直堆叠。桌面端：400px卡片居中。
+> 使用Shadcn UI组件库。移动端垂直堆叠，桌面端居中卡片。
 ```
 
-**设计一致性工作流**:
+**设计令牌工作流**:
 
-1. `extract_design_context`: 从现有界面提取设计令牌
-2. `generate_screen_from_text`: 使用提取的上下文生成新界面
-3. `fetch_screen_code`: 导出生产代码
+1. `get_variables`: 从.pen文件提取设计令牌
+2. `set_variables`: 更新主题值（支持明暗模式）
+3. `batch_design`: 应用设计令牌创建一致的界面
 
 ### 提示词编写技巧
 
 | 项目 | 建议 |
 | ---- | ---- |
 | **组件** | 明确指定按钮、输入框、卡片等所需UI元素 |
-| **布局** | 指定single-column、grid、sidebar等 |
-| **响应式** | 明确移动端/桌面端行为 |
-| **样式** | 指定颜色、字体、悬停效果 |
+| **框架** | 指定React、Next.js、Vue等目标框架 |
+| **样式** | 引用设计系统变量，指定Tailwind CSS |
+| **迭代** | 从大局出发，逐步细化细节 |
 
-> **注意**: 一次只请求一个界面和一两个修改是获得最佳结果的方法。
+> **注意**: `.pen`文件可像代码一样提交到Git，支持版本控制和团队协作。
 
 ### 详细文档
 
-完整提示词模板、错误处理、高级模式请参考技能文档:
-
-- **技能**: `.claude/skills/moai-platform-stitch/SKILL.md`
-- **智能体**: `expert-stitch` (UI/UX设计专家智能体)
+- **官方文档**: https://docs.pencil.dev
+- **智能体**: `expert-frontend` (前端架构 + Pencil MCP设计专家)
 
 ---
 
@@ -2456,7 +2440,7 @@ moai rank list-excluded
 
 - claude-in-chrome: 浏览器中使用Claude及Web自动化测试
 - Playwright: Web自动化测试
-- Figma: 设计系统
+- Pencil: 设计系统 (.pen文件)
 
 ### Q3: MoAI Rank有费用吗?
 

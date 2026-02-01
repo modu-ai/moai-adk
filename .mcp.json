@@ -9,13 +9,6 @@
     "sequential-thinking": {
       "command": "${SHELL:-/bin/bash}",
       "args": ["-l", "-c", "exec npx -y @modelcontextprotocol/server-sequential-thinking"]
-    },
-    "stitch": {
-      "command": "${SHELL:-/bin/bash}",
-      "args": ["-l", "-c", "exec npx -y stitch-mcp"],
-      "env": {
-        "GOOGLE_CLOUD_PROJECT": "moai-adk"
-      }
     }
   },
   "staggeredStartup": {

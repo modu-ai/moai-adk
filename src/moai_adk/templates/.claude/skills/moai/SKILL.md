@@ -164,7 +164,7 @@ MoAI NEVER implements directly. Agent selection follows these mappings:
 - Security analysis, vulnerability assessment: Use expert-security subagent
 - Performance optimization, profiling: Use expert-performance subagent
 - CI/CD pipelines, infrastructure: Use expert-devops subagent
-- UI/UX design via Google Stitch: Use expert-stitch subagent
+- UI/UX design via Pencil MCP: Use expert-frontend subagent
 - SPEC document creation: Use manager-spec subagent
 - DDD implementation cycles: Use manager-ddd subagent
 - Documentation generation: Use manager-docs subagent
@@ -239,11 +239,10 @@ These markers enable automation detection of workflow state.
 - manager-strategy: System design, architecture decisions, execution planning
 - manager-git: Git operations, branching, merge management, PR creation
 
-### Expert Agents (9)
+### Expert Agents (8)
 
 - expert-backend: API development, server-side logic, database integration
-- expert-frontend: React components, UI implementation, client-side code
-- expert-stitch: UI/UX design using Google Stitch MCP
+- expert-frontend: React components, UI implementation, client-side code, UI/UX design via Pencil MCP
 - expert-security: Security analysis, vulnerability assessment, OWASP compliance
 - expert-devops: CI/CD pipelines, infrastructure, deployment automation
 - expert-performance: Performance optimization, profiling
