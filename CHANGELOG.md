@@ -1,3 +1,101 @@
+# v1.13.0 - Feature: Chrome Extension Platform Support (2026-02-01)
+
+## Summary
+
+Feature release adding comprehensive Chrome Extension Manifest V3 development support.
+
+**Key Features**:
+- **Chrome Extension Platform**: Full Manifest V3 development support with service workers, content scripts, and chrome.* APIs
+- **Expert Agent**: New `expert-chrome-extension` agent for specialized extension development
+- **Comprehensive Documentation**: 8 modular guides covering APIs, security, publishing, and best practices
+
+## Breaking Changes
+
+None. This is a backward-compatible feature addition.
+
+## Added
+
+### Chrome Extension Platform Skill
+
+- **feat**: Add Chrome Extension platform skill and agent (be0ec50e)
+  - **Skill**: `moai-platform-chrome-extension` with 8 modular guides
+    - Manifest V3 reference and configuration
+    - Service Worker patterns and lifecycle management
+    - Content Scripts injection and communication
+    - Message passing patterns (one-time, long-lived, native)
+    - chrome.* APIs quick reference (storage, tabs, runtime, permissions)
+    - Security and CSP configuration
+    - UI components (popup, options, side panel)
+    - Publishing and Chrome Web Store submission
+  - **Agent**: `expert-chrome-extension` for specialized development
+  - **Coverage**: Service workers, content scripts, message passing, chrome.* APIs, security, publishing
+  - **Integration**: Seamless integration with MoAI-ADK workflow
+  - **Dependencies**: Updated `uv.lock` for package consistency
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.13.0 - 기능 추가: Chrome Extension 플랫폼 지원 (2026-02-01)
+
+## 요약
+
+Chrome Extension Manifest V3 개발을 위한 포괄적인 지원을 추가하는 기능 릴리스입니다.
+
+**주요 기능**:
+- **Chrome Extension 플랫폼**: Service Worker, Content Scripts, chrome.* APIs를 포함한 전체 Manifest V3 개발 지원
+- **전문 에이전트**: 확장 프로그램 전문 개발을 위한 `expert-chrome-extension` 에이전트 추가
+- **종합 문서**: API, 보안, 배포, 모범 사례를 다루는 8개의 모듈식 가이드
+
+## Breaking Changes
+
+없음. 하위 호환 가능한 기능 추가입니다.
+
+## 추가됨
+
+### Chrome Extension 플랫폼 스킬
+
+- **feat**: Chrome Extension 플랫폼 스킬 및 에이전트 추가 (be0ec50e)
+  - **스킬**: `moai-platform-chrome-extension` - 8개의 모듈식 가이드 포함
+    - Manifest V3 참조 및 구성
+    - Service Worker 패턴 및 생명주기 관리
+    - Content Scripts 주입 및 통신
+    - 메시지 전달 패턴 (일회성, 장기 연결, 네이티브)
+    - chrome.* APIs 빠른 참조 (storage, tabs, runtime, permissions)
+    - 보안 및 CSP 구성
+    - UI 컴포넌트 (popup, options, side panel)
+    - 배포 및 Chrome Web Store 제출
+  - **에이전트**: `expert-chrome-extension` - 전문 개발용
+  - **범위**: Service workers, content scripts, 메시지 전달, chrome.* APIs, 보안, 배포
+  - **통합**: MoAI-ADK 워크플로우와 원활한 통합
+  - **의존성**: 패키지 일관성을 위한 `uv.lock` 업데이트
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
+
+---
+
 # v1.12.15 - Bug Fix: StatusLine Template Substitution (2026-02-01)
 
 ## Summary
