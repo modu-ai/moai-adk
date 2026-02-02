@@ -11,7 +11,6 @@ from moai_adk.statusline.main import (
     main,
     read_session_context,
     safe_check_update,
-    safe_collect_alfred_task,
     safe_collect_duration,
     safe_collect_git_info,
     safe_collect_memory,
@@ -225,41 +224,41 @@ class TestSafeCollectDuration:
             assert result == "0m"
 
 
-class TestSafeCollectAlfredTask:
-    """Test safe_collect_alfred_task function."""
+class TestSafeCollectMoaiTask:
+    """Test safe_collect_moai_task function."""
 
-    def test_collect_alfred_task_with_command(self):
-        """Test collecting Alfred task with command."""
+    def test_collect_moai_task_with_command(self):
+        """Test collecting MoAI task with command."""
         mock_task = MagicMock()
         mock_task.command = "plan"
         mock_task.stage = "execution"
 
-        with patch("moai_adk.statusline.main.AlfredDetector") as mock_detector:
+        with patch("moai_adk.statusline.main.MoAIDetector") as mock_detector:
             mock_instance = MagicMock()
             mock_instance.detect_active_task.return_value = mock_task
             mock_detector.return_value = mock_instance
 
-            result = safe_collect_alfred_task()
+            result = safe_collect_moai_task()
             assert result == "[PLAN-execution]"
 
-    def test_collect_alfred_task_no_command(self):
-        """Test collecting Alfred task without command."""
+    def test_collect_moai_task_no_command(self):
+        """Test collecting MoAI task without command."""
         mock_task = MagicMock()
         mock_task.command = ""
         mock_task.stage = None
 
-        with patch("moai_adk.statusline.main.AlfredDetector") as mock_detector:
+        with patch("moai_adk.statusline.main.MoAIDetector") as mock_detector:
             mock_instance = MagicMock()
             mock_instance.detect_active_task.return_value = mock_task
             mock_detector.return_value = mock_instance
 
-            result = safe_collect_alfred_task()
+            result = safe_collect_moai_task()
             assert result == ""
 
-    def test_collect_alfred_task_runtime_error(self):
-        """Test Alfred task collection with RuntimeError."""
-        with patch("moai_adk.statusline.main.AlfredDetector", side_effect=RuntimeError("Error")):
-            result = safe_collect_alfred_task()
+    def test_collect_moai_task_runtime_error(self):
+        """Test MoAI task collection with RuntimeError."""
+        with patch("moai_adk.statusline.main.MoAIDetector", side_effect=RuntimeError("Error")):
+            result = safe_collect_moai_task()
             assert result == ""
 
 

@@ -15,7 +15,6 @@ from moai_adk.statusline.main import (
     build_statusline_data,
     read_session_context,
     safe_check_update,
-    safe_collect_alfred_task,
     safe_collect_duration,
     safe_collect_git_info,
     safe_collect_version,
@@ -109,39 +108,39 @@ class TestSafeCollectDuration:
         assert duration == "0m"
 
 
-class TestSafeCollectAlfredTask:
-    """Test safe_collect_alfred_task function."""
+class TestSafeCollectMoaiTask:
+    """Test safe_collect_moai_task function."""
 
-    def test_collect_alfred_task_success(self):
-        """Test successful Alfred task collection."""
+    def test_collect_moai_task_success(self):
+        """Test successful MoAI task collection."""
         mock_task = mock.Mock()
         mock_task.command = "moai:2-run"
         mock_task.stage = "phase-2"
 
-        with mock.patch("moai_adk.statusline.main.AlfredDetector") as mock_detector:
+        with mock.patch("moai_adk.statusline.main.MoAIDetector") as mock_detector:
             mock_detector.return_value.detect_active_task.return_value = mock_task
-            task = safe_collect_alfred_task()
+            task = safe_collect_moai_task()
 
         # Task should be formatted with uppercase command and stage
         assert "MOAI:2-RUN" in task
         assert "phase-2" in task or "PHASE-2" in task.upper()
 
-    def test_collect_alfred_task_no_command(self):
-        """Test Alfred task collection with no command."""
+    def test_collect_moai_task_no_command(self):
+        """Test MoAI task collection with no command."""
         mock_task = mock.Mock()
         mock_task.command = None
 
-        with mock.patch("moai_adk.statusline.main.AlfredDetector") as mock_detector:
+        with mock.patch("moai_adk.statusline.main.MoAIDetector") as mock_detector:
             mock_detector.return_value.detect_active_task.return_value = mock_task
-            task = safe_collect_alfred_task()
+            task = safe_collect_moai_task()
 
         assert task == ""
 
-    def test_collect_alfred_task_failure(self):
-        """Test Alfred task collection with failure."""
-        with mock.patch("moai_adk.statusline.main.AlfredDetector") as mock_detector:
+    def test_collect_moai_task_failure(self):
+        """Test MoAI task collection with failure."""
+        with mock.patch("moai_adk.statusline.main.MoAIDetector") as mock_detector:
             mock_detector.side_effect = RuntimeError("Detection failed")
-            task = safe_collect_alfred_task()
+            task = safe_collect_moai_task()
 
         assert task == ""
 
