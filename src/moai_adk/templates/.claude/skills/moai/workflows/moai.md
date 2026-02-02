@@ -84,6 +84,9 @@ Loop behavior (when --loop or ralph.yaml loop.enabled is true):
 
 - Delegate to manager-docs subagent
 - Synchronize documentation with implementation
+- Detect SPEC-implementation divergence and update SPEC documents accordingly
+- Conditionally update project documents (.moai/project/) when structural changes detected
+- Respect SPEC lifecycle level for update strategy (spec-first, spec-anchored, spec-as-source)
 - Add completion marker on success
 
 ## Task Tracking
@@ -125,5 +128,5 @@ Auto-routing based on llm.yaml settings:
 
 ---
 
-Version: 1.1.0
-Source: Renamed from alfred.md. Unified plan->run->sync pipeline.
+Version: 1.2.0
+Source: Renamed from alfred.md. Unified plan->run->sync pipeline. Added SPEC/project document update in sync phase.

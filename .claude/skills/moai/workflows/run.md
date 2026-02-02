@@ -108,7 +108,20 @@ Requirements:
 - Create characterization tests for uncovered code paths
 - Ensure test coverage meets or exceeds 85%
 
-Output: files_modified list, characterization_tests_created list, test_results (all passing), behavior_preserved flag, structural_metrics comparison.
+Output: files_modified list, characterization_tests_created list, test_results (all passing), behavior_preserved flag, structural_metrics comparison, implementation_divergence report.
+
+Implementation Divergence Tracking:
+
+The manager-ddd subagent must track deviations from the original SPEC plan during implementation:
+
+- planned_files: Files listed in plan.md that were expected to be created or modified
+- actual_files: Files actually created or modified during the DDD cycle
+- additional_features: Features or capabilities implemented beyond the original SPEC scope (with rationale)
+- scope_changes: Description of any scope adjustments made during implementation (expansions, deferrals, or substitutions)
+- new_dependencies: Any new libraries, packages, or external dependencies introduced
+- new_directories: Any new directory structures created
+
+This divergence data is consumed by /moai sync for SPEC document updates and project document synchronization.
 
 ### Phase 2.5: Quality Validation
 
@@ -191,8 +204,9 @@ Context flows forward through every phase:
 - Phase 1 to Phase 2: Execution plan with architecture decisions guides implementation
 - Phase 2 to Phase 2.5: Implementation code plus planning context enables context-aware validation
 - Phase 2.5 to Phase 3: Quality findings enable semantically meaningful commit messages
+- Phase 2 to /moai sync: Implementation divergence report enables accurate SPEC and project document updates
 
-Benefits: No re-analysis between phases. Architectural decisions propagate naturally. Commits explain both what changed and why.
+Benefits: No re-analysis between phases. Architectural decisions propagate naturally. Commits explain both what changed and why. Divergence tracking ensures sync phase can accurately update SPEC and project documents.
 
 ---
 
@@ -211,5 +225,5 @@ All of the following must be verified:
 
 ---
 
-Version: 1.0.0
-Source: Extracted from .claude/commands/moai/2-run.md v5.0.0
+Version: 1.1.0
+Source: Extracted from .claude/commands/moai/2-run.md v5.0.0. Added implementation divergence tracking for sync phase consumption.

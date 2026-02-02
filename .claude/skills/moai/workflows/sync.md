@@ -36,6 +36,7 @@ Before execution, load these essential files:
 - .moai/config/sections/git-strategy.yaml (auto_branch, branch creation policy)
 - .moai/config/sections/language.yaml (git_commit_messages setting)
 - .moai/specs/ directory listing (SPEC documents for sync)
+- .moai/project/ directory listing (project documents for conditional update)
 - README.md (current project documentation)
 
 Pre-execution commands: git status, git diff, git branch, git log, find .moai/specs.
@@ -130,7 +131,38 @@ Agent: manager-docs subagent
 
 Create synchronization strategy based on Git changes, mode, and project verification results. Output: documents to update, SPECs requiring sync, project improvements needed, estimated scope.
 
-#### Step 1.5: User Approval
+#### Step 1.5: SPEC-Implementation Divergence Analysis
+
+Purpose: Detect differences between the original SPEC plan and actual implementation to ensure documentation accuracy.
+
+For each SPEC associated with the current sync:
+
+- Step 1.5.1: Load SPEC Documents
+  - Read spec.md (requirements), plan.md (implementation plan), acceptance.md (criteria)
+  - Extract planned files, planned features, and planned scope
+
+- Step 1.5.2: Analyze Actual Implementation
+  - Use git diff and git log to identify all files created, modified, or deleted during the run phase
+  - Categorize changes by domain (backend, frontend, tests, config, docs)
+
+- Step 1.5.3: Compare Plan vs Reality
+  - Identify files created that were NOT in the original plan.md
+  - Identify features or endpoints implemented beyond original spec.md scope
+  - Identify planned items that were NOT implemented (deferred or dropped)
+  - Identify unplanned refactoring or dependency changes
+
+- Step 1.5.4: Generate Divergence Report
+  - Categorize divergences: scope_expansion, unplanned_additions, deferred_items, structural_changes
+  - Include: new_directories_created, new_dependencies_added, new_features_implemented
+  - This report feeds into Phase 2.2 (SPEC updates) and Phase 2.2.5 (project doc updates)
+
+- Step 1.5.5: Check SPEC Lifecycle Level
+  - Read SPEC metadata for lifecycle level (default: spec-first if not specified)
+  - Level 1 (spec-first): SPEC will be marked completed with implementation summary appended
+  - Level 2 (spec-anchored): SPEC content will be updated to reflect actual implementation
+  - Level 3 (spec-as-source): Flag discrepancies as warnings (implementation should match SPEC exactly)
+
+#### Step 1.6: User Approval
 
 Tool: AskUserQuestion
 
@@ -156,7 +188,7 @@ Before any modifications:
 
 Agent: manager-docs subagent
 
-Input: Approved sync plan, project verification results, changed files list.
+Input: Approved sync plan, project verification results, changed files list, divergence report from Phase 1.5.
 
 Tasks for manager-docs:
 
@@ -165,11 +197,59 @@ Tasks for manager-docs:
 - Update README if needed
 - Synchronize architecture documents
 - Fix project issues and restore broken references
-- Ensure SPEC documents match implementation
+- Update SPEC documents based on divergence analysis and lifecycle level (see Step 2.2.1)
 - Detect changed domains and generate domain-specific updates
 - Generate sync report: .moai/reports/sync-report-{timestamp}.md
 
 All document updates use conversation_language setting.
+
+##### Step 2.2.1: SPEC Document Update (Based on Divergence Report)
+
+Apply updates based on SPEC lifecycle level detected in Phase 1.5.5:
+
+Level 1 (spec-first):
+- Append "Implementation Notes" section to spec.md summarizing actual implementation
+- Record scope changes: features added beyond plan, items deferred
+- Mark SPEC as completed (no ongoing maintenance expected)
+
+Level 2 (spec-anchored):
+- Update spec.md requirements to reflect actual implementation
+- Add new EARS-format requirements for features implemented beyond original scope
+- Update plan.md with actual implementation steps taken
+- Update acceptance.md with new acceptance criteria for added features
+- Preserve original requirements with "as-implemented" annotations where changed
+
+Level 3 (spec-as-source):
+- Do NOT modify SPEC content
+- Generate discrepancy report listing implementation deviations from SPEC
+- Flag as warnings in sync report for manual review
+- Recommend either updating SPEC or adjusting implementation
+
+#### Step 2.2.5: Project Document Update (Conditional)
+
+Purpose: Update .moai/project/ documents when significant structural changes are detected.
+
+Condition: Execute this step ONLY when the divergence report from Phase 1.5 indicates:
+- New directories were created in the project
+- New dependencies or technologies were added
+- New major features or capabilities were implemented
+- Significant architectural changes occurred
+
+Skip condition: If .moai/project/ directory does not exist or contains no files, skip this step entirely.
+
+Agent: manager-docs subagent
+
+Tasks for manager-docs:
+
+- If new directories created: Update structure.md with new directory descriptions and purposes
+- If new dependencies added: Update tech.md with new technology stack entries and rationale
+- If new features implemented: Update product.md with new feature descriptions and use cases
+- If architectural changes: Update structure.md with revised architecture patterns
+
+Constraints:
+- Only update sections relevant to detected changes (do not regenerate entire files)
+- Preserve existing content and append or modify incrementally
+- Use conversation_language setting for all updates
 
 #### Step 2.3: Post-Sync Quality Verification
 
@@ -185,7 +265,13 @@ Verify synchronization quality against TRUST 5:
 
 #### Step 2.4: Update SPEC Status
 
-Batch update completed SPECs to status "completed". Record version changes and status transitions. Include in sync report.
+Update SPEC status based on lifecycle level and implementation completeness:
+
+- Level 1 (spec-first): Set status to "completed". No further maintenance required.
+- Level 2 (spec-anchored): Set status to "completed" if all requirements met, or "in-progress" if partial. Schedule next review based on quarterly maintenance policy.
+- Level 3 (spec-as-source): Set status based on implementation-SPEC alignment. Flag discrepancies for resolution.
+
+Record version changes, status transitions, and divergence summary. Include in sync report.
 
 ### Phase 3: Git Operations and PR
 
@@ -262,12 +348,12 @@ When user aborts at any decision point:
 All of the following must be verified:
 
 - Phase 0.5: Quality verification completed (tests, linter, type checker, code review)
-- Phase 1: Prerequisites verified, project analyzed, sync plan approved by user
-- Phase 2: Safety backup created and verified, documents synchronized, quality verified, SPEC status updated
+- Phase 1: Prerequisites verified, project analyzed, divergence analysis completed, sync plan approved by user
+- Phase 2: Safety backup created and verified, documents synchronized, SPEC documents updated per lifecycle level, project documents updated (if applicable), quality verified, SPEC status updated
 - Phase 3: Changes committed, PR transitioned (Team mode), auto-merge executed (if flagged)
 - Phase 4: Completion report displayed, appropriate next steps presented based on mode
 
 ---
 
-Version: 1.0.0
-Source: Extracted from .claude/commands/moai/3-sync.md v3.4.0
+Version: 1.1.0
+Source: Extracted from .claude/commands/moai/3-sync.md v3.4.0. Added SPEC divergence analysis, project document updates, and SPEC lifecycle awareness.
