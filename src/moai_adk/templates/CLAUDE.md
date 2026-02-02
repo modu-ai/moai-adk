@@ -302,7 +302,7 @@ Always prefer Edit tool over sed/awk for cross-platform compatibility.
 
 ---
 
-Version: 11.0.0 (Alfred to MoAI rename, unified /moai command structure)
+Version: 11.0.0 (MoAI unified command structure)
 Last Updated: 2026-01-28
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited

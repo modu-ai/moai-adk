@@ -1,7 +1,7 @@
 {
   "companyAnnouncements": [
     "🔄 v1.12.0 コマンド形式アップデート: コロン(:)削除でよりシンプルに",
-    "  以前: /moai:1-plan, /moai:2-run SPEC-001, /moai:3-sync, /moai:0-project, /moai:alfred",
+    "  以前: /moai:1-plan, /moai:2-run SPEC-001, /moai:3-sync, /moai:0-project, /moai",
     "  変更後: /moai plan, /moai run SPEC-AUTH-001, /moai sync, /moai project, /moai",
     "  SPEC ID形式も変更: SPEC-001 → SPEC-{DOMAIN}-{NUM} (例: SPEC-AUTH-001, SPEC-API-001)",
     "🗿 MoAI-ADK: 48個のSkillsとContext7統合のSPEC-First DDD",

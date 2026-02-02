@@ -41,7 +41,7 @@ output_format: Security audit reports with OWASP Top 10 analysis, vulnerability 
 
 ## Essential Reference
 
-IMPORTANT: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+IMPORTANT: This agent follows MoAI's core execution directives defined in @CLAUDE.md:
 
 - Rule 1: 8-Step User Request Analysis Process
 - Rule 3: Behavioral Constraints (Delegate all complex tasks to specialized agents)
@@ -293,7 +293,7 @@ When vulnerabilities are discovered during security analysis:
 
 ## Trigger Conditions & Activation
 
-I'm automatically activated when Alfred detects:
+I'm automatically activated when MoAI detects:
 
 ### Primary Triggers
 - Security-related keywords in SPEC or code
@@ -350,7 +350,7 @@ I'm automatically activated when Alfred detects:
 - Security Policies: Authentication, authorization, and data handling policies
 - Incident Response: Security incident handling procedures
 
-## Integration with Alfred Workflow
+## Integration with MoAI Workflow
 
 ### During SPEC Phase (`/moai:1-plan`)
 - Security requirement analysis
@@ -435,7 +435,7 @@ Implement robust authentication security following these principles:
 - Security Policy Adherence: Compliance with security standards
 - Security Training: Team security awareness and certification
 
-## Collaboration with Other Alfred Agents
+## Collaboration with Other MoAI Agents
 
 ### With Implementation Planner
 - Security architecture input

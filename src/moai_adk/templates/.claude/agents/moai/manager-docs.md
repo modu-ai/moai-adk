@@ -44,7 +44,7 @@ memory_management:
 
 ## Essential Reference
 
-IMPORTANT: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+IMPORTANT: This agent follows MoAI's core execution directives defined in @CLAUDE.md:
 
 - Rule 1: 8-Step User Request Analysis Process
 - Rule 3: Behavioral Constraints (Never execute directly, always delegate)
@@ -223,7 +223,7 @@ Core documentation skills (auto-loaded):
 - moai-foundation-claude: Claude Code authoring patterns, skills/agents/commands
 - moai-library-nextra: Nextra framework setup and optimization
 
-# Conditional skills (auto-loaded by Alfred when needed)
+# Conditional skills (auto-loaded by MoAI when needed)
 
 conditional_skills = [
 "moai-domain-uiux", # WCAG compliance, accessibility patterns, Pencil MCP integration
@@ -491,15 +491,15 @@ run: npm ci
 
 - name: Generate documentation from source
 run: |
-npx @alfred/nextra-expert generate \\
+npx @moai/nextra-expert generate \\
 --source ./src \\
 --output ./docs \\
 --config .nextra/config.json
 
 - name: Validate markdown and Mermaid
 run: |
-npx @alfred/docs-linter validate ./docs
-npx @alfred/mermaid-validator check ./docs
+npx @moai/docs-linter validate ./docs
+npx @moai/mermaid-validator check ./docs
 
 - name: Test documentation build
 run: npm run build:docs
@@ -529,10 +529,10 @@ working-directory: ./docs
 
 **Basic Documentation Generation Workflow:**
 
-Use Alfred delegation to generate comprehensive documentation:
+Use MoAI delegation to generate comprehensive documentation:
 
 ```bash
-# Delegation instruction for Alfred
+# Delegation instruction for MoAI
 "Use the manager-docs subagent to generate professional Nextra documentation from the @src/ directory.
 
 Requirements:
@@ -552,10 +552,10 @@ Config: .nextra/theme.config.tsx"
 
 **Advanced Custom Documentation Workflow:**
 
-Use Alfred delegation for specialized documentation requirements:
+Use MoAI delegation for specialized documentation requirements:
 
 ```bash
-# Delegation instruction for Alfred
+# Delegation instruction for MoAI
 "Use the manager-docs subagent to create specialized documentation with custom requirements:
 
 Target Audience: Intermediate developers

@@ -75,7 +75,7 @@ Architecture:
 
 ## Essential Reference
 
-IMPORTANT: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+IMPORTANT: This agent follows MoAI's core execution directives defined in @CLAUDE.md:
 
 - Rule 1: 8-Step User Request Analysis Process
 - Rule 3: Behavioral Constraints (Never execute directly, always delegate)
@@ -209,7 +209,7 @@ Automatic Core Skills (from YAML frontmatter Line 7)
 - moai-lang-typescript – TypeScript/Node.js/Express/NestJS patterns
 - moai-domain-backend – Backend infrastructure, databases, authentication, microservices architecture
 
-Conditional Skills (auto-loaded by Alfred when needed)
+Conditional Skills (auto-loaded by MoAI when needed)
 
 - moai-foundation-core – TRUST 5 framework and quality gates
 
@@ -921,7 +921,7 @@ Skills (from YAML frontmatter):
 - moai-lang-typescript – TypeScript/Node.js/Express/NestJS patterns
 - moai-domain-backend – Backend infrastructure, databases, authentication, microservices
 
-Conditional Skills (loaded by Alfred when needed):
+Conditional Skills (loaded by MoAI when needed):
 
 - moai-foundation-core – MCP server integration patterns
 
@@ -958,7 +958,7 @@ Context Engineering Requirements:
 
 Last Updated: 2025-12-03
 Version: 2.0.0
-Agent Tier: Domain (Alfred Sub-agents)
+Agent Tier: Domain (MoAI Sub-agents)
 Supported Frameworks: FastAPI, Flask, Django, Express, Fastify, NestJS, Sails, Gin, Beego, Axum, Rocket, Spring Boot, Laravel, Symfony
 Supported Languages: Python, TypeScript, Go, Rust, Java, Scala, PHP
 Context7 Integration: Enabled for real-time framework documentation

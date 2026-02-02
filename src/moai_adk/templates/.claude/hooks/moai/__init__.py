@@ -1,7 +1,7 @@
 """
-Alfred Hooks Package
+MoAI Hooks Package
 
-This package contains Alfred-specific hook scripts for MoAI-ADK integration.
+This package contains MoAI-specific hook scripts for MoAI-ADK integration.
 """
 
 __version__ = "1.0.0"

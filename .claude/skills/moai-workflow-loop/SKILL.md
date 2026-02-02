@@ -53,7 +53,7 @@ When to Use:
 
 ### Architecture Overview
 
-The Ralph Engine follows a layered architecture. User commands such as /moai:loop, /moai:fix, and /moai:alfred enter the Command Layer. The Command Layer invokes the Hook System, which contains the PostToolUse Hook for LSP diagnostics and the Stop Hook for loop control. The Hook System connects to Backend Services including the LSP Client (MoAILSPClient), AST-grep Scanner, and Test Runner. Backend Services feed into Completion Check which evaluates whether errors are zero, tests pass, and coverage is met. Based on the Completion Check result, the system either continues the loop or completes.
+The Ralph Engine follows a layered architecture. User commands such as /moai:loop, /moai:fix, and /moai enter the Command Layer. The Command Layer invokes the Hook System, which contains the PostToolUse Hook for LSP diagnostics and the Stop Hook for loop control. The Hook System connects to Backend Services including the LSP Client (MoAILSPClient), AST-grep Scanner, and Test Runner. Backend Services feed into Completion Check which evaluates whether errors are zero, tests pass, and coverage is met. Based on the Completion Check result, the system either continues the loop or completes.
 
 ### Configuration
 

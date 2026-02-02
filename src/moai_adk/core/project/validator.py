@@ -3,7 +3,7 @@
 Validates system requirements and installation results.
 
 SPEC-INIT-004 Enhancement:
-- Alfred command files validation (Phase 5)
+- MoAI command files validation (Phase 5)
 - Explicit missing files reporting
 - Required files verification checklist
 """
@@ -38,10 +38,10 @@ class ProjectValidator:
         "CLAUDE.md",
     ]
 
-    # Required Alfred command files
+    # Required MoAI command files
     # NOTE: Deprecated in v1.10.0+ - commands migrated to skill system
     # See: .claude/skills/moai/workflows/ for plan.md, run.md, sync.md
-    REQUIRED_ALFRED_COMMANDS: list[str] = []
+    REQUIRED_MOAI_COMMANDS: list[str] = []
 
     def validate_system_requirements(self) -> None:
         """Verify system requirements.
@@ -104,14 +104,14 @@ class ProjectValidator:
 
         moai_commands_dir = project_path / ".claude" / "commands" / "moai"
         missing_commands = []
-        for cmd in self.REQUIRED_ALFRED_COMMANDS:
+        for cmd in self.REQUIRED_MOAI_COMMANDS:
             cmd_path = moai_commands_dir / cmd
             if not cmd_path.exists():
                 missing_commands.append(cmd)
 
         if missing_commands:
             missing_list = ", ".join(missing_commands)
-            raise ValidationError(f"Required Alfred command files not found: {missing_list}")
+            raise ValidationError(f"Required MoAI command files not found: {missing_list}")
 
         # Verify required section files (section-based configuration replaces config.yaml)
         sections_dir = project_path / ".moai" / "config" / "sections"

@@ -661,7 +661,7 @@ class PhaseExecutor:
 
         # Validate installation results
         # Comprehensive installation validation
-        # Verifies all required files including 4 Alfred command files:
+        # Verifies all required files including 4 MoAI command files:
         # - 0-project.md, 1-plan.md, 2-run.md, 3-sync.md
         self.validator.validate_installation(project_path)
 

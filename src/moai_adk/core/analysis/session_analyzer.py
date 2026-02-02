@@ -334,7 +334,7 @@ class SessionAnalyzer:
                 if count >= 2:
                     suggestions.append(
                         f"Hook failure: **{hook}** ({count} times)\n"
-                        f"   - Debug `.claude/hooks/alfred/{hook}.py`\n"
+                        f"   - Debug `.claude/hooks/moai/{hook}.py`\n"
                         f"   - Check timeouts, permissions, and file paths"
                     )
 
@@ -348,7 +348,7 @@ class SessionAnalyzer:
                 f"Low success rate: **{success_rate:.1f}%**\n"
                 f"   - Review recent session logs in detail\n"
                 f"   - Re-evaluate rules and constraints in CLAUDE.md\n"
-                f"   - Verify context synchronization between Alfred and Sub-agents"
+                f"   - Verify context synchronization between MoAI and Sub-agents"
             )
 
         if not suggestions:

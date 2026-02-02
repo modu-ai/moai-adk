@@ -332,8 +332,8 @@ class OutputStyleDetector:
                 print(f"{method_name} detection failed: {e}", file=sys.stderr)
                 continue
 
-        # Default fallback - Mr. Alfred is the default output style
-        return "Mr. Alfred"
+        # Default fallback - MoAI is the default output style
+        return "MoAI"
 
 
 def safe_collect_output_style() -> str:
@@ -363,7 +363,7 @@ def safe_collect_output_style() -> str:
 
     except Exception as e:
         print(f"Output style detection failed: {e}", file=sys.stderr)
-        return "Mr. Alfred"
+        return "MoAI"
 
 
 # For backward compatibility

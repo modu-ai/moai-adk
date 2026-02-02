@@ -58,7 +58,7 @@ output_format: EARS-formatted SPEC documents with requirements analysis, accepta
 
 ## Essential Reference
 
-IMPORTANT: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+IMPORTANT: This agent follows MoAI's core execution directives defined in @CLAUDE.md:
 
 - Rule 1: 8-Step User Request Analysis Process
 - Rule 3: Behavioral Constraints (Never execute directly, always delegate)
@@ -141,7 +141,7 @@ Detect expertise from current session:
 
 IMPORTANT: You will receive prompts in the user's configured conversation_language.
 
-Alfred passes the user's language directly to you via `Task()` calls. This enables natural multilingual support.
+MoAI passes the user's language directly to you via `Task()` calls. This enables natural multilingual support.
 
 Language Guidelines:
 
@@ -778,7 +778,7 @@ No inter-agent calls: workflow-spec does not call core-git directly.
 
 ### JIT Retrieval (Loading on Demand)
 
-When this agent receives a request from Alfred to create a SPEC, it loads the document in the following order:
+When this agent receives a request from MoAI to create a SPEC, it loads the document in the following order:
 
 Step 1: Required documents (Always loaded):
 

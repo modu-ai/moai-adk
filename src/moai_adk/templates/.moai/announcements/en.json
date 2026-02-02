@@ -1,7 +1,7 @@
 {
   "companyAnnouncements": [
     "🔄 v1.12.0 Command Format Update: Colon(:) removed for cleaner commands",
-    "  Before: /moai:1-plan, /moai:2-run SPEC-001, /moai:3-sync, /moai:0-project, /moai:alfred",
+    "  Before: /moai:1-plan, /moai:2-run SPEC-001, /moai:3-sync, /moai:0-project, /moai",
     "  After: /moai plan, /moai run SPEC-AUTH-001, /moai sync, /moai project, /moai",
     "  SPEC ID format also changed: SPEC-001 → SPEC-{DOMAIN}-{NUM} (e.g., SPEC-AUTH-001, SPEC-API-001)",
     "🗿 MoAI-ADK: SPEC-First DDD with 48 Skills and Context7 integration",

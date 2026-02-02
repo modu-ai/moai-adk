@@ -44,7 +44,7 @@
 - Baseline Management: Version control integration
 
 ## MoAI-ADK Integration
-### Alfred Workflow
+### MoAI Workflow
 - 4-Step Process: Plan, Generate, Execute, Analyze
 - Agent Coordination: Multi-agent test orchestration
 - Context Sharing: Knowledge base integration

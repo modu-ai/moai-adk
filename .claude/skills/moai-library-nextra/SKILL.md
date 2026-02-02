@@ -118,7 +118,7 @@ Version 1.0.0 released 2025-11-12 provided initial Nextra architecture guide, th
 
 ---
 
-Maintained by: alfred
+Maintained by: moai
 Domain: Documentation Architecture
 Generated with: MoAI-ADK Skill Factory
 

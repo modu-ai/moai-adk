@@ -825,11 +825,11 @@ class TemplateProcessor:
                 dst_item.mkdir(parents=True, exist_ok=True)
 
     def _copy_claude(self, silent: bool = False) -> None:
-        """.claude/ directory copy with variable substitution (selective with alfred folder overwrite).
+        """.claude/ directory copy with variable substitution (selective with moai folder overwrite).
 
 
         Strategy:
-        - Alfred folders (commands/agents/hooks/output-styles/alfred) → copy wholesale (delete & overwrite)
+        - MoAI folders (commands/agents/hooks/output-styles/moai) → copy wholesale (delete & overwrite)
           * Creates individual backup before deletion for safety
           * Commands: 0-project.md, 1-plan.md, 2-run.md, 3-sync.md
         - Other files/folders → copy individually (preserve existing)
@@ -845,7 +845,7 @@ class TemplateProcessor:
         # Create .claude directory if not exists
         dst.mkdir(parents=True, exist_ok=True)
 
-        # Alfred and Moai folders to copy wholesale (overwrite)
+        # MoAI folders to copy wholesale (overwrite)
         # Including both legacy alfred/ and new moai/ structure
         alfred_moai_folders = [
             "hooks/alfred",
@@ -858,7 +858,7 @@ class TemplateProcessor:
             # NOTE: "skills" handled by _sync_skills_selective() to preserve custom skills
         ]
 
-        # 1. Copy Alfred and Moai folders wholesale (backup before delete & overwrite)
+        # 1. Copy MoAI folders wholesale (backup before delete & overwrite)
         for folder in alfred_moai_folders:
             src_folder = src / folder
             dst_folder = dst / folder
@@ -891,7 +891,7 @@ class TemplateProcessor:
                     console.print(f"   🗑️ .claude/{folder}/ removed (deprecated, backed up)")
 
         # 1.5 Copy other subdirectories in parent folders (e.g., output-styles/moai, hooks/shared)
-        # This ensures non-alfred subdirectories are also copied
+        # This ensures non-moai subdirectories are also copied
         parent_folders_with_subdirs = ["output-styles", "hooks", "commands", "agents"]
         for parent_name in parent_folders_with_subdirs:
             src_parent = src / parent_name
@@ -902,7 +902,7 @@ class TemplateProcessor:
                 if not subdir.is_dir():
                     continue
 
-                # Skip alfred subdirectories (already handled above)
+                # Skip legacy alfred subdirectories (already handled above)
                 if subdir.name == "alfred":
                     continue
 
@@ -910,7 +910,7 @@ class TemplateProcessor:
                 dst_subdir = dst / parent_name / subdir.name
 
                 if dst_subdir.exists():
-                    # For non-alfred directories, overwrite with merge if necessary
+                    # For non-moai directories, overwrite with merge if necessary
                     shutil.rmtree(dst_subdir)
 
                 # Copy the subdirectory with variable substitution
@@ -927,7 +927,7 @@ class TemplateProcessor:
             rel_path = item.relative_to(src)
             dst_item = dst / rel_path
 
-            # Skip Alfred parent folders (already handled above)
+            # Skip MoAI parent folders (already handled above)
             # Also skip "skills" - handled by _sync_skills_selective()
             if item.is_dir() and item.name in [
                 "hooks",

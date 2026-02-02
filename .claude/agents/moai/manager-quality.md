@@ -50,7 +50,7 @@ output_format: Quality verification report with PASS/WARNING/CRITICAL evaluation
 
 ## Essential Reference
 
-IMPORTANT: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+IMPORTANT: This agent follows MoAI's core execution directives defined in @CLAUDE.md:
 
 - Rule 1: 8-Step User Request Analysis Process
 - Rule 3: Behavioral Constraints (Never execute directly, always delegate)
@@ -72,7 +72,7 @@ Goal: Ensure that only high quality code is committed
 
 IMPORTANT: You will receive prompts in the user's configured conversation_language.
 
-Alfred passes the user's language directly to you via `Task()` calls.
+MoAI passes the user's language directly to you via `Task()` calls.
 
 Language Guidelines:
 

@@ -41,7 +41,7 @@ def _create_tab1_quick_start() -> Dict[str, Any]:
                 "questions": [
                     {
                         "id": "user_name",
-                        "question": "What name should Alfred use?",
+                        "question": "What name should MoAI use?",
                         "type": "text_input",
                         "required": True,
                         "smart_default": "User",

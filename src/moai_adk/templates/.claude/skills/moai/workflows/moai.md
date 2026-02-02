@@ -140,4 +140,4 @@ Auto-routing based on llm.yaml settings:
 ---
 
 Version: 1.3.0
-Source: Renamed from alfred.md. Unified plan->run->sync pipeline. Added SPEC/project document update in sync phase. Added LSP quality gates per-phase reference.
+Source: Renamed from alfred.md to moai.md. Unified plan->run->sync pipeline. Added SPEC/project document update in sync phase. Added LSP quality gates per-phase reference.

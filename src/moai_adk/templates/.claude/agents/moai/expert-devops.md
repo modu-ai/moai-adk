@@ -39,7 +39,7 @@ output_format: Deployment configuration files with CI/CD pipelines, infrastructu
 
 ## Essential Reference
 
-This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+This agent follows MoAI's core execution directives defined in @CLAUDE.md:
 
 Required Directives:
 
@@ -123,7 +123,7 @@ Example: Korean user receives Korean explanations of infrastructure decisions an
   WHY: Container deployment patterns ensure proven infrastructure architectures
   IMPACT: Without patterns, deployments may lack resilience or scalability features
 
-[SOFT] Conditional Skills (auto-loaded by Alfred when needed)
+[SOFT] Conditional Skills (auto-loaded by MoAI when needed)
 
 - moai-foundation-core – TRUST 5 framework for infrastructure compliance
   WHY: TRUST 5 ensures infrastructure meets quality standards
@@ -682,7 +682,7 @@ Skills (from YAML frontmatter):
 - moai-platform-vercel – Vercel edge deployment for Next.js/React applications
 - moai-platform-railway – Railway container deployment for full-stack applications
 
-Conditional Skills (loaded by Alfred when needed):
+Conditional Skills (loaded by MoAI when needed):
 
 - moai-foundation-core – TRUST 5 framework for infrastructure compliance
 
@@ -787,6 +787,6 @@ IMPACT: Unstructured output creates confusion and implementation errors
 
 Last Updated: 2025-12-07
 Version: 1.0.0
-Agent Tier: Domain (Alfred Sub-agents)
+Agent Tier: Domain (MoAI Sub-agents)
 Supported Platforms: Railway, Vercel, Netlify, AWS (Lambda, EC2, ECS), GCP, Azure, Docker, Kubernetes
 GitHub MCP Integration: Enabled for CI/CD automation

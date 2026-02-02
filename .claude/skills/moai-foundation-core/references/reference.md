@@ -22,7 +22,7 @@ SPEC-First DDD:
 
 Delegation Patterns:
 - Purpose: Task orchestration via specialized agents
-- Core Principle: Alfred delegates all work through Task() calls
+- Core Principle: MoAI delegates all work through Task() calls
 - Patterns: Sequential, Parallel, Conditional delegation
 - Agent Selection: Complexity-based agent matching
 

@@ -165,7 +165,7 @@ for project_path in project_list:
 ### Pattern 4: Language-Aware Agent Delegation
 
 ```python
-# Integrate with Alfred's delegation patterns
+# Integrate with MoAI's delegation patterns
 def delegate_with_language_context(task: str, language: str):
     """Delegate task with proper language context."""
     project = MoaiMenuProject(".")

@@ -961,7 +961,7 @@ class ErrorRecoverySystem:
                             repairs_made.append(f"Repaired: {skill_file}")
 
             # Validate agents
-            agents_dir = self.project_root / ".claude" / "agents" / "alfred"
+            agents_dir = self.project_root / ".claude" / "agents" / "moai"
             if agents_dir.exists():
                 for agent_file in agents_dir.glob("*.md"):
                     if not self._validate_agent_file(agent_file):
@@ -969,7 +969,7 @@ class ErrorRecoverySystem:
                         issues_found.append(f"Invalid agent file: {agent_file}")
 
             # Validate commands
-            commands_dir = self.project_root / ".claude" / "commands" / "alfred"
+            commands_dir = self.project_root / ".claude" / "commands" / "moai"
             if commands_dir.exists():
                 for command_file in commands_dir.glob("*.md"):
                     if not self._validate_command_file(command_file):

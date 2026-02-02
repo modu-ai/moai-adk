@@ -10,7 +10,7 @@ https://code.claude.com/docs/en/sub-agents
 Key Principles:
 - Sub-agents operate in isolated context windows
 - No direct agent-to-agent communication
-- Results flow through main conversation thread (Alfred)
+- Results flow through main conversation thread (MoAI)
 - Resume preserves full conversation history
 - Each execution gets unique agentId
 """

@@ -34,7 +34,7 @@ def print_banner(version: str = "0.3.0") -> None:
         version: MoAI-ADK version
     """
     console.print(f"[{CLAUDE_TERRA_COTTA}]{MOAI_BANNER}[/{CLAUDE_TERRA_COTTA}]")
-    console.print("[dim]  Modu-AI's Agentic Development Kit w/ SuperAgent 🎩 Alfred[/dim]\n")
+    console.print("[dim]  Modu-AI's Agentic Development Kit w/ SuperAgent 🤖 MoAI[/dim]\n")
     console.print(f"[dim]  Version: {version}[/dim]\n")
 
 

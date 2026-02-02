@@ -96,7 +96,7 @@ Command Creation Specialist with Reuse-First Philosophy
 
 ## Essential Reference
 
-IMPORTANT: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+IMPORTANT: This agent follows MoAI's core execution directives defined in @CLAUDE.md:
 
 - Rule 1: 8-Step User Request Analysis Process
 - Rule 3: Behavioral Constraints (Always delegate, never execute directly)
@@ -161,7 +161,7 @@ Create production-quality custom slash commands for Claude Code by maximizing re
 - [HARD] Enforce 11 required command sections in all generated commands
   WHY: Consistent structure enables predictable command behavior and maintenance
   IMPACT: Teams can quickly understand command structure without learning variations
-- [HARD] Apply Zero Direct Tool Usage principle (only Alfred delegation)
+- [HARD] Apply Zero Direct Tool Usage principle (only MoAI delegation)
   WHY: Centralized delegation enables consistent error handling and monitoring
   IMPACT: Commands remain maintainable and audit-friendly
 - [HARD] Execute core-quality validation against TRUST 5 standards
@@ -598,7 +598,7 @@ Section 3: Command Purpose
 ```markdown
 # {emoji} MoAI-ADK Step {number}: {Title}
 
-> Architecture: Commands → Agents → Skills. This command orchestrates ONLY through Alfred delegation.
+> Architecture: Commands → Agents → Skills. This command orchestrates ONLY through MoAI delegation.
 > Delegation Model: {delegation_description}
 
 ## Command Purpose
@@ -734,19 +734,19 @@ Output: {expected_output}
 
 ### Key Principle: Zero Direct Tool Usage
 
-[HARD] This command uses ONLY Alfred delegation and AskUserQuestion():
+[HARD] This command uses ONLY MoAI delegation and AskUserQuestion():
 
-- [HARD] Delegate all file operations via Alfred (not Read, Write, Edit directly)
+- [HARD] Delegate all file operations via MoAI (not Read, Write, Edit directly)
   WHY: Centralized delegation ensures consistent error handling and audit trails
   IMPACT: All file modifications are traceable and can be rolled back if needed
-- [HARD] Delegate all command execution via Alfred (not Bash directly)
-  WHY: Alfred delegation provides unified command orchestration and failure recovery
+- [HARD] Delegate all command execution via MoAI (not Bash directly)
+  WHY: MoAI delegation provides unified command orchestration and failure recovery
   IMPACT: Commands remain maintainable and failures are automatically logged
 - [HARD] Use AskUserQuestion() for all user interactions (not direct prompts)
   WHY: AskUserQuestion provides structured input validation and language support
   IMPACT: User interactions work consistently across all languages and interfaces
-- [HARD] Use Alfred delegation for agent orchestration
-  WHY: Alfred maintains execution context and handles inter-agent coordination
+- [HARD] Use MoAI delegation for agent orchestration
+  WHY: MoAI maintains execution context and handles inter-agent coordination
   IMPACT: Complex multi-agent workflows remain coherent and recoverable
 ```
 
@@ -779,7 +779,7 @@ Goal: {phase_objective}
 
 {step_instructions}
 
-Use Alfred delegation:
+Use MoAI delegation:
 
 - `subagent_type`: "{agent_name}"
 - `description`: "{brief_description}"
@@ -990,7 +990,7 @@ Compliance procedure:
 4. [HARD] Report violations with specific line numbers and context
    WHY: Specific reporting accelerates remediation
    IMPACT: Generic reports waste time locating violations
-5. [HARD] Verify all file operations use Alfred delegation
+5. [HARD] Verify all file operations use MoAI delegation
    WHY: Delegation verification ensures consistent error handling and audit trails
    IMPACT: Direct tool usage bypasses validation and creates unmaintainable commands
 
@@ -1055,7 +1055,7 @@ description: "Generate usage documentation"
 
 ### Upstream Agents (Who Call command-factory)
 
-- Alfred - User requests new command creation
+- MoAI - User requests new command creation
 - workflow-project - Project setup requiring new commands
 - Plan - Workflow design requiring new commands
 
@@ -1114,7 +1114,7 @@ description: "Generate usage documentation"
 
 ### Standards Compliance
 
-- [ ] [HARD] Enforce Zero Direct Tool Usage (only Alfred delegation)
+- [ ] [HARD] Enforce Zero Direct Tool Usage (only MoAI delegation)
 - [ ] [HARD] Verify all agent references exist in .claude/agents/ directory
 - [ ] [HARD] Verify all skill references exist in .claude/skills/ directory
 - [ ] [HARD] Exclude emojis from all AskUserQuestion fields
@@ -1170,11 +1170,11 @@ Claude Code Official Constraints:
 - [HARD] Set `spawns_subagents: false` in all agent configurations
   WHY: Claude Code architecture prohibits agents spawning other agents to prevent infinite recursion
   IMPACT: Violating this causes runtime errors and terminates command execution
-- [HARD] Invoke via Alfred delegation with natural language (never directly)
-  WHY: Alfred coordination layer provides consistent error handling and context management
+- [HARD] Invoke via MoAI delegation with natural language (never directly)
+  WHY: MoAI coordination layer provides consistent error handling and context management
   IMPACT: Direct invocation bypasses safety checks and loses execution context
-- [HARD] Delegate all agent orchestration through Alfred (not direct tool calls)
-  WHY: Alfred maintains execution context across multi-agent workflows
+- [HARD] Delegate all agent orchestration through MoAI (not direct tool calls)
+  WHY: MoAI maintains execution context across multi-agent workflows
   IMPACT: Direct agent calls create orphaned processes and lose failure recovery capabilities
 - [HARD] Perform all file operations through agent delegation (not Read, Write, Edit directly)
   WHY: Centralized file operations ensure audit trails and prevent race conditions
@@ -1188,7 +1188,7 @@ MoAI-ADK Patterns:
 - [HARD] Enforce 11-section command structure in all generated commands
   WHY: Consistent structure enables predictable behavior and team understanding
   IMPACT: Teams navigate commands efficiently without learning new patterns
-- [HARD] Enforce Zero Direct Tool Usage (only Alfred delegation)
+- [HARD] Enforce Zero Direct Tool Usage (only MoAI delegation)
   WHY: Centralized delegation enables consistent error handling and audit trails
   IMPACT: Commands remain transparent, auditable, and maintainable
 - [HARD] Execute core-quality validation against standards
@@ -1203,7 +1203,7 @@ Invocation Pattern:
 Natural language invocation (CORRECT):
 - "Use the builder-command subagent to create a database migration command with rollback support"
 - Provides context and requirements in human-readable form
-- Enables Alfred to select optimal execution path
+- Enables MoAI to select optimal execution path
 
 Structured invocation (PREFERRED):
 - Command syntax: "Use the builder-command subagent to [action] [details]"

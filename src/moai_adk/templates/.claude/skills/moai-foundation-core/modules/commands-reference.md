@@ -65,7 +65,7 @@ Next Step: Ready for SPEC generation via `/moai:1-plan`
 Example:
 ```
 User: /moai:0-project
-Alfred: Project initialized successfully.
+MoAI: Project initialized successfully.
  - .moai/config/config.yaml created
  - Git workflow set to 'manual' mode
  Ready for SPEC generation.
@@ -109,7 +109,7 @@ CRITICAL: Execute `/clear` immediately after completion
 Example:
 ```
 User: /moai:1-plan "Implement user authentication endpoint (JWT)"
-Alfred: SPEC-001 generated successfully.
+MoAI: SPEC-001 generated successfully.
  Location: .moai/specs/SPEC-001/spec.md
 
  IMPORTANT: Execute /clear now to free 45-50K tokens.
@@ -167,7 +167,7 @@ Requirement: Test coverage ≥ 85% (TRUST 5)
 Example:
 ```
 User: /moai:2-run SPEC-001
-Alfred: DDD implementation cycle started for SPEC-001.
+MoAI: DDD implementation cycle started for SPEC-001.
 
  ANALYZE: Requirements analyzed, 12 acceptance criteria identified
  PRESERVE: Existing behavior protected, characterization tests created
@@ -206,7 +206,7 @@ Output:
 Example:
 ```
 User: /moai:3-sync SPEC-001
-Alfred: Documentation synchronized for SPEC-001.
+MoAI: Documentation synchronized for SPEC-001.
 
  Generated:
  - API documentation: .moai/docs/SPEC-001/api.yaml
@@ -242,7 +242,7 @@ Use Cases:
 Example:
 ```
 User: /moai:9-feedback
-Alfred: Collecting feedback for recent session.
+MoAI: Collecting feedback for recent session.
 
  Errors: 2 permission issues detected
  Improvements: 1 token optimization suggestion
@@ -323,7 +323,7 @@ Delegation Flow:
 ```
 User executes command
  ↓
-Alfred receives command
+MoAI receives command
  ↓
 Command processor agent invoked
  ↓

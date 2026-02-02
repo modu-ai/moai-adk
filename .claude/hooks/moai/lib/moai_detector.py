@@ -1,6 +1,6 @@
 # type: ignore
 """
-Alfred task detector for statusline
+MoAI task detector for statusline
 
 """
 
@@ -15,33 +15,33 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class AlfredTask:
-    """Alfred task information"""
+class MoAITask:
+    """MoAI task information"""
 
     command: Optional[str]
     spec_id: Optional[str]
     stage: Optional[str]
 
 
-class AlfredDetector:
-    """Detects active Alfred tasks with 1-second caching"""
+class MoAIDetector:
+    """Detects active MoAI tasks with 1-second caching"""
 
     # Configuration
     _CACHE_TTL_SECONDS = 1
 
     def __init__(self):
-        """Initialize Alfred detector"""
-        self._cache: Optional[AlfredTask] = None
+        """Initialize MoAI detector"""
+        self._cache: Optional[MoAITask] = None
         self._cache_time: Optional[datetime] = None
         self._cache_ttl = timedelta(seconds=self._CACHE_TTL_SECONDS)
         self._session_state_path = Path.home() / ".moai" / "memory" / "last-session-state.json"
 
-    def detect_active_task(self) -> AlfredTask:
+    def detect_active_task(self) -> MoAITask:
         """
-        Detect currently active Alfred task
+        Detect currently active MoAI task
 
         Returns:
-            AlfredTask with command and spec_id
+            MoAITask with command and spec_id
         """
         # Check cache
         if self._is_cache_valid():
@@ -52,12 +52,12 @@ class AlfredDetector:
         self._update_cache(task)
         return task
 
-    def _read_session_state(self) -> AlfredTask:
+    def _read_session_state(self) -> MoAITask:
         """
-        Read Alfred task from session state file
+        Read MoAI task from session state file
 
         Returns:
-            AlfredTask from file or defaults
+            MoAITask from file or defaults
         """
         try:
             if not self._session_state_path.exists():
@@ -74,14 +74,14 @@ class AlfredDetector:
             command = active_task.get("command")
             spec_id = active_task.get("spec_id")
 
-            return AlfredTask(
+            return MoAITask(
                 command=command,
                 spec_id=spec_id,
                 stage=active_task.get("stage"),
             )
 
         except Exception as e:
-            logger.debug(f"Error reading Alfred task: {e}")
+            logger.debug(f"Error reading MoAI task: {e}")
             return self._create_default_task()
 
     def _is_cache_valid(self) -> bool:
@@ -90,15 +90,15 @@ class AlfredDetector:
             return False
         return datetime.now() - self._cache_time < self._cache_ttl
 
-    def _update_cache(self, task: AlfredTask) -> None:
+    def _update_cache(self, task: MoAITask) -> None:
         """Update task cache"""
         self._cache = task
         self._cache_time = datetime.now()
 
     @staticmethod
-    def _create_default_task() -> AlfredTask:
+    def _create_default_task() -> MoAITask:
         """Create default task (no active task)"""
-        return AlfredTask(
+        return MoAITask(
             command=None,
             spec_id=None,
             stage=None,

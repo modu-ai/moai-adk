@@ -16,7 +16,6 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from .alfred_detector import AlfredDetector
 from .config import StatuslineConfig
 from .git_collector import GitCollector
 from .metrics_tracker import MetricsTracker
@@ -87,15 +86,17 @@ def safe_collect_duration() -> str:
         return "0m"
 
 
-def safe_collect_alfred_task() -> str:
+def safe_collect_moai_task() -> str:
     """
-    Safely collect active Alfred task with fallback.
+    Safely collect active MoAI task with fallback.
 
     Returns:
         Formatted task string
     """
     try:
-        detector = AlfredDetector()
+        from .moai_detector import MoAIDetector
+
+        detector = MoAIDetector()
         task = detector.detect_active_task()
 
         if task.command:
@@ -103,7 +104,7 @@ def safe_collect_alfred_task() -> str:
             return f"[{task.command.upper()}{stage_suffix}]"
         return ""
     except (OSError, AttributeError, RuntimeError):
-        # Alfred detector errors (file access, attribute, or runtime errors)
+        # MoAI detector errors (file access, attribute, or runtime errors)
         return ""
 
 
@@ -278,7 +279,7 @@ def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
     - Claude Code session context (via stdin)
     - Git repository
     - Session metrics
-    - Alfred workflow state
+    - MoAI workflow state
     - MoAI-ADK version
     - Update checker
     - Output style
@@ -320,7 +321,7 @@ def build_statusline_data(session_context: dict, mode: str = "compact") -> str:
         # Collect all information from local sources
         branch, git_status = safe_collect_git_info()
         duration = safe_collect_duration()
-        active_task = safe_collect_alfred_task()
+        active_task = safe_collect_moai_task()
         version = safe_collect_version()
         memory_usage = safe_collect_memory()
         update_available, latest_version = safe_check_update(version)

@@ -126,7 +126,7 @@ Delegate TO:
 - expert-security: If security patterns need review
 
 Receive FROM:
-- Alfred: Large-scale transformation requests
+- MoAI: Large-scale transformation requests
 - expert-backend/frontend: Domain-specific refactoring needs
 - manager-quality: Code quality improvement tasks
 

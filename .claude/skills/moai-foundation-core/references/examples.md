@@ -242,12 +242,12 @@ else:
 
 ### Anti-Pattern 1: 직접 실행
 
-**Problem**: Alfred가 에이전트 위임 없이 직접 코드를 작성하거나 수정함
+**Problem**: MoAI가 에이전트 위임 없이 직접 코드를 작성하거나 수정함
 
 ```python
 # 잘못된 예시
-def alfred_direct_execution():
-    # Alfred가 직접 파일 수정 - 절대 금지!
+def moai_direct_execution():
+    # MoAI가 직접 파일 수정 - 절대 금지!
     with open("src/app.py", "w") as f:
         f.write("# Direct modification")
 ```

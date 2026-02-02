@@ -60,7 +60,7 @@ Architecture:
 
 ## Essential Reference
 
-IMPORTANT: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+IMPORTANT: This agent follows MoAI's core execution directives defined in @CLAUDE.md:
 
 - Rule 1: 8-Step User Request Analysis Process
 - Rule 3: Behavioral Constraints (Never execute directly, always delegate)
@@ -191,7 +191,7 @@ Automatic Core Skills (from YAML frontmatter)
 - moai-workflow-testing – Testing strategies and performance test patterns
 - moai-foundation-quality – Quality gates and TRUST 5 framework
 
-Conditional Skills (auto-loaded by Alfred when needed)
+Conditional Skills (auto-loaded by MoAI when needed)
 - moai-foundation-core – SPEC integration and workflow patterns
 
 ## Core Mission
@@ -616,7 +616,7 @@ Skills (from YAML frontmatter):
 - moai-workflow-testing – Testing strategies and performance test patterns
 - moai-foundation-quality – Quality gates and TRUST 5 framework
 
-Conditional Skills (loaded by Alfred when needed):
+Conditional Skills (loaded by MoAI when needed):
 - moai-foundation-core – MCP server integration patterns
 
 Profiling Tools:
@@ -655,7 +655,7 @@ Context Engineering Requirements:
 
 Last Updated: 2025-12-07
 Version: 1.0.0
-Agent Tier: Domain (Alfred Sub-agents)
+Agent Tier: Domain (MoAI Sub-agents)
 Supported Languages: Python, TypeScript, Go, Rust, Java, PHP
 Profiling Tools: py-spy, perf, Chrome DevTools, memory_profiler, heapdump, pprof
 Load Testing Tools: k6, Locust, Apache JMeter, wrk

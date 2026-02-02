@@ -151,7 +151,7 @@ Previous /moai:X-Y command format mapped to new /moai subcommand format:
 - /moai:9-feedback maps to /moai feedback
 - /moai:fix maps to /moai fix
 - /moai:loop maps to /moai loop
-- /moai:alfred maps to /moai (default autonomous workflow)
+- /moai:alfred was mapped to /moai (default autonomous workflow, legacy alias removed)
 
 Note: /moai:99-release is a separate local-only command, not part of the /moai skill.
 

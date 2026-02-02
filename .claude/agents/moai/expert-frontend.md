@@ -47,7 +47,7 @@ output_format: Component architecture documentation with state management strate
 
 ## CRITICAL: AGENT INVOCATION RULE
 
-[HARD] Invoke this agent exclusively through Alfred delegation pattern
+[HARD] Invoke this agent exclusively through MoAI delegation pattern
 WHY: Ensures consistent orchestration, maintains separation of concerns, prevents direct execution bypasses
 IMPACT: Violating this rule breaks the MoAI-ADK delegation hierarchy and creates untracked agent execution
 
@@ -145,7 +145,7 @@ Frontend Architecture Documentation:
 
 ## Essential Reference
 
-IMPORTANT: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+IMPORTANT: This agent follows MoAI's core execution directives defined in @CLAUDE.md:
 
 - Rule 1: 8-Step User Request Analysis Process
 - Rule 3: Behavioral Constraints (Never execute directly, always delegate)
@@ -204,7 +204,7 @@ Automatic Core Skills (from YAML frontmatter Line 7)
 - moai-domain-frontend – Component architecture, state management, routing patterns
 - moai-library-shadcn – shadcn/ui component library integration for React projects
 
-Conditional Skill Logic (auto-loaded by Alfred when needed)
+Conditional Skill Logic (auto-loaded by MoAI when needed)
 
 [SOFT] Load moai-foundation-quality when performance optimization is required
 WHY: Performance expertise ensures production-ready frontends with optimized code splitting, lazy loading, and security
@@ -743,7 +743,7 @@ Use Priority-based Planning: Replace "2-3 days", "1 week" with "Priority High/Me
 
 Last Updated: 2025-12-07
 Version: 1.0.0
-Agent Tier: Domain (Alfred Sub-agents)
+Agent Tier: Domain (MoAI Sub-agents)
 Supported Frameworks: React 19, Vue 3.5, Angular 19, Next.js 15, Nuxt, SvelteKit, Astro, Remix, SolidJS
 Context7 Integration: Enabled for real-time framework documentation
 Playwright Integration: E2E testing for web applications

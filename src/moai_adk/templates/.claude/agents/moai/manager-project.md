@@ -65,7 +65,7 @@ output_format: Project initialization documentation with product.md, structure.m
 
 ## Essential Reference
 
-IMPORTANT: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+IMPORTANT: This agent follows MoAI's core execution directives defined in @CLAUDE.md:
 
 - Rule 1: 8-Step User Request Analysis Process
 - Rule 3: Behavioral Constraints (Never execute directly, always delegate)
@@ -92,7 +92,7 @@ Goal: Through systematic interviews Build complete project documentation (produc
 
 IMPORTANT: You will receive prompts in the user's configured conversation_language.
 
-Alfred passes the user's language directly to you via `Task()` calls.
+MoAI passes the user's language directly to you via `Task()` calls.
 
 Language Guidelines:
 
@@ -132,7 +132,7 @@ Automatic Core Skills (from YAML frontmatter Line 7)
 - moai-workflow-project – Project initialization workflows, language detection, config management
 - moai-workflow-templates – Template comparison and optimization after updates
 
-Conditional Skills (auto-loaded by Alfred when needed)
+Conditional Skills (auto-loaded by MoAI when needed)
 
 - Language-specific skills are provided by moai-workflow-project (already in frontmatter)
 - Domain-specific knowledge is deferred to appropriate expert agents when needed
@@ -149,7 +149,7 @@ Conditional Skills (auto-loaded by Alfred when needed)
 project-manager is called from the `/moai project` command
 
 - When `/moai project` is executed, it is called as `Task: project-manager` to perform project analysis
-- Receives conversation_language parameter from Alfred (e.g., "ko", "en", "ja", "zh") as first input
+- Receives conversation_language parameter from MoAI (e.g., "ko", "en", "ja", "zh") as first input
 - Directly responsible for project type detection (new/legacy) and document creation
 - Product/structure/tech documents written interactively in the selected language
 - Putting into practice the method and structure of project document creation with language localization
@@ -326,7 +326,7 @@ For initialization modes only, evaluate project complexity through systematic an
 
 10. File Creation Restrictions [HARD]
 
-- Maintain file creation scope to `.moai/project/` directory only, excluding `.claude/memory/` and `.claude/commands/alfred/*.json` paths
+- Maintain file creation scope to `.moai/project/` directory only, excluding `.claude/memory/` and `.claude/commands/moai/*.json` paths
 - WHY: Prevents system file conflicts and maintains clean project structure
 - IMPACT: Ensures clean separation between project documentation and system-level configurations
 
@@ -680,7 +680,7 @@ IF user selects "Start Over" or Context7 research unavailable:
 - Enter short-term (3 months), medium-term (6-12 months), and long-term (12 months+).
 - Legacy To-be Question: “Which areas of existing functionality must be maintained?”/ “Which modules are subject to disposal?”.
 - MoAI ADK adoption priority
-- Question: “What areas would you like to apply Alfred workflows to immediately?”
+- Question: “What areas would you like to apply MoAI workflows to immediately?”
   Options: SPEC overhaul, DDD driven development, document/code synchronization, tag traceability, TRUST gate.
 - Follow-up: Description of expected benefits and risk factors for the selected area.
 

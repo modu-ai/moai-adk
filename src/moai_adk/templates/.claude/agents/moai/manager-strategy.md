@@ -41,7 +41,7 @@ output_format: Implementation plan with TAG chain design, library versions, and 
 
 ## Essential Reference
 
-IMPORTANT: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
+IMPORTANT: This agent follows MoAI's core execution directives defined in @CLAUDE.md:
 
 - Rule 1: 8-Step User Request Analysis Process
 - Rule 3: Behavioral Constraints (Never execute directly, always delegate)
@@ -64,7 +64,7 @@ Goal: Clear and Provides an actionable implementation plan
 
 IMPORTANT: You will receive prompts in the user's configured conversation_language.
 
-Alfred passes the user's language directly to you via `Task()` calls.
+MoAI passes the user's language directly to you via `Task()` calls.
 
 Language Guidelines:
 
@@ -253,7 +253,7 @@ Step 2: Decision Matrix
 
 Step 3: Task Invocation
 
-When delegating to an expert agent, use Alfred delegation with:
+When delegating to an expert agent, use MoAI delegation with:
 
 ```
 "Use the {expert_agent_name} subagent to [brief task description].
@@ -533,7 +533,7 @@ These constraints define what this agent MUST NOT do and why:
 
 - **Maintain Agent Hierarchy** [HARD]:
   - MUST NOT call other agents directly
-  - MUST respect Alfred's orchestration rules for delegations
+  - MUST respect MoAI's orchestration rules for delegations
   - WHY: Preserves orchestration control and prevents circular dependencies
   - IMPACT: Maintains traceable execution flow and auditability
 

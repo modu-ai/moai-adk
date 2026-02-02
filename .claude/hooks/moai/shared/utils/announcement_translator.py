@@ -135,7 +135,7 @@ def get_default_announcements() -> list[str]:
     """
     return [
         "🗿 MoAI-ADK: SPEC-First DDD with 48 Skills and Context7 integration",
-        "⚡ /moai:alfred: One-stop Plan→Run→Sync automation with intelligent routing",
+        "⚡ /moai: One-stop Plan→Run→Sync automation with intelligent routing",
         "🌳 moai-worktree: Parallel SPEC development - work on multiple features simultaneously",
         "🤖 20 Agents: 8 Expert + 8 Manager + 4 Builder for specialized tasks",
         "📋 Workflow: /moai:1-plan (SPEC) → /moai:2-run (DDD) → /moai:3-sync (Docs)",

@@ -285,22 +285,22 @@ uv run ruff check
 uv run mypy src
 ```
 
-### 6. Understanding Alfred Configuration (Important!)
+### 6. Understanding MoAI Configuration (Important!)
 
-The core of MoAI-ADK is **Alfred** (MoAI SuperAgent). Alfred's behavior is defined in 4 documents in the `.claude/` directory:
+The core of MoAI-ADK is **MoAI** (MoAI SuperAgent). MoAI's behavior is defined in 4 documents in the `.claude/` directory:
 
 #### 📄 Essential Reading: 4-Document Architecture
 
 | Document                   | Size  | When to Read                         | Key Content                                                |
 | -------------------------- | ----- | ------------------------------------ | ---------------------------------------------------------- |
-| **CLAUDE.md**              | ~7kb  | Before starting development          | Alfred's identity, core directives, 3-step workflow        |
+| **CLAUDE.md**              | ~7kb  | Before starting development          | MoAI's identity, core directives, 3-step workflow          |
 | **CLAUDE-AGENTS-GUIDE.md** | ~14kb | When you need a specific Agent       | 19 Sub-agent team structure, 55 Skills classification      |
 | **CLAUDE-RULES.md**        | ~17kb | When understanding decision rules    | Skill invocation rules, user question rules, TRUST 5 gates |
 | **CLAUDE-PRACTICES.md**    | ~8kb  | When you want real workflow examples | JIT context patterns, practical workflows                  |
 
 #### 🎯 Key Developer Knowledge (Summary)
 
-**Alfred's 3 Core Responsibilities**:
+**MoAI's 3 Core Responsibilities**:
 
 1. **SPEC-First**: Define requirements before code
 2. **Automated DDD**: Execute ANALYZE → PRESERVE → IMPROVE cycle
@@ -317,7 +317,7 @@ The core of MoAI-ADK is **Alfred** (MoAI SuperAgent). Alfred's behavior is defin
 
 - Need to modify `.claude/` files? **Usually not**. Defaults are optimized.
 - When proposing new features, refer to "Skill Invocation Rules" in **CLAUDE-RULES.md**.
-- If Alfred's behavior seems off, check "Alfred's Core Directives" in **CLAUDE.md** first.
+- If MoAI's behavior seems off, check "MoAI's Core Directives" in **CLAUDE.md** first.
 
 ---
 
@@ -700,22 +700,22 @@ uv run ruff check
 uv run mypy src
 ```
 
-### 6. Alfred의 설정 문서 이해하기 (중요!)
+### 6. MoAI의 설정 문서 이해하기 (중요!)
 
-MoAI-ADK의 핵심은 **Alfred** (MoAI SuperAgent)입니다. Alfred의 동작 방식은 `.claude/` 디렉토리의 4개 문서로 정의됩니다:
+MoAI-ADK의 핵심은 **MoAI** (MoAI SuperAgent)입니다. MoAI의 동작 방식은 `.claude/` 디렉토리의 4개 문서로 정의됩니다:
 
 #### 📄 필수 읽기: 4-Document Architecture
 
 | 문서                       | 크기  | 언제 읽을까?                     | 주요 내용                                         |
 | -------------------------- | ----- | -------------------------------- | ------------------------------------------------- |
-| **CLAUDE.md**              | ~7kb  | 개발 시작 시                     | Alfred의 정체성, 핵심 지령, 3단계 워크플로우      |
+| **CLAUDE.md**              | ~7kb  | 개발 시작 시                     | MoAI의 정체성, 핵심 지령, 3단계 워크플로우        |
 | **CLAUDE-AGENTS-GUIDE.md** | ~14kb | 어떤 Agent가 필요할 때           | 19개 Sub-agent 팀 구조, 55개 Skills 분류          |
 | **CLAUDE-RULES.md**        | ~17kb | 의사결정 규칙을 이해하고 싶을 때 | Skill 호출 규칙, 사용자 질문 규칙, TRUST 5 게이트 |
 | **CLAUDE-PRACTICES.md**    | ~8kb  | 실제 워크플로우 예제를 원할 때   | JIT 컨텍스트 패턴, 실전 워크플로우                |
 
 #### 🎯 개발자가 알아야 할 것 (요약)
 
-**Alfred의 3가지 핵심 의무**:
+**MoAI의 3가지 핵심 의무**:
 
 1. **SPEC-First**: 코드 전에 요구사항 정의
 2. **DDD 자동 실행**: ANALYZE → PRESERVE → IMPROVE 순환
@@ -732,7 +732,7 @@ MoAI-ADK의 핵심은 **Alfred** (MoAI SuperAgent)입니다. Alfred의 동작 �
 
 - `.claude/` 파일을 수정해야 하나? **대부분 안 합니다**. 기본값이 최적화되어 있습니다.
 - 새 기능을 제안할 때는 **CLAUDE-RULES.md**의 "Skill Invocation Rules" 섹션을 참고하세요.
-- Alfred의 동작이 이상하면 **CLAUDE.md**의 "Alfred's Core Directives"를 먼저 확인하세요.
+- MoAI의 동작이 이상하면 **CLAUDE.md**의 "MoAI's Core Directives"를 먼저 확인하세요.
 
 ---
 

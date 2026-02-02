@@ -9,7 +9,7 @@ Version: 2.0.0
 
 ## Quick Reference (30 seconds)
 
-Alfred operates under strict execution rules:
+MoAI operates under strict execution rules:
 
 Core Constraints:
 - Agent-First: ALWAYS delegate via Task(), NEVER execute directly
@@ -171,7 +171,7 @@ MCP Server Permissions:
 
 ### Git Strategy 3-Mode System
 
-Alfred automatically adjusts Git workflow based on `config.json` settings.
+MoAI automatically adjusts Git workflow based on `config.json` settings.
 
 Key Configuration Fields:
 - `git_strategy.mode`: Git mode selection (manual, personal, team)
@@ -203,7 +203,7 @@ Configuration (default):
 }
 ```
 
-Alfred's Behavior (prompt_always=true):
+MoAI's Behavior (prompt_always=true):
 1. When running `/moai:1-plan`, user prompted: "Create branch?"
  - Auto create → Creates feature/SPEC-001
  - Use current branch → Continues on current branch
@@ -223,7 +223,7 @@ Configuration (auto skip):
 }
 ```
 
-Alfred's Behavior (prompt_always=false):
+MoAI's Behavior (prompt_always=false):
 - All SPECs automatically work on current branch (no branch creation)
 - No user prompts
 
@@ -246,7 +246,7 @@ Configuration (default - prompt each time):
 }
 ```
 
-Alfred's Behavior (prompt_always=true):
+MoAI's Behavior (prompt_always=true):
 1. When running `/moai:1-plan`, user prompted: "Create branch?"
  - Auto create → Creates feature/SPEC-002 + auto push
  - Use current branch → Commits directly on current branch
@@ -266,7 +266,7 @@ Configuration (auto after approval):
 }
 ```
 
-Alfred's Behavior (prompt_always=false, auto_enabled=false):
+MoAI's Behavior (prompt_always=false, auto_enabled=false):
 1. When running `/moai:1-plan`, user prompted once: "Enable automatic branch creation?"
  - Yes → Auto updates config.json with `auto_enabled=true` → Creates feature/SPEC
  - No → Works on current branch, no config change
@@ -285,7 +285,7 @@ Configuration (full automation):
 }
 ```
 
-Alfred's Behavior (prompt_always=false, auto_enabled=true):
+MoAI's Behavior (prompt_always=false, auto_enabled=true):
 - Automatically creates feature/SPEC-XXX branch for every SPEC
 - No user prompts (full automation)
 - All DDD and documentation commits auto-pushed to feature branch
@@ -309,7 +309,7 @@ Configuration (default - prompt each time):
 }
 ```
 
-Alfred's Behavior (prompt_always=true):
+MoAI's Behavior (prompt_always=true):
 1. When running `/moai:1-plan`, user prompted: "Create branch?"
  - Auto create → Creates feature/SPEC-003 + auto create Draft PR
  - Use current branch → Proceeds on current branch (not recommended)
@@ -331,7 +331,7 @@ Configuration (auto after approval):
 }
 ```
 
-Alfred's Behavior (prompt_always=false, auto_enabled=false):
+MoAI's Behavior (prompt_always=false, auto_enabled=false):
 1. When running `/moai:1-plan`, user prompted once: "Enable automatic branch creation and Draft PR creation?"
  - Yes → Auto updates config.json with `auto_enabled=true` → Creates feature/SPEC + Draft PR
  - No → Works on current branch, no config change
@@ -350,7 +350,7 @@ Configuration (full automation):
 }
 ```
 
-Alfred's Behavior (prompt_always=false, auto_enabled=true):
+MoAI's Behavior (prompt_always=false, auto_enabled=true):
 - Automatically creates feature/SPEC-XXX branch + Draft PR for every SPEC
 - No user prompts (full automation)
 - All DDD and documentation commits auto-pushed to feature branch

@@ -624,7 +624,7 @@ Use manager-ddd for:
 ```
 
 Use AskUserQuestion if routing is unclear:
-- Option A: Full autonomous workflow (alfred)
+- Option A: Full autonomous workflow (moai)
 - Option B: Phased approach (plan → run → sync)
 - Option C: Direct expert delegation
 - Option D: Need more clarification
@@ -893,7 +893,7 @@ Key Features:
 - Comprehensive error handling and recovery
 
 Changes from 2.0.0:
-- Removed: All Alfred Pennyworth/Batman references
+- Removed: All legacy persona references
 - Removed: British butler persona, humor, character backstory
 - Removed: "sir", "madam", formal address, butler metaphors
 - Removed: Wayne Manor, Master Wayne, tea, Earl Grey references

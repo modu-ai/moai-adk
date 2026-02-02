@@ -31,11 +31,11 @@ statusline:
       separator: "38;5;250"        # Light Gray
 
   # Caching configuration (Windows optimization)
-  # Performance improvements: git 5→10s, alfred 1→5s, update 300→600s
+  # Performance improvements: git 5→10s, moai 1→5s, update 300→600s
   cache:
     git_ttl_seconds: 10          # Git command results (5→10: process creation reduced)
     metrics_ttl_seconds: 10      # Session metrics (unchanged)
-    alfred_ttl_seconds: 5        # Alfred task state (1→5: file I/O reduced 80%)
+    moai_ttl_seconds: 5          # MoAI task state (1→5: file I/O reduced 80%)
     todo_ttl_seconds: 5          # TODO items count (3→5)
     memory_ttl_seconds: 10       # Memory usage information (5→10)
     output_style_ttl_seconds: 120 # Output style configuration (60→120)
@@ -55,7 +55,7 @@ statusline:
     git_status: true             # 📊 +0 M25 ?3 Git changes status
     duration: false              # ⏱️ Session elapsed time (disabled)
     directory: true              # 📁 Project name/directory
-    active_task: true            # 🎯 Alfred active task
+    active_task: true            # 🎯 MoAI active task
     update_indicator: true       # 🔄 Update notification
 
   # Error handling (Windows: reduced logging I/O)

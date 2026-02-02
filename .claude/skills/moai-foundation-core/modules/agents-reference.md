@@ -9,7 +9,7 @@ Version: 2.0.0
 
 ## Quick Reference (30 seconds)
 
-Alfred delegates ALL tasks to specialized agents. 26 agents organized in 7 tiers:
+MoAI delegates ALL tasks to specialized agents. 26 agents organized in 7 tiers:
 
 Tier 1: `workflow-*` (Command Processors) - Always Active
 Tier 2: `core-*` (Orchestration & Quality) - Auto-triggered
@@ -212,7 +212,7 @@ Is this a new feature or architecture change?
 
 ### Delegation Principles
 
-1. Agent-First: Alfred NEVER executes tasks directly. ALWAYS delegates via Task()
+1. Agent-First: MoAI NEVER executes tasks directly. ALWAYS delegates via Task()
 
 2. Naming Consistency: All agents follow `{domain}-{role}` pattern
  - Lowercase only

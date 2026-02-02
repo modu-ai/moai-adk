@@ -244,7 +244,7 @@ class TemplateEngine:
             "TEST_DIR": github_templates_config.get("test_directory", "tests"),
             # Feature flags
             "ENABLE_TRUST_5": github_config.get("enable_trust_5", True),
-            "ENABLE_ALFRED_COMMANDS": github_templates_config.get("enable_alfred_commands", True),
+            "ENABLE_MOAI_COMMANDS": github_templates_config.get("enable_moai_commands", True),
             # Language configuration
             "CONVERSATION_LANGUAGE": config.get("language", {}).get("conversation_language", "en"),
             "CONVERSATION_LANGUAGE_NAME": config.get("language", {}).get("conversation_language_name", "English"),
@@ -274,7 +274,7 @@ class TemplateVariableValidator:
         "PROJECT_DESCRIPTION": (str, type(None)),
         "PROJECT_MODE": str,
         "ENABLE_TRUST_5": bool,
-        "ENABLE_ALFRED_COMMANDS": bool,
+        "ENABLE_MOAI_COMMANDS": bool,
         "CONVERSATION_LANGUAGE": str,
         "CONVERSATION_LANGUAGE_NAME": str,
         "USER_NAME": (str, type(None)),

@@ -5,7 +5,7 @@ Safe File Reader Utility
 Provides safe file reading with multiple encoding fallbacks and error handling.
 Resolves UTF-8 encoding issues found in MoAI-ADK project.
 
-Author: Alfred@MoAI
+Author: MoAI
 Date: 2025-11-11
 """
 

@@ -64,7 +64,7 @@ def show_logo() -> None:
     # Print with Rich styling
     console.print(logo, style="cyan bold", highlight=False)
     console.print(
-        "  Modu-AI's Agentic Development Kit w/ SuperAgent 🎩 Alfred",
+        "  Modu-AI's Agentic Development Kit w/ SuperAgent 🤖 MoAI",
         style="yellow bold",
     )
     console.print()
@@ -82,7 +82,7 @@ def show_logo() -> None:
 def cli(ctx: click.Context) -> None:
     """MoAI Agentic Development Kit
 
-    SPEC-First DDD Framework with Alfred SuperAgent
+    SPEC-First DDD Framework with MoAI SuperAgent
     """
     # Display the logo when no subcommand is invoked
     if ctx.invoked_subcommand is None:

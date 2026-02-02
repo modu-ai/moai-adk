@@ -217,13 +217,13 @@ def process_claude_md_imports(content: str, base_path: Path) -> Tuple[str, List[
 
 
 # ============================================================================
-# Context Manager for Phase Results (Alfred Workflow)
+# Context Manager for Phase Results (MoAI Workflow)
 # ============================================================================
 
 
 class ContextManager:
     """
-    Manages context for Alfred workflow phases.
+    Manages context for MoAI workflow phases.
 
     Provides utilities for storing and retrieving phase results,
     validating paths, and managing template variables.

@@ -163,7 +163,7 @@
               "required": true
             },
             {
-              "question": "What language should Alfred use in conversations? (current: {{language.conversation_language}})",
+              "question": "What language should MoAI use in conversations? (current: {{language.conversation_language}})",
               "header": "Conversation Language",
               "field": "language.conversation_language",
               "type": "select_single",

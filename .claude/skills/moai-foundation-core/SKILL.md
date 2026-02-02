@@ -148,7 +148,7 @@ Detailed Reference: modules/spec-first-ddd.md
 
 Purpose: Task delegation to specialized agents, avoiding direct execution.
 
-Core Principle: Alfred must delegate all work through Task() to specialized agents. Direct execution bypasses specialization, quality gates, and token optimization. Proper delegation improves task success rate by 40 percent and enables parallel execution.
+Core Principle: MoAI must delegate all work through Task() to specialized agents. Direct execution bypasses specialization, quality gates, and token optimization. Proper delegation improves task success rate by 40 percent and enables parallel execution.
 
 Delegation Syntax: Call Task with subagent_type parameter for specialized agent, prompt parameter for clear specific task, and context parameter with relevant data dictionary.
 

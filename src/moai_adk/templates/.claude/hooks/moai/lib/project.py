@@ -65,7 +65,7 @@ def find_project_root(start_path: str | Path = ".") -> Path:
     Examples:
         >>> find_project_root(".")
         Path("/Users/user/my-project")
-        >>> find_project_root(".claude/hooks/alfred")
+        >>> find_project_root(".claude/hooks/moai")
         Path("/Users/user/my-project")  # Found root 3 levels up
 
     Note:
@@ -656,7 +656,7 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
 
     # 1. Find project root (ensure cache is always in correct location)
     # This prevents creating .moai/cache in wrong locations when hooks run
-    # from subdirectories like .claude/hooks/alfred/
+    # from subdirectories like .claude/hooks/moai/
     project_root = find_project_root(cwd)
 
     # 2. Initialize cache (skip if VersionCache couldn't be imported)

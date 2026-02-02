@@ -13,11 +13,11 @@ Enhanced version includes:
 
 __version__ = "0.1.0"
 
-from .alfred_detector import AlfredDetector, AlfredTask
 from .config import StatuslineConfig
 from .git_collector import GitCollector, GitInfo
 from .memory_collector import MemoryCollector, MemoryInfo
 from .metrics_tracker import MetricsTracker
+from .moai_detector import MoAIDetector, MoAITask
 from .renderer import StatuslineData, StatuslineRenderer
 from .update_checker import UpdateChecker, UpdateInfo
 from .version_reader import VersionConfig, VersionReader, VersionReadError
@@ -31,8 +31,8 @@ __all__ = [
     "MemoryCollector",
     "MemoryInfo",
     "MetricsTracker",
-    "AlfredDetector",
-    "AlfredTask",
+    "MoAIDetector",
+    "MoAITask",
     "VersionReader",
     "VersionConfig",
     "VersionReadError",

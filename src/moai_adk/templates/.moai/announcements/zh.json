@@ -1,7 +1,7 @@
 {
   "companyAnnouncements": [
     "🔄 v1.12.0 命令格式更新: 移除冒号(:)使命令更简洁",
-    "  之前: /moai:1-plan, /moai:2-run SPEC-001, /moai:3-sync, /moai:0-project, /moai:alfred",
+    "  之前: /moai:1-plan, /moai:2-run SPEC-001, /moai:3-sync, /moai:0-project, /moai",
     "  现在: /moai plan, /moai run SPEC-AUTH-001, /moai sync, /moai project, /moai",
     "  SPEC ID格式也更改: SPEC-001 → SPEC-{DOMAIN}-{NUM} (例如: SPEC-AUTH-001, SPEC-API-001)",
     "🗿 MoAI-ADK: 48个Skills与Context7集成的SPEC-First DDD",
