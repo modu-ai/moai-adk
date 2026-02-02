@@ -71,11 +71,11 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "${SHELL:-/bin/bash} -l -c 'uv run --no-sync moai-adk statusline'",
+    "command": "${SHELL:-/bin/bash} -l -c 'uv run --no-sync moai statusline'",
     "padding": 0,
     "refreshInterval": 300
   },
-  "outputStyle": "Mr.Alfred",
+  "outputStyle": "MoAI",
   "cleanupPeriodDays": 30,
   "env": {
     "MOAI_CONFIG_SOURCE": "sections",

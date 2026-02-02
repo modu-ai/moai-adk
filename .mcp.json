@@ -8,7 +8,11 @@
     },
     "sequential-thinking": {
       "command": "${SHELL:-/bin/bash}",
-      "args": ["-l", "-c", "exec npx -y @modelcontextprotocol/server-sequential-thinking"]
+      "args": [
+        "-l",
+        "-c",
+        "exec npx -y @modelcontextprotocol/server-sequential-thinking"
+      ]
     }
   },
   "staggeredStartup": {

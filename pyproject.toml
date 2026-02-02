@@ -1,14 +1,14 @@
 [project]
 name = "moai-adk"
 version = "1.14.0"
-description = "MoAI Agentic Development Kit - SPEC-First DDD with Alfred SuperAgent & Unified moai-core-* Skills"
+description = "MoAI Agentic Development Kit - SPEC-First DDD with MoAI SuperAgent"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "COPYLEFT-3.0"}
 authors = [
     {name = "MoAI Team", email = "support@moduai.kr"}
 ]
-keywords = ["agentic", "ai", "claude", "ddd", "spec-first", "alfred", "development", "toolkit"]
+keywords = ["agentic", "ai", "claude", "ddd", "spec-first", "MoAI", "development", "toolkit"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",

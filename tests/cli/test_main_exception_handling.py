@@ -205,7 +205,7 @@ class TestCliCommandOptions:
 
         # Check params exist
         param_names = [p.name for p in update_cmd.params]
-        expected_params = ["path", "force", "check", "templates_only", "yes", "edit_config", "merge_strategy"]
+        expected_params = ["path", "force", "check", "templates_only", "yes", "edit_config"]
 
         for param in expected_params:
             assert param in param_names, f"Parameter '{param}' not found in update command"
