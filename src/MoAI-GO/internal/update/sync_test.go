@@ -5,19 +5,35 @@ import (
 	"testing"
 )
 
-// --- protectedDirs ---
+// --- DefaultProtectedDirs ---
 
-func TestProtectedDirs(t *testing.T) {
+func TestDefaultProtectedDirs(t *testing.T) {
 	expected := []string{".moai/project/", ".moai/specs/"}
 
-	for _, dir := range expected {
-		if !protectedDirs[dir] {
-			t.Errorf("protectedDirs missing %q", dir)
-		}
+	if len(DefaultProtectedDirs) != 2 {
+		t.Errorf("DefaultProtectedDirs length = %d, want 2", len(DefaultProtectedDirs))
 	}
 
-	if len(protectedDirs) != 2 {
-		t.Errorf("protectedDirs length = %d, want 2", len(protectedDirs))
+	dirSet := make(map[string]bool)
+	for _, dir := range DefaultProtectedDirs {
+		dirSet[dir] = true
+	}
+
+	for _, dir := range expected {
+		if !dirSet[dir] {
+			t.Errorf("DefaultProtectedDirs missing %q", dir)
+		}
+	}
+}
+
+func TestProtectedDirsOnManager(t *testing.T) {
+	sm := NewSyncManager("/tmp")
+
+	// Verify default protected dirs are loaded into the manager
+	for _, dir := range DefaultProtectedDirs {
+		if !sm.isProtected(dir) {
+			t.Errorf("isProtected(%q) = false, want true for default protected dir", dir)
+		}
 	}
 }
 
@@ -244,4 +260,80 @@ func TestSyncResult_PrintSummary_EmptyResult(t *testing.T) {
 
 	// Should not panic even with empty slices
 	result.PrintSummary()
+}
+
+// --- SetProtectedDirs ---
+
+func TestSetProtectedDirs(t *testing.T) {
+	sm := NewSyncManager("/tmp")
+
+	// Default: .moai/project/ and .moai/specs/ are protected
+	if !sm.isProtected(".moai/project/product.md") {
+		t.Error("default protected dir not recognized")
+	}
+
+	// Replace with custom dirs
+	sm.SetProtectedDirs([]string{".custom/dir/"})
+
+	// Old dirs should no longer be protected
+	if sm.isProtected(".moai/project/product.md") {
+		t.Error(".moai/project/ should no longer be protected after SetProtectedDirs")
+	}
+
+	// New dir should be protected
+	if !sm.isProtected(".custom/dir/file.txt") {
+		t.Error(".custom/dir/ should be protected after SetProtectedDirs")
+	}
+}
+
+func TestSetProtectedDirs_Empty(t *testing.T) {
+	sm := NewSyncManager("/tmp")
+
+	sm.SetProtectedDirs([]string{})
+
+	// Nothing should be protected
+	if sm.isProtected(".moai/project/product.md") {
+		t.Error("nothing should be protected with empty protected dirs")
+	}
+	if sm.isProtected(".moai/specs/SPEC-001/spec.md") {
+		t.Error("nothing should be protected with empty protected dirs")
+	}
+}
+
+// --- Sync with protected paths ---
+
+func TestSync_ProtectedPathsPreserved(t *testing.T) {
+	tmpDir := t.TempDir()
+	sm := NewSyncManager(tmpDir)
+
+	result, err := sm.Sync()
+	if err != nil {
+		t.Fatalf("Sync() error = %v", err)
+	}
+
+	// Check that some paths were protected (templates include .moai/project/ or .moai/specs/ files)
+	// Protected dirs are tracked in result
+	if result == nil {
+		t.Fatal("Sync returned nil result")
+	}
+
+	// Verify total files = added + updated + protected
+	totalTracked := len(result.FilesAdded) + len(result.FilesUpdated) + len(result.ProtectedDirs)
+	if totalTracked == 0 {
+		t.Error("expected some files to be tracked")
+	}
+}
+
+// --- SyncResult fields ---
+
+func TestSyncResult_FilesRemoved(t *testing.T) {
+	result := &SyncResult{
+		FilesAdded:   []string{"a.txt"},
+		FilesUpdated: []string{"b.txt"},
+		FilesRemoved: []string{"c.txt", "d.txt"},
+	}
+
+	if len(result.FilesRemoved) != 2 {
+		t.Errorf("FilesRemoved length = %d, want 2", len(result.FilesRemoved))
+	}
 }

@@ -1,11 +1,15 @@
 ---
 name: moai-workflow-spec
 description: >
-  SPEC workflow orchestration with EARS format, requirement clarification,
-  and Plan-Run-Sync integration for MoAI-ADK development methodology
+  SPEC workflow orchestration with EARS format requirements, acceptance criteria,
+  and Plan-Run-Sync integration for MoAI-ADK development methodology.
+  Use when creating SPEC documents, writing EARS requirements, defining acceptance
+  criteria, planning features, or orchestrating the /moai plan phase.
+  Do NOT use for implementation (use moai-workflow-ddd instead)
+  or documentation generation (use moai-workflow-project instead).
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Write Edit Bash Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read Write Edit Bash(git:*) Bash(ls:*) Bash(wc:*) Bash(mkdir:*) Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
 metadata:
   version: "1.2.0"

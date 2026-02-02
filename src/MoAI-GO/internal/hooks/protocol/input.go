@@ -31,17 +31,20 @@ type HookInput struct {
 type HookEvent string
 
 const (
-	EventSessionStart HookEvent = "session_start"
-	EventPreTool      HookEvent = "pre_tool"
-	EventPostTool     HookEvent = "post_tool"
-	EventSessionEnd   HookEvent = "session_end"
-	EventPreCompact   HookEvent = "pre_compact"
-	EventStop         HookEvent = "stop"
-	EventNotification HookEvent = "notification"
-	EventQualityGate  HookEvent = "quality_gate"
-	EventCommit       HookEvent = "commit"
-	EventPush         HookEvent = "push"
-	EventCompact      HookEvent = "compact"
+	EventSessionStart      HookEvent = "session_start"
+	EventPreTool           HookEvent = "pre_tool"
+	EventPostTool          HookEvent = "post_tool"
+	EventSessionEnd        HookEvent = "session_end"
+	EventPreCompact        HookEvent = "pre_compact"
+	EventStop              HookEvent = "stop"
+	EventNotification      HookEvent = "notification"
+	EventQualityGate       HookEvent = "quality_gate"
+	EventCommit            HookEvent = "commit"
+	EventPush              HookEvent = "push"
+	EventCompact           HookEvent = "compact"
+	EventSubagentStop      HookEvent = "SubagentStop"
+	EventUserPromptSubmit  HookEvent = "UserPromptSubmit"
+	EventPermissionRequest HookEvent = "PermissionRequest"
 )
 
 // IsValid checks if the event is a valid hook event
@@ -49,7 +52,8 @@ func (e HookEvent) IsValid() bool {
 	switch e {
 	case EventSessionStart, EventPreTool, EventPostTool, EventSessionEnd,
 		EventPreCompact, EventStop, EventNotification, EventQualityGate,
-		EventCommit, EventPush, EventCompact:
+		EventCommit, EventPush, EventCompact,
+		EventSubagentStop, EventUserPromptSubmit, EventPermissionRequest:
 		return true
 	default:
 		return false

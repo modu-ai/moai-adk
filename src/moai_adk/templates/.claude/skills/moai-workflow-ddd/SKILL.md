@@ -2,10 +2,14 @@
 name: moai-workflow-ddd
 description: >
   Domain-Driven Development workflow specialist using ANALYZE-PRESERVE-IMPROVE
-  cycle for behavior-preserving code transformation
+  cycle for behavior-preserving code transformation.
+  Use when refactoring legacy code, improving code structure without functional changes,
+  reducing technical debt, or performing API migration with behavior preservation.
+  Do NOT use for writing new tests (use moai-workflow-testing instead)
+  or creating new features from scratch (use expert-backend or expert-frontend instead).
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Write Edit Bash Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read Write Edit Bash(git:*) Bash(pytest:*) Bash(ruff:*) Bash(npm:*) Bash(npx:*) Bash(node:*) Bash(uv:*) Bash(make:*) Bash(cargo:*) Bash(go:*) Bash(mix:*) Bash(bundle:*) Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
 metadata:
   version: "1.0.0"

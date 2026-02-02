@@ -227,7 +227,10 @@ func TestMergeUserConfig_MergesLanguageYAML(t *testing.T) {
 			"conversation_language": "ko",
 		},
 	}
-	backupData, _ := yaml.Marshal(backupLang)
+	backupData, err := yaml.Marshal(backupLang)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(backupSections, "language.yaml"), backupData, 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +245,10 @@ func TestMergeUserConfig_MergesLanguageYAML(t *testing.T) {
 			"conversation_language": "en",
 		},
 	}
-	targetData, _ := yaml.Marshal(targetLang)
+	targetData, err := yaml.Marshal(targetLang)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(targetSections, "language.yaml"), targetData, 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -273,6 +279,79 @@ func TestMergeUserConfig_MergesLanguageYAML(t *testing.T) {
 	}
 }
 
+func TestMergeUserConfig_InvalidBackupYAML(t *testing.T) {
+	projectDir := t.TempDir()
+	backupDir := t.TempDir()
+
+	// Create backup with invalid YAML
+	backupSections := filepath.Join(backupDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(backupSections, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(backupSections, "user.yaml"), []byte(":\t\tinvalid\nyaml: [unclosed"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	mm := NewMergeManager(projectDir, backupDir)
+	err := mm.MergeUserConfig()
+	if err == nil {
+		t.Error("expected error for invalid backup YAML")
+	}
+}
+
+func TestMergeUserConfig_InvalidTargetYAML(t *testing.T) {
+	projectDir := t.TempDir()
+	backupDir := t.TempDir()
+
+	// Create valid backup
+	backupSections := filepath.Join(backupDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(backupSections, 0755); err != nil {
+		t.Fatal(err)
+	}
+	validData, err := yaml.Marshal(map[string]any{"user": map[string]any{"name": "Backup"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(backupSections, "user.yaml"), validData, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create invalid target YAML
+	targetSections := filepath.Join(projectDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(targetSections, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(targetSections, "user.yaml"), []byte(":\t\tinvalid\nyaml: [unclosed"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	mm := NewMergeManager(projectDir, backupDir)
+	mergeErr := mm.MergeUserConfig()
+	if mergeErr == nil {
+		t.Error("expected error for invalid target YAML")
+	}
+}
+
+func TestMergeUserConfig_LanguageInvalidBackupYAML(t *testing.T) {
+	projectDir := t.TempDir()
+	backupDir := t.TempDir()
+
+	// Create invalid backup language.yaml (but no user.yaml backup, so user merge is skipped)
+	backupSections := filepath.Join(backupDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(backupSections, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(backupSections, "language.yaml"), []byte(":\t\tinvalid\nyaml: [unclosed"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	mm := NewMergeManager(projectDir, backupDir)
+	err := mm.MergeUserConfig()
+	if err == nil {
+		t.Error("expected error for invalid backup language YAML")
+	}
+}
+
 func TestMergeUserConfig_NoTargetFile(t *testing.T) {
 	projectDir := t.TempDir()
 	backupDir := t.TempDir()
@@ -283,7 +362,10 @@ func TestMergeUserConfig_NoTargetFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	backupUser := map[string]any{"user": map[string]any{"name": "BackupUser"}}
-	backupData, _ := yaml.Marshal(backupUser)
+	backupData, err := yaml.Marshal(backupUser)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(backupSections, "user.yaml"), backupData, 0644); err != nil {
 		t.Fatal(err)
 	}

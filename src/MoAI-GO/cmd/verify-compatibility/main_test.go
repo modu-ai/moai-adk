@@ -505,7 +505,7 @@ func TestVerificationResult_AllMatch(t *testing.T) {
 		GoExitCode:     0,
 	}
 
-	if !(result.SchemaMatch && result.ExitCodeMatch && result.ErrorMatch) {
+	if !result.SchemaMatch || !result.ExitCodeMatch || !result.ErrorMatch {
 		t.Error("expected all matches to be true")
 	}
 }

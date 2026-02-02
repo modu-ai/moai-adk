@@ -4,7 +4,7 @@ description: >
   Python 3.13+ development specialist covering FastAPI, Django, async patterns, data science, testing with pytest, and modern Python features. Use when developing Python APIs, web applications, data pipelines, or writing tests.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Grep Glob Bash mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read Grep Glob Bash(python:*) Bash(python3:*) Bash(pytest:*) Bash(ruff:*) Bash(pip:*) Bash(uv:*) Bash(mypy:*) Bash(pyright:*) Bash(black:*) Bash(poetry:*) mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
 metadata:
   version: "1.1.0"

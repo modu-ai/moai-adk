@@ -80,12 +80,15 @@ func TestCheckSettingsJSON_ValidJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	settingsData := map[string]interface{}{
-		"hooks": map[string]interface{}{
+	settingsData := map[string]any{
+		"hooks": map[string]any{
 			"SessionStart": map[string]string{"type": "command", "command": "echo hello"},
 		},
 	}
-	data, _ := json.MarshalIndent(settingsData, "", "  ")
+	data, err := json.MarshalIndent(settingsData, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(claudeDir, "settings.json"), data, 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -215,12 +218,15 @@ func TestCheckLanguageConfig_ValidYAML(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	langConfig := map[string]interface{}{
+	langConfig := map[string]any{
 		"language": map[string]string{
 			"conversation_language": "en",
 		},
 	}
-	data, _ := yaml.Marshal(langConfig)
+	data, err := yaml.Marshal(langConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(langDir, "language.yaml"), data, 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -284,12 +290,15 @@ func TestCheckUserConfig_ValidYAML(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	userConfig := map[string]interface{}{
+	userConfig := map[string]any{
 		"user": map[string]string{
 			"name": "TestUser",
 		},
 	}
-	data, _ := yaml.Marshal(userConfig)
+	data, err := yaml.Marshal(userConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(userDir, "user.yaml"), data, 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -375,7 +384,10 @@ func TestCheckHookRegistration_NoHooksKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data, _ := json.Marshal(map[string]interface{}{"someKey": "value"})
+	data, err := json.Marshal(map[string]any{"someKey": "value"})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(claudeDir, "settings.json"), data, 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -402,13 +414,16 @@ func TestCheckHookRegistration_MissingHooks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	settings := map[string]interface{}{
-		"hooks": map[string]interface{}{
+	settings := map[string]any{
+		"hooks": map[string]any{
 			"SessionStart": map[string]string{"type": "command"},
 			// Missing PreToolUse and PostToolUse
 		},
 	}
-	data, _ := json.Marshal(settings)
+	data, err := json.Marshal(settings)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(claudeDir, "settings.json"), data, 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -432,14 +447,17 @@ func TestCheckHookRegistration_AllPresent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	settings := map[string]interface{}{
-		"hooks": map[string]interface{}{
+	settings := map[string]any{
+		"hooks": map[string]any{
 			"SessionStart": map[string]string{"type": "command"},
 			"PreToolUse":   map[string]string{"type": "command"},
 			"PostToolUse":  map[string]string{"type": "command"},
 		},
 	}
-	data, _ := json.Marshal(settings)
+	data, err := json.Marshal(settings)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(claudeDir, "settings.json"), data, 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -618,4 +636,144 @@ func TestPrintResults_AllPassing(t *testing.T) {
 
 	// Should not panic and print "All checks passed!"
 	d.printResults()
+}
+
+// --- RunAllChecks ---
+
+func TestRunAllChecks_DoesNotPanic(t *testing.T) {
+	tmpDir := t.TempDir()
+	d := NewDoctor(tmpDir)
+
+	// RunAllChecks runs all checks including external commands.
+	// It should not panic regardless of the environment.
+	_ = d.RunAllChecks()
+
+	// Should have accumulated results
+	if len(d.results) == 0 {
+		t.Error("expected results to be populated after RunAllChecks")
+	}
+}
+
+func TestRunAllChecks_ReturnsError(t *testing.T) {
+	tmpDir := t.TempDir()
+	d := NewDoctor(tmpDir)
+
+	err := d.RunAllChecks()
+	// May return error (missing tools) or nil, but should not panic
+	_ = err
+}
+
+// --- checkClaudeCode ---
+
+func TestCheckClaudeCode_ProducesResult(t *testing.T) {
+	d := NewDoctor("/tmp")
+	d.checkClaudeCode()
+
+	if len(d.results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(d.results))
+	}
+	r := d.results[0]
+	if r.Name != "Claude Code" {
+		t.Errorf("Name = %q, want %q", r.Name, "Claude Code")
+	}
+	// Status is either "success" (if claude installed) or "error" (if not)
+	if r.Status != "success" && r.Status != "error" {
+		t.Errorf("Status = %q, expected success or error", r.Status)
+	}
+}
+
+// --- checkExternalTools ---
+
+func TestCheckExternalTools_ProducesResults(t *testing.T) {
+	d := NewDoctor("/tmp")
+	d.checkExternalTools()
+
+	// Should produce 4 results: git, ruff, eslint, ast-grep
+	if len(d.results) != 4 {
+		t.Fatalf("expected 4 results, got %d", len(d.results))
+	}
+
+	expectedNames := []string{"git", "ruff", "eslint", "ast-grep"}
+	for i, name := range expectedNames {
+		if d.results[i].Name != name {
+			t.Errorf("result[%d].Name = %q, want %q", i, d.results[i].Name, name)
+		}
+	}
+}
+
+// --- checkTool found ---
+
+func TestCheckTool_FoundTool(t *testing.T) {
+	d := NewDoctor("/tmp")
+	// "echo" should be found on any system
+	d.checkTool("echo", "echo", []string{"hello"}, true)
+
+	if len(d.results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(d.results))
+	}
+	r := d.results[0]
+	if r.Status != "success" {
+		t.Errorf("Status = %q, want %q for found tool", r.Status, "success")
+	}
+	if r.Message == "not found" {
+		t.Error("Message should not be 'not found' for echo")
+	}
+}
+
+// --- checkConfigFiles ---
+
+func TestCheckConfigFiles_Complete(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create complete config structure
+	claudeDir := filepath.Join(tmpDir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	settings := map[string]any{
+		"hooks": map[string]any{
+			"SessionStart": map[string]string{"type": "command"},
+		},
+	}
+	data, err := json.MarshalIndent(settings, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(claudeDir, "settings.json"), data, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	langData, err := yaml.Marshal(map[string]any{"language": map[string]string{"conversation_language": "en"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sectionsDir, "language.yaml"), langData, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	userData, err := yaml.Marshal(map[string]any{"user": map[string]string{"name": "Test"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sectionsDir, "user.yaml"), userData, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	d := NewDoctor(tmpDir)
+	d.checkConfigFiles()
+
+	// Should have 4 results, all success
+	if len(d.results) != 4 {
+		t.Fatalf("expected 4 results, got %d", len(d.results))
+	}
+	for _, r := range d.results {
+		if r.Status != "success" {
+			t.Errorf("check %q: Status = %q, want success", r.Name, r.Status)
+		}
+	}
 }

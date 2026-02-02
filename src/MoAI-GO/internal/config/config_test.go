@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -369,4 +370,1049 @@ func TestConfigFileExists(t *testing.T) {
 			t.Error("ConfigFileExists() = false for existing file, want true")
 		}
 	})
+}
+
+// --- Additional tests for coverage improvement ---
+
+func TestLoadConfigFromEnv(t *testing.T) {
+	tempDir := t.TempDir()
+
+	cfg, err := LoadConfigFromEnv(tempDir)
+	if err != nil {
+		t.Fatalf("LoadConfigFromEnv() failed: %v", err)
+	}
+	if cfg == nil {
+		t.Fatal("LoadConfigFromEnv() returned nil config")
+	}
+	if cfg.Language.ConversationLanguage != "en" {
+		t.Errorf("default conversation_language = %s, want en", cfg.Language.ConversationLanguage)
+	}
+}
+
+func TestGetConfigPath(t *testing.T) {
+	got := GetConfigPath("/project")
+	want := filepath.Join("/project", ".moai", "config", "sections")
+	if got != want {
+		t.Errorf("GetConfigPath() = %s, want %s", got, want)
+	}
+}
+
+func TestGetMoaiDir(t *testing.T) {
+	got := GetMoaiDir("/project")
+	want := filepath.Join("/project", ".moai")
+	if got != want {
+		t.Errorf("GetMoaiDir() = %s, want %s", got, want)
+	}
+}
+
+func TestLoadConfig_InvalidYAML(t *testing.T) {
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(configPath, 0755); err != nil {
+		t.Fatalf("failed to create config directory: %v", err)
+	}
+
+	// Write invalid YAML to user.yaml
+	invalidYAML := `user:
+  name: [invalid yaml
+    broken: {{{
+`
+	if err := os.WriteFile(filepath.Join(configPath, "user.yaml"), []byte(invalidYAML), 0644); err != nil {
+		t.Fatalf("failed to write user.yaml: %v", err)
+	}
+
+	_, err := LoadConfig(tempDir)
+	if err == nil {
+		t.Error("LoadConfig() expected error for invalid YAML, got nil")
+	}
+	if err != nil && !strings.Contains(err.Error(), "failed to parse user.yaml") {
+		t.Errorf("LoadConfig() error = %v, want error containing 'failed to parse user.yaml'", err)
+	}
+}
+
+func TestLoadConfig_UnreadableFile(t *testing.T) {
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(configPath, 0755); err != nil {
+		t.Fatalf("failed to create config directory: %v", err)
+	}
+
+	// Create a user.yaml that is a directory (to cause read error)
+	userYAMLPath := filepath.Join(configPath, "user.yaml")
+	if err := os.MkdirAll(userYAMLPath, 0755); err != nil {
+		t.Fatalf("failed to create directory as user.yaml: %v", err)
+	}
+
+	_, err := LoadConfig(tempDir)
+	if err == nil {
+		t.Error("LoadConfig() expected error for unreadable file, got nil")
+	}
+	if err != nil && !strings.Contains(err.Error(), "failed to read user.yaml") {
+		t.Errorf("LoadConfig() error = %v, want error containing 'failed to read user.yaml'", err)
+	}
+}
+
+func TestNormalizeLanguageCode_EdgeCases(t *testing.T) {
+	tests := []struct {
+		name string
+		lang string
+		want string
+	}{
+		{"Spanish", "es", "es_ES"},
+		{"German", "de", "de_DE"},
+		{"UpperCase_ko", "KO", "ko_KR"},
+		{"UpperCase_EN", "EN", "en_US"},
+		{"Unknown2Char", "pt", "pt_PT"},
+		{"Unknown2Char_it", "it", "it_IT"},
+		{"LongerCode", "por", "por"},
+		{"SingleChar", "x", "x"},
+		{"EmptyString", "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := normalizeLanguageCode(tt.lang)
+			if got != tt.want {
+				t.Errorf("normalizeLanguageCode(%q) = %q, want %q", tt.lang, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestApplyEnvVarOverrides_AllVars(t *testing.T) {
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(configPath, 0755); err != nil {
+		t.Fatalf("failed to create config directory: %v", err)
+	}
+
+	envVars := map[string]string{
+		"MOAI_USER_NAME":                "EnvUser",
+		"MOAI_CONVERSATION_LANG":        "ja",
+		"MOAI_CODE_COMMENTS_LANG":       "ko",
+		"MOAI_GIT_COMMIT_MESSAGES_LANG": "fr",
+		"MOAI_DOCUMENTATION_LANG":       "de",
+		"MOAI_ERROR_MESSAGES_LANG":      "es",
+	}
+
+	// Save and set all env vars
+	saved := make(map[string]string)
+	for k, v := range envVars {
+		saved[k] = os.Getenv(k)
+		_ = os.Setenv(k, v)
+	}
+	defer func() {
+		for k, v := range saved {
+			if v == "" {
+				_ = os.Unsetenv(k)
+			} else {
+				_ = os.Setenv(k, v)
+			}
+		}
+	}()
+
+	cfg, err := LoadConfig(tempDir)
+	if err != nil {
+		t.Fatalf("LoadConfig() failed: %v", err)
+	}
+
+	if cfg.User.Name != "EnvUser" {
+		t.Errorf("user.name = %s, want EnvUser", cfg.User.Name)
+	}
+	if cfg.Language.ConversationLanguage != "ja" {
+		t.Errorf("conversation_language = %s, want ja", cfg.Language.ConversationLanguage)
+	}
+	if cfg.Language.CodeComments != "ko" {
+		t.Errorf("code_comments = %s, want ko", cfg.Language.CodeComments)
+	}
+	if cfg.Language.GitCommitMessages != "fr" {
+		t.Errorf("git_commit_messages = %s, want fr", cfg.Language.GitCommitMessages)
+	}
+	if cfg.Language.Documentation != "de" {
+		t.Errorf("documentation = %s, want de", cfg.Language.Documentation)
+	}
+	if cfg.Language.ErrorMessages != "es" {
+		t.Errorf("error_messages = %s, want es", cfg.Language.ErrorMessages)
+	}
+}
+
+// --- Validate() method tests on types ---
+
+func TestUserConfig_Validate(t *testing.T) {
+	cfg := &UserConfig{Name: "test"}
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("UserConfig.Validate() = %v, want nil", err)
+	}
+
+	cfg2 := &UserConfig{Name: ""}
+	if err := cfg2.Validate(); err != nil {
+		t.Errorf("UserConfig.Validate() with empty name = %v, want nil", err)
+	}
+}
+
+func TestLanguageConfig_Validate(t *testing.T) {
+	cfg := &LanguageConfig{ConversationLanguage: "en"}
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("LanguageConfig.Validate() = %v, want nil", err)
+	}
+}
+
+func TestConstitutionConfig_Validate(t *testing.T) {
+	t.Run("DDD_mode", func(t *testing.T) {
+		cfg := &ConstitutionConfig{DevelopmentMode: "ddd"}
+		if err := cfg.Validate(); err != nil {
+			t.Errorf("ConstitutionConfig.Validate() = %v, want nil", err)
+		}
+	})
+
+	t.Run("Other_mode", func(t *testing.T) {
+		cfg := &ConstitutionConfig{DevelopmentMode: "other"}
+		if err := cfg.Validate(); err != nil {
+			t.Errorf("ConstitutionConfig.Validate() = %v, want nil", err)
+		}
+	})
+}
+
+func TestSystemConfig_Validate(t *testing.T) {
+	cfg := &SystemConfig{}
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("SystemConfig.Validate() = %v, want nil", err)
+	}
+}
+
+func TestGitStrategyConfig_Validate(t *testing.T) {
+	t.Run("ValidMode", func(t *testing.T) {
+		cfg := &GitStrategyConfig{Mode: "manual"}
+		if err := cfg.Validate(); err != nil {
+			t.Errorf("GitStrategyConfig.Validate() = %v, want nil", err)
+		}
+	})
+
+	t.Run("OtherMode", func(t *testing.T) {
+		cfg := &GitStrategyConfig{Mode: "other"}
+		if err := cfg.Validate(); err != nil {
+			t.Errorf("GitStrategyConfig.Validate() = %v, want nil", err)
+		}
+	})
+}
+
+func TestProjectConfig_Validate(t *testing.T) {
+	cfg := &ProjectConfig{Name: "test"}
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("ProjectConfig.Validate() = %v, want nil", err)
+	}
+}
+
+func TestLLMConfig_Validate(t *testing.T) {
+	cfg := &LLMConfig{Mode: "claude-only"}
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("LLMConfig.Validate() = %v, want nil", err)
+	}
+}
+
+func TestServiceConfig_Validate(t *testing.T) {
+	cfg := &ServiceConfig{Type: "claude_subscription"}
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("ServiceConfig.Validate() = %v, want nil", err)
+	}
+}
+
+func TestRalphConfig_Validate(t *testing.T) {
+	cfg := &RalphConfig{}
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("RalphConfig.Validate() = %v, want nil", err)
+	}
+}
+
+func TestWorkflowConfig_Validate(t *testing.T) {
+	cfg := &WorkflowConfig{}
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("WorkflowConfig.Validate() = %v, want nil", err)
+	}
+}
+
+// --- ValidationErrors.Error() test ---
+
+func TestValidationErrors_Error(t *testing.T) {
+	ve := &ValidationErrors{
+		Errors: []error{
+			&ValidationError{Field: "field1", Message: "error1"},
+			&ValidationError{Field: "field2", Message: "error2"},
+		},
+	}
+
+	got := ve.Error()
+	if !strings.Contains(got, "field1") || !strings.Contains(got, "field2") {
+		t.Errorf("ValidationErrors.Error() = %q, want both field1 and field2 mentioned", got)
+	}
+	if !strings.Contains(got, "; ") {
+		t.Errorf("ValidationErrors.Error() = %q, want errors separated by '; '", got)
+	}
+}
+
+func TestValidationError_Error(t *testing.T) {
+	ve := &ValidationError{Field: "test_field", Message: "test message"}
+	got := ve.Error()
+	want := "validation error in test_field: test message"
+	if got != want {
+		t.Errorf("ValidationError.Error() = %q, want %q", got, want)
+	}
+}
+
+// --- Comprehensive validator tests ---
+
+func TestValidateConfig_MultipleErrors(t *testing.T) {
+	// Config with multiple validation errors to trigger multiple error paths
+	cfg := &Config{
+		Language: LanguageConfig{ConversationLanguage: "invalid"},
+		Constitution: ConstitutionConfig{
+			TestCoverageTarget: 150,
+		},
+		Ralph: RalphConfig{
+			LSP: RalphLSPConfig{
+				TimeoutSeconds: 15,
+				PollIntervalMs: 1000,
+			},
+			Loop: RalphLoopConfig{
+				MaxIterations: 10,
+				Completion:    RalphCompletionConfig{CoverageThreshold: 85},
+			},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{
+				MaxIterations:       100,
+				NoProgressThreshold: 5,
+			},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Fatal("ValidateConfig() expected error for multiple invalid fields, got nil")
+	}
+
+	ve, ok := err.(*ValidationErrors)
+	if !ok {
+		t.Fatalf("ValidateConfig() error type = %T, want *ValidationErrors", err)
+	}
+	if len(ve.Errors) < 2 {
+		t.Errorf("ValidateConfig() returned %d errors, want at least 2", len(ve.Errors))
+	}
+}
+
+func TestValidateConstitutionConfig_InvalidDevMode(t *testing.T) {
+	cfg := &Config{
+		Constitution: ConstitutionConfig{
+			DevelopmentMode:    "invalid_mode",
+			TestCoverageTarget: 85,
+		},
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for invalid development_mode, got nil")
+	}
+}
+
+func TestValidateConstitutionConfig_InvalidTransformSize(t *testing.T) {
+	cfg := &Config{
+		Constitution: ConstitutionConfig{
+			DevelopmentMode:    "ddd",
+			TestCoverageTarget: 85,
+			DDDDSettings: DDDSettings{
+				MaxTransformationSize: "huge",
+			},
+		},
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for invalid max_transformation_size, got nil")
+	}
+}
+
+func TestValidateConstitutionConfig_NegativeCoverage(t *testing.T) {
+	cfg := &Config{
+		Constitution: ConstitutionConfig{
+			TestCoverageTarget: -5,
+		},
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for negative test_coverage_target, got nil")
+	}
+}
+
+func TestValidateSystemConfig_InvalidUpdateFrequency(t *testing.T) {
+	cfg := &Config{
+		System: SystemConfig{
+			MoAI: MoAIConfig{UpdateCheckFrequency: "hourly"},
+		},
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for invalid update_check_frequency, got nil")
+	}
+}
+
+func TestValidateSystemConfig_InvalidSpecGitWorkflow(t *testing.T) {
+	cfg := &Config{
+		System: SystemConfig{
+			GitHub: GitHubConfig{SpecGitWorkflow: "invalid_workflow"},
+		},
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for invalid spec_git_workflow, got nil")
+	}
+}
+
+func TestValidateGitStrategyConfig_InvalidMode(t *testing.T) {
+	cfg := &Config{
+		GitStrategy: GitStrategyConfig{Mode: "invalid_mode"},
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for invalid git_strategy mode, got nil")
+	}
+}
+
+func TestValidateGitStrategyConfig_InvalidPersonalWorkflow(t *testing.T) {
+	cfg := &Config{
+		GitStrategy: GitStrategyConfig{
+			Mode:     "personal",
+			Personal: GitModeConfig{Workflow: "invalid-flow"},
+		},
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for invalid personal workflow, got nil")
+	}
+}
+
+func TestValidateGitStrategyConfig_InvalidTeamWorkflow(t *testing.T) {
+	cfg := &Config{
+		GitStrategy: GitStrategyConfig{
+			Mode: "team",
+			Team: GitTeamConfig{Workflow: "invalid-flow"},
+		},
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for invalid team workflow, got nil")
+	}
+}
+
+func TestValidateGitStrategyConfig_InvalidCommitStyle(t *testing.T) {
+	cfg := &Config{
+		GitStrategy: GitStrategyConfig{
+			Mode: "manual",
+			Manual: GitModeConfig{
+				Workflow:    "github-flow",
+				CommitStyle: CommitStyleConfig{Format: "invalid_style"},
+			},
+		},
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for invalid commit style, got nil")
+	}
+}
+
+func TestValidateLLMConfig_InvalidGLMModel(t *testing.T) {
+	cfg := &Config{
+		LLM: LLMConfig{
+			Mode: "claude-only",
+			GLM: GLMConfig{
+				Models: map[string]string{
+					"invalid_model": "some-value",
+				},
+			},
+		},
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for invalid GLM model key, got nil")
+	}
+}
+
+func TestValidateServiceConfig_InvalidType(t *testing.T) {
+	cfg := &Config{
+		Service: ServiceConfig{Type: "invalid_type"},
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for invalid service type, got nil")
+	}
+}
+
+func TestValidateServiceConfig_InvalidPricingPlan(t *testing.T) {
+	cfg := &Config{
+		Service: ServiceConfig{
+			Type:        "claude_subscription",
+			PricingPlan: "invalid_plan",
+		},
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for invalid pricing plan, got nil")
+	}
+}
+
+func TestValidateServiceConfig_InvalidAllocationStrategy(t *testing.T) {
+	cfg := &Config{
+		Service: ServiceConfig{
+			Type:        "claude_subscription",
+			PricingPlan: "pro",
+			ModelAllocation: ModelAllocationConfig{
+				Strategy: "invalid_strategy",
+			},
+		},
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for invalid allocation strategy, got nil")
+	}
+}
+
+func TestValidateRalphConfig_InvalidTimeout(t *testing.T) {
+	cfg := &Config{
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 0, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for invalid timeout_seconds (0), got nil")
+	}
+}
+
+func TestValidateRalphConfig_TimeoutTooHigh(t *testing.T) {
+	cfg := &Config{
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 500, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for timeout_seconds (500), got nil")
+	}
+}
+
+func TestValidateRalphConfig_InvalidPollInterval(t *testing.T) {
+	cfg := &Config{
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 50},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for invalid poll_interval_ms (50), got nil")
+	}
+}
+
+func TestValidateRalphConfig_PollIntervalTooHigh(t *testing.T) {
+	cfg := &Config{
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 70000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for poll_interval_ms (70000), got nil")
+	}
+}
+
+func TestValidateRalphConfig_InvalidMaxIterations(t *testing.T) {
+	cfg := &Config{
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 0, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for invalid loop.max_iterations (0), got nil")
+	}
+}
+
+func TestValidateRalphConfig_MaxIterationsTooHigh(t *testing.T) {
+	cfg := &Config{
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 2000, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for loop.max_iterations (2000), got nil")
+	}
+}
+
+func TestValidateRalphConfig_InvalidCoverageThreshold(t *testing.T) {
+	cfg := &Config{
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: -1}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for invalid coverage_threshold (-1), got nil")
+	}
+}
+
+func TestValidateRalphConfig_CoverageThresholdTooHigh(t *testing.T) {
+	cfg := &Config{
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 150}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for coverage_threshold (150), got nil")
+	}
+}
+
+func TestValidateRalphConfig_InvalidSeverityThreshold(t *testing.T) {
+	cfg := &Config{
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+			Hooks: RalphHooksConfig{
+				PostToolLSP: RalphPostToolLSPConfig{
+					SeverityThreshold: "critical",
+				},
+			},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for invalid severity_threshold, got nil")
+	}
+}
+
+func TestValidateWorkflowConfig_InvalidMaxIterations(t *testing.T) {
+	cfg := &Config{
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{
+				MaxIterations:       0,
+				NoProgressThreshold: 5,
+			},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for invalid loop_prevention.max_iterations (0), got nil")
+	}
+}
+
+func TestValidateWorkflowConfig_MaxIterationsTooHigh(t *testing.T) {
+	cfg := &Config{
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{
+				MaxIterations:       2000,
+				NoProgressThreshold: 5,
+			},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for loop_prevention.max_iterations (2000), got nil")
+	}
+}
+
+func TestValidateWorkflowConfig_InvalidNoProgressThreshold(t *testing.T) {
+	cfg := &Config{
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{
+				MaxIterations:       100,
+				NoProgressThreshold: 0,
+			},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for invalid no_progress_threshold (0), got nil")
+	}
+}
+
+func TestValidateWorkflowConfig_NoProgressThresholdTooHigh(t *testing.T) {
+	cfg := &Config{
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{
+				MaxIterations:       100,
+				NoProgressThreshold: 200,
+			},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for no_progress_threshold (200), got nil")
+	}
+}
+
+func TestValidateConfig_AllSectionsValid(t *testing.T) {
+	cfg := getDefaultConfig()
+	err := ValidateConfig(cfg)
+	if err != nil {
+		t.Errorf("ValidateConfig() on default config failed: %v", err)
+	}
+}
+
+func TestLoadConfig_AllSectionFiles(t *testing.T) {
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(configPath, 0755); err != nil {
+		t.Fatalf("failed to create config directory: %v", err)
+	}
+
+	// Write multiple section files to exercise more of the loading loop
+	sections := map[string]string{
+		"user.yaml": `user:
+  name: "AllSections"
+`,
+		"language.yaml": `language:
+  conversation_language: ja
+  conversation_language_name: Japanese
+`,
+		"quality.yaml": `constitution:
+  development_mode: ddd
+  enforce_quality: true
+  test_coverage_target: 90
+`,
+		"system.yaml": `system:
+  moai:
+    version: "1.0.0"
+    update_check_frequency: weekly
+`,
+		"git-strategy.yaml": `git_strategy:
+  mode: team
+`,
+		"project.yaml": `project:
+  name: "test-project"
+  type: "web"
+`,
+		"llm.yaml": `llm:
+  mode: mashup
+`,
+		"pricing.yaml": `service:
+  type: claude_api
+  pricing_plan: max5
+`,
+		"ralph.yaml": `ralph:
+  enabled: false
+`,
+		"workflow.yaml": `workflow:
+  loop_prevention:
+    max_iterations: 50
+`,
+	}
+
+	for name, content := range sections {
+		if err := os.WriteFile(filepath.Join(configPath, name), []byte(content), 0644); err != nil {
+			t.Fatalf("failed to write %s: %v", name, err)
+		}
+	}
+
+	cfg, err := LoadConfig(tempDir)
+	if err != nil {
+		t.Fatalf("LoadConfig() with all sections failed: %v", err)
+	}
+
+	if cfg.User.Name != "AllSections" {
+		t.Errorf("user.name = %s, want AllSections", cfg.User.Name)
+	}
+	if cfg.Language.ConversationLanguage != "ja" {
+		t.Errorf("conversation_language = %s, want ja", cfg.Language.ConversationLanguage)
+	}
+	if cfg.Constitution.TestCoverageTarget != 90 {
+		t.Errorf("test_coverage_target = %d, want 90", cfg.Constitution.TestCoverageTarget)
+	}
+	if cfg.System.MoAI.Version != "1.0.0" {
+		t.Errorf("moai.version = %s, want 1.0.0", cfg.System.MoAI.Version)
+	}
+	if cfg.System.MoAI.UpdateCheckFrequency != "weekly" {
+		t.Errorf("update_check_frequency = %s, want weekly", cfg.System.MoAI.UpdateCheckFrequency)
+	}
+	if cfg.GitStrategy.Mode != "team" {
+		t.Errorf("git_strategy.mode = %s, want team", cfg.GitStrategy.Mode)
+	}
+	if cfg.LLM.Mode != "mashup" {
+		t.Errorf("llm.mode = %s, want mashup", cfg.LLM.Mode)
+	}
+	if cfg.Service.Type != "claude_api" {
+		t.Errorf("service.type = %s, want claude_api", cfg.Service.Type)
+	}
+	if cfg.Ralph.Enabled != false {
+		t.Errorf("ralph.enabled = %v, want false", cfg.Ralph.Enabled)
+	}
+	if cfg.Workflow.LoopPrevention.MaxIterations != 50 {
+		t.Errorf("loop_prevention.max_iterations = %d, want 50", cfg.Workflow.LoopPrevention.MaxIterations)
+	}
+}
+
+func TestValidateRalphConfig_ValidSeverities(t *testing.T) {
+	validSeverities := []string{"error", "warning", "info"}
+	for _, sev := range validSeverities {
+		t.Run(sev, func(t *testing.T) {
+			cfg := &Config{
+				Ralph: RalphConfig{
+					LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+					Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+					Hooks: RalphHooksConfig{
+						PostToolLSP: RalphPostToolLSPConfig{
+							SeverityThreshold: sev,
+						},
+					},
+				},
+				Workflow: WorkflowConfig{
+					LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+				},
+			}
+
+			err := ValidateConfig(cfg)
+			if err != nil {
+				t.Errorf("ValidateConfig() with severity %q failed: %v", sev, err)
+			}
+		})
+	}
+}
+
+func TestValidateGitStrategyConfig_InvalidManualWorkflow(t *testing.T) {
+	cfg := &Config{
+		GitStrategy: GitStrategyConfig{
+			Mode:   "manual",
+			Manual: GitModeConfig{Workflow: "trunk-based"},
+		},
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err == nil {
+		t.Error("expected error for invalid manual workflow, got nil")
+	}
+}
+
+func TestValidateLLMConfig_NilModels(t *testing.T) {
+	cfg := &Config{
+		LLM: LLMConfig{
+			Mode: "claude-only",
+			GLM:  GLMConfig{Models: nil},
+		},
+		Ralph: RalphConfig{
+			LSP:  RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop: RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err != nil {
+		t.Errorf("ValidateConfig() with nil GLM models should pass: %v", err)
+	}
+}
+
+func TestValidateConfig_EmptyStringsPassValidation(t *testing.T) {
+	// All empty string fields should pass validation (optional fields)
+	cfg := &Config{
+		Language:     LanguageConfig{ConversationLanguage: ""},
+		Constitution: ConstitutionConfig{DevelopmentMode: "", TestCoverageTarget: 85},
+		System: SystemConfig{
+			MoAI:   MoAIConfig{UpdateCheckFrequency: ""},
+			GitHub: GitHubConfig{SpecGitWorkflow: ""},
+		},
+		GitStrategy: GitStrategyConfig{
+			Mode:     "",
+			Manual:   GitModeConfig{Workflow: "", CommitStyle: CommitStyleConfig{Format: ""}},
+			Personal: GitModeConfig{Workflow: ""},
+			Team:     GitTeamConfig{Workflow: ""},
+		},
+		LLM:     LLMConfig{Mode: ""},
+		Service: ServiceConfig{Type: "", PricingPlan: "", ModelAllocation: ModelAllocationConfig{Strategy: ""}},
+		Ralph: RalphConfig{
+			LSP:   RalphLSPConfig{TimeoutSeconds: 15, PollIntervalMs: 1000},
+			Loop:  RalphLoopConfig{MaxIterations: 10, Completion: RalphCompletionConfig{CoverageThreshold: 85}},
+			Hooks: RalphHooksConfig{PostToolLSP: RalphPostToolLSPConfig{SeverityThreshold: ""}},
+		},
+		Workflow: WorkflowConfig{
+			LoopPrevention: LoopPreventionConfig{MaxIterations: 100, NoProgressThreshold: 5},
+		},
+	}
+
+	err := ValidateConfig(cfg)
+	if err != nil {
+		t.Errorf("ValidateConfig() with empty optional fields should pass: %v", err)
+	}
 }

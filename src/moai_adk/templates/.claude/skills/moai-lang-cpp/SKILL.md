@@ -4,7 +4,7 @@ description: >
   Modern C++ (C++23/C++20) development specialist covering RAII, smart pointers, concepts, ranges, modules, and CMake. Use when developing high-performance applications, games, system software, or embedded systems.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Grep Glob Bash mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read Grep Glob Bash(g++:*) Bash(gcc:*) Bash(clang:*) Bash(clang++:*) Bash(cmake:*) Bash(make:*) Bash(ctest:*) Bash(valgrind:*) Bash(gdb:*) mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
 metadata:
   version: "1.1.0"

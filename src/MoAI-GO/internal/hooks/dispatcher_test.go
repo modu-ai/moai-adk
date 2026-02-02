@@ -482,14 +482,14 @@ func captureDispatchStdout(t *testing.T, fn func() error) string {
 
 	_ = fn()
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = origStdout
 
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, r); err != nil {
 		t.Fatalf("Failed to read captured output: %v", err)
 	}
-	r.Close()
+	_ = r.Close()
 
 	return buf.String()
 }

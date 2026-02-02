@@ -70,6 +70,15 @@ func (d *HookDispatcher) Dispatch(ctx context.Context, input *protocol.HookInput
 	case protocol.EventCompact:
 		return d.handleSimple(ctx, "Compact")
 
+	case protocol.EventSubagentStop:
+		return d.handleSimple(ctx, "SubagentStop")
+
+	case protocol.EventUserPromptSubmit:
+		return d.handleSimple(ctx, "UserPromptSubmit")
+
+	case protocol.EventPermissionRequest:
+		return d.handleSimple(ctx, "PermissionRequest")
+
 	default:
 		return d.handleError(ctx, fmt.Errorf("unknown event: %s", input.Event))
 	}

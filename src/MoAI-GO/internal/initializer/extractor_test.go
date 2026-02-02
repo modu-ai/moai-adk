@@ -1,6 +1,8 @@
 package initializer
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -108,5 +110,78 @@ func TestExtractFile_InvalidTemplate(t *testing.T) {
 	err := e.ExtractFile("nonexistent/file/path.txt", targetPath)
 	if err == nil {
 		t.Error("expected error for nonexistent template file")
+	}
+}
+
+func TestExtractTemplates_VerifyFileContent(t *testing.T) {
+	tmpDir := t.TempDir()
+	e := NewExtractor()
+
+	if err := e.ExtractTemplates(tmpDir); err != nil {
+		t.Fatalf("ExtractTemplates() error = %v", err)
+	}
+
+	files, err := e.ListTemplates()
+	if err != nil {
+		t.Fatalf("ListTemplates() error = %v", err)
+	}
+
+	// Verify at least one extracted file has non-zero content
+	for _, f := range files {
+		targetPath := filepath.Join(tmpDir, f)
+		info, err := os.Stat(targetPath)
+		if err != nil {
+			t.Errorf("file %q not found on disk: %v", f, err)
+			continue
+		}
+		if info.Size() > 0 {
+			return // Found a non-empty file, test passes
+		}
+	}
+
+	t.Error("no non-empty files found after extraction")
+}
+
+func TestExtractFile_CreatesDirectoryStructure(t *testing.T) {
+	e := NewExtractor()
+	files, err := e.ListTemplates()
+	if err != nil {
+		t.Fatalf("ListTemplates() error = %v", err)
+	}
+	if len(files) == 0 {
+		t.Skip("no embedded templates")
+	}
+
+	tmpDir := t.TempDir()
+	// Use a deeply nested target path
+	targetPath := filepath.Join(tmpDir, "deep", "nested", "dir", "file.txt")
+
+	if err := e.ExtractFile(files[0], targetPath); err != nil {
+		t.Fatalf("ExtractFile() error = %v", err)
+	}
+
+	// Verify the deep directory was created
+	if _, err := os.Stat(filepath.Join(tmpDir, "deep", "nested", "dir")); err != nil {
+		t.Fatalf("directory structure not created: %v", err)
+	}
+}
+
+func TestListTemplates_ContainsExpectedFiles(t *testing.T) {
+	e := NewExtractor()
+	files, err := e.ListTemplates()
+	if err != nil {
+		t.Fatalf("ListTemplates() error = %v", err)
+	}
+
+	// Should contain config files from .moai/ templates
+	foundConfig := false
+	for _, f := range files {
+		if filepath.Dir(f) == ".moai/config/sections" || filepath.Dir(f) == ".moai/config" {
+			foundConfig = true
+			break
+		}
+	}
+	if !foundConfig {
+		t.Error("expected .moai/config files in template listing")
 	}
 }

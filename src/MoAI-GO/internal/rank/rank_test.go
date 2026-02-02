@@ -1380,16 +1380,16 @@ func newMockRankServer(statusCode int, body any) *httptest.Server {
 		}
 		if r.Header.Get("Authorization") == "" {
 			w.WriteHeader(http.StatusUnauthorized)
-			fmt.Fprint(w, `{"error":"missing authorization"}`)
+			_, _ = fmt.Fprint(w, `{"error":"missing authorization"}`)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(statusCode)
 		switch v := body.(type) {
 		case string:
-			fmt.Fprint(w, v)
+			_, _ = fmt.Fprint(w, v)
 		default:
-			json.NewEncoder(w).Encode(v)
+			_ = json.NewEncoder(w).Encode(v)
 		}
 	}))
 }
@@ -1456,7 +1456,7 @@ func TestGetRank_VerifiesAuthHeader(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedAuth = r.Header.Get("Authorization")
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(validRankResponse())
+		_ = json.NewEncoder(w).Encode(validRankResponse())
 	}))
 	defer server.Close()
 
@@ -1822,7 +1822,7 @@ func TestLogin_Success(t *testing.T) {
 				redirectURI, state)
 			resp, getErr := http.Get(callbackURL)
 			if getErr == nil {
-				resp.Body.Close()
+				_ = resp.Body.Close()
 			}
 		}()
 		return nil
@@ -1872,7 +1872,7 @@ func TestLogin_InvalidState(t *testing.T) {
 				redirectURI)
 			resp, getErr := http.Get(callbackURL)
 			if getErr == nil {
-				resp.Body.Close()
+				_ = resp.Body.Close()
 			}
 		}()
 		return nil
@@ -1908,7 +1908,7 @@ func TestLogin_ErrorInCallback(t *testing.T) {
 				redirectURI, state)
 			resp, getErr := http.Get(callbackURL)
 			if getErr == nil {
-				resp.Body.Close()
+				_ = resp.Body.Close()
 			}
 		}()
 		return nil
@@ -1944,7 +1944,7 @@ func TestLogin_MissingAPIKey(t *testing.T) {
 				redirectURI, state)
 			resp, getErr := http.Get(callbackURL)
 			if getErr == nil {
-				resp.Body.Close()
+				_ = resp.Body.Close()
 			}
 		}()
 		return nil
@@ -1984,7 +1984,7 @@ func TestLogin_SaveCredentialsError(t *testing.T) {
 				redirectURI, state)
 			resp, getErr := http.Get(callbackURL)
 			if getErr == nil {
-				resp.Body.Close()
+				_ = resp.Body.Close()
 			}
 		}()
 		return nil
@@ -2021,7 +2021,7 @@ func TestLogin_BrowserOpenError(t *testing.T) {
 				redirectURI, state)
 			resp, getErr := http.Get(callbackURL)
 			if getErr == nil {
-				resp.Body.Close()
+				_ = resp.Body.Close()
 			}
 		}()
 		return fmt.Errorf("browser error")

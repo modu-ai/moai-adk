@@ -209,3 +209,120 @@ func TestGetQualityGateStatus_ReturnsAllFields(t *testing.T) {
 		t.Error("Trackable is nil")
 	}
 }
+
+func TestGetQualityGateStatus_WithTestFiles(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a Go test file so Tested passes
+	if err := os.WriteFile(filepath.Join(tmpDir, "main_test.go"), []byte("package main"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	status, err := GetQualityGateStatus(tmpDir)
+	if err != nil {
+		t.Fatalf("GetQualityGateStatus() error = %v", err)
+	}
+
+	if !status.Tested.Passed {
+		t.Errorf("Tested.Passed = false, want true (test files exist)")
+	}
+}
+
+func TestGetQualityGateStatus_AllFieldsHaveMessages(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	status, err := GetQualityGateStatus(tmpDir)
+	if err != nil {
+		t.Fatalf("GetQualityGateStatus() error = %v", err)
+	}
+
+	fields := []struct {
+		name string
+		item *QualityItem
+	}{
+		{"Tested", status.Tested},
+		{"Readable", status.Readable},
+		{"Unified", status.Unified},
+		{"Secured", status.Secured},
+		{"Trackable", status.Trackable},
+	}
+
+	for _, f := range fields {
+		if f.item.Message == "" {
+			t.Errorf("%s.Message is empty", f.name)
+		}
+	}
+}
+
+// --- checkLinting ---
+
+func TestCheckLinting_ReturnsQualityItem(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	result := checkLinting(tmpDir)
+	if result == nil {
+		t.Fatal("checkLinting returned nil")
+	}
+	// When golangci-lint is not found or no Go files, should return a result
+	if result.Message == "" {
+		t.Error("Message is empty")
+	}
+}
+
+// --- checkFormatting ---
+
+func TestCheckFormatting_EmptyDir(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	result := checkFormatting(tmpDir)
+	if result == nil {
+		t.Fatal("checkFormatting returned nil")
+	}
+	if result.Message == "" {
+		t.Error("Message is empty")
+	}
+}
+
+func TestCheckFormatting_FormattedGoCode(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a properly formatted Go file
+	code := "package main\n\nfunc main() {\n}\n"
+	if err := os.WriteFile(filepath.Join(tmpDir, "main.go"), []byte(code), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	result := checkFormatting(tmpDir)
+	if result == nil {
+		t.Fatal("checkFormatting returned nil")
+	}
+	if !result.Passed {
+		t.Errorf("Passed = false, Message = %q (expected formatted code to pass)", result.Message)
+	}
+}
+
+// --- checkSecurity ---
+
+func TestCheckSecurity_ReturnsQualityItem(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	result := checkSecurity(tmpDir)
+	if result == nil {
+		t.Fatal("checkSecurity returned nil")
+	}
+	if result.Message == "" {
+		t.Error("Message is empty")
+	}
+}
+
+// --- checkConventionalCommits ---
+
+func TestCheckConventionalCommits_ReturnsQualityItem(t *testing.T) {
+	result := checkConventionalCommits()
+	if result == nil {
+		t.Fatal("checkConventionalCommits returned nil")
+	}
+	if result.Message == "" {
+		t.Error("Message is empty")
+	}
+}

@@ -1,9 +1,13 @@
 ---
 name: moai-foundation-core
 description: >
-  MoAI-ADK's foundational principles - TRUST 5, SPEC-First DDD, delegation patterns,
-  token optimization, progressive disclosure, modular architecture, agent catalog,
-  command reference, and execution rules for building AI-powered development workflows
+  Provides MoAI-ADK foundational principles including TRUST 5 quality framework,
+  SPEC-First DDD methodology, delegation patterns, progressive disclosure,
+  and agent catalog reference.
+  Use when referencing TRUST 5 gates, SPEC workflow, EARS format, DDD methodology,
+  agent delegation patterns, or MoAI orchestration rules.
+  Do NOT use for context and token management (use moai-foundation-context instead)
+  or strategic analysis (use moai-foundation-philosopher instead).
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs

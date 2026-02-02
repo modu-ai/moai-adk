@@ -10,10 +10,10 @@ import (
 	templatepkg "github.com/anthropics/moai-adk-go/pkg/templates"
 )
 
-// Protected directories that should never be modified during update
-var protectedDirs = map[string]bool{
-	".moai/project/": true,
-	".moai/specs/":   true,
+// DefaultProtectedDirs are directories that should never be modified during update
+var DefaultProtectedDirs = []string{
+	".moai/project/",
+	".moai/specs/",
 }
 
 // SyncManager handles template synchronization
@@ -22,15 +22,29 @@ type SyncManager struct {
 	templateFS        fs.FS
 	dryRun            bool
 	preserveProtected bool
+	protectedDirs     map[string]bool
 }
 
-// NewSyncManager creates a new sync manager
+// NewSyncManager creates a new sync manager with default protected directories
 func NewSyncManager(projectDir string) *SyncManager {
-	return &SyncManager{
+	sm := &SyncManager{
 		projectDir:        projectDir,
 		templateFS:        templatepkg.GetTemplatesFS(),
 		dryRun:            false,
 		preserveProtected: true,
+		protectedDirs:     make(map[string]bool),
+	}
+	for _, dir := range DefaultProtectedDirs {
+		sm.protectedDirs[dir] = true
+	}
+	return sm
+}
+
+// SetProtectedDirs replaces the protected directory list with custom values
+func (sm *SyncManager) SetProtectedDirs(dirs []string) {
+	sm.protectedDirs = make(map[string]bool)
+	for _, dir := range dirs {
+		sm.protectedDirs[dir] = true
 	}
 }
 
@@ -113,7 +127,7 @@ func (sm *SyncManager) isProtected(path string) bool {
 		return false
 	}
 
-	for protectedDir := range protectedDirs {
+	for protectedDir := range sm.protectedDirs {
 		if path == protectedDir || (len(path) >= len(protectedDir) && path[:len(protectedDir)] == protectedDir) {
 			return true
 		}

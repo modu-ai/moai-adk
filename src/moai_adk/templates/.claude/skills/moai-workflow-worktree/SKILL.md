@@ -1,8 +1,12 @@
 ---
 name: moai-workflow-worktree
 description: >
-  Git worktree management for parallel SPEC development with isolated
-  workspaces, automatic registration, and seamless MoAI-ADK integration
+  Git worktree management for parallel SPEC development with isolated workspaces,
+  automatic branch registration, and seamless MoAI-ADK integration.
+  Use when setting up parallel development environments, creating isolated SPEC
+  workspaces, managing git worktrees, or working on multiple features simultaneously.
+  Do NOT use for regular git operations like commit or merge
+  (use manager-git agent instead).
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Write Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs

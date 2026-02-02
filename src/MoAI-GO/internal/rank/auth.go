@@ -96,7 +96,7 @@ func Login() (*Credentials, error) {
 		// Verify state parameter
 		if query.Get("state") != state {
 			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "<html><body><h2>Authentication failed: invalid state</h2></body></html>")
+			_, _ = fmt.Fprintf(w, "<html><body><h2>Authentication failed: invalid state</h2></body></html>")
 			resultCh <- &OAuthResult{Error: "invalid state parameter"}
 			return
 		}
@@ -104,7 +104,7 @@ func Login() (*Credentials, error) {
 		// Check for error
 		if errMsg := query.Get("error"); errMsg != "" {
 			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "<html><body><h2>Authentication failed: %s</h2></body></html>", errMsg)
+			_, _ = fmt.Fprintf(w, "<html><body><h2>Authentication failed: %s</h2></body></html>", errMsg)
 			resultCh <- &OAuthResult{Error: errMsg}
 			return
 		}
@@ -119,13 +119,13 @@ func Login() (*Credentials, error) {
 
 		if result.APIKey == "" {
 			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "<html><body><h2>Authentication failed: no API key received</h2></body></html>")
+			_, _ = fmt.Fprintf(w, "<html><body><h2>Authentication failed: no API key received</h2></body></html>")
 			resultCh <- &OAuthResult{Error: "no API key in callback"}
 			return
 		}
 
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "<html><body><h2>Authentication successful!</h2><p>You can close this window.</p></body></html>")
+		_, _ = fmt.Fprintf(w, "<html><body><h2>Authentication successful!</h2><p>You can close this window.</p></body></html>")
 		resultCh <- result
 	})
 

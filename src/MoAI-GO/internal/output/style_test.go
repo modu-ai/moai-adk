@@ -2,6 +2,8 @@ package output
 
 import (
 	"testing"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 // --- Color constants ---
@@ -37,27 +39,27 @@ func TestColorConstants(t *testing.T) {
 
 func TestStylesNotNil(t *testing.T) {
 	// Verify all styles can render without panic
-	styles := map[string]func(string) string{
-		"HeaderStyle":      HeaderStyle.Render,
-		"SuccessStyle":     SuccessStyle.Render,
-		"WarningStyle":     WarningStyle.Render,
-		"ErrorStyle":       ErrorStyle.Render,
-		"InfoStyle":        InfoStyle.Render,
-		"MutedStyle":       MutedStyle.Render,
-		"CheckmarkStyle":   CheckmarkStyle.Render,
-		"CrossmarkStyle":   CrossmarkStyle.Render,
-		"BulletStyle":      BulletStyle.Render,
-		"TableHeaderStyle": TableHeaderStyle.Render,
-		"TableCellStyle":   TableCellStyle.Render,
-		"TableBorderStyle": TableBorderStyle.Render,
-		"SectionStyle":     SectionStyle.Render,
-		"SubsectionStyle":  SubsectionStyle.Render,
-		"CodeStyle":        CodeStyle.Render,
+	styles := map[string]lipgloss.Style{
+		"HeaderStyle":      HeaderStyle,
+		"SuccessStyle":     SuccessStyle,
+		"WarningStyle":     WarningStyle,
+		"ErrorStyle":       ErrorStyle,
+		"InfoStyle":        InfoStyle,
+		"MutedStyle":       MutedStyle,
+		"CheckmarkStyle":   CheckmarkStyle,
+		"CrossmarkStyle":   CrossmarkStyle,
+		"BulletStyle":      BulletStyle,
+		"TableHeaderStyle": TableHeaderStyle,
+		"TableCellStyle":   TableCellStyle,
+		"TableBorderStyle": TableBorderStyle,
+		"SectionStyle":     SectionStyle,
+		"SubsectionStyle":  SubsectionStyle,
+		"CodeStyle":        CodeStyle,
 	}
 
-	for name, renderFn := range styles {
+	for name, style := range styles {
 		t.Run(name, func(t *testing.T) {
-			result := renderFn("test text")
+			result := style.Render("test text")
 			if result == "" {
 				t.Errorf("%s.Render returned empty string", name)
 			}
@@ -69,25 +71,22 @@ func TestStylesRenderContent(t *testing.T) {
 	// Verify styles preserve the input text content
 	input := "Hello World"
 
-	tests := []struct {
-		name   string
-		render func(string) string
-	}{
-		{"HeaderStyle", HeaderStyle.Render},
-		{"SuccessStyle", SuccessStyle.Render},
-		{"WarningStyle", WarningStyle.Render},
-		{"ErrorStyle", ErrorStyle.Render},
-		{"InfoStyle", InfoStyle.Render},
-		{"MutedStyle", MutedStyle.Render},
+	styles := map[string]lipgloss.Style{
+		"HeaderStyle":  HeaderStyle,
+		"SuccessStyle": SuccessStyle,
+		"WarningStyle": WarningStyle,
+		"ErrorStyle":   ErrorStyle,
+		"InfoStyle":    InfoStyle,
+		"MutedStyle":   MutedStyle,
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := tt.render(input)
+	for name, style := range styles {
+		t.Run(name, func(t *testing.T) {
+			result := style.Render(input)
 			// The rendered output should contain the original text
 			// (it may also contain ANSI escape codes)
 			if len(result) < len(input) {
-				t.Errorf("%s.Render(%q) = %q, shorter than input", tt.name, input, result)
+				t.Errorf("%s.Render(%q) = %q, shorter than input", name, input, result)
 			}
 		})
 	}
@@ -95,18 +94,17 @@ func TestStylesRenderContent(t *testing.T) {
 
 func TestStylesRenderEmptyString(t *testing.T) {
 	// Verify styles handle empty strings without panic
-	styles := []func(string) string{
-		HeaderStyle.Render,
-		SuccessStyle.Render,
-		WarningStyle.Render,
-		ErrorStyle.Render,
-		InfoStyle.Render,
-		MutedStyle.Render,
+	styles := []lipgloss.Style{
+		HeaderStyle,
+		SuccessStyle,
+		WarningStyle,
+		ErrorStyle,
+		InfoStyle,
+		MutedStyle,
 	}
 
-	for i, renderFn := range styles {
+	for _, style := range styles {
 		// Should not panic
-		_ = renderFn("")
-		_ = i
+		_ = style.Render("")
 	}
 }

@@ -1,8 +1,12 @@
 ---
 name: moai-workflow-templates
 description: >
-  Enterprise template management with code boilerplates, feedback templates,
-  and project optimization workflows
+  Template management system for code boilerplates, feedback templates, scaffolding,
+  and project optimization workflows.
+  Use when creating code templates, generating boilerplate files, managing project
+  scaffolding, optimizing template performance, or preparing GitHub issue templates.
+  Do NOT use for SPEC document creation (use moai-workflow-spec instead)
+  or documentation generation (use moai-workflow-project instead).
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Write Edit Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs

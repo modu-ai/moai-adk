@@ -5,7 +5,7 @@ description: >
   and beautiful UI components. Use when implementing modern auth with great UX.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Write Bash Grep Glob
+allowed-tools: Read Write Bash(npm:*) Bash(npx:*) Grep Glob
 user-invocable: false
 metadata:
   version: "2.1.0"

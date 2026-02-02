@@ -64,7 +64,7 @@ constitution:
   # LSP integration with TRUST 5
   lsp_integration:
     # LSP as quality indicator for each TRUST 5 pillar
-    truct5_integration:
+    trust5_integration:
       tested:
         - unit_tests_pass
         - lsp_type_errors == 0 # Type safety verified

@@ -2,10 +2,14 @@
 name: moai-tool-ast-grep
 description: >
   AST-based structural code search, security scanning, and refactoring using ast-grep
-  (sg CLI). Supports 40+ languages with pattern matching and code transformation.
+  (sg CLI) with pattern matching and code transformation across 40+ languages.
+  Use when performing structural code search, AST-based refactoring, codemod operations,
+  security pattern scanning, or syntax-aware code transformations across files.
+  Do NOT use for simple text search (use Grep tool instead)
+  or full codebase exploration (use Explore agent instead).
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Grep Glob Bash mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read Grep Glob Bash(sg:*) Bash(ast-grep:*) mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
 metadata:
   version: "1.2.0"

@@ -184,8 +184,8 @@ func TestStripANSI(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := stripANSI(tt.input)
 			// For plain text, result should be the same
-			if tt.input == got || got == "" && tt.input == "" {
-				// OK - either same or both empty
+			if tt.input != got && (got != "" || tt.input != "") {
+				t.Errorf("stripANSI changed plain text: input=%q, got=%q", tt.input, got)
 			}
 			// At minimum, should not be longer than input for plain text
 			if len(got) > len(tt.input)+len(tt.input) {

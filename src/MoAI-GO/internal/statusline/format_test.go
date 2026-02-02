@@ -1,6 +1,7 @@
 package statusline
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -235,5 +236,108 @@ func TestFormat_StatusTextPlaceholder(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("statustext = %q, expected one of %v", result, validTexts)
+	}
+}
+
+// --- GetTestCoverage ---
+
+func TestGetTestCoverage_ReturnsString(t *testing.T) {
+	tmpDir := t.TempDir()
+	f := NewFormatter(tmpDir, "1.0.0")
+
+	result := f.GetTestCoverage()
+	// For a temp dir with no Go module, should return "N/A"
+	if result != "N/A" {
+		t.Logf("GetTestCoverage() = %q (may vary by environment)", result)
+	}
+	if result == "" {
+		t.Error("GetTestCoverage() returned empty string")
+	}
+}
+
+func TestGetTestCoverage_WithGoProject(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a minimal Go module with a test
+	goMod := "module testmod\n\ngo 1.21\n"
+	mainGo := "package testmod\n\nfunc Add(a, b int) int { return a + b }\n"
+	testGo := "package testmod\n\nimport \"testing\"\n\nfunc TestAdd(t *testing.T) {\n\tif Add(1,2) != 3 { t.Error(\"fail\") }\n}\n"
+
+	if err := os.WriteFile(tmpDir+"/go.mod", []byte(goMod), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(tmpDir+"/main.go", []byte(mainGo), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(tmpDir+"/main_test.go", []byte(testGo), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	f := NewFormatter(tmpDir, "1.0.0")
+	result := f.GetTestCoverage()
+
+	// Should return a percentage like "100.0%"
+	if result == "N/A" {
+		t.Log("GetTestCoverage returned N/A - go test may not be available")
+		return
+	}
+	if !strings.HasSuffix(result, "%") {
+		t.Errorf("GetTestCoverage() = %q, expected percentage suffix", result)
+	}
+}
+
+// --- Format with status placeholder ---
+
+func TestFormat_StatusPlaceholder(t *testing.T) {
+	tmpDir := t.TempDir()
+	f := NewFormatter(tmpDir, "1.0.0")
+
+	result, err := f.Format("{status}")
+	if err != nil {
+		t.Fatalf("Format() error = %v", err)
+	}
+
+	validTexts := []string{"Clean", "Modified"}
+	found := false
+	for _, text := range validTexts {
+		if result == text {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("status = %q, expected one of %v", result, validTexts)
+	}
+}
+
+// --- Format empty version ---
+
+func TestFormat_EmptyVersion(t *testing.T) {
+	tmpDir := t.TempDir()
+	f := NewFormatter(tmpDir, "")
+
+	result, err := f.Format("{version}")
+	if err != nil {
+		t.Fatalf("Format() error = %v", err)
+	}
+	if result != "v" {
+		t.Errorf("Format({version}) = %q, want %q", result, "v")
+	}
+}
+
+// --- Format all placeholders together ---
+
+func TestFormat_AllPlaceholders(t *testing.T) {
+	tmpDir := t.TempDir()
+	f := NewFormatter(tmpDir, "1.0.0")
+
+	result, err := f.Format("{version} {branch} {state} {specs} {quality} {status} {statustext}")
+	if err != nil {
+		t.Fatalf("Format() error = %v", err)
+	}
+
+	// Should have replaced all placeholders - no curly braces remaining
+	if strings.Contains(result, "{") || strings.Contains(result, "}") {
+		t.Errorf("unreplaced placeholders in result: %q", result)
 	}
 }

@@ -6,7 +6,7 @@ description: >
   visualizations, or adding SVG animations.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Grep Glob Bash WebFetch
+allowed-tools: Read Grep Glob Bash(svgo:*) Bash(npx:*) WebFetch
 user-invocable: false
 metadata:
   version: "1.0.0"

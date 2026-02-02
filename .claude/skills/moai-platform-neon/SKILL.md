@@ -6,7 +6,7 @@ description: >
   preview environments, or optimizing database costs.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Write Bash Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read Write Bash(psql:*) Bash(npm:*) Bash(npx:*) Bash(neonctl:*) Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
 metadata:
   version: "2.1.0"

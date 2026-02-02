@@ -7,7 +7,7 @@ description: >
   documentation workflows.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Write Edit Grep Glob Bash mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read Write Edit Grep Glob Bash(npm:*) Bash(npx:*) Bash(git:*) Bash(sphinx-build:*) Bash(mkdocs:*) Bash(typedoc:*) mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
 metadata:
   version: "2.1.0"

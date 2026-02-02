@@ -3,17 +3,20 @@ package protocol
 // Timeout configuration for different hook events
 // Matches Python timeout specifications
 var HookTimeouts = map[HookEvent]int{
-	EventSessionStart: 5,  // 5 seconds
-	EventPreTool:      5,  // 5 seconds
-	EventPostTool:     30, // 30 seconds (format)
-	EventSessionEnd:   5,  // 5 seconds
-	EventPreCompact:   3,  // 3 seconds
-	EventStop:         5,  // 5 seconds
-	EventNotification: 5,  // 5 seconds
-	EventQualityGate:  10, // 10 seconds
-	EventCommit:       5,  // 5 seconds
-	EventPush:         5,  // 5 seconds
-	EventCompact:      5,  // 5 seconds
+	EventSessionStart:      5,  // 5 seconds
+	EventPreTool:           5,  // 5 seconds
+	EventPostTool:          30, // 30 seconds (format)
+	EventSessionEnd:        5,  // 5 seconds
+	EventPreCompact:        3,  // 3 seconds
+	EventStop:              5,  // 5 seconds
+	EventNotification:      5,  // 5 seconds
+	EventQualityGate:       10, // 10 seconds
+	EventCommit:            5,  // 5 seconds
+	EventPush:              5,  // 5 seconds
+	EventCompact:           5,  // 5 seconds
+	EventSubagentStop:      5,  // 5 seconds
+	EventUserPromptSubmit:  5,  // 5 seconds
+	EventPermissionRequest: 5,  // 5 seconds
 }
 
 // GetTimeout returns the timeout in seconds for a given event

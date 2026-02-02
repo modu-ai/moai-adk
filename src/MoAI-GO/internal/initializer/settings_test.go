@@ -136,7 +136,7 @@ func TestWriteToFile(t *testing.T) {
 	}
 
 	// Verify it's valid JSON
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	if err := json.Unmarshal(data, &parsed); err != nil {
 		t.Fatalf("settings.json is not valid JSON: %v", err)
 	}
@@ -193,5 +193,96 @@ func TestWriteToFile_JSONIsIndented(t *testing.T) {
 	}
 	if !strings.Contains(content, "  ") {
 		t.Error("settings.json is not indented (no spaces)")
+	}
+}
+
+// --- SettingsJSON struct ---
+
+func TestSettingsJSONStruct(t *testing.T) {
+	s := SettingsJSON{
+		Hooks: map[string]HookConfig{
+			"SessionStart": {Type: "command", Command: "echo hello"},
+		},
+	}
+
+	data, err := json.Marshal(s)
+	if err != nil {
+		t.Fatalf("json.Marshal error: %v", err)
+	}
+
+	var parsed SettingsJSON
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
+
+	hook, exists := parsed.Hooks["SessionStart"]
+	if !exists {
+		t.Fatal("SessionStart hook not found after roundtrip")
+	}
+	if hook.Type != "command" {
+		t.Errorf("hook Type = %q, want %q", hook.Type, "command")
+	}
+	if hook.Command != "echo hello" {
+		t.Errorf("hook Command = %q, want %q", hook.Command, "echo hello")
+	}
+}
+
+func TestHookConfigStruct(t *testing.T) {
+	hc := HookConfig{Type: "command", Command: "/usr/bin/moai hook session-start"}
+	if hc.Type != "command" {
+		t.Errorf("Type = %q", hc.Type)
+	}
+	if hc.Command == "" {
+		t.Error("Command is empty")
+	}
+}
+
+func TestWriteToFile_Overwrite(t *testing.T) {
+	sg, err := NewSettingsGenerator()
+	if err != nil {
+		t.Fatalf("NewSettingsGenerator() error = %v", err)
+	}
+
+	tmpDir := t.TempDir()
+
+	// Write once
+	if err := sg.WriteToFile(tmpDir); err != nil {
+		t.Fatalf("first WriteToFile() error = %v", err)
+	}
+
+	// Write again (should overwrite without error)
+	if err := sg.WriteToFile(tmpDir); err != nil {
+		t.Fatalf("second WriteToFile() error = %v", err)
+	}
+
+	// Verify file still valid
+	settingsFile := filepath.Join(tmpDir, ".claude", "settings.json")
+	data, err := os.ReadFile(settingsFile)
+	if err != nil {
+		t.Fatalf("failed to read settings.json: %v", err)
+	}
+
+	var parsed map[string]any
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("settings.json is not valid JSON: %v", err)
+	}
+}
+
+func TestGenerate_NoShellWrapper(t *testing.T) {
+	sg, err := NewSettingsGenerator()
+	if err != nil {
+		t.Fatalf("NewSettingsGenerator() error = %v", err)
+	}
+
+	settings, err := sg.Generate()
+	if err != nil {
+		t.Fatalf("Generate() error = %v", err)
+	}
+
+	// Verify NO shell wrapper (direct binary execution)
+	for hookName, hook := range settings.Hooks {
+		if strings.Contains(hook.Command, "bash -l -c") {
+			t.Errorf("hook %q should not contain shell wrapper, got %q", hookName, hook.Command)
+		}
 	}
 }

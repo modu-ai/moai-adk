@@ -142,8 +142,8 @@ func TestUpdateGLMKey(t *testing.T) {
 	origHome := os.Getenv("HOME")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
-	defer func() { //nolint:errcheck
-		os.Setenv("HOME", origHome)
+	defer func() {
+		_ = os.Setenv("HOME", origHome)
 	}()
 
 	err := UpdateGLMKey("test-api-key-12345")

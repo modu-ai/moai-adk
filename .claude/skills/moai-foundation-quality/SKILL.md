@@ -1,6 +1,12 @@
 ---
 name: moai-foundation-quality
-description: Enterprise code quality orchestrator with TRUST 5 validation, proactive analysis, and automated best practices enforcement
+description: >
+  Code quality orchestrator enforcing TRUST 5 validation, proactive code analysis,
+  linting standards, and automated best practices.
+  Use when performing code review, quality gate checks, lint configuration,
+  TRUST 5 compliance validation, or establishing coding standards.
+  Do NOT use for writing tests (use moai-workflow-testing instead)
+  or debugging runtime errors (use expert-debug agent instead).
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs

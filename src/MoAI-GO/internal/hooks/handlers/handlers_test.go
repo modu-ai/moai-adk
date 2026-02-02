@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -8,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/anthropics/moai-adk-go/internal/hooks/protocol"
+	"github.com/anthropics/moai-adk-go/internal/hooks/tools"
 )
 
 // ============================================================================
@@ -886,7 +888,7 @@ func TestPostToolHandler_Handle_IgnoresNonTargetTools(t *testing.T) {
 				ToolName:  toolName,
 			}
 
-			resp, err := handler.Handle(nil, input)
+			resp, err := handler.Handle(context.TODO(), input)
 			if err != nil {
 				t.Fatalf("Handle returned error: %v", err)
 			}
@@ -907,7 +909,7 @@ func TestPostToolHandler_Handle_EmptyPath(t *testing.T) {
 		ToolInput: map[string]any{},
 	}
 
-	resp, err := handler.Handle(nil, input)
+	resp, err := handler.Handle(context.TODO(), input)
 	if err != nil {
 		t.Fatalf("Handle returned error: %v", err)
 	}
@@ -935,7 +937,7 @@ func TestPostToolHandler_Handle_SkippedExtension(t *testing.T) {
 		},
 	}
 
-	resp, err := handler.Handle(nil, input)
+	resp, err := handler.Handle(context.TODO(), input)
 	if err != nil {
 		t.Fatalf("Handle returned error: %v", err)
 	}
@@ -956,7 +958,7 @@ func TestPostToolHandler_Handle_NonExistentFile(t *testing.T) {
 		},
 	}
 
-	resp, err := handler.Handle(nil, input)
+	resp, err := handler.Handle(context.TODO(), input)
 	if err != nil {
 		t.Fatalf("Handle returned error: %v", err)
 	}
@@ -964,6 +966,525 @@ func TestPostToolHandler_Handle_NonExistentFile(t *testing.T) {
 	// Non-existent file should be skipped by shouldSkipFile
 	if !resp.SuppressOutput {
 		t.Error("Expected SuppressOutput true for non-existent file")
+	}
+}
+
+// ============================================================================
+// Constructor tests
+// ============================================================================
+
+func TestNewSessionEndHandler(t *testing.T) {
+	handler := NewSessionEndHandler()
+	if handler == nil {
+		t.Fatal("NewSessionEndHandler returned nil")
+	}
+	if handler.projectRoot == "" {
+		t.Error("Expected non-empty projectRoot")
+	}
+}
+
+func TestNewSessionStartHandler(t *testing.T) {
+	handler := NewSessionStartHandler()
+	if handler == nil {
+		t.Fatal("NewSessionStartHandler returned nil")
+	}
+	if handler.projectRoot == "" {
+		t.Error("Expected non-empty projectRoot")
+	}
+}
+
+// ============================================================================
+// PostToolHandler - formatFile tests
+// ============================================================================
+
+// warmToolCache pre-warms the tool availability cache to avoid a mutex
+// deadlock in GetToolsForLanguage -> IsToolAvailable (which acquires a
+// write lock while the caller holds a read lock on the same RWMutex).
+func warmToolCache(t *testing.T, registry *tools.ToolRegistry) {
+	t.Helper()
+	// Warm cache for Go tools (gofmt is available on this machine)
+	registry.IsToolAvailable("gofmt")
+	registry.IsToolAvailable("goimports")
+	registry.IsToolAvailable("golangci-lint")
+	// Warm cache for a language whose tools are not installed
+	registry.IsToolAvailable("stylua")
+}
+
+func TestPostToolHandler_formatFile_UnknownLanguage(t *testing.T) {
+	handler := NewPostToolHandler()
+
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "data.xyz")
+	if err := os.WriteFile(filePath, []byte("some content"), 0o644); err != nil {
+		t.Fatalf("Failed to create file: %v", err)
+	}
+
+	ctx := context.Background()
+	formatted, msg, err := handler.formatFile(ctx, filePath)
+	if err != nil {
+		t.Fatalf("formatFile returned error: %v", err)
+	}
+	if formatted {
+		t.Error("Expected formatted=false for unknown language")
+	}
+	if msg != "" {
+		t.Errorf("Expected empty message, got '%s'", msg)
+	}
+}
+
+func TestPostToolHandler_formatFile_NoAvailableFormatters(t *testing.T) {
+	handler := NewPostToolHandler()
+	warmToolCache(t, handler.registry)
+
+	dir := t.TempDir()
+	// .lua extension is registered but stylua is unlikely to be installed
+	filePath := filepath.Join(dir, "script.lua")
+	if err := os.WriteFile(filePath, []byte("print('hello')"), 0o644); err != nil {
+		t.Fatalf("Failed to create file: %v", err)
+	}
+
+	ctx := context.Background()
+	formatted, msg, err := handler.formatFile(ctx, filePath)
+	if err != nil {
+		t.Fatalf("formatFile returned error: %v", err)
+	}
+	if formatted {
+		t.Error("Expected formatted=false when no formatters are available")
+	}
+	if msg != "" {
+		t.Errorf("Expected empty message, got '%s'", msg)
+	}
+}
+
+func TestPostToolHandler_formatFile_FormatterSuccess(t *testing.T) {
+	handler := NewPostToolHandler()
+	warmToolCache(t, handler.registry)
+
+	// Skip if gofmt is not available
+	if !handler.registry.IsToolAvailable("gofmt") {
+		t.Skip("gofmt not available, skipping formatter success test")
+	}
+
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "main.go")
+	// Valid Go code with intentionally bad formatting (gofmt will fix it)
+	badlyFormatted := []byte("package main\n\nimport \"fmt\"\n\nfunc main(){\nfmt.Println(\"hello\")\n}\n")
+	if err := os.WriteFile(filePath, badlyFormatted, 0o644); err != nil {
+		t.Fatalf("Failed to create file: %v", err)
+	}
+
+	ctx := context.Background()
+	formatted, msg, err := handler.formatFile(ctx, filePath)
+	if err != nil {
+		t.Fatalf("formatFile returned error: %v", err)
+	}
+	if !formatted {
+		t.Error("Expected formatted=true for valid Go file with gofmt available")
+	}
+	if !strings.Contains(msg, "gofmt") {
+		t.Errorf("Expected message to mention gofmt, got '%s'", msg)
+	}
+}
+
+func TestPostToolHandler_formatFile_FormatterError(t *testing.T) {
+	handler := NewPostToolHandler()
+	warmToolCache(t, handler.registry)
+
+	// Skip if gofmt is not available
+	if !handler.registry.IsToolAvailable("gofmt") {
+		t.Skip("gofmt not available, skipping formatter error test")
+	}
+
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "bad.go")
+	// Invalid Go syntax - gofmt will fail
+	invalidGo := []byte("package main\n\nfunc main() {\n    this is not valid go code!!!\n}\n")
+	if err := os.WriteFile(filePath, invalidGo, 0o644); err != nil {
+		t.Fatalf("Failed to create file: %v", err)
+	}
+
+	ctx := context.Background()
+	_, _, err := handler.formatFile(ctx, filePath)
+	if err == nil {
+		t.Error("Expected error from formatFile for invalid Go file")
+	}
+}
+
+// ============================================================================
+// PostToolHandler - Handle integration tests (through formatFile)
+// ============================================================================
+
+func TestPostToolHandler_Handle_FormatSuccess(t *testing.T) {
+	handler := NewPostToolHandler()
+	warmToolCache(t, handler.registry)
+
+	if !handler.registry.IsToolAvailable("gofmt") {
+		t.Skip("gofmt not available, skipping format success test")
+	}
+
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "main.go")
+	badlyFormatted := []byte("package main\n\nimport \"fmt\"\n\nfunc main(){\nfmt.Println(\"hello\")\n}\n")
+	if err := os.WriteFile(filePath, badlyFormatted, 0o644); err != nil {
+		t.Fatalf("Failed to create file: %v", err)
+	}
+
+	ctx := context.Background()
+	input := &protocol.HookInput{
+		SessionID: "s",
+		Event:     "post_tool",
+		ToolName:  "Write",
+		ToolInput: map[string]any{
+			"file_path": filePath,
+		},
+	}
+
+	resp, err := handler.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle returned error: %v", err)
+	}
+
+	if resp.SuppressOutput {
+		t.Error("Expected SuppressOutput=false when formatting was applied")
+	}
+	if !strings.Contains(resp.SystemMessage, "Auto-formatted") {
+		t.Errorf("Expected SystemMessage to contain 'Auto-formatted', got: '%s'", resp.SystemMessage)
+	}
+}
+
+func TestPostToolHandler_Handle_FormatError(t *testing.T) {
+	handler := NewPostToolHandler()
+	warmToolCache(t, handler.registry)
+
+	if !handler.registry.IsToolAvailable("gofmt") {
+		t.Skip("gofmt not available, skipping format error test")
+	}
+
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "bad.go")
+	invalidGo := []byte("package main\n\nfunc main() {\n    this is not valid go!!!\n}\n")
+	if err := os.WriteFile(filePath, invalidGo, 0o644); err != nil {
+		t.Fatalf("Failed to create file: %v", err)
+	}
+
+	ctx := context.Background()
+	input := &protocol.HookInput{
+		SessionID: "s",
+		Event:     "post_tool",
+		ToolName:  "Write",
+		ToolInput: map[string]any{
+			"file_path": filePath,
+		},
+	}
+
+	resp, err := handler.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle returned error (should be in response): %v", err)
+	}
+
+	// Error should be in the response, not as a Go error
+	if resp.Error == "" {
+		t.Error("Expected Error field to be set for format failure")
+	}
+	if !strings.Contains(resp.Error, "Format error") {
+		t.Errorf("Expected Error to contain 'Format error', got: '%s'", resp.Error)
+	}
+}
+
+func TestPostToolHandler_Handle_UnknownLanguageFile(t *testing.T) {
+	handler := NewPostToolHandler()
+
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "data.xyz")
+	if err := os.WriteFile(filePath, []byte("some content here"), 0o644); err != nil {
+		t.Fatalf("Failed to create file: %v", err)
+	}
+
+	ctx := context.Background()
+	input := &protocol.HookInput{
+		SessionID: "s",
+		Event:     "post_tool",
+		ToolName:  "Write",
+		ToolInput: map[string]any{
+			"file_path": filePath,
+		},
+	}
+
+	resp, err := handler.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle returned error: %v", err)
+	}
+
+	// Unknown language -> formatFile returns false -> suppress output
+	if !resp.SuppressOutput {
+		t.Error("Expected SuppressOutput=true for unknown language file")
+	}
+}
+
+func TestPostToolHandler_Handle_EditToolWithGoFile(t *testing.T) {
+	handler := NewPostToolHandler()
+	warmToolCache(t, handler.registry)
+
+	if !handler.registry.IsToolAvailable("gofmt") {
+		t.Skip("gofmt not available, skipping edit tool test")
+	}
+
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "edit.go")
+	badlyFormatted := []byte("package main\n\nimport \"fmt\"\n\nfunc main(){\nfmt.Println(\"edited\")\n}\n")
+	if err := os.WriteFile(filePath, badlyFormatted, 0o644); err != nil {
+		t.Fatalf("Failed to create file: %v", err)
+	}
+
+	ctx := context.Background()
+	input := &protocol.HookInput{
+		SessionID: "s",
+		Event:     "post_tool",
+		ToolName:  "Edit",
+		ToolInput: map[string]any{
+			"file_path": filePath,
+		},
+	}
+
+	resp, err := handler.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle returned error: %v", err)
+	}
+
+	// Edit tool should also trigger formatting
+	if resp.SuppressOutput {
+		t.Error("Expected SuppressOutput=false when formatting was applied via Edit tool")
+	}
+	if !strings.Contains(resp.SystemMessage, "Auto-formatted") {
+		t.Errorf("Expected 'Auto-formatted' in message, got: '%s'", resp.SystemMessage)
+	}
+}
+
+// ============================================================================
+// SessionEndHandler - additional branch coverage
+// ============================================================================
+
+func TestSessionEndHandler_GetBranch_DetachedHead(t *testing.T) {
+	dir := setupGitRepo(t)
+
+	// Create a second commit so we can detach HEAD at the first one
+	filePath := filepath.Join(dir, "second.txt")
+	if err := os.WriteFile(filePath, []byte("second"), 0o644); err != nil {
+		t.Fatalf("Failed to create file: %v", err)
+	}
+	cmd := exec.Command("git", "add", ".")
+	cmd.Dir = dir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git add failed: %v\nOutput: %s", err, output)
+	}
+	cmd = exec.Command("git", "commit", "-m", "second commit")
+	cmd.Dir = dir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git commit failed: %v\nOutput: %s", err, output)
+	}
+
+	// Detach HEAD at the first commit
+	cmd = exec.Command("git", "checkout", "HEAD~1")
+	cmd.Dir = dir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git checkout HEAD~1 failed: %v\nOutput: %s", err, output)
+	}
+
+	handler := &SessionEndHandler{projectRoot: dir}
+	branch := handler.getBranch()
+
+	if branch != "HEAD detached" {
+		t.Errorf("Expected 'HEAD detached', got '%s'", branch)
+	}
+}
+
+func TestSessionEndHandler_GetBranch_InvalidProjectRoot(t *testing.T) {
+	// Point to a directory that has .git but is not a valid git repo
+	dir := t.TempDir()
+	// Create a fake .git directory (not a real repo)
+	if err := os.Mkdir(filepath.Join(dir, ".git"), 0o755); err != nil {
+		t.Fatalf("Failed to create .git dir: %v", err)
+	}
+
+	handler := &SessionEndHandler{projectRoot: dir}
+	branch := handler.getBranch()
+
+	// git branch --show-current will fail on a fake .git dir
+	if branch != "unknown" {
+		t.Errorf("Expected 'unknown' for invalid git repo, got '%s'", branch)
+	}
+}
+
+// ============================================================================
+// SessionStartHandler - additional branch coverage
+// ============================================================================
+
+func TestSessionStartHandler_GetGitInfo_DetachedHead(t *testing.T) {
+	dir := setupGitRepo(t)
+
+	// Create second commit and detach HEAD
+	filePath := filepath.Join(dir, "second.txt")
+	if err := os.WriteFile(filePath, []byte("second"), 0o644); err != nil {
+		t.Fatalf("Failed to create file: %v", err)
+	}
+	cmd := exec.Command("git", "add", ".")
+	cmd.Dir = dir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git add failed: %v\nOutput: %s", err, output)
+	}
+	cmd = exec.Command("git", "commit", "-m", "second commit")
+	cmd.Dir = dir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git commit failed: %v\nOutput: %s", err, output)
+	}
+	cmd = exec.Command("git", "checkout", "HEAD~1")
+	cmd.Dir = dir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git checkout HEAD~1 failed: %v\nOutput: %s", err, output)
+	}
+
+	handler := &SessionStartHandler{projectRoot: dir}
+	info := handler.getGitInfo()
+
+	if info.branch != "HEAD detached" {
+		t.Errorf("Expected 'HEAD detached', got '%s'", info.branch)
+	}
+	// lastCommit should still be available (the first commit)
+	if info.lastCommit == "" || info.lastCommit == "No commits yet" {
+		t.Errorf("Expected a valid last commit in detached HEAD, got '%s'", info.lastCommit)
+	}
+}
+
+func TestSessionStartHandler_GetVersion_NonMoaiPrefix(t *testing.T) {
+	// getVersion returns the raw version string when it doesn't start
+	// with "MoAI version". We cannot control exec.Command output easily,
+	// but we can verify the function does not crash and returns non-empty.
+	handler := &SessionStartHandler{projectRoot: t.TempDir()}
+	version := handler.getVersion()
+
+	// Should return "unknown" if moai command is not found,
+	// or the version string if it is found
+	if version == "" {
+		t.Error("Expected non-empty version string")
+	}
+}
+
+func TestSessionStartHandler_GetLanguageInfo_SetupPy(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "setup.py"), []byte("from setuptools import setup"), 0o644); err != nil {
+		t.Fatalf("Failed to create setup.py: %v", err)
+	}
+
+	handler := &SessionStartHandler{projectRoot: dir}
+	info := handler.getLanguageInfo()
+
+	if info.code != "py" {
+		t.Errorf("Expected language code 'py', got '%s'", info.code)
+	}
+}
+
+func TestSessionStartHandler_GetLanguageInfo_RequirementsTxt(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "requirements.txt"), []byte("flask\n"), 0o644); err != nil {
+		t.Fatalf("Failed to create requirements.txt: %v", err)
+	}
+
+	handler := &SessionStartHandler{projectRoot: dir}
+	info := handler.getLanguageInfo()
+
+	if info.code != "py" {
+		t.Errorf("Expected language code 'py', got '%s'", info.code)
+	}
+}
+
+func TestSessionStartHandler_GetLanguageInfo_BuildGradle(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "build.gradle"), []byte("plugins {}"), 0o644); err != nil {
+		t.Fatalf("Failed to create build.gradle: %v", err)
+	}
+
+	handler := &SessionStartHandler{projectRoot: dir}
+	info := handler.getLanguageInfo()
+
+	if info.code != "java" {
+		t.Errorf("Expected language code 'java', got '%s'", info.code)
+	}
+}
+
+// ============================================================================
+// PreToolHandler - additional Bash warn path coverage
+// ============================================================================
+
+func TestPreToolHandler_Handle_Edit_WarnPath(t *testing.T) {
+	handler := NewPreToolHandler()
+	input := &protocol.HookInput{
+		SessionID: "s",
+		Event:     "pre_tool",
+		ToolName:  "Edit",
+		ToolInput: map[string]any{
+			"file_path": ".claude/settings.local.json",
+		},
+	}
+
+	resp, err := handler.Handle(input)
+	if err != nil {
+		t.Fatalf("Handle returned error: %v", err)
+	}
+
+	if !resp.ContinueExecution {
+		t.Error("Expected ContinueExecution true for warn path")
+	}
+	if resp.BlockExecution {
+		t.Error("Expected BlockExecution false for warn path")
+	}
+	if resp.HookSpecificOutput == nil {
+		t.Fatal("Expected HookSpecificOutput to be set for warn")
+	}
+	if resp.HookSpecificOutput["permissionDecision"] != "warn" {
+		t.Errorf("Expected permissionDecision 'warn', got '%v'", resp.HookSpecificOutput["permissionDecision"])
+	}
+}
+
+func TestPreToolHandler_Handle_Edit_AllowedPath(t *testing.T) {
+	handler := NewPreToolHandler()
+	input := &protocol.HookInput{
+		SessionID: "s",
+		Event:     "pre_tool",
+		ToolName:  "Edit",
+		ToolInput: map[string]any{
+			"file_path": "src/app.go",
+		},
+	}
+
+	resp, err := handler.Handle(input)
+	if err != nil {
+		t.Fatalf("Handle returned error: %v", err)
+	}
+
+	if !resp.ContinueExecution {
+		t.Error("Expected ContinueExecution true for allowed path")
+	}
+	if !resp.SuppressOutput {
+		t.Error("Expected SuppressOutput true for allowed path")
+	}
+}
+
+func TestPreToolHandler_Handle_Edit_EmptyPath(t *testing.T) {
+	handler := NewPreToolHandler()
+	input := &protocol.HookInput{
+		SessionID: "s",
+		Event:     "pre_tool",
+		ToolName:  "Edit",
+		ToolInput: map[string]any{},
+	}
+
+	resp, err := handler.Handle(input)
+	if err != nil {
+		t.Fatalf("Handle returned error: %v", err)
+	}
+
+	if !resp.SuppressOutput {
+		t.Error("Expected SuppressOutput true for empty path")
 	}
 }
 

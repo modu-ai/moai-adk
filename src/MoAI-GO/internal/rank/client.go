@@ -68,7 +68,7 @@ func (c *Client) GetRank() (*UserRankResponse, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to rank server: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, readErr := io.ReadAll(resp.Body)

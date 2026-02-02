@@ -27,6 +27,9 @@ type HookResponse struct {
 	BlockExecution     bool           `json:"block_execution,omitempty"`
 	SuppressOutput     bool           `json:"suppressOutput,omitempty"`
 	Error              string         `json:"error,omitempty"`
+	Decision           string         `json:"decision,omitempty"`     // "allow", "deny", "ask"
+	Reason             string         `json:"reason,omitempty"`       // Explanation for decision
+	UpdatedInput       any            `json:"updatedInput,omitempty"` // Modified input for UserPromptSubmit
 }
 
 // SecurityDecision represents the security decision for pre-tool hooks
@@ -123,6 +126,18 @@ func (h *HookResponse) clean() *HookResponse {
 
 	if h.Error != "" {
 		cleaned.Error = h.Error
+	}
+
+	if h.Decision != "" {
+		cleaned.Decision = h.Decision
+	}
+
+	if h.Reason != "" {
+		cleaned.Reason = h.Reason
+	}
+
+	if h.UpdatedInput != nil {
+		cleaned.UpdatedInput = h.UpdatedInput
 	}
 
 	return cleaned

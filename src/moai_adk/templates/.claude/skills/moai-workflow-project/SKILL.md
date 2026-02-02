@@ -7,7 +7,7 @@ description: >
   or optimizing templates.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Write Edit Bash Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read Write Edit Bash(git:*) Bash(npm:*) Bash(npx:*) Bash(uv:*) Bash(pip:*) Bash(ls:*) Bash(mkdir:*) Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
 metadata:
   version: "2.0.0"

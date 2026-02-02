@@ -2,6 +2,8 @@ package output
 
 import (
 	"testing"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 // --- Constants ---
@@ -28,17 +30,17 @@ func TestMoaiBanner(t *testing.T) {
 // --- Banner styles ---
 
 func TestBannerStyles(t *testing.T) {
-	styles := map[string]func(string) string{
-		"BannerStyle":     BannerStyle.Render,
-		"VersionStyle":    VersionStyle.Render,
-		"SubtitleStyle":   SubtitleStyle.Render,
-		"WelcomeStyle":    WelcomeStyle.Render,
-		"WizardInfoStyle": WizardInfoStyle.Render,
+	styles := map[string]lipgloss.Style{
+		"BannerStyle":     BannerStyle,
+		"VersionStyle":    VersionStyle,
+		"SubtitleStyle":   SubtitleStyle,
+		"WelcomeStyle":    WelcomeStyle,
+		"WizardInfoStyle": WizardInfoStyle,
 	}
 
-	for name, renderFn := range styles {
+	for name, style := range styles {
 		t.Run(name, func(t *testing.T) {
-			result := renderFn("test")
+			result := style.Render("test")
 			if result == "" {
 				t.Errorf("%s.Render returned empty string", name)
 			}

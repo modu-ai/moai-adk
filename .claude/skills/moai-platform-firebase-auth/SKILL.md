@@ -6,7 +6,7 @@ description: >
   Google ecosystem apps, implementing social login, or adding phone verification.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Write Bash Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read Write Bash(firebase:*) Bash(npm:*) Bash(npx:*) Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
 metadata:
   version: "2.1.0"

@@ -3,9 +3,14 @@ name: moai-domain-backend
 description: >
   Backend development specialist covering API design, database integration,
   microservices architecture, and modern backend patterns.
+  Use when user asks about API design, REST or GraphQL endpoints, server implementation,
+  authentication, authorization, middleware, or backend service architecture.
+  Do NOT use for database-specific schema design or query optimization
+  (use moai-domain-database instead) or frontend implementation
+  (use moai-domain-frontend instead).
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Write Edit Bash Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read Write Edit Bash(npm:*) Bash(npx:*) Bash(node:*) Bash(uv:*) Bash(pip:*) Bash(pytest:*) Bash(ruff:*) Bash(docker:*) Bash(curl:*) Bash(go:*) Bash(cargo:*) Grep Glob mcp__context7__resolve-library-id mcp__context7__get-library-docs
 user-invocable: false
 metadata:
   version: "1.0.0"

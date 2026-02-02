@@ -74,9 +74,9 @@ brews:
     description: MoAI Development Kit - Static binary distribution
     license: Apache-2.0
     test: |
-      system "#{bin}/moai-adk", "version"
+      system "#{bin}/moai-go", "version"
     install: |
-      bin.install "moai-adk"
+      bin.install "moai-go"
 
 # SBOM generation (optional, for security compliance)
 sboms:

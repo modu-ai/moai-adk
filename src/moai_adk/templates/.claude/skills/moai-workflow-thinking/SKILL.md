@@ -2,7 +2,10 @@
 name: moai-workflow-thinking
 description: >
   Sequential Thinking MCP and UltraThink mode for deep analysis, complex
-  problem decomposition, and structured reasoning workflows
+  problem decomposition, and structured reasoning workflows.
+  Use when performing multi-step analysis, architecture decisions, technology selection
+  trade-offs, breaking change assessment, or when --ultrathink flag is specified.
+  Do NOT use for simple decisions or straightforward implementation tasks.
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read Grep Glob mcp__sequential-thinking__sequentialthinking

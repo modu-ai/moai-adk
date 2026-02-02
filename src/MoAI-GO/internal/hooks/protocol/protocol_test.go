@@ -702,13 +702,13 @@ func overrideStdin(t *testing.T, data string) func() {
 	if err != nil {
 		t.Fatalf("Failed to write to pipe: %v", err)
 	}
-	w.Close()
+	_ = w.Close()
 
 	os.Stdin = r
 
 	return func() {
 		os.Stdin = origStdin
-		r.Close()
+		_ = r.Close()
 	}
 }
 
@@ -727,14 +727,14 @@ func captureStdout(t *testing.T, fn func()) string {
 
 	fn()
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = origStdout
 
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, r); err != nil {
 		t.Fatalf("Failed to read captured output: %v", err)
 	}
-	r.Close()
+	_ = r.Close()
 
 	return buf.String()
 }

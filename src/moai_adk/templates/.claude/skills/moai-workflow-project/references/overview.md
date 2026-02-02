@@ -100,7 +100,7 @@ See `schemas/config-schema.json` for complete schema definition.
 ```
 moai-menu-project/
  SKILL.md # Main skill documentation
- README.md # This file
+ references/overview.md # Skill overview
  __init__.py # Package initialization
  modules/
  config_manager.py # Core configuration management

@@ -120,7 +120,7 @@ type Principles struct {
 
 // LSPIntegration contains LSP TRUST 5 integration settings
 type LSPIntegration struct {
-	TRUST5Integration   map[string][]string `yaml:"truct5_integration"`
+	TRUST5Integration   map[string][]string `yaml:"trust5_integration"`
 	DiagnosticSources   []string            `yaml:"diagnostic_sources"`
 	RegressionDetection RegressionDetection `yaml:"regression_detection"`
 }

@@ -152,7 +152,7 @@ Core Implementation Modules:
 
 Supporting Files:
 
-- modules/README.md - Module overview and integration patterns
+- modules/INDEX.md - Module overview and integration patterns
 - reference.md - Extended reference documentation
 - examples.md - Complete working examples
 

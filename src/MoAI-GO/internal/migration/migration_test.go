@@ -416,7 +416,7 @@ func TestDetectImplementationWithOverride_ForceGoEmptyPath(t *testing.T) {
 	result := DetectImplementationWithOverride(true, false, "")
 	// Should not panic and should return a valid result
 	if result == nil {
-		t.Error("expected non-nil result")
+		t.Fatal("expected non-nil result")
 	}
 }
 
@@ -435,7 +435,7 @@ func TestDetectImplementationWithOverride_BothFalse(t *testing.T) {
 	// Should fall through to auto-detection (same as DetectImplementation)
 	result := DetectImplementationWithOverride(false, false, "")
 	if result == nil {
-		t.Error("expected non-nil result")
+		t.Fatal("expected non-nil result")
 	}
 	if result.CommonPaths == nil {
 		t.Error("expected CommonPaths to be set")
@@ -449,7 +449,7 @@ func TestDetectImplementationWithOverride_BothFalse(t *testing.T) {
 func TestDetectImplementation_ReturnsNonNil(t *testing.T) {
 	result := DetectImplementation()
 	if result == nil {
-		t.Error("expected non-nil result")
+		t.Fatal("expected non-nil result")
 	}
 }
 
@@ -1198,11 +1198,12 @@ func TestDetectImplementation_ResultContainsFoundOrNot(t *testing.T) {
 	result := DetectImplementation()
 	// We cannot control what's installed, but we can verify the result is consistent
 	if result.Found {
-		if result.Type == ImplementationGo {
+		switch result.Type {
+		case ImplementationGo:
 			if result.BinaryPath == "" {
 				t.Error("Go implementation found but BinaryPath is empty")
 			}
-		} else if result.Type == ImplementationPython {
+		case ImplementationPython:
 			if result.PythonCmd == "" {
 				t.Error("Python implementation found but PythonCmd is empty")
 			}
@@ -1228,7 +1229,7 @@ func TestDetectImplementationWithOverride_ForceGoMatchesCommonPathBasename(t *te
 	// This will fall through to auto-detection since /nonexistent doesn't exist
 	// and none of the CommonPaths will match either
 	if result == nil {
-		t.Error("expected non-nil result")
+		t.Fatal("expected non-nil result")
 	}
 }
 

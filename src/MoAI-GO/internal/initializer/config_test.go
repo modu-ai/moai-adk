@@ -162,6 +162,128 @@ func TestWriteLanguageConfig_CreatesDirectoryStructure(t *testing.T) {
 	}
 }
 
+// --- WriteLanguageConfig error paths ---
+
+func TestWriteLanguageConfig_UnknownLanguageCode(t *testing.T) {
+	tmpDir := t.TempDir()
+	cw := NewConfigWriter(tmpDir)
+
+	// Unknown code should still work (falls back to "English")
+	if err := cw.WriteLanguageConfig(LanguageCode("xx")); err != nil {
+		t.Fatalf("WriteLanguageConfig() error = %v", err)
+	}
+
+	langFile := filepath.Join(tmpDir, ".moai", "config", "sections", "language.yaml")
+	data, err := os.ReadFile(langFile)
+	if err != nil {
+		t.Fatalf("failed to read language.yaml: %v", err)
+	}
+
+	var config LanguageConfig
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if config.ConversationLanguage != "xx" {
+		t.Errorf("ConversationLanguage = %q, want %q", config.ConversationLanguage, "xx")
+	}
+	if config.ConversationLanguageName != "English" {
+		t.Errorf("ConversationLanguageName = %q, want %q (default fallback)", config.ConversationLanguageName, "English")
+	}
+}
+
+func TestWriteUserConfig_CreatesDirectoryStructure(t *testing.T) {
+	tmpDir := t.TempDir()
+	cw := NewConfigWriter(tmpDir)
+
+	if err := cw.WriteUserConfig("TestUser"); err != nil {
+		t.Fatalf("WriteUserConfig() error = %v", err)
+	}
+
+	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
+	info, err := os.Stat(sectionsDir)
+	if err != nil {
+		t.Fatalf("sections directory not created: %v", err)
+	}
+	if !info.IsDir() {
+		t.Error("sections path is not a directory")
+	}
+}
+
+func TestWriteUserConfig_SpecialCharacters(t *testing.T) {
+	tmpDir := t.TempDir()
+	cw := NewConfigWriter(tmpDir)
+
+	specialName := "User O'Brien & Co."
+	if err := cw.WriteUserConfig(specialName); err != nil {
+		t.Fatalf("WriteUserConfig() error = %v", err)
+	}
+
+	userFile := filepath.Join(tmpDir, ".moai", "config", "sections", "user.yaml")
+	data, err := os.ReadFile(userFile)
+	if err != nil {
+		t.Fatalf("failed to read user.yaml: %v", err)
+	}
+
+	var config UserConfig
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if config.User.Name != specialName {
+		t.Errorf("User.Name = %q, want %q", config.User.Name, specialName)
+	}
+}
+
+// --- LanguageConfig struct ---
+
+func TestLanguageConfigStruct(t *testing.T) {
+	config := LanguageConfig{
+		ConversationLanguage:     "ko",
+		ConversationLanguageName: "Korean",
+		AgentPromptLanguage:      "en",
+		GitCommitMessages:        "en",
+		CodeComments:             "en",
+		Documentation:            "en",
+		ErrorMessages:            "en",
+	}
+
+	data, err := yaml.Marshal(config)
+	if err != nil {
+		t.Fatalf("yaml.Marshal error: %v", err)
+	}
+
+	var parsed LanguageConfig
+	if err := yaml.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("yaml.Unmarshal error: %v", err)
+	}
+
+	if parsed.ConversationLanguage != "ko" {
+		t.Errorf("ConversationLanguage = %q, want %q", parsed.ConversationLanguage, "ko")
+	}
+}
+
+// --- UserConfig struct ---
+
+func TestUserConfigStruct(t *testing.T) {
+	config := UserConfig{}
+	config.User.Name = "TestDeveloper"
+
+	data, err := yaml.Marshal(config)
+	if err != nil {
+		t.Fatalf("yaml.Marshal error: %v", err)
+	}
+
+	var parsed UserConfig
+	if err := yaml.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("yaml.Unmarshal error: %v", err)
+	}
+
+	if parsed.User.Name != "TestDeveloper" {
+		t.Errorf("User.Name = %q, want %q", parsed.User.Name, "TestDeveloper")
+	}
+}
+
 // --- getLanguageName ---
 
 func TestGetLanguageName(t *testing.T) {

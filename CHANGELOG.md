@@ -1,3 +1,40 @@
+# Unreleased (2026-02-02)
+
+## Summary
+
+MoAI-GO complete SPEC implementation (SPEC-REFACTOR-GO-001 through 004) with comprehensive test coverage across 23 packages and zero golangci-lint issues. Skill system restructuring with modular references directory migration. Configuration and build updates.
+
+## Added
+
+### MoAI-GO: Complete SPEC Implementation
+
+- **test**: Comprehensive test suites achieving high coverage across all packages
+  - 98.9% config, 100% hooks/tools, 96.4% hooks/security, 93.5% hooks/handlers
+  - 93.0% hooks/protocol, 93.4% llmswitch, 93.2% doctor, 91.6% output
+  - 90.0% rank, 89.1% statusline, 87.8% verify-compatibility, 87.2% status
+  - 86.9% initializer, 86.6% worktree, 85.4% update, 100% version
+  - 84.0% migration, 80.0% templates, 65.4% hooks/dispatcher, 17.0% cli
+- **fix**: Resolved 17 errcheck lint warnings across production and test code
+- **fix**: Resolved 10 staticcheck warnings (De Morgan's law, nil context, nil pointer, tagged switch, empty branch)
+- **fix**: Proper error handling in auth.go, client.go, dispatcher.go, protocol/*.go, sync.go
+
+## Changed
+
+### Skill System Restructuring
+
+- Migrated skill reference files from flat structure to modular `references/` directory
+- Renamed `README.md` to `INDEX.md` in skill module directories
+- Updated `SKILL.md` files across 50+ skills with new module structure
+
+### Configuration and Build Updates
+
+- Updated `quality.yaml` with refined TRUST 5 settings
+- Updated `.goreleaser.yml` build configuration
+- Updated `config/types.go` for Go migration
+- Updated `expert-chrome-extension` agent definition
+
+---
+
 # v1.14.0 - Major Refactor: Pencil MCP Design Tool Migration (2026-02-01)
 
 ## Summary
