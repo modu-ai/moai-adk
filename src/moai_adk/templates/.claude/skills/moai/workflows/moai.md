@@ -16,8 +16,19 @@ Flow: Explore -> Plan -> Run -> Sync -> Done
 
 - ralph.yaml: Loop settings and iteration defaults
 - git-strategy.yaml: Branch and PR automation settings
-- quality.yaml: TRUST 5 quality thresholds
+- quality.yaml: TRUST 5 quality thresholds, LSP quality gates per phase
 - llm.yaml: LLM mode routing (claude-only, hybrid, glm-only)
+- language.yaml: Conversation language, commit message language
+
+## LSP Quality Gates (Per Phase)
+
+quality.yaml defines phase-specific LSP thresholds:
+
+- Plan phase: Capture LSP baseline (plan.require_baseline)
+- Run phase: Zero errors, zero type errors, zero lint errors, no regression from baseline
+- Sync phase: Zero errors, max 10 warnings, clean LSP required
+
+Each phase workflow references these thresholds for validation.
 
 ## Phase 0: Parallel Exploration
 
@@ -128,5 +139,5 @@ Auto-routing based on llm.yaml settings:
 
 ---
 
-Version: 1.2.0
-Source: Renamed from alfred.md. Unified plan->run->sync pipeline. Added SPEC/project document update in sync phase.
+Version: 1.3.0
+Source: Renamed from alfred.md. Unified plan->run->sync pipeline. Added SPEC/project document update in sync phase. Added LSP quality gates per-phase reference.

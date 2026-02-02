@@ -2,6 +2,13 @@
 
 Purpose: Collect user feedback, bug reports, or feature suggestions and create GitHub issues automatically via the manager-quality agent.
 
+## Context Loading
+
+Before execution, load these essential files:
+
+- .moai/config/sections/language.yaml (conversation_language for user interaction)
+- .moai/config/sections/user.yaml (user name for issue context)
+
 ---
 
 ## Phase 1: Feedback Collection
@@ -99,6 +106,11 @@ Resume support: Not applicable (atomic operation).
 
 ---
 
+## Completion Markers
+
+AI must add a marker when feedback submission is complete:
+- `<moai>DONE</moai>` - Feedback submitted successfully
+
 ## Agent Chain Summary
 
 - Phase 1: MoAI orchestrator (AskUserQuestion for feedback collection)
@@ -106,5 +118,5 @@ Resume support: Not applicable (atomic operation).
 
 ---
 
-Version: 1.0.0
-Last Updated: 2026-01-28
+Version: 1.1.0
+Source: Added context loading, completion markers.

@@ -10,9 +10,19 @@ Flow: Check Completion -> Memory Check -> Diagnose -> Fix -> Verify -> Repeat
 - --auto (alias --auto-fix): Enable auto-fix (default Level 1)
 - --sequential (alias --seq): Sequential diagnostics instead of parallel
 - --errors (alias --errors-only): Fix errors only, skip warnings
-- --coverage (alias --include-coverage): Include coverage threshold (default 85%)
+- --coverage (alias --include-coverage): Include coverage threshold (from quality.yaml test_coverage_target, default 85%)
 - --memory-check: Enable memory pressure detection
 - --resume ID (alias --resume-from): Restore from snapshot
+
+## Context Loading
+
+Before execution, load these essential files:
+
+- .moai/config/sections/quality.yaml (LSP thresholds, coverage targets, TRUST 5 settings)
+- .moai/config/sections/language.yaml (conversation_language)
+- .moai/config/sections/ralph.yaml (loop settings, iteration defaults)
+
+Pre-execution commands: git status, git diff.
 
 ## Per-Iteration Cycle
 
@@ -29,7 +39,7 @@ Step 2 - Memory Pressure Check (if --memory-check enabled):
 - If session duration exceeds 25 minutes OR iteration time doubling:
   - Save proactive checkpoint to .moai/cache/ralph-snapshots/memory-pressure.json
   - Warn user about memory pressure
-  - Suggest resuming with /moai:loop --resume memory-pressure
+  - Suggest resuming with /moai loop --resume memory-pressure
 - If memory-safe limit reached (50 iterations): Exit with checkpoint
 
 Step 3 - Parallel Diagnostics:
@@ -44,7 +54,7 @@ Step 3 - Parallel Diagnostics:
 If --sequential flag: Run LSP, then AST-grep, then Tests, then Coverage sequentially.
 
 Step 4 - Completion Condition Check:
-- Conditions: Zero errors AND all tests passing AND coverage meets threshold
+- Conditions: LSP errors meet quality.yaml thresholds (max_errors, max_type_errors, max_lint_errors) AND all tests passing AND coverage meets quality.yaml test_coverage_target
 - If all conditions met: Prompt user to add completion marker or continue
 
 Step 5 - Task Generation:
@@ -82,7 +92,7 @@ Step 9 - Repeat or Exit:
 
 The loop exits when any of these conditions are met:
 - Completion marker detected in response
-- All conditions met: zero errors + tests passing + coverage threshold
+- All conditions met: LSP quality gates passed + tests passing + coverage meets quality.yaml target
 - Max iterations reached (displays remaining issues)
 - Memory pressure threshold exceeded (saves checkpoint)
 - User interruption (state auto-saved)
@@ -99,9 +109,9 @@ Files:
 Loop state file: .moai/cache/.moai_loop_state.json
 
 Resume commands:
-- /moai:loop --resume latest
-- /moai:loop --resume iteration-002
-- /moai:loop --resume memory-pressure
+- /moai loop --resume latest
+- /moai loop --resume iteration-002
+- /moai loop --resume memory-pressure
 
 ## Language-Specific Commands
 
@@ -116,17 +126,59 @@ Language detection: pyproject.toml (Python), package.json (TypeScript/JavaScript
 
 Send any message to interrupt the loop. State is automatically saved via session_end hook.
 
+## Loop Completion: Next Steps
+
+Tool: AskUserQuestion (at orchestrator level)
+
+Display loop summary: iterations completed, issues fixed, remaining issues, coverage percentage.
+
+Options:
+
+- Commit Changes (recommended): Stage and commit all fixed files via manager-git subagent
+- Run Sync: Execute /moai sync to synchronize documentation
+- Review Changes: Examine all modifications before committing
+- Finish: Session complete
+
+## Graceful Exit
+
+When user aborts or loop exits:
+
+- Current state saved to .moai/cache/ralph-snapshots/
+- No uncommitted changes lost (snapshot preserves progress)
+- Display retry command: /moai loop --resume latest
+- Exit with code 0
+
 ## Execution Summary
 
 1. Parse arguments (extract flags: --max, --auto, --sequential, --errors, --coverage, --memory-check, --resume)
 2. If --resume: Load state from specified snapshot and continue
-3. Detect project language from indicator files
-4. Initialize iteration counter and memory tracking (start time)
-5. Loop: Execute per-iteration cycle (Steps 1-9)
-6. On exit: Report final summary with evidence
-7. If memory checkpoint created: Display resume instructions
+3. Load context (quality.yaml, language.yaml, ralph.yaml)
+4. Detect project language from indicator files
+5. Initialize iteration counter and memory tracking (start time)
+6. Loop: Execute per-iteration cycle (Steps 1-9)
+7. On exit: Report final summary with evidence
+8. If memory checkpoint created: Display resume instructions
+9. Present next steps via AskUserQuestion
+
+## Completion Criteria
+
+All of the following must be verified:
+
+- Context loaded: quality.yaml, language.yaml, ralph.yaml read
+- Per-iteration: All diagnostic tools executed (LSP, AST-grep, Tests, Coverage)
+- Task tracking: All issues tracked via TaskCreate/TaskUpdate
+- Agent delegation: All fixes delegated to specialized agents
+- Completion condition: LSP quality gates + tests passing + coverage target met (or max iterations reached)
+- Snapshot: Final state saved for potential resume
+- Next steps: Presented to user
+
+## Agent Chain Summary
+
+- Diagnostics: Bash (parallel background tasks)
+- Fixes: expert-debug, expert-backend, expert-frontend, expert-testing, expert-security, expert-performance subagents
+- Completion: manager-git subagent (optional commit)
 
 ---
 
-Version: 1.0.0
-Source: loop.md command v2.2.0
+Version: 1.1.0
+Source: loop.md command v2.2.0. Added context loading, quality.yaml threshold references, next steps, graceful exit, completion criteria.

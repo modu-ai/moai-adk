@@ -14,6 +14,15 @@ Flow: Parallel Scan -> Classify -> Fix -> Verify -> Report
 - --no-fmt (alias --no-format): Skip formatting fixes
 - --resume [ID] (alias --resume-from): Resume from snapshot (latest if no ID)
 
+## Context Loading
+
+Before execution, load these essential files:
+
+- .moai/config/sections/quality.yaml (LSP thresholds, coverage targets)
+- .moai/config/sections/language.yaml (conversation_language, code_comments)
+
+Pre-execution commands: git status, git diff.
+
 ## Phase 1: Parallel Scan
 
 Launch three diagnostic tools simultaneously using Bash with run_in_background for 3-4x speedup (8s vs 30s).
@@ -76,6 +85,20 @@ If --dry flag: Display preview of all classified issues and exit without changes
 - Re-run affected diagnostics on modified files
 - Confirm fixes resolved the targeted issues
 - Detect any regressions introduced by fixes
+- Verify against LSP quality gate thresholds from quality.yaml (max_errors, max_type_errors, max_lint_errors)
+
+## Phase 5: Next Steps
+
+Tool: AskUserQuestion (at orchestrator level)
+
+Display fix summary: issues found, fixed, remaining, regressions detected.
+
+Options:
+
+- Commit Changes (recommended): Stage and commit fixed files via manager-git subagent
+- Review Changes: Examine modified files before committing
+- Continue Fixing: Apply remaining Level 3-4 fixes
+- Finish: Session complete, no commit
 
 ## Task Tracking
 
@@ -97,26 +120,56 @@ Snapshot contents:
 - Scan results
 
 Resume commands:
-- /moai:fix --resume (uses latest snapshot)
-- /moai:fix --resume fix-20260119-143052 (uses specific snapshot)
+- /moai fix --resume (uses latest snapshot)
+- /moai fix --resume fix-20260119-143052 (uses specific snapshot)
+
+## Graceful Exit
+
+When user aborts at any decision point:
+
+- No changes made to files or Git history
+- Snapshot saved to .moai/cache/fix-snapshots/ for later resume
+- Display retry command: /moai fix --resume
+- Exit with code 0
 
 ## Execution Summary
 
 1. Parse arguments (extract flags: --dry, --sequential, --level, --errors, --security, --resume)
 2. If --resume: Load snapshot and continue from saved state
-3. Detect project language from indicator files
-4. Execute parallel scan (LSP + AST-grep + Linter)
-5. Aggregate results and remove duplicates
-6. Classify into Levels 1-4
-7. TaskCreate for all discovered issues
-8. If --dry: Display preview and exit
-9. Apply Level 1-2 fixes via agent delegation
-10. Request approval for Level 3 fixes via AskUserQuestion
-11. Verify fixes by re-running diagnostics
-12. Save snapshot to .moai/cache/fix-snapshots/
-13. Report with evidence (file:line changes)
+3. Load context (quality.yaml, language.yaml)
+4. Detect project language from indicator files
+5. Execute parallel scan (LSP + AST-grep + Linter)
+6. Aggregate results and remove duplicates
+7. Classify into Levels 1-4
+8. TaskCreate for all discovered issues
+9. If --dry: Display preview and exit
+10. Apply Level 1-2 fixes via agent delegation
+11. Request approval for Level 3 fixes via AskUserQuestion
+12. Verify fixes against LSP quality gate thresholds
+13. Save snapshot to .moai/cache/fix-snapshots/
+14. Present next steps via AskUserQuestion (commit, review, continue, finish)
+
+## Completion Criteria
+
+All of the following must be verified:
+
+- Context loaded: quality.yaml and language.yaml read
+- Phase 1: All scanners executed (LSP, AST-grep, Linter)
+- Phase 2: Issues classified into Levels 1-4
+- Task tracking: All issues tracked via TaskCreate/TaskUpdate
+- Phase 3: Level 1-2 fixes applied via agent delegation
+- Phase 3: Level 3 fixes applied only after user approval
+- Phase 4: Verification confirms no regressions
+- Phase 5: Next steps presented to user
+- Snapshot saved for potential resume
+
+## Agent Chain Summary
+
+- Phase 1: Bash (parallel diagnostic scans)
+- Phase 3: expert-backend, expert-frontend, expert-refactoring, expert-debug subagents (fix execution)
+- Phase 5: manager-git subagent (optional commit)
 
 ---
 
-Version: 1.0.0
-Source: fix.md command v2.2.0
+Version: 1.1.0
+Source: fix.md command v2.2.0. Added context loading, LSP quality gate verification, next steps, graceful exit, completion criteria.

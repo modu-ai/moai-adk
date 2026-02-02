@@ -137,14 +137,23 @@ TRUST 5 validation checks:
 - Secured: No security vulnerabilities introduced. OWASP compliance verified.
 - Trackable: All changes logged with clear commit messages. History analysis supported.
 
+LSP Quality Gate Validation (from quality.yaml):
+
+- max_errors: 0 (zero LSP errors required)
+- max_type_errors: 0 (zero type errors required)
+- max_lint_errors: 0 (zero lint errors required)
+- allow_regression: false (no regression from plan-phase baseline)
+
+If lsp-baseline.json exists in SPEC directory (captured during /moai plan), compare current metrics against baseline to detect regressions.
+
 Additional validation:
 
-- Test coverage at least 85%
+- Test coverage at least quality.yaml test_coverage_target (default 85%)
 - Behavior preservation: All existing tests pass unchanged
 - Characterization tests pass: Behavior snapshots match
 - Structural improvement: Coupling and cohesion metrics improved
 
-Output: trust_5_validation results per pillar, coverage percentage, overall status (PASS, WARNING, or CRITICAL), and issues_found list.
+Output: trust_5_validation results per pillar, lsp_quality_gate results, coverage percentage, overall status (PASS, WARNING, or CRITICAL), and issues_found list.
 
 ### Quality Gate Decision
 
@@ -225,5 +234,5 @@ All of the following must be verified:
 
 ---
 
-Version: 1.1.0
-Source: Extracted from .claude/commands/moai/2-run.md v5.0.0. Added implementation divergence tracking for sync phase consumption.
+Version: 1.2.0
+Source: Extracted from .claude/commands/moai/2-run.md v5.0.0. Added implementation divergence tracking, LSP quality gate validation with baseline comparison.

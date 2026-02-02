@@ -2,6 +2,16 @@
 
 Purpose: Generate project documentation from codebase analysis. Creates product.md, structure.md, and tech.md in .moai/project/ directory.
 
+## Context Loading
+
+Before execution, load these essential files:
+
+- .moai/config/sections/language.yaml (conversation_language for documentation)
+- .moai/config/sections/user.yaml (user name for authorship)
+- .moai/config/sections/quality.yaml (LSP quality gates for environment check)
+
+Pre-execution commands: git status, git branch.
+
 ---
 
 ## Phase 0: Project Type Detection
@@ -152,7 +162,7 @@ If LSP server is NOT installed, present AskUserQuestion:
 
 ---
 
-## Phase 4: Completion
+## Phase 4: Completion and Git Operations
 
 Display completion message in user's conversation_language:
 
@@ -162,11 +172,45 @@ Display completion message in user's conversation_language:
 
 Next Steps (AskUserQuestion):
 
+- Commit Documentation (recommended): Stage and commit generated files via manager-git subagent
 - Write SPEC: Execute /moai plan to define feature specifications
 - Review Documentation: Open generated files for review
 - Start New Session: Clear context and start fresh
 
 ---
+
+## Task Tracking
+
+[HARD] Task management tools mandatory for all task tracking:
+- Documentation generation task: TaskCreate with pending status at workflow start
+- Before doc generation: TaskUpdate with in_progress status
+- After docs created: TaskUpdate with completed status
+
+## Completion Markers
+
+AI must add a marker when project documentation is complete:
+- `<moai>DONE</moai>` - Documentation generation complete
+
+## Graceful Exit
+
+When user aborts at any decision point:
+
+- No documentation files created or modified
+- Project remains in current state
+- Display retry command: /moai project
+- Exit with code 0
+
+## Completion Criteria
+
+All of the following must be verified:
+
+- Phase 0: Project type detected (new or existing)
+- Phase 1: Codebase analysis completed (existing projects) or user input collected (new projects)
+- Phase 2: User approved analysis summary
+- Phase 3: All documentation files generated (product.md, structure.md, tech.md)
+- Phase 3.5: LSP environment checked
+- Phase 4: Next steps presented to user
+- Task tracking: Documentation task created and completed
 
 ## Agent Chain Summary
 
@@ -174,8 +218,9 @@ Next Steps (AskUserQuestion):
 - Phase 1: Explore subagent (codebase analysis)
 - Phase 3: manager-docs subagent (documentation generation)
 - Phase 3.5: expert-devops subagent (optional LSP installation)
+- Phase 4: manager-git subagent (optional commit)
 
 ---
 
-Version: 1.0.0
-Last Updated: 2026-01-28
+Version: 1.1.0
+Source: Added context loading, task tracking, git operations, completion criteria, graceful exit.
