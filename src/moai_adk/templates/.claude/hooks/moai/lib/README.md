@@ -17,7 +17,6 @@ lib/
 ├── unified_timeout_manager.py  # Unified timeout management (basic + advanced)
 ├── git_operations_manager.py   # Optimized Git operations
 ├── checkpoint.py         # Risky operation detection
-├── language_validator.py # Language config validation
 └── tool_registry.py      # Formatter/linter tool registry
 ```
 
