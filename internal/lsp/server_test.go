@@ -66,6 +66,16 @@ type serverTestClient struct {
 	diagFn     func(ctx context.Context, uri string) ([]Diagnostic, error)
 }
 
+// Compile-time interface compliance checks for serverTestClient.
+var (
+	_ Initializer         = (*serverTestClient)(nil)
+	_ DiagnosticsProvider = (*serverTestClient)(nil)
+	_ NavigationProvider  = (*serverTestClient)(nil)
+	_ HoverProvider       = (*serverTestClient)(nil)
+	_ SymbolsProvider     = (*serverTestClient)(nil)
+	_ Client              = (*serverTestClient)(nil)
+)
+
 func (c *serverTestClient) Initialize(_ context.Context, _ string) error { return nil }
 
 func (c *serverTestClient) Diagnostics(ctx context.Context, uri string) ([]Diagnostic, error) {

@@ -7,8 +7,58 @@ import (
 	"os"
 )
 
-// Client communicates with a single Language Server over JSON-RPC 2.0.
-// All methods accept a context.Context for cancellation and timeout control.
+// Initializer handles LSP server lifecycle management.
+// Use this interface when you only need to start or stop the server.
+type Initializer interface {
+	// Initialize sends the LSP initialize request and initialized notification.
+	Initialize(ctx context.Context, rootURI string) error
+
+	// Shutdown sends the LSP shutdown request followed by an exit notification.
+	Shutdown(ctx context.Context) error
+}
+
+// DiagnosticsProvider provides diagnostic information from the language server.
+// Use this interface when you only need to retrieve diagnostics.
+type DiagnosticsProvider interface {
+	// Diagnostics retrieves diagnostics for the given document URI.
+	Diagnostics(ctx context.Context, uri string) ([]Diagnostic, error)
+}
+
+// NavigationProvider provides code navigation features.
+// Use this interface when you only need references or go-to-definition.
+type NavigationProvider interface {
+	// References returns all reference locations for the symbol at the given position.
+	References(ctx context.Context, uri string, pos Position) ([]Location, error)
+
+	// Definition returns the definition location(s) for the symbol at the given position.
+	Definition(ctx context.Context, uri string, pos Position) ([]Location, error)
+}
+
+// HoverProvider provides hover information for symbols.
+// Use this interface when you only need hover documentation.
+type HoverProvider interface {
+	// Hover returns hover information for the symbol at the given position.
+	Hover(ctx context.Context, uri string, pos Position) (*HoverResult, error)
+}
+
+// SymbolsProvider provides document symbol information.
+// Use this interface when you only need to query document symbols.
+type SymbolsProvider interface {
+	// Symbols returns the document symbols for the given document URI.
+	Symbols(ctx context.Context, uri string) ([]DocumentSymbol, error)
+}
+
+// Client composes all LSP capabilities and communicates with a single
+// Language Server over JSON-RPC 2.0. All methods accept a context.Context
+// for cancellation and timeout control.
+//
+// This interface composes the following focused interfaces for consumers
+// that only need a subset of functionality:
+//   - Initializer: Server lifecycle (Initialize, Shutdown)
+//   - DiagnosticsProvider: Diagnostic retrieval
+//   - NavigationProvider: References and Definition
+//   - HoverProvider: Hover information
+//   - SymbolsProvider: Document symbols
 //
 // Example usage:
 //
@@ -17,26 +67,11 @@ import (
 //	diagnostics, err := client.Diagnostics(ctx, "file:///project/main.go")
 //	if err := client.Shutdown(ctx); err != nil { ... }
 type Client interface {
-	// Initialize sends the LSP initialize request and initialized notification.
-	Initialize(ctx context.Context, rootURI string) error
-
-	// Diagnostics retrieves diagnostics for the given document URI.
-	Diagnostics(ctx context.Context, uri string) ([]Diagnostic, error)
-
-	// References returns all reference locations for the symbol at the given position.
-	References(ctx context.Context, uri string, pos Position) ([]Location, error)
-
-	// Hover returns hover information for the symbol at the given position.
-	Hover(ctx context.Context, uri string, pos Position) (*HoverResult, error)
-
-	// Definition returns the definition location(s) for the symbol at the given position.
-	Definition(ctx context.Context, uri string, pos Position) ([]Location, error)
-
-	// Symbols returns the document symbols for the given document URI.
-	Symbols(ctx context.Context, uri string) ([]DocumentSymbol, error)
-
-	// Shutdown sends the LSP shutdown request followed by an exit notification.
-	Shutdown(ctx context.Context) error
+	Initializer
+	DiagnosticsProvider
+	NavigationProvider
+	HoverProvider
+	SymbolsProvider
 }
 
 // lspClient implements the Client interface using a Conn for JSON-RPC communication.
@@ -45,6 +80,17 @@ type lspClient struct {
 	initialized  bool
 	capabilities json.RawMessage
 }
+
+// Compile-time interface compliance checks.
+// lspClient implements all segregated interfaces.
+var (
+	_ Initializer         = (*lspClient)(nil)
+	_ DiagnosticsProvider = (*lspClient)(nil)
+	_ NavigationProvider  = (*lspClient)(nil)
+	_ HoverProvider       = (*lspClient)(nil)
+	_ SymbolsProvider     = (*lspClient)(nil)
+	_ Client              = (*lspClient)(nil)
+)
 
 // NewClient creates a new LSP Client that communicates over the given connection.
 func NewClient(conn Conn) Client {
