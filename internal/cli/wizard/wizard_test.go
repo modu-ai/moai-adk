@@ -515,6 +515,404 @@ func TestErrors(t *testing.T) {
 	}
 }
 
+func TestModelResult(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test")
+	model := New(questions, nil)
+
+	// Modify the result
+	model.result.ProjectName = "my-project"
+	model.result.Locale = "ko"
+
+	result := model.Result()
+	if result == nil {
+		t.Fatal("Result() returned nil")
+	}
+	if result.ProjectName != "my-project" {
+		t.Errorf("expected ProjectName 'my-project', got %q", result.ProjectName)
+	}
+	if result.Locale != "ko" {
+		t.Errorf("expected Locale 'ko', got %q", result.Locale)
+	}
+}
+
+func TestModelState(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test")
+	model := New(questions, nil)
+
+	// Test initial state
+	if model.State() != StateRunning {
+		t.Errorf("expected StateRunning, got %v", model.State())
+	}
+
+	// Test completed state
+	model.state = StateCompleted
+	if model.State() != StateCompleted {
+		t.Errorf("expected StateCompleted, got %v", model.State())
+	}
+
+	// Test cancelled state
+	model.state = StateCancelled
+	if model.State() != StateCancelled {
+		t.Errorf("expected StateCancelled, got %v", model.State())
+	}
+}
+
+func TestModelViewWithInputQuestion(t *testing.T) {
+	questions := []Question{
+		{
+			ID:          "user_name",
+			Type:        QuestionTypeInput,
+			Title:       "Enter your name",
+			Description: "This will be used for commits",
+			Default:     "defaultuser",
+			Required:    false,
+		},
+	}
+	model := New(questions, nil)
+
+	view := model.View()
+	if view == "" {
+		t.Error("View() returned empty string")
+	}
+
+	// Check for title
+	if !contains(view, "Enter your name") {
+		t.Error("View should contain question title")
+	}
+
+	// Check for input prompt
+	if !contains(view, ">") {
+		t.Error("View should contain input prompt '>'")
+	}
+}
+
+func TestModelViewWithInputNoDefault(t *testing.T) {
+	questions := []Question{
+		{
+			ID:       "user_name",
+			Type:     QuestionTypeInput,
+			Title:    "Enter your name",
+			Default:  "",
+			Required: false,
+		},
+	}
+	model := New(questions, nil)
+	model.inputValue = "" // Ensure empty
+
+	view := model.View()
+	if view == "" {
+		t.Error("View() returned empty string")
+	}
+}
+
+func TestModelViewWithInputValue(t *testing.T) {
+	questions := []Question{
+		{
+			ID:       "user_name",
+			Type:     QuestionTypeInput,
+			Title:    "Enter your name",
+			Default:  "",
+			Required: false,
+		},
+	}
+	model := New(questions, nil)
+	model.inputValue = "typed-value"
+
+	view := model.View()
+	if !contains(view, "typed-value") {
+		t.Error("View should contain typed input value")
+	}
+}
+
+func TestModelViewWithError(t *testing.T) {
+	questions := []Question{
+		{
+			ID:       "project_name",
+			Type:     QuestionTypeInput,
+			Title:    "Project name",
+			Default:  "",
+			Required: true,
+		},
+	}
+	model := New(questions, nil)
+	model.errorMsg = "This field is required"
+
+	view := model.View()
+	if !contains(view, "This field is required") {
+		t.Error("View should contain error message")
+	}
+}
+
+func TestSaveAnswerAllCases(t *testing.T) {
+	questions := []Question{
+		{ID: "locale", Type: QuestionTypeSelect, Options: []Option{{Value: "ko"}}},
+		{ID: "user_name", Type: QuestionTypeInput},
+		{ID: "project_name", Type: QuestionTypeInput},
+		{ID: "git_mode", Type: QuestionTypeSelect, Options: []Option{{Value: "personal"}}},
+		{ID: "github_username", Type: QuestionTypeInput},
+		{ID: "git_commit_lang", Type: QuestionTypeSelect, Options: []Option{{Value: "en"}}},
+		{ID: "code_comment_lang", Type: QuestionTypeSelect, Options: []Option{{Value: "en"}}},
+		{ID: "doc_lang", Type: QuestionTypeSelect, Options: []Option{{Value: "ko"}}},
+		{ID: "development_mode", Type: QuestionTypeSelect, Options: []Option{{Value: "ddd"}}},
+	}
+	model := New(questions, nil)
+
+	// Test all saveAnswer cases
+	model.saveAnswer("locale", "ko")
+	if model.result.Locale != "ko" {
+		t.Errorf("expected Locale 'ko', got %q", model.result.Locale)
+	}
+
+	model.saveAnswer("user_name", "testuser")
+	if model.result.UserName != "testuser" {
+		t.Errorf("expected UserName 'testuser', got %q", model.result.UserName)
+	}
+
+	model.saveAnswer("project_name", "myproject")
+	if model.result.ProjectName != "myproject" {
+		t.Errorf("expected ProjectName 'myproject', got %q", model.result.ProjectName)
+	}
+
+	model.saveAnswer("git_mode", "personal")
+	if model.result.GitMode != "personal" {
+		t.Errorf("expected GitMode 'personal', got %q", model.result.GitMode)
+	}
+
+	model.saveAnswer("github_username", "ghuser")
+	if model.result.GitHubUsername != "ghuser" {
+		t.Errorf("expected GitHubUsername 'ghuser', got %q", model.result.GitHubUsername)
+	}
+
+	model.saveAnswer("git_commit_lang", "en")
+	if model.result.GitCommitLang != "en" {
+		t.Errorf("expected GitCommitLang 'en', got %q", model.result.GitCommitLang)
+	}
+
+	model.saveAnswer("code_comment_lang", "en")
+	if model.result.CodeCommentLang != "en" {
+		t.Errorf("expected CodeCommentLang 'en', got %q", model.result.CodeCommentLang)
+	}
+
+	model.saveAnswer("doc_lang", "ko")
+	if model.result.DocLang != "ko" {
+		t.Errorf("expected DocLang 'ko', got %q", model.result.DocLang)
+	}
+
+	model.saveAnswer("development_mode", "tdd")
+	if model.result.DevelopmentMode != "tdd" {
+		t.Errorf("expected DevelopmentMode 'tdd', got %q", model.result.DevelopmentMode)
+	}
+}
+
+func TestRenderSelectWithDescription(t *testing.T) {
+	questions := []Question{
+		{
+			ID:   "test",
+			Type: QuestionTypeSelect,
+			Options: []Option{
+				{Label: "Option A", Value: "a", Desc: "Description for A"},
+				{Label: "Option B", Value: "b", Desc: "Description for B"},
+			},
+		},
+	}
+	model := New(questions, nil)
+
+	view := model.View()
+	if !contains(view, "Description for A") {
+		t.Error("View should contain option description")
+	}
+}
+
+func TestRenderHelpForInput(t *testing.T) {
+	questions := []Question{
+		{
+			ID:       "test",
+			Type:     QuestionTypeInput,
+			Title:    "Test input",
+			Required: false,
+		},
+	}
+	model := New(questions, nil)
+
+	view := model.View()
+	if !contains(view, "Enter to confirm") {
+		t.Error("View should contain input help text")
+	}
+}
+
+func TestAdvanceToCompletion(t *testing.T) {
+	questions := []Question{
+		{
+			ID:   "only_question",
+			Type: QuestionTypeSelect,
+			Options: []Option{
+				{Label: "Yes", Value: "yes"},
+			},
+		},
+	}
+	model := New(questions, nil)
+
+	// Select and advance (should complete since only one question)
+	newModel, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m := newModel.(Model)
+
+	if m.state != StateCompleted {
+		t.Errorf("expected StateCompleted, got %v", m.state)
+	}
+	if cmd == nil {
+		t.Error("expected tea.Quit command on completion")
+	}
+}
+
+func TestCurrentQuestionNil(t *testing.T) {
+	questions := []Question{
+		{
+			ID:   "only",
+			Type: QuestionTypeSelect,
+			Options: []Option{
+				{Label: "Yes", Value: "yes"},
+			},
+		},
+	}
+	model := New(questions, nil)
+	model.currentIndex = 999 // Beyond questions
+
+	q := model.currentQuestion()
+	if q != nil {
+		t.Error("expected nil when currentIndex is beyond questions")
+	}
+}
+
+func TestModelViewNilQuestion(t *testing.T) {
+	questions := []Question{
+		{
+			ID:   "only",
+			Type: QuestionTypeSelect,
+			Options: []Option{
+				{Label: "Yes", Value: "yes"},
+			},
+		},
+	}
+	model := New(questions, nil)
+	model.currentIndex = 999 // Beyond questions
+
+	view := model.View()
+	if view != "" {
+		t.Error("View should return empty string when no current question")
+	}
+}
+
+func TestHandleKeyMsgNilQuestion(t *testing.T) {
+	questions := []Question{
+		{
+			ID:   "only",
+			Type: QuestionTypeSelect,
+			Options: []Option{
+				{Label: "Yes", Value: "yes"},
+			},
+		},
+	}
+	model := New(questions, nil)
+	model.currentIndex = 999 // Beyond questions
+
+	newModel, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m := newModel.(Model)
+
+	if m.state != StateCompleted {
+		t.Errorf("expected StateCompleted when no questions left, got %v", m.state)
+	}
+	if cmd == nil {
+		t.Error("expected tea.Quit command")
+	}
+}
+
+func TestTabNavigation(t *testing.T) {
+	questions := []Question{
+		{
+			ID:   "test",
+			Type: QuestionTypeSelect,
+			Options: []Option{
+				{Label: "A", Value: "a"},
+				{Label: "B", Value: "b"},
+				{Label: "C", Value: "c"},
+			},
+		},
+	}
+	model := New(questions, nil)
+
+	// Tab should move down
+	newModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m := newModel.(Model)
+	if m.cursor != 1 {
+		t.Errorf("expected cursor 1 after Tab, got %d", m.cursor)
+	}
+
+	// ShiftTab should move up
+	newModel, _ = m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	m = newModel.(Model)
+	if m.cursor != 0 {
+		t.Errorf("expected cursor 0 after ShiftTab, got %d", m.cursor)
+	}
+}
+
+func TestSubmitTextInputWithDefault(t *testing.T) {
+	questions := []Question{
+		{
+			ID:       "project_name",
+			Type:     QuestionTypeInput,
+			Default:  "default-project",
+			Required: true,
+		},
+		{
+			ID:      "next",
+			Type:    QuestionTypeInput,
+			Default: "next-default",
+		},
+	}
+	model := New(questions, nil)
+	model.inputValue = "" // Empty, should use default
+
+	// Submit with empty input (should use default)
+	newModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m := newModel.(Model)
+
+	if m.result.ProjectName != "default-project" {
+		t.Errorf("expected ProjectName 'default-project', got %q", m.result.ProjectName)
+	}
+}
+
+func TestAdvanceWithDefaultOption(t *testing.T) {
+	questions := []Question{
+		{
+			ID:   "first",
+			Type: QuestionTypeSelect,
+			Options: []Option{
+				{Label: "A", Value: "a"},
+				{Label: "B", Value: "b"},
+			},
+		},
+		{
+			ID:      "second",
+			Type:    QuestionTypeSelect,
+			Default: "b",
+			Options: []Option{
+				{Label: "A", Value: "a"},
+				{Label: "B", Value: "b"},
+			},
+		},
+	}
+	model := New(questions, nil)
+
+	// Select first option and advance
+	newModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m := newModel.(Model)
+
+	// Cursor should be set to default option index (1 for "b")
+	if m.cursor != 1 {
+		t.Errorf("expected cursor 1 (default option 'b'), got %d", m.cursor)
+	}
+}
+
 // contains checks if s contains substr.
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
