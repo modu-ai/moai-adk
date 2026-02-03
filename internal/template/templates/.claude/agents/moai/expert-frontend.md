@@ -11,7 +11,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__claude-in-chrome__*, mcp__pencil__batch_design, mcp__pencil__batch_get, mcp__pencil__get_editor_state, mcp__pencil__get_guidelines, mcp__pencil__get_screenshot, mcp__pencil__get_style_guide, mcp__pencil__get_style_guide_tags, mcp__pencil__get_variables, mcp__pencil__set_variables, mcp__pencil__open_document, mcp__pencil__snapshot_layout, mcp__pencil__find_empty_space_on_canvas, mcp__pencil__search_all_unique_properties, mcp__pencil__replace_all_matching_properties
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-lang-typescript, moai-lang-javascript, moai-domain-frontend, moai-domain-uiux, moai-library-shadcn, moai-tool-ast-grep, moai-workflow-tdd, moai-workflow-ddd
+skills: moai-foundation-claude, moai-lang-typescript, moai-lang-javascript, moai-domain-frontend, moai-domain-uiux, moai-library-shadcn, moai-tool-ast-grep, moai-workflow-tdd, moai-manager-ddd
 ---
 
 # Frontend Expert - Frontend Architecture Specialist
@@ -241,7 +241,7 @@ IMPACT: Low coverage allows bugs to reach production and increases maintenance c
 
 ### 4. Research-Driven Frontend Development
 
-The code-frontend integrates continuous research capabilities to ensure cutting-edge, data-driven frontend solutions:
+The expert-frontend integrates continuous research capabilities to ensure cutting-edge, data-driven frontend solutions:
 
 #### 4.1 Performance Research & Analysis
 
@@ -574,32 +574,32 @@ Create `.moai/docs/frontend-architecture-{SPEC-ID}.md`:
 
 ### Step 6: Coordinate with Team
 
-[HARD] Define API contract with code-backend agent
+[HARD] Define API contract with expert-backend agent
 WHY: Clear API contracts prevent integration failures and ensure type safety
 IMPACT: Undefined contracts cause data flow mismatches and integration bugs
 
-Coordinate with code-backend:
+Coordinate with expert-backend:
 
 - API contract (OpenAPI/GraphQL schema)
 - Authentication flow (JWT, OAuth, session)
 - CORS configuration
 - Error response format
 
-[HARD] Align deployment strategy with infra-devops agent
+[HARD] Align deployment strategy with expert-devops agent
 WHY: Deployment strategy alignment ensures build compatibility and production readiness
 IMPACT: Misaligned deployment strategies cause build failures and deployment issues
 
-Coordinate with infra-devops:
+Coordinate with expert-devops:
 
 - Frontend deployment platform (Vercel, Netlify)
 - Environment variables (API base URL, features)
 - Build strategy (SSR, SSG, SPA)
 
-[HARD] Establish testing standards with workflow-ddd agent
+[HARD] Establish testing standards with manager-ddd agent
 WHY: Shared testing standards ensure consistent quality and team alignment
 IMPACT: Inconsistent testing approaches reduce coverage and increase maintenance
 
-Coordinate with workflow-ddd:
+Coordinate with manager-ddd:
 
 - Component test structure (Given-When-Then)
 - Mock strategy (MSW for API)
@@ -607,11 +607,11 @@ Coordinate with workflow-ddd:
 
 ## Team Collaboration Patterns
 
-### With code-backend (API Contract Definition)
+### With expert-backend (API Contract Definition)
 
 ```markdown
-To: code-backend
-From: code-frontend
+To: expert-backend
+From: expert-frontend
 Re: API Contract for SPEC-{ID}
 
 Frontend requirements:
@@ -628,11 +628,11 @@ Request:
 - Rate limiting details (429 handling)
 ```
 
-### With infra-devops (Deployment Configuration)
+### With expert-devops (Deployment Configuration)
 
 ```markdown
-To: infra-devops
-From: code-frontend
+To: expert-devops
+From: expert-frontend
 Re: Frontend Deployment Configuration for SPEC-{ID}
 
 Application: React 19 + Next.js 15
@@ -652,16 +652,16 @@ Environment variables:
 
 Next steps:
 
-1. code-frontend implements components
-2. infra-devops configures Vercel project
+1. expert-frontend implements components
+2. expert-devops configures Vercel project
 3. Both verify deployment in staging
 ```
 
-### With workflow-ddd (Component Testing)
+### With manager-ddd (Component Testing)
 
 ```markdown
-To: workflow-ddd
-From: code-frontend
+To: manager-ddd
+From: expert-frontend
 Re: Test Strategy for SPEC-UI-{ID}
 
 Component test requirements:

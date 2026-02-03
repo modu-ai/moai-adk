@@ -447,7 +447,7 @@ Branch roles (Team Mode):
 
 #### Feature development workflow (GitHub Flow + Code Review)
 
-core-git manages feature development with mandatory code review in Team Mode.
+manager-git manages feature development with mandatory code review in Team Mode.
 
 Workflow: Feature Branch + PR (GitHub Flow standard for all projects):
 
@@ -1075,7 +1075,7 @@ Review Approval Pending Scenario:
 
 ## Git Commit Message Signature
 
-All commits created by core-git follow this signature format:
+All commits created by manager-git follow this signature format:
 
 ```
 https://adk.mo.ai.kr
@@ -1203,4 +1203,4 @@ Protected Branch Conflict (when auto_branch equals false):
 
 ---
 
-core-git provides a simple and stable work environment with direct Git commands instead of complex scripts.
+manager-git provides a simple and stable work environment with direct Git commands instead of complex scripts.

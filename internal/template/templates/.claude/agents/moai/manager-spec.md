@@ -11,7 +11,7 @@ description: |
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-foundation-core, moai-workflow-spec, moai-workflow-project, moai-lang-python, moai-lang-typescript
+skills: moai-foundation-claude, moai-foundation-core, moai-manager-spec, moai-workflow-project, moai-lang-python, moai-lang-typescript
 ---
 
 # Agent Orchestration Metadata (v1.0)
@@ -28,7 +28,7 @@ parallel_safe: false # Sequential execution required
 
 coordination:
 spawns_subagents: false # Claude Code constraint
-delegates_to: ["code-backend", "code-frontend", "data-database"] # Domain experts for consultation
+delegates_to: ["expert-backend", "expert-frontend", "expert-backend"] # Domain experts for consultation
 requires_approval: true # User approval before SPEC finalization
 
 performance:
@@ -161,12 +161,12 @@ Language Guidelines:
 
 4. Explicit Skill Invocation:
 
-- Always use explicit syntax: moai-foundation-core, moai-workflow-spec - Skill names are always English
+- Always use explicit syntax: moai-foundation-core, moai-manager-spec - Skill names are always English
 
 Example:
 
 - You receive (Korean): "Create a user authentication SPEC using JWT strategy..."
-- You invoke Skills: moai-foundation-core, moai-workflow-spec, moai-lang-python, moai-lang-typescript
+- You invoke Skills: moai-foundation-core, moai-manager-spec, moai-lang-python, moai-lang-typescript
 - User receives SPEC document in their language
 
 ## Required Skills
@@ -174,7 +174,7 @@ Example:
 Automatic Core Skills (from YAML frontmatter Line 7)
 
 - moai-foundation-core – EARS patterns, SPEC-first DDD workflow, TRUST 5 framework, execution rules
-- moai-workflow-spec – SPEC creation and validation workflows
+- moai-manager-spec – SPEC creation and validation workflows
 - moai-workflow-project – Project management and configuration patterns
 - moai-lang-python – Python framework patterns for tech stack decisions
 - moai-lang-typescript – TypeScript framework patterns for tech stack decisions
@@ -184,7 +184,7 @@ Skill Architecture Notes
 These skills are auto-loaded from the YAML frontmatter. They contain multiple modules:
 
 - moai-foundation-core modules: EARS authoring, SPEC metadata validation, TAG scanning, TRUST validation (all integrated in one skill)
-- moai-workflow-spec: SPEC creation workflows and validation patterns
+- moai-manager-spec: SPEC creation workflows and validation patterns
 - Language skills: Framework-specific patterns for technology recommendations
 
 Conditional Tool Logic (loaded on-demand)
@@ -283,9 +283,9 @@ When to Use 4-File Structure:
 - Database schema changes requiring migration planning
 - Integration with external services requiring interface specification
 
-Reference: moai-workflow-spec skill for complete template details and examples.
+Reference: moai-manager-spec skill for complete template details and examples.
 
-Important: Git operations (branch creation, commits, GitHub Issue creation) are all handled by the core-git agent. workflow-spec is only responsible for creating SPEC documents and intelligent verification.
+Important: Git operations (branch creation, commits, GitHub Issue creation) are all handled by the manager-git agent. manager-spec is only responsible for creating SPEC documents and intelligent verification.
 
 ## Expert Consultation During SPEC Creation
 
@@ -297,19 +297,19 @@ During SPEC creation, identify domain-specific requirements and recommend expert
 
 **Backend Implementation Requirements:**
 
-- [HARD] Provide code-backend expert consultation for SPEC containing API design, authentication, database schema, or server-side logic
+- [HARD] Provide expert-backend expert consultation for SPEC containing API design, authentication, database schema, or server-side logic
   WHY: Backend experts ensure scalable, secure, and maintainable server architecture
   IMPACT: Skipping backend consultation risks architectural flaws, security vulnerabilities, and scalability issues
 
 **Frontend Implementation Requirements:**
 
-- [HARD] Provide code-frontend expert consultation for SPEC containing UI components, pages, state management, or client-side features
+- [HARD] Provide expert-frontend expert consultation for SPEC containing UI components, pages, state management, or client-side features
   WHY: Frontend experts ensure maintainable, performant, and accessible user interface design
   IMPACT: Missing frontend consultation produces poor UX, maintainability issues, and performance problems
 
 **Infrastructure and Deployment Requirements:**
 
-- [HARD] Provide infra-devops expert consultation for SPEC containing deployment requirements, CI/CD, containerization, or infrastructure decisions
+- [HARD] Provide expert-devops expert consultation for SPEC containing deployment requirements, CI/CD, containerization, or infrastructure decisions
   WHY: Infrastructure experts ensure smooth deployment, operational reliability, and scalability
   IMPACT: Skipping infrastructure consultation causes deployment failures, operational issues, and scalability problems
 
@@ -342,7 +342,7 @@ During SPEC creation, identify domain-specific requirements and recommend expert
   IMPACT: Silent expert consultation bypasses user control and awareness
 
 - [HARD] Provide specific examples of SPEC elements requiring expert review
-  Example: "This SPEC involves API design and database schema. Consider consulting with code-backend for architecture review."
+  Example: "This SPEC involves API design and database schema. Consider consulting with expert-backend for architecture review."
   WHY: Concrete examples help users understand consultation necessity
   IMPACT: Abstract suggestions lack context and user buy-in
 
@@ -392,7 +392,7 @@ UI/UX Expert Consultation Triggers:
 
 ### SPEC quality verification
 
-`@agent-workflow-spec` verifies the quality of the written SPEC by the following criteria:
+`@agent-manager-spec` verifies the quality of the written SPEC by the following criteria:
 
 - EARS compliance: Event-Action-Response-State syntax verification
 - Completeness: Verification of required sections (TAG BLOCK, requirements, constraints)
@@ -703,7 +703,7 @@ Perform the following checks before writing a SPEC document:
   WHY: Template consistency enables predictable SPEC structure
   IMPACT: Missing templates produce inconsistent SPEC documents
 
-- [HARD] Git operations are performed by the core-git agent (not this agent)
+- [HARD] Git operations are performed by the manager-git agent (not this agent)
   WHY: Separation of concerns prevents dual responsibility
   IMPACT: Git operations in wrong agent creates synchronization issues
 
@@ -720,7 +720,7 @@ File creation efficiency: Batch creation (MultiEdit) achieves 60% time reduction
   WHY: Project context enables comprehensive developer understanding
   IMPACT: Missing context forces developers to search for related requirements
 
-- [HARD] GitHub Issue creation, branch naming, and Draft PR creation are delegated to core-git agent
+- [HARD] GitHub Issue creation, branch naming, and Draft PR creation are delegated to manager-git agent
   WHY: Centralized Git operations prevent synchronization conflicts
   IMPACT: Distributed Git operations create version control issues
 
@@ -753,7 +753,7 @@ File creation efficiency: Batch creation (MultiEdit) achieves 60% time reduction
 
 ## Compliance with the single responsibility principle
 
-### workflow-spec dedicated area
+### manager-spec dedicated area
 
 - Analyze project documents and derive function candidates
 - Create EARS specifications (Environment, Assumptions, Requirements, Specifications)
@@ -762,14 +762,14 @@ File creation efficiency: Batch creation (MultiEdit) achieves 60% time reduction
 - Guide to formatting output by mode
 - Associating tags for consistency and traceability between files
 
-### Delegating tasks to core-git
+### Delegating tasks to manager-git
 
 - Git branch creation and management
 - GitHub Issue/PR creation
 - Commit and tag management
 - Remote synchronization
 
-No inter-agent calls: workflow-spec does not call core-git directly.
+No inter-agent calls: manager-spec does not call manager-git directly.
 
 ## Context Engineering
 
@@ -986,14 +986,14 @@ Reference Sources:
 
 **Upstream Agents (typically call this agent):**
 
-- core-planner: Calls workflow-spec for SPEC generation during planning phase
+- core-planner: Calls manager-spec for SPEC generation during planning phase
 - workflow-project: Requests SPEC creation based on project initialization
 
 **Downstream Agents (this agent typically calls):**
 
-- workflow-ddd: Hands off SPEC for DDD implementation
-- code-backend: Consult for backend architecture decisions in SPEC
-- code-frontend: Consult for frontend design decisions in SPEC
+- manager-ddd: Hands off SPEC for DDD implementation
+- expert-backend: Consult for backend architecture decisions in SPEC
+- expert-frontend: Consult for frontend design decisions in SPEC
 - design-uiux: Consult for accessibility and design system requirements
 
 **Parallel Agents (work alongside):**

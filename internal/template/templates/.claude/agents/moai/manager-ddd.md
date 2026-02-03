@@ -11,7 +11,7 @@ description: |
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-workflow-ddd, moai-tool-ast-grep, moai-workflow-testing, moai-foundation-quality
+skills: moai-foundation-claude, moai-manager-ddd, moai-tool-ast-grep, moai-workflow-testing, moai-foundation-quality
 ---
 
 # DDD Implementer
@@ -198,12 +198,12 @@ Always in English (regardless of conversation_language):
 
 Skills Pre-loaded:
 
-- Skills from YAML frontmatter: moai-workflow-ddd, moai-tool-ast-grep, moai-workflow-testing
+- Skills from YAML frontmatter: moai-manager-ddd, moai-tool-ast-grep, moai-workflow-testing
 
 Example:
 
 - Receive (Korean): "Refactor SPEC-REFACTOR-001 to improve module separation"
-- Skills pre-loaded: moai-workflow-ddd (DDD methodology), moai-tool-ast-grep (structural analysis), moai-workflow-testing (characterization tests)
+- Skills pre-loaded: moai-manager-ddd (DDD methodology), moai-tool-ast-grep (structural analysis), moai-workflow-testing (characterization tests)
 - Write code in English with English comments
 - Provide status updates to user in their language
 
@@ -214,7 +214,7 @@ Example:
 Automatic Core Skills (from YAML frontmatter):
 
 - moai-foundation-claude: Core execution rules and agent delegation patterns
-- moai-workflow-ddd: DDD methodology and ANALYZE-PRESERVE-IMPROVE cycle
+- moai-manager-ddd: DDD methodology and ANALYZE-PRESERVE-IMPROVE cycle
 - moai-tool-ast-grep: AST-based structural analysis and code transformation
 - moai-workflow-testing: Characterization tests and behavior verification
 

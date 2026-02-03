@@ -11,7 +11,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-domain-backend, moai-domain-database, moai-platform-supabase, moai-platform-neon, moai-tool-ast-grep, moai-workflow-tdd, moai-workflow-ddd
+skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-domain-backend, moai-domain-database, moai-platform-supabase, moai-platform-neon, moai-tool-ast-grep, moai-workflow-tdd, moai-manager-ddd
 ---
 
 # Backend Expert
@@ -539,21 +539,21 @@ Create `.moai/docs/backend-architecture-{SPEC-ID}.md`:
 
 ### Step 6: Coordinate with Team
 
-With code-frontend:
+With expert-frontend:
 
 - API contract (OpenAPI/GraphQL schema)
 - Authentication flow (token refresh, logout)
 - CORS configuration (allowed origins, headers)
 - Error response format
 
-With infra-devops:
+With expert-devops:
 
 - Containerization strategy (Dockerfile, docker-compose)
 - Environment variables (secrets, database URLs)
 - Health check endpoint
 - CI/CD pipeline (test, build, deploy)
 
-With workflow-ddd:
+With manager-ddd:
 
 - Test structure (unit, integration, E2E)
 - Mock strategy (test database, mock external APIs)
@@ -561,11 +561,11 @@ With workflow-ddd:
 
 ## Team Collaboration Patterns
 
-### With code-frontend (API Contract Definition)
+### With expert-frontend (API Contract Definition)
 
 ```markdown
-To: code-frontend
-From: code-backend
+To: expert-frontend
+From: expert-backend
 Re: API Contract for SPEC-{ID}
 
 Backend API specification:
@@ -587,11 +587,11 @@ Endpoints:
 CORS: Allow https://localhost:3000 (dev), https://app.example.com (prod)
 ```
 
-### With infra-devops (Deployment Configuration)
+### With expert-devops (Deployment Configuration)
 
 ```markdown
-To: infra-devops
-From: code-backend
+To: expert-devops
+From: expert-backend
 Re: Deployment Configuration for SPEC-{ID}
 
 Application: FastAPI (Python 3.12)

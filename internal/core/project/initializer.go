@@ -299,6 +299,41 @@ func (i *projectInitializer) generateConfigsFallback(opts InitOptions, result *I
 	}
 	result.CreatedFiles = append(result.CreatedFiles, ".moai/config/sections/workflow.yaml")
 
+	// git-strategy.yaml
+	gitStrategyContent := fmt.Sprintf(`git_strategy:
+  mode: %q
+  github_username: %q
+`, tmplCtx.GitMode, tmplCtx.GitHubUsername)
+	if err := os.WriteFile(filepath.Join(sectionsDir, "git-strategy.yaml"), []byte(gitStrategyContent), 0o644); err != nil {
+		return fmt.Errorf("write git-strategy.yaml: %w", err)
+	}
+	result.CreatedFiles = append(result.CreatedFiles, ".moai/config/sections/git-strategy.yaml")
+
+	// system.yaml
+	systemContent := fmt.Sprintf(`moai:
+  version: %q
+  update_check_frequency: daily
+`, tmplCtx.Version)
+	if err := os.WriteFile(filepath.Join(sectionsDir, "system.yaml"), []byte(systemContent), 0o644); err != nil {
+		return fmt.Errorf("write system.yaml: %w", err)
+	}
+	result.CreatedFiles = append(result.CreatedFiles, ".moai/config/sections/system.yaml")
+
+	// project.yaml
+	projectContent := fmt.Sprintf(`project:
+  name: %q
+  description: ""
+  type: ""
+  created_at: %q
+  initialized: "true"
+github:
+  profile_name: %q
+`, tmplCtx.ProjectName, tmplCtx.CreatedAt, tmplCtx.GitHubUsername)
+	if err := os.WriteFile(filepath.Join(sectionsDir, "project.yaml"), []byte(projectContent), 0o644); err != nil {
+		return fmt.Errorf("write project.yaml: %w", err)
+	}
+	result.CreatedFiles = append(result.CreatedFiles, ".moai/config/sections/project.yaml")
+
 	return nil
 }
 

@@ -56,6 +56,81 @@ type QualityConfig struct {
 	TDDSettings        TDDSettings        `yaml:"tdd_settings"`
 	HybridSettings     HybridSettings     `yaml:"hybrid_settings"`
 	CoverageExemptions CoverageExemptions `yaml:"coverage_exemptions"`
+	TestQuality        TestQuality        `yaml:"test_quality"`
+	LSPQualityGates    LSPQualityGates    `yaml:"lsp_quality_gates"`
+	Principles         Principles         `yaml:"principles"`
+	LSPIntegration     LSPIntegration     `yaml:"lsp_integration"`
+}
+
+// TestQuality configures test quality requirements.
+type TestQuality struct {
+	SpecificationBased          bool `yaml:"specification_based"`
+	MeaningfulAssertions        bool `yaml:"meaningful_assertions"`
+	AvoidImplementationCoupling bool `yaml:"avoid_implementation_coupling"`
+	MutationTestingEnabled      bool `yaml:"mutation_testing_enabled"`
+}
+
+// LSPQualityGates configures LSP-based quality validation.
+type LSPQualityGates struct {
+	Enabled         bool        `yaml:"enabled"`
+	Plan            LSPPlanGate `yaml:"plan"`
+	Run             LSPRunGate  `yaml:"run"`
+	Sync            LSPSyncGate `yaml:"sync"`
+	CacheTTLSeconds int         `yaml:"cache_ttl_seconds"`
+	TimeoutSeconds  int         `yaml:"timeout_seconds"`
+}
+
+// LSPPlanGate configures Plan phase LSP requirements.
+type LSPPlanGate struct {
+	RequireBaseline bool `yaml:"require_baseline"`
+}
+
+// LSPRunGate configures Run phase LSP requirements.
+type LSPRunGate struct {
+	MaxErrors       int  `yaml:"max_errors"`
+	MaxTypeErrors   int  `yaml:"max_type_errors"`
+	MaxLintErrors   int  `yaml:"max_lint_errors"`
+	AllowRegression bool `yaml:"allow_regression"`
+}
+
+// LSPSyncGate configures Sync phase LSP requirements.
+type LSPSyncGate struct {
+	MaxErrors       int  `yaml:"max_errors"`
+	MaxWarnings     int  `yaml:"max_warnings"`
+	RequireCleanLSP bool `yaml:"require_clean_lsp"`
+}
+
+// Principles configures quality principles.
+type Principles struct {
+	Simplicity SimplicityPrinciple `yaml:"simplicity"`
+}
+
+// SimplicityPrinciple configures simplicity constraints.
+type SimplicityPrinciple struct {
+	MaxParallelTasks int `yaml:"max_parallel_tasks"`
+}
+
+// LSPIntegration configures LSP integration with TRUST 5 framework.
+type LSPIntegration struct {
+	TRUST5Integration   TRUST5Integration   `yaml:"trust5_integration"`
+	DiagnosticSources   []string            `yaml:"diagnostic_sources"`
+	RegressionDetection RegressionDetection `yaml:"regression_detection"`
+}
+
+// TRUST5Integration maps TRUST 5 dimensions to LSP checks.
+type TRUST5Integration struct {
+	Tested         []string `yaml:"tested"`
+	Readable       []string `yaml:"readable"`
+	Understandable []string `yaml:"understandable"`
+	Secured        []string `yaml:"secured"`
+	Trackable      []string `yaml:"trackable"`
+}
+
+// RegressionDetection configures regression detection thresholds.
+type RegressionDetection struct {
+	ErrorIncreaseThreshold     int `yaml:"error_increase_threshold"`
+	WarningIncreaseThreshold   int `yaml:"warning_increase_threshold"`
+	TypeErrorIncreaseThreshold int `yaml:"type_error_increase_threshold"`
 }
 
 // DDDSettings configures Domain-Driven Development mode (ANALYZE-PRESERVE-IMPROVE).
@@ -89,4 +164,41 @@ type CoverageExemptions struct {
 	Enabled              bool `yaml:"enabled"`
 	RequireJustification bool `yaml:"require_justification"`
 	MaxExemptPercentage  int  `yaml:"max_exempt_percentage"`
+}
+
+// ReportGeneration configures quality report generation.
+type ReportGeneration struct {
+	Enabled    bool   `yaml:"enabled"`
+	AutoCreate bool   `yaml:"auto_create"`
+	WarnUser   bool   `yaml:"warn_user"`
+	UserChoice string `yaml:"user_choice"`
+}
+
+// LSPStateTracking configures LSP state tracking across phases.
+type LSPStateTracking struct {
+	Enabled       bool               `yaml:"enabled"`
+	CapturePoints []string           `yaml:"capture_points"`
+	Comparison    LSPStateComparison `yaml:"comparison"`
+	Logging       LSPStateLogging    `yaml:"logging"`
+}
+
+// LSPStateComparison configures LSP state comparison settings.
+type LSPStateComparison struct {
+	Baseline            string `yaml:"baseline"`
+	RegressionThreshold int    `yaml:"regression_threshold"`
+}
+
+// LSPStateLogging configures LSP state logging settings.
+type LSPStateLogging struct {
+	LogLSPStateChanges     bool `yaml:"log_lsp_state_changes"`
+	LogRegressionDetection bool `yaml:"log_regression_detection"`
+	LogCompletionMarkers   bool `yaml:"log_completion_markers"`
+	IncludeLSPInReports    bool `yaml:"include_lsp_in_reports"`
+}
+
+// FullQualityConfig represents the complete quality.yaml structure.
+type FullQualityConfig struct {
+	Constitution     QualityConfig    `yaml:"constitution"`
+	ReportGeneration ReportGeneration `yaml:"report_generation"`
+	LSPStateTracking LSPStateTracking `yaml:"lsp_state_tracking"`
 }

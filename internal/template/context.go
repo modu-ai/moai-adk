@@ -37,8 +37,10 @@ type TemplateContext struct {
 	SyncTokens int  // 40000
 
 	// Meta
-	Version  string // MoAI-ADK version
-	Platform string // "darwin", "linux", "windows"
+	Version       string // MoAI-ADK version
+	Platform      string // "darwin", "linux", "windows"
+	InitializedAt string // ISO 8601 timestamp when project was initialized
+	CreatedAt     string // ISO 8601 timestamp when project was created
 }
 
 // ContextOption configures a TemplateContext.
@@ -126,6 +128,20 @@ func WithVersion(version string) ContextOption {
 	}
 }
 
+// WithInitializedAt sets the project initialization timestamp.
+func WithInitializedAt(timestamp string) ContextOption {
+	return func(c *TemplateContext) {
+		c.InitializedAt = timestamp
+	}
+}
+
+// WithCreatedAt sets the project creation timestamp.
+func WithCreatedAt(timestamp string) ContextOption {
+	return func(c *TemplateContext) {
+		c.CreatedAt = timestamp
+	}
+}
+
 // WithGitMode sets the git mode (manual, personal, team).
 func WithGitMode(mode string) ContextOption {
 	return func(c *TemplateContext) {
@@ -157,21 +173,8 @@ func WithOutputLanguages(gitCommit, codeComment, documentation string) ContextOp
 	}
 }
 
-// langNameMap maps language codes to full names with native script.
-var langNameMap = map[string]string{
-	"en": "English",
-	"ko": "Korean (한국어)",
-	"ja": "Japanese (日本語)",
-	"zh": "Chinese (中文)",
-	"es": "Spanish (Español)",
-	"fr": "French (Français)",
-	"de": "German (Deutsch)",
-}
-
 // ResolveLanguageName returns the full name for a language code.
+// Uses the canonical language map from pkg/models.
 func ResolveLanguageName(code string) string {
-	if name, ok := langNameMap[code]; ok {
-		return name
-	}
-	return "English"
+	return models.GetLanguageName(code)
 }

@@ -962,7 +962,7 @@ Upstream Agents (typically call this agent):
 
 Downstream Agents (this agent typically calls):
 
-- workflow-spec: Create SPEC documents based on project initialization
+- manager-spec: Create SPEC documents based on project initialization
 - mcp-context7: Research project-specific best practices and technology versions
 - mcp-sequential-thinking: Complex project analysis requiring multi-step reasoning
 

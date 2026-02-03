@@ -28,8 +28,8 @@ func DefaultQuestions(projectRoot string) []Question {
 			Title:       "Select conversation language",
 			Description: "This determines the language Claude will use to communicate with you.",
 			Options: []Option{
-				{Label: "English", Value: "en", Desc: "English"},
 				{Label: "Korean (한국어)", Value: "ko", Desc: "Korean"},
+				{Label: "English", Value: "en", Desc: "English"},
 				{Label: "Japanese (日本語)", Value: "ja", Desc: "Japanese"},
 				{Label: "Chinese (中文)", Value: "zh", Desc: "Chinese"},
 			},
@@ -87,8 +87,8 @@ func DefaultQuestions(projectRoot string) []Question {
 			Title:       "Select language for Git commits",
 			Description: "Language used for commit messages.",
 			Options: []Option{
-				{Label: "English", Value: "en", Desc: "Write commits in English"},
 				{Label: "Korean (한국어)", Value: "ko", Desc: "Write commits in Korean"},
+				{Label: "English", Value: "en", Desc: "Write commits in English"},
 				{Label: "Japanese (日本語)", Value: "ja", Desc: "Write commits in Japanese"},
 				{Label: "Chinese (中文)", Value: "zh", Desc: "Write commits in Chinese"},
 			},
@@ -102,8 +102,8 @@ func DefaultQuestions(projectRoot string) []Question {
 			Title:       "Select language for code comments",
 			Description: "Language used for comments in code.",
 			Options: []Option{
-				{Label: "English", Value: "en", Desc: "Write comments in English"},
 				{Label: "Korean (한국어)", Value: "ko", Desc: "Write comments in Korean"},
+				{Label: "English", Value: "en", Desc: "Write comments in English"},
 				{Label: "Japanese (日本語)", Value: "ja", Desc: "Write comments in Japanese"},
 				{Label: "Chinese (中文)", Value: "zh", Desc: "Write comments in Chinese"},
 			},
@@ -117,8 +117,8 @@ func DefaultQuestions(projectRoot string) []Question {
 			Title:       "Select language for documentation",
 			Description: "Language used for documentation files.",
 			Options: []Option{
-				{Label: "English", Value: "en", Desc: "Write docs in English"},
 				{Label: "Korean (한국어)", Value: "ko", Desc: "Write docs in Korean"},
+				{Label: "English", Value: "en", Desc: "Write docs in English"},
 				{Label: "Japanese (日本語)", Value: "ja", Desc: "Write docs in Japanese"},
 				{Label: "Chinese (中文)", Value: "zh", Desc: "Write docs in Chinese"},
 			},

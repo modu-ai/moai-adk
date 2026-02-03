@@ -2,7 +2,11 @@
 // for MoAI project initialization.
 package wizard
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/modu-ai/moai-adk-go/pkg/models"
+)
 
 // WizardResult holds the user's selections from the init wizard.
 type WizardResult struct {
@@ -75,19 +79,12 @@ var (
 	ErrInvalidQuestion = errors.New("invalid question index")
 )
 
-// LangNameMap maps language codes to full names with native script.
-var LangNameMap = map[string]string{
-	"en": "English",
-	"ko": "Korean (한국어)",
-	"ja": "Japanese (日本語)",
-	"zh": "Chinese (中文)",
-}
+// LangNameMap is an alias to the canonical language map in pkg/models.
+// Deprecated: Use models.LangNameMap directly.
+var LangNameMap = models.LangNameMap
 
 // GetLanguageName returns the full language name for a code.
 // Returns "English" if the code is not found.
 func GetLanguageName(code string) string {
-	if name, ok := LangNameMap[code]; ok {
-		return name
-	}
-	return "English"
+	return models.GetLanguageName(code)
 }

@@ -642,14 +642,14 @@ Expected Impact: Transform technical codebases into accessible, professional doc
 Upstream Agents (typically call this agent):
 
 - manager-ddd: Documentation generation after DDD implementation completes
-- core-quality: Documentation validation as part of quality gates
+- manager-quality: Documentation validation as part of quality gates
 
 Downstream Agents (this agent typically calls):
 
 - mcp-context7: Research latest documentation best practices
-- core-quality: Validate documentation quality and completeness
+- manager-quality: Validate documentation quality and completeness
 
 Parallel Agents (work alongside):
 
-- workflow-spec: Synchronize SPEC documentation with generated docs
+- manager-spec: Synchronize SPEC documentation with generated docs
 - design-uiux: Integrate design system documentation from Pencil

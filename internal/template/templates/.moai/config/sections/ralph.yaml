@@ -1,0 +1,94 @@
+# Ralph Engine Settings
+# Automated feedback loop with LSP diagnostics and AST-grep integration
+
+ralph:
+  # Enable Ralph engine for automated quality improvement
+  enabled: true
+
+  # LSP Diagnostics Configuration
+  lsp:
+    # Automatically start LSP servers when needed
+    auto_start: true
+
+    # Timeout for LSP operations in seconds (default: 15)
+    timeout_seconds: 15
+
+    # Polling interval for diagnostics in milliseconds (default: 1000)
+    poll_interval_ms: 1000
+
+    # Continue execution if LSP is unavailable
+    graceful_degradation: true
+
+    # Supported languages (auto-detected from file extensions)
+    # LSP server configuration is loaded from .lsp.json if present
+
+  # AST-grep Security Scanning Configuration
+  ast_grep:
+    # Enable AST-grep for code analysis
+    enabled: true
+
+    # Path to AST-grep configuration file
+    config_path: ".claude/skills/moai-tool-ast-grep/rules/sgconfig.yml"
+
+    # Enable security vulnerability scanning
+    security_scan: true
+
+    # Enable code quality pattern scanning
+    quality_scan: true
+
+    # Automatically apply fixes without confirmation (not recommended)
+    auto_fix: false
+
+  # Loop Controller Configuration
+  loop:
+    # Maximum number of feedback loop iterations (default: 10)
+    max_iterations: 10
+
+    # Automatically apply fixes without confirmation (not recommended)
+    auto_fix: false
+
+    # Request user confirmation before applying fixes
+    require_confirmation: true
+
+    # Minimum time between loop iterations in seconds (default: 2)
+    cooldown_seconds: 2
+
+    # Completion Conditions
+    # All conditions must be true for the loop to complete
+    completion:
+      # Require zero LSP errors for completion
+      zero_errors: true
+
+      # Require zero warnings (false = warnings allowed)
+      zero_warnings: false
+
+      # All tests must pass
+      tests_pass: true
+
+      # Minimum test coverage percentage (0-100)
+      coverage_threshold: 85
+
+  # Git Integration
+  # Note: All git automation settings are managed in git-strategy.yaml
+  # Ralph respects the git_strategy.mode configuration for branch/PR creation
+
+  # Hook Behavior Configuration
+  hooks:
+    # LSP diagnostic hook
+    post_tool_lsp:
+      # Enable LSP diagnostic checking after tool use
+      enabled: true
+
+      # Trigger LSP diagnostics after these tools
+      trigger_on: ["Write", "Edit"]
+
+      # Minimum severity level to report (error, warning, info)
+      severity_threshold: "error"
+
+    # Loop controller hook
+    stop_loop_controller:
+      # Enable loop controller completion checking
+      enabled: true
+
+      # Check completion conditions after each response
+      check_completion: true

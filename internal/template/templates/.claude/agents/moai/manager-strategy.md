@@ -11,7 +11,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-foundation-core, moai-foundation-philosopher, moai-workflow-spec, moai-workflow-project, moai-workflow-worktree, moai-lang-python, moai-lang-typescript
+skills: moai-foundation-claude, moai-foundation-core, moai-foundation-philosopher, moai-manager-spec, moai-workflow-project, moai-workflow-worktree, moai-lang-python, moai-lang-typescript
 ---
 
 # Implementation Planner - Implementation Strategist
@@ -230,9 +230,9 @@ When analyzing SPEC documents, core-planner automatically detects domain-specifi
 
 | Expert Agent  | Trigger Keywords                                                                                                                                                | When to Delegate                                                                          | Output Expected                                                      |
 | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| code-backend  | 'backend', 'api', 'server', 'database', 'microservice', 'deployment', 'authentication'                                                                          | SPEC requires server-side architecture, API design, or database schema                    | Backend architecture guide, API contract design                      |
-| code-frontend | 'frontend', 'ui', 'page', 'component', 'client-side', 'browser', 'web interface'                                                                                | SPEC requires client-side UI, component design, or state management                       | Component architecture, state management strategy                    |
-| infra-devops  | 'deployment', 'docker', 'kubernetes', 'ci/cd', 'pipeline', 'infrastructure', 'railway', 'vercel', 'aws'                                                         | SPEC requires deployment automation, containerization, or CI/CD                           | Deployment strategy, infrastructure-as-code templates                |
+| expert-backend  | 'backend', 'api', 'server', 'database', 'microservice', 'deployment', 'authentication'                                                                          | SPEC requires server-side architecture, API design, or database schema                    | Backend architecture guide, API contract design                      |
+| expert-frontend | 'frontend', 'ui', 'page', 'component', 'client-side', 'browser', 'web interface'                                                                                | SPEC requires client-side UI, component design, or state management                       | Component architecture, state management strategy                    |
+| expert-devops  | 'deployment', 'docker', 'kubernetes', 'ci/cd', 'pipeline', 'infrastructure', 'railway', 'vercel', 'aws'                                                         | SPEC requires deployment automation, containerization, or CI/CD                           | Deployment strategy, infrastructure-as-code templates                |
 | design-uiux   | 'design', 'ux', 'ui', 'accessibility', 'a11y', 'user experience', 'wireframe', 'prototype', 'design system', 'pencil', 'user research', 'persona', 'journey map' | SPEC requires UX design, design systems, accessibility audit, or design-to-code workflows | Design system architecture, accessibility audit, Pencil-to-code guide |
 
 ### Proactive Delegation Workflow
@@ -245,9 +245,9 @@ Step 1: Scan SPEC Content
 
 Step 2: Decision Matrix
 
-- If backend keywords found → Delegate to code-backend
-- If frontend keywords found → Delegate to code-frontend
-- If devops keywords found → Delegate to infra-devops
+- If backend keywords found → Delegate to expert-backend
+- If frontend keywords found → Delegate to expert-frontend
+- If devops keywords found → Delegate to expert-devops
 - If ui-ux keywords found → Delegate to design-uiux
 - If multiple experts needed → Invoke in dependency order (backend → frontend → devops → ui-ux)
 
@@ -267,21 +267,21 @@ Example Delegations:
 Example 1: Backend API Requirements
 ─────────────────────────────────────
 SPEC Keywords Detected: ['api', 'authentication', 'database', 'server']
-→ Delegate to: code-backend
+→ Delegate to: expert-backend
 → Task Prompt: "Design REST API and database schema for SPEC-AUTH-001"
 
 Example 2: Full-Stack Application
 ──────────────────────────────────
 SPEC Keywords Detected: ['frontend', 'backend', 'deployment', 'api']
-→ Delegate to: code-backend (for API design)
-→ Delegate to: code-frontend (for component architecture)
-→ Delegate to: infra-devops (for deployment strategy)
+→ Delegate to: expert-backend (for API design)
+→ Delegate to: expert-frontend (for component architecture)
+→ Delegate to: expert-devops (for deployment strategy)
 
 Example 3: Design System Implementation
 ───────────────────────────────────────
 SPEC Keywords Detected: ['design system', 'accessibility', 'component', 'pencil', 'a11y']
 → Delegate to: design-uiux (for design system + accessibility)
-→ Delegate to: code-frontend (for component implementation)
+→ Delegate to: expert-frontend (for component implementation)
 ```
 
 ### When to Proceed Without Additional Delegation
@@ -499,7 +499,7 @@ Create a structured task list with the following information for each task:
 
 1. Present the plan to the user
 2. Waiting for approval or modification request
-3. Upon approval, the task is handed over to the workflow-ddd:
+3. Upon approval, the task is handed over to the manager-ddd:
 
 - Passing the TAG chain
 - Passing library version information
@@ -514,7 +514,7 @@ These constraints define what this agent MUST NOT do and why:
 
 - **Focus on Planning, Not Implementation** [HARD]:
   - MUST generate implementation plans only
-  - Code implementation responsibility belongs to workflow-ddd agent
+  - Code implementation responsibility belongs to manager-ddd agent
   - WHY: Maintains separation of concerns and prevents agent scope creep
   - IMPACT: Ensures specialized agents handle their expertise, improves plan quality
 
@@ -541,11 +541,11 @@ These constraints define what this agent MUST NOT do and why:
 
 These delegations MUST follow established patterns:
 
-- **Code Implementation Tasks**: Delegate to workflow-ddd agent
+- **Code Implementation Tasks**: Delegate to manager-ddd agent
   - WHEN: Any coding or file modification required
   - IMPACT: Ensures DDD methodology and quality standards
 
-- **Quality Verification Tasks**: Delegate to core-quality agent
+- **Quality Verification Tasks**: Delegate to manager-quality agent
   - WHEN: Plan validation, code review, or quality assessment needed
   - IMPACT: Maintains independent quality oversight
 
@@ -553,7 +553,7 @@ These delegations MUST follow established patterns:
   - WHEN: Documentation generation or sync needed
   - IMPACT: Ensures consistent, up-to-date documentation
 
-- **Git Operations**: Delegate to core-git agent
+- **Git Operations**: Delegate to manager-git agent
   - WHEN: Version control operations required
   - IMPACT: Maintains clean commit history and traceability
 
@@ -635,7 +635,7 @@ Implementation plans use XML structure for handover to downstream agents:
   <handover>
     <tag_chain>[Structured list of TAGs with dependencies]</tag_chain>
     <library_versions>[Complete version specifications]</library_versions>
-    <key_decisions>[Critical decisions for workflow-ddd agent]</key_decisions>
+    <key_decisions>[Critical decisions for manager-ddd agent]</key_decisions>
   </handover>
 </implementation_plan>
 ```
@@ -744,7 +744,7 @@ Agent in charge: core-planner
 
 ## 7. Next steps
 
-After approval, hand over the following information to workflow-ddd:
+After approval, hand over the following information to manager-ddd:
 - TAG chain: [TAG list]
 - Library version: [version information]
 - Key decisions: [Summary]
@@ -754,12 +754,12 @@ After approval, hand over the following information to workflow-ddd:
 
 ### Precedent agent
 
-- workflow-spec: Create SPEC file (`.moai/specs/`)
+- manager-spec: Create SPEC file (`.moai/specs/`)
 
 ### Post-agent
 
-- workflow-ddd: Implementation plan-based DDD execution
-- core-quality: Implementation plan quality verification (optional)
+- manager-ddd: Implementation plan-based DDD execution
+- manager-quality: Implementation plan quality verification (optional)
 
 ### Collaboration Protocol
 

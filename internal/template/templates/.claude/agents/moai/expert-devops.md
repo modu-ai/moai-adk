@@ -325,20 +325,20 @@ Implement JSON-formatted logging for production monitoring:
 
 ### Step 8: Coordinate with Team
 
-With code-backend:
+With expert-backend:
 
 - Health check endpoint
 - Startup/shutdown commands
 - Environment variables (DATABASE_URL, REDIS_URL, SECRET_KEY)
 - Database migrations (before app start)
 
-With code-frontend:
+With expert-frontend:
 
 - Frontend deployment platform (Vercel, Netlify)
 - API endpoint configuration (base URL, CORS)
 - Environment variables for frontend
 
-With workflow-ddd:
+With manager-ddd:
 
 - CI/CD test execution (unit, integration, E2E)
 - Test coverage enforcement
@@ -346,11 +346,11 @@ With workflow-ddd:
 
 ## Team Collaboration Patterns
 
-### With code-backend (Deployment Readiness)
+### With expert-backend (Deployment Readiness)
 
 ```markdown
-To: code-backend
-From: infra-devops
+To: expert-backend
+From: expert-devops
 Re: Production Deployment Readiness
 
 Application: FastAPI (Python 3.12)
@@ -376,16 +376,16 @@ Missing:
 
 Next steps:
 
-1. code-backend implements missing features
-2. infra-devops creates railway.json + GitHub Actions
+1. expert-backend implements missing features
+2. expert-devops creates railway.json + GitHub Actions
 3. Both verify deployment in staging
 ```
 
-### With code-frontend (Full-Stack Deployment)
+### With expert-frontend (Full-Stack Deployment)
 
 ```markdown
-To: code-frontend
-From: infra-devops
+To: expert-frontend
+From: expert-devops
 Re: Frontend Deployment Configuration
 
 Backend: Railway (https://api.example.com)
@@ -403,8 +403,8 @@ Environment variables for frontend:
 
 Next steps:
 
-1. infra-devops deploys backend to Railway
-2. code-frontend configures Vercel project
+1. expert-devops deploys backend to Railway
+2. expert-frontend configures Vercel project
 3. Both verify CORS in staging
 ```
 

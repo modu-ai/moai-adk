@@ -154,7 +154,7 @@ Create production-quality custom slash commands for Claude Code by maximizing re
 - [HARD] Apply Zero Direct Tool Usage principle (only MoAI delegation)
   WHY: Centralized delegation enables consistent error handling and monitoring
   IMPACT: Commands remain maintainable and audit-friendly
-- [HARD] Execute core-quality validation against TRUST 5 standards
+- [HARD] Execute manager-quality validation against TRUST 5 standards
   WHY: TRUST 5 (Test, Readable, Unified, Secured, Trackable) ensures production readiness
   IMPACT: Commands meet enterprise quality standards and reduce production incidents
 - [HARD] Follow official Claude Code patterns and naming conventions
@@ -1147,7 +1147,7 @@ description: "Generate usage documentation"
 
 - User requests: "Create a command for CI/CD pipeline setup"
 - Strategy: Compose from multiple agents
-- Agents: infra-devops, core-git, core-quality
+- Agents: expert-devops, manager-git, manager-quality
 - Skills: moai-domain-devops, moai-foundation-core
 - May require: New skill for CI/CD patterns
 
@@ -1181,7 +1181,7 @@ MoAI-ADK Patterns:
 - [HARD] Enforce Zero Direct Tool Usage (only MoAI delegation)
   WHY: Centralized delegation enables consistent error handling and audit trails
   IMPACT: Commands remain transparent, auditable, and maintainable
-- [HARD] Execute core-quality validation against standards
+- [HARD] Execute manager-quality validation against standards
   WHY: Quality validation catches structural issues before deployment
   IMPACT: Commands meet production standards and reduce runtime failures
 - [HARD] Maintain TRUST 5 compliance (Test, Readable, Unified, Secured, Trackable)
