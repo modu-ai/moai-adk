@@ -50,7 +50,13 @@ func newRankStatusCmd() *cobra.Command {
 		Short: "Show ranking status",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			out := cmd.OutOrStdout()
-			if deps == nil || deps.RankClient == nil {
+			if deps == nil {
+				fmt.Fprintln(out, "Rank client not configured. Run 'moai rank login' first.")
+				return nil
+			}
+
+			// Lazily initialize Rank client
+			if err := deps.EnsureRank(); err != nil {
 				fmt.Fprintln(out, "Rank client not configured. Run 'moai rank login' first.")
 				return nil
 			}
@@ -93,10 +99,12 @@ func newRankLogoutCmd() *cobra.Command {
 
 func newRankSyncCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "sync",
-		Short: "Sync metrics to MoAI Cloud",
+		Use:    "sync",
+		Short:  "Sync metrics to MoAI Cloud",
+		Hidden: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			out := cmd.OutOrStdout()
+			fmt.Fprintln(out, "Warning: rank sync is experimental and not yet implemented")
 			fmt.Fprintln(out, "Syncing metrics to MoAI Cloud...")
 			fmt.Fprintln(out, "Sync complete.")
 			return nil
@@ -106,11 +114,13 @@ func newRankSyncCmd() *cobra.Command {
 
 func newRankExcludeCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "exclude [pattern]",
-		Short: "Add exclusion pattern for metrics",
-		Args:  cobra.ExactArgs(1),
+		Use:    "exclude [pattern]",
+		Short:  "Add exclusion pattern for metrics",
+		Hidden: true,
+		Args:   cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			out := cmd.OutOrStdout()
+			fmt.Fprintln(out, "Warning: rank exclude is experimental and not yet implemented")
 			fmt.Fprintf(out, "Exclusion pattern added: %s\n", args[0])
 			return nil
 		},
@@ -119,11 +129,13 @@ func newRankExcludeCmd() *cobra.Command {
 
 func newRankIncludeCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "include [pattern]",
-		Short: "Add inclusion pattern for metrics",
-		Args:  cobra.ExactArgs(1),
+		Use:    "include [pattern]",
+		Short:  "Add inclusion pattern for metrics",
+		Hidden: true,
+		Args:   cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			out := cmd.OutOrStdout()
+			fmt.Fprintln(out, "Warning: rank include is experimental and not yet implemented")
 			fmt.Fprintf(out, "Inclusion pattern added: %s\n", args[0])
 			return nil
 		},
@@ -132,11 +144,13 @@ func newRankIncludeCmd() *cobra.Command {
 
 func newRankRegisterCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "register [org-name]",
-		Short: "Register organization with MoAI Cloud",
-		Args:  cobra.ExactArgs(1),
+		Use:    "register [org-name]",
+		Short:  "Register organization with MoAI Cloud",
+		Hidden: true,
+		Args:   cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			out := cmd.OutOrStdout()
+			fmt.Fprintln(out, "Warning: rank register is experimental and not yet implemented")
 			fmt.Fprintf(out, "Organization registration initiated: %s\n", args[0])
 			return nil
 		},

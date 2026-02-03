@@ -21,9 +21,6 @@ func init() {
 	rootCmd.AddCommand(updateCmd)
 
 	updateCmd.Flags().Bool("check", false, "Check for updates without installing")
-	updateCmd.Flags().Bool("force", false, "Force update even if already up to date")
-	updateCmd.Flags().Bool("templates-only", false, "Sync templates only without binary update")
-	updateCmd.Flags().Bool("yes", false, "Auto-accept update without confirmation")
 }
 
 // runUpdate executes the self-update workflow by delegating to SPEC-UPDATE-001 modules.
@@ -32,6 +29,13 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	out := cmd.OutOrStdout()
 
 	fmt.Fprintf(out, "Current version: moai-adk %s\n", version.GetVersion())
+
+	// Lazily initialize update dependencies
+	if deps != nil {
+		if err := deps.EnsureUpdate(); err != nil {
+			deps.Logger.Debug("failed to initialize update system", "error", err)
+		}
+	}
 
 	if deps == nil || deps.UpdateChecker == nil {
 		if checkOnly {

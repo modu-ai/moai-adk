@@ -335,7 +335,10 @@ func TestRunUpdate_CheckOnlyNilChecker(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
-	deps = &Dependencies{}
+	// Set deps to nil to test the case where dependencies are not initialized.
+	// With lazy initialization, EnsureUpdate would try to create a real checker
+	// if deps is non-nil, so we test the nil deps path instead.
+	deps = nil
 
 	buf := new(bytes.Buffer)
 	updateCmd.SetOut(buf)

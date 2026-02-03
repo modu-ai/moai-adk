@@ -63,6 +63,21 @@ const (
 
 	// LangR represents the R programming language.
 	LangR SupportedLanguage = "r"
+
+	// LangCSharp represents the C# programming language.
+	LangCSharp SupportedLanguage = "csharp"
+
+	// LangLua represents the Lua programming language.
+	LangLua SupportedLanguage = "lua"
+
+	// LangHTML represents HTML markup language.
+	LangHTML SupportedLanguage = "html"
+
+	// LangVue represents Vue.js single-file components.
+	LangVue SupportedLanguage = "vue"
+
+	// LangSvelte represents Svelte single-file components.
+	LangSvelte SupportedLanguage = "svelte"
 )
 
 // String returns the string representation of the SupportedLanguage.
@@ -77,7 +92,8 @@ func AllSupportedLanguages() []SupportedLanguage {
 		LangJava, LangRust, LangC, LangCPP,
 		LangRuby, LangPHP, LangKotlin, LangSwift,
 		LangDart, LangElixir, LangScala, LangHaskell,
-		LangZig, LangR,
+		LangZig, LangR, LangCSharp, LangLua,
+		LangHTML, LangVue, LangSvelte,
 	}
 }
 
@@ -88,6 +104,22 @@ type LanguageInfo struct {
 	Extensions      []string          `json:"extensions"`
 	TestPattern     string            `json:"test_pattern"`
 	CoverageCommand string            `json:"coverage_command"`
+	// AstGrepLang is the language identifier used by ast-grep CLI.
+	// If empty, the ID is used as the ast-grep language name.
+	// Some languages need special identifiers (e.g., "typescriptreact" for .tsx files).
+	AstGrepLang map[string]string `json:"ast_grep_lang,omitempty"`
+}
+
+// AstGrepLanguageName returns the ast-grep CLI language identifier for the given file extension.
+// If no special mapping exists for the extension, returns the language ID as a string.
+func (l *LanguageInfo) AstGrepLanguageName(ext string) string {
+	if l.AstGrepLang != nil {
+		lower := strings.ToLower(ext)
+		if name, ok := l.AstGrepLang[lower]; ok {
+			return name
+		}
+	}
+	return string(l.ID)
 }
 
 // LanguageRegistry provides lookup for supported programming languages.
@@ -118,6 +150,9 @@ var defaultLanguages = []*LanguageInfo{
 		Extensions:      []string{".ts", ".tsx", ".mts", ".cts"},
 		TestPattern:     "vitest",
 		CoverageCommand: "vitest --coverage",
+		AstGrepLang: map[string]string{
+			".tsx": "typescriptreact",
+		},
 	},
 	{
 		ID:              LangJavaScript,
@@ -125,6 +160,9 @@ var defaultLanguages = []*LanguageInfo{
 		Extensions:      []string{".js", ".jsx", ".mjs", ".cjs"},
 		TestPattern:     "vitest",
 		CoverageCommand: "vitest --coverage",
+		AstGrepLang: map[string]string{
+			".jsx": "javascriptreact",
+		},
 	},
 	{
 		ID:              LangJava,
@@ -223,6 +261,41 @@ var defaultLanguages = []*LanguageInfo{
 		Extensions:      []string{".R", ".r", ".Rmd"},
 		TestPattern:     "testthat",
 		CoverageCommand: "covr::package_coverage()",
+	},
+	{
+		ID:              LangCSharp,
+		Name:            "C#",
+		Extensions:      []string{".cs"},
+		TestPattern:     "dotnet test",
+		CoverageCommand: "dotnet test --collect:\"XPlat Code Coverage\"",
+	},
+	{
+		ID:              LangLua,
+		Name:            "Lua",
+		Extensions:      []string{".lua"},
+		TestPattern:     "busted",
+		CoverageCommand: "busted --coverage",
+	},
+	{
+		ID:              LangHTML,
+		Name:            "HTML",
+		Extensions:      []string{".html", ".htm"},
+		TestPattern:     "",
+		CoverageCommand: "",
+	},
+	{
+		ID:              LangVue,
+		Name:            "Vue",
+		Extensions:      []string{".vue"},
+		TestPattern:     "vitest",
+		CoverageCommand: "vitest --coverage",
+	},
+	{
+		ID:              LangSvelte,
+		Name:            "Svelte",
+		Extensions:      []string{".svelte"},
+		TestPattern:     "vitest",
+		CoverageCommand: "vitest --coverage",
 	},
 }
 

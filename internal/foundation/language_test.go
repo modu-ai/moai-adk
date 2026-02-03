@@ -49,12 +49,12 @@ func TestAllSupportedLanguages(t *testing.T) {
 
 	langs := AllSupportedLanguages()
 
-	if len(langs) < 16 {
-		t.Errorf("AllSupportedLanguages() returned %d, want at least 16", len(langs))
+	if len(langs) < 20 {
+		t.Errorf("AllSupportedLanguages() returned %d, want at least 20", len(langs))
 	}
 
-	if len(langs) != 18 {
-		t.Errorf("AllSupportedLanguages() returned %d, want exactly 18", len(langs))
+	if len(langs) != 23 {
+		t.Errorf("AllSupportedLanguages() returned %d, want exactly 23", len(langs))
 	}
 }
 
@@ -169,8 +169,8 @@ func TestRegistryAll(t *testing.T) {
 	r := NewLanguageRegistry()
 	all := r.All()
 
-	if len(all) != 18 {
-		t.Errorf("All() returned %d languages, want 18", len(all))
+	if len(all) != 23 {
+		t.Errorf("All() returned %d languages, want 23", len(all))
 	}
 
 	// Verify sorted by ID.
@@ -181,12 +181,21 @@ func TestRegistryAll(t *testing.T) {
 	}
 
 	// Verify all fields are populated.
+	// HTML is a markup language and does not have test/coverage commands.
+	markupLanguages := map[SupportedLanguage]bool{
+		LangHTML: true,
+	}
+
 	for _, info := range all {
 		if info.Name == "" {
 			t.Errorf("language %s has empty Name", info.ID)
 		}
 		if len(info.Extensions) == 0 {
 			t.Errorf("language %s has no Extensions", info.ID)
+		}
+		// Skip test/coverage checks for markup languages.
+		if markupLanguages[info.ID] {
+			continue
 		}
 		if info.TestPattern == "" {
 			t.Errorf("language %s has empty TestPattern", info.ID)

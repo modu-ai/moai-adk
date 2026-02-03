@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -28,6 +29,22 @@ func Execute() error {
 
 func init() {
 	rootCmd.SetVersionTemplate(fmt.Sprintf("moai-adk %s\n", version.GetVersion()))
+
+	// Wire worktree subcommand with lazy Git initialization
+	worktree.WorktreeCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		if deps == nil {
+			return fmt.Errorf("dependencies not initialized")
+		}
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("get working directory: %w", err)
+		}
+		if err := deps.EnsureGit(cwd); err != nil {
+			return fmt.Errorf("initialize git: %w", err)
+		}
+		worktree.WorktreeProvider = deps.GitWorktree
+		return nil
+	}
 
 	// Register worktree subcommand tree
 	rootCmd.AddCommand(worktree.WorktreeCmd)

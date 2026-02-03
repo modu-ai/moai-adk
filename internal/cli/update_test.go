@@ -25,7 +25,7 @@ func TestUpdateCmd_Short(t *testing.T) {
 }
 
 func TestUpdateCmd_HasFlags(t *testing.T) {
-	flags := []string{"check", "force", "templates-only", "yes"}
+	flags := []string{"check"}
 	for _, name := range flags {
 		if updateCmd.Flags().Lookup(name) == nil {
 			t.Errorf("update command should have --%s flag", name)

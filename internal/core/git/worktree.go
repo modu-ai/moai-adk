@@ -77,14 +77,20 @@ func (w *worktreeManager) List() ([]Worktree, error) {
 }
 
 // Remove deletes a worktree at the given path.
-func (w *worktreeManager) Remove(path string) error {
+// If force is true, the worktree is removed even with uncommitted changes.
+func (w *worktreeManager) Remove(path string, force bool) error {
 	w.logger.Info("system git fallback", "operation", "worktree remove", "reason", "go-git lacks worktree support")
-	w.logger.Debug("removing worktree", "path", path)
+	w.logger.Debug("removing worktree", "path", path, "force", force)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	_, err := execGit(ctx, w.root, "worktree", "remove", path)
+	args := []string{"worktree", "remove"}
+	if force {
+		args = append(args, "--force")
+	}
+	args = append(args, path)
+	_, err := execGit(ctx, w.root, args...)
 	if err != nil {
 		errStr := err.Error()
 		switch {

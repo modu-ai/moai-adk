@@ -4,13 +4,16 @@
 package cli
 
 import (
+	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/modu-ai/moai-adk-go/internal/config"
 	"github.com/modu-ai/moai-adk-go/internal/core/git"
 	"github.com/modu-ai/moai-adk-go/internal/hook"
 	"github.com/modu-ai/moai-adk-go/internal/rank"
 	"github.com/modu-ai/moai-adk-go/internal/update"
+	"github.com/modu-ai/moai-adk-go/pkg/version"
 )
 
 // Dependencies holds all domain-level services used by CLI commands.
@@ -62,4 +65,69 @@ func GetDeps() *Dependencies {
 // SetDeps replaces the global dependencies (used for testing).
 func SetDeps(d *Dependencies) {
 	deps = d
+}
+
+// EnsureGit lazily initializes Git-related dependencies.
+// It should be called before using Git, GitBranch, or GitWorktree.
+// Thread-safe: subsequent calls are no-ops if Git is already initialized.
+func (d *Dependencies) EnsureGit(projectRoot string) error {
+	if d.Git != nil {
+		return nil
+	}
+	repo, err := git.NewRepository(projectRoot)
+	if err != nil {
+		return fmt.Errorf("open git repository: %w", err)
+	}
+	d.Git = repo
+	d.GitBranch = git.NewBranchManager(repo.Root())
+	d.GitWorktree = git.NewWorktreeManager(repo.Root())
+	return nil
+}
+
+// EnsureUpdate lazily initializes Update-related dependencies.
+// It should be called before using UpdateChecker or UpdateOrch.
+// Thread-safe: subsequent calls are no-ops if UpdateChecker is already initialized.
+func (d *Dependencies) EnsureUpdate() error {
+	if d.UpdateChecker != nil {
+		return nil
+	}
+
+	// Default GitHub releases URL for moai-adk-go
+	const apiURL = "https://api.github.com/repos/modu-ai/moai-adk-go/releases/latest"
+	d.UpdateChecker = update.NewChecker(apiURL, nil)
+
+	// Get current binary path for updater and rollback
+	binaryPath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("get executable path: %w", err)
+	}
+
+	currentVersion := version.GetVersion()
+	updater := update.NewUpdater(binaryPath, nil)
+	rollback := update.NewRollback(binaryPath)
+	d.UpdateOrch = update.NewOrchestrator(currentVersion, d.UpdateChecker, updater, rollback)
+
+	return nil
+}
+
+// EnsureRank lazily initializes the Rank client.
+// It should be called before using RankClient.
+// Thread-safe: subsequent calls are no-ops if RankClient is already initialized.
+// Returns an error if RankCredStore is not initialized or has no API key.
+func (d *Dependencies) EnsureRank() error {
+	if d.RankClient != nil {
+		return nil
+	}
+	if d.RankCredStore == nil {
+		return fmt.Errorf("RankCredStore not initialized")
+	}
+	apiKey, err := d.RankCredStore.GetAPIKey()
+	if err != nil {
+		return fmt.Errorf("get API key: %w", err)
+	}
+	if apiKey == "" {
+		return fmt.Errorf("no API key configured")
+	}
+	d.RankClient = rank.NewClient(apiKey)
+	return nil
 }

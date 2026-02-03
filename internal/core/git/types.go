@@ -165,9 +165,10 @@ type WorktreeManager interface {
 	List() ([]Worktree, error)
 
 	// Remove deletes a worktree at the given path.
-	// Returns ErrWorktreeDirty if the worktree has uncommitted changes.
+	// If force is true, the worktree is removed even with uncommitted changes.
+	// Returns ErrWorktreeDirty if the worktree has uncommitted changes and force is false.
 	// Returns ErrWorktreeNotFound if no worktree exists at the path.
-	Remove(path string) error
+	Remove(path string, force bool) error
 
 	// Prune removes stale worktree references for deleted directories.
 	Prune() error

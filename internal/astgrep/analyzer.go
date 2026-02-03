@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/modu-ai/moai-adk-go/internal/foundation"
 )
 
 // Timeouts for sg CLI operations.
@@ -147,46 +149,23 @@ func (a *SGAnalyzer) IsSGAvailable(ctx context.Context) bool {
 	return a.sgAvailable
 }
 
-// extensionToLanguage maps file extensions to programming language names.
-// This mapping matches the Python reference implementation.
-var extensionToLanguage = map[string]string{
-	".py":     "python",
-	".js":     "javascript",
-	".mjs":    "javascript",
-	".cjs":    "javascript",
-	".jsx":    "javascriptreact",
-	".ts":     "typescript",
-	".mts":    "typescript",
-	".cts":    "typescript",
-	".tsx":    "typescriptreact",
-	".c":      "c",
-	".h":      "c",
-	".cpp":    "cpp",
-	".cc":     "cpp",
-	".cxx":    "cpp",
-	".hpp":    "cpp",
-	".cs":     "csharp",
-	".go":     "go",
-	".rs":     "rust",
-	".java":   "java",
-	".kt":     "kotlin",
-	".kts":    "kotlin",
-	".rb":     "ruby",
-	".swift":  "swift",
-	".lua":    "lua",
-	".html":   "html",
-	".vue":    "vue",
-	".svelte": "svelte",
-}
-
 // DetectLanguage returns the programming language for a file based on its extension.
-// Returns "text" for unrecognized extensions.
+// Uses foundation.DefaultRegistry for language lookup and returns the ast-grep
+// compatible language name. Returns "text" for unrecognized extensions.
 func DetectLanguage(filePath string) string {
 	ext := strings.ToLower(filepath.Ext(filePath))
-	if lang, ok := extensionToLanguage[ext]; ok {
-		return lang
+	if ext == "" {
+		return "text"
 	}
-	return "text"
+
+	info, err := foundation.DefaultRegistry.ByExtension(ext)
+	if err != nil {
+		return "text"
+	}
+
+	// Return the ast-grep specific language name if defined,
+	// otherwise return the language ID.
+	return info.AstGrepLanguageName(ext)
 }
 
 // ShouldIncludeFile checks if a file should be included in scanning

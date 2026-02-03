@@ -13,7 +13,7 @@ import (
 type mockWorktreeManager struct {
 	addFunc    func(path, branch string) error
 	listFunc   func() ([]git.Worktree, error)
-	removeFunc func(path string) error
+	removeFunc func(path string, force bool) error
 	pruneFunc  func() error
 }
 
@@ -31,9 +31,9 @@ func (m *mockWorktreeManager) List() ([]git.Worktree, error) {
 	return nil, nil
 }
 
-func (m *mockWorktreeManager) Remove(path string) error {
+func (m *mockWorktreeManager) Remove(path string, force bool) error {
 	if m.removeFunc != nil {
-		return m.removeFunc(path)
+		return m.removeFunc(path, force)
 	}
 	return nil
 }
@@ -428,9 +428,11 @@ func TestRunRemove_Success(t *testing.T) {
 	defer func() { WorktreeProvider = origProvider }()
 
 	var capturedPath string
+	var capturedForce bool
 	WorktreeProvider = &mockWorktreeManager{
-		removeFunc: func(path string) error {
+		removeFunc: func(path string, force bool) error {
 			capturedPath = path
+			capturedForce = force
 			return nil
 		},
 	}
@@ -449,6 +451,9 @@ func TestRunRemove_Success(t *testing.T) {
 			if capturedPath != "/tmp/test-wt" {
 				t.Errorf("path = %q, want %q", capturedPath, "/tmp/test-wt")
 			}
+			if capturedForce {
+				t.Errorf("force = %v, want false", capturedForce)
+			}
 			if !strings.Contains(buf.String(), "Removed worktree") {
 				t.Errorf("output should contain 'Removed worktree', got %q", buf.String())
 			}
@@ -463,7 +468,7 @@ func TestRunRemove_Error(t *testing.T) {
 	defer func() { WorktreeProvider = origProvider }()
 
 	WorktreeProvider = &mockWorktreeManager{
-		removeFunc: func(_ string) error {
+		removeFunc: func(_ string, _ bool) error {
 			return errors.New("dirty worktree")
 		},
 	}

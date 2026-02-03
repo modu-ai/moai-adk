@@ -171,7 +171,7 @@ func TestWorktreeRemove_Success(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := wm.Remove(wtPath); err != nil {
+	if err := wm.Remove(wtPath, false); err != nil {
 		t.Fatalf("Remove() error: %v", err)
 	}
 
@@ -191,7 +191,7 @@ func TestWorktreeRemove_NotFound(t *testing.T) {
 	dir := initTestRepo(t)
 	wm := NewWorktreeManager(dir)
 
-	err := wm.Remove("/tmp/nonexistent-worktree-path-" + t.Name())
+	err := wm.Remove("/tmp/nonexistent-worktree-path-"+t.Name(), false)
 	if err == nil {
 		t.Fatal("Remove() on nonexistent path should return error")
 	}

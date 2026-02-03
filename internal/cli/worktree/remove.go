@@ -22,11 +22,16 @@ func runRemove(cmd *cobra.Command, args []string) error {
 	out := cmd.OutOrStdout()
 	wtPath := args[0]
 
+	force, err := cmd.Flags().GetBool("force")
+	if err != nil {
+		return fmt.Errorf("get force flag: %w", err)
+	}
+
 	if WorktreeProvider == nil {
 		return fmt.Errorf("worktree manager not initialized (git module not available)")
 	}
 
-	if err := WorktreeProvider.Remove(wtPath); err != nil {
+	if err := WorktreeProvider.Remove(wtPath, force); err != nil {
 		return fmt.Errorf("remove worktree: %w", err)
 	}
 
