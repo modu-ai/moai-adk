@@ -1,52 +1,23 @@
 # LLM Configuration Settings
-# Multi-LLM routing for cost-effective development workflows
+# Single source of truth for LLM backend configuration
+#
+# Commands:
+#   moai glm  - Switch to GLM backend (injects env into settings.local.json)
+#   moai cc   - Switch to Claude backend (removes env from settings.local.json)
 
 llm:
-  # LLM Mode Selection
-  # - claude-only: Use Claude for all phases (Opus/Sonnet based on pricing plan)
-  # - mashup: Plan with Claude, Run/Sync with GLM (balanced cost/quality)
-  # - glm-only: Use GLM for all phases (lowest cost)
+  # Current mode: claude-only | glm-only
   mode: claude-only
 
   # Environment variable name for GLM API key
   # User must set this in their shell profile (~/.zshrc, ~/.bashrc)
-  # Example: export GLM_API_KEY="your-api-key-here"
   glm_env_var: GLM_API_KEY
 
-  # Auto Worktree Settings
-  # Automatically create git worktree with GLM configuration for parallel development
-  auto_worktree:
-    # Enable automatic worktree creation for hybrid mode
-    enabled: false
-
-    # Copy GLM settings.local.json to worktree automatically
-    copy_glm_config: true
-
   # GLM API Configuration
-  # These values are used in .moai/llm-configs/glm.json template
+  # Used by 'moai glm' to inject env variables into .claude/settings.local.json
   glm:
-    # GLM API base URL (Z.AI Anthropic-compatible endpoint)
     base_url: "https://api.z.ai/api/anthropic"
-
-    # GLM model mappings (maps Claude model names to GLM models)
     models:
-      # Haiku-equivalent: Fast, low-cost model
       haiku: "glm-4.7-flashx"
-
-      # Sonnet-equivalent: Balanced performance
       sonnet: "glm-4.7"
-
-      # Opus-equivalent: Highest quality
       opus: "glm-4.7"
-
-  # Routing Behavior
-  routing:
-    # Automatically detect task complexity and route to appropriate LLM
-    auto_detect: true
-
-    # Threshold for parallel SPEC decomposition
-    # If estimated tasks > threshold, decompose into multiple SPECs for parallel execution
-    parallel_threshold: 10
-
-    # Always ask user confirmation before creating worktree (hybrid mode)
-    confirm_worktree: false

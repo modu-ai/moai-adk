@@ -533,6 +533,21 @@ func TestRunCC_NilConfig(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
+	// Create temp project
+	tmpDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+
 	deps = nil
 
 	buf := new(bytes.Buffer)
@@ -544,8 +559,8 @@ func TestRunCC_NilConfig(t *testing.T) {
 		t.Fatalf("runCC nil deps should not error, got %v", err)
 	}
 
-	if !strings.Contains(buf.String(), "config not loaded") {
-		t.Errorf("output should say config not loaded, got %q", buf.String())
+	if !strings.Contains(buf.String(), "Claude") {
+		t.Errorf("output should mention Claude, got %q", buf.String())
 	}
 }
 
@@ -579,12 +594,21 @@ func TestRunGLM_WithConfig(t *testing.T) {
 	}
 }
 
-func TestRunGLM_WithAPIKey(t *testing.T) {
+func TestRunGLM_InjectsEnvToSettings(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
 	tmpDir := t.TempDir()
 	setupMinimalConfig(t, tmpDir)
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
 
 	mgr := config.NewConfigManager()
 	if _, err := mgr.Load(tmpDir); err != nil {
@@ -597,19 +621,33 @@ func TestRunGLM_WithAPIKey(t *testing.T) {
 	glmCmd.SetOut(buf)
 	glmCmd.SetErr(buf)
 
-	err := glmCmd.RunE(glmCmd, []string{"my-api-key"})
+	err := glmCmd.RunE(glmCmd, []string{})
 	if err != nil {
-		t.Fatalf("runGLM with api key error: %v", err)
+		t.Fatalf("runGLM error: %v", err)
 	}
 
-	if !strings.Contains(buf.String(), "API key saved") {
-		t.Errorf("output should mention API key saved, got %q", buf.String())
+	if !strings.Contains(buf.String(), "settings.local.json") {
+		t.Errorf("output should mention settings.local.json, got %q", buf.String())
 	}
 }
 
 func TestRunGLM_NilConfig(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
+
+	tmpDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
 
 	deps = nil
 
@@ -622,32 +660,8 @@ func TestRunGLM_NilConfig(t *testing.T) {
 		t.Fatalf("runGLM nil deps should not error, got %v", err)
 	}
 
-	if !strings.Contains(buf.String(), "config not loaded") {
-		t.Errorf("output should say config not loaded, got %q", buf.String())
-	}
-}
-
-func TestRunGLM_NilConfigWithAPIKey(t *testing.T) {
-	origDeps := deps
-	defer func() { deps = origDeps }()
-
-	deps = nil
-
-	buf := new(bytes.Buffer)
-	glmCmd.SetOut(buf)
-	glmCmd.SetErr(buf)
-
-	err := glmCmd.RunE(glmCmd, []string{"my-key"})
-	if err != nil {
-		t.Fatalf("runGLM nil deps with key should not error, got %v", err)
-	}
-
-	output := buf.String()
-	if !strings.Contains(output, "API key") {
-		t.Errorf("output should mention API key, got %q", output)
-	}
-	if !strings.Contains(output, "config not loaded") {
-		t.Errorf("output should say config not loaded, got %q", output)
+	if !strings.Contains(buf.String(), "GLM") {
+		t.Errorf("output should mention GLM, got %q", buf.String())
 	}
 }
 

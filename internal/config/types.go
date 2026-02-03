@@ -39,9 +39,29 @@ type SystemConfig struct {
 
 // LLMConfig represents the LLM configuration section.
 type LLMConfig struct {
+	// Mode selection: claude-only, glm-only, mashup
+	Mode string `yaml:"mode"`
+	// Environment variable name for GLM API key
+	GLMEnvVar string `yaml:"glm_env_var"`
+	// GLM API configuration
+	GLM GLMSettings `yaml:"glm"`
+	// Legacy fields (kept for backward compatibility)
 	DefaultModel string `yaml:"default_model"`
 	QualityModel string `yaml:"quality_model"`
 	SpeedModel   string `yaml:"speed_model"`
+}
+
+// GLMSettings represents GLM API configuration.
+type GLMSettings struct {
+	BaseURL string    `yaml:"base_url"`
+	Models  GLMModels `yaml:"models"`
+}
+
+// GLMModels represents GLM model mappings.
+type GLMModels struct {
+	Haiku  string `yaml:"haiku"`
+	Sonnet string `yaml:"sonnet"`
+	Opus   string `yaml:"opus"`
 }
 
 // PricingConfig represents the pricing configuration section.
