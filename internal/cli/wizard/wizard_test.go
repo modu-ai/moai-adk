@@ -698,9 +698,9 @@ func TestSaveAnswerAllCases(t *testing.T) {
 		t.Errorf("expected DocLang 'ko', got %q", model.result.DocLang)
 	}
 
-	model.saveAnswer("development_mode", "tdd")
-	if model.result.DevelopmentMode != "tdd" {
-		t.Errorf("expected DevelopmentMode 'tdd', got %q", model.result.DevelopmentMode)
+	model.saveAnswer("development_mode", "hybrid")
+	if model.result.DevelopmentMode != "hybrid" {
+		t.Errorf("expected DevelopmentMode 'hybrid', got %q", model.result.DevelopmentMode)
 	}
 }
 
@@ -925,4 +925,148 @@ func containsHelper(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+func TestGetLocalizedQuestion(t *testing.T) {
+	q := &Question{
+		ID:          "locale",
+		Type:        QuestionTypeSelect,
+		Title:       "Select conversation language",
+		Description: "This determines the language Claude will use.",
+		Options: []Option{
+			{Label: "Korean (한국어)", Value: "ko", Desc: "Korean"},
+			{Label: "English", Value: "en", Desc: "English"},
+		},
+	}
+
+	// Test English (default, no translation)
+	localizedEn := GetLocalizedQuestion(q, "en")
+	if localizedEn.Title != q.Title {
+		t.Errorf("expected English title %q, got %q", q.Title, localizedEn.Title)
+	}
+
+	// Test Korean translation
+	localizedKo := GetLocalizedQuestion(q, "ko")
+	if localizedKo.Title == q.Title {
+		t.Error("Korean title should be different from English")
+	}
+	if localizedKo.Title != "대화 언어 선택" {
+		t.Errorf("expected Korean title '대화 언어 선택', got %q", localizedKo.Title)
+	}
+
+	// Test Japanese translation
+	localizedJa := GetLocalizedQuestion(q, "ja")
+	if localizedJa.Title != "会話言語を選択" {
+		t.Errorf("expected Japanese title '会話言語を選択', got %q", localizedJa.Title)
+	}
+
+	// Test unknown locale (should return original)
+	localizedUnknown := GetLocalizedQuestion(q, "xx")
+	if localizedUnknown.Title != q.Title {
+		t.Errorf("unknown locale should return original title")
+	}
+}
+
+func TestGetUIStrings(t *testing.T) {
+	// Test English
+	enStrings := GetUIStrings("en")
+	if enStrings.HelpSelect == "" {
+		t.Error("English HelpSelect should not be empty")
+	}
+
+	// Test Korean
+	koStrings := GetUIStrings("ko")
+	if koStrings.HelpSelect == enStrings.HelpSelect {
+		t.Error("Korean HelpSelect should be different from English")
+	}
+	if koStrings.ErrorRequired != "필수 입력 항목입니다" {
+		t.Errorf("expected Korean error '필수 입력 항목입니다', got %q", koStrings.ErrorRequired)
+	}
+
+	// Test unknown locale (should return English)
+	unknownStrings := GetUIStrings("xx")
+	if unknownStrings.HelpSelect != enStrings.HelpSelect {
+		t.Error("unknown locale should return English strings")
+	}
+}
+
+func TestLocaleTransitionInWizard(t *testing.T) {
+	questions := []Question{
+		{
+			ID:   "locale",
+			Type: QuestionTypeSelect,
+			Options: []Option{
+				{Label: "Korean (한국어)", Value: "ko"},
+				{Label: "English", Value: "en"},
+			},
+		},
+		{
+			ID:          "user_name",
+			Type:        QuestionTypeInput,
+			Title:       "Enter your name",
+			Description: "This will be used in configuration files.",
+			Default:     "",
+			Required:    false,
+		},
+	}
+	model := New(questions, nil)
+
+	// Initially locale is empty, so English is used
+	view1 := model.View()
+	if !contains(view1, "Korean") {
+		t.Error("initial view should show locale options")
+	}
+
+	// Select Korean and advance
+	newModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter}) // Select first option (ko)
+	m := newModel.(Model)
+
+	if m.locale != "ko" {
+		t.Errorf("expected locale 'ko', got %q", m.locale)
+	}
+
+	// Next question should be in Korean
+	view2 := m.View()
+	if !contains(view2, "이름 입력") {
+		t.Errorf("second question should be in Korean, got: %s", view2)
+	}
+}
+
+func TestDevelopmentModeOptions(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test")
+
+	var devModeQ *Question
+	for i := range questions {
+		if questions[i].ID == "development_mode" {
+			devModeQ = &questions[i]
+			break
+		}
+	}
+
+	if devModeQ == nil {
+		t.Fatal("development_mode question not found")
+	}
+
+	// Should have exactly 2 options
+	if len(devModeQ.Options) != 2 {
+		t.Errorf("expected 2 options, got %d", len(devModeQ.Options))
+	}
+
+	// First option should be Hybrid (Recommended)
+	if devModeQ.Options[0].Value != "hybrid" {
+		t.Errorf("expected first option to be 'hybrid', got %q", devModeQ.Options[0].Value)
+	}
+	if !contains(devModeQ.Options[0].Label, "Recommended") {
+		t.Error("Hybrid option should contain 'Recommended'")
+	}
+
+	// Second option should be DDD
+	if devModeQ.Options[1].Value != "ddd" {
+		t.Errorf("expected second option to be 'ddd', got %q", devModeQ.Options[1].Value)
+	}
+
+	// Default should be hybrid
+	if devModeQ.Default != "hybrid" {
+		t.Errorf("expected default to be 'hybrid', got %q", devModeQ.Default)
+	}
 }

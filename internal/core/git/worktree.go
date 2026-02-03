@@ -124,6 +124,28 @@ func (w *worktreeManager) Prune() error {
 	return nil
 }
 
+// Repair repairs worktree administrative files if they have become corrupted.
+func (w *worktreeManager) Repair() error {
+	w.logger.Info("system git fallback", "operation", "worktree repair", "reason", "go-git lacks worktree support")
+	w.logger.Debug("repairing worktrees")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := execGit(ctx, w.root, "worktree", "repair")
+	if err != nil {
+		return fmt.Errorf("repair worktrees: %w", err)
+	}
+
+	w.logger.Debug("worktrees repaired")
+	return nil
+}
+
+// Root returns the repository root path.
+func (w *worktreeManager) Root() string {
+	return w.root
+}
+
 // parsePorcelainWorktreeList parses the output of git worktree list --porcelain.
 //
 // The porcelain format consists of stanzas separated by blank lines:

@@ -19,6 +19,7 @@ type Model struct {
 	inputValue   string     // For input questions
 	errorMsg     string     // Current error message
 	allQuestions []Question // All questions (including conditional ones)
+	locale       string     // Current UI locale for translations
 }
 
 // New creates a new wizard Model with the given questions.
@@ -134,7 +135,8 @@ func (m Model) submitTextInput() (tea.Model, tea.Cmd) {
 
 	// Validate required fields
 	if q.Required && value == "" {
-		m.errorMsg = "This field is required"
+		uiStr := GetUIStrings(m.locale)
+		m.errorMsg = uiStr.ErrorRequired
 		return m, nil
 	}
 
@@ -208,6 +210,7 @@ func (m *Model) saveAnswer(id, value string) {
 	switch id {
 	case "locale":
 		m.result.Locale = value
+		m.locale = value // Update UI locale for translations
 	case "user_name":
 		m.result.UserName = value
 	case "project_name":
@@ -238,6 +241,9 @@ func (m Model) View() string {
 		return ""
 	}
 
+	// Get localized question based on current locale
+	localizedQ := GetLocalizedQuestion(q, m.locale)
+
 	var b strings.Builder
 
 	// Progress indicator
@@ -247,33 +253,33 @@ func (m Model) View() string {
 	b.WriteString(" ")
 
 	// Title
-	b.WriteString(m.styles.Title.Render(q.Title))
+	b.WriteString(m.styles.Title.Render(localizedQ.Title))
 	b.WriteString("\n")
 
 	// Description
-	if q.Description != "" {
-		b.WriteString(m.styles.Description.Render(q.Description))
+	if localizedQ.Description != "" {
+		b.WriteString(m.styles.Description.Render(localizedQ.Description))
 		b.WriteString("\n")
 	}
 	b.WriteString("\n")
 
 	// Render based on question type
-	switch q.Type {
+	switch localizedQ.Type {
 	case QuestionTypeSelect:
-		b.WriteString(m.renderSelect(q))
+		b.WriteString(m.renderSelect(&localizedQ))
 	case QuestionTypeInput:
-		b.WriteString(m.renderInput(q))
+		b.WriteString(m.renderInput(&localizedQ))
 	}
 
-	// Error message
+	// Error message (localized)
 	if m.errorMsg != "" {
 		b.WriteString("\n")
 		b.WriteString(m.styles.Error.Render(m.errorMsg))
 	}
 
-	// Help text
+	// Help text (localized)
 	b.WriteString("\n")
-	b.WriteString(m.renderHelp(q.Type))
+	b.WriteString(m.renderHelp(localizedQ.Type))
 
 	return b.String()
 }
@@ -330,12 +336,13 @@ func (m Model) renderInput(q *Question) string {
 
 // renderHelp renders the help text based on question type.
 func (m Model) renderHelp(qType QuestionType) string {
+	uiStr := GetUIStrings(m.locale)
 	var help string
 	switch qType {
 	case QuestionTypeSelect:
-		help = "Use arrow keys to navigate, Enter to select, Esc to cancel"
+		help = uiStr.HelpSelect
 	case QuestionTypeInput:
-		help = "Type your answer, Enter to confirm, Esc to cancel"
+		help = uiStr.HelpInput
 	}
 	return m.styles.Help.Render(help)
 }

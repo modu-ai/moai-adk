@@ -25,10 +25,14 @@ func runStatusline(cmd *cobra.Command, _ []string) error {
 	// Render a compact status using available information
 	fmt.Fprint(out, "moai")
 
+	// Try to load config from project root
 	if deps != nil && deps.Config != nil {
-		cfg := deps.Config.Get()
-		if cfg != nil && cfg.Quality.DevelopmentMode != "" {
-			fmt.Fprintf(out, " [%s]", cfg.Quality.DevelopmentMode)
+		root, err := findProjectRoot()
+		if err == nil {
+			cfg, err := deps.Config.Load(root)
+			if err == nil && cfg != nil && cfg.Quality.DevelopmentMode != "" {
+				fmt.Fprintf(out, " [%s]", cfg.Quality.DevelopmentMode)
+			}
 		}
 	}
 

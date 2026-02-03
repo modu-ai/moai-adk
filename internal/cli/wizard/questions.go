@@ -132,11 +132,10 @@ func DefaultQuestions(projectRoot string) []Question {
 			Title:       "Select development methodology",
 			Description: "Determines how code changes and testing are handled.",
 			Options: []Option{
-				{Label: "DDD (Domain-Driven Development)", Value: "ddd", Desc: "ANALYZE-PRESERVE-IMPROVE cycle"},
-				{Label: "TDD (Test-Driven Development)", Value: "tdd", Desc: "RED-GREEN-REFACTOR cycle"},
-				{Label: "Hybrid", Value: "hybrid", Desc: "TDD for new code, DDD for legacy"},
+				{Label: "Hybrid (TDD + DDD) (Recommended)", Value: "hybrid", Desc: "TDD for new features, DDD for existing code"},
+				{Label: "DDD (Domain-Driven Development)", Value: "ddd", Desc: "ANALYZE-PRESERVE-IMPROVE cycle for legacy refactoring"},
 			},
-			Default:  "ddd",
+			Default:  "hybrid",
 			Required: true,
 		},
 	}

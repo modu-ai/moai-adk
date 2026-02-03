@@ -570,6 +570,9 @@ func TestRunGLM_WithConfig(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
+	// Set GLM_API_KEY env var
+	t.Setenv("GLM_API_KEY", "test-api-key")
+
 	tmpDir := t.TempDir()
 	setupMinimalConfig(t, tmpDir)
 
@@ -597,6 +600,9 @@ func TestRunGLM_WithConfig(t *testing.T) {
 func TestRunGLM_InjectsEnvToSettings(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
+
+	// Set GLM_API_KEY env var
+	t.Setenv("GLM_API_KEY", "test-api-key")
 
 	tmpDir := t.TempDir()
 	setupMinimalConfig(t, tmpDir)
@@ -634,6 +640,9 @@ func TestRunGLM_InjectsEnvToSettings(t *testing.T) {
 func TestRunGLM_NilConfig(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
+
+	// Set GLM_API_KEY env var
+	t.Setenv("GLM_API_KEY", "test-api-key")
 
 	tmpDir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai"), 0o755); err != nil {
@@ -1084,6 +1093,13 @@ func TestRunStatusline_WithConfigAndMode(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	setupMinimalConfigWithMode(t, tmpDir, "ddd")
+
+	// Change to temp dir so findProjectRoot works
+	origDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
 
 	mgr := config.NewConfigManager()
 	if _, err := mgr.Load(tmpDir); err != nil {

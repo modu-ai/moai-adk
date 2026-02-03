@@ -1,0 +1,80 @@
+package worktree
+
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+)
+
+func newDoneCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "done [branch-name]",
+		Short: "Complete worktree and cleanup",
+		Long: `Complete a worktree by removing it and optionally deleting the branch.
+
+This command performs the completion workflow:
+1. Remove the worktree at the specified branch
+2. Optionally delete the feature branch (with --delete-branch)
+
+Note: Merging to base branch should be done separately via git merge or PR.`,
+		Args: cobra.ExactArgs(1),
+		RunE: runDone,
+	}
+	cmd.Flags().Bool("force", false, "Force removal even with uncommitted changes")
+	cmd.Flags().Bool("delete-branch", false, "Delete the branch after removing worktree")
+	return cmd
+}
+
+func runDone(cmd *cobra.Command, args []string) error {
+	out := cmd.OutOrStdout()
+	branchName := args[0]
+
+	force, err := cmd.Flags().GetBool("force")
+	if err != nil {
+		return fmt.Errorf("get force flag: %w", err)
+	}
+
+	deleteBranch, err := cmd.Flags().GetBool("delete-branch")
+	if err != nil {
+		return fmt.Errorf("get delete-branch flag: %w", err)
+	}
+
+	if WorktreeProvider == nil {
+		return fmt.Errorf("worktree manager not initialized (git module not available)")
+	}
+
+	// Find the worktree for the given branch.
+	worktrees, err := WorktreeProvider.List()
+	if err != nil {
+		return fmt.Errorf("list worktrees: %w", err)
+	}
+
+	var targetPath string
+	for _, wt := range worktrees {
+		if wt.Branch == branchName {
+			targetPath = wt.Path
+			break
+		}
+	}
+
+	if targetPath == "" {
+		return fmt.Errorf("no worktree found for branch %q", branchName)
+	}
+
+	fmt.Fprintf(out, "Completing worktree for branch: %s\n", branchName)
+	fmt.Fprintf(out, "  Path: %s\n", targetPath)
+
+	// Remove the worktree.
+	if err := WorktreeProvider.Remove(targetPath, force); err != nil {
+		return fmt.Errorf("remove worktree: %w", err)
+	}
+	fmt.Fprintln(out, "  Worktree removed.")
+
+	if deleteBranch {
+		fmt.Fprintf(out, "  Note: Branch deletion requires BranchManager (not yet integrated).\n")
+		fmt.Fprintf(out, "  To delete the branch manually: git branch -d %s\n", branchName)
+	}
+
+	fmt.Fprintln(out, "Done.")
+	return nil
+}

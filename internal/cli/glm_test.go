@@ -41,6 +41,9 @@ func TestGLMCmd_IsSubcommandOfRoot(t *testing.T) {
 }
 
 func TestGLMCmd_NoArgs(t *testing.T) {
+	// Set GLM_API_KEY env var
+	t.Setenv("GLM_API_KEY", "test-api-key")
+
 	// Create temp project
 	tmpDir := t.TempDir()
 	moaiDir := filepath.Join(tmpDir, ".moai")
@@ -78,6 +81,9 @@ func TestGLMCmd_NoArgs(t *testing.T) {
 }
 
 func TestGLMCmd_InjectsEnv(t *testing.T) {
+	// Set GLM_API_KEY env var
+	t.Setenv("GLM_API_KEY", "test-api-key")
+
 	// Create temp project
 	tmpDir := t.TempDir()
 	moaiDir := filepath.Join(tmpDir, ".moai")

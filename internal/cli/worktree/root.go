@@ -27,5 +27,9 @@ func init() {
 		newSyncCmd(),
 		newRemoveCmd(),
 		newCleanCmd(),
+		newRecoverCmd(),
+		newDoneCmd(),
+		newConfigCmd(),
+		newStatusCmd(),
 	)
 }

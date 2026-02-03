@@ -172,6 +172,13 @@ type WorktreeManager interface {
 
 	// Prune removes stale worktree references for deleted directories.
 	Prune() error
+
+	// Repair repairs worktree administrative files if they have become
+	// corrupted or outdated. This runs 'git worktree repair'.
+	Repair() error
+
+	// Root returns the repository root path.
+	Root() string
 }
 
 // Compile-time interface compliance checks are in each implementation file:
