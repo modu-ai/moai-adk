@@ -1,0 +1,17 @@
+id: rule-python-eval
+language: python
+severity: error
+message: "Rule 1: No eval"
+pattern: "eval($CODE)"
+---
+id: rule-go-println
+language: go
+severity: warning
+message: "Rule 2: No fmt.Println"
+pattern: "fmt.Println($MSG)"
+---
+id: rule-js-alert
+language: javascript
+severity: info
+message: "Rule 3: No alert"
+pattern: "alert($MSG)"

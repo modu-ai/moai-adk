@@ -1,0 +1,6 @@
+service:
+  type: glm
+  pricing_plan: pro
+  glm_pricing_plan: basic
+model_allocation:
+  strategy: auto

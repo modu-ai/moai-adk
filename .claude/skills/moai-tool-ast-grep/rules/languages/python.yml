@@ -1,0 +1,54 @@
+# Python-specific Quality Rules
+
+id: use-fstring
+language: python
+severity: info
+message: "Consider using f-strings for string formatting"
+rule:
+  any:
+    - pattern: '$$$STR.format($$$ARGS)'
+    - pattern: '"$$$STR" % $ARGS'
+
+---
+id: use-pathlib
+language: python
+severity: info
+message: "Consider using pathlib for file path operations"
+rule:
+  any:
+    - pattern: os.path.join($$$ARGS)
+    - pattern: os.path.exists($PATH)
+    - pattern: os.path.isfile($PATH)
+    - pattern: os.path.isdir($PATH)
+
+---
+id: mutable-default-argument
+language: python
+severity: warning
+message: "Mutable default argument. Use None and initialize inside function."
+rule:
+  any:
+    - pattern: 'def $FUNC($$$ARGS, $PARAM=[], $$$REST):'
+    - pattern: 'def $FUNC($$$ARGS, $PARAM={}, $$$REST):'
+
+---
+id: type-comparison
+language: python
+severity: warning
+message: "Use isinstance() instead of type comparison"
+rule:
+  pattern: type($OBJ) == $TYPE
+fix: isinstance($OBJ, $TYPE)
+
+---
+id: dict-get-default
+language: python
+severity: info
+message: "Use dict.get() with default instead of conditional"
+rule:
+  pattern: |
+    if $KEY in $DICT:
+        $VAR = $DICT[$KEY]
+    else:
+        $VAR = $DEFAULT
+fix: $VAR = $DICT.get($KEY, $DEFAULT)

@@ -1,0 +1,1231 @@
+package cli
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/modu-ai/moai-adk-go/internal/config"
+	"github.com/modu-ai/moai-adk-go/internal/hook"
+	"github.com/modu-ai/moai-adk-go/internal/rank"
+	"github.com/modu-ai/moai-adk-go/internal/update"
+)
+
+// --- Hook command coverage tests ---
+
+func TestRunHookEvent_Success(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = &Dependencies{
+		HookProtocol: &mockHookProtocol{
+			readInputFunc: func(_ io.Reader) (*hook.HookInput, error) {
+				return &hook.HookInput{SessionID: "test-session"}, nil
+			},
+		},
+		HookRegistry: &mockHookRegistry{
+			dispatchFunc: func(_ context.Context, _ hook.EventType, _ *hook.HookInput) (*hook.HookOutput, error) {
+				return hook.NewAllowOutput(), nil
+			},
+		},
+	}
+
+	for _, cmd := range hookCmd.Commands() {
+		if cmd.Name() == "pre-tool" {
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+			cmd.SetContext(context.Background())
+
+			err := cmd.RunE(cmd, []string{})
+			if err != nil {
+				t.Fatalf("runHookEvent error: %v", err)
+			}
+			return
+		}
+	}
+	t.Error("pre-tool subcommand not found")
+}
+
+func TestRunHookEvent_ReadInputError(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = &Dependencies{
+		HookProtocol: &mockHookProtocol{
+			readInputFunc: func(_ io.Reader) (*hook.HookInput, error) {
+				return nil, errors.New("invalid JSON")
+			},
+		},
+		HookRegistry: &mockHookRegistry{},
+	}
+
+	for _, cmd := range hookCmd.Commands() {
+		if cmd.Name() == "post-tool" {
+			cmd.SetContext(context.Background())
+			err := cmd.RunE(cmd, []string{})
+			if err == nil {
+				t.Error("should error on ReadInput failure")
+			}
+			if !strings.Contains(err.Error(), "read hook input") {
+				t.Errorf("error should mention read hook input, got %v", err)
+			}
+			return
+		}
+	}
+	t.Error("post-tool subcommand not found")
+}
+
+func TestRunHookEvent_DispatchError(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = &Dependencies{
+		HookProtocol: &mockHookProtocol{},
+		HookRegistry: &mockHookRegistry{
+			dispatchFunc: func(_ context.Context, _ hook.EventType, _ *hook.HookInput) (*hook.HookOutput, error) {
+				return nil, errors.New("dispatch failed")
+			},
+		},
+	}
+
+	for _, cmd := range hookCmd.Commands() {
+		if cmd.Name() == "session-end" {
+			cmd.SetContext(context.Background())
+			err := cmd.RunE(cmd, []string{})
+			if err == nil {
+				t.Error("should error on dispatch failure")
+			}
+			if !strings.Contains(err.Error(), "dispatch hook") {
+				t.Errorf("error should mention dispatch hook, got %v", err)
+			}
+			return
+		}
+	}
+	t.Error("session-end subcommand not found")
+}
+
+func TestRunHookEvent_WriteOutputError(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = &Dependencies{
+		HookProtocol: &mockHookProtocol{
+			writeOutputFunc: func(_ io.Writer, _ *hook.HookOutput) error {
+				return errors.New("write failed")
+			},
+		},
+		HookRegistry: &mockHookRegistry{},
+	}
+
+	for _, cmd := range hookCmd.Commands() {
+		if cmd.Name() == "stop" {
+			cmd.SetContext(context.Background())
+			err := cmd.RunE(cmd, []string{})
+			if err == nil {
+				t.Error("should error on WriteOutput failure")
+			}
+			if !strings.Contains(err.Error(), "write hook output") {
+				t.Errorf("error should mention write hook output, got %v", err)
+			}
+			return
+		}
+	}
+	t.Error("stop subcommand not found")
+}
+
+func TestRunHookEvent_NilProtocol(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = &Dependencies{
+		HookRegistry: &mockHookRegistry{},
+	}
+
+	for _, cmd := range hookCmd.Commands() {
+		if cmd.Name() == "compact" {
+			err := cmd.RunE(cmd, []string{})
+			if err == nil {
+				t.Error("should error with nil protocol")
+			}
+			if !strings.Contains(err.Error(), "not initialized") {
+				t.Errorf("error should mention not initialized, got %v", err)
+			}
+			return
+		}
+	}
+	t.Error("compact subcommand not found")
+}
+
+func TestRunHookEvent_NilRegistry(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = &Dependencies{
+		HookProtocol: &mockHookProtocol{},
+	}
+
+	for _, cmd := range hookCmd.Commands() {
+		if cmd.Name() == "session-start" {
+			err := cmd.RunE(cmd, []string{})
+			if err == nil {
+				t.Error("should error with nil registry")
+			}
+			return
+		}
+	}
+	t.Error("session-start subcommand not found")
+}
+
+// --- Hook list command coverage tests ---
+
+func TestRunHookList_WithHandlers(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = &Dependencies{
+		HookRegistry: &mockHookRegistry{
+			handlersFunc: func(event hook.EventType) []hook.Handler {
+				if event == hook.EventSessionStart {
+					return []hook.Handler{
+						&mockHandler{eventType: hook.EventSessionStart},
+					}
+				}
+				return nil
+			},
+		},
+	}
+
+	for _, cmd := range hookCmd.Commands() {
+		if cmd.Name() == "list" {
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+
+			err := cmd.RunE(cmd, []string{})
+			if err != nil {
+				t.Fatalf("runHookList error: %v", err)
+			}
+
+			output := buf.String()
+			if !strings.Contains(output, "Registered Hook Handlers") {
+				t.Errorf("output should contain header, got %q", output)
+			}
+			if !strings.Contains(output, "SessionStart") {
+				t.Errorf("output should contain SessionStart, got %q", output)
+			}
+			if !strings.Contains(output, "1 handler") {
+				t.Errorf("output should contain handler count, got %q", output)
+			}
+			return
+		}
+	}
+	t.Error("list subcommand not found")
+}
+
+func TestRunHookList_NoHandlers(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = &Dependencies{
+		HookRegistry: &mockHookRegistry{
+			handlersFunc: func(_ hook.EventType) []hook.Handler {
+				return nil
+			},
+		},
+	}
+
+	for _, cmd := range hookCmd.Commands() {
+		if cmd.Name() == "list" {
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+
+			err := cmd.RunE(cmd, []string{})
+			if err != nil {
+				t.Fatalf("runHookList error: %v", err)
+			}
+
+			output := buf.String()
+			if !strings.Contains(output, "No handlers registered") {
+				t.Errorf("output should say no handlers, got %q", output)
+			}
+			return
+		}
+	}
+	t.Error("list subcommand not found")
+}
+
+func TestRunHookList_NilDeps(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = nil
+
+	for _, cmd := range hookCmd.Commands() {
+		if cmd.Name() == "list" {
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+
+			err := cmd.RunE(cmd, []string{})
+			if err != nil {
+				t.Fatalf("runHookList with nil deps should not error, got %v", err)
+			}
+
+			output := buf.String()
+			if !strings.Contains(output, "not initialized") {
+				t.Errorf("output should mention not initialized, got %q", output)
+			}
+			return
+		}
+	}
+	t.Error("list subcommand not found")
+}
+
+// --- Update command coverage tests ---
+
+func TestRunUpdate_CheckOnlyWithChecker(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = &Dependencies{
+		UpdateChecker: &mockUpdateChecker{
+			checkLatestFunc: func(_ context.Context) (*update.VersionInfo, error) {
+				return &update.VersionInfo{Version: "2.0.0"}, nil
+			},
+		},
+	}
+
+	buf := new(bytes.Buffer)
+	updateCmd.SetOut(buf)
+	updateCmd.SetErr(buf)
+	updateCmd.SetContext(context.Background())
+
+	if err := updateCmd.Flags().Set("check", "true"); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := updateCmd.Flags().Set("check", "false"); err != nil {
+			t.Logf("reset flag: %v", err)
+		}
+	}()
+
+	err := updateCmd.RunE(updateCmd, []string{})
+	if err != nil {
+		t.Fatalf("runUpdate --check error: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "Latest version") {
+		t.Errorf("output should contain 'Latest version', got %q", output)
+	}
+	if !strings.Contains(output, "2.0.0") {
+		t.Errorf("output should contain version, got %q", output)
+	}
+}
+
+func TestRunUpdate_CheckOnlyNilChecker(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = &Dependencies{}
+
+	buf := new(bytes.Buffer)
+	updateCmd.SetOut(buf)
+	updateCmd.SetErr(buf)
+
+	if err := updateCmd.Flags().Set("check", "true"); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := updateCmd.Flags().Set("check", "false"); err != nil {
+			t.Logf("reset flag: %v", err)
+		}
+	}()
+
+	err := updateCmd.RunE(updateCmd, []string{})
+	if err != nil {
+		t.Fatalf("runUpdate --check nil checker should not error, got %v", err)
+	}
+
+	if !strings.Contains(buf.String(), "not available") {
+		t.Errorf("output should mention not available, got %q", buf.String())
+	}
+}
+
+func TestRunUpdate_CheckLatestError(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = &Dependencies{
+		UpdateChecker: &mockUpdateChecker{
+			checkLatestFunc: func(_ context.Context) (*update.VersionInfo, error) {
+				return nil, errors.New("network error")
+			},
+		},
+	}
+
+	buf := new(bytes.Buffer)
+	updateCmd.SetOut(buf)
+	updateCmd.SetErr(buf)
+	updateCmd.SetContext(context.Background())
+
+	if err := updateCmd.Flags().Set("check", "true"); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := updateCmd.Flags().Set("check", "false"); err != nil {
+			t.Logf("reset flag: %v", err)
+		}
+	}()
+
+	err := updateCmd.RunE(updateCmd, []string{})
+	if err == nil {
+		t.Error("should error on CheckLatest failure")
+	}
+	if !strings.Contains(err.Error(), "check latest version") {
+		t.Errorf("error should mention check latest, got %v", err)
+	}
+}
+
+func TestRunUpdate_NilOrchestrator(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = &Dependencies{
+		UpdateChecker: &mockUpdateChecker{},
+	}
+
+	buf := new(bytes.Buffer)
+	updateCmd.SetOut(buf)
+	updateCmd.SetErr(buf)
+	updateCmd.SetContext(context.Background())
+
+	if err := updateCmd.Flags().Set("check", "false"); err != nil {
+		t.Fatal(err)
+	}
+
+	err := updateCmd.RunE(updateCmd, []string{})
+	if err == nil {
+		t.Error("should error with nil orchestrator")
+	}
+	if !strings.Contains(err.Error(), "orchestrator not initialized") {
+		t.Errorf("error should mention orchestrator, got %v", err)
+	}
+}
+
+func TestRunUpdate_FullUpdateSuccess(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = &Dependencies{
+		UpdateChecker: &mockUpdateChecker{},
+		UpdateOrch: &mockUpdateOrch{
+			updateFunc: func(_ context.Context) (*update.UpdateResult, error) {
+				return &update.UpdateResult{
+					PreviousVersion: "0.9.0",
+					NewVersion:      "1.0.0",
+					FilesUpdated:    3,
+					FilesMerged:     1,
+				}, nil
+			},
+		},
+	}
+
+	buf := new(bytes.Buffer)
+	updateCmd.SetOut(buf)
+	updateCmd.SetErr(buf)
+	updateCmd.SetContext(context.Background())
+
+	if err := updateCmd.Flags().Set("check", "false"); err != nil {
+		t.Fatal(err)
+	}
+
+	err := updateCmd.RunE(updateCmd, []string{})
+	if err != nil {
+		t.Fatalf("full update should not error, got %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "Updated from") {
+		t.Errorf("output should contain 'Updated from', got %q", output)
+	}
+	if !strings.Contains(output, "0.9.0") {
+		t.Errorf("output should contain old version, got %q", output)
+	}
+	if !strings.Contains(output, "1.0.0") {
+		t.Errorf("output should contain new version, got %q", output)
+	}
+}
+
+func TestRunUpdate_UpdateError(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = &Dependencies{
+		UpdateChecker: &mockUpdateChecker{},
+		UpdateOrch: &mockUpdateOrch{
+			updateFunc: func(_ context.Context) (*update.UpdateResult, error) {
+				return nil, errors.New("update failed")
+			},
+		},
+	}
+
+	buf := new(bytes.Buffer)
+	updateCmd.SetOut(buf)
+	updateCmd.SetErr(buf)
+	updateCmd.SetContext(context.Background())
+
+	if err := updateCmd.Flags().Set("check", "false"); err != nil {
+		t.Fatal(err)
+	}
+
+	err := updateCmd.RunE(updateCmd, []string{})
+	if err == nil {
+		t.Error("should error on Update failure")
+	}
+	if !strings.Contains(err.Error(), "update failed") {
+		t.Errorf("error should mention update failed, got %v", err)
+	}
+}
+
+// --- CC command coverage tests ---
+
+func TestRunCC_WithConfig(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	tmpDir := t.TempDir()
+	setupMinimalConfig(t, tmpDir)
+
+	mgr := config.NewConfigManager()
+	if _, err := mgr.Load(tmpDir); err != nil {
+		t.Fatalf("Load config: %v", err)
+	}
+
+	deps = &Dependencies{Config: mgr}
+
+	buf := new(bytes.Buffer)
+	ccCmd.SetOut(buf)
+	ccCmd.SetErr(buf)
+
+	err := ccCmd.RunE(ccCmd, []string{})
+	if err != nil {
+		t.Fatalf("runCC with config error: %v", err)
+	}
+
+	if !strings.Contains(buf.String(), "Switched to Claude backend.") {
+		t.Errorf("output should confirm switch, got %q", buf.String())
+	}
+}
+
+func TestRunCC_NilConfig(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = nil
+
+	buf := new(bytes.Buffer)
+	ccCmd.SetOut(buf)
+	ccCmd.SetErr(buf)
+
+	err := ccCmd.RunE(ccCmd, []string{})
+	if err != nil {
+		t.Fatalf("runCC nil deps should not error, got %v", err)
+	}
+
+	if !strings.Contains(buf.String(), "config not loaded") {
+		t.Errorf("output should say config not loaded, got %q", buf.String())
+	}
+}
+
+// --- GLM command coverage tests ---
+
+func TestRunGLM_WithConfig(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	tmpDir := t.TempDir()
+	setupMinimalConfig(t, tmpDir)
+
+	mgr := config.NewConfigManager()
+	if _, err := mgr.Load(tmpDir); err != nil {
+		t.Fatalf("Load config: %v", err)
+	}
+
+	deps = &Dependencies{Config: mgr}
+
+	buf := new(bytes.Buffer)
+	glmCmd.SetOut(buf)
+	glmCmd.SetErr(buf)
+
+	err := glmCmd.RunE(glmCmd, []string{})
+	if err != nil {
+		t.Fatalf("runGLM with config error: %v", err)
+	}
+
+	if !strings.Contains(buf.String(), "Switched to GLM backend.") {
+		t.Errorf("output should confirm switch, got %q", buf.String())
+	}
+}
+
+func TestRunGLM_WithAPIKey(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	tmpDir := t.TempDir()
+	setupMinimalConfig(t, tmpDir)
+
+	mgr := config.NewConfigManager()
+	if _, err := mgr.Load(tmpDir); err != nil {
+		t.Fatalf("Load config: %v", err)
+	}
+
+	deps = &Dependencies{Config: mgr}
+
+	buf := new(bytes.Buffer)
+	glmCmd.SetOut(buf)
+	glmCmd.SetErr(buf)
+
+	err := glmCmd.RunE(glmCmd, []string{"my-api-key"})
+	if err != nil {
+		t.Fatalf("runGLM with api key error: %v", err)
+	}
+
+	if !strings.Contains(buf.String(), "API key saved") {
+		t.Errorf("output should mention API key saved, got %q", buf.String())
+	}
+}
+
+func TestRunGLM_NilConfig(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = nil
+
+	buf := new(bytes.Buffer)
+	glmCmd.SetOut(buf)
+	glmCmd.SetErr(buf)
+
+	err := glmCmd.RunE(glmCmd, []string{})
+	if err != nil {
+		t.Fatalf("runGLM nil deps should not error, got %v", err)
+	}
+
+	if !strings.Contains(buf.String(), "config not loaded") {
+		t.Errorf("output should say config not loaded, got %q", buf.String())
+	}
+}
+
+func TestRunGLM_NilConfigWithAPIKey(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = nil
+
+	buf := new(bytes.Buffer)
+	glmCmd.SetOut(buf)
+	glmCmd.SetErr(buf)
+
+	err := glmCmd.RunE(glmCmd, []string{"my-key"})
+	if err != nil {
+		t.Fatalf("runGLM nil deps with key should not error, got %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "API key") {
+		t.Errorf("output should mention API key, got %q", output)
+	}
+	if !strings.Contains(output, "config not loaded") {
+		t.Errorf("output should say config not loaded, got %q", output)
+	}
+}
+
+// --- Rank command coverage tests ---
+
+func TestRankLogin_WithCredStore(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = &Dependencies{
+		RankCredStore: &mockCredentialStore{},
+	}
+
+	for _, cmd := range rankCmd.Commands() {
+		if cmd.Name() == "login" {
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+
+			err := cmd.RunE(cmd, []string{})
+			if err != nil {
+				t.Fatalf("rank login with cred store error: %v", err)
+			}
+
+			output := buf.String()
+			if !strings.Contains(output, "Opening browser") {
+				t.Errorf("output should mention browser, got %q", output)
+			}
+			if !strings.Contains(output, "Login flow initiated") {
+				t.Errorf("output should mention login flow, got %q", output)
+			}
+			return
+		}
+	}
+	t.Error("login subcommand not found")
+}
+
+func TestRankStatus_WithClient(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = &Dependencies{
+		RankClient: &mockRankClient{
+			getUserRankFunc: func(_ context.Context) (*rank.UserRank, error) {
+				return &rank.UserRank{
+					Username:      "testuser",
+					TotalTokens:   5000,
+					TotalSessions: 10,
+				}, nil
+			},
+		},
+	}
+
+	for _, cmd := range rankCmd.Commands() {
+		if cmd.Name() == "status" {
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+			cmd.SetContext(context.Background())
+
+			err := cmd.RunE(cmd, []string{})
+			if err != nil {
+				t.Fatalf("rank status with client error: %v", err)
+			}
+
+			output := buf.String()
+			if !strings.Contains(output, "testuser") {
+				t.Errorf("output should contain username, got %q", output)
+			}
+			if !strings.Contains(output, "5000") {
+				t.Errorf("output should contain token count, got %q", output)
+			}
+			if !strings.Contains(output, "10") {
+				t.Errorf("output should contain session count, got %q", output)
+			}
+			return
+		}
+	}
+	t.Error("status subcommand not found")
+}
+
+func TestRankStatus_GetRankError(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = &Dependencies{
+		RankClient: &mockRankClient{
+			getUserRankFunc: func(_ context.Context) (*rank.UserRank, error) {
+				return nil, errors.New("API error")
+			},
+		},
+	}
+
+	for _, cmd := range rankCmd.Commands() {
+		if cmd.Name() == "status" {
+			cmd.SetContext(context.Background())
+			err := cmd.RunE(cmd, []string{})
+			if err == nil {
+				t.Error("rank status should error on API failure")
+			}
+			if !strings.Contains(err.Error(), "get rank") {
+				t.Errorf("error should mention get rank, got %v", err)
+			}
+			return
+		}
+	}
+	t.Error("status subcommand not found")
+}
+
+func TestRankLogout_WithCredStore(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deleteCalled := false
+	deps = &Dependencies{
+		RankCredStore: &mockCredentialStore{
+			deleteFunc: func() error {
+				deleteCalled = true
+				return nil
+			},
+		},
+	}
+
+	for _, cmd := range rankCmd.Commands() {
+		if cmd.Name() == "logout" {
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+
+			err := cmd.RunE(cmd, []string{})
+			if err != nil {
+				t.Fatalf("rank logout error: %v", err)
+			}
+
+			if !deleteCalled {
+				t.Error("Delete should have been called")
+			}
+			if !strings.Contains(buf.String(), "Logged out") {
+				t.Errorf("output should mention logged out, got %q", buf.String())
+			}
+			return
+		}
+	}
+	t.Error("logout subcommand not found")
+}
+
+func TestRankLogout_DeleteError(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = &Dependencies{
+		RankCredStore: &mockCredentialStore{
+			deleteFunc: func() error {
+				return errors.New("permission denied")
+			},
+		},
+	}
+
+	for _, cmd := range rankCmd.Commands() {
+		if cmd.Name() == "logout" {
+			err := cmd.RunE(cmd, []string{})
+			if err == nil {
+				t.Error("rank logout should error on Delete failure")
+			}
+			if !strings.Contains(err.Error(), "delete credentials") {
+				t.Errorf("error should mention delete credentials, got %v", err)
+			}
+			return
+		}
+	}
+	t.Error("logout subcommand not found")
+}
+
+// --- Doctor command coverage tests ---
+
+func TestCheckGit_Verbose(t *testing.T) {
+	check := checkGit(true)
+	if check.Status == CheckOK && check.Detail == "" {
+		t.Error("verbose git check should include detail")
+	}
+	if check.Status == CheckOK && !strings.Contains(check.Detail, "path:") {
+		t.Errorf("verbose git detail should contain path, got %q", check.Detail)
+	}
+}
+
+func TestCheckMoAIConfig_Verbose(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai", "config", "sections"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if chErr := os.Chdir(origDir); chErr != nil {
+			t.Logf("restore dir: %v", chErr)
+		}
+	}()
+
+	check := checkMoAIConfig(true)
+	if check.Status != CheckOK {
+		t.Errorf("status = %q, want ok", check.Status)
+	}
+	if check.Detail == "" {
+		t.Error("verbose check should include detail")
+	}
+	if !strings.Contains(check.Detail, "path:") {
+		t.Errorf("detail should contain path, got %q", check.Detail)
+	}
+}
+
+func TestCheckMoAIConfig_MissingSections(t *testing.T) {
+	tmpDir := t.TempDir()
+	// Create .moai/ but not .moai/config/sections/
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if chErr := os.Chdir(origDir); chErr != nil {
+			t.Logf("restore dir: %v", chErr)
+		}
+	}()
+
+	check := checkMoAIConfig(false)
+	if check.Status != CheckWarn {
+		t.Errorf("status = %q, want warn for missing sections", check.Status)
+	}
+	if !strings.Contains(check.Message, "sections") {
+		t.Errorf("message should mention sections, got %q", check.Message)
+	}
+}
+
+func TestCheckClaudeConfig_Present(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if chErr := os.Chdir(origDir); chErr != nil {
+			t.Logf("restore dir: %v", chErr)
+		}
+	}()
+
+	check := checkClaudeConfig(false)
+	if check.Status != CheckOK {
+		t.Errorf("status = %q, want ok for present .claude/", check.Status)
+	}
+	if !strings.Contains(check.Message, "found") {
+		t.Errorf("message should mention found, got %q", check.Message)
+	}
+}
+
+func TestCheckClaudeConfig_Verbose(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if chErr := os.Chdir(origDir); chErr != nil {
+			t.Logf("restore dir: %v", chErr)
+		}
+	}()
+
+	check := checkClaudeConfig(true)
+	if check.Status != CheckOK {
+		t.Errorf("status = %q, want ok", check.Status)
+	}
+	if check.Detail == "" {
+		t.Error("verbose should include detail")
+	}
+	if !strings.Contains(check.Detail, "path:") {
+		t.Errorf("detail should contain path, got %q", check.Detail)
+	}
+}
+
+func TestRunDoctor_FixFlag(t *testing.T) {
+	// Run in a tmpDir with no .moai so MoAI Config check produces a warn
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if chErr := os.Chdir(origDir); chErr != nil {
+			t.Logf("restore dir: %v", chErr)
+		}
+	}()
+
+	buf := new(bytes.Buffer)
+	doctorCmd.SetOut(buf)
+	doctorCmd.SetErr(buf)
+
+	if err := doctorCmd.Flags().Set("fix", "true"); err != nil {
+		t.Fatal(err)
+	}
+	if err := doctorCmd.Flags().Set("verbose", "false"); err != nil {
+		t.Fatal(err)
+	}
+	if err := doctorCmd.Flags().Set("export", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := doctorCmd.Flags().Set("check", ""); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := doctorCmd.Flags().Set("fix", "false"); err != nil {
+			t.Logf("reset: %v", err)
+		}
+	}()
+
+	err = doctorCmd.RunE(doctorCmd, []string{})
+	if err != nil {
+		t.Fatalf("doctor --fix error: %v", err)
+	}
+
+	// Output may or may not contain "Suggested fixes" depending on whether any check fails.
+	// The fix code path is still exercised either way.
+	output := buf.String()
+	if !strings.Contains(output, "Results:") {
+		t.Errorf("output should contain Results, got %q", output)
+	}
+}
+
+func TestRunDoctor_CheckFilter(t *testing.T) {
+	buf := new(bytes.Buffer)
+	doctorCmd.SetOut(buf)
+	doctorCmd.SetErr(buf)
+
+	if err := doctorCmd.Flags().Set("check", "Go Runtime"); err != nil {
+		t.Fatal(err)
+	}
+	if err := doctorCmd.Flags().Set("verbose", "false"); err != nil {
+		t.Fatal(err)
+	}
+	if err := doctorCmd.Flags().Set("fix", "false"); err != nil {
+		t.Fatal(err)
+	}
+	if err := doctorCmd.Flags().Set("export", ""); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := doctorCmd.Flags().Set("check", ""); err != nil {
+			t.Logf("reset: %v", err)
+		}
+	}()
+
+	err := doctorCmd.RunE(doctorCmd, []string{})
+	if err != nil {
+		t.Fatalf("doctor --check error: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "Go Runtime") {
+		t.Errorf("output should contain filtered check name, got %q", output)
+	}
+	// Should NOT contain other checks
+	if strings.Contains(output, "MoAI Config") {
+		t.Errorf("output should not contain unfiltered checks, got %q", output)
+	}
+}
+
+// --- Statusline command coverage tests ---
+
+func TestRunStatusline_NilDeps(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = nil
+
+	buf := new(bytes.Buffer)
+	statuslineCmd.SetOut(buf)
+	statuslineCmd.SetErr(buf)
+
+	err := statuslineCmd.RunE(statuslineCmd, []string{})
+	if err != nil {
+		t.Fatalf("statusline nil deps error: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "moai") {
+		t.Errorf("output should contain 'moai', got %q", output)
+	}
+}
+
+func TestRunStatusline_WithConfigAndMode(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	tmpDir := t.TempDir()
+	setupMinimalConfigWithMode(t, tmpDir, "ddd")
+
+	mgr := config.NewConfigManager()
+	if _, err := mgr.Load(tmpDir); err != nil {
+		t.Fatalf("Load config: %v", err)
+	}
+
+	deps = &Dependencies{Config: mgr}
+
+	buf := new(bytes.Buffer)
+	statuslineCmd.SetOut(buf)
+	statuslineCmd.SetErr(buf)
+
+	err := statuslineCmd.RunE(statuslineCmd, []string{})
+	if err != nil {
+		t.Fatalf("statusline with config error: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "moai") {
+		t.Errorf("output should contain 'moai', got %q", output)
+	}
+	if !strings.Contains(output, "ddd") {
+		t.Errorf("output should contain development mode 'ddd', got %q", output)
+	}
+}
+
+// --- Init command coverage tests ---
+
+func TestRunInit_WithRootFlag(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	buf := new(bytes.Buffer)
+	initCmd.SetOut(buf)
+	initCmd.SetErr(buf)
+
+	if err := initCmd.Flags().Set("root", tmpDir); err != nil {
+		t.Fatal(err)
+	}
+	if err := initCmd.Flags().Set("non-interactive", "true"); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := initCmd.Flags().Set("root", ""); err != nil {
+			t.Logf("reset: %v", err)
+		}
+		if err := initCmd.Flags().Set("non-interactive", "false"); err != nil {
+			t.Logf("reset: %v", err)
+		}
+	}()
+
+	err := initCmd.RunE(initCmd, []string{})
+	if err != nil {
+		t.Fatalf("runInit error: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "initialized successfully") {
+		t.Errorf("output should confirm init, got %q", output)
+	}
+}
+
+func TestRunInit_WithNameAndLanguage(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	buf := new(bytes.Buffer)
+	initCmd.SetOut(buf)
+	initCmd.SetErr(buf)
+
+	if err := initCmd.Flags().Set("root", tmpDir); err != nil {
+		t.Fatal(err)
+	}
+	if err := initCmd.Flags().Set("name", "test-project"); err != nil {
+		t.Fatal(err)
+	}
+	if err := initCmd.Flags().Set("language", "go"); err != nil {
+		t.Fatal(err)
+	}
+	if err := initCmd.Flags().Set("non-interactive", "true"); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		for _, flag := range []string{"root", "name", "language"} {
+			if err := initCmd.Flags().Set(flag, ""); err != nil {
+				t.Logf("reset %s: %v", flag, err)
+			}
+		}
+		if err := initCmd.Flags().Set("non-interactive", "false"); err != nil {
+			t.Logf("reset: %v", err)
+		}
+	}()
+
+	err := initCmd.RunE(initCmd, []string{})
+	if err != nil {
+		t.Fatalf("runInit error: %v", err)
+	}
+
+	if !strings.Contains(buf.String(), "initialized successfully") {
+		t.Errorf("output should confirm init, got %q", buf.String())
+	}
+}
+
+// --- Helper functions ---
+
+// setupMinimalConfig creates a minimal .moai config directory for testing.
+func setupMinimalConfig(t *testing.T, dir string) {
+	t.Helper()
+	sectionsDir := filepath.Join(dir, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(sectionsDir, "user.yaml"),
+		[]byte("user:\n  name: test\n"),
+		0o644,
+	); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(sectionsDir, "language.yaml"),
+		[]byte("language:\n  conversation_language: en\n"),
+		0o644,
+	); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(sectionsDir, "quality.yaml"),
+		[]byte("constitution:\n  development_mode: ddd\n"),
+		0o644,
+	); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// setupMinimalConfigWithMode creates a minimal .moai config with a specific mode.
+func setupMinimalConfigWithMode(t *testing.T, dir string, mode string) {
+	t.Helper()
+	sectionsDir := filepath.Join(dir, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(sectionsDir, "user.yaml"),
+		[]byte("user:\n  name: test\n"),
+		0o644,
+	); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(sectionsDir, "language.yaml"),
+		[]byte("language:\n  conversation_language: en\n"),
+		0o644,
+	); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(sectionsDir, "quality.yaml"),
+		[]byte(fmt.Sprintf("constitution:\n  development_mode: %s\n", mode)),
+		0o644,
+	); err != nil {
+		t.Fatal(err)
+	}
+}

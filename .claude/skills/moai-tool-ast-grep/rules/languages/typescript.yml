@@ -1,0 +1,83 @@
+# TypeScript-specific Quality Rules
+
+id: avoid-any-type
+language: typescript
+severity: warning
+message: "Avoid using 'any' type. Be more specific."
+rule:
+  any:
+    - pattern: "const $NAME: any = $VALUE"
+    - pattern: "let $NAME: any = $VALUE"
+    - pattern: "function $FUNC($$$ARGS): any"
+    - pattern: "$PARAM: any"
+
+---
+id: prefer-as-over-angle-bracket
+language: typescript
+severity: info
+message: "Prefer 'as' syntax for type assertions"
+rule:
+  pattern: <$TYPE>$EXPR
+fix: $EXPR as $TYPE
+
+---
+id: use-optional-chaining
+language: typescript
+severity: info
+message: "Use optional chaining instead of && chain"
+rule:
+  pattern: $OBJ && $OBJ.$PROP
+fix: $OBJ?.$PROP
+
+---
+id: use-nullish-coalescing
+language: typescript
+severity: info
+message: "Use nullish coalescing operator"
+rule:
+  any:
+    - pattern: "$VAR !== null && $VAR !== undefined ? $VAR : $DEFAULT"
+    - pattern: "$VAR != null ? $VAR : $DEFAULT"
+fix: "$VAR ?? $DEFAULT"
+
+---
+id: prefer-const
+language: typescript
+severity: info
+message: "Prefer const over let for variables that are not reassigned"
+rule:
+  pattern: let $NAME = $VALUE
+
+---
+id: no-non-null-assertion
+language: typescript
+severity: warning
+message: "Avoid non-null assertion. Handle null cases explicitly."
+rule:
+  pattern: $EXPR!
+
+---
+id: prefer-interface-over-type
+language: typescript
+severity: info
+message: "Prefer interface over type alias for object types"
+rule:
+  pattern: type $NAME = { $$$PROPS }
+
+---
+id: explicit-return-type
+language: typescript
+severity: info
+message: "Consider adding explicit return type annotation"
+rule:
+  pattern: "function $NAME($$$ARGS) { $$$BODY }"
+  not:
+    pattern: "function $NAME($$$ARGS): $TYPE { $$$BODY }"
+
+---
+id: prefer-readonly
+language: typescript
+severity: info
+message: "Consider using readonly for properties that are not modified"
+rule:
+  pattern: "interface $NAME { $PROP: $TYPE; }"

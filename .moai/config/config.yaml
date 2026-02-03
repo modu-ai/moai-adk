@@ -1,0 +1,25 @@
+# MoAI-ADK Configuration
+# Format: YAML (modular section-based configuration)
+#
+# This is the main configuration file for initialization status.
+# All settings are stored in modular section files under .moai/config/sections/
+#
+# Section Files:
+# - sections/user.yaml: User personalization settings
+# - sections/language.yaml: Language preferences
+# - sections/project.yaml: Project metadata
+# - sections/git-strategy.yaml: Git workflow configuration
+# - sections/quality.yaml: DDD and quality settings
+# - sections/system.yaml: MoAI system settings (includes document_management, version)
+# - sections/llm.yaml: Multi-LLM routing settings
+# - sections/pricing.yaml: Service and pricing configuration
+# - sections/ralph.yaml: Ralph Engine settings
+#
+# CLAUDE.md automatically loads:
+# @.moai/config/sections/user.yaml
+# @.moai/config/sections/language.yaml
+
+moai:
+  initialized: true
+  initialized_at: "2025-12-19T00:00:00Z"
+  # Note: version is managed in sections/systㅈem.yaml

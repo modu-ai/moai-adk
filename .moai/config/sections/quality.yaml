@@ -1,0 +1,104 @@
+constitution:
+  development_mode: ddd    # Options: ddd, tdd, hybrid
+  enforce_quality: true
+  test_coverage_target: 85
+
+  # DDD Mode Settings (ANALYZE-PRESERVE-IMPROVE)
+  # Best for: Existing projects with < 10% test coverage
+  ddd_settings:
+    require_existing_tests: true
+    characterization_tests: true
+    behavior_snapshots: true
+    max_transformation_size: small
+    preserve_before_improve: true
+
+  # TDD Mode Settings (RED-GREEN-REFACTOR)
+  # Best for: New projects (greenfield) or projects with 50%+ coverage
+  tdd_settings:
+    red_green_refactor: true
+    test_first_required: true
+    min_coverage_per_commit: 80
+    mutation_testing_enabled: false
+
+  # Hybrid Mode Settings (TDD for new + DDD for legacy)
+  # Best for: Projects with 10-49% test coverage
+  hybrid_settings:
+    new_features: tdd
+    legacy_refactoring: ddd
+    min_coverage_new: 90
+    min_coverage_legacy: 85
+    preserve_refactoring: true
+
+  coverage_exemptions:
+    enabled: false
+    require_justification: true
+    max_exempt_percentage: 5
+  test_quality:
+    specification_based: true
+    meaningful_assertions: true
+    avoid_implementation_coupling: true
+    mutation_testing_enabled: false
+  lsp_quality_gates:
+    enabled: true
+    plan:
+      require_baseline: true
+    run:
+      max_errors: 0
+      max_type_errors: 0
+      max_lint_errors: 0
+      allow_regression: false
+    sync:
+      max_errors: 0
+      max_warnings: 10
+      require_clean_lsp: true
+    cache_ttl_seconds: 5
+    timeout_seconds: 3
+  principles:
+    simplicity:
+      max_parallel_tasks: 10
+  lsp_integration:
+    trust5_integration:
+      tested:
+      - unit_tests_pass
+      - lsp_type_errors == 0
+      - lsp_errors == 0
+      readable:
+      - naming_conventions_followed
+      - lsp_lint_errors == 0
+      understandable:
+      - documentation_complete
+      - code_complexity_acceptable
+      - lsp_warnings < threshold
+      secured:
+      - security_scan_pass
+      - lsp_security_warnings == 0
+      trackable:
+      - logs_structured
+      - lsp_diagnostic_history_tracked
+    diagnostic_sources:
+    - typecheck
+    - lint
+    - security
+    regression_detection:
+      error_increase_threshold: 0
+      warning_increase_threshold: 10
+      type_error_increase_threshold: 0
+report_generation:
+  enabled: true
+  auto_create: false
+  warn_user: true
+  user_choice: Minimal
+lsp_state_tracking:
+  enabled: true
+  capture_points:
+  - phase_start
+  - post_transformation
+  - pre_sync
+  comparison:
+    baseline: phase_start
+    regression_threshold: 0
+  logging:
+    log_lsp_state_changes: true
+    log_regression_detection: true
+    log_completion_markers: true
+    include_lsp_in_reports: true

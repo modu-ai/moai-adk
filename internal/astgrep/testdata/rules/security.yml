@@ -1,0 +1,6 @@
+id: no-eval
+language: python
+severity: error
+message: "Do not use eval()"
+pattern: "eval($CODE)"
+fix: ""

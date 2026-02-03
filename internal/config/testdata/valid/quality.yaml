@@ -1,0 +1,25 @@
+constitution:
+  development_mode: ddd
+  enforce_quality: true
+  test_coverage_target: 85
+  ddd_settings:
+    require_existing_tests: true
+    characterization_tests: true
+    behavior_snapshots: true
+    max_transformation_size: small
+    preserve_before_improve: true
+  tdd_settings:
+    red_green_refactor: true
+    test_first_required: true
+    min_coverage_per_commit: 80
+    mutation_testing_enabled: false
+  hybrid_settings:
+    new_features: tdd
+    legacy_refactoring: ddd
+    min_coverage_new: 90
+    min_coverage_legacy: 85
+    preserve_refactoring: true
+  coverage_exemptions:
+    enabled: false
+    require_justification: true
+    max_exempt_percentage: 5

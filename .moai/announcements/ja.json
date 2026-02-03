@@ -1,0 +1,22 @@
+{
+  "companyAnnouncements": [
+    "🔄 v1.12.0 コマンド形式アップデート: コロン(:)削除でよりシンプルに",
+    "  以前: /moai:1-plan, /moai:2-run SPEC-001, /moai:3-sync, /moai:0-project, /moai:alfred",
+    "  変更後: /moai plan, /moai run SPEC-AUTH-001, /moai sync, /moai project, /moai",
+    "  SPEC ID形式も変更: SPEC-001 → SPEC-{DOMAIN}-{NUM} (例: SPEC-AUTH-001, SPEC-API-001)",
+    "🗿 MoAI-ADK: 48個のSkillsとContext7統合のSPEC-First DDD",
+    "⚡ /moai: ワンストップ Plan→Run→Sync 自動化（インテリジェントルーティング）",
+    "🌳 moai-worktree: 並列SPEC開発 - 複数の機能を同時に作業",
+    "🤖 Expert Agents: backend, frontend, security, devops, performance, debug, testing, refactoring",
+    "🤖 Manager Agents: git, spec, ddd, docs, quality, project, strategy, claude-code",
+    "🤖 Builder Agents: agent, command, skill, plugin - カスタム拡張を作成",
+    "📋 ワークフロー: /moai plan (SPEC) → /moai run (DDD) → /moai sync (Docs)",
+    "✅ 品質: TRUST 5 + 85%+ カバレッジ + Ralph Engine (LSP + AST-grep)",
+    "🔄 Git戦略: 3-Mode (Manual/Personal/Team) + Smart Merge設定更新",
+    "📚 ヒント: moai update --templates-only で最新のskillsとagentsを同期",
+    "📚 ヒント: moai-wt new SPEC-XXX で並列開発用のworktreeを作成",
+    "💡 ハイブリッドモード: PlanはClaude (Opus/Sonnet)、Run/SyncはGLMでコスト削減",
+    "💡 並列開発: ターミナル1はClaude、ターミナル2+は 'moai glm && claude' で並列実行",
+    "🏆 moai rank: Claudeトークン使用量を追跡し、rank.mo.ai.krリーダーボードで競争"
+  ]
+}

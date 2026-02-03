@@ -1,0 +1,5 @@
+id: no-console-log
+language: javascript
+severity: warning
+message: "Remove console.log statements"
+pattern: "console.log($MSG)"
