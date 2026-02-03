@@ -191,11 +191,14 @@ moai-adk-go/
 ├── pkg/
 │   ├── models/
 │   │   ├── config.go
+│   │   ├── doc.go                 #   Package documentation
+│   │   ├── lang.go                #   Language support (LangNameMap, GetLanguageName)
 │   │   └── project.go
 │   ├── utils/
 │   │   ├── logger.go
 │   │   └── path.go
 │   └── version/
+│       ├── doc.go                 #   Package documentation
 │       └── version.go
 ├── templates/                      # go:embed source (bundled into binary)
 │   ├── .claude/
@@ -534,13 +537,20 @@ Modern TUI using Charmbracelet's Elm-architecture framework. Replaces Rich + Inq
 
 Version constants and build metadata injected at compile time via `-ldflags`. No runtime version file needed (resolves #221, #250).
 
+| File | Purpose |
+|------|---------|
+| `doc.go` | Package documentation |
+| `version.go` | Version constants and build metadata |
+
 #### `pkg/models/`
 
 | File | Purpose |
 |------|---------|
+| `config.go` | Configuration section types (LSP, TRUST5, Quality gates) |
+| `doc.go` | Package documentation |
+| `lang.go` | Language support utilities (LangNameMap, SupportedLanguages, GetLanguageName, IsValidLanguageCode) |
 | `project.go` | Project metadata, type enums, configuration models |
 | `spec.go` | SPEC document models, status enums |
-| `config.go` | Configuration section types |
 
 #### `pkg/utils/`
 

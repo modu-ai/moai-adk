@@ -538,7 +538,7 @@ type Config struct {
 
 // Default values embedded in struct tags
 type QualityConfig struct {
-    DevelopmentMode    string `yaml:"development_mode" default:"ddd"`
+    DevelopmentMode    string `yaml:"development_mode" default:"hybrid"`
     EnforceQuality     bool   `yaml:"enforce_quality" default:"true"`
     TestCoverageTarget int    `yaml:"test_coverage_target" default:"85"`
 }

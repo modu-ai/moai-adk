@@ -36,6 +36,29 @@ The module path follows Go conventions with the GitHub organization and reposito
 | File Embedding | `embed` (stdlib) | Go 1.25 | Compile-time template embedding into the binary |
 | Context | `context` (stdlib) | Go 1.25 | Cancellation, timeouts, and request-scoped values |
 
+### Language Support
+
+MoAI-ADK provides built-in internationalization with 4 supported languages:
+
+| Code | Language |
+|------|----------|
+| `ko` | Korean (default for wizard UI) |
+| `en` | English (default for configuration) |
+| `ja` | Japanese |
+| `zh` | Chinese |
+
+**Single Source of Truth**: All language mappings are centralized in `pkg/models/lang.go`:
+
+- `LangNameMap`: Map of language codes to display names
+- `SupportedLanguages`: Ordered slice of language codes (Korean-first for wizard)
+- `GetLanguageName(code)`: Returns display name for a language code
+- `IsValidLanguageCode(code)`: Validates language codes
+
+**DRY Principle**: This shared module is used by:
+- `internal/cli/wizard/`: Language selection in init wizard
+- `internal/template/`: Template context language resolution
+- Configuration files: Language settings validation
+
 ### LSP Dependencies
 
 | Category | Package | Version | Purpose |
