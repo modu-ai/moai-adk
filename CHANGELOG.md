@@ -1,3 +1,138 @@
+# v1.14.5 - Critical PATH Fixes & MoAI Rebrand Completion (2026-02-03)
+
+## Summary
+
+This patch release resolves critical PATH environment variable issues affecting Claude Code native installations and completes the Alfred → MoAI rebranding. It also consolidates the architecture by removing MoAI-GO and unifying on Python.
+
+**Key Changes**:
+- **Critical Fixes**: PATH environment variable configuration for isolated environments (#318, #319)
+- **Rebranding Complete**: All "Alfred" references replaced with "MoAI"
+- **Architecture Simplification**: Removed MoAI-GO, Python-only implementation
+- **Bug Fixes**: Hook migration report output corrected
+
+## Fixed
+
+### PATH Environment Issues (#318, #319)
+
+- **fix**: Resolve PATH environment variable issues in isolated environments (877a36ad)
+  - Added system paths to `settings.json` template env section
+  - Fixed `expert-chrome-extension.md` to use standard template variables (`{{HOOK_SHELL_PREFIX}}`)
+  - Added PATH merge logic in `merger.py` to preserve user custom paths during updates
+  - Improved shell detection in `hook_context.py` (check absolute paths before PATH-based lookup)
+  - **Impact**: Fixes plugin loading failures, hook execution errors, and SSH command not found issues
+  - **Platforms**: macOS, Linux, WSL, Windows
+
+### Hook Output
+
+- **fix**: Send migration report to stderr to prevent JSON parse error (36e39f25)
+  - Redirects migration report output to stderr, keeping stdout clean for JSON data
+  - Follows Unix conventions (data to stdout, logs to stderr)
+
+## Changed
+
+### Complete Alfred → MoAI Rebranding
+
+- **refactor**: Complete Alfred → MoAI rebranding cleanup (f78ffdb9, ef3a678c, b31dc3f6)
+  - Output style: `outputStyle: "Alfred"` → `outputStyle: "MoAI"`
+  - Output style files: `.claude/output-styles/moai/alfred.md` → `.claude/output-styles/moai/moai.md`
+  - Agent definitions: All references to "Alfred" replaced with "MoAI"
+  - Hooks, skills, commands: Updated across 177+ files
+  - Tests: Updated statusline tests for MoAI branding
+  - **Breaking Change**: Users with custom configurations referencing "Alfred" should update to "MoAI"
+
+### Architecture Consolidation
+
+- **refactor**: Remove MoAI-GO and consolidate to Python-based implementation (d23f6ece, bd6995a2, 838faa20)
+  - Removed entire MoAI-GO subsystem (Golang implementation)
+  - Consolidated all functionality to Python codebase
+  - Simplified maintenance and security surface
+  - **Note**: MoAI-GO was experimental; no user-facing features removed
+
+### Dependencies
+
+- **chore**: Update uv.lock with version 1.14.0 (cca6b545)
+
+## Installation & Update
+
+```bash
+# Update to the latest version
+uv tool update moai-adk
+
+# Update project templates in your folder
+moai update
+
+# Verify version
+moai --version
+```
+
+---
+
+# v1.14.5 - 중요 PATH 수정 및 MoAI 리브랜딩 완료 (2026-02-03)
+
+## 요약
+
+Claude Code 네이티브 설치 환경에서 발생하는 중요한 PATH 환경 변수 문제를 해결하고 Alfred → MoAI 리브랜딩을 완료한 패치 릴리스입니다. MoAI-GO를 제거하고 Python으로 아키텍처를 통합했습니다.
+
+**주요 변경사항**:
+- **중요 수정**: 격리 환경에서의 PATH 환경 변수 구성 문제 해결 (#318, #319)
+- **리브랜딩 완료**: 모든 "Alfred" 참조를 "MoAI"로 교체
+- **아키텍처 단순화**: MoAI-GO 제거, Python 전용 구현으로 통합
+- **버그 수정**: Hook 마이그레이션 보고서 출력 수정
+
+## 수정됨
+
+### PATH 환경 변수 문제 (#318, #319)
+
+- **fix**: 격리 환경에서 PATH 환경 변수 문제 해결 (877a36ad)
+  - `settings.json` 템플릿 env 섹션에 시스템 경로 추가
+  - `expert-chrome-extension.md`를 표준 템플릿 변수 사용하도록 수정 (`{{HOOK_SHELL_PREFIX}}`)
+  - `merger.py`에 PATH 병합 로직 추가하여 업데이트 시 사용자 커스텀 경로 보존
+  - `hook_context.py`의 shell 감지 개선 (PATH 기반 조회 전에 절대 경로 확인)
+  - **영향**: 플러그인 로딩 실패, hook 실행 오류, SSH 명령 찾을 수 없음 문제 해결
+  - **플랫폼**: macOS, Linux, WSL, Windows
+
+### Hook 출력
+
+- **fix**: JSON 파싱 오류 방지를 위해 마이그레이션 보고서를 stderr로 전송 (36e39f25)
+  - 마이그레이션 보고서 출력을 stderr로 리디렉션하여 stdout을 JSON 데이터용으로 유지
+  - Unix 규칙 준수 (데이터는 stdout, 로그는 stderr)
+
+## 변경됨
+
+### Alfred → MoAI 리브랜딩 완료
+
+- **refactor**: Alfred → MoAI 리브랜딩 정리 완료 (f78ffdb9, ef3a678c, b31dc3f6)
+  - 출력 스타일: `outputStyle: "Alfred"` → `outputStyle: "MoAI"`
+  - 출력 스타일 파일: `.claude/output-styles/moai/alfred.md` → `.claude/output-styles/moai/moai.md`
+  - 에이전트 정의: "Alfred"에 대한 모든 참조를 "MoAI"로 교체
+  - Hook, skill, 명령어: 177개 이상의 파일 업데이트
+  - 테스트: MoAI 브랜딩을 위한 statusline 테스트 업데이트
+  - **중대 변경**: "Alfred"를 참조하는 커스텀 구성이 있는 사용자는 "MoAI"로 업데이트해야 함
+
+### 아키텍처 통합
+
+- **refactor**: MoAI-GO 제거 및 Python 기반 구현으로 통합 (d23f6ece, bd6995a2, 838faa20)
+  - 전체 MoAI-GO 서브시스템 제거 (Golang 구현)
+  - 모든 기능을 Python 코드베이스로 통합
+  - 유지보수 및 보안 표면 단순화
+  - **참고**: MoAI-GO는 실험적이었으며 사용자 대면 기능은 제거되지 않음
+
+### 의존성
+
+- **chore**: uv.lock을 버전 1.14.0으로 업데이트 (cca6b545)
+
+## 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+uv tool update moai-adk
+
+# 프로젝트 폴더 템플릿 업데이트
+moai update
+
+# 버전 확인
+moai --version
+```
 # Unreleased (2026-02-02)
 
 ## Summary
