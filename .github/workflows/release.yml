@@ -274,7 +274,7 @@ jobs:
         run: |
           echo "🧪 Running smoke tests (blocking for deployment)..."
           uv sync
-          uv run pytest tests/ -m "smoke or critical" -v --tb=short --maxfail=5
+          uv run pytest tests/ -m "smoke or critical" -v --tb=short --maxfail=5 --no-cov
           echo "✅ Smoke tests passed"
 
       - name: 📦 Package integrity verification
