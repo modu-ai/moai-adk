@@ -3,6 +3,7 @@ package loop
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -299,7 +300,13 @@ func (c *LoopController) runLoop(ctx context.Context) {
 		fb.Iteration = c.state.Iteration
 		c.state.Feedback = append(c.state.Feedback, *fb)
 		c.state.UpdatedAt = time.Now()
-		_ = c.storage.SaveState(c.state)
+		if err := c.storage.SaveState(c.state); err != nil {
+			slog.Default().Warn("failed to save loop state after feedback collection",
+				"spec_id", c.state.SpecID,
+				"phase", c.state.Phase,
+				"iteration", c.state.Iteration,
+				"error", err)
+		}
 
 		currentPhase := c.state.Phase
 		c.mu.Unlock()
@@ -323,20 +330,32 @@ func (c *LoopController) runLoop(ctx context.Context) {
 			case ActionConverge:
 				c.converged = true
 				c.running = false
-				_ = c.storage.DeleteState(c.state.SpecID)
+				if err := c.storage.DeleteState(c.state.SpecID); err != nil {
+					slog.Default().Warn("failed to delete loop state on convergence",
+						"spec_id", c.state.SpecID,
+						"error", err)
+				}
 				c.mu.Unlock()
 				return
 
 			case ActionAbort:
 				c.running = false
-				_ = c.storage.DeleteState(c.state.SpecID)
+				if err := c.storage.DeleteState(c.state.SpecID); err != nil {
+					slog.Default().Warn("failed to delete loop state on abort",
+						"spec_id", c.state.SpecID,
+						"error", err)
+				}
 				c.mu.Unlock()
 				return
 
 			case ActionRequestReview:
 				c.running = false
 				c.paused = true
-				_ = c.storage.SaveState(c.state)
+				if err := c.storage.SaveState(c.state); err != nil {
+					slog.Default().Warn("failed to save loop state on review request",
+						"spec_id", c.state.SpecID,
+						"error", err)
+				}
 				c.mu.Unlock()
 				return
 
@@ -344,7 +363,13 @@ func (c *LoopController) runLoop(ctx context.Context) {
 				c.state.Iteration++
 				c.state.Phase = PhaseAnalyze
 				c.state.UpdatedAt = time.Now()
-				_ = c.storage.SaveState(c.state)
+				if err := c.storage.SaveState(c.state); err != nil {
+					slog.Default().Warn("failed to save loop state on continue",
+						"spec_id", c.state.SpecID,
+						"phase", c.state.Phase,
+						"iteration", c.state.Iteration,
+						"error", err)
+				}
 				c.mu.Unlock()
 				continue
 

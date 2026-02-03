@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/modu-ai/moai-adk-go/internal/foundation"
 )
 
 // Compile-time interface compliance check.
@@ -30,7 +32,7 @@ func NewRepository(path string) (*gitManager, error) {
 		return nil, fmt.Errorf("resolve path %s: %w", path, err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), foundation.DefaultGitTimeout)
 	defer cancel()
 
 	// Verify the path is a git repository.
@@ -59,7 +61,7 @@ func NewRepository(path string) (*gitManager, error) {
 func (m *gitManager) CurrentBranch() (string, error) {
 	m.logger.Debug("getting current branch")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), foundation.DefaultGitTimeout)
 	defer cancel()
 
 	out, err := execGit(ctx, m.root, "symbolic-ref", "--short", "HEAD")
@@ -75,7 +77,7 @@ func (m *gitManager) CurrentBranch() (string, error) {
 func (m *gitManager) Status() (*GitStatus, error) {
 	m.logger.Debug("getting repository status")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), foundation.DefaultGitTimeout)
 	defer cancel()
 
 	out, err := execGit(ctx, m.root, "status", "--porcelain")
@@ -124,11 +126,23 @@ func (m *gitManager) Status() (*GitStatus, error) {
 			behind, parseErr := strconv.Atoi(parts[0])
 			if parseErr == nil {
 				status.Behind = behind
+			} else {
+				m.logger.Debug("failed to parse behind count",
+					"value", parts[0],
+					"error", parseErr)
 			}
 			ahead, parseErr := strconv.Atoi(parts[1])
 			if parseErr == nil {
 				status.Ahead = ahead
+			} else {
+				m.logger.Debug("failed to parse ahead count",
+					"value", parts[1],
+					"error", parseErr)
 			}
+		} else {
+			m.logger.Debug("unexpected ahead/behind format",
+				"output", aheadBehind,
+				"parts", len(parts))
 		}
 	}
 
@@ -147,7 +161,7 @@ func (m *gitManager) Status() (*GitStatus, error) {
 func (m *gitManager) Log(n int) ([]Commit, error) {
 	m.logger.Debug("getting commit log", "count", n)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), foundation.DefaultGitTimeout)
 	defer cancel()
 
 	// Use unit separator (\x1f) as field delimiter.
@@ -195,7 +209,7 @@ func (m *gitManager) Log(n int) ([]Commit, error) {
 func (m *gitManager) Diff(ref1, ref2 string) (string, error) {
 	m.logger.Debug("getting diff", "ref1", ref1, "ref2", ref2)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), foundation.DefaultGitTimeout)
 	defer cancel()
 
 	out, err := execGit(ctx, m.root, "diff", ref1, ref2)

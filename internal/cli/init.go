@@ -17,10 +17,11 @@ import (
 )
 
 var initCmd = &cobra.Command{
-	Use:   "init",
-	Short: "Initialize a new MoAI project",
-	Long:  "Initialize a new MoAI project with Claude Code integration, including agents, skills, commands, hooks, and rules.",
-	RunE:  runInit,
+	Use:     "init",
+	Short:   "Initialize a new MoAI project",
+	Long:    "Initialize a new MoAI project with Claude Code integration, including agents, skills, commands, hooks, and rules.",
+	PreRunE: validateInitFlags,
+	RunE:    runInit,
 }
 
 func init() {
@@ -58,6 +59,59 @@ func getBoolFlag(cmd *cobra.Command, name string) bool {
 		return false
 	}
 	return val
+}
+
+// validateInitFlags validates flag values before execution.
+func validateInitFlags(cmd *cobra.Command, _ []string) error {
+	// Validate development mode
+	mode := getStringFlag(cmd, "mode")
+	if mode != "" {
+		validModes := []string{"ddd", "tdd", "hybrid"}
+		valid := false
+		for _, m := range validModes {
+			if mode == m {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return fmt.Errorf("invalid --mode value %q: must be one of: ddd, tdd, hybrid", mode)
+		}
+	}
+
+	// Validate git workflow mode
+	gitMode := getStringFlag(cmd, "git-mode")
+	if gitMode != "" {
+		validGitModes := []string{"manual", "personal", "team"}
+		valid := false
+		for _, m := range validGitModes {
+			if gitMode == m {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return fmt.Errorf("invalid --git-mode value %q: must be one of: manual, personal, team", gitMode)
+		}
+	}
+
+	// Validate conversation language (ISO 639-1 codes)
+	convLang := getStringFlag(cmd, "conv-lang")
+	if convLang != "" {
+		validLangs := []string{"en", "ko", "ja", "zh", "es", "fr", "de", "pt", "ru", "it"}
+		valid := false
+		for _, lang := range validLangs {
+			if convLang == lang {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return fmt.Errorf("invalid --conv-lang value %q: must be a valid ISO 639-1 language code (e.g., en, ko, ja, zh)", convLang)
+		}
+	}
+
+	return nil
 }
 
 // runInit executes the project initialization workflow.
@@ -143,7 +197,10 @@ func runInit(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("load embedded templates: %w", err)
 	}
-	deployer := template.NewDeployer(embeddedFS)
+
+	// Create renderer for template processing
+	renderer := template.NewRenderer(embeddedFS)
+	deployer := template.NewDeployerWithRenderer(embeddedFS, renderer)
 
 	initializer := project.NewInitializer(deployer, mgr, nil)
 	executor := project.NewPhaseExecutor(detector, methDetector, validator, initializer, nil)
