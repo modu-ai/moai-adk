@@ -232,6 +232,255 @@ func TestSettingsPlatformHookCommands(t *testing.T) {
 	})
 }
 
+func TestSettingsOutputStyleDefault(t *testing.T) {
+	gen := NewSettingsGenerator()
+
+	t.Run("default_moai_style", func(t *testing.T) {
+		data, err := gen.Generate(defaultTestConfig(), "darwin")
+		if err != nil {
+			t.Fatalf("Generate error: %v", err)
+		}
+
+		var settings Settings
+		trimmed := strings.TrimSpace(string(data))
+		if err := json.Unmarshal([]byte(trimmed), &settings); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+
+		expected := ".claude/output-styles/moai/moai.md"
+		if settings.OutputStyle != expected {
+			t.Errorf("output_style = %q, want %q", settings.OutputStyle, expected)
+		}
+	})
+
+	t.Run("nil_config_still_has_style", func(t *testing.T) {
+		data, err := gen.Generate(nil, "darwin")
+		if err != nil {
+			t.Fatalf("Generate error: %v", err)
+		}
+
+		var settings Settings
+		trimmed := strings.TrimSpace(string(data))
+		if err := json.Unmarshal([]byte(trimmed), &settings); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+
+		expected := ".claude/output-styles/moai/moai.md"
+		if settings.OutputStyle != expected {
+			t.Errorf("nil config output_style = %q, want %q", settings.OutputStyle, expected)
+		}
+	})
+}
+
+// --- MCP Generator Tests ---
+
+func TestMCPGeneratorGenerateMCP(t *testing.T) {
+	gen := NewMCPGenerator()
+
+	t.Run("darwin_valid_json", func(t *testing.T) {
+		data, err := gen.GenerateMCP("darwin")
+		if err != nil {
+			t.Fatalf("GenerateMCP error: %v", err)
+		}
+
+		trimmed := strings.TrimSpace(string(data))
+		if !json.Valid([]byte(trimmed)) {
+			t.Fatal("generated .mcp.json is not valid JSON")
+		}
+	})
+
+	t.Run("linux_valid_json", func(t *testing.T) {
+		data, err := gen.GenerateMCP("linux")
+		if err != nil {
+			t.Fatalf("GenerateMCP error: %v", err)
+		}
+
+		trimmed := strings.TrimSpace(string(data))
+		if !json.Valid([]byte(trimmed)) {
+			t.Fatal("generated .mcp.json is not valid JSON")
+		}
+	})
+
+	t.Run("windows_valid_json", func(t *testing.T) {
+		data, err := gen.GenerateMCP("windows")
+		if err != nil {
+			t.Fatalf("GenerateMCP error: %v", err)
+		}
+
+		trimmed := strings.TrimSpace(string(data))
+		if !json.Valid([]byte(trimmed)) {
+			t.Fatal("generated .mcp.json is not valid JSON")
+		}
+	})
+
+	t.Run("json_roundtrip", func(t *testing.T) {
+		data, err := gen.GenerateMCP("darwin")
+		if err != nil {
+			t.Fatalf("GenerateMCP error: %v", err)
+		}
+
+		var cfg MCPConfig
+		trimmed := strings.TrimSpace(string(data))
+		if err := json.Unmarshal([]byte(trimmed), &cfg); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+
+		redata, err := json.MarshalIndent(cfg, "", "  ")
+		if err != nil {
+			t.Fatalf("MarshalIndent error: %v", err)
+		}
+
+		if string(redata) != trimmed {
+			t.Errorf("roundtrip mismatch:\ngot:  %s\nwant: %s", string(redata), trimmed)
+		}
+	})
+
+	t.Run("no_unexpanded_tokens", func(t *testing.T) {
+		data, err := gen.GenerateMCP("darwin")
+		if err != nil {
+			t.Fatalf("GenerateMCP error: %v", err)
+		}
+
+		content := string(data)
+		tokens := []string{"${", "{{", "$VAR", "$SHELL", "MCP_SHELL"}
+		for _, tok := range tokens {
+			if strings.Contains(content, tok) {
+				t.Errorf("generated JSON contains unexpanded token %q", tok)
+			}
+		}
+	})
+}
+
+func TestMCPGeneratorRequiredServers(t *testing.T) {
+	gen := NewMCPGenerator()
+
+	requiredServers := []string{"context7", "sequential-thinking"}
+	platforms := []string{"darwin", "linux", "windows"}
+
+	for _, platform := range platforms {
+		t.Run(platform, func(t *testing.T) {
+			data, err := gen.GenerateMCP(platform)
+			if err != nil {
+				t.Fatalf("GenerateMCP error: %v", err)
+			}
+
+			var cfg MCPConfig
+			trimmed := strings.TrimSpace(string(data))
+			if err := json.Unmarshal([]byte(trimmed), &cfg); err != nil {
+				t.Fatalf("Unmarshal error: %v", err)
+			}
+
+			for _, name := range requiredServers {
+				server, ok := cfg.MCPServers[name]
+				if !ok {
+					t.Errorf("missing MCP server %q", name)
+					continue
+				}
+				if server.Command == "" {
+					t.Errorf("MCP server %q has empty command", name)
+				}
+				if len(server.Args) == 0 {
+					t.Errorf("MCP server %q has no args", name)
+				}
+			}
+		})
+	}
+}
+
+func TestMCPGeneratorPlatformCommands(t *testing.T) {
+	gen := NewMCPGenerator()
+
+	t.Run("darwin_uses_bash", func(t *testing.T) {
+		data, err := gen.GenerateMCP("darwin")
+		if err != nil {
+			t.Fatalf("GenerateMCP error: %v", err)
+		}
+
+		var cfg MCPConfig
+		trimmed := strings.TrimSpace(string(data))
+		if err := json.Unmarshal([]byte(trimmed), &cfg); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+
+		server := cfg.MCPServers["context7"]
+		if server.Command != "/bin/bash" {
+			t.Errorf("darwin command = %q, want %q", server.Command, "/bin/bash")
+		}
+		if len(server.Args) < 3 || server.Args[0] != "-l" || server.Args[1] != "-c" {
+			t.Errorf("darwin args = %v, want [-l -c ...]", server.Args)
+		}
+	})
+
+	t.Run("windows_uses_cmd", func(t *testing.T) {
+		data, err := gen.GenerateMCP("windows")
+		if err != nil {
+			t.Fatalf("GenerateMCP error: %v", err)
+		}
+
+		var cfg MCPConfig
+		trimmed := strings.TrimSpace(string(data))
+		if err := json.Unmarshal([]byte(trimmed), &cfg); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+
+		server := cfg.MCPServers["context7"]
+		if server.Command != "cmd.exe" {
+			t.Errorf("windows command = %q, want %q", server.Command, "cmd.exe")
+		}
+		if len(server.Args) < 2 || server.Args[0] != "/c" {
+			t.Errorf("windows args = %v, want [/c ...]", server.Args)
+		}
+	})
+}
+
+func TestMCPGeneratorStaggeredStartup(t *testing.T) {
+	gen := NewMCPGenerator()
+
+	data, err := gen.GenerateMCP("darwin")
+	if err != nil {
+		t.Fatalf("GenerateMCP error: %v", err)
+	}
+
+	var cfg MCPConfig
+	trimmed := strings.TrimSpace(string(data))
+	if err := json.Unmarshal([]byte(trimmed), &cfg); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+
+	if cfg.StaggeredStartup == nil {
+		t.Fatal("staggeredStartup is nil")
+	}
+	if !cfg.StaggeredStartup.Enabled {
+		t.Error("staggeredStartup.enabled should be true")
+	}
+	if cfg.StaggeredStartup.DelayMs != 500 {
+		t.Errorf("staggeredStartup.delayMs = %d, want 500", cfg.StaggeredStartup.DelayMs)
+	}
+	if cfg.StaggeredStartup.ConnectionTimeout != 15000 {
+		t.Errorf("staggeredStartup.connectionTimeout = %d, want 15000", cfg.StaggeredStartup.ConnectionTimeout)
+	}
+}
+
+func TestMCPGeneratorSchema(t *testing.T) {
+	gen := NewMCPGenerator()
+
+	data, err := gen.GenerateMCP("darwin")
+	if err != nil {
+		t.Fatalf("GenerateMCP error: %v", err)
+	}
+
+	var cfg MCPConfig
+	trimmed := strings.TrimSpace(string(data))
+	if err := json.Unmarshal([]byte(trimmed), &cfg); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+
+	expected := "https://raw.githubusercontent.com/anthropics/claude-code/main/.mcp.schema.json"
+	if cfg.Schema != expected {
+		t.Errorf("schema = %q, want %q", cfg.Schema, expected)
+	}
+}
+
 func TestEventToSubcommand(t *testing.T) {
 	tests := []struct {
 		event    string

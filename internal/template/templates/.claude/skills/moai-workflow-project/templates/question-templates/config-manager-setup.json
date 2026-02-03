@@ -1,0 +1,109 @@
+{
+  "id": "config-manager-setup",
+  "title": "Configuration Manager Setup",
+  "description": "Configure project settings and management preferences",
+  "questions": [
+    {
+      "id": "config_manager.auto_update",
+      "text": "Enable automatic configuration updates?",
+      "type": "boolean",
+      "required": true,
+      "default_value": true,
+      "description": "Automatically update config when project settings change"
+    },
+    {
+      "id": "config_manager.backup_frequency",
+      "text": "How often should configurations be backed up?",
+      "type": "single_choice",
+      "required": true,
+      "default_value": "daily",
+      "options": [
+        {
+          "label": "Every change",
+          "value": "every_change",
+          "description": "Backup after each configuration modification"
+        },
+        {
+          "label": "Daily",
+          "value": "daily",
+          "description": "Daily backup of configuration files"
+        },
+        {
+          "label": "Weekly",
+          "value": "weekly",
+          "description": "Weekly backup schedule"
+        },
+        {
+          "label": "Manual only",
+          "value": "manual",
+          "description": "Only backup when explicitly requested"
+        }
+      ]
+    },
+    {
+      "id": "config_manager.validation_mode",
+      "text": "Configuration validation mode:",
+      "type": "single_choice",
+      "required": true,
+      "default_value": "strict",
+      "options": [
+        {
+          "label": "Warn on invalid",
+          "value": "warn",
+          "description": "Show warnings but allow invalid configurations"
+        },
+        {
+          "label": "Strict validation",
+          "value": "strict",
+          "description": "Block invalid configuration changes"
+        },
+        {
+          "label": "Silent",
+          "value": "silent",
+          "description": "Skip validation for faster operation"
+        }
+      ]
+    },
+    {
+      "id": "config_manager.environment_config",
+      "text": "Enable environment-specific configurations?",
+      "type": "boolean",
+      "required": true,
+      "default_value": true,
+      "description": "Support different settings for development, staging, production"
+    },
+    {
+      "id": "config_manager.environments",
+      "text": "Select environments to configure:",
+      "type": "multi_choice",
+      "required": true,
+      "default_value": ["development", "production"],
+      "conditional_on": {
+        "config_manager.environment_config": true
+      },
+      "options": [
+        {
+          "label": "Development",
+          "value": "development"
+        },
+        {
+          "label": "Testing/Staging",
+          "value": "testing"
+        },
+        {
+          "label": "Production",
+          "value": "production"
+        },
+        {
+          "label": "Custom environment",
+          "value": "custom"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "skill": "moai-project-config-manager",
+    "category": "project_configuration",
+    "version": "1.0.0"
+  }
+}

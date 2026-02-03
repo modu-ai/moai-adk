@@ -1,0 +1,93 @@
+// Package wizard provides an interactive Bubble Tea-based wizard
+// for MoAI project initialization.
+package wizard
+
+import "errors"
+
+// WizardResult holds the user's selections from the init wizard.
+type WizardResult struct {
+	// Core settings
+	ProjectName string // Project name (required)
+	Locale      string // Conversation language code: ko, en, ja, zh
+	UserName    string // User display name (optional)
+
+	// Git settings
+	GitMode        string // Git automation mode: manual, personal, team
+	GitHubUsername string // GitHub username (required for personal/team modes)
+
+	// Output language settings
+	GitCommitLang   string // Language for git commit messages: en, ko, ja, zh
+	CodeCommentLang string // Language for code comments: en, ko, ja, zh
+	DocLang         string // Language for documentation: en, ko, ja, zh
+
+	// Development methodology
+	DevelopmentMode string // Development mode: ddd, tdd, hybrid
+}
+
+// QuestionType represents the type of wizard question.
+type QuestionType int
+
+const (
+	// QuestionTypeSelect is a single-choice selection question.
+	QuestionTypeSelect QuestionType = iota
+	// QuestionTypeInput is a text input question.
+	QuestionTypeInput
+)
+
+// Question defines a single wizard question.
+type Question struct {
+	ID          string                   // Unique identifier
+	Type        QuestionType             // Select or Input
+	Title       string                   // Question title
+	Description string                   // Additional description
+	Options     []Option                 // Options for select questions
+	Default     string                   // Default value
+	Required    bool                     // Whether the field is required
+	Condition   func(*WizardResult) bool // Condition for showing this question
+}
+
+// Option represents a selectable option.
+type Option struct {
+	Label string // Display label
+	Value string // Actual value stored
+	Desc  string // Optional description
+}
+
+// State represents the current state of the wizard.
+type State int
+
+const (
+	// StateRunning means the wizard is actively running.
+	StateRunning State = iota
+	// StateCompleted means the wizard finished successfully.
+	StateCompleted
+	// StateCancelled means the user cancelled the wizard.
+	StateCancelled
+)
+
+// Error definitions for the wizard package.
+var (
+	// ErrCancelled is returned when the user cancels the wizard.
+	ErrCancelled = errors.New("wizard cancelled by user")
+	// ErrNoQuestions is returned when no questions are provided.
+	ErrNoQuestions = errors.New("no questions provided")
+	// ErrInvalidQuestion is returned when a question index is out of bounds.
+	ErrInvalidQuestion = errors.New("invalid question index")
+)
+
+// LangNameMap maps language codes to full names with native script.
+var LangNameMap = map[string]string{
+	"en": "English",
+	"ko": "Korean (한국어)",
+	"ja": "Japanese (日本語)",
+	"zh": "Chinese (中文)",
+}
+
+// GetLanguageName returns the full language name for a code.
+// Returns "English" if the code is not found.
+func GetLanguageName(code string) string {
+	if name, ok := LangNameMap[code]; ok {
+		return name
+	}
+	return "English"
+}

@@ -16,7 +16,9 @@ import (
 type Deployer interface {
 	// Deploy extracts all templates and writes them to projectRoot,
 	// registering each file with the manifest manager.
-	Deploy(ctx context.Context, projectRoot string, m manifest.Manager) error
+	// If tmplCtx is provided and a Renderer is configured, files ending in
+	// .tmpl are rendered with the context and saved without the .tmpl suffix.
+	Deploy(ctx context.Context, projectRoot string, m manifest.Manager, tmplCtx *TemplateContext) error
 
 	// ExtractTemplate returns the raw content of a single template by name.
 	ExtractTemplate(name string) ([]byte, error)
@@ -27,7 +29,8 @@ type Deployer interface {
 
 // deployer is the concrete implementation of Deployer.
 type deployer struct {
-	fsys fs.FS
+	fsys     fs.FS
+	renderer Renderer // Optional: if set, .tmpl files are rendered with TemplateContext
 }
 
 // NewDeployer creates a Deployer backed by the given filesystem.
@@ -36,8 +39,15 @@ func NewDeployer(fsys fs.FS) Deployer {
 	return &deployer{fsys: fsys}
 }
 
+// NewDeployerWithRenderer creates a Deployer that renders .tmpl files using the given Renderer.
+func NewDeployerWithRenderer(fsys fs.FS, renderer Renderer) Deployer {
+	return &deployer{fsys: fsys, renderer: renderer}
+}
+
 // Deploy walks the embedded filesystem and writes every file to projectRoot.
-func (d *deployer) Deploy(ctx context.Context, projectRoot string, m manifest.Manager) error {
+// Files ending in .tmpl are rendered using the Renderer (if configured) and
+// saved without the .tmpl suffix.
+func (d *deployer) Deploy(ctx context.Context, projectRoot string, m manifest.Manager, tmplCtx *TemplateContext) error {
 	projectRoot = filepath.Clean(projectRoot)
 
 	var deployErr error
@@ -69,14 +79,52 @@ func (d *deployer) Deploy(ctx context.Context, projectRoot string, m manifest.Ma
 			return err
 		}
 
-		// Read template content
-		content, err := fs.ReadFile(d.fsys, path)
-		if err != nil {
-			return fmt.Errorf("template deploy read %q: %w", path, err)
+		// Determine if this is a template file that needs rendering
+		isTemplate := strings.HasSuffix(path, ".tmpl")
+		var content []byte
+		var destRelPath string
+
+		if isTemplate && d.renderer != nil && tmplCtx != nil {
+			// Render the template
+			rendered, renderErr := d.renderer.Render(path, tmplCtx)
+			if renderErr != nil {
+				return fmt.Errorf("template render %q: %w", path, renderErr)
+			}
+			content = rendered
+			// Remove .tmpl suffix for destination path
+			destRelPath = strings.TrimSuffix(path, ".tmpl")
+		} else {
+			// Read raw content
+			rawContent, readErr := fs.ReadFile(d.fsys, path)
+			if readErr != nil {
+				return fmt.Errorf("template deploy read %q: %w", path, readErr)
+			}
+			content = rawContent
+			destRelPath = path
 		}
 
 		// Compute destination path
-		destPath := filepath.Join(projectRoot, filepath.FromSlash(path))
+		destPath := filepath.Join(projectRoot, filepath.FromSlash(destRelPath))
+
+		// Existing file protection: skip files that already exist at the
+		// destination. This prevents overwriting user-created or
+		// programmatically-generated files (e.g., config YAMLs from Step 2
+		// of init, or pre-existing CLAUDE.md).
+		if _, statErr := os.Stat(destPath); statErr == nil {
+			// File exists — check manifest for provenance
+			if entry, found := m.GetEntry(destRelPath); found {
+				if entry.Provenance == manifest.UserModified || entry.Provenance == manifest.UserCreated {
+					// Respect user files
+					return nil
+				}
+				// template_managed files are safe to overwrite (re-init / update)
+			} else {
+				// Existing file not tracked in manifest — record as user_created and skip
+				templateHash := manifest.HashBytes(content)
+				_ = m.Track(destRelPath, manifest.UserCreated, templateHash)
+				return nil
+			}
+		}
 
 		// Create parent directories
 		destDir := filepath.Dir(destPath)
@@ -89,10 +137,10 @@ func (d *deployer) Deploy(ctx context.Context, projectRoot string, m manifest.Ma
 			return fmt.Errorf("template deploy write %q: %w", destPath, err)
 		}
 
-		// Track in manifest
+		// Track in manifest (use destRelPath, not original path with .tmpl)
 		templateHash := manifest.HashBytes(content)
-		if err := m.Track(path, manifest.TemplateManaged, templateHash); err != nil {
-			return fmt.Errorf("template deploy track %q: %w", path, err)
+		if err := m.Track(destRelPath, manifest.TemplateManaged, templateHash); err != nil {
+			return fmt.Errorf("template deploy track %q: %w", destRelPath, err)
 		}
 
 		return nil

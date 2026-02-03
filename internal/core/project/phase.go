@@ -209,6 +209,22 @@ func applyDetectedDefaults(opts InitOptions, languages []Language, frameworks []
 		opts.ConvLang = "en"
 	}
 
+	// GitMode defaults to "manual"
+	if opts.GitMode == "" {
+		opts.GitMode = "manual"
+	}
+
+	// Output language defaults to "en"
+	if opts.GitCommitLang == "" {
+		opts.GitCommitLang = "en"
+	}
+	if opts.CodeCommentLang == "" {
+		opts.CodeCommentLang = "en"
+	}
+	if opts.DocLang == "" {
+		opts.DocLang = "en"
+	}
+
 	return opts
 }
 

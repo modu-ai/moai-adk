@@ -66,7 +66,7 @@ This makes DDD a superset of TDD - it includes TDD's test-first approach while a
 
 ### DDD vs TDD Comparison
 
-DDD Approach (for new features):
+TDD Approach (for new features):
 
 - Cycle: RED-GREEN-REFACTOR
 - Goal: Create new functionality through tests

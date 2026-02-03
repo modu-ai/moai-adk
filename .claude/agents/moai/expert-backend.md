@@ -11,7 +11,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-domain-backend, moai-domain-database, moai-platform-supabase, moai-platform-neon, moai-tool-ast-grep
+skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-domain-backend, moai-domain-database, moai-platform-supabase, moai-platform-neon, moai-tool-ast-grep, moai-workflow-tdd, moai-workflow-ddd
 hooks:
   PreToolUse:
     - matcher: "Write|Edit"

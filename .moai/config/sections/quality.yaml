@@ -1,10 +1,10 @@
 constitution:
-  development_mode: ddd    # Options: ddd, tdd, hybrid
+  development_mode: hybrid    # Options: ddd, tdd, hybrid
   enforce_quality: true
   test_coverage_target: 85
 
   # DDD Mode Settings (ANALYZE-PRESERVE-IMPROVE)
-  # Best for: Existing projects with < 10% test coverage
+  # Best for: Legacy refactoring only (existing codebase, no new features)
   ddd_settings:
     require_existing_tests: true
     characterization_tests: true
@@ -13,7 +13,7 @@ constitution:
     preserve_before_improve: true
 
   # TDD Mode Settings (RED-GREEN-REFACTOR)
-  # Best for: New projects (greenfield) or projects with 50%+ coverage
+  # Best for: Isolated new modules with no existing code dependencies (rare)
   tdd_settings:
     red_green_refactor: true
     test_first_required: true
@@ -21,7 +21,7 @@ constitution:
     mutation_testing_enabled: false
 
   # Hybrid Mode Settings (TDD for new + DDD for legacy)
-  # Best for: Projects with 10-49% test coverage
+  # Best for: All development work (new projects, new features, ongoing development)
   hybrid_settings:
     new_features: tdd
     legacy_refactoring: ddd

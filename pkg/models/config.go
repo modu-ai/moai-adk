@@ -5,15 +5,15 @@ type DevelopmentMode string
 
 const (
 	// ModeDDD uses Domain-Driven Development (ANALYZE-PRESERVE-IMPROVE).
-	// Best for: existing projects with < 10% test coverage.
+	// Best for: legacy refactoring only (existing codebase, no new features).
 	ModeDDD DevelopmentMode = "ddd"
 
 	// ModeTDD uses Test-Driven Development (RED-GREEN-REFACTOR).
-	// Best for: new projects (greenfield) or projects with 50%+ coverage.
+	// Best for: isolated new modules with no existing code dependencies (rare).
 	ModeTDD DevelopmentMode = "tdd"
 
 	// ModeHybrid uses TDD for new code and DDD for legacy code.
-	// Best for: projects with 10-49% test coverage.
+	// Best for: all development work (new projects, new features, ongoing development).
 	ModeHybrid DevelopmentMode = "hybrid"
 )
 

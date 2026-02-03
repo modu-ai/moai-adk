@@ -46,7 +46,7 @@ func TestDeployerDeploy(t *testing.T) {
 		root, mgr := setupDeployProject(t)
 		d := NewDeployer(testFS())
 
-		err := d.Deploy(context.Background(), root, mgr)
+		err := d.Deploy(context.Background(), root, mgr, nil)
 		if err != nil {
 			t.Fatalf("Deploy error: %v", err)
 		}
@@ -90,7 +90,7 @@ func TestDeployerDeploy(t *testing.T) {
 		}
 		d := NewDeployer(fs)
 
-		err := d.Deploy(context.Background(), root, mgr)
+		err := d.Deploy(context.Background(), root, mgr, nil)
 		if err != nil {
 			t.Fatalf("Deploy error: %v", err)
 		}
@@ -115,7 +115,7 @@ func TestDeployerDeploy(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel() // Cancel immediately
 
-		err := d.Deploy(ctx, root, mgr)
+		err := d.Deploy(ctx, root, mgr, nil)
 		if err == nil {
 			t.Fatal("expected error from cancelled context")
 		}
@@ -132,7 +132,7 @@ func TestDeployerDeploy(t *testing.T) {
 		}
 		d := NewDeployer(fs)
 
-		if err := d.Deploy(context.Background(), root, mgr); err != nil {
+		if err := d.Deploy(context.Background(), root, mgr, nil); err != nil {
 			t.Fatalf("Deploy error: %v", err)
 		}
 

@@ -18,6 +18,10 @@ type Manager interface {
 	// along with an ErrManifestCorrupt error.
 	Load(projectRoot string) (*Manifest, error)
 
+	// Manifest returns the currently loaded in-memory manifest without
+	// reading from disk. Returns nil if Load has not been called yet.
+	Manifest() *Manifest
+
 	// Save persists the in-memory manifest to disk atomically.
 	Save() error
 
@@ -47,6 +51,11 @@ type manifestManager struct {
 // Load must be called before using other methods.
 func NewManager() Manager {
 	return &manifestManager{}
+}
+
+// Manifest returns the currently loaded in-memory manifest without disk I/O.
+func (m *manifestManager) Manifest() *Manifest {
+	return m.manifest
 }
 
 // Load reads and parses the manifest from disk.

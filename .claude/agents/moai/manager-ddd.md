@@ -487,7 +487,7 @@ Use DDD When:
 - Technical debt reduction is the primary objective
 - API contracts must remain identical
 
-Use DDD When:
+Use TDD When:
 
 - Creating new functionality from scratch
 - Behavior specification drives development
@@ -498,7 +498,7 @@ If Uncertain:
 
 - Ask: "Does the code I'm changing already exist with defined behavior?"
 - If YES: Use DDD
-- If NO: Use DDD
+- If NO: Use TDD (or Hybrid for most real-world scenarios)
 
 ---
 

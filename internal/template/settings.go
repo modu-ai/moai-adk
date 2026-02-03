@@ -128,11 +128,123 @@ func eventToSubcommand(event string) string {
 	}
 }
 
+// defaultOutputStyle is the default output style for new MoAI projects.
+const defaultOutputStyle = ".claude/output-styles/moai/moai.md"
+
 // resolveOutputStyle determines the output style from configuration.
 func resolveOutputStyle(cfg *config.Config) string {
-	if cfg == nil {
-		return ""
+	// Default to MoAI output style for all new projects.
+	// Future: allow override via config (e.g., r2d2, yoda).
+	return defaultOutputStyle
+}
+
+// --- MCP Configuration Generator ---
+
+// MCPConfig represents the .mcp.json structure for Claude Code MCP servers.
+type MCPConfig struct {
+	Schema           string                `json:"$schema"`
+	MCPServers       map[string]*MCPServer `json:"mcpServers"`
+	StaggeredStartup *MCPStaggeredStartup  `json:"staggeredStartup,omitempty"`
+}
+
+// MCPServer represents a single MCP server entry.
+type MCPServer struct {
+	Comment string   `json:"$comment,omitempty"`
+	Command string   `json:"command"`
+	Args    []string `json:"args"`
+}
+
+// MCPStaggeredStartup configures staggered MCP server startup.
+type MCPStaggeredStartup struct {
+	Enabled           bool `json:"enabled"`
+	DelayMs           int  `json:"delayMs"`
+	ConnectionTimeout int  `json:"connectionTimeout"`
+}
+
+// MCPGenerator produces .mcp.json content from platform information.
+type MCPGenerator interface {
+	// GenerateMCP creates a valid JSON byte slice for .mcp.json.
+	// Uses Go struct serialization only (ADR-011: no string concatenation).
+	GenerateMCP(platform string) ([]byte, error)
+}
+
+// mcpGenerator is the concrete implementation of MCPGenerator.
+type mcpGenerator struct{}
+
+// NewMCPGenerator creates a new MCPGenerator.
+func NewMCPGenerator() MCPGenerator {
+	return &mcpGenerator{}
+}
+
+// mcpServerDef defines an MCP server package for generation.
+type mcpServerDef struct {
+	name    string // server name key
+	comment string // human-readable comment
+	pkg     string // npx package specifier
+}
+
+// defaultMCPServers lists the MCP servers included in new projects.
+var defaultMCPServers = []mcpServerDef{
+	{
+		name:    "context7",
+		comment: "Up-to-date documentation and code examples via Context7",
+		pkg:     "@upstash/context7-mcp@latest",
+	},
+	{
+		name:    "sequential-thinking",
+		comment: "Step-by-step reasoning for complex problems",
+		pkg:     "@modelcontextprotocol/server-sequential-thinking",
+	},
+}
+
+// GenerateMCP builds MCPConfig and serializes to JSON.
+func (g *mcpGenerator) GenerateMCP(platform string) ([]byte, error) {
+	cfg := MCPConfig{
+		Schema:     "https://raw.githubusercontent.com/anthropics/claude-code/main/.mcp.schema.json",
+		MCPServers: buildMCPServers(platform),
+		StaggeredStartup: &MCPStaggeredStartup{
+			Enabled:           true,
+			DelayMs:           500,
+			ConnectionTimeout: 15000,
+		},
 	}
-	// Output style can be extended based on config in the future
-	return ""
+
+	data, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("mcp generate marshal: %w", err)
+	}
+
+	if !json.Valid(data) {
+		return nil, fmt.Errorf("%w: generated .mcp.json is invalid", ErrInvalidJSON)
+	}
+
+	data = append(data, '\n')
+	return data, nil
+}
+
+// buildMCPServers constructs the mcpServers map for all default servers.
+func buildMCPServers(platform string) map[string]*MCPServer {
+	servers := make(map[string]*MCPServer, len(defaultMCPServers))
+
+	for _, def := range defaultMCPServers {
+		cmd, args := buildMCPCommand(platform, def.pkg)
+		servers[def.name] = &MCPServer{
+			Comment: def.comment,
+			Command: cmd,
+			Args:    args,
+		}
+	}
+
+	return servers
+}
+
+// buildMCPCommand returns the platform-appropriate command and args for an MCP server.
+func buildMCPCommand(platform, pkg string) (string, []string) {
+	switch platform {
+	case "windows":
+		return "cmd.exe", []string{"/c", "npx -y " + pkg}
+	default:
+		// darwin, linux: use login shell to ensure PATH includes npm/node
+		return "/bin/bash", []string{"-l", "-c", "exec npx -y " + pkg}
+	}
 }

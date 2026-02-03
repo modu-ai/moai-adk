@@ -337,7 +337,7 @@ const (
 )
 
 type QualityConfig struct {
-    DevelopmentMode    DevelopmentMode    `yaml:"development_mode" default:"ddd"`
+    DevelopmentMode    DevelopmentMode    `yaml:"development_mode" default:"hybrid"`
     EnforceQuality     bool               `yaml:"enforce_quality" default:"true"`
     TestCoverageTarget int                `yaml:"test_coverage_target" default:"85"`
     DDDSettings        DDDSettings        `yaml:"ddd_settings"`
@@ -355,7 +355,7 @@ type DDDSettings struct {
 }
 
 // TDDSettings configures Test-Driven Development mode.
-// Best for: New projects (greenfield) or projects with 50%+ test coverage.
+// Best for: Isolated new modules with no existing code dependencies (rare).
 type TDDSettings struct {
     RedGreenRefactor       bool `yaml:"red_green_refactor" default:"true"`
     TestFirstRequired      bool `yaml:"test_first_required" default:"true"`
@@ -364,7 +364,7 @@ type TDDSettings struct {
 }
 
 // HybridSettings configures Hybrid mode (TDD for new, DDD for legacy).
-// Best for: Projects with partial test coverage (10-49%).
+// Best for: All development work (new projects, new features, ongoing development).
 type HybridSettings struct {
     NewFeatures         string `yaml:"new_features" default:"tdd"`       // tdd for new code
     LegacyRefactoring   string `yaml:"legacy_refactoring" default:"ddd"` // ddd for existing code

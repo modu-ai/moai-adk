@@ -634,6 +634,52 @@ func TestManagerIntegration(t *testing.T) {
 	})
 }
 
+func TestManagerManifest(t *testing.T) {
+	t.Run("nil_before_load", func(t *testing.T) {
+		mgr := NewManager()
+		if mf := mgr.Manifest(); mf != nil {
+			t.Errorf("Manifest() = %v, want nil before Load", mf)
+		}
+	})
+
+	t.Run("returns_loaded_manifest", func(t *testing.T) {
+		root := setupProject(t)
+		mgr := NewManager()
+		loaded, err := mgr.Load(root)
+		if err != nil {
+			t.Fatalf("Load error: %v", err)
+		}
+
+		got := mgr.Manifest()
+		if got != loaded {
+			t.Error("Manifest() should return the same pointer as Load()")
+		}
+	})
+
+	t.Run("preserves_tracked_entries", func(t *testing.T) {
+		root := setupProject(t)
+		writeProjectFile(t, root, "test.md", []byte("content"))
+
+		mgr := NewManager()
+		if _, err := mgr.Load(root); err != nil {
+			t.Fatalf("Load error: %v", err)
+		}
+
+		if err := mgr.Track("test.md", TemplateManaged, "sha256:tmpl"); err != nil {
+			t.Fatalf("Track error: %v", err)
+		}
+
+		// Manifest() should return the manifest with the tracked entry
+		mf := mgr.Manifest()
+		if mf == nil {
+			t.Fatal("Manifest() returned nil after Load+Track")
+		}
+		if len(mf.Files) != 1 {
+			t.Errorf("Files count = %d, want 1", len(mf.Files))
+		}
+	})
+}
+
 func TestManagerNilManifestGuards(t *testing.T) {
 	t.Run("getentry_nil_manifest", func(t *testing.T) {
 		mgr := NewManager()

@@ -7,12 +7,13 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk-go/internal/manifest"
 	"github.com/modu-ai/moai-adk-go/internal/template"
-	"github.com/modu-ai/moai-adk-go/pkg/models"
-	"gopkg.in/yaml.v3"
+	"github.com/modu-ai/moai-adk-go/pkg/version"
 )
 
 // InitOptions configures the project initialization.
@@ -25,6 +26,12 @@ type InitOptions struct {
 	UserName        string   // User display name for configuration.
 	ConvLang        string   // Conversation language code (e.g., "en", "ko").
 	DevelopmentMode string   // "ddd", "tdd", or "hybrid".
+	GitMode         string   // Git workflow mode: "manual", "personal", or "team".
+	GitHubUsername  string   // GitHub username (for personal/team modes).
+	GitCommitLang   string   // Git commit message language code.
+	CodeCommentLang string   // Code comment language code.
+	DocLang         string   // Documentation language code.
+	Platform        string   // Target platform ("darwin", "linux", "windows"). Defaults to runtime.GOOS.
 	NonInteractive  bool     // If true, skip wizard and use defaults/flags.
 	Force           bool     // If true, allow reinitializing an existing project.
 }
@@ -108,15 +115,7 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		return nil, fmt.Errorf("create .moai/ structure: %w", err)
 	}
 
-	// Step 2: Generate configuration files
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	if err := i.generateConfigs(opts, result); err != nil {
-		return nil, fmt.Errorf("generate configs: %w", err)
-	}
-
-	// Step 3: Create .claude/ directory structure
+	// Step 2: Create .claude/ directory structure
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -124,16 +123,36 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		return nil, fmt.Errorf("create .claude/ structure: %w", err)
 	}
 
-	// Step 4: Deploy templates (if deployer is available)
+	// Step 3: Deploy templates (if deployer is available)
+	// Templates include .moai/config/sections/*.yaml via .tmpl rendering
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	if i.deployer != nil {
-		if err := i.deployTemplates(ctx, opts.ProjectRoot, result); err != nil {
+		if err := i.deployTemplates(ctx, opts, result); err != nil {
 			// Template deployment is non-fatal; record warning
 			result.Warnings = append(result.Warnings, fmt.Sprintf("template deployment: %s", err))
 			i.logger.Warn("template deployment failed", "error", err)
 		}
+	} else {
+		// Fallback: generate config files directly when no deployer is available
+		if err := i.generateConfigsFallback(opts, result); err != nil {
+			result.Warnings = append(result.Warnings, fmt.Sprintf("config generation: %s", err))
+			i.logger.Warn("config generation failed", "error", err)
+		}
+	}
+
+	// Step 4: Generate runtime files (settings.json, .mcp.json) per ADR-011
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := i.generateSettings(opts, result); err != nil {
+		result.Warnings = append(result.Warnings, fmt.Sprintf("settings generation: %s", err))
+		i.logger.Warn("settings generation failed", "error", err)
+	}
+	if err := i.generateMCPConfig(opts, result); err != nil {
+		result.Warnings = append(result.Warnings, fmt.Sprintf("MCP config generation: %s", err))
+		i.logger.Warn("MCP config generation failed", "error", err)
 	}
 
 	// Step 5: Create CLAUDE.md
@@ -185,60 +204,97 @@ func (i *projectInitializer) createClaudeDirs(root string, result *InitResult) e
 	return nil
 }
 
-// generateConfigs writes the configuration YAML files using struct serialization.
-func (i *projectInitializer) generateConfigs(opts InitOptions, result *InitResult) error {
+// deployTemplates deploys embedded templates to the project root.
+// Files ending in .tmpl are rendered with TemplateContext built from opts.
+func (i *projectInitializer) deployTemplates(ctx context.Context, opts InitOptions, result *InitResult) error {
+	if i.manifestMgr == nil {
+		return fmt.Errorf("manifest manager required for template deployment")
+	}
+
+	// Load or create manifest for tracking
+	if _, err := i.manifestMgr.Load(opts.ProjectRoot); err != nil {
+		return fmt.Errorf("load manifest: %w", err)
+	}
+
+	// Build TemplateContext from InitOptions
+	tmplCtx := template.NewTemplateContext(
+		template.WithProject(opts.ProjectName, opts.ProjectRoot),
+		template.WithUser(opts.UserName),
+		template.WithLanguage(opts.ConvLang),
+		template.WithDevelopmentMode(opts.DevelopmentMode),
+		template.WithGitMode(opts.GitMode),
+		template.WithGitHubUsername(opts.GitHubUsername),
+		template.WithOutputLanguages(opts.GitCommitLang, opts.CodeCommentLang, opts.DocLang),
+		template.WithPlatform(opts.Platform),
+	)
+
+	if err := i.deployer.Deploy(ctx, opts.ProjectRoot, i.manifestMgr, tmplCtx); err != nil {
+		return fmt.Errorf("deploy templates: %w", err)
+	}
+
+	return nil
+}
+
+// generateConfigsFallback creates config YAML files directly when no deployer is available.
+// This provides a fallback for testing and minimal initialization scenarios.
+func (i *projectInitializer) generateConfigsFallback(opts InitOptions, result *InitResult) error {
 	sectionsDir := filepath.Clean(filepath.Join(opts.ProjectRoot, ".moai", "config", "sections"))
 
+	// Build context for config values
+	tmplCtx := template.NewTemplateContext(
+		template.WithProject(opts.ProjectName, opts.ProjectRoot),
+		template.WithUser(opts.UserName),
+		template.WithLanguage(opts.ConvLang),
+		template.WithDevelopmentMode(opts.DevelopmentMode),
+		template.WithGitMode(opts.GitMode),
+		template.WithGitHubUsername(opts.GitHubUsername),
+		template.WithOutputLanguages(opts.GitCommitLang, opts.CodeCommentLang, opts.DocLang),
+		template.WithPlatform(opts.Platform),
+	)
+
 	// user.yaml
-	if err := i.writeYAML(sectionsDir, "user.yaml", userYAML{
-		User: userSection{Name: opts.UserName},
-	}); err != nil {
+	userContent := fmt.Sprintf("user:\n  name: %q\n", tmplCtx.UserName)
+	if err := os.WriteFile(filepath.Join(sectionsDir, "user.yaml"), []byte(userContent), 0o644); err != nil {
 		return fmt.Errorf("write user.yaml: %w", err)
 	}
 	result.CreatedFiles = append(result.CreatedFiles, ".moai/config/sections/user.yaml")
 
 	// language.yaml
-	convLangName := resolveLanguageName(opts.ConvLang)
-	if err := i.writeYAML(sectionsDir, "language.yaml", languageYAML{
-		Language: languageSection{
-			ConversationLanguage:     opts.ConvLang,
-			ConversationLanguageName: convLangName,
-			AgentPromptLanguage:      "en",
-			GitCommitMessages:        "en",
-			CodeComments:             "en",
-			Documentation:            "en",
-			ErrorMessages:            "en",
-		},
-	}); err != nil {
+	langContent := fmt.Sprintf(`language:
+  conversation_language: %s
+  conversation_language_name: %s
+  agent_prompt_language: %s
+  git_commit_messages: %s
+  code_comments: %s
+  documentation: %s
+  error_messages: %s
+`, tmplCtx.ConversationLanguage, tmplCtx.ConversationLanguageName,
+		tmplCtx.AgentPromptLanguage, tmplCtx.GitCommitMessages,
+		tmplCtx.CodeComments, tmplCtx.Documentation, tmplCtx.ErrorMessages)
+	if err := os.WriteFile(filepath.Join(sectionsDir, "language.yaml"), []byte(langContent), 0o644); err != nil {
 		return fmt.Errorf("write language.yaml: %w", err)
 	}
 	result.CreatedFiles = append(result.CreatedFiles, ".moai/config/sections/language.yaml")
 
 	// quality.yaml
-	devMode := models.DevelopmentMode(opts.DevelopmentMode)
-	if !devMode.IsValid() {
-		devMode = models.ModeDDD
-	}
-	if err := i.writeYAML(sectionsDir, "quality.yaml", qualityYAML{
-		Constitution: qualitySection{
-			DevelopmentMode:    string(devMode),
-			EnforceQuality:     true,
-			TestCoverageTarget: 85,
-		},
-	}); err != nil {
+	qualityContent := fmt.Sprintf(`constitution:
+  development_mode: %s
+  enforce_quality: %t
+  test_coverage_target: %d
+`, tmplCtx.DevelopmentMode, tmplCtx.EnforceQuality, tmplCtx.TestCoverageTarget)
+	if err := os.WriteFile(filepath.Join(sectionsDir, "quality.yaml"), []byte(qualityContent), 0o644); err != nil {
 		return fmt.Errorf("write quality.yaml: %w", err)
 	}
 	result.CreatedFiles = append(result.CreatedFiles, ".moai/config/sections/quality.yaml")
 
 	// workflow.yaml
-	if err := i.writeYAML(sectionsDir, "workflow.yaml", workflowYAML{
-		Workflow: workflowSection{
-			AutoClear:  true,
-			PlanTokens: 30000,
-			RunTokens:  180000,
-			SyncTokens: 40000,
-		},
-	}); err != nil {
+	workflowContent := fmt.Sprintf(`workflow:
+  auto_clear: %t
+  plan_tokens: %d
+  run_tokens: %d
+  sync_tokens: %d
+`, tmplCtx.AutoClear, tmplCtx.PlanTokens, tmplCtx.RunTokens, tmplCtx.SyncTokens)
+	if err := os.WriteFile(filepath.Join(sectionsDir, "workflow.yaml"), []byte(workflowContent), 0o644); err != nil {
 		return fmt.Errorf("write workflow.yaml: %w", err)
 	}
 	result.CreatedFiles = append(result.CreatedFiles, ".moai/config/sections/workflow.yaml")
@@ -246,43 +302,99 @@ func (i *projectInitializer) generateConfigs(opts InitOptions, result *InitResul
 	return nil
 }
 
-// writeYAML marshals data to YAML and writes it atomically to dir/filename.
-func (i *projectInitializer) writeYAML(dir, filename string, data any) error {
-	yamlData, err := yaml.Marshal(data)
+// generateSettings generates .claude/settings.json using SettingsGenerator (ADR-011, REQ-E-033).
+func (i *projectInitializer) generateSettings(opts InitOptions, result *InitResult) error {
+	settingsPath := filepath.Clean(filepath.Join(opts.ProjectRoot, ".claude", "settings.json"))
+
+	// Skip if settings.json already exists (user-managed)
+	if _, err := os.Stat(settingsPath); err == nil {
+		i.logger.Info("settings.json already exists, skipping generation")
+		return nil
+	}
+
+	platform := opts.Platform
+	if platform == "" {
+		platform = runtime.GOOS
+	}
+
+	gen := template.NewSettingsGenerator()
+	data, err := gen.Generate(nil, platform)
 	if err != nil {
-		return fmt.Errorf("marshal %s: %w", filename, err)
+		return fmt.Errorf("generate settings.json: %w", err)
 	}
 
-	path := filepath.Clean(filepath.Join(dir, filename))
-	if err := os.WriteFile(path, yamlData, 0o644); err != nil {
-		return fmt.Errorf("write %s: %w", filename, err)
+	// Ensure .claude/ directory exists
+	claudeDir := filepath.Dir(settingsPath)
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		return fmt.Errorf("mkdir .claude/: %w", err)
 	}
 
+	if err := os.WriteFile(settingsPath, data, 0o644); err != nil {
+		return fmt.Errorf("write settings.json: %w", err)
+	}
+
+	// Track in manifest if available
+	if i.manifestMgr != nil {
+		templateHash := manifest.HashBytes(data)
+		if err := i.manifestMgr.Track(".claude/settings.json", manifest.TemplateManaged, templateHash); err != nil {
+			i.logger.Warn("failed to track settings.json in manifest", "error", err)
+		}
+	}
+
+	result.CreatedFiles = append(result.CreatedFiles, ".claude/settings.json")
 	return nil
 }
 
-// deployTemplates deploys embedded templates to the project root.
-func (i *projectInitializer) deployTemplates(ctx context.Context, root string, result *InitResult) error {
-	if i.manifestMgr == nil {
-		return fmt.Errorf("manifest manager required for template deployment")
+// generateMCPConfig generates .mcp.json using MCPGenerator (ADR-011).
+func (i *projectInitializer) generateMCPConfig(opts InitOptions, result *InitResult) error {
+	mcpPath := filepath.Clean(filepath.Join(opts.ProjectRoot, ".mcp.json"))
+
+	// Skip if .mcp.json already exists (user-managed)
+	if _, err := os.Stat(mcpPath); err == nil {
+		i.logger.Info(".mcp.json already exists, skipping generation")
+		return nil
 	}
 
-	// Load or create manifest for tracking
-	if _, err := i.manifestMgr.Load(root); err != nil {
-		return fmt.Errorf("load manifest: %w", err)
+	platform := opts.Platform
+	if platform == "" {
+		platform = runtime.GOOS
 	}
 
-	if err := i.deployer.Deploy(ctx, root, i.manifestMgr); err != nil {
-		return fmt.Errorf("deploy templates: %w", err)
+	gen := template.NewMCPGenerator()
+	data, err := gen.GenerateMCP(platform)
+	if err != nil {
+		return fmt.Errorf("generate .mcp.json: %w", err)
 	}
 
+	if err := os.WriteFile(mcpPath, data, 0o644); err != nil {
+		return fmt.Errorf("write .mcp.json: %w", err)
+	}
+
+	// Track in manifest if available
+	if i.manifestMgr != nil {
+		templateHash := manifest.HashBytes(data)
+		if err := i.manifestMgr.Track(".mcp.json", manifest.TemplateManaged, templateHash); err != nil {
+			i.logger.Warn("failed to track .mcp.json in manifest", "error", err)
+		}
+	}
+
+	result.CreatedFiles = append(result.CreatedFiles, ".mcp.json")
 	return nil
 }
 
 // createClaudeMD generates the CLAUDE.md file.
+// If the deployer already deployed the full CLAUDE.md from embedded templates,
+// this step is skipped to avoid overwriting it with the minimal stub.
 func (i *projectInitializer) createClaudeMD(opts InitOptions, result *InitResult) error {
 	claudeMDPath := filepath.Clean(filepath.Join(opts.ProjectRoot, "CLAUDE.md"))
 
+	// Skip if CLAUDE.md was already deployed by the template deployer (REQ-E-034)
+	if _, err := os.Stat(claudeMDPath); err == nil {
+		i.logger.Info("CLAUDE.md already exists (deployed from templates), skipping stub generation")
+		return nil
+	}
+
+	// Fallback: generate minimal stub when no deployer is available
 	content := buildClaudeMDContent(opts)
 
 	if err := os.WriteFile(claudeMDPath, []byte(content), 0o644); err != nil {
@@ -318,12 +430,20 @@ func (i *projectInitializer) initManifest(root string, result *InitResult) error
 		return nil
 	}
 
-	mf, err := i.manifestMgr.Load(root)
-	if err != nil {
-		return fmt.Errorf("load manifest: %w", err)
+	// Use the in-memory manifest if already loaded by deployTemplates (Step 3).
+	// Calling Load() again would discard all entries tracked during deployment.
+	mf := i.manifestMgr.Manifest()
+	if mf == nil {
+		var err error
+		mf, err = i.manifestMgr.Load(root)
+		if err != nil {
+			return fmt.Errorf("load manifest: %w", err)
+		}
 	}
 
-	mf.Version = "1.0.0"
+	// Record ADK version and deployment timestamp (REQ-E-040, REQ-E-041)
+	mf.Version = version.GetVersion()
+	mf.DeployedAt = time.Now().UTC().Format(time.RFC3339)
 
 	if err := i.manifestMgr.Save(); err != nil {
 		return fmt.Errorf("save manifest: %w", err)
@@ -339,69 +459,4 @@ func (i *projectInitializer) initManifest(root string, result *InitResult) error
 
 	result.CreatedFiles = append(result.CreatedFiles, ".moai/manifest.json")
 	return nil
-}
-
-// --- YAML serialization structs (REQ-N-002: struct serialization, not string concatenation) ---
-
-type userYAML struct {
-	User userSection `yaml:"user"`
-}
-
-type userSection struct {
-	Name string `yaml:"name"`
-}
-
-type languageYAML struct {
-	Language languageSection `yaml:"language"`
-}
-
-type languageSection struct {
-	ConversationLanguage     string `yaml:"conversation_language"`
-	ConversationLanguageName string `yaml:"conversation_language_name"`
-	AgentPromptLanguage      string `yaml:"agent_prompt_language"`
-	GitCommitMessages        string `yaml:"git_commit_messages"`
-	CodeComments             string `yaml:"code_comments"`
-	Documentation            string `yaml:"documentation"`
-	ErrorMessages            string `yaml:"error_messages"`
-}
-
-type qualityYAML struct {
-	Constitution qualitySection `yaml:"constitution"`
-}
-
-type qualitySection struct {
-	DevelopmentMode    string `yaml:"development_mode"`
-	EnforceQuality     bool   `yaml:"enforce_quality"`
-	TestCoverageTarget int    `yaml:"test_coverage_target"`
-}
-
-type workflowYAML struct {
-	Workflow workflowSection `yaml:"workflow"`
-}
-
-type workflowSection struct {
-	AutoClear  bool `yaml:"auto_clear"`
-	PlanTokens int  `yaml:"plan_tokens"`
-	RunTokens  int  `yaml:"run_tokens"`
-	SyncTokens int  `yaml:"sync_tokens"`
-}
-
-// --- Language name resolution ---
-
-var langNameMap = map[string]string{
-	"en": "English",
-	"ko": "Korean (한국어)",
-	"ja": "Japanese (日本語)",
-	"zh": "Chinese (中文)",
-	"es": "Spanish (Español)",
-	"fr": "French (Français)",
-	"de": "German (Deutsch)",
-}
-
-// resolveLanguageName returns the full name for a language code.
-func resolveLanguageName(code string) string {
-	if name, ok := langNameMap[code]; ok {
-		return name
-	}
-	return "English"
 }

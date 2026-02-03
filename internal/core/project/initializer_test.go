@@ -12,6 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/modu-ai/moai-adk-go/internal/manifest"
+	"github.com/modu-ai/moai-adk-go/internal/template"
 )
 
 // --- Mock implementations for testing ---
@@ -21,7 +22,7 @@ type mockDeployer struct {
 	deployed  bool
 }
 
-func (m *mockDeployer) Deploy(_ context.Context, _ string, _ manifest.Manager) error {
+func (m *mockDeployer) Deploy(_ context.Context, _ string, _ manifest.Manager, _ *template.TemplateContext) error {
 	m.deployed = true
 	return m.deployErr
 }
@@ -432,9 +433,9 @@ func TestResolveLanguageName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.code, func(t *testing.T) {
-			got := resolveLanguageName(tt.code)
+			got := template.ResolveLanguageName(tt.code)
 			if got != tt.want {
-				t.Errorf("resolveLanguageName(%q) = %q, want %q", tt.code, got, tt.want)
+				t.Errorf("ResolveLanguageName(%q) = %q, want %q", tt.code, got, tt.want)
 			}
 		})
 	}
@@ -574,6 +575,118 @@ func TestInit_WorkflowYAMLContent(t *testing.T) {
 	}
 }
 
+func TestInit_ManifestPreservesDeployedEntries(t *testing.T) {
+	// Regression test: verifies that template entries tracked during
+	// deployTemplates (Step 4) are not lost when initManifest (Step 6)
+	// finalizes the manifest. Previously, initManifest called Load()
+	// which replaced the in-memory entries with an empty disk file.
+	root := t.TempDir()
+
+	// Use a deployer that writes files and tracks them in the manifest,
+	// simulating the real embedded template deployer.
+	dep := &trackingMockDeployer{
+		files: map[string][]byte{
+			".claude/agents/moai/expert-backend.md":   []byte("# Expert Backend Agent"),
+			".claude/rules/moai/core/constitution.md": []byte("# MoAI Constitution"),
+			"CLAUDE.md": []byte("# MoAI Execution Directive"),
+		},
+	}
+	mgr := manifest.NewManager()
+	initializer := NewInitializer(dep, mgr, nil)
+
+	opts := InitOptions{
+		ProjectRoot:     root,
+		ProjectName:     "test-manifest-persist",
+		Language:        "Go",
+		Framework:       "none",
+		UserName:        "testuser",
+		ConvLang:        "en",
+		DevelopmentMode: "ddd",
+	}
+
+	result, err := initializer.Init(context.Background(), opts)
+	if err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+	if len(result.Warnings) > 0 {
+		t.Fatalf("unexpected warnings: %v", result.Warnings)
+	}
+
+	// Read the saved manifest from disk and verify entries survived
+	manifestPath := filepath.Join(root, ".moai", "manifest.json")
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatalf("read manifest.json: %v", err)
+	}
+
+	var saved manifest.Manifest
+	if err := json.Unmarshal(data, &saved); err != nil {
+		t.Fatalf("unmarshal manifest.json: %v", err)
+	}
+
+	// All 3 deployed files must be present in the saved manifest
+	for path := range dep.files {
+		entry, ok := saved.Files[path]
+		if !ok {
+			t.Errorf("manifest missing deployed entry %q", path)
+			continue
+		}
+		if entry.Provenance != manifest.TemplateManaged {
+			t.Errorf("entry %q provenance = %q, want %q", path, entry.Provenance, manifest.TemplateManaged)
+		}
+		if entry.TemplateHash == "" {
+			t.Errorf("entry %q has empty template_hash", path)
+		}
+	}
+
+	// Version and DeployedAt should also be set
+	if saved.Version == "" {
+		t.Error("manifest Version should not be empty")
+	}
+	if saved.DeployedAt == "" {
+		t.Error("manifest DeployedAt should not be empty")
+	}
+}
+
+// trackingMockDeployer simulates the real deployer by writing files to disk
+// and tracking each one in the manifest, reproducing the exact sequence that
+// caused the manifest overwrite bug.
+type trackingMockDeployer struct {
+	files map[string][]byte
+}
+
+func (d *trackingMockDeployer) Deploy(_ context.Context, projectRoot string, m manifest.Manager, _ *template.TemplateContext) error {
+	for path, content := range d.files {
+		destPath := filepath.Join(projectRoot, filepath.FromSlash(path))
+		if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(destPath, content, 0o644); err != nil {
+			return err
+		}
+		templateHash := manifest.HashBytes(content)
+		if err := m.Track(path, manifest.TemplateManaged, templateHash); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (d *trackingMockDeployer) ExtractTemplate(name string) ([]byte, error) {
+	if data, ok := d.files[name]; ok {
+		return data, nil
+	}
+	return nil, fmt.Errorf("not found: %s", name)
+}
+
+func (d *trackingMockDeployer) ListTemplates() []string {
+	var list []string
+	for path := range d.files {
+		list = append(list, path)
+	}
+	return list
+}
+
 // --- Test helpers ---
 
 func assertFileExists(t *testing.T, path string) {
@@ -592,4 +705,49 @@ func readYAML(t *testing.T, path string, target any) {
 	if err := yaml.Unmarshal(data, target); err != nil {
 		t.Fatalf("unmarshal %s: %v", path, err)
 	}
+}
+
+// --- YAML structs for test assertions ---
+
+type userYAML struct {
+	User userSection `yaml:"user"`
+}
+
+type userSection struct {
+	Name string `yaml:"name"`
+}
+
+type languageYAML struct {
+	Language languageSection `yaml:"language"`
+}
+
+type languageSection struct {
+	ConversationLanguage     string `yaml:"conversation_language"`
+	ConversationLanguageName string `yaml:"conversation_language_name"`
+	AgentPromptLanguage      string `yaml:"agent_prompt_language"`
+	GitCommitMessages        string `yaml:"git_commit_messages"`
+	CodeComments             string `yaml:"code_comments"`
+	Documentation            string `yaml:"documentation"`
+	ErrorMessages            string `yaml:"error_messages"`
+}
+
+type qualityYAML struct {
+	Constitution qualitySection `yaml:"constitution"`
+}
+
+type qualitySection struct {
+	DevelopmentMode    string `yaml:"development_mode"`
+	EnforceQuality     bool   `yaml:"enforce_quality"`
+	TestCoverageTarget int    `yaml:"test_coverage_target"`
+}
+
+type workflowYAML struct {
+	Workflow workflowSection `yaml:"workflow"`
+}
+
+type workflowSection struct {
+	AutoClear  bool `yaml:"auto_clear"`
+	PlanTokens int  `yaml:"plan_tokens"`
+	RunTokens  int  `yaml:"run_tokens"`
+	SyncTokens int  `yaml:"sync_tokens"`
 }
