@@ -47,10 +47,9 @@ def _detect_shell() -> str:
 
     Priority order:
     1. User's default shell from $SHELL env var
-    2. bash (most common login shell)
-    3. sh (POSIX standard)
-    4. Common hardcoded paths
-    5. /bin/sh (ultimate fallback)
+    2. Common absolute paths (PATH-independent, works in isolated environments)
+    3. PATH-based lookup via shutil.which()
+    4. /bin/sh (ultimate fallback)
 
     Returns:
         Absolute path to the detected shell executable
@@ -62,30 +61,35 @@ def _detect_shell() -> str:
     if user_shell and os.path.isfile(user_shell) and os.access(user_shell, os.X_OK):
         return user_shell
 
-    # Try bash first (most common, supports -l flag)
+    # Check common absolute paths FIRST (PATH-independent)
+    # This ensures shell detection works even in isolated environments
+    # where PATH may not include /bin or /usr/bin
+    for path in ["/bin/bash", "/usr/bin/bash", "/bin/sh", "/usr/bin/sh"]:
+        if os.path.isfile(path) and os.access(path, os.X_OK):
+            return path
+
+    # Fallback to PATH-based lookup (may fail in isolated environments)
     bash_path = shutil.which("bash")
     if bash_path:
         return bash_path
 
-    # Try sh (POSIX standard, supports -l flag)
     sh_path = shutil.which("sh")
     if sh_path:
         return sh_path
-
-    # Last resort - check common paths
-    for path in ["/bin/bash", "/bin/sh", "/usr/bin/bash", "/usr/bin/sh"]:
-        if os.path.isfile(path) and os.access(path, os.X_OK):
-            return path
 
     # Ultimate fallback (shouldn't happen on Unix systems)
     return "/bin/sh"
 
 
 # PATH augmentation for macOS/Linux
-# Ensures common binary directories (uv, cargo, homebrew) are in PATH
-# even if login shell profile doesn't include them.
+# Ensures common binary directories (uv, cargo, homebrew) AND system paths are in PATH
+# even if login shell profile doesn't include them or Claude Code runs in isolated env.
+# System paths (/bin, /usr/bin) are essential for `env`, `bash`, `sh` commands.
 # This runs AFTER login shell profile (-l) so user PATH takes precedence.
-_PATH_AUGMENT = "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH; "
+_PATH_AUGMENT = (
+    "export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:"
+    "$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:$PATH; "
+)
 
 # WSL path normalization snippet (bash)
 # Converts Windows-format CLAUDE_PROJECT_DIR to WSL /mnt/ format

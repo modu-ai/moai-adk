@@ -178,11 +178,18 @@ class TemplateMerger:
 
         # Template values take precedence for known keys
         # Only preserve user-added custom keys not in template
+        # Special handling for PATH: merge user paths with template paths
         merged_env = template_env.copy()
         for key, value in user_env.items():
             if key not in template_env:
                 # User added a custom env key, preserve it
                 merged_env[key] = value
+            elif key == "PATH" and value:
+                # PATH special handling: preserve user's additional paths
+                template_paths = set(template_env.get("PATH", "").split(":"))
+                user_paths = [p for p in value.split(":") if p and p not in template_paths]
+                if user_paths:
+                    merged_env["PATH"] = template_env["PATH"] + ":" + ":".join(user_paths)
 
         # Merge permissions.allow (deduplicated array merge)
         template_allow = set(template_data.get("permissions", {}).get("allow", []))

@@ -78,6 +78,7 @@
   "outputStyle": "MoAI",
   "cleanupPeriodDays": 30,
   "env": {
+    "PATH": "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin",
     "MOAI_CONFIG_SOURCE": "sections",
     "ENABLE_TOOL_SEARCH": "1",
     "MAX_THINKING_TOKENS": "31999",
