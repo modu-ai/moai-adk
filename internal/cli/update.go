@@ -3,6 +3,8 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -39,12 +41,17 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	currentVersion := version.GetVersion()
 	fmt.Fprintf(out, "Current version: moai-adk %s\n", currentVersion)
 
+	// Check if using local update source
+	updateSource := os.Getenv("MOAI_UPDATE_SOURCE")
+	useLocalUpdate := updateSource == "local"
+
 	// Detect development build and show appropriate message
+	// Skip this check for local updates (dev builds can update from local releases)
 	isDevBuild := strings.Contains(currentVersion, "dirty") ||
 		strings.Contains(currentVersion, "dev") ||
 		strings.Contains(currentVersion, "none")
 
-	if isDevBuild && !templatesOnly && !shellEnv {
+	if isDevBuild && !templatesOnly && !shellEnv && !useLocalUpdate {
 		fmt.Fprintln(out, "\nDevelopment build detected. To update:")
 		fmt.Fprintln(out, "  cd ~/MoAI/moai-adk-go && git pull && make install")
 		if checkOnly {
@@ -52,6 +59,19 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		}
 		// For dev builds, skip the actual update and return success
 		return nil
+	}
+
+	// Show update source info
+	if useLocalUpdate {
+		releasesDir := os.Getenv("MOAI_RELEASES_DIR")
+		if releasesDir == "" {
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				homeDir = "."
+			}
+			releasesDir = filepath.Join(homeDir, ".moai", "releases")
+		}
+		fmt.Fprintf(out, "Update source: local (%s)\n", releasesDir)
 	}
 
 	// Handle shell-env mode

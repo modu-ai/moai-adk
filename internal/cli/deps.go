@@ -98,17 +98,40 @@ func (d *Dependencies) EnsureUpdate() error {
 		return nil
 	}
 
-	// Determine the appropriate API URL based on current version
-	// - MOAI_UPDATE_URL environment variable takes highest priority
-	// - Dev versions automatically use moai-go-v2 branch releases
-	// - Production versions use main branch releases
+	// Determine the appropriate update source based on environment variable
+	// - MOAI_UPDATE_SOURCE=local: use local file-based releases
+	// - MOAI_UPDATE_URL: custom GitHub API URL
+	// - Default: GitHub releases based on version
 	currentVersion := version.GetVersion()
-	apiURL := os.Getenv("MOAI_UPDATE_URL")
+	updateSource := os.Getenv("MOAI_UPDATE_SOURCE")
 
+	// Get current binary path for updater and rollback
+	binaryPath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("get executable path: %w", err)
+	}
+
+	if updateSource == "local" {
+		// Local file-based updates
+		localConfig := update.LocalConfig{
+			ReleasesDir:    os.Getenv("MOAI_RELEASES_DIR"),
+			CurrentVersion: currentVersion,
+		}
+		d.UpdateChecker = update.NewLocalChecker(localConfig)
+		d.UpdateOrch = update.NewOrchestrator(
+			currentVersion,
+			d.UpdateChecker,
+			update.NewLocalUpdater(localConfig.ReleasesDir, binaryPath),
+			update.NewRollback(binaryPath),
+		)
+		return nil
+	}
+
+	// Remote GitHub updates
+	apiURL := os.Getenv("MOAI_UPDATE_URL")
 	if apiURL == "" {
 		if currentVersion == "dev" {
 			// Dev version: use moai-go-v2 branch releases (tagged with go-v prefix)
-			// The releases endpoint returns all releases; checker will filter for go-v tags
 			apiURL = "https://api.github.com/repos/modu-ai/moai-adk/releases"
 		} else {
 			// Production version: use main branch releases
@@ -117,14 +140,6 @@ func (d *Dependencies) EnsureUpdate() error {
 	}
 
 	d.UpdateChecker = update.NewChecker(apiURL, nil)
-
-	// Get current binary path for updater and rollback
-	binaryPath, err := os.Executable()
-	if err != nil {
-		return fmt.Errorf("get executable path: %w", err)
-	}
-
-	currentVersion = version.GetVersion()
 	updater := update.NewUpdater(binaryPath, nil)
 	rollback := update.NewRollback(binaryPath)
 	d.UpdateOrch = update.NewOrchestrator(currentVersion, d.UpdateChecker, updater, rollback)

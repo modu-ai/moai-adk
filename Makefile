@@ -8,12 +8,27 @@ COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 LDFLAGS := -ldflags "-s -w -X $(MODULE)/pkg/version.Version=$(VERSION) -X $(MODULE)/pkg/version.Commit=$(COMMIT) -X $(MODULE)/pkg/version.Date=$(DATE)"
 
-.PHONY: all build test lint clean install generate help
+# Local release configuration
+LOCAL_RELEASE_DIR ?= $(HOME)/.moai/releases
+PLATFORM := $(shell go env GOOS)-$(shell go env GOARCH)
+RELEASE_BINARY := moai-$(VERSION)-$(PLATFORM)
+
+.PHONY: all build test lint clean install generate help release-local
 
 all: lint test build ## Run lint, test, and build
 
 build: ## Build the binary
 	go build $(LDFLAGS) -o bin/$(BINARY_NAME) ./cmd/moai
+
+release-local: build ## Create a local release for development updates
+	@echo "Creating local release: $(VERSION)"
+	@mkdir -p $(LOCAL_RELEASE_DIR)
+	@cp bin/$(BINARY_NAME) $(LOCAL_RELEASE_DIR)/$(RELEASE_BINARY)
+	@chmod +x $(LOCAL_RELEASE_DIR)/$(RELEASE_BINARY)
+	@echo '{"version":"$(VERSION)","date":"$(DATE)","platform":"$(PLATFORM)","binary":"$(RELEASE_BINARY)"}' > $(LOCAL_RELEASE_DIR)/version.json
+	@echo "Local release created at: $(LOCAL_RELEASE_DIR)"
+	@echo "  Binary: $(RELEASE_BINARY)"
+	@echo "  Version: $(VERSION)"
 
 install: ## Install the binary
 	go install $(LDFLAGS) ./cmd/moai
