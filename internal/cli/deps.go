@@ -11,6 +11,8 @@ import (
 	"github.com/modu-ai/moai-adk-go/internal/config"
 	"github.com/modu-ai/moai-adk-go/internal/core/git"
 	"github.com/modu-ai/moai-adk-go/internal/hook"
+	"github.com/modu-ai/moai-adk-go/internal/hook/security"
+	lsphook "github.com/modu-ai/moai-adk-go/internal/lsp/hook"
 	"github.com/modu-ai/moai-adk-go/internal/rank"
 	"github.com/modu-ai/moai-adk-go/internal/update"
 	"github.com/modu-ai/moai-adk-go/pkg/version"
@@ -55,12 +57,20 @@ func InitDependencies() {
 	// Hook registry requires a ConfigProvider; use ConfigManager
 	deps.HookRegistry = hook.NewRegistry(deps.Config)
 
+	// Create security scanner for AST-based scanning
+	securityScanner := security.NewSecurityScanner()
+
+	// Create LSP diagnostics collector with fallback tools
+	// LSP client is nil (not yet integrated), but fallback CLI tools will work
+	fallbackDiags := lsphook.NewFallbackDiagnostics()
+	diagnosticsCollector := lsphook.NewDiagnosticsCollector(nil, fallbackDiags)
+
 	// Register default hook handlers
 	deps.HookRegistry.Register(hook.NewSessionStartHandler(deps.Config))
 	deps.HookRegistry.Register(hook.NewSessionEndHandler())
 	deps.HookRegistry.Register(hook.NewStopHandler())
-	deps.HookRegistry.Register(hook.NewPreToolHandler(deps.Config, hook.DefaultSecurityPolicy()))
-	deps.HookRegistry.Register(hook.NewPostToolHandler())
+	deps.HookRegistry.Register(hook.NewPreToolHandlerWithScanner(deps.Config, hook.DefaultSecurityPolicy(), securityScanner))
+	deps.HookRegistry.Register(hook.NewPostToolHandlerWithDiagnostics(diagnosticsCollector))
 	deps.HookRegistry.Register(hook.NewCompactHandler())
 }
 

@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/modu-ai/moai-adk-go/internal/hook/security"
 )
 
 // SecurityPolicy defines tool access control rules for PreToolUse events.
@@ -220,9 +222,11 @@ func DefaultSecurityPolicy() *SecurityPolicy {
 // preToolHandler processes PreToolUse events.
 // It enforces security policies by checking tool names against blocklists
 // and scanning tool input for dangerous patterns (REQ-HOOK-031, REQ-HOOK-032).
+// Optionally integrates with SecurityScanner for AST-based security scanning.
 type preToolHandler struct {
 	cfg        ConfigProvider
 	policy     *SecurityPolicy
+	scanner    *security.SecurityScanner
 	projectDir string
 }
 
@@ -233,6 +237,28 @@ func NewPreToolHandler(cfg ConfigProvider, policy *SecurityPolicy) Handler {
 		projectDir, _ = os.Getwd()
 	}
 	return &preToolHandler{cfg: cfg, policy: policy, projectDir: projectDir}
+}
+
+// NewPreToolHandlerWithScanner creates a PreToolUse handler with AST-based security scanning.
+// If scanner is nil or unavailable, falls back to pattern-based security only.
+func NewPreToolHandlerWithScanner(cfg ConfigProvider, policy *SecurityPolicy, scanner *security.SecurityScanner) Handler {
+	projectDir := os.Getenv("CLAUDE_PROJECT_DIR")
+	if projectDir == "" {
+		projectDir, _ = os.Getwd()
+	}
+
+	// Validate scanner availability
+	if scanner != nil && !scanner.IsAvailable() {
+		slog.Info("ast-grep not available, security scanning disabled")
+		scanner = nil
+	}
+
+	return &preToolHandler{
+		cfg:        cfg,
+		policy:     policy,
+		scanner:    scanner,
+		projectDir: projectDir,
+	}
 }
 
 // EventType returns EventPreToolUse.
@@ -301,9 +327,95 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 				return NewAskOutput(reason), nil
 			}
 		}
+
+		// AST-based security scanning for Write operations
+		if input.ToolName == "Write" && h.scanner != nil {
+			decision, reason := h.scanWriteContent(ctx, input.ToolInput)
+			if decision == DecisionDeny {
+				return NewDenyOutput(reason), nil
+			}
+		}
 	}
 
 	return NewAllowOutput(), nil
+}
+
+// scanWriteContent scans the content to be written using AST-based security scanner.
+// Creates a temporary file with the content, scans it, and returns the result.
+// Returns (decision, reason) where decision is "deny" or "" for allow.
+func (h *preToolHandler) scanWriteContent(ctx context.Context, toolInput json.RawMessage) (string, string) {
+	var parsed map[string]any
+	if err := json.Unmarshal(toolInput, &parsed); err != nil {
+		return "", ""
+	}
+
+	filePath, ok := parsed["file_path"].(string)
+	if !ok || filePath == "" {
+		return "", ""
+	}
+
+	content, ok := parsed["content"].(string)
+	if !ok || content == "" {
+		return "", ""
+	}
+
+	// Check if file extension is supported for scanning
+	ext := filepath.Ext(filePath)
+	if !security.IsSupportedExtension(ext) {
+		slog.Debug("file extension not supported for security scanning",
+			"file_path", filePath,
+			"extension", ext,
+		)
+		return "", ""
+	}
+
+	// Create temporary file with the content
+	tmpFile, err := os.CreateTemp("", "moai-security-scan-*"+ext)
+	if err != nil {
+		slog.Warn("failed to create temp file for security scan", "error", err)
+		return "", ""
+	}
+	defer os.Remove(tmpFile.Name())
+	defer tmpFile.Close()
+
+	if _, err := tmpFile.WriteString(content); err != nil {
+		slog.Warn("failed to write content to temp file", "error", err)
+		return "", ""
+	}
+	tmpFile.Close() // Close before scanning
+
+	// Scan the temporary file
+	result, err := h.scanner.ScanFile(ctx, tmpFile.Name(), h.projectDir)
+	if err != nil {
+		slog.Warn("security scan failed", "error", err)
+		return "", ""
+	}
+
+	if result == nil || !result.Scanned {
+		return "", ""
+	}
+
+	// Check for error-severity findings (REQ-HOOK-131)
+	if h.scanner.ShouldAlert(result) {
+		report := h.scanner.GetReport(result, filePath)
+		reason := fmt.Sprintf("Security vulnerabilities detected in %s:\n%s", filepath.Base(filePath), report)
+		slog.Warn("security scan blocked write operation",
+			"file_path", filePath,
+			"error_count", result.ErrorCount,
+			"warning_count", result.WarningCount,
+		)
+		return DecisionDeny, reason
+	}
+
+	// Log warnings but allow the operation
+	if result.WarningCount > 0 {
+		slog.Info("security scan found warnings",
+			"file_path", filePath,
+			"warning_count", result.WarningCount,
+		)
+	}
+
+	return "", ""
 }
 
 // checkBashCommand checks a Bash command against dangerous and ask patterns.
