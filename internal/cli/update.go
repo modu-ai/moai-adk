@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -35,7 +36,23 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	shellEnv := getBoolFlag(cmd, "shell-env")
 	out := cmd.OutOrStdout()
 
-	fmt.Fprintf(out, "Current version: moai-adk %s\n", version.GetVersion())
+	currentVersion := version.GetVersion()
+	fmt.Fprintf(out, "Current version: moai-adk %s\n", currentVersion)
+
+	// Detect development build and show appropriate message
+	isDevBuild := strings.Contains(currentVersion, "dirty") ||
+		strings.Contains(currentVersion, "dev") ||
+		strings.Contains(currentVersion, "none")
+
+	if isDevBuild && !templatesOnly && !shellEnv {
+		fmt.Fprintln(out, "\nDevelopment build detected. To update:")
+		fmt.Fprintln(out, "  cd ~/MoAI/moai-adk-go && git pull && make install")
+		if checkOnly {
+			return nil
+		}
+		// For dev builds, skip the actual update and return success
+		return nil
+	}
 
 	// Handle shell-env mode
 	if shellEnv {
