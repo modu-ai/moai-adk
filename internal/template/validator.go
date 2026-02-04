@@ -87,9 +87,19 @@ func (v *validator) ValidatePaths(projectRoot string, files []string) []PathErro
 			continue
 		}
 
+		// Convert projectRoot to absolute path for reliable comparison
+		absProjectRoot, err := filepath.Abs(projectRoot)
+		if err != nil {
+			errs = append(errs, PathError{
+				Path:   f,
+				Reason: fmt.Sprintf("resolve project root: %v", err),
+			})
+			continue
+		}
+
 		// Verify containment
-		absPath := filepath.Join(projectRoot, cleaned)
-		if !strings.HasPrefix(absPath, projectRoot+string(filepath.Separator)) && absPath != projectRoot {
+		absPath := filepath.Join(absProjectRoot, cleaned)
+		if !strings.HasPrefix(absPath, absProjectRoot+string(filepath.Separator)) && absPath != absProjectRoot {
 			errs = append(errs, PathError{
 				Path:   f,
 				Reason: "path escapes project root",

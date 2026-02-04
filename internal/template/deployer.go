@@ -194,9 +194,15 @@ func validateDeployPath(projectRoot, relPath string) error {
 		return fmt.Errorf("%w: parent reference in %q", ErrPathTraversal, relPath)
 	}
 
+	// Convert projectRoot to absolute path for reliable comparison
+	absProjectRoot, err := filepath.Abs(projectRoot)
+	if err != nil {
+		return fmt.Errorf("resolve project root: %w", err)
+	}
+
 	// Verify containment: the resolved path must be under projectRoot
-	absPath := filepath.Join(projectRoot, cleaned)
-	if !strings.HasPrefix(absPath, projectRoot+string(filepath.Separator)) && absPath != projectRoot {
+	absPath := filepath.Join(absProjectRoot, cleaned)
+	if !strings.HasPrefix(absPath, absProjectRoot+string(filepath.Separator)) && absPath != absProjectRoot {
 		return fmt.Errorf("%w: %q escapes project root", ErrPathTraversal, relPath)
 	}
 

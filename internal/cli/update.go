@@ -122,6 +122,52 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 
 	fmt.Fprintf(out, "Updated from %s to %s\n", result.PreviousVersion, result.NewVersion)
 	fmt.Fprintf(out, "  Files updated: %d, merged: %d\n", result.FilesUpdated, result.FilesMerged)
+
+	// Sync templates after successful binary update
+	fmt.Fprintln(out, "Syncing templates...")
+
+	// Save and restore current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		cwd = ""
+	}
+	defer func() {
+		if cwd != "" {
+			_ = os.Chdir(cwd)
+		}
+	}()
+
+	// Use project root (current directory) as deployment target
+	projectRoot := "."
+
+	// Load embedded templates
+	embedded, err := template.EmbeddedTemplates()
+	if err != nil {
+		fmt.Fprintf(out, "Warning: load templates failed: %v\n", err)
+		fmt.Fprintln(out, "You can run 'moai update --templates-only' to retry.")
+		return nil
+	}
+
+	// Initialize manifest manager
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(projectRoot); err != nil {
+		fmt.Fprintf(out, "Warning: load manifest failed: %v\n", err)
+		fmt.Fprintln(out, "You can run 'moai update --templates-only' to retry.")
+		return nil
+	}
+
+	// Create deployer
+	deployer := template.NewDeployer(embedded)
+
+	// Deploy templates with independent context
+	syncCtx := context.Background()
+	if err := deployer.Deploy(syncCtx, projectRoot, mgr, nil); err != nil {
+		fmt.Fprintf(out, "Warning: template sync failed: %v\n", err)
+		fmt.Fprintln(out, "You can run 'moai update --templates-only' to retry.")
+		return nil
+	}
+
+	fmt.Fprintln(out, "Templates synced successfully.")
 	return nil
 }
 
