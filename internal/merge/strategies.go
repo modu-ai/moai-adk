@@ -114,13 +114,6 @@ func mergeLineBased(base, current, updated []byte) (*MergeResult, error) {
 	n := len(baseLines)
 	// Track which base lines have changes on each side.
 	// For simplicity, use a per-line approach.
-	maxLen := n
-	if len(currentLines) > maxLen {
-		maxLen = len(currentLines)
-	}
-	if len(updatedLines) > maxLen {
-		maxLen = len(updatedLines)
-	}
 
 	ci := 0 // index into currentLines
 	ui := 0 // index into updatedLines

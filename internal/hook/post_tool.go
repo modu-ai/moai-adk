@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"path/filepath"
 
-	lsphook "github.com/modu-ai/moai-adk-go/internal/lsp/hook"
+	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
 )
 
 // postToolHandler processes PostToolUse events.

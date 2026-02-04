@@ -314,6 +314,6 @@ func TestWizardInteractive_ContextCancelled(t *testing.T) {
 func TestDefaultProgramRunner_Exists(t *testing.T) {
 	// Verify the default runner is a valid function by assigning it.
 	// We cannot actually call it because it needs a TTY.
-	var fn func(tea.Model) (tea.Model, error) = defaultProgramRunner
+	var fn = defaultProgramRunner
 	_ = fn
 }

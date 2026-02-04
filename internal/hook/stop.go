@@ -21,16 +21,30 @@ func (h *stopHandler) EventType() EventType {
 }
 
 // Handle processes a Stop event. It logs the stop request, preserves
-// any active state, and returns an empty response.
-// Stop hooks should not use hookSpecificOutput per Claude Code protocol.
+// any active state, and returns an appropriate response.
+//
+// Per Claude Code protocol:
+// - Return empty JSON {} to allow Claude to stop
+// - Return {"decision": "block", "reason": "..."} to keep Claude working
+// - Check stop_hook_active to prevent infinite loops
+//
 // Errors are non-blocking: the handler logs warnings and returns empty output.
 func (h *stopHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
 	slog.Info("stop requested",
 		"session_id", input.SessionID,
-		"project_dir", input.ProjectDir,
+		"stop_hook_active", input.StopHookActive,
 	)
 
-	// Stop hooks return empty JSON {} per Claude Code protocol
-	// Do NOT use hookSpecificOutput for Stop events
+	// IMPORTANT: Prevent infinite loop per Claude Code protocol
+	// If stop_hook_active is true, Claude is already continuing due to a previous
+	// stop hook decision. Allow Claude to stop to prevent infinite loops.
+	if input.StopHookActive {
+		slog.Debug("stop_hook_active is true, allowing Claude to stop")
+		return &HookOutput{}, nil
+	}
+
+	// Stop hooks use top-level decision/reason fields per Claude Code protocol
+	// Return empty JSON {} to allow Claude to stop (default behavior)
+	// To keep Claude working, return: {"decision": "block", "reason": "..."}
 	return &HookOutput{}, nil
 }

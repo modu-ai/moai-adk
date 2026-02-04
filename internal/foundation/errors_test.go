@@ -101,9 +101,8 @@ func TestRequirementNotFoundErrorImplementsError(t *testing.T) {
 	t.Parallel()
 
 	var err error = &RequirementNotFoundError{ID: "REQ-001"}
-	if err == nil {
-		t.Fatal("error should not be nil")
-	}
+	// Verify the error implements the error interface by using it
+	_ = err.Error()
 }
 
 func TestLanguageNotFoundError(t *testing.T) {
@@ -134,9 +133,8 @@ func TestLanguageNotFoundErrorImplementsError(t *testing.T) {
 	t.Parallel()
 
 	var err error = &LanguageNotFoundError{Query: ".xyz"}
-	if err == nil {
-		t.Fatal("error should not be nil")
-	}
+	// Verify the error implements the error interface by using it
+	_ = err.Error()
 }
 
 func TestErrorWrapping(t *testing.T) {

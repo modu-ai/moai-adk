@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/modu-ai/moai-adk-go/pkg/models"
+	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
 // Dynamic token patterns that must not appear in configuration values.

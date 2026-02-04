@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/modu-ai/moai-adk-go/pkg/models"
+	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
 // PhaseExecutor orchestrates the full project initialization workflow

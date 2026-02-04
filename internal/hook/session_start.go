@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 
-	"github.com/modu-ai/moai-adk-go/internal/config"
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // sessionStartHandler processes SessionStart events.

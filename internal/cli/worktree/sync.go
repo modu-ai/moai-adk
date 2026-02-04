@@ -19,13 +19,13 @@ func newSyncCmd() *cobra.Command {
 func runSync(cmd *cobra.Command, _ []string) error {
 	out := cmd.OutOrStdout()
 
-	fmt.Fprintln(out, "Warning: worktree sync is experimental and not yet implemented")
+	_, _ = fmt.Fprintln(out, "Warning: worktree sync is experimental and not yet implemented")
 
 	if WorktreeProvider == nil {
 		return fmt.Errorf("worktree manager not initialized (git module not available)")
 	}
 
-	fmt.Fprintln(out, "Syncing worktree with main branch...")
-	fmt.Fprintln(out, "Sync complete.")
+	_, _ = fmt.Fprintln(out, "Syncing worktree with main branch...")
+	_, _ = fmt.Fprintln(out, "Sync complete.")
 	return nil
 }

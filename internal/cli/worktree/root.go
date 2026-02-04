@@ -4,7 +4,7 @@ package worktree
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk-go/internal/core/git"
+	"github.com/modu-ai/moai-adk/internal/core/git"
 )
 
 // WorktreeProvider supplies git worktree operations to subcommands.

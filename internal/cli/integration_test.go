@@ -57,6 +57,9 @@ func TestUpdateCmd_NoUpdateOrch(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
+	// Set local update source to bypass dev build detection
+	t.Setenv("MOAI_UPDATE_SOURCE", "local")
+
 	// Set deps to nil to test the case where dependencies are not initialized.
 	// With lazy initialization, EnsureUpdate would try to create real dependencies
 	// if deps is non-nil, so we test the nil deps path instead.
@@ -335,9 +338,9 @@ func TestDoctorCmd_VerboseExecution(t *testing.T) {
 		t.Fatalf("doctor --verbose error: %v", err)
 	}
 
-	// Verbose should include details like GOROOT
+	// Verbose should include details like GOPATH
 	output := buf.String()
-	if !strings.Contains(output, "GOROOT") {
-		t.Errorf("verbose output should contain GOROOT detail, got %q", output)
+	if !strings.Contains(output, "GOPATH") {
+		t.Errorf("verbose output should contain GOPATH detail, got %q", output)
 	}
 }

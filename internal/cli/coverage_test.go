@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk-go/internal/config"
-	"github.com/modu-ai/moai-adk-go/internal/hook"
-	"github.com/modu-ai/moai-adk-go/internal/rank"
-	"github.com/modu-ai/moai-adk-go/internal/update"
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/hook"
+	"github.com/modu-ai/moai-adk/internal/rank"
+	"github.com/modu-ai/moai-adk/internal/update"
 )
 
 // --- Hook command coverage tests ---
@@ -1242,7 +1242,8 @@ func setupMinimalConfig(t *testing.T, dir string) {
 }
 
 // setupMinimalConfigWithMode creates a minimal .moai config with a specific mode.
-func setupMinimalConfigWithMode(t *testing.T, dir string, mode string) {
+// Currently unused but kept for future test expansions.
+func setupMinimalConfigWithMode(t *testing.T, dir string, mode string) { //nolint:unused
 	t.Helper()
 	sectionsDir := filepath.Join(dir, ".moai", "config", "sections")
 	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {

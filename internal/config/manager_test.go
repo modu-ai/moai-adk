@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/modu-ai/moai-adk-go/pkg/models"
+	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
 // setupManagerTestDir creates a project root with .moai/config/sections and
@@ -651,6 +651,7 @@ func TestConfigManagerConcurrentReads(t *testing.T) {
 			cfg := m.Get()
 			if cfg == nil {
 				t.Error("Get() returned nil during concurrent access")
+				return
 			}
 			if cfg.User.Name != "TestUser" {
 				t.Errorf("concurrent Get() User.Name: got %q, want %q",

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/modu-ai/moai-adk-go/internal/manifest"
+	"github.com/modu-ai/moai-adk/internal/manifest"
 )
 
 func testFS() fstest.MapFS {

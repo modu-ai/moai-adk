@@ -42,9 +42,9 @@ func runCC(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("remove GLM env: %w", err)
 	}
 
-	fmt.Fprintln(out, "✅ Switched to Claude backend.")
-	fmt.Fprintln(out, "   GLM environment variables removed from .claude/settings.local.json")
-	fmt.Fprintln(out, "   Run 'moai glm' to switch to GLM.")
+	_, _ = fmt.Fprintln(out, "✅ Switched to Claude backend.")
+	_, _ = fmt.Fprintln(out, "   GLM environment variables removed from .claude/settings.local.json")
+	_, _ = fmt.Fprintln(out, "   Run 'moai glm' to switch to GLM.")
 	return nil
 }
 

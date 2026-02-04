@@ -61,20 +61,20 @@ func runDone(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no worktree found for branch %q", branchName)
 	}
 
-	fmt.Fprintf(out, "Completing worktree for branch: %s\n", branchName)
-	fmt.Fprintf(out, "  Path: %s\n", targetPath)
+	_, _ = fmt.Fprintf(out, "Completing worktree for branch: %s\n", branchName)
+	_, _ = fmt.Fprintf(out, "  Path: %s\n", targetPath)
 
 	// Remove the worktree.
 	if err := WorktreeProvider.Remove(targetPath, force); err != nil {
 		return fmt.Errorf("remove worktree: %w", err)
 	}
-	fmt.Fprintln(out, "  Worktree removed.")
+	_, _ = fmt.Fprintln(out, "  Worktree removed.")
 
 	if deleteBranch {
-		fmt.Fprintf(out, "  Note: Branch deletion requires BranchManager (not yet integrated).\n")
-		fmt.Fprintf(out, "  To delete the branch manually: git branch -d %s\n", branchName)
+		_, _ = fmt.Fprintf(out, "  Note: Branch deletion requires BranchManager (not yet integrated).\n")
+		_, _ = fmt.Fprintf(out, "  To delete the branch manually: git branch -d %s\n", branchName)
 	}
 
-	fmt.Fprintln(out, "Done.")
+	_, _ = fmt.Fprintln(out, "Done.")
 	return nil
 }

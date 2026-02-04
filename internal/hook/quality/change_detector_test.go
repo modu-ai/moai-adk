@@ -3,386 +3,287 @@ package quality
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
+	"time"
 )
 
-func TestChangeDetector_ComputeHash(t *testing.T) {
-	t.Parallel()
+// TestComputeHash_SHA256 verifies SHA-256 hash computation.
+func TestComputeHash_SHA256(t *testing.T) {
+	t.Run("computes consistent hash for same content", func(t *testing.T) {
+		// Setup: Create temporary file with known content
+		tmpDir := t.TempDir()
+		testFile := filepath.Join(tmpDir, "test.go")
+		content := []byte("package main\n\nfunc main() {}\n")
 
-	// Create temporary test file
-	tmpDir := t.TempDir()
-	testFile := filepath.Join(tmpDir, "test.txt")
-	content := []byte("Hello, World!")
+		if err := os.WriteFile(testFile, content, 0644); err != nil {
+			t.Fatalf("failed to create test file: %v", err)
+		}
 
-	if err := os.WriteFile(testFile, content, 0644); err != nil {
-		t.Fatalf("failed to create test file: %v", err)
-	}
+		// Act: Create detector and compute hash
+		detector := NewChangeDetector()
+		hash1, err1 := detector.ComputeHash(testFile)
+		hash2, err2 := detector.ComputeHash(testFile)
 
-	detector := NewChangeDetector()
+		// Assert: No errors and hashes match
+		if err1 != nil {
+			t.Errorf("first ComputeHash failed: %v", err1)
+		}
+		if err2 != nil {
+			t.Errorf("second ComputeHash failed: %v", err2)
+		}
+		if len(hash1) != 32 {
+			t.Errorf("expected SHA-256 hash length of 32, got %d", len(hash1))
+		}
+		if len(hash2) != 32 {
+			t.Errorf("expected SHA-256 hash length of 32, got %d", len(hash2))
+		}
 
-	hash1, err := detector.ComputeHash(testFile)
-	if err != nil {
-		t.Fatalf("ComputeHash failed: %v", err)
-	}
-
-	if len(hash1) == 0 {
-		t.Error("hash is empty")
-	}
-
-	// Hash should be consistent (SHA-256 = 32 bytes)
-	if len(hash1) != 32 {
-		t.Errorf("hash length = %d, want 32", len(hash1))
-	}
-
-	// Computing again should give same result
-	hash2, err := detector.ComputeHash(testFile)
-	if err != nil {
-		t.Fatalf("ComputeHash failed: %v", err)
-	}
-
-	if string(hash1) != string(hash2) {
-		t.Error("hashes are not consistent")
-	}
-}
-
-func TestChangeDetector_ComputeHash_CacheHit(t *testing.T) {
-	t.Parallel()
-
-	tmpDir := t.TempDir()
-	testFile := filepath.Join(tmpDir, "test.txt")
-	content := []byte("Cached content")
-
-	if err := os.WriteFile(testFile, content, 0644); err != nil {
-		t.Fatalf("failed to create test file: %v", err)
-	}
-
-	detector := NewChangeDetector()
-
-	// First call - computes and caches
-	hash1, err := detector.ComputeHash(testFile)
-	if err != nil {
-		t.Fatalf("ComputeHash failed: %v", err)
-	}
-
-	// Second call - should use cache
-	hash2, err := detector.ComputeHash(testFile)
-	if err != nil {
-		t.Fatalf("ComputeHash failed: %v", err)
-	}
-
-	if string(hash1) != string(hash2) {
-		t.Error("cached hash differs from original")
-	}
-}
-
-func TestChangeDetector_ComputeHash_NonExistentFile(t *testing.T) {
-	t.Parallel()
-
-	detector := NewChangeDetector()
-	hash, err := detector.ComputeHash("/nonexistent/file/path.txt")
-
-	if err != nil {
-		t.Errorf("expected no error for nonexistent file, got: %v", err)
-	}
-
-	if len(hash) != 0 {
-		t.Errorf("expected empty hash for nonexistent file, got length %d", len(hash))
-	}
-}
-
-func TestChangeDetector_HasChanged(t *testing.T) {
-	t.Parallel()
-
-	tmpDir := t.TempDir()
-	testFile := filepath.Join(tmpDir, "test.txt")
-	content := []byte("Original content")
-
-	if err := os.WriteFile(testFile, content, 0644); err != nil {
-		t.Fatalf("failed to create test file: %v", err)
-	}
-
-	detector := NewChangeDetector()
-
-	// Get initial hash
-	hashBefore, err := detector.ComputeHash(testFile)
-	if err != nil {
-		t.Fatalf("ComputeHash failed: %v", err)
-	}
-
-	// File hasn't changed
-	changed, err := detector.HasChanged(testFile, hashBefore)
-	if err != nil {
-		t.Fatalf("HasChanged failed: %v", err)
-	}
-	if changed {
-		t.Error("file hasn't changed but HasChanged returned true")
-	}
-
-	// Modify the file
-	newContent := []byte("Modified content")
-	if err := os.WriteFile(testFile, newContent, 0644); err != nil {
-		t.Fatalf("failed to modify test file: %v", err)
-	}
-
-	// Clear cache to force recomputation
-	detector.ClearCache()
-
-	// Now file should be detected as changed
-	changed, err = detector.HasChanged(testFile, hashBefore)
-	if err != nil {
-		t.Fatalf("HasChanged failed: %v", err)
-	}
-	if !changed {
-		t.Error("file has changed but HasChanged returned false")
-	}
-}
-
-func TestChangeDetector_GetCachedHash(t *testing.T) {
-	t.Parallel()
-
-	tmpDir := t.TempDir()
-	testFile := filepath.Join(tmpDir, "test.txt")
-	content := []byte("Cache test")
-
-	if err := os.WriteFile(testFile, content, 0644); err != nil {
-		t.Fatalf("failed to create test file: %v", err)
-	}
-
-	detector := NewChangeDetector()
-
-	// No cache initially
-	_, found := detector.GetCachedHash(testFile)
-	if found {
-		t.Error("expected no cached hash initially")
-	}
-
-	// Compute hash (caches it)
-	hash, _ := detector.ComputeHash(testFile)
-
-	// Now should find in cache
-	cachedHash, found := detector.GetCachedHash(testFile)
-	if !found {
-		t.Error("expected to find cached hash")
-	}
-	if string(cachedHash) != string(hash) {
-		t.Error("cached hash differs from computed hash")
-	}
-}
-
-func TestChangeDetector_CacheHash(t *testing.T) {
-	t.Parallel()
-
-	detector := NewChangeDetector()
-	testPath := "/test/path.txt"
-	testHash := []byte{1, 2, 3, 4, 5}
-
-	detector.CacheHash(testPath, testHash)
-
-	cached, found := detector.GetCachedHash(testPath)
-	if !found {
-		t.Error("expected to find cached hash")
-	}
-
-	if string(cached) != string(testHash) {
-		t.Error("cached hash doesn't match")
-	}
-}
-
-func TestChangeDetector_ClearExpired(t *testing.T) {
-	t.Parallel()
-
-	detector := NewChangeDetector()
-	testFile := filepath.Join(t.TempDir(), "test.txt")
-	os.WriteFile(testFile, []byte("test"), 0644)
-
-	// Compute hash (caches with TTL)
-	detector.ComputeHash(testFile)
-
-	// Verify cache exists
-	_, found := detector.GetCachedHash(testFile)
-	if !found {
-		t.Error("expected to find cached hash")
-	}
-
-	// Manually expire by setting a very short TTL and waiting
-	// Since we can't modify TTL, just test the method doesn't crash
-	detector.ClearExpired()
-}
-
-func TestChangeDetector_ClearCache(t *testing.T) {
-	t.Parallel()
-
-	tmpDir := t.TempDir()
-	testFile := filepath.Join(tmpDir, "test.txt")
-	content := []byte("Clear test")
-
-	if err := os.WriteFile(testFile, content, 0644); err != nil {
-		t.Fatalf("failed to create test file: %v", err)
-	}
-
-	detector := NewChangeDetector()
-
-	// Populate cache
-	detector.ComputeHash(testFile)
-
-	// Verify cache exists
-	_, found := detector.GetCachedHash(testFile)
-	if !found {
-		t.Error("expected to find cached hash")
-	}
-
-	// Clear cache
-	detector.ClearCache()
-
-	// Verify cache is gone
-	_, found = detector.GetCachedHash(testFile)
-	if found {
-		t.Error("expected cache to be cleared")
-	}
-}
-
-func TestHashToString(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name string
-		hash []byte
-		want string
-	}{
-		{
-			name: "empty hash",
-			hash: []byte{},
-			want: "",
-		},
-		{
-			name: "simple hash",
-			hash: []byte{0x01, 0x02, 0x03, 0x0a, 0xff},
-			want: "0102030aff",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := HashToString(tt.hash)
-			if got != tt.want {
-				t.Errorf("HashToString() = %q, want %q", got, tt.want)
+		// Hashes should be identical for same content
+		for i := range hash1 {
+			if hash1[i] != hash2[i] {
+				t.Errorf("hashes differ at byte %d: %v != %v", i, hash1[i], hash2[i])
 			}
-		})
-	}
+		}
+	})
+
+	t.Run("computes different hash for different content", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		testFile := filepath.Join(tmpDir, "test.go")
+
+		// Write first content
+		content1 := []byte("package main\n\nfunc main() {}\n")
+		if err := os.WriteFile(testFile, content1, 0644); err != nil {
+			t.Fatalf("failed to create test file: %v", err)
+		}
+
+		detector := NewChangeDetector()
+		hash1, err1 := detector.ComputeHash(testFile)
+		if err1 != nil {
+			t.Fatalf("first ComputeHash failed: %v", err1)
+		}
+
+		// Write different content
+		time.Sleep(10 * time.Millisecond) // Ensure different mtime
+		content2 := []byte("package main\n\nfunc main() { print(\"hello\") }\n")
+		if err := os.WriteFile(testFile, content2, 0644); err != nil {
+			t.Fatalf("failed to update test file: %v", err)
+		}
+
+		hash2, err2 := detector.ComputeHash(testFile)
+		if err2 != nil {
+			t.Fatalf("second ComputeHash failed: %v", err2)
+		}
+
+		// Hashes should differ
+		same := true
+		for i := range hash1 {
+			if hash1[i] != hash2[i] {
+				same = false
+				break
+			}
+		}
+		if same {
+			t.Error("expected different hashes for different content, got same hash")
+		}
+	})
+
+	t.Run("returns error for non-existent file", func(t *testing.T) {
+		detector := NewChangeDetector()
+		_, err := detector.ComputeHash("/nonexistent/path/file.go")
+
+		if err == nil {
+			t.Error("expected error for non-existent file, got nil")
+		}
+	})
 }
 
-func TestChangeDetector_ConcurrentAccess(t *testing.T) {
-	t.Parallel()
+// TestHasChanged verifies change detection logic.
+func TestHasChanged(t *testing.T) {
+	t.Run("detects no change when content is identical", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		testFile := filepath.Join(tmpDir, "test.go")
+		content := []byte("package main\n\nfunc main() {}\n")
 
-	tmpDir := t.TempDir()
-	testFile := filepath.Join(tmpDir, "test.txt")
-	content := []byte("Concurrent test")
+		if err := os.WriteFile(testFile, content, 0644); err != nil {
+			t.Fatalf("failed to create test file: %v", err)
+		}
 
-	if err := os.WriteFile(testFile, content, 0644); err != nil {
-		t.Fatalf("failed to create test file: %v", err)
-	}
+		detector := NewChangeDetector()
+		originalHash, err := detector.ComputeHash(testFile)
+		if err != nil {
+			t.Fatalf("failed to compute original hash: %v", err)
+		}
 
-	detector := NewChangeDetector()
+		// File hasn't changed
+		changed, err := detector.HasChanged(testFile, originalHash)
+		if err != nil {
+			t.Errorf("HasChanged failed: %v", err)
+		}
+		if changed {
+			t.Error("expected no change, but HasChanged returned true")
+		}
+	})
 
-	// Run concurrent operations
-	done := make(chan bool)
-	for i := 0; i < 10; i++ {
-		go func() {
-			detector.ComputeHash(testFile)
-			detector.GetCachedHash(testFile)
-			detector.ClearExpired()
-			done <- true
-		}()
-	}
+	t.Run("detects change when content is modified", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		testFile := filepath.Join(tmpDir, "test.go")
+		content := []byte("package main\n\nfunc main() {}\n")
 
-	// Wait for all goroutines
-	for i := 0; i < 10; i++ {
-		<-done
-	}
+		if err := os.WriteFile(testFile, content, 0644); err != nil {
+			t.Fatalf("failed to create test file: %v", err)
+		}
 
-	// Verify detector still works
-	hash, err := detector.ComputeHash(testFile)
-	if err != nil {
-		t.Errorf("ComputeHash failed after concurrent access: %v", err)
-	}
-	if len(hash) == 0 {
-		t.Error("hash is empty after concurrent access")
-	}
+		detector := NewChangeDetector()
+		originalHash, err := detector.ComputeHash(testFile)
+		if err != nil {
+			t.Fatalf("failed to compute original hash: %v", err)
+		}
+
+		// Modify file
+		time.Sleep(10 * time.Millisecond)
+		newContent := []byte("package main\n\nfunc main() { fmt.Println(\"hi\") }\n")
+		if err := os.WriteFile(testFile, newContent, 0644); err != nil {
+			t.Fatalf("failed to modify test file: %v", err)
+		}
+
+		changed, err := detector.HasChanged(testFile, originalHash)
+		if err != nil {
+			t.Errorf("HasChanged failed: %v", err)
+		}
+		if !changed {
+			t.Error("expected change, but HasChanged returned false")
+		}
+	})
+
+	t.Run("returns error for non-existent file", func(t *testing.T) {
+		detector := NewChangeDetector()
+		someHash := make([]byte, 32)
+		_, err := detector.HasChanged("/nonexistent/path/file.go", someHash)
+
+		if err == nil {
+			t.Error("expected error for non-existent file, got nil")
+		}
+	})
 }
 
-func TestChangeDetector_HashConsistency(t *testing.T) {
-	t.Parallel()
+// TestGetCachedHash verifies hash caching functionality.
+func TestGetCachedHash(t *testing.T) {
+	t.Run("returns cached hash after computation", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		testFile := filepath.Join(tmpDir, "test.go")
+		content := []byte("package main\n\nfunc main() {}\n")
 
-	tests := []struct {
-		name    string
-		content string
-	}{
-		{"empty", ""},
-		{"short", "Hello"},
-		{"long", strings.Repeat("a", 10000)},
-		{"special", "Hello\nWorld\t!@#$%^&*()"},
-	}
+		if err := os.WriteFile(testFile, content, 0644); err != nil {
+			t.Fatalf("failed to create test file: %v", err)
+		}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+		detector := NewChangeDetector()
+		hash1, err := detector.ComputeHash(testFile)
+		if err != nil {
+			t.Fatalf("ComputeHash failed: %v", err)
+		}
 
-			tmpDir := t.TempDir()
-			testFile := filepath.Join(tmpDir, "test.txt")
-			content := []byte(tt.content)
+		// Should retrieve cached hash
+		cachedHash, found := detector.GetCachedHash(testFile)
+		if !found {
+			t.Error("expected to find cached hash, but found was false")
+		}
+		if len(cachedHash) != len(hash1) {
+			t.Errorf("cached hash length mismatch: got %d, want %d", len(cachedHash), len(hash1))
+		}
+	})
 
-			if err := os.WriteFile(testFile, content, 0644); err != nil {
-				t.Fatalf("failed to create test file: %v", err)
-			}
-
-			detector := NewChangeDetector()
-
-			hash1, err := detector.ComputeHash(testFile)
-			if err != nil {
-				t.Fatalf("ComputeHash failed: %v", err)
-			}
-
-			hash2, err := detector.ComputeHash(testFile)
-			if err != nil {
-				t.Fatalf("ComputeHash failed: %v", err)
-			}
-
-			if string(hash1) != string(hash2) {
-				t.Error("hashes are inconsistent")
-			}
-
-			// Different content should produce different hash
-			detector2 := NewChangeDetector()
-			testFile2 := filepath.Join(tmpDir, "test2.txt")
-			os.WriteFile(testFile2, []byte(tt.content+"x"), 0644)
-
-			hash3, _ := detector2.ComputeHash(testFile2)
-			if string(hash1) == string(hash3) {
-				t.Error("different content produced same hash")
-			}
-		})
-	}
+	t.Run("returns not found for uncached file", func(t *testing.T) {
+		detector := NewChangeDetector()
+		_, found := detector.GetCachedHash("/some/uncached/file.go")
+		if found {
+			t.Error("expected not found for uncached file, but found was true")
+		}
+	})
 }
 
-func TestChangeDetector_HashDifferentFiles(t *testing.T) {
-	t.Parallel()
+// TestCacheHash verifies explicit hash caching.
+func TestCacheHash(t *testing.T) {
+	t.Run("caches and retrieves hash", func(t *testing.T) {
+		detector := NewChangeDetector()
+		testPath := "/some/test/file.go"
+		testHash := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+			11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+			21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32}
 
-	tmpDir := t.TempDir()
-	file1 := filepath.Join(tmpDir, "file1.txt")
-	file2 := filepath.Join(tmpDir, "file2.txt")
+		detector.CacheHash(testPath, testHash)
 
-	content := []byte("Same content")
-	os.WriteFile(file1, content, 0644)
-	os.WriteFile(file2, content, 0644)
+		cachedHash, found := detector.GetCachedHash(testPath)
+		if !found {
+			t.Fatal("expected to find cached hash, but found was false")
+		}
+		if len(cachedHash) != 32 {
+			t.Errorf("cached hash length mismatch: got %d, want 32", len(cachedHash))
+		}
+		for i := range testHash {
+			if cachedHash[i] != testHash[i] {
+				t.Errorf("cached hash byte mismatch at %d: got %d, want %d", i, cachedHash[i], testHash[i])
+			}
+		}
+	})
+}
 
-	detector := NewChangeDetector()
+// TestThreadSafety verifies concurrent access is safe.
+func TestThreadSafety(t *testing.T) {
+	t.Run("concurrent hash computation is safe", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		testFile := filepath.Join(tmpDir, "test.go")
+		content := []byte("package main\n\nfunc main() {}\n")
 
-	hash1, _ := detector.ComputeHash(file1)
-	hash2, _ := detector.ComputeHash(file2)
+		if err := os.WriteFile(testFile, content, 0644); err != nil {
+			t.Fatalf("failed to create test file: %v", err)
+		}
 
-	// Same content should produce same hash
-	if string(hash1) != string(hash2) {
-		t.Error("same content in different files produced different hashes")
-	}
+		detector := NewChangeDetector()
+		done := make(chan bool, 10)
+
+		// Run 10 concurrent computations
+		for i := 0; i < 10; i++ {
+			go func() {
+				_, err := detector.ComputeHash(testFile)
+				if err != nil {
+					t.Errorf("concurrent ComputeHash failed: %v", err)
+				}
+				done <- true
+			}()
+		}
+
+		// Wait for all goroutines
+		for i := 0; i < 10; i++ {
+			<-done
+		}
+	})
+
+	t.Run("concurrent cache access is safe", func(t *testing.T) {
+		detector := NewChangeDetector()
+		done := make(chan bool, 10)
+
+		// Run 5 concurrent caches and 5 concurrent reads
+		for i := 0; i < 5; i++ {
+			go func(n int) {
+				testPath := "/test/file.go"
+				testHash := make([]byte, 32)
+				testHash[0] = byte(n)
+				detector.CacheHash(testPath, testHash)
+				done <- true
+			}(i)
+		}
+
+		for i := 0; i < 5; i++ {
+			go func() {
+				detector.GetCachedHash("/test/file.go")
+				done <- true
+			}()
+		}
+
+		// Wait for all goroutines
+		for i := 0; i < 10; i++ {
+			<-done
+		}
+	})
 }

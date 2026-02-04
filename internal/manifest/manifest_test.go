@@ -492,7 +492,7 @@ func TestManagerDetectChanges(t *testing.T) {
 		}
 
 		// Delete the file
-		os.Remove(filepath.Join(root, "file.md"))
+		_ = os.Remove(filepath.Join(root, "file.md"))
 
 		changes, err := mgr.DetectChanges()
 		if err != nil {
@@ -529,7 +529,7 @@ func TestManagerDetectChanges(t *testing.T) {
 
 		// Modify one, delete one, leave one unchanged
 		writeProjectFile(t, root, "modified.md", []byte("changed content"))
-		os.Remove(filepath.Join(root, "deleted.md"))
+		_ = os.Remove(filepath.Join(root, "deleted.md"))
 
 		changes, err := mgr.DetectChanges()
 		if err != nil {
@@ -762,7 +762,7 @@ func TestManagerLoadPermissionError(t *testing.T) {
 		}
 		t.Cleanup(func() {
 			// Restore permissions for cleanup
-			os.Chmod(manifestPath, 0o644)
+			_ = os.Chmod(manifestPath, 0o644)
 		})
 
 		mgr := NewManager()

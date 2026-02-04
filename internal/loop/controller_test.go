@@ -59,9 +59,7 @@ func (m *mockFeedbackGenerator) Collect(_ context.Context) (*Feedback, error) {
 }
 
 // blockingFeedbackGenerator blocks until context is cancelled.
-type blockingFeedbackGenerator struct {
-	fb *Feedback
-}
+type blockingFeedbackGenerator struct{}
 
 func (m *blockingFeedbackGenerator) Collect(ctx context.Context) (*Feedback, error) {
 	<-ctx.Done()

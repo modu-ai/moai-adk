@@ -3,7 +3,7 @@ package models_test
 import (
 	"testing"
 
-	"github.com/modu-ai/moai-adk-go/pkg/models"
+	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
 // Characterization tests: capture existing behavior of pkg/models types.

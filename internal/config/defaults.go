@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/modu-ai/moai-adk-go/pkg/models"
+	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
 // Default value constants to avoid magic numbers and strings.

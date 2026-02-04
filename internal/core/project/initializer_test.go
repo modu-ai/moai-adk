@@ -11,8 +11,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/modu-ai/moai-adk-go/internal/manifest"
-	"github.com/modu-ai/moai-adk-go/internal/template"
+	"github.com/modu-ai/moai-adk/internal/manifest"
+	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // --- Mock implementations for testing ---

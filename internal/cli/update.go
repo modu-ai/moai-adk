@@ -10,10 +10,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk-go/internal/manifest"
-	"github.com/modu-ai/moai-adk-go/internal/shell"
-	"github.com/modu-ai/moai-adk-go/internal/template"
-	"github.com/modu-ai/moai-adk-go/pkg/version"
+	"github.com/modu-ai/moai-adk/internal/manifest"
+	"github.com/modu-ai/moai-adk/internal/shell"
+	"github.com/modu-ai/moai-adk/internal/template"
+	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 var updateCmd = &cobra.Command{
@@ -39,7 +39,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	out := cmd.OutOrStdout()
 
 	currentVersion := version.GetVersion()
-	fmt.Fprintf(out, "Current version: moai-adk %s\n", currentVersion)
+	_, _ = fmt.Fprintf(out, "Current version: moai-adk %s\n", currentVersion)
 
 	// Check if using local update source
 	updateSource := os.Getenv("MOAI_UPDATE_SOURCE")
@@ -52,8 +52,8 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		strings.Contains(currentVersion, "none")
 
 	if isDevBuild && !templatesOnly && !shellEnv && !useLocalUpdate {
-		fmt.Fprintln(out, "\nDevelopment build detected. To update:")
-		fmt.Fprintln(out, "  cd ~/MoAI/moai-adk-go && git pull && make install")
+		_, _ = fmt.Fprintln(out, "\nDevelopment build detected. To update:")
+		_, _ = fmt.Fprintln(out, "  cd ~/MoAI/moai-adk-go && git pull && make install")
 		if checkOnly {
 			return nil
 		}
@@ -71,7 +71,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 			}
 			releasesDir = filepath.Join(homeDir, ".moai", "releases")
 		}
-		fmt.Fprintf(out, "Update source: local (%s)\n", releasesDir)
+		_, _ = fmt.Fprintf(out, "Update source: local (%s)\n", releasesDir)
 	}
 
 	// Handle shell-env mode
@@ -93,7 +93,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 
 	if deps == nil || deps.UpdateChecker == nil {
 		if checkOnly {
-			fmt.Fprintln(out, "Update checker not available. Using current version.")
+			_, _ = fmt.Fprintln(out, "Update checker not available. Using current version.")
 			return nil
 		}
 		return fmt.Errorf("update system not initialized (update module not available)")
@@ -107,7 +107,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("check latest version: %w", err)
 		}
-		fmt.Fprintf(out, "Latest version:  %s\n", info.Version)
+		_, _ = fmt.Fprintf(out, "Latest version:  %s\n", info.Version)
 		return nil
 	}
 
@@ -120,11 +120,11 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("update failed: %w", err)
 	}
 
-	fmt.Fprintf(out, "Updated from %s to %s\n", result.PreviousVersion, result.NewVersion)
-	fmt.Fprintf(out, "  Files updated: %d, merged: %d\n", result.FilesUpdated, result.FilesMerged)
+	_, _ = fmt.Fprintf(out, "Updated from %s to %s\n", result.PreviousVersion, result.NewVersion)
+	_, _ = fmt.Fprintf(out, "  Files updated: %d, merged: %d\n", result.FilesUpdated, result.FilesMerged)
 
 	// Sync templates after successful binary update
-	fmt.Fprintln(out, "Syncing templates...")
+	_, _ = fmt.Fprintln(out, "Syncing templates...")
 
 	// Save and restore current working directory
 	cwd, err := os.Getwd()
@@ -143,16 +143,16 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// Load embedded templates
 	embedded, err := template.EmbeddedTemplates()
 	if err != nil {
-		fmt.Fprintf(out, "Warning: load templates failed: %v\n", err)
-		fmt.Fprintln(out, "You can run 'moai update --templates-only' to retry.")
+		_, _ = fmt.Fprintf(out, "Warning: load templates failed: %v\n", err)
+		_, _ = fmt.Fprintln(out, "You can run 'moai update --templates-only' to retry.")
 		return nil
 	}
 
 	// Initialize manifest manager
 	mgr := manifest.NewManager()
 	if _, err := mgr.Load(projectRoot); err != nil {
-		fmt.Fprintf(out, "Warning: load manifest failed: %v\n", err)
-		fmt.Fprintln(out, "You can run 'moai update --templates-only' to retry.")
+		_, _ = fmt.Fprintf(out, "Warning: load manifest failed: %v\n", err)
+		_, _ = fmt.Fprintln(out, "You can run 'moai update --templates-only' to retry.")
 		return nil
 	}
 
@@ -162,12 +162,12 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// Deploy templates with independent context
 	syncCtx := context.Background()
 	if err := deployer.Deploy(syncCtx, projectRoot, mgr, nil); err != nil {
-		fmt.Fprintf(out, "Warning: template sync failed: %v\n", err)
-		fmt.Fprintln(out, "You can run 'moai update --templates-only' to retry.")
+		_, _ = fmt.Fprintf(out, "Warning: template sync failed: %v\n", err)
+		_, _ = fmt.Fprintln(out, "You can run 'moai update --templates-only' to retry.")
 		return nil
 	}
 
-	fmt.Fprintln(out, "Templates synced successfully.")
+	_, _ = fmt.Fprintln(out, "Templates synced successfully.")
 	return nil
 }
 
@@ -179,7 +179,7 @@ func runTemplateSync(cmd *cobra.Command) error {
 	// Use current directory as project root
 	projectRoot := "."
 
-	fmt.Fprintln(out, "Syncing templates from embedded filesystem...")
+	_, _ = fmt.Fprintln(out, "Syncing templates from embedded filesystem...")
 
 	// Load embedded templates
 	embedded, err := template.EmbeddedTemplates()
@@ -201,7 +201,7 @@ func runTemplateSync(cmd *cobra.Command) error {
 		return fmt.Errorf("deploy templates: %w", err)
 	}
 
-	fmt.Fprintln(out, "Template sync complete.")
+	_, _ = fmt.Fprintln(out, "Template sync complete.")
 	return nil
 }
 
@@ -209,20 +209,20 @@ func runTemplateSync(cmd *cobra.Command) error {
 func runShellEnvConfig(cmd *cobra.Command) error {
 	out := cmd.OutOrStdout()
 
-	fmt.Fprintln(out, "Configuring shell environment for Claude Code...")
+	_, _ = fmt.Fprintln(out, "Configuring shell environment for Claude Code...")
 
 	// Get recommendation first
 	configurator := shell.NewEnvConfigurator(nil)
 	rec := configurator.GetRecommendation()
 
-	fmt.Fprintf(out, "  Shell: %s\n", rec.Shell)
-	fmt.Fprintf(out, "  Config file: %s\n", rec.ConfigFile)
-	fmt.Fprintf(out, "  Explanation: %s\n", rec.Explanation)
-	fmt.Fprintln(out, "  Changes to add:")
+	_, _ = fmt.Fprintf(out, "  Shell: %s\n", rec.Shell)
+	_, _ = fmt.Fprintf(out, "  Config file: %s\n", rec.ConfigFile)
+	_, _ = fmt.Fprintf(out, "  Explanation: %s\n", rec.Explanation)
+	_, _ = fmt.Fprintln(out, "  Changes to add:")
 	for _, change := range rec.Changes {
-		fmt.Fprintf(out, "    - %s\n", change)
+		_, _ = fmt.Fprintf(out, "    - %s\n", change)
 	}
-	fmt.Fprintln(out)
+	_, _ = fmt.Fprintln(out)
 
 	// Execute configuration
 	result, err := configurator.Configure(shell.ConfigOptions{
@@ -236,11 +236,11 @@ func runShellEnvConfig(cmd *cobra.Command) error {
 	}
 
 	if result.Skipped {
-		fmt.Fprintf(out, "Shell environment already configured in %s\n", result.ConfigFile)
+		_, _ = fmt.Fprintf(out, "Shell environment already configured in %s\n", result.ConfigFile)
 	} else {
-		fmt.Fprintf(out, "Shell environment configured in %s\n", result.ConfigFile)
-		fmt.Fprintln(out, "Please restart your terminal or run:")
-		fmt.Fprintf(out, "  source %s\n", result.ConfigFile)
+		_, _ = fmt.Fprintf(out, "Shell environment configured in %s\n", result.ConfigFile)
+		_, _ = fmt.Fprintln(out, "Please restart your terminal or run:")
+		_, _ = fmt.Fprintf(out, "  source %s\n", result.ConfigFile)
 	}
 
 	return nil

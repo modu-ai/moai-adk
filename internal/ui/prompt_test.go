@@ -110,7 +110,7 @@ func TestPromptModel_Validate_ShowsErrorInView(t *testing.T) {
 	}
 	m := newPromptModel(testTheme(), "Name", inputConfig{validate: validate})
 	m.value = ""
-	m.validateInput()
+	_ = m.validateInput()
 	m.errMsg = "cannot be empty"
 	view := m.View()
 	if !strings.Contains(view, "cannot be empty") {

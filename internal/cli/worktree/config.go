@@ -40,10 +40,10 @@ func runConfig(cmd *cobra.Command, args []string) error {
 
 	switch key {
 	case "root":
-		fmt.Fprintf(out, "Worktree root: %s\n", root)
+		_, _ = fmt.Fprintf(out, "Worktree root: %s\n", root)
 	case "all":
-		fmt.Fprintln(out, "Worktree Configuration:")
-		fmt.Fprintf(out, "  root: %s\n", root)
+		_, _ = fmt.Fprintln(out, "Worktree Configuration:")
+		_, _ = fmt.Fprintf(out, "  root: %s\n", root)
 	default:
 		return fmt.Errorf("unknown config key: %q (available: root, all)", key)
 	}

@@ -82,7 +82,7 @@ func TestVersionCollector_CheckUpdate(t *testing.T) {
 			// Change to test directory
 			testDir := tt.setupConfig(t)
 			originalDir, _ := os.Getwd()
-			defer os.Chdir(originalDir)
+			defer func() { _ = os.Chdir(originalDir) }()
 			if err := os.Chdir(testDir); err != nil {
 				t.Fatal(err)
 			}

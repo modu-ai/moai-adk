@@ -3,7 +3,7 @@ package cli
 import (
 	"testing"
 
-	"github.com/modu-ai/moai-adk-go/internal/core/git"
+	"github.com/modu-ai/moai-adk/internal/core/git"
 )
 
 func TestInitDependencies(t *testing.T) {

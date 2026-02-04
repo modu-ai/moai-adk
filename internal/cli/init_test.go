@@ -17,8 +17,8 @@ func TestInitCmd_Exists(t *testing.T) {
 }
 
 func TestInitCmd_Use(t *testing.T) {
-	if initCmd.Use != "init" {
-		t.Errorf("initCmd.Use = %q, want %q", initCmd.Use, "init")
+	if initCmd.Use != "init [project-name]" {
+		t.Errorf("initCmd.Use = %q, want %q", initCmd.Use, "init [project-name]")
 	}
 }
 
@@ -37,7 +37,8 @@ func TestInitCmd_Long(t *testing.T) {
 func TestInitCmd_IsSubcommandOfRoot(t *testing.T) {
 	found := false
 	for _, cmd := range rootCmd.Commands() {
-		if cmd.Use == "init" {
+		// Use Name() which returns the command name without arguments
+		if cmd.Name() == "init" {
 			found = true
 			break
 		}
@@ -103,10 +104,103 @@ func TestInitCmd_NonInteractiveExecution(t *testing.T) {
 	}
 }
 
-func TestGetStringFlag(t *testing.T) {
-	if got := getStringFlag(initCmd, "name"); got == "" {
-		// Flag exists but may have been set in previous test; just verify no panic
+// TestInitCmd_PositionalArgCreatesDirectory tests that positional argument creates a new directory
+func TestInitCmd_PositionalArgCreatesDirectory(t *testing.T) {
+	// Create a temp directory to work in
+	workDir := t.TempDir()
+
+	// Change to work directory
+	oldWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("get current dir: %v", err)
 	}
+	if err := os.Chdir(workDir); err != nil {
+		t.Fatalf("chdir to temp: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldWd) })
+
+	buf := new(bytes.Buffer)
+	initCmd.SetOut(buf)
+	initCmd.SetErr(buf)
+
+	// Reset all flags to defaults
+	_ = initCmd.Flags().Set("root", "")
+	_ = initCmd.Flags().Set("non-interactive", "true")
+	_ = initCmd.Flags().Set("name", "")
+	_ = initCmd.Flags().Set("language", "Go")
+	_ = initCmd.Flags().Set("mode", "ddd")
+
+	// Run with positional argument
+	err = initCmd.RunE(initCmd, []string{"my-new-project"})
+	if err != nil {
+		t.Fatalf("init command RunE error = %v", err)
+	}
+
+	// Verify the directory was created
+	projectDir := filepath.Join(workDir, "my-new-project")
+	if _, statErr := os.Stat(projectDir); os.IsNotExist(statErr) {
+		t.Error("expected my-new-project/ directory to be created")
+	}
+
+	// Verify .moai/ was created inside the new directory
+	moaiDir := filepath.Join(projectDir, ".moai")
+	if _, statErr := os.Stat(moaiDir); os.IsNotExist(statErr) {
+		t.Error("expected .moai/ directory to be created inside project folder")
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "MoAI project initialized successfully") {
+		t.Errorf("expected success message in output, got: %q", output)
+	}
+}
+
+// TestInitCmd_DotArgUsesCurrentDirectory tests that "." argument uses current directory
+func TestInitCmd_DotArgUsesCurrentDirectory(t *testing.T) {
+	root := t.TempDir()
+
+	buf := new(bytes.Buffer)
+	initCmd.SetOut(buf)
+	initCmd.SetErr(buf)
+
+	// Change to temp directory
+	oldWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("get current dir: %v", err)
+	}
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir to temp: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldWd) })
+
+	// Reset flags
+	_ = initCmd.Flags().Set("root", "")
+	_ = initCmd.Flags().Set("non-interactive", "true")
+	_ = initCmd.Flags().Set("name", "dot-test")
+	_ = initCmd.Flags().Set("language", "Go")
+	_ = initCmd.Flags().Set("mode", "ddd")
+
+	// Run with "." argument
+	err = initCmd.RunE(initCmd, []string{"."})
+	if err != nil {
+		t.Fatalf("init command RunE error = %v", err)
+	}
+
+	// Verify .moai/ was created in current directory (not in a new "." folder)
+	moaiDir := filepath.Join(root, ".moai")
+	if _, statErr := os.Stat(moaiDir); os.IsNotExist(statErr) {
+		t.Error("expected .moai/ directory to be created in current directory")
+	}
+
+	// Verify initialization worked in current directory
+	output := buf.String()
+	if !strings.Contains(output, "MoAI project initialized successfully") {
+		t.Errorf("expected success message in output, got: %q", output)
+	}
+}
+
+func TestGetStringFlag(t *testing.T) {
+	// Flag exists but may have been set in previous test; just verify no panic
+	_ = getStringFlag(initCmd, "name")
 
 	// Non-existent flag returns empty
 	if got := getStringFlag(initCmd, "nonexistent-flag-xyz"); got != "" {

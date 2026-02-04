@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/modu-ai/moai-adk-go/internal/foundation"
-	"github.com/modu-ai/moai-adk-go/pkg/models"
+	"github.com/modu-ai/moai-adk/internal/foundation"
+	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
 func newTestDetector() Detector {

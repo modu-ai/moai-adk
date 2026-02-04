@@ -53,7 +53,7 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return fmt.Errorf("open source: %w", err)
 	}
-	defer srcFile.Close()
+	defer func() { _ = srcFile.Close() }()
 
 	srcInfo, err := srcFile.Stat()
 	if err != nil {

@@ -6,7 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'export PATH=$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH; uv run --with pyyaml \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start__show_project_info.py\"'"
+            "command": "\"$HOME/go/bin/moai\" hook session-start",
+            "timeout": 5
           }
         ]
       }
@@ -17,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'export PATH=$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH; uv run --with pyyaml \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_compact__save_context.py\"'",
+            "command": "\"$HOME/go/bin/moai\" hook compact",
             "timeout": 5
           }
         ]
@@ -29,7 +30,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'export PATH=$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH; uv run --with pyyaml \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_end__auto_cleanup.py\" &'"
+            "command": "\"$HOME/go/bin/moai\" hook session-end",
+            "timeout": 10
           }
         ]
       }
@@ -40,7 +42,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/go/bin/moai hook pre-tool",
+            "command": "\"$HOME/go/bin/moai\" hook pre-tool",
             "timeout": 5
           }
         ]
@@ -52,18 +54,20 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'export PATH=$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH; uv run --with pyyaml \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__code_formatter.py\"'",
-            "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "/bin/zsh -l -c 'export PATH=$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH; uv run --with pyyaml \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__linter.py\"'",
+            "command": "\"$HOME/go/bin/moai\" hook post-tool",
             "timeout": 60
-          },
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'export PATH=$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH; uv run --with pyyaml \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__ast_grep_scan.py\"'",
-            "timeout": 30
+            "command": "\"$HOME/go/bin/moai\" hook stop",
+            "timeout": 5
           }
         ]
       }
@@ -85,7 +89,7 @@
     "CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS": "64000"
   },
   "permissions": {
-    "defaultMode": "default",
+    "defaultMode": "acceptEdits",
     "allow": [
       "AskUserQuestion",
       "Bash(ast-grep:*)",

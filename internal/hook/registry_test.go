@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modu-ai/moai-adk-go/internal/config"
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // mockHandler is a test helper that implements the Handler interface.
@@ -245,15 +245,58 @@ func TestRegistryDispatch(t *testing.T) {
 				if got == nil {
 					t.Fatal("got nil output, want non-nil")
 				}
-				if got.Decision != tt.wantDecision {
-					t.Errorf("Decision = %q, want %q", got.Decision, tt.wantDecision)
-				}
+				// Verify decision based on event type per Claude Code protocol
+				verifyDecision(t, got, tt.event, tt.wantDecision)
 			}
 
 			if tt.checkCalled != nil {
 				tt.checkCalled(t, tt.handlers)
 			}
 		})
+	}
+}
+
+// verifyDecision checks the output decision based on event type.
+// Stop and SessionEnd use empty JSON (no decision field).
+// PreToolUse, PostToolUse, etc. use hookSpecificOutput.permissionDecision.
+func verifyDecision(t *testing.T, got *HookOutput, event EventType, wantDecision string) {
+	t.Helper()
+
+	switch event {
+	case EventStop, EventSessionEnd:
+		// Stop and SessionEnd return empty JSON per Claude Code protocol
+		// No decision field should be set
+		if wantDecision == "" {
+			// Expected empty output - verify no decision is set
+			if got.Decision != "" {
+				t.Errorf("Decision = %q, want empty for %s", got.Decision, event)
+			}
+		} else {
+			// For Stop with block decision, check top-level decision
+			if got.Decision != wantDecision {
+				t.Errorf("Decision = %q, want %q for %s", got.Decision, wantDecision, event)
+			}
+		}
+	default:
+		// Other events use hookSpecificOutput.permissionDecision
+		if wantDecision == "" {
+			// Empty decision expected
+			if got.HookSpecificOutput != nil && got.HookSpecificOutput.PermissionDecision != "" {
+				t.Errorf("PermissionDecision = %q, want empty for %s", got.HookSpecificOutput.PermissionDecision, event)
+			}
+			return
+		}
+		if got.HookSpecificOutput == nil {
+			t.Fatalf("HookSpecificOutput is nil, want permissionDecision %q for %s", wantDecision, event)
+		}
+		// Map DecisionBlock to DecisionDeny for PreToolUse
+		wantPerm := wantDecision
+		if wantPerm == DecisionBlock {
+			wantPerm = DecisionDeny
+		}
+		if got.HookSpecificOutput.PermissionDecision != wantPerm {
+			t.Errorf("PermissionDecision = %q, want %q for %s", got.HookSpecificOutput.PermissionDecision, wantPerm, event)
+		}
 	}
 }
 

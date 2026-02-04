@@ -7,8 +7,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/modu-ai/moai-adk-go/internal/config"
-	"github.com/modu-ai/moai-adk-go/internal/loop"
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/loop"
 )
 
 // RalphEngine implements loop.DecisionEngine using configurable heuristics.

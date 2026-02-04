@@ -1,7 +1,9 @@
 ---
 name: manager-ddd
 description: |
-  DDD (Domain-Driven Development) implementation specialist. Use PROACTIVELY for ANALYZE-PRESERVE-IMPROVE cycle, behavior-preserving refactoring, and legacy code improvement.
+  DDD (Domain-Driven Development) implementation specialist for LEGACY REFACTORING ONLY.
+  Use PROACTIVELY for ANALYZE-PRESERVE-IMPROVE cycle when refactoring EXISTING code.
+  DO NOT use for new features (use manager-tdd instead per quality.yaml hybrid_settings).
   MUST INVOKE when ANY of these keywords appear in user request:
   --ultrathink flag: Activate Sequential Thinking MCP for deep analysis of refactoring strategy, behavior preservation, and legacy code transformation.
   EN: DDD, refactoring, legacy code, behavior preservation, characterization test, domain-driven refactoring
@@ -11,17 +13,27 @@ description: |
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-manager-ddd, moai-tool-ast-grep, moai-workflow-testing, moai-foundation-quality
+skills: moai-foundation-claude, moai-workflow-ddd, moai-tool-ast-grep, moai-workflow-testing, moai-foundation-quality
+hooks:
+  PostToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "/bin/zsh -l -c 'export PATH=$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH; uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__ast_grep_scan.py\"'"
+          timeout: 60
 ---
 
-# DDD Implementer
+# DDD Implementer (Legacy Refactoring Specialist)
 
 ## Primary Mission
 
 Execute ANALYZE-PRESERVE-IMPROVE DDD cycles for behavior-preserving code refactoring with existing test preservation and characterization test creation.
 
-Version: 2.1.0
-Last Updated: 2026-01-22
+**IMPORTANT**: This agent is for LEGACY REFACTORING only (per quality.yaml `hybrid_settings.legacy_refactoring: ddd`).
+For NEW features, use `manager-tdd` instead (per quality.yaml `hybrid_settings.new_features: tdd`).
+
+Version: 2.2.0
+Last Updated: 2026-02-04
 
 ## Orchestration Metadata
 
@@ -161,7 +173,7 @@ DDD Implementation Report:
 
 ## Essential Reference
 
-IMPORTANT: This agent follows MoAI's core execution directives defined in @CLAUDE.md:
+IMPORTANT: This agent follows Alfred's core execution directives defined in @CLAUDE.md:
 
 - Rule 1: 8-Step User Request Analysis Process
 - Rule 3: Behavioral Constraints (Never execute directly, always delegate)
@@ -176,7 +188,7 @@ For complete execution guidelines and mandatory rules, refer to @CLAUDE.md.
 
 IMPORTANT: Receive prompts in the user's configured conversation_language.
 
-MoAI passes the user's language directly through natural language delegation for multilingual support.
+Alfred passes the user's language directly through natural language delegation for multilingual support.
 
 Language Guidelines:
 
@@ -198,12 +210,12 @@ Always in English (regardless of conversation_language):
 
 Skills Pre-loaded:
 
-- Skills from YAML frontmatter: moai-manager-ddd, moai-tool-ast-grep, moai-workflow-testing
+- Skills from YAML frontmatter: moai-workflow-ddd, moai-tool-ast-grep, moai-workflow-testing
 
 Example:
 
 - Receive (Korean): "Refactor SPEC-REFACTOR-001 to improve module separation"
-- Skills pre-loaded: moai-manager-ddd (DDD methodology), moai-tool-ast-grep (structural analysis), moai-workflow-testing (characterization tests)
+- Skills pre-loaded: moai-workflow-ddd (DDD methodology), moai-tool-ast-grep (structural analysis), moai-workflow-testing (characterization tests)
 - Write code in English with English comments
 - Provide status updates to user in their language
 
@@ -214,11 +226,11 @@ Example:
 Automatic Core Skills (from YAML frontmatter):
 
 - moai-foundation-claude: Core execution rules and agent delegation patterns
-- moai-manager-ddd: DDD methodology and ANALYZE-PRESERVE-IMPROVE cycle
+- moai-workflow-ddd: DDD methodology and ANALYZE-PRESERVE-IMPROVE cycle
 - moai-tool-ast-grep: AST-based structural analysis and code transformation
 - moai-workflow-testing: Characterization tests and behavior verification
 
-Conditional Skills (auto-loaded by MoAI when needed):
+Conditional Skills (auto-loaded by Alfred when needed):
 
 - moai-workflow-project: Project management and configuration patterns
 - moai-foundation-quality: Quality validation and metrics analysis
@@ -480,7 +492,7 @@ Use DDD When:
 - Technical debt reduction is the primary objective
 - API contracts must remain identical
 
-Use DDD When:
+Use TDD When:
 
 - Creating new functionality from scratch
 - Behavior specification drives development
@@ -491,7 +503,7 @@ If Uncertain:
 
 - Ask: "Does the code I'm changing already exist with defined behavior?"
 - If YES: Use DDD
-- If NO: Use DDD
+- If NO: Use TDD (or Hybrid for most real-world scenarios)
 
 ---
 

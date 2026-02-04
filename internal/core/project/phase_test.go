@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/modu-ai/moai-adk-go/internal/foundation"
-	"github.com/modu-ai/moai-adk-go/internal/manifest"
+	"github.com/modu-ai/moai-adk/internal/foundation"
+	"github.com/modu-ai/moai-adk/internal/manifest"
 )
 
 func TestPhaseExecutor_Execute_NonInteractive(t *testing.T) {
@@ -256,13 +256,13 @@ func TestOsUserName(t *testing.T) {
 	origUsername := os.Getenv("USERNAME")
 
 	t.Cleanup(func() {
-		os.Setenv("USER", origUser)
-		os.Setenv("USERNAME", origUsername)
+		_ = os.Setenv("USER", origUser)
+		_ = os.Setenv("USERNAME", origUsername)
 	})
 
 	t.Run("uses USER env var", func(t *testing.T) {
-		os.Setenv("USER", "testuser")
-		os.Setenv("USERNAME", "other")
+		_ = os.Setenv("USER", "testuser")
+		_ = os.Setenv("USERNAME", "other")
 		got := osUserName()
 		if got != "testuser" {
 			t.Errorf("osUserName() = %q, want %q", got, "testuser")
@@ -270,8 +270,8 @@ func TestOsUserName(t *testing.T) {
 	})
 
 	t.Run("falls back to USERNAME", func(t *testing.T) {
-		os.Unsetenv("USER")
-		os.Setenv("USERNAME", "winuser")
+		_ = os.Unsetenv("USER")
+		_ = os.Setenv("USERNAME", "winuser")
 		got := osUserName()
 		if got != "winuser" {
 			t.Errorf("osUserName() = %q, want %q", got, "winuser")
@@ -279,8 +279,8 @@ func TestOsUserName(t *testing.T) {
 	})
 
 	t.Run("falls back to default", func(t *testing.T) {
-		os.Unsetenv("USER")
-		os.Unsetenv("USERNAME")
+		_ = os.Unsetenv("USER")
+		_ = os.Unsetenv("USERNAME")
 		got := osUserName()
 		if got != "user" {
 			t.Errorf("osUserName() = %q, want %q", got, "user")

@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/modu-ai/moai-adk-go/internal/cli"
+	"github.com/modu-ai/moai-adk/internal/cli"
 )
 
 func main() {

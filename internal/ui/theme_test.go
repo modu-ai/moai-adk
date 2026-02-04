@@ -53,8 +53,8 @@ func TestNewTheme_NoColor(t *testing.T) {
 }
 
 func TestNewTheme_NoColorFromEnv(t *testing.T) {
-	os.Setenv("MOAI_NO_COLOR", "true")
-	defer os.Unsetenv("MOAI_NO_COLOR")
+	_ = os.Setenv("MOAI_NO_COLOR", "true")
+	defer func() { _ = os.Unsetenv("MOAI_NO_COLOR") }()
 
 	theme := NewTheme(ThemeConfig{})
 	if !theme.NoColor {
@@ -63,8 +63,8 @@ func TestNewTheme_NoColorFromEnv(t *testing.T) {
 }
 
 func TestNewTheme_NoColorFromEnvValue1(t *testing.T) {
-	os.Setenv("MOAI_NO_COLOR", "1")
-	defer os.Unsetenv("MOAI_NO_COLOR")
+	_ = os.Setenv("MOAI_NO_COLOR", "1")
+	defer func() { _ = os.Unsetenv("MOAI_NO_COLOR") }()
 
 	theme := NewTheme(ThemeConfig{})
 	if !theme.NoColor {

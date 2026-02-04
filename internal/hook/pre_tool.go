@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/modu-ai/moai-adk-go/internal/hook/security"
+	"github.com/modu-ai/moai-adk/internal/hook/security"
 )
 
 // SecurityPolicy defines tool access control rules for PreToolUse events.
@@ -375,14 +375,14 @@ func (h *preToolHandler) scanWriteContent(ctx context.Context, toolInput json.Ra
 		slog.Warn("failed to create temp file for security scan", "error", err)
 		return "", ""
 	}
-	defer os.Remove(tmpFile.Name())
-	defer tmpFile.Close()
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
+	defer func() { _ = tmpFile.Close() }()
 
 	if _, err := tmpFile.WriteString(content); err != nil {
 		slog.Warn("failed to write content to temp file", "error", err)
 		return "", ""
 	}
-	tmpFile.Close() // Close before scanning
+	_ = tmpFile.Close() // Close before scanning
 
 	// Scan the temporary file
 	result, err := h.scanner.ScanFile(ctx, tmpFile.Name(), h.projectDir)

@@ -1,6 +1,6 @@
 package template
 
-import "github.com/modu-ai/moai-adk-go/pkg/models"
+import "github.com/modu-ai/moai-adk/pkg/models"
 
 // TemplateContext provides data for template rendering during project initialization.
 // All fields are exported for use with Go's text/template package.

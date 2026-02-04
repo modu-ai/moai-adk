@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	gitpkg "github.com/modu-ai/moai-adk-go/internal/core/git"
+	gitpkg "github.com/modu-ai/moai-adk/internal/core/git"
 )
 
 // gitCollector adapts a git.Repository to the GitDataProvider interface.

@@ -40,7 +40,7 @@ func (u *updaterImpl) Download(ctx context.Context, version *VersionInfo) (strin
 	if err != nil {
 		return "", fmt.Errorf("%w: %v", ErrDownloadFailed, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("%w: unexpected status %d", ErrDownloadFailed, resp.StatusCode)
@@ -58,8 +58,8 @@ func (u *updaterImpl) Download(ctx context.Context, version *VersionInfo) (strin
 	success := false
 	defer func() {
 		if !success {
-			tmpFile.Close()
-			os.Remove(tmpPath)
+			_ = tmpFile.Close()
+			_ = os.Remove(tmpPath)
 		}
 	}()
 

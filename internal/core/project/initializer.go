@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/modu-ai/moai-adk-go/internal/manifest"
-	"github.com/modu-ai/moai-adk-go/internal/shell"
-	"github.com/modu-ai/moai-adk-go/internal/template"
-	"github.com/modu-ai/moai-adk-go/pkg/version"
+	"github.com/modu-ai/moai-adk/internal/manifest"
+	"github.com/modu-ai/moai-adk/internal/shell"
+	"github.com/modu-ai/moai-adk/internal/template"
+	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 // InitOptions configures the project initialization.

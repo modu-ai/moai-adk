@@ -1,4 +1,4 @@
-module github.com/modu-ai/moai-adk-go
+module github.com/modu-ai/moai-adk
 
 go 1.25.6
 

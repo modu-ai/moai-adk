@@ -56,7 +56,7 @@ func TestComputeSignature_EmptyBody(t *testing.T) {
 func TestComputeSignature_HexEncoded(t *testing.T) {
 	sig := ComputeSignature("key", "ts", "body")
 	for _, c := range sig {
-		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
 			t.Errorf("signature contains non-hex character: %c", c)
 		}
 	}
@@ -559,7 +559,7 @@ func TestComputeSessionHash_Format(t *testing.T) {
 	}
 
 	for _, c := range hash {
-		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
 			t.Errorf("hash contains non-hex character: %c", c)
 		}
 	}

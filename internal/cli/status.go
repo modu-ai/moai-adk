@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk-go/pkg/version"
+	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 var statusCmd = &cobra.Command{
@@ -32,35 +32,35 @@ func runStatus(cmd *cobra.Command, _ []string) error {
 
 	projectName := filepath.Base(cwd)
 
-	fmt.Fprintln(out, "Project Status")
-	fmt.Fprintln(out, "==============")
-	fmt.Fprintln(out)
-	fmt.Fprintf(out, "  Project:  %s\n", projectName)
-	fmt.Fprintf(out, "  Path:     %s\n", cwd)
-	fmt.Fprintf(out, "  ADK:      moai-adk %s\n", version.GetVersion())
+	_, _ = fmt.Fprintln(out, "Project Status")
+	_, _ = fmt.Fprintln(out, "==============")
+	_, _ = fmt.Fprintln(out)
+	_, _ = fmt.Fprintf(out, "  Project:  %s\n", projectName)
+	_, _ = fmt.Fprintf(out, "  Path:     %s\n", cwd)
+	_, _ = fmt.Fprintf(out, "  ADK:      moai-adk %s\n", version.GetVersion())
 
 	// Check .moai/ directory
 	moaiDir := filepath.Join(cwd, ".moai")
 	if _, statErr := os.Stat(moaiDir); statErr != nil {
-		fmt.Fprintln(out)
-		fmt.Fprintln(out, "  Status: Not initialized (run 'moai init')")
+		_, _ = fmt.Fprintln(out)
+		_, _ = fmt.Fprintln(out, "  Status: Not initialized (run 'moai init')")
 		return nil
 	}
-	fmt.Fprintf(out, "  Config:   %s\n", filepath.Join(".moai", "config", "sections"))
+	_, _ = fmt.Fprintf(out, "  Config:   %s\n", filepath.Join(".moai", "config", "sections"))
 
 	// Count SPECs
 	specsDir := filepath.Join(moaiDir, "specs")
 	specCount := countDirs(specsDir)
-	fmt.Fprintln(out)
-	fmt.Fprintf(out, "  SPECs:    %d found\n", specCount)
+	_, _ = fmt.Fprintln(out)
+	_, _ = fmt.Fprintf(out, "  SPECs:    %d found\n", specCount)
 
 	// Check config sections
 	sectionsDir := filepath.Join(moaiDir, "config", "sections")
 	sectionFiles := countFiles(sectionsDir, ".yaml")
-	fmt.Fprintf(out, "  Configs:  %d section files\n", sectionFiles)
+	_, _ = fmt.Fprintf(out, "  Configs:  %d section files\n", sectionFiles)
 
-	fmt.Fprintln(out)
-	fmt.Fprintln(out, "  Status: Initialized")
+	_, _ = fmt.Fprintln(out)
+	_, _ = fmt.Fprintln(out, "  Status: Initialized")
 
 	return nil
 }

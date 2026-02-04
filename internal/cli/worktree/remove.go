@@ -35,6 +35,6 @@ func runRemove(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("remove worktree: %w", err)
 	}
 
-	fmt.Fprintf(out, "Removed worktree at %s\n", wtPath)
+	_, _ = fmt.Fprintf(out, "Removed worktree at %s\n", wtPath)
 	return nil
 }

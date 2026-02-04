@@ -93,17 +93,49 @@ func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInp
 		}
 
 		// Handler returned block: short-circuit remaining handlers
-		if output != nil && output.Decision == DecisionBlock {
+		// Check both top-level decision (Stop, PostToolUse) and
+		// hookSpecificOutput.permissionDecision (PreToolUse)
+		if output != nil && isBlockDecision(output) {
+			reason := getBlockReason(output)
 			slog.Info("handler blocked action",
 				"event", string(event),
 				"handler_index", i,
-				"reason", output.Reason,
+				"reason", reason,
 			)
 			return output, nil
 		}
 	}
 
 	return r.defaultOutputForEvent(event), nil
+}
+
+// isBlockDecision checks if the output represents a blocking decision.
+// Per Claude Code protocol:
+// - Stop/PostToolUse use top-level decision = "block"
+// - PreToolUse uses hookSpecificOutput.permissionDecision = "deny"
+func isBlockDecision(output *HookOutput) bool {
+	// Check top-level decision (Stop, PostToolUse)
+	if output.Decision == DecisionBlock {
+		return true
+	}
+	// Check hookSpecificOutput.permissionDecision (PreToolUse)
+	if output.HookSpecificOutput != nil && output.HookSpecificOutput.PermissionDecision == DecisionDeny {
+		return true
+	}
+	return false
+}
+
+// getBlockReason extracts the reason from a blocking output.
+func getBlockReason(output *HookOutput) string {
+	// Check top-level reason first (Stop, PostToolUse)
+	if output.Reason != "" {
+		return output.Reason
+	}
+	// Check hookSpecificOutput.permissionDecisionReason (PreToolUse)
+	if output.HookSpecificOutput != nil && output.HookSpecificOutput.PermissionDecisionReason != "" {
+		return output.HookSpecificOutput.PermissionDecisionReason
+	}
+	return ""
 }
 
 // defaultOutputForEvent returns the appropriate default output based on event type.

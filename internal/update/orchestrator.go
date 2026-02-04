@@ -54,7 +54,7 @@ func (o *orchestratorImpl) Update(ctx context.Context) (*UpdateResult, error) {
 	// Step 3: Download new binary.
 	downloadPath, err := o.updater.Download(ctx, info)
 	if err != nil {
-		o.attemptRollback(backupPath, err)
+		_ = o.attemptRollback(backupPath, err)
 		return nil, fmt.Errorf("orchestrator: download: %w", err)
 	}
 

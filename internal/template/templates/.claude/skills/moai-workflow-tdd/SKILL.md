@@ -38,6 +38,27 @@ triggers:
 
 # Test-Driven Development (TDD) Workflow
 
+## Development Mode Configuration (CRITICAL)
+
+[NOTE] This workflow is selected based on `.moai/config/sections/quality.yaml`:
+
+```yaml
+constitution:
+  development_mode: hybrid    # or ddd, tdd
+  hybrid_settings:
+    new_features: tdd        # New code → use TDD (this workflow)
+    legacy_refactoring: ddd  # Existing code → use DDD
+```
+
+**When to use this workflow**:
+- `development_mode: tdd` → Always use TDD
+- `development_mode: hybrid` + new package/module → Use TDD
+- `development_mode: hybrid` + refactoring existing code → Use DDD instead (moai-workflow-ddd)
+
+**Key distinction**:
+- **New file/package** (doesn't exist yet) → TDD (this workflow)
+- **Existing code** (file already exists) → DDD (ANALYZE-PRESERVE-IMPROVE)
+
 ## Quick Reference
 
 Test-Driven Development provides a disciplined approach for creating new functionality where tests define the expected behavior before implementation.

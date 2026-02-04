@@ -5,21 +5,33 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk-go/internal/cli/wizard"
-	"github.com/modu-ai/moai-adk-go/internal/core/project"
-	"github.com/modu-ai/moai-adk-go/internal/foundation"
-	"github.com/modu-ai/moai-adk-go/internal/manifest"
-	"github.com/modu-ai/moai-adk-go/internal/template"
+	"github.com/modu-ai/moai-adk/internal/cli/wizard"
+	"github.com/modu-ai/moai-adk/internal/core/project"
+	"github.com/modu-ai/moai-adk/internal/foundation"
+	"github.com/modu-ai/moai-adk/internal/manifest"
+	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 var initCmd = &cobra.Command{
-	Use:     "init",
-	Short:   "Initialize a new MoAI project",
-	Long:    "Initialize a new MoAI project with Claude Code integration, including agents, skills, commands, hooks, and rules.",
+	Use:   "init [project-name]",
+	Short: "Initialize a new MoAI project",
+	Long: `Initialize a new MoAI project with Claude Code integration.
+
+Usage patterns:
+  moai init <project-name>   Create a new folder and initialize inside it
+  moai init .                Initialize in current directory
+  moai init                  Initialize in current directory (same as "moai init .")
+
+Examples:
+  moai init my-app           Creates ./my-app/ and initializes MoAI inside
+  moai init .                Initializes MoAI in the current directory
+  moai init --mode hybrid    Initialize with hybrid development mode`,
+	Args:    cobra.MaximumNArgs(1),
 	PreRunE: validateInitFlags,
 	RunE:    runInit,
 }
@@ -115,13 +127,39 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 }
 
 // runInit executes the project initialization workflow.
-func runInit(cmd *cobra.Command, _ []string) error {
+func runInit(cmd *cobra.Command, args []string) error {
 	rootFlag := getStringFlag(cmd, "root")
-	if rootFlag == "" {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("get working directory: %w", err)
+	projectName := getStringFlag(cmd, "name")
+
+	// Determine project root based on positional argument
+	// - moai init <name>  → create ./name/ directory
+	// - moai init .       → use current directory
+	// - moai init         → use current directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get working directory: %w", err)
+	}
+
+	if rootFlag != "" {
+		// --root flag takes precedence
+		// Keep rootFlag as-is
+	} else if len(args) > 0 && args[0] != "." {
+		// Positional argument provided (not ".")
+		// Create new folder with that name
+		targetDir := args[0]
+		rootFlag = filepath.Join(cwd, targetDir)
+
+		// Create the directory if it doesn't exist
+		if err := os.MkdirAll(rootFlag, 0755); err != nil {
+			return fmt.Errorf("create project directory %q: %w", targetDir, err)
 		}
+
+		// Use the directory name as project name if not specified
+		if projectName == "" {
+			projectName = targetDir
+		}
+	} else {
+		// No positional arg or "." - use current directory
 		rootFlag = cwd
 	}
 
@@ -129,7 +167,7 @@ func runInit(cmd *cobra.Command, _ []string) error {
 
 	opts := project.InitOptions{
 		ProjectRoot:     rootFlag,
-		ProjectName:     getStringFlag(cmd, "name"),
+		ProjectName:     projectName,
 		Language:        getStringFlag(cmd, "language"),
 		Framework:       getStringFlag(cmd, "framework"),
 		UserName:        getStringFlag(cmd, "username"),
@@ -149,7 +187,7 @@ func runInit(cmd *cobra.Command, _ []string) error {
 		result, err := wizard.RunWithDefaults(rootFlag)
 		if err != nil {
 			if errors.Is(err, wizard.ErrCancelled) {
-				fmt.Fprintln(cmd.OutOrStderr(), "Initialization cancelled.")
+				_, _ = fmt.Fprintln(cmd.OutOrStderr(), "Initialization cancelled.")
 				return nil
 			}
 			return fmt.Errorf("wizard failed: %w", err)
@@ -215,12 +253,12 @@ func runInit(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("initialization failed: %w", err)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "MoAI project initialized successfully.\n")
-	fmt.Fprintf(cmd.OutOrStdout(), "  Development mode: %s\n", result.DevelopmentMode)
-	fmt.Fprintf(cmd.OutOrStdout(), "  Created %d directories and %d files.\n", len(result.CreatedDirs), len(result.CreatedFiles))
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "MoAI project initialized successfully.\n")
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Development mode: %s\n", result.DevelopmentMode)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Created %d directories and %d files.\n", len(result.CreatedDirs), len(result.CreatedFiles))
 
 	for _, w := range result.Warnings {
-		fmt.Fprintf(cmd.OutOrStdout(), "  Warning: %s\n", w)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: %s\n", w)
 	}
 
 	return nil

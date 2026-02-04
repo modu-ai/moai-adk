@@ -1,7 +1,9 @@
 ---
 name: manager-ddd
 description: |
-  DDD (Domain-Driven Development) implementation specialist. Use PROACTIVELY for ANALYZE-PRESERVE-IMPROVE cycle, behavior-preserving refactoring, and legacy code improvement.
+  DDD (Domain-Driven Development) implementation specialist for LEGACY REFACTORING ONLY.
+  Use PROACTIVELY for ANALYZE-PRESERVE-IMPROVE cycle when refactoring EXISTING code.
+  DO NOT use for new features (use manager-tdd instead per quality.yaml hybrid_settings).
   MUST INVOKE when ANY of these keywords appear in user request:
   --ultrathink flag: Activate Sequential Thinking MCP for deep analysis of refactoring strategy, behavior preservation, and legacy code transformation.
   EN: DDD, refactoring, legacy code, behavior preservation, characterization test, domain-driven refactoring
@@ -21,14 +23,17 @@ hooks:
           timeout: 60
 ---
 
-# DDD Implementer
+# DDD Implementer (Legacy Refactoring Specialist)
 
 ## Primary Mission
 
 Execute ANALYZE-PRESERVE-IMPROVE DDD cycles for behavior-preserving code refactoring with existing test preservation and characterization test creation.
 
-Version: 2.1.0
-Last Updated: 2026-01-22
+**IMPORTANT**: This agent is for LEGACY REFACTORING only (per quality.yaml `hybrid_settings.legacy_refactoring: ddd`).
+For NEW features, use `manager-tdd` instead (per quality.yaml `hybrid_settings.new_features: tdd`).
+
+Version: 2.2.0
+Last Updated: 2026-02-04
 
 ## Orchestration Metadata
 

@@ -6,7 +6,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/modu-ai/moai-adk-go/internal/config"
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // DefaultHookTimeout is the default timeout for hook execution (30 seconds).
@@ -62,19 +62,63 @@ const (
 	DecisionAllow = "allow"
 	DecisionDeny  = "deny"
 	DecisionAsk   = "ask"
-	DecisionBlock = "deny" // Alias for backward compatibility
+)
+
+// Top-level decision constants for Stop, PostToolUse, etc. (Claude Code protocol).
+const (
+	DecisionBlock = "block" // Used in top-level decision field for Stop, PostToolUse, etc.
 )
 
 // HookInput represents the JSON payload received from Claude Code via stdin.
+// Fields follow the official Claude Code hooks protocol.
 type HookInput struct {
-	SessionID     string          `json:"session_id,omitempty"`
-	CWD           string          `json:"cwd,omitempty"`
-	HookEventName string          `json:"hook_event_name,omitempty"`
-	ToolName      string          `json:"tool_name,omitempty"`
-	ToolInput     json.RawMessage `json:"tool_input,omitempty"`
-	ToolOutput    json.RawMessage `json:"tool_output,omitempty"`
-	ToolResponse  json.RawMessage `json:"tool_response,omitempty"`
-	ProjectDir    string          `json:"project_dir,omitempty"`
+	// Common fields (all events)
+	SessionID      string `json:"session_id,omitempty"`
+	TranscriptPath string `json:"transcript_path,omitempty"`
+	CWD            string `json:"cwd,omitempty"`
+	PermissionMode string `json:"permission_mode,omitempty"` // default, plan, acceptEdits, dontAsk, bypassPermissions
+	HookEventName  string `json:"hook_event_name,omitempty"`
+
+	// Tool-related fields (PreToolUse, PostToolUse, PostToolUseFailure, PermissionRequest)
+	ToolName     string          `json:"tool_name,omitempty"`
+	ToolInput    json.RawMessage `json:"tool_input,omitempty"`
+	ToolOutput   json.RawMessage `json:"tool_output,omitempty"`   // Legacy field
+	ToolResponse json.RawMessage `json:"tool_response,omitempty"` // PostToolUse result
+	ToolUseID    string          `json:"tool_use_id,omitempty"`
+
+	// SessionStart fields
+	Source    string `json:"source,omitempty"`     // startup, resume, clear, compact
+	Model     string `json:"model,omitempty"`      // Model identifier
+	AgentType string `json:"agent_type,omitempty"` // Custom agent name if --agent flag used
+
+	// SessionEnd fields
+	Reason string `json:"reason,omitempty"` // clear, logout, prompt_input_exit, bypass_permissions_disabled, other
+
+	// Stop/SubagentStop fields
+	StopHookActive bool `json:"stop_hook_active,omitempty"` // True when already continuing due to stop hook
+
+	// SubagentStart/SubagentStop fields
+	AgentID            string `json:"agent_id,omitempty"`
+	AgentTranscriptPath string `json:"agent_transcript_path,omitempty"`
+
+	// PreCompact fields
+	Trigger            string `json:"trigger,omitempty"`            // manual, auto
+	CustomInstructions string `json:"custom_instructions,omitempty"` // User instructions for /compact
+
+	// PostToolUseFailure fields
+	Error       string `json:"error,omitempty"`
+	IsInterrupt bool   `json:"is_interrupt,omitempty"`
+
+	// UserPromptSubmit fields
+	Prompt string `json:"prompt,omitempty"`
+
+	// Notification fields
+	Message          string `json:"message,omitempty"`
+	Title            string `json:"title,omitempty"`
+	NotificationType string `json:"notification_type,omitempty"`
+
+	// Legacy/internal field (deprecated, use CWD instead)
+	ProjectDir string `json:"project_dir,omitempty"`
 }
 
 // HookSpecificOutput represents the hookSpecificOutput field for PreToolUse/PostToolUse.
@@ -88,68 +132,69 @@ type HookSpecificOutput struct {
 // HookOutput represents the JSON payload written to stdout for Claude Code.
 // The format varies by event type per Claude Code protocol.
 type HookOutput struct {
-	// For SessionStart/SessionEnd: continue flag and system message
-	Continue      bool   `json:"continue,omitempty"`
-	SystemMessage string `json:"systemMessage,omitempty"`
+	// Universal fields (all events)
+	Continue      bool   `json:"continue,omitempty"`      // If false, Claude stops processing entirely
+	StopReason    string `json:"stopReason,omitempty"`    // Message shown when continue is false
+	SystemMessage string `json:"systemMessage,omitempty"` // Warning message shown to user
+	SuppressOutput bool  `json:"suppressOutput,omitempty"` // If true, hides stdout from verbose mode
 
-	// For PreToolUse/PostToolUse: hook-specific output
+	// Top-level decision fields (Stop, SubagentStop, PostToolUse, PostToolUseFailure, UserPromptSubmit)
+	// Use "block" to prevent the action; omit to allow
+	Decision string `json:"decision,omitempty"` // "block" to prevent action
+	Reason   string `json:"reason,omitempty"`   // Explanation when decision is "block"
+
+	// For PreToolUse/PostToolUse/PermissionRequest: hook-specific output
 	HookSpecificOutput *HookSpecificOutput `json:"hookSpecificOutput,omitempty"`
 
-	// For silent operations
-	SuppressOutput bool `json:"suppressOutput,omitempty"`
-
-	// Legacy fields for backward compatibility (internal use)
-	Decision string          `json:"-"`
-	Reason   string          `json:"-"`
-	Data     json.RawMessage `json:"-"`
+	// Internal data (not serialized to JSON)
+	Data json.RawMessage `json:"-"`
 }
 
-// NewAllowOutput creates a HookOutput with permissionDecision "allow".
+// NewAllowOutput creates a HookOutput with permissionDecision "allow" for PreToolUse.
+// Per Claude Code protocol, PreToolUse uses hookSpecificOutput.permissionDecision.
 func NewAllowOutput() *HookOutput {
 	return &HookOutput{
 		HookSpecificOutput: &HookSpecificOutput{
 			PermissionDecision: DecisionAllow,
 		},
-		Decision: DecisionAllow,
 	}
 }
 
-// NewAllowOutputWithData creates a HookOutput with permissionDecision "allow" and data.
+// NewAllowOutputWithData creates a HookOutput with permissionDecision "allow" and internal data.
+// Per Claude Code protocol, PreToolUse uses hookSpecificOutput.permissionDecision.
 func NewAllowOutputWithData(data json.RawMessage) *HookOutput {
 	return &HookOutput{
 		HookSpecificOutput: &HookSpecificOutput{
 			PermissionDecision: DecisionAllow,
 		},
-		Decision: DecisionAllow,
-		Data:     data,
+		Data: data,
 	}
 }
 
-// NewDenyOutput creates a HookOutput with permissionDecision "deny" and a reason.
+// NewDenyOutput creates a HookOutput with permissionDecision "deny" for PreToolUse.
+// Per Claude Code protocol, PreToolUse uses hookSpecificOutput.permissionDecision.
 func NewDenyOutput(reason string) *HookOutput {
 	return &HookOutput{
 		HookSpecificOutput: &HookSpecificOutput{
 			PermissionDecision:       DecisionDeny,
 			PermissionDecisionReason: reason,
 		},
-		Decision: DecisionDeny,
-		Reason:   reason,
 	}
 }
 
-// NewAskOutput creates a HookOutput with permissionDecision "ask" and a reason.
+// NewAskOutput creates a HookOutput with permissionDecision "ask" for PreToolUse.
+// Per Claude Code protocol, PreToolUse uses hookSpecificOutput.permissionDecision.
 func NewAskOutput(reason string) *HookOutput {
 	return &HookOutput{
 		HookSpecificOutput: &HookSpecificOutput{
 			PermissionDecision:       DecisionAsk,
 			PermissionDecisionReason: reason,
 		},
-		Decision: DecisionAsk,
-		Reason:   reason,
 	}
 }
 
-// NewBlockOutput creates a HookOutput with permissionDecision "deny" (alias for NewDenyOutput).
+// NewBlockOutput creates a HookOutput with permissionDecision "deny" for PreToolUse.
+// This is an alias for NewDenyOutput. For Stop/PostToolUse, use NewStopBlockOutput instead.
 func NewBlockOutput(reason string) *HookOutput {
 	return NewDenyOutput(reason)
 }
@@ -175,6 +220,33 @@ func NewPostToolOutput(context string) *HookOutput {
 			AdditionalContext: context,
 		},
 	}
+}
+
+// NewStopBlockOutput creates a HookOutput that prevents Claude from stopping.
+// Use this for Stop and SubagentStop hooks when you want Claude to continue working.
+// Per Claude Code protocol, Stop hooks use top-level decision/reason, not hookSpecificOutput.
+func NewStopBlockOutput(reason string) *HookOutput {
+	return &HookOutput{
+		Decision: DecisionBlock,
+		Reason:   reason,
+	}
+}
+
+// NewPostToolBlockOutput creates a HookOutput that blocks after tool execution.
+// Use this for PostToolUse hooks when you want to provide feedback that stops Claude.
+// Per Claude Code protocol, PostToolUse uses top-level decision/reason.
+func NewPostToolBlockOutput(reason string, additionalContext string) *HookOutput {
+	output := &HookOutput{
+		Decision: DecisionBlock,
+		Reason:   reason,
+	}
+	if additionalContext != "" {
+		output.HookSpecificOutput = &HookSpecificOutput{
+			HookEventName:     "PostToolUse",
+			AdditionalContext: additionalContext,
+		}
+	}
+	return output
 }
 
 // Handler processes a specific hook event type.

@@ -62,7 +62,7 @@ func (c *configurator) HasEntry(configFile, search string) (bool, error) {
 		}
 		return false, fmt.Errorf("open config file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -126,7 +126,7 @@ func (c *configurator) AddEnvVar(configFile, varName, varValue string) (*ConfigR
 		}
 		return nil, fmt.Errorf("open config file: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	if _, err := f.WriteString(content); err != nil {
 		return nil, fmt.Errorf("write config: %w", err)
@@ -203,7 +203,7 @@ func (c *configurator) AddPathEntry(configFile, pathEntry string) (*ConfigResult
 		}
 		return nil, fmt.Errorf("open config file: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	if _, err := f.WriteString(content); err != nil {
 		return nil, fmt.Errorf("write config: %w", err)

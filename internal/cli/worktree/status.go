@@ -32,11 +32,11 @@ func runStatus(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("list worktrees: %w", err)
 	}
 
-	fmt.Fprintf(out, "Repository: %s\n", WorktreeProvider.Root())
-	fmt.Fprintf(out, "Total worktrees: %d\n\n", len(worktrees))
+	_, _ = fmt.Fprintf(out, "Repository: %s\n", WorktreeProvider.Root())
+	_, _ = fmt.Fprintf(out, "Total worktrees: %d\n\n", len(worktrees))
 
 	if len(worktrees) == 0 {
-		fmt.Fprintln(out, "No worktrees found.")
+		_, _ = fmt.Fprintln(out, "No worktrees found.")
 		return nil
 	}
 
@@ -49,10 +49,10 @@ func runStatus(cmd *cobra.Command, _ []string) error {
 		if len(headShort) > 8 {
 			headShort = headShort[:8]
 		}
-		fmt.Fprintf(out, "%s\n", branchDisplay)
-		fmt.Fprintf(out, "  Path: %s\n", wt.Path)
-		fmt.Fprintf(out, "  HEAD: %s\n", headShort)
-		fmt.Fprintln(out)
+		_, _ = fmt.Fprintf(out, "%s\n", branchDisplay)
+		_, _ = fmt.Fprintf(out, "  Path: %s\n", wt.Path)
+		_, _ = fmt.Fprintf(out, "  HEAD: %s\n", headShort)
+		_, _ = fmt.Fprintln(out)
 	}
 
 	return nil

@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk-go/internal/hook"
+	"github.com/modu-ai/moai-adk/internal/hook"
 )
 
 var hookCmd = &cobra.Command{
@@ -89,12 +89,12 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 func runHookList(cmd *cobra.Command, _ []string) error {
 	out := cmd.OutOrStdout()
 
-	fmt.Fprintln(out, "Registered Hook Handlers")
-	fmt.Fprintln(out, "========================")
-	fmt.Fprintln(out)
+	_, _ = fmt.Fprintln(out, "Registered Hook Handlers")
+	_, _ = fmt.Fprintln(out, "========================")
+	_, _ = fmt.Fprintln(out)
 
 	if deps == nil || deps.HookRegistry == nil {
-		fmt.Fprintln(out, "  Hook system not initialized.")
+		_, _ = fmt.Fprintln(out, "  Hook system not initialized.")
 		return nil
 	}
 
@@ -105,12 +105,12 @@ func runHookList(cmd *cobra.Command, _ []string) error {
 		count := len(handlers)
 		totalHandlers += count
 		if count > 0 {
-			fmt.Fprintf(out, "  %s: %d handler(s)\n", string(event), count)
+			_, _ = fmt.Fprintf(out, "  %s: %d handler(s)\n", string(event), count)
 		}
 	}
 
 	if totalHandlers == 0 {
-		fmt.Fprintln(out, "  No handlers registered.")
+		_, _ = fmt.Fprintln(out, "  No handlers registered.")
 	}
 
 	return nil

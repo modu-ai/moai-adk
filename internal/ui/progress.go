@@ -64,7 +64,7 @@ func (b *headlessProgressBar) Increment(n int) {
 	if b.current > b.total {
 		b.current = b.total
 	}
-	fmt.Fprintf(b.writer, "[%d/%d] %s\n", b.current, b.total, b.title)
+	_, _ = fmt.Fprintf(b.writer, "[%d/%d] %s\n", b.current, b.total, b.title)
 }
 
 // SetTitle updates the progress bar title.
@@ -75,7 +75,7 @@ func (b *headlessProgressBar) SetTitle(title string) {
 // Done completes the progress bar at 100%.
 func (b *headlessProgressBar) Done() {
 	b.current = b.total
-	fmt.Fprintf(b.writer, "[%d/%d] %s\n", b.current, b.total, b.title)
+	_, _ = fmt.Fprintf(b.writer, "[%d/%d] %s\n", b.current, b.total, b.title)
 }
 
 // --- headlessSpinner ---
@@ -95,14 +95,14 @@ func newHeadlessSpinner(theme *Theme, title string, w io.Writer) *headlessSpinne
 		title:  title,
 		writer: w,
 	}
-	fmt.Fprintf(w, "%s\n", title)
+	_, _ = fmt.Fprintf(w, "%s\n", title)
 	return s
 }
 
 // SetTitle updates the spinner title and prints a log line.
 func (s *headlessSpinner) SetTitle(title string) {
 	s.title = title
-	fmt.Fprintf(s.writer, "%s\n", title)
+	_, _ = fmt.Fprintf(s.writer, "%s\n", title)
 }
 
 // Stop halts the spinner.

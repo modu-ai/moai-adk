@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/modu-ai/moai-adk-go/pkg/models"
+	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
 func TestPhaseString(t *testing.T) {

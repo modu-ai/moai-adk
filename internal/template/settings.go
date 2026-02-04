@@ -4,14 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/modu-ai/moai-adk-go/internal/config"
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // Settings represents the Claude Code settings.json structure.
 // Generated exclusively via json.MarshalIndent (ADR-011).
 type Settings struct {
-	Hooks       map[string][]HookGroup `json:"hooks,omitempty"`
-	OutputStyle string                 `json:"output_style,omitempty"`
+	Hooks            map[string][]HookGroup `json:"hooks,omitempty"`
+	OutputStyle      string                 `json:"outputStyle,omitempty"`
+	CleanupPeriodDays int                   `json:"cleanupPeriodDays,omitempty"`
+	Env              map[string]string      `json:"env,omitempty"`
 }
 
 // HookGroup represents a group of hooks with an optional matcher.
@@ -24,6 +26,7 @@ type HookGroup struct {
 type HookEntry struct {
 	Type    string `json:"type"`
 	Command string `json:"command"`
+	Timeout int    `json:"timeout,omitempty"`
 }
 
 // SettingsGenerator produces settings.json content from configuration.
@@ -41,21 +44,30 @@ func NewSettingsGenerator() SettingsGenerator {
 	return &settingsGenerator{}
 }
 
+// hookEventDef defines a hook event with its configuration.
+type hookEventDef struct {
+	event   string // Claude Code event name (PascalCase)
+	matcher string // Tool matcher pattern (empty for all)
+	timeout int    // Timeout in seconds
+}
+
 // hookEvents defines the required hook events per REQ-T-023.
-var hookEvents = []string{
-	"SessionStart",
-	"PreToolUse",
-	"PostToolUse",
-	"SessionEnd",
-	"Stop",
-	"PreCompact",
+var hookEventDefs = []hookEventDef{
+	{event: "SessionStart", matcher: "", timeout: 5},
+	{event: "PreCompact", matcher: "", timeout: 5},
+	{event: "SessionEnd", matcher: "", timeout: 10},
+	{event: "PreToolUse", matcher: "Write|Edit|Bash", timeout: 5},
+	{event: "PostToolUse", matcher: "Write|Edit", timeout: 60},
+	{event: "Stop", matcher: "", timeout: 5},
 }
 
 // Generate builds Settings from config and serializes to JSON.
 func (g *settingsGenerator) Generate(cfg *config.Config, platform string) ([]byte, error) {
 	settings := Settings{
-		Hooks:       buildHooks(platform),
-		OutputStyle: resolveOutputStyle(cfg),
+		Hooks:            buildHooks(platform),
+		OutputStyle:      resolveOutputStyle(cfg),
+		CleanupPeriodDays: 30,
+		Env:              buildEnv(),
 	}
 
 	data, err := json.MarshalIndent(settings, "", "  ")
@@ -76,16 +88,18 @@ func (g *settingsGenerator) Generate(cfg *config.Config, platform string) ([]byt
 
 // buildHooks constructs the hooks map for all required events.
 func buildHooks(platform string) map[string][]HookGroup {
-	hooks := make(map[string][]HookGroup, len(hookEvents))
+	hooks := make(map[string][]HookGroup, len(hookEventDefs))
 
-	for _, event := range hookEvents {
-		cmd := buildHookCommand(platform, event)
-		hooks[event] = []HookGroup{
+	for _, def := range hookEventDefs {
+		cmd := buildHookCommand(platform, def.event)
+		hooks[def.event] = []HookGroup{
 			{
+				Matcher: def.matcher,
 				Hooks: []HookEntry{
 					{
 						Type:    "command",
 						Command: cmd,
+						Timeout: def.timeout,
 					},
 				},
 			},
@@ -96,40 +110,51 @@ func buildHooks(platform string) map[string][]HookGroup {
 }
 
 // buildHookCommand returns the platform-appropriate hook command string.
+// Uses quoted $HOME path per Claude Code official documentation.
 func buildHookCommand(platform, event string) string {
 	hookSubcommand := eventToSubcommand(event)
 
 	switch platform {
 	case "windows":
-		return "cmd.exe /c moai hook " + hookSubcommand
+		// Windows: use %USERPROFILE% for home directory
+		return `cmd.exe /c "%USERPROFILE%\go\bin\moai" hook ` + hookSubcommand
 	default:
 		// darwin, linux, and other unix-like platforms
-		return "moai hook " + hookSubcommand
+		// Use quoted $HOME path per official Claude Code documentation
+		return `"$HOME/go/bin/moai" hook ` + hookSubcommand
 	}
 }
 
 // eventToSubcommand converts a PascalCase event name to a kebab-case subcommand.
+// Maps to actual moai CLI hook subcommands (not Claude Code event names).
 func eventToSubcommand(event string) string {
 	switch event {
 	case "SessionStart":
 		return "session-start"
 	case "PreToolUse":
-		return "pre-tool-use"
+		return "pre-tool"
 	case "PostToolUse":
-		return "post-tool-use"
+		return "post-tool"
 	case "SessionEnd":
 		return "session-end"
 	case "Stop":
 		return "stop"
 	case "PreCompact":
-		return "pre-compact"
+		return "compact"
 	default:
 		return event
 	}
 }
 
+// buildEnv constructs the default environment variables for settings.json.
+func buildEnv() map[string]string {
+	return map[string]string{
+		"PATH": "$HOME/go/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin",
+	}
+}
+
 // defaultOutputStyle is the default output style for new MoAI projects.
-const defaultOutputStyle = ".claude/output-styles/moai/moai.md"
+const defaultOutputStyle = "MoAI"
 
 // resolveOutputStyle determines the output style from configuration.
 func resolveOutputStyle(cfg *config.Config) string {

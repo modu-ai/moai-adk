@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/modu-ai/moai-adk-go/internal/config"
-	"github.com/modu-ai/moai-adk-go/pkg/models"
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
 func TestSessionStartHandler_EventType(t *testing.T) {
@@ -88,8 +88,12 @@ func TestSessionStartHandler_Handle(t *testing.T) {
 			if got == nil {
 				t.Fatal("got nil output")
 			}
-			if got.Decision != tt.wantDecision {
-				t.Errorf("Decision = %q, want %q", got.Decision, tt.wantDecision)
+			// SessionStart uses hookSpecificOutput.permissionDecision per Claude Code protocol
+			if got.HookSpecificOutput == nil {
+				t.Fatal("HookSpecificOutput is nil")
+			}
+			if got.HookSpecificOutput.PermissionDecision != tt.wantDecision {
+				t.Errorf("PermissionDecision = %q, want %q", got.HookSpecificOutput.PermissionDecision, tt.wantDecision)
 			}
 
 			if len(tt.wantDataKeys) > 0 && got.Data != nil {

@@ -22,7 +22,7 @@ func runRecover(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("worktree manager not initialized (git module not available)")
 	}
 
-	fmt.Fprintf(out, "Scanning for worktrees in %s...\n", WorktreeProvider.Root())
+	_, _ = fmt.Fprintf(out, "Scanning for worktrees in %s...\n", WorktreeProvider.Root())
 
 	if err := WorktreeProvider.Repair(); err != nil {
 		return fmt.Errorf("repair worktrees: %w", err)
@@ -40,11 +40,11 @@ func runRecover(cmd *cobra.Command, _ []string) error {
 	}
 
 	if len(worktrees) == 0 {
-		fmt.Fprintln(out, "No worktrees found.")
+		_, _ = fmt.Fprintln(out, "No worktrees found.")
 	} else {
-		fmt.Fprintf(out, "Recovered %d worktree(s):\n", len(worktrees))
+		_, _ = fmt.Fprintf(out, "Recovered %d worktree(s):\n", len(worktrees))
 		for _, wt := range worktrees {
-			fmt.Fprintf(out, "  %s  [%s]\n", wt.Path, wt.Branch)
+			_, _ = fmt.Fprintf(out, "  %s  [%s]\n", wt.Path, wt.Branch)
 		}
 	}
 

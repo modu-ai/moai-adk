@@ -107,9 +107,31 @@ func (c *localChecker) IsUpdateAvailable(current string) (bool, *VersionInfo, er
 		return false, nil, err
 	}
 
-	// For dev versions, always consider local release as newer
+	// For dev versions, compare file modification times
+	// since version strings may be identical (e.g., commit-hash-dirty)
 	if c.isDevVersion(current) {
-		return true, info, nil
+		// Get current binary path and modification time
+		currentBinary, err := os.Executable()
+		if err == nil {
+			currentInfo, statErr := os.Stat(currentBinary)
+			releaseBinaryPath := strings.TrimPrefix(info.URL, "file://")
+			releaseInfo, releaseStatErr := os.Stat(releaseBinaryPath)
+
+			// If release binary is newer (by mtime), an update is available
+			if statErr == nil && releaseStatErr == nil {
+				if releaseInfo.ModTime().After(currentInfo.ModTime()) {
+					return true, info, nil
+				}
+				// Same version and release is older or same age - no update needed
+				return false, nil, nil
+			}
+		}
+		// If we can't compare mtimes for dev versions with same version string,
+		// assume no update needed (avoid unnecessary updates)
+		if info.Version == current {
+			return false, nil, nil
+		}
+		// Different version strings - proceed to version comparison
 	}
 
 	cmp := compareSemver(info.Version, current)

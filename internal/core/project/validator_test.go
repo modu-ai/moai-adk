@@ -382,7 +382,8 @@ func containsSubstring(ss []string, sub string) bool {
 }
 
 // ensureFileContent reads a file and checks it contains a substring.
-func ensureFileContent(t *testing.T, path, want string) {
+// Currently unused but kept for future test expansions.
+func ensureFileContent(t *testing.T, path, want string) { //nolint:unused
 	t.Helper()
 	data, err := os.ReadFile(path)
 	if err != nil {

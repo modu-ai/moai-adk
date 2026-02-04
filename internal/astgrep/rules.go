@@ -31,7 +31,7 @@ func (l *RuleLoader) LoadFromFile(path string) ([]Rule, error) {
 		}
 		return nil, fmt.Errorf("open rule file %s: %w", path, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var rules []Rule
 	decoder := yaml.NewDecoder(f)

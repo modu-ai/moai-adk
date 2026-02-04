@@ -59,7 +59,7 @@ func (c *checker) CheckLatest(ctx context.Context) (*VersionInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("checker: request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusNotFound {
@@ -81,7 +81,7 @@ func (c *checker) CheckLatest(ctx context.Context) (*VersionInfo, error) {
 		// Filter for go-v prefix tags (e.g., go-v2.0.0)
 		var filteredReleases []releaseResponse
 		for _, r := range releases {
-			if strings.HasPrefix(r.TagName, "go-v") || strings.HasPrefix(r.TagName, "go-v") {
+			if strings.HasPrefix(r.TagName, "go-v") {
 				filteredReleases = append(filteredReleases, r)
 			}
 		}

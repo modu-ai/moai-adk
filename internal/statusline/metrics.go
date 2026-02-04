@@ -118,11 +118,7 @@ func ShortenModelName(model string) string {
 	// e.g., ["4", "5"] -> "4.5", ["3", "5"] -> "3.5"
 	var versionStr string
 	if len(versionParts) > 0 {
-		var formatted []string
-		for _, v := range versionParts {
-			formatted = append(formatted, v)
-		}
-		versionStr = strings.Join(formatted, ".")
+		versionStr = strings.Join(versionParts, ".")
 	}
 
 	if versionStr != "" {

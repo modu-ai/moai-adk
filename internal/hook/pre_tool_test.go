@@ -143,11 +143,21 @@ func TestPreToolHandler_Handle(t *testing.T) {
 			if got == nil {
 				t.Fatal("got nil output")
 			}
-			if got.Decision != tt.wantDecision {
-				t.Errorf("Decision = %q, want %q", got.Decision, tt.wantDecision)
+			// PreToolUse uses hookSpecificOutput.permissionDecision per Claude Code protocol
+			if got.HookSpecificOutput == nil {
+				t.Fatal("HookSpecificOutput is nil")
 			}
-			if tt.wantReason && got.Reason == "" {
-				t.Error("expected non-empty Reason for block decision")
+			// Map expected decision to permissionDecision value
+			// DecisionBlock maps to DecisionDeny for PreToolUse
+			wantPerm := tt.wantDecision
+			if wantPerm == DecisionBlock {
+				wantPerm = DecisionDeny
+			}
+			if got.HookSpecificOutput.PermissionDecision != wantPerm {
+				t.Errorf("PermissionDecision = %q, want %q", got.HookSpecificOutput.PermissionDecision, wantPerm)
+			}
+			if tt.wantReason && got.HookSpecificOutput.PermissionDecisionReason == "" {
+				t.Error("expected non-empty PermissionDecisionReason for deny decision")
 			}
 		})
 	}

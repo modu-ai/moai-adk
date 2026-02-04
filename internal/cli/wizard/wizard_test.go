@@ -230,7 +230,7 @@ func TestModelUpdateCancel(t *testing.T) {
 
 	// Test Esc cancellation
 	model = New(questions, nil)
-	newModel, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	newModel, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
 	m = newModel.(Model)
 
 	if m.state != StateCancelled {

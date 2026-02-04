@@ -1,33 +1,3 @@
----
-name: moai-workflow-moai
-description: >
-  Full autonomous development orchestration using the plan-run-sync pipeline.
-  Default workflow when no subcommand is specified. Explores codebase, generates
-  SPEC, implements via DDD, syncs documentation, and optionally creates PR.
-  Use for complete autonomous development from planning to deployment.
-license: Apache-2.0
-compatibility: Designed for Claude Code
-user-invocable: false
-metadata:
-  version: "1.2.0"
-  category: "workflow"
-  status: "active"
-  updated: "2026-02-03"
-  tags: "autonomous, orchestration, plan, run, sync, pipeline, default"
-
-# MoAI Extension: Progressive Disclosure
-progressive_disclosure:
-  enabled: true
-  level1_tokens: 100
-  level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["moai", "autonomous", "pipeline", "implement", "build", "develop", "create"]
-  agents: ["manager-spec", "manager-ddd", "manager-quality", "manager-docs", "manager-git", "Explore"]
-  phases: ["plan", "run", "sync"]
----
-
 # Workflow: MoAI - Autonomous Development Orchestration
 
 Purpose: Full autonomous workflow. User provides a goal, MoAI autonomously executes plan -> run -> sync pipeline. This is the default workflow when no subcommand is specified.
@@ -46,8 +16,35 @@ Flow: Explore -> Plan -> Run -> Sync -> Done
 
 - ralph.yaml: Loop settings and iteration defaults
 - git-strategy.yaml: Branch and PR automation settings
-- quality.yaml: TRUST 5 quality thresholds
+- quality.yaml: TRUST 5 quality thresholds AND development_mode routing
 - llm.yaml: LLM mode routing (claude-only, hybrid, glm-only)
+
+## Development Mode Routing (CRITICAL)
+
+[HARD] Before Phase 2 implementation, ALWAYS check `.moai/config/sections/quality.yaml`:
+
+```yaml
+constitution:
+  development_mode: hybrid    # ddd, tdd, or hybrid
+  hybrid_settings:
+    new_features: tdd        # New code uses TDD
+    legacy_refactoring: ddd  # Existing code uses DDD
+```
+
+**Routing Logic**:
+
+| Feature Type | Mode: ddd | Mode: tdd | Mode: hybrid |
+|--------------|-----------|-----------|--------------|
+| **New package/module** (no existing file) | DDD* | TDD | TDD |
+| **New feature in existing file** | DDD | TDD | TDD |
+| **Refactoring existing code** | DDD | Use DDD for this part | DDD |
+| **Bug fix in existing code** | DDD | TDD | DDD |
+
+*DDD adapts for greenfield (ANALYZE requirements → PRESERVE with spec tests → IMPROVE)
+
+**Agent Selection**:
+- **TDD cycle**: `manager-tdd` subagent (RED-GREEN-REFACTOR)
+- **DDD cycle**: `manager-ddd` subagent (ANALYZE-PRESERVE-IMPROVE)
 
 ## Phase 0: Parallel Exploration
 
@@ -90,11 +87,16 @@ User approval checkpoint via AskUserQuestion:
 - Output: EARS-format SPEC document at .moai/specs/SPEC-XXX/spec.md
 - Includes requirements, acceptance criteria, technical approach
 
-## Phase 2: DDD Implementation Loop
+## Phase 2: Implementation (TDD or DDD based on development_mode)
 
 [HARD] Agent delegation mandate: ALL implementation tasks MUST be delegated to specialized agents. NEVER execute implementation directly, even after auto compact.
 
-Expert agent selection:
+[HARD] Methodology selection based on `.moai/config/sections/quality.yaml`:
+
+- **New features** (per hybrid_settings.new_features): Use `manager-tdd` (RED-GREEN-REFACTOR)
+- **Legacy refactoring** (per hybrid_settings.legacy_refactoring): Use `manager-ddd` (ANALYZE-PRESERVE-IMPROVE)
+
+Expert agent selection (for domain-specific work):
 - Backend logic: expert-backend subagent
 - Frontend components: expert-frontend subagent
 - Test creation: expert-testing subagent
@@ -147,16 +149,17 @@ Auto-routing based on llm.yaml settings:
 1. Parse arguments (extract flags: --loop, --max, --sequential, --branch, --pr, --resume)
 2. If --resume with SPEC ID: Load existing SPEC and continue from last state
 3. Detect LLM mode from llm.yaml
-4. Execute Phase 0 (parallel or sequential exploration)
-5. Routing decision (single-domain direct delegation vs full workflow)
-6. TaskCreate for discovered tasks
-7. User confirmation via AskUserQuestion
-8. Phase 1: SPEC generation via manager-spec
-9. Phase 2: DDD implementation loop via expert agents
-10. Phase 3: Documentation sync via manager-docs
-11. Terminate with completion marker
+4. Detect development_mode from quality.yaml (hybrid/ddd/tdd)
+5. Execute Phase 0 (parallel or sequential exploration)
+6. Routing decision (single-domain direct delegation vs full workflow)
+7. TaskCreate for discovered tasks
+8. User confirmation via AskUserQuestion
+9. Phase 1: SPEC generation via manager-spec
+10. Phase 2: Implementation via manager-tdd (new features) OR manager-ddd (legacy refactoring)
+11. Phase 3: Documentation sync via manager-docs
+12. Terminate with completion marker
 
 ---
 
 Version: 1.2.0
-Source: Unified plan->run->sync pipeline. Added SPEC/project document update in sync phase.
+Source: Renamed from alfred.md. Unified plan->run->sync pipeline. Added SPEC/project document update in sync phase.

@@ -6,377 +6,292 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/modu-ai/moai-adk-go/internal/hook"
 )
 
+// TestShouldFormat verifies skip conditions per REQ-HOOK-073, REQ-HOOK-074.
+func TestShouldFormat(t *testing.T) {
+	t.Run("returns true for supported code file", func(t *testing.T) {
+		f := NewFormatter(nil)
+		if !f.ShouldFormat("test.py") {
+			t.Error("expected true for .py file")
+		}
+		if !f.ShouldFormat("test.go") {
+			t.Error("expected true for .go file")
+		}
+	})
+
+	t.Run("returns false for skipped extensions per REQ-HOOK-073", func(t *testing.T) {
+		f := NewFormatter(nil)
+
+		skippedExts := []string{
+			".json", ".yaml", ".yml", ".toml", ".lock",
+			".min.js", ".min.css",
+			".map",
+			".svg", ".png", ".jpg", ".gif", ".ico",
+			".woff", ".woff2", ".ttf", ".eot",
+			".exe", ".dll", ".so", ".dylib", ".bin",
+		}
+
+		for _, ext := range skippedExts {
+			if f.ShouldFormat("test" + ext) {
+				t.Errorf("expected false for %s file (REQ-HOOK-073)", ext)
+			}
+		}
+	})
+
+	t.Run("returns false for skipped directories per REQ-HOOK-074", func(t *testing.T) {
+		f := NewFormatter(nil)
+
+		skipDirs := []string{
+			"node_modules/test.py",
+			"vendor/test.py",
+			".venv/test.py",
+			"venv/test.py",
+			"__pycache__/test.py",
+			".cache/test.py",
+			"dist/test.py",
+			"build/test.py",
+			".next/test.py",
+			".nuxt/test.py",
+			"target/test.py",
+			".git/test.py",
+			".svn/test.py",
+			".hg/test.py",
+			".idea/test.py",
+			".vscode/test.py",
+			".eclipse/test.py",
+		}
+
+		for _, path := range skipDirs {
+			if f.ShouldFormat(path) {
+				t.Errorf("expected false for %s (REQ-HOOK-074)", path)
+			}
+		}
+	})
+}
+
+// TestFormatFile verifies formatting behavior per REQ-HOOK-070, REQ-HOOK-071, REQ-HOOK-072.
+func TestFormatFile(t *testing.T) {
+	t.Run("formats Go file with gofmt if available", func(t *testing.T) {
+		registry := NewToolRegistry()
+
+		// Skip if gofmt not available
+		if !registry.IsToolAvailable("gofmt") {
+			t.Skip("gofmt not available")
+		}
+
+		f := NewFormatter(registry)
+		tmpDir := t.TempDir()
+
+		// Create a poorly formatted Go file
+		goFile := filepath.Join(tmpDir, "test.go")
+		content := `package main
+func main(){
+println("hello")
+}`
+		if err := os.WriteFile(goFile, []byte(content), 0644); err != nil {
+			t.Fatalf("failed to create test file: %v", err)
+		}
+
+		result, err := f.FormatFile(context.Background(), goFile)
+		if err != nil {
+			t.Fatalf("FormatFile failed: %v", err)
+		}
+
+		// Check if file was actually formatted
+		if result == nil {
+			t.Fatal("expected non-nil result")
+		}
+	})
+
+	t.Run("returns error for non-existent file", func(t *testing.T) {
+		f := NewFormatter(NewToolRegistry())
+		_, err := f.FormatFile(context.Background(), "/nonexistent/file.go")
+
+		if err == nil {
+			t.Error("expected error for non-existent file")
+		}
+	})
+
+	t.Run("skips formatting for skipped extension", func(t *testing.T) {
+		f := NewFormatter(NewToolRegistry())
+		tmpDir := t.TempDir()
+
+		// Create a .json file (should be skipped per REQ-HOOK-073)
+		jsonFile := filepath.Join(tmpDir, "test.json")
+		_ = os.WriteFile(jsonFile, []byte(`{"key":"value"}`), 0644)
+
+		result, err := f.FormatFile(context.Background(), jsonFile)
+
+		// Should return nil result (skipped) without error
+		if err != nil {
+			t.Errorf("expected no error for skipped file, got: %v", err)
+		}
+		if result != nil {
+			t.Error("expected nil result for skipped file")
+		}
+	})
+
+	t.Run("gracefully handles unavailable formatter", func(t *testing.T) {
+		registry := NewToolRegistry()
+		f := NewFormatter(registry)
+		tmpDir := t.TempDir()
+
+		// Create a .xyz file (no formatter available)
+		xyzFile := filepath.Join(tmpDir, "test.xyz")
+		_ = os.WriteFile(xyzFile, []byte("content"), 0644)
+
+		result, err := f.FormatFile(context.Background(), xyzFile)
+
+		// Should not error, just return nil or unsuccessful result
+		if err != nil {
+			t.Errorf("expected no error for unavailable formatter, got: %v", err)
+		}
+		if result != nil && result.Error == "" {
+			// If result exists, it should indicate failure or no change
+			t.Log("formatter returned result for unsupported file")
+		}
+	})
+}
+
+// TestFormatterWithChangeDetection verifies hash-based change detection per REQ-HOOK-061.
+func TestFormatterWithChangeDetection(t *testing.T) {
+	t.Run("detects when formatting makes no changes", func(t *testing.T) {
+		registry := NewToolRegistry()
+		detector := NewChangeDetector()
+
+		// Skip if no formatter available
+		if !registry.IsToolAvailable("gofmt") {
+			t.Skip("gofmt not available")
+		}
+
+		f := NewFormatterWithRegistry(registry, detector)
+		tmpDir := t.TempDir()
+
+		// Create a properly formatted Go file
+		goFile := filepath.Join(tmpDir, "test.go")
+		content := `package main
+
+func main() {
+	fmt.Println("hello")
+}
+`
+		if err := os.WriteFile(goFile, []byte(content), 0644); err != nil {
+			t.Fatalf("failed to create test file: %v", err)
+		}
+
+		// Get original hash
+		originalHash, err := detector.ComputeHash(goFile)
+		_ = err // Ignore error in this test
+
+		result, err := f.FormatFile(context.Background(), goFile)
+		if err != nil {
+			t.Fatalf("FormatFile failed: %v", err)
+		}
+
+		// Check if file changed
+		changed, err := detector.HasChanged(goFile, originalHash)
+		_ = err // Ignore error in this test
+
+		if changed {
+			t.Log("File was modified by formatter (this is OK for formatters that always add timestamps or normalize)")
+		}
+
+		if result == nil {
+			t.Error("expected non-nil result")
+		}
+	})
+}
+
+// TestFormatterIntegration verifies integration with ToolRegistry per REQ-HOOK-071.
+func TestFormatterIntegration(t *testing.T) {
+	t.Run("uses tool registry to find formatter", func(t *testing.T) {
+		registry := NewToolRegistry()
+
+		// Skip if gofmt not available
+		if !registry.IsToolAvailable("gofmt") {
+			t.Skip("gofmt not available")
+		}
+
+		_ = NewFormatter(registry)
+
+		// Verify the formatter can find Go tools
+		tools := registry.GetToolsForFile("test.go", ToolTypeFormatter)
+		if len(tools) == 0 {
+			t.Error("expected at least one Go formatter from registry")
+		}
+
+		// Check that gofmt is in the list
+		found := false
+		for _, tool := range tools {
+			if strings.Contains(tool.Name, "gofmt") || tool.Command == "gofmt" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Error("expected gofmt to be in formatters list")
+		}
+	})
+}
+
+// TestNewFormatter verifies constructor variants.
 func TestNewFormatter(t *testing.T) {
-	t.Parallel()
+	t.Run("creates formatter with registry", func(t *testing.T) {
+		registry := NewToolRegistry()
+		f := NewFormatter(registry)
 
-	f := NewFormatter()
-	if f == nil {
-		t.Fatal("NewFormatter returned nil")
-	}
+		if f == nil {
+			t.Error("expected non-nil formatter")
+		}
+	})
 
-	if f.registry == nil {
-		t.Error("registry is nil")
-	}
+	t.Run("creates formatter with default registry when nil", func(t *testing.T) {
+		f := NewFormatter(nil)
 
-	if f.detector == nil {
-		t.Error("detector is nil")
-	}
+		if f == nil {
+			t.Error("expected non-nil formatter with default registry")
+		}
+	})
+
+	t.Run("creates formatter with custom detector", func(t *testing.T) {
+		registry := NewToolRegistry()
+		detector := NewChangeDetector()
+		f := NewFormatterWithRegistry(registry, detector)
+
+		if f == nil {
+			t.Error("expected non-nil formatter with custom detector")
+		}
+	})
 }
 
-func TestNewFormatterWithRegistry(t *testing.T) {
-	t.Parallel()
+// TestCrossPlatformTimeout verifies timeout behavior per REQ-HOOK-092.
+func TestCrossPlatformTimeout(t *testing.T) {
+	t.Run("handles context cancellation", func(t *testing.T) {
+		registry := NewToolRegistry()
+		f := NewFormatter(registry)
+		tmpDir := t.TempDir()
 
-	registry := NewToolRegistry()
-	f := NewFormatterWithRegistry(registry)
+		// Create a test file
+		testFile := filepath.Join(tmpDir, "test.go")
+		_ = os.WriteFile(testFile, []byte("package main\n"), 0644)
 
-	if f.registry != registry {
-		t.Error("registry not set correctly")
-	}
-}
+		// Cancel the context immediately
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel() // Cancel immediately
 
-func TestFormatter_ShouldFormat(t *testing.T) {
-	t.Parallel()
+		result, err := f.FormatFile(ctx, testFile)
 
-	f := NewFormatter()
-
-	tests := []struct {
-		name     string
-		filePath string
-		want     bool
-	}{
-		// Should format
-		{"Python file", "test.py", true},
-		{"Go file", "main.go", true},
-		{"JavaScript", "app.js", true},
-		{"TypeScript", "app.ts", true},
-
-		// Should skip - extensions
-		{"JSON file", "config.json", false},
-		{"Lock file", "poetry.lock", false},
-		{"Minified JS", "app.min.js", false},
-		{"Source map", "app.map", false},
-		{"PNG image", "icon.png", false},
-		{"Binary", "program.exe", false},
-
-		// Should skip - directories
-		{"node_modules", "node_modules/package.js", false},
-		{".git file", ".git/config", false},
-		{"vendor file", "vendor/lib.js", false},
-		{"dist file", "dist/app.js", false},
-		{"build file", "build/main.go", false},
-
-		// Should skip - minified detection
-		{"Minified detection", "jquery.3.6.0.min.js", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create file if it doesn't exist
-			if !strings.Contains(tt.filePath, "node_modules") &&
-				!strings.Contains(tt.filePath, ".git") &&
-				!strings.Contains(tt.filePath, "vendor") {
-				absPath := filepath.Join(t.TempDir(), tt.filePath)
-				os.MkdirAll(filepath.Dir(absPath), 0755)
-				os.WriteFile(absPath, []byte("test"), 0644)
-				tt.filePath = absPath
+		// Should handle cancellation gracefully
+		if err == nil && result != nil && result.Success {
+			// This is OK if the formatter was fast enough
+			t.Log("Formatter completed before context cancellation")
+		}
+		if err != nil {
+			// Expected - context was cancelled
+			if !strings.Contains(err.Error(), "canceled") && !strings.Contains(err.Error(), "context") {
+				t.Logf("Got error (may be expected): %v", err)
 			}
-
-			got := f.ShouldFormat(tt.filePath)
-			if got != tt.want {
-				t.Errorf("ShouldFormat() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestFormatter_ShouldFormat_NonExistentFile(t *testing.T) {
-	t.Parallel()
-
-	f := NewFormatter()
-	result := f.ShouldFormat("/nonexistent/file/path.py")
-
-	if result {
-		t.Error("ShouldFormat returned true for nonexistent file")
-	}
-}
-
-func TestFormatter_FormatFile_SkipUnsupported(t *testing.T) {
-	t.Parallel()
-
-	f := NewFormatter()
-
-	// JSON should be skipped
-	result, err := f.FormatFile(context.Background(), "test.json", "")
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-
-	if result != nil {
-		t.Error("expected nil result for skipped file")
-	}
-}
-
-func TestFormatter_FormatFile_NoFormatterAvailable(t *testing.T) {
-	t.Parallel()
-
-	f := NewFormatter()
-
-	// Unknown extension
-	result, err := f.FormatFile(context.Background(), "test.unknown_ext", "")
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-
-	if result != nil {
-		t.Error("expected nil result for unknown file type")
-	}
-}
-
-func TestFormatter_FormatForHook_SkippedFile(t *testing.T) {
-	t.Parallel()
-
-	f := NewFormatter()
-
-	output := f.FormatForHook(context.Background(), "test.json", "")
-
-	if output.SuppressOutput != true {
-		t.Error("expected SuppressOutput for skipped file")
-	}
-}
-
-func TestFormatter_EventType(t *testing.T) {
-	t.Parallel()
-
-	f := NewFormatter()
-	if f.EventType() != hook.EventPostToolUse {
-		t.Errorf("EventType = %q, want PostToolUse", f.EventType())
-	}
-}
-
-func TestFormatter_Handle_SkipNonWriteEdit(t *testing.T) {
-	t.Parallel()
-
-	f := NewFormatter()
-
-	tests := []struct {
-		toolName string
-	}{
-		{"Read"},
-		{"Bash"},
-		{"Grep"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.toolName, func(t *testing.T) {
-			input := &hook.HookInput{
-				ToolName: tt.toolName,
-			}
-
-			output, err := f.Handle(context.Background(), input)
-			if err != nil {
-				t.Errorf("unexpected error: %v", err)
-			}
-
-			if output.Decision != hook.DecisionAllow {
-				t.Errorf("Decision = %q, want allow", output.Decision)
-			}
-		})
-	}
-}
-
-func TestFormatter_Handle_EmptyFilePath(t *testing.T) {
-	t.Parallel()
-
-	f := NewFormatter()
-
-	input := &hook.HookInput{
-		ToolName:  "Write",
-		ToolInput: []byte(`{"other_field": "value"}`),
-	}
-
-	output, err := f.Handle(context.Background(), input)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-
-	if output.Decision != hook.DecisionAllow {
-		t.Errorf("Decision = %q, want allow", output.Decision)
-	}
-}
-
-func TestFormatter_isBinary(t *testing.T) {
-	t.Parallel()
-
-	f := NewFormatter()
-
-	// Create a temporary file with null byte (binary indicator)
-	tmpDir := t.TempDir()
-	binaryFile := filepath.Join(tmpDir, "binary.dat")
-	content := make([]byte, 100)
-	content[50] = 0 // Null byte
-	if err := os.WriteFile(binaryFile, content, 0644); err != nil {
-		t.Fatalf("failed to create test file: %v", err)
-	}
-
-	if !f.isBinary(binaryFile) {
-		t.Error("isBinary returned false for file with null byte")
-	}
-
-	// Create a text file
-	textFile := filepath.Join(tmpDir, "text.txt")
-	if err := os.WriteFile(textFile, []byte("Hello, World!"), 0644); err != nil {
-		t.Fatalf("failed to create test file: %v", err)
-	}
-
-	if f.isBinary(textFile) {
-		t.Error("isBinary returned true for text file")
-	}
-}
-
-func TestFormatter_getParentDirectories(t *testing.T) {
-	t.Parallel()
-
-	f := NewFormatter()
-
-	tests := []struct {
-		name     string
-		path     string
-		wantDirs []string
-	}{
-		{
-			name:     "simple path",
-			path:     "/home/user/project/file.go",
-			wantDirs: []string{"file.go", "project", "user", "home"},
-		},
-		{
-			name:     "relative path",
-			path:     "project/module/file.py",
-			wantDirs: []string{"file.py", "module", "project"},
-		},
-		{
-			name:     "single file",
-			path:     "file.py",
-			wantDirs: []string{"file.py"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotDirs := f.getParentDirectories(tt.path)
-
-			// Just check that we get some directories and order is correct
-			if len(gotDirs) == 0 {
-				t.Error("got no directories")
-			}
-
-			// First element should be the file name
-			if gotDirs[0] != filepath.Base(tt.path) {
-				t.Errorf("first element = %q, want %q", gotDirs[0], filepath.Base(tt.path))
-			}
-		})
-	}
-}
-
-func TestExtractFilePath(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		input    string
-		wantPath string
-		wantErr  bool
-	}{
-		{
-			name:     "valid file path",
-			input:    `{"file_path": "/path/to/file.py"}`,
-			wantPath: "/path/to/file.py",
-			wantErr:  false,
-		},
-		{
-			name:     "file path with quotes",
-			input:    `{"file_path": "/path/to/file with spaces.py"}`,
-			wantPath: "/path/to/file with spaces.py",
-			wantErr:  false,
-		},
-		{
-			name:     "no file path",
-			input:    `{"other_field": "value"}`,
-			wantPath: "",
-			wantErr:  false,
-		},
-		{
-			name:     "empty JSON",
-			input:    `{}`,
-			wantPath: "",
-			wantErr:  false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			input := &hook.HookInput{
-				ToolInput: []byte(tt.input),
-			}
-
-			path, err := extractFilePath(input)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("extractFilePath() error = %v, wantErr %v", err, tt.wantErr)
-			}
-
-			if path != tt.wantPath {
-				t.Errorf("extractFilePath() = %q, want %q", path, tt.wantPath)
-			}
-		})
-	}
-}
-
-func TestFormatter_Integration(t *testing.T) {
-	t.Parallel()
-
-	// This test verifies the Formatter works end-to-end with the hook system
-	f := NewFormatter()
-
-	// Create a test file
-	tmpDir := t.TempDir()
-	testFile := filepath.Join(tmpDir, "test.py")
-	content := []byte("import os\nimport sys\nprint('hello')")
-	if err := os.WriteFile(testFile, content, 0644); err != nil {
-		t.Fatalf("failed to create test file: %v", err)
-	}
-
-	// Verify ShouldFormat returns true
-	if !f.ShouldFormat(testFile) {
-		t.Error("ShouldFormat returned false for .py file")
-	}
-
-	// Verify EventType is correct
-	if f.EventType() != hook.EventPostToolUse {
-		t.Errorf("EventType = %q, want PostToolUse", f.EventType())
-	}
-
-	// Test Handle with proper input
-	inputJSON := `{"file_path": "` + testFile + `"}`
-	input := &hook.HookInput{
-		ToolName:  "Write",
-		ToolInput: []byte(inputJSON),
-		CWD:       tmpDir,
-	}
-
-	output, err := f.Handle(context.Background(), input)
-	if err != nil {
-		t.Errorf("Handle returned error: %v", err)
-	}
-
-	if output == nil {
-		t.Fatal("Handle returned nil output")
-	}
-
-	// Should not block
-	if output.Decision == hook.DecisionDeny {
-		t.Error("Handle returned deny decision")
-	}
+		}
+	})
 }

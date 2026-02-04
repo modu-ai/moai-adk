@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk-go/internal/core/git"
+	"github.com/modu-ai/moai-adk/internal/core/git"
 )
 
 // mockWorktreeManager implements git.WorktreeManager for testing.

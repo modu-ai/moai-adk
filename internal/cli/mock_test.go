@@ -4,9 +4,9 @@ import (
 	"context"
 	"io"
 
-	"github.com/modu-ai/moai-adk-go/internal/hook"
-	"github.com/modu-ai/moai-adk-go/internal/rank"
-	"github.com/modu-ai/moai-adk-go/internal/update"
+	"github.com/modu-ai/moai-adk/internal/hook"
+	"github.com/modu-ai/moai-adk/internal/rank"
+	"github.com/modu-ai/moai-adk/internal/update"
 )
 
 // --- Mock implementations for CLI dependency testing ---

@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/modu-ai/moai-adk-go/internal/manifest"
+	"github.com/modu-ai/moai-adk/internal/manifest"
 )
 
 // Deployer extracts and deploys templates from an embedded filesystem

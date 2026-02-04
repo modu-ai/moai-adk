@@ -8,14 +8,14 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/modu-ai/moai-adk-go/internal/config"
-	"github.com/modu-ai/moai-adk-go/internal/core/git"
-	"github.com/modu-ai/moai-adk-go/internal/hook"
-	"github.com/modu-ai/moai-adk-go/internal/hook/security"
-	lsphook "github.com/modu-ai/moai-adk-go/internal/lsp/hook"
-	"github.com/modu-ai/moai-adk-go/internal/rank"
-	"github.com/modu-ai/moai-adk-go/internal/update"
-	"github.com/modu-ai/moai-adk-go/pkg/version"
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/core/git"
+	"github.com/modu-ai/moai-adk/internal/hook"
+	"github.com/modu-ai/moai-adk/internal/hook/security"
+	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
+	"github.com/modu-ai/moai-adk/internal/rank"
+	"github.com/modu-ai/moai-adk/internal/update"
+	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 // Dependencies holds all domain-level services used by CLI commands.

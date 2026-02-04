@@ -66,7 +66,7 @@ func TestGenerateStateToken_HexEncoded(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, c := range token {
-		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
 			t.Errorf("token contains non-hex character: %c", c)
 		}
 	}
@@ -79,7 +79,7 @@ func TestFindAvailablePort_ReturnsValidPort(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FindAvailablePort failed: %v", err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	if port < OAuthPortMin || port > OAuthPortMax {
 		t.Errorf("port %d outside range [%d, %d]", port, OAuthPortMin, OAuthPortMax)
@@ -91,7 +91,7 @@ func TestFindAvailablePort_ListenerWorks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	// Verify the listener is functional by accepting a connection.
 	addr := ln.Addr().String()
@@ -116,14 +116,14 @@ func TestFindAvailablePort_SkipsOccupiedPorts(t *testing.T) {
 	if err != nil {
 		t.Skipf("cannot occupy port %d: %v", OAuthPortMin, err)
 	}
-	defer occupied.Close()
+	defer func() { _ = occupied.Close() }()
 
 	// FindAvailablePort should find a different port.
 	port, ln, err := FindAvailablePort()
 	if err != nil {
 		t.Fatalf("FindAvailablePort failed: %v", err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	if port == OAuthPortMin {
 		t.Errorf("should not return occupied port %d", OAuthPortMin)

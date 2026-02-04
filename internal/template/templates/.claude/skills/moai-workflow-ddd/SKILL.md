@@ -26,6 +26,27 @@ metadata:
 
 # Domain-Driven Development (DDD) Workflow
 
+## Development Mode Configuration (CRITICAL)
+
+[NOTE] This workflow is selected based on `.moai/config/sections/quality.yaml`:
+
+```yaml
+constitution:
+  development_mode: hybrid    # or ddd, tdd
+  hybrid_settings:
+    new_features: tdd        # New code → use TDD
+    legacy_refactoring: ddd  # Existing code → use DDD (this workflow)
+```
+
+**When to use this workflow**:
+- `development_mode: ddd` → Always use DDD
+- `development_mode: hybrid` + refactoring existing code → Use DDD
+- `development_mode: hybrid` + new package/module → Use TDD instead (moai-workflow-tdd)
+
+**Key distinction**:
+- **New file/package** (doesn't exist yet) → TDD (RED-GREEN-REFACTOR)
+- **Existing code** (file already exists) → DDD (ANALYZE-PRESERVE-IMPROVE)
+
 ## Quick Reference
 
 Domain-Driven Development provides a systematic approach for refactoring existing codebases where behavior preservation is paramount. Unlike TDD which creates new functionality, DDD improves structure without changing behavior.
@@ -66,7 +87,7 @@ This makes DDD a superset of TDD - it includes TDD's test-first approach while a
 
 ### DDD vs TDD Comparison
 
-DDD Approach (for new features):
+TDD Approach (for new features):
 
 - Cycle: RED-GREEN-REFACTOR
 - Goal: Create new functionality through tests

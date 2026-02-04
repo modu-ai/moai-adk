@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk-go/pkg/version"
+	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 // CheckStatus represents the result of a single diagnostic check.
@@ -58,18 +58,18 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 
 	out := cmd.OutOrStdout()
 
-	fmt.Fprintln(out, "System Diagnostics")
-	fmt.Fprintln(out, "==================")
-	fmt.Fprintln(out)
+	_, _ = fmt.Fprintln(out, "System Diagnostics")
+	_, _ = fmt.Fprintln(out, "==================")
+	_, _ = fmt.Fprintln(out)
 
 	checks := runDiagnosticChecks(verbose, checkName)
 
 	okCount, warnCount, failCount := 0, 0, 0
 	for _, c := range checks {
 		icon := statusIcon(c.Status)
-		fmt.Fprintf(out, "  %s %s: %s\n", icon, c.Name, c.Message)
+		_, _ = fmt.Fprintf(out, "  %s %s: %s\n", icon, c.Name, c.Message)
 		if verbose && c.Detail != "" {
-			fmt.Fprintf(out, "      %s\n", c.Detail)
+			_, _ = fmt.Fprintf(out, "      %s\n", c.Detail)
 		}
 		switch c.Status {
 		case CheckOK:
@@ -81,15 +81,15 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	fmt.Fprintln(out)
-	fmt.Fprintf(out, "Results: %d passed, %d warnings, %d failed\n", okCount, warnCount, failCount)
+	_, _ = fmt.Fprintln(out)
+	_, _ = fmt.Fprintf(out, "Results: %d passed, %d warnings, %d failed\n", okCount, warnCount, failCount)
 
 	if fix && failCount > 0 {
-		fmt.Fprintln(out)
-		fmt.Fprintln(out, "Suggested fixes:")
+		_, _ = fmt.Fprintln(out)
+		_, _ = fmt.Fprintln(out, "Suggested fixes:")
 		for _, c := range checks {
 			if c.Status == CheckFail {
-				fmt.Fprintf(out, "  - %s: run 'moai init' to initialize project\n", c.Name)
+				_, _ = fmt.Fprintf(out, "  - %s: run 'moai init' to initialize project\n", c.Name)
 			}
 		}
 	}
@@ -98,7 +98,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		if err := exportDiagnostics(exportPath, checks); err != nil {
 			return fmt.Errorf("export diagnostics: %w", err)
 		}
-		fmt.Fprintf(out, "\nDiagnostics exported to %s\n", exportPath)
+		_, _ = fmt.Fprintf(out, "\nDiagnostics exported to %s\n", exportPath)
 	}
 
 	return nil
@@ -136,7 +136,7 @@ func checkGoRuntime(verbose bool) DiagnosticCheck {
 	check.Status = CheckOK
 	check.Message = fmt.Sprintf("%s (%s/%s)", goVersion, runtime.GOOS, runtime.GOARCH)
 	if verbose {
-		check.Detail = fmt.Sprintf("GOROOT=%s GOPATH=%s", runtime.GOROOT(), os.Getenv("GOPATH"))
+		check.Detail = fmt.Sprintf("GOPATH=%s", os.Getenv("GOPATH"))
 	}
 	return check
 }

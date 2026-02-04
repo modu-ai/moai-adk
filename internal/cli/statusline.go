@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/modu-ai/moai-adk-go/internal/statusline"
+	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/spf13/cobra"
 )
 
@@ -49,11 +49,11 @@ func runStatusline(cmd *cobra.Command, _ []string) error {
 	result, err := builder.Build(ctx, stdinData)
 	if err != nil {
 		// Fallback on error
-		fmt.Fprintln(out, renderSimpleFallback())
+		_, _ = fmt.Fprintln(out, renderSimpleFallback())
 		return nil
 	}
 
-	fmt.Fprintln(out, result)
+	_, _ = fmt.Fprintln(out, result)
 	return nil
 }
 

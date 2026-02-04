@@ -2,227 +2,139 @@ package quality
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/modu-ai/moai-adk-go/internal/hook"
 )
 
-// Formatter handles automatic code formatting for PostToolUse hooks.
-// It formats files after Write/Edit operations using language-specific tools.
+// Formatter handles automatic code formatting per REQ-HOOK-070.
 type Formatter struct {
-	registry *ToolRegistry
+	registry *toolRegistry
 	detector *ChangeDetector
 }
 
 // NewFormatter creates a new Formatter with default registry and detector.
-func NewFormatter() *Formatter {
-	return &Formatter{
-		registry: NewToolRegistry(),
-		detector: NewChangeDetector(),
+func NewFormatter(registry *toolRegistry) *Formatter {
+	if registry == nil {
+		registry = NewToolRegistry()
 	}
-}
-
-// NewFormatterWithRegistry creates a Formatter using the provided registry.
-func NewFormatterWithRegistry(registry *ToolRegistry) *Formatter {
 	return &Formatter{
 		registry: registry,
 		detector: NewChangeDetector(),
 	}
 }
 
-// FormatFile formats a single file using the appropriate formatter.
-// Returns the tool result or an error if formatting fails catastrophically.
-func (f *Formatter) FormatFile(ctx context.Context, filePath string, cwd string) (*ToolResult, error) {
-	// Check if we should skip this file
+// NewFormatterWithRegistry creates a new Formatter with custom registry and detector.
+func NewFormatterWithRegistry(registry *toolRegistry, detector *ChangeDetector) *Formatter {
+	if registry == nil {
+		registry = NewToolRegistry()
+	}
+	if detector == nil {
+		detector = NewChangeDetector()
+	}
+	return &Formatter{
+		registry: registry,
+		detector: detector,
+	}
+}
+
+// FormatFile formats a file using the appropriate formatter per REQ-HOOK-071.
+// Returns nil result if file should not be formatted (skipped).
+func (f *Formatter) FormatFile(ctx context.Context, filePath string) (*ToolResult, error) {
+	// Check if file should be formatted
 	if !f.ShouldFormat(filePath) {
 		return nil, nil
 	}
 
 	// Get formatters for this file
-	formatters := f.registry.GetToolsForFile(filePath, ToolTypeFormatter)
-	if len(formatters) == 0 {
+	tools := f.registry.GetToolsForFile(filePath, ToolTypeFormatter)
+	if len(tools) == 0 {
 		return nil, nil
 	}
 
-	// Try formatters in priority order
-	for _, formatter := range formatters {
+	// Get directory for command execution
+	cwd := filepath.Dir(filePath)
+	if cwd == "" {
+		cwd = "."
+	}
+
+	// Check if file exists first
+	beforeHash, err := f.detector.ComputeHash(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Try each formatter in priority order
+	for _, tool := range tools {
 		// Check if tool is available
-		if !f.registry.IsToolAvailable(formatter.Name) {
+		if !f.registry.IsToolAvailable(tool.Command) {
 			continue
 		}
 
 		// Run the formatter
-		result := f.registry.RunTool(ctx, formatter, filePath, cwd)
-		result.ToolName = formatter.Name
+		result := f.registry.RunTool(tool, filePath, cwd)
+
+		// Check if file was modified
+		if result.Success {
+			_, hashErr := f.detector.ComputeHash(filePath)
+			_ = hashErr // Ignore hash error, file may be locked
+			changed, _ := f.detector.HasChanged(filePath, beforeHash)
+			result.FileModified = changed
+		}
 
 		return &result, nil
 	}
 
-	// No formatter available
 	return nil, nil
 }
 
-// ShouldFormat checks if a file should be formatted based on skip patterns.
+// ShouldFormat determines if a file should be formatted per REQ-HOOK-073, REQ-HOOK-074.
 func (f *Formatter) ShouldFormat(filePath string) bool {
-	// Get file extension
-	ext := strings.ToLower(filepath.Ext(filePath))
+	// Convert to slashes for consistent path handling
+	path := filepath.ToSlash(filePath)
+	baseName := strings.ToLower(filepath.Base(filePath))
 
-	// Check skip extensions
-	if SkipExtensions[ext] {
-		return false
-	}
-
-	// Check for minified files
-	if strings.Contains(filepath.Base(filePath), ".min.") {
-		return false
-	}
-
-	// Check if file exists
-	if _, err := os.Stat(filePath); err != nil {
-		return false
-	}
-
-	// Check skip directories
-	for _, dir := range f.getParentDirectories(filePath) {
-		if SkipDirectories[dir] {
+	// Check for skipped directories
+	for _, skipDir := range skipDirectories {
+		if strings.HasPrefix(path, skipDir+"/") || strings.Contains(path, "/"+skipDir+"/") {
 			return false
 		}
 	}
 
-	// Check if file is binary
-	if f.isBinary(filePath) {
-		return false
-	}
-
-	return true
-}
-
-// getParentDirectories returns all parent directory names for a file path.
-func (f *Formatter) getParentDirectories(filePath string) []string {
-	var dirs []string
-	path := filePath
-
-	for {
-		dir := filepath.Base(path)
-		if dir == "." || dir == "/" || dir == "" {
-			break
-		}
-		dirs = append(dirs, dir)
-
-		parent := filepath.Dir(path)
-		if parent == path || parent == "." || parent == "/" {
-			break
-		}
-		path = parent
-	}
-
-	return dirs
-}
-
-// isBinary checks if a file is binary by reading the first chunk.
-func (f *Formatter) isBinary(filePath string) bool {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return false
-	}
-	defer file.Close()
-
-	buffer := make([]byte, 8192)
-	n, err := file.Read(buffer)
-	if err != nil {
-		return false
-	}
-
-	// Check for null byte (common in binary files)
-	for i := 0; i < n; i++ {
-		if buffer[i] == 0 {
-			return true
+	// Check for compound extensions like .min.js, .min.css
+	for _, skipExt := range skipExtensions {
+		if strings.HasSuffix(baseName, skipExt) {
+			return false
 		}
 	}
 
-	return false
-}
-
-// FormatForHook formats a file and returns a HookOutput for PostToolUse.
-// This is the main integration point with the hook system.
-func (f *Formatter) FormatForHook(ctx context.Context, filePath string, cwd string) *hook.HookOutput {
-	result, err := f.FormatFile(ctx, filePath, cwd)
-	if err != nil {
-		return &hook.HookOutput{
-			HookSpecificOutput: &hook.HookSpecificOutput{
-				HookEventName:     "PostToolUse",
-				AdditionalContext: fmt.Sprintf("Formatter error: %v", err),
-			},
+	// Check file extension for simple cases
+	ext := strings.ToLower(filepath.Ext(filePath))
+	for _, skipExt := range skipExtensions {
+		if ext == skipExt {
+			return false
 		}
 	}
 
-	if result == nil {
-		// File was skipped or no formatter available
-		return hook.NewSuppressOutput()
-	}
-
-	if result.Success && result.FileModified {
-		// File was formatted successfully
-		return &hook.HookOutput{
-			HookSpecificOutput: &hook.HookSpecificOutput{
-				HookEventName:     "PostToolUse",
-				AdditionalContext: fmt.Sprintf("Auto-formatted with %s", result.ToolName),
-			},
-		}
-	}
-
-	if !result.Success {
-		// Formatter failed but don't block
-		return &hook.HookOutput{
-			HookSpecificOutput: &hook.HookSpecificOutput{
-				HookEventName:     "PostToolUse",
-				AdditionalContext: fmt.Sprintf("Format warning: %s", result.Error),
-			},
-		}
-	}
-
-	// Formatter ran but made no changes
-	return hook.NewSuppressOutput()
+	// Only format known code files
+	tools := f.registry.GetToolsForFile(filePath, ToolTypeFormatter)
+	return len(tools) > 0
 }
 
-// EventType implements hook.Handler interface.
-func (f *Formatter) EventType() hook.EventType {
-	return hook.EventPostToolUse
+// skipExtensions lists file extensions to skip per REQ-HOOK-073.
+var skipExtensions = []string{
+	".json", ".yaml", ".yml", ".toml", ".lock",
+	".min.js", ".min.css",
+	".map",
+	".svg", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".webp",
+	".woff", ".woff2", ".ttf", ".eot", ".otf",
+	".exe", ".dll", ".so", ".dylib", ".bin",
 }
 
-// Handle implements hook.Handler interface for PostToolUse events.
-func (f *Formatter) Handle(ctx context.Context, input *hook.HookInput) (*hook.HookOutput, error) {
-	// Only process Write and Edit tools
-	if input.ToolName != "Write" && input.ToolName != "Edit" {
-		return hook.NewAllowOutput(), nil
-	}
-
-	// Extract file path from tool input
-	filePath, err := extractFilePath(input)
-	if err != nil || filePath == "" {
-		return hook.NewAllowOutput(), nil
-	}
-
-	// Format the file
-	output := f.FormatForHook(ctx, filePath, input.CWD)
-
-	return output, nil
-}
-
-// extractFilePath extracts the file_path from HookInput tool_input.
-func extractFilePath(input *hook.HookInput) (string, error) {
-	type toolInput struct {
-		FilePath string `json:"file_path"`
-	}
-
-	var ti toolInput
-	if err := json.Unmarshal(input.ToolInput, &ti); err != nil {
-		return "", err
-	}
-
-	return ti.FilePath, nil
+// skipDirectories lists directories to skip per REQ-HOOK-074.
+var skipDirectories = []string{
+	"node_modules", "vendor", ".venv", "venv",
+	"__pycache__", ".cache", ".pytest_cache",
+	"dist", "build", "target", ".next", ".nuxt", "out",
+	".git", ".svn", ".hg",
+	".idea", ".vscode", ".eclipse",
 }

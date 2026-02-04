@@ -31,7 +31,7 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 
 	for _, wt := range worktrees {
 		if wt.Branch == branchName {
-			fmt.Fprintf(out, "Worktree for branch %s is at: %s\n", branchName, wt.Path)
+			_, _ = fmt.Fprintf(out, "Worktree for branch %s is at: %s\n", branchName, wt.Path)
 			return nil
 		}
 	}

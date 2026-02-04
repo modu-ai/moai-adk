@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk-go/internal/cli/worktree"
-	"github.com/modu-ai/moai-adk-go/pkg/version"
+	"github.com/modu-ai/moai-adk/internal/cli/worktree"
+	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 var rootCmd = &cobra.Command{

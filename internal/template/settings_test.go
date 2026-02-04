@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk-go/internal/config"
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 func defaultTestConfig() *config.Config {
@@ -77,13 +77,15 @@ func TestSettingsGeneratorGenerate(t *testing.T) {
 		}
 	})
 
-	t.Run("no_unexpanded_tokens", func(t *testing.T) {
+	t.Run("no_unexpanded_template_tokens", func(t *testing.T) {
 		data, err := gen.Generate(defaultTestConfig(), "darwin")
 		if err != nil {
 			t.Fatalf("Generate error: %v", err)
 		}
 
 		content := string(data)
+		// Note: $HOME is intentionally included in the generated settings.json
+		// Only check for template-style tokens that shouldn't be present
 		tokens := []string{"${", "{{", "$VAR", "$SHELL"}
 		for _, tok := range tokens {
 			if strings.Contains(content, tok) {
@@ -166,8 +168,9 @@ func TestSettingsPlatformHookCommands(t *testing.T) {
 		}
 
 		cmd := settings.Hooks["SessionStart"][0].Hooks[0].Command
-		if cmd != "moai hook session-start" {
-			t.Errorf("darwin SessionStart command = %q, want %q", cmd, "moai hook session-start")
+		expected := `"$HOME/go/bin/moai" hook session-start`
+		if cmd != expected {
+			t.Errorf("darwin SessionStart command = %q, want %q", cmd, expected)
 		}
 	})
 
@@ -184,8 +187,9 @@ func TestSettingsPlatformHookCommands(t *testing.T) {
 		}
 
 		cmd := settings.Hooks["SessionStart"][0].Hooks[0].Command
-		if cmd != "moai hook session-start" {
-			t.Errorf("linux SessionStart command = %q, want %q", cmd, "moai hook session-start")
+		expected := `"$HOME/go/bin/moai" hook session-start`
+		if cmd != expected {
+			t.Errorf("linux SessionStart command = %q, want %q", cmd, expected)
 		}
 	})
 
@@ -202,7 +206,7 @@ func TestSettingsPlatformHookCommands(t *testing.T) {
 		}
 
 		cmd := settings.Hooks["SessionStart"][0].Hooks[0].Command
-		expected := "cmd.exe /c moai hook session-start"
+		expected := `cmd.exe /c "%USERPROFILE%\go\bin\moai" hook session-start`
 		if cmd != expected {
 			t.Errorf("windows SessionStart command = %q, want %q", cmd, expected)
 		}
@@ -230,6 +234,71 @@ func TestSettingsPlatformHookCommands(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("hooks_have_timeout", func(t *testing.T) {
+		data, err := gen.Generate(defaultTestConfig(), "darwin")
+		if err != nil {
+			t.Fatalf("Generate error: %v", err)
+		}
+
+		var settings Settings
+		trimmed := strings.TrimSpace(string(data))
+		if err := json.Unmarshal([]byte(trimmed), &settings); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+
+		for event, groups := range settings.Hooks {
+			for _, group := range groups {
+				for _, hook := range group.Hooks {
+					if hook.Timeout <= 0 {
+						t.Errorf("hook %q has invalid timeout %d", event, hook.Timeout)
+					}
+				}
+			}
+		}
+	})
+
+	t.Run("pretooluse_has_matcher", func(t *testing.T) {
+		data, err := gen.Generate(defaultTestConfig(), "darwin")
+		if err != nil {
+			t.Fatalf("Generate error: %v", err)
+		}
+
+		var settings Settings
+		trimmed := strings.TrimSpace(string(data))
+		if err := json.Unmarshal([]byte(trimmed), &settings); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+
+		groups := settings.Hooks["PreToolUse"]
+		if len(groups) == 0 {
+			t.Fatal("PreToolUse has no groups")
+		}
+		if groups[0].Matcher != "Write|Edit|Bash" {
+			t.Errorf("PreToolUse matcher = %q, want %q", groups[0].Matcher, "Write|Edit|Bash")
+		}
+	})
+
+	t.Run("posttooluse_has_matcher", func(t *testing.T) {
+		data, err := gen.Generate(defaultTestConfig(), "darwin")
+		if err != nil {
+			t.Fatalf("Generate error: %v", err)
+		}
+
+		var settings Settings
+		trimmed := strings.TrimSpace(string(data))
+		if err := json.Unmarshal([]byte(trimmed), &settings); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+
+		groups := settings.Hooks["PostToolUse"]
+		if len(groups) == 0 {
+			t.Fatal("PostToolUse has no groups")
+		}
+		if groups[0].Matcher != "Write|Edit" {
+			t.Errorf("PostToolUse matcher = %q, want %q", groups[0].Matcher, "Write|Edit")
+		}
+	})
 }
 
 func TestSettingsOutputStyleDefault(t *testing.T) {
@@ -247,9 +316,9 @@ func TestSettingsOutputStyleDefault(t *testing.T) {
 			t.Fatalf("Unmarshal error: %v", err)
 		}
 
-		expected := ".claude/output-styles/moai/moai.md"
+		expected := "MoAI"
 		if settings.OutputStyle != expected {
-			t.Errorf("output_style = %q, want %q", settings.OutputStyle, expected)
+			t.Errorf("outputStyle = %q, want %q", settings.OutputStyle, expected)
 		}
 	})
 
@@ -265,9 +334,56 @@ func TestSettingsOutputStyleDefault(t *testing.T) {
 			t.Fatalf("Unmarshal error: %v", err)
 		}
 
-		expected := ".claude/output-styles/moai/moai.md"
+		expected := "MoAI"
 		if settings.OutputStyle != expected {
-			t.Errorf("nil config output_style = %q, want %q", settings.OutputStyle, expected)
+			t.Errorf("nil config outputStyle = %q, want %q", settings.OutputStyle, expected)
+		}
+	})
+}
+
+func TestSettingsEnvDefault(t *testing.T) {
+	gen := NewSettingsGenerator()
+
+	t.Run("has_env_path", func(t *testing.T) {
+		data, err := gen.Generate(defaultTestConfig(), "darwin")
+		if err != nil {
+			t.Fatalf("Generate error: %v", err)
+		}
+
+		var settings Settings
+		trimmed := strings.TrimSpace(string(data))
+		if err := json.Unmarshal([]byte(trimmed), &settings); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+
+		if settings.Env == nil {
+			t.Fatal("env is nil")
+		}
+
+		path, ok := settings.Env["PATH"]
+		if !ok {
+			t.Fatal("env.PATH is missing")
+		}
+
+		if !strings.Contains(path, "$HOME/go/bin") {
+			t.Errorf("env.PATH should contain $HOME/go/bin, got %q", path)
+		}
+	})
+
+	t.Run("has_cleanup_period", func(t *testing.T) {
+		data, err := gen.Generate(defaultTestConfig(), "darwin")
+		if err != nil {
+			t.Fatalf("Generate error: %v", err)
+		}
+
+		var settings Settings
+		trimmed := strings.TrimSpace(string(data))
+		if err := json.Unmarshal([]byte(trimmed), &settings); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+
+		if settings.CleanupPeriodDays != 30 {
+			t.Errorf("cleanupPeriodDays = %d, want 30", settings.CleanupPeriodDays)
 		}
 	})
 }
@@ -487,11 +603,11 @@ func TestEventToSubcommand(t *testing.T) {
 		expected string
 	}{
 		{"SessionStart", "session-start"},
-		{"PreToolUse", "pre-tool-use"},
-		{"PostToolUse", "post-tool-use"},
+		{"PreToolUse", "pre-tool"},
+		{"PostToolUse", "post-tool"},
 		{"SessionEnd", "session-end"},
 		{"Stop", "stop"},
-		{"PreCompact", "pre-compact"},
+		{"PreCompact", "compact"},
 	}
 
 	for _, tt := range tests {

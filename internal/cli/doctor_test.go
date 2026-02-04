@@ -120,8 +120,8 @@ func TestCheckGoRuntime_Verbose(t *testing.T) {
 	if check.Detail == "" {
 		t.Error("check.Detail should not be empty in verbose mode")
 	}
-	if !strings.Contains(check.Detail, "GOROOT") {
-		t.Error("verbose detail should contain GOROOT")
+	if !strings.Contains(check.Detail, "GOPATH") {
+		t.Error("verbose detail should contain GOPATH")
 	}
 }
 

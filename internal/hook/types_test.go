@@ -60,11 +60,16 @@ func TestNewAllowOutput(t *testing.T) {
 	t.Parallel()
 
 	out := NewAllowOutput()
-	if out.Decision != DecisionAllow {
-		t.Errorf("Decision = %q, want %q", out.Decision, DecisionAllow)
+	// PreToolUse uses hookSpecificOutput.permissionDecision, not top-level Decision
+	if out.HookSpecificOutput == nil {
+		t.Fatal("HookSpecificOutput is nil")
 	}
-	if out.Reason != "" {
-		t.Errorf("Reason = %q, want empty", out.Reason)
+	if out.HookSpecificOutput.PermissionDecision != DecisionAllow {
+		t.Errorf("PermissionDecision = %q, want %q", out.HookSpecificOutput.PermissionDecision, DecisionAllow)
+	}
+	// Top-level Decision should be empty for PreToolUse
+	if out.Decision != "" {
+		t.Errorf("Decision = %q, want empty for PreToolUse", out.Decision)
 	}
 }
 
@@ -72,11 +77,52 @@ func TestNewBlockOutput(t *testing.T) {
 	t.Parallel()
 
 	out := NewBlockOutput("test reason")
+	// PreToolUse uses hookSpecificOutput.permissionDecision = "deny", not top-level "block"
+	if out.HookSpecificOutput == nil {
+		t.Fatal("HookSpecificOutput is nil")
+	}
+	if out.HookSpecificOutput.PermissionDecision != DecisionDeny {
+		t.Errorf("PermissionDecision = %q, want %q", out.HookSpecificOutput.PermissionDecision, DecisionDeny)
+	}
+	if out.HookSpecificOutput.PermissionDecisionReason != "test reason" {
+		t.Errorf("PermissionDecisionReason = %q, want %q", out.HookSpecificOutput.PermissionDecisionReason, "test reason")
+	}
+}
+
+func TestNewStopBlockOutput(t *testing.T) {
+	t.Parallel()
+
+	out := NewStopBlockOutput("continue working")
+	// Stop hooks use top-level decision = "block", not hookSpecificOutput
 	if out.Decision != DecisionBlock {
 		t.Errorf("Decision = %q, want %q", out.Decision, DecisionBlock)
 	}
-	if out.Reason != "test reason" {
-		t.Errorf("Reason = %q, want %q", out.Reason, "test reason")
+	if out.Reason != "continue working" {
+		t.Errorf("Reason = %q, want %q", out.Reason, "continue working")
+	}
+	// hookSpecificOutput should be nil for Stop hooks
+	if out.HookSpecificOutput != nil {
+		t.Error("HookSpecificOutput should be nil for Stop hooks")
+	}
+}
+
+func TestNewPostToolBlockOutput(t *testing.T) {
+	t.Parallel()
+
+	out := NewPostToolBlockOutput("test failed", "additional info")
+	// PostToolUse uses top-level decision = "block"
+	if out.Decision != DecisionBlock {
+		t.Errorf("Decision = %q, want %q", out.Decision, DecisionBlock)
+	}
+	if out.Reason != "test failed" {
+		t.Errorf("Reason = %q, want %q", out.Reason, "test failed")
+	}
+	// PostToolUse can also have hookSpecificOutput.additionalContext
+	if out.HookSpecificOutput == nil {
+		t.Fatal("HookSpecificOutput is nil")
+	}
+	if out.HookSpecificOutput.AdditionalContext != "additional info" {
+		t.Errorf("AdditionalContext = %q, want %q", out.HookSpecificOutput.AdditionalContext, "additional info")
 	}
 }
 

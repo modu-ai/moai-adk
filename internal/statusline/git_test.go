@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	gitpkg "github.com/modu-ai/moai-adk-go/internal/core/git"
+	gitpkg "github.com/modu-ai/moai-adk/internal/core/git"
 )
 
 // mockGitRepo implements git.Repository for testing.

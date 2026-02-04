@@ -3,7 +3,7 @@ package foundation
 import (
 	"fmt"
 
-	"github.com/modu-ai/moai-adk-go/pkg/models"
+	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
 // Phase represents a single step within a development methodology cycle.

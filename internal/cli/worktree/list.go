@@ -28,13 +28,13 @@ func runList(cmd *cobra.Command, _ []string) error {
 	}
 
 	if len(worktrees) == 0 {
-		fmt.Fprintln(out, "No worktrees found.")
+		_, _ = fmt.Fprintln(out, "No worktrees found.")
 		return nil
 	}
 
-	fmt.Fprintln(out, "Active Worktrees:")
+	_, _ = fmt.Fprintln(out, "Active Worktrees:")
 	for _, wt := range worktrees {
-		fmt.Fprintf(out, "  %s  [%s]  %s\n", wt.Path, wt.Branch, wt.HEAD[:minLen(len(wt.HEAD), 8)])
+		_, _ = fmt.Fprintf(out, "  %s  [%s]  %s\n", wt.Path, wt.Branch, wt.HEAD[:minLen(len(wt.HEAD), 8)])
 	}
 	return nil
 }

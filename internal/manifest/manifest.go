@@ -211,7 +211,7 @@ func atomicWriteFile(path string, data []byte) error {
 		return fmt.Errorf("create temp: %w", err)
 	}
 	tmpName := tmp.Name()
-	defer os.Remove(tmpName) // clean up on error path
+	defer func() { _ = os.Remove(tmpName) }() // clean up on error path
 
 	if _, err := tmp.Write(data); err != nil {
 		tmp.Close() //nolint:errcheck // best-effort close on error path

@@ -92,8 +92,8 @@ func TestStreamTransportReadWrite(t *testing.T) {
 		t.Errorf("ReadMessage() = %q, want %q", got, body)
 	}
 
-	clientTransport.Close()
-	serverTransport.Close()
+	_ = clientTransport.Close()
+	_ = serverTransport.Close()
 }
 
 func TestStreamTransportMultipleMessages(t *testing.T) {
@@ -102,7 +102,7 @@ func TestStreamTransportMultipleMessages(t *testing.T) {
 	reader, writer := io.Pipe()
 	closer := &multiCloser{reader, writer}
 	transport := NewStreamTransport(reader, writer, closer)
-	defer transport.Close()
+	defer func() { _ = transport.Close() }()
 
 	messages := []string{
 		`{"jsonrpc":"2.0","id":1,"result":"first"}`,
@@ -135,7 +135,7 @@ func TestStreamTransportReadClosedPipe(t *testing.T) {
 	reader, writer := io.Pipe()
 	transport := NewStreamTransport(reader, writer, reader)
 
-	writer.Close()
+	_ = writer.Close()
 
 	_, err := transport.ReadMessage(context.Background())
 	if err == nil {
@@ -151,7 +151,7 @@ func TestTCPTransportRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listen error: %v", err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	body := json.RawMessage(`{"jsonrpc":"2.0","id":1,"result":"tcp-ok"}`)
 
@@ -161,13 +161,13 @@ func TestTCPTransportRoundTrip(t *testing.T) {
 		if err != nil {
 			return
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		serverTransport := NewStreamTransport(conn, conn, nil)
 		msg, err := serverTransport.ReadMessage(context.Background())
 		if err != nil {
 			return
 		}
-		serverTransport.WriteMessage(context.Background(), msg)
+		_ = serverTransport.WriteMessage(context.Background(), msg)
 	}()
 
 	// Client connects via TCP.
@@ -175,7 +175,7 @@ func TestTCPTransportRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("TCPTransport error: %v", err)
 	}
-	defer clientTransport.Close()
+	defer func() { _ = clientTransport.Close() }()
 
 	// Client sends and receives.
 	if err := clientTransport.WriteMessage(context.Background(), body); err != nil {
@@ -208,14 +208,14 @@ func TestConnectionCall(t *testing.T) {
 		var req struct {
 			ID int64 `json:"id"`
 		}
-		json.Unmarshal(msg, &req)
+		_ = json.Unmarshal(msg, &req)
 
 		resp := fmt.Sprintf(`{"jsonrpc":"2.0","id":%d,"result":{"value":"hello"}}`, req.ID)
-		serverTransport.WriteMessage(context.Background(), json.RawMessage(resp))
+		_ = serverTransport.WriteMessage(context.Background(), json.RawMessage(resp))
 	}()
 
 	conn := NewConn(clientTransport)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	var result struct {
 		Value string `json:"value"`
@@ -248,19 +248,19 @@ func TestConnectionCallWithParams(t *testing.T) {
 			ID     int64           `json:"id"`
 			Params json.RawMessage `json:"params"`
 		}
-		json.Unmarshal(msg, &req)
+		_ = json.Unmarshal(msg, &req)
 
 		var params struct {
 			Name string `json:"name"`
 		}
-		json.Unmarshal(req.Params, &params)
+		_ = json.Unmarshal(req.Params, &params)
 
 		resp := fmt.Sprintf(`{"jsonrpc":"2.0","id":%d,"result":{"greeting":"hello %s"}}`, req.ID, params.Name)
-		serverTransport.WriteMessage(context.Background(), json.RawMessage(resp))
+		_ = serverTransport.WriteMessage(context.Background(), json.RawMessage(resp))
 	}()
 
 	conn := NewConn(clientTransport)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	params := map[string]string{"name": "world"}
 	var result struct {
@@ -293,14 +293,14 @@ func TestConnectionCallError(t *testing.T) {
 		var req struct {
 			ID int64 `json:"id"`
 		}
-		json.Unmarshal(msg, &req)
+		_ = json.Unmarshal(msg, &req)
 
 		resp := fmt.Sprintf(`{"jsonrpc":"2.0","id":%d,"error":{"code":-32601,"message":"method not found"}}`, req.ID)
-		serverTransport.WriteMessage(context.Background(), json.RawMessage(resp))
+		_ = serverTransport.WriteMessage(context.Background(), json.RawMessage(resp))
 	}()
 
 	conn := NewConn(clientTransport)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	err := conn.Call(context.Background(), "unknown/method", nil, nil)
 	if err == nil {
@@ -325,13 +325,13 @@ func TestConnectionCallContextTimeout(t *testing.T) {
 	clientTransport := NewStreamTransport(clientReader, clientWriter, &multiCloser{clientReader, clientWriter})
 
 	// Drain serverReader so WriteMessage does not block on pipe.
-	go io.Copy(io.Discard, serverReader)
+	go func() { _, _ = io.Copy(io.Discard, serverReader) }()
 
 	// Server never writes a response (keep serverWriter open so readLoop blocks).
 	_ = serverWriter
 
 	conn := NewConn(clientTransport)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
@@ -356,7 +356,7 @@ func TestConnectionNotify(t *testing.T) {
 	_ = serverWriter // keep open so readLoop blocks
 
 	conn := NewConn(clientTransport)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Read in goroutine first because io.Pipe blocks until both ends are active.
 	type readResult struct {
@@ -395,7 +395,7 @@ func TestConnectionNotify(t *testing.T) {
 
 	// Verify no ID field.
 	var raw map[string]json.RawMessage
-	json.Unmarshal(res.msg, &raw)
+	_ = json.Unmarshal(res.msg, &raw)
 	if _, hasID := raw["id"]; hasID {
 		t.Error("notification should not have 'id' field")
 	}
@@ -408,7 +408,7 @@ func TestConnectionCallAfterClose(t *testing.T) {
 	transport := NewStreamTransport(reader, writer, &multiCloser{reader, writer})
 
 	conn := NewConn(transport)
-	conn.Close()
+	_ = conn.Close()
 
 	err := conn.Call(context.Background(), "test", nil, nil)
 	if err != ErrConnectionClosed {
@@ -423,7 +423,7 @@ func TestConnectionNotifyAfterClose(t *testing.T) {
 	transport := NewStreamTransport(reader, writer, &multiCloser{reader, writer})
 
 	conn := NewConn(transport)
-	conn.Close()
+	_ = conn.Close()
 
 	err := conn.Notify(context.Background(), "test", nil)
 	if err != ErrConnectionClosed {
@@ -451,15 +451,15 @@ func TestConnectionMultipleCalls(t *testing.T) {
 				ID     int64  `json:"id"`
 				Method string `json:"method"`
 			}
-			json.Unmarshal(msg, &req)
+			_ = json.Unmarshal(msg, &req)
 
 			resp := fmt.Sprintf(`{"jsonrpc":"2.0","id":%d,"result":"%s"}`, req.ID, req.Method)
-			serverTransport.WriteMessage(context.Background(), json.RawMessage(resp))
+			_ = serverTransport.WriteMessage(context.Background(), json.RawMessage(resp))
 		}
 	}()
 
 	conn := NewConn(clientTransport)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	methods := []string{"method/a", "method/b", "method/c"}
 	for _, method := range methods {

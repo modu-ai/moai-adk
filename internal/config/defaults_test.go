@@ -3,7 +3,7 @@ package config
 import (
 	"testing"
 
-	"github.com/modu-ai/moai-adk-go/pkg/models"
+	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
 func TestNewDefaultConfig(t *testing.T) {

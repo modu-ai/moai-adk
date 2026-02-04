@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk-go/internal/config"
-	"github.com/modu-ai/moai-adk-go/internal/loop"
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/loop"
 )
 
 func TestRalphEngine_Decide(t *testing.T) {

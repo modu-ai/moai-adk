@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk-go/pkg/version"
+	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 var versionCmd = &cobra.Command{
@@ -13,7 +13,7 @@ var versionCmd = &cobra.Command{
 	Short: "Show version information",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		out := cmd.OutOrStdout()
-		fmt.Fprintf(out, "moai-adk %s (commit: %s, built: %s)\n",
+		_, _ = fmt.Fprintf(out, "moai-adk %s (commit: %s, built: %s)\n",
 			version.GetVersion(),
 			version.GetCommit(),
 			version.GetDate(),
