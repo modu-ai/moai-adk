@@ -178,7 +178,7 @@ moai-adk-go/
 - **Secured**: OWASP compliance, input validation
 - **Trackable**: Conventional commits, issue references
 
-**Hook Execution Contract** -- Compiled binary hooks replace shell wrappers, supporting 6 Claude Code event types (PreToolUse, PostToolUse, SessionStart, SessionEnd, PreCompact, Notification) via a JSON protocol.
+**Hook Execution Contract** -- Compiled binary hooks replace shell wrappers, supporting 6 Claude Code event types (PreToolUse, PostToolUse, SessionStart, SessionEnd, PreCompact, Notification) via a JSON protocol. All hook outputs must include the `hookEventName` field in `hookSpecificOutput` for proper protocol compliance.
 
 **Zero-Touch Template Updates** -- 3-way merge engine with file provenance tracking enables automatic template updates without losing user customizations.
 
