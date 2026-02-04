@@ -117,9 +117,7 @@ logs/
 # Backups
 # ===========================================
 .moai-backups/
-.moai/memory/
-.moai/plans/
-.moai/reports/
+.moai/
 settings.local.json
 *.backup/
 *-backup/

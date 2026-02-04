@@ -60,6 +60,9 @@ func (c *checker) CheckLatest(ctx context.Context) (*VersionInfo, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, fmt.Errorf("checker: release not found (status 404) - repository may not exist or have no releases")
+		}
 		return nil, fmt.Errorf("checker: unexpected status %d", resp.StatusCode)
 	}
 
