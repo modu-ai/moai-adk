@@ -33,6 +33,7 @@ type Dependencies struct {
 	UpdateOrch    update.Orchestrator
 	RankClient    rank.Client
 	RankCredStore rank.CredentialStore
+	RankBrowser   rank.BrowserOpener
 	Logger        *slog.Logger
 }
 

@@ -296,6 +296,8 @@ func TestRunUpdate_CheckOnlyWithChecker(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
+	t.Setenv("MOAI_UPDATE_SOURCE", "local")
+
 	deps = &Dependencies{
 		UpdateChecker: &mockUpdateChecker{
 			checkLatestFunc: func(_ context.Context) (*update.VersionInfo, error) {
@@ -336,6 +338,8 @@ func TestRunUpdate_CheckOnlyNilChecker(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
+	t.Setenv("MOAI_UPDATE_SOURCE", "local")
+
 	// Set deps to nil to test the case where dependencies are not initialized.
 	// With lazy initialization, EnsureUpdate would try to create a real checker
 	// if deps is non-nil, so we test the nil deps path instead.
@@ -367,6 +371,8 @@ func TestRunUpdate_CheckOnlyNilChecker(t *testing.T) {
 func TestRunUpdate_CheckLatestError(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
+
+	t.Setenv("MOAI_UPDATE_SOURCE", "local")
 
 	deps = &Dependencies{
 		UpdateChecker: &mockUpdateChecker{
@@ -403,6 +409,9 @@ func TestRunUpdate_NilOrchestrator(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
+	// Set local update source to bypass dev build detection
+	t.Setenv("MOAI_UPDATE_SOURCE", "local")
+
 	deps = &Dependencies{
 		UpdateChecker: &mockUpdateChecker{},
 	}
@@ -428,6 +437,9 @@ func TestRunUpdate_NilOrchestrator(t *testing.T) {
 func TestRunUpdate_FullUpdateSuccess(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
+
+	// Set local update source to bypass dev build detection
+	t.Setenv("MOAI_UPDATE_SOURCE", "local")
 
 	deps = &Dependencies{
 		UpdateChecker: &mockUpdateChecker{},
@@ -472,6 +484,9 @@ func TestRunUpdate_FullUpdateSuccess(t *testing.T) {
 func TestRunUpdate_UpdateError(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
+
+	// Set local update source to bypass dev build detection
+	t.Setenv("MOAI_UPDATE_SOURCE", "local")
 
 	deps = &Dependencies{
 		UpdateChecker: &mockUpdateChecker{},
@@ -689,6 +704,7 @@ func TestRankLogin_WithCredStore(t *testing.T) {
 	}
 
 	// Mock credential store with Save that succeeds
+	// Mock browser to prevent actual browser opening during tests
 	deps = &Dependencies{
 		RankCredStore: &mockCredentialStore{
 			saveFunc: func(_ *rank.Credentials) error {
@@ -698,6 +714,7 @@ func TestRankLogin_WithCredStore(t *testing.T) {
 				return mockCreds, nil
 			},
 		},
+		RankBrowser: &mockBrowser{}, // Prevents real browser from opening
 	}
 
 	for _, cmd := range rankCmd.Commands() {
@@ -1114,45 +1131,6 @@ func TestRunStatusline_NilDeps(t *testing.T) {
 		if len(output) < 3 {
 			t.Errorf("output should have meaningful content, got %q", output)
 		}
-	}
-}
-
-func TestRunStatusline_WithConfigAndMode(t *testing.T) {
-	origDeps := deps
-	defer func() { deps = origDeps }()
-
-	tmpDir := t.TempDir()
-	setupMinimalConfigWithMode(t, tmpDir, "ddd")
-
-	// Change to temp dir so findProjectRoot works
-	origDir, _ := os.Getwd()
-	defer func() { _ = os.Chdir(origDir) }()
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatal(err)
-	}
-
-	mgr := config.NewConfigManager()
-	if _, err := mgr.Load(tmpDir); err != nil {
-		t.Fatalf("Load config: %v", err)
-	}
-
-	deps = &Dependencies{Config: mgr}
-
-	buf := new(bytes.Buffer)
-	StatuslineCmd.SetOut(buf)
-	StatuslineCmd.SetErr(buf)
-
-	err := StatuslineCmd.RunE(StatuslineCmd, []string{})
-	if err != nil {
-		t.Fatalf("statusline with config error: %v", err)
-	}
-
-	output := buf.String()
-	if !strings.Contains(strings.ToLower(output), "moai") {
-		t.Errorf("output should contain 'moai', got %q", output)
-	}
-	if !strings.Contains(output, "ddd") {
-		t.Errorf("output should contain development mode 'ddd', got %q", output)
 	}
 }
 

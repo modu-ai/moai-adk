@@ -187,6 +187,21 @@ func (m *mockCredentialStore) GetAPIKey() (string, error) {
 	return "", nil
 }
 
+// mockBrowser implements rank.BrowserOpener for testing.
+// It records the URL that would be opened without actually opening a browser.
+type mockBrowser struct {
+	openFunc func(url string) error
+	lastURL  string
+}
+
+func (m *mockBrowser) Open(url string) error {
+	m.lastURL = url
+	if m.openFunc != nil {
+		return m.openFunc(url)
+	}
+	return nil
+}
+
 // mockHandler implements hook.Handler for testing.
 type mockHandler struct {
 	eventType hook.EventType

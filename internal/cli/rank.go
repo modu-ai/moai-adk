@@ -48,9 +48,14 @@ func newRankLoginCmd() *cobra.Command {
 			}
 
 			// Create OAuth handler with browser opener.
+			// Use injected browser if available (for testing), otherwise use real browser.
+			browser := deps.RankBrowser
+			if browser == nil {
+				browser = rank.NewBrowser()
+			}
 			handler := rank.NewOAuthHandler(rank.OAuthConfig{
 				BaseURL: rank.DefaultBaseURL,
-				Browser: rank.NewBrowser(),
+				Browser: browser,
 			})
 
 			// Start OAuth flow.
