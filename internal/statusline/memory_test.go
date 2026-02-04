@@ -11,9 +11,9 @@ func TestCollectMemory(t *testing.T) {
 		wantAvail  bool
 	}{
 		{
-			name: "valid context window data",
+			name: "valid context window data (legacy fields)",
 			input: &StdinData{
-				ContextWindow: &ContextWindow{Used: 50000, Total: 200000},
+				ContextWindow: &ContextWindowInfo{Used: 50000, Total: 200000},
 			},
 			wantUsed:   50000,
 			wantBudget: 200000,
@@ -28,26 +28,54 @@ func TestCollectMemory(t *testing.T) {
 		},
 		{
 			name:       "nil context window",
-			input:      &StdinData{Model: "claude-sonnet-4"},
+			input:      &StdinData{Model: &ModelInfo{Name: "claude-sonnet-4"}},
 			wantUsed:   0,
 			wantBudget: 0,
 			wantAvail:  false,
 		},
 		{
-			name: "zero values",
+			name: "zero values - session start state",
 			input: &StdinData{
-				ContextWindow: &ContextWindow{Used: 0, Total: 0},
+				ContextWindow: &ContextWindowInfo{Used: 0, Total: 0},
 			},
 			wantUsed:   0,
-			wantBudget: 0,
+			wantBudget: 200000, // Default context window size
 			wantAvail:  true,
 		},
 		{
-			name: "full context window",
+			name: "full context window (legacy fields)",
 			input: &StdinData{
-				ContextWindow: &ContextWindow{Used: 200000, Total: 200000},
+				ContextWindow: &ContextWindowInfo{Used: 200000, Total: 200000},
 			},
 			wantUsed:   200000,
+			wantBudget: 200000,
+			wantAvail:  true,
+		},
+		{
+			name: "used_percentage takes priority",
+			input: &StdinData{
+				ContextWindow: &ContextWindowInfo{
+					UsedPercentage:    float64Ptr(25.0),
+					ContextWindowSize: 200000,
+				},
+			},
+			wantUsed:   50000, // 25% of 200000
+			wantBudget: 200000,
+			wantAvail:  true,
+		},
+		{
+			name: "current_usage calculation",
+			input: &StdinData{
+				ContextWindow: &ContextWindowInfo{
+					ContextWindowSize: 200000,
+					CurrentUsage: &CurrentUsageInfo{
+						InputTokens:         30000,
+						CacheCreationTokens: 10000,
+						CacheReadTokens:     10000,
+					},
+				},
+			},
+			wantUsed:   50000, // 30000 + 10000 + 10000
 			wantBudget: 200000,
 			wantAvail:  true,
 		},
@@ -125,4 +153,9 @@ func TestUsagePercent(t *testing.T) {
 			}
 		})
 	}
+}
+
+// float64Ptr is a helper to create a pointer to a float64 value.
+func float64Ptr(v float64) *float64 {
+	return &v
 }

@@ -48,4 +48,7 @@ func init() {
 
 	// Register worktree subcommand tree
 	rootCmd.AddCommand(worktree.WorktreeCmd)
+
+	// Register statusline command
+	rootCmd.AddCommand(StatuslineCmd)
 }

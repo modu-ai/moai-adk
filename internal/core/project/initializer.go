@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk-go/internal/manifest"
+	"github.com/modu-ai/moai-adk-go/internal/shell"
 	"github.com/modu-ai/moai-adk-go/internal/template"
 	"github.com/modu-ai/moai-adk-go/pkg/version"
 )
@@ -34,6 +35,7 @@ type InitOptions struct {
 	Platform        string   // Target platform ("darwin", "linux", "windows"). Defaults to runtime.GOOS.
 	NonInteractive  bool     // If true, skip wizard and use defaults/flags.
 	Force           bool     // If true, allow reinitializing an existing project.
+	SkipShellConfig bool     // If true, skip shell environment configuration.
 }
 
 // InitResult summarizes the outcome of project initialization.
@@ -43,6 +45,8 @@ type InitResult struct {
 	DevelopmentMode string   // Selected development methodology.
 	BackupPath      string   // Non-empty if --force was used and backup was created.
 	Warnings        []string // Non-fatal warnings during initialization.
+	ShellConfigured bool     // Whether shell environment was configured.
+	ShellConfigFile string   // Path to the shell config file that was modified.
 }
 
 // Initializer handles project scaffolding and setup.
@@ -170,6 +174,27 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 	if err := i.initManifest(opts.ProjectRoot, result); err != nil {
 		result.Warnings = append(result.Warnings, fmt.Sprintf("manifest initialization: %s", err))
 		i.logger.Warn("manifest initialization failed", "error", err)
+	}
+
+	// Step 7: Configure shell environment (REQ-SHELL-001)
+	// Adds CLAUDE_DISABLE_PATH_WARNING and PATH to appropriate shell config file
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if !opts.SkipShellConfig {
+		if shellResult, err := i.configureShellEnv(); err != nil {
+			result.Warnings = append(result.Warnings, fmt.Sprintf("shell configuration: %s", err))
+			i.logger.Warn("shell configuration failed", "error", err)
+		} else if shellResult != nil {
+			result.ShellConfigured = !shellResult.Skipped
+			result.ShellConfigFile = shellResult.ConfigFile
+			if !shellResult.Skipped {
+				i.logger.Info("shell environment configured",
+					"configFile", shellResult.ConfigFile,
+					"linesAdded", len(shellResult.LinesAdded),
+				)
+			}
+		}
 	}
 
 	i.logger.Info("project initialized",
@@ -494,4 +519,18 @@ func (i *projectInitializer) initManifest(root string, result *InitResult) error
 
 	result.CreatedFiles = append(result.CreatedFiles, ".moai/manifest.json")
 	return nil
+}
+
+// configureShellEnv sets up shell environment variables for Claude Code.
+// This adds CLAUDE_DISABLE_PATH_WARNING=1 and PATH entry to the appropriate
+// shell configuration file (.zshenv, .profile, or config.fish).
+func (i *projectInitializer) configureShellEnv() (*shell.ConfigResult, error) {
+	configurator := shell.NewEnvConfigurator(i.logger)
+
+	return configurator.Configure(shell.ConfigOptions{
+		AddClaudeWarningDisable: true,
+		AddLocalBinPath:         true,
+		AddGoBinPath:            true,
+		PreferLoginShell:        true,
+	})
 }

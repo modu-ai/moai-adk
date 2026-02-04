@@ -72,9 +72,11 @@ func TestBuilder_Build_FullData(t *testing.T) {
 	})
 
 	input := &StdinData{
-		Model:         "claude-sonnet-4",
+		Model:         &ModelInfo{Name: "claude-sonnet-4-20250514"},
 		Cost:          &CostData{TotalUSD: 0.05},
-		ContextWindow: &ContextWindow{Used: 50000, Total: 200000},
+		ContextWindow: &ContextWindowInfo{Used: 50000, Total: 200000},
+		CWD:           "/Users/test/my-project",
+		OutputStyle:   &OutputStyleInfo{Name: "Mr.Alfred"},
 	}
 
 	got, err := builder.Build(context.Background(), makeStdinJSON(input))
@@ -82,15 +84,30 @@ func TestBuilder_Build_FullData(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Default mode: git + context + cost
-	if !strings.Contains(got, "main") {
-		t.Errorf("should contain git branch, got %q", got)
+	// Default mode: model + context graph + output style + git status + version + branch
+	if !strings.Contains(got, "🤖 Sonnet 4") {
+		t.Errorf("should contain model name with emoji, got %q", got)
 	}
-	if !strings.Contains(got, "Ctx: 25%") {
+	if !strings.Contains(got, "🔋 [") {
+		t.Errorf("should contain context bar graph, got %q", got)
+	}
+	if !strings.Contains(got, "25%") {
 		t.Errorf("should contain context percentage, got %q", got)
 	}
-	if !strings.Contains(got, "$0.05") {
-		t.Errorf("should contain cost, got %q", got)
+	if !strings.Contains(got, "💬 Mr.Alfred") {
+		t.Errorf("should contain output style, got %q", got)
+	}
+	if !strings.Contains(got, "📁 my-project") {
+		t.Errorf("should contain directory, got %q", got)
+	}
+	if !strings.Contains(got, "📊 +3 M2") {
+		t.Errorf("should contain git status, got %q", got)
+	}
+	if !strings.Contains(got, "🗿 v1.2.0") {
+		t.Errorf("should contain MoAI version with 🗿 emoji, got %q", got)
+	}
+	if !strings.Contains(got, "🔀 main") {
+		t.Errorf("should contain branch, got %q", got)
 	}
 }
 
@@ -156,7 +173,8 @@ func TestBuilder_Build_GitProviderFailure(t *testing.T) {
 	})
 
 	input := &StdinData{
-		ContextWindow: &ContextWindow{Used: 50000, Total: 200000},
+		Model:         &ModelInfo{Name: "claude-opus-4-5-20250514"},
+		ContextWindow: &ContextWindowInfo{Used: 50000, Total: 200000},
 		Cost:          &CostData{TotalUSD: 0.05},
 	}
 
@@ -165,12 +183,12 @@ func TestBuilder_Build_GitProviderFailure(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Should still have context and cost, without git
-	if !strings.Contains(got, "Ctx: 25%") {
-		t.Errorf("should contain context despite git failure, got %q", got)
+	// Should still have model and context, without git
+	if !strings.Contains(got, "🤖 Opus 4.5") {
+		t.Errorf("should contain model despite git failure, got %q", got)
 	}
-	if !strings.Contains(got, "$0.05") {
-		t.Errorf("should contain cost despite git failure, got %q", got)
+	if !strings.Contains(got, "🔋 [") {
+		t.Errorf("should contain context despite git failure, got %q", got)
 	}
 }
 
@@ -207,8 +225,8 @@ func TestBuilder_SetMode(t *testing.T) {
 	})
 
 	input := &StdinData{
-		Model:         "claude-sonnet-4",
-		ContextWindow: &ContextWindow{Used: 50000, Total: 200000},
+		Model:         &ModelInfo{Name: "claude-sonnet-4-20250514"},
+		ContextWindow: &ContextWindowInfo{Used: 50000, Total: 200000},
 	}
 
 	// Test in default mode
@@ -224,15 +242,20 @@ func TestBuilder_SetMode(t *testing.T) {
 		t.Fatalf("minimal mode build error: %v", err)
 	}
 
-	// Minimal should be different (no git info)
+	// Minimal should be different (no git info, no directory)
 	if gotDefault == gotMinimal {
 		t.Errorf("default and minimal output should differ:\ndefault: %q\nminimal: %q",
 			gotDefault, gotMinimal)
 	}
 
 	// Minimal should have model name
-	if !strings.Contains(gotMinimal, "sonnet-4") {
+	if !strings.Contains(gotMinimal, "Sonnet 4") {
 		t.Errorf("minimal mode should contain model name, got %q", gotMinimal)
+	}
+
+	// Minimal should have context bar graph
+	if !strings.Contains(gotMinimal, "🔋 [") {
+		t.Errorf("minimal mode should contain context bar graph, got %q", gotMinimal)
 	}
 }
 
@@ -246,7 +269,8 @@ func TestBuilder_Build_NoNewline(t *testing.T) {
 	})
 
 	input := &StdinData{
-		ContextWindow: &ContextWindow{Used: 50000, Total: 200000},
+		Model:         &ModelInfo{Name: "claude-haiku-3-5-20241022"},
+		ContextWindow: &ContextWindowInfo{Used: 50000, Total: 200000},
 	}
 
 	got, err := builder.Build(context.Background(), makeStdinJSON(input))
@@ -270,7 +294,8 @@ func TestBuilder_Build_ContextCancellation(t *testing.T) {
 	})
 
 	input := &StdinData{
-		ContextWindow: &ContextWindow{Used: 50000, Total: 200000},
+		Model:         &ModelInfo{Name: "claude-sonnet-4"},
+		ContextWindow: &ContextWindowInfo{Used: 50000, Total: 200000},
 	}
 
 	got, err := builder.Build(ctx, makeStdinJSON(input))
@@ -291,7 +316,7 @@ func TestBuilder_Build_MissingContextWindow(t *testing.T) {
 	})
 
 	input := &StdinData{
-		Model: "claude-sonnet-4",
+		Model: &ModelInfo{Name: "claude-sonnet-4-20250514"},
 		Cost:  &CostData{TotalUSD: 0.05},
 	}
 
@@ -301,7 +326,7 @@ func TestBuilder_Build_MissingContextWindow(t *testing.T) {
 	}
 
 	// Should not panic and should not contain context info
-	if strings.Contains(got, "Ctx:") {
+	if strings.Contains(got, "🔋") {
 		t.Errorf("should not contain context when missing, got %q", got)
 	}
 }
@@ -313,8 +338,8 @@ func TestBuilder_Build_MissingCost(t *testing.T) {
 	})
 
 	input := &StdinData{
-		Model:         "claude-sonnet-4",
-		ContextWindow: &ContextWindow{Used: 50000, Total: 200000},
+		Model:         &ModelInfo{Name: "claude-sonnet-4-20250514"},
+		ContextWindow: &ContextWindowInfo{Used: 50000, Total: 200000},
 	}
 
 	got, err := builder.Build(context.Background(), makeStdinJSON(input))
@@ -322,8 +347,11 @@ func TestBuilder_Build_MissingCost(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Should still have context
-	if !strings.Contains(got, "Ctx: 25%") {
+	// Should still have model and context
+	if !strings.Contains(got, "Sonnet 4") {
+		t.Errorf("should contain model, got %q", got)
+	}
+	if !strings.Contains(got, "🔋 [") {
 		t.Errorf("should contain context, got %q", got)
 	}
 }

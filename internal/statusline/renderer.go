@@ -8,20 +8,14 @@ import (
 )
 
 // Renderer formats StatusData into a single-line statusline string.
-// It supports multiple display modes and color themes, with NO_COLOR fallback.
+// Matches Python output format with emojis and context bar graph.
 type Renderer struct {
-	separator   string
-	noColor     bool
-	useNerd     bool
-	okStyle     lipgloss.Style
-	warnStyle   lipgloss.Style
-	errStyle    lipgloss.Style
-	mutedStyle  lipgloss.Style
-	branchStyle lipgloss.Style
+	separator  string
+	noColor    bool
+	mutedStyle lipgloss.Style
 }
 
 // NewRenderer creates a Renderer with the specified theme and color mode.
-// Supported theme names: "default", "minimal", "nerd".
 // When noColor is true, all styling is disabled for plain text output.
 func NewRenderer(themeName string, noColor bool) *Renderer {
 	r := &Renderer{
@@ -30,41 +24,18 @@ func NewRenderer(themeName string, noColor bool) *Renderer {
 	}
 
 	if noColor {
-		r.okStyle = lipgloss.NewStyle()
-		r.warnStyle = lipgloss.NewStyle()
-		r.errStyle = lipgloss.NewStyle()
 		r.mutedStyle = lipgloss.NewStyle()
-		r.branchStyle = lipgloss.NewStyle()
 		return r
 	}
 
-	switch themeName {
-	case "nerd":
-		r.useNerd = true
-		r.okStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#10B981"))
-		r.warnStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B"))
-		r.errStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#EF4444"))
-		r.mutedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280"))
-		r.branchStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#7C3AED")).Bold(true)
-	case "minimal":
-		r.okStyle = lipgloss.NewStyle()
-		r.warnStyle = lipgloss.NewStyle()
-		r.errStyle = lipgloss.NewStyle()
-		r.mutedStyle = lipgloss.NewStyle()
-		r.branchStyle = lipgloss.NewStyle()
-	default: // "default"
-		r.okStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#10B981"))
-		r.warnStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B"))
-		r.errStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#EF4444"))
-		r.mutedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280"))
-		r.branchStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#7C3AED")).Bold(true)
-	}
+	// All themes use the same muted style for consistency
+	r.mutedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280"))
 
 	return r
 }
 
 // Render formats the StatusData into a single-line string based on the mode.
-// Empty sections are automatically filtered out.
+// Format: 🤖 Model | 🔋/🪫 Context Graph | 💬 Style | 📁 Directory | 📊 Changes | 🔅 Claude Code Ver | 🗿 MoAI Ver | 🔀 Branch
 func (r *Renderer) Render(data *StatusData, mode StatuslineMode) string {
 	if data == nil {
 		return "MoAI"
@@ -77,8 +48,8 @@ func (r *Renderer) Render(data *StatusData, mode StatuslineMode) string {
 		sections = r.renderMinimal(data)
 	case ModeVerbose:
 		sections = r.renderVerbose(data)
-	default: // ModeDefault
-		sections = r.renderDefault(data)
+	default: // ModeDefault (compact)
+		sections = r.renderCompact(data)
 	}
 
 	// Filter empty sections
@@ -96,159 +67,166 @@ func (r *Renderer) Render(data *StatusData, mode StatuslineMode) string {
 	return strings.Join(filtered, r.separator)
 }
 
-// renderMinimal returns sections for minimal mode: model + context percentage.
+// renderCompact returns sections for compact mode with full emoji format.
+// Format: 🤖 Model | 🔋/🪫 Context Graph | 💬 Style | 📁 Directory | 📊 Changes | 🔅 Claude Code Ver | 🗿 MoAI Ver | 🔀 Branch
+func (r *Renderer) renderCompact(data *StatusData) []string {
+	var sections []string
+
+	// 1. Model with emoji
+	if data.Metrics.Available && data.Metrics.Model != "" {
+		sections = append(sections, fmt.Sprintf("🤖 %s", data.Metrics.Model))
+	}
+
+	// 2. Context window with battery emoji and bar graph
+	if data.Memory.Available {
+		if graph := r.renderContextGraph(data); graph != "" {
+			sections = append(sections, graph)
+		}
+	}
+
+	// 3. Output style with emoji
+	if data.OutputStyle != "" {
+		sections = append(sections, fmt.Sprintf("💬 %s", data.OutputStyle))
+	}
+
+	// 4. Directory with emoji
+	if data.Directory != "" {
+		sections = append(sections, fmt.Sprintf("📁 %s", data.Directory))
+	}
+
+	// 5. Git status with emoji
+	if git := r.renderGitStatus(data); git != "" {
+		sections = append(sections, fmt.Sprintf("📊 %s", git))
+	}
+
+	// 6. Claude Code version with emoji (from JSON input)
+	if data.ClaudeCodeVersion != "" {
+		sections = append(sections, fmt.Sprintf("🔅 v%s", data.ClaudeCodeVersion))
+	}
+
+	// 7. MoAI-ADK version with emoji (from config)
+	if data.Version.Available && data.Version.Current != "" {
+		sections = append(sections, fmt.Sprintf("🗿 v%s", data.Version.Current))
+	}
+
+	// 8. Branch with emoji
+	if data.Git.Available && data.Git.Branch != "" {
+		sections = append(sections, fmt.Sprintf("🔀 %s", data.Git.Branch))
+	}
+
+	return sections
+}
+
+// renderMinimal returns sections for minimal mode: model + context graph only.
+// Format: 🤖 Model | 🔋/🪫 Context Graph
 func (r *Renderer) renderMinimal(data *StatusData) []string {
 	var sections []string
 
 	if data.Metrics.Available && data.Metrics.Model != "" {
-		sections = append(sections, data.Metrics.Model)
+		sections = append(sections, fmt.Sprintf("🤖 %s", data.Metrics.Model))
 	}
 
 	if data.Memory.Available {
-		sections = append(sections, r.renderContextBrief(data))
+		if graph := r.renderContextGraph(data); graph != "" {
+			sections = append(sections, graph)
+		}
+	}
+
+	// Add git status if it fits
+	if git := r.renderGitStatus(data); git != "" {
+		statusLabel := fmt.Sprintf("📊 %s", git)
+		// Only add if total length would be under 40 chars
+		currentLen := len(strings.Join(sections, r.separator))
+		if currentLen+len(statusLabel)+len(r.separator) <= 40 {
+			sections = append(sections, statusLabel)
+		}
 	}
 
 	return sections
 }
 
-// renderDefault returns sections for default mode: git + context + cost.
-func (r *Renderer) renderDefault(data *StatusData) []string {
-	var sections []string
-
-	if git := r.renderGitBrief(data); git != "" {
-		sections = append(sections, git)
-	}
-
-	if data.Memory.Available {
-		sections = append(sections, r.renderContextBrief(data))
-	}
-
-	if data.Metrics.Available && data.Metrics.CostUSD > 0 {
-		sections = append(sections, formatCost(data.Metrics.CostUSD))
-	}
-
-	return sections
-}
-
-// renderVerbose returns sections for verbose mode: all data with full detail.
+// renderVerbose returns sections for verbose mode: same as compact.
+// Python uses the same format for both compact and extended.
 func (r *Renderer) renderVerbose(data *StatusData) []string {
-	var sections []string
-
-	if git := r.renderGitVerbose(data); git != "" {
-		sections = append(sections, git)
-	}
-
-	if data.Memory.Available {
-		sections = append(sections, r.renderContextVerbose(data))
-	}
-
-	if data.Metrics.Available {
-		sections = append(sections, formatCost(data.Metrics.CostUSD))
-	}
-
-	if ver := r.renderVersion(data); ver != "" {
-		sections = append(sections, ver)
-	}
-
-	return sections
+	return r.renderCompact(data)
 }
 
-// renderGitBrief renders git info for default mode: "main +3 ~2"
-func (r *Renderer) renderGitBrief(data *StatusData) string {
-	if !data.Git.Available || data.Git.Branch == "" {
-		return ""
-	}
-
-	parts := []string{data.Git.Branch}
-
-	if data.Git.Staged > 0 {
-		parts = append(parts, fmt.Sprintf("+%d", data.Git.Staged))
-	}
-	if data.Git.Modified > 0 {
-		parts = append(parts, fmt.Sprintf("~%d", data.Git.Modified))
-	}
-
-	return strings.Join(parts, " ")
-}
-
-// renderGitVerbose renders git info for verbose mode: "main +3 ~2 ^1 v0"
-func (r *Renderer) renderGitVerbose(data *StatusData) string {
-	if !data.Git.Available || data.Git.Branch == "" {
-		return ""
-	}
-
-	parts := []string{data.Git.Branch}
-
-	if data.Git.Staged > 0 {
-		parts = append(parts, fmt.Sprintf("+%d", data.Git.Staged))
-	}
-	if data.Git.Modified > 0 {
-		parts = append(parts, fmt.Sprintf("~%d", data.Git.Modified))
-	}
-
-	parts = append(parts, fmt.Sprintf("^%d", data.Git.Ahead))
-	parts = append(parts, fmt.Sprintf("v%d", data.Git.Behind))
-
-	return strings.Join(parts, " ")
-}
-
-// renderContextBrief renders context usage for default/minimal: "Ctx: 25%"
-func (r *Renderer) renderContextBrief(data *StatusData) string {
+// renderContextGraph renders the context window usage as a bar graph.
+// Format: 🔋 [████░░░░░░░░] 41% or 🪫 [██████████░] 85%
+// Battery icon: 🔋 (<=70% used), 🪫 (>70% used)
+func (r *Renderer) renderContextGraph(data *StatusData) string {
 	if !data.Memory.Available {
 		return ""
 	}
 
-	pct := usagePercent(data.Memory.TokensUsed, data.Memory.TokenBudget)
-	text := fmt.Sprintf("Ctx: %d%%", pct)
+	used := data.Memory.TokensUsed
+	total := data.Memory.TokenBudget
 
-	return r.applyContextStyle(text, data.Memory.TokensUsed, data.Memory.TokenBudget)
-}
-
-// renderContextVerbose renders context for verbose: "Ctx: 50K/200K (25%)"
-func (r *Renderer) renderContextVerbose(data *StatusData) string {
-	if !data.Memory.Available {
+	if total <= 0 {
 		return ""
 	}
 
-	pct := usagePercent(data.Memory.TokensUsed, data.Memory.TokenBudget)
-	text := fmt.Sprintf("Ctx: %s/%s (%d%%)",
-		formatTokens(data.Memory.TokensUsed),
-		formatTokens(data.Memory.TokenBudget),
-		pct,
-	)
+	pct := usagePercent(used, total)
 
-	return r.applyContextStyle(text, data.Memory.TokensUsed, data.Memory.TokenBudget)
+	// Determine battery icon based on usage
+	// 🔋 (70% or less used, 30%+ remaining) | 🪫 (over 70% used, less than 30% remaining)
+	icon := "🔋"
+	if pct > 70 {
+		icon = "🪫"
+	}
+
+	// Build bar graph with 12 character width
+	bar := r.buildBar(pct, 12)
+
+	return fmt.Sprintf("%s [%s] %d%%", icon, bar, pct)
 }
 
-// renderVersion renders version info for verbose mode.
-func (r *Renderer) renderVersion(data *StatusData) string {
-	if !data.Version.Available || data.Version.Current == "" {
+// buildBar constructs a horizontal bar graph using Unicode block characters.
+// Width is total bar width in characters.
+// Uses full block (█) for used portion and light block (░) for remaining.
+func (r *Renderer) buildBar(pct int, width int) string {
+	if width <= 0 {
 		return ""
 	}
 
-	text := "v" + data.Version.Current
-	if data.Version.UpdateAvailable {
-		text += " (update!)"
+	// Calculate filled blocks based on percentage
+	filled := (pct * width) / 100
+	if filled > width {
+		filled = width
 	}
 
-	return text
+	empty := width - filled
+
+	// Build bar using Unicode block characters
+	filledChar := "█" // Full block for used
+	emptyChar := "░"  // Light block for remaining
+
+	return strings.Repeat(filledChar, filled) + strings.Repeat(emptyChar, empty)
 }
 
-// applyContextStyle applies color based on context usage level.
-// In NoColor mode, returns the text unmodified.
-func (r *Renderer) applyContextStyle(text string, used, total int) string {
-	if r.noColor {
-		return text
+// renderGitStatus renders git status in Python format.
+// Format: +{staged} M{modified} ?{untracked}
+// Example: "+0 M1066 ?2" (0 staged, 1066 modified, 2 untracked)
+func (r *Renderer) renderGitStatus(data *StatusData) string {
+	if !data.Git.Available {
+		return ""
 	}
 
-	level := contextUsageLevel(used, total)
-
-	switch level {
-	case levelError:
-		return r.errStyle.Render(text)
-	case levelWarn:
-		return r.warnStyle.Render(text)
-	default:
-		return r.okStyle.Render(text)
+	// Only show git status if there are changes
+	if data.Git.Staged == 0 && data.Git.Modified == 0 && data.Git.Untracked == 0 {
+		return ""
 	}
+
+	var parts []string
+
+	// Staged files
+	parts = append(parts, fmt.Sprintf("+%d", data.Git.Staged))
+
+	// Modified files (uses M instead of ~)
+	parts = append(parts, fmt.Sprintf("M%d", data.Git.Modified))
+
+	// Untracked files
+	parts = append(parts, fmt.Sprintf("?%d", data.Git.Untracked))
+
+	return strings.Join(parts, " ")
 }

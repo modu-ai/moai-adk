@@ -54,6 +54,12 @@ func InitDependencies() {
 
 	// Hook registry requires a ConfigProvider; use ConfigManager
 	deps.HookRegistry = hook.NewRegistry(deps.Config)
+
+	// Register default hook handlers
+	deps.HookRegistry.Register(hook.NewSessionStartHandler(deps.Config))
+	deps.HookRegistry.Register(hook.NewPreToolHandler(deps.Config, hook.DefaultSecurityPolicy()))
+	deps.HookRegistry.Register(hook.NewPostToolHandler())
+	deps.HookRegistry.Register(hook.NewCompactHandler())
 }
 
 // GetDeps returns the current Dependencies instance.

@@ -13,112 +13,91 @@ func newTestRenderer() *Renderer {
 func TestRender_MinimalMode(t *testing.T) {
 	r := newTestRenderer()
 	data := &StatusData{
-		Metrics: MetricsData{Model: "sonnet-4", Available: true},
+		Metrics: MetricsData{Model: "Opus 4.5", Available: true},
 		Memory:  MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
 	}
 
 	got := r.Render(data, ModeMinimal)
 
-	if !strings.Contains(got, "sonnet-4") {
-		t.Errorf("minimal mode should contain model name, got %q", got)
+	if !strings.Contains(got, "🤖 Opus 4.5") {
+		t.Errorf("minimal mode should contain model name with emoji, got %q", got)
 	}
-	if !strings.Contains(got, "Ctx: 25%") {
+	if !strings.Contains(got, "🔋") {
+		t.Errorf("minimal mode should contain battery emoji, got %q", got)
+	}
+	if !strings.Contains(got, "25%") {
 		t.Errorf("minimal mode should contain context percentage, got %q", got)
-	}
-	// Minimal should NOT contain git or cost info
-	if strings.Contains(got, "main") {
-		t.Errorf("minimal mode should not contain git info, got %q", got)
-	}
-	if strings.Contains(got, "$") {
-		t.Errorf("minimal mode should not contain cost info, got %q", got)
 	}
 }
 
-func TestRender_DefaultMode(t *testing.T) {
+func TestRender_CompactMode(t *testing.T) {
 	r := newTestRenderer()
 	data := &StatusData{
-		Git:     GitStatusData{Branch: "main", Modified: 2, Staged: 3, Available: true},
-		Memory:  MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
-		Metrics: MetricsData{Model: "sonnet-4", CostUSD: 0.05, Available: true},
+		Git:         GitStatusData{Branch: "main", Modified: 2, Staged: 3, Untracked: 1, Available: true},
+		Memory:      MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
+		Metrics:     MetricsData{Model: "Opus 4.5", Available: true},
+		Directory:   "moai-adk-go",
+		OutputStyle: "Mr.Alfred",
+		Version:     VersionData{Current: "1.14.5", Available: true},
 	}
 
 	got := r.Render(data, ModeDefault)
 
-	if !strings.Contains(got, "main") {
-		t.Errorf("default mode should contain branch name, got %q", got)
+	// Check all sections are present with emojis
+	if !strings.Contains(got, "🤖 Opus 4.5") {
+		t.Errorf("compact mode should contain model with emoji, got %q", got)
+	}
+	if !strings.Contains(got, "🔋") {
+		t.Errorf("compact mode should contain battery emoji, got %q", got)
+	}
+	if !strings.Contains(got, "💬 Mr.Alfred") {
+		t.Errorf("compact mode should contain output style with emoji, got %q", got)
+	}
+	if !strings.Contains(got, "📁 moai-adk-go") {
+		t.Errorf("compact mode should contain directory with emoji, got %q", got)
+	}
+	if !strings.Contains(got, "📊") {
+		t.Errorf("compact mode should contain git status with emoji, got %q", got)
 	}
 	if !strings.Contains(got, "+3") {
-		t.Errorf("default mode should contain staged count, got %q", got)
+		t.Errorf("compact mode should contain staged count, got %q", got)
 	}
-	if !strings.Contains(got, "~2") {
-		t.Errorf("default mode should contain modified count, got %q", got)
+	if !strings.Contains(got, "M2") {
+		t.Errorf("compact mode should contain modified count with 'M', got %q", got)
 	}
-	if !strings.Contains(got, "Ctx: 25%") {
-		t.Errorf("default mode should contain context percentage, got %q", got)
+	if !strings.Contains(got, "?1") {
+		t.Errorf("compact mode should contain untracked count, got %q", got)
 	}
-	if !strings.Contains(got, "$0.05") {
-		t.Errorf("default mode should contain cost, got %q", got)
+	if !strings.Contains(got, "🗿 v1.14.5") {
+		t.Errorf("compact mode should contain MoAI version with 🗿 emoji, got %q", got)
+	}
+	if !strings.Contains(got, "🔀 main") {
+		t.Errorf("compact mode should contain branch with emoji, got %q", got)
 	}
 }
 
 func TestRender_VerboseMode(t *testing.T) {
 	r := newTestRenderer()
 	data := &StatusData{
-		Git: GitStatusData{
-			Branch: "main", Staged: 3, Modified: 2,
-			Ahead: 1, Behind: 0, Available: true,
-		},
-		Memory:  MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
-		Metrics: MetricsData{Model: "sonnet-4", CostUSD: 0.05, Available: true},
-		Version: VersionData{Current: "1.2.0", Latest: "1.3.0", UpdateAvailable: true, Available: true},
+		Git:         GitStatusData{Branch: "main", Staged: 3, Modified: 2, Untracked: 1, Available: true},
+		Memory:      MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
+		Metrics:     MetricsData{Model: "Sonnet 4", Available: true},
+		Directory:   "my-project",
+		OutputStyle: "Yoda",
+		Version:     VersionData{Current: "1.2.0", Available: true},
 	}
 
 	got := r.Render(data, ModeVerbose)
 
-	if !strings.Contains(got, "main") {
+	// Verbose mode has same format as compact
+	if !strings.Contains(got, "🤖 Sonnet 4") {
+		t.Errorf("verbose mode should contain model, got %q", got)
+	}
+	if !strings.Contains(got, "📊 +3 M2 ?1") {
+		t.Errorf("verbose mode should contain git status, got %q", got)
+	}
+	if !strings.Contains(got, "🔀 main") {
 		t.Errorf("verbose mode should contain branch, got %q", got)
-	}
-	if !strings.Contains(got, "+3") {
-		t.Errorf("verbose mode should contain staged count, got %q", got)
-	}
-	if !strings.Contains(got, "~2") {
-		t.Errorf("verbose mode should contain modified count, got %q", got)
-	}
-	if !strings.Contains(got, "^1") {
-		t.Errorf("verbose mode should contain ahead count, got %q", got)
-	}
-	if !strings.Contains(got, "v0") {
-		t.Errorf("verbose mode should contain behind count, got %q", got)
-	}
-	if !strings.Contains(got, "50K/200K") {
-		t.Errorf("verbose mode should contain token counts, got %q", got)
-	}
-	if !strings.Contains(got, "(25%)") {
-		t.Errorf("verbose mode should contain percentage, got %q", got)
-	}
-	if !strings.Contains(got, "$0.05") {
-		t.Errorf("verbose mode should contain cost, got %q", got)
-	}
-	if !strings.Contains(got, "v1.2.0") {
-		t.Errorf("verbose mode should contain version, got %q", got)
-	}
-	if !strings.Contains(got, "(update!)") {
-		t.Errorf("verbose mode should contain update notification, got %q", got)
-	}
-}
-
-func TestRender_NoUpdateNotification(t *testing.T) {
-	r := newTestRenderer()
-	data := &StatusData{
-		Version: VersionData{Current: "1.3.0", Latest: "1.3.0", UpdateAvailable: false, Available: true},
-		Memory:  MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
-		Metrics: MetricsData{CostUSD: 0.05, Available: true},
-	}
-
-	got := r.Render(data, ModeVerbose)
-
-	if strings.Contains(got, "(update!)") {
-		t.Errorf("should not show update notification when up to date, got %q", got)
 	}
 }
 
@@ -127,36 +106,42 @@ func TestRender_EmptyGit(t *testing.T) {
 	data := &StatusData{
 		Git:     GitStatusData{Available: false},
 		Memory:  MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
-		Metrics: MetricsData{CostUSD: 0.05, Available: true},
+		Metrics: MetricsData{Model: "Haiku 3.5", Available: true},
 	}
 
 	got := r.Render(data, ModeDefault)
 
 	// Should not contain any git info
-	if strings.Contains(got, "main") {
-		t.Errorf("should not contain git branch when unavailable, got %q", got)
+	if strings.Contains(got, "📊") {
+		t.Errorf("should not contain git status emoji when unavailable, got %q", got)
 	}
-	// But should still have context and cost
-	if !strings.Contains(got, "Ctx:") {
-		t.Errorf("should still contain context info, got %q", got)
+	if strings.Contains(got, "🔀") {
+		t.Errorf("should not contain branch emoji when unavailable, got %q", got)
+	}
+	// But should still have model and context
+	if !strings.Contains(got, "🤖") {
+		t.Errorf("should still contain model emoji, got %q", got)
+	}
+	if !strings.Contains(got, "🔋") {
+		t.Errorf("should still contain context, got %q", got)
 	}
 }
 
 func TestRender_EmptyMemory(t *testing.T) {
 	r := newTestRenderer()
 	data := &StatusData{
-		Git:     GitStatusData{Branch: "main", Available: true},
+		Git:     GitStatusData{Branch: "main", Modified: 2, Available: true},
 		Memory:  MemoryData{Available: false},
-		Metrics: MetricsData{CostUSD: 0.05, Available: true},
+		Metrics: MetricsData{Model: "Sonnet 3.5", Available: true},
 	}
 
 	got := r.Render(data, ModeDefault)
 
-	if !strings.Contains(got, "main") {
+	if !strings.Contains(got, "🔀 main") {
 		t.Errorf("should contain git info, got %q", got)
 	}
-	if strings.Contains(got, "Ctx:") {
-		t.Errorf("should not contain context when unavailable, got %q", got)
+	if strings.Contains(got, "🔋") {
+		t.Errorf("should not contain battery emoji when memory unavailable, got %q", got)
 	}
 }
 
@@ -177,36 +162,21 @@ func TestRender_AllEmpty(t *testing.T) {
 	}
 }
 
-func TestRender_ZeroCostNotShownInDefault(t *testing.T) {
-	r := newTestRenderer()
-	data := &StatusData{
-		Git:     GitStatusData{Branch: "main", Available: true},
-		Memory:  MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
-		Metrics: MetricsData{CostUSD: 0, Available: true},
-	}
-
-	got := r.Render(data, ModeDefault)
-
-	if strings.Contains(got, "$0.00") {
-		t.Errorf("default mode should not show zero cost, got %q", got)
-	}
-}
-
 func TestRender_GitOnlyBranch(t *testing.T) {
 	r := newTestRenderer()
 	data := &StatusData{
-		Git:    GitStatusData{Branch: "main", Available: true},
+		Git:    GitStatusData{Branch: "main", Staged: 0, Modified: 0, Untracked: 0, Available: true},
 		Memory: MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
 	}
 
 	got := r.Render(data, ModeDefault)
 
-	if !strings.Contains(got, "main") {
+	if !strings.Contains(got, "🔀 main") {
 		t.Errorf("should show branch name, got %q", got)
 	}
-	// Should not have staged/modified indicators with zero counts
-	if strings.Contains(got, "+0") || strings.Contains(got, "~0") {
-		t.Errorf("should not show zero counts, got %q", got)
+	// Should not have git status emoji when all counts are zero
+	if strings.Contains(got, "📊") {
+		t.Errorf("should not show git status when all counts are zero, got %q", got)
 	}
 }
 
@@ -215,7 +185,7 @@ func TestRender_Separator(t *testing.T) {
 	data := &StatusData{
 		Git:     GitStatusData{Branch: "main", Modified: 2, Available: true},
 		Memory:  MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
-		Metrics: MetricsData{CostUSD: 0.05, Available: true},
+		Metrics: MetricsData{Model: "Opus 4.5", Available: true},
 	}
 
 	got := r.Render(data, ModeDefault)
@@ -230,7 +200,7 @@ func TestRender_NoNewline(t *testing.T) {
 	data := &StatusData{
 		Git:     GitStatusData{Branch: "main", Available: true},
 		Memory:  MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
-		Metrics: MetricsData{CostUSD: 0.05, Available: true},
+		Metrics: MetricsData{Model: "Sonnet 4", Available: true},
 	}
 
 	got := r.Render(data, ModeDefault)
@@ -261,92 +231,100 @@ func TestNewRenderer_ThemeVariants(t *testing.T) {
 			if r.noColor != tt.noColor {
 				t.Errorf("noColor = %v, want %v", r.noColor, tt.noColor)
 			}
-			if tt.theme == "nerd" && !r.useNerd {
-				t.Error("nerd theme should set useNerd=true")
-			}
 		})
 	}
 }
 
-func TestRender_ContextColorLogic(t *testing.T) {
-	// Test that the correct style level is chosen based on usage
+func TestRender_ContextBarGraph(t *testing.T) {
+	r := newTestRenderer()
+	data := &StatusData{
+		Memory:  MemoryData{TokensUsed: 82000, TokenBudget: 200000, Available: true},
+		Metrics: MetricsData{Model: "Opus 4.5", Available: true},
+	}
+
+	got := r.Render(data, ModeDefault)
+
+	// Should contain bar graph with brackets
+	if !strings.Contains(got, "[") || !strings.Contains(got, "]") {
+		t.Errorf("should contain bar graph with brackets, got %q", got)
+	}
+	// Should contain percentage
+	if !strings.Contains(got, "41%") {
+		t.Errorf("should contain percentage, got %q", got)
+	}
+	// Should use 🔋 emoji (<=70% used)
+	if !strings.Contains(got, "🔋") {
+		t.Errorf("should use battery emoji for <=70%% usage, got %q", got)
+	}
+}
+
+func TestRender_HighContextUsage(t *testing.T) {
+	r := newTestRenderer()
+	data := &StatusData{
+		Memory:  MemoryData{TokensUsed: 180000, TokenBudget: 200000, Available: true},
+		Metrics: MetricsData{Model: "Sonnet 4", Available: true},
+	}
+
+	got := r.Render(data, ModeDefault)
+
+	// Should use 🪫 emoji (>70% used)
+	if !strings.Contains(got, "🪫") {
+		t.Errorf("should use empty battery emoji for >70%% usage, got %q", got)
+	}
+	if !strings.Contains(got, "90%") {
+		t.Errorf("should show 90%%, got %q", got)
+	}
+}
+
+func TestRender_ModelShortening(t *testing.T) {
 	tests := []struct {
-		name  string
-		used  int
-		total int
-		want  contextLevel
+		name     string
+		input    string
+		expected string
 	}{
-		{"green - 25%", 50000, 200000, levelOk},
-		{"yellow - 65%", 130000, 200000, levelWarn},
-		{"red - 90%", 180000, 200000, levelError},
+		{"Opus 4.5", "claude-opus-4-5-20250514", "Opus 4.5"},
+		{"Sonnet 4", "claude-sonnet-4-20250514", "Sonnet 4"},
+		{"Sonnet 3.5", "claude-3-5-sonnet-20241022", "Sonnet 3.5"},
+		{"Haiku 3.5", "claude-3-5-haiku-20241022", "Haiku 3.5"},
+		{"Non-Claude", "gpt-4", "gpt-4"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := contextUsageLevel(tt.used, tt.total)
-			if got != tt.want {
-				t.Errorf("contextUsageLevel(%d, %d) = %d, want %d",
-					tt.used, tt.total, got, tt.want)
+			got := ShortenModelName(tt.input)
+			if got != tt.expected {
+				t.Errorf("ShortenModelName(%q) = %q, want %q", tt.input, got, tt.expected)
 			}
 		})
 	}
 }
 
-func TestRender_ApplyContextStyle_WithColor(t *testing.T) {
-	// Test that color styles are applied when NoColor=false.
-	// In non-TTY test environments lipgloss may strip ANSI codes,
-	// so we verify the text content is preserved regardless.
-	r := NewRenderer("default", false)
-
-	tests := []struct {
-		name  string
-		used  int
-		total int
-	}{
-		{"green style", 50000, 200000},
-		{"yellow style", 130000, 200000},
-		{"red style", 180000, 200000},
+func TestRender_WithOutputStyle(t *testing.T) {
+	r := newTestRenderer()
+	data := &StatusData{
+		Metrics:     MetricsData{Model: "Opus 4.5", Available: true},
+		Memory:      MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
+		OutputStyle: "R2-D2",
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := r.applyContextStyle("Ctx: 25%", tt.used, tt.total)
-			if !strings.Contains(got, "Ctx: 25%") {
-				t.Errorf("styled output should contain original text, got %q", got)
-			}
-		})
+	got := r.Render(data, ModeDefault)
+
+	if !strings.Contains(got, "💬 R2-D2") {
+		t.Errorf("should contain output style with emoji, got %q", got)
 	}
 }
 
-func TestRender_ContextBriefUnavailable(t *testing.T) {
+func TestRender_WithDirectory(t *testing.T) {
 	r := newTestRenderer()
 	data := &StatusData{
-		Memory: MemoryData{Available: false},
+		Metrics:   MetricsData{Model: "Sonnet 4", Available: true},
+		Memory:    MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
+		Directory: "my-awesome-project",
 	}
-	got := r.renderContextBrief(data)
-	if got != "" {
-		t.Errorf("renderContextBrief with unavailable memory should return empty, got %q", got)
-	}
-}
 
-func TestRender_ContextVerboseUnavailable(t *testing.T) {
-	r := newTestRenderer()
-	data := &StatusData{
-		Memory: MemoryData{Available: false},
-	}
-	got := r.renderContextVerbose(data)
-	if got != "" {
-		t.Errorf("renderContextVerbose with unavailable memory should return empty, got %q", got)
-	}
-}
+	got := r.Render(data, ModeDefault)
 
-func TestRender_VersionEmptyCurrent(t *testing.T) {
-	r := newTestRenderer()
-	data := &StatusData{
-		Version: VersionData{Available: true, Current: ""},
-	}
-	got := r.renderVersion(data)
-	if got != "" {
-		t.Errorf("renderVersion with empty current should return empty, got %q", got)
+	if !strings.Contains(got, "📁 my-awesome-project") {
+		t.Errorf("should contain directory with emoji, got %q", got)
 	}
 }

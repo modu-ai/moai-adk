@@ -12,7 +12,6 @@ Security Features:
 - Prevent accidental overwrites of critical configs
 - Block dangerous database deletion commands (Supabase, Neon, etc.)
 - Block dangerous file deletion commands (rm -rf critical paths)
-- Support Claude Code Plan Mode with configurable plans directory
 
 Exit Codes:
 - 0: Success (with JSON output for permission decision)
@@ -215,42 +214,13 @@ def get_project_root() -> Path:
     return Path(project_dir).resolve()
 
 
-def get_plans_directory() -> Path | None:
-    """Get the configured plans directory from Claude Code settings.
-
-    Reads from .claude/settings.json in the project root.
-    Returns None if not configured or file doesn't exist.
-
-    Returns:
-        Path to plans directory if configured, None otherwise
-    """
-
-    project_root = get_project_root()
-    settings_file = project_root / ".claude" / "settings.json"
-
-    if not settings_file.exists():
-        return None
-
-    try:
-        with open(settings_file, "r", encoding="utf-8", errors="replace") as f:
-            settings = json.load(f)
-            plans_dir = settings.get("plansDirectory")
-            if plans_dir:
-                # Resolve relative to project root
-                return (project_root / plans_dir).resolve()
-    except (json.JSONDecodeError, OSError):
-        pass
-
-    return None
-
-
 def check_file_path(file_path: str) -> Tuple[str, str]:
     """Check if file path matches any security patterns.
 
     Security measures:
     - Resolves symlinks and '..' components to prevent path traversal
     - Checks both original and resolved paths against patterns
-    - Validates path is within project boundaries or configured plans directory
+    - Validates path is within project boundaries
 
     Args:
         file_path: Path to check
@@ -272,10 +242,9 @@ def check_file_path(file_path: str) -> Tuple[str, str]:
     normalized_original = file_path.replace("\\", "/")
     normalized_resolved = resolved_str.replace("\\", "/")
 
-    # Check project boundary and plans directory
+    # Check project boundary
     project_root = get_project_root()
     is_within_project = False
-    is_within_plans_dir = False
 
     # Check if path is within project directory
     try:
@@ -284,17 +253,8 @@ def check_file_path(file_path: str) -> Tuple[str, str]:
     except ValueError:
         pass
 
-    # Check if path is within configured plans directory
-    plans_dir = get_plans_directory()
-    if plans_dir:
-        try:
-            resolved_path.relative_to(plans_dir)
-            is_within_plans_dir = True
-        except ValueError:
-            pass
-
-    # If path is outside both project and plans directory, deny
-    if not is_within_project and not is_within_plans_dir:
+    # If path is outside project directory, deny
+    if not is_within_project:
         return "deny", "Path traversal detected: file is outside project directory"
 
     # Check deny patterns against BOTH original and resolved paths
@@ -325,7 +285,10 @@ def check_content_for_secrets(content: str) -> Tuple[bool, str]:
         match = pattern.search(content)
         if match:
             # Don't reveal the actual secret or pattern
-            return True, "Detected sensitive data (credentials, API keys, or certificates)"
+            return (
+                True,
+                "Detected sensitive data (credentials, API keys, or certificates)",
+            )
 
     return False, ""
 

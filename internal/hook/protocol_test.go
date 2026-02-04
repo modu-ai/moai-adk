@@ -212,8 +212,12 @@ func TestWriteOutput(t *testing.T) {
 				if err := json.Unmarshal(written, &parsed); err != nil {
 					t.Fatalf("unmarshal error: %v", err)
 				}
-				if parsed.Decision != DecisionAllow {
-					t.Errorf("Decision = %q, want %q", parsed.Decision, DecisionAllow)
+				// Check hookSpecificOutput.permissionDecision per Claude Code protocol
+				if parsed.HookSpecificOutput == nil {
+					t.Fatal("HookSpecificOutput is nil, want non-nil")
+				}
+				if parsed.HookSpecificOutput.PermissionDecision != DecisionAllow {
+					t.Errorf("PermissionDecision = %q, want %q", parsed.HookSpecificOutput.PermissionDecision, DecisionAllow)
 				}
 			},
 		},
@@ -226,11 +230,15 @@ func TestWriteOutput(t *testing.T) {
 				if err := json.Unmarshal(written, &parsed); err != nil {
 					t.Fatalf("unmarshal error: %v", err)
 				}
-				if parsed.Decision != DecisionBlock {
-					t.Errorf("Decision = %q, want %q", parsed.Decision, DecisionBlock)
+				// Check hookSpecificOutput per Claude Code protocol
+				if parsed.HookSpecificOutput == nil {
+					t.Fatal("HookSpecificOutput is nil, want non-nil")
 				}
-				if parsed.Reason != "security policy violation" {
-					t.Errorf("Reason = %q, want %q", parsed.Reason, "security policy violation")
+				if parsed.HookSpecificOutput.PermissionDecision != DecisionDeny {
+					t.Errorf("PermissionDecision = %q, want %q", parsed.HookSpecificOutput.PermissionDecision, DecisionDeny)
+				}
+				if parsed.HookSpecificOutput.PermissionDecisionReason != "security policy violation" {
+					t.Errorf("PermissionDecisionReason = %q, want %q", parsed.HookSpecificOutput.PermissionDecisionReason, "security policy violation")
 				}
 			},
 		},
@@ -243,11 +251,12 @@ func TestWriteOutput(t *testing.T) {
 				if err := json.Unmarshal(written, &parsed); err != nil {
 					t.Fatalf("unmarshal error: %v", err)
 				}
-				if parsed.Data == nil {
-					t.Fatal("Data is nil, want non-nil")
+				// Check hookSpecificOutput per Claude Code protocol
+				if parsed.HookSpecificOutput == nil {
+					t.Fatal("HookSpecificOutput is nil, want non-nil")
 				}
-				if !json.Valid(parsed.Data) {
-					t.Errorf("Data is not valid JSON: %s", parsed.Data)
+				if parsed.HookSpecificOutput.PermissionDecision != DecisionAllow {
+					t.Errorf("PermissionDecision = %q, want %q", parsed.HookSpecificOutput.PermissionDecision, DecisionAllow)
 				}
 			},
 		},
@@ -268,6 +277,54 @@ func TestWriteOutput(t *testing.T) {
 				t.Helper()
 				if !json.Valid(written) {
 					t.Fatalf("output is not valid JSON: %s", written)
+				}
+			},
+		},
+		{
+			name:   "suppress output",
+			output: NewSuppressOutput(),
+			check: func(t *testing.T, written []byte) {
+				t.Helper()
+				var parsed HookOutput
+				if err := json.Unmarshal(written, &parsed); err != nil {
+					t.Fatalf("unmarshal error: %v", err)
+				}
+				if !parsed.SuppressOutput {
+					t.Error("SuppressOutput = false, want true")
+				}
+			},
+		},
+		{
+			name:   "session output",
+			output: NewSessionOutput(true, "Session started"),
+			check: func(t *testing.T, written []byte) {
+				t.Helper()
+				var parsed HookOutput
+				if err := json.Unmarshal(written, &parsed); err != nil {
+					t.Fatalf("unmarshal error: %v", err)
+				}
+				if !parsed.Continue {
+					t.Error("Continue = false, want true")
+				}
+				if parsed.SystemMessage != "Session started" {
+					t.Errorf("SystemMessage = %q, want %q", parsed.SystemMessage, "Session started")
+				}
+			},
+		},
+		{
+			name:   "post tool output",
+			output: NewPostToolOutput("Formatted with gofmt"),
+			check: func(t *testing.T, written []byte) {
+				t.Helper()
+				var parsed HookOutput
+				if err := json.Unmarshal(written, &parsed); err != nil {
+					t.Fatalf("unmarshal error: %v", err)
+				}
+				if parsed.HookSpecificOutput == nil {
+					t.Fatal("HookSpecificOutput is nil, want non-nil")
+				}
+				if parsed.HookSpecificOutput.AdditionalContext != "Formatted with gofmt" {
+					t.Errorf("AdditionalContext = %q, want %q", parsed.HookSpecificOutput.AdditionalContext, "Formatted with gofmt")
 				}
 			},
 		},

@@ -57,43 +57,124 @@ func IsValidEventType(et EventType) bool {
 	return false
 }
 
-// Decision constants for hook output.
+// Permission decision constants for PreToolUse hooks (Claude Code protocol).
 const (
 	DecisionAllow = "allow"
-	DecisionBlock = "block"
+	DecisionDeny  = "deny"
+	DecisionAsk   = "ask"
+	DecisionBlock = "deny" // Alias for backward compatibility
 )
 
 // HookInput represents the JSON payload received from Claude Code via stdin.
 type HookInput struct {
-	SessionID     string          `json:"session_id"`
-	CWD           string          `json:"cwd"`
-	HookEventName string          `json:"hook_event_name"`
+	SessionID     string          `json:"session_id,omitempty"`
+	CWD           string          `json:"cwd,omitempty"`
+	HookEventName string          `json:"hook_event_name,omitempty"`
 	ToolName      string          `json:"tool_name,omitempty"`
 	ToolInput     json.RawMessage `json:"tool_input,omitempty"`
 	ToolOutput    json.RawMessage `json:"tool_output,omitempty"`
+	ToolResponse  json.RawMessage `json:"tool_response,omitempty"`
 	ProjectDir    string          `json:"project_dir,omitempty"`
 }
 
+// HookSpecificOutput represents the hookSpecificOutput field for PreToolUse/PostToolUse.
+type HookSpecificOutput struct {
+	HookEventName            string `json:"hookEventName,omitempty"`
+	PermissionDecision       string `json:"permissionDecision,omitempty"`
+	PermissionDecisionReason string `json:"permissionDecisionReason,omitempty"`
+	AdditionalContext        string `json:"additionalContext,omitempty"`
+}
+
 // HookOutput represents the JSON payload written to stdout for Claude Code.
+// The format varies by event type per Claude Code protocol.
 type HookOutput struct {
-	Decision string          `json:"decision,omitempty"`
-	Reason   string          `json:"reason,omitempty"`
-	Data     json.RawMessage `json:"data,omitempty"`
+	// For SessionStart/SessionEnd: continue flag and system message
+	Continue      bool   `json:"continue,omitempty"`
+	SystemMessage string `json:"systemMessage,omitempty"`
+
+	// For PreToolUse/PostToolUse: hook-specific output
+	HookSpecificOutput *HookSpecificOutput `json:"hookSpecificOutput,omitempty"`
+
+	// For silent operations
+	SuppressOutput bool `json:"suppressOutput,omitempty"`
+
+	// Legacy fields for backward compatibility (internal use)
+	Decision string          `json:"-"`
+	Reason   string          `json:"-"`
+	Data     json.RawMessage `json:"-"`
 }
 
-// NewAllowOutput creates a HookOutput with Decision "allow".
+// NewAllowOutput creates a HookOutput with permissionDecision "allow".
 func NewAllowOutput() *HookOutput {
-	return &HookOutput{Decision: DecisionAllow}
+	return &HookOutput{
+		HookSpecificOutput: &HookSpecificOutput{
+			PermissionDecision: DecisionAllow,
+		},
+		Decision: DecisionAllow,
+	}
 }
 
-// NewAllowOutputWithData creates a HookOutput with Decision "allow" and data.
+// NewAllowOutputWithData creates a HookOutput with permissionDecision "allow" and data.
 func NewAllowOutputWithData(data json.RawMessage) *HookOutput {
-	return &HookOutput{Decision: DecisionAllow, Data: data}
+	return &HookOutput{
+		HookSpecificOutput: &HookSpecificOutput{
+			PermissionDecision: DecisionAllow,
+		},
+		Decision: DecisionAllow,
+		Data:     data,
+	}
 }
 
-// NewBlockOutput creates a HookOutput with Decision "block" and a reason.
+// NewDenyOutput creates a HookOutput with permissionDecision "deny" and a reason.
+func NewDenyOutput(reason string) *HookOutput {
+	return &HookOutput{
+		HookSpecificOutput: &HookSpecificOutput{
+			PermissionDecision:       DecisionDeny,
+			PermissionDecisionReason: reason,
+		},
+		Decision: DecisionDeny,
+		Reason:   reason,
+	}
+}
+
+// NewAskOutput creates a HookOutput with permissionDecision "ask" and a reason.
+func NewAskOutput(reason string) *HookOutput {
+	return &HookOutput{
+		HookSpecificOutput: &HookSpecificOutput{
+			PermissionDecision:       DecisionAsk,
+			PermissionDecisionReason: reason,
+		},
+		Decision: DecisionAsk,
+		Reason:   reason,
+	}
+}
+
+// NewBlockOutput creates a HookOutput with permissionDecision "deny" (alias for NewDenyOutput).
 func NewBlockOutput(reason string) *HookOutput {
-	return &HookOutput{Decision: DecisionBlock, Reason: reason}
+	return NewDenyOutput(reason)
+}
+
+// NewSuppressOutput creates a HookOutput that suppresses output.
+func NewSuppressOutput() *HookOutput {
+	return &HookOutput{SuppressOutput: true}
+}
+
+// NewSessionOutput creates a HookOutput for SessionStart/SessionEnd events.
+func NewSessionOutput(continueSession bool, message string) *HookOutput {
+	return &HookOutput{
+		Continue:      continueSession,
+		SystemMessage: message,
+	}
+}
+
+// NewPostToolOutput creates a HookOutput with additionalContext for PostToolUse.
+func NewPostToolOutput(context string) *HookOutput {
+	return &HookOutput{
+		HookSpecificOutput: &HookSpecificOutput{
+			HookEventName:     "PostToolUse",
+			AdditionalContext: context,
+		},
+	}
 }
 
 // Handler processes a specific hook event type.

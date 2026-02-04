@@ -77,8 +77,8 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 		return fmt.Errorf("write hook output: %w", writeErr)
 	}
 
-	// Exit code 2 for block decisions per Claude Code protocol
-	if output != nil && output.Decision == hook.DecisionBlock {
+	// Exit code 2 for deny decisions per Claude Code protocol
+	if output != nil && output.Decision == hook.DecisionDeny {
 		os.Exit(2)
 	}
 

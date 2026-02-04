@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"path/filepath"
 	"sync"
+
+	gitpkg "github.com/modu-ai/moai-adk-go/internal/core/git"
 )
 
 // defaultBuilder implements the Builder interface by orchestrating
@@ -21,10 +24,16 @@ type defaultBuilder struct {
 // Options configures a new Builder instance.
 type Options struct {
 	// GitProvider collects git repository status. May be nil if no git repo.
+	// If nil, git repository will be opened automatically.
 	GitProvider GitDataProvider
 
 	// UpdateProvider checks for version updates. May be nil to skip.
+	// If nil, version will be read from config file automatically.
 	UpdateProvider UpdateProvider
+
+	// RootDir is the project root directory for auto-detecting git repo.
+	// If empty, current directory is used.
+	RootDir string
 
 	// ThemeName selects the rendering theme: "default", "minimal", "nerd".
 	ThemeName string
@@ -38,15 +47,39 @@ type Options struct {
 
 // New creates a new Builder with the given options.
 // If Mode is empty, defaults to ModeDefault.
+// If GitProvider is nil, attempts to open a git repository at RootDir (or ".") automatically.
+// If UpdateProvider is nil, attempts to read version from config file automatically.
 func New(opts Options) Builder {
 	mode := opts.Mode
 	if mode == "" {
 		mode = ModeDefault
 	}
 
+	gitProvider := opts.GitProvider
+	updateProvider := opts.UpdateProvider
+
+	// Auto-create git provider if not provided
+	if gitProvider == nil {
+		rootDir := opts.RootDir
+		if rootDir == "" {
+			rootDir = "."
+		}
+		if repo, err := gitpkg.NewRepository(rootDir); err == nil {
+			gitProvider = NewGitCollector(repo)
+			slog.Debug("auto-opened git repository for statusline", "root", repo.Root())
+		}
+		// If git repo not found, continue without git provider
+	}
+
+	// Auto-create version provider if not provided
+	if updateProvider == nil {
+		updateProvider = NewVersionCollector()
+		slog.Debug("auto-created version collector for statusline")
+	}
+
 	return &defaultBuilder{
-		gitProvider:    opts.GitProvider,
-		updateProvider: opts.UpdateProvider,
+		gitProvider:    gitProvider,
+		updateProvider: updateProvider,
 		renderer:       NewRenderer(opts.ThemeName, opts.NoColor),
 		mode:           mode,
 	}
@@ -115,6 +148,21 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		data.Metrics = *met
 	}
 
+	// Extract directory name from workspace (prefer project_dir per documentation)
+	if input != nil {
+		data.Directory = extractProjectDirectory(input)
+	}
+
+	// Extract output style from nested structure
+	if input != nil && input.OutputStyle != nil {
+		data.OutputStyle = input.OutputStyle.Name
+	}
+
+	// Extract Claude Code version from JSON input
+	if input != nil && input.Version != "" {
+		data.ClaudeCodeVersion = input.Version
+	}
+
 	// Parallel collectors (may involve I/O)
 	var wg sync.WaitGroup
 	var gitResult *GitStatusData
@@ -156,4 +204,30 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 	}
 
 	return data
+}
+
+// extractProjectDirectory extracts the project directory name from workspace.
+// Priority: workspace.project_dir > workspace.current_dir > cwd (legacy)
+// Per https://code.claude.com/docs/en/statusline documentation.
+func extractProjectDirectory(input *StdinData) string {
+	if input == nil {
+		return ""
+	}
+
+	// Priority 1: Use workspace.project_dir (preferred)
+	if input.Workspace != nil && input.Workspace.ProjectDir != "" {
+		return filepath.Base(input.Workspace.ProjectDir)
+	}
+
+	// Priority 2: Use workspace.current_dir
+	if input.Workspace != nil && input.Workspace.CurrentDir != "" {
+		return filepath.Base(input.Workspace.CurrentDir)
+	}
+
+	// Priority 3: Fall back to legacy cwd field
+	if input.CWD != "" {
+		return filepath.Base(input.CWD)
+	}
+
+	return ""
 }

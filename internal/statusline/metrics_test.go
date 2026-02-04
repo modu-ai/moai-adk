@@ -13,10 +13,10 @@ func TestCollectMetrics(t *testing.T) {
 		{
 			name: "valid cost and model data",
 			input: &StdinData{
-				Model: "claude-sonnet-4",
+				Model: &ModelInfo{Name: "claude-sonnet-4-20250514"},
 				Cost:  &CostData{TotalUSD: 0.05, InputTokens: 1000, OutputTokens: 500},
 			},
-			wantModel: "sonnet-4",
+			wantModel: "Sonnet 4",
 			wantCost:  0.05,
 			wantAvail: true,
 		},
@@ -30,9 +30,9 @@ func TestCollectMetrics(t *testing.T) {
 		{
 			name: "nil cost",
 			input: &StdinData{
-				Model: "claude-opus-4-5-20251101",
+				Model: &ModelInfo{Name: "claude-opus-4-5-20251101"},
 			},
-			wantModel: "opus-4-5",
+			wantModel: "Opus 4.5",
 			wantCost:  0,
 			wantAvail: true,
 		},
@@ -43,15 +43,24 @@ func TestCollectMetrics(t *testing.T) {
 			},
 			wantModel: "",
 			wantCost:  0.15,
-			wantAvail: true,
+			wantAvail: false,
 		},
 		{
 			name: "zero cost",
 			input: &StdinData{
-				Model: "claude-haiku-3-5",
+				Model: &ModelInfo{Name: "claude-haiku-3-5-20241022"},
 				Cost:  &CostData{TotalUSD: 0},
 			},
-			wantModel: "haiku-3-5",
+			wantModel: "Haiku 3.5",
+			wantCost:  0,
+			wantAvail: true,
+		},
+		{
+			name: "display name takes priority over name",
+			input: &StdinData{
+				Model: &ModelInfo{DisplayName: "Opus 4.5", Name: "claude-opus-4-5-20251101"},
+			},
+			wantModel: "Opus 4.5",
 			wantCost:  0,
 			wantAvail: true,
 		},
@@ -79,14 +88,14 @@ func TestShortenModelName(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"claude-sonnet-4", "sonnet-4"},
-		{"claude-opus-4-5-20251101", "opus-4-5"},
-		{"claude-haiku-3-5", "haiku-3-5"},
-		{"claude-sonnet-4-20250514", "sonnet-4"},
+		{"claude-sonnet-4-20250514", "Sonnet 4"},
+		{"claude-opus-4-5-20251101", "Opus 4.5"},
+		{"claude-haiku-3-5-20241022", "Haiku 3.5"},
+		{"claude-sonnet-4", "Sonnet 4"},
+		{"claude-opus-4-5", "Opus 4.5"},
 		{"gpt-4", "gpt-4"},
 		{"", ""},
 		{"claude-", ""},
-		{"claude-opus-4-5", "opus-4-5"},
 	}
 
 	for _, tt := range tests {

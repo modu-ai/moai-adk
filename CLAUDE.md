@@ -10,6 +10,10 @@ MoAI is the Strategic Orchestrator for Claude Code. All tasks must be delegated 
 - [HARD] Parallel Execution: Execute all independent tool calls in parallel when no dependencies exist
 - [HARD] No XML in User Responses: Never display XML tags in user-facing responses
 - [HARD] Markdown Output: Use Markdown for all user-facing communication
+- [HARD] Approach-First Development: Explain approach and get approval before writing code (See Section 7)
+- [HARD] Multi-File Decomposition: Split work when modifying 3+ files (See Section 7)
+- [HARD] Post-Implementation Review: List potential issues and suggest tests after coding (See Section 7)
+- [HARD] Reproduction-First Bug Fix: Write reproduction test before fixing bugs (See Section 7)
 
 ### Recommendations
 
@@ -146,6 +150,7 @@ For TRUST 5 framework details, see @.claude/rules/moai/core/moai-constitution.md
 MoAI-ADK implements LSP-based quality gates:
 
 **Phase-Specific Thresholds:**
+
 - **plan**: Capture LSP baseline at phase start
 - **run**: Zero errors, zero type errors, zero lint errors required
 - **sync**: Zero errors, max 10 warnings, clean LSP required
@@ -154,7 +159,60 @@ MoAI-ADK implements LSP-based quality gates:
 
 ---
 
-## 7. User Interaction Architecture
+## 7. Safe Development Protocol
+
+### Development Safeguards (4 HARD Rules)
+
+These rules ensure code quality and prevent regressions in the moai-adk-go codebase.
+
+**Rule 1: Approach-First Development**
+
+Before writing any non-trivial code:
+
+- Explain the implementation approach clearly
+- Describe which files will be modified and why
+- Get user approval before proceeding
+- Exceptions: Typo fixes, single-line changes, obvious bug fixes
+
+**Rule 2: Multi-File Change Decomposition**
+
+When modifying 3 or more files:
+
+- Split work into logical units using TodoList
+- Execute changes file-by-file or by logical grouping
+- Analyze file dependencies before parallel execution
+- Report progress after each unit completion
+
+**Rule 3: Post-Implementation Review**
+
+After writing code, always provide:
+
+- List of potential issues (edge cases, error scenarios, concurrency)
+- Suggested test cases to verify the implementation
+- Known limitations or assumptions made
+- Recommendations for additional validation
+
+**Rule 4: Reproduction-First Bug Fixing**
+
+When fixing bugs:
+
+- Write a failing test that reproduces the bug first
+- Confirm the test fails before making changes
+- Fix the bug with minimal code changes
+- Verify the reproduction test passes after the fix
+
+### Go-Specific Guidelines
+
+For moai-adk-go development:
+
+- Run `go test -race ./...` for concurrency safety
+- Use table-driven tests for comprehensive coverage
+- Maintain 85%+ test coverage per package
+- Run `go vet` and `golangci-lint` before commits
+
+---
+
+## 8. User Interaction Architecture
 
 ### Critical Constraint
 
@@ -176,7 +234,7 @@ Subagents invoked via Task() operate in isolated, stateless contexts and cannot 
 
 ---
 
-## 8. Configuration Reference
+## 9. Configuration Reference
 
 User and language configuration:
 
@@ -201,7 +259,7 @@ MoAI-ADK uses Claude Code's official rules system at `.claude/rules/moai/`:
 
 ---
 
-## 9. Web Search Protocol
+## 10. Web Search Protocol
 
 For anti-hallucination policy, see @.claude/rules/moai/core/moai-constitution.md
 
@@ -219,7 +277,7 @@ For anti-hallucination policy, see @.claude/rules/moai/core/moai-constitution.md
 
 ---
 
-## 10. Error Handling
+## 11. Error Handling
 
 ### Error Recovery
 
@@ -237,7 +295,7 @@ Resume interrupted agent work using agentId:
 
 ---
 
-## 11. Sequential Thinking & UltraThink
+## 12. Sequential Thinking & UltraThink
 
 For detailed usage patterns and examples, see Skill("moai-workflow-thinking").
 
@@ -255,13 +313,11 @@ Use Sequential Thinking MCP for:
 
 Activate with `--ultrathink` flag for enhanced analysis:
 
-```
-"Implement authentication system --ultrathink"
-```
+- "Implement authentication system --ultrathink"
 
 ---
 
-## 12. Progressive Disclosure System
+## 13. Progressive Disclosure System
 
 MoAI-ADK implements a 3-level Progressive Disclosure system:
 
@@ -277,11 +333,12 @@ MoAI-ADK implements a 3-level Progressive Disclosure system:
 
 ---
 
-## 13. Parallel Execution Safeguards
+## 14. Parallel Execution Safeguards
 
 ### File Write Conflict Prevention
 
 **Pre-execution Checklist**:
+
 1. File Access Analysis: Identify overlapping file access patterns
 2. Dependency Graph Construction: Map agent-to-agent dependencies
 3. Execution Mode Selection: Parallel, Sequential, or Hybrid
@@ -302,8 +359,8 @@ Always prefer Edit tool over sed/awk for cross-platform compatibility.
 
 ---
 
-Version: 11.0.0 (Alfred to MoAI rename, unified /moai command structure)
-Last Updated: 2026-01-28
+Version: 11.1.0 (Safe Development Protocol with 4 HARD Rules)
+Last Updated: 2026-02-04
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
 

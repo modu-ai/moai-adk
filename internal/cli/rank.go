@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/modu-ai/moai-adk-go/internal/rank"
 	"github.com/spf13/cobra"
 )
 
@@ -32,13 +33,41 @@ func newRankLoginCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "login",
 		Short: "Authenticate with MoAI Cloud",
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			out := cmd.OutOrStdout()
 			if deps == nil || deps.RankCredStore == nil {
 				return fmt.Errorf("rank system not initialized")
 			}
+
+			// Get or create context
+			ctx := cmd.Context()
+			if ctx == nil {
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithTimeout(context.Background(), rank.DefaultOAuthTimeout)
+				defer cancel()
+			}
+
+			// Create OAuth handler with browser opener.
+			handler := rank.NewOAuthHandler(rank.OAuthConfig{
+				BaseURL: rank.DefaultBaseURL,
+				Browser: rank.NewBrowser(),
+			})
+
+			// Start OAuth flow.
 			fmt.Fprintln(out, "Opening browser for MoAI Cloud authentication...")
-			fmt.Fprintln(out, "Login flow initiated. Complete authentication in your browser.")
+			fmt.Fprintln(out, "Complete authentication in your browser.")
+
+			creds, err := handler.StartOAuthFlow(ctx, rank.DefaultOAuthTimeout)
+			if err != nil {
+				return fmt.Errorf("oauth flow: %w", err)
+			}
+
+			// Store credentials.
+			if err := deps.RankCredStore.Save(creds); err != nil {
+				return fmt.Errorf("save credentials: %w", err)
+			}
+
+			fmt.Fprintf(out, "Authenticated as %s (ID: %s)\n", creds.Username, creds.UserID)
 			return nil
 		},
 	}
@@ -101,11 +130,36 @@ func newRankSyncCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:    "sync",
 		Short:  "Sync metrics to MoAI Cloud",
-		Hidden: true,
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		Hidden: false,
+		RunE: func(cmd *cobra.Command, args []string) error {
 			out := cmd.OutOrStdout()
-			fmt.Fprintln(out, "Warning: rank sync is experimental and not yet implemented")
+			if deps == nil {
+				return fmt.Errorf("rank system not initialized")
+			}
+
+			// Ensure rank client is initialized
+			if err := deps.EnsureRank(); err != nil {
+				fmt.Fprintln(out, "Not logged in. Run 'moai rank login' first.")
+				return nil
+			}
+
 			fmt.Fprintln(out, "Syncing metrics to MoAI Cloud...")
+
+			// TODO: Collect local session/metrics data
+			// For now, just verify connection
+			ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
+			defer cancel()
+
+			status, err := deps.RankClient.CheckStatus(ctx)
+			if err != nil {
+				return fmt.Errorf("check rank status: %w", err)
+			}
+
+			fmt.Fprintf(out, "Connected to MoAI Cloud (status: %s)\n", status.Status)
+
+			// TODO: Submit session data when available
+			// Use SubmitSession() or SubmitSessionsBatch() to send metrics
+			fmt.Fprintln(out, "Metrics collection not yet implemented.")
 			fmt.Fprintln(out, "Sync complete.")
 			return nil
 		},
@@ -116,12 +170,23 @@ func newRankExcludeCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:    "exclude [pattern]",
 		Short:  "Add exclusion pattern for metrics",
-		Hidden: true,
+		Long:   "Add a glob pattern to exclude from metrics sync. Patterns are stored in ~/.moai/config/rank.yaml.",
+		Hidden: false,
 		Args:   cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			out := cmd.OutOrStdout()
-			fmt.Fprintln(out, "Warning: rank exclude is experimental and not yet implemented")
-			fmt.Fprintf(out, "Exclusion pattern added: %s\n", args[0])
+
+			store, err := rank.NewPatternStore("")
+			if err != nil {
+				return fmt.Errorf("create pattern store: %w", err)
+			}
+
+			pattern := args[0]
+			if err := store.AddExclude(pattern); err != nil {
+				return fmt.Errorf("add exclude pattern: %w", err)
+			}
+
+			fmt.Fprintf(out, "Exclusion pattern added: %s\n", pattern)
 			return nil
 		},
 	}
@@ -131,12 +196,23 @@ func newRankIncludeCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:    "include [pattern]",
 		Short:  "Add inclusion pattern for metrics",
-		Hidden: true,
+		Long:   "Add a glob pattern to include in metrics sync. Patterns are stored in ~/.moai/config/rank.yaml.",
+		Hidden: false,
 		Args:   cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			out := cmd.OutOrStdout()
-			fmt.Fprintln(out, "Warning: rank include is experimental and not yet implemented")
-			fmt.Fprintf(out, "Inclusion pattern added: %s\n", args[0])
+
+			store, err := rank.NewPatternStore("")
+			if err != nil {
+				return fmt.Errorf("create pattern store: %w", err)
+			}
+
+			pattern := args[0]
+			if err := store.AddInclude(pattern); err != nil {
+				return fmt.Errorf("add include pattern: %w", err)
+			}
+
+			fmt.Fprintf(out, "Inclusion pattern added: %s\n", pattern)
 			return nil
 		},
 	}

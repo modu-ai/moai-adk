@@ -36,11 +36,11 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Write|Edit",
+        "matcher": "Write|Edit|Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'export PATH=$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH; uv run --with pyyaml \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_tool__security_guard.py\"'",
+            "command": "$HOME/go/bin/moai hook pre-tool",
             "timeout": 5
           }
         ]
@@ -71,13 +71,14 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "/bin/zsh -l -c 'export PATH=$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH; uv run --no-sync moai-adk statusline'",
+    "command": "/bin/zsh -l -c 'export PATH=$HOME/go/bin:$HOME/.local/bin:$PATH; moai statusline'",
     "padding": 0,
     "refreshInterval": 300
   },
   "outputStyle": "MoAI",
   "cleanupPeriodDays": 30,
   "env": {
+    "PATH": "$HOME/go/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin",
     "MOAI_CONFIG_SOURCE": "sections",
     "ENABLE_TOOL_SEARCH": "1",
     "MAX_THINKING_TOKENS": "31999",

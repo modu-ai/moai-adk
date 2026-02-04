@@ -34,8 +34,8 @@ func TestPreToolHandler_Handle(t *testing.T) {
 				SessionID:     "sess-1",
 				CWD:           "/tmp",
 				HookEventName: "PreToolUse",
-				ToolName:      "Write",
-				ToolInput:     json.RawMessage(`{"file_path": "/tmp/test.go", "content": "package main"}`),
+				ToolName:      "Read",
+				ToolInput:     json.RawMessage(`{"file_path": "/tmp/test.go"}`),
 			},
 			wantDecision: DecisionAllow,
 		},
@@ -50,7 +50,7 @@ func TestPreToolHandler_Handle(t *testing.T) {
 				HookEventName: "PreToolUse",
 				ToolName:      "DangerousTool",
 			},
-			wantDecision: DecisionBlock,
+			wantDecision: DecisionDeny,
 			wantReason:   true,
 		},
 		{
@@ -63,7 +63,7 @@ func TestPreToolHandler_Handle(t *testing.T) {
 				ToolName:      "Bash",
 				ToolInput:     json.RawMessage(`{"command": "rm -rf /"}`),
 			},
-			wantDecision: DecisionBlock,
+			wantDecision: DecisionDeny,
 			wantReason:   true,
 		},
 		{
@@ -161,7 +161,16 @@ func TestDefaultSecurityPolicy(t *testing.T) {
 	if policy == nil {
 		t.Fatal("DefaultSecurityPolicy() returned nil")
 	}
-	if len(policy.DangerousPatterns) == 0 {
-		t.Error("DangerousPatterns should not be empty")
+	if len(policy.DangerousBashPatterns) == 0 {
+		t.Error("DangerousBashPatterns should not be empty")
+	}
+	if len(policy.DenyPatterns) == 0 {
+		t.Error("DenyPatterns should not be empty")
+	}
+	if len(policy.AskPatterns) == 0 {
+		t.Error("AskPatterns should not be empty")
+	}
+	if len(policy.SensitiveContentPatterns) == 0 {
+		t.Error("SensitiveContentPatterns should not be empty")
 	}
 }
