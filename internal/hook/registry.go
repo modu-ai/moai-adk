@@ -49,11 +49,14 @@ func (r *registry) Register(handler Handler) {
 // returns Decision "block", remaining handlers are skipped and the block result
 // is returned immediately (REQ-HOOK-003). If all handlers succeed, Decision
 // "allow" is returned (REQ-HOOK-004).
+//
+// Note: Stop and SessionEnd events should NOT include hookSpecificOutput per
+// Claude Code protocol. These events return empty JSON {} instead.
 func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInput) (*HookOutput, error) {
 	handlers := r.handlers[event]
 	if len(handlers) == 0 {
 		slog.Debug("no handlers registered for event", "event", string(event))
-		return NewAllowOutput(), nil
+		return r.defaultOutputForEvent(event), nil
 	}
 
 	// Apply timeout from registry configuration
@@ -100,7 +103,22 @@ func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInp
 		}
 	}
 
-	return NewAllowOutput(), nil
+	return r.defaultOutputForEvent(event), nil
+}
+
+// defaultOutputForEvent returns the appropriate default output based on event type.
+// Stop and SessionEnd events return empty HookOutput per Claude Code protocol.
+// Other events return HookOutput with hookSpecificOutput for permission decisions.
+func (r *registry) defaultOutputForEvent(event EventType) *HookOutput {
+	switch event {
+	case EventStop, EventSessionEnd:
+		// Stop and SessionEnd hooks should NOT use hookSpecificOutput
+		// per Claude Code protocol - return empty JSON {}
+		return &HookOutput{}
+	default:
+		// Other events (PreToolUse, PostToolUse, etc.) use hookSpecificOutput
+		return NewAllowOutput()
+	}
 }
 
 // Handlers returns all handlers registered for the given event type.

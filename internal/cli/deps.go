@@ -57,6 +57,8 @@ func InitDependencies() {
 
 	// Register default hook handlers
 	deps.HookRegistry.Register(hook.NewSessionStartHandler(deps.Config))
+	deps.HookRegistry.Register(hook.NewSessionEndHandler())
+	deps.HookRegistry.Register(hook.NewStopHandler())
 	deps.HookRegistry.Register(hook.NewPreToolHandler(deps.Config, hook.DefaultSecurityPolicy()))
 	deps.HookRegistry.Register(hook.NewPostToolHandler())
 	deps.HookRegistry.Register(hook.NewCompactHandler())

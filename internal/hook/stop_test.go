@@ -2,7 +2,6 @@ package hook
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 )
 
@@ -20,9 +19,8 @@ func TestStopHandler_Handle(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name         string
-		input        *HookInput
-		wantDecision string
+		name  string
+		input *HookInput
 	}{
 		{
 			name: "normal stop",
@@ -32,7 +30,6 @@ func TestStopHandler_Handle(t *testing.T) {
 				HookEventName: "Stop",
 				ProjectDir:    t.TempDir(),
 			},
-			wantDecision: DecisionAllow,
 		},
 		{
 			name: "stop without project dir",
@@ -41,7 +38,6 @@ func TestStopHandler_Handle(t *testing.T) {
 				CWD:           "/tmp",
 				HookEventName: "Stop",
 			},
-			wantDecision: DecisionAllow,
 		},
 	}
 
@@ -59,11 +55,10 @@ func TestStopHandler_Handle(t *testing.T) {
 			if got == nil {
 				t.Fatal("got nil output")
 			}
-			if got.Decision != tt.wantDecision {
-				t.Errorf("Decision = %q, want %q", got.Decision, tt.wantDecision)
-			}
-			if got.Data != nil && !json.Valid(got.Data) {
-				t.Errorf("Data is not valid JSON: %s", got.Data)
+			// Stop hooks return empty JSON {} per Claude Code protocol
+			// They should NOT have hookSpecificOutput set
+			if got.HookSpecificOutput != nil {
+				t.Error("Stop hook should not set hookSpecificOutput")
 			}
 		})
 	}

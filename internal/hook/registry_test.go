@@ -98,10 +98,22 @@ func TestRegistryDispatch(t *testing.T) {
 		checkCalled  func(t *testing.T, handlers []*mockHandler)
 	}{
 		{
-			name:         "empty registry returns allow",
+			name:         "empty registry returns allow for SessionStart",
 			handlers:     nil,
 			event:        EventSessionStart,
 			wantDecision: DecisionAllow,
+		},
+		{
+			name:         "empty registry returns empty for SessionEnd",
+			handlers:     nil,
+			event:        EventSessionEnd,
+			wantDecision: "", // SessionEnd returns empty JSON per Claude Code protocol
+		},
+		{
+			name:         "empty registry returns empty for Stop",
+			handlers:     nil,
+			event:        EventStop,
+			wantDecision: "", // Stop returns empty JSON per Claude Code protocol
 		},
 		{
 			name: "single allow handler",
@@ -174,12 +186,28 @@ func TestRegistryDispatch(t *testing.T) {
 			},
 		},
 		{
-			name: "dispatch to unregistered event returns allow",
+			name: "dispatch to unregistered event returns allow for PreToolUse",
+			handlers: []*mockHandler{
+				{event: EventSessionStart, output: NewAllowOutput()},
+			},
+			event:        EventPreToolUse,
+			wantDecision: DecisionAllow,
+		},
+		{
+			name: "dispatch to unregistered SessionEnd returns empty output",
 			handlers: []*mockHandler{
 				{event: EventSessionStart, output: NewAllowOutput()},
 			},
 			event:        EventSessionEnd,
-			wantDecision: DecisionAllow,
+			wantDecision: "", // SessionEnd should return empty JSON per Claude Code protocol
+		},
+		{
+			name: "dispatch to unregistered Stop returns empty output",
+			handlers: []*mockHandler{
+				{event: EventSessionStart, output: NewAllowOutput()},
+			},
+			event:        EventStop,
+			wantDecision: "", // Stop should return empty JSON per Claude Code protocol
 		},
 	}
 

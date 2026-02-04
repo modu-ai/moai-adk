@@ -2,7 +2,6 @@ package hook
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -22,10 +21,9 @@ func TestSessionEndHandler_Handle(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name         string
-		input        *HookInput
-		setupDir     bool
-		wantDecision string
+		name     string
+		input    *HookInput
+		setupDir bool
 	}{
 		{
 			name: "normal session end",
@@ -34,8 +32,7 @@ func TestSessionEndHandler_Handle(t *testing.T) {
 				CWD:           "", // will be set in test
 				HookEventName: "SessionEnd",
 			},
-			setupDir:     true,
-			wantDecision: DecisionAllow,
+			setupDir: true,
 		},
 		{
 			name: "session end without project dir",
@@ -44,8 +41,7 @@ func TestSessionEndHandler_Handle(t *testing.T) {
 				CWD:           "/tmp",
 				HookEventName: "SessionEnd",
 			},
-			setupDir:     false,
-			wantDecision: DecisionAllow,
+			setupDir: false,
 		},
 	}
 
@@ -73,11 +69,10 @@ func TestSessionEndHandler_Handle(t *testing.T) {
 			if got == nil {
 				t.Fatal("got nil output")
 			}
-			if got.Decision != tt.wantDecision {
-				t.Errorf("Decision = %q, want %q", got.Decision, tt.wantDecision)
-			}
-			if got.Data != nil && !json.Valid(got.Data) {
-				t.Errorf("Data is not valid JSON: %s", got.Data)
+			// SessionEnd hooks return empty JSON {} per Claude Code protocol
+			// They should NOT have hookSpecificOutput set
+			if got.HookSpecificOutput != nil {
+				t.Error("SessionEnd hook should not set hookSpecificOutput")
 			}
 		})
 	}
