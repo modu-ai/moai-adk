@@ -7,7 +7,7 @@
 
 High-performance Agentic Development Kit for Claude Code -- a complete rewrite of the Python-based MoAI-ADK (~73,000+ lines) in Go.
 
-**Module:** `github.com/modu-ai/moai-adk-go`
+**Module:** `github.com/modu-ai/moai-adk`
 
 ---
 
@@ -43,8 +43,8 @@ MoAI-ADK (Go Edition) is a compiled development toolkit that serves as the runti
 Requires Go 1.22 or later.
 
 ```bash
-git clone https://github.com/modu-ai/moai-adk-go.git
-cd moai-adk-go
+git clone https://github.com/modu-ai/moai-adk.git
+cd moai-adk
 make build
 ```
 
@@ -58,7 +58,7 @@ make install
 
 ### Pre-built Binaries
 
-Download platform-specific binaries from the [Releases](https://github.com/modu-ai/moai-adk-go/releases) page. Archives are available for:
+Download platform-specific binaries from the [Releases](https://github.com/modu-ai/moai-adk/releases) page. Archives are available for:
 
 - `darwin_arm64` (macOS Apple Silicon)
 - `darwin_amd64` (macOS Intel)
@@ -112,7 +112,7 @@ Full worktree lifecycle management for parallel branch development.
 ## Architecture
 
 ```
-moai-adk-go/
+moai-adk/
 ├── cmd/moai/             # Application entry point
 │   └── main.go
 ├── internal/             # Private application packages
@@ -283,9 +283,9 @@ Version metadata is injected at build time via `-ldflags`:
 
 ```bash
 go build -ldflags "-s -w \
-  -X github.com/modu-ai/moai-adk-go/pkg/version.Version=v1.0.0 \
-  -X github.com/modu-ai/moai-adk-go/pkg/version.Commit=$(git rev-parse --short HEAD) \
-  -X github.com/modu-ai/moai-adk-go/pkg/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  -X github.com/modu-ai/moai-adk/pkg/version.Version=v1.0.0 \
+  -X github.com/modu-ai/moai-adk/pkg/version.Commit=$(git rev-parse --short HEAD) \
+  -X github.com/modu-ai/moai-adk/pkg/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   -o bin/moai ./cmd/moai
 ```
 
