@@ -199,6 +199,44 @@ moai-adk-go/
 | `moai worktree sync` | Synchronize worktree with upstream |
 | `moai worktree remove <name>` | Remove a worktree |
 | `moai worktree clean` | Clean up stale worktrees |
+| `moai update` | Update to the latest version (with auto-rollback) |
+| `moai update --check` | Check for updates without installing |
+| `moai update --templates-only` | Sync templates without updating binary |
+
+### Update Command
+
+The `moai update` command checks for and installs the latest release. It supports:
+
+- **Dev versions**: Automatically checks for `go-v*` tagged releases (Go edition)
+- **Production versions**: Checks for latest stable releases
+- **Environment override**: Use `MOAI_UPDATE_URL` to check a different repository
+
+```bash
+# Check for updates
+moai update --check
+
+# Update to latest version
+moai update
+
+# Sync templates only (no binary update)
+moai update --templates-only
+
+# Use custom repository (environment variable)
+export MOAI_UPDATE_URL="https://api.github.com/repos/owner/repo/releases/latest"
+moai update
+```
+
+#### Release Tagging
+
+For Go edition releases, use tags with the `go-v` prefix:
+
+```bash
+# Tag a Go edition release
+git tag go-v2.0.0
+git push origin go-v2.0.0
+```
+
+This allows dev builds to automatically detect and update to Go edition releases, while production builds use standard semver tags.
 
 ---
 

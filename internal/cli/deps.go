@@ -98,13 +98,24 @@ func (d *Dependencies) EnsureUpdate() error {
 		return nil
 	}
 
-	// Default GitHub releases URL for moai-adk
-	// Can be overridden via MOAI_UPDATE_URL environment variable
-	const defaultAPIURL = "https://api.github.com/repos/modu-ai/moai-adk/releases/latest"
+	// Determine the appropriate API URL based on current version
+	// - MOAI_UPDATE_URL environment variable takes highest priority
+	// - Dev versions automatically use moai-go-v2 branch releases
+	// - Production versions use main branch releases
+	currentVersion := version.GetVersion()
 	apiURL := os.Getenv("MOAI_UPDATE_URL")
+
 	if apiURL == "" {
-		apiURL = defaultAPIURL
+		if currentVersion == "dev" {
+			// Dev version: use moai-go-v2 branch releases (tagged with go-v prefix)
+			// The releases endpoint returns all releases; checker will filter for go-v tags
+			apiURL = "https://api.github.com/repos/modu-ai/moai-adk/releases"
+		} else {
+			// Production version: use main branch releases
+			apiURL = "https://api.github.com/repos/modu-ai/moai-adk/releases/latest"
+		}
 	}
+
 	d.UpdateChecker = update.NewChecker(apiURL, nil)
 
 	// Get current binary path for updater and rollback
@@ -113,7 +124,7 @@ func (d *Dependencies) EnsureUpdate() error {
 		return fmt.Errorf("get executable path: %w", err)
 	}
 
-	currentVersion := version.GetVersion()
+	currentVersion = version.GetVersion()
 	updater := update.NewUpdater(binaryPath, nil)
 	rollback := update.NewRollback(binaryPath)
 	d.UpdateOrch = update.NewOrchestrator(currentVersion, d.UpdateChecker, updater, rollback)
