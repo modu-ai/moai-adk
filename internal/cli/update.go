@@ -52,13 +52,15 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		strings.Contains(currentVersion, "none")
 
 	if isDevBuild && !templatesOnly && !shellEnv && !useLocalUpdate {
-		_, _ = fmt.Fprintln(out, "\nDevelopment build detected. To update:")
+		_, _ = fmt.Fprintln(out, "\nDevelopment build detected.")
+		_, _ = fmt.Fprintln(out, "Binary update skipped. To update binary:")
 		_, _ = fmt.Fprintln(out, "  cd ~/MoAI/moai-adk-go && git pull && make install")
 		if checkOnly {
 			return nil
 		}
-		// For dev builds, skip the actual update and return success
-		return nil
+		// For dev builds, skip binary update but still sync templates
+		_, _ = fmt.Fprintln(out, "\nSyncing templates...")
+		return runTemplateSync(cmd)
 	}
 
 	// Show update source info
@@ -113,6 +115,21 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 
 	if deps.UpdateOrch == nil {
 		return fmt.Errorf("update orchestrator not initialized")
+	}
+
+	// Check if Go binary is available before attempting update
+	info, err := deps.UpdateChecker.CheckLatest(ctx)
+	if err != nil {
+		_, _ = fmt.Fprintf(out, "Warning: could not check for updates: %v\n", err)
+		_, _ = fmt.Fprintln(out, "Falling back to template sync only...")
+		return runTemplateSync(cmd)
+	}
+
+	// If no Go binary URL available, skip binary update and sync templates only
+	if info.URL == "" {
+		_, _ = fmt.Fprintf(out, "Latest version:  %s\n", info.Version)
+		_, _ = fmt.Fprintln(out, "\nNo Go binary available for this platform. Syncing templates only...")
+		return runTemplateSync(cmd)
 	}
 
 	result, err := deps.UpdateOrch.Update(ctx)
