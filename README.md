@@ -12,7 +12,7 @@ Claude Code를 위한 고성능 Agentic Development Kit -- Python 기반 MoAI-AD
 **모듈:** `github.com/modu-ai/moai-adk`
 
 ---
-![Uploading image.png…]()
+
 
 ## 개요
 
