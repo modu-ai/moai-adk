@@ -7,9 +7,9 @@ MoAI-ADK v2.0은 Python 기반 v1.x(~73,000줄)을 Go로 완전히 재작성한 
 ## 목차
 
 - [v2.0 개요](#v20-개요)
-- [v1.x 제거하기](#v1x-제거하기)
-- [Go 설치하기](#go-설치하기)
-- [MoAI-ADK v2.0 설치하기](#moai-adk-v20-설치하기)
+- [1단계: Go 설치 확인](#1단계-go-설치-확인)
+- [2단계: v1.x 제거하기](#2단계-v1x-제거하기)
+- [3단계: MoAI-ADK v2.0 설치하기](#3단계-moai-adk-v20-설치하기)
 - [1.x와 2.0의 주요 차이점](#1x와-20의-주요-차이점)
 - [다가오는 기능: Agent Teams 모드](#다가오는-기능-agent-teams-모드)
 
@@ -38,7 +38,77 @@ MoAI-ADK v2.0은 Python 기반 v1.x(~73,000줄)을 Go로 완전히 재작성한 
 
 ---
 
-## v1.x 제거하기
+## 1단계: Go 설치 확인
+
+MoAI-ADK v2.0을 사용하려면 Go 1.22 이상이 필요합니다. 먼저 Go가 설치되어 있는지 확인하세요.
+
+### Go 설치 확인
+
+```bash
+# Go 버전 확인
+go version
+```
+
+**예상 출력:**
+```
+go version go1.23.0 darwin/arm64
+```
+
+### Go가 이미 설치된 경우
+
+Go 1.22 이상이 설치되어 있다면 **[2단계: v1.x 제거하기](#2단계-v1x-제거하기)**로 건너뛰세요.
+
+### Go가 설치되지 않은 경우
+
+Go가 설치되지 않았거나 버전이 1.22 미만인 경우 아래 가이드를 따라 설치하세요:
+
+#### macOS
+
+```bash
+# Homebrew로 설치 (추천)
+brew install go
+
+# 또는 공식 바이너리 다운로드
+# https://go.dev/dl/
+```
+
+#### Linux
+
+```bash
+# 패키지 매니저로 설치
+sudo apt install golang-go  # Ubuntu/Debian
+sudo yum install golang      # CentOS/RHEL
+
+# 또는 공식 바이너리 다운로드
+wget https://go.dev/dl/go1.23.0.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.23.0.linux-amd64.tar.gz
+```
+
+#### Windows
+
+```powershell
+# winget으로 설치
+winget install GoLang.Go
+
+# 또는 공식 설치 프로그램
+# https://go.dev/dl/
+```
+
+### 설치 후 PATH 설정
+
+Go를 설치한 후 터미널을 다시 시작하거나 다음 명령어를 실행하세요:
+
+```bash
+# 터미널 재시작 또는 PATH 새로고침
+source ~/.zshrc  # zsh 사용자
+source ~/.bashrc # bash 사용자
+```
+
+---
+
+## 2단계: v1.x 제거하기
+
+Go 설치가 확인되었으면 기존 Python moai-adk를 제거하세요.
 
 ### 1단계: 기존 Python moai-adk 제거
 
@@ -63,50 +133,7 @@ cp -r ~/.moai ~/.moai.backup.$(date +%Y%m%d)
 
 ---
 
-## Go 설치하기
-
-### macOS
-
-```bash
-# Homebrew로 설치 (추천)
-brew install go
-
-# 또는 공식 바이너리 다운로드
-# https://go.dev/dl/
-```
-
-### Linux
-
-```bash
-# 패키지 매니저로 설치
-sudo apt install golang-go  # Ubuntu/Debian
-sudo yum install golang      # CentOS/RHEL
-
-# 또는 공식 바이너리 다운로드
-wget https://go.dev/dl/go1.23.0.linux-amd64.tar.gz
-sudo tar -C /usr/local -xzf go1.23.0.linux-amd64.tar.gz
-```
-
-### Windows
-
-```powershell
-# winget으로 설치
-winget install GoLang.Go
-
-# 또는 공식 설치 프로그램
-# https://go.dev/dl/
-```
-
-### Go 설치 확인
-
-```bash
-go version
-# 출력: go version go1.23.0 darwin/arm64
-```
-
----
-
-## MoAI-ADK v2.0 설치하기
+## 3단계: MoAI-ADK v2.0 설치하기
 
 ### 방법 1: 소스에서 빌드 (개발용)
 
@@ -285,8 +312,9 @@ MoAI-ADK v2.0의 Agent Teams 모드는 현재 개발 중이며, 다음 기능을
 
 ## 빠른 시작 체크리스트
 
+- [ ] Go 설치 확인 (`go version`)
+- [ ] Go 1.22+ 설치 (필요시)
 - [ ] 기존 Python moai-adk 제거 (`uv tool uninstall moai-adk`)
-- [ ] Go 1.22+ 설치
 - [ ] MoAI-ADK v2.0 설치 (소스 빌드 또는 프리빌트 바이너리)
 - [ ] `moai doctor`로 설치 확인
 - [ ] 기존 프로젝트에서 `moai init` 실행 (설정 마이그레이션)
@@ -311,7 +339,7 @@ rm -rf ~/.local/bin/moai  # Python 버전 심볼릭 링크
 go version
 ```
 
-###PATH 설정
+### PATH 설정
 
 ```bash
 # Go bin이 PATH에 있는지 확인
