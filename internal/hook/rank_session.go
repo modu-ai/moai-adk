@@ -86,15 +86,43 @@ func (h *rankSessionHandler) Handle(ctx context.Context, input *HookInput) (*Hoo
 }
 
 // buildSessionSubmission creates a SessionSubmission from HookInput.
-// Note: The HookInput structure doesn't include detailed token usage.
-// This is a minimal implementation that can be enhanced when Claude Code
-// provides more detailed session metrics.
+// It attempts to parse the transcript file for actual token usage.
 func (h *rankSessionHandler) buildSessionSubmission(input *HookInput) (*rank.SessionSubmission, error) {
 	now := time.Now()
 	endedAt := now.Format(time.RFC3339)
 
+	// Try to parse transcript for actual token usage
+	var inputTokens, outputTokens, cacheCreation, cacheRead int64
+	var startedAt string
+	var durationSeconds int64
+	var turnCount int
+	var modelName string
+
+	// Find transcript file for this session
+	transcriptPath := rank.FindTranscriptForSession(input.SessionID)
+	if transcriptPath != "" {
+		if usage, err := rank.ParseTranscript(transcriptPath); err == nil {
+			inputTokens = usage.InputTokens
+			outputTokens = usage.OutputTokens
+			cacheCreation = usage.CacheCreationTokens
+			cacheRead = usage.CacheReadTokens
+			startedAt = usage.StartedAt
+			durationSeconds = usage.DurationSeconds
+			turnCount = usage.TurnCount
+			if usage.ModelName != "" {
+				modelName = usage.ModelName
+			}
+		}
+		// If parsing fails, fall back to zero values
+	}
+
+	// Use model from input if not found in transcript
+	if modelName == "" && input.Model != "" {
+		modelName = input.Model
+	}
+
 	// Generate session hash for deduplication
-	sessionHash, err := rank.ComputeSessionHash(endedAt, 0, 0)
+	sessionHash, err := rank.ComputeSessionHash(endedAt, inputTokens, outputTokens)
 	if err != nil {
 		return nil, fmt.Errorf("compute session hash: %w", err)
 	}
@@ -107,17 +135,17 @@ func (h *rankSessionHandler) buildSessionSubmission(input *HookInput) (*rank.Ses
 	anonymousProjectID := anonymizePath(projectPath)
 
 	submission := &rank.SessionSubmission{
-		SessionHash:        sessionHash,
-		EndedAt:            endedAt,
-		InputTokens:        0, // Not available in HookInput yet
-		OutputTokens:       0, // Not available in HookInput yet
-		CacheCreationTokens: 0,
-		CacheReadTokens:     0,
+		SessionHash:         sessionHash,
+		EndedAt:             endedAt,
+		InputTokens:         inputTokens,
+		OutputTokens:        outputTokens,
+		CacheCreationTokens: cacheCreation,
+		CacheReadTokens:     cacheRead,
 		AnonymousProjectID:  anonymousProjectID,
-		StartedAt:          "", // Not available in HookInput
-		DurationSeconds:    0, // Can be calculated if start time is available
-		TurnCount:          0, // Not available in HookInput
-		ModelName:          input.Model,
+		StartedAt:           startedAt,
+		DurationSeconds:     int(durationSeconds),
+		TurnCount:           turnCount,
+		ModelName:           modelName,
 	}
 
 	return submission, nil

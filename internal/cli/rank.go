@@ -169,22 +169,105 @@ func newRankSyncCmd() *cobra.Command {
 
 			_, _ = fmt.Fprintln(out, "Syncing metrics to MoAI Cloud...")
 
-			// TODO: Collect local session/metrics data
-			// For now, just verify connection
-			ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
-			defer cancel()
-
-			status, err := deps.RankClient.CheckStatus(ctx)
+			// Find all transcript files
+			transcripts, err := rank.FindTranscripts()
 			if err != nil {
-				return fmt.Errorf("check rank status: %w", err)
+				return fmt.Errorf("find transcripts: %w", err)
 			}
 
-			_, _ = fmt.Fprintf(out, "Connected to MoAI Cloud (status: %s)\n", status.Status)
+			if len(transcripts) == 0 {
+				_, _ = fmt.Fprintln(out, "No transcripts found.")
+				return nil
+			}
 
-			// TODO: Submit session data when available
-			// Use SubmitSession() or SubmitSessionsBatch() to send metrics
-			_, _ = fmt.Fprintln(out, "Metrics collection not yet implemented.")
-			_, _ = fmt.Fprintln(out, "Sync complete.")
+			_, _ = fmt.Fprintf(out, "Found %d transcript(s)\n", len(transcripts))
+
+			// Parse transcripts and build session submissions
+			var sessions []*rank.SessionSubmission
+			parsedCount := 0
+			skippedCount := 0
+
+			for _, transcriptPath := range transcripts {
+				usage, err := rank.ParseTranscript(transcriptPath)
+				if err != nil {
+					skippedCount++
+					continue
+				}
+
+				// Skip sessions with no token usage
+				if usage.InputTokens == 0 && usage.OutputTokens == 0 {
+					skippedCount++
+					continue
+				}
+
+				parsedCount++
+
+				// Generate session hash
+				sessionHash, err := rank.ComputeSessionHash(usage.EndedAt, usage.InputTokens, usage.OutputTokens)
+				if err != nil {
+					skippedCount++
+					continue
+				}
+
+				// Extract session ID from filename
+				sessionID := filepath.Base(transcriptPath)
+				sessionID = strings.TrimSuffix(sessionID, ".jsonl")
+				sessionID = strings.TrimSuffix(sessionID, ".json")
+
+				// Anonymize project path (use session ID as placeholder since we don't have project path)
+				anonymousProjectID := sessionID
+
+				submission := &rank.SessionSubmission{
+					SessionHash:         sessionHash,
+					EndedAt:             usage.EndedAt,
+					InputTokens:         usage.InputTokens,
+					OutputTokens:        usage.OutputTokens,
+					CacheCreationTokens: usage.CacheCreationTokens,
+					CacheReadTokens:     usage.CacheReadTokens,
+					AnonymousProjectID:  anonymousProjectID,
+					StartedAt:           usage.StartedAt,
+					DurationSeconds:     int(usage.DurationSeconds),
+					TurnCount:           usage.TurnCount,
+					ModelName:           usage.ModelName,
+				}
+
+				sessions = append(sessions, submission)
+			}
+
+			_, _ = fmt.Fprintf(out, "Parsed %d sessions, skipped %d\n", parsedCount, skippedCount)
+
+			if len(sessions) == 0 {
+				_, _ = fmt.Fprintln(out, "No sessions with token usage found.")
+				return nil
+			}
+
+			// Submit in batches
+			ctx, cancel := context.WithTimeout(cmd.Context(), 300*time.Second)
+			defer cancel()
+
+			submitted := 0
+			for i := 0; i < len(sessions); i += 100 {
+				end := i + 100
+				if end > len(sessions) {
+					end = len(sessions)
+				}
+
+				batch := sessions[i:end]
+				result, err := deps.RankClient.SubmitSessionsBatch(ctx, batch)
+				if err != nil {
+					_, _ = fmt.Fprintf(out, "Batch %d-%d failed: %v\n", i, end-1, err)
+					continue
+				}
+
+				submitted += len(batch)
+				_, _ = fmt.Fprintf(out, "Submitted %d sessions (batch %d-%d)\n", len(batch), i, end-1)
+
+				if result != nil && result.Failed > 0 {
+					_, _ = fmt.Fprintf(out, "  Failed: %d sessions\n", result.Failed)
+				}
+			}
+
+			_, _ = fmt.Fprintf(out, "Sync complete. Submitted %d session(s).\n", submitted)
 			return nil
 		},
 	}
