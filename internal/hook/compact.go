@@ -41,8 +41,8 @@ func (h *compactHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 		slog.Error("failed to marshal compact data",
 			"error", err.Error(),
 		)
-		return NewAllowOutput(), nil
+		return &HookOutput{}, nil
 	}
 
-	return NewAllowOutputWithData(jsonData), nil
+	return &HookOutput{Data: jsonData}, nil
 }

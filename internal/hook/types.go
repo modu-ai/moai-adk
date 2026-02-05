@@ -155,6 +155,7 @@ type HookOutput struct {
 func NewAllowOutput() *HookOutput {
 	return &HookOutput{
 		HookSpecificOutput: &HookSpecificOutput{
+			HookEventName:      "PreToolUse",
 			PermissionDecision: DecisionAllow,
 		},
 	}
@@ -165,6 +166,7 @@ func NewAllowOutput() *HookOutput {
 func NewAllowOutputWithData(data json.RawMessage) *HookOutput {
 	return &HookOutput{
 		HookSpecificOutput: &HookSpecificOutput{
+			HookEventName:      "PreToolUse",
 			PermissionDecision: DecisionAllow,
 		},
 		Data: data,
@@ -176,6 +178,7 @@ func NewAllowOutputWithData(data json.RawMessage) *HookOutput {
 func NewDenyOutput(reason string) *HookOutput {
 	return &HookOutput{
 		HookSpecificOutput: &HookSpecificOutput{
+			HookEventName:            "PreToolUse",
 			PermissionDecision:       DecisionDeny,
 			PermissionDecisionReason: reason,
 		},
@@ -187,6 +190,7 @@ func NewDenyOutput(reason string) *HookOutput {
 func NewAskOutput(reason string) *HookOutput {
 	return &HookOutput{
 		HookSpecificOutput: &HookSpecificOutput{
+			HookEventName:            "PreToolUse",
 			PermissionDecision:       DecisionAsk,
 			PermissionDecisionReason: reason,
 		},

@@ -1,0 +1,42 @@
+# LLM Configuration Settings
+# Multi-LLM routing for cost-effective development workflows
+# Reference: Multi-LLM Parallel Development Automation Plan
+
+llm:
+  # LLM Mode Selection
+  # - claude-only: Use Claude for all phases (Opus/Sonnet based on pricing plan)
+  # - mashup: Plan with Claude, Run/Sync with GLM (balanced)
+  # - glm-only: Use GLM for all phases (lowest cost)
+  mode: claude-only
+
+  # Environment variable name for GLM API key
+  # User must set this in their shell profile (~/.zshrc, ~/.bashrc)
+  # Matches pricing.yaml: GLM_API_KEY
+  glm_env_var: GLM_API_KEY
+
+  # Auto worktree settings
+  # When hybrid mode is enabled, automatically create worktree with GLM config
+  auto_worktree:
+    enabled: false # Enable auto-worktree for hybrid mode
+    copy_glm_config: true # Copy GLM settings.local.json to worktree
+
+  # GLM API Configuration
+  # These values are used in .moai/llm-configs/glm.json template
+  glm:
+    base_url: "https://api.z.ai/api/anthropic"
+    models:
+      haiku: "glm-4.7-flashx"
+      sonnet: "glm-4.7"
+      opus: "glm-4.7"
+
+  # Routing behavior
+  routing:
+    # Auto-detect complexity and route accordingly
+    auto_detect: true
+
+    # Threshold for parallel SPEC decomposition
+    # If estimated tasks > threshold, decompose into multiple SPECs
+    parallel_threshold: 10
+
+    # Always ask before creating worktree (when hybrid mode)
+    confirm_worktree: false

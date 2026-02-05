@@ -244,9 +244,9 @@ func TestRender_ContextBarGraph(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	// Should contain bar graph with brackets
-	if !strings.Contains(got, "[") || !strings.Contains(got, "]") {
-		t.Errorf("should contain bar graph with brackets, got %q", got)
+	// Should contain bar graph characters
+	if !strings.Contains(got, "█") {
+		t.Errorf("should contain bar graph characters, got %q", got)
 	}
 	// Should contain percentage
 	if !strings.Contains(got, "41%") {

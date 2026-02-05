@@ -57,7 +57,7 @@ Step 2 - Memory Pressure Check (if --memory-check enabled):
 - Calculate session duration from start time
 - Monitor iteration time for GC pressure signs (doubling iteration time)
 - If session duration exceeds 25 minutes OR iteration time doubling:
-  - Save proactive checkpoint to .moai/cache/ralph-snapshots/memory-pressure.json
+  - Save proactive checkpoint to $CLAUDE_PROJECT_DIR/.moai/cache/ralph-snapshots/memory-pressure.json
   - Warn user about memory pressure
   - Suggest resuming with /moai:loop --resume memory-pressure
 - If memory-safe limit reached (50 iterations): Exit with checkpoint
@@ -101,7 +101,7 @@ Step 7 - Verification:
 - [HARD] After each fix: TaskUpdate to change item to completed
 
 Step 8 - Snapshot Save:
-- Save iteration snapshot to .moai/cache/ralph-snapshots/
+- Save iteration snapshot to $CLAUDE_PROJECT_DIR/.moai/cache/ralph-snapshots/
 - Increment iteration counter
 
 Step 9 - Repeat or Exit:
@@ -119,14 +119,14 @@ The loop exits when any of these conditions are met:
 
 ## Snapshot Management
 
-Snapshot location: .moai/cache/ralph-snapshots/
+Snapshot location: $CLAUDE_PROJECT_DIR/.moai/cache/ralph-snapshots/
 
 Files:
 - iteration-001.json, iteration-002.json, etc. (per-iteration snapshots)
 - latest.json (symlink to most recent)
 - memory-pressure.json (proactive checkpoint on memory pressure)
 
-Loop state file: .moai/cache/.moai_loop_state.json
+Loop state file: $CLAUDE_PROJECT_DIR/.moai/cache/.moai_loop_state.json
 
 Resume commands:
 - /moai:loop --resume latest

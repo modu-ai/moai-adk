@@ -19,7 +19,7 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "/bin/zsh -l -c 'export PATH=$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH; uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__ast_grep_scan.py\"'"
+          command: "/bin/zsh -l -c 'export PATH=$HOME/go/bin:$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH; \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\" ast-grep'"
           timeout: 60
 ---
 
@@ -48,7 +48,8 @@ output_format: New implementation code with specification tests, coverage report
 checkpoint_strategy:
   enabled: true
   interval: every_cycle
-  location: .moai/memory/checkpoints/tdd/
+  # CRITICAL: Always use project root for .moai to prevent duplicate .moai in subfolders
+  location: $CLAUDE_PROJECT_DIR/.moai/memory/checkpoints/tdd/
   resume_capability: true
 
 memory_management:

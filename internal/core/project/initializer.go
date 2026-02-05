@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -241,6 +242,10 @@ func (i *projectInitializer) deployTemplates(ctx context.Context, opts InitOptio
 		return fmt.Errorf("load manifest: %w", err)
 	}
 
+	// Detect paths for template context
+	homeDir, _ := os.UserHomeDir()
+	goBinPath := detectGoBinPath(homeDir)
+
 	// Build TemplateContext from InitOptions
 	tmplCtx := template.NewTemplateContext(
 		template.WithProject(opts.ProjectName, opts.ProjectRoot),
@@ -251,6 +256,8 @@ func (i *projectInitializer) deployTemplates(ctx context.Context, opts InitOptio
 		template.WithGitHubUsername(opts.GitHubUsername),
 		template.WithOutputLanguages(opts.GitCommitLang, opts.CodeCommentLang, opts.DocLang),
 		template.WithPlatform(opts.Platform),
+		template.WithGoBinPath(goBinPath),
+		template.WithHomeDir(homeDir),
 	)
 
 	if err := i.deployer.Deploy(ctx, opts.ProjectRoot, i.manifestMgr, tmplCtx); err != nil {
@@ -258,6 +265,32 @@ func (i *projectInitializer) deployTemplates(ctx context.Context, opts InitOptio
 	}
 
 	return nil
+}
+
+// detectGoBinPath detects the Go binary installation path.
+// Returns the path where Go binaries are installed (e.g., "/Users/goos/go/bin").
+func detectGoBinPath(homeDir string) string {
+	// Try GOBIN first (explicit override)
+	if output, err := exec.Command("go", "env", "GOBIN").Output(); err == nil {
+		if goBin := strings.TrimSpace(string(output)); goBin != "" {
+			return goBin
+		}
+	}
+
+	// Try GOPATH/bin (user's Go workspace)
+	if output, err := exec.Command("go", "env", "GOPATH").Output(); err == nil {
+		if goPath := strings.TrimSpace(string(output)); goPath != "" {
+			return filepath.Join(goPath, "bin")
+		}
+	}
+
+	// Fallback to default ~/go/bin
+	if homeDir != "" {
+		return filepath.Join(homeDir, "go", "bin")
+	}
+
+	// Last resort: common Go install location
+	return "/usr/local/go/bin"
 }
 
 // generateConfigsFallback creates config YAML files directly when no deployer is available.

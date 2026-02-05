@@ -1,0 +1,337 @@
+name: 📋 SPEC Issue Sync
+
+on:
+  pull_request:
+    paths:
+      - '.moai/specs/SPEC-*/spec.md'
+    types: [opened, synchronize]
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  sync-spec-to-issue:
+    runs-on: ubuntu-latest
+    name: 🔄 Sync SPEC to GitHub Issue
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Find and parse SPEC file
+        id: spec
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -x  # Enable debug mode
+
+          echo "=== STEP 1: Get PR branch name ==="
+          branch_name="${{ github.head_ref }}"
+          echo "Branch: $branch_name"
+
+          echo ""
+          echo "=== STEP 2: Get changed files from PR ==="
+          # Get list of changed files from PR
+          changed_files=$(gh pr view ${{ github.event.pull_request.number }} --json files --jq '.files[].path' 2>&1)
+
+          if [ $? -ne 0 ]; then
+            echo "⚠️  Failed to fetch PR files, falling back to git diff"
+            changed_files=$(git diff --name-only origin/main HEAD 2>&1)
+          fi
+
+          echo "Changed files:"
+          echo "$changed_files"
+
+          echo ""
+          echo "=== STEP 3: Find SPEC files that were actually changed ==="
+          # Find spec files that were actually modified in this PR
+          spec_files=$(echo "$changed_files" | grep -E '\.moai/specs/SPEC-.*/spec\.md$' || true)
+
+          if [ -z "$spec_files" ]; then
+            echo "⚠️  No SPEC file changes detected in this PR"
+            echo "Exiting gracefully (this is expected if no SPEC files changed)"
+            exit 0
+          fi
+
+          echo "Found SPEC files:"
+          echo "$spec_files"
+
+          # Count SPEC files
+          spec_file_count=$(echo "$spec_files" | wc -l)
+          echo "Count: $spec_file_count"
+
+          if [ "$spec_file_count" -gt 1 ]; then
+            echo ""
+            echo "⚠️  WARNING: Multiple SPEC files detected in this PR"
+            echo "   This is unusual. Using first SPEC file."
+            echo "   Files:"
+            echo "$spec_files" | sed 's/^/     /'
+          fi
+
+          # Select first SPEC file
+          spec_file=$(echo "$spec_files" | head -1)
+          echo ""
+          echo "✅ Selected SPEC file: $spec_file"
+          echo "spec_file=$spec_file" >> $GITHUB_OUTPUT
+
+          echo ""
+          echo "=== STEP 4: Extract YAML metadata ==="
+          # Extract YAML metadata using grep
+          spec_id=$(grep "^id:" "$spec_file" | sed 's/^id: *//' | tr -d ' "')
+          spec_version=$(grep "^version:" "$spec_file" | sed 's/^version: *//' | tr -d ' "')
+          spec_status=$(grep "^status:" "$spec_file" | sed 's/^status: *//' | tr -d ' "')
+          spec_priority=$(grep "^priority:" "$spec_file" | sed 's/^priority: *//' | tr -d ' "')
+
+          # Extract title from H1 heading
+
+          echo "✅ Extracted SPEC metadata:"
+          echo "  ID: $spec_id"
+          echo "  Title: $spec_title"
+          echo "  Version: $spec_version"
+          echo "  Status: $spec_status"
+          echo "  Priority: $spec_priority"
+
+          echo ""
+          echo "=== STEP 5: Validate SPEC status ==="
+          # Skip if SPEC is already completed (historical document)
+          if [ "$spec_status" = "completed" ]; then
+            echo "⚠️  SPEC status is 'completed' (historical document)"
+            echo "   Skipping issue creation for completed SPEC"
+            exit 0
+          fi
+
+          echo "✅ SPEC status is valid (not completed)"
+
+          echo ""
+          echo "=== STEP 6: Validate branch name matches SPEC ID ==="
+          # Extract SPEC ID from branch name (feature/SPEC-UPDATE-REFACTOR-002 -> UPDATE-REFACTOR-002)
+          branch_spec_id=$(echo "$branch_name" | grep -oE 'SPEC-[A-Z0-9_-]+' | sed 's/^SPEC-//' || true)
+
+          if [ -n "$branch_spec_id" ]; then
+            if [ "$branch_spec_id" != "$spec_id" ]; then
+              echo "⚠️  WARNING: Branch name mismatch!"
+              echo "   Branch SPEC ID: $branch_spec_id"
+              echo "   File SPEC ID:   $spec_id"
+              echo "   Continuing anyway (might be intentional)"
+            else
+              echo "✅ Branch name matches SPEC ID"
+            fi
+          else
+            echo "⚠️  Could not extract SPEC ID from branch name"
+            echo "   Branch: $branch_name"
+            echo "   Continuing anyway"
+          fi
+
+          echo ""
+          echo "=== STEP 7: Output all variables ==="
+          echo "spec_id=$spec_id" >> $GITHUB_OUTPUT
+          echo "spec_version=$spec_version" >> $GITHUB_OUTPUT
+          echo "spec_status=$spec_status" >> $GITHUB_OUTPUT
+          echo "spec_priority=$spec_priority" >> $GITHUB_OUTPUT
+          echo "spec_title=$spec_title" >> $GITHUB_OUTPUT
+
+      - name: Check for existing issue
+        if: steps.spec.outputs.spec_id
+        id: check-issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          spec_id="${{ steps.spec.outputs.spec_id }}"
+
+          echo "=== Checking for existing issue ==="
+          echo "Searching for existing GitHub issue with SPEC-$spec_id..."
+
+          # PRIMARY: Search with label filter (efficient)
+          echo "  Attempt 1: Searching with 'spec' label filter..."
+          existing_issue=$(gh issue list \
+            --label "spec" \
+            --state all \
+            --search "[SPEC-$spec_id]" \
+            --json number,title,state \
+            --jq '.[] | select(.title | contains("[SPEC-'$spec_id']")) | .number' \
+            2>/dev/null | head -1)
+
+          # FALLBACK: Search without label filter (in case labels missing)
+          if [ -z "$existing_issue" ]; then
+            echo "  Attempt 2: Searching WITHOUT label filter (fallback for missing labels)..."
+            existing_issue=$(gh issue list \
+              --state all \
+              --search "[SPEC-$spec_id]" \
+              --json number,title,state,labels \
+              --jq '.[] | select(.title | contains("[SPEC-'$spec_id']")) | .number' \
+              2>/dev/null | head -1)
+
+            if [ -n "$existing_issue" ]; then
+              echo "  ⚠️  Found issue without 'spec' label, adding labels..."
+              # Add missing labels to existing issue
+              gh issue edit "$existing_issue" --add-label "spec,planning" 2>/dev/null || true
+            fi
+          fi
+
+          if [ -n "$existing_issue" ]; then
+            echo "✅ Found existing issue: #$existing_issue"
+            echo "issue_exists=true" >> $GITHUB_OUTPUT
+            echo "issue_number=$existing_issue" >> $GITHUB_OUTPUT
+          else
+            echo "📋 No existing issue found for SPEC-$spec_id"
+            echo "issue_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create or Update GitHub Issue
+        if: steps.spec.outputs.spec_id
+        id: create-issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          spec_id="${{ steps.spec.outputs.spec_id }}"
+          spec_version="${{ steps.spec.outputs.spec_version }}"
+          spec_title="${{ steps.spec.outputs.spec_title }}"
+          spec_status="${{ steps.spec.outputs.spec_status }}"
+          spec_priority="${{ steps.spec.outputs.spec_priority }}"
+          spec_file="${{ steps.spec.outputs.spec_file }}"
+          issue_exists="${{ steps.check-issue.outputs.issue_exists }}"
+          existing_issue="${{ steps.check-issue.outputs.issue_number }}"
+
+          # Read SPEC content (skip YAML frontmatter: 9 lines + 1 blank = 10 lines total)
+          # Start reading from line 11
+          spec_content=$(tail -n +11 "$spec_file")
+
+          # Create issue body using GitHub Actions recommended pattern
+          # Reference: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions
+          {
+            echo "## SPEC Metadata"
+            echo ""
+            echo "| Field | Value |"
+            echo "|-------|-------|"
+            echo "| **ID** | $spec_id |"
+            echo "| **Version** | $spec_version |"
+            echo "| **Status** | $spec_status |"
+            echo "| **Priority** | $spec_priority |"
+            echo ""
+            echo "## SPEC Document"
+            echo ""
+            echo "$spec_content"
+            echo ""
+            echo "---"
+            echo ""
+            echo "📎 **Branch**: \`feature/$spec_id\`"
+            echo "🔗 **PR**: #${{ github.event.pull_request.number }}"
+            echo "📝 **Auto-synced**: This issue is automatically synchronized from the SPEC document"
+          } > /tmp/issue_body.txt
+
+          if [ "$issue_exists" = "true" ]; then
+            echo "📝 Updating existing issue #$existing_issue..."
+            echo "  Title: [SPEC-$spec_id] $spec_title (v$spec_version)"
+            echo "  Labels: spec, planning, $spec_priority"
+
+            # Update existing issue with new content and ensure proper labels
+            gh issue edit "$existing_issue" \
+              --title "[SPEC-$spec_id] $spec_title (v$spec_version)" \
+              --body-file /tmp/issue_body.txt \
+              --add-label "spec,planning,$spec_priority" \
+              --state open
+
+            issue_num=$existing_issue
+            echo "✅ Updated issue #$issue_num with latest SPEC version"
+          else
+            echo "📋 Creating new GitHub Issue..."
+            echo "  Title: [SPEC-$spec_id] $spec_title (v$spec_version)"
+            echo "  Body file: /tmp/issue_body.txt"
+            wc -l /tmp/issue_body.txt
+
+            # Create issue with labels using body-file
+            issue_output=$(gh issue create \
+              --title "[SPEC-$spec_id] $spec_title (v$spec_version)" \
+              --body-file /tmp/issue_body.txt \
+              --label "spec" \
+              --label "planning" \
+              --label "$spec_priority" 2>&1)
+
+            echo "$issue_output" | tee /tmp/issue_output.txt
+
+            # Extract issue number from output
+            issue_num=$(echo "$issue_output" | grep -oE '/issues/[0-9]+' | grep -oE '[0-9]+' | head -1)
+
+            if [ -z "$issue_num" ]; then
+              echo "⚠️  Could not extract issue number from output"
+              echo "Full output:"
+              cat /tmp/issue_output.txt
+              exit 1
+            fi
+
+            echo "✅ Created issue #$issue_num"
+          fi
+
+          echo "issue_number=$issue_num" >> $GITHUB_OUTPUT
+
+      - name: Validate SPEC issue labels
+        if: steps.create-issue.outputs.issue_number
+        id: validate-labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          issue_num="${{ steps.create-issue.outputs.issue_number }}"
+          spec_priority="${{ steps.spec.outputs.spec_priority }}"
+
+          echo "🔍 Validating SPEC issue #$issue_num labels..."
+
+          # Get current labels
+          current_labels=$(gh issue view $issue_num --json labels --jq '.labels[].name' | tr '\n' ',' | sed 's/,$//')
+          echo "Current labels: $current_labels"
+
+          # Check for mandatory labels
+          needs_update=false
+
+          if [[ ! "$current_labels" =~ "spec" ]]; then
+            echo "⚠️  Missing 'spec' label, adding..."
+            gh issue edit $issue_num --add-label "spec"
+            needs_update=true
+          fi
+
+          if [[ ! "$current_labels" =~ "planning" ]]; then
+            echo "⚠️  Missing 'planning' label, adding..."
+            gh issue edit $issue_num --add-label "planning"
+            needs_update=true
+          fi
+
+          # Check for priority label
+          if [[ ! "$current_labels" =~ (critical|high|medium|low) ]]; then
+            echo "⚠️  No priority label found, adding '$spec_priority' as default"
+            gh issue edit $issue_num --add-label "$spec_priority"
+            needs_update=true
+          fi
+
+          if [ "$needs_update" = true ]; then
+            echo "✅ SPEC labels validated and corrected"
+          else
+            echo "✅ SPEC labels already valid"
+          fi
+
+      - name: Add PR comment
+        if: steps.create-issue.outputs.issue_number
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          issue_num="${{ steps.create-issue.outputs.issue_number }}"
+          spec_id="${{ steps.spec.outputs.spec_id }}"
+          spec_title="${{ steps.spec.outputs.spec_title }}"
+
+          # Create PR comment body using same pattern
+          {
+            echo "✅ **SPEC GitHub Issue Created**"
+            echo ""
+            echo "This SPEC has been synchronized to GitHub Issue."
+            echo ""
+            echo "📋 **Issue**: [#$issue_num - SPEC-$spec_id: $spec_title](../issues/$issue_num)"
+            echo "🔗 **SPEC File**: \`.moai/specs/SPEC-$spec_id/spec.md\`"
+            echo ""
+            echo "The issue will be automatically updated as you modify the SPEC document."
+          } > /tmp/pr_comment.txt
+
+          gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/pr_comment.txt
+          echo "✅ Added PR comment linking to issue #$issue_num"

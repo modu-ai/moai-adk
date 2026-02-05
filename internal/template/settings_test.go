@@ -110,11 +110,11 @@ func TestSettingsGeneratorGenerate(t *testing.T) {
 func TestSettingsRequiredHookEvents(t *testing.T) {
 	gen := NewSettingsGenerator()
 
+	// Note: SessionEnd is excluded - handled by global moai-rank hook
 	requiredEvents := []string{
 		"SessionStart",
 		"PreToolUse",
 		"PostToolUse",
-		"SessionEnd",
 		"Stop",
 		"PreCompact",
 	}
@@ -168,7 +168,7 @@ func TestSettingsPlatformHookCommands(t *testing.T) {
 		}
 
 		cmd := settings.Hooks["SessionStart"][0].Hooks[0].Command
-		expected := `"$HOME/go/bin/moai" hook session-start`
+		expected := `"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh"`
 		if cmd != expected {
 			t.Errorf("darwin SessionStart command = %q, want %q", cmd, expected)
 		}
@@ -187,7 +187,7 @@ func TestSettingsPlatformHookCommands(t *testing.T) {
 		}
 
 		cmd := settings.Hooks["SessionStart"][0].Hooks[0].Command
-		expected := `"$HOME/go/bin/moai" hook session-start`
+		expected := `"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh"`
 		if cmd != expected {
 			t.Errorf("linux SessionStart command = %q, want %q", cmd, expected)
 		}
@@ -206,7 +206,7 @@ func TestSettingsPlatformHookCommands(t *testing.T) {
 		}
 
 		cmd := settings.Hooks["SessionStart"][0].Hooks[0].Command
-		expected := `cmd.exe /c "%USERPROFILE%\go\bin\moai" hook session-start`
+		expected := `cmd.exe /c "%CLAUDE_PROJECT_DIR%\.claude\hooks\moai\handle-session-start.sh"`
 		if cmd != expected {
 			t.Errorf("windows SessionStart command = %q, want %q", cmd, expected)
 		}
@@ -344,7 +344,8 @@ func TestSettingsOutputStyleDefault(t *testing.T) {
 func TestSettingsEnvDefault(t *testing.T) {
 	gen := NewSettingsGenerator()
 
-	t.Run("has_env_path", func(t *testing.T) {
+	t.Run("env_managed_globally", func(t *testing.T) {
+		// Env is omitted from project-level settings, managed globally in ~/.claude/settings.json
 		data, err := gen.Generate(defaultTestConfig(), "darwin")
 		if err != nil {
 			t.Fatalf("Generate error: %v", err)
@@ -356,17 +357,14 @@ func TestSettingsEnvDefault(t *testing.T) {
 			t.Fatalf("Unmarshal error: %v", err)
 		}
 
-		if settings.Env == nil {
-			t.Fatal("env is nil")
+		// Env should be nil (not populated) since it's managed globally
+		if settings.Env != nil {
+			t.Errorf("env should be nil (managed globally), got %v", settings.Env)
 		}
 
-		path, ok := settings.Env["PATH"]
-		if !ok {
-			t.Fatal("env.PATH is missing")
-		}
-
-		if !strings.Contains(path, "$HOME/go/bin") {
-			t.Errorf("env.PATH should contain $HOME/go/bin, got %q", path)
+		// Verify the JSON doesn't contain "env" key
+		if strings.Contains(trimmed, `"env"`) {
+			t.Error("generated JSON should not contain 'env' key")
 		}
 	})
 

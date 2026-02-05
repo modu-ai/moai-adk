@@ -116,7 +116,7 @@ If --dry flag: Display preview of all classified issues and exit without changes
 
 ## Snapshot Save/Resume
 
-Snapshot location: .moai/cache/fix-snapshots/
+Snapshot location: $CLAUDE_PROJECT_DIR/.moai/cache/fix-snapshots/
 
 Snapshot contents:
 - Timestamp
@@ -143,7 +143,7 @@ Resume commands:
 9. Apply Level 1-2 fixes via agent delegation
 10. Request approval for Level 3 fixes via AskUserQuestion
 11. Verify fixes by re-running diagnostics
-12. Save snapshot to .moai/cache/fix-snapshots/
+12. Save snapshot to $CLAUDE_PROJECT_DIR/.moai/cache/fix-snapshots/
 13. Report with evidence (file:line changes)
 
 ---

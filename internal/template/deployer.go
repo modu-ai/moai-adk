@@ -29,8 +29,9 @@ type Deployer interface {
 
 // deployer is the concrete implementation of Deployer.
 type deployer struct {
-	fsys     fs.FS
-	renderer Renderer // Optional: if set, .tmpl files are rendered with TemplateContext
+	fsys        fs.FS
+	renderer    Renderer // Optional: if set, .tmpl files are rendered with TemplateContext
+	forceUpdate bool      // If true, overwrite existing files without manifest check (used for updates)
 }
 
 // NewDeployer creates a Deployer backed by the given filesystem.
@@ -41,7 +42,19 @@ func NewDeployer(fsys fs.FS) Deployer {
 
 // NewDeployerWithRenderer creates a Deployer that renders .tmpl files using the given Renderer.
 func NewDeployerWithRenderer(fsys fs.FS, renderer Renderer) Deployer {
-	return &deployer{fsys: fsys, renderer: renderer}
+	return &deployer{fsys: fsys, renderer: renderer, forceUpdate: false}
+}
+
+// NewDeployerWithForceUpdate creates a Deployer that forces overwrite of existing files.
+// This is used for template updates where template files should replace existing versions.
+func NewDeployerWithForceUpdate(fsys fs.FS, forceUpdate bool) Deployer {
+	return &deployer{fsys: fsys, forceUpdate: forceUpdate}
+}
+
+// NewDeployerWithRendererAndForceUpdate creates a Deployer that renders .tmpl files
+// and forces overwrite of existing files. Used for template updates with rendering.
+func NewDeployerWithRendererAndForceUpdate(fsys fs.FS, renderer Renderer, forceUpdate bool) Deployer {
+	return &deployer{fsys: fsys, renderer: renderer, forceUpdate: forceUpdate}
 }
 
 // Deploy walks the embedded filesystem and writes every file to projectRoot.
@@ -110,19 +123,22 @@ func (d *deployer) Deploy(ctx context.Context, projectRoot string, m manifest.Ma
 		// destination. This prevents overwriting user-created or
 		// programmatically-generated files (e.g., config YAMLs from Step 2
 		// of init, or pre-existing CLAUDE.md).
-		if _, statErr := os.Stat(destPath); statErr == nil {
-			// File exists — check manifest for provenance
-			if entry, found := m.GetEntry(destRelPath); found {
-				if entry.Provenance == manifest.UserModified || entry.Provenance == manifest.UserCreated {
-					// Respect user files
+		// Skip this check in forceUpdate mode (used for template updates).
+		if !d.forceUpdate {
+			if _, statErr := os.Stat(destPath); statErr == nil {
+				// File exists — check manifest for provenance
+				if entry, found := m.GetEntry(destRelPath); found {
+					if entry.Provenance == manifest.UserModified || entry.Provenance == manifest.UserCreated {
+						// Respect user files
+						return nil
+					}
+					// template_managed files are safe to overwrite (re-init / update)
+				} else {
+					// Existing file not tracked in manifest — record as user_created and skip
+					templateHash := manifest.HashBytes(content)
+					_ = m.Track(destRelPath, manifest.UserCreated, templateHash)
 					return nil
 				}
-				// template_managed files are safe to overwrite (re-init / update)
-			} else {
-				// Existing file not tracked in manifest — record as user_created and skip
-				templateHash := manifest.HashBytes(content)
-				_ = m.Track(destRelPath, manifest.UserCreated, templateHash)
-				return nil
 			}
 		}
 
@@ -132,8 +148,15 @@ func (d *deployer) Deploy(ctx context.Context, projectRoot string, m manifest.Ma
 			return fmt.Errorf("template deploy mkdir %q: %w", destDir, err)
 		}
 
+		// Determine file permissions based on extension
+		// Shell scripts and other executable files need executable bit
+	 perm := fs.FileMode(0o644) // Default: read/write for owner, read for others
+		if strings.HasSuffix(destRelPath, ".sh") {
+			perm = 0o755 // Executable: read/write/execute for owner, read/execute for others
+		}
+
 		// Write file
-		if err := os.WriteFile(destPath, content, 0o644); err != nil {
+		if err := os.WriteFile(destPath, content, perm); err != nil {
 			return fmt.Errorf("template deploy write %q: %w", destPath, err)
 		}
 

@@ -77,12 +77,12 @@ func TestPostToolHandler_Handle(t *testing.T) {
 			if got == nil {
 				t.Fatal("got nil output")
 			}
-			// PostToolUse handler is observation-only and uses hookSpecificOutput.permissionDecision
+			// PostToolUse handler is observation-only and uses hookSpecificOutput.hookEventName
 			if got.HookSpecificOutput == nil {
 				t.Fatal("HookSpecificOutput is nil")
 			}
-			if got.HookSpecificOutput.PermissionDecision != tt.wantDecision {
-				t.Errorf("PermissionDecision = %q, want %q", got.HookSpecificOutput.PermissionDecision, tt.wantDecision)
+			if got.HookSpecificOutput.HookEventName != "PostToolUse" {
+				t.Errorf("HookEventName = %q, want %q", got.HookSpecificOutput.HookEventName, "PostToolUse")
 			}
 			if tt.checkData && got.Data != nil {
 				if !json.Valid(got.Data) {

@@ -2,7 +2,12 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/rank"
@@ -73,6 +78,15 @@ func newRankLoginCmd() *cobra.Command {
 			}
 
 			_, _ = fmt.Fprintf(out, "Authenticated as %s (ID: %s)\n", creds.Username, creds.UserID)
+
+			// Install Claude Code hook for session submission
+			if err := installRankHook(); err != nil {
+				_, _ = fmt.Fprintf(out, "Warning: failed to install session hook: %v\n", err)
+				_, _ = fmt.Fprintln(out, "Session metrics will not be submitted automatically.")
+			} else {
+				_, _ = fmt.Fprintln(out, "Session hook installed successfully.")
+			}
+
 			return nil
 		},
 	}
@@ -119,6 +133,11 @@ func newRankLogoutCmd() *cobra.Command {
 			out := cmd.OutOrStdout()
 			if deps == nil || deps.RankCredStore == nil {
 				return fmt.Errorf("rank system not initialized")
+			}
+
+			// Remove Claude Code hook for session submission
+			if err := removeRankHook(); err != nil {
+				_, _ = fmt.Fprintf(out, "Warning: failed to remove session hook: %v\n", err)
 			}
 
 			if err := deps.RankCredStore.Delete(); err != nil {
@@ -236,4 +255,263 @@ func newRankRegisterCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// --- Claude Code Settings.json Hook Management ---
+
+// claudeSettings represents the structure of ~/.claude/settings.json
+type claudeSettings struct {
+	Hooks map[string][]hookGroup `json:"hooks,omitempty"`
+	// Other fields are omitted as we only modify hooks
+}
+
+// hookGroup represents a hook group with optional matcher
+type hookGroup struct {
+	Matcher string      `json:"matcher,omitempty"`
+	Hooks   []hookEntry `json:"hooks"`
+}
+
+// hookEntry represents a single hook command
+type hookEntry struct {
+	Type    string `json:"type"`
+	Command string `json:"command"`
+	Timeout int    `json:"timeout,omitempty"`
+}
+
+// installRankHook installs the rank session hook in ~/.claude/settings.json.
+// This enables automatic session metrics submission to MoAI Rank across all projects.
+// It deploys a wrapper script to ~/.claude/hooks/moai-rank-session-end.sh (global)
+// and configures settings.json to call this script.
+func installRankHook() error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("get home directory: %w", err)
+	}
+
+	// Step 1: Deploy the wrapper script to ~/.claude/hooks/
+	if err := deployGlobalRankHookScript(homeDir); err != nil {
+		return fmt.Errorf("deploy global hook script: %w", err)
+	}
+
+	// Step 2: Update ~/.claude/settings.json with global hook
+	settingsPath := filepath.Join(homeDir, ".claude", "settings.json")
+	// Use $HOME environment variable for user-independent path
+	hookCommand := `"$HOME/.claude/hooks/rank-submit.sh"`
+
+	// Read existing settings or create new structure
+	var settings claudeSettings
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("read settings.json: %w", err)
+		}
+		// File doesn't exist, create new structure
+		settings = claudeSettings{
+			Hooks: make(map[string][]hookGroup),
+		}
+	} else {
+		if err := json.Unmarshal(data, &settings); err != nil {
+			return fmt.Errorf("parse settings.json: %w", err)
+		}
+	}
+
+	// Ensure hooks map exists
+	if settings.Hooks == nil {
+		settings.Hooks = make(map[string][]hookGroup)
+	}
+
+	// Check if SessionEnd hook already exists with our script
+	sessionEndHooks := settings.Hooks["SessionEnd"]
+	hookExists := false
+	for _, group := range sessionEndHooks {
+		for _, h := range group.Hooks {
+			// Check for either old name (moai-rank-session-end.sh) or new name (rank-submit.sh)
+			if strings.Contains(h.Command, "moai-rank-session-end.sh") || strings.Contains(h.Command, "rank-submit.sh") {
+				hookExists = true
+				break
+			}
+		}
+		if hookExists {
+			break
+		}
+	}
+
+	// Add hook if not exists
+	if !hookExists {
+		settings.Hooks["SessionEnd"] = append(settings.Hooks["SessionEnd"], hookGroup{
+			Matcher: "",
+			Hooks: []hookEntry{
+				{
+					Type:    "command",
+					Command: hookCommand,
+					Timeout: 10,
+				},
+			},
+		})
+	}
+
+	// Write back to file
+	newData, err := json.MarshalIndent(settings, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal settings: %w", err)
+	}
+
+	// Ensure directory exists
+	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
+		return fmt.Errorf("create settings directory: %w", err)
+	}
+
+	if err := os.WriteFile(settingsPath, newData, 0o644); err != nil {
+		return fmt.Errorf("write settings: %w", err)
+	}
+
+	return nil
+}
+
+// deployGlobalRankHookScript deploys the rank-submit.sh wrapper script
+// to ~/.claude/hooks/. This global hook submits session metrics to MoAI Rank.
+func deployGlobalRankHookScript(homeDir string) error {
+	// Detect Go bin path for script
+	goBinPath := detectGoBinPath(homeDir)
+
+	// Script content - directly generated without template file
+	scriptContent := fmt.Sprintf(`#!/bin/bash
+# MoAI Rank Session Submission Hook - Generated by moai-adk-go
+# This script forwards stdin JSON to the moai hook session-end command.
+# Location: ~/.claude/hooks/rank-submit.sh
+# Scope: Global (applies to all projects)
+# Action: Submits session metrics to MoAI Rank leaderboard
+
+# Create temp file to store stdin
+temp_file=$(mktemp)
+trap 'rm -f "$temp_file"' EXIT
+
+# Read stdin into temp file
+cat > "$temp_file"
+
+# Try moai command in PATH
+if command -v moai &> /dev/null; then
+	exec moai hook session-end < "$temp_file"
+fi
+
+# Try detected Go bin path from initialization
+if [ -f "%s/moai" ]; then
+	exec "%s/moai" hook session-end < "$temp_file"
+fi
+
+# Try default ~/go/bin/moai
+if [ -f "%s/go/bin/moai" ]; then
+	exec "%s/go/bin/moai" hook session-end < "$temp_file"
+fi
+
+# Not found - exit silently (Claude Code handles missing hooks gracefully)
+exit 0
+`, goBinPath, goBinPath, homeDir, homeDir)
+
+	// Determine destination path in global hooks directory
+	// Use action-based name: rank-submit.sh instead of moai-rank-session-end.sh
+	destPath := filepath.Join(homeDir, ".claude", "hooks", "rank-submit.sh")
+
+	// Ensure directory exists
+	if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+		return fmt.Errorf("create global hooks directory: %w", err)
+	}
+
+	// Write the script with executable permissions
+	if err := os.WriteFile(destPath, []byte(scriptContent), 0o755); err != nil {
+		return fmt.Errorf("write global hook script: %w", err)
+	}
+
+	return nil
+}
+
+// detectGoBinPath detects the Go binary installation path using `go env`.
+func detectGoBinPath(homeDir string) string {
+	// Try GOBIN first (explicit override)
+	if output, err := exec.Command("go", "env", "GOBIN").Output(); err == nil {
+		if goBin := strings.TrimSpace(string(output)); goBin != "" {
+			return goBin
+		}
+	}
+	// Try GOPATH/bin (user's Go workspace)
+	if output, err := exec.Command("go", "env", "GOPATH").Output(); err == nil {
+		if goPath := strings.TrimSpace(string(output)); goPath != "" {
+			return filepath.Join(goPath, "bin")
+		}
+	}
+	// Fallback to default ~/go/bin
+	if homeDir != "" {
+		return filepath.Join(homeDir, "go", "bin")
+	}
+	return "/usr/local/go/bin"
+}
+
+// removeRankHook removes the rank session hook from ~/.claude/settings.json
+// and deletes the global wrapper script from ~/.claude/hooks/.
+func removeRankHook() error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("get home directory: %w", err)
+	}
+
+	settingsPath := filepath.Join(homeDir, ".claude", "settings.json")
+	hookScriptPath := filepath.Join(homeDir, ".claude", "hooks", "rank-submit.sh")
+
+	// Read existing settings
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// File doesn't exist, just try to remove the script
+			_ = os.Remove(hookScriptPath)
+			return nil
+		}
+		return fmt.Errorf("read settings.json: %w", err)
+	}
+
+	var settings claudeSettings
+	if err := json.Unmarshal(data, &settings); err != nil {
+		return fmt.Errorf("parse settings.json: %w", err)
+	}
+
+	// Remove our hook from SessionEnd
+	sessionEndHooks := settings.Hooks["SessionEnd"]
+	var newHooks []hookGroup
+
+	for _, group := range sessionEndHooks {
+		var filteredEntries []hookEntry
+		for _, h := range group.Hooks {
+			// Filter out hooks that reference our global hook script
+			// Check for both old name (moai-rank-session-end.sh) and new name (rank-submit.sh)
+			if !strings.Contains(h.Command, "moai-rank-session-end.sh") && !strings.Contains(h.Command, "rank-submit.sh") {
+				filteredEntries = append(filteredEntries, h)
+			}
+		}
+		if len(filteredEntries) > 0 {
+			newHooks = append(newHooks, hookGroup{
+				Matcher: group.Matcher,
+				Hooks:   filteredEntries,
+			})
+		}
+	}
+
+	if len(newHooks) == 0 {
+		delete(settings.Hooks, "SessionEnd")
+	} else {
+		settings.Hooks["SessionEnd"] = newHooks
+	}
+
+	// Write back to file
+	newData, err := json.MarshalIndent(settings, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal settings: %w", err)
+	}
+
+	if err := os.WriteFile(settingsPath, newData, 0o644); err != nil {
+		return fmt.Errorf("write settings: %w", err)
+	}
+
+	// Remove the global hook script
+	_ = os.Remove(hookScriptPath)
+
+	return nil
 }

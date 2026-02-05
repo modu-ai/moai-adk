@@ -1,0 +1,45 @@
+# SQL Injection Detection Rules
+
+id: sql-injection-python-format
+language: python
+severity: error
+message: "Potential SQL injection: Use parameterized queries instead of string formatting"
+rule:
+  any:
+    - pattern: cursor.execute($QUERY % $ARGS)
+    - pattern: cursor.execute($QUERY.format($$$ARGS))
+    - pattern: cursor.execute(f"$$$SQL")
+    - pattern: execute($QUERY + $VAR)
+
+---
+id: sql-injection-python-fstring
+language: python
+severity: error
+message: "Potential SQL injection: f-strings in SQL queries are dangerous"
+rule:
+  pattern: |
+    cursor.execute(f"$$$SQL")
+
+---
+id: sql-injection-js-template
+language: javascript
+severity: error
+message: "Potential SQL injection: Use parameterized queries"
+rule:
+  any:
+    - pattern: $DB.query(`$$$SQL ${$VAR} $$$REST`)
+    - pattern: $DB.query($SQL + $VAR)
+    - pattern: $DB.raw($SQL + $VAR)
+    - pattern: knex.raw($SQL + $VAR)
+
+---
+id: sql-injection-ts-template
+language: typescript
+severity: error
+message: "Potential SQL injection: Use parameterized queries"
+rule:
+  any:
+    - pattern: $DB.query(`$$$SQL ${$VAR} $$$REST`)
+    - pattern: $DB.query($SQL + $VAR)
+    - pattern: prisma.$raw($SQL + $VAR)
+    - pattern: knex.raw($SQL + $VAR)

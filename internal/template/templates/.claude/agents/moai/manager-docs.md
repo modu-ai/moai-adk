@@ -32,7 +32,8 @@ output_format: Professional documentation with Nextra framework setup, MDX conte
 checkpoint_strategy:
   enabled: true
   interval: every_phase
-  location: .moai/memory/checkpoints/docs/
+  # CRITICAL: Always use project root for .moai to prevent duplicate .moai in subfolders
+  location: $CLAUDE_PROJECT_DIR/.moai/memory/checkpoints/docs/
   resume_capability: true
 
 memory_management:

@@ -63,10 +63,10 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		slog.Error("failed to marshal session data",
 			"error", err.Error(),
 		)
-		return NewAllowOutput(), nil
+		return &HookOutput{}, nil
 	}
 
-	return NewAllowOutputWithData(jsonData), nil
+	return &HookOutput{Data: jsonData}, nil
 }
 
 // getConfig safely retrieves the configuration, returning nil if unavailable.

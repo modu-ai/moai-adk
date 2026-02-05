@@ -11,9 +11,27 @@ import (
 // Generated exclusively via json.MarshalIndent (ADR-011).
 type Settings struct {
 	Hooks            map[string][]HookGroup `json:"hooks,omitempty"`
+	StatusLine       *StatusLine            `json:"statusLine,omitempty"`
 	OutputStyle      string                 `json:"outputStyle,omitempty"`
 	CleanupPeriodDays int                   `json:"cleanupPeriodDays,omitempty"`
 	Env              map[string]string      `json:"env,omitempty"`
+	Permissions      *Permissions          `json:"permissions,omitempty"`
+}
+
+// StatusLine represents the status line configuration.
+type StatusLine struct {
+	Type           string `json:"type"`
+	Command        string `json:"command"`
+	Padding        int    `json:"padding"`
+	RefreshInterval int    `json:"refreshInterval"`
+}
+
+// Permissions represents tool permissions configuration.
+type Permissions struct {
+	DefaultMode string   `json:"defaultMode"`
+	Allow       []string `json:"allow"`
+	Ask         []string `json:"ask"`
+	Deny        []string `json:"deny"`
 }
 
 // HookGroup represents a group of hooks with an optional matcher.
@@ -52,22 +70,26 @@ type hookEventDef struct {
 }
 
 // hookEvents defines the required hook events per REQ-T-023.
+// Note: SessionEnd is also handled by global hook, but included here for project-level consistency.
 var hookEventDefs = []hookEventDef{
 	{event: "SessionStart", matcher: "", timeout: 5},
 	{event: "PreCompact", matcher: "", timeout: 5},
-	{event: "SessionEnd", matcher: "", timeout: 10},
+	{event: "SessionEnd", matcher: "", timeout: 5},
 	{event: "PreToolUse", matcher: "Write|Edit|Bash", timeout: 5},
 	{event: "PostToolUse", matcher: "Write|Edit", timeout: 60},
 	{event: "Stop", matcher: "", timeout: 5},
 }
 
 // Generate builds Settings from config and serializes to JSON.
+// For project-level settings, env is managed globally (not in template).
 func (g *settingsGenerator) Generate(cfg *config.Config, platform string) ([]byte, error) {
 	settings := Settings{
 		Hooks:            buildHooks(platform),
+		StatusLine:       buildStatusLine(),
 		OutputStyle:      resolveOutputStyle(cfg),
 		CleanupPeriodDays: 30,
-		Env:              buildEnv(),
+		// Env: omitted - managed globally in ~/.claude/settings.json
+		Permissions:      buildPermissions(),
 	}
 
 	data, err := json.MarshalIndent(settings, "", "  ")
@@ -110,18 +132,22 @@ func buildHooks(platform string) map[string][]HookGroup {
 }
 
 // buildHookCommand returns the platform-appropriate hook command string.
-// Uses quoted $HOME path per Claude Code official documentation.
+// Uses $CLAUDE_PROJECT_DIR to reference project-local hooks in .claude/hooks/moai/.
+// Project-local hooks apply only to the current project and can be version controlled.
 func buildHookCommand(platform, event string) string {
-	hookSubcommand := eventToSubcommand(event)
+	// Add "handle-" prefix to match deployed hook wrapper script names
+	hookScriptName := "handle-" + eventToSubcommand(event) + ".sh"
 
 	switch platform {
 	case "windows":
-		// Windows: use %USERPROFILE% for home directory
-		return `cmd.exe /c "%USERPROFILE%\go\bin\moai" hook ` + hookSubcommand
+		// Windows: use %CLAUDE_PROJECT_DIR% for project directory
+		// Note: Windows cmd.exe doesn't natively support CLAUDE_PROJECT_DIR,
+		// but Claude Code sets it as an environment variable
+		return `cmd.exe /c "%CLAUDE_PROJECT_DIR%\.claude\hooks\moai\` + hookScriptName + `"`
 	default:
 		// darwin, linux, and other unix-like platforms
-		// Use quoted $HOME path per official Claude Code documentation
-		return `"$HOME/go/bin/moai" hook ` + hookSubcommand
+		// Use $CLAUDE_PROJECT_DIR with proper quoting for paths with spaces
+		return `"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/` + hookScriptName + `"`
 	}
 }
 
@@ -146,10 +172,213 @@ func eventToSubcommand(event string) string {
 	}
 }
 
-// buildEnv constructs the default environment variables for settings.json.
-func buildEnv() map[string]string {
-	return map[string]string{
-		"PATH": "$HOME/go/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin",
+// buildStatusLine constructs the status line configuration.
+// Uses $CLAUDE_PROJECT_DIR for consistent path resolution.
+func buildStatusLine() *StatusLine {
+	// Use $CLAUDE_PROJECT_DIR for absolute path resolution
+	// The .moai/status_line.sh script is deployed during initialization
+	command := `"$CLAUDE_PROJECT_DIR/.moai/status_line.sh"`
+
+	return &StatusLine{
+		Type:            "command",
+		Command:         command,
+		Padding:         0,
+		RefreshInterval: 300,
+	}
+}
+
+// buildPermissions constructs the default permissions for Claude Code tools.
+func buildPermissions() *Permissions {
+	return &Permissions{
+		DefaultMode: "default",
+		Allow: []string{
+			"AskUserQuestion",
+			"BashOutput",
+			"Edit",
+			"Glob",
+			"Grep",
+			"KillShell",
+			"MultiEdit",
+			"NotebookEdit",
+			"Read",
+			"Skill",
+			"Task",
+			"TaskCreate",
+			"TaskGet",
+			"TaskList",
+			"TaskUpdate",
+			"TodoWrite",
+			"WebFetch",
+			"WebSearch",
+			"Write",
+			"mcp__context7__get-library-docs",
+			"mcp__context7__resolve-library-id",
+			"mcp__sequential-thinking__*",
+			// Git operations
+			"Bash(git status:*)",
+			"Bash(git log:*)",
+			"Bash(git diff:*)",
+			"Bash(git show:*)",
+			"Bash(git blame:*)",
+			"Bash(git branch:*)",
+			"Bash(git remote:*)",
+			"Bash(git config:*)",
+			"Bash(git tag:*)",
+			"Bash(git add:*)",
+			"Bash(git commit:*)",
+			"Bash(git push:*)",
+			"Bash(git pull:*)",
+			"Bash(git fetch:*)",
+			"Bash(git checkout:*)",
+			"Bash(git switch:*)",
+			"Bash(git stash:*)",
+			"Bash(git merge:*)",
+			"Bash(git revert:*)",
+			// GitHub CLI
+			"Bash(gh issue:*)",
+			"Bash(gh pr:*)",
+			"Bash(gh repo view:*)",
+			// File operations
+			"Bash(ls:*)",
+			"Bash(cat:*)",
+			"Bash(less:*)",
+			"Bash(head:*)",
+			"Bash(tail:*)",
+			"Bash(grep:*)",
+			"Bash(find:*)",
+			"Bash(tree:*)",
+			"Bash(pwd:*)",
+			"Bash(wc:*)",
+			"Bash(diff:*)",
+			"Bash(comm:*)",
+			"Bash(sort:*)",
+			"Bash(uniq:*)",
+			"Bash(cut:*)",
+			"Bash(awk:*)",
+			"Bash(sed:*)",
+			"Bash(basename:*)",
+			"Bash(dirname:*)",
+			"Bash(realpath:*)",
+			"Bash(readlink:*)",
+			"Bash(cp:*)",
+			"Bash(mv:*)",
+			"Bash(mkdir:*)",
+			"Bash(touch:*)",
+			"Bash(rsync:*)",
+			"Bash(curl:*)",
+			"Bash(jq:*)",
+			"Bash(yq:*)",
+			// Development tools
+			"Bash(python:*)",
+			"Bash(python3:*)",
+			"Bash(node*)",
+			"Bash(npm*)",
+			"Bash(npx*)",
+			"Bash(bun*)",
+			"Bash(pnpm*)",
+			"Bash(yarn*)",
+			"Bash(uv*)",
+			"Bash(pip*)",
+			"Bash(pip3:*)",
+			"Bash(black:*)",
+			"Bash(ruff:*)",
+			"Bash(pylint:*)",
+			"Bash(flake8:*)",
+			"Bash(mypy:*)",
+			"Bash(eslint:*)",
+			"Bash(prettier:*)",
+			"Bash(pytest:*)",
+			"Bash(coverage:*)",
+			"Bash(make:*)",
+			"Bash(ast-grep:*)",
+			"Bash(sg:*)",
+			"Bash(rg:*)",
+			"Bash(echo:*)",
+			"Bash(printf:*)",
+			"Bash(test:*)",
+			"Bash(true:*)",
+			"Bash(false:*)",
+			"Bash(which:*)",
+			"Bash(type:*)",
+			"Bash(man:*)",
+			"Bash(pydoc:*)",
+			"Bash(lsof:*)",
+			"Bash(time:*)",
+			"Bash(xargs:*)",
+			// MoAI commands
+			"Bash(moai-adk:*)",
+			"Bash(moai:*)",
+		},
+		Ask: []string{
+			"Bash(rm:*)",
+			"Bash(sudo:*)",
+			"Bash(chmod:*)",
+			"Bash(chown:*)",
+			"Read(./.env)",
+			"Read(./.env.*)",
+		},
+		Deny: []string{
+			"Read(./secrets/**)",
+			"Read(~/.ssh/**)",
+			"Read(~/.aws/**)",
+			"Read(~/.config/gcloud/**)",
+			"Write(./secrets/**)",
+			"Write(~/.ssh/**)",
+			"Write(~/.aws/**)",
+			"Write(~/.config/gcloud/**)",
+			"Edit(./secrets/**)",
+			"Edit(~/.ssh/**)",
+			"Edit(~/.aws/**)",
+			"Edit(~/.config/gcloud/**)",
+			"Grep(./secrets/**)",
+			"Grep(~/.ssh/**)",
+			"Grep(~/.aws/**)",
+			"Grep(~/.config/gcloud/**)",
+			"Glob(./secrets/**)",
+			"Glob(~/.ssh/**)",
+			"Glob(~/.aws/**)",
+			"Glob(~/.config/gcloud/**)",
+			"Bash(rm -rf /:*)",
+			"Bash(rm -rf /*:*)",
+			"Bash(rm -rf ~:*)",
+			"Bash(rm -rf ~/*:*)",
+			"Bash(rm -rf C\\:/:*)",
+			"Bash(rm -rf C\\:/*:*)",
+			"Bash(del /S /Q C\\:/:*)",
+			"Bash(rmdir /S /Q C\\:/:*)",
+			"Bash(Remove-Item -Recurse -Force C\\:/:*)",
+			"Bash(Clear-Disk:*)",
+			"Bash(Format-Volume:*)",
+			"Bash(git push --force:*)",
+			"Bash(git push -f:*)",
+			"Bash(git push --force-with-lease:*)",
+			"Bash(git reset --hard:*)",
+			"Bash(git clean -fd:*)",
+			"Bash(git clean -fdx:*)",
+			"Bash(git rebase -i:*)",
+			"Bash(format:*)",
+			"Bash(chmod -R 777:*)",
+			"Bash(chmod 777:*)",
+			"Bash(dd:*)",
+			"Bash(mkfs:*)",
+			"Bash(fdisk:*)",
+			"Bash(reboot:*)",
+			"Bash(shutdown:*)",
+			"Bash(init:*)",
+			"Bash(systemctl:*)",
+			"Bash(kill -9:*)",
+			"Bash(killall:*)",
+			"Bash(DROP DATABASE:*)",
+			"Bash(DROP TABLE:*)",
+			"Bash(TRUNCATE:*)",
+			"Bash(DELETE FROM:*)",
+			"Bash(mongo:*)",
+			"Bash(mongosh:*)",
+			"Bash(redis-cli FLUSHALL:*)",
+			"Bash(redis-cli FLUSHDB:*)",
+			"Bash(psql -c DROP:*)",
+			"Bash(mysql -e DROP:*)",
+		},
 	}
 }
 

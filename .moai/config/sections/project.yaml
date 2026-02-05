@@ -1,8 +1,24 @@
+# Project Metadata Configuration
+# Project-specific information and settings
+
 project:
-  name: moai-adk-go
-  description: ''
-  type: ''
-  created_at: '2026-02-02T19:56:57.999205Z'
-  initialized: 'true'
+  # Project name (derived from directory name or user input)
+  name: ""
+
+  # Project description (optional, user-provided)
+  description: ""
+
+  # Project type (e.g., web, api, library, cli, mobile)
+  type: ""
+
+  # Project creation timestamp (ISO 8601 format)
+  created_at: ""
+
+  # Project initialization status
+  initialized: "true"
+
+# GitHub Integration
 github:
-  profile_name: modu-ai
+  # GitHub profile/organization name for this project
+  # Used for generating proper URLs and repository references
+  profile_name: ""

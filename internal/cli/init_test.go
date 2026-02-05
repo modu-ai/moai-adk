@@ -214,3 +214,120 @@ func TestGetBoolFlag(t *testing.T) {
 		t.Error("getBoolFlag for nonexistent flag should return false")
 	}
 }
+
+// --- DDD PRESERVE: Characterization tests for flag validation ---
+
+func TestValidateInitFlags_ValidMode(t *testing.T) {
+	validModes := []string{"ddd", "tdd", "hybrid"}
+
+	for _, mode := range validModes {
+		t.Run(mode, func(t *testing.T) {
+			// Set the mode flag
+			if err := initCmd.Flags().Set("mode", mode); err != nil {
+				t.Fatal(err)
+			}
+
+			// Validate should pass
+			err := validateInitFlags(initCmd, []string{})
+			if err != nil {
+				t.Errorf("validateInitFlags with mode=%q should not error, got: %v", mode, err)
+			}
+		})
+	}
+}
+
+func TestValidateInitFlags_InvalidMode(t *testing.T) {
+	invalidModes := []string{"invalid", "test", "unknown", ""}
+
+	for _, mode := range invalidModes {
+		if mode == "" {
+			continue // Empty mode is valid (uses default)
+		}
+		t.Run(mode, func(t *testing.T) {
+			// Set the invalid mode flag
+			if err := initCmd.Flags().Set("mode", mode); err != nil {
+				t.Fatal(err)
+			}
+
+			// Validate should fail
+			err := validateInitFlags(initCmd, []string{})
+			if err == nil {
+				t.Errorf("validateInitFlags with mode=%q should error, got nil", mode)
+			}
+
+			// Error message should mention the invalid value
+			if !strings.Contains(err.Error(), "invalid --mode") {
+				t.Errorf("error should mention 'invalid --mode', got: %v", err)
+			}
+		})
+	}
+}
+
+func TestValidateInitFlags_ValidGitMode(t *testing.T) {
+	validGitModes := []string{"manual", "personal", "team"}
+
+	for _, gitMode := range validGitModes {
+		t.Run(gitMode, func(t *testing.T) {
+			// Reset mode flag first (in case previous test left invalid value)
+			if err := initCmd.Flags().Set("mode", ""); err != nil {
+				t.Fatal(err)
+			}
+
+			// Set the git-mode flag
+			if err := initCmd.Flags().Set("git-mode", gitMode); err != nil {
+				t.Fatal(err)
+			}
+
+			// Validate should pass
+			err := validateInitFlags(initCmd, []string{})
+			if err != nil {
+				t.Errorf("validateInitFlags with git-mode=%q should not error, got: %v", gitMode, err)
+			}
+		})
+	}
+}
+
+func TestValidateInitFlags_InvalidGitMode(t *testing.T) {
+	invalidGitModes := []string{"invalid", "auto", "unknown"}
+
+	for _, gitMode := range invalidGitModes {
+		t.Run(gitMode, func(t *testing.T) {
+			// Reset mode flag first (in case previous test left invalid value)
+			if err := initCmd.Flags().Set("mode", ""); err != nil {
+				t.Fatal(err)
+			}
+
+			// Set the invalid git-mode flag
+			if err := initCmd.Flags().Set("git-mode", gitMode); err != nil {
+				t.Fatal(err)
+			}
+
+			// Validate should fail
+			err := validateInitFlags(initCmd, []string{})
+			if err == nil {
+				t.Errorf("validateInitFlags with git-mode=%q should error, got nil", gitMode)
+			}
+
+			// Error message should mention the invalid value
+			if !strings.Contains(err.Error(), "invalid --git-mode") {
+				t.Errorf("error should mention 'invalid --git-mode', got: %v", err)
+			}
+		})
+	}
+}
+
+func TestValidateInitFlags_EmptyFlags(t *testing.T) {
+	// Reset all flags to empty
+	if err := initCmd.Flags().Set("mode", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := initCmd.Flags().Set("git-mode", ""); err != nil {
+		t.Fatal(err)
+	}
+
+	// Validate should pass with empty flags (uses defaults)
+	err := validateInitFlags(initCmd, []string{})
+	if err != nil {
+		t.Errorf("validateInitFlags with empty flags should not error, got: %v", err)
+	}
+}

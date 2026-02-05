@@ -1,2 +1,7 @@
+# User Configuration
+# User-specific information and preferences
+
 user:
-  name: GOOS
+  # User name for personalization and commit attribution
+  # Used in git commits when configured with Co-Authored-By
+  name: ""

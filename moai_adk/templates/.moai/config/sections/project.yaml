@@ -1,0 +1,12 @@
+# Project Settings
+# Basic project metadata
+
+project:
+  name: ""                    # Project name (set during /moai:0-project)
+  description: ""             # Project description
+  type: ""                    # Project type: web_browser_app, mobile_app, cli_tool, backend_api
+  created_at: ""              # Auto-set during init
+  initialized: false          # Auto-set during init
+
+github:
+  profile_name: ""            # GitHub username (e.g., @GoosLab)

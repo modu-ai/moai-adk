@@ -152,7 +152,7 @@ func (r *Renderer) renderVerbose(data *StatusData) []string {
 }
 
 // renderContextGraph renders the context window usage as a bar graph.
-// Format: 🔋 [████░░░░░░░░] 41% or 🪫 [██████████░] 85%
+// Format: 🔋 ████░░░░░░░░ 41% or 🪫 ██████████░ 85%
 // Battery icon: 🔋 (<=70% used), 🪫 (>70% used)
 func (r *Renderer) renderContextGraph(data *StatusData) string {
 	if !data.Memory.Available {
@@ -178,7 +178,7 @@ func (r *Renderer) renderContextGraph(data *StatusData) string {
 	// Build bar graph with 12 character width
 	bar := r.buildBar(pct, 12)
 
-	return fmt.Sprintf("%s [%s] %d%%", icon, bar, pct)
+	return fmt.Sprintf("%s %s %d%%", icon, bar, pct)
 }
 
 // buildBar constructs a horizontal bar graph using Unicode block characters.

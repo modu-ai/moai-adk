@@ -98,10 +98,10 @@ func TestRegistryDispatch(t *testing.T) {
 		checkCalled  func(t *testing.T, handlers []*mockHandler)
 	}{
 		{
-			name:         "empty registry returns allow for SessionStart",
+			name:         "empty registry returns empty for SessionStart",
 			handlers:     nil,
 			event:        EventSessionStart,
-			wantDecision: DecisionAllow,
+			wantDecision: "", // SessionStart returns empty JSON per Claude Code protocol
 		},
 		{
 			name:         "empty registry returns empty for SessionEnd",
@@ -118,20 +118,20 @@ func TestRegistryDispatch(t *testing.T) {
 		{
 			name: "single allow handler",
 			handlers: []*mockHandler{
-				{event: EventSessionStart, output: NewAllowOutput()},
+				{event: EventSessionStart, output: &HookOutput{}},
 			},
 			event:        EventSessionStart,
-			wantDecision: DecisionAllow,
+			wantDecision: "", // SessionStart returns empty JSON per Claude Code protocol
 		},
 		{
 			name: "multiple allow handlers all execute",
 			handlers: []*mockHandler{
-				{event: EventPostToolUse, output: NewAllowOutput()},
-				{event: EventPostToolUse, output: NewAllowOutput()},
-				{event: EventPostToolUse, output: NewAllowOutput()},
+				{event: EventPostToolUse, output: NewPostToolOutput("")},
+				{event: EventPostToolUse, output: NewPostToolOutput("")},
+				{event: EventPostToolUse, output: NewPostToolOutput("")},
 			},
 			event:        EventPostToolUse,
-			wantDecision: DecisionAllow,
+			wantDecision: "", // PostToolUse does not use permissionDecision
 			checkCalled: func(t *testing.T, handlers []*mockHandler) {
 				t.Helper()
 				for i, h := range handlers {
@@ -257,19 +257,23 @@ func TestRegistryDispatch(t *testing.T) {
 }
 
 // verifyDecision checks the output decision based on event type.
-// Stop and SessionEnd use empty JSON (no decision field).
-// PreToolUse, PostToolUse, etc. use hookSpecificOutput.permissionDecision.
+// Stop, SessionEnd, SessionStart, and PreCompact use empty JSON (no decision field).
+// PreToolUse uses hookSpecificOutput.permissionDecision.
+// PostToolUse uses hookSpecificOutput but not permissionDecision.
 func verifyDecision(t *testing.T, got *HookOutput, event EventType, wantDecision string) {
 	t.Helper()
 
 	switch event {
-	case EventStop, EventSessionEnd:
-		// Stop and SessionEnd return empty JSON per Claude Code protocol
-		// No decision field should be set
+	case EventStop, EventSessionEnd, EventSessionStart, EventPreCompact:
+		// These events return empty JSON per Claude Code protocol
+		// No hookSpecificOutput should be set
 		if wantDecision == "" {
 			// Expected empty output - verify no decision is set
 			if got.Decision != "" {
 				t.Errorf("Decision = %q, want empty for %s", got.Decision, event)
+			}
+			if got.HookSpecificOutput != nil {
+				t.Errorf("HookSpecificOutput should be nil for %s", event)
 			}
 		} else {
 			// For Stop with block decision, check top-level decision
@@ -277,8 +281,16 @@ func verifyDecision(t *testing.T, got *HookOutput, event EventType, wantDecision
 				t.Errorf("Decision = %q, want %q for %s", got.Decision, wantDecision, event)
 			}
 		}
-	default:
-		// Other events use hookSpecificOutput.permissionDecision
+	case EventPostToolUse:
+		// PostToolUse uses hookSpecificOutput.hookEventName but not permissionDecision
+		if got.HookSpecificOutput == nil {
+			t.Fatalf("HookSpecificOutput is nil for %s", event)
+		}
+		if got.HookSpecificOutput.HookEventName != "PostToolUse" {
+			t.Errorf("HookEventName = %q, want %q for %s", got.HookSpecificOutput.HookEventName, "PostToolUse", event)
+		}
+	case EventPreToolUse:
+		// PreToolUse uses hookSpecificOutput.permissionDecision and hookEventName
 		if wantDecision == "" {
 			// Empty decision expected
 			if got.HookSpecificOutput != nil && got.HookSpecificOutput.PermissionDecision != "" {
@@ -289,6 +301,9 @@ func verifyDecision(t *testing.T, got *HookOutput, event EventType, wantDecision
 		if got.HookSpecificOutput == nil {
 			t.Fatalf("HookSpecificOutput is nil, want permissionDecision %q for %s", wantDecision, event)
 		}
+		if got.HookSpecificOutput.HookEventName != "PreToolUse" {
+			t.Errorf("HookEventName = %q, want %q for %s", got.HookSpecificOutput.HookEventName, "PreToolUse", event)
+		}
 		// Map DecisionBlock to DecisionDeny for PreToolUse
 		wantPerm := wantDecision
 		if wantPerm == DecisionBlock {
@@ -297,6 +312,8 @@ func verifyDecision(t *testing.T, got *HookOutput, event EventType, wantDecision
 		if got.HookSpecificOutput.PermissionDecision != wantPerm {
 			t.Errorf("PermissionDecision = %q, want %q for %s", got.HookSpecificOutput.PermissionDecision, wantPerm, event)
 		}
+	default:
+		t.Errorf("unknown event type for verification: %s", event)
 	}
 }
 

@@ -150,7 +150,6 @@ For TRUST 5 framework details, see @.claude/rules/moai/core/moai-constitution.md
 MoAI-ADK implements LSP-based quality gates:
 
 **Phase-Specific Thresholds:**
-
 - **plan**: Capture LSP baseline at phase start
 - **run**: Zero errors, zero type errors, zero lint errors required
 - **sync**: Zero errors, max 10 warnings, clean LSP required
@@ -168,7 +167,6 @@ These rules ensure code quality and prevent regressions in the moai-adk-go codeb
 **Rule 1: Approach-First Development**
 
 Before writing any non-trivial code:
-
 - Explain the implementation approach clearly
 - Describe which files will be modified and why
 - Get user approval before proceeding
@@ -177,7 +175,6 @@ Before writing any non-trivial code:
 **Rule 2: Multi-File Change Decomposition**
 
 When modifying 3 or more files:
-
 - Split work into logical units using TodoList
 - Execute changes file-by-file or by logical grouping
 - Analyze file dependencies before parallel execution
@@ -186,7 +183,6 @@ When modifying 3 or more files:
 **Rule 3: Post-Implementation Review**
 
 After writing code, always provide:
-
 - List of potential issues (edge cases, error scenarios, concurrency)
 - Suggested test cases to verify the implementation
 - Known limitations or assumptions made
@@ -195,7 +191,6 @@ After writing code, always provide:
 **Rule 4: Reproduction-First Bug Fixing**
 
 When fixing bugs:
-
 - Write a failing test that reproduces the bug first
 - Confirm the test fails before making changes
 - Fix the bug with minimal code changes
@@ -204,7 +199,6 @@ When fixing bugs:
 ### Go-Specific Guidelines
 
 For moai-adk-go development:
-
 - Run `go test -race ./...` for concurrency safety
 - Use table-driven tests for comprehensive coverage
 - Maintain 85%+ test coverage per package
@@ -338,7 +332,6 @@ MoAI-ADK implements a 3-level Progressive Disclosure system:
 ### File Write Conflict Prevention
 
 **Pre-execution Checklist**:
-
 1. File Access Analysis: Identify overlapping file access patterns
 2. Dependency Graph Construction: Map agent-to-agent dependencies
 3. Execution Mode Selection: Parallel, Sequential, or Hybrid

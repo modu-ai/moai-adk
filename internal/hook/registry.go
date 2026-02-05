@@ -139,17 +139,20 @@ func getBlockReason(output *HookOutput) string {
 }
 
 // defaultOutputForEvent returns the appropriate default output based on event type.
-// Stop and SessionEnd events return empty HookOutput per Claude Code protocol.
-// Other events return HookOutput with hookSpecificOutput for permission decisions.
+// Stop, SessionEnd, SessionStart, and PreCompact events return empty HookOutput per Claude Code protocol.
+// PreToolUse and PostToolUse events return HookOutput with hookSpecificOutput.
 func (r *registry) defaultOutputForEvent(event EventType) *HookOutput {
 	switch event {
-	case EventStop, EventSessionEnd:
-		// Stop and SessionEnd hooks should NOT use hookSpecificOutput
-		// per Claude Code protocol - return empty JSON {}
+	case EventStop, EventSessionEnd, EventSessionStart, EventPreCompact:
+		// These events do NOT use hookSpecificOutput per Claude Code protocol
+		// Return empty JSON {}
 		return &HookOutput{}
-	default:
-		// Other events (PreToolUse, PostToolUse, etc.) use hookSpecificOutput
+	case EventPreToolUse:
 		return NewAllowOutput()
+	case EventPostToolUse:
+		return NewPostToolOutput("")
+	default:
+		return &HookOutput{}
 	}
 }
 

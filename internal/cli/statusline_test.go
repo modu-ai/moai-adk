@@ -61,3 +61,40 @@ func TestStatuslineCmd_Execution_NoDeps(t *testing.T) {
 	// If output doesn't contain expected sections, it should at least be a valid fallback
 	// The new independent collection always shows git status or version when available
 }
+
+// --- DDD PRESERVE: Characterization tests for statusline utility functions ---
+
+func TestRenderSimpleFallback(t *testing.T) {
+	result := renderSimpleFallback()
+
+	if result == "" {
+		t.Error("renderSimpleFallback should not return empty string")
+	}
+
+	if result != "moai" {
+		t.Errorf("renderSimpleFallback() = %q, want %q", result, "moai")
+	}
+}
+
+func TestRenderSimpleFallback_NotEmpty(t *testing.T) {
+	result := renderSimpleFallback()
+
+	if len(result) == 0 {
+		t.Fatal("renderSimpleFallback should return non-empty string")
+	}
+
+	// Should be a simple string without special characters
+	if strings.Contains(result, "\n") {
+		t.Error("renderSimpleFallback should not contain newlines")
+	}
+}
+
+func TestRenderSimpleFallback_ConsistentOutput(t *testing.T) {
+	// Should return consistent output across multiple calls
+	first := renderSimpleFallback()
+	second := renderSimpleFallback()
+
+	if first != second {
+		t.Errorf("renderSimpleFallback should be consistent, got %q and %q", first, second)
+	}
+}

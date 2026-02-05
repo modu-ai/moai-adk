@@ -88,8 +88,11 @@ func TestBuilder_Build_FullData(t *testing.T) {
 	if !strings.Contains(got, "🤖 Sonnet 4") {
 		t.Errorf("should contain model name with emoji, got %q", got)
 	}
-	if !strings.Contains(got, "🔋 [") {
+	if !strings.Contains(got, "🔋 ") {
 		t.Errorf("should contain context bar graph, got %q", got)
+	}
+	if !strings.Contains(got, "█") {
+		t.Errorf("should contain bar graph characters, got %q", got)
 	}
 	if !strings.Contains(got, "25%") {
 		t.Errorf("should contain context percentage, got %q", got)
@@ -187,8 +190,11 @@ func TestBuilder_Build_GitProviderFailure(t *testing.T) {
 	if !strings.Contains(got, "🤖 Opus 4.5") {
 		t.Errorf("should contain model despite git failure, got %q", got)
 	}
-	if !strings.Contains(got, "🔋 [") {
+	if !strings.Contains(got, "🔋 ") {
 		t.Errorf("should contain context despite git failure, got %q", got)
+	}
+	if !strings.Contains(got, "█") {
+		t.Errorf("should contain bar graph characters, got %q", got)
 	}
 }
 
@@ -254,8 +260,11 @@ func TestBuilder_SetMode(t *testing.T) {
 	}
 
 	// Minimal should have context bar graph
-	if !strings.Contains(gotMinimal, "🔋 [") {
+	if !strings.Contains(gotMinimal, "🔋 ") {
 		t.Errorf("minimal mode should contain context bar graph, got %q", gotMinimal)
+	}
+	if !strings.Contains(gotMinimal, "█") {
+		t.Errorf("minimal mode should contain bar graph characters, got %q", gotMinimal)
 	}
 }
 
@@ -351,8 +360,11 @@ func TestBuilder_Build_MissingCost(t *testing.T) {
 	if !strings.Contains(got, "Sonnet 4") {
 		t.Errorf("should contain model, got %q", got)
 	}
-	if !strings.Contains(got, "🔋 [") {
+	if !strings.Contains(got, "🔋 ") {
 		t.Errorf("should contain context, got %q", got)
+	}
+	if !strings.Contains(got, "█") {
+		t.Errorf("should contain bar graph characters, got %q", got)
 	}
 }
 

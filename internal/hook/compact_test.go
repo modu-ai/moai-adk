@@ -83,12 +83,9 @@ func TestCompactHandler_Handle(t *testing.T) {
 			if got == nil {
 				t.Fatal("got nil output")
 			}
-			// PreCompact uses hookSpecificOutput.permissionDecision per Claude Code protocol
-			if got.HookSpecificOutput == nil {
-				t.Fatal("HookSpecificOutput is nil")
-			}
-			if got.HookSpecificOutput.PermissionDecision != tt.wantDecision {
-				t.Errorf("PermissionDecision = %q, want %q", got.HookSpecificOutput.PermissionDecision, tt.wantDecision)
+			// PreCompact does NOT use hookSpecificOutput per Claude Code protocol
+			if got.HookSpecificOutput != nil {
+				t.Errorf("HookSpecificOutput should be nil for PreCompact, got %+v", got.HookSpecificOutput)
 			}
 			if got.Data != nil && !json.Valid(got.Data) {
 				t.Errorf("Data is not valid JSON: %s", got.Data)

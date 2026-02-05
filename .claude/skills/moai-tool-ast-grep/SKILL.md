@@ -212,7 +212,7 @@ Step 2: Use mcp__context7__get-library-docs with the resolved library ID to fetc
 
 ### MoAI-ADK Integration
 
-AST-Grep is integrated into MoAI-ADK through the Tool Registry as AST_ANALYZER type in tool_registry.py, PostToolUse Hook for automatic security scanning after Write/Edit operations, and Permissions with Bash(sg:*) and Bash(ast-grep:*) auto-allowed.
+AST-Grep is integrated into MoAI-ADK through the Tool Registry as AST_ANALYZER type in internal/hook/registry.go, PostToolUse Hook for automatic security scanning after Write/Edit operations, and Permissions with Bash(sg:*) and Bash(ast-grep:*) auto-allowed.
 
 ### Running Scans
 

@@ -257,7 +257,13 @@ func TestEmbeddedTemplates_NoPythonHooks(t *testing.T) {
 		if err != nil {
 			return nil
 		}
-		if strings.HasPrefix(path, ".claude/hooks/") {
+		// Skip directories (only check files)
+		if d.IsDir() {
+			return nil
+		}
+		// Allow Go hook wrapper templates in .claude/hooks/moai/
+		// Exclude Python hooks and any other .claude/hooks/ files
+		if strings.HasPrefix(path, ".claude/hooks/") && !strings.HasPrefix(path, ".claude/hooks/moai/") {
 			t.Errorf("found hooks file that should be excluded: %s", path)
 		}
 		if strings.HasSuffix(path, ".py") {

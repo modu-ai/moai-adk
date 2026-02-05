@@ -200,7 +200,7 @@ jobs:
 
  - name: Setup moai-worktree
  run: |
- uv tool install moai-adk
+ go install github.com/modu-ai/moai-adk-go/cmd/moai@latest
  echo "Setting up worktree environment..."
 
  - name: Test Worktree Operations
@@ -226,7 +226,7 @@ pipeline {
  stage('Setup') {
  steps {
  sh '''
- uv tool install moai-adk
+ go install github.com/modu-ai/moai-adk-go/cmd/moai@latest
  moai-worktree config set worktree_root $WORKSPACE/worktrees
  '''
  }

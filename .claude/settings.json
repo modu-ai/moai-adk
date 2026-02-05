@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$HOME/go/bin/moai\" hook session-start",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
             "timeout": 5
           }
         ]
@@ -18,20 +18,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$HOME/go/bin/moai\" hook compact",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-compact.sh\"",
             "timeout": 5
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/go/bin/moai\" hook session-end",
-            "timeout": 10
           }
         ]
       }
@@ -42,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$HOME/go/bin/moai\" hook pre-tool",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
             "timeout": 5
           }
         ]
@@ -54,7 +42,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$HOME/go/bin/moai\" hook post-tool",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\"",
             "timeout": 60
           }
         ]
@@ -66,7 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$HOME/go/bin/moai\" hook stop",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop.sh\"",
             "timeout": 5
           }
         ]
@@ -75,19 +63,12 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "/bin/zsh -l -c 'export PATH=$HOME/go/bin:$HOME/.local/bin:$PATH; moai statusline'",
+    "command": ".moai/status_line.sh",
     "padding": 0,
     "refreshInterval": 300
   },
   "outputStyle": "MoAI",
   "cleanupPeriodDays": 30,
-  "env": {
-    "PATH": "$HOME/go/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin",
-    "MOAI_CONFIG_SOURCE": "sections",
-    "ENABLE_TOOL_SEARCH": "1",
-    "MAX_THINKING_TOKENS": "31999",
-    "CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS": "64000"
-  },
   "permissions": {
     "defaultMode": "acceptEdits",
     "allow": [
@@ -97,6 +78,7 @@
       "Bash(basename:*)",
       "Bash(black:*)",
       "Bash(bun*)",
+      "Bash(bun:*)",
       "Bash(cat:*)",
       "Bash(comm:*)",
       "Bash(coverage:*)",
@@ -147,9 +129,13 @@
       "Bash(mypy:*)",
       "Bash(node*)",
       "Bash(npm*)",
+      "Bash(npm*)",
+      "Bash(npx*)",
       "Bash(npx*)",
       "Bash(pip*)",
-      "Bash(pip3*)",
+      "Bash(pip*)",
+      "Bash(pip3:*)",
+      "Bash(pip3:*)",
       "Bash(pnpm*)",
       "Bash(prettier:*)",
       "Bash(printf:*)",
@@ -174,8 +160,8 @@
       "Bash(tree:*)",
       "Bash(true:*)",
       "Bash(type:*)",
-      "Bash(uniq:*)",
       "Bash(uv*)",
+      "Bash(uniq:*)",
       "Bash(wc:*)",
       "Bash(which:*)",
       "Bash(xargs:*)",

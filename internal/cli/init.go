@@ -10,11 +10,13 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/cli/tui"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/foundation"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/template"
+	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 var initCmd = &cobra.Command{
@@ -184,6 +186,10 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	// Run interactive wizard if not in non-interactive mode and running in a TTY
 	if !nonInteractive && isatty.IsTerminal(os.Stdin.Fd()) {
+		// Print banner and welcome message
+		PrintBanner(version.GetVersion())
+		PrintWelcomeMessage()
+
 		result, err := wizard.RunWithDefaults(rootFlag)
 		if err != nil {
 			if errors.Is(err, wizard.ErrCancelled) {
@@ -248,17 +254,56 @@ func runInit(cmd *cobra.Command, args []string) error {
 		ctx = context.Background()
 	}
 
-	result, err := executor.Execute(ctx, opts)
-	if err != nil {
-		return fmt.Errorf("initialization failed: %w", err)
+	// Define the initialization steps for TUI
+	stepNames := []string{
+		"Detection",
+		"Methodology Detection",
+		"Validation",
+		"Initialization",
 	}
 
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "MoAI project initialized successfully.\n")
+	// Create TUI init function that runs the actual initialization
+	initFn := func(ctx context.Context, reporter project.ProgressReporter) (*project.InitResult, error) {
+		fmt.Fprintf(os.Stderr, "[DEBUG] initFn called, setting reporter\n")
+		// Set the reporter on the executor
+		executor.SetReporter(reporter)
+		fmt.Fprintf(os.Stderr, "[DEBUG] executor.SetReporter done, calling Execute\n")
+		// Execute initialization
+		result, err := executor.Execute(ctx, opts)
+		fmt.Fprintf(os.Stderr, "[DEBUG] Execute returned\n")
+		return result, err
+	}
+
+	var result *project.InitResult
+
+	// Check if we have a TTY for TUI
+	if isatty.IsTerminal(os.Stdin.Fd()) && isatty.IsTerminal(os.Stdout.Fd()) {
+		// Run TUI for initialization
+		result, err = tui.RunProgressTUI("MoAI Project Initialization", stepNames, initFn)
+		if err != nil {
+			return fmt.Errorf("initialization failed: %w", err)
+		}
+	} else {
+		// Fallback to console reporter for non-TTY environments
+		consoleReporter := project.NewConsoleReporter()
+		executor.SetReporter(consoleReporter)
+		result, err = executor.Execute(ctx, opts)
+		if err != nil {
+			return fmt.Errorf("initialization failed: %w", err)
+		}
+	}
+
+	// Display success message
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\n✓ MoAI project initialized successfully.\n")
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Development mode: %s\n", result.DevelopmentMode)
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Created %d directories and %d files.\n", len(result.CreatedDirs), len(result.CreatedFiles))
-
 	for _, w := range result.Warnings {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: %s\n", w)
+	}
+
+	// Ensure global settings.json has required env variables
+	if err := ensureGlobalSettingsEnv(); err != nil {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: Failed to update global settings env: %v\n", err)
 	}
 
 	return nil

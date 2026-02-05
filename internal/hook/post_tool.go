@@ -68,10 +68,15 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		slog.Error("failed to marshal post-tool metrics",
 			"error", err.Error(),
 		)
-		return NewAllowOutput(), nil
+		return NewPostToolOutput(""), nil
 	}
 
-	return NewAllowOutputWithData(jsonData), nil
+	return &HookOutput{
+		HookSpecificOutput: &HookSpecificOutput{
+			HookEventName: "PostToolUse",
+		},
+		Data: jsonData,
+	}, nil
 }
 
 // collectDiagnostics collects LSP diagnostics for the modified file.

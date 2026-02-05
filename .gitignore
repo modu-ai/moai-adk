@@ -10,9 +10,6 @@
 # Go Build Artifacts
 # ===========================================
 bin/
-moai
-moai_test
-moai_adk/
 *.exe
 *.exe~
 *.dll
@@ -117,8 +114,6 @@ logs/
 # Backups
 # ===========================================
 .moai-backups/
-.moai/
-settings.local.json
 *.backup/
 *-backup/
 *_backup_*/

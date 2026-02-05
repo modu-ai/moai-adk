@@ -17,6 +17,7 @@ type PhaseExecutor struct {
 	methodologyDetector MethodologyDetector
 	validator           ProjectValidator
 	initializer         Initializer
+	reporter            ProgressReporter // Optional progress reporter for UI
 	logger              *slog.Logger
 }
 
@@ -36,8 +37,15 @@ func NewPhaseExecutor(
 		methodologyDetector: methodologyDetector,
 		validator:           validator,
 		initializer:         initializer,
+		reporter:            &NoOpReporter{}, // Default: no progress reporting
 		logger:              logger,
 	}
+}
+
+// SetReporter sets the progress reporter for UI updates.
+func (pe *PhaseExecutor) SetReporter(reporter ProgressReporter) {
+	pe.reporter = reporter
+	fmt.Fprintf(os.Stderr, "[DEBUG] SetReporter called: %v\n", reporter != nil)
 }
 
 // Execute runs the full initialization workflow:
@@ -48,6 +56,7 @@ func NewPhaseExecutor(
 //  5. PhaseComplete: Return results.
 func (pe *PhaseExecutor) Execute(ctx context.Context, opts InitOptions) (*InitResult, error) {
 	opts.ProjectRoot = filepath.Clean(opts.ProjectRoot)
+	fmt.Fprintf(os.Stderr, "[DEBUG] Execute() called with reporter: %v\n", pe.reporter != nil)
 
 	pe.logger.Info("starting project initialization", "root", opts.ProjectRoot)
 
@@ -55,11 +64,14 @@ func (pe *PhaseExecutor) Execute(ctx context.Context, opts InitOptions) (*InitRe
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	fmt.Fprintf(os.Stderr, "[DEBUG] About to call StepStart, reporter=%v\n", pe.reporter != nil)
+	pe.reporter.StepStart("Detection", "Analyzing project structure")
 	languages, frameworks, projectType, err := pe.phaseDetect(opts.ProjectRoot)
 	if err != nil {
 		pe.logger.Warn("detection phase had issues", "error", err)
 		// Detection failures are non-fatal; proceed with defaults
 	}
+	pe.reporter.StepComplete("Detected project structure")
 
 	// Apply detected values as defaults when not explicitly set
 	opts = applyDetectedDefaults(opts, languages, frameworks, projectType)
@@ -69,6 +81,7 @@ func (pe *PhaseExecutor) Execute(ctx context.Context, opts InitOptions) (*InitRe
 		return nil, err
 	}
 	if opts.DevelopmentMode == "" {
+		pe.reporter.StepStart("Methodology Detection", "Determining development mode")
 		if rec, methErr := pe.phaseMethodology(opts.ProjectRoot, languages); methErr == nil && rec != nil {
 			opts.DevelopmentMode = rec.Recommended
 			pe.logger.Info("methodology auto-detected",
@@ -76,34 +89,45 @@ func (pe *PhaseExecutor) Execute(ctx context.Context, opts InitOptions) (*InitRe
 				"confidence", rec.Confidence,
 				"project_type", rec.ProjectType,
 			)
+			pe.reporter.StepUpdate(fmt.Sprintf("Recommended: %s", rec.Recommended))
 		} else {
 			opts.DevelopmentMode = "ddd" // fallback default
 			pe.logger.Debug("methodology detection failed, using default", "error", methErr)
+			pe.reporter.StepUpdate("Using default: DDD")
 		}
+		pe.reporter.StepComplete("Methodology determined")
 	} else {
 		// Validate explicitly provided development mode
 		if !models.DevelopmentMode(opts.DevelopmentMode).IsValid() {
 			return nil, fmt.Errorf("%w: %s", ErrInvalidDevelopmentMode, opts.DevelopmentMode)
 		}
 		pe.logger.Info("using explicitly set development mode", "mode", opts.DevelopmentMode)
+		pe.reporter.StepStart("Validation", fmt.Sprintf("Using mode: %s", opts.DevelopmentMode))
+		pe.reporter.StepComplete("Mode validated")
 	}
 
 	// Phase 3: Validate project structure
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	pe.reporter.StepStart("Validation", "Validating project structure")
 	if err := pe.phaseValidate(opts); err != nil {
+		pe.reporter.StepError(err)
 		return nil, err
 	}
+	pe.reporter.StepComplete("Validation passed")
 
 	// Phase 4: Initialize
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	pe.reporter.StepStart("Initialization", "Creating project structure")
 	result, err := pe.initializer.Init(ctx, opts)
 	if err != nil {
+		pe.reporter.StepError(err)
 		return nil, fmt.Errorf("initialization: %w", err)
 	}
+	pe.reporter.StepComplete(fmt.Sprintf("Created %d files", len(result.CreatedFiles)))
 
 	// Phase 5: Complete
 	pe.logger.Info("project initialization complete",

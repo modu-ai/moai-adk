@@ -178,3 +178,152 @@ func TestFindProjectRoot_NotInProject(t *testing.T) {
 		t.Error("findProjectRoot should error when not in a MoAI project")
 	}
 }
+
+// --- DDD PRESERVE: Characterization tests for GLM utility functions ---
+
+func TestEscapeDotenvValue_SpecialCharacters(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "backslash",
+			input:    `key\value`,
+			expected: `key\\value`,
+		},
+		{
+			name:     "double quote",
+			input:    `key"value`,
+			expected: `key\"value`,
+		},
+		{
+			name:     "dollar sign",
+			input:    `key$value`,
+			expected: `key\$value`,
+		},
+		{
+			name:     "multiple special chars",
+			input:    `key"$value`,
+			expected: `key\"\$value`,
+		},
+		{
+			name:     "no special chars",
+			input:    `keyvalue123`,
+			expected: `keyvalue123`,
+		},
+		{
+			name:     "empty string",
+			input:    ``,
+			expected: ``,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := escapeDotenvValue(tt.input)
+			if result != tt.expected {
+				t.Errorf("escapeDotenvValue(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestSaveGLMKey_Success(t *testing.T) {
+	// Create temp home directory
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+
+	testKey := "test-api-key-12345"
+
+	err := saveGLMKey(testKey)
+	if err != nil {
+		t.Fatalf("saveGLMKey should succeed, got error: %v", err)
+	}
+
+	// Verify file was created
+	envPath := filepath.Join(tmpHome, ".moai", ".env.glm")
+	if _, err := os.Stat(envPath); os.IsNotExist(err) {
+		t.Fatalf("expected .env.glm file to be created at %s", envPath)
+	}
+
+	// Verify file content
+	content, err := os.ReadFile(envPath)
+	if err != nil {
+		t.Fatalf("failed to read .env.glm: %v", err)
+	}
+
+	contentStr := string(content)
+	if !strings.Contains(contentStr, "GLM_API_KEY") {
+		t.Error("file should contain GLM_API_KEY")
+	}
+	if !strings.Contains(contentStr, testKey) {
+		t.Error("file should contain the API key")
+	}
+}
+
+func TestSaveGLMKey_SpecialCharacters(t *testing.T) {
+	// Create temp home directory
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+
+	// Key with special characters that need escaping
+	testKey := `key"with$special\chars`
+
+	err := saveGLMKey(testKey)
+	if err != nil {
+		t.Fatalf("saveGLMKey should succeed with special chars, got error: %v", err)
+	}
+
+	// Load the key back
+	loadedKey := loadGLMKey()
+	if loadedKey != testKey {
+		t.Errorf("loaded key %q does not match saved key %q", loadedKey, testKey)
+	}
+}
+
+func TestSaveGLMKey_EmptyKey(t *testing.T) {
+	// Create temp home directory
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+
+	err := saveGLMKey("")
+	if err != nil {
+		t.Fatalf("saveGLMKey should succeed with empty key, got error: %v", err)
+	}
+
+	// Verify file was created
+	envPath := filepath.Join(tmpHome, ".moai", ".env.glm")
+	if _, err := os.Stat(envPath); os.IsNotExist(err) {
+		t.Fatal("expected .env.glm file to be created")
+	}
+}
+
+func TestSaveGLMKey_OverwriteExisting(t *testing.T) {
+	// Create temp home directory
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+
+	// Save first key
+	firstKey := "first-key"
+	err := saveGLMKey(firstKey)
+	if err != nil {
+		t.Fatalf("first saveGLMKey failed: %v", err)
+	}
+
+	// Save second key (should overwrite)
+	secondKey := "second-key"
+	err = saveGLMKey(secondKey)
+	if err != nil {
+		t.Fatalf("second saveGLMKey failed: %v", err)
+	}
+
+	// Verify second key was saved
+	loadedKey := loadGLMKey()
+	if loadedKey != secondKey {
+		t.Errorf("loaded key %q, want %q", loadedKey, secondKey)
+	}
+	if loadedKey == firstKey {
+		t.Error("first key should be overwritten")
+	}
+}

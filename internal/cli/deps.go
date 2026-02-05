@@ -69,6 +69,16 @@ func InitDependencies() {
 	// Register default hook handlers
 	deps.HookRegistry.Register(hook.NewSessionStartHandler(deps.Config))
 	deps.HookRegistry.Register(hook.NewSessionEndHandler())
+
+	// Register rank session handler if credentials exist
+	rankHandler, err := hook.EnsureRankSessionHandler()
+	if err != nil {
+		slog.Warn("failed to initialize rank session handler", "error", err)
+	} else if rankHandler != nil {
+		deps.HookRegistry.Register(rankHandler)
+		slog.Info("rank session handler registered")
+	}
+
 	deps.HookRegistry.Register(hook.NewStopHandler())
 	deps.HookRegistry.Register(hook.NewPreToolHandlerWithScanner(deps.Config, hook.DefaultSecurityPolicy(), securityScanner))
 	deps.HookRegistry.Register(hook.NewPostToolHandlerWithDiagnostics(diagnosticsCollector))

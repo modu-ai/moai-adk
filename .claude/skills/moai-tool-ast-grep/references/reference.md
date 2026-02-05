@@ -202,7 +202,7 @@ This skill contains 4 modules:
 ### MoAI-ADK Integration
 
 #### Tool Registry
-- **Registration**: `tool_registry.py` as AST_ANALYZER type
+- **Registration**: `internal/hook/registry.go` as AST_ANALYZER type
 - **Permissions**: Auto-allowed for `Bash(sg:*)` and `Bash(ast-grep:*)`
 - **Hooks**: PostToolUse hook for automatic security scanning
 

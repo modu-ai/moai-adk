@@ -88,12 +88,9 @@ func TestSessionStartHandler_Handle(t *testing.T) {
 			if got == nil {
 				t.Fatal("got nil output")
 			}
-			// SessionStart uses hookSpecificOutput.permissionDecision per Claude Code protocol
-			if got.HookSpecificOutput == nil {
-				t.Fatal("HookSpecificOutput is nil")
-			}
-			if got.HookSpecificOutput.PermissionDecision != tt.wantDecision {
-				t.Errorf("PermissionDecision = %q, want %q", got.HookSpecificOutput.PermissionDecision, tt.wantDecision)
+			// SessionStart does NOT use hookSpecificOutput per Claude Code protocol
+			if got.HookSpecificOutput != nil {
+				t.Errorf("HookSpecificOutput should be nil for SessionStart, got %+v", got.HookSpecificOutput)
 			}
 
 			if len(tt.wantDataKeys) > 0 && got.Data != nil {

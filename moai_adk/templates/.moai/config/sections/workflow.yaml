@@ -1,0 +1,46 @@
+# Workflow Execution Mode Configuration
+# For Ralph-style autonomous workflow execution
+# Reference: SPEC-LSP-001
+
+# Execution mode: interactive or autonomous
+execution_mode:
+  # Interactive mode (default, current MoAI behavior)
+  interactive:
+    user_approval_required: true
+    each_step_explicit: true
+    show_progress: true
+
+  # Autonomous mode (Ralph-style, optional)
+  autonomous:
+    user_approval_required: false
+    continuous_loop: true
+    completion_marker_based: true
+    lsp_feedback_integration: true
+    show_progress: true
+
+# Completion markers for each phase
+completion_markers:
+  plan:
+    spec_document_created: true
+    lsp_baseline_recorded: true
+
+  run:
+    tests_passing: true
+    behavior_preserved: true
+    lsp_errors: 0
+    type_errors: 0
+    coverage_met_target: true
+
+  sync:
+    documentation_generated: true
+    lsp_clean: true
+    quality_gate_passed: true
+
+# Loop prevention (for autonomous mode)
+loop_prevention:
+  max_iterations: 100
+  no_progress_threshold: 5
+  stale_detection:
+    - error_count_unchanged
+    - same_fix_attempted_twice
+    - alternative_strategy_required

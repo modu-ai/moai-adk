@@ -41,6 +41,10 @@ type TemplateContext struct {
 	Platform      string // "darwin", "linux", "windows"
 	InitializedAt string // ISO 8601 timestamp when project was initialized
 	CreatedAt     string // ISO 8601 timestamp when project was created
+
+	// Paths (detected during initialization)
+	GoBinPath string // Detected Go binary installation path (e.g., "/Users/goos/go/bin")
+	HomeDir   string // User's home directory
 }
 
 // ContextOption configures a TemplateContext.
@@ -170,6 +174,20 @@ func WithOutputLanguages(gitCommit, codeComment, documentation string) ContextOp
 		if documentation != "" {
 			c.Documentation = documentation
 		}
+	}
+}
+
+// WithGoBinPath sets the detected Go binary installation path.
+func WithGoBinPath(path string) ContextOption {
+	return func(c *TemplateContext) {
+		c.GoBinPath = path
+	}
+}
+
+// WithHomeDir sets the user's home directory.
+func WithHomeDir(dir string) ContextOption {
+	return func(c *TemplateContext) {
+		c.HomeDir = dir
 	}
 }
 
