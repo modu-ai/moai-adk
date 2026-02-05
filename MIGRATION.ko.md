@@ -135,7 +135,105 @@ cp -r ~/.moai ~/.moai.backup.$(date +%Y%m%d)
 
 ## 3단계: MoAI-ADK v2.0 설치하기
 
-### 방법 1: 소스에서 빌드 (개발용)
+### 설치 스크립트 (추천)
+
+아래 명령어를 복사하여 터미널에 붙여넣으세요. OS를 자동 감지하여 적합한 바이너리를 다운로드하고 설치합니다.
+
+#### macOS (Apple Silicon & Intel)
+
+```bash
+# 플랫폼 감지 및 다운로드
+ARCH=$(uname -m)
+if [ "$ARCH" = "arm64" ]; then
+  ARCH_NAME="darwin-arm64"
+else
+  ARCH_NAME="darwin-amd64"
+fi
+
+# 최신 릴리스 다운로드
+echo "MoAI-ADK v2.0 설치 중 (macOS $ARCH)..."
+curl -fsSL "https://github.com/modu-ai/moai-adk/releases/latest/download/moai-${ARCH_NAME}.tar.gz" -o moai.tar.gz
+
+# 압축 해제 및 설치
+tar -xzf moai.tar.gz
+chmod +x moai
+sudo mv moai /usr/local/bin/
+
+# 정리
+rm moai.tar.gz
+
+# 설치 확인
+echo ""
+echo "✓ 설치 완료!"
+moai version
+```
+
+#### Linux (ARM64 & AMD64)
+
+```bash
+# 플랫폼 감지 및 다운로드
+ARCH=$(uname -m)
+if [ "$ARCH" = "aarch64" ]; then
+  ARCH_NAME="linux-arm64"
+else
+  ARCH_NAME="linux-amd64"
+fi
+
+# 최신 릴리스 다운로드
+echo "MoAI-ADK v2.0 설치 중 (Linux $ARCH)..."
+curl -fsSL "https://github.com/modu-ai/moai-adk/releases/latest/download/moai-${ARCH_NAME}.tar.gz" -o moai.tar.gz
+
+# 압축 해제 및 설치
+tar -xzf moai.tar.gz
+chmod +x moai
+sudo mv moai /usr/local/bin/
+
+# 정리
+rm moai.tar.gz
+
+# 설치 확인
+echo ""
+echo "✓ 설치 완료!"
+moai version
+```
+
+#### Windows (PowerShell)
+
+```powershell
+# PowerShell 관리자 권한으로 실행
+# 최신 릴리스 다운로드
+Write-Host "MoAI-ADK v2.0 설치 중 (Windows)..."
+Invoke-WebRequest -Uri "https://github.com/modu-ai/moai-adk/releases/latest/download/moai-windows-amd64.zip" -OutFile "moai.zip"
+
+# 압축 해제
+Expand-Archive -Path "moai.zip" -DestinationPath "." -Force
+
+# 설치 디렉토리 생성 및 복사
+$installDir = "$env:LOCALAPPDATA\MoAI-ADK"
+New-Item -ItemType Directory -Force -Path $installDir | Out-Null
+Copy-Item -Path "moai.exe" -Destination "$installDir\" -Force
+
+# PATH에 추가 (현재 세션만)
+$env:PATH += ";$installDir"
+
+# 정리
+Remove-Item "moai.zip"
+Remove-Item "moai.exe" -ErrorAction SilentlyContinue
+
+# 설치 확인
+Write-Host ""
+Write-Host "✓ 설치 완료!"
+& "$installDir\moai.exe" version
+```
+
+**Windows PATH 영구 추가 (선택):**
+
+```powershell
+# 시스템 PATH에 영구 추가 (관리자 권한 필요)
+[Environment]::SetEnvironmentVariable("Path", $env:Path + ";$installDir", "Machine")
+```
+
+### 방법 2: 소스에서 빌드 (개발용)
 
 ```bash
 # 저장소 복론
@@ -147,24 +245,6 @@ make build
 
 # GOPATH에 설치
 make install
-```
-
-### 방법 2: 프리빌트 바이너리 (추천)
-
-[릴리즈](https://github.com/modu-ai/moai-adk/releases) 페이지에서 플랫폼별 바이너리를 다운로드하세요:
-
-- `darwin_arm64` (macOS Apple Silicon)
-- `darwin_amd64` (macOS Intel)
-- `linux_arm64`
-- `linux_amd64`
-- `windows_amd64`
-
-```bash
-# 다운로드 및 압축 해제 (macOS 예시)
-curl -LO https://github.com/modu-ai/moai-adk/releases/latest/download/moai-darwin-arm64.tar.gz
-tar -xzf moai-darwin-arm64.tar.gz
-chmod +x moai
-sudo mv moai /usr/local/bin/
 ```
 
 ### 설치 확인
