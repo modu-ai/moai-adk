@@ -130,7 +130,8 @@ func (h *DefaultOAuthHandler) StartOAuthFlow(ctx context.Context, timeout time.D
 	}()
 
 	// Build auth URL and open browser.
-	authURL := fmt.Sprintf("%s/auth/github?callback_url=%s&state=%s", h.config.BaseURL, callbackURL, state)
+	// Use /api/auth/cli endpoint (matching Python moai-adk implementation)
+	authURL := fmt.Sprintf("%s/api/auth/cli?redirect_uri=%s&state=%s", h.config.BaseURL, callbackURL, state)
 	if h.config.Browser != nil {
 		if openErr := h.config.Browser.Open(authURL); openErr != nil {
 			return nil, fmt.Errorf("open browser: %w", openErr)
@@ -236,7 +237,7 @@ func (h *DefaultOAuthHandler) exchangeCode(code string) (*Credentials, error) {
 		return nil, fmt.Errorf("marshal exchange request: %w", marshalErr)
 	}
 
-	url := h.config.BaseURL + "/api/" + APIVersion + "/auth/exchange"
+	url := h.config.BaseURL + "/api/auth/cli/token"
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create exchange request: %w", err)

@@ -313,7 +313,7 @@ func TestHandleCallback_LegacyCodeFlow(t *testing.T) {
 	}
 
 	exchangeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v1/auth/exchange" {
+		if r.URL.Path != "/api/auth/cli/token" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		w.WriteHeader(http.StatusOK)
