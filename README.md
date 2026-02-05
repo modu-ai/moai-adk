@@ -40,6 +40,16 @@ MoAI-ADK (Go Edition)는 Claude Code 내에서 MoAI 프레임워크의 런타임
 
 ## 설치
 
+### 빠른 설치 (권장)
+
+간단한 원라인 명령어로 설치하세요. OS와 아키텍처를 자동 감지하여 적합한 바이너리를 다운로드하고 설치합니다.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+```
+
+또는 웹 기반 설치 페이지를 방문하세요: **[install.moai-adk.dev](https://moai-adk.dev/install)**
+
 ### 소스에서 빌드
 
 Go 1.22 이상이 필요합니다.

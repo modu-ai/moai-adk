@@ -110,7 +110,7 @@ source ~/.bashrc # bash 사용자
 
 Go 설치가 확인되었으면 기존 Python moai-adk를 제거하세요.
 
-### 1단계: 기존 Python moai-adk 제거
+### 기존 Python moai-adk 제거
 
 ```bash
 # uv로 설치한 경우
@@ -123,23 +123,41 @@ pip uninstall moai-adk
 rm -rf ~/.local/share/uv/tools/moai-adk
 ```
 
-### 2단계: 남아있는 설정 파일 백업
-
-```bash
-# 기존 설정 백업 (필요시)
-cp -r ~/.claude ~/.claude.backup.$(date +%Y%m%d)
-cp -r ~/.moai ~/.moai.backup.$(date +%Y%m%d)
-```
-
 ---
 
 ## 3단계: MoAI-ADK v2.0 설치하기
 
 ### 설치 스크립트 (추천)
 
-아래 명령어를 복사하여 터미널에 붙여넣으세요. OS를 자동 감지하여 적합한 바이너리를 다운로드하고 설치합니다.
+간단한 원라인 명령어로 설치하세요. OS와 아키텍처를 자동 감지하여 적합한 바이너리를 다운로드하고 설치합니다.
 
-#### macOS (Apple Silicon & Intel)
+```bash
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+```
+
+또는:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+```
+
+**특정 버전 설치:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version 2.0.0
+```
+
+**사용자 정의 설치 경로:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --install-dir ~/bin
+```
+
+### 수동 설치 (GUI)
+
+웹 기반 설치 페이지를 방문하여 설치할 수도 있습니다:
+
+🔗 **[https://moai-adk.dev/install](https://moai-adk.dev/install)**
+
+### 고급 사용자를 위한 수동 설치
 
 ```bash
 # 플랫폼 감지 및 다운로드
