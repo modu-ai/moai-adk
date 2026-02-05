@@ -75,10 +75,6 @@ powershell -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/m
 install.bat
 ```
 
-#### Web-based Installation
-
-Visit **[install.moai-adk.dev](https://moai-adk.dev/install)** in your browser
-
 ### From Source
 
 Requires Go 1.22 or later.

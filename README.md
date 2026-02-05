@@ -75,10 +75,6 @@ powershell -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/m
 install.bat
 ```
 
-#### 웹 기반 설치
-
-브라우저에서 **[install.moai-adk.dev](https://moai-adk.dev/install)** 방문
-
 ### 소스에서 빌드
 
 Go 1.22 이상이 필요합니다.

@@ -178,12 +178,6 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --install-dir ~/bin
 ```
 
-### 수동 설치 (GUI)
-
-웹 기반 설치 페이지를 방문하여 설치할 수도 있습니다:
-
-🔗 **[https://moai-adk.dev/install](https://moai-adk.dev/install)**
-
 ### 고급 사용자를 위한 수동 설치
 
 ```bash
