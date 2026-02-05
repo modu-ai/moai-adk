@@ -131,6 +131,8 @@ rm -rf ~/.local/share/uv/tools/moai-adk
 
 간단한 원라인 명령어로 설치하세요. OS와 아키텍처를 자동 감지하여 적합한 바이너리를 다운로드하고 설치합니다.
 
+#### macOS, Linux, WSL
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install.sh | bash
 ```
@@ -138,7 +140,26 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install
 또는:
 
 ```bash
-wget -qO- https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+wget -qO- https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install.sh | bash
+```
+
+#### Windows PowerShell
+
+```powershell
+irm https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install.ps1 | iex
+```
+
+또는:
+
+```powershell
+Invoke-Expression (Invoke-RestMethod -Uri "https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install.ps1")
+```
+
+#### Windows CMD
+
+```batch
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install.bat -o install.bat
+install.bat
 ```
 
 **특정 버전 설치:**

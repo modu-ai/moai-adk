@@ -44,11 +44,34 @@ MoAI-ADK (Go Edition) is a compiled development toolkit that serves as the runti
 
 Install with a single command. The script automatically detects your platform and downloads the appropriate binary.
 
+#### macOS, Linux, WSL
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install.sh | bash
 ```
 
-Or visit our web-based installation page: **[install.moai-adk.dev](https://moai-adk.dev/install)**
+#### Windows PowerShell
+
+```powershell
+irm https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install.ps1 | iex
+```
+
+Or:
+
+```powershell
+Invoke-Expression (Invoke-RestMethod -Uri "https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install.ps1")
+```
+
+#### Windows CMD
+
+```batch
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install.bat -o install.bat
+install.bat
+```
+
+#### Web-based Installation
+
+Visit **[install.moai-adk.dev](https://moai-adk.dev/install)** in your browser
 
 ### From Source
 
