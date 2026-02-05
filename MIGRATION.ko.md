@@ -162,9 +162,15 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install
 install.bat
 ```
 
+curl이 없는 경우:
+```batch
+powershell -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install.bat' -OutFile 'install.bat'"
+install.bat
+```
+
 **특정 버전 설치:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version 2.0.0
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install.sh | bash -s -- --version 2.0.0
 ```
 
 **사용자 정의 설치 경로:**

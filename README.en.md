@@ -69,6 +69,12 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install
 install.bat
 ```
 
+If curl is not available:
+```batch
+powershell -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install.bat' -OutFile 'install.bat'"
+install.bat
+```
+
 #### Web-based Installation
 
 Visit **[install.moai-adk.dev](https://moai-adk.dev/install)** in your browser
