@@ -65,32 +65,32 @@ detect_platform() {
     print_success "Detected platform: $PLATFORM"
 }
 
-# Get latest version from GitHub
+# Get latest Go edition version from GitHub
 get_latest_version() {
-    local version_url="https://api.github.com/repos/modu-ai/moai-adk/releases/latest"
+    local version_url="https://api.github.com/repos/modu-ai/moai-adk/releases"
 
     if command -v curl &> /dev/null; then
-        VERSION=$(curl -s "$version_url" | grep '"tag_name"' | sed -E 's/.*"tag_name": "v?([^"]+)".*/\1/')
+        VERSION=$(curl -s "$version_url" | grep -o '"tag_name":\s*"go-v[^"]*"' | head -n 1 | sed -E 's/.*"go-v([^"]+)".*/\1/')
     elif command -v wget &> /dev/null; then
-        VERSION=$(wget -qO- "$version_url" | grep '"tag_name"' | sed -E 's/.*"tag_name": "v?([^"]+)".*/\1/')
+        VERSION=$(wget -qO- "$version_url" | grep -o '"tag_name":\s*"go-v[^"]*"' | head -n 1 | sed -E 's/.*"go-v([^"]+)".*/\1/')
     else
         print_error "Neither curl nor wget found. Please install one of them."
         exit 1
     fi
 
     if [ -z "$VERSION" ]; then
-        print_error "Failed to fetch latest version from GitHub"
+        print_error "Failed to fetch latest Go edition version from GitHub"
         exit 1
     fi
 
-    print_success "Latest version: $VERSION"
+    print_success "Latest Go edition version: $VERSION"
 }
 
 # Download binary
 download_binary() {
     local version=$1
     local platform=$2
-    local download_url="https://github.com/modu-ai/moai-adk/releases/download/v${version}/moai-${platform}"
+    local download_url="https://github.com/modu-ai/moai-adk/releases/download/go-v${version}/moai-${platform}"
 
     # Create temp directory
     TMP_DIR=$(mktemp -d)

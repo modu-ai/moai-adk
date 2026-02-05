@@ -52,10 +52,10 @@ This is the first official release of MoAI-ADK Go Edition, a complete rewrite of
 
 ```bash
 # Install MoAI-ADK Go Edition (macOS/Linux)
-curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install.sh | bash
 
 # Or download binary directly from GitHub Releases
-# Visit: https://github.com/modu-ai/moai-adk/releases/tag/v2.0.0
+# Visit: https://github.com/modu-ai/moai-adk/releases/tag/go-v2.0.0
 
 # Update to the latest version
 moai update
@@ -123,10 +123,10 @@ Python 기반 MoAI-ADK를 Go로 완전히 재작성한 첫 번째 공식 릴리�
 
 ```bash
 # MoAI-ADK Go 에디션 설치 (macOS/Linux)
-curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install.sh | bash
 
 # 또는 GitHub 릴리스에서 바이너리 직접 다운로드
-# 방문: https://github.com/modu-ai/moai-adk/releases/tag/v2.0.0
+# 방문: https://github.com/modu-ai/moai-adk/releases/tag/go-v2.0.0
 
 # 최신 버전으로 업데이트
 moai update

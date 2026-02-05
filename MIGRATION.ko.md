@@ -175,7 +175,7 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install
 
 **사용자 정의 설치 경로:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --install-dir ~/bin
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install.sh | bash -s -- --install-dir ~/bin
 ```
 
 ### 고급 사용자를 위한 수동 설치

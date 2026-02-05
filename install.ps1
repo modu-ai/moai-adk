@@ -43,18 +43,20 @@ function Get-Platform {
     return $platform
 }
 
-# Get latest version
+# Get latest Go edition version
 function Get-LatestVersion {
-    $versionUrl = "https://api.github.com/repos/modu-ai/moai-adk/releases/latest"
+    $versionUrl = "https://api.github.com/repos/modu-ai/moai-adk/releases"
 
     try {
         $response = Invoke-RestMethod -Uri $versionUrl -Method Get
-        $version = $response.tag_name -replace '^v', ''
-        Print-Success "Latest version: $version"
+        # Find the latest Go edition release (tag starts with "go-v")
+        $goRelease = $response | Where-Object { $_.tag_name -like "go-v*" } | Select-Object -First 1
+        $version = $goRelease.tag_name -replace '^go-v', ''
+        Print-Success "Latest Go edition version: $version"
         return $version
     }
     catch {
-        Print-Error "Failed to fetch latest version from GitHub"
+        Print-Error "Failed to fetch latest Go edition version from GitHub"
         exit 1
     }
 }
@@ -66,7 +68,7 @@ function Download-Binary {
         [string]$Platform
     )
 
-    $downloadUrl = "https://github.com/modu-ai/moai-adk/releases/download/v$Version/moai-$Platform.exe"
+    $downloadUrl = "https://github.com/modu-ai/moai-adk/releases/download/go-v$Version/moai-$Platform.exe"
     $tempDir = Join-Path $env:TEMP "moai-install"
     $downloadFile = Join-Path $tempDir "moai.exe"
 

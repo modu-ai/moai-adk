@@ -44,29 +44,26 @@ echo [INFO] Detected platform: %PLATFORM%
 
 REM Get version
 if "%VERSION%"=="" (
-    echo [INFO] Fetching latest version from GitHub...
+    echo [INFO] Fetching latest Go edition version from GitHub...
 
-    REM Use PowerShell to get latest version
-    for /f "tokens=*" %%i in ('powershell -Command "Invoke-RestMethod -Uri https://api.github.com/repos/modu-ai/moai-adk/releases/latest | Select-Object -ExpandProperty tag_name" 2^>nul') do (
+    REM Use PowerShell to get latest Go edition version
+    for /f "tokens=*" %%i in ('powershell -Command "$releases = Invoke-RestMethod -Uri https://api.github.com/repos/modu-ai/moai-adk/releases; $goRelease = $releases ^| Where-Object { $_.tag_name -like 'go-v*' } ^| Select-Object -First 1; $goRelease.tag_name -replace '^go-v', ''" 2^>nul') do (
         set "VERSION=%%i"
     )
 
-    REM Remove 'v' prefix if present
-    set "VERSION=!VERSION:v=!"
-
     if "!VERSION!"=="" (
-        echo [ERROR] Failed to fetch latest version
+        echo [ERROR] Failed to fetch latest Go edition version
         exit /b 1
     )
 )
-echo [SUCCESS] Latest version: !VERSION!
+echo [SUCCESS] Latest Go edition version: !VERSION!
 
 REM Create temp directory
 set "TEMP_DIR=%TEMP%\moai-install"
 if not exist "%TEMP_DIR%" mkdir "%TEMP_DIR%"
 
 REM Download URL
-set "DOWNLOAD_URL=https://github.com/modu-ai/moai-adk/releases/download/v!VERSION!/moai-%PLATFORM%.exe"
+set "DOWNLOAD_URL=https://github.com/modu-ai/moai-adk/releases/download/go-v!VERSION!/moai-%PLATFORM%.exe"
 set "DOWNLOAD_FILE=%TEMP_DIR%\moai.exe"
 
 echo [INFO] Downloading from: !DOWNLOAD_URL!
