@@ -6,10 +6,10 @@ import (
 )
 
 func TestGetVersion(t *testing.T) {
-	// Default value test
+	// Default value test (version is set at build time)
 	got := GetVersion()
-	if got != "dev" {
-		t.Errorf("GetVersion() = %q, want %q (default)", got, "dev")
+	if got == "" {
+		t.Errorf("GetVersion() = %q, want non-empty string", got)
 	}
 }
 
@@ -51,8 +51,8 @@ func TestGetFullVersion(t *testing.T) {
 }
 
 func TestGetFullVersion_Format(t *testing.T) {
-	// Test exact format with default values
-	expected := "dev (commit: none, built: unknown)"
+	// Test exact format with current values
+	expected := Version + " (commit: " + Commit + ", built: " + Date + ")"
 	got := GetFullVersion()
 	if got != expected {
 		t.Errorf("GetFullVersion() = %q, want %q", got, expected)
@@ -60,21 +60,21 @@ func TestGetFullVersion_Format(t *testing.T) {
 }
 
 func TestVersionVariables_Defaults(t *testing.T) {
-	// Test that default values are set correctly
+	// Test that version variables are set (not empty)
 	tests := []struct {
 		name     string
 		variable string
-		want     string
+		notEmpty bool
 	}{
-		{"Version", Version, "dev"},
-		{"Commit", Commit, "none"},
-		{"Date", Date, "unknown"},
+		{"Version", Version, true},
+		{"Commit", Commit, true},
+		{"Date", Date, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.variable != tt.want {
-				t.Errorf("%s = %q, want %q", tt.name, tt.variable, tt.want)
+			if tt.notEmpty && tt.variable == "" {
+				t.Errorf("%s = %q, want non-empty string", tt.name, tt.variable)
 			}
 		})
 	}

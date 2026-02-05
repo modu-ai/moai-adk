@@ -21,10 +21,10 @@ type ProgressReporter interface {
 // NoOpReporter is a ProgressReporter that does nothing (used when no UI is needed).
 type NoOpReporter struct{}
 
-func (r *NoOpReporter) StepStart(name, message string)  {}
-func (r *NoOpReporter) StepUpdate(message string)         {}
-func (r *NoOpReporter) StepComplete(message string)      {}
-func (r *NoOpReporter) StepError(err error)             {}
+func (r *NoOpReporter) StepStart(name, message string) {}
+func (r *NoOpReporter) StepUpdate(message string)      {}
+func (r *NoOpReporter) StepComplete(message string)    {}
+func (r *NoOpReporter) StepError(err error)            {}
 
 // ConsoleReporter is a ProgressReporter that outputs to console.
 type ConsoleReporter struct{}

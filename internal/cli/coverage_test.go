@@ -441,6 +441,12 @@ func TestRunUpdate_FullUpdateSuccess(t *testing.T) {
 		t.Skip("skipping test in CI environment (requires TTY)")
 	}
 
+	// Also skip if running in automated test environments without TTY
+	// Check if we can access /dev/tty (Unix) or CONIN$ (Windows)
+	if _, err := os.OpenFile("/dev/tty", os.O_RDWR, 0); err != nil {
+		t.Skip("skipping test in non-TTY environment (requires interactive terminal)")
+	}
+
 	origDeps := deps
 	defer func() { deps = origDeps }()
 

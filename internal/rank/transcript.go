@@ -13,35 +13,35 @@ import (
 
 // TranscriptUsage represents token usage extracted from a Claude Code transcript.
 type TranscriptUsage struct {
-	InputTokens        int64  `json:"input_tokens"`
-	OutputTokens       int64  `json:"output_tokens"`
+	InputTokens         int64  `json:"input_tokens"`
+	OutputTokens        int64  `json:"output_tokens"`
 	CacheCreationTokens int64  `json:"cache_creation_tokens"`
 	CacheReadTokens     int64  `json:"cache_read_tokens"`
 	ModelName           string `json:"model_name"`
 	StartedAt           string `json:"started_at,omitempty"`
 	EndedAt             string `json:"ended_at,omitempty"`
-	DurationSeconds    int64  `json:"duration_seconds,omitempty"`
+	DurationSeconds     int64  `json:"duration_seconds,omitempty"`
 	TurnCount           int    `json:"turn_count,omitempty"`
 }
 
 // transcriptMessage represents a single line in the JSONL transcript file.
 type transcriptMessage struct {
-	Timestamp string         `json:"timestamp"`
-	Type      string         `json:"type"`
-	Message   transcriptMsg  `json:"message"`
-	Model     string         `json:"model"`
+	Timestamp string        `json:"timestamp"`
+	Type      string        `json:"type"`
+	Message   transcriptMsg `json:"message"`
+	Model     string        `json:"model"`
 }
 
 // transcriptMsg represents the message content with usage data.
 type transcriptMsg struct {
 	Usage *transcriptUsage `json:"usage"`
-	Model string             `json:"model"`
+	Model string           `json:"model"`
 }
 
 // transcriptUsage represents token usage information.
 type transcriptUsage struct {
-	InputTokens             int `json:"input_tokens"`
-	OutputTokens            int `json:"output_tokens"`
+	InputTokens              int `json:"input_tokens"`
+	OutputTokens             int `json:"output_tokens"`
 	CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
 	CacheReadInputTokens     int `json:"cache_read_input_tokens"`
 }
@@ -53,7 +53,10 @@ func ParseTranscript(transcriptPath string) (*TranscriptUsage, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open transcript: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		// Close errors are ignored for read-only files
+		_ = file.Close()
+	}()
 
 	usage := &TranscriptUsage{}
 	var firstTimestamp, lastTimestamp string

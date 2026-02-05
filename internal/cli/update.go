@@ -1446,10 +1446,10 @@ func ensureGlobalSettingsEnv() error {
 
 	// Define required env variables
 	requiredEnv := map[string]string{
-		"PATH":                          buildRequiredPATH(),
-		"MOAI_CONFIG_SOURCE":            "sections",
-		"ENABLE_TOOL_SEARCH":            "1",
-		"MAX_THINKING_TOKENS":           "31999",
+		"PATH":                buildRequiredPATH(),
+		"MOAI_CONFIG_SOURCE":  "sections",
+		"ENABLE_TOOL_SEARCH":  "1",
+		"MAX_THINKING_TOKENS": "31999",
 	}
 
 	// Define SessionEnd hook for moai-rank submission

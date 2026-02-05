@@ -10,19 +10,19 @@ import (
 // Settings represents the Claude Code settings.json structure.
 // Generated exclusively via json.MarshalIndent (ADR-011).
 type Settings struct {
-	Hooks            map[string][]HookGroup `json:"hooks,omitempty"`
-	StatusLine       *StatusLine            `json:"statusLine,omitempty"`
-	OutputStyle      string                 `json:"outputStyle,omitempty"`
-	CleanupPeriodDays int                   `json:"cleanupPeriodDays,omitempty"`
-	Env              map[string]string      `json:"env,omitempty"`
-	Permissions      *Permissions          `json:"permissions,omitempty"`
+	Hooks             map[string][]HookGroup `json:"hooks,omitempty"`
+	StatusLine        *StatusLine            `json:"statusLine,omitempty"`
+	OutputStyle       string                 `json:"outputStyle,omitempty"`
+	CleanupPeriodDays int                    `json:"cleanupPeriodDays,omitempty"`
+	Env               map[string]string      `json:"env,omitempty"`
+	Permissions       *Permissions           `json:"permissions,omitempty"`
 }
 
 // StatusLine represents the status line configuration.
 type StatusLine struct {
-	Type           string `json:"type"`
-	Command        string `json:"command"`
-	Padding        int    `json:"padding"`
+	Type            string `json:"type"`
+	Command         string `json:"command"`
+	Padding         int    `json:"padding"`
 	RefreshInterval int    `json:"refreshInterval"`
 }
 
@@ -84,12 +84,12 @@ var hookEventDefs = []hookEventDef{
 // For project-level settings, env is managed globally (not in template).
 func (g *settingsGenerator) Generate(cfg *config.Config, platform string) ([]byte, error) {
 	settings := Settings{
-		Hooks:            buildHooks(platform),
-		StatusLine:       buildStatusLine(),
-		OutputStyle:      resolveOutputStyle(cfg),
+		Hooks:             buildHooks(platform),
+		StatusLine:        buildStatusLine(),
+		OutputStyle:       resolveOutputStyle(cfg),
 		CleanupPeriodDays: 30,
 		// Env: omitted - managed globally in ~/.claude/settings.json
-		Permissions:      buildPermissions(),
+		Permissions: buildPermissions(),
 	}
 
 	data, err := json.MarshalIndent(settings, "", "  ")

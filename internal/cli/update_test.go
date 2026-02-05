@@ -1129,13 +1129,13 @@ func TestRestoreMoaiConfig_MergeBehavior(t *testing.T) {
 func TestBackupMetadata_Structure(t *testing.T) {
 	// Test BackupMetadata struct marshaling
 	metadata := BackupMetadata{
-		Timestamp:       "20250205_143022",
-		Description:     "config_backup",
-		BackedUpItems:   []string{".moai/config/config.yaml", ".moai/config/settings.yaml"},
-		ExcludedItems:   []string{"sections/user.yaml"},
-		ExcludedDirs:    []string{"config/sections"},
-		ProjectRoot:     "/home/user/project",
-		BackupType:      "config",
+		Timestamp:     "20250205_143022",
+		Description:   "config_backup",
+		BackedUpItems: []string{".moai/config/config.yaml", ".moai/config/settings.yaml"},
+		ExcludedItems: []string{"sections/user.yaml"},
+		ExcludedDirs:  []string{"config/sections"},
+		ProjectRoot:   "/home/user/project",
+		BackupType:    "config",
 	}
 
 	// Test marshaling
@@ -1279,10 +1279,10 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		sessionEndHookCommand := buildSessionEndHookCommand()
 		existing := map[string]interface{}{
 			"env": map[string]interface{}{
-				"PATH":                          buildRequiredPATH(), // Use same function to match exactly
-				"MOAI_CONFIG_SOURCE":            "sections",
-				"ENABLE_TOOL_SEARCH":            "1",
-				"MAX_THINKING_TOKENS":           "31999",
+				"PATH":                buildRequiredPATH(), // Use same function to match exactly
+				"MOAI_CONFIG_SOURCE":  "sections",
+				"ENABLE_TOOL_SEARCH":  "1",
+				"MAX_THINKING_TOKENS": "31999",
 			},
 			"hooks": map[string]interface{}{
 				"SessionEnd": []interface{}{
@@ -1348,4 +1348,3 @@ func TestBuildRequiredPATH(t *testing.T) {
 		t.Error("PATH missing colon separator")
 	}
 }
-

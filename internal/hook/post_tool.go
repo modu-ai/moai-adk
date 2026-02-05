@@ -109,14 +109,14 @@ func (h *postToolHandler) collectDiagnostics(ctx context.Context, input *HookInp
 
 	// Add diagnostic counts to metrics
 	metrics["lsp_diagnostics"] = map[string]any{
-		"file":         filepath.Base(filePath),
-		"errors":       counts.Errors,
-		"warnings":     counts.Warnings,
-		"information":  counts.Information,
-		"hints":        counts.Hints,
-		"total":        counts.Total(),
-		"count":        len(diagnostics),
-		"has_issues":   counts.Errors > 0 || counts.Warnings > 0,
+		"file":        filepath.Base(filePath),
+		"errors":      counts.Errors,
+		"warnings":    counts.Warnings,
+		"information": counts.Information,
+		"hints":       counts.Hints,
+		"total":       counts.Total(),
+		"count":       len(diagnostics),
+		"has_issues":  counts.Errors > 0 || counts.Warnings > 0,
 	}
 
 	// Log summary

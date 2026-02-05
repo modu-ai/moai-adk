@@ -4,10 +4,10 @@ package rank
 // ModelPricing holds pricing information for a Claude model.
 // Prices are in USD per million tokens.
 type ModelPricing struct {
-	Input           float64 `json:"input"`
-	Output          float64 `json:"output"`
-	CacheCreation   float64 `json:"cache_creation"`
-	CacheRead       float64 `json:"cache_read"`
+	Input         float64 `json:"input"`
+	Output        float64 `json:"output"`
+	CacheCreation float64 `json:"cache_creation"`
+	CacheRead     float64 `json:"cache_read"`
 }
 
 // modelPricingDB holds the pricing database for all Claude models.

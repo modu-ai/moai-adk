@@ -98,11 +98,11 @@ type HookInput struct {
 	StopHookActive bool `json:"stop_hook_active,omitempty"` // True when already continuing due to stop hook
 
 	// SubagentStart/SubagentStop fields
-	AgentID            string `json:"agent_id,omitempty"`
+	AgentID             string `json:"agent_id,omitempty"`
 	AgentTranscriptPath string `json:"agent_transcript_path,omitempty"`
 
 	// PreCompact fields
-	Trigger            string `json:"trigger,omitempty"`            // manual, auto
+	Trigger            string `json:"trigger,omitempty"`             // manual, auto
 	CustomInstructions string `json:"custom_instructions,omitempty"` // User instructions for /compact
 
 	// PostToolUseFailure fields
@@ -133,10 +133,10 @@ type HookSpecificOutput struct {
 // The format varies by event type per Claude Code protocol.
 type HookOutput struct {
 	// Universal fields (all events)
-	Continue      bool   `json:"continue,omitempty"`      // If false, Claude stops processing entirely
-	StopReason    string `json:"stopReason,omitempty"`    // Message shown when continue is false
-	SystemMessage string `json:"systemMessage,omitempty"` // Warning message shown to user
-	SuppressOutput bool  `json:"suppressOutput,omitempty"` // If true, hides stdout from verbose mode
+	Continue       bool   `json:"continue,omitempty"`       // If false, Claude stops processing entirely
+	StopReason     string `json:"stopReason,omitempty"`     // Message shown when continue is false
+	SystemMessage  string `json:"systemMessage,omitempty"`  // Warning message shown to user
+	SuppressOutput bool   `json:"suppressOutput,omitempty"` // If true, hides stdout from verbose mode
 
 	// Top-level decision fields (Stop, SubagentStop, PostToolUse, PostToolUseFailure, UserPromptSubmit)
 	// Use "block" to prevent the action; omit to allow

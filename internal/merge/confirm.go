@@ -39,11 +39,11 @@ type FileAnalysis struct {
 // confirmModel is the Bubble Tea model for merge confirmation UI.
 type confirmModel struct {
 	analysis      MergeAnalysis
-	decision      bool     // true = proceed, false = cancel
-	done          bool     // true = user made a decision
-	cursor        int      // current cursor position
-	selectedFiles []bool   // selection state for each file
-	showSelection bool     // true = show file selection UI
+	decision      bool   // true = proceed, false = cancel
+	done          bool   // true = user made a decision
+	cursor        int    // current cursor position
+	selectedFiles []bool // selection state for each file
+	showSelection bool   // true = show file selection UI
 }
 
 func (m confirmModel) Init() tea.Cmd {
@@ -184,30 +184,30 @@ func (m confirmModel) View() string {
 
 // AnalysisFormatter handles formatting of merge analysis for display.
 type AnalysisFormatter struct {
-	analysis        MergeAnalysis
-	styles          formatterStyles
-	cursor          int
-	selectedFiles   []bool
-	showSelection   bool
+	analysis      MergeAnalysis
+	styles        formatterStyles
+	cursor        int
+	selectedFiles []bool
+	showSelection bool
 }
 
 type formatterStyles struct {
-	title           lipgloss.Style
-	lowRisk         lipgloss.Style
-	mediumRisk      lipgloss.Style
-	highRisk        lipgloss.Style
-	prompt          lipgloss.Style
-	warning         lipgloss.Style
-	tableStyle      lipgloss.Style
-	headerStyle     lipgloss.Style
-	tableHeaderRow  lipgloss.Style
-	tableBorder     lipgloss.Style
-	tableRowEven    lipgloss.Style
-	tableRowOdd     lipgloss.Style
-	columnFile      lipgloss.Style
-	columnChanges   lipgloss.Style
-	columnStrategy  lipgloss.Style
-	columnRisk      lipgloss.Style
+	title          lipgloss.Style
+	lowRisk        lipgloss.Style
+	mediumRisk     lipgloss.Style
+	highRisk       lipgloss.Style
+	prompt         lipgloss.Style
+	warning        lipgloss.Style
+	tableStyle     lipgloss.Style
+	headerStyle    lipgloss.Style
+	tableHeaderRow lipgloss.Style
+	tableBorder    lipgloss.Style
+	tableRowEven   lipgloss.Style
+	tableRowOdd    lipgloss.Style
+	columnFile     lipgloss.Style
+	columnChanges  lipgloss.Style
+	columnStrategy lipgloss.Style
+	columnRisk     lipgloss.Style
 }
 
 // NewAnalysisFormatter creates a new formatter for the given analysis.
@@ -235,7 +235,7 @@ func NewAnalysisFormatterWithSelection(analysis MergeAnalysis, cursor int, selec
 func initFormatterStyles() formatterStyles {
 	// Border style for table
 	border := lipgloss.Border{
-		Top:    "─", Bottom: "─", Left: "│", Right: "│",
+		Top: "─", Bottom: "─", Left: "│", Right: "│",
 		TopLeft: "┌", TopRight: "┐", BottomLeft: "└", BottomRight: "┘",
 	}
 
@@ -253,7 +253,7 @@ func initFormatterStyles() formatterStyles {
 			Foreground(lipgloss.Color("#E5E7EB")).
 			Background(lipgloss.Color("#374151")).
 			Padding(0, 1),
-		tableBorder:     lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280")),
+		tableBorder:    lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280")),
 		tableRowEven:   lipgloss.NewStyle().Foreground(lipgloss.Color("#E5E7EB")),
 		tableRowOdd:    lipgloss.NewStyle().Foreground(lipgloss.Color("#D1D5DB")),
 		columnFile:     lipgloss.NewStyle().Width(39).MaxWidth(39),

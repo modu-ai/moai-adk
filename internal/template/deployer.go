@@ -31,7 +31,7 @@ type Deployer interface {
 type deployer struct {
 	fsys        fs.FS
 	renderer    Renderer // Optional: if set, .tmpl files are rendered with TemplateContext
-	forceUpdate bool      // If true, overwrite existing files without manifest check (used for updates)
+	forceUpdate bool     // If true, overwrite existing files without manifest check (used for updates)
 }
 
 // NewDeployer creates a Deployer backed by the given filesystem.
@@ -150,7 +150,7 @@ func (d *deployer) Deploy(ctx context.Context, projectRoot string, m manifest.Ma
 
 		// Determine file permissions based on extension
 		// Shell scripts and other executable files need executable bit
-	 perm := fs.FileMode(0o644) // Default: read/write for owner, read for others
+		perm := fs.FileMode(0o644) // Default: read/write for owner, read for others
 		if strings.HasSuffix(destRelPath, ".sh") {
 			perm = 0o755 // Executable: read/write/execute for owner, read/execute for others
 		}
