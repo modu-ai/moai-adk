@@ -3,8 +3,9 @@ package version
 import "fmt"
 
 // Build-time variables injected via -ldflags.
+// Default version for RC/test builds (overridden by -ldflags in production)
 var (
-	Version = "dev"
+	Version = "v2.0.0-rc1"
 	Commit  = "none"
 	Date    = "unknown"
 )

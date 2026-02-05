@@ -83,8 +83,9 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 
 	// Detect development build and show appropriate message
 	// Skip this check for local updates (dev builds can update from local releases)
+	// RC/alpha/beta versions are NOT considered dev builds - they can update
 	isDevBuild := strings.Contains(currentVersion, "dirty") ||
-		strings.Contains(currentVersion, "dev") ||
+		currentVersion == "dev" ||
 		strings.Contains(currentVersion, "none")
 
 	if isDevBuild && !templatesOnly && !shellEnv && !useLocalUpdate {
@@ -1697,8 +1698,8 @@ func cleanSessionEndHooks(hooksMap map[string]interface{}) {
 func buildRequiredPATH() string {
 	homeDir, _ := os.UserHomeDir()
 
-	// Get actual Go bin path from go env
-	goBin := "/Users/goos/go/bin" // Default for this user
+	// Get actual Go bin path from go env (no hardcoded default)
+	goBin := ""
 	if output, err := execCommand("go", "env", "GOBIN"); err == nil && output != "" {
 		goBin = strings.TrimSpace(output)
 	} else if output, err := execCommand("go", "env", "GOPATH"); err == nil && output != "" {
@@ -1706,6 +1707,11 @@ func buildRequiredPATH() string {
 		if goPath != "" {
 			goBin = filepath.Join(goPath, "bin")
 		}
+	}
+
+	// If go env fails, use default Go binary locations
+	if goBin == "" {
+		goBin = filepath.Join(homeDir, "go", "bin")
 	}
 
 	paths := []string{

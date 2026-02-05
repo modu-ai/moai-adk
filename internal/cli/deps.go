@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/git"
@@ -153,8 +154,15 @@ func (d *Dependencies) EnsureUpdate() error {
 	// Remote GitHub updates
 	apiURL := os.Getenv("MOAI_UPDATE_URL")
 	if apiURL == "" {
-		if currentVersion == "dev" {
-			// Dev version: use moai-go-v2 branch releases (tagged with go-v prefix)
+		// Check if this is a development or pre-release version
+		isDevVersion := currentVersion == "dev" ||
+			strings.Contains(currentVersion, "rc") ||
+			strings.Contains(currentVersion, "alpha") ||
+			strings.Contains(currentVersion, "beta") ||
+			strings.HasPrefix(currentVersion, "go-v")
+
+		if isDevVersion {
+			// Dev/RC version: use moai-go-v2 branch releases (tagged with go-v prefix)
 			apiURL = "https://api.github.com/repos/modu-ai/moai-adk/releases"
 		} else {
 			// Production version: use main branch releases
