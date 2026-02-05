@@ -13,7 +13,7 @@
     "📋 워크플로우: /moai plan (SPEC) → /moai run (DDD) → /moai sync (Docs)",
     "✅ 품질: TRUST 5 + 85%+ 커버리지 + Ralph Engine (LSP + AST-grep)",
     "🔄 Git 전략: 3-Mode (Manual/Personal/Team) + Smart Merge 설정 업데이트",
-    "📚 팁: moai update --templates-only로 최신 skills와 agents 동기화",
+    "📚 팁: moai update --project로 최신 skills와 agents 동기화",
     "📚 팁: moai-wt new SPEC-XXX로 병렬 개발용 worktree 생성",
     "💡 하이브리드 모드: Plan은 Claude (Opus/Sonnet), Run/Sync는 GLM으로 비용 절감",
     "💡 병렬 개발: 터미널1은 Claude, 터미널2+는 'moai glm && claude'로 병렬 실행",

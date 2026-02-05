@@ -13,7 +13,7 @@
     "📋 ワークフロー: /moai plan (SPEC) → /moai run (DDD) → /moai sync (Docs)",
     "✅ 品質: TRUST 5 + 85%+ カバレッジ + Ralph Engine (LSP + AST-grep)",
     "🔄 Git戦略: 3-Mode (Manual/Personal/Team) + Smart Merge設定更新",
-    "📚 ヒント: moai update --templates-only で最新のskillsとagentsを同期",
+    "📚 ヒント: moai update --project で最新のskillsとagentsを同期",
     "📚 ヒント: moai-wt new SPEC-XXX で並列開発用のworktreeを作成",
     "💡 ハイブリッドモード: PlanはClaude (Opus/Sonnet)、Run/SyncはGLMでコスト削減",
     "💡 並列開発: ターミナル1はClaude、ターミナル2+は 'moai glm && claude' で並列実行",

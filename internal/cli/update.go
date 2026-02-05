@@ -42,7 +42,7 @@ func init() {
 	rootCmd.AddCommand(updateCmd)
 
 	updateCmd.Flags().Bool("check", false, "Check for updates without installing")
-	updateCmd.Flags().Bool("templates-only", false, "Sync templates without updating binary")
+	updateCmd.Flags().Bool("project", false, "Update project templates without updating binary")
 	updateCmd.Flags().Bool("shell-env", false, "Configure shell environment variables for Claude Code")
 	updateCmd.Flags().BoolP("config", "c", false, "Edit project configuration (same as init wizard)")
 	updateCmd.Flags().Bool("force", false, "Skip backup and force the update")
@@ -63,7 +63,7 @@ func init() {
 //	--yes: Auto-confirm all prompts (CI/CD mode)
 func runUpdate(cmd *cobra.Command, _ []string) error {
 	checkOnly := getBoolFlag(cmd, "check")
-	templatesOnly := getBoolFlag(cmd, "templates-only")
+	projectOnly := getBoolFlag(cmd, "templates-only")
 	shellEnv := getBoolFlag(cmd, "shell-env")
 	editConfig := getBoolFlag(cmd, "config")
 	out := cmd.OutOrStdout()
@@ -88,7 +88,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		currentVersion == "dev" ||
 		strings.Contains(currentVersion, "none")
 
-	if isDevBuild && !templatesOnly && !shellEnv && !useLocalUpdate {
+	if isDevBuild && !projectOnly && !shellEnv && !useLocalUpdate {
 		_, _ = fmt.Fprintln(out, "\nDevelopment build detected.")
 		_, _ = fmt.Fprintln(out, "Binary update skipped. To update binary:")
 		_, _ = fmt.Fprintln(out, "  cd ~/MoAI/moai-adk-go && git pull && make install")
@@ -119,7 +119,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Handle templates-only mode
-	if templatesOnly {
+	if projectOnly {
 		return runTemplateSyncWithProgress(cmd)
 	}
 

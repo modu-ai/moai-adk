@@ -203,7 +203,7 @@ moai-adk/
 | `moai worktree clean` | 오래된 worktree 정리 |
 | `moai update` | 최신 버전으로 업데이트 (자동 롤백 포함) |
 | `moai update --check` | 설치하지 않고 업데이트 확인 |
-| `moai update --templates-only` | 바이너리 업데이트 없이 템플릿 동기화 |
+| `moai update --project` | 바이너리 업데이트 없이 프로젝트 템플릿 동기화 |
 
 ### 업데이트 명령어
 
@@ -220,8 +220,8 @@ moai update --check
 # 최신 버전으로 업데이트
 moai update
 
-# 템플릿만 동기화 (바이너리 업데이트 없음)
-moai update --templates-only
+# 프로젝트 템플릿만 동기화 (바이너리 업데이트 없음)
+moai update --project
 
 # 사용자 정의 저장소 사용 (환경 변수)
 export MOAI_UPDATE_URL="https://api.github.com/repos/owner/repo/releases/latest"

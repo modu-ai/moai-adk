@@ -316,8 +316,8 @@ moai update
 # 업데이트 확인만
 moai update --check
 
-# 템플릿만 동기화
-moai update --templates-only
+# 프로젝트 템플릿만 동기화
+moai update --project
 ```
 
 **LSP 통합**

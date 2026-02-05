@@ -203,7 +203,7 @@ moai-adk/
 | `moai worktree clean` | Clean up stale worktrees |
 | `moai update` | Update to the latest version (with auto-rollback) |
 | `moai update --check` | Check for updates without installing |
-| `moai update --templates-only` | Sync templates without updating binary |
+| `moai update --project` | Update project templates without updating binary |
 
 ### Update Command
 
@@ -220,8 +220,8 @@ moai update --check
 # Update to latest version
 moai update
 
-# Sync templates only (no binary update)
-moai update --templates-only
+# Update project templates only (no binary update)
+moai update --project
 
 # Use custom repository (environment variable)
 export MOAI_UPDATE_URL="https://api.github.com/repos/owner/repo/releases/latest"

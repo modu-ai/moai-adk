@@ -91,7 +91,7 @@ func TestRunTemplateSync_Timeout(t *testing.T) {
 	updateCmd.SetErr(buf)
 
 	// Reset flags
-	if err := updateCmd.Flags().Set("templates-only", "false"); err != nil {
+	if err := updateCmd.Flags().Set("project", "false"); err != nil {
 		t.Fatal(err)
 	}
 
