@@ -7,10 +7,11 @@ description: >
   Use for any development task from planning to deployment.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Task AskUserQuestion TaskCreate TaskUpdate TaskList TaskGet Bash Read Write Edit Glob Grep
+allowed-tools: Task AskUserQuestion TaskCreate TaskUpdate TaskList TaskGet TeamCreate TeamDelete SendMessage Bash Read Write Edit Glob Grep
 user-invocable: true
 metadata:
   argument-hint: "[subcommand] [args] | \"natural language task\""
+  version: "2.0.0"
 ---
 
 ## Pre-execution Context
@@ -127,7 +128,7 @@ For detailed orchestration: Read workflows/loop.md
 Purpose: Full autonomous plan -> run -> sync pipeline. Default when no subcommand matches.
 Agents: Explore, manager-spec, manager-ddd, manager-quality, manager-docs, manager-git
 Phases: Parallel exploration, SPEC generation (user approval), DDD implementation with optional auto-fix loop, documentation sync, completion marker.
-Flags: --loop (iterative fixing), --max N, --branch, --pr, --resume SPEC-XXX
+Flags: --loop (iterative fixing), --max N, --branch, --pr, --resume SPEC-XXX, --team (force Agent Teams), --solo (force sub-agent), --auto (intelligent mode selection)
 For detailed orchestration: Read workflows/moai.md
 
 ### project - Project Documentation
@@ -257,6 +258,16 @@ These markers enable automation detection of workflow state.
 - builder-skill: Create new skills
 - builder-plugin: Create new plugins
 
+### Team Agents (5)
+
+Team agents are specialized for parallel team-based workflows using Claude Code Agent Teams (experimental, v2.1.32+).
+
+- team-researcher: Read-only codebase exploration and research (haiku model, plan phase)
+- team-backend-dev: Server-side implementation with file ownership boundaries (sonnet model, run phase)
+- team-frontend-dev: Client-side implementation with file ownership boundaries (sonnet model, run phase)
+- team-tester: Test creation with exclusive test file ownership (sonnet model, run phase)
+- team-quality: TRUST 5 quality validation, read-only assessment (sonnet model, run phase)
+
 ### Agent Selection Decision Tree
 
 1. Read-only codebase exploration? Use the Explore subagent
@@ -299,6 +310,8 @@ For detailed workflow orchestration steps, read the corresponding workflow file:
 - workflows/loop.md: Iterative fix loop orchestration
 - workflows/project.md: Project documentation workflow
 - workflows/feedback.md: Feedback and issue creation workflow
+- workflows/team-plan.md: Agent Teams plan phase orchestration
+- workflows/team-run.md: Agent Teams run phase orchestration
 
 For SPEC workflow overview: See .claude/rules/moai/workflow/spec-workflow.md
 For quality standards: See .claude/rules/moai/core/moai-constitution.md
@@ -310,10 +323,13 @@ For quality standards: See .claude/rules/moai/core/moai-constitution.md
 When this skill is activated, execute the following steps in order:
 
 Step 1 - Parse Arguments:
-Extract subcommand keywords and flags from $ARGUMENTS. Recognized global flags: --resume [ID], --seq, --ultrathink. Workflow-specific flags: --loop, --max N, --worktree, --branch, --pr, --auto, --merge, --dry, --level N, --security. When --ultrathink is detected, activate Sequential Thinking MCP (mcp__sequential-thinking__sequentialthinking) for deep analysis before execution.
+Extract subcommand keywords and flags from $ARGUMENTS. Recognized global flags: --resume [ID], --seq, --ultrathink. Workflow-specific flags: --loop, --max N, --worktree, --branch, --pr, --auto, --merge, --dry, --level N, --security. Team mode flags: --team (force Agent Teams mode), --solo (force sub-agent mode), --auto (intelligent mode selection based on complexity). When --ultrathink is detected, activate Sequential Thinking MCP (mcp__sequential-thinking__sequentialthinking) for deep analysis before execution.
 
 Step 2 - Route to Workflow:
 Apply the Intent Router (Priority 1 through Priority 4) to determine the target workflow. If ambiguous, use AskUserQuestion to clarify with the user.
+
+Step 2.5 - Execution Mode Selection:
+Determine whether to use sub-agent mode or Agent Teams mode. Check --team/--solo flags first (user override). If --auto or no flag: read .moai/config/sections/workflow.yaml for execution_mode. If "auto": calculate complexity score based on domain count (>= 3: +3), affected files (>= 10: +3), cross-layer changes (+2). If score >= threshold (default 7) and AGENT_TEAMS is enabled: select team mode. For team mode, load Skill("moai-workflow-team") and route to team-specific workflow files (workflows/team-plan.md, workflows/team-run.md). Sync phase always uses sub-agent mode.
 
 Step 3 - Load Workflow Details:
 Read the corresponding workflows/<name>.md file for detailed orchestration instructions specific to the matched workflow.
@@ -326,6 +342,9 @@ Use TaskCreate to register discovered work items with pending status.
 
 Step 6 - Execute Workflow Phases:
 Follow the workflow-specific phase instructions from the loaded workflow file. Delegate all implementation to appropriate agents via Task(). Collect user approvals at designated checkpoints via AskUserQuestion.
+
+Step 6-T - Team Execution (when team mode selected):
+Instead of Step 6, follow the team workflow lifecycle: (1) TeamCreate with descriptive team name, (2) Create shared task list via TaskCreate with dependencies, (3) Spawn teammates via Task() with team_name parameter and file ownership boundaries in prompts, (4) Monitor teammate progress via automatic message delivery, (5) Coordinate via SendMessage for cross-teammate dependencies, (6) After all tasks complete, send shutdown_request to each teammate, (7) TeamDelete to clean up resources. Load workflows/team-plan.md or workflows/team-run.md for detailed phase instructions.
 
 Step 7 - Track Progress:
 Update task status using TaskUpdate as work progresses (pending to in_progress to completed).
@@ -341,5 +360,5 @@ Use AskUserQuestion to present the user with logical next actions based on the c
 
 ---
 
-Version: 1.1.0
-Last Updated: 2026-01-28
+Version: 2.0.0
+Last Updated: 2026-02-06
