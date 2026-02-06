@@ -1,0 +1,205 @@
+name: Test Installation Scripts
+
+on:
+  push:
+    branches: [main, moai-go-v2]
+    paths:
+      - 'install.sh'
+      - 'install.ps1'
+      - 'install.bat'
+      - '.github/workflows/test-install.yml'
+  pull_request:
+    branches: [main, moai-go-v2]
+    paths:
+      - 'install.sh'
+      - 'install.ps1'
+      - 'install.bat'
+      - '.github/workflows/test-install.yml'
+  workflow_dispatch:
+
+# Cancel in-progress runs for the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Job 1: Test install.sh on Unix-like systems
+  test-sh:
+    name: Test install.sh (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Test --help flag
+        run: |
+          bash install.sh --help
+          echo "Exit code: $?"
+
+      - name: Validate bash syntax
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          bash -n install.sh
+          echo "Bash syntax validation passed"
+
+      - name: Display script info
+        run: |
+          echo "=== Script Information ==="
+          wc -l install.sh
+          file install.sh || true
+          echo "=== First 20 lines ==="
+          head -20 install.sh
+
+  # Job 2: Test install.ps1 on all platforms
+  test-ps1:
+    name: Test install.ps1 (${{ matrix.os }}, ${{ matrix.shell }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # PowerShell Core (pwsh) on all platforms
+          - os: ubuntu-latest
+            shell: pwsh
+          - os: macos-latest
+            shell: pwsh
+          - os: windows-latest
+            shell: pwsh
+          # Windows PowerShell 5.1 on Windows
+          - os: windows-latest
+            shell: powershell
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Test --help flag
+        shell: ${{ matrix.shell }}
+        run: |
+          .\install.ps1 -help
+          echo "Exit code: $?"
+
+      - name: Validate PowerShell syntax
+        shell: pwsh
+        run: |
+          $errors = $null
+          $null = [System.Management.Automation.PSParser]::Tokenize((Get-Content install.ps1 -Raw), [ref]$errors)
+          if ($errors) {
+            Write-Host "PowerShell syntax errors found:"
+            $errors | Format-List
+            exit 1
+          }
+          Write-Host "PowerShell syntax validation passed"
+
+      - name: Display script info
+        shell: ${{ matrix.shell }}
+        run: |
+          Write-Host "=== Script Information ==="
+          (Get-Content install.ps1 | Measure-Object -Line).Lines "lines"
+          Write-Host "=== First 20 lines ==="
+          Get-Content install.ps1 | Select-Object -First 20
+
+  # Job 3: Test install.bat on Windows CMD
+  test-bat:
+    name: Test install.bat (windows-latest, cmd)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Test /? flag (help)
+        shell: cmd
+        run: |
+          install.bat /?
+          echo Exit code: %ERRORLEVEL%
+
+      - name: Test --help flag
+        shell: cmd
+        run: |
+          install.bat --help
+          echo Exit code: %ERRORLEVEL%
+
+      - name: Test -h flag
+        shell: cmd
+        run: |
+          install.bat -h
+          echo Exit code: %ERRORLEVEL%
+
+      - name: Display script info
+        shell: cmd
+        run: |
+          echo === Script Information ===
+          find /c /v "" install.bat
+          echo === First 20 lines ===
+          powershell -Command "Get-Content install.bat | Select-Object -First 20"
+
+  # Job 4: Cross-platform compatibility check
+  compatibility-check:
+    name: Cross-platform compatibility
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for platform-specific issues
+        run: |
+          echo "=== Checking install.sh ==="
+          grep -q "MOAI_INSTALL_DIR" install.sh && echo "✓ MOAI_INSTALL_DIR support found" || echo "✗ MOAI_INSTALL_DIR support missing"
+          grep -q "\-\-help" install.sh && echo "✓ Help flag support found" || echo "✗ Help flag support missing"
+          grep -q "darwin\|linux" install.sh && echo "✓ Platform detection found" || echo "✗ Platform detection missing"
+
+          echo ""
+          echo "=== Checking install.ps1 ==="
+          grep -q "IsWindows" install.ps1 && echo "✓ IsWindows variable found" || echo "✗ IsWindows variable missing"
+          grep -q "GetTempPath" install.ps1 && echo "✓ GetTempPath found" || echo "✗ GetTempPath missing"
+          grep -q "MOAI_INSTALL_DIR" install.ps1 && echo "✓ MOAI_INSTALL_DIR support found" || echo "✗ MOAI_INSTALL_DIR support missing"
+
+      - name: Verify shebang and encoding
+        run: |
+          echo "=== install.sh ==="
+          head -1 install.sh
+          file install.sh || true
+
+      - name: Check for common issues
+        run: |
+          echo "=== Checking for CRLF issues ==="
+          file install.sh install.ps1 install.bat || true
+
+          echo ""
+          echo "=== Checking for executable permissions pattern ==="
+          grep -q "chmod +x" install.sh && echo "✓ chmod pattern found" || echo "⚠ chmod pattern not found (may be OK)"
+
+  # Summary job
+  summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [test-sh, test-ps1, test-bat, compatibility-check]
+    if: always()
+
+    steps:
+      - name: Check test results
+        run: |
+          echo "=== Test Results Summary ==="
+          echo "test-sh: ${{ needs.test-sh.result }}"
+          echo "test-ps1: ${{ needs.test-ps1.result }}"
+          echo "test-bat: ${{ needs.test-bat.result }}"
+          echo "compatibility-check: ${{ needs.compatibility-check.result }}"
+
+          if [[ "${{ needs.test-sh.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-ps1.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-bat.result }}" == "failure" ]] || \
+             [[ "${{ needs.compatibility-check.result }}" == "failure" ]]; then
+            echo ""
+            echo "❌ Some tests failed!"
+            exit 1
+          fi
+
+          echo ""
+          echo "✅ All tests passed!"
