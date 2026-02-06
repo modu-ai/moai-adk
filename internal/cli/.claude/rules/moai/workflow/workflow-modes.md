@@ -10,13 +10,15 @@ The Run Phase adapts its workflow based on `quality.development_mode` in `.moai/
 
 | Mode | Workflow Cycle | Best For | Agent Strategy |
 |------|---------------|----------|----------------|
-| DDD | ANALYZE-PRESERVE-IMPROVE | Existing projects, < 10% coverage | Characterization tests first |
-| TDD | RED-GREEN-REFACTOR | New projects, 50%+ coverage | Tests before implementation |
-| Hybrid | Mixed per change type | Partial coverage (10-49%) | New code: TDD, Legacy: DDD |
+| DDD | ANALYZE-PRESERVE-IMPROVE | Existing/brownfield projects, legacy refactoring (selected at moai init) | Characterization tests first |
+| TDD | RED-GREEN-REFACTOR | Isolated new modules requiring strict test-first discipline | Tests before implementation |
+| Hybrid | Mixed per change type | Default for new projects and ongoing development (TDD for new + DDD for legacy) | New code: TDD, Legacy: DDD |
 
-## DDD Mode (default)
+## DDD Mode
 
 Development methodology: Domain-Driven Development (ANALYZE-PRESERVE-IMPROVE)
+
+DDD is auto-selected for existing projects with < 10% test coverage at moai init time.
 
 **ANALYZE**: Understand existing behavior and code structure
 - Read existing code and identify dependencies
@@ -66,14 +68,16 @@ Success Criteria:
 - No test written after implementation code
 - TRUST 5 quality gates passed
 
-## Hybrid Mode
+## Hybrid Mode (default)
 
 Development methodology: Hybrid (TDD for new + DDD for legacy)
+
+Hybrid is the recommended default for new projects and ongoing development.
 
 **For NEW code** (new files, new functions):
 - Apply TDD workflow (RED-GREEN-REFACTOR)
 - Strict test-first requirement
-- Coverage target: 90% for new code
+- Coverage target: 85% for new code
 
 **For EXISTING code** (modifications, refactoring):
 - Apply DDD workflow (ANALYZE-PRESERVE-IMPROVE)
@@ -88,7 +92,7 @@ Development methodology: Hybrid (TDD for new + DDD for legacy)
 
 Success Criteria:
 - All SPEC requirements implemented
-- New code has TDD-level coverage (90%+)
+- New code has TDD-level coverage (85%+)
 - Modified code has characterization tests
 - Overall coverage improvement trend
 - TRUST 5 quality gates passed
@@ -101,10 +105,10 @@ The system automatically recommends a methodology based on project analysis:
 
 | Project State | Test Coverage | Recommendation | Rationale |
 |--------------|---------------|----------------|-----------|
-| Greenfield (new) | N/A | Hybrid | Clean slate, TDD for features + DDD structure |
-| Brownfield | >= 50% | TDD | Sufficient test base for test-first development |
-| Brownfield | 10-49% | Hybrid | Partial tests, expand with DDD then TDD for new |
-| Brownfield | < 10% | DDD | No tests, gradual characterization test creation |
+| Greenfield (new) | N/A | Hybrid | Default for new projects. TDD for new features, DDD structure for any imported/existing code |
+| Brownfield | >= 50% | Hybrid | Strong test base. TDD for new features, DDD for refactoring existing |
+| Brownfield | 10-49% | Hybrid | Mixed coverage. TDD for new code, DDD to improve existing |
+| Brownfield | < 10% | DDD | No tests. Gradual characterization test creation for existing codebase |
 
 ### Manual Override
 
@@ -118,8 +122,8 @@ Users can override the auto-detected methodology:
 | Aspect | DDD | TDD | Hybrid |
 |--------|-----|-----|--------|
 | Test timing | After analysis (PRESERVE) | Before code (RED) | Mixed |
-| Coverage approach | Gradual improvement | Strict per-commit | Separate targets |
-| Best for | Legacy refactoring only | Isolated modules (rare) | All development work |
+| Coverage approach | Gradual improvement | Strict per-commit | Unified 85% target |
+| Best for | Existing/brownfield projects with legacy code | Isolated new modules (explicit selection only) | Default for all new projects and ongoing development |
 | Risk level | Low (preserves behavior) | Medium (requires discipline) | Medium |
 | Coverage exemptions | Allowed | Not allowed | Allowed for legacy only |
 | Run Phase cycle | ANALYZE-PRESERVE-IMPROVE | RED-GREEN-REFACTOR | Both (per change type) |

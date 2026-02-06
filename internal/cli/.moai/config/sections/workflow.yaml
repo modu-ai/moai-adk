@@ -1,0 +1,106 @@
+# Workflow Configuration
+# MoAI three-phase workflow: Plan → Run → Sync
+
+workflow:
+  # Automatically execute /clear between phases to manage token budget
+  auto_clear: true
+
+  # Token budget allocations per phase
+  # Plan phase: SPEC document creation (30K recommended)
+  plan_tokens: 30000
+
+  # Run phase: Implementation (180K recommended)
+  run_tokens: 180000
+
+  # Sync phase: Documentation generation (40K recommended)
+  sync_tokens: 40000
+
+# Execution Mode Configuration
+# For autonomous workflow execution (Ralph-style)
+execution_mode:
+  # Interactive mode (default, standard MoAI behavior)
+  interactive:
+    # Require user approval for each phase
+    user_approval_required: true
+
+    # Execute each step with explicit user confirmation
+    each_step_explicit: true
+
+    # Display progress indicators during execution
+    show_progress: true
+
+  # Autonomous mode (Ralph-style, continuous execution)
+  autonomous:
+    # Skip user approval, run continuously
+    user_approval_required: false
+
+    # Execute in continuous loop until completion
+    continuous_loop: true
+
+    # Use completion markers to detect phase completion
+    completion_marker_based: true
+
+    # Integrate LSP feedback for quality validation
+    lsp_feedback_integration: true
+
+    # Display progress indicators during execution
+    show_progress: true
+
+# Completion Markers
+# Conditions that must be met for each phase to be considered complete
+completion_markers:
+  # Plan phase completion conditions
+  plan:
+    # SPEC document must be created
+    spec_document_created: true
+
+    # LSP baseline must be recorded
+    lsp_baseline_recorded: true
+
+  # Run phase completion conditions
+  run:
+    # All tests must pass
+    tests_passing: true
+
+    # Existing behavior must be preserved (for DDD)
+    behavior_preserved: true
+
+    # Zero LSP errors required
+    lsp_errors: 0
+
+    # Zero type errors required
+    type_errors: 0
+
+    # Coverage must meet configured target
+    coverage_met_target: true
+
+  # Sync phase completion conditions
+  sync:
+    # Documentation must be generated
+    documentation_generated: true
+
+    # LSP diagnostics must be clean
+    lsp_clean: true
+
+    # Quality gates must pass
+    quality_gate_passed: true
+
+# Loop Prevention
+# Safeguards to prevent infinite loops in autonomous mode
+loop_prevention:
+  # Maximum iterations before forcing exit (default: 100)
+  max_iterations: 100
+
+  # Number of iterations with no progress before intervention (default: 5)
+  no_progress_threshold: 5
+
+  # Stale state detection criteria
+  stale_detection:
+  # Exit if error count remains unchanged across iterations
+  - error_count_unchanged
+
+  # Exit if same fix is attempted twice without progress
+  - same_fix_attempted_twice
+
+  # Exit if alternative strategy is required
+  - alternative_strategy_required

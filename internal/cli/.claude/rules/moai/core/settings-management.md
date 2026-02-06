@@ -11,6 +11,7 @@ Claude Code and MoAI configuration management rules.
 - allowedTools: Permitted tool list
 - hooks: Hook script definitions
 - permissions: Access control
+- statusLine: Statusline configuration
 
 ### MCP Configuration
 
@@ -27,6 +28,46 @@ Claude Code and MoAI configuration management rules.
 - sections/quality.yaml: Quality gates, coverage targets
 - sections/language.yaml: Language preferences
 - sections/user.yaml: User information
+
+## Hooks Configuration
+
+Hooks support environment variables and must be quoted to handle spaces:
+
+```json
+{
+  "hooks": {
+    "SessionStart": [{
+      "type": "command",
+      "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
+      "timeout": 5
+    }],
+    "PreToolUse": [{
+      "matcher": "Write|Edit|Bash",
+      "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
+      "timeout": 5
+    }]
+  }
+}
+```
+
+**Important**: Quote the entire path: `"\"$CLAUDE_PROJECT_DIR/path\""` not `"$CLAUDE_PROJECT_DIR/path"`
+
+## StatusLine Configuration
+
+StatusLine does NOT support environment variables. Use relative paths from project root:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": ".moai/status_line.sh",
+    "padding": 0,
+    "refreshInterval": 300
+  }
+}
+```
+
+Reference: GitHub Issue #7925 - statusline does not expand environment variables.
 
 ## Permission Management
 
@@ -58,8 +99,13 @@ Language preferences in language.yaml:
 - Never commit secrets to settings files
 - Use environment variables for sensitive data
 - Keep settings minimal and focused
+- Hook paths must be quoted when using environment variables
+- StatusLine uses relative paths only (no env var expansion)
+- Template sources (.tmpl files) belong in `internal/template/templates/` only
+- Local projects should contain rendered results, not template sources
 
 ## MoAI Integration
 
 - Skill("moai-workflow-project") for project setup
 - Skill("moai-foundation-core") for quality framework
+- See hooks-system.md for detailed hook configuration patterns

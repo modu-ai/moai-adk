@@ -1,0 +1,7 @@
+# User Configuration
+# User-specific information and preferences
+
+user:
+  # User name for personalization and commit attribution
+  # Used in git commits when configured with Co-Authored-By
+  name: ""

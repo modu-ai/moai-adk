@@ -1,0 +1,94 @@
+# System Configuration
+# MoAI-ADK system-level settings
+
+moai:
+  # MoAI-ADK version
+  version: ""
+
+  # Version update check frequency (daily, weekly, never)
+  update_check_frequency: daily
+
+  # Version check configuration
+  version_check:
+    # Enable automatic version checking
+    enabled: true
+
+    # Cache time-to-live for version check in hours
+    cache_ttl_hours: 24
+
+# GitHub Integration Settings
+github:
+  # Enable TRUST 5 quality framework for PRs
+  enable_trust_5: true
+
+  # Automatically delete feature branches after merge
+  auto_delete_branches: true
+
+  # SPEC git workflow strategy (main_direct, feature_branch, release_branch)
+  spec_git_workflow: main_direct
+
+# Document Management Configuration
+document_management:
+  # Enable document management features
+  enabled: true
+
+  # Enforce directory structure rules
+  enforce_structure: true
+
+  # Prevent document creation in project root
+  block_root_pollution: true
+
+  # Separation Policy
+  # Clear distinction between logs (runtime) and docs (documentation)
+  separation_policy:
+    # Enforce strict separation between logs and docs
+    strict_separation: true
+
+    # Policy description
+    description: "Clear separation between logs (runtime data) and docs (documentation content)"
+
+    # Logs scope: runtime sessions, errors, execution traces, agent transcripts
+    logs_scope: "runtime sessions, errors, execution traces, agent transcripts"
+
+    # Docs scope: reports, analysis, validation, sync, inspection, documentation files
+    docs_scope: "reports, analysis, validation, sync, inspection, documentation files"
+
+  # Directory Configuration
+  directories:
+    # Documentation directory (no auto-deletion)
+    docs:
+      # Base directory for documentation files
+      base: .moai/docs/
+
+      # Retention period in days (null = never delete)
+      retention_days: null
+
+    # Logs directory (runtime data)
+    logs:
+      # Base directory for log files
+      base: .moai/logs/
+
+      # Retention period in days (30 days default)
+      retention_days: 30
+
+    # Temporary files directory
+    temp:
+      # Base directory for temporary files
+      base: .moai/temp/
+
+      # Retention period in days (7 days default)
+      retention_days: 7
+
+      # Automatically cleanup old files
+      auto_cleanup: true
+
+    # Cache directory
+    cache:
+      # Base directory for cache files
+      base: .moai/cache/
+
+      # Retention period in days (30 days default)
+      retention_days: 30
+
+      # Automatically cleanup old cache
+      auto_cleanup: true
