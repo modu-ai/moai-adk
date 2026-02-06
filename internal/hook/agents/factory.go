@@ -56,9 +56,9 @@ func (f *Factory) CreateHandler(action string) (hook.Handler, error) {
 
 // baseHandler provides common functionality for all agent handlers.
 type baseHandler struct {
-	action   string
-	event    hook.EventType
-	agent    string
+	action string
+	event  hook.EventType
+	agent  string
 }
 
 // Handle logs the action and allows it by default.
@@ -73,13 +73,4 @@ func (h *baseHandler) Handle(ctx context.Context, input *hook.HookInput) (*hook.
 
 func (h *baseHandler) EventType() hook.EventType {
 	return h.event
-}
-
-// extractAction extracts the action from the hook input data.
-func extractAction(input *hook.HookInput) string {
-	if input.Data == nil {
-		return ""
-	}
-	// Parse {"action":"ddd-pre-transformation"}
-	return strings.Trim(string(input.Data), `"`)
 }
