@@ -74,9 +74,10 @@ get_latest_version() {
     local version_url="https://api.github.com/repos/modu-ai/moai-adk/releases"
 
     if command -v curl &> /dev/null; then
-        VERSION=$(curl -s "$version_url" | grep -o '"tag_name":\s*"go-v[^"]*"' | head -n 1 | sed -E 's/.*"go-v([^"]+)".*/\1/')
+        # Try go-v* tags first, then fall back to v* tags
+        VERSION=$(curl -s "$version_url" | grep -o '"tag_name":\s*"[^"]*"' | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/' | sed 's/^go-//' | sed 's/^v//')
     elif command -v wget &> /dev/null; then
-        VERSION=$(wget -qO- "$version_url" | grep -o '"tag_name":\s*"go-v[^"]*"' | head -n 1 | sed -E 's/.*"go-v([^"]+)".*/\1/')
+        VERSION=$(wget -qO- "$version_url" | grep -o '"tag_name":\s*"[^"]*"' | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/' | sed 's/^go-//' | sed 's/^v//')
     else
         print_error "Neither curl nor wget found. Please install one of them."
         exit 1
@@ -84,7 +85,7 @@ get_latest_version() {
 
     if [ -z "$VERSION" ]; then
         print_error "Failed to fetch latest Go edition version from GitHub"
-        print_info "No go-v* releases found. You can:"
+        print_info "No releases found. You can:"
         echo "  1. Install a specific version: $0 --version 2.0.0"
         echo "  2. Install from source: go install github.com/modu-ai/moai-adk/cmd/moai@latest"
         exit 1
@@ -102,10 +103,16 @@ download_binary() {
     local os=$(echo "$os_arch" | cut -d'_' -f1)
     local arch=$(echo "$os_arch" | cut -d'_' -f2)
 
+    # Determine archive extension based on OS
+    local ext="tar.gz"
+    if [ "$os" = "windows" ]; then
+        ext="zip"
+    fi
+
     # Build archive filename matching goreleaser format
-    local archive_name="moai-adk_go-v${version}_${os}_${arch}.tar.gz"
-    local download_url="https://github.com/modu-ai/moai-adk/releases/download/go-v${version}/${archive_name}"
-    local checksum_url="https://github.com/modu-ai/moai-adk/releases/download/go-v${version}/checksums.txt"
+    local archive_name="moai-adk_${version}_${os}_${arch}.${ext}"
+    local download_url="https://github.com/modu-ai/moai-adk/releases/download/v${version}/${archive_name}"
+    local checksum_url="https://github.com/modu-ai/moai-adk/releases/download/v${version}/checksums.txt"
 
     # Create temp directory
     TMP_DIR=$(mktemp -d)
