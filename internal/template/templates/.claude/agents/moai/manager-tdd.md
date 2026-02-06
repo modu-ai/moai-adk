@@ -15,12 +15,23 @@ model: inherit
 permissionMode: default
 skills: moai-foundation-claude, moai-foundation-core, moai-foundation-quality, moai-workflow-tdd, moai-workflow-testing, moai-workflow-ddd
 hooks:
-  PostToolUse:
-    - matcher: "Write|Edit"
+  PreToolUse:
+    - matcher: "Write|Edit|MultiEdit"
       hooks:
         - type: command
-          command: "/bin/zsh -l -c 'export PATH=$HOME/go/bin:$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH; \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\" ast-grep'"
-          timeout: 60
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" tdd-pre-implementation"
+          timeout: 5
+  PostToolUse:
+    - matcher: "Write|Edit|MultiEdit"
+      hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" tdd-post-implementation"
+          timeout: 10
+  SubagentStop:
+    hooks:
+      - type: command
+        command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" tdd-completion"
+        timeout: 10
 ---
 
 # TDD Implementer (New Feature Specialist)

@@ -12,6 +12,12 @@ tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task
 model: inherit
 permissionMode: bypassPermissions
 skills: moai-foundation-claude, moai-foundation-core, moai-foundation-quality, moai-workflow-testing, moai-tool-ast-grep, moai-workflow-loop
+hooks:
+  SubagentStop:
+    hooks:
+      - type: command
+        command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" quality-completion"
+        timeout: 10
 ---
 
 # Quality Gate - Quality Verification Gate

@@ -12,6 +12,19 @@ tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task
 model: inherit
 permissionMode: default
 skills: moai-foundation-claude, moai-foundation-core, moai-domain-backend, moai-domain-database, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-lang-go, moai-lang-java, moai-lang-rust, moai-lang-php, moai-lang-csharp, moai-lang-ruby, moai-lang-elixir, moai-lang-scala, moai-golang-pro, moai-golang-testing, moai-rust-engineer, moai-rust-guidelines, moai-rust-perf, moai-platform-supabase, moai-platform-neon, moai-platform-firestore, moai-platform-convex, moai-tool-ast-grep, moai-workflow-tdd, moai-workflow-ddd, moai-workflow-testing
+hooks:
+  PreToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" backend-validation"
+          timeout: 5
+  PostToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" backend-verification"
+          timeout: 15
 ---
 
 # Backend Expert

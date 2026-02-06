@@ -12,6 +12,19 @@ tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task
 model: inherit
 permissionMode: default
 skills: moai-foundation-claude, moai-foundation-core, moai-domain-frontend, moai-domain-uiux, moai-lang-typescript, moai-lang-javascript, moai-lang-flutter, moai-lang-swift, moai-lang-kotlin, moai-library-shadcn, moai-library-nextra, moai-library-mermaid, moai-flutter-expert, moai-flutter-anim, moai-flutter-adaptive, moai-figma, moai-pencil-code, moai-pencil-renderer, moai-platform-chrome-extension, moai-framework-electron, moai-tool-ast-grep, moai-tool-svg, moai-workflow-tdd, moai-workflow-ddd, moai-workflow-testing
+hooks:
+  PreToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" frontend-validation"
+          timeout: 5
+  PostToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" frontend-verification"
+          timeout: 15
 ---
 
 # Frontend Expert - Frontend Architecture Specialist

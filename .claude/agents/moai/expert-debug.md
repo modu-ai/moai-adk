@@ -12,6 +12,18 @@ tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Task, Skill, mcp__sequent
 model: haiku
 permissionMode: default
 skills: moai-foundation-claude, moai-foundation-core, moai-foundation-quality, moai-workflow-testing, moai-workflow-loop, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-lang-go, moai-lang-rust, moai-tool-ast-grep
+hooks:
+  PostToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" debug-verification"
+          timeout: 10
+  SubagentStop:
+    hooks:
+      - type: command
+        command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" debug-completion"
+          timeout: 10
 ---
 
 # Debug Helper - Integrated Debugging Expert

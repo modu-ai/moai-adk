@@ -31,6 +31,9 @@ const (
 	// EventStop is triggered when Claude Code requests a stop.
 	EventStop EventType = "Stop"
 
+	// EventSubagentStop is triggered when a subagent stops.
+	EventSubagentStop EventType = "SubagentStop"
+
 	// EventPreCompact is triggered before context compaction.
 	EventPreCompact EventType = "PreCompact"
 )
@@ -43,6 +46,7 @@ func ValidEventTypes() []EventType {
 		EventPostToolUse,
 		EventSessionEnd,
 		EventStop,
+		EventSubagentStop,
 		EventPreCompact,
 	}
 }
@@ -119,6 +123,9 @@ type HookInput struct {
 
 	// Legacy/internal field (deprecated, use CWD instead)
 	ProjectDir string `json:"project_dir,omitempty"`
+
+	// Internal data (not serialized to JSON)
+	Data json.RawMessage `json:"-"`
 }
 
 // HookSpecificOutput represents the hookSpecificOutput field for PreToolUse/PostToolUse.

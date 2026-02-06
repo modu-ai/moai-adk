@@ -12,6 +12,18 @@ tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TodoWrite, Task
 model: inherit
 permissionMode: acceptEdits
 skills: moai-foundation-claude, moai-foundation-core, moai-docs-generation, moai-workflow-jit-docs, moai-workflow-templates, moai-library-mermaid, moai-library-nextra, moai-formats-data, moai-foundation-context
+hooks:
+  PostToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" docs-verification"
+          timeout: 10
+  SubagentStop:
+    hooks:
+      - type: command
+        command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" docs-completion"
+        timeout: 10
 ---
 
 # Documentation Manager Expert

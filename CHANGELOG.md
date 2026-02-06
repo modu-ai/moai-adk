@@ -22,6 +22,18 @@ This is the first official release of MoAI-ADK Go Edition, a complete rewrite of
 - Synchronized workflow.yaml and status_line.sh templates
 - Updated CLAUDE.md to v12.0.0 with Agent Teams documentation
 
+**Agent Hooks System:**
+- Added agent-specific hooks for workflow enforcement
+- Implemented `SubagentStop` event type for agent completion hooks
+- Created `handle-agent-hook.sh` wrapper script for agent hooks
+- Added factory pattern for agent-specific handlers in `internal/hook/agents/`
+- Implemented hook actions for DDD workflow (ddd-pre-transformation, ddd-post-transformation, ddd-completion)
+- Implemented hook actions for TDD workflow (tdd-pre-implementation, tdd-post-implementation, tdd-completion)
+- Added validation/verification hooks for expert agents (backend, frontend, testing, debug, devops)
+- Added completion hooks for manager agents (quality, spec, docs)
+- Updated hooks-system.md documentation with agent hooks reference
+- Synchronized agent hook configuration to all template locations
+
 **Code Quality Improvements:**
 - Fixed missing error checks in init_tui.go (added nolint comments for informational messages)
 - Fixed missing error checks in init.go (added nolint comment for informational message)
@@ -62,6 +74,14 @@ This is the first official release of MoAI-ADK Go Edition, a complete rewrite of
   - Workflow configuration (`workflow.yaml`) with team patterns
 - **Hook Auto-Update**: Automatic update checking via session hooks
 - **Update Cache**: Caching layer for update checks to reduce API calls
+- **Agent Hooks System**: Agent-specific hooks for workflow enforcement
+  - SubagentStop event type for agent lifecycle hooks
+  - handle-agent-hook.sh wrapper script for consistent interface
+  - Factory pattern for agent-specific handlers
+  - DDD workflow hooks (pre/post-transformation, completion)
+  - TDD workflow hooks (pre/post-implementation, completion)
+  - Expert agent validation/verification hooks
+  - Manager agent completion hooks
 
 ### Changed
 

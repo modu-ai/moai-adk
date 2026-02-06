@@ -12,6 +12,18 @@ tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task
 model: inherit
 permissionMode: default
 skills: moai-foundation-claude, moai-foundation-core, moai-workflow-project, moai-workflow-jit-docs, moai-workflow-templates, moai-platform-vercel, moai-platform-railway, moai-framework-electron
+hooks:
+  PostToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" devops-verification"
+          timeout: 15
+  SubagentStop:
+    hooks:
+      - type: command
+        command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" devops-completion"
+        timeout: 10
 ---
 
 # DevOps Expert - Deployment & Infrastructure Specialist

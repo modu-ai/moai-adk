@@ -8,8 +8,8 @@ func TestValidEventTypes(t *testing.T) {
 	t.Parallel()
 
 	events := ValidEventTypes()
-	if len(events) != 6 {
-		t.Errorf("ValidEventTypes() returned %d events, want 6", len(events))
+	if len(events) != 7 {
+		t.Errorf("ValidEventTypes() returned %d events, want 7", len(events))
 	}
 
 	expected := map[EventType]bool{
@@ -18,6 +18,7 @@ func TestValidEventTypes(t *testing.T) {
 		EventPostToolUse:  true,
 		EventSessionEnd:   true,
 		EventStop:         true,
+		EventSubagentStop: true,
 		EventPreCompact:   true,
 	}
 
@@ -41,6 +42,7 @@ func TestIsValidEventType(t *testing.T) {
 		{"PostToolUse is valid", EventPostToolUse, true},
 		{"SessionEnd is valid", EventSessionEnd, true},
 		{"Stop is valid", EventStop, true},
+		{"SubagentStop is valid", EventSubagentStop, true},
 		{"PreCompact is valid", EventPreCompact, true},
 		{"empty string is invalid", EventType(""), false},
 		{"unknown event is invalid", EventType("UnknownEvent"), false},

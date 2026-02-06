@@ -52,6 +52,15 @@ func init() {
 		Short: "List registered hook handlers",
 		RunE:  runHookList,
 	})
+
+	// Add "agent" subcommand for agent-specific hooks
+	hookCmd.AddCommand(&cobra.Command{
+		Use:   "agent [action]",
+		Short: "Execute agent-specific hook action",
+		Long:  "Execute agent-specific hook actions like ddd-pre-transformation, backend-validation, etc.",
+		Args:  cobra.ExactArgs(1),
+		RunE:  runAgentHook,
+	})
 }
 
 // runHookEvent dispatches a hook event by reading JSON from stdin and writing to stdout.
@@ -114,4 +123,74 @@ func runHookList(cmd *cobra.Command, _ []string) error {
 	}
 
 	return nil
+}
+
+// runAgentHook executes an agent-specific hook action.
+// Agent actions are like: ddd-pre-transformation, backend-validation, etc.
+func runAgentHook(cmd *cobra.Command, args []string) error {
+	if deps == nil || deps.HookProtocol == nil || deps.HookRegistry == nil {
+		return fmt.Errorf("hook system not initialized")
+	}
+
+	action := args[0]
+
+	// Read hook input from stdin
+	input, err := deps.HookProtocol.ReadInput(os.Stdin)
+	if err != nil {
+		return fmt.Errorf("read hook input: %w", err)
+	}
+
+	// Determine the event type based on the action suffix
+	// PreToolUse: *-validation, *-pre-transformation, *-pre-implementation
+	// PostToolUse: *-verification, *-post-transformation, *-post-implementation
+	// SubagentStop: *-completion
+	var event hook.EventType
+	switch {
+	case endsWithAny(action, "-validation", "-pre-transformation", "-pre-implementation"):
+		event = hook.EventPreToolUse
+	case endsWithAny(action, "-verification", "-post-transformation", "-post-implementation"):
+		event = hook.EventPostToolUse
+	case endsWith(action, "-completion"):
+		event = hook.EventSubagentStop
+	default:
+		// Default to PreToolUse for unknown actions
+		event = hook.EventPreToolUse
+	}
+
+	// Add action to input for handler identification
+	input.Data = []byte(fmt.Sprintf(`{"action":"%s"}`, action))
+
+	ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
+	defer cancel()
+
+	output, err := deps.HookRegistry.Dispatch(ctx, event, input)
+	if err != nil {
+		return fmt.Errorf("dispatch agent hook: %w", err)
+	}
+
+	if writeErr := deps.HookProtocol.WriteOutput(os.Stdout, output); writeErr != nil {
+		return fmt.Errorf("write hook output: %w", writeErr)
+	}
+
+	// Exit code 2 for deny decisions per Claude Code protocol
+	if output != nil && output.Decision == hook.DecisionDeny {
+		os.Exit(2)
+	}
+
+	return nil
+}
+
+// endsWith checks if a string ends with any of the given suffixes.
+func endsWith(s string, suffixes ...string) bool {
+	for _, suffix := range suffixes {
+		if len(s) >= len(suffix) && s[len(s)-len(suffix):] == suffix {
+			return true
+		}
+	}
+	return false
+}
+
+// endsWithAny is an alias for endsWith for readability.
+func endsWithAny(s string, suffixes ...string) bool {
+	return endsWith(s, suffixes...)
 }

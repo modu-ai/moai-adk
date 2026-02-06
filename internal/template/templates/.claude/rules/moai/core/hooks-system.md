@@ -11,6 +11,113 @@ Available hook event types:
 - PreToolUse: Execute before a tool runs (supports matcher for tool-specific hooks)
 - PostToolUse: Execute after a tool completes (supports matcher for tool-specific hooks)
 - Stop: Execute when conversation stops
+- SubagentStop: Execute when a subagent terminates (agent-specific hooks)
+
+## Agent Hooks
+
+Agent-specific hooks are defined in agent frontmatter (`.claude/agents/**/*.md`) and are executed for specific agent lifecycle events. These hooks use the `handle-agent-hook.sh` wrapper script.
+
+### Agent Hook Configuration
+
+Hooks are defined in agent YAML frontmatter:
+
+```yaml
+---
+name: manager-ddd
+description: DDD workflow specialist
+hooks:
+  PreToolUse:
+    - matcher: "Write|Edit|MultiEdit"
+      hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" ddd-pre-transformation"
+          timeout: 5
+  PostToolUse:
+    - matcher: "Write|Edit|MultiEdit"
+      hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" ddd-post-transformation"
+          timeout: 10
+  SubagentStop:
+    hooks:
+      - type: command
+        command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" ddd-completion"
+        timeout: 10
+---
+```
+
+### Agent Hook Actions
+
+Available agent hook actions:
+
+| Agent | Action | Event | Purpose |
+|-------|--------|-------|---------|
+| manager-ddd | ddd-pre-transformation | PreToolUse | Check characterization tests before code changes |
+| manager-ddd | ddd-post-transformation | PostToolUse | Verify behavior preservation after changes |
+| manager-ddd | ddd-completion | SubagentStop | Report DDD workflow completion |
+| manager-tdd | tdd-pre-implementation | PreToolUse | Ensure test exists (RED phase) |
+| manager-tdd | tdd-post-implementation | PostToolUse | Verify tests pass (GREEN phase) |
+| manager-tdd | tdd-completion | SubagentStop | Report TDD workflow completion |
+| expert-backend | backend-validation | PreToolUse | Validate backend code before changes |
+| expert-backend | backend-verification | PostToolUse | Verify backend code after changes |
+| expert-frontend | frontend-validation | PreToolUse | Validate frontend code before changes |
+| expert-frontend | frontend-verification | PostToolUse | Verify frontend code after changes |
+| expert-testing | testing-verification | PostToolUse | Verify test quality |
+| expert-testing | testing-completion | SubagentStop | Report testing workflow completion |
+| expert-debug | debug-verification | PostToolUse | Verify debugging results |
+| expert-debug | debug-completion | SubagentStop | Report debugging completion |
+| expert-devops | devops-verification | PostToolUse | Verify DevOps configurations |
+| expert-devops | devops-completion | SubagentStop | Report DevOps workflow completion |
+| manager-quality | quality-completion | SubagentStop | Report quality validation completion |
+| manager-spec | spec-completion | SubagentStop | Report SPEC document generation completion |
+| manager-docs | docs-verification | PostToolUse | Verify documentation quality |
+| manager-docs | docs-completion | SubagentStop | Report documentation generation completion |
+
+### Hook Command Interface
+
+Agent hooks are executed via the `moai hook agent <action>` command:
+
+```bash
+moai hook agent ddd-pre-transformation
+moai hook agent backend-validation
+moai hook agent tdd-completion
+```
+
+The hook receives JSON input via stdin with the following structure:
+
+```json
+{
+  "eventType": "SubagentStop",
+  "toolName": "",
+  "toolInput": null,
+  "toolOutput": null,
+  "session": {
+    "id": "sess-123",
+    "cwd": "/path/to/project",
+    "projectDir": "/path/to/project"
+  },
+  "data": {
+    "agent": "manager-ddd",
+    "action": "ddd-completion"
+  }
+}
+```
+
+### Agent Handler Factory
+
+The `internal/hook/agents/factory.go` file implements the factory pattern for creating agent-specific handlers. Each agent type has its own handler file:
+
+- `ddd_handler.go`: DDD workflow hooks
+- `tdd_handler.go`: TDD workflow hooks
+- `backend_handler.go`: Backend expert hooks
+- `frontend_handler.go`: Frontend expert hooks
+- `testing_handler.go`: Testing expert hooks
+- `debug_handler.go`: Debug expert hooks
+- `devops_handler.go`: DevOps expert hooks
+- `quality_handler.go`: Quality manager hooks
+- `spec_handler.go`: SPEC manager hooks
+- `docs_handler.go`: Documentation manager hooks
+- `default_handler.go`: Default handler for unknown actions
 
 ## Hook Location
 
