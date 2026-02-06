@@ -2,7 +2,7 @@
 
 **[English](README.en.md)** | **[한국어](README.md)**
 
-[![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev/)
+[![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-Copyleft%203.0-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-20%20packages-brightgreen)](./internal/)
 [![Coverage](https://img.shields.io/badge/Coverage-85--100%25-brightgreen)](#test-coverage)
@@ -77,7 +77,7 @@ install.bat
 
 ### From Source
 
-Requires Go 1.22 or later.
+Requires Go 1.25 or later.
 
 ```bash
 git clone https://github.com/modu-ai/moai-adk.git
@@ -281,7 +281,7 @@ This allows dev builds to automatically detect and update to Go edition releases
 
 ### Prerequisites
 
-- Go 1.22 or later
+- Go 1.25 or later
 - `golangci-lint` (for linting)
 - `gofumpt` (for formatting)
 

@@ -2,7 +2,7 @@
 
 **[English](README.en.md)** | **[한국어](README.md)**
 
-[![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev/)
+[![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-Copyleft%203.0-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-20%20packages-brightgreen)](./internal/)
 [![Coverage](https://img.shields.io/badge/Coverage-85--100%25-brightgreen)](#test-coverage)
@@ -78,7 +78,7 @@ install.bat
 
 ### 소스에서 빌드
 
-Go 1.22 이상이 필요합니다.
+Go 1.25 이상이 필요합니다.
 
 ```bash
 git clone https://github.com/modu-ai/moai-adk.git
@@ -282,7 +282,7 @@ git push origin go-v2.0.0
 
 ### 전제 조건
 
-- Go 1.22 이상
+- Go 1.25 이상
 - `golangci-lint` (린팅용)
 - `gofumpt` (포맷팅용)
 
