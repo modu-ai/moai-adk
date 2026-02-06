@@ -39,6 +39,10 @@ detect_platform() {
             ;;
         linux)
             OS="linux"
+            # Detect WSL
+            if [ -n "$WSL_DISTRO_NAME" ]; then
+                print_info "Detected WSL environment: $WSL_DISTRO_NAME"
+            fi
             ;;
         *)
             print_error "Unsupported OS: $os"
@@ -80,6 +84,9 @@ get_latest_version() {
 
     if [ -z "$VERSION" ]; then
         print_error "Failed to fetch latest Go edition version from GitHub"
+        print_info "No go-v* releases found. You can:"
+        echo "  1. Install a specific version: $0 --version 2.0.0"
+        echo "  2. Install from source: go install github.com/modu-ai/moai-adk/cmd/moai@latest"
         exit 1
     fi
 
@@ -89,30 +96,44 @@ get_latest_version() {
 # Download binary
 download_binary() {
     local version=$1
-    local platform=$2
-    local download_url="https://github.com/modu-ai/moai-adk/releases/download/go-v${version}/moai-${platform}"
+    local os_arch=$2
+
+    # Extract OS and ARCH from platform (e.g., "linux_amd64")
+    local os=$(echo "$os_arch" | cut -d'_' -f1)
+    local arch=$(echo "$os_arch" | cut -d'_' -f2)
+
+    # Build archive filename matching goreleaser format
+    local archive_name="moai-adk_go-v${version}_${os}_${arch}.tar.gz"
+    local download_url="https://github.com/modu-ai/moai-adk/releases/download/go-v${version}/${archive_name}"
+    local checksum_url="https://github.com/modu-ai/moai-adk/releases/download/go-v${version}/checksums.txt"
 
     # Create temp directory
     TMP_DIR=$(mktemp -d)
-    DOWNLOAD_FILE="$TMP_DIR/moai"
+    ARCHIVE_FILE="$TMP_DIR/$archive_name"
+    CHECKSUM_FILE="$TMP_DIR/checksums.txt"
 
     print_info "Downloading from: $download_url"
 
+    # Download archive
     if command -v curl &> /dev/null; then
-        if curl -fsSL "$download_url" -o "$DOWNLOAD_FILE"; then
-            print_success "Download completed"
-        else
+        if ! curl -fsSL "$download_url" -o "$ARCHIVE_FILE"; then
             print_error "Download failed"
             rm -rf "$TMP_DIR"
             exit 1
         fi
+        # Download checksums
+        if ! curl -fsSL "$checksum_url" -o "$CHECKSUM_FILE"; then
+            print_warning "Failed to download checksums (verification skipped)"
+        fi
     elif command -v wget &> /dev/null; then
-        if wget -q "$download_url" -O "$DOWNLOAD_FILE"; then
-            print_success "Download completed"
-        else
+        if ! wget -q "$download_url" -O "$ARCHIVE_FILE"; then
             print_error "Download failed"
             rm -rf "$TMP_DIR"
             exit 1
+        fi
+        # Download checksums
+        if ! wget -q "$checksum_url" -O "$CHECKSUM_FILE"; then
+            print_warning "Failed to download checksums (verification skipped)"
         fi
     else
         print_error "Neither curl nor wget found. Please install one of them."
@@ -120,11 +141,59 @@ download_binary() {
         exit 1
     fi
 
+    print_success "Download completed"
+
+    # Verify checksum if checksums.txt was downloaded
+    if [ -f "$CHECKSUM_FILE" ]; then
+        print_info "Verifying checksum..."
+        local expected_checksum=$(grep "$archive_name" "$CHECKSUM_FILE" | awk '{print $1}')
+
+        if [ -n "$expected_checksum" ]; then
+            if command -v sha256sum &> /dev/null; then
+                local actual_checksum=$(sha256sum "$ARCHIVE_FILE" | awk '{print $1}')
+            elif command -v shasum &> /dev/null; then
+                local actual_checksum=$(shasum -a 256 "$ARCHIVE_FILE" | awk '{print $1}')
+            else
+                print_warning "sha256sum/shasum not found (checksum verification skipped)"
+            fi
+
+            if [ -n "$actual_checksum" ]; then
+                if [ "$expected_checksum" = "$actual_checksum" ]; then
+                    print_success "Checksum verified"
+                else
+                    print_error "Checksum mismatch!"
+                    print_error "Expected: $expected_checksum"
+                    print_error "Actual:   $actual_checksum"
+                    rm -rf "$TMP_DIR"
+                    exit 1
+                fi
+            fi
+        fi
+    fi
+
+    # Extract archive
+    print_info "Extracting archive..."
+    if tar -xzf "$ARCHIVE_FILE" -C "$TMP_DIR"; then
+        print_success "Extraction completed"
+    else
+        print_error "Failed to extract archive"
+        rm -rf "$TMP_DIR"
+        exit 1
+    fi
+
+    # Find the binary
+    BINARY_PATH="$TMP_DIR/moai"
+    if [ ! -f "$BINARY_PATH" ]; then
+        print_error "Binary not found in archive"
+        rm -rf "$TMP_DIR"
+        exit 1
+    fi
+
     # Make executable
-    chmod +x "$DOWNLOAD_FILE"
+    chmod +x "$BINARY_PATH"
 
     # Install to target location
-    install_binary "$DOWNLOAD_FILE"
+    install_binary "$BINARY_PATH"
 }
 
 # Install binary

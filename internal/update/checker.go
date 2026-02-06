@@ -111,10 +111,17 @@ func (c *checker) buildVersionInfo(release releaseResponse) *VersionInfo {
 		Date:    release.PublishedAt,
 	}
 
-	// Find the platform-specific binary URL.
-	platformName := fmt.Sprintf("moai-%s-%s", runtime.GOOS, runtime.GOARCH)
+	// Find the platform-specific archive URL matching goreleaser format.
+	// Archive format: moai-adk_<version>_<os>_<arch>.<ext>
+	// Example: moai-adk_go-v2.0.0_darwin_amd64.tar.gz
+	ext := "tar.gz"
+	if runtime.GOOS == "windows" {
+		ext = "zip"
+	}
+	archiveName := fmt.Sprintf("moai-adk_%s_%s_%s.%s", release.TagName, runtime.GOOS, runtime.GOARCH, ext)
+
 	for _, asset := range release.Assets {
-		if asset.Name == platformName {
+		if asset.Name == archiveName {
 			info.URL = asset.BrowserDownloadURL
 		}
 		if asset.Name == "checksums.txt" {
@@ -143,9 +150,12 @@ func (c *checker) IsUpdateAvailable(current string) (bool, *VersionInfo, error) 
 
 // compareSemver compares two semantic version strings.
 // Returns -1 if a < b, 0 if a == b, 1 if a > b.
-// Handles optional "v" prefix.
+// Handles optional "go-v" and "v" prefixes.
 func compareSemver(a, b string) int {
+	// Handle go-v prefix for Go edition releases
+	a = strings.TrimPrefix(a, "go-v")
 	a = strings.TrimPrefix(a, "v")
+	b = strings.TrimPrefix(b, "go-v")
 	b = strings.TrimPrefix(b, "v")
 
 	aParts := parseSemverParts(a)

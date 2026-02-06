@@ -2,6 +2,7 @@ package shell
 
 import (
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -132,31 +133,31 @@ func selectConfigFile(shell ShellType, preferLogin bool) string {
 		// .zshenv is loaded for ALL shells (interactive and non-interactive)
 		// This is critical for IDE/non-interactive contexts
 		if preferLogin {
-			return home + "/.zshenv"
+			return filepath.Join(home, ".zshenv")
 		}
-		return home + "/.zshrc"
+		return filepath.Join(home, ".zshrc")
 
 	case ShellBash:
 		// For non-interactive (login) shell support, prefer .profile
 		// WSL uses login shell, so .profile is more reliable
 		if preferLogin {
 			// Check if .profile exists
-			profilePath := home + "/.profile"
+			profilePath := filepath.Join(home, ".profile")
 			if _, err := os.Stat(profilePath); err == nil {
 				return profilePath
 			}
 			// Check .bash_profile
-			bashProfilePath := home + "/.bash_profile"
+			bashProfilePath := filepath.Join(home, ".bash_profile")
 			if _, err := os.Stat(bashProfilePath); err == nil {
 				return bashProfilePath
 			}
 			// Default to .profile even if it doesn't exist
 			return profilePath
 		}
-		return home + "/.bashrc"
+		return filepath.Join(home, ".bashrc")
 
 	case ShellFish:
-		return home + "/.config/fish/config.fish"
+		return filepath.Join(home, ".config", "fish", "config.fish")
 
 	case ShellPowerShell:
 		// PowerShell profile path
@@ -170,7 +171,7 @@ func selectConfigFile(shell ShellType, preferLogin bool) string {
 			return getPowerShellProfilePath(home)
 		}
 		// Default to .profile for unknown shells on Unix
-		return home + "/.profile"
+		return filepath.Join(home, ".profile")
 	}
 }
 
@@ -178,25 +179,25 @@ func selectConfigFile(shell ShellType, preferLogin bool) string {
 // It checks for PowerShell Core first, then Windows PowerShell.
 func getPowerShellProfilePath(home string) string {
 	// PowerShell Core profile (cross-platform)
-	psCorePath := home + "/Documents/PowerShell/Microsoft.PowerShell_profile.ps1"
+	psCorePath := filepath.Join(home, "Documents", "PowerShell", "Microsoft.PowerShell_profile.ps1")
 	if _, err := os.Stat(psCorePath); err == nil {
 		return psCorePath
 	}
 
 	// Check if PowerShell Core directory exists
-	psCoreDir := home + "/Documents/PowerShell"
+	psCoreDir := filepath.Join(home, "Documents", "PowerShell")
 	if _, err := os.Stat(psCoreDir); err == nil {
 		return psCorePath
 	}
 
 	// Windows PowerShell profile
-	winPSPath := home + "/Documents/WindowsPowerShell/Microsoft.PowerShell_profile.ps1"
+	winPSPath := filepath.Join(home, "Documents", "WindowsPowerShell", "Microsoft.PowerShell_profile.ps1")
 	if _, err := os.Stat(winPSPath); err == nil {
 		return winPSPath
 	}
 
 	// Check if Windows PowerShell directory exists
-	winPSDir := home + "/Documents/WindowsPowerShell"
+	winPSDir := filepath.Join(home, "Documents", "WindowsPowerShell")
 	if _, err := os.Stat(winPSDir); err == nil {
 		return winPSPath
 	}

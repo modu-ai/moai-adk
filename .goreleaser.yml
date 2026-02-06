@@ -19,9 +19,9 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X github.com/modu-ai/moai-adk-go/pkg/version.Version={{.Version}}
-      - -X github.com/modu-ai/moai-adk-go/pkg/version.Commit={{.Commit}}
-      - -X github.com/modu-ai/moai-adk-go/pkg/version.Date={{.Date}}
+      - -X github.com/modu-ai/moai-adk/pkg/version.Version={{.Version}}
+      - -X github.com/modu-ai/moai-adk/pkg/version.Commit={{.Commit}}
+      - -X github.com/modu-ai/moai-adk/pkg/version.Date={{.Date}}
 
 archives:
   - format: tar.gz
@@ -44,4 +44,4 @@ changelog:
 release:
   github:
     owner: modu-ai
-    name: moai-adk-go
+    name: moai-adk

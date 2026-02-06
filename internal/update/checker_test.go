@@ -38,10 +38,11 @@ func TestChecker_CheckLatest_Success(t *testing.T) {
 	t.Parallel()
 
 	release := githubRelease{
-		TagName:     "v1.2.0",
+		TagName:     "go-v1.2.0",
 		PublishedAt: time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC),
 		Assets: []githubAsset{
-			{Name: "moai-darwin-arm64", BrowserDownloadURL: "https://example.com/moai-darwin-arm64"},
+			{Name: "moai-adk_go-v1.2.0_darwin_arm64.tar.gz", BrowserDownloadURL: "https://example.com/moai-adk_go-v1.2.0_darwin_arm64.tar.gz"},
+			{Name: "moai-adk_go-v1.2.0_windows_amd64.zip", BrowserDownloadURL: "https://example.com/moai-adk_go-v1.2.0_windows_amd64.zip"},
 			{Name: "checksums.txt", BrowserDownloadURL: "https://example.com/checksums.txt"},
 		},
 	}
@@ -57,8 +58,8 @@ func TestChecker_CheckLatest_Success(t *testing.T) {
 	if info == nil {
 		t.Fatal("expected non-nil VersionInfo")
 	}
-	if info.Version != "v1.2.0" {
-		t.Errorf("Version = %q, want %q", info.Version, "v1.2.0")
+	if info.Version != "go-v1.2.0" {
+		t.Errorf("Version = %q, want %q", info.Version, "go-v1.2.0")
 	}
 	if info.Date.IsZero() {
 		t.Error("expected non-zero Date")
@@ -135,10 +136,11 @@ func TestChecker_IsUpdateAvailable_NewerVersion(t *testing.T) {
 	t.Parallel()
 
 	release := githubRelease{
-		TagName:     "v1.2.0",
+		TagName:     "go-v1.2.0",
 		PublishedAt: time.Now(),
 		Assets: []githubAsset{
-			{Name: "moai-darwin-arm64", BrowserDownloadURL: "https://example.com/binary"},
+			{Name: "moai-adk_go-v1.2.0_darwin_arm64.tar.gz", BrowserDownloadURL: "https://example.com/binary.tar.gz"},
+			{Name: "checksums.txt", BrowserDownloadURL: "https://example.com/checksums.txt"},
 		},
 	}
 
@@ -146,15 +148,15 @@ func TestChecker_IsUpdateAvailable_NewerVersion(t *testing.T) {
 	defer ts.Close()
 
 	checker := NewChecker(ts.URL, http.DefaultClient)
-	available, info, err := checker.IsUpdateAvailable("v1.1.0")
+	available, info, err := checker.IsUpdateAvailable("go-v1.1.0")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !available {
 		t.Error("expected update to be available")
 	}
-	if info == nil || info.Version != "v1.2.0" {
-		t.Errorf("expected version v1.2.0, got %v", info)
+	if info == nil || info.Version != "go-v1.2.0" {
+		t.Errorf("expected version go-v1.2.0, got %v", info)
 	}
 }
 
@@ -162,7 +164,7 @@ func TestChecker_IsUpdateAvailable_AlreadyCurrent(t *testing.T) {
 	t.Parallel()
 
 	release := githubRelease{
-		TagName:     "v1.2.0",
+		TagName:     "go-v1.2.0",
 		PublishedAt: time.Now(),
 		Assets:      []githubAsset{},
 	}
@@ -171,7 +173,7 @@ func TestChecker_IsUpdateAvailable_AlreadyCurrent(t *testing.T) {
 	defer ts.Close()
 
 	checker := NewChecker(ts.URL, http.DefaultClient)
-	available, info, err := checker.IsUpdateAvailable("v1.2.0")
+	available, info, err := checker.IsUpdateAvailable("go-v1.2.0")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -187,7 +189,7 @@ func TestChecker_IsUpdateAvailable_NewerCurrentVersion(t *testing.T) {
 	t.Parallel()
 
 	release := githubRelease{
-		TagName:     "v1.2.0",
+		TagName:     "go-v1.2.0",
 		PublishedAt: time.Now(),
 		Assets:      []githubAsset{},
 	}
@@ -196,7 +198,7 @@ func TestChecker_IsUpdateAvailable_NewerCurrentVersion(t *testing.T) {
 	defer ts.Close()
 
 	checker := NewChecker(ts.URL, http.DefaultClient)
-	available, info, err := checker.IsUpdateAvailable("v2.0.0")
+	available, info, err := checker.IsUpdateAvailable("go-v2.0.0")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -226,6 +228,11 @@ func TestCompareSemver(t *testing.T) {
 		{"b newer patch", "v1.0.1", "v1.0.2", -1},
 		{"no v prefix", "1.0.0", "1.0.0", 0},
 		{"mixed prefix", "v1.0.0", "1.0.0", 0},
+		{"go-v prefix equal", "go-v1.0.0", "go-v1.0.0", 0},
+		{"go-v prefix a newer", "go-v2.0.0", "go-v1.0.0", 1},
+		{"go-v prefix b newer", "go-v1.0.0", "go-v2.0.0", -1},
+		{"go-v vs v prefix", "go-v1.0.0", "v1.0.0", 0},
+		{"go-v vs no prefix", "go-v1.0.0", "1.0.0", 0},
 	}
 
 	for _, tt := range tests {

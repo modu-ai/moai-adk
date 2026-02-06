@@ -206,7 +206,7 @@ func TestSettingsPlatformHookCommands(t *testing.T) {
 		}
 
 		cmd := settings.Hooks["SessionStart"][0].Hooks[0].Command
-		expected := `cmd.exe /c "%CLAUDE_PROJECT_DIR%\.claude\hooks\moai\handle-session-start.sh"`
+		expected := `bash "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh"`
 		if cmd != expected {
 			t.Errorf("windows SessionStart command = %q, want %q", cmd, expected)
 		}

@@ -7,6 +7,18 @@ model: sonnet
 version: 2.0.0
 ---
 
+## ⚠️ IMPORTANT: Test/Private Release Configuration
+
+**This release command is configured for:**
+- **Branch**: `moai-go-v2` (NOT main)
+- **Tag prefix**: `go-v` (e.g., `go-v2.0.0`)
+- **Purpose**: Test and private deployment for v2.0 development
+- **Visibility**: Tags are pushed but GitHub Releases are OPTIONAL
+
+**For public main releases**, use a separate release workflow targeting the `main` branch.
+
+---
+
 ## EXECUTION DIRECTIVE - START IMMEDIATELY
 
 This is a release command. Execute the workflow below in order. Do NOT just describe the steps - actually run the commands.
@@ -232,23 +244,27 @@ Instead, delegate to manager-git subagent with this prompt:
 
 ```
 
-## Mission: Release Git Operations for Version X.Y.Z
+## Mission: Release Git Operations for Version X.Y.Z (Test/Private Release)
 
 ### Context
 
 - Target version: X.Y.Z
+- Target branch: moai-go-v2 (test branch)
+- Tag format: go-vX.Y.Z (Go edition prefix)
 - Current state: [describe current git state]
 - Quality gates: All passed
 - Commits included: [list commit count and summary]
 
 ### Required Actions
 
-1. **Check remote status**: Verify if tag X.Y.Z exists on remote (origin)
+1. **Check remote status**: Verify if tag go-vX.Y.Z exists on remote (origin)
 2. **Handle tag conflicts**:
-   - If remote does NOT have v{X.Y.Z}: Create tag and push
-   - If remote already has v{X.Y.Z}: Report situation with options
+   - If remote does NOT have go-vX.Y.Z: Create tag and push
+   - If remote already has go-vX.Y.Z: Report situation with options
 3. **Execute push**: `git push origin moai-go-v2 --tags`
-4. **Verify GitHub Actions**: Check if release workflow started
+   - This pushes to moai-go-v2 branch (NOT main)
+   - Tags will be available for private use
+4. **Optional**: Check if release workflow started (if configured)
 
 ### Expected Output
 
@@ -268,45 +284,51 @@ Use the manager-git subagent to handle release git operations for version 2.0.0
 
 Context:
 
-- Local tag v2.0.0 already exists
-- 6 commits included since v1.9.0
+- Target branch: moai-go-v2 (test branch)
+- Local tag go-v2.0.0 already exists
+- 6 commits included since go-v1.9.0
 - All quality gates passed
 
 The agent should:
 
-1. Check if v2.0.0 exists on remote
-2. Push tag to remote or handle conflicts
-3. Verify GitHub Actions workflow started
-4. Report release status with links
+1. Check if go-v2.0.0 exists on remote
+2. Push tag to moai-go-v2 branch or handle conflicts
+3. Optionally check if GitHub Actions workflow started
+4. Report release status with links (if applicable)
 
 ````
 
 ---
 
-## PHASE 7: Release Verification & Notes Update
+## PHASE 7: Release Verification & Notes Update (OPTIONAL for Test Releases)
 
-### Step 1: Verify GitHub Actions Workflow
+**NOTE**: For test/private releases on `moai-go-v2` branch, GitHub Release steps are OPTIONAL. The tag is sufficient for internal use.
+
+### Step 1: [OPTIONAL] Verify GitHub Actions Workflow
 
 Check if release workflow started:
 `gh run list --workflow=release.yml --limit 3`
 
 Wait for workflow completion (typically 5-10 minutes for Go builds).
 
-### Step 2: Verify GitHub Release Created
+### Step 2: [OPTIONAL] Verify GitHub Release Created
 
-`gh release view vX.Y.Z`
+`gh release view go-vX.Y.Z`
 
 If release exists but has minimal notes, proceed to Step 3.
 
-### Step 3: Update GitHub Release Notes with CHANGELOG Content
+If no release exists, you can skip to final verification or create a draft release manually.
 
-**[HARD] GitHub Release notes MUST include full CHANGELOG content (English + Korean).**
+### Step 3: [OPTIONAL] Update GitHub Release Notes with CHANGELOG Content
 
-The automated GoReleaser creates a basic release. Update it with full CHANGELOG:
+**For test releases**: Consider creating a DRAFT or PRIVATE release instead of public.
+
+If creating/updating a GitHub Release, use CHANGELOG content:
 
 ```bash
-gh release edit vX.Y.Z --notes "$(cat <<'RELEASE_EOF'
-# vX.Y.Z - English Title (YYYY-MM-DD)
+# For test releases, consider creating as DRAFT
+gh release edit go-vX.Y.Z --draft --notes "$(cat <<'RELEASE_EOF'
+# go-vX.Y.Z - English Title (YYYY-MM-DD) [TEST RELEASE]
 
 ## Summary
 [Copy from CHANGELOG.md English section]
@@ -320,13 +342,14 @@ gh release edit vX.Y.Z --notes "$(cat <<'RELEASE_EOF'
 ## Installation & Update
 
 \`\`\`bash
-moai update
+# Test release installation (using specific tag)
+curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install.sh | bash -s -- --version X.Y.Z
 moai version
 \`\`\`
 
 ---
 
-# vX.Y.Z - Korean Title (YYYY-MM-DD)
+# go-vX.Y.Z - Korean Title (YYYY-MM-DD) [테스트 릴리스]
 
 ## 요약
 [Copy from CHANGELOG.md Korean section]
@@ -340,7 +363,8 @@ moai version
 ## 설치 및 업데이트
 
 \`\`\`bash
-moai update
+# 테스트 릴리스 설치 (특정 태그 사용)
+curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install.sh | bash -s -- --version X.Y.Z
 moai version
 \`\`\`
 RELEASE_EOF
@@ -349,13 +373,17 @@ RELEASE_EOF
 
 ### Step 4: Final Verification
 
-1. Verify release notes updated: `gh release view vX.Y.Z | head -50`
-2. Check release assets: `gh release view vX.Y.Z --json assets`
+1. Verify release notes updated: `gh release view go-vX.Y.Z | head -50`
+2. Check release assets: `gh release view go-vX.Y.Z --json assets`
 3. Report final summary with links:
-   - GitHub Release: https://github.com/modu-ai/moai-adk/releases/tag/vX.Y.Z
+   - GitHub Release: https://github.com/modu-ai/moai-adk/releases/tag/go-vX.Y.Z
    - GitHub Actions: https://github.com/modu-ai/moai-adk/actions
+   - Branch: moai-go-v2 (test branch)
 
-**Note**: GitHub Release notes should match CHANGELOG structure (English → Korean).
+**Note**:
+- GitHub Release notes should match CHANGELOG structure (English → Korean)
+- Test releases are marked as DRAFT by default
+- Tag format: `go-vX.Y.Z` (not `vX.Y.Z`)
 
 ---
 
@@ -402,10 +430,12 @@ Updating version files...
 
 ## Key Rules
 
+- **Target branch**: `moai-go-v2` (test/private releases, NOT main)
+- **Tag format**: `go-vX.Y.Z` (Go edition prefix, e.g., `go-v2.0.0`)
 - Tests MUST pass to continue (85%+ coverage per package)
-- All version files must be consistent
-- Tag format: vX.Y.Z (with 'v' prefix) or go-vX.Y.Z for Go edition
-- GoReleaser handles binary builds and GitHub Releases automatically
+- All version files must be consistent (3 files: pkg/version/version.go, .moai/config/sections/system.yaml, internal/template/templates/.moai/config/sections/system.yaml)
+- GitHub Releases are OPTIONAL for test releases
+- GoReleaser handles binary builds if configured
 - **[HARD] ALL git operations MUST be delegated to manager-git agent**
   - Direct git commands (tag, push) are PROHIBITED
   - Use Task tool with manager-git subagent for all git operations

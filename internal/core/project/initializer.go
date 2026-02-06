@@ -289,7 +289,24 @@ func detectGoBinPath(homeDir string) string {
 		return filepath.Join(homeDir, "go", "bin")
 	}
 
-	// Last resort: common Go install location
+	// Last resort: platform-specific common Go install locations
+	if runtime.GOOS == "windows" {
+		// Windows common install paths
+		candidates := []string{
+			filepath.Join(os.Getenv("PROGRAMFILES"), "Go", "bin"),
+			`C:\Go\bin`,
+		}
+		for _, candidate := range candidates {
+			if candidate != "" && candidate != `\Go\bin` { // Skip if PROGRAMFILES is empty
+				if _, err := os.Stat(candidate); err == nil {
+					return candidate
+				}
+			}
+		}
+		// Final fallback for Windows
+		return filepath.Join(os.Getenv("USERPROFILE"), "go", "bin")
+	}
+	// Unix-like systems (Linux, macOS, etc.)
 	return "/usr/local/go/bin"
 }
 

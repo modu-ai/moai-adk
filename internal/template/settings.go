@@ -140,10 +140,9 @@ func buildHookCommand(platform, event string) string {
 
 	switch platform {
 	case "windows":
-		// Windows: use %CLAUDE_PROJECT_DIR% for project directory
-		// Note: Windows cmd.exe doesn't natively support CLAUDE_PROJECT_DIR,
-		// but Claude Code sets it as an environment variable
-		return `cmd.exe /c "%CLAUDE_PROJECT_DIR%\.claude\hooks\moai\` + hookScriptName + `"`
+		// Windows: use bash from Git for Windows (Claude Code requires Git)
+		// This is simpler than maintaining parallel PowerShell hook scripts
+		return `bash "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/` + hookScriptName + `"`
 	default:
 		// darwin, linux, and other unix-like platforms
 		// Use $CLAUDE_PROJECT_DIR with proper quoting for paths with spaces
@@ -173,11 +172,12 @@ func eventToSubcommand(event string) string {
 }
 
 // buildStatusLine constructs the status line configuration.
-// Uses $CLAUDE_PROJECT_DIR for consistent path resolution.
+// Uses relative path because StatusLine doesn't support environment variable expansion.
+// See GitHub Issue #7925: statusline does not expand environment variables
 func buildStatusLine() *StatusLine {
-	// Use $CLAUDE_PROJECT_DIR for absolute path resolution
+	// Use relative path from project root (StatusLine doesn't expand env vars)
 	// The .moai/status_line.sh script is deployed during initialization
-	command := `"$CLAUDE_PROJECT_DIR/.moai/status_line.sh"`
+	command := ".moai/status_line.sh"
 
 	return &StatusLine{
 		Type:            "command",
