@@ -2,7 +2,6 @@ backed_up_items:
     - .moai/config/backup_metadata.json
     - .moai/config/config.yaml
     - .moai/config/config.yaml.tmpl
-    - .moai/config/multilingual-triggers.yaml
 backup_type: config
 description: config_backup
 excluded_dirs:

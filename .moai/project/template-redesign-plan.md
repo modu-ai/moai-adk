@@ -559,7 +559,6 @@ The settings.json file is NOT a template file. It is generated programmatically 
 .moai/
 ├── config/
 │   ├── config.yaml                    # Root config (version, init status)
-│   ├── multilingual-triggers.yaml     # Language trigger keywords
 │   └── sections/
 │       ├── user.yaml                  # User identity
 │       ├── language.yaml              # Language preferences
@@ -632,7 +631,7 @@ Key structural changes:
 
 | File | Reason | Replacement |
 |------|--------|------------|
-| `multilingual-triggers.yaml` | Embedded in Go binary | `internal/foundation/langs.go` |
+| ~~`multilingual-triggers.yaml`~~ | **Removed (legacy Python config)** | Language triggers embedded in Go binary (`internal/foundation/`) |
 | `llm.yaml` | Merged into preferences | `config/preferences.yaml` |
 | `pricing.yaml` | Merged into preferences | `config/preferences.yaml` |
 | `system.yaml` | Split and absorbed | Relevant fields in `config/preferences.yaml` and `system/workflow.yaml` |
