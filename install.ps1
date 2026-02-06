@@ -2,29 +2,28 @@
 # Requires PowerShell 5.1 or later
 # Supports piped execution: irm https://... | iex
 
-& {
-    # Error handling
-    $ErrorActionPreference = "Stop"
+# Error handling
+$ErrorActionPreference = "Stop"
 
-    function Print-Info {
-        Write-Host "ℹ️  [INFO] " -ForegroundColor Cyan -NoNewline
-        Write-Host $args
-    }
+function Print-Info {
+    Write-Host "[INFO] " -ForegroundColor Cyan -NoNewline
+    Write-Host $args
+}
 
-    function Print-Success {
-        Write-Host "✅ [SUCCESS] " -ForegroundColor Green -NoNewline
-        Write-Host $args
-    }
+function Print-Success {
+    Write-Host "[SUCCESS] " -ForegroundColor Green -NoNewline
+    Write-Host $args
+}
 
-    function Print-Error {
-        Write-Host "❌ [ERROR] " -ForegroundColor Red -NoNewline
-        Write-Host $args
-    }
+function Print-Error {
+    Write-Host "[ERROR] " -ForegroundColor Red -NoNewline
+    Write-Host $args
+}
 
-    function Print-Warning {
-        Write-Host "⚠️  [WARNING] " -ForegroundColor Yellow -NoNewline
-        Write-Host $args
-    }
+function Print-Warning {
+    Write-Host "[WARNING] " -ForegroundColor Yellow -NoNewline
+    Write-Host $args
+}
 
     # Detect platform
     function Get-Platform {
@@ -334,6 +333,5 @@
         Print-Info "Documentation: https://github.com/modu-ai/moai-adk"
     }
 
-    # Run main function with script arguments
-    Main -Arguments $args
-} @args
+# Run main function with script arguments
+Main -Arguments $args
