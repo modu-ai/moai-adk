@@ -73,7 +73,7 @@ Development methodology: Hybrid (TDD for new + DDD for legacy)
 **For NEW code** (new files, new functions):
 - Apply TDD workflow (RED-GREEN-REFACTOR)
 - Strict test-first requirement
-- Coverage target: 90% for new code
+- Coverage target: 85% for new code
 
 **For EXISTING code** (modifications, refactoring):
 - Apply DDD workflow (ANALYZE-PRESERVE-IMPROVE)
@@ -88,7 +88,7 @@ Development methodology: Hybrid (TDD for new + DDD for legacy)
 
 Success Criteria:
 - All SPEC requirements implemented
-- New code has TDD-level coverage (90%+)
+- New code has TDD-level coverage (85%+)
 - Modified code has characterization tests
 - Overall coverage improvement trend
 - TRUST 5 quality gates passed
@@ -118,7 +118,7 @@ Users can override the auto-detected methodology:
 | Aspect | DDD | TDD | Hybrid |
 |--------|-----|-----|--------|
 | Test timing | After analysis (PRESERVE) | Before code (RED) | Mixed |
-| Coverage approach | Gradual improvement | Strict per-commit | Separate targets |
+| Coverage approach | Gradual improvement | Strict per-commit | Unified 85% target |
 | Best for | Legacy refactoring only | Isolated modules (rare) | All development work |
 | Risk level | Low (preserves behavior) | Medium (requires discipline) | Medium |
 | Coverage exemptions | Allowed | Not allowed | Allowed for legacy only |

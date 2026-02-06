@@ -260,7 +260,7 @@ Follow these scope management rules:
 Apply these coverage standards:
 
 - Minimum 80% coverage per commit
-- 90% recommended for new code
+- 85% recommended for new code
 - All public interfaces tested
 - Edge cases covered
 
@@ -595,7 +595,7 @@ Run phase completion requires:
 - LSP errors == 0
 - Type errors == 0
 - No regression from baseline
-- Coverage target met (80% minimum, 90% recommended)
+- Coverage target met (80% minimum, 85% recommended)
 
 ### Loop Prevention
 
@@ -703,7 +703,7 @@ TDD Success Criteria:
 Test Coverage (Required):
 
 - Minimum 80% coverage per commit
-- 90% recommended for new code
+- 85% recommended for new code
 - All public interfaces tested
 - Edge cases covered
 

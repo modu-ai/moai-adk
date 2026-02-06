@@ -52,7 +52,7 @@ constitution:
     legacy_refactoring: ddd
 
     # Minimum coverage for new code (0-100)
-    min_coverage_new: 90
+    min_coverage_new: 85
 
     # Minimum coverage for legacy code (0-100)
     min_coverage_legacy: 85

@@ -77,7 +77,7 @@ Purpose: Decompose the approved execution plan into atomic, reviewable tasks fol
 Tasks for manager-strategy:
 
 - Decompose plan into atomic implementation tasks
-- Each task must be completable in a single DDD cycle
+- Each task must be completable in a single DDD/TDD cycle
 - Assign priority and dependencies for each task
 - Generate task tracking entries for progress visibility
 - Verify task coverage matches all SPEC requirements
@@ -90,7 +90,7 @@ Task structure for each decomposed task:
 - Dependencies: List of prerequisite tasks
 - Acceptance Criteria: How to verify completion
 
-Constraints: Maximum 10 tasks per SPEC. If more needed, the SPEC should be split.
+Constraints: Decompose into atomic tasks where each task completes in a single DDD/TDD cycle. No artificial limit on task count. If the SPEC itself is too complex, consider splitting the SPEC.
 
 Output: Task list with coverage_verified flag set to true.
 
@@ -170,7 +170,7 @@ Requirements:
 - Initialize task tracking for progress across TDD cycles
 - Execute the complete RED-GREEN-REFACTOR cycle for each feature
 - Write tests before implementation (test-first discipline)
-- Ensure minimum 80% coverage per commit (90% recommended for new code)
+- Ensure minimum 80% coverage per commit (85% recommended for new code)
 
 Output: files_created list, specification_tests_created list, test_results (all passing), coverage percentage, refactoring_improvements list, implementation_divergence report.
 
@@ -210,13 +210,13 @@ For DDD mode:
 - Structural improvement: Coupling and cohesion metrics improved
 
 For TDD mode:
-- Test coverage at least 80% per commit (90% recommended for new code)
+- Test coverage at least 80% per commit (85% recommended for new code)
 - Test-first discipline: No code written without failing test first
 - All specification tests pass
 - Clean code principles applied in REFACTOR phase
 
 For Hybrid mode:
-- New code: TDD coverage targets (90% for new files)
+- New code: TDD coverage targets (85% for new files)
 - Modified code: DDD coverage targets (85% with behavior preservation)
 - Overall coverage improvement trend maintained
 
@@ -295,8 +295,8 @@ All of the following must be verified:
 - Phase 1.5: Tasks decomposed with requirement traceability
 - Phase 2: Implementation completed according to development_mode:
   - DDD mode: manager-ddd executed ANALYZE-PRESERVE-IMPROVE with 85%+ coverage
-  - TDD mode: manager-tdd executed RED-GREEN-REFACTOR with 80%+ coverage per commit
-  - Hybrid mode: Appropriate agent per task type with mode-specific coverage targets
+  - TDD mode: manager-tdd executed RED-GREEN-REFACTOR with 85%+ coverage
+  - Hybrid mode: Appropriate agent per task type with 85%+ unified coverage target
 - Phase 2.5: manager-quality completed TRUST 5 validation with PASS or WARNING status
 - Quality gate blocked Phase 3 if status was CRITICAL
 - Phase 3: manager-git created commits (branch or direct) only if quality permitted
