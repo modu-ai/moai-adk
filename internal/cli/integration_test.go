@@ -53,33 +53,39 @@ func TestRootCmd_AllCommandsRegistered(t *testing.T) {
 	}
 }
 
-func TestUpdateCmd_NoUpdateOrch(t *testing.T) {
+func TestUpdateCmd_DefaultIsTemplateSync(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
-	// Set local update source to bypass dev build detection
-	t.Setenv("MOAI_UPDATE_SOURCE", "local")
-
-	// Set deps to nil to test the case where dependencies are not initialized.
-	// With lazy initialization, EnsureUpdate would try to create real dependencies
-	// if deps is non-nil, so we test the nil deps path instead.
+	// Default moai update should run template sync, not binary update.
+	// Even with nil deps, the command should proceed to template sync.
 	deps = nil
 
 	buf := new(bytes.Buffer)
 	updateCmd.SetOut(buf)
 	updateCmd.SetErr(buf)
 
-	// Ensure check flag is false
+	// Ensure check flag is false (default flow)
 	if err := updateCmd.Flags().Set("check", "false"); err != nil {
 		t.Fatal(err)
 	}
 
 	err := updateCmd.RunE(updateCmd, []string{})
-	if err == nil {
-		t.Error("update without orchestrator should error")
+
+	// Template sync may fail in test environment (no project root, etc.)
+	// but the error should NOT be about orchestrator or "not initialized".
+	if err != nil {
+		if strings.Contains(err.Error(), "not initialized") {
+			t.Errorf("default update should not require orchestrator, got: %v", err)
+		}
+		if strings.Contains(err.Error(), "orchestrator") {
+			t.Errorf("default update should not reference orchestrator, got: %v", err)
+		}
 	}
-	if !strings.Contains(err.Error(), "not initialized") {
-		t.Errorf("error should mention not initialized, got: %v", err)
+
+	output := buf.String()
+	if !strings.Contains(output, "Current version") {
+		t.Errorf("output should contain version info, got %q", output)
 	}
 }
 

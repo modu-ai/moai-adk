@@ -83,17 +83,11 @@ func TestUpdateCmd_CheckOnly_NoDeps(t *testing.T) {
 
 func TestRunTemplateSync_Timeout(t *testing.T) {
 	// This test verifies that runTemplateSync completes within the timeout period
-	// The timeout constant is set to 30 seconds in update.go
 	// Actual timeout behavior is tested through integration tests
 
 	buf := new(bytes.Buffer)
 	updateCmd.SetOut(buf)
 	updateCmd.SetErr(buf)
-
-	// Reset flags
-	if err := updateCmd.Flags().Set("project", "false"); err != nil {
-		t.Fatal(err)
-	}
 
 	// Note: This is a smoke test to ensure the function completes normally
 	// For actual timeout testing with mock slow deployer, see integration tests

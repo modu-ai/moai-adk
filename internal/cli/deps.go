@@ -4,10 +4,12 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/git"
@@ -79,6 +81,9 @@ func InitDependencies() {
 		deps.HookRegistry.Register(rankHandler)
 		slog.Info("rank session handler registered")
 	}
+
+	// Register auto-update handler for SessionStart
+	deps.HookRegistry.Register(hook.NewAutoUpdateHandler(buildAutoUpdateFunc()))
 
 	deps.HookRegistry.Register(hook.NewStopHandler())
 	deps.HookRegistry.Register(hook.NewPreToolHandlerWithScanner(deps.Config, hook.DefaultSecurityPolicy(), securityScanner))
@@ -176,6 +181,88 @@ func (d *Dependencies) EnsureUpdate() error {
 	d.UpdateOrch = update.NewOrchestrator(currentVersion, d.UpdateChecker, updater, rollback)
 
 	return nil
+}
+
+// buildAutoUpdateFunc creates the callback that performs binary self-update.
+// It uses a closure to avoid circular dependencies between hook and update.
+func buildAutoUpdateFunc() hook.AutoUpdateFunc {
+	return func(ctx context.Context) (*hook.AutoUpdateResult, error) {
+		currentVersion := version.GetVersion()
+
+		// Skip dev builds
+		isDevBuild := strings.Contains(currentVersion, "dirty") ||
+			currentVersion == "dev" ||
+			strings.Contains(currentVersion, "none")
+		if isDevBuild {
+			return &hook.AutoUpdateResult{Updated: false}, nil
+		}
+
+		// Check cache first
+		cache := update.NewCache("", 0)
+		if entry := cache.Get(currentVersion); entry != nil {
+			if !entry.Available {
+				return &hook.AutoUpdateResult{Updated: false}, nil
+			}
+			// Cache says update available, proceed to update
+		}
+
+		// Initialize update system
+		if deps != nil {
+			if err := deps.EnsureUpdate(); err != nil {
+				slog.Debug("auto-update: failed to initialize update system", "error", err)
+				return nil, err
+			}
+		}
+
+		if deps == nil || deps.UpdateChecker == nil {
+			return &hook.AutoUpdateResult{Updated: false}, nil
+		}
+
+		// Check for available update via GitHub API
+		available, info, err := deps.UpdateChecker.IsUpdateAvailable(currentVersion)
+		if err != nil {
+			// Cache the failure so we don't retry on every session
+			_ = cache.Set(&update.CacheEntry{
+				CheckedAt:  time.Now(),
+				Available:  false,
+				CurrentVer: currentVersion,
+			})
+			slog.Debug("auto-update: version check failed", "error", err)
+			return nil, err
+		}
+
+		// Cache the result
+		cacheEntry := &update.CacheEntry{
+			CheckedAt:  time.Now(),
+			Available:  available,
+			CurrentVer: currentVersion,
+		}
+		if info != nil {
+			cacheEntry.LatestInfo = info
+		}
+		_ = cache.Set(cacheEntry)
+
+		if !available {
+			return &hook.AutoUpdateResult{Updated: false}, nil
+		}
+
+		// Perform the update
+		if deps.UpdateOrch == nil {
+			return &hook.AutoUpdateResult{Updated: false}, nil
+		}
+
+		result, err := deps.UpdateOrch.Update(ctx)
+		if err != nil {
+			slog.Debug("auto-update: update failed", "error", err)
+			return nil, err
+		}
+
+		return &hook.AutoUpdateResult{
+			Updated:         true,
+			PreviousVersion: result.PreviousVersion,
+			NewVersion:      result.NewVersion,
+		}, nil
+	}
 }
 
 // EnsureRank lazily initializes the Rank client.

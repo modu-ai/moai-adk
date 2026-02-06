@@ -33,37 +33,33 @@ const (
 
 var updateCmd = &cobra.Command{
 	Use:   "update",
-	Short: "Update MoAI-ADK to the latest version",
-	Long:  "Check for and install the latest MoAI-ADK release. Supports check-only mode, forced updates, and template-only sync.",
+	Short: "Sync MoAI-ADK project templates to the latest version",
+	Long:  "Synchronize embedded templates with the project. Binary updates happen automatically at session start.",
 	RunE:  runUpdate,
 }
 
 func init() {
 	rootCmd.AddCommand(updateCmd)
 
-	updateCmd.Flags().Bool("check", false, "Check for updates without installing")
-	updateCmd.Flags().Bool("project", false, "Update project templates without updating binary")
+	updateCmd.Flags().Bool("check", false, "Check if a newer binary version is available (informational)")
 	updateCmd.Flags().Bool("shell-env", false, "Configure shell environment variables for Claude Code")
 	updateCmd.Flags().BoolP("config", "c", false, "Edit project configuration (same as init wizard)")
 	updateCmd.Flags().Bool("force", false, "Skip backup and force the update")
 	updateCmd.Flags().Bool("yes", false, "Auto-confirm all prompts (CI/CD mode)")
 }
 
-// runUpdate checks for moai-adk binary updates and optionally syncs templates.
-// It compares the current version with the latest GitHub release and offers to
-// update if a newer version is available. Development builds skip version checks.
+// runUpdate synchronizes embedded templates with the project directory.
+// Binary self-updates now happen automatically at session start.
 //
 // Flags:
 //
 //	-c, --config: Edit project configuration (same as init wizard)
-//	--check: Check for updates without installing
+//	--check: Check if a newer binary version is available (informational)
 //	--force: Skip backup and force the update
-//	--templates-only: Skip binary update check
 //	--shell-env: Configure shell environment variables
 //	--yes: Auto-confirm all prompts (CI/CD mode)
 func runUpdate(cmd *cobra.Command, _ []string) error {
 	checkOnly := getBoolFlag(cmd, "check")
-	projectOnly := getBoolFlag(cmd, "templates-only")
 	shellEnv := getBoolFlag(cmd, "shell-env")
 	editConfig := getBoolFlag(cmd, "config")
 	out := cmd.OutOrStdout()
@@ -77,109 +73,38 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	currentVersion := version.GetVersion()
 	_, _ = fmt.Fprintf(out, "Current version: moai-adk %s\n", currentVersion)
 
-	// Check if using local update source
-	updateSource := os.Getenv("MOAI_UPDATE_SOURCE")
-	useLocalUpdate := updateSource == "local"
-
-	// Detect development build and show appropriate message
-	// Skip this check for local updates (dev builds can update from local releases)
-	// RC/alpha/beta versions are NOT considered dev builds - they can update
-	isDevBuild := strings.Contains(currentVersion, "dirty") ||
-		currentVersion == "dev" ||
-		strings.Contains(currentVersion, "none")
-
-	if isDevBuild && !projectOnly && !shellEnv && !useLocalUpdate {
-		_, _ = fmt.Fprintln(out, "\nDevelopment build detected.")
-		_, _ = fmt.Fprintln(out, "Binary update skipped. To update binary:")
-		_, _ = fmt.Fprintln(out, "  cd ~/MoAI/moai-adk-go && git pull && make install")
-		if checkOnly {
-			return nil
-		}
-		// For dev builds, skip binary update but still sync templates
-		_, _ = fmt.Fprintln(out, "\nSyncing templates...")
-		return runTemplateSyncWithProgress(cmd)
-	}
-
-	// Show update source info
-	if useLocalUpdate {
-		releasesDir := os.Getenv("MOAI_RELEASES_DIR")
-		if releasesDir == "" {
-			homeDir, err := os.UserHomeDir()
-			if err != nil {
-				homeDir = "."
-			}
-			releasesDir = filepath.Join(homeDir, ".moai", "releases")
-		}
-		_, _ = fmt.Fprintf(out, "Update source: local (%s)\n", releasesDir)
-	}
-
 	// Handle shell-env mode
 	if shellEnv {
 		return runShellEnvConfig(cmd)
 	}
 
-	// Handle templates-only mode
-	if projectOnly {
-		return runTemplateSyncWithProgress(cmd)
-	}
-
-	// Lazily initialize update dependencies
-	if deps != nil {
-		if err := deps.EnsureUpdate(); err != nil {
-			deps.Logger.Debug("failed to initialize update system", "error", err)
+	// Handle --check mode (informational: check if newer binary exists)
+	if checkOnly {
+		// Lazily initialize update dependencies
+		if deps != nil {
+			if err := deps.EnsureUpdate(); err != nil {
+				deps.Logger.Debug("failed to initialize update system", "error", err)
+			}
 		}
-	}
 
-	if deps == nil || deps.UpdateChecker == nil {
-		if checkOnly {
+		if deps == nil || deps.UpdateChecker == nil {
 			_, _ = fmt.Fprintln(out, "Update checker not available. Using current version.")
 			return nil
 		}
-		return fmt.Errorf("update system not initialized (update module not available)")
-	}
 
-	ctx, cancel := context.WithTimeout(cmd.Context(), 5*time.Minute)
-	defer cancel()
+		ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
+		defer cancel()
 
-	if checkOnly {
 		info, err := deps.UpdateChecker.CheckLatest(ctx)
 		if err != nil {
 			return fmt.Errorf("check latest version: %w", err)
 		}
 		_, _ = fmt.Fprintf(out, "Latest version:  %s\n", info.Version)
+		_, _ = fmt.Fprintln(out, "\nNote: Binary updates happen automatically at session start.")
 		return nil
 	}
 
-	if deps.UpdateOrch == nil {
-		return fmt.Errorf("update orchestrator not initialized")
-	}
-
-	// Check if Go binary is available before attempting update
-	info, err := deps.UpdateChecker.CheckLatest(ctx)
-	if err != nil {
-		// Inform user about network issue with clear context
-		_, _ = fmt.Fprintf(out, "Warning: Failed to check for updates (network issue): %v\n", err)
-		_, _ = fmt.Fprintf(out, "Continuing with template sync only...\n\n")
-		return runTemplateSyncWithProgress(cmd)
-	}
-
-	// If no Go binary URL available, skip binary update and sync templates only
-	if info.URL == "" {
-		_, _ = fmt.Fprintf(out, "Latest version:  %s\n", info.Version)
-		_, _ = fmt.Fprintln(out, "\nNo Go binary available for this platform. Syncing templates only...")
-		return runTemplateSyncWithProgress(cmd)
-	}
-
-	result, err := deps.UpdateOrch.Update(ctx)
-	if err != nil {
-		return fmt.Errorf("update failed: %w", err)
-	}
-
-	_, _ = fmt.Fprintf(out, "Updated from %s to %s\n", result.PreviousVersion, result.NewVersion)
-	_, _ = fmt.Fprintf(out, "  Files updated: %d, merged: %d\n", result.FilesUpdated, result.FilesMerged)
-
-	// Sync templates after successful binary update
-	_, _ = fmt.Fprintln(out, "Syncing templates...")
+	// Default: template sync only
 	return runTemplateSyncWithProgress(cmd)
 }
 

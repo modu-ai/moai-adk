@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"log/slog"
+
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/rank"
@@ -405,13 +407,12 @@ func TestRunUpdate_CheckLatestError(t *testing.T) {
 	}
 }
 
-func TestRunUpdate_NilOrchestrator(t *testing.T) {
+func TestRunUpdate_DefaultIsTemplateSync(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
-	// Set local update source to bypass dev build detection
-	t.Setenv("MOAI_UPDATE_SOURCE", "local")
-
+	// Default moai update should run template sync, not binary update.
+	// Even with nil orchestrator, the command should proceed to template sync.
 	deps = &Dependencies{
 		UpdateChecker: &mockUpdateChecker{},
 	}
@@ -424,89 +425,34 @@ func TestRunUpdate_NilOrchestrator(t *testing.T) {
 	if err := updateCmd.Flags().Set("check", "false"); err != nil {
 		t.Fatal(err)
 	}
-
-	err := updateCmd.RunE(updateCmd, []string{})
-	if err == nil {
-		t.Error("should error with nil orchestrator")
-	}
-	if !strings.Contains(err.Error(), "orchestrator not initialized") {
-		t.Errorf("error should mention orchestrator, got %v", err)
-	}
-}
-
-func TestRunUpdate_FullUpdateSuccess(t *testing.T) {
-	// Skip in non-interactive environments (no TTY available)
-	// The merge confirmation UI requires a TTY which isn't available in CI/test environments
-	if os.Getenv("CI") != "" {
-		t.Skip("skipping test in CI environment (requires TTY)")
-	}
-
-	// Also skip if running in automated test environments without TTY
-	// Check if we can access /dev/tty (Unix) or CONIN$ (Windows)
-	if _, err := os.OpenFile("/dev/tty", os.O_RDWR, 0); err != nil {
-		t.Skip("skipping test in non-TTY environment (requires interactive terminal)")
-	}
-
-	origDeps := deps
-	defer func() { deps = origDeps }()
-
-	// Set local update source to bypass dev build detection
-	t.Setenv("MOAI_UPDATE_SOURCE", "local")
-
-	deps = &Dependencies{
-		UpdateChecker: &mockUpdateChecker{},
-		UpdateOrch: &mockUpdateOrch{
-			updateFunc: func(_ context.Context) (*update.UpdateResult, error) {
-				return &update.UpdateResult{
-					PreviousVersion: "0.9.0",
-					NewVersion:      "1.0.0",
-					FilesUpdated:    3,
-					FilesMerged:     1,
-				}, nil
-			},
-		},
-	}
-
-	buf := new(bytes.Buffer)
-	updateCmd.SetOut(buf)
-	updateCmd.SetErr(buf)
-	updateCmd.SetContext(context.Background())
-
-	if err := updateCmd.Flags().Set("check", "false"); err != nil {
+	if err := updateCmd.Flags().Set("yes", "true"); err != nil {
 		t.Fatal(err)
 	}
 
+	// Default flow should attempt template sync, not binary update
 	err := updateCmd.RunE(updateCmd, []string{})
+
+	// Template sync may fail in test environment (no TTY, etc.) but
+	// the error should NOT be about orchestrator or binary update.
 	if err != nil {
-		t.Fatalf("full update should not error, got %v", err)
+		if strings.Contains(err.Error(), "orchestrator") {
+			t.Errorf("default update should not require orchestrator, got %v", err)
+		}
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "Updated from") {
-		t.Errorf("output should contain 'Updated from', got %q", output)
-	}
-	if !strings.Contains(output, "0.9.0") {
-		t.Errorf("output should contain old version, got %q", output)
-	}
-	if !strings.Contains(output, "1.0.0") {
-		t.Errorf("output should contain new version, got %q", output)
+	if !strings.Contains(output, "Current version") {
+		t.Errorf("output should contain version info, got %q", output)
 	}
 }
 
-func TestRunUpdate_UpdateError(t *testing.T) {
+func TestRunUpdate_CheckModeShowsLatest(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
-	// Set local update source to bypass dev build detection
-	t.Setenv("MOAI_UPDATE_SOURCE", "local")
-
 	deps = &Dependencies{
 		UpdateChecker: &mockUpdateChecker{},
-		UpdateOrch: &mockUpdateOrch{
-			updateFunc: func(_ context.Context) (*update.UpdateResult, error) {
-				return nil, errors.New("update failed")
-			},
-		},
+		Logger:        slog.Default(),
 	}
 
 	buf := new(bytes.Buffer)
@@ -514,16 +460,54 @@ func TestRunUpdate_UpdateError(t *testing.T) {
 	updateCmd.SetErr(buf)
 	updateCmd.SetContext(context.Background())
 
-	if err := updateCmd.Flags().Set("check", "false"); err != nil {
+	if err := updateCmd.Flags().Set("check", "true"); err != nil {
 		t.Fatal(err)
 	}
+	defer func() { _ = updateCmd.Flags().Set("check", "false") }()
+
+	err := updateCmd.RunE(updateCmd, []string{})
+	if err != nil {
+		t.Fatalf("--check should not error, got %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "Latest version") {
+		t.Errorf("output should contain 'Latest version', got %q", output)
+	}
+	if !strings.Contains(output, "Binary updates happen automatically") {
+		t.Errorf("output should mention auto-update, got %q", output)
+	}
+}
+
+func TestRunUpdate_CheckModeWithError(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = &Dependencies{
+		UpdateChecker: &mockUpdateChecker{
+			checkLatestFunc: func(_ context.Context) (*update.VersionInfo, error) {
+				return nil, errors.New("network timeout")
+			},
+		},
+		Logger: slog.Default(),
+	}
+
+	buf := new(bytes.Buffer)
+	updateCmd.SetOut(buf)
+	updateCmd.SetErr(buf)
+	updateCmd.SetContext(context.Background())
+
+	if err := updateCmd.Flags().Set("check", "true"); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = updateCmd.Flags().Set("check", "false") }()
 
 	err := updateCmd.RunE(updateCmd, []string{})
 	if err == nil {
-		t.Error("should error on Update failure")
+		t.Error("--check should error on CheckLatest failure")
 	}
-	if !strings.Contains(err.Error(), "update failed") {
-		t.Errorf("error should mention update failed, got %v", err)
+	if !strings.Contains(err.Error(), "check latest version") {
+		t.Errorf("error should mention check latest, got %v", err)
 	}
 }
 
