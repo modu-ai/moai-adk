@@ -87,7 +87,8 @@ function Download-Binary {
     $downloadUrl = "https://github.com/modu-ai/moai-adk/releases/download/v$Version/$archiveName"
     $checksumUrl = "https://github.com/modu-ai/moai-adk/releases/download/v$Version/checksums.txt"
 
-    $tempDir = Join-Path $env:TEMP "moai-install-$(New-Guid)"
+    # Use cross-platform temp directory
+    $tempDir = Join-Path [System.IO.Path]::GetTempPath() "moai-install-$(New-Guid)"
     $archiveFile = Join-Path $tempDir $archiveName
     $checksumFile = Join-Path $tempDir "checksums.txt"
 
@@ -150,8 +151,9 @@ function Download-Binary {
         exit 1
     }
 
-    # Find the binary
-    $binaryPath = Join-Path $tempDir "moai.exe"
+    # Find the binary (moai on Unix, moai.exe on Windows)
+    $binaryName = if ($IsWindows -or ($null -eq $IsWindows -and $env:OS -eq "Windows_NT")) { "moai.exe" } else { "moai" }
+    $binaryPath = Join-Path $tempDir $binaryName
     if (-not (Test-Path $binaryPath)) {
         Print-Error "Binary not found in archive"
         Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue
@@ -167,10 +169,15 @@ function Install-Binary {
         [string]$BinaryPath
     )
 
-    # Determine install location
-    $targetDir = Join-Path $env:LOCALAPPDATA "Programs\moai"
+    # Determine install location (cross-platform)
+    $isWindows = $IsWindows -or ($null -eq $IsWindows -and $env:OS -eq "Windows_NT")
     if ($env:MOAI_INSTALL_DIR) {
         $targetDir = $env:MOAI_INSTALL_DIR
+    } elseif ($isWindows) {
+        $targetDir = Join-Path $env:LOCALAPPDATA "Programs\moai"
+    } else {
+        # Unix-like: macOS/Linux
+        $targetDir = Join-Path $env:HOME ".local/bin"
     }
 
     # Create target directory
@@ -179,7 +186,9 @@ function Install-Binary {
         New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
     }
 
-    $targetPath = Join-Path $targetDir "moai.exe"
+    # Binary name depends on platform
+    $binaryName = if ($isWindows) { "moai.exe" } else { "moai" }
+    $targetPath = Join-Path $targetDir $binaryName
 
     Print-Info "Installing to: $targetPath"
 
