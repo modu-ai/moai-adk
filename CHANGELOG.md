@@ -32,6 +32,15 @@ This is the first official release of MoAI-ADK Go Edition, a complete rewrite of
 - **LSP Quality Gates**: Integrated LSP diagnostics for quality validation
 - **Security Scanner**: Hook-based security scanning for code changes
 - **i18n Support**: Multi-language support in CLI commands
+- **Agent Teams v2.0** (Experimental): Dual-mode execution engine with sub-agent and Agent Teams support
+  - 5 team agents: researcher, backend-dev, frontend-dev, tester, quality
+  - Team workflow skill with plan/run orchestration
+  - `--team`, `--solo`, `--auto` execution mode flags
+  - Complexity-based automatic mode selection
+  - File ownership strategy for write conflict prevention
+  - Workflow configuration (`workflow.yaml`) with team patterns
+- **Hook Auto-Update**: Automatic update checking via session hooks
+- **Update Cache**: Caching layer for update checks to reduce API calls
 
 ### Changed
 
@@ -40,6 +49,11 @@ This is the first official release of MoAI-ADK Go Edition, a complete rewrite of
 - **Update System**: New update mechanism with GitHub releases integration
 - **Template Deployment**: Automatic template deployment during initialization
 - **Configuration Management**: Enhanced configuration with better validation
+- **Development Methodology**: Hybrid (TDD+DDD) is now the default for new projects; DDD reserved for brownfield/legacy
+- **CLI Update Command**: Refactored with extracted dependency management (`deps.go`)
+- **StatusLine**: Improved version display and rendering with expanded test coverage
+- **CLAUDE.md**: Updated to v12.0.0 with Agent Teams section (Section 15)
+- **SKILL.md**: Updated to v2.0.0 with team mode support and execution mode selection
 
 ### Fixed
 
