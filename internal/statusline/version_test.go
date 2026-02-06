@@ -9,14 +9,17 @@ import (
 
 func TestVersionCollector_CheckUpdate(t *testing.T) {
 	tests := []struct {
-		name          string
-		setupConfig   func(t *testing.T) string
-		wantVersion   string
-		wantAvailable bool
-		wantErr       bool
+		name            string
+		setupConfig     func(t *testing.T) string
+		binaryVersion   string
+		wantVersion     string
+		wantAvailable   bool
+		wantUpdate      bool
+		wantLatest      string
+		wantErr         bool
 	}{
 		{
-			name: "valid config with version",
+			name: "valid config with version, same as binary",
 			setupConfig: func(t *testing.T) string {
 				dir := t.TempDir()
 				configDir := filepath.Join(dir, ".moai", "config")
@@ -30,8 +33,31 @@ func TestVersionCollector_CheckUpdate(t *testing.T) {
 				}
 				return dir
 			},
+			binaryVersion: "v1.14.0",
 			wantVersion:   "1.14.0",
 			wantAvailable: true,
+			wantUpdate:    false,
+		},
+		{
+			name: "binary newer than template",
+			setupConfig: func(t *testing.T) string {
+				dir := t.TempDir()
+				configDir := filepath.Join(dir, ".moai", "config")
+				if err := os.MkdirAll(configDir, 0755); err != nil {
+					t.Fatal(err)
+				}
+				configPath := filepath.Join(configDir, "config.yaml")
+				content := []byte("moai:\n  version: v2.0.0\n")
+				if err := os.WriteFile(configPath, content, 0644); err != nil {
+					t.Fatal(err)
+				}
+				return dir
+			},
+			binaryVersion: "v2.0.1",
+			wantVersion:   "2.0.0",
+			wantAvailable: true,
+			wantUpdate:    true,
+			wantLatest:    "2.0.1",
 		},
 		{
 			name: "valid config with v prefix",
@@ -48,14 +74,17 @@ func TestVersionCollector_CheckUpdate(t *testing.T) {
 				}
 				return dir
 			},
+			binaryVersion: "v2.0.0",
 			wantVersion:   "2.0.0",
 			wantAvailable: true,
+			wantUpdate:    false,
 		},
 		{
 			name: "no config file",
 			setupConfig: func(t *testing.T) string {
 				return t.TempDir()
 			},
+			binaryVersion: "v2.0.0",
 			wantAvailable: false,
 		},
 		{
@@ -73,7 +102,28 @@ func TestVersionCollector_CheckUpdate(t *testing.T) {
 				}
 				return dir
 			},
+			binaryVersion: "v2.0.0",
 			wantAvailable: false,
+		},
+		{
+			name: "no binary version provided",
+			setupConfig: func(t *testing.T) string {
+				dir := t.TempDir()
+				configDir := filepath.Join(dir, ".moai", "config")
+				if err := os.MkdirAll(configDir, 0755); err != nil {
+					t.Fatal(err)
+				}
+				configPath := filepath.Join(configDir, "config.yaml")
+				content := []byte("moai:\n  version: v2.0.0\n")
+				if err := os.WriteFile(configPath, content, 0644); err != nil {
+					t.Fatal(err)
+				}
+				return dir
+			},
+			binaryVersion: "",
+			wantVersion:   "2.0.0",
+			wantAvailable: true,
+			wantUpdate:    false,
 		},
 	}
 
@@ -88,7 +138,7 @@ func TestVersionCollector_CheckUpdate(t *testing.T) {
 			}
 
 			// Clear any cached state by creating a new collector
-			v := NewVersionCollector()
+			v := NewVersionCollector(tt.binaryVersion)
 			ctx := context.Background()
 
 			got, err := v.CheckUpdate(ctx)
@@ -103,6 +153,14 @@ func TestVersionCollector_CheckUpdate(t *testing.T) {
 
 			if tt.wantVersion != "" && got.Current != tt.wantVersion {
 				t.Errorf("CheckUpdate() Current = %v, want %v", got.Current, tt.wantVersion)
+			}
+
+			if got.UpdateAvailable != tt.wantUpdate {
+				t.Errorf("CheckUpdate() UpdateAvailable = %v, want %v", got.UpdateAvailable, tt.wantUpdate)
+			}
+
+			if tt.wantLatest != "" && got.Latest != tt.wantLatest {
+				t.Errorf("CheckUpdate() Latest = %v, want %v", got.Latest, tt.wantLatest)
 			}
 		})
 	}

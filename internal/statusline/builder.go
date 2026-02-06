@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	gitpkg "github.com/modu-ai/moai-adk/internal/core/git"
+	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 // defaultBuilder implements the Builder interface by orchestrating
@@ -73,7 +74,7 @@ func New(opts Options) Builder {
 
 	// Auto-create version provider if not provided
 	if updateProvider == nil {
-		updateProvider = NewVersionCollector()
+		updateProvider = NewVersionCollector(version.GetVersion())
 		slog.Debug("auto-created version collector for statusline")
 	}
 

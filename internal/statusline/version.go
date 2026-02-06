@@ -11,11 +11,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// VersionCollector reads the MoAI version from the config file.
-// It implements the UpdateProvider interface for version display only.
+// VersionCollector reads the MoAI version from the config file and
+// compares it against the running binary version to detect when
+// templates need syncing via `moai update`.
 type VersionCollector struct {
-	mu     sync.RWMutex
-	cached string
+	mu            sync.RWMutex
+	cached        string
+	binaryVersion string // running binary version (from pkg/version)
 }
 
 // VersionConfig represents the structure of .moai/config/config.yaml
@@ -26,26 +28,24 @@ type VersionConfig struct {
 	} `yaml:"moai"`
 }
 
-// NewVersionCollector creates a VersionCollector that reads version
-// from .moai/config/config.yaml. If the config file doesn't exist or
-// version is not set, it returns empty string (not an error).
-func NewVersionCollector() *VersionCollector {
-	return &VersionCollector{}
+// NewVersionCollector creates a VersionCollector that reads the template
+// version from .moai/config/config.yaml and compares it against the
+// running binary version. If binaryVersion is empty, no update check
+// is performed.
+func NewVersionCollector(binaryVersion string) *VersionCollector {
+	return &VersionCollector{binaryVersion: binaryVersion}
 }
 
-// CheckUpdate reads the version from the config file and returns it.
-// It implements the UpdateProvider interface but only returns the current
-// version - no update checking is performed.
+// CheckUpdate reads the template version from the config file and compares
+// it against the running binary version. If the binary is newer than the
+// templates, UpdateAvailable is set to true with the binary version in Latest.
 func (v *VersionCollector) CheckUpdate(_ context.Context) (*VersionData, error) {
 	// Check cache first
 	v.mu.RLock()
 	if v.cached != "" {
 		version := v.cached
 		v.mu.RUnlock()
-		return &VersionData{
-			Current:   formatVersion(version),
-			Available: true,
-		}, nil
+		return v.buildVersionData(version), nil
 	}
 	v.mu.RUnlock()
 
@@ -60,10 +60,28 @@ func (v *VersionCollector) CheckUpdate(_ context.Context) (*VersionData, error) 
 	v.cached = version
 	v.mu.Unlock()
 
-	return &VersionData{
-		Current:   formatVersion(version),
+	return v.buildVersionData(version), nil
+}
+
+// buildVersionData constructs VersionData from the template version,
+// comparing against the binary version to detect available updates.
+func (v *VersionCollector) buildVersionData(templateVersion string) *VersionData {
+	data := &VersionData{
+		Current:   formatVersion(templateVersion),
 		Available: true,
-	}, nil
+	}
+
+	// Compare binary version vs template version
+	if v.binaryVersion != "" {
+		bv := formatVersion(v.binaryVersion)
+		tv := formatVersion(templateVersion)
+		if bv != tv && bv != "" && tv != "" {
+			data.Latest = bv
+			data.UpdateAvailable = true
+		}
+	}
+
+	return data
 }
 
 // readVersionFromConfig searches for .moai/config/config.yaml starting

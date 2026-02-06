@@ -104,9 +104,13 @@ func (r *Renderer) renderCompact(data *StatusData) []string {
 		sections = append(sections, fmt.Sprintf("🔅 v%s", data.ClaudeCodeVersion))
 	}
 
-	// 7. MoAI-ADK version with emoji (from config)
+	// 7. MoAI-ADK version with emoji (from config) + update notification
 	if data.Version.Available && data.Version.Current != "" {
-		sections = append(sections, fmt.Sprintf("🗿 v%s", data.Version.Current))
+		versionStr := fmt.Sprintf("🗿 v%s", data.Version.Current)
+		if data.Version.UpdateAvailable && data.Version.Latest != "" {
+			versionStr += fmt.Sprintf(" (v%s updated)", data.Version.Latest)
+		}
+		sections = append(sections, versionStr)
 	}
 
 	// 8. Branch with emoji

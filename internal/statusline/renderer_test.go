@@ -314,6 +314,51 @@ func TestRender_WithOutputStyle(t *testing.T) {
 	}
 }
 
+func TestRender_VersionUpdateNotification(t *testing.T) {
+	r := newTestRenderer()
+	data := &StatusData{
+		Metrics: MetricsData{Model: "Opus 4.5", Available: true},
+		Memory:  MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
+		Version: VersionData{
+			Current:         "2.0.0",
+			Latest:          "2.0.1",
+			UpdateAvailable: true,
+			Available:        true,
+		},
+	}
+
+	got := r.Render(data, ModeDefault)
+
+	if !strings.Contains(got, "🗿 v2.0.0") {
+		t.Errorf("should contain current version, got %q", got)
+	}
+	if !strings.Contains(got, "(v2.0.1 updated)") {
+		t.Errorf("should contain update notification, got %q", got)
+	}
+}
+
+func TestRender_VersionNoUpdate(t *testing.T) {
+	r := newTestRenderer()
+	data := &StatusData{
+		Metrics: MetricsData{Model: "Opus 4.5", Available: true},
+		Memory:  MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
+		Version: VersionData{
+			Current:         "2.0.0",
+			UpdateAvailable: false,
+			Available:        true,
+		},
+	}
+
+	got := r.Render(data, ModeDefault)
+
+	if !strings.Contains(got, "🗿 v2.0.0") {
+		t.Errorf("should contain current version, got %q", got)
+	}
+	if strings.Contains(got, "updated)") {
+		t.Errorf("should NOT contain update notification when no update, got %q", got)
+	}
+}
+
 func TestRender_WithDirectory(t *testing.T) {
 	r := newTestRenderer()
 	data := &StatusData{
