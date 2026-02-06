@@ -5,100 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Fixed
-
-- **GitHub Issue #323**: Fixed PowerShell `irm | iex` installation failure
-  - Wrapped install.ps1 script in `& { ... } @args` scriptblock for piping compatibility
-  - Added ARM64 platform detection via ProcessArchitecture
-  - Changed install location from `$env:USERPROFILE` to `$env:LOCALAPPDATA\Programs\moai`
-  - Added SHA-256 checksum verification
-- **GitHub Issue #324**: Fixed Linux/WSL2 installation 404 download error
-  - Updated download URL to match goreleaser archive naming (`moai-adk_go-vX.Y.Z_OS_ARCH.tar.gz`)
-  - Added tar.gz extraction step
-  - Added SHA-256 checksum verification
-  - Added WSL environment detection
-- Windows CMD installation script improvements
-  - Added ARM64 platform detection
-  - Updated download URL to match goreleaser naming
-  - Added extraction via PowerShell Expand-Archive
-  - Fixed install location to `%LOCALAPPDATA%\Programs\moai`
-- goreleaser configuration fixes
-  - Fixed module path from `moai-adk-go` to `moai-adk` in ldflags
-  - Fixed release target repository from `moai-adk-go` to `moai-adk`
-- Windows hook execution improvements
-  - Changed from `cmd.exe /c` to `bash` command (uses Git for Windows)
-  - Ensures consistent hook execution across all platforms
-- Cross-platform path construction
-  - Replaced string concatenation with `filepath.Join()` in shell detection
-  - Fixed path handling for PowerShell profile detection
-- Update checker enhancements
-  - Added `go-v` prefix support for version comparison
-  - Updated archive naming to match goreleaser conventions
-- StatusLine configuration
-  - Changed from absolute path to relative path for better portability
-  - Addresses GitHub Issue #7925 (StatusLine doesn't expand environment variables)
-- Go bin path detection on Windows
-  - Added fallback paths for Go installation directory detection
-  - Checks `%PROGRAMFILES%\Go\bin` and `C:\Go\bin`
-
-### Changed
-
-- Release command (`/moai:99-release`) now configured for test/private releases
-  - Target branch: `moai-go-v2` (NOT main)
-  - Tag prefix: `go-v` (e.g., `go-v2.0.0`)
-  - GitHub Release steps marked as optional for test releases
-
----
-
-## [Unreleased]
-
-### 수정됨
-
-- **GitHub Issue #323**: PowerShell `irm | iex` 설치 실패 수정
-  - 파이핑 호환성을 위해 install.ps1 스크립트를 `& { ... } @args` 스크립트블록으로 래핑
-  - ProcessArchitecture를 통한 ARM64 플랫폼 감지 추가
-  - 설치 위치를 `$env:USERPROFILE`에서 `$env:LOCALAPPDATA\Programs\moai`로 변경
-  - SHA-256 체크섬 검증 추가
-- **GitHub Issue #324**: Linux/WSL2 설치 404 다운로드 오류 수정
-  - goreleaser 아카이브 명명 규칙에 맞게 다운로드 URL 업데이트 (`moai-adk_go-vX.Y.Z_OS_ARCH.tar.gz`)
-  - tar.gz 압축 해제 단계 추가
-  - SHA-256 체크섬 검증 추가
-  - WSL 환경 감지 추가
-- Windows CMD 설치 스크립트 개선
-  - ARM64 플랫폼 감지 추가
-  - goreleaser 명명 규칙에 맞게 다운로드 URL 업데이트
-  - PowerShell Expand-Archive를 통한 압축 해제 추가
-  - 설치 위치를 `%LOCALAPPDATA%\Programs\moai`로 수정
-- goreleaser 설정 수정
-  - ldflags의 모듈 경로를 `moai-adk-go`에서 `moai-adk`로 수정
-  - 릴리스 대상 저장소를 `moai-adk-go`에서 `moai-adk`로 수정
-- Windows 훅 실행 개선
-  - `cmd.exe /c`에서 `bash` 명령으로 변경 (Git for Windows 사용)
-  - 모든 플랫폼에서 일관된 훅 실행 보장
-- 크로스 플랫폼 경로 구성
-  - 셸 감지에서 문자열 연결을 `filepath.Join()`으로 교체
-  - PowerShell 프로필 감지를 위한 경로 처리 수정
-- 업데이트 검사기 개선
-  - 버전 비교를 위한 `go-v` 접두사 지원 추가
-  - goreleaser 규칙에 맞게 아카이브 명명 업데이트
-- StatusLine 설정
-  - 이식성 향상을 위해 절대 경로에서 상대 경로로 변경
-  - GitHub Issue #7925 해결 (StatusLine이 환경 변수를 확장하지 않음)
-- Windows에서 Go bin 경로 감지
-  - Go 설치 디렉터리 감지를 위한 대체 경로 추가
-  - `%PROGRAMFILES%\Go\bin` 및 `C:\Go\bin` 확인
-
-### 변경됨
-
-- 릴리스 명령 (`/moai:99-release`)이 테스트/비공개 릴리스용으로 설정됨
-  - 대상 브랜치: `moai-go-v2` (main이 아님)
-  - 태그 접두사: `go-v` (예: `go-v2.0.0`)
-  - 테스트 릴리스의 경우 GitHub Release 단계는 선택 사항으로 표시
-
----
-
 ## [2.0.0] - 2026-02-06
 
 ### Summary
@@ -137,6 +43,39 @@ This is the first official release of MoAI-ADK Go Edition, a complete rewrite of
 
 ### Fixed
 
+- **GitHub Issue #323**: Fixed PowerShell `irm | iex` installation failure
+  - Wrapped install.ps1 script in `& { ... } @args` scriptblock for piping compatibility
+  - Added ARM64 platform detection via ProcessArchitecture
+  - Changed install location from `$env:USERPROFILE` to `$env:LOCALAPPDATA\Programs\moai`
+  - Added SHA-256 checksum verification
+- **GitHub Issue #324**: Fixed Linux/WSL2 installation 404 download error
+  - Updated download URL to match goreleaser archive naming (`moai-adk_go-vX.Y.Z_OS_ARCH.tar.gz`)
+  - Added tar.gz extraction step
+  - Added SHA-256 checksum verification
+  - Added WSL environment detection
+- Windows CMD installation script improvements
+  - Added ARM64 platform detection
+  - Updated download URL to match goreleaser naming
+  - Added extraction via PowerShell Expand-Archive
+  - Fixed install location to `%LOCALAPPDATA%\Programs\moai`
+- goreleaser configuration fixes
+  - Fixed module path from `moai-adk-go` to `moai-adk` in ldflags
+  - Fixed release target repository from `moai-adk-go` to `moai-adk`
+- Windows hook execution improvements
+  - Changed from `cmd.exe /c` to `bash` command (uses Git for Windows)
+  - Ensures consistent hook execution across all platforms
+- Cross-platform path construction
+  - Replaced string concatenation with `filepath.Join()` in shell detection
+  - Fixed path handling for PowerShell profile detection
+- Update checker enhancements
+  - Added `go-v` prefix support for version comparison
+  - Updated archive naming to match goreleaser conventions
+- StatusLine configuration
+  - Changed from absolute path to relative path for better portability
+  - Addresses GitHub Issue #7925 (StatusLine doesn't expand environment variables)
+- Go bin path detection on Windows
+  - Added fallback paths for Go installation directory detection
+  - Checks `%PROGRAMFILES%\Go\bin` and `C:\Go\bin`
 - Template synchronization issues in development builds
 - Browser opening during automated tests
 - Hook JSON output schema compliance
@@ -208,6 +147,39 @@ Python 기반 MoAI-ADK를 Go로 완전히 재작성한 첫 번째 공식 릴리�
 
 ### 수정됨
 
+- **GitHub Issue #323**: PowerShell `irm | iex` 설치 실패 수정
+  - 파이핑 호환성을 위해 install.ps1 스크립트를 `& { ... } @args` 스크립트블록으로 래핑
+  - ProcessArchitecture를 통한 ARM64 플랫폼 감지 추가
+  - 설치 위치를 `$env:USERPROFILE`에서 `$env:LOCALAPPDATA\Programs\moai`로 변경
+  - SHA-256 체크섬 검증 추가
+- **GitHub Issue #324**: Linux/WSL2 설치 404 다운로드 오류 수정
+  - goreleaser 아카이브 명명 규칙에 맞게 다운로드 URL 업데이트 (`moai-adk_go-vX.Y.Z_OS_ARCH.tar.gz`)
+  - tar.gz 압축 해제 단계 추가
+  - SHA-256 체크섬 검증 추가
+  - WSL 환경 감지 추가
+- Windows CMD 설치 스크립트 개선
+  - ARM64 플랫폼 감지 추가
+  - goreleaser 명명 규칙에 맞게 다운로드 URL 업데이트
+  - PowerShell Expand-Archive를 통한 압축 해제 추가
+  - 설치 위치를 `%LOCALAPPDATA%\Programs\moai`로 수정
+- goreleaser 설정 수정
+  - ldflags의 모듈 경로를 `moai-adk-go`에서 `moai-adk`로 수정
+  - 릴리스 대상 저장소를 `moai-adk-go`에서 `moai-adk`로 수정
+- Windows 훅 실행 개선
+  - `cmd.exe /c`에서 `bash` 명령으로 변경 (Git for Windows 사용)
+  - 모든 플랫폼에서 일관된 훅 실행 보장
+- 크로스 플랫폼 경로 구성
+  - 셸 감지에서 문자열 연결을 `filepath.Join()`으로 교체
+  - PowerShell 프로필 감지를 위한 경로 처리 수정
+- 업데이트 검사기 개선
+  - 버전 비교를 위한 `go-v` 접두사 지원 추가
+  - goreleaser 규칙에 맞게 아카이브 명명 업데이트
+- StatusLine 설정
+  - 이식성 향상을 위해 절대 경로에서 상대 경로로 변경
+  - GitHub Issue #7925 해결 (StatusLine이 환경 변수를 확장하지 않음)
+- Windows에서 Go bin 경로 감지
+  - Go 설치 디렉터리 감지를 위한 대체 경로 추가
+  - `%PROGRAMFILES%\Go\bin` 및 `C:\Go\bin` 확인
 - 개발 빌드에서의 템플릿 동기화 문제
 - 자동화된 테스트 중 브라우저 열림 문제
 - 훅 JSON 출력 스키마 준수
@@ -238,38 +210,6 @@ Python MoAI-ADK v1.x에서 마이그레이션하는 사용자는:
 3. `moai init` 실행으로 프로젝트 템플릿 업데이트
 
 자세한 마이그레이션 가이드는 [MIGRATION.ko.md](MIGRATION.ko.md)를 참조하세요.
-
----
-
-## [Unreleased]
-
-### Added
-- SecurityScanner and LSP diagnostics integration in hook system
-- Local release folder update system for streamlined development
-- Branch-specific release detection for version management
-- Hook wrapper scripts for all 5 MoAI hook events (session-start, compact, pre-tool, post-tool, stop)
-
-### Changed
-- Module renamed from `moai-adk-go` to `moai-adk` with lint fixes
-- **Hook Path Syntax**: Updated to use `"$CLAUDE_PROJECT_DIR/.claude/hooks/..."` with proper quoting for paths with spaces
-- **StatusLine Configuration**: Changed to relative path `.moai/status_line.sh` (statusLine does not support `$CLAUDE_PROJECT_DIR` expansion per GitHub Issue #7925)
-- **Hook Wrapper Deployment**: Hook wrappers are now deployed to `.claude/hooks/moai/` during initialization with automatic moai binary path detection
-
-### Fixed
-- **Hook JSON Output Schema**: Added missing `hookEventName` field in `hookSpecificOutput` for protocol compliance
-  - Affected events: `PreToolUse`, `PostToolUse`, `SessionStart`, `PreCompact`
-  - Ensures full compliance with Claude Code hook validation requirements
-  - Resolves JSON schema validation errors in hook execution
-- Hook JSON output corrected for `Stop` and `SessionEnd` events
-- Template synchronization now works on dev builds and when Go binary is unavailable
-- Browser no longer opens during automated tests
-- Template sync properly executes after binary updates
-- API URL updated to point to `modu-ai/moai-adk` repository
-- **Missing Hook Scripts**: Deployed 5 hook wrapper scripts that were missing from local project, causing "No such file or directory" errors
-
-### Removed
-- Unused `err` field from `confirmModel` struct in merge confirmation UI
-- Duplicate `.tmpl` files from local `.moai/config/sections/` directory (template sources belong in `internal/template/templates/` only)
 
 ---
 

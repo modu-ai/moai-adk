@@ -1,7 +1,7 @@
 moai:
     initialized: true
     initialized_at: ""
-    version: ""
+    version: "2.0.0"
 project:
     created_at: ""
     description: ""
