@@ -233,7 +233,8 @@ function Add-ToPath {
         Write-Host ""
         Print-Info "Please add manually by running (Admin PowerShell):"
         Write-Host ""
-        Write-Host "    [Environment]::SetEnvironmentVariable('Path', `$env:Path + ';$targetDir', 'User')" -ForegroundColor Yellow
+        $exampleCmd = "[Environment]::SetEnvironmentVariable('Path', `$env:Path + ';$targetDir', 'User')"
+        Write-Host "    $exampleCmd" -ForegroundColor Yellow
         Write-Host ""
     }
 }
