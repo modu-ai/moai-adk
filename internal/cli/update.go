@@ -524,6 +524,9 @@ func determineChangeType(exists bool) string {
 //
 // Filters out moai* skills from the analysis since they are managed by MoAI-ADK
 // and users typically don't need to see them in the merge confirmation UI.
+//
+// For .tmpl files, displays the rendered target path (without .tmpl extension)
+// since that's what users will see in their project.
 func analyzeFiles(templates []string, projectRoot string) []merge.FileAnalysis {
 	var files []merge.FileAnalysis
 	for _, tmpl := range templates {
@@ -532,17 +535,25 @@ func analyzeFiles(templates []string, projectRoot string) []merge.FileAnalysis {
 			continue
 		}
 
+		// Handle .tmpl files: use rendered target path for display and existence check
+		displayPath := tmpl
 		targetPath := filepath.Join(projectRoot, tmpl)
+		if strings.HasSuffix(tmpl, ".tmpl") {
+			// .tmpl files are rendered to paths without the .tmpl extension
+			displayPath = strings.TrimSuffix(tmpl, ".tmpl")
+			targetPath = filepath.Join(projectRoot, displayPath)
+		}
+
 		_, err := os.Stat(targetPath)
 		exists := err == nil
 
-		// Classify risk and determine strategy
-		risk := classifyFileRisk(tmpl, exists)
-		strategy := determineStrategy(tmpl)
+		// Classify risk and determine strategy (use displayPath for classification)
+		risk := classifyFileRisk(displayPath, exists)
+		strategy := determineStrategy(displayPath)
 		changeType := determineChangeType(exists)
 
 		files = append(files, merge.FileAnalysis{
-			Path:      tmpl,
+			Path:      displayPath,
 			Changes:   changeType,
 			Strategy:  strategy,
 			RiskLevel: risk,
@@ -1509,18 +1520,35 @@ func ensureGlobalSettingsEnv() error {
 		}
 	}
 
-	// Check if permissions.allow needs update
+	// Check if permissions.allow needs update (must be an array per Claude Code IAM docs)
 	if !needsUpdate {
 		if existingPermissions, exists := existingSettings["permissions"]; exists {
 			if permMap, ok := existingPermissions.(map[string]interface{}); ok {
-				if existingAllow, exists := permMap["allow"]; !exists || existingAllow != requiredPermissions {
-					needsUpdate = true
+				if existingAllow, exists := permMap["allow"]; exists {
+					// Check if it's an array with our value
+					if allowArray, ok := existingAllow.([]interface{}); ok {
+						// Check if Task:* is in the array
+						found := false
+						for _, item := range allowArray {
+							if item == requiredPermissions {
+								found = true
+								break
+							}
+						}
+						if !found {
+							needsUpdate = true
+						}
+					} else {
+						needsUpdate = true // Not an array or wrong format
+					}
+				} else {
+					needsUpdate = true // allow field missing
 				}
 			} else {
-				needsUpdate = true
+				needsUpdate = true // permissions is not a map
 			}
 		} else {
-			needsUpdate = true
+			needsUpdate = true // permissions missing
 		}
 	}
 
@@ -1562,9 +1590,9 @@ func ensureGlobalSettingsEnv() error {
 	// Update settings
 	existingSettings["env"] = mergedEnv
 
-	// Add permissions.allow
+	// Add permissions.allow (must be an array per Claude Code IAM docs)
 	existingSettings["permissions"] = map[string]interface{}{
-		"allow": requiredPermissions,
+		"allow": []interface{}{requiredPermissions},
 	}
 
 	// Add teammateMode

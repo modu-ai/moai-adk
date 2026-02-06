@@ -1213,13 +1213,17 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 			}
 		}
 
-		// Check permissions.allow exists
+		// Check permissions.allow exists (must be an array per Claude Code IAM docs)
 		permissions, ok := settings["permissions"].(map[string]interface{})
 		if !ok {
 			t.Fatal("permissions not found in settings")
 		}
-		if permissions["allow"] != "Task:*" {
-			t.Errorf("permissions.allow not set correctly: got %v", permissions["allow"])
+		allowArray, ok := permissions["allow"].([]interface{})
+		if !ok {
+			t.Fatal("permissions.allow is not an array")
+		}
+		if len(allowArray) != 1 || allowArray[0] != "Task:*" {
+			t.Errorf("permissions.allow not set correctly: got %v", allowArray)
 		}
 
 		// Check teammateMode exists
@@ -1301,7 +1305,7 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 				"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
 			},
 			"permissions": map[string]interface{}{
-				"allow": "Task:*",
+				"allow": []interface{}{"Task:*"},
 			},
 			"teammateMode": "auto",
 			"hooks": map[string]interface{}{

@@ -291,8 +291,8 @@ setup_claude_settings() {
            '.env[$key] = $value' \
            "$settings_file" > "$settings_file.tmp" && mv "$settings_file.tmp" "$settings_file"
 
-        # Add permissions.allow
-        jq '.permissions.allow = "Task:*"' \
+        # Add permissions.allow (must be an array per Claude Code IAM docs)
+        jq '.permissions.allow = ["Task:*"]' \
            "$settings_file" > "$settings_file.tmp" && mv "$settings_file.tmp" "$settings_file"
 
         # Add teammateMode
@@ -322,9 +322,9 @@ setup_claude_settings() {
             rm -f "$settings_file.bak"
         fi
 
-        # Add permissions section
+        # Add permissions section (must be an array per Claude Code IAM docs)
         if ! grep -q '"permissions"' "$settings_file"; then
-            sed -i.bak 's/{/{\n  "permissions": {\n    "allow": "Task:*"\n  },/' "$settings_file"
+            sed -i.bak 's/{/{\n  "permissions": {\n    "allow": ["Task:*"]\n  },/' "$settings_file"
             rm -f "$settings_file.bak"
         fi
 

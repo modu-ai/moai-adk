@@ -26,9 +26,13 @@ This is the first official release of MoAI-ADK Go Edition, a complete rewrite of
 - Fixed missing error checks in init_tui.go (added nolint comments for informational messages)
 - Fixed missing error checks in init.go (added nolint comment for informational message)
 - Simplified character validation logic in wizard_tui.go using De Morgan's law
-- All 25 packages pass race detection tests
+- All 26 packages pass race detection tests
 - Zero linting issues after fixes
-- Average test coverage: 78.4%
+- Fixed `.tmpl` file display in `moai update` (now shows rendered target paths)
+- Fixed `permissions.allow` format (array instead of string per Claude Code IAM docs)
+
+**Language Configuration:**
+- Default conversation language set to Korean (ko) for improved user experience
 
 ### Breaking Changes
 
@@ -147,6 +151,27 @@ See [MIGRATION.ko.md](MIGRATION.ko.md) for detailed migration guide.
 **메이저 릴리스: MoAI-ADK Go 에디션**
 
 Python 기반 MoAI-ADK를 Go로 완전히 재작성한 첫 번째 공식 릴리스입니다. 성능이 크게 향상되고 설치가 간편해지며 기능이 향상되었습니다.
+
+### 최신 업데이트 (2026-02-06)
+
+**템플릿 동기화:**
+- 업데이트된 스킬 프론트매터로 17개 에이전트 정의 파일 동기화
+- 팀 모드 지원이 포함된 워크플로우 스킬 (SKILL.md v2.0.0, moai.md) 업데이트
+- Hybrid 방법론을 기본값으로 사용하는 workflow-modes.md 업데이트
+- workflow.yaml 및 status_line.sh 템플릿 동기화
+- Agent Teams 문서가 포함된 CLAUDE.md v12.0.0 업데이트
+
+**코드 품질 개선:**
+- init_tui.go에서 누락된 오류 검사 수정 (정보 메시지에 nolint 주석 추가)
+- init.go에서 누락된 오류 검사 수정 (정보 메시지에 nolint 주석 추가)
+- 드 모르간 법칙을 사용한 wizard_tui.go의 문자 검증 로직 단순화
+- 26개 패키지 모두 race detection 테스트 통과
+- 수정 후 linting 문제 0개
+- `moai update`에서 `.tmpl` 파일 표시 수정 (이제 렌더링된 대상 경로 표시)
+- `permissions.allow` 형식 수정 (Claude Code IAM 문서에 따라 문자열 대신 배열 사용)
+
+**언어 설정:**
+- 개선된 사용자 경험을 위해 기본 대화 언어를 한국어(ko)로 설정
 
 ### Breaking Changes
 
