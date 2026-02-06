@@ -654,6 +654,10 @@ func TestSaveAnswerAllCases(t *testing.T) {
 		{ID: "code_comment_lang", Type: QuestionTypeSelect, Options: []Option{{Value: "en"}}},
 		{ID: "doc_lang", Type: QuestionTypeSelect, Options: []Option{{Value: "ko"}}},
 		{ID: "development_mode", Type: QuestionTypeSelect, Options: []Option{{Value: "ddd"}}},
+		{ID: "agent_teams_mode", Type: QuestionTypeSelect, Options: []Option{{Value: "auto"}}},
+		{ID: "max_teammates", Type: QuestionTypeSelect, Options: []Option{{Value: "3"}}},
+		{ID: "default_model", Type: QuestionTypeSelect, Options: []Option{{Value: "sonnet"}}},
+		{ID: "github_token", Type: QuestionTypeInput},
 	}
 	model := New(questions, nil)
 
@@ -701,6 +705,26 @@ func TestSaveAnswerAllCases(t *testing.T) {
 	model.saveAnswer("development_mode", "hybrid")
 	if model.result.DevelopmentMode != "hybrid" {
 		t.Errorf("expected DevelopmentMode 'hybrid', got %q", model.result.DevelopmentMode)
+	}
+
+	model.saveAnswer("agent_teams_mode", "subagent")
+	if model.result.AgentTeamsMode != "subagent" {
+		t.Errorf("expected AgentTeamsMode 'subagent', got %q", model.result.AgentTeamsMode)
+	}
+
+	model.saveAnswer("max_teammates", "4")
+	if model.result.MaxTeammates != "4" {
+		t.Errorf("expected MaxTeammates '4', got %q", model.result.MaxTeammates)
+	}
+
+	model.saveAnswer("default_model", "opus")
+	if model.result.DefaultModel != "opus" {
+		t.Errorf("expected DefaultModel 'opus', got %q", model.result.DefaultModel)
+	}
+
+	model.saveAnswer("github_token", "ghp_test_token")
+	if model.result.GitHubToken != "ghp_test_token" {
+		t.Errorf("expected GitHubToken 'ghp_test_token', got %q", model.result.GitHubToken)
 	}
 }
 

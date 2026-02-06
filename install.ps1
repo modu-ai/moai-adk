@@ -88,7 +88,9 @@ function Download-Binary {
     $checksumUrl = "https://github.com/modu-ai/moai-adk/releases/download/v$Version/checksums.txt"
 
     # Use cross-platform temp directory
-    $tempDir = Join-Path [System.IO.Path]::GetTempPath() "moai-install-$(New-Guid)"
+    $tmpBase = ([System.IO.Path]::GetTempPath())
+    $tmpName = "moai-install-$([System.Guid]::NewGuid().ToString())"
+    $tempDir = Join-Path $tmpBase $tmpName
     $archiveFile = Join-Path $tempDir $archiveName
     $checksumFile = Join-Path $tempDir "checksums.txt"
 
@@ -152,7 +154,8 @@ function Download-Binary {
     }
 
     # Find the binary (moai on Unix, moai.exe on Windows)
-    $binaryName = if ($IsWindows -or ($null -eq $IsWindows -and $env:OS -eq "Windows_NT")) { "moai.exe" } else { "moai" }
+    $isWin = ($IsWindows -or ($null -eq $IsWindows -and $env:OS -eq "Windows_NT"))
+    if ($isWin) { $binaryName = "moai.exe" } else { $binaryName = "moai" }
     $binaryPath = Join-Path $tempDir $binaryName
     if (-not (Test-Path $binaryPath)) {
         Print-Error "Binary not found in archive"
@@ -170,7 +173,7 @@ function Install-Binary {
     )
 
     # Determine install location (cross-platform)
-    $isWindows = $IsWindows -or ($null -eq $IsWindows -and $env:OS -eq "Windows_NT")
+    $isWindows = ($IsWindows -or ($null -eq $IsWindows -and $env:OS -eq "Windows_NT"))
     if ($env:MOAI_INSTALL_DIR) {
         $targetDir = $env:MOAI_INSTALL_DIR
     } elseif ($isWindows) {
@@ -187,7 +190,7 @@ function Install-Binary {
     }
 
     # Binary name depends on platform
-    $binaryName = if ($isWindows) { "moai.exe" } else { "moai" }
+    if ($isWindows) { $binaryName = "moai.exe" } else { $binaryName = "moai" }
     $targetPath = Join-Path $targetDir $binaryName
 
     Print-Info "Installing to: $targetPath"
@@ -198,12 +201,14 @@ function Install-Binary {
     }
     catch {
         Print-Error "Failed to install: $_"
-        Remove-Item (Split-Path $BinaryPath) -Recurse -Force -ErrorAction SilentlyContinue
+        $parentDir = Split-Path $BinaryPath
+        Remove-Item $parentDir -Recurse -Force -ErrorAction SilentlyContinue
         exit 1
     }
 
     # Clean up temp directory
-    Remove-Item (Split-Path $BinaryPath) -Recurse -Force -ErrorAction SilentlyContinue
+    $parentDir = Split-Path $BinaryPath
+    Remove-Item $parentDir -Recurse -Force -ErrorAction SilentlyContinue
 
     return $targetPath
 }
@@ -231,10 +236,9 @@ function Add-ToPath {
     catch {
         Print-Warning "Failed to add to PATH automatically"
         Write-Host ""
-        Print-Info "Please add manually by running (Admin PowerShell):"
+        Print-Info 'Please add manually by running (Admin PowerShell):'
         Write-Host ""
-        $exampleCmd = "[Environment]::SetEnvironmentVariable('Path', `$env:Path + ';$targetDir', 'User')"
-        Write-Host "    $exampleCmd" -ForegroundColor Yellow
+        Write-Host "    [Environment]::SetEnvironmentVariable('Path', `$env:Path + ';$targetDir', 'User')" -ForegroundColor Yellow
         Write-Host ""
     }
 }
@@ -267,9 +271,9 @@ function Main {
     param($Arguments)
 
     Write-Host ""
-    Write-Host "╔══════════════════════════════════════════════════════════════╗"
-    Write-Host "║          MoAI-ADK Go Edition Installer v2.0                   ║"
-    Write-Host "╚══════════════════════════════════════════════════════════════╝"
+    Write-Host "=============================================================="
+    Write-Host "          MoAI-ADK Go Edition Installer v2.0"
+    Write-Host "=============================================================="
     Write-Host ""
 
     # Parse arguments
@@ -277,37 +281,36 @@ function Main {
     $InstallDir = ""
 
     for ($i = 0; $i -lt $Arguments.Count; $i++) {
-        switch ($Arguments[$i]) {
-            { $_ -in "--version", "-version" } {
-                $Version = $Arguments[$i + 1]
-                $i++
-            }
-            { $_ -in "--install-dir", "-install-dir" } {
-                $InstallDir = $Arguments[$i + 1]
-                $i++
-            }
-            { $_ -in "-h", "--help", "-help" } {
-                Write-Host "Usage: .\install.ps1 [OPTIONS]"
-                Write-Host ""
-                Write-Host "Options:"
-                Write-Host "  --version VERSION    Install specific version (default: latest)"
-                Write-Host "  --install-dir DIR     Install to custom directory"
-                Write-Host "  -h, --help            Show this help message"
-                Write-Host ""
-                Write-Host "Examples:"
-                Write-Host "  .\install.ps1                           # Install latest version"
-                Write-Host "  .\install.ps1 -version 2.0.0              # Install version 2.0.0"
-                Write-Host "  .\install.ps1 -install-dir `"C:\Tools`"  # Install to custom directory"
-                Write-Host ""
-                Write-Host "Piped execution:"
-                Write-Host "  irm https://raw.githubusercontent.com/.../install.ps1 | iex"
-                exit 0
-            }
-            default {
-                Print-Error "Unknown option: $($Arguments[$i])"
-                Write-Host "Use -h for usage information"
-                exit 1
-            }
+        $arg = $Arguments[$i]
+        if ($arg -eq "--version" -or $arg -eq "-version") {
+            $Version = $Arguments[$i + 1]
+            $i++
+        }
+        elseif ($arg -eq "--install-dir" -or $arg -eq "-install-dir") {
+            $InstallDir = $Arguments[$i + 1]
+            $i++
+        }
+        elseif ($arg -eq "-h" -or $arg -eq "--help" -or $arg -eq "-help") {
+            Write-Host "Usage: .\install.ps1 [OPTIONS]"
+            Write-Host ""
+            Write-Host "Options:"
+            Write-Host "  --version VERSION    Install specific version (default: latest)"
+            Write-Host "  --install-dir DIR     Install to custom directory"
+            Write-Host "  -h, --help            Show this help message"
+            Write-Host ""
+            Write-Host "Examples:"
+            Write-Host '  .\install.ps1                             # Install latest version'
+            Write-Host '  .\install.ps1 -version 2.0.0              # Install version 2.0.0'
+            Write-Host '  .\install.ps1 -install-dir "C:\Tools"     # Install to custom directory'
+            Write-Host ""
+            Write-Host "Piped execution:"
+            Write-Host "  irm https://raw.githubusercontent.com/.../install.ps1 | iex"
+            exit 0
+        }
+        else {
+            Print-Error "Unknown option: $arg"
+            Write-Host "Use -h for usage information"
+            exit 1
         }
     }
 

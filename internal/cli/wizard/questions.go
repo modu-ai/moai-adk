@@ -80,6 +80,18 @@ func DefaultQuestions(projectRoot string) []Question {
 				return r.GitMode == "personal" || r.GitMode == "team"
 			},
 		},
+		// 5b. GitHub Token (conditional, after github_username)
+		{
+			ID:          "github_token",
+			Type:        QuestionTypeInput,
+			Title:       "Enter GitHub personal access token (optional)",
+			Description: "Required for PR creation and pushing. Leave empty to skip or use gh CLI.",
+			Default:     "",
+			Required:    false,
+			Condition: func(r *WizardResult) bool {
+				return r.GitMode == "personal" || r.GitMode == "team"
+			},
+		},
 		// 6. Git Commit Language
 		{
 			ID:          "git_commit_lang",
@@ -137,6 +149,55 @@ func DefaultQuestions(projectRoot string) []Question {
 			},
 			Default:  "hybrid",
 			Required: true,
+		},
+		// 10. Agent Teams Mode
+		{
+			ID:          "agent_teams_mode",
+			Type:        QuestionTypeSelect,
+			Title:       "Select Agent Teams execution mode",
+			Description: "Controls whether MoAI uses Agent Teams (parallel) or sub-agents (sequential).",
+			Options: []Option{
+				{Label: "Auto (Recommended)", Value: "auto", Desc: "Intelligent selection based on task complexity"},
+				{Label: "Sub-agent (Classic)", Value: "subagent", Desc: "Traditional single-agent mode"},
+				{Label: "Team (Experimental)", Value: "team", Desc: "Parallel Agent Teams (requires experimental flag)"},
+			},
+			Default:  "auto",
+			Required: true,
+		},
+		// 11. Max Teammates (conditional - only for team mode)
+		{
+			ID:          "max_teammates",
+			Type:        QuestionTypeSelect,
+			Title:       "Select maximum teammates",
+			Description: "Maximum number of teammates in a team (2-5 recommended).",
+			Options: []Option{
+				{Label: "2", Value: "2", Desc: "Minimum for parallel work"},
+				{Label: "3", Value: "3", Desc: "Small team"},
+				{Label: "4", Value: "4", Desc: "Medium team"},
+				{Label: "5", Value: "5", Desc: "Large team (default)"},
+			},
+			Default:  "5",
+			Required: true,
+			Condition: func(r *WizardResult) bool {
+				return r.AgentTeamsMode == "team"
+			},
+		},
+		// 12. Default Model (conditional - only for team mode)
+		{
+			ID:          "default_model",
+			Type:        QuestionTypeSelect,
+			Title:       "Select default model for teammates",
+			Description: "Default Claude model for Agent Teammates.",
+			Options: []Option{
+				{Label: "Haiku (Fast/Cheap)", Value: "haiku", Desc: "Fastest and lowest cost"},
+				{Label: "Sonnet (Balanced)", Value: "sonnet", Desc: "Balanced performance and cost (default)"},
+				{Label: "Opus (Powerful)", Value: "opus", Desc: "Most capable, higher cost"},
+			},
+			Default:  "sonnet",
+			Required: true,
+			Condition: func(r *WizardResult) bool {
+				return r.AgentTeamsMode == "team"
+			},
 		},
 	}
 }

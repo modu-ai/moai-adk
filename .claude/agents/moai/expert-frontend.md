@@ -11,7 +11,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__claude-in-chrome__*, mcp__pencil__batch_design, mcp__pencil__batch_get, mcp__pencil__get_editor_state, mcp__pencil__get_guidelines, mcp__pencil__get_screenshot, mcp__pencil__get_style_guide, mcp__pencil__get_style_guide_tags, mcp__pencil__get_variables, mcp__pencil__set_variables, mcp__pencil__open_document, mcp__pencil__snapshot_layout, mcp__pencil__find_empty_space_on_canvas, mcp__pencil__search_all_unique_properties, mcp__pencil__replace_all_matching_properties
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-lang-typescript, moai-lang-javascript, moai-domain-frontend, moai-domain-uiux, moai-library-shadcn, moai-tool-ast-grep, moai-workflow-tdd, moai-manager-ddd
+skills: moai-foundation-claude, moai-foundation-core, moai-domain-frontend, moai-domain-uiux, moai-lang-typescript, moai-lang-javascript, moai-lang-flutter, moai-lang-swift, moai-lang-kotlin, moai-library-shadcn, moai-library-nextra, moai-library-mermaid, moai-flutter-expert, moai-flutter-anim, moai-flutter-adaptive, moai-figma, moai-pencil-code, moai-pencil-renderer, moai-platform-chrome-extension, moai-framework-electron, moai-tool-ast-grep, moai-tool-svg, moai-workflow-tdd, moai-workflow-ddd, moai-workflow-testing
 ---
 
 # Frontend Expert - Frontend Architecture Specialist

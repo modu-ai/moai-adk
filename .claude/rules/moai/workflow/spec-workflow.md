@@ -87,3 +87,40 @@ Plan to Run:
 Run to Sync:
 - Trigger: Implementation complete, tests passing
 - Action: Execute /moai sync SPEC-XXX
+
+## Agent Teams Variant
+
+When team mode is enabled (workflow.team.enabled and AGENT_TEAMS env), phases can execute with Agent Teams instead of sub-agents.
+
+### Team Mode Phase Overview
+
+| Phase | Sub-agent Mode | Team Mode | Condition |
+|-------|---------------|-----------|-----------|
+| Plan | manager-spec (single) | researcher + analyst + architect (parallel) | Complexity >= threshold |
+| Run | manager-ddd/tdd (sequential) | backend-dev + frontend-dev + tester (parallel) | Domains >= 3 or files >= 10 |
+| Sync | manager-docs (single) | manager-docs (always sub-agent) | N/A |
+
+### Team Mode Plan Phase
+- TeamCreate for parallel research team
+- Teammates explore codebase, analyze requirements, design approach
+- MoAI synthesizes into SPEC document
+- Shutdown team, /clear before Run phase
+
+### Team Mode Run Phase
+- TeamCreate for implementation team
+- Task decomposition with file ownership boundaries
+- Teammates self-claim tasks from shared list
+- Quality validation after all implementation completes
+- Shutdown team
+
+### Mode Selection
+- --team flag: Force team mode
+- --solo flag: Force sub-agent mode
+- auto (default): Complexity-based selection
+- See workflow.yaml team.auto_selection for thresholds
+
+### Fallback
+If team mode fails or is unavailable:
+- Graceful fallback to sub-agent mode
+- Continue from last completed task
+- No data loss or state corruption

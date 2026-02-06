@@ -96,6 +96,21 @@ jobs:
           }
           Write-Host "PowerShell syntax validation passed"
 
+      - name: Test irm pipe iex compatibility
+        shell: pwsh
+        run: |
+          # Simulate irm | iex by reading file content and creating a ScriptBlock
+          $content = Get-Content install.ps1 -Raw
+          try {
+            $sb = [ScriptBlock]::Create($content)
+            Write-Host "irm | iex compatibility: PASSED (ScriptBlock parsed successfully)"
+          }
+          catch {
+            Write-Host "irm | iex compatibility: FAILED"
+            Write-Host "Error: $_"
+            exit 1
+          }
+
       - name: Display script info
         shell: ${{ matrix.shell }}
         run: |

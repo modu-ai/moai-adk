@@ -4,8 +4,9 @@
 
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-Copyleft%203.0-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-20%20packages-brightgreen)](./internal/)
+[![Tests](https://img.shields.io/badge/Tests-30%20packages-brightgreen)](./internal/)
 [![Coverage](https://img.shields.io/badge/Coverage-85--100%25-brightgreen)](#test-coverage)
+[![Version](https://img.shields.io/badge/Version-2.0.0-success)](CHANGELOG.md)
 
 High-performance Agentic Development Kit for Claude Code -- a complete rewrite of the Python-based MoAI-ADK (~73,000+ lines) in Go.
 
@@ -30,11 +31,95 @@ MoAI-ADK (Go Edition) is a compiled development toolkit that serves as the runti
 
 ### Key Characteristics
 
-- **48,688 lines** of Go code across 20 packages
-- **85-100% test coverage** per package (20 test packages)
+- **32,977 lines** of Go code across 30 packages
+- **85-100% test coverage** per package (30 test packages)
 - **Native concurrency** via goroutines for parallel LSP, quality checks, and Git operations
 - **Embedded templates** using `go:embed` for bundled resources
 - **Cross-platform** builds for macOS (arm64, amd64), Linux (arm64, amd64), and Windows
+- **64 moai-* skills** optimized with progressive disclosure system
+- **Agent Teams v2.0** (experimental) - Dual-mode execution engine
+
+---
+
+## What's New (v2.0)
+
+### Agent Teams v2.0 (Experimental Feature)
+
+Dual-mode execution engine supporting both sub-agent and Agent Teams workflows:
+
+- **Sub-agent Mode**: Sequential specialized agent delegation (traditional)
+- **Agent Teams Mode**: Parallel team-based development with shared task list
+- **Auto Mode**: Intelligent mode selection based on complexity analysis
+
+```
+User Request
+    |
+    v
+MoAI Orchestrator
+    |
+    +-- Mode Selector
+        |
+        +-- Sub-Agent Mode (Task() single agent)
+        +-- Agent Teams Mode (TeamCreate + SendMessage)
+        +-- Auto Mode (complexity-based automatic selection)
+```
+
+**Team Composition Patterns:**
+- Plan team: researcher + analyst + architect (parallel exploration)
+- Run team: backend-dev + frontend-dev + tester (parallel implementation)
+- Sync phase: Always sub-agent mode
+
+**Activation:**
+1. Set `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` environment variable
+2. Set `workflow.team.enabled: true` in configuration
+3. Use `--team` or `--auto` flags
+
+See [workflow-v2.md](.moai/docs/workflow-v2.md) for details.
+
+### Auto-Update and Caching
+
+- **Automatic Update Notifications**: Automatic version check on session start
+- **Update Result Caching**: Minimizes unnecessary API calls
+- **Rollback Support**: Automatic recovery on update failure
+
+### StatusLine Improvements
+
+- **Enhanced Version Display**: Clearer version information rendering
+- **Extended Test Coverage**: Improved stability
+
+### Hybrid Methodology (Default)
+
+Recommended methodology for new projects and ongoing development:
+- **New code**: TDD (RED-GREEN-REFACTOR)
+- **Existing code**: DDD (ANALYZE-PRESERVE-IMPROVE)
+
+### 64 moai-* Skills
+
+Comprehensive skill collection optimized with progressive disclosure:
+
+**Foundation Skills:**
+- moai-foundation-claude, moai-foundation-core, moai-foundation-philosopher, moai-foundation-quality, moai-foundation-context
+
+**Workflow Skills:**
+- moai-workflow-spec, moai-workflow-project, moai-workflow-jit-docs, moai-workflow-templates, moai-workloop, moai-workflow-ddd, moai-workflow-tdd, moai-workflow-testing, moai-workflow-worktree, moai-workflow-thinking
+
+**Domain Skills:**
+- moai-domain-backend, moai-domain-frontend, moai-domain-database, moai-domain-uiux, moai-formats-data
+
+**Language Skills (18 languages):**
+- Go, Python, TypeScript, JavaScript, Java, Kotlin, Swift, C++, C#, Ruby, PHP, Rust, Elixir, Scala, R, Flutter
+
+**Library Skills:**
+- moai-library-shadcn, moai-library-nextra, moai-library-mermaid
+
+**Platform Skills:**
+- Vercel, Supabase, Neon, Convex, Firebase, Firestore, Auth0, Clerk, Railway
+
+**Tool Skills:**
+- moai-tool-ast-grep, moai-tool-svg
+
+**Specialist Skills:**
+- Figma integration, Flutter development, Rust engineering, Performance optimization, Guidelines
 
 ---
 
@@ -113,7 +198,7 @@ Download platform-specific binaries from the [Releases](https://github.com/modu-
 moai init
 ```
 
-Runs an interactive project setup wizard that detects your language, framework, and methodology, then generates the appropriate configuration and Claude Code integration files.
+Runs an interactive project setup wizard that detects your language, framework, and methodology, then generates the appropriate configuration and Claude Code integration files. Default methodology is **Hybrid**.
 
 ### Check System Health
 
@@ -130,6 +215,19 @@ moai status
 ```
 
 Displays a summary of project state including Git branch, quality metrics, and configuration status.
+
+### Check for Updates
+
+```bash
+# Check for updates only
+moai update --check
+
+# Update to latest version
+moai update
+
+# Sync project templates only
+moai update --project
+```
 
 ### Manage Git Worktrees
 
@@ -150,35 +248,42 @@ Full worktree lifecycle management for parallel branch development.
 
 ```
 moai-adk/
-├── cmd/moai/             # Application entry point
-│   └── main.go
-├── internal/             # Private application packages
-│   ├── astgrep/          # AST-based code analysis
-│   ├── cli/              # Cobra command definitions
-│   ├── config/           # YAML configuration management
-│   ├── core/
-│   │   ├── git/          # Git operations
-│   │   ├── project/      # Project initialization & detection
-│   │   └── quality/      # TRUST 5 quality gates
-│   ├── foundation/       # EARS patterns, TRUST 5, language defs
-│   ├── hook/             # Claude Code hook system
-│   ├── loop/             # Ralph feedback loop & state machine
-│   ├── lsp/              # LSP client (16+ languages)
-│   ├── manifest/         # File provenance tracking (SHA-256)
-│   ├── merge/            # 3-way merge engine
-│   ├── ralph/            # Convergence decision engine
-│   ├── rank/             # Session ranking (HMAC-SHA256)
-│   ├── statusline/       # Claude Code statusline integration
-│   ├── template/         # Template deployment & security
-│   ├── ui/               # Interactive TUI components
-│   └── update/           # Self-update with rollback
-├── pkg/                  # Public library packages
-│   ├── models/           # Shared data models
-│   ├── utils/            # Common utilities
-│   └── version/          # Build version metadata
-├── templates/            # Embedded project templates
-├── Makefile              # Build automation
-└── .goreleaser.yml       # Release configuration
++-- cmd/moai/             # Application entry point
+|   +-- main.go
++-- internal/             # Private application packages
+|   +-- astgrep/          # AST-based code analysis
+|   +-- cli/              # Cobra command definitions
+|   +-- config/           # YAML configuration management
+|   +-- core/
+|   |   +-- git/          # Git operations
+|   |   +-- project/      # Project initialization & detection
+|   |   +-- quality/      # TRUST 5 quality gates
+|   +-- foundation/       # EARS patterns, TRUST 5, language defs
+|   +-- git/              # Git operations wrapper
+|   +-- hook/             # Claude Code hook system
+|   |   +-- lifecycle/    # Hook lifecycle management
+|   |   +-- quality/      # Hook-based quality checks
+|   |   +-- security/     # Hook-based security scanning
+|   +-- loop/             # Ralph feedback loop & state machine
+|   +-- lsp/              # LSP client (16+ languages)
+|   |   +-- hook/         # LSP hook integration
+|   +-- manifest/         # File provenance tracking (SHA-256)
+|   +-- merge/            # 3-way merge engine
+|   +-- ralph/            # Convergence decision engine
+|   +-- rank/             # Session ranking (HMAC-SHA256)
+|   +-- resilience/       # Resilience patterns (circuit breaker, retry)
+|   +-- shell/            # Shell execution and environment detection
+|   +-- statusline/       # Claude Code statusline integration
+|   +-- template/         # Template deployment & security
+|   +-- ui/               # Interactive TUI components
+|   +-- update/           # Self-update with rollback
++-- pkg/                  # Public library packages
+|   +-- models/           # Shared data models
+|   +-- utils/            # Common utilities
+|   +-- version/          # Build version metadata
++-- templates/            # Embedded project templates
++-- Makefile              # Build automation
++-- .goreleaser.yml       # Release configuration
 ```
 
 ### Package Overview
@@ -263,17 +368,21 @@ export MOAI_UPDATE_URL="https://api.github.com/repos/owner/repo/releases/latest"
 moai update
 ```
 
+#### Automatic Update Notification
+
+A session-start hook automatically checks for new versions. When an update is available, a notification appears in the statusline. Update check results are cached to minimize API calls.
+
 #### Release Tagging
 
-For Go edition releases, use tags with the `go-v` prefix:
+Release tags use the `v*` format. The install script recognizes both `v*` and `go-v*` tags:
 
 ```bash
-# Tag a Go edition release
-git tag go-v2.0.0
-git push origin go-v2.0.0
+# Create a release tag (recommended)
+git tag v2.0.0
+git push origin v2.0.0
 ```
 
-This allows dev builds to automatically detect and update to Go edition releases, while production builds use standard semver tags.
+The install script automatically strips tag prefixes to construct the correct download URL.
 
 ---
 
@@ -375,10 +484,13 @@ make coverage
 
 ### Development Methodology
 
-The project follows a hybrid approach:
+The project uses **Hybrid** methodology as the default:
 
-- **DDD (Domain-Driven Development)** for existing code: ANALYZE existing behavior, PRESERVE with characterization tests, IMPROVE incrementally
-- **TDD (Test-Driven Development)** for new code: RED (write failing test), GREEN (make it pass), REFACTOR (clean up)
+- **Hybrid (default)**: Recommended for new projects and ongoing development. TDD for new code, DDD for existing code
+- **DDD (Domain-Driven Development)**: For existing/brownfield projects only. ANALYZE existing behavior, PRESERVE with characterization tests, IMPROVE incrementally
+- **TDD (Test-Driven Development)**: For isolated new modules only. RED (write failing test), GREEN (make it pass), REFACTOR (clean up)
+
+Methodology is auto-selected during `moai init` based on project state and can be changed in `.moai/config/sections/quality.yaml`.
 
 ---
 

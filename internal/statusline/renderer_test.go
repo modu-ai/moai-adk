@@ -323,7 +323,7 @@ func TestRender_VersionUpdateNotification(t *testing.T) {
 			Current:         "2.0.0",
 			Latest:          "2.0.1",
 			UpdateAvailable: true,
-			Available:        true,
+			Available:       true,
 		},
 	}
 
@@ -345,7 +345,7 @@ func TestRender_VersionNoUpdate(t *testing.T) {
 		Version: VersionData{
 			Current:         "2.0.0",
 			UpdateAvailable: false,
-			Available:        true,
+			Available:       true,
 		},
 	}
 

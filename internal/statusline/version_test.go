@@ -9,14 +9,14 @@ import (
 
 func TestVersionCollector_CheckUpdate(t *testing.T) {
 	tests := []struct {
-		name            string
-		setupConfig     func(t *testing.T) string
-		binaryVersion   string
-		wantVersion     string
-		wantAvailable   bool
-		wantUpdate      bool
-		wantLatest      string
-		wantErr         bool
+		name          string
+		setupConfig   func(t *testing.T) string
+		binaryVersion string
+		wantVersion   string
+		wantAvailable bool
+		wantUpdate    bool
+		wantLatest    string
+		wantErr       bool
 	}{
 		{
 			name: "valid config with version, same as binary",

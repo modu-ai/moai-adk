@@ -11,7 +11,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: acceptEdits
-skills: moai-foundation-claude, moai-foundation-core, moai-library-mermaid, moai-library-nextra, moai-formats-data, moai-docs-generation, moai-workflow-jit-docs
+skills: moai-foundation-claude, moai-foundation-core, moai-docs-generation, moai-workflow-jit-docs, moai-workflow-templates, moai-library-mermaid, moai-library-nextra, moai-formats-data, moai-foundation-context
 ---
 
 # Documentation Manager Expert

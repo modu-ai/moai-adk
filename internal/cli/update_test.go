@@ -1206,11 +1206,34 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		}
 
 		// Check required env variables
-		requiredKeys := []string{"PATH", "MOAI_CONFIG_SOURCE", "ENABLE_TOOL_SEARCH", "MAX_THINKING_TOKENS"}
+		requiredKeys := []string{"PATH", "ENABLE_TOOL_SEARCH", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"}
 		for _, key := range requiredKeys {
 			if _, exists := env[key]; !exists {
 				t.Errorf("required env key %q not found", key)
 			}
+		}
+
+		// Check permissions.allow exists
+		permissions, ok := settings["permissions"].(map[string]interface{})
+		if !ok {
+			t.Fatal("permissions not found in settings")
+		}
+		if permissions["allow"] != "Task:*" {
+			t.Errorf("permissions.allow not set correctly: got %v", permissions["allow"])
+		}
+
+		// Check teammateMode exists
+		if settings["teammateMode"] != "auto" {
+			t.Errorf("teammateMode not set correctly: got %v", settings["teammateMode"])
+		}
+
+		// Check hooks.SessionEnd exists
+		hooks, ok := settings["hooks"].(map[string]interface{})
+		if !ok {
+			t.Fatal("hooks not found in settings")
+		}
+		if _, exists := hooks["SessionEnd"]; !exists {
+			t.Error("SessionEnd hook not found")
 		}
 	})
 
@@ -1255,8 +1278,8 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		}
 
 		// Required keys should be added
-		if env["MOAI_CONFIG_SOURCE"] != "sections" {
-			t.Errorf("MOAI_CONFIG_SOURCE not added: got %v", env["MOAI_CONFIG_SOURCE"])
+		if env["ENABLE_TOOL_SEARCH"] != "1" {
+			t.Errorf("ENABLE_TOOL_SEARCH not added: got %v", env["ENABLE_TOOL_SEARCH"])
 		}
 
 		// PATH should be updated
@@ -1273,11 +1296,14 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		sessionEndHookCommand := buildSessionEndHookCommand()
 		existing := map[string]interface{}{
 			"env": map[string]interface{}{
-				"PATH":                buildRequiredPATH(), // Use same function to match exactly
-				"MOAI_CONFIG_SOURCE":  "sections",
-				"ENABLE_TOOL_SEARCH":  "1",
-				"MAX_THINKING_TOKENS": "31999",
+				"PATH":                                 buildRequiredPATH(), // Use same function to match exactly
+				"ENABLE_TOOL_SEARCH":                   "1",
+				"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
 			},
+			"permissions": map[string]interface{}{
+				"allow": "Task:*",
+			},
+			"teammateMode": "auto",
 			"hooks": map[string]interface{}{
 				"SessionEnd": []interface{}{
 					map[string]interface{}{
@@ -1285,6 +1311,7 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 							map[string]interface{}{
 								"type":    "command",
 								"command": sessionEndHookCommand,
+								"timeout": 5,
 							},
 						},
 					},

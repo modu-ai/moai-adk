@@ -219,6 +219,8 @@ func (m *Model) saveAnswer(id, value string) {
 		m.result.GitMode = value
 	case "github_username":
 		m.result.GitHubUsername = value
+	case "github_token":
+		m.result.GitHubToken = value
 	case "git_commit_lang":
 		m.result.GitCommitLang = value
 	case "code_comment_lang":
@@ -227,6 +229,12 @@ func (m *Model) saveAnswer(id, value string) {
 		m.result.DocLang = value
 	case "development_mode":
 		m.result.DevelopmentMode = value
+	case "agent_teams_mode":
+		m.result.AgentTeamsMode = value
+	case "max_teammates":
+		m.result.MaxTeammates = value
+	case "default_model":
+		m.result.DefaultModel = value
 	}
 }
 

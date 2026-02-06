@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
@@ -55,6 +56,7 @@ func init() {
 	initCmd.Flags().String("doc-lang", "", "Documentation language (default: en)")
 	initCmd.Flags().Bool("non-interactive", false, "Skip interactive wizard; use flags and defaults")
 	initCmd.Flags().Bool("force", false, "Reinitialize an existing project (backs up current .moai/)")
+	initCmd.Flags().Bool("tui", false, "Launch TUI wizard (forces terminal UI mode)")
 }
 
 // getStringFlag retrieves a string flag value from the command.
@@ -166,6 +168,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	nonInteractive := getBoolFlag(cmd, "non-interactive")
+	useTUI := getBoolFlag(cmd, "tui")
 
 	opts := project.InitOptions{
 		ProjectRoot:     rootFlag,
@@ -184,8 +187,26 @@ func runInit(cmd *cobra.Command, args []string) error {
 		Force:           getBoolFlag(cmd, "force"),
 	}
 
-	// Run interactive wizard if not in non-interactive mode and running in a TTY
-	if !nonInteractive && isatty.IsTerminal(os.Stdin.Fd()) {
+	// Run TUI wizard if --tui flag is specified
+	if useTUI {
+		result, err := tui.RunWizardTUI()
+		if err != nil {
+			if errors.Is(err, tea.ErrInterrupted) {
+				_, _ = fmt.Fprintln(cmd.OutOrStderr(), "Initialization cancelled.")
+				return nil
+			}
+			return fmt.Errorf("TUI wizard failed: %w", err)
+		}
+		// Apply TUI results to opts
+		if result == nil {
+			return nil
+		}
+		if opts.ProjectName == "" {
+			opts.ProjectName = result.ProjectName
+		}
+		// Note: TUI PoC only collects project name currently
+		// Full implementation would collect all fields like the wizard below
+	} else if !nonInteractive && isatty.IsTerminal(os.Stdin.Fd()) {
 		// Print banner and welcome message
 		PrintBanner(version.GetVersion())
 		PrintWelcomeMessage()
@@ -254,43 +275,15 @@ func runInit(cmd *cobra.Command, args []string) error {
 		ctx = context.Background()
 	}
 
-	// Define the initialization steps for TUI
-	stepNames := []string{
-		"Detection",
-		"Methodology Detection",
-		"Validation",
-		"Initialization",
-	}
+	// Use simple console output for progress reporting
+	consoleReporter := project.NewConsoleReporter()
+	executor.SetReporter(consoleReporter)
 
-	// Create TUI init function that runs the actual initialization
-	initFn := func(ctx context.Context, reporter project.ProgressReporter) (*project.InitResult, error) {
-		fmt.Fprintf(os.Stderr, "[DEBUG] initFn called, setting reporter\n")
-		// Set the reporter on the executor
-		executor.SetReporter(reporter)
-		fmt.Fprintf(os.Stderr, "[DEBUG] executor.SetReporter done, calling Execute\n")
-		// Execute initialization
-		result, err := executor.Execute(ctx, opts)
-		fmt.Fprintf(os.Stderr, "[DEBUG] Execute returned\n")
-		return result, err
-	}
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Initializing MoAI project...") //nolint:errcheck
 
-	var result *project.InitResult
-
-	// Check if we have a TTY for TUI
-	if isatty.IsTerminal(os.Stdin.Fd()) && isatty.IsTerminal(os.Stdout.Fd()) {
-		// Run TUI for initialization
-		result, err = tui.RunProgressTUI("MoAI Project Initialization", stepNames, initFn)
-		if err != nil {
-			return fmt.Errorf("initialization failed: %w", err)
-		}
-	} else {
-		// Fallback to console reporter for non-TTY environments
-		consoleReporter := project.NewConsoleReporter()
-		executor.SetReporter(consoleReporter)
-		result, err = executor.Execute(ctx, opts)
-		if err != nil {
-			return fmt.Errorf("initialization failed: %w", err)
-		}
+	result, err := executor.Execute(ctx, opts)
+	if err != nil {
+		return fmt.Errorf("initialization failed: %w", err)
 	}
 
 	// Display success message

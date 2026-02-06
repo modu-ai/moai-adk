@@ -11,9 +11,6 @@ Flow: Explore -> Plan -> Run -> Sync -> Done
 - --branch: Auto-create feature branch
 - --pr: Auto-create pull request after completion
 - --resume SPEC-XXX: Resume previous work from existing SPEC
-- --team: Force Agent Teams mode for plan and run phases
-- --solo: Force sub-agent mode (single agent per phase)
-- --auto: Intelligent mode selection based on complexity (default)
 
 ## Configuration Files
 
@@ -21,25 +18,6 @@ Flow: Explore -> Plan -> Run -> Sync -> Done
 - git-strategy.yaml: Branch and PR automation settings
 - quality.yaml: TRUST 5 quality thresholds AND development_mode routing
 - llm.yaml: LLM mode routing (claude-only, hybrid, glm-only)
-
-## Execution Mode Selection
-
-Before Phase 0, determine the execution mode:
-
-1. Check flags: --team (force team), --solo (force sub-agent), --auto (intelligent selection)
-2. Check workflow.yaml: execution_mode setting
-3. If "auto": Calculate complexity score:
-   - domain_count >= 3: +3 points
-   - affected_files >= 10: +3 points
-   - cross_layer_changes: +2 points
-   - If score >= min_complexity_score (default 7): use team mode
-4. Verify AGENT_TEAMS is enabled (settings.json env)
-5. If team mode selected but not available: warn and fall back to sub-agent
-
-Team mode routes to team-specific workflow files:
-- Plan phase: Read workflows/team-plan.md
-- Run phase: Read workflows/team-run.md
-- Sync phase: Always uses sub-agent (workflows/sync.md)
 
 ## Development Mode Routing (CRITICAL)
 
@@ -173,8 +151,6 @@ Auto-routing based on llm.yaml settings:
 3. Detect LLM mode from llm.yaml
 4. Detect development_mode from quality.yaml (hybrid/ddd/tdd)
 5. Execute Phase 0 (parallel or sequential exploration)
-5.5. Mode selection: Determine sub-agent or team mode based on flags, config, and complexity
-5.6. If team mode: Route to workflows/team-plan.md and workflows/team-run.md
 6. Routing decision (single-domain direct delegation vs full workflow)
 7. TaskCreate for discovered tasks
 8. User confirmation via AskUserQuestion
@@ -185,5 +161,5 @@ Auto-routing based on llm.yaml settings:
 
 ---
 
-Version: 2.0.0
-Source: Renamed from alfred.md. Unified plan->run->sync pipeline. Added SPEC/project document update in sync phase. Added Agent Teams mode support.
+Version: 1.2.0
+Source: Renamed from alfred.md. Unified plan->run->sync pipeline. Added SPEC/project document update in sync phase.

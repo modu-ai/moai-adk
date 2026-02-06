@@ -11,7 +11,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-domain-backend, moai-domain-database, moai-platform-supabase, moai-platform-neon, moai-tool-ast-grep, moai-workflow-tdd, moai-manager-ddd
+skills: moai-foundation-claude, moai-foundation-core, moai-domain-backend, moai-domain-database, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-lang-go, moai-lang-java, moai-lang-rust, moai-lang-php, moai-lang-csharp, moai-lang-ruby, moai-lang-elixir, moai-lang-scala, moai-golang-pro, moai-golang-testing, moai-rust-engineer, moai-rust-guidelines, moai-rust-perf, moai-platform-supabase, moai-platform-neon, moai-platform-firestore, moai-platform-convex, moai-tool-ast-grep, moai-workflow-tdd, moai-workflow-ddd, moai-workflow-testing
 ---
 
 # Backend Expert

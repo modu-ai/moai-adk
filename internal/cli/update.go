@@ -10,11 +10,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
-	"github.com/mattn/go-isatty"
-	"github.com/modu-ai/moai-adk/internal/cli/tui"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/manifest"
@@ -424,69 +423,45 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	return nil
 }
 
-// runTemplateSyncWithProgress runs template sync with TUI progress.
+// runTemplateSyncWithProgress runs template sync with simple console output.
 func runTemplateSyncWithProgress(cmd *cobra.Command) error {
 	out := cmd.OutOrStdout()
 	projectRoot := "."
 	autoConfirm := getBoolFlag(cmd, "yes")
 
-	// Define the template sync steps for TUI
-	stepNames := []string{
-		"Version Check",
-		"Loading Templates",
-		"Loading Manifest",
-		"Backup",
-		"Merge Settings",
-		"Deploy Templates",
-		"Restore Settings",
+	// Use simple console output for progress reporting
+	consoleReporter := project.NewConsoleReporter()
+
+	// Check for version match before proceeding
+	packageVersion := version.GetVersion()
+	projectVersion, err := getProjectConfigVersion(projectRoot)
+	if err == nil && packageVersion == projectVersion {
+		_, _ = fmt.Fprintln(out, "\n✓ Template version up-to-date. Skipping sync.")
+		return nil
 	}
 
-	// Create TUI init function that runs the actual template sync
-	initFn := func(ctx context.Context, reporter project.ProgressReporter) (*project.InitResult, error) {
-		// Run template sync with the TUI's reporter
-		err := runTemplateSyncWithReporter(cmd, reporter, true)
-		// Return empty result (not used for template sync)
-		return &project.InitResult{}, err
-	}
-
-	// Check if we have a TTY for TUI
-	if isatty.IsTerminal(os.Stdin.Fd()) && isatty.IsTerminal(os.Stdout.Fd()) {
-		// Avoid nested Bubble Tea UIs by confirming merge before starting progress TUI
-		if !autoConfirm {
-			packageVersion := version.GetVersion()
-			projectVersion, err := getProjectConfigVersion(projectRoot)
-			if err == nil && packageVersion == projectVersion {
-				_, _ = fmt.Fprintln(out, "\n✓ Template version up-to-date. Skipping sync.")
-				return nil
-			}
-
-			embedded, err := template.EmbeddedTemplates()
-			if err != nil {
-				return fmt.Errorf("load embedded templates: %w", err)
-			}
-
-			deployer := template.NewDeployerWithForceUpdate(embedded, true)
-			analysis := analyzeMergeChanges(deployer, projectRoot)
-
-			_, _ = fmt.Fprintln(out, "\nAnalyzing merge changes...")
-			proceed, err := merge.ConfirmMerge(analysis)
-			if err != nil {
-				return fmt.Errorf("confirm merge for %d files (risk: %s): %w",
-					len(analysis.Files), analysis.RiskLevel, err)
-			}
-			if !proceed {
-				_, _ = fmt.Fprintln(out, "\nMerge cancelled by user.")
-				return nil
-			}
+	// Confirm merge before proceeding (unless auto-confirm is set)
+	if !autoConfirm {
+		embedded, err := template.EmbeddedTemplates()
+		if err != nil {
+			return fmt.Errorf("load embedded templates: %w", err)
 		}
 
-		// Run TUI for template sync
-		_, err := tui.RunProgressTUI("MoAI Template Sync", stepNames, initFn)
-		return err
+		deployer := template.NewDeployerWithForceUpdate(embedded, true)
+		analysis := analyzeMergeChanges(deployer, projectRoot)
+
+		_, _ = fmt.Fprintln(out, "\nAnalyzing merge changes...")
+		proceed, err := merge.ConfirmMerge(analysis)
+		if err != nil {
+			return fmt.Errorf("confirm merge for %d files (risk: %s): %w",
+				len(analysis.Files), analysis.RiskLevel, err)
+		}
+		if !proceed {
+			_, _ = fmt.Fprintln(out, "\nMerge cancelled by user.")
+			return nil
+		}
 	}
 
-	// Fallback to console reporter for non-TTY environments
-	consoleReporter := project.NewConsoleReporter()
 	return runTemplateSyncWithReporter(cmd, consoleReporter, false)
 }
 
@@ -1356,6 +1331,124 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		}
 	}
 
+	// Update workflow.yaml with Agent Teams settings
+	if result.AgentTeamsMode != "" {
+		workflowPath := filepath.Join(sectionsDir, "workflow.yaml")
+		// Read existing content
+		workflowData, err := os.ReadFile(workflowPath)
+		if err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("read workflow.yaml: %w", err)
+		}
+
+		// Parse YAML
+		var workflow map[string]interface{}
+		if len(workflowData) > 0 {
+			if err := yaml.Unmarshal(workflowData, &workflow); err != nil {
+				return fmt.Errorf("parse workflow.yaml: %w", err)
+			}
+		} else {
+			workflow = make(map[string]interface{})
+		}
+
+		// Ensure workflow and workflow.team exist
+		workflowVal, ok := workflow["workflow"].(map[string]interface{})
+		if !ok {
+			workflowVal = make(map[string]interface{})
+			workflow["workflow"] = workflowVal
+		}
+
+		// Set execution_mode
+		workflowVal["execution_mode"] = result.AgentTeamsMode
+
+		// Handle team configuration
+		var teamConfig map[string]interface{}
+		if existingTeam, ok := workflowVal["team"].(map[string]interface{}); ok {
+			teamConfig = existingTeam
+		} else {
+			teamConfig = make(map[string]interface{})
+		}
+
+		// Set enabled flag based on AgentTeamsMode
+		teamConfig["enabled"] = (result.AgentTeamsMode == "team")
+
+		// Set max_teammates if provided (valid values: 2-5)
+		if result.MaxTeammates != "" {
+			// Validate max_teammates is between 2 and 5
+			if val, err := strconv.Atoi(result.MaxTeammates); err == nil && val >= 2 && val <= 5 {
+				teamConfig["max_teammates"] = val
+			}
+		}
+
+		// Set default_model if provided
+		if result.DefaultModel != "" {
+			// Validate default_model is one of: haiku, sonnet, opus
+			if result.DefaultModel == "haiku" || result.DefaultModel == "sonnet" || result.DefaultModel == "opus" {
+				teamConfig["default_model"] = result.DefaultModel
+			}
+		}
+
+		workflowVal["team"] = teamConfig
+		workflow["workflow"] = workflowVal
+
+		// Write back
+		updatedData, err := yaml.Marshal(workflow)
+		if err != nil {
+			return fmt.Errorf("marshal workflow.yaml: %w", err)
+		}
+		if err := os.WriteFile(workflowPath, updatedData, 0644); err != nil {
+			return fmt.Errorf("write workflow.yaml: %w", err)
+		}
+	}
+
+	// Update user.yaml with GitHub username and token
+	if result.GitHubUsername != "" || result.GitHubToken != "" {
+		userPath := filepath.Join(sectionsDir, "user.yaml")
+		// Read existing content
+		userData, err := os.ReadFile(userPath)
+		if err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("read user.yaml: %w", err)
+		}
+
+		// Parse YAML
+		var user map[string]interface{}
+		if len(userData) > 0 {
+			if err := yaml.Unmarshal(userData, &user); err != nil {
+				return fmt.Errorf("parse user.yaml: %w", err)
+			}
+		} else {
+			user = make(map[string]interface{})
+		}
+
+		// Ensure user.user exists
+		var userConfig map[string]interface{}
+		if existingUser, ok := user["user"].(map[string]interface{}); ok {
+			userConfig = existingUser
+		} else {
+			userConfig = make(map[string]interface{})
+		}
+
+		// Set github_username if provided
+		if result.GitHubUsername != "" {
+			userConfig["github_username"] = result.GitHubUsername
+		}
+
+		// Set github_token if provided
+		if result.GitHubToken != "" {
+			userConfig["github_token"] = result.GitHubToken
+		}
+
+		user["user"] = userConfig
+
+		// Write back
+		updatedData, err := yaml.Marshal(user)
+		if err != nil {
+			return fmt.Errorf("marshal user.yaml: %w", err)
+		}
+		if err := os.WriteFile(userPath, updatedData, 0644); err != nil {
+			return fmt.Errorf("write user.yaml: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -1371,15 +1464,20 @@ func ensureGlobalSettingsEnv() error {
 
 	// Define required env variables
 	requiredEnv := map[string]string{
-		"PATH":                buildRequiredPATH(),
-		"MOAI_CONFIG_SOURCE":  "sections",
-		"ENABLE_TOOL_SEARCH":  "1",
-		"MAX_THINKING_TOKENS": "31999",
+		"PATH":                                 buildRequiredPATH(),
+		"ENABLE_TOOL_SEARCH":                   "1",
+		"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
 	}
 
 	// Define SessionEnd hook for moai-rank submission
 	// Using shell script instead of Python for better performance and compatibility
 	sessionEndHookCommand := buildSessionEndHookCommand()
+
+	// Define required permissions
+	requiredPermissions := "Task:*"
+
+	// Define required teammate mode
+	requiredTeammateMode := "auto"
 
 	// Read existing global settings
 	var existingSettings map[string]interface{}
@@ -1408,6 +1506,28 @@ func ensureGlobalSettingsEnv() error {
 		if existingVal, exists := existingEnv[key]; !exists || existingVal != requiredValue {
 			needsUpdate = true
 			break
+		}
+	}
+
+	// Check if permissions.allow needs update
+	if !needsUpdate {
+		if existingPermissions, exists := existingSettings["permissions"]; exists {
+			if permMap, ok := existingPermissions.(map[string]interface{}); ok {
+				if existingAllow, exists := permMap["allow"]; !exists || existingAllow != requiredPermissions {
+					needsUpdate = true
+				}
+			} else {
+				needsUpdate = true
+			}
+		} else {
+			needsUpdate = true
+		}
+	}
+
+	// Check if teammateMode needs update
+	if !needsUpdate {
+		if existingMode, exists := existingSettings["teammateMode"]; !exists || existingMode != requiredTeammateMode {
+			needsUpdate = true
 		}
 	}
 
@@ -1442,6 +1562,14 @@ func ensureGlobalSettingsEnv() error {
 	// Update settings
 	existingSettings["env"] = mergedEnv
 
+	// Add permissions.allow
+	existingSettings["permissions"] = map[string]interface{}{
+		"allow": requiredPermissions,
+	}
+
+	// Add teammateMode
+	existingSettings["teammateMode"] = requiredTeammateMode
+
 	// Add SessionEnd hook
 	addSessionEndHook(existingSettings, sessionEndHookCommand)
 
@@ -1459,11 +1587,12 @@ func ensureGlobalSettingsEnv() error {
 }
 
 // buildSessionEndHookCommand builds the SessionEnd hook command for moai-rank submission.
-// Uses shell script wrapper instead of direct Python invocation for better performance.
+// Uses shell script wrapper with $HOME environment variable for global hook installation.
 func buildSessionEndHookCommand() string {
 	// The hook wrapper script is installed at ~/.claude/hooks/moai/handle-session-end.sh
 	// This wrapper calls: moai hook session-end
-	return `"/usr/bin/env bash" -l -c '"$HOME/.claude/hooks/moai/handle-session-end.sh"'`
+	// Note: For global settings, use $HOME instead of $CLAUDE_PROJECT_DIR
+	return "\"$HOME/.claude/hooks/moai/handle-session-end.sh\""
 }
 
 // ensureSessionEndHook checks if the SessionEnd hook needs to be added or updated.
@@ -1540,13 +1669,14 @@ func addSessionEndHook(settings map[string]interface{}, hookCommand string) {
 	// Remove any existing Python-based moai-rank hooks
 	cleanSessionEndHooks(hooksMap)
 
-	// Add new shell-based SessionEnd hook
+	// Add new shell-based SessionEnd hook with timeout
 	hooksMap["SessionEnd"] = []interface{}{
 		map[string]interface{}{
 			"hooks": []interface{}{
 				map[string]interface{}{
 					"type":    "command",
 					"command": hookCommand,
+					"timeout": 5,
 				},
 			},
 		},

@@ -116,6 +116,16 @@ Allowed Tools: Full access (Task, AskUserQuestion, TaskCreate, TaskUpdate, TaskL
 - builder-skill: Create new skills
 - builder-plugin: Create new plugins
 
+### Team Agents (5) - Experimental
+
+Team agents for Claude Code Agent Teams (v2.1.32+, requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1):
+
+- team-researcher: Read-only exploration and research (haiku, plan phase)
+- team-backend-dev: Server-side implementation with file ownership (sonnet, run phase)
+- team-frontend-dev: Client-side implementation with file ownership (sonnet, run phase)
+- team-tester: Test creation with exclusive test file ownership (sonnet, run phase)
+- team-quality: TRUST 5 quality validation, read-only (sonnet, run phase)
+
 ---
 
 ## 5. SPEC-Based Workflow
@@ -352,8 +362,55 @@ Always prefer Edit tool over sed/awk for cross-platform compatibility.
 
 ---
 
-Version: 11.1.0 (Safe Development Protocol with 4 HARD Rules)
-Last Updated: 2026-02-04
+## 15. Agent Teams (Experimental)
+
+MoAI supports dual-mode execution: sub-agent mode (default) and Agent Teams mode (experimental).
+
+### Activation
+
+Requirements:
+- Claude Code v2.1.32 or later
+- Set `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env
+- Set `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml`
+
+### Mode Selection
+
+Three execution modes controlled by flags or configuration:
+
+- `--team`: Force Agent Teams mode for plan and run phases
+- `--solo`: Force sub-agent mode (single agent per phase)
+- `--auto` (default): Intelligent mode selection based on complexity scoring
+
+Auto-selection thresholds (configurable in workflow.yaml):
+- Domain count >= 3: team mode recommended
+- Affected files >= 10: team mode recommended
+- Complexity score >= 7: team mode activated
+
+### Team Workflows
+
+- Plan phase team: researcher + analyst + architect (parallel exploration)
+- Run phase team: backend-dev + frontend-dev + tester (parallel implementation)
+- Sync phase: Always sub-agent mode (manager-docs)
+
+### File Ownership Strategy
+
+Each teammate exclusively owns specific files to prevent write conflicts:
+- backend-dev: src/api/**, src/models/**, src/services/**
+- frontend-dev: src/ui/**, src/components/**, src/pages/**
+- tester: tests/**, *_test.go, *.test.*
+- quality: read-only (no file ownership)
+
+### Configuration
+
+Workflow settings: @.moai/config/sections/workflow.yaml
+Team workflow skill: Skill("moai-workflow-team")
+
+For detailed team orchestration: See workflows/team-plan.md and workflows/team-run.md
+
+---
+
+Version: 12.0.0 (Agent Teams + Safe Development Protocol)
+Last Updated: 2026-02-06
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
 

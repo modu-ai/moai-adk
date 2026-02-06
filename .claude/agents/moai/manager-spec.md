@@ -11,7 +11,7 @@ description: |
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-foundation-core, moai-manager-spec, moai-workflow-project, moai-lang-python, moai-lang-typescript
+skills: moai-foundation-claude, moai-foundation-core, moai-foundation-philosopher, moai-workflow-spec, moai-workflow-project, moai-workflow-thinking, moai-lang-python, moai-lang-typescript
 ---
 
 # Agent Orchestration Metadata (v1.0)

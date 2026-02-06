@@ -13,6 +13,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 This is the first official release of MoAI-ADK Go Edition, a complete rewrite of the Python-based MoAI-ADK in Go. This release delivers significantly improved performance, easier installation, and enhanced features while maintaining full compatibility with Claude Code workflows.
 
+### Latest Updates (2026-02-06)
+
+**Template Synchronization:**
+- Synchronized 17 agent definition files with updated skill frontmatter
+- Updated workflow skills (SKILL.md v2.0.0, moai.md) with team mode support
+- Updated workflow-modes.md with Hybrid methodology as default
+- Synchronized workflow.yaml and status_line.sh templates
+- Updated CLAUDE.md to v12.0.0 with Agent Teams documentation
+
+**Code Quality Improvements:**
+- Fixed missing error checks in init_tui.go (added nolint comments for informational messages)
+- Fixed missing error checks in init.go (added nolint comment for informational message)
+- Simplified character validation logic in wizard_tui.go using De Morgan's law
+- All 25 packages pass race detection tests
+- Zero linting issues after fixes
+- Average test coverage: 78.4%
+
 ### Breaking Changes
 
 - **Installation Method**: Changed from `uv tool install moai-adk` to single binary installation

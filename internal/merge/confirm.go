@@ -2,6 +2,7 @@ package merge
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -617,20 +618,28 @@ func sanitizePath(path string) string {
 }
 
 // initLogger creates a structured logger with configurable level and format.
+// Logging is disabled by default for better user experience.
 // Environment variables:
-//   - MOAI_LOG_LEVEL: "debug" or "info" (default: info)
-//   - MOAI_LOG_FORMAT: "json" or "text" (default: json)
+//   - MOAI_LOG_LEVEL: "debug" or "info" (default: disabled)
+//   - MOAI_LOG_FORMAT: "json" or "text" (default: text)
 func initLogger() *slog.Logger {
+	// Check if logging is explicitly enabled
+	logLevel := os.Getenv("MOAI_LOG_LEVEL")
+	if logLevel == "" {
+		// No logging by default - return a no-op logger
+		return slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelError + 1}))
+	}
+
 	level := slog.LevelInfo
-	if os.Getenv("MOAI_LOG_LEVEL") == "debug" {
+	if logLevel == "debug" {
 		level = slog.LevelDebug
 	}
 
 	var handler slog.Handler
-	if os.Getenv("MOAI_LOG_FORMAT") == "text" {
-		handler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})
-	} else {
+	if os.Getenv("MOAI_LOG_FORMAT") == "json" {
 		handler = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: level})
+	} else {
+		handler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})
 	}
 
 	return slog.New(handler)

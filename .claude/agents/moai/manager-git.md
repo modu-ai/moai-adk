@@ -11,7 +11,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: default
-skills: moai-foundation-claude, moai-workflow-project, moai-workflow-testing, moai-workflow-worktree
+skills: moai-foundation-claude, moai-foundation-core, moai-workflow-project, moai-workflow-worktree, moai-workflow-testing, moai-foundation-quality
 ---
 
 # Git Manager Agent - Git Operations Specialist

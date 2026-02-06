@@ -92,6 +92,38 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "DDD (도메인 주도 개발)", Desc: "레거시 리팩토링을 위한 ANALYZE-PRESERVE-IMPROVE 사이클"},
 			},
 		},
+		"agent_teams_mode": {
+			Title:       "Agent Teams 실행 모드 선택",
+			Description: "MoAI가 Agent Teams(병렬) 또는 sub-agents(순차)를 사용하도록 설정합니다.",
+			Options: []OptionTranslation{
+				{Label: "Auto (권장)", Desc: "작업 복잡도 기반 지능형 선택"},
+				{Label: "Sub-agent (클래식)", Desc: "기존 단일 에이전트 모드"},
+				{Label: "Team (실험적)", Desc: "병렬 Agent Teams (실험적 기능 필요)"},
+			},
+		},
+		"max_teammates": {
+			Title:       "최대 팀원 수 선택",
+			Description: "팀의 최대 팀원 수 (2-5 권장).",
+			Options: []OptionTranslation{
+				{Label: "2", Desc: "병렬 작업을 위한 최소값"},
+				{Label: "3", Desc: "소규 팀"},
+				{Label: "4", Desc: "중간 팀"},
+				{Label: "5", Desc: "대규 팀 (기본값)"},
+			},
+		},
+		"default_model": {
+			Title:       "팀원 기본 모델 선택",
+			Description: "Agent Team원의 기본 Claude 모델.",
+			Options: []OptionTranslation{
+				{Label: "Haiku (빠름/저렴)", Desc: "가장 빠르고 저렴"},
+				{Label: "Sonnet (균형)", Desc: "성능과 비용의 균형 (기본값)"},
+				{Label: "Opus (고성능)", Desc: "가장 강력하지만 비용 높음"},
+			},
+		},
+		"github_token": {
+			Title:       "GitHub 개인 액세스 토큰 입력 (선택)",
+			Description: "PR 생성 및 푸시에 필요합니다. 비워두어 건너거나 gh CLI를 사용하세요.",
+		},
 	},
 	"ja": {
 		"locale": {
@@ -163,6 +195,38 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "DDD (ドメイン駆動開発)", Desc: "レガシーリファクタリングのためのANALYZE-PRESERVE-IMPROVEサイクル"},
 			},
 		},
+		"agent_teams_mode": {
+			Title:       "Agent Teams実行モードを選択",
+			Description: "MoAIがAgent Teams（並列）かsub-agents（順次）を使用するかを制御します。",
+			Options: []OptionTranslation{
+				{Label: "Auto (推奨)", Desc: "タスク複雑さに基づくインテリジェント選択"},
+				{Label: "Sub-agent (クラシック)", Desc: "従来の単一エージェントモード"},
+				{Label: "Team (実験的)", Desc: "並列Agent Teams（実験的フラグが必要）"},
+			},
+		},
+		"max_teammates": {
+			Title:       "最大チームメイト数を選択",
+			Description: "チームの最大メイト数（2-5推奨）。",
+			Options: []OptionTranslation{
+				{Label: "2", Desc: "並列作業の最小値"},
+				{Label: "3", Desc: "小規模チーム"},
+				{Label: "4", Desc: "中規模チーム"},
+				{Label: "5", Desc: "大規模チーム（デフォルト）"},
+			},
+		},
+		"default_model": {
+			Title:       "チームメイトのデフォルトモデルを選択",
+			Description: "Agent TeamメイトのデフォルトClaudeモデル。",
+			Options: []OptionTranslation{
+				{Label: "Haiku (高速/低コスト)", Desc: "最も高速で低コスト"},
+				{Label: "Sonnet (バランス)", Desc: "パフォーマンスとコストのバランス（デフォルト）"},
+				{Label: "Opus (高機能)", Desc: "最も高機能だが高コスト"},
+			},
+		},
+		"github_token": {
+			Title:       "GitHubパーソナルアクセストークンを入力（省略可）",
+			Description: "PR作成とプッシュに必要です。空欄のままスキップまたはgh CLIを使用してください。",
+		},
 	},
 	"zh": {
 		"locale": {
@@ -233,6 +297,38 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Hybrid (TDD + DDD) (推荐)", Desc: "新功能用TDD，现有代码用DDD"},
 				{Label: "DDD (领域驱动开发)", Desc: "用于遗留代码重构的ANALYZE-PRESERVE-IMPROVE循环"},
 			},
+		},
+		"agent_teams_mode": {
+			Title:       "选择Agent Teams执行模式",
+			Description: "控制MoAI使用Agent Teams（并行）还是sub-agents（顺序）。",
+			Options: []OptionTranslation{
+				{Label: "Auto (推荐)", Desc: "基于任务复杂度的智能选择"},
+				{Label: "Sub-agent (经典)", Desc: "传统单代理模式"},
+				{Label: "Team (实验性)", Desc: "并行Agent Teams（需要实验性标志）"},
+			},
+		},
+		"max_teammates": {
+			Title:       "选择最大团队成员数",
+			Description: "团队中最大成员数（建议2-5）。",
+			Options: []OptionTranslation{
+				{Label: "2", Desc: "并行工作的最小值"},
+				{Label: "3", Desc: "小型团队"},
+				{Label: "4", Desc: "中型团队"},
+				{Label: "5", Desc: "大型团队（默认）"},
+			},
+		},
+		"default_model": {
+			Title:       "选择团队成员的默认模型",
+			Description: "Agent Teammates的默认Claude模型。",
+			Options: []OptionTranslation{
+				{Label: "Haiku (快速/低成本)", Desc: "最快且成本最低"},
+				{Label: "Sonnet (平衡)", Desc: "性能与成本的平衡（默认）"},
+				{Label: "Opus (强大)", Desc: "最强大但成本较高"},
+			},
+		},
+		"github_token": {
+			Title:       "输入GitHub个人访问令牌（可选）",
+			Description: "PR创建和推送所需。留空以跳过或使用gh CLI。",
 		},
 	},
 }

@@ -18,6 +18,7 @@ type WizardResult struct {
 	// Git settings
 	GitMode        string // Git automation mode: manual, personal, team
 	GitHubUsername string // GitHub username (required for personal/team modes)
+	GitHubToken    string // GitHub personal access token (optional)
 
 	// Output language settings
 	GitCommitLang   string // Language for git commit messages: en, ko, ja, zh
@@ -26,6 +27,11 @@ type WizardResult struct {
 
 	// Development methodology
 	DevelopmentMode string // Development mode: ddd, tdd, hybrid
+
+	// Agent Teams settings
+	AgentTeamsMode string // Agent Teams execution mode: auto, subagent, team
+	MaxTeammates   string // Maximum teammates (2-5, for team mode)
+	DefaultModel   string // Default model for teammates: haiku, sonnet, opus
 }
 
 // QuestionType represents the type of wizard question.
