@@ -50,8 +50,8 @@
 
         try {
             $response = Invoke-RestMethod -Uri $versionUrl -Method Get
-            # Find the latest Go edition release (tag starts with "go-v")
-            $goRelease = $response | Where-Object { $_.tag_name -like "go-v*" } | Select-Object -First 1
+            # Find the latest release (accept both v* and go-v* tags)
+            $goRelease = $response | Where-Object { $_.tag_name -like "v*" -or $_.tag_name -like "go-v*" } | Select-Object -First 1
 
             if (-not $goRelease) {
                 Print-Error "No go-v* releases found"
@@ -61,7 +61,7 @@
                 exit 1
             }
 
-            $version = $goRelease.tag_name -replace '^go-v', ''
+            $version = $goRelease.tag_name -replace '^go-v', '' -replace '^v', ''
             Print-Success "Latest Go edition version: $version"
             return $version
         }
@@ -84,9 +84,9 @@
         $arch = $parts[1]
 
         # Build archive filename matching goreleaser format
-        $archiveName = "moai-adk_go-v${Version}_${os}_${arch}.zip"
-        $downloadUrl = "https://github.com/modu-ai/moai-adk/releases/download/go-v$Version/$archiveName"
-        $checksumUrl = "https://github.com/modu-ai/moai-adk/releases/download/go-v$Version/checksums.txt"
+        $archiveName = "moai-adk_${Version}_${os}_${arch}.zip"
+        $downloadUrl = "https://github.com/modu-ai/moai-adk/releases/download/v$Version/$archiveName"
+        $checksumUrl = "https://github.com/modu-ai/moai-adk/releases/download/v$Version/checksums.txt"
 
         $tempDir = Join-Path $env:TEMP "moai-install-$(New-Guid)"
         $archiveFile = Join-Path $tempDir $archiveName
