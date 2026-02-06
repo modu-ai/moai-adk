@@ -193,6 +193,18 @@ Python 기반 MoAI-ADK를 Go로 완전히 재작성한 첫 번째 공식 릴리�
 **언어 설정:**
 - 개선된 사용자 경험을 위해 기본 대화 언어를 한국어(ko)로 설정
 
+**에이전트 훅 시스템:**
+- 워크플로우 강제를 위한 에이전트별 훅 추가
+- 에이전트 완료 훅을 위한 `SubagentStop` 이벤트 타입 구현
+- 에이전트 훅을 위한 `handle-agent-hook.sh` 래퍼 스크립트 생성
+- `internal/hook/agents/`의 에이전트별 핸들러를 위한 팩토리 패턴 추가
+- DDD 워크플로우 훅 구현 (ddd-pre-transformation, ddd-post-transformation, ddd-completion)
+- TDD 워크플로우 훅 구현 (tdd-pre-implementation, tdd-post-implementation, tdd-completion)
+- 전문가 에이전트를 위한 검증/확인 훅 추가 (backend, frontend, testing, debug, devops)
+- 관리자 에이전트를 위한 완료 훅 추가 (quality, spec, docs)
+- 에이전트 훅 참조가 포함된 hooks-system.md 문서 업데이트
+- 모든 템플릿 위치에 에이전트 훅 구성 동기화
+
 ### Breaking Changes
 
 - **설치 방법**: `uv tool install moai-adk`에서 단일 바이너리 설치로 변경
@@ -212,6 +224,14 @@ Python 기반 MoAI-ADK를 Go로 완전히 재작성한 첫 번째 공식 릴리�
 - **LSP 품질 게이트**: 품질 검증을 위한 통합 LSP 진단
 - **보안 스캐너**: 코드 변경을 위한 훅 기반 보안 스캐닝
 - **i18n 지원**: CLI 명령어의 다국어 지원
+- **에이전트 훅 시스템**: 워크플로우 강제를 위한 에이전트별 훅
+  - 에이전트 수명주기 훅을 위한 SubagentStop 이벤트 타입
+  - 일관된 인터페이스를 위한 handle-agent-hook.sh 래퍼 스크립트
+  - 에이전트별 핸들러를 위한 팩토리 패턴
+  - DDD 워크플로우 훅 (pre/post-transformation, completion)
+  - TDD 워크플로우 훅 (pre/post-implementation, completion)
+  - 전문가 에이전트 검증/확인 훅
+  - 관리자 에이전트 완료 훅
 
 ### 변경됨
 
