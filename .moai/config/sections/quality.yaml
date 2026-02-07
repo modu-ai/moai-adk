@@ -1,0 +1,229 @@
+constitution:
+  # Development methodology selection
+  # Options: ddd (Domain-Driven Development), tdd (Test-Driven Development), hybrid (mixed approach)
+  development_mode: "ddd"
+
+  # Enable TRUST 5 quality framework enforcement
+  enforce_quality: true
+
+  # Target code coverage percentage (0-100)
+  test_coverage_target: 85
+
+  # DDD Mode Settings (ANALYZE-PRESERVE-IMPROVE)
+  # Best for: Legacy refactoring only (existing codebase, no new features)
+  ddd_settings:
+    # Require existing tests before modifications
+    require_existing_tests: true
+
+    # Create characterization tests to capture current behavior
+    characterization_tests: true
+
+    # Capture behavior snapshots for regression detection
+    behavior_snapshots: true
+
+    # Limit transformation size (small, medium, large)
+    max_transformation_size: small
+
+    # Always preserve behavior before improving
+    preserve_before_improve: true
+
+  # TDD Mode Settings (RED-GREEN-REFACTOR)
+  # Best for: Isolated new modules with no existing code dependencies (rare)
+  tdd_settings:
+    # Enforce RED-GREEN-REFACTOR cycle
+    red_green_refactor: true
+
+    # Tests must be written before implementation
+    test_first_required: true
+
+    # Minimum coverage percentage per commit (0-100)
+    min_coverage_per_commit: 80
+
+    # Enable mutation testing (experimental)
+    mutation_testing_enabled: false
+
+  # Hybrid Mode Settings (TDD for new + DDD for legacy)
+  # Best for: All development work (new projects, new features, ongoing development)
+  hybrid_settings:
+    # Methodology for new features (tdd or ddd)
+    new_features: tdd
+
+    # Methodology for legacy refactoring (tdd or ddd)
+    legacy_refactoring: ddd
+
+    # Minimum coverage for new code (0-100)
+    min_coverage_new: 85
+
+    # Minimum coverage for legacy code (0-100)
+    min_coverage_legacy: 85
+
+    # Preserve existing behavior during refactoring
+    preserve_refactoring: true
+
+  # Coverage exemption settings
+  coverage_exemptions:
+    # Allow coverage exemptions with justification
+    enabled: false
+
+    # Require written justification for exemptions
+    require_justification: true
+
+    # Maximum percentage of code that can be exempt (0-100)
+    max_exempt_percentage: 5
+
+  # Test quality requirements
+  test_quality:
+    # Tests should be specification-based (behavior, not implementation)
+    specification_based: true
+
+    # Tests must have meaningful assertions
+    meaningful_assertions: true
+
+    # Avoid coupling tests to implementation details
+    avoid_implementation_coupling: true
+
+    # Enable mutation testing (experimental)
+    mutation_testing_enabled: false
+
+  # LSP-based quality gates
+  lsp_quality_gates:
+    # Enable LSP quality validation
+    enabled: true
+
+    # Plan phase requirements
+    plan:
+      # Capture LSP baseline at phase start
+      require_baseline: true
+
+    # Run phase requirements
+    run:
+      # Maximum allowed errors (0 = zero tolerance)
+      max_errors: 0
+
+      # Maximum allowed type errors (0 = zero tolerance)
+      max_type_errors: 0
+
+      # Maximum allowed lint errors (0 = zero tolerance)
+      max_lint_errors: 0
+
+      # Allow regression from baseline (false = zero tolerance)
+      allow_regression: false
+
+    # Sync phase requirements
+    sync:
+      # Maximum allowed errors (0 = zero tolerance)
+      max_errors: 0
+
+      # Maximum allowed warnings
+      max_warnings: 10
+
+      # Require clean LSP state
+      require_clean_lsp: true
+
+    # LSP cache time-to-live in seconds
+    cache_ttl_seconds: 5
+
+    # LSP operation timeout in seconds
+    timeout_seconds: 3
+
+  # Quality principles
+  principles:
+    # Simplicity principle
+    simplicity:
+      # Maximum parallel tasks to prevent complexity
+      max_parallel_tasks: 10
+
+  # LSP integration settings
+  lsp_integration:
+    # TRUST 5 framework integration with LSP
+    trust5_integration:
+      # Tested dimension checks
+      tested:
+      - unit_tests_pass
+      - lsp_type_errors == 0
+      - lsp_errors == 0
+
+      # Readable dimension checks
+      readable:
+      - naming_conventions_followed
+      - lsp_lint_errors == 0
+
+      # Understandable dimension checks
+      understandable:
+      - documentation_complete
+      - code_complexity_acceptable
+      - lsp_warnings < threshold
+
+      # Secured dimension checks
+      secured:
+      - security_scan_pass
+      - lsp_security_warnings == 0
+
+      # Trackable dimension checks
+      trackable:
+      - logs_structured
+      - lsp_diagnostic_history_tracked
+
+    # LSP diagnostic sources to monitor
+    diagnostic_sources:
+    - typecheck
+    - lint
+    - security
+
+    # Regression detection thresholds
+    regression_detection:
+      # Error increase threshold (0 = zero tolerance)
+      error_increase_threshold: 0
+
+      # Warning increase threshold
+      warning_increase_threshold: 10
+
+      # Type error increase threshold (0 = zero tolerance)
+      type_error_increase_threshold: 0
+
+# Report generation settings
+report_generation:
+  # Enable quality report generation
+  enabled: true
+
+  # Automatically create reports after each phase
+  auto_create: false
+
+  # Warn user when quality issues detected
+  warn_user: true
+
+  # Default report detail level (Minimal, Summary, Detailed)
+  user_choice: Minimal
+
+# LSP state tracking
+lsp_state_tracking:
+  # Enable LSP state tracking across phases
+  enabled: true
+
+  # Phase points where LSP state is captured
+  capture_points:
+  - phase_start
+  - post_transformation
+  - pre_sync
+
+  # Comparison settings
+  comparison:
+    # Baseline for comparison (phase_start, previous, custom)
+    baseline: phase_start
+
+    # Regression detection threshold (0 = zero tolerance)
+    regression_threshold: 0
+
+  # Logging settings
+  logging:
+    # Log LSP state changes
+    log_lsp_state_changes: true
+
+    # Log regression detection events
+    log_regression_detection: true
+
+    # Log completion marker detection
+    log_completion_markers: true
+
+    # Include LSP diagnostics in quality reports
+    include_lsp_in_reports: true

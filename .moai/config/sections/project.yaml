@@ -1,0 +1,24 @@
+# Project Metadata Configuration
+# Project-specific information and settings
+
+project:
+  # Project name (derived from directory name or user input)
+  name: ""
+
+  # Project description (optional, user-provided)
+  description: ""
+
+  # Project type (e.g., web, api, library, cli, mobile)
+  type: ""
+
+  # Project creation timestamp (ISO 8601 format)
+  created_at: ""
+
+  # Project initialization status
+  initialized: "true"
+
+# GitHub Integration
+github:
+  # GitHub profile/organization name for this project
+  # Used for generating proper URLs and repository references
+  profile_name: ""

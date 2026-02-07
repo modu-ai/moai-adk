@@ -1,0 +1,36 @@
+# Language Configuration
+# Multi-language support for MoAI-ADK
+
+language:
+  # Conversation language code (ISO 639-1)
+  # Options: ko (Korean), en (English), ja (Japanese), zh (Chinese), es (Spanish), fr (French), de (German)
+  # Determines the language of AI responses to the user
+  conversation_language: "ko"
+
+  # Full language name with native script
+  # Automatically resolved from conversation_language code
+  # Examples: "Korean (한국어)", "English", "Japanese (日本語)"
+  conversation_language_name: "Korean (한국어)"
+
+  # Agent prompt language (internal communication)
+  # Always "en" (English) for consistency and compatibility
+  agent_prompt_language: "en"
+
+  # Git commit message language
+  # Options: en (English, recommended), ko, ja, zh
+  # Recommended: "en" for international collaboration
+  git_commit_messages: "en"
+
+  # Code comment language
+  # Options: en (English, recommended), ko, ja, zh
+  # Recommended: "en" for international collaboration
+  code_comments: "en"
+
+  # Documentation language
+  # Options: en (English), ko, ja, zh, or match conversation_language
+  # Can differ from conversation_language for international docs
+  documentation: "en"
+
+  # Error message language
+  # Options: en (English), ko, ja, zh, or match conversation_language
+  error_messages: "en"

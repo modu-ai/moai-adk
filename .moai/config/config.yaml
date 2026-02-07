@@ -1,0 +1,11 @@
+moai:
+    initialized: true
+    initialized_at: ""
+    version: ""
+project:
+    created_at: ""
+    description: ""
+    mode: personal
+    name: moai-adk-go
+    optimized: false
+    template_version: ""

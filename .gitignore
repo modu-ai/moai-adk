@@ -197,10 +197,10 @@ dist-ssr/
 # ===========================================
 # MoAI Local Data (user-specific, not shared)
 # ===========================================
-# Ignore all .moai contents by default
-.moai/*
-# But track project documentation (shared team knowledge)
-!.moai/project/
-!.moai/project/**
-# But track status line script (project-specific)
-!.moai/status_line.sh
+# Ignore runtime/cache data only
+.moai/cache/
+.moai/logs/
+.moai/memory/
+.moai/reports/
+.moai/temp/
+# Track everything else: project/, specs/, config/, status_line.sh, manifest.json

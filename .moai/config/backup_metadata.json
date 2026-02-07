@@ -1,0 +1,15 @@
+{
+  "timestamp": "20260207_152842",
+  "description": "config_backup",
+  "backed_up_items": [
+    ".moai/config/config.yaml"
+  ],
+  "excluded_items": [
+    "sections"
+  ],
+  "excluded_dirs": [
+    "sections"
+  ],
+  "project_root": ".",
+  "backup_type": "config"
+}

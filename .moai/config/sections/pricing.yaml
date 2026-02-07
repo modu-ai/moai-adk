@@ -1,0 +1,26 @@
+# Service Pricing Configuration
+# LLM service and pricing plan selection
+
+service:
+  # Service type (claude, glm, custom)
+  # - claude: Anthropic Claude API
+  # - glm: Z.AI GLM API (Anthropic-compatible)
+  # - custom: Custom LLM provider
+  type: glm
+
+  # Claude pricing plan (free, pro, team, enterprise)
+  # Determines model access and rate limits
+  pricing_plan: pro
+
+  # GLM pricing plan (basic, pro, enterprise)
+  # Determines GLM-specific features and quotas
+  glm_pricing_plan: basic
+
+# Model Allocation Strategy
+model_allocation:
+  # Strategy for model selection (auto, manual, cost-optimized, quality-optimized)
+  # - auto: Automatically select based on task complexity
+  # - manual: User specifies model for each task
+  # - cost-optimized: Prefer cheaper models when possible
+  # - quality-optimized: Prefer highest quality models
+  strategy: auto

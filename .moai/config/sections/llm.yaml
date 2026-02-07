@@ -1,0 +1,23 @@
+# LLM Configuration Settings
+# Single source of truth for LLM backend configuration
+#
+# Commands:
+#   moai glm  - Switch to GLM backend (injects env into settings.local.json)
+#   moai cc   - Switch to Claude backend (removes env from settings.local.json)
+
+llm:
+  # Current mode: claude-only | glm-only
+  mode: claude-only
+
+  # Environment variable name for GLM API key
+  # User must set this in their shell profile (~/.zshrc, ~/.bashrc)
+  glm_env_var: GLM_API_KEY
+
+  # GLM API Configuration
+  # Used by 'moai glm' to inject env variables into .claude/settings.local.json
+  glm:
+    base_url: "https://api.z.ai/api/anthropic"
+    models:
+      haiku: "glm-4.7-flashx"
+      sonnet: "glm-4.7"
+      opus: "glm-4.7"
