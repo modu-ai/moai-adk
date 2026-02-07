@@ -5,6 +5,70 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2026-02-07
+
+### 요약
+
+Windows 설치 스크립트 버그 수정 및 릴리즈 워크플로우 개선
+
+### 주요 변경 사항
+
+없음
+
+### 수정됨
+
+- Windows PowerShell 6+ 환경에서 `$IsWindows` 읽기 전용 변수 충돌 해결
+- `moai update` 실행 시 불필요한 JSON 로그 출력 제거 (merge confirmation)
+
+### 변경됨
+
+- 릴리즈 노트 이중언어 형식을 영어 우선으로 변경 (이전: 한국어 우선)
+- CI/CD 워크플로우에 OAuth 토큰 설정 추가
+
+### 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
+## [2.0.1] - 2026-02-07 (English)
+
+### Summary
+
+Windows installer bugfix and release workflow improvements
+
+### Breaking Changes
+
+None
+
+### Fixed
+
+- Resolved PowerShell `$IsWindows` read-only variable conflict in Windows installer (PowerShell 6+)
+- Removed unwanted JSON log output during `moai update` (merge confirmation)
+
+### Changed
+
+- Updated release notes bilingual format to English-first (previously Korean-first)
+- Added OAuth token configuration to CI/CD workflows
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
 ## [2.0.0] - 2026-02-06
 
 ### Summary
