@@ -46,6 +46,37 @@ This is the first official release of MoAI-ADK Go Edition, a complete rewrite of
 **Language Configuration:**
 - Default conversation language set to Korean (ko) for improved user experience
 
+**Additional Updates (Post v2.0.0 Tag):**
+- **Documentation Restructuring**:
+  - Made English the default README, moved Korean to README.ko.md (2e28f54f)
+  - Maintained multilingual support (EN, JA, ZH, KO)
+- **CI/CD Enhancements**:
+  - Switched claude-code-action to GLM API Key (unofficial) (29d353ca)
+  - Added open-source AI automation infrastructure (ffcaa6a2)
+  - Improved CI/CD workflows with CodeQL, community automation
+- **Project Organization**:
+  - Untracked .moai local config, keeping only project/ and status_line.sh (8153bb19)
+  - Cleaned up 38,895 lines of stale SPEC/project files
+- **GitHub Flow Integration**:
+  - Added /moai cpr command for issue-to-PR automation (081e5b7a)
+  - Switched to GitHub Flow branch protection with feature/hotfix patterns (61f54378)
+  - Made git delivery strategy-aware instead of GitHub Flow only (3fdec7aa)
+- **Agent Teams Infrastructure** (a95e2a8d):
+  - Added 8 team agents: team-researcher, team-analyst, team-architect, team-designer, team-backend-dev, team-frontend-dev, team-tester, team-quality
+  - Created team workflow skills: team-plan, team-run, team-debug, team-review, team-sync
+  - Implemented dual-mode execution (sub-agent vs Agent Teams)
+  - Added complexity-based automatic mode selection
+- **Settings Migration** (d01d16b8):
+  - Migrated env, permissions, and teammateMode from global to project-level settings
+  - Smart PATH capture instead of removing env.PATH (233f8907, 76500f84)
+  - Added required type field to statusLine configuration (ad40b799)
+- **Code Quality**:
+  - Improved StatusLine version display format with config fallback (9a8183cc)
+  - Fixed CI builds for Go 1.25 compatibility with golangci-lint (c72f4516, 542e146b, c58a61f7)
+- **Community Infrastructure**:
+  - Added CONTRIBUTING.md (KO/EN), SECURITY.md, LICENSE
+  - GitHub issue/PR templates, dependabot, labeler, CodeQL
+
 ### Breaking Changes
 
 - **Installation Method**: Changed from `uv tool install moai-adk` to single binary installation
@@ -192,6 +223,37 @@ Python 기반 MoAI-ADK를 Go로 완전히 재작성한 첫 번째 공식 릴리�
 
 **언어 설정:**
 - 개선된 사용자 경험을 위해 기본 대화 언어를 한국어(ko)로 설정
+
+**추가 업데이트 (v2.0.0 태그 이후):**
+- **문서 재구성**:
+  - 영문 README를 기본으로 설정, 한국어를 README.ko.md로 이동 (2e28f54f)
+  - 다국어 지원 유지 (EN, JA, ZH, KO)
+- **CI/CD 개선**:
+  - claude-code-action을 GLM API Key로 전환 (비공식) (29d353ca)
+  - 오픈소스 AI 자동화 인프라 추가 (ffcaa6a2)
+  - CodeQL, 커뮤니티 자동화를 포함한 CI/CD 워크플로우 개선
+- **프로젝트 정리**:
+  - .moai 로컬 설정 untrack, project/ 및 status_line.sh만 유지 (8153bb19)
+  - 오래된 SPEC/project 파일 38,895줄 정리
+- **GitHub Flow 통합**:
+  - issue-to-PR 자동화를 위한 /moai cpr 명령어 추가 (081e5b7a)
+  - feature/hotfix 패턴을 사용한 GitHub Flow 브랜치 보호 전환 (61f54378)
+  - GitHub Flow만이 아닌 전략 인식 git 전달 방식으로 변경 (3fdec7aa)
+- **에이전트 팀 인프라** (a95e2a8d):
+  - 8개 팀 에이전트 추가: team-researcher, team-analyst, team-architect, team-designer, team-backend-dev, team-frontend-dev, team-tester, team-quality
+  - 팀 워크플로우 스킬 생성: team-plan, team-run, team-debug, team-review, team-sync
+  - 이중 모드 실행 구현 (sub-agent vs Agent Teams)
+  - 복잡도 기반 자동 모드 선택 추가
+- **설정 마이그레이션** (d01d16b8):
+  - env, permissions, teammateMode를 global에서 project-level로 마이그레이션
+  - env.PATH 제거 대신 Smart PATH 캡처 (233f8907, 76500f84)
+  - statusLine 구성에 필수 type 필드 추가 (ad40b799)
+- **코드 품질**:
+  - config fallback을 사용한 StatusLine 버전 표시 형식 개선 (9a8183cc)
+  - golangci-lint와 Go 1.25 호환성을 위한 CI 빌드 수정 (c72f4516, 542e146b, c58a61f7)
+- **커뮤니티 인프라**:
+  - CONTRIBUTING.md (KO/EN), SECURITY.md, LICENSE 추가
+  - GitHub 이슈/PR 템플릿, dependabot, labeler, CodeQL
 
 **에이전트 훅 시스템:**
 - 워크플로우 강제를 위한 에이전트별 훅 추가

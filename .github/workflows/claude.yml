@@ -52,14 +52,6 @@ jobs:
       - name: Run Claude Code
         uses: anthropics/claude-code-action@v1
         with:
-          # ⚠️ UNOFFICIAL: GLM API via Z.AI Anthropic-compatible endpoint
-          # This is NOT officially supported by claude-code-action.
-          # No guarantee of operation. May break without notice.
-          # Official methods: anthropic_api_key, claude_code_oauth_token, Bedrock, Vertex AI
-          anthropic_api_key: ${{ secrets.GLM_API_KEY }}
-          claude_args: '--model glm-4.7'
-          # Claude reads CLAUDE.md automatically for project rules
-          # Max turns to prevent runaway jobs
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          model: "claude-sonnet-4-20250514"
           max_turns: "25"
-        env:
-          ANTHROPIC_BASE_URL: "https://api.z.ai/api/paas/v4"
