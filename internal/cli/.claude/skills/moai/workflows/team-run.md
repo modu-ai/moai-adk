@@ -48,6 +48,12 @@ For cross-layer features (implementation pattern):
 - frontend-dev (team-frontend-dev, sonnet): Client-side implementation
 - tester (team-tester, sonnet): Test creation and coverage
 
+For cross-layer features with design (design_implementation pattern):
+- designer (team-designer, sonnet): UI/UX design with Pencil/Figma MCP
+- backend-dev (team-backend-dev, sonnet): Server-side implementation
+- frontend-dev (team-frontend-dev, sonnet): Client-side implementation
+- tester (team-tester, sonnet): Test creation and coverage
+
 For full-stack features (full_stack pattern):
 - api-layer (team-backend-dev, sonnet): API and business logic
 - ui-layer (team-frontend-dev, sonnet): UI and components
@@ -56,13 +62,31 @@ For full-stack features (full_stack pattern):
 
 Spawn prompt must include:
 - SPEC summary and their specific requirements
-- File ownership boundaries
+- File ownership boundaries (detected from project structure, see SKILL.md File Ownership Detection)
 - Development methodology (TDD for new code, DDD for existing)
 - Quality targets (coverage, lint, type checking)
+
+### Plan Approval Mode
+
+When workflow.yaml `team.require_plan_approval: true`:
+- Spawn implementation teammates with `mode: "plan"` instead of `mode: "acceptEdits"`
+- Each teammate must submit a plan before implementing any code
+- Team lead receives `plan_approval_request` messages with the proposed approach
+- Team lead reviews: file ownership compliance, approach alignment with SPEC, scope correctness
+- Approve: `SendMessage(type: "plan_approval_response", request_id: "{id}", recipient: "{name}", approve: true)`
+- Reject with feedback: `SendMessage(type: "plan_approval_response", request_id: "{id}", recipient: "{name}", approve: false, content: "Revise X")`
+- After approval, teammate automatically exits plan mode and begins implementation
+- When `require_plan_approval` is false, spawn directly with `mode: "acceptEdits"`
 
 ## Phase 2: Parallel Implementation
 
 Teammates self-claim tasks from the shared list and work independently:
+
+Design (when team-designer is included):
+- Creates UI/UX designs using Pencil MCP or Figma MCP (Task 0)
+- Produces design tokens, style guides, and component specifications
+- Shares design specs with frontend-dev via SendMessage
+- Owns design files (.pen, design tokens, style configs)
 
 Backend development:
 - Creates data models and schema (Task 1)
@@ -72,10 +96,10 @@ Backend development:
 - Notifies frontend-dev when API contracts are ready
 
 Frontend development:
-- Waits for API contracts from backend-dev
+- Waits for API contracts from backend-dev and design specs from designer
 - Implements UI components and pages (Task 3)
 - Follows TDD for new components
-- Coordinates with backend on data shapes via SendMessage
+- Coordinates with backend on data shapes and designer on visual specs via SendMessage
 
 Testing:
 - Waits for implementation tasks to complete
@@ -88,6 +112,17 @@ MoAI coordination:
 - Resolve any blocking issues
 - Monitor task progress via TaskList
 - Redirect teammates if approach isn't working
+
+### Delegate Mode
+
+When workflow.yaml `team.delegate_mode: true`:
+- MoAI operates in coordination-only mode during the entire run phase
+- Focus on: task assignment, message routing, progress monitoring, conflict resolution
+- Do NOT directly implement code or modify files (no Write, Edit, or Bash for implementation)
+- Delegate ALL implementation to teammates via task assignment and SendMessage
+- Read and Grep are permitted for context understanding and reviewing teammate output
+- If a task has no suitable teammate, spawn a new one rather than implementing directly
+- When delegate_mode is false, team lead may implement small tasks directly alongside teammates
 
 ## Phase 3: Quality Validation
 
@@ -141,4 +176,4 @@ If team mode fails at any point:
 
 ---
 
-Version: 1.0.0
+Version: 1.2.0
