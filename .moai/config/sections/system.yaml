@@ -24,8 +24,24 @@ github:
   # Automatically delete feature branches after merge
   auto_delete_branches: true
 
-  # SPEC git workflow strategy (main_direct, feature_branch, release_branch)
-  spec_git_workflow: main_direct
+  # Git workflow strategy for open source project
+  # GitHub Flow: Feature branches off main, PR review, merge to main (recommended for team projects)
+  # personal: Direct commits to main (solo development only)
+  # gitflow: develop/release/hotfix branches (complex, enterprise)
+  git_workflow: github_flow
+
+  # SPEC git workflow strategy (feature_branch recommended for GitHub Flow)
+  spec_git_workflow: feature_branch
+
+  # GitHub Flow branch protection
+  # When enabled, enforces code review and CI checks before merging
+  branch_protection:
+    enabled: true
+    require_pr_reviews: true
+    min_review_count: 1
+    dismiss_stale_pr_reviews: true
+    require_status_checks: true
+    require_branches_up_to_date: true
 
 # Document Management Configuration
 document_management:

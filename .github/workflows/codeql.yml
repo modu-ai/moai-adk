@@ -2,7 +2,7 @@ name: CodeQL
 
 on:
   push:
-    branches: [main, moai-go-v2]
+    branches: [main, feature/**, hotfix/**]
   pull_request:
     branches: [main]
   schedule:

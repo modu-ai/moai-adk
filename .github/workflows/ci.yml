@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, moai-go-v2]
+    branches: [main, feature/**, hotfix/**]
   pull_request:
-    branches: [main, moai-go-v2]
+    branches: [main]
 
 # Cancel in-progress runs for the same branch
 concurrency:
