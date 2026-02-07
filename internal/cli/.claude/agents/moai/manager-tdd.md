@@ -28,10 +28,10 @@ hooks:
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" tdd-post-implementation"
           timeout: 10
   SubagentStop:
-    hooks:
-      - type: command
-        command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" tdd-completion"
-        timeout: 10
+    - hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" tdd-completion"
+          timeout: 10
 ---
 
 # TDD Implementer (New Feature Specialist)

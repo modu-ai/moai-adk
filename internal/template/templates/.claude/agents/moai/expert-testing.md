@@ -20,10 +20,10 @@ hooks:
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" testing-verification"
           timeout: 15
   SubagentStop:
-    hooks:
-      - type: command
-        command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" testing-completion"
-        timeout: 10
+    - hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" testing-completion"
+          timeout: 10
 ---
 
 # Testing Expert

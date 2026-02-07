@@ -14,10 +14,10 @@ permissionMode: default
 skills: moai-foundation-claude, moai-foundation-core, moai-foundation-philosopher, moai-workflow-spec, moai-workflow-project, moai-workflow-thinking, moai-lang-python, moai-lang-typescript
 hooks:
   SubagentStop:
-    hooks:
-      - type: command
-        command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" spec-completion"
-        timeout: 10
+    - hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" spec-completion"
+          timeout: 10
 ---
 
 # Agent Orchestration Metadata (v1.0)
