@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -10,6 +11,8 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/template"
+	"github.com/modu-ai/moai-adk/internal/update"
+	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 // buildSmartPATH is a test helper that builds a Smart PATH for a given home directory.
@@ -1750,6 +1753,165 @@ func TestPathContainsDir(t *testing.T) {
 					tt.pathStr, tt.dir, tt.sep, got, tt.want)
 			}
 		})
+	}
+}
+
+// --- Binary-First Update Tests ---
+
+func TestShouldSkipBinaryUpdate_EnvVar(t *testing.T) {
+	origVal := os.Getenv("MOAI_SKIP_BINARY_UPDATE")
+	defer func() {
+		if origVal == "" {
+			_ = os.Unsetenv("MOAI_SKIP_BINARY_UPDATE")
+		} else {
+			_ = os.Setenv("MOAI_SKIP_BINARY_UPDATE", origVal)
+		}
+	}()
+
+	_ = os.Setenv("MOAI_SKIP_BINARY_UPDATE", "1")
+
+	// Use the update command so the templates-only flag is registered
+	cmd := updateCmd
+	cmd.SetArgs([]string{})
+
+	got := shouldSkipBinaryUpdate(cmd)
+	if !got {
+		t.Error("shouldSkipBinaryUpdate should return true when MOAI_SKIP_BINARY_UPDATE=1")
+	}
+}
+
+func TestShouldSkipBinaryUpdate_DevBuild(t *testing.T) {
+	origVal := os.Getenv("MOAI_SKIP_BINARY_UPDATE")
+	defer func() {
+		if origVal == "" {
+			_ = os.Unsetenv("MOAI_SKIP_BINARY_UPDATE")
+		} else {
+			_ = os.Setenv("MOAI_SKIP_BINARY_UPDATE", origVal)
+		}
+	}()
+	_ = os.Unsetenv("MOAI_SKIP_BINARY_UPDATE")
+
+	origVersion := version.Version
+	defer func() { version.Version = origVersion }()
+
+	devVersions := []string{"dev", "abc1234-dirty", "none"}
+	for _, v := range devVersions {
+		version.Version = v
+		cmd := updateCmd
+		cmd.SetArgs([]string{})
+
+		got := shouldSkipBinaryUpdate(cmd)
+		if !got {
+			t.Errorf("shouldSkipBinaryUpdate should return true for dev version %q", v)
+		}
+	}
+}
+
+func TestShouldSkipBinaryUpdate_Normal(t *testing.T) {
+	origVal := os.Getenv("MOAI_SKIP_BINARY_UPDATE")
+	defer func() {
+		if origVal == "" {
+			_ = os.Unsetenv("MOAI_SKIP_BINARY_UPDATE")
+		} else {
+			_ = os.Setenv("MOAI_SKIP_BINARY_UPDATE", origVal)
+		}
+	}()
+	_ = os.Unsetenv("MOAI_SKIP_BINARY_UPDATE")
+
+	origVersion := version.Version
+	defer func() { version.Version = origVersion }()
+	version.Version = "v2.0.0"
+
+	cmd := updateCmd
+	cmd.SetArgs([]string{})
+
+	got := shouldSkipBinaryUpdate(cmd)
+	if got {
+		t.Error("shouldSkipBinaryUpdate should return false for normal version v2.0.0")
+	}
+}
+
+func TestUpdateCmd_HasTemplatesOnlyFlag(t *testing.T) {
+	f := updateCmd.Flags().Lookup("templates-only")
+	if f == nil {
+		t.Fatal("update command should have --templates-only flag")
+	}
+	if f.DefValue != "false" {
+		t.Errorf("--templates-only default should be false, got %q", f.DefValue)
+	}
+}
+
+func TestRunBinaryUpdateStep_NoUpdate(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = &Dependencies{
+		UpdateChecker: &mockUpdateChecker{
+			isUpdateAvailFunc: func(current string) (bool, *update.VersionInfo, error) {
+				return false, nil, nil
+			},
+		},
+	}
+
+	origVersion := version.Version
+	defer func() { version.Version = origVersion }()
+	version.Version = "v2.0.0"
+
+	var buf bytes.Buffer
+	cmd := updateCmd
+	cmd.SetOut(&buf)
+	cmd.SetArgs([]string{})
+	cmd.SetContext(context.Background())
+
+	updated, err := runBinaryUpdateStep(cmd)
+	if err != nil {
+		t.Fatalf("runBinaryUpdateStep returned error: %v", err)
+	}
+	if updated {
+		t.Error("runBinaryUpdateStep should return updated=false when no update is available")
+	}
+}
+
+func TestRunBinaryUpdateStep_UpdateAvailable(t *testing.T) {
+	origDeps := deps
+	defer func() { deps = origDeps }()
+
+	deps = &Dependencies{
+		UpdateChecker: &mockUpdateChecker{
+			isUpdateAvailFunc: func(current string) (bool, *update.VersionInfo, error) {
+				return true, &update.VersionInfo{Version: "v3.0.0"}, nil
+			},
+		},
+		UpdateOrch: &mockUpdateOrchestrator{
+			updateFunc: func(ctx context.Context) (*update.UpdateResult, error) {
+				return &update.UpdateResult{
+					PreviousVersion: "v2.0.0",
+					NewVersion:      "v3.0.0",
+				}, nil
+			},
+		},
+	}
+
+	origVersion := version.Version
+	defer func() { version.Version = origVersion }()
+	version.Version = "v2.0.0"
+
+	var buf bytes.Buffer
+	cmd := updateCmd
+	cmd.SetOut(&buf)
+	cmd.SetArgs([]string{})
+	cmd.SetContext(context.Background())
+
+	updated, err := runBinaryUpdateStep(cmd)
+	if err != nil {
+		t.Fatalf("runBinaryUpdateStep returned error: %v", err)
+	}
+	if !updated {
+		t.Error("runBinaryUpdateStep should return updated=true when update succeeds")
+	}
+	output := buf.String()
+	if !strings.Contains(output, "v3.0.0") {
+		t.Errorf("output should mention new version v3.0.0, got: %s", output)
 	}
 }
 

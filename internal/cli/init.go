@@ -131,7 +131,23 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 }
 
 // runInit executes the project initialization workflow.
+// It first checks for a binary update so the latest templates are used.
 func runInit(cmd *cobra.Command, args []string) error {
+	// Binary update step (non-fatal)
+	if !shouldSkipBinaryUpdate(cmd) {
+		updated, err := runBinaryUpdateStep(cmd)
+		if err != nil {
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Warning: binary update check failed: %v\n", err)
+		}
+		if updated {
+			if err := reexecNewBinary(); err != nil {
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Warning: failed to re-exec new binary: %v\n", err)
+			}
+			// reexecNewBinary replaces the process on success; only
+			// reach here if it failed.
+		}
+	}
+
 	rootFlag := getStringFlag(cmd, "root")
 	projectName := getStringFlag(cmd, "name")
 

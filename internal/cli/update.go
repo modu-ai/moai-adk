@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
@@ -34,7 +35,7 @@ const (
 var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Sync MoAI-ADK project templates to the latest version",
-	Long:  "Synchronize embedded templates with the project. Binary updates happen automatically at session start.",
+	Long:  "Check for binary updates, install if available, then synchronize embedded templates with the project.",
 	RunE:  runUpdate,
 }
 
@@ -46,10 +47,12 @@ func init() {
 	updateCmd.Flags().BoolP("config", "c", false, "Edit project configuration (same as init wizard)")
 	updateCmd.Flags().Bool("force", false, "Skip backup and force the update")
 	updateCmd.Flags().Bool("yes", false, "Auto-confirm all prompts (CI/CD mode)")
+	updateCmd.Flags().Bool("templates-only", false, "Skip binary update, sync templates only")
 }
 
-// runUpdate synchronizes embedded templates with the project directory.
-// Binary self-updates now happen automatically at session start.
+// runUpdate checks for binary updates first, then synchronizes embedded
+// templates with the project directory. If a newer binary is installed,
+// the process re-execs itself so the latest templates are used.
 //
 // Flags:
 //
@@ -58,6 +61,7 @@ func init() {
 //	--force: Skip backup and force the update
 //	--shell-env: Configure shell environment variables
 //	--yes: Auto-confirm all prompts (CI/CD mode)
+//	--templates-only: Skip binary update, sync templates only
 func runUpdate(cmd *cobra.Command, _ []string) error {
 	checkOnly := getBoolFlag(cmd, "check")
 	shellEnv := getBoolFlag(cmd, "shell-env")
@@ -104,8 +108,138 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	// Default: template sync only
+	// Step 1: Binary update (unless skipped)
+	if !shouldSkipBinaryUpdate(cmd) {
+		updated, err := runBinaryUpdateStep(cmd)
+		if err != nil {
+			// Binary update failure is never fatal; warn and continue
+			_, _ = fmt.Fprintf(out, "Warning: binary update check failed: %v\n", err)
+		}
+		if updated {
+			// New binary installed; re-exec so the latest templates are used
+			if err := reexecNewBinary(); err != nil {
+				_, _ = fmt.Fprintf(out, "Warning: failed to re-exec new binary: %v\n", err)
+				// Fall through to template sync with the current binary
+			}
+			// reexecNewBinary replaces the process on success, so we only
+			// reach here if it failed.
+		}
+	}
+
+	// Step 2: Template sync
 	return runTemplateSyncWithProgress(cmd)
+}
+
+// shouldSkipBinaryUpdate returns true when the binary update step should
+// be skipped. This happens in three cases:
+//  1. The --templates-only flag is set (update command only).
+//  2. The MOAI_SKIP_BINARY_UPDATE=1 environment variable is set (used by
+//     reexecNewBinary to prevent infinite re-exec loops).
+//  3. The current binary is a dev build (version contains "dirty", "dev",
+//     or "none"), where self-update is meaningless.
+func shouldSkipBinaryUpdate(cmd *cobra.Command) bool {
+	// Flag check (only the update command registers this flag)
+	if f := cmd.Flags().Lookup("templates-only"); f != nil && f.Value.String() == "true" {
+		return true
+	}
+
+	// Environment variable guard (set by reexecNewBinary)
+	if os.Getenv("MOAI_SKIP_BINARY_UPDATE") == "1" {
+		return true
+	}
+
+	// Dev build detection (reuse pattern from buildAutoUpdateFunc in deps.go)
+	v := version.GetVersion()
+	if strings.Contains(v, "dirty") || v == "dev" || strings.Contains(v, "none") {
+		return true
+	}
+
+	return false
+}
+
+// runBinaryUpdateStep checks whether a newer moai binary is available and,
+// if so, downloads and installs it. The caller should re-exec the process
+// when updated is true.
+//
+// Errors are non-fatal by design: the caller should log the error and
+// continue with the original operation (template sync or init).
+func runBinaryUpdateStep(cmd *cobra.Command) (updated bool, err error) {
+	out := cmd.OutOrStdout()
+
+	// Lazily initialise update dependencies
+	if deps != nil {
+		if initErr := deps.EnsureUpdate(); initErr != nil {
+			return false, fmt.Errorf("initialize update system: %w", initErr)
+		}
+	}
+
+	if deps == nil || deps.UpdateChecker == nil {
+		return false, nil
+	}
+
+	currentVersion := version.GetVersion()
+
+	// Check for available update
+	available, info, err := deps.UpdateChecker.IsUpdateAvailable(currentVersion)
+	if err != nil {
+		return false, fmt.Errorf("check for update: %w", err)
+	}
+	if !available {
+		return false, nil
+	}
+
+	_, _ = fmt.Fprintf(out, "New version available: %s (current: %s)\n", info.Version, currentVersion)
+	_, _ = fmt.Fprintln(out, "Installing update...")
+
+	if deps.UpdateOrch == nil {
+		return false, nil
+	}
+
+	ctx, cancel := context.WithTimeout(cmd.Context(), 120*time.Second)
+	defer cancel()
+
+	result, err := deps.UpdateOrch.Update(ctx)
+	if err != nil {
+		return false, fmt.Errorf("install update: %w", err)
+	}
+
+	_, _ = fmt.Fprintf(out, "Updated: %s -> %s\n", result.PreviousVersion, result.NewVersion)
+	return true, nil
+}
+
+// reexecNewBinary replaces the current process with the newly installed
+// moai binary, preserving the original command-line arguments. It sets
+// MOAI_SKIP_BINARY_UPDATE=1 to prevent the re-execed process from
+// attempting another binary update.
+//
+// On Unix this uses syscall.Exec (the process is replaced in-place).
+// On Windows syscall.Exec is not available, so we spawn a child process
+// and exit the parent.
+func reexecNewBinary() error {
+	exe, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("resolve executable path: %w", err)
+	}
+
+	// Prevent re-exec loop
+	if err := os.Setenv("MOAI_SKIP_BINARY_UPDATE", "1"); err != nil {
+		return fmt.Errorf("set MOAI_SKIP_BINARY_UPDATE: %w", err)
+	}
+
+	if runtime.GOOS == "windows" {
+		// Windows: spawn child and exit parent
+		child := exec.Command(exe, os.Args[1:]...)
+		child.Stdin = os.Stdin
+		child.Stdout = os.Stdout
+		child.Stderr = os.Stderr
+		if err := child.Run(); err != nil {
+			return fmt.Errorf("re-exec on windows: %w", err)
+		}
+		os.Exit(0)
+	}
+
+	// Unix: replace process via execve(2)
+	return syscall.Exec(exe, os.Args, os.Environ())
 }
 
 // runTemplateSync synchronizes embedded templates with the project directory.

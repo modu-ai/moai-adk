@@ -78,6 +78,18 @@ func (m *mockUpdateChecker) IsUpdateAvailable(current string) (bool, *update.Ver
 	return false, nil, nil
 }
 
+// mockUpdateOrchestrator implements update.Orchestrator for testing.
+type mockUpdateOrchestrator struct {
+	updateFunc func(ctx context.Context) (*update.UpdateResult, error)
+}
+
+func (m *mockUpdateOrchestrator) Update(ctx context.Context) (*update.UpdateResult, error) {
+	if m.updateFunc != nil {
+		return m.updateFunc(ctx)
+	}
+	return &update.UpdateResult{PreviousVersion: "v0.0.0", NewVersion: "v0.0.1"}, nil
+}
+
 // mockRankClient implements rank.Client for testing.
 type mockRankClient struct {
 	checkStatusFunc    func(ctx context.Context) (*rank.ApiStatus, error)
