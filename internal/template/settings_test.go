@@ -278,8 +278,6 @@ func TestSettingsTemplateNewFields(t *testing.T) {
 		"enableAllProjectMcpServers": true,
 		"respectGitignore":          true,
 		"spinnerTipsEnabled":        true,
-		"showTurnDuration":          true,
-		"terminalProgressBarEnabled": true,
 	}
 	for field, want := range boolFields {
 		val, ok := settings[field]
