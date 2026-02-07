@@ -506,6 +506,10 @@ Releases are automated with [GoReleaser](https://goreleaser.com/). Each release 
 
 ## Contributing
 
+Want to contribute? Check out [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+
+### Quick Start
+
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/my-feature`)
 3. Write tests first (TDD for new code, characterization tests for existing code)
@@ -521,6 +525,10 @@ Releases are automated with [GoReleaser](https://goreleaser.com/). Each release 
 - Zero lint errors, zero type errors
 - Follow existing package structure and naming conventions
 - Include table-driven tests where appropriate
+
+### Contributors
+
+All contributors are welcome! From small bug fixes to major features, every contribution is valued.
 
 ---
 

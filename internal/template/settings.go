@@ -19,11 +19,10 @@ type Settings struct {
 }
 
 // StatusLine represents the status line configuration.
+// Type must be "command" per Claude Code validation schema.
 type StatusLine struct {
-	Type            string `json:"type"`
-	Command         string `json:"command"`
-	Padding         int    `json:"padding"`
-	RefreshInterval int    `json:"refreshInterval"`
+	Type    string `json:"type"`
+	Command string `json:"command"`
 }
 
 // Permissions represents tool permissions configuration.
@@ -174,16 +173,13 @@ func eventToSubcommand(event string) string {
 // buildStatusLine constructs the status line configuration.
 // Uses relative path because StatusLine doesn't support environment variable expansion.
 // See GitHub Issue #7925: statusline does not expand environment variables
+//
+// StatusLine config format per official Claude Code documentation:
+// https://code.claude.com/docs/en/statusline
 func buildStatusLine() *StatusLine {
-	// Use relative path from project root (StatusLine doesn't expand env vars)
-	// The .moai/status_line.sh script is deployed during initialization
-	command := ".moai/status_line.sh"
-
 	return &StatusLine{
-		Type:            "command",
-		Command:         command,
-		Padding:         0,
-		RefreshInterval: 300,
+		Type:    "command",
+		Command: ".moai/status_line.sh",
 	}
 }
 

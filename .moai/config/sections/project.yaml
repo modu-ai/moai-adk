@@ -3,7 +3,7 @@
 
 project:
   # Project name (derived from directory name or user input)
-  name: ""
+  name: "moai-adk-go"
 
   # Project description (optional, user-provided)
   description: ""

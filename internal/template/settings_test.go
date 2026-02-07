@@ -301,6 +301,33 @@ func TestSettingsPlatformHookCommands(t *testing.T) {
 	})
 }
 
+func TestSettingsStatusLineType(t *testing.T) {
+	gen := NewSettingsGenerator()
+
+	t.Run("statusline_has_type_command", func(t *testing.T) {
+		data, err := gen.Generate(defaultTestConfig(), "darwin")
+		if err != nil {
+			t.Fatalf("Generate error: %v", err)
+		}
+
+		var settings Settings
+		trimmed := strings.TrimSpace(string(data))
+		if err := json.Unmarshal([]byte(trimmed), &settings); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+
+		if settings.StatusLine == nil {
+			t.Fatal("statusLine is nil")
+		}
+		if settings.StatusLine.Type != "command" {
+			t.Errorf("statusLine.type = %q, want %q", settings.StatusLine.Type, "command")
+		}
+		if settings.StatusLine.Command != ".moai/status_line.sh" {
+			t.Errorf("statusLine.command = %q, want %q", settings.StatusLine.Command, ".moai/status_line.sh")
+		}
+	})
+}
+
 func TestSettingsOutputStyleDefault(t *testing.T) {
 	gen := NewSettingsGenerator()
 

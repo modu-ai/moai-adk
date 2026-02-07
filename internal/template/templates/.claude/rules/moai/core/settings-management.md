@@ -60,9 +60,7 @@ StatusLine does NOT support environment variables. Use relative paths from proje
 {
   "statusLine": {
     "type": "command",
-    "command": ".moai/status_line.sh",
-    "padding": 0,
-    "refreshInterval": 300
+    "command": ".moai/status_line.sh"
   }
 }
 ```

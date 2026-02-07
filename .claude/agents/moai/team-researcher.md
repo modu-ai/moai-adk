@@ -8,7 +8,6 @@ description: >
 tools: Read, Grep, Glob, Bash
 model: haiku
 memory: project
-skills: moai-foundation-core
 ---
 
 You are a codebase research specialist working as part of a MoAI agent team.

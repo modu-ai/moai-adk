@@ -18,11 +18,11 @@
 
 set -e
 
-# Get action from first argument
-ACTION="${1:-}"
-if [ -z "$ACTION" ]; then
+# Get action from first argument (use lowercase to avoid template token detection)
+action="$${1:-}"
+if [ -z "$action" ]; then
     echo "Error: No action specified" >&2
-    echo "Usage: $0 <action>" >&2
+    echo "Usage: $$0 <action>" >&2
     exit 1
 fi
 
@@ -35,17 +35,17 @@ cat > "$temp_file"
 
 # Try moai command in PATH
 if command -v moai &> /dev/null; then
-    exec moai hook agent "$ACTION" < "$temp_file"
+    exec moai hook agent "$action" < "$temp_file"
 fi
 
 # Try detected Go bin path from initialization
 if [ -f "/Users/goos/go/bin/moai" ]; then
-    exec "/Users/goos/go/bin/moai" hook agent "$ACTION" < "$temp_file"
+    exec "/Users/goos/go/bin/moai" hook agent "$action" < "$temp_file"
 fi
 
 # Try default ~/go/bin/moai
-if [ -f "$HOME/go/bin/moai" ]; then
-    exec "$HOME/go/bin/moai" hook agent "$ACTION" < "$temp_file"
+if [ -f "/Users/goos/go/bin/moai" ]; then
+    exec "/Users/goos/go/bin/moai" hook agent "$action" < "$temp_file"
 fi
 
 # Not found - exit silently (Claude Code handles missing hooks gracefully)

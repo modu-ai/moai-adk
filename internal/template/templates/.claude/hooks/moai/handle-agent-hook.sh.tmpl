@@ -39,13 +39,13 @@ if command -v moai &> /dev/null; then
 fi
 
 # Try detected Go bin path from initialization
-if [ -f "/Users/goos/go/bin/moai" ]; then
-    exec "/Users/goos/go/bin/moai" hook agent "$action" < "$temp_file"
+if [ -f "{{.GoBinPath}}/moai" ]; then
+    exec "{{.GoBinPath}}/moai" hook agent "$action" < "$temp_file"
 fi
 
 # Try default ~/go/bin/moai
-if [ -f "/Users/goos/go/bin/moai" ]; then
-    exec "/Users/goos/go/bin/moai" hook agent "$action" < "$temp_file"
+if [ -f "{{.HomeDir}}/go/bin/moai" ]; then
+    exec "{{.HomeDir}}/go/bin/moai" hook agent "$action" < "$temp_file"
 fi
 
 # Not found - exit silently (Claude Code handles missing hooks gracefully)

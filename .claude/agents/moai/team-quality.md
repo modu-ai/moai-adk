@@ -8,7 +8,6 @@ description: >
 tools: Read, Grep, Glob, Bash
 model: sonnet
 memory: project
-skills: moai-foundation-core, moai-foundation-quality
 ---
 
 You are a quality assurance specialist working as part of a MoAI agent team.

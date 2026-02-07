@@ -195,7 +195,7 @@ make install
 ### 프로젝트 초기화
 
 ```bash
-moai init
+moai init my-project-name
 ```
 
 언어, 프레임워크, 방법론을 자동 감지하는 대화형 프로젝트 설정 마법사를 실행하여 적절한 구성과 Claude Code 통합 파일을 생성합니다. 기본 방법론은 **Hybrid**입니다.
@@ -222,10 +222,7 @@ Git 브랜치, 품질 메트릭, 구성 상태를 포함한 프로젝트 상태 
 # 업데이트 확인만 수행
 moai update --check
 
-# 최신 버전으로 업데이트
-moai update
-
-# 프로젝트 템플릿만 동기화
+# 최신 버전으로 프로젝트 템플릿 동기화
 moai update --project
 ```
 
@@ -506,6 +503,10 @@ make coverage
 
 ## 기여
 
+기여를 원하시나요? [CONTRIBUTING.ko.md](CONTRIBUTING.ko.md)에서 상세한 가이드를 확인하세요.
+
+### 빠른 시작
+
 1. 저장소를 포크하세요
 2. 기능 브랜치 생성 (`git checkout -b feature/my-feature`)
 3. 테스트 우선 작성 (새 코드는 TDD, 기존 코드는 특성 테스트)
@@ -521,6 +522,10 @@ make coverage
 - 0개의 린트 오류, 0개의 타입 오류
 - 기존 패키지 구조 및 명명 규칙 준수
 - 적절한 경우 테이블 기반 테스트 포함
+
+### 개발 참여자
+
+모든 기여자들을 환영합니다! 작은 버그 수정부터 대규모 기능 추가까지 모든 기여는 소중합니다.
 
 ---
 
