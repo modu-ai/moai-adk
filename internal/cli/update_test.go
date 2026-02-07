@@ -1206,11 +1206,16 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		}
 
 		// Check required env variables
-		requiredKeys := []string{"PATH", "ENABLE_TOOL_SEARCH", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"}
+		requiredKeys := []string{"ENABLE_TOOL_SEARCH", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"}
 		for _, key := range requiredKeys {
 			if _, exists := env[key]; !exists {
 				t.Errorf("required env key %q not found", key)
 			}
+		}
+
+		// PATH should NOT be set (respects terminal's system PATH, fixes #325)
+		if _, exists := env["PATH"]; exists {
+			t.Error("PATH should not be set in env to respect terminal's system PATH")
 		}
 
 		// Check permissions.allow exists (must be an array per Claude Code IAM docs)
@@ -1286,9 +1291,9 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 			t.Errorf("ENABLE_TOOL_SEARCH not added: got %v", env["ENABLE_TOOL_SEARCH"])
 		}
 
-		// PATH should be updated
-		if !strings.Contains(env["PATH"].(string), "/usr/local/bin") {
-			t.Errorf("PATH not properly updated: got %v", env["PATH"])
+		// PATH should be removed (respects terminal PATH, fixes #325)
+		if _, exists := env["PATH"]; exists {
+			t.Error("PATH should be removed from env to respect terminal's system PATH")
 		}
 	})
 
@@ -1300,7 +1305,6 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		sessionEndHookCommand := buildSessionEndHookCommand()
 		existing := map[string]interface{}{
 			"env": map[string]interface{}{
-				"PATH":                                 buildRequiredPATH(), // Use same function to match exactly
 				"ENABLE_TOOL_SEARCH":                   "1",
 				"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
 			},
@@ -1345,31 +1349,198 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 	})
 }
 
-func TestBuildRequiredPATH(t *testing.T) {
-	// Mock home directory
-	tempHome := t.TempDir()
+func TestEnsureGlobalSettingsEnv_RemovesExistingPATH(t *testing.T) {
+	// Create a temp directory for testing
+	tempDir := t.TempDir()
+
+	// Mock home directory to temp dir
 	originalHome := os.Getenv("HOME")
 	defer func() {
 		_ = os.Setenv("HOME", originalHome)
 	}()
-	_ = os.Setenv("HOME", tempHome)
+	_ = os.Setenv("HOME", tempDir)
 
-	path := buildRequiredPATH()
-
-	if path == "" {
-		t.Fatal("buildRequiredPATH returned empty string")
+	// Create .claude directory
+	claudeDir := filepath.Join(tempDir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+		t.Fatalf("failed to create .claude dir: %v", err)
 	}
 
-	// Check for essential paths
-	essentialPaths := []string{"/usr/local/bin", "/usr/bin", "/bin"}
-	for _, essential := range essentialPaths {
-		if !strings.Contains(path, essential) {
-			t.Errorf("PATH missing essential path: %s", essential)
-		}
+	settingsPath := filepath.Join(claudeDir, "settings.json")
+
+	// Create existing settings WITH PATH set (simulating pre-fix state)
+	existing := map[string]interface{}{
+		"env": map[string]interface{}{
+			"PATH":               "/old/go/bin:/usr/local/bin:/usr/bin:/bin",
+			"ENABLE_TOOL_SEARCH": "1",
+			"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+			"CUSTOM_VAR": "preserved",
+		},
+		"permissions": map[string]interface{}{
+			"allow": []interface{}{"Task:*"},
+		},
+		"teammateMode": "auto",
+		"hooks": map[string]interface{}{
+			"SessionEnd": []interface{}{
+				map[string]interface{}{
+					"hooks": []interface{}{
+						map[string]interface{}{
+							"type":    "command",
+							"command": buildSessionEndHookCommand(),
+							"timeout": 5,
+						},
+					},
+				},
+			},
+		},
+	}
+	data, _ := json.MarshalIndent(existing, "", "  ")
+	if err := os.WriteFile(settingsPath, data, 0644); err != nil {
+		t.Fatalf("failed to write existing settings: %v", err)
 	}
 
-	// Check PATH separator
-	if !strings.Contains(path, ":") {
-		t.Error("PATH missing colon separator")
+	err := ensureGlobalSettingsEnv()
+	if err != nil {
+		t.Fatalf("ensureGlobalSettingsEnv failed: %v", err)
+	}
+
+	// Read back and verify
+	data, err = os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("failed to read settings.json: %v", err)
+	}
+
+	var settings map[string]interface{}
+	if err := json.Unmarshal(data, &settings); err != nil {
+		t.Fatalf("failed to parse settings.json: %v", err)
+	}
+
+	env := settings["env"].(map[string]interface{})
+
+	// PATH should be removed
+	if _, exists := env["PATH"]; exists {
+		t.Error("PATH should be removed from env to respect terminal's system PATH (fixes #325)")
+	}
+
+	// Custom var should be preserved
+	if env["CUSTOM_VAR"] != "preserved" {
+		t.Errorf("CUSTOM_VAR not preserved: got %v", env["CUSTOM_VAR"])
+	}
+
+	// Required keys should still be present
+	if env["ENABLE_TOOL_SEARCH"] != "1" {
+		t.Errorf("ENABLE_TOOL_SEARCH not present: got %v", env["ENABLE_TOOL_SEARCH"])
+	}
+	if env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] != "1" {
+		t.Errorf("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS not present: got %v", env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"])
+	}
+}
+
+func TestEnsureGlobalSettingsEnv_RemovesVariousPATHFormats(t *testing.T) {
+	tests := []struct {
+		name    string
+		pathVal string
+	}{
+		{
+			name:    "Windows-style PATH with semicolons",
+			pathVal: `C:\Go\bin;C:\Users\user\go\bin;C:\Windows\system32`,
+		},
+		{
+			name:    "Mixed Unix/Windows PATH (MSYS2/Git Bash)",
+			pathVal: "/c/Users/user/go/bin:/usr/local/bin",
+		},
+		{
+			name:    "Empty string PATH",
+			pathVal: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a temp directory for testing
+			tempDir := t.TempDir()
+
+			// Mock home directory to temp dir
+			originalHome := os.Getenv("HOME")
+			defer func() {
+				_ = os.Setenv("HOME", originalHome)
+			}()
+			_ = os.Setenv("HOME", tempDir)
+
+			// Create .claude directory
+			claudeDir := filepath.Join(tempDir, ".claude")
+			if err := os.MkdirAll(claudeDir, 0755); err != nil {
+				t.Fatalf("failed to create .claude dir: %v", err)
+			}
+
+			settingsPath := filepath.Join(claudeDir, "settings.json")
+
+			// Create existing settings WITH PATH set (simulating pre-fix state)
+			existing := map[string]interface{}{
+				"env": map[string]interface{}{
+					"PATH":               tt.pathVal,
+					"ENABLE_TOOL_SEARCH": "1",
+					"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+					"CUSTOM_VAR": "preserved",
+				},
+				"permissions": map[string]interface{}{
+					"allow": []interface{}{"Task:*"},
+				},
+				"teammateMode": "auto",
+				"hooks": map[string]interface{}{
+					"SessionEnd": []interface{}{
+						map[string]interface{}{
+							"hooks": []interface{}{
+								map[string]interface{}{
+									"type":    "command",
+									"command": buildSessionEndHookCommand(),
+									"timeout": 5,
+								},
+							},
+						},
+					},
+				},
+			}
+			data, _ := json.MarshalIndent(existing, "", "  ")
+			if err := os.WriteFile(settingsPath, data, 0644); err != nil {
+				t.Fatalf("failed to write existing settings: %v", err)
+			}
+
+			err := ensureGlobalSettingsEnv()
+			if err != nil {
+				t.Fatalf("ensureGlobalSettingsEnv failed: %v", err)
+			}
+
+			// Read back and verify
+			data, err = os.ReadFile(settingsPath)
+			if err != nil {
+				t.Fatalf("failed to read settings.json: %v", err)
+			}
+
+			var settings map[string]interface{}
+			if err := json.Unmarshal(data, &settings); err != nil {
+				t.Fatalf("failed to parse settings.json: %v", err)
+			}
+
+			env := settings["env"].(map[string]interface{})
+
+			// PATH should be removed regardless of format
+			if _, exists := env["PATH"]; exists {
+				t.Errorf("PATH should be removed from env (was %q), fixes #325", tt.pathVal)
+			}
+
+			// Custom var should be preserved
+			if env["CUSTOM_VAR"] != "preserved" {
+				t.Errorf("CUSTOM_VAR not preserved: got %v", env["CUSTOM_VAR"])
+			}
+
+			// Required keys should still be present
+			if env["ENABLE_TOOL_SEARCH"] != "1" {
+				t.Errorf("ENABLE_TOOL_SEARCH not present: got %v", env["ENABLE_TOOL_SEARCH"])
+			}
+			if env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] != "1" {
+				t.Errorf("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS not present: got %v", env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"])
+			}
+		})
 	}
 }

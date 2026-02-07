@@ -59,6 +59,11 @@ func (d *detector) DetectShell() ShellType {
 		}
 	}
 
+	// Check for Git Bash / MSYS2 on Windows (sets MSYSTEM env var)
+	if msystem := d.getEnv("MSYSTEM"); msystem != "" {
+		return ShellBash
+	}
+
 	shellPath := d.getEnv("SHELL")
 	if shellPath == "" {
 		// On Windows without $SHELL, default to PowerShell if PSModulePath exists

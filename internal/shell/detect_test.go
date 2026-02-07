@@ -215,6 +215,51 @@ func TestDetectShell_PowerShell(t *testing.T) {
 	}
 }
 
+func TestDetectShell_GitBash(t *testing.T) {
+	tests := []struct {
+		name     string
+		msystem  string
+		want     ShellType
+	}{
+		{
+			name:    "mingw64",
+			msystem: "MINGW64",
+			want:    ShellBash,
+		},
+		{
+			name:    "mingw32",
+			msystem: "MINGW32",
+			want:    ShellBash,
+		},
+		{
+			name:    "ucrt64",
+			msystem: "UCRT64",
+			want:    ShellBash,
+		},
+		{
+			name:    "msys",
+			msystem: "MSYS",
+			want:    ShellBash,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := newDetectorWithEnv(func(key string) string {
+				if key == "MSYSTEM" {
+					return tt.msystem
+				}
+				return ""
+			})
+
+			got := d.DetectShell()
+			if got != tt.want {
+				t.Errorf("DetectShell() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestShellTypeString(t *testing.T) {
 	tests := []struct {
 		shell ShellType

@@ -1086,27 +1086,6 @@ func mergeSettingsJSON(templatePath, existingPath string) error {
 		if _, exists := templateEnv[k]; !exists {
 			// User added a custom env key, preserve it
 			mergedEnv[k] = v
-		} else if k == "PATH" {
-			// PATH special handling: merge user paths with template paths
-			templatePathStr, _ := templateEnv["PATH"].(string)
-			userPathStr, _ := v.(string)
-			if templatePathStr != "" && userPathStr != "" {
-				templatePaths := make(map[string]bool)
-				for _, p := range strings.Split(templatePathStr, ":") {
-					if p != "" {
-						templatePaths[p] = true
-					}
-				}
-				var userPaths []string
-				for _, p := range strings.Split(userPathStr, ":") {
-					if p != "" && !templatePaths[p] {
-						userPaths = append(userPaths, p)
-					}
-				}
-				if len(userPaths) > 0 {
-					mergedEnv["PATH"] = templatePathStr + ":" + strings.Join(userPaths, ":")
-				}
-			}
 		}
 	}
 
@@ -1474,8 +1453,10 @@ func ensureGlobalSettingsEnv() error {
 	globalSettingsPath := filepath.Join(homeDir, defs.ClaudeDir, defs.SettingsJSON)
 
 	// Define required env variables
+	// Note: PATH is intentionally NOT set here to respect the terminal's system PATH.
+	// Setting env.PATH in settings.json replaces the system PATH entirely, which breaks
+	// tools like pnpm, node, nvm, pyenv, etc. (fixes #325)
 	requiredEnv := map[string]string{
-		"PATH":                                 buildRequiredPATH(),
 		"ENABLE_TOOL_SEARCH":                   "1",
 		"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
 	}
@@ -1511,8 +1492,14 @@ func ensureGlobalSettingsEnv() error {
 		}
 	}
 
-	// Check if updates are needed
+	// Clean up previously-set PATH to respect terminal's system PATH (fixes #325)
 	needsUpdate := false
+	if _, exists := existingEnv["PATH"]; exists {
+		delete(existingEnv, "PATH")
+		needsUpdate = true
+	}
+
+	// Check if required env updates are needed
 	for key, requiredValue := range requiredEnv {
 		if existingVal, exists := existingEnv[key]; !exists || existingVal != requiredValue {
 			needsUpdate = true
@@ -1574,16 +1561,6 @@ func ensureGlobalSettingsEnv() error {
 		mergedEnv[k] = v
 	}
 	for key, value := range requiredEnv {
-		// Special handling for PATH: smart merge to preserve user additions
-		if key == "PATH" {
-			if existingPath, exists := existingEnv["PATH"]; exists {
-				if existingPathStr, ok := existingPath.(string); ok {
-					// Merge user PATH with required PATH (user additions preserved)
-					mergedEnv["PATH"] = mergePATH(value, existingPathStr)
-					continue
-				}
-			}
-		}
 		mergedEnv[key] = value
 	}
 
@@ -1777,42 +1754,6 @@ func cleanSessionEndHooks(hooksMap map[string]interface{}) {
 	}
 }
 
-// buildRequiredPATH builds the required PATH string with moai binary locations.
-func buildRequiredPATH() string {
-	homeDir, _ := os.UserHomeDir()
-
-	// Get actual Go bin path from go env (no hardcoded default)
-	goBin := ""
-	if output, err := execCommand("go", "env", "GOBIN"); err == nil && output != "" {
-		goBin = strings.TrimSpace(output)
-	} else if output, err := execCommand("go", "env", "GOPATH"); err == nil && output != "" {
-		goPath := strings.TrimSpace(output)
-		if goPath != "" {
-			goBin = filepath.Join(goPath, "bin")
-		}
-	}
-
-	// If go env fails, use default Go binary locations
-	if goBin == "" {
-		goBin = filepath.Join(homeDir, "go", "bin")
-	}
-
-	paths := []string{
-		goBin,
-		filepath.Join(homeDir, "go", "bin"),
-		"/usr/local/bin",
-		"/usr/bin",
-		"/bin",
-		"/usr/sbin",
-		"/sbin",
-		filepath.Join(homeDir, ".local", "bin"),
-		filepath.Join(homeDir, ".cargo", "bin"),
-		"/opt/homebrew/bin",
-	}
-
-	return strings.Join(paths, ":")
-}
-
 // execCommand executes a command and returns its output.
 func execCommand(name string, args ...string) (string, error) {
 	cmd := exec.Command(name, args...)
@@ -1821,32 +1762,6 @@ func execCommand(name string, args ...string) (string, error) {
 		return "", err
 	}
 	return string(output), nil
-}
-
-// mergePATH smartly merges required PATH with user's existing PATH.
-// Required paths come first (in order), followed by user paths not in required set.
-// This ensures required paths are available while preserving user customizations.
-func mergePATH(requiredPATH, userPATH string) string {
-	requiredPaths := make(map[string]bool)
-	for _, p := range strings.Split(requiredPATH, ":") {
-		if p != "" {
-			requiredPaths[p] = true
-		}
-	}
-
-	// Collect user paths not in required set
-	var userAdditions []string
-	for _, p := range strings.Split(userPATH, ":") {
-		if p != "" && !requiredPaths[p] {
-			userAdditions = append(userAdditions, p)
-		}
-	}
-
-	// Build merged PATH: required paths first, then user additions
-	if len(userAdditions) > 0 {
-		return requiredPATH + ":" + strings.Join(userAdditions, ":")
-	}
-	return requiredPATH
 }
 
 // detectGoBinPathForUpdate detects the Go binary installation path for template rendering.
