@@ -173,10 +173,10 @@ function Install-Binary {
     )
 
     # Determine install location (cross-platform)
-    $isWindows = ($IsWindows -or ($null -eq $IsWindows -and $env:OS -eq "Windows_NT"))
+    $isWin = ($IsWindows -or ($null -eq $IsWindows -and $env:OS -eq "Windows_NT"))
     if ($env:MOAI_INSTALL_DIR) {
         $targetDir = $env:MOAI_INSTALL_DIR
-    } elseif ($isWindows) {
+    } elseif ($isWin) {
         $targetDir = Join-Path $env:LOCALAPPDATA "Programs\moai"
     } else {
         # Unix-like: macOS/Linux
@@ -190,7 +190,7 @@ function Install-Binary {
     }
 
     # Binary name depends on platform
-    if ($isWindows) { $binaryName = "moai.exe" } else { $binaryName = "moai" }
+    if ($isWin) { $binaryName = "moai.exe" } else { $binaryName = "moai" }
     $targetPath = Join-Path $targetDir $binaryName
 
     Print-Info "Installing to: $targetPath"
