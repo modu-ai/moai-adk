@@ -585,7 +585,11 @@ func isMoaiManaged(path string) bool {
 		return false
 	}
 
-	parts := strings.Split(path, string(filepath.Separator))
+	// Split by both '/' and '\' for cross-platform compatibility.
+	// Template manifests always use '/' but filepath.Separator is '\' on Windows.
+	parts := strings.FieldsFunc(path, func(r rune) bool {
+		return r == '/' || r == '\\'
+	})
 	for i, part := range parts {
 		switch part {
 		case "skills", "rules", "agents", "commands", "output-styles":
@@ -803,7 +807,8 @@ func backupMoaiConfig(projectRoot string) (string, error) {
 		}
 
 		// Get relative path from backup directory
-		backupRelPath := filepath.Join(defs.MoAIDir, defs.ConfigSubdir, relPath)
+		// Use forward slashes for consistent metadata across platforms
+		backupRelPath := filepath.ToSlash(filepath.Join(defs.MoAIDir, defs.ConfigSubdir, relPath))
 		backedUpItems = append(backedUpItems, backupRelPath)
 
 		backupPath := filepath.Join(backupDir, relPath)

@@ -13,12 +13,17 @@ import (
 )
 
 // buildSmartPATH is a test helper that builds a Smart PATH for a given home directory.
-// It temporarily overrides HOME env to use the specified homeDir,
+// It temporarily overrides HOME and USERPROFILE env to use the specified homeDir,
 // then delegates to template.BuildSmartPATH().
 func buildSmartPATH(homeDir string) string {
 	origHome := os.Getenv("HOME")
+	origProfile := os.Getenv("USERPROFILE")
 	_ = os.Setenv("HOME", homeDir)
-	defer func() { _ = os.Setenv("HOME", origHome) }()
+	_ = os.Setenv("USERPROFILE", homeDir) // Windows: os.UserHomeDir() checks USERPROFILE first
+	defer func() {
+		_ = os.Setenv("HOME", origHome)
+		_ = os.Setenv("USERPROFILE", origProfile)
+	}()
 	return template.BuildSmartPATH()
 }
 
@@ -1177,10 +1182,13 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 
 	// Mock home directory to temp dir
 	originalHome := os.Getenv("HOME")
+	originalProfile := os.Getenv("USERPROFILE")
 	defer func() {
 		_ = os.Setenv("HOME", originalHome)
+		_ = os.Setenv("USERPROFILE", originalProfile)
 	}()
 	_ = os.Setenv("HOME", tempDir)
+	_ = os.Setenv("USERPROFILE", tempDir) // Windows: os.UserHomeDir() checks USERPROFILE first
 
 	// Create .claude directory
 	claudeDir := filepath.Join(tempDir, ".claude")
@@ -1464,10 +1472,13 @@ func TestEnsureGlobalSettingsEnv_CleanupMigratedSettings(t *testing.T) {
 
 	// Mock home directory to temp dir
 	originalHome := os.Getenv("HOME")
+	originalProfile := os.Getenv("USERPROFILE")
 	defer func() {
 		_ = os.Setenv("HOME", originalHome)
+		_ = os.Setenv("USERPROFILE", originalProfile)
 	}()
 	_ = os.Setenv("HOME", tempDir)
+	_ = os.Setenv("USERPROFILE", tempDir) // Windows: os.UserHomeDir() checks USERPROFILE first
 
 	// Create .claude directory
 	claudeDir := filepath.Join(tempDir, ".claude")
@@ -1572,41 +1583,42 @@ func TestEnsureGlobalSettingsEnv_CleanupMigratedSettings(t *testing.T) {
 func TestBuildSmartPATH(t *testing.T) {
 	sep := string(os.PathListSeparator)
 
+	// Use a platform-appropriate home directory so filepath.Join produces
+	// consistent separators between test data and BuildSmartPATH internals.
+	homeDir := filepath.Join(t.TempDir(), "testuser")
+	localBin := filepath.Join(homeDir, ".local", "bin")
+	goBin := filepath.Join(homeDir, "go", "bin")
+
 	tests := []struct {
-		name       string
-		homeDir    string
-		envPATH    string
-		wantLocalBin bool
-		wantGoBin    bool
+		name          string
+		envPATH       string
+		wantLocalBin  bool
+		wantGoBin     bool
 		wantUnchanged bool // true if PATH should remain unchanged (essential dirs already present)
 	}{
 		{
-			name:       "essential dirs missing from PATH - should be prepended",
-			homeDir:    "/home/testuser",
-			envPATH:    "/usr/local/bin" + sep + "/usr/bin" + sep + "/bin",
+			name:         "essential dirs missing from PATH - should be prepended",
+			envPATH:      strings.Join([]string{"/usr/local/bin", "/usr/bin", "/bin"}, sep),
 			wantLocalBin: true,
 			wantGoBin:    true,
 		},
 		{
-			name:       "essential dirs already in PATH - PATH unchanged",
-			homeDir:    "/home/testuser",
-			envPATH:    "/home/testuser/.local/bin" + sep + "/home/testuser/go/bin" + sep + "/usr/bin",
-			wantLocalBin: true,
-			wantGoBin:    true,
+			name:          "essential dirs already in PATH - PATH unchanged",
+			envPATH:       strings.Join([]string{localBin, goBin, "/usr/bin"}, sep),
+			wantLocalBin:  true,
+			wantGoBin:     true,
 			wantUnchanged: true,
 		},
 		{
-			name:       "trailing slash on existing dir - should match and not duplicate",
-			homeDir:    "/home/testuser",
-			envPATH:    "/home/testuser/.local/bin/" + sep + "/home/testuser/go/bin/" + sep + "/usr/bin",
-			wantLocalBin: true,
-			wantGoBin:    true,
+			name:          "trailing slash on existing dir - should match and not duplicate",
+			envPATH:       strings.Join([]string{localBin + "/", goBin + "/", "/usr/bin"}, sep),
+			wantLocalBin:  true,
+			wantGoBin:     true,
 			wantUnchanged: true,
 		},
 		{
-			name:       "empty current PATH - essential dirs only",
-			homeDir:    "/home/testuser",
-			envPATH:    "",
+			name:         "empty current PATH - essential dirs only",
+			envPATH:      "",
 			wantLocalBin: true,
 			wantGoBin:    true,
 		},
@@ -1621,10 +1633,7 @@ func TestBuildSmartPATH(t *testing.T) {
 			}()
 			_ = os.Setenv("PATH", tt.envPATH)
 
-			result := buildSmartPATH(tt.homeDir)
-
-			localBin := filepath.Join(tt.homeDir, ".local", "bin")
-			goBin := filepath.Join(tt.homeDir, "go", "bin")
+			result := buildSmartPATH(homeDir)
 
 			if tt.wantLocalBin && !strings.Contains(result, localBin) {
 				t.Errorf("result should contain %q, got %q", localBin, result)

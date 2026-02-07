@@ -233,6 +233,7 @@ func TestSaveGLMKey_Success(t *testing.T) {
 	// Create temp home directory
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
+	t.Setenv("USERPROFILE", tmpHome) // Windows: os.UserHomeDir() checks USERPROFILE first
 
 	testKey := "test-api-key-12345"
 
@@ -266,6 +267,7 @@ func TestSaveGLMKey_SpecialCharacters(t *testing.T) {
 	// Create temp home directory
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
+	t.Setenv("USERPROFILE", tmpHome) // Windows: os.UserHomeDir() checks USERPROFILE first
 
 	// Key with special characters that need escaping
 	testKey := `key"with$special\chars`
@@ -286,6 +288,7 @@ func TestSaveGLMKey_EmptyKey(t *testing.T) {
 	// Create temp home directory
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
+	t.Setenv("USERPROFILE", tmpHome) // Windows: os.UserHomeDir() checks USERPROFILE first
 
 	err := saveGLMKey("")
 	if err != nil {
@@ -303,6 +306,7 @@ func TestSaveGLMKey_OverwriteExisting(t *testing.T) {
 	// Create temp home directory
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
+	t.Setenv("USERPROFILE", tmpHome) // Windows: os.UserHomeDir() checks USERPROFILE first
 
 	// Save first key
 	firstKey := "first-key"
