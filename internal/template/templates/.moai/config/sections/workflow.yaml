@@ -70,6 +70,15 @@ workflow:
         model: "sonnet"
         description: "Cross-layer feature implementation"
 
+      design_implementation:
+        roles:
+          - designer
+          - backend-dev
+          - frontend-dev
+          - tester
+        model: "sonnet"
+        description: "Cross-layer feature implementation with UI/UX design"
+
       full_stack:
         roles:
           - api-layer
