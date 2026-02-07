@@ -172,7 +172,7 @@ func TestEmbeddedTemplates_NoMCPConfig(t *testing.T) {
 		t.Fatalf("EmbeddedTemplates() error: %v", err)
 	}
 
-	// .mcp.json is runtime-generated via MCPGenerator (ADR-011), not embedded.
+	// .mcp.json is rendered from .mcp.json.tmpl at deploy time, not embedded as bare JSON.
 	for _, name := range []string{".mcp.json", ".mcp.windows.json"} {
 		if _, err := fs.ReadFile(fsys, name); err == nil {
 			t.Errorf("found %s which should be excluded from templates (runtime-generated)", name)

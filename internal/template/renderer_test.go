@@ -150,6 +150,26 @@ func TestRendererRender(t *testing.T) {
 	})
 }
 
+func TestRendererPassthroughTokens(t *testing.T) {
+	fs := fstest.MapFS{
+		"hooks.tmpl": &fstest.MapFile{
+			Data: []byte(`{"command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/hook.sh\"", "name": "{{.Name}}"}`),
+		},
+	}
+	r := NewRenderer(fs)
+
+	data := map[string]string{"Name": "test"}
+	result, err := r.Render("hooks.tmpl", data)
+	if err != nil {
+		t.Fatalf("expected passthrough of $CLAUDE_PROJECT_DIR, got error: %v", err)
+	}
+
+	content := string(result)
+	if !strings.Contains(content, "$CLAUDE_PROJECT_DIR") {
+		t.Error("$CLAUDE_PROJECT_DIR should be preserved in output")
+	}
+}
+
 func TestUnexpandedTokenDetection(t *testing.T) {
 	tests := []struct {
 		name    string

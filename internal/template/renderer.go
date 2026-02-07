@@ -5,12 +5,19 @@ import (
 	"fmt"
 	"io/fs"
 	"regexp"
+	"strings"
 	"text/template"
 )
 
 // unexpandedTokenPattern detects leftover dynamic tokens in rendered output.
 // Matches ${VAR}, {{VAR}}, and $VAR patterns.
 var unexpandedTokenPattern = regexp.MustCompile(`\$\{[A-Za-z_][A-Za-z0-9_]*\}|\{\{\.?[A-Za-z_][A-Za-z0-9_.]*\}\}|\$[A-Z_][A-Z0-9_]*`)
+
+// claudeCodePassthroughTokens are environment variables resolved by Claude Code
+// at runtime and must not be flagged as unexpanded tokens (ADR-011 exception).
+var claudeCodePassthroughTokens = []string{
+	"$CLAUDE_PROJECT_DIR",
+}
 
 // Renderer renders Go text/template files with strict mode enabled.
 type Renderer interface {
@@ -51,8 +58,13 @@ func (r *renderer) Render(templateName string, data any) ([]byte, error) {
 
 	result := buf.Bytes()
 
-	// Verify no unexpanded tokens remain (ADR-011)
-	if loc := unexpandedTokenPattern.Find(result); loc != nil {
+	// Verify no unexpanded tokens remain (ADR-011).
+	// Mask Claude Code runtime env vars before validation.
+	masked := string(result)
+	for _, tok := range claudeCodePassthroughTokens {
+		masked = strings.ReplaceAll(masked, tok, "")
+	}
+	if loc := unexpandedTokenPattern.Find([]byte(masked)); loc != nil {
 		return nil, fmt.Errorf("%w: found %q", ErrUnexpandedToken, string(loc))
 	}
 

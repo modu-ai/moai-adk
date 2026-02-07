@@ -48,6 +48,7 @@ type TemplateContext struct {
 	// Paths (detected during initialization)
 	GoBinPath string // Detected Go binary installation path (e.g., "/Users/goos/go/bin")
 	HomeDir   string // User's home directory
+	SmartPATH string // Captured terminal PATH with essential dirs prepended
 }
 
 // ContextOption configures a TemplateContext.
@@ -191,6 +192,13 @@ func WithGoBinPath(path string) ContextOption {
 func WithHomeDir(dir string) ContextOption {
 	return func(c *TemplateContext) {
 		c.HomeDir = dir
+	}
+}
+
+// WithSmartPATH sets the captured terminal PATH with essential dirs prepended.
+func WithSmartPATH(path string) ContextOption {
+	return func(c *TemplateContext) {
+		c.SmartPATH = path
 	}
 }
 

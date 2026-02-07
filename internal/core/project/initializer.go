@@ -148,20 +148,7 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		}
 	}
 
-	// Step 4: Generate runtime files (settings.json, .mcp.json) per ADR-011
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	if err := i.generateSettings(opts, result); err != nil {
-		result.Warnings = append(result.Warnings, fmt.Sprintf("settings generation: %s", err))
-		i.logger.Warn("settings generation failed", "error", err)
-	}
-	if err := i.generateMCPConfig(opts, result); err != nil {
-		result.Warnings = append(result.Warnings, fmt.Sprintf("MCP config generation: %s", err))
-		i.logger.Warn("MCP config generation failed", "error", err)
-	}
-
-	// Step 5: Create CLAUDE.md
+	// Step 4: Create CLAUDE.md
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -169,7 +156,7 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		return nil, fmt.Errorf("create CLAUDE.md: %w", err)
 	}
 
-	// Step 6: Initialize manifest
+	// Step 5: Initialize manifest
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -178,7 +165,7 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		i.logger.Warn("manifest initialization failed", "error", err)
 	}
 
-	// Step 7: Configure shell environment (REQ-SHELL-001)
+	// Step 6: Configure shell environment (REQ-SHELL-001)
 	// Adds CLAUDE_DISABLE_PATH_WARNING and PATH to appropriate shell config file
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -259,6 +246,7 @@ func (i *projectInitializer) deployTemplates(ctx context.Context, opts InitOptio
 		template.WithPlatform(opts.Platform),
 		template.WithGoBinPath(goBinPath),
 		template.WithHomeDir(homeDir),
+		template.WithSmartPATH(template.BuildSmartPATH()),
 	)
 
 	if err := i.deployer.Deploy(ctx, opts.ProjectRoot, i.manifestMgr, tmplCtx); err != nil {
@@ -410,86 +398,6 @@ github:
 	}
 	result.CreatedFiles = append(result.CreatedFiles, filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.ProjectYAML))
 
-	return nil
-}
-
-// generateSettings generates .claude/settings.json using SettingsGenerator (ADR-011, REQ-E-033).
-func (i *projectInitializer) generateSettings(opts InitOptions, result *InitResult) error {
-	settingsPath := filepath.Clean(filepath.Join(opts.ProjectRoot, defs.ClaudeDir, defs.SettingsJSON))
-
-	// Skip if settings.json already exists (user-managed)
-	if _, err := os.Stat(settingsPath); err == nil {
-		i.logger.Info("settings.json already exists, skipping generation")
-		return nil
-	}
-
-	platform := opts.Platform
-	if platform == "" {
-		platform = runtime.GOOS
-	}
-
-	gen := template.NewSettingsGenerator()
-	data, err := gen.Generate(nil, platform)
-	if err != nil {
-		return fmt.Errorf("generate settings.json: %w", err)
-	}
-
-	// Ensure .claude/ directory exists
-	claudeDir := filepath.Dir(settingsPath)
-	if err := os.MkdirAll(claudeDir, defs.DirPerm); err != nil {
-		return fmt.Errorf("mkdir .claude/: %w", err)
-	}
-
-	if err := os.WriteFile(settingsPath, data, defs.FilePerm); err != nil {
-		return fmt.Errorf("write settings.json: %w", err)
-	}
-
-	// Track in manifest if available
-	if i.manifestMgr != nil {
-		templateHash := manifest.HashBytes(data)
-		if err := i.manifestMgr.Track(filepath.Join(defs.ClaudeDir, defs.SettingsJSON), manifest.TemplateManaged, templateHash); err != nil {
-			i.logger.Warn("failed to track settings.json in manifest", "error", err)
-		}
-	}
-
-	result.CreatedFiles = append(result.CreatedFiles, filepath.Join(defs.ClaudeDir, defs.SettingsJSON))
-	return nil
-}
-
-// generateMCPConfig generates .mcp.json using MCPGenerator (ADR-011).
-func (i *projectInitializer) generateMCPConfig(opts InitOptions, result *InitResult) error {
-	mcpPath := filepath.Clean(filepath.Join(opts.ProjectRoot, defs.MCPJSON))
-
-	// Skip if .mcp.json already exists (user-managed)
-	if _, err := os.Stat(mcpPath); err == nil {
-		i.logger.Info(".mcp.json already exists, skipping generation")
-		return nil
-	}
-
-	platform := opts.Platform
-	if platform == "" {
-		platform = runtime.GOOS
-	}
-
-	gen := template.NewMCPGenerator()
-	data, err := gen.GenerateMCP(platform)
-	if err != nil {
-		return fmt.Errorf("generate .mcp.json: %w", err)
-	}
-
-	if err := os.WriteFile(mcpPath, data, defs.FilePerm); err != nil {
-		return fmt.Errorf("write .mcp.json: %w", err)
-	}
-
-	// Track in manifest if available
-	if i.manifestMgr != nil {
-		templateHash := manifest.HashBytes(data)
-		if err := i.manifestMgr.Track(defs.MCPJSON, manifest.TemplateManaged, templateHash); err != nil {
-			i.logger.Warn("failed to track .mcp.json in manifest", "error", err)
-		}
-	}
-
-	result.CreatedFiles = append(result.CreatedFiles, defs.MCPJSON)
 	return nil
 }
 

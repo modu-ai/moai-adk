@@ -1,0 +1,290 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-compact.sh\"",
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-end.sh\"",
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "Write|Edit|Bash"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\"",
+            "timeout": 60,
+            "type": "command"
+          }
+        ],
+        "matcher": "Write|Edit"
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop.sh\"",
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": ".moai/status_line.sh"
+  },
+  "outputStyle": "MoAI",
+  "cleanupPeriodDays": 30,
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS": "64000",
+    "ENABLE_TOOL_SEARCH": "1",
+    "MOAI_CONFIG_SOURCE": "sections",
+    "PATH": "/Users/goos/go/bin:/opt/homebrew/Cellar/go/1.25.6/libexec/bin:/Users/goos/.local/bin:/Users/goos/.bun/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/opt/pmk/env/global/bin:/Library/Apple/usr/bin:/opt/homebrew/bin:/opt/homebrew/opt/python@3.13/bin:/Users/goos/.cargo/bin:/Users/goos/.pyenv/shims:/Users/goos/.cargo/bin:/Users/goos/.nvm/versions/node/v20.19.4/bin:/Users/goos/.nvm/versions/node/v22.14.0/bin:/Users/goos/.pyenv/shims:/Users/goos/bin:/opt/homebrew/bin:/usr/local/bin"
+  },
+  "permissions": {
+    "defaultMode": "default",
+    "allow": [
+      "AskUserQuestion",
+      "BashOutput",
+      "Edit",
+      "Glob",
+      "Grep",
+      "KillShell",
+      "MultiEdit",
+      "NotebookEdit",
+      "Read",
+      "Skill",
+      "Task",
+      "TaskCreate",
+      "TaskGet",
+      "TaskList",
+      "TaskUpdate",
+      "TodoWrite",
+      "WebFetch",
+      "WebSearch",
+      "Write",
+      "mcp__context7__get-library-docs",
+      "mcp__context7__resolve-library-id",
+      "mcp__sequential-thinking__*",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git show:*)",
+      "Bash(git blame:*)",
+      "Bash(git branch:*)",
+      "Bash(git remote:*)",
+      "Bash(git config:*)",
+      "Bash(git tag:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git fetch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git switch:*)",
+      "Bash(git stash:*)",
+      "Bash(git merge:*)",
+      "Bash(git revert:*)",
+      "Bash(gh issue:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh repo view:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(less:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(tree:*)",
+      "Bash(pwd:*)",
+      "Bash(wc:*)",
+      "Bash(diff:*)",
+      "Bash(comm:*)",
+      "Bash(sort:*)",
+      "Bash(uniq:*)",
+      "Bash(cut:*)",
+      "Bash(awk:*)",
+      "Bash(sed:*)",
+      "Bash(basename:*)",
+      "Bash(dirname:*)",
+      "Bash(realpath:*)",
+      "Bash(readlink:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(mkdir:*)",
+      "Bash(touch:*)",
+      "Bash(rsync:*)",
+      "Bash(curl:*)",
+      "Bash(jq:*)",
+      "Bash(yq:*)",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(node*)",
+      "Bash(npm*)",
+      "Bash(npx*)",
+      "Bash(bun*)",
+      "Bash(pnpm*)",
+      "Bash(yarn*)",
+      "Bash(uv*)",
+      "Bash(pip*)",
+      "Bash(pip3:*)",
+      "Bash(black:*)",
+      "Bash(ruff:*)",
+      "Bash(pylint:*)",
+      "Bash(flake8:*)",
+      "Bash(mypy:*)",
+      "Bash(eslint:*)",
+      "Bash(prettier:*)",
+      "Bash(pytest:*)",
+      "Bash(coverage:*)",
+      "Bash(make:*)",
+      "Bash(ast-grep:*)",
+      "Bash(sg:*)",
+      "Bash(rg:*)",
+      "Bash(echo:*)",
+      "Bash(printf:*)",
+      "Bash(test:*)",
+      "Bash(true:*)",
+      "Bash(false:*)",
+      "Bash(which:*)",
+      "Bash(type:*)",
+      "Bash(man:*)",
+      "Bash(pydoc:*)",
+      "Bash(lsof:*)",
+      "Bash(time:*)",
+      "Bash(xargs:*)",
+      "Bash(moai-adk:*)",
+      "Bash(moai:*)"
+    ],
+    "ask": [
+      "Bash(rm:*)",
+      "Bash(sudo:*)",
+      "Bash(chmod:*)",
+      "Bash(chown:*)",
+      "Read(./.env)",
+      "Read(./.env.*)"
+    ],
+    "deny": [
+      "Read(./secrets/**)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.config/gcloud/**)",
+      "Write(./secrets/**)",
+      "Write(~/.ssh/**)",
+      "Write(~/.aws/**)",
+      "Write(~/.config/gcloud/**)",
+      "Edit(./secrets/**)",
+      "Edit(~/.ssh/**)",
+      "Edit(~/.aws/**)",
+      "Edit(~/.config/gcloud/**)",
+      "Grep(./secrets/**)",
+      "Grep(~/.ssh/**)",
+      "Grep(~/.aws/**)",
+      "Grep(~/.config/gcloud/**)",
+      "Glob(./secrets/**)",
+      "Glob(~/.ssh/**)",
+      "Glob(~/.aws/**)",
+      "Glob(~/.config/gcloud/**)",
+      "Bash(rm -rf /:*)",
+      "Bash(rm -rf /*:*)",
+      "Bash(rm -rf ~:*)",
+      "Bash(rm -rf ~/*:*)",
+      "Bash(rm -rf C\\:/:*)",
+      "Bash(rm -rf C\\:/*:*)",
+      "Bash(del /S /Q C\\:/:*)",
+      "Bash(rmdir /S /Q C\\:/:*)",
+      "Bash(Remove-Item -Recurse -Force C\\:/:*)",
+      "Bash(Clear-Disk:*)",
+      "Bash(Format-Volume:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push --force-with-lease:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -fd:*)",
+      "Bash(git clean -fdx:*)",
+      "Bash(git rebase -i:*)",
+      "Bash(format:*)",
+      "Bash(chmod -R 777:*)",
+      "Bash(chmod 777:*)",
+      "Bash(dd:*)",
+      "Bash(mkfs:*)",
+      "Bash(fdisk:*)",
+      "Bash(reboot:*)",
+      "Bash(shutdown:*)",
+      "Bash(init:*)",
+      "Bash(systemctl:*)",
+      "Bash(kill -9:*)",
+      "Bash(killall:*)",
+      "Bash(DROP DATABASE:*)",
+      "Bash(DROP TABLE:*)",
+      "Bash(TRUNCATE:*)",
+      "Bash(DELETE FROM:*)",
+      "Bash(mongo:*)",
+      "Bash(mongosh:*)",
+      "Bash(redis-cli FLUSHALL:*)",
+      "Bash(redis-cli FLUSHDB:*)",
+      "Bash(psql -c DROP:*)",
+      "Bash(mysql -e DROP:*)"
+    ]
+  },
+  "teammateMode": "auto",
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "excludedCommands": [
+      "docker",
+      "git"
+    ],
+    "allowUnsandboxedCommands": true
+  },
+  "attribution": {
+    "commit": "\ud83d\uddff MoAI <email@mo.ai.kr>",
+    "pr": "\ud83d\uddff MoAI <email@mo.ai.kr>"
+  },
+  "enableAllProjectMcpServers": true,
+  "respectGitignore": true,
+  "spinnerTipsEnabled": true,
+  "showTurnDuration": true,
+  "terminalProgressBarEnabled": true
+}

@@ -172,17 +172,6 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		reporter.StepComplete("Templates loaded")
 	}
 
-	// Generate template settings.json for merge using SettingsGenerator
-	// Note: settings.json is NOT in embedded templates (runtime-generated per ADR-011)
-	settingsGen := template.NewSettingsGenerator()
-	templateSettingsData, err := settingsGen.Generate(nil, runtime.GOOS)
-	if err != nil {
-		if reporter != nil {
-			reporter.StepError(err)
-		}
-		return fmt.Errorf("generate template settings.json: %w", err)
-	}
-
 	if reporter != nil {
 		reporter.StepStart("Loading Manifest", "Reading project manifest...")
 	}
@@ -277,40 +266,6 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			},
 		},
 		{
-			name:    "Merge Settings",
-			message: "Merging settings.json",
-			execute: func() error {
-				settingsPath := filepath.Join(projectRoot, defs.ClaudeDir, defs.SettingsJSON)
-				if len(templateSettingsData) == 0 {
-					return nil
-				}
-				if _, err := os.Stat(settingsPath); err != nil {
-					return nil // No existing settings
-				}
-
-				_, _ = fmt.Fprintf(out, "  ○ Merging settings.json...")
-				tmpFile, tmpErr := os.CreateTemp("", "settings-template-*.json")
-				if tmpErr != nil {
-					_, _ = fmt.Fprintf(out, "\r  ✗ Failed to create temp file: %v\n", tmpErr)
-					return tmpErr
-				}
-				tmpPath := tmpFile.Name()
-				defer func() { _ = os.Remove(tmpPath) }()
-				if _, writeErr := tmpFile.Write(templateSettingsData); writeErr != nil {
-					_, _ = fmt.Fprintf(out, "\r  ✗ Failed to write temp file: %v\n", writeErr)
-					_ = tmpFile.Close()
-					return writeErr
-				}
-				_ = tmpFile.Close()
-				if mergeErr := mergeSettingsJSON(tmpPath, settingsPath); mergeErr != nil {
-					_, _ = fmt.Fprintf(out, "\r  ✗ Merge failed: %v\n", mergeErr)
-					return mergeErr
-				}
-				_, _ = fmt.Fprintln(out, "\r  ✓ settings.json merged")
-				return nil
-			},
-		},
-		{
 			name:    "Deploy Templates",
 			message: "Deploying template files",
 			execute: func() error {
@@ -322,6 +277,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				tmplCtx := template.NewTemplateContext(
 					template.WithGoBinPath(goBinPath),
 					template.WithHomeDir(homeDir),
+					template.WithSmartPATH(template.BuildSmartPATH()),
+					template.WithPlatform(runtime.GOOS),
 				)
 
 				if deployErr := deployer.Deploy(ctx, projectRoot, mgr, tmplCtx); deployErr != nil {
@@ -1043,189 +1000,6 @@ func deepMergeMaps(newMap, oldMap map[string]interface{}) map[string]interface{}
 		}
 	}
 
-	return result
-}
-
-// mergeSettingsJSON performs smart merge for .claude/settings.json.
-// Rules:
-// - env: shallow merge (user variables preserved)
-// - permissions.allow: array merge (deduplicated)
-// - permissions.deny: template priority (security)
-// - permissions.ask: template priority + user additions
-// - hooks: template priority
-// - outputStyle, spinnerTipsEnabled: user preserved
-func mergeSettingsJSON(templatePath, existingPath string) error {
-	// Load template
-	templateData, err := os.ReadFile(templatePath)
-	if err != nil {
-		return fmt.Errorf("read template settings.json: %w", err)
-	}
-
-	var tmplSettings map[string]interface{}
-	if err := json.Unmarshal(templateData, &tmplSettings); err != nil {
-		return fmt.Errorf("parse template settings.json: %w", err)
-	}
-
-	// Load existing for user settings
-	userData := make(map[string]interface{})
-	if existingData, err := os.ReadFile(existingPath); err == nil {
-		if err := json.Unmarshal(existingData, &userData); err != nil {
-			return fmt.Errorf("parse existing settings.json: %w", err)
-		}
-	} else if !os.IsNotExist(err) {
-		return fmt.Errorf("read existing settings.json: %w", err)
-	}
-
-	// Merge env (template priority for known keys, preserve user-added custom keys)
-	templateEnv := getMap(tmplSettings, "env")
-	userEnv := getMap(userData, "env")
-	mergedEnv := make(map[string]interface{})
-
-	// Copy template env first
-	for k, v := range templateEnv {
-		mergedEnv[k] = v
-	}
-
-	// Always refresh PATH from current terminal (not stale from template or previous init)
-	mergedEnv["PATH"] = template.BuildSmartPATH()
-
-	// Add user custom env keys not in template
-	for k, v := range userEnv {
-		if _, exists := templateEnv[k]; !exists {
-			// User added a custom env key, preserve it
-			mergedEnv[k] = v
-		}
-	}
-
-	// Merge permissions.allow (deduplicated array merge)
-	templatePerms := getMap(tmplSettings, "permissions")
-	userPerms := getMap(userData, "permissions")
-
-	templateAllow := getSlice(templatePerms, "allow")
-	userAllow := getSlice(userPerms, "allow")
-	mergedAllow := mergeStringSlices(templateAllow, userAllow)
-
-	// permissions.deny: template priority (security)
-	mergedDeny := getSlice(templatePerms, "deny")
-
-	// permissions.ask: template priority + user additions
-	templateAsk := getSlice(templatePerms, "ask")
-	userAsk := getSlice(userPerms, "ask")
-	mergedAsk := mergeStringSlices(templateAsk, userAsk)
-
-	// Start with full template (include all fields from template)
-	// Note: statusLine comes from template only (not user-preserved)
-	merged := deepCopyMap(tmplSettings)
-
-	// Override with merged values
-	merged["env"] = mergedEnv
-	merged["permissions"] = map[string]interface{}{
-		"defaultMode": getValue(templatePerms, "defaultMode", "default"),
-		"allow":       mergedAllow,
-		"ask":         mergedAsk,
-		"deny":        mergedDeny,
-	}
-
-	// Preserve user customizations for specific fields
-	preserveFields := []string{"outputStyle", "spinnerTipsEnabled"}
-	for _, field := range preserveFields {
-		if val, exists := userData[field]; exists {
-			merged[field] = val
-		}
-	}
-
-	// Write merged settings
-	jsonContent, err := json.MarshalIndent(merged, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal merged settings: %w", err)
-	}
-
-	if err := os.WriteFile(existingPath, append(jsonContent, '\n'), defs.FilePerm); err != nil {
-		return fmt.Errorf("write merged settings: %w", err)
-	}
-
-	return nil
-}
-
-// getMap safely gets a map value from a map
-func getMap(m map[string]interface{}, key string) map[string]interface{} {
-	if val, exists := m[key]; exists {
-		if mapVal, ok := val.(map[string]interface{}); ok {
-			return mapVal
-		}
-	}
-	return make(map[string]interface{})
-}
-
-// getSlice safely gets a string slice from a map
-func getSlice(m map[string]interface{}, key string) []string {
-	if val, exists := m[key]; exists {
-		if sliceVal, ok := val.([]interface{}); ok {
-			result := make([]string, 0, len(sliceVal))
-			for _, v := range sliceVal {
-				if strVal, ok := v.(string); ok {
-					result = append(result, strVal)
-				}
-			}
-			return result
-		}
-	}
-	return []string{}
-}
-
-// getValue safely gets a value from a map with default
-func getValue(m map[string]interface{}, key, defaultVal string) string {
-	if val, exists := m[key]; exists {
-		if strVal, ok := val.(string); ok {
-			return strVal
-		}
-	}
-	return defaultVal
-}
-
-// mergeStringSlices merges two string slices, deduplicating
-func mergeStringSlices(a, b []string) []string {
-	seen := make(map[string]bool)
-	result := make([]string, 0, len(a)+len(b))
-
-	for _, s := range a {
-		if !seen[s] {
-			seen[s] = true
-			result = append(result, s)
-		}
-	}
-	for _, s := range b {
-		if !seen[s] {
-			seen[s] = true
-			result = append(result, s)
-		}
-	}
-
-	sort.Strings(result)
-	return result
-}
-
-// deepCopyMap creates a deep copy of a map
-func deepCopyMap(m map[string]interface{}) map[string]interface{} {
-	result := make(map[string]interface{})
-	for k, v := range m {
-		switch val := v.(type) {
-		case map[string]interface{}:
-			result[k] = deepCopyMap(val)
-		case []interface{}:
-			copy := make([]interface{}, len(val))
-			for i, item := range val {
-				if subMap, ok := item.(map[string]interface{}); ok {
-					copy[i] = deepCopyMap(subMap)
-				} else {
-					copy[i] = item
-				}
-			}
-			result[k] = copy
-		default:
-			result[k] = v
-		}
-	}
 	return result
 }
 
