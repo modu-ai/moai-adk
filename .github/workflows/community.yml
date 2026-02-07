@@ -1,0 +1,97 @@
+# Community automation for moai-adk-go
+# Handles welcome messages, stale issue management, and PR labeling
+name: Community
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened, synchronize]
+  schedule:
+    # Run stale check daily at 00:00 UTC
+    - cron: "0 0 * * *"
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  # Welcome first-time contributors with a friendly message
+  welcome:
+    if: github.event_name == 'issues' || (github.event_name == 'pull_request_target' && github.event.action == 'opened')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Welcome first-time contributors
+        uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: |
+            Welcome to **moai-adk-go**! Thank you for opening your first issue.
+
+            Our team will review it as soon as possible. In the meantime, please make sure:
+
+            - You have searched existing issues to avoid duplicates
+            - You have provided enough detail for us to understand and reproduce the problem
+            - You have included your Go version and OS information if relevant
+
+            This project supports multiple languages for discussion. Feel free to write in your preferred language, though English is recommended for broader community participation.
+
+            Thank you for contributing!
+          pr-message: |
+            Welcome to **moai-adk-go**! Thank you for your first pull request.
+
+            Our team will review your changes shortly. Before we do, please ensure:
+
+            - All tests pass locally (`go test -race ./...`)
+            - Code follows our coding standards (run `golangci-lint run`)
+            - Commit messages follow Conventional Commits format
+            - Templates are regenerated if modified (`make build`)
+
+            This project supports multiple languages for discussion. Feel free to write in your preferred language, though English is recommended for code reviews and commit messages.
+
+            Thank you for contributing!
+
+  # Mark and close stale issues and PRs
+  stale:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mark stale issues and PRs
+        uses: actions/stale@v9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          days-before-stale: 30
+          days-before-close: 7
+          exempt-issue-labels: "pinned,security,help wanted"
+          exempt-pr-labels: "pinned,security,help wanted"
+          stale-issue-label: "stale"
+          stale-pr-label: "stale"
+          stale-issue-message: |
+            This issue has been automatically marked as stale because it has not had recent activity.
+
+            Is this issue still relevant? If so, please leave a comment to keep it open. Otherwise, it will be automatically closed in 7 days.
+
+            Thank you for your contributions to moai-adk-go.
+          stale-pr-message: |
+            This pull request has been automatically marked as stale because it has not had recent activity.
+
+            Is this PR still being worked on? If so, please leave a comment or push new commits to keep it open. Otherwise, it will be automatically closed in 7 days.
+
+            Thank you for your contributions to moai-adk-go.
+          close-issue-message: |
+            This issue has been automatically closed due to inactivity. If this is still relevant, feel free to reopen it.
+          close-pr-message: |
+            This pull request has been automatically closed due to inactivity. If you would like to continue working on it, feel free to reopen it.
+
+  # Auto-label PRs based on changed file paths
+  labeler:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label PR based on file paths
+        uses: actions/labeler@v5
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+          sync-labels: true

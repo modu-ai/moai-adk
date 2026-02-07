@@ -6,7 +6,7 @@ before:
     - go generate ./...
 
 builds:
-  - main: ./cmd/moai
+  - main: ./cmd/moai/
     binary: moai
     env:
       - CGO_ENABLED=0
@@ -29,17 +29,39 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
+    files:
+      - README.md
+      - LICENSE
 
 checksum:
   name_template: "checksums.txt"
+  algorithm: sha256
 
 changelog:
   sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
-      - "^chore:"
+  use: github
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: Others
+      order: 999
+
+brews:
+  - repository:
+      owner: modu-ai
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    homepage: https://github.com/modu-ai/moai-adk
+    description: "MoAI Agentic Development Kit - AI-powered development workflow CLI"
+    license: "GPL-3.0"
+    install: |
+      bin.install "moai"
+    test: |
+      system "#{bin}/moai", "version"
 
 release:
   github:

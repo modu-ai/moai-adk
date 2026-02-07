@@ -1,0 +1,84 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "en-US"
+early_access: false
+
+tone_instructions: "Professional and constructive. Focus on Go best practices, error handling patterns, and test coverage. Welcome contributions in multiple languages (EN, KO, JA, ZH). When reviewing AI-generated PRs, pay extra attention to test coverage and edge cases."
+
+reviews:
+  profile: "assertive"
+  request_changes_workflow: true
+  high_level_summary: true
+  high_level_summary_placeholder: "@coderabbitai summary"
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  sequence_diagrams: true
+  changed_files_summary: true
+  labeling_instructions:
+    - label: "go"
+      instructions: "Apply when Go source files are modified"
+    - label: "tests"
+      instructions: "Apply when test files are modified"
+    - label: "docs"
+      instructions: "Apply when documentation files are modified"
+    - label: "config"
+      instructions: "Apply when configuration files are modified"
+    - label: "ci"
+      instructions: "Apply when CI/CD workflow files are modified"
+    - label: "ai-generated"
+      instructions: "Apply when PR description or commits indicate AI-assisted development"
+  path_instructions:
+    - path: "**/*.go"
+      instructions: |
+        Review Go code for:
+        - Proper error wrapping with fmt.Errorf and %w
+        - Race condition risks (concurrent access without sync)
+        - Table-driven test patterns
+        - Exported types must have godoc comments
+        - No Korean in code comments (English only)
+        - Proper use of context.Context
+    - path: "**/*_test.go"
+      instructions: |
+        Review test code for:
+        - Table-driven test pattern usage
+        - Use of t.Helper() in test helpers
+        - Test isolation with t.TempDir()
+        - Meaningful assertion messages
+        - 85%+ coverage target compliance
+    - path: "internal/template/templates/**"
+      instructions: |
+        Review template files for:
+        - Cross-platform compatibility (Windows/macOS/Linux)
+        - Template variable usage (Go template syntax)
+        - No hardcoded paths
+    - path: ".github/**"
+      instructions: |
+        Review CI/CD configurations for:
+        - Security best practices (no secrets in workflows)
+        - Efficient caching and concurrency settings
+        - Proper permission scoping
+        - Action version pinning
+    - path: "cmd/**"
+      instructions: "Review CLI entry points for proper cobra command setup and flag handling"
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+      - moai-go-v2
+      - "release/*"
+
+chat:
+  auto_reply: true
+
+knowledge_base:
+  learnings:
+    scope: "auto"
+  issues:
+    scope: "auto"
+  jira:
+    project_keys: []
+  linear:
+    team_keys: []
+  pull_requests:
+    scope: "auto"

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Discussions
+    url: https://github.com/modu-ai/moai-adk/discussions
+    about: "Ask questions and share ideas (English, Korean, Japanese, Chinese welcome)"
+  - name: Documentation
+    url: https://github.com/modu-ai/moai-adk#readme
+    about: "Read the documentation before opening an issue"

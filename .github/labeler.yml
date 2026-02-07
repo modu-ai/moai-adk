@@ -1,0 +1,36 @@
+# Path-based label rules for actions/labeler
+# Used by .github/workflows/community.yml
+
+go:
+  - changed-files:
+      - any-glob-to-any-file: "**/*.go"
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file: "**/*_test.go"
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "*.md"
+          - "docs/**"
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file: ".github/**"
+
+config:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".moai/**"
+          - ".claude/**"
+
+templates:
+  - changed-files:
+      - any-glob-to-any-file: "internal/template/**"
+
+hooks:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "internal/hook/**"
+          - ".claude/hooks/**"
