@@ -1176,7 +1176,7 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		t.Fatalf("failed to create .claude dir: %v", err)
 	}
 
-	// Test 1: No existing settings.json - should create new file
+	// Test 1: No existing settings.json - should create new file with Smart PATH
 	t.Run("CreateNewSettings", func(t *testing.T) {
 		settingsPath := filepath.Join(claudeDir, "settings.json")
 
@@ -1213,9 +1213,24 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 			}
 		}
 
-		// PATH should NOT be set (respects terminal's system PATH, fixes #325)
-		if _, exists := env["PATH"]; exists {
-			t.Error("PATH should not be set in env to respect terminal's system PATH")
+		// PATH should be set (Smart PATH captures terminal PATH with essential dirs)
+		pathVal, exists := env["PATH"]
+		if !exists {
+			t.Fatal("PATH should be set in env (Smart PATH)")
+		}
+		pathStr, ok := pathVal.(string)
+		if !ok {
+			t.Fatalf("PATH should be a string, got %T", pathVal)
+		}
+
+		// PATH should contain essential directories
+		localBin := filepath.Join(tempDir, ".local", "bin")
+		goBin := filepath.Join(tempDir, "go", "bin")
+		if !strings.Contains(pathStr, localBin) {
+			t.Errorf("PATH should contain %q, got %q", localBin, pathStr)
+		}
+		if !strings.Contains(pathStr, goBin) {
+			t.Errorf("PATH should contain %q, got %q", goBin, pathStr)
 		}
 
 		// Check permissions.allow exists (must be an array per Claude Code IAM docs)
@@ -1246,11 +1261,11 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		}
 	})
 
-	// Test 2: Existing settings.json with partial env - should merge
+	// Test 2: Existing settings.json with partial env - should merge and set Smart PATH
 	t.Run("MergeExistingSettings", func(t *testing.T) {
 		settingsPath := filepath.Join(claudeDir, "settings.json")
 
-		// Create existing settings with some env
+		// Create existing settings with some env including an old PATH
 		existing := map[string]interface{}{
 			"env": map[string]interface{}{
 				"CUSTOM_VAR": "custom_value",
@@ -1291,20 +1306,37 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 			t.Errorf("ENABLE_TOOL_SEARCH not added: got %v", env["ENABLE_TOOL_SEARCH"])
 		}
 
-		// PATH should be removed (respects terminal PATH, fixes #325)
-		if _, exists := env["PATH"]; exists {
-			t.Error("PATH should be removed from env to respect terminal's system PATH")
+		// PATH should be set to Smart PATH (not removed)
+		pathVal, exists := env["PATH"]
+		if !exists {
+			t.Fatal("PATH should be set in env (Smart PATH)")
+		}
+		pathStr, ok := pathVal.(string)
+		if !ok {
+			t.Fatalf("PATH should be a string, got %T", pathVal)
+		}
+
+		// Smart PATH should contain essential directories
+		localBin := filepath.Join(tempDir, ".local", "bin")
+		goBin := filepath.Join(tempDir, "go", "bin")
+		if !strings.Contains(pathStr, localBin) {
+			t.Errorf("PATH should contain %q, got %q", localBin, pathStr)
+		}
+		if !strings.Contains(pathStr, goBin) {
+			t.Errorf("PATH should contain %q, got %q", goBin, pathStr)
 		}
 	})
 
-	// Test 3: All required env and SessionEnd hook already set - should not modify
+	// Test 3: All required env (including PATH) and SessionEnd hook already set - should not modify
 	t.Run("AlreadyConfigured", func(t *testing.T) {
 		settingsPath := filepath.Join(claudeDir, "settings.json")
 
-		// Create settings with all required env and SessionEnd hook (matching exact format)
+		// Create settings with all required env including Smart PATH and SessionEnd hook
 		sessionEndHookCommand := buildSessionEndHookCommand()
+		smartPATH := buildSmartPATH(tempDir)
 		existing := map[string]interface{}{
 			"env": map[string]interface{}{
+				"PATH":                                 smartPATH,
 				"ENABLE_TOOL_SEARCH":                   "1",
 				"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
 			},
@@ -1349,7 +1381,7 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 	})
 }
 
-func TestEnsureGlobalSettingsEnv_RemovesExistingPATH(t *testing.T) {
+func TestEnsureGlobalSettingsEnv_UpdatesExistingPATH(t *testing.T) {
 	// Create a temp directory for testing
 	tempDir := t.TempDir()
 
@@ -1368,7 +1400,7 @@ func TestEnsureGlobalSettingsEnv_RemovesExistingPATH(t *testing.T) {
 
 	settingsPath := filepath.Join(claudeDir, "settings.json")
 
-	// Create existing settings WITH PATH set (simulating pre-fix state)
+	// Create existing settings WITH an old/stale PATH (simulating pre-Smart-PATH state)
 	existing := map[string]interface{}{
 		"env": map[string]interface{}{
 			"PATH":               "/old/go/bin:/usr/local/bin:/usr/bin:/bin",
@@ -1417,9 +1449,30 @@ func TestEnsureGlobalSettingsEnv_RemovesExistingPATH(t *testing.T) {
 
 	env := settings["env"].(map[string]interface{})
 
-	// PATH should be removed
-	if _, exists := env["PATH"]; exists {
-		t.Error("PATH should be removed from env to respect terminal's system PATH (fixes #325)")
+	// PATH should be updated to the new Smart PATH (not the old value)
+	pathVal, exists := env["PATH"]
+	if !exists {
+		t.Fatal("PATH should exist in env (Smart PATH)")
+	}
+	pathStr, ok := pathVal.(string)
+	if !ok {
+		t.Fatalf("PATH should be a string, got %T", pathVal)
+	}
+
+	// Old PATH should be replaced; Smart PATH should contain essential dirs
+	expectedSmartPATH := buildSmartPATH(tempDir)
+	if pathStr != expectedSmartPATH {
+		t.Errorf("PATH should be updated to Smart PATH\ngot:  %q\nwant: %q", pathStr, expectedSmartPATH)
+	}
+
+	// Essential dirs should be present
+	localBin := filepath.Join(tempDir, ".local", "bin")
+	goBin := filepath.Join(tempDir, "go", "bin")
+	if !strings.Contains(pathStr, localBin) {
+		t.Errorf("PATH should contain %q, got %q", localBin, pathStr)
+	}
+	if !strings.Contains(pathStr, goBin) {
+		t.Errorf("PATH should contain %q, got %q", goBin, pathStr)
 	}
 
 	// Custom var should be preserved
@@ -1436,110 +1489,176 @@ func TestEnsureGlobalSettingsEnv_RemovesExistingPATH(t *testing.T) {
 	}
 }
 
-func TestEnsureGlobalSettingsEnv_RemovesVariousPATHFormats(t *testing.T) {
+func TestBuildSmartPATH(t *testing.T) {
+	sep := string(os.PathListSeparator)
+
 	tests := []struct {
-		name    string
-		pathVal string
+		name       string
+		homeDir    string
+		envPATH    string
+		wantLocalBin bool
+		wantGoBin    bool
+		wantUnchanged bool // true if PATH should remain unchanged (essential dirs already present)
 	}{
 		{
-			name:    "Windows-style PATH with semicolons",
-			pathVal: `C:\Go\bin;C:\Users\user\go\bin;C:\Windows\system32`,
+			name:       "essential dirs missing from PATH - should be prepended",
+			homeDir:    "/home/testuser",
+			envPATH:    "/usr/local/bin" + sep + "/usr/bin" + sep + "/bin",
+			wantLocalBin: true,
+			wantGoBin:    true,
 		},
 		{
-			name:    "Mixed Unix/Windows PATH (MSYS2/Git Bash)",
-			pathVal: "/c/Users/user/go/bin:/usr/local/bin",
+			name:       "essential dirs already in PATH - PATH unchanged",
+			homeDir:    "/home/testuser",
+			envPATH:    "/home/testuser/.local/bin" + sep + "/home/testuser/go/bin" + sep + "/usr/bin",
+			wantLocalBin: true,
+			wantGoBin:    true,
+			wantUnchanged: true,
 		},
 		{
-			name:    "Empty string PATH",
-			pathVal: "",
+			name:       "trailing slash on existing dir - should match and not duplicate",
+			homeDir:    "/home/testuser",
+			envPATH:    "/home/testuser/.local/bin/" + sep + "/home/testuser/go/bin/" + sep + "/usr/bin",
+			wantLocalBin: true,
+			wantGoBin:    true,
+			wantUnchanged: true,
+		},
+		{
+			name:       "empty current PATH - essential dirs only",
+			homeDir:    "/home/testuser",
+			envPATH:    "",
+			wantLocalBin: true,
+			wantGoBin:    true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a temp directory for testing
-			tempDir := t.TempDir()
-
-			// Mock home directory to temp dir
-			originalHome := os.Getenv("HOME")
+			// Save and restore PATH
+			originalPATH := os.Getenv("PATH")
 			defer func() {
-				_ = os.Setenv("HOME", originalHome)
+				_ = os.Setenv("PATH", originalPATH)
 			}()
-			_ = os.Setenv("HOME", tempDir)
+			_ = os.Setenv("PATH", tt.envPATH)
 
-			// Create .claude directory
-			claudeDir := filepath.Join(tempDir, ".claude")
-			if err := os.MkdirAll(claudeDir, 0755); err != nil {
-				t.Fatalf("failed to create .claude dir: %v", err)
+			result := buildSmartPATH(tt.homeDir)
+
+			localBin := filepath.Join(tt.homeDir, ".local", "bin")
+			goBin := filepath.Join(tt.homeDir, "go", "bin")
+
+			if tt.wantLocalBin && !strings.Contains(result, localBin) {
+				t.Errorf("result should contain %q, got %q", localBin, result)
+			}
+			if tt.wantGoBin && !strings.Contains(result, goBin) {
+				t.Errorf("result should contain %q, got %q", goBin, result)
 			}
 
-			settingsPath := filepath.Join(claudeDir, "settings.json")
-
-			// Create existing settings WITH PATH set (simulating pre-fix state)
-			existing := map[string]interface{}{
-				"env": map[string]interface{}{
-					"PATH":               tt.pathVal,
-					"ENABLE_TOOL_SEARCH": "1",
-					"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
-					"CUSTOM_VAR": "preserved",
-				},
-				"permissions": map[string]interface{}{
-					"allow": []interface{}{"Task:*"},
-				},
-				"teammateMode": "auto",
-				"hooks": map[string]interface{}{
-					"SessionEnd": []interface{}{
-						map[string]interface{}{
-							"hooks": []interface{}{
-								map[string]interface{}{
-									"type":    "command",
-									"command": buildSessionEndHookCommand(),
-									"timeout": 5,
-								},
-							},
-						},
-					},
-				},
-			}
-			data, _ := json.MarshalIndent(existing, "", "  ")
-			if err := os.WriteFile(settingsPath, data, 0644); err != nil {
-				t.Fatalf("failed to write existing settings: %v", err)
+			if tt.wantUnchanged && result != tt.envPATH {
+				t.Errorf("PATH should remain unchanged when essential dirs already present\ngot:  %q\nwant: %q", result, tt.envPATH)
 			}
 
-			err := ensureGlobalSettingsEnv()
-			if err != nil {
-				t.Fatalf("ensureGlobalSettingsEnv failed: %v", err)
+			// Verify no duplicate entries of essential dirs
+			entries := strings.Split(result, sep)
+			localBinCount := 0
+			goBinCount := 0
+			for _, entry := range entries {
+				normalized := strings.TrimRight(entry, "/\\")
+				if normalized == localBin {
+					localBinCount++
+				}
+				if normalized == goBin {
+					goBinCount++
+				}
 			}
-
-			// Read back and verify
-			data, err = os.ReadFile(settingsPath)
-			if err != nil {
-				t.Fatalf("failed to read settings.json: %v", err)
+			if localBinCount > 1 {
+				t.Errorf("localBin should appear at most once, found %d times in %q", localBinCount, result)
 			}
-
-			var settings map[string]interface{}
-			if err := json.Unmarshal(data, &settings); err != nil {
-				t.Fatalf("failed to parse settings.json: %v", err)
+			if goBinCount > 1 {
+				t.Errorf("goBin should appear at most once, found %d times in %q", goBinCount, result)
 			}
+		})
+	}
+}
 
-			env := settings["env"].(map[string]interface{})
+func TestPathContainsDir(t *testing.T) {
+	tests := []struct {
+		name    string
+		pathStr string
+		dir     string
+		sep     string
+		want    bool
+	}{
+		{
+			name:    "exact match",
+			pathStr: "/usr/local/bin:/usr/bin:/bin",
+			dir:     "/usr/local/bin",
+			sep:     ":",
+			want:    true,
+		},
+		{
+			name:    "trailing slash on dir",
+			pathStr: "/usr/local/bin:/usr/bin:/bin",
+			dir:     "/usr/local/bin/",
+			sep:     ":",
+			want:    true,
+		},
+		{
+			name:    "trailing slash on entry",
+			pathStr: "/usr/local/bin/:/usr/bin:/bin",
+			dir:     "/usr/local/bin",
+			sep:     ":",
+			want:    true,
+		},
+		{
+			name:    "substring should NOT match",
+			pathStr: "/usr/local/bin2:/usr/bin:/bin",
+			dir:     "/usr/local/bin",
+			sep:     ":",
+			want:    false,
+		},
+		{
+			name:    "empty path",
+			pathStr: "",
+			dir:     "/usr/local/bin",
+			sep:     ":",
+			want:    false,
+		},
+		{
+			name:    "Windows semicolon separator",
+			pathStr: `C:\Go\bin;C:\Users\user\go\bin;C:\Windows\system32`,
+			dir:     `C:\Users\user\go\bin`,
+			sep:     ";",
+			want:    true,
+		},
+		{
+			name:    "dir not in path",
+			pathStr: "/usr/local/bin:/usr/bin:/bin",
+			dir:     "/opt/homebrew/bin",
+			sep:     ":",
+			want:    false,
+		},
+		{
+			name:    "single entry exact match",
+			pathStr: "/usr/local/bin",
+			dir:     "/usr/local/bin",
+			sep:     ":",
+			want:    true,
+		},
+		{
+			name:    "single entry no match",
+			pathStr: "/usr/local/bin",
+			dir:     "/usr/bin",
+			sep:     ":",
+			want:    false,
+		},
+	}
 
-			// PATH should be removed regardless of format
-			if _, exists := env["PATH"]; exists {
-				t.Errorf("PATH should be removed from env (was %q), fixes #325", tt.pathVal)
-			}
-
-			// Custom var should be preserved
-			if env["CUSTOM_VAR"] != "preserved" {
-				t.Errorf("CUSTOM_VAR not preserved: got %v", env["CUSTOM_VAR"])
-			}
-
-			// Required keys should still be present
-			if env["ENABLE_TOOL_SEARCH"] != "1" {
-				t.Errorf("ENABLE_TOOL_SEARCH not present: got %v", env["ENABLE_TOOL_SEARCH"])
-			}
-			if env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] != "1" {
-				t.Errorf("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS not present: got %v", env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"])
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := pathContainsDir(tt.pathStr, tt.dir, tt.sep)
+			if got != tt.want {
+				t.Errorf("pathContainsDir(%q, %q, %q) = %v, want %v",
+					tt.pathStr, tt.dir, tt.sep, got, tt.want)
 			}
 		})
 	}

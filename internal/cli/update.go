@@ -1453,10 +1453,11 @@ func ensureGlobalSettingsEnv() error {
 	globalSettingsPath := filepath.Join(homeDir, defs.ClaudeDir, defs.SettingsJSON)
 
 	// Define required env variables
-	// Note: PATH is intentionally NOT set here to respect the terminal's system PATH.
-	// Setting env.PATH in settings.json replaces the system PATH entirely, which breaks
-	// tools like pnpm, node, nvm, pyenv, etc. (fixes #325)
+	// PATH is captured from the current terminal to ensure Claude Code subprocesses
+	// (hooks, statusline, IDE commands) have access to all user-installed tools.
+	// This captures the FULL runtime PATH rather than hardcoding directories (fixes #325).
 	requiredEnv := map[string]string{
+		"PATH":                                 buildSmartPATH(homeDir),
 		"ENABLE_TOOL_SEARCH":                   "1",
 		"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
 	}
@@ -1492,14 +1493,8 @@ func ensureGlobalSettingsEnv() error {
 		}
 	}
 
-	// Clean up previously-set PATH to respect terminal's system PATH (fixes #325)
-	needsUpdate := false
-	if _, exists := existingEnv["PATH"]; exists {
-		delete(existingEnv, "PATH")
-		needsUpdate = true
-	}
-
 	// Check if required env updates are needed
+	needsUpdate := false
 	for key, requiredValue := range requiredEnv {
 		if existingVal, exists := existingEnv[key]; !exists || existingVal != requiredValue {
 			needsUpdate = true
@@ -1589,6 +1584,48 @@ func ensureGlobalSettingsEnv() error {
 	}
 
 	return nil
+}
+
+// buildSmartPATH captures the current terminal PATH and ensures essential directories are included.
+// Unlike the previous hardcoded approach, this preserves all user-installed tool paths (nvm, pyenv,
+// cargo, pnpm, etc.) while ensuring moai-essential directories are present.
+// Claude Code uses env.PATH from settings.json for subprocess execution (hooks, statusline, IDE).
+// Without env.PATH, these subprocesses may not find tools like moai, go, or node.
+func buildSmartPATH(homeDir string) string {
+	currentPATH := os.Getenv("PATH")
+	sep := string(os.PathListSeparator)
+
+	// Essential directories that must be in PATH for moai to function
+	essentialDirs := []string{
+		filepath.Join(homeDir, ".local", "bin"),
+		filepath.Join(homeDir, "go", "bin"),
+	}
+
+	// Prepend essential dirs if not already present
+	for i := len(essentialDirs) - 1; i >= 0; i-- {
+		dir := essentialDirs[i]
+		if !pathContainsDir(currentPATH, dir, sep) {
+			currentPATH = dir + sep + currentPATH
+		}
+	}
+
+	return currentPATH
+}
+
+// pathContainsDir checks if a PATH string contains a specific directory entry.
+// Handles trailing slashes and exact segment matching to avoid false positives
+// (e.g., "/usr/local/bin" should not match "/usr/local/bin2").
+func pathContainsDir(pathStr, dir, sep string) bool {
+	// Normalize: remove trailing separators from the target directory
+	dir = strings.TrimRight(dir, "/\\")
+
+	for _, entry := range strings.Split(pathStr, sep) {
+		entry = strings.TrimRight(entry, "/\\")
+		if entry == dir {
+			return true
+		}
+	}
+	return false
 }
 
 // buildSessionEndHookCommand builds the SessionEnd hook command for moai-rank submission.
