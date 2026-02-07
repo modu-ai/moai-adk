@@ -8,6 +8,7 @@ description: >
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
 memory: project
+skills: moai-foundation-core, moai-workflow-testing
 ---
 
 You are a testing specialist working as part of a MoAI agent team.

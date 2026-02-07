@@ -1,118 +1,106 @@
 # Workflow Configuration
-# Execution mode, team settings, and automation preferences
+# MoAI three-phase workflow: Plan → Run → Sync
 
 workflow:
-  # Execution mode selection
-  # Options: auto (intelligent selection), subagent (classic mode), team (agent teams)
-  execution_mode: "auto"
-
-  # Auto-clear strategy for context management
-  auto_clear:
-    enabled: true
-    after_plan: true
-    after_run: false
-    token_threshold: 150000
+  # Automatically execute /clear between phases to manage token budget
+  auto_clear: true
 
   # Token budget allocations per phase
-  token_budget:
-    plan: 30000
-    run: 180000
-    sync: 40000
+  # Plan phase: SPEC document creation (30K recommended)
+  plan_tokens: 30000
 
-  # Agent Teams configuration
-  team:
-    # Master switch - also requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
-    enabled: false
+  # Run phase: Implementation (180K recommended)
+  run_tokens: 180000
 
-    # Maximum teammates per team (2-5 recommended)
-    max_teammates: 5
+  # Sync phase: Documentation generation (40K recommended)
+  sync_tokens: 40000
 
-    # Default model for teammates
-    # Options: haiku (fast/cheap), sonnet (balanced), opus (powerful)
-    default_model: "sonnet"
+# Execution Mode Configuration
+# For autonomous workflow execution (Ralph-style)
+execution_mode:
+  # Interactive mode (default, standard MoAI behavior)
+  interactive:
+    # Require user approval for each phase
+    user_approval_required: true
 
-    # Require teammates to get plan approved before implementing
-    require_plan_approval: true
+    # Execute each step with explicit user confirmation
+    each_step_explicit: true
 
-    # Team lead operates in delegate mode (coordination only, no direct implementation)
-    delegate_mode: true
+    # Display progress indicators during execution
+    show_progress: true
 
-    # Display mode for teammates
-    # Options: auto (tmux if available), in-process (same terminal), tmux (force split panes)
-    teammate_display: "auto"
+  # Autonomous mode (Ralph-style, continuous execution)
+  autonomous:
+    # Skip user approval, run continuously
+    user_approval_required: false
 
-    # Auto-selection thresholds for switching to team mode
-    auto_selection:
-      # Minimum number of distinct domains to trigger team mode
-      min_domains_for_team: 3
+    # Execute in continuous loop until completion
+    continuous_loop: true
 
-      # Minimum number of affected files to trigger team mode
-      min_files_for_team: 10
+    # Use completion markers to detect phase completion
+    completion_marker_based: true
 
-      # Minimum complexity score (1-10) to trigger team mode
-      min_complexity_score: 7
+    # Integrate LSP feedback for quality validation
+    lsp_feedback_integration: true
 
-    # Pre-defined team composition patterns
-    patterns:
-      plan_research:
-        roles:
-          - researcher
-          - analyst
-          - architect
-        model: "sonnet"
-        description: "Parallel SPEC research and design"
+    # Display progress indicators during execution
+    show_progress: true
 
-      implementation:
-        roles:
-          - backend-dev
-          - frontend-dev
-          - tester
-        model: "sonnet"
-        description: "Cross-layer feature implementation"
+# Completion Markers
+# Conditions that must be met for each phase to be considered complete
+completion_markers:
+  # Plan phase completion conditions
+  plan:
+    # SPEC document must be created
+    spec_document_created: true
 
-      design_implementation:
-        roles:
-          - designer
-          - backend-dev
-          - frontend-dev
-          - tester
-        model: "sonnet"
-        description: "Cross-layer feature implementation with UI/UX design"
+    # LSP baseline must be recorded
+    lsp_baseline_recorded: true
 
-      full_stack:
-        roles:
-          - api-layer
-          - ui-layer
-          - data-layer
-          - quality
-        model: "sonnet"
-        description: "Full-stack implementation with quality gate"
+  # Run phase completion conditions
+  run:
+    # All tests must pass
+    tests_passing: true
 
-      investigation:
-        roles:
-          - hypothesis-1
-          - hypothesis-2
-          - hypothesis-3
-        model: "haiku"
-        description: "Competing hypothesis debugging"
+    # Existing behavior must be preserved (for DDD)
+    behavior_preserved: true
 
-      review:
-        roles:
-          - security-reviewer
-          - perf-reviewer
-          - quality-reviewer
-        model: "sonnet"
-        description: "Multi-perspective code review"
+    # Zero LSP errors required
+    lsp_errors: 0
 
-  # Completion markers for workflow state detection
-  completion:
-    markers:
-      done: "<moai>DONE</moai>"
-      complete: "<moai>COMPLETE</moai>"
-    detect_in_output: true
+    # Zero type errors required
+    type_errors: 0
 
-  # Loop prevention guards
-  loop_prevention:
-    max_iterations: 100
-    max_retries_per_operation: 3
-    failure_pattern_detection: true
+    # Coverage must meet configured target
+    coverage_met_target: true
+
+  # Sync phase completion conditions
+  sync:
+    # Documentation must be generated
+    documentation_generated: true
+
+    # LSP diagnostics must be clean
+    lsp_clean: true
+
+    # Quality gates must pass
+    quality_gate_passed: true
+
+# Loop Prevention
+# Safeguards to prevent infinite loops in autonomous mode
+loop_prevention:
+  # Maximum iterations before forcing exit (default: 100)
+  max_iterations: 100
+
+  # Number of iterations with no progress before intervention (default: 5)
+  no_progress_threshold: 5
+
+  # Stale state detection criteria
+  stale_detection:
+  # Exit if error count remains unchanged across iterations
+  - error_count_unchanged
+
+  # Exit if same fix is attempted twice without progress
+  - same_fix_attempted_twice
+
+  # Exit if alternative strategy is required
+  - alternative_strategy_required
