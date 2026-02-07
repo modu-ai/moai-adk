@@ -5,6 +5,112 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.2] - 2026-02-07
+
+### Summary
+
+Template system refactoring and cross-platform compatibility improvements. This patch release migrates settings.json generation from runtime-based to template-based approach, improves PATH handling, and fixes Windows CI test failures.
+
+### Breaking Changes
+
+None
+
+### Added
+
+- Template-based configuration files: settings.json.tmpl, .mcp.json.tmpl, handle-session-end.sh.tmpl
+- SmartPATH and Platform fields in TemplateContext for better cross-platform support
+
+### Changed
+
+- Migrated settings.json generation from runtime JSON builder to template-based rendering
+- Simplified SettingsGenerator by removing complex JSON construction logic
+- Removed settings.json merge logic from update command (now handled by template deployment)
+- Enhanced template rendering with SmartPATH and Platform context
+
+### Fixed
+
+- Resolved cross-platform test failures on Windows CI
+- Restored .moai/project, specs, and config directories deleted in v2.0.0 cleanup
+- Fixed PowerShell `$IsWindows` read-only variable conflict
+
+### Technical Details
+
+**Template System Improvements:**
+- Centralized configuration in templates for single source of truth
+- Better cross-platform PATH handling via SmartPATH
+- Consistent template rendering across init and update commands
+- Reduced maintenance overhead with template-based approach
+
+**Test Coverage:**
+- All 30 packages pass race detection tests
+- Zero linting issues
+- Enhanced test coverage for template rendering
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.0.2] - 2026-02-07 (한국어)
+
+### 요약
+
+템플릿 시스템 리팩토링 및 크로스 플랫폼 호환성 개선. 이 패치 릴리스는 settings.json 생성을 런타임 기반에서 템플릿 기반 접근 방식으로 마이그레이션하고, PATH 처리를 개선하며, Windows CI 테스트 실패를 수정합니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 추가됨 (Added)
+
+- 템플릿 기반 구성 파일: settings.json.tmpl, .mcp.json.tmpl, handle-session-end.sh.tmpl
+- 더 나은 크로스 플랫폼 지원을 위한 TemplateContext의 SmartPATH 및 Platform 필드
+
+### 변경됨 (Changed)
+
+- settings.json 생성을 런타임 JSON 빌더에서 템플릿 기반 렌더링으로 마이그레이션
+- 복잡한 JSON 구성 로직을 제거하여 SettingsGenerator 단순화
+- update 명령에서 settings.json 병합 로직 제거 (이제 템플릿 배포로 처리)
+- SmartPATH 및 Platform 컨텍스트로 템플릿 렌더링 강화
+
+### 수정됨 (Fixed)
+
+- Windows CI에서 크로스 플랫폼 테스트 실패 해결
+- v2.0.0 정리 시 삭제된 .moai/project, specs, config 디렉토리 복원
+- PowerShell `$IsWindows` 읽기 전용 변수 충돌 수정
+
+### 기술 세부 사항
+
+**템플릿 시스템 개선:**
+- 단일 소스로서의 템플릿에 구성 중앙화
+- SmartPATH를 통한 더 나은 크로스 플랫폼 PATH 처리
+- init 및 update 명령에서 일관된 템플릿 렌더링
+- 템플릿 기반 접근 방식으로 유지 관리 오버헤드 감소
+
+**테스트 커버리지:**
+- 30개 패키지 모두 race detection 테스트 통과
+- linting 문제 0개
+- 템플릿 렌더링에 대한 향상된 테스트 커버리지
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.0.1] - 2026-02-07
 
 ### 요약
