@@ -5,6 +5,88 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.3] - 2026-02-07
+
+### Summary
+
+Binary-first self-update and configuration improvements. The `moai update` command now updates the binary before syncing templates, ensuring the latest template engine processes files. Agent hook definitions and settings schema have been corrected.
+
+### Breaking Changes
+
+None
+
+### Added
+
+- Binary self-update step in `moai update` and `moai init` commands with re-exec pattern
+- 3-layer loop prevention for binary update: env var guard, dev build detection, version comparison
+- `--templates-only` flag for skipping binary update during re-exec
+- `plansDirectory` setting in settings.json for Claude Code plan storage
+
+### Changed
+
+- `moai update` now performs binary update before template sync
+- Agent hook definitions converted from object to array format for SubagentStop events
+- Removed Homebrew tap from GoReleaser configuration
+
+### Fixed
+
+- Invalid schema fields removed from settings.json template
+- Missing configuration fields added to settings.json template
+- SubagentStop hooks in 8 agent definitions corrected to valid array format
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.0.3] - 2026-02-07 (한국어)
+
+### 요약
+
+바이너리 우선 자체 업데이트 및 설정 개선. `moai update` 명령어가 이제 템플릿 동기화 전에 바이너리를 먼저 업데이트하여 최신 템플릿 엔진이 파일을 처리하도록 보장합니다. 에이전트 훅 정의와 설정 스키마가 수정되었습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 추가됨 (Added)
+
+- `moai update` 및 `moai init` 명령어에 re-exec 패턴을 활용한 바이너리 자체 업데이트 단계 추가
+- 바이너리 업데이트를 위한 3중 루프 방지: 환경변수 가드, 개발 빌드 감지, 버전 비교
+- re-exec 시 바이너리 업데이트 건너뛰기를 위한 `--templates-only` 플래그
+- Claude Code 계획 문서 저장을 위한 settings.json에 `plansDirectory` 설정 추가
+
+### 변경됨 (Changed)
+
+- `moai update`가 이제 템플릿 동기화 전에 바이너리 업데이트를 수행
+- SubagentStop 이벤트의 에이전트 훅 정의를 객체에서 배열 형식으로 변환
+- GoReleaser 설정에서 Homebrew tap 제거
+
+### 수정됨 (Fixed)
+
+- settings.json 템플릿에서 잘못된 스키마 필드 제거
+- settings.json 템플릿에 누락된 설정 필드 추가
+- 8개 에이전트 정의의 SubagentStop 훅을 유효한 배열 형식으로 수정
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.0.2] - 2026-02-07
 
 ### Summary
