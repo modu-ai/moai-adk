@@ -50,19 +50,6 @@ changelog:
     - title: Others
       order: 999
 
-brews:
-  - repository:
-      owner: modu-ai
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    homepage: https://github.com/modu-ai/moai-adk
-    description: "MoAI Agentic Development Kit - AI-powered development workflow CLI"
-    license: "GPL-3.0"
-    install: |
-      bin.install "moai"
-    test: |
-      system "#{bin}/moai", "version"
-
 release:
   github:
     owner: modu-ai
