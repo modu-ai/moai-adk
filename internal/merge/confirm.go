@@ -2,12 +2,8 @@ package merge
 
 import (
 	"fmt"
-	"io"
-	"log/slog"
-	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -617,34 +613,6 @@ func sanitizePath(path string) string {
 	return cleaned
 }
 
-// initLogger creates a structured logger with configurable level and format.
-// Logging is disabled by default for better user experience.
-// Environment variables:
-//   - MOAI_LOG_LEVEL: "debug" or "info" (default: disabled)
-//   - MOAI_LOG_FORMAT: "json" or "text" (default: text)
-func initLogger() *slog.Logger {
-	// Check if logging is explicitly enabled
-	logLevel := os.Getenv("MOAI_LOG_LEVEL")
-	if logLevel == "" {
-		// No logging by default - return a no-op logger
-		return slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelError + 1}))
-	}
-
-	level := slog.LevelInfo
-	if logLevel == "debug" {
-		level = slog.LevelDebug
-	}
-
-	var handler slog.Handler
-	if os.Getenv("MOAI_LOG_FORMAT") == "json" {
-		handler = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: level})
-	} else {
-		handler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})
-	}
-
-	return slog.New(handler)
-}
-
 // ConfirmMerge displays an interactive confirmation UI for template merge operations.
 // It shows a table of files to be modified, their risk levels, and merge strategies.
 // Users can approve (y) or reject (n) the merge. The UI is built with Bubble Tea.
@@ -657,15 +625,6 @@ func initLogger() *slog.Logger {
 //
 // Returns true if user approves, false if rejected or error occurs.
 func ConfirmMerge(analysis MergeAnalysis) (bool, error) {
-	logger := initLogger()
-	start := time.Now()
-
-	logger.Info("starting merge confirmation",
-		"file_count", len(analysis.Files),
-		"has_conflicts", analysis.HasConflicts,
-		"risk_level", analysis.RiskLevel,
-	)
-
 	// Input validation
 	if err := validateAnalysis(analysis); err != nil {
 		return false, fmt.Errorf("invalid analysis: %w", err)
@@ -688,15 +647,5 @@ func ConfirmMerge(analysis MergeAnalysis) (bool, error) {
 	}
 
 	result := finalModel.(confirmModel)
-	decision := result.decision
-	duration := time.Since(start)
-
-	logger.Info("merge confirmation completed",
-		"decision", decision,
-		"duration_ms", duration.Milliseconds(),
-		"file_count", len(analysis.Files),
-		"risk_level", analysis.RiskLevel,
-	)
-
-	return decision, nil
+	return result.decision, nil
 }
