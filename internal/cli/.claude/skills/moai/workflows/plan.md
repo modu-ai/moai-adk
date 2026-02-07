@@ -51,6 +51,7 @@ Create comprehensive SPEC documents using EARS format as the first step of the P
 - --worktree: Create isolated Git worktree environment (highest priority)
 - --branch: Create traditional feature branch (second priority)
 - No flag: SPEC only by default; user may be prompted based on config
+- --team: Enable team-based exploration (see team-plan.md for parallel research team)
 - resume SPEC-XXX: Continue from last saved draft state
 
 Flag priority: --worktree takes precedence over --branch, which takes precedence over default.
@@ -233,6 +234,18 @@ Options:
 
 ---
 
+## Team Mode
+
+When --team flag is provided or auto-selected, the plan phase uses a parallel research team instead of sequential sub-agent execution.
+
+Team composition: researcher (haiku) + analyst (sonnet) + architect (sonnet)
+
+For detailed team orchestration steps, see workflows/team-plan.md.
+
+Fallback: If team mode is unavailable, the workflow continues with standard sub-agent mode (manager-spec).
+
+---
+
 ## Completion Criteria
 
 All of the following must be verified:
@@ -249,5 +262,6 @@ All of the following must be verified:
 
 ---
 
-Version: 1.0.0
-Source: Extracted from .claude/commands/moai/1-plan.md v5.1.0
+Version: 2.0.0
+Updated: 2026-02-07
+Source: Extracted from .claude/commands/moai/1-plan.md v5.1.0. Added team mode support and --team flag.

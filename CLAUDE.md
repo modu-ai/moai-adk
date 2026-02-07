@@ -88,10 +88,11 @@ Allowed Tools: Full access (Task, AskUserQuestion, TaskCreate, TaskUpdate, TaskL
 4. Workflow coordination needed? Use the manager-[workflow] subagent
 5. Complex multi-step tasks? Use the manager-strategy subagent
 
-### Manager Agents (7)
+### Manager Agents (8)
 
 - manager-spec: SPEC document creation, EARS format, requirements analysis
 - manager-ddd: Domain-driven development, ANALYZE-PRESERVE-IMPROVE cycle
+- manager-tdd: Test-driven development, RED-GREEN-REFACTOR cycle
 - manager-docs: Documentation generation, Nextra integration
 - manager-quality: Quality gates, TRUST 5 validation, code review
 - manager-project: Project configuration, structure management
@@ -116,11 +117,14 @@ Allowed Tools: Full access (Task, AskUserQuestion, TaskCreate, TaskUpdate, TaskL
 - builder-skill: Create new skills
 - builder-plugin: Create new plugins
 
-### Team Agents (5) - Experimental
+### Team Agents (8) - Experimental
 
 Team agents for Claude Code Agent Teams (v2.1.32+, requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1):
 
 - team-researcher: Read-only exploration and research (haiku, plan phase)
+- team-analyst: Requirements analysis, user stories, acceptance criteria (sonnet, plan phase)
+- team-architect: Technical design, architecture decisions, trade-offs (sonnet, plan phase)
+- team-designer: UI/UX design with Pencil/Figma MCP, design tokens, style guides (sonnet, run phase)
 - team-backend-dev: Server-side implementation with file ownership (sonnet, run phase)
 - team-frontend-dev: Client-side implementation with file ownership (sonnet, run phase)
 - team-tester: Test creation with exclusive test file ownership (sonnet, run phase)
@@ -373,44 +377,73 @@ Requirements:
 - Set `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env
 - Set `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml`
 
-### Mode Selection
+### Team API
 
-Three execution modes controlled by flags or configuration:
+| API | Purpose |
+|-----|---------|
+| TeamCreate | Create a team with named teammates, models, and tools |
+| SendMessage | Direct message, broadcast, shutdown_request/response, plan_approval_response |
+| TaskCreate / TaskUpdate / TaskList / TaskGet | Shared task board for teammate coordination |
+| TeamDelete | Graceful team shutdown after phase completion |
+
+### Team Hook Events
+
+| Event | Blocking | Purpose |
+|-------|----------|---------|
+| TeammateIdle | Yes (exit 2 keeps working) | Quality gate enforcement before idle |
+| TaskCompleted | Yes (exit 2 rejects) | Verify deliverables meet standards |
+
+### Team Agent Roster (8)
+
+| Agent | Model | Phase | Role |
+|-------|-------|-------|------|
+| team-researcher | haiku | plan | Read-only codebase exploration |
+| team-analyst | sonnet | plan | Requirements and domain analysis |
+| team-architect | sonnet | plan | System design and architecture |
+| team-designer | sonnet | run | UI/UX design with Pencil/Figma MCP |
+| team-backend-dev | sonnet | run | Server-side implementation |
+| team-frontend-dev | sonnet | run | Client-side implementation |
+| team-tester | sonnet | run | Test creation (exclusive test file ownership) |
+| team-quality | sonnet | run | TRUST 5 validation (read-only) |
+
+### Mode Selection
 
 - `--team`: Force Agent Teams mode for plan and run phases
 - `--solo`: Force sub-agent mode (single agent per phase)
 - `--auto` (default): Intelligent mode selection based on complexity scoring
 
 Auto-selection thresholds (configurable in workflow.yaml):
-- Domain count >= 3: team mode recommended
-- Affected files >= 10: team mode recommended
-- Complexity score >= 7: team mode activated
+- Domain count >= 3, affected files >= 10, or complexity score >= 7
 
 ### Team Workflows
 
-- Plan phase team: researcher + analyst + architect (parallel exploration)
-- Run phase team: backend-dev + frontend-dev + tester (parallel implementation)
-- Sync phase: Always sub-agent mode (manager-docs)
+| Workflow | File | Phases |
+|----------|------|--------|
+| Team Plan | workflows/team-plan.md | researcher + analyst + architect (parallel) |
+| Team Run | workflows/team-run.md | backend-dev + frontend-dev + tester (parallel) |
+| Team Sync | workflows/team-sync.md | Documentation generation (sub-agent) |
+| Team Debug | workflows/team-debug.md | Competing hypothesis investigation |
+| Team Review | workflows/team-review.md | Multi-perspective code review |
 
 ### File Ownership Strategy
 
-Each teammate exclusively owns specific files to prevent write conflicts:
-- backend-dev: src/api/**, src/models/**, src/services/**
-- frontend-dev: src/ui/**, src/components/**, src/pages/**
-- tester: tests/**, *_test.go, *.test.*
-- quality: read-only (no file ownership)
+File ownership is project-structure-aware, derived from actual project layout rather than hardcoded paths:
+- backend-dev: Server-side source directories (detected from project structure)
+- frontend-dev: Client-side source directories (detected from project structure)
+- tester: Test files (*_test.go, *.test.*, tests/**)
+- quality: Read-only (no file ownership)
 
 ### Configuration
 
 Workflow settings: @.moai/config/sections/workflow.yaml
 Team workflow skill: Skill("moai-workflow-team")
 
-For detailed team orchestration: See workflows/team-plan.md and workflows/team-run.md
+For detailed team orchestration: See workflows/team-plan.md through team-review.md
 
 ---
 
 Version: 12.0.0 (Agent Teams + Safe Development Protocol)
-Last Updated: 2026-02-06
+Last Updated: 2026-02-07
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
 

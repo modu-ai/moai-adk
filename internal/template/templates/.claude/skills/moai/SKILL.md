@@ -70,6 +70,7 @@ When no explicit subcommand or SPEC-ID is detected, classify the intent:
 - Iterative and repeat language (keep fixing, until done, repeat, iterate, all errors) routes to **loop**
 - Documentation language (document, sync, docs, readme, changelog, PR) routes to **sync** or **project**
 - Feedback and bug report language (report, feedback, suggestion, issue) routes to **feedback**
+- Review language (review, code review, audit, inspect) routes to **team-review** workflow (requires --team)
 - Implementation language (implement, build, create, add, develop) with clear scope routes to **moai** (default autonomous)
 
 ### Priority 4: Default Behavior
@@ -87,7 +88,7 @@ If the intent is clearly a development task with no specific routing signal, def
 Purpose: Create comprehensive specification documents using EARS format.
 Agents: manager-spec (primary), Explore (optional codebase analysis), manager-git (conditional branch/worktree)
 Phases: Explore codebase, analyze requirements, create SPEC candidates, user approval, generate spec.md/plan.md/acceptance.md, optional branch or worktree creation.
-Flags: --worktree (isolated environment), --branch (feature branch), --resume SPEC-XXX
+Flags: --worktree (isolated environment), --branch (feature branch), --resume SPEC-XXX, --team (parallel exploration)
 For detailed orchestration: Read workflows/plan.md
 
 ### run - DDD Implementation
@@ -95,7 +96,7 @@ For detailed orchestration: Read workflows/plan.md
 Purpose: Implement SPEC requirements through Domain-Driven Development methodology.
 Agents: manager-strategy (planning), manager-ddd (ANALYZE-PRESERVE-IMPROVE), manager-quality (TRUST 5 validation), manager-git (commits)
 Phases: SPEC analysis and execution plan, task decomposition, DDD implementation cycle, quality validation, git operations, completion guidance.
-Flags: --resume SPEC-XXX
+Flags: --resume SPEC-XXX, --team (parallel implementation)
 For detailed orchestration: Read workflows/run.md
 
 ### sync - Documentation Sync and PR
@@ -111,7 +112,7 @@ For detailed orchestration: Read workflows/sync.md
 Purpose: Autonomously detect and fix LSP errors, linting issues, and type errors.
 Agents: expert-debug (diagnosis), expert-backend/expert-frontend (fixes)
 Phases: Parallel scan (LSP + AST-grep + linters), auto classification (Level 1-4), auto fix (Level 1-2), verification.
-Flags: --dry (preview only), --sequential, --level N (fix depth), --resume
+Flags: --dry (preview only), --sequential, --level N (fix depth), --resume, --team (competing hypothesis)
 For detailed orchestration: Read workflows/fix.md
 
 ### loop - Iterative Auto-Fix
@@ -127,13 +128,13 @@ For detailed orchestration: Read workflows/loop.md
 Purpose: Full autonomous plan -> run -> sync pipeline. Default when no subcommand matches.
 Agents: Explore, manager-spec, manager-ddd, manager-quality, manager-docs, manager-git
 Phases: Parallel exploration, SPEC generation (user approval), DDD implementation with optional auto-fix loop, documentation sync, completion marker.
-Flags: --loop (iterative fixing), --max N, --branch, --pr, --resume SPEC-XXX
+Flags: --loop (iterative fixing), --max N, --branch, --pr, --resume SPEC-XXX, --team, --solo, --auto
 For detailed orchestration: Read workflows/moai.md
 
 ### project - Project Documentation
 
 Purpose: Generate project documentation by analyzing the existing codebase.
-Agents: manager-project (primary), Explore (codebase analysis)
+Agents: Explore (codebase analysis), manager-docs (documentation generation), expert-devops (optional LSP setup)
 Output: product.md, structure.md, tech.md in .moai/project/
 For detailed orchestration: Read workflows/project.md
 
@@ -257,6 +258,21 @@ These markers enable automation detection of workflow state.
 - builder-skill: Create new skills
 - builder-plugin: Create new plugins
 
+### Team Agents (8) - Experimental
+
+Team agents for Agent Teams mode (--team flag, requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1):
+
+| Agent | Model | Phase | Purpose |
+|-------|-------|-------|---------|
+| team-researcher | haiku | plan | Read-only codebase exploration |
+| team-analyst | sonnet | plan | Requirements and domain analysis |
+| team-architect | sonnet | plan | System design and architecture |
+| team-designer | sonnet | run | UI/UX design with Pencil/Figma MCP |
+| team-backend-dev | sonnet | run | Server-side implementation |
+| team-frontend-dev | sonnet | run | Client-side implementation |
+| team-tester | sonnet | run | Test creation (exclusive test ownership) |
+| team-quality | sonnet | run | TRUST 5 validation (read-only) |
+
 ### Agent Selection Decision Tree
 
 1. Read-only codebase exploration? Use the Explore subagent
@@ -299,6 +315,11 @@ For detailed workflow orchestration steps, read the corresponding workflow file:
 - workflows/loop.md: Iterative fix loop orchestration
 - workflows/project.md: Project documentation workflow
 - workflows/feedback.md: Feedback and issue creation workflow
+- workflows/team-plan.md: Team-based parallel exploration for plan phase
+- workflows/team-run.md: Team-based parallel implementation for run phase
+- workflows/team-sync.md: Sync phase rationale (always sub-agent mode)
+- workflows/team-debug.md: Competing hypothesis investigation team
+- workflows/team-review.md: Multi-perspective code review team
 
 For SPEC workflow overview: See .claude/rules/moai/workflow/spec-workflow.md
 For quality standards: See .claude/rules/moai/core/moai-constitution.md
@@ -310,7 +331,7 @@ For quality standards: See .claude/rules/moai/core/moai-constitution.md
 When this skill is activated, execute the following steps in order:
 
 Step 1 - Parse Arguments:
-Extract subcommand keywords and flags from $ARGUMENTS. Recognized global flags: --resume [ID], --seq, --ultrathink. Workflow-specific flags: --loop, --max N, --worktree, --branch, --pr, --auto, --merge, --dry, --level N, --security. When --ultrathink is detected, activate Sequential Thinking MCP (mcp__sequential-thinking__sequentialthinking) for deep analysis before execution.
+Extract subcommand keywords and flags from $ARGUMENTS. Recognized global flags: --resume [ID], --seq, --ultrathink, --team, --solo, --auto. Workflow-specific flags: --loop, --max N, --worktree, --branch, --pr, --merge, --dry, --level N, --security. When --ultrathink is detected, activate Sequential Thinking MCP (mcp__sequential-thinking__sequentialthinking) for deep analysis before execution.
 
 Step 2 - Route to Workflow:
 Apply the Intent Router (Priority 1 through Priority 4) to determine the target workflow. If ambiguous, use AskUserQuestion to clarify with the user.
@@ -341,5 +362,5 @@ Use AskUserQuestion to present the user with logical next actions based on the c
 
 ---
 
-Version: 1.1.0
-Last Updated: 2026-01-28
+Version: 2.0.0
+Last Updated: 2026-02-07

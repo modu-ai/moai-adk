@@ -9,10 +9,10 @@ license: Apache-2.0
 compatibility: Designed for Claude Code
 user-invocable: false
 metadata:
-  version: "1.0.0"
+  version: "2.0.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-03"
+  updated: "2026-02-07"
   tags: "loop, iterative, auto-fix, diagnostics, testing, coverage"
 
 # MoAI Extension: Progressive Disclosure
@@ -50,14 +50,14 @@ Each iteration executes the following steps in order:
 
 Step 1 - Completion Check:
 - Check for completion marker in previous iteration response
-- Marker types: `<moai>DONE</moai>`, `<moai>COMPLETE</moai>`, `<moai:done />`
+- Marker types: `<moai>DONE</moai>`, `<moai>COMPLETE</moai>`
 - If marker found: Exit loop with success
 
 Step 2 - Memory Pressure Check (if --memory-check enabled):
 - Calculate session duration from start time
 - Monitor iteration time for GC pressure signs (doubling iteration time)
 - If session duration exceeds 25 minutes OR iteration time doubling:
-  - Save proactive checkpoint to $CLAUDE_PROJECT_DIR/.moai/cache/ralph-snapshots/memory-pressure.json
+  - Save proactive checkpoint to $CLAUDE_PROJECT_DIR/.moai/cache/loop-snapshots/memory-pressure.json
   - Warn user about memory pressure
   - Suggest resuming with /moai:loop --resume memory-pressure
 - If memory-safe limit reached (50 iterations): Exit with checkpoint
@@ -101,7 +101,7 @@ Step 7 - Verification:
 - [HARD] After each fix: TaskUpdate to change item to completed
 
 Step 8 - Snapshot Save:
-- Save iteration snapshot to $CLAUDE_PROJECT_DIR/.moai/cache/ralph-snapshots/
+- Save iteration snapshot to $CLAUDE_PROJECT_DIR/.moai/cache/loop-snapshots/
 - Increment iteration counter
 
 Step 9 - Repeat or Exit:
@@ -119,7 +119,7 @@ The loop exits when any of these conditions are met:
 
 ## Snapshot Management
 
-Snapshot location: $CLAUDE_PROJECT_DIR/.moai/cache/ralph-snapshots/
+Snapshot location: $CLAUDE_PROJECT_DIR/.moai/cache/loop-snapshots/
 
 Files:
 - iteration-001.json, iteration-002.json, etc. (per-iteration snapshots)
@@ -146,6 +146,13 @@ Language detection: pyproject.toml (Python), package.json (TypeScript/JavaScript
 
 Send any message to interrupt the loop. State is automatically saved via session_end hook.
 
+## Safe Development Protocol
+
+All fixes within the loop follow CLAUDE.md Section 7 Safe Development Protocol:
+- Reproduction-first: Write failing tests before fixing bugs
+- Post-fix review: List potential side effects after each fix cycle
+- Maximum 3 retries per individual operation (per CLAUDE.md constitution)
+
 ## Execution Summary
 
 1. Parse arguments (extract flags: --max, --auto, --sequential, --errors, --coverage, --memory-check, --resume)
@@ -158,5 +165,5 @@ Send any message to interrupt the loop. State is automatically saved via session
 
 ---
 
-Version: 1.0.0
+Version: 2.0.0
 Source: loop.md command v2.2.0

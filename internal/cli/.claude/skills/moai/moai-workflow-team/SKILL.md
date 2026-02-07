@@ -11,10 +11,10 @@ compatibility: Designed for Claude Code
 allowed-tools: Task TeamCreate TeamDelete SendMessage TaskCreate TaskUpdate TaskList TaskGet Read Grep Glob AskUserQuestion
 user-invocable: false
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   category: "workflow"
   status: "experimental"
-  updated: "2026-02-06"
+  updated: "2026-02-07"
   modularized: "false"
   tags: "team, agent-teams, collaboration, parallel, dual-mode"
   related-skills: "moai-workflow-spec, moai-workflow-ddd, moai-workflow-tdd"
@@ -97,16 +97,25 @@ Task(
   subagent_type: "team-backend-dev",
   team_name: "moai-run-SPEC-XXX",
   name: "backend-dev",
-  prompt: "You are the backend developer for this team. Your file ownership: src/api/**, src/models/**. SPEC context: {spec_summary}",
-  mode: "acceptEdits"
+  prompt: "You are the backend developer for this team. Your file ownership: {detected_ownership}. SPEC context: {spec_summary}",
+  mode: "plan"
 )
 ```
 
 Spawning rules:
 - Include SPEC context in the spawn prompt
-- Assign clear file ownership boundaries
+- Assign file ownership boundaries detected from project structure (see File Ownership Detection)
 - Use appropriate model per role (haiku for research, sonnet for implementation)
-- Enable plan approval for risky tasks
+
+Plan approval (when workflow.yaml `team.require_plan_approval: true`):
+- Spawn implementation teammates with `mode: "plan"`
+- Teammates must submit a plan before writing any code
+- Team lead receives plan_approval_request messages from teammates
+- Team lead reviews plan scope, file ownership compliance, and approach
+- Approve via: `SendMessage(type: "plan_approval_response", request_id: "{id}", recipient: "{name}", approve: true)`
+- Reject with feedback via: `SendMessage(type: "plan_approval_response", request_id: "{id}", recipient: "{name}", approve: false, content: "Feedback here")`
+- After approval, teammate exits plan mode and begins implementation
+- When `require_plan_approval` is false, spawn with `mode: "acceptEdits"` instead
 
 ### Phase 4: Coordination
 
@@ -123,6 +132,15 @@ Coordination patterns:
 - When implementation completes: assign quality validation tasks
 - When quality finds issues: direct fix messages to responsible teammate
 - When all tasks complete: begin shutdown sequence
+
+Delegate mode (when workflow.yaml `team.delegate_mode: true`):
+- MoAI operates in coordination-only mode
+- Focus on task assignment, message routing, progress monitoring, and conflict resolution
+- Do NOT directly implement code or modify files (no Write, Edit, or Bash for implementation)
+- Delegate ALL implementation work to teammates via task assignment and SendMessage
+- Read and Grep are permitted for understanding context and reviewing teammate output
+- If a task has no suitable teammate, spawn a new one rather than implementing directly
+- When delegate_mode is false, team lead may implement small tasks directly alongside teammates
 
 ### Phase 5: Shutdown
 
@@ -141,21 +159,64 @@ Graceful shutdown sequence:
 
 ## File Ownership Strategy
 
-Prevent write conflicts by assigning exclusive file ownership:
+Prevent write conflicts by assigning exclusive file ownership.
 
-| Role | Typical Ownership |
-|------|------------------|
-| backend-dev | src/api/**, src/models/**, src/services/** |
-| frontend-dev | src/ui/**, src/components/**, src/pages/** |
-| tester | tests/**, __tests__/**, *_test.go |
-| data-layer | src/db/**, migrations/**, src/schema/** |
+[HARD] Team lead MUST analyze project structure before assigning ownership. Use Explore agent or Glob/Grep to map directory structure and assign ownership boundaries that match the actual project layout. Never use hardcoded patterns from a different project type.
+
+### File Ownership Detection
+
+Ownership patterns depend on the project type. Detect the project structure first, then assign accordingly:
+
+**Go projects:**
+
+| Role | Ownership |
+|------|-----------|
+| backend-dev | internal/**, pkg/**, cmd/** |
+| tester | *_test.go, testdata/**, test/** |
 | quality | (read-only, no file ownership) |
 
-Rules:
+**Web projects (React, Vue, Angular):**
+
+| Role | Ownership |
+|------|-----------|
+| backend-dev | src/api/**, src/models/**, src/services/** |
+| frontend-dev | src/ui/**, src/components/**, src/pages/** |
+| tester | tests/**, __tests__/**, *.test.*, *.spec.* |
+| quality | (read-only, no file ownership) |
+
+**Full-stack projects (separate client/server):**
+
+| Role | Ownership |
+|------|-----------|
+| backend-dev | server/**, api/**, src/server/** |
+| frontend-dev | client/**, app/**, src/client/** |
+| data-layer | db/**, migrations/**, schema/** |
+| tester | tests/**, __tests__/**, *_test.go, *.test.*, *.spec.* |
+| quality | (read-only, no file ownership) |
+
+**Monorepo projects:**
+
+| Role | Ownership |
+|------|-----------|
+| Per-domain teammate | packages/<domain-name>/**, apps/<domain-name>/** |
+| tester | **/tests/**, **/__tests__/**, **/*_test.go, **/*.test.*, **/*.spec.* |
+| quality | (read-only, no file ownership) |
+
+**Python projects:**
+
+| Role | Ownership |
+|------|-----------|
+| backend-dev | src/<package>/**, <package>/** |
+| tester | tests/**, **/test_*.py, **/*_test.py |
+| quality | (read-only, no file ownership) |
+
+### Ownership Rules
+
 - No two teammates own the same file
 - Shared types/interfaces: owned by the creating teammate, shared via message
 - Config files: owned by team lead or explicitly assigned
 - If ownership conflict: team lead resolves via SendMessage
+- Test files always belong to the tester role regardless of location
 
 ## Team Patterns Reference
 
@@ -194,5 +255,5 @@ Rules:
 
 ---
 
-Version: 1.0.0
-Last Updated: 2026-02-06
+Version: 1.1.0
+Last Updated: 2026-02-07

@@ -92,6 +92,47 @@ Language preferences in language.yaml:
 - agent_prompt_language: Internal communication
 - code_comments: Code comment language
 
+## Agent Teams Settings
+
+Agent Teams require both an environment variable and workflow configuration.
+
+### Environment Variable
+
+Enable in `.claude/settings.json`:
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  }
+}
+```
+
+This env var must be set for Claude Code to expose the Teams API.
+
+### Workflow Configuration
+
+Team behavior is controlled by the `workflow.team` section in `.moai/config/sections/workflow.yaml`:
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| team.enabled | boolean | false | Master switch for team mode |
+| team.max_teammates | integer | 5 | Maximum teammates per team (2-5 recommended) |
+| team.default_model | string | sonnet | Default model for teammates (haiku/sonnet/opus) |
+| team.require_plan_approval | boolean | true | Require plan approval before implementing |
+| team.delegate_mode | boolean | true | Team lead coordination-only mode (no direct implementation) |
+| team.teammate_display | string | auto | Display mode: auto, in-process, or tmux |
+
+### Auto-Selection Thresholds
+
+When `workflow.execution_mode` is `auto`, these thresholds determine when team mode activates:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| team.auto_selection.min_domains_for_team | 3 | Minimum distinct domains to trigger team mode |
+| team.auto_selection.min_files_for_team | 10 | Minimum affected files to trigger team mode |
+| team.auto_selection.min_complexity_score | 7 | Minimum complexity score (1-10) to trigger team mode |
+
 ## Rules
 
 - Never commit secrets to settings files

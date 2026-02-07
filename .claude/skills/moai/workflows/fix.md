@@ -9,10 +9,10 @@ license: Apache-2.0
 compatibility: Designed for Claude Code
 user-invocable: false
 metadata:
-  version: "1.0.0"
+  version: "2.0.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-03"
+  updated: "2026-02-07"
   tags: "fix, auto-fix, lsp, linting, diagnostics, errors, type-check"
 
 # MoAI Extension: Progressive Disclosure
@@ -43,6 +43,7 @@ Flow: Parallel Scan -> Classify -> Fix -> Verify -> Report
 - --security (alias --include-security): Include security issues in scan
 - --no-fmt (alias --no-format): Skip formatting fixes
 - --resume [ID] (alias --resume-from): Resume from snapshot (latest if no ID)
+- --team: Enable team-based debugging (see team-debug.md for competing hypothesis investigation)
 
 ## Phase 1: Parallel Scan
 
@@ -72,6 +73,8 @@ After all scanners complete:
 - Group by file path for efficient fixing
 
 Language auto-detection uses indicator files: pyproject.toml (Python), package.json (TypeScript/JavaScript), go.mod (Go), Cargo.toml (Rust). Supports 16 languages.
+
+Error handling: If any scanner fails, continue with results from successful scanners. Note the failed scanner in the report.
 
 If --sequential flag: Run LSP, then AST-grep, then Linter sequentially.
 
@@ -114,6 +117,13 @@ If --dry flag: Display preview of all classified issues and exit without changes
 - Before each fix: change to in_progress via TaskUpdate
 - After each fix: change to completed via TaskUpdate
 
+## Safe Development Protocol
+
+All fixes follow CLAUDE.md Section 7 Safe Development Protocol:
+- Reproduction-first: Write a failing test that reproduces the bug before fixing
+- Approach-first: For Level 3+ fixes, explain approach before applying
+- Post-fix review: List potential side effects after each fix
+
 ## Snapshot Save/Resume
 
 Snapshot location: $CLAUDE_PROJECT_DIR/.moai/cache/fix-snapshots/
@@ -129,6 +139,16 @@ Snapshot contents:
 Resume commands:
 - /moai:fix --resume (uses latest snapshot)
 - /moai:fix --resume fix-20260119-143052 (uses specific snapshot)
+
+## Team Mode
+
+When --team flag is provided, fix delegates to a team-based debugging workflow using competing hypotheses.
+
+Team composition: 3 hypothesis agents (haiku) exploring different root causes in parallel.
+
+For detailed team orchestration steps, see workflows/team-debug.md.
+
+Fallback: If team mode is unavailable, standard single-agent fix workflow continues.
 
 ## Execution Summary
 
@@ -148,5 +168,5 @@ Resume commands:
 
 ---
 
-Version: 1.0.0
+Version: 2.0.0
 Source: fix.md command v2.2.0

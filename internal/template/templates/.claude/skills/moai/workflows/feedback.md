@@ -9,10 +9,10 @@ license: Apache-2.0
 compatibility: Designed for Claude Code
 user-invocable: false
 metadata:
-  version: "1.0.0"
+  version: "2.0.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-03"
+  updated: "2026-02-07"
   tags: "feedback, bug-report, feature-request, github-issues, quality"
 
 # MoAI Extension: Progressive Disclosure
@@ -31,6 +31,8 @@ triggers:
 # Workflow: feedback - GitHub Issue Creation
 
 Purpose: Collect user feedback, bug reports, or feature suggestions and create GitHub issues automatically via the manager-quality agent.
+
+Prerequisite: The `gh` CLI must be installed and authenticated (`gh auth status`). If not available, guide user to install via https://cli.github.com/.
 
 ---
 
@@ -136,5 +138,5 @@ Resume support: Not applicable (atomic operation).
 
 ---
 
-Version: 1.0.0
-Last Updated: 2026-01-28
+Version: 2.0.0
+Last Updated: 2026-02-07

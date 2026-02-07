@@ -9,10 +9,10 @@ license: Apache-2.0
 compatibility: Designed for Claude Code
 user-invocable: false
 metadata:
-  version: "1.0.0"
+  version: "2.0.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-03"
+  updated: "2026-02-07"
   tags: "project, documentation, initialization, codebase-analysis, setup"
 
 # MoAI Extension: Progressive Disclosure
@@ -207,5 +207,5 @@ Next Steps (AskUserQuestion):
 
 ---
 
-Version: 1.0.0
-Last Updated: 2026-01-28
+Version: 2.0.0
+Last Updated: 2026-02-07

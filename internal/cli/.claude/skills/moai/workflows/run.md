@@ -1,3 +1,32 @@
+---
+name: moai-workflow-run
+description: >
+  DDD/TDD/Hybrid implementation workflow for SPEC requirements. Second step
+  of the Plan-Run-Sync workflow. Routes to manager-ddd or manager-tdd based
+  on quality.yaml development_mode setting.
+license: Apache-2.0
+compatibility: Designed for Claude Code
+user-invocable: false
+metadata:
+  version: "2.0.0"
+  category: "workflow"
+  status: "active"
+  updated: "2026-02-07"
+  tags: "run, implementation, ddd, tdd, hybrid, spec"
+
+# MoAI Extension: Progressive Disclosure
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 5000
+
+# MoAI Extension: Triggers
+triggers:
+  keywords: ["run", "implement", "build", "create", "develop", "code"]
+  agents: ["manager-ddd", "manager-tdd", "manager-strategy", "manager-quality", "manager-git"]
+  phases: ["run"]
+---
+
 # Run Workflow Orchestration
 
 ## Purpose
@@ -20,6 +49,7 @@ This is the second step of the Plan-Run-Sync workflow.
 
 - $ARGUMENTS: SPEC-ID to implement (e.g., SPEC-AUTH-001)
 - Resume: Re-running /moai run SPEC-XXX resumes from last successful phase checkpoint
+- --team: Enable team-based implementation (see team-run.md for parallel implementation team)
 
 ## Context Loading
 
@@ -232,6 +262,14 @@ If status is CRITICAL:
 
 If status is PASS or WARNING: Continue to Phase 3.
 
+### LSP Quality Gates
+
+The run phase enforces LSP-based quality gates as configured in quality.yaml:
+- Zero LSP errors required (lsp_quality_gates.run.max_errors: 0)
+- Zero type errors required (lsp_quality_gates.run.max_type_errors: 0)
+- Zero lint errors required (lsp_quality_gates.run.max_lint_errors: 0)
+- No regression from baseline allowed (lsp_quality_gates.run.allow_regression: false)
+
 ### Phase 3: Git Operations (Conditional)
 
 Agent: manager-git subagent
@@ -273,6 +311,18 @@ Options:
 
 ---
 
+## Team Mode
+
+When --team flag is provided or auto-selected, the run phase uses a parallel implementation team instead of sequential sub-agent execution.
+
+Team composition: backend-dev (sonnet) + frontend-dev (sonnet) + tester (sonnet) + quality (sonnet, read-only)
+
+For detailed team orchestration steps, see workflows/team-run.md.
+
+Fallback: If team mode is unavailable, the workflow continues with standard sub-agent mode (manager-ddd/tdd based on development_mode).
+
+---
+
 ## Context Propagation
 
 Context flows forward through every phase:
@@ -304,5 +354,6 @@ All of the following must be verified:
 
 ---
 
-Version: 1.2.0
-Source: Extracted from .claude/commands/moai/2-run.md v5.0.0. Added implementation divergence tracking and development_mode routing (ddd/tdd/hybrid).
+Version: 2.0.0
+Updated: 2026-02-07
+Source: Extracted from .claude/commands/moai/2-run.md v5.0.0. Added implementation divergence tracking, development_mode routing (ddd/tdd/hybrid), team mode support, and LSP quality gates.
