@@ -310,7 +310,23 @@ Update SPEC status based on lifecycle level and implementation completeness:
 
 Record version changes, status transitions, and divergence summary. Include in sync report.
 
-### Phase 3: Git Operations and PR (GitHub Flow Auto-PR)
+### Phase 3: Git Operations and Delivery
+
+#### Step 3.0: Detect Git Workflow Strategy
+
+Read `github.git_workflow` from `.moai/config/sections/system.yaml`. This determines how changes are delivered.
+
+| Strategy | Branch Model | PR Behavior | Best For |
+|----------|-------------|-------------|----------|
+| github_flow | Feature branches off main | Auto-create PR to main | Team/OSS projects |
+| main_direct | Direct commits to main | No PR created | Solo development |
+| gitflow | develop/release/hotfix branches | PR to appropriate base | Enterprise projects |
+
+Default strategy (if not configured): `github_flow`
+
+Also read `github.spec_git_workflow` to determine SPEC branch handling:
+- `feature_branch`: Each SPEC gets its own branch (recommended for github_flow/gitflow)
+- `main_direct`: SPEC changes committed to current branch (only when git_workflow is main_direct)
 
 #### Step 3.1: Commit Changes
 
@@ -318,52 +334,84 @@ Agent: manager-git subagent
 
 - Stage all changed document files, reports, README, docs/
 - Create single commit with descriptive message listing synchronized documents, project repairs, and SPEC updates
+- Commit message language follows `language.git_commit_messages` setting
 - Verify commit with git log
 
-#### Step 3.2: Push and Create or Update PR
+#### Step 3.2: Push and Deliver (Strategy-Aware)
 
-GitHub Flow requires all changes flow through PRs. Automatically create or update PR based on branch context.
+Behavior varies based on `github.git_workflow` setting and current branch context.
 
-Detect current branch context to determine behavior:
+##### Strategy: github_flow
 
-**Case A: Feature branch** (any branch matching pattern: feature/SPEC-*, hotfix/*)
+Detect current branch:
 
-Automatic PR creation flow:
-1. Push current branch to remote: `git push -u origin <branch>`
+**Feature branch** (any branch other than main):
+1. Push branch to remote: `git push -u origin <branch>`
 2. Check if PR already exists: `gh pr list --head <branch> --json number`
-3. If no PR exists: Create PR via `gh pr create --draft`
+3. If no PR exists: Create PR via `gh pr create`
    - Title: Derived from SPEC title or branch name
    - Body: Include sync summary, files changed, quality report
    - Base: main
-   - Draft: true (set to draft for initial creation)
    - Labels: auto-detected from changed files
 4. If PR exists: Update with comment summarizing sync changes
 5. Display PR URL to user
-6. For existing draft PR: Do NOT automatically transition to ready (user controls this)
 
-**Case B: Main branch** (direct commits)
+**Main branch** (direct commit):
+- Push directly: `git push origin main`
+- Display push confirmation
+- Note: Direct main commits are permitted but feature branches are recommended
 
-When on main branch:
-- Only allowed in personal mode with auto_branch disabled
-- Push directly to main: `git push origin main`
-- No PR created
-- Display push confirmation with warning about direct main commit
-
-**Case C: Worktree** (detected from git directory structure)
-
+**Worktree context** (detected from git directory structure):
 - Push worktree branch to remote
-- Create PR if not exists (same as Case A)
+- Create PR if not exists (same as feature branch flow)
 - Display PR URL and worktree context
-- Note: Worktree cleanup handled separately via /moai:worktree clean
 
-#### Step 3.3: PR Ready Transition (Team Mode Only)
+##### Strategy: main_direct
 
-- If Team mode enabled: Check PR draft status via `gh pr view --json isDraft`
-- If draft is true: Transition to ready via `gh pr ready`
+All commits go directly to main, no PRs:
+1. Push to main: `git push origin main`
+2. Display push confirmation
+3. No PR created regardless of branch name
+
+##### Strategy: gitflow
+
+Detect current branch type and route accordingly:
+
+**feature/* branch** → PR to `develop`:
+1. Push branch: `git push -u origin <branch>`
+2. Create or update PR targeting `develop` branch
+3. Display PR URL
+
+**release/* branch** → PR to `main`:
+1. Push branch: `git push -u origin <branch>`
+2. Create or update PR targeting `main` branch
+3. Display PR URL
+
+**hotfix/* branch** → PR to `main` (and back-merge to develop):
+1. Push branch: `git push -u origin <branch>`
+2. Create or update PR targeting `main` branch
+3. After merge: Create follow-up PR to `develop` for back-merge
+4. Display PR URLs
+
+**develop branch** → Push directly:
+1. Push to develop: `git push origin develop`
+2. Display push confirmation
+
+**main branch** → Error:
+- Direct commits to main are not allowed in gitflow
+- Suggest creating a hotfix or release branch instead
+
+#### Step 3.3: PR Ready Transition (Team Mode)
+
+Only applies when a PR was created in Step 3.2:
+
+- If Team mode enabled and PR is draft: Transition to ready via `gh pr ready`
 - Assign reviewers and labels if configured
 - If Team mode disabled: Do NOT automatically transition (user controls readiness)
 
 #### Step 3.4: Auto-Merge (When --merge flag set)
+
+Only applies when a PR was created in Step 3.2.
 
 Execution conditions [HARD]:
 - Flag must be explicitly set: --merge
@@ -375,7 +423,7 @@ Auto-merge execution:
 1. Check CI/CD status via `gh pr checks --watch` (wait for completion)
 2. Check merge conflicts via `gh pr view --json mergeable`
 3. If passing and mergeable: Execute `gh pr merge --squash --delete-branch`
-4. Checkout main, fetch latest: `git checkout main && git fetch origin && git pull origin main`
+4. Checkout target branch, fetch latest
 5. Verify local is synchronized with remote
 
 Auto-merge failures:
@@ -388,50 +436,34 @@ Auto-merge failures:
 #### Completion Report
 
 Display summary including:
+- Git workflow strategy used (github_flow, main_direct, or gitflow)
 - Sync mode and scope
 - Files updated and created
 - Project improvements made
 - Documents updated
 - Reports generated
 - Backup location
-- PR URL (if created)
-- Workflow status
+- PR URL (if created) or push target (if direct push)
 
 #### Context-Aware Next Steps
 
-Tool: AskUserQuestion with options tailored to current context:
+Tool: AskUserQuestion with options tailored to delivery result:
 
-**If Feature Branch PR Created:**
-1. Review PR on GitHub (open PR URL in browser)
-2. Request Code Review (for team mode)
-3. Auto-Merge PR (if all checks pass and ready)
-4. Create Next SPEC (start new feature)
-5. Return to Main (switch back to main branch)
+**If PR was created (github_flow feature branch, or gitflow):**
+- Review PR on GitHub
+- Auto-Merge PR (/moai sync --merge)
+- Create Next SPEC (/moai plan)
+- Start New Session (/clear)
 
-**If Draft PR Created (waiting for review):**
-1. Review PR Content (check changes)
-2. Mark PR Ready (when ready for review)
-3. Request Code Review (assign reviewers)
-4. Commit More Changes (add to same PR)
-5. Start New Session (work on different task)
+**If direct push (main_direct, or github_flow main branch):**
+- Create Next SPEC (/moai plan)
+- Continue Development
+- Start New Session (/clear)
 
-**If Direct Main Branch Commit (personal mode):**
-1. Create Next SPEC (start new feature)
-2. Start New Session (reset context)
-3. Continue Development (keep working)
-4. Switch Branch (use feature branches)
-
-**If Worktree Environment Detected:**
-1. Review PR in Browser (check changes)
-2. Return to Main Directory (cd to main repo)
-3. Remove This Worktree (cleanup after merge)
-4. Create Next SPEC (in main directory)
-
-**Default Recommendations:**
-- Always prefer feature branch + PR over direct main commits
-- In team mode: PRs are required before merging to main
-- In personal mode: feature branches encouraged but not required
-- After successful PR merge: Consider next SPEC or session cleanup
+**If worktree context:**
+- Review PR in Browser
+- Return to Main Directory
+- Remove This Worktree
 
 ---
 
@@ -461,11 +493,11 @@ All of the following must be verified:
 - Phase 0.5: Quality verification completed (tests, linter, type checker, code review)
 - Phase 1: Prerequisites verified, project analyzed, divergence analysis completed, sync plan approved by user
 - Phase 2: Safety backup created and verified, documents synchronized, SPEC documents updated per lifecycle level, project documents updated (if applicable), quality verified, SPEC status updated
-- Phase 3: Changes committed, pushed to remote, PR auto-created (feature branch) or direct push (main), auto-merge executed (if flagged)
-- Phase 4: Completion report displayed with PR URL, appropriate next steps presented based on context
+- Phase 3: Changes committed, delivered per git_workflow strategy (PR created for github_flow/gitflow, direct push for main_direct), auto-merge executed (if flagged and PR exists)
+- Phase 4: Completion report displayed with delivery result, appropriate next steps presented based on strategy and context
 
 ---
 
-Version: 2.1.0
+Version: 3.0.0
 Updated: 2026-02-07
-Source: Extracted from .claude/commands/moai/3-sync.md v3.4.0. Added SPEC divergence analysis, project document updates, SPEC lifecycle awareness, team mode section, LSP quality gates, and GitHub Flow auto-PR support.
+Source: Extracted from .claude/commands/moai/3-sync.md v3.4.0. Added SPEC divergence analysis, project document updates, SPEC lifecycle awareness, team mode section, LSP quality gates, and strategy-aware git delivery supporting github_flow, main_direct, and gitflow.
