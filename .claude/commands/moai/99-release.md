@@ -118,11 +118,11 @@ Version files checklist:
 
 ---
 
-## PHASE 4: CHANGELOG Generation (Bilingual: Korean First)
+## PHASE 4: CHANGELOG Generation (Bilingual: English First)
 
-### [HARD] Korean-First Bilingual Format
+### [HARD] English-First Bilingual Format
 
-CHANGELOG.md and GitHub Release notes MUST follow Korean-first bilingual structure. This ensures Korean users see their language first while maintaining English documentation.
+CHANGELOG.md and GitHub Release notes MUST follow English-first bilingual structure. This ensures international users see English first while maintaining Korean documentation.
 
 Get commits for changelog: `git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s (%h)"`
 
@@ -133,7 +133,39 @@ Prepend new version entry to CHANGELOG.md with this structure:
 ```
 ## [X.Y.Z] - YYYY-MM-DD
 
-### 요약 (Korean Summary)
+### Summary
+[English: Key features and improvements as 2-3 line summary]
+
+### Breaking Changes
+[English: List of breaking changes, or "None" if none]
+
+### Added
+- [English addition 1]
+- [English addition 2]
+
+### Changed
+- [English change 1]
+- [English change 2]
+
+### Fixed
+- [English fix 1]
+- [English fix 2]
+
+### Installation & Update
+
+\`\`\`bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+\`\`\`
+
+---
+
+## [X.Y.Z] - YYYY-MM-DD (한국어)
+
+### 요약
 [Korean: 핵심 기능과 개선 사항을 2-3줄로 요약]
 
 ### 주요 변경 사항 (Breaking Changes)
@@ -163,47 +195,15 @@ moai version
 
 ---
 
-## [X.Y.Z] - YYYY-MM-DD (English)
-
-### Summary (English Summary)
-[English: Key features and improvements as 2-3 line summary]
-
-### Breaking Changes (English)
-[English: List of breaking changes, or "None" if none]
-
-### Added
-- [English addition 1]
-- [English addition 2]
-
-### Changed
-- [English change 1]
-- [English change 2]
-
-### Fixed
-- [English fix 1]
-- [English fix 2]
-
-### Installation & Update
-
-\`\`\`bash
-# Update to the latest version
-moai update
-
-# Verify version
-moai version
-\`\`\`
-
----
-
 [Previous version entry comes here]
 ```
 
 ### CHANGELOG Verification Checklist
 
-- [ ] Korean section appears FIRST in version entry
-- [ ] English section appears SECOND with `---` separator
-- [ ] Korean uses native terminology (추가됨, 변경됨, 수정됨)
+- [ ] English section appears FIRST in version entry
+- [ ] Korean section appears SECOND with `---` separator
 - [ ] English uses standard changelog terminology (Added, Changed, Fixed)
+- [ ] Korean uses native terminology (추가됨, 변경됨, 수정됨)
 - [ ] Installation commands are identical in both sections
 - [ ] Previous version entry comes AFTER both sections
 
@@ -266,7 +266,7 @@ Report back with:
 
 ---
 
-## PHASE 7: GitHub Release Notes (Bilingual: Korean First)
+## PHASE 7: GitHub Release Notes (Bilingual: English First)
 
 ### Step 1: Wait for GoReleaser
 
@@ -275,49 +275,14 @@ Check workflow status:
 
 GoReleaser creates an initial release with auto-generated notes and binary assets.
 
-### Step 2: Replace Release Notes with Korean-First Bilingual Content
+### Step 2: Replace Release Notes with English-First Bilingual Content
 
-**[HARD] Korean section FIRST, English section SECOND. Use bilingual format identical to CHANGELOG.**
+**[HARD] English section FIRST, Korean section SECOND. Use bilingual format identical to CHANGELOG.**
 
 Use `gh release edit` to replace the auto-generated notes:
 
 ```bash
 gh release edit vX.Y.Z --notes "$(cat <<'RELEASE_EOF'
-# vX.Y.Z - [Korean Title] (YYYY-MM-DD)
-
-## 요약
-
-[Korean: 핵심 기능과 개선 사항을 포함한 요약]
-
-## Breaking Changes / 호환성 깨짐
-
-[Korean: 호환성을 깨는 변경 사항, 없으면 "없음"]
-
-## 추가됨 / Added (Korean)
-
-- [Korean additions grouped by category]
-
-## 변경됨 / Changed (Korean)
-
-- [Korean modifications]
-
-## 수정됨 / Fixed (Korean)
-
-- [Korean bug fixes]
-
-## 설치 및 업데이트 / Installation & Update
-
-\`\`\`bash
-# 신규 설치 / Fresh install
-curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
-moai version
-
-# 기존 사용자 업데이트 / Existing users update
-moai update
-\`\`\`
-
----
-
 # vX.Y.Z - [English Title] (YYYY-MM-DD)
 
 ## Summary
@@ -350,6 +315,52 @@ moai version
 # Existing users update
 moai update
 \`\`\`
+
+**Migrating from Python Version (v1.x)**:
+1. Uninstall Python version: `uv tool uninstall moai-adk`
+2. Install Go Edition (use commands above)
+3. Update project templates: `moai init`
+
+---
+
+# vX.Y.Z - [Korean Title] (YYYY-MM-DD)
+
+## 요약
+
+[Korean: 핵심 기능과 개선 사항을 포함한 요약]
+
+## 주요 변경 사항 (Breaking Changes)
+
+[Korean: 호환성을 깨는 변경 사항, 없으면 "없음"]
+
+## 추가됨 (Added)
+
+- [Korean additions grouped by category]
+
+## 변경됨 (Changed)
+
+- [Korean modifications]
+
+## 수정됨 (Fixed)
+
+- [Korean bug fixes]
+
+## 설치 및 업데이트 (Installation & Update)
+
+\`\`\`bash
+# 신규 설치
+curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+moai version
+
+# 기존 사용자 업데이트
+moai update
+\`\`\`
+
+**Python 버전(v1.x)에서 마이그레이션**:
+1. Python 버전 제거: `uv tool uninstall moai-adk`
+2. Go 에디션 설치 (위 명령어 사용)
+3. 프로젝트 템플릿 업데이트: `moai init`
+\`\`\`
 RELEASE_EOF
 )"
 ```
@@ -357,9 +368,9 @@ RELEASE_EOF
 ### Step 3: Final Verification
 
 1. Verify release notes appear correctly: `gh release view vX.Y.Z | head -80`
-   - Confirm Korean section appears first
+   - Confirm English section appears first
    - Confirm separator `---` present between sections
-   - Confirm English section appears second
+   - Confirm Korean section appears second
 
 2. Check release assets: `gh release view vX.Y.Z --json assets --jq '.assets[].name'`
    - Verify binaries: darwin-arm64, darwin-amd64, linux-arm64, linux-amd64, windows-amd64
@@ -415,7 +426,7 @@ Updating version files...
 - **Tag format**: `vX.Y.Z` (triggers GoReleaser via release.yml)
 - Tests MUST pass to continue (85%+ coverage per package)
 - All 3 version files must be consistent
-- **[HARD] CHANGELOG and GitHub Release: Korean FIRST, English SECOND**
+- **[HARD] CHANGELOG and GitHub Release: English FIRST, Korean SECOND**
 - **[HARD] ALL git operations MUST be delegated to manager-git agent**
 - **[HARD] Quality gate failures MUST be delegated to expert-debug agent**
 
