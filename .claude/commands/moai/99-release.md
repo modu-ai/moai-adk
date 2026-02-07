@@ -1,21 +1,26 @@
 ---
-description: "MoAI-ADK Go release with agent delegation for git operations and quality validation"
-argument-hint: "[VERSION] - optional target version (e.g., 2.0.0)"
+description: "MoAI-ADK v2.x production release with agent delegation and quality validation. Target branch is always main. Tag format vX.Y.Z triggers GoReleaser. All git operations delegated to manager-git. Quality failures escalate to expert-debug."
+argument-hint: "[VERSION] - optional target version (e.g., 2.1.0). If omitted, prompts for patch/minor/major selection."
 type: local
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, AskUserQuestion, Task
 model: sonnet
-version: 2.0.0
+version: 3.0.0
+metadata:
+  release_target: "production"
+  branch: "main"
+  tag_format: "vX.Y.Z"
+  changelog_format: "korean_first"
+  release_notes_format: "bilingual"
+  git_delegation: "required"
+  quality_escalation: "expert-debug"
 ---
 
-## ⚠️ IMPORTANT: Test/Private Release Configuration
+## Release Configuration
 
-**This release command is configured for:**
-- **Branch**: `moai-go-v2` (NOT main)
-- **Tag prefix**: `go-v` (e.g., `go-v2.0.0`)
-- **Purpose**: Test and private deployment for v2.0 development
-- **Visibility**: Tags are pushed but GitHub Releases are OPTIONAL
-
-**For public main releases**, use a separate release workflow targeting the `main` branch.
+- **Branch**: `main`
+- **Tag format**: `vX.Y.Z` (standard semver, triggers GoReleaser via `.github/workflows/release.yml`)
+- **Release URL**: https://github.com/modu-ai/moai-adk/releases/tag/vX.Y.Z
+- **Binaries**: darwin-arm64, darwin-amd64, linux-arm64, linux-amd64, windows-amd64
 
 ---
 
@@ -42,43 +47,33 @@ Arguments provided: $ARGUMENTS
 
 ---
 
-## PHASE 1: Quality Gates (Execute Now)
+## PHASE 1: Quality Gates
 
-Create TodoWrite with these items, then run each check:
+Create TodoWrite with these items, then run each check in parallel where possible:
 
 1. Run all tests: `go test -race ./... -count=1 2>&1 | tail -30`
-2. Run golangci-lint: `golangci-lint run 2>&1 | tail -20`
-3. Run go vet: `go vet ./... 2>&1 | tail -10`
-4. Run go fmt check: `gofumpt -l . | head -10`
+2. Run go vet: `go vet ./... 2>&1 | tail -10`
+3. Run go fmt check: `gofumpt -l . 2>/dev/null | head -10`
 
-If formatting issues found, fix them:
-`make fmt`
-
-If lint made changes, commit them:
-`git add -A && git commit -m "style: Auto-fix lint and format issues"`
+If formatting issues found, fix with `make fmt` and commit:
+`git add -A && git commit -m "style: auto-fix formatting issues"`
 
 Display quality summary:
 
 - tests: PASS or FAIL (if FAIL, stop and report)
-- golangci-lint: PASS or WARNING
 - go vet: PASS or WARNING
 - gofmt: PASS or FIXED
 
 ### Error Handling
 
-If any quality gate FAILS or encounters unexpected errors:
+If any quality gate FAILS:
 
 - **Use the expert-debug subagent** to diagnose and resolve the issue
-- Example: `Use the expert-debug subagent to investigate why tests are failing`
 - Resume release workflow only after all gates pass
 
 ---
 
-## PHASE 2: Code Review (Execute Now)
-
-[SOFT] Apply --ultrathink keyword for comprehensive code review analysis
-WHY: Release requires careful analysis of changes for bugs, security issues, and breaking changes
-IMPACT: Sequential thinking ensures thorough risk assessment before version release
+## PHASE 2: Code Review
 
 Get commits since last tag:
 `git log $(git describe --tags --abbrev=0 2>/dev/null || echo HEAD~20)..HEAD --oneline`
@@ -91,7 +86,7 @@ Analyze changes for:
 - Bug potential
 - Security issues
 - Breaking changes
-- Test coverage
+- Test coverage gaps
 
 Display review report with recommendation: PROCEED or REVIEW_NEEDED
 
@@ -99,7 +94,7 @@ Display review report with recommendation: PROCEED or REVIEW_NEEDED
 
 ## PHASE 3: Version Selection
 
-If VERSION argument was provided (e.g., "2.0.0"):
+If VERSION argument was provided (e.g., "2.1.0"):
 
 - Use that version directly
 - Skip AskUserQuestion
@@ -114,86 +109,49 @@ Calculate new version and update ALL version files:
 1. Edit `pkg/version/version.go` `Version` variable
 2. Edit `.moai/config/sections/system.yaml` `moai.version`
 3. Edit `internal/template/templates/.moai/config/sections/system.yaml` `moai.version`
-4. Commit: `git add pkg/version/version.go .moai/config/sections/system.yaml internal/template/templates/.moai/config/sections/system.yaml && git commit -m "chore: Bump version to X.Y.Z"`
-
-IMPORTANT: All 3 version files MUST be updated for release workflow to succeed.
-The GoReleaser validates version consistency via ldflags.
+4. Commit: `git add pkg/version/version.go .moai/config/sections/system.yaml internal/template/templates/.moai/config/sections/system.yaml && git commit -m "chore: bump version to vX.Y.Z"`
 
 Version files checklist:
-- [ ] pkg/version/version.go: Version = "X.Y.Z"
+- [ ] pkg/version/version.go: Version = "vX.Y.Z"
 - [ ] .moai/config/sections/system.yaml: moai.version: "X.Y.Z"
 - [ ] internal/template/templates/.moai/config/sections/system.yaml: moai.version: "X.Y.Z"
 
 ---
 
-## PHASE 4: CHANGELOG Generation (Bilingual Required)
+## PHASE 4: CHANGELOG Generation (Bilingual: Korean First)
 
-Get commits: `git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s (%h)"`
+### [HARD] Korean-First Bilingual Format
 
-### CRITICAL: CHANGELOG Structure Rule
+CHANGELOG.md and GitHub Release notes MUST follow Korean-first bilingual structure. This ensures Korean users see their language first while maintaining English documentation.
 
-**[HARD] Each version MUST have Korean section IMMEDIATELY after English section.**
+Get commits for changelog: `git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s (%h)"`
 
-Correct structure (English → Korean per version):
+### CHANGELOG.md Structure
+
+Prepend new version entry to CHANGELOG.md with this structure:
+
 ```
-# vX.Y.Z - English Title (YYYY-MM-DD)
-[English content]
----
-# vX.Y.Z - Korean Title (YYYY-MM-DD)
-[Korean content]
----
-# vX-1.Y.Z - Previous English
-[Previous English content]
----
-# vX-1.Y.Z - Previous Korean
-[Previous Korean content]
-```
+## [X.Y.Z] - YYYY-MM-DD
 
-### Section 1 - English:
+### 요약 (Korean Summary)
+[Korean: 핵심 기능과 개선 사항을 2-3줄로 요약]
 
-```markdown
-# vX.Y.Z - English Title (YYYY-MM-DD)
+### 주요 변경 사항 (Breaking Changes)
+[Korean: 호환성을 깨는 변경 사항 목록, 없으면 "없음"]
 
-## Summary
-[English summary with key features as bullet list]
+### 추가됨 (Added)
+- [Korean addition 1]
+- [Korean addition 2]
 
-## Breaking Changes
-[List breaking changes if any]
+### 변경됨 (Changed)
+- [Korean change 1]
+- [Korean change 2]
 
-## Added
-[New features grouped by category]
+### 수정됨 (Fixed)
+- [Korean fix 1]
+- [Korean fix 2]
 
-## Changed
-[Modified features]
-
-## Installation & Update
-
-\`\`\`bash
-# Update to the latest version
-moai update
-
-# Verify version
-moai version
-\`\`\`
-```
-
----
-
-### Section 2 - Korean (IMMEDIATELY after English, BEFORE previous version):
-
-```markdown
-# vX.Y.Z - Korean Title (YYYY-MM-DD)
-
-## 요약
-[Korean summary]
-
-## Breaking Changes
-[Korean breaking changes]
-
-## 추가됨
-[Korean additions]
-
-## 설치 및 업데이트
+### 설치 및 업데이트 (Installation & Update)
 
 \`\`\`bash
 # 최신 버전으로 업데이트
@@ -202,17 +160,55 @@ moai update
 # 버전 확인
 moai version
 \`\`\`
-```
 
 ---
 
-Both sections are REQUIRED. Verify structure before committing:
-- [ ] English vX.Y.Z section exists
-- [ ] Korean vX.Y.Z section IMMEDIATELY follows English vX.Y.Z
-- [ ] Previous version (vX-1.Y.Z) comes AFTER Korean vX.Y.Z
+## [X.Y.Z] - YYYY-MM-DD (English)
 
-Prepend both sections to CHANGELOG.md and commit:
-`git add CHANGELOG.md && git commit -m "docs: Update CHANGELOG for vX.Y.Z"`
+### Summary (English Summary)
+[English: Key features and improvements as 2-3 line summary]
+
+### Breaking Changes (English)
+[English: List of breaking changes, or "None" if none]
+
+### Added
+- [English addition 1]
+- [English addition 2]
+
+### Changed
+- [English change 1]
+- [English change 2]
+
+### Fixed
+- [English fix 1]
+- [English fix 2]
+
+### Installation & Update
+
+\`\`\`bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+\`\`\`
+
+---
+
+[Previous version entry comes here]
+```
+
+### CHANGELOG Verification Checklist
+
+- [ ] Korean section appears FIRST in version entry
+- [ ] English section appears SECOND with `---` separator
+- [ ] Korean uses native terminology (추가됨, 변경됨, 수정됨)
+- [ ] English uses standard changelog terminology (Added, Changed, Fixed)
+- [ ] Installation commands are identical in both sections
+- [ ] Previous version entry comes AFTER both sections
+
+Commit CHANGELOG.md:
+`git add CHANGELOG.md && git commit -m "docs: update CHANGELOG for vX.Y.Z"`
 
 ---
 
@@ -220,170 +216,158 @@ Prepend both sections to CHANGELOG.md and commit:
 
 Display release summary:
 
-- Version change
-- Commits included
+- Version change (current to target)
+- Commits included (count and key items)
 - Quality gate results
 - What will happen after approval
 
 Use AskUserQuestion:
 
-- Release: Create tag and push
+- Release: Create tag and push to main
 - Abort: Cancel (changes remain local)
 
 ---
 
 ## PHASE 6: Tag and Push (AGENT DELEGATION REQUIRED)
 
-**IMPORTANT: ALL git operations MUST be delegated to manager-git agent.**
+**[HARD] ALL git operations MUST be delegated to manager-git agent.**
 
-If approved:
-
-### DO NOT execute git commands directly
-
-Instead, delegate to manager-git subagent with this prompt:
+If approved, delegate to manager-git subagent with this context:
 
 ```
-
-## Mission: Release Git Operations for Version X.Y.Z (Test/Private Release)
+## Mission: Release Git Operations for Version X.Y.Z
 
 ### Context
 
 - Target version: X.Y.Z
-- Target branch: moai-go-v2 (test branch)
-- Tag format: go-vX.Y.Z (Go edition prefix)
+- Target branch: main
+- Tag format: vX.Y.Z (standard semver)
 - Current state: [describe current git state]
 - Quality gates: All passed
 - Commits included: [list commit count and summary]
 
 ### Required Actions
 
-1. **Check remote status**: Verify if tag go-vX.Y.Z exists on remote (origin)
-2. **Handle tag conflicts**:
-   - If remote does NOT have go-vX.Y.Z: Create tag and push
-   - If remote already has go-vX.Y.Z: Report situation with options
-3. **Execute push**: `git push origin moai-go-v2 --tags`
-   - This pushes to moai-go-v2 branch (NOT main)
-   - Tags will be available for private use
-4. **Optional**: Check if release workflow started (if configured)
+1. Check remote status: Verify if tag vX.Y.Z exists on remote (origin)
+2. Handle tag conflicts:
+   - If remote does NOT have vX.Y.Z: Create tag and push
+   - If remote already has vX.Y.Z: Report situation with options
+3. Execute push: `git push origin main --tags`
+4. Verify GoReleaser workflow triggered
 
 ### Expected Output
 
 Report back with:
-
 1. Remote tag status
-2. Action taken (pushed/recreated/recommended)
+2. Action taken
 3. GitHub Actions workflow status
-4. Release links (if successful)
-
+4. Release URL: https://github.com/modu-ai/moai-adk/releases/tag/vX.Y.Z
 ```
-
-Example delegation:
-```
-
-Use the manager-git subagent to handle release git operations for version 2.0.0
-
-Context:
-
-- Target branch: moai-go-v2 (test branch)
-- Local tag go-v2.0.0 already exists
-- 6 commits included since go-v1.9.0
-- All quality gates passed
-
-The agent should:
-
-1. Check if go-v2.0.0 exists on remote
-2. Push tag to moai-go-v2 branch or handle conflicts
-3. Optionally check if GitHub Actions workflow started
-4. Report release status with links (if applicable)
-
-````
 
 ---
 
-## PHASE 7: Release Verification & Notes Update (OPTIONAL for Test Releases)
+## PHASE 7: GitHub Release Notes (Bilingual: Korean First)
 
-**NOTE**: For test/private releases on `moai-go-v2` branch, GitHub Release steps are OPTIONAL. The tag is sufficient for internal use.
+### Step 1: Wait for GoReleaser
 
-### Step 1: [OPTIONAL] Verify GitHub Actions Workflow
-
-Check if release workflow started:
+Check workflow status:
 `gh run list --workflow=release.yml --limit 3`
 
-Wait for workflow completion (typically 5-10 minutes for Go builds).
+GoReleaser creates an initial release with auto-generated notes and binary assets.
 
-### Step 2: [OPTIONAL] Verify GitHub Release Created
+### Step 2: Replace Release Notes with Korean-First Bilingual Content
 
-`gh release view go-vX.Y.Z`
+**[HARD] Korean section FIRST, English section SECOND. Use bilingual format identical to CHANGELOG.**
 
-If release exists but has minimal notes, proceed to Step 3.
-
-If no release exists, you can skip to final verification or create a draft release manually.
-
-### Step 3: [OPTIONAL] Update GitHub Release Notes with CHANGELOG Content
-
-**For test releases**: Consider creating a DRAFT or PRIVATE release instead of public.
-
-If creating/updating a GitHub Release, use CHANGELOG content:
+Use `gh release edit` to replace the auto-generated notes:
 
 ```bash
-# For test releases, consider creating as DRAFT
-gh release edit go-vX.Y.Z --draft --notes "$(cat <<'RELEASE_EOF'
-# go-vX.Y.Z - English Title (YYYY-MM-DD) [TEST RELEASE]
+gh release edit vX.Y.Z --notes "$(cat <<'RELEASE_EOF'
+# vX.Y.Z - [Korean Title] (YYYY-MM-DD)
 
-## Summary
-[Copy from CHANGELOG.md English section]
+## 요약
 
-## Breaking Changes
-[Copy breaking changes]
+[Korean: 핵심 기능과 개선 사항을 포함한 요약]
 
-## Added
-[Copy additions - can be summarized]
+## Breaking Changes / 호환성 깨짐
 
-## Installation & Update
+[Korean: 호환성을 깨는 변경 사항, 없으면 "없음"]
+
+## 추가됨 / Added (Korean)
+
+- [Korean additions grouped by category]
+
+## 변경됨 / Changed (Korean)
+
+- [Korean modifications]
+
+## 수정됨 / Fixed (Korean)
+
+- [Korean bug fixes]
+
+## 설치 및 업데이트 / Installation & Update
 
 \`\`\`bash
-# Test release installation (using specific tag)
-curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install.sh | bash -s -- --version X.Y.Z
+# 신규 설치 / Fresh install
+curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
 moai version
+
+# 기존 사용자 업데이트 / Existing users update
+moai update
 \`\`\`
 
 ---
 
-# go-vX.Y.Z - Korean Title (YYYY-MM-DD) [테스트 릴리스]
+# vX.Y.Z - [English Title] (YYYY-MM-DD)
 
-## 요약
-[Copy from CHANGELOG.md Korean section]
+## Summary
+
+[English: Key features and improvements summary]
 
 ## Breaking Changes
-[Copy Korean breaking changes]
 
-## 추가됨
-[Copy Korean additions]
+[English: List of breaking changes, or "None" if none]
 
-## 설치 및 업데이트
+## Added
+
+[English additions grouped by category]
+
+## Changed
+
+[English modifications]
+
+## Fixed
+
+[English bug fixes]
+
+## Installation & Update
 
 \`\`\`bash
-# 테스트 릴리스 설치 (특정 태그 사용)
-curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/moai-go-v2/install.sh | bash -s -- --version X.Y.Z
+# Fresh install
+curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
 moai version
+
+# Existing users update
+moai update
 \`\`\`
 RELEASE_EOF
 )"
 ```
 
-### Step 4: Final Verification
+### Step 3: Final Verification
 
-1. Verify release notes updated: `gh release view go-vX.Y.Z | head -50`
-2. Check release assets: `gh release view go-vX.Y.Z --json assets`
+1. Verify release notes appear correctly: `gh release view vX.Y.Z | head -80`
+   - Confirm Korean section appears first
+   - Confirm separator `---` present between sections
+   - Confirm English section appears second
+
+2. Check release assets: `gh release view vX.Y.Z --json assets --jq '.assets[].name'`
+   - Verify binaries: darwin-arm64, darwin-amd64, linux-arm64, linux-amd64, windows-amd64
+
 3. Report final summary with links:
-   - GitHub Release: https://github.com/modu-ai/moai-adk/releases/tag/go-vX.Y.Z
+   - GitHub Release: https://github.com/modu-ai/moai-adk/releases/tag/vX.Y.Z
    - GitHub Actions: https://github.com/modu-ai/moai-adk/actions
-   - Branch: moai-go-v2 (test branch)
-
-**Note**:
-- GitHub Release notes should match CHANGELOG structure (English → Korean)
-- Test releases are marked as DRAFT by default
-- Tag format: `go-vX.Y.Z` (not `vX.Y.Z`)
+   - Full release: `gh release view vX.Y.Z --web` (opens in browser)
 
 ---
 
@@ -395,17 +379,16 @@ RELEASE_EOF
 ## Release: Phase 3/7 - Version Selection
 
 ### Quality Gates
-- tests: PASS (20/20 packages)
-- golangci-lint: PASS
+- tests: PASS (33 packages)
 - go vet: PASS
 - gofmt: CLEAN
 
 ### Version Update
-- Current: 2.0.0-rc1
-- Target: 2.0.0 (patch)
+- Current: 2.0.0
+- Target: 2.1.0 (minor)
 
 Updating version files...
-````
+```
 
 ### Complete
 
@@ -413,14 +396,12 @@ Updating version files...
 ## Release: COMPLETE
 
 ### Summary
-
-- Version: 2.0.0-rc1 → 2.0.0
+- Version: 2.0.0 -> 2.1.0
 - Commits: 8 commits included
 - Quality: All gates passed
 
 ### Links
-
-- GitHub Release: https://github.com/modu-ai/moai-adk/releases/tag/v2.0.0
+- GitHub Release: https://github.com/modu-ai/moai-adk/releases/tag/v2.1.0
 - Release Assets: darwin-arm64, darwin-amd64, linux-arm64, linux-amd64, windows-amd64
 
 <moai>DONE</moai>
@@ -430,87 +411,13 @@ Updating version files...
 
 ## Key Rules
 
-- **Target branch**: `moai-go-v2` (test/private releases, NOT main)
-- **Tag format**: `go-vX.Y.Z` (Go edition prefix, e.g., `go-v2.0.0`)
+- **Target branch**: `main` (production releases)
+- **Tag format**: `vX.Y.Z` (triggers GoReleaser via release.yml)
 - Tests MUST pass to continue (85%+ coverage per package)
-- All version files must be consistent (3 files: pkg/version/version.go, .moai/config/sections/system.yaml, internal/template/templates/.moai/config/sections/system.yaml)
-- GitHub Releases are OPTIONAL for test releases
-- GoReleaser handles binary builds if configured
+- All 3 version files must be consistent
+- **[HARD] CHANGELOG and GitHub Release: Korean FIRST, English SECOND**
 - **[HARD] ALL git operations MUST be delegated to manager-git agent**
-  - Direct git commands (tag, push) are PROHIBITED
-  - Use Task tool with manager-git subagent for all git operations
 - **[HARD] Quality gate failures MUST be delegated to expert-debug agent**
-  - Use Task tool with expert-debug subagent for diagnostics
-  - Resume only after all gates pass
-
-## Agent Delegation Pattern
-
-**For git operations (Phase 6 & 7):**
-
-```bash
-Use the manager-git subagent to handle release git operations for version X.Y.Z
-
-Context:
-- [current git state]
-- [commit summary]
-- [quality gate results]
-
-The agent should:
-1. Check remote tag status
-2. Handle conflicts appropriately
-3. Push tag to remote
-4. Verify GitHub Actions workflow
-5. Report release status with links
-```
-
-**For quality gate failures (Phase 1):**
-
-```bash
-Use the expert-debug subagent to diagnose quality gate failures
-
-Issue: [describe failure]
-Context: [test/lint output]
-
-The agent should:
-1. Analyze root cause
-2. Propose fixes
-3. Verify resolution
-```
-
----
-
-## State Management & Recovery
-
-Release state is saved for recovery if interrupted:
-
-```
-# Snapshot location
-.moai/cache/release-snapshots/
-├── release-20260206-143052.json    # Timestamp-based snapshot
-└── latest.json                      # Symlink to most recent
-
-# Snapshot contents
-{
-  "timestamp": "2026-02-06T14:30:52Z",
-  "target_version": "2.0.0",
-  "current_phase": 3,
-  "quality_results": {...},
-  "commits_included": [...],
-  "version_files_updated": [...]
-}
-```
-
-Recovery Commands:
-
-```bash
-# Resume from latest snapshot (if release was interrupted)
-/moai:99-release --resume
-
-# Check release status
-/moai:99-release --status
-```
-
-WHY: Release process involves multiple steps; recovery prevents partial releases.
 
 ---
 
