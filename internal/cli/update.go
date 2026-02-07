@@ -16,6 +16,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/core/project"
+	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/merge"
 	"github.com/modu-ai/moai-adk/internal/shell"
@@ -279,7 +280,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			name:    "Merge Settings",
 			message: "Merging settings.json",
 			execute: func() error {
-				settingsPath := filepath.Join(projectRoot, ".claude", "settings.json")
+				settingsPath := filepath.Join(projectRoot, defs.ClaudeDir, defs.SettingsJSON)
 				if len(templateSettingsData) == 0 {
 					return nil
 				}
@@ -696,7 +697,7 @@ func runShellEnvConfig(cmd *cobra.Command) error {
 // Returns "0.0.0" if the file doesn't exist or parsing fails, which triggers a sync.
 // This enables the version comparison optimization in runTemplateSync.
 func getProjectConfigVersion(projectRoot string) (string, error) {
-	configPath := filepath.Join(projectRoot, ".moai", "config", "config.yaml")
+	configPath := filepath.Join(projectRoot, defs.MoAIDir, defs.ConfigSubdir, defs.ConfigYAML)
 
 	// Check file size before reading to prevent DoS
 	info, err := os.Stat(configPath)
@@ -742,7 +743,7 @@ func getProjectConfigVersion(projectRoot string) (string, error) {
 // excludes config/sections/ (user settings) from backup.
 // Returns the backup directory path, or empty string if directory doesn't exist.
 func backupMoaiConfig(projectRoot string) (string, error) {
-	configDir := filepath.Join(projectRoot, ".moai", "config")
+	configDir := filepath.Join(projectRoot, defs.MoAIDir, defs.ConfigSubdir)
 
 	// Check if config directory exists
 	info, err := os.Stat(configDir)
@@ -756,12 +757,11 @@ func backupMoaiConfig(projectRoot string) (string, error) {
 		return "", fmt.Errorf("config path is not a directory")
 	}
 
-	// Generate timestamp for backup directory name (YYYYMMDD_HHMMSS format)
-	timestamp := time.Now().Format("20060102_150405")
-	backupDir := filepath.Join(projectRoot, ".moai-backups", timestamp)
+	timestamp := time.Now().Format(defs.BackupTimestampFormat)
+	backupDir := filepath.Join(projectRoot, defs.BackupsDir, timestamp)
 
 	// Create backup directory
-	if err := os.MkdirAll(backupDir, 0755); err != nil {
+	if err := os.MkdirAll(backupDir, defs.DirPerm); err != nil {
 		return "", fmt.Errorf("create backup directory: %w", err)
 	}
 
@@ -803,11 +803,11 @@ func backupMoaiConfig(projectRoot string) (string, error) {
 		}
 
 		// Get relative path from backup directory
-		backupRelPath := filepath.Join(".moai", "config", relPath)
+		backupRelPath := filepath.Join(defs.MoAIDir, defs.ConfigSubdir, relPath)
 		backedUpItems = append(backedUpItems, backupRelPath)
 
 		backupPath := filepath.Join(backupDir, relPath)
-		if err := os.MkdirAll(filepath.Dir(backupPath), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(backupPath), defs.DirPerm); err != nil {
 			return err
 		}
 
@@ -816,7 +816,7 @@ func backupMoaiConfig(projectRoot string) (string, error) {
 			return err
 		}
 
-		return os.WriteFile(backupPath, data, 0644)
+		return os.WriteFile(backupPath, data, defs.FilePerm)
 	})
 
 	if err != nil {
@@ -842,7 +842,7 @@ func backupMoaiConfig(projectRoot string) (string, error) {
 		return "", fmt.Errorf("marshal metadata: %w", err)
 	}
 
-	if err := os.WriteFile(metadataPath, data, 0644); err != nil {
+	if err := os.WriteFile(metadataPath, data, defs.FilePerm); err != nil {
 		_ = os.RemoveAll(backupDir)
 		return "", fmt.Errorf("write metadata: %w", err)
 	}
@@ -864,7 +864,7 @@ type BackupMetadata struct {
 // cleanup_old_backups maintains a maximum of 'keepCount' backups, deleting the oldest ones.
 // Returns the number of backups deleted.
 func cleanup_old_backups(projectRoot string, keepCount int) int {
-	backupDir := filepath.Join(projectRoot, ".moai-backups")
+	backupDir := filepath.Join(projectRoot, defs.BackupsDir)
 
 	// Check if backup directory exists
 	info, err := os.Stat(backupDir)
@@ -926,7 +926,7 @@ func cleanup_old_backups(projectRoot string, keepCount int) int {
 // restoreMoaiConfig restores user settings from backup to new config files.
 // It performs a deep YAML merge to preserve user settings while adopting new structure.
 func restoreMoaiConfig(projectRoot, backupDir string) error {
-	configDir := filepath.Join(projectRoot, ".moai", "config")
+	configDir := filepath.Join(projectRoot, defs.MoAIDir, defs.ConfigSubdir)
 
 	// Walk through backup files
 	err := filepath.Walk(backupDir, func(backupPath string, info os.FileInfo, err error) error {
@@ -954,7 +954,7 @@ func restoreMoaiConfig(projectRoot, backupDir string) error {
 		if _, err := os.Stat(targetPath); err != nil {
 			if os.IsNotExist(err) {
 				// Target doesn't exist, just copy backup
-				return os.WriteFile(targetPath, backupData, 0644)
+				return os.WriteFile(targetPath, backupData, defs.FilePerm)
 			}
 			return err
 		}
@@ -970,10 +970,10 @@ func restoreMoaiConfig(projectRoot, backupDir string) error {
 		if err != nil {
 			// If merge fails, backup the new file and restore old one
 			_, _ = fmt.Fprintf(os.Stderr, "Warning: merge failed for %s, restoring backup\n", relPath)
-			return os.WriteFile(targetPath, backupData, 0644)
+			return os.WriteFile(targetPath, backupData, defs.FilePerm)
 		}
 
-		return os.WriteFile(targetPath, merged, 0644)
+		return os.WriteFile(targetPath, merged, defs.FilePerm)
 	})
 
 	return err
@@ -1153,7 +1153,7 @@ func mergeSettingsJSON(templatePath, existingPath string) error {
 		return fmt.Errorf("marshal merged settings: %w", err)
 	}
 
-	if err := os.WriteFile(existingPath, append(jsonContent, '\n'), 0644); err != nil {
+	if err := os.WriteFile(existingPath, append(jsonContent, '\n'), defs.FilePerm); err != nil {
 		return fmt.Errorf("write merged settings: %w", err)
 	}
 
@@ -1253,7 +1253,7 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 		return fmt.Errorf("get working directory: %w", err)
 	}
 
-	if _, err := os.Stat(filepath.Join(cwd, ".moai")); os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(cwd, defs.MoAIDir)); os.IsNotExist(err) {
 		_, _ = fmt.Fprintln(out, "Project not initialized. Run 'moai init' first.")
 		return fmt.Errorf("project not initialized")
 	}
@@ -1294,19 +1294,19 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 
 // applyWizardConfig applies wizard results to the project configuration files.
 func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
-	sectionsDir := filepath.Join(projectRoot, ".moai", "config", "sections")
+	sectionsDir := filepath.Join(projectRoot, defs.MoAIDir, defs.SectionsSubdir)
 
 	// Update language.yaml
-	langPath := filepath.Join(sectionsDir, "language.yaml")
+	langPath := filepath.Join(sectionsDir, defs.LanguageYAML)
 	langContent := fmt.Sprintf("language:\n  conversation_language: %s\n  conversation_language_name: %s\n",
 		result.Locale, result.Locale)
-	if err := os.WriteFile(langPath, []byte(langContent), 0644); err != nil {
+	if err := os.WriteFile(langPath, []byte(langContent), defs.FilePerm); err != nil {
 		return fmt.Errorf("write language.yaml: %w", err)
 	}
 
 	// Update quality.yaml if development mode changed
 	if result.DevelopmentMode != "" {
-		qualityPath := filepath.Join(sectionsDir, "quality.yaml")
+		qualityPath := filepath.Join(sectionsDir, defs.QualityYAML)
 		// Read existing content
 		qualityData, err := os.ReadFile(qualityPath)
 		if err != nil && !os.IsNotExist(err) {
@@ -1337,14 +1337,14 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		if err != nil {
 			return fmt.Errorf("marshal quality.yaml: %w", err)
 		}
-		if err := os.WriteFile(qualityPath, updatedData, 0644); err != nil {
+		if err := os.WriteFile(qualityPath, updatedData, defs.FilePerm); err != nil {
 			return fmt.Errorf("write quality.yaml: %w", err)
 		}
 	}
 
 	// Update workflow.yaml with Agent Teams settings
 	if result.AgentTeamsMode != "" {
-		workflowPath := filepath.Join(sectionsDir, "workflow.yaml")
+		workflowPath := filepath.Join(sectionsDir, defs.WorkflowYAML)
 		// Read existing content
 		workflowData, err := os.ReadFile(workflowPath)
 		if err != nil && !os.IsNotExist(err) {
@@ -1406,14 +1406,14 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		if err != nil {
 			return fmt.Errorf("marshal workflow.yaml: %w", err)
 		}
-		if err := os.WriteFile(workflowPath, updatedData, 0644); err != nil {
+		if err := os.WriteFile(workflowPath, updatedData, defs.FilePerm); err != nil {
 			return fmt.Errorf("write workflow.yaml: %w", err)
 		}
 	}
 
 	// Update user.yaml with GitHub username and token
 	if result.GitHubUsername != "" || result.GitHubToken != "" {
-		userPath := filepath.Join(sectionsDir, "user.yaml")
+		userPath := filepath.Join(sectionsDir, defs.UserYAML)
 		// Read existing content
 		userData, err := os.ReadFile(userPath)
 		if err != nil && !os.IsNotExist(err) {
@@ -1455,7 +1455,7 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		if err != nil {
 			return fmt.Errorf("marshal user.yaml: %w", err)
 		}
-		if err := os.WriteFile(userPath, updatedData, 0644); err != nil {
+		if err := os.WriteFile(userPath, updatedData, defs.FilePerm); err != nil {
 			return fmt.Errorf("write user.yaml: %w", err)
 		}
 	}
@@ -1471,7 +1471,7 @@ func ensureGlobalSettingsEnv() error {
 		return fmt.Errorf("get home directory: %w", err)
 	}
 
-	globalSettingsPath := filepath.Join(homeDir, ".claude", "settings.json")
+	globalSettingsPath := filepath.Join(homeDir, defs.ClaudeDir, defs.SettingsJSON)
 
 	// Define required env variables
 	requiredEnv := map[string]string{
@@ -1607,7 +1607,7 @@ func ensureGlobalSettingsEnv() error {
 		return fmt.Errorf("marshal global settings: %w", err)
 	}
 
-	if err := os.WriteFile(globalSettingsPath, append(jsonContent, '\n'), 0644); err != nil {
+	if err := os.WriteFile(globalSettingsPath, append(jsonContent, '\n'), defs.FilePerm); err != nil {
 		return fmt.Errorf("write global settings: %w", err)
 	}
 

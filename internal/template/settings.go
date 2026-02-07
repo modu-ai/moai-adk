@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
 // Settings represents the Claude Code settings.json structure.
@@ -71,12 +72,12 @@ type hookEventDef struct {
 // hookEvents defines the required hook events per REQ-T-023.
 // Note: SessionEnd is also handled by global hook, but included here for project-level consistency.
 var hookEventDefs = []hookEventDef{
-	{event: "SessionStart", matcher: "", timeout: 5},
-	{event: "PreCompact", matcher: "", timeout: 5},
-	{event: "SessionEnd", matcher: "", timeout: 5},
-	{event: "PreToolUse", matcher: "Write|Edit|Bash", timeout: 5},
-	{event: "PostToolUse", matcher: "Write|Edit", timeout: 60},
-	{event: "Stop", matcher: "", timeout: 5},
+	{event: "SessionStart", matcher: "", timeout: defs.HookDefaultTimeout},
+	{event: "PreCompact", matcher: "", timeout: defs.HookDefaultTimeout},
+	{event: "SessionEnd", matcher: "", timeout: defs.HookDefaultTimeout},
+	{event: "PreToolUse", matcher: "Write|Edit|Bash", timeout: defs.HookDefaultTimeout},
+	{event: "PostToolUse", matcher: "Write|Edit", timeout: defs.HookPostToolTimeout},
+	{event: "Stop", matcher: "", timeout: defs.HookDefaultTimeout},
 }
 
 // Generate builds Settings from config and serializes to JSON.
@@ -179,7 +180,7 @@ func eventToSubcommand(event string) string {
 func buildStatusLine() *StatusLine {
 	return &StatusLine{
 		Type:    "command",
-		Command: ".moai/status_line.sh",
+		Command: defs.StatusLinePath,
 	}
 }
 

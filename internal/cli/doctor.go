@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
@@ -177,7 +178,7 @@ func checkMoAIConfig(verbose bool) DiagnosticCheck {
 		return check
 	}
 
-	moaiDir := filepath.Join(cwd, ".moai")
+	moaiDir := filepath.Join(cwd, defs.MoAIDir)
 	info, err := os.Stat(moaiDir)
 	if err != nil || !info.IsDir() {
 		check.Status = CheckWarn
@@ -185,7 +186,7 @@ func checkMoAIConfig(verbose bool) DiagnosticCheck {
 		return check
 	}
 
-	configDir := filepath.Join(moaiDir, "config", "sections")
+	configDir := filepath.Join(moaiDir, defs.SectionsSubdir)
 	if _, statErr := os.Stat(configDir); statErr != nil {
 		check.Status = CheckWarn
 		check.Message = ".moai/config/sections/ not found"
@@ -211,7 +212,7 @@ func checkClaudeConfig(verbose bool) DiagnosticCheck {
 		return check
 	}
 
-	claudeDir := filepath.Join(cwd, ".claude")
+	claudeDir := filepath.Join(cwd, defs.ClaudeDir)
 	info, err := os.Stat(claudeDir)
 	if err != nil || !info.IsDir() {
 		check.Status = CheckWarn
@@ -256,5 +257,5 @@ func exportDiagnostics(path string, checks []DiagnosticCheck) error {
 	if err != nil {
 		return fmt.Errorf("marshal diagnostics: %w", err)
 	}
-	return os.WriteFile(path, data, 0o644)
+	return os.WriteFile(path, data, defs.FilePerm)
 }

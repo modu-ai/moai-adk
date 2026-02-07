@@ -4,6 +4,8 @@ package lifecycle
 
 import (
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
 // SessionCleanup handles SessionEnd cleanup.
@@ -48,9 +50,9 @@ type CleanupConfig struct {
 // DefaultCleanupConfig returns the default cleanup configuration.
 func DefaultCleanupConfig() CleanupConfig {
 	return CleanupConfig{
-		TempDir:           ".moai/temp",
-		CacheDir:          ".moai/cache/temp",
-		LogDir:            ".moai/logs",
+		TempDir:           defs.MoAIDir + "/temp",
+		CacheDir:          defs.MoAIDir + "/cache/temp",
+		LogDir:            defs.MoAIDir + "/" + defs.LogsSubdir,
 		SessionLogPattern: "session-*.log",
 		PreserveMemory:    true,
 	}
@@ -82,6 +84,6 @@ type WorkStateConfig struct {
 // DefaultWorkStateConfig returns the default work state configuration.
 func DefaultWorkStateConfig() WorkStateConfig {
 	return WorkStateConfig{
-		StoragePath: ".moai/memory/last-session-state.json",
+		StoragePath: defs.MoAIDir + "/" + defs.MemorySubdir + "/last-session-state.json",
 	}
 }

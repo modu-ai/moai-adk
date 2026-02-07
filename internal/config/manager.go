@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/pkg/models"
 	"gopkg.in/yaml.v3"
 )
@@ -46,7 +47,7 @@ func (m *ConfigManager) Load(projectRoot string) (*Config, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	configDir := filepath.Join(filepath.Clean(projectRoot), ".moai")
+	configDir := filepath.Join(filepath.Clean(projectRoot), defs.MoAIDir)
 
 	// Support MOAI_CONFIG_DIR environment variable override
 	if envDir := os.Getenv("MOAI_CONFIG_DIR"); envDir != "" {
@@ -125,7 +126,7 @@ func (m *ConfigManager) Save() error {
 		return ErrNotInitialized
 	}
 
-	sectionsDir := filepath.Join(filepath.Clean(m.root), ".moai", "config", "sections")
+	sectionsDir := filepath.Join(filepath.Clean(m.root), defs.MoAIDir, defs.SectionsSubdir)
 
 	// Ensure directory exists
 	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
@@ -160,7 +161,7 @@ func (m *ConfigManager) Reload() error {
 		return ErrNotInitialized
 	}
 
-	configDir := filepath.Join(filepath.Clean(m.root), ".moai")
+	configDir := filepath.Join(filepath.Clean(m.root), defs.MoAIDir)
 	if envDir := os.Getenv("MOAI_CONFIG_DIR"); envDir != "" {
 		configDir = filepath.Clean(envDir)
 	}

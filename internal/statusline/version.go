@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/modu-ai/moai-adk/internal/defs"
 	"gopkg.in/yaml.v3"
 )
 
@@ -95,7 +96,7 @@ func (v *VersionCollector) readVersionFromConfig() (string, error) {
 
 	// Search upward for .moai/config/config.yaml
 	for {
-		configPath := filepath.Join(dir, ".moai", "config", "config.yaml")
+		configPath := filepath.Join(dir, defs.MoAIDir, defs.ConfigSubdir, defs.ConfigYAML)
 		if _, err := os.Stat(configPath); err == nil {
 			// Found config file
 			return v.parseConfigFile(configPath)

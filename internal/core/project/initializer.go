@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/shell"
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -209,11 +210,11 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 // createMoAIDirs creates the .moai/ directory structure.
 func (i *projectInitializer) createMoAIDirs(root string, result *InitResult) error {
 	for _, dir := range moaiDirs {
-		dirPath := filepath.Clean(filepath.Join(root, ".moai", dir))
-		if err := os.MkdirAll(dirPath, 0o755); err != nil {
+		dirPath := filepath.Clean(filepath.Join(root, defs.MoAIDir, dir))
+		if err := os.MkdirAll(dirPath, defs.DirPerm); err != nil {
 			return fmt.Errorf("mkdir %s: %w", dirPath, err)
 		}
-		result.CreatedDirs = append(result.CreatedDirs, filepath.Join(".moai", dir))
+		result.CreatedDirs = append(result.CreatedDirs, filepath.Join(defs.MoAIDir, dir))
 	}
 	return nil
 }
@@ -221,11 +222,11 @@ func (i *projectInitializer) createMoAIDirs(root string, result *InitResult) err
 // createClaudeDirs creates the .claude/ directory structure.
 func (i *projectInitializer) createClaudeDirs(root string, result *InitResult) error {
 	for _, dir := range claudeDirs {
-		dirPath := filepath.Clean(filepath.Join(root, ".claude", dir))
-		if err := os.MkdirAll(dirPath, 0o755); err != nil {
+		dirPath := filepath.Clean(filepath.Join(root, defs.ClaudeDir, dir))
+		if err := os.MkdirAll(dirPath, defs.DirPerm); err != nil {
 			return fmt.Errorf("mkdir %s: %w", dirPath, err)
 		}
-		result.CreatedDirs = append(result.CreatedDirs, filepath.Join(".claude", dir))
+		result.CreatedDirs = append(result.CreatedDirs, filepath.Join(defs.ClaudeDir, dir))
 	}
 	return nil
 }
@@ -313,7 +314,7 @@ func detectGoBinPath(homeDir string) string {
 // generateConfigsFallback creates config YAML files directly when no deployer is available.
 // This provides a fallback for testing and minimal initialization scenarios.
 func (i *projectInitializer) generateConfigsFallback(opts InitOptions, result *InitResult) error {
-	sectionsDir := filepath.Clean(filepath.Join(opts.ProjectRoot, ".moai", "config", "sections"))
+	sectionsDir := filepath.Clean(filepath.Join(opts.ProjectRoot, defs.MoAIDir, defs.SectionsSubdir))
 
 	// Build context for config values
 	tmplCtx := template.NewTemplateContext(
@@ -329,10 +330,10 @@ func (i *projectInitializer) generateConfigsFallback(opts InitOptions, result *I
 
 	// user.yaml
 	userContent := fmt.Sprintf("user:\n  name: %q\n", tmplCtx.UserName)
-	if err := os.WriteFile(filepath.Join(sectionsDir, "user.yaml"), []byte(userContent), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(sectionsDir, defs.UserYAML), []byte(userContent), defs.FilePerm); err != nil {
 		return fmt.Errorf("write user.yaml: %w", err)
 	}
-	result.CreatedFiles = append(result.CreatedFiles, ".moai/config/sections/user.yaml")
+	result.CreatedFiles = append(result.CreatedFiles, filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.UserYAML))
 
 	// language.yaml
 	langContent := fmt.Sprintf(`language:
@@ -346,10 +347,10 @@ func (i *projectInitializer) generateConfigsFallback(opts InitOptions, result *I
 `, tmplCtx.ConversationLanguage, tmplCtx.ConversationLanguageName,
 		tmplCtx.AgentPromptLanguage, tmplCtx.GitCommitMessages,
 		tmplCtx.CodeComments, tmplCtx.Documentation, tmplCtx.ErrorMessages)
-	if err := os.WriteFile(filepath.Join(sectionsDir, "language.yaml"), []byte(langContent), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(sectionsDir, defs.LanguageYAML), []byte(langContent), defs.FilePerm); err != nil {
 		return fmt.Errorf("write language.yaml: %w", err)
 	}
-	result.CreatedFiles = append(result.CreatedFiles, ".moai/config/sections/language.yaml")
+	result.CreatedFiles = append(result.CreatedFiles, filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.LanguageYAML))
 
 	// quality.yaml
 	qualityContent := fmt.Sprintf(`constitution:
@@ -357,10 +358,10 @@ func (i *projectInitializer) generateConfigsFallback(opts InitOptions, result *I
   enforce_quality: %t
   test_coverage_target: %d
 `, tmplCtx.DevelopmentMode, tmplCtx.EnforceQuality, tmplCtx.TestCoverageTarget)
-	if err := os.WriteFile(filepath.Join(sectionsDir, "quality.yaml"), []byte(qualityContent), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(sectionsDir, defs.QualityYAML), []byte(qualityContent), defs.FilePerm); err != nil {
 		return fmt.Errorf("write quality.yaml: %w", err)
 	}
-	result.CreatedFiles = append(result.CreatedFiles, ".moai/config/sections/quality.yaml")
+	result.CreatedFiles = append(result.CreatedFiles, filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.QualityYAML))
 
 	// workflow.yaml
 	workflowContent := fmt.Sprintf(`workflow:
@@ -369,30 +370,30 @@ func (i *projectInitializer) generateConfigsFallback(opts InitOptions, result *I
   run_tokens: %d
   sync_tokens: %d
 `, tmplCtx.AutoClear, tmplCtx.PlanTokens, tmplCtx.RunTokens, tmplCtx.SyncTokens)
-	if err := os.WriteFile(filepath.Join(sectionsDir, "workflow.yaml"), []byte(workflowContent), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(sectionsDir, defs.WorkflowYAML), []byte(workflowContent), defs.FilePerm); err != nil {
 		return fmt.Errorf("write workflow.yaml: %w", err)
 	}
-	result.CreatedFiles = append(result.CreatedFiles, ".moai/config/sections/workflow.yaml")
+	result.CreatedFiles = append(result.CreatedFiles, filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.WorkflowYAML))
 
 	// git-strategy.yaml
 	gitStrategyContent := fmt.Sprintf(`git_strategy:
   mode: %q
   github_username: %q
 `, tmplCtx.GitMode, tmplCtx.GitHubUsername)
-	if err := os.WriteFile(filepath.Join(sectionsDir, "git-strategy.yaml"), []byte(gitStrategyContent), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(sectionsDir, defs.GitStrategyYAML), []byte(gitStrategyContent), defs.FilePerm); err != nil {
 		return fmt.Errorf("write git-strategy.yaml: %w", err)
 	}
-	result.CreatedFiles = append(result.CreatedFiles, ".moai/config/sections/git-strategy.yaml")
+	result.CreatedFiles = append(result.CreatedFiles, filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.GitStrategyYAML))
 
 	// system.yaml
 	systemContent := fmt.Sprintf(`moai:
   version: %q
   update_check_frequency: daily
 `, tmplCtx.Version)
-	if err := os.WriteFile(filepath.Join(sectionsDir, "system.yaml"), []byte(systemContent), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(sectionsDir, defs.SystemYAML), []byte(systemContent), defs.FilePerm); err != nil {
 		return fmt.Errorf("write system.yaml: %w", err)
 	}
-	result.CreatedFiles = append(result.CreatedFiles, ".moai/config/sections/system.yaml")
+	result.CreatedFiles = append(result.CreatedFiles, filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.SystemYAML))
 
 	// project.yaml
 	projectContent := fmt.Sprintf(`project:
@@ -404,17 +405,17 @@ func (i *projectInitializer) generateConfigsFallback(opts InitOptions, result *I
 github:
   profile_name: %q
 `, tmplCtx.ProjectName, tmplCtx.CreatedAt, tmplCtx.GitHubUsername)
-	if err := os.WriteFile(filepath.Join(sectionsDir, "project.yaml"), []byte(projectContent), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(sectionsDir, defs.ProjectYAML), []byte(projectContent), defs.FilePerm); err != nil {
 		return fmt.Errorf("write project.yaml: %w", err)
 	}
-	result.CreatedFiles = append(result.CreatedFiles, ".moai/config/sections/project.yaml")
+	result.CreatedFiles = append(result.CreatedFiles, filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.ProjectYAML))
 
 	return nil
 }
 
 // generateSettings generates .claude/settings.json using SettingsGenerator (ADR-011, REQ-E-033).
 func (i *projectInitializer) generateSettings(opts InitOptions, result *InitResult) error {
-	settingsPath := filepath.Clean(filepath.Join(opts.ProjectRoot, ".claude", "settings.json"))
+	settingsPath := filepath.Clean(filepath.Join(opts.ProjectRoot, defs.ClaudeDir, defs.SettingsJSON))
 
 	// Skip if settings.json already exists (user-managed)
 	if _, err := os.Stat(settingsPath); err == nil {
@@ -435,29 +436,29 @@ func (i *projectInitializer) generateSettings(opts InitOptions, result *InitResu
 
 	// Ensure .claude/ directory exists
 	claudeDir := filepath.Dir(settingsPath)
-	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+	if err := os.MkdirAll(claudeDir, defs.DirPerm); err != nil {
 		return fmt.Errorf("mkdir .claude/: %w", err)
 	}
 
-	if err := os.WriteFile(settingsPath, data, 0o644); err != nil {
+	if err := os.WriteFile(settingsPath, data, defs.FilePerm); err != nil {
 		return fmt.Errorf("write settings.json: %w", err)
 	}
 
 	// Track in manifest if available
 	if i.manifestMgr != nil {
 		templateHash := manifest.HashBytes(data)
-		if err := i.manifestMgr.Track(".claude/settings.json", manifest.TemplateManaged, templateHash); err != nil {
+		if err := i.manifestMgr.Track(filepath.Join(defs.ClaudeDir, defs.SettingsJSON), manifest.TemplateManaged, templateHash); err != nil {
 			i.logger.Warn("failed to track settings.json in manifest", "error", err)
 		}
 	}
 
-	result.CreatedFiles = append(result.CreatedFiles, ".claude/settings.json")
+	result.CreatedFiles = append(result.CreatedFiles, filepath.Join(defs.ClaudeDir, defs.SettingsJSON))
 	return nil
 }
 
 // generateMCPConfig generates .mcp.json using MCPGenerator (ADR-011).
 func (i *projectInitializer) generateMCPConfig(opts InitOptions, result *InitResult) error {
-	mcpPath := filepath.Clean(filepath.Join(opts.ProjectRoot, ".mcp.json"))
+	mcpPath := filepath.Clean(filepath.Join(opts.ProjectRoot, defs.MCPJSON))
 
 	// Skip if .mcp.json already exists (user-managed)
 	if _, err := os.Stat(mcpPath); err == nil {
@@ -476,19 +477,19 @@ func (i *projectInitializer) generateMCPConfig(opts InitOptions, result *InitRes
 		return fmt.Errorf("generate .mcp.json: %w", err)
 	}
 
-	if err := os.WriteFile(mcpPath, data, 0o644); err != nil {
+	if err := os.WriteFile(mcpPath, data, defs.FilePerm); err != nil {
 		return fmt.Errorf("write .mcp.json: %w", err)
 	}
 
 	// Track in manifest if available
 	if i.manifestMgr != nil {
 		templateHash := manifest.HashBytes(data)
-		if err := i.manifestMgr.Track(".mcp.json", manifest.TemplateManaged, templateHash); err != nil {
+		if err := i.manifestMgr.Track(defs.MCPJSON, manifest.TemplateManaged, templateHash); err != nil {
 			i.logger.Warn("failed to track .mcp.json in manifest", "error", err)
 		}
 	}
 
-	result.CreatedFiles = append(result.CreatedFiles, ".mcp.json")
+	result.CreatedFiles = append(result.CreatedFiles, defs.MCPJSON)
 	return nil
 }
 
@@ -496,7 +497,7 @@ func (i *projectInitializer) generateMCPConfig(opts InitOptions, result *InitRes
 // If the deployer already deployed the full CLAUDE.md from embedded templates,
 // this step is skipped to avoid overwriting it with the minimal stub.
 func (i *projectInitializer) createClaudeMD(opts InitOptions, result *InitResult) error {
-	claudeMDPath := filepath.Clean(filepath.Join(opts.ProjectRoot, "CLAUDE.md"))
+	claudeMDPath := filepath.Clean(filepath.Join(opts.ProjectRoot, defs.ClaudeMD))
 
 	// Skip if CLAUDE.md was already deployed by the template deployer (REQ-E-034)
 	if _, err := os.Stat(claudeMDPath); err == nil {
@@ -507,11 +508,11 @@ func (i *projectInitializer) createClaudeMD(opts InitOptions, result *InitResult
 	// Fallback: generate minimal stub when no deployer is available
 	content := buildClaudeMDContent(opts)
 
-	if err := os.WriteFile(claudeMDPath, []byte(content), 0o644); err != nil {
+	if err := os.WriteFile(claudeMDPath, []byte(content), defs.FilePerm); err != nil {
 		return fmt.Errorf("write CLAUDE.md: %w", err)
 	}
 
-	result.CreatedFiles = append(result.CreatedFiles, "CLAUDE.md")
+	result.CreatedFiles = append(result.CreatedFiles, defs.ClaudeMD)
 	return nil
 }
 
@@ -560,14 +561,14 @@ func (i *projectInitializer) initManifest(root string, result *InitResult) error
 	}
 
 	// Validate the generated manifest JSON
-	manifestPath := filepath.Join(root, ".moai", "manifest.json")
+	manifestPath := filepath.Join(root, defs.MoAIDir, defs.ManifestJSON)
 	if data, readErr := os.ReadFile(manifestPath); readErr == nil {
 		if !json.Valid(data) {
 			return fmt.Errorf("generated manifest.json is not valid JSON")
 		}
 	}
 
-	result.CreatedFiles = append(result.CreatedFiles, ".moai/manifest.json")
+	result.CreatedFiles = append(result.CreatedFiles, filepath.Join(defs.MoAIDir, defs.ManifestJSON))
 	return nil
 }
 

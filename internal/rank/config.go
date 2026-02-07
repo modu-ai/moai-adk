@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
 // Credentials holds the user's authentication credentials.
@@ -58,18 +60,18 @@ func NewFileCredentialStore(dir string) *FileCredentialStore {
 		if err != nil {
 			home = "."
 		}
-		dir = filepath.Join(home, ".moai", "rank")
+		dir = filepath.Join(home, defs.MoAIDir, defs.RankSubdir)
 	}
 	return &FileCredentialStore{
 		dir:      dir,
-		credPath: filepath.Join(dir, "credentials.json"),
+		credPath: filepath.Join(dir, defs.CredentialsJSON),
 	}
 }
 
 // Save persists credentials to disk atomically with secure file permissions.
 // Directory permissions: 0700, file permissions: 0600.
 func (s *FileCredentialStore) Save(creds *Credentials) error {
-	if err := os.MkdirAll(s.dir, 0o700); err != nil {
+	if err := os.MkdirAll(s.dir, defs.CredDirPerm); err != nil {
 		return fmt.Errorf("create credential directory: %w", err)
 	}
 
@@ -80,7 +82,7 @@ func (s *FileCredentialStore) Save(creds *Credentials) error {
 
 	// Atomic write: write to temp file, then rename.
 	tmpFile := s.credPath + ".tmp"
-	if err := os.WriteFile(tmpFile, data, 0o600); err != nil {
+	if err := os.WriteFile(tmpFile, data, defs.CredFilePerm); err != nil {
 		return fmt.Errorf("write temp credential file: %w", err)
 	}
 

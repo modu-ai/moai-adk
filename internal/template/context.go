@@ -1,6 +1,9 @@
 package template
 
-import "github.com/modu-ai/moai-adk/pkg/models"
+import (
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/pkg/models"
+)
 
 // TemplateContext provides data for template rendering during project initialization.
 // All fields are exported for use with Go's text/template package.
@@ -66,11 +69,11 @@ func NewTemplateContext(opts ...ContextOption) *TemplateContext {
 		GitHubUsername:           "",
 		DevelopmentMode:          string(models.ModeDDD),
 		EnforceQuality:           true,
-		TestCoverageTarget:       85,
+		TestCoverageTarget:       config.DefaultTestCoverageTarget,
 		AutoClear:                true,
-		PlanTokens:               30000,
-		RunTokens:                180000,
-		SyncTokens:               40000,
+		PlanTokens:               config.DefaultPlanTokens,
+		RunTokens:                config.DefaultRunTokens,
+		SyncTokens:               config.DefaultSyncTokens,
 	}
 
 	for _, opt := range opts {

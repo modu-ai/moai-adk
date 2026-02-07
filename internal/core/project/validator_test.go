@@ -210,8 +210,8 @@ func TestBackupExistingProject(t *testing.T) {
 			t.Fatal("expected non-empty backup path")
 		}
 
-		if !strings.Contains(backupPath, ".moai.backup.") {
-			t.Errorf("backup path %q does not contain .moai.backup.", backupPath)
+		if !strings.Contains(backupPath, ".moai-backups") {
+			t.Errorf("backup path %q does not contain .moai-backups", backupPath)
 		}
 
 		// Verify original .moai/ no longer exists

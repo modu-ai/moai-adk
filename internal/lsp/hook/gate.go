@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/defs"
 	"gopkg.in/yaml.v3"
 )
 
@@ -29,7 +30,7 @@ type qualityGateEnforcer struct {
 func NewQualityGateEnforcer(projectDir string) *qualityGateEnforcer {
 	return &qualityGateEnforcer{
 		projectDir: projectDir,
-		configPath: filepath.Join(projectDir, ".moai", "config", "sections", "quality.yaml"),
+		configPath: filepath.Join(projectDir, defs.MoAIDir, defs.SectionsSubdir, defs.QualityYAML),
 	}
 }
 

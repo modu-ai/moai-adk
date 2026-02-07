@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
-const manifestFileName = "manifest.json"
+// manifestFileName is an alias for defs.ManifestJSON kept for test compatibility.
+const manifestFileName = defs.ManifestJSON
 
 // Manager defines the interface for manifest CRUD operations and change detection.
 type Manager interface {
@@ -61,7 +64,7 @@ func (m *manifestManager) Manifest() *Manifest {
 // Load reads and parses the manifest from disk.
 func (m *manifestManager) Load(projectRoot string) (*Manifest, error) {
 	m.projectRoot = filepath.Clean(projectRoot)
-	m.manifestPath = filepath.Join(m.projectRoot, ".moai", manifestFileName)
+	m.manifestPath = filepath.Join(m.projectRoot, defs.MoAIDir, defs.ManifestJSON)
 
 	data, err := os.ReadFile(m.manifestPath)
 	if err != nil {
@@ -107,7 +110,7 @@ func (m *manifestManager) Save() error {
 
 	// Ensure parent directory exists
 	dir := filepath.Dir(m.manifestPath)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, defs.DirPerm); err != nil {
 		return fmt.Errorf("manifest save mkdir: %w", err)
 	}
 

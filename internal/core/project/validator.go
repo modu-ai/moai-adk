@@ -8,8 +8,17 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/defs"
 	"gopkg.in/yaml.v3"
 )
+
+// BackupTimestampFormat is the Go time layout for backup directory names (YYYYMMDD_HHMMSS).
+// Deprecated: Use defs.BackupTimestampFormat directly.
+const BackupTimestampFormat = defs.BackupTimestampFormat
+
+// BackupsDir is the directory name where project backups are stored.
+// Deprecated: Use defs.BackupsDir directly.
+const BackupsDir = defs.BackupsDir
 
 // ProjectValidator checks project structure integrity.
 type ProjectValidator interface {
@@ -69,20 +78,20 @@ func (v *projectValidator) Validate(root string) (*ValidationResult, error) {
 	result := &ValidationResult{Valid: true}
 
 	// Check if .moai/ already exists
-	moaiDir := filepath.Join(root, ".moai")
+	moaiDir := filepath.Join(root, defs.MoAIDir)
 	if dirExists(moaiDir) {
 		result.Valid = false
 		result.Errors = append(result.Errors, "project already initialized: .moai/ directory exists. Use --force to reinitialize.")
 	}
 
 	// Check if .claude/ already exists
-	claudeDir := filepath.Join(root, ".claude")
+	claudeDir := filepath.Join(root, defs.ClaudeDir)
 	if dirExists(claudeDir) {
 		result.Warnings = append(result.Warnings, ".claude/ directory already exists; templates may be updated.")
 	}
 
 	// Check if CLAUDE.md already exists
-	claudeMD := filepath.Join(root, "CLAUDE.md")
+	claudeMD := filepath.Join(root, defs.ClaudeMD)
 	if fileExists(claudeMD) {
 		result.Warnings = append(result.Warnings, "CLAUDE.md already exists; it will be updated.")
 	}
@@ -107,7 +116,7 @@ func (v *projectValidator) ValidateMoAI(root string) (*ValidationResult, error) 
 
 	result := &ValidationResult{Valid: true}
 
-	moaiDir := filepath.Join(root, ".moai")
+	moaiDir := filepath.Join(root, defs.MoAIDir)
 	if !dirExists(moaiDir) {
 		result.Valid = false
 		result.Errors = append(result.Errors, ".moai/ directory not found. Run 'moai init' first.")
@@ -124,13 +133,13 @@ func (v *projectValidator) ValidateMoAI(root string) (*ValidationResult, error) 
 	}
 
 	// Check YAML config files are parseable
-	sectionsDir := filepath.Join(moaiDir, "config", "sections")
+	sectionsDir := filepath.Join(moaiDir, defs.SectionsSubdir)
 	if dirExists(sectionsDir) {
 		v.validateYAMLFiles(sectionsDir, result)
 	}
 
 	// Check manifest.json is valid JSON
-	manifestPath := filepath.Join(moaiDir, "manifest.json")
+	manifestPath := filepath.Join(moaiDir, defs.ManifestJSON)
 	if fileExists(manifestPath) {
 		v.validateJSONFile(manifestPath, result)
 	} else {
@@ -138,7 +147,7 @@ func (v *projectValidator) ValidateMoAI(root string) (*ValidationResult, error) 
 	}
 
 	// Check .claude/ directories
-	claudeDir := filepath.Join(root, ".claude")
+	claudeDir := filepath.Join(root, defs.ClaudeDir)
 	if dirExists(claudeDir) {
 		for _, subdir := range requiredClaudeDirs {
 			dirPath := filepath.Join(claudeDir, subdir)
@@ -151,7 +160,7 @@ func (v *projectValidator) ValidateMoAI(root string) (*ValidationResult, error) 
 	}
 
 	// Check CLAUDE.md exists
-	claudeMD := filepath.Join(root, "CLAUDE.md")
+	claudeMD := filepath.Join(root, defs.ClaudeMD)
 	if !fileExists(claudeMD) {
 		result.Warnings = append(result.Warnings, "CLAUDE.md not found.")
 	}
@@ -202,18 +211,23 @@ func (v *projectValidator) validateJSONFile(path string, result *ValidationResul
 	}
 }
 
-// BackupExistingProject moves .moai/ to .moai.backup.{timestamp}/.
+// BackupExistingProject moves .moai/ to .moai-backups/{timestamp}/.
 // Returns the backup path or an error.
 func BackupExistingProject(root string) (string, error) {
 	root = filepath.Clean(root)
-	moaiDir := filepath.Join(root, ".moai")
+	moaiDir := filepath.Join(root, defs.MoAIDir)
 
 	if !dirExists(moaiDir) {
 		return "", nil // nothing to backup
 	}
 
-	timestamp := time.Now().Format("20060102-150405")
-	backupDir := filepath.Join(root, fmt.Sprintf(".moai.backup.%s", timestamp))
+	backupsDir := filepath.Join(root, BackupsDir)
+	if err := os.MkdirAll(backupsDir, defs.DirPerm); err != nil {
+		return "", fmt.Errorf("create backups directory: %w", err)
+	}
+
+	timestamp := time.Now().Format(BackupTimestampFormat)
+	backupDir := filepath.Join(backupsDir, timestamp)
 
 	if err := os.Rename(moaiDir, backupDir); err != nil {
 		return "", fmt.Errorf("backup existing project: %w", err)
