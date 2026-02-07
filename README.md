@@ -5,12 +5,12 @@
 <h1 align="center">MoAI-ADK</h1>
 
 <p align="center">
-  <strong>Claude Code를 위한 Agentic Development Kit</strong>
+  <strong>Agentic Development Kit for Claude Code</strong>
 </p>
 
 <p align="center">
-  <a href="./README.en.md">English</a> ·
-  <a href="./README.md">한국어</a> ·
+  <a href="./README.md">English</a> ·
+  <a href="./README.ko.md">한국어</a> ·
   <a href="./README.ja.md">日本語</a> ·
   <a href="./README.zh.md">中文</a>
 </p>
@@ -27,40 +27,40 @@
 
 ---
 
-> **"바이브 코딩의 목적은 빠른 생산성이 아니라 코드 품질이다."**
+> **"The purpose of vibe coding is not rapid productivity but code quality."**
 
-MoAI-ADK는 Claude Code를 위한 **고성능 AI 개발 환경**입니다. 28개 전문 AI 에이전트와 64개 스킬이 협력하여 품질 있는 코드를 만듭니다. 신규 프로젝트에는 Hybrid 방법론(TDD + DDD)을, 기존 프로젝트에는 DDD를 자동 적용하며, Sub-Agent와 Agent Teams 이중 실행 모드를 지원합니다.
+MoAI-ADK is a **high-performance AI development environment** for Claude Code. 28 specialized AI agents and 64 skills collaborate to produce quality code. It automatically applies the Hybrid methodology (TDD + DDD) for new projects and DDD for existing projects, and supports dual execution modes with Sub-Agent and Agent Teams.
 
-Go로 작성된 단일 바이너리 — 의존성 없이 모든 플랫폼에서 즉시 실행됩니다.
-
----
-
-## 왜 MoAI-ADK인가?
-
-Python 기반 MoAI-ADK(~73,000줄)를 Go로 완전히 재작성했습니다.
-
-| 항목 | Python Edition | Go Edition |
-|------|---------------|------------|
-| 배포 | pip + venv + 의존성 | **단일 바이너리**, 의존성 없음 |
-| 시작 시간 | ~800ms 인터프리터 부팅 | **~5ms** 네이티브 실행 |
-| 동시성 | asyncio / threading | **네이티브 goroutines** |
-| 타입 안전성 | 런타임 (mypy 선택) | **컴파일 타임 강제** |
-| 크로스 플랫폼 | Python 런타임 필요 | **프리빌트 바이너리** (macOS, Linux, Windows) |
-| 훅 실행 | Shell 래퍼 + Python | **컴파일된 바이너리**, JSON 프로토콜 |
-
-### 핵심 수치
-
-- **32,977줄** Go 코드, **30개** 패키지
-- **85-100%** 테스트 커버리지
-- **28개** 전문 AI 에이전트 + **64개** 스킬
-- **18개** 프로그래밍 언어 지원
-- **6개** Claude Code 훅 이벤트
+A single binary written in Go -- runs instantly on any platform with zero dependencies.
 
 ---
 
-## 빠른 시작
+## Why MoAI-ADK?
 
-### 1. 설치
+We completely rewrote the Python-based MoAI-ADK (~73,000 lines) in Go.
+
+| Aspect | Python Edition | Go Edition |
+|--------|---------------|------------|
+| Distribution | pip + venv + dependencies | **Single binary**, zero dependencies |
+| Startup time | ~800ms interpreter boot | **~5ms** native execution |
+| Concurrency | asyncio / threading | **Native goroutines** |
+| Type safety | Runtime (mypy optional) | **Compile-time enforced** |
+| Cross-platform | Python runtime required | **Prebuilt binaries** (macOS, Linux, Windows) |
+| Hook execution | Shell wrapper + Python | **Compiled binary**, JSON protocol |
+
+### Key Numbers
+
+- **32,977 lines** of Go code, **30** packages
+- **85-100%** test coverage
+- **28** specialized AI agents + **64** skills
+- **18** programming languages supported
+- **6** Claude Code hook events
+
+---
+
+## Quick Start
+
+### 1. Installation
 
 #### macOS / Linux / WSL
 
@@ -74,92 +74,92 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | 
 irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
 ```
 
-#### 소스에서 빌드 (Go 1.25+)
+#### Build from Source (Go 1.25+)
 
 ```bash
 git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk && make build
 ```
 
-> 프리빌트 바이너리는 [Releases](https://github.com/modu-ai/moai-adk/releases) 페이지에서 다운로드할 수 있습니다.
+> Prebuilt binaries are available on the [Releases](https://github.com/modu-ai/moai-adk/releases) page.
 
-### 2. 프로젝트 초기화
+### 2. Initialize a Project
 
 ```bash
 moai init my-project
 ```
 
-대화형 마법사가 언어, 프레임워크, 방법론을 자동 감지하고 Claude Code 통합 파일을 생성합니다.
+An interactive wizard auto-detects your language, framework, and methodology, then generates Claude Code integration files.
 
-### 3. Claude Code에서 개발 시작
+### 3. Start Developing with Claude Code
 
 ```bash
-# Claude Code 실행 후
-/moai project                            # 프로젝트 문서 생성 (product.md, structure.md, tech.md)
-/moai plan "사용자 인증 기능 추가"        # SPEC 문서 생성
-/moai run SPEC-AUTH-001                   # DDD/TDD 구현
-/moai sync SPEC-AUTH-001                  # 문서 동기화 & PR 생성
+# After launching Claude Code
+/moai project                            # Generate project docs (product.md, structure.md, tech.md)
+/moai plan "Add user authentication"     # Create a SPEC document
+/moai run SPEC-AUTH-001                   # DDD/TDD implementation
+/moai sync SPEC-AUTH-001                  # Sync docs & create PR
 ```
 
 ```mermaid
 graph LR
     A["🔍 /moai project"] --> B["📋 /moai plan"]
-    B -->|"SPEC 문서"| C["🔨 /moai run"]
-    C -->|"구현 완료"| D["📄 /moai sync"]
-    D -->|"PR 생성"| E["✅ Done"]
+    B -->|"SPEC Document"| C["🔨 /moai run"]
+    C -->|"Implementation Complete"| D["📄 /moai sync"]
+    D -->|"PR Created"| E["✅ Done"]
 ```
 
 ---
 
-## MoAI 개발 방법론
+## MoAI Development Methodology
 
-MoAI-ADK는 프로젝트 상태에 따라 최적의 개발 방법론을 자동 선택합니다.
+MoAI-ADK automatically selects the optimal development methodology based on your project's state.
 
 ```mermaid
 flowchart TD
-    A["🔍 프로젝트 분석"] --> B{"신규 프로젝트?"}
+    A["🔍 Project Analysis"] --> B{"New Project?"}
     B -->|"Yes"| C["Hybrid (TDD + DDD)"]
-    B -->|"No"| D{"테스트 커버리지 ≥ 50%?"}
+    B -->|"No"| D{"Test Coverage ≥ 50%?"}
     D -->|"Yes"| C
     D -->|"No"| E["DDD"]
-    C --> F["신규 코드 → TDD"]
-    C --> G["기존 코드 → DDD"]
+    C --> F["New Code → TDD"]
+    C --> G["Existing Code → DDD"]
     E --> H["ANALYZE → PRESERVE → IMPROVE"]
 
     style C fill:#4CAF50,color:#fff
     style E fill:#2196F3,color:#fff
 ```
 
-### Hybrid 방법론 (신규 프로젝트 기본값)
+### Hybrid Methodology (Default for New Projects)
 
-신규 프로젝트와 지속적 개발에 권장되는 방법론입니다. 코드 유형에 따라 TDD와 DDD를 자동 적용합니다.
+The recommended methodology for new projects and ongoing development. It automatically applies TDD or DDD depending on the type of code being modified.
 
-| 코드 유형 | 방법론 | 사이클 | 설명 |
-|-----------|--------|--------|------|
-| 신규 코드 | **TDD** | RED → GREEN → REFACTOR | 테스트를 먼저 작성하고, 통과시킨 후, 리팩토링 |
-| 기존 코드 | **DDD** | ANALYZE → PRESERVE → IMPROVE | 기존 동작을 분석하고, 특성 테스트로 보존한 후, 점진적 개선 |
+| Code Type | Methodology | Cycle | Description |
+|-----------|-------------|-------|-------------|
+| New code | **TDD** | RED → GREEN → REFACTOR | Write tests first, make them pass, then refactor |
+| Existing code | **DDD** | ANALYZE → PRESERVE → IMPROVE | Analyze existing behavior, preserve with characterization tests, then improve incrementally |
 
-### DDD 방법론 (기존 프로젝트)
+### DDD Methodology (Existing Projects)
 
-테스트 커버리지가 낮은 기존 프로젝트에서 안전하게 리팩토링하기 위한 방법론입니다.
+A methodology for safely refactoring existing projects with low test coverage.
 
 ```
-ANALYZE   → 기존 코드와 의존성 분석, 도메인 경계 식별
-PRESERVE  → 특성 테스트 작성, 현재 동작 스냅샷 캡처
-IMPROVE   → 테스트로 보호된 상태에서 점진적 개선
+ANALYZE   → Analyze existing code and dependencies, identify domain boundaries
+PRESERVE  → Write characterization tests, capture current behavior snapshots
+IMPROVE   → Improve incrementally under test protection
 ```
 
-> 방법론은 `moai init` 시 자동 선택되며, `.moai/config/sections/quality.yaml`의 `development_mode`에서 변경할 수 있습니다.
+> The methodology is automatically selected during `moai init` and can be changed via `development_mode` in `.moai/config/sections/quality.yaml`.
 
 ---
 
-## AI 에이전트 오케스트레이션
+## AI Agent Orchestration
 
-MoAI는 **전략적 오케스트레이터**입니다. 직접 코드를 작성하지 않고, 28개 전문 에이전트에게 작업을 위임합니다.
+MoAI is a **strategic orchestrator**. Rather than writing code directly, it delegates tasks to 28 specialized agents.
 
 ```mermaid
 graph LR
-    U["👤 사용자 요청"] --> M["🗿 MoAI Orchestrator"]
+    U["👤 User Request"] --> M["🗿 MoAI Orchestrator"]
 
     M --> MG["📋 Manager (8)"]
     M --> EX["⚡ Expert (8)"]
@@ -178,21 +178,21 @@ graph LR
     style TM fill:#FF9800,color:#fff
 ```
 
-### 에이전트 카테고리
+### Agent Categories
 
-| 카테고리 | 수량 | 에이전트 | 역할 |
-|----------|------|---------|------|
-| **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git | 워크플로우 조율, SPEC 생성, 품질 관리 |
-| **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring | 도메인 전문 구현, 분석, 최적화 |
-| **Builder** | 4 | agent, command, skill, plugin | 새로운 MoAI 컴포넌트 생성 |
-| **Team** | 8 | researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality | 병렬 팀 기반 개발 |
+| Category | Count | Agents | Role |
+|----------|-------|--------|------|
+| **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git | Workflow coordination, SPEC creation, quality management |
+| **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring | Domain-specific implementation, analysis, optimization |
+| **Builder** | 4 | agent, command, skill, plugin | Creating new MoAI components |
+| **Team** | 8 | researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality | Parallel team-based development |
 
-### 64개 스킬 (프로그레시브 디스클로저)
+### 64 Skills (Progressive Disclosure)
 
-토큰 효율을 위해 3단계 프로그레시브 디스클로저 시스템으로 관리됩니다:
+Managed through a 3-level progressive disclosure system for token efficiency:
 
-| 카테고리 | 스킬 수 | 예시 |
-|----------|---------|------|
+| Category | Count | Examples |
+|----------|-------|----------|
 | **Foundation** | 5 | core, claude, philosopher, quality, context |
 | **Workflow** | 11 | spec, project, ddd, tdd, testing, worktree, thinking... |
 | **Domain** | 5 | backend, frontend, database, uiux, data-formats |
@@ -204,86 +204,86 @@ graph LR
 
 ---
 
-## 이중 실행 모드
+## Dual Execution Modes
 
-MoAI-ADK는 Claude Code가 지원하는 **Sub-Agent**와 **Agent Teams** 두 가지 실행 모드를 모두 제공합니다.
+MoAI-ADK provides both **Sub-Agent** and **Agent Teams** execution modes supported by Claude Code.
 
 ```mermaid
 graph TD
-    A["🗿 MoAI Orchestrator"] --> B{"실행 모드 선택"}
-    B -->|"--solo"| C["Sub-Agent 모드"]
-    B -->|"--team"| D["Agent Teams 모드"]
-    B -->|"--auto (기본)"| E["자동 선택"]
+    A["🗿 MoAI Orchestrator"] --> B{"Select Execution Mode"}
+    B -->|"--solo"| C["Sub-Agent Mode"]
+    B -->|"--team"| D["Agent Teams Mode"]
+    B -->|"--auto (default)"| E["Auto Selection"]
 
-    C --> F["순차적 전문가 위임<br/>Task() → Expert Agent"]
-    D --> G["병렬 팀 협업<br/>TeamCreate → SendMessage"]
-    E -->|"복잡도 높음"| D
-    E -->|"복잡도 낮음"| C
+    C --> F["Sequential Expert Delegation<br/>Task() → Expert Agent"]
+    D --> G["Parallel Team Collaboration<br/>TeamCreate → SendMessage"]
+    E -->|"High Complexity"| D
+    E -->|"Low Complexity"| C
 
     style C fill:#2196F3,color:#fff
     style D fill:#FF9800,color:#fff
     style E fill:#4CAF50,color:#fff
 ```
 
-### Sub-Agent 모드 (`--solo`)
+### Sub-Agent Mode (`--solo`)
 
-기존 Claude Code의 `Task()` API를 활용한 순차적 에이전트 위임 방식입니다.
+A sequential agent delegation approach using Claude Code's `Task()` API.
 
-- 하나의 전문 에이전트에게 작업을 위임하고 결과를 받음
-- 단계별로 Manager → Expert → Quality 순서로 진행
-- 단순하고 예측 가능한 워크플로우에 적합
-
-```bash
-/moai run SPEC-AUTH-001 --solo    # Sub-Agent 모드 강제
-```
-
-### Agent Teams 모드 (`--team`)
-
-Claude Code의 Agent Teams API를 활용한 병렬 팀 기반 개발 방식입니다.
-
-- 여러 에이전트가 동시에 작업하고 공유 작업 목록으로 협업
-- `TeamCreate`, `SendMessage`, `TaskList`를 통한 실시간 조율
-- 대규모 기능 개발, 멀티 도메인 작업에 적합
+- Delegates a task to a single specialized agent and receives the result
+- Progresses step by step: Manager → Expert → Quality
+- Best suited for simple and predictable workflows
 
 ```bash
-/moai plan "대규모 기능" --team   # Plan: researcher + analyst + architect 병렬
-/moai run SPEC-XXX --team         # Run: backend-dev + frontend-dev + tester 병렬
+/moai run SPEC-AUTH-001 --solo    # Force Sub-Agent mode
 ```
 
-### 자동 모드 (`--auto`, 기본값)
+### Agent Teams Mode (`--team`)
 
-프로젝트 복잡도를 분석하여 최적의 모드를 자동 선택합니다:
+A parallel team-based development approach using Claude Code's Agent Teams API.
 
-| 조건 | 선택 모드 |
-|------|-----------|
-| 도메인 3개 이상 | Agent Teams |
-| 영향 파일 10개 이상 | Agent Teams |
-| 복잡도 점수 7 이상 | Agent Teams |
-| 그 외 | Sub-Agent |
+- Multiple agents work simultaneously, collaborating through a shared task list
+- Real-time coordination via `TeamCreate`, `SendMessage`, and `TaskList`
+- Best suited for large-scale feature development and multi-domain tasks
+
+```bash
+/moai plan "large feature" --team   # Plan: researcher + analyst + architect in parallel
+/moai run SPEC-XXX --team           # Run: backend-dev + frontend-dev + tester in parallel
+```
+
+### Auto Mode (`--auto`, default)
+
+Analyzes project complexity and automatically selects the optimal mode:
+
+| Condition | Selected Mode |
+|-----------|---------------|
+| 3+ domains | Agent Teams |
+| 10+ affected files | Agent Teams |
+| Complexity score 7+ | Agent Teams |
+| Otherwise | Sub-Agent |
 
 ---
 
-## MoAI 워크플로우
+## MoAI Workflow
 
-### Plan → Run → Sync 파이프라인
+### Plan → Run → Sync Pipeline
 
-MoAI의 핵심 워크플로우는 3단계로 구성됩니다:
+MoAI's core workflow consists of three phases:
 
 ```mermaid
 graph TB
     subgraph Plan ["📋 Plan Phase"]
-        P1["코드베이스 탐색"] --> P2["요구사항 분석"]
-        P2 --> P3["SPEC 문서 생성 (EARS 형식)"]
+        P1["Explore Codebase"] --> P2["Analyze Requirements"]
+        P2 --> P3["Generate SPEC Document (EARS Format)"]
     end
 
     subgraph Run ["🔨 Run Phase"]
-        R1["SPEC 분석 & 실행 계획"] --> R2["DDD/TDD 구현"]
-        R2 --> R3["TRUST 5 품질 검증"]
+        R1["Analyze SPEC & Create Execution Plan"] --> R2["DDD/TDD Implementation"]
+        R2 --> R3["TRUST 5 Quality Validation"]
     end
 
     subgraph Sync ["📄 Sync Phase"]
-        S1["문서 생성"] --> S2["README/CHANGELOG 업데이트"]
-        S2 --> S3["Pull Request 생성"]
+        S1["Generate Documentation"] --> S2["Update README/CHANGELOG"]
+        S2 --> S3["Create Pull Request"]
     end
 
     Plan --> Run
@@ -294,136 +294,136 @@ graph TB
     style Sync fill:#FFF3E0,stroke:#E65100
 ```
 
-### 자율 개발 루프 (Ralph Engine)
+### Autonomous Development Loop (Ralph Engine)
 
-LSP 진단과 AST-grep을 결합한 자율 에러 수정 엔진입니다:
+An autonomous error-fixing engine that combines LSP diagnostics with AST-grep:
 
 ```bash
-/moai fix       # 단일 패스: 스캔 → 분류 → 수정 → 검증
-/moai loop      # 반복 수정: 완료 마커 감지까지 반복 (최대 100회)
+/moai fix       # Single pass: scan → classify → fix → verify
+/moai loop      # Iterative fix: repeats until completion marker detected (max 100 iterations)
 ```
 
-**Ralph Engine 동작:**
-1. **병렬 스캔**: LSP 진단 + AST-grep + 린터를 동시 실행
-2. **자동 분류**: 에러를 Level 1(자동 수정) ~ Level 4(사용자 개입)로 분류
-3. **수렴 감지**: 동일 에러 반복 시 대체 전략 적용
-4. **완료 조건**: 0 에러, 0 타입 에러, 85%+ 커버리지
+**How the Ralph Engine works:**
+1. **Parallel Scan**: Runs LSP diagnostics + AST-grep + linters simultaneously
+2. **Auto-Classification**: Classifies errors from Level 1 (auto-fix) to Level 4 (user intervention)
+3. **Convergence Detection**: Applies alternative strategies when the same error repeats
+4. **Completion Criteria**: 0 errors, 0 type errors, 85%+ coverage
 
 ---
 
-## TRUST 5 품질 프레임워크
+## TRUST 5 Quality Framework
 
-모든 코드 변경은 5가지 품질 기준으로 검증됩니다:
+Every code change is validated against five quality criteria:
 
-| 기준 | 설명 | 검증 항목 |
-|------|------|-----------|
-| **T**ested | 테스트됨 | 85%+ 커버리지, 특성 테스트, 유닛 테스트 통과 |
-| **R**eadable | 읽기 쉬움 | 명확한 명명 규칙, 일관된 코드 스타일, 린트 오류 0 |
-| **U**nified | 통일됨 | 일관된 포맷팅, 임포트 순서, 프로젝트 구조 준수 |
-| **S**ecured | 안전함 | OWASP 준수, 입력 검증, 보안 경고 0 |
-| **T**rackable | 추적 가능 | 컨벤셔널 커밋, 이슈 참조, 구조화된 로그 |
-
----
-
-## CLI 명령어
-
-| 명령어 | 설명 |
-|--------|------|
-| `moai init` | 대화형 프로젝트 설정 (언어/프레임워크/방법론 자동 감지) |
-| `moai doctor` | 시스템 상태 진단 및 환경 검증 |
-| `moai status` | Git 브랜치, 품질 메트릭 등 프로젝트 상태 요약 |
-| `moai update` | 최신 버전으로 업데이트 (자동 롤백 지원) |
-| `moai update --check` | 설치 없이 업데이트 확인 |
-| `moai update --project` | 프로젝트 템플릿만 동기화 |
-| `moai worktree new <name>` | 새 Git worktree 생성 (병렬 브랜치 개발) |
-| `moai worktree list` | 활성 worktree 목록 |
-| `moai worktree switch <name>` | worktree 전환 |
-| `moai worktree sync` | 업스트림과 동기화 |
-| `moai worktree remove <name>` | worktree 제거 |
-| `moai worktree clean` | 오래된 worktree 정리 |
-| `moai hook <event>` | Claude Code 훅 디스패처 |
-| `moai version` | 버전, 커밋 해시, 빌드 날짜 정보 |
+| Criterion | Meaning | Validation |
+|-----------|---------|------------|
+| **T**ested | Tested | 85%+ coverage, characterization tests, unit tests passing |
+| **R**eadable | Readable | Clear naming conventions, consistent code style, 0 lint errors |
+| **U**nified | Unified | Consistent formatting, import ordering, project structure adherence |
+| **S**ecured | Secured | OWASP compliance, input validation, 0 security warnings |
+| **T**rackable | Trackable | Conventional commits, issue references, structured logging |
 
 ---
 
-## 아키텍처
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `moai init` | Interactive project setup (auto-detects language/framework/methodology) |
+| `moai doctor` | System health diagnosis and environment verification |
+| `moai status` | Project status summary including Git branch, quality metrics, etc. |
+| `moai update` | Update to the latest version (with automatic rollback support) |
+| `moai update --check` | Check for updates without installing |
+| `moai update --project` | Sync project templates only |
+| `moai worktree new <name>` | Create a new Git worktree (parallel branch development) |
+| `moai worktree list` | List active worktrees |
+| `moai worktree switch <name>` | Switch to a worktree |
+| `moai worktree sync` | Sync with upstream |
+| `moai worktree remove <name>` | Remove a worktree |
+| `moai worktree clean` | Clean up stale worktrees |
+| `moai hook <event>` | Claude Code hook dispatcher |
+| `moai version` | Display version, commit hash, and build date |
+
+---
+
+## Architecture
 
 ```
 moai-adk/
-├── cmd/moai/             # 애플리케이션 진입점
-├── internal/             # 핵심 프라이빗 패키지
-│   ├── cli/              # Cobra CLI 명령어 정의
-│   ├── config/           # 스레드 안전 YAML 구성 관리
+├── cmd/moai/             # Application entry point
+├── internal/             # Core private packages
+│   ├── cli/              # Cobra CLI command definitions
+│   ├── config/           # Thread-safe YAML configuration management
 │   ├── core/
-│   │   ├── git/          # Git 작업 (브랜치, worktree, 충돌 감지)
-│   │   ├── project/      # 프로젝트 초기화, 언어/프레임워크 감지
-│   │   └── quality/      # TRUST 5 품질 게이트, 병렬 검증기
-│   ├── hook/             # 컴파일된 훅 시스템 (6개 이벤트, JSON 프로토콜)
-│   ├── lsp/              # LSP 클라이언트 (16개+ 언어, 병렬 서버 관리)
-│   ├── template/         # 템플릿 배포 (go:embed), 설정 생성
-│   ├── merge/            # 3-way 병합 엔진 (6가지 전략)
-│   ├── loop/             # Ralph 피드백 루프 (상태 머신, 수렴 감지)
-│   ├── manifest/         # 파일 출적 추적 (SHA-256 무결성)
-│   ├── ui/               # 대화형 TUI (선택기, 체크박스, 마법사)
-│   └── statusline/       # Claude Code 상태줄 통합
-├── pkg/                  # 퍼블릭 라이브러리 패키지
-│   ├── models/           # 공유 데이터 모델
-│   └── version/          # 빌드 버전 메타데이터
-└── Makefile              # 빌드 자동화
+│   │   ├── git/          # Git operations (branches, worktrees, conflict detection)
+│   │   ├── project/      # Project initialization, language/framework detection
+│   │   └── quality/      # TRUST 5 quality gates, parallel validators
+│   ├── hook/             # Compiled hook system (6 events, JSON protocol)
+│   ├── lsp/              # LSP client (16+ languages, parallel server management)
+│   ├── template/         # Template deployment (go:embed), settings generation
+│   ├── merge/            # 3-way merge engine (6 strategies)
+│   ├── loop/             # Ralph feedback loop (state machine, convergence detection)
+│   ├── manifest/         # File provenance tracking (SHA-256 integrity)
+│   ├── ui/               # Interactive TUI (selectors, checkboxes, wizards)
+│   └── statusline/       # Claude Code status line integration
+├── pkg/                  # Public library packages
+│   ├── models/           # Shared data models
+│   └── version/          # Build version metadata
+└── Makefile              # Build automation
 ```
 
-### 주요 패키지 커버리지
+### Key Package Coverage
 
-| 패키지 | 목적 | 커버리지 |
-|--------|------|----------|
-| `foundation` | EARS 패턴, TRUST 5, 18개 언어 정의 | 98.4% |
-| `core/quality` | 병렬 검증기, 페이즈 게이트 | 96.8% |
-| `ui` | 대화형 TUI 컴포넌트 | 96.8% |
-| `config` | 스레드 안전 YAML 구성 | 94.1% |
-| `loop` | Ralph 피드백 루프, 수렴 감지 | 92.7% |
-| `cli` | Cobra 명령어 | 92.0% |
-| `ralph` | 수렴 결정 엔진 | 100% |
-| `statusline` | Claude Code 상태줄 | 100% |
+| Package | Purpose | Coverage |
+|---------|---------|----------|
+| `foundation` | EARS patterns, TRUST 5, 18 language definitions | 98.4% |
+| `core/quality` | Parallel validators, phase gates | 96.8% |
+| `ui` | Interactive TUI components | 96.8% |
+| `config` | Thread-safe YAML configuration | 94.1% |
+| `loop` | Ralph feedback loop, convergence detection | 92.7% |
+| `cli` | Cobra commands | 92.0% |
+| `ralph` | Convergence decision engine | 100% |
+| `statusline` | Claude Code status line | 100% |
 
 ---
 
-## 스폰서
+## Sponsors
 
 ### z.ai GLM 4.7
 
-MoAI-ADK는 **z.ai GLM 4.7**과 파트너십을 통해 경제적인 AI 개발 환경을 제공합니다.
+MoAI-ADK partners with **z.ai GLM 4.7** to provide a cost-effective AI development environment.
 
-| 혜택 | 설명 |
-|------|------|
-| 70% 비용 절감 | Claude 대비 1/7 가격으로 동등한 성능 |
-| 완벽 호환 | Claude Code와 코드 수정 없이 사용 가능 |
-| 무제한 사용 | 일간/주간 토큰 리밋 없이 자유롭게 사용 |
+| Benefit | Description |
+|---------|-------------|
+| 70% cost savings | Equivalent performance at 1/7 the price of Claude |
+| Full compatibility | Works with Claude Code with no code changes |
+| Unlimited usage | No daily/weekly token limits |
 
-**[GLM 4.7 가입하기 (10% 추가 할인)](https://z.ai/subscribe?ic=1NDV03BGWU)** — 가입 리워드는 MoAI 오픈소스 개발에 사용됩니다.
+**[Sign up for GLM 4.7 (extra 10% discount)](https://z.ai/subscribe?ic=1NDV03BGWU)** -- Referral rewards are used to fund MoAI open-source development.
 
 ---
 
-## 기여
+## Contributing
 
-기여를 환영합니다! 자세한 가이드는 [CONTRIBUTING.ko.md](CONTRIBUTING.ko.md)를 참조하세요.
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
-### 빠른 시작
+### Quick Start
 
-1. 저장소를 포크하세요
-2. 기능 브랜치 생성: `git checkout -b feature/my-feature`
-3. 테스트 작성 (새 코드는 TDD, 기존 코드는 특성 테스트)
-4. 모든 테스트 통과 확인: `make test`
-5. 린팅 통과 확인: `make lint`
-6. 코드 포맷팅: `make fmt`
-7. 컨벤셔널 커밋 메시지로 커밋
-8. 풀 리퀘스트 오픈
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/my-feature`
+3. Write tests (TDD for new code, characterization tests for existing code)
+4. Ensure all tests pass: `make test`
+5. Ensure linting passes: `make lint`
+6. Format code: `make fmt`
+7. Commit with conventional commit messages
+8. Open a pull request
 
-**코드 품질 요구사항**: 85%+ 커버리지 · 0 린트 오류 · 0 타입 오류 · 컨벤셔널 커밋
+**Code quality requirements**: 85%+ coverage · 0 lint errors · 0 type errors · Conventional commits
 
-### 커뮤니티
+### Community
 
-- [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) — 질문, 아이디어, 피드백
-- [Issues](https://github.com/modu-ai/moai-adk/issues) — 버그 리포트, 기능 요청
+- [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) -- Questions, ideas, feedback
+- [Issues](https://github.com/modu-ai/moai-adk/issues) -- Bug reports, feature requests
 
 ---
 
@@ -433,12 +433,12 @@ MoAI-ADK는 **z.ai GLM 4.7**과 파트너십을 통해 경제적인 AI 개발 �
 
 ---
 
-## 라이선스
+## License
 
-[Copyleft 3.0](./LICENSE) — 자세한 내용은 LICENSE 파일을 참조하세요.
+[Copyleft 3.0](./LICENSE) -- See the LICENSE file for details.
 
-## 관련 링크
+## Links
 
-- [공식 문서](https://adk.mo.ai.kr)
+- [Official Documentation](https://adk.mo.ai.kr)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
-- [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) — 질문, 아이디어, 커뮤니티
+- [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) -- Questions, ideas, community
