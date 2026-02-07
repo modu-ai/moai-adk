@@ -372,7 +372,7 @@ func TestSettingsEnvDefault(t *testing.T) {
 	gen := NewSettingsGenerator()
 
 	t.Run("env_managed_globally", func(t *testing.T) {
-		// Env is omitted from project-level settings, managed globally in ~/.claude/settings.json
+		// Env is included in project-level settings with PATH, ENABLE_TOOL_SEARCH, and AGENT_TEAMS
 		data, err := gen.Generate(defaultTestConfig(), "darwin")
 		if err != nil {
 			t.Fatalf("Generate error: %v", err)
@@ -384,14 +384,20 @@ func TestSettingsEnvDefault(t *testing.T) {
 			t.Fatalf("Unmarshal error: %v", err)
 		}
 
-		// Env should be nil (not populated) since it's managed globally
-		if settings.Env != nil {
-			t.Errorf("env should be nil (managed globally), got %v", settings.Env)
+		// Env should be populated with required environment variables
+		if settings.Env == nil {
+			t.Fatal("env should not be nil")
 		}
 
-		// Verify the JSON doesn't contain "env" key
-		if strings.Contains(trimmed, `"env"`) {
-			t.Error("generated JSON should not contain 'env' key")
+		// Verify required keys exist
+		if _, ok := settings.Env["PATH"]; !ok {
+			t.Error("env should contain PATH key")
+		}
+		if settings.Env["ENABLE_TOOL_SEARCH"] != "1" {
+			t.Errorf("ENABLE_TOOL_SEARCH = %q, want %q", settings.Env["ENABLE_TOOL_SEARCH"], "1")
+		}
+		if settings.Env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] != "1" {
+			t.Errorf("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = %q, want %q", settings.Env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"], "1")
 		}
 	})
 

@@ -8,7 +8,19 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/template"
 )
+
+// buildSmartPATH is a test helper that builds a Smart PATH for a given home directory.
+// It temporarily overrides HOME env to use the specified homeDir,
+// then delegates to template.BuildSmartPATH().
+func buildSmartPATH(homeDir string) string {
+	origHome := os.Getenv("HOME")
+	_ = os.Setenv("HOME", homeDir)
+	defer func() { _ = os.Setenv("HOME", origHome) }()
+	return template.BuildSmartPATH()
+}
 
 func TestUpdateCmd_Exists(t *testing.T) {
 	if updateCmd == nil {
@@ -1176,8 +1188,8 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		t.Fatalf("failed to create .claude dir: %v", err)
 	}
 
-	// Test 1: No existing settings.json - should create new file with Smart PATH
-	t.Run("CreateNewSettings", func(t *testing.T) {
+	// Test 1: No existing settings.json -> creates with only SessionEnd hook, NO env/permissions/teammateMode
+	t.Run("CreateNewSettings_OnlySessionEndHook", func(t *testing.T) {
 		settingsPath := filepath.Join(claudeDir, "settings.json")
 
 		// Ensure file doesn't exist
@@ -1199,59 +1211,22 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 			t.Fatalf("failed to parse settings.json: %v", err)
 		}
 
-		// Check env exists
-		env, ok := settings["env"].(map[string]interface{})
-		if !ok {
-			t.Fatal("env not found in settings")
+		// env should NOT be set (moai no longer manages env in global settings)
+		if _, exists := settings["env"]; exists {
+			t.Error("env should not be set in global settings (managed at project level)")
 		}
 
-		// Check required env variables
-		requiredKeys := []string{"ENABLE_TOOL_SEARCH", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"}
-		for _, key := range requiredKeys {
-			if _, exists := env[key]; !exists {
-				t.Errorf("required env key %q not found", key)
-			}
+		// permissions should NOT be set (managed at project level)
+		if _, exists := settings["permissions"]; exists {
+			t.Error("permissions should not be set in global settings")
 		}
 
-		// PATH should be set (Smart PATH captures terminal PATH with essential dirs)
-		pathVal, exists := env["PATH"]
-		if !exists {
-			t.Fatal("PATH should be set in env (Smart PATH)")
-		}
-		pathStr, ok := pathVal.(string)
-		if !ok {
-			t.Fatalf("PATH should be a string, got %T", pathVal)
+		// teammateMode should NOT be set (managed at project level)
+		if _, exists := settings["teammateMode"]; exists {
+			t.Error("teammateMode should not be set in global settings")
 		}
 
-		// PATH should contain essential directories
-		localBin := filepath.Join(tempDir, ".local", "bin")
-		goBin := filepath.Join(tempDir, "go", "bin")
-		if !strings.Contains(pathStr, localBin) {
-			t.Errorf("PATH should contain %q, got %q", localBin, pathStr)
-		}
-		if !strings.Contains(pathStr, goBin) {
-			t.Errorf("PATH should contain %q, got %q", goBin, pathStr)
-		}
-
-		// Check permissions.allow exists (must be an array per Claude Code IAM docs)
-		permissions, ok := settings["permissions"].(map[string]interface{})
-		if !ok {
-			t.Fatal("permissions not found in settings")
-		}
-		allowArray, ok := permissions["allow"].([]interface{})
-		if !ok {
-			t.Fatal("permissions.allow is not an array")
-		}
-		if len(allowArray) != 1 || allowArray[0] != "Task:*" {
-			t.Errorf("permissions.allow not set correctly: got %v", allowArray)
-		}
-
-		// Check teammateMode exists
-		if settings["teammateMode"] != "auto" {
-			t.Errorf("teammateMode not set correctly: got %v", settings["teammateMode"])
-		}
-
-		// Check hooks.SessionEnd exists
+		// Check hooks.SessionEnd exists (the only managed global setting)
 		hooks, ok := settings["hooks"].(map[string]interface{})
 		if !ok {
 			t.Fatal("hooks not found in settings")
@@ -1261,15 +1236,17 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		}
 	})
 
-	// Test 2: Existing settings.json with partial env - should merge and set Smart PATH
-	t.Run("MergeExistingSettings", func(t *testing.T) {
+	// Test 2: Has moai env keys + custom -> removes moai keys, preserves custom + adds SessionEnd hook
+	t.Run("CleanupMoaiManagedKeys", func(t *testing.T) {
 		settingsPath := filepath.Join(claudeDir, "settings.json")
 
-		// Create existing settings with some env including an old PATH
+		// Create existing settings with moai-managed env keys and a custom env key
 		existing := map[string]interface{}{
 			"env": map[string]interface{}{
-				"CUSTOM_VAR": "custom_value",
-				"PATH":       "/old/path",
+				"CUSTOM_VAR":         "custom_value",
+				"PATH":              "/old/go/bin:/usr/local/bin",
+				"ENABLE_TOOL_SEARCH": "1",
+				"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
 			},
 			"language": "en",
 		}
@@ -1294,56 +1271,51 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 			t.Fatalf("failed to parse settings.json: %v", err)
 		}
 
-		env := settings["env"].(map[string]interface{})
+		// env should still exist because CUSTOM_VAR is preserved
+		env, hasEnv := settings["env"]
+		if !hasEnv {
+			t.Fatal("env should still exist (CUSTOM_VAR is present)")
+		}
+		envMap := env.(map[string]interface{})
 
 		// Custom var should be preserved
-		if env["CUSTOM_VAR"] != "custom_value" {
-			t.Errorf("CUSTOM_VAR not preserved: got %v", env["CUSTOM_VAR"])
+		if envMap["CUSTOM_VAR"] != "custom_value" {
+			t.Errorf("CUSTOM_VAR not preserved: got %v", envMap["CUSTOM_VAR"])
 		}
 
-		// Required keys should be added
-		if env["ENABLE_TOOL_SEARCH"] != "1" {
-			t.Errorf("ENABLE_TOOL_SEARCH not added: got %v", env["ENABLE_TOOL_SEARCH"])
+		// Moai-managed keys should be REMOVED
+		if _, exists := envMap["PATH"]; exists {
+			t.Error("PATH should be removed from global settings (managed at project level)")
+		}
+		if _, exists := envMap["ENABLE_TOOL_SEARCH"]; exists {
+			t.Error("ENABLE_TOOL_SEARCH should be removed from global settings")
+		}
+		if _, exists := envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"]; exists {
+			t.Error("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be removed from global settings")
 		}
 
-		// PATH should be set to Smart PATH (not removed)
-		pathVal, exists := env["PATH"]
-		if !exists {
-			t.Fatal("PATH should be set in env (Smart PATH)")
-		}
-		pathStr, ok := pathVal.(string)
+		// SessionEnd hook should be added
+		hooks, ok := settings["hooks"].(map[string]interface{})
 		if !ok {
-			t.Fatalf("PATH should be a string, got %T", pathVal)
+			t.Fatal("hooks not found in settings")
+		}
+		if _, exists := hooks["SessionEnd"]; !exists {
+			t.Error("SessionEnd hook not found")
 		}
 
-		// Smart PATH should contain essential directories
-		localBin := filepath.Join(tempDir, ".local", "bin")
-		goBin := filepath.Join(tempDir, "go", "bin")
-		if !strings.Contains(pathStr, localBin) {
-			t.Errorf("PATH should contain %q, got %q", localBin, pathStr)
-		}
-		if !strings.Contains(pathStr, goBin) {
-			t.Errorf("PATH should contain %q, got %q", goBin, pathStr)
+		// language should be preserved (non-moai-managed top-level key)
+		if settings["language"] != "en" {
+			t.Errorf("language not preserved: got %v", settings["language"])
 		}
 	})
 
-	// Test 3: All required env (including PATH) and SessionEnd hook already set - should not modify
-	t.Run("AlreadyConfigured", func(t *testing.T) {
+	// Test 3: Only SessionEnd hook, no moai keys -> no modification
+	t.Run("AlreadyClean_NoModification", func(t *testing.T) {
 		settingsPath := filepath.Join(claudeDir, "settings.json")
 
-		// Create settings with all required env including Smart PATH and SessionEnd hook
+		// Create settings with only the SessionEnd hook (no moai-managed env/permissions/teammateMode)
 		sessionEndHookCommand := buildSessionEndHookCommand()
-		smartPATH := buildSmartPATH(tempDir)
 		existing := map[string]interface{}{
-			"env": map[string]interface{}{
-				"PATH":                                 smartPATH,
-				"ENABLE_TOOL_SEARCH":                   "1",
-				"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
-			},
-			"permissions": map[string]interface{}{
-				"allow": []interface{}{"Task:*"},
-			},
-			"teammateMode": "auto",
 			"hooks": map[string]interface{}{
 				"SessionEnd": []interface{}{
 					map[string]interface{}{
@@ -1374,14 +1346,119 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		// Read back content
 		newContent, _ := os.ReadFile(settingsPath)
 
-		// Content should be identical
+		// Content should be identical (no modification needed)
 		if string(originalContent) != string(newContent) {
 			t.Errorf("file was modified when it should not have been\nOriginal: %s\nNew: %s", string(originalContent), string(newContent))
 		}
 	})
+
+	// Test 4: env has only moai keys -> entire env key removed after cleanup
+	t.Run("EmptyEnvRemovedEntirely", func(t *testing.T) {
+		settingsPath := filepath.Join(claudeDir, "settings.json")
+
+		// Create settings with env containing only moai-managed keys
+		existing := map[string]interface{}{
+			"env": map[string]interface{}{
+				"PATH":               "/old/go/bin:/usr/bin",
+				"ENABLE_TOOL_SEARCH": "1",
+				"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+			},
+		}
+		data, _ := json.MarshalIndent(existing, "", "  ")
+		if err := os.WriteFile(settingsPath, data, 0644); err != nil {
+			t.Fatalf("failed to write existing settings: %v", err)
+		}
+
+		err := ensureGlobalSettingsEnv()
+		if err != nil {
+			t.Fatalf("ensureGlobalSettingsEnv failed: %v", err)
+		}
+
+		// Read back and verify
+		data, err = os.ReadFile(settingsPath)
+		if err != nil {
+			t.Fatalf("failed to read settings.json: %v", err)
+		}
+
+		var settings map[string]interface{}
+		if err := json.Unmarshal(data, &settings); err != nil {
+			t.Fatalf("failed to parse settings.json: %v", err)
+		}
+
+		// env key should be completely removed (was empty after cleanup)
+		if _, exists := settings["env"]; exists {
+			t.Error("env should be removed entirely when all keys are moai-managed")
+		}
+
+		// SessionEnd hook should still be present
+		hooks, ok := settings["hooks"].(map[string]interface{})
+		if !ok {
+			t.Fatal("hooks not found in settings")
+		}
+		if _, exists := hooks["SessionEnd"]; !exists {
+			t.Error("SessionEnd hook not found")
+		}
+	})
+
+	// Test 5: Permissions with user-added entries (not just Task:*) -> preserved
+	t.Run("PreserveUserPermissions", func(t *testing.T) {
+		settingsPath := filepath.Join(claudeDir, "settings.json")
+
+		// Create settings with permissions that include user-added entries beyond Task:*
+		sessionEndHookCommand := buildSessionEndHookCommand()
+		existing := map[string]interface{}{
+			"permissions": map[string]interface{}{
+				"allow": []interface{}{"Task:*", "Bash(npm run build):*"},
+			},
+			"hooks": map[string]interface{}{
+				"SessionEnd": []interface{}{
+					map[string]interface{}{
+						"hooks": []interface{}{
+							map[string]interface{}{
+								"type":    "command",
+								"command": sessionEndHookCommand,
+								"timeout": 5,
+							},
+						},
+					},
+				},
+			},
+		}
+		data, _ := json.MarshalIndent(existing, "", "  ")
+		if err := os.WriteFile(settingsPath, data, 0644); err != nil {
+			t.Fatalf("failed to write existing settings: %v", err)
+		}
+
+		err := ensureGlobalSettingsEnv()
+		if err != nil {
+			t.Fatalf("ensureGlobalSettingsEnv failed: %v", err)
+		}
+
+		// Read back and verify
+		data, err = os.ReadFile(settingsPath)
+		if err != nil {
+			t.Fatalf("failed to read settings.json: %v", err)
+		}
+
+		var settings map[string]interface{}
+		if err := json.Unmarshal(data, &settings); err != nil {
+			t.Fatalf("failed to parse settings.json: %v", err)
+		}
+
+		// Permissions should be PRESERVED because it has more than just Task:*
+		permVal, exists := settings["permissions"]
+		if !exists {
+			t.Fatal("permissions should be preserved when it contains user-added entries")
+		}
+		permMap := permVal.(map[string]interface{})
+		allowArr := permMap["allow"].([]interface{})
+		if len(allowArr) != 2 {
+			t.Errorf("permissions.allow should have 2 entries, got %d", len(allowArr))
+		}
+	})
 }
 
-func TestEnsureGlobalSettingsEnv_UpdatesExistingPATH(t *testing.T) {
+func TestEnsureGlobalSettingsEnv_CleanupMigratedSettings(t *testing.T) {
 	// Create a temp directory for testing
 	tempDir := t.TempDir()
 
@@ -1400,7 +1477,9 @@ func TestEnsureGlobalSettingsEnv_UpdatesExistingPATH(t *testing.T) {
 
 	settingsPath := filepath.Join(claudeDir, "settings.json")
 
-	// Create existing settings WITH an old/stale PATH (simulating pre-Smart-PATH state)
+	// Create existing settings with ALL moai-managed settings that should be cleaned up:
+	// env keys (PATH, ENABLE_TOOL_SEARCH, CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS),
+	// permissions with only Task:*, teammateMode "auto", plus a custom env key
 	existing := map[string]interface{}{
 		"env": map[string]interface{}{
 			"PATH":               "/old/go/bin:/usr/local/bin:/usr/bin:/bin",
@@ -1447,45 +1526,46 @@ func TestEnsureGlobalSettingsEnv_UpdatesExistingPATH(t *testing.T) {
 		t.Fatalf("failed to parse settings.json: %v", err)
 	}
 
-	env := settings["env"].(map[string]interface{})
+	// Moai-managed env keys should be REMOVED from global settings
+	env, hasEnv := settings["env"]
+	if !hasEnv {
+		t.Fatal("env should still exist (CUSTOM_VAR is present)")
+	}
+	envMap := env.(map[string]interface{})
 
-	// PATH should be updated to the new Smart PATH (not the old value)
-	pathVal, exists := env["PATH"]
-	if !exists {
-		t.Fatal("PATH should exist in env (Smart PATH)")
+	if _, exists := envMap["PATH"]; exists {
+		t.Error("PATH should be removed from global settings (managed at project level)")
 	}
-	pathStr, ok := pathVal.(string)
-	if !ok {
-		t.Fatalf("PATH should be a string, got %T", pathVal)
+	if _, exists := envMap["ENABLE_TOOL_SEARCH"]; exists {
+		t.Error("ENABLE_TOOL_SEARCH should be removed from global settings")
 	}
-
-	// Old PATH should be replaced; Smart PATH should contain essential dirs
-	expectedSmartPATH := buildSmartPATH(tempDir)
-	if pathStr != expectedSmartPATH {
-		t.Errorf("PATH should be updated to Smart PATH\ngot:  %q\nwant: %q", pathStr, expectedSmartPATH)
-	}
-
-	// Essential dirs should be present
-	localBin := filepath.Join(tempDir, ".local", "bin")
-	goBin := filepath.Join(tempDir, "go", "bin")
-	if !strings.Contains(pathStr, localBin) {
-		t.Errorf("PATH should contain %q, got %q", localBin, pathStr)
-	}
-	if !strings.Contains(pathStr, goBin) {
-		t.Errorf("PATH should contain %q, got %q", goBin, pathStr)
+	if _, exists := envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"]; exists {
+		t.Error("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be removed from global settings")
 	}
 
-	// Custom var should be preserved
-	if env["CUSTOM_VAR"] != "preserved" {
-		t.Errorf("CUSTOM_VAR not preserved: got %v", env["CUSTOM_VAR"])
+	// Custom env keys should be PRESERVED
+	if envMap["CUSTOM_VAR"] != "preserved" {
+		t.Errorf("CUSTOM_VAR not preserved: got %v", envMap["CUSTOM_VAR"])
 	}
 
-	// Required keys should still be present
-	if env["ENABLE_TOOL_SEARCH"] != "1" {
-		t.Errorf("ENABLE_TOOL_SEARCH not present: got %v", env["ENABLE_TOOL_SEARCH"])
+	// permissions with only Task:* should be REMOVED
+	if _, exists := settings["permissions"]; exists {
+		t.Error("permissions with only Task:* should be removed from global settings")
 	}
-	if env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] != "1" {
-		t.Errorf("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS not present: got %v", env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"])
+
+	// teammateMode "auto" should be REMOVED
+	if _, exists := settings["teammateMode"]; exists {
+		t.Error("teammateMode 'auto' should be removed from global settings")
+	}
+
+	// SessionEnd hook should still be present
+	hooks, hasHooks := settings["hooks"]
+	if !hasHooks {
+		t.Fatal("hooks should still be present")
+	}
+	hooksMap := hooks.(map[string]interface{})
+	if _, hasSessionEnd := hooksMap["SessionEnd"]; !hasSessionEnd {
+		t.Error("SessionEnd hook should still be present")
 	}
 }
 
@@ -1655,9 +1735,9 @@ func TestPathContainsDir(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := pathContainsDir(tt.pathStr, tt.dir, tt.sep)
+			got := template.PathContainsDir(tt.pathStr, tt.dir, tt.sep)
 			if got != tt.want {
-				t.Errorf("pathContainsDir(%q, %q, %q) = %v, want %v",
+				t.Errorf("template.PathContainsDir(%q, %q, %q) = %v, want %v",
 					tt.pathStr, tt.dir, tt.sep, got, tt.want)
 			}
 		})

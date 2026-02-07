@@ -3,6 +3,9 @@ package template
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
@@ -10,6 +13,7 @@ import (
 
 // Settings represents the Claude Code settings.json structure.
 // Generated exclusively via json.MarshalIndent (ADR-011).
+// All settings are project-level to avoid modifying global ~/.claude/settings.json.
 type Settings struct {
 	Hooks             map[string][]HookGroup `json:"hooks,omitempty"`
 	StatusLine        *StatusLine            `json:"statusLine,omitempty"`
@@ -17,6 +21,7 @@ type Settings struct {
 	CleanupPeriodDays int                    `json:"cleanupPeriodDays,omitempty"`
 	Env               map[string]string      `json:"env,omitempty"`
 	Permissions       *Permissions           `json:"permissions,omitempty"`
+	TeammateMode      string                 `json:"teammateMode,omitempty"`
 }
 
 // StatusLine represents the status line configuration.
@@ -81,15 +86,17 @@ var hookEventDefs = []hookEventDef{
 }
 
 // Generate builds Settings from config and serializes to JSON.
-// For project-level settings, env is managed globally (not in template).
+// All settings are project-level for self-contained project configuration.
+// This avoids modifying global ~/.claude/settings.json which belongs to the user.
 func (g *settingsGenerator) Generate(cfg *config.Config, platform string) ([]byte, error) {
 	settings := Settings{
 		Hooks:             buildHooks(platform),
 		StatusLine:        buildStatusLine(),
 		OutputStyle:       resolveOutputStyle(cfg),
 		CleanupPeriodDays: 30,
-		// Env: omitted - managed globally in ~/.claude/settings.json
-		Permissions: buildPermissions(),
+		Env:               BuildEnv(),
+		Permissions:       buildPermissions(),
+		TeammateMode:      "auto",
 	}
 
 	data, err := json.MarshalIndent(settings, "", "  ")
@@ -182,6 +189,62 @@ func buildStatusLine() *StatusLine {
 		Type:    "command",
 		Command: defs.StatusLinePath,
 	}
+}
+
+// BuildEnv constructs the environment variables for Claude Code.
+// PATH is captured from the current terminal at runtime to ensure Claude Code
+// subprocesses (hooks, statusline, IDE commands) have access to all user tools.
+// Essential directories ($HOME/.local/bin, $HOME/go/bin) are prepended if missing.
+func BuildEnv() map[string]string {
+	return map[string]string{
+		"PATH":                                 BuildSmartPATH(),
+		"ENABLE_TOOL_SEARCH":                   "1",
+		"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+	}
+}
+
+// BuildSmartPATH captures the current terminal PATH and ensures essential directories are included.
+// Unlike hardcoded approaches, this preserves all user-installed tool paths (nvm, pyenv, cargo, etc.)
+// while ensuring moai-essential directories are present.
+func BuildSmartPATH() string {
+	homeDir, _ := os.UserHomeDir()
+	if homeDir == "" {
+		homeDir = os.Getenv("HOME")
+	}
+
+	currentPATH := os.Getenv("PATH")
+	sep := string(os.PathListSeparator)
+
+	// Essential directories that must be in PATH for moai to function
+	essentialDirs := []string{
+		filepath.Join(homeDir, ".local", "bin"),
+		filepath.Join(homeDir, "go", "bin"),
+	}
+
+	// Prepend essential dirs if not already present
+	for i := len(essentialDirs) - 1; i >= 0; i-- {
+		dir := essentialDirs[i]
+		if !PathContainsDir(currentPATH, dir, sep) {
+			currentPATH = dir + sep + currentPATH
+		}
+	}
+
+	return currentPATH
+}
+
+// PathContainsDir checks if a PATH string contains a specific directory entry.
+// Handles trailing slashes and exact segment matching to avoid false positives
+// (e.g., "/usr/local/bin" should not match "/usr/local/bin2").
+func PathContainsDir(pathStr, dir, sep string) bool {
+	dir = strings.TrimRight(dir, "/\\")
+
+	for _, entry := range strings.Split(pathStr, sep) {
+		entry = strings.TrimRight(entry, "/\\")
+		if entry == dir {
+			return true
+		}
+	}
+	return false
 }
 
 // buildPermissions constructs the default permissions for Claude Code tools.

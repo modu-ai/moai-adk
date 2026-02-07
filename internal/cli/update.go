@@ -1056,8 +1056,8 @@ func mergeSettingsJSON(templatePath, existingPath string) error {
 		return fmt.Errorf("read template settings.json: %w", err)
 	}
 
-	var template map[string]interface{}
-	if err := json.Unmarshal(templateData, &template); err != nil {
+	var tmplSettings map[string]interface{}
+	if err := json.Unmarshal(templateData, &tmplSettings); err != nil {
 		return fmt.Errorf("parse template settings.json: %w", err)
 	}
 
@@ -1072,7 +1072,7 @@ func mergeSettingsJSON(templatePath, existingPath string) error {
 	}
 
 	// Merge env (template priority for known keys, preserve user-added custom keys)
-	templateEnv := getMap(template, "env")
+	templateEnv := getMap(tmplSettings, "env")
 	userEnv := getMap(userData, "env")
 	mergedEnv := make(map[string]interface{})
 
@@ -1080,6 +1080,9 @@ func mergeSettingsJSON(templatePath, existingPath string) error {
 	for k, v := range templateEnv {
 		mergedEnv[k] = v
 	}
+
+	// Always refresh PATH from current terminal (not stale from template or previous init)
+	mergedEnv["PATH"] = template.BuildSmartPATH()
 
 	// Add user custom env keys not in template
 	for k, v := range userEnv {
@@ -1090,7 +1093,7 @@ func mergeSettingsJSON(templatePath, existingPath string) error {
 	}
 
 	// Merge permissions.allow (deduplicated array merge)
-	templatePerms := getMap(template, "permissions")
+	templatePerms := getMap(tmplSettings, "permissions")
 	userPerms := getMap(userData, "permissions")
 
 	templateAllow := getSlice(templatePerms, "allow")
@@ -1107,7 +1110,7 @@ func mergeSettingsJSON(templatePath, existingPath string) error {
 
 	// Start with full template (include all fields from template)
 	// Note: statusLine comes from template only (not user-preserved)
-	merged := deepCopyMap(template)
+	merged := deepCopyMap(tmplSettings)
 
 	// Override with merged values
 	merged["env"] = mergedEnv
@@ -1442,8 +1445,9 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 	return nil
 }
 
-// ensureGlobalSettingsEnv ensures required environment variables and SessionEnd hook are set in ~/.claude/settings.json.
-// This is called by moai init and moai update to maintain proper PATH, configuration, and hooks.
+// ensureGlobalSettingsEnv ensures only the SessionEnd hook for moai-rank is set in ~/.claude/settings.json.
+// All other settings (env, permissions, teammateMode) are managed at the project level in .claude/settings.json.
+// This minimizes modifications to the user's global settings file.
 func ensureGlobalSettingsEnv() error {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -1452,25 +1456,8 @@ func ensureGlobalSettingsEnv() error {
 
 	globalSettingsPath := filepath.Join(homeDir, defs.ClaudeDir, defs.SettingsJSON)
 
-	// Define required env variables
-	// PATH is captured from the current terminal to ensure Claude Code subprocesses
-	// (hooks, statusline, IDE commands) have access to all user-installed tools.
-	// This captures the FULL runtime PATH rather than hardcoding directories (fixes #325).
-	requiredEnv := map[string]string{
-		"PATH":                                 buildSmartPATH(homeDir),
-		"ENABLE_TOOL_SEARCH":                   "1",
-		"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
-	}
-
-	// Define SessionEnd hook for moai-rank submission
-	// Using shell script instead of Python for better performance and compatibility
+	// SessionEnd hook for moai-rank submission (the only global setting we manage)
 	sessionEndHookCommand := buildSessionEndHookCommand()
-
-	// Define required permissions
-	requiredPermissions := "Task:*"
-
-	// Define required teammate mode
-	requiredTeammateMode := "auto"
 
 	// Read existing global settings
 	var existingSettings map[string]interface{}
@@ -1481,94 +1468,55 @@ func ensureGlobalSettingsEnv() error {
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("read global settings: %w", err)
 	} else {
-		// File doesn't exist, create new structure
 		existingSettings = make(map[string]interface{})
 	}
 
-	// Get or create env map
-	existingEnv := make(map[string]interface{})
+	// Check if SessionEnd hook needs to be added/updated
+	needsUpdate := ensureSessionEndHook(existingSettings, sessionEndHookCommand)
+
+	// Clean up moai-managed settings that have been migrated to project level.
+	// Preserve any user-added custom env keys but remove moai-specific ones.
 	if envVal, exists := existingSettings["env"]; exists {
 		if envMap, ok := envVal.(map[string]interface{}); ok {
-			existingEnv = envMap
-		}
-	}
-
-	// Check if required env updates are needed
-	needsUpdate := false
-	for key, requiredValue := range requiredEnv {
-		if existingVal, exists := existingEnv[key]; !exists || existingVal != requiredValue {
-			needsUpdate = true
-			break
-		}
-	}
-
-	// Check if permissions.allow needs update (must be an array per Claude Code IAM docs)
-	if !needsUpdate {
-		if existingPermissions, exists := existingSettings["permissions"]; exists {
-			if permMap, ok := existingPermissions.(map[string]interface{}); ok {
-				if existingAllow, exists := permMap["allow"]; exists {
-					// Check if it's an array with our value
-					if allowArray, ok := existingAllow.([]interface{}); ok {
-						// Check if Task:* is in the array
-						found := false
-						for _, item := range allowArray {
-							if item == requiredPermissions {
-								found = true
-								break
-							}
-						}
-						if !found {
-							needsUpdate = true
-						}
-					} else {
-						needsUpdate = true // Not an array or wrong format
-					}
-				} else {
-					needsUpdate = true // allow field missing
+			moaiKeys := []string{"PATH", "ENABLE_TOOL_SEARCH", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"}
+			for _, key := range moaiKeys {
+				if _, exists := envMap[key]; exists {
+					delete(envMap, key)
+					needsUpdate = true
 				}
-			} else {
-				needsUpdate = true // permissions is not a map
 			}
-		} else {
-			needsUpdate = true // permissions missing
+			// If env is now empty, remove it entirely
+			if len(envMap) == 0 {
+				delete(existingSettings, "env")
+			}
 		}
 	}
 
-	// Check if teammateMode needs update
-	if !needsUpdate {
-		if existingMode, exists := existingSettings["teammateMode"]; !exists || existingMode != requiredTeammateMode {
+	// Clean up moai-managed permissions if they only contain Task:*
+	if permVal, exists := existingSettings["permissions"]; exists {
+		if permMap, ok := permVal.(map[string]interface{}); ok {
+			if allowVal, exists := permMap["allow"]; exists {
+				if allowArr, ok := allowVal.([]interface{}); ok {
+					if len(allowArr) == 1 && allowArr[0] == "Task:*" {
+						delete(existingSettings, "permissions")
+						needsUpdate = true
+					}
+				}
+			}
+		}
+	}
+
+	// Clean up moai-managed teammateMode
+	if mode, exists := existingSettings["teammateMode"]; exists {
+		if mode == "auto" {
+			delete(existingSettings, "teammateMode")
 			needsUpdate = true
 		}
 	}
 
-	// Check if SessionEnd hook needs to be added/updated
 	if !needsUpdate {
-		needsUpdate = ensureSessionEndHook(existingSettings, sessionEndHookCommand)
+		return nil
 	}
-
-	if !needsUpdate {
-		return nil // Already up to date
-	}
-
-	// Merge required env (preserve user custom keys)
-	mergedEnv := make(map[string]interface{})
-	for k, v := range existingEnv {
-		mergedEnv[k] = v
-	}
-	for key, value := range requiredEnv {
-		mergedEnv[key] = value
-	}
-
-	// Update settings
-	existingSettings["env"] = mergedEnv
-
-	// Add permissions.allow (must be an array per Claude Code IAM docs)
-	existingSettings["permissions"] = map[string]interface{}{
-		"allow": []interface{}{requiredPermissions},
-	}
-
-	// Add teammateMode
-	existingSettings["teammateMode"] = requiredTeammateMode
 
 	// Add SessionEnd hook
 	addSessionEndHook(existingSettings, sessionEndHookCommand)
@@ -1584,48 +1532,6 @@ func ensureGlobalSettingsEnv() error {
 	}
 
 	return nil
-}
-
-// buildSmartPATH captures the current terminal PATH and ensures essential directories are included.
-// Unlike the previous hardcoded approach, this preserves all user-installed tool paths (nvm, pyenv,
-// cargo, pnpm, etc.) while ensuring moai-essential directories are present.
-// Claude Code uses env.PATH from settings.json for subprocess execution (hooks, statusline, IDE).
-// Without env.PATH, these subprocesses may not find tools like moai, go, or node.
-func buildSmartPATH(homeDir string) string {
-	currentPATH := os.Getenv("PATH")
-	sep := string(os.PathListSeparator)
-
-	// Essential directories that must be in PATH for moai to function
-	essentialDirs := []string{
-		filepath.Join(homeDir, ".local", "bin"),
-		filepath.Join(homeDir, "go", "bin"),
-	}
-
-	// Prepend essential dirs if not already present
-	for i := len(essentialDirs) - 1; i >= 0; i-- {
-		dir := essentialDirs[i]
-		if !pathContainsDir(currentPATH, dir, sep) {
-			currentPATH = dir + sep + currentPATH
-		}
-	}
-
-	return currentPATH
-}
-
-// pathContainsDir checks if a PATH string contains a specific directory entry.
-// Handles trailing slashes and exact segment matching to avoid false positives
-// (e.g., "/usr/local/bin" should not match "/usr/local/bin2").
-func pathContainsDir(pathStr, dir, sep string) bool {
-	// Normalize: remove trailing separators from the target directory
-	dir = strings.TrimRight(dir, "/\\")
-
-	for _, entry := range strings.Split(pathStr, sep) {
-		entry = strings.TrimRight(entry, "/\\")
-		if entry == dir {
-			return true
-		}
-	}
-	return false
 }
 
 // buildSessionEndHookCommand builds the SessionEnd hook command for moai-rank submission.

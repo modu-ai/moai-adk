@@ -1,47 +1,53 @@
 {
+  "cleanupPeriodDays": 30,
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "ENABLE_TOOL_SEARCH": "1",
+    "PATH": "/Users/goos/go/bin:/Users/goos/.local/bin:/Users/goos/.bun/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/opt/pmk/env/global/bin:/Library/Apple/usr/bin:/opt/homebrew/bin:/opt/homebrew/opt/python@3.13/bin:/Users/goos/.cargo/bin:/Users/goos/.pyenv/shims:/Users/goos/.cargo/bin:/Users/goos/.nvm/versions/node/v20.19.4/bin:/Users/goos/.nvm/versions/node/v22.14.0/bin:/Users/goos/.pyenv/shims:/Users/goos/bin:/opt/homebrew/bin:/usr/local/bin"
+  },
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "Write|Edit",
         "hooks": [
           {
-            "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\"",
-            "timeout": 60
+            "timeout": 60,
+            "type": "command"
           }
-        ]
+        ],
+        "matcher": "Write|Edit"
       }
     ],
     "PreCompact": [
       {
         "hooks": [
           {
-            "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-compact.sh\"",
-            "timeout": 5
+            "timeout": 5,
+            "type": "command"
           }
         ]
       }
     ],
     "PreToolUse": [
       {
-        "matcher": "Write|Edit|Bash",
         "hooks": [
           {
-            "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
-            "timeout": 5
+            "timeout": 5,
+            "type": "command"
           }
-        ]
+        ],
+        "matcher": "Write|Edit|Bash"
       }
     ],
     "SessionEnd": [
       {
         "hooks": [
           {
-            "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-end.sh\"",
-            "timeout": 5
+            "timeout": 5,
+            "type": "command"
           }
         ]
       }
@@ -50,9 +56,9 @@
       {
         "hooks": [
           {
-            "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
-            "timeout": 5
+            "timeout": 5,
+            "type": "command"
           }
         ]
       }
@@ -61,24 +67,107 @@
       {
         "hooks": [
           {
-            "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop.sh\"",
-            "timeout": 5
+            "timeout": 5,
+            "type": "command"
           }
         ]
       }
     ]
   },
-  "statusLine": {
-    "type": "command",
-    "command": ".moai/status_line.sh"
-  },
   "outputStyle": "MoAI",
-  "cleanupPeriodDays": 30,
   "permissions": {
-    "defaultMode": "default",
     "allow": [
       "AskUserQuestion",
+      "Bash(ast-grep:*)",
+      "Bash(awk:*)",
+      "Bash(basename:*)",
+      "Bash(black:*)",
+      "Bash(bun*)",
+      "Bash(cat:*)",
+      "Bash(comm:*)",
+      "Bash(coverage:*)",
+      "Bash(cp:*)",
+      "Bash(curl:*)",
+      "Bash(cut:*)",
+      "Bash(diff:*)",
+      "Bash(dirname:*)",
+      "Bash(echo:*)",
+      "Bash(eslint:*)",
+      "Bash(false:*)",
+      "Bash(find:*)",
+      "Bash(flake8:*)",
+      "Bash(gh issue:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh repo view:*)",
+      "Bash(git add:*)",
+      "Bash(git blame:*)",
+      "Bash(git branch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git commit:*)",
+      "Bash(git config:*)",
+      "Bash(git diff:*)",
+      "Bash(git fetch:*)",
+      "Bash(git log:*)",
+      "Bash(git merge:*)",
+      "Bash(git pull:*)",
+      "Bash(git push:*)",
+      "Bash(git remote:*)",
+      "Bash(git revert:*)",
+      "Bash(git show:*)",
+      "Bash(git stash:*)",
+      "Bash(git status:*)",
+      "Bash(git switch:*)",
+      "Bash(git tag:*)",
+      "Bash(grep:*)",
+      "Bash(head:*)",
+      "Bash(jq:*)",
+      "Bash(less:*)",
+      "Bash(ls:*)",
+      "Bash(lsof:*)",
+      "Bash(make:*)",
+      "Bash(man:*)",
+      "Bash(mkdir:*)",
+      "Bash(moai-adk:*)",
+      "Bash(moai:*)",
+      "Bash(mv:*)",
+      "Bash(mypy:*)",
+      "Bash(node*)",
+      "Bash(npm*)",
+      "Bash(npx*)",
+      "Bash(pip*)",
+      "Bash(pip3:*)",
+      "Bash(pnpm*)",
+      "Bash(prettier:*)",
+      "Bash(printf:*)",
+      "Bash(pwd:*)",
+      "Bash(pydoc:*)",
+      "Bash(pylint:*)",
+      "Bash(pytest:*)",
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(readlink:*)",
+      "Bash(realpath:*)",
+      "Bash(rg:*)",
+      "Bash(rsync:*)",
+      "Bash(ruff:*)",
+      "Bash(sed:*)",
+      "Bash(sg:*)",
+      "Bash(sort:*)",
+      "Bash(tail:*)",
+      "Bash(test:*)",
+      "Bash(time:*)",
+      "Bash(touch:*)",
+      "Bash(tree:*)",
+      "Bash(true:*)",
+      "Bash(type:*)",
+      "Bash(uniq:*)",
+      "Bash(uv*)",
+      "Bash(wc:*)",
+      "Bash(which:*)",
+      "Bash(xargs:*)",
+      "Bash(yarn*)",
+      "Bash(yq:*)",
       "BashOutput",
       "Edit",
       "Glob",
@@ -99,105 +188,17 @@
       "Write",
       "mcp__context7__get-library-docs",
       "mcp__context7__resolve-library-id",
-      "mcp__sequential-thinking__*",
-      "Bash(git status:*)",
-      "Bash(git log:*)",
-      "Bash(git diff:*)",
-      "Bash(git show:*)",
-      "Bash(git blame:*)",
-      "Bash(git branch:*)",
-      "Bash(git remote:*)",
-      "Bash(git config:*)",
-      "Bash(git tag:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git push:*)",
-      "Bash(git pull:*)",
-      "Bash(git fetch:*)",
-      "Bash(git checkout:*)",
-      "Bash(git switch:*)",
-      "Bash(git stash:*)",
-      "Bash(git merge:*)",
-      "Bash(git revert:*)",
-      "Bash(gh issue:*)",
-      "Bash(gh pr:*)",
-      "Bash(gh repo view:*)",
-      "Bash(ls:*)",
-      "Bash(cat:*)",
-      "Bash(less:*)",
-      "Bash(head:*)",
-      "Bash(tail:*)",
-      "Bash(grep:*)",
-      "Bash(find:*)",
-      "Bash(tree:*)",
-      "Bash(pwd:*)",
-      "Bash(wc:*)",
-      "Bash(diff:*)",
-      "Bash(comm:*)",
-      "Bash(sort:*)",
-      "Bash(uniq:*)",
-      "Bash(cut:*)",
-      "Bash(awk:*)",
-      "Bash(sed:*)",
-      "Bash(basename:*)",
-      "Bash(dirname:*)",
-      "Bash(realpath:*)",
-      "Bash(readlink:*)",
-      "Bash(cp:*)",
-      "Bash(mv:*)",
-      "Bash(mkdir:*)",
-      "Bash(touch:*)",
-      "Bash(rsync:*)",
-      "Bash(curl:*)",
-      "Bash(jq:*)",
-      "Bash(yq:*)",
-      "Bash(python:*)",
-      "Bash(python3:*)",
-      "Bash(node*)",
-      "Bash(npm*)",
-      "Bash(npx*)",
-      "Bash(bun*)",
-      "Bash(pnpm*)",
-      "Bash(yarn*)",
-      "Bash(uv*)",
-      "Bash(pip*)",
-      "Bash(pip3:*)",
-      "Bash(black:*)",
-      "Bash(ruff:*)",
-      "Bash(pylint:*)",
-      "Bash(flake8:*)",
-      "Bash(mypy:*)",
-      "Bash(eslint:*)",
-      "Bash(prettier:*)",
-      "Bash(pytest:*)",
-      "Bash(coverage:*)",
-      "Bash(make:*)",
-      "Bash(ast-grep:*)",
-      "Bash(sg:*)",
-      "Bash(rg:*)",
-      "Bash(echo:*)",
-      "Bash(printf:*)",
-      "Bash(test:*)",
-      "Bash(true:*)",
-      "Bash(false:*)",
-      "Bash(which:*)",
-      "Bash(type:*)",
-      "Bash(man:*)",
-      "Bash(pydoc:*)",
-      "Bash(lsof:*)",
-      "Bash(time:*)",
-      "Bash(xargs:*)",
-      "Bash(moai-adk:*)",
-      "Bash(moai:*)"
+      "mcp__sequential-thinking__*"
     ],
     "ask": [
-      "Bash(rm:*)",
-      "Bash(sudo:*)",
       "Bash(chmod:*)",
       "Bash(chown:*)",
+      "Bash(rm:*)",
+      "Bash(sudo:*)",
       "Read(./.env)",
       "Read(./.env.*)"
     ],
+    "defaultMode": "default",
     "deny": [
       "Read(./secrets/**)",
       "Read(~/.ssh/**)",
@@ -260,5 +261,9 @@
       "Bash(psql -c DROP:*)",
       "Bash(mysql -e DROP:*)"
     ]
+  },
+  "statusLine": {
+    "command": ".moai/status_line.sh",
+    "type": "command"
   }
 }
