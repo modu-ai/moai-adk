@@ -108,7 +108,7 @@ func (r *Renderer) renderCompact(data *StatusData) []string {
 	if data.Version.Available && data.Version.Current != "" {
 		versionStr := fmt.Sprintf("🗿 v%s", data.Version.Current)
 		if data.Version.UpdateAvailable && data.Version.Latest != "" {
-			versionStr += fmt.Sprintf(" (v%s updated)", data.Version.Latest)
+			versionStr += fmt.Sprintf(" ⬆️ v%s", data.Version.Latest)
 		}
 		sections = append(sections, versionStr)
 	}
@@ -182,7 +182,7 @@ func (r *Renderer) renderContextGraph(data *StatusData) string {
 	// Build bar graph with 12 character width
 	bar := r.buildBar(pct, 12)
 
-	return fmt.Sprintf("%s %s %d%%", icon, bar, pct)
+	return fmt.Sprintf("%s  %s %d%%", icon, bar, pct)
 }
 
 // buildBar constructs a horizontal bar graph using Unicode block characters.

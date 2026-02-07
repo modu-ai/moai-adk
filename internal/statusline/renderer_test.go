@@ -332,8 +332,8 @@ func TestRender_VersionUpdateNotification(t *testing.T) {
 	if !strings.Contains(got, "🗿 v2.0.0") {
 		t.Errorf("should contain current version, got %q", got)
 	}
-	if !strings.Contains(got, "(v2.0.1 updated)") {
-		t.Errorf("should contain update notification, got %q", got)
+	if !strings.Contains(got, "⬆️ v2.0.1") {
+		t.Errorf("should contain update notification with emoji, got %q", got)
 	}
 }
 
@@ -354,7 +354,7 @@ func TestRender_VersionNoUpdate(t *testing.T) {
 	if !strings.Contains(got, "🗿 v2.0.0") {
 		t.Errorf("should contain current version, got %q", got)
 	}
-	if strings.Contains(got, "updated)") {
+	if strings.Contains(got, "⬆️") {
 		t.Errorf("should NOT contain update notification when no update, got %q", got)
 	}
 }

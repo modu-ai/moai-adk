@@ -40,6 +40,8 @@ func NewVersionCollector(binaryVersion string) *VersionCollector {
 // CheckUpdate reads the template version from the config file and compares
 // it against the running binary version. If the binary is newer than the
 // templates, UpdateAvailable is set to true with the binary version in Latest.
+// When the config file is missing or has no version, the binary version is
+// used as the display version so the statusline always shows something.
 func (v *VersionCollector) CheckUpdate(_ context.Context) (*VersionData, error) {
 	// Check cache first
 	v.mu.RLock()
@@ -53,6 +55,13 @@ func (v *VersionCollector) CheckUpdate(_ context.Context) (*VersionData, error) 
 	// Find and read config file
 	version, err := v.readVersionFromConfig()
 	if err != nil {
+		// Fallback: use binary version when config is unavailable
+		if v.binaryVersion != "" {
+			return &VersionData{
+				Current:   formatVersion(v.binaryVersion),
+				Available: true,
+			}, nil
+		}
 		return &VersionData{Available: false}, nil
 	}
 

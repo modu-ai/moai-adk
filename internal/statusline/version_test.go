@@ -80,15 +80,17 @@ func TestVersionCollector_CheckUpdate(t *testing.T) {
 			wantUpdate:    false,
 		},
 		{
-			name: "no config file",
+			name: "no config file falls back to binary version",
 			setupConfig: func(t *testing.T) string {
 				return t.TempDir()
 			},
 			binaryVersion: "v2.0.0",
-			wantAvailable: false,
+			wantVersion:   "2.0.0",
+			wantAvailable: true,
+			wantUpdate:    false,
 		},
 		{
-			name: "empty version",
+			name: "empty version falls back to binary version",
 			setupConfig: func(t *testing.T) string {
 				dir := t.TempDir()
 				configDir := filepath.Join(dir, ".moai", "config")
@@ -103,6 +105,16 @@ func TestVersionCollector_CheckUpdate(t *testing.T) {
 				return dir
 			},
 			binaryVersion: "v2.0.0",
+			wantVersion:   "2.0.0",
+			wantAvailable: true,
+			wantUpdate:    false,
+		},
+		{
+			name: "no config and no binary version",
+			setupConfig: func(t *testing.T) string {
+				return t.TempDir()
+			},
+			binaryVersion: "",
 			wantAvailable: false,
 		},
 		{
