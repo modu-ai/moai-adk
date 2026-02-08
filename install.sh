@@ -367,7 +367,7 @@ verify_installation() {
 main() {
     echo ""
     echo "╔══════════════════════════════════════════════════════════════╗"
-    echo "║          MoAI-ADK Go Edition Installer v2.0                   ║"
+    echo "║          MoAI's Agentic Development Kit Installer           ║"
     echo "╚══════════════════════════════════════════════════════════════╝"
     echo ""
 
