@@ -5,13 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk/internal/cli/tui"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/foundation"
@@ -56,7 +55,6 @@ func init() {
 	initCmd.Flags().String("doc-lang", "", "Documentation language (default: en)")
 	initCmd.Flags().Bool("non-interactive", false, "Skip interactive wizard; use flags and defaults")
 	initCmd.Flags().Bool("force", false, "Reinitialize an existing project (backs up current .moai/)")
-	initCmd.Flags().Bool("tui", false, "Launch TUI wizard (forces terminal UI mode)")
 }
 
 // getStringFlag retrieves a string flag value from the command.
@@ -148,6 +146,13 @@ func runInit(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Git availability check (non-fatal warning)
+	if _, err := exec.LookPath("git"); err != nil {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(),
+			"Warning: git is not installed. Some features (plan/run/sync workflows, branch management) will be limited.\n  %s\n",
+			GitInstallHint())
+	}
+
 	rootFlag := getStringFlag(cmd, "root")
 	projectName := getStringFlag(cmd, "name")
 
@@ -184,7 +189,6 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	nonInteractive := getBoolFlag(cmd, "non-interactive")
-	useTUI := getBoolFlag(cmd, "tui")
 
 	opts := project.InitOptions{
 		ProjectRoot:     rootFlag,
@@ -203,26 +207,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		Force:           getBoolFlag(cmd, "force"),
 	}
 
-	// Run TUI wizard if --tui flag is specified
-	if useTUI {
-		result, err := tui.RunWizardTUI()
-		if err != nil {
-			if errors.Is(err, tea.ErrInterrupted) {
-				_, _ = fmt.Fprintln(cmd.OutOrStderr(), "Initialization cancelled.")
-				return nil
-			}
-			return fmt.Errorf("TUI wizard failed: %w", err)
-		}
-		// Apply TUI results to opts
-		if result == nil {
-			return nil
-		}
-		if opts.ProjectName == "" {
-			opts.ProjectName = result.ProjectName
-		}
-		// Note: TUI PoC only collects project name currently
-		// Full implementation would collect all fields like the wizard below
-	} else if !nonInteractive && isatty.IsTerminal(os.Stdin.Fd()) {
+	if !nonInteractive && isatty.IsTerminal(os.Stdin.Fd()) {
 		// Print banner and welcome message
 		PrintBanner(version.GetVersion())
 		PrintWelcomeMessage()

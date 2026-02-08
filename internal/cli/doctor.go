@@ -142,6 +142,18 @@ func checkGoRuntime(verbose bool) DiagnosticCheck {
 	return check
 }
 
+// GitInstallHint returns OS-specific git installation instructions.
+func GitInstallHint() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "Install git: run 'xcode-select --install' or 'brew install git'"
+	case "windows":
+		return "Install git: run 'winget install Git.Git' or download from https://git-scm.com"
+	default: // linux and other unix
+		return "Install git: run 'sudo apt install git' (Debian/Ubuntu) or 'sudo yum install git' (RHEL/Fedora)"
+	}
+}
+
 // checkGit verifies Git is installed and accessible.
 func checkGit(verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Git"}
@@ -149,6 +161,7 @@ func checkGit(verbose bool) DiagnosticCheck {
 	if err != nil {
 		check.Status = CheckFail
 		check.Message = "git not found in PATH"
+		check.Detail = GitInstallHint()
 		return check
 	}
 

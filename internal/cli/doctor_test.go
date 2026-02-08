@@ -100,6 +100,40 @@ func TestDoctorCmd_HelpOutput(t *testing.T) {
 	}
 }
 
+// --- TDD: Tests for GitInstallHint ---
+
+func TestGitInstallHint(t *testing.T) {
+	hint := GitInstallHint()
+	if hint == "" {
+		t.Error("GitInstallHint() returned empty string")
+	}
+	if !strings.Contains(hint, "git") {
+		t.Errorf("GitInstallHint() = %q, expected to contain 'git'", hint)
+	}
+	if !strings.Contains(hint, "Install") {
+		t.Errorf("GitInstallHint() = %q, expected to contain 'Install'", hint)
+	}
+}
+
+func TestCheckGit_DetailWhenMissing(t *testing.T) {
+	// We can only test the Detail field indirectly:
+	// when git IS available, Detail should be empty (non-verbose)
+	// when git is NOT available, Detail should contain install hint
+	check := checkGit(false)
+	if check.Status == CheckFail {
+		if check.Detail == "" {
+			t.Error("checkGit should set Detail with install hint when git is not found")
+		}
+		if !strings.Contains(check.Detail, "Install git") {
+			t.Errorf("checkGit Detail = %q, expected to contain 'Install git'", check.Detail)
+		}
+	}
+	// If git is available, Detail should be empty in non-verbose mode
+	if check.Status == CheckOK && check.Detail != "" {
+		t.Errorf("checkGit Detail should be empty in non-verbose mode when git is found, got %q", check.Detail)
+	}
+}
+
 // --- TDD: Tests for diagnostic check functions ---
 
 func TestCheckGoRuntime(t *testing.T) {
