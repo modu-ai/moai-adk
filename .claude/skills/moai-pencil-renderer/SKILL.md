@@ -1,5 +1,5 @@
 ---
-name: pencil-renderer
+name: moai-pencil-renderer
 description: |
   Render DNA codes to Pencil .pen frames. Does ONE thing well.
 

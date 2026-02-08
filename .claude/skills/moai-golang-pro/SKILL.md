@@ -1,5 +1,5 @@
 ---
-name: golang-pro
+name: moai-golang-pro
 description: Use when building Go applications requiring concurrent programming, microservices architecture, or high-performance systems. Invoke for goroutines, channels, Go generics, gRPC integration.
 license: MIT
 metadata:

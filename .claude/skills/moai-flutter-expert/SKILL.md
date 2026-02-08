@@ -1,5 +1,5 @@
 ---
-name: flutter-expert
+name: moai-flutter-expert
 description: Use when building cross-platform applications with Flutter 3+ and Dart. Invoke for widget development, Riverpod/Bloc state management, GoRouter navigation, platform-specific implementations, performance optimization.
 license: MIT
 metadata:

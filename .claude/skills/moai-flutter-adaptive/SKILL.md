@@ -1,5 +1,5 @@
 ---
-name: flutter-adaptive-ui
+name: moai-flutter-adaptive
 description: Build adaptive and responsive Flutter UIs that work beautifully across all platforms and screen sizes. Use when creating Flutter apps that need to adapt layouts based on screen size, support multiple platforms including mobile tablet desktop and web, handle different input devices like touch mouse and keyboard, implement responsive navigation patterns, optimize for large screens and foldables, or use Capability and Policy patterns for platform-specific behavior.
 user-invocable: false
 ---

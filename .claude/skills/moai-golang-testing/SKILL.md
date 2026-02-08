@@ -1,5 +1,5 @@
 ---
-name: golang-testing
+name: moai-golang-testing
 description: Go testing patterns including table-driven tests, subtests, benchmarks, fuzzing, and test coverage. Follows TDD methodology with idiomatic Go practices.
 user-invocable: false
 ---

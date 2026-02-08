@@ -1,5 +1,5 @@
 ---
-name: pencil-to-code
+name: moai-pencil-code
 description: |
   Export .pen design to React/Tailwind code. Does ONE thing well.
 
