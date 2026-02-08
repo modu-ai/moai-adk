@@ -413,6 +413,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					template.WithHomeDir(homeDir),
 					template.WithSmartPATH(template.BuildSmartPATH()),
 					template.WithPlatform(runtime.GOOS),
+					template.WithVersion(version.GetVersion()),
 				)
 
 				if deployErr := deployer.Deploy(ctx, projectRoot, mgr, tmplCtx); deployErr != nil {
@@ -683,7 +684,7 @@ func isMoaiManaged(path string) bool {
 	})
 	for i, part := range parts {
 		switch part {
-		case "skills", "rules", "agents", "commands", "output-styles":
+		case "skills", "rules", "agents", "commands", "output-styles", "hooks":
 			// Check if the next directory starts with "moai-"
 			if i+1 < len(parts) {
 				itemName := parts[i+1]

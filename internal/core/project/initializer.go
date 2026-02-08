@@ -247,6 +247,7 @@ func (i *projectInitializer) deployTemplates(ctx context.Context, opts InitOptio
 		template.WithGoBinPath(goBinPath),
 		template.WithHomeDir(homeDir),
 		template.WithSmartPATH(template.BuildSmartPATH()),
+		template.WithVersion(version.GetVersion()),
 	)
 
 	if err := i.deployer.Deploy(ctx, opts.ProjectRoot, i.manifestMgr, tmplCtx); err != nil {

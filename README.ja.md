@@ -25,6 +25,10 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Copyleft--3.0-blue.svg" alt="License: Copyleft-3.0"></a>
 </p>
 
+<p align="center">
+  <a href="https://adk.mo.ai.kr"><strong>Official Documentation</strong></a>
+</p>
+
 ---
 
 > **「バイブコーディングの目的は、素早い生産性ではなく、コード品質である。」**

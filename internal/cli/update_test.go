@@ -692,6 +692,21 @@ func TestIsMoaiManaged(t *testing.T) {
 			path: ".claude/skills/moai-foundation-claude/skill.md",
 			want: true,
 		},
+		{
+			name: "moai hooks",
+			path: ".claude/hooks/moai/handle-session-start.sh",
+			want: true,
+		},
+		{
+			name: "moai hooks nested",
+			path: ".claude/hooks/moai/handle-agent-hook.sh",
+			want: true,
+		},
+		{
+			name: "user hooks without moai prefix",
+			path: ".claude/hooks/custom/my-hook.sh",
+			want: false,
+		},
 	}
 
 	for _, tt := range tests {

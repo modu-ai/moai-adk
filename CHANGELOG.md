@@ -5,6 +5,72 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.4] - 2026-02-08
+
+### Summary
+
+Fix version persistence in `moai update` and `moai init`, and exclude hook files from merge confirmation UI. Official documentation link added to all README files.
+
+### Breaking Changes
+
+None
+
+### Fixed
+
+- Template version not persisted after `moai update` — `WithVersion()` was missing from `TemplateContext` creation in both `update.go` and `initializer.go`, causing `config.yaml` to render with empty version fields
+- Status line showing stale version (`v1.14.0`) and perpetual update indicator because `moai.version` was empty in config
+- `.claude/hooks/moai/*` files incorrectly appearing in merge confirmation UI during `moai update` — added `hooks` to `isMoaiManaged()` filter
+
+### Added
+
+- Official documentation link (https://adk.mo.ai.kr) to all README files (EN, KO, JA, ZH)
+- Test cases for hooks path in `TestIsMoaiManaged` (3 new cases)
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.0.4] - 2026-02-08 (한국어)
+
+### 요약
+
+`moai update`와 `moai init`에서 템플릿 버전이 저장되지 않던 버그를 수정하고, 훅 파일이 병합 확인 UI에 노출되던 문제를 해결했습니다. 모든 README에 공식 문서 링크를 추가했습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 수정됨 (Fixed)
+
+- `moai update` 후 템플릿 버전이 저장되지 않는 버그 — `update.go`와 `initializer.go`에서 `TemplateContext` 생성 시 `WithVersion()`이 누락되어 `config.yaml`의 버전 필드가 빈 문자열로 렌더링됨
+- 상태 표시줄에 이전 버전(`v1.14.0`)이 표시되고 업데이트 표시가 계속 나타나는 문제 — config의 `moai.version`이 비어있었기 때문
+- `moai update` 중 `.claude/hooks/moai/*` 파일이 병합 확인 UI에 잘못 표시되는 문제 — `isMoaiManaged()` 필터에 `hooks` 추가
+
+### 추가됨 (Added)
+
+- 모든 README(EN, KO, JA, ZH)에 공식 문서 링크(https://adk.mo.ai.kr) 추가
+- `TestIsMoaiManaged`에 hooks 경로 테스트 케이스 3개 추가
+
+### 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.0.3] - 2026-02-07
 
 ### Summary

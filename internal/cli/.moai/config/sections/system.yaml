@@ -3,7 +3,7 @@
 
 moai:
   # MoAI-ADK version
-  version: ""
+  version: "v2.0.3"
 
   # Version update check frequency (daily, weekly, never)
   update_check_frequency: daily
