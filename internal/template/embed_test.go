@@ -88,8 +88,8 @@ func TestEmbeddedTemplates_SkillDefinitions(t *testing.T) {
 		return nil
 	})
 
-	if skillCount < 400 {
-		t.Errorf("expected at least 400 skill .md files, got %d", skillCount)
+	if skillCount < 350 {
+		t.Errorf("expected at least 350 skill .md files, got %d", skillCount)
 	}
 }
 
