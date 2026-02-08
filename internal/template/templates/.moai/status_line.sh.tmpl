@@ -16,13 +16,13 @@ if command -v moai &> /dev/null; then
 fi
 
 # Try detected Go bin path from initialization
-if [ -f "{{.GoBinPath}}/moai" ]; then
-	exec "{{.GoBinPath}}/moai" statusline < "$temp_file"
+if [ -f "{{posixPath .GoBinPath}}/moai" ]; then
+	exec "{{posixPath .GoBinPath}}/moai" statusline < "$temp_file"
 fi
 
 # Try user local bin directory
-if [ -f "{{.HomeDir}}/.local/bin/moai" ]; then
-	exec "{{.HomeDir}}/.local/bin/moai" statusline < "$temp_file"
+if [ -f "{{posixPath .HomeDir}}/.local/bin/moai" ]; then
+	exec "{{posixPath .HomeDir}}/.local/bin/moai" statusline < "$temp_file"
 fi
 
 # Not found - exit silently (Claude Code handles missing statusline gracefully)

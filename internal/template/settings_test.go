@@ -23,7 +23,7 @@ func renderTemplate(t *testing.T, tmplPath string, ctx *TemplateContext) string 
 		t.Fatalf("ReadFile(%q) error: %v", tmplPath, err)
 	}
 
-	tmpl, err := template.New(tmplPath).Parse(string(data))
+	tmpl, err := template.New(tmplPath).Funcs(templateFuncMap).Parse(string(data))
 	if err != nil {
 		t.Fatalf("Parse template error: %v", err)
 	}

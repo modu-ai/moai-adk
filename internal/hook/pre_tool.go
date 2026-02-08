@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/hook/security"
+	"golang.org/x/text/unicode/norm"
 )
 
 // SecurityPolicy defines tool access control rules for PreToolUse events.
@@ -474,7 +475,15 @@ func (h *preToolHandler) checkFileAccess(toolInput json.RawMessage, toolName str
 			// Cannot resolve project directory, skip boundary check
 			slog.Debug("cannot resolve project directory", "error", absErr)
 		} else {
-			rel, relErr := filepath.Rel(projectAbs, resolvedPath)
+			// Normalize both paths to Unicode NFC before comparison.
+			// macOS HFS+/APFS stores paths in NFD form, but tools like
+			// Claude Code may send paths in NFC form. Without normalization,
+			// filepath.Rel produces ".." prefixed results for paths containing
+			// non-ASCII characters (e.g., Korean), causing false path traversal errors.
+			nfcProject := norm.NFC.String(projectAbs)
+			nfcResolved := norm.NFC.String(resolvedPath)
+
+			rel, relErr := filepath.Rel(nfcProject, nfcResolved)
 			if relErr != nil || strings.HasPrefix(rel, "..") {
 				return DecisionDeny, "Path traversal detected: file is outside project directory"
 			}
