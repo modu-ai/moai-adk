@@ -8,7 +8,7 @@ description: >
 tools: Read, Grep, Glob, Bash
 model: haiku
 permissionMode: plan
-memory: project
+memory: user
 skills: moai-foundation-core
 ---
 
