@@ -50,7 +50,7 @@ func TestValidatorValidateJSON(t *testing.T) {
 
 func TestValidatorValidatePaths(t *testing.T) {
 	v := NewValidator()
-	root := "/home/user/project"
+	root := t.TempDir() // Use platform-specific temp directory
 
 	t.Run("valid_paths", func(t *testing.T) {
 		files := []string{
@@ -78,7 +78,9 @@ func TestValidatorValidatePaths(t *testing.T) {
 	})
 
 	t.Run("absolute_path", func(t *testing.T) {
-		files := []string{"/tmp/malicious"}
+		// Use a path that's absolute on the current platform
+		absPath := filepath.Join(root, "malicious")
+		files := []string{absPath}
 
 		errs := v.ValidatePaths(root, files)
 		if len(errs) != 1 {
@@ -87,11 +89,12 @@ func TestValidatorValidatePaths(t *testing.T) {
 	})
 
 	t.Run("mixed_valid_and_invalid", func(t *testing.T) {
+		absPath := filepath.Join(root, "absolute")
 		files := []string{
 			"CLAUDE.md",
 			"../escape",
 			".claude/agents/file.md",
-			"/absolute/path",
+			absPath,
 		}
 
 		errs := v.ValidatePaths(root, files)

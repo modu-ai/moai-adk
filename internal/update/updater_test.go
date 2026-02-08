@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -191,13 +192,15 @@ func TestUpdater_Replace_Success(t *testing.T) {
 		t.Errorf("content = %q, want %q", string(data), "new binary")
 	}
 
-	// Verify permissions.
-	info, err := os.Stat(binaryPath)
-	if err != nil {
-		t.Fatalf("stat: %v", err)
-	}
-	if info.Mode().Perm()&0o111 == 0 {
-		t.Error("binary should have execute permission")
+	// Verify permissions (skip on Windows).
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(binaryPath)
+		if err != nil {
+			t.Fatalf("stat: %v", err)
+		}
+		if info.Mode().Perm()&0o111 == 0 {
+			t.Error("binary should have execute permission")
+		}
 	}
 }
 

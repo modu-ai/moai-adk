@@ -3,6 +3,7 @@ package shell
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -11,60 +12,67 @@ func TestGetConfigFile(t *testing.T) {
 	c := NewConfigurator()
 
 	tests := []struct {
-		name        string
-		shell       ShellType
-		preferLogin bool
-		wantSuffix  string
+		name         string
+		shell        ShellType
+		preferLogin  bool
+		wantSuffixes []string // Accept multiple valid suffixes per platform
 	}{
 		{
-			name:        "zsh_prefer_login",
-			shell:       ShellZsh,
-			preferLogin: true,
-			wantSuffix:  ".zshenv",
+			name:         "zsh_prefer_login",
+			shell:        ShellZsh,
+			preferLogin:  true,
+			wantSuffixes: []string{".zshenv"},
 		},
 		{
-			name:        "zsh_no_prefer_login",
-			shell:       ShellZsh,
-			preferLogin: false,
-			wantSuffix:  ".zshrc",
+			name:         "zsh_no_prefer_login",
+			shell:        ShellZsh,
+			preferLogin:  false,
+			wantSuffixes: []string{".zshrc"},
 		},
 		{
-			name:        "bash_prefer_login",
-			shell:       ShellBash,
-			preferLogin: true,
-			wantSuffix:  ".profile",
+			name:         "bash_prefer_login",
+			shell:        ShellBash,
+			preferLogin:  true,
+			wantSuffixes: []string{".profile", ".bash_profile"}, // macOS may use .bash_profile
 		},
 		{
-			name:        "bash_no_prefer_login",
-			shell:       ShellBash,
-			preferLogin: false,
-			wantSuffix:  ".bashrc",
+			name:         "bash_no_prefer_login",
+			shell:        ShellBash,
+			preferLogin:  false,
+			wantSuffixes: []string{".bashrc"},
 		},
 		{
-			name:        "fish",
-			shell:       ShellFish,
-			preferLogin: false,
-			wantSuffix:  "config.fish",
+			name:         "fish",
+			shell:        ShellFish,
+			preferLogin:  false,
+			wantSuffixes: []string{"config.fish"},
 		},
 		{
-			name:        "unknown_defaults_to_profile",
-			shell:       ShellUnknown,
-			preferLogin: true,
-			wantSuffix:  ".profile",
+			name:         "unknown_defaults_to_profile",
+			shell:        ShellUnknown,
+			preferLogin:  true,
+			wantSuffixes: []string{".profile", ".bash_profile"},
 		},
 		{
-			name:        "powershell",
-			shell:       ShellPowerShell,
-			preferLogin: true,
-			wantSuffix:  ".ps1",
+			name:         "powershell",
+			shell:        ShellPowerShell,
+			preferLogin:  true,
+			wantSuffixes: []string{".ps1", "profile.ps1"}, // Accept both PowerShell profile formats
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := c.GetConfigFile(tt.shell, tt.preferLogin)
-			if !strings.HasSuffix(got, tt.wantSuffix) {
-				t.Errorf("GetConfigFile() = %v, want suffix %v", got, tt.wantSuffix)
+			found := false
+			for _, suffix := range tt.wantSuffixes {
+				if strings.HasSuffix(got, suffix) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("GetConfigFile() = %v, want one of suffixes %v", got, tt.wantSuffixes)
 			}
 		})
 	}

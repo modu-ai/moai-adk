@@ -30,7 +30,10 @@ func TestWorktreeAdd_NewBranch(t *testing.T) {
 
 	found := false
 	for _, wt := range worktrees {
-		if wt.Path == wtPath {
+		// Normalize paths for cross-platform comparison (Windows uses \ instead of /)
+		normalizedWtPath := filepath.ToSlash(wt.Path)
+		normalizedExpectedPath := filepath.ToSlash(wtPath)
+		if normalizedWtPath == normalizedExpectedPath {
 			found = true
 			if wt.Branch != "feature/parallel" {
 				t.Errorf("worktree.Branch = %q, want %q", wt.Branch, "feature/parallel")
@@ -65,7 +68,10 @@ func TestWorktreeAdd_ExistingBranch(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, wt := range worktrees {
-		if wt.Path == wtPath {
+		// Normalize paths for cross-platform comparison
+		normalizedWtPath := filepath.ToSlash(wt.Path)
+		normalizedExpectedPath := filepath.ToSlash(wtPath)
+		if normalizedWtPath == normalizedExpectedPath {
 			if wt.Branch != "feature/existing" {
 				t.Errorf("worktree.Branch = %q, want %q", wt.Branch, "feature/existing")
 			}

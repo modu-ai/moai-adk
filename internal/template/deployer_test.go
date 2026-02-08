@@ -210,7 +210,8 @@ func TestDeployerListTemplates(t *testing.T) {
 }
 
 func TestValidateDeployPath(t *testing.T) {
-	root := "/home/user/project"
+	// Use t.TempDir() to get a real directory path on the current platform
+	root := t.TempDir()
 
 	tests := []struct {
 		name    string
@@ -222,7 +223,6 @@ func TestValidateDeployPath(t *testing.T) {
 		{"valid_simple", "CLAUDE.md", false},
 		{"traversal_dotdot", "../etc/passwd", true},
 		{"traversal_nested", "foo/../../etc/passwd", true},
-		{"absolute_path", "/etc/passwd", true},
 		{"traversal_complex", ".claude/./../../secret", true},
 	}
 
@@ -240,4 +240,16 @@ func TestValidateDeployPath(t *testing.T) {
 			}
 		})
 	}
+
+	// Test absolute paths separately (platform-dependent)
+	t.Run("absolute_path", func(t *testing.T) {
+		absPath := filepath.Join(root, "absolute")
+		err := validateDeployPath(root, absPath)
+		if err == nil {
+			t.Errorf("expected error for absolute path %q", absPath)
+		}
+		if err != nil && !errors.Is(err, ErrPathTraversal) {
+			t.Errorf("expected ErrPathTraversal, got: %v", err)
+		}
+	})
 }

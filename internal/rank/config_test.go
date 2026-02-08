@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -188,15 +189,18 @@ func TestFileCredentialStore_FilePermissions(t *testing.T) {
 	}
 
 	// Check file permissions (0600).
-	credPath := filepath.Join(dir, "credentials.json")
-	info, err := os.Stat(credPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// Note: Windows doesn't support Unix file permissions, so skip this check
+	if runtime.GOOS != "windows" {
+		credPath := filepath.Join(dir, "credentials.json")
+		info, err := os.Stat(credPath)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	perm := info.Mode().Perm()
-	if perm != 0o600 {
-		t.Errorf("expected file permissions 0600, got %04o", perm)
+		perm := info.Mode().Perm()
+		if perm != 0o600 {
+			t.Errorf("expected file permissions 0600, got %04o", perm)
+		}
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -39,13 +40,15 @@ func TestRollback_CreateBackup_Success(t *testing.T) {
 		t.Errorf("backup content = %q, want %q", string(backupData), "binary content v1")
 	}
 
-	// Verify backup has execute permission.
-	info, err := os.Stat(backupPath)
-	if err != nil {
-		t.Fatalf("stat backup: %v", err)
-	}
-	if info.Mode().Perm()&0o111 == 0 {
-		t.Error("backup should have execute permission")
+	// Verify backup has execute permission (skip on Windows).
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(backupPath)
+		if err != nil {
+			t.Fatalf("stat backup: %v", err)
+		}
+		if info.Mode().Perm()&0o111 == 0 {
+			t.Error("backup should have execute permission")
+		}
 	}
 }
 
@@ -90,13 +93,15 @@ func TestRollback_Restore_Success(t *testing.T) {
 		t.Errorf("restored content = %q, want %q", string(data), "original good binary")
 	}
 
-	// Verify execute permission.
-	info, err := os.Stat(binaryPath)
-	if err != nil {
-		t.Fatalf("stat binary: %v", err)
-	}
-	if info.Mode().Perm()&0o111 == 0 {
-		t.Error("restored binary should have execute permission")
+	// Verify execute permission (skip on Windows).
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(binaryPath)
+		if err != nil {
+			t.Fatalf("stat binary: %v", err)
+		}
+		if info.Mode().Perm()&0o111 == 0 {
+			t.Error("restored binary should have execute permission")
+		}
 	}
 }
 
