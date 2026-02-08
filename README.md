@@ -31,6 +31,18 @@
 
 ---
 
+## ⚠️ Important Notice for v2.1.2 and Earlier Users
+
+**If you are currently using v2.1.2 or earlier**, automatic updates will fail due to a checksum verification bug. Please reinstall manually:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+```
+
+After reinstalling to v2.2.1, future updates will work automatically with `moai update`. See [v2.2.1 Release Notes](https://github.com/modu-ai/moai-adk/releases/tag/v2.2.1) for details.
+
+---
+
 > **"The purpose of vibe coding is not rapid productivity but code quality."**
 
 MoAI-ADK is a **high-performance AI development environment** for Claude Code. 28 specialized AI agents and 64 skills collaborate to produce quality code. It automatically applies the Hybrid methodology (TDD + DDD) for new projects and DDD for existing projects, and supports dual execution modes with Sub-Agent and Agent Teams.

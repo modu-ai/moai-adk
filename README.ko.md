@@ -31,6 +31,18 @@
 
 ---
 
+## ⚠️ v2.1.2 이하 버전 사용자 주의
+
+**현재 v2.1.2 이하 버전을 사용 중인 경우**, 체크섬 검증 버그로 인해 자동 업데이트가 실패합니다. 다음 명령어로 수동 재설치가 필요합니다:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+```
+
+v2.2.1로 재설치 후, 향후 업데이트는 `moai update`로 자동 작동합니다. 자세한 내용은 [v2.2.1 릴리즈 노트](https://github.com/modu-ai/moai-adk/releases/tag/v2.2.1)를 확인하세요.
+
+---
+
 > **"바이브 코딩의 목적은 빠른 생산성이 아니라 코드 품질이다."**
 
 MoAI-ADK는 Claude Code를 위한 **고성능 AI 개발 환경**입니다. 28개 전문 AI 에이전트와 64개 스킬이 협력하여 품질 있는 코드를 만듭니다. 신규 프로젝트에는 Hybrid 방법론(TDD + DDD)을, 기존 프로젝트에는 DDD를 자동 적용하며, Sub-Agent와 Agent Teams 이중 실행 모드를 지원합니다.
