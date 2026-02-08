@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `moai update` template filter now correctly processes `.tmpl` files using rendered target paths
+- `moai update` JSON logging issue resolved — merge confirmation now uses structured output
+- `moai update` config cleanup improved — full config backup (including sections/) for complete restore capability
+- Template deployment now properly filters MoAI-managed files using rendered paths instead of template paths
+
+### Changed
+
+- Config backup strategy now includes all files (config.yaml, sections/*.yaml) for full restore capability
+- Config cleanup step removes entire `.moai/config/` directory (backup was done by the Backup step)
+- Template filtering logic improved to use rendered target paths for display and filtering
+- Reduced documentation verbosity in agent hooks and workflow rules (saved ~3,500 lines)
+
+### Removed
+
+- Deprecated `builder-command.md` agent definition (1,208 lines) — command creation now uses skill-based approach
+- Verbose documentation sections from hooks-system.md and workflow skills
+- Redundant settings from settings.json template
+
+### Technical Details
+
+**Template System Improvements:**
+- `.tmpl` files now use rendered target path for display and existence checks
+- MoAI-managed file filtering moved after path transformation
+- Config backup includes all files for complete v2.x-to-v2.x migration support
+
+**Logging Improvements:**
+- JSON logging issues during merge confirmation resolved
+- Structured output for better CI/CD integration
+
+**Code Quality:**
+- All tests passing including cross-platform CI (Windows, macOS)
+- Zero linting issues
+- Improved test coverage for update logic
+
+---
+
 ## [2.0.5] - 2026-02-08
 
 ### Summary
