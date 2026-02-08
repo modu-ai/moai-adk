@@ -9,6 +9,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.2] - 2026-02-09
+
+### Summary
+
+Hotfix release addressing UI/UX improvements and token optimization for Agent Teams. Resolves .tmpl file display in merge list, JSON logging noise during initialization, and reduces token consumption by 30-45K tokens per team execution through skill injection optimization.
+
+### Breaking Changes
+
+None
+
+### Fixed
+
+- **Template Display**: Fixed .tmpl files appearing in merge confirmation list during `moai init` and `moai update` — deployer now strips .tmpl suffix before returning file paths
+- **JSON Logging**: Removed JSON-formatted log output during CLI commands by replacing `slog.Default()` with discard handler in `internal/cli/deps.go`
+- **Token Optimization**: Removed `moai-foundation-core` from all 8 team agent skill injections, reducing redundant file loading by 30-45K tokens per team execution
+
+### Changed
+
+- **Agent Skills Injection**: Team agents now load only domain-specific skills instead of foundation skills, following single-responsibility principle
+- **Logging Strategy**: CLI commands now use no-op logger to eliminate structured log noise in user-facing output
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+**For users on v2.1.0 experiencing "No Go binary available" error**:
+
+The v2.1.1 hotfix resolved the binary download issue. If you're still on v2.1.0, use the official install script to upgrade:
+
+```bash
+# Reinstall to latest version (recommended)
+curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+moai version
+```
+
+---
+
+## [2.1.2] - 2026-02-09 (한국어)
+
+### 요약
+
+Agent Teams의 UI/UX 개선 및 토큰 최적화를 처리하는 핫픽스 릴리스입니다. 병합 목록의 .tmpl 파일 표시, 초기화 중 JSON 로깅 노이즈를 해결하고, skill injection 최적화를 통해 팀 실행당 30-45K 토큰 소비를 줄였습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 수정됨 (Fixed)
+
+- **템플릿 표시**: `moai init` 및 `moai update` 시 병합 확인 목록에 .tmpl 파일이 표시되는 문제 수정 — deployer가 파일 경로 반환 전에 .tmpl suffix를 제거하도록 수정
+- **JSON 로깅**: `internal/cli/deps.go`에서 `slog.Default()`를 discard handler로 교체하여 CLI 명령어 실행 시 JSON 형식 로그 출력 제거
+- **토큰 최적화**: 8개 team agent의 skill injection에서 `moai-foundation-core` 제거, 팀 실행당 중복 파일 로딩을 30-45K 토큰 감소
+
+### 변경됨 (Changed)
+
+- **Agent Skill Injection**: Team agent가 foundation skill 대신 도메인별 skill만 로드하도록 변경, 단일 책임 원칙 준수
+- **로깅 전략**: CLI 명령어가 no-op logger를 사용하여 사용자 대면 출력에서 구조화된 로그 노이즈 제거
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+**v2.1.0에서 "No Go binary available" 오류가 발생하는 사용자**:
+
+v2.1.1 핫픽스에서 바이너리 다운로드 문제가 해결되었습니다. 여전히 v2.1.0을 사용 중이라면 공식 설치 스크립트를 사용하여 업그레이드하세요:
+
+```bash
+# 최신 버전으로 재설치 (권장)
+curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+moai version
+```
+
+---
+
 ## [2.1.1] - 2026-02-09
 
 ### Summary
