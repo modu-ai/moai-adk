@@ -1930,3 +1930,248 @@ func TestRunBinaryUpdateStep_UpdateAvailable(t *testing.T) {
 	}
 }
 
+func TestCleanMoaiManagedPaths(t *testing.T) {
+	// Helper to create a file (and its parent directories) inside the temp dir.
+	mkFile := func(t *testing.T, base string, relPath string, content string) {
+		t.Helper()
+		full := filepath.Join(base, relPath)
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatalf("MkdirAll for %s: %v", relPath, err)
+		}
+		if err := os.WriteFile(full, []byte(content), 0o644); err != nil {
+			t.Fatalf("WriteFile for %s: %v", relPath, err)
+		}
+	}
+
+	// Helper to create a directory inside the temp dir.
+	mkDir := func(t *testing.T, base string, relPath string) {
+		t.Helper()
+		full := filepath.Join(base, relPath)
+		if err := os.MkdirAll(full, 0o755); err != nil {
+			t.Fatalf("MkdirAll for %s: %v", relPath, err)
+		}
+	}
+
+	// Helper to check if a path exists.
+	pathExists := func(base string, relPath string) bool {
+		_, err := os.Stat(filepath.Join(base, relPath))
+		return err == nil
+	}
+
+	tests := []struct {
+		name string
+		// setup creates files/dirs in the temp directory before running cleanMoaiManagedPaths.
+		setup func(t *testing.T, root string)
+		// verify runs assertions after cleanMoaiManagedPaths returns.
+		verify func(t *testing.T, root string, output string)
+		// wantErr indicates whether cleanMoaiManagedPaths should return an error.
+		wantErr bool
+	}{
+		{
+			name: "AllPathsPresent",
+			setup: func(t *testing.T, root string) {
+				// Standard managed paths
+				mkFile(t, root, filepath.Join(".claude", "settings.json"), `{"key":"val"}`)
+				mkDir(t, root, filepath.Join(".claude", "commands", "moai"))
+				mkFile(t, root, filepath.Join(".claude", "commands", "moai", "plan.md"), "plan")
+				mkDir(t, root, filepath.Join(".claude", "agents", "moai"))
+				mkFile(t, root, filepath.Join(".claude", "agents", "moai", "expert.md"), "expert")
+				// Glob targets: skills/moai*
+				mkDir(t, root, filepath.Join(".claude", "skills", "moai-backend"))
+				mkFile(t, root, filepath.Join(".claude", "skills", "moai-backend", "SKILL.md"), "backend")
+				mkDir(t, root, filepath.Join(".claude", "skills", "moai-frontend"))
+				mkFile(t, root, filepath.Join(".claude", "skills", "moai-frontend", "SKILL.md"), "frontend")
+				// rules/moai
+				mkDir(t, root, filepath.Join(".claude", "rules", "moai"))
+				mkFile(t, root, filepath.Join(".claude", "rules", "moai", "rule.md"), "rule")
+				// output-styles/moai
+				mkDir(t, root, filepath.Join(".claude", "output-styles", "moai"))
+				mkFile(t, root, filepath.Join(".claude", "output-styles", "moai", "style.md"), "style")
+				// hooks/moai
+				mkDir(t, root, filepath.Join(".claude", "hooks", "moai"))
+				mkFile(t, root, filepath.Join(".claude", "hooks", "moai", "hook.sh"), "#!/bin/bash")
+				// .moai/config/ with sections/ and config.yaml
+				mkFile(t, root, filepath.Join(".moai", "config", "config.yaml"), "version: 1")
+				mkFile(t, root, filepath.Join(".moai", "config", "sections", "user.yaml"), "user: name")
+			},
+			verify: func(t *testing.T, root string, output string) {
+				// All standard managed paths should be removed
+				if pathExists(root, filepath.Join(".claude", "settings.json")) {
+					t.Error(".claude/settings.json should have been removed")
+				}
+				if pathExists(root, filepath.Join(".claude", "commands", "moai")) {
+					t.Error(".claude/commands/moai should have been removed")
+				}
+				if pathExists(root, filepath.Join(".claude", "agents", "moai")) {
+					t.Error(".claude/agents/moai should have been removed")
+				}
+				if pathExists(root, filepath.Join(".claude", "skills", "moai-backend")) {
+					t.Error(".claude/skills/moai-backend should have been removed")
+				}
+				if pathExists(root, filepath.Join(".claude", "skills", "moai-frontend")) {
+					t.Error(".claude/skills/moai-frontend should have been removed")
+				}
+				if pathExists(root, filepath.Join(".claude", "rules", "moai")) {
+					t.Error(".claude/rules/moai should have been removed")
+				}
+				if pathExists(root, filepath.Join(".claude", "output-styles", "moai")) {
+					t.Error(".claude/output-styles/moai should have been removed")
+				}
+				if pathExists(root, filepath.Join(".claude", "hooks", "moai")) {
+					t.Error(".claude/hooks/moai should have been removed")
+				}
+				// config.yaml should be removed
+				if pathExists(root, filepath.Join(".moai", "config", "config.yaml")) {
+					t.Error(".moai/config/config.yaml should have been removed")
+				}
+				// sections/ should be preserved
+				if !pathExists(root, filepath.Join(".moai", "config", "sections", "user.yaml")) {
+					t.Error(".moai/config/sections/user.yaml should have been preserved")
+				}
+			},
+		},
+		{
+			name: "NoPathsExist",
+			setup: func(t *testing.T, root string) {
+				// Empty temp dir, no managed paths exist
+			},
+			verify: func(t *testing.T, root string, output string) {
+				// Should complete without error; verify output contains skip markers
+				if !strings.Contains(output, "Skipped") {
+					t.Error("expected output to contain 'Skipped' markers for non-existent paths")
+				}
+			},
+		},
+		{
+			name: "MixedPresence",
+			setup: func(t *testing.T, root string) {
+				// Only some paths exist
+				mkFile(t, root, filepath.Join(".claude", "settings.json"), `{}`)
+				mkDir(t, root, filepath.Join(".claude", "rules", "moai"))
+				mkFile(t, root, filepath.Join(".claude", "rules", "moai", "core.md"), "core")
+				// commands/moai, agents/moai, skills/moai*, output-styles/moai, hooks/moai do NOT exist
+			},
+			verify: func(t *testing.T, root string, output string) {
+				// Existing paths should be removed
+				if pathExists(root, filepath.Join(".claude", "settings.json")) {
+					t.Error(".claude/settings.json should have been removed")
+				}
+				if pathExists(root, filepath.Join(".claude", "rules", "moai")) {
+					t.Error(".claude/rules/moai should have been removed")
+				}
+				// Output should contain "Skipped" for non-existent paths
+				if !strings.Contains(output, "Skipped") {
+					t.Error("expected output to contain 'Skipped' for missing paths")
+				}
+				// Output should contain "Removed" for existing paths
+				if !strings.Contains(output, "Removed") {
+					t.Error("expected output to contain 'Removed' for existing paths")
+				}
+			},
+		},
+		{
+			name: "ConfigPreservesSections",
+			setup: func(t *testing.T, root string) {
+				mkFile(t, root, filepath.Join(".moai", "config", "sections", "user.yaml"), "user: test")
+				mkFile(t, root, filepath.Join(".moai", "config", "sections", "language.yaml"), "lang: ko")
+				mkFile(t, root, filepath.Join(".moai", "config", "config.yaml"), "version: 2")
+				mkFile(t, root, filepath.Join(".moai", "config", "backup_metadata.json"), `{"ts":"now"}`)
+			},
+			verify: func(t *testing.T, root string, output string) {
+				// sections/ and its contents must survive
+				if !pathExists(root, filepath.Join(".moai", "config", "sections")) {
+					t.Error(".moai/config/sections/ should have been preserved")
+				}
+				if !pathExists(root, filepath.Join(".moai", "config", "sections", "user.yaml")) {
+					t.Error(".moai/config/sections/user.yaml should have been preserved")
+				}
+				if !pathExists(root, filepath.Join(".moai", "config", "sections", "language.yaml")) {
+					t.Error(".moai/config/sections/language.yaml should have been preserved")
+				}
+				// config.yaml and backup_metadata.json should be removed
+				if pathExists(root, filepath.Join(".moai", "config", "config.yaml")) {
+					t.Error(".moai/config/config.yaml should have been removed")
+				}
+				if pathExists(root, filepath.Join(".moai", "config", "backup_metadata.json")) {
+					t.Error(".moai/config/backup_metadata.json should have been removed")
+				}
+			},
+		},
+		{
+			name: "GlobMatchesMultiple",
+			setup: func(t *testing.T, root string) {
+				// Create multiple moai* skill directories
+				mkDir(t, root, filepath.Join(".claude", "skills", "moai-backend"))
+				mkFile(t, root, filepath.Join(".claude", "skills", "moai-backend", "SKILL.md"), "be")
+				mkDir(t, root, filepath.Join(".claude", "skills", "moai-frontend"))
+				mkFile(t, root, filepath.Join(".claude", "skills", "moai-frontend", "SKILL.md"), "fe")
+				mkDir(t, root, filepath.Join(".claude", "skills", "moai-testing"))
+				mkFile(t, root, filepath.Join(".claude", "skills", "moai-testing", "SKILL.md"), "test")
+				// Non-moai skill that should survive
+				mkDir(t, root, filepath.Join(".claude", "skills", "custom-skill"))
+				mkFile(t, root, filepath.Join(".claude", "skills", "custom-skill", "SKILL.md"), "custom")
+			},
+			verify: func(t *testing.T, root string, output string) {
+				// All moai* skills should be removed
+				if pathExists(root, filepath.Join(".claude", "skills", "moai-backend")) {
+					t.Error(".claude/skills/moai-backend should have been removed")
+				}
+				if pathExists(root, filepath.Join(".claude", "skills", "moai-frontend")) {
+					t.Error(".claude/skills/moai-frontend should have been removed")
+				}
+				if pathExists(root, filepath.Join(".claude", "skills", "moai-testing")) {
+					t.Error(".claude/skills/moai-testing should have been removed")
+				}
+				// Non-moai skill should be preserved
+				if !pathExists(root, filepath.Join(".claude", "skills", "custom-skill")) {
+					t.Error(".claude/skills/custom-skill should have been preserved")
+				}
+				if !pathExists(root, filepath.Join(".claude", "skills", "custom-skill", "SKILL.md")) {
+					t.Error(".claude/skills/custom-skill/SKILL.md should have been preserved")
+				}
+			},
+		},
+		{
+			name: "OutputCapture",
+			setup: func(t *testing.T, root string) {
+				// Create some paths that exist and leave others missing
+				mkFile(t, root, filepath.Join(".claude", "settings.json"), `{}`)
+				mkDir(t, root, filepath.Join(".claude", "agents", "moai"))
+				// commands/moai does not exist - should produce "Skipped"
+			},
+			verify: func(t *testing.T, root string, output string) {
+				// Verify output contains "Removed" markers for existing paths
+				if !strings.Contains(output, "Removed") {
+					t.Errorf("expected output to contain 'Removed' marker, got:\n%s", output)
+				}
+				// Verify output contains "Skipped" markers for missing paths
+				if !strings.Contains(output, "Skipped") {
+					t.Errorf("expected output to contain 'Skipped' marker, got:\n%s", output)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := t.TempDir()
+			tt.setup(t, root)
+
+			var buf bytes.Buffer
+			err := cleanMoaiManagedPaths(root, &buf)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			tt.verify(t, root, buf.String())
+		})
+	}
+}
+

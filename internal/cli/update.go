@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -400,6 +401,13 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			},
 		},
 		{
+			name:    "Clean Managed Paths",
+			message: "Removing old MoAI-managed files",
+			execute: func() error {
+				return cleanMoaiManagedPaths(projectRoot, out)
+			},
+		},
+		{
 			name:    "Deploy Templates",
 			message: "Deploying template files",
 			execute: func() error {
@@ -507,6 +515,10 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	}
 
 	_, _ = fmt.Fprintln(out, "\n✓ Template sync complete.")
+
+	_, _ = fmt.Fprintln(out)
+	_, _ = fmt.Fprintln(out, "💡 To reconfigure your project settings, run:")
+	_, _ = fmt.Fprintln(out, "   moai update -c")
 
 	// Ensure global settings.json has required env variables
 	if err := ensureGlobalSettingsEnv(); err != nil {
@@ -956,6 +968,117 @@ type BackupMetadata struct {
 	ExcludedDirs  []string `json:"excluded_dirs"`
 	ProjectRoot   string   `json:"project_root"`
 	BackupType    string   `json:"backup_type"`
+}
+
+// cleanMoaiManagedPaths removes MoAI-managed directories and files before template
+// deployment. This ensures stale v1.x files are cleaned up during migration to v2.x.
+// Paths that do not exist are silently skipped.
+func cleanMoaiManagedPaths(projectRoot string, out io.Writer) error {
+	type cleanTarget struct {
+		// displayPath is shown in progress messages (e.g., ".claude/settings.json")
+		displayPath string
+		// fullPath is the absolute filesystem path to delete
+		fullPath string
+		// isGlob indicates the target uses filepath.Glob matching
+		isGlob bool
+	}
+
+	targets := []cleanTarget{
+		{
+			displayPath: filepath.Join(defs.ClaudeDir, defs.SettingsJSON),
+			fullPath:    filepath.Join(projectRoot, defs.ClaudeDir, defs.SettingsJSON),
+		},
+		{
+			displayPath: filepath.Join(defs.ClaudeDir, defs.CommandsMoaiSubdir),
+			fullPath:    filepath.Join(projectRoot, defs.ClaudeDir, defs.CommandsMoaiSubdir),
+		},
+		{
+			displayPath: filepath.Join(defs.ClaudeDir, defs.AgentsMoaiSubdir),
+			fullPath:    filepath.Join(projectRoot, defs.ClaudeDir, defs.AgentsMoaiSubdir),
+		},
+		{
+			displayPath: filepath.Join(defs.ClaudeDir, defs.SkillsSubdir, "moai*"),
+			fullPath:    filepath.Join(projectRoot, defs.ClaudeDir, defs.SkillsSubdir, "moai*"),
+			isGlob:      true,
+		},
+		{
+			displayPath: filepath.Join(defs.ClaudeDir, defs.RulesMoaiSubdir),
+			fullPath:    filepath.Join(projectRoot, defs.ClaudeDir, defs.RulesMoaiSubdir),
+		},
+		{
+			displayPath: filepath.Join(defs.ClaudeDir, defs.OutputStylesSubdir, "moai"),
+			fullPath:    filepath.Join(projectRoot, defs.ClaudeDir, defs.OutputStylesSubdir, "moai"),
+		},
+		{
+			displayPath: filepath.Join(defs.ClaudeDir, defs.HooksMoaiSubdir),
+			fullPath:    filepath.Join(projectRoot, defs.ClaudeDir, defs.HooksMoaiSubdir),
+		},
+	}
+
+	// Process standard targets (files and directories)
+	for _, t := range targets {
+		_, _ = fmt.Fprintf(out, "  ○ Removing %s...", t.displayPath)
+
+		if t.isGlob {
+			matches, err := filepath.Glob(t.fullPath)
+			if err != nil {
+				_, _ = fmt.Fprintf(out, "\r  ✗ Failed to glob %s: %v\n", t.displayPath, err)
+				return fmt.Errorf("glob %s: %w", t.displayPath, err)
+			}
+			for _, match := range matches {
+				if err := os.RemoveAll(match); err != nil {
+					_, _ = fmt.Fprintf(out, "\r  ✗ Failed to remove %s: %v\n", t.displayPath, err)
+					return fmt.Errorf("remove %s: %w", match, err)
+				}
+			}
+			_, _ = fmt.Fprintf(out, "\r  ✓ Removed %s\n", t.displayPath)
+			continue
+		}
+
+		if _, err := os.Stat(t.fullPath); err != nil {
+			if os.IsNotExist(err) {
+				_, _ = fmt.Fprintf(out, "\r  - Skipped %s (not found)\n", t.displayPath)
+				continue
+			}
+			_, _ = fmt.Fprintf(out, "\r  ✗ Failed to stat %s: %v\n", t.displayPath, err)
+			return fmt.Errorf("stat %s: %w", t.displayPath, err)
+		}
+
+		if err := os.RemoveAll(t.fullPath); err != nil {
+			_, _ = fmt.Fprintf(out, "\r  ✗ Failed to remove %s: %v\n", t.displayPath, err)
+			return fmt.Errorf("remove %s: %w", t.displayPath, err)
+		}
+		_, _ = fmt.Fprintf(out, "\r  ✓ Removed %s\n", t.displayPath)
+	}
+
+	// Special handling for .moai/config/: delete everything except "sections" subdirectory
+	configDir := filepath.Join(projectRoot, defs.MoAIDir, defs.ConfigSubdir)
+	configDisplayPath := filepath.Join(defs.MoAIDir, defs.ConfigSubdir)
+	_, _ = fmt.Fprintf(out, "  ○ Cleaning %s (preserving sections/)...", configDisplayPath)
+
+	entries, err := os.ReadDir(configDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			_, _ = fmt.Fprintf(out, "\r  - Skipped %s (not found)\n", configDisplayPath)
+			return nil
+		}
+		_, _ = fmt.Fprintf(out, "\r  ✗ Failed to read %s: %v\n", configDisplayPath, err)
+		return fmt.Errorf("read dir %s: %w", configDisplayPath, err)
+	}
+
+	for _, entry := range entries {
+		if entry.Name() == "sections" {
+			continue // Preserve user settings
+		}
+		entryPath := filepath.Join(configDir, entry.Name())
+		if err := os.RemoveAll(entryPath); err != nil {
+			_, _ = fmt.Fprintf(out, "\r  ✗ Failed to remove %s/%s: %v\n", configDisplayPath, entry.Name(), err)
+			return fmt.Errorf("remove %s/%s: %w", configDisplayPath, entry.Name(), err)
+		}
+	}
+	_, _ = fmt.Fprintf(out, "\r  ✓ Cleaned %s (sections/ preserved)\n", configDisplayPath)
+
+	return nil
 }
 
 // cleanup_old_backups maintains a maximum of 'keepCount' backups, deleting the oldest ones.
