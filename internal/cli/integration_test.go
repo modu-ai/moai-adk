@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -57,6 +58,17 @@ func TestUpdateCmd_DefaultIsTemplateSync(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
+	// Run in a temp directory to avoid polluting the source tree with deployed templates.
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+
 	// Default moai update should run template sync, not binary update.
 	// Even with nil deps, the command should proceed to template sync.
 	deps = nil
@@ -70,7 +82,7 @@ func TestUpdateCmd_DefaultIsTemplateSync(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := updateCmd.RunE(updateCmd, []string{})
+	err = updateCmd.RunE(updateCmd, []string{})
 
 	// Template sync may fail in test environment (no project root, etc.)
 	// but the error should NOT be about orchestrator or "not initialized".

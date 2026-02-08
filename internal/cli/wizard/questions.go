@@ -169,14 +169,19 @@ func DefaultQuestions(projectRoot string) []Question {
 			ID:          "max_teammates",
 			Type:        QuestionTypeSelect,
 			Title:       "Select maximum teammates",
-			Description: "Maximum number of teammates in a team (2-5 recommended).",
+			Description: "Maximum number of teammates in a team (2-10 recommended).",
 			Options: []Option{
 				{Label: "2", Value: "2", Desc: "Minimum for parallel work"},
 				{Label: "3", Value: "3", Desc: "Small team"},
 				{Label: "4", Value: "4", Desc: "Medium team"},
-				{Label: "5", Value: "5", Desc: "Large team (default)"},
+				{Label: "5", Value: "5", Desc: "Medium-large team"},
+				{Label: "6", Value: "6", Desc: "Large team"},
+				{Label: "7", Value: "7", Desc: "Large team"},
+				{Label: "8", Value: "8", Desc: "Extra large team"},
+				{Label: "9", Value: "9", Desc: "Extra large team"},
+				{Label: "10", Value: "10", Desc: "Maximum team (default)"},
 			},
-			Default:  "5",
+			Default:  "10",
 			Required: true,
 			Condition: func(r *WizardResult) bool {
 				return r.AgentTeamsMode == "team"

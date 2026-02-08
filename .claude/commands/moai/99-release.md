@@ -57,11 +57,10 @@ Before starting the release process, verify the working directory is clean:
    ```
 
 2. **Handle uncommitted files**:
-   - If files in `internal/cli/.claude/` exist: These are test artifacts, discard them
    - If untracked files in `.claude/` exist: Check if they should be committed or discarded
    - Clean up command:
    ```bash
-   git checkout -- internal/cli/ .claude/
+   git checkout -- .claude/
    git clean -fd .claude/ internal/template/templates/.claude/
    ```
 
@@ -513,6 +512,36 @@ Display completion report with:
 - Full release: `gh release view vX.Y.Z --web` (opens in browser)
 - Asset count: 7 files verified
 - Manual download test: PASS
+
+---
+
+## PHASE 8: Local Environment Update
+
+After release is verified, update the local development environment to use the new binary and sync templates.
+
+**1. Update local binary to released version:**
+
+```bash
+moai update --binary
+```
+
+This downloads and installs the released binary from GitHub Releases. The `--binary` flag skips template sync since the local project already has the latest templates (they were the source for the release).
+
+**2. Sync local project templates (if needed):**
+
+If local `.claude/` or `.moai/` files are out of sync with the templates:
+
+```bash
+moai update --templates-only
+```
+
+**3. Verify local environment:**
+
+```bash
+moai version
+```
+
+Confirm the version matches the released `vX.Y.Z`.
 
 ---
 

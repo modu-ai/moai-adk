@@ -41,36 +41,97 @@ Flow: TeamCreate -> Task Decomposition -> Parallel Implementation -> Quality Val
 
 ## Phase 1: Spawn Implementation Team
 
-Select team pattern based on SPEC scope:
+Select team pattern based on SPEC scope and spawn ALL teammates using Task() with `team_name` and `name` parameters. Launch all teammates in a single response for parallel execution.
 
-For cross-layer features (implementation pattern):
-- backend-dev (team-backend-dev, inherit): Server-side implementation
-- frontend-dev (team-frontend-dev, inherit): Client-side implementation
-- tester (team-tester, inherit): Test creation and coverage
+### Pattern: implementation (cross-layer features)
 
-For cross-layer features with design (design_implementation pattern):
-- designer (team-designer, inherit): UI/UX design with Pencil/Figma MCP
-- backend-dev (team-backend-dev, inherit): Server-side implementation
-- frontend-dev (team-frontend-dev, inherit): Client-side implementation
-- tester (team-tester, inherit): Test creation and coverage
+```
+Task(
+  subagent_type: "team-backend-dev",
+  team_name: "moai-run-SPEC-XXX",
+  name: "backend-dev",
+  mode: "acceptEdits",
+  prompt: "You are the backend developer on team moai-run-SPEC-XXX.
+    SPEC Summary: {spec_summary}
+    Your requirements: {backend_requirements}
+    File ownership: {backend_file_patterns}
+    Methodology: TDD for new code, DDD for existing code.
+    Quality targets: 85%+ coverage, zero lint errors.
+    Coordinate with frontend-dev for API contracts via SendMessage.
+    Mark tasks completed via TaskUpdate when done."
+)
 
-For full-stack features (full_stack pattern):
-- api-layer (team-backend-dev, inherit): API and business logic
-- ui-layer (team-frontend-dev, inherit): UI and components
-- data-layer (team-backend-dev, inherit): Database and schema
-- quality (team-quality, inherit): Quality validation
+Task(
+  subagent_type: "team-frontend-dev",
+  team_name: "moai-run-SPEC-XXX",
+  name: "frontend-dev",
+  mode: "acceptEdits",
+  prompt: "You are the frontend developer on team moai-run-SPEC-XXX.
+    SPEC Summary: {spec_summary}
+    Your requirements: {frontend_requirements}
+    File ownership: {frontend_file_patterns}
+    Methodology: TDD for new components, DDD for existing.
+    Wait for API contracts from backend-dev before implementing data fetching.
+    Mark tasks completed via TaskUpdate when done."
+)
 
-Spawn prompt must include:
-- SPEC summary and their specific requirements
-- File ownership boundaries (detected from project structure, see SKILL.md File Ownership Detection)
+Task(
+  subagent_type: "team-tester",
+  team_name: "moai-run-SPEC-XXX",
+  name: "tester",
+  mode: "acceptEdits",
+  prompt: "You are the testing specialist on team moai-run-SPEC-XXX.
+    SPEC Summary: {spec_summary}
+    File ownership: all test files (*_test.go, *.test.*, __tests__/)
+    Wait for implementation tasks to complete before writing integration tests.
+    Coverage targets: 85%+ overall, 90%+ new code.
+    Mark tasks completed via TaskUpdate when done."
+)
+```
+
+### Pattern: design_implementation (with UI/UX design)
+
+Add designer teammate before the implementation pattern teammates:
+
+```
+Task(
+  subagent_type: "team-designer",
+  team_name: "moai-run-SPEC-XXX",
+  name: "designer",
+  mode: "acceptEdits",
+  prompt: "You are the UI/UX designer on team moai-run-SPEC-XXX.
+    SPEC Summary: {spec_summary}
+    File ownership: *.pen, design tokens, style configs.
+    Create designs first, then share specs with frontend-dev via SendMessage.
+    Mark tasks completed via TaskUpdate when done."
+)
+```
+
+### Pattern: full_stack (with quality gate)
+
+Use team-backend-dev for both api-layer and data-layer (unique names):
+
+```
+Task(subagent_type: "team-backend-dev", team_name: "moai-run-SPEC-XXX", name: "api-layer", mode: "acceptEdits", ...)
+Task(subagent_type: "team-frontend-dev", team_name: "moai-run-SPEC-XXX", name: "ui-layer", mode: "acceptEdits", ...)
+Task(subagent_type: "team-backend-dev", team_name: "moai-run-SPEC-XXX", name: "data-layer", mode: "acceptEdits", ...)
+Task(subagent_type: "team-quality", team_name: "moai-run-SPEC-XXX", name: "quality", mode: "plan", ...)
+```
+
+### Spawn Prompt Requirements
+
+Every spawn prompt MUST include:
+- SPEC summary and teammate-specific requirements
+- File ownership boundaries (detected from project structure)
 - Development methodology (TDD for new code, DDD for existing)
 - Quality targets (coverage, lint, type checking)
+- Instructions to use TaskUpdate and SendMessage for coordination
 
 ### Plan Approval Mode
 
 When workflow.yaml `team.require_plan_approval: true`:
 - Spawn implementation teammates with `mode: "plan"` instead of `mode: "acceptEdits"`
-- Each teammate must submit a plan before implementing any code
+- Each teammate must submit a plan via ExitPlanMode before implementing any code
 - Team lead receives `plan_approval_request` messages with the proposed approach
 - Team lead reviews: file ownership compliance, approach alignment with SPEC, scope correctness
 - Approve: `SendMessage(type: "plan_approval_response", request_id: "{id}", recipient: "{name}", approve: true)`
@@ -155,7 +216,13 @@ After quality validation passes:
 
 ## Phase 5: Cleanup
 
-1. Shutdown all teammates gracefully
+1. Shutdown all teammates gracefully (send to each active teammate):
+   ```
+   SendMessage(type: "shutdown_request", recipient: "backend-dev", content: "Implementation complete, shutting down")
+   SendMessage(type: "shutdown_request", recipient: "frontend-dev", content: "Implementation complete, shutting down")
+   SendMessage(type: "shutdown_request", recipient: "tester", content: "Implementation complete, shutting down")
+   ```
+   Wait for each teammate to respond with shutdown_response before proceeding.
 2. TeamDelete to clean up resources
 3. Report implementation summary to user
 

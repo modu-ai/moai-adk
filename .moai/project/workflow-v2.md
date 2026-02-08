@@ -390,7 +390,7 @@ workflow:
   # Agent Teams configuration
   team:
     enabled: false  # Set to true to enable Agent Teams
-    max_teammates: 5
+    max_teammates: 10
     default_model: "sonnet"
     require_plan_approval: true
     delegate_mode: true

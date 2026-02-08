@@ -5,8 +5,9 @@ description: >
   Designs implementation approach, evaluates alternatives, proposes architecture,
   and assesses trade-offs. Produces technical design that guides the run phase.
   Use proactively during plan phase team work.
-tools: Read, Write, Edit, Bash, Grep, Glob
+tools: Read, Grep, Glob, Bash
 model: inherit
+permissionMode: plan
 memory: project
 skills: moai-domain-backend, moai-domain-frontend
 ---

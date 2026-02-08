@@ -102,8 +102,18 @@ func TestUpdateCmd_CheckOnly_NoDeps(t *testing.T) {
 }
 
 func TestRunTemplateSync_Timeout(t *testing.T) {
-	// This test verifies that runTemplateSync completes within the timeout period
-	// Actual timeout behavior is tested through integration tests
+	// This test verifies that runTemplateSync completes within the timeout period.
+	// Run in a temp directory to avoid polluting the source tree with deployed templates.
+
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
 
 	buf := new(bytes.Buffer)
 	updateCmd.SetOut(buf)
@@ -113,7 +123,7 @@ func TestRunTemplateSync_Timeout(t *testing.T) {
 	// For actual timeout testing with mock slow deployer, see integration tests
 	// or test manually by setting templateDeployTimeout to a very short duration
 
-	err := runTemplateSync(updateCmd)
+	err = runTemplateSync(updateCmd)
 
 	// The function should complete (either successfully or with an error)
 	// If it hangs indefinitely, this test will timeout

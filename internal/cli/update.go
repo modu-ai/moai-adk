@@ -49,6 +49,7 @@ func init() {
 	updateCmd.Flags().Bool("force", false, "Skip backup and force the update")
 	updateCmd.Flags().Bool("yes", false, "Auto-confirm all prompts (CI/CD mode)")
 	updateCmd.Flags().Bool("templates-only", false, "Skip binary update, sync templates only")
+	updateCmd.Flags().Bool("binary", false, "Update binary only, skip template sync")
 }
 
 // runUpdate checks for binary updates first, then synchronizes embedded
@@ -63,11 +64,19 @@ func init() {
 //	--shell-env: Configure shell environment variables
 //	--yes: Auto-confirm all prompts (CI/CD mode)
 //	--templates-only: Skip binary update, sync templates only
+//	--binary: Update binary only, skip template sync
 func runUpdate(cmd *cobra.Command, _ []string) error {
 	checkOnly := getBoolFlag(cmd, "check")
 	shellEnv := getBoolFlag(cmd, "shell-env")
 	editConfig := getBoolFlag(cmd, "config")
+	binaryOnly := getBoolFlag(cmd, "binary")
+	templatesOnly := getBoolFlag(cmd, "templates-only")
 	out := cmd.OutOrStdout()
+
+	// Validate mutually exclusive flags
+	if binaryOnly && templatesOnly {
+		return fmt.Errorf("--binary and --templates-only are mutually exclusive")
+	}
 
 	// Handle --config / -c mode (edit configuration only, no template updates)
 	// This takes priority over all other flags
@@ -117,6 +126,11 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 			_, _ = fmt.Fprintf(out, "Warning: binary update check failed: %v\n", err)
 		}
 		if updated {
+			if binaryOnly {
+				// --binary mode: skip re-exec and template sync
+				_, _ = fmt.Fprintln(out, "Binary updated successfully (template sync skipped).")
+				return nil
+			}
 			// New binary installed; re-exec so the latest templates are used
 			if err := reexecNewBinary(); err != nil {
 				_, _ = fmt.Fprintf(out, "Warning: failed to re-exec new binary: %v\n", err)
@@ -124,10 +138,17 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 			}
 			// reexecNewBinary replaces the process on success, so we only
 			// reach here if it failed.
+		} else if binaryOnly {
+			_, _ = fmt.Fprintln(out, "Already up to date (no newer binary available).")
+			return nil
 		}
 	}
 
-	// Step 2: Template sync
+	// Step 2: Template sync (skipped when --binary is set)
+	if binaryOnly {
+		_, _ = fmt.Fprintln(out, "Binary update skipped (dev build). Template sync skipped (--binary).")
+		return nil
+	}
 	return runTemplateSyncWithProgress(cmd)
 }
 

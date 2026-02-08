@@ -24,8 +24,8 @@ workflow:
     # Master switch - also requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
     enabled: true
 
-    # Maximum teammates per team (2-5 recommended)
-    max_teammates: 5
+    # Maximum teammates per team (2-10 recommended)
+    max_teammates: 10
 
     # Default model for teammates
     # Options: inherit (use parent model), haiku (fast/cheap), sonnet (balanced), opus (powerful)

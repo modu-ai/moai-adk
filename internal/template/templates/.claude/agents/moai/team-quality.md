@@ -7,6 +7,7 @@ description: >
   Use proactively as the final validation step in team workflows.
 tools: Read, Grep, Glob, Bash
 model: inherit
+permissionMode: plan
 memory: project
 skills: moai-foundation-quality
 ---

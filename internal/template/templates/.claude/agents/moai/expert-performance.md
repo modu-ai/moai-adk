@@ -11,7 +11,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
-skills: moai-foundation-claude, moai-foundation-core, moai-foundation-quality, moai-workflow-testing, moai-rust-perf, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-lang-rust, moai-lang-go
+skills: moai-foundation-claude, moai-foundation-core, moai-foundation-quality, moai-workflow-testing, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-lang-rust, moai-lang-go
 ---
 
 # Performance Expert

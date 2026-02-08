@@ -411,6 +411,17 @@ func TestRunUpdate_DefaultIsTemplateSync(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
+	// Run in a temp directory to avoid polluting the source tree with deployed templates.
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+
 	// Default moai update should run template sync, not binary update.
 	// Even with nil orchestrator, the command should proceed to template sync.
 	deps = &Dependencies{
@@ -430,7 +441,7 @@ func TestRunUpdate_DefaultIsTemplateSync(t *testing.T) {
 	}
 
 	// Default flow should attempt template sync, not binary update
-	err := updateCmd.RunE(updateCmd, []string{})
+	err = updateCmd.RunE(updateCmd, []string{})
 
 	// Template sync may fail in test environment (no TTY, etc.) but
 	// the error should NOT be about orchestrator or binary update.

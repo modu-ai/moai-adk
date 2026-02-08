@@ -103,12 +103,17 @@ var translations = map[string]map[string]QuestionTranslation{
 		},
 		"max_teammates": {
 			Title:       "최대 팀원 수 선택",
-			Description: "팀의 최대 팀원 수 (2-5 권장).",
+			Description: "팀의 최대 팀원 수 (2-10 권장).",
 			Options: []OptionTranslation{
 				{Label: "2", Desc: "병렬 작업을 위한 최소값"},
 				{Label: "3", Desc: "소규 팀"},
 				{Label: "4", Desc: "중간 팀"},
-				{Label: "5", Desc: "대규 팀 (기본값)"},
+				{Label: "5", Desc: "중대규 팀"},
+				{Label: "6", Desc: "대규 팀"},
+				{Label: "7", Desc: "대규 팀"},
+				{Label: "8", Desc: "초대규 팀"},
+				{Label: "9", Desc: "초대규 팀"},
+				{Label: "10", Desc: "최대 팀 (기본값)"},
 			},
 		},
 		"default_model": {
@@ -206,12 +211,17 @@ var translations = map[string]map[string]QuestionTranslation{
 		},
 		"max_teammates": {
 			Title:       "最大チームメイト数を選択",
-			Description: "チームの最大メイト数（2-5推奨）。",
+			Description: "チームの最大メイト数（2-10推奨）。",
 			Options: []OptionTranslation{
 				{Label: "2", Desc: "並列作業の最小値"},
 				{Label: "3", Desc: "小規模チーム"},
 				{Label: "4", Desc: "中規模チーム"},
-				{Label: "5", Desc: "大規模チーム（デフォルト）"},
+				{Label: "5", Desc: "中大規模チーム"},
+				{Label: "6", Desc: "大規模チーム"},
+				{Label: "7", Desc: "大規模チーム"},
+				{Label: "8", Desc: "超大規模チーム"},
+				{Label: "9", Desc: "超大規模チーム"},
+				{Label: "10", Desc: "最大チーム（デフォルト）"},
 			},
 		},
 		"default_model": {
@@ -309,12 +319,17 @@ var translations = map[string]map[string]QuestionTranslation{
 		},
 		"max_teammates": {
 			Title:       "选择最大团队成员数",
-			Description: "团队中最大成员数（建议2-5）。",
+			Description: "团队中最大成员数（建议2-10）。",
 			Options: []OptionTranslation{
 				{Label: "2", Desc: "并行工作的最小值"},
 				{Label: "3", Desc: "小型团队"},
 				{Label: "4", Desc: "中型团队"},
-				{Label: "5", Desc: "大型团队（默认）"},
+				{Label: "5", Desc: "中大型团队"},
+				{Label: "6", Desc: "大型团队"},
+				{Label: "7", Desc: "大型团队"},
+				{Label: "8", Desc: "超大型团队"},
+				{Label: "9", Desc: "超大型团队"},
+				{Label: "10", Desc: "最大团队（默认）"},
 			},
 		},
 		"default_model": {
