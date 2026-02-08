@@ -8,7 +8,7 @@ description: >
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: inherit
 memory: project
-skills: moai-foundation-core, moai-workflow-testing
+skills: moai-workflow-testing
 ---
 
 You are a testing specialist working as part of a MoAI agent team.

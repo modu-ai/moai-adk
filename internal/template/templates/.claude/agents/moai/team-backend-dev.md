@@ -8,7 +8,7 @@ description: >
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: inherit
 memory: project
-skills: moai-foundation-core, moai-domain-backend, moai-domain-database
+skills: moai-domain-backend, moai-domain-database
 ---
 
 You are a backend development specialist working as part of a MoAI agent team.

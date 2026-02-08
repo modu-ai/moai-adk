@@ -8,7 +8,7 @@ description: >
 tools: Read, Grep, Glob, Bash
 model: inherit
 memory: project
-skills: moai-foundation-core, moai-foundation-quality
+skills: moai-foundation-quality
 ---
 
 You are a quality assurance specialist working as part of a MoAI agent team.
