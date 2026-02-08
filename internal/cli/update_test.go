@@ -1276,8 +1276,8 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		t.Fatalf("failed to create .claude dir: %v", err)
 	}
 
-	// Test 1: No existing settings.json -> creates with only SessionEnd hook, NO env/permissions/teammateMode
-	t.Run("CreateNewSettings_OnlySessionEndHook", func(t *testing.T) {
+	// Test 1: No existing settings.json -> no file created (nothing to clean up)
+	t.Run("NoExistingSettings_NothingCreated", func(t *testing.T) {
 		settingsPath := filepath.Join(claudeDir, "settings.json")
 
 		// Ensure file doesn't exist
@@ -1288,52 +1288,22 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 			t.Fatalf("ensureGlobalSettingsEnv failed: %v", err)
 		}
 
-		// Verify file was created
-		data, err := os.ReadFile(settingsPath)
-		if err != nil {
-			t.Fatalf("failed to read settings.json: %v", err)
-		}
-
-		var settings map[string]interface{}
-		if err := json.Unmarshal(data, &settings); err != nil {
-			t.Fatalf("failed to parse settings.json: %v", err)
-		}
-
-		// env should NOT be set (moai no longer manages env in global settings)
-		if _, exists := settings["env"]; exists {
-			t.Error("env should not be set in global settings (managed at project level)")
-		}
-
-		// permissions should NOT be set (managed at project level)
-		if _, exists := settings["permissions"]; exists {
-			t.Error("permissions should not be set in global settings")
-		}
-
-		// teammateMode should NOT be set (managed at project level)
-		if _, exists := settings["teammateMode"]; exists {
-			t.Error("teammateMode should not be set in global settings")
-		}
-
-		// Check hooks.SessionEnd exists (the only managed global setting)
-		hooks, ok := settings["hooks"].(map[string]interface{})
-		if !ok {
-			t.Fatal("hooks not found in settings")
-		}
-		if _, exists := hooks["SessionEnd"]; !exists {
-			t.Error("SessionEnd hook not found")
+		// Verify file was NOT created (nothing to clean up)
+		if _, err := os.Stat(settingsPath); !os.IsNotExist(err) {
+			t.Error("settings.json should not be created when there is nothing to clean up")
 		}
 	})
 
-	// Test 2: Has moai env keys + custom -> removes moai keys, preserves custom + adds SessionEnd hook
+	// Test 2: Has moai env keys + custom -> removes moai keys, preserves custom, no SessionEnd hook added
 	t.Run("CleanupMoaiManagedKeys", func(t *testing.T) {
 		settingsPath := filepath.Join(claudeDir, "settings.json")
 
 		// Create existing settings with moai-managed env keys and a custom env key
 		existing := map[string]interface{}{
 			"env": map[string]interface{}{
-				"CUSTOM_VAR":         "custom_value",
-				"PATH":              "/old/go/bin:/usr/local/bin",
-				"ENABLE_TOOL_SEARCH": "1",
+				"CUSTOM_VAR":                           "custom_value",
+				"PATH":                                 "/old/go/bin:/usr/local/bin",
+				"ENABLE_TOOL_SEARCH":                   "1",
 				"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
 			},
 			"language": "en",
@@ -1382,13 +1352,11 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 			t.Error("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be removed from global settings")
 		}
 
-		// SessionEnd hook should be added
-		hooks, ok := settings["hooks"].(map[string]interface{})
-		if !ok {
-			t.Fatal("hooks not found in settings")
-		}
-		if _, exists := hooks["SessionEnd"]; !exists {
-			t.Error("SessionEnd hook not found")
+		// SessionEnd hook should NOT be present (no longer managed globally)
+		if hooks, ok := settings["hooks"].(map[string]interface{}); ok {
+			if _, exists := hooks["SessionEnd"]; exists {
+				t.Error("SessionEnd hook should not be added to global settings")
+			}
 		}
 
 		// language should be preserved (non-moai-managed top-level key)
@@ -1397,12 +1365,11 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		}
 	})
 
-	// Test 3: Only SessionEnd hook, no moai keys -> no modification
-	t.Run("AlreadyClean_NoModification", func(t *testing.T) {
+	// Test 3: Orphaned SessionEnd hook (handle-session-end.sh) -> should be cleaned up
+	t.Run("CleanupOrphanedSessionEndHook", func(t *testing.T) {
 		settingsPath := filepath.Join(claudeDir, "settings.json")
 
-		// Create settings with only the SessionEnd hook (no moai-managed env/permissions/teammateMode)
-		sessionEndHookCommand := buildSessionEndHookCommand()
+		// Create settings with the orphaned SessionEnd hook
 		existing := map[string]interface{}{
 			"hooks": map[string]interface{}{
 				"SessionEnd": []interface{}{
@@ -1410,7 +1377,7 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 						"hooks": []interface{}{
 							map[string]interface{}{
 								"type":    "command",
-								"command": sessionEndHookCommand,
+								"command": "\"$HOME/.claude/hooks/moai/handle-session-end.sh\"",
 								"timeout": 5,
 							},
 						},
@@ -1423,20 +1390,25 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 			t.Fatalf("failed to write existing settings: %v", err)
 		}
 
-		// Store original content
-		originalContent, _ := os.ReadFile(settingsPath)
-
 		err := ensureGlobalSettingsEnv()
 		if err != nil {
 			t.Fatalf("ensureGlobalSettingsEnv failed: %v", err)
 		}
 
-		// Read back content
-		newContent, _ := os.ReadFile(settingsPath)
+		// Read back and verify
+		data, err = os.ReadFile(settingsPath)
+		if err != nil {
+			t.Fatalf("failed to read settings.json: %v", err)
+		}
 
-		// Content should be identical (no modification needed)
-		if string(originalContent) != string(newContent) {
-			t.Errorf("file was modified when it should not have been\nOriginal: %s\nNew: %s", string(originalContent), string(newContent))
+		var settings map[string]interface{}
+		if err := json.Unmarshal(data, &settings); err != nil {
+			t.Fatalf("failed to parse settings.json: %v", err)
+		}
+
+		// hooks should be completely removed (empty after cleanup)
+		if _, exists := settings["hooks"]; exists {
+			t.Error("hooks should be removed entirely when only orphaned handle-session-end.sh existed")
 		}
 	})
 
@@ -1447,8 +1419,8 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		// Create settings with env containing only moai-managed keys
 		existing := map[string]interface{}{
 			"env": map[string]interface{}{
-				"PATH":               "/old/go/bin:/usr/bin",
-				"ENABLE_TOOL_SEARCH": "1",
+				"PATH":                                 "/old/go/bin:/usr/bin",
+				"ENABLE_TOOL_SEARCH":                   "1",
 				"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
 			},
 		}
@@ -1478,13 +1450,11 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 			t.Error("env should be removed entirely when all keys are moai-managed")
 		}
 
-		// SessionEnd hook should still be present
-		hooks, ok := settings["hooks"].(map[string]interface{})
-		if !ok {
-			t.Fatal("hooks not found in settings")
-		}
-		if _, exists := hooks["SessionEnd"]; !exists {
-			t.Error("SessionEnd hook not found")
+		// SessionEnd hook should NOT be present (no longer managed globally)
+		if hooks, ok := settings["hooks"].(map[string]interface{}); ok {
+			if _, exists := hooks["SessionEnd"]; exists {
+				t.Error("SessionEnd hook should not be present in global settings")
+			}
 		}
 	})
 
@@ -1493,7 +1463,7 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		settingsPath := filepath.Join(claudeDir, "settings.json")
 
 		// Create settings with permissions that include user-added entries beyond Task:*
-		sessionEndHookCommand := buildSessionEndHookCommand()
+		// and an orphaned handle-session-end.sh hook that should be cleaned up
 		existing := map[string]interface{}{
 			"permissions": map[string]interface{}{
 				"allow": []interface{}{"Task:*", "Bash(npm run build):*"},
@@ -1504,7 +1474,7 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 						"hooks": []interface{}{
 							map[string]interface{}{
 								"type":    "command",
-								"command": sessionEndHookCommand,
+								"command": "\"$HOME/.claude/hooks/moai/handle-session-end.sh\"",
 								"timeout": 5,
 							},
 						},
@@ -1543,6 +1513,13 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		if len(allowArr) != 2 {
 			t.Errorf("permissions.allow should have 2 entries, got %d", len(allowArr))
 		}
+
+		// Orphaned SessionEnd hook should be cleaned up
+		if hooks, ok := settings["hooks"].(map[string]interface{}); ok {
+			if _, exists := hooks["SessionEnd"]; exists {
+				t.Error("orphaned SessionEnd hook should be cleaned up")
+			}
+		}
 	})
 }
 
@@ -1570,13 +1547,13 @@ func TestEnsureGlobalSettingsEnv_CleanupMigratedSettings(t *testing.T) {
 
 	// Create existing settings with ALL moai-managed settings that should be cleaned up:
 	// env keys (PATH, ENABLE_TOOL_SEARCH, CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS),
-	// permissions with only Task:*, teammateMode "auto", plus a custom env key
+	// permissions with only Task:*, teammateMode "auto", orphaned SessionEnd hook, plus a custom env key
 	existing := map[string]interface{}{
 		"env": map[string]interface{}{
-			"PATH":               "/old/go/bin:/usr/local/bin:/usr/bin:/bin",
-			"ENABLE_TOOL_SEARCH": "1",
+			"PATH":                                 "/old/go/bin:/usr/local/bin:/usr/bin:/bin",
+			"ENABLE_TOOL_SEARCH":                   "1",
 			"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
-			"CUSTOM_VAR": "preserved",
+			"CUSTOM_VAR":                           "preserved",
 		},
 		"permissions": map[string]interface{}{
 			"allow": []interface{}{"Task:*"},
@@ -1588,7 +1565,7 @@ func TestEnsureGlobalSettingsEnv_CleanupMigratedSettings(t *testing.T) {
 					"hooks": []interface{}{
 						map[string]interface{}{
 							"type":    "command",
-							"command": buildSessionEndHookCommand(),
+							"command": "\"$HOME/.claude/hooks/moai/handle-session-end.sh\"",
 							"timeout": 5,
 						},
 					},
@@ -1649,14 +1626,13 @@ func TestEnsureGlobalSettingsEnv_CleanupMigratedSettings(t *testing.T) {
 		t.Error("teammateMode 'auto' should be removed from global settings")
 	}
 
-	// SessionEnd hook should still be present
-	hooks, hasHooks := settings["hooks"]
-	if !hasHooks {
-		t.Fatal("hooks should still be present")
-	}
-	hooksMap := hooks.(map[string]interface{})
-	if _, hasSessionEnd := hooksMap["SessionEnd"]; !hasSessionEnd {
-		t.Error("SessionEnd hook should still be present")
+	// SessionEnd hook (orphaned handle-session-end.sh) should be REMOVED
+	if hooks, hasHooks := settings["hooks"]; hasHooks {
+		if hooksMap, ok := hooks.(map[string]interface{}); ok {
+			if _, hasSessionEnd := hooksMap["SessionEnd"]; hasSessionEnd {
+				t.Error("orphaned SessionEnd hook should be removed from global settings")
+			}
+		}
 	}
 }
 

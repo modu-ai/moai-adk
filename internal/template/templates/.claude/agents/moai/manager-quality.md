@@ -11,7 +11,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: bypassPermissions
-skills: moai-foundation-claude, moai-foundation-core, moai-foundation-quality, moai-workflow-testing, moai-tool-ast-grep, moai-workflow-loop
+skills: moai-foundation-claude, moai-foundation-core, moai-foundation-context, moai-foundation-quality, moai-workflow-testing, moai-tool-ast-grep, moai-workflow-loop
 hooks:
   SubagentStop:
     - hooks:

@@ -1497,9 +1497,10 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 	return nil
 }
 
-// ensureGlobalSettingsEnv ensures only the SessionEnd hook for moai-rank is set in ~/.claude/settings.json.
-// All other settings (env, permissions, teammateMode) are managed at the project level in .claude/settings.json.
-// This minimizes modifications to the user's global settings file.
+// ensureGlobalSettingsEnv cleans up moai-managed settings from ~/.claude/settings.json.
+// All settings (env, permissions, teammateMode, SessionEnd hooks) are managed at the project level.
+// The global SessionEnd hook (handle-session-end.sh) was removed because the script was never
+// deployed to the global location; project-level hooks handle this instead.
 func ensureGlobalSettingsEnv() error {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -1507,9 +1508,6 @@ func ensureGlobalSettingsEnv() error {
 	}
 
 	globalSettingsPath := filepath.Join(homeDir, defs.ClaudeDir, defs.SettingsJSON)
-
-	// SessionEnd hook for moai-rank submission (the only global setting we manage)
-	sessionEndHookCommand := buildSessionEndHookCommand()
 
 	// Read existing global settings
 	var existingSettings map[string]interface{}
@@ -1520,11 +1518,15 @@ func ensureGlobalSettingsEnv() error {
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("read global settings: %w", err)
 	} else {
-		existingSettings = make(map[string]interface{})
+		// No global settings file, nothing to clean up
+		return nil
 	}
 
-	// Check if SessionEnd hook needs to be added/updated
-	needsUpdate := ensureSessionEndHook(existingSettings, sessionEndHookCommand)
+	needsUpdate := false
+
+	// Clean up orphaned SessionEnd hook that references handle-session-end.sh
+	// This hook was registered but the script was never deployed to $HOME/.claude/hooks/moai/
+	needsUpdate = cleanOrphanedSessionEndHook(existingSettings) || needsUpdate
 
 	// Clean up moai-managed settings that have been migrated to project level.
 	// Preserve any user-added custom env keys but remove moai-specific ones.
@@ -1570,9 +1572,6 @@ func ensureGlobalSettingsEnv() error {
 		return nil
 	}
 
-	// Add SessionEnd hook
-	addSessionEndHook(existingSettings, sessionEndHookCommand)
-
 	// Write back
 	jsonContent, err := json.MarshalIndent(existingSettings, "", "  ")
 	if err != nil {
@@ -1586,118 +1585,35 @@ func ensureGlobalSettingsEnv() error {
 	return nil
 }
 
-// buildSessionEndHookCommand builds the SessionEnd hook command for moai-rank submission.
-// Uses shell script wrapper with $HOME environment variable for global hook installation.
-func buildSessionEndHookCommand() string {
-	// The hook wrapper script is installed at ~/.claude/hooks/moai/handle-session-end.sh
-	// This wrapper calls: moai hook session-end
-	// Note: For global settings, use $HOME instead of $CLAUDE_PROJECT_DIR
-	return "\"$HOME/.claude/hooks/moai/handle-session-end.sh\""
-}
-
-// ensureSessionEndHook checks if the SessionEnd hook needs to be added or updated.
-// Returns true if an update is needed.
-func ensureSessionEndHook(settings map[string]interface{}, hookCommand string) bool {
+// cleanOrphanedSessionEndHook removes the orphaned handle-session-end.sh hook from global settings.
+// This hook was previously registered by ensureGlobalSettingsEnv but the script was never deployed
+// to $HOME/.claude/hooks/moai/. Project-level hooks handle SessionEnd instead.
+// Returns true if any cleanup was performed.
+func cleanOrphanedSessionEndHook(settings map[string]interface{}) bool {
 	existingHooks, hasHooks := settings["hooks"]
 	if !hasHooks {
-		return true // Need to add hooks
+		return false
 	}
 
 	hooksMap, ok := existingHooks.(map[string]interface{})
 	if !ok {
-		return true // Invalid hooks structure, need to fix
+		return false
 	}
 
 	sessionEndHooks, hasSessionEnd := hooksMap["SessionEnd"]
 	if !hasSessionEnd {
-		return true // Need to add SessionEnd hook
-	}
-
-	// Check if our hook already exists
-	sessionEndList, ok := sessionEndHooks.([]interface{})
-	if !ok {
-		return true // Invalid structure, need to fix
-	}
-
-	for _, hookGroup := range sessionEndList {
-		groupMap, ok := hookGroup.(map[string]interface{})
-		if !ok {
-			continue
-		}
-
-		hooksList, ok := groupMap["hooks"].([]interface{})
-		if !ok {
-			continue
-		}
-
-		for _, hookEntry := range hooksList {
-			entryMap, ok := hookEntry.(map[string]interface{})
-			if !ok {
-				continue
-			}
-
-			if command, ok := entryMap["command"].(string); ok {
-				// Check if this is our moai-rank hook
-				if strings.Contains(command, "handle-session-end.sh") || strings.Contains(command, "session_end__rank_submit") {
-					// Hook exists, check if it needs updating to use shell script
-					if strings.Contains(command, "python") || strings.Contains(command, "uv run") {
-						return true // Needs update from Python to shell
-					}
-					return false // Hook exists and is up to date
-				}
-			}
-		}
-	}
-
-	return true // Hook not found, need to add
-}
-
-// addSessionEndHook adds the SessionEnd hook to the settings map.
-func addSessionEndHook(settings map[string]interface{}, hookCommand string) {
-	// Get or create hooks map
-	var hooksMap map[string]interface{}
-	if existingHooks, hasHooks := settings["hooks"]; hasHooks {
-		if hm, ok := existingHooks.(map[string]interface{}); ok {
-			hooksMap = hm
-		} else {
-			hooksMap = make(map[string]interface{})
-		}
-	} else {
-		hooksMap = make(map[string]interface{})
-	}
-
-	// Remove any existing Python-based moai-rank hooks
-	cleanSessionEndHooks(hooksMap)
-
-	// Add new shell-based SessionEnd hook with timeout
-	hooksMap["SessionEnd"] = []interface{}{
-		map[string]interface{}{
-			"hooks": []interface{}{
-				map[string]interface{}{
-					"type":    "command",
-					"command": hookCommand,
-					"timeout": 5,
-				},
-			},
-		},
-	}
-
-	settings["hooks"] = hooksMap
-}
-
-// cleanSessionEndHooks removes any existing Python-based moai-rank hooks from SessionEnd.
-func cleanSessionEndHooks(hooksMap map[string]interface{}) {
-	sessionEndHooks, hasSessionEnd := hooksMap["SessionEnd"]
-	if !hasSessionEnd {
-		return
+		return false
 	}
 
 	sessionEndList, ok := sessionEndHooks.([]interface{})
 	if !ok {
-		return
+		return false
 	}
 
+	// Filter out handle-session-end.sh hooks (orphaned) and Python-based legacy hooks
 	var cleanedHooks []interface{}
+	modified := false
+
 	for _, hookGroup := range sessionEndList {
 		groupMap, ok := hookGroup.(map[string]interface{})
 		if !ok {
@@ -1725,12 +1641,11 @@ func cleanSessionEndHooks(hooksMap map[string]interface{}) {
 				continue
 			}
 
-			// Remove Python-based moai-rank hooks
-			if strings.Contains(command, "session_end__rank_submit") ||
-				(strings.Contains(command, "moai-rank") && strings.Contains(command, "python")) ||
-				strings.Contains(command, "uv run python") && strings.Contains(command, "rank_submit") {
-				// Skip this hook (remove it)
-				continue
+			// Remove orphaned handle-session-end.sh hook and legacy Python hooks
+			if strings.Contains(command, "handle-session-end.sh") ||
+				strings.Contains(command, "session_end__rank_submit") {
+				modified = true
+				continue // Skip (remove) this hook
 			}
 
 			cleanedGroupHooks = append(cleanedGroupHooks, hookEntry)
@@ -1739,7 +1654,13 @@ func cleanSessionEndHooks(hooksMap map[string]interface{}) {
 		if len(cleanedGroupHooks) > 0 {
 			groupMap["hooks"] = cleanedGroupHooks
 			cleanedHooks = append(cleanedHooks, groupMap)
+		} else {
+			modified = true
 		}
+	}
+
+	if !modified {
+		return false
 	}
 
 	if len(cleanedHooks) > 0 {
@@ -1747,6 +1668,13 @@ func cleanSessionEndHooks(hooksMap map[string]interface{}) {
 	} else {
 		delete(hooksMap, "SessionEnd")
 	}
+
+	// If hooks map is now empty, remove it entirely
+	if len(hooksMap) == 0 {
+		delete(settings, "hooks")
+	}
+
+	return true
 }
 
 // execCommand executes a command and returns its output.
