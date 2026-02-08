@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"text/template"
@@ -410,8 +411,8 @@ func TestBuildSmartPATH_EssentialDirs(t *testing.T) {
 		t.Skip("cannot determine home directory")
 	}
 
-	localBin := homeDir + "/.local/bin"
-	goBin := homeDir + "/go/bin"
+	localBin := filepath.Join(homeDir, ".local", "bin")
+	goBin := filepath.Join(homeDir, "go", "bin")
 
 	if !PathContainsDir(path, localBin, sep) {
 		t.Errorf("PATH should contain %s", localBin)

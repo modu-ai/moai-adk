@@ -138,14 +138,16 @@ func TestWorktreeList_PorcelainParsing(t *testing.T) {
 		t.Fatalf("parsePorcelainWorktreeList() returned %d entries, want 2", len(worktrees))
 	}
 
+	// Use filepath.FromSlash for expected paths since parsePorcelainWorktreeList
+	// normalizes paths with filepath.Clean (converts / to \ on Windows)
 	tests := []struct {
 		idx    int
 		path   string
 		head   string
 		branch string
 	}{
-		{0, "/Users/goos/project", "abc123def456", "main"},
-		{1, "/tmp/wt-feature", "def789abc012", "feature"},
+		{0, filepath.FromSlash("/Users/goos/project"), "abc123def456", "main"},
+		{1, filepath.FromSlash("/tmp/wt-feature"), "def789abc012", "feature"},
 	}
 
 	for _, tt := range tests {

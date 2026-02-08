@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -728,6 +729,10 @@ func TestManagerNilManifestGuards(t *testing.T) {
 
 func TestManagerSaveReadOnlyDir(t *testing.T) {
 	t.Run("save_to_readonly_parent", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("Unix file permissions not supported on Windows")
+		}
+
 		root := t.TempDir()
 		readonlyDir := filepath.Join(root, "readonly")
 		if err := os.MkdirAll(readonlyDir, 0o555); err != nil {
@@ -750,6 +755,10 @@ func TestManagerSaveReadOnlyDir(t *testing.T) {
 
 func TestManagerLoadPermissionError(t *testing.T) {
 	t.Run("unreadable_manifest", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("Unix file permissions not supported on Windows")
+		}
+
 		root := setupProject(t)
 		manifestPath := filepath.Join(root, ".moai", manifestFileName)
 

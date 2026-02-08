@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"testing/fstest"
 
@@ -211,6 +212,11 @@ func TestDeployerListTemplates(t *testing.T) {
 
 func TestValidateDeployPath(t *testing.T) {
 	root := "/home/user/project"
+	absTestPath := "/etc/passwd"
+	if runtime.GOOS == "windows" {
+		root = `C:\Users\user\project`
+		absTestPath = `C:\Windows\System32\config`
+	}
 
 	tests := []struct {
 		name    string
@@ -222,7 +228,7 @@ func TestValidateDeployPath(t *testing.T) {
 		{"valid_simple", "CLAUDE.md", false},
 		{"traversal_dotdot", "../etc/passwd", true},
 		{"traversal_nested", "foo/../../etc/passwd", true},
-		{"absolute_path", "/etc/passwd", true},
+		{"absolute_path", absTestPath, true},
 		{"traversal_complex", ".claude/./../../secret", true},
 	}
 

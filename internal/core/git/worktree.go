@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -169,7 +170,8 @@ func parsePorcelainWorktreeList(output string) []Worktree {
 			if current.Path != "" {
 				worktrees = append(worktrees, current)
 			}
-			current = Worktree{Path: strings.TrimPrefix(line, "worktree ")}
+			// Normalize the path from git output to use OS-native separators
+			current = Worktree{Path: filepath.Clean(strings.TrimPrefix(line, "worktree "))}
 		case strings.HasPrefix(line, "HEAD "):
 			current.HEAD = strings.TrimPrefix(line, "HEAD ")
 		case strings.HasPrefix(line, "branch "):

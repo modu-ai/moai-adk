@@ -1,6 +1,7 @@
 package merge
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -387,12 +388,12 @@ func TestSanitizePath_PathTraversal(t *testing.T) {
 		{
 			name:     "Path with directory",
 			input:    "internal/merge/file.go",
-			expected: "internal/merge/file.go",
+			expected: filepath.FromSlash("internal/merge/file.go"),
 		},
 		{
 			name:     "Path traversal with ../",
 			input:    "../../../etc/passwd",
-			expected: "etc/passwd",
+			expected: filepath.FromSlash("etc/passwd"),
 		},
 		{
 			name:     "Path traversal with ./",
@@ -402,7 +403,7 @@ func TestSanitizePath_PathTraversal(t *testing.T) {
 		{
 			name:     "Absolute path",
 			input:    "/etc/passwd",
-			expected: "etc/passwd",
+			expected: filepath.FromSlash("etc/passwd"),
 		},
 		{
 			name:     "Complex path traversal",
@@ -412,12 +413,12 @@ func TestSanitizePath_PathTraversal(t *testing.T) {
 		{
 			name:     "Multiple leading slashes",
 			input:    "///etc/passwd",
-			expected: "etc/passwd",
+			expected: filepath.FromSlash("etc/passwd"),
 		},
 		{
 			name:     "Nested path traversal",
 			input:    "a/../../b/../c/./d.go",
-			expected: "c/d.go",
+			expected: filepath.FromSlash("c/d.go"),
 		},
 	}
 

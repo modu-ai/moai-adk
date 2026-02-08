@@ -11,10 +11,11 @@ func TestGetConfigFile(t *testing.T) {
 	c := NewConfigurator()
 
 	tests := []struct {
-		name        string
-		shell       ShellType
-		preferLogin bool
-		wantSuffix  string
+		name          string
+		shell         ShellType
+		preferLogin   bool
+		wantSuffix    string
+		wantAnySuffix []string // if non-nil, any of these suffixes is acceptable
 	}{
 		{
 			name:        "zsh_prefer_login",
@@ -32,7 +33,9 @@ func TestGetConfigFile(t *testing.T) {
 			name:        "bash_prefer_login",
 			shell:       ShellBash,
 			preferLogin: true,
-			wantSuffix:  ".profile",
+			// selectConfigFile prefers .profile but falls back to .bash_profile
+			// if .profile does not exist (e.g., macOS where .bash_profile is default)
+			wantAnySuffix: []string{".profile", ".bash_profile"},
 		},
 		{
 			name:        "bash_no_prefer_login",
@@ -50,7 +53,9 @@ func TestGetConfigFile(t *testing.T) {
 			name:        "unknown_defaults_to_profile",
 			shell:       ShellUnknown,
 			preferLogin: true,
-			wantSuffix:  ".profile",
+			// On Windows, ShellUnknown defaults to PowerShell profile (.ps1);
+			// on Unix, it defaults to .profile
+			wantAnySuffix: []string{".profile", ".ps1"},
 		},
 		{
 			name:        "powershell",
@@ -63,7 +68,18 @@ func TestGetConfigFile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := c.GetConfigFile(tt.shell, tt.preferLogin)
-			if !strings.HasSuffix(got, tt.wantSuffix) {
+			if len(tt.wantAnySuffix) > 0 {
+				matched := false
+				for _, suffix := range tt.wantAnySuffix {
+					if strings.HasSuffix(got, suffix) {
+						matched = true
+						break
+					}
+				}
+				if !matched {
+					t.Errorf("GetConfigFile() = %v, want any suffix of %v", got, tt.wantAnySuffix)
+				}
+			} else if !strings.HasSuffix(got, tt.wantSuffix) {
 				t.Errorf("GetConfigFile() = %v, want suffix %v", got, tt.wantSuffix)
 			}
 		})

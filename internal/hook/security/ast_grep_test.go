@@ -3,6 +3,7 @@ package security
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -65,6 +66,9 @@ func TestASTGrepScanner_GetVersion(t *testing.T) {
 	})
 
 	t.Run("returns version string when available", func(t *testing.T) {
+		if _, err := exec.LookPath("sg"); err != nil {
+			t.Skip("ast-grep (sg) not installed, skipping")
+		}
 		if !scanner.IsAvailable() {
 			t.Skip("ast-grep (sg) not installed, skipping version test")
 		}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -51,6 +52,13 @@ func TestValidatorValidateJSON(t *testing.T) {
 func TestValidatorValidatePaths(t *testing.T) {
 	v := NewValidator()
 	root := "/home/user/project"
+	absPath1 := "/tmp/malicious"
+	absPath2 := "/absolute/path"
+	if runtime.GOOS == "windows" {
+		root = `C:\Users\user\project`
+		absPath1 = `C:\temp\malicious`
+		absPath2 = `D:\absolute\path`
+	}
 
 	t.Run("valid_paths", func(t *testing.T) {
 		files := []string{
@@ -78,7 +86,7 @@ func TestValidatorValidatePaths(t *testing.T) {
 	})
 
 	t.Run("absolute_path", func(t *testing.T) {
-		files := []string{"/tmp/malicious"}
+		files := []string{absPath1}
 
 		errs := v.ValidatePaths(root, files)
 		if len(errs) != 1 {
@@ -91,7 +99,7 @@ func TestValidatorValidatePaths(t *testing.T) {
 			"CLAUDE.md",
 			"../escape",
 			".claude/agents/file.md",
-			"/absolute/path",
+			absPath2,
 		}
 
 		errs := v.ValidatePaths(root, files)

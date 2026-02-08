@@ -3,6 +3,8 @@ package quality
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -25,6 +27,11 @@ func NewLinter(registry *toolRegistry) *Linter {
 
 // LintFile runs linter on a file per REQ-HOOK-080.
 func (l *Linter) LintFile(ctx context.Context, filePath string) (*ToolResult, error) {
+	// Check if file exists before processing
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("file not found: %s", filePath)
+	}
+
 	// Get linters for this file
 	tools := l.registry.GetToolsForFile(filePath, ToolTypeLinter)
 	if len(tools) == 0 {

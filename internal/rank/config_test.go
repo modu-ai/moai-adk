@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -179,6 +180,10 @@ func TestFileCredentialStore_GetAPIKey(t *testing.T) {
 }
 
 func TestFileCredentialStore_FilePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix file permissions not supported on Windows")
+	}
+
 	dir := t.TempDir()
 	store := NewFileCredentialStore(dir)
 

@@ -601,13 +601,17 @@ func sanitizePath(path string) string {
 	// Normalize path separators and resolve . and ..
 	cleaned := filepath.Clean(path)
 
-	// Remove leading slashes to prevent absolute path attacks
-	cleaned = strings.TrimPrefix(cleaned, "/")
+	// Remove leading path separators to prevent absolute path attacks
+	// Handle both forward and backward slashes for cross-platform safety
+	cleaned = strings.TrimLeft(cleaned, `/\`)
 
-	// Remove leading ./ and ../ sequences
-	for strings.HasPrefix(cleaned, "./") || strings.HasPrefix(cleaned, "../") {
-		cleaned = strings.TrimPrefix(cleaned, "./")
-		cleaned = strings.TrimPrefix(cleaned, "../")
+	// Remove leading ./ and ../ sequences using OS-native separator
+	sep := string(filepath.Separator)
+	dotSep := "." + sep
+	dotDotSep := ".." + sep
+	for strings.HasPrefix(cleaned, dotSep) || strings.HasPrefix(cleaned, dotDotSep) {
+		cleaned = strings.TrimPrefix(cleaned, dotSep)
+		cleaned = strings.TrimPrefix(cleaned, dotDotSep)
 	}
 
 	return cleaned
