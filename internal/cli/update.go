@@ -1163,7 +1163,11 @@ func restoreMoaiConfig(projectRoot, backupDir string) error {
 		// Check if target file exists
 		if _, err := os.Stat(targetPath); err != nil {
 			if os.IsNotExist(err) {
-				// Target doesn't exist, just copy backup
+				// Target doesn't exist, ensure parent directory exists
+				if err := os.MkdirAll(filepath.Dir(targetPath), defs.DirPerm); err != nil {
+					return fmt.Errorf("create parent directory for %s: %w", relPath, err)
+				}
+				// Copy backup to target
 				return os.WriteFile(targetPath, backupData, defs.FilePerm)
 			}
 			return err
@@ -1391,10 +1395,10 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		// Set enabled flag based on AgentTeamsMode
 		teamConfig["enabled"] = (result.AgentTeamsMode == "team")
 
-		// Set max_teammates if provided (valid values: 2-5)
+		// Set max_teammates if provided (valid values: 2-10)
 		if result.MaxTeammates != "" {
-			// Validate max_teammates is between 2 and 5
-			if val, err := strconv.Atoi(result.MaxTeammates); err == nil && val >= 2 && val <= 5 {
+			// Validate max_teammates is between 2 and 10
+			if val, err := strconv.Atoi(result.MaxTeammates); err == nil && val >= 2 && val <= 10 {
 				teamConfig["max_teammates"] = val
 			}
 		}

@@ -1155,6 +1155,58 @@ func TestRestoreMoaiConfig_MergeBehavior(t *testing.T) {
 	}
 }
 
+func TestRestoreMoaiConfig_MissingDirectory(t *testing.T) {
+	// Test restore when backup contains files in directories that don't exist in target
+	tmpDir := t.TempDir()
+
+	// Create config directory with subdirectory
+	configDir := filepath.Join(tmpDir, ".moai", "config")
+	questionsDir := filepath.Join(configDir, "questions")
+
+	if err := os.MkdirAll(questionsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a file in questions directory
+	schemaPath := filepath.Join(questionsDir, "_schema.yaml")
+	schemaContent := []byte("version: 1.0\nfields:\n  - name: test\n")
+	if err := os.WriteFile(schemaPath, schemaContent, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create backup
+	backupDir, err := backupMoaiConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("backupMoaiConfig failed: %v", err)
+	}
+
+	// Delete the questions directory (simulating template without this directory)
+	if err := os.RemoveAll(questionsDir); err != nil {
+		t.Fatal(err)
+	}
+
+	// Restore from backup - should create directory and restore file
+	if err := restoreMoaiConfig(tmpDir, backupDir); err != nil {
+		t.Fatalf("restoreMoaiConfig failed: %v", err)
+	}
+
+	// Verify the file was restored and directory was created
+	restoredPath := filepath.Join(configDir, "questions", "_schema.yaml")
+	if _, err := os.Stat(restoredPath); os.IsNotExist(err) {
+		t.Error("restored file should exist in questions directory")
+	}
+
+	// Verify content
+	data, err := os.ReadFile(restoredPath)
+	if err != nil {
+		t.Fatalf("read restored file: %v", err)
+	}
+
+	if !strings.Contains(string(data), "version: 1.0") {
+		t.Error("restored file should contain original content")
+	}
+}
+
 func TestBackupMetadata_Structure(t *testing.T) {
 	// Test BackupMetadata struct marshaling
 	metadata := BackupMetadata{
