@@ -22,11 +22,25 @@ type VersionCollector struct {
 }
 
 // VersionConfig represents the structure of .moai/config/config.yaml
-// for parsing the version field.
+// for parsing version fields. It reads project.template_version first
+// (updated by moai update) and falls back to moai.version (set during init).
 type VersionConfig struct {
 	Moai struct {
 		Version string `yaml:"version"`
 	} `yaml:"moai"`
+	Project struct {
+		TemplateVersion string `yaml:"template_version"`
+	} `yaml:"project"`
+}
+
+// effectiveVersion returns project.template_version if set, otherwise
+// moai.version. This ensures the statusline reflects the version updated
+// by `moai update` rather than the original initialization version.
+func (c *VersionConfig) effectiveVersion() string {
+	if c.Project.TemplateVersion != "" {
+		return c.Project.TemplateVersion
+	}
+	return c.Moai.Version
 }
 
 // NewVersionCollector creates a VersionCollector that reads the template
@@ -135,11 +149,12 @@ func (v *VersionCollector) parseConfigFile(path string) (string, error) {
 		return "", fmt.Errorf("parse config file: %w", err)
 	}
 
-	if cfg.Moai.Version == "" {
+	version := cfg.effectiveVersion()
+	if version == "" {
 		return "", fmt.Errorf("version not set in config")
 	}
 
-	return cfg.Moai.Version, nil
+	return version, nil
 }
 
 // formatVersion removes the 'v' prefix from version strings if present.

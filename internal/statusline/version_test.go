@@ -178,6 +178,77 @@ func TestVersionCollector_CheckUpdate(t *testing.T) {
 	}
 }
 
+func TestVersionCollector_PrefersTemplateVersion(t *testing.T) {
+	// Reproduction test: when project.template_version differs from moai.version,
+	// the collector should use project.template_version (updated by moai update)
+	// rather than moai.version (only set during moai init).
+	dir := t.TempDir()
+	configDir := filepath.Join(dir, ".moai", "config")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(configDir, "config.yaml")
+	// Simulate a project initialized at v0.40.1, then updated to v2.2.1
+	content := []byte("moai:\n  version: 0.40.1\nproject:\n  template_version: 2.2.1\n")
+	if err := os.WriteFile(configPath, content, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	originalDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(originalDir) }()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+
+	v := NewVersionCollector("v2.2.1")
+	got, err := v.CheckUpdate(context.Background())
+	if err != nil {
+		t.Fatalf("CheckUpdate() error = %v", err)
+	}
+
+	// Should read template_version (2.2.1), not moai.version (0.40.1)
+	if got.Current != "2.2.1" {
+		t.Errorf("CheckUpdate() Current = %q, want %q (should prefer project.template_version)", got.Current, "2.2.1")
+	}
+	// Binary matches template_version, so no update should be available
+	if got.UpdateAvailable {
+		t.Errorf("CheckUpdate() UpdateAvailable = true, want false (binary matches template_version)")
+	}
+}
+
+func TestVersionCollector_FallbackToMoaiVersion(t *testing.T) {
+	// When project.template_version is missing, fall back to moai.version
+	dir := t.TempDir()
+	configDir := filepath.Join(dir, ".moai", "config")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(configDir, "config.yaml")
+	content := []byte("moai:\n  version: 1.5.0\n")
+	if err := os.WriteFile(configPath, content, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	originalDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(originalDir) }()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+
+	v := NewVersionCollector("v1.5.0")
+	got, err := v.CheckUpdate(context.Background())
+	if err != nil {
+		t.Fatalf("CheckUpdate() error = %v", err)
+	}
+
+	if got.Current != "1.5.0" {
+		t.Errorf("CheckUpdate() Current = %q, want %q", got.Current, "1.5.0")
+	}
+	if got.UpdateAvailable {
+		t.Errorf("CheckUpdate() UpdateAvailable = true, want false")
+	}
+}
+
 func TestFormatVersion(t *testing.T) {
 	tests := []struct {
 		input string
