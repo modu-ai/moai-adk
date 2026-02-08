@@ -3,6 +3,7 @@ package project
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -44,7 +45,7 @@ type projectValidator struct {
 // NewValidator creates a new ProjectValidator.
 func NewValidator(logger *slog.Logger) ProjectValidator {
 	if logger == nil {
-		logger = slog.Default()
+		logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 	}
 	return &projectValidator{logger: logger}
 }

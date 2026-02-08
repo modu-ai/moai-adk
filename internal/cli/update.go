@@ -567,7 +567,7 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) error {
 		}
 	}
 
-	return runTemplateSyncWithReporter(cmd, consoleReporter, false)
+	return runTemplateSyncWithReporter(cmd, consoleReporter, true)
 }
 
 // classifyFileRisk determines the risk level for a file modification.
@@ -635,19 +635,19 @@ func determineChangeType(exists bool) string {
 func analyzeFiles(templates []string, projectRoot string) []merge.FileAnalysis {
 	var files []merge.FileAnalysis
 	for _, tmpl := range templates {
+		// Strip .tmpl suffix first - display and filter using rendered target path
+		displayPath := tmpl
+		if strings.HasSuffix(tmpl, ".tmpl") {
+			displayPath = strings.TrimSuffix(tmpl, ".tmpl")
+		}
+
 		// Filter out MoAI-managed files - they are automatically installed
-		if isMoaiManaged(tmpl) {
+		if isMoaiManaged(displayPath) {
 			continue
 		}
 
-		// Handle .tmpl files: use rendered target path for display and existence check
-		displayPath := tmpl
-		targetPath := filepath.Join(projectRoot, tmpl)
-		if strings.HasSuffix(tmpl, ".tmpl") {
-			// .tmpl files are rendered to paths without the .tmpl extension
-			displayPath = strings.TrimSuffix(tmpl, ".tmpl")
-			targetPath = filepath.Join(projectRoot, displayPath)
-		}
+		// Use rendered target path for existence check
+		targetPath := filepath.Join(projectRoot, displayPath)
 
 		_, err := os.Stat(targetPath)
 		exists := err == nil
@@ -847,8 +847,8 @@ func getProjectConfigVersion(projectRoot string) (string, error) {
 }
 
 // backupMoaiConfig creates a backup of .moai/config/ directory.
-// Creates a timestamped backup under .moai-backups/YYYYMMDD_HHMMSS/ and
-// excludes config/sections/ (user settings) from backup.
+// Creates a timestamped backup under .moai-backups/YYYYMMDD_HHMMSS/ including
+// all files (config.yaml, sections/*.yaml, etc.) for full restore capability.
 // Returns the backup directory path, or empty string if directory doesn't exist.
 func backupMoaiConfig(projectRoot string) (string, error) {
 	configDir := filepath.Join(projectRoot, defs.MoAIDir, defs.ConfigSubdir)
@@ -873,9 +873,10 @@ func backupMoaiConfig(projectRoot string) (string, error) {
 		return "", fmt.Errorf("create backup directory: %w", err)
 	}
 
-	// Paths excluded from backups (protect user settings)
-	// Note: relPath from configDir will be "sections", not "config/sections"
-	excludedDirs := []string{"sections"}
+	// All config files are backed up (including sections/) for full restore.
+	// The clean step will delete everything, and the restore step will
+	// merge backed-up values back into the freshly deployed templates.
+	excludedDirs := []string{}
 
 	// Track backed up items and excluded items for metadata
 	backedUpItems := []string{}
@@ -971,7 +972,8 @@ type BackupMetadata struct {
 }
 
 // cleanMoaiManagedPaths removes MoAI-managed directories and files before template
-// deployment. This ensures stale v1.x files are cleaned up during migration to v2.x.
+// deployment. This ensures stale files are cleaned up during version upgrades.
+// The .moai/config/ directory is deleted entirely (backup was done by the Backup step).
 // Paths that do not exist are silently skipped.
 func cleanMoaiManagedPaths(projectRoot string, out io.Writer) error {
 	type cleanTarget struct {
@@ -1051,32 +1053,20 @@ func cleanMoaiManagedPaths(projectRoot string, out io.Writer) error {
 		_, _ = fmt.Fprintf(out, "\r  ✓ Removed %s\n", t.displayPath)
 	}
 
-	// Special handling for .moai/config/: delete everything except "sections" subdirectory
+	// Clean .moai/config/ entirely - backup was already done by the Backup step.
+	// For v1.x -> v2.x: old config is incompatible, fresh install needed.
+	// For v2.x -> v2.x: backup includes sections/, restore will merge values back.
 	configDir := filepath.Join(projectRoot, defs.MoAIDir, defs.ConfigSubdir)
 	configDisplayPath := filepath.Join(defs.MoAIDir, defs.ConfigSubdir)
-	_, _ = fmt.Fprintf(out, "  ○ Cleaning %s (preserving sections/)...", configDisplayPath)
+	_, _ = fmt.Fprintf(out, "  ○ Removing %s...", configDisplayPath)
 
-	entries, err := os.ReadDir(configDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			_, _ = fmt.Fprintf(out, "\r  - Skipped %s (not found)\n", configDisplayPath)
-			return nil
-		}
-		_, _ = fmt.Fprintf(out, "\r  ✗ Failed to read %s: %v\n", configDisplayPath, err)
-		return fmt.Errorf("read dir %s: %w", configDisplayPath, err)
-	}
-
-	for _, entry := range entries {
-		if entry.Name() == "sections" {
-			continue // Preserve user settings
-		}
-		entryPath := filepath.Join(configDir, entry.Name())
-		if err := os.RemoveAll(entryPath); err != nil {
-			_, _ = fmt.Fprintf(out, "\r  ✗ Failed to remove %s/%s: %v\n", configDisplayPath, entry.Name(), err)
-			return fmt.Errorf("remove %s/%s: %w", configDisplayPath, entry.Name(), err)
+	if err := os.RemoveAll(configDir); err != nil {
+		if !os.IsNotExist(err) {
+			_, _ = fmt.Fprintf(out, "\r  ✗ Failed to remove %s: %v\n", configDisplayPath, err)
+			return fmt.Errorf("remove %s: %w", configDisplayPath, err)
 		}
 	}
-	_, _ = fmt.Fprintf(out, "\r  ✓ Cleaned %s (sections/ preserved)\n", configDisplayPath)
+	_, _ = fmt.Fprintf(out, "\r  ✓ Removed %s\n", configDisplayPath)
 
 	return nil
 }

@@ -3,6 +3,7 @@ package project
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -30,7 +31,7 @@ func NewPhaseExecutor(
 	logger *slog.Logger,
 ) *PhaseExecutor {
 	if logger == nil {
-		logger = slog.Default()
+		logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 	}
 	return &PhaseExecutor{
 		detector:            detector,
@@ -45,7 +46,6 @@ func NewPhaseExecutor(
 // SetReporter sets the progress reporter for UI updates.
 func (pe *PhaseExecutor) SetReporter(reporter ProgressReporter) {
 	pe.reporter = reporter
-	fmt.Fprintf(os.Stderr, "[DEBUG] SetReporter called: %v\n", reporter != nil)
 }
 
 // Execute runs the full initialization workflow:
@@ -56,7 +56,6 @@ func (pe *PhaseExecutor) SetReporter(reporter ProgressReporter) {
 //  5. PhaseComplete: Return results.
 func (pe *PhaseExecutor) Execute(ctx context.Context, opts InitOptions) (*InitResult, error) {
 	opts.ProjectRoot = filepath.Clean(opts.ProjectRoot)
-	fmt.Fprintf(os.Stderr, "[DEBUG] Execute() called with reporter: %v\n", pe.reporter != nil)
 
 	pe.logger.Info("starting project initialization", "root", opts.ProjectRoot)
 
@@ -64,7 +63,6 @@ func (pe *PhaseExecutor) Execute(ctx context.Context, opts InitOptions) (*InitRe
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	fmt.Fprintf(os.Stderr, "[DEBUG] About to call StepStart, reporter=%v\n", pe.reporter != nil)
 	pe.reporter.StepStart("Detection", "Analyzing project structure")
 	languages, frameworks, projectType, err := pe.phaseDetect(opts.ProjectRoot)
 	if err != nil {

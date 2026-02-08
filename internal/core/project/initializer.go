@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -67,7 +68,7 @@ type projectInitializer struct {
 // NewInitializer creates an Initializer with the given dependencies.
 func NewInitializer(deployer template.Deployer, manifestMgr manifest.Manager, logger *slog.Logger) Initializer {
 	if logger == nil {
-		logger = slog.Default()
+		logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 	}
 	return &projectInitializer{
 		deployer:    deployer,
