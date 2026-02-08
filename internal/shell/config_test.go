@@ -3,7 +3,6 @@ package shell
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
