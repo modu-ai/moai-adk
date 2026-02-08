@@ -14,6 +14,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	// rankBatchSize is the number of sessions to submit per batch
+	rankBatchSize = 100
+)
+
 var rankCmd = &cobra.Command{
 	Use:   "rank",
 	Short: "MoAI Rank leaderboard management",
@@ -176,7 +181,7 @@ func newRankSyncCmd() *cobra.Command {
 			}
 
 			if len(transcripts) == 0 {
-				_, _ = fmt.Fprintln(out, "No transcripts found.")
+				_, _ = fmt.Fprintln(out, "No transcripts found. Run Claude Code sessions to generate transcript files for syncing.")
 				return nil
 			}
 
@@ -246,8 +251,8 @@ func newRankSyncCmd() *cobra.Command {
 			defer cancel()
 
 			submitted := 0
-			for i := 0; i < len(sessions); i += 100 {
-				end := i + 100
+			for i := 0; i < len(sessions); i += rankBatchSize {
+				end := i + rankBatchSize
 				if end > len(sessions) {
 					end = len(sessions)
 				}

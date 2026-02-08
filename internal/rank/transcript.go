@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -40,10 +41,10 @@ type transcriptMsg struct {
 
 // transcriptUsage represents token usage information.
 type transcriptUsage struct {
-	InputTokens              int `json:"input_tokens"`
-	OutputTokens             int `json:"output_tokens"`
-	CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
-	CacheReadInputTokens     int `json:"cache_read_input_tokens"`
+	InputTokens              int64 `json:"input_tokens"`
+	OutputTokens             int64 `json:"output_tokens"`
+	CacheCreationInputTokens int64 `json:"cache_creation_input_tokens"`
+	CacheReadInputTokens     int64 `json:"cache_read_input_tokens"`
 }
 
 // ParseTranscript parses a Claude Code transcript JSONL file and extracts token usage.
@@ -99,10 +100,10 @@ func ParseTranscript(transcriptPath string) (*TranscriptUsage, error) {
 
 		// Extract token usage
 		if msg.Message.Usage != nil {
-			usage.InputTokens += int64(msg.Message.Usage.InputTokens)
-			usage.OutputTokens += int64(msg.Message.Usage.OutputTokens)
-			usage.CacheCreationTokens += int64(msg.Message.Usage.CacheCreationInputTokens)
-			usage.CacheReadTokens += int64(msg.Message.Usage.CacheReadInputTokens)
+			usage.InputTokens += msg.Message.Usage.InputTokens
+			usage.OutputTokens += msg.Message.Usage.OutputTokens
+			usage.CacheCreationTokens += msg.Message.Usage.CacheCreationInputTokens
+			usage.CacheReadTokens += msg.Message.Usage.CacheReadInputTokens
 		}
 	}
 
@@ -129,16 +130,42 @@ func ParseTranscript(transcriptPath string) (*TranscriptUsage, error) {
 	return usage, nil
 }
 
-// FindTranscripts finds all Claude Code transcript JSONL files in the user's home directory.
-// Claude Code stores transcripts in ~/Library/Application Support/Claude/*/transcripts/*.jsonl
-func FindTranscripts() ([]string, error) {
+// claudeConfigDir returns the Claude Code configuration directory based on the platform.
+func claudeConfigDir() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return nil, fmt.Errorf("get home directory: %w", err)
+		return "", fmt.Errorf("get home directory: %w", err)
+	}
+
+	switch goos := runtime.GOOS; goos {
+	case "darwin":
+		return filepath.Join(homeDir, "Library", "Application Support", "Claude"), nil
+	case "linux":
+		return filepath.Join(homeDir, ".config", "Claude"), nil
+	case "windows":
+		appData := os.Getenv("APPDATA")
+		if appData == "" {
+			return "", fmt.Errorf("APPDATA environment variable not set")
+		}
+		return filepath.Join(appData, "Claude"), nil
+	default:
+		return "", fmt.Errorf("unsupported platform: %s", goos)
+	}
+}
+
+// FindTranscripts finds all Claude Code transcript JSONL files in the user's home directory.
+// Claude Code stores transcripts in platform-specific locations:
+// - macOS: ~/Library/Application Support/Claude/*/transcripts/*.jsonl
+// - Linux: ~/.config/Claude/*/transcripts/*.jsonl
+// - Windows: %APPDATA%\Claude\*\transcripts\*.jsonl
+func FindTranscripts() ([]string, error) {
+	configDir, err := claudeConfigDir()
+	if err != nil {
+		return nil, fmt.Errorf("get Claude config directory: %w", err)
 	}
 
 	// Claude Code transcript directory pattern
-	pattern := filepath.Join(homeDir, "Library", "Application Support", "Claude", "*", "transcripts", "*.jsonl")
+	pattern := filepath.Join(configDir, "*", "transcripts", "*.jsonl")
 
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
@@ -151,13 +178,13 @@ func FindTranscripts() ([]string, error) {
 // FindTranscriptForSession finds the transcript file for a specific session ID.
 // Returns the path if found, empty string otherwise.
 func FindTranscriptForSession(sessionID string) string {
-	homeDir, err := os.UserHomeDir()
+	configDir, err := claudeConfigDir()
 	if err != nil {
 		return ""
 	}
 
 	// Search in all Claude directories
-	pattern := filepath.Join(homeDir, "Library", "Application Support", "Claude", "*", "transcripts", sessionID+"*.jsonl")
+	pattern := filepath.Join(configDir, "*", "transcripts", sessionID+"*.jsonl")
 
 	matches, err := filepath.Glob(pattern)
 	if err != nil || len(matches) == 0 {
