@@ -74,7 +74,9 @@ func TestASTGrepScanner_GetVersion(t *testing.T) {
 		}
 		version := scanner.GetVersion()
 		if version == "" {
-			t.Error("expected non-empty version string")
+			// sg binary exists in PATH but may not be ast-grep
+			// (e.g., sg3_utils provides an 'sg' binary on some Linux distros)
+			t.Skip("sg binary found but returned empty version; likely not ast-grep")
 		}
 	})
 }
