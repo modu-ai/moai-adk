@@ -6,6 +6,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"strings"
@@ -49,7 +50,8 @@ var deps *Dependencies
 // Dependencies that require a project root (Config, Git) are
 // initialized lazily on first use or when the project root is available.
 func InitDependencies() {
-	logger := slog.Default()
+	// Disable JSON logging for CLI commands by using a no-op logger
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	deps = &Dependencies{
 		Config:        config.NewConfigManager(),
@@ -76,10 +78,10 @@ func InitDependencies() {
 	// Register rank session handler if credentials exist
 	rankHandler, err := hook.EnsureRankSessionHandler()
 	if err != nil {
-		slog.Warn("failed to initialize rank session handler", "error", err)
+		logger.Warn("failed to initialize rank session handler", "error", err)
 	} else if rankHandler != nil {
 		deps.HookRegistry.Register(rankHandler)
-		slog.Info("rank session handler registered")
+		logger.Info("rank session handler registered")
 	}
 
 	// Register auto-update handler for SessionStart
@@ -209,7 +211,9 @@ func buildAutoUpdateFunc() hook.AutoUpdateFunc {
 		// Initialize update system
 		if deps != nil {
 			if err := deps.EnsureUpdate(); err != nil {
-				slog.Debug("auto-update: failed to initialize update system", "error", err)
+				if deps.Logger != nil {
+					deps.Logger.Debug("auto-update: failed to initialize update system", "error", err)
+				}
 				return nil, err
 			}
 		}
@@ -227,7 +231,9 @@ func buildAutoUpdateFunc() hook.AutoUpdateFunc {
 				Available:  false,
 				CurrentVer: currentVersion,
 			})
-			slog.Debug("auto-update: version check failed", "error", err)
+			if deps.Logger != nil {
+				deps.Logger.Debug("auto-update: version check failed", "error", err)
+			}
 			return nil, err
 		}
 
@@ -253,7 +259,9 @@ func buildAutoUpdateFunc() hook.AutoUpdateFunc {
 
 		result, err := deps.UpdateOrch.Update(ctx)
 		if err != nil {
-			slog.Debug("auto-update: update failed", "error", err)
+			if deps.Logger != nil {
+				deps.Logger.Debug("auto-update: update failed", "error", err)
+			}
 			return nil, err
 		}
 
