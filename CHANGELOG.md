@@ -9,6 +9,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.2.2] - 2026-02-09
+
+### Summary
+
+Feature release adding persistent cross-session memory to agents, improving agent effectiveness through accumulated learnings. Expert agents now remember debugging patterns, API conventions, and component structures across sessions.
+
+### Breaking Changes
+
+None
+
+### Added
+
+- **Agent Memory System**: Added `memory` field to 10 agents for persistent cross-session learning
+  - `expert-debug`: User-scoped memory for cross-project debugging patterns
+  - `expert-backend`: Project-scoped memory for API/architecture patterns
+  - `expert-frontend`: Project-scoped memory for component/style patterns
+  - `manager-ddd`: Project-scoped memory for refactoring history
+  - `manager-quality`: Project-scoped memory for quality gate results
+  - `builder-skill`, `builder-agent`, `builder-plugin`: User-scoped memory for authoring patterns
+- **Memory Scope Optimization**: Changed `team-researcher` and `team-designer` from project to user scope for cross-project pattern reuse
+
+### Changed
+
+- **Version Handling**: Enhanced version test coverage with comprehensive edge case handling
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.2.2] - 2026-02-09 (한국어)
+
+### 요약
+
+에이전트에 지속적인 세션 간 메모리를 추가하여 축적된 학습을 통해 에이전트 효율성을 개선하는 기능 릴리즈. 전문가 에이전트는 이제 디버깅 패턴, API 규칙, 컴포넌트 구조를 세션 간에 기억합니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 추가됨 (Added)
+
+- **에이전트 메모리 시스템**: 10개 에이전트에 세션 간 지속 학습을 위한 `memory` 필드 추가
+  - `expert-debug`: 프로젝트 간 디버깅 패턴용 user 스코프 메모리
+  - `expert-backend`: API/아키텍처 패턴용 project 스코프 메모리
+  - `expert-frontend`: 컴포넌트/스타일 패턴용 project 스코프 메모리
+  - `manager-ddd`: 리팩토링 이력용 project 스코프 메모리
+  - `manager-quality`: 품질 게이트 결과용 project 스코프 메모리
+  - `builder-skill`, `builder-agent`, `builder-plugin`: 작성 패턴용 user 스코프 메모리
+- **메모리 스코프 최적화**: 프로젝트 간 패턴 재사용을 위해 `team-researcher`와 `team-designer`를 project에서 user 스코프로 변경
+
+### 변경됨 (Changed)
+
+- **버전 처리**: 포괄적인 엣지 케이스 처리로 버전 테스트 커버리지 향상
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.2.1] - 2026-02-09
 
 ### Summary
