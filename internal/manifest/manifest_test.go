@@ -730,7 +730,7 @@ func TestManagerNilManifestGuards(t *testing.T) {
 func TestManagerSaveReadOnlyDir(t *testing.T) {
 	t.Run("save_to_readonly_parent", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
-			t.Skip("Unix file permissions not supported on Windows")
+			t.Skip("skipping permission test on Windows (Unix permissions not supported)")
 		}
 
 		root := t.TempDir()
@@ -756,7 +756,7 @@ func TestManagerSaveReadOnlyDir(t *testing.T) {
 func TestManagerLoadPermissionError(t *testing.T) {
 	t.Run("unreadable_manifest", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
-			t.Skip("Unix file permissions not supported on Windows")
+			t.Skip("skipping permission test on Windows (Unix permissions not supported)")
 		}
 
 		root := setupProject(t)

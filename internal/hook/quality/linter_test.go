@@ -45,7 +45,8 @@ func main() {
 
 	t.Run("returns error for non-existent file", func(t *testing.T) {
 		l := NewLinter(NewToolRegistry())
-		_, err := l.LintFile(context.Background(), "/nonexistent/file.go")
+		nonexistentPath := filepath.Join(t.TempDir(), "nonexistent", "file.go")
+		_, err := l.LintFile(context.Background(), nonexistentPath)
 
 		if err == nil {
 			t.Error("expected error for non-existent file")

@@ -15,8 +15,8 @@ metadata:
 
 ## Pre-execution Context
 
-!`git status --porcelain`
-!`git branch --show-current`
+!`git status --porcelain 2>/dev/null`
+!`git branch --show-current 2>/dev/null`
 
 ## Essential Files
 

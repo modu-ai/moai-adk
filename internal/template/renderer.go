@@ -2,12 +2,32 @@ package template
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"regexp"
 	"strings"
 	"text/template"
 )
+
+// templateFuncMap provides custom functions available in all templates.
+var templateFuncMap = template.FuncMap{
+	// jsonEscape escapes a string for safe embedding in JSON values.
+	// It handles backslashes, quotes, and control characters by leveraging
+	// encoding/json.Marshal, then stripping the surrounding quotes.
+	"jsonEscape": func(s string) string {
+		b, err := json.Marshal(s)
+		if err != nil {
+			return s
+		}
+		// json.Marshal wraps in quotes: "value" → strip them
+		return string(b[1 : len(b)-1])
+	},
+	// posixPath converts Windows backslash paths to forward-slash POSIX paths.
+	"posixPath": func(s string) string {
+		return strings.ReplaceAll(s, "\\", "/")
+	},
+}
 
 // unexpandedTokenPattern detects leftover dynamic tokens in rendered output.
 // Matches ${VAR}, {{VAR}}, and $VAR patterns.
@@ -45,6 +65,7 @@ func (r *renderer) Render(templateName string, data any) ([]byte, error) {
 	}
 
 	tmpl, err := template.New(templateName).
+		Funcs(templateFuncMap).
 		Option("missingkey=error").
 		Parse(string(content))
 	if err != nil {

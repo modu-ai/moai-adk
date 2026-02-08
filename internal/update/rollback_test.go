@@ -40,7 +40,7 @@ func TestRollback_CreateBackup_Success(t *testing.T) {
 		t.Errorf("backup content = %q, want %q", string(backupData), "binary content v1")
 	}
 
-	// Verify backup has execute permission.
+	// Verify backup has execute permission (skip on Windows).
 	if runtime.GOOS != "windows" {
 		info, err := os.Stat(backupPath)
 		if err != nil {
@@ -93,7 +93,7 @@ func TestRollback_Restore_Success(t *testing.T) {
 		t.Errorf("restored content = %q, want %q", string(data), "original good binary")
 	}
 
-	// Verify execute permission.
+	// Verify execute permission (skip on Windows).
 	if runtime.GOOS != "windows" {
 		info, err := os.Stat(binaryPath)
 		if err != nil {

@@ -192,7 +192,7 @@ func TestUpdater_Replace_Success(t *testing.T) {
 		t.Errorf("content = %q, want %q", string(data), "new binary")
 	}
 
-	// Verify permissions.
+	// Verify permissions (skip on Windows).
 	if runtime.GOOS != "windows" {
 		info, err := os.Stat(binaryPath)
 		if err != nil {

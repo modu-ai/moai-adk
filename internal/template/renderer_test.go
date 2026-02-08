@@ -1,6 +1,7 @@
 package template
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -168,6 +169,187 @@ func TestRendererPassthroughTokens(t *testing.T) {
 	if !strings.Contains(content, "$CLAUDE_PROJECT_DIR") {
 		t.Error("$CLAUDE_PROJECT_DIR should be preserved in output")
 	}
+}
+
+func TestJsonEscapeTemplateFunc(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "unix_path_unchanged",
+			input: "/usr/local/go/bin:/usr/bin",
+			want:  "/usr/local/go/bin:/usr/bin",
+		},
+		{
+			name:  "windows_path_backslashes_escaped",
+			input: `C:\Users\user\go\bin;C:\Windows\system32`,
+			want:  `C:\\Users\\user\\go\\bin;C:\\Windows\\system32`,
+		},
+		{
+			name:  "double_quotes_escaped",
+			input: `path with "quotes"`,
+			want:  `path with \"quotes\"`,
+		},
+		{
+			name:  "tab_and_newline_escaped",
+			input: "line1\tvalue\nline2",
+			want:  `line1\tvalue\nline2`,
+		},
+		{
+			name:  "empty_string",
+			input: "",
+			want:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fn := templateFuncMap["jsonEscape"].(func(string) string)
+			got := fn(tt.input)
+			if got != tt.want {
+				t.Errorf("jsonEscape(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPosixPathTemplateFunc(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "windows_path_converted",
+			input: `C:\Users\user\go\bin`,
+			want:  "C:/Users/user/go/bin",
+		},
+		{
+			name:  "unix_path_unchanged",
+			input: "/home/user/go/bin",
+			want:  "/home/user/go/bin",
+		},
+		{
+			name:  "mixed_separators",
+			input: `C:\Users/user\projects`,
+			want:  "C:/Users/user/projects",
+		},
+		{
+			name:  "empty_string",
+			input: "",
+			want:  "",
+		},
+		{
+			name:  "no_separators",
+			input: "moai",
+			want:  "moai",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fn := templateFuncMap["posixPath"].(func(string) string)
+			got := fn(tt.input)
+			if got != tt.want {
+				t.Errorf("posixPath(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestJsonEscapeInTemplate(t *testing.T) {
+	t.Run("windows_path_produces_valid_json", func(t *testing.T) {
+		fs := fstest.MapFS{
+			"settings.json.tmpl": &fstest.MapFile{
+				Data: []byte(`{"env":{"PATH":"{{jsonEscape .SmartPATH}}"}}`),
+			},
+		}
+		r := NewRenderer(fs)
+
+		data := map[string]string{
+			"SmartPATH": `C:\Users\user\go\bin;C:\Windows\system32`,
+		}
+
+		result, err := r.Render("settings.json.tmpl", data)
+		if err != nil {
+			t.Fatalf("Render error: %v", err)
+		}
+
+		// Verify the output is valid JSON
+		var parsed map[string]interface{}
+		if err := json.Unmarshal(result, &parsed); err != nil {
+			t.Fatalf("rendered output is not valid JSON: %v\noutput: %s", err, string(result))
+		}
+
+		// Verify the PATH value round-trips correctly
+		env, ok := parsed["env"].(map[string]interface{})
+		if !ok {
+			t.Fatal("expected env key in JSON output")
+		}
+		pathVal, ok := env["PATH"].(string)
+		if !ok {
+			t.Fatal("expected PATH key in env")
+		}
+		want := `C:\Users\user\go\bin;C:\Windows\system32`
+		if pathVal != want {
+			t.Errorf("PATH = %q, want %q", pathVal, want)
+		}
+	})
+
+	t.Run("unix_path_produces_valid_json", func(t *testing.T) {
+		fs := fstest.MapFS{
+			"settings.json.tmpl": &fstest.MapFile{
+				Data: []byte(`{"env":{"PATH":"{{jsonEscape .SmartPATH}}"}}`),
+			},
+		}
+		r := NewRenderer(fs)
+
+		data := map[string]string{
+			"SmartPATH": "/home/user/go/bin:/usr/local/bin:/usr/bin",
+		}
+
+		result, err := r.Render("settings.json.tmpl", data)
+		if err != nil {
+			t.Fatalf("Render error: %v", err)
+		}
+
+		var parsed map[string]interface{}
+		if err := json.Unmarshal(result, &parsed); err != nil {
+			t.Fatalf("rendered output is not valid JSON: %v\noutput: %s", err, string(result))
+		}
+	})
+}
+
+func TestPosixPathInTemplate(t *testing.T) {
+	t.Run("windows_gobinpath_converted_in_shell", func(t *testing.T) {
+		fs := fstest.MapFS{
+			"hook.sh.tmpl": &fstest.MapFile{
+				Data: []byte(`if [ -f "{{posixPath .GoBinPath}}/moai" ]; then` + "\n" +
+					`	exec "{{posixPath .GoBinPath}}/moai" hook start` + "\n" +
+					`fi`),
+			},
+		}
+		r := NewRenderer(fs)
+
+		data := map[string]string{
+			"GoBinPath": `C:\Users\user\go\bin`,
+		}
+
+		result, err := r.Render("hook.sh.tmpl", data)
+		if err != nil {
+			t.Fatalf("Render error: %v", err)
+		}
+
+		content := string(result)
+		if strings.Contains(content, `\`) {
+			t.Errorf("output still contains backslashes: %s", content)
+		}
+		if !strings.Contains(content, "C:/Users/user/go/bin/moai") {
+			t.Errorf("expected POSIX path in output, got: %s", content)
+		}
+	})
 }
 
 func TestUnexpandedTokenDetection(t *testing.T) {

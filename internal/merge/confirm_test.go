@@ -425,8 +425,11 @@ func TestSanitizePath_PathTraversal(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := sanitizePath(tt.input)
-			if result != tt.expected {
-				t.Errorf("sanitizePath(%q) = %q, want %q", tt.input, result, tt.expected)
+			// Normalize paths to use forward slashes for cross-platform comparison
+			result = filepath.ToSlash(result)
+			expected := filepath.ToSlash(tt.expected)
+			if result != expected {
+				t.Errorf("sanitizePath(%q) = %q, want %q", tt.input, result, expected)
 			}
 		})
 	}

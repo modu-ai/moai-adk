@@ -16,13 +16,13 @@ if command -v moai &> /dev/null; then
 fi
 
 # Try detected Go bin path from initialization
-if [ -f "{{.GoBinPath}}/moai" ]; then
-	exec "{{.GoBinPath}}/moai" hook compact < "$temp_file"
+if [ -f "{{posixPath .GoBinPath}}/moai" ]; then
+	exec "{{posixPath .GoBinPath}}/moai" hook compact < "$temp_file"
 fi
 
 # Try default ~/go/bin/moai
-if [ -f "{{.HomeDir}}/go/bin/moai" ]; then
-	exec "{{.HomeDir}}/go/bin/moai" hook compact < "$temp_file"
+if [ -f "{{posixPath .HomeDir}}/go/bin/moai" ]; then
+	exec "{{posixPath .HomeDir}}/go/bin/moai" hook compact < "$temp_file"
 fi
 
 # Not found - exit silently (Claude Code handles missing hooks gracefully)

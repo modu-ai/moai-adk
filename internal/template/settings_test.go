@@ -24,7 +24,7 @@ func renderTemplate(t *testing.T, tmplPath string, ctx *TemplateContext) string 
 		t.Fatalf("ReadFile(%q) error: %v", tmplPath, err)
 	}
 
-	tmpl, err := template.New(tmplPath).Parse(string(data))
+	tmpl, err := template.New(tmplPath).Funcs(templateFuncMap).Parse(string(data))
 	if err != nil {
 		t.Fatalf("Parse template error: %v", err)
 	}
@@ -411,6 +411,7 @@ func TestBuildSmartPATH_EssentialDirs(t *testing.T) {
 		t.Skip("cannot determine home directory")
 	}
 
+	// Use filepath.Join for cross-platform path construction
 	localBin := filepath.Join(homeDir, ".local", "bin")
 	goBin := filepath.Join(homeDir, "go", "bin")
 
