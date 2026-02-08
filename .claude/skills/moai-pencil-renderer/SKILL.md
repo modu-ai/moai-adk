@@ -9,6 +9,7 @@ description: |
   Use when: design-exploration or other orchestrators need to render
   visual proposals using Pencil MCP backend.
 effort: high
+user-invocable: false
 ---
 
 # Pencil Renderer

@@ -234,15 +234,17 @@ Options:
 
 ---
 
-## Team Mode
+## Team Mode Routing
 
-When --team flag is provided or auto-selected, the plan phase uses a parallel research team instead of sequential sub-agent execution.
+When --team flag is provided or auto-selected, the plan phase MUST switch to team orchestration:
 
-Team composition: researcher (haiku) + analyst (sonnet) + architect (sonnet)
+1. Verify prerequisites: workflow.team.enabled == true AND CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var is set
+2. If prerequisites met: Read workflows/team-plan.md and execute the team workflow (TeamCreate with researcher + analyst + architect)
+3. If prerequisites NOT met: Warn user with message "Team mode requires workflow.team.enabled: true in workflow.yaml and CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var" then fallback to standard sub-agent mode (manager-spec)
+
+Team composition: researcher (haiku) + analyst (inherit) + architect (inherit)
 
 For detailed team orchestration steps, see workflows/team-plan.md.
-
-Fallback: If team mode is unavailable, the workflow continues with standard sub-agent mode (manager-spec).
 
 ---
 

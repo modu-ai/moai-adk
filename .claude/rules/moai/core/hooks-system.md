@@ -1,3 +1,10 @@
+---
+paths:
+  - "**/.claude/hooks/**"
+  - "**/.claude/settings.json"
+  - "**/.claude/settings.local.json"
+---
+
 # Hooks System
 
 Claude Code hooks for extending functionality with custom scripts.
@@ -33,81 +40,20 @@ All 14 available hook event types:
 
 **Agent Events**: SubagentStart, SubagentStop, TeammateIdle, TaskCompleted
 
-## Hook Event Reference
+## Hook Event stdin/stdout Reference
 
-### UserPromptSubmit
+| Event | stdin | stdout | Notes |
+|-------|-------|--------|-------|
+| UserPromptSubmit | `prompt` | `additionalContext`, `reason` | Exit 2 blocks prompt |
+| PermissionRequest | `toolName`, `toolInput` | `reason` | Exit 0 = allow, exit 2 = deny |
+| PostToolUseFailure | `toolName`, `toolInput`, `error`, `is_interrupt` | `systemMessage` | Non-blocking |
+| Notification | `type`, `message` | - | Types: permission_prompt, idle_prompt, auth_success, elicitation_dialog |
+| SubagentStart | `agentType`, `agentName` | `additionalContext` | Inject context into subagent |
+| TeammateIdle | `agentType`, `agentName`, `tasksSummary` | `systemMessage` | Exit 2 = keep working. Critical for team quality |
+| TaskCompleted | `taskId`, `taskSummary`, `agentName` | `reason` | Exit 2 = reject completion. Critical for team quality |
+| SessionEnd | `reason`, `sessionId` | - | Reasons: clear, logout, prompt_input_exit, bypass_permissions_disabled, other |
 
-Runs when the user submits a prompt, before Claude processes it. Can add context to the prompt or block it entirely.
-
-- Matcher: None
-- Blocking: Yes (exit code 2 blocks the prompt)
-- stdin fields: `prompt` (user's submitted text)
-- stdout: JSON with optional `additionalContext` (string injected into prompt) or `reason` (when blocking)
-
-### PermissionRequest
-
-Runs when a permission dialog would appear for a tool. Matches on tool name. Can auto-allow or auto-deny.
-
-- Matcher: Tool name (e.g., `Write|Edit|Bash`)
-- Blocking: Yes (exit code 0 = allow, exit code 2 = deny)
-- stdin fields: `toolName`, `toolInput`
-- stdout: JSON with optional `reason` (when denying)
-
-### PostToolUseFailure
-
-Runs after a tool execution fails. Matches on tool name. Receives error details.
-
-- Matcher: Tool name (e.g., `Bash|Write`)
-- Blocking: No
-- stdin fields: `toolName`, `toolInput`, `error` (error message), `is_interrupt` (boolean, true if user interrupted)
-- stdout: JSON with optional `systemMessage`
-
-### Notification
-
-Runs when Claude Code sends a notification. Matches on notification type.
-
-- Matcher: Notification type
-- Blocking: No
-- Notification types: `permission_prompt`, `idle_prompt`, `auth_success`, `elicitation_dialog`
-- stdin fields: `type` (notification type), `message`
-
-### SubagentStart
-
-Runs when a subagent spawns. Matches on agent type name. Can inject additional context into the subagent.
-
-- Matcher: Agent type name
-- Blocking: No
-- stdin fields: `agentType`, `agentName`
-- stdout: JSON with optional `additionalContext` (string injected into the subagent prompt)
-
-### TeammateIdle
-
-Runs when an agent team teammate is about to go idle. Exit code 2 keeps the teammate working instead of idling.
-
-- Matcher: None
-- Blocking: Yes (exit code 2 = keep working)
-- stdin fields: `agentType`, `agentName`, `tasksSummary`
-- stdout: JSON with optional `systemMessage` (guidance for continued work)
-- **Critical for team quality enforcement**: Use to verify quality gates before allowing idle
-
-### TaskCompleted
-
-Runs when a task is being marked complete. Exit code 2 prevents completion and sends the task back for more work.
-
-- Matcher: None
-- Blocking: Yes (exit code 2 = reject completion)
-- stdin fields: `taskId`, `taskSummary`, `agentName`
-- stdout: JSON with optional `reason` (why completion was rejected)
-- **Critical for team quality enforcement**: Use to verify deliverables meet standards
-
-### SessionEnd
-
-Runs when the session terminates. Matches on the termination reason. Cannot block termination.
-
-- Matcher: Reason (`clear`, `logout`, `prompt_input_exit`, `bypass_permissions_disabled`, `other`)
-- Blocking: No
-- stdin fields: `reason` (termination reason), `sessionId`
-- stdout: Ignored (session is ending)
+Standard events (SessionStart, PreCompact, PreToolUse, PostToolUse, Stop) use common stdin/stdout patterns: stdin receives event-specific fields, stdout accepts optional `systemMessage`.
 
 ## Hook Execution Types
 
@@ -147,111 +93,9 @@ Run command hooks in the background without blocking the conversation.
 - Results are delivered on the next conversation turn via `systemMessage`
 - Useful for long-running validations (linting, test execution, deployments)
 
-## Agent Hooks
+## Agent-Specific Hooks
 
-Agent-specific hooks are defined in agent frontmatter (`.claude/agents/**/*.md`) and are executed for specific agent lifecycle events. These hooks use the `handle-agent-hook.sh` wrapper script.
-
-### Agent Hook Configuration
-
-Hooks are defined in agent YAML frontmatter:
-
-```yaml
----
-name: manager-ddd
-description: DDD workflow specialist
-hooks:
-  PreToolUse:
-    - matcher: "Write|Edit|MultiEdit"
-      hooks:
-        - type: command
-          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" ddd-pre-transformation"
-          timeout: 5
-  PostToolUse:
-    - matcher: "Write|Edit|MultiEdit"
-      hooks:
-        - type: command
-          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" ddd-post-transformation"
-          timeout: 10
-  SubagentStop:
-    hooks:
-      - type: command
-        command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" ddd-completion"
-        timeout: 10
----
-```
-
-### Agent Hook Actions
-
-Available agent hook actions:
-
-| Agent | Action | Event | Purpose |
-|-------|--------|-------|---------|
-| manager-ddd | ddd-pre-transformation | PreToolUse | Check characterization tests before code changes |
-| manager-ddd | ddd-post-transformation | PostToolUse | Verify behavior preservation after changes |
-| manager-ddd | ddd-completion | SubagentStop | Report DDD workflow completion |
-| manager-tdd | tdd-pre-implementation | PreToolUse | Ensure test exists (RED phase) |
-| manager-tdd | tdd-post-implementation | PostToolUse | Verify tests pass (GREEN phase) |
-| manager-tdd | tdd-completion | SubagentStop | Report TDD workflow completion |
-| expert-backend | backend-validation | PreToolUse | Validate backend code before changes |
-| expert-backend | backend-verification | PostToolUse | Verify backend code after changes |
-| expert-frontend | frontend-validation | PreToolUse | Validate frontend code before changes |
-| expert-frontend | frontend-verification | PostToolUse | Verify frontend code after changes |
-| expert-testing | testing-verification | PostToolUse | Verify test quality |
-| expert-testing | testing-completion | SubagentStop | Report testing workflow completion |
-| expert-debug | debug-verification | PostToolUse | Verify debugging results |
-| expert-debug | debug-completion | SubagentStop | Report debugging completion |
-| expert-devops | devops-verification | PostToolUse | Verify DevOps configurations |
-| expert-devops | devops-completion | SubagentStop | Report DevOps workflow completion |
-| manager-quality | quality-completion | SubagentStop | Report quality validation completion |
-| manager-spec | spec-completion | SubagentStop | Report SPEC document generation completion |
-| manager-docs | docs-verification | PostToolUse | Verify documentation quality |
-| manager-docs | docs-completion | SubagentStop | Report documentation generation completion |
-
-### Hook Command Interface
-
-Agent hooks are executed via the `moai hook agent <action>` command:
-
-```bash
-moai hook agent ddd-pre-transformation
-moai hook agent backend-validation
-moai hook agent tdd-completion
-```
-
-The hook receives JSON input via stdin with the following structure:
-
-```json
-{
-  "eventType": "SubagentStop",
-  "toolName": "",
-  "toolInput": null,
-  "toolOutput": null,
-  "session": {
-    "id": "sess-123",
-    "cwd": "/path/to/project",
-    "projectDir": "/path/to/project"
-  },
-  "data": {
-    "agent": "manager-ddd",
-    "action": "ddd-completion"
-  }
-}
-```
-
-### Agent Handler Factory
-
-The `internal/hook/agents/factory.go` file implements the factory pattern for creating agent-specific handlers. Each agent type has its own handler file:
-
-- `ddd_handler.go`: DDD workflow hooks
-- `tdd_handler.go`: TDD workflow hooks
-- `backend_handler.go`: Backend expert hooks
-- `frontend_handler.go`: Frontend expert hooks
-- `testing_handler.go`: Testing expert hooks
-- `debug_handler.go`: Debug expert hooks
-- `devops_handler.go`: DevOps expert hooks
-- `quality_handler.go`: Quality manager hooks
-- `spec_handler.go`: SPEC manager hooks
-- `docs_handler.go`: Documentation manager hooks
-- `default_handler.go`: Default handler for unknown actions
+Agent hooks are defined in agent frontmatter and executed for agent lifecycle events. For detailed configuration, actions table, and handler architecture, see @agent-hooks.md.
 
 ## Hook Location
 
@@ -296,8 +140,6 @@ Define hooks in `.claude/settings.json`:
 
 ## Path Syntax Rules
 
-### Hooks (Support Environment Variables)
-
 Hooks support `$CLAUDE_PROJECT_DIR` and `$HOME` environment variables:
 
 ```json
@@ -310,18 +152,7 @@ Hooks support `$CLAUDE_PROJECT_DIR` and `$HOME` environment variables:
 - Correct: `"\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/hook.sh\""`
 - Wrong: `"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/hook.sh"`
 
-### StatusLine (No Environment Variable Support)
-
-StatusLine does NOT support environment variable expansion (GitHub Issue #7925). Use relative paths from project root:
-
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": ".moai/status_line.sh"
-  }
-}
-```
+For StatusLine path configuration, see @settings-management.md (StatusLine does NOT support environment variables).
 
 ## Hook Wrappers
 
@@ -348,7 +179,6 @@ Wrapper scripts are located at:
 - Avoid infinite loops (no recursive tool calls)
 - Keep hooks lightweight for performance
 - Use proper path quoting to handle spaces in project paths
-- StatusLine uses relative paths only (no env var expansion)
 - Prompt and agent hooks return JSON with `ok` and `reason` fields
 - Async hooks deliver results via `systemMessage` on the next turn
 - Exit code 2 is the universal "block/reject" signal for blocking events

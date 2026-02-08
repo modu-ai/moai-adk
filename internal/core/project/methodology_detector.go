@@ -2,6 +2,7 @@ package project
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -132,7 +133,7 @@ type methodologyDetector struct {
 // NewMethodologyDetector creates a new MethodologyDetector.
 func NewMethodologyDetector(logger *slog.Logger) MethodologyDetector {
 	if logger == nil {
-		logger = slog.Default()
+		logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 	}
 	return &methodologyDetector{logger: logger}
 }

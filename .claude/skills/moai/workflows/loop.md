@@ -37,7 +37,7 @@ Flow: Check Completion -> Memory Check -> Diagnose -> Fix -> Verify -> Repeat
 ## Supported Flags
 
 - --max N (alias --max-iterations): Maximum iteration count (default 100)
-- --auto (alias --auto-fix): Enable auto-fix (default Level 1)
+- --auto-fix: Enable auto-fix (default Level 1)
 - --sequential (alias --seq): Sequential diagnostics instead of parallel
 - --errors (alias --errors-only): Fix errors only, skip warnings
 - --coverage (alias --include-coverage): Include coverage threshold (default 85%)
@@ -155,7 +155,7 @@ All fixes within the loop follow CLAUDE.md Section 7 Safe Development Protocol:
 
 ## Execution Summary
 
-1. Parse arguments (extract flags: --max, --auto, --sequential, --errors, --coverage, --memory-check, --resume)
+1. Parse arguments (extract flags: --max, --auto-fix, --sequential, --errors, --coverage, --memory-check, --resume)
 2. If --resume: Load state from specified snapshot and continue
 3. Detect project language from indicator files
 4. Initialize iteration counter and memory tracking (start time)

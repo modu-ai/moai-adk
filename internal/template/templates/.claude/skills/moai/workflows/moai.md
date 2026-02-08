@@ -42,7 +42,10 @@ Flow: Explore -> Plan -> Run -> Sync -> Done
 - --resume SPEC-XXX: Resume previous work from existing SPEC
 - --team: Force Agent Teams mode for plan and run phases
 - --solo: Force sub-agent mode (single agent per phase)
-- --auto: Intelligent mode selection based on complexity (default)
+
+**Default Behavior (no flag)**: System auto-selects based on complexity:
+- Team mode: Multi-domain tasks (>=3 domains), many files (>=10), or high complexity (>=7)
+- Sub-agent mode: Focused, single-domain tasks
 
 ## Configuration Files
 
@@ -167,7 +170,7 @@ For team orchestration details:
 Mode selection:
 - --team: Force team mode for all applicable phases
 - --solo: Force sub-agent mode
-- --auto (default): Complexity-based selection per workflow.yaml thresholds
+- No flag (default): System auto-selects based on complexity thresholds (domains >= 3, files >= 10, or score >= 7)
 
 ## Task Tracking
 
@@ -193,17 +196,22 @@ AI must add a marker when work is complete:
 
 ## Execution Summary
 
-1. Parse arguments (extract flags: --loop, --max, --sequential, --branch, --pr, --resume, --team, --solo, --auto)
+1. Parse arguments (extract flags: --loop, --max, --sequential, --branch, --pr, --resume, --team, --solo)
 2. If --resume with SPEC ID: Load existing SPEC and continue from last state
 3. Detect development_mode from quality.yaml (hybrid/ddd/tdd)
-4. Execute Phase 0 (parallel or sequential exploration)
-5. Routing decision (single-domain direct delegation vs full workflow)
-6. TaskCreate for discovered tasks
-7. User confirmation via AskUserQuestion
-8. Phase 1: SPEC generation via manager-spec
-9. Phase 2: Implementation via manager-tdd (new features) OR manager-ddd (legacy refactoring)
-10. Phase 3: Documentation sync via manager-docs
-11. Terminate with completion marker
+4. **Team mode decision**: Read workflow.yaml team settings and determine execution mode
+   - If `--team` flag: Force team mode (requires workflow.team.enabled: true AND CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var)
+   - If `--solo` flag: Force sub-agent mode (skip team mode entirely)
+   - If no flag (default): Check complexity thresholds from workflow.yaml auto_selection (domains >= 3, files >= 10, or score >= 7)
+   - If team mode selected but prerequisites not met: Warn user and fallback to sub-agent mode
+5. Execute Phase 0 (parallel or sequential exploration)
+6. Routing decision (single-domain direct delegation vs full workflow)
+7. TaskCreate for discovered tasks
+8. User confirmation via AskUserQuestion
+9. **Phase 1 (Plan)**: If team mode → Read workflows/team-plan.md and follow team orchestration. Else → manager-spec sub-agent
+10. **Phase 2 (Run)**: If team mode → Read workflows/team-run.md and follow team orchestration. Else → manager-tdd (new features) OR manager-ddd (legacy refactoring) sub-agent
+11. **Phase 3 (Sync)**: Always manager-docs sub-agent (sync phase never uses team mode)
+12. Terminate with completion marker
 
 ---
 

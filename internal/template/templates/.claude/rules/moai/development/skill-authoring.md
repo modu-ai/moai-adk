@@ -9,7 +9,7 @@ MoAI skills follow the Agent Skills standard with MoAI-specific extensions.
 ### Standard Fields (agentskills.io)
 
 Required fields:
-- name: Skill identifier, lowercase with hyphens, max 64 characters (pattern: moai-{category}-{name})
+- name: Skill identifier, lowercase with hyphens, max 64 characters (system: moai-{category}-{name}, user: custom-{name})
 - description: Purpose description using YAML folded scalar (>), max 1024 characters
 
 Optional standard fields:

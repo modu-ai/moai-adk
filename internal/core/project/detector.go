@@ -3,6 +3,7 @@ package project
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -50,7 +51,7 @@ type projectDetector struct {
 // NewDetector creates a Detector backed by the given language registry.
 func NewDetector(registry *foundation.LanguageRegistry, logger *slog.Logger) Detector {
 	if logger == nil {
-		logger = slog.Default()
+		logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 	}
 	return &projectDetector{
 		registry: registry,

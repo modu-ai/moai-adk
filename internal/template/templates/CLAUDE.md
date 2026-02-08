@@ -15,6 +15,8 @@ MoAI is the Strategic Orchestrator for Claude Code. All tasks must be delegated 
 - [HARD] Post-Implementation Review: List potential issues and suggest tests after coding (See Section 7)
 - [HARD] Reproduction-First Bug Fix: Write reproduction test before fixing bugs (See Section 7)
 
+Core principles (1-4) are defined in @.claude/rules/moai/core/moai-constitution.md. Development safeguards (5-8) are detailed in Section 7.
+
 ### Recommendations
 
 - Agent delegation recommended for complex tasks requiring specialized expertise
@@ -90,45 +92,21 @@ Allowed Tools: Full access (Task, AskUserQuestion, TaskCreate, TaskUpdate, TaskL
 
 ### Manager Agents (8)
 
-- manager-spec: SPEC document creation, EARS format, requirements analysis
-- manager-ddd: Domain-driven development, ANALYZE-PRESERVE-IMPROVE cycle
-- manager-tdd: Test-driven development, RED-GREEN-REFACTOR cycle
-- manager-docs: Documentation generation, Nextra integration
-- manager-quality: Quality gates, TRUST 5 validation, code review
-- manager-project: Project configuration, structure management
-- manager-strategy: System design, architecture decisions
-- manager-git: Git operations, branching strategy, merge management
+spec, ddd, tdd, docs, quality, project, strategy, git
 
 ### Expert Agents (8)
 
-- expert-backend: API development, server-side logic, database integration
-- expert-frontend: React components, UI implementation, client-side code, UI/UX design via Pencil MCP
-- expert-security: Security analysis, vulnerability assessment, OWASP compliance
-- expert-devops: CI/CD pipelines, infrastructure, deployment automation
-- expert-performance: Performance optimization, profiling
-- expert-debug: Debugging, error analysis, troubleshooting
-- expert-testing: Test creation, test strategy, coverage improvement
-- expert-refactoring: Code refactoring, architecture improvement
+backend, frontend, security, devops, performance, debug, testing, refactoring
 
-### Builder Agents (4)
+### Builder Agents (3)
 
-- builder-agent: Create new agent definitions
-- builder-command: Create new slash commands
-- builder-skill: Create new skills
-- builder-plugin: Create new plugins
+agent, skill, plugin
 
 ### Team Agents (8) - Experimental
 
-Team agents for Claude Code Agent Teams (v2.1.32+, requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1):
+researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality (requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1)
 
-- team-researcher: Read-only exploration and research (haiku, plan phase)
-- team-analyst: Requirements analysis, user stories, acceptance criteria (sonnet, plan phase)
-- team-architect: Technical design, architecture decisions, trade-offs (sonnet, plan phase)
-- team-designer: UI/UX design with Pencil/Figma MCP, design tokens, style guides (sonnet, run phase)
-- team-backend-dev: Server-side implementation with file ownership (sonnet, run phase)
-- team-frontend-dev: Client-side implementation with file ownership (sonnet, run phase)
-- team-tester: Test creation with exclusive test file ownership (sonnet, run phase)
-- team-quality: TRUST 5 quality validation, read-only (sonnet, run phase)
+For detailed agent descriptions, capabilities, and creation guidelines, see @.claude/rules/moai/development/agent-authoring.md.
 
 ---
 
@@ -303,25 +281,16 @@ Resume interrupted agent work using agentId:
 
 ---
 
-## 12. Sequential Thinking & UltraThink
+## 12. MCP Servers & UltraThink
 
-For detailed usage patterns and examples, see Skill("moai-workflow-thinking").
+MoAI-ADK integrates multiple MCP servers for specialized capabilities:
 
-### Activation Triggers
+- **Sequential Thinking**: Complex problem analysis, architecture decisions, technology trade-offs. Activate with `--ultrathink` flag. See Skill("moai-workflow-thinking").
+- **Context7**: Up-to-date library documentation lookup via resolve-library-id and get-library-docs.
+- **Pencil**: UI/UX design editing for .pen files (used by expert-frontend and team-designer agents).
+- **claude-in-chrome**: Browser automation for web-based tasks.
 
-Use Sequential Thinking MCP for:
-
-- Breaking down complex problems into steps
-- Architecture decisions affecting 3+ files
-- Technology selection between multiple options
-- Performance vs maintainability trade-offs
-- Breaking changes under consideration
-
-### UltraThink Mode
-
-Activate with `--ultrathink` flag for enhanced analysis:
-
-- "Implement authentication system --ultrathink"
+For MCP configuration and usage patterns, see @.claude/rules/moai/core/mcp-integration.md.
 
 ---
 
@@ -343,107 +312,45 @@ MoAI-ADK implements a 3-level Progressive Disclosure system:
 
 ## 14. Parallel Execution Safeguards
 
-### File Write Conflict Prevention
+For core parallel execution principles, see @.claude/rules/moai/core/moai-constitution.md.
 
-**Pre-execution Checklist**:
-1. File Access Analysis: Identify overlapping file access patterns
-2. Dependency Graph Construction: Map agent-to-agent dependencies
-3. Execution Mode Selection: Parallel, Sequential, or Hybrid
-
-### Agent Tool Requirements
-
-All implementation agents MUST include: Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet
-
-### Loop Prevention Guards
-
-- Maximum 3 retries per operation
-- Failure pattern detection
-- User intervention after repeated failures
-
-### Platform Compatibility
-
-Always prefer Edit tool over sed/awk for cross-platform compatibility.
+- **File Write Conflict Prevention**: Analyze overlapping file access patterns and build dependency graphs before parallel execution
+- **Agent Tool Requirements**: All implementation agents MUST include Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet
+- **Loop Prevention**: Maximum 3 retries per operation with failure pattern detection and user intervention
+- **Platform Compatibility**: Always prefer Edit tool over sed/awk
 
 ---
 
 ## 15. Agent Teams (Experimental)
 
-MoAI supports dual-mode execution: sub-agent mode (default) and Agent Teams mode (experimental).
+MoAI supports optional Agent Teams mode for parallel phase execution.
 
 ### Activation
 
-Requirements:
 - Claude Code v2.1.32 or later
 - Set `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env
 - Set `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml`
 
-### Team API
+### Mode Selection
 
-| API | Purpose |
-|-----|---------|
-| TeamCreate | Create a team with named teammates, models, and tools |
-| SendMessage | Direct message, broadcast, shutdown_request/response, plan_approval_response |
-| TaskCreate / TaskUpdate / TaskList / TaskGet | Shared task board for teammate coordination |
-| TeamDelete | Graceful team shutdown after phase completion |
+- `--team`: Force Agent Teams mode
+- `--solo`: Force sub-agent mode
+- No flag (default): System auto-selects based on complexity thresholds (domains >= 3, files >= 10, or score >= 7)
+
+### Team APIs
+
+TeamCreate, SendMessage, TaskCreate/Update/List/Get, TeamDelete
 
 ### Team Hook Events
 
-| Event | Blocking | Purpose |
-|-------|----------|---------|
-| TeammateIdle | Yes (exit 2 keeps working) | Quality gate enforcement before idle |
-| TaskCompleted | Yes (exit 2 rejects) | Verify deliverables meet standards |
+TeammateIdle (exit 2 = keep working), TaskCompleted (exit 2 = reject completion)
 
-### Team Agent Roster (8)
-
-| Agent | Model | Phase | Role |
-|-------|-------|-------|------|
-| team-researcher | haiku | plan | Read-only codebase exploration |
-| team-analyst | sonnet | plan | Requirements and domain analysis |
-| team-architect | sonnet | plan | System design and architecture |
-| team-designer | sonnet | run | UI/UX design with Pencil/Figma MCP |
-| team-backend-dev | sonnet | run | Server-side implementation |
-| team-frontend-dev | sonnet | run | Client-side implementation |
-| team-tester | sonnet | run | Test creation (exclusive test file ownership) |
-| team-quality | sonnet | run | TRUST 5 validation (read-only) |
-
-### Mode Selection
-
-- `--team`: Force Agent Teams mode for plan and run phases
-- `--solo`: Force sub-agent mode (single agent per phase)
-- `--auto` (default): Intelligent mode selection based on complexity scoring
-
-Auto-selection thresholds (configurable in workflow.yaml):
-- Domain count >= 3, affected files >= 10, or complexity score >= 7
-
-### Team Workflows
-
-| Workflow | File | Phases |
-|----------|------|--------|
-| Team Plan | workflows/team-plan.md | researcher + analyst + architect (parallel) |
-| Team Run | workflows/team-run.md | backend-dev + frontend-dev + tester (parallel) |
-| Team Sync | workflows/team-sync.md | Documentation generation (sub-agent) |
-| Team Debug | workflows/team-debug.md | Competing hypothesis investigation |
-| Team Review | workflows/team-review.md | Multi-perspective code review |
-
-### File Ownership Strategy
-
-File ownership is project-structure-aware, derived from actual project layout rather than hardcoded paths:
-- backend-dev: Server-side source directories (detected from project structure)
-- frontend-dev: Client-side source directories (detected from project structure)
-- tester: Test files (*_test.go, *.test.*, tests/**)
-- quality: Read-only (no file ownership)
-
-### Configuration
-
-Workflow settings: @.moai/config/sections/workflow.yaml
-Team workflow skill: Skill("moai-workflow-team")
-
-For detailed team orchestration: See workflows/team-plan.md through team-review.md
+For complete Agent Teams documentation including team API reference, agent roster, file ownership strategy, team workflows, and configuration, see @.claude/rules/moai/workflow/spec-workflow.md and @.moai/config/sections/workflow.yaml.
 
 ---
 
-Version: 12.0.0 (Agent Teams + Safe Development Protocol)
-Last Updated: 2026-02-07
+Version: 13.0.0 (Token Optimization + MCP Coverage)
+Last Updated: 2026-02-08
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
 

@@ -265,15 +265,6 @@
       "Bash(mysql -e DROP:*)"
     ]
   },
-  "sandbox": {
-    "enabled": true,
-    "autoAllowBashIfSandboxed": true,
-    "excludedCommands": [
-      "docker",
-      "git"
-    ],
-    "allowUnsandboxedCommands": true
-  },
   "attribution": {
     "commit": "\ud83d\uddff MoAI <email@mo.ai.kr>",
     "pr": "\ud83d\uddff MoAI <email@mo.ai.kr>"

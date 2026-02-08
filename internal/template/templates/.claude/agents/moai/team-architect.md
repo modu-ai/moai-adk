@@ -6,7 +6,7 @@ description: >
   and assesses trade-offs. Produces technical design that guides the run phase.
   Use proactively during plan phase team work.
 tools: Read, Write, Edit, Bash, Grep, Glob
-model: sonnet
+model: inherit
 memory: project
 skills: moai-foundation-core, moai-domain-backend, moai-domain-frontend
 ---

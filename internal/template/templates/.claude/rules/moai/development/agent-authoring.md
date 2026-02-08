@@ -6,6 +6,10 @@ Guidelines for creating custom agents in MoAI-ADK.
 
 Custom agents are defined in `.claude/agents/*.md` or `.claude/agents/**/*.md` (subdirectories supported).
 
+Directory convention:
+- User custom agents: `.claude/agents/<agent-name>.md` (root level)
+- MoAI-ADK system agents: `.claude/agents/moai/<agent-name>.md` (moai subdirectory)
+
 ## Supported Frontmatter Fields
 
 All agent definitions use YAML frontmatter. The following fields are available:
@@ -96,13 +100,12 @@ Domain-specific implementation:
 - expert-testing: Test creation and strategy
 - expert-refactoring: Code refactoring
 
-### Builder Agents (4)
+### Builder Agents (3)
 
 Create new MoAI components:
 
 - builder-agent: New agent definitions
 - builder-skill: New skill creation
-- builder-command: Slash command creation
 - builder-plugin: Plugin creation
 
 ### Team Agents (8) - Experimental
@@ -112,13 +115,13 @@ Agents for Claude Code Agent Teams (v2.1.32+, requires CLAUDE_CODE_EXPERIMENTAL_
 | Agent | Model | Phase | Mode | Purpose |
 |-------|-------|-------|------|---------|
 | team-researcher | haiku | plan | plan (read-only) | Codebase exploration and research |
-| team-analyst | sonnet | plan | plan (read-only) | Requirements analysis |
-| team-architect | sonnet | plan | plan (read-only) | Technical design |
-| team-backend-dev | sonnet | run | acceptEdits | Server-side implementation |
-| team-designer | sonnet | run | acceptEdits | UI/UX design with Pencil/Figma MCP |
-| team-frontend-dev | sonnet | run | acceptEdits | Client-side implementation |
-| team-tester | sonnet | run | acceptEdits | Test creation with exclusive test file ownership |
-| team-quality | sonnet | run | plan (read-only) | TRUST 5 quality validation |
+| team-analyst | inherit | plan | plan (read-only) | Requirements analysis |
+| team-architect | inherit | plan | plan (read-only) | Technical design |
+| team-backend-dev | inherit | run | acceptEdits | Server-side implementation |
+| team-designer | inherit | run | acceptEdits | UI/UX design with Pencil/Figma MCP |
+| team-frontend-dev | inherit | run | acceptEdits | Client-side implementation |
+| team-tester | inherit | run | acceptEdits | Test creation with exclusive test file ownership |
+| team-quality | inherit | run | plan (read-only) | TRUST 5 quality validation |
 
 ## Rules
 

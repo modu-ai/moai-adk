@@ -36,10 +36,10 @@ Spawn 3 teammates from the plan_research pattern:
 Teammate 1 - researcher (team-researcher agent, haiku model):
 - Prompt: "Explore the codebase for {feature_description}. Map architecture, find relevant files, identify dependencies and patterns. Report findings to the team lead."
 
-Teammate 2 - analyst (team-analyst agent, sonnet model):
+Teammate 2 - analyst (team-analyst agent, inherit model):
 - Prompt: "Analyze requirements for {feature_description}. Identify user stories, acceptance criteria, edge cases, risks, and constraints. Report findings to the team lead."
 
-Teammate 3 - architect (team-architect agent, sonnet model):
+Teammate 3 - architect (team-architect agent, inherit model):
 - Prompt: "Design the technical approach for {feature_description}. Evaluate implementation alternatives, assess trade-offs, propose architecture. Consider existing patterns found by the researcher. Report to the team lead."
 
 ## Phase 2: Parallel Research

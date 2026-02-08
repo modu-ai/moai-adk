@@ -39,7 +39,7 @@ IN SCOPE:
 OUT OF SCOPE:
 
 - Agent creation tasks (delegate to builder-agent)
-- Command creation tasks (delegate to builder-command)
+- Plugin creation tasks (delegate to builder-plugin)
 - Code implementation within skills (delegate to expert-backend/expert-frontend)
 
 ## Delegation Protocol
@@ -53,7 +53,7 @@ Delegate TO this agent when:
 Delegate FROM this agent when:
 
 - Agent creation needed (delegate to builder-agent)
-- Command creation needed (delegate to builder-command)
+- Plugin creation needed (delegate to builder-plugin)
 - Code examples require implementation (delegate to expert-backend/expert-frontend)
 
 ---
@@ -66,7 +66,8 @@ Delegate FROM this agent when:
 - Identify domain-specific needs and target audience
 - Map skill relationships, dependencies, and integration points
 - [HARD] Use AskUserQuestion to ask for skill name before creating any skill
-- Provide suggested names based on skill purpose (without `moai-` prefix unless admin mode)
+- Provide suggested names based on skill purpose with `custom-` prefix by default
+- If `--moai` flag is present in the request, use `moai-` prefix instead of `custom-`
 
 ### Phase 2: Research
 
@@ -81,7 +82,7 @@ Determine progressive disclosure structure, naming, file organization, and overf
 
 ### Phase 4: Implementation
 
-Create SKILL.md and supporting files in `.claude/skills/skill-name/` directory. Apply frontmatter, write content sections, and verify line count.
+Create SKILL.md and supporting files in `.claude/skills/<prefix>-<name>/` directory (prefix is `custom-` by default, or `moai-` with `--moai` flag). Apply frontmatter, write content sections, and verify line count.
 
 ### Phase 5: Validation
 
@@ -179,17 +180,24 @@ References should be kept one level deep from SKILL.md. Avoid chains where SKILL
 
 ## Naming Conventions
 
-[HARD] NEVER use `moai-` prefix for skill names. This namespace is reserved for MoAI-ADK system skills.
+### Prefix Rules
 
-ADMIN MODE EXCEPTION: When user explicitly requests "admin mode" or "system skill" (or Korean equivalents), the `moai-` prefix restriction is lifted. Trigger phrases: "admin mode", "system skill", "MoAI-ADK development".
+[HARD] Default prefix is `custom-`. All user-created skills use `custom-` prefix unless `--moai` flag is explicitly provided.
 
-[HARD] Always ask user for skill name before creating, using AskUserQuestion. Provide 2-3 suggested names.
+- Default: `custom-<name>` → directory `.claude/skills/custom-<name>/`
+- With `--moai` flag: `moai-<name>` → directory `.claude/skills/moai-<name>/`
 
-Naming Rules:
+The `moai-` namespace is reserved for MoAI-ADK system skills. Only use `moai-` prefix when:
+- The `--moai` flag is present in the user request
+- The user explicitly requests "admin mode", "system skill", or "MoAI-ADK development"
 
-- Use gerund form (verb + -ing) for action-oriented skills: "generating-commit-messages", "analyzing-code-quality"
+[HARD] Always ask user for skill name before creating, using AskUserQuestion. Provide 2-3 suggested names with the appropriate prefix applied.
+
+### Naming Rules
+
+- Use gerund form (verb + -ing) for action-oriented skills: "custom-generating-commit-messages", "custom-analyzing-code-quality"
 - Kebab-case only: lowercase letters, numbers, hyphens
-- Maximum 64 characters
+- Maximum 64 characters (including prefix)
 - Avoid vague nouns: "helper", "tool", "utils"
 - Avoid reserved words: "anthropic", "claude"
 

@@ -3,6 +3,7 @@ package shell
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"runtime"
 )
@@ -30,7 +31,7 @@ type envConfigurator struct {
 // NewEnvConfigurator creates a new EnvConfigurator instance.
 func NewEnvConfigurator(logger *slog.Logger) EnvConfigurator {
 	if logger == nil {
-		logger = slog.Default()
+		logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 	}
 	return &envConfigurator{
 		detector:     NewDetector(),

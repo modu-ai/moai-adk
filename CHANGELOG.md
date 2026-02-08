@@ -5,6 +5,67 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- SessionEnd hook wrapper (`.claude/hooks/moai/handle-session-end.sh`) for Claude Code integration
+- Session cleanup and state management support through SessionEnd event handling
+
+### Changed
+
+- Removed `--auto` flag from workflow execution for clearer mode selection
+- Simplified execution mode selection logic for better user experience
+- Agent Teams mode now enabled by default with complexity-based auto-selection
+- Auto-selection thresholds: 3+ domains, 10+ affected files, or complexity score 7+
+- Improved parallel execution efficiency with Agent Teams as default
+
+### Fixed
+
+- `moai update` template filter now correctly processes `.tmpl` files using rendered target paths
+- `moai update` JSON logging issue resolved — merge confirmation now uses structured output
+- `moai update` config cleanup improved — full config backup (including sections/) for complete restore capability
+- Template deployment now properly filters MoAI-managed files using rendered paths instead of template paths
+- Template filtering logic improved to filter before `.tmpl` extension stripping
+- Enhanced backup and restore mechanism for configuration files
+
+### Removed
+
+- Deprecated `--auto` flag (auto-selection now happens by default)
+- Deprecated `builder-command.md` agent definition (1,208 lines) — command creation now uses skill-based approach
+- Verbose documentation sections from hooks-system.md and workflow skills
+- Redundant settings from settings.json template
+
+### Technical Details
+
+**Hook System:**
+- New SessionEnd hook enables session cleanup and state persistence
+- Consistent hook execution across all lifecycle events
+- Improved hook reliability and error handling
+
+**Workflow Improvements:**
+- Default execution mode now uses intelligent complexity analysis
+- Agent Teams mode activated automatically for complex tasks
+- Sub-agent mode for simple, predictable workflows
+- Enhanced parallel execution with team-based development
+
+**Template System Improvements:**
+- `.tmpl` files now use rendered target path for display and existence checks
+- MoAI-managed file filtering moved after path transformation
+- Config backup includes all files for complete v2.x-to-v2.x migration support
+- Filter-first approach prevents `.tmpl` extension issues
+
+**Logging Improvements:**
+- JSON logging issues during merge confirmation resolved
+- Structured output for better CI/CD integration
+
+**Code Quality:**
+- All tests passing including cross-platform CI (Windows, macOS)
+- Zero linting issues
+- Improved test coverage for update logic
+
+---
+
 ## [2.0.5] - 2026-02-08
 
 ### Summary

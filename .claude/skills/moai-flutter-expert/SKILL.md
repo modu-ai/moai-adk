@@ -11,6 +11,7 @@ metadata:
   scope: implementation
   output-format: code
   related-skills: react-native-expert, test-master, fullstack-guardian
+user-invocable: false
 ---
 
 # Flutter Expert

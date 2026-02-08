@@ -118,7 +118,7 @@ Team behavior is controlled by the `workflow.team` section in `.moai/config/sect
 |---------|------|---------|-------------|
 | team.enabled | boolean | false | Master switch for team mode |
 | team.max_teammates | integer | 5 | Maximum teammates per team (2-5 recommended) |
-| team.default_model | string | sonnet | Default model for teammates (haiku/sonnet/opus) |
+| team.default_model | string | inherit | Default model for teammates (inherit/haiku/sonnet/opus) |
 | team.require_plan_approval | boolean | true | Require plan approval before implementing |
 | team.delegate_mode | boolean | true | Team lead coordination-only mode (no direct implementation) |
 | team.teammate_display | string | auto | Display mode: auto, in-process, or tmux |

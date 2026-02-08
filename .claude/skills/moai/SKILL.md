@@ -45,6 +45,14 @@ Fundamental Principles:
 
 Parse $ARGUMENTS to determine which workflow to execute.
 
+### Execution Mode Flags (mutually exclusive)
+
+- `--team`: Force Agent Teams mode for parallel execution
+- `--solo`: Force sub-agent mode (single agent per phase)
+- No flag: System auto-selects based on complexity thresholds (domains >= 3, files >= 10, or complexity score >= 7)
+
+When no flag is provided, the system evaluates task complexity and automatically selects between team mode (for complex, multi-domain tasks) and sub-agent mode (for focused, single-domain tasks).
+
 ### Priority 1: Explicit Subcommand Matching
 
 Match the first word of $ARGUMENTS against known subcommands:
@@ -128,8 +136,12 @@ For detailed orchestration: Read workflows/loop.md
 Purpose: Full autonomous plan -> run -> sync pipeline. Default when no subcommand matches.
 Agents: Explore, manager-spec, manager-ddd, manager-quality, manager-docs, manager-git
 Phases: Parallel exploration, SPEC generation (user approval), DDD implementation with optional auto-fix loop, documentation sync, completion marker.
-Flags: --loop (iterative fixing), --max N, --branch, --pr, --resume SPEC-XXX, --team, --solo, --auto
+Flags: --loop (iterative fixing), --max N, --branch, --pr, --resume SPEC-XXX, --team (force team mode), --solo (force sub-agent mode)
 For detailed orchestration: Read workflows/moai.md
+
+**Note**: When no execution mode flag is provided, the system automatically selects based on complexity:
+- Team mode: Multi-domain tasks (>=3 domains), many files (>=10), or high complexity (>=7)
+- Sub-agent mode: Focused, single-domain tasks
 
 ### project - Project Documentation
 
@@ -251,10 +263,9 @@ These markers enable automation detection of workflow state.
 - expert-testing: Test creation, test strategy, coverage improvement
 - expert-refactoring: Code refactoring, architecture improvement
 
-### Builder Agents (4)
+### Builder Agents (3)
 
 - builder-agent: Create new agent definitions
-- builder-command: Create new slash commands
 - builder-skill: Create new skills
 - builder-plugin: Create new plugins
 
@@ -265,13 +276,13 @@ Team agents for Agent Teams mode (--team flag, requires CLAUDE_CODE_EXPERIMENTAL
 | Agent | Model | Phase | Purpose |
 |-------|-------|-------|---------|
 | team-researcher | haiku | plan | Read-only codebase exploration |
-| team-analyst | sonnet | plan | Requirements and domain analysis |
-| team-architect | sonnet | plan | System design and architecture |
-| team-designer | sonnet | run | UI/UX design with Pencil/Figma MCP |
-| team-backend-dev | sonnet | run | Server-side implementation |
-| team-frontend-dev | sonnet | run | Client-side implementation |
-| team-tester | sonnet | run | Test creation (exclusive test ownership) |
-| team-quality | sonnet | run | TRUST 5 validation (read-only) |
+| team-analyst | inherit | plan | Requirements and domain analysis |
+| team-architect | inherit | plan | System design and architecture |
+| team-designer | inherit | run | UI/UX design with Pencil/Figma MCP |
+| team-backend-dev | inherit | run | Server-side implementation |
+| team-frontend-dev | inherit | run | Client-side implementation |
+| team-tester | inherit | run | Test creation (exclusive test ownership) |
+| team-quality | inherit | run | TRUST 5 validation (read-only) |
 
 ### Agent Selection Decision Tree
 
@@ -331,7 +342,7 @@ For quality standards: See .claude/rules/moai/core/moai-constitution.md
 When this skill is activated, execute the following steps in order:
 
 Step 1 - Parse Arguments:
-Extract subcommand keywords and flags from $ARGUMENTS. Recognized global flags: --resume [ID], --seq, --ultrathink, --team, --solo, --auto. Workflow-specific flags: --loop, --max N, --worktree, --branch, --pr, --merge, --dry, --level N, --security. When --ultrathink is detected, activate Sequential Thinking MCP (mcp__sequential-thinking__sequentialthinking) for deep analysis before execution.
+Extract subcommand keywords and flags from $ARGUMENTS. Recognized global flags: --resume [ID], --seq, --ultrathink, --team, --solo. Workflow-specific flags: --loop, --max N, --worktree, --branch, --pr, --merge, --dry, --level N, --security. When --ultrathink is detected, activate Sequential Thinking MCP (mcp__sequential-thinking__sequentialthinking) for deep analysis before execution.
 
 Step 2 - Route to Workflow:
 Apply the Intent Router (Priority 1 through Priority 4) to determine the target workflow. If ambiguous, use AskUserQuestion to clarify with the user.

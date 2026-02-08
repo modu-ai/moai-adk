@@ -116,7 +116,7 @@ When team mode is enabled (workflow.team.enabled and AGENT_TEAMS env), phases ca
 ### Mode Selection
 - --team flag: Force team mode
 - --solo flag: Force sub-agent mode
-- auto (default): Complexity-based selection
+- No flag (default): Complexity-based selection
 - See workflow.yaml team.auto_selection for thresholds
 
 ### Fallback

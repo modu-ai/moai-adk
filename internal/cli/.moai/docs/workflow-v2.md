@@ -596,7 +596,7 @@ If team mode fails at any point:
 
 - Team mode uses more total API calls but completes faster
 - haiku model teammates (researcher) are cost-effective for exploration
-- sonnet model teammates (developers) balance capability and cost
+- Developer teammates inherit user's current model (configurable per pattern)
 - Sync phase always uses sub-agent (no team overhead)
 - Auto mode optimizes by only using teams when complexity warrants it
 

@@ -869,10 +869,10 @@ func TestBackupMoaiConfig_CreateBackup(t *testing.T) {
 		t.Error("config.yaml should be backed up")
 	}
 
-	// Verify sections directory was NOT backed up (should not exist)
+	// Verify sections directory WAS backed up (full backup for restore capability)
 	backupSectionsPath := filepath.Join(actualBackupDir, "sections")
-	if _, err := os.Stat(backupSectionsPath); err == nil {
-		t.Error("sections directory should be excluded from backup")
+	if _, err := os.Stat(backupSectionsPath); os.IsNotExist(err) {
+		t.Error("sections directory should be included in backup")
 	}
 
 	// Verify backup_metadata.json exists
@@ -915,16 +915,16 @@ func TestBackupMoaiConfig_CreateBackup(t *testing.T) {
 		t.Error("config.yaml should be in backed_up_items")
 	}
 
-	// Verify sections directory is in excluded_items (not excluded_dirs, since we use relative path)
-	foundExcludedDir := false
-	for _, item := range metadata.ExcludedItems {
-		if item == "sections" || item == "sections/user.yaml" {
-			foundExcludedDir = true
+	// Verify sections files are in backed_up_items (full backup, no exclusions)
+	foundSectionsFile := false
+	for _, item := range metadata.BackedUpItems {
+		if strings.Contains(item, "sections/") {
+			foundSectionsFile = true
 			break
 		}
 	}
-	if !foundExcludedDir {
-		t.Error("sections should be in excluded_items")
+	if !foundSectionsFile {
+		t.Error("sections files should be in backed_up_items")
 	}
 }
 
@@ -2020,13 +2020,12 @@ func TestCleanMoaiManagedPaths(t *testing.T) {
 				if pathExists(root, filepath.Join(".claude", "hooks", "moai")) {
 					t.Error(".claude/hooks/moai should have been removed")
 				}
-				// config.yaml should be removed
+				// entire .moai/config/ should be removed (backup handles preservation)
 				if pathExists(root, filepath.Join(".moai", "config", "config.yaml")) {
 					t.Error(".moai/config/config.yaml should have been removed")
 				}
-				// sections/ should be preserved
-				if !pathExists(root, filepath.Join(".moai", "config", "sections", "user.yaml")) {
-					t.Error(".moai/config/sections/user.yaml should have been preserved")
+				if pathExists(root, filepath.Join(".moai", "config", "sections", "user.yaml")) {
+					t.Error(".moai/config/sections/user.yaml should have been removed")
 				}
 			},
 		},
@@ -2070,7 +2069,7 @@ func TestCleanMoaiManagedPaths(t *testing.T) {
 			},
 		},
 		{
-			name: "ConfigPreservesSections",
+			name: "ConfigDeletedEntirely",
 			setup: func(t *testing.T, root string) {
 				mkFile(t, root, filepath.Join(".moai", "config", "sections", "user.yaml"), "user: test")
 				mkFile(t, root, filepath.Join(".moai", "config", "sections", "language.yaml"), "lang: ko")
@@ -2078,17 +2077,16 @@ func TestCleanMoaiManagedPaths(t *testing.T) {
 				mkFile(t, root, filepath.Join(".moai", "config", "backup_metadata.json"), `{"ts":"now"}`)
 			},
 			verify: func(t *testing.T, root string, output string) {
-				// sections/ and its contents must survive
-				if !pathExists(root, filepath.Join(".moai", "config", "sections")) {
-					t.Error(".moai/config/sections/ should have been preserved")
+				// Entire .moai/config/ should be deleted (backup already done by Backup step)
+				if pathExists(root, filepath.Join(".moai", "config", "sections")) {
+					t.Error(".moai/config/sections/ should have been removed")
 				}
-				if !pathExists(root, filepath.Join(".moai", "config", "sections", "user.yaml")) {
-					t.Error(".moai/config/sections/user.yaml should have been preserved")
+				if pathExists(root, filepath.Join(".moai", "config", "sections", "user.yaml")) {
+					t.Error(".moai/config/sections/user.yaml should have been removed")
 				}
-				if !pathExists(root, filepath.Join(".moai", "config", "sections", "language.yaml")) {
-					t.Error(".moai/config/sections/language.yaml should have been preserved")
+				if pathExists(root, filepath.Join(".moai", "config", "sections", "language.yaml")) {
+					t.Error(".moai/config/sections/language.yaml should have been removed")
 				}
-				// config.yaml and backup_metadata.json should be removed
 				if pathExists(root, filepath.Join(".moai", "config", "config.yaml")) {
 					t.Error(".moai/config/config.yaml should have been removed")
 				}

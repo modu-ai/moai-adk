@@ -22,14 +22,14 @@ workflow:
   # Agent Teams configuration
   team:
     # Master switch - also requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
-    enabled: false
+    enabled: true
 
     # Maximum teammates per team (2-5 recommended)
     max_teammates: 5
 
     # Default model for teammates
-    # Options: haiku (fast/cheap), sonnet (balanced), opus (powerful)
-    default_model: "sonnet"
+    # Options: inherit (use parent model), haiku (fast/cheap), sonnet (balanced), opus (powerful)
+    default_model: "inherit"
 
     # Require teammates to get plan approved before implementing
     require_plan_approval: true
@@ -59,7 +59,7 @@ workflow:
           - researcher
           - analyst
           - architect
-        model: "sonnet"
+        model: "inherit"
         description: "Parallel SPEC research and design"
 
       implementation:
@@ -67,7 +67,7 @@ workflow:
           - backend-dev
           - frontend-dev
           - tester
-        model: "sonnet"
+        model: "inherit"
         description: "Cross-layer feature implementation"
 
       design_implementation:
@@ -76,7 +76,7 @@ workflow:
           - backend-dev
           - frontend-dev
           - tester
-        model: "sonnet"
+        model: "inherit"
         description: "Cross-layer feature implementation with UI/UX design"
 
       full_stack:
@@ -85,7 +85,7 @@ workflow:
           - ui-layer
           - data-layer
           - quality
-        model: "sonnet"
+        model: "inherit"
         description: "Full-stack implementation with quality gate"
 
       investigation:
@@ -101,7 +101,7 @@ workflow:
           - security-reviewer
           - perf-reviewer
           - quality-reviewer
-        model: "sonnet"
+        model: "inherit"
         description: "Multi-perspective code review"
 
   # Completion markers for workflow state detection

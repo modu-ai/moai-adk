@@ -44,7 +44,6 @@ IN SCOPE:
 OUT OF SCOPE:
 
 - Creating Skills: Delegate to builder-skill subagent
-- Creating Slash Commands: Delegate to builder-command subagent
 - Creating Plugins: Delegate to builder-plugin subagent
 - Implementing actual business logic: Agents coordinate, not implement
 
@@ -58,6 +57,10 @@ Domain Assessment:
 - Identify agent scope and boundary conditions
 - Determine required tools and permissions
 - Define success criteria and quality metrics
+- [HARD] Use AskUserQuestion to ask for agent name before creating any agent
+- Provide suggested names based on agent purpose
+- If `--moai` flag is present in the request, create in `.claude/agents/moai/` directory
+- If no `--moai` flag, create in `.claude/agents/` directory (root level)
 
 Integration Planning:
 
@@ -207,6 +210,19 @@ Use cases: Long-running research, iterative improvements, multi-step workflows s
 - Must be descriptive and specific, avoiding abbreviations
 - Examples: `security-expert` (not `sec-Expert`), `database-architect` (not `db-arch`)
 
+### Directory Rules
+
+[HARD] Default directory is `.claude/agents/` (root level). All user-created agents go in root level unless `--moai` flag is explicitly provided.
+
+- Default: `.claude/agents/<agent-name>.md` (user custom agents)
+- With `--moai` flag: `.claude/agents/moai/<agent-name>.md` (MoAI-ADK official agents)
+
+The `.claude/agents/moai/` namespace is reserved for MoAI-ADK system agents. Only create agents in `moai/` subdirectory when:
+- The `--moai` flag is present in the user request
+- The user explicitly requests "admin mode", "system agent", or "MoAI-ADK development"
+
+[HARD] Always ask user for agent name before creating, using AskUserQuestion. Provide 2-3 suggested names.
+
 ### System Prompt Structure
 
 Every agent system prompt must include these sections:
@@ -264,7 +280,6 @@ Each sub-agent gets its own independent 200K token context window. Pass only ess
 When to delegate:
 
 - Skills creation needed: Delegate to builder-skill subagent
-- Command creation needed: Delegate to builder-command subagent
 - Plugin creation needed: Delegate to builder-plugin subagent
 - Documentation research: Use Context7 MCP or WebSearch tools
 - Quality validation: Delegate to manager-quality subagent
@@ -278,7 +293,6 @@ Context passing:
 ## Works Well With
 
 - builder-skill: Complementary skill creation for agent capabilities
-- builder-command: Slash command creation for agent invocation patterns
 - builder-plugin: Plugin bundling for agent distribution
 - manager-spec: Requirements analysis and specification generation
 - manager-quality: Agent validation and compliance checking

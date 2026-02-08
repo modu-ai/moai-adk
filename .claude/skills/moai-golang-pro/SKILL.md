@@ -11,6 +11,7 @@ metadata:
   scope: implementation
   output-format: code
   related-skills: devops-engineer, microservices-architect, test-master
+user-invocable: false
 ---
 
 # Golang Pro

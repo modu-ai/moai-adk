@@ -1,3 +1,8 @@
+---
+paths:
+  - "**/.mcp.json"
+---
+
 # MCP Integration
 
 Model Context Protocol (MCP) server integration rules.
