@@ -47,6 +47,35 @@ Arguments provided: $ARGUMENTS
 
 ---
 
+## PHASE 0: Pre-flight Checks
+
+Before starting the release process, verify the working directory is clean:
+
+1. **Check for uncommitted changes**:
+   ```bash
+   git status --porcelain
+   ```
+
+2. **Handle uncommitted files**:
+   - If files in `internal/cli/.claude/` exist: These are test artifacts, discard them
+   - If untracked files in `.claude/` exist: Check if they should be committed or discarded
+   - Clean up command:
+   ```bash
+   git checkout -- internal/cli/ .claude/
+   git clean -fd .claude/ internal/template/templates/.claude/
+   ```
+
+3. **Verify branch**:
+   - Must be on `main` branch
+   - If not, checkout main: `git checkout main`
+
+4. **Pull latest changes**:
+   ```bash
+   git pull origin main
+   ```
+
+---
+
 ## PHASE 1: Quality Gates
 
 Create TodoWrite with these items, then run each check in parallel where possible:
@@ -270,10 +299,52 @@ Report back with:
 
 ### Step 1: Wait for GoReleaser
 
-Check workflow status:
-`gh run list --workflow=release.yml --limit 3`
+**Check workflow status with retry logic:**
+
+```bash
+# Check if workflow was triggered
+gh run list --workflow=release.yml --limit 3
+
+# Wait for workflow completion (retry up to 10 times)
+for i in {1..10}; do
+  STATUS=$(gh run list --workflow=release.yml --limit 1 --json status --jq '.[0].status')
+  if [[ "$STATUS" == "completed" ]]; then
+    echo "✅ GoReleaser workflow completed"
+    break
+  fi
+  echo "⏳ Waiting for GoReleaser... (attempt $i/10)"
+  sleep 30
+done
+
+# Verify workflow success
+CONCLUSION=$(gh run list --workflow=release.yml --limit 1 --json conclusion --jq '.[0].conclusion')
+if [[ "$CONCLUSION" != "success" ]]; then
+  echo "❌ GoReleaser workflow failed with: $CONCLUSION"
+  echo "Check logs: gh run view --log"
+  exit 1
+fi
+```
+
+**Verify release was created:**
+
+```bash
+# Check if release exists
+gh release view vX.Y.Z --json tagName,assets
+
+# If release doesn't exist, check workflow logs
+gh run view --log | grep -A 20 "GoReleaser"
+```
 
 GoReleaser creates an initial release with auto-generated notes and binary assets.
+
+**Expected assets:**
+- moai-adk_X.Y.Z_darwin_arm64.tar.gz
+- moai-adk_X.Y.Z_darwin_amd64.tar.gz
+- moai-adk_X.Y.Z_linux_arm64.tar.gz
+- moai-adk_X.Y.Z_linux_amd64.tar.gz
+- moai-adk_X.Y.Z_windows_amd64.zip
+- moai-adk_X.Y.Z_windows_arm64.zip
+- checksums.txt
 
 ### Step 2: Replace Release Notes with English-First Bilingual Content
 
@@ -367,18 +438,81 @@ RELEASE_EOF
 
 ### Step 3: Final Verification
 
-1. Verify release notes appear correctly: `gh release view vX.Y.Z | head -80`
-   - Confirm English section appears first
-   - Confirm separator `---` present between sections
-   - Confirm Korean section appears second
+**1. Verify release notes format:**
 
-2. Check release assets: `gh release view vX.Y.Z --json assets --jq '.assets[].name'`
-   - Verify binaries: darwin-arm64, darwin-amd64, linux-arm64, linux-amd64, windows-amd64
+```bash
+# Check release notes structure
+gh release view vX.Y.Z | head -80
+```
 
-3. Report final summary with links:
-   - GitHub Release: https://github.com/modu-ai/moai-adk/releases/tag/vX.Y.Z
-   - GitHub Actions: https://github.com/modu-ai/moai-adk/actions
-   - Full release: `gh release view vX.Y.Z --web` (opens in browser)
+Checklist:
+- [ ] English section appears first
+- [ ] Separator `---` present between sections
+- [ ] Korean section appears second
+- [ ] Installation commands present in both sections
+- [ ] Breaking changes section present (or "None")
+
+**2. Verify release assets:**
+
+```bash
+# List all assets
+gh release view vX.Y.Z --json assets --jq '.assets[].name'
+
+# Expected count: 7 files (6 binaries + checksums.txt)
+```
+
+Required assets:
+- [ ] moai-adk_X.Y.Z_darwin_arm64.tar.gz
+- [ ] moai-adk_X.Y.Z_darwin_amd64.tar.gz
+- [ ] moai-adk_X.Y.Z_linux_arm64.tar.gz
+- [ ] moai-adk_X.Y.Z_linux_amd64.tar.gz
+- [ ] moai-adk_X.Y.Z_windows_amd64.zip
+- [ ] moai-adk_X.Y.Z_windows_arm64.zip
+- [ ] checksums.txt
+
+**3. Manual binary download test:**
+
+```bash
+# Test darwin-arm64 binary download
+DOWNLOAD_URL=$(gh release view vX.Y.Z --json assets --jq '.assets[] | select(.name | contains("darwin_arm64")) | .url')
+curl -L -o /tmp/test-binary.tar.gz "$DOWNLOAD_URL"
+
+# Verify archive contents
+tar -tzf /tmp/test-binary.tar.gz | head -5
+
+# Clean up
+rm /tmp/test-binary.tar.gz
+```
+
+Expected archive structure:
+```
+moai-adk_X.Y.Z_darwin_arm64/
+moai-adk_X.Y.Z_darwin_arm64/moai
+moai-adk_X.Y.Z_darwin_arm64/README.md
+moai-adk_X.Y.Z_darwin_arm64/LICENSE
+```
+
+**4. Verify archive naming matches checker logic:**
+
+The `internal/update/checker.go` expects archives WITHOUT "v" prefix:
+- ✅ Correct: `moai-adk_2.1.0_darwin_arm64.tar.gz`
+- ❌ Wrong: `moai-adk_v2.1.0_darwin_arm64.tar.gz`
+
+```bash
+# Verify naming convention
+gh release view vX.Y.Z --json assets --jq '.assets[].name' | grep -v "^moai-adk_v"
+```
+
+If any assets have "v" prefix, the update checker will fail.
+
+**5. Report final summary:**
+
+Display completion report with:
+- GitHub Release: https://github.com/modu-ai/moai-adk/releases/tag/vX.Y.Z
+- GitHub Actions: https://github.com/modu-ai/moai-adk/actions
+- Full release: `gh release view vX.Y.Z --web` (opens in browser)
+- Asset count: 7 files verified
+- Manual download test: PASS
 
 ---
 
@@ -429,6 +563,204 @@ Updating version files...
 - **[HARD] CHANGELOG and GitHub Release: English FIRST, Korean SECOND**
 - **[HARD] ALL git operations MUST be delegated to manager-git agent**
 - **[HARD] Quality gate failures MUST be delegated to expert-debug agent**
+
+---
+
+## Troubleshooting
+
+### Issue 1: Go Build Cache Permission Errors
+
+**Symptoms:**
+```
+permission denied: operation not permitted
+cache access errors during test execution
+```
+
+**Solution:**
+```bash
+# Clear Go build and test caches with sandbox bypass
+go clean -cache -testcache
+
+# Verify cache was cleared
+go clean -cache -testcache && echo "Cache cleared successfully"
+```
+
+**Prevention:** Run cache cleanup in Phase 0 pre-flight checks.
+
+---
+
+### Issue 2: Unused Import Errors in Tests
+
+**Symptoms:**
+```
+internal/shell/config_test.go:6: "runtime" imported and not used
+internal/template/deployer_test.go:8: "runtime" imported and not used
+```
+
+**Solution:**
+```bash
+# Delegate to expert-debug agent to identify and remove unused imports
+# Or manually remove unused imports and run gofmt
+
+# Fix formatting
+make fmt
+
+# Verify fix
+go test ./...
+```
+
+**Prevention:** Run `go vet` and `gofumpt -l .` in Phase 1 quality gates.
+
+---
+
+### Issue 3: Binary Download Failure "No Go binary available"
+
+**Root Cause:** Archive naming mismatch between GoReleaser output and update checker.
+
+**Symptoms:**
+```
+$ moai update
+Error: No Go binary available for this platform (darwin/arm64)
+```
+
+**Diagnosis:**
+```bash
+# Check actual asset names
+gh release view v2.1.0 --json assets --jq '.assets[].name'
+
+# Expected: moai-adk_2.1.0_darwin_arm64.tar.gz (without "v")
+# If you see: moai-adk_v2.1.0_darwin_arm64.tar.gz (with "v"), checker will fail
+```
+
+**Solution:** Archive names MUST NOT include "v" prefix. GoReleaser's `{{ .Version }}` strips "v" automatically.
+
+**Code Fix Location:** `internal/update/checker.go` line 121-126
+```go
+// Strip "v" and "go-v" prefixes from tag name to match GoReleaser's {{ .Version }}
+version := strings.TrimPrefix(release.TagName, "go-v")
+version = strings.TrimPrefix(version, "v")
+archiveName := fmt.Sprintf("moai-adk_%s_%s_%s.%s", version, runtime.GOOS, runtime.GOARCH, ext)
+```
+
+**Prevention:** Verify archive naming in Phase 7 Step 4.
+
+---
+
+### Issue 4: GoReleaser Workflow Failed
+
+**Symptoms:**
+```bash
+$ gh run list --workflow=release.yml --limit 1
+# Shows: conclusion = "failure"
+```
+
+**Diagnosis:**
+```bash
+# View workflow logs
+gh run view --log
+
+# Common causes:
+# 1. Tag format incorrect (must be vX.Y.Z)
+# 2. GoReleaser config syntax error
+# 3. Missing GitHub token permissions
+# 4. Binary build failure on specific platform
+```
+
+**Solution:**
+```bash
+# Check tag format
+git tag -l "v*" | tail -5
+
+# If tag is wrong format, delete and recreate
+git tag -d vX.Y.Z
+git push origin :refs/tags/vX.Y.Z
+git tag vX.Y.Z
+git push origin vX.Y.Z --tags
+```
+
+**Prevention:** Verify tag format matches `vX.Y.Z` in Phase 6.
+
+---
+
+### Issue 5: Test Artifacts in Working Directory
+
+**Symptoms:**
+```bash
+$ git status
+modified:   internal/cli/.claude/agents/moai/manager-spec.md
+modified:   internal/cli/.claude/commands/moai/01-plan.md
+# ... many more files in internal/cli/.claude/
+```
+
+**Root Cause:** Test files created by Claude Code during testing.
+
+**Solution:**
+```bash
+# Discard test artifacts (run in Phase 0)
+git checkout -- internal/cli/ .claude/
+git clean -fd .claude/ internal/template/templates/.claude/
+
+# Verify clean
+git status --porcelain
+```
+
+**Prevention:** Always run Phase 0 pre-flight checks before starting release.
+
+---
+
+### Issue 6: Version File Inconsistency
+
+**Symptoms:**
+- `pkg/version/version.go` shows v2.1.0
+- `.moai/config/sections/system.yaml` shows 2.0.5
+- `internal/template/templates/.moai/config/sections/system.yaml` shows 2.0.5
+
+**Solution:** All 3 version files MUST be updated together in Phase 3.
+
+**Verification:**
+```bash
+# Check consistency
+grep -n "Version" pkg/version/version.go
+grep -n "moai.version" .moai/config/sections/system.yaml
+grep -n "moai.version" internal/template/templates/.moai/config/sections/system.yaml
+
+# All should show same version (with/without "v" prefix as appropriate)
+```
+
+**Prevention:** Phase 3 includes version files checklist.
+
+---
+
+### Issue 7: CHANGELOG Format Violation
+
+**Symptoms:** English and Korean sections in wrong order or missing separator.
+
+**Correct Format:**
+```markdown
+## [2.1.0] - 2026-02-09
+
+### Summary
+[English text here]
+
+### Added
+- [English items]
+
+---
+
+## [2.1.0] - 2026-02-09 (한국어)
+
+### 요약
+[Korean text here]
+
+### 추가됨 (Added)
+- [Korean items]
+
+---
+
+[Previous version entry]
+```
+
+**Prevention:** Use CHANGELOG verification checklist in Phase 4.
 
 ---
 
