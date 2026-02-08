@@ -9,6 +9,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.1] - 2026-02-09
+
+### Summary
+
+Critical hotfix resolving binary download failure in `moai update`. Version prefix mismatch between GoReleaser archive naming and update checker caused "No Go binary available" error for all platforms.
+
+### Breaking Changes
+
+None
+
+### Fixed
+
+- **Binary Download**: Fixed archive name mismatch in update checker - GoReleaser strips "v" prefix from version tags, but checker was using full tag name (e.g., "v2.1.0"), causing download to fail
+- **Update Logic**: Added version prefix stripping logic to handle both "v" and "go-v" tag prefixes, ensuring correct archive URL construction
+
+### Installation & Update
+
+\`\`\`bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+\`\`\`
+
+**Note**: If `moai update` still fails with v2.1.0, manually download v2.1.1:
+
+\`\`\`bash
+# macOS arm64 (Apple Silicon)
+curl -L "https://github.com/modu-ai/moai-adk/releases/download/v2.1.1/moai-adk_2.1.1_darwin_arm64.tar.gz" | tar -xz && sudo mv moai /usr/local/bin/
+
+# macOS amd64 (Intel)
+curl -L "https://github.com/modu-ai/moai-adk/releases/download/v2.1.1/moai-adk_2.1.1_darwin_amd64.tar.gz" | tar -xz && sudo mv moai /usr/local/bin/
+
+# Linux amd64
+curl -L "https://github.com/modu-ai/moai-adk/releases/download/v2.1.1/moai-adk_2.1.1_linux_amd64.tar.gz" | tar -xz && sudo mv moai /usr/local/bin/
+\`\`\`
+
+---
+
+## [2.1.1] - 2026-02-09 (한국어)
+
+### 요약
+
+`moai update`에서 바이너리 다운로드 실패를 해결하는 긴급 핫픽스입니다. GoReleaser 아카이브 네이밍과 업데이트 체커 간의 버전 접두사 불일치로 인해 모든 플랫폼에서 "No Go binary available" 오류가 발생했습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 수정됨 (Fixed)
+
+- **바이너리 다운로드**: 업데이트 체커의 아카이브 이름 불일치 수정 - GoReleaser가 버전 태그에서 "v" 접두사를 제거하지만 체커는 전체 태그 이름(예: "v2.1.0")을 사용하여 다운로드 실패
+- **업데이트 로직**: "v"와 "go-v" 태그 접두사를 모두 처리하는 버전 접두사 제거 로직 추가, 올바른 아카이브 URL 구성 보장
+
+### 설치 및 업데이트 (Installation & Update)
+
+\`\`\`bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+\`\`\`
+
+**참고**: v2.1.0에서 `moai update`가 여전히 실패하면 v2.1.1을 수동으로 다운로드하세요:
+
+\`\`\`bash
+# macOS arm64 (Apple Silicon)
+curl -L "https://github.com/modu-ai/moai-adk/releases/download/v2.1.1/moai-adk_2.1.1_darwin_arm64.tar.gz" | tar -xz && sudo mv moai /usr/local/bin/
+
+# macOS amd64 (Intel)
+curl -L "https://github.com/modu-ai/moai-adk/releases/download/v2.1.1/moai-adk_2.1.1_darwin_amd64.tar.gz" | tar -xz && sudo mv moai /usr/local/bin/
+
+# Linux amd64
+curl -L "https://github.com/modu-ai/moai-adk/releases/download/v2.1.1/moai-adk_2.1.1_linux_amd64.tar.gz" | tar -xz && sudo mv moai /usr/local/bin/
+\`\`\`
+
+---
+
 ## [2.1.0] - 2026-02-09
 
 ### Summary
