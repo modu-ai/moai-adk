@@ -7,62 +7,105 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [2.1.0] - 2026-02-09
+
+### Summary
+
+Major update introducing SessionEnd hook support, Agent Teams enabled by default, and critical template system improvements. This release fixes cross-platform test failures and enhances the workflow execution system with intelligent mode selection.
+
+### Breaking Changes
+
+- `--auto` flag removed from workflow execution (auto-selection now default behavior)
+
 ### Added
 
-- SessionEnd hook wrapper (`.claude/hooks/moai/handle-session-end.sh`) for Claude Code integration
-- Session cleanup and state management support through SessionEnd event handling
+- **SessionEnd Hook**: New `.claude/hooks/moai/handle-session-end.sh` wrapper for Claude Code session lifecycle management
+- **Agent Hook System**: Dedicated agent-specific hook configuration in agent frontmatter with PreToolUse, PostToolUse, and SubagentStop support
+- **Session Management**: Automatic session cleanup and state persistence through SessionEnd event handling
 
 ### Changed
 
-- Removed `--auto` flag from workflow execution for clearer mode selection
-- Simplified execution mode selection logic for better user experience
-- Agent Teams mode now enabled by default with complexity-based auto-selection
-- Auto-selection thresholds: 3+ domains, 10+ affected files, or complexity score 7+
-- Improved parallel execution efficiency with Agent Teams as default
+- **Agent Teams Default**: Teams mode now enabled by default with complexity-based auto-selection (3+ domains, 10+ files, or score 7+)
+- **Workflow Mode Selection**: Simplified execution mode logic — auto-selection analyzes task complexity to choose between team and sub-agent modes
+- **Parallel Execution**: Enhanced efficiency with Agent Teams as primary execution mode for complex workflows
 
 ### Fixed
 
-- `moai update` template filter now correctly processes `.tmpl` files using rendered target paths
-- `moai update` JSON logging issue resolved — merge confirmation now uses structured output
-- `moai update` config cleanup improved — full config backup (including sections/) for complete restore capability
-- Template deployment now properly filters MoAI-managed files using rendered paths instead of template paths
-- Template filtering logic improved to filter before `.tmpl` extension stripping
-- Enhanced backup and restore mechanism for configuration files
+- **Cross-Platform Tests**: Resolved Windows path escaping, macOS Unicode NFD/NFC normalization, and non-git directory detection errors
+- **Windows CI**: Fixed path separator issues, permission tests, and filesystem compatibility across Windows, macOS, and Linux
+- **Template Filter**: `moai update` now correctly processes `.tmpl` files using rendered target paths instead of template paths
+- **JSON Logging**: Merge confirmation now uses structured output, fixing JSON formatting issues during `moai update`
+- **Config Cleanup**: Full configuration backup (including sections/) ensures complete v2.x-to-v2.x migration restore capability
+- **Test Imports**: Removed unused `runtime` imports from shell and template test files
 
 ### Removed
 
-- Deprecated `--auto` flag (auto-selection now happens by default)
-- Deprecated `builder-command.md` agent definition (1,208 lines) — command creation now uses skill-based approach
-- Verbose documentation sections from hooks-system.md and workflow skills
-- Redundant settings from settings.json template
+- **Deprecated Flag**: `--auto` flag (auto-selection now default)
+- **builder-command.md**: Removed 1,208-line agent definition in favor of skill-based command creation approach
+- **Verbose Docs**: Cleaned up redundant documentation in hooks-system.md and workflow skills
+- **Settings Bloat**: Removed unused settings from settings.json template
 
-### Technical Details
+### Installation & Update
 
-**Hook System:**
-- New SessionEnd hook enables session cleanup and state persistence
-- Consistent hook execution across all lifecycle events
-- Improved hook reliability and error handling
+```bash
+# Update to the latest version
+moai update
 
-**Workflow Improvements:**
-- Default execution mode now uses intelligent complexity analysis
-- Agent Teams mode activated automatically for complex tasks
-- Sub-agent mode for simple, predictable workflows
-- Enhanced parallel execution with team-based development
+# Verify version
+moai version
+```
 
-**Template System Improvements:**
-- `.tmpl` files now use rendered target path for display and existence checks
-- MoAI-managed file filtering moved after path transformation
-- Config backup includes all files for complete v2.x-to-v2.x migration support
-- Filter-first approach prevents `.tmpl` extension issues
+---
 
-**Logging Improvements:**
-- JSON logging issues during merge confirmation resolved
-- Structured output for better CI/CD integration
+## [2.1.0] - 2026-02-09 (한국어)
 
-**Code Quality:**
-- All tests passing including cross-platform CI (Windows, macOS)
-- Zero linting issues
-- Improved test coverage for update logic
+### 요약
+
+SessionEnd 훅 지원, Agent Teams 기본 활성화, 템플릿 시스템 개선을 포함한 주요 업데이트입니다. 크로스 플랫폼 테스트 실패를 수정하고 지능형 모드 선택으로 워크플로우 실행 시스템을 강화했습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+- `--auto` 플래그 제거 (자동 선택이 이제 기본 동작)
+
+### 추가됨 (Added)
+
+- **SessionEnd Hook**: Claude Code 세션 생명주기 관리를 위한 `.claude/hooks/moai/handle-session-end.sh` 래퍼
+- **Agent Hook System**: 에이전트별 훅 설정 지원 (PreToolUse, PostToolUse, SubagentStop)
+- **세션 관리**: SessionEnd 이벤트를 통한 자동 세션 정리 및 상태 지속성
+
+### 변경됨 (Changed)
+
+- **Agent Teams 기본 활성화**: 복잡도 기반 자동 선택으로 Teams 모드가 기본값 (3개 이상 도메인, 10개 이상 파일, 또는 점수 7 이상)
+- **워크플로우 모드 선택**: 실행 모드 로직 단순화 — 작업 복잡도를 분석하여 팀 모드와 서브 에이전트 모드 중 선택
+- **병렬 실행 강화**: Agent Teams를 복잡한 워크플로우의 주요 실행 모드로 사용하여 효율성 향상
+
+### 수정됨 (Fixed)
+
+- **크로스 플랫폼 테스트**: Windows 경로 이스케이핑, macOS Unicode NFD/NFC 정규화, non-git 디렉토리 감지 오류 해결
+- **Windows CI**: 경로 구분자 문제, 권한 테스트, Windows/macOS/Linux 파일시스템 호환성 수정
+- **템플릿 필터**: `moai update`가 템플릿 경로 대신 렌더링된 대상 경로를 사용하여 `.tmpl` 파일을 올바르게 처리
+- **JSON 로깅**: 병합 확인이 구조화된 출력을 사용하여 `moai update` 중 JSON 형식 문제 해결
+- **설정 정리**: sections/를 포함한 전체 설정 백업으로 완전한 v2.x-to-v2.x 마이그레이션 복원 보장
+- **테스트 import**: shell 및 template 테스트 파일에서 사용하지 않는 `runtime` import 제거
+
+### 제거됨 (Removed)
+
+- **더 이상 사용되지 않는 플래그**: `--auto` 플래그 (자동 선택이 기본값)
+- **builder-command.md**: 1,208줄 에이전트 정의를 스킬 기반 명령 생성 방식으로 대체
+- **장황한 문서**: hooks-system.md 및 워크플로우 스킬에서 중복 문서 정리
+- **불필요한 설정**: settings.json 템플릿에서 사용되지 않는 설정 제거
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
 
 ---
 
