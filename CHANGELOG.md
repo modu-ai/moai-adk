@@ -9,6 +9,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.2.0] - 2026-02-09
+
+### Summary
+
+Major refactoring release consolidating skills from 64 to 52 for improved token efficiency and standardized architecture. Includes comprehensive agent skill injection optimization to ensure all skills are properly mapped to their target agents based on trigger configuration.
+
+### Breaking Changes
+
+None
+
+### Added
+
+- **Skill Consolidation**: Reduced skill count from 64 to 52 through merging related domain skills (moai-platform-vercel, moai-platform-railway, moai-platform-supabase, moai-platform-neon merged into moai-platform-deployment and moai-platform-database-cloud)
+- **Design Tools Integration**: New moai-design-tools skill providing unified guidance for Figma MCP, Pencil MCP, and design-to-code workflows
+- **Enhanced Skill Triggers**: All skills now have proper `triggers.agents` mapping for automatic skill loading
+
+### Changed
+
+- **Agent Skill Injection**: Optimized skill injection across 10 agents (expert-backend, expert-frontend, expert-devops, manager-spec, manager-ddd, manager-quality, builder-agent, builder-skill, builder-plugin, expert-chrome-extension)
+- **Foundation Skills**: Added moai-foundation-philosopher to expert agents for strategic analysis capabilities
+- **Platform Skills**: Added platform-specific skills (auth, deployment, database-cloud) to relevant agents
+- **Workflow Skills**: Added moai-workflow-jit-docs and moai-workflow-worktree to appropriate agents
+- **Installer Title**: Updated to "MoAI's Agentic Development Kit" for better branding
+
+### Fixed
+
+- **Config File Restoration**: Fixed issue where parent directories weren't created when restoring config files during `moai update`
+- **Skill Name Standardization**: Standardized all skill name fields to match directory names for consistency
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.2.0] - 2026-02-09 (한국어)
+
+### 요약
+
+스킬 통합(64→52개)을 통한 토큰 효율 개선과 표준화된 아키텍처를 위한 대규모 리팩토링 릴리즈. 모든 스킬이 트리거 설정에 따라 대상 에이전트에 제대로 매핑되도록 에이전트 스킬 주입을 최적화했습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 추가됨 (Added)
+
+- **스킬 통합**: 관련 도메인 스킬을 병합하여 스킬 개수를 64개에서 52개로 감소 (moai-platform-vercel, moai-platform-railway, moai-platform-supabase, moai-platform-neon을 moai-platform-deployment와 moai-platform-database-cloud로 통합)
+- **디자인 도구 통합**: Figma MCP, Pencil MCP, 디자인-투-코드 워크플로우를 위한 통합 가이드를 제공하는 새로운 moai-design-tools 스킬
+- **향상된 스킬 트리거**: 자동 스킬 로딩을 위해 모든 스킬에 적절한 `triggers.agents` 매핑 추가
+
+### 변경됨 (Changed)
+
+- **에이전트 스킬 주입**: 10개 에이전트(expert-backend, expert-frontend, expert-devops, manager-spec, manager-ddd, manager-quality, builder-agent, builder-skill, builder-plugin, expert-chrome-extension)의 스킬 주입 최적화
+- **파운데이션 스킬**: 전략적 분석 기능을 위해 expert 에이전트에 moai-foundation-philosopher 추가
+- **플랫폼 스킬**: 관련 에이전트에 플랫폼별 스킬(auth, deployment, database-cloud) 추가
+- **워크플로우 스킬**: 적절한 에이전트에 moai-workflow-jit-docs와 moai-workflow-worktree 추가
+- **설치 관리자 제목**: 브랜딩 개선을 위해 "MoAI's Agentic Development Kit"로 업데이트
+
+### 수정됨 (Fixed)
+
+- **설정 파일 복원**: `moai update` 중 설정 파일 복원 시 상위 디렉토리가 생성되지 않던 문제 수정
+- **스킬 이름 표준화**: 일관성을 위해 모든 스킬 이름 필드를 디렉토리 이름과 일치하도록 표준화
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.1.2] - 2026-02-09
 
 ### Summary
