@@ -113,12 +113,17 @@ func (c *checker) buildVersionInfo(release releaseResponse) *VersionInfo {
 
 	// Find the platform-specific archive URL matching goreleaser format.
 	// Archive format: moai-adk_<version>_<os>_<arch>.<ext>
-	// Example: moai-adk_go-v2.0.0_darwin_amd64.tar.gz
+	// Example: moai-adk_2.0.0_darwin_amd64.tar.gz
+	// Note: GoReleaser's {{ .Version }} strips "v" prefix, so we must too
 	ext := "tar.gz"
 	if runtime.GOOS == "windows" {
 		ext = "zip"
 	}
-	archiveName := fmt.Sprintf("moai-adk_%s_%s_%s.%s", release.TagName, runtime.GOOS, runtime.GOARCH, ext)
+
+	// Strip "v" and "go-v" prefixes from tag name to match GoReleaser's {{ .Version }}
+	version := strings.TrimPrefix(release.TagName, "go-v")
+	version = strings.TrimPrefix(version, "v")
+	archiveName := fmt.Sprintf("moai-adk_%s_%s_%s.%s", version, runtime.GOOS, runtime.GOARCH, ext)
 
 	for _, asset := range release.Assets {
 		if asset.Name == archiveName {
