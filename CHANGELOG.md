@@ -5,6 +5,90 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.5] - 2026-02-08
+
+### Summary
+
+Add git installation check to `moai init`, remove TUI experimental feature, and add v1-to-v2 migration cleanup utility.
+
+### Breaking Changes
+
+- Removed TUI (Terminal UI) experimental feature from `moai init` — `--tui` flag no longer available, `internal/cli/tui/` package deleted
+- TUI will be redeveloped in future releases with improved architecture
+
+### Added
+
+- Git installation check in `moai init` with OS-specific installation guidance (macOS, Windows, Linux)
+- `GitInstallHint()` function providing platform-specific git installation instructions
+- `cleanMoaiManagedPaths()` utility for v1-to-v2 migration path cleanup
+- Test coverage for git installation hints (`TestGitInstallHint`, `TestCheckGit_DetailWhenMissing`)
+
+### Removed
+
+- TUI (Terminal UI) experimental feature — 6 files deleted from `internal/cli/tui/` package (~1600 lines)
+- `--tui` flag from `moai init` command
+- `RunInitWizardTUI()` and `RunInitWithTUI()` functions
+- Bubble Tea dependency from init command (CLI wizard remains intact)
+
+### Changed
+
+- `moai init` now shows non-fatal warning when git is not installed instead of silently continuing
+- Git check runs after binary update step, before flag parsing
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.0.5] - 2026-02-08 (한국어)
+
+### 요약
+
+`moai init`에 git 설치 확인 기능을 추가하고, TUI 실험 기능을 제거하며, v1-to-v2 마이그레이션 정리 유틸리티를 추가했습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+- TUI (Terminal UI) 실험 기능 제거 — `--tui` 플래그 더 이상 사용 불가, `internal/cli/tui/` 패키지 삭제
+- TUI는 향후 개선된 아키텍처로 재개발될 예정
+
+### 추가
+
+- `moai init`에 OS별 설치 안내가 포함된 git 설치 확인 기능 추가 (macOS, Windows, Linux)
+- 플랫폼별 git 설치 지침을 제공하는 `GitInstallHint()` 함수 추가
+- v1-to-v2 마이그레이션 경로 정리를 위한 `cleanMoaiManagedPaths()` 유틸리티 추가
+- git 설치 힌트 테스트 커버리지 추가 (`TestGitInstallHint`, `TestCheckGit_DetailWhenMissing`)
+
+### 제거
+
+- TUI (Terminal UI) 실험 기능 — `internal/cli/tui/` 패키지에서 6개 파일 삭제 (~1600줄)
+- `moai init` 명령에서 `--tui` 플래그 제거
+- `RunInitWizardTUI()`와 `RunInitWithTUI()` 함수 제거
+- init 명령에서 Bubble Tea 의존성 제거 (CLI wizard는 유지)
+
+### 변경
+
+- git이 설치되지 않은 경우 `moai init`이 치명적 오류 대신 경고 메시지 표시
+- git 확인은 바이너리 업데이트 단계 후, 플래그 파싱 전에 실행
+
+### 설치 및 업데이트
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.0.4] - 2026-02-08
 
 ### Summary
