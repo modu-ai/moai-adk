@@ -9,6 +9,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.2.1] - 2026-02-09
+
+### Summary
+
+Critical patch release fixing checksum verification bug that prevented automatic binary updates. Users on v2.2.0 should update to v2.2.1 to restore automatic update functionality.
+
+### Breaking Changes
+
+None
+
+### Fixed
+
+- **Checksum Verification**: Fixed critical bug where checksums.txt URL was used as checksum value instead of downloading and parsing the file
+- **Update Functionality**: Automatic binary updates now work correctly with proper SHA256 checksum verification
+- **Graceful Degradation**: Update continues without checksum if checksums.txt download fails (with warning)
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.2.1] - 2026-02-09 (한국어)
+
+### 요약
+
+자동 바이너리 업데이트를 방해하는 체크섬 검증 버그를 수정하는 치명적인 패치 릴리즈. v2.2.0 사용자는 자동 업데이트 기능을 복원하기 위해 v2.2.1로 업데이트해야 합니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 수정됨 (Fixed)
+
+- **체크섬 검증**: 체크섬 파일을 다운로드하고 파싱하는 대신 URL을 체크섬 값으로 사용하는 치명적인 버그 수정
+- **업데이트 기능**: 적절한 SHA256 체크섬 검증으로 자동 바이너리 업데이트가 정상 작동
+- **우아한 저하**: checksums.txt 다운로드 실패 시 체크섬 없이 업데이트 계속 (경고 포함)
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.2.0] - 2026-02-09
 
 ### Summary
