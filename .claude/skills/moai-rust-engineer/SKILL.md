@@ -11,6 +11,7 @@ metadata:
   scope: implementation
   output-format: code
   related-skills: test-master
+user-invocable: false
 ---
 
 # Rust Engineer

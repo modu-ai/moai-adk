@@ -147,7 +147,7 @@ func TestSettingsTemplateOutputStyle(t *testing.T) {
 	}
 }
 
-func TestSettingsTemplateSandbox(t *testing.T) {
+func TestSettingsTemplateNoSandbox(t *testing.T) {
 	ctx := testContext("darwin")
 	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
 
@@ -156,15 +156,8 @@ func TestSettingsTemplateSandbox(t *testing.T) {
 		t.Fatalf("Unmarshal error: %v", err)
 	}
 
-	sandbox, ok := settings["sandbox"].(map[string]interface{})
-	if !ok {
-		t.Fatal("missing sandbox section")
-	}
-	if sandbox["enabled"] != true {
-		t.Error("sandbox should be enabled")
-	}
-	if sandbox["autoAllowBashIfSandboxed"] != true {
-		t.Error("autoAllowBashIfSandboxed should be true")
+	if _, ok := settings["sandbox"]; ok {
+		t.Error("template should not include sandbox section (causes test failures across language ecosystems)")
 	}
 }
 

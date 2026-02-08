@@ -311,15 +311,17 @@ Options:
 
 ---
 
-## Team Mode
+## Team Mode Routing
 
-When --team flag is provided or auto-selected, the run phase uses a parallel implementation team instead of sequential sub-agent execution.
+When --team flag is provided or auto-selected, the run phase MUST switch to team orchestration:
 
-Team composition: backend-dev (sonnet) + frontend-dev (sonnet) + tester (sonnet) + quality (sonnet, read-only)
+1. Verify prerequisites: workflow.team.enabled == true AND CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var is set
+2. If prerequisites met: Read workflows/team-run.md and execute the team workflow (TeamCreate with backend-dev + frontend-dev + tester + quality)
+3. If prerequisites NOT met: Warn user with message "Team mode requires workflow.team.enabled: true in workflow.yaml and CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var" then fallback to standard sub-agent mode (manager-ddd/tdd based on development_mode)
+
+Team composition: backend-dev (inherit) + frontend-dev (inherit) + tester (inherit) + quality (inherit, read-only)
 
 For detailed team orchestration steps, see workflows/team-run.md.
-
-Fallback: If team mode is unavailable, the workflow continues with standard sub-agent mode (manager-ddd/tdd based on development_mode).
 
 ---
 

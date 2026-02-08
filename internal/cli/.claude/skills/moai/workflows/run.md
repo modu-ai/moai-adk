@@ -315,7 +315,7 @@ Options:
 
 When --team flag is provided or auto-selected, the run phase uses a parallel implementation team instead of sequential sub-agent execution.
 
-Team composition: backend-dev (sonnet) + frontend-dev (sonnet) + tester (sonnet) + quality (sonnet, read-only)
+Team composition: backend-dev (inherit) + frontend-dev (inherit) + tester (inherit) + quality (inherit, read-only)
 
 For detailed team orchestration steps, see workflows/team-run.md.
 

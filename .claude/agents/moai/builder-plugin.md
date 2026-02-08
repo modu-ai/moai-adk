@@ -33,7 +33,7 @@ parallel_safe: false
 
 coordination:
 spawns_subagents: false
-delegates_to: ["builder-command", "builder-agent", "builder-skill", "manager-quality"]
+delegates_to: ["builder-agent", "builder-skill", "manager-quality"]
 requires_approval: true
 
 performance:
@@ -117,7 +117,6 @@ Delegate TO this agent when:
 Delegate FROM this agent when:
 - Complex agent creation needed: delegate to builder-agent subagent
 - Complex skill creation needed: delegate to builder-skill subagent
-- Complex command creation needed: delegate to builder-command subagent
 - Quality validation required: delegate to manager-quality subagent
 
 Context to provide:
@@ -561,13 +560,11 @@ Upstream Agents (Who Call builder-plugin):
 - manager-project - Project setup requiring plugin structure
 
 Peer Agents (Collaborate With):
-- builder-command - Create individual commands for plugins
 - builder-agent - Create individual agents for plugins
 - builder-skill - Create individual skills for plugins
 - manager-quality - Validate plugin quality
 
 Downstream Agents (builder-plugin calls):
-- builder-command - Command creation delegation
 - builder-agent - Agent creation delegation
 - builder-skill - Skill creation delegation
 - manager-quality - Standards validation

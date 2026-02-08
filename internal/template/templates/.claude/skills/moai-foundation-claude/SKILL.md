@@ -42,7 +42,6 @@ triggers:
     - "delegation"
   agents:
     - "builder-agent"
-    - "builder-command"
     - "builder-skill"
     - "builder-plugin"
   phases:

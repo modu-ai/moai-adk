@@ -42,7 +42,10 @@ Flow: Explore -> Plan -> Run -> Sync -> Done
 - --resume SPEC-XXX: Resume previous work from existing SPEC
 - --team: Force Agent Teams mode for plan and run phases
 - --solo: Force sub-agent mode (single agent per phase)
-- --auto: Intelligent mode selection based on complexity (default)
+
+**Default Behavior (no flag)**: System auto-selects based on complexity:
+- Team mode: Multi-domain tasks (>=3 domains), many files (>=10), or high complexity (>=7)
+- Sub-agent mode: Focused, single-domain tasks
 
 ## Configuration Files
 
@@ -167,7 +170,7 @@ For team orchestration details:
 Mode selection:
 - --team: Force team mode for all applicable phases
 - --solo: Force sub-agent mode
-- --auto (default): Complexity-based selection per workflow.yaml thresholds
+- No flag (default): System auto-selects based on complexity thresholds (domains >= 3, files >= 10, or score >= 7)
 
 ## Task Tracking
 
@@ -193,7 +196,7 @@ AI must add a marker when work is complete:
 
 ## Execution Summary
 
-1. Parse arguments (extract flags: --loop, --max, --sequential, --branch, --pr, --resume, --team, --solo, --auto)
+1. Parse arguments (extract flags: --loop, --max, --sequential, --branch, --pr, --resume, --team, --solo)
 2. If --resume with SPEC ID: Load existing SPEC and continue from last state
 3. Detect development_mode from quality.yaml (hybrid/ddd/tdd)
 4. Execute Phase 0 (parallel or sequential exploration)

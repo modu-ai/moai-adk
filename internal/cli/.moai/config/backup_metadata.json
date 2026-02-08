@@ -1,11 +1,16 @@
-backed_up_items:
-    - .moai/config/backup_metadata.json
-    - .moai/config/config.yaml
-backup_type: config
-description: config_backup
-excluded_dirs:
-    - sections
-excluded_items:
-    - sections
-project_root: .
-timestamp: "20260208_151815"
+{
+  "timestamp": "20260208_222029",
+  "description": "config_backup",
+  "backed_up_items": [
+    ".moai/config/backup_metadata.json",
+    ".moai/config/config.yaml"
+  ],
+  "excluded_items": [
+    "sections"
+  ],
+  "excluded_dirs": [
+    "sections"
+  ],
+  "project_root": ".",
+  "backup_type": "config"
+}

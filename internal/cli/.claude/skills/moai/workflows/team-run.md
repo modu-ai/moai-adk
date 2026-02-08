@@ -44,21 +44,21 @@ Flow: TeamCreate -> Task Decomposition -> Parallel Implementation -> Quality Val
 Select team pattern based on SPEC scope:
 
 For cross-layer features (implementation pattern):
-- backend-dev (team-backend-dev, sonnet): Server-side implementation
-- frontend-dev (team-frontend-dev, sonnet): Client-side implementation
-- tester (team-tester, sonnet): Test creation and coverage
+- backend-dev (team-backend-dev, inherit): Server-side implementation
+- frontend-dev (team-frontend-dev, inherit): Client-side implementation
+- tester (team-tester, inherit): Test creation and coverage
 
 For cross-layer features with design (design_implementation pattern):
-- designer (team-designer, sonnet): UI/UX design with Pencil/Figma MCP
-- backend-dev (team-backend-dev, sonnet): Server-side implementation
-- frontend-dev (team-frontend-dev, sonnet): Client-side implementation
-- tester (team-tester, sonnet): Test creation and coverage
+- designer (team-designer, inherit): UI/UX design with Pencil/Figma MCP
+- backend-dev (team-backend-dev, inherit): Server-side implementation
+- frontend-dev (team-frontend-dev, inherit): Client-side implementation
+- tester (team-tester, inherit): Test creation and coverage
 
 For full-stack features (full_stack pattern):
-- api-layer (team-backend-dev, sonnet): API and business logic
-- ui-layer (team-frontend-dev, sonnet): UI and components
-- data-layer (team-backend-dev, sonnet): Database and schema
-- quality (team-quality, sonnet): Quality validation
+- api-layer (team-backend-dev, inherit): API and business logic
+- ui-layer (team-frontend-dev, inherit): UI and components
+- data-layer (team-backend-dev, inherit): Database and schema
+- quality (team-quality, inherit): Quality validation
 
 Spawn prompt must include:
 - SPEC summary and their specific requirements

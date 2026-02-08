@@ -31,7 +31,7 @@ progressive_disclosure:
 triggers:
   keywords: ["template", "boilerplate", "scaffolding", "code template", "project template", "feedback template", "GitHub issue", "template optimization"]
   phases: ["plan"]
-  agents: ["manager-project", "builder-command", "builder-skill"]
+  agents: ["manager-project", "builder-skill"]
 ---
 
 # Enterprise Template Management

@@ -6,7 +6,7 @@ description: >
   Runs after all implementation and testing work is complete.
   Use proactively as the final validation step in team workflows.
 tools: Read, Grep, Glob, Bash
-model: sonnet
+model: inherit
 memory: project
 skills: moai-foundation-core, moai-foundation-quality
 ---

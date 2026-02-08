@@ -122,13 +122,13 @@ Allowed Tools: Full access (Task, AskUserQuestion, TaskCreate, TaskUpdate, TaskL
 Team agents for Claude Code Agent Teams (v2.1.32+, requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1):
 
 - team-researcher: Read-only exploration and research (haiku, plan phase)
-- team-analyst: Requirements analysis, user stories, acceptance criteria (sonnet, plan phase)
-- team-architect: Technical design, architecture decisions, trade-offs (sonnet, plan phase)
-- team-designer: UI/UX design with Pencil/Figma MCP, design tokens, style guides (sonnet, run phase)
-- team-backend-dev: Server-side implementation with file ownership (sonnet, run phase)
-- team-frontend-dev: Client-side implementation with file ownership (sonnet, run phase)
-- team-tester: Test creation with exclusive test file ownership (sonnet, run phase)
-- team-quality: TRUST 5 quality validation, read-only (sonnet, run phase)
+- team-analyst: Requirements analysis, user stories, acceptance criteria (inherit, plan phase)
+- team-architect: Technical design, architecture decisions, trade-offs (inherit, plan phase)
+- team-designer: UI/UX design with Pencil/Figma MCP, design tokens, style guides (inherit, run phase)
+- team-backend-dev: Server-side implementation with file ownership (inherit, run phase)
+- team-frontend-dev: Client-side implementation with file ownership (inherit, run phase)
+- team-tester: Test creation with exclusive test file ownership (inherit, run phase)
+- team-quality: TRUST 5 quality validation, read-only (inherit, run phase)
 
 ---
 
@@ -398,19 +398,19 @@ Requirements:
 | Agent | Model | Phase | Role |
 |-------|-------|-------|------|
 | team-researcher | haiku | plan | Read-only codebase exploration |
-| team-analyst | sonnet | plan | Requirements and domain analysis |
-| team-architect | sonnet | plan | System design and architecture |
-| team-designer | sonnet | run | UI/UX design with Pencil/Figma MCP |
-| team-backend-dev | sonnet | run | Server-side implementation |
-| team-frontend-dev | sonnet | run | Client-side implementation |
-| team-tester | sonnet | run | Test creation (exclusive test file ownership) |
-| team-quality | sonnet | run | TRUST 5 validation (read-only) |
+| team-analyst | inherit | plan | Requirements and domain analysis |
+| team-architect | inherit | plan | System design and architecture |
+| team-designer | inherit | run | UI/UX design with Pencil/Figma MCP |
+| team-backend-dev | inherit | run | Server-side implementation |
+| team-frontend-dev | inherit | run | Client-side implementation |
+| team-tester | inherit | run | Test creation (exclusive test file ownership) |
+| team-quality | inherit | run | TRUST 5 validation (read-only) |
 
 ### Mode Selection
 
 - `--team`: Force Agent Teams mode for plan and run phases
 - `--solo`: Force sub-agent mode (single agent per phase)
-- `--auto` (default): Intelligent mode selection based on complexity scoring
+- No flag (default): System auto-selects based on complexity thresholds (domains >= 3, files >= 10, or score >= 7)
 
 Auto-selection thresholds (configurable in workflow.yaml):
 - Domain count >= 3, affected files >= 10, or complexity score >= 7

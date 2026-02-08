@@ -29,13 +29,13 @@ Flow: TeamCreate -> Perspective Assignment -> Parallel Review -> Report Consolid
 
 Use the review team pattern:
 
-Teammate 1 - security-reviewer (team-quality agent, sonnet model):
+Teammate 1 - security-reviewer (team-quality agent, inherit model):
 - Prompt: "Review the following changes for security issues. Check OWASP Top 10 compliance, input validation, authentication/authorization, secrets exposure, injection risks. Changes: {diff_summary}"
 
-Teammate 2 - perf-reviewer (team-quality agent, sonnet model):
+Teammate 2 - perf-reviewer (team-quality agent, inherit model):
 - Prompt: "Review the following changes for performance issues. Check algorithmic complexity, database query efficiency, memory usage, caching opportunities, bundle size impact. Changes: {diff_summary}"
 
-Teammate 3 - quality-reviewer (team-quality agent, sonnet model):
+Teammate 3 - quality-reviewer (team-quality agent, inherit model):
 - Prompt: "Review the following changes for code quality. Check TRUST 5 compliance, naming conventions, error handling, test coverage, documentation, consistency with project patterns. Changes: {diff_summary}"
 
 ## Phase 2: Parallel Review

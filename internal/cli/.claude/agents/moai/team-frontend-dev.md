@@ -6,7 +6,7 @@ description: >
   Owns client-side files exclusively during team work to prevent conflicts.
   Use proactively during run phase team work.
 tools: Read, Write, Edit, Bash, Grep, Glob
-model: sonnet
+model: inherit
 memory: project
 skills: moai-foundation-core, moai-domain-frontend, moai-domain-uiux
 ---

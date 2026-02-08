@@ -238,7 +238,7 @@ Options:
 
 When --team flag is provided or auto-selected, the plan phase uses a parallel research team instead of sequential sub-agent execution.
 
-Team composition: researcher (haiku) + analyst (sonnet) + architect (sonnet)
+Team composition: researcher (haiku) + analyst (inherit) + architect (inherit)
 
 For detailed team orchestration steps, see workflows/team-plan.md.
 
