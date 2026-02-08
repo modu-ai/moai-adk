@@ -217,7 +217,7 @@ graph TD
     A["🗿 MoAI Orchestrator"] --> B{"Select Execution Mode"}
     B -->|"--solo"| C["Sub-Agent Mode"]
     B -->|"--team"| D["Agent Teams Mode"]
-    B -->|"--auto (default)"| E["Auto Selection"]
+    B -->|"Default (Auto)"| E["Auto Selection"]
 
     C --> F["Sequential Expert Delegation<br/>Task() → Expert Agent"]
     D --> G["Parallel Team Collaboration<br/>TeamCreate → SendMessage"]
@@ -229,6 +229,29 @@ graph TD
     style E fill:#4CAF50,color:#fff
 ```
 
+### Agent Teams Mode (Default)
+
+MoAI-ADK automatically analyzes project complexity and selects the optimal execution mode:
+
+| Condition | Selected Mode | Reason |
+|-----------|---------------|--------|
+| 3+ domains | Agent Teams | Multi-domain coordination |
+| 10+ affected files | Agent Teams | Large-scale changes |
+| Complexity score 7+ | Agent Teams | High complexity |
+| Otherwise | Sub-Agent | Simple, predictable workflow |
+
+**Agent Teams Mode** uses parallel team-based development:
+
+- Multiple agents work simultaneously, collaborating through a shared task list
+- Real-time coordination via `TeamCreate`, `SendMessage`, and `TaskList`
+- Best suited for large-scale feature development and multi-domain tasks
+
+```bash
+/moai plan "large feature"          # Auto: researcher + analyst + architect in parallel
+/moai run SPEC-XXX                  # Auto: backend-dev + frontend-dev + tester in parallel
+/moai run SPEC-XXX --team           # Force Agent Teams mode
+```
+
 ### Sub-Agent Mode (`--solo`)
 
 A sequential agent delegation approach using Claude Code's `Task()` API.
@@ -238,32 +261,8 @@ A sequential agent delegation approach using Claude Code's `Task()` API.
 - Best suited for simple and predictable workflows
 
 ```bash
-/moai run SPEC-AUTH-001 --solo    # Force Sub-Agent mode
+/moai run SPEC-AUTH-001 --solo      # Force Sub-Agent mode
 ```
-
-### Agent Teams Mode (`--team`)
-
-A parallel team-based development approach using Claude Code's Agent Teams API.
-
-- Multiple agents work simultaneously, collaborating through a shared task list
-- Real-time coordination via `TeamCreate`, `SendMessage`, and `TaskList`
-- Best suited for large-scale feature development and multi-domain tasks
-
-```bash
-/moai plan "large feature" --team   # Plan: researcher + analyst + architect in parallel
-/moai run SPEC-XXX --team           # Run: backend-dev + frontend-dev + tester in parallel
-```
-
-### Auto Mode (`--auto`, default)
-
-Analyzes project complexity and automatically selects the optimal mode:
-
-| Condition | Selected Mode |
-|-----------|---------------|
-| 3+ domains | Agent Teams |
-| 10+ affected files | Agent Teams |
-| Complexity score 7+ | Agent Teams |
-| Otherwise | Sub-Agent |
 
 ---
 

@@ -217,7 +217,7 @@ graph TD
     A["🗿 MoAI Orchestrator"] --> B{"실행 모드 선택"}
     B -->|"--solo"| C["Sub-Agent 모드"]
     B -->|"--team"| D["Agent Teams 모드"]
-    B -->|"--auto (기본)"| E["자동 선택"]
+    B -->|"기본 (자동)"| E["자동 선택"]
 
     C --> F["순차적 전문가 위임<br/>Task() → Expert Agent"]
     D --> G["병렬 팀 협업<br/>TeamCreate → SendMessage"]
@@ -227,6 +227,29 @@ graph TD
     style C fill:#2196F3,color:#fff
     style D fill:#FF9800,color:#fff
     style E fill:#4CAF50,color:#fff
+```
+
+### Agent Teams 모드 (기본값)
+
+MoAI-ADK는 프로젝트 복잡도를 자동으로 분석하여 최적의 실행 모드를 선택합니다:
+
+| 조건 | 선택 모드 | 이유 |
+|------|-----------|------|
+| 도메인 3개 이상 | Agent Teams | 멀티 도메인 조율 |
+| 영향 파일 10개 이상 | Agent Teams | 대규모 변경 |
+| 복잡도 점수 7 이상 | Agent Teams | 높은 복잡도 |
+| 그 외 | Sub-Agent | 단순하고 예측 가능한 워크플로우 |
+
+**Agent Teams 모드**는 병렬 팀 기반 개발을 사용합니다:
+
+- 여러 에이전트가 동시에 작업하고 공유 작업 목록으로 협업
+- `TeamCreate`, `SendMessage`, `TaskList`를 통한 실시간 조율
+- 대규모 기능 개발, 멀티 도메인 작업에 적합
+
+```bash
+/moai plan "대규모 기능"          # 자동: researcher + analyst + architect 병렬
+/moai run SPEC-XXX                # 자동: backend-dev + frontend-dev + tester 병렬
+/moai run SPEC-XXX --team         # Agent Teams 모드 강제
 ```
 
 ### Sub-Agent 모드 (`--solo`)
@@ -240,30 +263,6 @@ graph TD
 ```bash
 /moai run SPEC-AUTH-001 --solo    # Sub-Agent 모드 강제
 ```
-
-### Agent Teams 모드 (`--team`)
-
-Claude Code의 Agent Teams API를 활용한 병렬 팀 기반 개발 방식입니다.
-
-- 여러 에이전트가 동시에 작업하고 공유 작업 목록으로 협업
-- `TeamCreate`, `SendMessage`, `TaskList`를 통한 실시간 조율
-- 대규모 기능 개발, 멀티 도메인 작업에 적합
-
-```bash
-/moai plan "대규모 기능" --team   # Plan: researcher + analyst + architect 병렬
-/moai run SPEC-XXX --team         # Run: backend-dev + frontend-dev + tester 병렬
-```
-
-### 자동 모드 (`--auto`, 기본값)
-
-프로젝트 복잡도를 분석하여 최적의 모드를 자동 선택합니다:
-
-| 조건 | 선택 모드 |
-|------|-----------|
-| 도메인 3개 이상 | Agent Teams |
-| 영향 파일 10개 이상 | Agent Teams |
-| 복잡도 점수 7 이상 | Agent Teams |
-| 그 외 | Sub-Agent |
 
 ---
 
