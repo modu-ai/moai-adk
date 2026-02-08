@@ -245,3 +245,126 @@ func TestCompareSemver(t *testing.T) {
 		})
 	}
 }
+
+func TestChecker_CheckLatest_WithChecksums(t *testing.T) {
+	t.Parallel()
+
+	// Create a mock checksums.txt server
+	checksumsTS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		checksumsContent := `392f7de6e7b21c1e4d1681a424ff254ab51b76fa0a8688e7d76c71226b3f520f  moai-adk_1.2.0_darwin_amd64.tar.gz
+99bf529b15df380c912d2be43b475122000ff9d6e1bb9069699b6199f9ef5d90  moai-adk_1.2.0_darwin_arm64.tar.gz
+a1423b990826e23bfb830a22bb9f4c42254e12a6ddfc2d958abd53e946e789c2  moai-adk_1.2.0_linux_amd64.tar.gz`
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(checksumsContent))
+	}))
+	defer checksumsTS.Close()
+
+	release := githubRelease{
+		TagName:     "v1.2.0",
+		PublishedAt: time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC),
+		Assets: []githubAsset{
+			{Name: "moai-adk_1.2.0_darwin_arm64.tar.gz", BrowserDownloadURL: "https://example.com/moai.tar.gz"},
+			{Name: "checksums.txt", BrowserDownloadURL: checksumsTS.URL},
+		},
+	}
+
+	ts := newTestServer(t, release)
+	defer ts.Close()
+
+	checker := NewChecker(ts.URL, http.DefaultClient)
+	info, err := checker.CheckLatest(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify checksum was extracted correctly
+	expectedChecksum := "99bf529b15df380c912d2be43b475122000ff9d6e1bb9069699b6199f9ef5d90"
+	if info.Checksum != expectedChecksum {
+		t.Errorf("Checksum = %q, want %q", info.Checksum, expectedChecksum)
+	}
+}
+
+func TestChecker_CheckLatest_ChecksumDownloadFailed(t *testing.T) {
+	t.Parallel()
+
+	// Create a checksums.txt server that returns 404
+	checksumsTS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer checksumsTS.Close()
+
+	release := githubRelease{
+		TagName:     "v1.2.0",
+		PublishedAt: time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC),
+		Assets: []githubAsset{
+			{Name: "moai-adk_1.2.0_darwin_arm64.tar.gz", BrowserDownloadURL: "https://example.com/moai.tar.gz"},
+			{Name: "checksums.txt", BrowserDownloadURL: checksumsTS.URL},
+		},
+	}
+
+	ts := newTestServer(t, release)
+	defer ts.Close()
+
+	checker := NewChecker(ts.URL, http.DefaultClient)
+	info, err := checker.CheckLatest(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// When checksum download fails, it should be empty string (graceful degradation)
+	if info.Checksum != "" {
+		t.Errorf("Checksum should be empty when download fails, got %q", info.Checksum)
+	}
+
+	// But URL should still be set
+	if info.URL == "" {
+		t.Error("URL should still be set even when checksum download fails")
+	}
+}
+
+func TestChecker_DownloadChecksum_ParsesCorrectly(t *testing.T) {
+	t.Parallel()
+
+	checksumsContent := `392f7de6e7b21c1e4d1681a424ff254ab51b76fa0a8688e7d76c71226b3f520f  moai-adk_1.2.0_darwin_amd64.tar.gz
+99bf529b15df380c912d2be43b475122000ff9d6e1bb9069699b6199f9ef5d90  moai-adk_1.2.0_darwin_arm64.tar.gz
+a1423b990826e23bfb830a22bb9f4c42254e12a6ddfc2d958abd53e946e789c2  moai-adk_1.2.0_linux_amd64.tar.gz`
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(checksumsContent))
+	}))
+	defer ts.Close()
+
+	c := NewChecker("http://example.com", http.DefaultClient)
+	checksum, err := c.(*checker).downloadChecksum(ts.URL, "moai-adk_1.2.0_darwin_arm64.tar.gz")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expectedChecksum := "99bf529b15df380c912d2be43b475122000ff9d6e1bb9069699b6199f9ef5d90"
+	if checksum != expectedChecksum {
+		t.Errorf("checksum = %q, want %q", checksum, expectedChecksum)
+	}
+}
+
+func TestChecker_DownloadChecksum_FileNotFound(t *testing.T) {
+	t.Parallel()
+
+	checksumsContent := `392f7de6e7b21c1e4d1681a424ff254ab51b76fa0a8688e7d76c71226b3f520f  moai-adk_1.2.0_darwin_amd64.tar.gz
+99bf529b15df380c912d2be43b475122000ff9d6e1bb9069699b6199f9ef5d90  moai-adk_1.2.0_darwin_arm64.tar.gz`
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(checksumsContent))
+	}))
+	defer ts.Close()
+
+	c := NewChecker("http://example.com", http.DefaultClient)
+	_, err := c.(*checker).downloadChecksum(ts.URL, "moai-adk_1.2.0_linux_amd64.tar.gz")
+	if err == nil {
+		t.Error("expected error when file not found in checksums")
+	}
+}

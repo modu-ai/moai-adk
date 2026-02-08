@@ -1,6 +1,7 @@
 package update
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -125,16 +126,79 @@ func (c *checker) buildVersionInfo(release releaseResponse) *VersionInfo {
 	version = strings.TrimPrefix(version, "v")
 	archiveName := fmt.Sprintf("moai-adk_%s_%s_%s.%s", version, runtime.GOOS, runtime.GOARCH, ext)
 
+	var checksumsURL string
 	for _, asset := range release.Assets {
 		if asset.Name == archiveName {
 			info.URL = asset.BrowserDownloadURL
 		}
 		if asset.Name == "checksums.txt" {
-			info.Checksum = asset.BrowserDownloadURL
+			checksumsURL = asset.BrowserDownloadURL
 		}
 	}
 
+	// Download and parse checksums.txt to extract the checksum for this platform
+	if checksumsURL != "" {
+		checksum, err := c.downloadChecksum(checksumsURL, archiveName)
+		if err == nil && checksum != "" {
+			info.Checksum = checksum
+		}
+		// If checksum download fails, continue without checksum verification
+		// (better to allow update with warning than to block entirely)
+	}
+
 	return info
+}
+
+// downloadChecksum downloads and parses the checksums.txt file to extract
+// the checksum for the specified archive filename.
+func (c *checker) downloadChecksum(checksumsURL, archiveName string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, checksumsURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("create checksum request: %w", err)
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("fetch checksums: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("checksums status %d", resp.StatusCode)
+	}
+
+	// Parse checksums.txt line by line
+	// Format: <checksum>  <filename>
+	scanner := bufio.NewScanner(resp.Body)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+
+		// Split by whitespace (checksum and filename)
+		parts := strings.Fields(line)
+		if len(parts) < 2 {
+			continue
+		}
+
+		checksum := parts[0]
+		filename := parts[1]
+
+		// Check if this line matches our archive name
+		if filename == archiveName {
+			return checksum, nil
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("scan checksums: %w", err)
+	}
+
+	return "", fmt.Errorf("checksum not found for %s", archiveName)
 }
 
 // IsUpdateAvailable compares the current version against the latest release.
