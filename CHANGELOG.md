@@ -37,6 +37,8 @@ None
 
 - **Config File Restoration**: Fixed issue where parent directories weren't created when restoring config files during `moai update`
 - **Skill Name Standardization**: Standardized all skill name fields to match directory names for consistency
+- **Test Isolation**: Added `MOAI_TEST_MODE` environment variable to prevent tests from modifying actual project settings files
+- **Platform Support**: Enhanced transcript parsing to support macOS, Linux, and Windows platforms with platform-specific Claude configuration directories
 
 ### Installation & Update
 
@@ -78,6 +80,8 @@ moai version
 
 - **설정 파일 복원**: `moai update` 중 설정 파일 복원 시 상위 디렉토리가 생성되지 않던 문제 수정
 - **스킬 이름 표준화**: 일관성을 위해 모든 스킬 이름 필드를 디렉토리 이름과 일치하도록 표준화
+- **테스트 격리**: 테스트에서 실제 프로젝트 설정 파일이 수정되지 않도록 `MOAI_TEST_MODE` 환경 변수 추가
+- **플랫폼 지원**: macOS, Linux, Windows 플랫폼을 지원하도록 트랜스크립트 파싱 개선 및 플랫폼별 Claude 설정 디렉토리 지원 추가
 
 ### 설치 및 업데이트 (Installation & Update)
 
