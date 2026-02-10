@@ -9,6 +9,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.2.4] - 2026-02-10
+
+### Summary
+
+Critical patch release fixing a major bug in the `moai update` command that prevented binary updates from working correctly. The updater was saving compressed archive files as executables instead of extracting the actual binary, causing "exec format error" when running moai after update. This release adds proper archive extraction logic for both tar.gz and zip formats.
+
+### Breaking Changes
+
+None
+
+### Fixed
+
+- **Critical: Binary Update Extraction**: Fixed `moai update` command that was saving tar.gz/zip archives as executables instead of extracting the moai binary, causing "exec format error" on all platforms after update
+- **Windows Help Flag**: Added `/? goto show_help` support to install.bat for Windows CMD help convention
+- **CI Workflow**: Resolved test-install.yml workflow file issue by properly splitting shell matrix configuration
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.2.4] - 2026-02-10 (한국어)
+
+### 요약
+
+`moai update` 명령어의 바이너리 업데이트 기능이 작동하지 않던 주요 버그를 수정한 긴급 패치 릴리스입니다. 업데이터가 압축 아카이브 파일을 실행 파일로 저장하여 업데이트 후 moai 실행 시 "exec format error"가 발생하던 문제를 해결했습니다. 이번 릴리스에서 tar.gz 및 zip 형식 모두에 대한 적절한 아카이브 추출 로직을 추가했습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 수정됨 (Fixed)
+
+- **중요: 바이너리 업데이트 추출**: `moai update` 명령어가 tar.gz/zip 아카이브를 실행 파일로 저장하는 대신 moai 바이너리를 추출하지 않아 모든 플랫폼에서 업데이트 후 "exec format error"가 발생하던 문제 수정
+- **Windows 도움말 플래그**: install.bat에 Windows CMD 도움말 규칙을 위한 `/? goto show_help` 지원 추가
+- **CI 워크플로우**: shell 매트릭스 구성을 적절히 분리하여 test-install.yml 워크플로우 파일 이슈 해결
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.2.3] - 2026-02-10
 
 ### Summary
