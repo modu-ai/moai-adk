@@ -9,6 +9,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.2.3] - 2026-02-10
+
+### Summary
+
+Patch release with beginner-friendly project workflow improvements, Windows support enhancements, and critical bug fixes. Introduces smart questions during project setup for better user guidance and fixes git command errors in non-git directories.
+
+### Breaking Changes
+
+None
+
+### Added
+
+- **Project Doc Auto-detection**: Automatically detects existing project documentation (product.md, architecture.md, tech.md) and creates smart questions to gather missing information
+- **Beginner-friendly Smart Questions**: Interactive questions during `/moai project` to guide users through requirement analysis, with options to skip or provide natural language input
+- **Two Large Skill Modules**: design-system-tokens.md (441 lines) and token-optimization.md (708 lines) previously excluded from git by overly broad `.gitignore` pattern
+
+### Changed
+
+- **Windows Support Scope**: Limited to WSL (recommended) and PowerShell 7.x+, with explicit requirement for Git for Windows installation
+- **CI Dependencies**: Upgraded actions/upload-artifact to v6 and github/codeql-action to v4
+
+### Fixed
+
+- **SKILL.md Git Commands**: Fixed `!git branch --show-current` errors in non-git directories by adding `|| true` to pre-execution context commands
+- **Legacy Hooks Cleanup**: `moai update` now properly removes old hook files that are no longer managed by MoAI-ADK
+- **manager-spec Post-Edit Verification**: Added post-edit verification to ensure SPEC document was successfully written before proceeding
+- **PowerShell Architecture Detection**: Added multi-layer fallback for architecture detection on Windows (environment variables, registry, WMI)
+- **Cross-Platform Test Compatibility**: Fixed CI test failures on Windows for unknown shell type detection and platform-specific tests
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.2.3] - 2026-02-10 (한국어)
+
+### 요약
+
+초보자 친화적인 프로젝트 워크플로우 개선, Windows 지원 강화 및 중요한 버그 수정을 포함한 패치 릴리스입니다. 프로젝트 설정 중 스마트 질문을 도입하여 사용자 안내를 개선하고 git이 아닌 디렉토리에서 git 명령 오류를 수정했습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 추가됨 (Added)
+
+- **프로젝트 문서 자동 감지**: 기존 프로젝트 문서(product.md, architecture.md, tech.md)를 자동으로 감지하고 누락된 정보를 수집하기 위한 스마트 질문 생성
+- **초보자 친화적 스마트 질문**: `/moai project` 실행 시 요구사항 분석을 안내하는 대화형 질문 제공, 건너뛰기 또는 자연어 입력 옵션 포함
+- **2개의 대형 스킬 모듈**: 과도하게 넓은 `.gitignore` 패턴으로 git에서 제외되었던 design-system-tokens.md (441줄)와 token-optimization.md (708줄) 추가
+
+### 변경됨 (Changed)
+
+- **Windows 지원 범위**: WSL(권장) 및 PowerShell 7.x+로 제한하고, Git for Windows 설치 명시적 요구
+- **CI 종속성**: actions/upload-artifact를 v6로, github/codeql-action을 v4로 업그레이드
+
+### 수정됨 (Fixed)
+
+- **SKILL.md Git 명령**: git이 아닌 디렉토리에서 `!git branch --show-current` 오류를 pre-execution context 명령에 `|| true` 추가로 수정
+- **레거시 훅 정리**: `moai update`가 이제 MoAI-ADK에서 더 이상 관리하지 않는 오래된 훅 파일을 올바르게 제거
+- **manager-spec 편집 후 검증**: SPEC 문서가 성공적으로 작성되었는지 확인하는 편집 후 검증 추가
+- **PowerShell 아키텍처 감지**: Windows에서 아키텍처 감지를 위한 다층 fallback 추가 (환경 변수, 레지스트리, WMI)
+- **크로스 플랫폼 테스트 호환성**: 알 수 없는 셸 유형 감지 및 플랫폼별 테스트에 대한 Windows CI 테스트 실패 수정
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.2.2] - 2026-02-09
 
 ### Summary
