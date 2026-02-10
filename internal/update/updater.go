@@ -101,11 +101,16 @@ func (u *updaterImpl) Download(ctx context.Context, version *VersionInfo) (strin
 }
 
 // Replace atomically replaces the current binary with the new one.
-// It sets execute permissions and uses os.Rename for atomicity.
+// It validates binary format, sets execute permissions and uses os.Rename for atomicity.
 func (u *updaterImpl) Replace(ctx context.Context, newBinaryPath string) error {
 	// Verify the new binary exists.
 	if _, err := os.Stat(newBinaryPath); err != nil {
 		return fmt.Errorf("%w: new binary not found: %v", ErrReplaceFailed, err)
+	}
+
+	// Validate binary format before replacing.
+	if err := validateBinaryFormat(newBinaryPath); err != nil {
+		return err
 	}
 
 	// Set execute permission on new binary.
@@ -206,6 +211,58 @@ func (u *updaterImpl) extractFromZip(archivePath, binaryName string) (string, er
 	}
 
 	return "", fmt.Errorf("binary %q not found in zip archive", binaryName)
+}
+
+// validateBinaryFormat checks that the file at path is a valid executable binary
+// and not a compressed archive. This is a safety net to prevent corrupted binaries
+// from being installed.
+func validateBinaryFormat(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("open file for validation: %w", err)
+	}
+	defer func() { _ = f.Close() }()
+
+	var magic [4]byte
+	n, err := io.ReadFull(f, magic[:])
+	if err != nil || n < 2 {
+		return fmt.Errorf("%w: file too small or unreadable", ErrReplaceFailed)
+	}
+
+	// Reject known archive formats (the most common mistake).
+	switch {
+	case magic[0] == 0x1f && magic[1] == 0x8b:
+		return fmt.Errorf("%w: file is a gzip archive, not an executable. Run: curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash", ErrReplaceFailed)
+	case magic[0] == 0x50 && magic[1] == 0x4b:
+		return fmt.Errorf("%w: file is a zip archive, not an executable. Run: curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash", ErrReplaceFailed)
+	}
+
+	// Accept known executable formats.
+	switch {
+	case magic[0] == 0x7f && magic[1] == 0x45 && magic[2] == 0x4c && magic[3] == 0x46:
+		// ELF (Linux)
+		return nil
+	case magic[0] == 0xcf && magic[1] == 0xfa && magic[2] == 0xed && magic[3] == 0xfe:
+		// Mach-O 64-bit (macOS arm64/amd64)
+		return nil
+	case magic[0] == 0xce && magic[1] == 0xfa && magic[2] == 0xed && magic[3] == 0xfe:
+		// Mach-O 32-bit (macOS legacy)
+		return nil
+	case magic[0] == 0xfe && magic[1] == 0xed && magic[2] == 0xfa && magic[3] == 0xcf:
+		// Mach-O 64-bit big-endian
+		return nil
+	case magic[0] == 0xfe && magic[1] == 0xed && magic[2] == 0xfa && magic[3] == 0xce:
+		// Mach-O 32-bit big-endian
+		return nil
+	case magic[0] == 0xca && magic[1] == 0xfe && magic[2] == 0xba && magic[3] == 0xbe:
+		// Mach-O Universal Binary (Fat Binary)
+		return nil
+	case magic[0] == 0x4d && magic[1] == 0x5a:
+		// PE (Windows .exe)
+		return nil
+	}
+
+	return fmt.Errorf("%w: unrecognized binary format (magic: %x). Run: curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash", ErrReplaceFailed, magic[:n])
 }
 
 // writeExtractedBinary writes the binary content from r to a temp file

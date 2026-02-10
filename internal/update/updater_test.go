@@ -190,9 +190,10 @@ func TestUpdater_Replace_Success(t *testing.T) {
 		t.Fatalf("write old: %v", err)
 	}
 
-	// Write new binary.
+	// Write new binary with valid Mach-O 64-bit magic bytes.
 	newPath := filepath.Join(dir, "moai-new")
-	if err := os.WriteFile(newPath, []byte("new binary"), 0o755); err != nil {
+	newContent := append([]byte{0xcf, 0xfa, 0xed, 0xfe}, []byte("new binary payload")...)
+	if err := os.WriteFile(newPath, newContent, 0o755); err != nil {
 		t.Fatalf("write new: %v", err)
 	}
 
@@ -206,8 +207,8 @@ func TestUpdater_Replace_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read replaced: %v", err)
 	}
-	if string(data) != "new binary" {
-		t.Errorf("content = %q, want %q", string(data), "new binary")
+	if !bytes.Equal(data, newContent) {
+		t.Errorf("content mismatch after replace")
 	}
 
 	// Verify permissions (skip on Windows).
@@ -235,6 +236,198 @@ func TestUpdater_Replace_NonexistentNewBinary(t *testing.T) {
 	err := u.Replace(context.Background(), "/nonexistent/new-binary")
 	if err == nil {
 		t.Error("expected error for nonexistent new binary")
+	}
+}
+
+func TestUpdater_Replace_RejectsGzipArchive(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	binaryPath := filepath.Join(dir, "moai")
+
+	// Write old binary.
+	if err := os.WriteFile(binaryPath, []byte("old binary"), 0o755); err != nil {
+		t.Fatalf("write old: %v", err)
+	}
+
+	// Write a gzip file as "new binary".
+	newPath := filepath.Join(dir, "moai-new")
+	gzipContent := []byte{0x1f, 0x8b, 0x08, 0x00} // gzip magic bytes
+	if err := os.WriteFile(newPath, gzipContent, 0o755); err != nil {
+		t.Fatalf("write gzip: %v", err)
+	}
+
+	u := NewUpdater(binaryPath, http.DefaultClient)
+	err := u.Replace(context.Background(), newPath)
+	if err == nil {
+		t.Fatal("expected error when replacing with gzip archive")
+	}
+	if !errors.Is(err, ErrReplaceFailed) {
+		t.Errorf("expected ErrReplaceFailed, got: %v", err)
+	}
+
+	// Verify original binary is unchanged.
+	data, err := os.ReadFile(binaryPath)
+	if err != nil {
+		t.Fatalf("read original: %v", err)
+	}
+	if string(data) != "old binary" {
+		t.Error("original binary was modified")
+	}
+}
+
+func TestUpdater_Replace_RejectsZipArchive(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	binaryPath := filepath.Join(dir, "moai")
+
+	// Write old binary.
+	if err := os.WriteFile(binaryPath, []byte("old binary"), 0o755); err != nil {
+		t.Fatalf("write old: %v", err)
+	}
+
+	// Write a zip file as "new binary".
+	newPath := filepath.Join(dir, "moai-new")
+	zipContent := []byte{0x50, 0x4b, 0x03, 0x04} // zip magic bytes (PK)
+	if err := os.WriteFile(newPath, zipContent, 0o755); err != nil {
+		t.Fatalf("write zip: %v", err)
+	}
+
+	u := NewUpdater(binaryPath, http.DefaultClient)
+	err := u.Replace(context.Background(), newPath)
+	if err == nil {
+		t.Fatal("expected error when replacing with zip archive")
+	}
+	if !errors.Is(err, ErrReplaceFailed) {
+		t.Errorf("expected ErrReplaceFailed, got: %v", err)
+	}
+}
+
+func TestUpdater_Replace_RejectsUnknownFormat(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	binaryPath := filepath.Join(dir, "moai")
+
+	// Write old binary.
+	if err := os.WriteFile(binaryPath, []byte("old binary"), 0o755); err != nil {
+		t.Fatalf("write old: %v", err)
+	}
+
+	// Write a file with unknown magic bytes.
+	newPath := filepath.Join(dir, "moai-new")
+	unknownContent := []byte{0xde, 0xad, 0xbe, 0xef}
+	if err := os.WriteFile(newPath, unknownContent, 0o755); err != nil {
+		t.Fatalf("write unknown: %v", err)
+	}
+
+	u := NewUpdater(binaryPath, http.DefaultClient)
+	err := u.Replace(context.Background(), newPath)
+	if err == nil {
+		t.Fatal("expected error when replacing with unknown format")
+	}
+	if !errors.Is(err, ErrReplaceFailed) {
+		t.Errorf("expected ErrReplaceFailed, got: %v", err)
+	}
+}
+
+func TestUpdater_Replace_AcceptsELF(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	binaryPath := filepath.Join(dir, "moai")
+
+	// Write old binary.
+	if err := os.WriteFile(binaryPath, []byte("old binary"), 0o755); err != nil {
+		t.Fatalf("write old: %v", err)
+	}
+
+	// Write a valid ELF binary.
+	newPath := filepath.Join(dir, "moai-new")
+	elfContent := append([]byte{0x7f, 0x45, 0x4c, 0x46}, []byte("elf payload")...)
+	if err := os.WriteFile(newPath, elfContent, 0o755); err != nil {
+		t.Fatalf("write elf: %v", err)
+	}
+
+	u := NewUpdater(binaryPath, http.DefaultClient)
+	if err := u.Replace(context.Background(), newPath); err != nil {
+		t.Fatalf("Replace should accept ELF binary: %v", err)
+	}
+}
+
+func TestUpdater_Replace_AcceptsPE(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	binaryPath := filepath.Join(dir, "moai")
+
+	// Write old binary.
+	if err := os.WriteFile(binaryPath, []byte("old binary"), 0o755); err != nil {
+		t.Fatalf("write old: %v", err)
+	}
+
+	// Write a valid PE (Windows) binary.
+	newPath := filepath.Join(dir, "moai-new")
+	peContent := append([]byte{0x4d, 0x5a}, []byte("pe payload")...)
+	if err := os.WriteFile(newPath, peContent, 0o755); err != nil {
+		t.Fatalf("write pe: %v", err)
+	}
+
+	u := NewUpdater(binaryPath, http.DefaultClient)
+	if err := u.Replace(context.Background(), newPath); err != nil {
+		t.Fatalf("Replace should accept PE binary: %v", err)
+	}
+}
+
+func TestUpdater_Replace_AcceptsMachOUniversal(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	binaryPath := filepath.Join(dir, "moai")
+
+	// Write old binary.
+	if err := os.WriteFile(binaryPath, []byte("old binary"), 0o755); err != nil {
+		t.Fatalf("write old: %v", err)
+	}
+
+	// Write a valid Mach-O Universal Binary (Fat Binary).
+	newPath := filepath.Join(dir, "moai-new")
+	fatContent := append([]byte{0xca, 0xfe, 0xba, 0xbe}, []byte("fat payload")...)
+	if err := os.WriteFile(newPath, fatContent, 0o755); err != nil {
+		t.Fatalf("write fat: %v", err)
+	}
+
+	u := NewUpdater(binaryPath, http.DefaultClient)
+	if err := u.Replace(context.Background(), newPath); err != nil {
+		t.Fatalf("Replace should accept Mach-O Universal binary: %v", err)
+	}
+}
+
+func TestUpdater_Replace_RejectsTooSmallFile(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	binaryPath := filepath.Join(dir, "moai")
+
+	// Write old binary.
+	if err := os.WriteFile(binaryPath, []byte("old binary"), 0o755); err != nil {
+		t.Fatalf("write old: %v", err)
+	}
+
+	// Write a file too small to have valid magic bytes.
+	newPath := filepath.Join(dir, "moai-new")
+	if err := os.WriteFile(newPath, []byte{0x00}, 0o755); err != nil {
+		t.Fatalf("write tiny: %v", err)
+	}
+
+	u := NewUpdater(binaryPath, http.DefaultClient)
+	err := u.Replace(context.Background(), newPath)
+	if err == nil {
+		t.Fatal("expected error when replacing with too-small file")
+	}
+	if !errors.Is(err, ErrReplaceFailed) {
+		t.Errorf("expected ErrReplaceFailed, got: %v", err)
 	}
 }
 

@@ -31,6 +31,21 @@
 
 ---
 
+## ⚠️ v2.2.3 及更早版本用户须知
+
+**如果您正在使用 v2.2.3 或更早版本**，`moai update` 将会失败。请使用以下命令手动重新安装：
+
+```bash
+curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+```
+
+- **v2.2.3**：二进制更新时将归档文件保存为可执行文件（"exec format error"）。已在 v2.2.4 中修复。
+- **v2.1.2 及更早**：校验和验证错误导致自动更新失败。已在 v2.2.1 中修复。
+
+重新安装后，今后的更新将通过 `moai update` 自动正常工作。
+
+---
+
 > **"氛围编程的目的不是追求速度，而是代码质量。"**
 
 MoAI-ADK 是专为 Claude Code 打造的**高性能 AI 开发环境**。28 个专业 AI 智能体与 64 个技能协同工作，助力产出高质量代码。新项目默认采用 Hybrid 方法论（TDD + DDD），现有项目自动采用 DDD，并支持 Sub-Agent 与 Agent Teams 双执行模式。
