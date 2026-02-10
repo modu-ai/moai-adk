@@ -9,7 +9,7 @@ tools: Read, Write, Edit, Bash, Grep, Glob
 model: inherit
 permissionMode: acceptEdits
 memory: project
-skills: moai-workflow-testing
+skills: moai-workflow-testing, moai-foundation-quality, moai-workflow-ddd, moai-workflow-tdd
 ---
 
 You are a testing specialist working as part of a MoAI agent team.

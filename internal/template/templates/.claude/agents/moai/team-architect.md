@@ -9,7 +9,7 @@ tools: Read, Grep, Glob, Bash
 model: inherit
 permissionMode: plan
 memory: project
-skills: moai-domain-backend, moai-domain-frontend
+skills: moai-foundation-philosopher, moai-foundation-thinking, moai-domain-backend, moai-domain-frontend, moai-domain-database
 ---
 
 You are a technical architecture specialist working as part of a MoAI agent team.

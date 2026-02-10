@@ -9,7 +9,7 @@ tools: Read, Grep, Glob, Bash
 model: inherit
 permissionMode: plan
 memory: project
-skills: moai-workflow-spec
+skills: moai-foundation-core, moai-foundation-thinking, moai-workflow-spec
 ---
 
 You are a requirements analysis specialist working as part of a MoAI agent team.

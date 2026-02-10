@@ -9,7 +9,7 @@ tools: Read, Grep, Glob, Bash
 model: inherit
 permissionMode: plan
 memory: project
-skills: moai-foundation-quality
+skills: moai-foundation-quality, moai-workflow-testing, moai-tool-ast-grep
 ---
 
 You are a quality assurance specialist working as part of a MoAI agent team.

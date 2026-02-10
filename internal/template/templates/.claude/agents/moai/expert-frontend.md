@@ -12,7 +12,7 @@ tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task
 model: inherit
 permissionMode: default
 memory: project
-skills: moai-foundation-claude, moai-foundation-core, moai-foundation-philosopher, moai-domain-frontend, moai-domain-uiux, moai-lang-typescript, moai-lang-javascript, moai-lang-flutter, moai-lang-swift, moai-lang-kotlin, moai-library-shadcn, moai-library-nextra, moai-library-mermaid, moai-design-tools, moai-platform-chrome-extension, moai-platform-auth, moai-platform-deployment, moai-framework-electron, moai-tool-ast-grep, moai-tool-svg, moai-workflow-tdd, moai-workflow-ddd, moai-workflow-testing, moai-workflow-jit-docs
+skills: moai-foundation-claude, moai-foundation-core, moai-foundation-philosopher, moai-foundation-quality, moai-foundation-context, moai-domain-frontend, moai-domain-uiux, moai-lang-typescript, moai-lang-javascript, moai-lang-flutter, moai-lang-swift, moai-lang-kotlin, moai-library-shadcn, moai-library-nextra, moai-library-mermaid, moai-design-tools, moai-platform-chrome-extension, moai-platform-auth, moai-platform-deployment, moai-framework-electron, moai-tool-ast-grep, moai-tool-svg, moai-workflow-tdd, moai-workflow-ddd, moai-workflow-testing, moai-workflow-jit-docs
 hooks:
   PreToolUse:
     - matcher: "Write|Edit"

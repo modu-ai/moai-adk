@@ -10,7 +10,7 @@ tools: Read, Write, Edit, Bash, Grep, Glob, mcp__pencil__batch_design, mcp__penc
 model: inherit
 permissionMode: acceptEdits
 memory: user
-skills: moai-domain-uiux, moai-design-tools
+skills: moai-domain-uiux, moai-design-tools, moai-domain-frontend, moai-library-shadcn
 mcpServers: pencil, figma
 ---
 
