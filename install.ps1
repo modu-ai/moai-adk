@@ -30,7 +30,7 @@ function Get-Platform {
     # $env:PROCESSOR_ARCHITECTURE: Windows 10/11, PS 5.1/7+ all operate stably
     $arch = $env:PROCESSOR_ARCHITECTURE
 
-    WoW64 correction: When running in a 32-bit process, replaces the virtualised architecture with the actual OS architecture.
+    # WoW64 correction: When running in a 32-bit process, replaces the virtualised architecture with the actual OS architecture.
     if ($arch -eq "x86" -and $env:PROCESSOR_ARCHITEW6432) {
         $arch = $env:PROCESSOR_ARCHITEW6432
     }
