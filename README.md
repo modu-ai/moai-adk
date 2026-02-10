@@ -442,6 +442,56 @@ MoAI-ADK partners with **z.ai GLM 4.7** to provide a cost-effective AI developme
 
 ---
 
+## Frequently Asked Questions
+
+### Q: What does the version indicator in statusline mean?
+
+The MoAI statusline shows version information with update notifications:
+
+```
+🗿 v2.2.2 ⬆️ v2.2.5
+```
+
+- **`v2.2.2`**: Currently installed version
+- **`⬆️ v2.2.5`**: New version available for update
+
+When you're on the latest version, only the version number is displayed:
+```
+🗿 v2.2.5
+```
+
+**To update**: Run `moai update` and the update notification will disappear.
+
+**Note**: This is different from Claude Code's built-in version indicator (`🔅 v2.1.38`). The MoAI indicator tracks MoAI-ADK versions, while Claude Code shows its own version separately.
+
+---
+
+### Q: "Allow external CLAUDE.md file imports?" warning appears
+
+When opening a project, Claude Code may show a security prompt about external file imports:
+
+```
+External imports:
+  /Users/<user>/.moai/config/sections/quality.yaml
+  /Users/<user>/.moai/config/sections/user.yaml
+  /Users/<user>/.moai/config/sections/language.yaml
+```
+
+**Recommended action**: Select **"No, disable external imports"** ✅
+
+**Why?**
+- Your project's `.moai/config/sections/` already contains these files
+- Project-specific settings take precedence over global settings
+- The essential configuration is already embedded in CLAUDE.md text
+- Disabling external imports is more secure and doesn't affect functionality
+
+**What are these files?**
+- `quality.yaml`: TRUST 5 framework and development methodology settings
+- `language.yaml`: Language preferences (conversation, comments, commits)
+- `user.yaml`: User name (optional, for Co-Authored-By attribution)
+
+---
+
 ## Contributing
 
 Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.

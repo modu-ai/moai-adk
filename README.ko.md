@@ -442,6 +442,56 @@ MoAI-ADK는 **z.ai GLM 4.7**과 파트너십을 통해 경제적인 AI 개발 �
 
 ---
 
+## 자주 묻는 질문 (FAQ)
+
+### Q: statusline의 버전 표시는 무엇을 의미하나요?
+
+MoAI statusline은 버전 정보와 업데이트 알림을 함께 표시합니다:
+
+```
+🗿 v2.2.2 ⬆️ v2.2.5
+```
+
+- **`v2.2.2`**: 현재 설치된 버전
+- **`⬆️ v2.2.5`**: 업데이트 가능한 새 버전
+
+최신 버전을 사용 중일 때는 버전 번호만 표시됩니다:
+```
+🗿 v2.2.5
+```
+
+**업데이트 방법**: `moai update` 실행 시 업데이트 알림이 사라집니다.
+
+**참고**: Claude Code의 빌트인 버전 표시(`🔅 v2.1.38`)와는 다릅니다. MoAI 표시는 MoAI-ADK 버전을 추적하며, Claude Code는 자체 버전을 별도로 표시합니다.
+
+---
+
+### Q: "Allow external CLAUDE.md file imports?" 경고가 나타납니다
+
+프로젝트를 열 때 Claude Code가 외부 파일 import에 대한 보안 프롬프트를 표시할 수 있습니다:
+
+```
+External imports:
+  /Users/<user>/.moai/config/sections/quality.yaml
+  /Users/<user>/.moai/config/sections/user.yaml
+  /Users/<user>/.moai/config/sections/language.yaml
+```
+
+**권장 조치**: **"No, disable external imports"** 선택 ✅
+
+**이유:**
+- 프로젝트의 `.moai/config/sections/`에 이미 이 파일들이 존재합니다
+- 프로젝트별 설정이 전역 설정보다 우선 적용됩니다
+- 필수 설정은 이미 CLAUDE.md 텍스트에 포함되어 있습니다
+- 외부 import를 비활성화하는 것이 더 안전하며 기능에 영향을 주지 않습니다
+
+**파일 설명:**
+- `quality.yaml`: TRUST 5 프레임워크 및 개발 방법론 설정
+- `language.yaml`: 언어 설정 (대화, 코멘트, 커밋)
+- `user.yaml`: 사용자 이름 (선택 사항, Co-Authored-By 표시용)
+
+---
+
 ## 기여
 
 기여를 환영합니다! 자세한 가이드는 [CONTRIBUTING.ko.md](CONTRIBUTING.ko.md)를 참조하세요.
