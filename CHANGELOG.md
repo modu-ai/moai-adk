@@ -9,6 +9,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.2.5] - 2026-02-10
+
+### Summary
+
+Security enhancement release adding comprehensive binary format validation to the `moai update` command. Building on the v2.2.4 extraction fix, this release adds magic byte detection for all supported executable formats (Mach-O, ELF, PE) to prevent archive files from being mistakenly installed as executables. Includes extensive test coverage with 7 new validation test cases.
+
+### Breaking Changes
+
+None
+
+### Added
+
+- **Binary Format Validation**: Added `validateBinaryFormat()` function with magic byte detection for Mach-O (macOS), ELF (Linux), and PE (Windows) executable formats
+- **Archive Rejection**: Automatic detection and rejection of gzip/zip archives with clear error messages and recovery instructions
+- **Comprehensive Test Coverage**: Added 7 new test cases covering valid executables, archive rejection, and corrupted file handling
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.2.5] - 2026-02-10 (한국어)
+
+### 요약
+
+`moai update` 명령어에 포괄적인 바이너리 형식 검증 기능을 추가한 보안 개선 릴리스입니다. v2.2.4의 추출 수정을 기반으로, 지원되는 모든 실행 파일 형식(Mach-O, ELF, PE)에 대한 매직 바이트 감지를 추가하여 아카이브 파일이 실행 파일로 잘못 설치되는 것을 방지합니다. 7개의 새로운 검증 테스트 케이스로 광범위한 테스트 커버리지를 제공합니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 추가됨 (Added)
+
+- **바이너리 형식 검증**: Mach-O(macOS), ELF(Linux), PE(Windows) 실행 파일 형식에 대한 매직 바이트 감지 기능을 갖춘 `validateBinaryFormat()` 함수 추가
+- **아카이브 거부**: gzip/zip 아카이브 자동 감지 및 명확한 오류 메시지와 복구 지침과 함께 거부
+- **포괄적인 테스트 커버리지**: 유효한 실행 파일, 아카이브 거부, 손상된 파일 처리를 다루는 7개의 새로운 테스트 케이스 추가
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.2.4] - 2026-02-10
 
 ### Summary
