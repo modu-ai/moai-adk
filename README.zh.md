@@ -62,6 +62,23 @@ MoAI-ADK 是专为 Claude Code 打造的**高性能 AI 开发环境**。28 个�
 
 ---
 
+## 系统要求
+
+| 平台 | 支持环境 | 备注 |
+|------|---------|------|
+| macOS | Terminal, iTerm2 | 完全支持 |
+| Linux | Bash, Zsh | 完全支持 |
+| Windows | **WSL（推荐）**, PowerShell 7.x+ | 原生 cmd.exe 不支持 |
+
+**前置条件：**
+- 所有平台必须安装 **Git**
+- **Windows 用户**：必须安装 [Git for Windows](https://gitforwindows.org/)（包含 Git Bash）
+  - 推荐使用 **WSL**（适用于 Linux 的 Windows 子系统）
+  - 也支持 PowerShell 7.x 及以上版本
+  - 旧版 Windows PowerShell 5.x 和 cmd.exe **不受支持**
+
+---
+
 ## 快速入门
 
 ### 1. 安装
@@ -72,11 +89,15 @@ MoAI-ADK 是专为 Claude Code 打造的**高性能 AI 开发环境**。28 个�
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
 ```
 
-#### Windows PowerShell
+#### Windows（PowerShell 7.x+）
+
+> **推荐**：为获得最佳体验，请在 WSL 中使用上面的 Linux 安装命令。
 
 ```powershell
 irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
 ```
+
+> 需要先安装 [Git for Windows](https://gitforwindows.org/)。
 
 #### 从源码构建（Go 1.25+）
 

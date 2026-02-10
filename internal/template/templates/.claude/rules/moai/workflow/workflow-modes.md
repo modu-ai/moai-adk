@@ -109,8 +109,9 @@ The system automatically recommends a methodology based on project analysis:
 ### Manual Override
 
 Users can override the auto-detected methodology:
-- During init: Select in the wizard or use `--development-mode` flag
-- After init: Edit `quality.development_mode` in `.moai/config/sections/quality.yaml`
+- During init: Use `moai init --mode <ddd|tdd|hybrid>` flag (default: hybrid)
+- After project setup: Re-run `/moai project` to auto-detect based on codebase analysis
+- Manual edit: Edit `quality.development_mode` in `.moai/config/sections/quality.yaml`
 - Per session: Set `MOAI_DEVELOPMENT_MODE` environment variable
 
 ### Methodology Comparison

@@ -12,7 +12,7 @@ import "path/filepath"
 // 6. Git commit language
 // 7. Code comment language
 // 8. Documentation language
-// 9. Development methodology
+// 9. Agent Teams mode
 func DefaultQuestions(projectRoot string) []Question {
 	// Use current directory name as default project name
 	defaultProjectName := filepath.Base(projectRoot)
@@ -137,20 +137,7 @@ func DefaultQuestions(projectRoot string) []Question {
 			Default:  "en",
 			Required: true,
 		},
-		// 9. Development Methodology
-		{
-			ID:          "development_mode",
-			Type:        QuestionTypeSelect,
-			Title:       "Select development methodology",
-			Description: "Determines how code changes and testing are handled.",
-			Options: []Option{
-				{Label: "Hybrid (TDD + DDD) (Recommended)", Value: "hybrid", Desc: "TDD for new features, DDD for existing code"},
-				{Label: "DDD (Domain-Driven Development)", Value: "ddd", Desc: "ANALYZE-PRESERVE-IMPROVE cycle for legacy refactoring"},
-			},
-			Default:  "hybrid",
-			Required: true,
-		},
-		// 10. Agent Teams Mode
+		// 9. Agent Teams Mode
 		{
 			ID:          "agent_teams_mode",
 			Type:        QuestionTypeSelect,

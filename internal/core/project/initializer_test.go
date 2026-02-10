@@ -184,7 +184,7 @@ func TestInit_QualityYAMLContent(t *testing.T) {
 	}
 }
 
-func TestInit_InvalidDevelopmentModeFallsBackToDDD(t *testing.T) {
+func TestInit_InvalidDevelopmentModeFallsBackToHybrid(t *testing.T) {
 	root := t.TempDir()
 	init := NewInitializer(nil, nil, nil)
 
@@ -206,8 +206,8 @@ func TestInit_InvalidDevelopmentModeFallsBackToDDD(t *testing.T) {
 	var qualYAMLData qualityYAML
 	readYAML(t, qualityPath, &qualYAMLData)
 
-	if qualYAMLData.Constitution.DevelopmentMode != "ddd" {
-		t.Errorf("development_mode = %q, want fallback %q", qualYAMLData.Constitution.DevelopmentMode, "ddd")
+	if qualYAMLData.Constitution.DevelopmentMode != "hybrid" {
+		t.Errorf("development_mode = %q, want fallback %q", qualYAMLData.Constitution.DevelopmentMode, "hybrid")
 	}
 }
 

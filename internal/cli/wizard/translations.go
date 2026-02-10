@@ -84,14 +84,6 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Chinese (中文)", Desc: "중국어로 문서"},
 			},
 		},
-		"development_mode": {
-			Title:       "개발 방법론 선택",
-			Description: "코드 변경 및 테스트 처리 방식을 결정합니다.",
-			Options: []OptionTranslation{
-				{Label: "Hybrid (TDD + DDD) (권장)", Desc: "신규 기능은 TDD, 기존 코드는 DDD"},
-				{Label: "DDD (도메인 주도 개발)", Desc: "레거시 리팩토링을 위한 ANALYZE-PRESERVE-IMPROVE 사이클"},
-			},
-		},
 		"agent_teams_mode": {
 			Title:       "Agent Teams 실행 모드 선택",
 			Description: "MoAI가 Agent Teams(병렬) 또는 sub-agents(순차)를 사용하도록 설정합니다.",
@@ -192,14 +184,6 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Chinese (中文)", Desc: "中国語でドキュメント"},
 			},
 		},
-		"development_mode": {
-			Title:       "開発方法論を選択",
-			Description: "コード変更とテストの処理方法を決定します。",
-			Options: []OptionTranslation{
-				{Label: "Hybrid (TDD + DDD) (推奨)", Desc: "新機能はTDD、既存コードはDDD"},
-				{Label: "DDD (ドメイン駆動開発)", Desc: "レガシーリファクタリングのためのANALYZE-PRESERVE-IMPROVEサイクル"},
-			},
-		},
 		"agent_teams_mode": {
 			Title:       "Agent Teams実行モードを選択",
 			Description: "MoAIがAgent Teams（並列）かsub-agents（順次）を使用するかを制御します。",
@@ -298,14 +282,6 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "English", Desc: "英语文档"},
 				{Label: "Japanese (日本語)", Desc: "日语文档"},
 				{Label: "Chinese (中文)", Desc: "中文文档"},
-			},
-		},
-		"development_mode": {
-			Title:       "选择开发方法论",
-			Description: "决定代码更改和测试的处理方式。",
-			Options: []OptionTranslation{
-				{Label: "Hybrid (TDD + DDD) (推荐)", Desc: "新功能用TDD，现有代码用DDD"},
-				{Label: "DDD (领域驱动开发)", Desc: "用于遗留代码重构的ANALYZE-PRESERVE-IMPROVE循环"},
 			},
 		},
 		"agent_teams_mode": {

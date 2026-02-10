@@ -82,7 +82,7 @@ func NewDefaultLanguageConfig() models.LanguageConfig {
 // NewDefaultQualityConfig returns a QualityConfig with default values.
 func NewDefaultQualityConfig() models.QualityConfig {
 	return models.QualityConfig{
-		DevelopmentMode:    models.ModeDDD,
+		DevelopmentMode:    models.ModeHybrid,
 		EnforceQuality:     true,
 		TestCoverageTarget: DefaultTestCoverageTarget,
 		DDDSettings:        NewDefaultDDDSettings(),

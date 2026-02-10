@@ -1321,7 +1321,6 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 	_, _ = fmt.Fprintln(out, "✓ Configuration updated successfully.")
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintf(out, "  Language: %s\n", result.Locale)
-	_, _ = fmt.Fprintf(out, "  Development mode: %s\n", result.DevelopmentMode)
 
 	return nil
 }
@@ -1338,43 +1337,8 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		return fmt.Errorf("write language.yaml: %w", err)
 	}
 
-	// Update quality.yaml if development mode changed
-	if result.DevelopmentMode != "" {
-		qualityPath := filepath.Join(sectionsDir, defs.QualityYAML)
-		// Read existing content
-		qualityData, err := os.ReadFile(qualityPath)
-		if err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("read quality.yaml: %w", err)
-		}
-
-		// Parse YAML
-		var quality map[string]interface{}
-		if len(qualityData) > 0 {
-			if err := yaml.Unmarshal(qualityData, &quality); err != nil {
-				return fmt.Errorf("parse quality.yaml: %w", err)
-			}
-		} else {
-			quality = make(map[string]interface{})
-		}
-
-		// Update development_mode
-		if constitution, ok := quality["constitution"].(map[string]interface{}); ok {
-			constitution["development_mode"] = result.DevelopmentMode
-		} else {
-			quality["constitution"] = map[string]interface{}{
-				"development_mode": result.DevelopmentMode,
-			}
-		}
-
-		// Write back
-		updatedData, err := yaml.Marshal(quality)
-		if err != nil {
-			return fmt.Errorf("marshal quality.yaml: %w", err)
-		}
-		if err := os.WriteFile(qualityPath, updatedData, defs.FilePerm); err != nil {
-			return fmt.Errorf("write quality.yaml: %w", err)
-		}
-	}
+	// Development mode is no longer configured via wizard.
+	// It defaults to "hybrid" and is auto-configured by /moai project workflow.
 
 	// Update workflow.yaml with Agent Teams settings
 	if result.AgentTeamsMode != "" {
