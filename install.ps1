@@ -27,14 +27,21 @@ function Print-Warning {
 
 # Detect platform
 function Get-Platform {
-    $arch = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture
+    # $env:PROCESSOR_ARCHITECTURE: Windows 10/11, PS 5.1/7+ all operate stably
+    $arch = $env:PROCESSOR_ARCHITECTURE
 
+    WoW64 correction: When running in a 32-bit process, replaces the virtualised architecture with the actual OS architecture.
+    if ($arch -eq "x86" -and $env:PROCESSOR_ARCHITEW6432) {
+        $arch = $env:PROCESSOR_ARCHITEW6432
+    }
+
+    # Change to actual OS response
     $platform = switch ($arch) {
-        "X64"   { "windows_amd64" }
-        "Arm64" { "windows_arm64" }
+        "AMD64" { "windows_amd64" }
+        "ARM64" { "windows_arm64" }
         default {
             Print-Error "Unsupported architecture: $arch"
-            Print-Info "Supported architectures: x64, arm64"
+            Print-Info "Supported architectures: x64 (AMD64), arm64 (ARM64)"
             exit 1
         }
     }
