@@ -348,6 +348,25 @@ Extract subcommand keywords and flags from $ARGUMENTS. Recognized global flags: 
 Step 2 - Route to Workflow:
 Apply the Intent Router (Priority 1 through Priority 4) to determine the target workflow. If ambiguous, use AskUserQuestion to clarify with the user.
 
+Step 2.5 - Project Documentation Check:
+Before executing plan, run, sync, fix, loop, or default workflows, verify project documentation exists by checking for `.moai/project/product.md`. If product.md does NOT exist, use AskUserQuestion to ask the user (in their conversation_language):
+
+Question: Project documentation not found. Would you like to create it first?
+Options:
+- Create project documentation (Recommended): Generates product.md, structure.md, tech.md through a guided interview. This helps MoAI understand your project context for better results in all subsequent workflows. Takes a few questions to complete.
+- Skip and continue: Proceed with the original workflow without project documentation. MoAI will have less context about your project, which may reduce the quality of generated SPECs and code.
+
+This check does NOT apply to: project, feedback subcommands (project creates the docs, feedback is independent).
+
+When the user selects "Create project documentation", execute the full project workflow (Phase 0 through Phase 4) to collect requirements and generate product.md, structure.md, and tech.md. After completion, resume the originally requested workflow.
+
+[HARD] Beginner-Friendly Option Design:
+All AskUserQuestion calls throughout MoAI workflows MUST follow these rules:
+- The first option MUST always be the recommended choice, clearly marked with "(Recommended)" suffix in the label
+- Every option MUST include a detailed description explaining what it does and its implications
+- Descriptions should help users who are unfamiliar with the workflow make informed decisions
+- Use plain language without technical jargon where possible
+
 Step 3 - Load Workflow Details:
 Read the corresponding workflows/<name>.md file for detailed orchestration instructions specific to the matched workflow.
 
