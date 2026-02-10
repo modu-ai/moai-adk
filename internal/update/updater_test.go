@@ -1,6 +1,9 @@
 package update
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -17,11 +20,12 @@ func TestUpdater_Download_Success(t *testing.T) {
 	t.Parallel()
 
 	binaryContent := []byte("fake binary content for testing")
-	checksum := sha256Hex(binaryContent)
+	archiveData := createTarGz(t, "moai", binaryContent)
+	checksum := sha256Hex(archiveData)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(binaryContent)
+		_, _ = w.Write(archiveData)
 	}))
 	defer ts.Close()
 
@@ -30,7 +34,7 @@ func TestUpdater_Download_Success(t *testing.T) {
 
 	info := &VersionInfo{
 		Version:  "v1.2.0",
-		URL:      ts.URL + "/moai-darwin-arm64",
+		URL:      ts.URL + "/moai-darwin-arm64.tar.gz",
 		Checksum: checksum,
 	}
 
@@ -39,13 +43,27 @@ func TestUpdater_Download_Success(t *testing.T) {
 		t.Fatalf("Download: %v", err)
 	}
 
-	// Verify file exists.
+	// Verify extracted binary content.
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read downloaded file: %v", err)
 	}
 	if string(data) != string(binaryContent) {
-		t.Error("downloaded content mismatch")
+		t.Error("extracted binary content mismatch")
+	}
+
+	// Verify no archive temp files remain.
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("readdir: %v", err)
+	}
+	for _, e := range entries {
+		if e.Name() != filepath.Base(path) {
+			name := e.Name()
+			if filepath.Ext(name) == ".tmp" && name != filepath.Base(path) {
+				t.Errorf("archive temp file not cleaned up: %s", name)
+			}
+		}
 	}
 }
 
@@ -224,4 +242,34 @@ func TestUpdater_Replace_NonexistentNewBinary(t *testing.T) {
 func sha256Hex(data []byte) string {
 	h := sha256.Sum256(data)
 	return hex.EncodeToString(h[:])
+}
+
+// createTarGz creates a .tar.gz archive containing a single file with the given name and content.
+func createTarGz(t *testing.T, name string, content []byte) []byte {
+	t.Helper()
+
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gw)
+
+	hdr := &tar.Header{
+		Name: name,
+		Mode: 0o755,
+		Size: int64(len(content)),
+	}
+	if err := tw.WriteHeader(hdr); err != nil {
+		t.Fatalf("tar write header: %v", err)
+	}
+	if _, err := tw.Write(content); err != nil {
+		t.Fatalf("tar write content: %v", err)
+	}
+
+	if err := tw.Close(); err != nil {
+		t.Fatalf("tar close: %v", err)
+	}
+	if err := gw.Close(); err != nil {
+		t.Fatalf("gzip close: %v", err)
+	}
+
+	return buf.Bytes()
 }

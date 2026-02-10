@@ -1,6 +1,9 @@
 package update
 
 import (
+	"archive/tar"
+	"archive/zip"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -9,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
 // updaterImpl is the concrete implementation of Updater.
@@ -83,8 +87,17 @@ func (u *updaterImpl) Download(ctx context.Context, version *VersionInfo) (strin
 		}
 	}
 
+	// Extract binary from archive.
+	binaryPath, err := u.extractBinary(tmpPath)
+	if err != nil {
+		return "", fmt.Errorf("%w: extract binary: %v", ErrDownloadFailed, err)
+	}
+
+	// Clean up the archive file; the extracted binary is all we need.
+	_ = os.Remove(tmpPath)
+
 	success = true
-	return tmpPath, nil
+	return binaryPath, nil
 }
 
 // Replace atomically replaces the current binary with the new one.
@@ -106,4 +119,115 @@ func (u *updaterImpl) Replace(ctx context.Context, newBinaryPath string) error {
 	}
 
 	return nil
+}
+
+// extractBinary detects the archive format and extracts the moai binary.
+// It returns the path to a temp file containing the extracted binary.
+func (u *updaterImpl) extractBinary(archivePath string) (string, error) {
+	binaryName := "moai"
+	if runtime.GOOS == "windows" {
+		binaryName = "moai.exe"
+	}
+
+	// Detect format via magic bytes.
+	f, err := os.Open(archivePath)
+	if err != nil {
+		return "", fmt.Errorf("open archive: %w", err)
+	}
+
+	var magic [2]byte
+	if _, err := io.ReadFull(f, magic[:]); err != nil {
+		_ = f.Close()
+		return "", fmt.Errorf("read magic bytes: %w", err)
+	}
+	_ = f.Close()
+
+	switch {
+	case magic[0] == 0x1f && magic[1] == 0x8b: // gzip
+		return u.extractFromTarGz(archivePath, binaryName)
+	case magic[0] == 0x50 && magic[1] == 0x4b: // zip (PK)
+		return u.extractFromZip(archivePath, binaryName)
+	default:
+		return "", fmt.Errorf("unsupported archive format (magic: %x %x)", magic[0], magic[1])
+	}
+}
+
+// extractFromTarGz extracts the named binary from a .tar.gz archive.
+func (u *updaterImpl) extractFromTarGz(archivePath, binaryName string) (string, error) {
+	f, err := os.Open(archivePath)
+	if err != nil {
+		return "", fmt.Errorf("open tar.gz: %w", err)
+	}
+	defer func() { _ = f.Close() }()
+
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return "", fmt.Errorf("gzip reader: %w", err)
+	}
+	defer func() { _ = gz.Close() }()
+
+	tr := tar.NewReader(gz)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return "", fmt.Errorf("tar next: %w", err)
+		}
+
+		// Match the binary by base name (archive may have directory prefixes).
+		if filepath.Base(hdr.Name) == binaryName && hdr.Typeflag == tar.TypeReg {
+			return u.writeExtractedBinary(tr)
+		}
+	}
+
+	return "", fmt.Errorf("binary %q not found in tar.gz archive", binaryName)
+}
+
+// extractFromZip extracts the named binary from a .zip archive.
+func (u *updaterImpl) extractFromZip(archivePath, binaryName string) (string, error) {
+	zr, err := zip.OpenReader(archivePath)
+	if err != nil {
+		return "", fmt.Errorf("open zip: %w", err)
+	}
+	defer func() { _ = zr.Close() }()
+
+	for _, zf := range zr.File {
+		if filepath.Base(zf.Name) == binaryName && !zf.FileInfo().IsDir() {
+			rc, err := zf.Open()
+			if err != nil {
+				return "", fmt.Errorf("open zip entry %q: %w", zf.Name, err)
+			}
+			defer func() { _ = rc.Close() }()
+
+			return u.writeExtractedBinary(rc)
+		}
+	}
+
+	return "", fmt.Errorf("binary %q not found in zip archive", binaryName)
+}
+
+// writeExtractedBinary writes the binary content from r to a temp file
+// in the same directory as the target binary.
+func (u *updaterImpl) writeExtractedBinary(r io.Reader) (string, error) {
+	dir := filepath.Dir(u.binaryPath)
+	tmp, err := os.CreateTemp(dir, ".moai-extracted-*.tmp")
+	if err != nil {
+		return "", fmt.Errorf("create temp file: %w", err)
+	}
+	tmpPath := tmp.Name()
+
+	if _, err := io.Copy(tmp, r); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
+		return "", fmt.Errorf("write binary: %w", err)
+	}
+
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return "", fmt.Errorf("close temp file: %w", err)
+	}
+
+	return tmpPath, nil
 }
