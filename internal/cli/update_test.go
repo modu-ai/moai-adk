@@ -1636,6 +1636,104 @@ func TestEnsureGlobalSettingsEnv_CleanupMigratedSettings(t *testing.T) {
 	}
 }
 
+func TestEnsureGlobalSettingsEnv_RemovesGlobalHooksDir(t *testing.T) {
+	tempDir := t.TempDir()
+	origHome := os.Getenv("HOME")
+	origUserProfile := os.Getenv("USERPROFILE")
+	defer func() {
+		_ = os.Setenv("HOME", origHome)
+		_ = os.Setenv("USERPROFILE", origUserProfile)
+	}()
+	_ = os.Setenv("HOME", tempDir)
+	_ = os.Setenv("USERPROFILE", tempDir)
+
+	claudeDir := filepath.Join(tempDir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+		t.Fatalf("failed to create .claude dir: %v", err)
+	}
+
+	// Create empty settings.json so ensureGlobalSettingsEnv doesn't bail early
+	settingsPath := filepath.Join(claudeDir, "settings.json")
+	if err := os.WriteFile(settingsPath, []byte("{}"), 0644); err != nil {
+		t.Fatalf("failed to write settings: %v", err)
+	}
+
+	t.Run("RemovesExistingGlobalHooksMoaiDir", func(t *testing.T) {
+		hooksDir := filepath.Join(claudeDir, "hooks", "moai")
+		if err := os.MkdirAll(hooksDir, 0755); err != nil {
+			t.Fatalf("failed to create hooks dir: %v", err)
+		}
+		// Create a dummy hook file
+		dummyHook := filepath.Join(hooksDir, "handle-stop.sh")
+		if err := os.WriteFile(dummyHook, []byte("#!/bin/bash\n"), 0755); err != nil {
+			t.Fatalf("failed to write dummy hook: %v", err)
+		}
+
+		err := ensureGlobalSettingsEnv()
+		if err != nil {
+			t.Fatalf("ensureGlobalSettingsEnv failed: %v", err)
+		}
+
+		if _, err := os.Stat(hooksDir); !os.IsNotExist(err) {
+			t.Error("~/.claude/hooks/moai should be removed by ensureGlobalSettingsEnv")
+		}
+	})
+
+	t.Run("NoErrorWhenGlobalHooksDirMissing", func(t *testing.T) {
+		hooksDir := filepath.Join(claudeDir, "hooks", "moai")
+		_ = os.RemoveAll(hooksDir)
+
+		err := ensureGlobalSettingsEnv()
+		if err != nil {
+			t.Fatalf("ensureGlobalSettingsEnv should not fail when hooks dir is missing: %v", err)
+		}
+	})
+}
+
+func TestCleanLegacyHooks_RemovesMoaiHandleHooks(t *testing.T) {
+	moaiHookPatterns := []struct {
+		hookType string
+		command  string
+	}{
+		{"Stop", `"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop.sh"`},
+		{"PreToolUse", `"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh"`},
+		{"PostToolUse", `"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh"`},
+		{"SessionStart", `"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh"`},
+	}
+
+	for _, tc := range moaiHookPatterns {
+		t.Run(tc.hookType, func(t *testing.T) {
+			settings := map[string]interface{}{
+				"hooks": map[string]interface{}{
+					tc.hookType: []interface{}{
+						map[string]interface{}{
+							"hooks": []interface{}{
+								map[string]interface{}{
+									"command": tc.command,
+									"timeout": float64(5),
+									"type":    "command",
+								},
+							},
+						},
+					},
+				},
+			}
+
+			modified := cleanLegacyHooks(settings)
+			if !modified {
+				t.Errorf("cleanLegacyHooks should detect %s hook as legacy", tc.hookType)
+			}
+
+			if hooks, exists := settings["hooks"]; exists {
+				hooksMap, _ := hooks.(map[string]interface{})
+				if _, hasHookType := hooksMap[tc.hookType]; hasHookType {
+					t.Errorf("%s hook should be removed from global settings", tc.hookType)
+				}
+			}
+		})
+	}
+}
+
 func TestBuildSmartPATH(t *testing.T) {
 	sep := string(os.PathListSeparator)
 

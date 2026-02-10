@@ -1462,13 +1462,21 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 }
 
 // ensureGlobalSettingsEnv cleans up moai-managed settings from ~/.claude/settings.json.
-// All settings (env, permissions, teammateMode, SessionEnd hooks) are managed at the project level.
-// The global SessionEnd hook (handle-session-end.sh) was removed because the script was never
-// deployed to the global location; project-level hooks handle this instead.
+// All settings (env, permissions, teammateMode, hooks) are managed at the project level.
+// The global hooks directory (~/.claude/hooks/moai/) is also removed since hooks
+// are only deployed to project-level directories via moai init.
 func ensureGlobalSettingsEnv() error {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("get home directory: %w", err)
+	}
+
+	// Remove global hooks/moai directory if it exists.
+	// Hooks are project-level only; the global directory causes "No such file or directory"
+	// errors in non-initialized projects that reference $CLAUDE_PROJECT_DIR paths.
+	globalHooksDir := filepath.Join(homeDir, defs.ClaudeDir, "hooks", "moai")
+	if _, err := os.Stat(globalHooksDir); err == nil {
+		_ = os.RemoveAll(globalHooksDir)
 	}
 
 	globalSettingsPath := filepath.Join(homeDir, defs.ClaudeDir, defs.SettingsJSON)
@@ -1552,9 +1560,16 @@ func ensureGlobalSettingsEnv() error {
 // This includes orphaned scripts that were never deployed and deprecated Python-based hooks.
 // Returns true if any cleanup was performed.
 func cleanLegacyHooks(settings map[string]interface{}) bool {
-	// List of legacy hook patterns to remove
+	// List of legacy hook patterns to remove.
+	// All moai handle-*.sh hooks belong in project-level settings, not global.
 	legacyPatterns := []string{
 		"handle-session-end.sh",
+		"handle-session-start.sh",
+		"handle-stop.sh",
+		"handle-pre-tool.sh",
+		"handle-post-tool.sh",
+		"handle-agent-hook.sh",
+		"handle-compact.sh",
 		"session_end__rank_submit",
 		"post_tool__code_formatter.py",
 		"post_tool__linter.py",
