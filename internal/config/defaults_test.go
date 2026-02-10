@@ -38,9 +38,9 @@ func TestNewDefaultConfigContainsAllSections(t *testing.T) {
 	}
 
 	// Quality section should have defaults
-	if cfg.Quality.DevelopmentMode != models.ModeDDD {
+	if cfg.Quality.DevelopmentMode != models.ModeHybrid {
 		t.Errorf("Quality.DevelopmentMode: got %q, want %q",
-			cfg.Quality.DevelopmentMode, models.ModeDDD)
+			cfg.Quality.DevelopmentMode, models.ModeHybrid)
 	}
 
 	// GitStrategy should have defaults
@@ -121,8 +121,8 @@ func TestNewDefaultQualityConfig(t *testing.T) {
 
 	cfg := NewDefaultQualityConfig()
 
-	if cfg.DevelopmentMode != models.ModeDDD {
-		t.Errorf("DevelopmentMode: got %q, want %q", cfg.DevelopmentMode, models.ModeDDD)
+	if cfg.DevelopmentMode != models.ModeHybrid {
+		t.Errorf("DevelopmentMode: got %q, want %q", cfg.DevelopmentMode, models.ModeHybrid)
 	}
 	if !cfg.EnforceQuality {
 		t.Error("EnforceQuality: expected true")

@@ -93,9 +93,9 @@ func TestConfigManagerLoadDefaults(t *testing.T) {
 		t.Errorf("Language.ConversationLanguage: got %q, want default %q",
 			cfg.Language.ConversationLanguage, DefaultConversationLanguage)
 	}
-	if cfg.Quality.DevelopmentMode != models.ModeDDD {
+	if cfg.Quality.DevelopmentMode != models.ModeHybrid {
 		t.Errorf("Quality.DevelopmentMode: got %q, want default %q",
-			cfg.Quality.DevelopmentMode, models.ModeDDD)
+			cfg.Quality.DevelopmentMode, models.ModeHybrid)
 	}
 }
 
@@ -826,9 +826,9 @@ func TestApplyEnvOverrides(t *testing.T) {
 	applyEnvOverrides(cfg)
 
 	// Values should remain as defaults since no env vars are set in this test
-	if cfg.Quality.DevelopmentMode != models.ModeDDD {
+	if cfg.Quality.DevelopmentMode != models.ModeHybrid {
 		t.Errorf("DevelopmentMode: got %q, want default %q",
-			cfg.Quality.DevelopmentMode, models.ModeDDD)
+			cfg.Quality.DevelopmentMode, models.ModeHybrid)
 	}
 }
 

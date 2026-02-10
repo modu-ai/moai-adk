@@ -227,8 +227,6 @@ func (m *Model) saveAnswer(id, value string) {
 		m.result.CodeCommentLang = value
 	case "doc_lang":
 		m.result.DocLang = value
-	case "development_mode":
-		m.result.DevelopmentMode = value
 	case "agent_teams_mode":
 		m.result.AgentTeamsMode = value
 	case "max_teammates":

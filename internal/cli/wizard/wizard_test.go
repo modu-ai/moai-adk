@@ -16,7 +16,6 @@ func TestWizardResult(t *testing.T) {
 		GitCommitLang:   "en",
 		CodeCommentLang: "en",
 		DocLang:         "ko",
-		DevelopmentMode: "ddd",
 	}
 
 	if result.ProjectName != "test-project" {
@@ -24,9 +23,6 @@ func TestWizardResult(t *testing.T) {
 	}
 	if result.Locale != "ko" {
 		t.Errorf("expected Locale 'ko', got %q", result.Locale)
-	}
-	if result.DevelopmentMode != "ddd" {
-		t.Errorf("expected DevelopmentMode 'ddd', got %q", result.DevelopmentMode)
 	}
 }
 
@@ -99,19 +95,11 @@ func TestDefaultQuestions(t *testing.T) {
 		t.Error("project_name question not found")
 	}
 
-	// Verify development_mode question exists
-	found = false
+	// Verify development_mode question is NOT in wizard (auto-configured by /moai project)
 	for _, q := range questions {
 		if q.ID == "development_mode" {
-			found = true
-			if q.Type != QuestionTypeSelect {
-				t.Errorf("expected development_mode type QuestionTypeSelect, got %v", q.Type)
-			}
-			break
+			t.Error("development_mode question should not be in wizard (auto-configured by /moai project)")
 		}
-	}
-	if !found {
-		t.Error("development_mode question not found")
 	}
 }
 
@@ -653,7 +641,6 @@ func TestSaveAnswerAllCases(t *testing.T) {
 		{ID: "git_commit_lang", Type: QuestionTypeSelect, Options: []Option{{Value: "en"}}},
 		{ID: "code_comment_lang", Type: QuestionTypeSelect, Options: []Option{{Value: "en"}}},
 		{ID: "doc_lang", Type: QuestionTypeSelect, Options: []Option{{Value: "ko"}}},
-		{ID: "development_mode", Type: QuestionTypeSelect, Options: []Option{{Value: "ddd"}}},
 		{ID: "agent_teams_mode", Type: QuestionTypeSelect, Options: []Option{{Value: "auto"}}},
 		{ID: "max_teammates", Type: QuestionTypeSelect, Options: []Option{{Value: "3"}}},
 		{ID: "default_model", Type: QuestionTypeSelect, Options: []Option{{Value: "sonnet"}}},
@@ -700,11 +687,6 @@ func TestSaveAnswerAllCases(t *testing.T) {
 	model.saveAnswer("doc_lang", "ko")
 	if model.result.DocLang != "ko" {
 		t.Errorf("expected DocLang 'ko', got %q", model.result.DocLang)
-	}
-
-	model.saveAnswer("development_mode", "hybrid")
-	if model.result.DevelopmentMode != "hybrid" {
-		t.Errorf("expected DevelopmentMode 'hybrid', got %q", model.result.DevelopmentMode)
 	}
 
 	model.saveAnswer("agent_teams_mode", "subagent")
@@ -1056,41 +1038,12 @@ func TestLocaleTransitionInWizard(t *testing.T) {
 	}
 }
 
-func TestDevelopmentModeOptions(t *testing.T) {
+func TestDevelopmentModeRemovedFromWizard(t *testing.T) {
 	questions := DefaultQuestions("/tmp/test")
 
-	var devModeQ *Question
-	for i := range questions {
-		if questions[i].ID == "development_mode" {
-			devModeQ = &questions[i]
-			break
+	for _, q := range questions {
+		if q.ID == "development_mode" {
+			t.Fatal("development_mode question should not be in wizard; it is auto-configured by /moai project")
 		}
-	}
-
-	if devModeQ == nil {
-		t.Fatal("development_mode question not found")
-	}
-
-	// Should have exactly 2 options
-	if len(devModeQ.Options) != 2 {
-		t.Errorf("expected 2 options, got %d", len(devModeQ.Options))
-	}
-
-	// First option should be Hybrid (Recommended)
-	if devModeQ.Options[0].Value != "hybrid" {
-		t.Errorf("expected first option to be 'hybrid', got %q", devModeQ.Options[0].Value)
-	}
-	if !contains(devModeQ.Options[0].Label, "Recommended") {
-		t.Error("Hybrid option should contain 'Recommended'")
-	}
-
-	// Second option should be DDD
-	if devModeQ.Options[1].Value != "ddd" {
-		t.Errorf("expected second option to be 'ddd', got %q", devModeQ.Options[1].Value)
-	}
-
-	// Default should be hybrid
-	if devModeQ.Default != "hybrid" {
-		t.Errorf("expected default to be 'hybrid', got %q", devModeQ.Default)
 	}
 }

@@ -235,6 +235,43 @@ If LSP server is NOT installed, present AskUserQuestion:
 
 ---
 
+## Phase 3.7: Development Methodology Auto-Configuration
+
+Goal: Automatically set the `development_mode` in `.moai/config/sections/quality.yaml` based on the project analysis results from Phase 0 and Phase 1.
+
+[HARD] This phase runs automatically without user interaction. No AskUserQuestion is needed.
+
+Auto-Detection Logic:
+
+For New Projects (Phase 0 classified as "New Project"):
+- Set `development_mode: "hybrid"` (TDD for new features, DDD for structure)
+- Rationale: New projects benefit from test-first development for new features while maintaining DDD structure for overall architecture
+
+For Existing Projects (Phase 0 classified as "Existing Project"):
+- Step 1: Check for existing test files using Glob patterns (*_test.go, *_test.py, *.test.ts, *.test.js, *.spec.ts, *.spec.js, test_*.py, tests/, __tests__/, spec/)
+- Step 2: Estimate test coverage level based on test file count relative to source file count:
+  - No test files found (0%): Set `development_mode: "ddd"` (need characterization tests first)
+  - Few test files (< 10% ratio): Set `development_mode: "ddd"` (insufficient coverage for TDD)
+  - Moderate test files (10-49% ratio): Set `development_mode: "hybrid"` (expand with DDD, new code with TDD)
+  - Good test files (>= 50% ratio): Set `development_mode: "hybrid"` (sufficient base, hybrid approach)
+
+Implementation:
+- Read current `.moai/config/sections/quality.yaml`
+- Update only the `constitution.development_mode` field
+- Preserve all other settings in quality.yaml unchanged
+- Use the Bash tool with a targeted YAML update (read, modify, write back)
+
+Methodology-to-Mode Mapping Reference:
+
+| Project State | Test Ratio | development_mode | Rationale |
+|--------------|-----------|------------------|-----------|
+| New (no code) | N/A | hybrid | Clean slate, TDD for features + DDD structure |
+| Existing | >= 50% | hybrid | Sufficient test base for hybrid development |
+| Existing | 10-49% | hybrid | Partial tests, expand with DDD then TDD for new |
+| Existing | < 10% | ddd | No tests, gradual characterization test creation |
+
+---
+
 ## Phase 4: Completion
 
 Display completion message in user's conversation_language:
@@ -257,8 +294,9 @@ Next Steps (AskUserQuestion):
 - Phase 1: Explore subagent (codebase analysis)
 - Phase 3: manager-docs subagent (documentation generation)
 - Phase 3.5: expert-devops subagent (optional LSP installation)
+- Phase 3.7: MoAI orchestrator (automatic development_mode configuration, no user interaction)
 
 ---
 
-Version: 2.0.0
-Last Updated: 2026-02-07
+Version: 2.1.0
+Last Updated: 2026-02-10

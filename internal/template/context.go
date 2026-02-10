@@ -68,7 +68,7 @@ func NewTemplateContext(opts ...ContextOption) *TemplateContext {
 		ErrorMessages:            "en",
 		GitMode:                  "manual",
 		GitHubUsername:           "",
-		DevelopmentMode:          string(models.ModeDDD),
+		DevelopmentMode:          string(models.ModeHybrid),
 		EnforceQuality:           true,
 		TestCoverageTarget:       config.DefaultTestCoverageTarget,
 		AutoClear:                true,
