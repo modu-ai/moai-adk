@@ -3,6 +3,7 @@ package shell
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -47,10 +48,16 @@ func TestGetConfigFile(t *testing.T) {
 			wantSuffixes: []string{"config.fish"},
 		},
 		{
-			name:         "unknown_defaults_to_profile",
-			shell:        ShellUnknown,
-			preferLogin:  true,
-			wantSuffixes: []string{".profile", ".bash_profile"},
+			name:        "unknown_defaults_to_profile",
+			shell:       ShellUnknown,
+			preferLogin: true,
+			// On Windows, ShellUnknown defaults to PowerShell profile
+			wantSuffixes: func() []string {
+				if runtime.GOOS == "windows" {
+					return []string{".ps1", "profile.ps1"}
+				}
+				return []string{".profile", ".bash_profile"}
+			}(),
 		},
 		{
 			name:         "powershell",
