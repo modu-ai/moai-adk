@@ -25,6 +25,7 @@ if "%~1"=="--install-dir" (
 )
 if "%~1"=="-h" goto show_help
 if "%~1"=="--help" goto show_help
+if "%~1"=="/?" goto show_help
 echo [ERROR] Unknown option: %~1
 echo Use --help for usage information
 exit /b 1
