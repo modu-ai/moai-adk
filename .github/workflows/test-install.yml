@@ -2,14 +2,14 @@ name: Test Installation Scripts
 
 on:
   push:
-    branches: [main, moai-go-v2]
+    branches: [main]
     paths:
       - 'install.sh'
       - 'install.ps1'
       - 'install.bat'
       - '.github/workflows/test-install.yml'
   pull_request:
-    branches: [main, moai-go-v2]
+    branches: [main]
     paths:
       - 'install.sh'
       - 'install.ps1'
@@ -55,37 +55,28 @@ jobs:
           echo "=== First 20 lines ==="
           head -20 install.sh
 
-  # Job 2: Test install.ps1 on all platforms
-  test-ps1:
-    name: Test install.ps1 (${{ matrix.os }}, ${{ matrix.shell }})
+  # Job 2a: Test install.ps1 with PowerShell Core (pwsh) on all platforms
+  test-ps1-pwsh:
+    name: Test install.ps1 (${{ matrix.os }}, pwsh)
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: pwsh
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # PowerShell Core (pwsh) on all platforms
-          - os: ubuntu-latest
-            shell: pwsh
-          - os: macos-latest
-            shell: pwsh
-          - os: windows-latest
-            shell: pwsh
-          # Windows PowerShell 5.1 on Windows
-          - os: windows-latest
-            shell: powershell
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Test --help flag
-        shell: ${{ matrix.shell }}
         run: |
           .\install.ps1 -help
-          echo "Exit code: $?"
+          Write-Host "Exit code: $LASTEXITCODE"
 
       - name: Validate PowerShell syntax
-        shell: pwsh
         run: |
           $errors = $null
           $null = [System.Management.Automation.PSParser]::Tokenize((Get-Content install.ps1 -Raw), [ref]$errors)
@@ -97,7 +88,6 @@ jobs:
           Write-Host "PowerShell syntax validation passed"
 
       - name: Test irm pipe iex compatibility
-        shell: pwsh
         run: |
           # Simulate irm | iex by reading file content and creating a ScriptBlock
           $content = Get-Content install.ps1 -Raw
@@ -112,10 +102,58 @@ jobs:
           }
 
       - name: Display script info
-        shell: ${{ matrix.shell }}
         run: |
           Write-Host "=== Script Information ==="
-          (Get-Content install.ps1 | Measure-Object -Line).Lines "lines"
+          Write-Host "$((Get-Content install.ps1 | Measure-Object -Line).Lines) lines"
+          Write-Host "=== First 20 lines ==="
+          Get-Content install.ps1 | Select-Object -First 20
+
+  # Job 2b: Test install.ps1 with Windows PowerShell 5.1
+  test-ps1-powershell:
+    name: Test install.ps1 (windows-latest, powershell)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: powershell
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Test --help flag
+        run: |
+          .\install.ps1 -help
+          Write-Host "Exit code: $LASTEXITCODE"
+
+      - name: Validate PowerShell syntax
+        run: |
+          $errors = $null
+          $null = [System.Management.Automation.PSParser]::Tokenize((Get-Content install.ps1 -Raw), [ref]$errors)
+          if ($errors) {
+            Write-Host "PowerShell syntax errors found:"
+            $errors | Format-List
+            exit 1
+          }
+          Write-Host "PowerShell syntax validation passed"
+
+      - name: Test irm pipe iex compatibility
+        run: |
+          # Simulate irm | iex by reading file content and creating a ScriptBlock
+          $content = Get-Content install.ps1 -Raw
+          try {
+            $sb = [ScriptBlock]::Create($content)
+            Write-Host "irm | iex compatibility: PASSED (ScriptBlock parsed successfully)"
+          }
+          catch {
+            Write-Host "irm | iex compatibility: FAILED"
+            Write-Host "Error: $_"
+            exit 1
+          }
+
+      - name: Display script info
+        run: |
+          Write-Host "=== Script Information ==="
+          Write-Host "$((Get-Content install.ps1 | Measure-Object -Line).Lines) lines"
           Write-Host "=== First 20 lines ==="
           Get-Content install.ps1 | Select-Object -First 20
 
@@ -195,7 +233,7 @@ jobs:
   summary:
     name: Test Summary
     runs-on: ubuntu-latest
-    needs: [test-sh, test-ps1, test-bat, compatibility-check]
+    needs: [test-sh, test-ps1-pwsh, test-ps1-powershell, test-bat, compatibility-check]
     if: always()
 
     steps:
@@ -203,12 +241,14 @@ jobs:
         run: |
           echo "=== Test Results Summary ==="
           echo "test-sh: ${{ needs.test-sh.result }}"
-          echo "test-ps1: ${{ needs.test-ps1.result }}"
+          echo "test-ps1-pwsh: ${{ needs.test-ps1-pwsh.result }}"
+          echo "test-ps1-powershell: ${{ needs.test-ps1-powershell.result }}"
           echo "test-bat: ${{ needs.test-bat.result }}"
           echo "compatibility-check: ${{ needs.compatibility-check.result }}"
 
           if [[ "${{ needs.test-sh.result }}" == "failure" ]] || \
-             [[ "${{ needs.test-ps1.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-ps1-pwsh.result }}" == "failure" ]] || \
+             [[ "${{ needs.test-ps1-powershell.result }}" == "failure" ]] || \
              [[ "${{ needs.test-bat.result }}" == "failure" ]] || \
              [[ "${{ needs.compatibility-check.result }}" == "failure" ]]; then
             echo ""
