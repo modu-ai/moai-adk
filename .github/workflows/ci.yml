@@ -119,7 +119,7 @@ jobs:
           echo "Built ${BINARY_NAME}"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: moai-${{ matrix.goos }}-${{ matrix.goarch }}
           path: moai-${{ matrix.goos }}-${{ matrix.goarch }}*

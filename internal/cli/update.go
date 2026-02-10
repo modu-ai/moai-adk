@@ -1321,7 +1321,6 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 	_, _ = fmt.Fprintln(out, "✓ Configuration updated successfully.")
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintf(out, "  Language: %s\n", result.Locale)
-	_, _ = fmt.Fprintf(out, "  Development mode: %s\n", result.DevelopmentMode)
 
 	return nil
 }
@@ -1338,43 +1337,8 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		return fmt.Errorf("write language.yaml: %w", err)
 	}
 
-	// Update quality.yaml if development mode changed
-	if result.DevelopmentMode != "" {
-		qualityPath := filepath.Join(sectionsDir, defs.QualityYAML)
-		// Read existing content
-		qualityData, err := os.ReadFile(qualityPath)
-		if err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("read quality.yaml: %w", err)
-		}
-
-		// Parse YAML
-		var quality map[string]interface{}
-		if len(qualityData) > 0 {
-			if err := yaml.Unmarshal(qualityData, &quality); err != nil {
-				return fmt.Errorf("parse quality.yaml: %w", err)
-			}
-		} else {
-			quality = make(map[string]interface{})
-		}
-
-		// Update development_mode
-		if constitution, ok := quality["constitution"].(map[string]interface{}); ok {
-			constitution["development_mode"] = result.DevelopmentMode
-		} else {
-			quality["constitution"] = map[string]interface{}{
-				"development_mode": result.DevelopmentMode,
-			}
-		}
-
-		// Write back
-		updatedData, err := yaml.Marshal(quality)
-		if err != nil {
-			return fmt.Errorf("marshal quality.yaml: %w", err)
-		}
-		if err := os.WriteFile(qualityPath, updatedData, defs.FilePerm); err != nil {
-			return fmt.Errorf("write quality.yaml: %w", err)
-		}
-	}
+	// Development mode is no longer configured via wizard.
+	// It defaults to "hybrid" and is auto-configured by /moai project workflow.
 
 	// Update workflow.yaml with Agent Teams settings
 	if result.AgentTeamsMode != "" {
@@ -1524,9 +1488,8 @@ func ensureGlobalSettingsEnv() error {
 
 	needsUpdate := false
 
-	// Clean up orphaned SessionEnd hook that references handle-session-end.sh
-	// This hook was registered but the script was never deployed to $HOME/.claude/hooks/moai/
-	needsUpdate = cleanOrphanedSessionEndHook(existingSettings) || needsUpdate
+	// Clean up legacy hooks including orphaned scripts and deprecated Python hooks
+	needsUpdate = cleanLegacyHooks(existingSettings) || needsUpdate
 
 	// Clean up moai-managed settings that have been migrated to project level.
 	// Preserve any user-added custom env keys but remove moai-specific ones.
@@ -1585,96 +1548,96 @@ func ensureGlobalSettingsEnv() error {
 	return nil
 }
 
-// cleanOrphanedSessionEndHook removes the orphaned handle-session-end.sh hook from global settings.
-// This hook was previously registered by ensureGlobalSettingsEnv but the script was never deployed
-// to $HOME/.claude/hooks/moai/. Project-level hooks handle SessionEnd instead.
+// cleanLegacyHooks removes legacy hook patterns from global settings.
+// This includes orphaned scripts that were never deployed and deprecated Python-based hooks.
 // Returns true if any cleanup was performed.
-func cleanOrphanedSessionEndHook(settings map[string]interface{}) bool {
-	existingHooks, hasHooks := settings["hooks"]
-	if !hasHooks {
-		return false
+func cleanLegacyHooks(settings map[string]interface{}) bool {
+	// List of legacy hook patterns to remove
+	legacyPatterns := []string{
+		"handle-session-end.sh",
+		"session_end__rank_submit",
+		"post_tool__code_formatter.py",
+		"post_tool__linter.py",
+		"post_tool__ast_grep_scan.py",
 	}
 
-	hooksMap, ok := existingHooks.(map[string]interface{})
+	hooksMap, ok := settings["hooks"].(map[string]interface{})
 	if !ok {
 		return false
 	}
 
-	sessionEndHooks, hasSessionEnd := hooksMap["SessionEnd"]
-	if !hasSessionEnd {
-		return false
-	}
-
-	sessionEndList, ok := sessionEndHooks.([]interface{})
-	if !ok {
-		return false
-	}
-
-	// Filter out handle-session-end.sh hooks (orphaned) and Python-based legacy hooks
-	var cleanedHooks []interface{}
 	modified := false
-
-	for _, hookGroup := range sessionEndList {
-		groupMap, ok := hookGroup.(map[string]interface{})
+	for hookType, hookListInterface := range hooksMap {
+		hookList, ok := hookListInterface.([]interface{})
 		if !ok {
-			cleanedHooks = append(cleanedHooks, hookGroup)
 			continue
 		}
 
-		hooksList, ok := groupMap["hooks"].([]interface{})
-		if !ok {
-			cleanedHooks = append(cleanedHooks, hookGroup)
-			continue
-		}
-
-		var cleanedGroupHooks []interface{}
-		for _, hookEntry := range hooksList {
-			entryMap, ok := hookEntry.(map[string]interface{})
+		var cleanedHooks []interface{}
+		for _, hookGroup := range hookList {
+			groupMap, ok := hookGroup.(map[string]interface{})
 			if !ok {
-				cleanedGroupHooks = append(cleanedGroupHooks, hookEntry)
+				cleanedHooks = append(cleanedHooks, hookGroup)
 				continue
 			}
 
-			command, ok := entryMap["command"].(string)
+			hooksList, ok := groupMap["hooks"].([]interface{})
 			if !ok {
-				cleanedGroupHooks = append(cleanedGroupHooks, hookEntry)
+				cleanedHooks = append(cleanedHooks, hookGroup)
 				continue
 			}
 
-			// Remove orphaned handle-session-end.sh hook and legacy Python hooks
-			if strings.Contains(command, "handle-session-end.sh") ||
-				strings.Contains(command, "session_end__rank_submit") {
+			var cleanedGroupHooks []interface{}
+			for _, hookEntry := range hooksList {
+				entryMap, ok := hookEntry.(map[string]interface{})
+				if !ok {
+					cleanedGroupHooks = append(cleanedGroupHooks, hookEntry)
+					continue
+				}
+
+				command, ok := entryMap["command"].(string)
+				if !ok {
+					cleanedGroupHooks = append(cleanedGroupHooks, hookEntry)
+					continue
+				}
+
+				// Check if command contains any legacy pattern
+				shouldRemove := false
+				for _, pattern := range legacyPatterns {
+					if strings.Contains(command, pattern) {
+						shouldRemove = true
+						break
+					}
+				}
+
+				if shouldRemove {
+					modified = true
+				} else {
+					cleanedGroupHooks = append(cleanedGroupHooks, hookEntry)
+				}
+			}
+
+			if len(cleanedGroupHooks) > 0 {
+				groupMap["hooks"] = cleanedGroupHooks
+				cleanedHooks = append(cleanedHooks, groupMap)
+			} else {
 				modified = true
-				continue // Skip (remove) this hook
 			}
-
-			cleanedGroupHooks = append(cleanedGroupHooks, hookEntry)
 		}
 
-		if len(cleanedGroupHooks) > 0 {
-			groupMap["hooks"] = cleanedGroupHooks
-			cleanedHooks = append(cleanedHooks, groupMap)
+		if len(cleanedHooks) > 0 {
+			hooksMap[hookType] = cleanedHooks
 		} else {
+			delete(hooksMap, hookType)
 			modified = true
 		}
 	}
 
-	if !modified {
-		return false
-	}
-
-	if len(cleanedHooks) > 0 {
-		hooksMap["SessionEnd"] = cleanedHooks
-	} else {
-		delete(hooksMap, "SessionEnd")
-	}
-
-	// If hooks map is now empty, remove it entirely
-	if len(hooksMap) == 0 {
+	if modified && len(hooksMap) == 0 {
 		delete(settings, "hooks")
 	}
 
-	return true
+	return modified
 }
 
 // execCommand executes a command and returns its output.

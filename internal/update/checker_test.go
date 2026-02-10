@@ -3,8 +3,10 @@ package update
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -249,22 +251,40 @@ func TestCompareSemver(t *testing.T) {
 func TestChecker_CheckLatest_WithChecksums(t *testing.T) {
 	t.Parallel()
 
+	// Platform-specific expected values based on runtime.GOOS and runtime.GOARCH
+	checksumMap := map[string]string{
+		"darwin_amd64":  "392f7de6e7b21c1e4d1681a424ff254ab51b76fa0a8688e7d76c71226b3f520f",
+		"darwin_arm64":  "99bf529b15df380c912d2be43b475122000ff9d6e1bb9069699b6199f9ef5d90",
+		"linux_amd64":   "a1423b990826e23bfb830a22bb9f4c42254e12a6ddfc2d958abd53e946e789c2",
+		"linux_arm64":   "b2534c001927f34cfb941b33cc10e6443355e23d7cfa2d069800c7200a0ef6e3",
+		"windows_amd64": "c3645d112038a45dac052c44dd21f7554466f34e8dfb3e170911d8311b1fa7f4",
+	}
+
 	// Create a mock checksums.txt server
 	checksumsTS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		checksumsContent := `392f7de6e7b21c1e4d1681a424ff254ab51b76fa0a8688e7d76c71226b3f520f  moai-adk_1.2.0_darwin_amd64.tar.gz
 99bf529b15df380c912d2be43b475122000ff9d6e1bb9069699b6199f9ef5d90  moai-adk_1.2.0_darwin_arm64.tar.gz
-a1423b990826e23bfb830a22bb9f4c42254e12a6ddfc2d958abd53e946e789c2  moai-adk_1.2.0_linux_amd64.tar.gz`
+a1423b990826e23bfb830a22bb9f4c42254e12a6ddfc2d958abd53e946e789c2  moai-adk_1.2.0_linux_amd64.tar.gz
+b2534c001927f34cfb941b33cc10e6443355e23d7cfa2d069800c7200a0ef6e3  moai-adk_1.2.0_linux_arm64.tar.gz
+c3645d112038a45dac052c44dd21f7554466f34e8dfb3e170911d8311b1fa7f4  moai-adk_1.2.0_windows_amd64.zip`
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(checksumsContent))
 	}))
 	defer checksumsTS.Close()
 
+	// Build platform-specific archive name
+	ext := "tar.gz"
+	if runtime.GOOS == "windows" {
+		ext = "zip"
+	}
+	archiveName := fmt.Sprintf("moai-adk_1.2.0_%s_%s.%s", runtime.GOOS, runtime.GOARCH, ext)
+
 	release := githubRelease{
 		TagName:     "v1.2.0",
 		PublishedAt: time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC),
 		Assets: []githubAsset{
-			{Name: "moai-adk_1.2.0_darwin_arm64.tar.gz", BrowserDownloadURL: "https://example.com/moai.tar.gz"},
+			{Name: archiveName, BrowserDownloadURL: "https://example.com/moai.tar.gz"},
 			{Name: "checksums.txt", BrowserDownloadURL: checksumsTS.URL},
 		},
 	}
@@ -278,8 +298,12 @@ a1423b990826e23bfb830a22bb9f4c42254e12a6ddfc2d958abd53e946e789c2  moai-adk_1.2.0
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Verify checksum was extracted correctly
-	expectedChecksum := "99bf529b15df380c912d2be43b475122000ff9d6e1bb9069699b6199f9ef5d90"
+	// Verify checksum was extracted correctly for this platform
+	platformKey := runtime.GOOS + "_" + runtime.GOARCH
+	expectedChecksum, ok := checksumMap[platformKey]
+	if !ok {
+		t.Skipf("no expected checksum for platform %s", platformKey)
+	}
 	if info.Checksum != expectedChecksum {
 		t.Errorf("Checksum = %q, want %q", info.Checksum, expectedChecksum)
 	}
@@ -294,11 +318,18 @@ func TestChecker_CheckLatest_ChecksumDownloadFailed(t *testing.T) {
 	}))
 	defer checksumsTS.Close()
 
+	// Build platform-specific archive name so the asset is always found
+	ext := "tar.gz"
+	if runtime.GOOS == "windows" {
+		ext = "zip"
+	}
+	archiveName := fmt.Sprintf("moai-adk_1.2.0_%s_%s.%s", runtime.GOOS, runtime.GOARCH, ext)
+
 	release := githubRelease{
 		TagName:     "v1.2.0",
 		PublishedAt: time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC),
 		Assets: []githubAsset{
-			{Name: "moai-adk_1.2.0_darwin_arm64.tar.gz", BrowserDownloadURL: "https://example.com/moai.tar.gz"},
+			{Name: archiveName, BrowserDownloadURL: "https://example.com/moai.tar.gz"},
 			{Name: "checksums.txt", BrowserDownloadURL: checksumsTS.URL},
 		},
 	}

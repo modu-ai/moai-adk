@@ -32,7 +32,7 @@ Usage patterns:
 Examples:
   moai init my-app           Creates ./my-app/ and initializes MoAI inside
   moai init .                Initializes MoAI in the current directory
-  moai init --mode hybrid    Initialize with hybrid development mode`,
+  moai init --mode hybrid    Initialize with specific development mode (default: hybrid)`,
 	Args:    cobra.MaximumNArgs(1),
 	PreRunE: validateInitFlags,
 	RunE:    runInit,
@@ -47,7 +47,7 @@ func init() {
 	initCmd.Flags().String("framework", "", "Framework name (default: auto-detect or \"none\")")
 	initCmd.Flags().String("username", "", "User display name")
 	initCmd.Flags().String("conv-lang", "", "Conversation language code (e.g., \"en\", \"ko\")")
-	initCmd.Flags().String("mode", "", "Development mode: ddd, tdd, or hybrid (default: auto-detect)")
+	initCmd.Flags().String("mode", "", "Development mode: ddd, tdd, or hybrid (default: hybrid, auto-configured by /moai project)")
 	initCmd.Flags().String("git-mode", "", "Git workflow mode: manual, personal, or team (default: manual)")
 	initCmd.Flags().String("github-username", "", "GitHub username (required for personal/team modes)")
 	initCmd.Flags().String("git-commit-lang", "", "Git commit message language (default: en)")
@@ -231,9 +231,8 @@ func runInit(cmd *cobra.Command, args []string) error {
 		if opts.ConvLang == "" {
 			opts.ConvLang = result.Locale
 		}
-		if opts.DevelopmentMode == "" {
-			opts.DevelopmentMode = result.DevelopmentMode
-		}
+		// DevelopmentMode defaults to "hybrid" via template context;
+		// auto-configured later by /moai project workflow based on project analysis.
 		if opts.GitMode == "" {
 			opts.GitMode = result.GitMode
 		}
@@ -289,7 +288,6 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	// Display success message
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\n✓ MoAI project initialized successfully.\n")
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Development mode: %s\n", result.DevelopmentMode)
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Created %d directories and %d files.\n", len(result.CreatedDirs), len(result.CreatedFiles))
 	for _, w := range result.Warnings {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: %s\n", w)

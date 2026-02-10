@@ -74,6 +74,23 @@ We completely rewrote the Python-based MoAI-ADK (~73,000 lines) in Go.
 
 ---
 
+## System Requirements
+
+| Platform | Supported Environments | Notes |
+|----------|----------------------|-------|
+| macOS | Terminal, iTerm2 | Fully supported |
+| Linux | Bash, Zsh | Fully supported |
+| Windows | **WSL (recommended)**, PowerShell 7.x+ | Native cmd.exe is not supported |
+
+**Prerequisites:**
+- **Git** must be installed on all platforms
+- **Windows users**: [Git for Windows](https://gitforwindows.org/) is **required** (includes Git Bash)
+  - Use **WSL** (Windows Subsystem for Linux) for the best experience
+  - PowerShell 7.x or later is supported as an alternative
+  - Legacy Windows PowerShell 5.x and cmd.exe are **not supported**
+
+---
+
 ## Quick Start
 
 ### 1. Installation
@@ -84,11 +101,15 @@ We completely rewrote the Python-based MoAI-ADK (~73,000 lines) in Go.
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
 ```
 
-#### Windows PowerShell
+#### Windows (PowerShell 7.x+)
+
+> **Recommended**: Use WSL with the Linux installation command above for the best experience.
 
 ```powershell
 irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
 ```
+
+> Requires [Git for Windows](https://gitforwindows.org/) to be installed first.
 
 #### Build from Source (Go 1.25+)
 

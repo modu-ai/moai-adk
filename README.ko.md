@@ -74,6 +74,23 @@ Python 기반 MoAI-ADK(~73,000줄)를 Go로 완전히 재작성했습니다.
 
 ---
 
+## 시스템 요구사항
+
+| 플랫폼 | 지원 환경 | 비고 |
+|--------|----------|------|
+| macOS | Terminal, iTerm2 | 완전 지원 |
+| Linux | Bash, Zsh | 완전 지원 |
+| Windows | **WSL (권장)**, PowerShell 7.x+ | 네이티브 cmd.exe 미지원 |
+
+**필수 조건:**
+- **Git**이 모든 플랫폼에서 설치되어 있어야 합니다
+- **Windows 사용자**: [Git for Windows](https://gitforwindows.org/) **필수 설치** (Git Bash 포함)
+  - **WSL** (Windows Subsystem for Linux) 사용을 권장합니다
+  - PowerShell 7.x 이상도 지원됩니다
+  - 레거시 Windows PowerShell 5.x 및 cmd.exe는 **지원하지 않습니다**
+
+---
+
 ## 빠른 시작
 
 ### 1. 설치
@@ -84,11 +101,15 @@ Python 기반 MoAI-ADK(~73,000줄)를 Go로 완전히 재작성했습니다.
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
 ```
 
-#### Windows PowerShell
+#### Windows (PowerShell 7.x+)
+
+> **권장**: 최상의 경험을 위해 WSL에서 위의 Linux 설치 명령어를 사용하세요.
 
 ```powershell
 irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
 ```
+
+> [Git for Windows](https://gitforwindows.org/)가 먼저 설치되어 있어야 합니다.
 
 #### 소스에서 빌드 (Go 1.25+)
 
