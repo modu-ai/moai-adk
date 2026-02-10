@@ -259,7 +259,7 @@ func (i *projectInitializer) deployTemplates(ctx context.Context, opts InitOptio
 }
 
 // detectGoBinPath detects the Go binary installation path.
-// Returns the path where Go binaries are installed (e.g., "/Users/goos/go/bin").
+// Returns the path where Go binaries are installed (e.g., "/home/user/go/bin").
 func detectGoBinPath(homeDir string) string {
 	// Try GOBIN first (explicit override)
 	if output, err := exec.Command("go", "env", "GOBIN").Output(); err == nil {

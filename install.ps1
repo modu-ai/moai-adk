@@ -25,21 +25,112 @@ function Print-Warning {
     Write-Host $args
 }
 
-# Detect platform
+# Detect platform with multi-layer fallback system
 function Get-Platform {
-    $arch = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture
+    $detectedArch = $null
+    $detectionMethod = ""
 
-    $platform = switch ($arch) {
-        "X64"   { "windows_amd64" }
-        "Arm64" { "windows_arm64" }
+    # Layer 1: Environment Variables (most compatible)
+    # ARCHITEW6432 handles 32-bit PowerShell on 64-bit OS
+    if (-not $detectedArch) {
+        $arch = $env:ARCHITEW6432
+        if ($arch) {
+            $detectedArch = $arch
+            $detectionMethod = "ARCHITEW6432 environment variable"
+            Print-Info "Architecture detection (Layer 1 - Env Vars): $arch via $detectionMethod"
+        }
+        else {
+            $arch = $env:PROCESSOR_ARCHITECTURE
+            if ($arch) {
+                $detectedArch = $arch
+                $detectionMethod = "PROCESSOR_ARCHITECTURE environment variable"
+                Print-Info "Architecture detection (Layer 1 - Env Vars): $arch via $detectionMethod"
+            }
+        }
+    }
+
+    # Layer 2: .NET APIs (secondary fallback)
+    # If x86 detected, check if OS is 64-bit
+    if ($detectedArch -eq "x86" -or $detectedArch -eq "X86") {
+        try {
+            if ([Environment]::Is64BitOperatingSystem) {
+                $detectedArch = "AMD64"
+                $detectionMethod = ".NET API: Environment.Is64BitOperatingSystem"
+                Print-Info "Architecture detection (Layer 2 - .NET API): x86 detected but OS is 64-bit, upgrading to AMD64"
+            }
+        }
+        catch {
+            Print-Warning "Failed to check 64-bit OS via .NET API: $_"
+        }
+    }
+
+    # Layer 3: WMI Query (fallback)
+    if (-not $detectedArch) {
+        try {
+            $wmi = Get-WmiObject -Class Win32_Processor -ErrorAction Stop | Select-Object -First 1
+            if ($wmi) {
+                $arch = $wmi.Architecture
+                # Map WMI architecture values: 0=x86, 9=x64, 12=ARM64
+                $detectedArch = switch ($arch) {
+                    "0"  { "x86" }
+                    "9"  { "AMD64" }
+                    "12" { "ARM64" }
+                    default { $arch }
+                }
+                $detectionMethod = "WMI Win32_Processor.Architecture ($arch)"
+                Print-Info "Architecture detection (Layer 3 - WMI): $arch via $detectionMethod"
+            }
+        }
+        catch {
+            Print-Warning "Failed to detect architecture via WMI: $_"
+        }
+    }
+
+    # Layer 4: Registry Check (last resort)
+    if (-not $detectedArch) {
+        try {
+            $regPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
+            $arch = (Get-ItemProperty -Path $regPath -ErrorAction Stop).PROCESSOR_ARCHITECTURE
+            if ($arch) {
+                $detectedArch = $arch
+                $detectionMethod = "Registry PROCESSOR_ARCHITECTURE"
+                Print-Info "Architecture detection (Layer 4 - Registry): $arch via $detectionMethod"
+            }
+        }
+        catch {
+            Print-Warning "Failed to detect architecture via Registry: $_"
+        }
+    }
+
+    # Validate detection result
+    if (-not $detectedArch) {
+        Print-Error "Failed to detect system architecture through all detection methods"
+        Print-Error "Please report this issue at: https://github.com/modu-ai/moai-adk/issues"
+        Print-Info "System information:"
+        Write-Host "  - ARCHITEW6432: $env:ARCHITEW6432" -ForegroundColor Gray
+        Write-Host "  - PROCESSOR_ARCHITECTURE: $env:PROCESSOR_ARCHITECTURE" -ForegroundColor Gray
+        Write-Host "  - Is64BitOperatingSystem: $([Environment]::Is64BitOperatingSystem)" -ForegroundColor Gray
+        exit 1
+    }
+
+    # Normalize and map architecture to platform string
+    $normalizedArch = $detectedArch.ToUpper()
+
+    $platform = switch -Exact ($normalizedArch) {
+        "AMD64"   { "windows_amd64" }
+        "X64"     { "windows_amd64" }
+        "X86"     { "windows_amd64" }  # Should be upgraded to 64-bit if running on 64-bit OS
+        "ARM64"   { "windows_arm64" }
+        "ARM"     { "windows_arm64" }
         default {
-            Print-Error "Unsupported architecture: $arch"
-            Print-Info "Supported architectures: x64, arm64"
+            Print-Error "Unsupported architecture: $normalizedArch"
+            Print-Info "Supported architectures: x86, AMD64, X64, ARM64"
+            Print-Info "Detected via: $detectionMethod"
             exit 1
         }
     }
 
-    Print-Success "Detected platform: $platform"
+    Print-Success "Detected platform: $platform (via $detectionMethod)"
     return $platform
 }
 
