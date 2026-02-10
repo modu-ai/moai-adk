@@ -33,7 +33,7 @@ type checker struct {
 
 // NewChecker creates a Checker that queries the given API URL.
 // The apiURL should be the base URL for the releases endpoint
-// (e.g., "https://api.github.com/repos/modu-ai/moai-adk-go/releases/latest").
+// (e.g., "https://api.github.com/repos/modu-ai/moai-adk/releases/latest").
 // For testing, pass the httptest.Server URL directly.
 func NewChecker(apiURL string, client *http.Client) Checker {
 	if client == nil {
@@ -54,7 +54,7 @@ func (c *checker) CheckLatest(ctx context.Context) (*VersionInfo, error) {
 		return nil, fmt.Errorf("checker: create request: %w", err)
 	}
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
-	req.Header.Set("User-Agent", "moai-adk-go-updater")
+	req.Header.Set("User-Agent", "moai-adk-updater")
 
 	resp, err := c.client.Do(req)
 	if err != nil {

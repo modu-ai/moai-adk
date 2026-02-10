@@ -1688,7 +1688,7 @@ func execCommand(name string, args ...string) (string, error) {
 }
 
 // detectGoBinPathForUpdate detects the Go binary installation path for template rendering.
-// Returns the path where Go binaries are installed (e.g., "/Users/goos/go/bin").
+// Returns the path where Go binaries are installed (e.g., "/home/user/go/bin").
 func detectGoBinPathForUpdate(homeDir string) string {
 	// Try GOBIN first (explicit override)
 	if output, err := execCommand("go", "env", "GOBIN"); err == nil {

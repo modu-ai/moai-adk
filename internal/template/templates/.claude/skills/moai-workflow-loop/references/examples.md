@@ -759,7 +759,7 @@ jobs:
 
       - name: Install MoAI-ADK
         run: |
-          go install github.com/modu-ai/moai-adk-go/cmd/moai@latest
+          go install github.com/modu-ai/moai-adk/cmd/moai@latest
           moai init
 
       - name: Run Ralph Loop
@@ -799,7 +799,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          go install github.com/modu-ai/moai-adk-go/cmd/moai@latest
+          go install github.com/modu-ai/moai-adk/cmd/moai@latest
           moai init
 
       - name: Run ${{ matrix.check }} Check
@@ -869,7 +869,7 @@ FROM python:3.13-slim
 WORKDIR /app
 
 # Install MoAI-ADK
-RUN go install github.com/modu-ai/moai-adk-go/cmd/moai@latest
+RUN go install github.com/modu-ai/moai-adk/cmd/moai@latest
 
 # Copy project
 COPY . .

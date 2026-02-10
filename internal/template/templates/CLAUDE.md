@@ -154,7 +154,7 @@ MoAI-ADK implements LSP-based quality gates:
 
 ### Development Safeguards (4 HARD Rules)
 
-These rules ensure code quality and prevent regressions in the moai-adk-go codebase.
+These rules ensure code quality and prevent regressions in the project codebase.
 
 **Rule 1: Approach-First Development**
 
@@ -190,7 +190,7 @@ When fixing bugs:
 
 ### Go-Specific Guidelines
 
-For moai-adk-go development:
+For Go development:
 - Run `go test -race ./...` for concurrency safety
 - Use table-driven tests for comprehensive coverage
 - Maintain 85%+ test coverage per package
