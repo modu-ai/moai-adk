@@ -9,6 +9,94 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.2.6] - 2026-02-10
+
+### Summary
+
+Feature-rich release introducing comprehensive Agent Teams integration and Sequential Thinking MCP. Added 28 skill assignments across 15 agents for enhanced domain expertise, and introduced the moai-foundation-thinking skill for deep analysis workflows.
+
+### Breaking Changes
+
+None
+
+### Added
+
+- **Agent Teams Integration**: Comprehensive team mode support with TeamCreate, SendMessage, and TeamDelete APIs
+- **Team Coordination Rules**: Parallel execution patterns, quality gates (TeammateIdle, TaskCompleted hooks)
+- **Team Workflow References**: Prerequisites, fallback strategies, and team mode methodology documentation
+- **Sequential Thinking Skill**: moai-foundation-thinking with critical evaluation, deep questioning, and diverge-converge modules
+- **Agent Skills Enhancement**: 28 skill assignments across 15 agents (expert-backend, expert-frontend, manager-spec, team agents)
+- **Hook System**: TeammateIdle and TaskCompleted hook configurations for team quality validation
+- **FAQ Documentation**: Added FAQ section for statusline and external import warnings
+- **Update Fix**: Clean up global hooks directory during `moai update` to prevent stale hooks
+
+### Changed
+
+- **CLAUDE.md**: Updated sections 5/8/14/15 with team patterns, coordination, and file ownership
+- **Agent Authoring**: Enhanced with team invocation patterns and MCP references
+- **Workflow Modes**: Added Team Mode Methodology section for DDD/TDD/Hybrid in team context
+
+### Removed
+
+- **Review Workflow**: Removed redundant `/moai review` workflow (functionality covered by `run` quality gates)
+- **team-review Pattern**: Removed from workflow.yaml configuration
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.2.6] - 2026-02-10 (한국어)
+
+### 요약
+
+포괄적인 Agent Teams 통합과 Sequential Thinking MCP를 도입한 기능 중심 릴리스입니다. 15개 에이전트에 28개 스킬 할당을 추가하여 도메인 전문성을 강화했으며, 심층 분석 워크플로우를 위한 moai-foundation-thinking 스킬을 도입했습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 추가됨 (Added)
+
+- **Agent Teams 통합**: TeamCreate, SendMessage, TeamDelete API를 포함한 포괄적인 팀 모드 지원
+- **팀 조정 규칙**: 병렬 실행 패턴, 품질 게이트 (TeammateIdle, TaskCompleted 훅)
+- **팀 워크플로우 참조**: 전제 조건, 폴백 전략, 팀 모드 방법론 문서
+- **Sequential Thinking 스킬**: 비판적 평가, 심층 질문, 발산-수렴 모듈을 포함한 moai-foundation-thinking
+- **에이전트 스킬 강화**: 15개 에이전트에 28개 스킬 할당 (expert-backend, expert-frontend, manager-spec, team 에이전트)
+- **Hook 시스템**: 팀 품질 검증을 위한 TeammateIdle 및 TaskCompleted 훅 구성
+- **FAQ 문서**: 상태바 및 외부 임포트 경고에 대한 FAQ 섹션 추가
+- **Update 수정**: `moai update` 중 전역 훅 디렉토리 정리로 오래된 훅 방지
+
+### 변경됨 (Changed)
+
+- **CLAUDE.md**: 팀 패턴, 조정, 파일 소유권으로 섹션 5/8/14/15 업데이트
+- **에이전트 작성**: 팀 호출 패턴 및 MCP 참조로 강화
+- **워크플로우 모드**: 팀 컨텍스트에서 DDD/TDD/Hybrid를 위한 Team Mode Methodology 섹션 추가
+
+### 제거됨 (Removed)
+
+- **Review 워크플로우**: 중복된 `/moai review` 워크플로우 제거 (기능은 `run` 품질 게이트에서 처리)
+- **team-review 패턴**: workflow.yaml 구성에서 제거
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.2.5] - 2026-02-10
 
 ### Summary
