@@ -111,9 +111,11 @@ func (m *mockRankClient) GetUserRank(ctx context.Context) (*rank.UserRank, error
 		return m.getUserRankFunc(ctx)
 	}
 	return &rank.UserRank{
-		Username:      "testuser",
-		TotalTokens:   1000,
-		TotalSessions: 5,
+		Username: "testuser",
+		Stats: &rank.UserRankStats{
+			TotalTokens:   1000,
+			TotalSessions: 5,
+		},
 	}, nil
 }
 

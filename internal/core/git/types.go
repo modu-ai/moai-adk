@@ -179,6 +179,19 @@ type WorktreeManager interface {
 
 	// Root returns the repository root path.
 	Root() string
+
+	// Sync fetches the latest changes and merges/rebases a base branch
+	// into the worktree at the given path.
+	// Strategy can be "merge" (default) or "rebase".
+	Sync(wtPath, baseBranch, strategy string) error
+
+	// DeleteBranch deletes a local branch by name.
+	// Returns an error if the branch does not exist or is currently checked out.
+	DeleteBranch(name string) error
+
+	// IsBranchMerged checks whether a branch has been fully merged into
+	// the given base branch.
+	IsBranchMerged(branch, base string) (bool, error)
 }
 
 // Compile-time interface compliance checks are in each implementation file:

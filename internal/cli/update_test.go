@@ -141,13 +141,13 @@ func TestRunTemplateSync_Timeout(t *testing.T) {
 func TestGetProjectConfigVersion_FileSizeExceeds(t *testing.T) {
 	// Create temp directory
 	tmpDir := t.TempDir()
-	configDir := filepath.Join(tmpDir, ".moai", "config")
+	configDir := filepath.Join(tmpDir, ".moai", "config", "sections")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		t.Fatal(err)
 	}
 
 	// Create file larger than 10MB
-	configPath := filepath.Join(configDir, "config.yaml")
+	configPath := filepath.Join(configDir, "system.yaml")
 	largeContent := make([]byte, maxConfigSize+1)
 	if err := os.WriteFile(configPath, largeContent, 0644); err != nil {
 		t.Fatal(err)
@@ -168,14 +168,14 @@ func TestGetProjectConfigVersion_FileSizeExceeds(t *testing.T) {
 func TestGetProjectConfigVersion_ExactlyAtLimit(t *testing.T) {
 	// Create temp directory
 	tmpDir := t.TempDir()
-	configDir := filepath.Join(tmpDir, ".moai", "config")
+	configDir := filepath.Join(tmpDir, ".moai", "config", "sections")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		t.Fatal(err)
 	}
 
 	// Create file exactly at 10MB limit with valid YAML
-	configPath := filepath.Join(configDir, "config.yaml")
-	validYAML := "project:\n  template_version: \"1.0.0\"\n"
+	configPath := filepath.Join(configDir, "system.yaml")
+	validYAML := "moai:\n  template_version: \"1.0.0\"\n"
 	padding := make([]byte, maxConfigSize-len(validYAML))
 	for i := range padding {
 		padding[i] = '#' // YAML comment padding
@@ -199,14 +199,14 @@ func TestGetProjectConfigVersion_ExactlyAtLimit(t *testing.T) {
 func TestGetProjectConfigVersion_NormalSize(t *testing.T) {
 	// Create temp directory
 	tmpDir := t.TempDir()
-	configDir := filepath.Join(tmpDir, ".moai", "config")
+	configDir := filepath.Join(tmpDir, ".moai", "config", "sections")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		t.Fatal(err)
 	}
 
 	// Create normal-sized valid config file
-	configPath := filepath.Join(configDir, "config.yaml")
-	content := []byte("project:\n  template_version: \"2.5.3\"\n")
+	configPath := filepath.Join(configDir, "system.yaml")
+	content := []byte("moai:\n  template_version: \"2.5.3\"\n")
 	if err := os.WriteFile(configPath, content, 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -240,19 +240,17 @@ func TestGetProjectConfigVersion_NonExistent(t *testing.T) {
 func TestGetProjectConfigVersion_ValidParsing(t *testing.T) {
 	// Create temp directory
 	tmpDir := t.TempDir()
-	configDir := filepath.Join(tmpDir, ".moai", "config")
+	configDir := filepath.Join(tmpDir, ".moai", "config", "sections")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		t.Fatal(err)
 	}
 
 	// Create valid config file with various YAML structures
-	configPath := filepath.Join(configDir, "config.yaml")
-	content := []byte(`project:
+	configPath := filepath.Join(configDir, "system.yaml")
+	content := []byte(`moai:
   name: "test-project"
   template_version: "3.1.4"
   other_field: "value"
-user:
-  name: "testuser"
 `)
 	if err := os.WriteFile(configPath, content, 0644); err != nil {
 		t.Fatal(err)
@@ -274,7 +272,7 @@ user:
 func TestRunTemplateSync_VersionMatch_SkipsSync(t *testing.T) {
 	// Create temp directory with matching version
 	tmpDir := t.TempDir()
-	configDir := filepath.Join(tmpDir, ".moai", "config")
+	configDir := filepath.Join(tmpDir, ".moai", "config", "sections")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -283,8 +281,8 @@ func TestRunTemplateSync_VersionMatch_SkipsSync(t *testing.T) {
 	currentVersion := "test-version-1.0.0"
 
 	// Create config with matching version
-	configPath := filepath.Join(configDir, "config.yaml")
-	content := []byte("project:\n  template_version: \"" + currentVersion + "\"\n")
+	configPath := filepath.Join(configDir, "system.yaml")
+	content := []byte("moai:\n  template_version: \"" + currentVersion + "\"\n")
 	if err := os.WriteFile(configPath, content, 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -327,14 +325,14 @@ func TestRunTemplateSync_VersionMatch_SkipsSync(t *testing.T) {
 func TestRunTemplateSync_VersionMismatch_AttemptsSync(t *testing.T) {
 	// Create temp directory with non-matching version
 	tmpDir := t.TempDir()
-	configDir := filepath.Join(tmpDir, ".moai", "config")
+	configDir := filepath.Join(tmpDir, ".moai", "config", "sections")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		t.Fatal(err)
 	}
 
 	// Create config with different version
-	configPath := filepath.Join(configDir, "config.yaml")
-	content := []byte("project:\n  template_version: \"0.0.1\"\n")
+	configPath := filepath.Join(configDir, "system.yaml")
+	content := []byte("moai:\n  template_version: \"0.0.1\"\n")
 	if err := os.WriteFile(configPath, content, 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -402,14 +400,14 @@ func TestRunTemplateSync_GetVersionError_ContinuesSync(t *testing.T) {
 func TestRunTemplateSync_EmbeddedTemplatesError(t *testing.T) {
 	// Create minimal valid directory structure
 	tmpDir := t.TempDir()
-	configDir := filepath.Join(tmpDir, ".moai", "config")
+	configDir := filepath.Join(tmpDir, ".moai", "config", "sections")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		t.Fatal(err)
 	}
 
 	// Create config file
-	configPath := filepath.Join(configDir, "config.yaml")
-	content := []byte("project:\n  template_version: \"0.0.0\"\n")
+	configPath := filepath.Join(configDir, "system.yaml")
+	content := []byte("moai:\n  template_version: \"0.0.0\"\n")
 	if err := os.WriteFile(configPath, content, 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -449,14 +447,14 @@ func TestRunTemplateSync_EmbeddedTemplatesError(t *testing.T) {
 func TestGetProjectConfigVersion_EmptyTemplateVersion(t *testing.T) {
 	// Create temp directory
 	tmpDir := t.TempDir()
-	configDir := filepath.Join(tmpDir, ".moai", "config")
+	configDir := filepath.Join(tmpDir, ".moai", "config", "sections")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		t.Fatal(err)
 	}
 
 	// Create config without template_version field
-	configPath := filepath.Join(configDir, "config.yaml")
-	content := []byte("project:\n  name: \"test\"\n")
+	configPath := filepath.Join(configDir, "system.yaml")
+	content := []byte("moai:\n  name: \"test\"\n")
 	if err := os.WriteFile(configPath, content, 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -475,13 +473,13 @@ func TestGetProjectConfigVersion_EmptyTemplateVersion(t *testing.T) {
 func TestGetProjectConfigVersion_InvalidYAML(t *testing.T) {
 	// Create temp directory
 	tmpDir := t.TempDir()
-	configDir := filepath.Join(tmpDir, ".moai", "config")
+	configDir := filepath.Join(tmpDir, ".moai", "config", "sections")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		t.Fatal(err)
 	}
 
 	// Create config with invalid YAML
-	configPath := filepath.Join(configDir, "config.yaml")
+	configPath := filepath.Join(configDir, "system.yaml")
 	content := []byte("invalid: yaml: content: [[[")
 	if err := os.WriteFile(configPath, content, 0644); err != nil {
 		t.Fatal(err)
@@ -521,10 +519,10 @@ func TestClassifyFileRisk(t *testing.T) {
 			want:     "high",
 		},
 		{
-			name:     "high risk config.yaml",
+			name:     "medium risk config.yaml",
 			filename: ".moai/config/config.yaml",
 			exists:   true,
-			want:     "high",
+			want:     "medium",
 		},
 		{
 			name:     "low risk new file",
@@ -814,9 +812,9 @@ func TestBackupMoaiConfig_CreateBackup(t *testing.T) {
 	}
 
 	// Create test files
-	configPath := filepath.Join(configDir, "config.yaml")
-	configContent := []byte("project:\n  name: \"test-project\"\n  template_version: \"1.0.0\"\n")
-	if err := os.WriteFile(configPath, configContent, 0644); err != nil {
+	systemPath := filepath.Join(sectionsDir, "system.yaml")
+	systemContent := []byte("moai:\n  name: \"test-project\"\n  template_version: \"1.0.0\"\n")
+	if err := os.WriteFile(systemPath, systemContent, 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -873,16 +871,16 @@ func TestBackupMoaiConfig_CreateBackup(t *testing.T) {
 		t.Error("backup directory should exist")
 	}
 
-	// Verify config.yaml was backed up
-	backupConfigPath := filepath.Join(actualBackupDir, "config.yaml")
-	if _, err := os.Stat(backupConfigPath); os.IsNotExist(err) {
-		t.Error("config.yaml should be backed up")
-	}
-
 	// Verify sections directory WAS backed up (full backup for restore capability)
 	backupSectionsPath := filepath.Join(actualBackupDir, "sections")
 	if _, err := os.Stat(backupSectionsPath); os.IsNotExist(err) {
 		t.Error("sections directory should be included in backup")
+	}
+
+	// Verify sections/system.yaml was backed up
+	backupSystemPath := filepath.Join(actualBackupDir, "sections", "system.yaml")
+	if _, err := os.Stat(backupSystemPath); os.IsNotExist(err) {
+		t.Error("sections/system.yaml should be backed up")
 	}
 
 	// Verify backup_metadata.json exists
@@ -913,16 +911,16 @@ func TestBackupMoaiConfig_CreateBackup(t *testing.T) {
 		t.Errorf("metadata backup_type should be 'config', got: %s", metadata.BackupType)
 	}
 
-	// Verify config.yaml is in backed_up_items
-	foundConfig := false
+	// Verify sections/system.yaml is in backed_up_items
+	foundSystem := false
 	for _, item := range metadata.BackedUpItems {
-		if item == ".moai/config/config.yaml" {
-			foundConfig = true
+		if item == ".moai/config/sections/system.yaml" {
+			foundSystem = true
 			break
 		}
 	}
-	if !foundConfig {
-		t.Error("config.yaml should be in backed_up_items")
+	if !foundSystem {
+		t.Errorf("sections/system.yaml should be in backed_up_items, got: %v", metadata.BackedUpItems)
 	}
 
 	// Verify sections files are in backed_up_items (full backup, no exclusions)
@@ -1101,39 +1099,35 @@ func TestRestoreMoaiConfig_MergeBehavior(t *testing.T) {
 
 	// Create config structure at the project root
 	configDir := filepath.Join(tmpDir, ".moai", "config")
+	sectionsDir := filepath.Join(configDir, "sections")
 
-	if err := os.MkdirAll(configDir, 0755); err != nil {
+	if err := os.MkdirAll(sectionsDir, 0755); err != nil {
 		t.Fatal(err)
 	}
 
-	// Create old config.yaml (backup will have this)
-	oldConfigPath := filepath.Join(configDir, "config.yaml")
-	oldConfigContent := []byte("project:\n  name: \"old-project\"\n  template_version: \"1.0.0\"\nuser:\n  name: \"testuser\"\n  custom_setting: \"custom_value\"\n")
-	if err := os.WriteFile(oldConfigPath, oldConfigContent, 0644); err != nil {
+	// Create old system.yaml (backup will have this)
+	// The "name" field is user-modified (differs from template default)
+	oldSystemPath := filepath.Join(sectionsDir, "system.yaml")
+	oldSystemContent := []byte("moai:\n  name: \"user-modified-name\"\n  template_version: \"1.0.0\"\n")
+	if err := os.WriteFile(oldSystemPath, oldSystemContent, 0644); err != nil {
 		t.Fatal(err)
 	}
 
-	// Create backup (sections/ is excluded per Python behavior)
+	// Create backup
 	backupDir, err := backupMoaiConfig(tmpDir)
 	if err != nil {
 		t.Fatalf("backupMoaiConfig failed: %v", err)
 	}
 
-	// Verify backup does NOT contain sections directory (it's excluded)
-	backupSectionsPath := filepath.Join(backupDir, "sections")
-	if _, err := os.Stat(backupSectionsPath); err == nil {
-		t.Error("sections directory should be excluded from backup")
+	// Verify backup contains sections/system.yaml
+	backupSystemPath := filepath.Join(backupDir, "sections", "system.yaml")
+	if _, err := os.Stat(backupSystemPath); os.IsNotExist(err) {
+		t.Error("backup should contain sections/system.yaml")
 	}
 
-	// Verify backup contains config.yaml
-	backupConfigPath := filepath.Join(backupDir, "config.yaml")
-	if _, err := os.Stat(backupConfigPath); os.IsNotExist(err) {
-		t.Error("backup should contain config.yaml")
-	}
-
-	// Now simulate template sync by replacing config.yaml with new version
-	newConfigContent := []byte("project:\n  name: \"new-project\"\n  template_version: \"2.0.0\"\n  new_field: \"value\"\n")
-	if err := os.WriteFile(oldConfigPath, newConfigContent, 0644); err != nil {
+	// Now simulate template sync by replacing system.yaml with new version
+	newSystemContent := []byte("moai:\n  name: \"new-project\"\n  template_version: \"2.0.0\"\n  new_field: \"value\"\n")
+	if err := os.WriteFile(oldSystemPath, newSystemContent, 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1142,15 +1136,15 @@ func TestRestoreMoaiConfig_MergeBehavior(t *testing.T) {
 		t.Fatalf("restoreMoaiConfig failed: %v", err)
 	}
 
-	// Read restored config.yaml
-	data, err := os.ReadFile(oldConfigPath)
+	// Read restored system.yaml
+	data, err := os.ReadFile(oldSystemPath)
 	if err != nil {
 		t.Fatalf("read restored file: %v", err)
 	}
 
-	// Verify custom_setting was preserved from old config (backup)
-	if !strings.Contains(string(data), "custom_setting") {
-		t.Error("custom_setting should be preserved from backup")
+	// Verify user-modified "name" was preserved from old config (backup)
+	if !strings.Contains(string(data), "user-modified-name") {
+		t.Errorf("user-modified name should be preserved from backup, got:\n%s", string(data))
 	}
 
 	// Verify new_field from new config is also present

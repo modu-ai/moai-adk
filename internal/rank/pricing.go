@@ -12,9 +12,16 @@ type ModelPricing struct {
 
 // modelPricingDB holds the pricing database for all Claude models.
 // Source: https://platform.claude.com/docs/en/about-claude/pricing
-// Last updated: 2025-01
+// Last updated: 2026-02
 var modelPricingDB = map[string]ModelPricing{
-	// Claude Opus 4.5 - Latest flagship model
+	// Claude Opus 4.6 - Latest flagship model (same pricing tier as Opus 4/4.1)
+	"claude-opus-4-6-20260203": {
+		Input:         15.00,
+		Output:        75.00,
+		CacheCreation: 18.75,
+		CacheRead:     1.50,
+	},
+	// Claude Opus 4.5
 	"claude-opus-4-5-20251101": {
 		Input:         5.00,
 		Output:        25.00,

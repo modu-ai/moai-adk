@@ -147,6 +147,72 @@ func (w *worktreeManager) Root() string {
 	return w.root
 }
 
+// Sync fetches the latest changes from origin and merges or rebases the
+// base branch into the worktree at wtPath.
+func (w *worktreeManager) Sync(wtPath, baseBranch, strategy string) error {
+	w.logger.Debug("syncing worktree", "path", wtPath, "base", baseBranch, "strategy", strategy)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Fetch latest from origin.
+	if _, err := execGit(ctx, wtPath, "fetch", "origin"); err != nil {
+		return fmt.Errorf("fetch origin in %q: %w", wtPath, err)
+	}
+
+	// Apply sync strategy.
+	ref := "origin/" + baseBranch
+	switch strategy {
+	case "rebase":
+		if _, err := execGit(ctx, wtPath, "rebase", ref); err != nil {
+			return fmt.Errorf("rebase %s in %q: %w", ref, wtPath, err)
+		}
+	default: // merge
+		if _, err := execGit(ctx, wtPath, "merge", ref, "--no-edit"); err != nil {
+			return fmt.Errorf("merge %s in %q: %w", ref, wtPath, err)
+		}
+	}
+
+	w.logger.Debug("worktree synced", "path", wtPath, "base", baseBranch)
+	return nil
+}
+
+// DeleteBranch deletes a local branch by name.
+func (w *worktreeManager) DeleteBranch(name string) error {
+	w.logger.Debug("deleting branch", "name", name)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if _, err := execGit(ctx, w.root, "branch", "-d", name); err != nil {
+		return fmt.Errorf("delete branch %q: %w", name, err)
+	}
+
+	w.logger.Debug("branch deleted", "name", name)
+	return nil
+}
+
+// IsBranchMerged checks whether a branch has been fully merged into base.
+func (w *worktreeManager) IsBranchMerged(branch, base string) (bool, error) {
+	w.logger.Debug("checking if branch merged", "branch", branch, "base", base)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	out, err := execGit(ctx, w.root, "branch", "--merged", base)
+	if err != nil {
+		return false, fmt.Errorf("check merged branches: %w", err)
+	}
+
+	for _, line := range strings.Split(out, "\n") {
+		name := strings.TrimSpace(strings.TrimPrefix(line, "* "))
+		if name == branch {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // parsePorcelainWorktreeList parses the output of git worktree list --porcelain.
 //
 // The porcelain format consists of stanzas separated by blank lines:

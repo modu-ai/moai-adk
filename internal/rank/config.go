@@ -15,6 +15,7 @@ type Credentials struct {
 	Username  string `json:"username"`
 	UserID    string `json:"user_id"`
 	CreatedAt string `json:"created_at"`
+	DeviceID  string `json:"device_id,omitempty"`
 }
 
 // Config holds Rank service configuration.

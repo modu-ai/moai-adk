@@ -194,11 +194,13 @@ func TestCheckStatus_InvalidJSON(t *testing.T) {
 
 func TestGetUserRank_Success(t *testing.T) {
 	rank := UserRank{
-		Username:      "testuser",
-		TotalTokens:   50000,
-		TotalSessions: 10,
-		InputTokens:   30000,
-		OutputTokens:  20000,
+		Username: "testuser",
+		Stats: &UserRankStats{
+			TotalTokens:   50000,
+			TotalSessions: 10,
+			InputTokens:   30000,
+			OutputTokens:  20000,
+		},
 	}
 	body, err := json.Marshal(rank)
 	if err != nil {
@@ -233,8 +235,11 @@ func TestGetUserRank_Success(t *testing.T) {
 	if result.Username != "testuser" {
 		t.Errorf("expected username testuser, got %q", result.Username)
 	}
-	if result.TotalTokens != 50000 {
-		t.Errorf("expected 50000 tokens, got %d", result.TotalTokens)
+	if result.Stats == nil {
+		t.Fatal("expected Stats to be non-nil")
+	}
+	if result.Stats.TotalTokens != 50000 {
+		t.Errorf("expected 50000 tokens, got %d", result.Stats.TotalTokens)
 	}
 }
 
@@ -427,12 +432,13 @@ func TestSubmitSession_TokenClamping(t *testing.T) {
 	}
 
 	// Verify tokens were clamped.
-	maxFloat := float64(MaxTokensPerField)
-	if v, ok := receivedBody["input_tokens"].(float64); ok && v > maxFloat {
-		t.Errorf("input_tokens should be clamped to %v, got %v", maxFloat, v)
+	maxInputFloat := float64(MaxInputTokens)
+	maxOutputFloat := float64(MaxOutputTokens)
+	if v, ok := receivedBody["inputTokens"].(float64); ok && v > maxInputFloat {
+		t.Errorf("inputTokens should be clamped to %v, got %v", maxInputFloat, v)
 	}
-	if v, ok := receivedBody["output_tokens"].(float64); ok && v > maxFloat {
-		t.Errorf("output_tokens should be clamped to %v, got %v", maxFloat, v)
+	if v, ok := receivedBody["outputTokens"].(float64); ok && v > maxOutputFloat {
+		t.Errorf("outputTokens should be clamped to %v, got %v", maxOutputFloat, v)
 	}
 }
 
@@ -532,27 +538,37 @@ func TestSubmitSessionsBatch_ExactMax(t *testing.T) {
 
 // --- ComputeSessionHash Tests ---
 
-func TestComputeSessionHash_Unique(t *testing.T) {
-	h1, err := ComputeSessionHash("2026-01-15T10:00:00Z", 1000, 500)
-	if err != nil {
-		t.Fatal(err)
+func TestComputeSessionHash_Deterministic(t *testing.T) {
+	h1 := ComputeSessionHash("2026-01-15T10:00:00Z", 1000, 500, 200, 100, "claude-sonnet-4-20250514")
+	h2 := ComputeSessionHash("2026-01-15T10:00:00Z", 1000, 500, 200, 100, "claude-sonnet-4-20250514")
+
+	// Same inputs should produce the same hash (deterministic).
+	if h1 != h2 {
+		t.Errorf("same inputs should produce same hash, got %q and %q", h1, h2)
 	}
-	h2, err := ComputeSessionHash("2026-01-15T10:00:00Z", 1000, 500)
-	if err != nil {
-		t.Fatal(err)
+}
+
+func TestComputeSessionHash_DifferentInputs(t *testing.T) {
+	h1 := ComputeSessionHash("2026-01-15T10:00:00Z", 1000, 500, 200, 100, "claude-sonnet-4-20250514")
+	h2 := ComputeSessionHash("2026-01-15T11:00:00Z", 1000, 500, 200, 100, "claude-sonnet-4-20250514")
+
+	if h1 == h2 {
+		t.Error("different endedAt should produce different hashes")
 	}
 
-	// Same inputs should produce different hashes due to random nonce.
-	if h1 == h2 {
-		t.Error("hashes should be unique due to random nonce")
+	h3 := ComputeSessionHash("2026-01-15T10:00:00Z", 1000, 500, 200, 100, "claude-opus-4-20250514")
+	if h1 == h3 {
+		t.Error("different modelName should produce different hashes")
+	}
+
+	h4 := ComputeSessionHash("2026-01-15T10:00:00Z", 1000, 500, 300, 100, "claude-sonnet-4-20250514")
+	if h1 == h4 {
+		t.Error("different cacheCreationTokens should produce different hashes")
 	}
 }
 
 func TestComputeSessionHash_Format(t *testing.T) {
-	hash, err := ComputeSessionHash("2026-01-15T10:00:00Z", 100, 50)
-	if err != nil {
-		t.Fatal(err)
-	}
+	hash := ComputeSessionHash("2026-01-15T10:00:00Z", 100, 50, 10, 5, "claude-sonnet-4-20250514")
 
 	if len(hash) != 64 { // SHA-256 hex = 64 chars
 		t.Errorf("expected 64 hex chars, got %d", len(hash))
@@ -567,24 +583,28 @@ func TestComputeSessionHash_Format(t *testing.T) {
 
 // --- Token Clamping Tests ---
 
-func TestClampTokens(t *testing.T) {
+func TestClampTokensTo(t *testing.T) {
+	max := int64(MaxInputTokens)
 	tests := []struct {
 		name     string
 		input    int64
+		max      int64
 		expected int64
 	}{
-		{"below_max", 1000, 1000},
-		{"at_max", int64(MaxTokensPerField), int64(MaxTokensPerField)},
-		{"above_max", int64(MaxTokensPerField) + 1, int64(MaxTokensPerField)},
-		{"zero", 0, 0},
-		{"large", 999_999_999_999, int64(MaxTokensPerField)},
+		{"below_max", 1000, max, 1000},
+		{"at_max", max, max, max},
+		{"above_max", max + 1, max, max},
+		{"zero", 0, max, 0},
+		{"large", 999_999_999_999, max, max},
+		{"output_max", int64(MaxOutputTokens) + 1, int64(MaxOutputTokens), int64(MaxOutputTokens)},
+		{"cache_max", int64(MaxCacheTokens) + 1, int64(MaxCacheTokens), int64(MaxCacheTokens)},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := clampTokens(tt.input)
+			got := clampTokensTo(tt.input, tt.max)
 			if got != tt.expected {
-				t.Errorf("clampTokens(%d) = %d, want %d", tt.input, got, tt.expected)
+				t.Errorf("clampTokensTo(%d, %d) = %d, want %d", tt.input, tt.max, got, tt.expected)
 			}
 		})
 	}
@@ -599,18 +619,17 @@ func TestClampSessionTokens(t *testing.T) {
 	}
 	clampSessionTokens(s)
 
-	max := int64(MaxTokensPerField)
-	if s.InputTokens != max {
-		t.Errorf("InputTokens not clamped: %d", s.InputTokens)
+	if s.InputTokens != int64(MaxInputTokens) {
+		t.Errorf("InputTokens not clamped: got %d, want %d", s.InputTokens, MaxInputTokens)
 	}
-	if s.OutputTokens != max {
-		t.Errorf("OutputTokens not clamped: %d", s.OutputTokens)
+	if s.OutputTokens != int64(MaxOutputTokens) {
+		t.Errorf("OutputTokens not clamped: got %d, want %d", s.OutputTokens, MaxOutputTokens)
 	}
-	if s.CacheCreationTokens != max {
-		t.Errorf("CacheCreationTokens not clamped: %d", s.CacheCreationTokens)
+	if s.CacheCreationTokens != int64(MaxCacheTokens) {
+		t.Errorf("CacheCreationTokens not clamped: got %d, want %d", s.CacheCreationTokens, MaxCacheTokens)
 	}
-	if s.CacheReadTokens != max {
-		t.Errorf("CacheReadTokens not clamped: %d", s.CacheReadTokens)
+	if s.CacheReadTokens != int64(MaxCacheTokens) {
+		t.Errorf("CacheReadTokens not clamped: got %d, want %d", s.CacheReadTokens, MaxCacheTokens)
 	}
 }
 
@@ -733,12 +752,16 @@ func TestApiStatus_JSON(t *testing.T) {
 func TestUserRank_JSON(t *testing.T) {
 	raw := `{
 		"username": "test",
-		"daily": {"position": 1, "composite_score": 99.5, "total_participants": 100},
-		"total_tokens": 50000,
-		"total_sessions": 10,
-		"input_tokens": 30000,
-		"output_tokens": 20000,
-		"last_updated": "2026-01-15"
+		"rankings": {
+			"daily": {"position": 1, "compositeScore": 99.5, "totalParticipants": 100}
+		},
+		"stats": {
+			"totalTokens": 50000,
+			"totalSessions": 10,
+			"inputTokens": 30000,
+			"outputTokens": 20000
+		},
+		"lastUpdated": "2026-01-15"
 	}`
 	var ur UserRank
 	if err := json.Unmarshal([]byte(raw), &ur); err != nil {
@@ -747,16 +770,19 @@ func TestUserRank_JSON(t *testing.T) {
 	if ur.Username != "test" {
 		t.Errorf("expected test, got %q", ur.Username)
 	}
-	if ur.Daily == nil {
+	if ur.Rankings == nil {
+		t.Fatal("expected rankings to be non-nil")
+	}
+	if ur.Rankings.Daily == nil {
 		t.Fatal("expected daily rank info")
 	}
-	if ur.Daily.Position != 1 {
-		t.Errorf("expected position 1, got %d", ur.Daily.Position)
+	if ur.Rankings.Daily.Position != 1 {
+		t.Errorf("expected position 1, got %d", ur.Rankings.Daily.Position)
 	}
 }
 
 func TestLeaderboardEntry_JSON(t *testing.T) {
-	raw := `{"rank":1,"username":"leader","total_tokens":100000,"composite_score":99.9,"session_count":100,"is_private":false}`
+	raw := `{"rank":1,"username":"leader","totalTokens":100000,"compositeScore":99.9,"sessionCount":100,"isPrivate":false}`
 	var e LeaderboardEntry
 	if err := json.Unmarshal([]byte(raw), &e); err != nil {
 		t.Fatal(err)
@@ -765,7 +791,7 @@ func TestLeaderboardEntry_JSON(t *testing.T) {
 		t.Errorf("expected rank 1, got %d", e.Rank)
 	}
 	if e.IsPrivate {
-		t.Error("expected is_private false")
+		t.Error("expected isPrivate false")
 	}
 }
 
@@ -786,11 +812,11 @@ func TestSessionSubmission_JSON(t *testing.T) {
 	if err := json.Unmarshal(data, &parsed); err != nil {
 		t.Fatal(err)
 	}
-	if parsed["session_hash"] != "hash123" {
-		t.Errorf("expected hash123, got %v", parsed["session_hash"])
+	if parsed["sessionHash"] != "hash123" {
+		t.Errorf("expected hash123, got %v", parsed["sessionHash"])
 	}
-	if parsed["model_name"] != "claude-opus-4-5-20251101" {
-		t.Errorf("expected model name, got %v", parsed["model_name"])
+	if parsed["modelName"] != "claude-opus-4-5-20251101" {
+		t.Errorf("expected model name, got %v", parsed["modelName"])
 	}
 }
 

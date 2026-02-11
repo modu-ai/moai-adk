@@ -24,6 +24,7 @@ func init() {
 		newNewCmd(),
 		newListCmd(),
 		newSwitchCmd(),
+		newGoCmd(),
 		newSyncCmd(),
 		newRemoveCmd(),
 		newCleanCmd(),

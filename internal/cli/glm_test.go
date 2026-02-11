@@ -151,6 +151,22 @@ func TestFindProjectRoot_NotInProject(t *testing.T) {
 	// Create temp dir without .moai
 	tmpDir := t.TempDir()
 
+	// Verify no .moai exists in the parent chain of tmpDir.
+	// When running from within a MoAI project, t.TempDir() may resolve
+	// to a path whose ancestor contains .moai, causing findProjectRoot()
+	// to succeed unexpectedly.
+	dir := tmpDir
+	for {
+		if _, err := os.Stat(filepath.Join(dir, ".moai")); err == nil {
+			t.Skip("temp dir is under a MoAI project directory; skipping test")
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+
 	// Change to temp dir
 	origDir, _ := os.Getwd()
 	defer func() { _ = os.Chdir(origDir) }()

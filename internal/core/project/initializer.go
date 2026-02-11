@@ -378,8 +378,9 @@ func (i *projectInitializer) generateConfigsFallback(opts InitOptions, result *I
 	// system.yaml
 	systemContent := fmt.Sprintf(`moai:
   version: %q
+  template_version: %q
   update_check_frequency: daily
-`, tmplCtx.Version)
+`, tmplCtx.Version, tmplCtx.Version)
 	if err := os.WriteFile(filepath.Join(sectionsDir, defs.SystemYAML), []byte(systemContent), defs.FilePerm); err != nil {
 		return fmt.Errorf("write system.yaml: %w", err)
 	}
@@ -389,12 +390,12 @@ func (i *projectInitializer) generateConfigsFallback(opts InitOptions, result *I
 	projectContent := fmt.Sprintf(`project:
   name: %q
   description: ""
-  type: ""
+  mode: personal
   created_at: %q
-  initialized: "true"
-github:
-  profile_name: %q
-`, tmplCtx.ProjectName, tmplCtx.CreatedAt, tmplCtx.GitHubUsername)
+  initialized: true
+  optimized: false
+  template_version: %q
+`, tmplCtx.ProjectName, tmplCtx.CreatedAt, tmplCtx.Version)
 	if err := os.WriteFile(filepath.Join(sectionsDir, defs.ProjectYAML), []byte(projectContent), defs.FilePerm); err != nil {
 		return fmt.Errorf("write project.yaml: %w", err)
 	}

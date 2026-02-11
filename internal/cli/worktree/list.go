@@ -7,12 +7,14 @@ import (
 )
 
 func newListCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List active worktrees",
 		Long:  "Display all active Git worktrees including the main worktree.",
 		RunE:  runList,
 	}
+	cmd.Flags().BoolP("verbose", "v", false, "Show detailed information for each worktree")
+	return cmd
 }
 
 func runList(cmd *cobra.Command, _ []string) error {
@@ -32,9 +34,24 @@ func runList(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	_, _ = fmt.Fprintln(out, "Active Worktrees:")
-	for _, wt := range worktrees {
-		_, _ = fmt.Fprintf(out, "  %s  [%s]  %s\n", wt.Path, wt.Branch, wt.HEAD[:minLen(len(wt.HEAD), 8)])
+	verbose, _ := cmd.Flags().GetBool("verbose")
+
+	if verbose {
+		_, _ = fmt.Fprintf(out, "Active Worktrees (%d):\n\n", len(worktrees))
+		for _, wt := range worktrees {
+			branchDisplay := wt.Branch
+			if branchDisplay == "" {
+				branchDisplay = "(detached)"
+			}
+			_, _ = fmt.Fprintf(out, "  Branch: %s\n", branchDisplay)
+			_, _ = fmt.Fprintf(out, "  Path:   %s\n", wt.Path)
+			_, _ = fmt.Fprintf(out, "  HEAD:   %s\n\n", wt.HEAD)
+		}
+	} else {
+		_, _ = fmt.Fprintln(out, "Active Worktrees:")
+		for _, wt := range worktrees {
+			_, _ = fmt.Fprintf(out, "  %s  [%s]  %s\n", wt.Path, wt.Branch, wt.HEAD[:minLen(len(wt.HEAD), 8)])
+		}
 	}
 	return nil
 }

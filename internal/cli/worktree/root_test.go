@@ -39,7 +39,7 @@ func TestWorktreeCmd_Short(t *testing.T) {
 }
 
 func TestWorktreeCmd_HasSubcommands(t *testing.T) {
-	expected := []string{"new", "list", "switch", "sync", "remove", "clean", "recover", "done", "config", "status"}
+	expected := []string{"new", "list", "switch", "go", "sync", "remove", "clean", "recover", "done", "config", "status"}
 	for _, name := range expected {
 		found := false
 		for _, cmd := range WorktreeCmd.Commands() {
@@ -56,8 +56,8 @@ func TestWorktreeCmd_HasSubcommands(t *testing.T) {
 
 func TestWorktreeCmd_SubcommandCount(t *testing.T) {
 	count := len(WorktreeCmd.Commands())
-	if count != 10 {
-		t.Errorf("worktree should have 10 subcommands, got %d", count)
+	if count != 11 {
+		t.Errorf("worktree should have 11 subcommands, got %d", count)
 	}
 }
 
@@ -178,6 +178,36 @@ func TestWorktreeCmd_RemoveNoProvider(t *testing.T) {
 		}
 	}
 	t.Error("remove subcommand not found")
+}
+
+func TestWorktreeCmd_GoRequiresArg(t *testing.T) {
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "go" {
+			err := cmd.Args(cmd, []string{})
+			if err == nil {
+				t.Error("worktree go should require an argument")
+			}
+			return
+		}
+	}
+	t.Error("go subcommand not found")
+}
+
+func TestWorktreeCmd_GoNoProvider(t *testing.T) {
+	origProvider := WorktreeProvider
+	defer func() { WorktreeProvider = origProvider }()
+
+	WorktreeProvider = nil
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "go" {
+			err := cmd.RunE(cmd, []string{"test-branch"})
+			if err == nil {
+				t.Error("worktree go should error without WorktreeProvider")
+			}
+			return
+		}
+	}
+	t.Error("go subcommand not found")
 }
 
 func TestMinLen(t *testing.T) {

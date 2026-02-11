@@ -81,6 +81,15 @@ func (h *rankSessionHandler) Handle(ctx context.Context, input *HookInput) (*Hoo
 		"project", anonymizePath(projectPath),
 	)
 
+	// Mark session in sync state to prevent re-submission during sync
+	transcriptPath := rank.FindTranscriptForSession(input.SessionID)
+	if transcriptPath != "" {
+		if syncState, syncErr := rank.NewSyncState(""); syncErr == nil {
+			_ = syncState.MarkSynced(transcriptPath)
+			_ = syncState.Save()
+		}
+	}
+
 	// SessionEnd hooks return empty JSON {} per Claude Code protocol
 	return &HookOutput{}, nil
 }
@@ -122,10 +131,7 @@ func (h *rankSessionHandler) buildSessionSubmission(input *HookInput) (*rank.Ses
 	}
 
 	// Generate session hash for deduplication
-	sessionHash, err := rank.ComputeSessionHash(endedAt, inputTokens, outputTokens)
-	if err != nil {
-		return nil, fmt.Errorf("compute session hash: %w", err)
-	}
+	sessionHash := rank.ComputeSessionHash(endedAt, inputTokens, outputTokens, cacheCreation, cacheRead, modelName)
 
 	// Anonymize project path
 	projectPath := input.ProjectDir
@@ -133,6 +139,9 @@ func (h *rankSessionHandler) buildSessionSubmission(input *HookInput) (*rank.Ses
 		projectPath = input.CWD
 	}
 	anonymousProjectID := anonymizePath(projectPath)
+
+	// Get device info for multi-device tracking
+	deviceInfo := rank.GetDeviceInfo()
 
 	submission := &rank.SessionSubmission{
 		SessionHash:         sessionHash,
@@ -146,6 +155,7 @@ func (h *rankSessionHandler) buildSessionSubmission(input *HookInput) (*rank.Ses
 		DurationSeconds:     int(durationSeconds),
 		TurnCount:           turnCount,
 		ModelName:           modelName,
+		DeviceID:            deviceInfo.DeviceID,
 	}
 
 	return submission, nil
@@ -166,7 +176,11 @@ func anonymizePath(path string) string {
 
 	// Create SHA-256 hash for one-way anonymization
 	hash := sha256.Sum256([]byte(absPath))
-	return hex.EncodeToString(hash[:])
+	fullHash := hex.EncodeToString(hash[:])
+	if len(fullHash) > 16 {
+		return fullHash[:16]
+	}
+	return fullHash
 }
 
 // --- Lazy Initialization Helpers ---

@@ -21,30 +21,28 @@ type VersionCollector struct {
 	binaryVersion string // running binary version (from pkg/version)
 }
 
-// VersionConfig represents the structure of .moai/config/config.yaml
-// for parsing version fields. It reads project.template_version first
+// VersionConfig represents the structure of .moai/config/sections/system.yaml
+// for parsing version fields. It reads moai.template_version first
 // (updated by moai update) and falls back to moai.version (set during init).
 type VersionConfig struct {
 	Moai struct {
-		Version string `yaml:"version"`
-	} `yaml:"moai"`
-	Project struct {
+		Version         string `yaml:"version"`
 		TemplateVersion string `yaml:"template_version"`
-	} `yaml:"project"`
+	} `yaml:"moai"`
 }
 
-// effectiveVersion returns project.template_version if set, otherwise
+// effectiveVersion returns moai.template_version if set, otherwise
 // moai.version. This ensures the statusline reflects the version updated
 // by `moai update` rather than the original initialization version.
 func (c *VersionConfig) effectiveVersion() string {
-	if c.Project.TemplateVersion != "" {
-		return c.Project.TemplateVersion
+	if c.Moai.TemplateVersion != "" {
+		return c.Moai.TemplateVersion
 	}
 	return c.Moai.Version
 }
 
 // NewVersionCollector creates a VersionCollector that reads the template
-// version from .moai/config/config.yaml and compares it against the
+// version from .moai/config/sections/system.yaml and compares it against the
 // running binary version. If binaryVersion is empty, no update check
 // is performed.
 func NewVersionCollector(binaryVersion string) *VersionCollector {
@@ -108,7 +106,7 @@ func (v *VersionCollector) buildVersionData(templateVersion string) *VersionData
 	return data
 }
 
-// readVersionFromConfig searches for .moai/config/config.yaml starting
+// readVersionFromConfig searches for .moai/config/sections/system.yaml starting
 // from the current directory and working upward to find the project root.
 func (v *VersionCollector) readVersionFromConfig() (string, error) {
 	// Start from current directory
@@ -117,9 +115,9 @@ func (v *VersionCollector) readVersionFromConfig() (string, error) {
 		return "", fmt.Errorf("get working directory: %w", err)
 	}
 
-	// Search upward for .moai/config/config.yaml
+	// Search upward for .moai/config/sections/system.yaml
 	for {
-		configPath := filepath.Join(dir, defs.MoAIDir, defs.ConfigSubdir, defs.ConfigYAML)
+		configPath := filepath.Join(dir, defs.MoAIDir, defs.SectionsSubdir, defs.SystemYAML)
 		if _, err := os.Stat(configPath); err == nil {
 			// Found config file
 			return v.parseConfigFile(configPath)

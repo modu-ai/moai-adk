@@ -11,9 +11,6 @@ const (
 	// ManifestJSON is the MoAI manifest file that tracks deployed templates.
 	ManifestJSON = "manifest.json"
 
-	// ConfigYAML is the main MoAI configuration file.
-	ConfigYAML = "config.yaml"
-
 	// ClaudeMD is the main Claude Code execution directive file.
 	ClaudeMD = "CLAUDE.md"
 

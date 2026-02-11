@@ -2,6 +2,8 @@ package cli
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -77,6 +79,10 @@ func newRankLoginCmd() *cobra.Command {
 				return fmt.Errorf("oauth flow: %w", err)
 			}
 
+			// Set device ID for multi-device tracking
+			deviceInfo := rank.GetDeviceInfo()
+			creds.DeviceID = deviceInfo.DeviceID
+
 			// Store credentials.
 			if err := deps.RankCredStore.Save(creds); err != nil {
 				return fmt.Errorf("save credentials: %w", err)
@@ -123,8 +129,10 @@ func newRankStatusCmd() *cobra.Command {
 			}
 
 			_, _ = fmt.Fprintf(out, "User: %s\n", userRank.Username)
-			_, _ = fmt.Fprintf(out, "Total tokens: %d\n", userRank.TotalTokens)
-			_, _ = fmt.Fprintf(out, "Sessions: %d\n", userRank.TotalSessions)
+			if userRank.Stats != nil {
+				_, _ = fmt.Fprintf(out, "Total tokens: %d\n", userRank.Stats.TotalTokens)
+				_, _ = fmt.Fprintf(out, "Sessions: %d\n", userRank.Stats.TotalSessions)
+			}
 			return nil
 		},
 	}
@@ -156,7 +164,7 @@ func newRankLogoutCmd() *cobra.Command {
 }
 
 func newRankSyncCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:    "sync",
 		Short:  "Sync metrics to MoAI Cloud",
 		Hidden: false,
@@ -172,7 +180,24 @@ func newRankSyncCmd() *cobra.Command {
 				return nil
 			}
 
+			// Load sync state for incremental sync
+			syncState, err := rank.NewSyncState("")
+			if err != nil {
+				_, _ = fmt.Fprintf(out, "Warning: could not load sync state: %v\n", err)
+				// Continue without sync state (will sync everything)
+			}
+
+			// Get device info for multi-device tracking
+			deviceInfo := rank.GetDeviceInfo()
+
+			// Check for --force flag
+			force, _ := cmd.Flags().GetBool("force")
+			if force && syncState != nil {
+				syncState.Reset()
+			}
+
 			_, _ = fmt.Fprintln(out, "Syncing metrics to MoAI Cloud...")
+			_, _ = fmt.Fprintf(out, "Device: %s (%s)\n", deviceInfo.HostName, deviceInfo.DeviceID)
 
 			// Find all transcript files
 			transcripts, err := rank.FindTranscripts()
@@ -185,14 +210,20 @@ func newRankSyncCmd() *cobra.Command {
 				return nil
 			}
 
-			_, _ = fmt.Fprintf(out, "Found %d transcript(s)\n", len(transcripts))
-
 			// Parse transcripts and build session submissions
 			var sessions []*rank.SessionSubmission
+			var sessionTranscriptPaths []string
 			parsedCount := 0
 			skippedCount := 0
+			alreadySyncedCount := 0
 
 			for _, transcriptPath := range transcripts {
+				// Skip already-synced transcripts (unless --force)
+				if syncState != nil && syncState.IsSynced(transcriptPath) {
+					alreadySyncedCount++
+					continue
+				}
+
 				usage, err := rank.ParseTranscript(transcriptPath)
 				if err != nil {
 					skippedCount++
@@ -208,19 +239,16 @@ func newRankSyncCmd() *cobra.Command {
 				parsedCount++
 
 				// Generate session hash
-				sessionHash, err := rank.ComputeSessionHash(usage.EndedAt, usage.InputTokens, usage.OutputTokens)
-				if err != nil {
-					skippedCount++
-					continue
-				}
+				sessionHash := rank.ComputeSessionHash(usage.EndedAt, usage.InputTokens, usage.OutputTokens, usage.CacheCreationTokens, usage.CacheReadTokens, usage.ModelName)
 
 				// Extract session ID from filename
 				sessionID := filepath.Base(transcriptPath)
 				sessionID = strings.TrimSuffix(sessionID, ".jsonl")
 				sessionID = strings.TrimSuffix(sessionID, ".json")
 
-				// Anonymize project path (use session ID as placeholder since we don't have project path)
-				anonymousProjectID := sessionID
+				// Anonymize project ID - hash and truncate to 16 chars (server limit)
+				projHash := sha256.Sum256([]byte(sessionID))
+				anonymousProjectID := hex.EncodeToString(projHash[:])[:16]
 
 				submission := &rank.SessionSubmission{
 					SessionHash:         sessionHash,
@@ -234,15 +262,20 @@ func newRankSyncCmd() *cobra.Command {
 					DurationSeconds:     int(usage.DurationSeconds),
 					TurnCount:           usage.TurnCount,
 					ModelName:           usage.ModelName,
+					DeviceID:            deviceInfo.DeviceID,
 				}
 
 				sessions = append(sessions, submission)
+				sessionTranscriptPaths = append(sessionTranscriptPaths, transcriptPath)
 			}
 
-			_, _ = fmt.Fprintf(out, "Parsed %d sessions, skipped %d\n", parsedCount, skippedCount)
+			_, _ = fmt.Fprintf(out, "Found %d transcript(s), %d new, %d already synced\n", len(transcripts), parsedCount, alreadySyncedCount)
+			if skippedCount > 0 {
+				_, _ = fmt.Fprintf(out, "Skipped %d (parse errors or no token usage)\n", skippedCount)
+			}
 
 			if len(sessions) == 0 {
-				_, _ = fmt.Fprintln(out, "No sessions with token usage found.")
+				_, _ = fmt.Fprintln(out, "No new sessions to sync.")
 				return nil
 			}
 
@@ -270,12 +303,32 @@ func newRankSyncCmd() *cobra.Command {
 				if result != nil && result.Failed > 0 {
 					_, _ = fmt.Fprintf(out, "  Failed: %d sessions\n", result.Failed)
 				}
+
+				// Mark synced after successful batch
+				if syncState != nil {
+					batchPaths := sessionTranscriptPaths[i:end]
+					for _, transcriptPath := range batchPaths {
+						_ = syncState.MarkSynced(transcriptPath)
+					}
+				}
+			}
+
+			// Save sync state
+			if syncState != nil {
+				syncState.CleanStale()
+				if err := syncState.Save(); err != nil {
+					_, _ = fmt.Fprintf(out, "Warning: could not save sync state: %v\n", err)
+				}
 			}
 
 			_, _ = fmt.Fprintf(out, "Sync complete. Submitted %d session(s).\n", submitted)
 			return nil
 		},
 	}
+
+	cmd.Flags().BoolP("force", "f", false, "Force resync all transcripts")
+
+	return cmd
 }
 
 func newRankExcludeCmd() *cobra.Command {

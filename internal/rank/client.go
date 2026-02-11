@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -21,12 +20,14 @@ import (
 
 // Constants for the Rank API client.
 const (
-	MaxTokensPerField = 100_000_000
-	MaxBatchSize      = 100
-	DefaultTimeout    = 30 * time.Second
-	DefaultBaseURL    = "https://rank.mo.ai.kr"
-	APIVersion        = "v1"
-	UserAgent         = "moai-adk/1.0"
+	MaxInputTokens  = 50_000_000
+	MaxOutputTokens = 10_000_000
+	MaxCacheTokens  = 100_000_000
+	MaxBatchSize    = 100
+	DefaultTimeout  = 30 * time.Second
+	DefaultBaseURL  = "https://rank.mo.ai.kr"
+	APIVersion      = "v1"
+	UserAgent       = "moai-adk/1.0"
 )
 
 // --- Error Types ---
@@ -64,58 +65,72 @@ func (e *ApiError) Error() string {
 
 // ApiStatus represents the Rank API health status response.
 type ApiStatus struct {
-	Status    string `json:"status"`
-	Version   string `json:"version"`
-	Timestamp string `json:"timestamp"`
+	Status    string            `json:"status"`
+	Version   string            `json:"version"`
+	Timestamp string            `json:"timestamp"`
+	Endpoints map[string]string `json:"endpoints,omitempty"`
 }
 
 // RankInfo holds ranking position details for a time period.
 type RankInfo struct {
 	Position          int     `json:"position"`
-	CompositeScore    float64 `json:"composite_score"`
-	TotalParticipants int     `json:"total_participants"`
+	CompositeScore    float64 `json:"compositeScore"`
+	TotalParticipants int     `json:"totalParticipants"`
+}
+
+// UserRankStats holds aggregate statistics for a user.
+type UserRankStats struct {
+	TotalTokens   int64 `json:"totalTokens"`
+	TotalSessions int   `json:"totalSessions"`
+	InputTokens   int64 `json:"inputTokens"`
+	OutputTokens  int64 `json:"outputTokens"`
+}
+
+// UserRankRankings holds ranking positions for all time periods.
+type UserRankRankings struct {
+	Daily   *RankInfo `json:"daily,omitempty"`
+	Weekly  *RankInfo `json:"weekly,omitempty"`
+	Monthly *RankInfo `json:"monthly,omitempty"`
+	AllTime *RankInfo `json:"allTime,omitempty"`
 }
 
 // UserRank represents the full ranking information for a user.
 type UserRank struct {
-	Username      string    `json:"username"`
-	Daily         *RankInfo `json:"daily,omitempty"`
-	Weekly        *RankInfo `json:"weekly,omitempty"`
-	Monthly       *RankInfo `json:"monthly,omitempty"`
-	AllTime       *RankInfo `json:"all_time,omitempty"`
-	TotalTokens   int64     `json:"total_tokens"`
-	TotalSessions int       `json:"total_sessions"`
-	InputTokens   int64     `json:"input_tokens"`
-	OutputTokens  int64     `json:"output_tokens"`
-	LastUpdated   string    `json:"last_updated"`
+	Username    string            `json:"username"`
+	Rankings    *UserRankRankings `json:"rankings,omitempty"`
+	Stats       *UserRankStats    `json:"stats,omitempty"`
+	LastUpdated string            `json:"lastUpdated"`
 }
 
 // LeaderboardEntry represents a single entry on the leaderboard.
 type LeaderboardEntry struct {
-	Rank           int     `json:"rank"`
-	Username       string  `json:"username"`
-	TotalTokens    int64   `json:"total_tokens"`
-	CompositeScore float64 `json:"composite_score"`
-	SessionCount   int     `json:"session_count"`
-	IsPrivate      bool    `json:"is_private"`
+	Rank            int     `json:"rank"`
+	UserID          string  `json:"userId"`
+	Username        string  `json:"username"`
+	AvatarURL       string  `json:"avatarUrl"`
+	TotalTokens     int64   `json:"totalTokens"`
+	CompositeScore  float64 `json:"compositeScore"`
+	SessionCount    int     `json:"sessionCount"`
+	EfficiencyScore float64 `json:"efficiencyScore"`
+	IsPrivate       bool    `json:"isPrivate"`
 }
 
 // SessionSubmission holds session data for submission to the Rank API.
 type SessionSubmission struct {
-	SessionHash         string                    `json:"session_hash"`
-	EndedAt             string                    `json:"ended_at"`
-	InputTokens         int64                     `json:"input_tokens"`
-	OutputTokens        int64                     `json:"output_tokens"`
-	CacheCreationTokens int64                     `json:"cache_creation_tokens"`
-	CacheReadTokens     int64                     `json:"cache_read_tokens"`
-	ModelName           string                    `json:"model_name,omitempty"`
-	AnonymousProjectID  string                    `json:"anonymous_project_id,omitempty"`
-	StartedAt           string                    `json:"started_at,omitempty"`
-	DurationSeconds     int                       `json:"duration_seconds,omitempty"`
-	TurnCount           int                       `json:"turn_count,omitempty"`
-	ToolUsage           map[string]int            `json:"tool_usage,omitempty"`
-	ModelUsage          map[string]map[string]int `json:"model_usage,omitempty"`
-	CodeMetrics         map[string]int            `json:"code_metrics,omitempty"`
+	SessionHash         string         `json:"sessionHash"`
+	EndedAt             string         `json:"endedAt"`
+	InputTokens         int64          `json:"inputTokens"`
+	OutputTokens        int64          `json:"outputTokens"`
+	CacheCreationTokens int64          `json:"cacheCreationTokens"`
+	CacheReadTokens     int64          `json:"cacheReadTokens"`
+	ModelName           string         `json:"modelName,omitempty"`
+	AnonymousProjectID  string         `json:"anonymousProjectId,omitempty"`
+	StartedAt           string         `json:"startedAt,omitempty"`
+	DurationSeconds     int            `json:"durationSeconds,omitempty"`
+	TurnCount           int            `json:"turnCount,omitempty"`
+	ToolUsage           map[string]int `json:"toolUsage,omitempty"`
+	CodeMetrics         map[string]int `json:"codeMetrics,omitempty"`
+	DeviceID            string         `json:"deviceId,omitempty"`
 }
 
 // BatchResult represents the result of a batch session submission.
@@ -266,10 +281,41 @@ func (c *RankClient) doRequest(ctx context.Context, method, path string, body []
 		return nil, &ClientError{Message: fmt.Sprintf("read response: %v", err)}
 	}
 
+	// Try to parse response envelope
+	var envelope struct {
+		Success bool            `json:"success"`
+		Data    json.RawMessage `json:"data,omitempty"`
+		Error   *struct {
+			Code    string         `json:"code"`
+			Message string         `json:"message"`
+			Details map[string]any `json:"details,omitempty"`
+		} `json:"error,omitempty"`
+	}
+
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 		return nil, &AuthenticationError{Message: "authentication failed"}
 	}
 
+	// Try to parse as envelope
+	if err := json.Unmarshal(respBody, &envelope); err == nil && (envelope.Data != nil || envelope.Error != nil) {
+		// Server uses envelope format
+		if resp.StatusCode >= 400 || !envelope.Success {
+			apiErr := &ApiError{
+				Message:    fmt.Sprintf("API returned status %d", resp.StatusCode),
+				StatusCode: resp.StatusCode,
+			}
+			if envelope.Error != nil {
+				apiErr.Message = envelope.Error.Message
+				apiErr.Details = envelope.Error.Details
+			}
+			return nil, apiErr
+		}
+		if envelope.Data != nil {
+			return []byte(envelope.Data), nil
+		}
+	}
+
+	// Fallback: non-envelope response
 	if resp.StatusCode >= 400 {
 		apiErr := &ApiError{
 			Message:    fmt.Sprintf("API returned status %d", resp.StatusCode),
@@ -346,7 +392,7 @@ func (c *RankClient) GetLeaderboard(ctx context.Context, period string, limit, o
 }
 
 // SubmitSession submits a single session metric.
-// Requires HMAC authentication. Token fields are clamped to MaxTokensPerField.
+// Requires HMAC authentication. Token fields are clamped to per-field maximums.
 func (c *RankClient) SubmitSession(ctx context.Context, session *SessionSubmission) error {
 	clampSessionTokens(session)
 
@@ -396,31 +442,27 @@ func (c *RankClient) SubmitSessionsBatch(ctx context.Context, sessions []*Sessio
 
 // --- Utility Functions ---
 
-// ComputeSessionHash generates a unique SHA-256 hash for a session.
-// Includes a random nonce to ensure uniqueness across identical sessions.
-func ComputeSessionHash(endedAt string, inputTokens, outputTokens int64) (string, error) {
-	nonce := make([]byte, 16)
-	if _, err := rand.Read(nonce); err != nil {
-		return "", fmt.Errorf("generate nonce: %w", err)
-	}
-
-	data := fmt.Sprintf("%s:%d:%d:%x", endedAt, inputTokens, outputTokens, nonce)
+// ComputeSessionHash generates a deterministic SHA-256 hash for a session.
+// The hash is computed from immutable session properties to ensure the same
+// session always produces the same hash, enabling deduplication.
+func ComputeSessionHash(endedAt string, inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens int64, modelName string) string {
+	data := fmt.Sprintf("%s:%d:%d:%d:%d:%s", endedAt, inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens, modelName)
 	hash := sha256.Sum256([]byte(data))
-	return hex.EncodeToString(hash[:]), nil
+	return hex.EncodeToString(hash[:])
 }
 
-// clampTokens clamps a token value to MaxTokensPerField.
-func clampTokens(value int64) int64 {
-	if value > MaxTokensPerField {
-		return MaxTokensPerField
+// clampTokensTo clamps a token value to the specified maximum.
+func clampTokensTo(value, max int64) int64 {
+	if value > max {
+		return max
 	}
 	return value
 }
 
-// clampSessionTokens applies token clamping to all token fields in a session.
+// clampSessionTokens applies per-field token clamping to a session.
 func clampSessionTokens(s *SessionSubmission) {
-	s.InputTokens = clampTokens(s.InputTokens)
-	s.OutputTokens = clampTokens(s.OutputTokens)
-	s.CacheCreationTokens = clampTokens(s.CacheCreationTokens)
-	s.CacheReadTokens = clampTokens(s.CacheReadTokens)
+	s.InputTokens = clampTokensTo(s.InputTokens, MaxInputTokens)
+	s.OutputTokens = clampTokensTo(s.OutputTokens, MaxOutputTokens)
+	s.CacheCreationTokens = clampTokensTo(s.CacheCreationTokens, MaxCacheTokens)
+	s.CacheReadTokens = clampTokensTo(s.CacheReadTokens, MaxCacheTokens)
 }

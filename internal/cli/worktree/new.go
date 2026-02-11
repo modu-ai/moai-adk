@@ -3,6 +3,7 @@ package worktree
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -11,17 +12,22 @@ func newNewCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "new [branch-name]",
 		Short: "Create a new worktree",
-		Long:  "Create a new Git worktree for the given branch name. If the branch does not exist, it is created automatically.",
-		Args:  cobra.ExactArgs(1),
-		RunE:  runNew,
+		Long: `Create a new Git worktree for the given branch name.
+If the branch does not exist, it is created automatically.
+
+SPEC-ID patterns (e.g., SPEC-AUTH-001) are automatically converted
+to branch names using the feature/ prefix convention.`,
+		Args: cobra.ExactArgs(1),
+		RunE: runNew,
 	}
 	cmd.Flags().String("path", "", "Custom path for the worktree (default: ../<branch-name>)")
+	cmd.Flags().String("base", "main", "Base branch to create the worktree from")
 	return cmd
 }
 
 func runNew(cmd *cobra.Command, args []string) error {
 	out := cmd.OutOrStdout()
-	branchName := args[0]
+	branchName := resolveSpecBranch(args[0])
 
 	if WorktreeProvider == nil {
 		return fmt.Errorf("worktree manager not initialized (git module not available)")
@@ -38,4 +44,24 @@ func runNew(cmd *cobra.Command, args []string) error {
 
 	_, _ = fmt.Fprintf(out, "Created worktree at %s for branch %s\n", wtPath, branchName)
 	return nil
+}
+
+// resolveSpecBranch converts SPEC-ID patterns to branch names.
+// e.g., "SPEC-AUTH-001" -> "feature/SPEC-AUTH-001"
+// Regular branch names pass through unchanged.
+func resolveSpecBranch(name string) string {
+	if isSpecID(name) {
+		return "feature/" + name
+	}
+	return name
+}
+
+// isSpecID checks if the given name matches the SPEC-ID pattern.
+// Pattern: SPEC-<CATEGORY>-<NUMBER> (e.g., SPEC-AUTH-001, SPEC-UI-042)
+func isSpecID(name string) bool {
+	if !strings.HasPrefix(name, "SPEC-") {
+		return false
+	}
+	parts := strings.SplitN(name, "-", 3)
+	return len(parts) >= 3
 }

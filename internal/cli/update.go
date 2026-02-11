@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,7 +30,7 @@ import (
 )
 
 const (
-	// maxConfigSize is the maximum allowed size for config.yaml to prevent DoS
+	// maxConfigSize is the maximum allowed size for a config YAML file to prevent DoS
 	maxConfigSize = 10 * 1024 * 1024 // 10MB
 )
 
@@ -592,13 +593,13 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) error {
 }
 
 // classifyFileRisk determines the risk level for a file modification.
-// Returns "high" for core config files (CLAUDE.md, settings.json, config.yaml),
+// Returns "high" for core config files (CLAUDE.md, settings.json),
 // "low" for new files, and "medium" for existing file updates.
 func classifyFileRisk(filename string, exists bool) string {
 	base := filepath.Base(filename)
 
 	// High risk files
-	highRiskFiles := []string{"CLAUDE.md", "settings.json", "config.yaml"}
+	highRiskFiles := []string{"CLAUDE.md", "settings.json"}
 	for _, high := range highRiskFiles {
 		if base == high {
 			return "high"
@@ -770,7 +771,7 @@ func buildMergeAnalysis(files []merge.FileAnalysis) merge.MergeAnalysis {
 
 // analyzeMergeChanges performs a quick analysis of template files that will be modified.
 // It evaluates risk levels based on file types and existing content:
-//   - High risk: CLAUDE.md, settings.json, config.yaml (core config files)
+//   - High risk: CLAUDE.md, settings.json (core config files)
 //   - Medium risk: Existing files being updated
 //   - Low risk: New files being created
 //
@@ -822,11 +823,11 @@ func runShellEnvConfig(cmd *cobra.Command) error {
 	return nil
 }
 
-// getProjectConfigVersion reads the template_version from .moai/config/config.yaml.
+// getProjectConfigVersion reads the template_version from .moai/config/sections/system.yaml.
 // Returns "0.0.0" if the file doesn't exist or parsing fails, which triggers a sync.
 // This enables the version comparison optimization in runTemplateSync.
 func getProjectConfigVersion(projectRoot string) (string, error) {
-	configPath := filepath.Join(projectRoot, defs.MoAIDir, defs.ConfigSubdir, defs.ConfigYAML)
+	configPath := filepath.Join(projectRoot, defs.MoAIDir, defs.SectionsSubdir, defs.SystemYAML)
 
 	// Check file size before reading to prevent DoS
 	info, err := os.Stat(configPath)
@@ -848,11 +849,11 @@ func getProjectConfigVersion(projectRoot string) (string, error) {
 		return "", fmt.Errorf("read config file: %w", err)
 	}
 
-	// Parse YAML to extract project.template_version
+	// Parse YAML to extract moai.template_version
 	var config struct {
-		Project struct {
+		Moai struct {
 			TemplateVersion string `yaml:"template_version"`
-		} `yaml:"project"`
+		} `yaml:"moai"`
 	}
 
 	if err := yaml.Unmarshal(data, &config); err != nil {
@@ -860,16 +861,16 @@ func getProjectConfigVersion(projectRoot string) (string, error) {
 	}
 
 	// If template_version is not set, return "0.0.0" to force update
-	if config.Project.TemplateVersion == "" {
+	if config.Moai.TemplateVersion == "" {
 		return "0.0.0", nil
 	}
 
-	return config.Project.TemplateVersion, nil
+	return config.Moai.TemplateVersion, nil
 }
 
 // backupMoaiConfig creates a backup of .moai/config/ directory.
 // Creates a timestamped backup under .moai-backups/YYYYMMDD_HHMMSS/ including
-// all files (config.yaml, sections/*.yaml, etc.) for full restore capability.
+// all files (sections/*.yaml, etc.) for full restore capability.
 // Returns the backup directory path, or empty string if directory doesn't exist.
 func backupMoaiConfig(projectRoot string) (string, error) {
 	configDir := filepath.Join(projectRoot, defs.MoAIDir, defs.ConfigSubdir)
@@ -955,15 +956,25 @@ func backupMoaiConfig(projectRoot string) (string, error) {
 		return "", fmt.Errorf("copy config files: %w", err)
 	}
 
+	// Save template defaults from embedded FS for 3-way merge.
+	// This allows the restore step to distinguish user-modified values
+	// from unchanged template defaults.
+	templateDefaultsDir := filepath.Join(backupDir, ".template-defaults")
+	if err := saveTemplateDefaults(templateDefaultsDir); err != nil {
+		// Non-fatal: if template defaults can't be saved, restore falls back to 2-way merge
+		_, _ = fmt.Fprintf(os.Stderr, "Warning: could not save template defaults: %v\n", err)
+	}
+
 	// Create backup metadata file
 	metadata := BackupMetadata{
-		Timestamp:     timestamp,
-		Description:   "config_backup",
-		BackedUpItems: backedUpItems,
-		ExcludedItems: excludedItems,
-		ExcludedDirs:  excludedDirs,
-		ProjectRoot:   projectRoot,
-		BackupType:    "config",
+		Timestamp:           timestamp,
+		Description:         "config_backup",
+		BackedUpItems:       backedUpItems,
+		ExcludedItems:       excludedItems,
+		ExcludedDirs:        excludedDirs,
+		ProjectRoot:         projectRoot,
+		BackupType:          "config",
+		TemplateDefaultsDir: ".template-defaults",
 	}
 
 	metadataPath := filepath.Join(backupDir, "backup_metadata.json")
@@ -981,15 +992,63 @@ func backupMoaiConfig(projectRoot string) (string, error) {
 	return backupDir, nil
 }
 
+// saveTemplateDefaults extracts config section files from embedded templates
+// and saves them to the given directory as baseline for 3-way merge.
+func saveTemplateDefaults(destDir string) error {
+	embedded, err := template.EmbeddedTemplates()
+	if err != nil {
+		return fmt.Errorf("load embedded templates: %w", err)
+	}
+
+	// Walk embedded FS to find config section files
+	prefix := ".moai/config/sections/"
+	entries, err := fs.ReadDir(embedded, ".moai/config/sections")
+	if err != nil {
+		return fmt.Errorf("read embedded config sections: %w", err)
+	}
+
+	sectionsDestDir := filepath.Join(destDir, "sections")
+	if err := os.MkdirAll(sectionsDestDir, defs.DirPerm); err != nil {
+		return fmt.Errorf("create template defaults directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+
+		// Read the raw file from embedded FS
+		data, err := fs.ReadFile(embedded, prefix+name)
+		if err != nil {
+			continue // Skip files that can't be read
+		}
+
+		// For .tmpl files, save the raw template (not rendered) - the keys
+		// and structure are what matter for 3-way comparison, template vars
+		// will have placeholder values like {{.Version}} which won't match
+		// user values, so they'll be treated as "user changed" = correct behavior.
+		// Strip .tmpl extension for the output filename.
+		outputName := strings.TrimSuffix(name, ".tmpl")
+		if err := os.WriteFile(filepath.Join(sectionsDestDir, outputName), data, defs.FilePerm); err != nil {
+			continue
+		}
+	}
+
+	return nil
+}
+
 // BackupMetadata represents the structure of backup_metadata.json
 type BackupMetadata struct {
-	Timestamp     string   `json:"timestamp"`
-	Description   string   `json:"description"`
-	BackedUpItems []string `json:"backed_up_items"`
-	ExcludedItems []string `json:"excluded_items"`
-	ExcludedDirs  []string `json:"excluded_dirs"`
-	ProjectRoot   string   `json:"project_root"`
-	BackupType    string   `json:"backup_type"`
+	Timestamp           string   `json:"timestamp"`
+	Description         string   `json:"description"`
+	BackedUpItems       []string `json:"backed_up_items"`
+	ExcludedItems       []string `json:"excluded_items"`
+	ExcludedDirs        []string `json:"excluded_dirs"`
+	ProjectRoot         string   `json:"project_root"`
+	BackupType          string   `json:"backup_type"`
+	TemplateDefaultsDir string   `json:"template_defaults_dir,omitempty"`
 }
 
 // cleanMoaiManagedPaths removes MoAI-managed directories and files before template
@@ -1155,12 +1214,96 @@ func cleanup_old_backups(projectRoot string, keepCount int) int {
 }
 
 // restoreMoaiConfig restores user settings from backup to new config files.
-// It performs a deep YAML merge to preserve user settings while adopting new structure.
+// It performs a 3-way YAML merge using old template defaults as the base,
+// allowing it to distinguish user-modified values from unchanged defaults.
+// Falls back to 2-way merge when template defaults are not available.
 func restoreMoaiConfig(projectRoot, backupDir string) error {
 	configDir := filepath.Join(projectRoot, defs.MoAIDir, defs.ConfigSubdir)
+	templateDefaultsDir := filepath.Join(backupDir, ".template-defaults")
 
-	// Walk through backup files
-	err := filepath.Walk(backupDir, func(backupPath string, info os.FileInfo, err error) error {
+	// Check if template defaults are available for 3-way merge
+	has3Way := false
+	if info, err := os.Stat(templateDefaultsDir); err == nil && info.IsDir() {
+		has3Way = true
+	}
+
+	// Walk through backup files (only sections/*.yaml)
+	sectionsBackupDir := filepath.Join(backupDir, "sections")
+	if info, err := os.Stat(sectionsBackupDir); err != nil || !info.IsDir() {
+		// No sections in backup, try walking from backup root
+		return restoreMoaiConfigLegacy(projectRoot, backupDir, configDir)
+	}
+
+	return filepath.Walk(sectionsBackupDir, func(backupPath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+
+		// Skip non-YAML files (e.g., backup_metadata.json)
+		if filepath.Ext(backupPath) != ".yaml" && filepath.Ext(backupPath) != ".yml" {
+			return nil
+		}
+
+		relPath, err := filepath.Rel(sectionsBackupDir, backupPath)
+		if err != nil {
+			return err
+		}
+
+		targetPath := filepath.Join(configDir, "sections", relPath)
+
+		// Read backup (old user) data
+		oldData, err := os.ReadFile(backupPath)
+		if err != nil {
+			return err
+		}
+
+		// Check if target file exists (new template)
+		if _, err := os.Stat(targetPath); err != nil {
+			if os.IsNotExist(err) {
+				// Target doesn't exist in new template - skip (field removed from template)
+				return nil
+			}
+			return err
+		}
+
+		// Read new template data
+		newData, err := os.ReadFile(targetPath)
+		if err != nil {
+			return err
+		}
+
+		// Try 3-way merge if template defaults are available
+		if has3Way {
+			basePath := filepath.Join(templateDefaultsDir, "sections", relPath)
+			baseData, err := os.ReadFile(basePath)
+			if err == nil {
+				merged, mergeErr := mergeYAML3Way(newData, oldData, baseData)
+				if mergeErr == nil {
+					return os.WriteFile(targetPath, merged, defs.FilePerm)
+				}
+				// 3-way merge failed, fall through to 2-way
+				_, _ = fmt.Fprintf(os.Stderr, "Warning: 3-way merge failed for %s, falling back to 2-way\n", relPath)
+			}
+		}
+
+		// Fallback: 2-way merge (old behavior)
+		merged, err := mergeYAMLDeep(newData, oldData)
+		if err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "Warning: merge failed for %s, restoring backup\n", relPath)
+			return os.WriteFile(targetPath, oldData, defs.FilePerm)
+		}
+
+		return os.WriteFile(targetPath, merged, defs.FilePerm)
+	})
+}
+
+// restoreMoaiConfigLegacy handles restore from legacy backup format
+// (pre-3-way merge) where files might be at the backup root level.
+func restoreMoaiConfigLegacy(projectRoot, backupDir, configDir string) error {
+	return filepath.Walk(backupDir, func(backupPath string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -1173,48 +1316,144 @@ func restoreMoaiConfig(projectRoot, backupDir string) error {
 			return err
 		}
 
+		// Skip metadata and template defaults
+		if filepath.Base(relPath) == "backup_metadata.json" ||
+			strings.HasPrefix(relPath, ".template-defaults") {
+			return nil
+		}
+
 		targetPath := filepath.Join(configDir, relPath)
 
-		// Read backup data
 		backupData, err := os.ReadFile(backupPath)
 		if err != nil {
 			return err
 		}
 
-		// Check if target file exists
 		if _, err := os.Stat(targetPath); err != nil {
 			if os.IsNotExist(err) {
-				// Target doesn't exist, ensure parent directory exists
 				if err := os.MkdirAll(filepath.Dir(targetPath), defs.DirPerm); err != nil {
 					return fmt.Errorf("create parent directory for %s: %w", relPath, err)
 				}
-				// Copy backup to target
 				return os.WriteFile(targetPath, backupData, defs.FilePerm)
 			}
 			return err
 		}
 
-		// Both files exist, merge them
 		targetData, err := os.ReadFile(targetPath)
 		if err != nil {
 			return err
 		}
 
-		// Perform YAML deep merge
 		merged, err := mergeYAMLDeep(targetData, backupData)
 		if err != nil {
-			// If merge fails, backup the new file and restore old one
 			_, _ = fmt.Fprintf(os.Stderr, "Warning: merge failed for %s, restoring backup\n", relPath)
 			return os.WriteFile(targetPath, backupData, defs.FilePerm)
 		}
 
 		return os.WriteFile(targetPath, merged, defs.FilePerm)
 	})
-
-	return err
 }
 
-// mergeYAMLDeep performs a deep merge of two YAML documents.
+// mergeYAML3Way performs a 3-way merge of YAML documents.
+// It uses baseData (old template defaults) to detect user changes:
+//   - If user value == base value: user didn't change it → use new template value
+//   - If user value != base value: user customized it → preserve user value
+//
+// System fields (like template_version) always use new values regardless.
+func mergeYAML3Way(newData, oldData, baseData []byte) ([]byte, error) {
+	var newMap, oldMap, baseMap map[string]interface{}
+
+	if err := yaml.Unmarshal(newData, &newMap); err != nil {
+		return nil, fmt.Errorf("unmarshal new YAML: %w", err)
+	}
+	if err := yaml.Unmarshal(oldData, &oldMap); err != nil {
+		return nil, fmt.Errorf("unmarshal old YAML: %w", err)
+	}
+	if err := yaml.Unmarshal(baseData, &baseMap); err != nil {
+		return nil, fmt.Errorf("unmarshal base YAML: %w", err)
+	}
+
+	merged := deepMerge3Way(newMap, oldMap, baseMap)
+	return yaml.Marshal(merged)
+}
+
+// deepMerge3Way recursively performs 3-way merge of maps.
+// Decision logic for each key:
+//   - old == base → user didn't change → use new value
+//   - old != base → user changed → preserve old value
+//   - key only in new → new field added by template → use new value
+//   - key only in old → removed from template → drop it
+func deepMerge3Way(newMap, oldMap, baseMap map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+
+	// System fields that always use new values
+	systemFields := map[string]bool{
+		"template_version": true,
+		"version":          true,
+	}
+
+	// Start with all new values as the base result
+	for k, newV := range newMap {
+		// System fields always use new value
+		if systemFields[k] {
+			result[k] = newV
+			continue
+		}
+
+		oldV, oldExists := oldMap[k]
+		baseV, baseExists := baseMap[k]
+
+		if !oldExists {
+			// Key only in new template → add it (new field)
+			result[k] = newV
+			continue
+		}
+
+		// Both new and old exist
+		newMapVal, newIsMap := newV.(map[string]interface{})
+		oldMapVal, oldIsMap := oldV.(map[string]interface{})
+
+		if newIsMap && oldIsMap {
+			// Both are maps → recurse
+			baseMapVal, baseIsMap := baseV.(map[string]interface{})
+			if !baseIsMap {
+				baseMapVal = make(map[string]interface{})
+			}
+			result[k] = deepMerge3Way(newMapVal, oldMapVal, baseMapVal)
+		} else {
+			// Scalar or list values
+			if !baseExists {
+				// No base value → user added this; preserve user value
+				result[k] = oldV
+			} else if valuesEqual(oldV, baseV) {
+				// User didn't change from template default → use new template value
+				result[k] = newV
+			} else {
+				// User changed from template default → preserve user value
+				result[k] = oldV
+			}
+		}
+	}
+
+	// Keys only in old (not in new template) are dropped:
+	// they were removed from the template, so we don't carry them forward.
+
+	return result
+}
+
+// valuesEqual compares two interface{} values for equality.
+// Handles string, int, float, bool, and nil comparisons.
+func valuesEqual(a, b interface{}) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
+}
+
+// mergeYAMLDeep performs a deep merge of two YAML documents (2-way fallback).
 // The newData takes precedence for structure, but values from oldData are preserved
 // when the key exists in both.
 func mergeYAMLDeep(newData, oldData []byte) ([]byte, error) {

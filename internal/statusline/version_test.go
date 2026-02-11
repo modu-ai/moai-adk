@@ -22,11 +22,11 @@ func TestVersionCollector_CheckUpdate(t *testing.T) {
 			name: "valid config with version, same as binary",
 			setupConfig: func(t *testing.T) string {
 				dir := t.TempDir()
-				configDir := filepath.Join(dir, ".moai", "config")
+				configDir := filepath.Join(dir, ".moai", "config", "sections")
 				if err := os.MkdirAll(configDir, 0755); err != nil {
 					t.Fatal(err)
 				}
-				configPath := filepath.Join(configDir, "config.yaml")
+				configPath := filepath.Join(configDir, "system.yaml")
 				content := []byte("moai:\n  version: 1.14.0\n")
 				if err := os.WriteFile(configPath, content, 0644); err != nil {
 					t.Fatal(err)
@@ -42,11 +42,11 @@ func TestVersionCollector_CheckUpdate(t *testing.T) {
 			name: "binary newer than template",
 			setupConfig: func(t *testing.T) string {
 				dir := t.TempDir()
-				configDir := filepath.Join(dir, ".moai", "config")
+				configDir := filepath.Join(dir, ".moai", "config", "sections")
 				if err := os.MkdirAll(configDir, 0755); err != nil {
 					t.Fatal(err)
 				}
-				configPath := filepath.Join(configDir, "config.yaml")
+				configPath := filepath.Join(configDir, "system.yaml")
 				content := []byte("moai:\n  version: v2.0.0\n")
 				if err := os.WriteFile(configPath, content, 0644); err != nil {
 					t.Fatal(err)
@@ -63,11 +63,11 @@ func TestVersionCollector_CheckUpdate(t *testing.T) {
 			name: "valid config with v prefix",
 			setupConfig: func(t *testing.T) string {
 				dir := t.TempDir()
-				configDir := filepath.Join(dir, ".moai", "config")
+				configDir := filepath.Join(dir, ".moai", "config", "sections")
 				if err := os.MkdirAll(configDir, 0755); err != nil {
 					t.Fatal(err)
 				}
-				configPath := filepath.Join(configDir, "config.yaml")
+				configPath := filepath.Join(configDir, "system.yaml")
 				content := []byte("moai:\n  version: v2.0.0\n")
 				if err := os.WriteFile(configPath, content, 0644); err != nil {
 					t.Fatal(err)
@@ -93,11 +93,11 @@ func TestVersionCollector_CheckUpdate(t *testing.T) {
 			name: "empty version falls back to binary version",
 			setupConfig: func(t *testing.T) string {
 				dir := t.TempDir()
-				configDir := filepath.Join(dir, ".moai", "config")
+				configDir := filepath.Join(dir, ".moai", "config", "sections")
 				if err := os.MkdirAll(configDir, 0755); err != nil {
 					t.Fatal(err)
 				}
-				configPath := filepath.Join(configDir, "config.yaml")
+				configPath := filepath.Join(configDir, "system.yaml")
 				content := []byte("moai:\n  version: ''\n")
 				if err := os.WriteFile(configPath, content, 0644); err != nil {
 					t.Fatal(err)
@@ -121,11 +121,11 @@ func TestVersionCollector_CheckUpdate(t *testing.T) {
 			name: "no binary version provided",
 			setupConfig: func(t *testing.T) string {
 				dir := t.TempDir()
-				configDir := filepath.Join(dir, ".moai", "config")
+				configDir := filepath.Join(dir, ".moai", "config", "sections")
 				if err := os.MkdirAll(configDir, 0755); err != nil {
 					t.Fatal(err)
 				}
-				configPath := filepath.Join(configDir, "config.yaml")
+				configPath := filepath.Join(configDir, "system.yaml")
 				content := []byte("moai:\n  version: v2.0.0\n")
 				if err := os.WriteFile(configPath, content, 0644); err != nil {
 					t.Fatal(err)
@@ -179,17 +179,17 @@ func TestVersionCollector_CheckUpdate(t *testing.T) {
 }
 
 func TestVersionCollector_PrefersTemplateVersion(t *testing.T) {
-	// Reproduction test: when project.template_version differs from moai.version,
-	// the collector should use project.template_version (updated by moai update)
+	// Reproduction test: when moai.template_version differs from moai.version,
+	// the collector should use moai.template_version (updated by moai update)
 	// rather than moai.version (only set during moai init).
 	dir := t.TempDir()
-	configDir := filepath.Join(dir, ".moai", "config")
+	configDir := filepath.Join(dir, ".moai", "config", "sections")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	configPath := filepath.Join(configDir, "config.yaml")
+	configPath := filepath.Join(configDir, "system.yaml")
 	// Simulate a project initialized at v0.40.1, then updated to v2.2.1
-	content := []byte("moai:\n  version: 0.40.1\nproject:\n  template_version: 2.2.1\n")
+	content := []byte("moai:\n  version: 0.40.1\n  template_version: 2.2.1\n")
 	if err := os.WriteFile(configPath, content, 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -208,7 +208,7 @@ func TestVersionCollector_PrefersTemplateVersion(t *testing.T) {
 
 	// Should read template_version (2.2.1), not moai.version (0.40.1)
 	if got.Current != "2.2.1" {
-		t.Errorf("CheckUpdate() Current = %q, want %q (should prefer project.template_version)", got.Current, "2.2.1")
+		t.Errorf("CheckUpdate() Current = %q, want %q (should prefer moai.template_version)", got.Current, "2.2.1")
 	}
 	// Binary matches template_version, so no update should be available
 	if got.UpdateAvailable {
@@ -217,13 +217,13 @@ func TestVersionCollector_PrefersTemplateVersion(t *testing.T) {
 }
 
 func TestVersionCollector_FallbackToMoaiVersion(t *testing.T) {
-	// When project.template_version is missing, fall back to moai.version
+	// When moai.template_version is missing, fall back to moai.version
 	dir := t.TempDir()
-	configDir := filepath.Join(dir, ".moai", "config")
+	configDir := filepath.Join(dir, ".moai", "config", "sections")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	configPath := filepath.Join(configDir, "config.yaml")
+	configPath := filepath.Join(configDir, "system.yaml")
 	content := []byte("moai:\n  version: 1.5.0\n")
 	if err := os.WriteFile(configPath, content, 0644); err != nil {
 		t.Fatal(err)

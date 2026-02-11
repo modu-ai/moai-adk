@@ -71,8 +71,12 @@ func runDone(cmd *cobra.Command, args []string) error {
 	_, _ = fmt.Fprintln(out, "  Worktree removed.")
 
 	if deleteBranch {
-		_, _ = fmt.Fprintf(out, "  Note: Branch deletion requires BranchManager (not yet integrated).\n")
-		_, _ = fmt.Fprintf(out, "  To delete the branch manually: git branch -d %s\n", branchName)
+		if err := WorktreeProvider.DeleteBranch(branchName); err != nil {
+			_, _ = fmt.Fprintf(out, "  Warning: could not delete branch: %v\n", err)
+			_, _ = fmt.Fprintf(out, "  To delete manually: git branch -d %s\n", branchName)
+		} else {
+			_, _ = fmt.Fprintf(out, "  Branch %s deleted.\n", branchName)
+		}
 	}
 
 	_, _ = fmt.Fprintln(out, "Done.")

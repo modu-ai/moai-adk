@@ -1020,3 +1020,710 @@ func TestRunStatus_DetachedHEAD(t *testing.T) {
 	}
 	t.Error("status subcommand not found")
 }
+
+// --- Tests for go subcommand ---
+
+func TestRunGo_Found(t *testing.T) {
+	origProvider := WorktreeProvider
+	defer func() { WorktreeProvider = origProvider }()
+
+	WorktreeProvider = &mockWorktreeManager{
+		listFunc: func() ([]git.Worktree, error) {
+			return []git.Worktree{
+				{Path: "/repo", Branch: "main", HEAD: "abc"},
+				{Path: "/repo-feat", Branch: "feat", HEAD: "def"},
+			}, nil
+		},
+	}
+
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "go" {
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+
+			err := cmd.RunE(cmd, []string{"feat"})
+			if err != nil {
+				t.Fatalf("runGo error: %v", err)
+			}
+
+			output := buf.String()
+			if output != "/repo-feat\n" {
+				t.Errorf("output = %q, want %q", output, "/repo-feat\n")
+			}
+			return
+		}
+	}
+	t.Error("go subcommand not found")
+}
+
+func TestRunGo_NotFound(t *testing.T) {
+	origProvider := WorktreeProvider
+	defer func() { WorktreeProvider = origProvider }()
+
+	WorktreeProvider = &mockWorktreeManager{
+		listFunc: func() ([]git.Worktree, error) {
+			return []git.Worktree{
+				{Path: "/repo", Branch: "main", HEAD: "abc"},
+			}, nil
+		},
+	}
+
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "go" {
+			err := cmd.RunE(cmd, []string{"nonexistent"})
+			if err == nil {
+				t.Error("runGo should error for unknown branch")
+			}
+			if !strings.Contains(err.Error(), "no worktree found") {
+				t.Errorf("error should mention no worktree found, got %v", err)
+			}
+			return
+		}
+	}
+	t.Error("go subcommand not found")
+}
+
+func TestRunGo_ListError(t *testing.T) {
+	origProvider := WorktreeProvider
+	defer func() { WorktreeProvider = origProvider }()
+
+	WorktreeProvider = &mockWorktreeManager{
+		listFunc: func() ([]git.Worktree, error) {
+			return nil, errors.New("git error")
+		},
+	}
+
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "go" {
+			err := cmd.RunE(cmd, []string{"feat"})
+			if err == nil {
+				t.Error("runGo should error on list failure")
+			}
+			if !strings.Contains(err.Error(), "list worktrees") {
+				t.Errorf("error should mention list worktrees, got %v", err)
+			}
+			return
+		}
+	}
+	t.Error("go subcommand not found")
+}
+
+// --- Tests for SPEC-ID resolution ---
+
+func TestResolveSpecBranch(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"regular branch", "feature-x", "feature-x"},
+		{"spec id", "SPEC-AUTH-001", "feature/SPEC-AUTH-001"},
+		{"spec id with long name", "SPEC-UI-042", "feature/SPEC-UI-042"},
+		{"not spec just prefix", "SPEC-", "SPEC-"},
+		{"not spec one part", "SPEC-AUTH", "SPEC-AUTH"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := resolveSpecBranch(tt.input)
+			if got != tt.want {
+				t.Errorf("resolveSpecBranch(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsSpecID(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  bool
+	}{
+		{"valid spec", "SPEC-AUTH-001", true},
+		{"valid spec 2", "SPEC-UI-042", true},
+		{"not spec no prefix", "feature-x", false},
+		{"not spec too few parts", "SPEC-AUTH", false},
+		{"not spec just prefix", "SPEC-", false},
+		{"empty string", "", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isSpecID(tt.input)
+			if got != tt.want {
+				t.Errorf("isSpecID(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRunNew_SpecID(t *testing.T) {
+	origProvider := WorktreeProvider
+	defer func() { WorktreeProvider = origProvider }()
+
+	var capturedBranch string
+	WorktreeProvider = &mockWorktreeManager{
+		addFunc: func(_, branch string) error {
+			capturedBranch = branch
+			return nil
+		},
+	}
+
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "new" {
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+
+			err := cmd.RunE(cmd, []string{"SPEC-AUTH-001"})
+			if err != nil {
+				t.Fatalf("runNew error: %v", err)
+			}
+
+			if capturedBranch != "feature/SPEC-AUTH-001" {
+				t.Errorf("branch = %q, want %q", capturedBranch, "feature/SPEC-AUTH-001")
+			}
+			return
+		}
+	}
+	t.Error("new subcommand not found")
+}
+
+// --- Tests for new --base flag ---
+
+func TestWorktreeCmd_NewHasBaseFlag(t *testing.T) {
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "new" {
+			f := cmd.Flags().Lookup("base")
+			if f == nil {
+				t.Error("worktree new should have --base flag")
+			}
+			return
+		}
+	}
+	t.Error("new subcommand not found")
+}
+
+// --- Tests for enhanced sync ---
+
+func TestRunSync_WithBranch(t *testing.T) {
+	origProvider := WorktreeProvider
+	origSync := mockSyncFunc
+	defer func() {
+		WorktreeProvider = origProvider
+		mockSyncFunc = origSync
+	}()
+
+	var syncPath, syncBase, syncStrategy string
+	mockSyncFunc = func(wtPath, baseBranch, strategy string) error {
+		syncPath = wtPath
+		syncBase = baseBranch
+		syncStrategy = strategy
+		return nil
+	}
+
+	WorktreeProvider = &mockWorktreeManager{
+		listFunc: func() ([]git.Worktree, error) {
+			return []git.Worktree{
+				{Path: "/repo", Branch: "main", HEAD: "abc"},
+				{Path: "/repo-feat", Branch: "feat", HEAD: "def"},
+			}, nil
+		},
+	}
+
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "sync" {
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+
+			err := cmd.RunE(cmd, []string{"feat"})
+			if err != nil {
+				t.Fatalf("runSync error: %v", err)
+			}
+
+			if syncPath != "/repo-feat" {
+				t.Errorf("sync path = %q, want %q", syncPath, "/repo-feat")
+			}
+			if syncBase != "main" {
+				t.Errorf("sync base = %q, want %q", syncBase, "main")
+			}
+			if syncStrategy != "merge" {
+				t.Errorf("sync strategy = %q, want %q", syncStrategy, "merge")
+			}
+
+			output := buf.String()
+			if !strings.Contains(output, "Syncing worktree") {
+				t.Errorf("output should contain 'Syncing worktree', got %q", output)
+			}
+			if !strings.Contains(output, "Sync complete") {
+				t.Errorf("output should contain 'Sync complete', got %q", output)
+			}
+			return
+		}
+	}
+	t.Error("sync subcommand not found")
+}
+
+func TestRunSync_BranchNotFound(t *testing.T) {
+	origProvider := WorktreeProvider
+	defer func() { WorktreeProvider = origProvider }()
+
+	WorktreeProvider = &mockWorktreeManager{
+		listFunc: func() ([]git.Worktree, error) {
+			return []git.Worktree{
+				{Path: "/repo", Branch: "main", HEAD: "abc"},
+			}, nil
+		},
+	}
+
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "sync" {
+			err := cmd.RunE(cmd, []string{"nonexistent"})
+			if err == nil {
+				t.Error("runSync should error for unknown branch")
+			}
+			if !strings.Contains(err.Error(), "no worktree found") {
+				t.Errorf("error should mention no worktree found, got %v", err)
+			}
+			return
+		}
+	}
+	t.Error("sync subcommand not found")
+}
+
+func TestRunSync_SyncError(t *testing.T) {
+	origProvider := WorktreeProvider
+	origSync := mockSyncFunc
+	defer func() {
+		WorktreeProvider = origProvider
+		mockSyncFunc = origSync
+	}()
+
+	mockSyncFunc = func(_, _, _ string) error {
+		return errors.New("sync failed")
+	}
+
+	WorktreeProvider = &mockWorktreeManager{
+		listFunc: func() ([]git.Worktree, error) {
+			return []git.Worktree{
+				{Path: "/repo-feat", Branch: "feat", HEAD: "def"},
+			}, nil
+		},
+	}
+
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "sync" {
+			err := cmd.RunE(cmd, []string{"feat"})
+			if err == nil {
+				t.Error("runSync should error when Sync fails")
+			}
+			if !strings.Contains(err.Error(), "sync worktree") {
+				t.Errorf("error should mention sync worktree, got %v", err)
+			}
+			return
+		}
+	}
+	t.Error("sync subcommand not found")
+}
+
+func TestWorktreeCmd_SyncHasBaseFlag(t *testing.T) {
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "sync" {
+			f := cmd.Flags().Lookup("base")
+			if f == nil {
+				t.Error("worktree sync should have --base flag")
+			}
+			return
+		}
+	}
+	t.Error("sync subcommand not found")
+}
+
+func TestWorktreeCmd_SyncHasStrategyFlag(t *testing.T) {
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "sync" {
+			f := cmd.Flags().Lookup("strategy")
+			if f == nil {
+				t.Error("worktree sync should have --strategy flag")
+			}
+			return
+		}
+	}
+	t.Error("sync subcommand not found")
+}
+
+// --- Tests for list --verbose ---
+
+func TestRunList_Verbose(t *testing.T) {
+	origProvider := WorktreeProvider
+	defer func() { WorktreeProvider = origProvider }()
+
+	WorktreeProvider = &mockWorktreeManager{
+		listFunc: func() ([]git.Worktree, error) {
+			return []git.Worktree{
+				{Path: "/repo", Branch: "main", HEAD: "abc12345def67890"},
+				{Path: "/repo-feature", Branch: "feature", HEAD: "789abcde00012345"},
+			}, nil
+		},
+	}
+
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "list" {
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+
+			if err := cmd.Flags().Set("verbose", "true"); err != nil {
+				t.Fatalf("set verbose flag: %v", err)
+			}
+			defer func() { _ = cmd.Flags().Set("verbose", "false") }()
+
+			err := cmd.RunE(cmd, []string{})
+			if err != nil {
+				t.Fatalf("runList error: %v", err)
+			}
+
+			output := buf.String()
+			if !strings.Contains(output, "Branch:") {
+				t.Errorf("verbose output should contain 'Branch:', got %q", output)
+			}
+			if !strings.Contains(output, "Path:") {
+				t.Errorf("verbose output should contain 'Path:', got %q", output)
+			}
+			if !strings.Contains(output, "HEAD:") {
+				t.Errorf("verbose output should contain 'HEAD:', got %q", output)
+			}
+			// Verbose shows full HEAD hash, not truncated.
+			if !strings.Contains(output, "abc12345def67890") {
+				t.Errorf("verbose output should contain full HEAD hash, got %q", output)
+			}
+			return
+		}
+	}
+	t.Error("list subcommand not found")
+}
+
+func TestWorktreeCmd_ListHasVerboseFlag(t *testing.T) {
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "list" {
+			f := cmd.Flags().Lookup("verbose")
+			if f == nil {
+				t.Error("worktree list should have --verbose flag")
+			}
+			return
+		}
+	}
+	t.Error("list subcommand not found")
+}
+
+// --- Tests for clean --merged-only ---
+
+func TestRunClean_MergedOnly(t *testing.T) {
+	origProvider := WorktreeProvider
+	origMerged := mockIsBranchMergedFunc
+	defer func() {
+		WorktreeProvider = origProvider
+		mockIsBranchMergedFunc = origMerged
+	}()
+
+	mockIsBranchMergedFunc = func(branch, base string) (bool, error) {
+		return branch == "feature", nil
+	}
+
+	var removedPath string
+	WorktreeProvider = &mockWorktreeManager{
+		listFunc: func() ([]git.Worktree, error) {
+			return []git.Worktree{
+				{Path: "/repo", Branch: "main", HEAD: "abc"},
+				{Path: "/repo-feature", Branch: "feature", HEAD: "def"},
+			}, nil
+		},
+		removeFunc: func(path string, force bool) error {
+			removedPath = path
+			return nil
+		},
+	}
+
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "clean" {
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+
+			if err := cmd.Flags().Set("merged-only", "true"); err != nil {
+				t.Fatalf("set merged-only flag: %v", err)
+			}
+			defer func() { _ = cmd.Flags().Set("merged-only", "false") }()
+
+			err := cmd.RunE(cmd, []string{})
+			if err != nil {
+				t.Fatalf("runClean error: %v", err)
+			}
+
+			if removedPath != "/repo-feature" {
+				t.Errorf("removedPath = %q, want %q", removedPath, "/repo-feature")
+			}
+
+			output := buf.String()
+			if !strings.Contains(output, "Removing merged worktree") {
+				t.Errorf("output should contain 'Removing merged worktree', got %q", output)
+			}
+			return
+		}
+	}
+	t.Error("clean subcommand not found")
+}
+
+func TestRunClean_MergedOnlyNone(t *testing.T) {
+	origProvider := WorktreeProvider
+	origMerged := mockIsBranchMergedFunc
+	defer func() {
+		WorktreeProvider = origProvider
+		mockIsBranchMergedFunc = origMerged
+	}()
+
+	mockIsBranchMergedFunc = func(_, _ string) (bool, error) {
+		return false, nil
+	}
+
+	WorktreeProvider = &mockWorktreeManager{
+		listFunc: func() ([]git.Worktree, error) {
+			return []git.Worktree{
+				{Path: "/repo", Branch: "main", HEAD: "abc"},
+				{Path: "/repo-feature", Branch: "feature", HEAD: "def"},
+			}, nil
+		},
+	}
+
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "clean" {
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+
+			if err := cmd.Flags().Set("merged-only", "true"); err != nil {
+				t.Fatalf("set merged-only flag: %v", err)
+			}
+			defer func() { _ = cmd.Flags().Set("merged-only", "false") }()
+
+			err := cmd.RunE(cmd, []string{})
+			if err != nil {
+				t.Fatalf("runClean error: %v", err)
+			}
+
+			output := buf.String()
+			if !strings.Contains(output, "No merged worktrees to clean") {
+				t.Errorf("output should contain 'No merged worktrees to clean', got %q", output)
+			}
+			return
+		}
+	}
+	t.Error("clean subcommand not found")
+}
+
+func TestWorktreeCmd_CleanHasMergedOnlyFlag(t *testing.T) {
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "clean" {
+			f := cmd.Flags().Lookup("merged-only")
+			if f == nil {
+				t.Error("worktree clean should have --merged-only flag")
+			}
+			return
+		}
+	}
+	t.Error("clean subcommand not found")
+}
+
+// --- Tests for enhanced done --delete-branch ---
+
+func TestRunDone_WithDeleteBranch(t *testing.T) {
+	origProvider := WorktreeProvider
+	origDeleteBranch := mockDeleteBranchFunc
+	defer func() {
+		WorktreeProvider = origProvider
+		mockDeleteBranchFunc = origDeleteBranch
+	}()
+
+	var deletedBranch string
+	mockDeleteBranchFunc = func(name string) error {
+		deletedBranch = name
+		return nil
+	}
+
+	removeCalled := false
+	WorktreeProvider = &mockWorktreeManager{
+		listFunc: func() ([]git.Worktree, error) {
+			return []git.Worktree{
+				{Path: "/repo", Branch: "main", HEAD: "abc"},
+				{Path: "/repo-feature", Branch: "feature", HEAD: "def"},
+			}, nil
+		},
+		removeFunc: func(_ string, _ bool) error {
+			removeCalled = true
+			return nil
+		},
+	}
+
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "done" {
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+
+			if err := cmd.Flags().Set("delete-branch", "true"); err != nil {
+				t.Fatalf("set delete-branch flag: %v", err)
+			}
+			defer func() { _ = cmd.Flags().Set("delete-branch", "false") }()
+
+			err := cmd.RunE(cmd, []string{"feature"})
+			if err != nil {
+				t.Fatalf("runDone error: %v", err)
+			}
+
+			if !removeCalled {
+				t.Error("Remove should have been called")
+			}
+			if deletedBranch != "feature" {
+				t.Errorf("deletedBranch = %q, want %q", deletedBranch, "feature")
+			}
+
+			output := buf.String()
+			if !strings.Contains(output, "Branch feature deleted") {
+				t.Errorf("output should contain 'Branch feature deleted', got %q", output)
+			}
+			return
+		}
+	}
+	t.Error("done subcommand not found")
+}
+
+func TestRunDone_DeleteBranchError(t *testing.T) {
+	origProvider := WorktreeProvider
+	origDeleteBranch := mockDeleteBranchFunc
+	defer func() {
+		WorktreeProvider = origProvider
+		mockDeleteBranchFunc = origDeleteBranch
+	}()
+
+	mockDeleteBranchFunc = func(_ string) error {
+		return errors.New("branch in use")
+	}
+
+	WorktreeProvider = &mockWorktreeManager{
+		listFunc: func() ([]git.Worktree, error) {
+			return []git.Worktree{
+				{Path: "/repo", Branch: "main", HEAD: "abc"},
+				{Path: "/repo-feature", Branch: "feature", HEAD: "def"},
+			}, nil
+		},
+		removeFunc: func(_ string, _ bool) error {
+			return nil
+		},
+	}
+
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "done" {
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+
+			if err := cmd.Flags().Set("delete-branch", "true"); err != nil {
+				t.Fatalf("set delete-branch flag: %v", err)
+			}
+			defer func() { _ = cmd.Flags().Set("delete-branch", "false") }()
+
+			err := cmd.RunE(cmd, []string{"feature"})
+			// Should NOT error (graceful degradation).
+			if err != nil {
+				t.Fatalf("runDone should not error on branch delete failure, got: %v", err)
+			}
+
+			output := buf.String()
+			if !strings.Contains(output, "Warning: could not delete branch") {
+				t.Errorf("output should contain warning about branch deletion, got %q", output)
+			}
+			return
+		}
+	}
+	t.Error("done subcommand not found")
+}
+
+// --- Tests for status --all ---
+
+func TestRunStatus_ShowAll(t *testing.T) {
+	origProvider := WorktreeProvider
+	defer func() { WorktreeProvider = origProvider }()
+
+	WorktreeProvider = &mockWorktreeManager{
+		listFunc: func() ([]git.Worktree, error) {
+			return []git.Worktree{
+				{Path: "/repo", Branch: "main", HEAD: "abc12345def67890"},
+			}, nil
+		},
+		rootPath: "/repo",
+	}
+
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "status" {
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+
+			if err := cmd.Flags().Set("all", "true"); err != nil {
+				t.Fatalf("set all flag: %v", err)
+			}
+			defer func() { _ = cmd.Flags().Set("all", "false") }()
+
+			err := cmd.RunE(cmd, []string{})
+			if err != nil {
+				t.Fatalf("runStatus error: %v", err)
+			}
+
+			output := buf.String()
+			// With --all, full hash should be shown.
+			if !strings.Contains(output, "abc12345def67890") {
+				t.Errorf("output should contain full hash with --all, got %q", output)
+			}
+			return
+		}
+	}
+	t.Error("status subcommand not found")
+}
+
+func TestWorktreeCmd_StatusHasAllFlag(t *testing.T) {
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "status" {
+			f := cmd.Flags().Lookup("all")
+			if f == nil {
+				t.Error("worktree status should have --all flag")
+			}
+			return
+		}
+	}
+	t.Error("status subcommand not found")
+}
+
+// --- Tests for config with 2 args ---
+
+func TestRunConfig_SetNotSupported(t *testing.T) {
+	origProvider := WorktreeProvider
+	defer func() { WorktreeProvider = origProvider }()
+
+	WorktreeProvider = &mockWorktreeManager{
+		rootPath: "/test/repo",
+	}
+
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "config" {
+			err := cmd.RunE(cmd, []string{"root", "some-value"})
+			if err == nil {
+				t.Error("runConfig should error for set operation")
+			}
+			if !strings.Contains(err.Error(), "config set is not yet supported") {
+				t.Errorf("error should mention config set not supported, got %v", err)
+			}
+			return
+		}
+	}
+	t.Error("config subcommand not found")
+}

@@ -769,9 +769,11 @@ func TestRankStatus_WithClient(t *testing.T) {
 		RankClient: &mockRankClient{
 			getUserRankFunc: func(_ context.Context) (*rank.UserRank, error) {
 				return &rank.UserRank{
-					Username:      "testuser",
-					TotalTokens:   5000,
-					TotalSessions: 10,
+					Username: "testuser",
+					Stats: &rank.UserRankStats{
+						TotalTokens:   5000,
+						TotalSessions: 10,
+					},
 				}, nil
 			},
 		},
