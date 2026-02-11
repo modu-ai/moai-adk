@@ -9,6 +9,124 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.2.7] - 2026-02-11
+
+### Summary
+
+Feature release adding worktree shell navigation, device tracking for MoAI Rank sync, and configuration cleanup. Introduces `moai worktree go` command for seamless shell directory switching, device-aware session management, and removes legacy LLM/pricing configs moved to Context7 MCP.
+
+### Breaking Changes
+
+- **Configuration Cleanup**: Removed llm.yaml and pricing.yaml configs (moved to Context7 MCP server)
+  - Users must run `moai update` to sync template changes
+  - Existing projects continue working with Context7 MCP integration
+
+### Added
+
+- **Worktree Shell Navigation**: New `moai worktree go <branch>` command for shell directory switching
+  - Usage: `cd $(moai wt go my-branch)` for instant navigation to worktree directory
+  - Comprehensive test coverage (+707 lines in worktree/subcommands_test.go)
+  - Mock extension framework for testability
+- **MoAI Rank Device Tracking**: Multi-device sync awareness for session management
+  - New device.go module for device identification and tracking
+  - Device-scoped session persistence and sync state
+  - Comprehensive test coverage (device_test.go)
+- **MoAI Rank Sync State**: Session state management for cross-device synchronization
+  - New sync_state.go module for sync coordination
+  - State persistence and recovery mechanisms
+  - Comprehensive test coverage (sync_state_test.go)
+- **Update Command Enhancements**: Major refactoring of update.go (+315 lines)
+  - Enhanced error handling and retry logic
+  - Improved update verification and rollback
+  - Better progress reporting
+
+### Changed
+
+- **Worktree Configuration**: Improved config management and error handling
+- **Rank Client**: Refactored with enhanced error handling and retry logic
+- **Template Structure**: Consolidated configuration templates for better maintainability
+- **Project Initializer**: Updated for new configuration layout
+
+### Removed
+
+- **Legacy Configuration Files**:
+  - .moai/config/sections/llm.yaml (moved to Context7 MCP)
+  - .moai/config/sections/pricing.yaml (moved to Context7 MCP)
+  - internal/template/templates/.moai/config/config.yaml.tmpl (consolidated)
+  - internal/template/templates/.moai/config/sections/llm.yaml (moved to Context7 MCP)
+  - internal/template/templates/.moai/config/sections/pricing.yaml (moved to Context7 MCP)
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.2.7] - 2026-02-11 (한국어)
+
+### 요약
+
+워크트리 셸 내비게이션, MoAI Rank 동기화를 위한 디바이스 추적, 설정 정리 기능이 추가된 기능 릴리스입니다. 원활한 셸 디렉토리 전환을 위한 `moai worktree go` 명령어를 도입하고, 디바이스 인식 세션 관리를 제공하며, Context7 MCP로 이동한 레거시 LLM/pricing 설정을 제거했습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+- **설정 정리**: llm.yaml 및 pricing.yaml 설정 제거 (Context7 MCP 서버로 이동)
+  - 사용자는 `moai update`를 실행하여 템플릿 변경 사항을 동기화해야 함
+  - 기존 프로젝트는 Context7 MCP 통합으로 계속 작동
+
+### 추가됨 (Added)
+
+- **워크트리 셸 내비게이션**: 셸 디렉토리 전환을 위한 새로운 `moai worktree go <branch>` 명령어
+  - 사용법: `cd $(moai wt go my-branch)`로 워크트리 디렉토리로 즉시 이동
+  - 포괄적인 테스트 커버리지 (worktree/subcommands_test.go에 +707줄)
+  - 테스트 가능성을 위한 Mock 확장 프레임워크
+- **MoAI Rank 디바이스 추적**: 세션 관리를 위한 다중 디바이스 동기화 인식
+  - 디바이스 식별 및 추적을 위한 새로운 device.go 모듈
+  - 디바이스 범위 세션 지속성 및 동기화 상태
+  - 포괄적인 테스트 커버리지 (device_test.go)
+- **MoAI Rank 동기화 상태**: 크로스 디바이스 동기화를 위한 세션 상태 관리
+  - 동기화 조정을 위한 새로운 sync_state.go 모듈
+  - 상태 지속성 및 복구 메커니즘
+  - 포괄적인 테스트 커버리지 (sync_state_test.go)
+- **Update 명령어 개선**: update.go의 주요 리팩토링 (+315줄)
+  - 향상된 오류 처리 및 재시도 로직
+  - 개선된 업데이트 검증 및 롤백
+  - 더 나은 진행 상황 보고
+
+### 변경됨 (Changed)
+
+- **워크트리 설정**: 개선된 설정 관리 및 오류 처리
+- **Rank 클라이언트**: 향상된 오류 처리 및 재시도 로직으로 리팩토링
+- **템플릿 구조**: 더 나은 유지 관리를 위한 설정 템플릿 통합
+- **프로젝트 초기화**: 새로운 설정 레이아웃에 맞게 업데이트
+
+### 제거됨 (Removed)
+
+- **레거시 설정 파일**:
+  - .moai/config/sections/llm.yaml (Context7 MCP로 이동)
+  - .moai/config/sections/pricing.yaml (Context7 MCP로 이동)
+  - internal/template/templates/.moai/config/config.yaml.tmpl (통합됨)
+  - internal/template/templates/.moai/config/sections/llm.yaml (Context7 MCP로 이동)
+  - internal/template/templates/.moai/config/sections/pricing.yaml (Context7 MCP로 이동)
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.2.6] - 2026-02-10
 
 ### Summary
