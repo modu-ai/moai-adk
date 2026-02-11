@@ -113,6 +113,23 @@ When team mode is enabled (workflow.team.enabled and AGENT_TEAMS env), phases ca
 - Quality validation after all implementation completes
 - Shutdown team
 
+### Team Workflow References
+
+Detailed team orchestration steps are defined in dedicated workflow files:
+
+- Plan phase: @.claude/skills/moai/workflows/team-plan.md
+- Run phase: @.claude/skills/moai/workflows/team-run.md
+- Fix phase: @.claude/skills/moai/workflows/team-debug.md
+
+
+### Prerequisites
+
+Both conditions must be met for team mode:
+- `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in environment or settings.json env
+- `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml`
+
+If prerequisites are not met, all subcommands gracefully fall back to sub-agent mode.
+
 ### Mode Selection
 - --team flag: Force team mode
 - --solo flag: Force sub-agent mode
@@ -120,7 +137,8 @@ When team mode is enabled (workflow.team.enabled and AGENT_TEAMS env), phases ca
 - See workflow.yaml team.auto_selection for thresholds
 
 ### Fallback
-If team mode fails or is unavailable:
+If team mode fails or prerequisites are not met:
 - Graceful fallback to sub-agent mode
 - Continue from last completed task
 - No data loss or state corruption
+- Trigger conditions: AGENT_TEAMS env not set, workflow.team.enabled false, TeamCreate failure, teammate spawn failure

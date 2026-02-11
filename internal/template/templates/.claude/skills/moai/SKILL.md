@@ -65,6 +65,7 @@ Match the first word of $ARGUMENTS against known subcommands:
 - **fix**: Auto-fix errors in a single pass
 - **loop**: Iterative auto-fix until completion marker detected
 
+
 ### Priority 2: SPEC-ID Detection
 
 If $ARGUMENTS contains a pattern matching SPEC-XXX (such as SPEC-AUTH-001), route to the **run** workflow automatically. The SPEC-ID becomes the target for DDD implementation.
@@ -78,7 +79,6 @@ When no explicit subcommand or SPEC-ID is detected, classify the intent:
 - Iterative and repeat language (keep fixing, until done, repeat, iterate, all errors) routes to **loop**
 - Documentation language (document, sync, docs, readme, changelog, PR) routes to **sync** or **project**
 - Feedback and bug report language (report, feedback, suggestion, issue) routes to **feedback**
-- Review language (review, code review, audit, inspect) routes to **team-review** workflow (requires --team)
 - Implementation language (implement, build, create, add, develop) with clear scope routes to **moai** (default autonomous)
 
 ### Priority 4: Default Behavior
@@ -331,7 +331,7 @@ For detailed workflow orchestration steps, read the corresponding workflow file:
 - workflows/team-run.md: Team-based parallel implementation for run phase
 - workflows/team-sync.md: Sync phase rationale (always sub-agent mode)
 - workflows/team-debug.md: Competing hypothesis investigation team
-- workflows/team-review.md: Multi-perspective code review team
+
 
 For SPEC workflow overview: See .claude/rules/moai/workflow/spec-workflow.md
 For quality standards: See .claude/rules/moai/core/moai-constitution.md

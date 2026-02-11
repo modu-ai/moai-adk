@@ -37,8 +37,7 @@ workflow:
     # Team lead operates in delegate mode (coordination only, no direct implementation)
     delegate_mode: true
 
-    # Display mode for teammates
-    # Options: auto (tmux if available), in-process (same terminal), tmux (force split panes)
+    # Display mode: auto (tmux if available, else in-process), in-process (same terminal), tmux (split panes)
     teammate_display: "auto"
 
     # Auto-selection thresholds for switching to team mode
@@ -52,7 +51,7 @@ workflow:
       # Minimum complexity score (1-10) to trigger team mode
       min_complexity_score: 7
 
-    # Pre-defined team composition patterns
+    # Pre-defined team composition patterns used by team workflow files (team-plan.md, team-run.md, etc.)
     patterns:
       plan_research:
         roles:
@@ -95,14 +94,6 @@ workflow:
           - hypothesis-3
         model: "haiku"
         description: "Competing hypothesis debugging"
-
-      review:
-        roles:
-          - security-reviewer
-          - perf-reviewer
-          - quality-reviewer
-        model: "inherit"
-        description: "Multi-perspective code review"
 
   # Completion markers for workflow state detection
   completion:

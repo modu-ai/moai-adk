@@ -74,7 +74,7 @@ The `memory` field enables cross-session learning for agents. Three scope levels
 
 ## Agent Categories
 
-### Manager Agents (7)
+### Manager Agents (8)
 
 Coordinate workflows and multi-step processes:
 
@@ -118,7 +118,7 @@ Agents for Claude Code Agent Teams (v2.1.32+, requires CLAUDE_CODE_EXPERIMENTAL_
 | team-analyst | inherit | plan | plan (read-only) | Requirements analysis |
 | team-architect | inherit | plan | plan (read-only) | Technical design |
 | team-backend-dev | inherit | run | acceptEdits | Server-side implementation |
-| team-designer | inherit | run | acceptEdits | UI/UX design with Pencil/Figma MCP |
+| team-designer | inherit | run | acceptEdits | UI/UX design with Pencil/Figma MCP (requires Pencil MCP server) |
 | team-frontend-dev | inherit | run | acceptEdits | Client-side implementation |
 | team-tester | inherit | run | acceptEdits | Test creation with exclusive test file ownership |
 | team-quality | inherit | run | plan (read-only) | TRUST 5 quality validation |
@@ -157,6 +157,13 @@ Invoke agents via Task tool:
 
 - "Use the expert-backend subagent to implement the API"
 - Task tool with subagent_type parameter
+
+For team mode invocation:
+- TeamCreate to initialize team structure
+- Task() with team_name and name parameters to spawn teammates
+- SendMessage for inter-teammate coordination
+- TeamDelete after all teammates shut down
+- See team-plan.md and team-run.md for complete workflow examples
 
 ## MoAI Integration
 
