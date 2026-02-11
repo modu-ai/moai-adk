@@ -9,6 +9,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.2.8] - 2026-02-11
+
+### Summary
+
+Patch release upgrading default GLM models from glm-4.7 to glm-5 for enhanced AI capabilities. This update provides improved response quality and advanced features for Sonnet and Opus model tiers while maintaining the optimized glm-4.7-flashx for Haiku.
+
+### Breaking Changes
+
+None
+
+### Changed
+
+- **GLM Model Defaults**: Upgraded Sonnet and Opus models from glm-4.7 to glm-5
+  - Sonnet: glm-4.7 → glm-5 (enhanced model performance and capabilities)
+  - Opus: glm-4.7 → glm-5 (enhanced model performance and capabilities)
+  - Haiku: glm-4.7-flashx (unchanged, optimized for speed and cost)
+  - Applies only to default fallback values when GLM config is unavailable
+  - Users with custom GLM configurations unaffected
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.2.8] - 2026-02-11 (한국어)
+
+### 요약
+
+glm-4.7에서 glm-5로 기본 GLM 모델을 업그레이드하여 향상된 AI 기능을 제공하는 패치 릴리스입니다. 이 업데이트는 Sonnet 및 Opus 모델 계층에 대한 향상된 응답 품질과 고급 기능을 제공하며, Haiku는 최적화된 glm-4.7-flashx를 유지합니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 변경됨 (Changed)
+
+- **GLM 모델 기본값**: Sonnet 및 Opus 모델을 glm-4.7에서 glm-5로 업그레이드
+  - Sonnet: glm-4.7 → glm-5 (향상된 모델 성능 및 기능)
+  - Opus: glm-4.7 → glm-5 (향상된 모델 성능 및 기능)
+  - Haiku: glm-4.7-flashx (변경 없음, 속도 및 비용 최적화)
+  - GLM 설정이 없을 때 기본 fallback 값에만 적용됨
+  - 사용자 정의 GLM 설정이 있는 경우 영향 없음
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.2.7] - 2026-02-11
 
 ### Summary
