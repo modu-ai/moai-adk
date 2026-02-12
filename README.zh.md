@@ -244,6 +244,32 @@ graph LR
 
 ---
 
+## 模型策略（Token 优化）
+
+MoAI-ADK 根据您的 Claude Code 订阅方案，为 28 个智能体分配最优 AI 模型。在方案的速率限制内最大化质量。
+
+| 策略 | 方案 | Opus | Sonnet | Haiku | 适用场景 |
+|------|------|------|--------|-------|----------|
+| **High** | Max $200/月 | 23 | 1 | 4 | 最高质量，最大吞吐量 |
+| **Medium** | Max $100/月 | 4 | 19 | 5 | 质量与成本平衡 |
+| **Low** | Plus $20/月 | 0 | 12 | 16 | 经济实惠，无 Opus |
+
+> **为什么重要？** Plus $20 方案不包含 Opus。设置为 `Low` 后，所有智能体仅使用 Sonnet 和 Haiku，避免速率限制错误。更高级方案可在关键智能体（安全、策略、架构）上使用 Opus，常规任务使用 Sonnet/Haiku。
+
+### 配置方法
+
+```bash
+# 项目初始化时
+moai init my-project          # 交互式向导中选择模型策略
+
+# 重新配置现有项目
+moai update -c                # 重新运行配置向导
+```
+
+> 默认策略为 `High`。运行 `moai update` 后，会提示您通过 `moai update -c` 配置此设置。
+
+---
+
 ## 双执行模式
 
 MoAI-ADK 同时提供 Claude Code 支持的 **Sub-Agent** 和 **Agent Teams** 两种执行模式。

@@ -244,6 +244,32 @@ Managed through a 3-level progressive disclosure system for token efficiency:
 
 ---
 
+## Model Policy (Token Optimization)
+
+MoAI-ADK assigns optimal AI models to each of 28 agents based on your Claude Code subscription plan. This maximizes quality within your plan's rate limits.
+
+| Policy | Plan | Opus | Sonnet | Haiku | Best For |
+|--------|------|------|--------|-------|----------|
+| **High** | Max $200/mo | 23 | 1 | 4 | Maximum quality, highest throughput |
+| **Medium** | Max $100/mo | 4 | 19 | 5 | Balanced quality and cost |
+| **Low** | Plus $20/mo | 0 | 12 | 16 | Budget-friendly, no Opus access |
+
+> **Why does this matter?** The Plus $20 plan does not include Opus access. Setting `Low` ensures all agents use only Sonnet and Haiku, preventing rate limit errors. Higher plans benefit from Opus on critical agents (security, strategy, architecture) while using Sonnet/Haiku for routine tasks.
+
+### Configuration
+
+```bash
+# During project initialization
+moai init my-project          # Interactive wizard includes model policy selection
+
+# Reconfigure existing project
+moai update -c                # Re-runs the configuration wizard
+```
+
+> Default policy is `High`. After running `moai update`, a notice guides you to configure this setting via `moai update -c`.
+
+---
+
 ## Dual Execution Modes
 
 MoAI-ADK provides both **Sub-Agent** and **Agent Teams** execution modes supported by Claude Code.

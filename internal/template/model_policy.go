@@ -14,11 +14,11 @@ import (
 type ModelPolicy string
 
 const (
-	// ModelPolicyHigh uses inherit for all agents (maximum quality, highest token consumption).
+	// ModelPolicyHigh uses explicit opus for most agents (Max $200 plan, highest quality).
 	ModelPolicyHigh ModelPolicy = "high"
-	// ModelPolicyMedium uses opus for critical agents, sonnet for implementation, haiku for mechanical.
+	// ModelPolicyMedium uses opus for critical agents, sonnet for standard, haiku for mechanical (Max $100 plan).
 	ModelPolicyMedium ModelPolicy = "medium"
-	// ModelPolicyLow uses explicit opus/sonnet/haiku for maximum efficiency.
+	// ModelPolicyLow uses no opus (Plus $20 plan). Sonnet for core agents, Haiku for the rest.
 	ModelPolicyLow ModelPolicy = "low"
 )
 
@@ -40,59 +40,56 @@ func IsValidModelPolicy(s string) bool {
 }
 
 // agentModelMap defines the model assignment for each agent under each policy.
-// Key: agent name, Value: [medium_model, low_model]
-// "high" policy always returns "inherit" for all agents.
-var agentModelMap = map[string][2]string{
+// Key: agent name, Value: [high_model, medium_model, low_model]
+var agentModelMap = map[string][3]string{
 	// Manager Agents
-	"manager-spec":     {"opus", "opus"},
-	"manager-ddd":      {"sonnet", "sonnet"},
-	"manager-tdd":      {"sonnet", "sonnet"},
-	"manager-docs":     {"haiku", "haiku"},
-	"manager-quality":  {"haiku", "haiku"},
-	"manager-project":  {"sonnet", "opus"},
-	"manager-strategy": {"opus", "opus"},
-	"manager-git":      {"haiku", "haiku"},
+	"manager-spec":     {"opus", "opus", "sonnet"},
+	"manager-ddd":      {"opus", "sonnet", "sonnet"},
+	"manager-tdd":      {"opus", "sonnet", "sonnet"},
+	"manager-docs":     {"sonnet", "haiku", "haiku"},
+	"manager-quality":  {"haiku", "haiku", "haiku"},
+	"manager-project":  {"opus", "sonnet", "haiku"},
+	"manager-strategy": {"opus", "opus", "sonnet"},
+	"manager-git":      {"haiku", "haiku", "haiku"},
 	// Expert Agents
-	"expert-backend":          {"sonnet", "sonnet"},
-	"expert-frontend":         {"sonnet", "sonnet"},
-	"expert-security":         {"opus", "opus"},
-	"expert-devops":           {"sonnet", "sonnet"},
-	"expert-performance":      {"sonnet", "sonnet"},
-	"expert-debug":            {"sonnet", "opus"},
-	"expert-testing":          {"sonnet", "sonnet"},
-	"expert-refactoring":      {"sonnet", "sonnet"},
-	"expert-chrome-extension": {"sonnet", "sonnet"},
+	"expert-backend":          {"opus", "sonnet", "sonnet"},
+	"expert-frontend":         {"opus", "sonnet", "sonnet"},
+	"expert-security":         {"opus", "opus", "sonnet"},
+	"expert-devops":           {"opus", "sonnet", "haiku"},
+	"expert-performance":      {"opus", "sonnet", "haiku"},
+	"expert-debug":            {"opus", "sonnet", "sonnet"},
+	"expert-testing":          {"opus", "sonnet", "haiku"},
+	"expert-refactoring":      {"opus", "sonnet", "sonnet"},
+	"expert-chrome-extension": {"opus", "sonnet", "haiku"},
 	// Builder Agents
-	"builder-agent":  {"sonnet", "haiku"},
-	"builder-skill":  {"sonnet", "haiku"},
-	"builder-plugin": {"sonnet", "haiku"},
+	"builder-agent":  {"opus", "sonnet", "haiku"},
+	"builder-skill":  {"opus", "sonnet", "haiku"},
+	"builder-plugin": {"opus", "sonnet", "haiku"},
 	// Team Agents
-	"team-researcher":   {"haiku", "haiku"},
-	"team-analyst":      {"sonnet", "sonnet"},
-	"team-architect":    {"opus", "opus"},
-	"team-designer":     {"sonnet", "sonnet"},
-	"team-backend-dev":  {"sonnet", "sonnet"},
-	"team-frontend-dev": {"sonnet", "sonnet"},
-	"team-tester":       {"sonnet", "haiku"},
-	"team-quality":      {"haiku", "haiku"},
+	"team-researcher":   {"haiku", "haiku", "haiku"},
+	"team-analyst":      {"opus", "sonnet", "haiku"},
+	"team-architect":    {"opus", "opus", "sonnet"},
+	"team-designer":     {"opus", "sonnet", "haiku"},
+	"team-backend-dev":  {"opus", "sonnet", "sonnet"},
+	"team-frontend-dev": {"opus", "sonnet", "sonnet"},
+	"team-tester":       {"opus", "sonnet", "haiku"},
+	"team-quality":      {"haiku", "haiku", "haiku"},
 }
 
 // GetAgentModel returns the model string for a given agent under the specified policy.
 func GetAgentModel(policy ModelPolicy, agentName string) string {
-	if policy == ModelPolicyHigh {
-		return "inherit"
-	}
-
 	models, ok := agentModelMap[agentName]
 	if !ok {
 		return "inherit" // Unknown agent defaults to inherit
 	}
 
 	switch policy {
-	case ModelPolicyMedium:
+	case ModelPolicyHigh:
 		return models[0]
-	case ModelPolicyLow:
+	case ModelPolicyMedium:
 		return models[1]
+	case ModelPolicyLow:
+		return models[2]
 	default:
 		return "inherit"
 	}
@@ -105,10 +102,6 @@ var modelLineRegex = regexp.MustCompile(`(?m)^model:\s*\S+`)
 // under the given project root based on the specified model policy.
 // It also updates the manifest hashes for patched files.
 func ApplyModelPolicy(projectRoot string, policy ModelPolicy, mgr manifest.Manager) error {
-	if policy == ModelPolicyHigh {
-		return nil // No patching needed for "high" policy
-	}
-
 	agentsDir := filepath.Join(projectRoot, ".claude", "agents", "moai")
 	entries, err := os.ReadDir(agentsDir)
 	if err != nil {
