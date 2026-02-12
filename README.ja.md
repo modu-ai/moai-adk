@@ -48,7 +48,7 @@ curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | b
 
 > **「バイブコーディングの目的は、素早い生産性ではなく、コード品質である。」**
 
-MoAI-ADKは、Claude Codeのための**高性能AI開発環境**です。28の専門AIエージェントと64のスキルが連携し、品質の高いコードを生み出します。新規プロジェクトにはHybrid方法論（TDD + DDD）を、既存プロジェクトにはDDDを自動的に適用し、Sub-AgentとAgent Teamsの二重実行モードをサポートします。
+MoAI-ADKは、Claude Codeのための**高性能AI開発環境**です。28の専門AIエージェントと52のスキルが連携し、品質の高いコードを生み出します。新規プロジェクトにはHybrid方法論（TDD + DDD）を、既存プロジェクトにはDDDを自動的に適用し、Sub-AgentとAgent Teamsの二重実行モードをサポートします。
 
 Goで書かれたシングルバイナリ -- 依存関係なしに、あらゆるプラットフォームで即座に実行できます。
 
@@ -69,11 +69,11 @@ PythonベースのMoAI-ADK（約73,000行）をGoで完全に書き直しまし�
 
 ### 主要な数値
 
-- **32,977行** Goコード、**30個**のパッケージ
+- **34,220行** Goコード、**32個**のパッケージ
 - **85-100%** テストカバレッジ
-- **28個** 専門AIエージェント + **64個** スキル
+- **28個** 専門AIエージェント + **52個** スキル
 - **18個** プログラミング言語対応
-- **6個** Claude Codeフックイベント
+- **8個** Claude Codeフックイベント
 
 ---
 
@@ -202,13 +202,13 @@ graph LR
     U["👤 ユーザーリクエスト"] --> M["🗿 MoAI Orchestrator"]
 
     M --> MG["📋 Manager (8)"]
-    M --> EX["⚡ Expert (8)"]
-    M --> BL["🔧 Builder (4)"]
+    M --> EX["⚡ Expert (9)"]
+    M --> BL["🔧 Builder (3)"]
     M --> TM["👥 Team (8)"]
 
     MG --> MG1["spec · ddd · tdd · docs<br/>quality · project · strategy · git"]
-    EX --> EX1["backend · frontend · security · devops<br/>performance · debug · testing · refactoring"]
-    BL --> BL1["agent · command · skill · plugin"]
+    EX --> EX1["backend · frontend · security · devops<br/>performance · debug · testing · refactoring · chrome-ext"]
+    BL --> BL1["agent · skill · plugin"]
     TM --> TM1["researcher · analyst · architect · designer<br/>backend-dev · frontend-dev · tester · quality"]
 
     style M fill:#FF6B35,color:#fff
@@ -223,11 +223,11 @@ graph LR
 | カテゴリ | 数量 | エージェント | 役割 |
 |----------|------|---------|------|
 | **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git | ワークフロー調整、SPEC作成、品質管理 |
-| **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring | ドメイン専門の実装、分析、最適化 |
-| **Builder** | 4 | agent, command, skill, plugin | 新しいMoAIコンポーネントの作成 |
+| **Expert** | 9 | backend, frontend, security, devops, performance, debug, testing, refactoring, chrome-extension | ドメイン専門の実装、分析、最適化 |
+| **Builder** | 3 | agent, skill, plugin | 新しいMoAIコンポーネントの作成 |
 | **Team** | 8 | researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality | 並列チームベースの開発 |
 
-### 64スキル（プログレッシブディスクロージャー）
+### 52スキル（プログレッシブディスクロージャー）
 
 トークン効率のため、3段階のプログレッシブディスクロージャーシステムで管理されています：
 
@@ -381,6 +381,7 @@ LSP診断とAST-grepを組み合わせた自律的なエラー修正エンジン
 | `moai worktree sync` | アップストリームと同期 |
 | `moai worktree remove <name>` | worktreeの削除 |
 | `moai worktree clean` | 古いworktreeのクリーンアップ |
+| `moai worktree go <name>` | 現在のシェルでworktreeディレクトリに移動 |
 | `moai hook <event>` | Claude Codeフックディスパッチャー |
 | `moai version` | バージョン、コミットハッシュ、ビルド日時の情報 |
 
@@ -392,20 +393,27 @@ LSP診断とAST-grepを組み合わせた自律的なエラー修正エンジン
 moai-adk/
 ├── cmd/moai/             # アプリケーションエントリポイント
 ├── internal/             # コアプライベートパッケージ
+│   ├── astgrep/          # AST-grep統合
 │   ├── cli/              # Cobra CLIコマンド定義
 │   ├── config/           # スレッドセーフなYAML設定管理
 │   ├── core/
 │   │   ├── git/          # Git操作（ブランチ、worktree、コンフリクト検出）
 │   │   ├── project/      # プロジェクト初期化、言語/フレームワーク検出
 │   │   └── quality/      # TRUST 5 品質ゲート、並列バリデーター
-│   ├── hook/             # コンパイル済みフックシステム（6イベント、JSONプロトコル）
-│   ├── lsp/              # LSPクライアント（16以上の言語、並列サーバー管理）
-│   ├── template/         # テンプレートデプロイ（go:embed）、設定生成
-│   ├── merge/            # 3-wayマージエンジン（6つの戦略）
+│   ├── defs/             # 言語定義とフレームワーク検出
+│   ├── git/              # Gitコンベンション検証エンジン
+│   ├── hook/             # コンパイル済みフックシステム（8イベント、JSONプロトコル）
 │   ├── loop/             # Ralphフィードバックループ（状態マシン、収束検知）
+│   ├── lsp/              # LSPクライアント（16以上の言語、並列サーバー管理）
 │   ├── manifest/         # ファイル追跡（SHA-256整合性）
+│   ├── merge/            # 3-wayマージエンジン（6つの戦略）
+│   ├── rank/             # MoAI Rank同期とトランスクリプト管理
+│   ├── resilience/       # リトライポリシーとサーキットブレーカー
+│   ├── shell/            # シェル統合（worktreeナビゲーション）
+│   ├── statusline/       # Claude Codeステータスライン統合
+│   ├── template/         # テンプレートデプロイ（go:embed）、設定生成
 │   ├── ui/               # 対話型TUI（セレクター、チェックボックス、ウィザード）
-│   └── statusline/       # Claude Codeステータスライン統合
+│   └── update/           # バイナリ自己更新メカニズム
 ├── pkg/                  # パブリックライブラリパッケージ
 │   ├── models/           # 共有データモデル
 │   └── version/          # ビルドバージョンメタデータ
@@ -429,9 +437,9 @@ moai-adk/
 
 ## スポンサー
 
-### z.ai GLM 4.7
+### z.ai GLM 5
 
-MoAI-ADKは**z.ai GLM 4.7**とのパートナーシップにより、経済的なAI開発環境を提供しています。
+MoAI-ADKは**z.ai GLM 5**とのパートナーシップにより、経済的なAI開発環境を提供しています。
 
 | 特典 | 説明 |
 |------|------|
@@ -439,7 +447,7 @@ MoAI-ADKは**z.ai GLM 4.7**とのパートナーシップにより、経済的�
 | 完全互換 | Claude Codeとコード変更なしで利用可能 |
 | 無制限利用 | 日次/週次のトークン制限なく自由に利用 |
 
-**[GLM 4.7に登録する（10%追加割引）](https://z.ai/subscribe?ic=1NDV03BGWU)** -- 登録リワードはMoAIオープンソース開発に使用されます。
+**[GLM 5に登録する（10%追加割引）](https://z.ai/subscribe?ic=1NDV03BGWU)** -- 登録リワードはMoAIオープンソース開発に使用されます。
 
 ---
 
