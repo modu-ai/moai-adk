@@ -49,6 +49,9 @@ type TemplateContext struct {
 	GoBinPath string // Detected Go binary installation path (e.g., "/home/user/go/bin")
 	HomeDir   string // User's home directory
 	SmartPATH string // Captured terminal PATH with essential dirs prepended
+
+	// Model policy for agent model assignment
+	ModelPolicy string // "high", "medium", "low" (default: "high")
 }
 
 // ContextOption configures a TemplateContext.
@@ -75,6 +78,7 @@ func NewTemplateContext(opts ...ContextOption) *TemplateContext {
 		PlanTokens:               config.DefaultPlanTokens,
 		RunTokens:                config.DefaultRunTokens,
 		SyncTokens:               config.DefaultSyncTokens,
+		ModelPolicy:              string(DefaultModelPolicy),
 	}
 
 	for _, opt := range opts {
@@ -199,6 +203,15 @@ func WithHomeDir(dir string) ContextOption {
 func WithSmartPATH(path string) ContextOption {
 	return func(c *TemplateContext) {
 		c.SmartPATH = path
+	}
+}
+
+// WithModelPolicy sets the model policy for agent model assignment.
+func WithModelPolicy(policy string) ContextOption {
+	return func(c *TemplateContext) {
+		if IsValidModelPolicy(policy) {
+			c.ModelPolicy = policy
+		}
 	}
 }
 

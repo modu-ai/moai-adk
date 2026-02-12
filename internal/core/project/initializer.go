@@ -39,6 +39,7 @@ type InitOptions struct {
 	NonInteractive  bool     // If true, skip wizard and use defaults/flags.
 	Force           bool     // If true, allow reinitializing an existing project.
 	SkipShellConfig bool     // If true, skip shell environment configuration.
+	ModelPolicy     string   // Token consumption tier: "high", "medium", "low".
 }
 
 // InitResult summarizes the outcome of project initialization.
@@ -146,6 +147,14 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		if err := i.generateConfigsFallback(opts, result); err != nil {
 			result.Warnings = append(result.Warnings, fmt.Sprintf("config generation: %s", err))
 			i.logger.Warn("config generation failed", "error", err)
+		}
+	}
+
+	// Step 3b: Apply model policy to agent files (post-deployment patching)
+	if opts.ModelPolicy != "" && opts.ModelPolicy != "high" {
+		if err := template.ApplyModelPolicy(opts.ProjectRoot, template.ModelPolicy(opts.ModelPolicy), i.manifestMgr); err != nil {
+			i.logger.Warn("failed to apply model policy", "error", err)
+			// Non-fatal: agents will use default inherit
 		}
 	}
 

@@ -53,6 +53,7 @@ func init() {
 	initCmd.Flags().String("git-commit-lang", "", "Git commit message language (default: en)")
 	initCmd.Flags().String("code-comment-lang", "", "Code comment language (default: en)")
 	initCmd.Flags().String("doc-lang", "", "Documentation language (default: en)")
+	initCmd.Flags().String("model-policy", "", "Agent model policy: high, medium, or low (default: high)")
 	initCmd.Flags().Bool("non-interactive", false, "Skip interactive wizard; use flags and defaults")
 	initCmd.Flags().Bool("force", false, "Reinitialize an existing project (backs up current .moai/)")
 }
@@ -106,6 +107,22 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 		}
 		if !valid {
 			return fmt.Errorf("invalid --git-mode value %q: must be one of: manual, personal, team", gitMode)
+		}
+	}
+
+	// Validate model policy
+	modelPolicy := getStringFlag(cmd, "model-policy")
+	if modelPolicy != "" {
+		validPolicies := []string{"high", "medium", "low"}
+		valid := false
+		for _, p := range validPolicies {
+			if modelPolicy == p {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return fmt.Errorf("invalid --model-policy value %q: must be one of: high, medium, low", modelPolicy)
 		}
 	}
 
@@ -203,6 +220,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		GitCommitLang:   getStringFlag(cmd, "git-commit-lang"),
 		CodeCommentLang: getStringFlag(cmd, "code-comment-lang"),
 		DocLang:         getStringFlag(cmd, "doc-lang"),
+		ModelPolicy:     getStringFlag(cmd, "model-policy"),
 		NonInteractive:  nonInteractive,
 		Force:           getBoolFlag(cmd, "force"),
 	}
@@ -247,6 +265,9 @@ func runInit(cmd *cobra.Command, args []string) error {
 		}
 		if opts.DocLang == "" {
 			opts.DocLang = result.DocLang
+		}
+		if opts.ModelPolicy == "" && result.ModelPolicy != "" {
+			opts.ModelPolicy = result.ModelPolicy
 		}
 	}
 

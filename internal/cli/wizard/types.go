@@ -28,6 +28,9 @@ type WizardResult struct {
 	// Development methodology
 	DevelopmentMode string // Development mode: ddd, tdd, hybrid
 
+	// Model policy
+	ModelPolicy string // Token consumption tier: high, medium, low
+
 	// Agent Teams settings
 	AgentTeamsMode string // Agent Teams execution mode: auto, subagent, team
 	MaxTeammates   string // Maximum teammates (2-5, for team mode)

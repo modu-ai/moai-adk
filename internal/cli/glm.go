@@ -129,7 +129,7 @@ func loadGLMConfig(root string) (*GLMConfigFromYAML, error) {
 			Opus   string
 		}{
 			Haiku:  "glm-4.7-flashx",
-			Sonnet: "glm-5",
+			Sonnet: "glm-4.7",
 			Opus:   "glm-5",
 		},
 		EnvVar: "GLM_API_KEY",

@@ -137,7 +137,21 @@ func DefaultQuestions(projectRoot string) []Question {
 			Default:  "en",
 			Required: true,
 		},
-		// 9. Agent Teams Mode
+		// 9. Model Policy (Token Optimization)
+		{
+			ID:          "model_policy",
+			Type:        QuestionTypeSelect,
+			Title:       "Select agent model policy",
+			Description: "Controls token consumption by assigning optimal models to each agent.",
+			Options: []Option{
+				{Label: "High (All inherit)", Value: "high", Desc: "Maximum quality, all agents use parent model"},
+				{Label: "Medium (Recommended)", Value: "medium", Desc: "Smart optimization, critical agents use opus"},
+				{Label: "Low (Maximum savings)", Value: "low", Desc: "Aggressive optimization, ~45% token savings"},
+			},
+			Default:  "high",
+			Required: true,
+		},
+		// 10. Agent Teams Mode
 		{
 			ID:          "agent_teams_mode",
 			Type:        QuestionTypeSelect,
@@ -151,7 +165,7 @@ func DefaultQuestions(projectRoot string) []Question {
 			Default:  "auto",
 			Required: true,
 		},
-		// 11. Max Teammates (conditional - only for team mode)
+		// 12. Max Teammates (conditional - only for team mode)
 		{
 			ID:          "max_teammates",
 			Type:        QuestionTypeSelect,
@@ -174,7 +188,7 @@ func DefaultQuestions(projectRoot string) []Question {
 				return r.AgentTeamsMode == "team"
 			},
 		},
-		// 12. Default Model (conditional - only for team mode)
+		// 13. Default Model (conditional - only for team mode)
 		{
 			ID:          "default_model",
 			Type:        QuestionTypeSelect,

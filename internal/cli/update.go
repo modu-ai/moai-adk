@@ -1557,6 +1557,20 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 		return fmt.Errorf("apply configuration: %w", err)
 	}
 
+	// Apply model policy to agent files if selected
+	if result.ModelPolicy != "" && result.ModelPolicy != "high" {
+		mgr := manifest.NewManager()
+		if _, err := mgr.Load(cwd); err == nil {
+			if err := template.ApplyModelPolicy(cwd, template.ModelPolicy(result.ModelPolicy), mgr); err != nil {
+				_, _ = fmt.Fprintf(out, "Warning: failed to apply model policy: %v\n", err)
+			} else {
+				if err := mgr.Save(); err != nil {
+					_, _ = fmt.Fprintf(out, "Warning: failed to save manifest after model policy: %v\n", err)
+				}
+			}
+		}
+	}
+
 	_, _ = fmt.Fprintln(out, "✓ Configuration updated successfully.")
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintf(out, "  Language: %s\n", result.Locale)
