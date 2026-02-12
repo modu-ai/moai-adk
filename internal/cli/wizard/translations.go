@@ -50,9 +50,29 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Team", Desc: "AI가 브랜치 생성, 커밋, PR 생성 가능"},
 			},
 		},
+		"git_provider": {
+			Title:       "Git 프로바이더 선택",
+			Description: "프로젝트의 Git 호스팅 플랫폼을 선택합니다.",
+			Options: []OptionTranslation{
+				{Label: "GitHub", Desc: "GitHub.com"},
+				{Label: "GitLab", Desc: "GitLab.com 또는 자체 호스팅 GitLab"},
+			},
+		},
+		"gitlab_instance_url": {
+			Title:       "GitLab 인스턴스 URL 입력",
+			Description: "GitLab.com은 https://gitlab.com을 사용합니다. 자체 호스팅인 경우 인스턴스 URL을 입력하세요.",
+		},
 		"github_username": {
 			Title:       "GitHub 사용자명 입력",
 			Description: "Git 자동화 기능에 필요합니다.",
+		},
+		"gitlab_username": {
+			Title:       "GitLab 사용자명 입력",
+			Description: "GitLab Git 자동화 기능에 필요합니다.",
+		},
+		"gitlab_token": {
+			Title:       "GitLab 개인 액세스 토큰 입력 (선택사항)",
+			Description: "MR 생성 및 푸시에 필요합니다. 비워두거나 glab CLI를 사용할 수 있습니다.",
 		},
 		"git_commit_lang": {
 			Title:       "Git 커밋 메시지 언어 선택",
@@ -168,9 +188,29 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Team", Desc: "AIがブランチ作成、コミット、PR作成が可能"},
 			},
 		},
+		"git_provider": {
+			Title:       "Gitプロバイダーを選択",
+			Description: "プロジェクトのGitホスティングプラットフォームを選択します。",
+			Options: []OptionTranslation{
+				{Label: "GitHub", Desc: "GitHub.com"},
+				{Label: "GitLab", Desc: "GitLab.comまたはセルフホストGitLab"},
+			},
+		},
+		"gitlab_instance_url": {
+			Title:       "GitLabインスタンスURLを入力",
+			Description: "GitLab.comはhttps://gitlab.comを使用します。セルフホストの場合はインスタンスURLを入力してください。",
+		},
 		"github_username": {
 			Title:       "GitHubユーザー名を入力",
 			Description: "Git自動化機能に必要です。",
+		},
+		"gitlab_username": {
+			Title:       "GitLabユーザー名を入力",
+			Description: "GitLab Git自動化機能に必要です。",
+		},
+		"gitlab_token": {
+			Title:       "GitLabパーソナルアクセストークンを入力（省略可）",
+			Description: "MR作成とプッシュに必要です。空欄のままスキップまたはglab CLIを使用してください。",
 		},
 		"git_commit_lang": {
 			Title:       "Gitコミットメッセージ言語を選択",
@@ -277,9 +317,29 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Team", Desc: "AI可以创建分支、提交和创建PR"},
 			},
 		},
+		"git_provider": {
+			Title:       "选择Git提供商",
+			Description: "选择项目的Git托管平台。",
+			Options: []OptionTranslation{
+				{Label: "GitHub", Desc: "GitHub.com"},
+				{Label: "GitLab", Desc: "GitLab.com或自托管GitLab"},
+			},
+		},
+		"gitlab_instance_url": {
+			Title:       "输入GitLab实例URL",
+			Description: "GitLab.com请使用https://gitlab.com。自托管请输入实例URL。",
+		},
 		"github_username": {
 			Title:       "输入GitHub用户名",
 			Description: "Git自动化功能所需。",
+		},
+		"gitlab_username": {
+			Title:       "输入GitLab用户名",
+			Description: "GitLab Git自动化功能所需。",
+		},
+		"gitlab_token": {
+			Title:       "输入GitLab个人访问令牌（可选）",
+			Description: "MR创建和推送所需。留空以跳过或使用glab CLI。",
 		},
 		"git_commit_lang": {
 			Title:       "选择Git提交消息语言",

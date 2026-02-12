@@ -637,6 +637,7 @@ func TestSaveAnswerAllCases(t *testing.T) {
 		{ID: "user_name", Type: QuestionTypeInput},
 		{ID: "project_name", Type: QuestionTypeInput},
 		{ID: "git_mode", Type: QuestionTypeSelect, Options: []Option{{Value: "personal"}}},
+		{ID: "git_provider", Type: QuestionTypeSelect, Options: []Option{{Value: "github"}, {Value: "gitlab"}}},
 		{ID: "github_username", Type: QuestionTypeInput},
 		{ID: "git_commit_lang", Type: QuestionTypeSelect, Options: []Option{{Value: "en"}}},
 		{ID: "code_comment_lang", Type: QuestionTypeSelect, Options: []Option{{Value: "en"}}},
@@ -645,6 +646,9 @@ func TestSaveAnswerAllCases(t *testing.T) {
 		{ID: "max_teammates", Type: QuestionTypeSelect, Options: []Option{{Value: "3"}}},
 		{ID: "default_model", Type: QuestionTypeSelect, Options: []Option{{Value: "sonnet"}}},
 		{ID: "github_token", Type: QuestionTypeInput},
+		{ID: "gitlab_instance_url", Type: QuestionTypeInput},
+		{ID: "gitlab_username", Type: QuestionTypeInput},
+		{ID: "gitlab_token", Type: QuestionTypeInput},
 	}
 	model := New(questions, nil)
 
@@ -707,6 +711,26 @@ func TestSaveAnswerAllCases(t *testing.T) {
 	model.saveAnswer("github_token", "ghp_test_token")
 	if model.result.GitHubToken != "ghp_test_token" {
 		t.Errorf("expected GitHubToken 'ghp_test_token', got %q", model.result.GitHubToken)
+	}
+
+	model.saveAnswer("git_provider", "gitlab")
+	if model.result.GitProvider != "gitlab" {
+		t.Errorf("expected GitProvider 'gitlab', got %q", model.result.GitProvider)
+	}
+
+	model.saveAnswer("gitlab_instance_url", "https://gitlab.company.com")
+	if model.result.GitLabInstanceURL != "https://gitlab.company.com" {
+		t.Errorf("expected GitLabInstanceURL 'https://gitlab.company.com', got %q", model.result.GitLabInstanceURL)
+	}
+
+	model.saveAnswer("gitlab_username", "gluser")
+	if model.result.GitLabUsername != "gluser" {
+		t.Errorf("expected GitLabUsername 'gluser', got %q", model.result.GitLabUsername)
+	}
+
+	model.saveAnswer("gitlab_token", "glpat-test-token")
+	if model.result.GitLabToken != "glpat-test-token" {
+		t.Errorf("expected GitLabToken 'glpat-test-token', got %q", model.result.GitLabToken)
 	}
 }
 
@@ -1035,6 +1059,136 @@ func TestLocaleTransitionInWizard(t *testing.T) {
 	view2 := m.View()
 	if !contains(view2, "이름 입력") {
 		t.Errorf("second question should be in Korean, got: %s", view2)
+	}
+}
+
+func TestGitProviderQuestion(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test-project")
+
+	// Verify git_provider question exists
+	q := QuestionByID(questions, "git_provider")
+	if q == nil {
+		t.Fatal("git_provider question not found")
+	}
+	if q.Default != "github" {
+		t.Errorf("expected git_provider default 'github', got %q", q.Default)
+	}
+
+	// Verify condition: should show for personal/team modes
+	result := &WizardResult{GitMode: "personal"}
+	if !q.Condition(result) {
+		t.Error("git_provider should be visible for personal mode")
+	}
+	result.GitMode = "team"
+	if !q.Condition(result) {
+		t.Error("git_provider should be visible for team mode")
+	}
+	result.GitMode = "manual"
+	if q.Condition(result) {
+		t.Error("git_provider should be hidden for manual mode")
+	}
+}
+
+func TestGitLabQuestionsConditional(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test-project")
+
+	// gitlab_instance_url should only show for gitlab provider
+	q := QuestionByID(questions, "gitlab_instance_url")
+	if q == nil {
+		t.Fatal("gitlab_instance_url question not found")
+	}
+	result := &WizardResult{GitMode: "personal", GitProvider: "gitlab"}
+	if !q.Condition(result) {
+		t.Error("gitlab_instance_url should be visible for gitlab provider")
+	}
+	result.GitProvider = "github"
+	if q.Condition(result) {
+		t.Error("gitlab_instance_url should be hidden for github provider")
+	}
+
+	// gitlab_username should only show for gitlab provider
+	q = QuestionByID(questions, "gitlab_username")
+	if q == nil {
+		t.Fatal("gitlab_username question not found")
+	}
+	result.GitProvider = "gitlab"
+	if !q.Condition(result) {
+		t.Error("gitlab_username should be visible for gitlab provider")
+	}
+	result.GitProvider = "github"
+	if q.Condition(result) {
+		t.Error("gitlab_username should be hidden for github provider")
+	}
+
+	// gitlab_token should only show for gitlab provider
+	q = QuestionByID(questions, "gitlab_token")
+	if q == nil {
+		t.Fatal("gitlab_token question not found")
+	}
+	result.GitProvider = "gitlab"
+	if !q.Condition(result) {
+		t.Error("gitlab_token should be visible for gitlab provider")
+	}
+	result.GitProvider = "github"
+	if q.Condition(result) {
+		t.Error("gitlab_token should be hidden for github provider")
+	}
+}
+
+func TestGitHubQuestionsHiddenForGitLab(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test-project")
+
+	// github_username should be hidden for gitlab provider
+	q := QuestionByID(questions, "github_username")
+	if q == nil {
+		t.Fatal("github_username question not found")
+	}
+	result := &WizardResult{GitMode: "personal", GitProvider: "gitlab"}
+	if q.Condition(result) {
+		t.Error("github_username should be hidden for gitlab provider")
+	}
+	result.GitProvider = "github"
+	if !q.Condition(result) {
+		t.Error("github_username should be visible for github provider")
+	}
+
+	// github_token should be hidden for gitlab provider
+	q = QuestionByID(questions, "github_token")
+	if q == nil {
+		t.Fatal("github_token question not found")
+	}
+	result.GitProvider = "gitlab"
+	if q.Condition(result) {
+		t.Error("github_token should be hidden for gitlab provider")
+	}
+	result.GitProvider = "github"
+	if !q.Condition(result) {
+		t.Error("github_token should be visible for github provider")
+	}
+}
+
+func TestWizardResultGitLabFields(t *testing.T) {
+	result := &WizardResult{
+		ProjectName:       "test-project",
+		Locale:            "en",
+		GitMode:           "personal",
+		GitProvider:       "gitlab",
+		GitLabInstanceURL: "https://gitlab.company.com",
+		GitLabUsername:    "gluser",
+		GitLabToken:       "glpat-test-token",
+	}
+
+	if result.GitProvider != "gitlab" {
+		t.Errorf("expected GitProvider 'gitlab', got %q", result.GitProvider)
+	}
+	if result.GitLabInstanceURL != "https://gitlab.company.com" {
+		t.Errorf("expected GitLabInstanceURL 'https://gitlab.company.com', got %q", result.GitLabInstanceURL)
+	}
+	if result.GitLabUsername != "gluser" {
+		t.Errorf("expected GitLabUsername 'gluser', got %q", result.GitLabUsername)
+	}
+	if result.GitLabToken != "glpat-test-token" {
+		t.Errorf("expected GitLabToken 'glpat-test-token', got %q", result.GitLabToken)
 	}
 }
 

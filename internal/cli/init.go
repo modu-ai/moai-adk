@@ -49,7 +49,9 @@ func init() {
 	initCmd.Flags().String("conv-lang", "", "Conversation language code (e.g., \"en\", \"ko\")")
 	initCmd.Flags().String("mode", "", "Development mode: ddd, tdd, or hybrid (default: hybrid, auto-configured by /moai project)")
 	initCmd.Flags().String("git-mode", "", "Git workflow mode: manual, personal, or team (default: manual)")
+	initCmd.Flags().String("git-provider", "", "Git provider (github, gitlab)")
 	initCmd.Flags().String("github-username", "", "GitHub username (required for personal/team modes)")
+	initCmd.Flags().String("gitlab-instance-url", "", "GitLab instance URL for self-hosted")
 	initCmd.Flags().String("git-commit-lang", "", "Git commit message language (default: en)")
 	initCmd.Flags().String("code-comment-lang", "", "Code comment language (default: en)")
 	initCmd.Flags().String("doc-lang", "", "Documentation language (default: en)")
@@ -107,6 +109,22 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 		}
 		if !valid {
 			return fmt.Errorf("invalid --git-mode value %q: must be one of: manual, personal, team", gitMode)
+		}
+	}
+
+	// Validate git provider
+	gitProvider := getStringFlag(cmd, "git-provider")
+	if gitProvider != "" {
+		validProviders := []string{"github", "gitlab"}
+		valid := false
+		for _, p := range validProviders {
+			if gitProvider == p {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return fmt.Errorf("invalid --git-provider value %q: must be one of: github, gitlab", gitProvider)
 		}
 	}
 
@@ -214,9 +232,11 @@ func runInit(cmd *cobra.Command, args []string) error {
 		Framework:       getStringFlag(cmd, "framework"),
 		UserName:        getStringFlag(cmd, "username"),
 		ConvLang:        getStringFlag(cmd, "conv-lang"),
-		DevelopmentMode: getStringFlag(cmd, "mode"),
-		GitMode:         getStringFlag(cmd, "git-mode"),
-		GitHubUsername:  getStringFlag(cmd, "github-username"),
+		DevelopmentMode:   getStringFlag(cmd, "mode"),
+		GitMode:           getStringFlag(cmd, "git-mode"),
+		GitProvider:       getStringFlag(cmd, "git-provider"),
+		GitHubUsername:    getStringFlag(cmd, "github-username"),
+		GitLabInstanceURL: getStringFlag(cmd, "gitlab-instance-url"),
 		GitCommitLang:   getStringFlag(cmd, "git-commit-lang"),
 		CodeCommentLang: getStringFlag(cmd, "code-comment-lang"),
 		DocLang:         getStringFlag(cmd, "doc-lang"),
@@ -254,8 +274,14 @@ func runInit(cmd *cobra.Command, args []string) error {
 		if opts.GitMode == "" {
 			opts.GitMode = result.GitMode
 		}
+		if opts.GitProvider == "" {
+			opts.GitProvider = result.GitProvider
+		}
 		if opts.GitHubUsername == "" {
 			opts.GitHubUsername = result.GitHubUsername
+		}
+		if opts.GitLabInstanceURL == "" {
+			opts.GitLabInstanceURL = result.GitLabInstanceURL
 		}
 		if opts.GitCommitLang == "" {
 			opts.GitCommitLang = result.GitCommitLang
@@ -269,6 +295,11 @@ func runInit(cmd *cobra.Command, args []string) error {
 		if opts.ModelPolicy == "" && result.ModelPolicy != "" {
 			opts.ModelPolicy = result.ModelPolicy
 		}
+	}
+
+	// Default git provider to "github" for backward compatibility
+	if opts.GitProvider == "" {
+		opts.GitProvider = "github"
 	}
 
 	// Build dependencies
