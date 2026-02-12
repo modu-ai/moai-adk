@@ -31,18 +31,7 @@
 
 ---
 
-## ⚠️ Important Notice for v2.2.3 and Earlier Users
-
-**If you are using v2.2.3 or earlier**, `moai update` will fail. Please reinstall manually:
-
-```bash
-curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
-```
-
-- **v2.2.3**: Binary update saves archive as executable ("exec format error"). Fixed in v2.2.4.
-- **v2.1.2 and earlier**: Checksum verification bug prevents automatic updates. Fixed in v2.2.1.
-
-After reinstalling, future updates will work automatically with `moai update`.
+> 📚 **[Official Documentation](https://adk.mo.ai.kr)** | **[GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)**
 
 ---
 

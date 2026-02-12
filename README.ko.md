@@ -31,18 +31,7 @@
 
 ---
 
-## ⚠️ v2.2.3 이하 버전 사용자 주의
-
-**v2.2.3 이하 버전을 사용 중인 경우**, `moai update`가 실패합니다. 다음 명령어로 수동 재설치가 필요합니다:
-
-```bash
-curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
-```
-
-- **v2.2.3**: 바이너리 업데이트 시 아카이브를 실행 파일로 저장하는 버그 ("exec format error"). v2.2.4에서 수정.
-- **v2.1.2 이하**: 체크섬 검증 버그로 자동 업데이트 실패. v2.2.1에서 수정.
-
-재설치 후, 향후 업데이트는 `moai update`로 자동 작동합니다.
+> 📚 **[공식 문서](https://adk.mo.ai.kr)** | **[GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)** | **[Discord 커뮤니티](https://discord.gg/moai-adk)**
 
 ---
 
@@ -565,3 +554,4 @@ External imports:
 - [공식 문서](https://adk.mo.ai.kr)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
 - [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) — 질문, 아이디어, 커뮤니티
+- [Discord 커뮤니티](https://discord.gg/moai-adk) — 실시간 소통, 팁 공유

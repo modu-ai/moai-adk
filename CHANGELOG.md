@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Summary
 
-Feature release introducing Model Policy internationalization with pricing tiers, critical --force flag bug fix, and comprehensive README documentation updates. This release adds full i18n support (Korean/Japanese/Chinese) for the model policy wizard with clear pricing tier indicators (// plans), fixes a version check bypass bug, and includes template cleanup.
+Feature release introducing Model Policy internationalization with pricing tiers, critical --force flag bug fix, and comprehensive README documentation updates. This release adds full i18n support (Korean/Japanese/Chinese) for the model policy wizard with clear pricing tier indicators ($200/$100/$20 plans), fixes a version check bypass bug, and includes template cleanup.
 
 ### Breaking Changes
 
@@ -23,7 +23,7 @@ None
 
 - **Model Policy i18n**: Full internationalization support for model policy wizard
   - Korean (ko), Japanese (ja), Chinese (zh) translations added
-  - Pricing tier indicators: High (Max /mo), Medium (Max /mo), Low (Plus /mo)
+  - Pricing tier indicators: High (Max $200/mo), Medium (Max $100/mo), Low (Plus $20/mo)
   - Clear model descriptions: High uses opus, Medium mixes opus/sonnet/haiku, Low uses sonnet/haiku only
 - **Model Policy Notice**: User-friendly configuration guide displayed after `moai update`
   - Shows pricing tiers and agent model assignments
@@ -34,6 +34,7 @@ None
 - **README Updates**: Synchronized architecture and statistics across all 4 language versions (EN, KO, JA, ZH)
   - Added Model Policy section with comparison table
   - Updated agent counts and configuration examples
+  - Replaced v2.2.3 warning notice with official documentation links
 
 ### Fixed
 
@@ -42,6 +43,8 @@ None
   - Applied to both `runTemplateSyncWithReporter` and `runTemplateSyncWithProgress`
 - **Template Cleanup**: Removed outdated `workflow.yaml.tmpl` that was overwriting team settings
 - **Hardcoded Paths**: Removed hardcoded `moai-adk-go` references and developer-specific paths
+- **CI: Lint errcheck**: Fixed unchecked `os.Remove` return value in `sync_state_test.go`
+- **CI: Windows test**: Fixed platform-specific binary name (`moai.exe`) in `updater_test.go`
 
 ### Installation & Update
 
@@ -59,7 +62,7 @@ moai version
 
 ### 요약
 
-요금제 계층이 포함된 모델 정책 국제화, 중요한 --force 플래그 버그 수정, 포괄적인 README 문서 업데이트를 도입하는 기능 릴리스입니다. 이 릴리스는 명확한 요금제 계층 표시기(// 플랜)가 포함된 모델 정책 마법사의 완전한 i18n 지원(한국어/일본어/중국어)을 추가하고, 버전 확인 우회 버그를 수정하며, 템플릿 정리를 포함합니다.
+요금제 계층이 포함된 모델 정책 국제화, 중요한 --force 플래그 버그 수정, 포괄적인 README 문서 업데이트를 도입하는 기능 릴리스입니다. 이 릴리스는 명확한 요금제 계층 표시기($200/$100/$20 플랜)가 포함된 모델 정책 마법사의 완전한 i18n 지원(한국어/일본어/중국어)을 추가하고, 버전 확인 우회 버그를 수정하며, 템플릿 정리를 포함합니다.
 
 ### 주요 변경 사항 (Breaking Changes)
 
@@ -69,7 +72,7 @@ moai version
 
 - **모델 정책 i18n**: 모델 정책 마법사의 완전한 국제화 지원
   - 한국어(ko), 일본어(ja), 중국어(zh) 번역 추가
-  - 요금제 계층 표시기: High (Max /mo), Medium (Max /mo), Low (Plus /mo)
+  - 요금제 계층 표시기: High (Max $200/mo), Medium (Max $100/mo), Low (Plus $20/mo)
   - 명확한 모델 설명: High는 opus 사용, Medium은 opus/sonnet/haiku 혼합, Low는 sonnet/haiku만 사용
 - **모델 정책 안내**: `moai update` 후 표시되는 사용자 친화적 설정 가이드
   - 요금제 계층 및 에이전트 모델 할당 표시
@@ -80,6 +83,7 @@ moai version
 - **README 업데이트**: 4개 언어 버전(EN, KO, JA, ZH) 전체에 걸친 아키텍처 및 통계 동기화
   - 비교 표가 포함된 모델 정책 섹션 추가
   - 에이전트 수 및 설정 예제 업데이트
+  - v2.2.3 경고 알림을 공식 문서 링크로 교체
 
 ### 수정됨 (Fixed)
 
@@ -88,6 +92,8 @@ moai version
   - `runTemplateSyncWithReporter` 및 `runTemplateSyncWithProgress` 모두에 적용
 - **템플릿 정리**: 팀 설정을 덮어쓰던 오래된 `workflow.yaml.tmpl` 제거
 - **하드코딩된 경로**: 하드코딩된 `moai-adk-go` 참조 및 개발자별 경로 제거
+- **CI: Lint errcheck**: `sync_state_test.go`에서 `os.Remove` 반환값 미확인 수정
+- **CI: Windows 테스트**: `updater_test.go`에서 플랫폼별 바이너리 이름(`moai.exe`) 수정
 
 ### 설치 및 업데이트 (Installation & Update)
 
