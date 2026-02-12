@@ -76,6 +76,12 @@ func TestNewDefaultConfigContainsAllSections(t *testing.T) {
 		t.Errorf("Workflow.PlanTokens: got %d, want %d",
 			cfg.Workflow.PlanTokens, DefaultPlanTokens)
 	}
+
+	// GitConvention should have defaults
+	if cfg.GitConvention.Convention != DefaultGitConvention {
+		t.Errorf("GitConvention.Convention: got %q, want %q",
+			cfg.GitConvention.Convention, DefaultGitConvention)
+	}
 }
 
 func TestNewDefaultUserConfig(t *testing.T) {
@@ -415,6 +421,7 @@ func TestDefaultConstants(t *testing.T) {
 		{"DefaultMaxWarnings", DefaultMaxWarnings, 10},
 		{"DefaultGitConvention", DefaultGitConvention, "auto"},
 		{"DefaultGitConventionSampleSize", DefaultGitConventionSampleSize, 100},
+		{"DefaultGitConventionConfidenceThreshold", DefaultGitConventionConfidenceThreshold, 0.5},
 		{"DefaultGitConventionFallback", DefaultGitConventionFallback, "conventional-commits"},
 		{"DefaultGitConventionMaxLength", DefaultGitConventionMaxLength, 100},
 	}

@@ -1,0 +1,18 @@
+# Git Commit Convention Configuration
+# Controls commit message validation and enforcement
+
+git_convention:
+  # Convention name: "auto" (detect from history), "conventional-commits", "angular", "karma", "custom"
+  convention: "auto"
+
+  # Enforce convention check on push (via pre-push hook)
+  enforce_on_push: false
+
+  # Auto-detect convention from commit history when "auto" is selected
+  auto_detect: true
+
+  # Maximum header line length (0 = no limit)
+  max_length: 72
+
+  # Number of recent commits to analyze for auto-detection
+  sample_size: 100

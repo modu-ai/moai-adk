@@ -132,11 +132,11 @@ func validateQualityConfig(q *models.QualityConfig) []ValidationError {
 
 // validGitConventionNames lists recognized convention names.
 var validGitConventionNames = map[string]bool{
-	"auto":                 true,
-	"conventional-commits": true,
-	"angular":              true,
-	"karma":                true,
-	"custom":               true,
+	"auto":                  true,
+	"conventional-commits":  true,
+	"angular":               true,
+	"karma":                 true,
+	"custom":                true,
 }
 
 // validateGitConventionConfig checks the git convention configuration.

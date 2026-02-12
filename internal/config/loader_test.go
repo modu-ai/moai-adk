@@ -362,3 +362,72 @@ func TestLoaderMultipleLoads(t *testing.T) {
 		t.Errorf("second load User.Name: got %q, want %q", cfg2.User.Name, "NewUser")
 	}
 }
+
+func TestLoaderLoadGitConventionSection(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	root := setupTestdataDir(t, tempDir, []string{"git-convention.yaml"})
+
+	loader := NewLoader()
+	cfg, err := loader.Load(filepath.Join(root, ".moai"))
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+
+	if cfg.GitConvention.Convention != "conventional-commits" {
+		t.Errorf("GitConvention.Convention: got %q, want %q",
+			cfg.GitConvention.Convention, "conventional-commits")
+	}
+	if !cfg.GitConvention.Validation.EnforceOnPush {
+		t.Error("GitConvention.Validation.EnforceOnPush: expected true")
+	}
+	if cfg.GitConvention.AutoDetection.Enabled {
+		t.Error("GitConvention.AutoDetection.Enabled: expected false")
+	}
+	if cfg.GitConvention.Validation.MaxLength != 100 {
+		t.Errorf("GitConvention.Validation.MaxLength: got %d, want 100", cfg.GitConvention.Validation.MaxLength)
+	}
+	if cfg.GitConvention.AutoDetection.SampleSize != 50 {
+		t.Errorf("GitConvention.AutoDetection.SampleSize: got %d, want 50", cfg.GitConvention.AutoDetection.SampleSize)
+	}
+
+	sections := loader.LoadedSections()
+	if !sections["git_convention"] {
+		t.Error("expected git_convention section to be loaded")
+	}
+}
+
+func TestLoaderGitConventionDefaults(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	// Load with only user.yaml - git-convention should use defaults
+	root := setupTestdataDir(t, tempDir, []string{"user.yaml"})
+
+	loader := NewLoader()
+	cfg, err := loader.Load(filepath.Join(root, ".moai"))
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+
+	if cfg.GitConvention.Convention != DefaultGitConvention {
+		t.Errorf("GitConvention.Convention: got %q, want default %q",
+			cfg.GitConvention.Convention, DefaultGitConvention)
+	}
+	if cfg.GitConvention.Validation.EnforceOnPush {
+		t.Error("GitConvention.Validation.EnforceOnPush: expected default false")
+	}
+	if !cfg.GitConvention.AutoDetection.Enabled {
+		t.Error("GitConvention.AutoDetection.Enabled: expected default true")
+	}
+	if cfg.GitConvention.Validation.MaxLength != DefaultGitConventionMaxLength {
+		t.Errorf("GitConvention.Validation.MaxLength: got %d, want default %d",
+			cfg.GitConvention.Validation.MaxLength, DefaultGitConventionMaxLength)
+	}
+
+	sections := loader.LoadedSections()
+	if sections["git_convention"] {
+		t.Error("expected git_convention section to NOT be loaded")
+	}
+}

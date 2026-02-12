@@ -53,17 +53,17 @@ const (
 // NewDefaultConfig returns a Config with all fields set to compiled defaults.
 func NewDefaultConfig() *Config {
 	return &Config{
-		User:        NewDefaultUserConfig(),
-		Language:    NewDefaultLanguageConfig(),
-		Quality:     NewDefaultQualityConfig(),
-		Project:     NewDefaultProjectConfig(),
+		User:          NewDefaultUserConfig(),
+		Language:      NewDefaultLanguageConfig(),
+		Quality:       NewDefaultQualityConfig(),
+		Project:       NewDefaultProjectConfig(),
 		GitStrategy:   NewDefaultGitStrategyConfig(),
 		GitConvention: NewDefaultGitConventionConfig(),
 		System:        NewDefaultSystemConfig(),
-		LLM:         NewDefaultLLMConfig(),
-		Pricing:     NewDefaultPricingConfig(),
-		Ralph:       NewDefaultRalphConfig(),
-		Workflow:    NewDefaultWorkflowConfig(),
+		LLM:           NewDefaultLLMConfig(),
+		Pricing:       NewDefaultPricingConfig(),
+		Ralph:         NewDefaultRalphConfig(),
+		Workflow:      NewDefaultWorkflowConfig(),
 	}
 }
 

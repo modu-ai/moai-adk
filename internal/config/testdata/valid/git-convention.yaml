@@ -1,0 +1,16 @@
+git_convention:
+  convention: "conventional-commits"
+  auto_detection:
+    enabled: false
+    sample_size: 50
+    confidence_threshold: 0.5
+    fallback: "conventional-commits"
+  validation:
+    enabled: true
+    enforce_on_commit: false
+    enforce_on_push: true
+    max_length: 100
+  formatting:
+    show_examples: true
+    show_suggestions: true
+    verbose: false

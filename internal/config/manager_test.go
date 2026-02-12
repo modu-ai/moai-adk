@@ -183,6 +183,10 @@ func TestConfigManagerGetSection(t *testing.T) {
 			_, ok := v.(GitStrategyConfig)
 			return ok
 		}},
+		{"git_convention", "git_convention", func(v any) bool {
+			_, ok := v.(models.GitConventionConfig)
+			return ok
+		}},
 		{"system", "system", func(v any) bool {
 			_, ok := v.(SystemConfig)
 			return ok
@@ -291,6 +295,7 @@ func TestConfigManagerSetSectionAllTypes(t *testing.T) {
 		{"quality", models.QualityConfig{DevelopmentMode: models.ModeTDD}},
 		{"project", models.ProjectConfig{}},
 		{"git_strategy", GitStrategyConfig{BranchPrefix: "test/"}},
+		{"git_convention", models.GitConventionConfig{Convention: "angular"}},
 		{"system", SystemConfig{LogLevel: "debug"}},
 		{"llm", LLMConfig{DefaultModel: "opus"}},
 		{"pricing", PricingConfig{TokenBudget: 100}},
@@ -352,6 +357,7 @@ func TestConfigManagerSetSectionTypeMismatch(t *testing.T) {
 		{"quality", true},
 		{"project", "string"},
 		{"git_strategy", 123},
+		{"git_convention", "wrong"},
 		{"system", false},
 		{"llm", []string{"wrong"}},
 		{"pricing", "wrong"},

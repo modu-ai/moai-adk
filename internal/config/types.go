@@ -8,17 +8,17 @@ import (
 // It imports types from pkg/models for shared types (UserConfig, LanguageConfig,
 // QualityConfig, ProjectConfig) and defines internal types for the rest.
 type Config struct {
-	User        models.UserConfig     `yaml:"user"`
-	Language    models.LanguageConfig `yaml:"language"`
-	Quality     models.QualityConfig  `yaml:"quality"`
-	Project     models.ProjectConfig  `yaml:"project"`
+	User          models.UserConfig          `yaml:"user"`
+	Language      models.LanguageConfig      `yaml:"language"`
+	Quality       models.QualityConfig       `yaml:"quality"`
+	Project       models.ProjectConfig       `yaml:"project"`
 	GitStrategy   GitStrategyConfig          `yaml:"git_strategy"`
 	GitConvention models.GitConventionConfig `yaml:"git_convention"`
 	System        SystemConfig               `yaml:"system"`
-	LLM         LLMConfig             `yaml:"llm"`
-	Pricing     PricingConfig         `yaml:"pricing"`
-	Ralph       RalphConfig           `yaml:"ralph"`
-	Workflow    WorkflowConfig        `yaml:"workflow"`
+	LLM           LLMConfig                  `yaml:"llm"`
+	Pricing       PricingConfig              `yaml:"pricing"`
+	Ralph         RalphConfig                `yaml:"ralph"`
+	Workflow      WorkflowConfig             `yaml:"workflow"`
 }
 
 // GitStrategyConfig represents the git strategy configuration section.
