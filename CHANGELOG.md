@@ -9,6 +9,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.3.1] - 2026-02-12
+
+### Summary
+
+Patch release merging three feature PRs and a security fix. Adds Claude Code CLI transcript path support, GitLab/self-hosted GitLab instance support, git commit message convention validation system, and sessionID path traversal prevention.
+
+### Breaking Changes
+
+None
+
+### Added
+
+- **GitLab Support**: Self-hosted GitLab instance support in `moai init` wizard (#375)
+  - Git strategy configuration for GitHub, GitLab, and self-hosted GitLab
+  - New `git-strategy.yaml` configuration template
+- **Commit Convention Validation**: Full commit message convention validation system (#374)
+  - Support for conventional-commits, angular, karma, and custom conventions
+  - Auto-detection from repository commit history
+  - Pre-push hook handler (`moai hook pre-push`) for enforcement
+  - `git-convention.yaml` template config with documentation
+- **Claude Code CLI Transcript Paths**: Support for new Claude Code CLI transcript locations (#371)
+  - Priority search: `~/.claude/projects/*/*.jsonl` > `~/.claude/transcripts/*.jsonl` > Desktop paths
+  - Deduplication logic for multi-source transcript discovery
+
+### Fixed
+
+- **Security: Path Traversal Prevention**: Added `isValidSessionID()` validation to `FindTranscriptForSession()`
+  - Rejects path traversal characters (`../`, `/`, `\`)
+  - Enforces alphanumeric + hyphen/underscore whitelist
+  - Max length validation (128 characters)
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.3.1] - 2026-02-12 (한국어)
+
+### 요약
+
+3개의 기능 PR 머지와 보안 수정을 포함하는 패치 릴리스입니다. Claude Code CLI 트랜스크립트 경로 지원, GitLab/자체 호스팅 GitLab 인스턴스 지원, git 커밋 메시지 컨벤션 검증 시스템, sessionID 경로 탐색 방지 기능을 추가합니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 추가됨 (Added)
+
+- **GitLab 지원**: `moai init` 마법사에서 자체 호스팅 GitLab 인스턴스 지원 (#375)
+  - GitHub, GitLab, 자체 호스팅 GitLab용 Git 전략 설정
+  - 새로운 `git-strategy.yaml` 설정 템플릿
+- **커밋 컨벤션 검증**: 완전한 커밋 메시지 컨벤션 검증 시스템 (#374)
+  - conventional-commits, angular, karma, 커스텀 컨벤션 지원
+  - 저장소 커밋 히스토리 자동 감지
+  - 푸시 전 훅 핸들러 (`moai hook pre-push`) 적용
+  - `git-convention.yaml` 템플릿 설정 및 문서
+- **Claude Code CLI 트랜스크립트 경로**: 새로운 Claude Code CLI 트랜스크립트 위치 지원 (#371)
+  - 우선순위 검색: `~/.claude/projects/*/*.jsonl` > `~/.claude/transcripts/*.jsonl` > Desktop 경로
+  - 멀티 소스 트랜스크립트 중복 제거 로직
+
+### 수정됨 (Fixed)
+
+- **보안: 경로 탐색 방지**: `FindTranscriptForSession()`에 `isValidSessionID()` 검증 추가
+  - 경로 탐색 문자 거부 (`../`, `/`, `\`)
+  - 영숫자 + 하이픈/밑줄 화이트리스트 적용
+  - 최대 길이 검증 (128자)
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.3.0] - 2026-02-12
 
 ### Summary
