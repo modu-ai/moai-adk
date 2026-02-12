@@ -9,6 +9,98 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.3.0] - 2026-02-12
+
+### Summary
+
+Feature release introducing Model Policy internationalization with pricing tiers, critical --force flag bug fix, and comprehensive README documentation updates. This release adds full i18n support (Korean/Japanese/Chinese) for the model policy wizard with clear pricing tier indicators (// plans), fixes a version check bypass bug, and includes template cleanup.
+
+### Breaking Changes
+
+None
+
+### Added
+
+- **Model Policy i18n**: Full internationalization support for model policy wizard
+  - Korean (ko), Japanese (ja), Chinese (zh) translations added
+  - Pricing tier indicators: High (Max /mo), Medium (Max /mo), Low (Plus /mo)
+  - Clear model descriptions: High uses opus, Medium mixes opus/sonnet/haiku, Low uses sonnet/haiku only
+- **Model Policy Notice**: User-friendly configuration guide displayed after `moai update`
+  - Shows pricing tiers and agent model assignments
+  - Guides users to run `moai update -c` for reconfiguration
+
+### Changed
+
+- **README Updates**: Synchronized architecture and statistics across all 4 language versions (EN, KO, JA, ZH)
+  - Added Model Policy section with comparison table
+  - Updated agent counts and configuration examples
+
+### Fixed
+
+- **Critical: --force Flag Bug**: Fixed `--force` flag not bypassing version check in `moai update`
+  - `moai update --force` now correctly forces template sync even when versions match
+  - Applied to both `runTemplateSyncWithReporter` and `runTemplateSyncWithProgress`
+- **Template Cleanup**: Removed outdated `workflow.yaml.tmpl` that was overwriting team settings
+- **Hardcoded Paths**: Removed hardcoded `moai-adk-go` references and developer-specific paths
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.3.0] - 2026-02-12 (한국어)
+
+### 요약
+
+요금제 계층이 포함된 모델 정책 국제화, 중요한 --force 플래그 버그 수정, 포괄적인 README 문서 업데이트를 도입하는 기능 릴리스입니다. 이 릴리스는 명확한 요금제 계층 표시기(// 플랜)가 포함된 모델 정책 마법사의 완전한 i18n 지원(한국어/일본어/중국어)을 추가하고, 버전 확인 우회 버그를 수정하며, 템플릿 정리를 포함합니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 추가됨 (Added)
+
+- **모델 정책 i18n**: 모델 정책 마법사의 완전한 국제화 지원
+  - 한국어(ko), 일본어(ja), 중국어(zh) 번역 추가
+  - 요금제 계층 표시기: High (Max /mo), Medium (Max /mo), Low (Plus /mo)
+  - 명확한 모델 설명: High는 opus 사용, Medium은 opus/sonnet/haiku 혼합, Low는 sonnet/haiku만 사용
+- **모델 정책 안내**: `moai update` 후 표시되는 사용자 친화적 설정 가이드
+  - 요금제 계층 및 에이전트 모델 할당 표시
+  - `moai update -c`를 실행하여 재구성하도록 사용자 안내
+
+### 변경됨 (Changed)
+
+- **README 업데이트**: 4개 언어 버전(EN, KO, JA, ZH) 전체에 걸친 아키텍처 및 통계 동기화
+  - 비교 표가 포함된 모델 정책 섹션 추가
+  - 에이전트 수 및 설정 예제 업데이트
+
+### 수정됨 (Fixed)
+
+- **중요: --force 플래그 버그**: `moai update`에서 `--force` 플래그가 버전 확인을 우회하지 않던 버그 수정
+  - `moai update --force`가 이제 버전이 일치해도 템플릿 동기화를 강제로 수행
+  - `runTemplateSyncWithReporter` 및 `runTemplateSyncWithProgress` 모두에 적용
+- **템플릿 정리**: 팀 설정을 덮어쓰던 오래된 `workflow.yaml.tmpl` 제거
+- **하드코딩된 경로**: 하드코딩된 `moai-adk-go` 참조 및 개발자별 경로 제거
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.2.8] - 2026-02-11
 
 ### Summary
