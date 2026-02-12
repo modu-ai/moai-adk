@@ -144,9 +144,9 @@ func DefaultQuestions(projectRoot string) []Question {
 			Title:       "Select agent model policy",
 			Description: "Controls token consumption by assigning optimal models to each agent.",
 			Options: []Option{
-				{Label: "High (All inherit)", Value: "high", Desc: "Maximum quality, all agents use parent model"},
-				{Label: "Medium (Recommended)", Value: "medium", Desc: "Smart optimization, critical agents use opus"},
-				{Label: "Low (Maximum savings)", Value: "low", Desc: "Aggressive optimization, ~45% token savings"},
+				{Label: "High (Max $200/mo)", Value: "high", Desc: "All agents use opus"},
+				{Label: "Medium (Max $100/mo)", Value: "medium", Desc: "Critical agents use opus, others sonnet/haiku"},
+				{Label: "Low (Plus $20/mo)", Value: "low", Desc: "No opus, sonnet + haiku only"},
 			},
 			Default:  "high",
 			Required: true,

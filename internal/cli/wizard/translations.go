@@ -84,6 +84,15 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Chinese (中文)", Desc: "중국어로 문서"},
 			},
 		},
+		"model_policy": {
+			Title:       "에이전트 모델 정책 선택",
+			Description: "Claude Code 요금제에 따라 각 에이전트에 최적 모델을 할당합니다.",
+			Options: []OptionTranslation{
+				{Label: "High (Max $200/mo)", Desc: "모든 에이전트가 opus 사용"},
+				{Label: "Medium (Max $100/mo)", Desc: "핵심 에이전트 opus, 나머지 sonnet/haiku"},
+				{Label: "Low (Plus $20/mo)", Desc: "opus 없음, sonnet + haiku만 사용"},
+			},
+		},
 		"agent_teams_mode": {
 			Title:       "Agent Teams 실행 모드 선택",
 			Description: "MoAI가 Agent Teams(병렬) 또는 sub-agents(순차)를 사용하도록 설정합니다.",
@@ -123,6 +132,15 @@ var translations = map[string]map[string]QuestionTranslation{
 		},
 	},
 	"ja": {
+		"model_policy": {
+			Title:       "エージェントモデルポリシーを選択",
+			Description: "Claude Codeプランに基づいて各エージェントに最適なモデルを割り当てます。",
+			Options: []OptionTranslation{
+				{Label: "High (Max $200/mo)", Desc: "全エージェントがopusを使用"},
+				{Label: "Medium (Max $100/mo)", Desc: "重要エージェントにopus、他はsonnet/haiku"},
+				{Label: "Low (Plus $20/mo)", Desc: "opus無し、sonnet + haikuのみ"},
+			},
+		},
 		"locale": {
 			Title:       "会話言語を選択",
 			Description: "Claudeとの会話で使用する言語を選択します。",
@@ -223,6 +241,15 @@ var translations = map[string]map[string]QuestionTranslation{
 		},
 	},
 	"zh": {
+		"model_policy": {
+			Title:       "选择代理模型策略",
+			Description: "根据Claude Code计划为每个代理分配最佳模型。",
+			Options: []OptionTranslation{
+				{Label: "High (Max $200/mo)", Desc: "所有代理使用opus"},
+				{Label: "Medium (Max $100/mo)", Desc: "关键代理使用opus，其他sonnet/haiku"},
+				{Label: "Low (Plus $20/mo)", Desc: "无opus，仅sonnet + haiku"},
+			},
+		},
 		"locale": {
 			Title:       "选择对话语言",
 			Description: "选择Claude与您交流时使用的语言。",
