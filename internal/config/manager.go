@@ -226,6 +226,8 @@ func (m *ConfigManager) getSectionLocked(name string) (any, error) {
 		return m.config.Ralph, nil
 	case "workflow":
 		return m.config.Workflow, nil
+	case "git_convention":
+		return m.config.GitConvention, nil
 	default:
 		return nil, ErrSectionNotFound
 	}
@@ -294,6 +296,12 @@ func (m *ConfigManager) setSectionLocked(name string, value any) error {
 			return fmt.Errorf("%w: expected WorkflowConfig for section %q", ErrSectionTypeMismatch, name)
 		}
 		m.config.Workflow = v
+	case "git_convention":
+		v, ok := value.(models.GitConventionConfig)
+		if !ok {
+			return fmt.Errorf("%w: expected GitConventionConfig for section %q", ErrSectionTypeMismatch, name)
+		}
+		m.config.GitConvention = v
 	default:
 		return ErrSectionNotFound
 	}

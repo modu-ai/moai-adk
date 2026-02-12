@@ -202,3 +202,54 @@ type FullQualityConfig struct {
 	ReportGeneration ReportGeneration `yaml:"report_generation"`
 	LSPStateTracking LSPStateTracking `yaml:"lsp_state_tracking"`
 }
+
+// GitConventionConfig represents commit message convention settings.
+type GitConventionConfig struct {
+	// Convention name: auto, conventional-commits, angular, karma, custom
+	Convention string `yaml:"convention"`
+
+	// AutoDetection settings for convention discovery
+	AutoDetection AutoDetectionConfig `yaml:"auto_detection"`
+
+	// Validation settings for commit message checking
+	Validation ConventionValidationConfig `yaml:"validation"`
+
+	// Formatting settings for error display
+	Formatting FormattingConfig `yaml:"formatting"`
+
+	// Custom holds a user-defined convention configuration.
+	Custom CustomConventionConfig `yaml:"custom"`
+}
+
+// AutoDetectionConfig configures convention auto-detection behavior.
+type AutoDetectionConfig struct {
+	Enabled             bool    `yaml:"enabled"`
+	SampleSize          int     `yaml:"sample_size"`
+	ConfidenceThreshold float64 `yaml:"confidence_threshold"`
+	Fallback            string  `yaml:"fallback"`
+}
+
+// ConventionValidationConfig configures when and how validation is enforced.
+type ConventionValidationConfig struct {
+	Enabled         bool `yaml:"enabled"`
+	EnforceOnCommit bool `yaml:"enforce_on_commit"`
+	EnforceOnPush   bool `yaml:"enforce_on_push"`
+	MaxLength       int  `yaml:"max_length"`
+}
+
+// FormattingConfig configures error message formatting.
+type FormattingConfig struct {
+	ShowExamples    bool `yaml:"show_examples"`
+	ShowSuggestions bool `yaml:"show_suggestions"`
+	Verbose         bool `yaml:"verbose"`
+}
+
+// CustomConventionConfig holds a user-defined commit convention definition.
+type CustomConventionConfig struct {
+	Name      string   `yaml:"name"`
+	Pattern   string   `yaml:"pattern"`
+	Types     []string `yaml:"types"`
+	Scopes    []string `yaml:"scopes"`
+	MaxLength int      `yaml:"max_length"`
+	Examples  []string `yaml:"examples"`
+}

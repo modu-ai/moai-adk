@@ -217,10 +217,18 @@ func (m *Model) saveAnswer(id, value string) {
 		m.result.ProjectName = value
 	case "git_mode":
 		m.result.GitMode = value
+	case "git_provider":
+		m.result.GitProvider = value
 	case "github_username":
 		m.result.GitHubUsername = value
 	case "github_token":
 		m.result.GitHubToken = value
+	case "gitlab_instance_url":
+		m.result.GitLabInstanceURL = value
+	case "gitlab_username":
+		m.result.GitLabUsername = value
+	case "gitlab_token":
+		m.result.GitLabToken = value
 	case "git_commit_lang":
 		m.result.GitCommitLang = value
 	case "code_comment_lang":

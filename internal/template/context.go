@@ -25,8 +25,10 @@ type TemplateContext struct {
 	ErrorMessages            string // e.g., "en"
 
 	// Git settings
-	GitMode        string // "manual", "personal", "team"
-	GitHubUsername string // GitHub username (for personal/team modes)
+	GitMode           string // "manual", "personal", "team"
+	GitProvider       string // "github", "gitlab" (default: "github")
+	GitHubUsername    string // GitHub username (for personal/team modes)
+	GitLabInstanceURL string // GitLab instance URL (e.g., "https://gitlab.com")
 
 	// Development settings
 	DevelopmentMode    string // "ddd", "tdd", "hybrid"
@@ -70,7 +72,9 @@ func NewTemplateContext(opts ...ContextOption) *TemplateContext {
 		Documentation:            "en",
 		ErrorMessages:            "en",
 		GitMode:                  "manual",
+		GitProvider:              "github",
 		GitHubUsername:           "",
+		GitLabInstanceURL:        "",
 		DevelopmentMode:          string(models.ModeHybrid),
 		EnforceQuality:           true,
 		TestCoverageTarget:       config.DefaultTestCoverageTarget,
@@ -163,10 +167,26 @@ func WithGitMode(mode string) ContextOption {
 	}
 }
 
+// WithGitProvider sets the git provider.
+func WithGitProvider(provider string) ContextOption {
+	return func(c *TemplateContext) {
+		if provider == "github" || provider == "gitlab" {
+			c.GitProvider = provider
+		}
+	}
+}
+
 // WithGitHubUsername sets the GitHub username.
 func WithGitHubUsername(username string) ContextOption {
 	return func(c *TemplateContext) {
 		c.GitHubUsername = username
+	}
+}
+
+// WithGitLabInstanceURL sets the GitLab instance URL.
+func WithGitLabInstanceURL(url string) ContextOption {
+	return func(c *TemplateContext) {
+		c.GitLabInstanceURL = url
 	}
 }
 
