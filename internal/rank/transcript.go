@@ -208,10 +208,28 @@ func FindTranscripts() ([]string, error) {
 	return results, nil
 }
 
+// isValidSessionID validates a session ID to prevent path traversal attacks.
+// Valid session IDs contain only alphanumeric characters, hyphens, and underscores.
+func isValidSessionID(sessionID string) bool {
+	if sessionID == "" || len(sessionID) > 128 {
+		return false
+	}
+	for _, c := range sessionID {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_') {
+			return false
+		}
+	}
+	return true
+}
+
 // FindTranscriptForSession finds the transcript file for a specific session ID.
 // It searches Claude Code CLI paths first, then falls back to Desktop paths.
 // Returns the path if found, empty string otherwise.
 func FindTranscriptForSession(sessionID string) string {
+	if !isValidSessionID(sessionID) {
+		return ""
+	}
+
 	// Priority 1: Claude Code CLI new format (~/.claude/projects/*/<sessionID>*.jsonl)
 	if codeDir, err := claudeCodeDir(); err == nil {
 		pattern := filepath.Join(codeDir, "projects", "*", sessionID+"*.jsonl")

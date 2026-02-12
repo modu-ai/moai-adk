@@ -257,6 +257,57 @@ func TestFindTranscriptForSession_PrefersNewFormat(t *testing.T) {
 	}
 }
 
+func TestIsValidSessionID(t *testing.T) {
+	tests := []struct {
+		name      string
+		sessionID string
+		want      bool
+	}{
+		{"valid UUID", "abc-123-def-456", true},
+		{"valid alphanumeric", "session123", true},
+		{"valid with underscores", "my_session_id", true},
+		{"valid mixed", "abc-123_XYZ", true},
+		{"empty string", "", false},
+		{"path traversal dots", "../../../etc/passwd", false},
+		{"path traversal backslash", `..\..\etc\passwd`, false},
+		{"contains slash", "session/evil", false},
+		{"contains space", "session id", false},
+		{"contains colon", "C:evil", false},
+		{"contains null byte", "session\x00evil", false},
+		{"too long", string(make([]byte, 129)), false},
+		{"max length", string(make([]byte, 128)), false}, // all null bytes → invalid chars
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isValidSessionID(tt.sessionID)
+			if got != tt.want {
+				t.Errorf("isValidSessionID(%q) = %v, want %v", tt.sessionID, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFindTranscriptForSession_PathTraversal(t *testing.T) {
+	tempHome := t.TempDir()
+	t.Setenv("HOME", tempHome)
+
+	// Attempt path traversal attack - should return empty.
+	result := FindTranscriptForSession("../../../etc/passwd")
+	if result != "" {
+		t.Errorf("FindTranscriptForSession with path traversal returned %q, want empty", result)
+	}
+
+	result = FindTranscriptForSession(`..\..\etc\passwd`)
+	if result != "" {
+		t.Errorf("FindTranscriptForSession with backslash traversal returned %q, want empty", result)
+	}
+
+	result = FindTranscriptForSession("session/evil")
+	if result != "" {
+		t.Errorf("FindTranscriptForSession with slash returned %q, want empty", result)
+	}
+}
+
 func TestParseTranscript_BasicUsage(t *testing.T) {
 	dir := t.TempDir()
 	transcriptFile := filepath.Join(dir, "test-session.jsonl")
