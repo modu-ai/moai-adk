@@ -43,9 +43,11 @@ const (
 	DefaultTimeoutSeconds  = 3
 	DefaultMaxWarnings     = 10
 
-	DefaultGitConvention           = "auto"
-	DefaultGitConventionSampleSize = 100
-	DefaultGitConventionMaxLength  = 72
+	DefaultGitConvention                    = "auto"
+	DefaultGitConventionSampleSize          = 100
+	DefaultGitConventionConfidenceThreshold = 0.5
+	DefaultGitConventionFallback            = "conventional-commits"
+	DefaultGitConventionMaxLength           = 100
 )
 
 // NewDefaultConfig returns a Config with all fields set to compiled defaults.
@@ -149,6 +151,7 @@ func NewDefaultGitStrategyConfig() GitStrategyConfig {
 		AutoBranch:   false,
 		BranchPrefix: DefaultBranchPrefix,
 		CommitStyle:  DefaultCommitStyle,
+		Provider:     "github",
 	}
 }
 
@@ -198,11 +201,24 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 // NewDefaultGitConventionConfig returns a GitConventionConfig with default values.
 func NewDefaultGitConventionConfig() models.GitConventionConfig {
 	return models.GitConventionConfig{
-		Convention:    DefaultGitConvention,
-		EnforceOnPush: false,
-		AutoDetect:    true,
-		MaxLength:     DefaultGitConventionMaxLength,
-		SampleSize:    DefaultGitConventionSampleSize,
+		Convention: DefaultGitConvention,
+		AutoDetection: models.AutoDetectionConfig{
+			Enabled:             true,
+			SampleSize:          DefaultGitConventionSampleSize,
+			ConfidenceThreshold: DefaultGitConventionConfidenceThreshold,
+			Fallback:            DefaultGitConventionFallback,
+		},
+		Validation: models.ConventionValidationConfig{
+			Enabled:         true,
+			EnforceOnCommit: false,
+			EnforceOnPush:   false,
+			MaxLength:       DefaultGitConventionMaxLength,
+		},
+		Formatting: models.FormattingConfig{
+			ShowExamples:    true,
+			ShowSuggestions: true,
+			Verbose:         false,
+		},
 	}
 }
 

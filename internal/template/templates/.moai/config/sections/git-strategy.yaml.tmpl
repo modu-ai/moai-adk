@@ -3,7 +3,10 @@
 
 git_strategy:
   mode: "{{.GitMode}}"                # manual, personal, team
+  provider: "{{.GitProvider}}"          # github, gitlab
   github_username: "{{.GitHubUsername}}"  # GitHub username (for personal/team modes)
+  gitlab:
+    instance_url: "{{.GitLabInstanceURL}}"  # GitLab instance URL
 
   # Manual Mode Settings (Local Git)
   manual:

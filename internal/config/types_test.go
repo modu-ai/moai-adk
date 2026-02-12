@@ -164,10 +164,12 @@ func TestGitStrategyConfigFields(t *testing.T) {
 	t.Parallel()
 
 	cfg := GitStrategyConfig{
-		AutoBranch:   true,
-		BranchPrefix: "moai/",
-		CommitStyle:  "conventional",
-		WorktreeRoot: "/tmp/worktree",
+		AutoBranch:        true,
+		BranchPrefix:      "moai/",
+		CommitStyle:       "conventional",
+		WorktreeRoot:      "/tmp/worktree",
+		Provider:          "gitlab",
+		GitLabInstanceURL: "https://gitlab.company.com",
 	}
 	if !cfg.AutoBranch {
 		t.Error("AutoBranch: expected true")
@@ -180,6 +182,12 @@ func TestGitStrategyConfigFields(t *testing.T) {
 	}
 	if cfg.WorktreeRoot != "/tmp/worktree" {
 		t.Errorf("WorktreeRoot: got %q, want %q", cfg.WorktreeRoot, "/tmp/worktree")
+	}
+	if cfg.Provider != "gitlab" {
+		t.Errorf("Provider: got %q, want %q", cfg.Provider, "gitlab")
+	}
+	if cfg.GitLabInstanceURL != "https://gitlab.company.com" {
+		t.Errorf("GitLabInstanceURL: got %q, want %q", cfg.GitLabInstanceURL, "https://gitlab.company.com")
 	}
 }
 

@@ -351,28 +351,6 @@ func TestNewDefaultWorkflowConfig(t *testing.T) {
 	}
 }
 
-func TestNewDefaultGitConventionConfig(t *testing.T) {
-	t.Parallel()
-
-	cfg := NewDefaultGitConventionConfig()
-
-	if cfg.Convention != DefaultGitConvention {
-		t.Errorf("Convention: got %q, want %q", cfg.Convention, DefaultGitConvention)
-	}
-	if cfg.EnforceOnPush {
-		t.Error("EnforceOnPush: expected false")
-	}
-	if !cfg.AutoDetect {
-		t.Error("AutoDetect: expected true")
-	}
-	if cfg.MaxLength != DefaultGitConventionMaxLength {
-		t.Errorf("MaxLength: got %d, want %d", cfg.MaxLength, DefaultGitConventionMaxLength)
-	}
-	if cfg.SampleSize != DefaultGitConventionSampleSize {
-		t.Errorf("SampleSize: got %d, want %d", cfg.SampleSize, DefaultGitConventionSampleSize)
-	}
-}
-
 func TestNewDefaultLSPQualityGates(t *testing.T) {
 	t.Parallel()
 
@@ -443,7 +421,9 @@ func TestDefaultConstants(t *testing.T) {
 		{"DefaultMaxWarnings", DefaultMaxWarnings, 10},
 		{"DefaultGitConvention", DefaultGitConvention, "auto"},
 		{"DefaultGitConventionSampleSize", DefaultGitConventionSampleSize, 100},
-		{"DefaultGitConventionMaxLength", DefaultGitConventionMaxLength, 72},
+		{"DefaultGitConventionConfidenceThreshold", DefaultGitConventionConfidenceThreshold, 0.5},
+		{"DefaultGitConventionFallback", DefaultGitConventionFallback, "conventional-commits"},
+		{"DefaultGitConventionMaxLength", DefaultGitConventionMaxLength, 100},
 	}
 
 	for _, tt := range tests {
@@ -453,5 +433,78 @@ func TestDefaultConstants(t *testing.T) {
 				t.Errorf("%s: got %v, want %v", tt.name, tt.got, tt.expected)
 			}
 		})
+	}
+}
+
+func TestDefaultGitConventionConfidenceThreshold(t *testing.T) {
+	t.Parallel()
+
+	// Float comparison needs separate test (can't use any equality).
+	if DefaultGitConventionConfidenceThreshold != 0.5 {
+		t.Errorf("DefaultGitConventionConfidenceThreshold: got %f, want 0.5",
+			DefaultGitConventionConfidenceThreshold)
+	}
+}
+
+func TestNewDefaultGitConventionConfig(t *testing.T) {
+	t.Parallel()
+
+	cfg := NewDefaultGitConventionConfig()
+
+	if cfg.Convention != DefaultGitConvention {
+		t.Errorf("Convention: got %q, want %q", cfg.Convention, DefaultGitConvention)
+	}
+
+	// AutoDetection
+	if !cfg.AutoDetection.Enabled {
+		t.Error("AutoDetection.Enabled: expected true")
+	}
+	if cfg.AutoDetection.SampleSize != DefaultGitConventionSampleSize {
+		t.Errorf("AutoDetection.SampleSize: got %d, want %d",
+			cfg.AutoDetection.SampleSize, DefaultGitConventionSampleSize)
+	}
+	if cfg.AutoDetection.ConfidenceThreshold != DefaultGitConventionConfidenceThreshold {
+		t.Errorf("AutoDetection.ConfidenceThreshold: got %f, want %f",
+			cfg.AutoDetection.ConfidenceThreshold, DefaultGitConventionConfidenceThreshold)
+	}
+	if cfg.AutoDetection.Fallback != DefaultGitConventionFallback {
+		t.Errorf("AutoDetection.Fallback: got %q, want %q",
+			cfg.AutoDetection.Fallback, DefaultGitConventionFallback)
+	}
+
+	// Validation
+	if !cfg.Validation.Enabled {
+		t.Error("Validation.Enabled: expected true")
+	}
+	if cfg.Validation.EnforceOnCommit {
+		t.Error("Validation.EnforceOnCommit: expected false")
+	}
+	if cfg.Validation.EnforceOnPush {
+		t.Error("Validation.EnforceOnPush: expected false")
+	}
+	if cfg.Validation.MaxLength != DefaultGitConventionMaxLength {
+		t.Errorf("Validation.MaxLength: got %d, want %d",
+			cfg.Validation.MaxLength, DefaultGitConventionMaxLength)
+	}
+
+	// Formatting
+	if !cfg.Formatting.ShowExamples {
+		t.Error("Formatting.ShowExamples: expected true")
+	}
+	if !cfg.Formatting.ShowSuggestions {
+		t.Error("Formatting.ShowSuggestions: expected true")
+	}
+	if cfg.Formatting.Verbose {
+		t.Error("Formatting.Verbose: expected false")
+	}
+}
+
+func TestNewDefaultConfigContainsGitConvention(t *testing.T) {
+	t.Parallel()
+
+	cfg := NewDefaultConfig()
+	if cfg.GitConvention.Convention != DefaultGitConvention {
+		t.Errorf("GitConvention.Convention: got %q, want %q",
+			cfg.GitConvention.Convention, DefaultGitConvention)
 	}
 }

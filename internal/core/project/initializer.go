@@ -30,8 +30,10 @@ type InitOptions struct {
 	UserName        string   // User display name for configuration.
 	ConvLang        string   // Conversation language code (e.g., "en", "ko").
 	DevelopmentMode string   // "ddd", "tdd", or "hybrid".
-	GitMode         string   // Git workflow mode: "manual", "personal", or "team".
-	GitHubUsername  string   // GitHub username (for personal/team modes).
+	GitMode           string // Git workflow mode: "manual", "personal", or "team".
+	GitProvider       string // Git provider: "github", "gitlab".
+	GitHubUsername    string // GitHub username (for personal/team modes).
+	GitLabInstanceURL string // GitLab instance URL (for self-hosted instances).
 	GitCommitLang   string   // Git commit message language code.
 	CodeCommentLang string   // Code comment language code.
 	DocLang         string   // Documentation language code.
@@ -251,7 +253,9 @@ func (i *projectInitializer) deployTemplates(ctx context.Context, opts InitOptio
 		template.WithLanguage(opts.ConvLang),
 		template.WithDevelopmentMode(opts.DevelopmentMode),
 		template.WithGitMode(opts.GitMode),
+		template.WithGitProvider(opts.GitProvider),
 		template.WithGitHubUsername(opts.GitHubUsername),
+		template.WithGitLabInstanceURL(opts.GitLabInstanceURL),
 		template.WithOutputLanguages(opts.GitCommitLang, opts.CodeCommentLang, opts.DocLang),
 		template.WithPlatform(opts.Platform),
 		template.WithGoBinPath(goBinPath),
@@ -322,7 +326,9 @@ func (i *projectInitializer) generateConfigsFallback(opts InitOptions, result *I
 		template.WithLanguage(opts.ConvLang),
 		template.WithDevelopmentMode(opts.DevelopmentMode),
 		template.WithGitMode(opts.GitMode),
+		template.WithGitProvider(opts.GitProvider),
 		template.WithGitHubUsername(opts.GitHubUsername),
+		template.WithGitLabInstanceURL(opts.GitLabInstanceURL),
 		template.WithOutputLanguages(opts.GitCommitLang, opts.CodeCommentLang, opts.DocLang),
 		template.WithPlatform(opts.Platform),
 	)
@@ -377,8 +383,11 @@ func (i *projectInitializer) generateConfigsFallback(opts InitOptions, result *I
 	// git-strategy.yaml
 	gitStrategyContent := fmt.Sprintf(`git_strategy:
   mode: %q
+  provider: %q
   github_username: %q
-`, tmplCtx.GitMode, tmplCtx.GitHubUsername)
+  gitlab:
+    instance_url: %q
+`, tmplCtx.GitMode, tmplCtx.GitProvider, tmplCtx.GitHubUsername, tmplCtx.GitLabInstanceURL)
 	if err := os.WriteFile(filepath.Join(sectionsDir, defs.GitStrategyYAML), []byte(gitStrategyContent), defs.FilePerm); err != nil {
 		return fmt.Errorf("write git-strategy.yaml: %w", err)
 	}

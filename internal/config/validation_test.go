@@ -592,7 +592,7 @@ func TestValidateGitConventionSampleSize(t *testing.T) {
 			t.Parallel()
 
 			cfg := NewDefaultConfig()
-			cfg.GitConvention.SampleSize = tt.value
+			cfg.GitConvention.AutoDetection.SampleSize = tt.value
 			loaded := map[string]bool{}
 
 			err := Validate(cfg, loaded)

@@ -68,7 +68,35 @@ func DefaultQuestions(projectRoot string) []Question {
 			Default:  "manual",
 			Required: true,
 		},
-		// 5. GitHub Username (conditional)
+		// 4b. Git Provider (conditional - only for personal/team modes)
+		{
+			ID:          "git_provider",
+			Type:        QuestionTypeSelect,
+			Title:       "Select your Git provider",
+			Description: "Choose the Git hosting platform for your project.",
+			Options: []Option{
+				{Label: "GitHub", Value: "github", Desc: "GitHub.com"},
+				{Label: "GitLab", Value: "gitlab", Desc: "GitLab.com or self-hosted GitLab"},
+			},
+			Default:  "github",
+			Required: true,
+			Condition: func(r *WizardResult) bool {
+				return r.GitMode == "personal" || r.GitMode == "team"
+			},
+		},
+		// 4c. GitLab Instance URL (conditional - only for gitlab provider)
+		{
+			ID:          "gitlab_instance_url",
+			Type:        QuestionTypeInput,
+			Title:       "Enter GitLab instance URL",
+			Description: "For GitLab.com use https://gitlab.com. For self-hosted, enter your instance URL.",
+			Default:     "https://gitlab.com",
+			Required:    false,
+			Condition: func(r *WizardResult) bool {
+				return (r.GitMode == "personal" || r.GitMode == "team") && r.GitProvider == "gitlab"
+			},
+		},
+		// 5. GitHub Username (conditional - only for github provider)
 		{
 			ID:          "github_username",
 			Type:        QuestionTypeInput,
@@ -77,10 +105,10 @@ func DefaultQuestions(projectRoot string) []Question {
 			Default:     "",
 			Required:    false, // Conditional requirement handled by wizard
 			Condition: func(r *WizardResult) bool {
-				return r.GitMode == "personal" || r.GitMode == "team"
+				return (r.GitMode == "personal" || r.GitMode == "team") && r.GitProvider != "gitlab"
 			},
 		},
-		// 5b. GitHub Token (conditional, after github_username)
+		// 5b. GitHub Token (conditional - only for github provider)
 		{
 			ID:          "github_token",
 			Type:        QuestionTypeInput,
@@ -89,7 +117,31 @@ func DefaultQuestions(projectRoot string) []Question {
 			Default:     "",
 			Required:    false,
 			Condition: func(r *WizardResult) bool {
-				return r.GitMode == "personal" || r.GitMode == "team"
+				return (r.GitMode == "personal" || r.GitMode == "team") && r.GitProvider != "gitlab"
+			},
+		},
+		// 5c. GitLab Username (conditional - only for gitlab provider)
+		{
+			ID:          "gitlab_username",
+			Type:        QuestionTypeInput,
+			Title:       "Enter your GitLab username",
+			Description: "Required for Git automation features with GitLab.",
+			Default:     "",
+			Required:    false,
+			Condition: func(r *WizardResult) bool {
+				return (r.GitMode == "personal" || r.GitMode == "team") && r.GitProvider == "gitlab"
+			},
+		},
+		// 5d. GitLab Token (conditional - only for gitlab provider)
+		{
+			ID:          "gitlab_token",
+			Type:        QuestionTypeInput,
+			Title:       "Enter GitLab personal access token (optional)",
+			Description: "Required for MR creation and pushing. Leave empty to skip or use glab CLI.",
+			Default:     "",
+			Required:    false,
+			Condition: func(r *WizardResult) bool {
+				return (r.GitMode == "personal" || r.GitMode == "team") && r.GitProvider == "gitlab"
 			},
 		},
 		// 6. Git Commit Language
@@ -144,9 +196,9 @@ func DefaultQuestions(projectRoot string) []Question {
 			Title:       "Select agent model policy",
 			Description: "Controls token consumption by assigning optimal models to each agent.",
 			Options: []Option{
-				{Label: "High (Max $200/mo)", Value: "high", Desc: "All agents use opus"},
-				{Label: "Medium (Max $100/mo)", Value: "medium", Desc: "Critical agents use opus, others sonnet/haiku"},
-				{Label: "Low (Plus $20/mo)", Value: "low", Desc: "No opus, sonnet + haiku only"},
+				{Label: "High (Max $200/mo)", Value: "high", Desc: "Best quality - opus 23, sonnet 1, haiku 4"},
+				{Label: "Medium (Max $100/mo)", Value: "medium", Desc: "Balanced - opus 4, sonnet 19, haiku 5"},
+				{Label: "Low (Plus $20/mo)", Value: "low", Desc: "No Opus - sonnet 12, haiku 16"},
 			},
 			Default:  "high",
 			Required: true,

@@ -121,7 +121,7 @@ func isEnforceOnPushEnabled() bool {
 	if deps != nil && deps.Config != nil {
 		cfg := deps.Config.Get()
 		if cfg != nil {
-			return cfg.GitConvention.EnforceOnPush
+			return cfg.GitConvention.Validation.EnforceOnPush
 		}
 	}
 

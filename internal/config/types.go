@@ -23,10 +23,12 @@ type Config struct {
 
 // GitStrategyConfig represents the git strategy configuration section.
 type GitStrategyConfig struct {
-	AutoBranch   bool   `yaml:"auto_branch"`
-	BranchPrefix string `yaml:"branch_prefix"`
-	CommitStyle  string `yaml:"commit_style"`
-	WorktreeRoot string `yaml:"worktree_root"`
+	AutoBranch        bool   `yaml:"auto_branch"`
+	BranchPrefix      string `yaml:"branch_prefix"`
+	CommitStyle       string `yaml:"commit_style"`
+	WorktreeRoot      string `yaml:"worktree_root"`
+	Provider          string `yaml:"provider"`           // "github", "gitlab"
+	GitLabInstanceURL string `yaml:"gitlab_instance_url"` // GitLab instance URL
 }
 
 // SystemConfig represents the system configuration section.

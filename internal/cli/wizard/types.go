@@ -16,9 +16,13 @@ type WizardResult struct {
 	UserName    string // User display name (optional)
 
 	// Git settings
-	GitMode        string // Git automation mode: manual, personal, team
-	GitHubUsername string // GitHub username (required for personal/team modes)
-	GitHubToken    string // GitHub personal access token (optional)
+	GitMode           string // Git automation mode: manual, personal, team
+	GitProvider       string // Git provider: "github", "gitlab"
+	GitHubUsername    string // GitHub username (required for personal/team modes)
+	GitHubToken       string // GitHub personal access token (optional)
+	GitLabInstanceURL string // GitLab instance URL (for self-hosted, e.g. "https://gitlab.company.com")
+	GitLabUsername    string // GitLab username (for personal/team modes with gitlab provider)
+	GitLabToken       string // GitLab personal access token (optional)
 
 	// Output language settings
 	GitCommitLang   string // Language for git commit messages: en, ko, ja, zh

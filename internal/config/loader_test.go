@@ -379,17 +379,17 @@ func TestLoaderLoadGitConventionSection(t *testing.T) {
 		t.Errorf("GitConvention.Convention: got %q, want %q",
 			cfg.GitConvention.Convention, "conventional-commits")
 	}
-	if !cfg.GitConvention.EnforceOnPush {
-		t.Error("GitConvention.EnforceOnPush: expected true")
+	if !cfg.GitConvention.Validation.EnforceOnPush {
+		t.Error("GitConvention.Validation.EnforceOnPush: expected true")
 	}
-	if cfg.GitConvention.AutoDetect {
-		t.Error("GitConvention.AutoDetect: expected false")
+	if cfg.GitConvention.AutoDetection.Enabled {
+		t.Error("GitConvention.AutoDetection.Enabled: expected false")
 	}
-	if cfg.GitConvention.MaxLength != 100 {
-		t.Errorf("GitConvention.MaxLength: got %d, want 100", cfg.GitConvention.MaxLength)
+	if cfg.GitConvention.Validation.MaxLength != 100 {
+		t.Errorf("GitConvention.Validation.MaxLength: got %d, want 100", cfg.GitConvention.Validation.MaxLength)
 	}
-	if cfg.GitConvention.SampleSize != 50 {
-		t.Errorf("GitConvention.SampleSize: got %d, want 50", cfg.GitConvention.SampleSize)
+	if cfg.GitConvention.AutoDetection.SampleSize != 50 {
+		t.Errorf("GitConvention.AutoDetection.SampleSize: got %d, want 50", cfg.GitConvention.AutoDetection.SampleSize)
 	}
 
 	sections := loader.LoadedSections()
@@ -415,15 +415,15 @@ func TestLoaderGitConventionDefaults(t *testing.T) {
 		t.Errorf("GitConvention.Convention: got %q, want default %q",
 			cfg.GitConvention.Convention, DefaultGitConvention)
 	}
-	if cfg.GitConvention.EnforceOnPush {
-		t.Error("GitConvention.EnforceOnPush: expected default false")
+	if cfg.GitConvention.Validation.EnforceOnPush {
+		t.Error("GitConvention.Validation.EnforceOnPush: expected default false")
 	}
-	if !cfg.GitConvention.AutoDetect {
-		t.Error("GitConvention.AutoDetect: expected default true")
+	if !cfg.GitConvention.AutoDetection.Enabled {
+		t.Error("GitConvention.AutoDetection.Enabled: expected default true")
 	}
-	if cfg.GitConvention.MaxLength != DefaultGitConventionMaxLength {
-		t.Errorf("GitConvention.MaxLength: got %d, want default %d",
-			cfg.GitConvention.MaxLength, DefaultGitConventionMaxLength)
+	if cfg.GitConvention.Validation.MaxLength != DefaultGitConventionMaxLength {
+		t.Errorf("GitConvention.Validation.MaxLength: got %d, want default %d",
+			cfg.GitConvention.Validation.MaxLength, DefaultGitConventionMaxLength)
 	}
 
 	sections := loader.LoadedSections()

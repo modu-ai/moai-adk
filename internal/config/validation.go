@@ -152,20 +152,29 @@ func validateGitConventionConfig(gc *models.GitConventionConfig) []ValidationErr
 		})
 	}
 
-	if gc.SampleSize < 0 {
+	if gc.AutoDetection.SampleSize < 0 {
 		errs = append(errs, ValidationError{
-			Field:   "git_convention.sample_size",
+			Field:   "git_convention.auto_detection.sample_size",
 			Message: "must be non-negative",
-			Value:   gc.SampleSize,
+			Value:   gc.AutoDetection.SampleSize,
 			Wrapped: ErrInvalidConfig,
 		})
 	}
 
-	if gc.MaxLength < 0 {
+	if gc.AutoDetection.ConfidenceThreshold < 0 || gc.AutoDetection.ConfidenceThreshold > 1 {
 		errs = append(errs, ValidationError{
-			Field:   "git_convention.max_length",
+			Field:   "git_convention.auto_detection.confidence_threshold",
+			Message: "must be between 0.0 and 1.0",
+			Value:   gc.AutoDetection.ConfidenceThreshold,
+			Wrapped: ErrInvalidConfig,
+		})
+	}
+
+	if gc.Validation.MaxLength < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "git_convention.validation.max_length",
 			Message: "must be non-negative",
-			Value:   gc.MaxLength,
+			Value:   gc.Validation.MaxLength,
 			Wrapped: ErrInvalidConfig,
 		})
 	}
@@ -215,6 +224,7 @@ func validateDynamicTokens(cfg *Config) []ValidationError {
 
 	// Git convention section
 	errs = append(errs, checkStringField("git_convention.convention", cfg.GitConvention.Convention)...)
+	errs = append(errs, checkStringField("git_convention.auto_detection.fallback", cfg.GitConvention.AutoDetection.Fallback)...)
 	errs = append(errs, checkStringField("git_convention.custom.name", cfg.GitConvention.Custom.Name)...)
 	errs = append(errs, checkStringField("git_convention.custom.pattern", cfg.GitConvention.Custom.Pattern)...)
 
