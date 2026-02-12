@@ -76,6 +76,12 @@ func TestNewDefaultConfigContainsAllSections(t *testing.T) {
 		t.Errorf("Workflow.PlanTokens: got %d, want %d",
 			cfg.Workflow.PlanTokens, DefaultPlanTokens)
 	}
+
+	// GitConvention should have defaults
+	if cfg.GitConvention.Convention != DefaultGitConvention {
+		t.Errorf("GitConvention.Convention: got %q, want %q",
+			cfg.GitConvention.Convention, DefaultGitConvention)
+	}
 }
 
 func TestNewDefaultUserConfig(t *testing.T) {
@@ -345,6 +351,28 @@ func TestNewDefaultWorkflowConfig(t *testing.T) {
 	}
 }
 
+func TestNewDefaultGitConventionConfig(t *testing.T) {
+	t.Parallel()
+
+	cfg := NewDefaultGitConventionConfig()
+
+	if cfg.Convention != DefaultGitConvention {
+		t.Errorf("Convention: got %q, want %q", cfg.Convention, DefaultGitConvention)
+	}
+	if cfg.EnforceOnPush {
+		t.Error("EnforceOnPush: expected false")
+	}
+	if !cfg.AutoDetect {
+		t.Error("AutoDetect: expected true")
+	}
+	if cfg.MaxLength != DefaultGitConventionMaxLength {
+		t.Errorf("MaxLength: got %d, want %d", cfg.MaxLength, DefaultGitConventionMaxLength)
+	}
+	if cfg.SampleSize != DefaultGitConventionSampleSize {
+		t.Errorf("SampleSize: got %d, want %d", cfg.SampleSize, DefaultGitConventionSampleSize)
+	}
+}
+
 func TestNewDefaultLSPQualityGates(t *testing.T) {
 	t.Parallel()
 
@@ -413,6 +441,9 @@ func TestDefaultConstants(t *testing.T) {
 		{"DefaultCacheTTLSeconds", DefaultCacheTTLSeconds, 5},
 		{"DefaultTimeoutSeconds", DefaultTimeoutSeconds, 3},
 		{"DefaultMaxWarnings", DefaultMaxWarnings, 10},
+		{"DefaultGitConvention", DefaultGitConvention, "auto"},
+		{"DefaultGitConventionSampleSize", DefaultGitConventionSampleSize, 100},
+		{"DefaultGitConventionMaxLength", DefaultGitConventionMaxLength, 72},
 	}
 
 	for _, tt := range tests {

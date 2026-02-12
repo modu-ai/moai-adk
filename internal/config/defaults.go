@@ -42,21 +42,26 @@ const (
 	DefaultCacheTTLSeconds = 5
 	DefaultTimeoutSeconds  = 3
 	DefaultMaxWarnings     = 10
+
+	DefaultGitConvention           = "auto"
+	DefaultGitConventionSampleSize = 100
+	DefaultGitConventionMaxLength  = 72
 )
 
 // NewDefaultConfig returns a Config with all fields set to compiled defaults.
 func NewDefaultConfig() *Config {
 	return &Config{
-		User:        NewDefaultUserConfig(),
-		Language:    NewDefaultLanguageConfig(),
-		Quality:     NewDefaultQualityConfig(),
-		Project:     NewDefaultProjectConfig(),
-		GitStrategy: NewDefaultGitStrategyConfig(),
-		System:      NewDefaultSystemConfig(),
-		LLM:         NewDefaultLLMConfig(),
-		Pricing:     NewDefaultPricingConfig(),
-		Ralph:       NewDefaultRalphConfig(),
-		Workflow:    NewDefaultWorkflowConfig(),
+		User:          NewDefaultUserConfig(),
+		Language:      NewDefaultLanguageConfig(),
+		Quality:       NewDefaultQualityConfig(),
+		Project:       NewDefaultProjectConfig(),
+		GitStrategy:   NewDefaultGitStrategyConfig(),
+		GitConvention: NewDefaultGitConventionConfig(),
+		System:        NewDefaultSystemConfig(),
+		LLM:           NewDefaultLLMConfig(),
+		Pricing:       NewDefaultPricingConfig(),
+		Ralph:         NewDefaultRalphConfig(),
+		Workflow:      NewDefaultWorkflowConfig(),
 	}
 }
 
@@ -187,6 +192,17 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		PlanTokens: DefaultPlanTokens,
 		RunTokens:  DefaultRunTokens,
 		SyncTokens: DefaultSyncTokens,
+	}
+}
+
+// NewDefaultGitConventionConfig returns a GitConventionConfig with default values.
+func NewDefaultGitConventionConfig() models.GitConventionConfig {
+	return models.GitConventionConfig{
+		Convention:    DefaultGitConvention,
+		EnforceOnPush: false,
+		AutoDetect:    true,
+		MaxLength:     DefaultGitConventionMaxLength,
+		SampleSize:    DefaultGitConventionSampleSize,
 	}
 }
 

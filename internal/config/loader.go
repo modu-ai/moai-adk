@@ -49,6 +49,9 @@ func (l *Loader) Load(configDir string) (*Config, error) {
 	// Load quality section
 	l.loadQualitySection(sectionsDir, cfg)
 
+	// Load git convention section
+	l.loadGitConventionSection(sectionsDir, cfg)
+
 	return cfg, nil
 }
 
@@ -106,6 +109,20 @@ func (l *Loader) loadQualitySection(dir string, cfg *Config) {
 	if loaded {
 		cfg.Quality = wrapper.Constitution
 		l.loadedSections["quality"] = true
+	}
+}
+
+// loadGitConventionSection loads the git convention configuration from git-convention.yaml.
+func (l *Loader) loadGitConventionSection(dir string, cfg *Config) {
+	wrapper := &gitConventionFileWrapper{GitConvention: cfg.GitConvention}
+	loaded, err := loadYAMLFile(dir, "git-convention.yaml", wrapper)
+	if err != nil {
+		slog.Warn("failed to load git convention config, using defaults", "error", err)
+		return
+	}
+	if loaded {
+		cfg.GitConvention = wrapper.GitConvention
+		l.loadedSections["git_convention"] = true
 	}
 }
 

@@ -1,0 +1,6 @@
+git_convention:
+  convention: "conventional-commits"
+  enforce_on_push: true
+  auto_detect: false
+  max_length: 100
+  sample_size: 50

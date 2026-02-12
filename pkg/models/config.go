@@ -202,3 +202,29 @@ type FullQualityConfig struct {
 	ReportGeneration ReportGeneration `yaml:"report_generation"`
 	LSPStateTracking LSPStateTracking `yaml:"lsp_state_tracking"`
 }
+
+// GitConventionConfig represents the git convention configuration section.
+type GitConventionConfig struct {
+	// Convention is the convention name: "auto", a built-in name, or "custom".
+	Convention string `yaml:"convention"`
+	// EnforceOnPush enables convention validation during pre-push hook.
+	EnforceOnPush bool `yaml:"enforce_on_push"`
+	// AutoDetect enables automatic convention detection from git history.
+	AutoDetect bool `yaml:"auto_detect"`
+	// MaxLength is the maximum allowed header line length (0 = no limit).
+	MaxLength int `yaml:"max_length"`
+	// SampleSize is the number of recent commits to analyze for auto-detection.
+	SampleSize int `yaml:"sample_size"`
+	// Custom holds a user-defined convention configuration.
+	Custom CustomConventionConfig `yaml:"custom"`
+}
+
+// CustomConventionConfig holds a user-defined commit convention definition.
+type CustomConventionConfig struct {
+	Name      string   `yaml:"name"`
+	Pattern   string   `yaml:"pattern"`
+	Types     []string `yaml:"types"`
+	Scopes    []string `yaml:"scopes"`
+	MaxLength int      `yaml:"max_length"`
+	Examples  []string `yaml:"examples"`
+}

@@ -8,16 +8,17 @@ import (
 // It imports types from pkg/models for shared types (UserConfig, LanguageConfig,
 // QualityConfig, ProjectConfig) and defines internal types for the rest.
 type Config struct {
-	User        models.UserConfig     `yaml:"user"`
-	Language    models.LanguageConfig `yaml:"language"`
-	Quality     models.QualityConfig  `yaml:"quality"`
-	Project     models.ProjectConfig  `yaml:"project"`
-	GitStrategy GitStrategyConfig     `yaml:"git_strategy"`
-	System      SystemConfig          `yaml:"system"`
-	LLM         LLMConfig             `yaml:"llm"`
-	Pricing     PricingConfig         `yaml:"pricing"`
-	Ralph       RalphConfig           `yaml:"ralph"`
-	Workflow    WorkflowConfig        `yaml:"workflow"`
+	User          models.UserConfig          `yaml:"user"`
+	Language      models.LanguageConfig      `yaml:"language"`
+	Quality       models.QualityConfig       `yaml:"quality"`
+	Project       models.ProjectConfig       `yaml:"project"`
+	GitStrategy   GitStrategyConfig          `yaml:"git_strategy"`
+	GitConvention models.GitConventionConfig `yaml:"git_convention"`
+	System        SystemConfig               `yaml:"system"`
+	LLM           LLMConfig                  `yaml:"llm"`
+	Pricing       PricingConfig              `yaml:"pricing"`
+	Ralph         RalphConfig                `yaml:"ralph"`
+	Workflow      WorkflowConfig             `yaml:"workflow"`
 }
 
 // GitStrategyConfig represents the git strategy configuration section.
@@ -118,8 +119,8 @@ type SyncGate struct {
 // sectionNames lists all valid configuration section names.
 var sectionNames = []string{
 	"user", "language", "quality", "project",
-	"git_strategy", "system", "llm", "pricing",
-	"ralph", "workflow",
+	"git_strategy", "git_convention", "system", "llm",
+	"pricing", "ralph", "workflow",
 }
 
 // IsValidSectionName checks if the given name is a valid section name.
@@ -154,4 +155,9 @@ type languageFileWrapper struct {
 // as the top-level key (Python MoAI-ADK backward compatibility).
 type qualityFileWrapper struct {
 	Constitution models.QualityConfig `yaml:"constitution"`
+}
+
+// gitConventionFileWrapper handles the git-convention.yaml section file.
+type gitConventionFileWrapper struct {
+	GitConvention models.GitConventionConfig `yaml:"git_convention"`
 }

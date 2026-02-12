@@ -32,6 +32,9 @@ func Validate(cfg *Config, loadedSections map[string]bool) error {
 	// Check quality config ranges
 	errs = append(errs, validateQualityConfig(&cfg.Quality)...)
 
+	// Check git convention config
+	errs = append(errs, validateGitConventionConfig(&cfg.GitConvention)...)
+
 	// Check for unexpanded dynamic tokens
 	errs = append(errs, validateDynamicTokens(cfg)...)
 
@@ -127,6 +130,58 @@ func validateQualityConfig(q *models.QualityConfig) []ValidationError {
 	return errs
 }
 
+// validGitConventionNames lists recognized convention names.
+var validGitConventionNames = map[string]bool{
+	"auto":                  true,
+	"conventional-commits":  true,
+	"angular":               true,
+	"karma":                 true,
+	"custom":                true,
+}
+
+// validateGitConventionConfig checks the git convention configuration.
+func validateGitConventionConfig(gc *models.GitConventionConfig) []ValidationError {
+	var errs []ValidationError
+
+	if gc.Convention != "" && !validGitConventionNames[gc.Convention] {
+		errs = append(errs, ValidationError{
+			Field:   "git_convention.convention",
+			Message: "must be one of: auto, conventional-commits, angular, karma, custom",
+			Value:   gc.Convention,
+			Wrapped: ErrInvalidConfig,
+		})
+	}
+
+	if gc.SampleSize < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "git_convention.sample_size",
+			Message: "must be non-negative",
+			Value:   gc.SampleSize,
+			Wrapped: ErrInvalidConfig,
+		})
+	}
+
+	if gc.MaxLength < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "git_convention.max_length",
+			Message: "must be non-negative",
+			Value:   gc.MaxLength,
+			Wrapped: ErrInvalidConfig,
+		})
+	}
+
+	// When convention is "custom", pattern is required.
+	if gc.Convention == "custom" && gc.Custom.Pattern == "" {
+		errs = append(errs, ValidationError{
+			Field:   "git_convention.custom.pattern",
+			Message: "pattern is required when convention is 'custom'",
+			Wrapped: ErrInvalidConfig,
+		})
+	}
+
+	return errs
+}
+
 // validateDynamicTokens checks all string fields for unexpanded dynamic tokens.
 func validateDynamicTokens(cfg *Config) []ValidationError {
 	var errs []ValidationError
@@ -157,6 +212,11 @@ func validateDynamicTokens(cfg *Config) []ValidationError {
 	// Git strategy section
 	errs = append(errs, checkStringField("git_strategy.branch_prefix", cfg.GitStrategy.BranchPrefix)...)
 	errs = append(errs, checkStringField("git_strategy.commit_style", cfg.GitStrategy.CommitStyle)...)
+
+	// Git convention section
+	errs = append(errs, checkStringField("git_convention.convention", cfg.GitConvention.Convention)...)
+	errs = append(errs, checkStringField("git_convention.custom.name", cfg.GitConvention.Custom.Name)...)
+	errs = append(errs, checkStringField("git_convention.custom.pattern", cfg.GitConvention.Custom.Pattern)...)
 
 	// LLM section
 	errs = append(errs, checkStringField("llm.default_model", cfg.LLM.DefaultModel)...)

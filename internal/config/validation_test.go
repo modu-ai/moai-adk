@@ -533,6 +533,125 @@ func TestValidationErrorsIs(t *testing.T) {
 	}
 }
 
+func TestValidateGitConventionName(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		conv    string
+		wantErr bool
+	}{
+		{"auto is valid", "auto", false},
+		{"conventional-commits is valid", "conventional-commits", false},
+		{"angular is valid", "angular", false},
+		{"karma is valid", "karma", false},
+		{"custom is valid", "custom", false},
+		{"empty is valid (defaults applied)", "", false},
+		{"invalid convention", "gitmoji", true},
+		{"uppercase is invalid", "AUTO", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := NewDefaultConfig()
+			cfg.GitConvention.Convention = tt.conv
+			// When convention is "custom", pattern is required.
+			if tt.conv == "custom" {
+				cfg.GitConvention.Custom.Pattern = `^.+$`
+			}
+			loaded := map[string]bool{}
+
+			err := Validate(cfg, loaded)
+			if tt.wantErr && err == nil {
+				t.Errorf("Validate() expected error for convention %q, got nil", tt.conv)
+			}
+			if !tt.wantErr && err != nil {
+				t.Errorf("Validate() expected no error for convention %q, got: %v", tt.conv, err)
+			}
+		})
+	}
+}
+
+func TestValidateGitConventionSampleSize(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		value   int
+		wantErr bool
+	}{
+		{"0 is valid", 0, false},
+		{"100 is valid", 100, false},
+		{"-1 is invalid", -1, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := NewDefaultConfig()
+			cfg.GitConvention.SampleSize = tt.value
+			loaded := map[string]bool{}
+
+			err := Validate(cfg, loaded)
+			if tt.wantErr && err == nil {
+				t.Errorf("expected error for SampleSize %d", tt.value)
+			}
+			if !tt.wantErr && err != nil {
+				t.Errorf("expected no error for SampleSize %d, got: %v", tt.value, err)
+			}
+		})
+	}
+}
+
+func TestValidateGitConventionCustomRequiresPattern(t *testing.T) {
+	t.Parallel()
+
+	cfg := NewDefaultConfig()
+	cfg.GitConvention.Convention = "custom"
+	cfg.GitConvention.Custom.Pattern = "" // missing pattern
+	loaded := map[string]bool{}
+
+	err := Validate(cfg, loaded)
+	if err == nil {
+		t.Fatal("expected error for custom convention without pattern")
+	}
+
+	var ve *ValidationErrors
+	if !errors.As(err, &ve) {
+		t.Fatalf("expected *ValidationErrors, got %T", err)
+	}
+
+	found := false
+	for _, e := range ve.Errors {
+		if e.Field == "git_convention.custom.pattern" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected validation error for field git_convention.custom.pattern")
+	}
+}
+
+func TestValidateGitConventionDynamicTokens(t *testing.T) {
+	t.Parallel()
+
+	cfg := NewDefaultConfig()
+	cfg.GitConvention.Convention = "${GIT_CONV}"
+	loaded := map[string]bool{}
+
+	err := Validate(cfg, loaded)
+	if err == nil {
+		t.Fatal("expected error for dynamic token in git_convention.convention")
+	}
+	if !errors.Is(err, ErrDynamicToken) {
+		t.Errorf("expected ErrDynamicToken, got: %v", err)
+	}
+}
+
 func TestDevelopmentModeStrings(t *testing.T) {
 	t.Parallel()
 

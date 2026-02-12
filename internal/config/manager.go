@@ -148,6 +148,11 @@ func (m *ConfigManager) Save() error {
 		return fmt.Errorf("save quality config: %w", err)
 	}
 
+	// Save git convention section
+	if err := saveSection(sectionsDir, "git-convention.yaml", gitConventionFileWrapper{GitConvention: m.config.GitConvention}); err != nil {
+		return fmt.Errorf("save git convention config: %w", err)
+	}
+
 	return nil
 }
 
@@ -216,6 +221,8 @@ func (m *ConfigManager) getSectionLocked(name string) (any, error) {
 		return m.config.Project, nil
 	case "git_strategy":
 		return m.config.GitStrategy, nil
+	case "git_convention":
+		return m.config.GitConvention, nil
 	case "system":
 		return m.config.System, nil
 	case "llm":
@@ -264,6 +271,12 @@ func (m *ConfigManager) setSectionLocked(name string, value any) error {
 			return fmt.Errorf("%w: expected GitStrategyConfig for section %q", ErrSectionTypeMismatch, name)
 		}
 		m.config.GitStrategy = v
+	case "git_convention":
+		v, ok := value.(models.GitConventionConfig)
+		if !ok {
+			return fmt.Errorf("%w: expected GitConventionConfig for section %q", ErrSectionTypeMismatch, name)
+		}
+		m.config.GitConvention = v
 	case "system":
 		v, ok := value.(SystemConfig)
 		if !ok {

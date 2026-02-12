@@ -38,7 +38,7 @@ func TestHookCmd_IsSubcommandOfRoot(t *testing.T) {
 }
 
 func TestHookCmd_HasSubcommands(t *testing.T) {
-	expected := []string{"session-start", "pre-tool", "post-tool", "session-end", "stop", "compact", "list", "agent"}
+	expected := []string{"session-start", "pre-tool", "post-tool", "session-end", "stop", "compact", "list", "agent", "pre-push"}
 	for _, name := range expected {
 		found := false
 		for _, cmd := range hookCmd.Commands() {
@@ -55,8 +55,8 @@ func TestHookCmd_HasSubcommands(t *testing.T) {
 
 func TestHookCmd_SubcommandCount(t *testing.T) {
 	count := len(hookCmd.Commands())
-	if count != 8 {
-		t.Errorf("hook should have 8 subcommands, got %d", count)
+	if count != 9 {
+		t.Errorf("hook should have 9 subcommands, got %d", count)
 	}
 }
 

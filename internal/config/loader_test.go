@@ -362,3 +362,72 @@ func TestLoaderMultipleLoads(t *testing.T) {
 		t.Errorf("second load User.Name: got %q, want %q", cfg2.User.Name, "NewUser")
 	}
 }
+
+func TestLoaderLoadGitConventionSection(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	root := setupTestdataDir(t, tempDir, []string{"git-convention.yaml"})
+
+	loader := NewLoader()
+	cfg, err := loader.Load(filepath.Join(root, ".moai"))
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+
+	if cfg.GitConvention.Convention != "conventional-commits" {
+		t.Errorf("GitConvention.Convention: got %q, want %q",
+			cfg.GitConvention.Convention, "conventional-commits")
+	}
+	if !cfg.GitConvention.EnforceOnPush {
+		t.Error("GitConvention.EnforceOnPush: expected true")
+	}
+	if cfg.GitConvention.AutoDetect {
+		t.Error("GitConvention.AutoDetect: expected false")
+	}
+	if cfg.GitConvention.MaxLength != 100 {
+		t.Errorf("GitConvention.MaxLength: got %d, want 100", cfg.GitConvention.MaxLength)
+	}
+	if cfg.GitConvention.SampleSize != 50 {
+		t.Errorf("GitConvention.SampleSize: got %d, want 50", cfg.GitConvention.SampleSize)
+	}
+
+	sections := loader.LoadedSections()
+	if !sections["git_convention"] {
+		t.Error("expected git_convention section to be loaded")
+	}
+}
+
+func TestLoaderGitConventionDefaults(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	// Load with only user.yaml - git-convention should use defaults
+	root := setupTestdataDir(t, tempDir, []string{"user.yaml"})
+
+	loader := NewLoader()
+	cfg, err := loader.Load(filepath.Join(root, ".moai"))
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+
+	if cfg.GitConvention.Convention != DefaultGitConvention {
+		t.Errorf("GitConvention.Convention: got %q, want default %q",
+			cfg.GitConvention.Convention, DefaultGitConvention)
+	}
+	if cfg.GitConvention.EnforceOnPush {
+		t.Error("GitConvention.EnforceOnPush: expected default false")
+	}
+	if !cfg.GitConvention.AutoDetect {
+		t.Error("GitConvention.AutoDetect: expected default true")
+	}
+	if cfg.GitConvention.MaxLength != DefaultGitConventionMaxLength {
+		t.Errorf("GitConvention.MaxLength: got %d, want default %d",
+			cfg.GitConvention.MaxLength, DefaultGitConventionMaxLength)
+	}
+
+	sections := loader.LoadedSections()
+	if sections["git_convention"] {
+		t.Error("expected git_convention section to NOT be loaded")
+	}
+}
