@@ -162,7 +162,7 @@ func TestSyncState_CleanStale(t *testing.T) {
 	}
 
 	// Delete the transcript file
-	os.Remove(transcriptPath)
+	_ = os.Remove(transcriptPath) // Cleanup, ignore error
 
 	removed := state.CleanStale()
 	if removed != 1 {

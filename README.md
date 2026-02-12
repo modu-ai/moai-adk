@@ -31,24 +31,13 @@
 
 ---
 
-## ⚠️ Important Notice for v2.2.3 and Earlier Users
-
-**If you are using v2.2.3 or earlier**, `moai update` will fail. Please reinstall manually:
-
-```bash
-curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
-```
-
-- **v2.2.3**: Binary update saves archive as executable ("exec format error"). Fixed in v2.2.4.
-- **v2.1.2 and earlier**: Checksum verification bug prevents automatic updates. Fixed in v2.2.1.
-
-After reinstalling, future updates will work automatically with `moai update`.
+> 📚 **[Official Documentation](https://adk.mo.ai.kr)** | **[GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)**
 
 ---
 
 > **"The purpose of vibe coding is not rapid productivity but code quality."**
 
-MoAI-ADK is a **high-performance AI development environment** for Claude Code. 28 specialized AI agents and 64 skills collaborate to produce quality code. It automatically applies the Hybrid methodology (TDD + DDD) for new projects and DDD for existing projects, and supports dual execution modes with Sub-Agent and Agent Teams.
+MoAI-ADK is a **high-performance AI development environment** for Claude Code. 28 specialized AI agents and 52 skills collaborate to produce quality code. It automatically applies the Hybrid methodology (TDD + DDD) for new projects and DDD for existing projects, and supports dual execution modes with Sub-Agent and Agent Teams.
 
 A single binary written in Go -- runs instantly on any platform with zero dependencies.
 
@@ -69,11 +58,11 @@ We completely rewrote the Python-based MoAI-ADK (~73,000 lines) in Go.
 
 ### Key Numbers
 
-- **32,977 lines** of Go code, **30** packages
+- **34,220 lines** of Go code, **32** packages
 - **85-100%** test coverage
-- **28** specialized AI agents + **64** skills
+- **28** specialized AI agents + **52** skills
 - **18** programming languages supported
-- **6** Claude Code hook events
+- **8** Claude Code hook events
 
 ---
 
@@ -202,13 +191,13 @@ graph LR
     U["👤 User Request"] --> M["🗿 MoAI Orchestrator"]
 
     M --> MG["📋 Manager (8)"]
-    M --> EX["⚡ Expert (8)"]
-    M --> BL["🔧 Builder (4)"]
+    M --> EX["⚡ Expert (9)"]
+    M --> BL["🔧 Builder (3)"]
     M --> TM["👥 Team (8)"]
 
     MG --> MG1["spec · ddd · tdd · docs<br/>quality · project · strategy · git"]
-    EX --> EX1["backend · frontend · security · devops<br/>performance · debug · testing · refactoring"]
-    BL --> BL1["agent · command · skill · plugin"]
+    EX --> EX1["backend · frontend · security · devops<br/>performance · debug · testing · refactoring · chrome-ext"]
+    BL --> BL1["agent · skill · plugin"]
     TM --> TM1["researcher · analyst · architect · designer<br/>backend-dev · frontend-dev · tester · quality"]
 
     style M fill:#FF6B35,color:#fff
@@ -223,11 +212,11 @@ graph LR
 | Category | Count | Agents | Role |
 |----------|-------|--------|------|
 | **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git | Workflow coordination, SPEC creation, quality management |
-| **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring | Domain-specific implementation, analysis, optimization |
-| **Builder** | 4 | agent, command, skill, plugin | Creating new MoAI components |
+| **Expert** | 9 | backend, frontend, security, devops, performance, debug, testing, refactoring, chrome-extension | Domain-specific implementation, analysis, optimization |
+| **Builder** | 3 | agent, skill, plugin | Creating new MoAI components |
 | **Team** | 8 | researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality | Parallel team-based development |
 
-### 64 Skills (Progressive Disclosure)
+### 52 Skills (Progressive Disclosure)
 
 Managed through a 3-level progressive disclosure system for token efficiency:
 
@@ -241,6 +230,32 @@ Managed through a 3-level progressive disclosure system for token efficiency:
 | **Library** | 3 | shadcn, nextra, mermaid |
 | **Tool** | 2 | ast-grep, svg |
 | **Specialist** | 11 | Figma, Flutter, Chrome Extension, Pencil... |
+
+---
+
+## Model Policy (Token Optimization)
+
+MoAI-ADK assigns optimal AI models to each of 28 agents based on your Claude Code subscription plan. This maximizes quality within your plan's rate limits.
+
+| Policy | Plan | Opus | Sonnet | Haiku | Best For |
+|--------|------|------|--------|-------|----------|
+| **High** | Max $200/mo | 23 | 1 | 4 | Maximum quality, highest throughput |
+| **Medium** | Max $100/mo | 4 | 19 | 5 | Balanced quality and cost |
+| **Low** | Plus $20/mo | 0 | 12 | 16 | Budget-friendly, no Opus access |
+
+> **Why does this matter?** The Plus $20 plan does not include Opus access. Setting `Low` ensures all agents use only Sonnet and Haiku, preventing rate limit errors. Higher plans benefit from Opus on critical agents (security, strategy, architecture) while using Sonnet/Haiku for routine tasks.
+
+### Configuration
+
+```bash
+# During project initialization
+moai init my-project          # Interactive wizard includes model policy selection
+
+# Reconfigure existing project
+moai update -c                # Re-runs the configuration wizard
+```
+
+> Default policy is `High`. After running `moai update`, a notice guides you to configure this setting via `moai update -c`.
 
 ---
 
@@ -380,6 +395,7 @@ Every code change is validated against five quality criteria:
 | `moai worktree sync` | Sync with upstream |
 | `moai worktree remove <name>` | Remove a worktree |
 | `moai worktree clean` | Clean up stale worktrees |
+| `moai worktree go <name>` | Navigate to worktree directory in current shell |
 | `moai hook <event>` | Claude Code hook dispatcher |
 | `moai version` | Display version, commit hash, and build date |
 
@@ -391,20 +407,27 @@ Every code change is validated against five quality criteria:
 moai-adk/
 ├── cmd/moai/             # Application entry point
 ├── internal/             # Core private packages
+│   ├── astgrep/          # AST-grep integration for structural code analysis
 │   ├── cli/              # Cobra CLI command definitions
 │   ├── config/           # Thread-safe YAML configuration management
 │   ├── core/
 │   │   ├── git/          # Git operations (branches, worktrees, conflict detection)
 │   │   ├── project/      # Project initialization, language/framework detection
 │   │   └── quality/      # TRUST 5 quality gates, parallel validators
-│   ├── hook/             # Compiled hook system (6 events, JSON protocol)
-│   ├── lsp/              # LSP client (16+ languages, parallel server management)
-│   ├── template/         # Template deployment (go:embed), settings generation
-│   ├── merge/            # 3-way merge engine (6 strategies)
+│   ├── defs/             # Language definitions and framework detection
+│   ├── git/              # Git convention validation engine
+│   ├── hook/             # Compiled hook system (8 events, JSON protocol)
 │   ├── loop/             # Ralph feedback loop (state machine, convergence detection)
+│   ├── lsp/              # LSP client (16+ languages, parallel server management)
 │   ├── manifest/         # File provenance tracking (SHA-256 integrity)
+│   ├── merge/            # 3-way merge engine (6 strategies)
+│   ├── rank/             # MoAI Rank sync and transcript management
+│   ├── resilience/       # Retry policies and circuit breakers
+│   ├── shell/            # Shell integration (worktree navigation)
+│   ├── statusline/       # Claude Code status line integration
+│   ├── template/         # Template deployment (go:embed), settings generation
 │   ├── ui/               # Interactive TUI (selectors, checkboxes, wizards)
-│   └── statusline/       # Claude Code status line integration
+│   └── update/           # Binary self-update mechanism
 ├── pkg/                  # Public library packages
 │   ├── models/           # Shared data models
 │   └── version/          # Build version metadata
@@ -428,9 +451,9 @@ moai-adk/
 
 ## Sponsors
 
-### z.ai GLM 4.7
+### z.ai GLM 5
 
-MoAI-ADK partners with **z.ai GLM 4.7** to provide a cost-effective AI development environment.
+MoAI-ADK partners with **z.ai GLM 5** to provide a cost-effective AI development environment.
 
 | Benefit | Description |
 |---------|-------------|
@@ -438,7 +461,7 @@ MoAI-ADK partners with **z.ai GLM 4.7** to provide a cost-effective AI developme
 | Full compatibility | Works with Claude Code with no code changes |
 | Unlimited usage | No daily/weekly token limits |
 
-**[Sign up for GLM 4.7 (extra 10% discount)](https://z.ai/subscribe?ic=1NDV03BGWU)** -- Referral rewards are used to fund MoAI open-source development.
+**[Sign up for GLM 5 (extra 10% discount)](https://z.ai/subscribe?ic=1NDV03BGWU)** -- Referral rewards are used to fund MoAI open-source development.
 
 ---
 

@@ -300,7 +300,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// If versions match, skip sync for performance (70-80% faster)
 	packageVersion := version.GetVersion()
 	projectVersion, err := getProjectConfigVersion(projectRoot)
-	if err == nil && packageVersion == projectVersion {
+	if err == nil && packageVersion == projectVersion && !forceBackup {
 		if reporter != nil {
 			reporter.StepComplete("Already up-to-date")
 		}
@@ -538,6 +538,22 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 
 	_, _ = fmt.Fprintln(out, "\n✓ Template sync complete.")
 
+	// Show model policy notice when user ran without -c flag
+	configWizard := getBoolFlag(cmd, "config")
+	if !configWizard {
+		_, _ = fmt.Fprintf(out, "\n")
+		_, _ = fmt.Fprintf(out, "  ┌─────────────────────────────────────────────────────────┐\n")
+		_, _ = fmt.Fprintf(out, "  │  💡 Model Policy Configuration                          │\n")
+		_, _ = fmt.Fprintf(out, "  │                                                         │\n")
+		_, _ = fmt.Fprintf(out, "  │  Optimize token usage based on your Claude Code plan:    │\n")
+		_, _ = fmt.Fprintf(out, "  │    High   - Max $200 plan (opus 23, sonnet 1, haiku 4)   │\n")
+		_, _ = fmt.Fprintf(out, "  │    Medium - Max $100 plan (opus 4, sonnet 19, haiku 5)   │\n")
+		_, _ = fmt.Fprintf(out, "  │    Low    - Plus $20 plan (sonnet 12, haiku 16, no opus) │\n")
+		_, _ = fmt.Fprintf(out, "  │                                                         │\n")
+		_, _ = fmt.Fprintf(out, "  │  Run: moai update -c                                    │\n")
+		_, _ = fmt.Fprintf(out, "  └─────────────────────────────────────────────────────────┘\n")
+	}
+
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintln(out, "💡 To reconfigure your project settings, run:")
 	_, _ = fmt.Fprintln(out, "   moai update -c")
@@ -555,6 +571,7 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) error {
 	out := cmd.OutOrStdout()
 	projectRoot := "."
 	autoConfirm := getBoolFlag(cmd, "yes")
+	forceUpdate := getBoolFlag(cmd, "force")
 
 	// Use simple console output for progress reporting
 	consoleReporter := project.NewConsoleReporter()
@@ -562,7 +579,7 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) error {
 	// Check for version match before proceeding
 	packageVersion := version.GetVersion()
 	projectVersion, err := getProjectConfigVersion(projectRoot)
-	if err == nil && packageVersion == projectVersion {
+	if err == nil && packageVersion == projectVersion && !forceUpdate {
 		_, _ = fmt.Fprintln(out, "\n✓ Template version up-to-date. Skipping sync.")
 		return nil
 	}

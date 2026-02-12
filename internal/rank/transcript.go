@@ -130,8 +130,9 @@ func ParseTranscript(transcriptPath string) (*TranscriptUsage, error) {
 	return usage, nil
 }
 
-// claudeConfigDir returns the Claude Code configuration directory based on the platform.
-func claudeConfigDir() (string, error) {
+// claudeDesktopConfigDir returns the Claude Desktop (Electron app) configuration directory
+// based on the platform.
+func claudeDesktopConfigDir() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("get home directory: %w", err)
@@ -153,44 +154,87 @@ func claudeConfigDir() (string, error) {
 	}
 }
 
-// FindTranscripts finds all Claude Code transcript JSONL files in the user's home directory.
-// Claude Code stores transcripts in platform-specific locations:
-// - macOS: ~/Library/Application Support/Claude/*/transcripts/*.jsonl
-// - Linux: ~/.config/Claude/*/transcripts/*.jsonl
-// - Windows: %APPDATA%\Claude\*\transcripts\*.jsonl
-func FindTranscripts() ([]string, error) {
-	configDir, err := claudeConfigDir()
+// claudeCodeDir returns the Claude Code CLI configuration directory (~/.claude/).
+func claudeCodeDir() (string, error) {
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return nil, fmt.Errorf("get Claude config directory: %w", err)
+		return "", fmt.Errorf("get home directory: %w", err)
 	}
+	return filepath.Join(homeDir, ".claude"), nil
+}
 
-	// Claude Code transcript directory pattern
-	pattern := filepath.Join(configDir, "*", "transcripts", "*.jsonl")
-
+// globJSONL collects .jsonl files matching the given pattern, ignoring glob errors.
+func globJSONL(pattern string) []string {
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
-		return nil, fmt.Errorf("glob transcripts: %w", err)
+		return nil
+	}
+	return matches
+}
+
+// FindTranscripts finds all Claude Code transcript JSONL files.
+// It searches multiple locations in priority order:
+//  1. ~/.claude/projects/*/*.jsonl  (Claude Code CLI - new format, UUID-based filenames)
+//  2. ~/.claude/transcripts/*.jsonl (Claude Code CLI - old/legacy format)
+//  3. Claude Desktop paths           (fallback for Desktop users)
+func FindTranscripts() ([]string, error) {
+	seen := make(map[string]struct{})
+	var results []string
+
+	addUnique := func(paths []string) {
+		for _, p := range paths {
+			if _, exists := seen[p]; !exists {
+				seen[p] = struct{}{}
+				results = append(results, p)
+			}
+		}
 	}
 
-	return matches, nil
+	// Priority 1: Claude Code CLI new format (~/.claude/projects/*/*.jsonl)
+	if codeDir, err := claudeCodeDir(); err == nil {
+		addUnique(globJSONL(filepath.Join(codeDir, "projects", "*", "*.jsonl")))
+	}
+
+	// Priority 2: Claude Code CLI old/legacy format (~/.claude/transcripts/*.jsonl)
+	if codeDir, err := claudeCodeDir(); err == nil {
+		addUnique(globJSONL(filepath.Join(codeDir, "transcripts", "*.jsonl")))
+	}
+
+	// Priority 3: Claude Desktop paths (fallback)
+	if desktopDir, err := claudeDesktopConfigDir(); err == nil {
+		addUnique(globJSONL(filepath.Join(desktopDir, "*", "transcripts", "*.jsonl")))
+	}
+
+	return results, nil
 }
 
 // FindTranscriptForSession finds the transcript file for a specific session ID.
+// It searches Claude Code CLI paths first, then falls back to Desktop paths.
 // Returns the path if found, empty string otherwise.
 func FindTranscriptForSession(sessionID string) string {
-	configDir, err := claudeConfigDir()
-	if err != nil {
-		return ""
+	// Priority 1: Claude Code CLI new format (~/.claude/projects/*/<sessionID>*.jsonl)
+	if codeDir, err := claudeCodeDir(); err == nil {
+		pattern := filepath.Join(codeDir, "projects", "*", sessionID+"*.jsonl")
+		if matches := globJSONL(pattern); len(matches) > 0 {
+			return matches[0]
+		}
 	}
 
-	// Search in all Claude directories
-	pattern := filepath.Join(configDir, "*", "transcripts", sessionID+"*.jsonl")
-
-	matches, err := filepath.Glob(pattern)
-	if err != nil || len(matches) == 0 {
-		return ""
+	// Priority 2: Claude Code CLI old/legacy format (~/.claude/transcripts/<sessionID>*.jsonl)
+	if codeDir, err := claudeCodeDir(); err == nil {
+		pattern := filepath.Join(codeDir, "transcripts", sessionID+"*.jsonl")
+		if matches := globJSONL(pattern); len(matches) > 0 {
+			return matches[0]
+		}
 	}
 
-	// Return the first match (most recent)
-	return matches[0]
+	// Priority 3: Claude Desktop paths (fallback)
+	if desktopDir, err := claudeDesktopConfigDir(); err == nil {
+		pattern := filepath.Join(desktopDir, "*", "transcripts", sessionID+"*.jsonl")
+		if matches := globJSONL(pattern); len(matches) > 0 {
+			return matches[0]
+		}
+	}
+
+	return ""
 }

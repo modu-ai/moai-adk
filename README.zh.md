@@ -31,24 +31,13 @@
 
 ---
 
-## ⚠️ v2.2.3 及更早版本用户须知
-
-**如果您正在使用 v2.2.3 或更早版本**，`moai update` 将会失败。请使用以下命令手动重新安装：
-
-```bash
-curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
-```
-
-- **v2.2.3**：二进制更新时将归档文件保存为可执行文件（"exec format error"）。已在 v2.2.4 中修复。
-- **v2.1.2 及更早**：校验和验证错误导致自动更新失败。已在 v2.2.1 中修复。
-
-重新安装后，今后的更新将通过 `moai update` 自动正常工作。
+> 📚 **[官方文档](https://adk.mo.ai.kr)** | **[GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)**
 
 ---
 
 > **"氛围编程的目的不是追求速度，而是代码质量。"**
 
-MoAI-ADK 是专为 Claude Code 打造的**高性能 AI 开发环境**。28 个专业 AI 智能体与 64 个技能协同工作，助力产出高质量代码。新项目默认采用 Hybrid 方法论（TDD + DDD），现有项目自动采用 DDD，并支持 Sub-Agent 与 Agent Teams 双执行模式。
+MoAI-ADK 是专为 Claude Code 打造的**高性能 AI 开发环境**。28 个专业 AI 智能体与 52 个技能协同工作，助力产出高质量代码。新项目默认采用 Hybrid 方法论（TDD + DDD），现有项目自动采用 DDD，并支持 Sub-Agent 与 Agent Teams 双执行模式。
 
 使用 Go 编写的单一可执行文件 -- 零依赖，全平台即刻运行。
 
@@ -69,11 +58,11 @@ MoAI-ADK 是专为 Claude Code 打造的**高性能 AI 开发环境**。28 个�
 
 ### 核心数据
 
-- **32,977 行** Go 代码，**30 个**包
+- **34,220 行** Go 代码，**32 个**包
 - **85-100%** 测试覆盖率
-- **28 个**专业 AI 智能体 + **64 个**技能
+- **28 个**专业 AI 智能体 + **52 个**技能
 - **18 种**编程语言支持
-- **6 个** Claude Code 钩子事件
+- **8 个** Claude Code 钩子事件
 
 ---
 
@@ -202,13 +191,13 @@ graph LR
     U["👤 用户请求"] --> M["🗿 MoAI Orchestrator"]
 
     M --> MG["📋 Manager (8)"]
-    M --> EX["⚡ Expert (8)"]
-    M --> BL["🔧 Builder (4)"]
+    M --> EX["⚡ Expert (9)"]
+    M --> BL["🔧 Builder (3)"]
     M --> TM["👥 Team (8)"]
 
     MG --> MG1["spec · ddd · tdd · docs<br/>quality · project · strategy · git"]
-    EX --> EX1["backend · frontend · security · devops<br/>performance · debug · testing · refactoring"]
-    BL --> BL1["agent · command · skill · plugin"]
+    EX --> EX1["backend · frontend · security · devops<br/>performance · debug · testing · refactoring · chrome-ext"]
+    BL --> BL1["agent · skill · plugin"]
     TM --> TM1["researcher · analyst · architect · designer<br/>backend-dev · frontend-dev · tester · quality"]
 
     style M fill:#FF6B35,color:#fff
@@ -223,11 +212,11 @@ graph LR
 | 分类 | 数量 | 智能体 | 职责 |
 |------|------|--------|------|
 | **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git | 工作流编排、SPEC 生成、质量管理 |
-| **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring | 领域专业实现、分析、优化 |
-| **Builder** | 4 | agent, command, skill, plugin | 创建新的 MoAI 组件 |
+| **Expert** | 9 | backend, frontend, security, devops, performance, debug, testing, refactoring, chrome-extension | 领域专业实现、分析、优化 |
+| **Builder** | 3 | agent, skill, plugin | 创建新的 MoAI 组件 |
 | **Team** | 8 | researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality | 并行团队协作开发 |
 
-### 64 个技能（渐进式披露）
+### 52 个技能（渐进式披露）
 
 为优化 Token 效率，采用三级渐进式披露系统管理：
 
@@ -241,6 +230,32 @@ graph LR
 | **Library** | 3 | shadcn, nextra, mermaid |
 | **Tool** | 2 | ast-grep, svg |
 | **Specialist** | 11 | Figma, Flutter, Chrome Extension, Pencil... |
+
+---
+
+## 模型策略（Token 优化）
+
+MoAI-ADK 根据您的 Claude Code 订阅方案，为 28 个智能体分配最优 AI 模型。在方案的速率限制内最大化质量。
+
+| 策略 | 方案 | Opus | Sonnet | Haiku | 适用场景 |
+|------|------|------|--------|-------|----------|
+| **High** | Max $200/月 | 23 | 1 | 4 | 最高质量，最大吞吐量 |
+| **Medium** | Max $100/月 | 4 | 19 | 5 | 质量与成本平衡 |
+| **Low** | Plus $20/月 | 0 | 12 | 16 | 经济实惠，无 Opus |
+
+> **为什么重要？** Plus $20 方案不包含 Opus。设置为 `Low` 后，所有智能体仅使用 Sonnet 和 Haiku，避免速率限制错误。更高级方案可在关键智能体（安全、策略、架构）上使用 Opus，常规任务使用 Sonnet/Haiku。
+
+### 配置方法
+
+```bash
+# 项目初始化时
+moai init my-project          # 交互式向导中选择模型策略
+
+# 重新配置现有项目
+moai update -c                # 重新运行配置向导
+```
+
+> 默认策略为 `High`。运行 `moai update` 后，会提示您通过 `moai update -c` 配置此设置。
 
 ---
 
@@ -381,6 +396,7 @@ graph TB
 | `moai worktree sync` | 与上游同步 |
 | `moai worktree remove <name>` | 移除 worktree |
 | `moai worktree clean` | 清理过期 worktree |
+| `moai worktree go <name>` | 在当前 Shell 中导航到 worktree 目录 |
 | `moai hook <event>` | Claude Code 钩子分发器 |
 | `moai version` | 版本、提交哈希、构建日期信息 |
 
@@ -392,20 +408,27 @@ graph TB
 moai-adk/
 ├── cmd/moai/             # 应用程序入口
 ├── internal/             # 核心私有包
+│   ├── astgrep/          # AST-grep 集成
 │   ├── cli/              # Cobra CLI 命令定义
 │   ├── config/           # 线程安全 YAML 配置管理
 │   ├── core/
 │   │   ├── git/          # Git 操作（分支、worktree、冲突检测）
 │   │   ├── project/      # 项目初始化、语言/框架检测
 │   │   └── quality/      # TRUST 5 质量门禁、并行验证器
-│   ├── hook/             # 编译后的钩子系统（6 个事件、JSON 协议）
-│   ├── lsp/              # LSP 客户端（16+ 种语言、并行服务器管理）
-│   ├── template/         # 模板部署（go:embed）、配置生成
-│   ├── merge/            # 三路合并引擎（6 种策略）
+│   ├── defs/             # 语言定义和框架检测
+│   ├── git/              # Git 约定验证引擎
+│   ├── hook/             # 编译后的钩子系统（8 个事件、JSON 协议）
 │   ├── loop/             # Ralph 反馈循环（状态机、收敛检测）
+│   ├── lsp/              # LSP 客户端（16+ 种语言、并行服务器管理）
 │   ├── manifest/         # 文件来源追踪（SHA-256 完整性）
+│   ├── merge/            # 三路合并引擎（6 种策略）
+│   ├── rank/             # MoAI Rank 同步和记录管理
+│   ├── resilience/       # 重试策略和熔断器
+│   ├── shell/            # Shell 集成（worktree 导航）
+│   ├── statusline/       # Claude Code 状态栏集成
+│   ├── template/         # 模板部署（go:embed）、配置生成
 │   ├── ui/               # 交互式 TUI（选择器、复选框、向导）
-│   └── statusline/       # Claude Code 状态栏集成
+│   └── update/           # 二进制自更新机制
 ├── pkg/                  # 公共库包
 │   ├── models/           # 共享数据模型
 │   └── version/          # 构建版本元数据
@@ -429,9 +452,9 @@ moai-adk/
 
 ## 赞助商
 
-### z.ai GLM 4.7
+### z.ai GLM 5
 
-MoAI-ADK 通过与 **z.ai GLM 4.7** 的合作伙伴关系，提供经济高效的 AI 开发环境。
+MoAI-ADK 通过与 **z.ai GLM 5** 的合作伙伴关系，提供经济高效的 AI 开发环境。
 
 | 优势 | 说明 |
 |------|------|
@@ -439,7 +462,7 @@ MoAI-ADK 通过与 **z.ai GLM 4.7** 的合作伙伴关系，提供经济高效�
 | 完全兼容 | 无需修改代码即可与 Claude Code 配合使用 |
 | 无限使用 | 无每日/每周 Token 限制，自由使用 |
 
-**[注册 GLM 4.7（额外 10% 折扣）](https://z.ai/subscribe?ic=1NDV03BGWU)** -- 注册奖励将用于 MoAI 开源开发。
+**[注册 GLM 5（额外 10% 折扣）](https://z.ai/subscribe?ic=1NDV03BGWU)** -- 注册奖励将用于 MoAI 开源开发。
 
 ---
 

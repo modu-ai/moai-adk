@@ -31,24 +31,13 @@
 
 ---
 
-## ⚠️ v2.2.3 이하 버전 사용자 주의
-
-**v2.2.3 이하 버전을 사용 중인 경우**, `moai update`가 실패합니다. 다음 명령어로 수동 재설치가 필요합니다:
-
-```bash
-curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
-```
-
-- **v2.2.3**: 바이너리 업데이트 시 아카이브를 실행 파일로 저장하는 버그 ("exec format error"). v2.2.4에서 수정.
-- **v2.1.2 이하**: 체크섬 검증 버그로 자동 업데이트 실패. v2.2.1에서 수정.
-
-재설치 후, 향후 업데이트는 `moai update`로 자동 작동합니다.
+> 📚 **[공식 문서](https://adk.mo.ai.kr)** | **[GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)** | **[Discord 커뮤니티](https://discord.gg/moai-adk)**
 
 ---
 
 > **"바이브 코딩의 목적은 빠른 생산성이 아니라 코드 품질이다."**
 
-MoAI-ADK는 Claude Code를 위한 **고성능 AI 개발 환경**입니다. 28개 전문 AI 에이전트와 64개 스킬이 협력하여 품질 있는 코드를 만듭니다. 신규 프로젝트에는 Hybrid 방법론(TDD + DDD)을, 기존 프로젝트에는 DDD를 자동 적용하며, Sub-Agent와 Agent Teams 이중 실행 모드를 지원합니다.
+MoAI-ADK는 Claude Code를 위한 **고성능 AI 개발 환경**입니다. 28개 전문 AI 에이전트와 52개 스킬이 협력하여 품질 있는 코드를 만듭니다. 신규 프로젝트에는 Hybrid 방법론(TDD + DDD)을, 기존 프로젝트에는 DDD를 자동 적용하며, Sub-Agent와 Agent Teams 이중 실행 모드를 지원합니다.
 
 Go로 작성된 단일 바이너리 — 의존성 없이 모든 플랫폼에서 즉시 실행됩니다.
 
@@ -69,11 +58,11 @@ Python 기반 MoAI-ADK(~73,000줄)를 Go로 완전히 재작성했습니다.
 
 ### 핵심 수치
 
-- **32,977줄** Go 코드, **30개** 패키지
+- **34,220줄** Go 코드, **32개** 패키지
 - **85-100%** 테스트 커버리지
-- **28개** 전문 AI 에이전트 + **64개** 스킬
+- **28개** 전문 AI 에이전트 + **52개** 스킬
 - **18개** 프로그래밍 언어 지원
-- **6개** Claude Code 훅 이벤트
+- **8개** Claude Code 훅 이벤트
 
 ---
 
@@ -202,13 +191,13 @@ graph LR
     U["👤 사용자 요청"] --> M["🗿 MoAI Orchestrator"]
 
     M --> MG["📋 Manager (8)"]
-    M --> EX["⚡ Expert (8)"]
-    M --> BL["🔧 Builder (4)"]
+    M --> EX["⚡ Expert (9)"]
+    M --> BL["🔧 Builder (3)"]
     M --> TM["👥 Team (8)"]
 
     MG --> MG1["spec · ddd · tdd · docs<br/>quality · project · strategy · git"]
-    EX --> EX1["backend · frontend · security · devops<br/>performance · debug · testing · refactoring"]
-    BL --> BL1["agent · command · skill · plugin"]
+    EX --> EX1["backend · frontend · security · devops<br/>performance · debug · testing · refactoring · chrome-ext"]
+    BL --> BL1["agent · skill · plugin"]
     TM --> TM1["researcher · analyst · architect · designer<br/>backend-dev · frontend-dev · tester · quality"]
 
     style M fill:#FF6B35,color:#fff
@@ -223,11 +212,11 @@ graph LR
 | 카테고리 | 수량 | 에이전트 | 역할 |
 |----------|------|---------|------|
 | **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git | 워크플로우 조율, SPEC 생성, 품질 관리 |
-| **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring | 도메인 전문 구현, 분석, 최적화 |
-| **Builder** | 4 | agent, command, skill, plugin | 새로운 MoAI 컴포넌트 생성 |
+| **Expert** | 9 | backend, frontend, security, devops, performance, debug, testing, refactoring, chrome-extension | 도메인 전문 구현, 분석, 최적화 |
+| **Builder** | 3 | agent, skill, plugin | 새로운 MoAI 컴포넌트 생성 |
 | **Team** | 8 | researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality | 병렬 팀 기반 개발 |
 
-### 64개 스킬 (프로그레시브 디스클로저)
+### 52개 스킬 (프로그레시브 디스클로저)
 
 토큰 효율을 위해 3단계 프로그레시브 디스클로저 시스템으로 관리됩니다:
 
@@ -241,6 +230,32 @@ graph LR
 | **Library** | 3 | shadcn, nextra, mermaid |
 | **Tool** | 2 | ast-grep, svg |
 | **Specialist** | 11 | Figma, Flutter, Chrome Extension, Pencil... |
+
+---
+
+## 모델 정책 (토큰 최적화)
+
+MoAI-ADK는 Claude Code 구독 요금제에 맞춰 28개 에이전트에 최적의 AI 모델을 할당합니다. 요금제의 사용량 제한 내에서 품질을 극대화합니다.
+
+| 정책 | 요금제 | Opus | Sonnet | Haiku | 용도 |
+|------|--------|------|--------|-------|------|
+| **High** | Max $200/월 | 23 | 1 | 4 | 최고 품질, 최대 처리량 |
+| **Medium** | Max $100/월 | 4 | 19 | 5 | 품질과 비용의 균형 |
+| **Low** | Plus $20/월 | 0 | 12 | 16 | 경제적, Opus 미포함 |
+
+> **왜 중요한가요?** Plus $20 요금제는 Opus를 포함하지 않습니다. `Low`로 설정하면 모든 에이전트가 Sonnet과 Haiku만 사용하여 사용량 제한 오류를 방지합니다. 상위 요금제에서는 핵심 에이전트(보안, 전략, 아키텍처)에 Opus를, 일반 작업에 Sonnet/Haiku를 배분합니다.
+
+### 설정 방법
+
+```bash
+# 프로젝트 초기화 시
+moai init my-project          # 대화형 마법사에서 모델 정책 선택
+
+# 기존 프로젝트 재설정
+moai update -c                # 설정 마법사 재실행
+```
+
+> 기본 정책은 `High`입니다. `moai update` 실행 후, `moai update -c`로 이 설정을 구성하도록 안내가 표시됩니다.
 
 ---
 
@@ -380,6 +395,7 @@ LSP 진단과 AST-grep을 결합한 자율 에러 수정 엔진입니다:
 | `moai worktree sync` | 업스트림과 동기화 |
 | `moai worktree remove <name>` | worktree 제거 |
 | `moai worktree clean` | 오래된 worktree 정리 |
+| `moai worktree go <name>` | 현재 셸에서 worktree 디렉토리로 이동 |
 | `moai hook <event>` | Claude Code 훅 디스패처 |
 | `moai version` | 버전, 커밋 해시, 빌드 날짜 정보 |
 
@@ -391,20 +407,27 @@ LSP 진단과 AST-grep을 결합한 자율 에러 수정 엔진입니다:
 moai-adk/
 ├── cmd/moai/             # 애플리케이션 진입점
 ├── internal/             # 핵심 프라이빗 패키지
+│   ├── astgrep/          # AST-grep 통합
 │   ├── cli/              # Cobra CLI 명령어 정의
 │   ├── config/           # 스레드 안전 YAML 구성 관리
 │   ├── core/
 │   │   ├── git/          # Git 작업 (브랜치, worktree, 충돌 감지)
 │   │   ├── project/      # 프로젝트 초기화, 언어/프레임워크 감지
 │   │   └── quality/      # TRUST 5 품질 게이트, 병렬 검증기
-│   ├── hook/             # 컴파일된 훅 시스템 (6개 이벤트, JSON 프로토콜)
-│   ├── lsp/              # LSP 클라이언트 (16개+ 언어, 병렬 서버 관리)
-│   ├── template/         # 템플릿 배포 (go:embed), 설정 생성
-│   ├── merge/            # 3-way 병합 엔진 (6가지 전략)
+│   ├── defs/             # 언어 정의 및 프레임워크 감지
+│   ├── git/              # Git 컨벤션 검증 엔진
+│   ├── hook/             # 컴파일된 훅 시스템 (8개 이벤트, JSON 프로토콜)
 │   ├── loop/             # Ralph 피드백 루프 (상태 머신, 수렴 감지)
+│   ├── lsp/              # LSP 클라이언트 (16개+ 언어, 병렬 서버 관리)
 │   ├── manifest/         # 파일 출적 추적 (SHA-256 무결성)
+│   ├── merge/            # 3-way 병합 엔진 (6가지 전략)
+│   ├── rank/             # MoAI Rank 동기화 및 트랜스크립트 관리
+│   ├── resilience/       # 재시도 정책 및 서킷 브레이커
+│   ├── shell/            # 셸 통합 (worktree 내비게이션)
+│   ├── statusline/       # Claude Code 상태줄 통합
+│   ├── template/         # 템플릿 배포 (go:embed), 설정 생성
 │   ├── ui/               # 대화형 TUI (선택기, 체크박스, 마법사)
-│   └── statusline/       # Claude Code 상태줄 통합
+│   └── update/           # 바이너리 자체 업데이트 메커니즘
 ├── pkg/                  # 퍼블릭 라이브러리 패키지
 │   ├── models/           # 공유 데이터 모델
 │   └── version/          # 빌드 버전 메타데이터
@@ -428,9 +451,9 @@ moai-adk/
 
 ## 스폰서
 
-### z.ai GLM 4.7
+### z.ai GLM 5
 
-MoAI-ADK는 **z.ai GLM 4.7**과 파트너십을 통해 경제적인 AI 개발 환경을 제공합니다.
+MoAI-ADK는 **z.ai GLM 5**과 파트너십을 통해 경제적인 AI 개발 환경을 제공합니다.
 
 | 혜택 | 설명 |
 |------|------|
@@ -438,7 +461,7 @@ MoAI-ADK는 **z.ai GLM 4.7**과 파트너십을 통해 경제적인 AI 개발 �
 | 완벽 호환 | Claude Code와 코드 수정 없이 사용 가능 |
 | 무제한 사용 | 일간/주간 토큰 리밋 없이 자유롭게 사용 |
 
-**[GLM 4.7 가입하기 (10% 추가 할인)](https://z.ai/subscribe?ic=1NDV03BGWU)** — 가입 리워드는 MoAI 오픈소스 개발에 사용됩니다.
+**[GLM 5 가입하기 (10% 추가 할인)](https://z.ai/subscribe?ic=1NDV03BGWU)** — 가입 리워드는 MoAI 오픈소스 개발에 사용됩니다.
 
 ---
 
@@ -531,3 +554,4 @@ External imports:
 - [공식 문서](https://adk.mo.ai.kr)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
 - [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) — 질문, 아이디어, 커뮤니티
+- [Discord 커뮤니티](https://discord.gg/moai-adk) — 실시간 소통, 팁 공유

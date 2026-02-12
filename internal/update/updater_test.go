@@ -19,8 +19,14 @@ import (
 func TestUpdater_Download_Success(t *testing.T) {
 	t.Parallel()
 
+	// Use platform-specific binary name
+	binaryName := "moai"
+	if runtime.GOOS == "windows" {
+		binaryName = "moai.exe"
+	}
+
 	binaryContent := []byte("fake binary content for testing")
-	archiveData := createTarGz(t, "moai", binaryContent)
+	archiveData := createTarGz(t, binaryName, binaryContent)
 	checksum := sha256Hex(archiveData)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
