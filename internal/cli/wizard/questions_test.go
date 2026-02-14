@@ -139,19 +139,19 @@ func TestStatuslineQuestionsDoNotBreakExisting(t *testing.T) {
 
 	// Existing questions should still be present at their positions
 	expectedIDs := []string{
-		"locale",          // 0
-		"user_name",       // 1
-		"project_name",    // 2
-		"git_mode",        // 3
-		"git_provider",    // 4
+		"locale",              // 0
+		"user_name",           // 1
+		"project_name",        // 2
+		"git_mode",            // 3
+		"git_provider",        // 4
 		"gitlab_instance_url", // 5
-		"github_username", // 6
-		"github_token",    // 7
-		"gitlab_username", // 8
-		"gitlab_token",    // 9
-		"git_commit_lang", // 10
-		"code_comment_lang", // 11
-		"doc_lang",        // 12
+		"github_username",     // 6
+		"github_token",        // 7
+		"gitlab_username",     // 8
+		"gitlab_token",        // 9
+		"git_commit_lang",     // 10
+		"code_comment_lang",   // 11
+		"doc_lang",            // 12
 	}
 
 	for i, expectedID := range expectedIDs {

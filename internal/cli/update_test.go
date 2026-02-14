@@ -2310,11 +2310,11 @@ func TestPresetToSegments(t *testing.T) {
 	allSegments := []string{"model", "context", "output_style", "directory", "git_status", "claude_version", "moai_version", "git_branch"}
 
 	tests := []struct {
-		name       string
-		preset     string
-		custom     map[string]bool
-		wantTrue   []string // segments that should be true
-		wantFalse  []string // segments that should be false
+		name      string
+		preset    string
+		custom    map[string]bool
+		wantTrue  []string // segments that should be true
+		wantFalse []string // segments that should be false
 	}{
 		{
 			name:     "full preset enables all segments",
@@ -2337,8 +2337,8 @@ func TestPresetToSegments(t *testing.T) {
 			name:   "custom preset uses provided map",
 			preset: "custom",
 			custom: map[string]bool{
-				"model":   true,
-				"context": false,
+				"model":      true,
+				"context":    false,
 				"git_branch": true,
 			},
 			wantTrue:  []string{"model", "git_branch"},
@@ -2563,4 +2563,3 @@ func TestApplyWizardConfig_StatuslineEmpty(t *testing.T) {
 		t.Error("statusline.yaml should not be created when StatuslinePreset is empty")
 	}
 }
-

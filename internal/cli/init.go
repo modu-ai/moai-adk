@@ -226,23 +226,23 @@ func runInit(cmd *cobra.Command, args []string) error {
 	nonInteractive := getBoolFlag(cmd, "non-interactive")
 
 	opts := project.InitOptions{
-		ProjectRoot:     rootFlag,
-		ProjectName:     projectName,
-		Language:        getStringFlag(cmd, "language"),
-		Framework:       getStringFlag(cmd, "framework"),
-		UserName:        getStringFlag(cmd, "username"),
-		ConvLang:        getStringFlag(cmd, "conv-lang"),
+		ProjectRoot:       rootFlag,
+		ProjectName:       projectName,
+		Language:          getStringFlag(cmd, "language"),
+		Framework:         getStringFlag(cmd, "framework"),
+		UserName:          getStringFlag(cmd, "username"),
+		ConvLang:          getStringFlag(cmd, "conv-lang"),
 		DevelopmentMode:   getStringFlag(cmd, "mode"),
 		GitMode:           getStringFlag(cmd, "git-mode"),
 		GitProvider:       getStringFlag(cmd, "git-provider"),
 		GitHubUsername:    getStringFlag(cmd, "github-username"),
 		GitLabInstanceURL: getStringFlag(cmd, "gitlab-instance-url"),
-		GitCommitLang:   getStringFlag(cmd, "git-commit-lang"),
-		CodeCommentLang: getStringFlag(cmd, "code-comment-lang"),
-		DocLang:         getStringFlag(cmd, "doc-lang"),
-		ModelPolicy:     getStringFlag(cmd, "model-policy"),
-		NonInteractive:  nonInteractive,
-		Force:           getBoolFlag(cmd, "force"),
+		GitCommitLang:     getStringFlag(cmd, "git-commit-lang"),
+		CodeCommentLang:   getStringFlag(cmd, "code-comment-lang"),
+		DocLang:           getStringFlag(cmd, "doc-lang"),
+		ModelPolicy:       getStringFlag(cmd, "model-policy"),
+		NonInteractive:    nonInteractive,
+		Force:             getBoolFlag(cmd, "force"),
 	}
 
 	if !nonInteractive && isatty.IsTerminal(os.Stdin.Fd()) {

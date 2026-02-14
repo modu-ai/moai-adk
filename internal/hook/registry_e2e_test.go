@@ -14,14 +14,14 @@ func TestRegistryDispatch_AllNewEventTypes(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name               string
-		handler            Handler
-		event              EventType
-		input              *HookInput
-		wantNilHSO         bool   // expect HookSpecificOutput to be nil
-		wantPermDecision   string // expected permissionDecision (if HSO present)
-		wantExitCode       int
-		wantHookEventName  string // expected hookEventName in HSO (if present)
+		name              string
+		handler           Handler
+		event             EventType
+		input             *HookInput
+		wantNilHSO        bool   // expect HookSpecificOutput to be nil
+		wantPermDecision  string // expected permissionDecision (if HSO present)
+		wantExitCode      int
+		wantHookEventName string // expected hookEventName in HSO (if present)
 	}{
 		{
 			name:    "PostToolUseFailure dispatches with real handler",

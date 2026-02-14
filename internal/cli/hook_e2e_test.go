@@ -15,8 +15,8 @@ type spyRegistry struct {
 	dispatched []hook.EventType
 }
 
-func (s *spyRegistry) Register(_ hook.Handler)                    {}
-func (s *spyRegistry) Handlers(_ hook.EventType) []hook.Handler   { return nil }
+func (s *spyRegistry) Register(_ hook.Handler)                  {}
+func (s *spyRegistry) Handlers(_ hook.EventType) []hook.Handler { return nil }
 func (s *spyRegistry) Dispatch(_ context.Context, event hook.EventType, _ *hook.HookInput) (*hook.HookOutput, error) {
 	s.dispatched = append(s.dispatched, event)
 	return &hook.HookOutput{}, nil
@@ -428,4 +428,3 @@ func TestHookSubcommands_OriginalEventTypeMapping(t *testing.T) {
 		})
 	}
 }
-

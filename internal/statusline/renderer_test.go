@@ -388,9 +388,9 @@ func TestRender_SegmentFiltering(t *testing.T) {
 	}
 
 	tests := []struct {
-		name          string
-		segmentConfig map[string]bool
-		wantContain   []string
+		name           string
+		segmentConfig  map[string]bool
+		wantContain    []string
 		wantNotContain []string
 	}{
 		{
@@ -436,7 +436,7 @@ func TestRender_SegmentFiltering(t *testing.T) {
 			name: "unknown segment key defaults to enabled",
 			segmentConfig: map[string]bool{
 				"unknown_segment": false,
-				SegmentModel: true,
+				SegmentModel:      true,
 			},
 			wantContain: []string{"🤖 Opus 4.5", "🔋", "💬 MoAI", "📁 moai-adk-go"},
 		},

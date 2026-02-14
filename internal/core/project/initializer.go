@@ -22,26 +22,26 @@ import (
 
 // InitOptions configures the project initialization.
 type InitOptions struct {
-	ProjectRoot     string   // Absolute or relative path to the project root.
-	ProjectName     string   // Name of the project.
-	Language        string   // Primary programming language.
-	Framework       string   // Framework name, or "none".
-	Features        []string // Selected features (e.g., "LSP", "Quality Gates").
-	UserName        string   // User display name for configuration.
-	ConvLang        string   // Conversation language code (e.g., "en", "ko").
-	DevelopmentMode string   // "ddd", "tdd", or "hybrid".
-	GitMode           string // Git workflow mode: "manual", "personal", or "team".
-	GitProvider       string // Git provider: "github", "gitlab".
-	GitHubUsername    string // GitHub username (for personal/team modes).
-	GitLabInstanceURL string // GitLab instance URL (for self-hosted instances).
-	GitCommitLang   string   // Git commit message language code.
-	CodeCommentLang string   // Code comment language code.
-	DocLang         string   // Documentation language code.
-	Platform        string   // Target platform ("darwin", "linux", "windows"). Defaults to runtime.GOOS.
-	NonInteractive  bool     // If true, skip wizard and use defaults/flags.
-	Force           bool     // If true, allow reinitializing an existing project.
-	SkipShellConfig bool     // If true, skip shell environment configuration.
-	ModelPolicy     string   // Token consumption tier: "high", "medium", "low".
+	ProjectRoot       string   // Absolute or relative path to the project root.
+	ProjectName       string   // Name of the project.
+	Language          string   // Primary programming language.
+	Framework         string   // Framework name, or "none".
+	Features          []string // Selected features (e.g., "LSP", "Quality Gates").
+	UserName          string   // User display name for configuration.
+	ConvLang          string   // Conversation language code (e.g., "en", "ko").
+	DevelopmentMode   string   // "ddd", "tdd", or "hybrid".
+	GitMode           string   // Git workflow mode: "manual", "personal", or "team".
+	GitProvider       string   // Git provider: "github", "gitlab".
+	GitHubUsername    string   // GitHub username (for personal/team modes).
+	GitLabInstanceURL string   // GitLab instance URL (for self-hosted instances).
+	GitCommitLang     string   // Git commit message language code.
+	CodeCommentLang   string   // Code comment language code.
+	DocLang           string   // Documentation language code.
+	Platform          string   // Target platform ("darwin", "linux", "windows"). Defaults to runtime.GOOS.
+	NonInteractive    bool     // If true, skip wizard and use defaults/flags.
+	Force             bool     // If true, allow reinitializing an existing project.
+	SkipShellConfig   bool     // If true, skip shell environment configuration.
+	ModelPolicy       string   // Token consumption tier: "high", "medium", "low".
 }
 
 // InitResult summarizes the outcome of project initialization.

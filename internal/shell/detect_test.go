@@ -217,9 +217,9 @@ func TestDetectShell_PowerShell(t *testing.T) {
 
 func TestDetectShell_GitBash(t *testing.T) {
 	tests := []struct {
-		name     string
-		msystem  string
-		want     ShellType
+		name    string
+		msystem string
+		want    ShellType
 	}{
 		{
 			name:    "mingw64",
