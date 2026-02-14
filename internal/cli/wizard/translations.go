@@ -150,6 +150,80 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "GitHub 개인 액세스 토큰 입력 (선택)",
 			Description: "PR 생성 및 푸시에 필요합니다. 비워두어 건너거나 gh CLI를 사용하세요.",
 		},
+		"statusline_preset": {
+			Title:       "상태줄 표시 프리셋 선택",
+			Description: "Claude Code 상태줄에 표시할 세그먼트를 설정합니다.",
+			Options: []OptionTranslation{
+				{Label: "Full", Desc: "8개 세그먼트 전부 표시"},
+				{Label: "Compact", Desc: "모델, 컨텍스트, Git 상태, Git 브랜치"},
+				{Label: "Minimal", Desc: "모델과 컨텍스트만"},
+				{Label: "Custom", Desc: "개별 세그먼트 선택"},
+			},
+		},
+		"statusline_seg_model": {
+			Title:       "상태줄: 모델 이름 표시",
+			Description: "상태줄에 현재 Claude 모델 이름을 표시합니다.",
+			Options: []OptionTranslation{
+				{Label: "활성화", Desc: "모델 세그먼트 표시"},
+				{Label: "비활성화", Desc: "모델 세그먼트 숨김"},
+			},
+		},
+		"statusline_seg_context": {
+			Title:       "상태줄: 컨텍스트 사용량 표시",
+			Description: "상태줄에 컨텍스트 윈도우 사용률을 표시합니다.",
+			Options: []OptionTranslation{
+				{Label: "활성화", Desc: "컨텍스트 세그먼트 표시"},
+				{Label: "비활성화", Desc: "컨텍스트 세그먼트 숨김"},
+			},
+		},
+		"statusline_seg_output_style": {
+			Title:       "상태줄: 출력 스타일 표시",
+			Description: "상태줄에 활성 출력 스타일 이름을 표시합니다.",
+			Options: []OptionTranslation{
+				{Label: "활성화", Desc: "출력 스타일 세그먼트 표시"},
+				{Label: "비활성화", Desc: "출력 스타일 세그먼트 숨김"},
+			},
+		},
+		"statusline_seg_directory": {
+			Title:       "상태줄: 디렉토리 이름 표시",
+			Description: "상태줄에 현재 작업 디렉토리 이름을 표시합니다.",
+			Options: []OptionTranslation{
+				{Label: "활성화", Desc: "디렉토리 세그먼트 표시"},
+				{Label: "비활성화", Desc: "디렉토리 세그먼트 숨김"},
+			},
+		},
+		"statusline_seg_git_status": {
+			Title:       "상태줄: Git 상태 표시",
+			Description: "상태줄에 Git 상태 (스테이지, 수정, 비추적 수)를 표시합니다.",
+			Options: []OptionTranslation{
+				{Label: "활성화", Desc: "Git 상태 세그먼트 표시"},
+				{Label: "비활성화", Desc: "Git 상태 세그먼트 숨김"},
+			},
+		},
+		"statusline_seg_claude_version": {
+			Title:       "상태줄: Claude 버전 표시",
+			Description: "상태줄에 Claude Code 버전을 표시합니다.",
+			Options: []OptionTranslation{
+				{Label: "활성화", Desc: "Claude 버전 세그먼트 표시"},
+				{Label: "비활성화", Desc: "Claude 버전 세그먼트 숨김"},
+			},
+		},
+		"statusline_seg_moai_version": {
+			Title:       "상태줄: MoAI 버전 표시",
+			Description: "상태줄에 MoAI-ADK 버전을 표시합니다.",
+			Options: []OptionTranslation{
+				{Label: "활성화", Desc: "MoAI 버전 세그먼트 표시"},
+				{Label: "비활성화", Desc: "MoAI 버전 세그먼트 숨김"},
+			},
+		},
+		"statusline_seg_git_branch": {
+			Title:       "상태줄: Git 브랜치 표시",
+			Description: "상태줄에 현재 Git 브랜치 이름을 표시합니다.",
+			Options: []OptionTranslation{
+				{Label: "활성화", Desc: "Git 브랜치 세그먼트 표시"},
+				{Label: "비활성화", Desc: "Git 브랜치 세그먼트 숨김"},
+			},
+		},
 	},
 	"ja": {
 		"model_policy": {
@@ -279,6 +353,80 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "GitHubパーソナルアクセストークンを入力（省略可）",
 			Description: "PR作成とプッシュに必要です。空欄のままスキップまたはgh CLIを使用してください。",
 		},
+		"statusline_preset": {
+			Title:       "ステータスライン表示プリセットを選択",
+			Description: "Claude Codeステータスラインに表示するセグメントを設定します。",
+			Options: []OptionTranslation{
+				{Label: "Full", Desc: "全8セグメントを表示"},
+				{Label: "Compact", Desc: "モデル、コンテキスト、Git状態、Gitブランチ"},
+				{Label: "Minimal", Desc: "モデルとコンテキストのみ"},
+				{Label: "Custom", Desc: "個別のセグメントを選択"},
+			},
+		},
+		"statusline_seg_model": {
+			Title:       "ステータスライン: モデル名を表示",
+			Description: "ステータスラインに現在のClaudeモデル名を表示します。",
+			Options: []OptionTranslation{
+				{Label: "有効", Desc: "モデルセグメントを表示"},
+				{Label: "無効", Desc: "モデルセグメントを非表示"},
+			},
+		},
+		"statusline_seg_context": {
+			Title:       "ステータスライン: コンテキスト使用量を表示",
+			Description: "ステータスラインにコンテキストウィンドウ使用率を表示します。",
+			Options: []OptionTranslation{
+				{Label: "有効", Desc: "コンテキストセグメントを表示"},
+				{Label: "無効", Desc: "コンテキストセグメントを非表示"},
+			},
+		},
+		"statusline_seg_output_style": {
+			Title:       "ステータスライン: 出力スタイルを表示",
+			Description: "ステータスラインにアクティブな出力スタイル名を表示します。",
+			Options: []OptionTranslation{
+				{Label: "有効", Desc: "出力スタイルセグメントを表示"},
+				{Label: "無効", Desc: "出力スタイルセグメントを非表示"},
+			},
+		},
+		"statusline_seg_directory": {
+			Title:       "ステータスライン: ディレクトリ名を表示",
+			Description: "ステータスラインに現在の作業ディレクトリ名を表示します。",
+			Options: []OptionTranslation{
+				{Label: "有効", Desc: "ディレクトリセグメントを表示"},
+				{Label: "無効", Desc: "ディレクトリセグメントを非表示"},
+			},
+		},
+		"statusline_seg_git_status": {
+			Title:       "ステータスライン: Git状態を表示",
+			Description: "ステータスラインにGit状態（ステージ、変更、未追跡の数）を表示します。",
+			Options: []OptionTranslation{
+				{Label: "有効", Desc: "Git状態セグメントを表示"},
+				{Label: "無効", Desc: "Git状態セグメントを非表示"},
+			},
+		},
+		"statusline_seg_claude_version": {
+			Title:       "ステータスライン: Claudeバージョンを表示",
+			Description: "ステータスラインにClaude Codeバージョンを表示します。",
+			Options: []OptionTranslation{
+				{Label: "有効", Desc: "Claudeバージョンセグメントを表示"},
+				{Label: "無効", Desc: "Claudeバージョンセグメントを非表示"},
+			},
+		},
+		"statusline_seg_moai_version": {
+			Title:       "ステータスライン: MoAIバージョンを表示",
+			Description: "ステータスラインにMoAI-ADKバージョンを表示します。",
+			Options: []OptionTranslation{
+				{Label: "有効", Desc: "MoAIバージョンセグメントを表示"},
+				{Label: "無効", Desc: "MoAIバージョンセグメントを非表示"},
+			},
+		},
+		"statusline_seg_git_branch": {
+			Title:       "ステータスライン: Gitブランチを表示",
+			Description: "ステータスラインに現在のGitブランチ名を表示します。",
+			Options: []OptionTranslation{
+				{Label: "有効", Desc: "Gitブランチセグメントを表示"},
+				{Label: "無効", Desc: "Gitブランチセグメントを非表示"},
+			},
+		},
 	},
 	"zh": {
 		"model_policy": {
@@ -407,6 +555,80 @@ var translations = map[string]map[string]QuestionTranslation{
 		"github_token": {
 			Title:       "输入GitHub个人访问令牌（可选）",
 			Description: "PR创建和推送所需。留空以跳过或使用gh CLI。",
+		},
+		"statusline_preset": {
+			Title:       "选择状态栏显示预设",
+			Description: "设置Claude Code状态栏中显示的段。",
+			Options: []OptionTranslation{
+				{Label: "Full", Desc: "显示全部8个段"},
+				{Label: "Compact", Desc: "模型、上下文、Git状态、Git分支"},
+				{Label: "Minimal", Desc: "仅模型和上下文"},
+				{Label: "Custom", Desc: "选择单个段"},
+			},
+		},
+		"statusline_seg_model": {
+			Title:       "状态栏: 显示模型名称",
+			Description: "在状态栏中显示当前Claude模型名称。",
+			Options: []OptionTranslation{
+				{Label: "启用", Desc: "显示模型段"},
+				{Label: "禁用", Desc: "隐藏模型段"},
+			},
+		},
+		"statusline_seg_context": {
+			Title:       "状态栏: 显示上下文使用量",
+			Description: "在状态栏中显示上下文窗口使用百分比。",
+			Options: []OptionTranslation{
+				{Label: "启用", Desc: "显示上下文段"},
+				{Label: "禁用", Desc: "隐藏上下文段"},
+			},
+		},
+		"statusline_seg_output_style": {
+			Title:       "状态栏: 显示输出样式",
+			Description: "在状态栏中显示活动输出样式名称。",
+			Options: []OptionTranslation{
+				{Label: "启用", Desc: "显示输出样式段"},
+				{Label: "禁用", Desc: "隐藏输出样式段"},
+			},
+		},
+		"statusline_seg_directory": {
+			Title:       "状态栏: 显示目录名称",
+			Description: "在状态栏中显示当前工作目录名称。",
+			Options: []OptionTranslation{
+				{Label: "启用", Desc: "显示目录段"},
+				{Label: "禁用", Desc: "隐藏目录段"},
+			},
+		},
+		"statusline_seg_git_status": {
+			Title:       "状态栏: 显示Git状态",
+			Description: "在状态栏中显示Git状态（暂存、修改、未跟踪数量）。",
+			Options: []OptionTranslation{
+				{Label: "启用", Desc: "显示Git状态段"},
+				{Label: "禁用", Desc: "隐藏Git状态段"},
+			},
+		},
+		"statusline_seg_claude_version": {
+			Title:       "状态栏: 显示Claude版本",
+			Description: "在状态栏中显示Claude Code版本。",
+			Options: []OptionTranslation{
+				{Label: "启用", Desc: "显示Claude版本段"},
+				{Label: "禁用", Desc: "隐藏Claude版本段"},
+			},
+		},
+		"statusline_seg_moai_version": {
+			Title:       "状态栏: 显示MoAI版本",
+			Description: "在状态栏中显示MoAI-ADK版本。",
+			Options: []OptionTranslation{
+				{Label: "启用", Desc: "显示MoAI版本段"},
+				{Label: "禁用", Desc: "隐藏MoAI版本段"},
+			},
+		},
+		"statusline_seg_git_branch": {
+			Title:       "状态栏: 显示Git分支",
+			Description: "在状态栏中显示当前Git分支名称。",
+			Options: []OptionTranslation{
+				{Label: "启用", Desc: "显示Git分支段"},
+				{Label: "禁用", Desc: "隐藏Git分支段"},
+			},
 		},
 	},
 }

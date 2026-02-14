@@ -10,17 +10,20 @@ import (
 // Renderer formats StatusData into a single-line statusline string.
 // Matches Python output format with emojis and context bar graph.
 type Renderer struct {
-	separator  string
-	noColor    bool
-	mutedStyle lipgloss.Style
+	separator     string
+	noColor       bool
+	mutedStyle    lipgloss.Style
+	segmentConfig map[string]bool
 }
 
-// NewRenderer creates a Renderer with the specified theme and color mode.
-// When noColor is true, all styling is disabled for plain text output.
-func NewRenderer(themeName string, noColor bool) *Renderer {
+// NewRenderer creates a Renderer with the specified theme, color mode, and
+// segment configuration. When segmentConfig is nil or empty, all segments
+// are displayed (backward compatible).
+func NewRenderer(themeName string, noColor bool, segmentConfig map[string]bool) *Renderer {
 	r := &Renderer{
-		separator: " | ",
-		noColor:   noColor,
+		separator:     " | ",
+		noColor:       noColor,
+		segmentConfig: segmentConfig,
 	}
 
 	if noColor {
@@ -67,45 +70,62 @@ func (r *Renderer) Render(data *StatusData, mode StatuslineMode) string {
 	return strings.Join(filtered, r.separator)
 }
 
+// isSegmentEnabled checks whether a segment should be rendered based on config.
+// Returns true (enabled) when segmentConfig is nil/empty (backward compatible),
+// or when the key is not present in the config (unknown segments default to enabled).
+func (r *Renderer) isSegmentEnabled(key string) bool {
+	if len(r.segmentConfig) == 0 {
+		return true
+	}
+	enabled, exists := r.segmentConfig[key]
+	if !exists {
+		return true
+	}
+	return enabled
+}
+
 // renderCompact returns sections for compact mode with full emoji format.
 // Format: 🤖 Model | 🔋/🪫 Context Graph | 💬 Style | 📁 Directory | 📊 Changes | 🔅 Claude Code Ver | 🗿 MoAI Ver | 🔀 Branch
+// Each segment is filtered by isSegmentEnabled() based on the segment config.
 func (r *Renderer) renderCompact(data *StatusData) []string {
 	var sections []string
 
 	// 1. Model with emoji
-	if data.Metrics.Available && data.Metrics.Model != "" {
+	if r.isSegmentEnabled(SegmentModel) && data.Metrics.Available && data.Metrics.Model != "" {
 		sections = append(sections, fmt.Sprintf("🤖 %s", data.Metrics.Model))
 	}
 
 	// 2. Context window with battery emoji and bar graph
-	if data.Memory.Available {
+	if r.isSegmentEnabled(SegmentContext) && data.Memory.Available {
 		if graph := r.renderContextGraph(data); graph != "" {
 			sections = append(sections, graph)
 		}
 	}
 
 	// 3. Output style with emoji
-	if data.OutputStyle != "" {
+	if r.isSegmentEnabled(SegmentOutputStyle) && data.OutputStyle != "" {
 		sections = append(sections, fmt.Sprintf("💬 %s", data.OutputStyle))
 	}
 
 	// 4. Directory with emoji
-	if data.Directory != "" {
+	if r.isSegmentEnabled(SegmentDirectory) && data.Directory != "" {
 		sections = append(sections, fmt.Sprintf("📁 %s", data.Directory))
 	}
 
 	// 5. Git status with emoji
-	if git := r.renderGitStatus(data); git != "" {
-		sections = append(sections, fmt.Sprintf("📊 %s", git))
+	if r.isSegmentEnabled(SegmentGitStatus) {
+		if git := r.renderGitStatus(data); git != "" {
+			sections = append(sections, fmt.Sprintf("📊 %s", git))
+		}
 	}
 
 	// 6. Claude Code version with emoji (from JSON input)
-	if data.ClaudeCodeVersion != "" {
+	if r.isSegmentEnabled(SegmentClaudeVersion) && data.ClaudeCodeVersion != "" {
 		sections = append(sections, fmt.Sprintf("🔅 v%s", data.ClaudeCodeVersion))
 	}
 
 	// 7. MoAI-ADK version with emoji (from config) + update notification
-	if data.Version.Available && data.Version.Current != "" {
+	if r.isSegmentEnabled(SegmentMoaiVersion) && data.Version.Available && data.Version.Current != "" {
 		versionStr := fmt.Sprintf("🗿 v%s", data.Version.Current)
 		if data.Version.UpdateAvailable && data.Version.Latest != "" {
 			versionStr += fmt.Sprintf(" ⬆️ v%s", data.Version.Latest)
@@ -114,7 +134,7 @@ func (r *Renderer) renderCompact(data *StatusData) []string {
 	}
 
 	// 8. Branch with emoji
-	if data.Git.Available && data.Git.Branch != "" {
+	if r.isSegmentEnabled(SegmentGitBranch) && data.Git.Available && data.Git.Branch != "" {
 		sections = append(sections, fmt.Sprintf("🔀 %s", data.Git.Branch))
 	}
 

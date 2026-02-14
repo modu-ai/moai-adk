@@ -1,7 +1,7 @@
 constitution:
   # Development methodology selection
   # Options: ddd (Domain-Driven Development), tdd (Test-Driven Development), hybrid (mixed approach)
-  development_mode: "ddd"
+  development_mode: "hybrid"
 
   # Enable TRUST 5 quality framework enforcement
   enforce_quality: true
@@ -139,36 +139,36 @@ constitution:
     trust5_integration:
       # Tested dimension checks
       tested:
-      - unit_tests_pass
-      - lsp_type_errors == 0
-      - lsp_errors == 0
+        - unit_tests_pass
+        - lsp_type_errors == 0
+        - lsp_errors == 0
 
       # Readable dimension checks
       readable:
-      - naming_conventions_followed
-      - lsp_lint_errors == 0
+        - naming_conventions_followed
+        - lsp_lint_errors == 0
 
       # Understandable dimension checks
       understandable:
-      - documentation_complete
-      - code_complexity_acceptable
-      - lsp_warnings < threshold
+        - documentation_complete
+        - code_complexity_acceptable
+        - lsp_warnings < threshold
 
       # Secured dimension checks
       secured:
-      - security_scan_pass
-      - lsp_security_warnings == 0
+        - security_scan_pass
+        - lsp_security_warnings == 0
 
       # Trackable dimension checks
       trackable:
-      - logs_structured
-      - lsp_diagnostic_history_tracked
+        - logs_structured
+        - lsp_diagnostic_history_tracked
 
     # LSP diagnostic sources to monitor
     diagnostic_sources:
-    - typecheck
-    - lint
-    - security
+      - typecheck
+      - lint
+      - security
 
     # Regression detection thresholds
     regression_detection:
@@ -202,9 +202,9 @@ lsp_state_tracking:
 
   # Phase points where LSP state is captured
   capture_points:
-  - phase_start
-  - post_transformation
-  - pre_sync
+    - phase_start
+    - post_transformation
+    - pre_sync
 
   # Comparison settings
   comparison:

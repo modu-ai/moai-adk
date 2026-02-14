@@ -153,7 +153,7 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 	}
 
 	// Step 3b: Apply model policy to agent files (post-deployment patching)
-	if opts.ModelPolicy != "" && opts.ModelPolicy != "high" {
+	if opts.ModelPolicy != "" {
 		if err := template.ApplyModelPolicy(opts.ProjectRoot, template.ModelPolicy(opts.ModelPolicy), i.manifestMgr); err != nil {
 			i.logger.Warn("failed to apply model policy", "error", err)
 			// Non-fatal: agents will use default inherit

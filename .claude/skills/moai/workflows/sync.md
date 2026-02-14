@@ -75,11 +75,53 @@ Pre-execution commands: git status, git diff, git branch, git log, find .moai/sp
 
 ## Phase Sequence
 
-### Phase 0.5: Quality Verification (Parallel Diagnostics)
+### Phase 0: Deployment Readiness Check
 
-Purpose: Validate project quality before synchronization begins. Runs before Phase 1 to catch issues early.
+Purpose: Verify the implementation is deployment-ready before quality verification and documentation sync. Catches deployment-blocking issues early.
 
-#### Step 1: Detect Project Language
+#### Step 0.1: Test Passage Verification
+
+- Run full test suite for detected project language
+- Verify all tests pass (zero failures required)
+- If tests fail: Present failure summary and offer options via AskUserQuestion
+  - Fix and retry: Delegate to expert-debug subagent
+  - Continue anyway: Proceed with warning
+  - Abort: Exit sync workflow
+
+#### Step 0.2: Migration Check
+
+- Scan for database schema changes (new models, altered tables, migration files)
+- Scan for configuration format changes (new config keys, changed defaults)
+- Scan for data format changes (API request/response shape changes)
+- If migrations detected: Flag as deployment prerequisite and include in sync report
+
+#### Step 0.3: Environment and Configuration Changes
+
+- Scan for new environment variables referenced in code but not in .env.example or documentation
+- Scan for new configuration files or sections added
+- Scan for changed default values in existing configuration
+- If changes detected: Generate environment change summary for inclusion in PR description
+
+#### Step 0.4: Backward Compatibility Assessment
+
+- Identify public API changes (removed endpoints, changed signatures, removed fields)
+- Identify breaking changes in exported functions or types
+- Identify dependency version changes that may affect consumers
+- Severity classification:
+  - Breaking: Must be documented and versioned (semver major bump)
+  - Deprecation: Must include migration guide
+  - Compatible: No action required
+- If breaking changes detected: Require explicit user acknowledgment via AskUserQuestion
+
+Output: deployment_readiness_report with test_status, migrations_needed, env_changes, breaking_changes, and overall readiness status (READY, NEEDS_ATTENTION, or BLOCKED).
+
+If overall status is BLOCKED: Present blocking issues to user and exit unless user overrides.
+
+### Phase 0: Deployment Readiness Check
+
+Purpose: Verify implementation is deployment-ready before quality verification and documentation sync. Catches deployment-blocking issues early.
+
+#### Step 0.1: Test Passage Verification
 
 Check indicator files in priority order (first match wins):
 
@@ -166,7 +208,7 @@ Scan ALL source files (not just changed files) for:
 
 Agent: manager-docs subagent
 
-Create synchronization strategy based on Git changes, mode, and project verification results. Output: documents to update, SPECs requiring sync, project improvements needed, estimated scope.
+Create synchronization strategy based on Git changes, mode, project verification results, and deployment readiness report from Phase 0. Output: documents to update, SPECs requiring sync, project improvements needed, estimated scope, deployment notes to include in PR.
 
 #### Step 1.5: SPEC-Implementation Divergence Analysis
 
@@ -350,7 +392,7 @@ Detect current branch:
 2. Check if PR already exists: `gh pr list --head <branch> --json number`
 3. If no PR exists: Create PR via `gh pr create`
    - Title: Derived from SPEC title or branch name
-   - Body: Include sync summary, files changed, quality report
+   - Body: Include sync summary, files changed, quality report, deployment readiness notes (migrations, env changes, breaking changes)
    - Base: main
    - Labels: auto-detected from changed files
 4. If PR exists: Update with comment summarizing sync changes
@@ -490,6 +532,7 @@ When user aborts at any decision point:
 
 All of the following must be verified:
 
+- Phase 0: Deployment readiness verified (tests, migrations, env changes, backward compatibility)
 - Phase 0.5: Quality verification completed (tests, linter, type checker, code review)
 - Phase 1: Prerequisites verified, project analyzed, divergence analysis completed, sync plan approved by user
 - Phase 2: Safety backup created and verified, documents synchronized, SPEC documents updated per lifecycle level, project documents updated (if applicable), quality verified, SPEC status updated
@@ -498,6 +541,6 @@ All of the following must be verified:
 
 ---
 
-Version: 3.0.0
-Updated: 2026-02-07
-Source: Extracted from .claude/commands/moai/3-sync.md v3.4.0. Added SPEC divergence analysis, project document updates, SPEC lifecycle awareness, team mode section, LSP quality gates, and strategy-aware git delivery supporting github_flow, main_direct, and gitflow.
+Version: 3.1.0
+Updated: 2026-02-13
+Source: Extracted from .claude/commands/moai/3-sync.md v3.4.0. Added SPEC divergence analysis, project document updates, SPEC lifecycle awareness, team mode section, LSP quality gates, strategy-aware git delivery, and deployment readiness check (Phase 0) with test verification, migration detection, environment changes, and backward compatibility assessment.

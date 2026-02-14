@@ -7,7 +7,7 @@ import (
 
 // newTestRenderer creates a Renderer with NoColor=true for predictable test output.
 func newTestRenderer() *Renderer {
-	return NewRenderer("default", true)
+	return NewRenderer("default", true, nil)
 }
 
 func TestRender_MinimalMode(t *testing.T) {
@@ -224,7 +224,7 @@ func TestNewRenderer_ThemeVariants(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.theme, func(t *testing.T) {
-			r := NewRenderer(tt.theme, tt.noColor)
+			r := NewRenderer(tt.theme, tt.noColor, nil)
 			if r == nil {
 				t.Fatal("NewRenderer returned nil")
 			}
@@ -371,5 +371,149 @@ func TestRender_WithDirectory(t *testing.T) {
 
 	if !strings.Contains(got, "📁 my-awesome-project") {
 		t.Errorf("should contain directory with emoji, got %q", got)
+	}
+}
+
+// --- TDD RED: Tests for segment filtering ---
+
+func TestRender_SegmentFiltering(t *testing.T) {
+	fullData := &StatusData{
+		Git:               GitStatusData{Branch: "main", Modified: 2, Staged: 3, Untracked: 1, Available: true},
+		Memory:            MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
+		Metrics:           MetricsData{Model: "Opus 4.5", Available: true},
+		Directory:         "moai-adk-go",
+		OutputStyle:       "MoAI",
+		ClaudeCodeVersion: "1.0.80",
+		Version:           VersionData{Current: "2.3.1", Available: true},
+	}
+
+	tests := []struct {
+		name          string
+		segmentConfig map[string]bool
+		wantContain   []string
+		wantNotContain []string
+	}{
+		{
+			name:          "nil config shows all segments",
+			segmentConfig: nil,
+			wantContain:   []string{"🤖 Opus 4.5", "🔋", "💬 MoAI", "📁 moai-adk-go", "📊", "🔅 v1.0.80", "🗿 v2.3.1", "🔀 main"},
+		},
+		{
+			name:          "empty config shows all segments",
+			segmentConfig: map[string]bool{},
+			wantContain:   []string{"🤖 Opus 4.5", "🔋", "💬 MoAI", "📁 moai-adk-go", "📊", "🔅 v1.0.80", "🗿 v2.3.1", "🔀 main"},
+		},
+		{
+			name: "model disabled hides model",
+			segmentConfig: map[string]bool{
+				SegmentModel: false, SegmentContext: true, SegmentOutputStyle: true,
+				SegmentDirectory: true, SegmentGitStatus: true, SegmentClaudeVersion: true,
+				SegmentMoaiVersion: true, SegmentGitBranch: true,
+			},
+			wantContain:    []string{"🔋", "💬 MoAI", "📁 moai-adk-go"},
+			wantNotContain: []string{"🤖"},
+		},
+		{
+			name: "compact preset config",
+			segmentConfig: map[string]bool{
+				SegmentModel: true, SegmentContext: true, SegmentOutputStyle: false,
+				SegmentDirectory: false, SegmentGitStatus: true, SegmentClaudeVersion: false,
+				SegmentMoaiVersion: false, SegmentGitBranch: true,
+			},
+			wantContain:    []string{"🤖 Opus 4.5", "🔋", "📊", "🔀 main"},
+			wantNotContain: []string{"💬", "📁", "🔅", "🗿"},
+		},
+		{
+			name: "all segments disabled returns MoAI fallback",
+			segmentConfig: map[string]bool{
+				SegmentModel: false, SegmentContext: false, SegmentOutputStyle: false,
+				SegmentDirectory: false, SegmentGitStatus: false, SegmentClaudeVersion: false,
+				SegmentMoaiVersion: false, SegmentGitBranch: false,
+			},
+			wantContain: []string{"MoAI"},
+		},
+		{
+			name: "unknown segment key defaults to enabled",
+			segmentConfig: map[string]bool{
+				"unknown_segment": false,
+				SegmentModel: true,
+			},
+			wantContain: []string{"🤖 Opus 4.5", "🔋", "💬 MoAI", "📁 moai-adk-go"},
+		},
+		{
+			name: "only context disabled",
+			segmentConfig: map[string]bool{
+				SegmentModel: true, SegmentContext: false, SegmentOutputStyle: true,
+				SegmentDirectory: true, SegmentGitStatus: true, SegmentClaudeVersion: true,
+				SegmentMoaiVersion: true, SegmentGitBranch: true,
+			},
+			wantContain:    []string{"🤖 Opus 4.5", "💬 MoAI", "📁 moai-adk-go", "🔀 main"},
+			wantNotContain: []string{"🔋"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := NewRenderer("default", true, tt.segmentConfig)
+			got := r.Render(fullData, ModeDefault)
+
+			for _, want := range tt.wantContain {
+				if !strings.Contains(got, want) {
+					t.Errorf("should contain %q, got %q", want, got)
+				}
+			}
+			for _, notWant := range tt.wantNotContain {
+				if strings.Contains(got, notWant) {
+					t.Errorf("should NOT contain %q, got %q", notWant, got)
+				}
+			}
+		})
+	}
+}
+
+func TestRender_SegmentFiltering_MinimalModeIgnoresConfig(t *testing.T) {
+	// Minimal mode should ignore segment config (REQ-SL-042)
+	segmentConfig := map[string]bool{
+		SegmentModel: false, SegmentContext: false,
+	}
+	r := NewRenderer("default", true, segmentConfig)
+	data := &StatusData{
+		Metrics: MetricsData{Model: "Opus 4.5", Available: true},
+		Memory:  MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
+	}
+
+	got := r.Render(data, ModeMinimal)
+
+	// Minimal mode uses hard-coded rendering, should still show model and context
+	if !strings.Contains(got, "🤖 Opus 4.5") {
+		t.Errorf("minimal mode should show model regardless of config, got %q", got)
+	}
+	if !strings.Contains(got, "🔋") {
+		t.Errorf("minimal mode should show context regardless of config, got %q", got)
+	}
+}
+
+func TestIsSegmentEnabled(t *testing.T) {
+	tests := []struct {
+		name          string
+		segmentConfig map[string]bool
+		key           string
+		want          bool
+	}{
+		{"nil config always enabled", nil, SegmentModel, true},
+		{"empty config always enabled", map[string]bool{}, SegmentModel, true},
+		{"enabled segment", map[string]bool{SegmentModel: true}, SegmentModel, true},
+		{"disabled segment", map[string]bool{SegmentModel: false}, SegmentModel, false},
+		{"unknown key defaults to enabled", map[string]bool{SegmentModel: true}, "unknown", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := NewRenderer("default", true, tt.segmentConfig)
+			got := r.isSegmentEnabled(tt.key)
+			if got != tt.want {
+				t.Errorf("isSegmentEnabled(%q) = %v, want %v", tt.key, got, tt.want)
+			}
+		})
 	}
 }

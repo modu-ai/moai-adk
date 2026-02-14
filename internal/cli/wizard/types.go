@@ -39,6 +39,10 @@ type WizardResult struct {
 	AgentTeamsMode string // Agent Teams execution mode: auto, subagent, team
 	MaxTeammates   string // Maximum teammates (2-5, for team mode)
 	DefaultModel   string // Default model for teammates: haiku, sonnet, opus
+
+	// Statusline settings
+	StatuslinePreset   string          // Statusline preset: full, compact, minimal, custom
+	StatuslineSegments map[string]bool // Segment toggles (used when preset is "custom")
 }
 
 // QuestionType represents the type of wizard question.

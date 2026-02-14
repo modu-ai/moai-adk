@@ -90,6 +90,12 @@ Output: Execution plan containing plan_summary, requirements list, success_crite
 
 Tool: AskUserQuestion (at orchestrator level)
 
+Before presenting options, verify the plan against these criteria:
+
+- Proportionality: Is the plan proportional to the requirements? Flag plans with excessive abstraction layers, unnecessary patterns, or scope creep beyond SPEC requirements.
+- Code Reuse: Has the plan identified existing code, libraries, or patterns that can be reused? Flag plans that reinvent existing functionality.
+- Simplicity: Does the plan follow YAGNI (You Aren't Gonna Need It)? Flag speculative features not in the SPEC.
+
 Options:
 
 - Proceed with plan (continue to Phase 1.5)
@@ -252,6 +258,34 @@ For Hybrid mode:
 
 Output: trust_5_validation results per pillar, coverage percentage, overall status (PASS, WARNING, or CRITICAL), and issues_found list.
 
+#### Extended Quality Checks
+
+In addition to TRUST 5 validation, the following checks are performed:
+
+Code Complexity Analysis:
+- Function size: Flag functions exceeding 50 lines (suggest splitting)
+- File size: Flag files exceeding 500 lines (suggest decomposition)
+- Cyclomatic complexity: Flag functions with complexity > 10
+- Nesting depth: Flag code with nesting > 4 levels
+
+Dead Code Detection:
+- Unused imports: Identify and flag unused import statements
+- Unused functions: Identify exported functions with no callers
+- Unused variables: Identify declared but unreferenced variables
+- Orphaned files: Identify files not referenced by any other module
+
+Side Effect Analysis:
+- Caller impact: For each modified function, identify all callers and assess impact
+- Interface changes: Flag signature changes that affect downstream consumers
+- State mutations: Identify unexpected state changes in modified code paths
+- Dependency chain: Trace changes through dependency graph to detect cascading effects
+
+Code Reuse Opportunities:
+- Duplication detection: Identify code blocks similar to existing utilities or helpers
+- Library overlap: Check if implemented functionality exists in project dependencies
+- Pattern consolidation: Suggest merging similar patterns across modified files
+- Shared abstraction: Identify opportunities to extract common logic
+
 ### Quality Gate Decision
 
 If status is CRITICAL:
@@ -260,7 +294,29 @@ If status is CRITICAL:
 - Option to return to implementation phase for fixes
 - Exit current execution flow
 
-If status is PASS or WARNING: Continue to Phase 3.
+If status is PASS or WARNING: Continue to Phase 2.7.
+
+### Phase 2.7: Post-Implementation Review (Optional)
+
+Purpose: Multi-dimensional review iteration for high-quality output. Activated when quality status is WARNING or when --review flag is set.
+
+Review dimensions (each executed via manager-quality subagent):
+
+- Purpose alignment: Does the implementation fulfill the SPEC requirements without deviation?
+- Improvement safety: Do the improvements introduce any new issues?
+- Side effect verification: Are there unintended behavioral changes in related modules?
+- Full change review: Comprehensive diff review of all modified files
+- Dead code cleanup: Remove code made obsolete during implementation
+- User flow validation: Verify end-to-end user workflows remain functional
+
+Iteration behavior:
+- Each review dimension generates findings with severity (critical, warning, suggestion)
+- Critical findings trigger a fix cycle: delegate to appropriate expert agent, then re-review
+- Warning findings are logged for user attention
+- Maximum 3 review iterations to prevent infinite loops
+- If all dimensions pass with no critical findings: Continue to Phase 3
+
+Output: review_findings per dimension, iterations_completed count, final review status.
 
 ### LSP Quality Gates
 
@@ -356,6 +412,6 @@ All of the following must be verified:
 
 ---
 
-Version: 2.0.0
-Updated: 2026-02-07
-Source: Extracted from .claude/commands/moai/2-run.md v5.0.0. Added implementation divergence tracking, development_mode routing (ddd/tdd/hybrid), team mode support, and LSP quality gates.
+Version: 2.1.0
+Updated: 2026-02-13
+Source: Extracted from .claude/commands/moai/2-run.md v5.0.0. Added implementation divergence tracking, development_mode routing (ddd/tdd/hybrid), team mode support, LSP quality gates, extended quality checks (code complexity, dead code, side effects, code reuse), plan proportionality validation, and post-implementation review loop.

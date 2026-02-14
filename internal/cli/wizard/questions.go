@@ -257,6 +257,149 @@ func DefaultQuestions(projectRoot string) []Question {
 				return r.AgentTeamsMode == "team"
 			},
 		},
+		// 14. Statusline Preset
+		{
+			ID:          "statusline_preset",
+			Type:        QuestionTypeSelect,
+			Title:       "Select statusline display preset",
+			Description: "Controls which segments are shown in the Claude Code statusline.",
+			Options: []Option{
+				{Label: "Full", Value: "full", Desc: "All 8 segments displayed"},
+				{Label: "Compact", Value: "compact", Desc: "Model, context, git status, git branch"},
+				{Label: "Minimal", Value: "minimal", Desc: "Model and context only"},
+				{Label: "Custom", Value: "custom", Desc: "Choose individual segments"},
+			},
+			Default:  "full",
+			Required: true,
+		},
+		// 14a. Statusline Segment: Model (conditional - only for custom preset)
+		{
+			ID:          "statusline_seg_model",
+			Type:        QuestionTypeSelect,
+			Title:       "Statusline: Show model name",
+			Description: "Display the current Claude model name in the statusline.",
+			Options: []Option{
+				{Label: "Enabled", Value: "true", Desc: "Show model segment"},
+				{Label: "Disabled", Value: "false", Desc: "Hide model segment"},
+			},
+			Default:  "true",
+			Required: true,
+			Condition: func(r *WizardResult) bool {
+				return r.StatuslinePreset == "custom"
+			},
+		},
+		// 14b. Statusline Segment: Context (conditional - only for custom preset)
+		{
+			ID:          "statusline_seg_context",
+			Type:        QuestionTypeSelect,
+			Title:       "Statusline: Show context usage",
+			Description: "Display the context window usage percentage in the statusline.",
+			Options: []Option{
+				{Label: "Enabled", Value: "true", Desc: "Show context segment"},
+				{Label: "Disabled", Value: "false", Desc: "Hide context segment"},
+			},
+			Default:  "true",
+			Required: true,
+			Condition: func(r *WizardResult) bool {
+				return r.StatuslinePreset == "custom"
+			},
+		},
+		// 14c. Statusline Segment: Output Style (conditional - only for custom preset)
+		{
+			ID:          "statusline_seg_output_style",
+			Type:        QuestionTypeSelect,
+			Title:       "Statusline: Show output style",
+			Description: "Display the active output style name in the statusline.",
+			Options: []Option{
+				{Label: "Enabled", Value: "true", Desc: "Show output style segment"},
+				{Label: "Disabled", Value: "false", Desc: "Hide output style segment"},
+			},
+			Default:  "true",
+			Required: true,
+			Condition: func(r *WizardResult) bool {
+				return r.StatuslinePreset == "custom"
+			},
+		},
+		// 14d. Statusline Segment: Directory (conditional - only for custom preset)
+		{
+			ID:          "statusline_seg_directory",
+			Type:        QuestionTypeSelect,
+			Title:       "Statusline: Show directory name",
+			Description: "Display the current working directory name in the statusline.",
+			Options: []Option{
+				{Label: "Enabled", Value: "true", Desc: "Show directory segment"},
+				{Label: "Disabled", Value: "false", Desc: "Hide directory segment"},
+			},
+			Default:  "true",
+			Required: true,
+			Condition: func(r *WizardResult) bool {
+				return r.StatuslinePreset == "custom"
+			},
+		},
+		// 14e. Statusline Segment: Git Status (conditional - only for custom preset)
+		{
+			ID:          "statusline_seg_git_status",
+			Type:        QuestionTypeSelect,
+			Title:       "Statusline: Show git status",
+			Description: "Display git status (staged, modified, untracked counts) in the statusline.",
+			Options: []Option{
+				{Label: "Enabled", Value: "true", Desc: "Show git status segment"},
+				{Label: "Disabled", Value: "false", Desc: "Hide git status segment"},
+			},
+			Default:  "true",
+			Required: true,
+			Condition: func(r *WizardResult) bool {
+				return r.StatuslinePreset == "custom"
+			},
+		},
+		// 14f. Statusline Segment: Claude Version (conditional - only for custom preset)
+		{
+			ID:          "statusline_seg_claude_version",
+			Type:        QuestionTypeSelect,
+			Title:       "Statusline: Show Claude version",
+			Description: "Display the Claude Code version in the statusline.",
+			Options: []Option{
+				{Label: "Enabled", Value: "true", Desc: "Show Claude version segment"},
+				{Label: "Disabled", Value: "false", Desc: "Hide Claude version segment"},
+			},
+			Default:  "true",
+			Required: true,
+			Condition: func(r *WizardResult) bool {
+				return r.StatuslinePreset == "custom"
+			},
+		},
+		// 14g. Statusline Segment: MoAI Version (conditional - only for custom preset)
+		{
+			ID:          "statusline_seg_moai_version",
+			Type:        QuestionTypeSelect,
+			Title:       "Statusline: Show MoAI version",
+			Description: "Display the MoAI-ADK version in the statusline.",
+			Options: []Option{
+				{Label: "Enabled", Value: "true", Desc: "Show MoAI version segment"},
+				{Label: "Disabled", Value: "false", Desc: "Hide MoAI version segment"},
+			},
+			Default:  "true",
+			Required: true,
+			Condition: func(r *WizardResult) bool {
+				return r.StatuslinePreset == "custom"
+			},
+		},
+		// 14h. Statusline Segment: Git Branch (conditional - only for custom preset)
+		{
+			ID:          "statusline_seg_git_branch",
+			Type:        QuestionTypeSelect,
+			Title:       "Statusline: Show git branch",
+			Description: "Display the current git branch name in the statusline.",
+			Options: []Option{
+				{Label: "Enabled", Value: "true", Desc: "Show git branch segment"},
+				{Label: "Disabled", Value: "false", Desc: "Hide git branch segment"},
+			},
+			Default:  "true",
+			Required: true,
+			Condition: func(r *WizardResult) bool {
+				return r.StatuslinePreset == "custom"
+			},
+		},
 	}
 }
 

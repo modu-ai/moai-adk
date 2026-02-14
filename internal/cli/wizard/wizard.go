@@ -7,6 +7,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// statuslineSegmentPrefix is the prefix used for statusline segment question IDs.
+const statuslineSegmentPrefix = "statusline_seg_"
+
 // Model is the Bubble Tea model for the wizard.
 type Model struct {
 	questions    []Question
@@ -243,6 +246,17 @@ func (m *Model) saveAnswer(id, value string) {
 		m.result.MaxTeammates = value
 	case "default_model":
 		m.result.DefaultModel = value
+	case "statusline_preset":
+		m.result.StatuslinePreset = value
+	default:
+		// Handle statusline segment toggles (statusline_seg_*)
+		if strings.HasPrefix(id, statuslineSegmentPrefix) {
+			segName := strings.TrimPrefix(id, statuslineSegmentPrefix)
+			if m.result.StatuslineSegments == nil {
+				m.result.StatuslineSegments = make(map[string]bool)
+			}
+			m.result.StatuslineSegments[segName] = (value == "true")
+		}
 	}
 }
 

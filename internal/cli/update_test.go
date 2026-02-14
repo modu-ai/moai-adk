@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/update"
 	"github.com/modu-ai/moai-adk/pkg/version"
@@ -2300,6 +2301,266 @@ func TestCleanMoaiManagedPaths(t *testing.T) {
 
 			tt.verify(t, root, buf.String())
 		})
+	}
+}
+
+// --- TDD RED: Statusline wizard config tests ---
+
+func TestPresetToSegments(t *testing.T) {
+	allSegments := []string{"model", "context", "output_style", "directory", "git_status", "claude_version", "moai_version", "git_branch"}
+
+	tests := []struct {
+		name       string
+		preset     string
+		custom     map[string]bool
+		wantTrue   []string // segments that should be true
+		wantFalse  []string // segments that should be false
+	}{
+		{
+			name:     "full preset enables all segments",
+			preset:   "full",
+			wantTrue: allSegments,
+		},
+		{
+			name:      "compact preset enables subset",
+			preset:    "compact",
+			wantTrue:  []string{"model", "context", "git_status", "git_branch"},
+			wantFalse: []string{"output_style", "directory", "claude_version", "moai_version"},
+		},
+		{
+			name:      "minimal preset enables model and context only",
+			preset:    "minimal",
+			wantTrue:  []string{"model", "context"},
+			wantFalse: []string{"output_style", "directory", "git_status", "claude_version", "moai_version", "git_branch"},
+		},
+		{
+			name:   "custom preset uses provided map",
+			preset: "custom",
+			custom: map[string]bool{
+				"model":   true,
+				"context": false,
+				"git_branch": true,
+			},
+			wantTrue:  []string{"model", "git_branch"},
+			wantFalse: []string{"context"},
+		},
+		{
+			name:     "unknown preset falls back to full",
+			preset:   "unknown",
+			wantTrue: allSegments,
+		},
+		{
+			name:     "empty preset falls back to full",
+			preset:   "",
+			wantTrue: allSegments,
+		},
+		{
+			name:     "custom with nil map defaults all to true",
+			preset:   "custom",
+			custom:   nil,
+			wantTrue: allSegments,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := presetToSegments(tt.preset, tt.custom)
+
+			for _, seg := range tt.wantTrue {
+				if !result[seg] {
+					t.Errorf("segment %q should be true for preset %q", seg, tt.preset)
+				}
+			}
+
+			for _, seg := range tt.wantFalse {
+				if result[seg] {
+					t.Errorf("segment %q should be false for preset %q", seg, tt.preset)
+				}
+			}
+		})
+	}
+}
+
+func TestApplyWizardConfig_StatuslinePresetFull(t *testing.T) {
+	tmpDir := t.TempDir()
+	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create required language.yaml (applyWizardConfig writes it first)
+	result := &wizard.WizardResult{
+		Locale:           "en",
+		StatuslinePreset: "full",
+	}
+
+	if err := applyWizardConfig(tmpDir, result); err != nil {
+		t.Fatalf("applyWizardConfig failed: %v", err)
+	}
+
+	// Read statusline.yaml
+	data, err := os.ReadFile(filepath.Join(sectionsDir, "statusline.yaml"))
+	if err != nil {
+		t.Fatalf("read statusline.yaml: %v", err)
+	}
+
+	content := string(data)
+
+	// Should contain preset: full
+	if !strings.Contains(content, "preset: full") {
+		t.Errorf("statusline.yaml should contain 'preset: full', got:\n%s", content)
+	}
+
+	// All segments should be true
+	for _, seg := range []string{"model", "context", "output_style", "directory", "git_status", "claude_version", "moai_version", "git_branch"} {
+		if !strings.Contains(content, seg+": true") {
+			t.Errorf("statusline.yaml should contain '%s: true', got:\n%s", seg, content)
+		}
+	}
+}
+
+func TestApplyWizardConfig_StatuslinePresetCompact(t *testing.T) {
+	tmpDir := t.TempDir()
+	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	result := &wizard.WizardResult{
+		Locale:           "en",
+		StatuslinePreset: "compact",
+	}
+
+	if err := applyWizardConfig(tmpDir, result); err != nil {
+		t.Fatalf("applyWizardConfig failed: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(sectionsDir, "statusline.yaml"))
+	if err != nil {
+		t.Fatalf("read statusline.yaml: %v", err)
+	}
+
+	content := string(data)
+
+	// Compact: model, context, git_status, git_branch enabled
+	for _, seg := range []string{"model", "context", "git_status", "git_branch"} {
+		if !strings.Contains(content, seg+": true") {
+			t.Errorf("statusline.yaml should contain '%s: true' for compact, got:\n%s", seg, content)
+		}
+	}
+
+	// Others disabled
+	for _, seg := range []string{"output_style", "directory", "claude_version", "moai_version"} {
+		if !strings.Contains(content, seg+": false") {
+			t.Errorf("statusline.yaml should contain '%s: false' for compact, got:\n%s", seg, content)
+		}
+	}
+}
+
+func TestApplyWizardConfig_StatuslinePresetMinimal(t *testing.T) {
+	tmpDir := t.TempDir()
+	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	result := &wizard.WizardResult{
+		Locale:           "en",
+		StatuslinePreset: "minimal",
+	}
+
+	if err := applyWizardConfig(tmpDir, result); err != nil {
+		t.Fatalf("applyWizardConfig failed: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(sectionsDir, "statusline.yaml"))
+	if err != nil {
+		t.Fatalf("read statusline.yaml: %v", err)
+	}
+
+	content := string(data)
+
+	// Minimal: model, context enabled
+	for _, seg := range []string{"model", "context"} {
+		if !strings.Contains(content, seg+": true") {
+			t.Errorf("statusline.yaml should contain '%s: true' for minimal, got:\n%s", seg, content)
+		}
+	}
+
+	// Others disabled
+	for _, seg := range []string{"output_style", "directory", "git_status", "claude_version", "moai_version", "git_branch"} {
+		if !strings.Contains(content, seg+": false") {
+			t.Errorf("statusline.yaml should contain '%s: false' for minimal, got:\n%s", seg, content)
+		}
+	}
+}
+
+func TestApplyWizardConfig_StatuslinePresetCustom(t *testing.T) {
+	tmpDir := t.TempDir()
+	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	result := &wizard.WizardResult{
+		Locale:           "en",
+		StatuslinePreset: "custom",
+		StatuslineSegments: map[string]bool{
+			"model":          true,
+			"context":        true,
+			"output_style":   false,
+			"directory":      false,
+			"git_status":     true,
+			"claude_version": false,
+			"moai_version":   false,
+			"git_branch":     true,
+		},
+	}
+
+	if err := applyWizardConfig(tmpDir, result); err != nil {
+		t.Fatalf("applyWizardConfig failed: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(sectionsDir, "statusline.yaml"))
+	if err != nil {
+		t.Fatalf("read statusline.yaml: %v", err)
+	}
+
+	content := string(data)
+
+	// Custom segments
+	for _, seg := range []string{"model", "context", "git_status", "git_branch"} {
+		if !strings.Contains(content, seg+": true") {
+			t.Errorf("statusline.yaml should contain '%s: true' for custom, got:\n%s", seg, content)
+		}
+	}
+	for _, seg := range []string{"output_style", "directory", "claude_version", "moai_version"} {
+		if !strings.Contains(content, seg+": false") {
+			t.Errorf("statusline.yaml should contain '%s: false' for custom, got:\n%s", seg, content)
+		}
+	}
+}
+
+func TestApplyWizardConfig_StatuslineEmpty(t *testing.T) {
+	tmpDir := t.TempDir()
+	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	result := &wizard.WizardResult{
+		Locale:           "en",
+		StatuslinePreset: "", // Empty - should skip
+	}
+
+	if err := applyWizardConfig(tmpDir, result); err != nil {
+		t.Fatalf("applyWizardConfig failed: %v", err)
+	}
+
+	// statusline.yaml should NOT exist
+	statuslinePath := filepath.Join(sectionsDir, "statusline.yaml")
+	if _, err := os.Stat(statuslinePath); !os.IsNotExist(err) {
+		t.Error("statusline.yaml should not be created when StatuslinePreset is empty")
 	}
 }
 

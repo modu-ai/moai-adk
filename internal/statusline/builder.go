@@ -44,6 +44,10 @@ type Options struct {
 
 	// NoColor disables all ANSI color output when true.
 	NoColor bool
+
+	// SegmentConfig maps segment keys to enabled state.
+	// When nil or empty, all segments are displayed (backward compatible).
+	SegmentConfig map[string]bool
 }
 
 // New creates a new Builder with the given options.
@@ -81,7 +85,7 @@ func New(opts Options) Builder {
 	return &defaultBuilder{
 		gitProvider:    gitProvider,
 		updateProvider: updateProvider,
-		renderer:       NewRenderer(opts.ThemeName, opts.NoColor),
+		renderer:       NewRenderer(opts.ThemeName, opts.NoColor, opts.SegmentConfig),
 		mode:           mode,
 	}
 }

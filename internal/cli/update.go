@@ -1575,7 +1575,7 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 	}
 
 	// Apply model policy to agent files if selected
-	if result.ModelPolicy != "" && result.ModelPolicy != "high" {
+	if result.ModelPolicy != "" {
 		mgr := manifest.NewManager()
 		if _, err := mgr.Load(cwd); err == nil {
 			if err := template.ApplyModelPolicy(cwd, template.ModelPolicy(result.ModelPolicy), mgr); err != nil {
@@ -1679,6 +1679,27 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		}
 	}
 
+	// Write statusline.yaml from wizard results
+	if result.StatuslinePreset != "" {
+		segments := presetToSegments(result.StatuslinePreset, result.StatuslineSegments)
+		statuslinePath := filepath.Join(sectionsDir, defs.StatuslineYAML)
+
+		statuslineConfig := map[string]interface{}{
+			"statusline": map[string]interface{}{
+				"preset":   result.StatuslinePreset,
+				"segments": segments,
+			},
+		}
+
+		data, err := yaml.Marshal(statuslineConfig)
+		if err != nil {
+			return fmt.Errorf("marshal statusline.yaml: %w", err)
+		}
+		if err := os.WriteFile(statuslinePath, data, defs.FilePerm); err != nil {
+			return fmt.Errorf("write statusline.yaml: %w", err)
+		}
+	}
+
 	// Update user.yaml with GitHub username and token
 	if result.GitHubUsername != "" || result.GitHubToken != "" {
 		userPath := filepath.Join(sectionsDir, defs.UserYAML)
@@ -1729,6 +1750,58 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 	}
 
 	return nil
+}
+
+// allStatuslineSegments lists all supported statusline segment names in display order.
+var allStatuslineSegments = []string{
+	"model", "context", "output_style", "directory",
+	"git_status", "claude_version", "moai_version", "git_branch",
+}
+
+// presetToSegments converts a statusline preset name and optional custom segment map
+// into a full segment-to-enabled map. Unknown presets fall back to "full" (all enabled).
+func presetToSegments(preset string, custom map[string]bool) map[string]bool {
+	segments := make(map[string]bool, len(allStatuslineSegments))
+
+	switch preset {
+	case "compact":
+		compactEnabled := map[string]bool{
+			"model": true, "context": true, "git_status": true, "git_branch": true,
+		}
+		for _, seg := range allStatuslineSegments {
+			segments[seg] = compactEnabled[seg]
+		}
+	case "minimal":
+		minimalEnabled := map[string]bool{
+			"model": true, "context": true,
+		}
+		for _, seg := range allStatuslineSegments {
+			segments[seg] = minimalEnabled[seg]
+		}
+	case "custom":
+		if custom == nil {
+			// No custom selections provided, default all to true
+			for _, seg := range allStatuslineSegments {
+				segments[seg] = true
+			}
+		} else {
+			for _, seg := range allStatuslineSegments {
+				val, exists := custom[seg]
+				if exists {
+					segments[seg] = val
+				} else {
+					segments[seg] = true // Default missing segments to enabled
+				}
+			}
+		}
+	default:
+		// "full" and any unknown preset: all segments enabled
+		for _, seg := range allStatuslineSegments {
+			segments[seg] = true
+		}
+	}
+
+	return segments
 }
 
 // ensureGlobalSettingsEnv cleans up moai-managed settings from ~/.claude/settings.json.

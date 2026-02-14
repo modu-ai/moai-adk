@@ -20,6 +20,11 @@ workflow:
     sync: 40000
 
   # Agent Teams configuration
+  # NOTE: Agent teams use significantly more tokens than a single session.
+  # Each teammate has its own independent context window, so token usage scales
+  # linearly with the number of active teammates (e.g., 3 teammates ~ 3x tokens).
+  # Use team mode for research, review, and cross-layer features where parallelism
+  # adds real value. For routine tasks, sub-agent mode is more cost-effective.
   team:
     # Master switch - also requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
     enabled: true
@@ -94,6 +99,14 @@ workflow:
           - hypothesis-3
         model: "haiku"
         description: "Competing hypothesis debugging"
+
+      review:
+        roles:
+          - security-reviewer
+          - perf-reviewer
+          - quality-reviewer
+        model: "inherit"
+        description: "Multi-perspective code review"
 
   # Completion markers for workflow state detection
   completion:

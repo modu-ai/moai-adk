@@ -22,6 +22,7 @@ Flow: TeamCreate -> Perspective Assignment -> Parallel Review -> Report Consolid
    TaskCreate: "Security review: OWASP compliance, input validation, auth" (no deps)
    TaskCreate: "Performance review: algorithmic complexity, resource usage, caching" (no deps)
    TaskCreate: "Quality review: TRUST 5, patterns, maintainability, test coverage" (no deps)
+   TaskCreate: "UX review: user flow validation, error states, edge cases, accessibility" (no deps)
    TaskCreate: "Consolidate review findings" (blocked by above)
    ```
 
@@ -38,12 +39,17 @@ Teammate 2 - perf-reviewer (team-quality agent, inherit model):
 Teammate 3 - quality-reviewer (team-quality agent, inherit model):
 - Prompt: "Review the following changes for code quality. Check TRUST 5 compliance, naming conventions, error handling, test coverage, documentation, consistency with project patterns. Changes: {diff_summary}"
 
+Teammate 4 - ux-reviewer (team-quality agent, inherit model):
+- Prompt: "Review the following changes for user experience impact. Validate user flows remain functional, check error states and edge cases from the user's perspective, verify accessibility compliance, assess whether the changes align with expected user behavior. Changes: {diff_summary}"
+
 ## Phase 2: Parallel Review
 
-Reviewers work independently (all read-only):
-- Each focuses on their assigned quality dimension
-- Reviews all changed files from their perspective
-- Rates each finding by severity (critical, warning, suggestion)
+Reviewers work independently (all read-only, 4 perspectives):
+- Security: OWASP compliance, injection risks, auth vulnerabilities
+- Performance: Algorithmic complexity, resource usage, caching
+- Quality: TRUST 5 compliance, patterns, maintainability
+- UX: User flow integrity, error states, accessibility
+- Each rates findings by severity (critical, warning, suggestion)
 - Reports findings to team lead
 
 ## Phase 3: Report Consolidation
@@ -57,6 +63,7 @@ After all reviews complete:
    - Warnings that should be addressed
    - Suggestions for improvement
    - Overall quality assessment per TRUST 5 dimension
+   - User experience impact assessment
 
 ## Phase 4: Cleanup
 
@@ -72,4 +79,6 @@ If team creation fails:
 
 ---
 
-Version: 1.0.0
+Version: 1.1.0
+Updated: 2026-02-13
+Source: Added ux-reviewer as 4th review perspective for user flow validation, error states, and accessibility.

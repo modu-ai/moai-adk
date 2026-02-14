@@ -96,8 +96,8 @@ When team mode is enabled (workflow.team.enabled and AGENT_TEAMS env), phases ca
 
 | Phase | Sub-agent Mode | Team Mode | Condition |
 |-------|---------------|-----------|-----------|
-| Plan | manager-spec (single) | researcher + analyst + architect (parallel) | Complexity >= threshold |
-| Run | manager-ddd/tdd (sequential) | backend-dev + frontend-dev + tester (parallel) | Domains >= 3 or files >= 10 |
+| Plan | manager-spec (single) | team-researcher + team-analyst + team-architect (parallel) | Complexity >= threshold |
+| Run | manager-ddd/tdd (sequential) | team-backend-dev + team-frontend-dev + team-tester (parallel) | Domains >= 3 or files >= 10 |
 | Sync | manager-docs (single) | manager-docs (always sub-agent) | N/A |
 
 ### Team Mode Plan Phase
@@ -113,6 +113,29 @@ When team mode is enabled (workflow.team.enabled and AGENT_TEAMS env), phases ca
 - Quality validation after all implementation completes
 - Shutdown team
 
+### Token Cost Awareness
+
+Agent teams use significantly more tokens than a single session. Each teammate has its own independent context window, so token usage scales linearly with the number of active teammates.
+
+Estimated token multipliers by team pattern:
+- plan_research (3 teammates): ~3x plan phase tokens
+- implementation (3 teammates): ~3x run phase tokens
+- design_implementation (4 teammates): ~4x run phase tokens
+- investigation (3 teammates): ~2x (haiku model reduces cost)
+- review (3 teammates): ~2x (read-only, shorter sessions)
+
+When to prefer team mode over sub-agent mode:
+- Research and review tasks where parallel exploration adds real value
+- Cross-layer features (frontend + backend + tests)
+- Complex debugging with multiple potential root causes
+- Tasks where teammates need to communicate and coordinate
+
+When to prefer sub-agent mode:
+- Sequential tasks with heavy dependencies
+- Same-file edits or tightly coupled changes
+- Routine tasks with clear single-domain scope
+- Token budget is a concern
+
 ### Team Workflow References
 
 Detailed team orchestration steps are defined in dedicated workflow files:
@@ -120,7 +143,20 @@ Detailed team orchestration steps are defined in dedicated workflow files:
 - Plan phase: @.claude/skills/moai/workflows/team-plan.md
 - Run phase: @.claude/skills/moai/workflows/team-run.md
 - Fix phase: @.claude/skills/moai/workflows/team-debug.md
+- Review: @.claude/skills/moai/workflows/team-review.md
 
+### Known Limitations
+
+Agent teams are experimental. Current limitations from Claude Code documentation:
+
+- No session resumption: /resume and /rewind do not restore in-process teammates. After resuming a session, the lead may attempt to message teammates that no longer exist. Spawn new teammates if this occurs.
+- Task status can lag: Teammates sometimes fail to mark tasks as completed, which blocks dependent tasks. Check whether work is actually done and update task status manually if needed.
+- Shutdown can be slow: Teammates finish their current request or tool call before shutting down.
+- One team per session: A lead can only manage one team at a time. Clean up the current team before starting a new one.
+- No nested teams: Teammates cannot spawn their own teams or teammates. Only the lead can manage the team.
+- Lead is fixed: The session that creates the team is the lead for its lifetime. Leadership cannot be transferred.
+- Permissions set at spawn: All teammates start with the lead's permission mode. Individual teammate modes can be changed after spawning via permissionMode in agent definitions.
+- Split panes require tmux or iTerm2: The default in-process mode works in any terminal. Split-pane mode is not supported in VS Code integrated terminal, Windows Terminal, or Ghostty.
 
 ### Prerequisites
 

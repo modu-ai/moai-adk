@@ -1,0 +1,14 @@
+statusline:
+  # Preset name: full, compact, minimal, custom
+  preset: "full"
+
+  # Individual segment toggles
+  segments:
+    model: true
+    context: true
+    output_style: true
+    directory: true
+    git_status: true
+    claude_version: true
+    moai_version: true
+    git_branch: true
