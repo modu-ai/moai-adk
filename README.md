@@ -62,7 +62,7 @@ We completely rewrote the Python-based MoAI-ADK (~73,000 lines) in Go.
 - **85-100%** test coverage
 - **28** specialized AI agents + **52** skills
 - **18** programming languages supported
-- **8** Claude Code hook events
+- **14** Claude Code hook events
 
 ---
 
@@ -416,7 +416,7 @@ moai-adk/
 │   │   └── quality/      # TRUST 5 quality gates, parallel validators
 │   ├── defs/             # Language definitions and framework detection
 │   ├── git/              # Git convention validation engine
-│   ├── hook/             # Compiled hook system (8 events, JSON protocol)
+│   ├── hook/             # Compiled hook system (14 events, JSON protocol)
 │   ├── loop/             # Ralph feedback loop (state machine, convergence detection)
 │   ├── lsp/              # LSP client (16+ languages, parallel server management)
 │   ├── manifest/         # File provenance tracking (SHA-256 integrity)
@@ -466,6 +466,35 @@ MoAI-ADK partners with **z.ai GLM 5** to provide a cost-effective AI development
 ---
 
 ## Frequently Asked Questions
+
+### Q: How do I customize which statusline segments are displayed?
+
+The statusline supports 4 display presets plus custom configuration:
+
+- **Full** (default): All 8 segments displayed
+- **Compact**: Model + Context + Git Status + Branch only
+- **Minimal**: Model + Context only
+- **Custom**: Pick individual segments
+
+Configure during `moai init` / `moai update -c` wizard, or edit `.moai/config/sections/statusline.yaml`:
+
+```yaml
+statusline:
+  preset: compact  # or full, minimal, custom
+  segments:
+    model: true
+    context: true
+    output_style: false
+    directory: false
+    git_status: true
+    claude_version: false
+    moai_version: false
+    git_branch: true
+```
+
+See [SPEC-STATUSLINE-001](.moai/specs/SPEC-STATUSLINE-001/spec.md) for details.
+
+---
 
 ### Q: What does the version indicator in statusline mean?
 
