@@ -285,6 +285,238 @@ func TestSettingsTemplateNewFields(t *testing.T) {
 	}
 }
 
+func TestSettingsTemplateAllHookEvents(t *testing.T) {
+	t.Parallel()
+
+	ctx := testContext("darwin")
+	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
+
+	var settings map[string]interface{}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+
+	hooks, ok := settings["hooks"].(map[string]interface{})
+	if !ok {
+		t.Fatal("missing hooks section")
+	}
+
+	allEvents := []string{
+		"SessionStart", "PreCompact", "SessionEnd",
+		"PreToolUse", "PostToolUse", "Stop",
+		"SubagentStop", "PostToolUseFailure", "Notification",
+		"SubagentStart", "UserPromptSubmit", "PermissionRequest",
+		"TeammateIdle", "TaskCompleted",
+	}
+	for _, event := range allEvents {
+		if _, ok := hooks[event]; !ok {
+			t.Errorf("missing hook event %q", event)
+		}
+	}
+}
+
+func TestSettingsTemplateNewHookStructure(t *testing.T) {
+	t.Parallel()
+
+	ctx := testContext("darwin")
+	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
+
+	var settings map[string]interface{}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+
+	hooksSection, ok := settings["hooks"].(map[string]interface{})
+	if !ok {
+		t.Fatal("missing hooks section")
+	}
+
+	newEvents := []struct {
+		event      string
+		scriptName string
+	}{
+		{"SubagentStop", "handle-subagent-stop.sh"},
+		{"PostToolUseFailure", "handle-post-tool-failure.sh"},
+		{"Notification", "handle-notification.sh"},
+		{"SubagentStart", "handle-subagent-start.sh"},
+		{"UserPromptSubmit", "handle-user-prompt-submit.sh"},
+		{"PermissionRequest", "handle-permission-request.sh"},
+		{"TeammateIdle", "handle-teammate-idle.sh"},
+		{"TaskCompleted", "handle-task-completed.sh"},
+	}
+
+	for _, ne := range newEvents {
+		t.Run(ne.event, func(t *testing.T) {
+			t.Parallel()
+
+			eventData, ok := hooksSection[ne.event]
+			if !ok {
+				t.Fatalf("missing hook event %q", ne.event)
+			}
+
+			// Hook config must be an array (Claude Code expects array of hook groups)
+			hookGroups, ok := eventData.([]interface{})
+			if !ok {
+				t.Fatalf("%q: expected array of hook groups, got %T", ne.event, eventData)
+			}
+			if len(hookGroups) == 0 {
+				t.Fatalf("%q: hook groups array is empty", ne.event)
+			}
+
+			// Each hook group must have a "hooks" array
+			group, ok := hookGroups[0].(map[string]interface{})
+			if !ok {
+				t.Fatalf("%q: hook group is not an object, got %T", ne.event, hookGroups[0])
+			}
+
+			hooksArr, ok := group["hooks"].([]interface{})
+			if !ok {
+				t.Fatalf("%q: missing or invalid 'hooks' array in hook group", ne.event)
+			}
+			if len(hooksArr) == 0 {
+				t.Fatalf("%q: hooks array is empty", ne.event)
+			}
+
+			// Each hook entry must have command, timeout, and type fields
+			hookEntry, ok := hooksArr[0].(map[string]interface{})
+			if !ok {
+				t.Fatalf("%q: hook entry is not an object, got %T", ne.event, hooksArr[0])
+			}
+
+			// Verify command contains the correct shell script name
+			command, ok := hookEntry["command"].(string)
+			if !ok {
+				t.Fatalf("%q: missing or non-string 'command' field", ne.event)
+			}
+			if !strings.Contains(command, ne.scriptName) {
+				t.Errorf("%q: command %q does not contain expected script name %q", ne.event, command, ne.scriptName)
+			}
+
+			// Verify timeout is 5 (number)
+			timeout, ok := hookEntry["timeout"]
+			if !ok {
+				t.Fatalf("%q: missing 'timeout' field", ne.event)
+			}
+			if timeout != float64(5) {
+				t.Errorf("%q: timeout = %v, want 5", ne.event, timeout)
+			}
+
+			// Verify type is "command"
+			hookType, ok := hookEntry["type"].(string)
+			if !ok {
+				t.Fatalf("%q: missing or non-string 'type' field", ne.event)
+			}
+			if hookType != "command" {
+				t.Errorf("%q: type = %q, want %q", ne.event, hookType, "command")
+			}
+		})
+	}
+}
+
+func TestSettingsTemplateNewHooksPlatformCompatibility(t *testing.T) {
+	t.Parallel()
+
+	newEvents := []struct {
+		event      string
+		scriptName string
+	}{
+		{"SubagentStop", "handle-subagent-stop.sh"},
+		{"PostToolUseFailure", "handle-post-tool-failure.sh"},
+		{"Notification", "handle-notification.sh"},
+		{"SubagentStart", "handle-subagent-start.sh"},
+		{"UserPromptSubmit", "handle-user-prompt-submit.sh"},
+		{"PermissionRequest", "handle-permission-request.sh"},
+		{"TeammateIdle", "handle-teammate-idle.sh"},
+		{"TaskCompleted", "handle-task-completed.sh"},
+	}
+
+	platforms := []string{"darwin", "linux", "windows"}
+
+	for _, platform := range platforms {
+		t.Run(platform, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := testContext(platform)
+			output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
+
+			var settings map[string]interface{}
+			if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
+				t.Fatalf("Unmarshal error: %v", err)
+			}
+
+			hooksSection, ok := settings["hooks"].(map[string]interface{})
+			if !ok {
+				t.Fatal("missing hooks section")
+			}
+
+			for _, ne := range newEvents {
+				t.Run(ne.event, func(t *testing.T) {
+					eventData, ok := hooksSection[ne.event]
+					if !ok {
+						t.Fatalf("missing hook event %q", ne.event)
+					}
+
+					hookGroups := eventData.([]interface{})
+					group := hookGroups[0].(map[string]interface{})
+					hooksArr := group["hooks"].([]interface{})
+					hookEntry := hooksArr[0].(map[string]interface{})
+					command := hookEntry["command"].(string)
+
+					switch platform {
+					case "darwin", "linux":
+						expected := `"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/` + ne.scriptName + `"`
+						if !strings.Contains(command, expected) {
+							t.Errorf("%s/%s: command %q does not contain expected path %q", platform, ne.event, command, expected)
+						}
+						// Should NOT have bash prefix
+						if strings.HasPrefix(command, "bash ") {
+							t.Errorf("%s/%s: command should not have bash prefix, got %q", platform, ne.event, command)
+						}
+					case "windows":
+						if !strings.HasPrefix(command, "bash ") {
+							t.Errorf("windows/%s: command should have bash prefix, got %q", ne.event, command)
+						}
+						if !strings.Contains(command, ne.scriptName) {
+							t.Errorf("windows/%s: command %q does not contain script name %q", ne.event, command, ne.scriptName)
+						}
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestSettingsTemplateHookEventCount(t *testing.T) {
+	t.Parallel()
+
+	ctx := testContext("darwin")
+	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
+
+	var settings map[string]interface{}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+
+	hooks, ok := settings["hooks"].(map[string]interface{})
+	if !ok {
+		t.Fatal("missing hooks section")
+	}
+
+	const expectedCount = 14
+	if len(hooks) != expectedCount {
+		t.Errorf("hook event count = %d, want %d; events: %v", len(hooks), expectedCount, hookKeys(hooks))
+	}
+}
+
+// hookKeys returns sorted keys from a map for diagnostic output.
+func hookKeys(m map[string]interface{}) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 // --- .mcp.json.tmpl tests ---
 
 func TestMCPTemplateValidJSON(t *testing.T) {
