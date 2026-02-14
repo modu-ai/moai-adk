@@ -91,6 +91,126 @@
           }
         ]
       }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-subagent-stop.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-subagent-stop.sh\"",
+{{- end}}
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool-failure.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool-failure.sh\"",
+{{- end}}
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-notification.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-notification.sh\"",
+{{- end}}
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-subagent-start.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-subagent-start.sh\"",
+{{- end}}
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-user-prompt-submit.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-user-prompt-submit.sh\"",
+{{- end}}
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-permission-request.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-permission-request.sh\"",
+{{- end}}
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "TeammateIdle": [
+      {
+        "hooks": [
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-teammate-idle.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-teammate-idle.sh\"",
+{{- end}}
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-task-completed.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-task-completed.sh\"",
+{{- end}}
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {

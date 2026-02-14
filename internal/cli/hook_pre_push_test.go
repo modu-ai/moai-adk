@@ -71,14 +71,14 @@ func TestReadStdinLines_Empty(t *testing.T) {
 }
 
 func TestHookCmd_PrePushSubcommandCount(t *testing.T) {
-	// The hook command should now have 9 subcommands (8 original + pre-push).
+	// The hook command should now have 16 subcommands (8 original + pre-push + 7 new events).
 	count := len(hookCmd.Commands())
-	if count != 9 {
+	if count != 16 {
 		names := make([]string, 0, count)
 		for _, cmd := range hookCmd.Commands() {
 			names = append(names, cmd.Name())
 		}
-		t.Errorf("hook should have 9 subcommands, got %d: %v", count, names)
+		t.Errorf("hook should have 16 subcommands, got %d: %v", count, names)
 	}
 }
 

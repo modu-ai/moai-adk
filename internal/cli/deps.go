@@ -91,6 +91,13 @@ func InitDependencies() {
 	deps.HookRegistry.Register(hook.NewPreToolHandlerWithScanner(deps.Config, hook.DefaultSecurityPolicy(), securityScanner))
 	deps.HookRegistry.Register(hook.NewPostToolHandlerWithDiagnostics(diagnosticsCollector))
 	deps.HookRegistry.Register(hook.NewCompactHandler())
+	deps.HookRegistry.Register(hook.NewPostToolUseFailureHandler())
+	deps.HookRegistry.Register(hook.NewNotificationHandler())
+	deps.HookRegistry.Register(hook.NewSubagentStartHandler())
+	deps.HookRegistry.Register(hook.NewUserPromptSubmitHandler())
+	deps.HookRegistry.Register(hook.NewPermissionRequestHandler())
+	deps.HookRegistry.Register(hook.NewTeammateIdleHandler())
+	deps.HookRegistry.Register(hook.NewTaskCompletedHandler())
 }
 
 // GetDeps returns the current Dependencies instance.

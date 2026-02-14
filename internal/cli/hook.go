@@ -32,6 +32,13 @@ func init() {
 		{"session-end", "Handle session end event", hook.EventSessionEnd},
 		{"stop", "Handle stop event", hook.EventStop},
 		{"compact", "Handle pre-compact event", hook.EventPreCompact},
+		{"post-tool-failure", "Handle post-tool-use failure event", hook.EventPostToolUseFailure},
+		{"notification", "Handle notification event", hook.EventNotification},
+		{"subagent-start", "Handle subagent start event", hook.EventSubagentStart},
+		{"user-prompt-submit", "Handle user prompt submit event", hook.EventUserPromptSubmit},
+		{"permission-request", "Handle permission request event", hook.EventPermissionRequest},
+		{"teammate-idle", "Handle teammate idle event", hook.EventTeammateIdle},
+		{"task-completed", "Handle task completed event", hook.EventTaskCompleted},
 	}
 
 	for _, sub := range hookSubcommands {
@@ -84,6 +91,11 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 
 	if writeErr := deps.HookProtocol.WriteOutput(os.Stdout, output); writeErr != nil {
 		return fmt.Errorf("write hook output: %w", writeErr)
+	}
+
+	// Exit code 2 for explicit exit code (TeammateIdle, TaskCompleted)
+	if output != nil && output.ExitCode == 2 {
+		os.Exit(2)
 	}
 
 	// Exit code 2 for deny decisions per Claude Code protocol
@@ -170,6 +182,11 @@ func runAgentHook(cmd *cobra.Command, args []string) error {
 
 	if writeErr := deps.HookProtocol.WriteOutput(os.Stdout, output); writeErr != nil {
 		return fmt.Errorf("write hook output: %w", writeErr)
+	}
+
+	// Exit code 2 for explicit exit code (TeammateIdle, TaskCompleted)
+	if output != nil && output.ExitCode == 2 {
+		os.Exit(2)
 	}
 
 	// Exit code 2 for deny decisions per Claude Code protocol

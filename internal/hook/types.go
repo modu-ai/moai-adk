@@ -36,6 +36,27 @@ const (
 
 	// EventPreCompact is triggered before context compaction.
 	EventPreCompact EventType = "PreCompact"
+
+	// EventPostToolUseFailure is triggered when a tool execution fails.
+	EventPostToolUseFailure EventType = "PostToolUseFailure"
+
+	// EventNotification is triggered when Claude Code sends a notification.
+	EventNotification EventType = "Notification"
+
+	// EventSubagentStart is triggered when a subagent starts.
+	EventSubagentStart EventType = "SubagentStart"
+
+	// EventUserPromptSubmit is triggered when a user submits a prompt.
+	EventUserPromptSubmit EventType = "UserPromptSubmit"
+
+	// EventPermissionRequest is triggered when a permission check occurs.
+	EventPermissionRequest EventType = "PermissionRequest"
+
+	// EventTeammateIdle is triggered when a teammate goes idle in Agent Teams.
+	EventTeammateIdle EventType = "TeammateIdle"
+
+	// EventTaskCompleted is triggered when a task is completed in Agent Teams.
+	EventTaskCompleted EventType = "TaskCompleted"
 )
 
 // ValidEventTypes returns all valid event types.
@@ -48,6 +69,13 @@ func ValidEventTypes() []EventType {
 		EventStop,
 		EventSubagentStop,
 		EventPreCompact,
+		EventPostToolUseFailure,
+		EventNotification,
+		EventSubagentStart,
+		EventUserPromptSubmit,
+		EventPermissionRequest,
+		EventTeammateIdle,
+		EventTaskCompleted,
 	}
 }
 
@@ -152,6 +180,13 @@ type HookOutput struct {
 
 	// For PreToolUse/PostToolUse/PermissionRequest: hook-specific output
 	HookSpecificOutput *HookSpecificOutput `json:"hookSpecificOutput,omitempty"`
+
+	// UpdatedInput is used by UserPromptSubmit to modify the user's prompt.
+	UpdatedInput string `json:"updatedInput,omitempty"`
+
+	// ExitCode allows handlers to signal a specific process exit code.
+	// Not serialized to JSON. Used for exit code 2 protocol (TeammateIdle, TaskCompleted).
+	ExitCode int `json:"-"`
 
 	// Internal data (not serialized to JSON)
 	Data json.RawMessage `json:"-"`
@@ -258,6 +293,37 @@ func NewPostToolBlockOutput(reason string, additionalContext string) *HookOutput
 		}
 	}
 	return output
+}
+
+// NewPermissionRequestOutput creates a HookOutput for PermissionRequest events.
+func NewPermissionRequestOutput(decision, reason string) *HookOutput {
+	return &HookOutput{
+		HookSpecificOutput: &HookSpecificOutput{
+			HookEventName:            "PermissionRequest",
+			PermissionDecision:       decision,
+			PermissionDecisionReason: reason,
+		},
+	}
+}
+
+// NewUserPromptBlockOutput creates a HookOutput that blocks user prompt processing.
+func NewUserPromptBlockOutput(reason string) *HookOutput {
+	return &HookOutput{
+		Decision: DecisionBlock,
+		Reason:   reason,
+	}
+}
+
+// NewTeammateKeepWorkingOutput creates a HookOutput that signals exit code 2 for TeammateIdle.
+// Exit code 2 tells Claude Code to keep the teammate working.
+func NewTeammateKeepWorkingOutput() *HookOutput {
+	return &HookOutput{ExitCode: 2}
+}
+
+// NewTaskRejectedOutput creates a HookOutput that signals exit code 2 for TaskCompleted.
+// Exit code 2 tells Claude Code to reject the task completion.
+func NewTaskRejectedOutput() *HookOutput {
+	return &HookOutput{ExitCode: 2}
 }
 
 // Handler processes a specific hook event type.

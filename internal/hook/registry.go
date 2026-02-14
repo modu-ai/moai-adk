@@ -143,10 +143,21 @@ func getBlockReason(output *HookOutput) string {
 // PreToolUse and PostToolUse events return HookOutput with hookSpecificOutput.
 func (r *registry) defaultOutputForEvent(event EventType) *HookOutput {
 	switch event {
-	case EventStop, EventSessionEnd, EventSessionStart, EventPreCompact:
+	case EventStop, EventSessionEnd, EventSessionStart, EventPreCompact,
+		EventSubagentStop, EventPostToolUseFailure, EventNotification,
+		EventSubagentStart, EventUserPromptSubmit, EventTeammateIdle,
+		EventTaskCompleted:
 		// These events do NOT use hookSpecificOutput per Claude Code protocol
 		// Return empty JSON {}
 		return &HookOutput{}
+	case EventPermissionRequest:
+		// PermissionRequest defaults to "ask" (defer to user)
+		return &HookOutput{
+			HookSpecificOutput: &HookSpecificOutput{
+				HookEventName:      "PermissionRequest",
+				PermissionDecision: DecisionAsk,
+			},
+		}
 	case EventPreToolUse:
 		return NewAllowOutput()
 	case EventPostToolUse:
