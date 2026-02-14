@@ -201,7 +201,7 @@
       "Read(./.env)",
       "Read(./.env.*)"
     ],
-    "defaultMode": "default",
+    "defaultMode": "acceptEdits",
     "deny": [
       "Read(./secrets/**)",
       "Read(~/.ssh/**)",

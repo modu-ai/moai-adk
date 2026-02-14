@@ -38,6 +38,7 @@ None
 - **Model Policy Application**: `ApplyModelPolicy` now applies for all policy values including "high"
 - **Agent Teams Documentation**: Added token cost awareness, team workflow references, and known limitations to spec-workflow.md
 - **Workflow Skills**: Updated run.md (v2.1.0), sync.md (v3.1.0), team-review.md (v1.1.0)
+- **Permission Mode**: Changed default `permissions.defaultMode` from `default` to `acceptEdits` for smoother agent workflows
 
 ### Fixed
 
@@ -90,6 +91,7 @@ moai version
 - **모델 정책 적용**: `ApplyModelPolicy`가 "high" 포함 모든 정책 값에 대해 적용
 - **에이전트 팀 문서화**: spec-workflow.md에 토큰 비용 인식, 팀 워크플로우 참조, 알려진 제한 사항 추가
 - **워크플로우 스킬**: run.md (v2.1.0), sync.md (v3.1.0), team-review.md (v1.1.0) 업데이트
+- **권한 모드**: 기본 `permissions.defaultMode`를 `default`에서 `acceptEdits`로 변경하여 에이전트 워크플로우 원활화
 
 ### 수정됨 (Fixed)
 

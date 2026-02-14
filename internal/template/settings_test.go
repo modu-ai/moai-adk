@@ -219,8 +219,8 @@ func TestSettingsTemplatePermissions(t *testing.T) {
 		t.Fatal("missing permissions section")
 	}
 
-	if perms["defaultMode"] != "default" {
-		t.Errorf("permissions.defaultMode = %v, want %q", perms["defaultMode"], "default")
+	if perms["defaultMode"] != "acceptEdits" {
+		t.Errorf("permissions.defaultMode = %v, want %q", perms["defaultMode"], "acceptEdits")
 	}
 
 	allow, ok := perms["allow"].([]interface{})
