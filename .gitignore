@@ -10,6 +10,9 @@
 # Go Build Artifacts
 # ===========================================
 bin/
+/moai
+/moai_test
+/quality.test
 *.exe
 *.exe~
 *.dll
@@ -17,8 +20,10 @@ bin/
 *.dylib
 cover.out
 cover.html
+coverage.out
 cpu.prof
 mem.prof
+*.test
 
 # ===========================================
 # Build Artifacts & Distribution
@@ -201,6 +206,11 @@ dist-ssr/
 .vercel/
 .netlify/
 .firebase/
+
+# ===========================================
+# Pencil Design Files
+# ===========================================
+pencil/
 
 # ===========================================
 # MoAI Local Data (user-specific, not shared)
