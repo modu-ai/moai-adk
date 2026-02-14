@@ -141,14 +141,14 @@ type VersionData struct {
 
 // Segment key constants identify individual statusline segments.
 const (
-	SegmentModel        = "model"
-	SegmentContext      = "context"
-	SegmentOutputStyle  = "output_style"
-	SegmentDirectory    = "directory"
-	SegmentGitStatus    = "git_status"
+	SegmentModel         = "model"
+	SegmentContext       = "context"
+	SegmentOutputStyle   = "output_style"
+	SegmentDirectory     = "directory"
+	SegmentGitStatus     = "git_status"
 	SegmentClaudeVersion = "claude_version"
-	SegmentMoaiVersion  = "moai_version"
-	SegmentGitBranch    = "git_branch"
+	SegmentMoaiVersion   = "moai_version"
+	SegmentGitBranch     = "git_branch"
 )
 
 // contextLevel represents the severity level for context window usage coloring.

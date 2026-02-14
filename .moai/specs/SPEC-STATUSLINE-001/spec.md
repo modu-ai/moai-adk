@@ -6,7 +6,7 @@
 | -------- | ------------------------------------------------------------------ |
 | SPEC ID  | SPEC-STATUSLINE-001                                                |
 | Title    | Statusline Segment Configuration via Wizard and YAML Config        |
-| Status   | Planned                                                            |
+| Status   | Implemented                                                        |
 | Priority | P1 (High)                                                          |
 | Created  | 2026-02-14                                                         |
 | Domain   | internal/statusline, internal/cli/wizard, internal/cli, internal/template |

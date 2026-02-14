@@ -25,7 +25,7 @@ const (
 	QualityYAML     = "quality.yaml"
 	WorkflowYAML    = "workflow.yaml"
 	ProjectYAML     = "project.yaml"
-	GitStrategyYAML  = "git-strategy.yaml"
-	SystemYAML       = "system.yaml"
-	StatuslineYAML   = "statusline.yaml"
+	GitStrategyYAML = "git-strategy.yaml"
+	SystemYAML      = "system.yaml"
+	StatuslineYAML  = "statusline.yaml"
 )

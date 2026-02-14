@@ -9,6 +9,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.4.0] - 2026-02-14
+
+### Summary
+
+Feature release adding statusline segment configuration (SPEC-STATUSLINE-001) and enhanced workflow documentation. Users can now customize which statusline segments are displayed via the init/update wizard or YAML configuration.
+
+### Breaking Changes
+
+None
+
+### Added
+
+- **Statusline Segment Configuration** (SPEC-STATUSLINE-001): Configurable statusline display with preset and per-segment controls
+  - 4 presets: Full (all 8 segments), Compact (model, context, git status, branch), Minimal (model, context only), Custom (pick individual segments)
+  - New `statusline.yaml` configuration file at `.moai/config/sections/statusline.yaml`
+  - Wizard questions for statusline preset and individual segment selection during `moai init` / `moai update -c`
+  - i18n translations for Korean, Japanese, and Chinese
+  - Renderer-level segment filtering with backward compatibility (nil config = all enabled)
+- **Extended Run Workflow Quality Checks**: Code complexity analysis, dead code detection, side effect analysis
+- **Post-Implementation Review Phase** (Phase 2.7): Multi-dimensional review iteration for run workflow
+- **Deployment Readiness Check** (Phase 0 in sync workflow): Test verification, migration detection, backward compatibility
+- **UX Review Perspective**: Added 4th review dimension to team-review workflow
+
+### Changed
+
+- **Development Mode**: Changed default `development_mode` from `ddd` to `hybrid` in quality.yaml
+- **Model Policy Application**: `ApplyModelPolicy` now applies for all policy values including "high"
+- **Agent Teams Documentation**: Added token cost awareness, team workflow references, and known limitations to spec-workflow.md
+- **Workflow Skills**: Updated run.md (v2.1.0), sync.md (v3.1.0), team-review.md (v1.1.0)
+
+### Fixed
+
+- **Model Policy Skip Bug**: Fixed `moai init` and `moai update` skipping model policy application when policy was "high"
+
+### Testing
+
+- Statusline: 281 lines covering segment config loading, filtering, preset mapping, and renderer behavior
+- Wizard: 356 lines covering question generation, conditional visibility, and answer saving
+- Update command: 261 lines covering preset-to-segments conversion and config file writing
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
 ## [2.3.1] - 2026-02-12
 
 ### Summary

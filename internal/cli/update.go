@@ -23,6 +23,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/merge"
 	"github.com/modu-ai/moai-adk/internal/shell"
+	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/pkg/version"
 	"github.com/spf13/cobra"
@@ -1754,8 +1755,8 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 
 // allStatuslineSegments lists all supported statusline segment names in display order.
 var allStatuslineSegments = []string{
-	"model", "context", "output_style", "directory",
-	"git_status", "claude_version", "moai_version", "git_branch",
+	statusline.SegmentModel, statusline.SegmentContext, statusline.SegmentOutputStyle, statusline.SegmentDirectory,
+	statusline.SegmentGitStatus, statusline.SegmentClaudeVersion, statusline.SegmentMoaiVersion, statusline.SegmentGitBranch,
 }
 
 // presetToSegments converts a statusline preset name and optional custom segment map
@@ -1766,14 +1767,14 @@ func presetToSegments(preset string, custom map[string]bool) map[string]bool {
 	switch preset {
 	case "compact":
 		compactEnabled := map[string]bool{
-			"model": true, "context": true, "git_status": true, "git_branch": true,
+			statusline.SegmentModel: true, statusline.SegmentContext: true, statusline.SegmentGitStatus: true, statusline.SegmentGitBranch: true,
 		}
 		for _, seg := range allStatuslineSegments {
 			segments[seg] = compactEnabled[seg]
 		}
 	case "minimal":
 		minimalEnabled := map[string]bool{
-			"model": true, "context": true,
+			statusline.SegmentModel: true, statusline.SegmentContext: true,
 		}
 		for _, seg := range allStatuslineSegments {
 			segments[seg] = minimalEnabled[seg]

@@ -117,11 +117,11 @@ Output: deployment_readiness_report with test_status, migrations_needed, env_cha
 
 If overall status is BLOCKED: Present blocking issues to user and exit unless user overrides.
 
-### Phase 0: Deployment Readiness Check
+### Phase 0.5: Quality Verification
 
-Purpose: Verify implementation is deployment-ready before quality verification and documentation sync. Catches deployment-blocking issues early.
+Purpose: Detect project language and run language-specific diagnostics (tests, linter, type checker) in parallel, followed by code review.
 
-#### Step 0.1: Test Passage Verification
+#### Step 0.5.1: Language Detection
 
 Check indicator files in priority order (first match wins):
 
@@ -143,7 +143,7 @@ Check indicator files in priority order (first match wins):
 - Scala: build.sbt, build.sc
 - Fallback: unknown (skip language-specific tools, proceed to code review)
 
-#### Step 2: Execute Diagnostics in Parallel
+#### Step 0.5.2: Execute Diagnostics in Parallel
 
 Launch three background tasks simultaneously:
 
@@ -153,14 +153,14 @@ Launch three background tasks simultaneously:
 
 Collect all results with timeouts (180s for tests, 120s for others). Handle partial failures gracefully.
 
-#### Step 3: Handle Test Failures
+#### Step 0.5.3: Handle Test Failures
 
 If any tests fail, use AskUserQuestion:
 
 - Continue: Proceed with sync despite failures
 - Abort: Stop sync, fix tests first (exit to Phase 4 graceful exit)
 
-#### Step 4: Code Review
+#### Step 0.5.4: Code Review
 
 Agent: manager-quality subagent
 
@@ -173,7 +173,7 @@ The sync phase enforces LSP-based quality gates as configured in quality.yaml:
 - Maximum 10 warnings allowed (lsp_quality_gates.sync.max_warnings: 10)
 - Clean LSP state required (lsp_quality_gates.sync.require_clean_lsp: true)
 
-#### Step 5: Generate Quality Report
+#### Step 0.5.5: Generate Quality Report
 
 Aggregate all results into a quality report showing status for test-runner, linter, type-checker, and code-review. Determine overall status (PASS or WARN).
 
