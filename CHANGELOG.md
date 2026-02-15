@@ -9,6 +9,120 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.4.1] - 2026-02-15
+
+### Summary
+
+Maintenance release modernizing the TUI system with charmbracelet/huh form components and glamour markdown renderer (SPEC-UI-003). This update replaces custom Bubble Tea components with industry-standard Charmbracelet libraries, providing modern visual styling, accessibility support, and enhanced user experience.
+
+### Breaking Changes
+
+None
+
+### Added
+
+- **Modern Form System** (SPEC-UI-003): Replaced custom form components with charmbracelet/huh v0.8.0
+  - Select/MultiSelect: Modern visual styling with rounded borders and proper keyboard navigation
+  - Input: Bordered containers with placeholder text and validation callbacks
+  - Confirm: Clear visual distinction for yes/no prompts
+  - Form+Groups: Page-based progression for multi-step wizards
+  - MoAI custom theme: Brand colors (#DA7756 primary, #7C3AED secondary) with adaptive light/dark support
+  - Accessibility: NoColor mode for headless/CI environments
+- **Markdown Rendering**: charmbracelet/glamour v0.10.0 for terminal documentation display
+  - Auto light/dark theme detection
+  - Syntax highlighting for code blocks
+  - Professional layout for help text
+- **Layout Enhancement**: Lipgloss advanced features (RoundedBorder, responsive width, terminal detection)
+- **Progress Components**: Animated Bubbles spinner and progress bar with MoAI theme colors
+
+### Changed
+
+- **Form Components**: Rewrote selector.go, checkbox.go, prompt.go, progress.go with huh/Bubbles integration
+- **Wizard System**: Rebuilt wizard.go using huh.Form + huh.Group for multi-step forms
+- **Test Architecture**: Extracted pure functions (buildSelectField, buildMultiSelectField, buildInputField, buildConfirmField) for 100% test coverage
+- **File Cleanup**: Removed runner.go and runner_test.go (replaced by huh Form.Run pattern)
+
+### Fixed
+
+- **Lint QF1001**: Applied De Morgan's law to internal/rank/transcript.go:218 for staticcheck compliance
+- **Windows Test Compatibility**: Added USERPROFILE environment variable to 5 test functions in internal/rank/transcript_test.go
+
+### Testing
+
+- UI package: 73.5% coverage (220 tests passing with -race flag)
+- Wizard package: 80.5% coverage
+- Pure functions: 100% coverage
+- Coverage gap: Structural limitation from TTY-dependent wrappers (huh.Form.Run, tea.Program.Run)
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.4.1] - 2026-02-15 (한국어)
+
+### 요약
+
+charmbracelet/huh 폼 컴포넌트와 glamour 마크다운 렌더러를 사용하여 TUI 시스템을 현대화하는 유지보수 릴리스입니다 (SPEC-UI-003). 이 업데이트는 커스텀 Bubble Tea 컴포넌트를 업계 표준 Charmbracelet 라이브러리로 교체하여 현대적인 비주얼 스타일링, 접근성 지원 및 향상된 사용자 경험을 제공합니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 추가됨 (Added)
+
+- **현대적인 폼 시스템** (SPEC-UI-003): 커스텀 폼 컴포넌트를 charmbracelet/huh v0.8.0으로 교체
+  - Select/MultiSelect: 둥근 테두리와 적절한 키보드 탐색을 갖춘 현대적인 비주얼 스타일링
+  - Input: 플레이스홀더 텍스트 및 유효성 검사 콜백이 있는 테두리 컨테이너
+  - Confirm: 예/아니오 프롬프트의 명확한 시각적 구분
+  - Form+Groups: 다단계 마법사를 위한 페이지 기반 진행
+  - MoAI 커스텀 테마: 적응형 라이트/다크 지원이 포함된 브랜드 색상 (#DA7756 기본, #7C3AED 보조)
+  - 접근성: 헤드리스/CI 환경을 위한 NoColor 모드
+- **마크다운 렌더링**: 터미널 문서 표시를 위한 charmbracelet/glamour v0.10.0
+  - 자동 라이트/다크 테마 감지
+  - 코드 블록 구문 강조
+  - 도움말 텍스트의 전문적인 레이아웃
+- **레이아웃 개선**: Lipgloss 고급 기능 (RoundedBorder, 반응형 너비, 터미널 감지)
+- **진행 컴포넌트**: MoAI 테마 색상이 적용된 애니메이션 Bubbles 스피너 및 진행 표시줄
+
+### 변경됨 (Changed)
+
+- **폼 컴포넌트**: huh/Bubbles 통합으로 selector.go, checkbox.go, prompt.go, progress.go 재작성
+- **마법사 시스템**: 다단계 폼을 위해 huh.Form + huh.Group을 사용하여 wizard.go 재구축
+- **테스트 아키텍처**: 100% 테스트 커버리지를 위해 순수 함수 추출 (buildSelectField, buildMultiSelectField, buildInputField, buildConfirmField)
+- **파일 정리**: runner.go 및 runner_test.go 제거 (huh Form.Run 패턴으로 대체)
+
+### 수정됨 (Fixed)
+
+- **Lint QF1001**: staticcheck 준수를 위해 internal/rank/transcript.go:218에 De Morgan의 법칙 적용
+- **Windows 테스트 호환성**: internal/rank/transcript_test.go의 5개 테스트 함수에 USERPROFILE 환경 변수 추가
+
+### 테스트 (Testing)
+
+- UI 패키지: 73.5% 커버리지 (-race 플래그로 220개 테스트 통과)
+- 마법사 패키지: 80.5% 커버리지
+- 순수 함수: 100% 커버리지
+- 커버리지 갭: TTY 의존 래퍼의 구조적 제한 (huh.Form.Run, tea.Program.Run)
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.4.0] - 2026-02-14
 
 ### Summary
