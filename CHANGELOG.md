@@ -9,6 +9,96 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.4.3] - 2026-02-16
+
+### Summary
+
+TUI modernization release with lipgloss rounded box design across all CLI commands and SKILL.md routing fix. This update replaces plain text output and `======` separators with modern styled cards for consistent user experience.
+
+### Breaking Changes
+
+None
+
+### Added
+
+- **Shared Rendering Primitives**: New `internal/cli/render.go` with reusable lipgloss functions (`renderCard`, `renderSuccessCard`, `renderInfoCard`, `renderStatusLine`, `renderSummaryLine`, `renderKeyValue`)
+- **Worktree Rendering**: New `internal/cli/worktree/render.go` for worktree-specific styled output
+- **Styled Console Reporter**: Added `StyledConsoleReporter` in `internal/core/project/reporter.go` for colored project detection output
+
+### Changed
+
+- **CLI Output**: Modernized all CLI commands with rounded box design:
+  - `moai status`: Replaced `======` separator with styled card showing project info
+  - `moai doctor`: Replaced `======` separator with styled card + colored status icons
+  - `moai version`: Added styled card for version display
+  - `moai init`: Added styled success card for completion output
+  - `moai cc` / `moai glm`: Replaced emoji with styled success cards
+  - `moai hook list`: Replaced `======` separator with styled card
+  - `moai rank`: All 7 subcommands now use styled cards
+  - `moai worktree`: All subcommands (list, status, new, done, clean, sync) use styled output
+- **SelectHeight**: Added chrome padding compensation (2 lines) to prevent UI cutoff in huh selectors
+
+### Fixed
+
+- **SKILL.md Routing**: Prevented `$ARGUMENTS` inline expansion from contaminating intent router logic by isolating to dedicated "Raw User Input" section with [HARD] enforcement on Priority 1 subcommand matching
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.4.3] - 2026-02-16 (한국어)
+
+### 요약
+
+모든 CLI 명령어에 lipgloss 라운드 박스 디자인을 적용하고 SKILL.md 라우팅 버그를 수정한 TUI 현대화 릴리스입니다. 이 업데이트는 plain text 출력과 `======` 구분선을 모던한 스타일 카드로 대체하여 일관된 사용자 경험을 제공합니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 추가됨 (Added)
+
+- **공유 렌더링 기능**: `internal/cli/render.go`에 재사용 가능한 lipgloss 함수 추가 (`renderCard`, `renderSuccessCard`, `renderInfoCard`, `renderStatusLine`, `renderSummaryLine`, `renderKeyValue`)
+- **Worktree 렌더링**: worktree 전용 스타일 출력을 위한 `internal/cli/worktree/render.go` 추가
+- **스타일 콘솔 리포터**: 프로젝트 감지 출력에 색상을 적용한 `StyledConsoleReporter` 추가
+
+### 변경됨 (Changed)
+
+- **CLI 출력**: 모든 CLI 명령어 라운드 박스 디자인으로 현대화:
+  - `moai status`: `======` 구분선을 프로젝트 정보 스타일 카드로 대체
+  - `moai doctor`: `======` 구분선을 색상 상태 아이콘이 있는 스타일 카드로 대체
+  - `moai version`: 버전 표시용 스타일 카드 추가
+  - `moai init`: 완료 출력용 스타일 성공 카드 추가
+  - `moai cc` / `moai glm`: 이모지를 스타일 성공 카드로 대체
+  - `moai hook list`: `======` 구분선을 스타일 카드로 대체
+  - `moai rank`: 7개 서브커맨드 모두 스타일 카드 사용
+  - `moai worktree`: 모든 서브커맨드 (list, status, new, done, clean, sync) 스타일 출력 사용
+- **SelectHeight**: huh 셀렉터에서 UI 잘림 방지를 위한 chrome 패딩 보정 (2줄) 추가
+
+### 수정됨 (Fixed)
+
+- **SKILL.md 라우팅**: `$ARGUMENTS` 인라인 확장이 인텐트 라우터 로직을 오염시키는 문제 수정 - 전용 "Raw User Input" 섹션으로 격리하고 Priority 1 서브커맨드 매칭에 [HARD] 강제 적용
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.4.2] - 2026-02-15
 
 ### Summary
