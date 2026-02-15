@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/defs"
@@ -34,6 +35,19 @@ const (
 	// maxConfigSize is the maximum allowed size for a config YAML file to prevent DoS
 	maxConfigSize = 10 * 1024 * 1024 // 10MB
 )
+
+// CLI output styles for consistent MoAI-themed terminal output.
+var (
+	cliSuccess = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#059669", Dark: "#10B981"})
+	cliError   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#DC2626", Dark: "#EF4444"})
+	cliMuted   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#9CA3AF", Dark: "#6B7280"})
+	cliPrimary = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#C45A3C", Dark: "#DA7756"})
+	cliBorder  = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#D1D5DB", Dark: "#4B5563"})
+)
+
+func symSuccess() string  { return cliSuccess.Render("\u2713") }
+func symError() string    { return cliError.Render("\u2717") }
+func symProgress() string { return cliMuted.Render("\u25CB") }
 
 var updateCmd = &cobra.Command{
 	Use:   "update",
@@ -305,7 +319,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		if reporter != nil {
 			reporter.StepComplete("Already up-to-date")
 		}
-		_, _ = fmt.Fprintln(out, "\n✓ Template version up-to-date. Skipping sync.")
+		_, _ = fmt.Fprintf(out, "\n%s Template version up-to-date. Skipping sync.\n", symSuccess())
 		return nil
 	}
 
@@ -405,18 +419,18 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			message: "Backing up configuration",
 			execute: func() error {
 				if forceBackup {
-					_, _ = fmt.Fprintf(out, "  ○ Skipping backup (--force mode)...\n")
+					_, _ = fmt.Fprintf(out, "  %s Skipping backup (--force mode)...\n", symProgress())
 					return nil
 				}
 
-				_, _ = fmt.Fprintf(out, "  ○ Backing up .moai/config...")
+				_, _ = fmt.Fprintf(out, "  %s Backing up .moai/config...", symProgress())
 				configBackupPath, backupErr := backupMoaiConfig(projectRoot)
 				if backupErr != nil {
-					_, _ = fmt.Fprintf(out, "\r  ✗ Backup failed: %v\n", backupErr)
+					_, _ = fmt.Fprintf(out, "\r  %s Backup failed: %v\n", symError(), backupErr)
 					return backupErr
 				}
 				if configBackupPath != "" {
-					_, _ = fmt.Fprintf(out, "\r  ✓ .moai/config backed up\n")
+					_, _ = fmt.Fprintf(out, "\r  %s .moai/config backed up\n", symSuccess())
 				} else {
 					_, _ = fmt.Fprintln(out, "\r  - No config to backup")
 				}
@@ -434,7 +448,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			name:    "Deploy Templates",
 			message: "Deploying template files",
 			execute: func() error {
-				_, _ = fmt.Fprintf(out, "  ○ Deploying templates...")
+				_, _ = fmt.Fprintf(out, "  %s Deploying templates...", symProgress())
 
 				// Build TemplateContext with detected paths for template rendering
 				homeDir, _ := os.UserHomeDir()
@@ -448,10 +462,10 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				)
 
 				if deployErr := deployer.Deploy(ctx, projectRoot, mgr, tmplCtx); deployErr != nil {
-					_, _ = fmt.Fprintf(out, "\r  ✗ Deployment failed: %v\n", deployErr)
+					_, _ = fmt.Fprintf(out, "\r  %s Deployment failed: %v\n", symError(), deployErr)
 					return fmt.Errorf("deploy templates: %w", deployErr)
 				}
-				_, _ = fmt.Fprintln(out, "\r  ✓ Templates deployed")
+				_, _ = fmt.Fprintf(out, "\r  %s Templates deployed\n", symSuccess())
 				return nil
 			},
 		},
@@ -477,18 +491,18 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 
 		// Special handling for backup step to capture backup path
 		if step.name == "Backup" && !forceBackup {
-			_, _ = fmt.Fprintf(out, "  ○ Backing up .moai/config...")
+			_, _ = fmt.Fprintf(out, "  %s Backing up .moai/config...", symProgress())
 			var backupErr error
 			configBackupPath, backupErr = backupMoaiConfig(projectRoot)
 			if backupErr != nil {
-				_, _ = fmt.Fprintf(out, "\r  ✗ Backup failed: %v\n", backupErr)
+				_, _ = fmt.Fprintf(out, "\r  %s Backup failed: %v\n", symError(), backupErr)
 				if reporter != nil {
 					reporter.StepError(backupErr)
 				}
 				return backupErr
 			}
 			if configBackupPath != "" {
-				_, _ = fmt.Fprintf(out, "\r  ✓ .moai/config backed up\n")
+				_, _ = fmt.Fprintf(out, "\r  %s .moai/config backed up\n", symSuccess())
 			} else {
 				_, _ = fmt.Fprintln(out, "\r  - No config to backup")
 			}
@@ -501,18 +515,18 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				if reporter != nil {
 					reporter.StepStart("Restore Settings", "Restoring user settings")
 				}
-				_, _ = fmt.Fprintf(out, "  ○ Restoring user settings...")
+				_, _ = fmt.Fprintf(out, "  %s Restoring user settings...", symProgress())
 				if restoreErr := restoreMoaiConfig(projectRoot, configBackupPath); restoreErr != nil {
-					_, _ = fmt.Fprintf(out, "\r  ✗ Restore failed: %v\n", restoreErr)
+					_, _ = fmt.Fprintf(out, "\r  %s Restore failed: %v\n", symError(), restoreErr)
 					if reporter != nil {
 						reporter.StepError(restoreErr)
 					}
 					return restoreErr
 				}
-				_, _ = fmt.Fprintln(out, "\r  ✓ User settings restored")
+				_, _ = fmt.Fprintf(out, "\r  %s User settings restored\n", symSuccess())
 				deletedCount := cleanup_old_backups(projectRoot, 5)
 				if deletedCount > 0 {
-					_, _ = fmt.Fprintf(out, "  ✓ Cleaned up %d old backup(s)\n", deletedCount)
+					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", symSuccess(), deletedCount)
 				}
 				if reporter != nil {
 					reporter.StepComplete("Settings restored")
@@ -537,26 +551,28 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		}
 	}
 
-	_, _ = fmt.Fprintln(out, "\n✓ Template sync complete.")
+	_, _ = fmt.Fprintf(out, "\n%s Template sync complete.\n", symSuccess())
 
 	// Show model policy notice when user ran without -c flag
 	configWizard := getBoolFlag(cmd, "config")
 	if !configWizard {
-		_, _ = fmt.Fprintf(out, "\n")
-		_, _ = fmt.Fprintf(out, "  ┌─────────────────────────────────────────────────────────┐\n")
-		_, _ = fmt.Fprintf(out, "  │  💡 Model Policy Configuration                          │\n")
-		_, _ = fmt.Fprintf(out, "  │                                                         │\n")
-		_, _ = fmt.Fprintf(out, "  │  Optimize token usage based on your Claude Code plan:    │\n")
-		_, _ = fmt.Fprintf(out, "  │    High   - Max $200 plan (opus 23, sonnet 1, haiku 4)   │\n")
-		_, _ = fmt.Fprintf(out, "  │    Medium - Max $100 plan (opus 4, sonnet 19, haiku 5)   │\n")
-		_, _ = fmt.Fprintf(out, "  │    Low    - Plus $20 plan (sonnet 12, haiku 16, no opus) │\n")
-		_, _ = fmt.Fprintf(out, "  │                                                         │\n")
-		_, _ = fmt.Fprintf(out, "  │  Run: moai update -c                                    │\n")
-		_, _ = fmt.Fprintf(out, "  └─────────────────────────────────────────────────────────┘\n")
+		boxContent := cliPrimary.Render("Model Policy Configuration") + "\n\n" +
+			"Optimize token usage based on your Claude Code plan:\n" +
+			"  High   - Max $200 plan (opus 23, sonnet 1, haiku 4)\n" +
+			"  Medium - Max $100 plan (opus 4, sonnet 19, haiku 5)\n" +
+			"  Low    - Plus $20 plan (sonnet 12, haiku 16, no opus)\n\n" +
+			"Run: moai update -c"
+		boxStyle := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(cliBorder.GetForeground()).
+			Padding(0, 2).
+			MarginLeft(2)
+		_, _ = fmt.Fprintln(out)
+		_, _ = fmt.Fprintln(out, boxStyle.Render(boxContent))
 	}
 
 	_, _ = fmt.Fprintln(out)
-	_, _ = fmt.Fprintln(out, "💡 To reconfigure your project settings, run:")
+	_, _ = fmt.Fprintln(out, "To reconfigure your project settings, run:")
 	_, _ = fmt.Fprintln(out, "   moai update -c")
 
 	// Ensure global settings.json has required env variables
@@ -581,7 +597,7 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) error {
 	packageVersion := version.GetVersion()
 	projectVersion, err := getProjectConfigVersion(projectRoot)
 	if err == nil && packageVersion == projectVersion && !forceUpdate {
-		_, _ = fmt.Fprintln(out, "\n✓ Template version up-to-date. Skipping sync.")
+		_, _ = fmt.Fprintf(out, "\n%s Template version up-to-date. Skipping sync.\n", symSuccess())
 		return nil
 	}
 
@@ -1117,21 +1133,21 @@ func cleanMoaiManagedPaths(projectRoot string, out io.Writer) error {
 
 	// Process standard targets (files and directories)
 	for _, t := range targets {
-		_, _ = fmt.Fprintf(out, "  ○ Removing %s...", t.displayPath)
+		_, _ = fmt.Fprintf(out, "  %s Removing %s...", symProgress(), t.displayPath)
 
 		if t.isGlob {
 			matches, err := filepath.Glob(t.fullPath)
 			if err != nil {
-				_, _ = fmt.Fprintf(out, "\r  ✗ Failed to glob %s: %v\n", t.displayPath, err)
+				_, _ = fmt.Fprintf(out, "\r  %s Failed to glob %s: %v\n", symError(), t.displayPath, err)
 				return fmt.Errorf("glob %s: %w", t.displayPath, err)
 			}
 			for _, match := range matches {
 				if err := os.RemoveAll(match); err != nil {
-					_, _ = fmt.Fprintf(out, "\r  ✗ Failed to remove %s: %v\n", t.displayPath, err)
+					_, _ = fmt.Fprintf(out, "\r  %s Failed to remove %s: %v\n", symError(), t.displayPath, err)
 					return fmt.Errorf("remove %s: %w", match, err)
 				}
 			}
-			_, _ = fmt.Fprintf(out, "\r  ✓ Removed %s\n", t.displayPath)
+			_, _ = fmt.Fprintf(out, "\r  %s Removed %s\n", symSuccess(), t.displayPath)
 			continue
 		}
 
@@ -1140,15 +1156,15 @@ func cleanMoaiManagedPaths(projectRoot string, out io.Writer) error {
 				_, _ = fmt.Fprintf(out, "\r  - Skipped %s (not found)\n", t.displayPath)
 				continue
 			}
-			_, _ = fmt.Fprintf(out, "\r  ✗ Failed to stat %s: %v\n", t.displayPath, err)
+			_, _ = fmt.Fprintf(out, "\r  %s Failed to stat %s: %v\n", symError(), t.displayPath, err)
 			return fmt.Errorf("stat %s: %w", t.displayPath, err)
 		}
 
 		if err := os.RemoveAll(t.fullPath); err != nil {
-			_, _ = fmt.Fprintf(out, "\r  ✗ Failed to remove %s: %v\n", t.displayPath, err)
+			_, _ = fmt.Fprintf(out, "\r  %s Failed to remove %s: %v\n", symError(), t.displayPath, err)
 			return fmt.Errorf("remove %s: %w", t.displayPath, err)
 		}
-		_, _ = fmt.Fprintf(out, "\r  ✓ Removed %s\n", t.displayPath)
+		_, _ = fmt.Fprintf(out, "\r  %s Removed %s\n", symSuccess(), t.displayPath)
 	}
 
 	// Clean .moai/config/ entirely - backup was already done by the Backup step.
@@ -1156,15 +1172,15 @@ func cleanMoaiManagedPaths(projectRoot string, out io.Writer) error {
 	// For v2.x -> v2.x: backup includes sections/, restore will merge values back.
 	configDir := filepath.Join(projectRoot, defs.MoAIDir, defs.ConfigSubdir)
 	configDisplayPath := filepath.Join(defs.MoAIDir, defs.ConfigSubdir)
-	_, _ = fmt.Fprintf(out, "  ○ Removing %s...", configDisplayPath)
+	_, _ = fmt.Fprintf(out, "  %s Removing %s...", symProgress(), configDisplayPath)
 
 	if err := os.RemoveAll(configDir); err != nil {
 		if !os.IsNotExist(err) {
-			_, _ = fmt.Fprintf(out, "\r  ✗ Failed to remove %s: %v\n", configDisplayPath, err)
+			_, _ = fmt.Fprintf(out, "\r  %s Failed to remove %s: %v\n", symError(), configDisplayPath, err)
 			return fmt.Errorf("remove %s: %w", configDisplayPath, err)
 		}
 	}
-	_, _ = fmt.Fprintf(out, "\r  ✓ Removed %s\n", configDisplayPath)
+	_, _ = fmt.Fprintf(out, "\r  %s Removed %s\n", symSuccess(), configDisplayPath)
 
 	return nil
 }
@@ -1589,7 +1605,7 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 		}
 	}
 
-	_, _ = fmt.Fprintln(out, "✓ Configuration updated successfully.")
+	_, _ = fmt.Fprintf(out, "%s Configuration updated successfully.\n", symSuccess())
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintf(out, "  Language: %s\n", result.Locale)
 

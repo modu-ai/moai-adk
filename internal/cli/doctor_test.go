@@ -256,18 +256,18 @@ func TestCheckMoAIVersion(t *testing.T) {
 
 func TestStatusIcon(t *testing.T) {
 	tests := []struct {
-		status CheckStatus
-		want   string
+		status   CheckStatus
+		contains string
 	}{
-		{CheckOK, "[OK]"},
-		{CheckWarn, "[WARN]"},
-		{CheckFail, "[FAIL]"},
-		{CheckStatus("unknown"), "[??]"},
+		{CheckOK, "\u2713"},       // ✓
+		{CheckWarn, "\u26A0"},     // ⚠
+		{CheckFail, "\u2717"},     // ✗
+		{CheckStatus("unknown"), "?"},
 	}
 	for _, tt := range tests {
 		got := statusIcon(tt.status)
-		if got != tt.want {
-			t.Errorf("statusIcon(%q) = %q, want %q", tt.status, got, tt.want)
+		if !strings.Contains(got, tt.contains) {
+			t.Errorf("statusIcon(%q) = %q, want string containing %q", tt.status, got, tt.contains)
 		}
 	}
 }
