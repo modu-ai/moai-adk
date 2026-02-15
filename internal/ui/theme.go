@@ -7,6 +7,7 @@ package ui
 import (
 	"os"
 
+	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -189,4 +190,83 @@ func (t *Theme) RenderHighlight(text string) string {
 		return text
 	}
 	return t.highlightStyle.Render(text)
+}
+
+// NewMoAIHuhTheme creates a huh.Theme styled with MoAI branding.
+// It uses AdaptiveColor for automatic light/dark mode support.
+// Pass noColor=true to return a plain unstyled theme for headless mode.
+func NewMoAIHuhTheme(noColor bool) *huh.Theme {
+	if noColor {
+		return huh.ThemeBase()
+	}
+
+	t := huh.ThemeBase()
+
+	var (
+		// MoAI brand orange for focused/selected elements.
+		primary = lipgloss.AdaptiveColor{Light: "#C45A3C", Dark: "#DA7756"}
+		// Purple for highlights and selectors.
+		secondary = lipgloss.AdaptiveColor{Light: "#5B21B6", Dark: "#7C3AED"}
+		// Success green.
+		green = lipgloss.AdaptiveColor{Light: "#059669", Dark: "#10B981"}
+		// Error red.
+		red = lipgloss.AdaptiveColor{Light: "#DC2626", Dark: "#EF4444"}
+		// Normal text.
+		text = lipgloss.AdaptiveColor{Light: "#111827", Dark: "#F9FAFB"}
+		// Muted/description text.
+		muted = lipgloss.AdaptiveColor{Light: "#9CA3AF", Dark: "#6B7280"}
+		// Border color.
+		border = lipgloss.AdaptiveColor{Light: "#D1D5DB", Dark: "#4B5563"}
+		// Button background for blurred state.
+		btnBg = lipgloss.AdaptiveColor{Light: "#E5E7EB", Dark: "#374151"}
+	)
+
+	// Focused field styles.
+	t.Focused.Base = t.Focused.Base.BorderForeground(border)
+	t.Focused.Card = t.Focused.Base
+	t.Focused.Title = t.Focused.Title.Foreground(primary).Bold(true)
+	t.Focused.NoteTitle = t.Focused.NoteTitle.Foreground(primary).Bold(true).MarginBottom(1)
+	t.Focused.Description = t.Focused.Description.Foreground(muted)
+	t.Focused.Directory = t.Focused.Directory.Foreground(secondary)
+	t.Focused.ErrorIndicator = t.Focused.ErrorIndicator.Foreground(red)
+	t.Focused.ErrorMessage = t.Focused.ErrorMessage.Foreground(red)
+
+	// Select styles.
+	t.Focused.SelectSelector = t.Focused.SelectSelector.Foreground(primary)
+	t.Focused.NextIndicator = t.Focused.NextIndicator.Foreground(primary)
+	t.Focused.PrevIndicator = t.Focused.PrevIndicator.Foreground(primary)
+	t.Focused.Option = t.Focused.Option.Foreground(text)
+
+	// Multi-select styles.
+	t.Focused.MultiSelectSelector = t.Focused.MultiSelectSelector.Foreground(primary)
+	t.Focused.SelectedOption = t.Focused.SelectedOption.Foreground(green)
+	t.Focused.SelectedPrefix = lipgloss.NewStyle().Foreground(green).SetString("[x] ")
+	t.Focused.UnselectedOption = t.Focused.UnselectedOption.Foreground(text)
+	t.Focused.UnselectedPrefix = lipgloss.NewStyle().Foreground(muted).SetString("[ ] ")
+
+	// Text input styles.
+	t.Focused.TextInput.Cursor = t.Focused.TextInput.Cursor.Foreground(primary)
+	t.Focused.TextInput.Placeholder = t.Focused.TextInput.Placeholder.Foreground(muted)
+	t.Focused.TextInput.Prompt = t.Focused.TextInput.Prompt.Foreground(secondary)
+
+	// Confirm button styles.
+	t.Focused.FocusedButton = t.Focused.FocusedButton.
+		Foreground(lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#FFFFFF"}).
+		Background(primary)
+	t.Focused.BlurredButton = t.Focused.BlurredButton.
+		Foreground(text).Background(btnBg)
+	t.Focused.Next = t.Focused.FocusedButton
+
+	// Blurred styles inherit from Focused with hidden border.
+	t.Blurred = t.Focused
+	t.Blurred.Base = t.Focused.Base.BorderStyle(lipgloss.HiddenBorder())
+	t.Blurred.Card = t.Blurred.Base
+	t.Blurred.NextIndicator = lipgloss.NewStyle()
+	t.Blurred.PrevIndicator = lipgloss.NewStyle()
+
+	// Group styles.
+	t.Group.Title = t.Focused.Title
+	t.Group.Description = t.Focused.Description
+
+	return t
 }

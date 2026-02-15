@@ -165,46 +165,41 @@ func TestStatuslineQuestionsDoNotBreakExisting(t *testing.T) {
 }
 
 func TestSaveAnswerStatuslinePreset(t *testing.T) {
-	questions := []Question{
-		{ID: "statusline_preset", Type: QuestionTypeSelect, Options: []Option{{Value: "full"}}},
-	}
-	model := New(questions, nil)
+	result := &WizardResult{}
+	locale := ""
 
-	model.saveAnswer("statusline_preset", "compact")
-	if model.result.StatuslinePreset != "compact" {
-		t.Errorf("expected StatuslinePreset 'compact', got %q", model.result.StatuslinePreset)
+	saveAnswer("statusline_preset", "compact", result, &locale)
+	if result.StatuslinePreset != "compact" {
+		t.Errorf("expected StatuslinePreset 'compact', got %q", result.StatuslinePreset)
 	}
 
-	model.saveAnswer("statusline_preset", "custom")
-	if model.result.StatuslinePreset != "custom" {
-		t.Errorf("expected StatuslinePreset 'custom', got %q", model.result.StatuslinePreset)
+	saveAnswer("statusline_preset", "custom", result, &locale)
+	if result.StatuslinePreset != "custom" {
+		t.Errorf("expected StatuslinePreset 'custom', got %q", result.StatuslinePreset)
 	}
 }
 
 func TestSaveAnswerStatuslineSegments(t *testing.T) {
-	questions := []Question{
-		{ID: "statusline_seg_model", Type: QuestionTypeSelect, Options: []Option{{Value: "true"}, {Value: "false"}}},
-		{ID: "statusline_seg_context", Type: QuestionTypeSelect, Options: []Option{{Value: "true"}, {Value: "false"}}},
-	}
-	model := New(questions, nil)
+	result := &WizardResult{}
+	locale := ""
 
 	// Initially StatuslineSegments should be nil
-	if model.result.StatuslineSegments != nil {
+	if result.StatuslineSegments != nil {
 		t.Error("StatuslineSegments should be nil initially")
 	}
 
 	// Save first segment answer - should initialize map
-	model.saveAnswer("statusline_seg_model", "true")
-	if model.result.StatuslineSegments == nil {
+	saveAnswer("statusline_seg_model", "true", result, &locale)
+	if result.StatuslineSegments == nil {
 		t.Fatal("StatuslineSegments should be initialized after saving a segment answer")
 	}
-	if !model.result.StatuslineSegments["model"] {
+	if !result.StatuslineSegments["model"] {
 		t.Error("StatuslineSegments['model'] should be true")
 	}
 
 	// Save second segment answer
-	model.saveAnswer("statusline_seg_context", "false")
-	if model.result.StatuslineSegments["context"] {
+	saveAnswer("statusline_seg_context", "false", result, &locale)
+	if result.StatuslineSegments["context"] {
 		t.Error("StatuslineSegments['context'] should be false")
 	}
 }
@@ -232,23 +227,12 @@ func TestSaveAnswerAllStatuslineSegments(t *testing.T) {
 		"git_branch",
 	}
 
-	questions := make([]Question, len(segmentIDs))
-	for i, id := range segmentIDs {
-		questions[i] = Question{
-			ID:   id,
-			Type: QuestionTypeSelect,
-			Options: []Option{
-				{Value: "true"},
-				{Value: "false"},
-			},
-		}
-	}
-
-	model := New(questions, nil)
+	result := &WizardResult{}
+	locale := ""
 
 	for i, id := range segmentIDs {
-		model.saveAnswer(id, "true")
-		if !model.result.StatuslineSegments[expectedSegNames[i]] {
+		saveAnswer(id, "true", result, &locale)
+		if !result.StatuslineSegments[expectedSegNames[i]] {
 			t.Errorf("StatuslineSegments[%q] should be true after saving %s", expectedSegNames[i], id)
 		}
 	}

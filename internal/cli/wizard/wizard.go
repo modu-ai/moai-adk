@@ -1,417 +1,278 @@
 package wizard
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // statuslineSegmentPrefix is the prefix used for statusline segment question IDs.
 const statuslineSegmentPrefix = "statusline_seg_"
 
-// Model is the Bubble Tea model for the wizard.
-type Model struct {
-	questions    []Question
-	currentIndex int
-	visibleIndex int // 1-based index for display (e.g., "[1/7]")
-	result       *WizardResult
-	styles       *Styles
-	state        State
-	cursor       int        // For select questions
-	inputValue   string     // For input questions
-	errorMsg     string     // Current error message
-	allQuestions []Question // All questions (including conditional ones)
-	locale       string     // Current UI locale for translations
-}
-
-// New creates a new wizard Model with the given questions.
-func New(questions []Question, styles *Styles) Model {
-	if styles == nil {
-		styles = NewStyles()
-	}
-
-	// Store all questions and filter for initial display
+// buildWizardForm creates a complete huh.Form from the given questions.
+// It returns the configured form and the WizardResult that will be populated
+// when the form runs. This function is separated from Run to enable unit testing
+// of form structure, group configuration, and field setup without requiring a TTY.
+func buildWizardForm(questions []Question) (*huh.Form, *WizardResult) {
 	result := &WizardResult{}
+	locale := ""
 
-	return Model{
-		questions:    questions,
-		allQuestions: questions,
-		currentIndex: 0,
-		visibleIndex: 1,
-		result:       result,
-		styles:       styles,
-		state:        StateRunning,
-		inputValue:   questions[0].Default,
-	}
-}
+	// Build huh groups from questions, one group per question.
+	groups := make([]*huh.Group, 0, len(questions))
 
-// Init implements tea.Model.
-func (m Model) Init() tea.Cmd {
-	return nil
-}
-
-// Update implements tea.Model.
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		return m.handleKeyMsg(msg)
-	}
-	return m, nil
-}
-
-// handleKeyMsg processes keyboard input.
-func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// Handle cancellation
-	switch msg.Type {
-	case tea.KeyCtrlC, tea.KeyEsc:
-		m.state = StateCancelled
-		return m, tea.Quit
+	for i := range questions {
+		q := &questions[i]
+		g := buildQuestionGroup(q, result, &locale)
+		groups = append(groups, g)
 	}
 
-	// Route to appropriate handler based on question type
-	q := m.currentQuestion()
-	if q == nil {
-		m.state = StateCompleted
-		return m, tea.Quit
-	}
+	// Create the form with wizard theme.
+	theme := newMoAIWizardTheme()
+	form := huh.NewForm(groups...).
+		WithTheme(theme).
+		WithAccessible(false)
 
-	switch q.Type {
-	case QuestionTypeSelect:
-		return m.handleSelectInput(msg)
-	case QuestionTypeInput:
-		return m.handleTextInput(msg)
-	}
-
-	return m, nil
-}
-
-// handleSelectInput handles input for select-type questions.
-func (m Model) handleSelectInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	q := m.currentQuestion()
-	numOptions := len(q.Options)
-
-	switch msg.Type {
-	case tea.KeyUp, tea.KeyShiftTab:
-		m.cursor--
-		if m.cursor < 0 {
-			m.cursor = numOptions - 1
-		}
-	case tea.KeyDown, tea.KeyTab:
-		m.cursor = (m.cursor + 1) % numOptions
-	case tea.KeyEnter:
-		if numOptions > 0 {
-			m.saveSelectAnswer(q.Options[m.cursor].Value)
-			return m.advance()
-		}
-	}
-
-	return m, nil
-}
-
-// handleTextInput handles input for text-type questions.
-func (m Model) handleTextInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.Type {
-	case tea.KeyEnter:
-		return m.submitTextInput()
-	case tea.KeyBackspace:
-		if len(m.inputValue) > 0 {
-			m.inputValue = m.inputValue[:len(m.inputValue)-1]
-		}
-	case tea.KeyRunes:
-		m.inputValue += string(msg.Runes)
-		m.errorMsg = ""
-	}
-
-	return m, nil
-}
-
-// submitTextInput validates and saves text input.
-func (m Model) submitTextInput() (tea.Model, tea.Cmd) {
-	q := m.currentQuestion()
-	value := strings.TrimSpace(m.inputValue)
-
-	// Use default if empty and not required
-	if value == "" && q.Default != "" {
-		value = q.Default
-	}
-
-	// Validate required fields
-	if q.Required && value == "" {
-		uiStr := GetUIStrings(m.locale)
-		m.errorMsg = uiStr.ErrorRequired
-		return m, nil
-	}
-
-	m.saveInputAnswer(value)
-	return m.advance()
-}
-
-// advance moves to the next question or completes the wizard.
-func (m Model) advance() (tea.Model, tea.Cmd) {
-	m.currentIndex++
-	m.errorMsg = ""
-
-	// Skip questions whose conditions are not met
-	for m.currentIndex < len(m.allQuestions) {
-		q := &m.allQuestions[m.currentIndex]
-		if q.Condition == nil || q.Condition(m.result) {
-			break
-		}
-		m.currentIndex++
-	}
-
-	// Check if we've finished all questions
-	if m.currentIndex >= len(m.allQuestions) {
-		m.state = StateCompleted
-		return m, tea.Quit
-	}
-
-	// Update visible index
-	m.visibleIndex++
-
-	// Reset state for new question
-	m.cursor = 0
-	q := m.currentQuestion()
-	if q != nil {
-		m.inputValue = q.Default
-
-		// Set cursor to default option for select questions
-		if q.Type == QuestionTypeSelect {
-			for i, opt := range q.Options {
-				if opt.Value == q.Default {
-					m.cursor = i
-					break
-				}
-			}
-		}
-	}
-
-	return m, nil
-}
-
-// currentQuestion returns the current question or nil if done.
-func (m *Model) currentQuestion() *Question {
-	if m.currentIndex >= len(m.allQuestions) {
-		return nil
-	}
-	return &m.allQuestions[m.currentIndex]
-}
-
-// saveSelectAnswer saves the answer for a select question.
-func (m *Model) saveSelectAnswer(value string) {
-	m.saveAnswer(m.currentQuestion().ID, value)
-}
-
-// saveInputAnswer saves the answer for an input question.
-func (m *Model) saveInputAnswer(value string) {
-	m.saveAnswer(m.currentQuestion().ID, value)
-}
-
-// saveAnswer stores an answer in the result.
-func (m *Model) saveAnswer(id, value string) {
-	switch id {
-	case "locale":
-		m.result.Locale = value
-		m.locale = value // Update UI locale for translations
-	case "user_name":
-		m.result.UserName = value
-	case "project_name":
-		m.result.ProjectName = value
-	case "git_mode":
-		m.result.GitMode = value
-	case "git_provider":
-		m.result.GitProvider = value
-	case "github_username":
-		m.result.GitHubUsername = value
-	case "github_token":
-		m.result.GitHubToken = value
-	case "gitlab_instance_url":
-		m.result.GitLabInstanceURL = value
-	case "gitlab_username":
-		m.result.GitLabUsername = value
-	case "gitlab_token":
-		m.result.GitLabToken = value
-	case "git_commit_lang":
-		m.result.GitCommitLang = value
-	case "code_comment_lang":
-		m.result.CodeCommentLang = value
-	case "doc_lang":
-		m.result.DocLang = value
-	case "model_policy":
-		m.result.ModelPolicy = value
-	case "agent_teams_mode":
-		m.result.AgentTeamsMode = value
-	case "max_teammates":
-		m.result.MaxTeammates = value
-	case "default_model":
-		m.result.DefaultModel = value
-	case "statusline_preset":
-		m.result.StatuslinePreset = value
-	default:
-		// Handle statusline segment toggles (statusline_seg_*)
-		if strings.HasPrefix(id, statuslineSegmentPrefix) {
-			segName := strings.TrimPrefix(id, statuslineSegmentPrefix)
-			if m.result.StatuslineSegments == nil {
-				m.result.StatuslineSegments = make(map[string]bool)
-			}
-			m.result.StatuslineSegments[segName] = (value == "true")
-		}
-	}
-}
-
-// View implements tea.Model.
-func (m Model) View() string {
-	if m.state == StateCompleted || m.state == StateCancelled {
-		return ""
-	}
-
-	q := m.currentQuestion()
-	if q == nil {
-		return ""
-	}
-
-	// Get localized question based on current locale
-	localizedQ := GetLocalizedQuestion(q, m.locale)
-
-	var b strings.Builder
-
-	// Progress indicator
-	total := TotalVisibleQuestions(m.allQuestions, m.result)
-	progress := m.styles.Progress.Render(fmt.Sprintf("[%d/%d]", m.visibleIndex, total))
-	b.WriteString(progress)
-	b.WriteString(" ")
-
-	// Title
-	b.WriteString(m.styles.Title.Render(localizedQ.Title))
-	b.WriteString("\n")
-
-	// Description
-	if localizedQ.Description != "" {
-		b.WriteString(m.styles.Description.Render(localizedQ.Description))
-		b.WriteString("\n")
-	}
-	b.WriteString("\n")
-
-	// Render based on question type
-	switch localizedQ.Type {
-	case QuestionTypeSelect:
-		b.WriteString(m.renderSelect(&localizedQ))
-	case QuestionTypeInput:
-		b.WriteString(m.renderInput(&localizedQ))
-	}
-
-	// Error message (localized)
-	if m.errorMsg != "" {
-		b.WriteString("\n")
-		b.WriteString(m.styles.Error.Render(m.errorMsg))
-	}
-
-	// Help text (localized)
-	b.WriteString("\n")
-	b.WriteString(m.renderHelp(localizedQ.Type))
-
-	return b.String()
-}
-
-// renderSelect renders a select question.
-func (m Model) renderSelect(q *Question) string {
-	var b strings.Builder
-
-	for i, opt := range q.Options {
-		cursor := "  "
-		if i == m.cursor {
-			cursor = m.styles.Cursor.Render("> ")
-		}
-
-		label := opt.Label
-		if i == m.cursor {
-			label = m.styles.SelectedOption.Render(label)
-		} else {
-			label = m.styles.Option.Render(label)
-		}
-
-		b.WriteString(cursor)
-		b.WriteString(label)
-
-		if opt.Desc != "" {
-			b.WriteString(m.styles.Muted.Render(" - " + opt.Desc))
-		}
-		b.WriteString("\n")
-	}
-
-	return b.String()
-}
-
-// renderInput renders an input question.
-func (m Model) renderInput(q *Question) string {
-	var b strings.Builder
-
-	// Input prompt
-	b.WriteString("> ")
-
-	if m.inputValue == "" && q.Default != "" {
-		// Show default as placeholder
-		b.WriteString(m.styles.Placeholder.Render(q.Default))
-	} else if m.inputValue == "" {
-		// Show cursor position indicator
-		b.WriteString(m.styles.Muted.Render("_"))
-	} else {
-		b.WriteString(m.inputValue)
-		b.WriteString(m.styles.Muted.Render("_"))
-	}
-
-	return b.String()
-}
-
-// renderHelp renders the help text based on question type.
-func (m Model) renderHelp(qType QuestionType) string {
-	uiStr := GetUIStrings(m.locale)
-	var help string
-	switch qType {
-	case QuestionTypeSelect:
-		help = uiStr.HelpSelect
-	case QuestionTypeInput:
-		help = uiStr.HelpInput
-	}
-	return m.styles.Help.Render(help)
-}
-
-// Result returns the wizard result. Only valid after completion.
-func (m Model) Result() *WizardResult {
-	return m.result
-}
-
-// State returns the current wizard state.
-func (m Model) State() State {
-	return m.state
+	return form, result
 }
 
 // Run executes the wizard and returns the result.
-// This is a convenience function that handles the Bubble Tea program lifecycle.
+// It builds a huh.Form from the given questions with conditional group visibility.
 func Run(questions []Question, styles *Styles) (*WizardResult, error) {
 	if len(questions) == 0 {
 		return nil, ErrNoQuestions
 	}
 
-	model := New(questions, styles)
-	p := tea.NewProgram(model)
+	form, result := buildWizardForm(questions)
 
-	finalModel, err := p.Run()
-	if err != nil {
+	if err := form.Run(); err != nil {
+		if errors.Is(err, huh.ErrUserAborted) {
+			return nil, ErrCancelled
+		}
 		return nil, fmt.Errorf("wizard error: %w", err)
 	}
 
-	m := finalModel.(Model)
-	if m.State() == StateCancelled {
-		return nil, ErrCancelled
-	}
-
-	return m.Result(), nil
+	return result, nil
 }
 
 // RunWithDefaults runs the wizard with default questions for the given project root.
 func RunWithDefaults(projectRoot string) (*WizardResult, error) {
 	questions := DefaultQuestions(projectRoot)
 	return Run(questions, nil)
+}
+
+// buildQuestionGroup creates a huh.Group for a single question.
+// Conditional questions use WithHideFunc to check visibility at runtime.
+func buildQuestionGroup(q *Question, result *WizardResult, locale *string) *huh.Group {
+	var field huh.Field
+
+	switch q.Type {
+	case QuestionTypeSelect:
+		field = buildSelectField(q, result, locale)
+	case QuestionTypeInput:
+		field = buildInputField(q, result, locale)
+	}
+
+	g := huh.NewGroup(field)
+
+	// Apply conditional visibility.
+	if q.Condition != nil {
+		cond := q.Condition
+		g = g.WithHideFunc(func() bool {
+			return !cond(result)
+		})
+	}
+
+	return g
+}
+
+// buildSelectField creates a huh.Select field for a select-type question.
+func buildSelectField(q *Question, result *WizardResult, locale *string) *huh.Select[string] {
+	var selected string
+
+	// Set default value as initial selection.
+	if q.Default != "" {
+		selected = q.Default
+	}
+
+	sel := huh.NewSelect[string]().
+		TitleFunc(func() string {
+			lq := GetLocalizedQuestion(q, *locale)
+			return lq.Title
+		}, locale).
+		DescriptionFunc(func() string {
+			lq := GetLocalizedQuestion(q, *locale)
+			return lq.Description
+		}, locale).
+		OptionsFunc(func() []huh.Option[string] {
+			lq := GetLocalizedQuestion(q, *locale)
+			opts := make([]huh.Option[string], len(lq.Options))
+			for i, opt := range lq.Options {
+				key := opt.Label
+				if opt.Desc != "" {
+					key = opt.Label + " - " + opt.Desc
+				}
+				opts[i] = huh.NewOption(key, opt.Value)
+				if opt.Value == selected {
+					opts[i] = opts[i].Selected(true)
+				}
+			}
+			return opts
+		}, locale).
+		Value(&selected)
+
+	// Wire up value storage after each change.
+	sel.Validate(func(val string) error {
+		saveAnswer(q.ID, val, result, locale)
+		return nil
+	})
+
+	return sel
+}
+
+// buildInputField creates a huh.Input field for an input-type question.
+func buildInputField(q *Question, result *WizardResult, locale *string) *huh.Input {
+	var value string
+	if q.Default != "" {
+		value = q.Default
+	}
+
+	inp := huh.NewInput().
+		TitleFunc(func() string {
+			lq := GetLocalizedQuestion(q, *locale)
+			return lq.Title
+		}, locale).
+		DescriptionFunc(func() string {
+			lq := GetLocalizedQuestion(q, *locale)
+			return lq.Description
+		}, locale).
+		Value(&value)
+
+	if q.Default != "" {
+		inp = inp.Placeholder(q.Default)
+	}
+
+	// Validation and value storage.
+	qID := q.ID
+	required := q.Required
+	defVal := q.Default
+	inp = inp.Validate(func(val string) error {
+		v := strings.TrimSpace(val)
+		if v == "" && defVal != "" {
+			v = defVal
+		}
+		if required && v == "" {
+			uiStr := GetUIStrings(*locale)
+			return errors.New(uiStr.ErrorRequired)
+		}
+		saveAnswer(qID, v, result, locale)
+		return nil
+	})
+
+	return inp
+}
+
+// saveAnswer stores an answer in the result.
+func saveAnswer(id, value string, result *WizardResult, locale *string) {
+	switch id {
+	case "locale":
+		result.Locale = value
+		*locale = value
+	case "user_name":
+		result.UserName = value
+	case "project_name":
+		result.ProjectName = value
+	case "git_mode":
+		result.GitMode = value
+	case "git_provider":
+		result.GitProvider = value
+	case "github_username":
+		result.GitHubUsername = value
+	case "github_token":
+		result.GitHubToken = value
+	case "gitlab_instance_url":
+		result.GitLabInstanceURL = value
+	case "gitlab_username":
+		result.GitLabUsername = value
+	case "gitlab_token":
+		result.GitLabToken = value
+	case "git_commit_lang":
+		result.GitCommitLang = value
+	case "code_comment_lang":
+		result.CodeCommentLang = value
+	case "doc_lang":
+		result.DocLang = value
+	case "model_policy":
+		result.ModelPolicy = value
+	case "agent_teams_mode":
+		result.AgentTeamsMode = value
+	case "max_teammates":
+		result.MaxTeammates = value
+	case "default_model":
+		result.DefaultModel = value
+	case "statusline_preset":
+		result.StatuslinePreset = value
+	default:
+		if strings.HasPrefix(id, statuslineSegmentPrefix) {
+			segName := strings.TrimPrefix(id, statuslineSegmentPrefix)
+			if result.StatuslineSegments == nil {
+				result.StatuslineSegments = make(map[string]bool)
+			}
+			result.StatuslineSegments[segName] = (value == "true")
+		}
+	}
+}
+
+// newMoAIWizardTheme creates a huh.Theme with MoAI wizard branding.
+func newMoAIWizardTheme() *huh.Theme {
+	t := huh.ThemeBase()
+
+	// Map wizard brand colors to huh theme.
+	primary := lipgloss.AdaptiveColor{Light: "#C45A3C", Dark: ColorPrimary}
+	secondary := lipgloss.AdaptiveColor{Light: "#5B21B6", Dark: ColorSecondary}
+	green := lipgloss.AdaptiveColor{Light: "#059669", Dark: ColorSuccess}
+	red := lipgloss.AdaptiveColor{Light: "#DC2626", Dark: ColorError}
+	text := lipgloss.AdaptiveColor{Light: "#111827", Dark: ColorText}
+	muted := lipgloss.AdaptiveColor{Light: "#9CA3AF", Dark: ColorMuted}
+	border := lipgloss.AdaptiveColor{Light: "#D1D5DB", Dark: ColorBorder}
+
+	t.Focused.Base = t.Focused.Base.BorderForeground(border)
+	t.Focused.Card = t.Focused.Base
+	t.Focused.Title = t.Focused.Title.Foreground(primary).Bold(true)
+	t.Focused.NoteTitle = t.Focused.NoteTitle.Foreground(primary).Bold(true).MarginBottom(1)
+	t.Focused.Description = t.Focused.Description.Foreground(muted)
+	t.Focused.ErrorIndicator = t.Focused.ErrorIndicator.Foreground(red)
+	t.Focused.ErrorMessage = t.Focused.ErrorMessage.Foreground(red)
+	t.Focused.SelectSelector = t.Focused.SelectSelector.Foreground(primary)
+	t.Focused.NextIndicator = t.Focused.NextIndicator.Foreground(primary)
+	t.Focused.PrevIndicator = t.Focused.PrevIndicator.Foreground(primary)
+	t.Focused.Option = t.Focused.Option.Foreground(text)
+	t.Focused.MultiSelectSelector = t.Focused.MultiSelectSelector.Foreground(primary)
+	t.Focused.SelectedOption = t.Focused.SelectedOption.Foreground(green)
+	t.Focused.SelectedPrefix = lipgloss.NewStyle().Foreground(green).SetString("[x] ")
+	t.Focused.UnselectedOption = t.Focused.UnselectedOption.Foreground(text)
+	t.Focused.UnselectedPrefix = lipgloss.NewStyle().Foreground(muted).SetString("[ ] ")
+	t.Focused.TextInput.Cursor = t.Focused.TextInput.Cursor.Foreground(primary)
+	t.Focused.TextInput.Placeholder = t.Focused.TextInput.Placeholder.Foreground(muted)
+	t.Focused.TextInput.Prompt = t.Focused.TextInput.Prompt.Foreground(secondary)
+	t.Focused.FocusedButton = t.Focused.FocusedButton.
+		Foreground(lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#FFFFFF"}).
+		Background(primary)
+	t.Focused.BlurredButton = t.Focused.BlurredButton.
+		Foreground(text).
+		Background(lipgloss.AdaptiveColor{Light: "#E5E7EB", Dark: "#374151"})
+	t.Focused.Next = t.Focused.FocusedButton
+
+	t.Blurred = t.Focused
+	t.Blurred.Base = t.Focused.Base.BorderStyle(lipgloss.HiddenBorder())
+	t.Blurred.Card = t.Blurred.Base
+	t.Blurred.NextIndicator = lipgloss.NewStyle()
+	t.Blurred.PrevIndicator = lipgloss.NewStyle()
+
+	t.Group.Title = t.Focused.Title
+	t.Group.Description = t.Focused.Description
+
+	return t
 }

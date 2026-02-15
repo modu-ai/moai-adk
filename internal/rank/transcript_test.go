@@ -36,6 +36,7 @@ func TestFindTranscripts_CLIPaths(t *testing.T) {
 	// Set HOME to a temp directory to isolate from the real filesystem.
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
+	t.Setenv("USERPROFILE", tempHome)
 
 	claudeDir := filepath.Join(tempHome, ".claude")
 
@@ -85,6 +86,7 @@ func TestFindTranscripts_CLIPaths(t *testing.T) {
 func TestFindTranscripts_MultipleSources(t *testing.T) {
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
+	t.Setenv("USERPROFILE", tempHome)
 
 	claudeDir := filepath.Join(tempHome, ".claude")
 
@@ -161,6 +163,7 @@ func TestFindTranscripts_Deduplication(t *testing.T) {
 func TestFindTranscriptForSession_CLIPaths(t *testing.T) {
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
+	t.Setenv("USERPROFILE", tempHome)
 
 	claudeDir := filepath.Join(tempHome, ".claude")
 	sessionID := "test-session-abc123"
@@ -187,6 +190,7 @@ func TestFindTranscriptForSession_CLIPaths(t *testing.T) {
 func TestFindTranscriptForSession_OldFormat(t *testing.T) {
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
+	t.Setenv("USERPROFILE", tempHome)
 
 	claudeDir := filepath.Join(tempHome, ".claude")
 	sessionID := "old-session-xyz"
@@ -223,6 +227,7 @@ func TestFindTranscriptForSession_NotFound(t *testing.T) {
 func TestFindTranscriptForSession_PrefersNewFormat(t *testing.T) {
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
+	t.Setenv("USERPROFILE", tempHome)
 
 	claudeDir := filepath.Join(tempHome, ".claude")
 	sessionID := "shared-session"
