@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [2.4.2] - 2026-02-15
+
+### Summary
+
+Visual polish release with adaptive terminal colors and modern Unicode symbols. This update enhances CLI output readability by migrating to `lipgloss.AdaptiveColor` for automatic light/dark theme support and replacing ASCII status indicators with professional Unicode glyphs across all interactive components.
+
+### Breaking Changes
+
+None
+
 ### Changed
 
 - **Adaptive Colors**: Migrated all hardcoded hex colors to `lipgloss.AdaptiveColor` for automatic light/dark terminal support across banner, doctor, update, and merge confirm components
@@ -20,6 +32,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Unused Constant**: Removed orphaned `claudeTerraCotta` constant from banner.go after AdaptiveColor migration
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+**Migrating from Python Version (v1.x)**:
+1. Uninstall Python version: `uv tool uninstall moai-adk`
+2. Install Go Edition: `curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash`
+3. Update project templates: `moai init`
+
+---
+
+## [2.4.2] - 2026-02-15 (한국어)
+
+### 요약
+
+적응형 터미널 색상과 현대적인 유니코드 기호를 사용한 비주얼 개선 릴리스입니다. 이 업데이트는 자동 라이트/다크 테마 지원을 위해 `lipgloss.AdaptiveColor`로 마이그레이션하고 모든 대화형 컴포넌트에서 ASCII 상태 표시기를 전문적인 유니코드 글리프로 교체하여 CLI 출력 가독성을 향상시킵니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 변경됨 (Changed)
+
+- **적응형 색상**: 배너, doctor, update, merge confirm 컴포넌트 전체에서 자동 라이트/다크 터미널 지원을 위해 모든 하드코딩된 hex 색상을 `lipgloss.AdaptiveColor`로 마이그레이션
+- **상태 아이콘**: `moai doctor` 출력에서 ASCII 상태 텍스트 (`[OK]`, `[WARN]`, `[FAIL]`)를 컬러 유니코드 아이콘 (✓, ⚠, ✗)으로 교체
+- **CLI 출력 스타일**: `moai update`에서 일관된 테마 출력을 위해 공유 lipgloss 스타일 변수 (`cliSuccess`, `cliError`, `cliMuted`, `cliPrimary`, `cliBorder`) 및 심볼 함수 추출
+- **선택 높이**: 터미널 오버플로우를 방지하기 위해 옵션 수에 따라 Select 및 MultiSelect 필드의 동적 높이 자동 조정 추가 (최대 10)
+- **선택자 접두사**: UI 및 마법사 테마 모두에서 선택자 커서를 기본값에서 `▸`로, 체크박스 접두사를 `[x]`/`[ ]`에서 `◆`/`◇`로 업데이트
+- **둥근 테두리**: 병합 분석 테이블 모서리를 예리한 스타일 (`┌┐└┘`)에서 둥근 스타일 (`╭╮╰╯`)로 변경
+- **모델 정책 박스**: `moai update` 출력에서 수동 ASCII 박스 그리기를 lipgloss `RoundedBorder` 스타일 박스로 교체
+
+### 수정됨 (Fixed)
+
+- **사용하지 않는 상수**: AdaptiveColor 마이그레이션 후 banner.go에서 고아가 된 `claudeTerraCotta` 상수 제거
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+**Python 버전(v1.x)에서 마이그레이션**:
+1. Python 버전 제거: `uv tool uninstall moai-adk`
+2. Go 에디션 설치: `curl -sSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash`
+3. 프로젝트 템플릿 업데이트: `moai init`
 
 ---
 
