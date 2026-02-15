@@ -70,6 +70,9 @@ func runSync(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("sync worktree: %w", err)
 	}
 
-	_, _ = fmt.Fprintln(out, "Sync complete.")
+	_, _ = fmt.Fprintln(out, wtSuccessCard("Sync complete",
+		fmt.Sprintf("Path: %s", wtPath),
+		fmt.Sprintf("Base: %s (%s)", base, strategy),
+	))
 	return nil
 }

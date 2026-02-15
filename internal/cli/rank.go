@@ -88,7 +88,10 @@ func newRankLoginCmd() *cobra.Command {
 				return fmt.Errorf("save credentials: %w", err)
 			}
 
-			_, _ = fmt.Fprintf(out, "Authenticated as %s (ID: %s)\n", creds.Username, creds.UserID)
+			_, _ = fmt.Fprintln(out, renderSuccessCard(
+				fmt.Sprintf("Authenticated as %s", creds.Username),
+				fmt.Sprintf("ID: %s", creds.UserID),
+			))
 
 			// Install Claude Code hook for session submission
 			if err := installRankHook(); err != nil {
@@ -128,11 +131,16 @@ func newRankStatusCmd() *cobra.Command {
 				return fmt.Errorf("get rank: %w", err)
 			}
 
-			_, _ = fmt.Fprintf(out, "User: %s\n", userRank.Username)
-			if userRank.Stats != nil {
-				_, _ = fmt.Fprintf(out, "Total tokens: %d\n", userRank.Stats.TotalTokens)
-				_, _ = fmt.Fprintf(out, "Sessions: %d\n", userRank.Stats.TotalSessions)
+			pairs := []kvPair{
+				{"User", userRank.Username},
 			}
+			if userRank.Stats != nil {
+				pairs = append(pairs,
+					kvPair{"Tokens", fmt.Sprintf("%d", userRank.Stats.TotalTokens)},
+					kvPair{"Sessions", fmt.Sprintf("%d", userRank.Stats.TotalSessions)},
+				)
+			}
+			_, _ = fmt.Fprintln(out, renderCard("MoAI Rank", renderKeyValueLines(pairs)))
 			return nil
 		},
 	}
@@ -157,7 +165,7 @@ func newRankLogoutCmd() *cobra.Command {
 				return fmt.Errorf("delete credentials: %w", err)
 			}
 
-			_, _ = fmt.Fprintln(out, "Logged out from MoAI Cloud.")
+			_, _ = fmt.Fprintln(out, renderSuccessCard("Logged out from MoAI Cloud"))
 			return nil
 		},
 	}
@@ -351,7 +359,7 @@ func newRankExcludeCmd() *cobra.Command {
 				return fmt.Errorf("add exclude pattern: %w", err)
 			}
 
-			_, _ = fmt.Fprintf(out, "Exclusion pattern added: %s\n", pattern)
+			_, _ = fmt.Fprintln(out, renderSuccessCard(fmt.Sprintf("Exclusion pattern added: %s", pattern)))
 			return nil
 		},
 	}
@@ -377,7 +385,7 @@ func newRankIncludeCmd() *cobra.Command {
 				return fmt.Errorf("add include pattern: %w", err)
 			}
 
-			_, _ = fmt.Fprintf(out, "Inclusion pattern added: %s\n", pattern)
+			_, _ = fmt.Fprintln(out, renderSuccessCard(fmt.Sprintf("Inclusion pattern added: %s", pattern)))
 			return nil
 		},
 	}

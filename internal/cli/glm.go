@@ -54,7 +54,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		if err := saveGLMKey(apiKey); err != nil {
 			return fmt.Errorf("save GLM API key: %w", err)
 		}
-		_, _ = fmt.Fprintln(out, "✅ GLM API key saved to ~/.moai/.env.glm")
+		_, _ = fmt.Fprintln(out, renderSuccessCard("GLM API key saved to ~/.moai/.env.glm"))
 	}
 
 	// Get project root
@@ -81,9 +81,13 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("inject GLM env: %w", err)
 	}
 
-	_, _ = fmt.Fprintln(out, "✅ Switched to GLM backend.")
-	_, _ = fmt.Fprintln(out, "   Environment variables injected into .claude/settings.local.json")
-	_, _ = fmt.Fprintln(out, "   Run 'moai cc' to switch back to Claude.")
+	_, _ = fmt.Fprintln(out, renderSuccessCard(
+		"Switched to GLM backend",
+		"Environment variables injected into",
+		".claude/settings.local.json",
+		"",
+		"Run 'moai cc' to switch back to Claude.",
+	))
 	return nil
 }
 

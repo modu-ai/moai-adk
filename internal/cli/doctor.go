@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -59,19 +60,22 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 
 	out := cmd.OutOrStdout()
 
-	titleStyle := cliPrimary.Bold(true)
-	_, _ = fmt.Fprintln(out, titleStyle.Render("System Diagnostics"))
-	_, _ = fmt.Fprintln(out, titleStyle.Render("=================="))
-	_, _ = fmt.Fprintln(out)
-
 	checks := runDiagnosticChecks(verbose, checkName)
 
-	okCount, warnCount, failCount := 0, 0, 0
+	// Compute max label width for alignment.
+	maxLabel := 0
 	for _, c := range checks {
-		icon := statusIcon(c.Status)
-		_, _ = fmt.Fprintf(out, "  %s %s: %s\n", icon, c.Name, c.Message)
+		if len(c.Name) > maxLabel {
+			maxLabel = len(c.Name)
+		}
+	}
+
+	okCount, warnCount, failCount := 0, 0, 0
+	var lines []string
+	for _, c := range checks {
+		lines = append(lines, renderStatusLine(c.Status, c.Name, c.Message, maxLabel))
 		if verbose && c.Detail != "" {
-			_, _ = fmt.Fprintf(out, "      %s\n", c.Detail)
+			lines = append(lines, fmt.Sprintf("    %s", cliMuted.Render(c.Detail)))
 		}
 		switch c.Status {
 		case CheckOK:
@@ -83,20 +87,20 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	_, _ = fmt.Fprintln(out)
-	_, _ = fmt.Fprintf(out, "Results: %s passed, %s warnings, %s failed\n",
-		cliSuccess.Render(fmt.Sprintf("%d", okCount)),
-		cliWarn.Render(fmt.Sprintf("%d", warnCount)),
-		cliError.Render(fmt.Sprintf("%d", failCount)))
+	summary := renderSummaryLine(okCount, warnCount, failCount)
+	content := strings.Join(lines, "\n") + "\n\n" + summary
+
+	_, _ = fmt.Fprintln(out, renderCard("System Diagnostics", content))
 
 	if fix && failCount > 0 {
-		_, _ = fmt.Fprintln(out)
-		_, _ = fmt.Fprintln(out, "Suggested fixes:")
+		var fixes []string
 		for _, c := range checks {
 			if c.Status == CheckFail {
-				_, _ = fmt.Fprintf(out, "  - %s: run 'moai init' to initialize project\n", c.Name)
+				fixes = append(fixes, fmt.Sprintf("- %s: run 'moai init' to initialize project", c.Name))
 			}
 		}
+		_, _ = fmt.Fprintln(out)
+		_, _ = fmt.Fprintln(out, renderInfoCard("Suggested Fixes", strings.Join(fixes, "\n")))
 	}
 
 	if exportPath != "" {

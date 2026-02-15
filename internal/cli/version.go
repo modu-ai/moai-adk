@@ -13,11 +13,9 @@ var versionCmd = &cobra.Command{
 	Short: "Show version information",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		out := cmd.OutOrStdout()
-		_, _ = fmt.Fprintf(out, "moai-adk %s (commit: %s, built: %s)\n",
-			version.GetVersion(),
-			version.GetCommit(),
-			version.GetDate(),
-		)
+		title := "moai-adk " + version.GetVersion()
+		detail := fmt.Sprintf("commit: %s  built: %s", version.GetCommit(), version.GetDate())
+		_, _ = fmt.Fprintln(out, renderCard(title, detail))
 		return nil
 	},
 }

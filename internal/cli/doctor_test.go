@@ -78,8 +78,8 @@ func TestDoctorCmd_Execution(t *testing.T) {
 	if !strings.Contains(output, "System Diagnostics") {
 		t.Errorf("doctor output should contain 'System Diagnostics', got %q", output)
 	}
-	if !strings.Contains(output, "Results:") {
-		t.Errorf("doctor output should contain 'Results:', got %q", output)
+	if !strings.Contains(output, "passed") {
+		t.Errorf("doctor output should contain 'passed' in summary, got %q", output)
 	}
 }
 

@@ -10,6 +10,14 @@ import (
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
+// statusState represents the resolved status of a MoAI project.
+type statusState int
+
+const (
+	statusNotInitialized statusState = iota
+	statusInitialized
+)
+
 var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show project status",
@@ -32,35 +40,36 @@ func runStatus(cmd *cobra.Command, _ []string) error {
 
 	projectName := filepath.Base(cwd)
 
-	_, _ = fmt.Fprintln(out, "Project Status")
-	_, _ = fmt.Fprintln(out, "==============")
-	_, _ = fmt.Fprintln(out)
-	_, _ = fmt.Fprintf(out, "  Project:  %s\n", projectName)
-	_, _ = fmt.Fprintf(out, "  Path:     %s\n", cwd)
-	_, _ = fmt.Fprintf(out, "  ADK:      moai-adk %s\n", version.GetVersion())
+	pairs := []kvPair{
+		{"Project", projectName},
+		{"Path", cwd},
+		{"ADK", "moai-adk " + version.GetVersion()},
+	}
 
 	// Check .moai/ directory
 	moaiDir := filepath.Join(cwd, ".moai")
 	if _, statErr := os.Stat(moaiDir); statErr != nil {
-		_, _ = fmt.Fprintln(out)
-		_, _ = fmt.Fprintln(out, "  Status: Not initialized (run 'moai init')")
+		pairs = append(pairs,
+			kvPair{"Status", "Not initialized (run 'moai init')"},
+		)
+		_, _ = fmt.Fprintln(out, renderCard("Project Status", renderKeyValueLines(pairs)))
 		return nil
 	}
-	_, _ = fmt.Fprintf(out, "  Config:   %s\n", filepath.Join(".moai", "config", "sections"))
+	pairs = append(pairs, kvPair{"Config", filepath.Join(".moai", "config", "sections")})
 
 	// Count SPECs
 	specsDir := filepath.Join(moaiDir, "specs")
 	specCount := countDirs(specsDir)
-	_, _ = fmt.Fprintln(out)
-	_, _ = fmt.Fprintf(out, "  SPECs:    %d found\n", specCount)
+	pairs = append(pairs, kvPair{"SPECs", fmt.Sprintf("%d found", specCount)})
 
 	// Check config sections
 	sectionsDir := filepath.Join(moaiDir, "config", "sections")
 	sectionFiles := countFiles(sectionsDir, ".yaml")
-	_, _ = fmt.Fprintf(out, "  Configs:  %d section files\n", sectionFiles)
+	pairs = append(pairs, kvPair{"Configs", fmt.Sprintf("%d section files", sectionFiles)})
 
-	_, _ = fmt.Fprintln(out)
-	_, _ = fmt.Fprintln(out, "  Status: Initialized")
+	pairs = append(pairs, kvPair{"Status", "Initialized"})
+
+	_, _ = fmt.Fprintln(out, renderCard("Project Status", renderKeyValueLines(pairs)))
 
 	return nil
 }

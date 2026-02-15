@@ -87,7 +87,7 @@ func TestInitCmd_NonInteractiveExecution(t *testing.T) {
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "MoAI project initialized successfully") {
+	if !strings.Contains(output, "MoAI project initialized") {
 		t.Errorf("expected success message in output, got: %q", output)
 	}
 
@@ -149,7 +149,7 @@ func TestInitCmd_PositionalArgCreatesDirectory(t *testing.T) {
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "MoAI project initialized successfully") {
+	if !strings.Contains(output, "MoAI project initialized") {
 		t.Errorf("expected success message in output, got: %q", output)
 	}
 }
@@ -193,7 +193,7 @@ func TestInitCmd_DotArgUsesCurrentDirectory(t *testing.T) {
 
 	// Verify initialization worked in current directory
 	output := buf.String()
-	if !strings.Contains(output, "MoAI project initialized successfully") {
+	if !strings.Contains(output, "MoAI project initialized") {
 		t.Errorf("expected success message in output, got: %q", output)
 	}
 }

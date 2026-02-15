@@ -547,7 +547,7 @@ func TestRunCC_WithConfig(t *testing.T) {
 		t.Fatalf("runCC with config error: %v", err)
 	}
 
-	if !strings.Contains(buf.String(), "Switched to Claude backend.") {
+	if !strings.Contains(buf.String(), "Switched to Claude backend") {
 		t.Errorf("output should confirm switch, got %q", buf.String())
 	}
 }
@@ -1076,8 +1076,8 @@ func TestRunDoctor_FixFlag(t *testing.T) {
 	// Output may or may not contain "Suggested fixes" depending on whether any check fails.
 	// The fix code path is still exercised either way.
 	output := buf.String()
-	if !strings.Contains(output, "Results:") {
-		t.Errorf("output should contain Results, got %q", output)
+	if !strings.Contains(output, "passed") {
+		t.Errorf("output should contain summary with 'passed', got %q", output)
 	}
 }
 
@@ -1182,7 +1182,7 @@ func TestRunInit_WithRootFlag(t *testing.T) {
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "initialized successfully") {
+	if !strings.Contains(output, "MoAI project initialized") {
 		t.Errorf("output should confirm init, got %q", output)
 	}
 }
@@ -1222,7 +1222,7 @@ func TestRunInit_WithNameAndLanguage(t *testing.T) {
 		t.Fatalf("runInit error: %v", err)
 	}
 
-	if !strings.Contains(buf.String(), "initialized successfully") {
+	if !strings.Contains(buf.String(), "MoAI project initialized") {
 		t.Errorf("output should confirm init, got %q", buf.String())
 	}
 }

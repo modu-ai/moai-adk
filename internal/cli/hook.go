@@ -110,28 +110,31 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 func runHookList(cmd *cobra.Command, _ []string) error {
 	out := cmd.OutOrStdout()
 
-	_, _ = fmt.Fprintln(out, "Registered Hook Handlers")
-	_, _ = fmt.Fprintln(out, "========================")
-	_, _ = fmt.Fprintln(out)
-
 	if deps == nil || deps.HookRegistry == nil {
-		_, _ = fmt.Fprintln(out, "  Hook system not initialized.")
+		_, _ = fmt.Fprintln(out, renderInfoCard("Registered Hook Handlers", "Hook system not initialized."))
 		return nil
 	}
 
 	events := hook.ValidEventTypes()
 	totalHandlers := 0
+	var pairs []kvPair
 	for _, event := range events {
 		handlers := deps.HookRegistry.Handlers(event)
 		count := len(handlers)
 		totalHandlers += count
 		if count > 0 {
-			_, _ = fmt.Fprintf(out, "  %s: %d handler(s)\n", string(event), count)
+			label := "handler"
+			if count > 1 {
+				label = "handlers"
+			}
+			pairs = append(pairs, kvPair{string(event), fmt.Sprintf("%d %s", count, label)})
 		}
 	}
 
 	if totalHandlers == 0 {
-		_, _ = fmt.Fprintln(out, "  No handlers registered.")
+		_, _ = fmt.Fprintln(out, renderInfoCard("Registered Hook Handlers", "No handlers registered."))
+	} else {
+		_, _ = fmt.Fprintln(out, renderCard("Registered Hook Handlers", renderKeyValueLines(pairs)))
 	}
 
 	return nil

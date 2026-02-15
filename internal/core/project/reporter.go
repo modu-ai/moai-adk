@@ -1,6 +1,10 @@
 package project
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/charmbracelet/lipgloss"
+)
 
 // ProgressReporter reports progress during project initialization.
 // Implemented by UI components to show real-time status updates.
@@ -34,11 +38,19 @@ func NewConsoleReporter() *ConsoleReporter {
 	return &ConsoleReporter{}
 }
 
+// Reporter styles for colored status icons.
+var (
+	reporterSuccess = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#059669", Dark: "#10B981"})
+	reporterError   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#DC2626", Dark: "#EF4444"})
+	reporterMuted   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#9CA3AF", Dark: "#6B7280"})
+)
+
 func (r *ConsoleReporter) StepStart(name, message string) {
+	icon := reporterMuted.Render("\u25CB")
 	if message != "" {
-		fmt.Printf("  ○ %s: %s...\n", name, message)
+		fmt.Printf("  %s %s: %s...\n", icon, name, message)
 	} else {
-		fmt.Printf("  ○ %s...\n", name)
+		fmt.Printf("  %s %s...\n", icon, name)
 	}
 }
 
@@ -47,13 +59,15 @@ func (r *ConsoleReporter) StepUpdate(message string) {
 }
 
 func (r *ConsoleReporter) StepComplete(message string) {
+	icon := reporterSuccess.Render("\u2713")
 	if message != "" {
-		fmt.Printf("\r  ✓ %s: %s\n", message, "completed")
+		fmt.Printf("\r  %s %s: %s\n", icon, message, "completed")
 	} else {
-		fmt.Println("\r  ✓ Completed")
+		fmt.Printf("\r  %s Completed\n", icon)
 	}
 }
 
 func (r *ConsoleReporter) StepError(err error) {
-	fmt.Printf("\r  ✗ Error: %v\n", err)
+	icon := reporterError.Render("\u2717")
+	fmt.Printf("\r  %s Error: %v\n", icon, err)
 }

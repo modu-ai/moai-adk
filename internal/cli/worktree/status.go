@@ -2,6 +2,7 @@ package worktree
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -36,14 +37,18 @@ func runStatus(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("list worktrees: %w", err)
 	}
 
-	_, _ = fmt.Fprintf(out, "Repository: %s\n", WorktreeProvider.Root())
-	_, _ = fmt.Fprintf(out, "Total worktrees: %d\n\n", len(worktrees))
-
 	if len(worktrees) == 0 {
-		_, _ = fmt.Fprintln(out, "No worktrees found.")
+		_, _ = fmt.Fprintln(out, wtCard("Worktree Status",
+			fmt.Sprintf("Repository: %s\nTotal worktrees: %d\n\nNo worktrees found.", WorktreeProvider.Root(), len(worktrees))))
 		return nil
 	}
 
+	var lines []string
+	lines = append(lines,
+		fmt.Sprintf("Repository: %s", WorktreeProvider.Root()),
+		fmt.Sprintf("Total worktrees: %d", len(worktrees)),
+		"",
+	)
 	for _, wt := range worktrees {
 		branchDisplay := wt.Branch
 		if branchDisplay == "" {
@@ -53,11 +58,14 @@ func runStatus(cmd *cobra.Command, _ []string) error {
 		if !showAll && len(headDisplay) > 8 {
 			headDisplay = headDisplay[:8]
 		}
-		_, _ = fmt.Fprintf(out, "%s\n", branchDisplay)
-		_, _ = fmt.Fprintf(out, "  Path: %s\n", wt.Path)
-		_, _ = fmt.Fprintf(out, "  HEAD: %s\n", headDisplay)
-		_, _ = fmt.Fprintln(out)
+		lines = append(lines,
+			branchDisplay,
+			fmt.Sprintf("  Path: %s", wt.Path),
+			fmt.Sprintf("  HEAD: %s", headDisplay),
+			"",
+		)
 	}
 
+	_, _ = fmt.Fprintln(out, wtCard("Worktree Status", strings.Join(lines, "\n")))
 	return nil
 }

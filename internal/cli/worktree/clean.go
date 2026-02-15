@@ -37,7 +37,7 @@ func runClean(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("prune worktrees: %w", err)
 	}
 
-	_, _ = fmt.Fprintln(out, "Cleaned stale worktree references.")
+	_, _ = fmt.Fprintln(out, wtSuccessCard("Cleaned stale worktree references"))
 	return nil
 }
 

@@ -2,6 +2,7 @@ package worktree
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -36,23 +37,27 @@ func runList(cmd *cobra.Command, _ []string) error {
 
 	verbose, _ := cmd.Flags().GetBool("verbose")
 
-	if verbose {
-		_, _ = fmt.Fprintf(out, "Active Worktrees (%d):\n\n", len(worktrees))
-		for _, wt := range worktrees {
-			branchDisplay := wt.Branch
-			if branchDisplay == "" {
-				branchDisplay = "(detached)"
-			}
-			_, _ = fmt.Fprintf(out, "  Branch: %s\n", branchDisplay)
-			_, _ = fmt.Fprintf(out, "  Path:   %s\n", wt.Path)
-			_, _ = fmt.Fprintf(out, "  HEAD:   %s\n\n", wt.HEAD)
+	title := fmt.Sprintf("Active Worktrees (%d)", len(worktrees))
+	var lines []string
+	for _, wt := range worktrees {
+		branchDisplay := wt.Branch
+		if branchDisplay == "" {
+			branchDisplay = "(detached)"
 		}
-	} else {
-		_, _ = fmt.Fprintln(out, "Active Worktrees:")
-		for _, wt := range worktrees {
-			_, _ = fmt.Fprintf(out, "  %s  [%s]  %s\n", wt.Path, wt.Branch, wt.HEAD[:minLen(len(wt.HEAD), 8)])
+		if verbose {
+			lines = append(lines,
+				fmt.Sprintf("Branch: %s", branchDisplay),
+				fmt.Sprintf("Path:   %s", wt.Path),
+				fmt.Sprintf("HEAD:   %s", wt.HEAD),
+				"",
+			)
+		} else {
+			head := wt.HEAD[:minLen(len(wt.HEAD), 8)]
+			lines = append(lines, fmt.Sprintf("%-14s  %s  %s", branchDisplay, wt.Path, head))
 		}
 	}
+	content := strings.Join(lines, "\n")
+	_, _ = fmt.Fprintln(out, wtCard(title, content))
 	return nil
 }
 

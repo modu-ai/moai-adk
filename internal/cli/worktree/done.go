@@ -61,24 +61,30 @@ func runDone(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no worktree found for branch %q", branchName)
 	}
 
-	_, _ = fmt.Fprintf(out, "Completing worktree for branch: %s\n", branchName)
-	_, _ = fmt.Fprintf(out, "  Path: %s\n", targetPath)
-
 	// Remove the worktree.
 	if err := WorktreeProvider.Remove(targetPath, force); err != nil {
 		return fmt.Errorf("remove worktree: %w", err)
 	}
-	_, _ = fmt.Fprintln(out, "  Worktree removed.")
+
+	details := []string{
+		fmt.Sprintf("Path: %s", targetPath),
+		"Worktree removed.",
+	}
 
 	if deleteBranch {
 		if err := WorktreeProvider.DeleteBranch(branchName); err != nil {
-			_, _ = fmt.Fprintf(out, "  Warning: could not delete branch: %v\n", err)
-			_, _ = fmt.Fprintf(out, "  To delete manually: git branch -d %s\n", branchName)
+			details = append(details,
+				fmt.Sprintf("Warning: could not delete branch: %v", err),
+				fmt.Sprintf("To delete manually: git branch -d %s", branchName),
+			)
 		} else {
-			_, _ = fmt.Fprintf(out, "  Branch %s deleted.\n", branchName)
+			details = append(details, fmt.Sprintf("Branch %s deleted.", branchName))
 		}
 	}
 
-	_, _ = fmt.Fprintln(out, "Done.")
+	_, _ = fmt.Fprintln(out, wtSuccessCard(
+		fmt.Sprintf("Done: worktree for branch %s", branchName),
+		details...,
+	))
 	return nil
 }

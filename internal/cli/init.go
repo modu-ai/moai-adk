@@ -339,11 +339,17 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	// Display success message
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\n✓ MoAI project initialized successfully.\n")
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Created %d directories and %d files.\n", len(result.CreatedDirs), len(result.CreatedFiles))
-	for _, w := range result.Warnings {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: %s\n", w)
+	details := []string{
+		renderKeyValueLines([]kvPair{
+			{"Directories", fmt.Sprintf("%d created", len(result.CreatedDirs))},
+			{"Files", fmt.Sprintf("%d created", len(result.CreatedFiles))},
+		}),
 	}
+	for _, w := range result.Warnings {
+		details = append(details, cliWarn.Render("Warning: "+w))
+	}
+	_, _ = fmt.Fprintln(cmd.OutOrStdout())
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), renderSuccessCard("MoAI project initialized", details...))
 
 	// Ensure global settings.json has required env variables
 	if err := ensureGlobalSettingsEnv(); err != nil {
