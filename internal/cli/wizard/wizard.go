@@ -7,6 +7,8 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/modu-ai/moai-adk/internal/ui"
 )
 
 // statuslineSegmentPrefix is the prefix used for statusline segment question IDs.
@@ -121,7 +123,8 @@ func buildSelectField(q *Question, result *WizardResult, locale *string) *huh.Se
 			}
 			return opts
 		}, locale).
-		Height(wizardSelectHeight(len(q.Options))).
+		// Height auto-sizes based on option count; localization preserves option count
+		Height(ui.SelectHeight(len(q.Options))).
 		Value(&selected)
 
 	// Wire up value storage after each change.
@@ -173,16 +176,6 @@ func buildInputField(q *Question, result *WizardResult, locale *string) *huh.Inp
 	})
 
 	return inp
-}
-
-// wizardSelectHeight returns the display height for wizard select fields.
-// Shows all options up to a maximum of 10 to prevent overflow.
-func wizardSelectHeight(optionCount int) int {
-	const maxHeight = 10
-	if optionCount > maxHeight {
-		return maxHeight
-	}
-	return optionCount
 }
 
 // saveAnswer stores an answer in the result.

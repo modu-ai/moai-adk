@@ -195,7 +195,6 @@ type formatterStyles struct {
 	highRisk       lipgloss.Style
 	prompt         lipgloss.Style
 	warning        lipgloss.Style
-	tableStyle     lipgloss.Style
 	headerStyle    lipgloss.Style
 	tableHeaderRow lipgloss.Style
 	tableBorder    lipgloss.Style
@@ -230,11 +229,6 @@ func NewAnalysisFormatterWithSelection(analysis MergeAnalysis, cursor int, selec
 }
 
 func initFormatterStyles() formatterStyles {
-	border := lipgloss.Border{
-		Top: "─", Bottom: "─", Left: "│", Right: "│",
-		TopLeft: "╭", TopRight: "╮", BottomLeft: "╰", BottomRight: "╯",
-	}
-
 	return formatterStyles{
 		title:       lipgloss.NewStyle().Bold(true).Foreground(lipgloss.AdaptiveColor{Light: "#C45A3C", Dark: "#DA7756"}).MarginBottom(1),
 		lowRisk:     lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#059669", Dark: "#10B981"}),
@@ -242,7 +236,6 @@ func initFormatterStyles() formatterStyles {
 		highRisk:    lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#DC2626", Dark: "#EF4444"}),
 		prompt:      lipgloss.NewStyle().Bold(true).Foreground(lipgloss.AdaptiveColor{Light: "#5B21B6", Dark: "#7C3AED"}).MarginTop(1),
 		warning:     lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#D97706", Dark: "#F59E0B"}).Bold(true),
-		tableStyle:  lipgloss.NewStyle().Border(border, true).BorderForeground(lipgloss.AdaptiveColor{Light: "#D1D5DB", Dark: "#6B7280"}).Padding(0, 1),
 		headerStyle: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.AdaptiveColor{Light: "#C45A3C", Dark: "#DA7756"}),
 		tableHeaderRow: lipgloss.NewStyle().
 			Bold(true).
@@ -341,7 +334,7 @@ func (f *AnalysisFormatter) FormatFileTable() string {
 	tableContent.WriteString("\n")
 
 	// Header separator
-	tableContent.WriteString(f.styles.tableBorder.Render("┌" + strings.Repeat("─", dividerLen) + "┐"))
+	tableContent.WriteString(f.styles.tableBorder.Render("╭" + strings.Repeat("─", dividerLen) + "╮"))
 	tableContent.WriteString("\n")
 
 	// Table rows with alternating styles
@@ -361,8 +354,8 @@ func (f *AnalysisFormatter) FormatFileTable() string {
 		// Highlight cursor row in selection mode
 		if f.showSelection && i == f.cursor {
 			cursorStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#E5E7EB")).
-				Background(lipgloss.Color("#4B5563")).
+				Foreground(lipgloss.AdaptiveColor{Light: "#111827", Dark: "#E5E7EB"}).
+				Background(lipgloss.AdaptiveColor{Light: "#D1D5DB", Dark: "#4B5563"}).
 				Bold(true)
 		}
 
@@ -399,7 +392,7 @@ func (f *AnalysisFormatter) FormatFileTable() string {
 	}
 
 	// Table bottom border
-	tableContent.WriteString(f.styles.tableBorder.Render("└" + strings.Repeat("─", dividerLen) + "┘"))
+	tableContent.WriteString(f.styles.tableBorder.Render("╰" + strings.Repeat("─", dividerLen) + "╯"))
 
 	return tableContent.String()
 }

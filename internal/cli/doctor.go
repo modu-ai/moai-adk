@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
@@ -60,7 +59,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 
 	out := cmd.OutOrStdout()
 
-	titleStyle := lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#C45A3C", Dark: "#DA7756"}).Bold(true)
+	titleStyle := cliPrimary.Bold(true)
 	_, _ = fmt.Fprintln(out, titleStyle.Render("System Diagnostics"))
 	_, _ = fmt.Fprintln(out, titleStyle.Render("=================="))
 	_, _ = fmt.Fprintln(out)
@@ -85,13 +84,10 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	}
 
 	_, _ = fmt.Fprintln(out)
-	successStyle := lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#059669", Dark: "#10B981"})
-	warnStyle := lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#D97706", Dark: "#F59E0B"})
-	failStyle := lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#DC2626", Dark: "#EF4444"})
 	_, _ = fmt.Fprintf(out, "Results: %s passed, %s warnings, %s failed\n",
-		successStyle.Render(fmt.Sprintf("%d", okCount)),
-		warnStyle.Render(fmt.Sprintf("%d", warnCount)),
-		failStyle.Render(fmt.Sprintf("%d", failCount)))
+		cliSuccess.Render(fmt.Sprintf("%d", okCount)),
+		cliWarn.Render(fmt.Sprintf("%d", warnCount)),
+		cliError.Render(fmt.Sprintf("%d", failCount)))
 
 	if fix && failCount > 0 {
 		_, _ = fmt.Fprintln(out)
@@ -262,11 +258,11 @@ func checkMoAIVersion(_ bool) DiagnosticCheck {
 func statusIcon(s CheckStatus) string {
 	switch s {
 	case CheckOK:
-		return lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#059669", Dark: "#10B981"}).Render("\u2713")
+		return cliSuccess.Render("\u2713")
 	case CheckWarn:
-		return lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#D97706", Dark: "#F59E0B"}).Render("\u26A0")
+		return cliWarn.Render("\u26A0")
 	case CheckFail:
-		return lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#DC2626", Dark: "#EF4444"}).Render("\u2717")
+		return cliError.Render("\u2717")
 	default:
 		return "?"
 	}

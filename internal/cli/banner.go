@@ -17,8 +17,8 @@ const moaiBanner = `
 `
 
 // PrintBanner displays the MoAI ASCII art banner with version information.
-// The banner uses MoAI's brand color (claude terra cotta #DA7756) and includes
-// the provided version string. If version is empty, it displays "unknown".
+// The banner uses MoAI's adaptive brand color (#C45A3C light, #DA7756 dark)
+// and includes the provided version string. If version is empty, it displays "unknown".
 func PrintBanner(version string) {
 	// Create a style with terra cotta color (adaptive for light/dark terminals)
 	bannerStyle := lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#C45A3C", Dark: "#DA7756"})
