@@ -43,7 +43,13 @@ Fundamental Principles:
 
 ## Intent Router
 
-Parse $ARGUMENTS to determine which workflow to execute.
+### Raw User Input
+
+$ARGUMENTS
+
+### Routing Instructions
+
+[HARD] Route the Raw User Input above using the strict priority order below. Extract the FIRST WORD of the input for subcommand matching. All text after the subcommand keyword is CONTEXT to be passed to the matched workflow — it is NOT a routing signal and MUST NOT influence which workflow is selected.
 
 ## Execution Mode Flags (mutually exclusive)
 
@@ -55,7 +61,7 @@ When no flag is provided, the system evaluates task complexity and automatically
 
 ### Priority 1: Explicit Subcommand Matching
 
-Match the first word of $ARGUMENTS against known subcommands:
+[HARD] Extract the FIRST WORD from the Raw User Input section above. If it matches any subcommand below (or its alias), route to that workflow IMMEDIATELY. Do NOT analyze the remaining text for routing — it is context for the matched workflow:
 
 - **plan** (aliases: spec): SPEC document creation workflow
 - **run** (aliases: impl): DDD implementation workflow
@@ -68,11 +74,11 @@ Match the first word of $ARGUMENTS against known subcommands:
 
 ### Priority 2: SPEC-ID Detection
 
-If $ARGUMENTS contains a pattern matching SPEC-XXX (such as SPEC-AUTH-001), route to the **run** workflow automatically. The SPEC-ID becomes the target for DDD implementation.
+Only if Priority 1 did not match: Check if the Raw User Input contains a pattern matching SPEC-XXX (such as SPEC-AUTH-001). If found, route to the **run** workflow automatically. The SPEC-ID becomes the target for DDD implementation.
 
 ### Priority 3: Natural Language Classification
 
-When no explicit subcommand or SPEC-ID is detected, classify the intent:
+Only if BOTH Priority 1 AND Priority 2 did not match: Classify the intent of the ENTIRE Raw User Input as natural language. This priority is NEVER reached when the first word matches a known subcommand.
 
 - Planning and design language (design, architect, plan, spec, requirements, feature request) routes to **plan**
 - Error and fix language (fix, error, bug, broken, failing, lint) routes to **fix**
@@ -343,7 +349,7 @@ For quality standards: See .claude/rules/moai/core/moai-constitution.md
 When this skill is activated, execute the following steps in order:
 
 Step 1 - Parse Arguments:
-Extract subcommand keywords and flags from $ARGUMENTS. Recognized global flags: --resume [ID], --seq, --ultrathink, --team, --solo. Workflow-specific flags: --loop, --max N, --worktree, --branch, --pr, --merge, --dry, --level N, --auto-fix, --security. When --ultrathink is detected, activate Sequential Thinking MCP (mcp__sequential-thinking__sequentialthinking) for deep analysis before execution.
+Extract subcommand keywords and flags from the Raw User Input (defined in the Intent Router section). Recognized global flags: --resume [ID], --seq, --ultrathink, --team, --solo. Workflow-specific flags: --loop, --max N, --worktree, --branch, --pr, --merge, --dry, --level N, --auto-fix, --security. When --ultrathink is detected, activate Sequential Thinking MCP (mcp__sequential-thinking__sequentialthinking) for deep analysis before execution.
 
 Step 2 - Route to Workflow:
 Apply the Intent Router (Priority 1 through Priority 4) to determine the target workflow. If ambiguous, use AskUserQuestion to clarify with the user.
