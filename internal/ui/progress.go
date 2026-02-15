@@ -4,7 +4,12 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
+	"sync"
+
+	"github.com/charmbracelet/bubbles/progress"
+	"github.com/charmbracelet/bubbles/spinner"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // progressImpl implements the Progress interface.
@@ -28,13 +33,220 @@ func newProgressImpl(theme *Theme, hm *HeadlessManager, w io.Writer) *progressIm
 // Start creates a determinate progress bar with the given total.
 // In headless mode it returns a log-based progress bar.
 func (p *progressImpl) Start(title string, total int) ProgressBar {
-	return newHeadlessProgressBar(p.theme, title, total, p.writer)
+	if p.headless.IsHeadless() || p.theme.NoColor {
+		return newHeadlessProgressBar(p.theme, title, total, p.writer)
+	}
+	return newInteractiveProgressBar(p.theme, title, total)
 }
 
 // Spinner creates an indeterminate spinner.
 // In headless mode it prints the title as a log line.
 func (p *progressImpl) Spinner(title string) Spinner {
-	return newHeadlessSpinner(p.theme, title, p.writer)
+	if p.headless.IsHeadless() || p.theme.NoColor {
+		return newHeadlessSpinner(p.theme, title, p.writer)
+	}
+	return newInteractiveSpinner(p.theme, title)
+}
+
+// --- interactiveSpinner ---
+
+// spinnerTitleMsg is sent to update the spinner title.
+type spinnerTitleMsg string
+
+// spinnerStopMsg is sent to stop the spinner.
+type spinnerStopMsg struct{}
+
+// spinnerModel is the bubbletea Model for the animated spinner.
+type spinnerModel struct {
+	spinner spinner.Model
+	title   string
+	done    bool
+}
+
+func newSpinnerModel(theme *Theme, title string) spinnerModel {
+	s := spinner.New(spinner.WithSpinner(spinner.Dot))
+	if !theme.NoColor {
+		s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Colors.Primary))
+	}
+	return spinnerModel{spinner: s, title: title}
+}
+
+func (m spinnerModel) Init() tea.Cmd {
+	return m.spinner.Tick
+}
+
+func (m spinnerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case spinnerTitleMsg:
+		m.title = string(msg)
+		return m, nil
+	case spinnerStopMsg:
+		m.done = true
+		return m, tea.Quit
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
+	case tea.KeyMsg:
+		if msg.Type == tea.KeyCtrlC {
+			m.done = true
+			return m, tea.Quit
+		}
+	}
+	return m, nil
+}
+
+func (m spinnerModel) View() string {
+	if m.done {
+		return ""
+	}
+	return m.spinner.View() + " " + m.title + "\n"
+}
+
+// interactiveSpinner implements Spinner with an animated bubbles spinner.
+type interactiveSpinner struct {
+	program *tea.Program
+	once    sync.Once
+}
+
+func newInteractiveSpinner(theme *Theme, title string) *interactiveSpinner {
+	m := newSpinnerModel(theme, title)
+	p := tea.NewProgram(m)
+
+	s := &interactiveSpinner{program: p}
+
+	go func() {
+		_, _ = p.Run()
+	}()
+
+	return s
+}
+
+// SetTitle updates the spinner title.
+func (s *interactiveSpinner) SetTitle(title string) {
+	s.program.Send(spinnerTitleMsg(title))
+}
+
+// Stop halts the spinner.
+func (s *interactiveSpinner) Stop() {
+	s.once.Do(func() {
+		s.program.Send(spinnerStopMsg{})
+		s.program.Wait()
+	})
+}
+
+// --- interactiveProgressBar ---
+
+// progressIncrMsg is sent to increment the progress bar.
+type progressIncrMsg int
+
+// progressTitleMsg is sent to update the progress bar title.
+type progressTitleMsg string
+
+// progressDoneMsg is sent to complete the progress bar.
+type progressDoneMsg struct{}
+
+// progressModel is the bubbletea Model for the animated progress bar.
+type progressModel struct {
+	bar     progress.Model
+	title   string
+	current int
+	total   int
+	done    bool
+}
+
+func newProgressModel(theme *Theme, title string, total int) progressModel {
+	bar := progress.New(
+		progress.WithDefaultGradient(),
+		progress.WithWidth(40),
+	)
+	if !theme.NoColor {
+		bar = progress.New(
+			progress.WithGradient(theme.Colors.Primary, theme.Colors.Secondary),
+			progress.WithWidth(40),
+		)
+	}
+	return progressModel{bar: bar, title: title, total: total}
+}
+
+func (m progressModel) Init() tea.Cmd {
+	return nil
+}
+
+func (m progressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case progressIncrMsg:
+		m.current += int(msg)
+		if m.current > m.total {
+			m.current = m.total
+		}
+		return m, nil
+	case progressTitleMsg:
+		m.title = string(msg)
+		return m, nil
+	case progressDoneMsg:
+		m.current = m.total
+		m.done = true
+		return m, tea.Quit
+	case progress.FrameMsg:
+		pm, cmd := m.bar.Update(msg)
+		m.bar = pm.(progress.Model)
+		return m, cmd
+	case tea.KeyMsg:
+		if msg.Type == tea.KeyCtrlC {
+			m.done = true
+			return m, tea.Quit
+		}
+	}
+	return m, nil
+}
+
+func (m progressModel) View() string {
+	if m.done {
+		return ""
+	}
+	pct := 0.0
+	if m.total > 0 {
+		pct = float64(m.current) / float64(m.total)
+	}
+	return m.bar.ViewAs(pct) + " " + fmt.Sprintf("[%d/%d] %s\n", m.current, m.total, m.title)
+}
+
+// interactiveProgressBar implements ProgressBar with an animated bubbles progress bar.
+type interactiveProgressBar struct {
+	program *tea.Program
+	once    sync.Once
+}
+
+func newInteractiveProgressBar(theme *Theme, title string, total int) *interactiveProgressBar {
+	m := newProgressModel(theme, title, total)
+	p := tea.NewProgram(m)
+
+	pb := &interactiveProgressBar{program: p}
+
+	go func() {
+		_, _ = p.Run()
+	}()
+
+	return pb
+}
+
+// Increment advances the progress by n.
+func (b *interactiveProgressBar) Increment(n int) {
+	b.program.Send(progressIncrMsg(n))
+}
+
+// SetTitle updates the progress bar title.
+func (b *interactiveProgressBar) SetTitle(title string) {
+	b.program.Send(progressTitleMsg(title))
+}
+
+// Done completes the progress bar at 100%.
+func (b *interactiveProgressBar) Done() {
+	b.once.Do(func() {
+		b.program.Send(progressDoneMsg{})
+		b.program.Wait()
+	})
 }
 
 // --- headlessProgressBar ---
@@ -108,33 +320,4 @@ func (s *headlessSpinner) SetTitle(title string) {
 // Stop halts the spinner.
 func (s *headlessSpinner) Stop() {
 	s.stopped = true
-}
-
-// --- ASCII progress bar rendering ---
-
-// renderASCIIBar renders a progress bar using ASCII characters: [=====>     ]
-func renderASCIIBar(current, total, width int) string {
-	if total <= 0 {
-		return "[" + strings.Repeat(" ", width) + "]"
-	}
-
-	ratio := float64(current) / float64(total)
-	if ratio > 1.0 {
-		ratio = 1.0
-	}
-
-	filled := int(ratio * float64(width))
-	empty := width - filled
-
-	var bar strings.Builder
-	bar.WriteString("[")
-	if filled > 0 {
-		bar.WriteString(strings.Repeat("=", filled))
-	}
-	if empty > 0 {
-		bar.WriteString(strings.Repeat(" ", empty))
-	}
-	bar.WriteString("]")
-
-	return bar.String()
 }

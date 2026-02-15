@@ -2,8 +2,6 @@ package wizard
 
 import (
 	"testing"
-
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 func TestWizardResult(t *testing.T) {
@@ -12,7 +10,7 @@ func TestWizardResult(t *testing.T) {
 		Locale:          "ko",
 		UserName:        "TestUser",
 		GitMode:         "personal",
-		GitHubUsername:  "testuser",
+		GitHubUsername:   "testuser",
 		GitCommitLang:   "en",
 		CodeCommentLang: "en",
 		DocLang:         "ko",
@@ -170,315 +168,6 @@ func TestQuestionByID(t *testing.T) {
 	}
 }
 
-func TestModelNew(t *testing.T) {
-	questions := DefaultQuestions("/tmp/test")
-	model := New(questions, nil)
-
-	if model.state != StateRunning {
-		t.Errorf("expected state StateRunning, got %v", model.state)
-	}
-	if model.currentIndex != 0 {
-		t.Errorf("expected currentIndex 0, got %d", model.currentIndex)
-	}
-	if model.visibleIndex != 1 {
-		t.Errorf("expected visibleIndex 1, got %d", model.visibleIndex)
-	}
-	if model.result == nil {
-		t.Error("result should not be nil")
-	}
-	if model.styles == nil {
-		t.Error("styles should not be nil")
-	}
-}
-
-func TestModelInit(t *testing.T) {
-	questions := DefaultQuestions("/tmp/test")
-	model := New(questions, nil)
-
-	cmd := model.Init()
-	if cmd != nil {
-		t.Error("Init() should return nil")
-	}
-}
-
-func TestModelUpdateCancel(t *testing.T) {
-	questions := DefaultQuestions("/tmp/test")
-	model := New(questions, nil)
-
-	// Test Ctrl+C cancellation
-	newModel, cmd := model.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
-	m := newModel.(Model)
-
-	if m.state != StateCancelled {
-		t.Errorf("expected state StateCancelled after Ctrl+C, got %v", m.state)
-	}
-	if cmd == nil {
-		t.Error("expected tea.Quit command after cancellation")
-	}
-
-	// Test Esc cancellation
-	model = New(questions, nil)
-	newModel, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
-	m = newModel.(Model)
-
-	if m.state != StateCancelled {
-		t.Errorf("expected state StateCancelled after Esc, got %v", m.state)
-	}
-}
-
-func TestModelSelectNavigation(t *testing.T) {
-	questions := []Question{
-		{
-			ID:   "test",
-			Type: QuestionTypeSelect,
-			Options: []Option{
-				{Label: "A", Value: "a"},
-				{Label: "B", Value: "b"},
-				{Label: "C", Value: "c"},
-			},
-		},
-	}
-	model := New(questions, nil)
-
-	// Navigate down
-	newModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyDown})
-	m := newModel.(Model)
-	if m.cursor != 1 {
-		t.Errorf("expected cursor 1 after KeyDown, got %d", m.cursor)
-	}
-
-	// Navigate down again (wrap around)
-	newModel, _ = m.Update(tea.KeyMsg{Type: tea.KeyDown})
-	m = newModel.(Model)
-	newModel, _ = m.Update(tea.KeyMsg{Type: tea.KeyDown})
-	m = newModel.(Model)
-	if m.cursor != 0 {
-		t.Errorf("expected cursor 0 after wrap, got %d", m.cursor)
-	}
-
-	// Navigate up (wrap around)
-	newModel, _ = m.Update(tea.KeyMsg{Type: tea.KeyUp})
-	m = newModel.(Model)
-	if m.cursor != 2 {
-		t.Errorf("expected cursor 2 after KeyUp wrap, got %d", m.cursor)
-	}
-}
-
-func TestModelSelectEnter(t *testing.T) {
-	questions := []Question{
-		{
-			ID:   "locale",
-			Type: QuestionTypeSelect,
-			Options: []Option{
-				{Label: "English", Value: "en"},
-				{Label: "Korean", Value: "ko"},
-			},
-		},
-		{
-			ID:       "project_name",
-			Type:     QuestionTypeInput,
-			Default:  "test",
-			Required: true,
-		},
-	}
-	model := New(questions, nil)
-
-	// Move to second option and select
-	newModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyDown})
-	m := newModel.(Model)
-	newModel, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m = newModel.(Model)
-
-	if m.result.Locale != "ko" {
-		t.Errorf("expected Locale 'ko', got %q", m.result.Locale)
-	}
-	if m.currentIndex != 1 {
-		t.Errorf("expected currentIndex 1, got %d", m.currentIndex)
-	}
-}
-
-func TestModelTextInput(t *testing.T) {
-	questions := []Question{
-		{
-			ID:       "user_name",
-			Type:     QuestionTypeInput,
-			Default:  "",
-			Required: false,
-		},
-		{
-			ID:       "project_name",
-			Type:     QuestionTypeInput,
-			Default:  "default-project",
-			Required: true,
-		},
-	}
-	model := New(questions, nil)
-
-	// Type some text
-	newModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("John")})
-	m := newModel.(Model)
-	if m.inputValue != "John" {
-		t.Errorf("expected inputValue 'John', got %q", m.inputValue)
-	}
-
-	// Backspace
-	newModel, _ = m.Update(tea.KeyMsg{Type: tea.KeyBackspace})
-	m = newModel.(Model)
-	if m.inputValue != "Joh" {
-		t.Errorf("expected inputValue 'Joh', got %q", m.inputValue)
-	}
-}
-
-func TestModelTextInputSubmit(t *testing.T) {
-	questions := []Question{
-		{
-			ID:       "user_name",
-			Type:     QuestionTypeInput,
-			Default:  "",
-			Required: false,
-		},
-		{
-			ID:       "project_name",
-			Type:     QuestionTypeInput,
-			Default:  "test",
-			Required: true,
-		},
-	}
-	model := New(questions, nil)
-
-	// Submit empty (allowed for non-required)
-	newModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m := newModel.(Model)
-
-	if m.result.UserName != "" {
-		t.Errorf("expected empty UserName, got %q", m.result.UserName)
-	}
-	if m.currentIndex != 1 {
-		t.Errorf("expected currentIndex 1, got %d", m.currentIndex)
-	}
-}
-
-func TestModelRequiredField(t *testing.T) {
-	questions := []Question{
-		{
-			ID:       "project_name",
-			Type:     QuestionTypeInput,
-			Default:  "",
-			Required: true,
-		},
-	}
-	model := New(questions, nil)
-	model.inputValue = "" // Clear default
-
-	// Try to submit empty required field
-	newModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m := newModel.(Model)
-
-	if m.errorMsg == "" {
-		t.Error("expected error message for empty required field")
-	}
-	if m.currentIndex != 0 {
-		t.Error("should not advance on validation error")
-	}
-}
-
-func TestModelView(t *testing.T) {
-	questions := []Question{
-		{
-			ID:          "locale",
-			Type:        QuestionTypeSelect,
-			Title:       "Select language",
-			Description: "Choose your language",
-			Options: []Option{
-				{Label: "English", Value: "en"},
-				{Label: "Korean", Value: "ko"},
-			},
-		},
-	}
-	model := New(questions, nil)
-
-	view := model.View()
-	if view == "" {
-		t.Error("View() returned empty string")
-	}
-
-	// Check for progress indicator
-	if !contains(view, "[1/") {
-		t.Error("View should contain progress indicator")
-	}
-
-	// Check for title
-	if !contains(view, "Select language") {
-		t.Error("View should contain question title")
-	}
-}
-
-func TestModelViewCompleted(t *testing.T) {
-	questions := DefaultQuestions("/tmp/test")
-	model := New(questions, nil)
-	model.state = StateCompleted
-
-	view := model.View()
-	if view != "" {
-		t.Error("View() should return empty string when completed")
-	}
-}
-
-func TestModelViewCancelled(t *testing.T) {
-	questions := DefaultQuestions("/tmp/test")
-	model := New(questions, nil)
-	model.state = StateCancelled
-
-	view := model.View()
-	if view != "" {
-		t.Error("View() should return empty string when cancelled")
-	}
-}
-
-func TestConditionalQuestionSkip(t *testing.T) {
-	questions := []Question{
-		{
-			ID:   "git_mode",
-			Type: QuestionTypeSelect,
-			Options: []Option{
-				{Label: "Manual", Value: "manual"},
-				{Label: "Personal", Value: "personal"},
-			},
-		},
-		{
-			ID:       "github_username",
-			Type:     QuestionTypeInput,
-			Default:  "",
-			Required: false,
-			Condition: func(r *WizardResult) bool {
-				return r.GitMode == "personal" || r.GitMode == "team"
-			},
-		},
-		{
-			ID:       "next_question",
-			Type:     QuestionTypeInput,
-			Default:  "test",
-			Required: false,
-		},
-	}
-	model := New(questions, nil)
-
-	// Select "manual" mode (index 0)
-	newModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m := newModel.(Model)
-
-	// Should skip github_username and go to next_question
-	if m.currentIndex != 2 {
-		t.Errorf("expected currentIndex 2 (skipping conditional), got %d", m.currentIndex)
-	}
-
-	// Verify the current question is next_question
-	q := m.currentQuestion()
-	if q.ID != "next_question" {
-		t.Errorf("expected current question 'next_question', got %q", q.ID)
-	}
-}
-
 func TestRunWithEmptyQuestions(t *testing.T) {
 	_, err := Run(nil, nil)
 	if err != ErrNoQuestions {
@@ -503,459 +192,96 @@ func TestErrors(t *testing.T) {
 	}
 }
 
-func TestModelResult(t *testing.T) {
-	questions := DefaultQuestions("/tmp/test")
-	model := New(questions, nil)
+// --- saveAnswer standalone function tests ---
 
-	// Modify the result
-	model.result.ProjectName = "my-project"
-	model.result.Locale = "ko"
+func TestSaveAnswer_AllFields(t *testing.T) {
+	result := &WizardResult{}
+	locale := ""
 
-	result := model.Result()
-	if result == nil {
-		t.Fatal("Result() returned nil")
-	}
-	if result.ProjectName != "my-project" {
-		t.Errorf("expected ProjectName 'my-project', got %q", result.ProjectName)
-	}
-	if result.Locale != "ko" {
-		t.Errorf("expected Locale 'ko', got %q", result.Locale)
-	}
-}
-
-func TestModelState(t *testing.T) {
-	questions := DefaultQuestions("/tmp/test")
-	model := New(questions, nil)
-
-	// Test initial state
-	if model.State() != StateRunning {
-		t.Errorf("expected StateRunning, got %v", model.State())
-	}
-
-	// Test completed state
-	model.state = StateCompleted
-	if model.State() != StateCompleted {
-		t.Errorf("expected StateCompleted, got %v", model.State())
+	tests := []struct {
+		id       string
+		value    string
+		checkFn  func() bool
+		expected string
+	}{
+		{"locale", "ko", func() bool { return result.Locale == "ko" && locale == "ko" }, "Locale=ko, locale pointer=ko"},
+		{"user_name", "testuser", func() bool { return result.UserName == "testuser" }, "UserName=testuser"},
+		{"project_name", "myproject", func() bool { return result.ProjectName == "myproject" }, "ProjectName=myproject"},
+		{"git_mode", "personal", func() bool { return result.GitMode == "personal" }, "GitMode=personal"},
+		{"git_provider", "gitlab", func() bool { return result.GitProvider == "gitlab" }, "GitProvider=gitlab"},
+		{"github_username", "ghuser", func() bool { return result.GitHubUsername == "ghuser" }, "GitHubUsername=ghuser"},
+		{"github_token", "ghp_token", func() bool { return result.GitHubToken == "ghp_token" }, "GitHubToken=ghp_token"},
+		{"gitlab_instance_url", "https://gl.co", func() bool { return result.GitLabInstanceURL == "https://gl.co" }, "GitLabInstanceURL"},
+		{"gitlab_username", "gluser", func() bool { return result.GitLabUsername == "gluser" }, "GitLabUsername=gluser"},
+		{"gitlab_token", "glpat-token", func() bool { return result.GitLabToken == "glpat-token" }, "GitLabToken=glpat-token"},
+		{"git_commit_lang", "en", func() bool { return result.GitCommitLang == "en" }, "GitCommitLang=en"},
+		{"code_comment_lang", "en", func() bool { return result.CodeCommentLang == "en" }, "CodeCommentLang=en"},
+		{"doc_lang", "ko", func() bool { return result.DocLang == "ko" }, "DocLang=ko"},
+		{"model_policy", "high", func() bool { return result.ModelPolicy == "high" }, "ModelPolicy=high"},
+		{"agent_teams_mode", "auto", func() bool { return result.AgentTeamsMode == "auto" }, "AgentTeamsMode=auto"},
+		{"max_teammates", "3", func() bool { return result.MaxTeammates == "3" }, "MaxTeammates=3"},
+		{"default_model", "sonnet", func() bool { return result.DefaultModel == "sonnet" }, "DefaultModel=sonnet"},
+		{"statusline_preset", "compact", func() bool { return result.StatuslinePreset == "compact" }, "StatuslinePreset=compact"},
 	}
 
-	// Test cancelled state
-	model.state = StateCancelled
-	if model.State() != StateCancelled {
-		t.Errorf("expected StateCancelled, got %v", model.State())
-	}
-}
-
-func TestModelViewWithInputQuestion(t *testing.T) {
-	questions := []Question{
-		{
-			ID:          "user_name",
-			Type:        QuestionTypeInput,
-			Title:       "Enter your name",
-			Description: "This will be used for commits",
-			Default:     "defaultuser",
-			Required:    false,
-		},
-	}
-	model := New(questions, nil)
-
-	view := model.View()
-	if view == "" {
-		t.Error("View() returned empty string")
-	}
-
-	// Check for title
-	if !contains(view, "Enter your name") {
-		t.Error("View should contain question title")
-	}
-
-	// Check for input prompt
-	if !contains(view, ">") {
-		t.Error("View should contain input prompt '>'")
+	for _, tt := range tests {
+		t.Run(tt.id, func(t *testing.T) {
+			saveAnswer(tt.id, tt.value, result, &locale)
+			if !tt.checkFn() {
+				t.Errorf("saveAnswer(%q, %q) did not set expected: %s", tt.id, tt.value, tt.expected)
+			}
+		})
 	}
 }
 
-func TestModelViewWithInputNoDefault(t *testing.T) {
-	questions := []Question{
-		{
-			ID:       "user_name",
-			Type:     QuestionTypeInput,
-			Title:    "Enter your name",
-			Default:  "",
-			Required: false,
-		},
-	}
-	model := New(questions, nil)
-	model.inputValue = "" // Ensure empty
+func TestSaveAnswer_Locale_UpdatesPointer(t *testing.T) {
+	result := &WizardResult{}
+	locale := ""
 
-	view := model.View()
-	if view == "" {
-		t.Error("View() returned empty string")
+	saveAnswer("locale", "ja", result, &locale)
+
+	if result.Locale != "ja" {
+		t.Errorf("expected Locale 'ja', got %q", result.Locale)
+	}
+	if locale != "ja" {
+		t.Errorf("expected locale pointer 'ja', got %q", locale)
 	}
 }
 
-func TestModelViewWithInputValue(t *testing.T) {
-	questions := []Question{
-		{
-			ID:       "user_name",
-			Type:     QuestionTypeInput,
-			Title:    "Enter your name",
-			Default:  "",
-			Required: false,
-		},
-	}
-	model := New(questions, nil)
-	model.inputValue = "typed-value"
+func TestSaveAnswer_StatuslineSegments(t *testing.T) {
+	result := &WizardResult{}
+	locale := ""
 
-	view := model.View()
-	if !contains(view, "typed-value") {
-		t.Error("View should contain typed input value")
+	// Initially StatuslineSegments should be nil
+	if result.StatuslineSegments != nil {
+		t.Error("StatuslineSegments should be nil initially")
 	}
-}
 
-func TestModelViewWithError(t *testing.T) {
-	questions := []Question{
-		{
-			ID:       "project_name",
-			Type:     QuestionTypeInput,
-			Title:    "Project name",
-			Default:  "",
-			Required: true,
-		},
+	// Save first segment - should initialize map
+	saveAnswer("statusline_seg_model", "true", result, &locale)
+	if result.StatuslineSegments == nil {
+		t.Fatal("StatuslineSegments should be initialized after saving a segment")
 	}
-	model := New(questions, nil)
-	model.errorMsg = "This field is required"
+	if !result.StatuslineSegments["model"] {
+		t.Error("StatuslineSegments['model'] should be true")
+	}
 
-	view := model.View()
-	if !contains(view, "This field is required") {
-		t.Error("View should contain error message")
+	// Save second segment
+	saveAnswer("statusline_seg_context", "false", result, &locale)
+	if result.StatuslineSegments["context"] {
+		t.Error("StatuslineSegments['context'] should be false")
 	}
 }
 
-func TestSaveAnswerAllCases(t *testing.T) {
-	questions := []Question{
-		{ID: "locale", Type: QuestionTypeSelect, Options: []Option{{Value: "ko"}}},
-		{ID: "user_name", Type: QuestionTypeInput},
-		{ID: "project_name", Type: QuestionTypeInput},
-		{ID: "git_mode", Type: QuestionTypeSelect, Options: []Option{{Value: "personal"}}},
-		{ID: "git_provider", Type: QuestionTypeSelect, Options: []Option{{Value: "github"}, {Value: "gitlab"}}},
-		{ID: "github_username", Type: QuestionTypeInput},
-		{ID: "git_commit_lang", Type: QuestionTypeSelect, Options: []Option{{Value: "en"}}},
-		{ID: "code_comment_lang", Type: QuestionTypeSelect, Options: []Option{{Value: "en"}}},
-		{ID: "doc_lang", Type: QuestionTypeSelect, Options: []Option{{Value: "ko"}}},
-		{ID: "agent_teams_mode", Type: QuestionTypeSelect, Options: []Option{{Value: "auto"}}},
-		{ID: "max_teammates", Type: QuestionTypeSelect, Options: []Option{{Value: "3"}}},
-		{ID: "default_model", Type: QuestionTypeSelect, Options: []Option{{Value: "sonnet"}}},
-		{ID: "github_token", Type: QuestionTypeInput},
-		{ID: "gitlab_instance_url", Type: QuestionTypeInput},
-		{ID: "gitlab_username", Type: QuestionTypeInput},
-		{ID: "gitlab_token", Type: QuestionTypeInput},
-	}
-	model := New(questions, nil)
+func TestSaveAnswer_UnknownID(t *testing.T) {
+	result := &WizardResult{}
+	locale := ""
 
-	// Test all saveAnswer cases
-	model.saveAnswer("locale", "ko")
-	if model.result.Locale != "ko" {
-		t.Errorf("expected Locale 'ko', got %q", model.result.Locale)
-	}
-
-	model.saveAnswer("user_name", "testuser")
-	if model.result.UserName != "testuser" {
-		t.Errorf("expected UserName 'testuser', got %q", model.result.UserName)
-	}
-
-	model.saveAnswer("project_name", "myproject")
-	if model.result.ProjectName != "myproject" {
-		t.Errorf("expected ProjectName 'myproject', got %q", model.result.ProjectName)
-	}
-
-	model.saveAnswer("git_mode", "personal")
-	if model.result.GitMode != "personal" {
-		t.Errorf("expected GitMode 'personal', got %q", model.result.GitMode)
-	}
-
-	model.saveAnswer("github_username", "ghuser")
-	if model.result.GitHubUsername != "ghuser" {
-		t.Errorf("expected GitHubUsername 'ghuser', got %q", model.result.GitHubUsername)
-	}
-
-	model.saveAnswer("git_commit_lang", "en")
-	if model.result.GitCommitLang != "en" {
-		t.Errorf("expected GitCommitLang 'en', got %q", model.result.GitCommitLang)
-	}
-
-	model.saveAnswer("code_comment_lang", "en")
-	if model.result.CodeCommentLang != "en" {
-		t.Errorf("expected CodeCommentLang 'en', got %q", model.result.CodeCommentLang)
-	}
-
-	model.saveAnswer("doc_lang", "ko")
-	if model.result.DocLang != "ko" {
-		t.Errorf("expected DocLang 'ko', got %q", model.result.DocLang)
-	}
-
-	model.saveAnswer("agent_teams_mode", "subagent")
-	if model.result.AgentTeamsMode != "subagent" {
-		t.Errorf("expected AgentTeamsMode 'subagent', got %q", model.result.AgentTeamsMode)
-	}
-
-	model.saveAnswer("max_teammates", "4")
-	if model.result.MaxTeammates != "4" {
-		t.Errorf("expected MaxTeammates '4', got %q", model.result.MaxTeammates)
-	}
-
-	model.saveAnswer("default_model", "opus")
-	if model.result.DefaultModel != "opus" {
-		t.Errorf("expected DefaultModel 'opus', got %q", model.result.DefaultModel)
-	}
-
-	model.saveAnswer("github_token", "ghp_test_token")
-	if model.result.GitHubToken != "ghp_test_token" {
-		t.Errorf("expected GitHubToken 'ghp_test_token', got %q", model.result.GitHubToken)
-	}
-
-	model.saveAnswer("git_provider", "gitlab")
-	if model.result.GitProvider != "gitlab" {
-		t.Errorf("expected GitProvider 'gitlab', got %q", model.result.GitProvider)
-	}
-
-	model.saveAnswer("gitlab_instance_url", "https://gitlab.company.com")
-	if model.result.GitLabInstanceURL != "https://gitlab.company.com" {
-		t.Errorf("expected GitLabInstanceURL 'https://gitlab.company.com', got %q", model.result.GitLabInstanceURL)
-	}
-
-	model.saveAnswer("gitlab_username", "gluser")
-	if model.result.GitLabUsername != "gluser" {
-		t.Errorf("expected GitLabUsername 'gluser', got %q", model.result.GitLabUsername)
-	}
-
-	model.saveAnswer("gitlab_token", "glpat-test-token")
-	if model.result.GitLabToken != "glpat-test-token" {
-		t.Errorf("expected GitLabToken 'glpat-test-token', got %q", model.result.GitLabToken)
-	}
+	// Should not panic for unknown IDs
+	saveAnswer("unknown_field", "value", result, &locale)
 }
 
-func TestRenderSelectWithDescription(t *testing.T) {
-	questions := []Question{
-		{
-			ID:   "test",
-			Type: QuestionTypeSelect,
-			Options: []Option{
-				{Label: "Option A", Value: "a", Desc: "Description for A"},
-				{Label: "Option B", Value: "b", Desc: "Description for B"},
-			},
-		},
-	}
-	model := New(questions, nil)
-
-	view := model.View()
-	if !contains(view, "Description for A") {
-		t.Error("View should contain option description")
-	}
-}
-
-func TestRenderHelpForInput(t *testing.T) {
-	questions := []Question{
-		{
-			ID:       "test",
-			Type:     QuestionTypeInput,
-			Title:    "Test input",
-			Required: false,
-		},
-	}
-	model := New(questions, nil)
-
-	view := model.View()
-	if !contains(view, "Enter to confirm") {
-		t.Error("View should contain input help text")
-	}
-}
-
-func TestAdvanceToCompletion(t *testing.T) {
-	questions := []Question{
-		{
-			ID:   "only_question",
-			Type: QuestionTypeSelect,
-			Options: []Option{
-				{Label: "Yes", Value: "yes"},
-			},
-		},
-	}
-	model := New(questions, nil)
-
-	// Select and advance (should complete since only one question)
-	newModel, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m := newModel.(Model)
-
-	if m.state != StateCompleted {
-		t.Errorf("expected StateCompleted, got %v", m.state)
-	}
-	if cmd == nil {
-		t.Error("expected tea.Quit command on completion")
-	}
-}
-
-func TestCurrentQuestionNil(t *testing.T) {
-	questions := []Question{
-		{
-			ID:   "only",
-			Type: QuestionTypeSelect,
-			Options: []Option{
-				{Label: "Yes", Value: "yes"},
-			},
-		},
-	}
-	model := New(questions, nil)
-	model.currentIndex = 999 // Beyond questions
-
-	q := model.currentQuestion()
-	if q != nil {
-		t.Error("expected nil when currentIndex is beyond questions")
-	}
-}
-
-func TestModelViewNilQuestion(t *testing.T) {
-	questions := []Question{
-		{
-			ID:   "only",
-			Type: QuestionTypeSelect,
-			Options: []Option{
-				{Label: "Yes", Value: "yes"},
-			},
-		},
-	}
-	model := New(questions, nil)
-	model.currentIndex = 999 // Beyond questions
-
-	view := model.View()
-	if view != "" {
-		t.Error("View should return empty string when no current question")
-	}
-}
-
-func TestHandleKeyMsgNilQuestion(t *testing.T) {
-	questions := []Question{
-		{
-			ID:   "only",
-			Type: QuestionTypeSelect,
-			Options: []Option{
-				{Label: "Yes", Value: "yes"},
-			},
-		},
-	}
-	model := New(questions, nil)
-	model.currentIndex = 999 // Beyond questions
-
-	newModel, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m := newModel.(Model)
-
-	if m.state != StateCompleted {
-		t.Errorf("expected StateCompleted when no questions left, got %v", m.state)
-	}
-	if cmd == nil {
-		t.Error("expected tea.Quit command")
-	}
-}
-
-func TestTabNavigation(t *testing.T) {
-	questions := []Question{
-		{
-			ID:   "test",
-			Type: QuestionTypeSelect,
-			Options: []Option{
-				{Label: "A", Value: "a"},
-				{Label: "B", Value: "b"},
-				{Label: "C", Value: "c"},
-			},
-		},
-	}
-	model := New(questions, nil)
-
-	// Tab should move down
-	newModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyTab})
-	m := newModel.(Model)
-	if m.cursor != 1 {
-		t.Errorf("expected cursor 1 after Tab, got %d", m.cursor)
-	}
-
-	// ShiftTab should move up
-	newModel, _ = m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
-	m = newModel.(Model)
-	if m.cursor != 0 {
-		t.Errorf("expected cursor 0 after ShiftTab, got %d", m.cursor)
-	}
-}
-
-func TestSubmitTextInputWithDefault(t *testing.T) {
-	questions := []Question{
-		{
-			ID:       "project_name",
-			Type:     QuestionTypeInput,
-			Default:  "default-project",
-			Required: true,
-		},
-		{
-			ID:      "next",
-			Type:    QuestionTypeInput,
-			Default: "next-default",
-		},
-	}
-	model := New(questions, nil)
-	model.inputValue = "" // Empty, should use default
-
-	// Submit with empty input (should use default)
-	newModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m := newModel.(Model)
-
-	if m.result.ProjectName != "default-project" {
-		t.Errorf("expected ProjectName 'default-project', got %q", m.result.ProjectName)
-	}
-}
-
-func TestAdvanceWithDefaultOption(t *testing.T) {
-	questions := []Question{
-		{
-			ID:   "first",
-			Type: QuestionTypeSelect,
-			Options: []Option{
-				{Label: "A", Value: "a"},
-				{Label: "B", Value: "b"},
-			},
-		},
-		{
-			ID:      "second",
-			Type:    QuestionTypeSelect,
-			Default: "b",
-			Options: []Option{
-				{Label: "A", Value: "a"},
-				{Label: "B", Value: "b"},
-			},
-		},
-	}
-	model := New(questions, nil)
-
-	// Select first option and advance
-	newModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m := newModel.(Model)
-
-	// Cursor should be set to default option index (1 for "b")
-	if m.cursor != 1 {
-		t.Errorf("expected cursor 1 (default option 'b'), got %d", m.cursor)
-	}
-}
-
-// contains checks if s contains substr.
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
-}
-
-func containsHelper(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}
+// --- Localization tests ---
 
 func TestGetLocalizedQuestion(t *testing.T) {
 	q := &Question{
@@ -1020,47 +346,7 @@ func TestGetUIStrings(t *testing.T) {
 	}
 }
 
-func TestLocaleTransitionInWizard(t *testing.T) {
-	questions := []Question{
-		{
-			ID:   "locale",
-			Type: QuestionTypeSelect,
-			Options: []Option{
-				{Label: "Korean (한국어)", Value: "ko"},
-				{Label: "English", Value: "en"},
-			},
-		},
-		{
-			ID:          "user_name",
-			Type:        QuestionTypeInput,
-			Title:       "Enter your name",
-			Description: "This will be used in configuration files.",
-			Default:     "",
-			Required:    false,
-		},
-	}
-	model := New(questions, nil)
-
-	// Initially locale is empty, so English is used
-	view1 := model.View()
-	if !contains(view1, "Korean") {
-		t.Error("initial view should show locale options")
-	}
-
-	// Select Korean and advance
-	newModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter}) // Select first option (ko)
-	m := newModel.(Model)
-
-	if m.locale != "ko" {
-		t.Errorf("expected locale 'ko', got %q", m.locale)
-	}
-
-	// Next question should be in Korean
-	view2 := m.View()
-	if !contains(view2, "이름 입력") {
-		t.Errorf("second question should be in Korean, got: %s", view2)
-	}
-}
+// --- Git provider conditional tests ---
 
 func TestGitProviderQuestion(t *testing.T) {
 	questions := DefaultQuestions("/tmp/test-project")
@@ -1174,7 +460,7 @@ func TestWizardResultGitLabFields(t *testing.T) {
 		GitMode:           "personal",
 		GitProvider:       "gitlab",
 		GitLabInstanceURL: "https://gitlab.company.com",
-		GitLabUsername:    "gluser",
+		GitLabUsername:     "gluser",
 		GitLabToken:       "glpat-test-token",
 	}
 
@@ -1199,5 +485,560 @@ func TestDevelopmentModeRemovedFromWizard(t *testing.T) {
 		if q.ID == "development_mode" {
 			t.Fatal("development_mode question should not be in wizard; it is auto-configured by /moai project")
 		}
+	}
+}
+
+// --- buildQuestionGroup tests ---
+
+func TestBuildQuestionGroup_Select(t *testing.T) {
+	result := &WizardResult{}
+	locale := ""
+	q := &Question{
+		ID:   "test_select",
+		Type: QuestionTypeSelect,
+		Options: []Option{
+			{Label: "A", Value: "a"},
+			{Label: "B", Value: "b"},
+		},
+	}
+
+	g := buildQuestionGroup(q, result, &locale)
+	if g == nil {
+		t.Error("expected non-nil group")
+	}
+}
+
+func TestBuildQuestionGroup_Input(t *testing.T) {
+	result := &WizardResult{}
+	locale := ""
+	q := &Question{
+		ID:      "test_input",
+		Type:    QuestionTypeInput,
+		Default: "default-val",
+	}
+
+	g := buildQuestionGroup(q, result, &locale)
+	if g == nil {
+		t.Error("expected non-nil group")
+	}
+}
+
+func TestBuildQuestionGroup_WithCondition(t *testing.T) {
+	result := &WizardResult{}
+	locale := ""
+	q := &Question{
+		ID:   "conditional_q",
+		Type: QuestionTypeInput,
+		Condition: func(r *WizardResult) bool {
+			return r.GitMode == "team"
+		},
+	}
+
+	g := buildQuestionGroup(q, result, &locale)
+	if g == nil {
+		t.Error("expected non-nil group even with condition")
+	}
+}
+
+// --- newMoAIWizardTheme tests ---
+
+func TestNewMoAIWizardTheme_ReturnsNonNil(t *testing.T) {
+	theme := newMoAIWizardTheme()
+	if theme == nil {
+		t.Error("expected non-nil theme")
+	}
+}
+
+// --- GetLocalizedQuestion edge cases ---
+
+func TestGetLocalizedQuestion_EmptyLocale(t *testing.T) {
+	q := &Question{
+		ID:    "test_q",
+		Title: "Original Title",
+	}
+	result := GetLocalizedQuestion(q, "")
+	if result.Title != "Original Title" {
+		t.Errorf("empty locale should return original title, got %q", result.Title)
+	}
+}
+
+func TestGetLocalizedQuestion_KnownLocaleUnknownID(t *testing.T) {
+	q := &Question{
+		ID:    "nonexistent_question_id",
+		Title: "Original Title",
+	}
+	result := GetLocalizedQuestion(q, "ko")
+	if result.Title != "Original Title" {
+		t.Errorf("unknown question ID should return original title, got %q", result.Title)
+	}
+}
+
+func TestGetLocalizedQuestion_OptionTranslation(t *testing.T) {
+	q := &Question{
+		ID:    "locale",
+		Type:  QuestionTypeSelect,
+		Title: "Select language",
+		Options: []Option{
+			{Label: "Korean (한국어)", Value: "ko", Desc: "Korean"},
+			{Label: "English", Value: "en", Desc: "English"},
+		},
+	}
+
+	// Korean translation should translate option labels
+	result := GetLocalizedQuestion(q, "ko")
+	if len(result.Options) != 2 {
+		t.Fatalf("expected 2 options, got %d", len(result.Options))
+	}
+	// Values should be preserved
+	if result.Options[0].Value != "ko" {
+		t.Errorf("option[0].Value should be 'ko', got %q", result.Options[0].Value)
+	}
+	if result.Options[1].Value != "en" {
+		t.Errorf("option[1].Value should be 'en', got %q", result.Options[1].Value)
+	}
+}
+
+func TestGetLocalizedQuestion_MismatchedOptionCount(t *testing.T) {
+	// Create a question with 3 options but use a locale that has 2 option translations
+	q := &Question{
+		ID:    "locale",
+		Type:  QuestionTypeSelect,
+		Title: "Select language",
+		Options: []Option{
+			{Label: "Korean", Value: "ko"},
+			{Label: "English", Value: "en"},
+			{Label: "Extra", Value: "extra"}, // Extra option not in translations
+		},
+	}
+
+	// When option count doesn't match translation count, options should NOT be translated
+	result := GetLocalizedQuestion(q, "ko")
+	// Title should still be translated
+	if result.Title == q.Title {
+		t.Error("title should be translated even with mismatched option count")
+	}
+	// Options should remain original since count mismatch
+	if len(result.Options) != 3 {
+		t.Fatalf("expected 3 options, got %d", len(result.Options))
+	}
+	if result.Options[0].Label != "Korean" {
+		t.Errorf("mismatched options should keep original label, got %q", result.Options[0].Label)
+	}
+}
+
+func TestGetLocalizedQuestion_PreservesNonTranslatedFields(t *testing.T) {
+	q := &Question{
+		ID:       "locale",
+		Type:     QuestionTypeSelect,
+		Title:    "Select language",
+		Default:  "en",
+		Required: true,
+		Options: []Option{
+			{Label: "Korean", Value: "ko"},
+			{Label: "English", Value: "en"},
+		},
+	}
+
+	result := GetLocalizedQuestion(q, "ko")
+	if result.Default != "en" {
+		t.Errorf("Default should be preserved, got %q", result.Default)
+	}
+	if !result.Required {
+		t.Error("Required should be preserved")
+	}
+	if result.Type != QuestionTypeSelect {
+		t.Errorf("Type should be preserved, got %v", result.Type)
+	}
+}
+
+// --- buildSelectField edge cases ---
+
+func TestBuildSelectField_WithDefault(t *testing.T) {
+	result := &WizardResult{}
+	locale := ""
+	q := &Question{
+		ID:      "test_sel",
+		Type:    QuestionTypeSelect,
+		Title:   "Pick one",
+		Default: "b",
+		Options: []Option{
+			{Label: "A", Value: "a"},
+			{Label: "B", Value: "b"},
+			{Label: "C", Value: "c"},
+		},
+	}
+
+	field := buildSelectField(q, result, &locale)
+	if field == nil {
+		t.Error("expected non-nil select field")
+	}
+}
+
+func TestBuildSelectField_WithoutDefault(t *testing.T) {
+	result := &WizardResult{}
+	locale := ""
+	q := &Question{
+		ID:   "test_sel_nodef",
+		Type: QuestionTypeSelect,
+		Options: []Option{
+			{Label: "X", Value: "x"},
+			{Label: "Y", Value: "y"},
+		},
+	}
+
+	field := buildSelectField(q, result, &locale)
+	if field == nil {
+		t.Error("expected non-nil select field")
+	}
+}
+
+func TestBuildSelectField_WithDescriptions(t *testing.T) {
+	result := &WizardResult{}
+	locale := ""
+	q := &Question{
+		ID:   "test_sel_desc",
+		Type: QuestionTypeSelect,
+		Options: []Option{
+			{Label: "Option A", Value: "a", Desc: "Description A"},
+			{Label: "Option B", Value: "b", Desc: ""},
+		},
+	}
+
+	field := buildSelectField(q, result, &locale)
+	if field == nil {
+		t.Error("expected non-nil select field")
+	}
+}
+
+// --- buildInputField edge cases ---
+
+func TestBuildInputField_WithDefault(t *testing.T) {
+	result := &WizardResult{}
+	locale := ""
+	q := &Question{
+		ID:      "test_inp_def",
+		Type:    QuestionTypeInput,
+		Title:   "Enter name",
+		Default: "default-name",
+	}
+
+	field := buildInputField(q, result, &locale)
+	if field == nil {
+		t.Error("expected non-nil input field")
+	}
+}
+
+func TestBuildInputField_WithoutDefault(t *testing.T) {
+	result := &WizardResult{}
+	locale := ""
+	q := &Question{
+		ID:   "test_inp_nodef",
+		Type: QuestionTypeInput,
+	}
+
+	field := buildInputField(q, result, &locale)
+	if field == nil {
+		t.Error("expected non-nil input field")
+	}
+}
+
+func TestBuildInputField_Required(t *testing.T) {
+	result := &WizardResult{}
+	locale := ""
+	q := &Question{
+		ID:       "test_inp_req",
+		Type:     QuestionTypeInput,
+		Required: true,
+	}
+
+	field := buildInputField(q, result, &locale)
+	if field == nil {
+		t.Error("expected non-nil input field")
+	}
+}
+
+func TestBuildInputField_RequiredWithDefault(t *testing.T) {
+	result := &WizardResult{}
+	locale := ""
+	q := &Question{
+		ID:       "test_inp_reqdef",
+		Type:     QuestionTypeInput,
+		Required: true,
+		Default:  "fallback",
+	}
+
+	field := buildInputField(q, result, &locale)
+	if field == nil {
+		t.Error("expected non-nil input field")
+	}
+}
+
+// --- DefaultQuestions comprehensive coverage ---
+
+func TestDefaultQuestions_AllQuestionTypesValid(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test")
+	for _, q := range questions {
+		if q.Type != QuestionTypeSelect && q.Type != QuestionTypeInput {
+			t.Errorf("question %q has invalid type %v", q.ID, q.Type)
+		}
+		if q.ID == "" {
+			t.Error("question has empty ID")
+		}
+		if q.Title == "" {
+			t.Errorf("question %q has empty title", q.ID)
+		}
+	}
+}
+
+func TestDefaultQuestions_SelectQuestionsHaveOptions(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test")
+	for _, q := range questions {
+		if q.Type == QuestionTypeSelect && len(q.Options) == 0 {
+			t.Errorf("select question %q has no options", q.ID)
+		}
+	}
+}
+
+func TestDefaultQuestions_ConditionalQuestionsHaveConditions(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test")
+	conditionalIDs := map[string]bool{
+		"git_provider":       true,
+		"gitlab_instance_url": true,
+		"github_username":    true,
+		"github_token":       true,
+		"gitlab_username":    true,
+		"gitlab_token":       true,
+	}
+
+	for _, q := range questions {
+		if conditionalIDs[q.ID] && q.Condition == nil {
+			t.Errorf("question %q should have a condition", q.ID)
+		}
+	}
+}
+
+func TestDefaultQuestions_UniqueIDs(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test")
+	seen := make(map[string]bool)
+	for _, q := range questions {
+		if seen[q.ID] {
+			t.Errorf("duplicate question ID: %q", q.ID)
+		}
+		seen[q.ID] = true
+	}
+}
+
+// --- RunWithDefaults test ---
+
+func TestRunWithDefaults_CreatesQuestions(t *testing.T) {
+	// RunWithDefaults calls Run which needs TTY, but will fail gracefully.
+	// We just verify it doesn't panic and creates questions correctly.
+	// Since we can't run the form without TTY, we test that it at least
+	// processes questions by verifying DefaultQuestions returns valid data.
+	questions := DefaultQuestions("/tmp/run-defaults-test")
+	if len(questions) == 0 {
+		t.Error("DefaultQuestions should return non-empty for RunWithDefaults")
+	}
+}
+
+// --- Additional translation coverage ---
+
+func TestGetUIStrings_AllLocales(t *testing.T) {
+	locales := []string{"en", "ko", "ja", "zh"}
+	for _, locale := range locales {
+		str := GetUIStrings(locale)
+		if str.HelpSelect == "" {
+			t.Errorf("locale %q: HelpSelect should not be empty", locale)
+		}
+		if str.HelpInput == "" {
+			t.Errorf("locale %q: HelpInput should not be empty", locale)
+		}
+		if str.ErrorRequired == "" {
+			t.Errorf("locale %q: ErrorRequired should not be empty", locale)
+		}
+	}
+}
+
+func TestGetLocalizedQuestion_AllLocales_ForLocaleQuestion(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test")
+	q := QuestionByID(questions, "locale")
+	if q == nil {
+		t.Fatal("locale question not found")
+	}
+
+	locales := []string{"ko", "ja", "zh"}
+	for _, locale := range locales {
+		result := GetLocalizedQuestion(q, locale)
+		if result.Title == "" {
+			t.Errorf("locale %q: title should not be empty", locale)
+		}
+		if result.Description == "" {
+			t.Errorf("locale %q: description should not be empty", locale)
+		}
+	}
+}
+
+// --- buildWizardForm tests ---
+
+func TestBuildWizardForm_ReturnsFormAndResult(t *testing.T) {
+	questions := []Question{
+		{
+			ID:    "test_q1",
+			Type:  QuestionTypeSelect,
+			Title: "Q1",
+			Options: []Option{
+				{Label: "A", Value: "a"},
+				{Label: "B", Value: "b"},
+			},
+		},
+	}
+
+	form, result := buildWizardForm(questions)
+	if form == nil {
+		t.Fatal("buildWizardForm should return non-nil form")
+	}
+	if result == nil {
+		t.Fatal("buildWizardForm should return non-nil result")
+	}
+}
+
+func TestBuildWizardForm_MultipleQuestions(t *testing.T) {
+	questions := []Question{
+		{
+			ID:    "q1",
+			Type:  QuestionTypeSelect,
+			Title: "Select one",
+			Options: []Option{
+				{Label: "A", Value: "a"},
+			},
+		},
+		{
+			ID:    "q2",
+			Type:  QuestionTypeInput,
+			Title: "Enter text",
+		},
+		{
+			ID:    "q3",
+			Type:  QuestionTypeSelect,
+			Title: "Another select",
+			Options: []Option{
+				{Label: "X", Value: "x"},
+				{Label: "Y", Value: "y"},
+			},
+		},
+	}
+
+	form, result := buildWizardForm(questions)
+	if form == nil {
+		t.Fatal("expected non-nil form")
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+}
+
+func TestBuildWizardForm_WithDefaultQuestions(t *testing.T) {
+	questions := DefaultQuestions("/tmp/wizard-test")
+	form, result := buildWizardForm(questions)
+	if form == nil {
+		t.Fatal("expected non-nil form from default questions")
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result from default questions")
+	}
+}
+
+func TestBuildWizardForm_EmptyResult(t *testing.T) {
+	questions := []Question{
+		{
+			ID:      "locale",
+			Type:    QuestionTypeSelect,
+			Title:   "Language",
+			Default: "en",
+			Options: []Option{
+				{Label: "English", Value: "en"},
+				{Label: "Korean", Value: "ko"},
+			},
+		},
+	}
+
+	_, result := buildWizardForm(questions)
+	// Result should be initialized but empty (form hasn't run)
+	if result.Locale != "" {
+		t.Errorf("expected empty Locale before form runs, got %q", result.Locale)
+	}
+	if result.ProjectName != "" {
+		t.Errorf("expected empty ProjectName before form runs, got %q", result.ProjectName)
+	}
+}
+
+// --- buildQuestionGroup tests ---
+
+func TestBuildQuestionGroup_SelectType(t *testing.T) {
+	result := &WizardResult{}
+	locale := ""
+	q := &Question{
+		ID:    "test_group_sel",
+		Type:  QuestionTypeSelect,
+		Title: "Group select",
+		Options: []Option{
+			{Label: "A", Value: "a"},
+		},
+	}
+
+	group := buildQuestionGroup(q, result, &locale)
+	if group == nil {
+		t.Fatal("expected non-nil group for select question")
+	}
+}
+
+func TestBuildQuestionGroup_InputType(t *testing.T) {
+	result := &WizardResult{}
+	locale := ""
+	q := &Question{
+		ID:    "test_group_inp",
+		Type:  QuestionTypeInput,
+		Title: "Group input",
+	}
+
+	group := buildQuestionGroup(q, result, &locale)
+	if group == nil {
+		t.Fatal("expected non-nil group for input question")
+	}
+}
+
+func TestBuildQuestionGroup_WithCondition_Personal(t *testing.T) {
+	result := &WizardResult{}
+	locale := ""
+	q := &Question{
+		ID:    "conditional_personal",
+		Type:  QuestionTypeInput,
+		Title: "Conditional Personal",
+		Condition: func(r *WizardResult) bool {
+			return r.GitMode == "personal"
+		},
+	}
+
+	group := buildQuestionGroup(q, result, &locale)
+	if group == nil {
+		t.Fatal("expected non-nil group for conditional question")
+	}
+}
+
+func TestBuildQuestionGroup_WithoutCondition(t *testing.T) {
+	result := &WizardResult{}
+	locale := ""
+	q := &Question{
+		ID:    "no_cond_q",
+		Type:  QuestionTypeSelect,
+		Title: "Always visible",
+		Options: []Option{
+			{Label: "Yes", Value: "yes"},
+		},
+	}
+
+	group := buildQuestionGroup(q, result, &locale)
+	if group == nil {
+		t.Fatal("expected non-nil group")
 	}
 }

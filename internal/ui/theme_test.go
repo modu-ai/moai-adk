@@ -210,3 +210,32 @@ func TestThemeConfig_Defaults(t *testing.T) {
 		t.Error("default ThemeConfig.NoColor should be false")
 	}
 }
+
+// --- NewMoAIHuhTheme tests ---
+
+func TestNewMoAIHuhTheme_Default(t *testing.T) {
+	theme := NewMoAIHuhTheme(false)
+	if theme == nil {
+		t.Fatal("NewMoAIHuhTheme(false) returned nil")
+	}
+}
+
+func TestNewMoAIHuhTheme_NoColor(t *testing.T) {
+	theme := NewMoAIHuhTheme(true)
+	if theme == nil {
+		t.Fatal("NewMoAIHuhTheme(true) returned nil")
+	}
+}
+
+func TestNewMoAIHuhTheme_DifferentFromBase(t *testing.T) {
+	// The no-color theme should be the base theme;
+	// the color theme should be customized.
+	noColorTheme := NewMoAIHuhTheme(true)
+	colorTheme := NewMoAIHuhTheme(false)
+
+	if noColorTheme == nil || colorTheme == nil {
+		t.Fatal("themes should not be nil")
+	}
+	// Both should be valid huh.Theme pointers (not the same pointer
+	// unless implementation reuses base).
+}

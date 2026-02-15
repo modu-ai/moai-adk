@@ -25,7 +25,9 @@ The module path follows Go conventions with the GitHub organization and reposito
 | CLI Framework | `github.com/spf13/cobra` | v1.10.2 | Command-line interface with subcommands, flags, and shell completion |
 | YAML Parsing | `gopkg.in/yaml.v3` | v3.0.1 | YAML marshaling/unmarshaling for configuration and SPEC documents |
 | Terminal UI | `github.com/charmbracelet/bubbletea` | v1.3.10 | Interactive TUI framework with Elm-architecture patterns |
+| Terminal Forms | `github.com/charmbracelet/huh` | v0.8.0 | Modern form components (Select, MultiSelect, Input, Confirm, Form) with themes and accessibility |
 | Terminal Styling | `github.com/charmbracelet/lipgloss` | v1.1.0 | Terminal layout and styling for statusline and UI components |
+| Markdown Rendering | `github.com/charmbracelet/glamour` | v0.10.0 | Terminal markdown rendering with syntax highlighting and auto dark/light detection |
 | TTY Detection | `github.com/mattn/go-isatty` | v0.0.20 | Terminal detection for headless mode support |
 | Configuration | Custom YAML loader | -- | Custom implementation in `internal/config/loader.go` (Viper was not used) |
 | Git Operations | System Git via `exec.Command` | -- | All Git operations use system Git binary (go-git was not used) |

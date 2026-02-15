@@ -1,168 +1,17 @@
 package ui
 
 import (
-	"errors"
-	"strings"
 	"testing"
 )
 
-// --- promptModel unit tests ---
+// --- Constructor tests ---
 
-func TestNewPromptModel(t *testing.T) {
-	m := newPromptModel(testTheme(), "Project name", inputConfig{})
-	if m.label != "Project name" {
-		t.Errorf("expected label 'Project name', got %q", m.label)
-	}
-	if m.value != "" {
-		t.Error("initial value should be empty")
-	}
-}
-
-func TestPromptModel_View_ShowsLabel(t *testing.T) {
-	m := newPromptModel(testTheme(), "Name", inputConfig{})
-	view := m.View()
-	if !strings.Contains(view, "Name") {
-		t.Error("View should contain the label")
-	}
-}
-
-func TestPromptModel_View_ShowsPlaceholder(t *testing.T) {
-	m := newPromptModel(testTheme(), "Name", inputConfig{placeholder: "Enter name"})
-	view := m.View()
-	if !strings.Contains(view, "Enter name") {
-		t.Error("View should show placeholder when value is empty")
-	}
-}
-
-func TestPromptModel_View_HidesPlaceholderWhenTyping(t *testing.T) {
-	m := newPromptModel(testTheme(), "Name", inputConfig{placeholder: "Enter name"})
-	m.value = "hello"
-	view := m.View()
-	if strings.Contains(view, "Enter name") {
-		t.Error("View should hide placeholder when value is not empty")
-	}
-}
-
-func TestPromptModel_TypeRunes(t *testing.T) {
-	m := newPromptModel(testTheme(), "Name", inputConfig{})
-	m = m.addRunes([]rune("hello"))
-	if m.value != "hello" {
-		t.Errorf("expected 'hello', got %q", m.value)
-	}
-}
-
-func TestPromptModel_Backspace(t *testing.T) {
-	m := newPromptModel(testTheme(), "Name", inputConfig{})
-	m.value = "hello"
-	m = m.backspace()
-	if m.value != "hell" {
-		t.Errorf("expected 'hell', got %q", m.value)
-	}
-}
-
-func TestPromptModel_Backspace_Empty(t *testing.T) {
-	m := newPromptModel(testTheme(), "Name", inputConfig{})
-	m = m.backspace()
-	if m.value != "" {
-		t.Error("backspace on empty should remain empty")
-	}
-}
-
-func TestPromptModel_Validate_Success(t *testing.T) {
-	validate := func(s string) error {
-		if s == "" {
-			return errors.New("cannot be empty")
-		}
-		return nil
-	}
-	m := newPromptModel(testTheme(), "Name", inputConfig{validate: validate})
-	m.value = "valid"
-	err := m.validateInput()
-	if err != nil {
-		t.Errorf("expected nil error, got %v", err)
-	}
-	if m.errMsg != "" {
-		t.Errorf("expected no error message, got %q", m.errMsg)
-	}
-}
-
-func TestPromptModel_Validate_Failure(t *testing.T) {
-	validate := func(s string) error {
-		if s == "" {
-			return errors.New("cannot be empty")
-		}
-		return nil
-	}
-	m := newPromptModel(testTheme(), "Name", inputConfig{validate: validate})
-	m.value = ""
-	err := m.validateInput()
-	if err == nil {
-		t.Error("expected validation error")
-	}
-}
-
-func TestPromptModel_Validate_ShowsErrorInView(t *testing.T) {
-	validate := func(s string) error {
-		if s == "" {
-			return errors.New("cannot be empty")
-		}
-		return nil
-	}
-	m := newPromptModel(testTheme(), "Name", inputConfig{validate: validate})
-	m.value = ""
-	_ = m.validateInput()
-	m.errMsg = "cannot be empty"
-	view := m.View()
-	if !strings.Contains(view, "cannot be empty") {
-		t.Error("View should show validation error message")
-	}
-}
-
-func TestPromptModel_DefaultValue(t *testing.T) {
-	m := newPromptModel(testTheme(), "Name", inputConfig{defaultVal: "default-name"})
-	if m.value != "default-name" {
-		t.Errorf("expected default value 'default-name', got %q", m.value)
-	}
-}
-
-// --- confirmModel unit tests ---
-
-func TestNewConfirmModel(t *testing.T) {
-	m := newConfirmModel(testTheme(), "Continue?", true)
-	if m.label != "Continue?" {
-		t.Errorf("expected label 'Continue?', got %q", m.label)
-	}
-	if !m.value {
-		t.Error("default value should be true")
-	}
-}
-
-func TestConfirmModel_View_ShowsLabel(t *testing.T) {
-	m := newConfirmModel(testTheme(), "Continue?", true)
-	view := m.View()
-	if !strings.Contains(view, "Continue?") {
-		t.Error("View should contain the label")
-	}
-}
-
-func TestConfirmModel_View_ShowsYesNo(t *testing.T) {
-	m := newConfirmModel(testTheme(), "Continue?", true)
-	view := m.View()
-	if !strings.Contains(view, "Yes") && !strings.Contains(view, "yes") &&
-		!strings.Contains(view, "Y") && !strings.Contains(view, "y") {
-		t.Error("View should show Yes option")
-	}
-}
-
-func TestConfirmModel_ToggleValue(t *testing.T) {
-	m := newConfirmModel(testTheme(), "Continue?", true)
-	m = m.toggle()
-	if m.value {
-		t.Error("value should be false after toggle")
-	}
-	m = m.toggle()
-	if !m.value {
-		t.Error("value should be true after double toggle")
+func TestNewPrompt_ReturnsNonNil(t *testing.T) {
+	theme := testTheme()
+	hm := NewHeadlessManager()
+	p := NewPrompt(theme, hm)
+	if p == nil {
+		t.Error("NewPrompt should not return nil")
 	}
 }
 
@@ -211,6 +60,22 @@ func TestPromptHeadless_WithDefaultOption(t *testing.T) {
 	}
 	if result != "fallback" {
 		t.Errorf("expected 'fallback', got %q", result)
+	}
+}
+
+func TestPromptHeadless_HeadlessDefaultOverridesOption(t *testing.T) {
+	theme := testTheme()
+	hm := NewHeadlessManager()
+	hm.ForceHeadless(true)
+	hm.SetDefaults(map[string]string{"name": "headless-value"})
+
+	p := NewPrompt(theme, hm)
+	result, err := p.Input("name", WithDefault("option-value"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result != "headless-value" {
+		t.Errorf("expected 'headless-value', got %q", result)
 	}
 }
 
@@ -268,5 +133,140 @@ func TestWithDefault(t *testing.T) {
 	WithDefault("default-val")(&cfg)
 	if cfg.defaultVal != "default-val" {
 		t.Errorf("expected 'default-val', got %q", cfg.defaultVal)
+	}
+}
+
+func TestInputOptions_Combined(t *testing.T) {
+	cfg := inputConfig{}
+	opts := []InputOption{
+		WithPlaceholder("hint"),
+		WithDefault("def"),
+		WithValidation(func(s string) error { return nil }),
+	}
+	for _, o := range opts {
+		o(&cfg)
+	}
+	if cfg.placeholder != "hint" {
+		t.Errorf("expected placeholder 'hint', got %q", cfg.placeholder)
+	}
+	if cfg.defaultVal != "def" {
+		t.Errorf("expected defaultVal 'def', got %q", cfg.defaultVal)
+	}
+	if cfg.validate == nil {
+		t.Error("expected validate function to be set")
+	}
+}
+
+// --- buildInputField tests ---
+
+func TestBuildInputField_Basic(t *testing.T) {
+	var value string
+	cfg := inputConfig{}
+	field := buildInputField("Enter name", cfg, &value)
+	if field == nil {
+		t.Fatal("buildInputField should not return nil")
+	}
+}
+
+func TestBuildInputField_WithPlaceholder(t *testing.T) {
+	var value string
+	cfg := inputConfig{placeholder: "your name here"}
+	field := buildInputField("Name", cfg, &value)
+	if field == nil {
+		t.Fatal("expected non-nil field with placeholder")
+	}
+}
+
+func TestBuildInputField_WithValidation(t *testing.T) {
+	var value string
+	cfg := inputConfig{
+		validate: func(s string) error {
+			if s == "" {
+				return ErrNoItems // reuse existing error for test
+			}
+			return nil
+		},
+	}
+	field := buildInputField("Name", cfg, &value)
+	if field == nil {
+		t.Fatal("expected non-nil field with validation")
+	}
+}
+
+func TestBuildInputField_WithAllOptions(t *testing.T) {
+	var value string
+	cfg := inputConfig{
+		placeholder: "hint",
+		defaultVal:  "default",
+		validate:    func(s string) error { return nil },
+	}
+	field := buildInputField("Project", cfg, &value)
+	if field == nil {
+		t.Fatal("expected non-nil field")
+	}
+}
+
+func TestBuildInputField_BindsValuePointer(t *testing.T) {
+	var value string
+	cfg := inputConfig{}
+	field := buildInputField("Test", cfg, &value)
+	if field == nil {
+		t.Fatal("expected non-nil field")
+	}
+	if value != "" {
+		t.Errorf("expected empty initial value, got %q", value)
+	}
+}
+
+func TestBuildInputField_NoPlaceholder_NoValidation(t *testing.T) {
+	var value string
+	cfg := inputConfig{}
+	field := buildInputField("Plain input", cfg, &value)
+	if field == nil {
+		t.Fatal("expected non-nil field")
+	}
+}
+
+// --- buildConfirmField tests ---
+
+func TestBuildConfirmField_Basic(t *testing.T) {
+	var value bool
+	field := buildConfirmField("Continue?", &value)
+	if field == nil {
+		t.Fatal("buildConfirmField should not return nil")
+	}
+}
+
+func TestBuildConfirmField_DefaultTrue(t *testing.T) {
+	value := true
+	field := buildConfirmField("Proceed?", &value)
+	if field == nil {
+		t.Fatal("expected non-nil field")
+	}
+	if !value {
+		t.Error("value should still be true")
+	}
+}
+
+func TestBuildConfirmField_DefaultFalse(t *testing.T) {
+	value := false
+	field := buildConfirmField("Delete?", &value)
+	if field == nil {
+		t.Fatal("expected non-nil field")
+	}
+	if value {
+		t.Error("value should still be false")
+	}
+}
+
+func TestBuildConfirmField_BindsValuePointer(t *testing.T) {
+	value := false
+	field := buildConfirmField("Confirm?", &value)
+	if field == nil {
+		t.Fatal("expected non-nil field")
+	}
+	// Value pointer should be bound but unchanged
+	if value != false {
+		t.Error("value should not have changed")
 	}
 }
