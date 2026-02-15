@@ -232,7 +232,7 @@ func NewMoAIHuhTheme(noColor bool) *huh.Theme {
 	t.Focused.ErrorMessage = t.Focused.ErrorMessage.Foreground(red)
 
 	// Select styles.
-	t.Focused.SelectSelector = t.Focused.SelectSelector.Foreground(primary)
+	t.Focused.SelectSelector = t.Focused.SelectSelector.Foreground(primary).SetString("▸ ")
 	t.Focused.NextIndicator = t.Focused.NextIndicator.Foreground(primary)
 	t.Focused.PrevIndicator = t.Focused.PrevIndicator.Foreground(primary)
 	t.Focused.Option = t.Focused.Option.Foreground(text)
@@ -240,9 +240,9 @@ func NewMoAIHuhTheme(noColor bool) *huh.Theme {
 	// Multi-select styles.
 	t.Focused.MultiSelectSelector = t.Focused.MultiSelectSelector.Foreground(primary)
 	t.Focused.SelectedOption = t.Focused.SelectedOption.Foreground(green)
-	t.Focused.SelectedPrefix = lipgloss.NewStyle().Foreground(green).SetString("[x] ")
+	t.Focused.SelectedPrefix = lipgloss.NewStyle().Foreground(green).SetString("◆ ")
 	t.Focused.UnselectedOption = t.Focused.UnselectedOption.Foreground(text)
-	t.Focused.UnselectedPrefix = lipgloss.NewStyle().Foreground(muted).SetString("[ ] ")
+	t.Focused.UnselectedPrefix = lipgloss.NewStyle().Foreground(muted).SetString("◇ ")
 
 	// Text input styles.
 	t.Focused.TextInput.Cursor = t.Focused.TextInput.Cursor.Foreground(primary)

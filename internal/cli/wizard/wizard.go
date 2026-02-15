@@ -7,6 +7,8 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/modu-ai/moai-adk/internal/ui"
 )
 
 // statuslineSegmentPrefix is the prefix used for statusline segment question IDs.
@@ -121,6 +123,8 @@ func buildSelectField(q *Question, result *WizardResult, locale *string) *huh.Se
 			}
 			return opts
 		}, locale).
+		// Height auto-sizes based on option count; localization preserves option count
+		Height(ui.SelectHeight(len(q.Options))).
 		Value(&selected)
 
 	// Wire up value storage after each change.
@@ -245,15 +249,15 @@ func newMoAIWizardTheme() *huh.Theme {
 	t.Focused.Description = t.Focused.Description.Foreground(muted)
 	t.Focused.ErrorIndicator = t.Focused.ErrorIndicator.Foreground(red)
 	t.Focused.ErrorMessage = t.Focused.ErrorMessage.Foreground(red)
-	t.Focused.SelectSelector = t.Focused.SelectSelector.Foreground(primary)
+	t.Focused.SelectSelector = t.Focused.SelectSelector.Foreground(primary).SetString("▸ ")
 	t.Focused.NextIndicator = t.Focused.NextIndicator.Foreground(primary)
 	t.Focused.PrevIndicator = t.Focused.PrevIndicator.Foreground(primary)
 	t.Focused.Option = t.Focused.Option.Foreground(text)
 	t.Focused.MultiSelectSelector = t.Focused.MultiSelectSelector.Foreground(primary)
 	t.Focused.SelectedOption = t.Focused.SelectedOption.Foreground(green)
-	t.Focused.SelectedPrefix = lipgloss.NewStyle().Foreground(green).SetString("[x] ")
+	t.Focused.SelectedPrefix = lipgloss.NewStyle().Foreground(green).SetString("◆ ")
 	t.Focused.UnselectedOption = t.Focused.UnselectedOption.Foreground(text)
-	t.Focused.UnselectedPrefix = lipgloss.NewStyle().Foreground(muted).SetString("[ ] ")
+	t.Focused.UnselectedPrefix = lipgloss.NewStyle().Foreground(muted).SetString("◇ ")
 	t.Focused.TextInput.Cursor = t.Focused.TextInput.Cursor.Foreground(primary)
 	t.Focused.TextInput.Placeholder = t.Focused.TextInput.Placeholder.Foreground(muted)
 	t.Focused.TextInput.Prompt = t.Focused.TextInput.Prompt.Foreground(secondary)

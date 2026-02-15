@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Adaptive Colors**: Migrated all hardcoded hex colors to `lipgloss.AdaptiveColor` for automatic light/dark terminal support across banner, doctor, update, and merge confirm components
+- **Status Icons**: Replaced ASCII status text (`[OK]`, `[WARN]`, `[FAIL]`) with colored Unicode icons (✓, ⚠, ✗) in `moai doctor` output
+- **CLI Output Styles**: Extracted shared lipgloss style variables (`cliSuccess`, `cliError`, `cliMuted`, `cliPrimary`, `cliBorder`) and symbol functions for consistent themed output in `moai update`
+- **Select Height**: Added dynamic height auto-sizing for Select and MultiSelect fields based on option count (max 10) to prevent terminal overflow
+- **Selector Prefixes**: Updated selector cursor from default to `▸` and checkbox prefixes from `[x]`/`[ ]` to `◆`/`◇` in both UI and wizard themes
+- **Rounded Borders**: Changed merge analysis table corners from sharp (`┌┐└┘`) to rounded (`╭╮╰╯`) style
+- **Model Policy Box**: Replaced manual ASCII box drawing with lipgloss `RoundedBorder` styled box in `moai update` output
+
+### Fixed
+
+- **Unused Constant**: Removed orphaned `claudeTerraCotta` constant from banner.go after AdaptiveColor migration
+
 ---
 
 ## [2.4.1] - 2026-02-15

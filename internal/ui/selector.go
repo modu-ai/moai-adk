@@ -57,7 +57,18 @@ func buildSelectField(label string, items []SelectItem, selected *string) *huh.S
 	return huh.NewSelect[string]().
 		Title(label).
 		Options(opts...).
+		Height(SelectHeight(len(items))).
 		Value(selected)
+}
+
+// SelectHeight returns the display height for a select/multiselect field.
+// It shows all items up to a maximum of 10 to prevent overflow.
+func SelectHeight(itemCount int) int {
+	const maxHeight = 10
+	if itemCount > maxHeight {
+		return maxHeight
+	}
+	return itemCount
 }
 
 // selectInteractive runs a huh.Select form for interactive selection.

@@ -66,6 +66,7 @@ func buildMultiSelectField(label string, items []SelectItem, selected *[]string)
 	return huh.NewMultiSelect[string]().
 		Title(label).
 		Options(opts...).
+		Height(SelectHeight(len(items))).
 		Value(selected)
 }
 

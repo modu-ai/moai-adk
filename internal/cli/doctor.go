@@ -59,8 +59,9 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 
 	out := cmd.OutOrStdout()
 
-	_, _ = fmt.Fprintln(out, "System Diagnostics")
-	_, _ = fmt.Fprintln(out, "==================")
+	titleStyle := cliPrimary.Bold(true)
+	_, _ = fmt.Fprintln(out, titleStyle.Render("System Diagnostics"))
+	_, _ = fmt.Fprintln(out, titleStyle.Render("=================="))
 	_, _ = fmt.Fprintln(out)
 
 	checks := runDiagnosticChecks(verbose, checkName)
@@ -83,7 +84,10 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	}
 
 	_, _ = fmt.Fprintln(out)
-	_, _ = fmt.Fprintf(out, "Results: %d passed, %d warnings, %d failed\n", okCount, warnCount, failCount)
+	_, _ = fmt.Fprintf(out, "Results: %s passed, %s warnings, %s failed\n",
+		cliSuccess.Render(fmt.Sprintf("%d", okCount)),
+		cliWarn.Render(fmt.Sprintf("%d", warnCount)),
+		cliError.Render(fmt.Sprintf("%d", failCount)))
 
 	if fix && failCount > 0 {
 		_, _ = fmt.Fprintln(out)
@@ -250,17 +254,17 @@ func checkMoAIVersion(_ bool) DiagnosticCheck {
 	}
 }
 
-// statusIcon returns a text icon for the check status.
+// statusIcon returns a colored Unicode icon for the check status.
 func statusIcon(s CheckStatus) string {
 	switch s {
 	case CheckOK:
-		return "[OK]"
+		return cliSuccess.Render("\u2713")
 	case CheckWarn:
-		return "[WARN]"
+		return cliWarn.Render("\u26A0")
 	case CheckFail:
-		return "[FAIL]"
+		return cliError.Render("\u2717")
 	default:
-		return "[??]"
+		return "?"
 	}
 }
 

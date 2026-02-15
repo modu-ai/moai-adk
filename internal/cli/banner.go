@@ -6,9 +6,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Claude Code official terra cotta color
-const claudeTerraCotta = "#DA7756"
-
 // MoAI ASCII art banner
 const moaiBanner = `
 ███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
@@ -20,11 +17,11 @@ const moaiBanner = `
 `
 
 // PrintBanner displays the MoAI ASCII art banner with version information.
-// The banner uses MoAI's brand color (claude terra cotta #DA7756) and includes
-// the provided version string. If version is empty, it displays "unknown".
+// The banner uses MoAI's adaptive brand color (#C45A3C light, #DA7756 dark)
+// and includes the provided version string. If version is empty, it displays "unknown".
 func PrintBanner(version string) {
-	// Create a style with terra cotta color
-	bannerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(claudeTerraCotta))
+	// Create a style with terra cotta color (adaptive for light/dark terminals)
+	bannerStyle := lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#C45A3C", Dark: "#DA7756"})
 	dimStyle := lipgloss.NewStyle().Faint(true)
 
 	// Print the ASCII art banner
@@ -43,13 +40,13 @@ func PrintBanner(version string) {
 // It provides basic usage instructions and reminds users they can exit anytime
 // with Ctrl+C.
 func PrintWelcomeMessage() {
-	cyanBoldStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("cyan")).
+	titleStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "#5B21B6", Dark: "#7C3AED"}).
 		Bold(true)
 	dimStyle := lipgloss.NewStyle().Faint(true)
 
 	// Print welcome title
-	fmt.Println(cyanBoldStyle.Render("Welcome to MoAI-ADK Project Initialization!"))
+	fmt.Println(titleStyle.Render("Welcome to MoAI-ADK Project Initialization!"))
 	fmt.Println()
 
 	// Print guide message
