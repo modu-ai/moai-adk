@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -46,6 +47,7 @@ type SpecLinker interface {
 
 // fileSpecLinker implements SpecLinker using a JSON file.
 type fileSpecLinker struct {
+	mu           sync.Mutex
 	registryPath string
 	registry     *Registry
 }
@@ -128,6 +130,9 @@ func (l *fileSpecLinker) save() error {
 
 // LinkIssueToSpec creates a new mapping between an issue and a SPEC.
 func (l *fileSpecLinker) LinkIssueToSpec(issueNum int, specID string) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
 	// Check for duplicate.
 	for _, m := range l.registry.Mappings {
 		if m.IssueNumber == issueNum {

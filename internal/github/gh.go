@@ -280,6 +280,9 @@ func execGH(ctx context.Context, dir string, args ...string) (string, error) {
 		if errMsg == "" {
 			errMsg = err.Error()
 		}
+		if len(args) == 0 {
+			return "", fmt.Errorf("gh: %s: %w", errMsg, err)
+		}
 		return "", fmt.Errorf("gh %s: %s: %w", args[0], errMsg, err)
 	}
 
