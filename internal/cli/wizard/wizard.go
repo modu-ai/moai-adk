@@ -7,8 +7,6 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
-
-	"github.com/modu-ai/moai-adk/internal/ui"
 )
 
 // statuslineSegmentPrefix is the prefix used for statusline segment question IDs.
@@ -123,8 +121,8 @@ func buildSelectField(q *Question, result *WizardResult, locale *string) *huh.Se
 			}
 			return opts
 		}, locale).
-		// Height auto-sizes based on option count; localization preserves option count
-		Height(ui.SelectHeight(len(q.Options))).
+		// Height auto-sizes viewport; avoids huh YOffset scroll bug
+		Height(0).
 		Value(&selected)
 
 	// Wire up value storage after each change.
