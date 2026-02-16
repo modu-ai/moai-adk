@@ -216,8 +216,8 @@ func TestIntegration_ReviewThenMerge_ApprovedFlow(t *testing.T) {
 	}
 
 	// Create real reviewer and merger with shared GH client.
-	reviewer := NewPRReviewer(gh, gate, nil)
-	merger := NewPRMerger(gh, reviewer, nil)
+	reviewer := mustNewPRReviewer(t, gh, gate, nil)
+	merger := mustNewPRMerger(t, gh, reviewer, nil)
 
 	// Step 1: Review the PR.
 	report, err := reviewer.Review(context.Background(), 500, "SPEC-ISSUE-500")
@@ -278,8 +278,8 @@ func TestIntegration_ReviewThenMerge_BlockedFlow(t *testing.T) {
 		report: &quality.Report{Passed: false, Score: 0.4},
 	}
 
-	reviewer := NewPRReviewer(gh, gate, nil)
-	merger := NewPRMerger(gh, reviewer, nil)
+	reviewer := mustNewPRReviewer(t, gh, gate, nil)
+	merger := mustNewPRMerger(t, gh, reviewer, nil)
 
 	// Step 1: Review should return REQUEST_CHANGES.
 	report, err := reviewer.Review(context.Background(), 501, "SPEC-ISSUE-501")

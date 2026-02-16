@@ -116,12 +116,22 @@ type worktreeOrchestrator struct {
 var _ WorktreeOrchestrator = (*worktreeOrchestrator)(nil)
 
 // NewWorktreeOrchestrator creates an orchestrator for worktree-based workflows.
+// Returns an error if worktreeMgr, validator, or executor is nil.
 func NewWorktreeOrchestrator(
 	worktreeMgr git.WorktreeManager,
 	validator quality.WorktreeValidator,
 	executor PhaseExecutor,
 	logger *slog.Logger,
-) *worktreeOrchestrator {
+) (*worktreeOrchestrator, error) {
+	if worktreeMgr == nil {
+		return nil, ErrNilWorktreeManager
+	}
+	if validator == nil {
+		return nil, ErrNilValidator
+	}
+	if executor == nil {
+		return nil, ErrNilExecutor
+	}
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -130,7 +140,7 @@ func NewWorktreeOrchestrator(
 		validator:   validator,
 		executor:    executor,
 		logger:      logger.With("module", "worktree-orchestrator"),
-	}
+	}, nil
 }
 
 // DetectWorktreeContext identifies which worktree the given directory belongs to

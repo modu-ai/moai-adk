@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -91,6 +92,16 @@ func setupWorktree(t *testing.T, specID string) string {
 	return wtPath
 }
 
+// mustNewWorktreeOrchestrator is a test helper that calls NewWorktreeOrchestrator and fails on error.
+func mustNewWorktreeOrchestrator(t *testing.T, wm git.WorktreeManager, wv quality.WorktreeValidator, pe PhaseExecutor, logger *slog.Logger) *worktreeOrchestrator {
+	t.Helper()
+	o, err := NewWorktreeOrchestrator(wm, wv, pe, logger)
+	if err != nil {
+		t.Fatalf("NewWorktreeOrchestrator() error = %v", err)
+	}
+	return o
+}
+
 // --- Tests ---
 
 func TestNewWorktreeOrchestrator(t *testing.T) {
@@ -100,9 +111,39 @@ func TestNewWorktreeOrchestrator(t *testing.T) {
 	wv := &mockWorktreeValidator{}
 	pe := &mockPhaseExecutor{}
 
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o, err := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	if err != nil {
+		t.Fatalf("NewWorktreeOrchestrator() error = %v", err)
+	}
 	if o == nil {
 		t.Fatal("NewWorktreeOrchestrator returned nil")
+	}
+}
+
+func TestNewWorktreeOrchestrator_NilWorktreeManager(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewWorktreeOrchestrator(nil, &mockWorktreeValidator{}, &mockPhaseExecutor{}, nil)
+	if !errors.Is(err, ErrNilWorktreeManager) {
+		t.Errorf("NewWorktreeOrchestrator(nil wm) error = %v, want ErrNilWorktreeManager", err)
+	}
+}
+
+func TestNewWorktreeOrchestrator_NilValidator(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewWorktreeOrchestrator(&mockWorktreeManager{}, nil, &mockPhaseExecutor{}, nil)
+	if !errors.Is(err, ErrNilValidator) {
+		t.Errorf("NewWorktreeOrchestrator(nil validator) error = %v, want ErrNilValidator", err)
+	}
+}
+
+func TestNewWorktreeOrchestrator_NilExecutor(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewWorktreeOrchestrator(&mockWorktreeManager{}, &mockWorktreeValidator{}, nil, nil)
+	if !errors.Is(err, ErrNilExecutor) {
+		t.Errorf("NewWorktreeOrchestrator(nil executor) error = %v, want ErrNilExecutor", err)
 	}
 }
 
@@ -117,7 +158,7 @@ func TestDetectWorktreeContext_ValidWorktree(t *testing.T) {
 	}
 	wv := &mockWorktreeValidator{}
 	pe := &mockPhaseExecutor{}
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o := mustNewWorktreeOrchestrator(t, wm, wv, pe, nil)
 
 	ctx := context.Background()
 	wtCtx, err := o.DetectWorktreeContext(ctx, wtPath)
@@ -143,7 +184,7 @@ func TestDetectWorktreeContext_NotInWorktree(t *testing.T) {
 	}
 	wv := &mockWorktreeValidator{}
 	pe := &mockPhaseExecutor{}
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o := mustNewWorktreeOrchestrator(t, wm, wv, pe, nil)
 
 	_, err := o.DetectWorktreeContext(context.Background(), "/some/random/dir")
 	if err == nil {
@@ -171,7 +212,7 @@ func TestDetectWorktreeContext_SPECNotFound(t *testing.T) {
 	}
 	wv := &mockWorktreeValidator{}
 	pe := &mockPhaseExecutor{}
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o := mustNewWorktreeOrchestrator(t, wm, wv, pe, nil)
 
 	_, err := o.DetectWorktreeContext(context.Background(), wtPath)
 	if err == nil {
@@ -195,7 +236,7 @@ func TestExecuteWorkflow_AllPhasesSucceed(t *testing.T) {
 		report: &quality.Report{Passed: true, Score: 1.0},
 	}
 	pe := &mockPhaseExecutor{}
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o := mustNewWorktreeOrchestrator(t, wm, wv, pe, nil)
 
 	result, err := o.ExecuteWorkflow(context.Background(), "SPEC-ISSUE-42")
 	if err != nil {
@@ -232,7 +273,7 @@ func TestExecuteWorkflow_PlanFails(t *testing.T) {
 	}
 	wv := &mockWorktreeValidator{}
 	pe := &mockPhaseExecutor{planErr: errors.New("plan failed")}
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o := mustNewWorktreeOrchestrator(t, wm, wv, pe, nil)
 
 	result, err := o.ExecuteWorkflow(context.Background(), "SPEC-ISSUE-50")
 	if err == nil {
@@ -263,7 +304,7 @@ func TestExecuteWorkflow_RunFails(t *testing.T) {
 	}
 	wv := &mockWorktreeValidator{}
 	pe := &mockPhaseExecutor{runErr: errors.New("run failed")}
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o := mustNewWorktreeOrchestrator(t, wm, wv, pe, nil)
 
 	result, err := o.ExecuteWorkflow(context.Background(), "SPEC-ISSUE-60")
 	if err == nil {
@@ -296,7 +337,7 @@ func TestExecuteWorkflow_SyncFails(t *testing.T) {
 		report: &quality.Report{Passed: true, Score: 1.0},
 	}
 	pe := &mockPhaseExecutor{syncErr: errors.New("sync failed")}
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o := mustNewWorktreeOrchestrator(t, wm, wv, pe, nil)
 
 	result, err := o.ExecuteWorkflow(context.Background(), "SPEC-ISSUE-70")
 	if err == nil {
@@ -333,7 +374,7 @@ func TestExecuteWorkflow_InvalidSPECID(t *testing.T) {
 	wm := &mockWorktreeManager{}
 	wv := &mockWorktreeValidator{}
 	pe := &mockPhaseExecutor{}
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o := mustNewWorktreeOrchestrator(t, wm, wv, pe, nil)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -370,7 +411,7 @@ func TestValidateQuality_Passing(t *testing.T) {
 		},
 	}
 	pe := &mockPhaseExecutor{}
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o := mustNewWorktreeOrchestrator(t, wm, wv, pe, nil)
 
 	report, err := o.ValidateQuality(context.Background(), "SPEC-ISSUE-80")
 	if err != nil {
@@ -394,7 +435,7 @@ func TestPrepareForReview_QualityPassed(t *testing.T) {
 		report: &quality.Report{Passed: true, Score: 1.0},
 	}
 	pe := &mockPhaseExecutor{}
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o := mustNewWorktreeOrchestrator(t, wm, wv, pe, nil)
 
 	readiness, err := o.PrepareForReview(context.Background(), "SPEC-ISSUE-90")
 	if err != nil {
@@ -434,7 +475,7 @@ func TestPrepareForReview_QualityFailed(t *testing.T) {
 		},
 	}
 	pe := &mockPhaseExecutor{}
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o := mustNewWorktreeOrchestrator(t, wm, wv, pe, nil)
 
 	readiness, err := o.PrepareForReview(context.Background(), "SPEC-ISSUE-91")
 	if err != nil {
@@ -459,7 +500,7 @@ func TestDetectWorktreeContext_ListError(t *testing.T) {
 	}
 	wv := &mockWorktreeValidator{}
 	pe := &mockPhaseExecutor{}
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o := mustNewWorktreeOrchestrator(t, wm, wv, pe, nil)
 
 	_, err := o.DetectWorktreeContext(context.Background(), "/some/dir")
 	if err == nil {
@@ -484,7 +525,7 @@ func TestDetectWorktreeContext_InvalidSPECIDInWorktreeName(t *testing.T) {
 	}
 	wv := &mockWorktreeValidator{}
 	pe := &mockPhaseExecutor{}
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o := mustNewWorktreeOrchestrator(t, wm, wv, pe, nil)
 
 	_, err := o.DetectWorktreeContext(context.Background(), wtPath)
 	if err == nil {
@@ -501,7 +542,7 @@ func TestValidateQuality_InvalidSPECID(t *testing.T) {
 	wm := &mockWorktreeManager{}
 	wv := &mockWorktreeValidator{}
 	pe := &mockPhaseExecutor{}
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o := mustNewWorktreeOrchestrator(t, wm, wv, pe, nil)
 
 	_, err := o.ValidateQuality(context.Background(), "INVALID-SPEC")
 	if err == nil {
@@ -520,7 +561,7 @@ func TestValidateQuality_WorktreeNotFound(t *testing.T) {
 	}
 	wv := &mockWorktreeValidator{}
 	pe := &mockPhaseExecutor{}
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o := mustNewWorktreeOrchestrator(t, wm, wv, pe, nil)
 
 	_, err := o.ValidateQuality(context.Background(), "SPEC-ISSUE-999")
 	if err == nil {
@@ -539,7 +580,7 @@ func TestValidateQuality_ListError(t *testing.T) {
 	}
 	wv := &mockWorktreeValidator{}
 	pe := &mockPhaseExecutor{}
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o := mustNewWorktreeOrchestrator(t, wm, wv, pe, nil)
 
 	_, err := o.ValidateQuality(context.Background(), "SPEC-ISSUE-100")
 	if err == nil {
@@ -553,7 +594,7 @@ func TestPrepareForReview_InvalidSPECID(t *testing.T) {
 	wm := &mockWorktreeManager{}
 	wv := &mockWorktreeValidator{}
 	pe := &mockPhaseExecutor{}
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o := mustNewWorktreeOrchestrator(t, wm, wv, pe, nil)
 
 	_, err := o.PrepareForReview(context.Background(), "BAD-SPEC")
 	if err == nil {
@@ -572,7 +613,7 @@ func TestPrepareForReview_WorktreeNotFound(t *testing.T) {
 	}
 	wv := &mockWorktreeValidator{}
 	pe := &mockPhaseExecutor{}
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o := mustNewWorktreeOrchestrator(t, wm, wv, pe, nil)
 
 	_, err := o.PrepareForReview(context.Background(), "SPEC-ISSUE-999")
 	if err == nil {
@@ -596,7 +637,7 @@ func TestPrepareForReview_ValidatorError(t *testing.T) {
 		err: errors.New("lsp timeout"),
 	}
 	pe := &mockPhaseExecutor{}
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o := mustNewWorktreeOrchestrator(t, wm, wv, pe, nil)
 
 	readiness, err := o.PrepareForReview(context.Background(), "SPEC-ISSUE-95")
 	if err != nil {
@@ -618,7 +659,7 @@ func TestExecuteWorkflow_WorktreeNotFound(t *testing.T) {
 	}
 	wv := &mockWorktreeValidator{}
 	pe := &mockPhaseExecutor{}
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o := mustNewWorktreeOrchestrator(t, wm, wv, pe, nil)
 
 	_, err := o.ExecuteWorkflow(context.Background(), "SPEC-ISSUE-999")
 	if err == nil {
@@ -642,7 +683,7 @@ func TestExecuteWorkflow_QualityValidationError(t *testing.T) {
 		err: errors.New("quality check failed"),
 	}
 	pe := &mockPhaseExecutor{}
-	o := NewWorktreeOrchestrator(wm, wv, pe, nil)
+	o := mustNewWorktreeOrchestrator(t, wm, wv, pe, nil)
 
 	// Quality validation error is non-fatal; workflow should still complete.
 	result, err := o.ExecuteWorkflow(context.Background(), "SPEC-ISSUE-85")

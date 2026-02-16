@@ -90,7 +90,14 @@ type prMerger struct {
 var _ PRMerger = (*prMerger)(nil)
 
 // NewPRMerger creates a merger that checks prerequisites before merging.
-func NewPRMerger(gh GHClient, reviewer PRReviewer, logger *slog.Logger) *prMerger {
+// Returns an error if gh or reviewer is nil.
+func NewPRMerger(gh GHClient, reviewer PRReviewer, logger *slog.Logger) (*prMerger, error) {
+	if gh == nil {
+		return nil, ErrNilGHClient
+	}
+	if reviewer == nil {
+		return nil, ErrNilReviewer
+	}
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -98,7 +105,7 @@ func NewPRMerger(gh GHClient, reviewer PRReviewer, logger *slog.Logger) *prMerge
 		gh:       gh,
 		reviewer: reviewer,
 		logger:   logger.With("module", "pr-merger"),
-	}
+	}, nil
 }
 
 // Merge attempts to merge a PR after verifying all prerequisites.

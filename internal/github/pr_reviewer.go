@@ -61,7 +61,14 @@ type prReviewer struct {
 var _ PRReviewer = (*prReviewer)(nil)
 
 // NewPRReviewer creates a PR reviewer that validates quality gates and CI status.
-func NewPRReviewer(gh GHClient, qualityGate quality.Gate, logger *slog.Logger) *prReviewer {
+// Returns an error if gh or qualityGate is nil.
+func NewPRReviewer(gh GHClient, qualityGate quality.Gate, logger *slog.Logger) (*prReviewer, error) {
+	if gh == nil {
+		return nil, ErrNilGHClient
+	}
+	if qualityGate == nil {
+		return nil, ErrNilQualityGate
+	}
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -69,7 +76,7 @@ func NewPRReviewer(gh GHClient, qualityGate quality.Gate, logger *slog.Logger) *
 		gh:          gh,
 		qualityGate: qualityGate,
 		logger:      logger.With("module", "pr-reviewer"),
-	}
+	}, nil
 }
 
 // Review analyzes a PR and returns a review report with a decision.

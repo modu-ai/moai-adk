@@ -27,4 +27,13 @@ var (
 
 	// ErrSyncPhaseFailed indicates the Sync phase failed.
 	ErrSyncPhaseFailed = errors.New("workflow: sync phase failed")
+
+	// ErrNilWorktreeManager indicates a nil WorktreeManager was provided.
+	ErrNilWorktreeManager = errors.New("workflow: WorktreeManager must not be nil")
+
+	// ErrNilValidator indicates a nil WorktreeValidator was provided.
+	ErrNilValidator = errors.New("workflow: WorktreeValidator must not be nil")
+
+	// ErrNilExecutor indicates a nil PhaseExecutor was provided.
+	ErrNilExecutor = errors.New("workflow: PhaseExecutor must not be nil")
 )

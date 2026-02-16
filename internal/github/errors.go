@@ -54,6 +54,15 @@ var (
 
 	// ErrMappingNotFound indicates no SPEC is linked to the issue.
 	ErrMappingNotFound = errors.New("github: no SPEC linked to issue")
+
+	// ErrNilGHClient indicates a nil GHClient was provided to a constructor.
+	ErrNilGHClient = errors.New("github: GHClient must not be nil")
+
+	// ErrNilQualityGate indicates a nil quality.Gate was provided to a constructor.
+	ErrNilQualityGate = errors.New("github: quality gate must not be nil")
+
+	// ErrNilReviewer indicates a nil PRReviewer was provided to a constructor.
+	ErrNilReviewer = errors.New("github: PRReviewer must not be nil")
 )
 
 // RetryError wraps the final error after all retry attempts are exhausted.

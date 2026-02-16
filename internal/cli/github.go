@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/github"
+	"github.com/modu-ai/moai-adk/internal/workflow"
 )
 
 // GithubIssueParser is the issue parser used by github subcommands.
@@ -168,8 +169,8 @@ func runLinkSpec(cmd *cobra.Command, args []string) error {
 	}
 
 	specID := args[1]
-	if specID == "" {
-		return fmt.Errorf("spec ID cannot be empty")
+	if err := workflow.ValidateSpecID(specID); err != nil {
+		return err
 	}
 
 	cwd, err := os.Getwd()

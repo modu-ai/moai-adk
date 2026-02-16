@@ -106,6 +106,10 @@ func NewIssueCloser(root string, opts ...IssueCloserOption) *DefaultIssueCloser 
 // If label fails, close is still attempted (label is non-critical).
 // The result tracks which steps succeeded for partial failure recovery.
 func (c *DefaultIssueCloser) Close(ctx context.Context, issueNumber int, comment string) (*CloseResult, error) {
+	if issueNumber <= 0 {
+		return nil, fmt.Errorf("close issue: invalid issue number %d", issueNumber)
+	}
+
 	result := &CloseResult{
 		IssueNumber: issueNumber,
 	}

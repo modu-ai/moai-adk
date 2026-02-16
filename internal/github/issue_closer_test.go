@@ -353,6 +353,43 @@ func TestIssueCloser_WithMaxRetries_IgnoresZero(t *testing.T) {
 	}
 }
 
+func TestIssueCloser_Close_InvalidIssueNumber(t *testing.T) {
+	t.Parallel()
+
+	exec := func(_ context.Context, _ string, _ ...string) (string, error) {
+		t.Fatal("exec should not be called for invalid issue numbers")
+		return "", nil
+	}
+
+	closer := NewIssueCloser("/tmp/repo", WithExecFunc(exec), WithRetryDelay(0))
+
+	tests := []struct {
+		name   string
+		number int
+	}{
+		{"zero", 0},
+		{"negative", -1},
+		{"large negative", -999},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result, err := closer.Close(context.Background(), tt.number, "comment")
+			if err == nil {
+				t.Fatal("expected error for invalid issue number")
+			}
+			if result != nil {
+				t.Error("result should be nil for invalid issue number")
+			}
+			want := fmt.Sprintf("close issue: invalid issue number %d", tt.number)
+			if err.Error() != want {
+				t.Errorf("error = %q, want %q", err.Error(), want)
+			}
+		})
+	}
+}
+
 // assertArgsContain checks that at least one arg matches the target.
 func assertArgsContain(t *testing.T, args []string, target string) {
 	t.Helper()

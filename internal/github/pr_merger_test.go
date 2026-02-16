@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/core/quality"
@@ -18,14 +19,45 @@ func (m *mockPRReviewer) Review(_ context.Context, _ int, _ string) (*ReviewRepo
 	return m.report, m.err
 }
 
+// mustNewPRMerger is a test helper that calls NewPRMerger and fails the test on error.
+func mustNewPRMerger(t *testing.T, gh GHClient, rev PRReviewer, logger *slog.Logger) *prMerger {
+	t.Helper()
+	m, err := NewPRMerger(gh, rev, logger)
+	if err != nil {
+		t.Fatalf("NewPRMerger() error = %v", err)
+	}
+	return m
+}
+
 func TestNewPRMerger(t *testing.T) {
 	t.Parallel()
 
 	gh := &mockGHClient{}
 	rev := &mockPRReviewer{}
-	m := NewPRMerger(gh, rev, nil)
+	m, err := NewPRMerger(gh, rev, nil)
+	if err != nil {
+		t.Fatalf("NewPRMerger() error = %v", err)
+	}
 	if m == nil {
 		t.Fatal("NewPRMerger returned nil")
+	}
+}
+
+func TestNewPRMerger_NilGHClient(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewPRMerger(nil, &mockPRReviewer{}, nil)
+	if !errors.Is(err, ErrNilGHClient) {
+		t.Errorf("NewPRMerger(nil gh) error = %v, want ErrNilGHClient", err)
+	}
+}
+
+func TestNewPRMerger_NilReviewer(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewPRMerger(&mockGHClient{}, nil, nil)
+	if !errors.Is(err, ErrNilReviewer) {
+		t.Errorf("NewPRMerger(nil reviewer) error = %v, want ErrNilReviewer", err)
 	}
 }
 
@@ -47,7 +79,7 @@ func TestMerge_AllConditionsMet(t *testing.T) {
 			QualityReport: &quality.Report{Passed: true, Score: 1.0},
 		},
 	}
-	merger := NewPRMerger(gh, rev, nil)
+	merger := mustNewPRMerger(t, gh, rev, nil)
 
 	result, err := merger.Merge(context.Background(), 100, MergeOptions{
 		AutoMerge:     true,
@@ -81,7 +113,7 @@ func TestMerge_AutoMergeNotRequested(t *testing.T) {
 
 	gh := &mockGHClient{}
 	rev := &mockPRReviewer{}
-	merger := NewPRMerger(gh, rev, nil)
+	merger := mustNewPRMerger(t, gh, rev, nil)
 
 	_, err := merger.Merge(context.Background(), 101, MergeOptions{
 		AutoMerge: false,
@@ -112,7 +144,7 @@ func TestMerge_ReviewNotApproved(t *testing.T) {
 			QualityReport: &quality.Report{Passed: false, Score: 0.5},
 		},
 	}
-	merger := NewPRMerger(gh, rev, nil)
+	merger := mustNewPRMerger(t, gh, rev, nil)
 
 	_, err := merger.Merge(context.Background(), 102, MergeOptions{
 		AutoMerge:     true,
@@ -151,7 +183,7 @@ func TestMerge_CIFailed(t *testing.T) {
 			QualityReport: &quality.Report{Passed: true, Score: 1.0},
 		},
 	}
-	merger := NewPRMerger(gh, rev, nil)
+	merger := mustNewPRMerger(t, gh, rev, nil)
 
 	_, err := merger.Merge(context.Background(), 103, MergeOptions{
 		AutoMerge:     true,
@@ -185,7 +217,7 @@ func TestMerge_MergeConflicts(t *testing.T) {
 			QualityReport: &quality.Report{Passed: true, Score: 1.0},
 		},
 	}
-	merger := NewPRMerger(gh, rev, nil)
+	merger := mustNewPRMerger(t, gh, rev, nil)
 
 	_, err := merger.Merge(context.Background(), 104, MergeOptions{
 		AutoMerge:     true,
@@ -218,7 +250,7 @@ func TestMerge_DefaultMergeMethod(t *testing.T) {
 			QualityReport: &quality.Report{Passed: true, Score: 1.0},
 		},
 	}
-	merger := NewPRMerger(gh, rev, nil)
+	merger := mustNewPRMerger(t, gh, rev, nil)
 
 	result, err := merger.Merge(context.Background(), 105, MergeOptions{
 		AutoMerge: true,
@@ -243,7 +275,7 @@ func TestMerge_RebaseMethod(t *testing.T) {
 		},
 	}
 	rev := &mockPRReviewer{}
-	merger := NewPRMerger(gh, rev, nil)
+	merger := mustNewPRMerger(t, gh, rev, nil)
 
 	result, err := merger.Merge(context.Background(), 106, MergeOptions{
 		AutoMerge: true,
@@ -278,7 +310,7 @@ func TestCheckPrerequisites_AllMet(t *testing.T) {
 			QualityReport: &quality.Report{Passed: true, Score: 1.0},
 		},
 	}
-	merger := NewPRMerger(gh, rev, nil)
+	merger := mustNewPRMerger(t, gh, rev, nil)
 
 	prereqs, err := merger.CheckPrerequisites(context.Background(), 110, MergeOptions{
 		AutoMerge:     true,
@@ -327,7 +359,7 @@ func TestCheckPrerequisites_PartiallyMet(t *testing.T) {
 			QualityReport: &quality.Report{Passed: true, Score: 1.0},
 		},
 	}
-	merger := NewPRMerger(gh, rev, nil)
+	merger := mustNewPRMerger(t, gh, rev, nil)
 
 	prereqs, err := merger.CheckPrerequisites(context.Background(), 111, MergeOptions{
 		AutoMerge:     true,
@@ -360,7 +392,7 @@ func TestCheckPrerequisites_NoReviewRequired(t *testing.T) {
 		},
 	}
 	rev := &mockPRReviewer{}
-	merger := NewPRMerger(gh, rev, nil)
+	merger := mustNewPRMerger(t, gh, rev, nil)
 
 	prereqs, err := merger.CheckPrerequisites(context.Background(), 112, MergeOptions{
 		AutoMerge:     true,
@@ -382,7 +414,7 @@ func TestCheckPrerequisites_PRViewError(t *testing.T) {
 		prViewErr: ErrPRNotFound,
 	}
 	rev := &mockPRReviewer{}
-	merger := NewPRMerger(gh, rev, nil)
+	merger := mustNewPRMerger(t, gh, rev, nil)
 
 	_, err := merger.CheckPrerequisites(context.Background(), 999, MergeOptions{
 		AutoMerge: true,
@@ -413,7 +445,7 @@ func TestMerge_PRMergeError(t *testing.T) {
 			QualityReport: &quality.Report{Passed: true, Score: 1.0},
 		},
 	}
-	merger := NewPRMerger(gh, rev, nil)
+	merger := mustNewPRMerger(t, gh, rev, nil)
 
 	_, err := merger.Merge(context.Background(), 200, MergeOptions{
 		AutoMerge:     true,
@@ -439,7 +471,7 @@ func TestCheckPrerequisites_ReviewError(t *testing.T) {
 	rev := &mockPRReviewer{
 		err: errors.New("review service unavailable"),
 	}
-	merger := NewPRMerger(gh, rev, nil)
+	merger := mustNewPRMerger(t, gh, rev, nil)
 
 	prereqs, err := merger.CheckPrerequisites(context.Background(), 201, MergeOptions{
 		AutoMerge:     true,
@@ -479,7 +511,7 @@ func TestCheckPrerequisites_ChecksError(t *testing.T) {
 			QualityReport: &quality.Report{Passed: true, Score: 1.0},
 		},
 	}
-	merger := NewPRMerger(gh, rev, nil)
+	merger := mustNewPRMerger(t, gh, rev, nil)
 
 	prereqs, err := merger.CheckPrerequisites(context.Background(), 202, MergeOptions{
 		AutoMerge:     true,
@@ -512,7 +544,7 @@ func TestCheckPrerequisites_UnknownMergeability(t *testing.T) {
 		},
 	}
 	rev := &mockPRReviewer{}
-	merger := NewPRMerger(gh, rev, nil)
+	merger := mustNewPRMerger(t, gh, rev, nil)
 
 	prereqs, err := merger.CheckPrerequisites(context.Background(), 203, MergeOptions{
 		AutoMerge: true,

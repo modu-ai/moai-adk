@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/github"
+	"github.com/modu-ai/moai-adk/internal/workflow"
 )
 
 // mockIssueParser implements github.IssueParser for testing.
@@ -216,6 +217,37 @@ func TestRunLinkSpec_InvalidNumber(t *testing.T) {
 		}
 	}
 	t.Error("link-spec subcommand not found")
+}
+
+func TestRunLinkSpec_InvalidSpecID(t *testing.T) {
+	tests := []struct {
+		name   string
+		specID string
+	}{
+		{"empty", ""},
+		{"no prefix", "ISSUE-123"},
+		{"wrong prefix", "SPEC-123"},
+		{"lowercase", "spec-issue-123"},
+		{"trailing text", "SPEC-ISSUE-123abc"},
+		{"spaces", "SPEC-ISSUE- 123"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, cmd := range githubCmd.Commands() {
+				if cmd.Name() == "link-spec" {
+					err := cmd.RunE(cmd, []string{"1", tt.specID})
+					if err == nil {
+						t.Fatalf("expected error for SPEC ID %q, got nil", tt.specID)
+					}
+					if !errors.Is(err, workflow.ErrInvalidSPECID) {
+						t.Errorf("error = %v, want ErrInvalidSPECID", err)
+					}
+					return
+				}
+			}
+			t.Error("link-spec subcommand not found")
+		})
+	}
 }
 
 func TestRunLinkSpec_LinkError(t *testing.T) {

@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/core/quality"
@@ -22,14 +23,45 @@ func (m *mockQualityGate) ValidatePrinciple(_ context.Context, _ string) (*quali
 	return nil, nil
 }
 
+// mustNewPRReviewer is a test helper that calls NewPRReviewer and fails the test on error.
+func mustNewPRReviewer(t *testing.T, gh GHClient, gate quality.Gate, logger *slog.Logger) *prReviewer {
+	t.Helper()
+	r, err := NewPRReviewer(gh, gate, logger)
+	if err != nil {
+		t.Fatalf("NewPRReviewer() error = %v", err)
+	}
+	return r
+}
+
 func TestNewPRReviewer(t *testing.T) {
 	t.Parallel()
 
 	gh := &mockGHClient{}
 	gate := &mockQualityGate{}
-	r := NewPRReviewer(gh, gate, nil)
+	r, err := NewPRReviewer(gh, gate, nil)
+	if err != nil {
+		t.Fatalf("NewPRReviewer() error = %v", err)
+	}
 	if r == nil {
 		t.Fatal("NewPRReviewer returned nil")
+	}
+}
+
+func TestNewPRReviewer_NilGHClient(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewPRReviewer(nil, &mockQualityGate{}, nil)
+	if !errors.Is(err, ErrNilGHClient) {
+		t.Errorf("NewPRReviewer(nil gh) error = %v, want ErrNilGHClient", err)
+	}
+}
+
+func TestNewPRReviewer_NilQualityGate(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewPRReviewer(&mockGHClient{}, nil, nil)
+	if !errors.Is(err, ErrNilQualityGate) {
+		t.Errorf("NewPRReviewer(nil gate) error = %v, want ErrNilQualityGate", err)
 	}
 }
 
@@ -53,7 +85,7 @@ func TestReview_AllChecksPassed_Approve(t *testing.T) {
 	gate := &mockQualityGate{
 		report: &quality.Report{Passed: true, Score: 0.95},
 	}
-	r := NewPRReviewer(gh, gate, nil)
+	r := mustNewPRReviewer(t, gh, gate, nil)
 
 	report, err := r.Review(context.Background(), 42, "SPEC-ISSUE-42")
 	if err != nil {
@@ -99,7 +131,7 @@ func TestReview_QualityFailed_RequestChanges(t *testing.T) {
 			},
 		},
 	}
-	r := NewPRReviewer(gh, gate, nil)
+	r := mustNewPRReviewer(t, gh, gate, nil)
 
 	report, err := r.Review(context.Background(), 43, "SPEC-ISSUE-43")
 	if err != nil {
@@ -131,7 +163,7 @@ func TestReview_CIFailed_RequestChanges(t *testing.T) {
 	gate := &mockQualityGate{
 		report: &quality.Report{Passed: true, Score: 1.0},
 	}
-	r := NewPRReviewer(gh, gate, nil)
+	r := mustNewPRReviewer(t, gh, gate, nil)
 
 	report, err := r.Review(context.Background(), 44, "SPEC-ISSUE-44")
 	if err != nil {
@@ -160,7 +192,7 @@ func TestReview_CIPending_Comment(t *testing.T) {
 	gate := &mockQualityGate{
 		report: &quality.Report{Passed: true, Score: 1.0},
 	}
-	r := NewPRReviewer(gh, gate, nil)
+	r := mustNewPRReviewer(t, gh, gate, nil)
 
 	report, err := r.Review(context.Background(), 45, "SPEC-ISSUE-45")
 	if err != nil {
@@ -178,7 +210,7 @@ func TestReview_PRNotFound(t *testing.T) {
 		prViewErr: ErrPRNotFound,
 	}
 	gate := &mockQualityGate{}
-	r := NewPRReviewer(gh, gate, nil)
+	r := mustNewPRReviewer(t, gh, gate, nil)
 
 	_, err := r.Review(context.Background(), 999, "SPEC-ISSUE-999")
 	if err == nil {
@@ -199,7 +231,7 @@ func TestReview_PRNotOpen(t *testing.T) {
 		},
 	}
 	gate := &mockQualityGate{}
-	r := NewPRReviewer(gh, gate, nil)
+	r := mustNewPRReviewer(t, gh, gate, nil)
 
 	_, err := r.Review(context.Background(), 46, "SPEC-ISSUE-46")
 	if err == nil {
@@ -220,7 +252,7 @@ func TestReview_QualityValidationError(t *testing.T) {
 	gate := &mockQualityGate{
 		err: errors.New("lsp timeout"),
 	}
-	r := NewPRReviewer(gh, gate, nil)
+	r := mustNewPRReviewer(t, gh, gate, nil)
 
 	report, err := r.Review(context.Background(), 47, "SPEC-ISSUE-47")
 	if err != nil {
@@ -244,7 +276,7 @@ func TestReview_SummaryGeneration(t *testing.T) {
 	gate := &mockQualityGate{
 		report: &quality.Report{Passed: true, Score: 0.92},
 	}
-	r := NewPRReviewer(gh, gate, nil)
+	r := mustNewPRReviewer(t, gh, gate, nil)
 
 	report, err := r.Review(context.Background(), 48, "SPEC-ISSUE-48")
 	if err != nil {
@@ -271,7 +303,7 @@ func TestReview_CIChecksError(t *testing.T) {
 	gate := &mockQualityGate{
 		report: &quality.Report{Passed: true, Score: 1.0},
 	}
-	r := NewPRReviewer(gh, gate, nil)
+	r := mustNewPRReviewer(t, gh, gate, nil)
 
 	report, err := r.Review(context.Background(), 49, "SPEC-ISSUE-49")
 	if err != nil {
