@@ -16,6 +16,9 @@ const (
 
 	// CredentialsJSON is the rank service credentials file.
 	CredentialsJSON = "credentials.json"
+
+	// GithubSpecRegistryJSON is the file that maps GitHub issues to SPEC IDs.
+	GithubSpecRegistryJSON = "github-spec-registry.json"
 )
 
 // Section YAML file names under .moai/config/sections/.
