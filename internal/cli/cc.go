@@ -42,13 +42,33 @@ func runCC(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("remove GLM env: %w", err)
 	}
 
+	// Remove project-level .env.glm
+	if err := removeProjectEnvGLM(root); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to remove project .env.glm: %v\n", err)
+	}
+
 	_, _ = fmt.Fprintln(out, renderSuccessCard(
 		"Switched to Claude backend",
-		"GLM env vars removed from",
-		".claude/settings.local.json",
+		"GLM configuration removed from:",
+		"  - .claude/settings.local.json",
+		"  - .moai/.env.glm",
 		"",
 		"Run 'moai glm' to switch to GLM.",
 	))
+	return nil
+}
+
+// removeProjectEnvGLM removes the project-level .moai/.env.glm file.
+func removeProjectEnvGLM(projectRoot string) error {
+	envPath := filepath.Join(projectRoot, ".moai", ".env.glm")
+
+	if err := os.Remove(envPath); err != nil {
+		if os.IsNotExist(err) {
+			return nil // Already removed, no-op
+		}
+		return fmt.Errorf("remove project .env.glm: %w", err)
+	}
+
 	return nil
 }
 
