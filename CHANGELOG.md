@@ -9,6 +9,110 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.4.4] - 2026-02-17
+
+### Summary
+
+GitHub Workflow integration release with SPEC-GITHUB-WORKFLOW (Milestones 1-6) enabling automated PR review, issue management, and SPEC linking. Includes project-scale-aware DDD test strategies, wizard viewport fix, and multiple bug fixes for worktree, GLM, and install.sh.
+
+### Breaking Changes
+
+None
+
+### Added
+
+- **GitHub Workflow Integration**: Full SPEC-GITHUB-WORKFLOW implementation (Milestones 1-6) with automated PR review, issue closing, SPEC linking, and concurrent GitHub operations (`internal/github/`)
+- **GitHub CLI Command**: New `moai github` command for managing issues and PRs from the CLI (`internal/cli/github.go`)
+- **Project-Scale-Aware DDD Test Strategy**: DDD agent now adapts test strategies based on project size (small/medium/large/xlarge) for optimized coverage
+- **Tmux Session Management**: New `internal/tmux/` package for robust Agent Teams tmux session detection and management
+- **Workflow Orchestrator**: New `internal/workflow/worktree_orchestrator.go` for improved worktree workflow coordination
+- **i18n Templates**: Internationalization support for template messages (`internal/i18n/templates.go`)
+- **Branch Detector**: New `internal/git/branch_detector.go` for reliable branch detection
+
+### Changed
+
+- **Output Style**: MoAI output style templates updated to English-first format
+- **GLM Status Line**: `status_line.sh` now loads GLM environment variables for Agent Teams tmux mode
+- **Manager-DDD Agent**: Updated with project-scale-aware test strategy documentation
+
+### Fixed
+
+- **Wizard Viewport**: Reordered language options to fix huh library viewport YOffset rendering bug in `moai update -c` wizard
+- **GitHub Quality**: Resolved 11 code quality suggestions from PR #390 code review
+- **Worktree SPEC-ID**: Fixed SPEC-ID matching and path standardization inconsistencies in worktree commands
+- **GLM tmux Mode**: Fixed GLM environment variables not loading in status_line.sh for Agent Teams tmux mode
+- **Install Script**: Removed unsafe sed-based JSON editing from install.sh for improved security
+
+### Dependencies
+
+- Bumped `github.com/charmbracelet/bubbles` to v1.0.0
+- Bumped `golang.org/x/text` (minor/patch)
+- Bumped `golang.org/x/net` to v0.38.0
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.4.4] - 2026-02-17 (한국어)
+
+### 요약
+
+GitHub 워크플로우 통합 릴리즈로, SPEC-GITHUB-WORKFLOW (Milestone 1-6)를 통해 자동화된 PR 리뷰, 이슈 관리, SPEC 연결 기능을 제공합니다. 프로젝트 규모 인식 DDD 테스트 전략, wizard viewport 버그 수정, worktree/GLM/install.sh 다수 버그 픽스를 포함합니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음
+
+### 추가됨 (Added)
+
+- **GitHub 워크플로우 통합**: SPEC-GITHUB-WORKFLOW 전체 구현 (Milestone 1-6) — 자동 PR 리뷰, 이슈 종료, SPEC 연결, 동시 GitHub 작업 (`internal/github/`)
+- **GitHub CLI 명령어**: CLI에서 이슈 및 PR을 관리하는 새로운 `moai github` 명령어 (`internal/cli/github.go`)
+- **프로젝트 규모 인식 DDD 테스트 전략**: DDD 에이전트가 프로젝트 크기(small/medium/large/xlarge)에 따라 테스트 전략을 최적화
+- **Tmux 세션 관리**: Agent Teams tmux 세션 감지 및 관리를 위한 새로운 `internal/tmux/` 패키지
+- **워크플로우 오케스트레이터**: 개선된 worktree 워크플로우 조율을 위한 `internal/workflow/worktree_orchestrator.go`
+- **i18n 템플릿**: 템플릿 메시지 다국어 지원 (`internal/i18n/templates.go`)
+- **브랜치 감지기**: 안정적인 브랜치 감지를 위한 `internal/git/branch_detector.go`
+
+### 변경됨 (Changed)
+
+- **출력 스타일**: MoAI 출력 스타일 템플릿을 영문 우선 형식으로 업데이트
+- **GLM 상태 라인**: `status_line.sh`에서 Agent Teams tmux 모드용 GLM 환경 변수 로드 지원 추가
+- **Manager-DDD 에이전트**: 프로젝트 규모 인식 테스트 전략 문서 업데이트
+
+### 수정됨 (Fixed)
+
+- **Wizard Viewport**: `moai update -c` 위저드에서 huh 라이브러리 viewport YOffset 렌더링 버그 수정 (언어 옵션 순서 변경)
+- **GitHub 코드 품질**: PR #390 코드 리뷰의 코드 품질 제안 11개 해결
+- **Worktree SPEC-ID**: worktree 명령어에서 SPEC-ID 매칭 및 경로 표준화 불일치 수정
+- **GLM tmux 모드**: Agent Teams tmux 모드에서 status_line.sh GLM 환경 변수 미로드 버그 수정
+- **설치 스크립트**: install.sh에서 보안 취약한 sed 기반 JSON 편집 방식 제거
+
+### 의존성 업데이트
+
+- `github.com/charmbracelet/bubbles` v1.0.0으로 업데이트
+- `golang.org/x/text` 마이너/패치 업데이트
+- `golang.org/x/net` v0.38.0으로 업데이트
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.4.3] - 2026-02-16
 
 ### Summary
