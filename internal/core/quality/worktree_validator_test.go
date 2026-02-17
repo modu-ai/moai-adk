@@ -21,6 +21,16 @@ func (m *mockGate) ValidatePrinciple(_ context.Context, _ string) (*PrincipleRes
 	return nil, nil
 }
 
+// mustNewWorktreeValidator is a test helper that calls NewWorktreeValidator and fails the test on error.
+func mustNewWorktreeValidator(t *testing.T, factory GateFactory, config QualityConfig) *worktreeValidator {
+	t.Helper()
+	v, err := NewWorktreeValidator(factory, config, nil)
+	if err != nil {
+		t.Fatalf("NewWorktreeValidator() error = %v", err)
+	}
+	return v
+}
+
 // mockGateFactory returns a GateFactory that always returns the given Gate.
 func mockGateFactory(gate Gate) GateFactory {
 	return func(_ QualityConfig) Gate {
@@ -37,9 +47,26 @@ func TestNewWorktreeValidator(t *testing.T) {
 		TestCoverageTarget: 85,
 	}
 
-	v := NewWorktreeValidator(mockGateFactory(gate), config, nil)
+	v, err := NewWorktreeValidator(mockGateFactory(gate), config, nil)
+	if err != nil {
+		t.Fatalf("NewWorktreeValidator() error = %v", err)
+	}
 	if v == nil {
 		t.Fatal("NewWorktreeValidator returned nil")
+	}
+}
+
+func TestNewWorktreeValidator_NilGateFactory(t *testing.T) {
+	t.Parallel()
+
+	config := QualityConfig{
+		DevelopmentMode:    ModeHybrid,
+		TestCoverageTarget: 85,
+	}
+
+	_, err := NewWorktreeValidator(nil, config, nil)
+	if err == nil {
+		t.Fatal("NewWorktreeValidator(nil factory) should return error")
 	}
 }
 
@@ -51,7 +78,7 @@ func TestWorktreeValidator_Validate_InvalidPath(t *testing.T) {
 		DevelopmentMode:    ModeHybrid,
 		TestCoverageTarget: 85,
 	}
-	v := NewWorktreeValidator(mockGateFactory(gate), config, nil)
+	v := mustNewWorktreeValidator(t, mockGateFactory(gate), config)
 
 	_, err := v.Validate(context.Background(), "/nonexistent/path/that/does/not/exist")
 	if err == nil {
@@ -73,7 +100,7 @@ func TestWorktreeValidator_Validate_NotADirectory(t *testing.T) {
 		DevelopmentMode:    ModeHybrid,
 		TestCoverageTarget: 85,
 	}
-	v := NewWorktreeValidator(mockGateFactory(gate), config, nil)
+	v := mustNewWorktreeValidator(t, mockGateFactory(gate), config)
 
 	_, err := v.Validate(context.Background(), filePath)
 	if err == nil {
@@ -100,7 +127,7 @@ func TestWorktreeValidator_Validate_PassingQuality(t *testing.T) {
 		EnforceQuality:     true,
 		TestCoverageTarget: 85,
 	}
-	v := NewWorktreeValidator(mockGateFactory(gate), config, nil)
+	v := mustNewWorktreeValidator(t, mockGateFactory(gate), config)
 
 	report, err := v.Validate(context.Background(), dir)
 	if err != nil {
@@ -145,7 +172,7 @@ func TestWorktreeValidator_Validate_FailingQuality(t *testing.T) {
 		EnforceQuality:     true,
 		TestCoverageTarget: 85,
 	}
-	v := NewWorktreeValidator(mockGateFactory(gate), config, nil)
+	v := mustNewWorktreeValidator(t, mockGateFactory(gate), config)
 
 	report, err := v.Validate(context.Background(), dir)
 	if err != nil {
@@ -173,7 +200,7 @@ func TestWorktreeValidator_ValidateWithConfig_Override(t *testing.T) {
 		DevelopmentMode:    ModeDDD,
 		TestCoverageTarget: 90,
 	}
-	v := NewWorktreeValidator(mockGateFactory(gate), defaultConfig, nil)
+	v := mustNewWorktreeValidator(t, mockGateFactory(gate), defaultConfig)
 
 	overrideConfig := QualityConfig{
 		DevelopmentMode:    ModeHybrid,
@@ -200,7 +227,7 @@ func TestWorktreeValidator_Validate_GateError(t *testing.T) {
 		DevelopmentMode:    ModeHybrid,
 		TestCoverageTarget: 85,
 	}
-	v := NewWorktreeValidator(mockGateFactory(gate), config, nil)
+	v := mustNewWorktreeValidator(t, mockGateFactory(gate), config)
 
 	_, err := v.Validate(context.Background(), dir)
 	if err == nil {

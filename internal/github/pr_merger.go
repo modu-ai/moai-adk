@@ -139,10 +139,11 @@ func (m *prMerger) Merge(ctx context.Context, prNumber int, opts MergeOptions) (
 	}
 
 	result := &MergeResult{
-		Merged:   true,
-		PRNumber: prNumber,
-		Method:   method,
-		MergedAt: time.Now(),
+		Merged:        true,
+		PRNumber:      prNumber,
+		Method:        method,
+		BranchDeleted: opts.DeleteBranch,
+		MergedAt:      time.Now(),
 	}
 
 	m.logger.Info("pull request merged", "pr", prNumber, "method", string(method))

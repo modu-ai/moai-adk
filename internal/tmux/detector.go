@@ -83,14 +83,14 @@ func parseVersion(output string) string {
 	return parts[1]
 }
 
-// defaultRun executes a command using os/exec.
-func defaultRun(_ context.Context, name string, args ...string) (string, error) {
+// defaultRun executes a command using os/exec with context support.
+func defaultRun(ctx context.Context, name string, args ...string) (string, error) {
 	path, err := exec.LookPath(name)
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", name, ErrTmuxNotFound)
 	}
 
-	cmd := exec.Command(path, args...)
+	cmd := exec.CommandContext(ctx, path, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

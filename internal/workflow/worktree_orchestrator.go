@@ -105,12 +105,16 @@ type WorktreeOrchestrator interface {
 	PrepareForReview(ctx context.Context, specID string) (*ReviewReadiness, error)
 }
 
+// DefaultBranchDetector returns the repository's default branch name.
+type DefaultBranchDetector func(root string) string
+
 // worktreeOrchestrator implements WorktreeOrchestrator.
 type worktreeOrchestrator struct {
-	worktreeMgr git.WorktreeManager
-	validator   quality.WorktreeValidator
-	executor    PhaseExecutor
-	logger      *slog.Logger
+	worktreeMgr    git.WorktreeManager
+	validator      quality.WorktreeValidator
+	executor       PhaseExecutor
+	detectBranch   DefaultBranchDetector
+	logger         *slog.Logger
 }
 
 // Compile-time interface compliance check.
@@ -137,10 +141,11 @@ func NewWorktreeOrchestrator(
 		logger = slog.Default()
 	}
 	return &worktreeOrchestrator{
-		worktreeMgr: worktreeMgr,
-		validator:   validator,
-		executor:    executor,
-		logger:      logger.With("module", "worktree-orchestrator"),
+		worktreeMgr:  worktreeMgr,
+		validator:    validator,
+		executor:     executor,
+		detectBranch: detectDefaultBranch,
+		logger:       logger.With("module", "worktree-orchestrator"),
 	}, nil
 }
 
@@ -165,7 +170,7 @@ func (o *worktreeOrchestrator) DetectWorktreeContext(ctx context.Context, dir st
 		if err != nil {
 			continue
 		}
-		if strings.HasPrefix(absDir, wtAbs) {
+		if absDir == wtAbs || strings.HasPrefix(absDir, wtAbs+string(filepath.Separator)) {
 			matched = wt
 			break
 		}
@@ -183,8 +188,11 @@ func (o *worktreeOrchestrator) DetectWorktreeContext(ctx context.Context, dir st
 
 	// Verify SPEC document exists in the worktree.
 	specDir := filepath.Join(matched.Path, ".moai", "specs", specID)
-	if _, err := os.Stat(specDir); os.IsNotExist(err) {
-		return nil, fmt.Errorf("SPEC directory %q: %w", specDir, ErrSPECNotFound)
+	if _, err := os.Stat(specDir); err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("SPEC directory %q: %w", specDir, ErrSPECNotFound)
+		}
+		return nil, fmt.Errorf("stat SPEC directory %q: %w", specDir, err)
 	}
 
 	issueNumber := extractIssueNumber(specID)
@@ -193,7 +201,7 @@ func (o *worktreeOrchestrator) DetectWorktreeContext(ctx context.Context, dir st
 		SpecID:      specID,
 		WorktreeDir: matched.Path,
 		Branch:      matched.Branch,
-		BaseBranch:  detectDefaultBranch(o.worktreeMgr.Root()),
+		BaseBranch:  o.detectBranch(o.worktreeMgr.Root()),
 		IssueNumber: issueNumber,
 	}, nil
 }
@@ -337,7 +345,7 @@ func (o *worktreeOrchestrator) findWorktreeForSpec(specID string) (*WorktreeCont
 				SpecID:      specID,
 				WorktreeDir: wt.Path,
 				Branch:      wt.Branch,
-				BaseBranch:  detectDefaultBranch(o.worktreeMgr.Root()),
+				BaseBranch:  o.detectBranch(o.worktreeMgr.Root()),
 				IssueNumber: extractIssueNumber(specID),
 			}, nil
 		}

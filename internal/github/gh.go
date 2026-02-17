@@ -193,12 +193,14 @@ func (c *ghClient) PRMerge(ctx context.Context, number int, method MergeMethod) 
 	args := []string{"pr", "merge", strconv.Itoa(number)}
 
 	switch method {
+	case MergeMethodMerge:
+		args = append(args, "--merge")
 	case MergeMethodSquash:
 		args = append(args, "--squash")
 	case MergeMethodRebase:
 		args = append(args, "--rebase")
 	default:
-		args = append(args, "--merge")
+		return fmt.Errorf("merge PR #%d: unsupported merge method %q", number, method)
 	}
 
 	c.logger.Debug("merging pull request", "number", number, "method", method)
@@ -250,20 +252,17 @@ func (c *ghClient) Push(ctx context.Context, dir string) error {
 
 	c.logger.Debug("pushing to remote", "dir", workDir)
 
-	_, err := execGH(ctx, workDir, "repo", "sync", "--source", ".")
-	if err != nil {
-		// Fall back to git push if gh repo sync fails.
-		gitPath, lookErr := exec.LookPath("git")
-		if lookErr != nil {
-			return fmt.Errorf("push: git not found: %w", lookErr)
-		}
-		cmd := exec.CommandContext(ctx, gitPath, "push", "-u", "origin", "HEAD")
-		cmd.Dir = workDir
-		var stderr bytes.Buffer
-		cmd.Stderr = &stderr
-		if runErr := cmd.Run(); runErr != nil {
-			return fmt.Errorf("push: %s: %w", strings.TrimSpace(stderr.String()), runErr)
-		}
+	gitPath, lookErr := exec.LookPath("git")
+	if lookErr != nil {
+		return fmt.Errorf("push: git not found: %w", lookErr)
+	}
+
+	cmd := exec.CommandContext(ctx, gitPath, "push", "-u", "origin", "HEAD")
+	cmd.Dir = workDir
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if runErr := cmd.Run(); runErr != nil {
+		return fmt.Errorf("push: %s: %w", strings.TrimSpace(stderr.String()), runErr)
 	}
 
 	return nil

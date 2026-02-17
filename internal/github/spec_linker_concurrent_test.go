@@ -8,8 +8,8 @@ import (
 
 // TestSpecLinker_ConcurrentLinkAttempts verifies behavior when multiple
 // goroutines attempt to link different issues concurrently.
-// The fileSpecLinker has no internal locking, so this test documents
-// the race condition risk and verifies data integrity under -race.
+// Each goroutine links a unique issue number, so this test validates
+// data integrity under concurrent access with -race detection.
 func TestSpecLinker_ConcurrentLinkAttempts(t *testing.T) {
 	t.Parallel()
 

@@ -48,9 +48,30 @@ func TestFormatIssueBranch(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := FormatIssueBranch(tt.labels, tt.issueNumber)
+			got, err := FormatIssueBranch(tt.labels, tt.issueNumber)
+			if err != nil {
+				t.Fatalf("FormatIssueBranch(%v, %d) error = %v", tt.labels, tt.issueNumber, err)
+			}
 			if got != tt.want {
 				t.Errorf("FormatIssueBranch(%v, %d) = %q, want %q", tt.labels, tt.issueNumber, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFormatIssueBranch_InvalidNumber(t *testing.T) {
+	tests := []struct {
+		name        string
+		issueNumber int
+	}{
+		{"zero", 0},
+		{"negative", -1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := FormatIssueBranch(nil, tt.issueNumber)
+			if err == nil {
+				t.Errorf("FormatIssueBranch(nil, %d) expected error, got nil", tt.issueNumber)
 			}
 		})
 	}

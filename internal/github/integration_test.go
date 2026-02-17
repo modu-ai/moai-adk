@@ -95,7 +95,10 @@ func TestIntegration_ParseIssue_ToBranchDetection(t *testing.T) {
 				t.Fatalf("ParseIssueFromJSON() error: %v", err)
 			}
 
-			branch := git.FormatIssueBranch(issue.LabelNames(), issue.Number)
+			branch, err := git.FormatIssueBranch(issue.LabelNames(), issue.Number)
+			if err != nil {
+				t.Fatalf("FormatIssueBranch() error: %v", err)
+			}
 			if branch != tt.wantBranch {
 				t.Errorf("FormatIssueBranch() = %q, want %q", branch, tt.wantBranch)
 			}
@@ -383,7 +386,10 @@ func TestIntegration_FullPipeline_IssueToClose(t *testing.T) {
 	}
 
 	// Phase 2: Detect branch prefix.
-	branch := git.FormatIssueBranch(issue.LabelNames(), issue.Number)
+	branch, err := git.FormatIssueBranch(issue.LabelNames(), issue.Number)
+	if err != nil {
+		t.Fatalf("FormatIssueBranch() error: %v", err)
+	}
 	if branch != "fix/issue-600" {
 		t.Errorf("FormatIssueBranch() = %q, want %q", branch, "fix/issue-600")
 	}
