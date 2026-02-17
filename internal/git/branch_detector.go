@@ -4,7 +4,8 @@ package git
 import "fmt"
 
 // labelPrefixMap maps GitHub issue labels to Git branch prefixes.
-// Order matters: first match wins when scanning labels.
+// DetectBranchPrefix iterates over the input labels slice (not this map),
+// so the first matching label in the caller's list determines the prefix.
 var labelPrefixMap = map[string]string{
 	"bug":           "fix/",
 	"feature":       "feat/",
@@ -27,7 +28,11 @@ func DetectBranchPrefix(labels []string) string {
 
 // FormatIssueBranch returns a full branch name for a GitHub issue.
 // Format: {prefix}issue-{number} (e.g., "fix/issue-123", "feat/issue-456").
-func FormatIssueBranch(labels []string, issueNumber int) string {
+// Returns an error if issueNumber is not positive.
+func FormatIssueBranch(labels []string, issueNumber int) (string, error) {
+	if issueNumber <= 0 {
+		return "", fmt.Errorf("format issue branch: issue number must be positive, got %d", issueNumber)
+	}
 	prefix := DetectBranchPrefix(labels)
-	return fmt.Sprintf("%sissue-%d", prefix, issueNumber)
+	return fmt.Sprintf("%sissue-%d", prefix, issueNumber), nil
 }

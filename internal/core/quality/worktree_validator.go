@@ -32,9 +32,11 @@ var _ WorktreeValidator = (*worktreeValidator)(nil)
 
 // NewWorktreeValidator creates a validator scoped to worktree directories.
 // The gateFactory creates a quality Gate for each validation run, enabling
-// dependency injection for testing. If gateFactory is nil, a default factory
-// using TrustGate with the provided LSP client is used.
-func NewWorktreeValidator(gateFactory GateFactory, config QualityConfig, logger *slog.Logger) *worktreeValidator {
+// dependency injection for testing. Returns an error if gateFactory is nil.
+func NewWorktreeValidator(gateFactory GateFactory, config QualityConfig, logger *slog.Logger) (*worktreeValidator, error) {
+	if gateFactory == nil {
+		return nil, fmt.Errorf("worktree validator: gate factory must not be nil")
+	}
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -42,7 +44,7 @@ func NewWorktreeValidator(gateFactory GateFactory, config QualityConfig, logger 
 		gateFactory: gateFactory,
 		config:      config,
 		logger:      logger.With("module", "worktree-validator"),
-	}
+	}, nil
 }
 
 // DefaultGateFactory creates a GateFactory that builds TrustGate instances

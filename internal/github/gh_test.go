@@ -18,10 +18,11 @@ type mockGHClient struct {
 	authErr        error
 
 	// Track calls for assertion.
-	prMergeCalled     bool
-	prMergeNumber     int
-	prMergeMethod     MergeMethod
-	pushCalled        bool
+	prMergeCalled       bool
+	prMergeNumber       int
+	prMergeMethod       MergeMethod
+	prMergeDeleteBranch bool
+	pushCalled          bool
 	pushDir           string
 	prViewCallCount   int
 	prChecksCallCount int
@@ -36,10 +37,11 @@ func (m *mockGHClient) PRView(_ context.Context, _ int) (*PRDetails, error) {
 	return m.prViewResult, m.prViewErr
 }
 
-func (m *mockGHClient) PRMerge(_ context.Context, number int, method MergeMethod) error {
+func (m *mockGHClient) PRMerge(_ context.Context, number int, method MergeMethod, deleteBranch bool) error {
 	m.prMergeCalled = true
 	m.prMergeNumber = number
 	m.prMergeMethod = method
+	m.prMergeDeleteBranch = deleteBranch
 	return m.prMergeErr
 }
 

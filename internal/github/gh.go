@@ -20,6 +20,13 @@ var (
 	ghBinErr  error
 )
 
+// gitBin caches the resolved git binary path to avoid repeated exec.LookPath calls.
+var (
+	gitBinOnce sync.Once
+	gitBinPath string
+	gitBinErr  error
+)
+
 // CheckConclusion represents the overall CI/CD check result.
 type CheckConclusion string
 
@@ -92,7 +99,8 @@ type GHClient interface {
 	PRView(ctx context.Context, number int) (*PRDetails, error)
 
 	// PRMerge merges a PR by number using the specified method.
-	PRMerge(ctx context.Context, number int, method MergeMethod) error
+	// If deleteBranch is true, the head branch is deleted after merge.
+	PRMerge(ctx context.Context, number int, method MergeMethod, deleteBranch bool) error
 
 	// PRChecks returns the CI/CD check status for a PR.
 	PRChecks(ctx context.Context, number int) (*CheckStatus, error)
@@ -189,16 +197,23 @@ func (c *ghClient) PRView(ctx context.Context, number int) (*PRDetails, error) {
 }
 
 // PRMerge merges a pull request using the specified method.
-func (c *ghClient) PRMerge(ctx context.Context, number int, method MergeMethod) error {
+// If deleteBranch is true, the head branch is deleted after merge.
+func (c *ghClient) PRMerge(ctx context.Context, number int, method MergeMethod, deleteBranch bool) error {
 	args := []string{"pr", "merge", strconv.Itoa(number)}
 
 	switch method {
+	case MergeMethodMerge:
+		args = append(args, "--merge")
 	case MergeMethodSquash:
 		args = append(args, "--squash")
 	case MergeMethodRebase:
 		args = append(args, "--rebase")
 	default:
-		args = append(args, "--merge")
+		return fmt.Errorf("merge PR #%d: unsupported merge method %q", number, method)
+	}
+
+	if deleteBranch {
+		args = append(args, "--delete-branch")
 	}
 
 	c.logger.Debug("merging pull request", "number", number, "method", method)
@@ -250,20 +265,23 @@ func (c *ghClient) Push(ctx context.Context, dir string) error {
 
 	c.logger.Debug("pushing to remote", "dir", workDir)
 
-	_, err := execGH(ctx, workDir, "repo", "sync", "--source", ".")
-	if err != nil {
-		// Fall back to git push if gh repo sync fails.
-		gitPath, lookErr := exec.LookPath("git")
-		if lookErr != nil {
-			return fmt.Errorf("push: git not found: %w", lookErr)
+	gitBinOnce.Do(func() {
+		gitBinPath, gitBinErr = exec.LookPath("git")
+	})
+	if gitBinErr != nil {
+		return fmt.Errorf("push: git not found: %w", gitBinErr)
+	}
+
+	cmd := exec.CommandContext(ctx, gitBinPath, "push", "-u", "origin", "HEAD")
+	cmd.Dir = workDir
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if runErr := cmd.Run(); runErr != nil {
+		errMsg := strings.TrimSpace(stderr.String())
+		if errMsg == "" {
+			errMsg = runErr.Error()
 		}
-		cmd := exec.CommandContext(ctx, gitPath, "push", "-u", "origin", "HEAD")
-		cmd.Dir = workDir
-		var stderr bytes.Buffer
-		cmd.Stderr = &stderr
-		if runErr := cmd.Run(); runErr != nil {
-			return fmt.Errorf("push: %s: %w", strings.TrimSpace(stderr.String()), runErr)
-		}
+		return fmt.Errorf("push: %s: %w", errMsg, runErr)
 	}
 
 	return nil

@@ -187,9 +187,8 @@ func TestIssueCloser_Close_CloseFails_AllRetries(t *testing.T) {
 	if !result.CommentPosted {
 		t.Error("CommentPosted should be true")
 	}
-	if !result.IssueClosed {
-		// IssueClosed should be false since close failed.
-		t.Log("IssueClosed correctly false")
+	if result.IssueClosed {
+		t.Error("IssueClosed should be false since close failed")
 	}
 }
 
