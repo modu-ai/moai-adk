@@ -9,8 +9,23 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
+
+// ghBin caches the resolved gh binary path to avoid repeated exec.LookPath calls.
+var (
+	ghBinOnce sync.Once
+	ghBinPath string
+	ghBinErr  error
+)
+
+// resetGHBinCache clears the cached gh binary path for testing.
+func resetGHBinCache() {
+	ghBinOnce = sync.Once{}
+	ghBinPath = ""
+	ghBinErr = nil
+}
 
 // CheckConclusion represents the overall CI/CD check result.
 type CheckConclusion string
@@ -263,12 +278,14 @@ func (c *ghClient) Push(ctx context.Context, dir string) error {
 
 // execGH runs a gh CLI command and returns its stdout output.
 func execGH(ctx context.Context, dir string, args ...string) (string, error) {
-	ghPath, err := exec.LookPath("gh")
-	if err != nil {
+	ghBinOnce.Do(func() {
+		ghBinPath, ghBinErr = exec.LookPath("gh")
+	})
+	if ghBinErr != nil {
 		return "", fmt.Errorf("gh lookup: %w", ErrGHNotFound)
 	}
 
-	cmd := exec.CommandContext(ctx, ghPath, args...)
+	cmd := exec.CommandContext(ctx, ghBinPath, args...)
 	cmd.Dir = dir
 
 	var stdout, stderr bytes.Buffer
@@ -293,15 +310,31 @@ func execGH(ctx context.Context, dir string, args ...string) (string, error) {
 // The URL format is: https://github.com/owner/repo/pull/123
 func extractPRNumber(output string) (int, error) {
 	output = strings.TrimSpace(output)
+	if output == "" {
+		return 0, fmt.Errorf("empty output")
+	}
+
 	parts := strings.Split(output, "/")
-	if len(parts) < 1 {
-		return 0, fmt.Errorf("unexpected output format")
+	// A valid GitHub PR URL has the form: https://github.com/owner/repo/pull/123
+	// After splitting by "/" that yields at least 7 parts:
+	// ["https:", "", "github.com", "owner", "repo", "pull", "123"]
+	// We require at least 2 trailing segments: "pull" and a number.
+	if len(parts) < 2 {
+		return 0, fmt.Errorf("unexpected URL format: %q", output)
+	}
+
+	if parts[len(parts)-2] != "pull" {
+		return 0, fmt.Errorf("URL missing /pull/ segment: %q", output)
 	}
 
 	lastPart := parts[len(parts)-1]
 	number, err := strconv.Atoi(lastPart)
 	if err != nil {
-		return 0, fmt.Errorf("parse number %q: %w", lastPart, err)
+		return 0, fmt.Errorf("parse PR number %q: %w", lastPart, err)
+	}
+
+	if number <= 0 {
+		return 0, fmt.Errorf("invalid PR number: %d", number)
 	}
 
 	return number, nil

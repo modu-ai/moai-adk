@@ -151,6 +151,7 @@ func (m *prMerger) Merge(ctx context.Context, prNumber int, opts MergeOptions) (
 }
 
 // CheckPrerequisites verifies all merge conditions without actually merging.
+// It fetches PR data once and passes it to the reviewer to avoid redundant API calls.
 func (m *prMerger) CheckPrerequisites(ctx context.Context, prNumber int, opts MergeOptions) (*PrerequisiteCheck, error) {
 	check := &PrerequisiteCheck{
 		AllMet:         false,
@@ -163,12 +164,13 @@ func (m *prMerger) CheckPrerequisites(ctx context.Context, prNumber int, opts Me
 		check.FailureReasons = append(check.FailureReasons, "--auto-merge flag not specified")
 	}
 
-	// Check 2: PR details and mergeability.
+	// Fetch PR details once for all downstream checks.
 	prDetails, err := m.gh.PRView(ctx, prNumber)
 	if err != nil {
 		return nil, fmt.Errorf("view PR #%d: %w", prNumber, err)
 	}
 
+	// Check 2: Mergeability.
 	switch prDetails.Mergeable {
 	case "MERGEABLE":
 		check.Mergeable = true
@@ -179,12 +181,34 @@ func (m *prMerger) CheckPrerequisites(ctx context.Context, prNumber int, opts Me
 		check.Mergeable = true
 	}
 
-	// Check 3: Review via PRReviewer.
-	if opts.RequireReview {
-		reviewReport, err := m.reviewer.Review(ctx, prNumber, opts.SpecID)
+	// Fetch CI/CD status once if required (shared with reviewer).
+	var checkStatus *CheckStatus
+	if opts.RequireChecks {
+		checkStatus, err = m.gh.PRChecks(ctx, prNumber)
 		if err != nil {
 			check.FailureReasons = append(check.FailureReasons,
-				fmt.Sprintf("review error: %v", err))
+				fmt.Sprintf("CI check error: %v", err))
+		} else if checkStatus != nil {
+			check.ChecksPassed = checkStatus.Overall == CheckPass
+			if !check.ChecksPassed {
+				check.FailureReasons = append(check.FailureReasons,
+					fmt.Sprintf("CI/CD status: %s", checkStatus.Overall))
+			}
+		}
+	} else {
+		// No checks required: mark as passed.
+		check.ChecksPassed = true
+	}
+
+	// Check 3: Review via PRReviewer (pass pre-fetched data to avoid redundant calls).
+	if opts.RequireReview {
+		reviewReport, reviewErr := m.reviewer.Review(ctx, prNumber, opts.SpecID, &ReviewInput{
+			PRDetails:   prDetails,
+			CheckStatus: checkStatus,
+		})
+		if reviewErr != nil {
+			check.FailureReasons = append(check.FailureReasons,
+				fmt.Sprintf("review error: %v", reviewErr))
 		} else {
 			check.ReviewApproved = reviewReport.Decision == ReviewApprove
 			if reviewReport.QualityReport != nil {
@@ -199,24 +223,6 @@ func (m *prMerger) CheckPrerequisites(ctx context.Context, prNumber int, opts Me
 		// No review required: mark as passed.
 		check.ReviewApproved = true
 		check.QualityPassed = true
-	}
-
-	// Check 4: CI/CD checks.
-	if opts.RequireChecks {
-		checkStatus, err := m.gh.PRChecks(ctx, prNumber)
-		if err != nil {
-			check.FailureReasons = append(check.FailureReasons,
-				fmt.Sprintf("CI check error: %v", err))
-		} else if checkStatus != nil {
-			check.ChecksPassed = checkStatus.Overall == CheckPass
-			if !check.ChecksPassed {
-				check.FailureReasons = append(check.FailureReasons,
-					fmt.Sprintf("CI/CD status: %s", checkStatus.Overall))
-			}
-		}
-	} else {
-		// No checks required: mark as passed.
-		check.ChecksPassed = true
 	}
 
 	// Determine overall result.

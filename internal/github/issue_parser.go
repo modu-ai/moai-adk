@@ -50,11 +50,15 @@ type IssueParser interface {
 }
 
 // ghIssueParser implements IssueParser using the gh CLI.
-type ghIssueParser struct{}
+type ghIssueParser struct {
+	root string
+}
 
 // NewIssueParser returns an IssueParser that uses the gh CLI.
-func NewIssueParser() IssueParser {
-	return &ghIssueParser{}
+// The root parameter sets the working directory for gh commands,
+// which must be inside the target GitHub repository.
+func NewIssueParser(root string) IssueParser {
+	return &ghIssueParser{root: root}
 }
 
 // issueFields is the comma-separated list of fields to request from gh.
@@ -67,7 +71,7 @@ func (p *ghIssueParser) ParseIssue(ctx context.Context, number int) (*Issue, err
 		return nil, fmt.Errorf("parse issue: invalid issue number %d", number)
 	}
 
-	output, err := execGH(ctx, ".", "issue", "view",
+	output, err := execGH(ctx, p.root, "issue", "view",
 		strconv.Itoa(number), "--json", issueFields)
 	if err != nil {
 		return nil, fmt.Errorf("parse issue #%d: %w", number, err)

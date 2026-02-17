@@ -97,7 +97,11 @@ func runParseIssue(cmd *cobra.Command, args []string) error {
 
 	parser := GithubIssueParser
 	if parser == nil {
-		parser = github.NewIssueParser()
+		cwd, cwdErr := os.Getwd()
+		if cwdErr != nil {
+			return fmt.Errorf("get working directory: %w", cwdErr)
+		}
+		parser = github.NewIssueParser(cwd)
 	}
 
 	ctx := cmd.Context()

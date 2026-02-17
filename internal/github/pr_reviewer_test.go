@@ -87,7 +87,7 @@ func TestReview_AllChecksPassed_Approve(t *testing.T) {
 	}
 	r := mustNewPRReviewer(t, gh, gate, nil)
 
-	report, err := r.Review(context.Background(), 42, "SPEC-ISSUE-42")
+	report, err := r.Review(context.Background(), 42, "SPEC-ISSUE-42", nil)
 	if err != nil {
 		t.Fatalf("Review() error = %v", err)
 	}
@@ -133,7 +133,7 @@ func TestReview_QualityFailed_RequestChanges(t *testing.T) {
 	}
 	r := mustNewPRReviewer(t, gh, gate, nil)
 
-	report, err := r.Review(context.Background(), 43, "SPEC-ISSUE-43")
+	report, err := r.Review(context.Background(), 43, "SPEC-ISSUE-43", nil)
 	if err != nil {
 		t.Fatalf("Review() error = %v", err)
 	}
@@ -165,7 +165,7 @@ func TestReview_CIFailed_RequestChanges(t *testing.T) {
 	}
 	r := mustNewPRReviewer(t, gh, gate, nil)
 
-	report, err := r.Review(context.Background(), 44, "SPEC-ISSUE-44")
+	report, err := r.Review(context.Background(), 44, "SPEC-ISSUE-44", nil)
 	if err != nil {
 		t.Fatalf("Review() error = %v", err)
 	}
@@ -194,7 +194,7 @@ func TestReview_CIPending_Comment(t *testing.T) {
 	}
 	r := mustNewPRReviewer(t, gh, gate, nil)
 
-	report, err := r.Review(context.Background(), 45, "SPEC-ISSUE-45")
+	report, err := r.Review(context.Background(), 45, "SPEC-ISSUE-45", nil)
 	if err != nil {
 		t.Fatalf("Review() error = %v", err)
 	}
@@ -212,7 +212,7 @@ func TestReview_PRNotFound(t *testing.T) {
 	gate := &mockQualityGate{}
 	r := mustNewPRReviewer(t, gh, gate, nil)
 
-	_, err := r.Review(context.Background(), 999, "SPEC-ISSUE-999")
+	_, err := r.Review(context.Background(), 999, "SPEC-ISSUE-999", nil)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -233,7 +233,7 @@ func TestReview_PRNotOpen(t *testing.T) {
 	gate := &mockQualityGate{}
 	r := mustNewPRReviewer(t, gh, gate, nil)
 
-	_, err := r.Review(context.Background(), 46, "SPEC-ISSUE-46")
+	_, err := r.Review(context.Background(), 46, "SPEC-ISSUE-46", nil)
 	if err == nil {
 		t.Fatal("expected error for non-OPEN PR, got nil")
 	}
@@ -254,7 +254,7 @@ func TestReview_QualityValidationError(t *testing.T) {
 	}
 	r := mustNewPRReviewer(t, gh, gate, nil)
 
-	report, err := r.Review(context.Background(), 47, "SPEC-ISSUE-47")
+	report, err := r.Review(context.Background(), 47, "SPEC-ISSUE-47", nil)
 	if err != nil {
 		t.Fatalf("Review() error = %v", err)
 	}
@@ -278,7 +278,7 @@ func TestReview_SummaryGeneration(t *testing.T) {
 	}
 	r := mustNewPRReviewer(t, gh, gate, nil)
 
-	report, err := r.Review(context.Background(), 48, "SPEC-ISSUE-48")
+	report, err := r.Review(context.Background(), 48, "SPEC-ISSUE-48", nil)
 	if err != nil {
 		t.Fatalf("Review() error = %v", err)
 	}
@@ -305,7 +305,7 @@ func TestReview_CIChecksError(t *testing.T) {
 	}
 	r := mustNewPRReviewer(t, gh, gate, nil)
 
-	report, err := r.Review(context.Background(), 49, "SPEC-ISSUE-49")
+	report, err := r.Review(context.Background(), 49, "SPEC-ISSUE-49", nil)
 	if err != nil {
 		t.Fatalf("Review() error = %v", err)
 	}

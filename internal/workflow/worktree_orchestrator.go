@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -192,7 +193,7 @@ func (o *worktreeOrchestrator) DetectWorktreeContext(ctx context.Context, dir st
 		SpecID:      specID,
 		WorktreeDir: matched.Path,
 		Branch:      matched.Branch,
-		BaseBranch:  "main",
+		BaseBranch:  detectDefaultBranch(o.worktreeMgr.Root()),
 		IssueNumber: issueNumber,
 	}, nil
 }
@@ -336,13 +337,32 @@ func (o *worktreeOrchestrator) findWorktreeForSpec(specID string) (*WorktreeCont
 				SpecID:      specID,
 				WorktreeDir: wt.Path,
 				Branch:      wt.Branch,
-				BaseBranch:  "main",
+				BaseBranch:  detectDefaultBranch(o.worktreeMgr.Root()),
 				IssueNumber: extractIssueNumber(specID),
 			}, nil
 		}
 	}
 
 	return nil, fmt.Errorf("no worktree found for %s: %w", specID, ErrNotInWorktree)
+}
+
+// detectDefaultBranch determines the repository's default branch by reading
+// the symbolic ref for origin/HEAD. Falls back to "main" if the git command
+// fails or returns an empty result.
+func detectDefaultBranch(root string) string {
+	out, err := exec.Command("git", "-C", root, "symbolic-ref", "refs/remotes/origin/HEAD", "--short").Output()
+	if err != nil {
+		return "main"
+	}
+	ref := strings.TrimSpace(string(out))
+	if ref == "" {
+		return "main"
+	}
+	// The output is e.g. "origin/main" — strip the "origin/" prefix.
+	if after, ok := strings.CutPrefix(ref, "origin/"); ok && after != "" {
+		return after
+	}
+	return ref
 }
 
 // extractIssueNumber parses the issue number from a SPEC ID like "SPEC-ISSUE-123".

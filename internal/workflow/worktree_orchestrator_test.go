@@ -698,6 +698,35 @@ func TestExecuteWorkflow_QualityValidationError(t *testing.T) {
 	}
 }
 
+func TestDetectDefaultBranch(t *testing.T) {
+	t.Parallel()
+
+	t.Run("non-git directory falls back to main", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		got := detectDefaultBranch(dir)
+		if got != "main" {
+			t.Errorf("detectDefaultBranch(non-git) = %q, want %q", got, "main")
+		}
+	})
+
+	t.Run("empty root falls back to main", func(t *testing.T) {
+		t.Parallel()
+		got := detectDefaultBranch("")
+		if got != "main" {
+			t.Errorf("detectDefaultBranch(\"\") = %q, want %q", got, "main")
+		}
+	})
+
+	t.Run("nonexistent path falls back to main", func(t *testing.T) {
+		t.Parallel()
+		got := detectDefaultBranch("/nonexistent/path/that/does/not/exist")
+		if got != "main" {
+			t.Errorf("detectDefaultBranch(nonexistent) = %q, want %q", got, "main")
+		}
+	})
+}
+
 func TestExtractIssueNumber(t *testing.T) {
 	t.Parallel()
 

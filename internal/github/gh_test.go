@@ -18,11 +18,13 @@ type mockGHClient struct {
 	authErr        error
 
 	// Track calls for assertion.
-	prMergeCalled  bool
-	prMergeNumber  int
-	prMergeMethod  MergeMethod
-	pushCalled     bool
-	pushDir        string
+	prMergeCalled     bool
+	prMergeNumber     int
+	prMergeMethod     MergeMethod
+	pushCalled        bool
+	pushDir           string
+	prViewCallCount   int
+	prChecksCallCount int
 }
 
 func (m *mockGHClient) PRCreate(_ context.Context, _ PRCreateOptions) (int, error) {
@@ -30,6 +32,7 @@ func (m *mockGHClient) PRCreate(_ context.Context, _ PRCreateOptions) (int, erro
 }
 
 func (m *mockGHClient) PRView(_ context.Context, _ int) (*PRDetails, error) {
+	m.prViewCallCount++
 	return m.prViewResult, m.prViewErr
 }
 
@@ -41,6 +44,7 @@ func (m *mockGHClient) PRMerge(_ context.Context, number int, method MergeMethod
 }
 
 func (m *mockGHClient) PRChecks(_ context.Context, _ int) (*CheckStatus, error) {
+	m.prChecksCallCount++
 	return m.prChecksResult, m.prChecksErr
 }
 
@@ -81,6 +85,31 @@ func TestExtractPRNumber(t *testing.T) {
 		{
 			name:    "empty string",
 			input:   "",
+			wantErr: true,
+		},
+		{
+			name:    "missing pull segment",
+			input:   "https://github.com/owner/repo/issues/42",
+			wantErr: true,
+		},
+		{
+			name:    "just a number",
+			input:   "42",
+			wantErr: true,
+		},
+		{
+			name:    "repo URL without pull",
+			input:   "https://github.com/owner/repo",
+			wantErr: true,
+		},
+		{
+			name:    "negative PR number",
+			input:   "https://github.com/owner/repo/pull/-1",
+			wantErr: true,
+		},
+		{
+			name:    "zero PR number",
+			input:   "https://github.com/owner/repo/pull/0",
 			wantErr: true,
 		},
 	}

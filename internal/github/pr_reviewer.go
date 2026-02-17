@@ -44,10 +44,21 @@ type ReviewReport struct {
 	Issues []string
 }
 
+// ReviewInput holds optional pre-fetched data to avoid redundant API calls.
+// When fields are non-nil, Review uses them instead of calling the GH API.
+type ReviewInput struct {
+	// PRDetails is optional pre-fetched PR details. If nil, Review fetches it.
+	PRDetails *PRDetails
+
+	// CheckStatus is optional pre-fetched CI check status. If nil, Review fetches it.
+	CheckStatus *CheckStatus
+}
+
 // PRReviewer generates quality-based PR review reports.
 type PRReviewer interface {
 	// Review runs quality validation and CI checks, then generates a review decision.
-	Review(ctx context.Context, prNumber int, specID string) (*ReviewReport, error)
+	// Pass nil for input to have Review fetch all data itself.
+	Review(ctx context.Context, prNumber int, specID string, input *ReviewInput) (*ReviewReport, error)
 }
 
 // prReviewer implements PRReviewer.
@@ -80,7 +91,8 @@ func NewPRReviewer(gh GHClient, qualityGate quality.Gate, logger *slog.Logger) (
 }
 
 // Review analyzes a PR and returns a review report with a decision.
-func (r *prReviewer) Review(ctx context.Context, prNumber int, specID string) (*ReviewReport, error) {
+// When input is non-nil, pre-fetched data is used to avoid redundant API calls.
+func (r *prReviewer) Review(ctx context.Context, prNumber int, specID string, input *ReviewInput) (*ReviewReport, error) {
 	r.logger.Info("starting PR review", "pr", prNumber, "spec_id", specID)
 
 	report := &ReviewReport{
@@ -89,10 +101,16 @@ func (r *prReviewer) Review(ctx context.Context, prNumber int, specID string) (*
 		Issues:   []string{},
 	}
 
-	// Verify PR exists.
-	prDetails, err := r.gh.PRView(ctx, prNumber)
-	if err != nil {
-		return nil, fmt.Errorf("view PR #%d: %w", prNumber, err)
+	// Use pre-fetched PR details or fetch them.
+	var prDetails *PRDetails
+	var err error
+	if input != nil && input.PRDetails != nil {
+		prDetails = input.PRDetails
+	} else {
+		prDetails, err = r.gh.PRView(ctx, prNumber)
+		if err != nil {
+			return nil, fmt.Errorf("view PR #%d: %w", prNumber, err)
+		}
 	}
 
 	if prDetails.State != "OPEN" {
@@ -117,8 +135,14 @@ func (r *prReviewer) Review(ctx context.Context, prNumber int, specID string) (*
 		}
 	}
 
-	// Check CI/CD status.
-	checkStatus, checkErr := r.gh.PRChecks(ctx, prNumber)
+	// Use pre-fetched check status or fetch it.
+	var checkStatus *CheckStatus
+	var checkErr error
+	if input != nil && input.CheckStatus != nil {
+		checkStatus = input.CheckStatus
+	} else {
+		checkStatus, checkErr = r.gh.PRChecks(ctx, prNumber)
+	}
 	report.CheckStatus = checkStatus
 
 	if checkErr != nil {

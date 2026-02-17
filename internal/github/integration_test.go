@@ -220,7 +220,7 @@ func TestIntegration_ReviewThenMerge_ApprovedFlow(t *testing.T) {
 	merger := mustNewPRMerger(t, gh, reviewer, nil)
 
 	// Step 1: Review the PR.
-	report, err := reviewer.Review(context.Background(), 500, "SPEC-ISSUE-500")
+	report, err := reviewer.Review(context.Background(), 500, "SPEC-ISSUE-500", nil)
 	if err != nil {
 		t.Fatalf("Review() error = %v", err)
 	}
@@ -282,7 +282,7 @@ func TestIntegration_ReviewThenMerge_BlockedFlow(t *testing.T) {
 	merger := mustNewPRMerger(t, gh, reviewer, nil)
 
 	// Step 1: Review should return REQUEST_CHANGES.
-	report, err := reviewer.Review(context.Background(), 501, "SPEC-ISSUE-501")
+	report, err := reviewer.Review(context.Background(), 501, "SPEC-ISSUE-501", nil)
 	if err != nil {
 		t.Fatalf("Review() error = %v", err)
 	}
@@ -308,6 +308,53 @@ func TestIntegration_ReviewThenMerge_BlockedFlow(t *testing.T) {
 	}
 	if gh.prMergeCalled {
 		t.Error("gh.PRMerge should not have been called when merge is blocked")
+	}
+}
+
+// TestIntegration_MergeCallCount verifies that CheckPrerequisites passes
+// pre-fetched data to the reviewer, avoiding redundant PRView and PRChecks calls.
+// Before the optimization, RequireReview+RequireChecks caused 4 gh calls (2 PRView + 2 PRChecks).
+// After: only 2 gh calls (1 PRView + 1 PRChecks) because data is fetched once and shared.
+func TestIntegration_MergeCallCount(t *testing.T) {
+	t.Parallel()
+
+	gh := &mockGHClient{
+		prViewResult: &PRDetails{
+			Number:    510,
+			State:     "OPEN",
+			Mergeable: "MERGEABLE",
+		},
+		prChecksResult: &CheckStatus{
+			Overall: CheckPass,
+			Checks: []Check{
+				{Name: "build", Status: "completed", Conclusion: "success"},
+			},
+		},
+	}
+	gate := &mockQualityGate{
+		report: &quality.Report{Passed: true, Score: 1.0},
+	}
+
+	reviewer := mustNewPRReviewer(t, gh, gate, nil)
+	merger := mustNewPRMerger(t, gh, reviewer, nil)
+
+	_, err := merger.Merge(context.Background(), 510, MergeOptions{
+		AutoMerge:     true,
+		Method:        MergeMethodSquash,
+		RequireReview: true,
+		RequireChecks: true,
+		SpecID:        "SPEC-ISSUE-510",
+	})
+	if err != nil {
+		t.Fatalf("Merge() error = %v", err)
+	}
+
+	// With pre-fetched data, PRView and PRChecks should each be called exactly once.
+	if gh.prViewCallCount != 1 {
+		t.Errorf("PRView called %d times, want 1", gh.prViewCallCount)
+	}
+	if gh.prChecksCallCount != 1 {
+		t.Errorf("PRChecks called %d times, want 1", gh.prChecksCallCount)
 	}
 }
 

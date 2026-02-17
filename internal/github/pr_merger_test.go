@@ -15,7 +15,7 @@ type mockPRReviewer struct {
 	err    error
 }
 
-func (m *mockPRReviewer) Review(_ context.Context, _ int, _ string) (*ReviewReport, error) {
+func (m *mockPRReviewer) Review(_ context.Context, _ int, _ string, _ *ReviewInput) (*ReviewReport, error) {
 	return m.report, m.err
 }
 
