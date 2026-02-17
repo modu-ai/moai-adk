@@ -1200,6 +1200,7 @@ func TestResolveSpecBranch(t *testing.T) {
 		{"spec id with long name", "SPEC-UI-042", "feature/SPEC-UI-042"},
 		{"not spec just prefix", "SPEC-", "SPEC-"},
 		{"not spec one part", "SPEC-AUTH", "SPEC-AUTH"},
+		{"not spec trailing dash", "SPEC-X-", "SPEC-X-"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1222,6 +1223,7 @@ func TestIsSpecID(t *testing.T) {
 		{"not spec no prefix", "feature-x", false},
 		{"not spec too few parts", "SPEC-AUTH", false},
 		{"not spec just prefix", "SPEC-", false},
+		{"not spec trailing dash", "SPEC-X-", false},
 		{"empty string", "", false},
 	}
 	for _, tt := range tests {
@@ -1853,6 +1855,111 @@ func TestWorktreeCmd_StatusHasAllFlag(t *testing.T) {
 		}
 	}
 	t.Error("status subcommand not found")
+}
+
+// --- Tests for done with SPEC-ID ---
+
+func TestRunDone_SpecID(t *testing.T) {
+	origProvider := WorktreeProvider
+	defer func() { WorktreeProvider = origProvider }()
+
+	removeCalled := false
+	WorktreeProvider = &mockWorktreeManager{
+		listFunc: func() ([]git.Worktree, error) {
+			return []git.Worktree{
+				{Path: "/repo", Branch: "main", HEAD: "abc"},
+				{Path: "/repo-auth", Branch: "feature/SPEC-AUTH-001", HEAD: "def"},
+			}, nil
+		},
+		removeFunc: func(path string, force bool) error {
+			removeCalled = true
+			if path != "/repo-auth" {
+				t.Errorf("path = %q, want %q", path, "/repo-auth")
+			}
+			return nil
+		},
+	}
+
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "done" {
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+
+			// Reset flags.
+			_ = cmd.Flags().Set("force", "false")
+			_ = cmd.Flags().Set("delete-branch", "false")
+
+			// Pass raw SPEC ID; should resolve to feature/SPEC-AUTH-001
+			err := cmd.RunE(cmd, []string{"SPEC-AUTH-001"})
+			if err != nil {
+				t.Fatalf("runDone error: %v", err)
+			}
+
+			if !removeCalled {
+				t.Error("Remove should have been called")
+			}
+			if !strings.Contains(buf.String(), "Done") {
+				t.Errorf("output should contain 'Done', got %q", buf.String())
+			}
+			if !strings.Contains(buf.String(), "feature/SPEC-AUTH-001") {
+				t.Errorf("output should contain resolved branch name, got %q", buf.String())
+			}
+			return
+		}
+	}
+	t.Error("done subcommand not found")
+}
+
+// --- Tests for sync with SPEC-ID ---
+
+func TestRunSync_SpecID(t *testing.T) {
+	origProvider := WorktreeProvider
+	origSync := mockSyncFunc
+	defer func() {
+		WorktreeProvider = origProvider
+		mockSyncFunc = origSync
+	}()
+
+	var syncPath string
+	mockSyncFunc = func(wtPath, _, _ string) error {
+		syncPath = wtPath
+		return nil
+	}
+
+	WorktreeProvider = &mockWorktreeManager{
+		listFunc: func() ([]git.Worktree, error) {
+			return []git.Worktree{
+				{Path: "/repo", Branch: "main", HEAD: "abc"},
+				{Path: "/repo-auth", Branch: "feature/SPEC-AUTH-001", HEAD: "def"},
+			}, nil
+		},
+	}
+
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "sync" {
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+
+			// Pass raw SPEC ID; should resolve to feature/SPEC-AUTH-001
+			err := cmd.RunE(cmd, []string{"SPEC-AUTH-001"})
+			if err != nil {
+				t.Fatalf("runSync error: %v", err)
+			}
+
+			if syncPath != "/repo-auth" {
+				t.Errorf("sync path = %q, want %q", syncPath, "/repo-auth")
+			}
+
+			output := buf.String()
+			if !strings.Contains(output, "Sync complete") {
+				t.Errorf("output should contain 'Sync complete', got %q", output)
+			}
+			return
+		}
+	}
+	t.Error("sync subcommand not found")
 }
 
 // --- Tests for config with 2 args ---

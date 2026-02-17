@@ -34,8 +34,8 @@ func runNew(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("worktree manager not initialized (git module not available)")
 	}
 
-	wtPath, err := cmd.Flags().GetString("path")
-	if err != nil || wtPath == "" {
+	wtPath, _ := cmd.Flags().GetString("path")
+	if wtPath == "" {
 		if isSpecID(specID) {
 			wtPath = filepath.Join(".moai", "worktrees", specID)
 		} else {
@@ -71,5 +71,5 @@ func isSpecID(name string) bool {
 		return false
 	}
 	parts := strings.SplitN(name, "-", 3)
-	return len(parts) >= 3
+	return len(parts) >= 3 && parts[2] != ""
 }
