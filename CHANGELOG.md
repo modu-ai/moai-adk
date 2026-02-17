@@ -9,6 +9,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.4.5] - 2026-02-17
+
+### Summary
+
+This patch release fixes two data-loss bugs in `moai update`: user-added `.gitignore` patterns are now preserved via EntryMerge after template sync, and user-created custom config sections (not present in the template) are correctly restored instead of being silently dropped.
+
+### Breaking Changes
+
+None.
+
+### Added
+
+- **`.gitignore` EntryMerge**: User-specific patterns are automatically detected after template deploy and appended under a `# User Custom Patterns` section, preventing data loss on `moai update`.
+
+### Fixed
+
+- **`.gitignore` overwritten**: `moai update` previously overwrote the entire `.gitignore` with the template version, discarding user-added patterns. Now user patterns are preserved.
+- **Custom config sections dropped**: User-created files in `.moai/config/sections/` (e.g., `my-custom.yaml`) were silently dropped when the template did not include them. They are now restored after template sync.
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.4.5] - 2026-02-17 (한국어)
+
+### 요약
+
+이번 패치 릴리즈는 `moai update` 실행 시 데이터가 손실되던 두 가지 버그를 수정합니다. 사용자가 추가한 `.gitignore` 패턴이 EntryMerge를 통해 보존되며, 사용자가 생성한 커스텀 config 섹션도 템플릿에 없더라도 올바르게 복원됩니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 추가됨 (Added)
+
+- **`.gitignore` EntryMerge**: 템플릿 배포 후 사용자가 추가한 패턴을 자동으로 감지하여 `# User Custom Patterns` 섹션 아래에 추가합니다. `moai update` 시 데이터 손실이 방지됩니다.
+
+### 수정됨 (Fixed)
+
+- **`.gitignore` 덮어쓰기 문제**: `moai update`가 사용자가 추가한 패턴을 포함한 `.gitignore` 전체를 템플릿 버전으로 덮어쓰던 문제를 수정했습니다.
+- **커스텀 config 섹션 손실 문제**: `.moai/config/sections/`에 사용자가 직접 생성한 파일(예: `my-custom.yaml`)이 새 템플릿에 해당 파일이 없으면 조용히 사라지던 문제를 수정했습니다. 이제 템플릿 배포 후에도 올바르게 복원됩니다.
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.4.4] - 2026-02-17
 
 ### Summary
