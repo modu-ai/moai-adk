@@ -27,7 +27,7 @@ Note: Merging to base branch should be done separately via git merge or PR.`,
 
 func runDone(cmd *cobra.Command, args []string) error {
 	out := cmd.OutOrStdout()
-	branchName := args[0]
+	branchName := resolveSpecBranch(args[0])
 
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
