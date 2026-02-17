@@ -20,13 +20,6 @@ var (
 	ghBinErr  error
 )
 
-// resetGHBinCache clears the cached gh binary path for testing.
-func resetGHBinCache() {
-	ghBinOnce = sync.Once{}
-	ghBinPath = ""
-	ghBinErr = nil
-}
-
 // CheckConclusion represents the overall CI/CD check result.
 type CheckConclusion string
 
