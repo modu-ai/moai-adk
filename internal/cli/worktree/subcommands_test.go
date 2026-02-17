@@ -3,6 +3,7 @@ package worktree
 import (
 	"bytes"
 	"errors"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -1109,6 +1110,83 @@ func TestRunGo_ListError(t *testing.T) {
 	t.Error("go subcommand not found")
 }
 
+// --- Tests for go with SPEC-ID ---
+
+func TestRunGo_SpecID(t *testing.T) {
+	origProvider := WorktreeProvider
+	defer func() { WorktreeProvider = origProvider }()
+
+	WorktreeProvider = &mockWorktreeManager{
+		listFunc: func() ([]git.Worktree, error) {
+			return []git.Worktree{
+				{Path: "/repo", Branch: "main", HEAD: "abc"},
+				{Path: "/repo-auth", Branch: "feature/SPEC-AUTH-001", HEAD: "def"},
+			}, nil
+		},
+	}
+
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "go" {
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+
+			// Pass raw SPEC ID; should resolve to feature/SPEC-AUTH-001
+			err := cmd.RunE(cmd, []string{"SPEC-AUTH-001"})
+			if err != nil {
+				t.Fatalf("runGo error: %v", err)
+			}
+
+			output := buf.String()
+			if output != "/repo-auth\n" {
+				t.Errorf("output = %q, want %q", output, "/repo-auth\n")
+			}
+			return
+		}
+	}
+	t.Error("go subcommand not found")
+}
+
+// --- Tests for switch with SPEC-ID ---
+
+func TestRunSwitch_SpecID(t *testing.T) {
+	origProvider := WorktreeProvider
+	defer func() { WorktreeProvider = origProvider }()
+
+	WorktreeProvider = &mockWorktreeManager{
+		listFunc: func() ([]git.Worktree, error) {
+			return []git.Worktree{
+				{Path: "/repo", Branch: "main", HEAD: "abc"},
+				{Path: "/repo-auth", Branch: "feature/SPEC-AUTH-001", HEAD: "def"},
+			}, nil
+		},
+	}
+
+	for _, cmd := range WorktreeCmd.Commands() {
+		if cmd.Name() == "switch" {
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+
+			// Pass raw SPEC ID; should resolve to feature/SPEC-AUTH-001
+			err := cmd.RunE(cmd, []string{"SPEC-AUTH-001"})
+			if err != nil {
+				t.Fatalf("runSwitch error: %v", err)
+			}
+
+			output := buf.String()
+			if !strings.Contains(output, "/repo-auth") {
+				t.Errorf("output should contain path, got %q", output)
+			}
+			if !strings.Contains(output, "feature/SPEC-AUTH-001") {
+				t.Errorf("output should contain resolved branch name, got %q", output)
+			}
+			return
+		}
+	}
+	t.Error("switch subcommand not found")
+}
+
 // --- Tests for SPEC-ID resolution ---
 
 func TestResolveSpecBranch(t *testing.T) {
@@ -1160,9 +1238,10 @@ func TestRunNew_SpecID(t *testing.T) {
 	origProvider := WorktreeProvider
 	defer func() { WorktreeProvider = origProvider }()
 
-	var capturedBranch string
+	var capturedPath, capturedBranch string
 	WorktreeProvider = &mockWorktreeManager{
-		addFunc: func(_, branch string) error {
+		addFunc: func(path, branch string) error {
+			capturedPath = path
 			capturedBranch = branch
 			return nil
 		},
@@ -1174,6 +1253,9 @@ func TestRunNew_SpecID(t *testing.T) {
 			cmd.SetOut(buf)
 			cmd.SetErr(buf)
 
+			// Reset --path flag to ensure default path is used.
+			_ = cmd.Flags().Set("path", "")
+
 			err := cmd.RunE(cmd, []string{"SPEC-AUTH-001"})
 			if err != nil {
 				t.Fatalf("runNew error: %v", err)
@@ -1182,10 +1264,80 @@ func TestRunNew_SpecID(t *testing.T) {
 			if capturedBranch != "feature/SPEC-AUTH-001" {
 				t.Errorf("branch = %q, want %q", capturedBranch, "feature/SPEC-AUTH-001")
 			}
+			wantPath := filepath.Join(".moai", "worktrees", "SPEC-AUTH-001")
+			if capturedPath != wantPath {
+				t.Errorf("path = %q, want %q", capturedPath, wantPath)
+			}
 			return
 		}
 	}
 	t.Error("new subcommand not found")
+}
+
+func TestRunNew_DefaultPath(t *testing.T) {
+	origProvider := WorktreeProvider
+	defer func() { WorktreeProvider = origProvider }()
+
+	tests := []struct {
+		name     string
+		input    string
+		wantPath string
+	}{
+		{
+			name:     "SPEC ID uses .moai/worktrees",
+			input:    "SPEC-AUTH-001",
+			wantPath: filepath.Join(".moai", "worktrees", "SPEC-AUTH-001"),
+		},
+		{
+			name:     "regular branch uses sibling directory",
+			input:    "feature-x",
+			wantPath: filepath.Join("..", "feature-x"),
+		},
+		{
+			name:     "SPEC with different category",
+			input:    "SPEC-UI-042",
+			wantPath: filepath.Join(".moai", "worktrees", "SPEC-UI-042"),
+		},
+		{
+			name:     "branch with slash passes through",
+			input:    "fix/something",
+			wantPath: filepath.Join("..", "fix/something"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var capturedPath string
+			WorktreeProvider = &mockWorktreeManager{
+				addFunc: func(path, _ string) error {
+					capturedPath = path
+					return nil
+				},
+			}
+
+			for _, cmd := range WorktreeCmd.Commands() {
+				if cmd.Name() == "new" {
+					buf := new(bytes.Buffer)
+					cmd.SetOut(buf)
+					cmd.SetErr(buf)
+
+					// Reset --path flag to empty to test default behavior.
+					_ = cmd.Flags().Set("path", "")
+
+					err := cmd.RunE(cmd, []string{tt.input})
+					if err != nil {
+						t.Fatalf("runNew error: %v", err)
+					}
+
+					if capturedPath != tt.wantPath {
+						t.Errorf("path = %q, want %q", capturedPath, tt.wantPath)
+					}
+					return
+				}
+			}
+			t.Error("new subcommand not found")
+		})
+	}
 }
 
 // --- Tests for new --base flag ---

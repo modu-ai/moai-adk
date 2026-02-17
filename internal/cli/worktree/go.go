@@ -22,7 +22,7 @@ Use with shell command substitution to change directory:
 
 func runGo(cmd *cobra.Command, args []string) error {
 	out := cmd.OutOrStdout()
-	branchName := args[0]
+	branchName := resolveSpecBranch(args[0])
 
 	if WorktreeProvider == nil {
 		return fmt.Errorf("worktree manager not initialized (git module not available)")
