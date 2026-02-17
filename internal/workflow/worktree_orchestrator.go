@@ -106,7 +106,7 @@ type WorktreeOrchestrator interface {
 }
 
 // defaultBranchDetectorFunc returns the repository's default branch name.
-type defaultBranchDetectorFunc func(root string) string
+type defaultBranchDetectorFunc func(ctx context.Context, root string) string
 
 // worktreeOrchestrator implements WorktreeOrchestrator.
 type worktreeOrchestrator struct {
@@ -201,7 +201,7 @@ func (o *worktreeOrchestrator) DetectWorktreeContext(ctx context.Context, dir st
 		SpecID:      specID,
 		WorktreeDir: matched.Path,
 		Branch:      matched.Branch,
-		BaseBranch:  o.detectBranch(o.worktreeMgr.Root()),
+		BaseBranch:  o.detectBranch(ctx, o.worktreeMgr.Root()),
 		IssueNumber: issueNumber,
 	}, nil
 }
@@ -212,7 +212,7 @@ func (o *worktreeOrchestrator) ExecuteWorkflow(ctx context.Context, specID strin
 		return nil, fmt.Errorf("SPEC ID %q: %w", specID, ErrInvalidSPECID)
 	}
 
-	wtCtx, err := o.findWorktreeForSpec(specID)
+	wtCtx, err := o.findWorktreeForSpec(ctx, specID)
 	if err != nil {
 		return nil, fmt.Errorf("find worktree for %s: %w", specID, err)
 	}
@@ -282,7 +282,7 @@ func (o *worktreeOrchestrator) ValidateQuality(ctx context.Context, specID strin
 		return nil, fmt.Errorf("SPEC ID %q: %w", specID, ErrInvalidSPECID)
 	}
 
-	wtCtx, err := o.findWorktreeForSpec(specID)
+	wtCtx, err := o.findWorktreeForSpec(ctx, specID)
 	if err != nil {
 		return nil, fmt.Errorf("find worktree for %s: %w", specID, err)
 	}
@@ -296,7 +296,7 @@ func (o *worktreeOrchestrator) PrepareForReview(ctx context.Context, specID stri
 		return nil, fmt.Errorf("SPEC ID %q: %w", specID, ErrInvalidSPECID)
 	}
 
-	wtCtx, err := o.findWorktreeForSpec(specID)
+	wtCtx, err := o.findWorktreeForSpec(ctx, specID)
 	if err != nil {
 		return nil, fmt.Errorf("find worktree for %s: %w", specID, err)
 	}
@@ -333,7 +333,7 @@ func (o *worktreeOrchestrator) PrepareForReview(ctx context.Context, specID stri
 }
 
 // findWorktreeForSpec looks up the worktree directory for a given SPEC ID.
-func (o *worktreeOrchestrator) findWorktreeForSpec(specID string) (*WorktreeContext, error) {
+func (o *worktreeOrchestrator) findWorktreeForSpec(ctx context.Context, specID string) (*WorktreeContext, error) {
 	worktrees, err := o.worktreeMgr.List()
 	if err != nil {
 		return nil, fmt.Errorf("list worktrees: %w", err)
@@ -345,7 +345,7 @@ func (o *worktreeOrchestrator) findWorktreeForSpec(specID string) (*WorktreeCont
 				SpecID:      specID,
 				WorktreeDir: wt.Path,
 				Branch:      wt.Branch,
-				BaseBranch:  o.detectBranch(o.worktreeMgr.Root()),
+				BaseBranch:  o.detectBranch(ctx, o.worktreeMgr.Root()),
 				IssueNumber: extractIssueNumber(specID),
 			}, nil
 		}
@@ -357,8 +357,8 @@ func (o *worktreeOrchestrator) findWorktreeForSpec(specID string) (*WorktreeCont
 // detectDefaultBranch determines the repository's default branch by reading
 // the symbolic ref for origin/HEAD. Falls back to "main" if the git command
 // fails or returns an empty result.
-func detectDefaultBranch(root string) string {
-	out, err := exec.Command("git", "-C", root, "symbolic-ref", "refs/remotes/origin/HEAD", "--short").Output()
+func detectDefaultBranch(ctx context.Context, root string) string {
+	out, err := exec.CommandContext(ctx, "git", "-C", root, "symbolic-ref", "refs/remotes/origin/HEAD", "--short").Output()
 	if err != nil {
 		return "main"
 	}

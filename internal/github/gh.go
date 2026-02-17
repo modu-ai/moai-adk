@@ -20,6 +20,13 @@ var (
 	ghBinErr  error
 )
 
+// gitBin caches the resolved git binary path to avoid repeated exec.LookPath calls.
+var (
+	gitBinOnce sync.Once
+	gitBinPath string
+	gitBinErr  error
+)
+
 // CheckConclusion represents the overall CI/CD check result.
 type CheckConclusion string
 
@@ -258,12 +265,14 @@ func (c *ghClient) Push(ctx context.Context, dir string) error {
 
 	c.logger.Debug("pushing to remote", "dir", workDir)
 
-	gitPath, lookErr := exec.LookPath("git")
-	if lookErr != nil {
-		return fmt.Errorf("push: git not found: %w", lookErr)
+	gitBinOnce.Do(func() {
+		gitBinPath, gitBinErr = exec.LookPath("git")
+	})
+	if gitBinErr != nil {
+		return fmt.Errorf("push: git not found: %w", gitBinErr)
 	}
 
-	cmd := exec.CommandContext(ctx, gitPath, "push", "-u", "origin", "HEAD")
+	cmd := exec.CommandContext(ctx, gitBinPath, "push", "-u", "origin", "HEAD")
 	cmd.Dir = workDir
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

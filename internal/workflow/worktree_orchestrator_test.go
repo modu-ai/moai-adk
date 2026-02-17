@@ -704,7 +704,7 @@ func TestDetectDefaultBranch(t *testing.T) {
 	t.Run("non-git directory falls back to main", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
-		got := detectDefaultBranch(dir)
+		got := detectDefaultBranch(context.Background(), dir)
 		if got != "main" {
 			t.Errorf("detectDefaultBranch(non-git) = %q, want %q", got, "main")
 		}
@@ -712,7 +712,7 @@ func TestDetectDefaultBranch(t *testing.T) {
 
 	t.Run("empty root falls back to main", func(t *testing.T) {
 		t.Parallel()
-		got := detectDefaultBranch("")
+		got := detectDefaultBranch(context.Background(), "")
 		if got != "main" {
 			t.Errorf("detectDefaultBranch(\"\") = %q, want %q", got, "main")
 		}
@@ -720,7 +720,7 @@ func TestDetectDefaultBranch(t *testing.T) {
 
 	t.Run("nonexistent path falls back to main", func(t *testing.T) {
 		t.Parallel()
-		got := detectDefaultBranch("/nonexistent/path/that/does/not/exist")
+		got := detectDefaultBranch(context.Background(), "/nonexistent/path/that/does/not/exist")
 		if got != "main" {
 			t.Errorf("detectDefaultBranch(nonexistent) = %q, want %q", got, "main")
 		}
