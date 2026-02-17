@@ -2563,3 +2563,179 @@ func TestApplyWizardConfig_StatuslineEmpty(t *testing.T) {
 		t.Error("statusline.yaml should not be created when StatuslinePreset is empty")
 	}
 }
+
+func TestMergeGitignoreFile_PreservesUserPatterns(t *testing.T) {
+	tmpDir := t.TempDir()
+	gitignorePath := filepath.Join(tmpDir, ".gitignore")
+
+	// Simulate new template .gitignore (deployed by template sync)
+	templateContent := "# Go\n*.exe\n*.test\n*.out\nvendor/\n\n# IDE\n.idea/\n.vscode/\n"
+	if err := os.WriteFile(gitignorePath, []byte(templateContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// User's backup had template patterns PLUS custom patterns
+	userBackup := []byte("# Go\n*.exe\n*.test\n*.out\nvendor/\n\n# IDE\n.idea/\n.vscode/\n\n# My custom patterns\nmy-secret.txt\nbuild-output/\n.env.local\n")
+
+	if err := mergeGitignoreFile(gitignorePath, userBackup); err != nil {
+		t.Fatalf("mergeGitignoreFile failed: %v", err)
+	}
+
+	data, err := os.ReadFile(gitignorePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := string(data)
+
+	// Template patterns should still be present
+	if !strings.Contains(result, "*.exe") {
+		t.Error("template pattern *.exe should be preserved")
+	}
+	if !strings.Contains(result, ".idea/") {
+		t.Error("template pattern .idea/ should be preserved")
+	}
+
+	// User custom patterns should be appended
+	if !strings.Contains(result, "my-secret.txt") {
+		t.Error("user pattern my-secret.txt should be preserved")
+	}
+	if !strings.Contains(result, "build-output/") {
+		t.Error("user pattern build-output/ should be preserved")
+	}
+	if !strings.Contains(result, ".env.local") {
+		t.Error("user pattern .env.local should be preserved")
+	}
+
+	// Should have the user custom patterns header
+	if !strings.Contains(result, "User Custom Patterns") {
+		t.Error("should contain 'User Custom Patterns' header")
+	}
+}
+
+func TestMergeGitignoreFile_NoUserAdditions(t *testing.T) {
+	tmpDir := t.TempDir()
+	gitignorePath := filepath.Join(tmpDir, ".gitignore")
+
+	// Template and user have the same patterns
+	templateContent := "*.exe\n*.test\nvendor/\n"
+	if err := os.WriteFile(gitignorePath, []byte(templateContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	userBackup := []byte("*.exe\n*.test\nvendor/\n")
+
+	if err := mergeGitignoreFile(gitignorePath, userBackup); err != nil {
+		t.Fatalf("mergeGitignoreFile failed: %v", err)
+	}
+
+	data, err := os.ReadFile(gitignorePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := string(data)
+
+	// No changes should be made (no user-specific patterns)
+	if strings.Contains(result, "User Custom Patterns") {
+		t.Error("should NOT contain 'User Custom Patterns' header when no user additions exist")
+	}
+
+	// Original template content should remain unchanged
+	if result != templateContent {
+		t.Errorf("file should remain unchanged, got:\n%s", result)
+	}
+}
+
+func TestMergeGitignoreFile_EmptyBackup(t *testing.T) {
+	tmpDir := t.TempDir()
+	gitignorePath := filepath.Join(tmpDir, ".gitignore")
+
+	templateContent := "*.exe\nvendor/\n"
+	if err := os.WriteFile(gitignorePath, []byte(templateContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Empty user backup — nothing to merge
+	if err := mergeGitignoreFile(gitignorePath, []byte("")); err != nil {
+		t.Fatalf("mergeGitignoreFile failed: %v", err)
+	}
+
+	data, err := os.ReadFile(gitignorePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if string(data) != templateContent {
+		t.Errorf("file should remain unchanged with empty backup, got:\n%s", string(data))
+	}
+}
+
+func TestRestoreMoaiConfig_CustomSectionPreserved(t *testing.T) {
+	// Test that user's custom config sections (not in template) are restored
+	tmpDir := t.TempDir()
+
+	// Create config structure with a standard section AND a custom section
+	configDir := filepath.Join(tmpDir, ".moai", "config")
+	sectionsDir := filepath.Join(configDir, "sections")
+	if err := os.MkdirAll(sectionsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Standard section that exists in template
+	standardPath := filepath.Join(sectionsDir, "system.yaml")
+	standardContent := []byte("moai:\n  version: \"1.0.0\"\n")
+	if err := os.WriteFile(standardPath, standardContent, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// User's custom section (NOT in template)
+	customPath := filepath.Join(sectionsDir, "my-custom.yaml")
+	customContent := []byte("custom:\n  setting: \"my-value\"\n  enabled: true\n")
+	if err := os.WriteFile(customPath, customContent, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create backup (includes both standard and custom)
+	backupDir, err := backupMoaiConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("backupMoaiConfig failed: %v", err)
+	}
+
+	// Simulate template sync: remove custom section (template doesn't have it)
+	os.Remove(customPath)
+
+	// Update standard section (as if template deployed a new version)
+	newStandardContent := []byte("moai:\n  version: \"2.0.0\"\n  new_field: \"added\"\n")
+	if err := os.WriteFile(standardPath, newStandardContent, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Restore from backup
+	if err := restoreMoaiConfig(tmpDir, backupDir); err != nil {
+		t.Fatalf("restoreMoaiConfig failed: %v", err)
+	}
+
+	// Verify: custom section should be restored
+	if _, err := os.Stat(customPath); os.IsNotExist(err) {
+		t.Fatal("user's custom config section should be restored")
+	}
+
+	data, err := os.ReadFile(customPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(string(data), "my-value") {
+		t.Errorf("custom section should contain original user value, got:\n%s", string(data))
+	}
+
+	// Verify: standard section should be merged (not just overwritten with backup)
+	standardData, err := os.ReadFile(standardPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// New field from template should be present
+	if !strings.Contains(string(standardData), "new_field") {
+		t.Errorf("standard section should contain new template field, got:\n%s", string(standardData))
+	}
+}

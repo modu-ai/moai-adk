@@ -48,6 +48,7 @@ var (
 
 func symSuccess() string  { return cliSuccess.Render("\u2713") }
 func symError() string    { return cliError.Render("\u2717") }
+func symWarning() string  { return cliWarn.Render("!") }
 func symProgress() string { return cliMuted.Render("\u25CB") }
 
 var updateCmd = &cobra.Command{
@@ -483,6 +484,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 
 	// Track config backup path for restore step
 	var configBackupPath string
+	// Backup of user's .gitignore content for EntryMerge after deploy
+	var gitignoreBackup []byte
 
 	// Execute each step with progress reporting
 	for i, step := range steps {
@@ -506,6 +509,11 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				_, _ = fmt.Fprintf(out, "\r  %s .moai/config backed up\n", symSuccess())
 			} else {
 				_, _ = fmt.Fprintln(out, "\r  - No config to backup")
+			}
+			// Also backup .gitignore for EntryMerge after deploy
+			gitignorePath := filepath.Join(projectRoot, ".gitignore")
+			if data, readErr := os.ReadFile(gitignorePath); readErr == nil {
+				gitignoreBackup = data
 			}
 			if reporter != nil {
 				reporter.StepComplete("Configuration backed up")
@@ -531,6 +539,15 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				}
 				if reporter != nil {
 					reporter.StepComplete("Settings restored")
+				}
+			}
+			// Merge .gitignore: preserve user-added patterns via EntryMerge
+			if len(gitignoreBackup) > 0 {
+				gitignorePath := filepath.Join(projectRoot, ".gitignore")
+				if mergeErr := mergeGitignoreFile(gitignorePath, gitignoreBackup); mergeErr != nil {
+					_, _ = fmt.Fprintf(out, "  %s .gitignore merge warning: %v\n", symWarning(), mergeErr)
+				} else {
+					_, _ = fmt.Fprintf(out, "  %s .gitignore user patterns preserved\n", symSuccess())
 				}
 			}
 		} else {
@@ -669,6 +686,56 @@ func determineStrategy(filename string) merge.MergeStrategy {
 	default:
 		return merge.LineMerge
 	}
+}
+
+// mergeGitignoreFile reads the newly deployed .gitignore template and merges
+// user-specific patterns from the backup. Template content is kept as-is;
+// user-added lines (not present in the template) are appended under a
+// "User Custom Patterns" header.
+func mergeGitignoreFile(gitignorePath string, userBackup []byte) error {
+	templateContent, err := os.ReadFile(gitignorePath)
+	if err != nil {
+		return fmt.Errorf("read new .gitignore: %w", err)
+	}
+
+	// Build a set of non-blank, non-comment lines from the template
+	templateLines := strings.Split(string(templateContent), "\n")
+	templateSet := make(map[string]bool, len(templateLines))
+	for _, line := range templateLines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed != "" && !strings.HasPrefix(trimmed, "#") {
+			templateSet[trimmed] = true
+		}
+	}
+
+	// Collect user-specific lines that are not in the new template
+	userLines := strings.Split(string(userBackup), "\n")
+	var userAdditions []string
+	for _, line := range userLines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		if !templateSet[trimmed] {
+			userAdditions = append(userAdditions, line)
+		}
+	}
+
+	if len(userAdditions) == 0 {
+		return nil // No user-specific patterns to preserve
+	}
+
+	// Append user additions to the template content
+	result := string(templateContent)
+	if !strings.HasSuffix(result, "\n") {
+		result += "\n"
+	}
+	result += "\n# User Custom Patterns (preserved by moai update)\n"
+	for _, line := range userAdditions {
+		result += line + "\n"
+	}
+
+	return os.WriteFile(gitignorePath, []byte(result), defs.FilePerm)
 }
 
 // determineChangeType returns a user-friendly description of the change type.
@@ -1298,8 +1365,12 @@ func restoreMoaiConfig(projectRoot, backupDir string) error {
 		// Check if target file exists (new template)
 		if _, err := os.Stat(targetPath); err != nil {
 			if os.IsNotExist(err) {
-				// Target doesn't exist in new template - skip (field removed from template)
-				return nil
+				// User's custom config section not in new template - restore as-is
+				destDir := filepath.Dir(targetPath)
+				if mkErr := os.MkdirAll(destDir, defs.DirPerm); mkErr != nil {
+					return mkErr
+				}
+				return os.WriteFile(targetPath, oldData, defs.FilePerm)
 			}
 			return err
 		}
