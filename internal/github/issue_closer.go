@@ -68,10 +68,10 @@ func WithMaxRetries(n int) IssueCloserOption {
 
 // WithRetryDelay sets the base delay between retry attempts.
 // Actual delay doubles with each attempt (exponential backoff).
-// Non-positive values are ignored.
+// Zero disables backoff; negative values are ignored.
 func WithRetryDelay(d time.Duration) IssueCloserOption {
 	return func(c *DefaultIssueCloser) {
-		if d > 0 {
+		if d >= 0 {
 			c.retryDelay = d
 		}
 	}

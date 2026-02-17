@@ -105,15 +105,15 @@ type WorktreeOrchestrator interface {
 	PrepareForReview(ctx context.Context, specID string) (*ReviewReadiness, error)
 }
 
-// DefaultBranchDetector returns the repository's default branch name.
-type DefaultBranchDetector func(root string) string
+// defaultBranchDetectorFunc returns the repository's default branch name.
+type defaultBranchDetectorFunc func(root string) string
 
 // worktreeOrchestrator implements WorktreeOrchestrator.
 type worktreeOrchestrator struct {
 	worktreeMgr    git.WorktreeManager
 	validator      quality.WorktreeValidator
 	executor       PhaseExecutor
-	detectBranch   DefaultBranchDetector
+	detectBranch   defaultBranchDetectorFunc
 	logger         *slog.Logger
 }
 

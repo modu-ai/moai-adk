@@ -134,7 +134,7 @@ func (m *prMerger) Merge(ctx context.Context, prNumber int, opts MergeOptions) (
 		method = MergeMethodMerge
 	}
 
-	if err := m.gh.PRMerge(ctx, prNumber, method); err != nil {
+	if err := m.gh.PRMerge(ctx, prNumber, method, opts.DeleteBranch); err != nil {
 		return nil, fmt.Errorf("merge PR #%d: %w", prNumber, err)
 	}
 

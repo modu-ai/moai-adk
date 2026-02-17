@@ -36,7 +36,7 @@ func (m *mockGHClient) PRView(_ context.Context, _ int) (*PRDetails, error) {
 	return m.prViewResult, m.prViewErr
 }
 
-func (m *mockGHClient) PRMerge(_ context.Context, number int, method MergeMethod) error {
+func (m *mockGHClient) PRMerge(_ context.Context, number int, method MergeMethod, _ bool) error {
 	m.prMergeCalled = true
 	m.prMergeNumber = number
 	m.prMergeMethod = method

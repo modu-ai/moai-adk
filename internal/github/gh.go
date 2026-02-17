@@ -92,7 +92,8 @@ type GHClient interface {
 	PRView(ctx context.Context, number int) (*PRDetails, error)
 
 	// PRMerge merges a PR by number using the specified method.
-	PRMerge(ctx context.Context, number int, method MergeMethod) error
+	// If deleteBranch is true, the head branch is deleted after merge.
+	PRMerge(ctx context.Context, number int, method MergeMethod, deleteBranch bool) error
 
 	// PRChecks returns the CI/CD check status for a PR.
 	PRChecks(ctx context.Context, number int) (*CheckStatus, error)
@@ -189,7 +190,8 @@ func (c *ghClient) PRView(ctx context.Context, number int) (*PRDetails, error) {
 }
 
 // PRMerge merges a pull request using the specified method.
-func (c *ghClient) PRMerge(ctx context.Context, number int, method MergeMethod) error {
+// If deleteBranch is true, the head branch is deleted after merge.
+func (c *ghClient) PRMerge(ctx context.Context, number int, method MergeMethod, deleteBranch bool) error {
 	args := []string{"pr", "merge", strconv.Itoa(number)}
 
 	switch method {
@@ -201,6 +203,10 @@ func (c *ghClient) PRMerge(ctx context.Context, number int, method MergeMethod) 
 		args = append(args, "--rebase")
 	default:
 		return fmt.Errorf("merge PR #%d: unsupported merge method %q", number, method)
+	}
+
+	if deleteBranch {
+		args = append(args, "--delete-branch")
 	}
 
 	c.logger.Debug("merging pull request", "number", number, "method", method)
@@ -262,7 +268,11 @@ func (c *ghClient) Push(ctx context.Context, dir string) error {
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if runErr := cmd.Run(); runErr != nil {
-		return fmt.Errorf("push: %s: %w", strings.TrimSpace(stderr.String()), runErr)
+		errMsg := strings.TrimSpace(stderr.String())
+		if errMsg == "" {
+			errMsg = runErr.Error()
+		}
+		return fmt.Errorf("push: %s: %w", errMsg, runErr)
 	}
 
 	return nil
