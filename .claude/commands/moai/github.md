@@ -211,7 +211,48 @@ Link issue to PR:
 
 After PR: `git checkout main` to prepare for next issue.
 
-## Issues Phase 5: Cleanup and Report
+## Issues Phase 5: Issue Closure
+
+After PRs are merged (manually or via --merge flag), close issues with multilingual comments.
+
+### Step 5.1: Detect Language
+
+Read user's `conversation_language` from `.moai/config/sections/language.yaml`.
+Supported languages: `en`, `ko`, `ja`, `zh`. Unsupported codes fall back to English.
+
+### Step 5.2: Generate Success Comment
+
+Use `internal/i18n.CommentGenerator` to produce a multilingual comment:
+- Implementation summary from SPEC or commit messages
+- PR link: `#<pr_number>`
+- Merge timestamp with timezone
+- Test coverage percentage (if available)
+
+Comment templates are language-aware. Example (Korean):
+```
+✅ 이슈가 성공적으로 해결되었습니다!
+
+구현 내용: 사용자 인증 기능 추가
+관련 PR: #456
+병합 시간: 2026-02-16 16:30 KST
+```
+
+### Step 5.3: Close Issue
+
+Use `internal/github.IssueCloser` to execute the 3-step closure:
+1. Post comment: `gh issue comment {number} --body "{comment}"`
+2. Add label: `gh issue edit {number} --add-label resolved`
+3. Close issue: `gh issue close {number}`
+
+Each step retries up to 3 times with exponential backoff (2s, 4s, 8s).
+Label failure is non-critical (closure continues even if labeling fails).
+
+### Step 5.4: Update SPEC Status
+
+If a SPEC document exists for this issue (`SPEC-ISSUE-{number}`):
+- Update SPEC metadata `status` to `completed`
+
+## Issues Phase 6: Cleanup and Report
 
 If team mode was used:
 1. Shutdown all teammates via SendMessage(type: "shutdown_request")
@@ -221,10 +262,10 @@ Display batch summary:
 ```markdown
 ## GitHub Issues: Complete
 
-| Issue | Title | Status | PR |
-|-------|-------|--------|-----|
-| #123 | Fix login bug | PR Created | #456 |
-| #124 | Add dark mode | Skipped | - |
+| Issue | Title | Status | PR | Closed |
+|-------|-------|--------|-----|--------|
+| #123 | Fix login bug | Merged | #456 | Yes |
+| #124 | Add dark mode | Skipped | - | No |
 ```
 
 AskUserQuestion for next steps:
@@ -232,6 +273,85 @@ AskUserQuestion for next steps:
 - Merge All PRs (if --merge flag)
 - Process More Issues
 - Done
+
+## Issues Phase 7 (Optional): tmux Parallel Development
+
+When `--tmux` flag is provided and tmux is available on the system:
+
+### Step 7.1: Detect tmux
+
+Use `internal/tmux.Detector` to check:
+- `tmux.IsAvailable()` - verify tmux binary exists
+- `tmux.Version()` - ensure compatible version
+- If unavailable, fall back to sequential execution with warning
+
+### Step 7.2: Create Session
+
+Use `internal/tmux.SessionManager` to create a multi-pane session:
+- Session name: `github-issues-{timestamp}`
+- One pane per issue worktree (max 3 visible via vertical splits)
+- Additional panes overflow to horizontal splits
+- Each pane auto-executes: `moai worktree go SPEC-ISSUE-{number}`
+
+Layout algorithm:
+- Panes 1-3: vertical splits (`tmux split-window -v`)
+- Panes 4+: horizontal splits (`tmux split-window -h`)
+- Focus returns to first pane after creation
+
+---
+
+## Go Package Integration Reference
+
+### internal/i18n (Multilingual Comments)
+
+```go
+// Create generator (one-time setup)
+gen := i18n.NewCommentGenerator()
+
+// Generate comment in user's language
+comment, err := gen.Generate(langCode, &i18n.CommentData{
+    Summary:         "Added user authentication",
+    PRNumber:        456,
+    IssueNumber:     123,
+    MergedAt:        time.Now(),
+    TimeZone:        "KST",
+    CoveragePercent: 92,
+})
+```
+
+Supported languages: en, ko, ja, zh. Unknown codes fall back to English.
+
+### internal/github (Issue Closure)
+
+```go
+// Create closer with retry configuration
+closer := github.NewIssueCloser(repoRoot,
+    github.WithMaxRetries(3),
+    github.WithRetryDelay(2 * time.Second),
+)
+
+// Close issue with generated comment
+result, err := closer.Close(ctx, issueNumber, comment)
+// result.CommentPosted, result.LabelAdded, result.IssueClosed
+```
+
+### internal/tmux (Session Management)
+
+```go
+// Check availability
+detector := tmux.NewDetector()
+if !detector.IsAvailable() {
+    // Fall back to sequential mode
+}
+
+// Create session
+mgr := tmux.NewSessionManager()
+result, err := mgr.Create(ctx, &tmux.SessionConfig{
+    Name:       "github-issues-20260216-1630",
+    Panes:      panes,  // []tmux.PaneConfig
+    MaxVisible: 3,
+})
+```
 
 ---
 
