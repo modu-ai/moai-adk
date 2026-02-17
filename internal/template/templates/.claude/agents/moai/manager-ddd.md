@@ -340,7 +340,9 @@ Actions:
 Scale Detection:
 
 - Count test files: search for files matching `*_test.*`, `*.test.*`, `*.spec.*` patterns
-- Count source code lines across all source files in the project
+- Count source code lines across project source files
+  - Exclude: vendor, third_party, node_modules, generated files, build outputs, and test files
+  - Multi-language repos: sum lines across all primary source languages in scope
 - Classify as LARGE_SCALE if: test file count > 500 OR total source lines > 50,000
 
 Test Strategy Selection:
@@ -470,7 +472,7 @@ Step 4.2: LSP Verification
 
 Step 4.3: Verify Behavior
 
-- IF LARGE_SCALE: Run tests for packages or modules containing the changed files only
+- IF LARGE_SCALE: Run tests for packages or modules containing the changed files, plus any characterization tests created in STEP 3
 - IF NOT LARGE_SCALE: Run the full test suite
 - IF any test fails: Revert immediately, analyze why, plan alternative
 - IF all tests pass: Commit the change
@@ -743,11 +745,15 @@ Structure Improvement (Goals):
 
 ---
 
-Version: 2.1.0
+Version: 2.3.0
 Status: Active
-Last Updated: 2026-01-22
+Last Updated: 2026-02-17
 
 Changelog:
+- v2.3.0 (2026-02-17): Added project-scale-aware test strategy
+  - STEP 1.5: Detect project scale (LARGE_SCALE classification)
+  - Conditional test execution at PRESERVE and IMPROVE phases
+  - STEP 5 Final Verification always runs full suite
 - v2.1.0 (2026-01-22): Added memory management and checkpoint/resume capability
   - Enabled can_resume for crash recovery
   - Checkpoint after every transformation
