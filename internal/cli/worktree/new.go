@@ -20,22 +20,30 @@ to branch names using the feature/ prefix convention.`,
 		Args: cobra.ExactArgs(1),
 		RunE: runNew,
 	}
-	cmd.Flags().String("path", "", "Custom path for the worktree (default: ../<branch-name>)")
+	cmd.Flags().String("path", "", "Custom path for the worktree (default: .moai/worktrees/<SPEC-ID> for SPEC IDs, ../<branch-name> otherwise)")
 	cmd.Flags().String("base", "main", "Base branch to create the worktree from")
 	return cmd
 }
 
 func runNew(cmd *cobra.Command, args []string) error {
 	out := cmd.OutOrStdout()
-	branchName := resolveSpecBranch(args[0])
+	specID := args[0]
+	branchName := resolveSpecBranch(specID)
 
 	if WorktreeProvider == nil {
 		return fmt.Errorf("worktree manager not initialized (git module not available)")
 	}
 
 	wtPath, err := cmd.Flags().GetString("path")
-	if err != nil || wtPath == "" {
-		wtPath = filepath.Join("..", branchName)
+	if err != nil {
+		return fmt.Errorf("get path flag: %w", err)
+	}
+	if wtPath == "" {
+		if isSpecID(specID) {
+			wtPath = filepath.Join(".moai", "worktrees", specID)
+		} else {
+			wtPath = filepath.Join("..", branchName)
+		}
 	}
 
 	if err := WorktreeProvider.Add(wtPath, branchName); err != nil {
@@ -66,5 +74,5 @@ func isSpecID(name string) bool {
 		return false
 	}
 	parts := strings.SplitN(name, "-", 3)
-	return len(parts) >= 3
+	return len(parts) >= 3 && parts[2] != ""
 }

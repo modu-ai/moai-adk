@@ -10,14 +10,6 @@ import (
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
-// statusState represents the resolved status of a MoAI project.
-type statusState int
-
-const (
-	statusNotInitialized statusState = iota
-	statusInitialized
-)
-
 var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show project status",

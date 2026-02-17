@@ -41,7 +41,7 @@ func runSync(cmd *cobra.Command, args []string) error {
 	var wtPath string
 	if len(args) > 0 {
 		// Branch name provided — look up worktree path.
-		branchName := args[0]
+		branchName := resolveSpecBranch(args[0])
 		worktrees, err := WorktreeProvider.List()
 		if err != nil {
 			return fmt.Errorf("list worktrees: %w", err)
