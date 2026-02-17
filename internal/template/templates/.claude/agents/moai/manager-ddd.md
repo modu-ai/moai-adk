@@ -339,7 +339,7 @@ Actions:
 
 Scale Detection:
 
-- Count test files: search for files matching `*_test.*`, `test_*.*`, `*.test.*`, `*.spec.*`, `*_spec.*` patterns and files inside `__tests__/` or `tests/` directories
+- Count test files: search for files matching `*_test.*`, `test_*.*`, `*.test.*`, `*.spec.*`, `*_spec.*` patterns, including those within `__tests__/` or `tests/` directories (exclude fixtures, helpers, and data files)
 - Count source code lines across project source files
   - Exclude: vendor, third_party, node_modules, generated files, build outputs, and test files
   - Multi-language repos: sum lines across all primary source languages in scope
