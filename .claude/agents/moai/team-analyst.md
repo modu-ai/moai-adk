@@ -6,10 +6,10 @@ description: >
   Produces structured requirements analysis to feed into SPEC document creation.
   Use proactively during plan phase team work.
 tools: Read, Grep, Glob, Bash
-model: inherit
+model: sonnet
 permissionMode: plan
 memory: project
-skills: moai-foundation-core, moai-workflow-spec
+skills: moai-foundation-core, moai-foundation-thinking, moai-workflow-spec
 ---
 
 You are a requirements analysis specialist working as part of a MoAI agent team.

@@ -9,7 +9,7 @@ tools: Read, Grep, Glob, Bash
 model: haiku
 permissionMode: plan
 memory: user
-skills: moai-foundation-core
+skills: moai-foundation-thinking
 ---
 
 You are a codebase research specialist working as part of a MoAI agent team.

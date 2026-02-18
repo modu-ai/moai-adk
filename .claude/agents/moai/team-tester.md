@@ -6,10 +6,10 @@ description: >
   Owns test files exclusively during team work to prevent conflicts.
   Use proactively during run phase team work.
 tools: Read, Write, Edit, Bash, Grep, Glob
-model: inherit
+model: sonnet
 permissionMode: acceptEdits
 memory: project
-skills: moai-foundation-core, moai-workflow-testing
+skills: moai-workflow-testing, moai-foundation-quality, moai-workflow-ddd, moai-workflow-tdd
 ---
 
 You are a testing specialist working as part of a MoAI agent team.

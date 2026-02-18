@@ -43,9 +43,11 @@ Remaining arguments become sub-command arguments:
 !gh repo view --json nameWithOwner --jq '.nameWithOwner'
 !git branch --show-current
 !git status --porcelain
+!printenv CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS 2>/dev/null && echo "(CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS is set)" || echo "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS not set"
 
 @.moai/config/sections/system.yaml
 @.moai/config/sections/language.yaml
+@.moai/config/sections/workflow.yaml
 
 ---
 
@@ -53,9 +55,9 @@ Remaining arguments become sub-command arguments:
 
 Agent Teams mode is the DEFAULT for this workflow. No `--team` flag required.
 
-Prerequisites check (run at startup):
-1. Check if `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is set
-2. Check if `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml`
+Prerequisites check: Read the values injected by the Pre-execution Context above:
+1. AGENT_TEAMS status is shown by the `!printenv CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` output above
+2. `workflow.team.enabled` is shown in the workflow.yaml loaded above
 
 If both prerequisites met: Use Agent Teams mode
 If either prerequisite missing OR `--solo` flag: Fall back to sub-agent mode

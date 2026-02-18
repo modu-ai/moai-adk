@@ -133,6 +133,20 @@ Define hooks in `.claude/settings.json`:
     "Stop": [{
       "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop.sh\"",
       "timeout": 5
+    }],
+    "TeammateIdle": [{
+      "hooks": [{
+        "type": "command",
+        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\"",
+        "timeout": 10
+      }]
+    }],
+    "TaskCompleted": [{
+      "hooks": [{
+        "type": "command",
+        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\"",
+        "timeout": 10
+      }]
     }]
   }
 }
@@ -171,6 +185,7 @@ Wrapper scripts are located at:
 - `.claude/hooks/moai/handle-pre-tool.sh`
 - `.claude/hooks/moai/handle-post-tool.sh`
 - `.claude/hooks/moai/handle-stop.sh`
+- `.claude/hooks/moai/handle-agent-hook.sh`: TeammateIdle, TaskCompleted events (team mode)
 
 ## Rules
 

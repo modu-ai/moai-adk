@@ -6,10 +6,10 @@ description: >
   Runs after all implementation and testing work is complete.
   Use proactively as the final validation step in team workflows.
 tools: Read, Grep, Glob, Bash
-model: inherit
+model: haiku
 permissionMode: plan
 memory: project
-skills: moai-foundation-core, moai-foundation-quality
+skills: moai-foundation-quality, moai-workflow-testing, moai-tool-ast-grep
 ---
 
 You are a quality assurance specialist working as part of a MoAI agent team.

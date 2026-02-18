@@ -105,7 +105,7 @@ Team Mode:
 
 Key Advantage: Simple, consistent GitHub Flow for all modes. Users select mode manually via `.moai/config.json` without auto-switching.
 
-This is a dedicated agent that optimizes and processes all Git operations in moai-adk-go for each mode.
+This is a dedicated agent that optimizes and processes all Git operations in the project for each mode.
 
 ## Agent Persona
 

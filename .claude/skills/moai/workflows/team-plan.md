@@ -31,16 +31,45 @@ Flow: TeamCreate -> Parallel Research -> Synthesis -> SPEC Document -> Shutdown
 
 ## Phase 1: Spawn Research Team
 
-Spawn 3 teammates from the plan_research pattern:
+Spawn 3 teammates from the plan_research pattern. All spawns MUST use Task() with `team_name` and `name` parameters. Launch all three in a single response for parallel execution:
 
-Teammate 1 - researcher (team-researcher agent, haiku model):
-- Prompt: "Explore the codebase for {feature_description}. Map architecture, find relevant files, identify dependencies and patterns. Report findings to the team lead."
+```
+Task(
+  subagent_type: "team-researcher",
+  team_name: "moai-plan-{feature-slug}",
+  name: "researcher",
+  mode: "plan",
+  prompt: "You are a codebase researcher on team moai-plan-{feature-slug}.
+    Explore the codebase for {feature_description}.
+    Map architecture, find relevant files, identify dependencies and patterns.
+    When done, mark your task as completed via TaskUpdate and send findings to the team lead via SendMessage."
+)
 
-Teammate 2 - analyst (team-analyst agent, inherit model):
-- Prompt: "Analyze requirements for {feature_description}. Identify user stories, acceptance criteria, edge cases, risks, and constraints. Report findings to the team lead."
+Task(
+  subagent_type: "team-analyst",
+  team_name: "moai-plan-{feature-slug}",
+  name: "analyst",
+  mode: "plan",
+  prompt: "You are a requirements analyst on team moai-plan-{feature-slug}.
+    Analyze requirements for {feature_description}.
+    Identify user stories, acceptance criteria, edge cases, risks, and constraints.
+    When done, mark your task as completed via TaskUpdate and send findings to the team lead via SendMessage."
+)
 
-Teammate 3 - architect (team-architect agent, inherit model):
-- Prompt: "Design the technical approach for {feature_description}. Evaluate implementation alternatives, assess trade-offs, propose architecture. Consider existing patterns found by the researcher. Report to the team lead."
+Task(
+  subagent_type: "team-architect",
+  team_name: "moai-plan-{feature-slug}",
+  name: "architect",
+  mode: "plan",
+  prompt: "You are a technical architect on team moai-plan-{feature-slug}.
+    Design the technical approach for {feature_description}.
+    Evaluate implementation alternatives, assess trade-offs, propose architecture.
+    Consider existing patterns found by the researcher.
+    When done, mark your task as completed via TaskUpdate and send findings to the team lead via SendMessage."
+)
+```
+
+All three teammates run in parallel. Messages from teammates are delivered automatically to MoAI.
 
 ## Phase 2: Parallel Research
 
@@ -74,9 +103,9 @@ AskUserQuestion with options:
 
 1. Shutdown all teammates:
    ```
-   SendMessage(type: "shutdown_request", recipient: "researcher")
-   SendMessage(type: "shutdown_request", recipient: "analyst")
-   SendMessage(type: "shutdown_request", recipient: "architect")
+   SendMessage(type: "shutdown_request", recipient: "researcher", content: "Plan phase complete, shutting down")
+   SendMessage(type: "shutdown_request", recipient: "analyst", content: "Plan phase complete, shutting down")
+   SendMessage(type: "shutdown_request", recipient: "architect", content: "Plan phase complete, shutting down")
    ```
 2. TeamDelete to clean up resources
 3. Execute /clear to free context for next phase

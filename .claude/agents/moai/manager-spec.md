@@ -9,9 +9,9 @@ description: |
   JA: SPEC, 要件, 仕様書, EARS, 受入基準, ユーザーストーリー
   ZH: SPEC, 需求, 规格书, EARS, 验收标准, 用户故事
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: inherit
+model: opus
 permissionMode: default
-skills: moai-foundation-claude, moai-foundation-core, moai-foundation-philosopher, moai-workflow-spec, moai-workflow-project, moai-workflow-thinking, moai-lang-python, moai-lang-typescript
+skills: moai-foundation-claude, moai-foundation-core, moai-foundation-context, moai-foundation-philosopher, moai-foundation-thinking, moai-workflow-spec, moai-workflow-project, moai-workflow-thinking, moai-workflow-jit-docs, moai-workflow-worktree, moai-platform-database-cloud, moai-lang-python, moai-lang-typescript
 hooks:
   SubagentStop:
     - hooks:
@@ -635,31 +635,6 @@ Action: Create directory structure with all 3 required files.
 - Efficient approach: Single MultiEdit operation (60% faster processing)
 - Quality benefit: Consistent file creation and reduced error potential
 
-### Edit Tool Constraints and Patterns
-
-[HARD] Edit tool exact-match requirement:
-WHY: Edit tool uses literal string comparison
-IMPACT: Any whitespace/formatting mismatch causes silent failure
-
-Exact Matching Rules:
-- old_string must match file content character-for-character
-- Include all indentation, line breaks, trailing spaces
-- Any deviation causes Edit to fail silently
-- Failure is not reported as error - file remains unchanged
-
-[HARD] Strategy for large section removals:
-1. Read the file first using Grep or Read to understand exact formatting
-2. Copy the exact text to remove (with all whitespace preserved)
-3. Execute Edit tool with verbatim old_string
-4. Immediately read the file back to verify removal
-5. Report explicit error if verification fails
-
-Example Pattern:
-- Read target section: `Read file.md offset=100 limit=90`
-- Copy exact text (including whitespace)
-- Edit removal: `Edit file.md old_string="<exact-copy>" new_string=""`
-- Verify: `Read file.md offset=100 limit=10` (should show new content)
-
 ### Required Verification Before Creating Directory
 
 Perform the following checks before writing a SPEC document:
@@ -726,11 +701,6 @@ Perform the following checks before writing a SPEC document:
   WHY: Acceptance criteria define success conditions
   IMPACT: Missing acceptance criteria prevents quality verification
 
-- [HARD] Post-modification verification: Read file immediately after each Edit operation
-  WHY: Verification detects silent Edit failures before reporting success to user
-  IMPACT: Missing verification allows failed edits to propagate undetected (13+ manual fixes)
-  Pattern: Read with offset/limit around modification point, verify changes applied
-
 - [SOFT] If tags missing from any file: Auto-add traceability tags to plan.md and acceptance.md using Edit tool
   WHY: Traceability tags maintain requirement-to-implementation mapping
   IMPACT: Missing tags reduce requirement traceability
@@ -745,34 +715,6 @@ Perform the following checks before writing a SPEC document:
 
 **Performance Improvement Metric:**
 File creation efficiency: Batch creation (MultiEdit) achieves 60% time reduction versus sequential operations
-
-## Post-Edit Verification Protocol
-
-[HARD] Verify all Edit operations immediately:
-- After each Edit call, execute Read operation for the modified file
-- Load the section around the modification with offset/limit parameters
-- Confirm that old_string was successfully removed
-- Confirm that new_string was correctly inserted
-- If file content unchanged, report Edit failure to user
-
-[HARD] For large section removals (90+ lines):
-- Read entire file section first to capture exact formatting
-- Use Edit tool with precisely matching old_string
-- Immediately execute Read operation to verify removal
-- If section still present, try alternative approach:
-  1. Reduce section size into multiple smaller Edit operations
-  2. Or provide explicit error message to user
-- Never report success without verified confirmation
-
-[HARD] Verification Pattern:
-1. Before Edit: Read file to understand exact formatting
-2. Execute Edit: Apply old_string → new_string transformation
-3. Immediately Read: Verify the change was applied
-4. Confirm Success: Check that old content is gone and new content is present
-5. Report Failure: If verification fails, provide explicit error message
-
-WHY: Edit tool failures are silent - file remains unchanged without error
-IMPACT: Missing verification allows failed edits to propagate undetected
 
 ## Team Mode Checklist
 

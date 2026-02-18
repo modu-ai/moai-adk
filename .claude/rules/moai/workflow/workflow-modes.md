@@ -93,6 +93,22 @@ Success Criteria:
 - Overall coverage improvement trend
 - TRUST 5 quality gates passed
 
+## Team Mode Methodology
+
+When --team flag is used, the methodology applies at the teammate level:
+
+| Methodology | Team Behavior |
+|-------------|---------------|
+| DDD | Each teammate applies ANALYZE-PRESERVE-IMPROVE within their file ownership scope |
+| TDD | Each teammate applies RED-GREEN-REFACTOR within their module scope |
+| Hybrid | team-tester uses TDD for new test files; team-backend-dev and team-frontend-dev use DDD for existing code modifications |
+
+Team-specific rules:
+- Methodology is shared across all teammates via the SPEC document
+- team-quality agent validates methodology compliance after all implementation completes
+- File ownership prevents cross-teammate conflicts during parallel development
+- team-tester exclusively owns test files regardless of methodology
+
 ## Methodology Selection Guide
 
 ### Auto-Detection (via /moai project or /moai init)
@@ -109,8 +125,9 @@ The system automatically recommends a methodology based on project analysis:
 ### Manual Override
 
 Users can override the auto-detected methodology:
-- During init: Select in the wizard or use `--development-mode` flag
-- After init: Edit `quality.development_mode` in `.moai/config/sections/quality.yaml`
+- During init: Use `moai init --mode <ddd|tdd|hybrid>` flag (default: hybrid)
+- After project setup: Re-run `/moai project` to auto-detect based on codebase analysis
+- Manual edit: Edit `quality.development_mode` in `.moai/config/sections/quality.yaml`
 - Per session: Set `MOAI_DEVELOPMENT_MODE` environment variable
 
 ### Methodology Comparison

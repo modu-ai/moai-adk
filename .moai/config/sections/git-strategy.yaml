@@ -1,104 +1,74 @@
-# Git Strategy Settings
-# Workflow configuration for Manual/Personal/Team modes
-
 git_strategy:
-  mode: "manual"                # manual, personal, team
-  github_username: ""  # GitHub username (for personal/team modes)
-
-  # Manual Mode Settings (Local Git)
-  manual:
-    workflow: github-flow
-    environment: local
-    github_integration: false
-    auto_checkpoint: disabled
-    push_to_remote: false
-
-    # Branch creation policy
-    branch_creation:
-      prompt_always: true       # Always ask before creating branch
-      auto_enabled: false       # Do not auto-create branches
-
-    # Automation settings
-    automation:
-      auto_branch: false
-      auto_commit: true
-      auto_pr: false
-      auto_push: false
-
-    # Git hooks policy
-    hooks:
-      pre_commit: enforce       # enforce, warn, skip
-      pre_push: warn
-      commit_msg: warn
-
-    # Commit message style
-    commit_style:
-      format: conventional      # conventional, simple
-      scope_required: false
-
-  # Personal Mode Settings (GitHub Individual)
-  personal:
-    workflow: github-flow
-    environment: github
-    github_integration: true
-    push_to_remote: true
-    branch_prefix: "feature/SPEC-"
-    main_branch: main
-
-    # Branch creation policy
-    branch_creation:
-      prompt_always: true         # Ask before creating branch (default: prompt)
-      auto_enabled: false         # Do not auto-create branches (default: disabled)
-
-    # Automation settings
-    automation:
-      auto_branch: false          # Do not auto-create branches (default: disabled)
-      auto_commit: true
-      auto_pr: false              # Manual PR for review (default: disabled)
-      auto_push: false            # Do not auto-push (default: disabled)
-
-    # Git hooks policy
-    hooks:
-      pre_commit: enforce
-      pre_push: warn
-      commit_msg: warn
-
-    # Commit message style
-    commit_style:
-      format: conventional
-      scope_required: false
-
-  # Team Mode Settings (GitHub Team)
-  team:
-    workflow: github-flow
-    environment: github
-    github_integration: true
-    push_to_remote: true
-    branch_prefix: "feature/SPEC-"
-    main_branch: main
-    draft_pr: true
-    required_reviews: 1
-    branch_protection: true
-
-    # Branch creation policy
-    branch_creation:
-      prompt_always: false
-      auto_enabled: true
-
-    # Automation settings
-    automation:
-      auto_branch: true
-      auto_commit: true
-      auto_pr: true
-      auto_push: true
-
-    # Git hooks policy
-    hooks:
-      pre_commit: enforce
-      pre_push: warn
-      commit_msg: warn
-
-    # Commit message style
-    commit_style:
-      format: conventional
-      scope_required: true      # Required for team projects
+    github_username: ""
+    gitlab:
+        instance_url: ""
+    manual:
+        auto_checkpoint: disabled
+        automation:
+            auto_branch: false
+            auto_commit: true
+            auto_pr: false
+            auto_push: false
+        branch_creation:
+            auto_enabled: false
+            prompt_always: true
+        commit_style:
+            format: conventional
+            scope_required: false
+        environment: local
+        github_integration: false
+        hooks:
+            commit_msg: warn
+            pre_commit: enforce
+            pre_push: warn
+        push_to_remote: false
+        workflow: github-flow
+    mode: manual
+    personal:
+        automation:
+            auto_branch: false
+            auto_commit: true
+            auto_pr: false
+            auto_push: false
+        branch_creation:
+            auto_enabled: false
+            prompt_always: true
+        branch_prefix: feature/SPEC-
+        commit_style:
+            format: conventional
+            scope_required: false
+        environment: github
+        github_integration: true
+        hooks:
+            commit_msg: warn
+            pre_commit: enforce
+            pre_push: warn
+        main_branch: main
+        push_to_remote: true
+        workflow: github-flow
+    provider: github
+    team:
+        automation:
+            auto_branch: true
+            auto_commit: true
+            auto_pr: true
+            auto_push: true
+        branch_creation:
+            auto_enabled: true
+            prompt_always: false
+        branch_prefix: feature/SPEC-
+        branch_protection: true
+        commit_style:
+            format: conventional
+            scope_required: true
+        draft_pr: true
+        environment: github
+        github_integration: true
+        hooks:
+            commit_msg: warn
+            pre_commit: enforce
+            pre_push: warn
+        main_branch: main
+        push_to_remote: true
+        required_reviews: 1
+        workflow: github-flow

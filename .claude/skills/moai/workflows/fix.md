@@ -150,6 +150,11 @@ For detailed team orchestration steps, see workflows/team-debug.md.
 
 Fallback: If team mode is unavailable, standard single-agent fix workflow continues.
 
+Team Prerequisites:
+- workflow.team.enabled: true in .moai/config/sections/workflow.yaml
+- CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in environment
+- If prerequisites not met: Falls back to standard single-agent fix workflow
+
 ## Execution Summary
 
 1. Parse arguments (extract flags: --dry, --sequential, --level, --errors, --security, --resume)

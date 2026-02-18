@@ -11,7 +11,7 @@ description: |
   JA: TDD, テスト駆動開発, レッドグリーンリファクタ, テストファースト, 新機能, 仕様テスト, グリーンフィールド
   ZH: TDD, 测试驱动开发, 红绿重构, 测试优先, 新功能, 规格测试, 绿地项目
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: inherit
+model: sonnet
 permissionMode: default
 skills: moai-foundation-claude, moai-foundation-core, moai-foundation-quality, moai-workflow-tdd, moai-workflow-testing, moai-workflow-ddd
 hooks:

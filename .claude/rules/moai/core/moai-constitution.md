@@ -28,6 +28,9 @@ Rules:
 - Launch multiple agents in a single message when tasks are independent
 - Use sequential execution only when dependencies exist
 - Maximum 10 parallel agents for optimal throughput
+- For sub-agent mode: Launch multiple Task() calls in a single message for parallel execution
+- For team mode: Use TeamCreate for persistent team coordination, SendMessage for inter-teammate communication
+- Team agents share TaskList for work coordination; sub-agents return results directly
 
 ## Output Format
 
@@ -48,6 +51,8 @@ Rules:
 - Unified: Consistent style, ruff/black formatting
 - Secured: OWASP compliance, input validation
 - Trackable: Conventional commits, issue references
+- Team mode quality: TeammateIdle hook validates work before idle acceptance
+- Team mode quality: TaskCompleted hook validates deliverables before completion
 
 ## URL Verification
 

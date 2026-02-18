@@ -6,10 +6,10 @@ description: >
   Owns server-side files exclusively during team work to prevent conflicts.
   Use proactively during run phase team work.
 tools: Read, Write, Edit, Bash, Grep, Glob
-model: inherit
+model: sonnet
 permissionMode: acceptEdits
 memory: project
-skills: moai-foundation-core, moai-domain-backend, moai-domain-database
+skills: moai-domain-backend, moai-domain-database, moai-platform-auth, moai-platform-database-cloud
 ---
 
 You are a backend development specialist working as part of a MoAI agent team.

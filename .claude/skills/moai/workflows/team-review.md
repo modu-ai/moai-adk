@@ -28,19 +28,64 @@ Flow: TeamCreate -> Perspective Assignment -> Parallel Review -> Report Consolid
 
 ## Phase 1: Spawn Review Team
 
-Use the review team pattern:
+Use the review team pattern. All spawns MUST use Task() with `team_name` and `name` parameters. Launch all four in a single response for parallel execution:
 
-Teammate 1 - security-reviewer (team-quality agent, inherit model):
-- Prompt: "Review the following changes for security issues. Check OWASP Top 10 compliance, input validation, authentication/authorization, secrets exposure, injection risks. Changes: {diff_summary}"
+```
+Task(
+  subagent_type: "team-quality",
+  team_name: "moai-review-{target}",
+  name: "security-reviewer",
+  mode: "plan",
+  prompt: "You are a security reviewer on team moai-review-{target}.
+    Review the following changes for security issues.
+    Check OWASP Top 10 compliance, input validation, authentication/authorization,
+    secrets exposure, injection risks.
+    Changes: {diff_summary}
+    When done, mark your task as completed via TaskUpdate and send findings to the team lead via SendMessage."
+)
 
-Teammate 2 - perf-reviewer (team-quality agent, inherit model):
-- Prompt: "Review the following changes for performance issues. Check algorithmic complexity, database query efficiency, memory usage, caching opportunities, bundle size impact. Changes: {diff_summary}"
+Task(
+  subagent_type: "team-quality",
+  team_name: "moai-review-{target}",
+  name: "perf-reviewer",
+  mode: "plan",
+  prompt: "You are a performance reviewer on team moai-review-{target}.
+    Review the following changes for performance issues.
+    Check algorithmic complexity, database query efficiency, memory usage,
+    caching opportunities, bundle size impact.
+    Changes: {diff_summary}
+    When done, mark your task as completed via TaskUpdate and send findings to the team lead via SendMessage."
+)
 
-Teammate 3 - quality-reviewer (team-quality agent, inherit model):
-- Prompt: "Review the following changes for code quality. Check TRUST 5 compliance, naming conventions, error handling, test coverage, documentation, consistency with project patterns. Changes: {diff_summary}"
+Task(
+  subagent_type: "team-quality",
+  team_name: "moai-review-{target}",
+  name: "quality-reviewer",
+  mode: "plan",
+  prompt: "You are a code quality reviewer on team moai-review-{target}.
+    Review the following changes for code quality.
+    Check TRUST 5 compliance, naming conventions, error handling,
+    test coverage, documentation, consistency with project patterns.
+    Changes: {diff_summary}
+    When done, mark your task as completed via TaskUpdate and send findings to the team lead via SendMessage."
+)
 
-Teammate 4 - ux-reviewer (team-quality agent, inherit model):
-- Prompt: "Review the following changes for user experience impact. Validate user flows remain functional, check error states and edge cases from the user's perspective, verify accessibility compliance, assess whether the changes align with expected user behavior. Changes: {diff_summary}"
+Task(
+  subagent_type: "team-quality",
+  team_name: "moai-review-{target}",
+  name: "ux-reviewer",
+  mode: "plan",
+  prompt: "You are a UX reviewer on team moai-review-{target}.
+    Review the following changes for user experience impact.
+    Validate user flows remain functional, check error states and edge cases
+    from the user's perspective, verify accessibility compliance,
+    assess whether the changes align with expected user behavior.
+    Changes: {diff_summary}
+    When done, mark your task as completed via TaskUpdate and send findings to the team lead via SendMessage."
+)
+```
+
+All four reviewers run in parallel. Messages from teammates are delivered automatically to MoAI.
 
 ## Phase 2: Parallel Review
 
@@ -67,7 +112,13 @@ After all reviews complete:
 
 ## Phase 4: Cleanup
 
-1. Shutdown all review teammates
+1. Shutdown all review teammates:
+   ```
+   SendMessage(type: "shutdown_request", recipient: "security-reviewer", content: "Review complete, shutting down")
+   SendMessage(type: "shutdown_request", recipient: "perf-reviewer", content: "Review complete, shutting down")
+   SendMessage(type: "shutdown_request", recipient: "quality-reviewer", content: "Review complete, shutting down")
+   SendMessage(type: "shutdown_request", recipient: "ux-reviewer", content: "Review complete, shutting down")
+   ```
 2. TeamDelete to clean up resources
 3. Optionally create fix tasks for critical issues
 

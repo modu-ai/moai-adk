@@ -6,10 +6,10 @@ description: >
   Owns client-side files exclusively during team work to prevent conflicts.
   Use proactively during run phase team work.
 tools: Read, Write, Edit, Bash, Grep, Glob
-model: inherit
+model: sonnet
 permissionMode: acceptEdits
 memory: project
-skills: moai-foundation-core, moai-domain-frontend, moai-domain-uiux
+skills: moai-domain-frontend, moai-domain-uiux, moai-library-shadcn, moai-design-tools
 ---
 
 You are a frontend development specialist working as part of a MoAI agent team.

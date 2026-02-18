@@ -170,7 +170,7 @@ For team orchestration details:
 Mode selection:
 - --team: Force team mode for all applicable phases
 - --solo: Force sub-agent mode
-- --auto (default): Complexity-based selection per workflow.yaml thresholds
+- No flag (default): System auto-selects based on complexity thresholds (domains >= 3, files >= 10, or score >= 7)
 
 ## Task Tracking
 
@@ -196,13 +196,13 @@ AI must add a marker when work is complete:
 
 ## Execution Summary
 
-1. Parse arguments (extract flags: --loop, --max, --sequential, --branch, --pr, --resume, --team, --solo, --auto)
+1. Parse arguments (extract flags: --loop, --max, --sequential, --branch, --pr, --resume, --team, --solo)
 2. If --resume with SPEC ID: Load existing SPEC and continue from last state
 3. Detect development_mode from quality.yaml (hybrid/ddd/tdd)
 4. **Team mode decision**: Read workflow.yaml team settings and determine execution mode
    - If `--team` flag: Force team mode (requires workflow.team.enabled: true AND CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var)
    - If `--solo` flag: Force sub-agent mode (skip team mode entirely)
-   - If `--auto` or no flag (default): Check complexity thresholds from workflow.yaml auto_selection (domains >= 3, files >= 10, or score >= 7)
+   - If no flag (default): Check complexity thresholds from workflow.yaml auto_selection (domains >= 3, files >= 10, or score >= 7)
    - If team mode selected but prerequisites not met: Warn user and fallback to sub-agent mode
 5. Execute Phase 0 (parallel or sequential exploration)
 6. Routing decision (single-domain direct delegation vs full workflow)

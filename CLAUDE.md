@@ -106,6 +106,8 @@ agent, skill, plugin
 
 researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality (requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1)
 
+Both `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` env var AND `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml` are required.
+
 For detailed agent descriptions, capabilities, and creation guidelines, see @.claude/rules/moai/development/agent-authoring.md.
 
 ---
@@ -131,6 +133,8 @@ For detailed workflow specifications, see @.claude/rules/moai/workflow/spec-work
 - Phase 5: manager-quality → ensure quality standards
 - Phase 6: manager-docs → create documentation
 
+For team-based parallel execution of these phases, see @.claude/skills/moai/workflows/team-plan.md and @.claude/skills/moai/workflows/team-run.md.
+
 ---
 
 ## 6. Quality Gates
@@ -154,7 +158,7 @@ MoAI-ADK implements LSP-based quality gates:
 
 ### Development Safeguards (4 HARD Rules)
 
-These rules ensure code quality and prevent regressions in the moai-adk-go codebase.
+These rules ensure code quality and prevent regressions in the project codebase.
 
 **Rule 1: Approach-First Development**
 
@@ -190,7 +194,7 @@ When fixing bugs:
 
 ### Go-Specific Guidelines
 
-For moai-adk-go development:
+For Go development:
 - Run `go test -race ./...` for concurrency safety
 - Use table-driven tests for comprehensive coverage
 - Maintain 85%+ test coverage per package
@@ -211,6 +215,15 @@ Subagents invoked via Task() operate in isolated, stateless contexts and cannot 
 - Step 3: Subagent executes based on provided parameters
 - Step 4: Subagent returns structured response
 - Step 5: MoAI uses AskUserQuestion for next decision
+
+### Team Coordination Pattern
+
+In team mode, MoAI bridges user interaction and teammate coordination:
+
+- MoAI uses AskUserQuestion for user decisions (teammates cannot)
+- MoAI uses SendMessage for teammate-to-teammate coordination
+- Teammates share TaskList for self-coordinated work distribution
+- MoAI synthesizes teammate results before presenting to user
 
 ### AskUserQuestion Constraints
 
@@ -318,6 +331,7 @@ For core parallel execution principles, see @.claude/rules/moai/core/moai-consti
 - **Agent Tool Requirements**: All implementation agents MUST include Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet
 - **Loop Prevention**: Maximum 3 retries per operation with failure pattern detection and user intervention
 - **Platform Compatibility**: Always prefer Edit tool over sed/awk
+- **Team File Ownership**: In team mode, each teammate owns specific file patterns to prevent write conflicts
 
 ---
 
@@ -341,6 +355,8 @@ MoAI supports optional Agent Teams mode for parallel phase execution.
 
 TeamCreate, SendMessage, TaskCreate/Update/List/Get, TeamDelete
 
+Call TeamDelete only after all teammates have shut down to release team resources.
+
 ### Team Hook Events
 
 TeammateIdle (exit 2 = keep working), TaskCompleted (exit 2 = reject completion)
@@ -349,8 +365,8 @@ For complete Agent Teams documentation including team API reference, agent roste
 
 ---
 
-Version: 13.0.0 (Token Optimization + MCP Coverage)
-Last Updated: 2026-02-08
+Version: 13.1.0 (Agent Teams Integration)
+Last Updated: 2026-02-10
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
 
