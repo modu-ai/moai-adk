@@ -3,6 +3,7 @@ package project
 import (
 	"context"
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/foundation"
@@ -183,50 +184,73 @@ func TestPhaseExecutor_Execute_AutoDetectsMethodology(t *testing.T) {
 
 func TestApplyDetectedDefaults(t *testing.T) {
 	tests := []struct {
-		name       string
-		opts       InitOptions
-		languages  []Language
-		frameworks []Framework
-		wantName   string
-		wantLang   string
-		wantFW     string
-		wantConv   string
+		name         string
+		opts         InitOptions
+		languages    []Language
+		frameworks   []Framework
+		wantName     string
+		wantLang     string
+		wantFW       string
+		wantConv     string
+		wantPlatform string
 	}{
 		{
-			name:     "all defaults applied",
-			opts:     InitOptions{ProjectRoot: "/tmp/my-project"},
-			wantName: "my-project",
-			wantLang: "Go", // fallback
-			wantFW:   "none",
-			wantConv: "en",
+			name:         "all defaults applied",
+			opts:         InitOptions{ProjectRoot: "/tmp/my-project"},
+			wantName:     "my-project",
+			wantLang:     "Go", // fallback
+			wantFW:       "none",
+			wantConv:     "en",
+			wantPlatform: runtime.GOOS,
 		},
 		{
-			name:      "detected language used",
-			opts:      InitOptions{ProjectRoot: "/tmp/test"},
-			languages: []Language{{Name: "Python", Confidence: 0.8}},
-			wantName:  "test",
-			wantLang:  "Python",
-			wantFW:    "none",
-			wantConv:  "en",
+			name:         "detected language used",
+			opts:         InitOptions{ProjectRoot: "/tmp/test"},
+			languages:    []Language{{Name: "Python", Confidence: 0.8}},
+			wantName:     "test",
+			wantLang:     "Python",
+			wantFW:       "none",
+			wantConv:     "en",
+			wantPlatform: runtime.GOOS,
 		},
 		{
-			name:       "detected framework used",
-			opts:       InitOptions{ProjectRoot: "/tmp/test"},
-			languages:  []Language{{Name: "Go", Confidence: 1.0}},
-			frameworks: []Framework{{Name: "Gin"}},
-			wantName:   "test",
-			wantLang:   "Go",
-			wantFW:     "Gin",
-			wantConv:   "en",
+			name:         "detected framework used",
+			opts:         InitOptions{ProjectRoot: "/tmp/test"},
+			languages:    []Language{{Name: "Go", Confidence: 1.0}},
+			frameworks:   []Framework{{Name: "Gin"}},
+			wantName:     "test",
+			wantLang:     "Go",
+			wantFW:       "Gin",
+			wantConv:     "en",
+			wantPlatform: runtime.GOOS,
 		},
 		{
-			name:      "explicit values not overridden",
-			opts:      InitOptions{ProjectRoot: "/tmp/test", ProjectName: "custom", Language: "Rust", Framework: "Axum", ConvLang: "ko"},
-			languages: []Language{{Name: "Go", Confidence: 1.0}},
-			wantName:  "custom",
-			wantLang:  "Rust",
-			wantFW:    "Axum",
-			wantConv:  "ko",
+			name:         "explicit values not overridden",
+			opts:         InitOptions{ProjectRoot: "/tmp/test", ProjectName: "custom", Language: "Rust", Framework: "Axum", ConvLang: "ko"},
+			languages:    []Language{{Name: "Go", Confidence: 1.0}},
+			wantName:     "custom",
+			wantLang:     "Rust",
+			wantFW:       "Axum",
+			wantConv:     "ko",
+			wantPlatform: runtime.GOOS,
+		},
+		{
+			name:         "platform defaults to runtime.GOOS",
+			opts:         InitOptions{ProjectRoot: "/tmp/foo"},
+			wantName:     "foo",
+			wantLang:     "Go",
+			wantFW:       "none",
+			wantConv:     "en",
+			wantPlatform: runtime.GOOS,
+		},
+		{
+			name:         "explicit platform not overridden",
+			opts:         InitOptions{ProjectRoot: "/tmp/foo", Platform: "windows"},
+			wantName:     "foo",
+			wantLang:     "Go",
+			wantFW:       "none",
+			wantConv:     "en",
+			wantPlatform: "windows",
 		},
 	}
 
@@ -245,6 +269,9 @@ func TestApplyDetectedDefaults(t *testing.T) {
 			}
 			if got.ConvLang != tt.wantConv {
 				t.Errorf("ConvLang = %q, want %q", got.ConvLang, tt.wantConv)
+			}
+			if got.Platform != tt.wantPlatform {
+				t.Errorf("Platform = %q, want %q", got.Platform, tt.wantPlatform)
 			}
 		})
 	}

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/modu-ai/moai-adk/pkg/models"
 )
@@ -234,6 +235,11 @@ func applyDetectedDefaults(opts InitOptions, languages []Language, frameworks []
 	// GitMode defaults to "manual"
 	if opts.GitMode == "" {
 		opts.GitMode = "manual"
+	}
+
+	// Platform defaults to current OS ("darwin", "linux", "windows")
+	if opts.Platform == "" {
+		opts.Platform = runtime.GOOS
 	}
 
 	// Output language defaults to "en"
