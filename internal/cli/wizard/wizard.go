@@ -88,6 +88,30 @@ func buildSelectField(q *Question, result *WizardResult, locale *string) *huh.Se
 		selected = q.Default
 	}
 
+	// Build options eagerly at form-construction time using the current locale.
+	// Each question runs as its own sequential Form, so locale is already set
+	// by the time subsequent questions are built.
+	//
+	// We deliberately avoid OptionsFunc here: huh v0.8.x OptionsFunc forces
+	// s.height = defaultHeight (10) when no explicit height is set. Once
+	// s.height > 0, updateViewportHeight() resets viewport.YOffset = s.selected
+	// on *every* Update() call, causing the viewport to always scroll so the
+	// selected item is at the top — hiding options above the cursor.
+	//
+	// Using Options() (static) with no Height() call keeps s.height == 0, so
+	// updateViewportHeight() takes the auto-size branch, sizes the viewport to
+	// exactly the number of options, and never resets YOffset. Navigation keys
+	// move only the cursor highlight; the visible option list stays fixed.
+	lq := GetLocalizedQuestion(q, *locale)
+	opts := make([]huh.Option[string], len(lq.Options))
+	for i, opt := range lq.Options {
+		key := opt.Label
+		if opt.Desc != "" {
+			key = opt.Label + " - " + opt.Desc
+		}
+		opts[i] = huh.NewOption(key, opt.Value)
+	}
+
 	sel := huh.NewSelect[string]().
 		TitleFunc(func() string {
 			lq := GetLocalizedQuestion(q, *locale)
@@ -97,29 +121,7 @@ func buildSelectField(q *Question, result *WizardResult, locale *string) *huh.Se
 			lq := GetLocalizedQuestion(q, *locale)
 			return lq.Description
 		}, locale).
-		OptionsFunc(func() []huh.Option[string] {
-			lq := GetLocalizedQuestion(q, *locale)
-			opts := make([]huh.Option[string], len(lq.Options))
-			for i, opt := range lq.Options {
-				key := opt.Label
-				if opt.Desc != "" {
-					key = opt.Label + " - " + opt.Desc
-				}
-				opts[i] = huh.NewOption(key, opt.Value)
-				if opt.Value == selected {
-					opts[i] = opts[i].Selected(true)
-				}
-			}
-			return opts
-		}, locale).
-		// huh v0.8.x Select.Height(h) sets the *total* field height including
-		// the title and description rows. updateViewportHeight() subtracts the
-		// rendered height of those rows from h to get the options viewport:
-		//   viewport.Height = max(1, h - titleHeight - descHeight)
-		// With title=1 and desc=1, the offset is 2. To show all N options we
-		// therefore need h = N + 2. An extra +1 row is added as padding in
-		// case a description wraps to two lines at narrow terminal widths.
-		Height(len(q.Options) + 3).
+		Options(opts...).
 		Value(&selected)
 
 	// Wire up value storage after each change.
