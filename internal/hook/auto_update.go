@@ -70,10 +70,11 @@ func (h *autoUpdateHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 		return &HookOutput{}, nil
 	}
 
-	// Use an independent context with a timeout shorter than both the registry
-	// DefaultHookTimeout and the Claude Code hook process timeout. This
-	// guarantees the handler returns in time regardless of network conditions.
-	updateCtx, cancel := context.WithTimeout(context.Background(), autoUpdateTimeout)
+	// Use context.WithoutCancel to inherit parent context values (trace IDs, loggers)
+	// while detaching from the parent's cancellation signal. This prevents the
+	// SessionStart hook timeout from propagating into the update check, while still
+	// propagating any values set on the registry context.
+	updateCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), autoUpdateTimeout)
 	defer cancel()
 
 	result, err := h.updateFn(updateCtx)

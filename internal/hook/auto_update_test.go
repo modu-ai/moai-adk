@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestAutoUpdateHandler_EventType(t *testing.T) {
@@ -149,5 +150,34 @@ func TestAutoUpdateHandler_IndependentContext(t *testing.T) {
 		}
 	default:
 		t.Fatal("update function was never called")
+	}
+}
+
+// TestAutoUpdateHandler_UpdateContextHasDeadline verifies that the update
+// function receives a context with a deadline set by autoUpdateTimeout.
+func TestAutoUpdateHandler_UpdateContextHasDeadline(t *testing.T) {
+	deadlineSet := make(chan bool, 1)
+	fn := func(ctx context.Context) (*AutoUpdateResult, error) {
+		_, hasDeadline := ctx.Deadline()
+		deadlineSet <- hasDeadline
+		return &AutoUpdateResult{Updated: false}, nil
+	}
+
+	h := NewAutoUpdateHandler(fn)
+	_, err := h.Handle(context.Background(), &HookInput{})
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+	if !<-deadlineSet {
+		t.Error("update function context has no deadline, want autoUpdateTimeout deadline")
+	}
+}
+
+// TestAutoUpdateTimeout_Value documents and asserts the expected timeout
+// constant so that accidental changes are caught during code review.
+func TestAutoUpdateTimeout_Value(t *testing.T) {
+	if autoUpdateTimeout != 25*time.Second {
+		t.Errorf("autoUpdateTimeout = %v, want 25s; this constant must stay below the SessionStart hook timeout (30s)",
+			autoUpdateTimeout)
 	}
 }
