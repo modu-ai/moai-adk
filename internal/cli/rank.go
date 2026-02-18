@@ -292,6 +292,7 @@ func newRankSyncCmd() *cobra.Command {
 			defer cancel()
 
 			submitted := 0
+			failedTotal := 0
 			for i := 0; i < len(sessions); i += rankBatchSize {
 				end := i + rankBatchSize
 				if end > len(sessions) {
@@ -308,12 +309,16 @@ func newRankSyncCmd() *cobra.Command {
 				submitted += len(batch)
 				_, _ = fmt.Fprintf(out, "Submitted %d sessions (batch %d-%d)\n", len(batch), i, end-1)
 
+				// Track actual server-side failures
 				if result != nil && result.Failed > 0 {
+					failedTotal += result.Failed
 					_, _ = fmt.Fprintf(out, "  Failed: %d sessions\n", result.Failed)
 				}
 
-				// Mark synced after successful batch
-				if syncState != nil {
+				// Only mark synced if ALL sessions in batch succeeded (result.Failed == 0).
+				// When any session fails server-side, skip marking so they can be retried
+				// on subsequent sync runs without --force.
+				if syncState != nil && (result == nil || result.Failed == 0) {
 					batchPaths := sessionTranscriptPaths[i:end]
 					for _, transcriptPath := range batchPaths {
 						_ = syncState.MarkSynced(transcriptPath)
@@ -329,7 +334,8 @@ func newRankSyncCmd() *cobra.Command {
 				}
 			}
 
-			_, _ = fmt.Fprintf(out, "Sync complete. Submitted %d session(s).\n", submitted)
+			succeededTotal := submitted - failedTotal
+			_, _ = fmt.Fprintf(out, "Sync complete. Submitted %d session(s), %d succeeded, %d failed.\n", submitted, succeededTotal, failedTotal)
 			return nil
 		},
 	}
