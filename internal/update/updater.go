@@ -9,10 +9,12 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 )
 
 // updaterImpl is the concrete implementation of Updater.
@@ -102,6 +104,8 @@ func (u *updaterImpl) Download(ctx context.Context, version *VersionInfo) (strin
 
 // Replace atomically replaces the current binary with the new one.
 // It validates binary format, sets execute permissions and uses os.Rename for atomicity.
+// On Windows, a two-step rename is used because overwriting a running executable
+// via rename is not permitted; renaming the running binary away first is allowed.
 func (u *updaterImpl) Replace(ctx context.Context, newBinaryPath string) error {
 	// Verify the new binary exists.
 	if _, err := os.Stat(newBinaryPath); err != nil {
@@ -118,9 +122,52 @@ func (u *updaterImpl) Replace(ctx context.Context, newBinaryPath string) error {
 		return fmt.Errorf("%w: chmod: %v", ErrReplaceFailed, err)
 	}
 
+	if runtime.GOOS == "windows" {
+		return u.replaceOnWindows(newBinaryPath)
+	}
+
 	// Atomic rename (works when src and dst are on the same filesystem).
 	if err := os.Rename(newBinaryPath, u.binaryPath); err != nil {
 		return fmt.Errorf("%w: rename: %v", ErrReplaceFailed, err)
+	}
+
+	return nil
+}
+
+// replaceOnWindows performs a Windows-safe binary replacement.
+// Windows does not allow overwriting a running executable via rename.
+// Instead, the running binary is renamed away first (which Windows does permit),
+// then the new binary is moved to the original path.
+// Any leftover .old-* files are removed opportunistically; if still locked they
+// are simply left for the next run to clean up.
+func (u *updaterImpl) replaceOnWindows(newBinaryPath string) error {
+	// Step 1: Rename the running binary to a temporary path.
+	// Windows allows renaming a running executable (just not overwriting it).
+	oldPath := fmt.Sprintf("%s.old-%d", u.binaryPath, time.Now().UnixNano())
+	if err := os.Rename(u.binaryPath, oldPath); err != nil {
+		return fmt.Errorf("%w: windows: rename current binary away: %v", ErrReplaceFailed, err)
+	}
+
+	// Step 2: Move the new binary into the vacated original path.
+	// Note: there is a brief TOCTOU window between steps 1 and 2 where the
+	// binary path is empty. Any concurrent process attempting to exec the binary
+	// would fail. Exploiting this requires write access to the binary directory.
+	if err := os.Rename(newBinaryPath, u.binaryPath); err != nil {
+		// Best-effort restore: move the old binary back before returning the error.
+		if rerr := os.Rename(oldPath, u.binaryPath); rerr != nil {
+			slog.Error("binary replacement and recovery both failed; binary may be missing",
+				"binary_path", u.binaryPath,
+				"old_binary_at", oldPath,
+				"replace_error", err,
+				"recovery_error", rerr)
+		}
+		return fmt.Errorf("%w: windows: place new binary: %v", ErrReplaceFailed, err)
+	}
+
+	// Step 3: Try to remove the old binary. The file may still be mapped into
+	// the running process, so this may fail silently – that is acceptable.
+	if err := os.Remove(oldPath); err != nil {
+		slog.Debug("could not remove orphaned binary", "path", oldPath, "error", err)
 	}
 
 	return nil
