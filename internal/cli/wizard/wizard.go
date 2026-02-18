@@ -3,10 +3,12 @@ package wizard
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
+	"golang.org/x/term"
 )
 
 // statuslineSegmentPrefix is the prefix used for statusline segment question IDs.
@@ -24,6 +26,15 @@ func Run(questions []Question, styles *Styles) (*WizardResult, error) {
 	locale := ""
 	theme := newMoAIWizardTheme()
 
+	// Detect terminal height so each per-question form can use the full
+	// viewport. Without an explicit height, huh v0.8.x may under-report the
+	// available rows in subshell environments (e.g. Claude Code terminal),
+	// causing select options to be clipped to 1-2 visible items.
+	termH := 40 // safe fallback
+	if h, _, err := term.GetSize(int(os.Stdout.Fd())); err == nil && h > 0 {
+		termH = h
+	}
+
 	for i := range questions {
 		q := &questions[i]
 
@@ -35,7 +46,8 @@ func Run(questions []Question, styles *Styles) (*WizardResult, error) {
 		g := buildQuestionGroup(q, result, &locale)
 		form := huh.NewForm(g).
 			WithTheme(theme).
-			WithAccessible(false)
+			WithAccessible(false).
+			WithHeight(termH)
 
 		if err := form.Run(); err != nil {
 			if errors.Is(err, huh.ErrUserAborted) {
