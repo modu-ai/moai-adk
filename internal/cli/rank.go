@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -291,35 +292,7 @@ func newRankSyncCmd() *cobra.Command {
 			ctx, cancel := context.WithTimeout(cmd.Context(), 300*time.Second)
 			defer cancel()
 
-			submitted := 0
-			for i := 0; i < len(sessions); i += rankBatchSize {
-				end := i + rankBatchSize
-				if end > len(sessions) {
-					end = len(sessions)
-				}
-
-				batch := sessions[i:end]
-				result, err := deps.RankClient.SubmitSessionsBatch(ctx, batch)
-				if err != nil {
-					_, _ = fmt.Fprintf(out, "Batch %d-%d failed: %v\n", i, end-1, err)
-					continue
-				}
-
-				submitted += len(batch)
-				_, _ = fmt.Fprintf(out, "Submitted %d sessions (batch %d-%d)\n", len(batch), i, end-1)
-
-				if result != nil && result.Failed > 0 {
-					_, _ = fmt.Fprintf(out, "  Failed: %d sessions\n", result.Failed)
-				}
-
-				// Mark synced after successful batch
-				if syncState != nil {
-					batchPaths := sessionTranscriptPaths[i:end]
-					for _, transcriptPath := range batchPaths {
-						_ = syncState.MarkSynced(transcriptPath)
-					}
-				}
-			}
+			batchResult := submitSyncBatches(ctx, deps.RankClient, sessions, sessionTranscriptPaths, syncState, out)
 
 			// Save sync state
 			if syncState != nil {
@@ -329,7 +302,9 @@ func newRankSyncCmd() *cobra.Command {
 				}
 			}
 
-			_, _ = fmt.Fprintf(out, "Sync complete. Submitted %d session(s).\n", submitted)
+			succeededTotal := batchResult.Submitted - batchResult.FailedTotal
+			_, _ = fmt.Fprintf(out, "Sync complete. Submitted %d session(s), %d succeeded, %d failed, %d errored.\n",
+				batchResult.Submitted, succeededTotal, batchResult.FailedTotal, batchResult.ErroredTotal)
 			return nil
 		},
 	}
@@ -404,6 +379,56 @@ func newRankRegisterCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// syncBatchResult holds the summary counts from a batch sync operation.
+type syncBatchResult struct {
+	Submitted    int
+	FailedTotal  int
+	ErroredTotal int
+}
+
+// submitSyncBatches submits sessions to the server in batches and tracks sync state.
+// It returns aggregate counts of submitted, server-failed, and HTTP-errored sessions.
+func submitSyncBatches(ctx context.Context, client rank.Client, sessions []*rank.SessionSubmission, paths []string, syncState *rank.SyncState, out io.Writer) syncBatchResult {
+	var res syncBatchResult
+	for i := 0; i < len(sessions); i += rankBatchSize {
+		end := i + rankBatchSize
+		if end > len(sessions) {
+			end = len(sessions)
+		}
+
+		batch := sessions[i:end]
+		result, err := client.SubmitSessionsBatch(ctx, batch)
+		if err != nil {
+			_, _ = fmt.Fprintf(out, "Batch %d-%d failed: %v\n", i, end-1, err)
+			res.ErroredTotal += len(batch)
+			continue
+		}
+
+		res.Submitted += len(batch)
+		_, _ = fmt.Fprintf(out, "Submitted %d sessions (batch %d-%d)\n", len(batch), i, end-1)
+
+		// Track actual server-side failures
+		if result != nil && result.Failed > 0 {
+			res.FailedTotal += result.Failed
+			_, _ = fmt.Fprintf(out, "  Failed: %d sessions\n", result.Failed)
+		}
+
+		// Only mark synced if ALL sessions in batch succeeded (result.Failed == 0).
+		// When any session fails server-side, skip marking so they can be retried
+		// on subsequent sync runs without --force.
+		// Note: when result.Failed > 0, we skip marking ALL sessions in the batch as
+		// synced — even the ones that succeeded — so they can be retried. This relies
+		// on the server deduplicating by SessionHash on subsequent sync runs.
+		if syncState != nil && (result == nil || result.Failed == 0) {
+			batchPaths := paths[i:end]
+			for _, transcriptPath := range batchPaths {
+				_ = syncState.MarkSynced(transcriptPath)
+			}
+		}
+	}
+	return res
 }
 
 // --- Claude Code Settings.json Hook Management ---
