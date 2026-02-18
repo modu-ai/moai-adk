@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestAutoUpdateHandler_EventType(t *testing.T) {
@@ -105,5 +106,78 @@ func TestAutoUpdateHandler_ContextCancellation(t *testing.T) {
 	if output.SystemMessage != "" {
 		t.Errorf("cancelled context should not produce a SystemMessage, got: %q",
 			output.SystemMessage)
+	}
+}
+
+// TestAutoUpdateHandler_IndependentContext verifies that Handle uses an
+// independent context for the update function, not the caller's context.
+// This is critical for issue #397: when the registry's outer context
+// expires, the handler must still return cleanly rather than propagating
+// a timeout error that causes "SessionStart:startup hook error".
+func TestAutoUpdateHandler_IndependentContext(t *testing.T) {
+	// The update function checks whether its context is already cancelled
+	// at the moment the function is invoked. If Handle forwards the caller's
+	// (pre-cancelled) context, the function will see ctx.Err() != nil
+	// immediately upon entry. If Handle creates an independent context from
+	// context.Background(), the function will see ctx.Err() == nil.
+	ctxErrAtInvocation := make(chan error, 1)
+	fn := func(ctx context.Context) (*AutoUpdateResult, error) {
+		ctxErrAtInvocation <- ctx.Err()
+		return &AutoUpdateResult{Updated: false}, nil
+	}
+
+	// Pre-cancel the caller context to simulate a timed-out registry context.
+	callerCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	h := NewAutoUpdateHandler(fn)
+	output, err := h.Handle(callerCtx, &HookInput{})
+	if err != nil {
+		t.Fatalf("Handle() should not propagate errors, got: %v", err)
+	}
+	if output == nil {
+		t.Fatal("Handle() returned nil output")
+	}
+
+	// The update function must have been called with a non-cancelled context,
+	// proving Handle creates an independent context rather than forwarding
+	// the (expired) caller context.
+	select {
+	case ctxErr := <-ctxErrAtInvocation:
+		if ctxErr != nil {
+			t.Errorf("update function received a cancelled context at invocation (%v), "+
+				"want independent non-cancelled context", ctxErr)
+		}
+	default:
+		t.Fatal("update function was never called")
+	}
+}
+
+// TestAutoUpdateHandler_UpdateContextHasDeadline verifies that the update
+// function receives a context with a deadline set by autoUpdateTimeout.
+func TestAutoUpdateHandler_UpdateContextHasDeadline(t *testing.T) {
+	deadlineSet := make(chan bool, 1)
+	fn := func(ctx context.Context) (*AutoUpdateResult, error) {
+		_, hasDeadline := ctx.Deadline()
+		deadlineSet <- hasDeadline
+		return &AutoUpdateResult{Updated: false}, nil
+	}
+
+	h := NewAutoUpdateHandler(fn)
+	_, err := h.Handle(context.Background(), &HookInput{})
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+	if !<-deadlineSet {
+		t.Error("update function context has no deadline, want autoUpdateTimeout deadline")
+	}
+}
+
+// TestAutoUpdateTimeout_Value documents and asserts the expected timeout
+// constant so that accidental changes are caught during code review.
+func TestAutoUpdateTimeout_Value(t *testing.T) {
+	if autoUpdateTimeout != 25*time.Second {
+		t.Errorf("autoUpdateTimeout = %v, want 25s; this constant must stay below the SessionStart hook timeout (30s)",
+			autoUpdateTimeout)
 	}
 }

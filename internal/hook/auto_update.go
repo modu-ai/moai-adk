@@ -4,7 +4,16 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 )
+
+// autoUpdateTimeout is the maximum time the auto-update handler will wait
+// for the update function to complete. It must be shorter than
+// DefaultHookTimeout (30s) so that the registry's ctx.Err() check after
+// Handle() returns finds the context still valid. It must also be shorter
+// than the SessionStart hook timeout configured in settings.json (30s) so
+// that the hook process exits before Claude Code forcibly terminates it.
+const autoUpdateTimeout = 25 * time.Second
 
 // AutoUpdateResult holds the outcome of an automatic binary update attempt.
 type AutoUpdateResult struct {
@@ -44,12 +53,31 @@ func (h *autoUpdateHandler) EventType() EventType {
 
 // Handle executes the auto-update callback and returns a SystemMessage
 // if a new version was installed. All errors are logged and swallowed.
+//
+// The update runs with an independent context bounded by autoUpdateTimeout
+// (25s). This ensures the handler always returns before:
+//   - The registry's DefaultHookTimeout (30s) expires and ctx.Err() becomes
+//     non-nil, which would cause the registry to return ErrHookTimeout.
+//   - The Claude Code SessionStart hook timeout (30s in settings.json) elapses
+//     and the moai process is forcibly terminated, producing a hook error.
+//
+// This prevents spurious "SessionStart:startup hook error" messages that
+// occur on Windows when the /model command triggers a new session start
+// (e.g., switching to Opus 4.6) and the update check takes longer than
+// expected due to network latency or binary-in-use conditions.
 func (h *autoUpdateHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
 	if h.updateFn == nil {
 		return &HookOutput{}, nil
 	}
 
-	result, err := h.updateFn(ctx)
+	// Use context.WithoutCancel to inherit parent context values (trace IDs, loggers)
+	// while detaching from the parent's cancellation signal. This prevents the
+	// SessionStart hook timeout from propagating into the update check, while still
+	// propagating any values set on the registry context.
+	updateCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), autoUpdateTimeout)
+	defer cancel()
+
+	result, err := h.updateFn(updateCtx)
 	if err != nil {
 		slog.Debug("auto-update check failed", "error", err)
 		return &HookOutput{}, nil
