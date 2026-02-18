@@ -13,11 +13,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Summary
 
-This patch release fixes the `moai init` / `moai update -c` interactive wizard where the **max teammates** and **default model** select fields displayed only one option and became unresponsive after selection, caused by two compounding bugs in charmbracelet/huh v0.8.x.
+This patch release fixes the `moai init` / `moai update -c` interactive wizard where the **max teammates** and **default model** select fields displayed only one option and became unresponsive after selection, caused by two compounding bugs in charmbracelet/huh v0.8.x. Also includes a major update to the MoAI template system with new lifecycle hooks, updated agent definitions, and new skill modules.
 
 ### Breaking Changes
 
 None.
+
+### Added
+
+- **New lifecycle hooks**: `Notification`, `PermissionRequest`, `PostToolUseFailure`, `SubagentStart`, `SubagentStop`, `TaskCompleted`, `TeammateIdle`, `UserPromptSubmit` hooks for comprehensive Claude Code event coverage.
+- **New skill modules**: `moai-foundation-thinking` skill with critical-evaluation, diverge-converge, and deep-questioning modules; `token-optimization` module for context management; `design-system-tokens` module for UI/UX.
+- **Git convention config**: New `git-convention.yaml` section for configurable commit message standards.
+
+### Changed
+
+- **Agent definitions updated**: All 19 MoAI agents (manager, expert, builder, team) updated with latest capabilities and descriptions.
+- **Workflow commands updated**: `github`, `loop`, `team-plan`, `team-review`, `team-run` workflows updated with Agent Teams improvements.
+- **MCP integration rules updated**: Improved context7, pencil, and claude-in-chrome integration documentation.
+- **Removed deprecated skill files**: Removed `moai-tool-ast-grep` rule files, `moai-workflow-testing` examples, and `moai-foundation-quality` scripts that are no longer bundled as static files.
 
 ### Fixed
 
@@ -43,11 +56,24 @@ moai version
 
 ### 요약
 
-이번 패치 릴리즈는 `moai init` / `moai update -c` 위자드에서 **최대 팀원 수**와 **기본 모델** 선택 필드가 하나의 항목만 표시되고 선택 후 멈추던 버그를 수정합니다. charmbracelet/huh v0.8.x에서 발생한 두 가지 버그가 복합적으로 작용한 것이었습니다.
+이번 패치 릴리즈는 `moai init` / `moai update -c` 위자드에서 **최대 팀원 수**와 **기본 모델** 선택 필드가 하나의 항목만 표시되고 선택 후 멈추던 버그를 수정합니다. charmbracelet/huh v0.8.x에서 발생한 두 가지 버그가 복합적으로 작용한 것이었습니다. 또한 새 라이프사이클 훅, 업데이트된 에이전트 정의, 새 스킬 모듈을 포함한 MoAI 템플릿 시스템 대규모 업데이트도 포함합니다.
 
 ### 주요 변경 사항 (Breaking Changes)
 
 없음.
+
+### 추가됨 (Added)
+
+- **새 라이프사이클 훅**: Claude Code 이벤트 완전 커버를 위해 `Notification`, `PermissionRequest`, `PostToolUseFailure`, `SubagentStart`, `SubagentStop`, `TaskCompleted`, `TeammateIdle`, `UserPromptSubmit` 훅 추가.
+- **새 스킬 모듈**: 비판적 평가·발산-수렴·심층 질문 모듈이 포함된 `moai-foundation-thinking` 스킬; 컨텍스트 관리를 위한 `token-optimization` 모듈; UI/UX용 `design-system-tokens` 모듈.
+- **Git 컨벤션 설정**: 커밋 메시지 기준 설정을 위한 새 `git-convention.yaml` 섹션 추가.
+
+### 변경됨 (Changed)
+
+- **에이전트 정의 업데이트**: 모든 19개 MoAI 에이전트(manager, expert, builder, team)가 최신 기능과 설명으로 업데이트.
+- **워크플로우 커맨드 업데이트**: `github`, `loop`, `team-plan`, `team-review`, `team-run` 워크플로우가 Agent Teams 개선사항을 반영하여 업데이트.
+- **MCP 통합 규칙 업데이트**: context7, pencil, claude-in-chrome 통합 문서 개선.
+- **더 이상 사용되지 않는 스킬 파일 제거**: 더 이상 정적 파일로 번들되지 않는 `moai-tool-ast-grep` 규칙 파일, `moai-workflow-testing` 예제, `moai-foundation-quality` 스크립트 제거.
 
 ### 수정됨 (Fixed)
 
@@ -56,6 +82,16 @@ moai version
 - **위자드 YOffset 스크롤 버그 (기본 모델)**: `default_model` 필드에서도 동일한 YOffset 문제가 발생했습니다. "Sonnet (균형)" (기본값)이 첫 번째로 오도록 옵션 순서를 변경했습니다.
 - **MaxTeammates 주석 오류**: 타입 주석에 "2-5"로 잘못 표기되어 있던 것을 "2-10"으로 수정했습니다.
 - **한국어 번역 오타**: `max_teammates`의 한국어 번역에서 크기 설명 레이블에 "모"가 누락되어 있었습니다 (예: "소규 팀" → "소규모 팀", "중대규 팀" → "중대규모 팀").
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
 
 ---
 
