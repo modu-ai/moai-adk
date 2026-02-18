@@ -12,46 +12,37 @@ import (
 // statuslineSegmentPrefix is the prefix used for statusline segment question IDs.
 const statuslineSegmentPrefix = "statusline_seg_"
 
-// buildWizardForm creates a complete huh.Form from the given questions.
-// It returns the configured form and the WizardResult that will be populated
-// when the form runs. This function is separated from Run to enable unit testing
-// of form structure, group configuration, and field setup without requiring a TTY.
-func buildWizardForm(questions []Question) (*huh.Form, *WizardResult) {
-	result := &WizardResult{}
-	locale := ""
-
-	// Build huh groups from questions, one group per question.
-	groups := make([]*huh.Group, 0, len(questions))
-
-	for i := range questions {
-		q := &questions[i]
-		g := buildQuestionGroup(q, result, &locale)
-		groups = append(groups, g)
-	}
-
-	// Create the form with wizard theme.
-	theme := newMoAIWizardTheme()
-	form := huh.NewForm(groups...).
-		WithTheme(theme).
-		WithAccessible(false)
-
-	return form, result
-}
-
 // Run executes the wizard and returns the result.
-// It builds a huh.Form from the given questions with conditional group visibility.
+// Each question runs as its own independent huh.Form to avoid the huh v0.8.x
+// YOffset scroll bug that occurs when multiple groups share a single viewport.
 func Run(questions []Question, styles *Styles) (*WizardResult, error) {
 	if len(questions) == 0 {
 		return nil, ErrNoQuestions
 	}
 
-	form, result := buildWizardForm(questions)
+	result := &WizardResult{}
+	locale := ""
+	theme := newMoAIWizardTheme()
 
-	if err := form.Run(); err != nil {
-		if errors.Is(err, huh.ErrUserAborted) {
-			return nil, ErrCancelled
+	for i := range questions {
+		q := &questions[i]
+
+		// Pre-check condition: skip questions whose condition is not met.
+		if q.Condition != nil && !q.Condition(result) {
+			continue
 		}
-		return nil, fmt.Errorf("wizard error: %w", err)
+
+		g := buildQuestionGroup(q, result, &locale)
+		form := huh.NewForm(g).
+			WithTheme(theme).
+			WithAccessible(false)
+
+		if err := form.Run(); err != nil {
+			if errors.Is(err, huh.ErrUserAborted) {
+				return nil, ErrCancelled
+			}
+			return nil, fmt.Errorf("wizard error: %w", err)
+		}
 	}
 
 	return result, nil
