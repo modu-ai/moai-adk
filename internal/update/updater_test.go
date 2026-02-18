@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -441,6 +442,52 @@ func TestUpdater_Replace_RejectsTooSmallFile(t *testing.T) {
 func sha256Hex(data []byte) string {
 	h := sha256.Sum256(data)
 	return hex.EncodeToString(h[:])
+}
+
+func TestReplaceOnWindows(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+
+	// Create current binary.
+	binaryPath := filepath.Join(dir, "moai")
+	if err := os.WriteFile(binaryPath, []byte("old-binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create new binary.
+	newBinaryPath := filepath.Join(dir, "moai.new")
+	if err := os.WriteFile(newBinaryPath, []byte("new-binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	u := &updaterImpl{binaryPath: binaryPath}
+
+	if err := u.replaceOnWindows(newBinaryPath); err != nil {
+		t.Fatalf("replaceOnWindows() error: %v", err)
+	}
+
+	// Verify binary path has new content.
+	got, err := os.ReadFile(binaryPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "new-binary" {
+		t.Errorf("binary content = %q, want %q", got, "new-binary")
+	}
+
+	// Verify new binary temp file is gone.
+	if _, err := os.Stat(newBinaryPath); !os.IsNotExist(err) {
+		t.Errorf("new binary temp file should be gone")
+	}
+
+	// Verify no orphaned .old-* files remain (best-effort, may remain on real Windows).
+	entries, _ := os.ReadDir(dir)
+	for _, e := range entries {
+		if strings.Contains(e.Name(), ".old-") {
+			t.Logf("note: orphaned file found (expected on Windows): %s", e.Name())
+		}
+	}
 }
 
 // createTarGz creates a .tar.gz archive containing a single file with the given name and content.

@@ -3,6 +3,7 @@ package update
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"runtime"
 	"time"
@@ -62,6 +63,9 @@ func (r *rollbackImpl) Restore(backupPath string) error {
 func (r *rollbackImpl) restoreOnWindows(backupPath string) error {
 	// Step 1: Rename the current (failed) binary to a temporary path.
 	// Windows allows renaming a running executable.
+	// Note: there is a brief TOCTOU window between steps 1 and 2 where the
+	// binary path is empty. Any concurrent process attempting to exec the binary
+	// would fail. Exploiting this requires write access to the binary directory.
 	failedPath := fmt.Sprintf("%s.failed-%d", r.binaryPath, time.Now().UnixNano())
 	if err := os.Rename(r.binaryPath, failedPath); err != nil {
 		// If the current binary does not exist (e.g. it was already removed),
@@ -71,15 +75,25 @@ func (r *rollbackImpl) restoreOnWindows(backupPath string) error {
 		}
 	}
 
-	// Step 2: Copy the backup to the original path (now free).
+	// Step 2: Copy (not rename) the backup to the original path.
+	// We use copyFile instead of os.Rename so the backup file is preserved
+	// even if the copy fails mid-way, enabling manual recovery.
 	if err := copyFile(backupPath, r.binaryPath); err != nil {
 		// Best-effort: try to put the failed binary back.
-		_ = os.Rename(failedPath, r.binaryPath)
+		if rerr := os.Rename(failedPath, r.binaryPath); rerr != nil {
+			slog.Error("binary restore and recovery both failed; binary may be missing",
+				"binary_path", r.binaryPath,
+				"backup_at", failedPath,
+				"restore_error", err,
+				"recovery_error", rerr)
+		}
 		return fmt.Errorf("%w: restore from %s: %v", ErrRollbackFailed, backupPath, err)
 	}
 
 	// Step 3: Opportunistically remove the failed binary.
-	_ = os.Remove(failedPath)
+	if err := os.Remove(failedPath); err != nil {
+		slog.Debug("could not remove orphaned binary", "path", failedPath, "error", err)
+	}
 
 	return nil
 }

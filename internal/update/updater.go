@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -148,15 +149,26 @@ func (u *updaterImpl) replaceOnWindows(newBinaryPath string) error {
 	}
 
 	// Step 2: Move the new binary into the vacated original path.
+	// Note: there is a brief TOCTOU window between steps 1 and 2 where the
+	// binary path is empty. Any concurrent process attempting to exec the binary
+	// would fail. Exploiting this requires write access to the binary directory.
 	if err := os.Rename(newBinaryPath, u.binaryPath); err != nil {
 		// Best-effort restore: move the old binary back before returning the error.
-		_ = os.Rename(oldPath, u.binaryPath)
+		if rerr := os.Rename(oldPath, u.binaryPath); rerr != nil {
+			slog.Error("binary replacement and recovery both failed; binary may be missing",
+				"binary_path", u.binaryPath,
+				"old_binary_at", oldPath,
+				"replace_error", err,
+				"recovery_error", rerr)
+		}
 		return fmt.Errorf("%w: windows: place new binary: %v", ErrReplaceFailed, err)
 	}
 
 	// Step 3: Try to remove the old binary. The file may still be mapped into
 	// the running process, so this may fail silently – that is acceptable.
-	_ = os.Remove(oldPath)
+	if err := os.Remove(oldPath); err != nil {
+		slog.Debug("could not remove orphaned binary", "path", oldPath, "error", err)
+	}
 
 	return nil
 }

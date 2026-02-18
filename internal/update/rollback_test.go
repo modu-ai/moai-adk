@@ -175,3 +175,73 @@ func TestRollback_FullCycle(t *testing.T) {
 		t.Errorf("content = %q, want %q", string(data), "original binary v1.0")
 	}
 }
+
+func TestRestoreOnWindows(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+
+	// Create a "current" binary.
+	binaryPath := filepath.Join(dir, "moai")
+	if err := os.WriteFile(binaryPath, []byte("current-binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a backup.
+	backupPath := filepath.Join(dir, "moai.backup")
+	if err := os.WriteFile(backupPath, []byte("backup-binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	r := &rollbackImpl{binaryPath: binaryPath}
+
+	if err := r.restoreOnWindows(backupPath); err != nil {
+		t.Fatalf("restoreOnWindows() error: %v", err)
+	}
+
+	// Verify binary path has backup content.
+	got, err := os.ReadFile(binaryPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "backup-binary" {
+		t.Errorf("binary content = %q, want %q", got, "backup-binary")
+	}
+
+	// Verify backup file still exists (copyFile preserves it).
+	if _, err := os.Stat(backupPath); err != nil {
+		t.Errorf("backup file should still exist: %v", err)
+	}
+
+	// Verify no orphaned .failed-* files remain.
+	entries, _ := os.ReadDir(dir)
+	for _, e := range entries {
+		if strings.Contains(e.Name(), ".failed-") {
+			t.Errorf("orphaned file found: %s", e.Name())
+		}
+	}
+}
+
+func TestRestoreOnWindows_MissingCurrentBinary(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+
+	binaryPath := filepath.Join(dir, "moai") // does NOT exist
+	backupPath := filepath.Join(dir, "moai.backup")
+	if err := os.WriteFile(backupPath, []byte("backup-binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	r := &rollbackImpl{binaryPath: binaryPath}
+
+	// Should succeed: os.IsNotExist is handled gracefully.
+	if err := r.restoreOnWindows(backupPath); err != nil {
+		t.Fatalf("restoreOnWindows() with missing binary error: %v", err)
+	}
+
+	got, _ := os.ReadFile(binaryPath)
+	if string(got) != "backup-binary" {
+		t.Errorf("binary content = %q, want %q", got, "backup-binary")
+	}
+}
