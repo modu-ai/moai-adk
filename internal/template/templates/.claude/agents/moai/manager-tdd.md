@@ -13,6 +13,7 @@ description: |
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 permissionMode: default
+memory: project
 skills: moai-foundation-claude, moai-foundation-core, moai-foundation-quality, moai-workflow-tdd, moai-workflow-testing, moai-workflow-ddd
 hooks:
   PreToolUse:

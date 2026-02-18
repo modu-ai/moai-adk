@@ -9,7 +9,7 @@ description: >
 tools: Read, Write, Edit, Bash, Grep, Glob, mcp__pencil__batch_design, mcp__pencil__batch_get, mcp__pencil__get_editor_state, mcp__pencil__get_guidelines, mcp__pencil__get_screenshot, mcp__pencil__get_style_guide, mcp__pencil__get_style_guide_tags, mcp__pencil__get_variables, mcp__pencil__set_variables, mcp__pencil__open_document, mcp__pencil__snapshot_layout, mcp__pencil__find_empty_space_on_canvas, mcp__pencil__search_all_unique_properties, mcp__pencil__replace_all_matching_properties
 model: inherit
 permissionMode: acceptEdits
-memory: user
+memory: project
 skills: moai-domain-uiux, moai-design-tools, moai-domain-frontend, moai-library-shadcn
 mcpServers: pencil, figma
 ---

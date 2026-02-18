@@ -152,6 +152,13 @@ type HookInput struct {
 	// Legacy/internal field (deprecated, use CWD instead)
 	ProjectDir string `json:"project_dir,omitempty"`
 
+	// TeammateIdle and TaskCompleted fields (Agent Teams v2.1.33+)
+	TeamName        string `json:"team_name,omitempty"`
+	TeammateName    string `json:"teammate_name,omitempty"`
+	TaskID          string `json:"task_id,omitempty"`
+	TaskSubject     string `json:"task_subject,omitempty"`
+	TaskDescription string `json:"task_description,omitempty"`
+
 	// Internal data (not serialized to JSON)
 	Data json.RawMessage `json:"-"`
 }
