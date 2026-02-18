@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 )
 
 // updaterImpl is the concrete implementation of Updater.
@@ -102,6 +103,8 @@ func (u *updaterImpl) Download(ctx context.Context, version *VersionInfo) (strin
 
 // Replace atomically replaces the current binary with the new one.
 // It validates binary format, sets execute permissions and uses os.Rename for atomicity.
+// On Windows, a two-step rename is used because overwriting a running executable
+// via rename is not permitted; renaming the running binary away first is allowed.
 func (u *updaterImpl) Replace(ctx context.Context, newBinaryPath string) error {
 	// Verify the new binary exists.
 	if _, err := os.Stat(newBinaryPath); err != nil {
@@ -118,10 +121,42 @@ func (u *updaterImpl) Replace(ctx context.Context, newBinaryPath string) error {
 		return fmt.Errorf("%w: chmod: %v", ErrReplaceFailed, err)
 	}
 
+	if runtime.GOOS == "windows" {
+		return u.replaceOnWindows(newBinaryPath)
+	}
+
 	// Atomic rename (works when src and dst are on the same filesystem).
 	if err := os.Rename(newBinaryPath, u.binaryPath); err != nil {
 		return fmt.Errorf("%w: rename: %v", ErrReplaceFailed, err)
 	}
+
+	return nil
+}
+
+// replaceOnWindows performs a Windows-safe binary replacement.
+// Windows does not allow overwriting a running executable via rename.
+// Instead, the running binary is renamed away first (which Windows does permit),
+// then the new binary is moved to the original path.
+// Any leftover .old-* files are removed opportunistically; if still locked they
+// are simply left for the next run to clean up.
+func (u *updaterImpl) replaceOnWindows(newBinaryPath string) error {
+	// Step 1: Rename the running binary to a temporary path.
+	// Windows allows renaming a running executable (just not overwriting it).
+	oldPath := fmt.Sprintf("%s.old-%d", u.binaryPath, time.Now().UnixNano())
+	if err := os.Rename(u.binaryPath, oldPath); err != nil {
+		return fmt.Errorf("%w: windows: rename current binary away: %v", ErrReplaceFailed, err)
+	}
+
+	// Step 2: Move the new binary into the vacated original path.
+	if err := os.Rename(newBinaryPath, u.binaryPath); err != nil {
+		// Best-effort restore: move the old binary back before returning the error.
+		_ = os.Rename(oldPath, u.binaryPath)
+		return fmt.Errorf("%w: windows: place new binary: %v", ErrReplaceFailed, err)
+	}
+
+	// Step 3: Try to remove the old binary. The file may still be mapped into
+	// the running process, so this may fail silently – that is acceptable.
+	_ = os.Remove(oldPath)
 
 	return nil
 }

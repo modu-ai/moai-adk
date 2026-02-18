@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"time"
 )
 
@@ -30,19 +31,55 @@ func (r *rollbackImpl) CreateBackup() (string, error) {
 }
 
 // Restore copies the backup file back to the original binary location.
+// On Windows, a two-step rename approach is used to avoid "Access is denied"
+// errors that occur when writing to a running executable.
 func (r *rollbackImpl) Restore(backupPath string) error {
 	if _, err := os.Stat(backupPath); err != nil {
 		return fmt.Errorf("%w: backup not found at %s: %v", ErrRollbackFailed, backupPath, err)
 	}
 
-	if err := copyFile(backupPath, r.binaryPath); err != nil {
-		return fmt.Errorf("%w: restore from %s: %v", ErrRollbackFailed, backupPath, err)
+	if runtime.GOOS == "windows" {
+		if err := r.restoreOnWindows(backupPath); err != nil {
+			return err
+		}
+	} else {
+		if err := copyFile(backupPath, r.binaryPath); err != nil {
+			return fmt.Errorf("%w: restore from %s: %v", ErrRollbackFailed, backupPath, err)
+		}
 	}
 
 	// Ensure execute permission on restored binary.
 	if err := os.Chmod(r.binaryPath, 0o755); err != nil {
 		return fmt.Errorf("%w: chmod after restore: %v", ErrRollbackFailed, err)
 	}
+
+	return nil
+}
+
+// restoreOnWindows performs a Windows-safe rollback restoration.
+// It renames the (potentially locked) current binary away before copying
+// the backup into the original path.
+func (r *rollbackImpl) restoreOnWindows(backupPath string) error {
+	// Step 1: Rename the current (failed) binary to a temporary path.
+	// Windows allows renaming a running executable.
+	failedPath := fmt.Sprintf("%s.failed-%d", r.binaryPath, time.Now().UnixNano())
+	if err := os.Rename(r.binaryPath, failedPath); err != nil {
+		// If the current binary does not exist (e.g. it was already removed),
+		// continue and attempt the copy regardless.
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("%w: windows: rename failed binary away: %v", ErrRollbackFailed, err)
+		}
+	}
+
+	// Step 2: Copy the backup to the original path (now free).
+	if err := copyFile(backupPath, r.binaryPath); err != nil {
+		// Best-effort: try to put the failed binary back.
+		_ = os.Rename(failedPath, r.binaryPath)
+		return fmt.Errorf("%w: restore from %s: %v", ErrRollbackFailed, backupPath, err)
+	}
+
+	// Step 3: Opportunistically remove the failed binary.
+	_ = os.Remove(failedPath)
 
 	return nil
 }
