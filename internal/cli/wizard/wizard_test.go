@@ -10,7 +10,7 @@ func TestWizardResult(t *testing.T) {
 		Locale:          "ko",
 		UserName:        "TestUser",
 		GitMode:         "personal",
-		GitHubUsername:   "testuser",
+		GitHubUsername:  "testuser",
 		GitCommitLang:   "en",
 		CodeCommentLang: "en",
 		DocLang:         "ko",
@@ -460,7 +460,7 @@ func TestWizardResultGitLabFields(t *testing.T) {
 		GitMode:           "personal",
 		GitProvider:       "gitlab",
 		GitLabInstanceURL: "https://gitlab.company.com",
-		GitLabUsername:     "gluser",
+		GitLabUsername:    "gluser",
 		GitLabToken:       "glpat-test-token",
 	}
 
@@ -802,12 +802,12 @@ func TestDefaultQuestions_SelectQuestionsHaveOptions(t *testing.T) {
 func TestDefaultQuestions_ConditionalQuestionsHaveConditions(t *testing.T) {
 	questions := DefaultQuestions("/tmp/test")
 	conditionalIDs := map[string]bool{
-		"git_provider":       true,
+		"git_provider":        true,
 		"gitlab_instance_url": true,
-		"github_username":    true,
-		"github_token":       true,
-		"gitlab_username":    true,
-		"gitlab_token":       true,
+		"github_username":     true,
+		"github_token":        true,
+		"gitlab_username":     true,
+		"gitlab_token":        true,
 	}
 
 	for _, q := range questions {

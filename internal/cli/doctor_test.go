@@ -259,9 +259,9 @@ func TestStatusIcon(t *testing.T) {
 		status   CheckStatus
 		contains string
 	}{
-		{CheckOK, "\u2713"},       // ✓
-		{CheckWarn, "\u26A0"},     // ⚠
-		{CheckFail, "\u2717"},     // ✗
+		{CheckOK, "\u2713"},   // ✓
+		{CheckWarn, "\u26A0"}, // ⚠
+		{CheckFail, "\u2717"}, // ✗
 		{CheckStatus("unknown"), "?"},
 	}
 	for _, tt := range tests {

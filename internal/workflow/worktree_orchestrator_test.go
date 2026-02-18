@@ -22,14 +22,14 @@ type mockWorktreeManager struct {
 	root      string
 }
 
-func (m *mockWorktreeManager) Add(_, _ string) error          { return m.addErr }
-func (m *mockWorktreeManager) List() ([]git.Worktree, error)  { return m.worktrees, m.listErr }
-func (m *mockWorktreeManager) Remove(_ string, _ bool) error  { return nil }
-func (m *mockWorktreeManager) Prune() error                   { return nil }
-func (m *mockWorktreeManager) Repair() error                  { return nil }
-func (m *mockWorktreeManager) Root() string                   { return m.root }
-func (m *mockWorktreeManager) Sync(_, _, _ string) error      { return nil }
-func (m *mockWorktreeManager) DeleteBranch(_ string) error    { return nil }
+func (m *mockWorktreeManager) Add(_, _ string) error         { return m.addErr }
+func (m *mockWorktreeManager) List() ([]git.Worktree, error) { return m.worktrees, m.listErr }
+func (m *mockWorktreeManager) Remove(_ string, _ bool) error { return nil }
+func (m *mockWorktreeManager) Prune() error                  { return nil }
+func (m *mockWorktreeManager) Repair() error                 { return nil }
+func (m *mockWorktreeManager) Root() string                  { return m.root }
+func (m *mockWorktreeManager) Sync(_, _, _ string) error     { return nil }
+func (m *mockWorktreeManager) DeleteBranch(_ string) error   { return nil }
 func (m *mockWorktreeManager) IsBranchMerged(_, _ string) (bool, error) {
 	return false, nil
 }

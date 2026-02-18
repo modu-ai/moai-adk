@@ -328,7 +328,7 @@ func TestIssueCloser_Close_ContextCancelledDuringRetryWait(t *testing.T) {
 
 	closer := NewIssueCloser("/tmp/repo",
 		WithExecFunc(exec),
-		WithMaxRetries(10), // Many retries to ensure we hit the delay.
+		WithMaxRetries(10),                   // Many retries to ensure we hit the delay.
 		WithRetryDelay(500*time.Millisecond), // Long delay so context cancels during wait.
 	)
 

@@ -110,11 +110,11 @@ type defaultBranchDetectorFunc func(ctx context.Context, root string) string
 
 // worktreeOrchestrator implements WorktreeOrchestrator.
 type worktreeOrchestrator struct {
-	worktreeMgr    git.WorktreeManager
-	validator      quality.WorktreeValidator
-	executor       PhaseExecutor
-	detectBranch   defaultBranchDetectorFunc
-	logger         *slog.Logger
+	worktreeMgr  git.WorktreeManager
+	validator    quality.WorktreeValidator
+	executor     PhaseExecutor
+	detectBranch defaultBranchDetectorFunc
+	logger       *slog.Logger
 }
 
 // Compile-time interface compliance check.

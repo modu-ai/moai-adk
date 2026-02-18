@@ -60,7 +60,6 @@ func buildSelectField(label string, items []SelectItem, selected *string) *huh.S
 		Value(selected)
 }
 
-
 // selectInteractive runs a huh.Select form for interactive selection.
 func (s *selectorImpl) selectInteractive(label string, items []SelectItem) (string, error) {
 	var selected string

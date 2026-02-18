@@ -23,9 +23,9 @@ type mockGHClient struct {
 	prMergeMethod       MergeMethod
 	prMergeDeleteBranch bool
 	pushCalled          bool
-	pushDir           string
-	prViewCallCount   int
-	prChecksCallCount int
+	pushDir             string
+	prViewCallCount     int
+	prChecksCallCount   int
 }
 
 func (m *mockGHClient) PRCreate(_ context.Context, _ PRCreateOptions) (int, error) {

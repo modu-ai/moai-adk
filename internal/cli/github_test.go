@@ -25,10 +25,10 @@ func (m *mockGHIssueParser) ParseIssue(ctx context.Context, number int) (*github
 
 // mockSpecLinker implements github.SpecLinker for testing.
 type mockGHSpecLinker struct {
-	linkFunc       func(issueNum int, specID string) error
-	getSpecFunc    func(issueNum int) (string, error)
-	getIssueFunc   func(specID string) (int, error)
-	listFunc       func() []github.SpecMapping
+	linkFunc     func(issueNum int, specID string) error
+	getSpecFunc  func(issueNum int) (string, error)
+	getIssueFunc func(specID string) (int, error)
+	listFunc     func() []github.SpecMapping
 }
 
 func (m *mockGHSpecLinker) LinkIssueToSpec(issueNum int, specID string) error {
