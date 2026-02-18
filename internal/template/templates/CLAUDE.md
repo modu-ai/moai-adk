@@ -365,6 +365,47 @@ For complete Agent Teams documentation including team API reference, agent roste
 
 ---
 
+## Troubleshooting
+
+### Debugging MoAI Sessions
+
+When MoAI workflows behave unexpectedly, use Claude Code's built-in debug tools:
+
+```bash
+# Enable hook debugging
+claude --debug "hooks"
+
+# Enable API + hook debugging
+claude --debug "api,hooks"
+
+# Enable MCP debugging
+claude --debug "mcp"
+```
+
+Or use the `/debug` command inside a session to inspect current session state, hook execution logs, and tool traces.
+
+### Common Issues
+
+| Symptom | Cause | Solution |
+|---------|-------|---------|
+| TeammateIdle hook blocks teammate | LSP errors exceed threshold | Fix errors, or set `enforce_quality: false` in quality.yaml |
+| Agent Teams messages not delivered | Session was resumed after interrupt | Spawn new teammates; old teammates are orphaned |
+| `moai hook subagent-stop` fails | Binary not in PATH | Run `which moai` to verify installation |
+| settings.json not updated after `moai update` | Conflict with user modifications | Run `moai update -t` for template-only sync |
+
+### Reading Large PDFs
+
+When agents need to analyze large PDF files (>10 pages), use the `pages` parameter:
+
+```
+Read /path/to/doc.pdf
+pages: "1-20"
+```
+
+Large PDFs (>10 pages) return a lightweight reference when @-mentioned. Always specify page ranges for PDFs over 50 pages to avoid token waste.
+
+---
+
 Version: 13.1.0 (Agent Teams Integration)
 Last Updated: 2026-02-10
 Language: English

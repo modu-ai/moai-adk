@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.5.0] - 2026-02-18
+
+### Added
+
+- **Agent Teams Quality Hooks**: TeammateIdle hook now enforces LSP quality gates when diagnostics baseline exists. TaskCompleted hook verifies SPEC documents exist when task references SPEC-XXX patterns. All validation uses graceful degradation.
+- **Agent Persistent Memory**: All 28 agent templates now have consistent `memory` frontmatter. Manager/Expert/Team agents use `project` scope; Builder agents use `user` scope for cross-project learning.
+- **Settings Enhancements**: `spinnerTipsOverride` with 8 MoAI-specific workflow tips, `enabledPlugins`, and `extraKnownMarketplaces` added to settings.json template (Claude Code v2.1.45).
+- **Task Metrics Logging**: PostToolUse hook now captures Task tool metrics (tokens, tool uses, duration) to `.moai/logs/task-metrics.jsonl` for session analytics.
+- **MCP OAuth Support**: Added `.moai/docs/MCP_OAUTH_SETUP.md` guide for configuring OAuth credentials for MCP servers (Slack, GitHub, Sentry).
+- **Troubleshooting Guide**: Added troubleshooting section to CLAUDE.md covering `/debug` command usage, common Agent Teams issues, and PDF pagination tips.
+
+### Fixed
+
+- **SubagentStop Hook**: `moai hook subagent-stop` was not registered as a CLI subcommand, causing silent failures. Now properly registered (Claude Code v2.1.33).
+- **SessionEnd Cleanup**: SessionEnd hook now automatically removes orphaned team directories and tmux sessions from interrupted Agent Teams workflows.
+
+### Changed
+
+- **HookInput**: Added `TeamName`, `TeammateName`, `TaskID`, `TaskSubject`, `TaskDescription` fields for Agent Teams event handling (Claude Code v2.1.33).
+
+---
+
 ## [2.4.7] - 2026-02-18
 
 ### Summary

@@ -10,6 +10,8 @@ Directory convention:
 - User custom agents: `.claude/agents/<agent-name>.md` (root level)
 - MoAI-ADK system agents: `.claude/agents/moai/<agent-name>.md` (moai subdirectory)
 
+Platform Support: Windows ARM64 (`win32-arm64`) is natively supported as of Claude Code v2.1.41. No WSL required for ARM-based Windows devices.
+
 ## Supported Frontmatter Fields
 
 All agent definitions use YAML frontmatter. The following fields are available:
