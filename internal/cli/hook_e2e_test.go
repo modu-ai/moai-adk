@@ -266,10 +266,8 @@ func TestHookValidEventTypes_AllHaveSubcommands(t *testing.T) {
 	t.Parallel()
 
 	// Events that do NOT have a direct hookCmd subcommand.
-	// SubagentStop is handled by the "agent" subcommand pattern.
-	excludedEvents := map[hook.EventType]bool{
-		hook.EventSubagentStop: true,
-	}
+	// (SubagentStop now has a direct subcommand in addition to the "agent" pattern.)
+	excludedEvents := map[hook.EventType]bool{}
 
 	// Build a mapping from EventType to expected subcommand name.
 	eventToSubcmd := map[hook.EventType]string{
@@ -286,6 +284,7 @@ func TestHookValidEventTypes_AllHaveSubcommands(t *testing.T) {
 		hook.EventPermissionRequest:  "permission-request",
 		hook.EventTeammateIdle:       "teammate-idle",
 		hook.EventTaskCompleted:      "task-completed",
+		hook.EventSubagentStop:       "subagent-stop",
 	}
 
 	registeredNames := make(map[string]bool)

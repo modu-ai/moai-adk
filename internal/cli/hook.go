@@ -39,6 +39,7 @@ func init() {
 		{"permission-request", "Handle permission request event", hook.EventPermissionRequest},
 		{"teammate-idle", "Handle teammate idle event", hook.EventTeammateIdle},
 		{"task-completed", "Handle task completed event", hook.EventTaskCompleted},
+		{"subagent-stop", "Handle subagent stop event", hook.EventSubagentStop},
 	}
 
 	for _, sub := range hookSubcommands {

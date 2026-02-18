@@ -42,7 +42,7 @@ func TestHookCmd_HasSubcommands(t *testing.T) {
 		"session-start", "pre-tool", "post-tool", "session-end", "stop", "compact",
 		"list", "agent", "pre-push",
 		"post-tool-failure", "notification", "subagent-start", "user-prompt-submit",
-		"permission-request", "teammate-idle", "task-completed",
+		"permission-request", "teammate-idle", "task-completed", "subagent-stop",
 	}
 	for _, name := range expected {
 		found := false
@@ -60,8 +60,8 @@ func TestHookCmd_HasSubcommands(t *testing.T) {
 
 func TestHookCmd_SubcommandCount(t *testing.T) {
 	count := len(hookCmd.Commands())
-	if count != 16 {
-		t.Errorf("hook should have 16 subcommands, got %d", count)
+	if count != 17 {
+		t.Errorf("hook should have 17 subcommands, got %d", count)
 	}
 }
 
