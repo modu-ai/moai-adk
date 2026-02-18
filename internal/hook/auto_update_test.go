@@ -107,3 +107,47 @@ func TestAutoUpdateHandler_ContextCancellation(t *testing.T) {
 			output.SystemMessage)
 	}
 }
+
+// TestAutoUpdateHandler_IndependentContext verifies that Handle uses an
+// independent context for the update function, not the caller's context.
+// This is critical for issue #397: when the registry's outer context
+// expires, the handler must still return cleanly rather than propagating
+// a timeout error that causes "SessionStart:startup hook error".
+func TestAutoUpdateHandler_IndependentContext(t *testing.T) {
+	// The update function checks whether its context is already cancelled
+	// at the moment the function is invoked. If Handle forwards the caller's
+	// (pre-cancelled) context, the function will see ctx.Err() != nil
+	// immediately upon entry. If Handle creates an independent context from
+	// context.Background(), the function will see ctx.Err() == nil.
+	ctxErrAtInvocation := make(chan error, 1)
+	fn := func(ctx context.Context) (*AutoUpdateResult, error) {
+		ctxErrAtInvocation <- ctx.Err()
+		return &AutoUpdateResult{Updated: false}, nil
+	}
+
+	// Pre-cancel the caller context to simulate a timed-out registry context.
+	callerCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	h := NewAutoUpdateHandler(fn)
+	output, err := h.Handle(callerCtx, &HookInput{})
+	if err != nil {
+		t.Fatalf("Handle() should not propagate errors, got: %v", err)
+	}
+	if output == nil {
+		t.Fatal("Handle() returned nil output")
+	}
+
+	// The update function must have been called with a non-cancelled context,
+	// proving Handle creates an independent context rather than forwarding
+	// the (expired) caller context.
+	select {
+	case ctxErr := <-ctxErrAtInvocation:
+		if ctxErr != nil {
+			t.Errorf("update function received a cancelled context at invocation (%v), "+
+				"want independent non-cancelled context", ctxErr)
+		}
+	default:
+		t.Fatal("update function was never called")
+	}
+}
