@@ -399,3 +399,167 @@ func TestChecker_DownloadChecksum_FileNotFound(t *testing.T) {
 		t.Error("expected error when file not found in checksums")
 	}
 }
+
+func TestChecker_CheckLatest_ReleasesArray(t *testing.T) {
+	t.Parallel()
+
+	ext := "tar.gz"
+	if runtime.GOOS == "windows" {
+		ext = "zip"
+	}
+	archiveName := fmt.Sprintf("moai-adk_2.0.0_%s_%s.%s", runtime.GOOS, runtime.GOARCH, ext)
+
+	releases := []githubRelease{
+		{
+			TagName:     "go-v2.0.0",
+			PublishedAt: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC),
+			Assets: []githubAsset{
+				{Name: archiveName, BrowserDownloadURL: "https://example.com/v2.tar.gz"},
+			},
+		},
+		{
+			TagName:     "go-v1.5.0",
+			PublishedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			Assets:      []githubAsset{},
+		},
+		{
+			TagName:     "v3.0.0",
+			PublishedAt: time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC),
+			Assets:      []githubAsset{},
+		},
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data, _ := json.Marshal(releases)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(data)
+	}))
+	defer ts.Close()
+
+	// URL ends with /releases (not /latest) to trigger array parsing
+	checker := NewChecker(ts.URL+"/releases", http.DefaultClient)
+	info, err := checker.CheckLatest(context.Background())
+	if err != nil {
+		t.Fatalf("CheckLatest: %v", err)
+	}
+	if info.Version != "go-v2.0.0" {
+		t.Errorf("Version = %q, want %q", info.Version, "go-v2.0.0")
+	}
+}
+
+func TestChecker_CheckLatest_ReleasesArray_NoGoVReleases(t *testing.T) {
+	t.Parallel()
+
+	releases := []githubRelease{
+		{TagName: "v3.0.0", PublishedAt: time.Now(), Assets: nil},
+		{TagName: "v2.0.0", PublishedAt: time.Now(), Assets: nil},
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data, _ := json.Marshal(releases)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(data)
+	}))
+	defer ts.Close()
+
+	checker := NewChecker(ts.URL+"/releases", http.DefaultClient)
+	_, err := checker.CheckLatest(context.Background())
+	if err == nil {
+		t.Error("expected error when no go-v releases found")
+	}
+}
+
+func TestChecker_CheckLatest_404(t *testing.T) {
+	t.Parallel()
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer ts.Close()
+
+	checker := NewChecker(ts.URL, http.DefaultClient)
+	_, err := checker.CheckLatest(context.Background())
+	if err == nil {
+		t.Error("expected error for 404 response")
+	}
+}
+
+func TestNewChecker_NilClient(t *testing.T) {
+	t.Parallel()
+
+	c := NewChecker("https://example.com", nil)
+	if c == nil {
+		t.Fatal("NewChecker returned nil with nil client")
+	}
+}
+
+func TestParseSemverParts_PreRelease(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		v    string
+		want [3]int
+	}{
+		{"standard", "1.2.3", [3]int{1, 2, 3}},
+		{"pre-release dash", "1.2.3-beta", [3]int{1, 2, 3}},
+		{"pre-release plus", "1.2.3+build123", [3]int{1, 2, 3}},
+		{"major only", "5", [3]int{5, 0, 0}},
+		{"major.minor", "3.7", [3]int{3, 7, 0}},
+		{"empty", "", [3]int{0, 0, 0}},
+		{"non-numeric", "abc.def.ghi", [3]int{0, 0, 0}},
+		{"mixed", "1.abc.3", [3]int{1, 0, 3}},
+		{"patch with pre-release", "2.1.0-alpha.1", [3]int{2, 1, 0}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := parseSemverParts(tt.v)
+			if got != tt.want {
+				t.Errorf("parseSemverParts(%q) = %v, want %v", tt.v, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestChecker_CheckLatest_ReleasesArray_InvalidJSON(t *testing.T) {
+	t.Parallel()
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("{not an array}"))
+	}))
+	defer ts.Close()
+
+	checker := NewChecker(ts.URL+"/releases", http.DefaultClient)
+	_, err := checker.CheckLatest(context.Background())
+	if err == nil {
+		t.Error("expected error for invalid JSON array")
+	}
+}
+
+func TestChecker_IsUpdateAvailable_Error(t *testing.T) {
+	t.Parallel()
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+
+	checker := NewChecker(ts.URL, http.DefaultClient)
+	available, info, err := checker.IsUpdateAvailable("v1.0.0")
+	if err == nil {
+		t.Error("expected error")
+	}
+	if available {
+		t.Error("expected available=false on error")
+	}
+	if info != nil {
+		t.Error("expected nil info on error")
+	}
+}

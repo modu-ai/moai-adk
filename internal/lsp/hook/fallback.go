@@ -11,6 +11,12 @@ import (
 	"time"
 )
 
+// Package-level compiled regexps to avoid repeated compilation.
+var (
+	reGoVetPattern        = regexp.MustCompile(`\.?/?([^:]+):(\d+):(\d+): (.+)`)
+	reTypeScriptPattern   = regexp.MustCompile(`([^(]+)\((\d+),(\d+)\): (error|warning) (TS\d+): (.+)`)
+)
+
 // FallbackTool represents a CLI tool configuration for fallback diagnostics.
 type FallbackTool struct {
 	Name       string
@@ -290,7 +296,6 @@ func parseGoVetOutput(output string, basePath string) []Diagnostic {
 	result := make([]Diagnostic, 0)
 
 	// Pattern: ./file.go:line:column: message
-	pattern := regexp.MustCompile(`\.?/?([^:]+):(\d+):(\d+): (.+)`)
 
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
@@ -299,7 +304,7 @@ func parseGoVetOutput(output string, basePath string) []Diagnostic {
 			continue
 		}
 
-		matches := pattern.FindStringSubmatch(line)
+		matches := reGoVetPattern.FindStringSubmatch(line)
 		if len(matches) != 5 {
 			continue
 		}
@@ -333,7 +338,6 @@ func parseTypeScriptOutput(output string) []Diagnostic {
 	var result []Diagnostic
 
 	// Pattern: file.ts(line,column): error TS1234: message
-	pattern := regexp.MustCompile(`([^(]+)\((\d+),(\d+)\): (error|warning) (TS\d+): (.+)`)
 
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
@@ -342,7 +346,7 @@ func parseTypeScriptOutput(output string) []Diagnostic {
 			continue
 		}
 
-		matches := pattern.FindStringSubmatch(line)
+		matches := reTypeScriptPattern.FindStringSubmatch(line)
 		if len(matches) != 7 {
 			continue
 		}

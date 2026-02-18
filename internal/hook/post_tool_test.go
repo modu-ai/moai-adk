@@ -4,10 +4,14 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
 )
 
 func TestPostToolHandler_EventType(t *testing.T) {
@@ -181,7 +185,7 @@ func TestLogTaskMetrics(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to open JSONL file: %v", err)
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 
 			scanner := bufio.NewScanner(f)
 			if !scanner.Scan() {
@@ -242,5 +246,386 @@ func TestPostToolHandler_Handle_TaskMetrics_DoesNotFail(t *testing.T) {
 	}
 	if got.HookSpecificOutput == nil || got.HookSpecificOutput.HookEventName != "PostToolUse" {
 		t.Errorf("expected PostToolUse output, got: %+v", got)
+	}
+}
+
+func TestNewPostToolHandlerWithDiagnostics_NilDiagnostics(t *testing.T) {
+	t.Parallel()
+
+	h := NewPostToolHandlerWithDiagnostics(nil)
+	if h == nil {
+		t.Fatal("NewPostToolHandlerWithDiagnostics(nil) returned nil")
+	}
+	if h.EventType() != EventPostToolUse {
+		t.Errorf("EventType() = %q, want %q", h.EventType(), EventPostToolUse)
+	}
+}
+
+func TestPostToolHandler_Handle_WithInputAndOutput(t *testing.T) {
+	t.Parallel()
+
+	h := NewPostToolHandler()
+	ctx := context.Background()
+
+	input := &HookInput{
+		SessionID:     "sess-both-sizes",
+		CWD:           "/tmp",
+		HookEventName: "PostToolUse",
+		ToolName:      "Edit",
+		ToolInput:     json.RawMessage(`{"file_path": "/tmp/main.go", "old_string": "a", "new_string": "b"}`),
+		ToolOutput:    json.RawMessage(`{"result": "success"}`),
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+	if got == nil || got.Data == nil {
+		t.Fatal("expected non-nil Data with both input and output")
+	}
+
+	var metrics map[string]any
+	if err := json.Unmarshal(got.Data, &metrics); err != nil {
+		t.Fatalf("unmarshal Data: %v", err)
+	}
+	if _, ok := metrics["input_size"]; !ok {
+		t.Error("metrics should contain input_size")
+	}
+	if _, ok := metrics["output_size"]; !ok {
+		t.Error("metrics should contain output_size")
+	}
+	if metrics["tool_name"] != "Edit" {
+		t.Errorf("tool_name = %v, want Edit", metrics["tool_name"])
+	}
+	if metrics["session_id"] != "sess-both-sizes" {
+		t.Errorf("session_id = %v, want sess-both-sizes", metrics["session_id"])
+	}
+}
+
+func TestPostToolHandler_Handle_TaskToolRoutesToLogTaskMetrics(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	h := NewPostToolHandler()
+	ctx := context.Background()
+
+	input := &HookInput{
+		SessionID:    "sess-task-route",
+		CWD:          tmpDir,
+		ToolName:     "Task",
+		ToolResponse: json.RawMessage(`{"status":"completed","output":"done","metrics":{"tokensUsed":500,"toolUses":3,"durationSeconds":12.5}}`),
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+	if got == nil {
+		t.Fatal("Handle() returned nil")
+	}
+
+	// Verify the metrics JSONL was created
+	logPath := filepath.Join(tmpDir, ".moai", "logs", "task-metrics.jsonl")
+	if _, err := os.Stat(logPath); err != nil {
+		t.Errorf("task-metrics.jsonl should be created: %v", err)
+	}
+
+	// Verify JSONL content
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("read JSONL: %v", err)
+	}
+
+	var rec taskMetricsRecord
+	scanner := bufio.NewScanner(strings.NewReader(string(data)))
+	if !scanner.Scan() {
+		t.Fatal("JSONL file is empty")
+	}
+	if err := json.Unmarshal(scanner.Bytes(), &rec); err != nil {
+		t.Fatalf("unmarshal JSONL: %v", err)
+	}
+	if rec.TokensUsed != 500 {
+		t.Errorf("tokens_used = %d, want 500", rec.TokensUsed)
+	}
+	if rec.ToolUses != 3 {
+		t.Errorf("tool_uses = %d, want 3", rec.ToolUses)
+	}
+}
+
+func TestLogTaskMetrics_AppendMultipleRecords(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+
+	for i := 0; i < 3; i++ {
+		input := &HookInput{
+			SessionID:    fmt.Sprintf("sess-multi-%d", i),
+			CWD:          tmpDir,
+			ToolName:     "Task",
+			ToolResponse: json.RawMessage(fmt.Sprintf(`{"metrics":{"tokensUsed":%d,"toolUses":%d,"durationSeconds":%d}}`, (i+1)*100, i+1, i+1)),
+		}
+		logTaskMetrics(input)
+	}
+
+	logPath := filepath.Join(tmpDir, ".moai", "logs", "task-metrics.jsonl")
+	f, err := os.Open(logPath)
+	if err != nil {
+		t.Fatalf("open JSONL: %v", err)
+	}
+	defer func() { _ = f.Close() }()
+
+	count := 0
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		count++
+		var rec taskMetricsRecord
+		if err := json.Unmarshal(scanner.Bytes(), &rec); err != nil {
+			t.Fatalf("unmarshal record %d: %v", count, err)
+		}
+		if rec.SessionID == "" {
+			t.Errorf("record %d: session_id should not be empty", count)
+		}
+	}
+	if count != 3 {
+		t.Errorf("expected 3 records, got %d", count)
+	}
+}
+
+// --- collectDiagnostics mock and tests ---
+
+type mockDiagnosticsCollector struct {
+	getDiagnosticsFunc   func(ctx context.Context, filePath string) ([]lsphook.Diagnostic, error)
+	getSeverityCountFunc func(diagnostics []lsphook.Diagnostic) lsphook.SeverityCounts
+}
+
+func (m *mockDiagnosticsCollector) GetDiagnostics(ctx context.Context, filePath string) ([]lsphook.Diagnostic, error) {
+	if m.getDiagnosticsFunc != nil {
+		return m.getDiagnosticsFunc(ctx, filePath)
+	}
+	return nil, nil
+}
+
+func (m *mockDiagnosticsCollector) GetSeverityCounts(diagnostics []lsphook.Diagnostic) lsphook.SeverityCounts {
+	if m.getSeverityCountFunc != nil {
+		return m.getSeverityCountFunc(diagnostics)
+	}
+	return lsphook.SeverityCounts{}
+}
+
+func TestPostToolHandler_CollectDiagnostics_WriteToolWithErrors(t *testing.T) {
+	t.Parallel()
+
+	mock := &mockDiagnosticsCollector{
+		getDiagnosticsFunc: func(_ context.Context, _ string) ([]lsphook.Diagnostic, error) {
+			return []lsphook.Diagnostic{
+				{Message: "undefined: foo", Severity: lsphook.SeverityError},
+				{Message: "unused variable", Severity: lsphook.SeverityWarning},
+			}, nil
+		},
+		getSeverityCountFunc: func(_ []lsphook.Diagnostic) lsphook.SeverityCounts {
+			return lsphook.SeverityCounts{Errors: 1, Warnings: 1}
+		},
+	}
+
+	h := NewPostToolHandlerWithDiagnostics(mock)
+	ctx := context.Background()
+
+	input := &HookInput{
+		SessionID:     "sess-diag-errors",
+		CWD:           "/tmp",
+		HookEventName: "PostToolUse",
+		ToolName:      "Write",
+		ToolInput:     json.RawMessage(`{"file_path": "/tmp/test.go", "content": "package main"}`),
+		ToolOutput:    json.RawMessage(`{"success": true}`),
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+	if got == nil || got.Data == nil {
+		t.Fatal("expected non-nil Data")
+	}
+
+	var metrics map[string]any
+	if err := json.Unmarshal(got.Data, &metrics); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	diag, ok := metrics["lsp_diagnostics"]
+	if !ok {
+		t.Fatal("expected lsp_diagnostics in metrics")
+	}
+	diagMap, ok := diag.(map[string]any)
+	if !ok {
+		t.Fatalf("lsp_diagnostics is not a map, got %T", diag)
+	}
+	if diagMap["errors"] != float64(1) {
+		t.Errorf("errors = %v, want 1", diagMap["errors"])
+	}
+	if diagMap["warnings"] != float64(1) {
+		t.Errorf("warnings = %v, want 1", diagMap["warnings"])
+	}
+	if diagMap["has_issues"] != true {
+		t.Errorf("has_issues = %v, want true", diagMap["has_issues"])
+	}
+}
+
+func TestPostToolHandler_CollectDiagnostics_EditToolClean(t *testing.T) {
+	t.Parallel()
+
+	mock := &mockDiagnosticsCollector{
+		getDiagnosticsFunc: func(_ context.Context, _ string) ([]lsphook.Diagnostic, error) {
+			return []lsphook.Diagnostic{}, nil
+		},
+		getSeverityCountFunc: func(_ []lsphook.Diagnostic) lsphook.SeverityCounts {
+			return lsphook.SeverityCounts{}
+		},
+	}
+
+	h := NewPostToolHandlerWithDiagnostics(mock)
+	ctx := context.Background()
+
+	input := &HookInput{
+		SessionID:     "sess-diag-clean",
+		CWD:           "/tmp",
+		HookEventName: "PostToolUse",
+		ToolName:      "Edit",
+		ToolInput:     json.RawMessage(`{"file_path": "/tmp/clean.go", "old_string": "a", "new_string": "b"}`),
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+
+	var metrics map[string]any
+	if err := json.Unmarshal(got.Data, &metrics); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	diag, ok := metrics["lsp_diagnostics"]
+	if !ok {
+		t.Fatal("expected lsp_diagnostics in metrics")
+	}
+	diagMap := diag.(map[string]any)
+	if diagMap["has_issues"] != false {
+		t.Errorf("has_issues = %v, want false", diagMap["has_issues"])
+	}
+}
+
+func TestPostToolHandler_CollectDiagnostics_Error(t *testing.T) {
+	t.Parallel()
+
+	mock := &mockDiagnosticsCollector{
+		getDiagnosticsFunc: func(_ context.Context, _ string) ([]lsphook.Diagnostic, error) {
+			return nil, errors.New("LSP unavailable")
+		},
+	}
+
+	h := NewPostToolHandlerWithDiagnostics(mock)
+	ctx := context.Background()
+
+	input := &HookInput{
+		SessionID:     "sess-diag-err",
+		CWD:           "/tmp",
+		HookEventName: "PostToolUse",
+		ToolName:      "Write",
+		ToolInput:     json.RawMessage(`{"file_path": "/tmp/err.go", "content": "pkg"}`),
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+
+	// Should still succeed (observation only)
+	if got == nil {
+		t.Fatal("expected non-nil output")
+	}
+
+	var metrics map[string]any
+	if err := json.Unmarshal(got.Data, &metrics); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	// No lsp_diagnostics when collector fails
+	if _, ok := metrics["lsp_diagnostics"]; ok {
+		t.Error("expected no lsp_diagnostics when collector errors")
+	}
+}
+
+func TestPostToolHandler_CollectDiagnostics_InvalidToolInput(t *testing.T) {
+	t.Parallel()
+
+	mock := &mockDiagnosticsCollector{}
+	h := NewPostToolHandlerWithDiagnostics(mock)
+	ctx := context.Background()
+
+	input := &HookInput{
+		SessionID:     "sess-diag-badinput",
+		CWD:           "/tmp",
+		HookEventName: "PostToolUse",
+		ToolName:      "Write",
+		ToolInput:     json.RawMessage(`{invalid json`),
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+	if got == nil {
+		t.Fatal("expected non-nil output even with bad input")
+	}
+}
+
+func TestPostToolHandler_CollectDiagnostics_NoFilePath(t *testing.T) {
+	t.Parallel()
+
+	mock := &mockDiagnosticsCollector{}
+	h := NewPostToolHandlerWithDiagnostics(mock)
+	ctx := context.Background()
+
+	input := &HookInput{
+		SessionID:     "sess-diag-nopath",
+		CWD:           "/tmp",
+		HookEventName: "PostToolUse",
+		ToolName:      "Edit",
+		ToolInput:     json.RawMessage(`{"old_string": "a", "new_string": "b"}`),
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+	if got == nil {
+		t.Fatal("expected non-nil output")
+	}
+}
+
+func TestPostToolHandler_NonWriteEditTool_NoDiagnostics(t *testing.T) {
+	t.Parallel()
+
+	mock := &mockDiagnosticsCollector{
+		getDiagnosticsFunc: func(_ context.Context, _ string) ([]lsphook.Diagnostic, error) {
+			t.Error("GetDiagnostics should not be called for non-Write/Edit tools")
+			return nil, nil
+		},
+	}
+
+	h := NewPostToolHandlerWithDiagnostics(mock)
+	ctx := context.Background()
+
+	input := &HookInput{
+		SessionID:     "sess-diag-read",
+		CWD:           "/tmp",
+		HookEventName: "PostToolUse",
+		ToolName:      "Read",
+		ToolInput:     json.RawMessage(`{"file_path": "/tmp/test.go"}`),
+	}
+
+	_, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
 	}
 }

@@ -57,6 +57,17 @@ func TestCompactHandler_Handle(t *testing.T) {
 			setupDir:     false,
 			wantDecision: DecisionAllow,
 		},
+		{
+			name: "compact preserves session id in data",
+			input: &HookInput{
+				SessionID:     "sess-compact-preserve",
+				CWD:           "/tmp",
+				ProjectDir:    "/tmp",
+				HookEventName: "PreCompact",
+			},
+			setupDir:     false,
+			wantDecision: DecisionAllow,
+		},
 	}
 
 	for _, tt := range tests {
@@ -91,5 +102,42 @@ func TestCompactHandler_Handle(t *testing.T) {
 				t.Errorf("Data is not valid JSON: %s", got.Data)
 			}
 		})
+	}
+}
+
+func TestCompactHandler_Handle_DataContainsSessionID(t *testing.T) {
+	t.Parallel()
+
+	h := NewCompactHandler()
+	ctx := context.Background()
+
+	input := &HookInput{
+		SessionID:     "sess-data-check",
+		CWD:           "/tmp",
+		ProjectDir:    "/tmp",
+		HookEventName: "PreCompact",
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("Handle() error: %v", err)
+	}
+	if got.Data == nil {
+		t.Fatal("Data should not be nil")
+	}
+
+	var data map[string]any
+	if err := json.Unmarshal(got.Data, &data); err != nil {
+		t.Fatalf("unmarshal Data: %v", err)
+	}
+
+	if data["session_id"] != "sess-data-check" {
+		t.Errorf("session_id = %v, want sess-data-check", data["session_id"])
+	}
+	if data["status"] != "preserved" {
+		t.Errorf("status = %v, want preserved", data["status"])
+	}
+	if data["snapshot_created"] != true {
+		t.Errorf("snapshot_created = %v, want true", data["snapshot_created"])
 	}
 }

@@ -170,6 +170,8 @@ secret-*.*
 .claude/skills/*/*/*secret*
 .claude/skills/*/*/*key*
 .claude/skills/*/*/*token*
+# Re-include legitimate skill module files containing "token" in their name
+!.claude/skills/*/modules/*token*.md
 
 # ===========================================
 # Node.js (for docs/Nextra)

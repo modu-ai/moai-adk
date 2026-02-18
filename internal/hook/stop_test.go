@@ -63,3 +63,55 @@ func TestStopHandler_Handle(t *testing.T) {
 		})
 	}
 }
+
+func TestStopHandler_Handle_StopHookActive(t *testing.T) {
+	t.Parallel()
+
+	h := NewStopHandler()
+	ctx := context.Background()
+
+	input := &HookInput{
+		SessionID:      "sess-stop-active",
+		CWD:            "/tmp",
+		HookEventName:  "Stop",
+		StopHookActive: true,
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got == nil {
+		t.Fatal("got nil output")
+	}
+	// When StopHookActive is true, handler should return empty to break loop
+	if got.Decision != "" {
+		t.Errorf("Decision should be empty when StopHookActive=true, got %q", got.Decision)
+	}
+}
+
+func TestStopHandler_Handle_StopHookNotActive(t *testing.T) {
+	t.Parallel()
+
+	h := NewStopHandler()
+	ctx := context.Background()
+
+	input := &HookInput{
+		SessionID:      "sess-stop-normal",
+		CWD:            "/tmp",
+		HookEventName:  "Stop",
+		StopHookActive: false,
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got == nil {
+		t.Fatal("got nil output")
+	}
+	// Default behavior: allow stop
+	if got.HookSpecificOutput != nil {
+		t.Error("Stop hook should not set hookSpecificOutput")
+	}
+}

@@ -104,6 +104,16 @@ func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInp
 			)
 			return output, nil
 		}
+
+		// Handler signalled exit code 2 (TeammateIdle keep-working, TaskCompleted reject).
+		// Short-circuit so the caller (CLI) can exit with code 2.
+		if output != nil && output.ExitCode == 2 {
+			slog.Info("handler requested exit code 2",
+				"event", string(event),
+				"handler_index", i,
+			)
+			return output, nil
+		}
 	}
 
 	return r.defaultOutputForEvent(event), nil

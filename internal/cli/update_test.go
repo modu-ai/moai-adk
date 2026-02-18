@@ -2701,7 +2701,7 @@ func TestRestoreMoaiConfig_CustomSectionPreserved(t *testing.T) {
 	}
 
 	// Simulate template sync: remove custom section (template doesn't have it)
-	os.Remove(customPath)
+	_ = os.Remove(customPath)
 
 	// Update standard section (as if template deployed a new version)
 	newStandardContent := []byte("moai:\n  version: \"2.0.0\"\n  new_field: \"added\"\n")

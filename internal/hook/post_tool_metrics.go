@@ -90,7 +90,7 @@ func logTaskMetrics(input *HookInput) {
 		)
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	if _, err := f.Write(line); err != nil {
 		slog.Warn("task metrics: failed to write log record",
