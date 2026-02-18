@@ -3,12 +3,10 @@ package wizard
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
-	"golang.org/x/term"
 )
 
 // statuslineSegmentPrefix is the prefix used for statusline segment question IDs.
@@ -26,15 +24,6 @@ func Run(questions []Question, styles *Styles) (*WizardResult, error) {
 	locale := ""
 	theme := newMoAIWizardTheme()
 
-	// Detect terminal height so each per-question form can use the full
-	// viewport. Without an explicit height, huh v0.8.x may under-report the
-	// available rows in subshell environments (e.g. Claude Code terminal),
-	// causing select options to be clipped to 1-2 visible items.
-	termH := 40 // safe fallback
-	if h, _, err := term.GetSize(int(os.Stdout.Fd())); err == nil && h > 0 {
-		termH = h
-	}
-
 	for i := range questions {
 		q := &questions[i]
 
@@ -46,8 +35,7 @@ func Run(questions []Question, styles *Styles) (*WizardResult, error) {
 		g := buildQuestionGroup(q, result, &locale)
 		form := huh.NewForm(g).
 			WithTheme(theme).
-			WithAccessible(false).
-			WithHeight(termH)
+			WithAccessible(false)
 
 		if err := form.Run(); err != nil {
 			if errors.Is(err, huh.ErrUserAborted) {
@@ -124,11 +112,14 @@ func buildSelectField(q *Question, result *WizardResult, locale *string) *huh.Se
 			}
 			return opts
 		}, locale).
-		// Height is set to the option count so all options are visible without
-		// scrolling. This avoids the huh v0.8.x YOffset scroll bug, which only
-		// manifests when the list is taller than the viewport. Minimum of 3 as
-		// a safety net for edge cases with very few options.
-		Height(max(len(q.Options), 3)).
+		// huh v0.8.x Select.Height(h) sets the *total* field height including
+		// the title and description rows. updateViewportHeight() subtracts the
+		// rendered height of those rows from h to get the options viewport:
+		//   viewport.Height = max(1, h - titleHeight - descHeight)
+		// With title=1 and desc=1, the offset is 2. To show all N options we
+		// therefore need h = N + 2. An extra +1 row is added as padding in
+		// case a description wraps to two lines at narrow terminal widths.
+		Height(len(q.Options) + 3).
 		Value(&selected)
 
 	// Wire up value storage after each change.
