@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime"
+	"strings"
 )
 
 // Browser implements BrowserOpener using platform-specific commands.
@@ -28,7 +29,10 @@ func (b *Browser) Open(url string) error {
 	case "linux":
 		cmd = exec.Command("xdg-open", url)
 	case "windows":
-		cmd = exec.Command("cmd", "/c", "start", url)
+		// Escape & as ^& because cmd.exe interprets & as a command separator.
+		// OAuth callback URLs contain multiple query parameters joined by &.
+		escapedURL := strings.ReplaceAll(url, "&", "^&")
+		cmd = exec.Command("cmd", "/c", "start", escapedURL)
 	default:
 		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
 	}
