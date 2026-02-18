@@ -9,6 +9,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.4.7] - 2026-02-18
+
+### Summary
+
+This patch release fully resolves the `moai init` / `moai update -c` interactive wizard scrolling regression introduced by charmbracelet/huh v0.8.x. Three compounding bugs were eliminated: shared viewport state across questions, incorrect height calculation, and `OptionsFunc` forcing a non-zero height that caused `updateViewportHeight()` to reset `YOffset` on every keypress — scrolling the selected item to the top and hiding options above the cursor.
+
+### Breaking Changes
+
+None.
+
+### Fixed
+
+- **Wizard scroll regression** (`moai init`, `moai update -c`): Pressing the down arrow no longer scrolls the option list — only the cursor highlight moves. Root cause was `OptionsFunc()` forcing `s.height = defaultHeight(10)` in huh v0.8.x, which triggered `updateViewportHeight()` to reset `viewport.YOffset = s.selected` on every `Update()` call. Fixed by replacing `OptionsFunc` with static `Options()` and removing any explicit `Height()` call, keeping `s.height = 0` so the auto-size branch sizes the viewport to exactly the number of options and never resets `YOffset`.
+- **Wizard shared viewport**: Each wizard question now runs as its own independent `huh.Form` instead of sharing a single form with multiple groups. This eliminates cross-question viewport state pollution in huh v0.8.x.
+- **Wizard height calculation**: `Select.Height()` was previously set incorrectly (options count only), ignoring title and description overhead. The explicit height call has been removed entirely in favour of huh's auto-sizing.
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.4.7] - 2026-02-18 (한국어)
+
+### 요약
+
+이번 패치 릴리즈는 charmbracelet/huh v0.8.x에서 발생하는 `moai init` / `moai update -c` 인터랙티브 위저드 스크롤 버그를 완전히 수정합니다. 세 가지 복합적인 버그를 제거했습니다: 질문 간 뷰포트 상태 공유, 잘못된 높이 계산, 그리고 `OptionsFunc`가 강제로 `s.height` 값을 설정해 매번 `updateViewportHeight()`가 `YOffset`을 리셋하여 선택 항목이 항상 맨 위로 스크롤되던 문제입니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 수정됨 (Fixed)
+
+- **위저드 스크롤 버그** (`moai init`, `moai update -c`): 이제 아래 화살표를 누르면 옵션 목록이 스크롤되지 않고 커서 하이라이트만 이동합니다. 근본 원인은 huh v0.8.x에서 `OptionsFunc()`가 `s.height = defaultHeight(10)`으로 강제 설정하여 `Update()` 호출마다 `viewport.YOffset = s.selected`가 리셋되었기 때문입니다. `OptionsFunc` 대신 정적 `Options()`를 사용하고 `Height()` 호출을 제거하여 `s.height = 0`을 유지함으로써 뷰포트가 정확히 옵션 개수만큼 자동 크기 조정되어 `YOffset`이 강제 초기화되지 않도록 수정했습니다.
+- **위저드 공유 뷰포트**: 이제 각 위저드 질문이 단일 폼 내 여러 그룹을 공유하는 대신 독립적인 `huh.Form`으로 실행됩니다. huh v0.8.x에서의 질문 간 뷰포트 상태 오염이 제거됩니다.
+- **위저드 높이 계산**: `Select.Height()`가 제목 및 설명 오버헤드를 무시하고 옵션 수만으로 잘못 계산되던 문제를 수정했습니다. 이제 명시적 `Height()` 호출을 제거하고 huh 자동 크기 조정을 활용합니다.
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.4.6] - 2026-02-18
 
 ### Summary
