@@ -37,7 +37,7 @@ type WizardResult struct {
 
 	// Agent Teams settings
 	AgentTeamsMode string // Agent Teams execution mode: auto, subagent, team
-	MaxTeammates   string // Maximum teammates (2-5, for team mode)
+	MaxTeammates   string // Maximum teammates (2-10, for team mode)
 	DefaultModel   string // Default model for teammates: haiku, sonnet, opus
 
 	// Statusline settings

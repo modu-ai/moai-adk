@@ -9,6 +9,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.4.6] - 2026-02-18
+
+### Summary
+
+This patch release fixes the `moai init` / `moai update -c` interactive wizard where the **max teammates** and **default model** select fields displayed only one option and became unresponsive after selection, caused by two compounding bugs in charmbracelet/huh v0.8.x.
+
+### Breaking Changes
+
+None.
+
+### Fixed
+
+- **Wizard viewport freeze (Height(0))**: The select field height was set to `0`, which in huh v0.8.x means a viewport of zero lines. Only the currently-selected item was rendered and the list could not scroll. Fixed to `Height(max(len(options), 3))` so all options are always fully visible.
+- **Wizard YOffset scroll bug (max teammates)**: When the default option is at index N, huh v0.8.x unconditionally sets `viewport.YOffset = N`, hiding all options above it. Fixed by reordering `max_teammates` options descending (10 → 2) so the default ("10") is always at index 0.
+- **Wizard YOffset scroll bug (default model)**: Same YOffset issue affected the `default_model` field. Fixed by reordering options so "Sonnet (Balanced)" (the default) appears first.
+- **MaxTeammates comment**: Type comment incorrectly stated "2-5"; corrected to "2-10".
+- **Korean translation typos**: Size-description labels in the `max_teammates` Korean translation were missing "모" (e.g., "소규 팀" → "소규모 팀", "중대규 팀" → "중대규모 팀").
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.4.6] - 2026-02-18 (한국어)
+
+### 요약
+
+이번 패치 릴리즈는 `moai init` / `moai update -c` 위자드에서 **최대 팀원 수**와 **기본 모델** 선택 필드가 하나의 항목만 표시되고 선택 후 멈추던 버그를 수정합니다. charmbracelet/huh v0.8.x에서 발생한 두 가지 버그가 복합적으로 작용한 것이었습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 수정됨 (Fixed)
+
+- **위자드 뷰포트 멈춤 (Height(0))**: 선택 필드의 높이가 `0`으로 설정되어 huh v0.8.x에서 뷰포트 크기가 0줄이 되던 문제를 수정했습니다. 현재 선택된 항목만 렌더링되고 스크롤이 불가능했습니다. `Height(max(옵션 수, 3))`으로 변경하여 항상 모든 옵션이 표시됩니다.
+- **위자드 YOffset 스크롤 버그 (최대 팀원 수)**: 기본값 옵션이 인덱스 N에 있을 때 huh v0.8.x가 `viewport.YOffset = N`으로 설정하여 그 위의 옵션이 모두 숨겨지던 문제를 수정했습니다. `max_teammates` 옵션을 내림차순(10 → 2)으로 재정렬하여 기본값("10")이 항상 인덱스 0에 위치하도록 했습니다.
+- **위자드 YOffset 스크롤 버그 (기본 모델)**: `default_model` 필드에서도 동일한 YOffset 문제가 발생했습니다. "Sonnet (균형)" (기본값)이 첫 번째로 오도록 옵션 순서를 변경했습니다.
+- **MaxTeammates 주석 오류**: 타입 주석에 "2-5"로 잘못 표기되어 있던 것을 "2-10"으로 수정했습니다.
+- **한국어 번역 오타**: `max_teammates`의 한국어 번역에서 크기 설명 레이블에 "모"가 누락되어 있었습니다 (예: "소규 팀" → "소규모 팀", "중대규 팀" → "중대규모 팀").
+
+---
+
 ## [2.4.5] - 2026-02-17
 
 ### Summary

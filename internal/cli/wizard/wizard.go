@@ -121,8 +121,11 @@ func buildSelectField(q *Question, result *WizardResult, locale *string) *huh.Se
 			}
 			return opts
 		}, locale).
-		// Height auto-sizes viewport; avoids huh YOffset scroll bug
-		Height(0).
+		// Height is set to the option count so all options are visible without
+		// scrolling. This avoids the huh v0.8.x YOffset scroll bug, which only
+		// manifests when the list is taller than the viewport. Minimum of 3 as
+		// a safety net for edge cases with very few options.
+		Height(max(len(q.Options), 3)).
 		Value(&selected)
 
 	// Wire up value storage after each change.
