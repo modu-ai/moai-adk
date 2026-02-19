@@ -5,11 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/spf13/cobra"
 )
+
+var glmTeamFlag bool
 
 var glmCmd = &cobra.Command{
 	Use:   "glm [api-key]",
@@ -22,9 +26,13 @@ for future use. The key is stored securely with owner-only permissions (600).
 This command reads GLM configuration from .moai/config/sections/llm.yaml and
 injects the appropriate environment variables into Claude Code's settings.
 
+Use --team flag for hybrid mode: leader stays on Anthropic Opus while
+Agent Teams teammates use GLM. Requires tmux.
+
 Examples:
   moai glm                    # Use saved or environment API key
   moai glm sk-xxx-your-key    # Save API key and switch to GLM
+  moai glm --team             # Hybrid: leader=Opus, teammates=GLM (tmux)
 
 Use 'moai cc' to switch back to Claude backend.`,
 	Args: cobra.MaximumNArgs(1),
@@ -33,6 +41,7 @@ Use 'moai cc' to switch back to Claude backend.`,
 
 func init() {
 	rootCmd.AddCommand(glmCmd)
+	glmCmd.Flags().BoolVar(&glmTeamFlag, "team", false, "Hybrid mode: teammates use GLM, leader stays on Opus (requires tmux)")
 }
 
 // SettingsLocal represents .claude/settings.local.json structure.
@@ -55,6 +64,11 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("save GLM API key: %w", err)
 		}
 		_, _ = fmt.Fprintln(out, renderSuccessCard("GLM API key saved to ~/.moai/.env.glm"))
+	}
+
+	// Branch based on --team flag
+	if glmTeamFlag {
+		return runGLMTeam(cmd)
 	}
 
 	// Get project root
@@ -95,6 +109,137 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		"Run 'moai cc' to switch back to Claude.",
 	))
 	return nil
+}
+
+// runGLMTeam starts a tmux session for hybrid model mode.
+// Leader pane uses Anthropic Opus, teammate panes inherit GLM env vars.
+func runGLMTeam(cmd *cobra.Command) error {
+	out := cmd.OutOrStdout()
+
+	// Verify tmux is available
+	if err := checkTmuxAvailable(); err != nil {
+		return err
+	}
+
+	// Get project root
+	root, err := findProjectRoot()
+	if err != nil {
+		return fmt.Errorf("find project root: %w", err)
+	}
+
+	// Load GLM config
+	glmConfig, err := loadGLMConfig(root)
+	if err != nil {
+		return fmt.Errorf("load GLM config: %w", err)
+	}
+
+	// Get API key
+	apiKey := getGLMAPIKey(glmConfig.EnvVar)
+	if apiKey == "" {
+		return fmt.Errorf("GLM API key not found. Run 'moai glm <api-key>' to save your key, or set %s environment variable", glmConfig.EnvVar)
+	}
+
+	sessionName := "moai-hybrid-glm"
+
+	// Check if session already exists
+	if tmuxSessionExists(sessionName) {
+		_, _ = fmt.Fprintln(out, renderSuccessCard(
+			"Hybrid session already exists",
+			"",
+			"Attaching to existing session: "+sessionName,
+			"Run 'tmux kill-session -t "+sessionName+"' to stop it.",
+		))
+		return execTmuxAttach(sessionName)
+	}
+
+	// Build env vars map
+	envVars := buildGLMEnvVars(glmConfig, apiKey)
+
+	// Create tmux session and inject env vars
+	if err := createHybridTmuxSession(sessionName, envVars, root); err != nil {
+		return fmt.Errorf("create hybrid tmux session: %w", err)
+	}
+
+	_, _ = fmt.Fprintln(out, renderSuccessCard(
+		"Hybrid mode started",
+		"",
+		"Session: "+sessionName,
+		"Leader: Anthropic Opus (direct API)",
+		"Teammates: GLM ("+glmConfig.Models.Opus+", "+glmConfig.Models.Sonnet+", "+glmConfig.Models.Haiku+")",
+		"",
+		"Claude is starting in the leader pane...",
+	))
+
+	// Attach to the tmux session
+	return execTmuxAttach(sessionName)
+}
+
+// checkTmuxAvailable verifies that tmux is installed and accessible.
+func checkTmuxAvailable() error {
+	_, err := exec.LookPath("tmux")
+	if err != nil {
+		return fmt.Errorf("tmux is required for --team mode but was not found in PATH. Install tmux first")
+	}
+	return nil
+}
+
+// tmuxSessionExists checks if a tmux session with the given name exists.
+func tmuxSessionExists(sessionName string) bool {
+	cmd := exec.Command("tmux", "has-session", "-t", sessionName)
+	return cmd.Run() == nil
+}
+
+// buildGLMEnvVars constructs the environment variable map for GLM hybrid mode.
+func buildGLMEnvVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string]string {
+	return map[string]string{
+		"ANTHROPIC_AUTH_TOKEN":           apiKey,
+		"ANTHROPIC_BASE_URL":             glmConfig.BaseURL,
+		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Haiku,
+		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Sonnet,
+		"ANTHROPIC_DEFAULT_OPUS_MODEL":   glmConfig.Models.Opus,
+	}
+}
+
+// createHybridTmuxSession creates a tmux session with GLM env vars at session level,
+// then starts claude in the leader pane with those env vars unset.
+func createHybridTmuxSession(sessionName string, envVars map[string]string, projectRoot string) error {
+	// Create detached tmux session starting in the project root
+	cmd := exec.Command("tmux", "new-session", "-d", "-s", sessionName, "-c", projectRoot)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("create tmux session: %s: %w", string(out), err)
+	}
+
+	// Set session-level environment variables
+	for key, value := range envVars {
+		cmd := exec.Command("tmux", "set-environment", "-t", sessionName, key, value)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("set tmux env %s: %s: %w", key, string(out), err)
+		}
+	}
+
+	// Build the leader pane command:
+	// 1. Unset ANTHROPIC_* env vars (so leader uses Anthropic API directly = Opus)
+	// 2. Start claude
+	leaderCmd := "unset ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL " +
+		"ANTHROPIC_DEFAULT_HAIKU_MODEL ANTHROPIC_DEFAULT_SONNET_MODEL " +
+		"ANTHROPIC_DEFAULT_OPUS_MODEL && claude"
+
+	// Send the command to the leader pane
+	cmd = exec.Command("tmux", "send-keys", "-t", sessionName, leaderCmd, "Enter")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("send leader command: %s: %w", string(out), err)
+	}
+
+	return nil
+}
+
+// execTmuxAttach attaches to the given tmux session, replacing the current process.
+func execTmuxAttach(sessionName string) error {
+	tmuxPath, err := exec.LookPath("tmux")
+	if err != nil {
+		return fmt.Errorf("find tmux: %w", err)
+	}
+	return syscall.Exec(tmuxPath, []string{"tmux", "attach", "-t", sessionName}, os.Environ())
 }
 
 // GLMConfigFromYAML represents the GLM settings from llm.yaml.

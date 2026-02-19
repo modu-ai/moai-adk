@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -47,6 +48,13 @@ func runCC(cmd *cobra.Command, _ []string) error {
 		_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to remove project .env.glm: %v\n", err)
 	}
 
+	// Check for active hybrid tmux session and inform user
+	if hybridSessionActive("moai-hybrid-glm") {
+		_, _ = fmt.Fprintln(out, "")
+		_, _ = fmt.Fprintln(out, "Note: Hybrid tmux session 'moai-hybrid-glm' is still running.")
+		_, _ = fmt.Fprintln(out, "Run 'tmux kill-session -t moai-hybrid-glm' to stop it.")
+	}
+
 	_, _ = fmt.Fprintln(out, renderSuccessCard(
 		"Switched to Claude backend",
 		"GLM configuration removed from:",
@@ -54,8 +62,15 @@ func runCC(cmd *cobra.Command, _ []string) error {
 		"  - .moai/.env.glm",
 		"",
 		"Run 'moai glm' to switch to GLM.",
+		"Run 'moai glm --team' for hybrid mode.",
 	))
 	return nil
+}
+
+// hybridSessionActive checks if a hybrid tmux session is currently running.
+func hybridSessionActive(sessionName string) bool {
+	cmd := exec.Command("tmux", "has-session", "-t", sessionName)
+	return cmd.Run() == nil
 }
 
 // removeProjectEnvGLM removes the project-level .moai/.env.glm file.
