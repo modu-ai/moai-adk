@@ -152,11 +152,16 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		}
 	}
 
-	// Step 3b: Apply model policy to agent files (post-deployment patching)
-	if opts.ModelPolicy != "" {
-		if err := template.ApplyModelPolicy(opts.ProjectRoot, template.ModelPolicy(opts.ModelPolicy), i.manifestMgr); err != nil {
+	// Step 3b: Apply model policy to agent files (post-deployment patching).
+	// Always apply a policy; default to high when not explicitly set.
+	// "inherit" is no longer a supported model value in Claude Code.
+	{
+		policy := template.ModelPolicy(opts.ModelPolicy)
+		if policy == "" {
+			policy = template.DefaultModelPolicy
+		}
+		if err := template.ApplyModelPolicy(opts.ProjectRoot, policy, i.manifestMgr); err != nil {
 			i.logger.Warn("failed to apply model policy", "error", err)
-			// Non-fatal: agents will use default inherit
 		}
 	}
 

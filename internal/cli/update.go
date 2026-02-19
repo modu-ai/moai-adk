@@ -1736,8 +1736,9 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 			teamConfig = make(map[string]interface{})
 		}
 
-		// Set enabled flag based on AgentTeamsMode
-		teamConfig["enabled"] = (result.AgentTeamsMode == "team")
+		// Set enabled flag based on AgentTeamsMode.
+		// "auto" and "team" both enable team mode; only "subagent" disables it.
+		teamConfig["enabled"] = (result.AgentTeamsMode != "subagent")
 
 		// Set max_teammates if provided (valid values: 2-10)
 		if result.MaxTeammates != "" {

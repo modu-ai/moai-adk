@@ -9,7 +9,7 @@ description: |
   JA: プラグイン作成, プラグイン, プラグイン検証, プラグイン構造, マーケットプレイス, マーケットプレイス作成, プラグイン配布
   ZH: 创建插件, 插件, 插件验证, 插件结构, 市场, 市场创建, 插件分发
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: inherit
+model: opus
 permissionMode: bypassPermissions
 memory: user
 skills: moai-foundation-claude, moai-foundation-core, moai-workflow-project

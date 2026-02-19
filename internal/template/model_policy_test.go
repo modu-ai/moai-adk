@@ -83,11 +83,11 @@ func TestGetAgentModel(t *testing.T) {
 		{"tester_high", ModelPolicyHigh, "team-tester", "opus"},
 		{"tester_low", ModelPolicyLow, "team-tester", "haiku"},
 
-		// Unknown agent
-		{"unknown_agent", ModelPolicyHigh, "nonexistent-agent", "inherit"},
+		// Unknown agent: returns "" (skip sentinel - preserve current model)
+		{"unknown_agent", ModelPolicyHigh, "nonexistent-agent", ""},
 
-		// Invalid policy
-		{"invalid_policy", ModelPolicy("invalid"), "manager-spec", "inherit"},
+		// Invalid policy: returns "sonnet" as safe fallback
+		{"invalid_policy", ModelPolicy("invalid"), "manager-spec", "sonnet"},
 	}
 
 	for _, tt := range tests {
@@ -250,7 +250,7 @@ model: opus
 			t.Fatalf("ApplyModelPolicy error: %v", err)
 		}
 
-		// File should be unchanged since unknown-agent returns "inherit"
+		// File should be unchanged since unknown-agent returns "" (skip sentinel)
 		content, err := os.ReadFile(filepath.Join(agentsDir, "unknown-agent.md"))
 		if err != nil {
 			t.Fatalf("ReadFile error: %v", err)

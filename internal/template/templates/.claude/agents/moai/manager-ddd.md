@@ -11,7 +11,7 @@ description: |
   JA: DDD, リファクタリング, レガシーコード, 動作保存, 特性テスト, ドメイン駆動リファクタリング
   ZH: DDD, 重构, 遗留代码, 行为保存, 特性测试, 领域驱动重构
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: inherit
+model: opus
 permissionMode: default
 memory: project
 skills: moai-foundation-claude, moai-foundation-core, moai-foundation-context, moai-foundation-quality, moai-workflow-ddd, moai-workflow-tdd, moai-workflow-testing, moai-tool-ast-grep

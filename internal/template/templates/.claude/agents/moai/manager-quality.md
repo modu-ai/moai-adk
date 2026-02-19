@@ -9,7 +9,7 @@ description: |
   JA: 品質, TRUST 5, コードレビュー, コンプライアンス, 品質ゲート, リント
   ZH: 质量, TRUST 5, 代码审查, 合规, 质量门, lint
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: inherit
+model: haiku
 permissionMode: bypassPermissions
 memory: project
 skills: moai-foundation-claude, moai-foundation-core, moai-foundation-context, moai-foundation-quality, moai-workflow-testing, moai-tool-ast-grep, moai-workflow-loop

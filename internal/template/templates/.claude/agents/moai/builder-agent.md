@@ -9,7 +9,7 @@ description: |
   JA: エージェント作成, 新エージェント, エージェントブループリント, サブエージェント
   ZH: 创建代理, 新代理, 代理蓝图, 子代理, 代理定义
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: inherit
+model: opus
 permissionMode: bypassPermissions
 memory: user
 skills: moai-foundation-claude, moai-foundation-core, moai-workflow-project

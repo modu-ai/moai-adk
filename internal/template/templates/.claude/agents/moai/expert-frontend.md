@@ -9,7 +9,7 @@ description: |
   JA: フロントエンド, UI, コンポーネント, リアクト, ビュー, CSS, レスポンシブ, 状態管理, UI/UX, デザイン, アクセシビリティ, WCAG, ユーザー体験, デザインシステム
   ZH: 前端, UI, 组件, React, Vue, CSS, 响应式, 状态管理, UI/UX, 设计, 可访问性, WCAG, 用户体验, 设计系统
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__claude-in-chrome__*, mcp__pencil__batch_design, mcp__pencil__batch_get, mcp__pencil__get_editor_state, mcp__pencil__get_guidelines, mcp__pencil__get_screenshot, mcp__pencil__get_style_guide, mcp__pencil__get_style_guide_tags, mcp__pencil__get_variables, mcp__pencil__set_variables, mcp__pencil__open_document, mcp__pencil__snapshot_layout, mcp__pencil__find_empty_space_on_canvas, mcp__pencil__search_all_unique_properties, mcp__pencil__replace_all_matching_properties
-model: inherit
+model: opus
 permissionMode: default
 memory: project
 skills: moai-foundation-claude, moai-foundation-core, moai-foundation-philosopher, moai-foundation-quality, moai-foundation-context, moai-domain-frontend, moai-domain-uiux, moai-lang-typescript, moai-lang-javascript, moai-lang-flutter, moai-lang-swift, moai-lang-kotlin, moai-library-shadcn, moai-library-nextra, moai-library-mermaid, moai-design-tools, moai-platform-chrome-extension, moai-platform-auth, moai-platform-deployment, moai-framework-electron, moai-tool-ast-grep, moai-tool-svg, moai-workflow-tdd, moai-workflow-ddd, moai-workflow-testing, moai-workflow-jit-docs
