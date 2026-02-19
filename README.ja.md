@@ -245,6 +245,56 @@ MoAI-ADKは、Claude Codeサブスクリプションプランに基づいて、2
 
 > **なぜ重要なのか？** Plus $20プランにはOpusが含まれていません。`Low`に設定すると、すべてのエージェントがSonnetとHaikuのみを使用し、レート制限エラーを防止します。上位プランでは、重要なエージェント（セキュリティ、戦略、アーキテクチャ）にOpusを、通常タスクにSonnet/Haikuを配分します。
 
+### ティア別エージェントモデル配分
+
+#### Manager Agents
+
+| エージェント | High | Medium | Low |
+|------------|------|--------|-----|
+| manager-spec | opus | opus | sonnet |
+| manager-strategy | opus | opus | sonnet |
+| manager-ddd | opus | sonnet | sonnet |
+| manager-tdd | opus | sonnet | sonnet |
+| manager-project | opus | sonnet | haiku |
+| manager-docs | sonnet | haiku | haiku |
+| manager-quality | haiku | haiku | haiku |
+| manager-git | haiku | haiku | haiku |
+
+#### Expert Agents
+
+| エージェント | High | Medium | Low |
+|------------|------|--------|-----|
+| expert-backend | opus | sonnet | sonnet |
+| expert-frontend | opus | sonnet | sonnet |
+| expert-security | opus | opus | sonnet |
+| expert-debug | opus | sonnet | sonnet |
+| expert-refactoring | opus | sonnet | sonnet |
+| expert-devops | opus | sonnet | haiku |
+| expert-performance | opus | sonnet | haiku |
+| expert-testing | opus | sonnet | haiku |
+| expert-chrome-extension | opus | sonnet | haiku |
+
+#### Builder Agents
+
+| エージェント | High | Medium | Low |
+|------------|------|--------|-----|
+| builder-agent | opus | sonnet | haiku |
+| builder-skill | opus | sonnet | haiku |
+| builder-plugin | opus | sonnet | haiku |
+
+#### Team Agents
+
+| エージェント | High | Medium | Low |
+|------------|------|--------|-----|
+| team-architect | opus | opus | sonnet |
+| team-analyst | opus | sonnet | haiku |
+| team-designer | opus | sonnet | haiku |
+| team-backend-dev | opus | sonnet | sonnet |
+| team-frontend-dev | opus | sonnet | sonnet |
+| team-tester | opus | sonnet | haiku |
+| team-researcher | haiku | haiku | haiku |
+| team-quality | haiku | haiku | haiku |
+
 ### 設定方法
 
 ```bash

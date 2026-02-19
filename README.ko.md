@@ -245,6 +245,56 @@ MoAI-ADK는 Claude Code 구독 요금제에 맞춰 28개 에이전트에 최적�
 
 > **왜 중요한가요?** Plus $20 요금제는 Opus를 포함하지 않습니다. `Low`로 설정하면 모든 에이전트가 Sonnet과 Haiku만 사용하여 사용량 제한 오류를 방지합니다. 상위 요금제에서는 핵심 에이전트(보안, 전략, 아키텍처)에 Opus를, 일반 작업에 Sonnet/Haiku를 배분합니다.
 
+### 티어별 에이전트 모델 배정
+
+#### Manager Agents
+
+| 에이전트 | High | Medium | Low |
+|---------|------|--------|-----|
+| manager-spec | opus | opus | sonnet |
+| manager-strategy | opus | opus | sonnet |
+| manager-ddd | opus | sonnet | sonnet |
+| manager-tdd | opus | sonnet | sonnet |
+| manager-project | opus | sonnet | haiku |
+| manager-docs | sonnet | haiku | haiku |
+| manager-quality | haiku | haiku | haiku |
+| manager-git | haiku | haiku | haiku |
+
+#### Expert Agents
+
+| 에이전트 | High | Medium | Low |
+|---------|------|--------|-----|
+| expert-backend | opus | sonnet | sonnet |
+| expert-frontend | opus | sonnet | sonnet |
+| expert-security | opus | opus | sonnet |
+| expert-debug | opus | sonnet | sonnet |
+| expert-refactoring | opus | sonnet | sonnet |
+| expert-devops | opus | sonnet | haiku |
+| expert-performance | opus | sonnet | haiku |
+| expert-testing | opus | sonnet | haiku |
+| expert-chrome-extension | opus | sonnet | haiku |
+
+#### Builder Agents
+
+| 에이전트 | High | Medium | Low |
+|---------|------|--------|-----|
+| builder-agent | opus | sonnet | haiku |
+| builder-skill | opus | sonnet | haiku |
+| builder-plugin | opus | sonnet | haiku |
+
+#### Team Agents
+
+| 에이전트 | High | Medium | Low |
+|---------|------|--------|-----|
+| team-architect | opus | opus | sonnet |
+| team-analyst | opus | sonnet | haiku |
+| team-designer | opus | sonnet | haiku |
+| team-backend-dev | opus | sonnet | sonnet |
+| team-frontend-dev | opus | sonnet | sonnet |
+| team-tester | opus | sonnet | haiku |
+| team-researcher | haiku | haiku | haiku |
+| team-quality | haiku | haiku | haiku |
+
 ### 설정 방법
 
 ```bash

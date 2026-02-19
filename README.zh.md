@@ -245,6 +245,56 @@ MoAI-ADK 根据您的 Claude Code 订阅方案，为 28 个智能体分配最优
 
 > **为什么重要？** Plus $20 方案不包含 Opus。设置为 `Low` 后，所有智能体仅使用 Sonnet 和 Haiku，避免速率限制错误。更高级方案可在关键智能体（安全、策略、架构）上使用 Opus，常规任务使用 Sonnet/Haiku。
 
+### 各档位智能体模型分配
+
+#### Manager Agents
+
+| 智能体 | High | Medium | Low |
+|--------|------|--------|-----|
+| manager-spec | opus | opus | sonnet |
+| manager-strategy | opus | opus | sonnet |
+| manager-ddd | opus | sonnet | sonnet |
+| manager-tdd | opus | sonnet | sonnet |
+| manager-project | opus | sonnet | haiku |
+| manager-docs | sonnet | haiku | haiku |
+| manager-quality | haiku | haiku | haiku |
+| manager-git | haiku | haiku | haiku |
+
+#### Expert Agents
+
+| 智能体 | High | Medium | Low |
+|--------|------|--------|-----|
+| expert-backend | opus | sonnet | sonnet |
+| expert-frontend | opus | sonnet | sonnet |
+| expert-security | opus | opus | sonnet |
+| expert-debug | opus | sonnet | sonnet |
+| expert-refactoring | opus | sonnet | sonnet |
+| expert-devops | opus | sonnet | haiku |
+| expert-performance | opus | sonnet | haiku |
+| expert-testing | opus | sonnet | haiku |
+| expert-chrome-extension | opus | sonnet | haiku |
+
+#### Builder Agents
+
+| 智能体 | High | Medium | Low |
+|--------|------|--------|-----|
+| builder-agent | opus | sonnet | haiku |
+| builder-skill | opus | sonnet | haiku |
+| builder-plugin | opus | sonnet | haiku |
+
+#### Team Agents
+
+| 智能体 | High | Medium | Low |
+|--------|------|--------|-----|
+| team-architect | opus | opus | sonnet |
+| team-analyst | opus | sonnet | haiku |
+| team-designer | opus | sonnet | haiku |
+| team-backend-dev | opus | sonnet | sonnet |
+| team-frontend-dev | opus | sonnet | sonnet |
+| team-tester | opus | sonnet | haiku |
+| team-researcher | haiku | haiku | haiku |
+| team-quality | haiku | haiku | haiku |
+
 ### 配置方法
 
 ```bash
