@@ -8,7 +8,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/modu-ai/moai-adk/internal/defs"
 	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
+	"gopkg.in/yaml.v3"
 )
 
 // teammateIdleHandler processes TeammateIdle events.
@@ -91,7 +93,79 @@ func (h *teammateIdleHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		return NewTeammateKeepWorkingOutput(), nil
 	}
 
+	// Check test coverage gate.
+	if coveragePct, ok := loadCoverageData(projectDir); ok {
+		threshold := loadCoverageThreshold(projectDir)
+		if coveragePct < threshold {
+			msg := fmt.Sprintf(
+				"Coverage gate failed for teammate %q: %.1f%% < %.1f%% required. Run tests to improve coverage.",
+				input.TeammateName, coveragePct, threshold,
+			)
+			fmt.Fprint(os.Stderr, msg)
+			slog.Warn("teammate_idle: blocking idle - coverage gate failed",
+				"teammate", input.TeammateName,
+				"coverage", coveragePct,
+				"threshold", threshold,
+			)
+			return NewTeammateKeepWorkingOutput(), nil
+		}
+	}
+
 	return &HookOutput{}, nil
+}
+
+// defaultCoverageThreshold is used when quality.yaml does not specify test_coverage_target.
+const defaultCoverageThreshold = 85.0
+
+// coverageData represents the JSON structure of .moai/memory/coverage.json.
+type coverageData struct {
+	CoveragePercent float64 `json:"coverage_percent"`
+	UpdatedAt       string  `json:"updated_at"`
+}
+
+// coverageThresholdConfig represents the subset of quality.yaml needed for coverage threshold.
+type coverageThresholdConfig struct {
+	Constitution struct {
+		TestCoverageTarget float64 `yaml:"test_coverage_target"`
+	} `yaml:"constitution"`
+}
+
+// loadCoverageData reads coverage data from .moai/memory/coverage.json.
+// Returns (percent, true) on success, or (0, false) if the file does not exist or cannot be parsed.
+func loadCoverageData(projectDir string) (float64, bool) {
+	coverageFile := filepath.Join(projectDir, defs.MoAIDir, defs.MemorySubdir, "coverage.json")
+	data, err := os.ReadFile(coverageFile)
+	if err != nil {
+		slog.Info("teammate_idle: no coverage data, skipping coverage check", "error", err)
+		return 0, false
+	}
+
+	var cov coverageData
+	if err := json.Unmarshal(data, &cov); err != nil {
+		slog.Info("teammate_idle: failed to parse coverage data, skipping coverage check", "error", err)
+		return 0, false
+	}
+	return cov.CoveragePercent, true
+}
+
+// loadCoverageThreshold reads the test_coverage_target from quality.yaml.
+// Returns defaultCoverageThreshold (85.0) if the file cannot be read or parsed.
+func loadCoverageThreshold(projectDir string) float64 {
+	configPath := filepath.Join(projectDir, defs.MoAIDir, defs.SectionsSubdir, defs.QualityYAML)
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return defaultCoverageThreshold
+	}
+
+	var cfg coverageThresholdConfig
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return defaultCoverageThreshold
+	}
+
+	if cfg.Constitution.TestCoverageTarget <= 0 {
+		return defaultCoverageThreshold
+	}
+	return cfg.Constitution.TestCoverageTarget
 }
 
 // loadBaselineCounts reads the diagnostics baseline file and sums error counts

@@ -101,6 +101,63 @@ func TestTeammateIdleHandler_Handle(t *testing.T) {
 			},
 			wantExitCode: 2,
 		},
+		{
+			name: "team mode with coverage data meeting threshold - allow idle",
+			input: &HookInput{
+				SessionID:    "sess-ti-6",
+				TeamName:     "team-alpha",
+				TeammateName: "worker-1",
+			},
+			setupDir: func(t *testing.T) string {
+				t.Helper()
+				dir := t.TempDir()
+				writeQualityConfig(t, dir, true)
+				writeBaseline(t, dir, map[string][]string{
+					"file.go": {"warning"},
+				})
+				writeCoverageData(t, dir, 90.0)
+				return dir
+			},
+			wantExitCode: 0,
+		},
+		{
+			name: "team mode with coverage data below threshold - block idle",
+			input: &HookInput{
+				SessionID:    "sess-ti-7",
+				TeamName:     "team-alpha",
+				TeammateName: "worker-1",
+			},
+			setupDir: func(t *testing.T) string {
+				t.Helper()
+				dir := t.TempDir()
+				writeQualityConfig(t, dir, true)
+				writeBaseline(t, dir, map[string][]string{
+					"file.go": {"warning"},
+				})
+				writeCoverageData(t, dir, 50.0)
+				return dir
+			},
+			wantExitCode: 2,
+		},
+		{
+			name: "team mode with no coverage data - allow idle (graceful)",
+			input: &HookInput{
+				SessionID:    "sess-ti-8",
+				TeamName:     "team-alpha",
+				TeammateName: "worker-1",
+			},
+			setupDir: func(t *testing.T) string {
+				t.Helper()
+				dir := t.TempDir()
+				writeQualityConfig(t, dir, true)
+				writeBaseline(t, dir, map[string][]string{
+					"file.go": {"warning"},
+				})
+				// No coverage.json written - graceful degradation
+				return dir
+			},
+			wantExitCode: 0,
+		},
 	}
 
 	for _, tt := range tests {
@@ -149,6 +206,25 @@ func writeQualityConfig(t *testing.T, projectDir string, blockOnError bool) {
 	}
 	content := "constitution:\n  lsp_quality_gates:\n    enabled: " + enabled + "\n    run:\n      max_errors: 0\n"
 	if err := os.WriteFile(filepath.Join(dir, "quality.yaml"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// writeCoverageData writes a coverage.json file with the given coverage percentage.
+func writeCoverageData(t *testing.T, projectDir string, percent float64) {
+	t.Helper()
+	memDir := filepath.Join(projectDir, ".moai", "memory")
+	if err := os.MkdirAll(memDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(map[string]any{
+		"coverage_percent": percent,
+		"updated_at":       "2026-02-19T10:00:00Z",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(memDir, "coverage.json"), data, 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
