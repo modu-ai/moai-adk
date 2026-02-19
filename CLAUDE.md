@@ -94,9 +94,9 @@ Allowed Tools: Full access (Task, AskUserQuestion, TaskCreate, TaskUpdate, TaskL
 
 spec, ddd, tdd, docs, quality, project, strategy, git
 
-### Expert Agents (8)
+### Expert Agents (9)
 
-backend, frontend, security, devops, performance, debug, testing, refactoring
+backend, frontend, security, devops, performance, debug, testing, refactoring, chrome-extension
 
 ### Builder Agents (3)
 
