@@ -37,7 +37,7 @@
 
 > **"氛围编程的目的不是追求速度，而是代码质量。"**
 
-MoAI-ADK 是专为 Claude Code 打造的**高性能 AI 开发环境**。28 个专业 AI 智能体与 52 个技能协同工作，助力产出高质量代码。新项目默认采用 Hybrid 方法论（TDD + DDD），现有项目自动采用 DDD，并支持 Sub-Agent 与 Agent Teams 双执行模式。
+MoAI-ADK 是专为 Claude Code 打造的**高性能 AI 开发环境**。28 个专业 AI 智能体与 52 个技能协同工作，助力产出高质量代码。新项目和功能开发默认采用 TDD，覆盖率低于 10% 的现有项目自动采用 DDD，并支持 Sub-Agent 与 Agent Teams 双执行模式。
 
 使用 Go 编写的单一可执行文件 -- 零依赖，全平台即刻运行。
 
@@ -146,29 +146,30 @@ MoAI-ADK 根据项目状态自动选择最优的开发方法论。
 
 ```mermaid
 flowchart TD
-    A["🔍 项目分析"] --> B{"新项目？"}
-    B -->|"Yes"| C["Hybrid (TDD + DDD)"]
-    B -->|"No"| D{"测试覆盖率 ≥ 50%？"}
-    D -->|"Yes"| C
-    D -->|"No"| E["DDD"]
-    C --> F["新代码 → TDD"]
-    C --> G["现有代码 → DDD"]
-    E --> H["ANALYZE → PRESERVE → IMPROVE"]
+    A["🔍 项目分析"] --> B{"新项目或<br/>10%+ 测试覆盖率？"}
+    B -->|"Yes"| C["TDD（默认）"]
+    B -->|"No"| D{"现有项目<br/>< 10% 覆盖率？"}
+    D -->|"Yes"| E["DDD"]
+    C --> F["RED → GREEN → REFACTOR"]
+    E --> G["ANALYZE → PRESERVE → IMPROVE"]
 
     style C fill:#4CAF50,color:#fff
     style E fill:#2196F3,color:#fff
 ```
 
-### Hybrid 方法论（新项目默认值）
+### TDD 方法论（默认）
 
-推荐用于新项目和持续开发。根据代码类型自动选择 TDD 或 DDD。
+新项目和功能开发推荐的默认方法论。先写测试，再实现代码。
 
-| 代码类型 | 方法论 | 周期 | 说明 |
-|----------|--------|------|------|
-| 新代码 | **TDD** | RED → GREEN → REFACTOR | 先写测试，通过后再重构 |
-| 现有代码 | **DDD** | ANALYZE → PRESERVE → IMPROVE | 分析现有行为，通过特征测试保护后渐进改进 |
+| 阶段 | 说明 |
+|------|------|
+| **RED** | 编写定义期望行为的失败测试 |
+| **GREEN** | 编写使测试通过的最小代码 |
+| **REFACTOR** | 在保持测试绿色的同时提升代码质量 |
 
-### DDD 方法论（现有项目）
+对于棕地项目（现有代码库），TDD 增加了 **RED 前分析步骤**：在编写测试前先阅读现有代码，了解当前行为。
+
+### DDD 方法论（覆盖率 < 10% 的现有项目）
 
 专为测试覆盖率较低的现有项目安全重构而设计的方法论。
 
@@ -178,7 +179,7 @@ PRESERVE  → 编写特征测试，捕获当前行为快照
 IMPROVE   → 在测试保护下渐进改进
 ```
 
-> 方法论在 `moai init` 时自动选定，可在 `.moai/config/sections/quality.yaml` 的 `development_mode` 中修改。
+> 方法论在 `moai init` 时自动选定（`--mode <ddd|tdd>`，默认: tdd），可在 `.moai/config/sections/quality.yaml` 的 `development_mode` 中修改。
 
 ---
 
