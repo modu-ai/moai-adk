@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Task Metrics Logging**: PostToolUse hook now captures Task tool metrics (tokens, tool uses, duration) to `.moai/logs/task-metrics.jsonl` for session analytics.
 - **MCP OAuth Support**: Added `.moai/docs/MCP_OAUTH_SETUP.md` guide for configuring OAuth credentials for MCP servers (Slack, GitHub, Sentry).
 - **Troubleshooting Guide**: Added troubleshooting section to CLAUDE.md covering `/debug` command usage, common Agent Teams issues, and PDF pagination tips.
+- **Test Coverage**: Comprehensive test suite added across all packages to meet 85%+ coverage threshold. Key packages: internal/hook (3 subpackages), internal/shell, internal/template, internal/rank, internal/github, internal/merge, internal/update, pkg/models, internal/ui, internal/core/git, internal/core/project, internal/hook/agents, internal/hook/lifecycle. internal/cli improved from 60.6% → 73.3% (OAuth browser-flow functions excluded from automated testing).
 
 ### Fixed
 
