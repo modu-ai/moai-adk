@@ -237,7 +237,7 @@ graph LR
 
 MoAI-ADK는 Claude Code 구독 요금제에 맞춰 28개 에이전트에 최적의 AI 모델을 할당합니다. 요금제의 사용량 제한 내에서 품질을 극대화합니다.
 
-| 정책 | 요금제 | Opus | Sonnet | Haiku | 용도 |
+| 정책 | 요금제 | 🟣 Opus | 🔵 Sonnet | 🟡 Haiku | 용도 |
 |------|--------|------|--------|-------|------|
 | **High** | Max $200/월 | 23 | 1 | 4 | 최고 품질, 최대 처리량 |
 | **Medium** | Max $100/월 | 4 | 19 | 5 | 품질과 비용의 균형 |
@@ -251,49 +251,49 @@ MoAI-ADK는 Claude Code 구독 요금제에 맞춰 28개 에이전트에 최적�
 
 | 에이전트 | High | Medium | Low |
 |---------|------|--------|-----|
-| manager-spec | opus | opus | sonnet |
-| manager-strategy | opus | opus | sonnet |
-| manager-ddd | opus | sonnet | sonnet |
-| manager-tdd | opus | sonnet | sonnet |
-| manager-project | opus | sonnet | haiku |
-| manager-docs | sonnet | haiku | haiku |
-| manager-quality | haiku | haiku | haiku |
-| manager-git | haiku | haiku | haiku |
+| manager-spec | 🟣 opus | 🟣 opus | 🔵 sonnet |
+| manager-strategy | 🟣 opus | 🟣 opus | 🔵 sonnet |
+| manager-ddd | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
+| manager-tdd | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
+| manager-project | 🟣 opus | 🔵 sonnet | 🟡 haiku |
+| manager-docs | 🔵 sonnet | 🟡 haiku | 🟡 haiku |
+| manager-quality | 🟡 haiku | 🟡 haiku | 🟡 haiku |
+| manager-git | 🟡 haiku | 🟡 haiku | 🟡 haiku |
 
 #### Expert Agents
 
 | 에이전트 | High | Medium | Low |
 |---------|------|--------|-----|
-| expert-backend | opus | sonnet | sonnet |
-| expert-frontend | opus | sonnet | sonnet |
-| expert-security | opus | opus | sonnet |
-| expert-debug | opus | sonnet | sonnet |
-| expert-refactoring | opus | sonnet | sonnet |
-| expert-devops | opus | sonnet | haiku |
-| expert-performance | opus | sonnet | haiku |
-| expert-testing | opus | sonnet | haiku |
-| expert-chrome-extension | opus | sonnet | haiku |
+| expert-backend | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
+| expert-frontend | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
+| expert-security | 🟣 opus | 🟣 opus | 🔵 sonnet |
+| expert-debug | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
+| expert-refactoring | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
+| expert-devops | 🟣 opus | 🔵 sonnet | 🟡 haiku |
+| expert-performance | 🟣 opus | 🔵 sonnet | 🟡 haiku |
+| expert-testing | 🟣 opus | 🔵 sonnet | 🟡 haiku |
+| expert-chrome-extension | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 
 #### Builder Agents
 
 | 에이전트 | High | Medium | Low |
 |---------|------|--------|-----|
-| builder-agent | opus | sonnet | haiku |
-| builder-skill | opus | sonnet | haiku |
-| builder-plugin | opus | sonnet | haiku |
+| builder-agent | 🟣 opus | 🔵 sonnet | 🟡 haiku |
+| builder-skill | 🟣 opus | 🔵 sonnet | 🟡 haiku |
+| builder-plugin | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 
 #### Team Agents
 
 | 에이전트 | High | Medium | Low |
 |---------|------|--------|-----|
-| team-architect | opus | opus | sonnet |
-| team-analyst | opus | sonnet | haiku |
-| team-designer | opus | sonnet | haiku |
-| team-backend-dev | opus | sonnet | sonnet |
-| team-frontend-dev | opus | sonnet | sonnet |
-| team-tester | opus | sonnet | haiku |
-| team-researcher | haiku | haiku | haiku |
-| team-quality | haiku | haiku | haiku |
+| team-architect | 🟣 opus | 🟣 opus | 🔵 sonnet |
+| team-analyst | 🟣 opus | 🔵 sonnet | 🟡 haiku |
+| team-designer | 🟣 opus | 🔵 sonnet | 🟡 haiku |
+| team-backend-dev | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
+| team-frontend-dev | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
+| team-tester | 🟣 opus | 🔵 sonnet | 🟡 haiku |
+| team-researcher | 🟡 haiku | 🟡 haiku | 🟡 haiku |
+| team-quality | 🟡 haiku | 🟡 haiku | 🟡 haiku |
 
 ### 설정 방법
 
