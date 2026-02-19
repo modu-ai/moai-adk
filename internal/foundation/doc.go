@@ -5,7 +5,7 @@
 //
 //   - EARS (Easy Approach to Requirements Syntax) requirement patterns
 //   - TRUST 5 quality framework (Tested, Readable, Understandable, Secured, Trackable)
-//   - Development methodology definitions (DDD, TDD, Hybrid)
+//   - Development methodology definitions (DDD, TDD)
 //   - Programming language definitions and registry
 //
 // All types support JSON serialization via encoding/json struct tags.

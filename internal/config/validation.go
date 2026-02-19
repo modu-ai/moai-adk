@@ -100,24 +100,6 @@ func validateQualityConfig(q *models.QualityConfig) []ValidationError {
 		})
 	}
 
-	if q.HybridSettings.MinCoverageNew < 0 || q.HybridSettings.MinCoverageNew > 100 {
-		errs = append(errs, ValidationError{
-			Field:   "quality.hybrid_settings.min_coverage_new",
-			Message: "must be between 0 and 100",
-			Value:   q.HybridSettings.MinCoverageNew,
-			Wrapped: ErrInvalidConfig,
-		})
-	}
-
-	if q.HybridSettings.MinCoverageLegacy < 0 || q.HybridSettings.MinCoverageLegacy > 100 {
-		errs = append(errs, ValidationError{
-			Field:   "quality.hybrid_settings.min_coverage_legacy",
-			Message: "must be between 0 and 100",
-			Value:   q.HybridSettings.MinCoverageLegacy,
-			Wrapped: ErrInvalidConfig,
-		})
-	}
-
 	if q.CoverageExemptions.MaxExemptPercentage < 0 || q.CoverageExemptions.MaxExemptPercentage > 100 {
 		errs = append(errs, ValidationError{
 			Field:   "quality.coverage_exemptions.max_exempt_percentage",
@@ -210,8 +192,6 @@ func validateDynamicTokens(cfg *Config) []ValidationError {
 	// Quality section
 	errs = append(errs, checkStringField("quality.development_mode", string(cfg.Quality.DevelopmentMode))...)
 	errs = append(errs, checkStringField("quality.ddd_settings.max_transformation_size", cfg.Quality.DDDSettings.MaxTransformationSize)...)
-	errs = append(errs, checkStringField("quality.hybrid_settings.new_features", cfg.Quality.HybridSettings.NewFeatures)...)
-	errs = append(errs, checkStringField("quality.hybrid_settings.legacy_refactoring", cfg.Quality.HybridSettings.LegacyRefactoring)...)
 
 	// System section
 	errs = append(errs, checkStringField("system.version", cfg.System.Version)...)

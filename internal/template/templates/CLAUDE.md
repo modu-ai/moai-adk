@@ -114,12 +114,12 @@ For detailed agent descriptions, capabilities, and creation guidelines, see @.cl
 
 ## 5. SPEC-Based Workflow
 
-MoAI uses DDD (Domain-Driven Development) as its development methodology.
+MoAI uses DDD and TDD as its development methodologies, selected via quality.yaml.
 
 ### MoAI Command Flow
 
 - /moai plan "description" → manager-spec subagent
-- /moai run SPEC-XXX → manager-ddd subagent (ANALYZE-PRESERVE-IMPROVE)
+- /moai run SPEC-XXX → manager-ddd or manager-tdd subagent (per quality.yaml development_mode)
 - /moai sync SPEC-XXX → manager-docs subagent
 
 For detailed workflow specifications, see @.claude/rules/moai/workflow/spec-workflow.md

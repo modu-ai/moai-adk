@@ -93,9 +93,9 @@ func TestConfigManagerLoadDefaults(t *testing.T) {
 		t.Errorf("Language.ConversationLanguage: got %q, want default %q",
 			cfg.Language.ConversationLanguage, DefaultConversationLanguage)
 	}
-	if cfg.Quality.DevelopmentMode != models.ModeHybrid {
+	if cfg.Quality.DevelopmentMode != models.ModeTDD {
 		t.Errorf("Quality.DevelopmentMode: got %q, want default %q",
-			cfg.Quality.DevelopmentMode, models.ModeHybrid)
+			cfg.Quality.DevelopmentMode, models.ModeTDD)
 	}
 }
 
@@ -790,7 +790,6 @@ func TestConfigManagerSaveAndReloadRoundTrip(t *testing.T) {
 		TestCoverageTarget: 90,
 		DDDSettings:        NewDefaultDDDSettings(),
 		TDDSettings:        NewDefaultTDDSettings(),
-		HybridSettings:     NewDefaultHybridSettings(),
 		CoverageExemptions: NewDefaultCoverageExemptions(),
 	})
 
@@ -832,9 +831,9 @@ func TestApplyEnvOverrides(t *testing.T) {
 	applyEnvOverrides(cfg)
 
 	// Values should remain as defaults since no env vars are set in this test
-	if cfg.Quality.DevelopmentMode != models.ModeHybrid {
+	if cfg.Quality.DevelopmentMode != models.ModeTDD {
 		t.Errorf("DevelopmentMode: got %q, want default %q",
-			cfg.Quality.DevelopmentMode, models.ModeHybrid)
+			cfg.Quality.DevelopmentMode, models.ModeTDD)
 	}
 }
 
@@ -849,7 +848,7 @@ func TestSentinelErrors(t *testing.T) {
 		{"ErrConfigNotFound", ErrConfigNotFound, "config: configuration directory not found"},
 		{"ErrInvalidConfig", ErrInvalidConfig, "config: invalid configuration"},
 		{"ErrSectionNotFound", ErrSectionNotFound, "config: section not found"},
-		{"ErrInvalidDevelopmentMode", ErrInvalidDevelopmentMode, "config: invalid development_mode, must be one of: ddd, tdd, hybrid"},
+		{"ErrInvalidDevelopmentMode", ErrInvalidDevelopmentMode, "config: invalid development_mode, must be one of: ddd, tdd"},
 		{"ErrNotInitialized", ErrNotInitialized, "config: manager not initialized, call Load() first"},
 		{"ErrSectionTypeMismatch", ErrSectionTypeMismatch, "config: section type mismatch"},
 		{"ErrDynamicToken", ErrDynamicToken, "config: unexpanded dynamic token detected"},

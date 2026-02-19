@@ -30,7 +30,7 @@ type WizardResult struct {
 	DocLang         string // Language for documentation: en, ko, ja, zh
 
 	// Development methodology
-	DevelopmentMode string // Development mode: ddd, tdd, hybrid
+	DevelopmentMode string // Development mode: ddd, tdd
 
 	// Model policy
 	ModelPolicy string // Token consumption tier: high, medium, low

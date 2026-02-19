@@ -218,7 +218,7 @@ func TestGetBoolFlag(t *testing.T) {
 // --- DDD PRESERVE: Characterization tests for flag validation ---
 
 func TestValidateInitFlags_ValidMode(t *testing.T) {
-	validModes := []string{"ddd", "tdd", "hybrid"}
+	validModes := []string{"ddd", "tdd"}
 
 	for _, mode := range validModes {
 		t.Run(mode, func(t *testing.T) {

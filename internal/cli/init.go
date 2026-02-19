@@ -32,7 +32,7 @@ Usage patterns:
 Examples:
   moai init my-app           Creates ./my-app/ and initializes MoAI inside
   moai init .                Initializes MoAI in the current directory
-  moai init --mode hybrid    Initialize with specific development mode (default: hybrid)`,
+  moai init --mode tdd       Initialize with specific development mode (default: tdd)`,
 	Args:    cobra.MaximumNArgs(1),
 	PreRunE: validateInitFlags,
 	RunE:    runInit,
@@ -47,7 +47,7 @@ func init() {
 	initCmd.Flags().String("framework", "", "Framework name (default: auto-detect or \"none\")")
 	initCmd.Flags().String("username", "", "User display name")
 	initCmd.Flags().String("conv-lang", "", "Conversation language code (e.g., \"en\", \"ko\")")
-	initCmd.Flags().String("mode", "", "Development mode: ddd, tdd, or hybrid (default: hybrid, auto-configured by /moai project)")
+	initCmd.Flags().String("mode", "", "Development mode: ddd or tdd (default: tdd, auto-configured by /moai project)")
 	initCmd.Flags().String("git-mode", "", "Git workflow mode: manual, personal, or team (default: manual)")
 	initCmd.Flags().String("git-provider", "", "Git provider (github, gitlab)")
 	initCmd.Flags().String("github-username", "", "GitHub username (required for personal/team modes)")
@@ -83,7 +83,7 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 	// Validate development mode
 	mode := getStringFlag(cmd, "mode")
 	if mode != "" {
-		validModes := []string{"ddd", "tdd", "hybrid"}
+		validModes := []string{"ddd", "tdd"}
 		valid := false
 		for _, m := range validModes {
 			if mode == m {
@@ -92,7 +92,7 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 			}
 		}
 		if !valid {
-			return fmt.Errorf("invalid --mode value %q: must be one of: ddd, tdd, hybrid", mode)
+			return fmt.Errorf("invalid --mode value %q: must be one of: ddd, tdd", mode)
 		}
 	}
 
@@ -269,7 +269,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		if opts.ConvLang == "" {
 			opts.ConvLang = result.Locale
 		}
-		// DevelopmentMode defaults to "hybrid" via template context;
+		// DevelopmentMode defaults to "tdd" via template context;
 		// auto-configured later by /moai project workflow based on project analysis.
 		if opts.GitMode == "" {
 			opts.GitMode = result.GitMode

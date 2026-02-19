@@ -31,7 +31,7 @@ type TemplateContext struct {
 	GitLabInstanceURL string // GitLab instance URL (e.g., "https://gitlab.com")
 
 	// Development settings
-	DevelopmentMode    string // "ddd", "tdd", "hybrid"
+	DevelopmentMode    string // "ddd", "tdd"
 	EnforceQuality     bool   // true
 	TestCoverageTarget int    // 85
 
@@ -75,7 +75,7 @@ func NewTemplateContext(opts ...ContextOption) *TemplateContext {
 		GitProvider:              "github",
 		GitHubUsername:           "",
 		GitLabInstanceURL:        "",
-		DevelopmentMode:          string(models.ModeHybrid),
+		DevelopmentMode:          string(models.ModeTDD),
 		EnforceQuality:           true,
 		TestCoverageTarget:       config.DefaultTestCoverageTarget,
 		AutoClear:                true,

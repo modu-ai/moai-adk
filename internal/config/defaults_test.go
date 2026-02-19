@@ -38,9 +38,9 @@ func TestNewDefaultConfigContainsAllSections(t *testing.T) {
 	}
 
 	// Quality section should have defaults
-	if cfg.Quality.DevelopmentMode != models.ModeHybrid {
+	if cfg.Quality.DevelopmentMode != models.ModeTDD {
 		t.Errorf("Quality.DevelopmentMode: got %q, want %q",
-			cfg.Quality.DevelopmentMode, models.ModeHybrid)
+			cfg.Quality.DevelopmentMode, models.ModeTDD)
 	}
 
 	// GitStrategy should have defaults
@@ -127,8 +127,8 @@ func TestNewDefaultQualityConfig(t *testing.T) {
 
 	cfg := NewDefaultQualityConfig()
 
-	if cfg.DevelopmentMode != models.ModeHybrid {
-		t.Errorf("DevelopmentMode: got %q, want %q", cfg.DevelopmentMode, models.ModeHybrid)
+	if cfg.DevelopmentMode != models.ModeTDD {
+		t.Errorf("DevelopmentMode: got %q, want %q", cfg.DevelopmentMode, models.ModeTDD)
 	}
 	if !cfg.EnforceQuality {
 		t.Error("EnforceQuality: expected true")
@@ -144,10 +144,6 @@ func TestNewDefaultQualityConfig(t *testing.T) {
 	}
 	if !cfg.TDDSettings.RedGreenRefactor {
 		t.Error("TDDSettings.RedGreenRefactor: expected true")
-	}
-	if cfg.HybridSettings.NewFeatures != "tdd" {
-		t.Errorf("HybridSettings.NewFeatures: got %q, want %q",
-			cfg.HybridSettings.NewFeatures, "tdd")
 	}
 	if cfg.CoverageExemptions.Enabled {
 		t.Error("CoverageExemptions.Enabled: expected false")
@@ -194,28 +190,6 @@ func TestNewDefaultTDDSettings(t *testing.T) {
 	}
 	if s.MutationTestingEnabled {
 		t.Error("MutationTestingEnabled: expected false")
-	}
-}
-
-func TestNewDefaultHybridSettings(t *testing.T) {
-	t.Parallel()
-
-	s := NewDefaultHybridSettings()
-
-	if s.NewFeatures != "tdd" {
-		t.Errorf("NewFeatures: got %q, want %q", s.NewFeatures, "tdd")
-	}
-	if s.LegacyRefactoring != "ddd" {
-		t.Errorf("LegacyRefactoring: got %q, want %q", s.LegacyRefactoring, "ddd")
-	}
-	if s.MinCoverageNew != DefaultMinCoverageNew {
-		t.Errorf("MinCoverageNew: got %d, want %d", s.MinCoverageNew, DefaultMinCoverageNew)
-	}
-	if s.MinCoverageLegacy != DefaultMinCoverageLegacy {
-		t.Errorf("MinCoverageLegacy: got %d, want %d", s.MinCoverageLegacy, DefaultMinCoverageLegacy)
-	}
-	if !s.PreserveRefactoring {
-		t.Error("PreserveRefactoring: expected true")
 	}
 }
 

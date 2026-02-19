@@ -43,7 +43,7 @@ func TestNewWorktreeValidator(t *testing.T) {
 
 	gate := &mockGate{}
 	config := QualityConfig{
-		DevelopmentMode:    ModeHybrid,
+		DevelopmentMode:    ModeTDD,
 		TestCoverageTarget: 85,
 	}
 
@@ -60,7 +60,7 @@ func TestNewWorktreeValidator_NilGateFactory(t *testing.T) {
 	t.Parallel()
 
 	config := QualityConfig{
-		DevelopmentMode:    ModeHybrid,
+		DevelopmentMode:    ModeTDD,
 		TestCoverageTarget: 85,
 	}
 
@@ -75,7 +75,7 @@ func TestWorktreeValidator_Validate_InvalidPath(t *testing.T) {
 
 	gate := &mockGate{}
 	config := QualityConfig{
-		DevelopmentMode:    ModeHybrid,
+		DevelopmentMode:    ModeTDD,
 		TestCoverageTarget: 85,
 	}
 	v := mustNewWorktreeValidator(t, mockGateFactory(gate), config)
@@ -97,7 +97,7 @@ func TestWorktreeValidator_Validate_NotADirectory(t *testing.T) {
 
 	gate := &mockGate{}
 	config := QualityConfig{
-		DevelopmentMode:    ModeHybrid,
+		DevelopmentMode:    ModeTDD,
 		TestCoverageTarget: 85,
 	}
 	v := mustNewWorktreeValidator(t, mockGateFactory(gate), config)
@@ -123,7 +123,7 @@ func TestWorktreeValidator_Validate_PassingQuality(t *testing.T) {
 		},
 	}
 	config := QualityConfig{
-		DevelopmentMode:    ModeHybrid,
+		DevelopmentMode:    ModeTDD,
 		EnforceQuality:     true,
 		TestCoverageTarget: 85,
 	}
@@ -168,7 +168,7 @@ func TestWorktreeValidator_Validate_FailingQuality(t *testing.T) {
 		},
 	}
 	config := QualityConfig{
-		DevelopmentMode:    ModeHybrid,
+		DevelopmentMode:    ModeTDD,
 		EnforceQuality:     true,
 		TestCoverageTarget: 85,
 	}
@@ -203,7 +203,7 @@ func TestWorktreeValidator_ValidateWithConfig_Override(t *testing.T) {
 	v := mustNewWorktreeValidator(t, mockGateFactory(gate), defaultConfig)
 
 	overrideConfig := QualityConfig{
-		DevelopmentMode:    ModeHybrid,
+		DevelopmentMode:    ModeTDD,
 		TestCoverageTarget: 0,
 	}
 
@@ -224,7 +224,7 @@ func TestWorktreeValidator_Validate_GateError(t *testing.T) {
 		err: context.Canceled,
 	}
 	config := QualityConfig{
-		DevelopmentMode:    ModeHybrid,
+		DevelopmentMode:    ModeTDD,
 		TestCoverageTarget: 85,
 	}
 	v := mustNewWorktreeValidator(t, mockGateFactory(gate), config)

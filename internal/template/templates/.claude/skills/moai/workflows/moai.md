@@ -58,20 +58,17 @@ Flow: Explore -> Plan -> Run -> Sync -> Done
 
 ```yaml
 constitution:
-  development_mode: hybrid    # ddd, tdd, or hybrid
-  hybrid_settings:
-    new_features: tdd        # New code uses TDD
-    legacy_refactoring: ddd  # Existing code uses DDD
+  development_mode: tdd    # or ddd
 ```
 
 **Routing Logic**:
 
-| Feature Type | Mode: ddd | Mode: tdd | Mode: hybrid |
-|--------------|-----------|-----------|--------------|
-| **New package/module** (no existing file) | DDD* | TDD | TDD |
-| **New feature in existing file** | DDD | TDD | TDD |
-| **Refactoring existing code** | DDD | Use DDD for this part | DDD |
-| **Bug fix in existing code** | DDD | TDD | DDD |
+| Feature Type | Mode: ddd | Mode: tdd |
+|--------------|-----------|-----------|
+| **New package/module** (no existing file) | DDD* | TDD |
+| **New feature in existing file** | DDD | TDD |
+| **Refactoring existing code** | DDD | TDD (with brownfield pre-RED analysis) |
+| **Bug fix in existing code** | DDD | TDD |
 
 *DDD adapts for greenfield (ANALYZE requirements → PRESERVE with spec tests → IMPROVE)
 
@@ -126,8 +123,8 @@ User approval checkpoint via AskUserQuestion:
 
 [HARD] Methodology selection based on `.moai/config/sections/quality.yaml`:
 
-- **New features** (per hybrid_settings.new_features): Use `manager-tdd` (RED-GREEN-REFACTOR)
-- **Legacy refactoring** (per hybrid_settings.legacy_refactoring): Use `manager-ddd` (ANALYZE-PRESERVE-IMPROVE)
+- **development_mode: tdd** (default): Use `manager-tdd` (RED-GREEN-REFACTOR)
+- **development_mode: ddd**: Use `manager-ddd` (ANALYZE-PRESERVE-IMPROVE)
 
 Expert agent selection (for domain-specific work):
 - Backend logic: expert-backend subagent
@@ -198,7 +195,7 @@ AI must add a marker when work is complete:
 
 1. Parse arguments (extract flags: --loop, --max, --sequential, --branch, --pr, --resume, --team, --solo)
 2. If --resume with SPEC ID: Load existing SPEC and continue from last state
-3. Detect development_mode from quality.yaml (hybrid/ddd/tdd)
+3. Detect development_mode from quality.yaml (ddd/tdd)
 4. **Team mode decision**: Read workflow.yaml team settings and determine execution mode
    - If `--team` flag: Force team mode (requires workflow.team.enabled: true AND CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var)
    - If `--solo` flag: Force sub-agent mode (skip team mode entirely)
@@ -209,7 +206,7 @@ AI must add a marker when work is complete:
 7. TaskCreate for discovered tasks
 8. User confirmation via AskUserQuestion
 9. **Phase 1 (Plan)**: If team mode → Read workflows/team-plan.md and follow team orchestration. Else → manager-spec sub-agent
-10. **Phase 2 (Run)**: If team mode → Read workflows/team-run.md and follow team orchestration. Else → manager-tdd (new features) OR manager-ddd (legacy refactoring) sub-agent
+10. **Phase 2 (Run)**: If team mode → Read workflows/team-run.md and follow team orchestration. Else → manager-tdd or manager-ddd sub-agent (per quality.yaml development_mode)
 11. **Phase 3 (Sync)**: Always manager-docs sub-agent (sync phase never uses team mode)
 12. Terminate with completion marker
 

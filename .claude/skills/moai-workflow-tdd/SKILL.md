@@ -44,16 +44,11 @@ triggers:
 
 ```yaml
 constitution:
-  development_mode: hybrid    # or ddd, tdd
-  hybrid_settings:
-    new_features: tdd        # New code → use TDD (this workflow)
-    legacy_refactoring: ddd  # Existing code → use DDD
+  development_mode: tdd    # or ddd
 ```
 
 **When to use this workflow**:
-- `development_mode: tdd` → Always use TDD
-- `development_mode: hybrid` + new package/module → Use TDD
-- `development_mode: hybrid` + refactoring existing code → Use DDD instead (moai-workflow-ddd)
+- `development_mode: tdd` (default) → Always use TDD
 
 **Key distinction**:
 - **New file/package** (doesn't exist yet) → TDD (this workflow)

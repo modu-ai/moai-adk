@@ -1,7 +1,7 @@
 ---
 name: moai-workflow-run
 description: >
-  DDD/TDD/Hybrid implementation workflow for SPEC requirements. Second step
+  DDD/TDD implementation workflow for SPEC requirements. Second step
   of the Plan-Run-Sync workflow. Routes to manager-ddd or manager-tdd based
   on quality.yaml development_mode setting.
 license: Apache-2.0
@@ -12,7 +12,7 @@ metadata:
   category: "workflow"
   status: "active"
   updated: "2026-02-07"
-  tags: "run, implementation, ddd, tdd, hybrid, spec"
+  tags: "run, implementation, ddd, tdd, spec"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -33,9 +33,8 @@ triggers:
 
 Implement SPEC requirements using the configured development methodology. The methodology is determined by `development_mode` in quality.yaml:
 
-- **ddd**: Domain-Driven Development using ANALYZE-PRESERVE-IMPROVE cycle (for legacy refactoring only)
-- **tdd**: Test-Driven Development using RED-GREEN-REFACTOR cycle (for isolated new modules)
-- **hybrid**: Combined approach - TDD for new code, DDD for existing code modifications (recommended for all development)
+- **ddd**: Domain-Driven Development using ANALYZE-PRESERVE-IMPROVE cycle (for existing projects with < 10% test coverage)
+- **tdd**: Test-Driven Development using RED-GREEN-REFACTOR cycle (default for all development work)
 
 This is the second step of the Plan-Run-Sync workflow.
 
@@ -144,17 +143,9 @@ Before Phase 2, determine the development methodology by reading `.moai/config/s
 - Use RED-GREEN-REFACTOR cycle
 - Focus on test-first development with specification tests
 
-**If development_mode is "hybrid" (recommended):**
-- Classify each task by change type:
-  - New files → Route to manager-tdd (TDD workflow)
-  - New functions in existing files → Route to manager-tdd (TDD workflow)
-  - Modifications to existing code → Route to manager-ddd (DDD workflow)
-  - Refactoring existing code → Route to manager-ddd (DDD workflow)
-- Execute tasks in dependency order, routing to appropriate agent per task
-
 ### Phase 2: Implementation (Mode-Dependent)
 
-#### Phase 2A: DDD Implementation (for ddd mode or legacy code in hybrid mode)
+#### Phase 2A: DDD Implementation (for ddd mode)
 
 Agent: manager-ddd subagent
 
@@ -189,7 +180,7 @@ The manager-ddd subagent must track deviations from the original SPEC plan durin
 
 This divergence data is consumed by /moai sync for SPEC document updates and project document synchronization.
 
-#### Phase 2B: TDD Implementation (for tdd mode or new code in hybrid mode)
+#### Phase 2B: TDD Implementation (for tdd mode)
 
 Agent: manager-tdd subagent
 
@@ -250,11 +241,6 @@ For TDD mode:
 - Test-first discipline: No code written without failing test first
 - All specification tests pass
 - Clean code principles applied in REFACTOR phase
-
-For Hybrid mode:
-- New code: TDD coverage targets (85% for new files)
-- Modified code: DDD coverage targets (85% with behavior preservation)
-- Overall coverage improvement trend maintained
 
 Output: trust_5_validation results per pillar, coverage percentage, overall status (PASS, WARNING, or CRITICAL), and issues_found list.
 
@@ -404,7 +390,6 @@ All of the following must be verified:
 - Phase 2: Implementation completed according to development_mode:
   - DDD mode: manager-ddd executed ANALYZE-PRESERVE-IMPROVE with 85%+ coverage
   - TDD mode: manager-tdd executed RED-GREEN-REFACTOR with 85%+ coverage
-  - Hybrid mode: Appropriate agent per task type with 85%+ unified coverage target
 - Phase 2.5: manager-quality completed TRUST 5 validation with PASS or WARNING status
 - Quality gate blocked Phase 3 if status was CRITICAL
 - Phase 3: manager-git created commits (branch or direct) only if quality permitted
@@ -414,4 +399,4 @@ All of the following must be verified:
 
 Version: 2.1.0
 Updated: 2026-02-13
-Source: Extracted from .claude/commands/moai/2-run.md v5.0.0. Added implementation divergence tracking, development_mode routing (ddd/tdd/hybrid), team mode support, LSP quality gates, extended quality checks (code complexity, dead code, side effects, code reuse), plan proportionality validation, and post-implementation review loop.
+Source: Extracted from .claude/commands/moai/2-run.md v5.0.0. Added implementation divergence tracking, development_mode routing (ddd/tdd), team mode support, LSP quality gates, extended quality checks (code complexity, dead code, side effects, code reuse), plan proportionality validation, and post-implementation review loop.

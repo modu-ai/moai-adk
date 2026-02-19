@@ -1697,7 +1697,7 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 	}
 
 	// Development mode is no longer configured via wizard.
-	// It defaults to "hybrid" and is auto-configured by /moai project workflow.
+	// It defaults to "tdd" and is auto-configured by /moai project workflow.
 
 	// Update workflow.yaml with Agent Teams settings
 	if result.AgentTeamsMode != "" {

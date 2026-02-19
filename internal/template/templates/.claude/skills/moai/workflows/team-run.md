@@ -15,9 +15,8 @@ Flow: TeamCreate -> Task Decomposition -> Parallel Implementation -> Quality Val
 
 1. Read SPEC document and analyze scope
 2. Read quality.yaml for development_mode:
-   - hybrid (default for new projects): New code uses TDD, existing code uses DDD
-   - ddd (for existing projects): All code uses ANALYZE-PRESERVE-IMPROVE
-   - tdd (explicit selection): All code uses RED-GREEN-REFACTOR
+   - tdd (default): All code uses RED-GREEN-REFACTOR
+   - ddd (for existing projects with < 10% coverage): All code uses ANALYZE-PRESERVE-IMPROVE
 
 3. Decompose SPEC into implementation tasks:
    - Identify domain boundaries (backend, frontend, data, tests)

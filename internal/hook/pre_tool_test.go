@@ -367,6 +367,108 @@ func TestDefaultSecurityPolicy(t *testing.T) {
 	if len(policy.SensitiveContentPatterns) == 0 {
 		t.Error("SensitiveContentPatterns should not be empty")
 	}
+	if len(policy.AllowedExternalPaths) == 0 {
+		t.Error("AllowedExternalPaths should not be empty (should include ~/.claude/plans)")
+	}
+}
+
+func TestPreToolHandler_AllowedExternalPaths(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	projectDir := filepath.Join(tmpDir, "my-project")
+	if err := os.MkdirAll(projectDir, 0o755); err != nil {
+		t.Fatalf("create project dir: %v", err)
+	}
+
+	externalPlansDir := filepath.Join(tmpDir, "external-plans")
+	if err := os.MkdirAll(externalPlansDir, 0o755); err != nil {
+		t.Fatalf("create external plans dir: %v", err)
+	}
+
+	tests := []struct {
+		name         string
+		filePath     string
+		allowedPaths []string
+		wantDecision string
+	}{
+		{
+			name:         "file inside project dir is allowed",
+			filePath:     filepath.Join(projectDir, "main.go"),
+			allowedPaths: nil,
+			wantDecision: DecisionAllow,
+		},
+		{
+			name:         "external path denied without allowlist",
+			filePath:     filepath.Join(externalPlansDir, "plan.md"),
+			allowedPaths: nil,
+			wantDecision: DecisionDeny,
+		},
+		{
+			name:         "external path allowed with allowlist",
+			filePath:     filepath.Join(externalPlansDir, "plan.md"),
+			allowedPaths: []string{externalPlansDir},
+			wantDecision: DecisionAllow,
+		},
+		{
+			name:         "external path subdirectory allowed with allowlist",
+			filePath:     filepath.Join(externalPlansDir, "sub", "plan.md"),
+			allowedPaths: []string{externalPlansDir},
+			wantDecision: DecisionAllow,
+		},
+		{
+			name:         "unrelated external path still denied with allowlist",
+			filePath:     filepath.Join(tmpDir, "other", "secret.go"),
+			allowedPaths: []string{externalPlansDir},
+			wantDecision: DecisionDeny,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := &mockConfigProvider{cfg: newTestConfig()}
+			policy := &SecurityPolicy{
+				AllowedExternalPaths: tt.allowedPaths,
+			}
+			handler := &preToolHandler{
+				cfg:        cfg,
+				policy:     policy,
+				projectDir: projectDir,
+			}
+
+			toolInput, err := json.Marshal(map[string]string{
+				"file_path": tt.filePath,
+			})
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+
+			input := &HookInput{
+				SessionID:     "sess-external",
+				CWD:           projectDir,
+				HookEventName: "PreToolUse",
+				ToolName:      "Write",
+				ToolInput:     json.RawMessage(toolInput),
+			}
+
+			ctx := context.Background()
+			got, handleErr := handler.Handle(ctx, input)
+			if handleErr != nil {
+				t.Fatalf("unexpected error: %v", handleErr)
+			}
+			if got == nil || got.HookSpecificOutput == nil {
+				t.Fatal("got nil output or nil HookSpecificOutput")
+			}
+
+			gotDecision := got.HookSpecificOutput.PermissionDecision
+			if gotDecision != tt.wantDecision {
+				t.Errorf("decision = %q, want %q (filePath=%q, allowed=%v)",
+					gotDecision, tt.wantDecision, tt.filePath, tt.allowedPaths)
+			}
+		})
+	}
 }
 
 func TestPreToolHandler_SensitiveContentDetection(t *testing.T) {

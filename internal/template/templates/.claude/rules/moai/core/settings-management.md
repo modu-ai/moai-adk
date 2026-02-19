@@ -88,7 +88,7 @@ Tool permissions in settings.json:
 
 Quality gates in quality.yaml:
 
-- development_mode: ddd, tdd, or hybrid
+- development_mode: ddd or tdd
 - test_coverage_target: Minimum coverage percentage
 - lsp_quality_gates: LSP-based validation
 

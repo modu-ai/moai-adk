@@ -17,8 +17,6 @@ const (
 	DefaultTestCoverageTarget    = 85
 	DefaultMaxTransformationSize = "small"
 	DefaultMinCoveragePerCommit  = 80
-	DefaultMinCoverageNew        = 90
-	DefaultMinCoverageLegacy     = 85
 	DefaultMaxExemptPercentage   = 5
 
 	DefaultLogLevel  = "info"
@@ -89,12 +87,11 @@ func NewDefaultLanguageConfig() models.LanguageConfig {
 // NewDefaultQualityConfig returns a QualityConfig with default values.
 func NewDefaultQualityConfig() models.QualityConfig {
 	return models.QualityConfig{
-		DevelopmentMode:    models.ModeHybrid,
+		DevelopmentMode:    models.ModeTDD,
 		EnforceQuality:     true,
 		TestCoverageTarget: DefaultTestCoverageTarget,
 		DDDSettings:        NewDefaultDDDSettings(),
 		TDDSettings:        NewDefaultTDDSettings(),
-		HybridSettings:     NewDefaultHybridSettings(),
 		CoverageExemptions: NewDefaultCoverageExemptions(),
 	}
 }
@@ -117,17 +114,6 @@ func NewDefaultTDDSettings() models.TDDSettings {
 		TestFirstRequired:      true,
 		MinCoveragePerCommit:   DefaultMinCoveragePerCommit,
 		MutationTestingEnabled: false,
-	}
-}
-
-// NewDefaultHybridSettings returns HybridSettings with default values.
-func NewDefaultHybridSettings() models.HybridSettings {
-	return models.HybridSettings{
-		NewFeatures:         "tdd",
-		LegacyRefactoring:   "ddd",
-		MinCoverageNew:      DefaultMinCoverageNew,
-		MinCoverageLegacy:   DefaultMinCoverageLegacy,
-		PreserveRefactoring: true,
 	}
 }
 

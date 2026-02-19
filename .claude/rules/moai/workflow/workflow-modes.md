@@ -11,10 +11,9 @@ The Run Phase adapts its workflow based on `quality.development_mode` in `.moai/
 | Mode | Workflow Cycle | Best For | Agent Strategy |
 |------|---------------|----------|----------------|
 | DDD | ANALYZE-PRESERVE-IMPROVE | Existing projects, < 10% coverage | Characterization tests first |
-| TDD | RED-GREEN-REFACTOR | New projects, 50%+ coverage | Tests before implementation |
-| Hybrid | Mixed per change type | Partial coverage (10-49%) | New code: TDD, Legacy: DDD |
+| TDD | RED-GREEN-REFACTOR | All development work, new projects, 10%+ coverage (default) | Tests before implementation |
 
-## DDD Mode (default)
+## DDD Mode
 
 Development methodology: Domain-Driven Development (ANALYZE-PRESERVE-IMPROVE)
 
@@ -40,7 +39,7 @@ Success Criteria:
 - 85%+ code coverage achieved
 - TRUST 5 quality gates passed
 
-## TDD Mode
+## TDD Mode (default)
 
 Development methodology: Test-Driven Development (RED-GREEN-REFACTOR)
 
@@ -66,32 +65,16 @@ Success Criteria:
 - No test written after implementation code
 - TRUST 5 quality gates passed
 
-## Hybrid Mode
+### Brownfield Enhancement (for existing codebases)
 
-Development methodology: Hybrid (TDD for new + DDD for legacy)
+When TDD is selected for a project with existing code, the RED phase is enhanced:
 
-**For NEW code** (new files, new functions):
-- Apply TDD workflow (RED-GREEN-REFACTOR)
-- Strict test-first requirement
-- Coverage target: 85% for new code
+1. (Pre-RED) Read existing code in the target area to understand current behavior
+2. RED: Write a failing test informed by existing code understanding
+3. GREEN: Write minimal code to pass
+4. REFACTOR: Improve while keeping tests green
 
-**For EXISTING code** (modifications, refactoring):
-- Apply DDD workflow (ANALYZE-PRESERVE-IMPROVE)
-- Characterization tests before changes
-- Coverage target: 85% for modified code
-
-**Classification Logic**:
-- New files - TDD rules
-- Modified existing files - DDD rules
-- New functions in existing files - TDD rules for those functions
-- Deleted code - Verify characterization tests still pass
-
-Success Criteria:
-- All SPEC requirements implemented
-- New code has TDD-level coverage (85%+)
-- Modified code has characterization tests
-- Overall coverage improvement trend
-- TRUST 5 quality gates passed
+This ensures TDD on brownfield projects still respects existing behavior without requiring a separate methodology mode.
 
 ## Team Mode Methodology
 
@@ -101,7 +84,6 @@ When --team flag is used, the methodology applies at the teammate level:
 |-------------|---------------|
 | DDD | Each teammate applies ANALYZE-PRESERVE-IMPROVE within their file ownership scope |
 | TDD | Each teammate applies RED-GREEN-REFACTOR within their module scope |
-| Hybrid | team-tester uses TDD for new test files; team-backend-dev and team-frontend-dev use DDD for existing code modifications |
 
 Team-specific rules:
 - Methodology is shared across all teammates via the SPEC document
@@ -117,26 +99,26 @@ The system automatically recommends a methodology based on project analysis:
 
 | Project State | Test Coverage | Recommendation | Rationale |
 |--------------|---------------|----------------|-----------|
-| Greenfield (new) | N/A | Hybrid | Clean slate, TDD for features + DDD structure |
-| Brownfield | >= 50% | TDD | Sufficient test base for test-first development |
-| Brownfield | 10-49% | Hybrid | Partial tests, expand with DDD then TDD for new |
+| Greenfield (new) | N/A | TDD | Clean slate, test-first development |
+| Brownfield | >= 50% | TDD | Strong test base for test-first development |
+| Brownfield | 10-49% | TDD | Partial tests, expand with test-first development |
 | Brownfield | < 10% | DDD | No tests, gradual characterization test creation |
 
 ### Manual Override
 
 Users can override the auto-detected methodology:
-- During init: Use `moai init --mode <ddd|tdd|hybrid>` flag (default: hybrid)
+- During init: Use `moai init --mode <ddd|tdd>` flag (default: tdd)
 - After project setup: Re-run `/moai project` to auto-detect based on codebase analysis
 - Manual edit: Edit `quality.development_mode` in `.moai/config/sections/quality.yaml`
 - Per session: Set `MOAI_DEVELOPMENT_MODE` environment variable
 
 ### Methodology Comparison
 
-| Aspect | DDD | TDD | Hybrid |
-|--------|-----|-----|--------|
-| Test timing | After analysis (PRESERVE) | Before code (RED) | Mixed |
-| Coverage approach | Gradual improvement | Strict per-commit | Unified 85% target |
-| Best for | Legacy refactoring only | Isolated modules (rare) | All development work |
-| Risk level | Low (preserves behavior) | Medium (requires discipline) | Medium |
-| Coverage exemptions | Allowed | Not allowed | Allowed for legacy only |
-| Run Phase cycle | ANALYZE-PRESERVE-IMPROVE | RED-GREEN-REFACTOR | Both (per change type) |
+| Aspect | DDD | TDD |
+|--------|-----|-----|
+| Test timing | After analysis (PRESERVE) | Before code (RED) |
+| Coverage approach | Gradual improvement | Strict per-commit |
+| Best for | Existing projects with < 10% coverage | All development work (default) |
+| Risk level | Low (preserves behavior) | Medium (requires discipline) |
+| Coverage exemptions | Allowed | Not allowed |
+| Run Phase cycle | ANALYZE-PRESERVE-IMPROVE | RED-GREEN-REFACTOR |

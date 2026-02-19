@@ -3,7 +3,7 @@
 // It provides automated validation of five quality principles:
 // Tested, Readable, Understandable, Secured, and Trackable.
 // The framework supports phase-specific thresholds, regression detection,
-// and methodology-aware validation (DDD, TDD, Hybrid).
+// and methodology-aware validation (DDD, TDD).
 package quality
 
 import (
@@ -51,18 +51,15 @@ const (
 
 	// ModeTDD uses Test-Driven Development (RED-GREEN-REFACTOR).
 	ModeTDD DevelopmentMode = "tdd"
-
-	// ModeHybrid uses TDD for new code and DDD for legacy code.
-	ModeHybrid DevelopmentMode = "hybrid"
 )
 
 // ValidDevelopmentModes lists all supported development modes.
-var ValidDevelopmentModes = []DevelopmentMode{ModeDDD, ModeTDD, ModeHybrid}
+var ValidDevelopmentModes = []DevelopmentMode{ModeDDD, ModeTDD}
 
 // IsValid checks whether the DevelopmentMode is a recognized value.
 func (m DevelopmentMode) IsValid() bool {
 	switch m {
-	case ModeDDD, ModeTDD, ModeHybrid:
+	case ModeDDD, ModeTDD:
 		return true
 	}
 	return false
@@ -156,13 +153,6 @@ type ASTMatch struct {
 	Match   string
 }
 
-// ChangeClassification categorizes code changes for hybrid mode analysis.
-type ChangeClassification struct {
-	NewFiles      []string
-	ModifiedFiles []string
-	NewFunctions  []string
-}
-
 // --- Interfaces ---
 
 // Gate defines the TRUST 5 quality gate interface.
@@ -210,7 +200,6 @@ type QualityConfig struct {
 	RegressionDetection RegressionConfig
 	DDDSettings         DDDSettings
 	TDDSettings         TDDSettings
-	HybridSettings      HybridSettings
 	CacheTTL            time.Duration
 	Timeout             time.Duration
 }
@@ -266,12 +255,6 @@ type TDDSettings struct {
 	MutationScoreThreshold int
 }
 
-// HybridSettings holds hybrid mode quality gate configuration.
-type HybridSettings struct {
-	MinCoverageNew    int
-	MinCoverageLegacy int
-}
-
 // MethodologyContext provides methodology-specific validation inputs.
 type MethodologyContext struct {
 	// DDD-specific
@@ -283,11 +266,6 @@ type MethodologyContext struct {
 	TestFirstVerified          bool
 	CommitCoverage             int
 	CoverageExemptionRequested bool
-
-	// Hybrid-specific
-	Changes            *ChangeClassification
-	NewCodeCoverage    int
-	LegacyCodeCoverage int
 
 	// Transition tracking
 	PreviousMode DevelopmentMode
@@ -342,10 +320,6 @@ func DefaultQualityConfig() QualityConfig {
 			MinCoveragePerCommit:   80,
 			RequireTestFirst:       true,
 			MutationTestingEnabled: false,
-		},
-		HybridSettings: HybridSettings{
-			MinCoverageNew:    90,
-			MinCoverageLegacy: 85,
 		},
 		CacheTTL: 5 * time.Second,
 		Timeout:  3 * time.Second,
@@ -736,7 +710,7 @@ func (g *TrustGate) validateMethodology() []Issue {
 		return []Issue{{
 			Severity: SeverityError,
 			Message: fmt.Sprintf(
-				"unknown development mode %q, valid modes: ddd, tdd, hybrid",
+				"unknown development mode %q, valid modes: ddd, tdd",
 				g.config.DevelopmentMode,
 			),
 			Rule: "methodology-invalid-mode",
@@ -748,8 +722,6 @@ func (g *TrustGate) validateMethodology() []Issue {
 		return g.validateDDDMode()
 	case ModeTDD:
 		return g.validateTDDMode()
-	case ModeHybrid:
-		return g.validateHybridMode()
 	default:
 		return nil
 	}
@@ -815,38 +787,6 @@ func (g *TrustGate) validateTDDMode() []Issue {
 			Message: fmt.Sprintf("commit coverage %d%% is below TDD minimum %d%%",
 				mCtx.CommitCoverage, minCov),
 			Rule: "tdd-min-coverage",
-		})
-	}
-
-	return issues
-}
-
-// validateHybridMode enforces hybrid-mode-specific quality rules.
-func (g *TrustGate) validateHybridMode() []Issue {
-	var issues []Issue
-	mCtx := g.methodologyCtx
-
-	if mCtx.Changes == nil {
-		return issues
-	}
-
-	minNew := g.config.HybridSettings.MinCoverageNew
-	if minNew > 0 && len(mCtx.Changes.NewFiles) > 0 && mCtx.NewCodeCoverage < minNew {
-		issues = append(issues, Issue{
-			Severity: SeverityError,
-			Message: fmt.Sprintf("new code coverage %d%% is below hybrid minimum %d%%",
-				mCtx.NewCodeCoverage, minNew),
-			Rule: "hybrid-new-coverage",
-		})
-	}
-
-	minLegacy := g.config.HybridSettings.MinCoverageLegacy
-	if minLegacy > 0 && len(mCtx.Changes.ModifiedFiles) > 0 && mCtx.LegacyCodeCoverage < minLegacy {
-		issues = append(issues, Issue{
-			Severity: SeverityError,
-			Message: fmt.Sprintf("legacy code coverage %d%% is below hybrid minimum %d%%",
-				mCtx.LegacyCodeCoverage, minLegacy),
-			Rule: "hybrid-legacy-coverage",
 		})
 	}
 

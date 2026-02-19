@@ -27,7 +27,7 @@
         "hooks": [
           {
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-end.sh\"",
-            "timeout": 5,
+            "timeout": 10,
             "type": "command"
           }
         ]
@@ -162,7 +162,6 @@
     "command": ".moai/status_line.sh"
   },
   "outputStyle": "MoAI",
-  "plansDirectory": ".moai/plans",
   "cleanupPeriodDays": 30,
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
@@ -363,6 +362,5 @@
     "pr": "\ud83d\uddff MoAI <email@mo.ai.kr>"
   },
   "enableAllProjectMcpServers": true,
-  "respectGitignore": true,
-  "spinnerTipsEnabled": true
+  "respectGitignore": true
 }

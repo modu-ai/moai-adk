@@ -21,7 +21,7 @@ var (
 	ErrSectionNotFound = errors.New("config: section not found")
 
 	// ErrInvalidDevelopmentMode indicates an invalid development mode value.
-	ErrInvalidDevelopmentMode = errors.New("config: invalid development_mode, must be one of: ddd, tdd, hybrid")
+	ErrInvalidDevelopmentMode = errors.New("config: invalid development_mode, must be one of: ddd, tdd")
 
 	// ErrNotInitialized indicates the ConfigManager has not been initialized via Load().
 	ErrNotInitialized = errors.New("config: manager not initialized, call Load() first")

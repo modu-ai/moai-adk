@@ -37,7 +37,7 @@
 
 > **"The purpose of vibe coding is not rapid productivity but code quality."**
 
-MoAI-ADK is a **high-performance AI development environment** for Claude Code. 28 specialized AI agents and 52 skills collaborate to produce quality code. It automatically applies the Hybrid methodology (TDD + DDD) for new projects and DDD for existing projects, and supports dual execution modes with Sub-Agent and Agent Teams.
+MoAI-ADK is a **high-performance AI development environment** for Claude Code. 28 specialized AI agents and 52 skills collaborate to produce quality code. It automatically applies TDD (default) for new projects and feature development, or DDD for existing projects with minimal test coverage, and supports dual execution modes with Sub-Agent and Agent Teams.
 
 A single binary written in Go -- runs instantly on any platform with zero dependencies.
 
@@ -146,31 +146,32 @@ MoAI-ADK automatically selects the optimal development methodology based on your
 
 ```mermaid
 flowchart TD
-    A["🔍 Project Analysis"] --> B{"New Project?"}
-    B -->|"Yes"| C["Hybrid (TDD + DDD)"]
-    B -->|"No"| D{"Test Coverage ≥ 50%?"}
-    D -->|"Yes"| C
-    D -->|"No"| E["DDD"]
-    C --> F["New Code → TDD"]
-    C --> G["Existing Code → DDD"]
-    E --> H["ANALYZE → PRESERVE → IMPROVE"]
+    A["🔍 Project Analysis"] --> B{"New Project or<br/>10%+ Test Coverage?"}
+    B -->|"Yes"| C["TDD (default)"]
+    B -->|"No"| D{"Existing Project<br/>< 10% Coverage?"}
+    D -->|"Yes"| E["DDD"]
+    C --> F["RED → GREEN → REFACTOR"]
+    E --> G["ANALYZE → PRESERVE → IMPROVE"]
 
     style C fill:#4CAF50,color:#fff
     style E fill:#2196F3,color:#fff
 ```
 
-### Hybrid Methodology (Default for New Projects)
+### TDD Methodology (Default)
 
-The recommended methodology for new projects and ongoing development. It automatically applies TDD or DDD depending on the type of code being modified.
+The default methodology for new projects and feature development. Write tests first, then implement.
 
-| Code Type | Methodology | Cycle | Description |
-|-----------|-------------|-------|-------------|
-| New code | **TDD** | RED → GREEN → REFACTOR | Write tests first, make them pass, then refactor |
-| Existing code | **DDD** | ANALYZE → PRESERVE → IMPROVE | Analyze existing behavior, preserve with characterization tests, then improve incrementally |
+| Phase | Description |
+|-------|-------------|
+| **RED** | Write a failing test that defines expected behavior |
+| **GREEN** | Write minimal code to make the test pass |
+| **REFACTOR** | Improve code quality while keeping tests green |
 
-### DDD Methodology (Existing Projects)
+For brownfield projects (existing codebases), TDD is enhanced with a **pre-RED analysis step**: read existing code to understand current behavior before writing tests.
 
-A methodology for safely refactoring existing projects with low test coverage.
+### DDD Methodology (Existing Projects with < 10% Coverage)
+
+A methodology for safely refactoring existing projects with minimal test coverage.
 
 ```
 ANALYZE   → Analyze existing code and dependencies, identify domain boundaries
@@ -178,7 +179,7 @@ PRESERVE  → Write characterization tests, capture current behavior snapshots
 IMPROVE   → Improve incrementally under test protection
 ```
 
-> The methodology is automatically selected during `moai init` and can be changed via `development_mode` in `.moai/config/sections/quality.yaml`.
+> The methodology is automatically selected during `moai init` (`--mode <ddd|tdd>`, default: tdd) and can be changed via `development_mode` in `.moai/config/sections/quality.yaml`.
 
 ---
 

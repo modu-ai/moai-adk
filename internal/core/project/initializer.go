@@ -29,7 +29,7 @@ type InitOptions struct {
 	Features          []string // Selected features (e.g., "LSP", "Quality Gates").
 	UserName          string   // User display name for configuration.
 	ConvLang          string   // Conversation language code (e.g., "en", "ko").
-	DevelopmentMode   string   // "ddd", "tdd", or "hybrid".
+	DevelopmentMode   string   // "ddd" or "tdd".
 	GitMode           string   // Git workflow mode: "manual", "personal", or "team".
 	GitProvider       string   // Git provider: "github", "gitlab".
 	GitHubUsername    string   // GitHub username (for personal/team modes).

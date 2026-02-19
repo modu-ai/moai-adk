@@ -22,8 +22,8 @@ func TestNewTemplateContext_Defaults(t *testing.T) {
 	if ctx.GitProvider != "github" {
 		t.Errorf("GitProvider = %q, want %q", ctx.GitProvider, "github")
 	}
-	if ctx.DevelopmentMode != string(models.ModeHybrid) {
-		t.Errorf("DevelopmentMode = %q, want %q", ctx.DevelopmentMode, models.ModeHybrid)
+	if ctx.DevelopmentMode != string(models.ModeTDD) {
+		t.Errorf("DevelopmentMode = %q, want %q", ctx.DevelopmentMode, models.ModeTDD)
 	}
 	if !ctx.EnforceQuality {
 		t.Error("EnforceQuality = false, want true")
@@ -102,8 +102,8 @@ func TestNewTemplateContext_WithOptions(t *testing.T) {
 			opt:  WithDevelopmentMode("waterfall"),
 			checkFn: func(t *testing.T, ctx *TemplateContext) {
 				// Invalid mode should not change default
-				if ctx.DevelopmentMode != string(models.ModeHybrid) {
-					t.Errorf("DevelopmentMode = %q, want %q (unchanged from default)", ctx.DevelopmentMode, models.ModeHybrid)
+				if ctx.DevelopmentMode != string(models.ModeTDD) {
+					t.Errorf("DevelopmentMode = %q, want %q (unchanged from default)", ctx.DevelopmentMode, models.ModeTDD)
 				}
 			},
 		},

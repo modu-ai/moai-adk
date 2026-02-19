@@ -244,16 +244,16 @@ Goal: Automatically set the `development_mode` in `.moai/config/sections/quality
 Auto-Detection Logic:
 
 For New Projects (Phase 0 classified as "New Project"):
-- Set `development_mode: "hybrid"` (TDD for new features, DDD for structure)
-- Rationale: New projects benefit from test-first development for new features while maintaining DDD structure for overall architecture
+- Set `development_mode: "tdd"` (test-first development)
+- Rationale: New projects benefit from test-first development with clean RED-GREEN-REFACTOR cycles
 
 For Existing Projects (Phase 0 classified as "Existing Project"):
 - Step 1: Check for existing test files using Glob patterns (*_test.go, *_test.py, *.test.ts, *.test.js, *.spec.ts, *.spec.js, test_*.py, tests/, __tests__/, spec/)
 - Step 2: Estimate test coverage level based on test file count relative to source file count:
   - No test files found (0%): Set `development_mode: "ddd"` (need characterization tests first)
-  - Few test files (< 10% ratio): Set `development_mode: "ddd"` (insufficient coverage for TDD)
-  - Moderate test files (10-49% ratio): Set `development_mode: "hybrid"` (expand with DDD, new code with TDD)
-  - Good test files (>= 50% ratio): Set `development_mode: "hybrid"` (sufficient base, hybrid approach)
+  - Few test files (< 10% ratio): Set `development_mode: "ddd"` (insufficient coverage, characterization tests first)
+  - Moderate test files (10-49% ratio): Set `development_mode: "tdd"` (partial tests, expand with test-first development)
+  - Good test files (>= 50% ratio): Set `development_mode: "tdd"` (strong test base for test-first development)
 
 Implementation:
 - Read current `.moai/config/sections/quality.yaml`
@@ -265,9 +265,9 @@ Methodology-to-Mode Mapping Reference:
 
 | Project State | Test Ratio | development_mode | Rationale |
 |--------------|-----------|------------------|-----------|
-| New (no code) | N/A | hybrid | Clean slate, TDD for features + DDD structure |
-| Existing | >= 50% | hybrid | Sufficient test base for hybrid development |
-| Existing | 10-49% | hybrid | Partial tests, expand with DDD then TDD for new |
+| New (no code) | N/A | tdd | Clean slate, test-first development |
+| Existing | >= 50% | tdd | Strong test base for test-first development |
+| Existing | 10-49% | tdd | Partial tests, expand with test-first development |
 | Existing | < 10% | ddd | No tests, gradual characterization test creation |
 
 ---

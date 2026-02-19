@@ -116,37 +116,11 @@ func (c *TDDCycle) ValidateTransition(from, to Phase) error {
 	return nil
 }
 
-// HybridStrategy routes code to the appropriate cycle based on whether it is new or legacy.
-type HybridStrategy struct {
-	DDD *DDDCycle
-	TDD *TDDCycle
-}
-
-// ClassifyCode returns the appropriate cycle type for the given code classification.
-// New code uses TDD; legacy code uses DDD.
-func (h *HybridStrategy) ClassifyCode(isNew bool) CycleType {
-	if isNew {
-		return CycleTDD
-	}
-	return CycleDDD
-}
-
-// GetDDDCycle returns the DDD cycle for legacy code processing.
-func (h *HybridStrategy) GetDDDCycle() *DDDCycle {
-	return h.DDD
-}
-
-// GetTDDCycle returns the TDD cycle for new code processing.
-func (h *HybridStrategy) GetTDDCycle() *TDDCycle {
-	return h.TDD
-}
-
 // MethodologyConfig holds the configuration for a development methodology.
 type MethodologyConfig struct {
-	Mode   models.DevelopmentMode `json:"mode"`
-	DDD    *DDDCycle              `json:"ddd,omitempty"`
-	TDD    *TDDCycle              `json:"tdd,omitempty"`
-	Hybrid *HybridStrategy        `json:"hybrid,omitempty"`
+	Mode models.DevelopmentMode `json:"mode"`
+	DDD  *DDDCycle              `json:"ddd,omitempty"`
+	TDD  *TDDCycle              `json:"tdd,omitempty"`
 }
 
 // NewMethodology creates a MethodologyConfig for the given development mode.
@@ -163,11 +137,6 @@ func NewMethodology(mode models.DevelopmentMode) (*MethodologyConfig, error) {
 		cfg.DDD = &DDDCycle{}
 	case models.ModeTDD:
 		cfg.TDD = &TDDCycle{}
-	case models.ModeHybrid:
-		cfg.Hybrid = &HybridStrategy{
-			DDD: &DDDCycle{},
-			TDD: &TDDCycle{},
-		}
 	}
 
 	return cfg, nil
@@ -183,13 +152,6 @@ func (mc *MethodologyConfig) ActivePhases() []Phase {
 	case models.ModeTDD:
 		if mc.TDD != nil {
 			return mc.TDD.Phases()
-		}
-	case models.ModeHybrid:
-		if mc.Hybrid != nil {
-			// Hybrid returns all phases from both cycles.
-			dddPhases := mc.Hybrid.DDD.Phases()
-			tddPhases := mc.Hybrid.TDD.Phases()
-			return append(dddPhases, tddPhases...)
 		}
 	}
 	return nil

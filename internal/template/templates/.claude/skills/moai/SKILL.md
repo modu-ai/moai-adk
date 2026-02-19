@@ -108,7 +108,7 @@ For detailed orchestration: Read workflows/plan.md
 ### run - DDD Implementation
 
 Purpose: Implement SPEC requirements through Domain-Driven Development methodology.
-Agents: manager-strategy (planning), manager-ddd (ANALYZE-PRESERVE-IMPROVE), manager-quality (TRUST 5 validation), manager-git (commits)
+Agents: manager-strategy (planning), manager-ddd or manager-tdd (per quality.yaml development_mode), manager-quality (TRUST 5 validation), manager-git (commits)
 Phases: SPEC analysis and execution plan, task decomposition, DDD implementation cycle, quality validation, git operations, completion guidance.
 Flags: --resume SPEC-XXX, --team (parallel implementation)
 For detailed orchestration: Read workflows/run.md

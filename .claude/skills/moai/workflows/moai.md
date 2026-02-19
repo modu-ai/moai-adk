@@ -58,20 +58,17 @@ Flow: Explore -> Plan -> Run -> Sync -> Done
 
 ```yaml
 constitution:
-  development_mode: hybrid    # ddd, tdd, or hybrid
-  hybrid_settings:
-    new_features: tdd        # New code uses TDD
-    legacy_refactoring: ddd  # Existing code uses DDD
+  development_mode: tdd    # or ddd
 ```
 
 **Routing Logic**:
 
-| Feature Type | Mode: ddd | Mode: tdd | Mode: hybrid |
-|--------------|-----------|-----------|--------------|
-| **New package/module** (no existing file) | DDD* | TDD | TDD |
-| **New feature in existing file** | DDD | TDD | TDD |
-| **Refactoring existing code** | DDD | Use DDD for this part | DDD |
-| **Bug fix in existing code** | DDD | TDD | DDD |
+| Feature Type | Mode: ddd | Mode: tdd |
+|--------------|-----------|-----------|
+| **New package/module** (no existing file) | DDD* | TDD |
+| **New feature in existing file** | DDD | TDD |
+| **Refactoring existing code** | DDD | DDD for this part |
+| **Bug fix in existing code** | DDD | TDD |
 
 *DDD adapts for greenfield (ANALYZE requirements → PRESERVE with spec tests → IMPROVE)
 
@@ -126,8 +123,8 @@ User approval checkpoint via AskUserQuestion:
 
 [HARD] Methodology selection based on `.moai/config/sections/quality.yaml`:
 
-- **New features** (per hybrid_settings.new_features): Use `manager-tdd` (RED-GREEN-REFACTOR)
-- **Legacy refactoring** (per hybrid_settings.legacy_refactoring): Use `manager-ddd` (ANALYZE-PRESERVE-IMPROVE)
+- **development_mode: tdd** (default): Use `manager-tdd` (RED-GREEN-REFACTOR)
+- **development_mode: ddd**: Use `manager-ddd` (ANALYZE-PRESERVE-IMPROVE)
 
 Expert agent selection (for domain-specific work):
 - Backend logic: expert-backend subagent

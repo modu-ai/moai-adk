@@ -87,7 +87,7 @@ Coordinate workflows and multi-step processes:
 - manager-strategy: System design, architecture decisions
 - manager-git: Git operations, branching strategy
 
-### Expert Agents (8)
+### Expert Agents (9)
 
 Domain-specific implementation:
 
@@ -99,6 +99,7 @@ Domain-specific implementation:
 - expert-debug: Debugging and troubleshooting
 - expert-testing: Test creation and strategy
 - expert-refactoring: Code refactoring
+- expert-chrome-extension: Chrome Extension Manifest V3 development
 
 ### Builder Agents (3)
 
@@ -115,13 +116,13 @@ Agents for Claude Code Agent Teams (v2.1.32+, requires CLAUDE_CODE_EXPERIMENTAL_
 | Agent | Model | Phase | Mode | Purpose |
 |-------|-------|-------|------|---------|
 | team-researcher | haiku | plan | plan (read-only) | Codebase exploration and research |
-| team-analyst | inherit | plan | plan (read-only) | Requirements analysis |
-| team-architect | inherit | plan | plan (read-only) | Technical design |
-| team-backend-dev | inherit | run | acceptEdits | Server-side implementation |
-| team-designer | inherit | run | acceptEdits | UI/UX design with Pencil/Figma MCP (requires Pencil MCP server) |
-| team-frontend-dev | inherit | run | acceptEdits | Client-side implementation |
-| team-tester | inherit | run | acceptEdits | Test creation with exclusive test file ownership |
-| team-quality | inherit | run | plan (read-only) | TRUST 5 quality validation |
+| team-analyst | opus | plan | plan (read-only) | Requirements analysis |
+| team-architect | opus | plan | plan (read-only) | Technical design |
+| team-backend-dev | opus | run | acceptEdits | Server-side implementation |
+| team-designer | opus | run | acceptEdits | UI/UX design with Pencil/Figma MCP (requires Pencil MCP server) |
+| team-frontend-dev | opus | run | acceptEdits | Client-side implementation |
+| team-tester | opus | run | acceptEdits | Test creation with exclusive test file ownership |
+| team-quality | haiku | run | plan (read-only) | TRUST 5 quality validation |
 
 ## Rules
 

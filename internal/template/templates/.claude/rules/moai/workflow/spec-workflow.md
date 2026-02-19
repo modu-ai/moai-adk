@@ -36,7 +36,7 @@ Token Strategy:
 - Enables 70% larger implementations
 
 Development Methodology:
-- Configured in quality.yaml (development_mode: ddd, tdd, or hybrid)
+- Configured in quality.yaml (development_mode: ddd or tdd)
 - See @workflow-modes.md for detailed methodology cycles
 
 Success Criteria:

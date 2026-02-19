@@ -172,7 +172,7 @@ func TestValidateInitFlags_AllEmpty(t *testing.T) {
 
 func TestValidateInitFlags_AllValid(t *testing.T) {
 	cmd := newTestInitCmd()
-	_ = cmd.Flags().Set("mode", "hybrid")
+	_ = cmd.Flags().Set("mode", "tdd")
 	_ = cmd.Flags().Set("git-mode", "team")
 	_ = cmd.Flags().Set("git-provider", "github")
 	_ = cmd.Flags().Set("model-policy", "medium")

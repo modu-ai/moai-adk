@@ -33,6 +33,11 @@ type SecurityPolicy struct {
 
 	// SensitiveContentPatterns are regex patterns for sensitive data in content.
 	SensitiveContentPatterns []*regexp.Regexp
+
+	// AllowedExternalPaths are absolute directory paths outside the project that
+	// are permitted for file access. This bypasses the project-boundary check
+	// for specific well-known directories (e.g., ~/.claude/plans/).
+	AllowedExternalPaths []string
 }
 
 // compilePatterns compiles a list of pattern strings into regexp objects.
@@ -210,6 +215,12 @@ func DefaultSecurityPolicy() *SecurityPolicy {
 		`ya29\.[a-zA-Z0-9_\-]+`,     // Google OAuth tokens
 	}
 
+	// Resolve allowed external paths that bypass the project-boundary check.
+	var allowedExternal []string
+	if home, err := os.UserHomeDir(); err == nil {
+		allowedExternal = append(allowedExternal, filepath.Join(home, ".claude", "plans"))
+	}
+
 	return &SecurityPolicy{
 		BlockedTools:             []string{},
 		DenyPatterns:             compilePatterns(denyPatterns),
@@ -217,6 +228,7 @@ func DefaultSecurityPolicy() *SecurityPolicy {
 		DangerousBashPatterns:    compilePatterns(dangerousBashPatterns),
 		AskBashPatterns:          compilePatterns(askBashPatterns),
 		SensitiveContentPatterns: compilePatterns(sensitiveContentPatterns),
+		AllowedExternalPaths:     allowedExternal,
 	}
 }
 
@@ -485,7 +497,10 @@ func (h *preToolHandler) checkFileAccess(toolInput json.RawMessage, toolName str
 
 			rel, relErr := filepath.Rel(nfcProject, nfcResolved)
 			if relErr != nil || strings.HasPrefix(rel, "..") {
-				return DecisionDeny, "Path traversal detected: file is outside project directory"
+				// Before denying, check if path is under an allowed external directory.
+				if !h.isAllowedExternalPath(nfcResolved) {
+					return DecisionDeny, "Path traversal detected: file is outside project directory"
+				}
 			}
 		}
 	}
@@ -521,4 +536,27 @@ func (h *preToolHandler) checkFileAccess(toolInput json.RawMessage, toolName str
 	}
 
 	return "", ""
+}
+
+// isAllowedExternalPath checks whether the given absolute path falls under
+// one of the policy's AllowedExternalPaths directories.
+func (h *preToolHandler) isAllowedExternalPath(resolvedPath string) bool {
+	if h.policy == nil {
+		return false
+	}
+	for _, allowed := range h.policy.AllowedExternalPaths {
+		absAllowed, err := filepath.Abs(allowed)
+		if err != nil {
+			continue
+		}
+		nfcAllowed := norm.NFC.String(absAllowed)
+		rel, err := filepath.Rel(nfcAllowed, resolvedPath)
+		if err != nil {
+			continue
+		}
+		if !strings.HasPrefix(rel, "..") {
+			return true
+		}
+	}
+	return false
 }

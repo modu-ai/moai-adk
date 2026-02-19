@@ -5,27 +5,23 @@ type DevelopmentMode string
 
 const (
 	// ModeDDD uses Domain-Driven Development (ANALYZE-PRESERVE-IMPROVE).
-	// Best for: legacy refactoring only (existing codebase, no new features).
+	// Best for: existing codebases with minimal test coverage.
 	ModeDDD DevelopmentMode = "ddd"
 
 	// ModeTDD uses Test-Driven Development (RED-GREEN-REFACTOR).
-	// Best for: isolated new modules with no existing code dependencies (rare).
+	// Best for: new projects, feature development, codebases with existing tests (default).
 	ModeTDD DevelopmentMode = "tdd"
-
-	// ModeHybrid uses TDD for new code and DDD for legacy code.
-	// Best for: all development work (new projects, new features, ongoing development).
-	ModeHybrid DevelopmentMode = "hybrid"
 )
 
 // ValidDevelopmentModes returns all valid development mode values.
 func ValidDevelopmentModes() []DevelopmentMode {
-	return []DevelopmentMode{ModeDDD, ModeTDD, ModeHybrid}
+	return []DevelopmentMode{ModeDDD, ModeTDD}
 }
 
 // IsValid checks if the development mode is a valid value.
 func (m DevelopmentMode) IsValid() bool {
 	switch m {
-	case ModeDDD, ModeTDD, ModeHybrid:
+	case ModeDDD, ModeTDD:
 		return true
 	}
 	return false
@@ -54,7 +50,6 @@ type QualityConfig struct {
 	TestCoverageTarget int                `yaml:"test_coverage_target"`
 	DDDSettings        DDDSettings        `yaml:"ddd_settings"`
 	TDDSettings        TDDSettings        `yaml:"tdd_settings"`
-	HybridSettings     HybridSettings     `yaml:"hybrid_settings"`
 	CoverageExemptions CoverageExemptions `yaml:"coverage_exemptions"`
 	TestQuality        TestQuality        `yaml:"test_quality"`
 	LSPQualityGates    LSPQualityGates    `yaml:"lsp_quality_gates"`
@@ -148,15 +143,6 @@ type TDDSettings struct {
 	TestFirstRequired      bool `yaml:"test_first_required"`
 	MinCoveragePerCommit   int  `yaml:"min_coverage_per_commit"`
 	MutationTestingEnabled bool `yaml:"mutation_testing_enabled"`
-}
-
-// HybridSettings configures Hybrid mode (TDD for new code, DDD for legacy).
-type HybridSettings struct {
-	NewFeatures         string `yaml:"new_features"`
-	LegacyRefactoring   string `yaml:"legacy_refactoring"`
-	MinCoverageNew      int    `yaml:"min_coverage_new"`
-	MinCoverageLegacy   int    `yaml:"min_coverage_legacy"`
-	PreserveRefactoring bool   `yaml:"preserve_refactoring"`
 }
 
 // CoverageExemptions allows gradual coverage improvement for legacy code.
