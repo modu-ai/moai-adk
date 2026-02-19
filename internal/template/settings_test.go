@@ -294,24 +294,33 @@ func TestSettingsTemplateSpinnerTipsOverride(t *testing.T) {
 		t.Fatalf("Unmarshal error: %v", err)
 	}
 
-	tips, ok := settings["spinnerTipsOverride"].([]interface{})
+	overrideObj, ok := settings["spinnerTipsOverride"].(map[string]interface{})
 	if !ok {
-		t.Fatal("spinnerTipsOverride is missing or not an array")
+		t.Fatal("spinnerTipsOverride is missing or not an object")
+	}
+	tips, ok := overrideObj["tips"].([]interface{})
+	if !ok {
+		t.Fatal("spinnerTipsOverride.tips is missing or not an array")
 	}
 	if len(tips) == 0 {
-		t.Fatal("spinnerTipsOverride array is empty")
+		t.Fatal("spinnerTipsOverride.tips array is empty")
 	}
 
 	// Verify each entry is a non-empty string
 	for i, tip := range tips {
 		s, ok := tip.(string)
 		if !ok {
-			t.Errorf("spinnerTipsOverride[%d] is not a string, got %T", i, tip)
+			t.Errorf("spinnerTipsOverride.tips[%d] is not a string, got %T", i, tip)
 			continue
 		}
 		if s == "" {
-			t.Errorf("spinnerTipsOverride[%d] is an empty string", i)
+			t.Errorf("spinnerTipsOverride.tips[%d] is an empty string", i)
 		}
+	}
+
+	excludeDefault, ok := overrideObj["excludeDefault"].(bool)
+	if !ok || !excludeDefault {
+		t.Error("spinnerTipsOverride.excludeDefault is missing or not true")
 	}
 }
 
