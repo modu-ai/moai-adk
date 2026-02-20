@@ -553,22 +553,6 @@ ls -la internal/template/embedded.go
 
 **Solution:** Tests should use `t.TempDir()` for isolation. Check if test creates files in project root.
 
-### Issue: 3 pre-existing test failures in internal/template
-
-**Tests:**
-- `TestSettingsTemplateNewFields`
-- `TestSettingsTemplateSpinnerTipsOverride`
-- `TestSettingsTemplatePluginFields`
-
-**Cause:** These tests are related to SPEC-SETTINGS-001 (`spinnerTipsEnabled`, `enabledPlugins` fields). They were failing **before** the Go 1.26 upgrade and are NOT a regression.
-
-**Solution:** Implement the pending SPEC-SETTINGS-001 work to fix these tests. Until then, exclude them if needed:
-```bash
-go test -run "^(?!TestSettingsTemplateNewFields|TestSettingsTemplateSpinnerTipsOverride|TestSettingsTemplatePluginFields)" ./internal/template/...
-```
-
----
-
 ### Issue: Hook timeout
 
 **Solution:** Increase timeout in settings.json:

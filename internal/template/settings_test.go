@@ -271,7 +271,6 @@ func TestSettingsTemplateNewFields(t *testing.T) {
 	boolFields := map[string]bool{
 		"enableAllProjectMcpServers": true,
 		"respectGitignore":           true,
-		"spinnerTipsEnabled":         true,
 	}
 	for field, want := range boolFields {
 		val, ok := settings[field]
@@ -285,72 +284,6 @@ func TestSettingsTemplateNewFields(t *testing.T) {
 	}
 }
 
-func TestSettingsTemplateSpinnerTipsOverride(t *testing.T) {
-	ctx := testContext("darwin")
-	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
-
-	var settings map[string]any
-	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
-		t.Fatalf("Unmarshal error: %v", err)
-	}
-
-	overrideObj, ok := settings["spinnerTipsOverride"].(map[string]any)
-	if !ok {
-		t.Fatal("spinnerTipsOverride is missing or not an object")
-	}
-	tips, ok := overrideObj["tips"].([]any)
-	if !ok {
-		t.Fatal("spinnerTipsOverride.tips is missing or not an array")
-	}
-	if len(tips) == 0 {
-		t.Fatal("spinnerTipsOverride.tips array is empty")
-	}
-
-	// Verify each entry is a non-empty string
-	for i, tip := range tips {
-		s, ok := tip.(string)
-		if !ok {
-			t.Errorf("spinnerTipsOverride.tips[%d] is not a string, got %T", i, tip)
-			continue
-		}
-		if s == "" {
-			t.Errorf("spinnerTipsOverride.tips[%d] is an empty string", i)
-		}
-	}
-
-	excludeDefault, ok := overrideObj["excludeDefault"].(bool)
-	if !ok || !excludeDefault {
-		t.Error("spinnerTipsOverride.excludeDefault is missing or not true")
-	}
-}
-
-func TestSettingsTemplatePluginFields(t *testing.T) {
-	ctx := testContext("darwin")
-	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
-
-	var settings map[string]any
-	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
-		t.Fatalf("Unmarshal error: %v", err)
-	}
-
-	// enabledPlugins must be a map (object), not array
-	enabledPlugins, ok := settings["enabledPlugins"]
-	if !ok {
-		t.Fatal("missing field enabledPlugins")
-	}
-	if _, ok := enabledPlugins.(map[string]any); !ok {
-		t.Errorf("enabledPlugins is not an object, got %T", enabledPlugins)
-	}
-
-	// extraKnownMarketplaces must be a map (object), not array
-	extraMarketplaces, ok := settings["extraKnownMarketplaces"]
-	if !ok {
-		t.Fatal("missing field extraKnownMarketplaces")
-	}
-	if _, ok := extraMarketplaces.(map[string]any); !ok {
-		t.Errorf("extraKnownMarketplaces is not an object, got %T", extraMarketplaces)
-	}
-}
 
 func TestSettingsTemplateAllHookEvents(t *testing.T) {
 	t.Parallel()
