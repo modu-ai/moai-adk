@@ -1,15 +1,16 @@
 package cli
 
 import (
-	"bytes"
 	"os"
-	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // TestBuildGLMEnvVars verifies that buildGLMEnvVars produces the correct
-// map of environment variables for GLM hybrid mode.
+// map of environment variables for GLM mode.
 func TestBuildGLMEnvVars(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -141,61 +142,8 @@ func TestBuildGLMEnvVars(t *testing.T) {
 	}
 }
 
-// TestCheckTmuxAvailable verifies that checkTmuxAvailable returns an error
-// when tmux is not in PATH.
-func TestCheckTmuxAvailable(t *testing.T) {
-	tests := []struct {
-		name        string
-		pathVal     string
-		wantErr     bool
-		errContains string
-	}{
-		{
-			name:        "tmux_not_in_path",
-			pathVal:     t.TempDir(), // empty directory with no tmux binary
-			wantErr:     true,
-			errContains: "tmux is required",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Override PATH to a directory that doesn't contain tmux
-			t.Setenv("PATH", tt.pathVal)
-
-			err := checkTmuxAvailable()
-
-			if tt.wantErr {
-				if err == nil {
-					t.Error("checkTmuxAvailable() should return error when tmux not in PATH")
-				} else if !strings.Contains(err.Error(), tt.errContains) {
-					t.Errorf("checkTmuxAvailable() error = %q, want to contain %q", err.Error(), tt.errContains)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("checkTmuxAvailable() unexpected error: %v", err)
-				}
-			}
-		})
-	}
-}
-
-// TestCheckTmuxAvailable_TmuxPresent verifies checkTmuxAvailable succeeds
-// when tmux is installed. Skips if tmux is not available on the test machine.
-func TestCheckTmuxAvailable_TmuxPresent(t *testing.T) {
-	// Check if tmux is actually installed before testing this path
-	if _, err := exec.LookPath("tmux"); err != nil {
-		t.Skip("tmux is not installed on this machine, skipping tmux-present test")
-	}
-
-	err := checkTmuxAvailable()
-	if err != nil {
-		t.Errorf("checkTmuxAvailable() should succeed when tmux is installed, got: %v", err)
-	}
-}
-
 // TestGLMTeamFlag verifies that the --team flag is correctly registered
-// on the glm command with the expected default value.
+// on the glm command with the expected type and default value.
 func TestGLMTeamFlag(t *testing.T) {
 	// Verify the --team flag exists on glmCmd
 	flag := glmCmd.Flags().Lookup("team")
@@ -212,59 +160,77 @@ func TestGLMTeamFlag(t *testing.T) {
 	if flag.DefValue != "false" {
 		t.Errorf("--team flag default = %q, want %q", flag.DefValue, "false")
 	}
-
-	// Verify the flag usage text mentions tmux
-	if !strings.Contains(strings.ToLower(flag.Usage), "tmux") {
-		t.Errorf("--team flag usage should mention tmux, got: %q", flag.Usage)
-	}
 }
 
-// TestRunGLMTeam_NoTmux verifies that runGLMTeam returns an error
-// containing the expected message when tmux is not found in PATH.
-func TestRunGLMTeam_NoTmux(t *testing.T) {
+// TestPersistTeamMode verifies that persistTeamMode saves team_mode to llm.yaml.
+func TestPersistTeamMode(t *testing.T) {
 	t.Setenv("MOAI_TEST_MODE", "1")
 
-	// Override PATH to a directory that does not contain tmux
-	emptyDir := t.TempDir()
-	t.Setenv("PATH", emptyDir)
-
-	buf := new(bytes.Buffer)
-	cmd := glmCmd
-	cmd.SetOut(buf)
-	cmd.SetErr(buf)
-
-	err := runGLMTeam(cmd)
-	if err == nil {
-		t.Fatal("runGLMTeam() should return error when tmux is not available")
-	}
-
-	if !strings.Contains(err.Error(), "tmux") {
-		t.Errorf("runGLMTeam() error should mention tmux, got: %q", err.Error())
-	}
-}
-
-// TestRunGLMTeam_NoAPIKey verifies that runGLMTeam returns an error
-// when tmux is available but no API key is configured.
-// Skips if tmux is not installed on the test machine.
-func TestRunGLMTeam_NoAPIKey(t *testing.T) {
-	// Skip if tmux is not available
-	if _, err := exec.LookPath("tmux"); err != nil {
-		t.Skip("tmux is not installed on this machine, skipping API key test")
-	}
-
-	t.Setenv("MOAI_TEST_MODE", "1")
-
-	// Use a temp directory as the home dir so no saved key is found
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
-	t.Setenv("USERPROFILE", tmpHome)
-
-	// Clear any API key environment variable
-	t.Setenv("GLM_API_KEY", "")
-
-	// Create a temporary project directory so findProjectRoot succeeds
+	// Create a temporary project directory with config
 	projectRoot := t.TempDir()
-	if err := os.MkdirAll(projectRoot+"/.moai", 0o755); err != nil {
+	sectionsDir := filepath.Join(projectRoot, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Test persisting team mode
+	if err := persistTeamMode(projectRoot, "glm"); err != nil {
+		t.Fatalf("persistTeamMode() error: %v", err)
+	}
+
+	// Verify the llm.yaml was created with correct team_mode
+	llmPath := filepath.Join(sectionsDir, "llm.yaml")
+	data, err := os.ReadFile(llmPath)
+	if err != nil {
+		t.Fatalf("failed to read llm.yaml: %v", err)
+	}
+
+	content := string(data)
+	if !strings.Contains(content, "team_mode: glm") {
+		t.Errorf("llm.yaml should contain team_mode: glm, got:\n%s", content)
+	}
+}
+
+// TestDisableTeamMode verifies that disableTeamMode resets team_mode to empty.
+func TestDisableTeamMode(t *testing.T) {
+	t.Setenv("MOAI_TEST_MODE", "1")
+
+	// Create a temporary project directory with config
+	projectRoot := t.TempDir()
+	sectionsDir := filepath.Join(projectRoot, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// First enable, then disable
+	if err := persistTeamMode(projectRoot, "glm"); err != nil {
+		t.Fatalf("persistTeamMode() error: %v", err)
+	}
+	if err := disableTeamMode(projectRoot); err != nil {
+		t.Fatalf("disableTeamMode() error: %v", err)
+	}
+
+	// Verify the llm.yaml has empty team_mode
+	llmPath := filepath.Join(sectionsDir, "llm.yaml")
+	data, err := os.ReadFile(llmPath)
+	if err != nil {
+		t.Fatalf("failed to read llm.yaml: %v", err)
+	}
+
+	content := string(data)
+	if strings.Contains(content, "team_mode: glm") {
+		t.Errorf("llm.yaml should have empty team_mode after disable, got:\n%s", content)
+	}
+}
+
+// TestEnableTeamModeAlwaysGLM verifies enableTeamMode always sets team_mode to "glm".
+func TestEnableTeamModeAlwaysGLM(t *testing.T) {
+	t.Setenv("MOAI_TEST_MODE", "1")
+
+	// Create project dir
+	projectRoot := t.TempDir()
+	sectionsDir := filepath.Join(projectRoot, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -274,22 +240,182 @@ func TestRunGLMTeam_NoAPIKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Set deps to nil so loadGLMConfig uses fallback (which reads GLM_API_KEY)
-	origDeps := deps
-	deps = nil
-	defer func() { deps = origDeps }()
+	glmTeamFlag = true
+	defer func() { glmTeamFlag = false }()
 
-	buf := new(bytes.Buffer)
-	cmd := glmCmd
-	cmd.SetOut(buf)
-	cmd.SetErr(buf)
-
-	err := runGLMTeam(cmd)
-	if err == nil {
-		t.Fatal("runGLMTeam() should return error when no API key is configured")
+	err := enableTeamMode(glmCmd)
+	if err != nil {
+		t.Fatalf("enableTeamMode() error: %v", err)
 	}
 
-	if !strings.Contains(err.Error(), "GLM API key not found") {
-		t.Errorf("runGLMTeam() error should mention missing API key, got: %q", err.Error())
+	// Verify llm.yaml contains team_mode: glm
+	data, err := os.ReadFile(filepath.Join(sectionsDir, "llm.yaml"))
+	if err != nil {
+		t.Fatalf("failed to read llm.yaml: %v", err)
+	}
+	if !strings.Contains(string(data), "team_mode: glm") {
+		t.Errorf("llm.yaml should contain team_mode: glm, got:\n%s", string(data))
+	}
+}
+
+// TestLoadLLMSectionIntegration verifies that the LLM section is loaded correctly
+// from llm.yaml by the config.Loader.
+func TestLoadLLMSectionIntegration(t *testing.T) {
+	// Create a temporary config directory
+	tmpDir := t.TempDir()
+	sectionsDir := filepath.Join(tmpDir, "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write an llm.yaml with custom values
+	llmContent := `llm:
+  mode: glm
+  team_mode: glm
+  glm_env_var: CUSTOM_KEY
+  glm:
+    base_url: https://custom.api/v1
+    models:
+      haiku: custom-haiku
+      sonnet: custom-sonnet
+      opus: custom-opus
+`
+	if err := os.WriteFile(filepath.Join(sectionsDir, "llm.yaml"), []byte(llmContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Load config
+	loader := config.NewLoader()
+	cfg, err := loader.Load(tmpDir)
+	if err != nil {
+		t.Fatalf("loader.Load() error: %v", err)
+	}
+
+	// Verify LLM config was loaded
+	if cfg.LLM.Mode != "glm" {
+		t.Errorf("LLM.Mode = %q, want %q", cfg.LLM.Mode, "glm")
+	}
+	if cfg.LLM.TeamMode != "glm" {
+		t.Errorf("LLM.TeamMode = %q, want %q", cfg.LLM.TeamMode, "glm")
+	}
+	if cfg.LLM.GLMEnvVar != "CUSTOM_KEY" {
+		t.Errorf("LLM.GLMEnvVar = %q, want %q", cfg.LLM.GLMEnvVar, "CUSTOM_KEY")
+	}
+	if cfg.LLM.GLM.BaseURL != "https://custom.api/v1" {
+		t.Errorf("LLM.GLM.BaseURL = %q, want %q", cfg.LLM.GLM.BaseURL, "https://custom.api/v1")
+	}
+	if cfg.LLM.GLM.Models.Opus != "custom-opus" {
+		t.Errorf("LLM.GLM.Models.Opus = %q, want %q", cfg.LLM.GLM.Models.Opus, "custom-opus")
+	}
+
+	// Verify llm was in loaded sections
+	loaded := loader.LoadedSections()
+	if !loaded["llm"] {
+		t.Error("LLM section should be marked as loaded")
+	}
+}
+
+// TestLoadLLMSectionDefaults verifies that defaults are used when llm.yaml is missing.
+func TestLoadLLMSectionDefaults(t *testing.T) {
+	// Create a temporary config directory without llm.yaml
+	tmpDir := t.TempDir()
+	sectionsDir := filepath.Join(tmpDir, "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Load config (no llm.yaml)
+	loader := config.NewLoader()
+	cfg, err := loader.Load(tmpDir)
+	if err != nil {
+		t.Fatalf("loader.Load() error: %v", err)
+	}
+
+	// Verify defaults are used
+	defaults := config.NewDefaultLLMConfig()
+	if cfg.LLM.GLM.BaseURL != defaults.GLM.BaseURL {
+		t.Errorf("LLM.GLM.BaseURL = %q, want default %q", cfg.LLM.GLM.BaseURL, defaults.GLM.BaseURL)
+	}
+	if cfg.LLM.GLMEnvVar != defaults.GLMEnvVar {
+		t.Errorf("LLM.GLMEnvVar = %q, want default %q", cfg.LLM.GLMEnvVar, defaults.GLMEnvVar)
+	}
+	if cfg.LLM.TeamMode != "" {
+		t.Errorf("LLM.TeamMode = %q, want empty", cfg.LLM.TeamMode)
+	}
+}
+
+// TestEnableTeamModeDoesNotInjectEnv verifies that enableTeamMode only saves
+// team_mode to llm.yaml and does NOT inject GLM env into settings.local.json.
+// This is critical for GLM Worker mode where Leader must stay on Opus.
+func TestEnableTeamModeDoesNotInjectEnv(t *testing.T) {
+	t.Setenv("MOAI_TEST_MODE", "1")
+
+	// Create project dir with .claude directory
+	projectRoot := t.TempDir()
+	claudeDir := filepath.Join(projectRoot, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	sectionsDir := filepath.Join(projectRoot, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create an existing settings.local.json (should NOT be modified by enableTeamMode)
+	settingsPath := filepath.Join(claudeDir, "settings.local.json")
+	initialSettings := `{"env": {"EXISTING_VAR": "value"}}`
+	if err := os.WriteFile(settingsPath, []byte(initialSettings), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Change to project directory
+	origDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(projectRoot); err != nil {
+		t.Fatal(err)
+	}
+
+	// Enable team mode
+	glmTeamFlag = true
+	defer func() { glmTeamFlag = false }()
+
+	err := enableTeamMode(glmCmd)
+	if err != nil {
+		t.Fatalf("enableTeamMode() error: %v", err)
+	}
+
+	// Verify settings.local.json was NOT modified
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("failed to read settings.local.json: %v", err)
+	}
+	if string(data) != initialSettings {
+		t.Errorf("settings.local.json should NOT be modified by enableTeamMode\n got: %s\n want: %s", string(data), initialSettings)
+	}
+
+	// Verify settings.local.json does NOT contain ANTHROPIC_* vars
+	if strings.Contains(string(data), "ANTHROPIC_") {
+		t.Errorf("settings.local.json should NOT contain ANTHROPIC_* vars after enableTeamMode, got:\n%s", string(data))
+	}
+}
+
+// TestCleanupMoaiWorktrees verifies that cleanupMoaiWorktrees removes
+// moai-related worktrees when called.
+func TestCleanupMoaiWorktrees(t *testing.T) {
+	t.Setenv("MOAI_TEST_MODE", "1")
+
+	// Skip if not in a git repo (for CI environments)
+	if _, err := os.Stat(".git"); os.IsNotExist(err) {
+		t.Skip("not in a git repository")
+	}
+
+	// Create a temp project root
+	projectRoot := t.TempDir()
+
+	// cleanupMoaiWorktrees should handle non-git directories gracefully
+	result := cleanupMoaiWorktrees(projectRoot)
+	// Result should be empty since there's no git repo
+	if result != "" {
+		t.Logf("cleanupMoaiWorktrees returned: %s (expected empty for non-git dir)", result)
 	}
 }

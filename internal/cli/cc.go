@@ -6,7 +6,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -17,6 +19,8 @@ var ccCmd = &cobra.Command{
 
 This command removes the GLM-specific environment variables that were injected
 by 'moai glm', restoring Claude Code to use the default Claude API.
+
+If team mode was enabled, it will be disabled automatically.
 
 Use 'moai glm' to switch to GLM backend.`,
 	Args: cobra.NoArgs,
@@ -48,29 +52,50 @@ func runCC(cmd *cobra.Command, _ []string) error {
 		_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to remove project .env.glm: %v\n", err)
 	}
 
-	// Check for active hybrid tmux session and inform user
-	if hybridSessionActive("moai-hybrid-glm") {
-		_, _ = fmt.Fprintln(out, "")
-		_, _ = fmt.Fprintln(out, "Note: Hybrid tmux session 'moai-hybrid-glm' is still running.")
-		_, _ = fmt.Fprintln(out, "Run 'tmux kill-session -t moai-hybrid-glm' to stop it.")
-	}
+	// Handle team_mode: disable and cleanup worktrees
+	teamModeMsg := resetTeamModeForCC(root)
 
-	_, _ = fmt.Fprintln(out, renderSuccessCard(
-		"Switched to Claude backend",
+	// Cleanup moai worktrees if any exist
+	worktreeMsg := cleanupMoaiWorktrees(root)
+
+	details := []string{
 		"GLM configuration removed from:",
 		"  - .claude/settings.local.json",
 		"  - .moai/.env.glm",
-		"",
-		"Run 'moai glm' to switch to GLM.",
-		"Run 'moai glm --team' for hybrid mode.",
+	}
+	if teamModeMsg != "" {
+		details = append(details, "", teamModeMsg)
+	}
+	if worktreeMsg != "" {
+		details = append(details, "", worktreeMsg)
+	}
+	details = append(details, "", "Run 'moai glm' to switch to GLM.")
+
+	_, _ = fmt.Fprintln(out, renderSuccessCard(
+		"Switched to Claude backend",
+		details...,
 	))
 	return nil
 }
 
-// hybridSessionActive checks if a hybrid tmux session is currently running.
-func hybridSessionActive(sessionName string) bool {
-	cmd := exec.Command("tmux", "has-session", "-t", sessionName)
-	return cmd.Run() == nil
+// resetTeamModeForCC disables team_mode when switching to CC.
+// Returns a message string describing what was changed, or empty if unchanged.
+func resetTeamModeForCC(projectRoot string) string {
+	mgr := config.NewConfigManager()
+	if _, err := mgr.Load(projectRoot); err != nil {
+		return ""
+	}
+
+	cfg := mgr.Get()
+	if cfg == nil || cfg.LLM.TeamMode == "" {
+		return ""
+	}
+
+	prev := cfg.LLM.TeamMode
+	if err := disableTeamMode(projectRoot); err != nil {
+		return fmt.Sprintf("Warning: failed to disable team mode: %v", err)
+	}
+	return fmt.Sprintf("Team mode disabled (was: %s)", prev)
 }
 
 // removeProjectEnvGLM removes the project-level .moai/.env.glm file.
@@ -129,4 +154,70 @@ func removeGLMEnv(settingsPath string) error {
 	}
 
 	return nil
+}
+
+// cleanupMoaiWorktrees removes moai-related git worktrees.
+// These are worktrees created by /moai --team with names like worker-SPEC-XXX.
+func cleanupMoaiWorktrees(projectRoot string) string {
+	// Check if we're in a git repository
+	gitDir := filepath.Join(projectRoot, ".git")
+	if _, err := os.Stat(gitDir); os.IsNotExist(err) {
+		return "" // Not a git repo, nothing to clean up
+	}
+
+	// List worktrees and find moai-related ones
+	// git worktree list --porcelain
+	// Format: worktree /path/to/worktree
+	//         HEAD <sha>
+	//         branch refs/heads/worktree-<name>
+	output, err := runGitCommand(projectRoot, "worktree", "list", "--porcelain")
+	if err != nil {
+		return "" // Silently ignore errors
+	}
+
+	// Parse worktree list to find moai worker worktrees
+	// Look for worktrees with paths containing .claude/worktrees/worker-
+	worktreeBase := filepath.Join(projectRoot, ".claude", "worktrees")
+	var cleanedWorktrees []string
+
+	// Parse porcelain output
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "worktree ") {
+			worktreePath := strings.TrimPrefix(line, "worktree ")
+			// Check if this is a moai worker worktree
+			if strings.HasPrefix(worktreePath, worktreeBase) {
+				// Extract worker name from path
+				workerName := filepath.Base(worktreePath)
+				if strings.HasPrefix(workerName, "worker-") {
+					// Remove the worktree
+					if err := removeWorktree(projectRoot, workerName); err == nil {
+						cleanedWorktrees = append(cleanedWorktrees, workerName)
+					}
+				}
+			}
+		}
+	}
+
+	if len(cleanedWorktrees) > 0 {
+		return fmt.Sprintf("Cleaned up %d worktree(s): %s", len(cleanedWorktrees), strings.Join(cleanedWorktrees, ", "))
+	}
+	return ""
+}
+
+// removeWorktree removes a single git worktree.
+func removeWorktree(projectRoot, worktreeName string) error {
+	_, err := runGitCommand(projectRoot, "worktree", "remove", "--force", worktreeName)
+	return err
+}
+
+// runGitCommand executes a git command in the given directory.
+func runGitCommand(dir string, args ...string) (string, error) {
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(output), nil
 }

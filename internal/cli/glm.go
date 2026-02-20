@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 var glmTeamFlag bool
@@ -26,22 +27,22 @@ for future use. The key is stored securely with owner-only permissions (600).
 This command reads GLM configuration from .moai/config/sections/llm.yaml and
 injects the appropriate environment variables into Claude Code's settings.
 
-Use --team flag for hybrid mode: leader stays on Anthropic Opus while
-Agent Teams teammates use GLM. Requires tmux.
+Use --team flag to enable Agent Teams mode for parallel development.
+Teammates use GLM models (glm-5, glm-4.7, glm-4.7-flashx).
 
 Examples:
   moai glm                    # Use saved or environment API key
   moai glm sk-xxx-your-key    # Save API key and switch to GLM
-  moai glm --team             # Hybrid: leader=Opus, teammates=GLM (tmux)
+  moai glm --team             # Enable Agent Teams mode
 
-Use 'moai cc' to switch back to Claude backend.`,
+Use 'moai cc' to switch back to Claude backend and disable team mode.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runGLM,
 }
 
 func init() {
 	rootCmd.AddCommand(glmCmd)
-	glmCmd.Flags().BoolVar(&glmTeamFlag, "team", false, "Hybrid mode: teammates use GLM, leader stays on Opus (requires tmux)")
+	glmCmd.Flags().BoolVar(&glmTeamFlag, "team", false, "Enable Agent Teams mode for parallel development")
 }
 
 // SettingsLocal represents .claude/settings.local.json structure.
@@ -52,6 +53,7 @@ type SettingsLocal struct {
 	Env                   map[string]string `json:"env,omitempty"`
 	Permissions           map[string]any    `json:"permissions,omitempty"`
 }
+
 
 // runGLM switches the LLM backend to GLM by modifying settings.local.json.
 func runGLM(cmd *cobra.Command, args []string) error {
@@ -66,9 +68,9 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		_, _ = fmt.Fprintln(out, renderSuccessCard("GLM API key saved to ~/.moai/.env.glm"))
 	}
 
-	// Branch based on --team flag
+	// Handle --team flag
 	if glmTeamFlag {
-		return runGLMTeam(cmd)
+		return enableTeamMode(cmd)
 	}
 
 	// Get project root
@@ -95,7 +97,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("inject GLM env: %w", err)
 	}
 
-	// Create project-level .env.glm for status_line.sh sourcing (Agent Teams tmux mode)
+	// Create project-level .env.glm for status_line.sh sourcing
 	if err := createProjectEnvGLM(glmConfig, root); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to create project .env.glm: %v\n", err)
 	}
@@ -104,143 +106,108 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		"Switched to GLM backend",
 		"Environment variables configured:",
 		"  - .claude/settings.local.json (project)",
-		"  - .moai/.env.glm (for Agent Teams tmux mode)",
+		"  - .moai/.env.glm (for Agent Teams)",
 		"",
 		"Run 'moai cc' to switch back to Claude.",
 	))
 	return nil
 }
 
-// runGLMTeam starts a tmux session for hybrid model mode.
-// Leader pane uses Anthropic Opus, teammate panes inherit GLM env vars.
-func runGLMTeam(cmd *cobra.Command) error {
+// enableTeamMode saves team_mode="glm" to llm.yaml via ConfigManager.
+// This enables the GLM Worker mode: Leader (current Claude model) + Worker (GLM-5 in worktree).
+func enableTeamMode(cmd *cobra.Command) error {
 	out := cmd.OutOrStdout()
 
-	// Verify tmux is available
-	if err := checkTmuxAvailable(); err != nil {
-		return err
-	}
-
-	// Get project root
 	root, err := findProjectRoot()
 	if err != nil {
 		return fmt.Errorf("find project root: %w", err)
 	}
 
-	// Load GLM config
-	glmConfig, err := loadGLMConfig(root)
-	if err != nil {
-		return fmt.Errorf("load GLM config: %w", err)
-	}
-
-	// Get API key
-	apiKey := getGLMAPIKey(glmConfig.EnvVar)
-	if apiKey == "" {
-		return fmt.Errorf("GLM API key not found. Run 'moai glm <api-key>' to save your key, or set %s environment variable", glmConfig.EnvVar)
-	}
-
-	sessionName := "moai-hybrid-glm"
-
-	// Check if session already exists
-	if tmuxSessionExists(sessionName) {
-		_, _ = fmt.Fprintln(out, renderSuccessCard(
-			"Hybrid session already exists",
-			"",
-			"Attaching to existing session: "+sessionName,
-			"Run 'tmux kill-session -t "+sessionName+"' to stop it.",
-		))
-		return execTmuxAttach(sessionName)
-	}
-
-	// Build env vars map
-	envVars := buildGLMEnvVars(glmConfig, apiKey)
-
-	// Create tmux session and inject env vars
-	if err := createHybridTmuxSession(sessionName, envVars, root); err != nil {
-		return fmt.Errorf("create hybrid tmux session: %w", err)
+	if err := persistTeamMode(root, "glm"); err != nil {
+		return fmt.Errorf("persist team mode: %w", err)
 	}
 
 	_, _ = fmt.Fprintln(out, renderSuccessCard(
-		"Hybrid mode started",
+		"GLM Team mode enabled",
 		"",
-		"Session: "+sessionName,
-		"Leader: Anthropic Opus (direct API)",
-		"Teammates: GLM ("+glmConfig.Models.Opus+", "+glmConfig.Models.Sonnet+", "+glmConfig.Models.Haiku+")",
+		"Architecture: Leader (Claude - your selected model) + Worker (GLM-5 in worktree)",
+		"Config saved to: .moai/config/sections/llm.yaml",
 		"",
-		"Claude is starting in the leader pane...",
+		"Next steps:",
+		"  1. Start Claude Code: claude",
+		"  2. Run workflow: /moai --team \"your task\"",
+		"",
+		"MoAI will orchestrate:",
+		"  - Plan (Leader): Create SPEC",
+		"  - Run (GLM-5): Implement in worktree",
+		"  - Merge (Leader): Integrate changes",
+		"  - Sync (Leader): Documentation",
+		"",
+		"Run 'moai cc' to disable team mode and cleanup worktrees.",
 	))
-
-	// Attach to the tmux session
-	return execTmuxAttach(sessionName)
-}
-
-// checkTmuxAvailable verifies that tmux is installed and accessible.
-func checkTmuxAvailable() error {
-	_, err := exec.LookPath("tmux")
-	if err != nil {
-		return fmt.Errorf("tmux is required for --team mode but was not found in PATH. Install tmux first")
-	}
 	return nil
 }
 
-// tmuxSessionExists checks if a tmux session with the given name exists.
-func tmuxSessionExists(sessionName string) bool {
-	cmd := exec.Command("tmux", "has-session", "-t", sessionName)
-	return cmd.Run() == nil
+// persistTeamMode saves the team_mode value to .moai/config/sections/llm.yaml.
+func persistTeamMode(projectRoot, mode string) error {
+	mgr := config.NewConfigManager()
+	if _, err := mgr.Load(projectRoot); err != nil {
+		return fmt.Errorf("load config: %w", err)
+	}
+
+	cfg := mgr.Get()
+	cfg.LLM.TeamMode = mode
+
+	if err := mgr.SetSection("llm", cfg.LLM); err != nil {
+		return fmt.Errorf("set LLM section: %w", err)
+	}
+
+	// Save only the llm.yaml section atomically
+	sectionsDir := filepath.Join(filepath.Clean(projectRoot), defs.MoAIDir, defs.SectionsSubdir)
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		return fmt.Errorf("create config directory: %w", err)
+	}
+
+	return saveLLMSection(sectionsDir, cfg.LLM)
 }
 
-// buildGLMEnvVars constructs the environment variable map for GLM hybrid mode.
-func buildGLMEnvVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string]string {
-	return map[string]string{
-		"ANTHROPIC_AUTH_TOKEN":           apiKey,
-		"ANTHROPIC_BASE_URL":             glmConfig.BaseURL,
-		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Haiku,
-		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Sonnet,
-		"ANTHROPIC_DEFAULT_OPUS_MODEL":   glmConfig.Models.Opus,
-	}
+// disableTeamMode resets team_mode to empty in llm.yaml.
+func disableTeamMode(projectRoot string) error {
+	return persistTeamMode(projectRoot, "")
 }
 
-// createHybridTmuxSession creates a tmux session with GLM env vars at session level,
-// then starts claude in the leader pane with those env vars unset.
-func createHybridTmuxSession(sessionName string, envVars map[string]string, projectRoot string) error {
-	// Create detached tmux session starting in the project root
-	cmd := exec.Command("tmux", "new-session", "-d", "-s", sessionName, "-c", projectRoot)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("create tmux session: %s: %w", string(out), err)
-	}
+// saveLLMSection saves only the LLM section to llm.yaml.
+func saveLLMSection(sectionsDir string, llm config.LLMConfig) error {
+	wrapper := struct {
+		LLM config.LLMConfig `yaml:"llm"`
+	}{LLM: llm}
 
-	// Set session-level environment variables
-	for key, value := range envVars {
-		cmd := exec.Command("tmux", "set-environment", "-t", sessionName, key, value)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("set tmux env %s: %s: %w", key, string(out), err)
-		}
-	}
-
-	// Build the leader pane command:
-	// 1. Unset ANTHROPIC_* env vars (so leader uses Anthropic API directly = Opus)
-	// 2. Start claude
-	leaderCmd := "unset ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL " +
-		"ANTHROPIC_DEFAULT_HAIKU_MODEL ANTHROPIC_DEFAULT_SONNET_MODEL " +
-		"ANTHROPIC_DEFAULT_OPUS_MODEL && claude"
-
-	// Send the command to the leader pane
-	cmd = exec.Command("tmux", "send-keys", "-t", sessionName, leaderCmd, "Enter")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("send leader command: %s: %w", string(out), err)
-	}
-
-	return nil
-}
-
-// execTmuxAttach attaches to the given tmux session, replacing the current process.
-func execTmuxAttach(sessionName string) error {
-	tmuxPath, err := exec.LookPath("tmux")
+	data, err := yaml.Marshal(wrapper)
 	if err != nil {
-		return fmt.Errorf("find tmux: %w", err)
+		return fmt.Errorf("marshal llm config: %w", err)
 	}
-	return syscall.Exec(tmuxPath, []string{"tmux", "attach", "-t", sessionName}, os.Environ())
+
+	path := filepath.Join(sectionsDir, "llm.yaml")
+
+	// Atomic write: temp file + rename
+	tmp, err := os.CreateTemp(sectionsDir, ".llm-config-*.tmp")
+	if err != nil {
+		return fmt.Errorf("create temp file: %w", err)
+	}
+	tmpName := tmp.Name()
+	defer func() { _ = os.Remove(tmpName) }()
+
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("write temp file: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("close temp file: %w", err)
+	}
+
+	return os.Rename(tmpName, path)
 }
+
 
 // GLMConfigFromYAML represents the GLM settings from llm.yaml.
 type GLMConfigFromYAML struct {
@@ -276,18 +243,19 @@ func loadGLMConfig(root string) (*GLMConfigFromYAML, error) {
 	}
 
 	// Fallback to default values
+	defaults := config.NewDefaultLLMConfig()
 	return &GLMConfigFromYAML{
-		BaseURL: "https://api.z.ai/api/anthropic",
+		BaseURL: defaults.GLM.BaseURL,
 		Models: struct {
 			Haiku  string
 			Sonnet string
 			Opus   string
 		}{
-			Haiku:  "glm-4.7-flashx",
-			Sonnet: "glm-4.7",
-			Opus:   "glm-5",
+			Haiku:  defaults.GLM.Models.Haiku,
+			Sonnet: defaults.GLM.Models.Sonnet,
+			Opus:   defaults.GLM.Models.Opus,
 		},
-		EnvVar: "GLM_API_KEY",
+		EnvVar: defaults.GLMEnvVar,
 	}, nil
 }
 
@@ -384,6 +352,17 @@ func getGLMAPIKey(envVar string) string {
 	return os.Getenv(envVar)
 }
 
+// buildGLMEnvVars constructs the environment variable map for GLM mode.
+func buildGLMEnvVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string]string {
+	return map[string]string{
+		"ANTHROPIC_AUTH_TOKEN":           apiKey,
+		"ANTHROPIC_BASE_URL":             glmConfig.BaseURL,
+		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Haiku,
+		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Sonnet,
+		"ANTHROPIC_DEFAULT_OPUS_MODEL":   glmConfig.Models.Opus,
+	}
+}
+
 // injectGLMEnv adds GLM environment variables to settings.local.json.
 func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 	// Get API key from saved file or environment
@@ -433,7 +412,7 @@ func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 
 // createProjectEnvGLM creates a project-level .moai/.env.glm with all ANTHROPIC_*
 // variables as shell export statements. This file is sourced by status_line.sh
-// so that Agent Teams teammates in tmux mode inherit GLM configuration.
+// so that Agent Teams teammates inherit GLM configuration.
 func createProjectEnvGLM(glmConfig *GLMConfigFromYAML, projectRoot string) error {
 	apiKey := getGLMAPIKey(glmConfig.EnvVar)
 	if apiKey == "" {
@@ -444,7 +423,7 @@ func createProjectEnvGLM(glmConfig *GLMConfigFromYAML, projectRoot string) error
 
 	content := fmt.Sprintf(`# GLM environment variables for Agent Teams
 # Generated by moai glm
-# This file is sourced by .moai/status_line.sh in tmux mode
+# This file is sourced by .moai/status_line.sh
 export ANTHROPIC_AUTH_TOKEN="%s"
 export ANTHROPIC_BASE_URL="%s"
 export ANTHROPIC_DEFAULT_HAIKU_MODEL="%s"

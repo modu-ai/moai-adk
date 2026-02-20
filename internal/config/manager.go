@@ -153,6 +153,11 @@ func (m *ConfigManager) Save() error {
 		return fmt.Errorf("save git convention config: %w", err)
 	}
 
+	// Save LLM section
+	if err := saveSection(sectionsDir, "llm.yaml", llmFileWrapper{LLM: m.config.LLM}); err != nil {
+		return fmt.Errorf("save LLM config: %w", err)
+	}
+
 	return nil
 }
 

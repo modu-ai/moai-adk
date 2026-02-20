@@ -44,8 +44,10 @@ type SystemConfig struct {
 
 // LLMConfig represents the LLM configuration section.
 type LLMConfig struct {
-	// Mode selection: claude-only, glm-only, mashup
+	// Mode selection: "", "glm"
 	Mode string `yaml:"mode"`
+	// TeamMode selection: "", "claude", "glm", "hybrid"
+	TeamMode string `yaml:"team_mode"`
 	// Environment variable name for GLM API key
 	GLMEnvVar string `yaml:"glm_env_var"`
 	// GLM API configuration
@@ -159,4 +161,9 @@ type qualityFileWrapper struct {
 // gitConventionFileWrapper handles the git-convention.yaml section file.
 type gitConventionFileWrapper struct {
 	GitConvention models.GitConventionConfig `yaml:"git_convention"`
+}
+
+// llmFileWrapper handles the llm.yaml section file.
+type llmFileWrapper struct {
+	LLM LLMConfig `yaml:"llm"`
 }

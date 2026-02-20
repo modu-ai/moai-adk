@@ -37,6 +37,12 @@ const (
 	DefaultBranchPrefix = "moai/"
 	DefaultCommitStyle  = "conventional"
 
+	DefaultGLMEnvVar  = "GLM_API_KEY"
+	DefaultGLMBaseURL = "https://api.z.ai/api/anthropic"
+	DefaultGLMHaiku   = "glm-4.7-flashx"
+	DefaultGLMSonnet  = "glm-4.7"
+	DefaultGLMOpus    = "glm-5"
+
 	DefaultCacheTTLSeconds = 5
 	DefaultTimeoutSeconds  = 3
 	DefaultMaxWarnings     = 10
@@ -152,9 +158,18 @@ func NewDefaultSystemConfig() SystemConfig {
 // NewDefaultLLMConfig returns a LLMConfig with default values.
 func NewDefaultLLMConfig() LLMConfig {
 	return LLMConfig{
+		GLMEnvVar:    DefaultGLMEnvVar,
 		DefaultModel: DefaultModel,
 		QualityModel: DefaultQualModel,
 		SpeedModel:   DefaultSpeedModel,
+		GLM: GLMSettings{
+			BaseURL: DefaultGLMBaseURL,
+			Models: GLMModels{
+				Haiku:  DefaultGLMHaiku,
+				Sonnet: DefaultGLMSonnet,
+				Opus:   DefaultGLMOpus,
+			},
+		},
 	}
 }
 
