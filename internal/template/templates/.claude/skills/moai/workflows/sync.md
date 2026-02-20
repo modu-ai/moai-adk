@@ -57,6 +57,7 @@ Synchronize documentation with code changes, verify project quality, and finaliz
 ## Supported Flags
 
 - --merge: After sync, auto-merge PR and clean up branch. Worktree/branch environment is auto-detected from git context.
+- --skip-mx: Skip MX tag validation and annotation during sync.
 
 ## Context Loading
 
@@ -176,6 +177,41 @@ The sync phase enforces LSP-based quality gates as configured in quality.yaml:
 #### Step 0.5.5: Generate Quality Report
 
 Aggregate all results into a quality report showing status for test-runner, linter, type-checker, and code-review. Determine overall status (PASS or WARN).
+
+### Phase 0.6: MX Tag Validation
+
+Purpose: Ensure code has appropriate @MX annotations for AI agent context.
+
+Skip if `--skip-mx` flag is provided.
+
+#### Step 0.6.1: Scan Modified Files
+
+- Get list of files changed since last sync (git diff)
+- For each modified source file, check for @MX tags
+- Identify functions/code blocks that should have tags but don't
+
+#### Step 0.6.2: Add Missing Tags
+
+For modified files missing @MX tags:
+
+1. **fan_in >= 5**: Add `@MX:ANCHOR` for functions with many callers
+2. **goroutines**: Add `@MX:WARN` for concurrency patterns
+3. **magic constants**: Add `@MX:NOTE` for unexplained values
+4. **missing tests**: Add `@MX:TODO` for untested public functions
+
+#### Step 0.6.3: Generate Tag Report
+
+Include in sync report:
+- Files scanned: N
+- Tags added: N (by type)
+- Files requiring attention (high complexity, missing documentation)
+
+#### MX Tag Integration
+
+When MX tags are added during sync:
+- Changes are included in the same commit as documentation updates
+- Tag additions are noted in the PR description
+- Report summarizes tag changes by category
 
 Status mode early exit: If mode is "status", display quality report and exit. No further phases execute.
 

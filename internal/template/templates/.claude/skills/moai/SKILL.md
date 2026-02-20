@@ -70,6 +70,7 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **feedback** (aliases: fb, bug, issue): GitHub issue creation
 - **fix**: Auto-fix errors in a single pass
 - **loop**: Iterative auto-fix until completion marker detected
+- **mx**: MX tag scan and annotation for codebase
 
 
 ### Priority 2: SPEC-ID Detection
@@ -85,6 +86,7 @@ Only if BOTH Priority 1 AND Priority 2 did not match: Classify the intent of the
 - Iterative and repeat language (keep fixing, until done, repeat, iterate, all errors) routes to **loop**
 - Documentation language (document, sync, docs, readme, changelog, PR) routes to **sync** or **project**
 - Feedback and bug report language (report, feedback, suggestion, issue) routes to **feedback**
+- MX tag language (mx tag, annotation, code context, legacy annotate) routes to **mx**
 - Implementation language (implement, build, create, add, develop) with clear scope routes to **moai** (default autonomous)
 
 ### Priority 4: Default Behavior
@@ -117,8 +119,8 @@ For detailed orchestration: Read workflows/run.md
 
 Purpose: Synchronize documentation with code changes and prepare pull requests.
 Agents: manager-docs (primary), manager-quality (verification), manager-git (PR creation)
-Phases: Phase 0.5 quality verification, documentation generation, README/CHANGELOG update, PR creation.
-Modes: auto (default), force, status, project. Flag: --merge (auto-merge PR)
+Phases: Phase 0.5 quality verification, MX tag validation (add missing tags), documentation generation, README/CHANGELOG update, PR creation.
+Modes: auto (default), force, status, project. Flag: --merge (auto-merge PR), --skip-mx (skip MX tag validation)
 For detailed orchestration: Read workflows/sync.md
 
 ### fix - Auto-Fix Errors
@@ -136,6 +138,14 @@ Agents: expert-debug, expert-backend, expert-frontend, expert-testing
 Phases: Parallel diagnostics, TODO generation, autonomous fixing, iterative verification, completion detection.
 Flags: --max N (iteration limit, default 100), --auto-fix, --seq
 For detailed orchestration: Read workflows/loop.md
+
+### mx - MX Tag Scan and Annotation
+
+Purpose: Scan codebase and add @MX code-level annotations for AI agent context.
+Agents: Explore (scan), expert-backend (annotation)
+Phases: 3-Pass scan (Grep full scan, selective deep read, batch edit), tag insertion, report generation.
+Flags: --all (scan entire codebase), --dry (preview only), --priority P1-P4 (filter by priority), --force (overwrite existing)
+For detailed orchestration: Read workflows/mx.md
 
 ### (default) - MoAI Autonomous Workflow
 
