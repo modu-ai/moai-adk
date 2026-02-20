@@ -154,10 +154,3 @@ func TestUsagePercent(t *testing.T) {
 		})
 	}
 }
-
-// float64Ptr is a helper to create a pointer to a float64 value.
-//
-//go:fix inline
-func float64Ptr(v float64) *float64 {
-	return new(v)
-}

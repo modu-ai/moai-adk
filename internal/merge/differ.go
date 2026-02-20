@@ -103,8 +103,8 @@ func UnifiedDiff(filename string, base, current []byte) string {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("--- a/%s\n", filename))
-	sb.WriteString(fmt.Sprintf("+++ b/%s\n", filename))
+	fmt.Fprintf(&sb, "--- a/%s\n", filename)
+	fmt.Fprintf(&sb, "+++ b/%s\n", filename)
 
 	// Build a full annotated sequence for generating hunks.
 	type annotatedLine struct {
@@ -253,7 +253,7 @@ func UnifiedDiff(filename string, base, current []byte) string {
 			continue
 		}
 
-		sb.WriteString(fmt.Sprintf("@@ -%d,%d +%d,%d @@\n", aStart, aCount, bStart, bCount))
+		fmt.Fprintf(&sb, "@@ -%d,%d +%d,%d @@\n", aStart, aCount, bStart, bCount)
 
 		for idx := h.start; idx < h.end; idx++ {
 			al := annotated[idx]

@@ -101,7 +101,7 @@ func parseUncheckedCriteria(specPath string) []string {
 	if err != nil {
 		return nil
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var (
 		inSection bool

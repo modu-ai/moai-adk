@@ -147,14 +147,14 @@ func FormatGateResult(counts SeverityCounts, gate QualityGate) string {
 	var sb strings.Builder
 
 	sb.WriteString("Quality Gate Check:\n")
-	sb.WriteString(fmt.Sprintf("  Errors: %d (max: %d)", counts.Errors, gate.MaxErrors))
+	fmt.Fprintf(&sb, "  Errors: %d (max: %d)", counts.Errors, gate.MaxErrors)
 
 	if counts.Errors > gate.MaxErrors {
 		sb.WriteString(" [EXCEEDED]")
 	}
 	sb.WriteString("\n")
 
-	sb.WriteString(fmt.Sprintf("  Warnings: %d (max: %d)", counts.Warnings, gate.MaxWarnings))
+	fmt.Fprintf(&sb, "  Warnings: %d (max: %d)", counts.Warnings, gate.MaxWarnings)
 	if counts.Warnings > gate.MaxWarnings {
 		sb.WriteString(" [EXCEEDED]")
 	}

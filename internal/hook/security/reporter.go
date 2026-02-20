@@ -37,8 +37,8 @@ func (r *findingReporter) FormatResult(result *ScanResult, filePath string) stri
 	var sb strings.Builder
 
 	// Summary line per SPEC 4.4
-	sb.WriteString(fmt.Sprintf("AST-Grep found %d error(s), %d warning(s) in %s\n",
-		result.ErrorCount, result.WarningCount, filePath))
+	fmt.Fprintf(&sb, "AST-Grep found %d error(s), %d warning(s) in %s\n",
+		result.ErrorCount, result.WarningCount, filePath)
 
 	// List findings (limited to MaxFindingsToReport per REQ-HOOK-132)
 	displayCount := min(len(result.Findings), MaxFindingsToReport)
@@ -52,7 +52,7 @@ func (r *findingReporter) FormatResult(result *ScanResult, filePath string) stri
 	// Add "... and N more" if truncated
 	if len(result.Findings) > MaxFindingsToReport {
 		remaining := len(result.Findings) - MaxFindingsToReport
-		sb.WriteString(fmt.Sprintf("  ... and %d more\n", remaining))
+		fmt.Fprintf(&sb, "  ... and %d more\n", remaining)
 	}
 
 	return strings.TrimSuffix(sb.String(), "\n")
@@ -86,8 +86,8 @@ func (r *findingReporter) FormatMultiple(results []*ScanResult) string {
 	}
 
 	// Summary line
-	sb.WriteString(fmt.Sprintf("AST-Grep found %d error(s), %d warning(s), %d info(s) across %d files\n",
-		totalErrors, totalWarnings, totalInfos, len(results)))
+	fmt.Fprintf(&sb, "AST-Grep found %d error(s), %d warning(s), %d info(s) across %d files\n",
+		totalErrors, totalWarnings, totalInfos, len(results))
 
 	// List findings (limited to MaxFindingsToReport)
 	displayCount := min(len(allFindings), MaxFindingsToReport)
@@ -101,7 +101,7 @@ func (r *findingReporter) FormatMultiple(results []*ScanResult) string {
 	// Add "... and N more" if truncated
 	if len(allFindings) > MaxFindingsToReport {
 		remaining := len(allFindings) - MaxFindingsToReport
-		sb.WriteString(fmt.Sprintf("  ... and %d more\n", remaining))
+		fmt.Fprintf(&sb, "  ... and %d more\n", remaining)
 	}
 
 	return strings.TrimSuffix(sb.String(), "\n")

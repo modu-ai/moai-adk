@@ -186,7 +186,7 @@ func (r *prReviewer) Review(ctx context.Context, prNumber int, specID string, in
 func (r *prReviewer) buildSummary(report *ReviewReport) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("## PR #%d Review\n\n", report.PRNumber))
+	fmt.Fprintf(&sb, "## PR #%d Review\n\n", report.PRNumber)
 
 	switch report.Decision {
 	case ReviewApprove:
@@ -203,12 +203,12 @@ func (r *prReviewer) buildSummary(report *ReviewReport) string {
 	if len(report.Issues) > 0 {
 		sb.WriteString("\n### Issues\n\n")
 		for _, issue := range report.Issues {
-			sb.WriteString(fmt.Sprintf("- %s\n", issue))
+			fmt.Fprintf(&sb, "- %s\n", issue)
 		}
 	}
 
 	if report.QualityReport != nil {
-		sb.WriteString(fmt.Sprintf("\n### Quality Score: %.1f%%\n", report.QualityReport.Score*100))
+		fmt.Fprintf(&sb, "\n### Quality Score: %.1f%%\n", report.QualityReport.Score*100)
 	}
 
 	return sb.String()

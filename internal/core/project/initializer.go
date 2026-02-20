@@ -454,12 +454,12 @@ func (i *projectInitializer) createClaudeMD(opts InitOptions, result *InitResult
 func buildClaudeMDContent(opts InitOptions) string {
 	var b strings.Builder
 	b.WriteString("# MoAI Execution Directive\n\n")
-	b.WriteString(fmt.Sprintf("Project: %s\n", opts.ProjectName))
-	b.WriteString(fmt.Sprintf("Language: %s\n", opts.Language))
+	fmt.Fprintf(&b, "Project: %s\n", opts.ProjectName)
+	fmt.Fprintf(&b, "Language: %s\n", opts.Language)
 	if opts.Framework != "" && opts.Framework != "none" {
-		b.WriteString(fmt.Sprintf("Framework: %s\n", opts.Framework))
+		fmt.Fprintf(&b, "Framework: %s\n", opts.Framework)
 	}
-	b.WriteString(fmt.Sprintf("Development Mode: %s\n\n", opts.DevelopmentMode))
+	fmt.Fprintf(&b, "Development Mode: %s\n\n", opts.DevelopmentMode)
 	b.WriteString("## Configuration\n\n")
 	b.WriteString("Configuration files are located in `.moai/config/sections/`.\n\n")
 	b.WriteString("## Quick Start\n\n")
