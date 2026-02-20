@@ -2,7 +2,7 @@
 
 > **Purpose**: Essential guide for local moai-adk-go development
 > **Audience**: GOOS (local developer only)
-> **Last Updated**: 2026-02-06
+> **Last Updated**: 2026-02-20
 
 ---
 
@@ -434,6 +434,9 @@ make install
 
 # Clean build artifacts
 make clean
+
+# Run go fix modernizers (twice for synergistic fixes - added in Go 1.26 upgrade)
+make fix
 ```
 
 ### Development Workflow
@@ -455,6 +458,30 @@ go test ./internal/template/...
 git add internal/template/templates/
 git commit -m "feat(template): update SKILL.md"
 ```
+
+### Go 1.26 Modernization Notes
+
+go.mod now targets Go 1.26 (upgraded 2026-02-20, commit `062d1e06`).
+
+**`make fix` — go fix modernizers:**
+- Run `make fix` after pulling major upstream changes to apply new modernizers
+- Runs `go fix ./...` twice (synergistic: some fixes enable others)
+- Key transformations: `interface{}` → `any`, range-over-int, `slices.Contains`
+- Safe: go fix only applies verified, backward-compatible transformations
+
+**Green Tea GC (active by default in Go 1.26):**
+- 10–40% reduction in GC overhead — no code changes required
+- Particularly beneficial for CLI tools with bursty allocation patterns
+- Automatically active in all built binaries
+
+**Goroutine leak profiler (experimental):**
+- Available via `GOEXPERIMENT=goroutineleakprofile`
+- Profile name: `goroutineleak`
+- Useful for diagnosing goroutine leaks in long-running processes
+
+**`go tool doc` → `go doc` (cmd/doc removed):**
+- `cmd/doc` and `go tool doc` are removed in Go 1.26
+- Use `go doc` directly (unchanged)
 
 ---
 
@@ -526,6 +553,22 @@ ls -la internal/template/embedded.go
 
 **Solution:** Tests should use `t.TempDir()` for isolation. Check if test creates files in project root.
 
+### Issue: 3 pre-existing test failures in internal/template
+
+**Tests:**
+- `TestSettingsTemplateNewFields`
+- `TestSettingsTemplateSpinnerTipsOverride`
+- `TestSettingsTemplatePluginFields`
+
+**Cause:** These tests are related to SPEC-SETTINGS-001 (`spinnerTipsEnabled`, `enabledPlugins` fields). They were failing **before** the Go 1.26 upgrade and are NOT a regression.
+
+**Solution:** Implement the pending SPEC-SETTINGS-001 work to fix these tests. Until then, exclude them if needed:
+```bash
+go test -run "^(?!TestSettingsTemplateNewFields|TestSettingsTemplateSpinnerTipsOverride|TestSettingsTemplatePluginFields)" ./internal/template/...
+```
+
+---
+
 ### Issue: Hook timeout
 
 **Solution:** Increase timeout in settings.json:
@@ -558,5 +601,5 @@ ls -la internal/template/embedded.go
 ---
 
 **Status**: Active (Local Development)
-**Version**: 1.0.0 (Initial version for moai-adk-go)
-**Last Updated**: 2026-02-06
+**Version**: 1.1.0 (Go 1.26 upgrade notes added)
+**Last Updated**: 2026-02-20
