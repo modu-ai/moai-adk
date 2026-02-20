@@ -25,6 +25,45 @@
 4. Git commit from local root
 ```
 
+### [CRITICAL] moai CLI vs /moai Slash Command
+
+**DO NOT CONFUSE** these two completely different things:
+
+| | `moai` (Terminal CLI) | `/moai` (Slash Command) |
+|---|---|---|
+| **Where** | Terminal shell | Claude Code chat input |
+| **What** | Go binary (`~/go/bin/moai`) | Claude Code skill invocation |
+| **Purpose** | Project setup, template deployment | AI-assisted development workflows |
+| **Example** | `moai init myproject` | `/moai plan "add auth"` |
+| **Scope** | File system operations | AI agent orchestration |
+
+**Terminal `moai` commands:**
+```bash
+moai init <project>     # Initialize new project with templates
+moai update             # Sync templates to current project
+moai build              # Build embedded templates
+moai hook <event>       # Execute hook handler
+moai glm                # GLM worker mode
+moai version            # Show version
+```
+
+**Claude Code `/moai` commands:**
+```
+/moai plan "feature"    # Create SPEC document
+/moai run SPEC-XXX      # Implement SPEC
+/moai sync SPEC-XXX     # Generate docs & PR
+/moai fix               # Auto-fix errors
+/moai loop              # Iterative fix loop
+/moai project           # Generate project docs
+/moai feedback          # Create GitHub issue
+```
+
+**Common mistake to avoid:**
+- WRONG: Running `/moai init` in Claude Code chat (not a valid slash command)
+- CORRECT: Running `moai init` in terminal
+- WRONG: Running `moai plan` in terminal (not a CLI command)
+- CORRECT: Running `/moai plan` in Claude Code chat
+
 ---
 
 ## 2. File Synchronization
