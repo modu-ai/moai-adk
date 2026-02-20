@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Test Coverage**: Comprehensive test suite added across all packages to meet 85%+ coverage threshold. Key packages: internal/hook (3 subpackages), internal/shell, internal/template, internal/rank, internal/github, internal/merge, internal/update, pkg/models, internal/ui, internal/core/git, internal/core/project, internal/hook/agents, internal/hook/lifecycle. internal/cli improved from 60.6% → 73.3% (OAuth browser-flow functions excluded from automated testing).
 - **Binary TDD/DDD Methodology**: Removed hybrid mode, implemented clean binary selection between TDD (default for new code) and DDD (for legacy refactoring). Simplified development mode selection and documentation.
 - **GLM Team Flag**: Added `moai glm --team` flag for Agent Teams parallel execution in GLM workflow.
+- **GLM Worker Mode**: Implemented `/moai --team` workflow with Leader (user-selected Claude model) + Worker (GLM-5 in worktree) architecture for cost-effective development. Worker spawns via `env ANTHROPIC_*=... claude -w worker-SPEC-XXX -p "..."` for isolated git worktree execution. 60-70% cost reduction for implementation-heavy tasks.
 - **Go 1.26 Upgrade**: Integrated Green Tea GC with 10-40% memory improvement, goroutine leak profiler, and modernization utilities.
 - **Agent Documentation**: Corrected expert agent count documentation (8 to 9 agents), added per-agent model assignment tables by tier, fixed team agent model values.
 
