@@ -437,7 +437,44 @@ Step 5 - Initialize Task Tracking:
 Use TaskCreate to register discovered work items with pending status.
 
 Step 6 - Execute Workflow Phases:
-Follow the workflow-specific phase instructions from the loaded workflow file. Delegate all implementation to appropriate agents via Task(). Collect user approvals at designated checkpoints via AskUserQuestion.
+Follow the workflow-specific phase instructions from the loaded workflow file. Delegate all implementation to appropriate agents via Task().
+
+[CRITICAL] SPEC Creation Approval Checkpoint for plan and moai workflows:
+Before delegating to manager-spec subagent for SPEC creation, you MUST obtain user approval via AskUserQuestion:
+
+When conversation_language is ko:
+Question: 다음 작업을 진행하시겠습니까?
+Options:
+- SPEC 문서 생성 (추천): 제안된 계획으로 SPEC 문서를 생성합니다.
+- 계획 수정: 계획을 수정하기 위한 피드백을 제공합니다.
+- 초안 저장: 계획을 초안으로 저장하고 나중에 다시 시작합니다.
+- 취소: 작업을 취소하고 파일을 생성하지 않습니다.
+
+When conversation_language is en:
+Question: Do you want to proceed with the following task?
+Options:
+- Create SPEC Document (Recommended): Generate SPEC document with the proposed plan.
+- Modify Plan: Provide feedback to modify the plan.
+- Save as Draft: Save plan as draft and resume later.
+- Cancel: Cancel the task without creating any files.
+
+When conversation_language is ja:
+Question: 次の作業を進めますか？
+Options:
+- SPECドキュメント作成 (推奨): 提案された計画でSPECドキュメントを作成します。
+- 計画修正: 計画を修正するためのフィードバックを提供します。
+- 下書き保存: 計画を下書きとして保存し、後で再開します。
+- キャンセル: 作業をキャンセルし、ファイルを作成しません。
+
+When conversation_language is zh:
+Question: 您想继续执行以下任务吗？
+Options:
+- 创建 SPEC 文档 (推荐): 使用提议的计划生成 SPEC 文档。
+- 修改计划: 提供反馈以修改计划。
+- 保存为草稿: 将计划保存为草稿并稍后继续。
+- 取消: 取消任务且不创建任何文件。
+
+Only after user selects "Create SPEC Document" option, proceed to delegate to manager-spec subagent.
 
 Step 7 - Track Progress:
 Update task status using TaskUpdate as work progresses (pending to in_progress to completed).
@@ -453,5 +490,5 @@ Use AskUserQuestion to present the user with logical next actions based on the c
 
 ---
 
-Version: 2.0.0
-Last Updated: 2026-02-07
+Version: 2.0.1
+Last Updated: 2026-02-20
