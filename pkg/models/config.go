@@ -1,3 +1,4 @@
+// @MX:NOTE: [AUTO] 개발 방법론 모드를 정의합니다. ModeDDD(기존 코드베이스)와 ModeTDD(신규 개발)를 지원합니다.
 package models
 
 // DevelopmentMode defines the development methodology mode.
@@ -43,6 +44,7 @@ type LanguageConfig struct {
 	ErrorMessages            string `yaml:"error_messages"`
 }
 
+// @MX:NOTE: [AUTO] TRUST 5 품질 게이트 설정을 포함합니다. LSP 통합, 테스트 커버리지, 개발 방법론(DDD/TDD) 설정을 관리합니다.
 // QualityConfig represents the quality configuration section.
 type QualityConfig struct {
 	DevelopmentMode    DevelopmentMode    `yaml:"development_mode"`

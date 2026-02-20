@@ -1,3 +1,5 @@
+// @MX:ANCHOR: [AUTO] TRUST 5 품질 게이트 프레임워크의 핵심 패키지입니다. 5가지 품질 원칙(Tested, Readable, Understandable, Secured, Trackable)을 자동 검증합니다.
+// @MX:REASON: fan_in=15+, 모든 품질 검증의 진입점이며 시스템 전체에서 호출됩니다
 // Package quality implements the TRUST 5 Quality Gates framework.
 //
 // It provides automated validation of five quality principles:

@@ -1978,9 +1978,10 @@ func ensureGlobalSettingsEnv() error {
 
 	// Clean up moai-managed settings that have been migrated to project level.
 	// Preserve any user-added custom env keys but remove moai-specific ones.
+	// Note: CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS is kept as a default value (see below).
 	if envVal, exists := existingSettings["env"]; exists {
 		if envMap, ok := envVal.(map[string]any); ok {
-			moaiKeys := []string{"PATH", "ENABLE_TOOL_SEARCH", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"}
+			moaiKeys := []string{"PATH", "ENABLE_TOOL_SEARCH"}
 			for _, key := range moaiKeys {
 				if _, exists := envMap[key]; exists {
 					delete(envMap, key)
@@ -1991,6 +1992,28 @@ func ensureGlobalSettingsEnv() error {
 			if len(envMap) == 0 {
 				delete(existingSettings, "env")
 			}
+		}
+	}
+
+	// Ensure default global settings are present.
+	// CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 enables Agent Teams mode by default.
+	defaultEnvKeys := map[string]string{
+		"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+	}
+	for key, value := range defaultEnvKeys {
+		if envVal, exists := existingSettings["env"]; exists {
+			if envMap, ok := envVal.(map[string]any); ok {
+				if _, exists := envMap[key]; !exists {
+					envMap[key] = value
+					needsUpdate = true
+				}
+			}
+		} else {
+			// No env section yet, create it with defaults
+			existingSettings["env"] = map[string]any{
+				key: value,
+			}
+			needsUpdate = true
 		}
 	}
 

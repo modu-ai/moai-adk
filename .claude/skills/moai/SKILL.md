@@ -3,7 +3,7 @@ name: moai
 description: >
   MoAI super agent - unified orchestrator for autonomous development.
   Routes natural language or explicit subcommands (plan, run, sync, fix,
-  loop, project, feedback) to specialized agents.
+  loop, project, feedback, mx) to specialized agents.
   Use for any development task from planning to deployment.
 license: Apache-2.0
 compatibility: Designed for Claude Code
@@ -69,7 +69,8 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **project** (aliases: init): Project documentation generation
 - **feedback** (aliases: fb, bug, issue): GitHub issue creation
 - **fix**: Auto-fix errors in a single pass
-- **loop**: Iterative auto-fix until completion marker detected
+- **loop** (aliases: iterate): Iterative auto-fix until completion marker detected
+- **mx** (aliases: tag, annotate): MX tag scan and code annotation workflow
 
 
 ### Priority 2: SPEC-ID Detection
@@ -136,6 +137,14 @@ Agents: expert-debug, expert-backend, expert-frontend, expert-testing
 Phases: Parallel diagnostics, TODO generation, autonomous fixing, iterative verification, completion detection.
 Flags: --max N (iteration limit, default 100), --auto-fix, --seq
 For detailed orchestration: Read workflows/loop.md
+
+### mx - MX Tag Scan and Annotation
+
+Purpose: Scan codebase and add @MX code-level annotations for AI agent context.
+Agents: Explore (codebase scan), manager-quality (tag validation and report generation)
+Phases: 3-Pass scan (Grep, Read, Edit), tag generation, report output.
+Flags: --all (full scan), --dry (preview), --priority P1-P4, --force, --exclude pattern
+For detailed orchestration: Read workflows/mx.md
 
 ### (default) - MoAI Autonomous Workflow
 

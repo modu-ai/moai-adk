@@ -1338,8 +1338,9 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		if _, exists := envMap["ENABLE_TOOL_SEARCH"]; exists {
 			t.Error("ENABLE_TOOL_SEARCH should be removed from global settings")
 		}
-		if _, exists := envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"]; exists {
-			t.Error("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be removed from global settings")
+		// CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be set to "1" as default
+		if envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] != "1" {
+			t.Errorf("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be set to '1', got: %v", envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"])
 		}
 
 		// SessionEnd hook should NOT be present (no longer managed globally)
@@ -1435,9 +1436,18 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 			t.Fatalf("failed to parse settings.json: %v", err)
 		}
 
-		// env key should be completely removed (was empty after cleanup)
-		if _, exists := settings["env"]; exists {
-			t.Error("env should be removed entirely when all keys are moai-managed")
+		// env key should NOT be removed (CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS is added as default)
+		env, hasEnv := settings["env"]
+		if !hasEnv {
+			t.Fatal("env should exist (CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be added)")
+		}
+		envMap := env.(map[string]any)
+		// Only CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be present
+		if envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] != "1" {
+			t.Errorf("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be '1', got: %v", envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"])
+		}
+		if len(envMap) != 1 {
+			t.Errorf("env should only contain CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS, got: %v", envMap)
 		}
 
 		// SessionEnd hook should NOT be present (no longer managed globally)
@@ -1597,8 +1607,9 @@ func TestEnsureGlobalSettingsEnv_CleanupMigratedSettings(t *testing.T) {
 	if _, exists := envMap["ENABLE_TOOL_SEARCH"]; exists {
 		t.Error("ENABLE_TOOL_SEARCH should be removed from global settings")
 	}
-	if _, exists := envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"]; exists {
-		t.Error("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be removed from global settings")
+	// CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be set to "1" as default
+	if envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] != "1" {
+		t.Errorf("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be set to '1', got: %v", envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"])
 	}
 
 	// Custom env keys should be PRESERVED

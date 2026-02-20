@@ -54,6 +54,50 @@ Synchronize documentation with code changes, verify project quality, and finaliz
 - status: Read-only health check. Quick project health report with no changes.
 - project: Project-wide documentation updates. Milestone completion and periodic sync use case.
 
+### Project Mode Details (ENHANCED)
+
+The `project` mode performs comprehensive project-wide synchronization:
+
+**When to use:**
+- After completing a milestone or major feature
+- Before releasing a new version
+- Periodic maintenance (weekly/monthly)
+- After significant refactoring
+- When `.moai/project/` documents are outdated
+
+**What project mode does:**
+
+1. **Full Project Scan** (vs. auto mode's selective scan):
+   - Scans ALL source files (not just changed files)
+   - Checks ALL SPEC documents for updates needed
+   - Verifies ALL project documentation consistency
+   - Validates ALL language files for MX tag coverage
+
+2. **SPEC Document Update Detection**:
+   - Compares implementation against SPEC requirements
+   - Detects implemented features not documented in SPEC
+   - Detects SPEC requirements not yet implemented
+   - Flags SPEC documents requiring updates
+
+3. **Project Document Updates**:
+   - Updates `.moai/project/tech.md` when new dependencies/technologies added
+   - Updates `.moai/project/structure.md` when architecture changes
+   - Updates `.moai/project/product.md` when new features added
+   - Updates README.md to reflect current project state
+
+4. **Comprehensive Quality Verification**:
+   - Runs full test suite (all languages)
+   - Lint check for ALL source files
+   - Type check for ALL source files
+   - MX tag validation for ALL source files
+
+**Output for project mode:**
+- Complete project health report
+- All SPEC documents requiring updates
+- All project documents requiring updates
+- Recommendations for improvements
+- Full language breakdown of code quality metrics
+
 ## Supported Flags
 
 - --merge: After sync, auto-merge PR and clean up branch. Worktree/branch environment is auto-detected from git context.
@@ -178,32 +222,88 @@ The sync phase enforces LSP-based quality gates as configured in quality.yaml:
 
 Aggregate all results into a quality report showing status for test-runner, linter, type-checker, and code-review. Determine overall status (PASS or WARN).
 
-### Phase 0.6: MX Tag Validation
+### Phase 0.6: MX Tag Validation (Multi-Language)
 
-Purpose: Ensure code has appropriate @MX annotations for AI agent context.
+Purpose: Ensure code has appropriate @MX annotations for AI agent context. Supports all 16 MoAI-ADK languages.
 
 Skip if `--skip-mx` flag is provided.
 
-#### Step 0.6.1: Scan Modified Files
+#### Step 0.6.1: Language Detection for Modified Files
+
+Detect languages present in modified files:
+
+| Language | Indicator Files | File Patterns | Comment Prefix |
+|----------|----------------|---------------|----------------|
+| Go | go.mod | *.go | `//` |
+| Python | pyproject.toml | *.py | `#` |
+| TypeScript | tsconfig.json | *.ts, *.tsx | `//` |
+| JavaScript | package.json | *.js, *.jsx | `//` |
+| Rust | Cargo.toml | *.rs | `//` |
+| Java | pom.xml | *.java | `//` |
+| Kotlin | build.gradle.kts | *.kt | `//` |
+| C# | .csproj | *.cs | `//` |
+| Ruby | Gemfile | *.rb | `#` |
+| PHP | composer.json | *.php | `//` |
+| Elixir | mix.exs | *.ex, *.exs | `#` |
+| C++ | CMakeLists.txt | *.cpp, *.h | `//` |
+| Scala | build.sbt | *.scala | `//` |
+| R | DESCRIPTION | *.R, *.r | `#` |
+| Flutter | pubspec.yaml | *.dart | `//` |
+| Swift | Package.swift | *.swift | `//` |
+
+#### Step 0.6.2: Scan Modified Files
 
 - Get list of files changed since last sync (git diff)
 - For each modified source file, check for @MX tags
 - Identify functions/code blocks that should have tags but don't
 
-#### Step 0.6.2: Add Missing Tags
+#### Step 0.6.3: Add Missing Tags (Language-Aware)
 
-For modified files missing @MX tags:
+For modified files missing @MX tags, use language-specific patterns:
 
-1. **fan_in >= 5**: Add `@MX:ANCHOR` for functions with many callers
-2. **goroutines**: Add `@MX:WARN` for concurrency patterns
+**Backend Languages (Go, Python, Rust, Java, Kotlin, C#, Ruby, PHP, Elixir, C++, Scala)**:
+1. **fan_in >= 3**: Add `@MX:ANCHOR` for functions/methods with many callers
+2. **Language-specific WARN patterns**:
+   - Go: `go func`, `go ` (goroutines without context)
+   - Python: `async def`, `threading` (async/threading patterns)
+   - Rust: `async fn`, `unsafe ` (async/unsafe blocks)
+   - Java: `new Thread`, `Executor` (thread usage)
+   - Kotlin: `GlobalScope`, `runBlocking` (coroutine issues)
+   - C#: `Task.Run`, `Thread.` (async/threading)
+   - Ruby: `Thread.new` (thread creation)
+   - PHP: `async ` (async patterns)
+   - Elixir: `Task.async`, `spawn` (async/process)
+   - C++: `std::thread`, `new ` (thread/memory)
+   - Scala: `Future.`, `new Thread` (async/thread)
 3. **magic constants**: Add `@MX:NOTE` for unexplained values
 4. **missing tests**: Add `@MX:TODO` for untested public functions
 
-#### Step 0.6.3: Generate Tag Report
+**Frontend Languages (TypeScript, JavaScript)**:
+1. **fan_in >= 3**: Add `@MX:ANCHOR` for functions with many callers
+2. **Promise chains**: Add `@MX:WARN` for Promise.all without error handling
+3. **async/await**: Add `@MX:WARN` for async functions without try/catch
+4. **magic constants**: Add `@MX:NOTE` for unexplained values
+5. **missing tests**: Add `@MX:TODO` for untested functions
+
+**Data Science Languages (R, Flutter/Dart)**:
+1. **fan_in >= 3**: Add `@MX:ANCHOR` for functions with many callers
+2. **Language-specific WARN patterns**:
+   - R: `parallel::` (parallel processing)
+   - Flutter: `Isolate.`, `Future.` (async/isolate patterns)
+3. **magic constants**: Add `@MX:NOTE` for unexplained values
+4. **missing tests**: Add `@MX:TODO` for untested functions
+
+**Mobile (Swift)**:
+1. **fan_in >= 3**: Add `@MX:ANCHOR` for functions with many callers
+2. **Swift-specific WARN**: `Task.`, `DispatchQueue` (async/concurrency)
+3. **magic constants**: Add `@MX:NOTE` for unexplained values
+4. **missing tests**: Add `@MX:TODO` for untested functions
+
+#### Step 0.6.4: Generate Tag Report
 
 Include in sync report:
-- Files scanned: N
-- Tags added: N (by type)
+- Files scanned: N (by language)
+- Tags added: N (by type, by language)
 - Files requiring attention (high complexity, missing documentation)
 
 #### MX Tag Integration

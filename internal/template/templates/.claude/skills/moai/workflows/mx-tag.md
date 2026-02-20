@@ -302,6 +302,51 @@ mx:
 
 **WHEN** `.mx.yaml` specifies `auto_tag: false`: Agents do not autonomously add tags, but still validate and report on existing tags.
 
+## Language Settings (language.yaml)
+
+**CRITICAL**: @MX tag descriptions MUST respect the `code_comments` setting from `.moai/config/sections/language.yaml`.
+
+The `code_comments` setting controls the human language used for:
+- @MX tag descriptions (NOTE, WARN, ANCHOR, TODO)
+- @MX:REASON sub-lines
+- Code comments and godoc
+
+**Available languages:**
+- `en` - English (default)
+- `ko` - Korean
+- `ja` - Japanese
+- `zh` - Chinese
+
+**Agent protocol:**
+1. Before adding @MX tags, read `.moai/config/sections/language.yaml`
+2. Extract the `language.code_comments` value
+3. Write tag descriptions in the specified language
+4. If `code_comments` is not set, default to English (`en`)
+
+**Example:**
+```yaml
+# .moai/config/sections/language.yaml
+language:
+  code_comments: ko  # Tags will be in Korean
+```
+
+**Tag examples by language:**
+
+English (en):
+```go
+// @MX:NOTE: [AUTO] Maximum retry count for payment gateway API calls
+```
+
+Korean (ko):
+```go
+// @MX:NOTE: [AUTO] 결제 게이트웨이 API 호출의 최대 재시도 횟수
+```
+
+Japanese (ja):
+```go
+// @MX:NOTE: [AUTO] 決済ゲートウェイAPI呼び出しの最大再試行回数
+```
+
 ## Fan-In Analysis Method
 
 Fan-in counting uses Grep-based reference analysis:

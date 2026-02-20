@@ -151,6 +151,33 @@ Project-level settings in `.mx.yaml`:
 - auto_tag: enable/disable autonomous tagging
 - require_reason_for: tag types requiring @MX:REASON
 
+## Language Settings
+
+**IMPORTANT**: @MX tag descriptions MUST respect the `code_comments` setting from `.moai/config/sections/language.yaml`.
+
+The `code_comments` setting controls the language used for:
+- @MX tag descriptions (NOTE, WARN, ANCHOR, TODO)
+- @MX:REASON sub-lines
+- Code comments and godoc
+
+Available languages:
+- `en` - English (default)
+- `ko` - Korean
+- `ja` - Japanese
+- `zh` - Chinese
+
+**How to read the setting:**
+Before adding @MX tags, agents MUST read `.moai/config/sections/language.yaml` and use the `code_comments` value to determine the tag language.
+
+**Example:**
+```yaml
+# .moai/config/sections/language.yaml
+language:
+  code_comments: ko  # Tags will be in Korean
+```
+
+If `code_comments` is not set, default to English (`en`).
+
 ## Agent Reporting
 
 After any phase with tag changes, generate report:

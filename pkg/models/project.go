@@ -1,3 +1,4 @@
+// @MX:NOTE: [AUTO] 프로젝트 유형(web-app, api, cli, library)과 설정을 정의합니다. YAML에서 로드되는 데이터 모델입니다.
 package models
 
 // ProjectType represents the type of project.

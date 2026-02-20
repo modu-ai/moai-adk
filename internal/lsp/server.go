@@ -45,6 +45,8 @@ type ProcessHandle interface {
 	IsRunning() bool
 }
 
+// @MX:ANCHOR: [AUTO] ServerManager는 다중 언어 서버의 동시성 라이프사이클을 관리하는 핵심 인터페이스입니다. 모든 메서드는 스레드 안전하게 설계되었습니다.
+// @MX:REASON: fan_in=10+, LSP 서버 관리의 진입점이며 여러 곳에서 호출됩니다
 // ServerManager manages multiple language server lifecycles concurrently.
 // All methods are safe for concurrent use.
 //
@@ -251,6 +253,7 @@ func (m *serverManager) HealthCheck(_ context.Context) map[string]error {
 	return result
 }
 
+// @MX:NOTE: [AUTO] maxParallel로 제한된 고루틴 풀을 사용하여 병렬로 서버를 시작합니다. 개별 서버 실패는 치명적이지 않습니다 (graceful degradation).
 // StartAll starts servers for all given languages concurrently,
 // limited by maxParallel. Individual failures are non-fatal (graceful degradation).
 func (m *serverManager) StartAll(ctx context.Context, langs []string) error {

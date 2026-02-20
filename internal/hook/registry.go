@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+// @MX:ANCHOR: [AUTO] Hook Registry는 모든 Claude Code 이벤트 핸들러의 중앙 등록 및 디스패치 시스템입니다. 순차 실행, 타임아웃, block short-circuit을 지원합니다.
+// @MX:REASON: fan_in=20+, 모든 훅 이벤트의 진입점이며 시스템의 핵심 인프라입니다
 // registry is the default implementation of the Registry interface.
 // It manages handler registration and sequential event dispatch with
 // block short-circuit and timeout support.
@@ -16,6 +18,7 @@ type registry struct {
 	timeout  time.Duration
 }
 
+// @MX:NOTE: [AUTO] 기본 타임아웃은 30초(DefaultHookTimeout)입니다. 타임아웃 내에 핸들러가 완료되지 않으면 ErrHookTimeout이 반환됩니다.
 // NewRegistry creates a new Registry with the default timeout (30 seconds).
 func NewRegistry(cfg ConfigProvider) *registry {
 	return &registry{
