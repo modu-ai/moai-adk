@@ -212,6 +212,25 @@ Agent: manager-git subagent
 - No branch creation, no manager-git invocation
 - SPEC files remain on current branch
 
+### Phase 3.5: MX Tag Planning (Optional)
+
+Purpose: Identify code locations that will need @MX annotations during implementation.
+
+Execution conditions: SPEC involves modifying existing code OR creating new public APIs.
+
+Tasks:
+- Scan target files for high fan_in functions (potential @MX:ANCHOR)
+- Identify dangerous patterns (goroutines, complexity) for @MX:WARN
+- List magic constants and business rules for @MX:NOTE
+- Document MX tag strategy in plan.md
+
+Output: MX_TAG_STRATEGY section added to plan.md with:
+- Target files for tagging
+- Priority levels (P1-P4)
+- Estimated tag count by type
+
+Skip conditions: New feature with no existing code interaction.
+
 ### Decision Point 2: Development Environment Selection
 
 Tool: AskUserQuestion (when prompt_always config is true and auto_branch is true)

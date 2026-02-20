@@ -224,3 +224,32 @@ Wrapper scripts are located at:
 - Hook scripts must follow coding-standards.md
 - Hook wrappers are managed by `internal/hook/` package
 - TeammateIdle and TaskCompleted hooks are critical for Agent Teams quality enforcement
+
+## MX Tag Integration with Hooks
+
+PostToolUse hooks can trigger MX tag validation after code modifications:
+
+**Trigger Conditions:**
+- Write or Edit tool used on source files (`.go`, `.py`, `.ts`, etc.)
+- New functions or classes added
+- Function signatures changed
+
+**PostToolUse MX Check Flow:**
+1. Detect if modified file is a source code file
+2. Check if file has `.mx.yaml` exclusion
+3. If new exported function added without @MX tag, log warning
+4. If function with @MX:ANCHOR modified, flag for review
+
+**Hook Wrapper Enhancement:**
+```bash
+# handle-post-tool.sh MX check
+if [[ "$TOOL_NAME" =~ ^(Write|Edit)$ ]] && is_source_file "$FILE_PATH"; then
+  # Check for MX tag needs
+  moai mx check --file "$FILE_PATH" --dry
+fi
+```
+
+**Non-Blocking Behavior:**
+- MX checks are informational only during hook execution
+- Actual tag insertion happens during workflow phases (run, sync)
+- Use `/moai mx --dry` to preview tag recommendations

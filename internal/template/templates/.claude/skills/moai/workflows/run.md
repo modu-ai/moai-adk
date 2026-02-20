@@ -304,6 +304,23 @@ Iteration behavior:
 
 Output: review_findings per dimension, iterations_completed count, final review status.
 
+### Phase 2.8: MX Tag Update
+
+Purpose: Update @MX code annotations for modified files.
+
+**TDD Mode:**
+- Remove `@MX:TODO` tags for tests that now pass
+- Add `@MX:NOTE` for complex logic added during GREEN phase
+- Review `@MX:WARN` tags if dangerous patterns were improved
+
+**DDD Mode:**
+- Run 3-Pass scan if codebase has zero @MX tags
+- Update `@MX:ANCHOR` tags if fan_in changed
+- Add `@MX:NOTE` for business rules discovered during ANALYZE
+- Convert `@MX:LEGACY` to `@MX:SPEC` if SPEC retroactively created
+
+Output: MX_TAG_REPORT with tags added, updated, removed by type.
+
 ### LSP Quality Gates
 
 The run phase enforces LSP-based quality gates as configured in quality.yaml:

@@ -44,6 +44,7 @@ Success Criteria:
 - Methodology-specific tests passing
 - 85%+ code coverage
 - TRUST 5 quality gates passed
+- MX tags added for new code (NOTE, ANCHOR, WARN as appropriate)
 
 ## Sync Phase
 
