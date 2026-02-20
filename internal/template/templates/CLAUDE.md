@@ -133,6 +133,22 @@ For detailed workflow specifications, see @.claude/rules/moai/workflow/spec-work
 - Phase 5: manager-quality → ensure quality standards
 - Phase 6: manager-docs → create documentation
 
+### MX Tag Integration
+
+All phases include @MX code annotation management:
+
+- **plan**: Identify MX tag targets (high fan_in, danger zones)
+- **run**: Create/update @MX:NOTE, @MX:WARN, @MX:ANCHOR, @MX:TODO tags
+- **sync**: Validate MX tags, add missing annotations
+
+MX Tag Types:
+- `@MX:NOTE` - Context and intent delivery
+- `@MX:WARN` - Danger zone (requires @MX:REASON)
+- `@MX:ANCHOR` - Invariant contract (high fan_in functions)
+- `@MX:TODO` - Incomplete work (resolved in GREEN phase)
+
+For MX protocol details, see @.claude/rules/moai/workflow/mx-tag-protocol.md
+
 For team-based parallel execution of these phases, see @.claude/skills/moai/workflows/team-plan.md and @.claude/skills/moai/workflows/team-run.md.
 
 ---
@@ -396,6 +412,44 @@ MoAI-ADK supports GLM Worker Mode for 60-70% cost reduction on implementation-he
 - Planning/architecture decisions (needs Opus reasoning)
 - Security reviews (needs Claude's security training)
 - Complex debugging (needs advanced reasoning)
+
+---
+
+## 16. Context Search Protocol
+
+MoAI searches previous Claude Code sessions when context is needed to continue work on existing tasks or discussions.
+
+### When to Search
+
+Search previous sessions when:
+- User references past work without sufficient context in current session
+- User mentions a SPEC-ID that is not loaded in current context
+- User asks to continue previous work or resume interrupted tasks
+- User explicitly requests to find previous discussions
+
+### Search Process
+
+1. Ask user confirmation before searching (via AskUserQuestion)
+2. Use Grep to search session index and transcript files in ~/.claude/projects/
+3. Limit search to recent sessions (configurable, default 30 days)
+4. Summarize findings and present for user approval
+5. Inject approved context into current conversation
+
+### Token Budget
+
+- Maximum 5,000 tokens per injection
+- Skip search if current token usage exceeds 150,000
+- Summarize lengthy conversations to stay within budget
+
+### Manual Trigger
+
+User can explicitly request context search at any time during conversation.
+
+### Integration Notes
+
+- Complements @MX TAG system for code context
+- Automatically triggered when SPEC reference lacks context
+- Available in both solo and team modes
 
 ---
 
