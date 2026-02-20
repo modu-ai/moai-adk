@@ -262,6 +262,24 @@ func DefaultQuestions(projectRoot string) []Question {
 				return r.AgentTeamsMode == "team"
 			},
 		},
+		// 13b. Teammate Display Mode (conditional - only for team or auto mode)
+		{
+			ID:          "teammate_display",
+			Type:        QuestionTypeSelect,
+			Title:       "Select teammate display mode",
+			Description: "Controls how Agent Teammates are displayed. Requires tmux for split panes.",
+			// Default option must be first to avoid huh v0.8.x YOffset bug.
+			Options: []Option{
+				{Label: "Auto (Recommended)", Value: "auto", Desc: "Use tmux if available, else in-process (default)"},
+				{Label: "In-Process", Value: "in-process", Desc: "Run in same terminal (works everywhere)"},
+				{Label: "Tmux", Value: "tmux", Desc: "Split panes in tmux (requires tmux/iTerm2)"},
+			},
+			Default:  "auto",
+			Required: true,
+			Condition: func(r *WizardResult) bool {
+				return r.AgentTeamsMode == "team" || r.AgentTeamsMode == "auto"
+			},
+		},
 		// 14. Statusline Preset
 		{
 			ID:          "statusline_preset",

@@ -20,7 +20,7 @@
   <a href="https://github.com/modu-ai/moai-adk/actions/workflows/codeql.yml"><img src="https://github.com/modu-ai/moai-adk/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
   <a href="https://codecov.io/gh/modu-ai/moai-adk"><img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov"></a>
   <br>
-  <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
+  <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
   <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/github/v/release/modu-ai/moai-adk?sort=semver" alt="Release"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Copyleft--3.0-blue.svg" alt="License: Copyleft-3.0"></a>
 </p>
@@ -62,7 +62,7 @@ Python 기반 MoAI-ADK(~73,000줄)를 Go로 완전히 재작성했습니다.
 - **85-100%** 테스트 커버리지
 - **28개** 전문 AI 에이전트 + **52개** 스킬
 - **18개** 프로그래밍 언어 지원
-- **8개** Claude Code 훅 이벤트
+- **14개** Claude Code 훅 이벤트
 
 ---
 
@@ -180,6 +180,8 @@ IMPROVE   → 테스트로 보호된 상태에서 점진적 개선
 ```
 
 > 방법론은 `moai init` 시 자동 선택되며 (`--mode <ddd|tdd>`, 기본값: tdd), `.moai/config/sections/quality.yaml`의 `development_mode`에서 변경할 수 있습니다.
+>
+> **참고**: MoAI-ADK v2.5.0+는 이진 방법론 선택(TDD 또는 DDD만)을 사용합니다. 명확성과 일관성을 위해 hybrid 모드는 제거되었습니다.
 
 ---
 
@@ -354,6 +356,11 @@ MoAI-ADK는 프로젝트 복잡도를 자동으로 분석하여 최적의 실행
 /moai run SPEC-XXX --team         # Agent Teams 모드 강제
 ```
 
+**Agent Teams용 품질 훅:**
+- **TeammateIdle 훅**: 팀원이 대기 상태로 전환되기 전 LSP 품질 게이트 검증 (에러, 타입 에러, 린트 에러)
+- **TaskCompleted 훅**: 작업이 SPEC-XXX 패턴을 참조할 때 SPEC 문서 존재 확인
+- 모든 검증은 graceful degradation 사용 - 경고는 로그되지만 작업은 계속됨
+
 ### Sub-Agent 모드 (`--solo`)
 
 기존 Claude Code의 `Task()` API를 활용한 순차적 에이전트 위임 방식입니다.
@@ -430,6 +437,18 @@ LSP 진단과 AST-grep을 결합한 자율 에러 수정 엔진입니다:
 
 ---
 
+## Task 메트릭 로깅
+
+MoAI-ADK는 개발 세션 중 Task 도구 메트릭을 자동으로 캡처합니다:
+
+- **위치**: `.moai/logs/task-metrics.jsonl`
+- **캡처 메트릭**: 토큰 사용량, 도구 호출, 소요 시간, 에이전트 타입
+- **목적**: 세션 분석, 성능 최적화, 비용 추적
+
+Task 도구 완료 시 PostToolUse 훅이 메트릭을 로깅합니다. 이 데이터를 사용하여 에이전트 효율성을 분석하고 토큰 소비를 최적화하세요.
+
+---
+
 ## CLI 명령어
 
 | 명령어 | 설명 |
@@ -448,6 +467,8 @@ LSP 진단과 AST-grep을 결합한 자율 에러 수정 엔진입니다:
 | `moai worktree clean` | 오래된 worktree 정리 |
 | `moai worktree go <name>` | 현재 셸에서 worktree 디렉토리로 이동 |
 | `moai hook <event>` | Claude Code 훅 디스패처 |
+| `moai glm` | GLM 5 API로 Claude Code 시작 (비용 효율적 대안) |
+| `moai glm --team` | GLM Worker 모드 시작 (Opus 리더 + GLM-5 팀원) |
 | `moai version` | 버전, 커밋 해시, 빌드 날짜 정보 |
 
 ---
@@ -467,7 +488,7 @@ moai-adk/
 │   │   └── quality/      # TRUST 5 품질 게이트, 병렬 검증기
 │   ├── defs/             # 언어 정의 및 프레임워크 감지
 │   ├── git/              # Git 컨벤션 검증 엔진
-│   ├── hook/             # 컴파일된 훅 시스템 (8개 이벤트, JSON 프로토콜)
+│   ├── hook/             # 컴파일된 훅 시스템 (14개 이벤트, JSON 프로토콜)
 │   ├── loop/             # Ralph 피드백 루프 (상태 머신, 수렴 감지)
 │   ├── lsp/              # LSP 클라이언트 (16개+ 언어, 병렬 서버 관리)
 │   ├── manifest/         # 파일 출적 추적 (SHA-256 무결성)

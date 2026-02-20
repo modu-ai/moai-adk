@@ -5,6 +5,9 @@ const (
 	// SettingsJSON is the Claude Code project settings file.
 	SettingsJSON = "settings.json"
 
+	// SettingsLocalJSON is the Claude Code local settings override file.
+	SettingsLocalJSON = "settings.local.json"
+
 	// MCPJSON is the MCP server configuration file.
 	MCPJSON = ".mcp.json"
 

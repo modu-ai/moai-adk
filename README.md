@@ -20,7 +20,7 @@
   <a href="https://github.com/modu-ai/moai-adk/actions/workflows/codeql.yml"><img src="https://github.com/modu-ai/moai-adk/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
   <a href="https://codecov.io/gh/modu-ai/moai-adk"><img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov"></a>
   <br>
-  <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
+  <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
   <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/github/v/release/modu-ai/moai-adk?sort=semver" alt="Release"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Copyleft--3.0-blue.svg" alt="License: Copyleft-3.0"></a>
 </p>
@@ -180,6 +180,8 @@ IMPROVE   → Improve incrementally under test protection
 ```
 
 > The methodology is automatically selected during `moai init` (`--mode <ddd|tdd>`, default: tdd) and can be changed via `development_mode` in `.moai/config/sections/quality.yaml`.
+>
+> **Note**: MoAI-ADK v2.5.0+ uses binary methodology selection (TDD or DDD only). The hybrid mode has been removed for clarity and consistency.
 
 ---
 
@@ -354,6 +356,11 @@ MoAI-ADK automatically analyzes project complexity and selects the optimal execu
 /moai run SPEC-XXX --team           # Force Agent Teams mode
 ```
 
+**Quality Hooks for Agent Teams:**
+- **TeammateIdle Hook**: Validates LSP quality gates before teammate goes idle (errors, type errors, lint errors)
+- **TaskCompleted Hook**: Verifies SPEC document exists when task references SPEC-XXX patterns
+- All validation uses graceful degradation - warnings logged but work continues
+
 ### Sub-Agent Mode (`--solo`)
 
 A sequential agent delegation approach using Claude Code's `Task()` API.
@@ -430,6 +437,18 @@ Every code change is validated against five quality criteria:
 
 ---
 
+## Task Metrics Logging
+
+MoAI-ADK automatically captures Task tool metrics during development sessions:
+
+- **Location**: `.moai/logs/task-metrics.jsonl`
+- **Captured Metrics**: Token usage, tool calls, duration, agent type
+- **Purpose**: Session analytics, performance optimization, cost tracking
+
+Metrics are logged by the PostToolUse hook when Task tool completes. Use this data to analyze agent efficiency and optimize token consumption.
+
+---
+
 ## CLI Commands
 
 | Command | Description |
@@ -448,6 +467,8 @@ Every code change is validated against five quality criteria:
 | `moai worktree clean` | Clean up stale worktrees |
 | `moai worktree go <name>` | Navigate to worktree directory in current shell |
 | `moai hook <event>` | Claude Code hook dispatcher |
+| `moai glm` | Start Claude Code with GLM 5 API (cost-effective alternative) |
+| `moai glm --team` | Start GLM Worker mode (Opus leader + GLM-5 teammates) |
 | `moai version` | Display version, commit hash, and build date |
 
 ---

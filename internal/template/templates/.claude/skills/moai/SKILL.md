@@ -329,6 +329,60 @@ When a workflow is interrupted or needs to continue, use the --resume flag with 
 
 Each phase must pass its results forward to the next phase. Include previous phase outputs in the Task() prompt so the receiving agent has full context without re-analyzing. This ensures semantic continuity across planning, implementation, quality validation, and git operations.
 
+### Team Mode Coordination
+
+When using Agent Teams mode (--team flag), follow these coordination patterns to prevent infinite waiting:
+
+**Understanding Idle States:**
+
+Teammates go idle after every turn—this is completely normal and expected. A teammate going idle immediately after sending a message does NOT mean they are done or unavailable. Idle simply means they are waiting for input.
+
+**When you receive an idle notification:**
+
+1. Check TaskList to verify if work is actually complete
+2. If all tasks are complete, proceed to shutdown:
+   ```
+   SendMessage(type: "shutdown_request", recipient: "{name}", content: "Work complete, shutting down")
+   ```
+3. If work remains, send additional instructions:
+   ```
+   SendMessage(type: "message", recipient: "{name}", content: "Next task: {instructions}")
+   ```
+4. NEVER ignore idle notifications—always respond with either shutdown or new work
+
+**Plan Approval Pattern:**
+
+When `require_plan_approval: true` in workflow.yaml:
+
+1. Teammates submit plans via ExitPlanMode (you receive `plan_approval_request`)
+2. You MUST respond immediately:
+   - Approve: `SendMessage(type: "plan_approval_response", request_id: "{id}", recipient: "{name}", approve: true)`
+   - Reject: `SendMessage(type: "plan_approval_response", request_id: "{id}", recipient: "{name}", approve: false, content: "Feedback")`
+3. After approval, teammate automatically exits plan mode and begins implementation
+4. FAILURE TO RESPOND causes infinite waiting
+
+**Shutdown Pattern:**
+
+1. Send shutdown_request to each teammate:
+   ```
+   SendMessage(type: "shutdown_request", recipient: "backend-dev", content: "Phase complete, shutting down")
+   ```
+2. Wait for shutdown_response from each teammate (they may reject if still working)
+3. After all teammates shut down, call TeamDelete
+4. NEVER call TeamDelete while teammates are still active
+
+**Automatic Message Delivery:**
+
+Messages from teammates are delivered automatically—you do NOT need to poll. When a teammate sends you a message, you will receive it on your next turn.
+
+**Known Limitations Workarounds:**
+
+| Issue | Symptom | Solution |
+|-------|---------|----------|
+| Task status lag | Teammate finished but task still pending | Check TaskList, update status manually with TaskUpdate |
+| Session resumed | Teammates no longer exist | Spawn new teammates, do not message old ones |
+| Slow shutdown | Teammate still processing tool call | Be patient, or check if shutdown was rejected |
+
 ---
 
 ## Additional Resources
