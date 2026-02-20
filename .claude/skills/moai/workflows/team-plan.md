@@ -83,6 +83,23 @@ MoAI monitors:
 - Forward researcher findings to architect when available
 - Resolve any questions from teammates
 
+**Handling Idle Notifications:**
+
+When a teammate goes idle, you MUST respond:
+
+1. Check TaskList to verify work status:
+   - If task is still pending/in_progress, the teammate may be waiting for input
+   - If task is completed, proceed to step 2
+
+2. If all assigned work is complete, send new work or shutdown:
+   ```
+   SendMessage(type: "message", recipient: "{name}", content: "New task: {instructions}")
+   # OR
+   SendMessage(type: "shutdown_request", recipient: "{name}", content: "Work complete, shutting down")
+   ```
+
+3. NEVER ignore idle notifications - failure to respond causes infinite waiting
+
 ## Phase 3: Synthesis
 
 After all research tasks complete:
@@ -101,14 +118,16 @@ AskUserQuestion with options:
 
 ## Phase 5: Cleanup
 
-1. Shutdown all teammates:
+1. Verify all tasks are completed via TaskList
+2. Shutdown all teammates (send to each):
    ```
    SendMessage(type: "shutdown_request", recipient: "researcher", content: "Plan phase complete, shutting down")
    SendMessage(type: "shutdown_request", recipient: "analyst", content: "Plan phase complete, shutting down")
    SendMessage(type: "shutdown_request", recipient: "architect", content: "Plan phase complete, shutting down")
    ```
-2. TeamDelete to clean up resources
-3. Execute /clear to free context for next phase
+3. Wait for shutdown_response from each teammate before proceeding
+4. TeamDelete to clean up resources
+5. Execute /clear to free context for next phase
 
 ## Fallback
 

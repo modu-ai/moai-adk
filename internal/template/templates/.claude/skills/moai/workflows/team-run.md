@@ -4,6 +4,20 @@ Purpose: Implement SPEC requirements using Leader (current Claude model) + Worke
 
 Flow: Mode Detection -> Plan (Leader) -> Run (GLM-5 Worker) -> Merge (Leader) -> Sync (Leader)
 
+## Mode Selection
+
+Before executing this workflow, check `.moai/config/sections/llm.yaml`:
+
+| team_mode | Execution Mode | Description |
+|-----------|---------------|-------------|
+| (empty) | Sub-agent | Single session, Task() subagents |
+| glm | GLM Worker | Opus Leader + GLM-5 Worker in worktree |
+| agent-teams | Agent Teams | Parallel teammates with file ownership |
+
+- If `team_mode == "glm"`: Use this workflow (GLM Worker Mode)
+- If `team_mode == "agent-teams"`: See Agent Teams Mode section below
+- If `team_mode == ""`: Fall back to sub-agent mode (run.md)
+
 ## Overview
 
 This workflow enables cost-effective development by combining:
@@ -304,5 +318,85 @@ If GLM Worker mode fails at any point:
 
 ---
 
-Version: 2.0.0 (GLM Worker Mode)
+## Agent Teams Mode
+
+When `team_mode == "agent-teams"` in llm.yaml, use parallel teammates instead of GLM Worker.
+
+### Phase 1: Team Setup
+
+1. Create team:
+   ```
+   TeamCreate(team_name: "moai-run-SPEC-XXX")
+   ```
+
+2. Create shared task list with dependencies:
+   ```
+   TaskCreate: "Implement data models and schema" (no deps)
+   TaskCreate: "Implement API endpoints" (blocked by data models)
+   TaskCreate: "Implement UI components" (blocked by API endpoints)
+   TaskCreate: "Write unit and integration tests" (blocked by API + UI)
+   TaskCreate: "Quality validation - TRUST 5" (blocked by all above)
+   ```
+
+### Phase 2: Spawn Implementation Team
+
+Spawn teammates with file ownership boundaries:
+
+```
+Task(subagent_type: "team-backend-dev", team_name: "moai-run-SPEC-XXX", name: "backend-dev", mode: "acceptEdits", ...)
+Task(subagent_type: "team-frontend-dev", team_name: "moai-run-SPEC-XXX", name: "frontend-dev", mode: "acceptEdits", ...)
+Task(subagent_type: "team-tester", team_name: "moai-run-SPEC-XXX", name: "tester", mode: "acceptEdits", ...)
+```
+
+### Phase 3: Handle Idle Notifications
+
+**CRITICAL**: When a teammate goes idle, you MUST respond immediately:
+
+1. **Check TaskList** to verify work status
+2. **If all tasks complete**: Send shutdown_request
+3. **If work remains**: Send new instructions or wait
+
+Example response to idle notification:
+```
+# Check tasks
+TaskList()
+
+# If work is done, shutdown
+SendMessage(type: "shutdown_request", recipient: "backend-dev", content: "Implementation complete, shutting down")
+
+# If work remains, send instructions
+SendMessage(type: "message", recipient: "backend-dev", content: "Continue with next task: {instructions}")
+```
+
+**FAILURE TO RESPOND TO IDLE NOTIFICATIONS CAUSES INFINITE WAITING**
+
+### Phase 4: Plan Approval (when require_plan_approval: true)
+
+When teammates submit plans, you MUST respond immediately:
+
+```
+# Receive plan_approval_request with request_id
+
+# Approve
+SendMessage(type: "plan_approval_response", request_id: "{id}", recipient: "{name}", approve: true)
+
+# Reject with feedback
+SendMessage(type: "plan_approval_response", request_id: "{id}", recipient: "{name}", approve: false, content: "Revise X")
+```
+
+### Phase 5: Quality and Shutdown
+
+1. Assign quality validation task to team-quality (or use manager-quality subagent)
+2. After all tasks complete, shutdown teammates:
+   ```
+   SendMessage(type: "shutdown_request", recipient: "backend-dev", content: "Phase complete")
+   SendMessage(type: "shutdown_request", recipient: "frontend-dev", content: "Phase complete")
+   SendMessage(type: "shutdown_request", recipient: "tester", content: "Phase complete")
+   ```
+3. Wait for shutdown_response from each teammate
+4. TeamDelete to clean up resources
+
+---
+
+Version: 2.1.0 (Added Agent Teams Mode)
 Last Updated: 2026-02-20

@@ -185,6 +185,39 @@ When workflow.yaml `team.delegate_mode: true`:
 - If a task has no suitable teammate, spawn a new one rather than implementing directly
 - When delegate_mode is false, team lead may implement small tasks directly alongside teammates
 
+### Handling Idle Notifications
+
+**CRITICAL**: When a teammate goes idle, you MUST respond immediately:
+
+1. **Check TaskList** to verify work status:
+   - If task is still pending/in_progress, the teammate may be waiting for input
+   - If task is completed, proceed to step 2
+
+2. **If all assigned work is complete**, send new work or shutdown:
+   ```
+   SendMessage(type: "message", recipient: "{name}", content: "Next task: {instructions}")
+   # OR
+   SendMessage(type: "shutdown_request", recipient: "{name}", content: "Work complete, shutting down")
+   ```
+
+3. **NEVER ignore idle notifications** - failure to respond causes infinite waiting
+
+### Plan Approval Handling (when require_plan_approval: true)
+
+When teammates submit plans, you MUST respond immediately:
+
+```
+# Receive plan_approval_request with request_id
+
+# Approve
+SendMessage(type: "plan_approval_response", request_id: "{id}", recipient: "{name}", approve: true)
+
+# Reject with feedback
+SendMessage(type: "plan_approval_response", request_id: "{id}", recipient: "{name}", approve: false, content: "Revise X")
+```
+
+**FAILURE TO RESPOND TO PLAN APPROVAL REQUESTS CAUSES INFINITE WAITING**
+
 ## Phase 3: Quality Validation
 
 After implementation and testing tasks complete:
@@ -216,15 +249,16 @@ After quality validation passes:
 
 ## Phase 5: Cleanup
 
-1. Shutdown all teammates gracefully (send to each active teammate):
+1. Verify all tasks are completed via TaskList
+2. Shutdown all teammates gracefully (send to each active teammate):
    ```
    SendMessage(type: "shutdown_request", recipient: "backend-dev", content: "Implementation complete, shutting down")
    SendMessage(type: "shutdown_request", recipient: "frontend-dev", content: "Implementation complete, shutting down")
    SendMessage(type: "shutdown_request", recipient: "tester", content: "Implementation complete, shutting down")
    ```
-   Wait for each teammate to respond with shutdown_response before proceeding.
-2. TeamDelete to clean up resources
-3. Report implementation summary to user
+3. Wait for shutdown_response from each teammate before proceeding (they may reject if still working)
+4. TeamDelete to clean up resources
+5. Report implementation summary to user
 
 ## Fallback
 

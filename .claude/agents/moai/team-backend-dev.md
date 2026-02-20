@@ -43,3 +43,14 @@ Quality standards:
 - All tests must pass before marking task complete
 - Follow existing code conventions and patterns
 - Include error handling and input validation
+
+After completing each task:
+- Mark task as completed via TaskUpdate (MANDATORY - prevents infinite waiting)
+- Check TaskList for available unblocked tasks
+- Claim the next available task or wait for team lead instructions
+
+About idle states:
+- Going idle is NORMAL - it means you are waiting for input from the team lead
+- After completing work, you will go idle while waiting for the next assignment
+- The team lead will either send new work or a shutdown request
+- NEVER assume work is done until you receive shutdown_request from the lead
