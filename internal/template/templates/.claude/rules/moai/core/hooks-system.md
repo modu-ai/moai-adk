@@ -11,7 +11,7 @@ Claude Code hooks for extending functionality with custom scripts.
 
 ## Hook Events
 
-All 14 available hook event types:
+All 15 available hook event types:
 
 | Event | Matcher | Can Block | Description |
 |-------|---------|-----------|-------------|
@@ -29,10 +29,11 @@ All 14 available hook event types:
 | TeammateIdle | No | Yes | Runs when agent team teammate is about to go idle |
 | TaskCompleted | No | Yes | Runs when a task is being marked complete |
 | SessionEnd | Reason | No | Runs when session terminates |
+| ConfigChange | No | No | Runs when settings.json is modified (v2.1.49+) |
 
 ### Event Categories
 
-**Lifecycle Events**: SessionStart, SessionEnd, Stop, PreCompact
+**Lifecycle Events**: SessionStart, SessionEnd, Stop, PreCompact, ConfigChange
 
 **Prompt Events**: UserPromptSubmit, PermissionRequest, Notification
 
@@ -52,8 +53,11 @@ All 14 available hook event types:
 | TeammateIdle | `agentType`, `agentName`, `tasksSummary` | `systemMessage` | Exit 2 = keep working. Critical for team quality |
 | TaskCompleted | `taskId`, `taskSummary`, `agentName` | `reason` | Exit 2 = reject completion. Critical for team quality |
 | SessionEnd | `reason`, `sessionId` | - | Reasons: clear, logout, prompt_input_exit, bypass_permissions_disabled, other |
+| Stop | `last_assistant_message` | `systemMessage` | Includes last assistant message (v2.1.49+) |
+| SubagentStop | `agentType`, `agentName`, `last_assistant_message` | `systemMessage` | Includes last assistant message (v2.1.49+) |
+| ConfigChange | `configPath`, `changes` | - | Triggered on settings.json modification (v2.1.49+) |
 
-Standard events (SessionStart, PreCompact, PreToolUse, PostToolUse, Stop) use common stdin/stdout patterns: stdin receives event-specific fields, stdout accepts optional `systemMessage`.
+Standard events (SessionStart, PreCompact, PreToolUse, PostToolUse) use common stdin/stdout patterns: stdin receives event-specific fields, stdout accepts optional `systemMessage`.
 
 ## Hook Execution Types
 
@@ -197,6 +201,7 @@ Wrapper scripts are located at:
 - Prompt and agent hooks return JSON with `ok` and `reason` fields
 - Async hooks deliver results via `systemMessage` on the next turn
 - Exit code 2 is the universal "block/reject" signal for blocking events
+- Stop and SubagentStop hooks receive `last_assistant_message` field (v2.1.49+)
 
 ## Error Handling
 

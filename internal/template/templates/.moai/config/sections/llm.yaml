@@ -1,0 +1,13 @@
+llm:
+  mode: ""
+  team_mode: ""
+  glm_env_var: "GLM_API_KEY"
+  default_model: "sonnet"
+  quality_model: "opus"
+  speed_model: "haiku"
+  glm:
+    base_url: "https://api.z.ai/api/anthropic"
+    models:
+      haiku: "glm-4.7-flashx"
+      sonnet: "glm-4.7"
+      opus: "glm-5"

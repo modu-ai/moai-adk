@@ -43,6 +43,7 @@ workflow:
     delegate_mode: true
 
     # Display mode: auto (tmux if available, else in-process), in-process (same terminal), tmux (split panes)
+    # Also set CLAUDE_CODE_TEAMMATE_DISPLAY env var in settings.local.json
     teammate_display: "auto"
 
     # Auto-selection thresholds for switching to team mode

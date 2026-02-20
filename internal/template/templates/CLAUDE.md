@@ -363,6 +363,40 @@ TeammateIdle (exit 2 = keep working), TaskCompleted (exit 2 = reject completion)
 
 For complete Agent Teams documentation including team API reference, agent roster, file ownership strategy, team workflows, and configuration, see @.claude/rules/moai/workflow/spec-workflow.md and @.moai/config/sections/workflow.yaml.
 
+### GLM Worker Mode (Cost Optimization)
+
+MoAI-ADK supports GLM Worker Mode for 60-70% cost reduction on implementation-heavy tasks:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  LEADER (User-selected Claude model)                        │
+│  - Orchestrates workflow                                     │
+│  - Delegates tasks via Task()                                │
+│  - Reviews results                                           │
+└──────────────────────┬──────────────────────────────────────┘
+                       │ SendMessage / Task()
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│  WORKER (GLM-5 in isolated worktree)                        │
+│  - Executes implementation tasks                            │
+│  - Full access to codebase                                  │
+│  - Returns structured results                                │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Activation**: `moai glm --team` or via `.moai/config/sections/llm.yaml` configuration.
+
+**When to use**:
+- Implementation-heavy SPECs (run phase)
+- Code generation tasks
+- Test writing
+- Documentation generation
+
+**When NOT to use**:
+- Planning/architecture decisions (needs Opus reasoning)
+- Security reviews (needs Claude's security training)
+- Complex debugging (needs advanced reasoning)
+
 ---
 
 ## Troubleshooting
