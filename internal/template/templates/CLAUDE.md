@@ -427,13 +427,22 @@ Search previous sessions when:
 - User asks to continue previous work or resume interrupted tasks
 - User explicitly requests to find previous discussions
 
+### When NOT to Search
+
+Skip context search when:
+- Relevant SPEC document is already loaded in current context
+- Related documents or code are already present in conversation
+- User references content that exists in current session
+- Context duplication would provide no additional value
+
 ### Search Process
 
-1. Ask user confirmation before searching (via AskUserQuestion)
-2. Use Grep to search session index and transcript files in ~/.claude/projects/
-3. Limit search to recent sessions (configurable, default 30 days)
-4. Summarize findings and present for user approval
-5. Inject approved context into current conversation
+1. Check if relevant context already exists in current session (skip if found)
+2. Ask user confirmation before searching (via AskUserQuestion)
+3. Use Grep to search session index and transcript files in ~/.claude/projects/
+4. Limit search to recent sessions (configurable, default 30 days)
+5. Summarize findings and present for user approval
+6. Inject approved context into current conversation (avoid duplicates)
 
 ### Token Budget
 
