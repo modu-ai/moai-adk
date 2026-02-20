@@ -194,7 +194,7 @@ func TestWorkState_ConcurrentAccess(t *testing.T) {
 	numGoroutines := 10
 
 	// Concurrent Save calls
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
@@ -207,12 +207,10 @@ func TestWorkState_ConcurrentAccess(t *testing.T) {
 	}
 
 	// Concurrent Load calls
-	for i := 0; i < numGoroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range numGoroutines {
+		wg.Go(func() {
 			_, _ = ws.Load()
-		}()
+		})
 	}
 
 	wg.Wait()

@@ -650,10 +650,8 @@ func TestConfigManagerConcurrentReads(t *testing.T) {
 	const goroutines = 50
 
 	// Concurrent Get() calls
-	for i := 0; i < goroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range goroutines {
+		wg.Go(func() {
 			cfg := m.Get()
 			if cfg == nil {
 				t.Error("Get() returned nil during concurrent access")
@@ -663,14 +661,12 @@ func TestConfigManagerConcurrentReads(t *testing.T) {
 				t.Errorf("concurrent Get() User.Name: got %q, want %q",
 					cfg.User.Name, "TestUser")
 			}
-		}()
+		})
 	}
 
 	// Concurrent GetSection() calls
-	for i := 0; i < goroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range goroutines {
+		wg.Go(func() {
 			v, err := m.GetSection("user")
 			if err != nil {
 				t.Errorf("concurrent GetSection() error: %v", err)
@@ -681,7 +677,7 @@ func TestConfigManagerConcurrentReads(t *testing.T) {
 				t.Errorf("concurrent GetSection() User.Name: got %q, want %q",
 					u.Name, "TestUser")
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -701,17 +697,15 @@ func TestConfigManagerConcurrentReadWrite(t *testing.T) {
 	const goroutines = 30
 
 	// Concurrent readers
-	for i := 0; i < goroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range goroutines {
+		wg.Go(func() {
 			_ = m.Get()
 			_, _ = m.GetSection("language")
-		}()
+		})
 	}
 
 	// Concurrent writers
-	for i := 0; i < goroutines; i++ {
+	for i := range goroutines {
 		wg.Add(1)
 		go func(n int) {
 			defer wg.Done()

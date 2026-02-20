@@ -3,6 +3,7 @@ package git
 import (
 	"errors"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
@@ -219,7 +220,7 @@ func TestLog(t *testing.T) {
 	dir := initTestRepo(t)
 
 	// Create additional commits.
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		writeTestFile(t, filepath.Join(dir, "file.txt"), "content "+string(rune('A'+i))+"\n")
 		runGit(t, dir, "add", ".")
 		runGit(t, dir, "commit", "-m", "Commit "+string(rune('A'+i)))
@@ -350,12 +351,7 @@ func TestRoot(t *testing.T) {
 
 // containsFile checks if a slice of filenames contains the given name.
 func containsFile(files []string, name string) bool {
-	for _, f := range files {
-		if f == name {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(files, name)
 }
 
 // containsString checks if a string contains a substring.

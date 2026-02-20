@@ -357,7 +357,7 @@ func TestLogTaskMetrics_AppendMultipleRecords(t *testing.T) {
 
 	tmpDir := t.TempDir()
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		input := &HookInput{
 			SessionID:    fmt.Sprintf("sess-multi-%d", i),
 			CWD:          tmpDir,

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"testing"
 	"time"
 )
@@ -57,10 +58,8 @@ func TestIssueCloser_Close_CommentFails_AllRetries(t *testing.T) {
 
 	commentErr := fmt.Errorf("network timeout")
 	exec := func(_ context.Context, _ string, args ...string) (string, error) {
-		for _, a := range args {
-			if a == "comment" {
-				return "", commentErr
-			}
+		if slices.Contains(args, "comment") {
+			return "", commentErr
 		}
 		return "", nil
 	}
@@ -129,10 +128,8 @@ func TestIssueCloser_Close_LabelFails_CloseSucceeds(t *testing.T) {
 	t.Parallel()
 
 	exec := func(_ context.Context, _ string, args ...string) (string, error) {
-		for _, a := range args {
-			if a == "--add-label" {
-				return "", fmt.Errorf("label error")
-			}
+		if slices.Contains(args, "--add-label") {
+			return "", fmt.Errorf("label error")
 		}
 		return "", nil
 	}
@@ -163,10 +160,8 @@ func TestIssueCloser_Close_CloseFails_AllRetries(t *testing.T) {
 	t.Parallel()
 
 	exec := func(_ context.Context, _ string, args ...string) (string, error) {
-		for _, a := range args {
-			if a == "close" {
-				return "", fmt.Errorf("close error")
-			}
+		if slices.Contains(args, "close") {
+			return "", fmt.Errorf("close error")
 		}
 		return "", nil
 	}
@@ -314,11 +309,9 @@ func TestIssueCloser_Close_ContextCancelledDuringRetryWait(t *testing.T) {
 	// Cancel context while the closer is waiting in the retry delay.
 	attempt := 0
 	exec := func(_ context.Context, _ string, args ...string) (string, error) {
-		for _, a := range args {
-			if a == "comment" {
-				attempt++
-				return "", fmt.Errorf("always fail")
-			}
+		if slices.Contains(args, "comment") {
+			attempt++
+			return "", fmt.Errorf("always fail")
 		}
 		return "", nil
 	}
@@ -392,10 +385,8 @@ func TestIssueCloser_Close_InvalidIssueNumber(t *testing.T) {
 // assertArgsContain checks that at least one arg matches the target.
 func assertArgsContain(t *testing.T, args []string, target string) {
 	t.Helper()
-	for _, a := range args {
-		if a == target {
-			return
-		}
+	if slices.Contains(args, target) {
+		return
 	}
 	t.Errorf("args %v does not contain %q", args, target)
 }

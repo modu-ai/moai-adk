@@ -96,7 +96,7 @@ func TestCircuitBreakerOpensAfterThreshold(t *testing.T) {
 	operationErr := errors.New("operation failed")
 
 	// Fail threshold times
-	for i := 0; i < threshold; i++ {
+	for range threshold {
 		_ = cb.Call(ctx, func() error {
 			return operationErr
 		})
@@ -121,7 +121,7 @@ func TestCircuitBreakerOpenRejectsImmediately(t *testing.T) {
 	operationErr := errors.New("operation failed")
 
 	// Open the circuit
-	for i := 0; i < threshold; i++ {
+	for range threshold {
 		_ = cb.Call(ctx, func() error {
 			return operationErr
 		})
@@ -156,7 +156,7 @@ func TestCircuitBreakerHalfOpenAfterTimeout(t *testing.T) {
 	operationErr := errors.New("operation failed")
 
 	// Open the circuit
-	for i := 0; i < threshold; i++ {
+	for range threshold {
 		_ = cb.Call(ctx, func() error {
 			return operationErr
 		})
@@ -189,7 +189,7 @@ func TestCircuitBreakerHalfOpenSuccessCloses(t *testing.T) {
 	operationErr := errors.New("operation failed")
 
 	// Open the circuit
-	for i := 0; i < threshold; i++ {
+	for range threshold {
 		_ = cb.Call(ctx, func() error {
 			return operationErr
 		})
@@ -225,7 +225,7 @@ func TestCircuitBreakerHalfOpenFailureReopens(t *testing.T) {
 	operationErr := errors.New("operation failed")
 
 	// Open the circuit
-	for i := 0; i < threshold; i++ {
+	for range threshold {
 		_ = cb.Call(ctx, func() error {
 			return operationErr
 		})
@@ -257,7 +257,7 @@ func TestCircuitBreakerReset(t *testing.T) {
 	operationErr := errors.New("operation failed")
 
 	// Open the circuit
-	for i := 0; i < threshold; i++ {
+	for range threshold {
 		_ = cb.Call(ctx, func() error {
 			return operationErr
 		})
@@ -317,17 +317,15 @@ func TestCircuitBreakerConcurrentAccess(t *testing.T) {
 
 	var successCount atomic.Int32
 
-	for i := 0; i < numGoroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range numGoroutines {
+		wg.Go(func() {
 			err := cb.Call(ctx, func() error {
 				return nil
 			})
 			if err == nil {
 				successCount.Add(1)
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -424,7 +422,7 @@ func TestCircuitBreakerOnStateChange(t *testing.T) {
 	operationErr := errors.New("operation failed")
 
 	// Open the circuit
-	for i := 0; i < threshold; i++ {
+	for range threshold {
 		_ = cb.Call(ctx, func() error {
 			return operationErr
 		})

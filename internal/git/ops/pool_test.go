@@ -94,7 +94,7 @@ func TestWorkerPool_ConcurrencyLimit(t *testing.T) {
 	var maxConcurrent atomic.Int32
 	var wg sync.WaitGroup
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		wg.Add(1)
 		err := pool.Submit(func() {
 			defer wg.Done()
@@ -130,7 +130,7 @@ func TestWorkerPool_Shutdown(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// Submit some tasks
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		wg.Add(1)
 		err := pool.Submit(func() {
 			defer wg.Done()
@@ -176,7 +176,7 @@ func TestWorkerPool_PendingCount(t *testing.T) {
 	}
 
 	// Submit more tasks that will queue
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		err := pool.Submit(func() {
 			done <- struct{}{}
 		})
@@ -197,7 +197,7 @@ func TestWorkerPool_PendingCount(t *testing.T) {
 	close(blocker)
 
 	// Wait for all to complete
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		select {
 		case <-done:
 		case <-time.After(2 * time.Second):
@@ -210,8 +210,7 @@ func TestWorkerPool_SubmitWithContext(t *testing.T) {
 	pool := NewWorkerPool(4)
 	defer pool.Shutdown()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	var executed atomic.Bool
 	done := make(chan struct{})
@@ -265,7 +264,7 @@ func TestExecuteParallel(t *testing.T) {
 	defer pool.Shutdown()
 
 	tasks := make([]func() int, 5)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		val := i
 		tasks[i] = func() int {
 			time.Sleep(10 * time.Millisecond)
@@ -293,7 +292,7 @@ func TestExecuteParallel_PreservesOrder(t *testing.T) {
 	tasks := make([]func() string, 4)
 	delays := []time.Duration{40 * time.Millisecond, 10 * time.Millisecond, 30 * time.Millisecond, 20 * time.Millisecond}
 
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		idx := i
 		delay := delays[i]
 		tasks[i] = func() string {

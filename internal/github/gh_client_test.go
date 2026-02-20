@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 )
@@ -271,13 +272,7 @@ func TestGHClient_PRMerge_Merge(t *testing.T) {
 	}
 
 	// Verify --merge flag is present.
-	found := false
-	for _, arg := range capturedArgs {
-		if arg == "--merge" {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(capturedArgs, "--merge")
 	if !found {
 		t.Errorf("PRMerge() args = %v, want --merge flag", capturedArgs)
 	}
@@ -298,13 +293,7 @@ func TestGHClient_PRMerge_Squash(t *testing.T) {
 		t.Errorf("PRMerge() error = %v", err)
 	}
 
-	found := false
-	for _, arg := range capturedArgs {
-		if arg == "--squash" {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(capturedArgs, "--squash")
 	if !found {
 		t.Errorf("PRMerge() args = %v, want --squash flag", capturedArgs)
 	}

@@ -34,7 +34,7 @@ func Retry(ctx context.Context, policy RetryPolicy, fn func() error) error {
 	// Initial attempt plus retries
 	maxAttempts := policy.MaxRetries + 1
 
-	for attempt := 0; attempt < maxAttempts; attempt++ {
+	for attempt := range maxAttempts {
 		// Check context before each attempt
 		if err := ctx.Err(); err != nil {
 			return err
@@ -81,7 +81,7 @@ func CalculateBackoff(attempt int, baseDelay, maxDelay time.Duration, useJitter 
 
 	// Calculate exponential backoff: baseDelay * 2^attempt
 	delay := baseDelay
-	for i := 0; i < attempt; i++ {
+	for range attempt {
 		delay *= 2
 		if delay > maxDelay {
 			delay = maxDelay

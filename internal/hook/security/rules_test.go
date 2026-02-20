@@ -3,6 +3,7 @@ package security
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -183,9 +184,9 @@ func TestRuleManager_GetDefaultRules(t *testing.T) {
 		rules := rm.GetDefaultRules()
 
 		// Should contain common security patterns
-		rulesStr := ""
+		var rulesStr strings.Builder
 		for _, r := range rules {
-			rulesStr += r
+			rulesStr.WriteString(r)
 		}
 
 		// Check for common security rule indicators
@@ -195,7 +196,7 @@ func TestRuleManager_GetDefaultRules(t *testing.T) {
 
 		foundCount := 0
 		for _, pattern := range expectedPatterns {
-			if containsIgnoreCase(rulesStr, pattern) {
+			if containsIgnoreCase(rulesStr.String(), pattern) {
 				foundCount++
 			}
 		}

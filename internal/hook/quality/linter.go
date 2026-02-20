@@ -12,10 +12,10 @@ import (
 
 // Package-level compiled regexps to avoid repeated compilation.
 var (
-	reIssuesSummary  = regexp.MustCompile(`(\d+)\s+issues?\s+found`)
-	reFileLineCol    = regexp.MustCompile(`^.+:\d+:\d+:\s+\w+`)
-	reFileLine       = regexp.MustCompile(`^.+:\d+:\s+\w+`)
-	reFixedSummary   = regexp.MustCompile(`(\d+)\s+(?:issues?\s+)?(?:fixed|corrected|resolved)`)
+	reIssuesSummary = regexp.MustCompile(`(\d+)\s+issues?\s+found`)
+	reFileLineCol   = regexp.MustCompile(`^.+:\d+:\d+:\s+\w+`)
+	reFileLine      = regexp.MustCompile(`^.+:\d+:\s+\w+`)
+	reFixedSummary  = regexp.MustCompile(`(\d+)\s+(?:issues?\s+)?(?:fixed|corrected|resolved)`)
 )
 
 // Linter handles automatic code linting per REQ-HOOK-080.
@@ -185,8 +185,8 @@ func (l *Linter) parseIssuesFromOutput(output, filePath string) int {
 
 	// Count issue lines
 	count := 0
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
 		if l.isIssueLine(line) {
 			// Check if issue is for our file
 			if strings.Contains(line, baseName) || !strings.Contains(line, ":") {
@@ -251,8 +251,8 @@ func (l *Linter) countFixedIssues(output string) int {
 
 	// Fallback: count lines with "fixed" or similar
 	count := 0
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
 		if strings.Contains(strings.ToLower(line), "fixed") {
 			count++
 		}

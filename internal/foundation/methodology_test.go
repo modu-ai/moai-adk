@@ -307,7 +307,7 @@ func TestDDDCycleFullLoop(t *testing.T) {
 	phases := c.Phases()
 
 	// Validate full cycle: Analyze -> Preserve -> Improve -> Analyze.
-	for i := 0; i < len(phases); i++ {
+	for i := range phases {
 		from := phases[i]
 		to := phases[(i+1)%len(phases)]
 		if err := c.ValidateTransition(from, to); err != nil {
@@ -323,7 +323,7 @@ func TestTDDCycleFullLoop(t *testing.T) {
 	phases := c.Phases()
 
 	// Validate full cycle: Red -> Green -> Refactor -> Red.
-	for i := 0; i < len(phases); i++ {
+	for i := range phases {
 		from := phases[i]
 		to := phases[(i+1)%len(phases)]
 		if err := c.ValidateTransition(from, to); err != nil {

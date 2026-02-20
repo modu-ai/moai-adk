@@ -278,13 +278,13 @@ func TestJsonEscapeInTemplate(t *testing.T) {
 		}
 
 		// Verify the output is valid JSON
-		var parsed map[string]interface{}
+		var parsed map[string]any
 		if err := json.Unmarshal(result, &parsed); err != nil {
 			t.Fatalf("rendered output is not valid JSON: %v\noutput: %s", err, string(result))
 		}
 
 		// Verify the PATH value round-trips correctly
-		env, ok := parsed["env"].(map[string]interface{})
+		env, ok := parsed["env"].(map[string]any)
 		if !ok {
 			t.Fatal("expected env key in JSON output")
 		}
@@ -315,7 +315,7 @@ func TestJsonEscapeInTemplate(t *testing.T) {
 			t.Fatalf("Render error: %v", err)
 		}
 
-		var parsed map[string]interface{}
+		var parsed map[string]any
 		if err := json.Unmarshal(result, &parsed); err != nil {
 			t.Fatalf("rendered output is not valid JSON: %v\noutput: %s", err, string(result))
 		}

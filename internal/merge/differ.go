@@ -168,10 +168,7 @@ func UnifiedDiff(filename string, base, current []byte) string {
 	i := 0
 	for i < len(annotated) {
 		if annotated[i].op != OpEqual {
-			start := i - contextLines
-			if start < 0 {
-				start = 0
-			}
+			start := max(i-contextLines, 0)
 			// Find the end of this change group.
 			end := i
 			for end < len(annotated) {
@@ -193,10 +190,7 @@ func UnifiedDiff(filename string, base, current []byte) string {
 					}
 				}
 			}
-			endCtx := end + contextLines
-			if endCtx > len(annotated) {
-				endCtx = len(annotated)
-			}
+			endCtx := min(end+contextLines, len(annotated))
 			hunks = append(hunks, hunkRange{start: start, end: endCtx})
 			i = end
 		} else {
@@ -246,10 +240,7 @@ func UnifiedDiff(filename string, base, current []byte) string {
 				aCount++
 			case OpInsert:
 				if first {
-					aStart = al.aIdx + 1
-					if aStart < 1 {
-						aStart = 1
-					}
+					aStart = max(al.aIdx+1, 1)
 					bStart = al.bIdx + 1
 					first = false
 				}

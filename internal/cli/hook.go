@@ -174,7 +174,7 @@ func runAgentHook(cmd *cobra.Command, args []string) error {
 	}
 
 	// Add action to input for handler identification
-	input.Data = []byte(fmt.Sprintf(`{"action":"%s"}`, action))
+	input.Data = fmt.Appendf(nil, `{"action":"%s"}`, action)
 
 	ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
 	defer cancel()

@@ -117,8 +117,8 @@ func (t *StreamTransport) ReadMessage(_ context.Context) (json.RawMessage, error
 			break
 		}
 
-		if strings.HasPrefix(line, "Content-Length: ") {
-			val := strings.TrimPrefix(line, "Content-Length: ")
+		if after, ok := strings.CutPrefix(line, "Content-Length: "); ok {
+			val := after
 			n, err := strconv.Atoi(val)
 			if err != nil {
 				return nil, fmt.Errorf("invalid Content-Length %q: %w", val, err)

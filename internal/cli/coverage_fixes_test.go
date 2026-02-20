@@ -21,8 +21,8 @@ import (
 // =============================================================================
 
 func TestCleanLegacyHooks_NoHooksKey(t *testing.T) {
-	settings := map[string]interface{}{
-		"permissions": map[string]interface{}{"allow": true},
+	settings := map[string]any{
+		"permissions": map[string]any{"allow": true},
 	}
 	modified := cleanLegacyHooks(settings)
 	if modified {
@@ -31,7 +31,7 @@ func TestCleanLegacyHooks_NoHooksKey(t *testing.T) {
 }
 
 func TestCleanLegacyHooks_HooksNotMap(t *testing.T) {
-	settings := map[string]interface{}{
+	settings := map[string]any{
 		"hooks": "not a map",
 	}
 	modified := cleanLegacyHooks(settings)
@@ -41,8 +41,8 @@ func TestCleanLegacyHooks_HooksNotMap(t *testing.T) {
 }
 
 func TestCleanLegacyHooks_HookListNotArray(t *testing.T) {
-	settings := map[string]interface{}{
-		"hooks": map[string]interface{}{
+	settings := map[string]any{
+		"hooks": map[string]any{
 			"SessionStart": "not an array",
 		},
 	}
@@ -54,9 +54,9 @@ func TestCleanLegacyHooks_HookListNotArray(t *testing.T) {
 
 func TestCleanLegacyHooks_HookGroupNotMap(t *testing.T) {
 	// When a hook group is not a map, it should be preserved
-	settings := map[string]interface{}{
-		"hooks": map[string]interface{}{
-			"SessionStart": []interface{}{
+	settings := map[string]any{
+		"hooks": map[string]any{
+			"SessionStart": []any{
 				"just a string, not a map",
 			},
 		},
@@ -69,10 +69,10 @@ func TestCleanLegacyHooks_HookGroupNotMap(t *testing.T) {
 
 func TestCleanLegacyHooks_GroupHooksFieldNotArray(t *testing.T) {
 	// When group["hooks"] is not an array, the group should be preserved
-	settings := map[string]interface{}{
-		"hooks": map[string]interface{}{
-			"SessionStart": []interface{}{
-				map[string]interface{}{
+	settings := map[string]any{
+		"hooks": map[string]any{
+			"SessionStart": []any{
+				map[string]any{
 					"hooks": "not an array",
 				},
 			},
@@ -86,11 +86,11 @@ func TestCleanLegacyHooks_GroupHooksFieldNotArray(t *testing.T) {
 
 func TestCleanLegacyHooks_HookEntryNotMap(t *testing.T) {
 	// When a hook entry is not a map, it should be preserved
-	settings := map[string]interface{}{
-		"hooks": map[string]interface{}{
-			"SessionStart": []interface{}{
-				map[string]interface{}{
-					"hooks": []interface{}{
+	settings := map[string]any{
+		"hooks": map[string]any{
+			"SessionStart": []any{
+				map[string]any{
+					"hooks": []any{
 						"just a string",
 					},
 				},
@@ -105,12 +105,12 @@ func TestCleanLegacyHooks_HookEntryNotMap(t *testing.T) {
 
 func TestCleanLegacyHooks_CommandNotString(t *testing.T) {
 	// When command field is not a string, the entry should be preserved
-	settings := map[string]interface{}{
-		"hooks": map[string]interface{}{
-			"SessionStart": []interface{}{
-				map[string]interface{}{
-					"hooks": []interface{}{
-						map[string]interface{}{
+	settings := map[string]any{
+		"hooks": map[string]any{
+			"SessionStart": []any{
+				map[string]any{
+					"hooks": []any{
+						map[string]any{
 							"command": 12345,
 						},
 					},
@@ -125,12 +125,12 @@ func TestCleanLegacyHooks_CommandNotString(t *testing.T) {
 }
 
 func TestCleanLegacyHooks_PreservesNonLegacyHooks(t *testing.T) {
-	settings := map[string]interface{}{
-		"hooks": map[string]interface{}{
-			"SessionEnd": []interface{}{
-				map[string]interface{}{
-					"hooks": []interface{}{
-						map[string]interface{}{
+	settings := map[string]any{
+		"hooks": map[string]any{
+			"SessionEnd": []any{
+				map[string]any{
+					"hooks": []any{
+						map[string]any{
 							"command": "custom-script.sh",
 							"timeout": float64(5),
 						},
@@ -144,7 +144,7 @@ func TestCleanLegacyHooks_PreservesNonLegacyHooks(t *testing.T) {
 		t.Error("cleanLegacyHooks should not remove non-legacy hooks")
 	}
 
-	hooksMap := settings["hooks"].(map[string]interface{})
+	hooksMap := settings["hooks"].(map[string]any)
 	if _, exists := hooksMap["SessionEnd"]; !exists {
 		t.Error("non-legacy SessionEnd hook should be preserved")
 	}
@@ -152,16 +152,16 @@ func TestCleanLegacyHooks_PreservesNonLegacyHooks(t *testing.T) {
 
 func TestCleanLegacyHooks_MixedLegacyAndNonLegacy(t *testing.T) {
 	// A hook group containing both legacy and non-legacy entries
-	settings := map[string]interface{}{
-		"hooks": map[string]interface{}{
-			"SessionEnd": []interface{}{
-				map[string]interface{}{
-					"hooks": []interface{}{
-						map[string]interface{}{
+	settings := map[string]any{
+		"hooks": map[string]any{
+			"SessionEnd": []any{
+				map[string]any{
+					"hooks": []any{
+						map[string]any{
 							"command": "handle-session-end.sh",
 							"timeout": float64(5),
 						},
-						map[string]interface{}{
+						map[string]any{
 							"command": "my-custom-hook.sh",
 							"timeout": float64(10),
 						},
@@ -176,14 +176,14 @@ func TestCleanLegacyHooks_MixedLegacyAndNonLegacy(t *testing.T) {
 	}
 
 	// The custom hook should still be present
-	hooksMap := settings["hooks"].(map[string]interface{})
-	sessionEnd := hooksMap["SessionEnd"].([]interface{})
-	group := sessionEnd[0].(map[string]interface{})
-	hooks := group["hooks"].([]interface{})
+	hooksMap := settings["hooks"].(map[string]any)
+	sessionEnd := hooksMap["SessionEnd"].([]any)
+	group := sessionEnd[0].(map[string]any)
+	hooks := group["hooks"].([]any)
 	if len(hooks) != 1 {
 		t.Fatalf("expected 1 remaining hook, got %d", len(hooks))
 	}
-	entry := hooks[0].(map[string]interface{})
+	entry := hooks[0].(map[string]any)
 	if entry["command"] != "my-custom-hook.sh" {
 		t.Errorf("remaining hook command = %q, want %q", entry["command"], "my-custom-hook.sh")
 	}
@@ -198,12 +198,12 @@ func TestCleanLegacyHooks_PythonPatterns(t *testing.T) {
 
 	for _, pattern := range pythonPatterns {
 		t.Run(pattern, func(t *testing.T) {
-			settings := map[string]interface{}{
-				"hooks": map[string]interface{}{
-					"PostToolUse": []interface{}{
-						map[string]interface{}{
-							"hooks": []interface{}{
-								map[string]interface{}{
+			settings := map[string]any{
+				"hooks": map[string]any{
+					"PostToolUse": []any{
+						map[string]any{
+							"hooks": []any{
+								map[string]any{
 									"command": "/path/to/" + pattern,
 								},
 							},
@@ -220,12 +220,12 @@ func TestCleanLegacyHooks_PythonPatterns(t *testing.T) {
 }
 
 func TestCleanLegacyHooks_AllHooksRemovedDeletesHooksKey(t *testing.T) {
-	settings := map[string]interface{}{
-		"hooks": map[string]interface{}{
-			"SessionEnd": []interface{}{
-				map[string]interface{}{
-					"hooks": []interface{}{
-						map[string]interface{}{
+	settings := map[string]any{
+		"hooks": map[string]any{
+			"SessionEnd": []any{
+				map[string]any{
+					"hooks": []any{
+						map[string]any{
 							"command": "handle-session-end.sh",
 						},
 					},

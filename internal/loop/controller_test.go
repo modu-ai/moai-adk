@@ -643,7 +643,7 @@ func TestLoopController_ConcurrentStart(t *testing.T) {
 	// Launch multiple concurrent starts.
 	errCount := atomic.Int32{}
 	done := make(chan struct{})
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		go func() {
 			defer func() { done <- struct{}{} }()
 			if err := ctrl.Start(ctx, "SPEC-TEST-001"); err == ErrLoopAlreadyRunning {
@@ -651,7 +651,7 @@ func TestLoopController_ConcurrentStart(t *testing.T) {
 			}
 		}()
 	}
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		<-done
 	}
 

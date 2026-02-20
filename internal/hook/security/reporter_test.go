@@ -220,7 +220,7 @@ func TestFindingReporter_LimitFindings(t *testing.T) {
 
 	t.Run("shows all findings when 10 or fewer", func(t *testing.T) {
 		findings := make([]Finding, 10)
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			findings[i] = Finding{
 				RuleID:   "rule-" + string(rune('0'+i)),
 				Severity: SeverityWarning,
@@ -244,7 +244,7 @@ func TestFindingReporter_LimitFindings(t *testing.T) {
 
 	t.Run("truncates findings when more than 10", func(t *testing.T) {
 		findings := make([]Finding, 15)
-		for i := 0; i < 15; i++ {
+		for i := range 15 {
 			findings[i] = Finding{
 				RuleID:   "rule-" + string(rune('a'+i)),
 				Severity: SeverityWarning,
@@ -353,9 +353,9 @@ func TestFindingReporter_FormatMultiple_Truncation(t *testing.T) {
 
 	t.Run("truncates when more than 10 findings across files", func(t *testing.T) {
 		results := make([]*ScanResult, 3)
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			findings := make([]Finding, 5)
-			for j := 0; j < 5; j++ {
+			for j := range 5 {
 				findings[j] = Finding{
 					RuleID:   "rule",
 					Severity: SeverityWarning,

@@ -13,7 +13,7 @@ LOCAL_RELEASE_DIR ?= $(HOME)/.moai/releases
 PLATFORM := $(shell go env GOOS)-$(shell go env GOARCH)
 RELEASE_BINARY := moai-$(VERSION)-$(PLATFORM)
 
-.PHONY: all build test lint clean install generate help release-local
+.PHONY: all build test lint fix clean install generate help release-local
 
 all: lint test build ## Run lint, test, and build
 
@@ -45,6 +45,10 @@ coverage: test ## Show test coverage report
 
 lint: ## Run linters
 	golangci-lint run ./...
+
+fix: ## Run go fix modernizers (twice for synergistic fixes)
+	go fix ./...
+	go fix ./...
 
 vet: ## Run go vet
 	go vet ./...

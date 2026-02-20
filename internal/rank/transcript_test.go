@@ -530,7 +530,7 @@ func TestGlobJSONL_WithMatches(t *testing.T) {
 func TestIsValidSessionID_MaxLength(t *testing.T) {
 	// Exactly 128 chars of valid characters
 	id := ""
-	for i := 0; i < 128; i++ {
+	for range 128 {
 		id += "a"
 	}
 	if !isValidSessionID(id) {

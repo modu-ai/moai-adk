@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
 	"sync"
@@ -62,9 +63,7 @@ func (l *Loader) LoadedSections() map[string]bool {
 	defer l.mu.RUnlock()
 
 	result := make(map[string]bool, len(l.loadedSections))
-	for k, v := range l.loadedSections {
-		result[k] = v
-	}
+	maps.Copy(result, l.loadedSections)
 	return result
 }
 

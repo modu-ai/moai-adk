@@ -343,8 +343,8 @@ func loadGLMKey() string {
 		if strings.HasPrefix(line, "#") || line == "" {
 			continue
 		}
-		if strings.HasPrefix(line, "GLM_API_KEY=") {
-			value := strings.TrimPrefix(line, "GLM_API_KEY=")
+		if after, ok := strings.CutPrefix(line, "GLM_API_KEY="); ok {
+			value := after
 			// Remove quotes if present
 			if len(value) >= 2 && value[0] == '"' && value[len(value)-1] == '"' {
 				value = unescapeDotenvValue(value[1 : len(value)-1])

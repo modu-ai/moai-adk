@@ -7,8 +7,8 @@ import (
 func TestValuesEqual(t *testing.T) {
 	tests := []struct {
 		name string
-		a    interface{}
-		b    interface{}
+		a    any
+		b    any
 		want bool
 	}{
 		{
@@ -128,15 +128,15 @@ func TestValuesEqual(t *testing.T) {
 func TestDeepMergeMaps(t *testing.T) {
 	tests := []struct {
 		name   string
-		newMap map[string]interface{}
-		oldMap map[string]interface{}
-		check  func(t *testing.T, result map[string]interface{})
+		newMap map[string]any
+		oldMap map[string]any
+		check  func(t *testing.T, result map[string]any)
 	}{
 		{
 			name:   "nil maps",
 			newMap: nil,
 			oldMap: nil,
-			check: func(t *testing.T, result map[string]interface{}) {
+			check: func(t *testing.T, result map[string]any) {
 				if len(result) != 0 {
 					t.Errorf("expected empty map, got %v", result)
 				}
@@ -144,9 +144,9 @@ func TestDeepMergeMaps(t *testing.T) {
 		},
 		{
 			name:   "empty maps",
-			newMap: map[string]interface{}{},
-			oldMap: map[string]interface{}{},
-			check: func(t *testing.T, result map[string]interface{}) {
+			newMap: map[string]any{},
+			oldMap: map[string]any{},
+			check: func(t *testing.T, result map[string]any) {
 				if len(result) != 0 {
 					t.Errorf("expected empty map, got %v", result)
 				}
@@ -154,13 +154,13 @@ func TestDeepMergeMaps(t *testing.T) {
 		},
 		{
 			name: "old values preserved over new for scalar",
-			newMap: map[string]interface{}{
+			newMap: map[string]any{
 				"key": "new_value",
 			},
-			oldMap: map[string]interface{}{
+			oldMap: map[string]any{
 				"key": "old_value",
 			},
-			check: func(t *testing.T, result map[string]interface{}) {
+			check: func(t *testing.T, result map[string]any) {
 				if result["key"] != "old_value" {
 					t.Errorf("expected old_value, got %v", result["key"])
 				}
@@ -168,23 +168,23 @@ func TestDeepMergeMaps(t *testing.T) {
 		},
 		{
 			name: "new-only keys added",
-			newMap: map[string]interface{}{
+			newMap: map[string]any{
 				"new_key": "new_value",
 			},
-			oldMap: map[string]interface{}{},
-			check: func(t *testing.T, result map[string]interface{}) {
+			oldMap: map[string]any{},
+			check: func(t *testing.T, result map[string]any) {
 				if result["new_key"] != "new_value" {
 					t.Errorf("expected new_value, got %v", result["new_key"])
 				}
 			},
 		},
 		{
-			name: "old-only keys added",
-			newMap: map[string]interface{}{},
-			oldMap: map[string]interface{}{
+			name:   "old-only keys added",
+			newMap: map[string]any{},
+			oldMap: map[string]any{
 				"old_key": "old_value",
 			},
-			check: func(t *testing.T, result map[string]interface{}) {
+			check: func(t *testing.T, result map[string]any) {
 				if result["old_key"] != "old_value" {
 					t.Errorf("expected old_value, got %v", result["old_key"])
 				}
@@ -192,13 +192,13 @@ func TestDeepMergeMaps(t *testing.T) {
 		},
 		{
 			name: "template_version always uses new value",
-			newMap: map[string]interface{}{
+			newMap: map[string]any{
 				"template_version": "2.0.0",
 			},
-			oldMap: map[string]interface{}{
+			oldMap: map[string]any{
 				"template_version": "1.0.0",
 			},
-			check: func(t *testing.T, result map[string]interface{}) {
+			check: func(t *testing.T, result map[string]any) {
 				if result["template_version"] != "2.0.0" {
 					t.Errorf("expected 2.0.0, got %v", result["template_version"])
 				}
@@ -206,20 +206,20 @@ func TestDeepMergeMaps(t *testing.T) {
 		},
 		{
 			name: "nested maps merged recursively",
-			newMap: map[string]interface{}{
-				"nested": map[string]interface{}{
+			newMap: map[string]any{
+				"nested": map[string]any{
 					"a": "new_a",
 					"b": "new_b",
 				},
 			},
-			oldMap: map[string]interface{}{
-				"nested": map[string]interface{}{
+			oldMap: map[string]any{
+				"nested": map[string]any{
 					"a": "old_a",
 					"c": "old_c",
 				},
 			},
-			check: func(t *testing.T, result map[string]interface{}) {
-				nested, ok := result["nested"].(map[string]interface{})
+			check: func(t *testing.T, result map[string]any) {
+				nested, ok := result["nested"].(map[string]any)
 				if !ok {
 					t.Fatal("nested should be a map")
 				}
@@ -239,13 +239,13 @@ func TestDeepMergeMaps(t *testing.T) {
 		},
 		{
 			name: "type conflict map vs scalar uses old scalar",
-			newMap: map[string]interface{}{
-				"key": map[string]interface{}{"a": "1"},
+			newMap: map[string]any{
+				"key": map[string]any{"a": "1"},
 			},
-			oldMap: map[string]interface{}{
+			oldMap: map[string]any{
 				"key": "scalar_value",
 			},
-			check: func(t *testing.T, result map[string]interface{}) {
+			check: func(t *testing.T, result map[string]any) {
 				// When new is map but old is scalar, old value is preserved
 				if result["key"] != "scalar_value" {
 					t.Errorf("expected scalar_value, got %v", result["key"])
@@ -254,15 +254,15 @@ func TestDeepMergeMaps(t *testing.T) {
 		},
 		{
 			name: "type conflict scalar vs map uses old map",
-			newMap: map[string]interface{}{
+			newMap: map[string]any{
 				"key": "scalar_value",
 			},
-			oldMap: map[string]interface{}{
-				"key": map[string]interface{}{"a": "1"},
+			oldMap: map[string]any{
+				"key": map[string]any{"a": "1"},
 			},
-			check: func(t *testing.T, result map[string]interface{}) {
+			check: func(t *testing.T, result map[string]any) {
 				// When new is scalar but old is map, old value is preserved
-				m, ok := result["key"].(map[string]interface{})
+				m, ok := result["key"].(map[string]any)
 				if !ok {
 					t.Fatalf("expected map, got %T: %v", result["key"], result["key"])
 				}
@@ -273,23 +273,23 @@ func TestDeepMergeMaps(t *testing.T) {
 		},
 		{
 			name: "deeply nested maps",
-			newMap: map[string]interface{}{
-				"level1": map[string]interface{}{
-					"level2": map[string]interface{}{
+			newMap: map[string]any{
+				"level1": map[string]any{
+					"level2": map[string]any{
 						"level3": "new_deep",
 					},
 				},
 			},
-			oldMap: map[string]interface{}{
-				"level1": map[string]interface{}{
-					"level2": map[string]interface{}{
+			oldMap: map[string]any{
+				"level1": map[string]any{
+					"level2": map[string]any{
 						"level3": "old_deep",
 					},
 				},
 			},
-			check: func(t *testing.T, result map[string]interface{}) {
-				l1 := result["level1"].(map[string]interface{})
-				l2 := l1["level2"].(map[string]interface{})
+			check: func(t *testing.T, result map[string]any) {
+				l1 := result["level1"].(map[string]any)
+				l2 := l1["level2"].(map[string]any)
 				if l2["level3"] != "old_deep" {
 					t.Errorf("expected old_deep, got %v", l2["level3"])
 				}
@@ -589,18 +589,18 @@ func TestMergeYAML3Way(t *testing.T) {
 
 func TestDeepMerge3Way(t *testing.T) {
 	tests := []struct {
-		name     string
-		newMap   map[string]interface{}
-		oldMap   map[string]interface{}
-		baseMap  map[string]interface{}
-		check    func(t *testing.T, result map[string]interface{})
+		name    string
+		newMap  map[string]any
+		oldMap  map[string]any
+		baseMap map[string]any
+		check   func(t *testing.T, result map[string]any)
 	}{
 		{
 			name:    "nil maps",
 			newMap:  nil,
 			oldMap:  nil,
 			baseMap: nil,
-			check: func(t *testing.T, result map[string]interface{}) {
+			check: func(t *testing.T, result map[string]any) {
 				if len(result) != 0 {
 					t.Errorf("expected empty map, got %v", result)
 				}
@@ -608,10 +608,10 @@ func TestDeepMerge3Way(t *testing.T) {
 		},
 		{
 			name:    "empty maps",
-			newMap:  map[string]interface{}{},
-			oldMap:  map[string]interface{}{},
-			baseMap: map[string]interface{}{},
-			check: func(t *testing.T, result map[string]interface{}) {
+			newMap:  map[string]any{},
+			oldMap:  map[string]any{},
+			baseMap: map[string]any{},
+			check: func(t *testing.T, result map[string]any) {
 				if len(result) != 0 {
 					t.Errorf("expected empty map, got %v", result)
 				}
@@ -619,16 +619,16 @@ func TestDeepMerge3Way(t *testing.T) {
 		},
 		{
 			name: "user unchanged from base uses new value",
-			newMap: map[string]interface{}{
+			newMap: map[string]any{
 				"key": "new_val",
 			},
-			oldMap: map[string]interface{}{
+			oldMap: map[string]any{
 				"key": "base_val",
 			},
-			baseMap: map[string]interface{}{
+			baseMap: map[string]any{
 				"key": "base_val",
 			},
-			check: func(t *testing.T, result map[string]interface{}) {
+			check: func(t *testing.T, result map[string]any) {
 				if result["key"] != "new_val" {
 					t.Errorf("expected new_val, got %v", result["key"])
 				}
@@ -636,16 +636,16 @@ func TestDeepMerge3Way(t *testing.T) {
 		},
 		{
 			name: "user changed from base preserves user value",
-			newMap: map[string]interface{}{
+			newMap: map[string]any{
 				"key": "new_val",
 			},
-			oldMap: map[string]interface{}{
+			oldMap: map[string]any{
 				"key": "user_val",
 			},
-			baseMap: map[string]interface{}{
+			baseMap: map[string]any{
 				"key": "base_val",
 			},
-			check: func(t *testing.T, result map[string]interface{}) {
+			check: func(t *testing.T, result map[string]any) {
 				if result["key"] != "user_val" {
 					t.Errorf("expected user_val, got %v", result["key"])
 				}
@@ -653,12 +653,12 @@ func TestDeepMerge3Way(t *testing.T) {
 		},
 		{
 			name: "key only in new added",
-			newMap: map[string]interface{}{
+			newMap: map[string]any{
 				"new_only": "added",
 			},
-			oldMap:  map[string]interface{}{},
-			baseMap: map[string]interface{}{},
-			check: func(t *testing.T, result map[string]interface{}) {
+			oldMap:  map[string]any{},
+			baseMap: map[string]any{},
+			check: func(t *testing.T, result map[string]any) {
 				if result["new_only"] != "added" {
 					t.Errorf("expected added, got %v", result["new_only"])
 				}
@@ -666,12 +666,12 @@ func TestDeepMerge3Way(t *testing.T) {
 		},
 		{
 			name:   "key only in old is dropped",
-			newMap: map[string]interface{}{},
-			oldMap: map[string]interface{}{
+			newMap: map[string]any{},
+			oldMap: map[string]any{
 				"old_only": "removed",
 			},
-			baseMap: map[string]interface{}{},
-			check: func(t *testing.T, result map[string]interface{}) {
+			baseMap: map[string]any{},
+			check: func(t *testing.T, result map[string]any) {
 				if _, exists := result["old_only"]; exists {
 					t.Errorf("expected old_only to be dropped, got %v", result["old_only"])
 				}
@@ -679,16 +679,16 @@ func TestDeepMerge3Way(t *testing.T) {
 		},
 		{
 			name: "system field version always uses new",
-			newMap: map[string]interface{}{
+			newMap: map[string]any{
 				"version": "2.0",
 			},
-			oldMap: map[string]interface{}{
+			oldMap: map[string]any{
 				"version": "user_modified",
 			},
-			baseMap: map[string]interface{}{
+			baseMap: map[string]any{
 				"version": "1.0",
 			},
-			check: func(t *testing.T, result map[string]interface{}) {
+			check: func(t *testing.T, result map[string]any) {
 				if result["version"] != "2.0" {
 					t.Errorf("expected 2.0, got %v", result["version"])
 				}
@@ -696,16 +696,16 @@ func TestDeepMerge3Way(t *testing.T) {
 		},
 		{
 			name: "system field template_version always uses new",
-			newMap: map[string]interface{}{
+			newMap: map[string]any{
 				"template_version": "3.0",
 			},
-			oldMap: map[string]interface{}{
+			oldMap: map[string]any{
 				"template_version": "user_val",
 			},
-			baseMap: map[string]interface{}{
+			baseMap: map[string]any{
 				"template_version": "1.0",
 			},
-			check: func(t *testing.T, result map[string]interface{}) {
+			check: func(t *testing.T, result map[string]any) {
 				if result["template_version"] != "3.0" {
 					t.Errorf("expected 3.0, got %v", result["template_version"])
 				}
@@ -713,24 +713,24 @@ func TestDeepMerge3Way(t *testing.T) {
 		},
 		{
 			name: "nested maps recurse with 3-way merge",
-			newMap: map[string]interface{}{
-				"parent": map[string]interface{}{
+			newMap: map[string]any{
+				"parent": map[string]any{
 					"child":     "new_child",
 					"new_field": "added",
 				},
 			},
-			oldMap: map[string]interface{}{
-				"parent": map[string]interface{}{
+			oldMap: map[string]any{
+				"parent": map[string]any{
 					"child": "user_child",
 				},
 			},
-			baseMap: map[string]interface{}{
-				"parent": map[string]interface{}{
+			baseMap: map[string]any{
+				"parent": map[string]any{
 					"child": "base_child",
 				},
 			},
-			check: func(t *testing.T, result map[string]interface{}) {
-				parent := result["parent"].(map[string]interface{})
+			check: func(t *testing.T, result map[string]any) {
+				parent := result["parent"].(map[string]any)
 				// user changed from base -> preserve user
 				if parent["child"] != "user_child" {
 					t.Errorf("expected user_child, got %v", parent["child"])
@@ -743,21 +743,21 @@ func TestDeepMerge3Way(t *testing.T) {
 		},
 		{
 			name: "nested maps base not a map creates empty base",
-			newMap: map[string]interface{}{
-				"parent": map[string]interface{}{
+			newMap: map[string]any{
+				"parent": map[string]any{
 					"child": "new_val",
 				},
 			},
-			oldMap: map[string]interface{}{
-				"parent": map[string]interface{}{
+			oldMap: map[string]any{
+				"parent": map[string]any{
 					"child": "old_val",
 				},
 			},
-			baseMap: map[string]interface{}{
+			baseMap: map[string]any{
 				"parent": "was_a_scalar",
 			},
-			check: func(t *testing.T, result map[string]interface{}) {
-				parent := result["parent"].(map[string]interface{})
+			check: func(t *testing.T, result map[string]any) {
+				parent := result["parent"].(map[string]any)
 				// base is not a map, so baseMapVal is empty
 				// old exists and no base key -> user added this -> preserve old
 				if parent["child"] != "old_val" {
@@ -767,14 +767,14 @@ func TestDeepMerge3Way(t *testing.T) {
 		},
 		{
 			name: "scalar no base exists preserves user value",
-			newMap: map[string]interface{}{
+			newMap: map[string]any{
 				"key": "new_val",
 			},
-			oldMap: map[string]interface{}{
+			oldMap: map[string]any{
 				"key": "user_val",
 			},
-			baseMap: map[string]interface{}{},
-			check: func(t *testing.T, result map[string]interface{}) {
+			baseMap: map[string]any{},
+			check: func(t *testing.T, result map[string]any) {
 				// No base value -> user added this -> preserve old
 				if result["key"] != "user_val" {
 					t.Errorf("expected user_val, got %v", result["key"])
@@ -783,12 +783,12 @@ func TestDeepMerge3Way(t *testing.T) {
 		},
 		{
 			name: "old not exists uses new value",
-			newMap: map[string]interface{}{
+			newMap: map[string]any{
 				"key": "new_val",
 			},
-			oldMap:  map[string]interface{}{},
-			baseMap: map[string]interface{}{},
-			check: func(t *testing.T, result map[string]interface{}) {
+			oldMap:  map[string]any{},
+			baseMap: map[string]any{},
+			check: func(t *testing.T, result map[string]any) {
 				if result["key"] != "new_val" {
 					t.Errorf("expected new_val, got %v", result["key"])
 				}
@@ -796,24 +796,24 @@ func TestDeepMerge3Way(t *testing.T) {
 		},
 		{
 			name: "multiple keys mixed scenarios",
-			newMap: map[string]interface{}{
+			newMap: map[string]any{
 				"unchanged":        "new_template",
 				"user_customized":  "new_template",
 				"new_field":        "brand_new",
 				"version":          "2.0",
 				"template_version": "3.0",
 			},
-			oldMap: map[string]interface{}{
+			oldMap: map[string]any{
 				"unchanged":        "base_val",
 				"user_customized":  "my_custom",
 				"deprecated_field": "old",
 			},
-			baseMap: map[string]interface{}{
+			baseMap: map[string]any{
 				"unchanged":        "base_val",
 				"user_customized":  "base_val",
 				"deprecated_field": "old",
 			},
-			check: func(t *testing.T, result map[string]interface{}) {
+			check: func(t *testing.T, result map[string]any) {
 				// unchanged from base -> use new
 				if result["unchanged"] != "new_template" {
 					t.Errorf("unchanged: expected new_template, got %v", result["unchanged"])
@@ -841,16 +841,16 @@ func TestDeepMerge3Way(t *testing.T) {
 		},
 		{
 			name: "new is map old is scalar uses old scalar",
-			newMap: map[string]interface{}{
-				"key": map[string]interface{}{"nested": "val"},
+			newMap: map[string]any{
+				"key": map[string]any{"nested": "val"},
 			},
-			oldMap: map[string]interface{}{
+			oldMap: map[string]any{
 				"key": "scalar",
 			},
-			baseMap: map[string]interface{}{
+			baseMap: map[string]any{
 				"key": "base_scalar",
 			},
-			check: func(t *testing.T, result map[string]interface{}) {
+			check: func(t *testing.T, result map[string]any) {
 				// new is map, old is not map -> scalar path
 				// old != base -> user changed -> preserve old
 				if result["key"] != "scalar" {

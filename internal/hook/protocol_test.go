@@ -420,7 +420,7 @@ func buildLargePayload(t *testing.T) string {
 
 	// Create ~100KB of tool output data
 	largeData := make(map[string]string)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		key := strings.Repeat("k", 10)
 		val := strings.Repeat("v", 90)
 		largeData[key+string(rune('0'+i%10))] = val

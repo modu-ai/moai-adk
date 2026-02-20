@@ -13,8 +13,8 @@ import (
 
 // Package-level compiled regexps to avoid repeated compilation.
 var (
-	reGoVetPattern        = regexp.MustCompile(`\.?/?([^:]+):(\d+):(\d+): (.+)`)
-	reTypeScriptPattern   = regexp.MustCompile(`([^(]+)\((\d+),(\d+)\): (error|warning) (TS\d+): (.+)`)
+	reGoVetPattern      = regexp.MustCompile(`\.?/?([^:]+):(\d+):(\d+): (.+)`)
+	reTypeScriptPattern = regexp.MustCompile(`([^(]+)\((\d+),(\d+)\): (error|warning) (TS\d+): (.+)`)
 )
 
 // FallbackTool represents a CLI tool configuration for fallback diagnostics.
@@ -297,8 +297,8 @@ func parseGoVetOutput(output string, basePath string) []Diagnostic {
 
 	// Pattern: ./file.go:line:column: message
 
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
@@ -339,8 +339,8 @@ func parseTypeScriptOutput(output string) []Diagnostic {
 
 	// Pattern: file.ts(line,column): error TS1234: message
 
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -437,8 +437,8 @@ func parseClippyOutput(data []byte) ([]Diagnostic, error) {
 	var result []Diagnostic
 
 	// Clippy outputs one JSON object per line
-	lines := strings.Split(string(data), "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(string(data), "\n")
+	for line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue

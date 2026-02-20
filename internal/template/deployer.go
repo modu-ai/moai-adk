@@ -197,8 +197,8 @@ func (d *deployer) ListTemplates() []string {
 		}
 		// Strip .tmpl suffix to return deployment target paths
 		targetPath := path
-		if strings.HasSuffix(path, ".tmpl") {
-			targetPath = strings.TrimSuffix(path, ".tmpl")
+		if before, ok := strings.CutSuffix(path, ".tmpl"); ok {
+			targetPath = before
 		}
 		list = append(list, targetPath)
 		return nil

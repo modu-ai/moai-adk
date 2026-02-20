@@ -2,6 +2,7 @@ package convention
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -63,13 +64,7 @@ func validateSemantics(header string, conv *Convention, result *ValidationResult
 
 	// Check type validity.
 	if len(conv.Types) > 0 && commitType != "" {
-		found := false
-		for _, t := range conv.Types {
-			if t == commitType {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(conv.Types, commitType)
 		if !found {
 			result.Violations = append(result.Violations, Violation{
 				Type:     ViolationInvalidType,
@@ -83,13 +78,7 @@ func validateSemantics(header string, conv *Convention, result *ValidationResult
 	// Check scope validity (only when scopes are defined).
 	scope := extractScope(header)
 	if len(conv.Scopes) > 0 && scope != "" {
-		found := false
-		for _, s := range conv.Scopes {
-			if s == scope {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(conv.Scopes, scope)
 		if !found {
 			result.Violations = append(result.Violations, Violation{
 				Type:     ViolationInvalidScope,

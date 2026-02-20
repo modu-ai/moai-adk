@@ -3,6 +3,7 @@ package lsp
 import (
 	"context"
 	"fmt"
+	"maps"
 	"sort"
 	"sync"
 	"time"
@@ -235,9 +236,7 @@ func (m *serverManager) HealthCheck(_ context.Context) map[string]error {
 		defer m.mu.RUnlock()
 
 		s := make(map[string]*managedServer, len(m.servers))
-		for k, v := range m.servers {
-			s[k] = v
-		}
+		maps.Copy(s, m.servers)
 		return s
 	}()
 

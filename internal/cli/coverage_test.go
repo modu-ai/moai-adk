@@ -1283,7 +1283,7 @@ func setupMinimalConfigWithMode(t *testing.T, dir string, mode string) { //nolin
 	}
 	if err := os.WriteFile(
 		filepath.Join(sectionsDir, "quality.yaml"),
-		[]byte(fmt.Sprintf("constitution:\n  development_mode: %s\n", mode)),
+		fmt.Appendf(nil, "constitution:\n  development_mode: %s\n", mode),
 		0o644,
 	); err != nil {
 		t.Fatal(err)

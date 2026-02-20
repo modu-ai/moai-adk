@@ -106,7 +106,7 @@ func TestDeployerDeploy(t *testing.T) {
 
 		// Create a large FS to ensure we hit the cancellation
 		largeFS := make(fstest.MapFS)
-		for i := 0; i < 100; i++ {
+		for i := range 100 {
 			name := filepath.Join("files", filepath.Base(filepath.Join("dir", string(rune('a'+i%26))+".md")))
 			largeFS[name] = &fstest.MapFile{Data: []byte("content")}
 		}

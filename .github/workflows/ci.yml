@@ -30,7 +30,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.25"
+          go-version: "1.26"
           cache: true
 
       - name: Download dependencies
@@ -65,7 +65,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.25"
+          go-version: "1.26"
           cache: true
 
       - name: Install golangci-lint from source
@@ -102,7 +102,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.25"
+          go-version: "1.26"
           cache: true
 
       - name: Cross-compile binary

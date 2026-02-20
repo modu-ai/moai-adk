@@ -95,10 +95,7 @@ func (m *GitManager) ExecuteCommand(cmd GitCommand) GitResult {
 	// Execute the command with retry
 	var result GitResult
 	var lastErr error
-	maxRetries := cmd.RetryCount
-	if maxRetries < 0 {
-		maxRetries = 0
-	}
+	maxRetries := max(cmd.RetryCount, 0)
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		result = m.executeGit(workDir, args, cmd.TimeoutSeconds)

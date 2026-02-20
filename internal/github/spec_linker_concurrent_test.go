@@ -20,7 +20,7 @@ func TestSpecLinker_ConcurrentLinkAttempts(t *testing.T) {
 	var wg sync.WaitGroup
 	errs := make([]error, numWorkers)
 
-	for i := 0; i < numWorkers; i++ {
+	for i := range numWorkers {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
@@ -92,7 +92,7 @@ func TestSpecLinker_ConcurrentDuplicateLink(t *testing.T) {
 	var wg sync.WaitGroup
 	errs := make([]error, numWorkers)
 
-	for i := 0; i < numWorkers; i++ {
+	for i := range numWorkers {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()

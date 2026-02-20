@@ -204,7 +204,7 @@ func TestHookOutput_UpdatedInput_JSON(t *testing.T) {
 		t.Fatalf("json.Marshal failed: %v", err)
 	}
 
-	var m map[string]interface{}
+	var m map[string]any
 	if err := json.Unmarshal(data, &m); err != nil {
 		t.Fatalf("json.Unmarshal failed: %v", err)
 	}
@@ -226,7 +226,7 @@ func TestHookOutput_ExitCode_NotSerialized(t *testing.T) {
 		t.Fatalf("json.Marshal failed: %v", err)
 	}
 
-	var m map[string]interface{}
+	var m map[string]any
 	if err := json.Unmarshal(data, &m); err != nil {
 		t.Fatalf("json.Unmarshal failed: %v", err)
 	}

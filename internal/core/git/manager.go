@@ -88,8 +88,8 @@ func (m *gitManager) Status() (*GitStatus, error) {
 	status := &GitStatus{}
 
 	if out != "" {
-		lines := strings.Split(out, "\n")
-		for _, line := range lines {
+		lines := strings.SplitSeq(out, "\n")
+		for line := range lines {
 			if len(line) < 3 {
 				continue
 			}
@@ -178,8 +178,8 @@ func (m *gitManager) Log(n int) ([]Commit, error) {
 	}
 
 	var commits []Commit
-	lines := strings.Split(out, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(out, "\n")
+	for line := range lines {
 		if line == "" {
 			continue
 		}

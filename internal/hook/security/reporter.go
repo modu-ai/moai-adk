@@ -41,12 +41,9 @@ func (r *findingReporter) FormatResult(result *ScanResult, filePath string) stri
 		result.ErrorCount, result.WarningCount, filePath))
 
 	// List findings (limited to MaxFindingsToReport per REQ-HOOK-132)
-	displayCount := len(result.Findings)
-	if displayCount > MaxFindingsToReport {
-		displayCount = MaxFindingsToReport
-	}
+	displayCount := min(len(result.Findings), MaxFindingsToReport)
 
-	for i := 0; i < displayCount; i++ {
+	for i := range displayCount {
 		f := result.Findings[i]
 		sb.WriteString(formatFinding(&f))
 		sb.WriteString("\n")
@@ -93,12 +90,9 @@ func (r *findingReporter) FormatMultiple(results []*ScanResult) string {
 		totalErrors, totalWarnings, totalInfos, len(results)))
 
 	// List findings (limited to MaxFindingsToReport)
-	displayCount := len(allFindings)
-	if displayCount > MaxFindingsToReport {
-		displayCount = MaxFindingsToReport
-	}
+	displayCount := min(len(allFindings), MaxFindingsToReport)
 
-	for i := 0; i < displayCount; i++ {
+	for i := range displayCount {
 		f := allFindings[i]
 		sb.WriteString(formatFindingWithFile(&f))
 		sb.WriteString("\n")

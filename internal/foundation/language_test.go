@@ -3,6 +3,7 @@ package foundation
 import (
 	"encoding/json"
 	"errors"
+	"slices"
 	"testing"
 )
 
@@ -420,10 +421,5 @@ func TestLanguageInfoJSONRoundTrip(t *testing.T) {
 
 // containsString checks if a string slice contains a target string.
 func containsString(slice []string, target string) bool {
-	for _, s := range slice {
-		if s == target {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(slice, target)
 }

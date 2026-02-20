@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"maps"
 	"os"
 
 	"github.com/mattn/go-isatty"
@@ -49,9 +50,7 @@ func (h *HeadlessManager) SetDefaults(defaults map[string]string) {
 		return
 	}
 	h.defaults = make(map[string]string, len(defaults))
-	for k, v := range defaults {
-		h.defaults[k] = v
-	}
+	maps.Copy(h.defaults, defaults)
 }
 
 // GetDefault retrieves a default value by key. The second return value

@@ -216,8 +216,8 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 	case "statusline_preset":
 		result.StatuslinePreset = value
 	default:
-		if strings.HasPrefix(id, statuslineSegmentPrefix) {
-			segName := strings.TrimPrefix(id, statuslineSegmentPrefix)
+		if after, ok := strings.CutPrefix(id, statuslineSegmentPrefix); ok {
+			segName := after
 			if result.StatuslineSegments == nil {
 				result.StatuslineSegments = make(map[string]bool)
 			}

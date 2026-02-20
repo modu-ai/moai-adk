@@ -551,7 +551,7 @@ func TestSessionEndHandler_Handle_MultipleCallsIdempotent(t *testing.T) {
 	}
 
 	// Call Handle twice to ensure idempotency.
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		got, err := h.Handle(ctx, input)
 		if err != nil {
 			t.Fatalf("call %d: unexpected error: %v", i+1, err)

@@ -192,7 +192,7 @@ func TestCleanSessionLogs_RemoveError(t *testing.T) {
 	}
 
 	// Create log files
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		logFile := filepath.Join(logDir, "session-"+string(rune('a'+i))+".log")
 		if err := os.WriteFile(logFile, []byte("log content"), 0644); err != nil {
 			t.Fatalf("failed to create log file: %v", err)

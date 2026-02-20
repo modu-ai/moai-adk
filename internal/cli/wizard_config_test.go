@@ -24,13 +24,13 @@ func setupSectionsDir(t *testing.T) string {
 }
 
 // readYAML reads a YAML file and unmarshals it into a map.
-func readYAML(t *testing.T, path string) map[string]interface{} {
+func readYAML(t *testing.T, path string) map[string]any {
 	t.Helper()
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read %s: %v", path, err)
 	}
-	var result map[string]interface{}
+	var result map[string]any
 	if err := yaml.Unmarshal(data, &result); err != nil {
 		t.Fatalf("unmarshal %s: %v", path, err)
 	}
@@ -119,7 +119,7 @@ func TestApplyWizardConfig_WorkflowTeamEnabled(t *testing.T) {
 	workflowPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.WorkflowYAML)
 	parsed := readYAML(t, workflowPath)
 
-	wf, ok := parsed["workflow"].(map[string]interface{})
+	wf, ok := parsed["workflow"].(map[string]any)
 	if !ok {
 		t.Fatal("expected workflow key in parsed YAML")
 	}
@@ -128,7 +128,7 @@ func TestApplyWizardConfig_WorkflowTeamEnabled(t *testing.T) {
 		t.Errorf("execution_mode = %v, want %q", wf["execution_mode"], "team")
 	}
 
-	team, ok := wf["team"].(map[string]interface{})
+	team, ok := wf["team"].(map[string]any)
 	if !ok {
 		t.Fatal("expected workflow.team key in parsed YAML")
 	}
@@ -161,12 +161,12 @@ func TestApplyWizardConfig_WorkflowSubagentMode(t *testing.T) {
 	workflowPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.WorkflowYAML)
 	parsed := readYAML(t, workflowPath)
 
-	wf := parsed["workflow"].(map[string]interface{})
+	wf := parsed["workflow"].(map[string]any)
 	if wf["execution_mode"] != "subagent" {
 		t.Errorf("execution_mode = %v, want %q", wf["execution_mode"], "subagent")
 	}
 
-	team := wf["team"].(map[string]interface{})
+	team := wf["team"].(map[string]any)
 	if team["enabled"] != false {
 		t.Errorf("team.enabled = %v, want false (subagent mode)", team["enabled"])
 	}
@@ -201,8 +201,8 @@ func TestApplyWizardConfig_MaxTeammatesInvalidValues(t *testing.T) {
 
 			workflowPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.WorkflowYAML)
 			parsed := readYAML(t, workflowPath)
-			wf := parsed["workflow"].(map[string]interface{})
-			team := wf["team"].(map[string]interface{})
+			wf := parsed["workflow"].(map[string]any)
+			team := wf["team"].(map[string]any)
 
 			_, hasKey := team["max_teammates"]
 			if hasKey != tt.expectKey {
@@ -241,8 +241,8 @@ func TestApplyWizardConfig_DefaultModelValidation(t *testing.T) {
 
 			workflowPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.WorkflowYAML)
 			parsed := readYAML(t, workflowPath)
-			wf := parsed["workflow"].(map[string]interface{})
-			team := wf["team"].(map[string]interface{})
+			wf := parsed["workflow"].(map[string]any)
+			team := wf["team"].(map[string]any)
 
 			_, hasKey := team["default_model"]
 			if hasKey != tt.expectKey {
@@ -284,7 +284,7 @@ func TestApplyWizardConfig_StatuslineFullPresetAllEnabled(t *testing.T) {
 	statuslinePath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.StatuslineYAML)
 	parsed := readYAML(t, statuslinePath)
 
-	sl, ok := parsed["statusline"].(map[string]interface{})
+	sl, ok := parsed["statusline"].(map[string]any)
 	if !ok {
 		t.Fatal("expected statusline key in parsed YAML")
 	}
@@ -293,7 +293,7 @@ func TestApplyWizardConfig_StatuslineFullPresetAllEnabled(t *testing.T) {
 		t.Errorf("statusline.preset = %v, want %q", sl["preset"], "full")
 	}
 
-	segments, ok := sl["segments"].(map[string]interface{})
+	segments, ok := sl["segments"].(map[string]any)
 	if !ok {
 		t.Fatal("expected statusline.segments map")
 	}
@@ -325,7 +325,7 @@ func TestApplyWizardConfig_StatuslineCompactPresetValue(t *testing.T) {
 	statuslinePath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.StatuslineYAML)
 	parsed := readYAML(t, statuslinePath)
 
-	sl := parsed["statusline"].(map[string]interface{})
+	sl := parsed["statusline"].(map[string]any)
 	if sl["preset"] != "compact" {
 		t.Errorf("statusline.preset = %v, want %q", sl["preset"], "compact")
 	}
@@ -345,7 +345,7 @@ func TestApplyWizardConfig_StatuslineMinimalPresetValue(t *testing.T) {
 	statuslinePath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.StatuslineYAML)
 	parsed := readYAML(t, statuslinePath)
 
-	sl := parsed["statusline"].(map[string]interface{})
+	sl := parsed["statusline"].(map[string]any)
 	if sl["preset"] != "minimal" {
 		t.Errorf("statusline.preset = %v, want %q", sl["preset"], "minimal")
 	}
@@ -365,7 +365,7 @@ func TestApplyWizardConfig_GitHubUsername(t *testing.T) {
 	userPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.UserYAML)
 	parsed := readYAML(t, userPath)
 
-	user, ok := parsed["user"].(map[string]interface{})
+	user, ok := parsed["user"].(map[string]any)
 	if !ok {
 		t.Fatal("expected user key in parsed YAML")
 	}
@@ -389,7 +389,7 @@ func TestApplyWizardConfig_GitHubToken(t *testing.T) {
 	userPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.UserYAML)
 	parsed := readYAML(t, userPath)
 
-	user := parsed["user"].(map[string]interface{})
+	user := parsed["user"].(map[string]any)
 	if user["github_token"] != "ghp_testtoken123" {
 		t.Errorf("user.github_token = %v, want %q", user["github_token"], "ghp_testtoken123")
 	}
@@ -410,7 +410,7 @@ func TestApplyWizardConfig_GitHubUsernameAndToken(t *testing.T) {
 	userPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.UserYAML)
 	parsed := readYAML(t, userPath)
 
-	user := parsed["user"].(map[string]interface{})
+	user := parsed["user"].(map[string]any)
 	if user["github_username"] != "myuser" {
 		t.Errorf("user.github_username = %v, want %q", user["github_username"], "myuser")
 	}
@@ -457,7 +457,7 @@ func TestApplyWizardConfig_ExistingWorkflowYAMLPreserved(t *testing.T) {
 	}
 
 	parsed := readYAML(t, workflowPath)
-	wf := parsed["workflow"].(map[string]interface{})
+	wf := parsed["workflow"].(map[string]any)
 
 	// The new execution_mode should be set.
 	if wf["execution_mode"] != "auto" {
@@ -485,7 +485,7 @@ func TestApplyWizardConfig_ExistingUserYAMLPreserved(t *testing.T) {
 	}
 
 	parsed := readYAML(t, userPath)
-	user := parsed["user"].(map[string]interface{})
+	user := parsed["user"].(map[string]any)
 
 	// New field should be added.
 	if user["github_username"] != "newuser" {
@@ -542,8 +542,8 @@ func TestApplyWizardConfig_AllFieldsPopulated(t *testing.T) {
 
 	// Verify workflow.yaml
 	wfParsed := readYAML(t, filepath.Join(sectionsDir, defs.WorkflowYAML))
-	wf := wfParsed["workflow"].(map[string]interface{})
-	team := wf["team"].(map[string]interface{})
+	wf := wfParsed["workflow"].(map[string]any)
+	team := wf["team"].(map[string]any)
 	if team["enabled"] != true {
 		t.Error("team.enabled should be true")
 	}
@@ -556,14 +556,14 @@ func TestApplyWizardConfig_AllFieldsPopulated(t *testing.T) {
 
 	// Verify statusline.yaml
 	slParsed := readYAML(t, filepath.Join(sectionsDir, defs.StatuslineYAML))
-	sl := slParsed["statusline"].(map[string]interface{})
+	sl := slParsed["statusline"].(map[string]any)
 	if sl["preset"] != "compact" {
 		t.Errorf("statusline.preset = %v, want compact", sl["preset"])
 	}
 
 	// Verify user.yaml
 	userParsed := readYAML(t, filepath.Join(sectionsDir, defs.UserYAML))
-	user := userParsed["user"].(map[string]interface{})
+	user := userParsed["user"].(map[string]any)
 	if user["github_username"] != "fulluser" {
 		t.Errorf("github_username = %v, want fulluser", user["github_username"])
 	}

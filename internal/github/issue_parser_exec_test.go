@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"testing"
 )
 
@@ -169,10 +170,8 @@ func TestParseIssue_LargeIssueNumber(t *testing.T) {
 
 	parser := newIssueParserWithExec("/tmp/repo", func(_ context.Context, _ string, args ...string) (string, error) {
 		// Verify the number is correctly stringified.
-		for _, arg := range args {
-			if arg == "99999" {
-				return `{"number": 99999, "title": "Large number issue"}`, nil
-			}
+		if slices.Contains(args, "99999") {
+			return `{"number": 99999, "title": "Large number issue"}`, nil
 		}
 		return "", fmt.Errorf("did not find expected number in args: %v", args)
 	})

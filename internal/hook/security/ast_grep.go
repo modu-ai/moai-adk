@@ -280,8 +280,8 @@ func parseASTGrepRegex(output string) []Finding {
 	// Pattern: file:line:column: severity[rule]: message
 	// Example: test.py:10:5: error[sql-injection]: Potential SQL injection
 
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
 		matches := reASTGrepFinding.FindStringSubmatch(line)
 		if len(matches) == 7 {
 			// These conversions are safe because the regex ensures digits

@@ -1,6 +1,8 @@
 package config
 
 import (
+	"slices"
+
 	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
@@ -127,12 +129,7 @@ var sectionNames = []string{
 
 // IsValidSectionName checks if the given name is a valid section name.
 func IsValidSectionName(name string) bool {
-	for _, s := range sectionNames {
-		if s == name {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(sectionNames, name)
 }
 
 // ValidSectionNames returns all valid section names.

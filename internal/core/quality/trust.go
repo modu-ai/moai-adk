@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"math"
 	"regexp"
+	"slices"
 	"sync"
 	"time"
 )
@@ -834,12 +835,7 @@ func (g *TrustGate) buildReport(results map[string]*PrincipleResult) *Report {
 
 // isValidPrinciple checks whether the given name is a valid TRUST principle.
 func isValidPrinciple(name string) bool {
-	for _, p := range ValidPrinciples {
-		if p == name {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ValidPrinciples, name)
 }
 
 // IsConventionalCommit checks whether a commit message follows Conventional Commits format.

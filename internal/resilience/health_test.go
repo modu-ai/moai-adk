@@ -183,14 +183,12 @@ func TestHealthCheckerConcurrentAccess(t *testing.T) {
 	var wg sync.WaitGroup
 	numGoroutines := 50
 
-	for i := 0; i < numGoroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range numGoroutines {
+		wg.Go(func() {
 			_ = checker.Check(ctx)
 			_ = checker.Status()
 			_ = checker.LastCheck()
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -445,8 +443,7 @@ func TestHealthCheckerDoubleStart(t *testing.T) {
 		},
 	})
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	// Start twice - should only have one monitoring goroutine
 	checker.Start(ctx)

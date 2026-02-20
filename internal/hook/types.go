@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"slices"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -81,12 +82,7 @@ func ValidEventTypes() []EventType {
 
 // IsValidEventType checks if the given event type is valid.
 func IsValidEventType(et EventType) bool {
-	for _, v := range ValidEventTypes() {
-		if v == et {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ValidEventTypes(), et)
 }
 
 // Permission decision constants for PreToolUse hooks (Claude Code protocol).

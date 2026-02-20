@@ -265,7 +265,7 @@ func TestDiagnosticCheck_JSONMarshal(t *testing.T) {
 		t.Fatalf("json.Marshal error: %v", err)
 	}
 
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatalf("json.Unmarshal error: %v", err)
 	}

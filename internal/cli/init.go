@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
@@ -84,13 +85,7 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 	mode := getStringFlag(cmd, "mode")
 	if mode != "" {
 		validModes := []string{"ddd", "tdd"}
-		valid := false
-		for _, m := range validModes {
-			if mode == m {
-				valid = true
-				break
-			}
-		}
+		valid := slices.Contains(validModes, mode)
 		if !valid {
 			return fmt.Errorf("invalid --mode value %q: must be one of: ddd, tdd", mode)
 		}
@@ -100,13 +95,7 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 	gitMode := getStringFlag(cmd, "git-mode")
 	if gitMode != "" {
 		validGitModes := []string{"manual", "personal", "team"}
-		valid := false
-		for _, m := range validGitModes {
-			if gitMode == m {
-				valid = true
-				break
-			}
-		}
+		valid := slices.Contains(validGitModes, gitMode)
 		if !valid {
 			return fmt.Errorf("invalid --git-mode value %q: must be one of: manual, personal, team", gitMode)
 		}
@@ -116,13 +105,7 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 	gitProvider := getStringFlag(cmd, "git-provider")
 	if gitProvider != "" {
 		validProviders := []string{"github", "gitlab"}
-		valid := false
-		for _, p := range validProviders {
-			if gitProvider == p {
-				valid = true
-				break
-			}
-		}
+		valid := slices.Contains(validProviders, gitProvider)
 		if !valid {
 			return fmt.Errorf("invalid --git-provider value %q: must be one of: github, gitlab", gitProvider)
 		}
@@ -132,13 +115,7 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 	modelPolicy := getStringFlag(cmd, "model-policy")
 	if modelPolicy != "" {
 		validPolicies := []string{"high", "medium", "low"}
-		valid := false
-		for _, p := range validPolicies {
-			if modelPolicy == p {
-				valid = true
-				break
-			}
-		}
+		valid := slices.Contains(validPolicies, modelPolicy)
 		if !valid {
 			return fmt.Errorf("invalid --model-policy value %q: must be one of: high, medium, low", modelPolicy)
 		}
@@ -148,13 +125,7 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 	convLang := getStringFlag(cmd, "conv-lang")
 	if convLang != "" {
 		validLangs := []string{"en", "ko", "ja", "zh", "es", "fr", "de", "pt", "ru", "it"}
-		valid := false
-		for _, lang := range validLangs {
-			if convLang == lang {
-				valid = true
-				break
-			}
-		}
+		valid := slices.Contains(validLangs, convLang)
 		if !valid {
 			return fmt.Errorf("invalid --conv-lang value %q: must be a valid ISO 639-1 language code (e.g., en, ko, ja, zh)", convLang)
 		}

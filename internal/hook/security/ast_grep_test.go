@@ -40,7 +40,7 @@ func TestASTGrepScanner_IsAvailable(t *testing.T) {
 	t.Run("caches availability result", func(t *testing.T) {
 		// Multiple calls should be efficient (cached)
 		start := time.Now()
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			scanner.IsAvailable()
 		}
 		elapsed := time.Since(start)

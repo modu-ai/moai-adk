@@ -315,8 +315,8 @@ func (d *methodologyDetector) applyDecisionTree(testFiles, codeFiles int, covera
 
 // isInTestDir checks if a path is within a known test directory.
 func isInTestDir(path string) bool {
-	parts := strings.Split(filepath.ToSlash(path), "/")
-	for _, part := range parts {
+	parts := strings.SplitSeq(filepath.ToSlash(path), "/")
+	for part := range parts {
 		lower := strings.ToLower(part)
 		if lower == "tests" || lower == "test" || lower == "__tests__" || lower == "spec" {
 			return true

@@ -91,7 +91,7 @@ func changedFiles(ctx context.Context, dir, ref1, ref2 string) ([]string, error)
 	}
 
 	var files []string
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		f := strings.TrimSpace(line)
 		if f != "" {
 			files = append(files, f)

@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -652,10 +654,8 @@ func classifyFileRisk(filename string, exists bool) string {
 
 	// High risk files
 	highRiskFiles := []string{"CLAUDE.md", "settings.json"}
-	for _, high := range highRiskFiles {
-		if base == high {
-			return "high"
-		}
+	if slices.Contains(highRiskFiles, base) {
+		return "high"
 	}
 
 	// New files are low risk
@@ -761,8 +761,8 @@ func analyzeFiles(templates []string, projectRoot string) []merge.FileAnalysis {
 	for _, tmpl := range templates {
 		// Strip .tmpl suffix first - display and filter using rendered target path
 		displayPath := tmpl
-		if strings.HasSuffix(tmpl, ".tmpl") {
-			displayPath = strings.TrimSuffix(tmpl, ".tmpl")
+		if before, ok := strings.CutSuffix(tmpl, ".tmpl"); ok {
+			displayPath = before
 		}
 
 		// Filter out MoAI-managed files - they are automatically installed
@@ -1467,7 +1467,7 @@ func restoreMoaiConfigLegacy(projectRoot, backupDir, configDir string) error {
 //
 // System fields (like template_version) always use new values regardless.
 func mergeYAML3Way(newData, oldData, baseData []byte) ([]byte, error) {
-	var newMap, oldMap, baseMap map[string]interface{}
+	var newMap, oldMap, baseMap map[string]any
 
 	if err := yaml.Unmarshal(newData, &newMap); err != nil {
 		return nil, fmt.Errorf("unmarshal new YAML: %w", err)
@@ -1489,8 +1489,8 @@ func mergeYAML3Way(newData, oldData, baseData []byte) ([]byte, error) {
 //   - old != base → user changed → preserve old value
 //   - key only in new → new field added by template → use new value
 //   - key only in old → removed from template → drop it
-func deepMerge3Way(newMap, oldMap, baseMap map[string]interface{}) map[string]interface{} {
-	result := make(map[string]interface{})
+func deepMerge3Way(newMap, oldMap, baseMap map[string]any) map[string]any {
+	result := make(map[string]any)
 
 	// System fields that always use new values
 	systemFields := map[string]bool{
@@ -1516,14 +1516,14 @@ func deepMerge3Way(newMap, oldMap, baseMap map[string]interface{}) map[string]in
 		}
 
 		// Both new and old exist
-		newMapVal, newIsMap := newV.(map[string]interface{})
-		oldMapVal, oldIsMap := oldV.(map[string]interface{})
+		newMapVal, newIsMap := newV.(map[string]any)
+		oldMapVal, oldIsMap := oldV.(map[string]any)
 
 		if newIsMap && oldIsMap {
 			// Both are maps → recurse
-			baseMapVal, baseIsMap := baseV.(map[string]interface{})
+			baseMapVal, baseIsMap := baseV.(map[string]any)
 			if !baseIsMap {
-				baseMapVal = make(map[string]interface{})
+				baseMapVal = make(map[string]any)
 			}
 			result[k] = deepMerge3Way(newMapVal, oldMapVal, baseMapVal)
 		} else {
@@ -1549,7 +1549,7 @@ func deepMerge3Way(newMap, oldMap, baseMap map[string]interface{}) map[string]in
 
 // valuesEqual compares two interface{} values for equality.
 // Handles string, int, float, bool, and nil comparisons.
-func valuesEqual(a, b interface{}) bool {
+func valuesEqual(a, b any) bool {
 	if a == nil && b == nil {
 		return true
 	}
@@ -1563,7 +1563,7 @@ func valuesEqual(a, b interface{}) bool {
 // The newData takes precedence for structure, but values from oldData are preserved
 // when the key exists in both.
 func mergeYAMLDeep(newData, oldData []byte) ([]byte, error) {
-	var newMap, oldMap map[string]interface{}
+	var newMap, oldMap map[string]any
 
 	if err := yaml.Unmarshal(newData, &newMap); err != nil {
 		return nil, fmt.Errorf("unmarshal new YAML: %w", err)
@@ -1580,8 +1580,8 @@ func mergeYAMLDeep(newData, oldData []byte) ([]byte, error) {
 
 // deepMergeMaps recursively merges oldMap into newMap, preserving old values.
 // System fields (like template_version) always use new values.
-func deepMergeMaps(newMap, oldMap map[string]interface{}) map[string]interface{} {
-	result := make(map[string]interface{})
+func deepMergeMaps(newMap, oldMap map[string]any) map[string]any {
+	result := make(map[string]any)
 
 	// System fields that should always use new values (not preserved from old config)
 	systemFields := map[string]bool{
@@ -1589,9 +1589,7 @@ func deepMergeMaps(newMap, oldMap map[string]interface{}) map[string]interface{}
 	}
 
 	// Copy all new values
-	for k, v := range newMap {
-		result[k] = v
-	}
+	maps.Copy(result, newMap)
 
 	// Merge old values, preserving when they exist
 	for k, v := range oldMap {
@@ -1602,8 +1600,8 @@ func deepMergeMaps(newMap, oldMap map[string]interface{}) map[string]interface{}
 
 		if newV, exists := newMap[k]; exists {
 			// Both exist, check if they are maps
-			newMapVal, newIsMap := newV.(map[string]interface{})
-			oldMapVal, oldIsMap := v.(map[string]interface{})
+			newMapVal, newIsMap := newV.(map[string]any)
+			oldMapVal, oldIsMap := v.(map[string]any)
 
 			if newIsMap && oldIsMap {
 				// Recursively merge nested maps
@@ -1709,19 +1707,19 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		}
 
 		// Parse YAML
-		var workflow map[string]interface{}
+		var workflow map[string]any
 		if len(workflowData) > 0 {
 			if err := yaml.Unmarshal(workflowData, &workflow); err != nil {
 				return fmt.Errorf("parse workflow.yaml: %w", err)
 			}
 		} else {
-			workflow = make(map[string]interface{})
+			workflow = make(map[string]any)
 		}
 
 		// Ensure workflow and workflow.team exist
-		workflowVal, ok := workflow["workflow"].(map[string]interface{})
+		workflowVal, ok := workflow["workflow"].(map[string]any)
 		if !ok {
-			workflowVal = make(map[string]interface{})
+			workflowVal = make(map[string]any)
 			workflow["workflow"] = workflowVal
 		}
 
@@ -1729,11 +1727,11 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		workflowVal["execution_mode"] = result.AgentTeamsMode
 
 		// Handle team configuration
-		var teamConfig map[string]interface{}
-		if existingTeam, ok := workflowVal["team"].(map[string]interface{}); ok {
+		var teamConfig map[string]any
+		if existingTeam, ok := workflowVal["team"].(map[string]any); ok {
 			teamConfig = existingTeam
 		} else {
-			teamConfig = make(map[string]interface{})
+			teamConfig = make(map[string]any)
 		}
 
 		// Set enabled flag based on AgentTeamsMode.
@@ -1774,8 +1772,8 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		segments := presetToSegments(result.StatuslinePreset, result.StatuslineSegments)
 		statuslinePath := filepath.Join(sectionsDir, defs.StatuslineYAML)
 
-		statuslineConfig := map[string]interface{}{
-			"statusline": map[string]interface{}{
+		statuslineConfig := map[string]any{
+			"statusline": map[string]any{
 				"preset":   result.StatuslinePreset,
 				"segments": segments,
 			},
@@ -1800,21 +1798,21 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		}
 
 		// Parse YAML
-		var user map[string]interface{}
+		var user map[string]any
 		if len(userData) > 0 {
 			if err := yaml.Unmarshal(userData, &user); err != nil {
 				return fmt.Errorf("parse user.yaml: %w", err)
 			}
 		} else {
-			user = make(map[string]interface{})
+			user = make(map[string]any)
 		}
 
 		// Ensure user.user exists
-		var userConfig map[string]interface{}
-		if existingUser, ok := user["user"].(map[string]interface{}); ok {
+		var userConfig map[string]any
+		if existingUser, ok := user["user"].(map[string]any); ok {
 			userConfig = existingUser
 		} else {
-			userConfig = make(map[string]interface{})
+			userConfig = make(map[string]any)
 		}
 
 		// Set github_username if provided
@@ -1915,7 +1913,7 @@ func ensureGlobalSettingsEnv() error {
 	globalSettingsPath := filepath.Join(homeDir, defs.ClaudeDir, defs.SettingsJSON)
 
 	// Read existing global settings
-	var existingSettings map[string]interface{}
+	var existingSettings map[string]any
 	if data, err := os.ReadFile(globalSettingsPath); err == nil {
 		if err := json.Unmarshal(data, &existingSettings); err != nil {
 			return fmt.Errorf("parse existing global settings: %w", err)
@@ -1935,7 +1933,7 @@ func ensureGlobalSettingsEnv() error {
 	// Clean up moai-managed settings that have been migrated to project level.
 	// Preserve any user-added custom env keys but remove moai-specific ones.
 	if envVal, exists := existingSettings["env"]; exists {
-		if envMap, ok := envVal.(map[string]interface{}); ok {
+		if envMap, ok := envVal.(map[string]any); ok {
 			moaiKeys := []string{"PATH", "ENABLE_TOOL_SEARCH", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"}
 			for _, key := range moaiKeys {
 				if _, exists := envMap[key]; exists {
@@ -1952,9 +1950,9 @@ func ensureGlobalSettingsEnv() error {
 
 	// Clean up moai-managed permissions if they only contain Task:*
 	if permVal, exists := existingSettings["permissions"]; exists {
-		if permMap, ok := permVal.(map[string]interface{}); ok {
+		if permMap, ok := permVal.(map[string]any); ok {
 			if allowVal, exists := permMap["allow"]; exists {
-				if allowArr, ok := allowVal.([]interface{}); ok {
+				if allowArr, ok := allowVal.([]any); ok {
 					if len(allowArr) == 1 && allowArr[0] == "Task:*" {
 						delete(existingSettings, "permissions")
 						needsUpdate = true
@@ -1992,7 +1990,7 @@ func ensureGlobalSettingsEnv() error {
 // cleanLegacyHooks removes legacy hook patterns from global settings.
 // This includes orphaned scripts that were never deployed and deprecated Python-based hooks.
 // Returns true if any cleanup was performed.
-func cleanLegacyHooks(settings map[string]interface{}) bool {
+func cleanLegacyHooks(settings map[string]any) bool {
 	// List of legacy hook patterns to remove.
 	// All moai handle-*.sh hooks belong in project-level settings, not global.
 	legacyPatterns := []string{
@@ -2009,35 +2007,35 @@ func cleanLegacyHooks(settings map[string]interface{}) bool {
 		"post_tool__ast_grep_scan.py",
 	}
 
-	hooksMap, ok := settings["hooks"].(map[string]interface{})
+	hooksMap, ok := settings["hooks"].(map[string]any)
 	if !ok {
 		return false
 	}
 
 	modified := false
 	for hookType, hookListInterface := range hooksMap {
-		hookList, ok := hookListInterface.([]interface{})
+		hookList, ok := hookListInterface.([]any)
 		if !ok {
 			continue
 		}
 
-		var cleanedHooks []interface{}
+		var cleanedHooks []any
 		for _, hookGroup := range hookList {
-			groupMap, ok := hookGroup.(map[string]interface{})
+			groupMap, ok := hookGroup.(map[string]any)
 			if !ok {
 				cleanedHooks = append(cleanedHooks, hookGroup)
 				continue
 			}
 
-			hooksList, ok := groupMap["hooks"].([]interface{})
+			hooksList, ok := groupMap["hooks"].([]any)
 			if !ok {
 				cleanedHooks = append(cleanedHooks, hookGroup)
 				continue
 			}
 
-			var cleanedGroupHooks []interface{}
+			var cleanedGroupHooks []any
 			for _, hookEntry := range hooksList {
-				entryMap, ok := hookEntry.(map[string]interface{})
+				entryMap, ok := hookEntry.(map[string]any)
 				if !ok {
 					cleanedGroupHooks = append(cleanedGroupHooks, hookEntry)
 					continue
