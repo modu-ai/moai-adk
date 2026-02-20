@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [2.5.0] - 2026-02-18
+## [2.5.0] - 2026-02-20
 
 ### Added
 
@@ -20,15 +20,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **MCP OAuth Support**: Added `.moai/docs/MCP_OAUTH_SETUP.md` guide for configuring OAuth credentials for MCP servers (Slack, GitHub, Sentry).
 - **Troubleshooting Guide**: Added troubleshooting section to CLAUDE.md covering `/debug` command usage, common Agent Teams issues, and PDF pagination tips.
 - **Test Coverage**: Comprehensive test suite added across all packages to meet 85%+ coverage threshold. Key packages: internal/hook (3 subpackages), internal/shell, internal/template, internal/rank, internal/github, internal/merge, internal/update, pkg/models, internal/ui, internal/core/git, internal/core/project, internal/hook/agents, internal/hook/lifecycle. internal/cli improved from 60.6% → 73.3% (OAuth browser-flow functions excluded from automated testing).
+- **Binary TDD/DDD Methodology**: Removed hybrid mode, implemented clean binary selection between TDD (default for new code) and DDD (for legacy refactoring). Simplified development mode selection and documentation.
+- **GLM Team Flag**: Added `moai glm --team` flag for Agent Teams parallel execution in GLM workflow.
+- **Go 1.26 Upgrade**: Integrated Green Tea GC with 10-40% memory improvement, goroutine leak profiler, and modernization utilities.
+- **Agent Documentation**: Corrected expert agent count documentation (8 to 9 agents), added per-agent model assignment tables by tier, fixed team agent model values.
 
 ### Fixed
 
 - **SubagentStop Hook**: `moai hook subagent-stop` was not registered as a CLI subcommand, causing silent failures. Now properly registered (Claude Code v2.1.33).
 - **SessionEnd Cleanup**: SessionEnd hook now automatically removes orphaned team directories and tmux sessions from interrupted Agent Teams workflows.
+- **Settings Format**: Changed `spinnerTipsOverride` from array to object format for consistency.
+- **Lint Quality**: Replaced all `WriteString(fmt.Sprintf())` patterns with `fmt.Fprintf()` for improved code quality and performance.
+- **Unused Settings Fields**: Removed unused `spinnerTipsEnabled`, `spinnerTipsOverride` (reverted), `enabledPlugins`, `extraKnownMarketplaces` from template to reduce configuration bloat.
+- **Model Inheritance**: Removed `inherit` model option, fixed `team.enabled` default setting.
 
 ### Changed
 
 - **HookInput**: Added `TeamName`, `TeammateName`, `TaskID`, `TaskSubject`, `TaskDescription` fields for Agent Teams event handling (Claude Code v2.1.33).
+- **Development Methodology**: Binary methodology selection replacing hybrid mode for clearer workflow adoption and documentation.
 
 ---
 
