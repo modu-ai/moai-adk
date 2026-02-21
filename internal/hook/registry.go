@@ -164,10 +164,11 @@ func (r *registry) defaultOutputForEvent(event EventType) *HookOutput {
 		// Return empty JSON {}
 		return &HookOutput{}
 	case EventPermissionRequest:
-		// PermissionRequest defaults to "ask" (defer to user)
+		// PermissionRequest defaults to "ask" (defer to user).
+		// Per Claude Code protocol, hookEventName must be "PreToolUse" in output.
 		return &HookOutput{
 			HookSpecificOutput: &HookSpecificOutput{
-				HookEventName:      "PermissionRequest",
+				HookEventName:      "PreToolUse",
 				PermissionDecision: DecisionAsk,
 			},
 		}

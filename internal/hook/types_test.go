@@ -162,8 +162,8 @@ func TestNewPermissionRequestOutput(t *testing.T) {
 	if out.HookSpecificOutput.PermissionDecisionReason != "auto-approved tool" {
 		t.Errorf("PermissionDecisionReason = %q, want %q", out.HookSpecificOutput.PermissionDecisionReason, "auto-approved tool")
 	}
-	if out.HookSpecificOutput.HookEventName != "PermissionRequest" {
-		t.Errorf("HookEventName = %q, want %q", out.HookSpecificOutput.HookEventName, "PermissionRequest")
+	if out.HookSpecificOutput.HookEventName != "PreToolUse" {
+		t.Errorf("HookEventName = %q, want %q", out.HookSpecificOutput.HookEventName, "PreToolUse")
 	}
 }
 

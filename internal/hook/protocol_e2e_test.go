@@ -210,8 +210,8 @@ func TestProtocol_WriteOutput_NewEventOutputs(t *testing.T) {
 				if hso["permissionDecisionReason"] != "deferred to user" {
 					t.Errorf("permissionDecisionReason = %v, want %q", hso["permissionDecisionReason"], "deferred to user")
 				}
-				if hso["hookEventName"] != "PermissionRequest" {
-					t.Errorf("hookEventName = %v, want %q", hso["hookEventName"], "PermissionRequest")
+				if hso["hookEventName"] != "PreToolUse" {
+					t.Errorf("hookEventName = %v, want %q", hso["hookEventName"], "PreToolUse")
 				}
 			},
 		},
@@ -401,8 +401,8 @@ func TestProtocol_FullRoundTrip_NewEvents(t *testing.T) {
 				if hso["permissionDecision"] != DecisionAllow {
 					t.Errorf("permissionDecision = %v, want %q", hso["permissionDecision"], DecisionAllow)
 				}
-				if hso["hookEventName"] != "PermissionRequest" {
-					t.Errorf("hookEventName = %v, want %q", hso["hookEventName"], "PermissionRequest")
+				if hso["hookEventName"] != "PreToolUse" {
+					t.Errorf("hookEventName = %v, want %q", hso["hookEventName"], "PreToolUse")
 				}
 			},
 		},
