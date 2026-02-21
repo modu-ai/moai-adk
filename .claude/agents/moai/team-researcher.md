@@ -7,8 +7,10 @@ description: >
   Use proactively during plan phase team work.
 tools: Read, Grep, Glob, Bash
 model: haiku
+isolation: none
+background: true
 permissionMode: plan
-memory: user
+memory: project
 skills: moai-foundation-thinking
 ---
 

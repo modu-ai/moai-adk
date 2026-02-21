@@ -7,6 +7,8 @@ description: >
   Use proactively during plan phase team work.
 tools: Read, Grep, Glob, Bash
 model: opus
+isolation: none
+background: true
 permissionMode: plan
 memory: project
 skills: moai-foundation-philosopher, moai-foundation-thinking, moai-domain-backend, moai-domain-frontend, moai-domain-database

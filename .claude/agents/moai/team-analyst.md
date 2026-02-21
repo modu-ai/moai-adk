@@ -6,7 +6,9 @@ description: >
   Produces structured requirements analysis to feed into SPEC document creation.
   Use proactively during plan phase team work.
 tools: Read, Grep, Glob, Bash
-model: sonnet
+model: opus
+isolation: none
+background: true
 permissionMode: plan
 memory: project
 skills: moai-foundation-core, moai-foundation-thinking, moai-workflow-spec

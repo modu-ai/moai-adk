@@ -7,6 +7,8 @@ description: >
   Use proactively as the final validation step in team workflows.
 tools: Read, Grep, Glob, Bash
 model: haiku
+isolation: none
+background: true
 permissionMode: plan
 memory: project
 skills: moai-foundation-quality, moai-workflow-testing, moai-tool-ast-grep

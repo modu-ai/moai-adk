@@ -6,7 +6,9 @@ description: >
   Owns server-side files exclusively during team work to prevent conflicts.
   Use proactively during run phase team work.
 tools: Read, Write, Edit, Bash, Grep, Glob
-model: sonnet
+model: opus
+isolation: worktree
+background: true
 permissionMode: acceptEdits
 memory: project
 skills: moai-domain-backend, moai-domain-database, moai-platform-auth, moai-platform-database-cloud
