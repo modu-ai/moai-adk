@@ -120,6 +120,37 @@ moai init my-project
 
 An interactive wizard auto-detects your language, framework, and methodology, then generates Claude Code integration files.
 
+#### Installation Modes
+
+MoAI-ADK supports two installation modes:
+
+| Mode | Command | Description |
+|------|---------|-------------|
+| **Local** (default) | `moai init my-project` | Installs all files to project `.claude/` |
+| **Global** | `moai init my-project --install-mode global` | Installs system files to `~/.claude/` for sharing across projects |
+
+**File Placement Strategy (Global Mode):**
+
+| File Pattern | Location | Reason |
+|--------------|----------|--------|
+| `agents/moai/` | `~/.claude/agents/moai/` | Shared across projects |
+| `skills/moai*` | `~/.claude/skills/moai*/` | Shared across projects |
+| `rules/moai/` | `~/.claude/rules/moai/` | Shared across projects |
+| `commands/moai/` | `~/.claude/commands/moai/` | Shared across projects (13 subcommands) |
+| `hooks/` | Project `.claude/hooks/` | Project-specific |
+| `settings.json` | Project `.claude/` | Team sharing via Git |
+| `.moai/` | Project `.moai/` | Project-specific config |
+
+**When to use Global mode:**
+- You work on multiple MoAI-ADK projects with the same agent definitions
+- You want to reduce per-project file overhead
+- You prefer centralized updates for system files
+
+**When to use Local mode (default):**
+- Team projects where everyone needs identical agent definitions
+- Project-specific agent customizations are required
+- Full control over all files in the project directory
+
 ### 3. Start Developing with Claude Code
 
 ```bash
@@ -302,13 +333,18 @@ MoAI-ADK assigns optimal AI models to each of 28 agents based on your Claude Cod
 
 ```bash
 # During project initialization
-moai init my-project          # Interactive wizard includes model policy selection
+moai init my-project          # Interactive wizard includes model policy and install mode selection
 
 # Reconfigure existing project
-moai update -c                # Re-runs the configuration wizard
+moai update                   # Interactive prompts for each configuration step
 ```
 
-> Default policy is `High`. After running `moai update`, a notice guides you to configure this setting via `moai update -c`.
+During `moai update`, you'll be asked:
+- **Reset model policy?** (y/n) - Re-run model policy configuration wizard
+- **Reset install mode?** (y/n) - Re-run install mode configuration wizard
+- **Update GLM settings?** (y/n) - Configure GLM environment variables in settings.local.json
+
+> Default policy is `High`. GLM settings are isolated in `settings.local.json` (not committed to Git).
 
 ---
 
@@ -534,6 +570,7 @@ Metrics are logged by the PostToolUse hook when Task tool completes. Use this da
 | Command | Description |
 |---------|-------------|
 | `moai init` | Interactive project setup (auto-detects language/framework/methodology) |
+| `moai init --install-mode <mode>` | Set installation mode: `local` (default) or `global` |
 | `moai doctor` | System health diagnosis and environment verification |
 | `moai status` | Project status summary including Git branch, quality metrics, etc. |
 | `moai update` | Update to the latest version (with automatic rollback support) |
@@ -760,7 +797,7 @@ The statusline supports 4 display presets plus custom configuration:
 - **Minimal**: Model + Context only
 - **Custom**: Pick individual segments
 
-Configure during `moai init` / `moai update -c` wizard, or edit `.moai/config/sections/statusline.yaml`:
+Configure during `moai init` / `moai update` wizard (answer "y" to reset statusline), or edit `.moai/config/sections/statusline.yaml`:
 
 ```yaml
 statusline:
