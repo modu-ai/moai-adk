@@ -180,7 +180,14 @@ func runInit(cmd *cobra.Command, args []string) error {
 		// Positional argument provided (not ".")
 		// Create new folder with that name
 		targetDir := args[0]
-		rootFlag = filepath.Join(cwd, targetDir)
+		// Use filepath.Abs to correctly handle both absolute and relative paths.
+		// filepath.Join(cwd, absPath) incorrectly prepends cwd to absolute paths,
+		// e.g. Join("/a/b", "/c/d") = "/a/b/c/d" instead of "/c/d".
+		absTarget, err := filepath.Abs(targetDir)
+		if err != nil {
+			return fmt.Errorf("resolve project path %q: %w", targetDir, err)
+		}
+		rootFlag = absTarget
 
 		// Create the directory if it doesn't exist
 		if err := os.MkdirAll(rootFlag, 0755); err != nil {

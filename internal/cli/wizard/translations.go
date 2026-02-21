@@ -150,6 +150,15 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "GitHub 개인 액세스 토큰 입력 (선택)",
 			Description: "PR 생성 및 푸시에 필요합니다. 비워두어 건너거나 gh CLI를 사용하세요.",
 		},
+		"teammate_display": {
+			Title:       "팀원 표시 모드 선택",
+			Description: "Agent 팀원 표시 방법을 설정합니다. 분할 화면은 tmux가 필요합니다.",
+			Options: []OptionTranslation{
+				{Label: "Auto (권장)", Desc: "tmux 사용 가능 시 tmux, 없으면 in-process (기본값)"},
+				{Label: "In-Process", Desc: "같은 터미널에서 실행 (어디서나 동작)"},
+				{Label: "Tmux", Desc: "tmux 분할 화면 (tmux/iTerm2 필요)"},
+			},
+		},
 		"statusline_preset": {
 			Title:       "상태줄 표시 프리셋 선택",
 			Description: "Claude Code 상태줄에 표시할 세그먼트를 설정합니다.",
@@ -353,6 +362,15 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "GitHubパーソナルアクセストークンを入力（省略可）",
 			Description: "PR作成とプッシュに必要です。空欄のままスキップまたはgh CLIを使用してください。",
 		},
+		"teammate_display": {
+			Title:       "チームメイト表示モードを選択",
+			Description: "Agent Teammatesの表示方法を制御します。分割ペインにはtmuxが必要です。",
+			Options: []OptionTranslation{
+				{Label: "Auto (推奨)", Desc: "tmux利用可能時はtmux、それ以外はin-process（デフォルト）"},
+				{Label: "In-Process", Desc: "同一ターミナルで実行（どこでも動作）"},
+				{Label: "Tmux", Desc: "tmuxで分割ペイン（tmux/iTerm2が必要）"},
+			},
+		},
 		"statusline_preset": {
 			Title:       "ステータスライン表示プリセットを選択",
 			Description: "Claude Codeステータスラインに表示するセグメントを設定します。",
@@ -555,6 +573,15 @@ var translations = map[string]map[string]QuestionTranslation{
 		"github_token": {
 			Title:       "输入GitHub个人访问令牌（可选）",
 			Description: "PR创建和推送所需。留空以跳过或使用gh CLI。",
+		},
+		"teammate_display": {
+			Title:       "选择队友显示模式",
+			Description: "控制Agent Teammates的显示方式。分割窗格需要tmux。",
+			Options: []OptionTranslation{
+				{Label: "Auto (推荐)", Desc: "有tmux时使用tmux，否则使用in-process（默认）"},
+				{Label: "In-Process", Desc: "在同一终端中运行（任何地方都可用）"},
+				{Label: "Tmux", Desc: "在tmux中使用分割窗格（需要tmux/iTerm2）"},
+			},
 		},
 		"statusline_preset": {
 			Title:       "选择状态栏显示预设",

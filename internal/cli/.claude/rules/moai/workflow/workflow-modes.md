@@ -91,6 +91,35 @@ Team-specific rules:
 - File ownership prevents cross-teammate conflicts during parallel development
 - team-tester exclusively owns test files regardless of methodology
 
+## MX Tag Integration
+
+Both methodologies include @MX tag management:
+
+### TDD Mode MX Tags
+
+| Phase | MX Action |
+|-------|-----------|
+| RED | Add `@MX:TODO` for test requirements |
+| GREEN | Remove `@MX:TODO` when test passes |
+| REFACTOR | Add `@MX:NOTE` for refactored logic |
+
+### DDD Mode MX Tags
+
+| Phase | MX Action |
+|-------|-----------|
+| ANALYZE | Run 3-Pass scan, identify tag targets |
+| PRESERVE | Validate existing tags, add `@MX:LEGACY` for legacy code |
+| IMPROVE | Update tags, add `@MX:NOTE` for new logic |
+
+### MX Tag Priority by Methodology
+
+| Tag Type | TDD Trigger | DDD Trigger |
+|----------|-------------|-------------|
+| `@MX:TODO` | Missing test | SPEC not implemented |
+| `@MX:NOTE` | Complex logic | Business rule discovered |
+| `@MX:WARN` | Complexity >= 15 | Goroutine without context |
+| `@MX:ANCHOR` | fan_in >= 3 | Public API boundary |
+
 ## Methodology Selection Guide
 
 ### Auto-Detection (via /moai project or /moai init)

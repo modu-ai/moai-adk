@@ -1,6 +1,7 @@
 package quality
 
 import (
+	"context"
 	"testing"
 )
 
@@ -147,7 +148,7 @@ func TestAutoFix_NoTools(t *testing.T) {
 	l := NewLinter(NewToolRegistry())
 
 	// Use a file extension with no matching linter/auto-fix
-	result, err := l.AutoFix(nil, "/tmp/test.unknownext123")
+	result, err := l.AutoFix(context.TODO(), "/tmp/test.unknownext123")
 	if err != nil {
 		t.Fatalf("AutoFix returned unexpected error: %v", err)
 	}

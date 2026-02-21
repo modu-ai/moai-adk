@@ -108,7 +108,7 @@ func DefaultQuestions(projectRoot string) []Question {
 			Default:     "",
 			Required:    false, // Conditional requirement handled by wizard
 			Condition: func(r *WizardResult) bool {
-				return (r.GitMode == "personal" || r.GitMode == "team") && r.GitProvider != "gitlab"
+				return (r.GitMode == "personal" || r.GitMode == "team") && r.GitProvider == "github"
 			},
 		},
 		// 5b. GitHub Token (conditional - only for github provider)
@@ -120,7 +120,7 @@ func DefaultQuestions(projectRoot string) []Question {
 			Default:     "",
 			Required:    false,
 			Condition: func(r *WizardResult) bool {
-				return (r.GitMode == "personal" || r.GitMode == "team") && r.GitProvider != "gitlab"
+				return (r.GitMode == "personal" || r.GitMode == "team") && r.GitProvider == "github"
 			},
 		},
 		// 5c. GitLab Username (conditional - only for gitlab provider)
