@@ -211,6 +211,36 @@
           }
         ]
       }
+    ],
+    "WorktreeCreate": [
+      {
+        "hooks": [
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-worktree-create.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-worktree-create.sh\"",
+{{- end}}
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "WorktreeRemove": [
+      {
+        "hooks": [
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-worktree-remove.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-worktree-remove.sh\"",
+{{- end}}
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {

@@ -496,9 +496,9 @@ graph TB
 |------|--------|------|------|------|
 | Claude 전용 | `moai cc` | Claude | Claude | 최고 품질 |
 | GLM 전용 | `moai glm` | GLM | GLM | 최대 비용 절감 |
-| 하이브리드 | `moai glm --hybrid` | Claude | GLM | 품질 + 비용 균형 |
+| CG (Claude+GLM) | `moai cg` | Claude | GLM | 품질 + 비용 균형 |
 
-> **참고**: `--hybrid`는 항상 리더 모델로 Claude를 사용합니다. 현재 `moai glm` 모드인 경우, `moai glm --hybrid`는 리더를 자동으로 Claude로 전환합니다.
+> **참고**: `moai cg`는 worktree 기반 격리를 사용하여 Claude 리더와 GLM 워커를 분리합니다. `moai glm` 모드에서 전환 시, `moai cg`가 GLM 설정을 자동으로 리셋합니다 — 중간에 `moai cc`를 실행할 필요 없습니다.
 
 ### 자율 개발 루프 (Ralph Engine)
 
@@ -585,7 +585,7 @@ Task 도구 완료 시 PostToolUse 훅이 메트릭을 로깅합니다. 이 데�
 | `moai worktree go <name>` | 현재 셸에서 worktree 디렉토리로 이동 |
 | `moai hook <event>` | Claude Code 훅 디스패처 |
 | `moai glm` | GLM 5 API로 Claude Code 시작 (비용 효율적 대안) |
-| `moai glm --team` | GLM Worker 모드 시작 (Opus 리더 + GLM-5 팀원) |
+| `moai cg` | CG 모드 활성화 — Claude 리더 + GLM 팀원 (worktree 격리) |
 | `moai version` | 버전, 커밋 해시, 빌드 날짜 정보 |
 
 ---

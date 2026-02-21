@@ -643,9 +643,9 @@ ls -la internal/template/embedded.go
 │  ├── Purpose: Claude Code 모델 선택                             │
 │  └── Set by: moai init/update -c 또는 수동 편집                 │
 ├─────────────────────────────────────────────────────────────────┤
-│  3. Hybrid Mode (CLI Command)                                   │
-│  ├── Commands: moai glm --hybrid, moai glm, moai cc             │
-│  ├── Mechanism: Environment variable override                   │
+│  3. CG Mode (CLI Command)                                       │
+│  ├── Commands: moai cg, moai glm, moai cc                       │
+│  ├── Mechanism: Worktree-based environment isolation             │
 │  └── Purpose: Claude Leader + GLM Workers cost optimization     │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -727,13 +727,13 @@ GLM은 `~/.claude/settings.json`의 환경 변수 오버라이드로 설정됩�
 |---------|-------------------|--------|
 | `moai cc` | No GLM env vars | Claude-only (opus/sonnet/haiku) |
 | `moai glm` | All GLM env vars | GLM-only (glm-4.7-air/glm-4.7/glm-5) |
-| `moai glm --hybrid` | Selective GLM env vars | Claude Leader + GLM Workers |
+| `moai cg` | Worktree isolation + GLM env for workers | Claude Leader + GLM Workers |
 
-**Hybrid Mode 작동 방식:**
-1. `moai glm --hybrid` 실행
-2. CLI가 `ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-air` 설정 (Worker용)
-3. Leader는 opus/sonnet 유지 (Claude)
-4. Workers (haiku model) → GLM으로 실행
+**CG Mode 작동 방식:**
+1. `moai glm <api-key>` 실행 (API 키 저장, 최초 1회)
+2. `moai cg` 실행
+3. 리더 세션은 Claude 유지 (GLM env 자동 제거)
+4. 팀원은 worktree 격리 환경에서 GLM으로 실행
 
 ```bash
 # Claude-only mode (default)
@@ -744,8 +744,9 @@ moai cc                    # settings.json에 GLM env 없음
 moai glm                   # settings.json에 모든 GLM env 설정
 /moai run SPEC-XXX         # 모든 작업 GLM으로 실행
 
-# Hybrid mode (Claude Leader + GLM Workers)
-moai glm --hybrid          # HAIKU만 GLM으로 설정
+# CG mode (Claude Leader + GLM Workers)
+moai glm sk-xxx            # API 키 저장 (최초 1회)
+moai cg                    # worktree 격리 (자동 GLM 리셋 포함)
 /moai run SPEC-XXX         # Leader: Claude, Workers: GLM
 ```
 
@@ -756,7 +757,7 @@ moai glm --hybrid          # HAIKU만 GLM으로 설정
 ---
 name: team-backend-dev
 description: Backend implementation specialist
-model: inherit              # CORRECT: Uses user's default or GLM (if hybrid)
+model: inherit              # CORRECT: Uses user's default or GLM (if CG/GLM mode)
 isolation: worktree         # Claude Code 2.1.50: worktree isolation
 background: true            # Claude Code 2.1.50: parallel execution
 permissionMode: acceptEdits
@@ -784,7 +785,7 @@ model: glm                  # ❌ NEVER do this
 # WRONG - Fixed to opus when user wants flexibility
 model: opus                 # ❌ Use "high" or "inherit"
 
-# WRONG - Fixed model prevents hybrid mode flexibility
+# WRONG - Fixed model prevents CG mode flexibility
 model: sonnet               # ❌ Use "medium" or "inherit"
 ```
 
@@ -813,7 +814,7 @@ Agent worktrees use Claude Code's native `claude -w`:
 |---------|--------------|--------------|----------|
 | `moai cc` | Claude (user choice) | Claude (per agent def) | Complex work, high quality |
 | `moai glm` | GLM | GLM | Cost optimization, simple tasks |
-| `moai glm --hybrid` | Claude (user choice) | GLM (via env) | Best balance: quality + cost |
+| `moai cg` | Claude (user choice) | GLM (via worktree env) | Best balance: quality + cost |
 
 ### Configuration Schema
 
@@ -840,7 +841,7 @@ workflow:
 **llm.yaml:**
 ```yaml
 llm:
-  # Mode selection via CLI: moai cc, moai glm, moai glm --hybrid
+  # Mode selection via CLI: moai cc, moai glm, moai cg
   mode: ""  # Set by CLI command, not config file
 
   # Model tier mapping
@@ -853,8 +854,8 @@ llm:
 ### Key Rules Summary
 
 1. **Model field**: Use `inherit`, `high`, `medium`, `low` only
-2. **GLM access**: Via `moai glm` or `moai glm --hybrid` CLI, NOT model field
-3. **Hybrid mode**: Claude Leader + GLM Workers (env var override)
+2. **GLM access**: Via `moai glm` or `moai cg` CLI, NOT model field
+3. **CG mode**: Claude Leader + GLM Workers (worktree-based isolation)
 4. **Worktree isolation**: `isolation: worktree` in agent definition
 5. **Claude -w**: Default mechanism for agent worktree isolation
 

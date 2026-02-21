@@ -400,7 +400,7 @@ MoAI-ADK supports GLM Worker Mode for 60-70% cost reduction on implementation-he
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Activation**: `moai glm --team` or via `.moai/config/sections/llm.yaml` configuration.
+**Activation**: `moai cg` (requires tmux) or via `.moai/config/sections/llm.yaml` configuration.
 
 **When to use**:
 - Implementation-heavy SPECs (run phase)

@@ -38,9 +38,9 @@ triggers:
 GLM Worker mode combines your selected Claude model with GLM-5 (cost effective) for optimal development workflow:
 
 ```
-User runs: moai glm --team
+User runs: moai cg
     │
-    ├── team_mode="glm" saved to llm.yaml
+    ├── team_mode="cg" saved to llm.yaml
     │
 User runs: claude (starts on your selected model)
     │
@@ -94,17 +94,17 @@ Detection steps:
 
 Before using `/moai --team`:
 
-1. **Enable team mode** (CLI):
-   ```bash
-   moai glm --team
-   ```
-   This saves `team_mode: glm` to llm.yaml WITHOUT modifying settings.local.json.
-
-2. **Save GLM API key** (CLI):
+1. **Save GLM API key** (CLI):
    ```bash
    moai glm sk-your-glm-api-key
    ```
    Or set `GLM_API_KEY` environment variable.
+
+2. **Enable CG mode** (CLI):
+   ```bash
+   moai cg
+   ```
+   This saves `team_mode: cg` to llm.yaml and configures worktree-based isolation.
 
 3. **Start Claude Code**:
    ```bash

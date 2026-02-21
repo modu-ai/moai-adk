@@ -496,9 +496,9 @@ Control how agents are dispatched during workflow execution:
 |-------------|---------|--------|---------|----------|
 | Claude-only | `moai cc` | Claude | Claude | Maximum quality |
 | GLM-only | `moai glm` | GLM | GLM | Maximum cost savings |
-| Hybrid | `moai glm --hybrid` | Claude | GLM | Quality + cost balance |
+| CG (Claude+GLM) | `moai cg` | Claude | GLM | Quality + cost balance |
 
-> **Note**: `--hybrid` always uses Claude as the leader model. If currently in `moai glm` mode, `moai glm --hybrid` automatically switches the leader to Claude first.
+> **Note**: `moai cg` uses worktree-based isolation to separate Claude leader from GLM workers. If switching from `moai glm`, `moai cg` automatically resets GLM settings first — no need to run `moai cc` in between.
 
 ### Autonomous Development Loop (Ralph Engine)
 
@@ -585,7 +585,7 @@ Metrics are logged by the PostToolUse hook when Task tool completes. Use this da
 | `moai worktree go <name>` | Navigate to worktree directory in current shell |
 | `moai hook <event>` | Claude Code hook dispatcher |
 | `moai glm` | Start Claude Code with GLM 5 API (cost-effective alternative) |
-| `moai glm --team` | Start GLM Worker mode (Opus leader + GLM-5 teammates) |
+| `moai cg` | Enable CG mode — Claude leader + GLM teammates (worktree isolation) |
 | `moai version` | Display version, commit hash, and build date |
 
 ---
