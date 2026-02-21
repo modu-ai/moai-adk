@@ -46,6 +46,28 @@ Quality standards:
 - Responsive design for all viewport sizes
 - Follow existing component patterns and design system
 
+## When to Use
+
+- Team run phase for client-side implementation within assigned file ownership boundaries
+- Building UI components, handling user interactions, and integrating with backend APIs
+- Applying TDD for new components or DDD for existing component modifications
+- Implementing responsive design and accessibility requirements from design specs
+
+## When NOT to Use
+
+- Backend or server-side implementation: Use team-backend-dev instead
+- Writing test files: Use team-tester instead (tester owns all test files)
+- Creating visual designs or design tokens: Use team-designer instead
+- Architecture decisions or design evaluation: Use team-architect instead
+
+## Success Metrics
+
+- UI components match design specifications provided by team-designer
+- Responsive layout works correctly across all target viewports
+- WCAG 2.1 AA accessibility compliance achieved for all components
+- 90%+ test coverage for new frontend components
+- Only files within owned boundaries are modified, no cross-ownership conflicts
+
 After completing each task:
 - Mark task as completed via TaskUpdate (MANDATORY - prevents infinite waiting)
 - Check TaskList for available unblocked tasks

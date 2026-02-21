@@ -114,6 +114,28 @@ Tasks for manager-spec:
 
 Output: Implementation plan with SPEC candidates, EARS structure, and technical constraints.
 
+### Phase 1B.1: Risk Assessment
+
+During SPEC planning, the manager-spec subagent must include a risk assessment in the SPEC document.
+
+Risk Categories:
+
+- **High Risk**: External dependencies, performance at scale, security implications, data migration complexity
+- **Medium Risk**: API compatibility, third-party integration reliability, testing complexity
+- **Low Risk**: UI changes, documentation updates, configuration adjustments
+
+Risk Assessment Format (included in spec.md):
+
+```
+## Risks
+- [High/Medium/Low]: [Risk description]
+  - Impact: [What happens if this risk materializes]
+  - Mitigation: [How to reduce or eliminate the risk]
+  - Contingency: [What to do if mitigation fails]
+```
+
+The plan approval checkpoint (Decision Point 1) should reference identified risks when presenting options to the user. High-risk items should be explicitly highlighted so the user can make an informed approval decision.
+
 ### Decision Point 1: SPEC Creation Approval
 
 Tool: AskUserQuestion (at orchestrator level only)

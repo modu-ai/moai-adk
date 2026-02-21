@@ -406,6 +406,64 @@ graph TB
     style Sync fill:#FFF3E0,stroke:#E65100
 ```
 
+### /moai Subcommands
+
+All subcommands are invoked within Claude Code as `/moai <subcommand>`.
+
+#### Core Workflow
+
+| Subcommand | Aliases | Purpose | Key Flags |
+|------------|---------|---------|-----------|
+| `plan` | `spec` | Create SPEC document (EARS format) | `--worktree`, `--branch`, `--resume SPEC-XXX`, `--team` |
+| `run` | `impl` | DDD/TDD implementation of a SPEC | `--resume SPEC-XXX`, `--team` |
+| `sync` | `docs`, `pr` | Sync documentation, codemaps, and create PR | `--merge`, `--skip-mx` |
+
+#### Quality & Testing
+
+| Subcommand | Aliases | Purpose | Key Flags |
+|------------|---------|---------|-----------|
+| `fix` | — | Auto-fix LSP errors, linting, type errors (single pass) | `--dry`, `--seq`, `--level N`, `--resume`, `--team` |
+| `loop` | — | Iterative auto-fix until completion (max 100 iterations) | `--max N`, `--auto-fix`, `--seq` |
+| `review` | `code-review` | Code review with security and @MX tag compliance check | `--staged`, `--branch`, `--security` |
+| `coverage` | `test-coverage` | Test coverage analysis and gap filling (16 languages) | `--target N`, `--file PATH`, `--report` |
+| `e2e` | — | E2E testing (Claude-in-Chrome, Playwright CLI, or Agent Browser) | `--record`, `--url URL`, `--journey NAME` |
+| `clean` | `refactor-clean` | Dead code identification and safe removal | `--dry`, `--safe-only`, `--file PATH` |
+
+#### Documentation & Codebase
+
+| Subcommand | Aliases | Purpose | Key Flags |
+|------------|---------|---------|-----------|
+| `project` | `init` | Generate project docs (product.md, structure.md, tech.md, codemaps/) | — |
+| `mx` | — | Scan codebase and add @MX code-level annotations | `--all`, `--dry`, `--priority P1-P4`, `--force`, `--team` |
+| `codemaps` | `update-codemaps` | Generate architecture docs in `.moai/project/codemaps/` | `--force`, `--area AREA` |
+| `feedback` | `fb`, `bug`, `issue` | Collect user feedback and create GitHub issues | — |
+
+#### Default Workflow
+
+| Subcommand | Purpose | Key Flags |
+|------------|---------|-----------|
+| *(none)* | Full autonomous plan → run → sync pipeline. Auto-generates SPEC when complexity score >= 5. | `--loop`, `--max N`, `--branch`, `--pr`, `--resume SPEC-XXX`, `--team`, `--solo` |
+
+### Execution Mode Flags
+
+Control how agents are dispatched during workflow execution:
+
+| Flag | Mode | Description |
+|------|------|-------------|
+| `--team` | Agent Teams | Parallel team-based execution. Multiple agents work simultaneously. |
+| `--solo` | Sub-Agent | Sequential single-agent delegation per phase. |
+| *(default)* | Auto | System auto-selects based on complexity (domains >= 3, files >= 10, or score >= 7). |
+
+**`--team` supports three execution environments:**
+
+| Environment | Command | Leader | Workers | Best For |
+|-------------|---------|--------|---------|----------|
+| Claude-only | `moai cc` | Claude | Claude | Maximum quality |
+| GLM-only | `moai glm` | GLM | GLM | Maximum cost savings |
+| Hybrid | `moai glm --hybrid` | Claude | GLM | Quality + cost balance |
+
+> **Note**: `--hybrid` always uses Claude as the leader model. If currently in `moai glm` mode, `moai glm --hybrid` automatically switches the leader to Claude first.
+
 ### Autonomous Development Loop (Ralph Engine)
 
 An autonomous error-fixing engine that combines LSP diagnostics with AST-grep:
@@ -420,6 +478,28 @@ An autonomous error-fixing engine that combines LSP diagnostics with AST-grep:
 2. **Auto-Classification**: Classifies errors from Level 1 (auto-fix) to Level 4 (user intervention)
 3. **Convergence Detection**: Applies alternative strategies when the same error repeats
 4. **Completion Criteria**: 0 errors, 0 type errors, 85%+ coverage
+
+### Recommended Workflow Chains
+
+**New Feature Development:**
+```
+/moai plan → /moai run SPEC-XXX → /moai review → /moai coverage → /moai sync SPEC-XXX
+```
+
+**Bug Fix:**
+```
+/moai fix (or /moai loop) → /moai review → /moai sync
+```
+
+**Refactoring:**
+```
+/moai plan → /moai clean → /moai run SPEC-XXX → /moai review → /moai coverage → /moai codemaps
+```
+
+**Documentation Update:**
+```
+/moai codemaps → /moai sync
+```
 
 ---
 

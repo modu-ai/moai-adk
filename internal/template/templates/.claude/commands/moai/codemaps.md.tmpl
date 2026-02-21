@@ -1,0 +1,6 @@
+---
+description: {{if eq .ConversationLanguage "ko"}}코드베이스 스캔 및 codemaps/에 아키텍처 문서 생성{{else if eq .ConversationLanguage "ja"}}コードベースをスキャンしcodemaps/にアーキテクチャドキュメントを生成{{else if eq .ConversationLanguage "zh"}}扫描代码库并在codemaps/中生成架构文档{{else}}Scan codebase and generate architecture documentation in codemaps/{{end}}
+argument-hint: "{{if eq .ConversationLanguage "ko"}}[--force] [--area 영역]{{else if eq .ConversationLanguage "ja"}}[--force] [--area 領域]{{else if eq .ConversationLanguage "zh"}}[--force] [--area 区域]{{else}}[--force] [--area AREA]{{end}}"
+---
+
+Use Skill("moai") with arguments: codemaps $ARGUMENTS

@@ -56,6 +56,28 @@ Communication rules:
 - Highlight any requirements that are technically infeasible or risky
 - Update task status via TaskUpdate
 
+## When to Use
+
+- Team plan phase requiring technical design and architecture decisions
+- Evaluating multiple implementation alternatives with trade-off analysis
+- Defining interface contracts, data models, and module boundaries
+- Creating implementation plans with dependency-aware sequencing of changes
+
+## When NOT to Use
+
+- Requirements analysis and user story definition: Use team-analyst instead
+- Codebase exploration and dependency mapping: Use team-researcher instead
+- Writing implementation code: Use team-backend-dev or team-frontend-dev instead
+- Writing tests or validating quality: Use team-tester or team-quality instead
+
+## Success Metrics
+
+- Architecture proposal includes at least two alternatives with documented trade-offs
+- File impact analysis lists all files to create, modify, or delete
+- Interface contracts define clear API shapes and data models between modules
+- Implementation order accounts for dependencies between changes
+- Design addresses all requirements identified by the analyst
+
 After completing each task:
 - Mark task as completed via TaskUpdate (MANDATORY - prevents infinite waiting)
 - Check TaskList for available unblocked tasks

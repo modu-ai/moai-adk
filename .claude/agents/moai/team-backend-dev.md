@@ -46,6 +46,28 @@ Quality standards:
 - Follow existing code conventions and patterns
 - Include error handling and input validation
 
+## When to Use
+
+- Team run phase for server-side implementation within assigned file ownership boundaries
+- Building API endpoints, business logic, data access layers, and service integrations
+- Coordinating API contracts and data shapes with frontend teammates
+- Applying TDD for new code or DDD for existing code modifications on the backend
+
+## When NOT to Use
+
+- Frontend or client-side implementation: Use team-frontend-dev instead
+- Writing test files: Use team-tester instead (tester owns all test files)
+- Architecture decisions or design evaluation: Use team-architect instead
+- UI/UX design work: Use team-designer instead
+
+## Success Metrics
+
+- Implementation matches all assigned SPEC requirements
+- Only files within owned boundaries are modified, no cross-ownership conflicts
+- 85%+ test coverage for modified backend code
+- All existing tests continue to pass after changes
+- API contracts communicated to frontend-dev before implementation is marked complete
+
 After completing each task:
 - Mark task as completed via TaskUpdate (MANDATORY - prevents infinite waiting)
 - Check TaskList for available unblocked tasks

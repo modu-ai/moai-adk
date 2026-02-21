@@ -777,3 +777,26 @@ Updated: 2026-01-06
 Pattern: Comprehensive 7-Phase Plugin Creation Workflow
 Compliance: Claude Code Official Plugin Standards + MoAI-ADK Conventions
 Changes: Added PHASE 6 for marketplace creation; Added marketplace keywords to description; Updated scope to include marketplace distribution; Previous: Added PostToolUseFailure, SubagentStart, Notification, PreCompact hook events; Added agent hook type; Added LSP server advanced options; Added Plugin Caching and Security section; Added managed installation scope
+
+## When to Use
+
+- Creating new Claude Code plugins from scratch with complete directory structure
+- Setting up plugin marketplaces with marketplace.json for distribution
+- Validating existing plugin structure against official Claude Code standards
+- Converting standalone .claude/ configurations into distributable plugin format
+- Adding new components (commands, agents, skills, hooks, MCP, LSP) to existing plugins
+
+## When NOT to Use
+
+- Creating individual agent definitions without plugin packaging: Use builder-agent instead
+- Creating individual skill definitions without plugin packaging: Use builder-skill instead
+- Implementing application business logic within plugin components: Use expert-backend or expert-frontend instead
+- Publishing or deploying plugins to external registries: Outside agent scope
+
+## Success Metrics
+
+- Plugin passes `claude plugin validate .` with no errors
+- plugin.json manifest contains all required fields with valid schema
+- Component directories are at plugin root level, not inside .claude-plugin/
+- All paths in plugin.json start with "./" and resolve to valid locations
+- Plugin installs cleanly and all components are discoverable by Claude Code

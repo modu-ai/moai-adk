@@ -1,0 +1,5 @@
+---
+description: {{if eq .ConversationLanguage "ko"}}프로젝트 문서 생성 (product.md, structure.md, tech.md, codemaps/){{else if eq .ConversationLanguage "ja"}}プロジェクトドキュメント生成 (product.md, structure.md, tech.md, codemaps/){{else if eq .ConversationLanguage "zh"}}生成项目文档 (product.md, structure.md, tech.md, codemaps/){{else}}Generate project documentation (product.md, structure.md, tech.md, codemaps/){{end}}
+---
+
+Use Skill("moai") with arguments: project $ARGUMENTS

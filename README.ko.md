@@ -406,6 +406,64 @@ graph TB
     style Sync fill:#FFF3E0,stroke:#E65100
 ```
 
+### /moai 서브커맨드
+
+모든 서브커맨드는 Claude Code 내에서 `/moai <서브커맨드>`로 실행합니다.
+
+#### 핵심 워크플로우
+
+| 서브커맨드 | 별칭 | 목적 | 주요 플래그 |
+|-----------|------|------|------------|
+| `plan` | `spec` | SPEC 문서 생성 (EARS 형식) | `--worktree`, `--branch`, `--resume SPEC-XXX`, `--team` |
+| `run` | `impl` | SPEC의 DDD/TDD 구현 | `--resume SPEC-XXX`, `--team` |
+| `sync` | `docs`, `pr` | 문서 동기화, 코드맵 업데이트, PR 생성 | `--merge`, `--skip-mx` |
+
+#### 품질 & 테스팅
+
+| 서브커맨드 | 별칭 | 목적 | 주요 플래그 |
+|-----------|------|------|------------|
+| `fix` | — | LSP 에러, 린트, 타입 에러 자동 수정 (단일 패스) | `--dry`, `--seq`, `--level N`, `--resume`, `--team` |
+| `loop` | — | 완료까지 반복 자동 수정 (최대 100회) | `--max N`, `--auto-fix`, `--seq` |
+| `review` | `code-review` | 보안 및 @MX 태그 준수 코드 리뷰 | `--staged`, `--branch`, `--security` |
+| `coverage` | `test-coverage` | 테스트 커버리지 분석 및 갭 보완 (16개 언어) | `--target N`, `--file PATH`, `--report` |
+| `e2e` | — | E2E 테스트 (Claude-in-Chrome, Playwright CLI, Agent Browser) | `--record`, `--url URL`, `--journey NAME` |
+| `clean` | `refactor-clean` | 데드 코드 식별 및 안전한 제거 | `--dry`, `--safe-only`, `--file PATH` |
+
+#### 문서 & 코드베이스
+
+| 서브커맨드 | 별칭 | 목적 | 주요 플래그 |
+|-----------|------|------|------------|
+| `project` | `init` | 프로젝트 문서 생성 (product.md, structure.md, tech.md, codemaps/) | — |
+| `mx` | — | 코드베이스 스캔 및 @MX 코드 레벨 주석 추가 | `--all`, `--dry`, `--priority P1-P4`, `--force`, `--team` |
+| `codemaps` | `update-codemaps` | `.moai/project/codemaps/`에 아키텍처 문서 생성 | `--force`, `--area AREA` |
+| `feedback` | `fb`, `bug`, `issue` | 사용자 피드백 수집 및 GitHub 이슈 생성 | — |
+
+#### 기본 워크플로우
+
+| 서브커맨드 | 목적 | 주요 플래그 |
+|-----------|------|------------|
+| *(없음)* | 완전 자율 plan → run → sync 파이프라인. 복잡도 점수 >= 5일 때 SPEC 자동 생성. | `--loop`, `--max N`, `--branch`, `--pr`, `--resume SPEC-XXX`, `--team`, `--solo` |
+
+### 실행 모드 플래그
+
+워크플로우 실행 시 에이전트 디스패치 방식을 제어합니다:
+
+| 플래그 | 모드 | 설명 |
+|--------|------|------|
+| `--team` | Agent Teams | 병렬 팀 기반 실행. 여러 에이전트가 동시 작업. |
+| `--solo` | Sub-Agent | 페이즈별 순차 단일 에이전트 위임. |
+| *(기본)* | 자동 | 복잡도 기반 자동 선택 (도메인 >= 3, 파일 >= 10, 점수 >= 7). |
+
+**`--team`은 세 가지 실행 환경을 지원합니다:**
+
+| 환경 | 명령어 | 리더 | 워커 | 용도 |
+|------|--------|------|------|------|
+| Claude 전용 | `moai cc` | Claude | Claude | 최고 품질 |
+| GLM 전용 | `moai glm` | GLM | GLM | 최대 비용 절감 |
+| 하이브리드 | `moai glm --hybrid` | Claude | GLM | 품질 + 비용 균형 |
+
+> **참고**: `--hybrid`는 항상 리더 모델로 Claude를 사용합니다. 현재 `moai glm` 모드인 경우, `moai glm --hybrid`는 리더를 자동으로 Claude로 전환합니다.
+
 ### 자율 개발 루프 (Ralph Engine)
 
 LSP 진단과 AST-grep을 결합한 자율 에러 수정 엔진입니다:
@@ -420,6 +478,28 @@ LSP 진단과 AST-grep을 결합한 자율 에러 수정 엔진입니다:
 2. **자동 분류**: 에러를 Level 1(자동 수정) ~ Level 4(사용자 개입)로 분류
 3. **수렴 감지**: 동일 에러 반복 시 대체 전략 적용
 4. **완료 조건**: 0 에러, 0 타입 에러, 85%+ 커버리지
+
+### 권장 워크플로우 체인
+
+**신규 기능 개발:**
+```
+/moai plan → /moai run SPEC-XXX → /moai review → /moai coverage → /moai sync SPEC-XXX
+```
+
+**버그 수정:**
+```
+/moai fix (또는 /moai loop) → /moai review → /moai sync
+```
+
+**리팩토링:**
+```
+/moai plan → /moai clean → /moai run SPEC-XXX → /moai review → /moai coverage → /moai codemaps
+```
+
+**문서 업데이트:**
+```
+/moai codemaps → /moai sync
+```
 
 ---
 

@@ -1,0 +1,6 @@
+---
+description: {{if eq .ConversationLanguage "ko"}}보안 및 @MX 태그 준수 확인을 포함한 코드 리뷰{{else if eq .ConversationLanguage "ja"}}セキュリティと@MXタグ準拠チェックを含むコードレビュー{{else if eq .ConversationLanguage "zh"}}包含安全性和@MX标签合规检查的代码审查{{else}}Code review with security and @MX tag compliance check{{end}}
+argument-hint: "[--staged] [--branch] [--security]"
+---
+
+Use Skill("moai") with arguments: review $ARGUMENTS

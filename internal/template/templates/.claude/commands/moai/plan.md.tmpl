@@ -1,0 +1,6 @@
+---
+description: {{if eq .ConversationLanguage "ko"}}EARS 형식 요구사항과 인수 기준을 포함한 SPEC 문서 생성{{else if eq .ConversationLanguage "ja"}}EARS形式の要件と受入基準を含むSPECドキュメントを作成{{else if eq .ConversationLanguage "zh"}}使用EARS格式创建包含需求和验收标准的SPEC文档{{else}}Create SPEC document with EARS format requirements and acceptance criteria{{end}}
+argument-hint: "{{if eq .ConversationLanguage "ko"}}\"설명\" [--team] [--worktree] [--branch] [--resume SPEC-XXX]{{else if eq .ConversationLanguage "ja"}}\"説明\" [--team] [--worktree] [--branch] [--resume SPEC-XXX]{{else if eq .ConversationLanguage "zh"}}\"描述\" [--team] [--worktree] [--branch] [--resume SPEC-XXX]{{else}}\"description\" [--team] [--worktree] [--branch] [--resume SPEC-XXX]{{end}}"
+---
+
+Use Skill("moai") with arguments: plan $ARGUMENTS

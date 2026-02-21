@@ -866,3 +866,27 @@ Supported Frameworks: React 19, Vue 3.5, Angular 19, Next.js 16, Nuxt, SvelteKit
 Design Tool: Pencil MCP (Design-as-Code with .pen files)
 Context7 Integration: Enabled for real-time framework documentation
 Playwright Integration: E2E testing for web applications
+
+## When to Use
+
+- UI component architecture and implementation (React, Vue, Angular, Svelte, etc.)
+- State management strategy design (Redux, Zustand, Pinia, Jotai, TanStack Query)
+- Accessibility implementation and WCAG 2.1 AA compliance verification
+- Frontend performance optimization (code splitting, lazy loading, Core Web Vitals)
+- Design-to-code workflow using Pencil MCP for UI/UX prototyping
+
+## When NOT to Use
+
+- Server-side API or database logic → Use expert-backend instead
+- CI/CD pipeline or deployment configuration → Use expert-devops instead
+- Chrome extension development (service workers, chrome.* APIs) → Use expert-chrome-extension instead
+- Security audits or vulnerability assessments → Use expert-security instead
+- System-level performance profiling or benchmarking → Use expert-performance instead
+
+## Success Metrics
+
+- Components render correctly with proper container/presentational separation
+- Accessibility compliant (WCAG 2.1 AA) with semantic HTML, ARIA attributes, and keyboard navigation
+- Core Web Vitals targets met (LCP < 2.5s, FID < 100ms, CLS < 0.1)
+- 85%+ test coverage across unit, integration, and E2E tests (Vitest + Playwright)
+- Responsive design functional across all target viewports and browsers

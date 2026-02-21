@@ -204,6 +204,38 @@ Output Files:
 
 ---
 
+## Phase 3.3: Architecture Documentation (Codemaps)
+
+Purpose: Generate architecture documentation alongside project documentation for comprehensive context.
+
+[HARD] This phase runs automatically after documentation generation. No separate user confirmation needed.
+
+Condition: Only execute for Existing Projects (Phase 0 classified as "Existing Project"). Skip for New Projects (no codebase to analyze).
+
+Agent: manager-docs subagent (or Explore subagent for initial scan)
+
+Process:
+1. Scan codebase structure (reuse Phase 1 analysis results)
+2. Generate `.moai/project/codemaps/` directory:
+   - architecture.md: System overview, component relationships, data flow
+   - backend.md: API endpoints, services, middleware, database patterns
+   - frontend.md: Component hierarchy, state management, routing (if applicable)
+   - data.md: Database schema, models, migrations, data relationships
+3. Cross-reference with generated project documents:
+   - Link to structure.md for directory context
+   - Link to tech.md for technology details
+   - Link to product.md for feature mapping
+
+Constraints:
+- Maximum 500 lines per codemap file
+- Token-efficient format: bullet points over prose
+- Skip frontend.md if no frontend code detected
+- Skip data.md if no database/schema files detected
+
+Output: `.moai/project/codemaps/` directory with 2-4 codemap files.
+
+---
+
 ## Phase 3.5: Development Environment Check
 
 Goal: Verify LSP servers are installed for the detected technology stack.
@@ -293,10 +325,11 @@ Next Steps (AskUserQuestion):
 - Phase 0-2: MoAI orchestrator (AskUserQuestion for all user interaction)
 - Phase 1: Explore subagent (codebase analysis)
 - Phase 3: manager-docs subagent (documentation generation)
+- Phase 3.3: manager-docs subagent (codemaps generation, existing projects only)
 - Phase 3.5: expert-devops subagent (optional LSP installation)
 - Phase 3.7: MoAI orchestrator (automatic development_mode configuration, no user interaction)
 
 ---
 
-Version: 2.1.0
-Last Updated: 2026-02-10
+Version: 2.2.0
+Last Updated: 2026-02-21

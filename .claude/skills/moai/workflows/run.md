@@ -8,10 +8,10 @@ license: Apache-2.0
 compatibility: Designed for Claude Code
 user-invocable: false
 metadata:
-  version: "2.0.0"
+  version: "2.3.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-07"
+  updated: "2026-02-21"
   tags: "run, implementation, ddd, tdd, spec"
 
 # MoAI Extension: Progressive Disclosure
@@ -414,6 +414,235 @@ All of the following must be verified:
 
 ---
 
-Version: 2.1.0
-Updated: 2026-02-13
-Source: Extracted from .claude/commands/moai/2-run.md v5.0.0. Added implementation divergence tracking, development_mode routing (ddd/tdd), team mode support, LSP quality gates, extended quality checks (code complexity, dead code, side effects, code reuse), plan proportionality validation, and post-implementation review loop.
+## Standalone: Code Review (/moai review)
+
+Purpose: Comprehensive quality and security review of uncommitted or staged changes using git diff analysis. Invoked independently via `/moai review`.
+
+### Input
+
+- $ARGUMENTS: Optional flags
+- --staged: Review only staged changes (git diff --cached)
+- --branch [base]: Compare current branch against base (default: main)
+- --security: Focus on security-specific review patterns only
+
+### Phase 1: Collect Changes
+
+- Default: Run `git diff` for all unstaged and staged changes
+- If --staged: Run `git diff --cached` for staged changes only
+- If --branch: Run `git diff <base>...HEAD` for branch comparison
+- Parse diff output to extract: files changed, lines added/removed, change context
+
+### Phase 2: Code Review Analysis
+
+Agent: manager-quality subagent
+
+Review each change at four severity levels:
+
+- Critical: Security vulnerabilities, data loss risks, authentication bypasses
+- High: Logic errors, race conditions, resource leaks, error handling gaps
+- Medium: Code style violations, missing validation, incomplete error messages
+- Low: Naming conventions, documentation gaps, minor improvements
+
+For each finding, report:
+- Severity level
+- File path and line number
+- Description of the issue
+- Suggested fix
+
+### Phase 2.5: @MX Tag Compliance Check
+
+Verify @MX annotations on modified code:
+
+- New exported functions without @MX:NOTE or @MX:ANCHOR → flag as Medium
+- Functions with fan_in >= 5 missing @MX:ANCHOR → flag as High
+- Dangerous patterns (goroutines, complexity >= 15) without @MX:WARN → flag as Medium
+- Untested public functions without @MX:TODO → flag as Low
+- Existing @MX tags on modified code that are now stale → flag as Low
+
+Include MX compliance findings in the review report alongside code quality findings.
+
+### Phase 3: Approval Recommendation
+
+Based on findings, generate recommendation:
+
+- Approve: Zero Critical or High findings
+- Warning: Medium findings only (proceed with awareness)
+- Block: One or more Critical or High findings (must fix before merge)
+
+### Phase 4: Report
+
+Display review summary:
+- Total files reviewed
+- Findings by severity
+- Approval recommendation
+- Specific action items for Critical/High findings
+
+---
+
+## Standalone: Test Coverage Analysis (/moai coverage)
+
+Purpose: Analyze test coverage, identify gaps, and generate missing tests to meet coverage targets. Invoked independently via `/moai coverage`.
+
+### Input
+
+- $ARGUMENTS: Optional flags
+- --target N: Override coverage threshold (default: from quality.yaml test_coverage_target)
+- --file PATH: Analyze specific file or directory only
+- --report: Report-only mode, no test generation
+
+### Phase 1: Run Tests with Coverage
+
+Execute language-specific test command with coverage output:
+- Go: `go test -coverprofile=coverage.out ./...`
+- Python: `pytest --cov --cov-report=json`
+- TypeScript: `npx vitest run --coverage` or `npx jest --coverage`
+- JavaScript: `npx vitest run --coverage` or `npx jest --coverage` or `npx c8 node`
+- Rust: `cargo tarpaulin --out json`
+- Java: `mvn jacoco:report` or `gradle jacocoTestReport`
+- Kotlin: `gradle koverReport`
+- C#: `dotnet test --collect:"XPlat Code Coverage"`
+- Ruby: `COVERAGE=true bundle exec rspec` (with simplecov)
+- PHP: `XDEBUG_MODE=coverage vendor/bin/phpunit --coverage-text`
+- Elixir: `mix test --cover`
+- C++: `gcov` / `lcov` or `cmake --build . --target coverage`
+- Scala: `sbt coverage test coverageReport`
+- R: `covr::package_coverage()` or `Rscript -e 'covr::report()'`
+- Flutter/Dart: `flutter test --coverage`
+- Swift: `swift test --enable-code-coverage`
+
+Language auto-detection uses indicator files from sync.md Phase 0.5 language detection. If language not detected, ask user via AskUserQuestion.
+
+Parse coverage report to extract per-file and per-function coverage percentages.
+
+### Phase 2: Gap Analysis
+
+Identify uncovered code:
+- Functions with 0% coverage (completely untested)
+- Functions below target threshold
+- Critical paths (error handlers, security checks) without tests
+- Recently modified code without corresponding test updates
+
+Sort gaps by priority:
+1. Public API functions without tests
+2. Error handling paths
+3. Complex functions (cyclomatic complexity > 5)
+4. Recently changed code
+
+### Phase 3: Test Generation (unless --report)
+
+Agent: expert-testing subagent
+
+For each identified gap (prioritized):
+- Generate specification-based tests (not implementation-coupled)
+- Include edge cases and error scenarios
+- Follow project's existing test patterns and conventions
+- Verify generated tests pass
+
+### Phase 4: Before/After Comparison
+
+Display coverage improvement:
+- Before: N% overall, N% for target files
+- After: N% overall, N% for target files
+- Gap: N% remaining to target
+- Files still needing attention
+
+---
+
+## Standalone: E2E Testing (/moai e2e)
+
+Purpose: Create and execute end-to-end tests for critical user journeys using one of three supported testing approaches. Invoked independently via `/moai e2e`.
+
+### Input
+
+- $ARGUMENTS: Optional flags and test scope
+- --record: Record test execution as GIF or video
+- --url URL: Override base URL for testing
+- --journey NAME: Run specific named journey only
+
+### Phase 1: Testing Tool Selection
+
+Tool: AskUserQuestion (at orchestrator level)
+
+Present three E2E testing approaches to the user:
+
+Option 1 - Claude-in-Chrome (Recommended):
+Browser automation via Claude Code's built-in Chrome extension. No installation needed. Best for interactive testing, visual verification, and GIF recording. Uses MCP tools (navigate, form_input, read_page, get_page_text, gif_creator).
+
+Option 2 - Playwright CLI:
+Industry-standard headless browser testing via CLI. Fastest execution and lowest token consumption. Best for CI/CD integration and repeatable test suites. If not installed, offer to install: `npm init playwright@latest`.
+
+Option 3 - Agent Browser:
+AI-powered browser automation from Vercel Labs (https://github.com/vercel-labs/agent-browser). Best for complex multi-step user journeys with AI reasoning. If not installed, offer to install: `npm install agent-browser`.
+
+After user selects a tool:
+- Check if the selected tool is installed (for Playwright and Agent Browser)
+- If not installed, ask user permission to install via AskUserQuestion
+- If user approves, install using appropriate package manager
+- Verify installation success before proceeding
+
+### Phase 2: Skill Verification
+
+Before proceeding, check if a corresponding skill exists for the selected tool:
+
+- Claude-in-Chrome: Check for `moai-platform-chrome-e2e` or similar skill
+- Playwright: Check for `moai-platform-playwright` or similar skill
+- Agent Browser: Check for `moai-platform-agent-browser` or similar skill
+
+If the skill does NOT exist:
+1. Research the tool's official documentation (WebSearch + WebFetch)
+2. Create a new skill definition following the agent skills standard (using builder-skill subagent)
+3. The skill should include: setup instructions, test writing patterns, assertion methods, best practices
+
+### Phase 3: Journey Identification
+
+Agent: Explore subagent (or expert-testing subagent)
+
+Identify critical user journeys from:
+- SPEC acceptance criteria (if SPEC-ID provided)
+- Application routes and navigation structure
+- Form submissions and data flows
+- Authentication and authorization flows
+
+### Phase 4: Test Plan and Creation
+
+Agent: expert-testing subagent
+
+Create a test plan via AskUserQuestion showing:
+- Identified user journeys (numbered list)
+- Estimated test count per journey
+- Recommended assertion strategy
+
+For each approved journey, generate tests using the selected tool:
+
+**Claude-in-Chrome tests:**
+- mcp__claude-in-chrome__navigate for page navigation
+- mcp__claude-in-chrome__form_input for form interactions
+- mcp__claude-in-chrome__read_page for content verification
+- mcp__claude-in-chrome__get_page_text for text assertions
+- mcp__claude-in-chrome__gif_creator for recording (if --record)
+
+**Playwright CLI tests:**
+- Generate .spec.ts test files with Page Object Model pattern
+- Use playwright test runner configuration
+- Include screenshot and trace on failure
+- Support headed and headless modes
+
+**Agent Browser tests:**
+- Generate test scripts using agent-browser API
+- Leverage AI reasoning for dynamic content handling
+- Include retry logic for flaky elements
+
+### Phase 5: Test Execution and Results
+
+Execute tests using the selected tool and report:
+- Journeys tested: N passed, N failed
+- Recordings/screenshots (if --record or on failure)
+- Failed step details with browser state
+- Recommendations for flaky test prevention
+- Coverage of acceptance criteria (if SPEC-ID provided)
+
+---
+
+Version: 2.3.0
+Updated: 2026-02-21
+Source: Extracted from .claude/commands/moai/2-run.md v5.0.0. Added implementation divergence tracking, development_mode routing (ddd/tdd), team mode support, LSP quality gates, extended quality checks (code complexity, dead code, side effects, code reuse), plan proportionality validation, post-implementation review loop, and standalone workflows for code review, test coverage analysis, and E2E testing.

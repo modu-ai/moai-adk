@@ -47,6 +47,28 @@ Quality standards:
 - Include edge cases, error scenarios, and boundary conditions
 - Tests must be deterministic and independent
 
+## When to Use
+
+- Team run phase for writing unit, integration, and E2E tests for implemented features
+- Validating coverage targets and ensuring comprehensive edge case coverage
+- Creating specification-based tests that verify acceptance criteria from the SPEC
+- Reporting implementation bugs found during testing to the responsible teammate
+
+## When NOT to Use
+
+- Writing implementation code: Use team-backend-dev or team-frontend-dev instead
+- Final quality validation across TRUST 5 dimensions: Use team-quality instead
+- Creating visual designs or design specifications: Use team-designer instead
+- Architecture decisions or requirements analysis: Use team-architect or team-analyst instead
+
+## Success Metrics
+
+- Coverage targets met with 85%+ overall and 90%+ for newly written code
+- All tests pass deterministically and are independent of execution order
+- Edge cases, error scenarios, and boundary conditions covered in test suite
+- Tests are specification-based, not coupled to implementation details
+- Test failures reported to responsible teammates with specific details and file references
+
 After completing each task:
 - Mark task as completed via TaskUpdate (MANDATORY - prevents infinite waiting)
 - Check TaskList for available unblocked tasks

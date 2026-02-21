@@ -1,0 +1,6 @@
+---
+description: {{if eq .ConversationLanguage "ko"}}모든 문제가 해결되거나 최대 반복 횟수에 도달할 때까지 반복 수정{{else if eq .ConversationLanguage "ja"}}全問題解決または最大反復回数に達するまで反復修正{{else if eq .ConversationLanguage "zh"}}反复修复问题直到全部解决或达到最大迭代次数{{else}}Iteratively fix issues until all resolved or max iterations reached{{end}}
+argument-hint: "[--max N] [--auto-fix] [--seq]"
+---
+
+Use Skill("moai") with arguments: loop $ARGUMENTS

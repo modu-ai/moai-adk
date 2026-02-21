@@ -53,7 +53,10 @@ $ARGUMENTS
 
 ## Execution Mode Flags (mutually exclusive)
 
-- `--team`: Force Agent Teams mode for parallel execution
+- `--team`: Force Agent Teams mode for parallel execution. Supports all execution environments:
+  - `moai cc`: Claude-only mode (all agents use Claude models)
+  - `moai glm`: GLM-only mode (all agents use GLM models)
+  - `moai glm --hybrid`: Hybrid mode (Claude leader + GLM workers). IMPORTANT: --hybrid always uses Claude as the leader model regardless of prior mode. If currently in `moai glm` mode, `moai glm --hybrid` MUST first switch to `moai cc` for the leader, then apply GLM only to worker agents (haiku tier).
 - `--solo`: Force sub-agent mode (single agent per phase)
 - No flag: System auto-selects based on complexity thresholds (domains >= 3, files >= 10, or complexity score >= 7)
 
@@ -71,6 +74,11 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **fix**: Auto-fix errors in a single pass
 - **loop**: Iterative auto-fix until completion marker detected
 - **mx**: MX tag scan and annotation for codebase
+- **review** (aliases: code-review): Code review of uncommitted changes
+- **coverage** (aliases: test-coverage): Test coverage analysis and gap filling
+- **e2e**: End-to-end testing with Claude-in-Chrome
+- **clean** (aliases: refactor-clean): Dead code identification and removal
+- **codemaps** (aliases: update-codemaps): Architecture documentation generation
 
 
 ### Priority 2: SPEC-ID Detection
@@ -87,6 +95,11 @@ Only if BOTH Priority 1 AND Priority 2 did not match: Classify the intent of the
 - Documentation language (document, sync, docs, readme, changelog, PR) routes to **sync** or **project**
 - Feedback and bug report language (report, feedback, suggestion, issue) routes to **feedback**
 - MX tag language (mx tag, annotation, code context, legacy annotate) routes to **mx**
+- Code review language (review, check code, quality check, security scan) routes to **review**
+- Coverage language (coverage, test gap, uncovered, untested) routes to **coverage**
+- E2E testing language (e2e, end to end, browser test, user journey) routes to **e2e**
+- Dead code language (clean, dead code, unused, remove unused) routes to **clean**
+- Architecture documentation language (codemap, architecture doc, codebase structure) routes to **codemaps**
 - Implementation language (implement, build, create, add, develop) with clear scope routes to **moai** (default autonomous)
 
 ### Priority 4: Default Behavior
@@ -117,9 +130,9 @@ For detailed orchestration: Read workflows/run.md
 
 ### sync - Documentation Sync and PR
 
-Purpose: Synchronize documentation with code changes and prepare pull requests.
+Purpose: Synchronize documentation, codemaps, and project docs with code changes and prepare pull requests.
 Agents: manager-docs (primary), manager-quality (verification), manager-git (PR creation)
-Phases: Phase 0.5 quality verification, MX tag validation (add missing tags), documentation generation, README/CHANGELOG update, PR creation.
+Phases: Phase 0.5 quality verification, MX tag validation, documentation generation, codemaps sync, README/CHANGELOG update, PR creation.
 Modes: auto (default), force, status, project. Flag: --merge (auto-merge PR), --skip-mx (skip MX tag validation)
 For detailed orchestration: Read workflows/sync.md
 
@@ -128,7 +141,7 @@ For detailed orchestration: Read workflows/sync.md
 Purpose: Autonomously detect and fix LSP errors, linting issues, and type errors.
 Agents: expert-debug (diagnosis), expert-backend/expert-frontend (fixes)
 Phases: Parallel scan (LSP + AST-grep + linters), auto classification (Level 1-4), auto fix (Level 1-2), verification.
-Flags: --dry (preview only), --sequential, --level N (fix depth), --resume, --team (competing hypothesis)
+Flags: --dry (preview only), --seq (sequential scan), --level N (fix depth), --resume, --team (competing hypothesis)
 For detailed orchestration: Read workflows/fix.md
 
 ### loop - Iterative Auto-Fix
@@ -151,7 +164,7 @@ For detailed orchestration: Read workflows/mx.md
 
 Purpose: Full autonomous plan -> run -> sync pipeline. Default when no subcommand matches.
 Agents: Explore, manager-spec, manager-ddd, manager-quality, manager-docs, manager-git
-Phases: Parallel exploration, SPEC generation (user approval), DDD implementation with optional auto-fix loop, documentation sync, completion marker.
+Phases: Parallel exploration, auto-SPEC generation (complexity >= 5), DDD/TDD implementation with optional auto-fix loop, documentation sync, completion marker.
 Flags: --loop (iterative fixing), --max N, --branch, --pr, --resume SPEC-XXX, --team (force team mode), --solo (force sub-agent mode)
 
 **Note**: When no execution mode flag is provided, the system automatically selects based on complexity:
@@ -162,9 +175,9 @@ For detailed orchestration: Read workflows/moai.md
 
 ### project - Project Documentation
 
-Purpose: Generate project documentation by analyzing the existing codebase.
-Agents: Explore (codebase analysis), manager-docs (documentation generation), expert-devops (optional LSP setup)
-Output: product.md, structure.md, tech.md in .moai/project/
+Purpose: Generate project documentation and architecture codemaps by analyzing the existing codebase.
+Agents: Explore (codebase analysis), manager-docs (documentation + codemaps generation), expert-devops (optional LSP setup)
+Output: product.md, structure.md, tech.md, codemaps/ in .moai/project/
 For detailed orchestration: Read workflows/project.md
 
 ### feedback - GitHub Issue Creation
@@ -173,6 +186,48 @@ Purpose: Collect user feedback, bug reports, or feature suggestions and create G
 Agents: manager-quality (feedback collection and issue creation)
 Phases: Analyze feedback type, collect details, create GitHub issue.
 For detailed orchestration: Read workflows/feedback.md
+
+### review - Code Review
+
+Purpose: Comprehensive security and quality review of uncommitted or staged changes.
+Agents: manager-quality (primary, Code Review Mode), expert-backend/frontend/security (fixes)
+Phases: Collect changes via git diff, analyze at 4 severity levels, report with approval recommendation.
+Flags: --staged (staged only), --branch (compare against main), --security (security-only focus)
+For detailed orchestration: Read workflows/run.md (Standalone: Code Review section)
+
+### coverage - Test Coverage Analysis
+
+Purpose: Analyze test coverage, identify gaps, and generate missing tests.
+Agents: expert-testing (primary), Bash (test execution)
+Phases: Run tests with coverage, analyze report, identify gaps, generate tests, verify improvement.
+Flags: --target N (override threshold), --file PATH (specific file), --report (report only, no generation)
+For detailed orchestration: Read workflows/run.md (Standalone: Test Coverage section)
+
+### e2e - End-to-End Testing
+
+Purpose: Create and run E2E tests using one of three approaches: Claude-in-Chrome, Playwright CLI, or Agent Browser.
+Agents: expert-testing (primary), builder-skill (skill creation if needed)
+Phases: Tool selection (AskUserQuestion), skill verification, journey identification, test plan approval, execution, report.
+Flags: --record (recording), --url URL (override base URL), --journey NAME (specific journey)
+Tools: Claude-in-Chrome (built-in), Playwright CLI (fastest, lowest tokens), Agent Browser (AI-powered)
+For detailed orchestration: Read workflows/run.md (Standalone: E2E Testing section)
+
+### clean - Dead Code Removal
+
+Purpose: Identify and safely remove unused code with test verification.
+Agents: expert-refactoring (primary), Bash (test verification)
+Phases: Analyze dead code, classify by safety, remove with test verification, summary.
+Flags: --dry (preview only), --safe-only (auto-remove safe items), --file PATH (specific scope)
+For detailed orchestration: Read workflows/fix.md (Standalone: Dead Code Removal section)
+
+### codemaps - Architecture Documentation
+
+Purpose: Scan codebase and generate architecture documentation in .moai/project/codemaps/, integrated with project docs.
+Agents: manager-docs (primary), Explore (codebase scanning)
+Phases: Scan codebase, generate .moai/project/codemaps/, cross-reference with project docs, diff analysis with 30% threshold.
+Flags: --force (skip diff check), --area AREA (specific codemap only)
+Integration: Auto-generated during /moai project, auto-synced during /moai sync.
+For detailed orchestration: Read workflows/sync.md (Standalone: Architecture Documentation section)
 
 ---
 
@@ -329,6 +384,34 @@ When a workflow is interrupted or needs to continue, use the --resume flag with 
 
 Each phase must pass its results forward to the next phase. Include previous phase outputs in the Task() prompt so the receiving agent has full context without re-analyzing. This ensures semantic continuity across planning, implementation, quality validation, and git operations.
 
+### Recommended Workflow Chains
+
+Common workflow sequences for different development scenarios:
+
+**New Feature Development:**
+1. `/moai plan` - Create SPEC with requirements and risk assessment
+2. `/moai run SPEC-XXX` - Implement with TDD/DDD methodology
+3. `/moai review` - Code quality and security review
+4. `/moai coverage` - Verify test coverage targets
+5. `/moai sync SPEC-XXX` - Documentation and PR
+
+**Bug Fix:**
+1. `/moai fix` or `/moai loop` - Diagnose and fix errors
+2. `/moai review` - Review the fix
+3. `/moai sync` - Document and PR
+
+**Refactoring:**
+1. `/moai plan` - Plan refactoring scope
+2. `/moai clean` - Remove dead code first
+3. `/moai run SPEC-XXX` - Implement refactoring
+4. `/moai review` - Review changes
+5. `/moai coverage` - Ensure no regression
+6. `/moai codemaps` - Update architecture docs
+
+**Documentation Update:**
+1. `/moai codemaps` - Update architecture documentation
+2. `/moai sync` - Synchronize all documentation
+
 ### Team Mode Coordination
 
 When using Agent Teams mode (--team flag), follow these coordination patterns to prevent infinite waiting:
@@ -463,5 +546,5 @@ Use AskUserQuestion to present the user with logical next actions based on the c
 
 ---
 
-Version: 2.0.0
-Last Updated: 2026-02-07
+Version: 2.2.0
+Last Updated: 2026-02-21

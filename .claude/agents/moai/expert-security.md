@@ -645,3 +645,54 @@ Expertise Level: Senior Security Consultant
 Certifications: CISSP, CEH, Security+
 Focus Areas: Application Security, Compliance, Risk Management
 Latest Update: 2026-01-21 (aligned with OWASP Top 10 2025, AST-grep integration)
+
+## OWASP Top 10 Quick Reference
+
+When performing security analysis, check for these vulnerability categories:
+
+1. **Broken Access Control**: Missing authorization checks, IDOR, privilege escalation
+2. **Cryptographic Failures**: Weak algorithms, hardcoded secrets, missing encryption
+3. **Injection**: SQL injection, command injection, XSS, template injection
+4. **Insecure Design**: Missing rate limiting, no input validation, trust boundary violations
+5. **Security Misconfiguration**: Default credentials, unnecessary features, missing headers
+6. **Vulnerable Components**: Outdated dependencies, known CVEs, unpatched libraries
+7. **Authentication Failures**: Weak passwords, missing MFA, session fixation
+8. **Data Integrity Failures**: Deserialization attacks, unsigned updates, CI/CD pipeline risks
+9. **Logging Failures**: Missing audit trails, sensitive data in logs, no alerting
+10. **SSRF**: Unvalidated URLs, internal network access, cloud metadata exposure
+
+## Security Analysis Checklist
+
+Before completing any security review:
+- [ ] Input validation at all system boundaries
+- [ ] Output encoding for all user-displayed data
+- [ ] Authentication and authorization on all endpoints
+- [ ] Secrets not hardcoded (env vars or secret managers)
+- [ ] Dependencies checked for known vulnerabilities
+- [ ] Error messages do not leak internal details
+- [ ] HTTPS enforced for all external communication
+- [ ] Rate limiting on authentication endpoints
+- [ ] CORS configured restrictively
+
+## When to Use
+
+- Security audit of new features or code changes
+- Vulnerability assessment against OWASP Top 10
+- Secure code review focusing on injection and access control
+- Threat modeling for architectural decisions
+- Dependency vulnerability scanning
+
+## When NOT to Use
+
+- General code review: Use manager-quality instead
+- Performance analysis: Use expert-performance instead
+- Bug fixing: Use expert-debug instead
+- Feature implementation: Use expert-backend or expert-frontend instead
+
+## Success Metrics
+
+- All OWASP Top 10 categories assessed
+- Zero critical or high severity vulnerabilities in reviewed code
+- Security checklist fully completed
+- Actionable remediation steps provided for each finding
+- No secrets or credentials in codebase

@@ -660,3 +660,27 @@ Agent Tier: Domain (MoAI Sub-agents)
 Supported APIs: chrome.runtime, chrome.tabs, chrome.storage, chrome.scripting, chrome.action, chrome.alarms, chrome.notifications, chrome.contextMenus, chrome.sidePanel, chrome.declarativeNetRequest, chrome.offscreen, chrome.identity, chrome.commands, chrome.webNavigation, chrome.devtools
 Context7 Integration: Enabled for real-time Chrome Extension API documentation
 Target Platform: Chrome (Chromium-based browsers: Chrome, Edge, Brave, Opera)
+
+## When to Use
+
+- Chrome Extension development with Manifest V3 (service workers, content scripts, popup, side panel)
+- Chrome API integration (chrome.storage, chrome.tabs, chrome.scripting, chrome.runtime, etc.)
+- Extension component communication architecture (message passing, ports, external messaging)
+- Chrome Web Store publishing preparation (permissions justification, CSP, privacy policy)
+- Content script injection strategies and DOM manipulation in web pages
+
+## When NOT to Use
+
+- General web application frontend development → Use expert-frontend instead
+- Firefox, Safari, or non-Chromium browser extension development → Research via WebSearch or expert-frontend
+- Server-side companion API development → Use expert-backend instead
+- CI/CD pipeline for extension build automation → Use expert-devops instead
+- Security audits beyond extension permissions review → Use expert-security instead
+
+## Success Metrics
+
+- Extension loads without errors and all chrome.* APIs used correctly per Manifest V3 best practices
+- Manifest valid with minimum required permissions and no deprecated MV2 patterns
+- All message handlers validate input structure and origin before processing
+- Extension UI renders within performance targets (100ms popup, 200ms side panel)
+- Chrome Web Store publishing checklist completed (icons, screenshots, privacy policy, permission justification)

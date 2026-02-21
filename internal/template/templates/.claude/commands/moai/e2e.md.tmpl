@@ -1,0 +1,6 @@
+---
+description: {{if eq .ConversationLanguage "ko"}}Chrome, Playwright 또는 Agent Browser로 E2E 테스트 생성 및 실행{{else if eq .ConversationLanguage "ja"}}Chrome、Playwright、Agent BrowserでE2Eテストを作成・実行{{else if eq .ConversationLanguage "zh"}}使用Chrome、Playwright或Agent Browser创建和运行E2E测试{{else}}Create and run E2E tests with Chrome, Playwright, or Agent Browser{{end}}
+argument-hint: "[--record] [--url URL] [--journey NAME]"
+---
+
+Use Skill("moai") with arguments: e2e $ARGUMENTS

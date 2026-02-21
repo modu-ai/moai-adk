@@ -1,0 +1,6 @@
+---
+description: {{if eq .ConversationLanguage "ko"}}LSP 오류, 린트 문제, 타입 오류 자동 감지 및 수정{{else if eq .ConversationLanguage "ja"}}LSPエラー、リント問題、型エラーを自動検出して修正{{else if eq .ConversationLanguage "zh"}}自动检测并修复LSP错误、lint问题和类型错误{{else}}Auto-detect and fix LSP errors, linting issues, and type errors{{end}}
+argument-hint: "[--dry] [--seq] [--level N] [--resume] [--team]"
+---
+
+Use Skill("moai") with arguments: fix $ARGUMENTS

@@ -1,0 +1,6 @@
+---
+description: {{if eq .ConversationLanguage "ko"}}테스트 커버리지 분석, 갭 식별 및 누락된 테스트 생성{{else if eq .ConversationLanguage "ja"}}テストカバレッジ分析、ギャップ特定、不足テスト生成{{else if eq .ConversationLanguage "zh"}}分析测试覆盖率、识别差距并生成缺失的测试{{else}}Analyze test coverage, identify gaps, and generate missing tests{{end}}
+argument-hint: "[--target N] [--file PATH] [--report]"
+---
+
+Use Skill("moai") with arguments: coverage $ARGUMENTS

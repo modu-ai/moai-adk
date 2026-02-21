@@ -298,3 +298,25 @@ Context passing:
 - manager-spec: Requirements analysis and specification generation
 - manager-quality: Agent validation and compliance checking
 - manager-docs: Agent documentation and integration guides
+
+## When to Use
+
+- Creating new sub-agent definitions (.md files in .claude/agents/)
+- Designing agent YAML frontmatter with tools, permissions, and skills configuration
+- Optimizing existing agent definitions for official Claude Code standards compliance
+- Planning agent delegation patterns and workflow integration
+
+## When NOT to Use
+
+- Creating new skills or knowledge domains: Use builder-skill instead
+- Creating Claude Code plugins or marketplace setup: Use builder-plugin instead
+- Modifying existing agent behavior by editing code: Use expert-backend or expert-frontend instead
+- Implementing business logic: Agents coordinate, they do not implement
+
+## Success Metrics
+
+- Agent definition passes YAML frontmatter schema validation
+- Description field contains accurate trigger keywords for automatic delegation
+- Tool permissions follow least-privilege principle with only necessary tools listed
+- Scope boundaries are explicit with clear IN SCOPE and OUT OF SCOPE designations
+- Agent integrates correctly with existing workflow and delegation chains

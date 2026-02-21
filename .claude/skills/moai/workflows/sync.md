@@ -466,6 +466,51 @@ Constraints:
 - Preserve existing content and append or modify incrementally
 - Use conversation_language setting for all updates
 
+#### Step 2.2.5.1: Codemaps Synchronization
+
+Purpose: Keep architecture documentation in sync with code changes on every sync operation.
+
+Condition: Execute when `.moai/project/codemaps/` directory exists.
+
+Agent: manager-docs subagent
+
+Process:
+1. Analyze modified files from git diff to identify structural changes
+2. Map changes to codemap areas (backend.md, frontend.md, data.md, architecture.md)
+3. For each affected codemap:
+   - Read current codemap content
+   - Identify sections impacted by code changes
+   - Update affected sections with current code structure
+   - Preserve unchanged sections
+4. If changes are significant (new modules, removed endpoints, schema changes):
+   - Regenerate the affected codemap entirely
+5. Include codemap updates in the sync commit
+
+Skip condition: If `.moai/project/codemaps/` does not exist, skip this step entirely.
+
+#### Step 2.2.6: Stale Documentation Detection
+
+Purpose: Identify potentially outdated documentation before finalizing synchronization.
+
+Procedure:
+
+1. Scan documentation files (README.md, docs/, .moai/project/) for last modification dates
+2. Flag files not modified in 90+ days as potentially stale
+3. Cross-reference with recent code changes:
+   - If code in a documented area changed but docs did not: likely stale
+   - If docs reference files or functions that no longer exist: definitely stale
+4. Present stale documentation list to user:
+   - File path
+   - Last modified date
+   - Reason flagged (age-based or reference-based)
+   - Suggested action (update, review, or archive)
+
+Configuration:
+- Stale threshold: 90 days (configurable via .moai/config/sections/quality.yaml)
+- Skip patterns: CHANGELOG.md, LICENSE (rarely need updates)
+
+Output: Stale documentation findings are included in the sync report and optionally surfaced in the PR description.
+
 #### Step 2.3: Post-Sync Quality Verification
 
 Agent: manager-quality subagent
@@ -677,6 +722,74 @@ All of the following must be verified:
 
 ---
 
-Version: 3.1.0
-Updated: 2026-02-13
-Source: Extracted from .claude/commands/moai/3-sync.md v3.4.0. Added SPEC divergence analysis, project document updates, SPEC lifecycle awareness, team mode section, LSP quality gates, strategy-aware git delivery, and deployment readiness check (Phase 0) with test verification, migration detection, environment changes, and backward compatibility assessment.
+## Standalone: Architecture Documentation (/moai codemaps)
+
+Purpose: Scan codebase structure and generate token-efficient architecture documentation integrated with project documentation. Invoked independently via `/moai codemaps`.
+
+### Integration with Project Documentation
+
+Codemaps are stored in `.moai/project/codemaps/` to serve as contextual reference alongside product.md, structure.md, and tech.md. This enables MoAI agents to load architecture context when planning and implementing features.
+
+### Input
+
+- $ARGUMENTS: Optional flags
+- --force: Regenerate all codemaps regardless of diff threshold
+- --area AREA: Generate specific codemap only (architecture, backend, frontend, data)
+
+### Phase 1: Codebase Scan
+
+Agent: Explore subagent
+
+Scan project structure to map:
+- Directory hierarchy and module organization
+- Entry points and main modules
+- API endpoints and route definitions
+- Database models and schemas
+- Frontend component tree (if applicable)
+- Key dependency relationships
+
+### Phase 2: Codemap Generation
+
+Agent: manager-docs subagent
+
+Generate `.moai/project/codemaps/` directory with:
+
+- architecture.md: High-level system overview, component relationships, data flow
+- backend.md: API endpoints, services, middleware, database access patterns
+- frontend.md: Component hierarchy, state management, routing (if applicable)
+- data.md: Database schema, models, migrations, data relationships
+
+Constraints per file:
+- Maximum 500 lines per codemap file
+- Focus on structure and relationships, not implementation details
+- Use Mermaid diagrams for visual relationships where helpful
+- Token-efficient format: bullet points over prose
+
+Cross-reference with project documents:
+- Link to structure.md for directory explanations
+- Link to tech.md for technology stack details
+- Link to product.md for feature context
+
+### Phase 3: Diff Analysis (unless --force)
+
+If `.moai/project/codemaps/` already exists:
+- Compare generated content with existing codemaps
+- Calculate diff percentage per file
+- If diff < 30%: Skip update (content is current enough)
+- If diff >= 30%: Update the codemap file
+- Report which files were updated and why
+
+### Phase 4: Summary
+
+Display codemap generation results:
+- Files generated or updated: N
+- Files skipped (below diff threshold): N
+- Total lines across all codemaps: N
+- Areas covered: architecture, backend, frontend, data
+- Integration status: linked with project docs in .moai/project/
+
+---
+
+Version: 3.3.0
+Updated: 2026-02-21
+Source: Extracted from .claude/commands/moai/3-sync.md v3.4.0. Added SPEC divergence analysis, project document updates, SPEC lifecycle awareness, team mode section, LSP quality gates, strategy-aware git delivery, deployment readiness check (Phase 0), stale documentation detection, standalone architecture documentation (codemaps) workflow, and codemaps synchronization integration.

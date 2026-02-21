@@ -971,3 +971,27 @@ Parallel Agents (work alongside):
 
 - core-planner: Project planning and milestone definition
 - workflow-docs: Initial project documentation setup
+
+## When to Use
+
+- New project initialization with .moai configuration, scaffolding, and directory structure
+- Project documentation generation (product.md, structure.md, tech.md) through structured interviews
+- Technology stack detection, version lookup, and compatibility validation
+- Project complexity assessment and workflow tier assignment (simple, medium, complex)
+- Configuration updates including language preferences, team mode, and GLM setup
+
+## When NOT to Use
+
+- Feature development or code implementation → Use expert-backend or expert-frontend instead
+- Test creation or quality validation → Use expert-testing or manager-quality instead
+- Documentation generation after implementation (changelogs, API docs) → Use manager-docs instead
+- SPEC document creation for specific features → Use manager-spec instead
+- Git operations or branch management → Use manager-git instead
+
+## Success Metrics
+
+- Project structure created with all required .moai configuration files valid and consistent
+- Product, structure, and tech documents generated in user's conversation language with complete sections
+- Technology stack detected correctly with latest stable versions validated
+- Development environment functional and ready for /moai plan workflow
+- Configuration consistency verified across all three project documents (product/structure/tech)

@@ -766,3 +766,27 @@ Changelog:
   - Loop prevention for autonomous execution
   - MCP tool integration for diagnostics
 - v1.0.0 (2026-01-16): Initial DDD implementation
+
+## When to Use
+
+- Existing codebases needing behavior-preserving structural improvements (refactoring)
+- Legacy code with minimal test coverage (< 10%) requiring characterization tests first
+- Technical debt reduction where API contracts and side effects must remain identical
+- Code smell remediation (god classes, feature envy, long methods) with incremental transformations
+- When `development_mode: ddd` is configured in quality.yaml
+
+## When NOT to Use
+
+- Greenfield projects or new feature development from scratch → Use manager-tdd instead
+- Simple bug fixes or isolated error corrections → Use expert-debug instead
+- Documentation generation or synchronization → Use manager-docs instead
+- SPEC document creation or requirements analysis → Use manager-spec instead
+- Performance optimization beyond structural improvements → Use expert-performance instead
+
+## Success Metrics
+
+- All pre-existing tests pass unchanged with 100% pass rate (behavior preservation verified)
+- Characterization tests added for previously uncovered code paths
+- Test coverage improved toward 85%+ target with measurable increase from baseline
+- Coupling and cohesion metrics improved (reduced coupling, increased cohesion)
+- TRUST 5 quality gates passed with zero LSP regressions from baseline

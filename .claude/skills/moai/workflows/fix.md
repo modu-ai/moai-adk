@@ -37,7 +37,7 @@ Flow: Parallel Scan -> Classify -> Fix -> Verify -> Report
 ## Supported Flags
 
 - --dry (alias --dry-run): Preview only, no changes applied
-- --sequential (alias --seq): Sequential scan instead of parallel
+- --seq (alias --sequential): Sequential scan instead of parallel
 - --level N: Maximum fix level to apply (default 3)
 - --errors (alias --errors-only): Fix errors only, skip warnings
 - --security (alias --include-security): Include security issues in scan
@@ -76,7 +76,7 @@ Language auto-detection uses indicator files: pyproject.toml (Python), package.j
 
 Error handling: If any scanner fails, continue with results from successful scanners. Note the failed scanner in the report.
 
-If --sequential flag: Run LSP, then AST-grep, then Linter sequentially.
+If --seq flag: Run LSP, then AST-grep, then Linter sequentially.
 
 ## Phase 2: Classification
 
@@ -101,6 +101,26 @@ Execution order:
 - Level 2 fixes applied automatically with logging
 - Level 3 fixes require AskUserQuestion approval, then delegated to agent
 - Level 4 fixes listed in report as manual action items
+
+### Incremental Fix Strategy
+
+When auto-fixing errors, apply the one-at-a-time discipline:
+
+1. Sort errors by severity (Critical first, then type errors, then lint errors)
+2. For each error:
+   a. Show error context (5 lines before and after)
+   b. Explain the problem
+   c. Apply the minimal fix (smallest possible change)
+   d. Re-run diagnostics to verify the fix
+   e. Confirm the fix did not introduce new errors
+   f. Move to the next error
+3. Stop conditions:
+   - A fix introduces new errors: rollback the fix and report to user
+   - Same error persists after 3 attempts: skip and report to user
+   - User requests stop
+   - All errors resolved
+
+This incremental approach prevents cascading failures from batch fixes.
 
 If --dry flag: Display preview of all classified issues and exit without changes.
 
@@ -196,7 +216,7 @@ Team Prerequisites:
 
 ## Execution Summary
 
-1. Parse arguments (extract flags: --dry, --sequential, --level, --errors, --security, --resume)
+1. Parse arguments (extract flags: --dry, --seq, --level, --errors, --security, --resume)
 2. If --resume: Load snapshot and continue from saved state
 3. Detect project language from indicator files
 4. Execute parallel scan (LSP + AST-grep + Linter)
@@ -212,5 +232,75 @@ Team Prerequisites:
 
 ---
 
-Version: 2.0.0
-Source: fix.md command v2.2.0
+## Standalone: Dead Code Removal (/moai clean)
+
+Purpose: Identify and safely remove unused code, imports, functions, and files with test verification. Invoked independently via `/moai clean`.
+
+### Input
+
+- $ARGUMENTS: Optional flags
+- --dry: Preview only, no changes applied
+- --safe-only: Only remove Safe-classified items automatically
+- --file PATH: Scope analysis to specific file or directory
+
+### Phase 1: Dead Code Analysis
+
+Agent: expert-refactoring subagent
+
+Detect unused code across the project:
+
+- Unused imports: Import statements not referenced in the file
+- Unused functions: Exported functions with no callers (verified via Grep)
+- Unused variables: Declared but unreferenced variables
+- Unused types: Type definitions not referenced elsewhere
+- Orphaned files: Source files not imported by any other module
+- Unused dependencies: Package dependencies not imported in source code
+
+Language-specific detection:
+- Go: `go vet`, unused import detection, unexported function analysis
+- TypeScript/JavaScript: AST-grep patterns, import analysis
+- Python: ruff rules for unused imports/variables
+- Rust: compiler warnings for dead code
+
+### Phase 2: Safety Classification
+
+Classify each finding:
+
+- Safe: No external consumers, private/internal scope, zero callers confirmed
+  - Examples: unused private function, unused local variable, unused import
+- Caution: Low usage but may have external consumers or reflection usage
+  - Examples: exported function with 0 direct callers but possible reflection/interface usage
+- Danger: Cannot safely determine usage scope
+  - Examples: public API endpoint, dynamically referenced code, plugin interface
+
+### Phase 3: Removal with Verification
+
+For Safe items:
+- Remove automatically
+- Run tests after each removal to verify no regression
+- If tests fail: rollback removal and reclassify as Caution
+
+For Caution items (unless --safe-only):
+- Present to user via AskUserQuestion with context
+- Remove only with user approval
+- Run tests after removal
+
+For Danger items:
+- Report only, never auto-remove
+- Include in report with explanation
+
+If --dry flag: Display classification report and exit without changes.
+
+### Phase 4: Summary Report
+
+Display removal summary:
+- Items found: N (Safe: N, Caution: N, Danger: N)
+- Items removed: N
+- Tests status: all passing / N failures
+- Lines of code removed: N
+- Files deleted: N
+
+---
+
+Version: 2.1.0
+Source: fix.md command v2.2.0. Added incremental fix strategy and standalone dead code removal workflow.
