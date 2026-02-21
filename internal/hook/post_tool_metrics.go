@@ -31,8 +31,32 @@ type taskMetricsRecord struct {
 	DurationSeconds float64 `json:"duration_seconds"`
 }
 
+// resolveProjectRoot returns the MoAI project root for task metrics logging.
+// It prefers CLAUDE_PROJECT_DIR (set by the Claude Code hook system when invoking
+// hook scripts) over input.CWD. Returns empty string when the resolved path does
+// not already contain a .moai/ directory, preventing accidental creation of .moai/
+// in subdirectories or unrelated directories.
+func resolveProjectRoot(input *HookInput) string {
+	root := os.Getenv("CLAUDE_PROJECT_DIR")
+	if root == "" {
+		root = input.CWD
+	}
+	if root == "" {
+		return ""
+	}
+	// Guard: only write to directories that are already MoAI project roots.
+	// This prevents creating .moai/ in non-project directories when CWD is a
+	// subdirectory (e.g., internal/cli/) rather than the project root.
+	if _, err := os.Stat(filepath.Join(root, ".moai")); err != nil {
+		return ""
+	}
+	return root
+}
+
 // logTaskMetrics parses a Task tool response and appends a metrics record to
-// .moai/logs/task-metrics.jsonl relative to input.CWD.
+// .moai/logs/task-metrics.jsonl in the MoAI project root.
+// The project root is resolved via resolveProjectRoot to prevent creating .moai/
+// directories in non-project locations.
 // All errors are best-effort: logged with slog.Warn, never returned.
 func logTaskMetrics(input *HookInput) {
 	if len(input.ToolResponse) == 0 {
@@ -72,7 +96,16 @@ func logTaskMetrics(input *HookInput) {
 	}
 	line = append(line, '\n')
 
-	logDir := filepath.Join(input.CWD, ".moai", "logs")
+	projectRoot := resolveProjectRoot(input)
+	if projectRoot == "" {
+		slog.Debug("task metrics: skipping, no MoAI project root found",
+			"session_id", input.SessionID,
+			"cwd", input.CWD,
+		)
+		return
+	}
+
+	logDir := filepath.Join(projectRoot, ".moai", "logs")
 	if err := os.MkdirAll(logDir, 0o755); err != nil {
 		slog.Warn("task metrics: failed to create log directory",
 			"path", logDir,

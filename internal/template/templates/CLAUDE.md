@@ -380,28 +380,28 @@ TeammateIdle (exit 2 = keep working), TaskCompleted (exit 2 = reject completion)
 
 For complete Agent Teams documentation including team API reference, agent roster, file ownership strategy, team workflows, and configuration, see @.claude/rules/moai/workflow/spec-workflow.md and @.moai/config/sections/workflow.yaml.
 
-### GLM Worker Mode (Cost Optimization)
+### CG Mode (Claude + GLM Cost Optimization)
 
-MoAI-ADK supports GLM Worker Mode for 60-70% cost reduction on implementation-heavy tasks:
+MoAI-ADK supports CG Mode for 60-70% cost reduction on implementation-heavy tasks via tmux Agent Teams:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  LEADER (User-selected Claude model)                        │
-│  - Orchestrates workflow                                     │
-│  - Delegates tasks via Task()                                │
+│  LEADER (Claude, current tmux pane)                         │
+│  - Orchestrates workflow (no GLM env)                        │
+│  - Delegates tasks via Agent Teams                           │
 │  - Reviews results                                           │
 └──────────────────────┬──────────────────────────────────────┘
-                       │ SendMessage / Task()
+                       │ Agent Teams (tmux panes)
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  WORKER (GLM-5 in isolated worktree)                        │
-│  - Executes implementation tasks                            │
-│  - Full access to codebase                                  │
-│  - Returns structured results                                │
+│  TEAMMATES (GLM, new tmux panes)                            │
+│  - Inherit GLM env from tmux session                        │
+│  - Execute implementation tasks                              │
+│  - Full access to codebase                                   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Activation**: `moai cg` (requires tmux) or via `.moai/config/sections/llm.yaml` configuration.
+**Activation**: `moai cg` (requires tmux). Uses tmux session-level env isolation.
 
 **When to use**:
 - Implementation-heavy SPECs (run phase)

@@ -284,13 +284,33 @@ go test -run TestEnsureGlobalSettingsEnv ./internal/cli/
 
 ### Test Isolation
 
-Some tests use `t.TempDir()` for isolation:
+**[HARD] All test temp directories MUST be created under `/tmp` and cleaned up automatically.**
+
+Use `t.TempDir()` for all temporary directories. It creates dirs under `os.TempDir()` and registers automatic cleanup.
+
 ```go
 func TestSomething(t *testing.T) {
-    tempDir := t.TempDir()  // Auto-cleanup after test
+    tempDir := t.TempDir()  // Auto-cleanup after test - ALWAYS use this
     // Work in tempDir instead of project root
 }
 ```
+
+**Why this matters - `filepath.Join` vs absolute paths:**
+
+On macOS, `t.TempDir()` returns paths starting with `/var/folders/...`.
+Go's `filepath.Join(cwd, absPath)` does NOT strip the leading `/` from the second arg:
+```
+filepath.Join("/a/b", "/var/folders/x") = "/a/b/var/folders/x"  // WRONG!
+filepath.Abs("/var/folders/x") = "/var/folders/x"                // CORRECT
+```
+
+Always use `filepath.Abs()` when resolving user-supplied paths in CLI commands.
+Never use `filepath.Join(cwd, userPath)` when `userPath` can be absolute.
+
+**Root cause of `internal/cli/var/` pollution (fixed 2026-02-22):**
+- `init.go` used `filepath.Join(cwd, args[0])` where `args[0]` was an absolute path
+- This created `internal/cli/var/folders/.../TestRunInit_NonInteractive*/` directories
+- Fixed by replacing `filepath.Join(cwd, targetDir)` with `filepath.Abs(targetDir)`
 
 ### Coverage Targets
 
@@ -645,8 +665,8 @@ ls -la internal/template/embedded.go
 ├─────────────────────────────────────────────────────────────────┤
 │  3. CG Mode (CLI Command)                                       │
 │  ├── Commands: moai cg, moai glm, moai cc                       │
-│  ├── Mechanism: Worktree-based environment isolation             │
-│  └── Purpose: Claude Leader + GLM Workers cost optimization     │
+│  ├── Mechanism: tmux pane-level environment isolation            │
+│  └── Purpose: Claude Leader + GLM Teammates cost optimization   │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -727,13 +747,13 @@ GLM은 `~/.claude/settings.json`의 환경 변수 오버라이드로 설정됩�
 |---------|-------------------|--------|
 | `moai cc` | No GLM env vars | Claude-only (opus/sonnet/haiku) |
 | `moai glm` | All GLM env vars | GLM-only (glm-4.7-air/glm-4.7/glm-5) |
-| `moai cg` | Worktree isolation + GLM env for workers | Claude Leader + GLM Workers |
+| `moai cg` | tmux session env + GLM env for teammates | Claude Leader + GLM Teammates |
 
 **CG Mode 작동 방식:**
 1. `moai glm <api-key>` 실행 (API 키 저장, 최초 1회)
 2. `moai cg` 실행
 3. 리더 세션은 Claude 유지 (GLM env 자동 제거)
-4. 팀원은 worktree 격리 환경에서 GLM으로 실행
+4. 팀원은 tmux 새 pane에서 GLM env 상속하여 실행
 
 ```bash
 # Claude-only mode (default)
@@ -746,7 +766,7 @@ moai glm                   # settings.json에 모든 GLM env 설정
 
 # CG mode (Claude Leader + GLM Workers)
 moai glm sk-xxx            # API 키 저장 (최초 1회)
-moai cg                    # worktree 격리 (자동 GLM 리셋 포함)
+moai cg                    # tmux env 격리 (자동 GLM 리셋 포함)
 /moai run SPEC-XXX         # Leader: Claude, Workers: GLM
 ```
 
@@ -855,9 +875,9 @@ llm:
 
 1. **Model field**: Use `inherit`, `high`, `medium`, `low` only
 2. **GLM access**: Via `moai glm` or `moai cg` CLI, NOT model field
-3. **CG mode**: Claude Leader + GLM Workers (worktree-based isolation)
-4. **Worktree isolation**: `isolation: worktree` in agent definition
-5. **Claude -w**: Default mechanism for agent worktree isolation
+3. **CG mode**: Claude Leader + GLM Teammates (tmux pane-level env isolation)
+4. **Worktree isolation**: `isolation: worktree` in agent definition (Claude Code native)
+5. **tmux**: Required for CG mode (pane-level env isolation for API separation)
 
 ---
 

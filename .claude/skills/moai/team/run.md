@@ -1,17 +1,18 @@
 ---
 name: moai-workflow-team-run
 description: >
-  Implement SPEC requirements using Leader + Worker architecture.
-  Supports GLM Worker Mode (cost-effective) and Agent Teams Mode (parallel).
-  GLM mode uses worktree isolation for Leader/Worker separation.
-  Agent Teams mode uses file ownership for parallel teammate coordination.
+  Implement SPEC requirements using team-based architecture.
+  Supports CG Mode (Claude leader + GLM teammates via tmux) and
+  Agent Teams Mode (all same API, parallel teammates).
+  CG mode uses tmux pane-level env isolation for API separation.
+  Agent Teams mode uses file ownership for parallel coordination.
 user-invocable: false
 metadata:
-  version: "2.5.0"
+  version: "3.0.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-21"
-  tags: "run, team, glm, worktree, implementation, parallel"
+  updated: "2026-02-22"
+  tags: "run, team, glm, tmux, implementation, parallel, agent-teams"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -25,11 +26,12 @@ triggers:
   agents: ["team-backend-dev", "team-frontend-dev", "team-tester"]
   phases: ["run"]
 ---
-# Workflow: Team Run - GLM Worker Mode
+# Workflow: Team Run - Implementation with Agent Teams
 
-Purpose: Implement SPEC requirements using Leader (current Claude model) + Worker (GLM-5) architecture with worktree isolation.
+Purpose: Implement SPEC requirements using team-based architecture with parallel
+teammates. Supports CG Mode (Claude + GLM) and standard Agent Teams Mode.
 
-Flow: Mode Detection -> Plan (Leader) -> Run (GLM-5 Worker) -> Merge (Leader) -> Sync (Leader)
+Flow: Mode Detection -> Plan (Leader) -> Run (Agent Teams) -> Quality (Leader) -> Sync (Leader)
 
 ## Mode Selection
 
@@ -38,48 +40,35 @@ Before executing this workflow, check `.moai/config/sections/llm.yaml`:
 | team_mode | Execution Mode | Description |
 |-----------|---------------|-------------|
 | (empty) | Sub-agent | Single session, Task() subagents |
-| glm | GLM Worker | Opus Leader + GLM-5 Worker in worktree |
-| agent-teams | Agent Teams | Parallel teammates with file ownership |
+| cg | CG Mode | Claude Leader + GLM Teammates via tmux |
+| agent-teams | Agent Teams | All same API, parallel teammates |
 
-- If `team_mode == "glm"`: Use this workflow (GLM Worker Mode)
-- If `team_mode == "agent-teams"`: See Agent Teams Mode section below
-- If `team_mode == ""`: Fall back to sub-agent mode (run.md)
+- If `team_mode == "cg"`: Use CG Mode section below
+- If `team_mode == "agent-teams"`: Use Agent Teams Mode section below
+- If `team_mode == ""`: Fall back to sub-agent mode (workflows/run.md)
 
-## Overview
+---
 
-This workflow enables cost-effective development by combining:
-- **Leader (current Claude model)**: SPEC creation, merge, review, documentation - uses your selected model (Opus, Sonnet, etc.)
-- **Worker (GLM-5)**: Cost-effective implementation in isolated worktree
+## CG Mode (Claude Leader + GLM Teammates)
 
-Cost savings: Run phase typically uses ~70% of total tokens. Using GLM-5 for this phase reduces overall cost by 60-70%.
+### Overview
 
-## Prerequisites
+CG mode uses tmux pane-level environment isolation:
+- **Leader (Claude)**: Runs in the original tmux pane with no GLM env vars
+- **Teammates (GLM)**: Spawn in new tmux panes that inherit GLM env from tmux session
 
-- `moai cg` has been run (team_mode="cg" in llm.yaml)
-- Claude Code session started with `claude` (runs on Opus)
-- GLM API key saved via `moai glm <key>` or set in GLM_API_KEY env
+This is standard Agent Teams with `CLAUDE_CODE_TEAMMATE_DISPLAY=tmux`, where
+the tmux session has GLM env vars injected by `moai cg`.
 
-## Phase 0: Mode Detection
+### Prerequisites
 
-Read `.moai/config/sections/llm.yaml` to determine execution mode:
+- `moai cg` has been run inside tmux (team_mode="cg" in llm.yaml)
+- Claude Code started in the SAME pane where `moai cg` was run
+- GLM API key saved via `moai glm <key>` or `GLM_API_KEY` env
 
-| team_mode | Execution Mode | Description |
-|-----------|---------------|-------------|
-| (empty) | Sub-agent | Single session, Task() subagents |
-| glm | GLM Worker | Opus Leader + GLM-5 Worker in worktree |
+### Phase 1: Plan (Leader on Claude)
 
-Detection steps:
-```
-1. Read .moai/config/sections/llm.yaml
-2. If team_mode == "glm": proceed with GLM Worker mode (this workflow)
-3. If team_mode == "": fall back to sub-agent mode (see run.md)
-```
-
-## Phase 1: Plan (Leader - Current Session)
-
-The Leader (running on your selected Claude model) creates the SPEC document.
-
-### Steps
+The Leader creates the SPEC document using Claude's reasoning capabilities.
 
 1. **Delegate to manager-spec subagent**:
    ```
@@ -93,259 +82,164 @@ The Leader (running on your selected Claude model) creates the SPEC document.
 
 2. **User Approval** via AskUserQuestion:
    - Approve SPEC and proceed to implementation
-   - Request modifications (specify which section)
+   - Request modifications
    - Cancel workflow
 
 3. **Output**: `.moai/specs/SPEC-XXX/spec.md`
 
-### Why Leader for Plan
+### Phase 2: Run (Agent Teams — Teammates on GLM)
 
-SPEC documents define architecture and requirements. Quality at this stage prevents costly rework. Your selected Claude model (Opus for complex projects, Sonnet for standard work) provides appropriate reasoning for design decisions.
+Teammates execute implementation in parallel using GLM via Z.AI API.
 
-## Phase 2: Run (GLM-5 Worker in Worktree)
+#### 2.1 Team Setup
 
-The Worker implements the SPEC using GLM-5 in an isolated git worktree.
-
-### 2.1 Prepare Worker Environment
-
-1. **Read GLM configuration** from llm.yaml:
-   - base_url: `https://api.z.ai/api/anthropic`
-   - models: opus=glm-5, sonnet=glm-4.7, haiku=glm-4.7-flashx
-   - env_var: `GLM_API_KEY`
-
-2. **Read API key**:
-   - From `~/.moai/.env.glm` (saved by `moai glm`)
-   - Or from environment variable `GLM_API_KEY`
-
-3. **Build worker prompt** from SPEC:
+1. Create team:
    ```
-   You are implementing SPEC-XXX.
-
-   SPEC Location: .moai/specs/SPEC-XXX/spec.md
-
-   Requirements:
-   {extract_requirements_from_spec}
-
-   Instructions:
-   1. Read the SPEC document carefully
-   2. Follow TDD methodology: write tests first, then implement
-   3. Implement all requirements listed in the SPEC
-   4. Run tests to verify: go test -race ./...
-   5. Run lint: golangci-lint run
-   6. Ensure 85%+ code coverage
-   7. Commit all changes with conventional commit format
-   8. Reference SPEC-XXX in commit message
-
-   When complete, all tests should pass and the implementation should match the SPEC requirements.
+   TeamCreate(team_name: "moai-run-SPEC-XXX")
    ```
 
-### 2.2 Spawn Worker via Bash
+2. Create shared task list with dependencies:
+   ```
+   TaskCreate: "Implement data models and schema" (no deps)
+   TaskCreate: "Implement API endpoints" (blocked by data models)
+   TaskCreate: "Implement UI components" (blocked by API)
+   TaskCreate: "Write unit and integration tests" (blocked by API + UI)
+   TaskCreate: "Quality validation - TRUST 5" (blocked by all above)
+   ```
 
-Execute worker using Bash tool with background execution:
+#### 2.2 Spawn Teammates
 
-```bash
-# Worker command with GLM environment
-env \
-  ANTHROPIC_AUTH_TOKEN="$GLM_API_KEY" \
-  ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic" \
-  ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5" \
-  ANTHROPIC_DEFAULT_SONNET_MODEL="glm-4.7" \
-  ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.7-flashx" \
-  API_TIMEOUT_MS="3000000" \
-  claude -w worker-SPEC-XXX \
-    -p "IMPLEMENTATION_PROMPT_HERE" \
-    --output-format text \
-    > .moai/team/worker-SPEC-XXX.log 2>&1 &
+Spawn teammates using Task() with team_name. Because `CLAUDE_CODE_TEAMMATE_DISPLAY=tmux`
+is set, each teammate spawns in a new tmux pane. New panes inherit GLM env vars
+from the tmux session, routing them through Z.AI API.
 
-echo "Worker PID: $!"
+```
+Task(
+  subagent_type: "team-backend-dev",
+  team_name: "moai-run-SPEC-XXX",
+  name: "backend-dev",
+  mode: "acceptEdits",
+  prompt: "You are backend-dev on team moai-run-SPEC-XXX.
+    Implement backend tasks from the shared task list.
+    SPEC: .moai/specs/SPEC-XXX/spec.md
+    Follow TDD methodology. Claim tasks via TaskUpdate.
+    Mark tasks completed when done. Send results via SendMessage."
+)
+
+Task(
+  subagent_type: "team-frontend-dev",
+  team_name: "moai-run-SPEC-XXX",
+  name: "frontend-dev",
+  mode: "acceptEdits",
+  prompt: "You are frontend-dev on team moai-run-SPEC-XXX.
+    Implement frontend tasks from the shared task list.
+    SPEC: .moai/specs/SPEC-XXX/spec.md
+    Follow TDD methodology. Claim tasks via TaskUpdate.
+    Mark tasks completed when done. Send results via SendMessage."
+)
+
+Task(
+  subagent_type: "team-tester",
+  team_name: "moai-run-SPEC-XXX",
+  name: "tester",
+  mode: "acceptEdits",
+  prompt: "You are tester on team moai-run-SPEC-XXX.
+    Write tests for implemented features.
+    SPEC: .moai/specs/SPEC-XXX/spec.md
+    Own all *_test.go files exclusively.
+    Mark tasks completed when done. Send results via SendMessage."
+)
 ```
 
-**Key points**:
-- `env VAR=val ...` sets environment ONLY for the claude process
-- `claude -w worker-SPEC-XXX` creates worktree at `.claude/worktrees/worker-SPEC-XXX/`
-- `-p "..."` runs headless with the given prompt
-- Background `&` allows Leader to continue
+All teammates spawn in parallel in separate tmux panes.
 
-### 2.3 Monitor Worker Progress
+#### 2.3 Monitor and Coordinate
 
-1. **Poll for completion**:
+MoAI monitors teammate progress:
+
+1. **Receive messages automatically** (no polling needed)
+2. **Handle idle notifications**:
+   - Check TaskList to verify work status
+   - If complete: Send shutdown_request
+   - If work remains: Send new instructions
+   - NEVER ignore idle notifications
+3. **Handle plan approval** (if require_plan_approval: true):
+   - Respond with plan_approval_response immediately
+4. **Forward information** between teammates as needed
+
+#### 2.4 Teammate Completion
+
+When teammates complete:
+- All tasks marked completed in shared TaskList
+- Tests passing within each teammate's scope
+- Changes committed (teammates with `isolation: worktree` commit to their branches)
+
+### Phase 3: Quality (Leader on Claude)
+
+Leader validates quality using Claude's analysis:
+
+1. Run quality gates:
    ```bash
-   # Check if worktree has new commits
-   git log worktree-worker-SPEC-XXX --oneline -1
-
-   # Or check if process is still running
-   ps -p $WORKER_PID
+   go test -race ./...
+   golangci-lint run
+   go test -cover ./...
    ```
 
-2. **Read worker log**:
-   ```bash
-   tail -f .moai/team/worker-SPEC-XXX.log
-   ```
+2. SPEC verification:
+   - Read SPEC acceptance criteria
+   - Verify all requirements implemented
+   - If gaps found: create follow-up tasks or assign to teammates
 
-3. **Timeout handling**:
-   - Default timeout: 30 minutes
-   - If exceeded, warn user and offer options:
-     - Continue waiting
-     - Check worker status
-     - Abort and merge partial work
+3. TRUST 5 validation via manager-quality subagent
 
-### 2.4 Worker Completion
+### Phase 4: Sync and Cleanup (Leader on Claude)
 
-When worker completes:
-- All tests pass in worktree
-- Changes committed to branch `worktree-worker-SPEC-XXX`
-- Log file shows completion message
+#### 4.1 Documentation
 
-## Phase 3: Merge (Leader - Current Session)
-
-The Leader integrates worker changes with quality validation.
-
-### 3.1 Merge Worktree Branch
-
-```bash
-# Fetch worktree changes
-git fetch origin worktree-worker-SPEC-XXX
-
-# Merge with main
-git merge worktree-worker-SPEC-XXX --no-ff -m "feat(scope): implement SPEC-XXX
-
-Implemented by GLM-5 Worker in worktree.
-
-SPEC: .moai/specs/SPEC-XXX/spec.md
-"
-```
-
-### 3.2 Handle Conflicts
-
-If merge conflicts occur:
-1. Leader (current model) analyzes conflicts
-2. Auto-resolves if straightforward
-3. Otherwise, presents to user via AskUserQuestion with options:
-   - Accept worker changes
-   - Keep main changes
-   - Manual resolution
-
-### 3.3 Quality Validation
-
-Run quality gates:
-
-```bash
-# Tests
-go test -race ./...
-
-# Lint
-golangci-lint run
-
-# Coverage
-go test -cover ./...
-```
-
-**Quality gates must pass**:
-- Zero test failures
-- Zero lint errors
-- 85%+ coverage maintained
-
-### 3.4 SPEC Verification
-
-Verify all SPEC requirements are implemented:
-- Read SPEC acceptance criteria
-- Check implementation matches requirements
-- If gaps found, either:
-  - Create follow-up tasks
-  - Re-run worker with refined prompt
-
-## Phase 4: Sync & Cleanup (Leader - Current Session)
-
-### 4.1 Documentation
-
-Delegate to manager-docs subagent:
 ```
 Task(
   subagent_type: "manager-docs",
   prompt: "Generate documentation for SPEC-XXX implementation.
-           Update CHANGELOG.md with feature description.
-           Update README.md if API changes."
+           Update CHANGELOG.md and README.md as needed."
 )
 ```
 
-### 4.2 Worktree Cleanup
+#### 4.2 Team Shutdown
 
-```bash
-# Remove worktree (claude -w auto-cleans on exit, but verify)
-git worktree remove worker-SPEC-XXX --force
-
-# Delete branch
-git branch -D worktree-worker-SPEC-XXX
+```
+SendMessage(type: "shutdown_request", recipient: "backend-dev", content: "Phase complete")
+SendMessage(type: "shutdown_request", recipient: "frontend-dev", content: "Phase complete")
+SendMessage(type: "shutdown_request", recipient: "tester", content: "Phase complete")
 ```
 
-### 4.3 Report Summary
+Wait for shutdown_response from each, then:
+```
+TeamDelete
+```
+
+#### 4.3 Report Summary
 
 Present completion report to user:
 - SPEC ID and description
 - Files modified
 - Tests added/modified
 - Coverage achieved
-- Documentation updated
+- Cost savings estimate (GLM vs Claude)
 
-## Error Recovery
+### CG Mode Error Recovery
 
-### Worker Fails
-
-1. Check worker log for errors
-2. Options:
-   - Retry with refined prompt
-   - Fall back to sub-agent mode
-   - User manual intervention
-
-### Merge Conflicts
-
-1. Leader attempts auto-resolution
-2. Complex conflicts: user choice
-3. Worst case: abort merge, manual resolution
-
-### Quality Gate Failures
-
-1. Identify failing tests/lint errors
-2. Options:
-   - Create fix task for worker
-   - Leader implements fixes directly
-   - User manual intervention
-
-## Multiple Workers (Advanced)
-
-For large SPECs with independent components:
-
-1. Split SPEC into sub-SPECs
-2. Spawn multiple workers in parallel:
-   - `worker-SPEC-XXX-api`
-   - `worker-SPEC-XXX-ui`
-   - `worker-SPEC-XXX-tests`
-3. Each worker in separate worktree
-4. Merge sequentially by dependency order
-
-## Comparison with Agent Teams Mode
-
-| Aspect | GLM Worker Mode | Agent Teams Mode |
-|--------|----------------|------------------|
-| APIs | Claude + GLM-5 | Single API (all same) |
-| Isolation | Git worktree | File ownership convention |
-| Coordination | Sequential (spawn -> wait -> merge) | Parallel (SendMessage) |
-| Cost | Lower (GLM for implementation) | Higher (all same model) |
-| Quality | Leader reviews all changes | All teammates share quality |
-
-## Fallback
-
-If GLM Worker mode fails at any point:
-1. Log error details
-2. Clean up worktree
-3. Fall back to sub-agent mode (run.md)
-4. Continue from last successful phase
+| Failure | Recovery |
+|---------|----------|
+| Teammate spawn failure | Fall back to sub-agent mode |
+| tmux pane crash | Check teammate status, respawn if needed |
+| Quality gate failure | Leader creates fix task |
+| Merge conflicts (worktree) | Leader resolves or user choice |
 
 ---
 
 ## Agent Teams Mode
 
-When `team_mode == "agent-teams"` in llm.yaml, use parallel teammates instead of GLM Worker.
+When `team_mode == "agent-teams"` in llm.yaml, use parallel teammates all on the same API.
 
 ### Phase 1: Team Setup
 
@@ -423,5 +317,26 @@ SendMessage(type: "plan_approval_response", request_id: "{id}", recipient: "{nam
 
 ---
 
-Version: 2.1.0 (Added Agent Teams Mode)
-Last Updated: 2026-02-20
+## Comparison
+
+| Aspect | CG Mode | Agent Teams Mode | Sub-agent Mode |
+|--------|---------|------------------|----------------|
+| APIs | Claude + GLM | Single (all same) | Single |
+| Cost | Lowest | Highest | Medium |
+| Parallelism | Parallel (tmux panes) | Parallel (in-process/tmux) | Sequential |
+| Quality | Highest (Claude reviews) | High | High |
+| Requires tmux | Yes | No (optional) | No |
+| Isolation | tmux env + optional worktree | File ownership + optional worktree | None |
+
+## Fallback
+
+If team mode fails at any point:
+1. Log error details
+2. Clean up team (TeamDelete) if created
+3. Fall back to sub-agent mode (workflows/run.md)
+4. Continue from last successful phase
+
+---
+
+Version: 3.0.0 (tmux Agent Teams CG Mode)
+Last Updated: 2026-02-22

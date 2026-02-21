@@ -1,17 +1,17 @@
 ---
 name: moai-workflow-team
 description: >
-  GLM Worker mode for MoAI-ADK. Enables Leader (current Claude model) + Worker (GLM-5)
-  architecture with git worktree isolation. Leader creates SPEC on your selected model,
-  Worker implements on GLM-5, Leader merges and documents. 60-70% cost
-  reduction for implementation-heavy tasks.
+  CG (Claude + GLM) hybrid mode for MoAI-ADK. Uses tmux pane-level environment
+  isolation so the Leader session runs on Claude API while Agent Teams teammates
+  spawn in new tmux panes that inherit GLM env vars from the tmux session.
+  60-70% cost reduction for implementation-heavy tasks.
 user-invocable: false
 metadata:
-  version: "2.5.0"
+  version: "3.0.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-21"
-  tags: "team, glm, worktree, cost-effective, parallel"
+  updated: "2026-02-22"
+  tags: "team, glm, tmux, cost-effective, agent-teams, cg"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -21,202 +21,181 @@ progressive_disclosure:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords: ["--team", "team mode", "glm worker", "worktree"]
+  keywords: ["--team", "team mode", "glm worker", "cg mode", "tmux"]
   agents: ["moai"]
   phases: ["run"]
 ---
 
-# MoAI GLM Worker Mode
+# MoAI CG Mode (Claude + GLM via tmux Agent Teams)
 
 ## Overview
 
-GLM Worker mode combines your selected Claude model with GLM-5 (cost effective) for optimal development workflow:
+CG mode combines Claude (leader) with GLM (teammates) using tmux pane-level
+environment isolation. The leader session stays on Claude API for high-quality
+planning and review, while Agent Teams teammates spawn in new tmux panes that
+inherit GLM env vars — routing them through Z.AI's cost-effective GLM API.
 
 ```
-User runs: moai cg
+User runs: moai glm sk-xxx     (save API key, once)
+User runs: tmux new -s moai    (start tmux session)
+User runs: moai cg             (configure CG mode)
     │
-    ├── team_mode="cg" saved to llm.yaml
+    ├── Validates tmux session (required)
+    ├── Removes GLM env from settings.local.json
+    │   → Leader (this pane) uses Claude API
+    ├── Injects GLM env into tmux session env
+    │   → New panes inherit GLM env → Z.AI API
+    ├── Sets CLAUDE_CODE_TEAMMATE_DISPLAY=tmux
+    ├── Sets CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
+    └── Saves team_mode: cg to llm.yaml
+
+User runs: claude              (leader on Claude, in THIS pane)
+User runs: /moai --team "task"
     │
-User runs: claude (starts on your selected model)
-    │
-User runs: /moai --team "Add user auth"
-    │
-    ├── PHASE 1: PLAN (Leader)
+    ├── PHASE 1: PLAN (Leader on Claude)
     │   └── manager-spec creates SPEC
     │
-    ├── PHASE 2: RUN (GLM-5 Worker)
-    │   ├── Leader spawns Worker via Bash
-    │   │   env ANTHROPIC_*=... claude -w worker-SPEC-XXX -p "..."
-    │   ├── Worker implements in worktree
-    │   └── Worker commits changes
+    ├── PHASE 2: RUN (Agent Teams — teammates on GLM)
+    │   ├── TeamCreate → teammates spawn in new tmux panes
+    │   ├── New panes inherit GLM env from tmux session
+    │   ├── Teammates run on Z.AI GLM API
+    │   ├── File ownership prevents write conflicts
+    │   └── Teammates complete tasks and report
     │
-    ├── PHASE 3: MERGE (Leader)
-    │   ├── git merge worktree branch
-    │   ├── Run tests, lint
-    │   └── Quality validation
+    ├── PHASE 3: QUALITY (Leader on Claude)
+    │   └── manager-quality validates TRUST 5
     │
-    └── PHASE 4: SYNC (Leader)
-        ├── Documentation
-        └── Worktree cleanup
+    └── PHASE 4: SYNC (Leader on Claude)
+        └── Documentation and PR
 ```
+
+## How It Works
+
+The key mechanism is **tmux session-level environment variables**:
+
+1. `tmux set-environment` injects GLM vars at the session level
+2. The CURRENT pane is NOT affected (leader stays on Claude)
+3. Only NEW panes inherit session-level env vars
+4. Agent Teams with `CLAUDE_CODE_TEAMMATE_DISPLAY=tmux` spawns teammates in new panes
+5. Result: Leader = Claude API, Teammates = Z.AI GLM API
+
+This is NOT headless mode. Teammates run as full interactive Claude Code
+sessions in their own tmux panes, visible via `tmux list-panes`.
 
 ## Cost Benefit
 
 | Phase | Tokens | Model | Cost |
 |-------|--------|-------|------|
-| Plan | 30K | Leader (your model) | Standard |
-| Run | 180K | GLM-5 | Cost effective |
-| Merge | 20K | Leader (your model) | Standard |
-| Sync | 40K | Leader (your model) | Standard |
+| Plan | 30K | Leader (Claude) | Standard |
+| Run | 180K | Teammates (GLM) | Cost effective |
+| Quality | 20K | Leader (Claude) | Standard |
+| Sync | 40K | Leader (Claude) | Standard |
 
-**Result**: Run phase uses ~70% of tokens. GLM-5 for Run = 60-70% overall cost reduction.
+**Result**: Run phase uses ~70% of tokens. GLM for Run = 60-70% overall cost reduction.
 
 ## LLM Mode Detection
 
 Read `.moai/config/sections/llm.yaml` for `team_mode` value:
 
-| team_mode | Execution Mode | Leader | Worker |
-|-----------|---------------|--------|--------|
+| team_mode | Execution Mode | Leader | Teammates |
+|-----------|---------------|--------|-----------|
 | (empty) | Sub-agent | Current session | Task() subagents |
-| glm | GLM Worker | Current Claude model | GLM-5 in worktree |
+| cg | CG Mode | Claude (this pane) | GLM (new tmux panes) |
+| glm | GLM-only | GLM | GLM |
 
 Detection steps:
 1. Read `.moai/config/sections/llm.yaml`
-2. If `team_mode == "glm"`: Activate GLM Worker mode (this skill)
-3. If `team_mode == ""`: Fall back to sub-agent mode
+2. If `team_mode == "cg"`: Activate CG mode (this skill)
+3. If `team_mode == "glm"`: All-GLM mode (no hybrid)
+4. If `team_mode == ""`: Fall back to sub-agent mode
 
 ## Prerequisites
 
-Before using `/moai --team`:
-
-1. **Save GLM API key** (CLI):
+1. **Save GLM API key** (once):
    ```bash
    moai glm sk-your-glm-api-key
    ```
    Or set `GLM_API_KEY` environment variable.
 
-2. **Enable CG mode** (CLI):
+2. **Start tmux session** (required for CG mode):
+   ```bash
+   tmux new -s moai
+   ```
+
+3. **Enable CG mode** (inside tmux):
    ```bash
    moai cg
    ```
-   This saves `team_mode: cg` to llm.yaml and configures worktree-based isolation.
 
-3. **Start Claude Code**:
+4. **Start Claude Code in the SAME pane** (critical):
    ```bash
    claude
    ```
-   This starts on your selected Claude model because settings.local.json was NOT modified.
+   Starting Claude in a NEW pane would make it inherit GLM env.
 
-4. **Run workflow**:
+5. **Run workflow**:
    ```
    /moai --team "Your task description"
    ```
 
-## Worker Spawning
+## tmux Environment Variables
 
-The Leader spawns a GLM-5 worker via Bash:
+`moai cg` injects these into the tmux session:
 
-```bash
-env \
-  ANTHROPIC_AUTH_TOKEN="$GLM_API_KEY" \
-  ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic" \
-  ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5" \
-  ANTHROPIC_DEFAULT_SONNET_MODEL="glm-4.7" \
-  ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.7-flashx" \
-  API_TIMEOUT_MS="3000000" \
-  claude -w worker-SPEC-XXX \
-    -p "Implement SPEC at .moai/specs/SPEC-XXX/spec.md
-        Follow TDD methodology.
-        Commit when done." \
-    --output-format text \
-    > .moai/team/worker-SPEC-XXX.log 2>&1 &
-```
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| ANTHROPIC_AUTH_TOKEN | GLM API key | Z.AI authentication |
+| ANTHROPIC_BASE_URL | https://api.z.ai/api/anthropic | Z.AI endpoint |
+| ANTHROPIC_DEFAULT_OPUS_MODEL | glm-5 | Opus model override |
+| ANTHROPIC_DEFAULT_SONNET_MODEL | glm-4.7 | Sonnet model override |
+| ANTHROPIC_DEFAULT_HAIKU_MODEL | glm-4.7-flashx | Haiku model override |
 
-**Key concepts**:
-- `env VAR=val command` sets environment ONLY for that command
-- `claude -w NAME` creates worktree at `.claude/worktrees/NAME/`
-- `-p "..."` runs headless with prompt
-- `&` backgrounds the process
+These are set via `tmux set-environment` (session-level, not global).
 
-## Worktree Isolation
+## Agent Teams Integration
 
-Each worker operates in its own git worktree:
+CG mode uses standard Agent Teams with tmux display:
 
-```
-project-root/
-├── .claude/
-│   └── worktrees/
-│       ├── worker-SPEC-AUTH-001/    # Worker 1 worktree
-│       │   └── ... (implementation files)
-│       └── worker-SPEC-API-002/     # Worker 2 worktree
-│           └── ... (implementation files)
-└── .moai/
-    └── team/
-        ├── worker-SPEC-AUTH-001.log  # Worker 1 log
-        └── worker-SPEC-API-002.log   # Worker 2 log
-```
+- `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` enables Agent Teams
+- `CLAUDE_CODE_TEAMMATE_DISPLAY=tmux` makes teammates spawn in tmux panes
+- Each teammate gets its own pane → inherits GLM env → uses Z.AI API
+- Leader stays in the original pane → no GLM env → uses Claude API
 
-**Branch naming**: `worktree-worker-SPEC-XXX`
+Agent model mapping in CG mode:
 
-**Cleanup**: Automatic on `moai cc` or manual via `git worktree remove`
-
-## Merge Process
-
-After worker completes:
-
-1. **Fetch and merge**:
-   ```bash
-   git fetch origin worktree-worker-SPEC-XXX
-   git merge worktree-worker-SPEC-XXX --no-ff
-   ```
-
-2. **Quality gates**:
-   ```bash
-   go test -race ./...
-   golangci-lint run
-   ```
-
-3. **Conflict resolution**: Leader (Opus) handles or presents to user
-
-## Multiple Workers
-
-For large SPECs with independent components:
-
-```
-/moai --team "Add user auth with API and UI"
-    │
-    ├── SPEC split: AUTH-API, AUTH-UI, AUTH-TESTS
-    │
-    ├── Spawn workers in parallel:
-    │   ├── worker-SPEC-AUTH-API    (GLM-5)
-    │   ├── worker-SPEC-AUTH-UI     (GLM-5)
-    │   └── worker-SPEC-AUTH-TESTS  (GLM-5)
-    │
-    └── Sequential merge by dependency
-```
+| Agent | Pane | API | Model |
+|-------|------|-----|-------|
+| Leader (MoAI) | Original | Claude | User's choice (Opus/Sonnet) |
+| team-backend-dev | New pane | Z.AI | glm-5 / glm-4.7 |
+| team-frontend-dev | New pane | Z.AI | glm-5 / glm-4.7 |
+| team-tester | New pane | Z.AI | glm-5 / glm-4.7 |
+| team-researcher | New pane | Z.AI | glm-4.7-flashx |
+| team-quality | New pane | Z.AI | glm-4.7-flashx |
 
 ## Error Recovery
 
 | Failure | Recovery |
 |---------|----------|
-| Worker timeout | Extend, check log, or abort |
-| Worker failure | Check log, retry with refined prompt, or sub-agent fallback |
-| Merge conflict | Opus auto-resolves or user choice |
-| Quality gate failure | Create fix task or manual intervention |
+| Not in tmux | Error: "CG mode requires a tmux session" |
+| No API key | Error: "Run moai glm <api-key> first" |
+| Teammate spawn failure | Falls back to sub-agent mode |
+| tmux env injection failure | Fatal for CG mode (retry tmux session) |
+| Quality gate failure | Leader creates fix task or manual intervention |
 
 ## Comparison with Other Modes
 
-| Aspect | GLM Worker | Sub-agent | Agent Teams |
-|--------|-----------|-----------|-------------|
-| APIs | Claude + GLM | Single | Single |
-| Cost | Lowest | Medium | Highest |
-| Quality | High (Leader review) | High | High |
-| Parallelism | Sequential | Sequential | Parallel |
-| Isolation | Worktree | None | File ownership |
+| Aspect | CG Mode | GLM-only Mode | Sub-agent Mode | Agent Teams Mode |
+|--------|---------|---------------|----------------|------------------|
+| APIs | Claude + GLM | GLM only | Claude only | Claude only |
+| Cost | Lowest | Low | Medium | Highest |
+| Quality | Highest (Claude leads) | Medium | High | High |
+| Parallelism | Parallel (Agent Teams) | Parallel (Agent Teams) | Sequential | Parallel |
+| Requires tmux | Yes | No (recommended) | No | No |
+| Isolation | tmux panes | tmux panes / in-process | None | File ownership |
 
 ## Cleanup
 
-When done with team mode:
+When done with CG mode:
 
 ```bash
 moai cc
@@ -224,11 +203,11 @@ moai cc
 
 This command:
 - Removes GLM env from settings.local.json
-- Resets team_mode to empty
-- Cleans up moai worktrees
-- Deletes worker logs
+- Unsets tmux session GLM env vars
+- Resets team_mode to empty in llm.yaml
+- Restores standard Claude-only operation
 
 ---
 
-Version: 2.0.0 (GLM Worker Mode)
-Last Updated: 2026-02-20
+Version: 3.0.0 (tmux Agent Teams CG Mode)
+Last Updated: 2026-02-22

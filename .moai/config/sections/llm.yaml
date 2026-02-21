@@ -1,6 +1,6 @@
 llm:
     mode: ""
-    team_mode: cg
+    team_mode: ""
     glm_env_var: GLM_API_KEY
     performance_tier: ""
     claude_models:

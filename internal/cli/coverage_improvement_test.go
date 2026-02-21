@@ -1979,7 +1979,7 @@ func TestEnableTeamMode_Success_CG(t *testing.T) {
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("GLM_API_KEY", "sk-test-key")
-	t.Setenv("TMUX", "") // not in tmux
+	t.Setenv("TMUX", "/tmp/tmux-501/default,12345,0") // CG mode requires tmux
 
 	oldWd, _ := os.Getwd()
 	if err := os.Chdir(tmpDir); err != nil {

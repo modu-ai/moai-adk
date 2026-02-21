@@ -104,12 +104,13 @@ func TestLogTaskMetrics(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name        string
-		input       *HookInput
-		wantFile    bool // whether task-metrics.jsonl should be created
-		wantTokens  int
-		wantTools   int
-		wantSeconds float64
+		name         string
+		input        *HookInput
+		setupMoaiDir bool // whether to pre-create .moai/ so resolveProjectRoot accepts tmpDir
+		wantFile     bool // whether task-metrics.jsonl should be created
+		wantTokens   int
+		wantTools    int
+		wantSeconds  float64
 	}{
 		{
 			name: "task tool with valid metrics creates JSONL record",
@@ -118,10 +119,21 @@ func TestLogTaskMetrics(t *testing.T) {
 				ToolName:     "Task",
 				ToolResponse: json.RawMessage(`{"status":"completed","output":"done","metrics":{"tokensUsed":12450,"toolUses":8,"durationSeconds":45.2}}`),
 			},
-			wantFile:    true,
-			wantTokens:  12450,
-			wantTools:   8,
-			wantSeconds: 45.2,
+			setupMoaiDir: true,
+			wantFile:     true,
+			wantTokens:   12450,
+			wantTools:    8,
+			wantSeconds:  45.2,
+		},
+		{
+			name: "task tool with valid metrics but no .moai dir writes no file",
+			input: &HookInput{
+				SessionID:    "sess-metrics-guard",
+				ToolName:     "Task",
+				ToolResponse: json.RawMessage(`{"status":"completed","output":"done","metrics":{"tokensUsed":100,"toolUses":1,"durationSeconds":1.0}}`),
+			},
+			setupMoaiDir: false,
+			wantFile:     false,
 		},
 		{
 			name: "task tool with missing metrics field writes no file",
@@ -156,8 +168,16 @@ func TestLogTaskMetrics(t *testing.T) {
 			t.Parallel()
 
 			// Use a temp directory as CWD for isolation.
+			// CLAUDE_PROJECT_DIR is not set in normal test runs, so resolveProjectRoot
+			// falls back to input.CWD. Pre-create .moai/ when the test expects success.
 			tmpDir := t.TempDir()
 			tt.input.CWD = tmpDir
+
+			if tt.setupMoaiDir {
+				if err := os.MkdirAll(filepath.Join(tmpDir, ".moai"), 0o755); err != nil {
+					t.Fatalf("pre-create .moai: %v", err)
+				}
+			}
 
 			logPath := filepath.Join(tmpDir, ".moai", "logs", "task-metrics.jsonl")
 
@@ -306,6 +326,10 @@ func TestPostToolHandler_Handle_TaskToolRoutesToLogTaskMetrics(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
+	// Pre-create .moai/ so resolveProjectRoot accepts tmpDir as a MoAI project root.
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai"), 0o755); err != nil {
+		t.Fatalf("pre-create .moai: %v", err)
+	}
 	h := NewPostToolHandler()
 	ctx := context.Background()
 
@@ -356,6 +380,10 @@ func TestLogTaskMetrics_AppendMultipleRecords(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
+	// Pre-create .moai/ so resolveProjectRoot accepts tmpDir as a MoAI project root.
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai"), 0o755); err != nil {
+		t.Fatalf("pre-create .moai: %v", err)
+	}
 
 	for i := range 3 {
 		input := &HookInput{

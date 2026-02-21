@@ -722,6 +722,10 @@ func TestPostToolHandler_Handle_TaskTool_ValidMetrics(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
+	// Pre-create .moai/ so resolveProjectRoot accepts tmpDir as a MoAI project root.
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai"), 0o755); err != nil {
+		t.Fatalf("pre-create .moai: %v", err)
+	}
 	input := &HookInput{
 		SessionID:    "sess-task-valid",
 		CWD:          tmpDir,

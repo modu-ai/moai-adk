@@ -493,6 +493,54 @@ func TestEnableTeamModeCGRequiresAPIKey(t *testing.T) {
 	}
 }
 
+// TestEnableTeamModeCGRequiresTmux verifies that CG mode fails with
+// a helpful error when not inside a tmux session (even with API key present).
+func TestEnableTeamModeCGRequiresTmux(t *testing.T) {
+	// NOTE: Do NOT set MOAI_TEST_MODE here. This test validates the tmux
+	// requirement check (glm.go:111), which is bypassed by MOAI_TEST_MODE=1.
+	// The function returns an error before reaching any downstream code.
+
+	// Explicitly unset TMUX to simulate running outside tmux
+	t.Setenv("TMUX", "")
+
+	// Provide a valid API key so we get past the API key check
+	t.Setenv("GLM_API_KEY", "test-tmux-required-key")
+
+	projectRoot := t.TempDir()
+	sectionsDir := filepath.Join(projectRoot, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(projectRoot); err != nil {
+		t.Fatal(err)
+	}
+
+	err := enableTeamMode(cgCmd, true)
+	if err == nil {
+		t.Fatal("enableTeamMode(isHybrid=true) should fail without tmux")
+	}
+
+	errMsg := err.Error()
+
+	// Should mention tmux requirement
+	if !strings.Contains(errMsg, "tmux") {
+		t.Errorf("error should mention 'tmux', got: %v", err)
+	}
+
+	// Should suggest starting tmux
+	if !strings.Contains(errMsg, "tmux new") {
+		t.Errorf("error should suggest 'tmux new', got: %v", err)
+	}
+
+	// Should suggest moai glm as alternative
+	if !strings.Contains(errMsg, "moai glm") {
+		t.Errorf("error should mention 'moai glm' alternative, got: %v", err)
+	}
+}
+
 // TestEnableTeamModeCGInTmux verifies that CG mode (Claude + GLM) succeeds
 // inside a tmux session and correctly configures settings.local.json.
 func TestEnableTeamModeCGInTmux(t *testing.T) {
