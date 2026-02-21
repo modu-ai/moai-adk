@@ -1,5 +1,5 @@
 ---
-description: Scan codebase and generate architecture documentation in codemaps/
+description: Scan codebase and generate architecture documentation in .moai/project/codemaps/
 argument-hint: "[--force] [--area AREA]"
 ---
 

@@ -5,18 +5,13 @@ description: >
   architecture with git worktree isolation. Leader creates SPEC on your selected model,
   Worker implements on GLM-5, Leader merges and documents. 60-70% cost
   reduction for implementation-heavy tasks.
-license: Apache-2.0
-compatibility: Designed for Claude Code
-allowed-tools: Task Bash Read Grep Glob AskUserQuestion
 user-invocable: false
 metadata:
-  version: "2.0.0"
+  version: "2.5.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-20"
-  modularized: "false"
+  updated: "2026-02-21"
   tags: "team, glm, worktree, cost-effective, parallel"
-  related-skills: "moai-workflow-spec, moai-workflow-run"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:

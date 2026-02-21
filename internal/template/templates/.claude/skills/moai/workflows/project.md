@@ -2,17 +2,16 @@
 name: moai-workflow-project
 description: >
   Generates project documentation from codebase analysis or user input.
-  Creates product.md, structure.md, and tech.md in .moai/project/ directory.
+  Creates product.md, structure.md, and tech.md in .moai/project/ directory,
+  plus architecture maps in .moai/project/codemaps/ directory.
   Supports new and existing project types with LSP server detection.
   Use when initializing projects or generating project documentation.
-license: Apache-2.0
-compatibility: Designed for Claude Code
 user-invocable: false
 metadata:
-  version: "2.0.0"
+  version: "2.5.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-07"
+  updated: "2026-02-21"
   tags: "project, documentation, initialization, codebase-analysis, setup"
 
 # MoAI Extension: Progressive Disclosure
@@ -30,7 +29,7 @@ triggers:
 
 # Workflow: project - Project Documentation Generation
 
-Purpose: Generate project documentation through smart questions and codebase analysis. Creates product.md, structure.md, and tech.md in .moai/project/ directory.
+Purpose: Generate project documentation through smart questions and codebase analysis. Creates product.md, structure.md, and tech.md in .moai/project/ directory, plus architecture documentation in .moai/project/codemaps/ directory.
 
 This workflow is also triggered automatically when project documentation does not exist and the user requests other workflows (plan, run, sync, etc.). See SKILL.md Step 2.5 for the auto-detection mechanism.
 
@@ -204,6 +203,31 @@ Output Files:
 
 ---
 
+## Phase 3.3: Codemaps Generation
+
+Purpose: Generate architecture documentation in `.moai/project/codemaps/` directory based on codebase analysis results from Phase 1.
+
+[HARD] This phase runs automatically after Phase 3 documentation generation.
+
+Agent Chain:
+- Explore subagent: Analyze codebase architecture (reuse Phase 1 results if available)
+- manager-docs subagent: Generate codemaps documentation files
+
+Output Files (in `.moai/project/codemaps/` directory):
+- overview.md: High-level architecture summary, design patterns, system boundaries
+- modules.md: Module descriptions, responsibilities, public interfaces
+- dependencies.md: Dependency graph, external packages, internal module relationships
+- entry-points.md: Application entry points, CLI commands, API routes, event handlers
+- data-flow.md: Data flow paths, request lifecycle, state management patterns
+
+Skip Conditions:
+- New projects with no existing code (Phase 0.5 path): Skip codemaps generation, create placeholder `.moai/project/codemaps/overview.md` with project goals only
+- User explicitly requests skip via AskUserQuestion in Phase 2
+
+For detailed codemaps generation process, delegate to codemaps workflow (workflows/codemaps.md).
+
+---
+
 ## Phase 3.5: Development Environment Check
 
 Goal: Verify LSP servers are installed for the detected technology stack.
@@ -293,6 +317,7 @@ Next Steps (AskUserQuestion):
 - Phase 0-2: MoAI orchestrator (AskUserQuestion for all user interaction)
 - Phase 1: Explore subagent (codebase analysis)
 - Phase 3: manager-docs subagent (documentation generation)
+- Phase 3.3: Explore + manager-docs subagents (codemaps generation via codemaps workflow)
 - Phase 3.5: expert-devops subagent (optional LSP installation)
 - Phase 3.7: MoAI orchestrator (automatic development_mode configuration, no user interaction)
 

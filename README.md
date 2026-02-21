@@ -469,7 +469,7 @@ All subcommands are invoked within Claude Code as `/moai <subcommand>`.
 
 | Subcommand | Aliases | Purpose | Key Flags |
 |------------|---------|---------|-----------|
-| `project` | `init` | Generate project docs (product.md, structure.md, tech.md, codemaps/) | — |
+| `project` | `init` | Generate project docs (product.md, structure.md, tech.md, .moai/project/codemaps/) | — |
 | `mx` | — | Scan codebase and add @MX code-level annotations | `--all`, `--dry`, `--priority P1-P4`, `--force`, `--team` |
 | `codemaps` | `update-codemaps` | Generate architecture docs in `.moai/project/codemaps/` | `--force`, `--area AREA` |
 | `feedback` | `fb`, `bug`, `issue` | Collect user feedback and create GitHub issues | — |
@@ -720,7 +720,7 @@ func LoadConfig() (*Config, error) {
 }
 ```
 
-### Configuration (`.mx.yaml`)
+### Configuration (`.moai/config/sections/mx.yaml`)
 
 ```yaml
 thresholds:

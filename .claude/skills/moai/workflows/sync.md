@@ -5,14 +5,12 @@ description: >
   and finalizes pull requests. Third step of the Plan-Run-Sync workflow.
   Includes SPEC divergence analysis and project document updates.
   Use when documentation sync, PR creation, or quality verification is needed.
-license: Apache-2.0
-compatibility: Designed for Claude Code
 user-invocable: false
 metadata:
-  version: "1.1.0"
+  version: "2.5.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-03"
+  updated: "2026-02-21"
   tags: "sync, documentation, pull-request, quality, verification, pr"
 
 # MoAI Extension: Progressive Disclosure
@@ -83,6 +81,7 @@ The `project` mode performs comprehensive project-wide synchronization:
    - Updates `.moai/project/tech.md` when new dependencies/technologies added
    - Updates `.moai/project/structure.md` when architecture changes
    - Updates `.moai/project/product.md` when new features added
+   - Updates `.moai/project/codemaps/` when architecture changes detected (delegates to codemaps workflow)
    - Updates README.md to reflect current project state
 
 4. **Comprehensive Quality Verification**:
@@ -112,6 +111,7 @@ Before execution, load these essential files:
 - .moai/config/sections/language.yaml (git_commit_messages setting)
 - .moai/specs/ directory listing (SPEC documents for sync)
 - .moai/project/ directory listing (project documents for conditional update)
+- .moai/project/codemaps/ directory listing (architecture maps for conditional update)
 - README.md (current project documentation)
 
 Pre-execution commands: git status, git diff, git branch, git log, find .moai/specs.
@@ -460,6 +460,7 @@ Tasks for manager-docs:
 - If new dependencies added: Update tech.md with new technology stack entries and rationale
 - If new features implemented: Update product.md with new feature descriptions and use cases
 - If architectural changes: Update structure.md with revised architecture patterns
+- If architectural changes: Regenerate .moai/project/codemaps/ via codemaps workflow (workflows/codemaps.md) when significant structural changes (new directories, dependency graph changes, or module reorganization) are detected
 
 Constraints:
 - Only update sections relevant to detected changes (do not regenerate entire files)
@@ -649,7 +650,7 @@ Tool: AskUserQuestion with options tailored to delivery result:
 
 The sync phase always uses sub-agent mode (manager-docs), even when --team is active for other phases. Documentation synchronization requires sequential consistency and a single authoritative view of project state.
 
-For rationale and details, see workflows/team-sync.md.
+For rationale and details, see team/sync.md.
 
 ---
 

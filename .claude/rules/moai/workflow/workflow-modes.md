@@ -118,7 +118,7 @@ Both methodologies include @MX tag management:
 | `@MX:TODO` | Missing test | SPEC not implemented |
 | `@MX:NOTE` | Complex logic | Business rule discovered |
 | `@MX:WARN` | Complexity >= 15 | Goroutine without context |
-| `@MX:ANCHOR` | fan_in >= 5 | Public API boundary |
+| `@MX:ANCHOR` | fan_in >= 3 | Public API boundary |
 
 ## Methodology Selection Guide
 

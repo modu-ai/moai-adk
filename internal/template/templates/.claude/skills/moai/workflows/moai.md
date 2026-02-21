@@ -4,14 +4,12 @@ description: >
   Full autonomous plan-run-sync pipeline. Default workflow when no subcommand
   is specified. Handles parallel exploration, SPEC generation, DDD/TDD
   implementation with optional auto-fix loop, and documentation sync.
-license: Apache-2.0
-compatibility: Designed for Claude Code
 user-invocable: false
 metadata:
-  version: "2.0.0"
+  version: "2.5.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-07"
+  updated: "2026-02-22"
   tags: "moai, autonomous, pipeline, plan-run-sync, default"
 
 # MoAI Extension: Progressive Disclosure
@@ -32,6 +30,8 @@ triggers:
 Purpose: Full autonomous workflow. User provides a goal, MoAI autonomously executes plan -> run -> sync pipeline. This is the default workflow when no subcommand is specified.
 
 Flow: Explore -> Plan -> Run -> Sync -> Done
+
+For phase overview, token budgets, and phase transitions, see: @.claude/rules/moai/workflow/spec-workflow.md
 
 ## Supported Flags
 
@@ -70,17 +70,20 @@ constitution:
 | **Refactoring existing code** | DDD | TDD (with brownfield pre-RED analysis) |
 | **Bug fix in existing code** | DDD | TDD |
 
-*DDD adapts for greenfield (ANALYZE requirements → PRESERVE with spec tests → IMPROVE)
+*DDD adapts for greenfield (ANALYZE requirements -> PRESERVE with spec tests -> IMPROVE)
 
 **Agent Selection**:
 - **TDD cycle**: `manager-tdd` subagent (RED-GREEN-REFACTOR)
 - **DDD cycle**: `manager-ddd` subagent (ANALYZE-PRESERVE-IMPROVE)
+
+For methodology details, see: @.claude/rules/moai/workflow/workflow-modes.md
 
 ## Phase 0: Parallel Exploration
 
 Launch three agents simultaneously in a single response for 2-3x speedup (15-30s vs 45-90s).
 
 Agent 1 - Explore (subagent_type Explore):
+- If .moai/project/codemaps/ exists: Use as architecture baseline to accelerate exploration (skip redundant scanning)
 - Codebase analysis for task context
 - Relevant files, architecture patterns, existing implementations
 
@@ -160,36 +163,14 @@ When --team flag is provided or auto-selected (based on complexity thresholds in
 - Phase 3 sync: Always sub-agent mode (manager-docs)
 
 For team orchestration details:
-- Plan phase: See workflows/team-plan.md
-- Run phase: See workflows/team-run.md
-- Sync rationale: See workflows/team-sync.md
+- Plan phase: See team/plan.md
+- Run phase: See team/run.md
+- Sync rationale: See team/sync.md
 
 Mode selection:
 - --team: Force team mode for all applicable phases
 - --solo: Force sub-agent mode
 - No flag (default): System auto-selects based on complexity thresholds (domains >= 3, files >= 10, or score >= 7)
-
-## Task Tracking
-
-[HARD] Task management tools mandatory for all task tracking:
-- When issues discovered: TaskCreate with pending status
-- Before starting work: TaskUpdate with in_progress status
-- After completing work: TaskUpdate with completed status
-- Never output TODO lists as text
-
-## Safe Development Protocol
-
-All implementation follows CLAUDE.md Section 7 Safe Development Protocol:
-- Approach-first: Explain approach before writing code
-- Multi-file decomposition: Split work when modifying 3+ files
-- Post-implementation review: List potential issues and suggest tests
-- Reproduction-first: Write failing test before fixing bugs
-
-## Completion Markers
-
-AI must add a marker when work is complete:
-- `<moai>DONE</moai>` - Task complete
-- `<moai>COMPLETE</moai>` - Full completion
 
 ## Execution Summary
 
@@ -205,12 +186,12 @@ AI must add a marker when work is complete:
 6. Routing decision (single-domain direct delegation vs full workflow)
 7. TaskCreate for discovered tasks
 8. User confirmation via AskUserQuestion
-9. **Phase 1 (Plan)**: If team mode → Read workflows/team-plan.md and follow team orchestration. Else → manager-spec sub-agent
-10. **Phase 2 (Run)**: If team mode → Read workflows/team-run.md and follow team orchestration. Else → manager-tdd or manager-ddd sub-agent (per quality.yaml development_mode)
+9. **Phase 1 (Plan)**: If team mode -> Read team/plan.md and follow team orchestration. Else -> manager-spec sub-agent
+10. **Phase 2 (Run)**: If team mode -> Read team/run.md and follow team orchestration. Else -> manager-tdd or manager-ddd sub-agent (per quality.yaml development_mode)
 11. **Phase 3 (Sync)**: Always manager-docs sub-agent (sync phase never uses team mode)
 12. Terminate with completion marker
 
 ---
 
-Version: 2.0.0
+Version: 2.5.0
 Source: Renamed from alfred.md. Unified plan->run->sync pipeline. Added SPEC/project document update in sync phase.

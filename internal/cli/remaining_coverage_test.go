@@ -337,44 +337,6 @@ func TestRemoveGLMEnv_EnvBecomesEmptyAfterRemoval(t *testing.T) {
 }
 
 // =============================================================================
-// removeProjectEnvGLM — branch: file does not exist (cc.go:62)
-// =============================================================================
-
-func TestRemoveProjectEnvGLM_FileNotExist(t *testing.T) {
-	tmpDir := t.TempDir()
-	// The .moai/.env.glm file does not exist — should be a no-op
-	err := removeProjectEnvGLM(tmpDir)
-	if err != nil {
-		t.Fatalf("removeProjectEnvGLM should not error when file does not exist: %v", err)
-	}
-}
-
-// =============================================================================
-// removeProjectEnvGLM — branch: file exists and is removed (cc.go:62)
-// =============================================================================
-
-func TestRemoveProjectEnvGLM_FileExists(t *testing.T) {
-	tmpDir := t.TempDir()
-	moaiDir := filepath.Join(tmpDir, ".moai")
-	if err := os.MkdirAll(moaiDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	envPath := filepath.Join(moaiDir, ".env.glm")
-	if err := os.WriteFile(envPath, []byte("GLM_API_KEY=\"test\""), 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	err := removeProjectEnvGLM(tmpDir)
-	if err != nil {
-		t.Fatalf("removeProjectEnvGLM error: %v", err)
-	}
-
-	if _, statErr := os.Stat(envPath); !os.IsNotExist(statErr) {
-		t.Error(".env.glm file should be removed")
-	}
-}
-
-// =============================================================================
 // checkGit — verbose=false does not populate Detail (doctor.go:166)
 // =============================================================================
 

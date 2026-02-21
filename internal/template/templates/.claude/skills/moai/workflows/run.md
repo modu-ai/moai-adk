@@ -4,14 +4,12 @@ description: >
   DDD/TDD implementation workflow for SPEC requirements. Second step
   of the Plan-Run-Sync workflow. Routes to manager-ddd or manager-tdd based
   on quality.yaml development_mode setting.
-license: Apache-2.0
-compatibility: Designed for Claude Code
 user-invocable: false
 metadata:
-  version: "2.0.0"
+  version: "2.5.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-07"
+  updated: "2026-02-22"
   tags: "run, implementation, ddd, tdd, spec"
 
 # MoAI Extension: Progressive Disclosure
@@ -31,12 +29,9 @@ triggers:
 
 ## Purpose
 
-Implement SPEC requirements using the configured development methodology. The methodology is determined by `development_mode` in quality.yaml:
+Implement SPEC requirements using the configured development methodology.
 
-- **ddd**: Domain-Driven Development using ANALYZE-PRESERVE-IMPROVE cycle (for existing projects with < 10% test coverage)
-- **tdd**: Test-Driven Development using RED-GREEN-REFACTOR cycle (default for all development work)
-
-This is the second step of the Plan-Run-Sync workflow.
+For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR cycles, success criteria, brownfield enhancement), see: @.claude/rules/moai/workflow/workflow-modes.md
 
 ## Scope
 
@@ -48,17 +43,20 @@ This is the second step of the Plan-Run-Sync workflow.
 
 - $ARGUMENTS: SPEC-ID to implement (e.g., SPEC-AUTH-001)
 - Resume: Re-running /moai run SPEC-XXX resumes from last successful phase checkpoint
-- --team: Enable team-based implementation (see team-run.md for parallel implementation team)
+- --team: Enable team-based implementation (see team/run.md for parallel implementation team)
 
 ## Context Loading
 
 Before execution, load these essential files:
 
 - .moai/config/config.yaml (git strategy, automation settings)
-- .moai/config/sections/quality.yaml (coverage targets, TRUST 5 settings)
+- .moai/config/sections/quality.yaml (coverage targets, TRUST 5 settings, development_mode)
 - .moai/config/sections/git-strategy.yaml (auto_branch, branch creation policy)
 - .moai/config/sections/language.yaml (git_commit_messages setting)
 - .moai/specs/SPEC-{ID}/ directory (spec.md, plan.md, acceptance.md)
+- .moai/project/structure.md (architecture context for implementation decisions)
+- .moai/project/tech.md (technology stack context)
+- .moai/project/codemaps/ directory listing (architecture maps for dependency and module understanding)
 
 Pre-execution commands: git status, git branch, git log, git diff.
 
@@ -66,7 +64,7 @@ Pre-execution commands: git status, git branch, git log, git diff.
 
 ## Phase Sequence
 
-All phases execute sequentially. Each phase receives outputs from all previous phases as context. Parallel execution is not permitted because DDD methodology mandates specific ordering.
+All phases execute sequentially. Each phase receives outputs from all previous phases as context.
 
 ### Phase 1: Analysis and Planning
 
@@ -135,13 +133,11 @@ Before Phase 2, determine the development methodology by reading `.moai/config/s
 
 **If development_mode is "ddd":**
 - Route all tasks to manager-ddd subagent
-- Use ANALYZE-PRESERVE-IMPROVE cycle
-- Focus on behavior preservation with characterization tests
+- Use ANALYZE-PRESERVE-IMPROVE cycle (see @workflow-modes.md for details)
 
 **If development_mode is "tdd":**
 - Route all tasks to manager-tdd subagent
-- Use RED-GREEN-REFACTOR cycle
-- Focus on test-first development with specification tests
+- Use RED-GREEN-REFACTOR cycle (see @workflow-modes.md for details)
 
 ### Phase 2: Implementation (Mode-Dependent)
 
@@ -150,12 +146,6 @@ Before Phase 2, determine the development methodology by reading `.moai/config/s
 Agent: manager-ddd subagent
 
 Input: Approved execution plan from Phase 1 plus task decomposition from Phase 1.5.
-
-The DDD cycle executes three stages:
-
-- ANALYZE: Identify domain boundaries, coupling metrics, and refactoring targets. Read existing code and map dependencies.
-- PRESERVE: Verify existing tests. Create characterization tests for uncovered code paths to establish a safety net before changes.
-- IMPROVE: Apply incremental transformations with continuous verification. Run all tests after each transformation.
 
 Requirements:
 
@@ -185,12 +175,6 @@ This divergence data is consumed by /moai sync for SPEC document updates and pro
 Agent: manager-tdd subagent
 
 Input: Approved execution plan from Phase 1 plus task decomposition from Phase 1.5.
-
-The TDD cycle executes three stages:
-
-- RED: Write specification tests that define expected behavior. Tests must fail initially (confirms they test something new).
-- GREEN: Write minimal implementation code to make tests pass. Focus on correctness, not elegance.
-- REFACTOR: Improve code structure while keeping tests green. Apply clean code principles.
 
 Requirements:
 
@@ -228,25 +212,9 @@ TRUST 5 validation checks:
 - Secured: No security vulnerabilities introduced. OWASP compliance verified.
 - Trackable: All changes logged with clear commit messages. History analysis supported.
 
-Additional validation (mode-dependent):
-
-For DDD mode:
-- Test coverage at least 85%
-- Behavior preservation: All existing tests pass unchanged
-- Characterization tests pass: Behavior snapshots match
-- Structural improvement: Coupling and cohesion metrics improved
-
-For TDD mode:
-- Test coverage at least 80% per commit (85% recommended for new code)
-- Test-first discipline: No code written without failing test first
-- All specification tests pass
-- Clean code principles applied in REFACTOR phase
-
 Output: trust_5_validation results per pillar, coverage percentage, overall status (PASS, WARNING, or CRITICAL), and issues_found list.
 
 #### Extended Quality Checks
-
-In addition to TRUST 5 validation, the following checks are performed:
 
 Code Complexity Analysis:
 - Function size: Flag functions exceeding 50 lines (suggest splitting)
@@ -255,10 +223,8 @@ Code Complexity Analysis:
 - Nesting depth: Flag code with nesting > 4 levels
 
 Dead Code Detection:
-- Unused imports: Identify and flag unused import statements
-- Unused functions: Identify exported functions with no callers
-- Unused variables: Identify declared but unreferenced variables
-- Orphaned files: Identify files not referenced by any other module
+- Unused imports, functions, variables, and orphaned files
+- Auto-removal: When confirmed, delegate to clean workflow (workflows/clean.md)
 
 Side Effect Analysis:
 - Caller impact: For each modified function, identify all callers and assess impact
@@ -267,18 +233,18 @@ Side Effect Analysis:
 - Dependency chain: Trace changes through dependency graph to detect cascading effects
 
 Code Reuse Opportunities:
-- Duplication detection: Identify code blocks similar to existing utilities or helpers
-- Library overlap: Check if implemented functionality exists in project dependencies
-- Pattern consolidation: Suggest merging similar patterns across modified files
-- Shared abstraction: Identify opportunities to extract common logic
+- Duplication detection, library overlap, pattern consolidation, shared abstraction
 
 ### Quality Gate Decision
 
 If status is CRITICAL:
-
 - Present quality issues to user via AskUserQuestion
 - Option to return to implementation phase for fixes
 - Exit current execution flow
+
+If coverage is below target (quality.yaml test_coverage_target):
+- Auto-route to coverage workflow (workflows/coverage.md)
+- Re-run quality validation after coverage improvement
 
 If status is PASS or WARNING: Continue to Phase 2.7.
 
@@ -287,18 +253,14 @@ If status is PASS or WARNING: Continue to Phase 2.7.
 Purpose: Multi-dimensional review iteration for high-quality output. Activated when quality status is WARNING or when --review flag is set.
 
 Review dimensions (each executed via manager-quality subagent):
+- Purpose alignment, improvement safety, side effect verification, full change review, dead code cleanup, user flow validation
 
-- Purpose alignment: Does the implementation fulfill the SPEC requirements without deviation?
-- Improvement safety: Do the improvements introduce any new issues?
-- Side effect verification: Are there unintended behavioral changes in related modules?
-- Full change review: Comprehensive diff review of all modified files
-- Dead code cleanup: Remove code made obsolete during implementation
-- User flow validation: Verify end-to-end user workflows remain functional
+Extended review (when --review flag is set or changes affect security/performance/UX domains):
+- Delegate to review workflow (workflows/review.md) for multi-perspective analysis
 
 Iteration behavior:
 - Each review dimension generates findings with severity (critical, warning, suggestion)
 - Critical findings trigger a fix cycle: delegate to appropriate expert agent, then re-review
-- Warning findings are logged for user attention
 - Maximum 3 review iterations to prevent infinite loops
 - If all dimensions pass with no critical findings: Continue to Phase 3
 
@@ -306,7 +268,7 @@ Output: review_findings per dimension, iterations_completed count, final review 
 
 ### Phase 2.8: MX Tag Update
 
-Purpose: Update @MX code annotations for modified files.
+Purpose: Update @MX code annotations for modified files. See @.claude/rules/moai/workflow/mx-tag-protocol.md for tag rules.
 
 **TDD Mode:**
 - Remove `@MX:TODO` tags for tests that now pass
@@ -336,13 +298,11 @@ Agent: manager-git subagent
 Input: Full context from Phases 1, 2, and 2.5.
 
 Execution conditions:
-
 - quality_status is PASS or WARNING
 - If config git_strategy.automation.auto_branch is true: Create feature branch feature/SPEC-{ID}
 - If auto_branch is false: Commit directly to current branch
 
 Tasks for manager-git:
-
 - Create feature branch (if auto_branch enabled)
 - Stage all relevant implementation and test files
 - Create commits with conventional commit messages
@@ -355,14 +315,9 @@ Output: branch_name, commits array (sha and message), files_staged count, status
 Tool: AskUserQuestion (at orchestrator level)
 
 Display implementation summary:
-
-- Files created count
-- Tests passing count
-- Coverage percentage
-- Commits count
+- Files created count, tests passing count, coverage percentage, commits count
 
 Options:
-
 - Sync Documentation (recommended): Execute /moai sync to synchronize docs and create PR
 - Implement Another Feature: Return to /moai plan for additional SPEC
 - Review Results: Examine implementation and test coverage locally
@@ -375,12 +330,12 @@ Options:
 When --team flag is provided or auto-selected, the run phase MUST switch to team orchestration:
 
 1. Verify prerequisites: workflow.team.enabled == true AND CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var is set
-2. If prerequisites met: Read workflows/team-run.md and execute the team workflow (TeamCreate with backend-dev + frontend-dev + tester + quality)
-3. If prerequisites NOT met: Warn user with message "Team mode requires workflow.team.enabled: true in workflow.yaml and CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var" then fallback to standard sub-agent mode (manager-ddd/tdd based on development_mode)
+2. If prerequisites met: Read team/run.md and execute the team workflow (TeamCreate with backend-dev + frontend-dev + tester + quality)
+3. If prerequisites NOT met: Warn user then fallback to standard sub-agent mode
 
 Team composition: backend-dev (inherit) + frontend-dev (inherit) + tester (inherit) + quality (inherit, read-only)
 
-For detailed team orchestration steps, see workflows/team-run.md.
+For detailed team orchestration steps, see team/run.md.
 
 ---
 
@@ -393,8 +348,6 @@ Context flows forward through every phase:
 - Phase 2.5 to Phase 3: Quality findings enable semantically meaningful commit messages
 - Phase 2 to /moai sync: Implementation divergence report enables accurate SPEC and project document updates
 
-Benefits: No re-analysis between phases. Architectural decisions propagate naturally. Commits explain both what changed and why. Divergence tracking ensures sync phase can accurately update SPEC and project documents.
-
 ---
 
 ## Completion Criteria
@@ -404,9 +357,7 @@ All of the following must be verified:
 - Phase 1: manager-strategy returned execution plan with requirements and success criteria
 - User approval checkpoint blocked Phase 2 until user confirmed
 - Phase 1.5: Tasks decomposed with requirement traceability
-- Phase 2: Implementation completed according to development_mode:
-  - DDD mode: manager-ddd executed ANALYZE-PRESERVE-IMPROVE with 85%+ coverage
-  - TDD mode: manager-tdd executed RED-GREEN-REFACTOR with 85%+ coverage
+- Phase 2: Implementation completed according to development_mode
 - Phase 2.5: manager-quality completed TRUST 5 validation with PASS or WARNING status
 - Quality gate blocked Phase 3 if status was CRITICAL
 - Phase 3: manager-git created commits (branch or direct) only if quality permitted
@@ -414,6 +365,5 @@ All of the following must be verified:
 
 ---
 
-Version: 2.1.0
-Updated: 2026-02-13
-Source: Extracted from .claude/commands/moai/2-run.md v5.0.0. Added implementation divergence tracking, development_mode routing (ddd/tdd), team mode support, LSP quality gates, extended quality checks (code complexity, dead code, side effects, code reuse), plan proportionality validation, and post-implementation review loop.
+Version: 2.5.0
+Updated: 2026-02-22

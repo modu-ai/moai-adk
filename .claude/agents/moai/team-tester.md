@@ -6,7 +6,7 @@ description: >
   Owns test files exclusively during team work to prevent conflicts.
   Use proactively during run phase team work.
 tools: Read, Write, Edit, Bash, Grep, Glob
-model: opus
+model: sonnet
 permissionMode: acceptEdits
 isolation: worktree
 background: true

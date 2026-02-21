@@ -52,11 +52,6 @@ func runCC(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("remove GLM env: %w", err)
 	}
 
-	// Remove project-level .env.glm
-	if err := removeProjectEnvGLM(root); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to remove project .env.glm: %v\n", err)
-	}
-
 	// Handle team_mode: disable and cleanup worktrees
 	teamModeMsg := resetTeamModeForCC(root)
 
@@ -66,7 +61,6 @@ func runCC(cmd *cobra.Command, _ []string) error {
 	details := []string{
 		"GLM configuration removed from:",
 		"  - .claude/settings.local.json",
-		"  - .moai/.env.glm",
 	}
 	if teamModeMsg != "" {
 		details = append(details, "", teamModeMsg)
@@ -101,20 +95,6 @@ func resetTeamModeForCC(projectRoot string) string {
 		return fmt.Sprintf("Warning: failed to disable team mode: %v", err)
 	}
 	return fmt.Sprintf("Team mode disabled (was: %s)", prev)
-}
-
-// removeProjectEnvGLM removes the project-level .moai/.env.glm file.
-func removeProjectEnvGLM(projectRoot string) error {
-	envPath := filepath.Join(projectRoot, ".moai", ".env.glm")
-
-	if err := os.Remove(envPath); err != nil {
-		if os.IsNotExist(err) {
-			return nil // Already removed, no-op
-		}
-		return fmt.Errorf("remove project .env.glm: %w", err)
-	}
-
-	return nil
 }
 
 // removeGLMEnv removes GLM environment variables from settings.local.json.

@@ -1,3 +1,30 @@
+---
+name: moai-workflow-team-review
+description: >
+  Multi-perspective code review using parallel review teammates.
+  Four reviewers analyze security, performance, quality, and UX simultaneously.
+  Findings are consolidated and deduplicated into a prioritized report.
+  Use when comprehensive multi-angle code review is needed.
+user-invocable: false
+metadata:
+  version: "2.5.0"
+  category: "workflow"
+  status: "active"
+  updated: "2026-02-21"
+  tags: "review, team, security, performance, quality, ux, parallel"
+
+# MoAI Extension: Progressive Disclosure
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 3000
+
+# MoAI Extension: Triggers
+triggers:
+  keywords: ["team review", "multi-perspective review", "parallel review"]
+  agents: ["team-quality"]
+  phases: ["review"]
+---
 # Workflow: Team Review - Multi-Perspective Code Review
 
 Purpose: Review code changes from multiple perspectives simultaneously. Each reviewer focuses on a specific quality dimension.

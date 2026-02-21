@@ -1,3 +1,30 @@
+---
+name: moai-workflow-team-run
+description: >
+  Implement SPEC requirements using Leader + Worker architecture.
+  Supports GLM Worker Mode (cost-effective) and Agent Teams Mode (parallel).
+  GLM mode uses worktree isolation for Leader/Worker separation.
+  Agent Teams mode uses file ownership for parallel teammate coordination.
+user-invocable: false
+metadata:
+  version: "2.5.0"
+  category: "workflow"
+  status: "active"
+  updated: "2026-02-21"
+  tags: "run, team, glm, worktree, implementation, parallel"
+
+# MoAI Extension: Progressive Disclosure
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 5000
+
+# MoAI Extension: Triggers
+triggers:
+  keywords: ["team run", "glm worker", "parallel implementation"]
+  agents: ["team-backend-dev", "team-frontend-dev", "team-tester"]
+  phases: ["run"]
+---
 # Workflow: Team Run - GLM Worker Mode
 
 Purpose: Implement SPEC requirements using Leader (current Claude model) + Worker (GLM-5) architecture with worktree isolation.
@@ -285,8 +312,6 @@ Present completion report to user:
    - User manual intervention
 
 ## Multiple Workers (Advanced)
-
-For large SPECs with independent components:
 
 For large SPECs with independent components:
 

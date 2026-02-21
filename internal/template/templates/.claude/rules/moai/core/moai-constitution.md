@@ -60,7 +60,7 @@ Code changes should include appropriate @MX annotations.
 
 Rules:
 - New exported functions: Consider @MX:NOTE or @MX:ANCHOR
-- High fan_in functions (>=5 callers): MUST have @MX:ANCHOR
+- High fan_in functions (>=3 callers): MUST have @MX:ANCHOR
 - Dangerous patterns (goroutines, complexity >=15): SHOULD have @MX:WARN
 - Untested public functions: SHOULD have @MX:TODO
 - Legacy code without SPEC: Use @MX:LEGACY sub-line

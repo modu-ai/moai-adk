@@ -493,44 +493,6 @@ func TestEnableTeamModeCGRequiresAPIKey(t *testing.T) {
 	}
 }
 
-// TestEnableTeamModeCGRequiresTmux verifies that CG mode (Claude + GLM)
-// fails with a clear error when not running inside a tmux session.
-func TestEnableTeamModeCGRequiresTmux(t *testing.T) {
-	t.Setenv("MOAI_TEST_MODE", "1")
-
-	// Ensure TMUX is NOT set (simulate non-tmux environment)
-	t.Setenv("TMUX", "")
-
-	// Create project dir
-	projectRoot := t.TempDir()
-	sectionsDir := filepath.Join(projectRoot, ".moai", "config", "sections")
-	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	origDir, _ := os.Getwd()
-	defer func() { _ = os.Chdir(origDir) }()
-	if err := os.Chdir(projectRoot); err != nil {
-		t.Fatal(err)
-	}
-
-	// CG mode (isHybrid = true) should fail without tmux session
-	err := enableTeamMode(cgCmd, true)
-	if err == nil {
-		t.Fatal("enableTeamMode(isHybrid=true) should fail without tmux session")
-	}
-
-	// Error message should mention tmux session requirement
-	if !strings.Contains(err.Error(), "tmux session") {
-		t.Errorf("error should mention tmux session, got: %v", err)
-	}
-
-	// Error message should mention 'moai cg' (not 'moai glm --hybrid')
-	if !strings.Contains(err.Error(), "moai cg") {
-		t.Errorf("error should mention 'moai cg', got: %v", err)
-	}
-}
-
 // TestEnableTeamModeCGInTmux verifies that CG mode (Claude + GLM) succeeds
 // inside a tmux session and correctly configures settings.local.json.
 func TestEnableTeamModeCGInTmux(t *testing.T) {
@@ -543,6 +505,12 @@ func TestEnableTeamModeCGInTmux(t *testing.T) {
 	projectRoot := t.TempDir()
 	sectionsDir := filepath.Join(projectRoot, ".moai", "config", "sections")
 	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create .claude directory for settings.local.json
+	claudeDir := filepath.Join(projectRoot, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 

@@ -469,7 +469,7 @@ graph TB
 
 | 서브커맨드 | 별칭 | 목적 | 주요 플래그 |
 |-----------|------|------|------------|
-| `project` | `init` | 프로젝트 문서 생성 (product.md, structure.md, tech.md, codemaps/) | — |
+| `project` | `init` | 프로젝트 문서 생성 (product.md, structure.md, tech.md, .moai/project/codemaps/) | — |
 | `mx` | — | 코드베이스 스캔 및 @MX 코드 레벨 주석 추가 | `--all`, `--dry`, `--priority P1-P4`, `--force`, `--team` |
 | `codemaps` | `update-codemaps` | `.moai/project/codemaps/`에 아키텍처 문서 생성 | `--force`, `--area AREA` |
 | `feedback` | `fb`, `bug`, `issue` | 사용자 피드백 수집 및 GitHub 이슈 생성 | — |
@@ -720,7 +720,7 @@ func LoadConfig() (*Config, error) {
 }
 ```
 
-### 설정 (`.mx.yaml`)
+### 설정 (`.moai/config/sections/mx.yaml`)
 
 ```yaml
 thresholds:

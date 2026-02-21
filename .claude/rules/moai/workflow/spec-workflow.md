@@ -141,10 +141,10 @@ When to prefer sub-agent mode:
 
 Detailed team orchestration steps are defined in dedicated workflow files:
 
-- Plan phase: @.claude/skills/moai/workflows/team-plan.md
-- Run phase: @.claude/skills/moai/workflows/team-run.md
-- Fix phase: @.claude/skills/moai/workflows/team-debug.md
-- Review: @.claude/skills/moai/workflows/team-review.md
+- Plan phase: @.claude/skills/moai/team/plan.md
+- Run phase: @.claude/skills/moai/team/run.md
+- Fix phase: @.claude/skills/moai/team/debug.md
+- Review: @.claude/skills/moai/team/review.md
 
 ### Known Limitations
 

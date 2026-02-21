@@ -1,3 +1,30 @@
+---
+name: moai-workflow-team-plan
+description: >
+  Create SPEC documents through parallel team-based research and analysis.
+  Spawns researcher, analyst, and architect teammates for multi-angle exploration.
+  Synthesizes findings into comprehensive SPEC document via manager-spec.
+  Use when plan phase benefits from parallel multi-perspective exploration.
+user-invocable: false
+metadata:
+  version: "2.5.0"
+  category: "workflow"
+  status: "active"
+  updated: "2026-02-21"
+  tags: "plan, team, research, spec, parallel"
+
+# MoAI Extension: Progressive Disclosure
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 3000
+
+# MoAI Extension: Triggers
+triggers:
+  keywords: ["team plan", "parallel research", "team spec"]
+  agents: ["team-researcher", "team-analyst", "team-architect"]
+  phases: ["plan"]
+---
 # Workflow: Team Plan - Agent Teams SPEC Creation
 
 Purpose: Create comprehensive SPEC documents through parallel team-based research and analysis. Used when plan phase benefits from multi-angle exploration.

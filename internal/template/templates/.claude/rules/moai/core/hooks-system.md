@@ -236,7 +236,7 @@ PostToolUse hooks can trigger MX tag validation after code modifications:
 
 **PostToolUse MX Check Flow:**
 1. Detect if modified file is a source code file
-2. Check if file has `.mx.yaml` exclusion
+2. Check if file has `.moai/config/sections/mx.yaml` exclusion
 3. If new exported function added without @MX tag, log warning
 4. If function with @MX:ANCHOR modified, flag for review
 

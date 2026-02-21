@@ -494,8 +494,9 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			reporter.StepStart(step.name, step.message)
 		}
 
-		// Special handling for backup step to capture backup path
-		if step.name == "Backup" {
+		// Special handling for backup/restore steps; default executes normally
+		switch step.name {
+		case "Backup":
 			_, _ = fmt.Fprintf(out, "  %s Backing up .moai/config...", symProgress())
 			var backupErr error
 			configBackupPath, backupErr = backupMoaiConfig(projectRoot)
@@ -519,7 +520,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			if reporter != nil {
 				reporter.StepComplete("Configuration backed up")
 			}
-		} else if step.name == "Restore Settings" {
+		case "Restore Settings":
 			// Handle restore step with captured backup path
 			if configBackupPath != "" {
 				if reporter != nil {
@@ -551,7 +552,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					_, _ = fmt.Fprintf(out, "  %s .gitignore user patterns preserved\n", symSuccess())
 				}
 			}
-		} else {
+		default:
 			// Execute normal step
 			if err := step.execute(); err != nil {
 				if reporter != nil {

@@ -28,7 +28,7 @@ The implementation follows the DDD methodology (ANALYZE-PRESERVE-IMPROVE) becaus
 | Skill file exceeds 500-line limit          | Medium      | Low    | Use progressive disclosure; split into modules/    |
 | Agent context window overflow with new skill| Low         | Medium | Skill uses progressive disclosure (Level 2 only when triggered) |
 | Existing agent tests break after skill addition | Low     | High   | Only add skill name to frontmatter skills list    |
-| @MX prefix conflicts with user codebase    | Very Low    | Medium | Prefix is unique; .mx.yaml exclude patterns available |
+| @MX prefix conflicts with user codebase    | Very Low    | Medium | Prefix is unique; .moai/config/sections/mx.yaml exclude patterns available |
 | Token overhead of 3-Pass scan on large codebases | Medium | Medium | Pass 2 reads only P1 files; batch across sessions |
 
 ---
@@ -41,7 +41,7 @@ The implementation follows the DDD methodology (ANALYZE-PRESERVE-IMPROVE) becaus
 
 **Deliverables**:
 - `.claude/skills/moai/workflows/mx-tag.md` -- Main skill file with tag definitions, syntax, lifecycle rules
-- `.mx.yaml` template -- Default configuration file
+- `.moai/config/sections/mx.yaml` template -- Default configuration file
 - `.claude/rules/moai/workflow/mx-tag-protocol.md` -- Mandatory workflow rule
 
 **Technical Approach**:
@@ -49,7 +49,7 @@ The implementation follows the DDD methodology (ANALYZE-PRESERVE-IMPROVE) becaus
 2. Define all 4 tag types with EARS format requirements embedded in the skill instructions
 3. Include the formal tag syntax grammar
 4. Define the lifecycle state machine with transition rules
-5. Create .mx.yaml template with default values
+5. Create .moai/config/sections/mx.yaml template with default values
 6. Create workflow rule file that is loaded by all agents during run phase
 
 **Acceptance Criteria**: AC-NOTE-001, AC-WARN-001, AC-ANCHOR-001, AC-TODO-001, AC-SPEC-001, AC-AUTHOR-001, AC-LIFE-001 through AC-LIFE-004, AC-CONFIG-001, AC-EDGE-001, AC-EDGE-002, AC-EDGE-005, AC-EDGE-006, AC-EDGE-007
@@ -99,7 +99,7 @@ The implementation follows the DDD methodology (ANALYZE-PRESERVE-IMPROVE) becaus
 1. Run the 3-Pass scan on `internal/` directory
 2. Verify tag counts do not exceed per-file limits
 3. Verify fan-in analysis produces reasonable results
-4. Adjust .mx.yaml defaults if needed
+4. Adjust .moai/config/sections/mx.yaml defaults if needed
 
 ---
 
@@ -111,7 +111,7 @@ The implementation follows the DDD methodology (ANALYZE-PRESERVE-IMPROVE) becaus
 |------------------------------------------------------------|--------------------------------|
 | `.claude/skills/moai/workflows/mx-tag.md`                  | Core @MX TAG skill definition  |
 | `.claude/rules/moai/workflow/mx-tag-protocol.md`           | @MX protocol workflow rule     |
-| `.mx.yaml`                                                 | Default configuration template |
+| `.moai/config/sections/mx.yaml`                                                 | Default configuration template |
 
 ### Modified Files
 
@@ -152,11 +152,11 @@ All other agent definitions, skill files, and configuration files remain unchang
 
 **Rationale**: AST-grep provides higher precision but requires the ast-grep binary to be installed. Grep is universally available and provides sufficient accuracy for threshold-based decisions. False positives from name collisions are acceptable because all ANCHOR tags are reviewed in reports.
 
-### TD-005: .mx.yaml at Project Root
+### TD-005: mx.yaml inside .moai/config/sections/
 
-**Decision**: Place .mx.yaml at the project root (not inside .moai/).
+**Decision**: Place mx.yaml at `.moai/config/sections/mx.yaml` (inside .moai/ config directory).
 
-**Rationale**: The .mx.yaml file is a code-level concern (tag limits, excluded patterns) that developers may want to version-control and customize. Placing it at the project root alongside .gitignore and other project-level configs follows standard convention.
+**Rationale**: MX tags are a MoAI-specific feature. Consolidating all MoAI configuration under `.moai/config/sections/` provides consistent config management alongside quality.yaml, language.yaml, workflow.yaml, etc. Updated from original decision to place at project root.
 
 ---
 
@@ -198,7 +198,7 @@ After implementation, the following build steps are required:
 - [ ] YAML frontmatter passes validation (name, description, metadata, triggers)
 - [ ] manager-ddd.md skills list includes `moai-workflow-mx-tag`
 - [ ] manager-tdd.md skills list includes `moai-workflow-mx-tag`
-- [ ] `.mx.yaml` template deploys correctly via `moai init`
+- [ ] `.moai/config/sections/mx.yaml` template deploys correctly via `moai init`
 - [ ] `mx-tag-protocol.md` rule file loads correctly for all agents
 - [ ] All 4 tag types have complete syntax definitions
 - [ ] Lifecycle state machine covers all transitions

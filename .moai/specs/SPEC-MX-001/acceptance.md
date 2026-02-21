@@ -195,18 +195,18 @@
 
 ## 7. Configuration Acceptance Criteria
 
-### AC-CONFIG-001: .mx.yaml
+### AC-CONFIG-001: .moai/config/sections/mx.yaml
 
-**Given** a project has no .mx.yaml file
+**Given** a project has no .moai/config/sections/mx.yaml file
 **When** an agent applies @MX tag logic
 **Then** the agent uses default values: anchor_per_file=3, warn_per_file=5, fan_in_anchor=5, complexity_warn=15, branch_warn=8, auto_tag=true
 
-**Given** a .mx.yaml file exists with `auto_tag: false`
+**Given** a .moai/config/sections/mx.yaml file exists with `auto_tag: false`
 **When** the agent encounters a trigger condition for @MX:NOTE
 **Then** the agent does NOT add any tags
 **And** the agent still validates and reports on existing tags
 
-**Given** a .mx.yaml file exists with `exclude: ["**/vendor/**", "**/*_generated.go"]`
+**Given** a .moai/config/sections/mx.yaml file exists with `exclude: ["**/vendor/**", "**/*_generated.go"]`
 **When** the agent processes `vendor/lib/client.go` or `models_generated.go`
 **Then** the agent skips tag insertion, validation, and reporting for those files
 
@@ -275,7 +275,7 @@
 
 ### AC-EDGE-007: Auto-Generated File Exclusion
 
-**Given** `.mx.yaml` excludes `**/*_generated.go`
+**Given** `.moai/config/sections/mx.yaml` excludes `**/*_generated.go`
 **When** the agent processes `internal/template/embedded.go` (a generated file)
 **Then** no @MX tags are added, modified, or validated in that file
 
@@ -306,7 +306,7 @@ The SPEC-MX-001 implementation is considered DONE when all of the following are 
 
 - [ ] `mx-tag.md` skill file exists at `.claude/skills/moai/workflows/mx-tag.md` within templates
 - [ ] `mx-tag-protocol.md` rule file exists at `.claude/rules/moai/workflow/mx-tag-protocol.md` within templates
-- [ ] `.mx.yaml` configuration template exists at project root within templates
+- [ ] `.moai/config/sections/mx.yaml` configuration template exists at project root within templates
 - [ ] `manager-ddd.md` frontmatter `skills:` list includes `moai-workflow-mx-tag`
 - [ ] `manager-tdd.md` frontmatter `skills:` list includes `moai-workflow-mx-tag`
 - [ ] All 4 tag types (NOTE, WARN, ANCHOR, TODO) have complete syntax definitions
@@ -314,7 +314,7 @@ The SPEC-MX-001 implementation is considered DONE when all of the following are 
 - [ ] TDD phase integration (RED/GREEN/REFACTOR) is fully specified
 - [ ] DDD phase integration (ANALYZE/PRESERVE/IMPROVE) is fully specified
 - [ ] 3-Pass fast tagging algorithm is documented with all 3 passes
-- [ ] .mx.yaml defaults are functional (agent uses defaults when file is absent)
+- [ ] .moai/config/sections/mx.yaml defaults are functional (agent uses defaults when file is absent)
 - [ ] Report format is fully specified with all 4 sections
 - [ ] All 10 edge cases have documented resolution strategies
 - [ ] Comment syntax mapping covers all 16+ supported languages

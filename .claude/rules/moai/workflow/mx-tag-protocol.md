@@ -25,7 +25,7 @@ Purpose: Define rules for @MX code-level annotations that enable AI agents to co
 
 ## Scope
 
-This rule applies to all agents working with source code in the supported programming languages. For full @MX protocol details, see @.claude/skills/moai/workflows/mx-tag.md.
+This rule applies to all agents working with source code in the supported programming languages. For full @MX protocol details, see @.claude/skills/moai/references/mx-tag.md.
 
 ## @MX Tag Syntax
 
@@ -56,7 +56,7 @@ This rule applies to all agents working with source code in the supported progra
 - If-branches >= 8
 
 **@MX:ANCHOR** -- Add when:
-- Function has fan_in >= 5 callers
+- Function has fan_in >= 3 callers
 - Public API boundary identified
 - External system integration point detected
 
@@ -87,7 +87,7 @@ This rule applies to all agents working with source code in the supported progra
 - Escalates to WARN after > 3 iterations unresolved
 
 **ANCHOR:**
-- Created when fan_in >= 5
+- Created when fan_in >= 3
 - Updated when caller count or SPEC changes
 - Demoted to NOTE when fan_in drops below 3 (requires report)
 - NEVER auto-deleted
@@ -104,7 +104,7 @@ This rule applies to all agents working with source code in the supported progra
 
 ## File Exclusion Rules
 
-Files matching patterns in `.mx.yaml` exclude list are not tagged:
+Files matching patterns in `.moai/config/sections/mx.yaml` exclude list are not tagged:
 
 Default exclude patterns:
 - `**/*_generated.go`
@@ -113,7 +113,7 @@ Default exclude patterns:
 
 ## Hard Limits
 
-Per-file limits from `.mx.yaml` (defaults):
+Per-file limits from `.moai/config/sections/mx.yaml` (defaults):
 - `anchor_per_file`: 3
 - `warn_per_file`: 5
 
@@ -144,7 +144,7 @@ In Agent Teams mode, @MX tag operations follow file ownership rules:
 
 ## Configuration
 
-Project-level settings in `.mx.yaml`:
+Project-level settings in `.moai/config/sections/mx.yaml`:
 - thresholds: fan_in_anchor, complexity_warn, branch_warn
 - limits: anchor_per_file, warn_per_file
 - exclude: file patterns to skip

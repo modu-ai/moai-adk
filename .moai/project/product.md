@@ -143,6 +143,25 @@ Code analysis via structural AST (Abstract Syntax Tree) pattern matching.
 - **Refactoring Support**: Pattern-based code transformations with preview
 - **Integration**: AST analysis results feed into quality gates and SPEC validation
 
+### 11. Multi-Model Architecture
+
+Support for multiple LLM providers and hybrid cost-optimization modes.
+
+- **Claude Mode** (`moai cc`): Full Claude model stack with per-agent model assignment (opus, sonnet, haiku) controlled by model policy
+- **GLM Mode** (`moai glm`): Switch all agents to Z.AI's GLM models for cost reduction
+- **Hybrid CG Mode** (`moai cg`): Claude leader with GLM workers via worktree-based environment isolation for 60-70% cost reduction on implementation tasks
+- **Model Policy** (`moai init --model-policy`): Apply high/medium/low model distribution across all agent definitions based on role-specific mappings
+
+### 12. Agent Teams Integration (Experimental)
+
+Support for Claude Code's experimental Agent Teams API for parallel phase execution.
+
+- **Team Orchestration**: Spawn and manage multiple specialized teammates (researcher, analyst, architect, backend-dev, frontend-dev, tester, quality)
+- **Worktree Isolation**: Implementation agents run in isolated git worktrees to prevent file conflicts (`isolation: worktree`)
+- **Background Execution**: Non-blocking parallel execution for implementation teammates (`background: true`)
+- **Hook Integration**: WorktreeCreate/WorktreeRemove lifecycle hooks for worktree tracking
+- **Graceful Fallback**: Automatically falls back to sub-agent mode when Agent Teams prerequisites are not met
+
 ---
 
 ## Use Cases
@@ -209,7 +228,7 @@ Code analysis via structural AST (Abstract Syntax Tree) pattern matching.
 
 ## Implementation Status
 
-All 14 SPEC documents have been fully implemented. The Go codebase contains 48,688 lines of Go code across 20 test packages with 85-100% test coverage.
+All 14 SPEC documents have been fully implemented. The Go codebase contains 40,000+ lines of Go code across 20+ test packages with 85-100% test coverage. Module path: `github.com/modu-ai/moai-adk`.
 
 ### Feature Completion
 
@@ -234,10 +253,12 @@ All 14 SPEC documents have been fully implemented. The Go codebase contains 48,6
 
 | Package | Version | Purpose |
 |---------|---------|---------|
+| `github.com/charmbracelet/bubbles` | v1.0.0 | TUI components (spinners, progress bars, text input) |
 | `github.com/charmbracelet/bubbletea` | v1.3.10 | Interactive TUI framework |
-| `github.com/charmbracelet/lipgloss` | v1.1.0 | Terminal layout and styling |
+| `github.com/charmbracelet/lipgloss` | v1.1.1+ | Terminal layout and styling |
 | `github.com/mattn/go-isatty` | v0.0.20 | TTY detection for headless mode |
 | `github.com/spf13/cobra` | v1.10.2 | CLI framework with subcommands |
+| `golang.org/x/text` | v0.34.0 | Text processing utilities |
 | `gopkg.in/yaml.v3` | v3.0.1 | YAML configuration parsing |
 
 ### Design Decisions Made During Implementation
@@ -248,7 +269,7 @@ Several planned dependencies were replaced with simpler, purpose-built solutions
 - **No Viper**: Custom YAML loader in `internal/config/loader.go` provides simpler, type-safe configuration
 - **No testify**: Standard `testing` package used throughout, reducing external dependencies
 - **No go.lsp.dev packages**: Custom LSP protocol implementation in `internal/lsp/` for full control
-- **Go 1.25.6**: Final Go version used is significantly newer than the originally planned Go 1.22+
+- **Go 1.26**: Final Go version used is significantly newer than the originally planned Go 1.22+; includes Green Tea GC for 10-40% GC overhead reduction
 
 ---
 
@@ -272,6 +293,6 @@ Several planned dependencies were replaced with simpler, purpose-built solutions
 
 ### Development Constraints
 
-- Go 1.25.6 (actual version used in implementation)
+- Go 1.26 (actual version used in implementation)
 - All public APIs must follow Go conventions (exported names, godoc comments)
 - Internal packages must use the `internal/` directory for encapsulation

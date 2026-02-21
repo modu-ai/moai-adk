@@ -1,6 +1,35 @@
+---
+name: moai-workflow-mx
+description: >
+  Scan codebase and add @MX code-level annotations for AI agent context.
+  Implements 3-Pass scan with priority queue for efficient tag insertion.
+  Supports all 16 MoAI-ADK languages with language-aware comment syntax.
+  Use when scanning code for MX tags or annotating codebase for AI context.
+user-invocable: false
+metadata:
+  version: "2.5.0"
+  category: "workflow"
+  status: "active"
+  updated: "2026-02-22"
+  tags: "mx, annotation, code-context, scan, tagging"
+
+# MoAI Extension: Progressive Disclosure
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 5000
+
+# MoAI Extension: Triggers
+triggers:
+  keywords: ["mx", "annotation", "code context", "tag scan", "mx tag"]
+  agents: ["expert-backend", "expert-frontend"]
+  phases: ["mx", "sync"]
+---
 # Workflow: MX Tag Scan and Annotation
 
-Purpose: Scan codebase and add @MX code-level annotations for AI agent context. Supports all MoAI-ADK languages (16 total) with automatic language detection.
+Purpose: Scan codebase and add @MX code-level annotations for AI agent context.
+
+For tag types, lifecycle rules, mandatory fields, and per-file limits, see: @.claude/rules/moai/workflow/mx-tag-protocol.md
 
 ## When to Use
 
@@ -38,11 +67,9 @@ Purpose: Scan codebase and add @MX code-level annotations for AI agent context. 
 | P3 | magic constant, missing docstring | `@MX:NOTE` |
 | P4 | missing test | `@MX:TODO` |
 
-**Note**: Threshold lowered from 5 to 3 to capture more important functions.
-
 ## Workflow Phases
 
-### Phase 0: Codebase Discovery (NEW)
+### Phase 0: Codebase Discovery
 
 **Purpose**: Detect project languages and load context before scanning.
 
@@ -81,73 +108,22 @@ Purpose: Scan codebase and add @MX code-level annotations for AI agent context. 
    - Estimate token budget
    - Apply exclude patterns
 
-**Output**:
-```yaml
-discovery:
-  languages:
-    - name: go
-      files: 45
-      enabled: true
-    - name: python
-      files: 23
-      enabled: true
-    - name: typescript
-      files: 67
-      enabled: true
-  project_context:
-    loaded: true
-    tech_stack: "..."
-    architecture: "..."
-  scan_scope:
-    total_files: 135
-    estimated_tokens: 35000
-```
-
-### Pass 1: Full File Scan (IMPROVED)
+### Pass 1: Full File Scan
 
 **Purpose**: Scan all source files and generate priority queue.
-
-**Complete Multi-Language Pattern Detection**:
-
-| Language | ANCHOR (P1) | WARN (P2) | NOTE (P3) | TODO (P4) |
-|----------|-------------|-----------|-----------|-----------|
-| **Backend** |
-| Go | fan_in >= 3 | `go func`, `go `, complexity >= 15 | magic constant, no godoc | no `*_test.go` |
-| Python | fan_in >= 3 | `async def`, `threading`, complexity >= 15 | magic constant, no docstring | no `test_*.py` |
-| Rust | fan_in >= 3 | `async fn`, `unsafe `, complexity >= 15 | magic constant, no doc | no `*test.rs` |
-| Java | fan_in >= 3 | `new Thread`, `Executor`, complexity >= 15 | magic constant, no Javadoc | no `*Test.java` |
-| Kotlin | fan_in >= 3 | `GlobalScope`, `runBlocking`, complexity >= 15 | magic constant, no KDoc | no `*Test.kt` |
-| C# | fan_in >= 3 | `Task.Run`, `Thread.`, complexity >= 15 | magic constant, no XML doc | no `*Test.cs` |
-| Ruby | fan_in >= 3 | `Thread.new`, complexity >= 15 | magic constant, no comment | no `*_test.rb` |
-| PHP | fan_in >= 3 | `async `, complexity >= 15 | magic constant, no PHPDoc | no `*Test.php` |
-| Elixir | fan_in >= 3 | `Task.async`, `spawn`, complexity >= 15 | magic constant, no doc | no `*_test.exs` |
-| C++ | fan_in >= 3 | `std::thread`, `new `, complexity >= 15 | magic constant, no comment | no `*test.cpp` |
-| Scala | fan_in >= 3 | `Future.`, `new Thread`, complexity >= 15 | magic constant, no doc | no `*Test.scala` |
-| **Frontend** |
-| TypeScript | fan_in >= 3 | `Promise.all`, `async `, complexity >= 15 | magic constant, no JSDoc | no `*.test.ts` |
-| JavaScript | fan_in >= 3 | `Promise.all`, `async `, complexity >= 15 | magic constant, no JSDoc | no `*.test.js` |
-| **Data Science** |
-| R | fan_in >= 3 | `parallel::`, complexity >= 15 | magic constant, no comment | no `*test.R` |
-| Flutter/Dart | fan_in >= 3 | `Isolate.`, `Future.`, complexity >= 15 | magic constant, no doc | no `*_test.dart` |
-| **Mobile** |
-| Swift | fan_in >= 3 | `Task.`, `DispatchQueue`, complexity >= 15 | magic constant, no doc | no `*Test.swift` |
 
 **Steps**:
 1. For each enabled language:
    - Glob all source files using language-specific patterns
    - Fan-in analysis: Count function/method references across files
    - Complexity detection: Lines, branches, nesting depth
-   - Pattern detection: Language-specific danger patterns
+   - Pattern detection: Language-specific danger patterns (goroutines, async, threading, unsafe)
 2. Build priority queue (ALL files included, ranked by score)
 3. Output: Priority list P1-P4
 
-### Pass 2: Selective Deep Read (IMPROVED)
+### Pass 2: Selective Deep Read
 
-**Purpose**: Read files and generate accurate tag descriptions.
-
-**Expanded Scope**:
-- **Previous**: P1 files only (fan_in >= 5)
-- **Current**: P1 + P2 files (fan_in >= 3 OR complexity >= 15)
+**Purpose**: Read P1 + P2 files and generate accurate tag descriptions.
 
 **Steps**:
 1. For each P1 and P2 file:
@@ -161,35 +137,9 @@ discovery:
 - Architecture patterns from `structure.md`
 - Business domain from `product.md`
 
-**Language-Specific Strategies**:
-- **Go**: Extract godoc comments, analyze interface contracts
-- **Python**: Extract docstrings, analyze class hierarchies, decorators
-- **TypeScript**: Extract JSDoc, analyze type definitions, interfaces
-- **Rust**: Extract docs, analyze trait bounds, lifetimes
-- **Java**: Extract Javadoc, analyze class hierarchies, annotations
-- **Kotlin**: Extract KDoc, analyze extension functions, coroutines
-- **C#**: Extract XML docs, analyze async/await patterns
-- **Ruby**: Extract comments, analyze metaprogramming, DSL patterns
-- **PHP**: Extract PHPDoc, analyze PSR standards
-- **Elixir**: Extract docs, analyze GenServer/GenStage patterns
-- **C++**: Extract comments, analyze template metaprogramming
-- **Scala**: Extract Scaladoc, analyze type classes, implicits
-- **R**: Extract comments, analyze pipe operations, tidyverse patterns
-- **Flutter/Dart**: Extract docs, analyze widget trees, state management
-- **Swift**: Extract docs, analyze SwiftUI, Combine patterns
-- **JavaScript**: Extract JSDoc, analyze CommonJS/ES modules
-
 ### Pass 3: Batch Edit
 
 **Purpose**: Insert tags into files.
-
-**Language Comment Syntax**:
-
-| Language | Prefix | Example |
-|----------|--------|---------|
-| Go, Java, TS, JS, Rust, Kotlin, Swift, Scala, C++, C#, Dart | `//` | `// @MX:NOTE:` |
-| Python, Ruby, R, Elixir | `#` | `# @MX:WARN:` |
-| Haskell | `--` | `-- @MX:ANCHOR:` |
 
 **Steps**:
 1. One Edit call per file
@@ -221,15 +171,6 @@ After completion, generates report:
 - @MX:NOTE: 28 (P3) - Context annotations
 - @MX:TODO: 9 (P4) - Missing tests
 
-### Tags by Language
-- Go: 32 tags (15 ANCHOR, 5 WARN, 8 NOTE, 4 TODO)
-- Python: 18 tags (5 ANCHOR, 4 WARN, 7 NOTE, 2 TODO)
-- TypeScript: 25 tags (10 ANCHOR, 6 WARN, 7 NOTE, 2 TODO)
-- Rust: 5 tags (1 ANCHOR, 2 WARN, 1 NOTE, 1 TODO)
-- Java: 4 tags (1 ANCHOR, 1 WARN, 1 NOTE, 1 TODO)
-- Kotlin: 2 tags (0 ANCHOR, 0 WARN, 2 NOTE, 0 TODO)
-- JavaScript: 1 tag (0 ANCHOR, 0 WARN, 1 NOTE, 0 TODO)
-
 ### Files Modified
 - internal/core/handler.go: +5 tags
 - src/api/server.ts: +4 tags
@@ -237,7 +178,6 @@ After completion, generates report:
 
 ### Attention Required
 - High fan_in functions (>= 10 callers): handler.go:ProcessRequest
-- Complex functions (complexity >= 20): server.ts:HandleConnection
 ```
 
 ## Integration with Other Workflows
@@ -257,35 +197,6 @@ During DDD ANALYZE phase:
 2. Existing tags are validated and updated
 3. New tags added for new code
 
-## Configuration
-
-Project settings in `.mx.yaml` (complete 16-language support):
-
-```yaml
-mx:
-  version: "2.1"
-
-  languages:
-    go:
-      enabled: auto
-      patterns: ["*.go"]
-      exclude: ["*_generated.go", "vendor/**"]
-    python:
-      enabled: auto
-      patterns: ["*.py"]
-      exclude: ["**/__pycache__/**", "**/venv/**"]
-    typescript:
-      enabled: auto
-      patterns: ["*.ts", "*.tsx"]
-      exclude: ["**/node_modules/**", "**/*.d.ts"]
-    # ... (13 more languages)
-
-  thresholds:
-    fan_in_anchor: 3  # Lowered from 5
-    complexity_warn: 15
-    branch_warn: 8
-```
-
 ## Examples
 
 ```bash
@@ -301,76 +212,15 @@ mx:
 # Force overwrite existing tags
 /moai mx --all --force
 
-# Exclude test files
-/moai mx --all --exclude "**/*_test.go,**/*_test.py"
-
 # Scan only Go and Python
 /moai mx --all --lang go,python
 
 # Lower threshold for more coverage
 /moai mx --all --threshold 2
-
-# Skip Phase 0 discovery
-/moai mx --all --no-discovery
 ```
-
-## Language-Specific Examples
-
-### Go Project
-```bash
-/moai mx --all
-# Scans *.go files
-# Detects: go func, goroutines, godoc
-# Adds: @MX:ANCHOR (fan_in >= 3), @MX:WARN (goroutines)
-```
-
-### Python Project
-```bash
-/moai mx --all
-# Scans *.py files
-# Detects: async def, threading, docstrings
-# Adds: @MX:ANCHOR (fan_in >= 3), @MX:WARN (async/threading)
-```
-
-### TypeScript Project
-```bash
-/moai mx --all
-# Scans *.ts, *.tsx files
-# Detects: Promise.all, async/await, JSDoc
-# Adds: @MX:ANCHOR (fan_in >= 3), @MX:WARN (Promise chains)
-```
-
-### Multi-Language Project (Go + Python + TypeScript)
-```bash
-/moai mx --all
-# Auto-detects all 3 languages
-# Scans: *.go, *.py, *.ts, *.tsx
-# Generates language-specific tags for each
-```
-
-## Complete Language Support Matrix
-
-| # | Language | File Patterns | Comment | Test Pattern | WARN Patterns |
-|---|----------|---------------|---------|--------------|---------------|
-| 1 | Go | *.go | `//` | *_test.go | go func, go  |
-| 2 | Python | *.py | `#` | test_*.py | async def, threading |
-| 3 | TypeScript | *.ts, *.tsx | `//` | *.test.ts | Promise.all, async  |
-| 4 | Rust | *.rs | `//` | *test.rs | async fn, unsafe  |
-| 5 | Java | *.java | `//` | *Test.java | new Thread, Executor |
-| 6 | Kotlin | *.kt, *.kts | `//` | *Test.kt | GlobalScope, runBlocking |
-| 7 | C# | *.cs | `//` | *Test.cs | Task.Run, Thread. |
-| 8 | Ruby | *.rb | `#` | *_test.rb | Thread.new |
-| 9 | PHP | *.php | `//` | *Test.php | async  |
-| 10 | Elixir | *.ex, *.exs | `#` | *_test.exs | Task.async, spawn |
-| 11 | C++ | *.cpp, *.cc, *.h | `//` | *test.cpp | std::thread, new  |
-| 12 | Scala | *.scala | `//` | *Test.scala | Future., new Thread |
-| 13 | R | *.R, *.r | `#` | *test.R | parallel:: |
-| 14 | Flutter | *.dart | `//` | *_test.dart | Isolate., Future. |
-| 15 | Swift | *.swift | `//` | *Test.swift | Task., DispatchQueue |
-| 16 | JavaScript | *.js, *.jsx | `//` | *.test.js | Promise.all, async  |
 
 ---
 
-Version: 2.1.0 (Complete 16-Language Support)
-Last Updated: 2026-02-20
+Version: 2.5.0
+Last Updated: 2026-02-22
 Source: SPEC-MX-001

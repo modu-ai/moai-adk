@@ -5,14 +5,12 @@ description: >
   Finds LSP errors, linting issues, and type errors, classifies by severity,
   applies safe fixes via agent delegation, and reports results.
   Use when fixing errors, linting issues, or running diagnostics.
-license: Apache-2.0
-compatibility: Designed for Claude Code
 user-invocable: false
 metadata:
-  version: "2.0.0"
+  version: "2.5.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-07"
+  updated: "2026-02-21"
   tags: "fix, auto-fix, lsp, linting, diagnostics, errors, type-check"
 
 # MoAI Extension: Progressive Disclosure
@@ -149,6 +147,15 @@ Generate MX_TAG_REPORT section in fix report:
 
 See @.claude/rules/moai/workflow/mx-tag-protocol.md for complete tag rules.
 
+## Phase 4.6: Dead Code Cleanup (Optional)
+
+After fixes are applied and verified, scan for dead code exposed by the fixes:
+
+- Delegate to clean workflow (workflows/clean.md) for comprehensive dead code analysis
+- Targets: Files modified during fix phase that may now have unused imports, orphaned functions, or unreferenced variables
+- Skip condition: --errors flag was set (errors-only mode skips cleanup) or no dead code detected
+- Clean workflow applies safe removal with test verification
+
 ## Task Tracking
 
 [HARD] Task management tools mandatory:
@@ -185,7 +192,7 @@ When --team flag is provided, fix delegates to a team-based debugging workflow u
 
 Team composition: 3 hypothesis agents (haiku) exploring different root causes in parallel.
 
-For detailed team orchestration steps, see workflows/team-debug.md.
+For detailed team orchestration steps, see team/debug.md.
 
 Fallback: If team mode is unavailable, standard single-agent fix workflow continues.
 

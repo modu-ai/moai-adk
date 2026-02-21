@@ -2,14 +2,14 @@
 
 ## Primary Language
 
-**Go 1.25.6**
+**Go 1.26**
 
-Go is the implementation language for the MoAI-ADK rewrite. The project uses Go 1.25.6, which provides enhanced routing patterns in `net/http`, improved range-over-function iterators, and the latest `log/slog` structured logging capabilities.
+Go is the implementation language for the MoAI-ADK rewrite. The project uses Go 1.26, which provides Green Tea GC (10-40% GC overhead reduction), enhanced routing patterns in `net/http`, range-over-int iterators, and the latest `log/slog` structured logging capabilities.
 
 ## Go Module
 
 ```
-module github.com/modu-ai/moai-adk-go
+module github.com/modu-ai/moai-adk
 ```
 
 The module path follows Go conventions with the GitHub organization and repository name. All internal imports use this module path prefix.
@@ -24,19 +24,21 @@ The module path follows Go conventions with the GitHub organization and reposito
 |----------|---------|---------|---------|
 | CLI Framework | `github.com/spf13/cobra` | v1.10.2 | Command-line interface with subcommands, flags, and shell completion |
 | YAML Parsing | `gopkg.in/yaml.v3` | v3.0.1 | YAML marshaling/unmarshaling for configuration and SPEC documents |
+| TUI Components | `github.com/charmbracelet/bubbles` | v1.0.0 | Reusable TUI components (spinners, progress bars, viewport, text input) |
 | Terminal UI | `github.com/charmbracelet/bubbletea` | v1.3.10 | Interactive TUI framework with Elm-architecture patterns |
 | Terminal Forms | `github.com/charmbracelet/huh` | v0.8.0 | Modern form components (Select, MultiSelect, Input, Confirm, Form) with themes and accessibility |
-| Terminal Styling | `github.com/charmbracelet/lipgloss` | v1.1.0 | Terminal layout and styling for statusline and UI components |
+| Terminal Styling | `github.com/charmbracelet/lipgloss` | v1.1.1+ | Terminal layout and styling for statusline and UI components |
 | Markdown Rendering | `github.com/charmbracelet/glamour` | v0.10.0 | Terminal markdown rendering with syntax highlighting and auto dark/light detection |
 | TTY Detection | `github.com/mattn/go-isatty` | v0.0.20 | Terminal detection for headless mode support |
+| Text Processing | `golang.org/x/text` | v0.34.0 | Unicode normalization, language tag processing, and text utilities |
 | Configuration | Custom YAML loader | -- | Custom implementation in `internal/config/loader.go` (Viper was not used) |
 | Git Operations | System Git via `exec.Command` | -- | All Git operations use system Git binary (go-git was not used) |
-| Logging | `log/slog` (stdlib) | Go 1.25 | Structured, leveled logging with JSON and text handlers |
-| Testing | `testing` (stdlib) | Go 1.25 | Standard test framework with benchmarks and fuzzing (testify was not used) |
-| HTTP Client | `net/http` (stdlib) | Go 1.25 | HTTP client for ranking API and update checking |
-| Concurrency | goroutines + channels (stdlib) | Go 1.25 | Native concurrent execution for LSP, quality gates, and parallel operations |
-| File Embedding | `embed` (stdlib) | Go 1.25 | Compile-time template embedding into the binary |
-| Context | `context` (stdlib) | Go 1.25 | Cancellation, timeouts, and request-scoped values |
+| Logging | `log/slog` (stdlib) | Go 1.26 | Structured, leveled logging with JSON and text handlers |
+| Testing | `testing` (stdlib) | Go 1.26 | Standard test framework with benchmarks and fuzzing (testify was not used) |
+| HTTP Client | `net/http` (stdlib) | Go 1.26 | HTTP client for ranking API and update checking |
+| Concurrency | goroutines + channels (stdlib) | Go 1.26 | Native concurrent execution for LSP, quality gates, and parallel operations |
+| File Embedding | `embed` (stdlib) | Go 1.26 | Compile-time template embedding into the binary |
+| Context | `context` (stdlib) | Go 1.26 | Cancellation, timeouts, and request-scoped values |
 
 ### Language Support
 
@@ -152,7 +154,7 @@ builds:
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Go | 1.25.6 | Compiler and standard toolchain |
+| Go | 1.26 | Compiler and standard toolchain |
 | gopls | Latest | Go language server for IDE integration |
 | golangci-lint | v1.62+ | Linter aggregator |
 | goreleaser | v2.5+ | Release automation |
@@ -259,7 +261,7 @@ The Go edition introduces formal contract testing for Claude Code hook integrati
 |---------|--------|--------|
 | GitHub Releases | goreleaser | macOS (arm64, amd64), Linux (arm64, amd64), Windows (amd64, arm64) |
 | Homebrew | Tap formula | macOS and Linux via `brew install modu-ai/tap/moai` |
-| Go Install | `go install` | Developers with Go toolchain: `go install github.com/modu-ai/moai-adk-go/cmd/moai@latest` |
+| Go Install | `go install` | Developers with Go toolchain: `go install github.com/modu-ai/moai-adk/cmd/moai@latest` |
 | Self-Update | Built-in `moai update` | In-place binary replacement with checksum verification |
 
 ### Release Process
@@ -357,7 +359,7 @@ The Go edition introduces formal contract testing for Claude Code hook integrati
 
 ### ADR-003: embed Package for Template Distribution
 
-**Decision**: Use Go's `//go:embed` directive to bundle all Claude Code templates into the binary.
+**Decision**: Use Go's `//go:embed` directive to bundle all Claude Code templates into the binary. Templates are located at `internal/template/templates/` (not a root-level `templates/` directory).
 
 ```go
 //go:embed templates/*

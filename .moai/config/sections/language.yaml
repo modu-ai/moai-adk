@@ -1,8 +1,3 @@
 language:
-    agent_prompt_language: en
-    code_comments: ko
-    conversation_language: ko
-    conversation_language_name: ko
-    documentation: en
-    error_messages: en
-    git_commit_messages: en
+  conversation_language: ko
+  conversation_language_name: ko

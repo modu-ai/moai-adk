@@ -45,7 +45,7 @@ AIDEV-NOTE system by Diwank Tomer introduced the foundational concept of AI-read
 - TDD (RED-GREEN-REFACTOR) workflow integration
 - DDD (ANALYZE-PRESERVE-IMPROVE) workflow integration
 - 3-Pass Fast Tagging Algorithm for legacy bootstrap
-- Configuration file (.mx.yaml) for project-level settings
+- Configuration file (.moai/config/sections/mx.yaml) for project-level settings
 - Agent autonomous report format
 - MoAI skill definition (`moai-workflow-mx-tag`)
 - Agent definition updates for manager-ddd and manager-tdd
@@ -75,7 +75,7 @@ AIDEV-NOTE system by Diwank Tomer introduced the foundational concept of AI-read
 | manager-ddd agent    | Skill preloading   | ANALYZE-PRESERVE-IMPROVE tag protocol      |
 | manager-tdd agent    | Skill preloading   | RED-GREEN-REFACTOR tag protocol            |
 | manager-quality      | Tag validation     | TRUST 5 traceability via @MX:ANCHOR       |
-| .mx.yaml             | Configuration      | Per-project tag limits, thresholds, excludes|
+| .moai/config/sections/mx.yaml             | Configuration      | Per-project tag limits, thresholds, excludes|
 | Workflow rules       | Rule loading       | @MX protocol as mandatory workflow rule    |
 
 ### 2.3 Dependencies
@@ -93,7 +93,7 @@ AIDEV-NOTE system by Diwank Tomer introduced the foundational concept of AI-read
 - A3: Code comments are preserved across formatting operations (gofmt, black, prettier, etc.) for all supported languages.
 - A4: Agents can reliably count function references using Grep for fan-in analysis. Exact AST-level precision is not required; approximate grep-based counts are acceptable.
 - A5: Users accept that agents will autonomously add, update, and remove @MX tags without prior approval. Humans are notified via reports only.
-- A6: The `.mx.yaml` configuration file is optional. Sensible defaults are used when the file is absent.
+- A6: The `.moai/config/sections/mx.yaml` configuration file is optional. Sensible defaults are used when the file is absent.
 
 ---
 
@@ -315,9 +315,9 @@ The @MX:NOTE tag **shall** follow this lifecycle:
 
 ### 4.8 Configuration
 
-#### REQ-CONFIG-001: .mx.yaml Configuration File
+#### REQ-CONFIG-001: .moai/config/sections/mx.yaml Configuration File
 
-The system **shall** support a `.mx.yaml` configuration file at the project root with the following structure:
+The system **shall** support a `.moai/config/sections/mx.yaml` configuration file at the project root with the following structure:
 
 ```yaml
 mx:
@@ -339,9 +339,9 @@ mx:
     - WARN
 ```
 
-**WHEN** `.mx.yaml` does not exist, **THEN** the system **shall** use the default values shown above.
+**WHEN** `.moai/config/sections/mx.yaml` does not exist, **THEN** the system **shall** use the default values shown above.
 
-**WHEN** `.mx.yaml` specifies `auto_tag: false`, **THEN** agents **shall not** autonomously add tags, but **shall** still validate and report on existing tags.
+**WHEN** `.moai/config/sections/mx.yaml` specifies `auto_tag: false`, **THEN** agents **shall not** autonomously add tags, but **shall** still validate and report on existing tags.
 
 ### 4.9 Agent Report
 
@@ -397,7 +397,7 @@ The `@MX:` prefix pattern **shall** remain consistent across languages. Only the
 
 #### REQ-EDGE-007: Auto-Generated File Exclusion
 
-**WHEN** a file matches a pattern in `.mx.yaml` exclude list, **THEN** the agent **shall not** add, modify, or validate @MX tags in that file.
+**WHEN** a file matches a pattern in `.moai/config/sections/mx.yaml` exclude list, **THEN** the agent **shall not** add, modify, or validate @MX tags in that file.
 
 #### REQ-EDGE-008: Team Environment
 
@@ -424,7 +424,7 @@ The @MX TAG system will be implemented entirely within the MoAI-ADK template sys
 | MoAI Skill                   | `.claude/skills/moai/workflows/mx-tag.md`                  | Core @MX protocol, tag syntax, lifecycle rules, report format |
 | DDD Agent Definition Update  | `.claude/agents/moai/manager-ddd.md`                       | Add `moai-workflow-mx-tag` to skills list  |
 | TDD Agent Definition Update  | `.claude/agents/moai/manager-tdd.md`                       | Add `moai-workflow-mx-tag` to skills list  |
-| Configuration Template       | `.mx.yaml` (project root template)                         | Default .mx.yaml with standard thresholds  |
+| Configuration Template       | `.moai/config/sections/mx.yaml` (project root template)                         | Default .moai/config/sections/mx.yaml with standard thresholds  |
 | Workflow Rule                 | `.claude/rules/moai/workflow/mx-tag-protocol.md`           | @MX protocol rules loaded by all agents    |
 
 ### 5.2 Skill Structure: moai-workflow-mx-tag

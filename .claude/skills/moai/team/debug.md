@@ -1,3 +1,30 @@
+---
+name: moai-workflow-team-debug
+description: >
+  Debug complex issues through parallel competing hypothesis investigation.
+  Each teammate explores a different theory independently using haiku model.
+  Evidence is synthesized to identify root cause before fix implementation.
+  Use when debugging issues with multiple potential root causes.
+user-invocable: false
+metadata:
+  version: "2.5.0"
+  category: "workflow"
+  status: "active"
+  updated: "2026-02-21"
+  tags: "debug, team, hypothesis, investigation, parallel"
+
+# MoAI Extension: Progressive Disclosure
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 3000
+
+# MoAI Extension: Triggers
+triggers:
+  keywords: ["debug team", "hypothesis", "investigation", "parallel debug"]
+  agents: ["expert-debug"]
+  phases: ["fix"]
+---
 # Workflow: Team Debug - Investigation Team
 
 Purpose: Debug complex issues through parallel competing hypothesis investigation. Each teammate explores a different theory independently.

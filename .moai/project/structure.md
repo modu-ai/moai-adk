@@ -91,6 +91,8 @@ moai-adk-go/
 │   │   ├── manager.go              #   Central config with sync.RWMutex
 │   │   ├── types.go                #   Config struct definitions with defaults
 │   │   └── validation.go           #   Schema validation
+│   ├── defs/                       # Constant definitions (6 files)
+│   │   └── specid.go               #   SPEC ID parsing and validation
 │   ├── core/                       # Core business logic domains
 │   │   ├── git/                    #   Git domain (system Git via exec)
 │   │   │   ├── branch.go
@@ -118,19 +120,40 @@ moai-adk-go/
 │   │   ├── language.go             #   Language ecosystem definitions (16+ languages)
 │   │   ├── methodology.go          #   Development methodology patterns
 │   │   └── trust5.go               #   TRUST 5 principle definitions and checklists
+│   ├── github/                     # GitHub API integration (20 files)
+│   │   ├── gh.go                   #   GitHub CLI wrapper (gh command)
+│   │   ├── issue_closer.go         #   Automated GitHub issue closing
+│   │   ├── issue_parser.go         #   Issue content parsing
+│   │   ├── pr_merger.go            #   Pull request merge automation
+│   │   ├── pr_reviewer.go          #   PR review automation
+│   │   ├── spec_linker.go          #   Link SPECs to GitHub issues/PRs
+│   │   └── worktree_orchestrator.go#   Worktree-based PR workflows
 │   ├── hook/                       # Hook system (replaces 46 Python scripts)
+│   │   ├── auto_update.go          #   Auto-update hook handler
 │   │   ├── compact.go              #   Context preservation
 │   │   ├── contract.go             #   Hook execution contract
 │   │   ├── doc.go
 │   │   ├── errors.go
+│   │   ├── notification.go         #   Notification hook handler
+│   │   ├── permission_request.go   #   Permission request hook handler
 │   │   ├── post_tool.go            #   Linter, formatter, LSP diagnostics
+│   │   ├── post_tool_failure.go    #   Post-tool failure handler
 │   │   ├── pre_tool.go             #   Security guard, validation
 │   │   ├── protocol.go             #   Claude Code JSON stdin/stdout protocol
+│   │   ├── rank_session.go         #   Session ranking hook handler
 │   │   ├── registry.go             #   Hook registration & dispatch
 │   │   ├── session_end.go          #   Cleanup, rank submission
 │   │   ├── session_start.go        #   Project info, config validation
 │   │   ├── stop.go                 #   Loop controller
-│   │   └── types.go                #   Hook type definitions
+│   │   ├── subagent_start.go       #   Subagent start hook handler
+│   │   ├── task_completed.go       #   Task completed hook handler
+│   │   ├── teammate_idle.go        #   Teammate idle hook handler
+│   │   ├── types.go                #   Hook type definitions
+│   │   ├── user_prompt_submit.go   #   User prompt submit hook handler
+│   │   ├── worktree_create.go      #   Worktree create lifecycle hook
+│   │   └── worktree_remove.go      #   Worktree remove lifecycle hook
+│   ├── i18n/                       # Internationalization (3 files)
+│   │   └── templates.go            #   Translation templates for supported languages
 │   ├── loop/                       # Ralph feedback loop
 │   │   ├── controller.go
 │   │   ├── feedback.go
@@ -158,6 +181,11 @@ moai-adk-go/
 │   │   ├── auth.go
 │   │   ├── client.go
 │   │   └── config.go
+│   ├── resilience/                 # Retry and error recovery (11 files)
+│   │   ├── circuit.go              #   Circuit breaker pattern
+│   │   ├── health.go               #   Health check monitoring
+│   │   ├── monitor.go              #   Resilience metrics monitoring
+│   │   └── retry.go                #   Retry with exponential backoff
 │   ├── statusline/                 # Statusline rendering
 │   │   ├── builder.go
 │   │   ├── git.go
@@ -166,12 +194,23 @@ moai-adk-go/
 │   │   ├── renderer.go
 │   │   ├── types.go                #   Statusline type definitions
 │   │   └── update.go
+│   ├── shell/                      # Shell environment detection (9 files)
+│   │   ├── detect.go               #   Shell type detection (bash, zsh, fish)
+│   │   └── env.go                  #   Shell environment variable management
 │   ├── template/                   # Template deployment
 │   │   ├── deployer.go             #   go:embed extraction with manifest
+│   │   ├── deployer_mode.go        #   Model policy application to agent definitions
 │   │   ├── errors.go               #   Template error types
+│   │   ├── model_policy.go         #   Per-agent model assignment (high/medium/low)
 │   │   ├── renderer.go             #   Go text/template strict rendering
 │   │   ├── settings.go             #   Platform-aware settings.json generation
-│   │   └── validator.go            #   Post-deployment validation
+│   │   ├── validator.go            #   Post-deployment validation
+│   │   └── templates/              #   go:embed source (bundled into binary)
+│   │       ├── .claude/            #       Agent definitions, skills, commands, rules
+│   │       ├── .moai/              #       Config section templates
+│   │       └── CLAUDE.md           #       CLAUDE.md template
+│   ├── tmux/                       # Tmux split-pane integration (6 files)
+│   │   └── session.go              #   Tmux session management for CG mode
 │   ├── ui/                         # Charmbracelet TUI
 │   │   ├── checkbox.go             #   Multi-select with search
 │   │   ├── headless.go             #   Non-interactive mode support
@@ -182,6 +221,8 @@ moai-adk-go/
 │   │   ├── theme.go                #   MoAI color theme (lipgloss)
 │   │   ├── ui.go                   #   UI package entry point
 │   │   └── wizard.go               #   Init wizard (bubbletea Elm model)
+│   ├── workflow/                   # Workflow state management (6 files)
+│   │   └── state.go                #   Workflow phase and SPEC state tracking
 │   └── update/                     # Self-update system
 │       ├── checker.go              #   GitHub Releases API version check
 │       ├── orchestrator.go         #   Full update workflow coordinator
@@ -200,18 +241,6 @@ moai-adk-go/
 │   └── version/
 │       ├── doc.go                 #   Package documentation
 │       └── version.go
-├── templates/                      # go:embed source (bundled into binary)
-│   ├── .claude/
-│   │   ├── settings.json.tmpl      #   Platform-aware template
-│   │   ├── agents/moai/            #   Agent definitions
-│   │   ├── skills/                 #   Skill definitions
-│   │   ├── commands/moai/          #   Slash commands
-│   │   ├── rules/moai/             #   Rule files
-│   │   └── output-styles/          #   Output styles
-│   ├── .moai/
-│   │   └── config/sections/        #   Config section templates
-│   ├── CLAUDE.md.tmpl              #   CLAUDE.md template
-│   └── .gitignore.tmpl             #   .gitignore template
 ├── go.mod
 ├── go.sum
 ├── Makefile
@@ -391,7 +420,7 @@ Defines all CLI commands using the Cobra library. Each file registers one comman
 | `rank.go` | Performance ranking commands | `cli/commands/rank_command.py` | -- |
 | `worktree/` | Git worktree management subcommands | `cli/worktree/` | #270 |
 
-#### `internal/config/` -- Configuration Management (Viper + Typed Structs)
+#### `internal/config/` -- Configuration Management (Custom YAML Loader + Typed Structs)
 
 Thread-safe configuration loading with compile-time type safety. No template variable substitution in config files.
 
@@ -416,7 +445,7 @@ Contains the primary domain packages, each encapsulating a bounded context.
 | `validator.go` | Project structure validation | `core/project/validator.py` |
 | `phase.go` | Phase execution (plan/run/sync) | `core/project/phase_executor.py` |
 
-**`internal/core/git/`** -- Git Domain (go-git + system Git fallback)
+**`internal/core/git/`** -- Git Domain (system Git via exec only)
 
 | File | Purpose | Python Equivalent |
 |------|---------|-------------------|
@@ -562,14 +591,13 @@ Version constants and build metadata injected at compile time via `-ldflags`. No
 | `timeout.go` | Context-based timeout utilities |
 | `validator.go` | Input validation helpers |
 
-### `templates/` -- Embedded Templates
+### `internal/template/templates/` -- Embedded Templates
 
 **Go Feature**: Go 1.16's `embed` package bundles all templates into the compiled binary. Version-matched deployment guaranteed (resolves #307).
 
 ```
-templates/
+internal/template/templates/
 ├── .claude/
-│   ├── settings.json.tmpl     # Platform-aware (no {{HOOK_SHELL_PREFIX}} hack)
 │   ├── agents/moai/           # Agent definitions (markdown)
 │   ├── skills/                # Skill definitions (YAML frontmatter + markdown)
 │   ├── commands/moai/         # Slash commands
@@ -577,15 +605,14 @@ templates/
 │   └── output-styles/         # Output style configurations
 ├── .moai/
 │   └── config/sections/       # Config section templates (YAML)
-├── CLAUDE.md.tmpl             # CLAUDE.md template
-└── .gitignore.tmpl            # .gitignore template
+└── CLAUDE.md                  # CLAUDE.md template
 ```
 
 ### Root Files
 
 | File | Purpose |
 |------|---------|
-| `go.mod` | Go module definition (`github.com/modu-ai/moai-adk-go`) |
+| `go.mod` | Go module definition (`github.com/modu-ai/moai-adk`) |
 | `go.sum` | Cryptographic checksums of dependencies |
 | `Makefile` | Build, test, lint, and release automation |
 | `CHANGELOG.md` | Version history following Keep a Changelog format |
@@ -760,7 +787,7 @@ Converged? --> Yes: Complete
 | Claude Code (hooks) | stdin JSON + exit codes | `internal/hook/` | Event-driven automation |
 | Claude Code (files) | File system | `internal/cli/`, `internal/template/` | Agent/skill/command execution |
 | Language Servers | JSON-RPC 2.0 (stdio/TCP) | `internal/lsp/` | Code diagnostics |
-| Git | go-git (in-process) + system Git | `internal/core/git/` | Version control |
+| Git | system Git via `exec.Command` | `internal/core/git/` | Version control |
 | ast-grep | CLI subprocess | `internal/astgrep/` | Structural code analysis |
 | Ranking API | HTTPS REST | `internal/rank/` | Performance metrics |
 | GitHub Releases | HTTPS REST | `internal/update/` | Self-update |
@@ -769,15 +796,20 @@ Converged? --> Yes: Complete
 ### Internal Module Dependencies
 
 ```
-cli/ ────────→ config/, core/*, hook/, update/, ui/
-hook/ ───────→ config/, core/quality/, lsp/, loop/
+cli/ ────────→ config/, core/*, hook/, update/, ui/, github/, tmux/
+hook/ ───────→ config/, core/quality/, lsp/, loop/, resilience/
 update/ ─────→ manifest/, merge/, template/
 template/ ───→ manifest/
-core/project/ → config/, core/git/, foundation/
+core/project/ → config/, core/git/, foundation/, defs/
 core/quality/ → lsp/, astgrep/, core/git/
 loop/ ────────→ ralph/, core/quality/, core/git/
 statusline/ ──→ core/git/, config/, pkg/version/
 rank/ ────────→ config/, core/git/
+github/ ─────→ shell/, resilience/, workflow/
+shell/ ──────→ (no internal deps)
+resilience/ ─→ (no internal deps)
+workflow/ ───→ config/, defs/
+i18n/ ───────→ (no internal deps)
 ```
 
 **Dependency Rule**: Dependencies flow downward and inward. `cli/` depends on everything; `pkg/` depends on nothing internal. Circular dependencies are prohibited.
@@ -802,7 +834,7 @@ rank/ ────────→ config/, core/git/
 
 **Decision**: Each domain exposes a Go interface; consumers depend on the interface, not the struct.
 
-**Rationale**: Enables testing with mocks, allows swapping implementations (e.g., go-git vs system Git), and enforces DIP at compile time.
+**Rationale**: Enables testing with mocks, allows swapping implementations (system Git via exec in production, in-memory stubs in tests), and enforces DIP at compile time.
 
 ### ADR-004: Embedded Templates via go:embed
 

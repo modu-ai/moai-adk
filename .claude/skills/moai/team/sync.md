@@ -1,3 +1,30 @@
+---
+name: moai-workflow-team-sync
+description: >
+  Documents rationale for sync phase always using sub-agent mode.
+  Documentation generation requires sequential consistency and single
+  authoritative view. Team mode overhead is wasteful for few output files.
+  Reference document explaining why sync skips team mode.
+user-invocable: false
+metadata:
+  version: "2.5.0"
+  category: "workflow"
+  status: "active"
+  updated: "2026-02-21"
+  tags: "sync, team, documentation, rationale"
+
+# MoAI Extension: Progressive Disclosure
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 1000
+
+# MoAI Extension: Triggers
+triggers:
+  keywords: ["team sync", "sync team mode"]
+  agents: ["manager-docs"]
+  phases: ["sync"]
+---
 # Workflow: Team Sync - Documentation Phase
 
 Purpose: Explain why sync phase always uses sub-agent mode and document the rationale.
