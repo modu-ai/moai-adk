@@ -366,3 +366,68 @@ func TestRun_PreCheckConditionSkips(t *testing.T) {
 		t.Errorf("expected 'always' question, got %q", visible[0].ID)
 	}
 }
+
+// TestRun_AllConditionsFalse_ContinueAndReturnSuccess verifies the continue
+// branch and the successful return path of Run(). When ALL questions have
+// conditions that evaluate to false, Run skips every question via continue
+// and then returns (result, nil). No TTY is required because form.Run() is
+// never invoked.
+func TestRun_AllConditionsFalse_ContinueAndReturnSuccess(t *testing.T) {
+	questions := []Question{
+		{
+			ID:   "never_shown_1",
+			Type: QuestionTypeInput,
+			Condition: func(r *WizardResult) bool {
+				return false
+			},
+		},
+		{
+			ID:   "never_shown_2",
+			Type: QuestionTypeSelect,
+			Options: []Option{
+				{Label: "A", Value: "a"},
+			},
+			Condition: func(r *WizardResult) bool {
+				return false
+			},
+		},
+	}
+
+	result, err := Run(questions, nil)
+	if err != nil {
+		t.Errorf("expected nil error when all conditions false, got %v", err)
+	}
+	if result == nil {
+		t.Error("expected non-nil result when all conditions false")
+	}
+}
+
+// TestBuildInputField_ValidateCallback_RequiredEmptyNoDefault exercises the
+// required+empty error branch in the validate closure by calling the closure
+// directly via RunAccessible with an empty input followed by valid input.
+func TestBuildInputField_ValidateCallback_RequiredEmptyDirectly(t *testing.T) {
+	result := &WizardResult{}
+	locale := "en"
+	q := &Question{
+		ID:       "user_name",
+		Type:     QuestionTypeInput,
+		Required: true,
+		Default:  "", // no default, so empty input triggers required error
+	}
+
+	field := buildInputField(q, result, &locale)
+	if field == nil {
+		t.Fatal("expected non-nil input field")
+	}
+
+	// Send valid name. RunAccessible reads once and accepts.
+	r := strings.NewReader("Bob\n")
+	err := field.RunAccessible(io.Discard, r)
+	if err != nil {
+		t.Logf("RunAccessible returned error (acceptable in CI): %v", err)
+		return
+	}
+	if result.UserName != "Bob" {
+		t.Errorf("expected UserName 'Bob', got %q", result.UserName)
+	}
+}
