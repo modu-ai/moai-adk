@@ -121,16 +121,16 @@ Create new MoAI components:
 
 Agents for Claude Code Agent Teams (v2.1.32+, requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1):
 
-| Agent | Model | Phase | Mode | Purpose |
-|-------|-------|-------|------|---------|
-| team-researcher | haiku | plan | plan (read-only) | Codebase exploration and research |
-| team-analyst | opus | plan | plan (read-only) | Requirements analysis |
-| team-architect | opus | plan | plan (read-only) | Technical design |
-| team-backend-dev | opus | run | acceptEdits | Server-side implementation |
-| team-designer | opus | run | acceptEdits | UI/UX design with Pencil/Figma MCP (requires Pencil MCP server) |
-| team-frontend-dev | opus | run | acceptEdits | Client-side implementation |
-| team-tester | opus | run | acceptEdits | Test creation with exclusive test file ownership |
-| team-quality | haiku | run | plan (read-only) | TRUST 5 quality validation |
+| Agent | Model | Phase | Mode | Isolation | Background | Purpose |
+|-------|-------|-------|------|-----------|------------|---------|
+| team-researcher | haiku | plan | plan (read-only) | none | false | Codebase exploration and research |
+| team-analyst | opus | plan | plan (read-only) | none | false | Requirements analysis |
+| team-architect | opus | plan | plan (read-only) | none | false | Technical design |
+| team-backend-dev | opus | run | acceptEdits | worktree | true | Server-side implementation |
+| team-designer | opus | run | acceptEdits | worktree | true | UI/UX design with Pencil/Figma MCP (requires Pencil MCP server) |
+| team-frontend-dev | opus | run | acceptEdits | worktree | true | Client-side implementation |
+| team-tester | opus | run | acceptEdits | worktree | true | Test creation with exclusive test file ownership |
+| team-quality | haiku | run | plan (read-only) | none | false | TRUST 5 quality validation |
 
 ## Rules
 

@@ -861,6 +861,95 @@ llm:
 
 ---
 
+## 16. Claude Code 2.1.50 Worktree Integration
+
+### Two Distinct Worktree Systems
+
+MoAI-ADK uses two complementary worktree systems:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  1. Claude Code Native Worktree                                  │
+│  ├── Path: .claude/worktrees/<name>/                            │
+│  ├── User CLI: claude --worktree / claude -w                    │
+│  ├── Agent: isolation: worktree in frontmatter                  │
+│  ├── Lifetime: Ephemeral (auto-cleanup on session end)          │
+│  └── Hooks: WorktreeCreate / WorktreeRemove events              │
+├─────────────────────────────────────────────────────────────────┤
+│  2. MoAI Worktree                                               │
+│  ├── Path: .moai/worktrees/{Project}/{SPEC}/                    │
+│  ├── CLI: moai worktree new/list/remove                         │
+│  ├── Lifetime: Persistent (SPEC-scoped)                         │
+│  └── Purpose: Multi-session SPEC development, PRs               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### `claude --worktree` and `--tmux` Flags
+
+```bash
+# Start isolated session
+claude --worktree            # Creates .claude/worktrees/<auto-name>/
+claude -w                    # Short form
+
+# With tmux for split-pane (requires tmux or iTerm2)
+claude --worktree --tmux
+
+# NOT supported in: VS Code integrated terminal, Windows Terminal, Ghostty
+```
+
+**Who uses it**: USERS (not agents/subagents internally)
+
+### `isolation: worktree` in Agent Frontmatter (v2.1.49+)
+
+**Who uses it**: AGENTS (implementation teammates)
+
+```yaml
+# Implementation agents get isolation + background
+name: team-backend-dev
+isolation: worktree   # Own isolated worktree per agent
+background: true      # Non-blocking parallel execution
+
+# Research/analysis agents do NOT need isolation
+name: team-researcher
+# No isolation needed (permissionMode: plan already prevents writes)
+permissionMode: plan
+```
+
+**Current agent status**:
+
+| Agent | isolation | background | Reason |
+|-------|-----------|------------|--------|
+| team-backend-dev | worktree | true | Writes server-side files |
+| team-frontend-dev | worktree | true | Writes client-side files |
+| team-tester | worktree | true | Writes test files |
+| team-designer | worktree | true | Writes design files |
+| team-researcher | none | false | Read-only (plan mode) |
+| team-analyst | none | false | Read-only (plan mode) |
+| team-architect | none | false | Read-only (plan mode) |
+| team-quality | none | false | Read-only (plan mode) |
+
+### WorktreeCreate/Remove Go Handlers
+
+Implemented in `internal/hook/`:
+- `worktree_create.go` → `moai hook worktree-create`
+- `worktree_remove.go` → `moai hook worktree-remove`
+
+Registered in `internal/cli/deps.go` and `internal/cli/hook.go`.
+
+Shell wrappers in `.claude/hooks/moai/`:
+- `handle-worktree-create.sh` → Calls `moai hook worktree-create`
+- `handle-worktree-remove.sh` → Calls `moai hook worktree-remove`
+
+### Development Checklist for Worktree Features
+
+When adding isolation to new agents:
+- [ ] Add `isolation: worktree` to agent frontmatter in templates
+- [ ] Add `background: true` if parallel execution is needed
+- [ ] Verify agent's tasks don't have sequential dependencies
+- [ ] Check file ownership patterns don't overlap with other agents
+
+---
+
 **Status**: Active (Local Development)
-**Version**: 1.2.0 (Multi-Model Architecture section added)
+**Version**: 1.3.0 (Worktree Integration section added)
 **Last Updated**: 2026-02-21
