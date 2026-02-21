@@ -252,6 +252,7 @@ func TestIsGlobalFile(t *testing.T) {
 		path     string
 		expected bool
 	}{
+		// Global files (agents/moai, skills/moai*, rules/moai, commands/moai)
 		{".claude/agents/moai/expert-backend.md", true},
 		{".claude/agents/moai/manager-spec.md", true},
 		{".claude/skills/moai/SKILL.md", true},
@@ -259,6 +260,20 @@ func TestIsGlobalFile(t *testing.T) {
 		{".claude/skills/moai-workflow-project/SKILL.md", true},
 		{".claude/rules/moai/core/constitution.md", true},
 		{".claude/rules/moai/workflow/spec-workflow.md", true},
+		{".claude/commands/moai/plan.md", true},
+		{".claude/commands/moai/run.md", true},
+		{".claude/commands/moai/sync.md", true},
+		{".claude/commands/moai/fix.md", true},
+		{".claude/commands/moai/loop.md", true},
+		{".claude/commands/moai/mx.md", true},
+		{".claude/commands/moai/project.md", true},
+		{".claude/commands/moai/feedback.md", true},
+		{".claude/commands/moai/review.md", true},
+		{".claude/commands/moai/coverage.md", true},
+		{".claude/commands/moai/e2e.md", true},
+		{".claude/commands/moai/clean.md", true},
+		{".claude/commands/moai/codemaps.md", true},
+		// Local files (always project-specific)
 		{".claude/hooks/moai/handle-session-start.sh", false},
 		{".claude/settings.json", false},
 		{".claude/settings.local.json", false},

@@ -11,9 +11,9 @@ import (
 	"github.com/modu-ai/moai-adk/internal/manifest"
 )
 
-// @MX:NOTE: [AUTO] IsGlobalFile은 Global 모드에서 ~/.claude/에 배치될 파일을 결정합니다. agents/moai, skills/moai*, rules/moai는 글로벌, hooks와 settings는 로컬에 유지됩니다.
+// @MX:NOTE: [AUTO] IsGlobalFile은 Global 모드에서 ~/.claude/에 배치될 파일을 결정합니다. agents/moai, skills/moai*, rules/moai, commands/moai는 글로벌, hooks와 settings는 로컬에 유지됩니다.
 // IsGlobalFile determines if a template file should be deployed to global ~/.claude/
-// when in global mode. Returns true for agents/moai/, skills/moai*, rules/moai/.
+// when in global mode. Returns true for agents/moai/, skills/moai*, rules/moai/, commands/moai/.
 // Returns false for hooks/, settings files, and other project-specific files.
 func IsGlobalFile(relPath string) bool {
 	// Normalize path separators
@@ -37,6 +37,7 @@ func IsGlobalFile(relPath string) bool {
 	// - agents/moai/ - MoAI system agents
 	// - skills/moai* - MoAI core and related skills
 	// - rules/moai/ - MoAI system rules
+	// - commands/moai/ - MoAI slash commands (plan, run, sync, fix, loop, mx, project, feedback, review, coverage, e2e, clean, codemaps)
 	if strings.HasPrefix(relPath, ".claude/agents/moai/") {
 		return true
 	}
@@ -44,6 +45,9 @@ func IsGlobalFile(relPath string) bool {
 		return true
 	}
 	if strings.HasPrefix(relPath, ".claude/rules/moai/") {
+		return true
+	}
+	if strings.HasPrefix(relPath, ".claude/commands/moai/") {
 		return true
 	}
 
