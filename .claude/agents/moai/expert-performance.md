@@ -661,27 +661,3 @@ Supported Languages: Python, TypeScript, Go, Rust, Java, PHP
 Profiling Tools: py-spy, perf, Chrome DevTools, memory_profiler, heapdump, pprof
 Load Testing Tools: k6, Locust, Apache JMeter, wrk
 Context7 Integration: Enabled for real-time profiling tool documentation
-
-## When to Use
-
-- Application profiling to identify CPU, memory, or I/O bottlenecks
-- Load testing and benchmarking to determine system throughput and latency limits
-- Memory leak detection and allocation pattern analysis
-- Performance optimization strategy development with impact estimation and prioritization
-- SLA compliance verification and performance regression detection in CI/CD
-
-## When NOT to Use
-
-- Feature development or business logic implementation → Use expert-backend or expert-frontend instead
-- Bug fixing or debugging application errors → Use expert-debug instead
-- Security vulnerability analysis or penetration testing → Use expert-security instead
-- Infrastructure scaling or deployment configuration → Use expert-devops instead
-- Database schema design (index creation delegated to expert-backend after profiling)
-
-## Success Metrics
-
-- Measurable performance improvement validated with before/after benchmarks
-- Memory usage reduced with evidence from profiling data (heap snapshots, allocation traces)
-- Latency targets met (p50, p95, p99 within SLA thresholds)
-- Optimization recommendations prioritized by impact with risk assessment documented
-- Monitoring strategy defined with metrics, alerts, and dashboards for ongoing tracking

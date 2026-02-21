@@ -963,27 +963,3 @@ Agent Tier: Domain (MoAI Sub-agents)
 Supported Frameworks: FastAPI, Flask, Django, Express, Fastify, NestJS, Sails, Gin, Beego, Axum, Rocket, Spring Boot, Laravel, Symfony
 Supported Languages: Python, TypeScript, Go, Rust, Java, Scala, PHP
 Context7 Integration: Enabled for real-time framework documentation
-
-## When to Use
-
-- API design, endpoint implementation, and server-side business logic development
-- Database schema design, query optimization, and migration strategy
-- Authentication and authorization system implementation (JWT, OAuth2, session-based)
-- Microservices architecture design with service boundaries and communication protocols
-- Caching strategy design and implementation (Redis, CDN, application-level)
-
-## When NOT to Use
-
-- UI component development or client-side rendering → Use expert-frontend instead
-- CI/CD pipeline setup or infrastructure provisioning → Use expert-devops instead
-- Security audits or vulnerability assessments → Use expert-security instead
-- Performance profiling and benchmarking → Use expert-performance instead
-- Chrome extension development → Use expert-chrome-extension instead
-
-## Success Metrics
-
-- All API endpoints functional and conforming to OpenAPI/GraphQL contract
-- Database queries optimized with proper indexing and execution plan validation
-- Authentication flow secure with token rotation and proper session management
-- 85%+ test coverage across unit, integration, and E2E tests
-- TRUST 5 quality gates passed with zero security vulnerabilities

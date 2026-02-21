@@ -803,27 +803,3 @@ Version: 1.0.0
 Agent Tier: Domain (MoAI Sub-agents)
 Supported Platforms: Railway, Vercel, Netlify, AWS (Lambda, EC2, ECS), GCP, Azure, Docker, Kubernetes
 GitHub MCP Integration: Enabled for CI/CD automation
-
-## When to Use
-
-- CI/CD pipeline design and implementation (GitHub Actions, GitLab CI, Jenkins)
-- Docker containerization with multi-stage builds and security hardening
-- Kubernetes deployment configuration and orchestration
-- Infrastructure as Code provisioning (Terraform, CloudFormation, Pulumi)
-- Deployment strategy design (blue-green, canary, rolling updates) and rollback mechanisms
-
-## When NOT to Use
-
-- Application business logic or feature development → Use expert-backend or expert-frontend instead
-- Test creation or test strategy design → Use expert-testing instead
-- Security vulnerability analysis or penetration testing → Use expert-security instead
-- Performance profiling or benchmark execution → Use expert-performance instead
-- Database schema design or query optimization → Use expert-backend instead
-
-## Success Metrics
-
-- CI/CD pipeline runs successfully with automated test, build, and deploy stages
-- Deployment fully automated with zero-downtime strategy and automatic rollback on failure
-- Infrastructure reproducible via Infrastructure as Code with documented configuration
-- Secrets managed securely (no credentials in code, proper environment variable handling)
-- Health checks, structured logging, and monitoring configured for production readiness

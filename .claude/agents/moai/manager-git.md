@@ -1205,27 +1205,3 @@ Protected Branch Conflict (when auto_branch equals false):
 ---
 
 manager-git provides a simple and stable work environment with direct Git commands instead of complex scripts.
-
-## When to Use
-
-- Git branch creation, management, and naming strategy (feature branches, hotfix branches)
-- Commit message generation following conventional commits and DDD phase structure
-- Pull request creation, review coordination, and merge management
-- Checkpoint creation and rollback operations for safe recovery points
-- Release workflow execution including tagging and deployment triggering
-
-## When NOT to Use
-
-- Application code implementation or feature development → Use expert-backend or expert-frontend instead
-- Test creation or test strategy design → Use expert-testing instead
-- Documentation content generation → Use manager-docs instead
-- SPEC document creation or requirements analysis → Use manager-spec instead
-- CI/CD pipeline configuration → Use expert-devops instead
-
-## Success Metrics
-
-- Clean commit history with structured messages following conventional commit format
-- Pull request created with proper description, branch naming, and review requirements met
-- Branch strategy followed consistently (GitHub Flow with correct base branch usage)
-- Checkpoint tags created before risky operations enabling safe rollback
-- All Git operations complete without merge conflicts or data loss

@@ -28,7 +28,7 @@ Cost savings: Run phase typically uses ~70% of total tokens. Using GLM-5 for thi
 
 ## Prerequisites
 
-- `moai glm --team` has been run (team_mode="glm" in llm.yaml)
+- `moai cg` has been run (team_mode="cg" in llm.yaml)
 - Claude Code session started with `claude` (runs on Opus)
 - GLM API key saved via `moai glm <key>` or set in GLM_API_KEY env
 

@@ -8,8 +8,6 @@ description: >
   Use proactively during run phase team work when UI/UX design is needed.
 tools: Read, Write, Edit, Bash, Grep, Glob, mcp__pencil__batch_design, mcp__pencil__batch_get, mcp__pencil__get_editor_state, mcp__pencil__get_guidelines, mcp__pencil__get_screenshot, mcp__pencil__get_style_guide, mcp__pencil__get_style_guide_tags, mcp__pencil__get_variables, mcp__pencil__set_variables, mcp__pencil__open_document, mcp__pencil__snapshot_layout, mcp__pencil__find_empty_space_on_canvas, mcp__pencil__search_all_unique_properties, mcp__pencil__replace_all_matching_properties
 model: opus
-isolation: worktree
-background: true
 permissionMode: acceptEdits
 memory: project
 skills: moai-domain-uiux, moai-design-tools, moai-domain-frontend, moai-library-shadcn
@@ -81,28 +79,6 @@ Quality standards:
 - Responsive design specifications for mobile, tablet, and desktop
 - Dark mode and light mode variants when applicable
 - Component state coverage: default, hover, active, focus, disabled, error
-
-## When to Use
-
-- Team run phase requiring UI/UX design via Pencil MCP or Figma MCP tools
-- Creating design tokens, style guides, and component specifications from scratch
-- Translating existing Figma designs into project-specific design system artifacts
-- Defining responsive layouts, accessibility annotations, and component state coverage
-
-## When NOT to Use
-
-- Implementing UI components in code: Use team-frontend-dev instead
-- Building server-side logic or API endpoints: Use team-backend-dev instead
-- Writing tests for UI components: Use team-tester instead
-- Defining requirements or acceptance criteria: Use team-analyst instead
-
-## Success Metrics
-
-- Design tokens generated and documented in project-compatible format
-- Component specifications include all states (default, hover, active, focus, disabled, error)
-- WCAG 2.2 AA accessibility compliance verified for all designs
-- Responsive design specifications cover mobile, tablet, and desktop viewports
-- Design artifacts exported and communicated to frontend-dev for implementation
 
 After completing each task:
 - Mark task as completed via TaskUpdate (MANDATORY - prevents infinite waiting)

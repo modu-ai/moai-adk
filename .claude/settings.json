@@ -166,6 +166,17 @@
           }
         ]
       }
+    ],
+    "WorktreeRemove": [
+      {
+        "hooks": [
+          {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-worktree-remove.sh\"",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
@@ -372,5 +383,6 @@
     "pr": "\ud83d\uddff MoAI <email@mo.ai.kr>"
   },
   "enableAllProjectMcpServers": true,
-  "respectGitignore": true
+  "respectGitignore": true,
+  "teammateMode": "auto"
 }

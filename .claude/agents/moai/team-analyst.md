@@ -7,8 +7,6 @@ description: >
   Use proactively during plan phase team work.
 tools: Read, Grep, Glob, Bash
 model: opus
-isolation: none
-background: true
 permissionMode: plan
 memory: project
 skills: moai-foundation-core, moai-foundation-thinking, moai-workflow-spec
@@ -46,28 +44,6 @@ Communication rules:
 - Share edge cases and risks with the architect for design consideration
 - Ask the team lead for clarification if requirements are ambiguous
 - Update task status via TaskUpdate
-
-## When to Use
-
-- Team plan phase requiring comprehensive requirements analysis and user story definition
-- Features with complex acceptance criteria that need EARS format specification
-- Identifying edge cases, risks, constraints, and non-functional requirements
-- Cross-cutting concerns that affect multiple system areas and need dependency analysis
-
-## When NOT to Use
-
-- Codebase exploration and architecture mapping: Use team-researcher instead
-- Technical design and implementation approach evaluation: Use team-architect instead
-- Writing implementation code or tests: Use team-backend-dev, team-frontend-dev, or team-tester instead
-- Quality validation of completed work: Use team-quality instead
-
-## Success Metrics
-
-- All user stories documented with testable EARS-format acceptance criteria
-- Edge cases and boundary conditions identified with error scenarios
-- Risks categorized (technical, business, schedule) with mitigation strategies
-- Non-functional requirements (performance, security, accessibility) explicitly defined
-- Dependencies on external systems and internal modules mapped completely
 
 After completing each task:
 - Mark task as completed via TaskUpdate (MANDATORY - prevents infinite waiting)

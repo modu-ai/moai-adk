@@ -7,8 +7,6 @@ description: >
   Use proactively as the final validation step in team workflows.
 tools: Read, Grep, Glob, Bash
 model: haiku
-isolation: none
-background: true
 permissionMode: plan
 memory: project
 skills: moai-foundation-quality, moai-workflow-testing, moai-tool-ast-grep
@@ -51,28 +49,6 @@ Quality gates (must all pass):
 - Coverage targets met
 - No critical security issues
 - All acceptance criteria verified
-
-## When to Use
-
-- Final validation step in team run phase after all implementation and testing is complete
-- Verifying TRUST 5 compliance across all modified code (Tested, Readable, Unified, Secured, Trackable)
-- Running comprehensive lint, type check, and coverage validation before marking a feature done
-- Identifying security anti-patterns and code quality issues across the entire changeset
-
-## When NOT to Use
-
-- Writing implementation code: Use team-backend-dev or team-frontend-dev instead
-- Writing tests: Use team-tester instead
-- Architecture decisions or technical design: Use team-architect instead
-- Requirements analysis: Use team-analyst instead
-
-## Success Metrics
-
-- All TRUST 5 dimensions pass validation with documented evidence
-- Zero lint errors and zero type errors in the final changeset
-- Coverage targets met (85%+ overall, 90%+ for new code)
-- No critical security issues identified in the quality report
-- All acceptance criteria from the SPEC verified as satisfied
 
 After completing each task:
 - Mark task as completed via TaskUpdate (MANDATORY - prevents infinite waiting)

@@ -104,32 +104,12 @@ If --sequential flag: Run Explore, then Research, then Quality sequentially inst
 
 ## Phase 0 Completion: Routing Decision
 
-Complexity-based routing (auto-detect from Phase 0 exploration results):
+Single-domain routing:
+- If task is single-domain (e.g., "SQL optimization"): Delegate directly to expert agent, skip SPEC generation
+- If task is multi-domain: Proceed to full workflow with SPEC generation
 
-Complexity Score Calculation:
-- Number of domains affected (backend, frontend, database, config, etc.): +2 per domain
-- Number of files to create or modify: +1 per file
-- External dependency changes needed: +3 each
-- Cross-module interaction required: +2 each
-
-Routing Logic:
-
-**Simple task (complexity score < 5)**:
-- Single-domain, few files: Delegate directly to expert agent, skip SPEC generation
-- Example: "Add a utility function", "Fix the login button color"
-
-**Moderate to complex task (complexity score >= 5)**:
-- [HARD] Automatically generate SPEC via manager-spec subagent (no user approval needed for SPEC creation)
-- SPEC is created and committed as reference documentation
-- Proceed directly to Phase 2 implementation
-- User approval checkpoint is at the run phase plan approval (Phase 2 Decision Point 1), not at SPEC creation
-
-**High complexity task (complexity score >= 10)**:
-- Generate SPEC with full risk assessment
-- Present SPEC summary to user via AskUserQuestion for awareness (not blocking approval)
-- Options: Proceed (default, recommended), Review SPEC details, Cancel
-
-This ensures that SPEC documents are always created for non-trivial work, providing traceability without blocking the development flow.
+User approval checkpoint via AskUserQuestion:
+- Options: Proceed to SPEC creation, Modify approach, Cancel
 
 ## Phase 1: SPEC Generation
 
@@ -232,5 +212,5 @@ AI must add a marker when work is complete:
 
 ---
 
-Version: 2.1.0
-Source: Renamed from alfred.md. Unified plan->run->sync pipeline. Added SPEC/project document update in sync phase. Added auto-SPEC generation based on complexity thresholds.
+Version: 2.0.0
+Source: Renamed from alfred.md. Unified plan->run->sync pipeline. Added SPEC/project document update in sync phase.
