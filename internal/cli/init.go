@@ -57,7 +57,6 @@ func init() {
 	initCmd.Flags().String("code-comment-lang", "", "Code comment language (default: en)")
 	initCmd.Flags().String("doc-lang", "", "Documentation language (default: en)")
 	initCmd.Flags().String("model-policy", "", "Agent model policy: high, medium, or low (default: high)")
-	initCmd.Flags().String("install-mode", "", "Installation mode: global or local (default: local)")
 	initCmd.Flags().Bool("non-interactive", false, "Skip interactive wizard; use flags and defaults")
 	initCmd.Flags().Bool("force", false, "Reinitialize an existing project (backs up current .moai/)")
 }
@@ -129,16 +128,6 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 		valid := slices.Contains(validLangs, convLang)
 		if !valid {
 			return fmt.Errorf("invalid --conv-lang value %q: must be a valid ISO 639-1 language code (e.g., en, ko, ja, zh)", convLang)
-		}
-	}
-
-	// Validate installation mode
-	installMode := getStringFlag(cmd, "install-mode")
-	if installMode != "" {
-		validModes := []string{"global", "local"}
-		valid := slices.Contains(validModes, installMode)
-		if !valid {
-			return fmt.Errorf("invalid --install-mode value %q: must be one of: global, local", installMode)
 		}
 	}
 
@@ -225,7 +214,6 @@ func runInit(cmd *cobra.Command, args []string) error {
 		CodeCommentLang:   getStringFlag(cmd, "code-comment-lang"),
 		DocLang:           getStringFlag(cmd, "doc-lang"),
 		ModelPolicy:       getStringFlag(cmd, "model-policy"),
-		InstallationMode:  getStringFlag(cmd, "install-mode"),
 		NonInteractive:    nonInteractive,
 		Force:             getBoolFlag(cmd, "force"),
 	}

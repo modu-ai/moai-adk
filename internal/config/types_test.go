@@ -294,55 +294,6 @@ func TestWorkflowConfigFields(t *testing.T) {
 	}
 }
 
-// TAG-001: Test SystemConfig InstallationMode field
-func TestSystemConfigInstallationMode(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name  string
-		mode  string
-		valid bool
-	}{
-		{"empty is valid (default)", "", true},
-		{"global is valid", "global", true},
-		{"local is valid", "local", true},
-		{"invalid mode", "invalid", false},
-		{"mixed case GLOBAL", "GLOBAL", false},
-		{"mixed case Local", "Local", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			cfg := SystemConfig{
-				InstallationMode: tt.mode,
-			}
-			if cfg.InstallationMode != tt.mode {
-				t.Errorf("InstallationMode: got %q, want %q", cfg.InstallationMode, tt.mode)
-			}
-
-			// Validate mode
-			isValid := IsValidInstallationMode(tt.mode)
-			if isValid != tt.valid {
-				t.Errorf("IsValidInstallationMode(%q) = %v, want %v", tt.mode, isValid, tt.valid)
-			}
-		})
-	}
-}
-
-// TAG-001: Test SystemConfig GlobalPath field
-func TestSystemConfigGlobalPath(t *testing.T) {
-	t.Parallel()
-
-	cfg := SystemConfig{
-		GlobalPath: "~/.claude",
-	}
-
-	if cfg.GlobalPath != "~/.claude" {
-		t.Errorf("GlobalPath: got %q, want %q", cfg.GlobalPath, "~/.claude")
-	}
-}
-
 func TestLSPQualityGatesFields(t *testing.T) {
 	t.Parallel()
 

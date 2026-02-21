@@ -59,10 +59,6 @@ const (
 	DefaultGitConventionConfidenceThreshold = 0.5
 	DefaultGitConventionFallback            = "conventional-commits"
 	DefaultGitConventionMaxLength           = 100
-
-	// Installation mode constants (TAG-001)
-	DefaultInstallationMode = "local" // Default to local for backward compatibility
-	DefaultGlobalPath       = "~/.claude"
 )
 
 // NewDefaultConfig returns a Config with all fields set to compiled defaults.
@@ -161,10 +157,8 @@ func NewDefaultGitStrategyConfig() GitStrategyConfig {
 // NewDefaultSystemConfig returns a SystemConfig with default values.
 func NewDefaultSystemConfig() SystemConfig {
 	return SystemConfig{
-		LogLevel:         DefaultLogLevel,
-		LogFormat:        DefaultLogFormat,
-		InstallationMode: DefaultInstallationMode,
-		GlobalPath:       DefaultGlobalPath,
+		LogLevel:  DefaultLogLevel,
+		LogFormat: DefaultLogFormat,
 	}
 }
 

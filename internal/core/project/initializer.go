@@ -42,7 +42,6 @@ type InitOptions struct {
 	Force             bool     // If true, allow reinitializing an existing project.
 	SkipShellConfig   bool     // If true, skip shell environment configuration.
 	ModelPolicy       string   // Token consumption tier: "high", "medium", "low".
-	InstallationMode  string   // Installation mode: "global" or "local" (default: "local").
 }
 
 // InitResult summarizes the outcome of project initialization.
@@ -268,7 +267,6 @@ func (i *projectInitializer) deployTemplates(ctx context.Context, opts InitOptio
 		template.WithHomeDir(homeDir),
 		template.WithSmartPATH(template.BuildSmartPATH()),
 		template.WithVersion(version.GetVersion()),
-		template.WithInstallationMode(opts.InstallationMode),
 	)
 
 	if err := i.deployer.Deploy(ctx, opts.ProjectRoot, i.manifestMgr, tmplCtx); err != nil {

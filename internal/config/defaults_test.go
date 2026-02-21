@@ -259,14 +259,6 @@ func TestNewDefaultSystemConfig(t *testing.T) {
 	if cfg.NonInteractive {
 		t.Error("NonInteractive: expected false")
 	}
-	// TAG-001: Default installation mode is "local" for backward compatibility
-	if cfg.InstallationMode != DefaultInstallationMode {
-		t.Errorf("InstallationMode: got %q, want %q", cfg.InstallationMode, DefaultInstallationMode)
-	}
-	// TAG-001: Default global path
-	if cfg.GlobalPath != DefaultGlobalPath {
-		t.Errorf("GlobalPath: got %q, want %q", cfg.GlobalPath, DefaultGlobalPath)
-	}
 }
 
 func TestNewDefaultLLMConfig(t *testing.T) {
@@ -406,9 +398,6 @@ func TestDefaultConstants(t *testing.T) {
 		{"DefaultGitConventionConfidenceThreshold", DefaultGitConventionConfidenceThreshold, 0.5},
 		{"DefaultGitConventionFallback", DefaultGitConventionFallback, "conventional-commits"},
 		{"DefaultGitConventionMaxLength", DefaultGitConventionMaxLength, 100},
-		// TAG-001: Installation mode constants
-		{"DefaultInstallationMode", DefaultInstallationMode, "local"},
-		{"DefaultGlobalPath", DefaultGlobalPath, "~/.claude"},
 	}
 
 	for _, tt := range tests {
