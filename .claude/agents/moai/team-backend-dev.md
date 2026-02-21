@@ -8,6 +8,8 @@ description: >
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: opus
 permissionMode: acceptEdits
+isolation: worktree
+background: true
 memory: project
 skills: moai-domain-backend, moai-domain-database, moai-platform-auth, moai-platform-database-cloud
 ---
