@@ -727,3 +727,171 @@ func TestUnescapeDotenvValue(t *testing.T) {
 		})
 	}
 }
+
+// --- TAG-006: GLM isolation - only modify settings.local.json, never settings.json ---
+
+func TestInjectGLMEnvForTeam_NeverModifiesSettingsJson(t *testing.T) {
+	tmpDir := t.TempDir()
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+	t.Setenv("USERPROFILE", tmpHome)
+
+	// Save a test API key.
+	moaiDir := filepath.Join(tmpHome, ".moai")
+	if err := os.MkdirAll(moaiDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(moaiDir, ".env.glm"),
+		[]byte("GLM_API_KEY=\"isolation-test\"\n"),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create both settings.json and settings.local.json
+	claudeDir := filepath.Join(tmpDir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// settings.json content (team-shared, should NOT be modified)
+	settingsJSONPath := filepath.Join(claudeDir, "settings.json")
+	originalSettingsJSON := map[string]any{
+		"permissions": map[string]any{
+			"allow": []string{"Read", "Write"},
+		},
+	}
+	settingsData, _ := json.MarshalIndent(originalSettingsJSON, "", "  ")
+	if err := os.WriteFile(settingsJSONPath, settingsData, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// settings.local.json path (should be modified)
+	settingsLocalPath := filepath.Join(claudeDir, "settings.local.json")
+
+	glmConfig := &GLMConfigFromYAML{
+		BaseURL: "https://api.z.ai/api/anthropic",
+		Models: struct {
+			High   string
+			Medium string
+			Low    string
+		}{
+			High:   "glm-5",
+			Medium: "glm-4.7",
+			Low:    "glm-4.7-flashx",
+		},
+		EnvVar: "GLM_API_KEY",
+	}
+
+	// Run injectGLMEnvForTeam
+	err := injectGLMEnvForTeam(settingsLocalPath, glmConfig, "isolation-test")
+	if err != nil {
+		t.Fatalf("injectGLMEnvForTeam should succeed, got: %v", err)
+	}
+
+	// Verify settings.json was NOT modified
+	settingsJSONAfter, err := os.ReadFile(settingsJSONPath)
+	if err != nil {
+		t.Fatalf("failed to read settings.json: %v", err)
+	}
+	var settingsAfter map[string]any
+	if err := json.Unmarshal(settingsJSONAfter, &settingsAfter); err != nil {
+		t.Fatalf("failed to unmarshal settings.json: %v", err)
+	}
+
+	// Verify original permissions are unchanged
+	perms, ok := settingsAfter["permissions"].(map[string]any)
+	if !ok {
+		t.Fatal("settings.json should still have permissions")
+	}
+	allow, ok := perms["allow"].([]any)
+	if !ok || len(allow) != 2 {
+		t.Errorf("settings.json permissions.allow should be unchanged, got: %v", allow)
+	}
+
+	// Verify settings.json does NOT have GLM env vars
+	if env, exists := settingsAfter["env"]; exists {
+		if envMap, ok := env.(map[string]any); ok {
+			if _, hasToken := envMap["ANTHROPIC_AUTH_TOKEN"]; hasToken {
+				t.Error("settings.json should NOT contain ANTHROPIC_AUTH_TOKEN (GLM isolation)")
+			}
+		}
+	}
+
+	// Verify settings.local.json WAS modified
+	settingsLocalAfter, err := os.ReadFile(settingsLocalPath)
+	if err != nil {
+		t.Fatalf("failed to read settings.local.json: %v", err)
+	}
+	var settingsLocal SettingsLocal
+	if err := json.Unmarshal(settingsLocalAfter, &settingsLocal); err != nil {
+		t.Fatalf("failed to unmarshal settings.local.json: %v", err)
+	}
+	if settingsLocal.Env["ANTHROPIC_AUTH_TOKEN"] != "isolation-test" {
+		t.Error("settings.local.json should contain ANTHROPIC_AUTH_TOKEN")
+	}
+}
+
+func TestInjectTmuxDisplayOnly_NeverModifiesSettingsJson(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create both settings.json and settings.local.json
+	claudeDir := filepath.Join(tmpDir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// settings.json content (team-shared, should NOT be modified)
+	settingsJSONPath := filepath.Join(claudeDir, "settings.json")
+	originalSettingsJSON := map[string]any{
+		"permissions": map[string]any{
+			"allow": []string{"Read"},
+		},
+	}
+	settingsData, _ := json.MarshalIndent(originalSettingsJSON, "", "  ")
+	if err := os.WriteFile(settingsJSONPath, settingsData, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// settings.local.json path (should be modified)
+	settingsLocalPath := filepath.Join(claudeDir, "settings.local.json")
+
+	// Run injectTmuxDisplayOnly
+	err := injectTmuxDisplayOnly(settingsLocalPath)
+	if err != nil {
+		t.Fatalf("injectTmuxDisplayOnly should succeed, got: %v", err)
+	}
+
+	// Verify settings.json was NOT modified
+	settingsJSONAfter, err := os.ReadFile(settingsJSONPath)
+	if err != nil {
+		t.Fatalf("failed to read settings.json: %v", err)
+	}
+	var settingsAfter map[string]any
+	if err := json.Unmarshal(settingsJSONAfter, &settingsAfter); err != nil {
+		t.Fatalf("failed to unmarshal settings.json: %v", err)
+	}
+
+	// Verify settings.json does NOT have CLAUDE_CODE_TEAMMATE_DISPLAY
+	if env, exists := settingsAfter["env"]; exists {
+		if envMap, ok := env.(map[string]any); ok {
+			if _, hasDisplay := envMap["CLAUDE_CODE_TEAMMATE_DISPLAY"]; hasDisplay {
+				t.Error("settings.json should NOT contain CLAUDE_CODE_TEAMMATE_DISPLAY (GLM isolation)")
+			}
+		}
+	}
+
+	// Verify settings.local.json WAS modified
+	settingsLocalAfter, err := os.ReadFile(settingsLocalPath)
+	if err != nil {
+		t.Fatalf("failed to read settings.local.json: %v", err)
+	}
+	var settingsLocal SettingsLocal
+	if err := json.Unmarshal(settingsLocalAfter, &settingsLocal); err != nil {
+		t.Fatalf("failed to unmarshal settings.local.json: %v", err)
+	}
+	if settingsLocal.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
+		t.Error("settings.local.json should contain CLAUDE_CODE_TEAMMATE_DISPLAY=tmux")
+	}
+}

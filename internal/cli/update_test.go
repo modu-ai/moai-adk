@@ -82,8 +82,14 @@ func TestUpdateCmd_CheckOnly_NoDeps(t *testing.T) {
 	updateCmd.SetOut(buf)
 	updateCmd.SetErr(buf)
 
-	// Reset flags before test
+	// Reset all flags before test to avoid state pollution from other tests
 	if err := updateCmd.Flags().Set("check", "true"); err != nil {
+		t.Fatal(err)
+	}
+	if err := updateCmd.Flags().Set("binary", "false"); err != nil {
+		t.Fatal(err)
+	}
+	if err := updateCmd.Flags().Set("templates-only", "false"); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {

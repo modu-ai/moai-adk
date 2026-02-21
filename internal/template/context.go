@@ -54,6 +54,9 @@ type TemplateContext struct {
 
 	// Model policy for agent model assignment
 	ModelPolicy string // "high", "medium", "low" (default: "high")
+
+	// Installation mode for template deployment
+	InstallationMode string // "global" | "local" (default: "local")
 }
 
 // ContextOption configures a TemplateContext.
@@ -83,6 +86,7 @@ func NewTemplateContext(opts ...ContextOption) *TemplateContext {
 		RunTokens:                config.DefaultRunTokens,
 		SyncTokens:               config.DefaultSyncTokens,
 		ModelPolicy:              string(DefaultModelPolicy),
+		InstallationMode:         "local", // Default to local mode
 	}
 
 	for _, opt := range opts {
@@ -231,6 +235,16 @@ func WithModelPolicy(policy string) ContextOption {
 	return func(c *TemplateContext) {
 		if IsValidModelPolicy(policy) {
 			c.ModelPolicy = policy
+		}
+	}
+}
+
+// WithInstallationMode sets the installation mode for template deployment.
+// Valid values are "global" and "local" (default).
+func WithInstallationMode(mode string) ContextOption {
+	return func(c *TemplateContext) {
+		if mode == "global" || mode == "local" {
+			c.InstallationMode = mode
 		}
 	}
 }

@@ -35,11 +35,13 @@ type GitStrategyConfig struct {
 
 // SystemConfig represents the system configuration section.
 type SystemConfig struct {
-	Version        string `yaml:"version"`
-	LogLevel       string `yaml:"log_level"`
-	LogFormat      string `yaml:"log_format"`
-	NoColor        bool   `yaml:"no_color"`
-	NonInteractive bool   `yaml:"non_interactive"`
+	Version          string `yaml:"version"`
+	LogLevel         string `yaml:"log_level"`
+	LogFormat        string `yaml:"log_format"`
+	NoColor          bool   `yaml:"no_color"`
+	NonInteractive   bool   `yaml:"non_interactive"`
+	InstallationMode string `yaml:"installation_mode"` // "global" | "local"
+	GlobalPath       string `yaml:"global_path"`       // Global installation path (read-only)
 }
 
 // LLMConfig represents the LLM configuration section.
@@ -155,6 +157,18 @@ func ValidSectionNames() []string {
 	result := make([]string, len(sectionNames))
 	copy(result, sectionNames)
 	return result
+}
+
+// validInstallationModes contains the valid installation mode values.
+var validInstallationModes = map[string]bool{
+	"":      true, // empty means default (local)
+	"local": true,
+	"global": true,
+}
+
+// IsValidInstallationMode checks if the given mode is valid.
+func IsValidInstallationMode(mode string) bool {
+	return validInstallationModes[mode]
 }
 
 // YAML file wrapper types for proper unmarshaling with top-level keys.
