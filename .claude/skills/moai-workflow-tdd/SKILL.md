@@ -48,11 +48,12 @@ constitution:
 ```
 
 **When to use this workflow**:
-- `development_mode: tdd` (default) → Always use TDD
+- `development_mode: tdd` → Use TDD (this workflow, default)
+- `development_mode: ddd` → Use DDD instead (moai-workflow-ddd)
 
 **Key distinction**:
-- **New file/package** (doesn't exist yet) → TDD (this workflow)
-- **Existing code** (file already exists) → DDD (ANALYZE-PRESERVE-IMPROVE)
+- **TDD** (default): Test-first development for all work, including brownfield projects with pre-RED analysis
+- **DDD**: Characterization-test-first for existing codebases with minimal test coverage
 
 ## Quick Reference
 

@@ -3,7 +3,7 @@ name: moai
 description: >
   MoAI super agent - unified orchestrator for autonomous development.
   Routes natural language or explicit subcommands (plan, run, sync, fix,
-  loop, project, feedback, mx) to specialized agents.
+  loop, project, feedback) to specialized agents.
   Use for any development task from planning to deployment.
 license: Apache-2.0
 compatibility: Designed for Claude Code
@@ -69,8 +69,8 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **project** (aliases: init): Project documentation generation
 - **feedback** (aliases: fb, bug, issue): GitHub issue creation
 - **fix**: Auto-fix errors in a single pass
-- **loop** (aliases: iterate): Iterative auto-fix until completion marker detected
-- **mx** (aliases: tag, annotate): MX tag scan and code annotation workflow
+- **loop**: Iterative auto-fix until completion marker detected
+- **mx**: MX tag scan and annotation for codebase
 
 
 ### Priority 2: SPEC-ID Detection
@@ -86,6 +86,7 @@ Only if BOTH Priority 1 AND Priority 2 did not match: Classify the intent of the
 - Iterative and repeat language (keep fixing, until done, repeat, iterate, all errors) routes to **loop**
 - Documentation language (document, sync, docs, readme, changelog, PR) routes to **sync** or **project**
 - Feedback and bug report language (report, feedback, suggestion, issue) routes to **feedback**
+- MX tag language (mx tag, annotation, code context, legacy annotate) routes to **mx**
 - Implementation language (implement, build, create, add, develop) with clear scope routes to **moai** (default autonomous)
 
 ### Priority 4: Default Behavior
@@ -109,7 +110,7 @@ For detailed orchestration: Read workflows/plan.md
 ### run - DDD Implementation
 
 Purpose: Implement SPEC requirements through Domain-Driven Development methodology.
-Agents: manager-strategy (planning), manager-ddd (ANALYZE-PRESERVE-IMPROVE), manager-quality (TRUST 5 validation), manager-git (commits)
+Agents: manager-strategy (planning), manager-ddd or manager-tdd (per quality.yaml development_mode), manager-quality (TRUST 5 validation), manager-git (commits)
 Phases: SPEC analysis and execution plan, task decomposition, DDD implementation cycle, quality validation, git operations, completion guidance.
 Flags: --resume SPEC-XXX, --team (parallel implementation)
 For detailed orchestration: Read workflows/run.md
@@ -118,8 +119,8 @@ For detailed orchestration: Read workflows/run.md
 
 Purpose: Synchronize documentation with code changes and prepare pull requests.
 Agents: manager-docs (primary), manager-quality (verification), manager-git (PR creation)
-Phases: Phase 0.5 quality verification, documentation generation, README/CHANGELOG update, PR creation.
-Modes: auto (default), force, status, project. Flag: --merge (auto-merge PR)
+Phases: Phase 0.5 quality verification, MX tag validation (add missing tags), documentation generation, README/CHANGELOG update, PR creation.
+Modes: auto (default), force, status, project. Flag: --merge (auto-merge PR), --skip-mx (skip MX tag validation)
 For detailed orchestration: Read workflows/sync.md
 
 ### fix - Auto-Fix Errors
@@ -141,9 +142,9 @@ For detailed orchestration: Read workflows/loop.md
 ### mx - MX Tag Scan and Annotation
 
 Purpose: Scan codebase and add @MX code-level annotations for AI agent context.
-Agents: Explore (codebase scan), manager-quality (tag validation and report generation)
-Phases: 3-Pass scan (Grep, Read, Edit), tag generation, report output.
-Flags: --all (full scan), --dry (preview), --priority P1-P4, --force, --exclude pattern
+Agents: Explore (scan), expert-backend (annotation)
+Phases: 3-Pass scan (Grep full scan, selective deep read, batch edit), tag insertion, report generation.
+Flags: --all (scan entire codebase), --dry (preview only), --priority P1-P4 (filter by priority), --force (overwrite existing), --team (parallel scan by language)
 For detailed orchestration: Read workflows/mx.md
 
 ### (default) - MoAI Autonomous Workflow
@@ -446,44 +447,7 @@ Step 5 - Initialize Task Tracking:
 Use TaskCreate to register discovered work items with pending status.
 
 Step 6 - Execute Workflow Phases:
-Follow the workflow-specific phase instructions from the loaded workflow file. Delegate all implementation to appropriate agents via Task().
-
-[CRITICAL] SPEC Creation Approval Checkpoint for plan and moai workflows:
-Before delegating to manager-spec subagent for SPEC creation, you MUST obtain user approval via AskUserQuestion:
-
-When conversation_language is ko:
-Question: 다음 작업을 진행하시겠습니까?
-Options:
-- SPEC 문서 생성 (추천): 제안된 계획으로 SPEC 문서를 생성합니다.
-- 계획 수정: 계획을 수정하기 위한 피드백을 제공합니다.
-- 초안 저장: 계획을 초안으로 저장하고 나중에 다시 시작합니다.
-- 취소: 작업을 취소하고 파일을 생성하지 않습니다.
-
-When conversation_language is en:
-Question: Do you want to proceed with the following task?
-Options:
-- Create SPEC Document (Recommended): Generate SPEC document with the proposed plan.
-- Modify Plan: Provide feedback to modify the plan.
-- Save as Draft: Save plan as draft and resume later.
-- Cancel: Cancel the task without creating any files.
-
-When conversation_language is ja:
-Question: 次の作業を進めますか？
-Options:
-- SPECドキュメント作成 (推奨): 提案された計画でSPECドキュメントを作成します。
-- 計画修正: 計画を修正するためのフィードバックを提供します。
-- 下書き保存: 計画を下書きとして保存し、後で再開します。
-- キャンセル: 作業をキャンセルし、ファイルを作成しません。
-
-When conversation_language is zh:
-Question: 您想继续执行以下任务吗？
-Options:
-- 创建 SPEC 文档 (推荐): 使用提议的计划生成 SPEC 文档。
-- 修改计划: 提供反馈以修改计划。
-- 保存为草稿: 将计划保存为草稿并稍后继续。
-- 取消: 取消任务且不创建任何文件。
-
-Only after user selects "Create SPEC Document" option, proceed to delegate to manager-spec subagent.
+Follow the workflow-specific phase instructions from the loaded workflow file. Delegate all implementation to appropriate agents via Task(). Collect user approvals at designated checkpoints via AskUserQuestion.
 
 Step 7 - Track Progress:
 Update task status using TaskUpdate as work progresses (pending to in_progress to completed).
@@ -499,5 +463,5 @@ Use AskUserQuestion to present the user with logical next actions based on the c
 
 ---
 
-Version: 2.0.1
-Last Updated: 2026-02-20
+Version: 2.0.0
+Last Updated: 2026-02-07

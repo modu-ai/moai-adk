@@ -110,6 +110,45 @@ If --dry flag: Display preview of all classified issues and exit without changes
 - Confirm fixes resolved the targeted issues
 - Detect any regressions introduced by fixes
 
+## Phase 4.5: MX Tag Update
+
+After fixes are verified, update @MX tags for modified files:
+
+**Tag Actions by Fix Level:**
+| Fix Level | MX Action |
+|-----------|-----------|
+| Level 1 (formatting) | No tag changes typically needed |
+| Level 2 (rename, type) | Update @MX:NOTE if signature changed |
+| Level 3 (logic, API) | Add @MX:NOTE for new logic, re-evaluate ANCHOR |
+| Level 4 (manual) | Requires @MX:WARN with @MX:REASON if security-related |
+
+**Specific Actions:**
+- Bug fix applied: Remove corresponding @MX:TODO if exists
+- New code introduced: Add appropriate @MX tags per protocol
+- Function signature changed: Re-evaluate @MX:ANCHOR (fan_in may change)
+- Complexity increased: Add @MX:WARN if cyclomatic complexity >= 15
+- Dangerous pattern introduced: Add @MX:WARN with @MX:REASON
+
+**MX Tag Report Generation:**
+Generate MX_TAG_REPORT section in fix report:
+```markdown
+## MX Tag Report
+
+### Tags Added (N)
+- file:line: @MX:NOTE: [description]
+
+### Tags Removed (N)
+- file:line: @MX:TODO (resolved)
+
+### Tags Updated (N)
+- file:line: @MX:ANCHOR (fan_in updated)
+
+### Attention Required
+- Files with new @MX:WARN requiring review
+```
+
+See @.claude/rules/moai/workflow/mx-tag-protocol.md for complete tag rules.
+
 ## Task Tracking
 
 [HARD] Task management tools mandatory:

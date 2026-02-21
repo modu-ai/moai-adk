@@ -170,7 +170,6 @@
     "MOAI_CONFIG_SOURCE": "sections",
     "PATH": "/Users/goos/bin:/Users/goos/go/bin:/Users/goos/.local/bin:/Users/goos/.pyenv/shims:/Users/goos/.codeium/windsurf/bin:/Users/goos/.cache/lm-studio/bin:/opt/homebrew/bin:/opt/homebrew/opt/python@3.13/bin:/opt/homebrew/opt/postgresql@17/bin:/Users/goos/.local/bin:/Users/goos/.bun/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/opt/pmk/env/global/bin:/Library/Apple/usr/bin:/opt/homebrew/bin:/opt/homebrew/opt/python@3.13/bin:/Users/goos/.cargo/bin:/path/to/flutter/bin:/Applications/Ghostty.app/Contents/MacOS"
   },
-  "skipDangerousModePermissionPrompt": true,
   "permissions": {
     "defaultMode": "acceptEdits",
     "allow": [

@@ -100,6 +100,16 @@ Fix levels applied per --auto setting:
 Step 7 - Verification:
 - [HARD] After each fix: TaskUpdate to change item to completed
 
+Step 7.5 - MX Tag Check:
+- After fixes applied, scan modified files for MX tag requirements
+- Add missing tags for modified functions:
+  - New exported functions: Add @MX:NOTE or @MX:ANCHOR if fan_in >= 5
+  - Dangerous patterns introduced: Add @MX:WARN with @MX:REASON
+  - Unresolved issues: Keep @MX:TODO
+- Remove resolved @MX:TODO tags for fixed issues
+- Generate MX_TAG_REPORT with tags added/removed/updated
+- See @.claude/rules/moai/workflow/mx-tag-protocol.md for tag rules
+
 Step 8 - Snapshot Save:
 - Save iteration snapshot to $CLAUDE_PROJECT_DIR/.moai/cache/loop-snapshots/
 - Increment iteration counter
@@ -116,6 +126,31 @@ The loop exits when any of these conditions are met:
 - Max iterations reached (displays remaining issues)
 - Memory pressure threshold exceeded (saves checkpoint)
 - User interruption (state auto-saved)
+
+## MX Tag Integration
+
+Each iteration includes MX tag management:
+
+**Tag Updates During Loop:**
+- Fix resolves an issue: Remove corresponding @MX:TODO
+- Fix introduces new code: Add appropriate @MX tags
+- Fix changes function signature: Re-evaluate @MX:ANCHOR
+- Fix adds complexity: Add @MX:WARN if threshold exceeded
+
+**Tag Types for Fixes:**
+| Fix Type | MX Action |
+|----------|-----------|
+| Bug fix (resolved) | Remove @MX:TODO |
+| New function added | Add @MX:NOTE or @MX:ANCHOR |
+| Refactoring | Update @MX:NOTE, check ANCHOR |
+| Security fix | Add @MX:NOTE with security context |
+
+**MX Tag Report:**
+After each iteration, include MX_TAG_REPORT section:
+- Tags Added: List new tags with file:line
+- Tags Removed: List resolved TODOs
+- Tags Updated: List modified tags
+- Attention Required: WARN tags requiring review
 
 ## Snapshot Management
 

@@ -11,6 +11,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: opus
 permissionMode: default
+memory: project
 skills: moai-foundation-claude, moai-foundation-core, moai-foundation-philosopher, moai-foundation-thinking, moai-workflow-spec, moai-workflow-project, moai-workflow-thinking, moai-foundation-context, moai-workflow-worktree
 ---
 

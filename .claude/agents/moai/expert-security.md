@@ -10,6 +10,7 @@ description: |
   ZH: 安全, 漏洞, OWASP, 注入, XSS, CSRF, 渗透, 审计
 model: opus
 permissionMode: default
+memory: project
 skills: moai-foundation-claude, moai-foundation-core, moai-foundation-quality, moai-foundation-philosopher, moai-workflow-testing, moai-platform-auth, moai-tool-ast-grep
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---

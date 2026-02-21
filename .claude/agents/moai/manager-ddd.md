@@ -13,7 +13,7 @@ tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Task, Skill, m
 model: opus
 permissionMode: default
 memory: project
-skills: moai-foundation-claude, moai-foundation-core, moai-foundation-context, moai-foundation-quality, moai-workflow-ddd, moai-workflow-tdd, moai-workflow-testing, moai-tool-ast-grep
+skills: moai-foundation-claude, moai-foundation-core, moai-foundation-context, moai-foundation-quality, moai-workflow-ddd, moai-workflow-tdd, moai-workflow-testing, moai-workflow-mx-tag, moai-tool-ast-grep
 hooks:
   PreToolUse:
     - matcher: "Write|Edit|MultiEdit"

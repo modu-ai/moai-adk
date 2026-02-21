@@ -10,6 +10,8 @@ Directory convention:
 - User custom agents: `.claude/agents/<agent-name>.md` (root level)
 - MoAI-ADK system agents: `.claude/agents/moai/<agent-name>.md` (moai subdirectory)
 
+Platform Support: Windows ARM64 (`win32-arm64`) is natively supported as of Claude Code v2.1.41. No WSL required for ARM-based Windows devices.
+
 ## Supported Frontmatter Fields
 
 All agent definitions use YAML frontmatter. The following fields are available:
@@ -27,6 +29,8 @@ All agent definitions use YAML frontmatter. The following fields are available:
 | mcpServers | No | None | MCP servers available to this agent |
 | hooks | No | None | Lifecycle hooks scoped to this agent |
 | memory | No | None | Persistent memory scope for cross-session learning |
+| background | No | false | Run agent in background without blocking conversation (v2.1.46+) |
+| isolation | No | none | Isolation mode: "worktree" creates isolated git worktree (v2.1.49+) |
 
 ### Field Details
 
@@ -39,6 +43,10 @@ All agent definitions use YAML frontmatter. The following fields are available:
 **mcpServers**: Either a server name reference (matching a key in `.mcp.json`) or an inline server definition with command and args.
 
 **hooks**: Supports PreToolUse, PostToolUse, and SubagentStop events scoped to this agent. See @hooks-system.md for configuration format.
+
+**background**: When set to true, the agent runs in the background without blocking the main conversation. Results are delivered asynchronously on the next turn. Available since Claude Code v2.1.46.
+
+**isolation**: Controls agent execution isolation. When set to "worktree", the agent runs in an isolated git worktree, preventing conflicts with the main working directory. Available since Claude Code v2.1.49.
 
 ## Task(agent_type) Restrictions
 
