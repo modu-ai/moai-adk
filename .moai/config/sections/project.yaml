@@ -5,4 +5,4 @@ project:
     mode: personal
     name: ""
     optimized: false
-    template_version: 2.4.5
+    template_version: v2.4.7-36-gf8c4b15b-dirty

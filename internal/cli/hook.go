@@ -71,6 +71,8 @@ func init() {
 	})
 }
 
+// @MX:ANCHOR: [AUTO] runHookEvent is the central dispatcher for all Claude Code hook events
+// @MX:REASON: [AUTO] fan_in=3, called from hook.go init(), coverage_test.go, hook_e2e_test.go
 // runHookEvent dispatches a hook event by reading JSON from stdin and writing to stdout.
 func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 	if deps == nil || deps.HookProtocol == nil || deps.HookRegistry == nil {

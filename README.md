@@ -537,7 +537,139 @@ MoAI-ADK partners with **z.ai GLM 5** to provide a cost-effective AI development
 
 ---
 
+## @MX Tag System
+
+MoAI-ADK uses **@MX code-level annotation system** to communicate context, invariants, and danger zones between AI agents.
+
+### What are @MX Tags?
+
+@MX tags are inline code annotations that help AI agents understand your codebase faster and more accurately.
+
+```go
+// @MX:ANCHOR: [AUTO] Hook registry dispatch - 5+ callers
+// @MX:REASON: [AUTO] Central entry point for all hook events, changes have wide impact
+func DispatchHook(event string, data []byte) error {
+    // ...
+}
+
+// @MX:WARN: [AUTO] Goroutine executes without context.Context
+// @MX:REASON: [AUTO] Cannot cancel goroutine, potential resource leak
+func processAsync() {
+    go func() {
+        // ...
+    }()
+}
+```
+
+### Tag Types
+
+| Tag Type | Purpose | Description |
+|----------|---------|-------------|
+| `@MX:ANCHOR` | Important contracts | Functions with fan_in >= 3, changes have wide impact |
+| `@MX:WARN` | Danger zones | Goroutines, complexity >= 15, global state mutation |
+| `@MX:NOTE` | Context | Magic constants, missing godoc, business rules |
+| `@MX:TODO` | Incomplete work | Missing tests, unimplemented features |
+
+### Why doesn't every code have @MX tags?
+
+The @MX tag system is **NOT designed to add tags to all code.** The core principle is to **"mark only the most dangerous/important code that AI needs to notice first."**
+
+| Priority | Condition | Tag Type |
+|----------|-----------|----------|
+| **P1 (Critical)** | fan_in >= 3 | `@MX:ANCHOR` |
+| **P2 (Danger)** | goroutine, complexity >= 15 | `@MX:WARN` |
+| **P3 (Context)** | magic constant, no godoc | `@MX:NOTE` |
+| **P4 (Missing)** | no test file | `@MX:TODO` |
+
+**Most code doesn't meet any criteria, so it has no tags.** This is **normal**.
+
+### Example: Tag Decision
+
+```go
+// ❌ No tag (fan_in = 1, low complexity)
+func calculateTotal(items []Item) int {
+    total := 0
+    for _, item := range items {
+        total += item.Price
+    }
+    return total
+}
+
+// ✅ @MX:ANCHOR added (fan_in = 5)
+// @MX:ANCHOR: [AUTO] Config manager load - 5+ callers
+// @MX:REASON: [AUTO] Entry point for all CLI commands
+func LoadConfig() (*Config, error) {
+    // ...
+}
+```
+
+### Configuration (`.mx.yaml`)
+
+```yaml
+thresholds:
+  fan_in_anchor: 3        # < 3 callers = no ANCHOR
+  complexity_warn: 15     # < 15 complexity = no WARN
+  branch_warn: 8          # < 8 branches = no WARN
+
+limits:
+  anchor_per_file: 3      # Max 3 ANCHOR tags per file
+  warn_per_file: 5        # Max 5 WARN tags per file
+
+exclude:
+  - "**/*_generated.go"   # Exclude generated files
+  - "**/vendor/**"        # Exclude external libraries
+  - "**/mock_*.go"        # Exclude mock files
+```
+
+### Running MX Tag Scan
+
+```bash
+# Scan entire codebase (Go projects)
+/moai mx --all
+
+# Preview only (no file modifications)
+/moai mx --dry
+
+# Scan by priority (P1 only)
+/moai mx --priority P1
+
+# Scan specific languages only
+/moai mx --all --lang go,python
+```
+
+### Why Other Projects Also Have Few MX Tags
+
+| Situation | Reason |
+|-----------|--------|
+| **New projects** | Most functions have fan_in = 0 → no tags (normal) |
+| **Small projects** | Few functions = simple call graph = fewer tags |
+| **High-quality code** | Low complexity, no goroutines → no WARN tags |
+| **High thresholds** | `fan_in_anchor: 5` = even fewer tags |
+
+### Core Principle
+
+The @MX tag system optimizes **"Signal-to-Noise Ratio"**:
+
+- ✅ **Mark only truly important code** → AI quickly identifies core areas
+- ❌ **Tag all code** → Increases noise, makes important tags harder to find
+
+---
+
 ## Frequently Asked Questions
+
+### Q: Why doesn't every Go code have @MX tags?
+
+**A: This is normal.** @MX tags are added "only where needed." Most code is simple and safe enough that tags aren't required.
+
+| Question | Answer |
+|----------|--------|
+| Is having no tags a problem? | **No.** Most code doesn't need tags. |
+| When are tags added? | **High fan_in**, **complex logic**, **danger patterns** only |
+| Are all projects similar? | **Yes.** Most code in every project has no tags. |
+
+See the **"@MX Tag System"** section above for details.
+
+---
 
 ### Q: How do I customize which statusline segments are displayed?
 

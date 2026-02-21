@@ -144,7 +144,7 @@ For detailed orchestration: Read workflows/loop.md
 Purpose: Scan codebase and add @MX code-level annotations for AI agent context.
 Agents: Explore (scan), expert-backend (annotation)
 Phases: 3-Pass scan (Grep full scan, selective deep read, batch edit), tag insertion, report generation.
-Flags: --all (scan entire codebase), --dry (preview only), --priority P1-P4 (filter by priority), --force (overwrite existing)
+Flags: --all (scan entire codebase), --dry (preview only), --priority P1-P4 (filter by priority), --force (overwrite existing), --team (parallel scan by language)
 For detailed orchestration: Read workflows/mx.md
 
 ### (default) - MoAI Autonomous Workflow

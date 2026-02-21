@@ -25,14 +25,14 @@ func TestLoadGLMConfig_FallbackDefaults(t *testing.T) {
 	if cfg.BaseURL != "https://api.z.ai/api/anthropic" {
 		t.Errorf("BaseURL = %q, want %q", cfg.BaseURL, "https://api.z.ai/api/anthropic")
 	}
-	if cfg.Models.Haiku != "glm-4.7-flashx" {
-		t.Errorf("Models.Haiku = %q, want %q", cfg.Models.Haiku, "glm-4.7-flashx")
+	if cfg.Models.Low != "glm-4.7-flashx" {
+		t.Errorf("Models.Low = %q, want %q", cfg.Models.Low, "glm-4.7-flashx")
 	}
-	if cfg.Models.Sonnet != "glm-4.7" {
-		t.Errorf("Models.Sonnet = %q, want %q", cfg.Models.Sonnet, "glm-4.7")
+	if cfg.Models.Medium != "glm-4.7" {
+		t.Errorf("Models.Medium = %q, want %q", cfg.Models.Medium, "glm-4.7")
 	}
-	if cfg.Models.Opus != "glm-5" {
-		t.Errorf("Models.Opus = %q, want %q", cfg.Models.Opus, "glm-5")
+	if cfg.Models.High != "glm-5" {
+		t.Errorf("Models.High = %q, want %q", cfg.Models.High, "glm-5")
 	}
 	if cfg.EnvVar != "GLM_API_KEY" {
 		t.Errorf("EnvVar = %q, want %q", cfg.EnvVar, "GLM_API_KEY")
@@ -97,13 +97,13 @@ func TestInjectGLMEnv_Success(t *testing.T) {
 	glmConfig := &GLMConfigFromYAML{
 		BaseURL: "https://api.z.ai/api/anthropic",
 		Models: struct {
-			Haiku  string
-			Sonnet string
-			Opus   string
+			High   string
+			Medium string
+			Low    string
 		}{
-			Haiku:  "glm-4.7-flashx",
-			Sonnet: "glm-4.7",
-			Opus:   "glm-5",
+			High:   "glm-5",
+			Medium: "glm-4.7",
+			Low:    "glm-4.7-flashx",
 		},
 		EnvVar: "GLM_API_KEY",
 	}
@@ -202,13 +202,13 @@ func TestInjectGLMEnv_MergesExistingSettings(t *testing.T) {
 	glmConfig := &GLMConfigFromYAML{
 		BaseURL: "https://api.z.ai/api/anthropic",
 		Models: struct {
-			Haiku  string
-			Sonnet string
-			Opus   string
+			High   string
+			Medium string
+			Low    string
 		}{
-			Haiku:  "h",
-			Sonnet: "s",
-			Opus:   "o",
+			High:   "o",
+			Medium: "s",
+			Low:    "h",
 		},
 		EnvVar: "GLM_API_KEY",
 	}
@@ -287,13 +287,13 @@ func TestInjectGLMEnv_FromEnvironmentVariable(t *testing.T) {
 	glmConfig := &GLMConfigFromYAML{
 		BaseURL: "https://api.z.ai/api/anthropic",
 		Models: struct {
-			Haiku  string
-			Sonnet string
-			Opus   string
+			High   string
+			Medium string
+			Low    string
 		}{
-			Haiku:  "h",
-			Sonnet: "s",
-			Opus:   "o",
+			High:   "o",
+			Medium: "s",
+			Low:    "h",
 		},
 		EnvVar: "MY_GLM_KEY",
 	}
@@ -432,13 +432,13 @@ func TestCreateProjectEnvGLM_ShellExportFormat(t *testing.T) {
 	glmConfig := &GLMConfigFromYAML{
 		BaseURL: "https://api.z.ai/api/anthropic",
 		Models: struct {
-			Haiku  string
-			Sonnet string
-			Opus   string
+			High   string
+			Medium string
+			Low    string
 		}{
-			Haiku:  "h",
-			Sonnet: "s",
-			Opus:   "o",
+			High:   "o",
+			Medium: "s",
+			Low:    "h",
 		},
 		EnvVar: "GLM_API_KEY",
 	}

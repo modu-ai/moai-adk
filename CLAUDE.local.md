@@ -623,6 +623,243 @@ ls -la internal/template/embedded.go
 
 ---
 
+## 15. Multi-Model Architecture (Claude Code 2.1.50+)
+
+### [CRITICAL] Model Distribution vs Hybrid Mode
+
+**절대 헷갈리지 말 것:** 세 가지 개념이 완전히 다릅니다.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  1. Model Policy (moai init --model-policy / update -c)         │
+│  ├── Values: high, medium, low                                  │
+│  ├── Action: CLI이 각 에이전트 정의를 개별적으로 수정             │
+│  ├── high  → 에이전트별 opus/sonnet/haiku 배정 (상세 매핑 참조)   │
+│  ├── medium → 에이전트별 opus/sonnet/haiku 배정                  │
+│  └── low   → 에이전트별 sonnet/haiku 배정 (opus 없음)            │
+├─────────────────────────────────────────────────────────────────┤
+│  2. Model Field (Agent Definition)                              │
+│  ├── Values: inherit, opus, sonnet, haiku                       │
+│  ├── Purpose: Claude Code 모델 선택                             │
+│  └── Set by: moai init/update -c 또는 수동 편집                 │
+├─────────────────────────────────────────────────────────────────┤
+│  3. Hybrid Mode (CLI Command)                                   │
+│  ├── Commands: moai glm --hybrid, moai glm, moai cc             │
+│  ├── Mechanism: Environment variable override                   │
+│  └── Purpose: Claude Leader + GLM Workers cost optimization     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Model Policy (moai init --model-policy)
+
+**소스 코드:** `internal/template/model_policy.go`
+
+```bash
+# Model policy 설정으로 각 에이전트 정의를 개별 수정
+moai init --model-policy high      # 에이전트별 매핑에 따라 opus/sonnet/haiku 배정
+moai init --model-policy medium    # 에이전트별 매핑에 따라 opus/sonnet/haiku 배정 (기본값)
+moai init --model-policy low       # 에이전트별 매핑에 따라 sonnet/haiku 배정
+
+# 기존 프로젝트 업데이트
+moai update -c --model-policy high
+```
+
+**에이전트별 모델 배정 매핑 (model_policy.go):**
+
+```go
+// Key: agent name, Value: [high_model, medium_model, low_model]
+var agentModelMap = map[string][3]string{
+    // Manager Agents
+    "manager-spec":     {"opus", "opus", "sonnet"},   // 중요: 항상 고품질
+    "manager-ddd":      {"opus", "sonnet", "sonnet"},
+    "manager-tdd":      {"opus", "sonnet", "sonnet"},
+    "manager-docs":     {"sonnet", "haiku", "haiku"}, // 문서는 경량 모델로 충분
+    "manager-quality":  {"haiku", "haiku", "haiku"},  // 품질 체크는 haiku로 충분
+    "manager-project":  {"opus", "sonnet", "haiku"},
+    "manager-strategy": {"opus", "opus", "sonnet"},   // 전략은 항상 고품질
+    "manager-git":      {"haiku", "haiku", "haiku"},  // Git 작업은 haiku로 충분
+    // Expert Agents
+    "expert-backend":   {"opus", "sonnet", "sonnet"},
+    "expert-frontend":  {"opus", "sonnet", "sonnet"},
+    "expert-security":  {"opus", "opus", "sonnet"},   // 보안은 항상 고품질
+    // ... (전체 목록은 model_policy.go 참조)
+}
+```
+
+**핵심 포인트:**
+- "모든 에이전트에 opus 배정"이 **아님**
+- 각 에이전트는 역할에 따라 다른 모델 배정
+- `manager-quality`, `manager-git`, `team-researcher`, `team-quality` → 모든 정책에서 haiku
+- `manager-spec`, `manager-strategy`, `expert-security` → high/medium에서 opus 유지
+
+### Model Field Values (Agent Definition)
+
+| Value | Meaning | Set By |
+|-------|---------|--------|
+| `inherit` | 부모 세션 모델 상속 | 기본값 (수동 편집) |
+| `opus` | Claude Opus 4.6 | `moai init --model-policy high` (일부 에이전트) |
+| `sonnet` | Claude Sonnet 4.6 | `moai init --model-policy medium` (일부 에이전트) |
+| `haiku` | Claude Haiku | `moai init --model-policy low` (일부 에이전트) |
+
+**NEVER use these values in model field:**
+- ❌ `glm` - GLM은 model field 값이 아님 (Hybrid mode로 접근)
+- ❌ `high`, `medium`, `low` - 이것은 moai init 플래그이지 model 값이 아님
+
+### GLM Configuration (Z.AI 공식 문서 기반)
+
+**참조 문서:** https://docs.z.ai/devpack/tool/claude
+
+GLM은 `~/.claude/settings.json`의 환경 변수 오버라이드로 설정됩니다:
+
+```json
+{
+  "env": {
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.7-air",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5"
+  }
+}
+```
+
+### Mode Selection (moai CLI Commands)
+
+| Command | Settings.json Env | Result |
+|---------|-------------------|--------|
+| `moai cc` | No GLM env vars | Claude-only (opus/sonnet/haiku) |
+| `moai glm` | All GLM env vars | GLM-only (glm-4.7-air/glm-4.7/glm-5) |
+| `moai glm --hybrid` | Selective GLM env vars | Claude Leader + GLM Workers |
+
+**Hybrid Mode 작동 방식:**
+1. `moai glm --hybrid` 실행
+2. CLI가 `ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-air` 설정 (Worker용)
+3. Leader는 opus/sonnet 유지 (Claude)
+4. Workers (haiku model) → GLM으로 실행
+
+```bash
+# Claude-only mode (default)
+moai cc                    # settings.json에 GLM env 없음
+/moai run SPEC-XXX         # 모든 작업 Claude로 실행
+
+# GLM-only mode
+moai glm                   # settings.json에 모든 GLM env 설정
+/moai run SPEC-XXX         # 모든 작업 GLM으로 실행
+
+# Hybrid mode (Claude Leader + GLM Workers)
+moai glm --hybrid          # HAIKU만 GLM으로 설정
+/moai run SPEC-XXX         # Leader: Claude, Workers: GLM
+```
+
+### Correct Agent Definition Pattern
+
+```yaml
+# .claude/agents/moai/team-backend-dev.md
+---
+name: team-backend-dev
+description: Backend implementation specialist
+model: inherit              # CORRECT: Uses user's default or GLM (if hybrid)
+isolation: worktree         # Claude Code 2.1.50: worktree isolation
+background: true            # Claude Code 2.1.50: parallel execution
+permissionMode: acceptEdits
+skills:
+  - moai-domain-backend
+  - moai-lang-go
+---
+
+# .claude/agents/moai/team-architect.md
+---
+name: team-architect
+description: Technical architecture specialist
+model: opus                 # CORRECT: Always opus for architecture (set by model_policy.go)
+# model: inherit           # ALSO OK: Inherit from user's choice
+isolation: none             # Read-only, no worktree needed
+---
+```
+
+### Incorrect Patterns (DO NOT USE)
+
+```yaml
+# WRONG - GLM is NOT a model field value
+model: glm                  # ❌ NEVER do this
+
+# WRONG - Fixed to opus when user wants flexibility
+model: opus                 # ❌ Use "high" or "inherit"
+
+# WRONG - Fixed model prevents hybrid mode flexibility
+model: sonnet               # ❌ Use "medium" or "inherit"
+```
+
+### Worktree Integration
+
+Agent worktrees use Claude Code's native `claude -w`:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  SPEC Worktree (Persistent)                                     │
+│  ├── Path: .moai/worktrees/{ProjectName}/{SPEC-ID}/             │
+│  ├── Purpose: Multi-session SPEC development                    │
+│  └── CLI: moai worktree new SPEC-XXX                            │
+├─────────────────────────────────────────────────────────────────┤
+│  Agent Worktree (Ephemeral)                                     │
+│  ├── Path: .claude/worktrees/<name>/                            │
+│  ├── Purpose: Subagent isolation during execution               │
+│  ├── Mechanism: claude -w (Claude Code native)                  │
+│  └── Config: isolation: worktree in agent definition            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Mode Selection Matrix
+
+| Command | Leader Model | Worker Model | Use Case |
+|---------|--------------|--------------|----------|
+| `moai cc` | Claude (user choice) | Claude (per agent def) | Complex work, high quality |
+| `moai glm` | GLM | GLM | Cost optimization, simple tasks |
+| `moai glm --hybrid` | Claude (user choice) | GLM (via env) | Best balance: quality + cost |
+
+### Configuration Schema
+
+**workflow.yaml:**
+```yaml
+workflow:
+  team:
+    enabled: true
+    models:
+      # Default model for teammates (inherit = user's choice)
+      default: "inherit"
+
+      # Per-role model preference (high/medium/low only)
+      # These are hints, actual model depends on user's base choice
+      role_preferences:
+        architect: "high"      # Prefers opus for complex design
+        analyst: "high"        # Prefers opus for deep analysis
+        backend-dev: "medium"  # Prefers sonnet for implementation
+        frontend-dev: "medium" # Prefers sonnet for implementation
+        tester: "low"          # Prefers haiku for simple tests
+        researcher: "low"      # Prefers haiku for exploration
+```
+
+**llm.yaml:**
+```yaml
+llm:
+  # Mode selection via CLI: moai cc, moai glm, moai glm --hybrid
+  mode: ""  # Set by CLI command, not config file
+
+  # Model tier mapping
+  tiers:
+    high: "opus"
+    medium: "sonnet"
+    low: "haiku"
+```
+
+### Key Rules Summary
+
+1. **Model field**: Use `inherit`, `high`, `medium`, `low` only
+2. **GLM access**: Via `moai glm` or `moai glm --hybrid` CLI, NOT model field
+3. **Hybrid mode**: Claude Leader + GLM Workers (env var override)
+4. **Worktree isolation**: `isolation: worktree` in agent definition
+5. **Claude -w**: Default mechanism for agent worktree isolation
+
+---
+
 **Status**: Active (Local Development)
-**Version**: 1.1.0 (Go 1.26 upgrade notes added)
-**Last Updated**: 2026-02-20
+**Version**: 1.2.0 (Multi-Model Architecture section added)
+**Last Updated**: 2026-02-21

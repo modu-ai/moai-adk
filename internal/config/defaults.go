@@ -39,9 +39,16 @@ const (
 
 	DefaultGLMEnvVar  = "GLM_API_KEY"
 	DefaultGLMBaseURL = "https://api.z.ai/api/anthropic"
-	DefaultGLMHaiku   = "glm-4.7-flashx"
-	DefaultGLMSonnet  = "glm-4.7"
-	DefaultGLMOpus    = "glm-5"
+	// GLM model tiers
+	DefaultGLMHigh   = "glm-5"
+	DefaultGLMMedium = "glm-4.7"
+	DefaultGLMLow    = "glm-4.7-flashx"
+	// Legacy GLM model names (map to tiers)
+	DefaultGLMHaiku  = "glm-4.7-flashx"
+	DefaultGLMSonnet = "glm-4.7"
+	DefaultGLMOpus   = "glm-5"
+	// Default performance tier
+	DefaultPerformanceTier = "medium"
 
 	DefaultCacheTTLSeconds = 5
 	DefaultTimeoutSeconds  = 3
@@ -158,16 +165,26 @@ func NewDefaultSystemConfig() SystemConfig {
 // NewDefaultLLMConfig returns a LLMConfig with default values.
 func NewDefaultLLMConfig() LLMConfig {
 	return LLMConfig{
-		GLMEnvVar:    DefaultGLMEnvVar,
+		GLMEnvVar:       DefaultGLMEnvVar,
+		PerformanceTier: DefaultPerformanceTier,
+		ClaudeModels: ClaudeTierModels{
+			High:   "opus",
+			Medium: "sonnet",
+			Low:    "haiku",
+		},
 		DefaultModel: DefaultModel,
 		QualityModel: DefaultQualModel,
 		SpeedModel:   DefaultSpeedModel,
 		GLM: GLMSettings{
 			BaseURL: DefaultGLMBaseURL,
 			Models: GLMModels{
-				Haiku:  DefaultGLMHaiku,
-				Sonnet: DefaultGLMSonnet,
+				High:   DefaultGLMHigh,
+				Medium: DefaultGLMMedium,
+				Low:    DefaultGLMLow,
+				// Legacy fields for backward compatibility
 				Opus:   DefaultGLMOpus,
+				Sonnet: DefaultGLMSonnet,
+				Haiku:  DefaultGLMHaiku,
 			},
 		},
 	}

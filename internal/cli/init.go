@@ -134,6 +134,8 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
+// @MX:ANCHOR: [AUTO] runInit is the main entry point for project initialization
+// @MX:REASON: [AUTO] fan_in=3, called from init.go init(), coverage_test.go, init_coverage_test.go
 // runInit executes the project initialization workflow.
 // It first checks for a binary update so the latest templates are used.
 func runInit(cmd *cobra.Command, args []string) error {

@@ -66,12 +66,14 @@ func init() {
 	updateCmd.Flags().Bool("check", false, "Check if a newer binary version is available (informational)")
 	updateCmd.Flags().Bool("shell-env", false, "Configure shell environment variables for Claude Code")
 	updateCmd.Flags().BoolP("config", "c", false, "Edit project configuration (same as init wizard)")
-	updateCmd.Flags().Bool("force", false, "Skip backup and force the update")
+	updateCmd.Flags().Bool("force", false, "Force update even if version matches (still performs backup and merge)")
 	updateCmd.Flags().Bool("yes", false, "Auto-confirm all prompts (CI/CD mode)")
 	updateCmd.Flags().Bool("templates-only", false, "Skip binary update, sync templates only")
 	updateCmd.Flags().Bool("binary", false, "Update binary only, skip template sync")
 }
 
+// @MX:ANCHOR: [AUTO] runUpdate orchestrates binary update and template synchronization
+// @MX:REASON: [AUTO] fan_in=3, called from update.go init(), coverage_test.go, remaining_coverage_test.go
 // runUpdate checks for binary updates first, then synchronizes embedded
 // templates with the project directory. If a newer binary is installed,
 // the process re-execs itself so the latest templates are used.
@@ -422,11 +424,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			name:    "Backup",
 			message: "Backing up configuration",
 			execute: func() error {
-				if forceBackup {
-					_, _ = fmt.Fprintf(out, "  %s Skipping backup (--force mode)...\n", symProgress())
-					return nil
-				}
-
+				// Always backup before update (even with --force)
+				// --force only skips version check, not backup/merge
 				_, _ = fmt.Fprintf(out, "  %s Backing up .moai/config...", symProgress())
 				configBackupPath, backupErr := backupMoaiConfig(projectRoot)
 				if backupErr != nil {
@@ -496,7 +495,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		}
 
 		// Special handling for backup step to capture backup path
-		if step.name == "Backup" && !forceBackup {
+		if step.name == "Backup" {
 			_, _ = fmt.Fprintf(out, "  %s Backing up .moai/config...", symProgress())
 			var backupErr error
 			configBackupPath, backupErr = backupMoaiConfig(projectRoot)

@@ -27,6 +27,7 @@ Purpose: Scan codebase and add @MX code-level annotations for AI agent context. 
 | `--lang go,py,ts` | Scan only specified languages (default: auto-detect) |
 | `--threshold N` | Override fan_in threshold (default: 3) |
 | `--no-discovery` | Skip Phase 0 codebase discovery |
+| `--team` | Parallel scan by language (Agent Teams mode) |
 
 ## Priority Levels
 

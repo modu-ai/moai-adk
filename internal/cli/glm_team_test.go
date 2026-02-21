@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,13 +25,13 @@ func TestBuildGLMEnvVars(t *testing.T) {
 			glmConfig: &GLMConfigFromYAML{
 				BaseURL: "https://api.z.ai/api/anthropic",
 				Models: struct {
-					Haiku  string
-					Sonnet string
-					Opus   string
+					High   string
+					Medium string
+					Low    string
 				}{
-					Haiku:  "glm-4.7-flashx",
-					Sonnet: "glm-4.7",
-					Opus:   "glm-5",
+					High:   "glm-5",
+					Medium: "glm-4.7",
+					Low:    "glm-4.7-flashx",
 				},
 				EnvVar: "GLM_API_KEY",
 			},
@@ -38,16 +39,16 @@ func TestBuildGLMEnvVars(t *testing.T) {
 			wantKeys: []string{
 				"ANTHROPIC_AUTH_TOKEN",
 				"ANTHROPIC_BASE_URL",
-				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
-				"ANTHROPIC_DEFAULT_SONNET_MODEL",
 				"ANTHROPIC_DEFAULT_OPUS_MODEL",
+				"ANTHROPIC_DEFAULT_SONNET_MODEL",
+				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
 			},
 			wantVals: map[string]string{
 				"ANTHROPIC_AUTH_TOKEN":           "test-key-123",
 				"ANTHROPIC_BASE_URL":             "https://api.z.ai/api/anthropic",
-				"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.7-flashx",
-				"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
 				"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5",
+				"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
+				"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.7-flashx",
 			},
 		},
 		{
@@ -55,13 +56,13 @@ func TestBuildGLMEnvVars(t *testing.T) {
 			glmConfig: &GLMConfigFromYAML{
 				BaseURL: "https://custom.glm.api/v1",
 				Models: struct {
-					Haiku  string
-					Sonnet string
-					Opus   string
+					High   string
+					Medium string
+					Low    string
 				}{
-					Haiku:  "custom-haiku",
-					Sonnet: "custom-sonnet",
-					Opus:   "custom-opus",
+					High:   "custom-high",
+					Medium: "custom-medium",
+					Low:    "custom-low",
 				},
 				EnvVar: "CUSTOM_API_KEY",
 			},
@@ -69,16 +70,16 @@ func TestBuildGLMEnvVars(t *testing.T) {
 			wantKeys: []string{
 				"ANTHROPIC_AUTH_TOKEN",
 				"ANTHROPIC_BASE_URL",
-				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
-				"ANTHROPIC_DEFAULT_SONNET_MODEL",
 				"ANTHROPIC_DEFAULT_OPUS_MODEL",
+				"ANTHROPIC_DEFAULT_SONNET_MODEL",
+				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
 			},
 			wantVals: map[string]string{
 				"ANTHROPIC_AUTH_TOKEN":           "custom-api-key-xyz",
 				"ANTHROPIC_BASE_URL":             "https://custom.glm.api/v1",
-				"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "custom-haiku",
-				"ANTHROPIC_DEFAULT_SONNET_MODEL": "custom-sonnet",
-				"ANTHROPIC_DEFAULT_OPUS_MODEL":   "custom-opus",
+				"ANTHROPIC_DEFAULT_OPUS_MODEL":   "custom-high",
+				"ANTHROPIC_DEFAULT_SONNET_MODEL": "custom-medium",
+				"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "custom-low",
 			},
 		},
 		{
@@ -86,13 +87,13 @@ func TestBuildGLMEnvVars(t *testing.T) {
 			glmConfig: &GLMConfigFromYAML{
 				BaseURL: "https://api.z.ai/api/anthropic",
 				Models: struct {
-					Haiku  string
-					Sonnet string
-					Opus   string
+					High   string
+					Medium string
+					Low    string
 				}{
-					Haiku:  "glm-4.7-flashx",
-					Sonnet: "glm-4.7",
-					Opus:   "glm-5",
+					High:   "glm-5",
+					Medium: "glm-4.7",
+					Low:    "glm-4.7-flashx",
 				},
 				EnvVar: "GLM_API_KEY",
 			},
@@ -100,16 +101,16 @@ func TestBuildGLMEnvVars(t *testing.T) {
 			wantKeys: []string{
 				"ANTHROPIC_AUTH_TOKEN",
 				"ANTHROPIC_BASE_URL",
-				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
-				"ANTHROPIC_DEFAULT_SONNET_MODEL",
 				"ANTHROPIC_DEFAULT_OPUS_MODEL",
+				"ANTHROPIC_DEFAULT_SONNET_MODEL",
+				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
 			},
 			wantVals: map[string]string{
 				"ANTHROPIC_AUTH_TOKEN":           "",
 				"ANTHROPIC_BASE_URL":             "https://api.z.ai/api/anthropic",
-				"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.7-flashx",
-				"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
 				"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5",
+				"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
+				"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.7-flashx",
 			},
 		},
 	}
@@ -142,23 +143,23 @@ func TestBuildGLMEnvVars(t *testing.T) {
 	}
 }
 
-// TestGLMTeamFlag verifies that the --team flag is correctly registered
+// TestGLMHybridFlag verifies that the --hybrid flag is correctly registered
 // on the glm command with the expected type and default value.
-func TestGLMTeamFlag(t *testing.T) {
-	// Verify the --team flag exists on glmCmd
-	flag := glmCmd.Flags().Lookup("team")
+func TestGLMHybridFlag(t *testing.T) {
+	// Verify the --hybrid flag exists on glmCmd
+	flag := glmCmd.Flags().Lookup("hybrid")
 	if flag == nil {
-		t.Fatal("--team flag should be registered on glmCmd")
+		t.Fatal("--hybrid flag should be registered on glmCmd")
 	}
 
 	// Verify the flag type is bool
 	if flag.Value.Type() != "bool" {
-		t.Errorf("--team flag type = %q, want %q", flag.Value.Type(), "bool")
+		t.Errorf("--hybrid flag type = %q, want %q", flag.Value.Type(), "bool")
 	}
 
 	// Verify the default value is false
 	if flag.DefValue != "false" {
-		t.Errorf("--team flag default = %q, want %q", flag.DefValue, "false")
+		t.Errorf("--hybrid flag default = %q, want %q", flag.DefValue, "false")
 	}
 }
 
@@ -223,7 +224,7 @@ func TestDisableTeamMode(t *testing.T) {
 	}
 }
 
-// TestEnableTeamModeAlwaysGLM verifies enableTeamMode always sets team_mode to "glm".
+// TestEnableTeamModeAlwaysGLM verifies enableTeamMode(false) sets team_mode to "glm".
 func TestEnableTeamModeAlwaysGLM(t *testing.T) {
 	t.Setenv("MOAI_TEST_MODE", "1")
 
@@ -240,10 +241,8 @@ func TestEnableTeamModeAlwaysGLM(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	glmTeamFlag = true
-	defer func() { glmTeamFlag = false }()
-
-	err := enableTeamMode(glmCmd)
+	// isHybrid = false means all agents use GLM
+	err := enableTeamMode(glmCmd, false)
 	if err != nil {
 		t.Fatalf("enableTeamMode() error: %v", err)
 	}
@@ -344,10 +343,10 @@ func TestLoadLLMSectionDefaults(t *testing.T) {
 	}
 }
 
-// TestEnableTeamModeDoesNotInjectEnv verifies that enableTeamMode only saves
-// team_mode to llm.yaml and does NOT inject GLM env into settings.local.json.
-// This is critical for GLM Worker mode where Leader must stay on Opus.
-func TestEnableTeamModeDoesNotInjectEnv(t *testing.T) {
+// TestEnableTeamModeInjectsGLMEnvAndTmux verifies that enableTeamMode(false) injects
+// both GLM environment variables AND tmux display configuration to settings.local.json.
+// This is critical for GLM Team mode where all agents use GLM models.
+func TestEnableTeamModeInjectsGLMEnvAndTmux(t *testing.T) {
 	t.Setenv("MOAI_TEST_MODE", "1")
 
 	// Create project dir with .claude directory
@@ -361,41 +360,95 @@ func TestEnableTeamModeDoesNotInjectEnv(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Create an existing settings.local.json (should NOT be modified by enableTeamMode)
+	// Create an existing settings.local.json
 	settingsPath := filepath.Join(claudeDir, "settings.local.json")
 	initialSettings := `{"env": {"EXISTING_VAR": "value"}}`
 	if err := os.WriteFile(settingsPath, []byte(initialSettings), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
+	// Create a mock GLM API key file
+	homeDir := t.TempDir()
+	envGLMPath := filepath.Join(homeDir, ".moai", ".env.glm")
+	if err := os.MkdirAll(filepath.Dir(envGLMPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	glmEnvContent := `# GLM API Key
+GLM_API_KEY="test-glm-api-key-for-team-mode"
+`
+	if err := os.WriteFile(envGLMPath, []byte(glmEnvContent), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Set HOME to temp directory to use our mock .env.glm
+	origHome := os.Getenv("HOME")
+	t.Setenv("HOME", homeDir)
+
 	// Change to project directory
 	origDir, _ := os.Getwd()
-	defer func() { _ = os.Chdir(origDir) }()
+	defer func() {
+		_ = os.Chdir(origDir)
+		_ = os.Setenv("HOME", origHome)
+	}()
 	if err := os.Chdir(projectRoot); err != nil {
 		t.Fatal(err)
 	}
 
-	// Enable team mode
-	glmTeamFlag = true
-	defer func() { glmTeamFlag = false }()
-
-	err := enableTeamMode(glmCmd)
+	// Enable team mode (isHybrid = false = all agents use GLM)
+	err := enableTeamMode(glmCmd, false)
 	if err != nil {
 		t.Fatalf("enableTeamMode() error: %v", err)
 	}
 
-	// Verify settings.local.json was NOT modified
+	// Verify settings.local.json was modified with GLM env and tmux display mode
 	data, err := os.ReadFile(settingsPath)
 	if err != nil {
 		t.Fatalf("failed to read settings.local.json: %v", err)
 	}
-	if string(data) != initialSettings {
-		t.Errorf("settings.local.json should NOT be modified by enableTeamMode\n got: %s\n want: %s", string(data), initialSettings)
+
+	var settings map[string]any
+	if err := json.Unmarshal(data, &settings); err != nil {
+		t.Fatalf("parse settings.local.json: %v", err)
 	}
 
-	// Verify settings.local.json does NOT contain ANTHROPIC_* vars
-	if strings.Contains(string(data), "ANTHROPIC_") {
-		t.Errorf("settings.local.json should NOT contain ANTHROPIC_* vars after enableTeamMode, got:\n%s", string(data))
+	env, ok := settings["env"].(map[string]any)
+	if !ok {
+		t.Fatal("settings.env should exist")
+	}
+
+	// Check that EXISTING_VAR is still present
+	if _, exists := env["EXISTING_VAR"]; !exists {
+		t.Errorf("settings.env should preserve EXISTING_VAR")
+	}
+
+	// Check that CLAUDE_CODE_TEAMMATE_DISPLAY is set to "tmux"
+	displayMode, exists := env["CLAUDE_CODE_TEAMMATE_DISPLAY"]
+	if !exists {
+		t.Errorf("settings.local.json should contain CLAUDE_CODE_TEAMMATE_DISPLAY after enableTeamMode, got:\n%s", string(data))
+	}
+	if displayMode != "tmux" {
+		t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want \"tmux\"", displayMode)
+	}
+
+	// Check that GLM ANTHROPIC_* vars ARE present (required for teammates to use GLM models)
+	expectedKeys := []string{
+		"ANTHROPIC_AUTH_TOKEN",
+		"ANTHROPIC_BASE_URL",
+		"ANTHROPIC_DEFAULT_HAIKU_MODEL",
+		"ANTHROPIC_DEFAULT_SONNET_MODEL",
+		"ANTHROPIC_DEFAULT_OPUS_MODEL",
+	}
+	for _, key := range expectedKeys {
+		if _, exists := env[key]; !exists {
+			t.Errorf("settings.local.json should contain %s after enableTeamMode --team (GLM teammates need this), got:\n%s", key, string(data))
+		}
+	}
+
+	// Verify the API key was injected
+	if authToken, exists := env["ANTHROPIC_AUTH_TOKEN"]; !exists {
+		t.Error("ANTHROPIC_AUTH_TOKEN should exist")
+	} else if authToken != "test-glm-api-key-for-team-mode" {
+		t.Errorf("ANTHROPIC_AUTH_TOKEN = %q, want %q", authToken, "test-glm-api-key-for-team-mode")
 	}
 }
 

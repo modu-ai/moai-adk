@@ -41,6 +41,11 @@ func runCC(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("find project root: %w", err)
 	}
 
+	// Clear tmux session environment variables (for Agent Teams)
+	if err := clearTmuxSessionEnv(); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to clear tmux session env: %v\n", err)
+	}
+
 	// Remove env from settings.local.json
 	settingsPath := filepath.Join(root, ".claude", "settings.local.json")
 	if err := removeGLMEnv(settingsPath); err != nil {

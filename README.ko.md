@@ -537,7 +537,139 @@ MoAI-ADK는 **z.ai GLM 5**과 파트너십을 통해 경제적인 AI 개발 환�
 
 ---
 
+## @MX 태그 시스템
+
+MoAI-ADK는 **@MX 코드 레벨 주석 시스템**을 사용하여 AI 에이전트 간 컨텍스트, 불변 계약, 위험 영역을 전달합니다.
+
+### @MX 태그란 무엇인가요?
+
+@MX 태그는 코드에 직접 추가하는 주석으로, AI 에이전트가 코드베이스를 더 빠르고 정확하게 이해할 수 있게 돕습니다.
+
+```go
+// @MX:ANCHOR: [AUTO] 훅 레지스트리 디스패치 - 5개 이상의 호출자
+// @MX:REASON: [AUTO] 모든 훅 이벤트의 중앙 진입점이므로 변경 시 영향 범위 큼
+func DispatchHook(event string, data []byte) error {
+    // ...
+}
+
+// @MX:WARN: [AUTO] Goroutine이 context.Context 없이 실행됨
+// @MX:REASON: [AUTO] 컨텍스트 취소가 불가능하여 리소스 누수 위험
+func processAsync() {
+    go func() {
+        // ...
+    }()
+}
+```
+
+### 태그 유형
+
+| 태그 타입 | 용도 | 설명 |
+|----------|------|------|
+| `@MX:ANCHOR` | 중요 계약 | fan_in >= 3인 함수, 변경 시 영향 범위 큼 |
+| `@MX:WARN` | 위험 영역 | Goroutine, 복잡도 >= 15, 전역 상태 변이 |
+| `@MX:NOTE` | 컨텍스트 | 마법 상수, 누락된 godoc, 비즈니스 규칙 |
+| `@MX:TODO` | 미완성 작업 | 누락된 테스트, 구현되지 않은 기능 |
+
+### 왜 모든 코드에 @MX 태그가 없나요?
+
+@MX 태그 시스템은 **"모든 코드에 태그를 추가하는 것"이 목적이 아닙니다.** 핵심은 **"AI가 가장 먼저 주목해야 할 위험/중요 코드만 표시"**하는 것입니다.
+
+| 우선순위 | 조건 | 태그 타입 |
+|----------|------|----------|
+| **P1 (Critical)** | fan_in >= 3 | `@MX:ANCHOR` |
+| **P2 (Danger)** | goroutine, complexity >= 15 | `@MX:WARN` |
+| **P3 (Context)** | magic constant, no godoc | `@MX:NOTE` |
+| **P4 (Missing)** | no test file | `@MX:TODO` |
+
+**대부분의 코드는 아무 조건도 만족하지 못해 태그가 없습니다.** 이것이 **정상**입니다.
+
+### 예시: 태그 유무 결정
+
+```go
+// ❌ 태그 없음 (fan_in = 1, 복잡도 낮음)
+func calculateTotal(items []Item) int {
+    total := 0
+    for _, item := range items {
+        total += item.Price
+    }
+    return total
+}
+
+// ✅ @MX:ANCHOR 추가 (fan_in = 5)
+// @MX:ANCHOR: [AUTO] 설정 관리자 로드 - 5개 이상의 호출자
+// @MX:REASON: [AUTO] 모든 CLI 명령어의 설정 진입점
+func LoadConfig() (*Config, error) {
+    // ...
+}
+```
+
+### 설정 (`.mx.yaml`)
+
+```yaml
+thresholds:
+  fan_in_anchor: 3        # 3개 미만 호출자 = ANCHOR 없음
+  complexity_warn: 15     # 복잡도 15 미만 = WARN 없음
+  branch_warn: 8          # 분기 8개 미만 = WARN 없음
+
+limits:
+  anchor_per_file: 3      # 파일당 최대 3개 ANCHOR
+  warn_per_file: 5        # 파일당 최대 5개 WARN
+
+exclude:
+  - "**/*_generated.go"   # 생성된 파일 제외
+  - "**/vendor/**"        # 외부 라이브러리 제외
+  - "**/mock_*.go"        # 목 파일 제외
+```
+
+### MX 태그 스캔 실행
+
+```bash
+# 전체 코드베이스 스캔 (Go 프로젝트)
+/moai mx --all
+
+# 미리보기만 (파일 수정 없음)
+/moai mx --dry
+
+# 우선순위별 스캔 (P1만)
+/moai mx --priority P1
+
+# 특정 언어만 스캔
+/moai mx --all --lang go,python
+```
+
+### 다른 프로젝트에서도 MX 태그가 적은 이유
+
+| 상황 | 이유 |
+|------|------|
+| **신규 프로젝트** | fan_in이 0인 함수들이 대부분 → 태그 없음 (정상) |
+| **작은 프로젝트** | 함수 개수 적음 = 호출 관계 단순 = 태그 적음 |
+| **높은 품질 코드** | 복잡도 낮음, goroutine 없음 → WARN 없음 |
+| **높은 임계값 설정** | `fan_in_anchor: 5`로 설정되면 태그 더 적음 |
+
+### 핵심 원칙
+
+MX 태그 시스템은 **"신호 대 잡음비(Signal-to-Noise Ratio)"**를 최적화하는 것을 목표로 합니다:
+
+- ✅ **정말 중요한 코드만 표시** → AI가 핵심을 빠르게 파악
+- ❌ **모든 코드에 태그 추가** → 노이즈 증가, 오히려 중요 태그 찾기 어려움
+
+---
+
 ## 자주 묻는 질문 (FAQ)
+
+### Q: 왜 모든 Go 코드에 @MX 태그가 없나요?
+
+**A: 이것이 정상입니다.** @MX 태그는 "필요한 코드에만" 추가됩니다. 대부분의 코드는 충분히 단순하고 안전해서 태그가 필요 없습니다.
+
+| 질문 | 답변 |
+|------|------|
+| 태그가 없는 건 문제인가? | **아닙니다.** 대부분의 코드는 태그가 필요 없습니다. |
+| 언제 태그가 추가되나? | **높은 fan_in**, **복잡한 로직**, **위험 패턴**이 있을 때만 |
+| 모든 프로젝트가 비슷한가? | **네.** 모든 프로젝트에서 대부분의 코드는 태그가 없습니다. |
+
+자세한 내용은 위의 **"@MX 태그 시스템"** 섹션을 참조하세요.
+
+---
 
 ### Q: statusline의 버전 표시는 무엇을 의미하나요?
 

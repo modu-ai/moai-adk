@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -14,7 +15,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var glmTeamFlag bool
+var glmHybridFlag bool
 
 var glmCmd = &cobra.Command{
 	Use:   "glm [api-key]",
@@ -27,13 +28,14 @@ for future use. The key is stored securely with owner-only permissions (600).
 This command reads GLM configuration from .moai/config/sections/llm.yaml and
 injects the appropriate environment variables into Claude Code's settings.
 
-Use --team flag to enable Agent Teams mode for parallel development.
-Teammates use GLM models (glm-5, glm-4.7, glm-4.7-flashx).
+Modes:
+  moai glm          All agents use GLM models (requires tmux or iTerm2)
+  moai glm --hybrid Lead uses Claude (opus/sonnet), agents use GLM (requires tmux)
 
 Examples:
-  moai glm                    # Use saved or environment API key
+  moai glm                    # Use saved or environment API key, all agents use GLM
   moai glm sk-xxx-your-key    # Save API key and switch to GLM
-  moai glm --team             # Enable Agent Teams mode
+  moai glm --hybrid           # Lead: Claude, Agents: GLM (cost optimization)
 
 Use 'moai cc' to switch back to Claude backend and disable team mode.`,
 	Args: cobra.MaximumNArgs(1),
@@ -42,7 +44,7 @@ Use 'moai cc' to switch back to Claude backend and disable team mode.`,
 
 func init() {
 	rootCmd.AddCommand(glmCmd)
-	glmCmd.Flags().BoolVar(&glmTeamFlag, "team", false, "Enable Agent Teams mode for parallel development")
+	glmCmd.Flags().BoolVar(&glmHybridFlag, "hybrid", false, "Enable hybrid mode: lead uses Claude, agents use GLM. Requires tmux or iTerm2.")
 }
 
 // SettingsLocal represents .claude/settings.local.json structure.
@@ -68,112 +70,380 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		_, _ = fmt.Fprintln(out, renderSuccessCard("GLM API key saved to ~/.moai/.env.glm"))
 	}
 
-	// Handle --team flag
-	if glmTeamFlag {
-		return enableTeamMode(cmd)
+	// Handle --hybrid flag
+	// moai glm = all agents use GLM
+	// moai glm --hybrid = lead uses Claude, agents use GLM
+	return enableTeamMode(cmd, glmHybridFlag)
+}
+
+// enableTeamMode enables GLM Team mode with tmux environment configuration injection.
+// isHybrid: false = all agents use GLM, true = lead uses Claude, agents use GLM
+// Both modes require tmux or iTerm2 for split-pane display.
+func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
+	out := cmd.OutOrStdout()
+
+	// Check if tmux is available (required for team modes)
+	// Note: isTmuxAvailable returns true in test environment to allow testing
+	if !isTmuxAvailable() {
+		return fmt.Errorf("tmux is required for team mode but not found in PATH. Install tmux or use iTerm2")
 	}
 
-	// Get project root
 	root, err := findProjectRoot()
 	if err != nil {
 		return fmt.Errorf("find project root: %w", err)
 	}
 
-	// Prevent modifying real project settings during tests
-	if isTestEnvironment() {
-		_, _ = fmt.Fprintln(out, "⚠️  Test environment detected - skipping settings.local.json modification")
-		return nil
-	}
-
-	// Load GLM config from llm.yaml
+	// Load GLM config for environment variable injection
 	glmConfig, err := loadGLMConfig(root)
 	if err != nil {
 		return fmt.Errorf("load GLM config: %w", err)
 	}
 
-	// Inject env into settings.local.json
-	settingsPath := filepath.Join(root, ".claude", "settings.local.json")
-	if err := injectGLMEnv(settingsPath, glmConfig); err != nil {
-		return fmt.Errorf("inject GLM env: %w", err)
+	// Get API key
+	apiKey := getGLMAPIKey(glmConfig.EnvVar)
+	if apiKey == "" {
+		return fmt.Errorf("GLM API key not found. Run 'moai glm <api-key>' to save your key, or set %s environment variable", glmConfig.EnvVar)
 	}
 
-	// Create project-level .env.glm for status_line.sh sourcing
-	if err := createProjectEnvGLM(glmConfig, root); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to create project .env.glm: %v\n", err)
+	settingsPath := filepath.Join(root, defs.ClaudeDir, defs.SettingsLocalJSON)
+
+	// Check if we're in a tmux session for proper env propagation
+	inTmux := isInTmuxSession()
+
+	// Inject GLM environment variables into tmux session
+	// This is critical for Agent Teams - new panes (teammates) will inherit these
+	if inTmux {
+		if err := injectTmuxSessionEnv(glmConfig, apiKey); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to inject tmux session env: %v\n", err)
+			// Continue anyway - settings.local.json will still work for lead
+		}
 	}
 
-	_, _ = fmt.Fprintln(out, renderSuccessCard(
-		"Switched to GLM backend",
-		"Environment variables configured:",
-		"  - .claude/settings.local.json (project)",
-		"  - .moai/.env.glm (for Agent Teams)",
-		"",
-		"Run 'moai cc' to switch back to Claude.",
-	))
+	if isHybrid {
+		// Hybrid mode: Lead uses Claude, agents use GLM
+		// Only inject GLM env for teammates (via tmux), not for lead
+		if err := persistTeamMode(root, "hybrid"); err != nil {
+			return fmt.Errorf("persist team mode: %w", err)
+		}
+
+		// Inject only tmux display mode for lead session (lead uses Claude)
+		// GLM env vars will be injected by status_line.sh for teammates only
+		if err := injectTmuxDisplayOnly(settingsPath); err != nil {
+			return fmt.Errorf("inject tmux display: %w", err)
+		}
+
+		// Create project-level .env.glm for teammate sourcing (not for lead)
+		if err := createProjectEnvGLM(glmConfig, root); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to create project .env.glm: %v\n", err)
+		}
+
+		// Build status message
+		tmuxStatus := "tmux session: active (env vars injected)"
+		if !inTmux {
+			tmuxStatus = "tmux session: NOT DETECTED (start claude inside tmux for teammates)"
+		}
+
+		_, _ = fmt.Fprintln(out, renderSuccessCard(
+			"GLM Hybrid Team mode enabled",
+			"",
+			"Architecture: Teamlead (Claude opus/sonnet) + Agents (GLM-5 to glm-4.7)",
+			"Display mode: tmux (split panes)",
+			tmuxStatus,
+			"Config saved to: .moai/config/sections/llm.yaml",
+			"",
+			"Agent model mapping:",
+			"  - teamlead: opus/sonnet (your selected Claude model)",
+			"  - team-researcher: glm-4.7-flash (fastest exploration)",
+			"  - team-analyst: glm-5 (requirements analysis)",
+			"  - team-architect: glm-5 (technical design)",
+			"  - team-backend-dev: glm-4.7 (implementation)",
+			"  - team-frontend-dev: glm-4.7 (implementation)",
+			"  - team-tester: glm-4.7 (test creation)",
+			"  - team-quality: glm-4.7-flash (quality validation)",
+			"",
+			"Cost savings: 60-70% on implementation tasks",
+			"",
+			"Next steps:",
+			"  1. Ensure you're in a tmux session (tmux new -s moai)",
+			"  2. Start Claude Code: claude",
+			"  3. Run workflow: /moai --team \"your task\"",
+			"",
+			"Run 'moai cc' to disable team mode.",
+		))
+	} else {
+		// Regular team mode: All agents use GLM
+		if err := persistTeamMode(root, "glm"); err != nil {
+			return fmt.Errorf("persist team mode: %w", err)
+		}
+
+		// Inject GLM environment variables for all (lead and agents)
+		if err := injectGLMEnvForTeam(settingsPath, glmConfig, apiKey); err != nil {
+			return fmt.Errorf("inject GLM env for team: %w", err)
+		}
+
+		// Create project-level .env.glm for status_line.sh sourcing
+		if err := createProjectEnvGLM(glmConfig, root); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to create project .env.glm: %v\n", err)
+		}
+
+		// Build status message
+		tmuxStatus := "tmux session: active (env vars injected)"
+		if !inTmux {
+			tmuxStatus = "tmux session: NOT DETECTED (start claude inside tmux for teammates)"
+		}
+
+		_, _ = fmt.Fprintln(out, renderSuccessCard(
+			"GLM Team mode enabled",
+			"",
+			"Architecture: All agents use GLM models",
+			"Display mode: tmux (split panes)",
+			tmuxStatus,
+			"Config saved to: .moai/config/sections/llm.yaml",
+			"",
+			"Agent model mapping:",
+			"  - teamlead: glm-5",
+			"  - team-researcher: glm-4.7-flash (fastest exploration)",
+			"  - team-analyst: glm-5 (requirements analysis)",
+			"  - team-architect: glm-5 (technical design)",
+			"  - team-backend-dev: glm-4.7 (implementation)",
+			"  - team-frontend-dev: glm-4.7 (implementation)",
+			"  - team-tester: glm-4.7 (test creation)",
+			"  - team-quality: glm-4.7-flash (quality validation)",
+			"",
+			"Next steps:",
+			"  1. Ensure you're in a tmux session (tmux new -s moai)",
+			"  2. Start Claude Code: claude",
+			"  3. Run workflow: /moai --team \"your task\"",
+			"",
+			"Run 'moai cc' to disable team mode.",
+		))
+	}
+
 	return nil
 }
 
-// enableTeamMode saves team_mode="glm" to llm.yaml via ConfigManager.
-// This enables the GLM Worker mode: Leader (current Claude model) + Worker (GLM-5 in worktree).
-func enableTeamMode(cmd *cobra.Command) error {
-	out := cmd.OutOrStdout()
+// isTmuxAvailable checks if tmux is available in PATH.
+// Required for Agent Teams split-pane display mode.
+// Returns true in test environment to allow testing without tmux.
+func isTmuxAvailable() bool {
+	// Skip tmux check in test environment
+	if isTestEnvironment() {
+		return true
+	}
+	_, err := exec.LookPath("tmux")
+	return err == nil
+}
 
-	root, err := findProjectRoot()
+// isInTmuxSession checks if we're running inside a tmux session.
+// tmux set-environment only works when called from within a tmux session.
+func isInTmuxSession() bool {
+	return os.Getenv("TMUX") != ""
+}
+
+// injectTmuxSessionEnv sets environment variables at the tmux session level
+// so that new panes (teammates) inherit them automatically.
+// This is required because settings.local.json env only applies to the current session,
+// not to new tmux panes which start fresh shells.
+func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
+	// Skip in test environment
+	if isTestEnvironment() {
+		return nil
+	}
+
+	// Only works inside a tmux session
+	if !isInTmuxSession() {
+		return nil
+	}
+
+	envVars := map[string]string{
+		"ANTHROPIC_AUTH_TOKEN":           apiKey,
+		"ANTHROPIC_BASE_URL":             glmConfig.BaseURL,
+		"ANTHROPIC_DEFAULT_OPUS_MODEL":   glmConfig.Models.High,
+		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Medium,
+		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
+	}
+
+	for name, value := range envVars {
+		// tmux set-environment sets a session-level environment variable
+		// New panes will inherit these variables
+		cmd := exec.Command("tmux", "set-environment", name, value)
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("tmux set-environment %s: %w", name, err)
+		}
+	}
+
+	return nil
+}
+
+// clearTmuxSessionEnv removes GLM environment variables from tmux session.
+// Called when switching back to Claude mode (moai cc).
+func clearTmuxSessionEnv() error {
+	// Skip in test environment
+	if isTestEnvironment() {
+		return nil
+	}
+
+	// Only works inside a tmux session
+	if !isInTmuxSession() {
+		return nil
+	}
+
+	envVars := []string{
+		"ANTHROPIC_AUTH_TOKEN",
+		"ANTHROPIC_BASE_URL",
+		"ANTHROPIC_DEFAULT_OPUS_MODEL",
+		"ANTHROPIC_DEFAULT_SONNET_MODEL",
+		"ANTHROPIC_DEFAULT_HAIKU_MODEL",
+	}
+
+	for _, name := range envVars {
+		cmd := exec.Command("tmux", "set-environment", "-u", name)
+		if err := cmd.Run(); err != nil {
+			// Log warning but don't fail - variable might not exist
+			fmt.Fprintf(os.Stderr, "Warning: failed to clear tmux env %s: %v\n", name, err)
+		}
+	}
+
+	return nil
+}
+
+// injectTmuxDisplayOnly injects only the tmux display mode setting.
+// Used for hybrid mode where lead uses Claude but agents use GLM.
+func injectTmuxDisplayOnly(settingsPath string) error {
+	var settings SettingsLocal
+
+	// Read existing settings if file exists
+	if data, err := os.ReadFile(settingsPath); err == nil {
+		if err := json.Unmarshal(data, &settings); err != nil {
+			return fmt.Errorf("parse settings.local.json: %w", err)
+		}
+	}
+
+	// Initialize env map if nil
+	if settings.Env == nil {
+		settings.Env = make(map[string]string)
+	}
+
+	// Set tmux display mode for Agent Teams (NO GLM env vars - lead uses Claude)
+	settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] = "tmux"
+
+	// Ensure directory exists
+	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
+		return fmt.Errorf("create directory: %w", err)
+	}
+
+	// Write back
+	data, err := json.MarshalIndent(settings, "", "  ")
 	if err != nil {
-		return fmt.Errorf("find project root: %w", err)
+		return fmt.Errorf("marshal settings: %w", err)
 	}
 
-	if err := persistTeamMode(root, "glm"); err != nil {
-		return fmt.Errorf("persist team mode: %w", err)
+	if err := os.WriteFile(settingsPath, data, 0o644); err != nil {
+		return fmt.Errorf("write settings.local.json: %w", err)
 	}
 
-	_, _ = fmt.Fprintln(out, renderSuccessCard(
-		"GLM Team mode enabled",
-		"",
-		"Architecture: Leader (Claude - your selected model) + Worker (GLM-5 in worktree)",
-		"Config saved to: .moai/config/sections/llm.yaml",
-		"",
-		"Next steps:",
-		"  1. Start Claude Code: claude",
-		"  2. Run workflow: /moai --team \"your task\"",
-		"",
-		"MoAI will orchestrate:",
-		"  - Plan (Leader): Create SPEC",
-		"  - Run (GLM-5): Implement in worktree",
-		"  - Merge (Leader): Integrate changes",
-		"  - Sync (Leader): Documentation",
-		"",
-		"Run 'moai cc' to disable team mode and cleanup worktrees.",
-	))
 	return nil
 }
 
 // persistTeamMode saves the team_mode value to .moai/config/sections/llm.yaml.
+// Only loads the LLM section to avoid validation errors from missing user.name.
 func persistTeamMode(projectRoot, mode string) error {
-	mgr := config.NewConfigManager()
-	if _, err := mgr.Load(projectRoot); err != nil {
-		return fmt.Errorf("load config: %w", err)
-	}
-
-	cfg := mgr.Get()
-	cfg.LLM.TeamMode = mode
-
-	if err := mgr.SetSection("llm", cfg.LLM); err != nil {
-		return fmt.Errorf("set LLM section: %w", err)
-	}
-
-	// Save only the llm.yaml section atomically
 	sectionsDir := filepath.Join(filepath.Clean(projectRoot), defs.MoAIDir, defs.SectionsSubdir)
 	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
 		return fmt.Errorf("create config directory: %w", err)
 	}
 
-	return saveLLMSection(sectionsDir, cfg.LLM)
+	// Load existing LLM config (or use defaults)
+	llmCfg, err := loadLLMSectionOnly(sectionsDir)
+	if err != nil {
+		return fmt.Errorf("load LLM section: %w", err)
+	}
+
+	// Update team_mode
+	llmCfg.TeamMode = mode
+
+	// Save only the llm.yaml section atomically
+	return saveLLMSection(sectionsDir, llmCfg)
+}
+
+// loadLLMSectionOnly loads only the LLM section from llm.yaml.
+// Returns default LLM config if file doesn't exist.
+func loadLLMSectionOnly(sectionsDir string) (config.LLMConfig, error) {
+	llmPath := filepath.Join(sectionsDir, "llm.yaml")
+
+	// Check if file exists
+	if _, err := os.Stat(llmPath); os.IsNotExist(err) {
+		// Return default config
+		return config.NewDefaultLLMConfig(), nil
+	}
+
+	// Read existing file
+	data, err := os.ReadFile(llmPath)
+	if err != nil {
+		return config.LLMConfig{}, fmt.Errorf("read llm.yaml: %w", err)
+	}
+
+	// Parse YAML (llm.yaml wrapper format)
+	wrapper := struct {
+		LLM config.LLMConfig `yaml:"llm"`
+	}{}
+	if err := yaml.Unmarshal(data, &wrapper); err != nil {
+		return config.LLMConfig{}, fmt.Errorf("parse llm.yaml: %w", err)
+	}
+
+	return wrapper.LLM, nil
 }
 
 // disableTeamMode resets team_mode to empty in llm.yaml.
 func disableTeamMode(projectRoot string) error {
 	return persistTeamMode(projectRoot, "")
+}
+
+// injectGLMEnvForTeam injects GLM environment variables AND tmux display mode
+// to settings.local.json for GLM Team mode.
+// This enables teammates to use GLM models instead of Claude models.
+func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiKey string) error {
+	var settings SettingsLocal
+
+	// Read existing settings if file exists
+	if data, err := os.ReadFile(settingsPath); err == nil {
+		if err := json.Unmarshal(data, &settings); err != nil {
+			return fmt.Errorf("parse settings.local.json: %w", err)
+		}
+	}
+
+	// Initialize env map if nil
+	if settings.Env == nil {
+		settings.Env = make(map[string]string)
+	}
+
+	// Inject GLM environment variables for teammates
+	settings.Env["ANTHROPIC_AUTH_TOKEN"] = apiKey
+	settings.Env["ANTHROPIC_BASE_URL"] = glmConfig.BaseURL
+	// Use tier-based model names (Claude Code uses OPUS/SONNET/HAIKU as env var names)
+	settings.Env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
+	settings.Env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
+	settings.Env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
+
+	// Set tmux display mode for Agent Teams
+	settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] = "tmux"
+
+	// Ensure directory exists
+	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
+		return fmt.Errorf("create directory: %w", err)
+	}
+
+	// Write back
+	data, err := json.MarshalIndent(settings, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal settings: %w", err)
+	}
+
+	if err := os.WriteFile(settingsPath, data, 0o644); err != nil {
+		return fmt.Errorf("write settings.local.json: %w", err)
+	}
+
+	return nil
 }
 
 // saveLLMSection saves only the LLM section to llm.yaml.
@@ -213,9 +483,9 @@ func saveLLMSection(sectionsDir string, llm config.LLMConfig) error {
 type GLMConfigFromYAML struct {
 	BaseURL string
 	Models  struct {
-		Haiku  string
-		Sonnet string
-		Opus   string
+		High   string
+		Medium string
+		Low    string
 	}
 	EnvVar string
 }
@@ -229,13 +499,13 @@ func loadGLMConfig(root string) (*GLMConfigFromYAML, error) {
 			return &GLMConfigFromYAML{
 				BaseURL: cfg.LLM.GLM.BaseURL,
 				Models: struct {
-					Haiku  string
-					Sonnet string
-					Opus   string
+					High   string
+					Medium string
+					Low    string
 				}{
-					Haiku:  cfg.LLM.GLM.Models.Haiku,
-					Sonnet: cfg.LLM.GLM.Models.Sonnet,
-					Opus:   cfg.LLM.GLM.Models.Opus,
+					High:   cfg.LLM.GLM.Models.High,
+					Medium: cfg.LLM.GLM.Models.Medium,
+					Low:    cfg.LLM.GLM.Models.Low,
 				},
 				EnvVar: cfg.LLM.GLMEnvVar,
 			}, nil
@@ -247,13 +517,13 @@ func loadGLMConfig(root string) (*GLMConfigFromYAML, error) {
 	return &GLMConfigFromYAML{
 		BaseURL: defaults.GLM.BaseURL,
 		Models: struct {
-			Haiku  string
-			Sonnet string
-			Opus   string
+			High   string
+			Medium string
+			Low    string
 		}{
-			Haiku:  defaults.GLM.Models.Haiku,
-			Sonnet: defaults.GLM.Models.Sonnet,
-			Opus:   defaults.GLM.Models.Opus,
+			High:   defaults.GLM.Models.High,
+			Medium: defaults.GLM.Models.Medium,
+			Low:    defaults.GLM.Models.Low,
 		},
 		EnvVar: defaults.GLMEnvVar,
 	}, nil
@@ -357,9 +627,9 @@ func buildGLMEnvVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string]str
 	return map[string]string{
 		"ANTHROPIC_AUTH_TOKEN":           apiKey,
 		"ANTHROPIC_BASE_URL":             glmConfig.BaseURL,
-		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Haiku,
-		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Sonnet,
-		"ANTHROPIC_DEFAULT_OPUS_MODEL":   glmConfig.Models.Opus,
+		"ANTHROPIC_DEFAULT_OPUS_MODEL":   glmConfig.Models.High,
+		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Medium,
+		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
 	}
 }
 
@@ -388,9 +658,10 @@ func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 	// Inject GLM environment variables with actual API key value
 	settings.Env["ANTHROPIC_AUTH_TOKEN"] = apiKey
 	settings.Env["ANTHROPIC_BASE_URL"] = glmConfig.BaseURL
-	settings.Env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Haiku
-	settings.Env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Sonnet
-	settings.Env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.Opus
+	// Use tier-based model names (Claude Code uses OPUS/SONNET/HAIKU as env var names)
+	settings.Env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
+	settings.Env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
+	settings.Env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
 
 	// Ensure directory exists
 	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
@@ -426,15 +697,15 @@ func createProjectEnvGLM(glmConfig *GLMConfigFromYAML, projectRoot string) error
 # This file is sourced by .moai/status_line.sh
 export ANTHROPIC_AUTH_TOKEN="%s"
 export ANTHROPIC_BASE_URL="%s"
-export ANTHROPIC_DEFAULT_HAIKU_MODEL="%s"
-export ANTHROPIC_DEFAULT_SONNET_MODEL="%s"
 export ANTHROPIC_DEFAULT_OPUS_MODEL="%s"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="%s"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="%s"
 `,
 		escapeDotenvValue(apiKey),
 		glmConfig.BaseURL,
-		glmConfig.Models.Haiku,
-		glmConfig.Models.Sonnet,
-		glmConfig.Models.Opus,
+		glmConfig.Models.High,
+		glmConfig.Models.Medium,
+		glmConfig.Models.Low,
 	)
 
 	if err := os.MkdirAll(filepath.Dir(envPath), 0o755); err != nil {

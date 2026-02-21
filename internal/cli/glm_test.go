@@ -40,8 +40,6 @@ func TestGLMCmd_IsSubcommandOfRoot(t *testing.T) {
 }
 
 func TestGLMCmd_NoArgs(t *testing.T) {
-	// Enable test mode to prevent modifying actual settings files
-	t.Setenv("MOAI_TEST_MODE", "1")
 	// Set GLM_API_KEY env var
 	t.Setenv("GLM_API_KEY", "test-api-key")
 
@@ -73,15 +71,13 @@ func TestGLMCmd_NoArgs(t *testing.T) {
 	}
 
 	output := buf.String()
-	// In test mode, the command should skip settings modification
-	if !strings.Contains(output, "Test environment detected") {
-		t.Errorf("output should mention test environment, got %q", output)
+	// GLM Team mode should be enabled
+	if !strings.Contains(output, "GLM Team mode enabled") {
+		t.Errorf("output should mention GLM Team mode enabled, got %q", output)
 	}
 }
 
 func TestGLMCmd_InjectsEnv(t *testing.T) {
-	// Enable test mode to prevent modifying actual settings files
-	t.Setenv("MOAI_TEST_MODE", "1")
 	// Set GLM_API_KEY env var
 	t.Setenv("GLM_API_KEY", "test-api-key")
 
@@ -112,10 +108,22 @@ func TestGLMCmd_InjectsEnv(t *testing.T) {
 		t.Fatalf("glm should not error, got: %v", err)
 	}
 
-	// In test mode, settings.local.json should NOT be created
+	// GLM Team mode should create settings.local.json with GLM env vars
 	settingsPath := filepath.Join(claudeDir, "settings.local.json")
-	if _, err := os.Stat(settingsPath); !os.IsNotExist(err) {
-		t.Error("settings.local.json should not be created in test mode")
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("settings.local.json should be created: %v", err)
+	}
+
+	content := string(data)
+	if !strings.Contains(content, "ANTHROPIC_AUTH_TOKEN") {
+		t.Error("settings.local.json should contain ANTHROPIC_AUTH_TOKEN")
+	}
+	if !strings.Contains(content, "ANTHROPIC_BASE_URL") {
+		t.Error("settings.local.json should contain ANTHROPIC_BASE_URL")
+	}
+	if !strings.Contains(content, "CLAUDE_CODE_TEAMMATE_DISPLAY") {
+		t.Error("settings.local.json should contain CLAUDE_CODE_TEAMMATE_DISPLAY")
 	}
 }
 
@@ -361,13 +369,13 @@ func TestCreateProjectEnvGLM(t *testing.T) {
 	glmConfig := &GLMConfigFromYAML{
 		BaseURL: "https://api.z.ai/api/anthropic",
 		Models: struct {
-			Haiku  string
-			Sonnet string
-			Opus   string
+			High   string
+			Medium string
+			Low    string
 		}{
-			Haiku:  "glm-4.7-flashx",
-			Sonnet: "glm-4.7",
-			Opus:   "glm-5",
+			High:   "glm-5",
+			Medium: "glm-4.7",
+			Low:    "glm-4.7-flashx",
 		},
 		EnvVar: "GLM_API_KEY",
 	}
@@ -424,13 +432,13 @@ func TestCreateProjectEnvGLM_CreatesDirectory(t *testing.T) {
 	glmConfig := &GLMConfigFromYAML{
 		BaseURL: "https://api.z.ai/api/anthropic",
 		Models: struct {
-			Haiku  string
-			Sonnet string
-			Opus   string
+			High   string
+			Medium string
+			Low    string
 		}{
-			Haiku:  "glm-4.7-flashx",
-			Sonnet: "glm-4.7",
-			Opus:   "glm-5",
+			High:   "glm-5",
+			Medium: "glm-4.7",
+			Low:    "glm-4.7-flashx",
 		},
 		EnvVar: "GLM_API_KEY",
 	}

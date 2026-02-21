@@ -21,6 +21,8 @@ Git operations, quality gates, and autonomous development loop capabilities.`,
 	Version: version.GetVersion(),
 }
 
+// @MX:ANCHOR: [AUTO] Execute is the main entry point for the moai CLI
+// @MX:REASON: [AUTO] fan_in=3, called from cmd/moai/main.go, root_test.go, integration_test.go
 // Execute initializes dependencies and runs the root command.
 func Execute() error {
 	InitDependencies()

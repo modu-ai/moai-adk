@@ -240,6 +240,8 @@ func (m *gitManager) Root() string {
 	return m.root
 }
 
+// @MX:ANCHOR: [AUTO] execGit is the core git command executor used by all Repository methods
+// @MX:REASON: [AUTO] fan_in=5, called from branch.go, conflict.go, manager.go, worktree.go, event.go
 // execGit executes a git command in the given directory and returns stdout.
 // It sets GIT_TERMINAL_PROMPT=0 and LC_ALL=C for consistent behavior.
 func execGit(ctx context.Context, dir string, args ...string) (string, error) {
