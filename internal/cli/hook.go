@@ -40,6 +40,8 @@ func init() {
 		{"teammate-idle", "Handle teammate idle event", hook.EventTeammateIdle},
 		{"task-completed", "Handle task completed event", hook.EventTaskCompleted},
 		{"subagent-stop", "Handle subagent stop event", hook.EventSubagentStop},
+		{"worktree-create", "Handle worktree create event", hook.EventWorktreeCreate},
+		{"worktree-remove", "Handle worktree remove event", hook.EventWorktreeRemove},
 	}
 
 	for _, sub := range hookSubcommands {

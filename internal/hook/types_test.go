@@ -9,8 +9,8 @@ func TestValidEventTypes(t *testing.T) {
 	t.Parallel()
 
 	events := ValidEventTypes()
-	if len(events) != 14 {
-		t.Errorf("ValidEventTypes() returned %d events, want 14", len(events))
+	if len(events) != 16 {
+		t.Errorf("ValidEventTypes() returned %d events, want 16", len(events))
 	}
 
 	expected := map[EventType]bool{
@@ -28,6 +28,8 @@ func TestValidEventTypes(t *testing.T) {
 		EventPermissionRequest:  true,
 		EventTeammateIdle:       true,
 		EventTaskCompleted:      true,
+		EventWorktreeCreate:     true,
+		EventWorktreeRemove:     true,
 	}
 
 	for _, et := range events {
@@ -52,6 +54,8 @@ func TestIsValidEventType(t *testing.T) {
 		{"Stop is valid", EventStop, true},
 		{"SubagentStop is valid", EventSubagentStop, true},
 		{"PreCompact is valid", EventPreCompact, true},
+		{"WorktreeCreate is valid", EventWorktreeCreate, true},
+		{"WorktreeRemove is valid", EventWorktreeRemove, true},
 		{"empty string is invalid", EventType(""), false},
 		{"unknown event is invalid", EventType("UnknownEvent"), false},
 	}

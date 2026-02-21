@@ -159,7 +159,7 @@ func (r *registry) defaultOutputForEvent(event EventType) *HookOutput {
 	case EventStop, EventSessionEnd, EventSessionStart, EventPreCompact,
 		EventSubagentStop, EventPostToolUseFailure, EventNotification,
 		EventSubagentStart, EventUserPromptSubmit, EventTeammateIdle,
-		EventTaskCompleted:
+		EventTaskCompleted, EventWorktreeCreate, EventWorktreeRemove:
 		// These events do NOT use hookSpecificOutput per Claude Code protocol
 		// Return empty JSON {}
 		return &HookOutput{}

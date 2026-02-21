@@ -58,6 +58,14 @@ const (
 
 	// EventTaskCompleted is triggered when a task is completed in Agent Teams.
 	EventTaskCompleted EventType = "TaskCompleted"
+
+	// EventWorktreeCreate is triggered when a worktree is created for an agent with isolation: worktree.
+	// Available since Claude Code v2.1.49+.
+	EventWorktreeCreate EventType = "WorktreeCreate"
+
+	// EventWorktreeRemove is triggered when a worktree is removed after an isolated agent terminates.
+	// Available since Claude Code v2.1.49+.
+	EventWorktreeRemove EventType = "WorktreeRemove"
 )
 
 // ValidEventTypes returns all valid event types.
@@ -77,6 +85,8 @@ func ValidEventTypes() []EventType {
 		EventPermissionRequest,
 		EventTeammateIdle,
 		EventTaskCompleted,
+		EventWorktreeCreate,
+		EventWorktreeRemove,
 	}
 }
 
@@ -154,6 +164,11 @@ type HookInput struct {
 	TaskID          string `json:"task_id,omitempty"`
 	TaskSubject     string `json:"task_subject,omitempty"`
 	TaskDescription string `json:"task_description,omitempty"`
+
+	// WorktreeCreate and WorktreeRemove fields (v2.1.49+)
+	WorktreePath   string `json:"worktree_path,omitempty"`   // Absolute path to the worktree directory
+	WorktreeBranch string `json:"worktree_branch,omitempty"` // Branch name for the worktree
+	AgentName      string `json:"agent_name,omitempty"`      // Name of the agent using the worktree
 
 	// Internal data (not serialized to JSON)
 	Data json.RawMessage `json:"-"`
