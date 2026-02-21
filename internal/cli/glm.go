@@ -15,12 +15,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var glmHybridFlag bool
-
 var glmCmd = &cobra.Command{
 	Use:   "glm [api-key]",
-	Short: "Switch to GLM backend",
+	Short: "Switch to GLM backend (all agents)",
 	Long: `Switch the active LLM backend to GLM by injecting env variables into .claude/settings.local.json.
+
+All agents (lead and teammates) will use GLM models.
 
 If an API key is provided as an argument, it will be saved to ~/.moai/.env.glm
 for future use. The key is stored securely with owner-only permissions (600).
@@ -28,15 +28,11 @@ for future use. The key is stored securely with owner-only permissions (600).
 This command reads GLM configuration from .moai/config/sections/llm.yaml and
 injects the appropriate environment variables into Claude Code's settings.
 
-Modes:
-  moai glm          All agents use GLM models (requires tmux or iTerm2)
-  moai glm --hybrid Lead uses Claude (opus/sonnet), agents use GLM (requires tmux)
-
 Examples:
   moai glm                    # Use saved or environment API key, all agents use GLM
   moai glm sk-xxx-your-key    # Save API key and switch to GLM
-  moai glm --hybrid           # Lead: Claude, Agents: GLM (cost optimization)
 
+For hybrid mode (Claude lead + GLM teammates), use 'moai cg' instead.
 Use 'moai cc' to switch back to Claude backend and disable team mode.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runGLM,
@@ -44,7 +40,6 @@ Use 'moai cc' to switch back to Claude backend and disable team mode.`,
 
 func init() {
 	rootCmd.AddCommand(glmCmd)
-	glmCmd.Flags().BoolVar(&glmHybridFlag, "hybrid", false, "Enable hybrid mode: lead uses Claude, agents use GLM. Requires tmux or iTerm2.")
 }
 
 // SettingsLocal represents .claude/settings.local.json structure.
@@ -70,10 +65,8 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		_, _ = fmt.Fprintln(out, renderSuccessCard("GLM API key saved to ~/.moai/.env.glm"))
 	}
 
-	// Handle --hybrid flag
-	// moai glm = all agents use GLM
-	// moai glm --hybrid = lead uses Claude, agents use GLM
-	return enableTeamMode(cmd, glmHybridFlag)
+	// moai glm = all agents use GLM (use 'moai cg' for hybrid mode)
+	return enableTeamMode(cmd, false)
 }
 
 // enableTeamMode enables GLM Team mode with tmux environment configuration injection.
@@ -102,6 +95,13 @@ func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 	// Get API key
 	apiKey := getGLMAPIKey(glmConfig.EnvVar)
 	if apiKey == "" {
+		if isHybrid {
+			return fmt.Errorf("GLM API key not found.\n\n"+
+				"Set up your API key first, then enable CG mode:\n"+
+				"  1. moai glm <api-key>   (saves key to ~/.moai/.env.glm)\n"+
+				"  2. moai cg              (enable hybrid mode)\n\n"+
+				"Or set the %s environment variable.", glmConfig.EnvVar)
+		}
 		return fmt.Errorf("GLM API key not found. Run 'moai glm <api-key>' to save your key, or set %s environment variable", glmConfig.EnvVar)
 	}
 
@@ -120,10 +120,33 @@ func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 	}
 
 	if isHybrid {
-		// Hybrid mode: Lead uses Claude, agents use GLM
-		// Only inject GLM env for teammates (via tmux), not for lead
-		if err := persistTeamMode(root, "hybrid"); err != nil {
+		// CG mode requires tmux session for pane-level env isolation:
+		// - Lead's pane (created before env injection) → no Z.AI env → Claude
+		// - Teammate panes (created after) → inherit tmux session env → GLM
+		// Z.AI maps ALL model names to GLM server-side, so settings.local.json
+		// cannot isolate lead from teammates. Only tmux pane isolation works.
+		if !inTmux {
+			return fmt.Errorf("CG mode requires running inside a tmux session\n\n" +
+				"CG mode uses tmux pane-level environment isolation:\n" +
+				"  - Lead (current pane): No Z.AI env → uses Claude models\n" +
+				"  - Teammates (new panes): Inherit Z.AI env → use GLM models\n\n" +
+				"To fix:\n" +
+				"  1. Start tmux: tmux new -s moai\n" +
+				"  2. Run: moai cg\n" +
+				"  3. Start Claude Code: claude\n\n" +
+				"Alternative: 'moai glm' (all-GLM mode, works without tmux)")
+		}
+
+		// Lead uses Claude, agents use GLM via tmux session env
+		if err := persistTeamMode(root, "cg"); err != nil {
 			return fmt.Errorf("persist team mode: %w", err)
+		}
+
+		// Clean up any existing GLM env vars from settings.local.json.
+		// This handles the case where user ran 'moai glm' before 'moai cg',
+		// ensuring the lead uses Claude (not GLM) without requiring 'moai cc' first.
+		if err := removeGLMEnv(settingsPath); err != nil {
+			return fmt.Errorf("clean up GLM env for CG mode: %w", err)
 		}
 
 		// Inject only tmux display mode for lead session (lead uses Claude)
@@ -137,38 +160,26 @@ func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 			_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to create project .env.glm: %v\n", err)
 		}
 
-		// Build status message
-		tmuxStatus := "tmux session: active (env vars injected)"
-		if !inTmux {
-			tmuxStatus = "tmux session: NOT DETECTED (start claude inside tmux for teammates)"
-		}
-
 		_, _ = fmt.Fprintln(out, renderSuccessCard(
-			"GLM Hybrid Team mode enabled",
+			"CG mode enabled (Claude + GLM)",
 			"",
-			"Architecture: Teamlead (Claude opus/sonnet) + Agents (GLM-5 to glm-4.7)",
-			"Display mode: tmux (split panes)",
-			tmuxStatus,
+			"Architecture: Lead (Claude) + Teammates (GLM)",
+			"Isolation: tmux pane-level environment variables",
+			"tmux session: active (GLM env vars injected for new panes)",
 			"Config saved to: .moai/config/sections/llm.yaml",
 			"",
-			"Agent model mapping:",
-			"  - teamlead: opus/sonnet (your selected Claude model)",
-			"  - team-researcher: glm-4.7-flash (fastest exploration)",
-			"  - team-analyst: glm-5 (requirements analysis)",
-			"  - team-architect: glm-5 (technical design)",
-			"  - team-backend-dev: glm-4.7 (implementation)",
-			"  - team-frontend-dev: glm-4.7 (implementation)",
-			"  - team-tester: glm-4.7 (test creation)",
-			"  - team-quality: glm-4.7-flash (quality validation)",
+			"How it works:",
+			"  - This pane: No Z.AI env → Claude models (lead)",
+			"  - New panes: Inherit Z.AI env → GLM models (teammates)",
 			"",
-			"Cost savings: 60-70% on implementation tasks",
+			"IMPORTANT: Start Claude Code in THIS pane (not a new one).",
+			"Opening a new tmux pane for the lead will cause it to use GLM.",
 			"",
 			"Next steps:",
-			"  1. Ensure you're in a tmux session (tmux new -s moai)",
-			"  2. Start Claude Code: claude",
-			"  3. Run workflow: /moai --team \"your task\"",
+			"  1. Start Claude Code in this pane: claude",
+			"  2. Run workflow: /moai --team \"your task\"",
 			"",
-			"Run 'moai cc' to disable team mode.",
+			"Run 'moai cc' to disable CG/GLM team mode.",
 		))
 	} else {
 		// Regular team mode: All agents use GLM
@@ -215,7 +226,7 @@ func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 			"  2. Start Claude Code: claude",
 			"  3. Run workflow: /moai --team \"your task\"",
 			"",
-			"Run 'moai cc' to disable team mode.",
+			"Run 'moai cc' to disable GLM team mode.",
 		))
 	}
 

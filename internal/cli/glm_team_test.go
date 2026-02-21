@@ -143,23 +143,24 @@ func TestBuildGLMEnvVars(t *testing.T) {
 	}
 }
 
-// TestGLMHybridFlag verifies that the --hybrid flag is correctly registered
-// on the glm command with the expected type and default value.
-func TestGLMHybridFlag(t *testing.T) {
-	// Verify the --hybrid flag exists on glmCmd
-	flag := glmCmd.Flags().Lookup("hybrid")
-	if flag == nil {
-		t.Fatal("--hybrid flag should be registered on glmCmd")
+// TestCGCommandRegistered verifies that the cg command is correctly registered
+// on the root command.
+func TestCGCommandRegistered(t *testing.T) {
+	// Verify cgCmd has the correct Use field (no api-key arg)
+	if cgCmd.Use != "cg" {
+		t.Errorf("cgCmd.Use = %q, want %q", cgCmd.Use, "cg")
 	}
 
-	// Verify the flag type is bool
-	if flag.Value.Type() != "bool" {
-		t.Errorf("--hybrid flag type = %q, want %q", flag.Value.Type(), "bool")
+	// Verify cgCmd does NOT have a --hybrid flag (it's always hybrid)
+	flag := cgCmd.Flags().Lookup("hybrid")
+	if flag != nil {
+		t.Error("cgCmd should NOT have a --hybrid flag (CG is always hybrid)")
 	}
 
-	// Verify the default value is false
-	if flag.DefValue != "false" {
-		t.Errorf("--hybrid flag default = %q, want %q", flag.DefValue, "false")
+	// Verify glmCmd does NOT have a --hybrid flag anymore
+	glmFlag := glmCmd.Flags().Lookup("hybrid")
+	if glmFlag != nil {
+		t.Error("glmCmd should NOT have a --hybrid flag (use 'moai cg' instead)")
 	}
 }
 
@@ -449,6 +450,244 @@ GLM_API_KEY="test-glm-api-key-for-team-mode"
 		t.Error("ANTHROPIC_AUTH_TOKEN should exist")
 	} else if authToken != "test-glm-api-key-for-team-mode" {
 		t.Errorf("ANTHROPIC_AUTH_TOKEN = %q, want %q", authToken, "test-glm-api-key-for-team-mode")
+	}
+}
+
+// TestEnableTeamModeCGRequiresAPIKey verifies that CG mode fails with a
+// helpful error message when GLM API key is not configured.
+func TestEnableTeamModeCGRequiresAPIKey(t *testing.T) {
+	t.Setenv("MOAI_TEST_MODE", "1")
+	t.Setenv("TMUX", "/tmp/tmux-test/default,12345,0")
+
+	// Ensure no API key is available
+	t.Setenv("GLM_API_KEY", "")
+
+	// Override HOME so loadGLMKey finds no saved key
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
+	projectRoot := t.TempDir()
+	sectionsDir := filepath.Join(projectRoot, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(projectRoot); err != nil {
+		t.Fatal(err)
+	}
+
+	err := enableTeamMode(cgCmd, true)
+	if err == nil {
+		t.Fatal("enableTeamMode(isHybrid=true) should fail without API key")
+	}
+
+	// Error should guide user to set up API key first
+	errMsg := err.Error()
+	if !strings.Contains(errMsg, "moai glm <api-key>") {
+		t.Errorf("error should mention 'moai glm <api-key>', got: %v", err)
+	}
+	if !strings.Contains(errMsg, "moai cg") {
+		t.Errorf("error should mention 'moai cg', got: %v", err)
+	}
+}
+
+// TestEnableTeamModeCGRequiresTmux verifies that CG mode (Claude + GLM)
+// fails with a clear error when not running inside a tmux session.
+func TestEnableTeamModeCGRequiresTmux(t *testing.T) {
+	t.Setenv("MOAI_TEST_MODE", "1")
+
+	// Ensure TMUX is NOT set (simulate non-tmux environment)
+	t.Setenv("TMUX", "")
+
+	// Create project dir
+	projectRoot := t.TempDir()
+	sectionsDir := filepath.Join(projectRoot, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(projectRoot); err != nil {
+		t.Fatal(err)
+	}
+
+	// CG mode (isHybrid = true) should fail without tmux session
+	err := enableTeamMode(cgCmd, true)
+	if err == nil {
+		t.Fatal("enableTeamMode(isHybrid=true) should fail without tmux session")
+	}
+
+	// Error message should mention tmux session requirement
+	if !strings.Contains(err.Error(), "tmux session") {
+		t.Errorf("error should mention tmux session, got: %v", err)
+	}
+
+	// Error message should mention 'moai cg' (not 'moai glm --hybrid')
+	if !strings.Contains(err.Error(), "moai cg") {
+		t.Errorf("error should mention 'moai cg', got: %v", err)
+	}
+}
+
+// TestEnableTeamModeCGInTmux verifies that CG mode (Claude + GLM) succeeds
+// inside a tmux session and correctly configures settings.local.json.
+func TestEnableTeamModeCGInTmux(t *testing.T) {
+	t.Setenv("MOAI_TEST_MODE", "1")
+
+	// Simulate being inside a tmux session
+	t.Setenv("TMUX", "/tmp/tmux-test/default,12345,0")
+
+	// Create project dir with GLM key
+	projectRoot := t.TempDir()
+	sectionsDir := filepath.Join(projectRoot, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Set GLM API key via env
+	t.Setenv("GLM_API_KEY", "test-cg-api-key")
+
+	origDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(projectRoot); err != nil {
+		t.Fatal(err)
+	}
+
+	// CG mode (isHybrid = true) should succeed inside tmux
+	err := enableTeamMode(cgCmd, true)
+	if err != nil {
+		t.Fatalf("enableTeamMode(isHybrid=true) should succeed in tmux, got: %v", err)
+	}
+
+	// Verify llm.yaml contains team_mode: cg (NOT "hybrid")
+	data, err := os.ReadFile(filepath.Join(sectionsDir, "llm.yaml"))
+	if err != nil {
+		t.Fatalf("failed to read llm.yaml: %v", err)
+	}
+	if !strings.Contains(string(data), "team_mode: cg") {
+		t.Errorf("llm.yaml should contain team_mode: cg, got:\n%s", string(data))
+	}
+	if strings.Contains(string(data), "team_mode: hybrid") {
+		t.Errorf("llm.yaml should NOT contain team_mode: hybrid (renamed to cg), got:\n%s", string(data))
+	}
+
+	// Verify settings.local.json was created
+	settingsPath := filepath.Join(projectRoot, ".claude", "settings.local.json")
+	settingsData, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("failed to read settings.local.json: %v", err)
+	}
+
+	var settings SettingsLocal
+	if err := json.Unmarshal(settingsData, &settings); err != nil {
+		t.Fatalf("failed to unmarshal settings.local.json: %v", err)
+	}
+
+	// Should have CLAUDE_CODE_TEAMMATE_DISPLAY=tmux
+	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
+		t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want %q", settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"], "tmux")
+	}
+
+	// Should NOT have ANTHROPIC_BASE_URL (lead must use Claude, not Z.AI)
+	if _, exists := settings.Env["ANTHROPIC_BASE_URL"]; exists {
+		t.Error("settings.local.json should NOT contain ANTHROPIC_BASE_URL in CG mode (lead uses Claude)")
+	}
+
+	// Should NOT have ANTHROPIC_DEFAULT_*_MODEL (GLM vars are only in tmux session env)
+	for _, key := range []string{"ANTHROPIC_DEFAULT_OPUS_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_HAIKU_MODEL"} {
+		if _, exists := settings.Env[key]; exists {
+			t.Errorf("settings.local.json should NOT contain %s in CG mode", key)
+		}
+	}
+}
+
+// TestCGAutoResetsGLMMode verifies that 'moai cg' automatically cleans up
+// GLM env vars from settings.local.json when switching from 'moai glm' mode.
+// This eliminates the need to run 'moai cc' between 'moai glm' and 'moai cg'.
+func TestCGAutoResetsGLMMode(t *testing.T) {
+	t.Setenv("MOAI_TEST_MODE", "1")
+	t.Setenv("TMUX", "/tmp/tmux-test/default,12345,0")
+	t.Setenv("GLM_API_KEY", "test-auto-reset-key")
+
+	projectRoot := t.TempDir()
+	claudeDir := filepath.Join(projectRoot, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	sectionsDir := filepath.Join(projectRoot, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(projectRoot); err != nil {
+		t.Fatal(err)
+	}
+
+	// Step 1: Run 'moai glm' (all-GLM mode) - injects GLM env vars
+	err := enableTeamMode(glmCmd, false)
+	if err != nil {
+		t.Fatalf("enableTeamMode(glm) error: %v", err)
+	}
+
+	// Verify GLM env vars are present in settings.local.json
+	settingsPath := filepath.Join(claudeDir, "settings.local.json")
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("failed to read settings.local.json after glm: %v", err)
+	}
+	var glmSettings SettingsLocal
+	if err := json.Unmarshal(data, &glmSettings); err != nil {
+		t.Fatalf("parse settings.local.json: %v", err)
+	}
+	if _, exists := glmSettings.Env["ANTHROPIC_BASE_URL"]; !exists {
+		t.Fatal("after 'moai glm', settings.local.json should contain ANTHROPIC_BASE_URL")
+	}
+
+	// Step 2: Run 'moai cg' directly (without 'moai cc')
+	err = enableTeamMode(cgCmd, true)
+	if err != nil {
+		t.Fatalf("enableTeamMode(cg) error: %v", err)
+	}
+
+	// Verify GLM env vars are removed (lead must use Claude)
+	data, err = os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("failed to read settings.local.json after cg: %v", err)
+	}
+	var cgSettings SettingsLocal
+	if err := json.Unmarshal(data, &cgSettings); err != nil {
+		t.Fatalf("parse settings.local.json: %v", err)
+	}
+
+	// Should NOT have any GLM env vars
+	for _, key := range []string{
+		"ANTHROPIC_AUTH_TOKEN",
+		"ANTHROPIC_BASE_URL",
+		"ANTHROPIC_DEFAULT_OPUS_MODEL",
+		"ANTHROPIC_DEFAULT_SONNET_MODEL",
+		"ANTHROPIC_DEFAULT_HAIKU_MODEL",
+	} {
+		if _, exists := cgSettings.Env[key]; exists {
+			t.Errorf("after 'moai cg', settings.local.json should NOT contain %s (lead uses Claude)", key)
+		}
+	}
+
+	// Should have CLAUDE_CODE_TEAMMATE_DISPLAY=tmux
+	if cgSettings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
+		t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want %q", cgSettings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"], "tmux")
+	}
+
+	// Verify llm.yaml shows cg mode (not glm)
+	llmData, err := os.ReadFile(filepath.Join(sectionsDir, "llm.yaml"))
+	if err != nil {
+		t.Fatalf("failed to read llm.yaml: %v", err)
+	}
+	if !strings.Contains(string(llmData), "team_mode: cg") {
+		t.Errorf("llm.yaml should contain team_mode: cg, got:\n%s", string(llmData))
 	}
 }
 

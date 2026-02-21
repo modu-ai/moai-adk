@@ -18,11 +18,11 @@ var ccCmd = &cobra.Command{
 	Long: `Switch the active LLM backend to Claude by removing GLM env variables from .claude/settings.local.json.
 
 This command removes the GLM-specific environment variables that were injected
-by 'moai glm', restoring Claude Code to use the default Claude API.
+by 'moai glm' or 'moai cg', restoring Claude Code to use the default Claude API.
 
-If team mode was enabled, it will be disabled automatically.
+If team mode was enabled (glm or cg), it will be disabled automatically.
 
-Use 'moai glm' to switch to GLM backend.`,
+Use 'moai glm' for all-GLM mode, or 'moai cg' for Claude + GLM hybrid mode.`,
 	Args: cobra.NoArgs,
 	RunE: runCC,
 }
@@ -74,7 +74,7 @@ func runCC(cmd *cobra.Command, _ []string) error {
 	if worktreeMsg != "" {
 		details = append(details, "", worktreeMsg)
 	}
-	details = append(details, "", "Run 'moai glm' to switch to GLM.")
+	details = append(details, "", "Run 'moai glm' for all-GLM mode, or 'moai cg' for hybrid mode.")
 
 	_, _ = fmt.Fprintln(out, renderSuccessCard(
 		"Switched to Claude backend",
