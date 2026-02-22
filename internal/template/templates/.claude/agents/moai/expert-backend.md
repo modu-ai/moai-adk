@@ -12,7 +12,34 @@ tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task
 model: opus
 permissionMode: default
 memory: project
-skills: moai-foundation-claude, moai-foundation-core, moai-foundation-philosopher, moai-foundation-quality, moai-foundation-context, moai-domain-backend, moai-domain-database, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-lang-go, moai-lang-java, moai-lang-rust, moai-lang-php, moai-lang-csharp, moai-lang-ruby, moai-lang-elixir, moai-lang-scala, moai-platform-database-cloud, moai-platform-auth, moai-platform-deployment, moai-platform-chrome-extension, moai-tool-ast-grep, moai-workflow-tdd, moai-workflow-ddd, moai-workflow-testing, moai-workflow-jit-docs
+skills:
+  - moai-foundation-claude
+  - moai-foundation-core
+  - moai-foundation-philosopher
+  - moai-foundation-quality
+  - moai-foundation-context
+  - moai-domain-backend
+  - moai-domain-database
+  - moai-lang-python
+  - moai-lang-typescript
+  - moai-lang-javascript
+  - moai-lang-go
+  - moai-lang-java
+  - moai-lang-rust
+  - moai-lang-php
+  - moai-lang-csharp
+  - moai-lang-ruby
+  - moai-lang-elixir
+  - moai-lang-scala
+  - moai-platform-database-cloud
+  - moai-platform-auth
+  - moai-platform-deployment
+  - moai-platform-chrome-extension
+  - moai-tool-ast-grep
+  - moai-workflow-tdd
+  - moai-workflow-ddd
+  - moai-workflow-testing
+  - moai-workflow-jit-docs
 hooks:
   PreToolUse:
     - matcher: "Write|Edit"

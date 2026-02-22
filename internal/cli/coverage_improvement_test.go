@@ -6753,6 +6753,20 @@ func TestSaveLLMSection_FullConfig(t *testing.T) {
 // --- runUpdate additional paths ---
 
 func TestRunUpdate_TemplatesOnlySkipsBinary(t *testing.T) {
+	// CRITICAL: Change CWD to a temp directory to prevent template deployment
+	// from polluting the actual source tree (internal/cli/).
+	// runUpdate -> runTemplateSyncWithProgress uses projectRoot := "." (CWD).
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(origDir) })
+	t.Setenv("HOME", tmpDir)
+
 	origDeps := deps
 	defer func() { deps = origDeps }()
 	deps = &Dependencies{Logger: newTestLogger()}

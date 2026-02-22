@@ -1,9 +1,5 @@
 ---
-paths:
-  - "**/*.rb"
-  - "**/Gemfile"
-  - "**/Gemfile.lock"
-  - "**/*.gemspec"
+paths: "**/*.rb,**/Gemfile,**/Gemfile.lock,**/*.gemspec"
 ---
 
 # Ruby Rules

@@ -328,6 +328,50 @@ SendMessage(type: "plan_approval_response", request_id: "{id}", recipient: "{nam
 | Requires tmux | Yes | No (optional) | No |
 | Isolation | tmux env + optional worktree | File ownership + optional worktree | None |
 
+## Resilient Team Orchestration Protocol
+
+Rules for preventing teammate hangs, unresponsive agents, and unclean shutdowns.
+
+### Timeout Contract
+
+- Each teammate MUST send a TaskUpdate within 120 seconds of task assignment
+- If no update after 3 minutes: mark the task as failed via TaskUpdate, log the issue
+- Reassign failed tasks to another teammate or absorb into leader's workload
+
+### Graceful Degradation
+
+- If a teammate fails to respond to messages after 2 attempts: proceed without waiting
+- If a teammate's task fails: leader absorbs remaining work rather than blocking the pipeline
+- Never block the entire workflow waiting for a single unresponsive teammate
+
+### Rate Limit Resilience
+
+- If a teammate reports a rate limit error: redistribute their remaining tasks to other teammates
+- If multiple teammates hit rate limits: pause team work, commit current progress, resume later
+- Progress preservation: all teammates should commit intermediate work before long operations
+
+### Clean Shutdown Sequence
+
+After all tasks complete (or on workflow termination):
+
+```
+1. Send shutdown_request to ALL teammates (in parallel)
+2. Wait maximum 30 seconds for shutdown_responses
+3. After 30 seconds: proceed with TeamDelete regardless of response status
+4. Log any unresponsive teammates for debugging
+5. Do NOT wait indefinitely for shutdown_response
+```
+
+### Error Recovery Matrix
+
+| Failure | Detection | Recovery |
+|---------|-----------|----------|
+| Teammate unresponsive | No TaskUpdate in 3 min | Mark task failed, reassign |
+| Teammate stuck in loop | Same task in_progress > 5 min | Send interrupt message, then absorb |
+| Rate limit hit | Tool failure count >= 3 | Commit progress, redistribute work |
+| Shutdown unresponsive | No response in 30 sec | Proceed with TeamDelete |
+| Teammate spawn failure | Task() returns error | Fall back to sub-agent for that role |
+
 ## Fallback
 
 If team mode fails at any point:
@@ -338,5 +382,5 @@ If team mode fails at any point:
 
 ---
 
-Version: 3.0.0 (tmux Agent Teams CG Mode)
+Version: 3.1.0 (Resilient Orchestration Protocol)
 Last Updated: 2026-02-22

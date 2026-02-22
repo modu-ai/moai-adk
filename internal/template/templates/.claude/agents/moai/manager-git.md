@@ -12,7 +12,13 @@ tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Task, Skill, mcp__sequent
 model: haiku
 permissionMode: default
 memory: project
-skills: moai-foundation-claude, moai-foundation-core, moai-workflow-project, moai-workflow-worktree, moai-workflow-testing, moai-foundation-quality
+skills:
+  - moai-foundation-claude
+  - moai-foundation-core
+  - moai-workflow-project
+  - moai-workflow-worktree
+  - moai-workflow-testing
+  - moai-foundation-quality
 ---
 
 # Git Manager Agent - Git Operations Specialist

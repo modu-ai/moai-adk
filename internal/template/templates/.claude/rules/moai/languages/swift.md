@@ -1,8 +1,5 @@
 ---
-paths:
-  - "**/*.swift"
-  - "**/Package.swift"
-  - "**/*.xcodeproj/**"
+paths: "**/*.swift,**/Package.swift,**/*.xcodeproj/**"
 ---
 
 # Swift Rules

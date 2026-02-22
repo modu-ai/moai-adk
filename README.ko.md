@@ -62,7 +62,7 @@ Python 기반 MoAI-ADK(~73,000줄)를 Go로 완전히 재작성했습니다.
 - **85-100%** 테스트 커버리지
 - **28개** 전문 AI 에이전트 + **52개** 스킬
 - **18개** 프로그래밍 언어 지원
-- **14개** Claude Code 훅 이벤트
+- **16개** Claude Code 훅 이벤트
 
 ---
 
@@ -103,7 +103,7 @@ irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
 
 > [Git for Windows](https://gitforwindows.org/)가 먼저 설치되어 있어야 합니다.
 
-#### 소스에서 빌드 (Go 1.25+)
+#### 소스에서 빌드 (Go 1.26+)
 
 ```bash
 git clone https://github.com/modu-ai/moai-adk.git
@@ -119,37 +119,6 @@ moai init my-project
 ```
 
 대화형 마법사가 언어, 프레임워크, 방법론을 자동 감지하고 Claude Code 통합 파일을 생성합니다.
-
-#### 설치 모드
-
-MoAI-ADK는 두 가지 설치 모드를 지원합니다:
-
-| 모드 | 명령어 | 설명 |
-|------|--------|------|
-| **Local** (기본값) | `moai init my-project` | 모든 파일을 프로젝트 `.claude/`에 설치 |
-| **Global** | `moai init my-project --install-mode global` | 시스템 파일을 `~/.claude/`에 설치하여 프로젝트 간 공유 |
-
-**파일 배치 전략 (Global 모드):**
-
-| 파일 패턴 | 위치 | 이유 |
-|-----------|------|------|
-| `agents/moai/` | `~/.claude/agents/moai/` | 프로젝트 간 공유 |
-| `skills/moai*` | `~/.claude/skills/moai*/` | 프로젝트 간 공유 |
-| `rules/moai/` | `~/.claude/rules/moai/` | 프로젝트 간 공유 |
-| `commands/moai/` | `~/.claude/commands/moai/` | 프로젝트 간 공유 (13개 서브커맨드) |
-| `hooks/` | 프로젝트 `.claude/hooks/` | 프로젝트별 |
-| `settings.json` | 프로젝트 `.claude/` | Git을 통한 팀 공유 |
-| `.moai/` | 프로젝트 `.moai/` | 프로젝트별 설정 |
-
-**Global 모드 사용 시점:**
-- 여러 MoAI-ADK 프로젝트에서 동일한 에이전트 정의 사용
-- 프로젝트별 파일 오버헤드 감소 원함
-- 시스템 파일의 중앙 집중식 업데이트 선호
-
-**Local 모드 사용 시점 (기본값):**
-- 모든 팀원이 동일한 에이전트 정의를 가져야 하는 팀 프로젝트
-- 프로젝트별 에이전트 커스터마이징 필요
-- 프로젝트 디렉토리의 모든 파일에 대한 완전한 제어 필요
 
 ### 3. Claude Code에서 개발 시작
 
@@ -333,7 +302,7 @@ MoAI-ADK는 Claude Code 구독 요금제에 맞춰 28개 에이전트에 최적�
 
 ```bash
 # 프로젝트 초기화 시
-moai init my-project          # 대화형 마법사에서 모델 정책 및 설치 모드 선택
+moai init my-project          # 대화형 마법사에서 모델 정책 선택
 
 # 기존 프로젝트 재설정
 moai update                   # 각 설정 단계별 대화형 프롬프트
@@ -341,7 +310,6 @@ moai update                   # 각 설정 단계별 대화형 프롬프트
 
 `moai update` 실행 시 다음 항목을 묻습니다:
 - **모델 정책 재설정?** (y/n) - 모델 정책 설정 마법사 재실행
-- **설치 모드 재설정?** (y/n) - 설치 모드 설정 마법사 재실행
 - **GLM 설정 업데이트?** (y/n) - settings.local.json에 GLM 환경 변수 구성
 
 > 기본 정책은 `High`입니다. GLM 설정은 `settings.local.json`에 격리됩니다 (Git에 커밋되지 않음).
@@ -498,7 +466,7 @@ graph TB
 | GLM 전용 | `moai glm` | GLM | GLM | 최대 비용 절감 |
 | CG (Claude+GLM) | `moai cg` | Claude | GLM | 품질 + 비용 균형 |
 
-> **참고**: `moai cg`는 worktree 기반 격리를 사용하여 Claude 리더와 GLM 워커를 분리합니다. `moai glm` 모드에서 전환 시, `moai cg`가 GLM 설정을 자동으로 리셋합니다 — 중간에 `moai cc`를 실행할 필요 없습니다.
+> **참고**: `moai cg`는 tmux pane 레벨 환경 격리를 사용하여 Claude 리더와 GLM 워커를 분리합니다. `moai glm` 모드에서 전환 시, `moai cg`가 GLM 설정을 자동으로 리셋합니다 — 중간에 `moai cc`를 실행할 필요 없습니다.
 
 ### 자율 개발 루프 (Ralph Engine)
 
@@ -570,7 +538,6 @@ Task 도구 완료 시 PostToolUse 훅이 메트릭을 로깅합니다. 이 데�
 | 명령어 | 설명 |
 |--------|------|
 | `moai init` | 대화형 프로젝트 설정 (언어/프레임워크/방법론 자동 감지) |
-| `moai init --install-mode <mode>` | 설치 모드 설정: `local` (기본값) 또는 `global` |
 | `moai doctor` | 시스템 상태 진단 및 환경 검증 |
 | `moai status` | Git 브랜치, 품질 메트릭 등 프로젝트 상태 요약 |
 | `moai update` | 최신 버전으로 업데이트 (자동 롤백 지원) |
@@ -585,7 +552,8 @@ Task 도구 완료 시 PostToolUse 훅이 메트릭을 로깅합니다. 이 데�
 | `moai worktree go <name>` | 현재 셸에서 worktree 디렉토리로 이동 |
 | `moai hook <event>` | Claude Code 훅 디스패처 |
 | `moai glm` | GLM 5 API로 Claude Code 시작 (비용 효율적 대안) |
-| `moai cg` | CG 모드 활성화 — Claude 리더 + GLM 팀원 (worktree 격리) |
+| `moai cc` | GLM 설정 없이 Claude Code 시작 (Claude 전용 모드) |
+| `moai cg` | CG 모드 활성화 — Claude 리더 + GLM 팀원 (tmux pane 레벨 격리) |
 | `moai version` | 버전, 커밋 해시, 빌드 날짜 정보 |
 
 ---
@@ -605,7 +573,7 @@ moai-adk/
 │   │   └── quality/      # TRUST 5 품질 게이트, 병렬 검증기
 │   ├── defs/             # 언어 정의 및 프레임워크 감지
 │   ├── git/              # Git 컨벤션 검증 엔진
-│   ├── hook/             # 컴파일된 훅 시스템 (14개 이벤트, JSON 프로토콜)
+│   ├── hook/             # 컴파일된 훅 시스템 (16개 이벤트, JSON 프로토콜)
 │   ├── loop/             # Ralph 피드백 루프 (상태 머신, 수렴 감지)
 │   ├── lsp/              # LSP 클라이언트 (16개+ 언어, 병렬 서버 관리)
 │   ├── manifest/         # 파일 출적 추적 (SHA-256 무결성)

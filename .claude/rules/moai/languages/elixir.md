@@ -1,8 +1,5 @@
 ---
-paths:
-  - "**/*.ex"
-  - "**/*.exs"
-  - "**/mix.exs"
+paths: "**/*.ex,**/*.exs,**/mix.exs"
 ---
 
 # Elixir Rules

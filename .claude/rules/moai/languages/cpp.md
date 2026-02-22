@@ -1,10 +1,5 @@
 ---
-paths:
-  - "**/*.cpp"
-  - "**/*.hpp"
-  - "**/*.h"
-  - "**/*.cc"
-  - "**/CMakeLists.txt"
+paths: "**/*.cpp,**/*.hpp,**/*.h,**/*.cc,**/CMakeLists.txt"
 ---
 
 # C++ Rules

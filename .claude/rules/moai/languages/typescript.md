@@ -1,8 +1,5 @@
 ---
-paths:
-  - "**/*.ts"
-  - "**/*.tsx"
-  - "**/tsconfig.json"
+paths: "**/*.ts,**/*.tsx,**/tsconfig.json"
 ---
 
 # TypeScript Rules

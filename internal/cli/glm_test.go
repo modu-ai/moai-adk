@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 func TestGLMCmd_Exists(t *testing.T) {
@@ -309,6 +311,99 @@ func TestSaveGLMKey_EmptyKey(t *testing.T) {
 	if _, err := os.Stat(envPath); os.IsNotExist(err) {
 		t.Fatal("expected .env.glm file to be created")
 	}
+}
+
+// TestResolveGLMModels verifies backward compatibility fallback logic.
+func TestResolveGLMModels(t *testing.T) {
+	defaults := config.NewDefaultLLMConfig()
+
+	tests := []struct {
+		name       string
+		models     config.GLMModels
+		wantHigh   string
+		wantMedium string
+		wantLow    string
+	}{
+		{
+			name: "only High/Medium/Low set - uses them directly",
+			models: config.GLMModels{
+				High:   "custom-high",
+				Medium: "custom-medium",
+				Low:    "custom-low",
+			},
+			wantHigh:   "custom-high",
+			wantMedium: "custom-medium",
+			wantLow:    "custom-low",
+		},
+		{
+			name: "only Opus/Sonnet/Haiku set - falls back to legacy fields",
+			models: config.GLMModels{
+				Opus:   "legacy-opus",
+				Sonnet: "legacy-sonnet",
+				Haiku:  "legacy-haiku",
+			},
+			wantHigh:   "legacy-opus",
+			wantMedium: "legacy-sonnet",
+			wantLow:    "legacy-haiku",
+		},
+		{
+			name: "both set - High/Medium/Low takes priority over Opus/Sonnet/Haiku",
+			models: config.GLMModels{
+				High:   "new-high",
+				Medium: "new-medium",
+				Low:    "new-low",
+				Opus:   "old-opus",
+				Sonnet: "old-sonnet",
+				Haiku:  "old-haiku",
+			},
+			wantHigh:   "new-high",
+			wantMedium: "new-medium",
+			wantLow:    "new-low",
+		},
+		{
+			name:       "neither set - falls back to config defaults",
+			models:     config.GLMModels{},
+			wantHigh:   defaults.GLM.Models.High,
+			wantMedium: defaults.GLM.Models.Medium,
+			wantLow:    defaults.GLM.Models.Low,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotHigh, gotMedium, gotLow := resolveGLMModels(tt.models)
+			if gotHigh != tt.wantHigh {
+				t.Errorf("high = %q, want %q", gotHigh, tt.wantHigh)
+			}
+			if gotMedium != tt.wantMedium {
+				t.Errorf("medium = %q, want %q", gotMedium, tt.wantMedium)
+			}
+			if gotLow != tt.wantLow {
+				t.Errorf("low = %q, want %q", gotLow, tt.wantLow)
+			}
+		})
+	}
+}
+
+// TestLoadGLMConfig_BackwardCompatibility reproduces Issue #409:
+// Legacy users with llm.yaml configured using old field names (opus, sonnet, haiku)
+// should get correct model mapping via resolveGLMModels fallback.
+// NOTE: This test is now covered by glm_compat_test.go tests.
+func TestLoadGLMConfig_BackwardCompatibility(t *testing.T) {
+	t.Skip("Covered by glm_compat_test.go tests - kept for historical reference")
+}
+
+// configManagerMock is a minimal mock of config.ConfigManager for testing.
+type configManagerMock struct {
+	cfg *config.Config
+}
+
+func (m *configManagerMock) Get() *config.Config {
+	return m.cfg
+}
+
+func (m *configManagerMock) Reload() error {
+	return nil
 }
 
 func TestSaveGLMKey_OverwriteExisting(t *testing.T) {

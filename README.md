@@ -31,7 +31,7 @@
 
 ---
 
-> 📚 **[Official Documentation](https://adk.mo.ai.kr)** | **[GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)**
+> 📚 **[Official Documentation](https://adk.mo.ai.kr)** | **[GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)** | **[Discord Community](https://discord.gg/moai-adk)**
 
 ---
 
@@ -62,7 +62,7 @@ We completely rewrote the Python-based MoAI-ADK (~73,000 lines) in Go.
 - **85-100%** test coverage
 - **28** specialized AI agents + **52** skills
 - **18** programming languages supported
-- **14** Claude Code hook events
+- **16** Claude Code hook events
 
 ---
 
@@ -103,7 +103,7 @@ irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
 
 > Requires [Git for Windows](https://gitforwindows.org/) to be installed first.
 
-#### Build from Source (Go 1.25+)
+#### Build from Source (Go 1.26+)
 
 ```bash
 git clone https://github.com/modu-ai/moai-adk.git
@@ -119,37 +119,6 @@ moai init my-project
 ```
 
 An interactive wizard auto-detects your language, framework, and methodology, then generates Claude Code integration files.
-
-#### Installation Modes
-
-MoAI-ADK supports two installation modes:
-
-| Mode | Command | Description |
-|------|---------|-------------|
-| **Local** (default) | `moai init my-project` | Installs all files to project `.claude/` |
-| **Global** | `moai init my-project --install-mode global` | Installs system files to `~/.claude/` for sharing across projects |
-
-**File Placement Strategy (Global Mode):**
-
-| File Pattern | Location | Reason |
-|--------------|----------|--------|
-| `agents/moai/` | `~/.claude/agents/moai/` | Shared across projects |
-| `skills/moai*` | `~/.claude/skills/moai*/` | Shared across projects |
-| `rules/moai/` | `~/.claude/rules/moai/` | Shared across projects |
-| `commands/moai/` | `~/.claude/commands/moai/` | Shared across projects (13 subcommands) |
-| `hooks/` | Project `.claude/hooks/` | Project-specific |
-| `settings.json` | Project `.claude/` | Team sharing via Git |
-| `.moai/` | Project `.moai/` | Project-specific config |
-
-**When to use Global mode:**
-- You work on multiple MoAI-ADK projects with the same agent definitions
-- You want to reduce per-project file overhead
-- You prefer centralized updates for system files
-
-**When to use Local mode (default):**
-- Team projects where everyone needs identical agent definitions
-- Project-specific agent customizations are required
-- Full control over all files in the project directory
 
 ### 3. Start Developing with Claude Code
 
@@ -333,7 +302,7 @@ MoAI-ADK assigns optimal AI models to each of 28 agents based on your Claude Cod
 
 ```bash
 # During project initialization
-moai init my-project          # Interactive wizard includes model policy and install mode selection
+moai init my-project          # Interactive wizard includes model policy selection
 
 # Reconfigure existing project
 moai update                   # Interactive prompts for each configuration step
@@ -341,7 +310,6 @@ moai update                   # Interactive prompts for each configuration step
 
 During `moai update`, you'll be asked:
 - **Reset model policy?** (y/n) - Re-run model policy configuration wizard
-- **Reset install mode?** (y/n) - Re-run install mode configuration wizard
 - **Update GLM settings?** (y/n) - Configure GLM environment variables in settings.local.json
 
 > Default policy is `High`. GLM settings are isolated in `settings.local.json` (not committed to Git).
@@ -498,7 +466,7 @@ Control how agents are dispatched during workflow execution:
 | GLM-only | `moai glm` | GLM | GLM | Maximum cost savings |
 | CG (Claude+GLM) | `moai cg` | Claude | GLM | Quality + cost balance |
 
-> **Note**: `moai cg` uses worktree-based isolation to separate Claude leader from GLM workers. If switching from `moai glm`, `moai cg` automatically resets GLM settings first — no need to run `moai cc` in between.
+> **Note**: `moai cg` uses tmux pane-level env isolation to separate Claude leader from GLM workers. If switching from `moai glm`, `moai cg` automatically resets GLM settings first — no need to run `moai cc` in between.
 
 ### Autonomous Development Loop (Ralph Engine)
 
@@ -570,7 +538,6 @@ Metrics are logged by the PostToolUse hook when Task tool completes. Use this da
 | Command | Description |
 |---------|-------------|
 | `moai init` | Interactive project setup (auto-detects language/framework/methodology) |
-| `moai init --install-mode <mode>` | Set installation mode: `local` (default) or `global` |
 | `moai doctor` | System health diagnosis and environment verification |
 | `moai status` | Project status summary including Git branch, quality metrics, etc. |
 | `moai update` | Update to the latest version (with automatic rollback support) |
@@ -585,7 +552,8 @@ Metrics are logged by the PostToolUse hook when Task tool completes. Use this da
 | `moai worktree go <name>` | Navigate to worktree directory in current shell |
 | `moai hook <event>` | Claude Code hook dispatcher |
 | `moai glm` | Start Claude Code with GLM 5 API (cost-effective alternative) |
-| `moai cg` | Enable CG mode — Claude leader + GLM teammates (worktree isolation) |
+| `moai cc` | Start Claude Code without GLM settings (Claude-only mode) |
+| `moai cg` | Enable CG mode — Claude leader + GLM teammates (tmux pane-level isolation) |
 | `moai version` | Display version, commit hash, and build date |
 
 ---
@@ -605,7 +573,7 @@ moai-adk/
 │   │   └── quality/      # TRUST 5 quality gates, parallel validators
 │   ├── defs/             # Language definitions and framework detection
 │   ├── git/              # Git convention validation engine
-│   ├── hook/             # Compiled hook system (14 events, JSON protocol)
+│   ├── hook/             # Compiled hook system (16 events, JSON protocol)
 │   ├── loop/             # Ralph feedback loop (state machine, convergence detection)
 │   ├── lsp/              # LSP client (16+ languages, parallel server management)
 │   ├── manifest/         # File provenance tracking (SHA-256 integrity)
@@ -885,6 +853,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed g
 ### Community
 
 - [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) -- Questions, ideas, feedback
+- [Discord Community](https://discord.gg/moai-adk) -- Real-time chat, tips sharing
 - [Issues](https://github.com/modu-ai/moai-adk/issues) -- Bug reports, feature requests
 
 ---
@@ -904,3 +873,4 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed g
 - [Official Documentation](https://adk.mo.ai.kr)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
 - [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) -- Questions, ideas, community
+- [Discord Community](https://discord.gg/moai-adk) -- Real-time chat, tips sharing

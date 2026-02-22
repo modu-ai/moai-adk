@@ -1,9 +1,5 @@
 ---
-paths:
-  - "**/*.R"
-  - "**/*.Rmd"
-  - "**/DESCRIPTION"
-  - "**/NAMESPACE"
+paths: "**/*.R,**/*.Rmd,**/DESCRIPTION,**/NAMESPACE"
 ---
 
 # R Rules

@@ -33,9 +33,7 @@ Flow: TeamCreate -> Parallel Research -> Synthesis -> SPEC Document -> Shutdown
 
 ## Prerequisites
 
-- workflow.team.enabled: true
-- CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
-- Triggered by: /moai plan --team OR auto-detected complexity >= threshold
+See @.claude/rules/moai/workflow/spec-workflow.md for team mode prerequisites.
 
 ## Phase 0: Team Setup
 

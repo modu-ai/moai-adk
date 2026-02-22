@@ -1,3 +1,7 @@
+---
+paths: "**/.claude/agents/**,**/.moai/worktrees/**"
+---
+
 # Worktree Integration Guide
 
 Integration guide for MoAI Worktree and Claude Code Native Worktree systems.

@@ -1,6 +1,5 @@
 ---
-paths:
-  - "**/.mcp.json"
+paths: "**/.mcp.json"
 ---
 
 # MCP Integration

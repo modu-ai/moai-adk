@@ -1,8 +1,5 @@
 ---
-paths:
-  - "**/*.scala"
-  - "**/*.sc"
-  - "**/build.sbt"
+paths: "**/*.scala,**/*.sc,**/build.sbt"
 ---
 
 # Scala Rules

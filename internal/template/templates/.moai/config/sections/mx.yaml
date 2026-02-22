@@ -215,6 +215,15 @@ mx:
     p3_weight: 10   # missing docs or magic constants
     p4_weight: 1    # missing tests
 
+  # Batch scanning configuration
+  scanning:
+    batch_size: 50              # Files per batch iteration
+    auto_commit: true           # Commit after each batch
+    commit_message_template: "chore(mx): batch {N}/{M} - add MX tags to {lang} files"
+    resume_enabled: true        # Allow resume from interrupted scans
+    progress_file: ".moai/cache/mx-scan-progress.json"
+    max_consecutive_failures: 3 # Stop after N consecutive tool failures
+
   # Report generation
   reporting:
     include_language_breakdown: true  # Show stats per language

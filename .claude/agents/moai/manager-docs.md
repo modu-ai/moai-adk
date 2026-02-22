@@ -12,7 +12,16 @@ tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TodoWrite, Task
 model: haiku
 permissionMode: acceptEdits
 memory: project
-skills: moai-foundation-claude, moai-foundation-core, moai-docs-generation, moai-workflow-jit-docs, moai-workflow-templates, moai-library-mermaid, moai-library-nextra, moai-formats-data, moai-foundation-context
+skills:
+  - moai-foundation-claude
+  - moai-foundation-core
+  - moai-docs-generation
+  - moai-workflow-jit-docs
+  - moai-workflow-templates
+  - moai-library-mermaid
+  - moai-library-nextra
+  - moai-formats-data
+  - moai-foundation-context
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"

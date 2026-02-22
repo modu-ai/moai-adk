@@ -475,12 +475,46 @@ type GLMConfigFromYAML struct {
 	EnvVar string
 }
 
+// resolveGLMModels resolves the effective high, medium, and low model names
+// from a GLMModels struct, applying legacy field fallback for backward compatibility.
+// Priority: High/Medium/Low > Opus/Sonnet/Haiku (legacy) > defaults.
+func resolveGLMModels(models config.GLMModels) (high, medium, low string) {
+	defaults := config.NewDefaultLLMConfig()
+
+	high = models.High
+	if high == "" {
+		high = models.Opus
+	}
+	if high == "" {
+		high = defaults.GLM.Models.High
+	}
+
+	medium = models.Medium
+	if medium == "" {
+		medium = models.Sonnet
+	}
+	if medium == "" {
+		medium = defaults.GLM.Models.Medium
+	}
+
+	low = models.Low
+	if low == "" {
+		low = models.Haiku
+	}
+	if low == "" {
+		low = defaults.GLM.Models.Low
+	}
+
+	return high, medium, low
+}
+
 // loadGLMConfig reads GLM configuration from llm.yaml.
 func loadGLMConfig(root string) (*GLMConfigFromYAML, error) {
 	// If config is available via deps, use it
 	if deps != nil && deps.Config != nil {
 		cfg := deps.Config.Get()
 		if cfg != nil && cfg.LLM.GLM.BaseURL != "" {
+			high, medium, low := resolveGLMModels(cfg.LLM.GLM.Models)
 			return &GLMConfigFromYAML{
 				BaseURL: cfg.LLM.GLM.BaseURL,
 				Models: struct {
@@ -488,9 +522,9 @@ func loadGLMConfig(root string) (*GLMConfigFromYAML, error) {
 					Medium string
 					Low    string
 				}{
-					High:   cfg.LLM.GLM.Models.High,
-					Medium: cfg.LLM.GLM.Models.Medium,
-					Low:    cfg.LLM.GLM.Models.Low,
+					High:   high,
+					Medium: medium,
+					Low:    low,
 				},
 				EnvVar: cfg.LLM.GLMEnvVar,
 			}, nil

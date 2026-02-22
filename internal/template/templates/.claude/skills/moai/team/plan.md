@@ -33,9 +33,7 @@ Flow: TeamCreate -> Parallel Research -> Synthesis -> SPEC Document -> Shutdown
 
 ## Prerequisites
 
-- workflow.team.enabled: true
-- CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
-- Triggered by: /moai plan --team OR auto-detected complexity >= threshold
+See @.claude/rules/moai/workflow/spec-workflow.md for team mode prerequisites.
 
 ## Phase 0: Team Setup
 
@@ -143,18 +141,22 @@ AskUserQuestion with options:
 - Request modifications (specify which section)
 - Cancel workflow
 
-## Phase 5: Cleanup
+## Phase 5: Cleanup (Timeout-Based)
 
 1. Verify all tasks are completed via TaskList
-2. Shutdown all teammates (send to each):
+2. Shutdown all teammates in parallel:
    ```
    SendMessage(type: "shutdown_request", recipient: "researcher", content: "Plan phase complete, shutting down")
    SendMessage(type: "shutdown_request", recipient: "analyst", content: "Plan phase complete, shutting down")
    SendMessage(type: "shutdown_request", recipient: "architect", content: "Plan phase complete, shutting down")
    ```
-3. Wait for shutdown_response from each teammate before proceeding
-4. TeamDelete to clean up resources
-5. Execute /clear to free context for next phase
+3. Wait maximum 30 seconds for shutdown_responses
+4. After 30 seconds: proceed with TeamDelete regardless of response status
+5. Log any unresponsive teammates for debugging
+6. Do NOT wait indefinitely for shutdown_response
+7. Execute /clear to free context for next phase
+
+**Timeout Rule**: If a teammate does not respond to shutdown_request within 30 seconds, proceed without their confirmation. This prevents the common issue of teammates hanging during cleanup.
 
 ## Fallback
 
@@ -164,4 +166,4 @@ If team creation fails or AGENT_TEAMS not enabled:
 
 ---
 
-Version: 1.1.0
+Version: 2.6.0 (Timeout-Based Cleanup)
