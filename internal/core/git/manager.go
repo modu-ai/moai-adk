@@ -24,6 +24,8 @@ type gitManager struct {
 	logger *slog.Logger
 }
 
+// @MX:ANCHOR: [AUTO] Git 리포지토리 관리의 진입점입니다. 모든 Git 작업이 이 함수를 통해 시작됩니다.
+// @MX:REASON: [AUTO] fan_in=15+, Git 작업의 시작점이며 시스템 전방위에서 호출됩니다
 // NewRepository opens a Git repository at the given path.
 // Returns ErrNotRepository if the path is not inside a Git repository.
 func NewRepository(path string) (*gitManager, error) {

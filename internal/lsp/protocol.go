@@ -308,6 +308,8 @@ func (c *connection) Close() error {
 	return c.closeErr
 }
 
+// @MX:WARN: [AUTO] 무한 루프에서 메시지를 읽습니다. 종료 조건이 불분명합니다.
+// @MX:REASON: [AUTO] 고루틴이 오류 시에도 종료되지 않고 계속 실행될 수 있습니다
 // readLoop reads messages from the transport and dispatches responses.
 func (c *connection) readLoop() {
 	for {

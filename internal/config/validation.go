@@ -16,6 +16,8 @@ var dynamicTokenPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`\$[A-Z_][A-Z0-9_]*`), // $VAR
 }
 
+// @MX:ANCHOR: [AUTO] 모든 CLI 명령의 설정 유효성을 검사하는 핵심 진입점입니다.
+// @MX:REASON: [AUTO] fan_in=37+, 모든 CLI 명령이 이 유효성 검사에 의존합니다
 // Validate checks the configuration for correctness.
 // The loadedSections map indicates which sections were loaded from YAML files
 // (as opposed to using defaults). Required field validation only applies

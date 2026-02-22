@@ -67,6 +67,8 @@ func (e *qualityGateEnforcer) GetExitCode(counts SeverityCounts, gate QualityGat
 	return ExitCodeSuccess
 }
 
+// @MX:ANCHOR: [AUTO] 품질 게이트 설정을 YAML에서 로드합니다. 모든 훅이 이 함수를 통해 설정을 로드합니다.
+// @MX:REASON: [AUTO] fan_in=5+, 훅 설정 로드의 유일한 진입점입니다
 // LoadConfig loads quality gate configuration from YAML per REQ-HOOK-180.
 func (e *qualityGateEnforcer) LoadConfig() (QualityGate, error) {
 	data, err := os.ReadFile(e.configPath)

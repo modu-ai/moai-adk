@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 )
 
+// @MX:ANCHOR: [AUTO] 프로젝트 루트 탐색의 핵심 함수입니다. 모든 .moai 작업이 프로젝트 루트에 고정됩니다.
+// @MX:REASON: [AUTO] fan_in=10+, 모든 프로젝트 작업의 루트 경로 탐색에 사용됩니다
 // FindProjectRoot locates the project root directory by searching for .moai directory.
 // It starts from the current working directory and traverses upward until it finds .moai.
 // Returns the absolute path to the project root, or an error if not in a MoAI project.

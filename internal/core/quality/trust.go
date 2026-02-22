@@ -404,6 +404,8 @@ func NewTrustGate(config QualityConfig, validators []Validator, opts ...TrustGat
 // Compile-time interface compliance check.
 var _ Gate = (*TrustGate)(nil)
 
+// @MX:WARN: [AUTO] validators 수만큼 고루틴을 생성하여 동시에 실행합니다. 고루틴 누수 가능성을 제어해야 합니다.
+// @MX:REASON: [AUTO] validators 길이만큼 고루틴이 생성되어 리소스 부하 가능성
 // Validate runs all TRUST 5 principle validators and returns an aggregated report.
 // Validators are executed concurrently. If context is cancelled, partial results
 // are returned along with the context error.
