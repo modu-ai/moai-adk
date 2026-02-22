@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -259,10 +260,8 @@ func TestIntegration_IssueClose_PartialFailure(t *testing.T) {
 	var calls []ghCall
 	mockExec := func(_ context.Context, _ string, args ...string) (string, error) {
 		calls = append(calls, ghCall{args: args})
-		for _, a := range args {
-			if a == "--add-label" {
-				return "", fmt.Errorf("label 'resolved' does not exist")
-			}
+		if slices.Contains(args, "--add-label") {
+			return "", fmt.Errorf("label 'resolved' does not exist")
 		}
 		return "", nil
 	}
@@ -311,10 +310,8 @@ type ghCall struct {
 // assertGHCallContains verifies that at least one argument matches target.
 func assertGHCallContains(t *testing.T, call ghCall, target string) {
 	t.Helper()
-	for _, a := range call.args {
-		if a == target {
-			return
-		}
+	if slices.Contains(call.args, target) {
+		return
 	}
 	t.Errorf("gh call args %v does not contain %q", call.args, target)
 }

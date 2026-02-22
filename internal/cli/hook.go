@@ -39,6 +39,9 @@ func init() {
 		{"permission-request", "Handle permission request event", hook.EventPermissionRequest},
 		{"teammate-idle", "Handle teammate idle event", hook.EventTeammateIdle},
 		{"task-completed", "Handle task completed event", hook.EventTaskCompleted},
+		{"subagent-stop", "Handle subagent stop event", hook.EventSubagentStop},
+		{"worktree-create", "Handle worktree create event", hook.EventWorktreeCreate},
+		{"worktree-remove", "Handle worktree remove event", hook.EventWorktreeRemove},
 	}
 
 	for _, sub := range hookSubcommands {
@@ -70,6 +73,8 @@ func init() {
 	})
 }
 
+// @MX:ANCHOR: [AUTO] runHookEvent is the central dispatcher for all Claude Code hook events
+// @MX:REASON: [AUTO] fan_in=3, called from hook.go init(), coverage_test.go, hook_e2e_test.go
 // runHookEvent dispatches a hook event by reading JSON from stdin and writing to stdout.
 func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 	if deps == nil || deps.HookProtocol == nil || deps.HookRegistry == nil {
@@ -173,7 +178,7 @@ func runAgentHook(cmd *cobra.Command, args []string) error {
 	}
 
 	// Add action to input for handler identification
-	input.Data = []byte(fmt.Sprintf(`{"action":"%s"}`, action))
+	input.Data = fmt.Appendf(nil, `{"action":"%s"}`, action)
 
 	ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
 	defer cancel()

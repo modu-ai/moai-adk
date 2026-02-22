@@ -83,7 +83,7 @@ func TestGitManager_GetChangeCount(t *testing.T) {
 	}
 
 	// Add files
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		testFile := filepath.Join(dir, "file"+string(rune('a'+i))+".txt")
 		if err := os.WriteFile(testFile, []byte("content\n"), 0644); err != nil {
 			t.Fatalf("write test file: %v", err)
@@ -501,7 +501,7 @@ func TestParseProjectInfo_FailedResults(t *testing.T) {
 
 func TestExecuteParallelWithSemaphore(t *testing.T) {
 	tasks := make([]func() int, 5)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		val := i
 		tasks[i] = func() int {
 			return val * 2

@@ -1,0 +1,6 @@
+---
+description: {{if eq .ConversationLanguage "ko"}}테스트 검증을 통한 데드 코드 식별 및 안전한 제거{{else if eq .ConversationLanguage "ja"}}テスト検証によるデッドコードの特定と安全な削除{{else if eq .ConversationLanguage "zh"}}通过测试验证识别并安全删除无用代码{{else}}Identify and safely remove dead code with test verification{{end}}
+argument-hint: "[--dry] [--safe-only] [--file PATH]"
+---
+
+Use Skill("moai") with arguments: clean $ARGUMENTS

@@ -1,8 +1,5 @@
 ---
-paths:
-  - "**/*.go"
-  - "**/go.mod"
-  - "**/go.sum"
+paths: "**/*.go,**/go.mod,**/go.sum"
 ---
 
 # Go Rules

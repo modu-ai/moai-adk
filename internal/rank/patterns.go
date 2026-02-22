@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 
 	"gopkg.in/yaml.v3"
@@ -95,10 +96,8 @@ func (s *PatternStore) AddExclude(pattern string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for _, p := range s.patterns.ExcludePatterns {
-		if p == pattern {
-			return fmt.Errorf("pattern already exists in exclude list")
-		}
+	if slices.Contains(s.patterns.ExcludePatterns, pattern) {
+		return fmt.Errorf("pattern already exists in exclude list")
 	}
 
 	s.patterns.ExcludePatterns = append(s.patterns.ExcludePatterns, pattern)
@@ -128,10 +127,8 @@ func (s *PatternStore) AddInclude(pattern string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for _, p := range s.patterns.IncludePatterns {
-		if p == pattern {
-			return fmt.Errorf("pattern already exists in include list")
-		}
+	if slices.Contains(s.patterns.IncludePatterns, pattern) {
+		return fmt.Errorf("pattern already exists in include list")
 	}
 
 	s.patterns.IncludePatterns = append(s.patterns.IncludePatterns, pattern)
@@ -177,13 +174,7 @@ func (s *PatternStore) ShouldExclude(path string) bool {
 
 	// Simple prefix matching for now
 	// Can be extended to support glob patterns
-	for _, pattern := range s.patterns.ExcludePatterns {
-		if pattern == path {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(s.patterns.ExcludePatterns, path)
 }
 
 // ShouldInclude checks if a given path matches any inclusion pattern.
@@ -191,13 +182,7 @@ func (s *PatternStore) ShouldInclude(path string) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	for _, pattern := range s.patterns.IncludePatterns {
-		if pattern == path {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(s.patterns.IncludePatterns, path)
 }
 
 // GetConfig returns a copy of the current pattern configuration.

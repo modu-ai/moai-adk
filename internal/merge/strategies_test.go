@@ -1,6 +1,7 @@
 package merge
 
 import (
+	"slices"
 	"testing"
 )
 
@@ -377,12 +378,7 @@ func TestSectionMergeStrategy_SameSectionConflict(t *testing.T) {
 // Helper functions.
 
 func containsLine(content, line string) bool {
-	for _, l := range splitLines(content) {
-		if l == line {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(splitLines(content), line)
 }
 
 func contains(s, substr string) bool {

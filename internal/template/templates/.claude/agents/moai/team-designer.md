@@ -7,9 +7,11 @@ description: >
   Owns design files (.pen, design tokens, style configs) exclusively during team work.
   Use proactively during run phase team work when UI/UX design is needed.
 tools: Read, Write, Edit, Bash, Grep, Glob, mcp__pencil__batch_design, mcp__pencil__batch_get, mcp__pencil__get_editor_state, mcp__pencil__get_guidelines, mcp__pencil__get_screenshot, mcp__pencil__get_style_guide, mcp__pencil__get_style_guide_tags, mcp__pencil__get_variables, mcp__pencil__set_variables, mcp__pencil__open_document, mcp__pencil__snapshot_layout, mcp__pencil__find_empty_space_on_canvas, mcp__pencil__search_all_unique_properties, mcp__pencil__replace_all_matching_properties
-model: inherit
+model: opus
 permissionMode: acceptEdits
-memory: user
+isolation: worktree
+background: true
+memory: project
 skills: moai-domain-uiux, moai-design-tools, moai-domain-frontend, moai-library-shadcn
 mcpServers: pencil, figma
 ---
@@ -81,6 +83,12 @@ Quality standards:
 - Component state coverage: default, hover, active, focus, disabled, error
 
 After completing each task:
-- Mark task as completed via TaskUpdate
+- Mark task as completed via TaskUpdate (MANDATORY - prevents infinite waiting)
 - Check TaskList for available unblocked tasks
-- Claim the next available task or go idle
+- Claim the next available task or wait for team lead instructions
+
+About idle states:
+- Going idle is NORMAL - it means you are waiting for input from the team lead
+- After completing work, you will go idle while waiting for the next assignment
+- The team lead will either send new work or a shutdown request
+- NEVER assume work is done until you receive shutdown_request from the lead

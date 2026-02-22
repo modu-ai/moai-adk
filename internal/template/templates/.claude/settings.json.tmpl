@@ -39,7 +39,7 @@
 {{- else}}
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-end.sh\"",
 {{- end}}
-            "timeout": 5,
+            "timeout": 10,
             "type": "command"
           }
         ]
@@ -211,6 +211,36 @@
           }
         ]
       }
+    ],
+    "WorktreeCreate": [
+      {
+        "hooks": [
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-worktree-create.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-worktree-create.sh\"",
+{{- end}}
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "WorktreeRemove": [
+      {
+        "hooks": [
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-worktree-remove.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-worktree-remove.sh\"",
+{{- end}}
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
@@ -218,7 +248,6 @@
     "command": ".moai/status_line.sh"
   },
   "outputStyle": "MoAI",
-  "plansDirectory": ".moai/plans",
   "cleanupPeriodDays": 30,
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
@@ -419,5 +448,5 @@
   },
   "enableAllProjectMcpServers": true,
   "respectGitignore": true,
-  "spinnerTipsEnabled": true
+  "teammateMode": "auto"
 }

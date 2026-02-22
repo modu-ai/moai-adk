@@ -308,17 +308,17 @@ gh run list --workflow=release.yml --limit 3
 for i in {1..10}; do
   STATUS=$(gh run list --workflow=release.yml --limit 1 --json status --jq '.[0].status')
   if [[ "$STATUS" == "completed" ]]; then
-    echo "✅ GoReleaser workflow completed"
+    echo "GoReleaser workflow completed"
     break
   fi
-  echo "⏳ Waiting for GoReleaser... (attempt $i/10)"
+  echo "Waiting for GoReleaser... (attempt $i/10)"
   sleep 30
 done
 
 # Verify workflow success
 CONCLUSION=$(gh run list --workflow=release.yml --limit 1 --json conclusion --jq '.[0].conclusion')
 if [[ "$CONCLUSION" != "success" ]]; then
-  echo "❌ GoReleaser workflow failed with: $CONCLUSION"
+  echo "GoReleaser workflow failed with: $CONCLUSION"
   echo "Check logs: gh run view --log"
   exit 1
 fi
@@ -494,8 +494,8 @@ moai-adk_X.Y.Z_darwin_arm64/LICENSE
 **4. Verify archive naming matches checker logic:**
 
 The `internal/update/checker.go` expects archives WITHOUT "v" prefix:
-- ✅ Correct: `moai-adk_2.1.0_darwin_arm64.tar.gz`
-- ❌ Wrong: `moai-adk_v2.1.0_darwin_arm64.tar.gz`
+- Correct: `moai-adk_2.1.0_darwin_arm64.tar.gz`
+- Wrong: `moai-adk_v2.1.0_darwin_arm64.tar.gz`
 
 ```bash
 # Verify naming convention

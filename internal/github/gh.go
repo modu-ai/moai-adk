@@ -112,10 +112,24 @@ type GHClient interface {
 	IsAuthenticated(ctx context.Context) error
 }
 
+// execFunc is the function signature for executing gh CLI commands.
+// Used for dependency injection in tests.
+type execFunc func(ctx context.Context, dir string, args ...string) (string, error)
+
+// pushFunc is the function signature for pushing to remote.
+// Used for dependency injection in tests.
+type pushFunc func(ctx context.Context, workDir string) error
+
 // ghClient implements GHClient using the gh CLI binary.
 type ghClient struct {
 	root   string
 	logger *slog.Logger
+	// execFn is the function used to execute gh commands.
+	// If nil, the package-level execGH function is used.
+	execFn execFunc
+	// pushFn is the function used to push to remote.
+	// If nil, the default git push implementation is used.
+	pushFn pushFunc
 }
 
 // Compile-time interface compliance check.
@@ -129,9 +143,35 @@ func NewGHClient(root string) *ghClient {
 	}
 }
 
+// newGHClientWithExec creates a ghClient with a custom exec function for testing.
+func newGHClientWithExec(root string, fn execFunc) *ghClient {
+	return &ghClient{
+		root:   root,
+		logger: slog.Default().With("module", "github"),
+		execFn: fn,
+	}
+}
+
+// newGHClientWithPush creates a ghClient with a custom push function for testing.
+func newGHClientWithPush(root string, fn pushFunc) *ghClient {
+	return &ghClient{
+		root:   root,
+		logger: slog.Default().With("module", "github"),
+		pushFn: fn,
+	}
+}
+
+// exec runs a gh command using execFn if set, otherwise falls back to execGH.
+func (c *ghClient) exec(ctx context.Context, args ...string) (string, error) {
+	if c.execFn != nil {
+		return c.execFn(ctx, c.root, args...)
+	}
+	return execGH(ctx, c.root, args...)
+}
+
 // IsAuthenticated checks whether the gh CLI is authenticated.
 func (c *ghClient) IsAuthenticated(ctx context.Context) error {
-	_, err := execGH(ctx, c.root, "auth", "status")
+	_, err := c.exec(ctx, "auth", "status")
 	if err != nil {
 		return fmt.Errorf("check auth: %w", ErrGHNotAuthenticated)
 	}
@@ -157,7 +197,7 @@ func (c *ghClient) PRCreate(ctx context.Context, opts PRCreateOptions) (int, err
 
 	c.logger.Debug("creating pull request", "title", opts.Title, "base", opts.BaseBranch)
 
-	output, err := execGH(ctx, c.root, args...)
+	output, err := c.exec(ctx, args...)
 	if err != nil {
 		if strings.Contains(err.Error(), "already exists") {
 			return 0, fmt.Errorf("create PR: %w", ErrPRAlreadyExists)
@@ -177,7 +217,7 @@ func (c *ghClient) PRCreate(ctx context.Context, opts PRCreateOptions) (int, err
 
 // PRView retrieves pull request details by number.
 func (c *ghClient) PRView(ctx context.Context, number int) (*PRDetails, error) {
-	output, err := execGH(ctx, c.root,
+	output, err := c.exec(ctx,
 		"pr", "view", strconv.Itoa(number),
 		"--json", "number,title,state,mergeable,headRefName,baseRefName,url,createdAt",
 	)
@@ -218,7 +258,7 @@ func (c *ghClient) PRMerge(ctx context.Context, number int, method MergeMethod, 
 
 	c.logger.Debug("merging pull request", "number", number, "method", method)
 
-	_, err := execGH(ctx, c.root, args...)
+	_, err := c.exec(ctx, args...)
 	if err != nil {
 		if strings.Contains(err.Error(), "conflict") {
 			return fmt.Errorf("merge PR #%d: %w", number, ErrMergeConflict)
@@ -232,7 +272,7 @@ func (c *ghClient) PRMerge(ctx context.Context, number int, method MergeMethod, 
 
 // PRChecks returns the CI/CD check status for a pull request.
 func (c *ghClient) PRChecks(ctx context.Context, number int) (*CheckStatus, error) {
-	output, err := execGH(ctx, c.root,
+	output, err := c.exec(ctx,
 		"pr", "checks", strconv.Itoa(number),
 		"--json", "name,status,conclusion",
 	)
@@ -265,6 +305,16 @@ func (c *ghClient) Push(ctx context.Context, dir string) error {
 
 	c.logger.Debug("pushing to remote", "dir", workDir)
 
+	// Use injected push function if available (for testing).
+	if c.pushFn != nil {
+		return c.pushFn(ctx, workDir)
+	}
+
+	return pushWithGit(ctx, workDir)
+}
+
+// pushWithGit performs the actual git push operation.
+func pushWithGit(ctx context.Context, workDir string) error {
 	gitBinOnce.Do(func() {
 		gitBinPath, gitBinErr = exec.LookPath("git")
 	})

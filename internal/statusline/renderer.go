@@ -214,10 +214,7 @@ func (r *Renderer) buildBar(pct int, width int) string {
 	}
 
 	// Calculate filled blocks based on percentage
-	filled := (pct * width) / 100
-	if filled > width {
-		filled = width
-	}
+	filled := min((pct*width)/100, width)
 
 	empty := width - filled
 

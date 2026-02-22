@@ -1104,91 +1104,17 @@ func TestTDDModeQualityGate(t *testing.T) {
 	})
 }
 
-func TestHybridModeQualityGate(t *testing.T) {
-	t.Run("new code coverage below minimum", func(t *testing.T) {
-		config := DefaultQualityConfig()
-		config.DevelopmentMode = ModeHybrid
-		config.HybridSettings.MinCoverageNew = 90
-		config.HybridSettings.MinCoverageLegacy = 85
-		lsp := newCleanLSP()
-		validators := newAllPassValidators(lsp)
-
-		gate := NewTrustGate(config, validators,
-			WithMethodologyContext(&MethodologyContext{
-				Changes: &ChangeClassification{
-					NewFiles:      []string{"new_service.go"},
-					ModifiedFiles: []string{"existing.go"},
-				},
-				NewCodeCoverage:    88,
-				LegacyCodeCoverage: 87,
-			}),
-		)
-
-		report, err := gate.Validate(context.Background())
-		if err != nil {
-			t.Fatalf("Validate() error: %v", err)
-		}
-
-		foundNew := false
-		foundLegacy := false
-		for _, issue := range report.MethodologyIssues {
-			if strings.Contains(issue.Message, "new code coverage 88%") {
-				foundNew = true
-			}
-			if strings.Contains(issue.Message, "legacy code coverage") {
-				foundLegacy = true
-			}
-		}
-		if !foundNew {
-			t.Error("expected hybrid new code coverage issue")
-		}
-		if foundLegacy {
-			t.Error("legacy code coverage 87% should pass (>= 85%)")
-		}
-	})
-
-	t.Run("classifies changes correctly", func(t *testing.T) {
-		config := DefaultQualityConfig()
-		config.DevelopmentMode = ModeHybrid
-		config.HybridSettings.MinCoverageNew = 90
-		config.HybridSettings.MinCoverageLegacy = 85
-		lsp := newCleanLSP()
-		validators := newAllPassValidators(lsp)
-
-		gate := NewTrustGate(config, validators,
-			WithMethodologyContext(&MethodologyContext{
-				Changes: &ChangeClassification{
-					NewFiles:      []string{"new.go"},
-					ModifiedFiles: []string{"old.go"},
-				},
-				NewCodeCoverage:    95,
-				LegacyCodeCoverage: 90,
-			}),
-		)
-
-		report, err := gate.Validate(context.Background())
-		if err != nil {
-			t.Fatalf("Validate() error: %v", err)
-		}
-
-		if len(report.MethodologyIssues) != 0 {
-			t.Errorf("MethodologyIssues = %d, want 0 (both coverages met)", len(report.MethodologyIssues))
-		}
-	})
-}
-
 func TestMethodologyTransitionWarning(t *testing.T) {
 	config := DefaultQualityConfig()
-	config.DevelopmentMode = ModeHybrid
+	config.DevelopmentMode = ModeTDD
 	lsp := newCleanLSP()
 	validators := newAllPassValidators(lsp)
 
-	// The transition from DDD to Hybrid should be logged.
+	// The transition from DDD to TDD should be logged.
 	// We verify the methodology context with PreviousMode is accepted without error.
 	gate := NewTrustGate(config, validators,
 		WithMethodologyContext(&MethodologyContext{
 			PreviousMode: ModeDDD,
-			Changes:      &ChangeClassification{},
 		}),
 	)
 
@@ -1209,7 +1135,6 @@ func TestReportIncludesDevelopmentMode(t *testing.T) {
 	}{
 		{ModeDDD},
 		{ModeTDD},
-		{ModeHybrid},
 	}
 
 	for _, tt := range tests {
@@ -1262,8 +1187,7 @@ func TestInvalidDevelopmentMode(t *testing.T) {
 	for _, issue := range report.MethodologyIssues {
 		if strings.Contains(issue.Message, "unknown development mode") &&
 			strings.Contains(issue.Message, "ddd") &&
-			strings.Contains(issue.Message, "tdd") &&
-			strings.Contains(issue.Message, "hybrid") {
+			strings.Contains(issue.Message, "tdd") {
 			found = true
 			break
 		}
@@ -1381,7 +1305,6 @@ func TestDevelopmentModeIsValid(t *testing.T) {
 	}{
 		{ModeDDD, true},
 		{ModeTDD, true},
-		{ModeHybrid, true},
 		{DevelopmentMode("invalid"), false},
 		{DevelopmentMode(""), false},
 	}
@@ -1412,9 +1335,6 @@ func TestDefaultQualityConfig(t *testing.T) {
 	}
 	if config.TDDSettings.MinCoveragePerCommit != 80 {
 		t.Errorf("TDDSettings.MinCoveragePerCommit = %d, want 80", config.TDDSettings.MinCoveragePerCommit)
-	}
-	if config.HybridSettings.MinCoverageNew != 90 {
-		t.Errorf("HybridSettings.MinCoverageNew = %d, want 90", config.HybridSettings.MinCoverageNew)
 	}
 }
 

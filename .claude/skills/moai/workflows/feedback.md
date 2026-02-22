@@ -5,14 +5,12 @@ description: >
   GitHub issues automatically via the manager-quality agent. Supports bug
   reports, feature requests, and questions with priority classification.
   Use when submitting feedback, reporting bugs, or requesting features.
-license: Apache-2.0
-compatibility: Designed for Claude Code
 user-invocable: false
 metadata:
-  version: "2.0.0"
+  version: "2.5.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-07"
+  updated: "2026-02-21"
   tags: "feedback, bug-report, feature-request, github-issues, quality"
 
 # MoAI Extension: Progressive Disclosure

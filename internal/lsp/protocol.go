@@ -117,8 +117,8 @@ func (t *StreamTransport) ReadMessage(_ context.Context) (json.RawMessage, error
 			break
 		}
 
-		if strings.HasPrefix(line, "Content-Length: ") {
-			val := strings.TrimPrefix(line, "Content-Length: ")
+		if after, ok := strings.CutPrefix(line, "Content-Length: "); ok {
+			val := after
 			n, err := strconv.Atoi(val)
 			if err != nil {
 				return nil, fmt.Errorf("invalid Content-Length %q: %w", val, err)
@@ -308,6 +308,8 @@ func (c *connection) Close() error {
 	return c.closeErr
 }
 
+// @MX:WARN: [AUTO] 무한 루프에서 메시지를 읽습니다. 종료 조건이 불분명합니다.
+// @MX:REASON: [AUTO] 고루틴이 오류 시에도 종료되지 않고 계속 실행될 수 있습니다
 // readLoop reads messages from the transport and dispatches responses.
 func (c *connection) readLoop() {
 	for {

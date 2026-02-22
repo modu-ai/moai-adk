@@ -212,3 +212,65 @@ func TestMockIssueParser_Interface(t *testing.T) {
 		t.Error("ParseIssue(999) should error")
 	}
 }
+
+func TestNewIssueParser(t *testing.T) {
+	t.Parallel()
+
+	parser := NewIssueParser("/tmp/test-repo")
+	if parser == nil {
+		t.Fatal("NewIssueParser returned nil")
+	}
+
+	// Verify it implements the interface
+	var _ IssueParser = parser //nolint:staticcheck // explicit interface check
+}
+
+func TestMockIssueParser_NilFunc(t *testing.T) {
+	t.Parallel()
+
+	mock := &mockIssueParser{}
+	_, err := mock.ParseIssue(context.Background(), 1)
+	if err == nil {
+		t.Error("expected error from nil parseFunc")
+	}
+}
+
+func TestIssue_LabelNames_SingleLabel(t *testing.T) {
+	t.Parallel()
+
+	issue := &Issue{
+		Labels: []Label{{Name: "enhancement"}},
+	}
+	names := issue.LabelNames()
+	if len(names) != 1 {
+		t.Fatalf("LabelNames() len = %d, want 1", len(names))
+	}
+	if names[0] != "enhancement" {
+		t.Errorf("LabelNames()[0] = %q, want %q", names[0], "enhancement")
+	}
+}
+
+func TestParseIssueFromJSON_WithComments(t *testing.T) {
+	t.Parallel()
+
+	data := []byte(`{
+		"number": 200,
+		"title": "Multi-comment issue",
+		"body": "body text",
+		"labels": [],
+		"author": {"login": "user1"},
+		"comments": [
+			{"body": "First comment", "author": {"login": "user2"}},
+			{"body": "Second comment", "author": {"login": "user3"}},
+			{"body": "Third comment", "author": {"login": "user1"}}
+		]
+	}`)
+
+	issue, err := ParseIssueFromJSON(data)
+	if err != nil {
+		t.Fatalf("ParseIssueFromJSON() error: %v", err)
+	}
+	if len(issue.Comments) != 3 {
+		t.Errorf("Comments count = %d, want 3", len(issue.Comments))
+	}
+}

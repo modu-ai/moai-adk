@@ -130,7 +130,7 @@ func TestCleanup_ClearCaches(t *testing.T) {
 	}
 
 	// Create some cache files
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		filePath := filepath.Join(cacheDir, "cache"+string(rune('0'+i))+".json")
 		if err := os.WriteFile(filePath, []byte("{}"), 0644); err != nil {
 			t.Fatalf("failed to create cache file: %v", err)
@@ -227,7 +227,7 @@ func TestCleanup_GenerateCleanupReport(t *testing.T) {
 	}
 
 	// Create some files to clean
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		filePath := filepath.Join(tempDir, "file"+string(rune('0'+i))+".tmp")
 		if err := os.WriteFile(filePath, []byte("content"), 0644); err != nil {
 			t.Fatalf("failed to create temp file: %v", err)
@@ -365,7 +365,7 @@ func TestCleanup_SessionLogs(t *testing.T) {
 	}
 
 	// Create session log files
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		logFile := filepath.Join(logDir, "session-"+string(rune('0'+i))+".log")
 		if err := os.WriteFile(logFile, []byte("log content"), 0644); err != nil {
 			t.Fatalf("failed to create log file: %v", err)

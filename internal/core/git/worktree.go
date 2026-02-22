@@ -204,7 +204,7 @@ func (w *worktreeManager) IsBranchMerged(branch, base string) (bool, error) {
 		return false, fmt.Errorf("check merged branches: %w", err)
 	}
 
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		name := strings.TrimSpace(strings.TrimPrefix(line, "* "))
 		if name == branch {
 			return true, nil
@@ -228,8 +228,8 @@ func parsePorcelainWorktreeList(output string) []Worktree {
 	var worktrees []Worktree
 	var current Worktree
 
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
 		switch {
 		case strings.HasPrefix(line, "worktree "):
 			// Save the previous entry if present.

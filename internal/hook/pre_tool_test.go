@@ -367,4 +367,467 @@ func TestDefaultSecurityPolicy(t *testing.T) {
 	if len(policy.SensitiveContentPatterns) == 0 {
 		t.Error("SensitiveContentPatterns should not be empty")
 	}
+	if len(policy.AllowedExternalPaths) == 0 {
+		t.Error("AllowedExternalPaths should not be empty (should include ~/.claude/plans)")
+	}
+}
+
+func TestPreToolHandler_AllowedExternalPaths(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	projectDir := filepath.Join(tmpDir, "my-project")
+	if err := os.MkdirAll(projectDir, 0o755); err != nil {
+		t.Fatalf("create project dir: %v", err)
+	}
+
+	externalPlansDir := filepath.Join(tmpDir, "external-plans")
+	if err := os.MkdirAll(externalPlansDir, 0o755); err != nil {
+		t.Fatalf("create external plans dir: %v", err)
+	}
+
+	tests := []struct {
+		name         string
+		filePath     string
+		allowedPaths []string
+		wantDecision string
+	}{
+		{
+			name:         "file inside project dir is allowed",
+			filePath:     filepath.Join(projectDir, "main.go"),
+			allowedPaths: nil,
+			wantDecision: DecisionAllow,
+		},
+		{
+			name:         "external path denied without allowlist",
+			filePath:     filepath.Join(externalPlansDir, "plan.md"),
+			allowedPaths: nil,
+			wantDecision: DecisionDeny,
+		},
+		{
+			name:         "external path allowed with allowlist",
+			filePath:     filepath.Join(externalPlansDir, "plan.md"),
+			allowedPaths: []string{externalPlansDir},
+			wantDecision: DecisionAllow,
+		},
+		{
+			name:         "external path subdirectory allowed with allowlist",
+			filePath:     filepath.Join(externalPlansDir, "sub", "plan.md"),
+			allowedPaths: []string{externalPlansDir},
+			wantDecision: DecisionAllow,
+		},
+		{
+			name:         "unrelated external path still denied with allowlist",
+			filePath:     filepath.Join(tmpDir, "other", "secret.go"),
+			allowedPaths: []string{externalPlansDir},
+			wantDecision: DecisionDeny,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := &mockConfigProvider{cfg: newTestConfig()}
+			policy := &SecurityPolicy{
+				AllowedExternalPaths: tt.allowedPaths,
+			}
+			handler := &preToolHandler{
+				cfg:        cfg,
+				policy:     policy,
+				projectDir: projectDir,
+			}
+
+			toolInput, err := json.Marshal(map[string]string{
+				"file_path": tt.filePath,
+			})
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+
+			input := &HookInput{
+				SessionID:     "sess-external",
+				CWD:           projectDir,
+				HookEventName: "PreToolUse",
+				ToolName:      "Write",
+				ToolInput:     json.RawMessage(toolInput),
+			}
+
+			ctx := context.Background()
+			got, handleErr := handler.Handle(ctx, input)
+			if handleErr != nil {
+				t.Fatalf("unexpected error: %v", handleErr)
+			}
+			if got == nil || got.HookSpecificOutput == nil {
+				t.Fatal("got nil output or nil HookSpecificOutput")
+			}
+
+			gotDecision := got.HookSpecificOutput.PermissionDecision
+			if gotDecision != tt.wantDecision {
+				t.Errorf("decision = %q, want %q (filePath=%q, allowed=%v)",
+					gotDecision, tt.wantDecision, tt.filePath, tt.allowedPaths)
+			}
+		})
+	}
+}
+
+func TestPreToolHandler_SensitiveContentDetection(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		content      string
+		wantDecision string
+	}{
+		{
+			name:         "RSA private key detected",
+			content:      "-----BEGIN RSA PRIVATE KEY-----\nMIIE...\n-----END RSA PRIVATE KEY-----",
+			wantDecision: DecisionDeny,
+		},
+		{
+			name:         "generic private key detected",
+			content:      "-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----",
+			wantDecision: DecisionDeny,
+		},
+		{
+			name:         "certificate detected",
+			content:      "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
+			wantDecision: DecisionDeny,
+		},
+		{
+			name:         "OpenAI API key detected",
+			content:      "api_key = \"sk-abcdefghijklmnopqrstuvwxyz12345678\"",
+			wantDecision: DecisionDeny,
+		},
+		{
+			name:         "GitHub personal access token detected",
+			content:      "token: ghp_abcdefghijklmnopqrstuvwxyz1234567890",
+			wantDecision: DecisionDeny,
+		},
+		{
+			name:         "GitHub OAuth token detected",
+			content:      "GITHUB_TOKEN=gho_abcdefghijklmnopqrstuvwxyz1234567890",
+			wantDecision: DecisionDeny,
+		},
+		{
+			name:         "AWS access key detected",
+			content:      "aws_access_key_id = AKIAIOSFODNN7EXAMPLE",
+			wantDecision: DecisionDeny,
+		},
+		{
+			name:         "Slack token detected",
+			content:      "SLACK_TOKEN=xoxb-some-token-value-here",
+			wantDecision: DecisionDeny,
+		},
+		{
+			name:         "safe content allowed",
+			content:      "package main\n\nfunc main() {\n\tfmt.Println(\"hello\")\n}",
+			wantDecision: DecisionAllow,
+		},
+		{
+			name:         "empty content allowed",
+			content:      "",
+			wantDecision: DecisionAllow,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			projectDir := t.TempDir()
+			cfg := &mockConfigProvider{cfg: newTestConfig()}
+			policy := DefaultSecurityPolicy()
+			handler := &preToolHandler{
+				cfg:        cfg,
+				policy:     policy,
+				projectDir: projectDir,
+			}
+
+			toolInput, err := json.Marshal(map[string]string{
+				"file_path": filepath.Join(projectDir, "test.go"),
+				"content":   tt.content,
+			})
+			if err != nil {
+				t.Fatalf("marshal tool input: %v", err)
+			}
+
+			input := &HookInput{
+				SessionID:     "sess-sensitive",
+				CWD:           "/tmp",
+				HookEventName: "PreToolUse",
+				ToolName:      "Write",
+				ToolInput:     json.RawMessage(toolInput),
+			}
+
+			ctx := context.Background()
+			got, handleErr := handler.Handle(ctx, input)
+			if handleErr != nil {
+				t.Fatalf("unexpected error: %v", handleErr)
+			}
+			if got == nil || got.HookSpecificOutput == nil {
+				t.Fatal("got nil output or nil HookSpecificOutput")
+			}
+
+			gotDecision := got.HookSpecificOutput.PermissionDecision
+			if gotDecision != tt.wantDecision {
+				t.Errorf("PermissionDecision = %q, want %q", gotDecision, tt.wantDecision)
+			}
+		})
+	}
+}
+
+func TestPreToolHandler_DenyPatternFileAccess(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		filePath     string
+		toolName     string
+		wantDecision string
+	}{
+		{
+			name:         "secrets.json is denied",
+			filePath:     "/project/secrets.json",
+			toolName:     "Write",
+			wantDecision: DecisionDeny,
+		},
+		{
+			name:         "credentials.yaml is denied",
+			filePath:     "/project/credentials.yaml",
+			toolName:     "Write",
+			wantDecision: DecisionDeny,
+		},
+		{
+			name:         "SSH key file is denied",
+			filePath:     "/home/user/.ssh/id_rsa",
+			toolName:     "Write",
+			wantDecision: DecisionDeny,
+		},
+		{
+			name:         "normal Go file is allowed",
+			filePath:     "", // will be set per test
+			toolName:     "Write",
+			wantDecision: DecisionAllow,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			projectDir := t.TempDir()
+			cfg := &mockConfigProvider{cfg: newTestConfig()}
+			policy := DefaultSecurityPolicy()
+			handler := &preToolHandler{
+				cfg:        cfg,
+				policy:     policy,
+				projectDir: projectDir,
+			}
+
+			filePath := tt.filePath
+			if filePath == "" {
+				filePath = filepath.Join(projectDir, "main.go")
+			}
+
+			toolInput, err := json.Marshal(map[string]string{
+				"file_path": filePath,
+			})
+			if err != nil {
+				t.Fatalf("marshal tool input: %v", err)
+			}
+
+			input := &HookInput{
+				SessionID:     "sess-deny",
+				CWD:           "/tmp",
+				HookEventName: "PreToolUse",
+				ToolName:      tt.toolName,
+				ToolInput:     json.RawMessage(toolInput),
+			}
+
+			ctx := context.Background()
+			got, handleErr := handler.Handle(ctx, input)
+			if handleErr != nil {
+				t.Fatalf("unexpected error: %v", handleErr)
+			}
+			if got == nil || got.HookSpecificOutput == nil {
+				t.Fatal("got nil output or nil HookSpecificOutput")
+			}
+
+			gotDecision := got.HookSpecificOutput.PermissionDecision
+			if gotDecision != tt.wantDecision {
+				t.Errorf("PermissionDecision = %q, want %q", gotDecision, tt.wantDecision)
+			}
+		})
+	}
+}
+
+func TestPreToolHandler_AskBashPatterns(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		command      string
+		wantDecision string
+	}{
+		{
+			name:         "git reset --hard requires confirmation",
+			command:      "git reset --hard HEAD~3",
+			wantDecision: DecisionAsk,
+		},
+		{
+			name:         "git clean -fd requires confirmation",
+			command:      "git clean -fd",
+			wantDecision: DecisionAsk,
+		},
+		{
+			name:         "safe go test command is allowed",
+			command:      "go test -race ./...",
+			wantDecision: DecisionAllow,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := &mockConfigProvider{cfg: newTestConfig()}
+			policy := DefaultSecurityPolicy()
+			handler := &preToolHandler{
+				cfg:        cfg,
+				policy:     policy,
+				projectDir: t.TempDir(),
+			}
+
+			toolInput, err := json.Marshal(map[string]string{
+				"command": tt.command,
+			})
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+
+			input := &HookInput{
+				SessionID:     "sess-ask",
+				CWD:           "/tmp",
+				HookEventName: "PreToolUse",
+				ToolName:      "Bash",
+				ToolInput:     json.RawMessage(toolInput),
+			}
+
+			ctx := context.Background()
+			got, handleErr := handler.Handle(ctx, input)
+			if handleErr != nil {
+				t.Fatalf("unexpected error: %v", handleErr)
+			}
+			if got == nil || got.HookSpecificOutput == nil {
+				t.Fatal("got nil output or nil HookSpecificOutput")
+			}
+
+			gotDecision := got.HookSpecificOutput.PermissionDecision
+			if gotDecision != tt.wantDecision {
+				t.Errorf("PermissionDecision = %q, want %q", gotDecision, tt.wantDecision)
+			}
+		})
+	}
+}
+
+func TestNewPreToolHandlerWithScanner_NilScanner(t *testing.T) {
+	t.Parallel()
+
+	cfg := &mockConfigProvider{cfg: newTestConfig()}
+	policy := DefaultSecurityPolicy()
+	h := NewPreToolHandlerWithScanner(cfg, policy, nil)
+	if h == nil {
+		t.Fatal("NewPreToolHandlerWithScanner returned nil")
+	}
+	if h.EventType() != EventPreToolUse {
+		t.Errorf("EventType() = %q, want %q", h.EventType(), EventPreToolUse)
+	}
+}
+
+func TestPreToolHandler_InvalidJSON_ToolInput(t *testing.T) {
+	t.Parallel()
+
+	cfg := &mockConfigProvider{cfg: newTestConfig()}
+	policy := DefaultSecurityPolicy()
+	handler := NewPreToolHandler(cfg, policy)
+
+	input := &HookInput{
+		SessionID:     "sess-invalid",
+		CWD:           "/tmp",
+		HookEventName: "PreToolUse",
+		ToolName:      "Bash",
+		ToolInput:     json.RawMessage(`{invalid json}`),
+	}
+
+	ctx := context.Background()
+	got, err := handler.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got == nil || got.HookSpecificOutput == nil {
+		t.Fatal("got nil output or nil HookSpecificOutput")
+	}
+	// Invalid JSON should be treated as allow (cannot parse = no match)
+	if got.HookSpecificOutput.PermissionDecision != DecisionAllow {
+		t.Errorf("expected allow for invalid JSON, got %q", got.HookSpecificOutput.PermissionDecision)
+	}
+}
+
+func TestPreToolHandler_DangerousBashPatterns(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		command string
+	}{
+		{name: "terraform destroy", command: "terraform destroy"},
+		{name: "docker system prune -a", command: "docker system prune -a"},
+		{name: "git push force to main", command: "git push --force origin main"},
+		{name: "dd to dev sda", command: "dd if=/dev/zero of=/dev/sda"},
+		{name: "mkfs command", command: "mkfs.ext4 /dev/sda1"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := &mockConfigProvider{cfg: newTestConfig()}
+			policy := DefaultSecurityPolicy()
+			handler := &preToolHandler{
+				cfg:        cfg,
+				policy:     policy,
+				projectDir: t.TempDir(),
+			}
+
+			toolInput, err := json.Marshal(map[string]string{
+				"command": tt.command,
+			})
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+
+			input := &HookInput{
+				SessionID:     "sess-danger",
+				CWD:           "/tmp",
+				HookEventName: "PreToolUse",
+				ToolName:      "Bash",
+				ToolInput:     json.RawMessage(toolInput),
+			}
+
+			ctx := context.Background()
+			got, handleErr := handler.Handle(ctx, input)
+			if handleErr != nil {
+				t.Fatalf("unexpected error: %v", handleErr)
+			}
+			if got == nil || got.HookSpecificOutput == nil {
+				t.Fatal("got nil output or nil HookSpecificOutput")
+			}
+
+			// Dangerous patterns should be denied
+			if got.HookSpecificOutput.PermissionDecision != DecisionDeny {
+				t.Errorf("expected deny for %q, got %q", tt.command, got.HookSpecificOutput.PermissionDecision)
+			}
+		})
+	}
 }

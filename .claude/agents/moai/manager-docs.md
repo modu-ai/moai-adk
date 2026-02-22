@@ -11,7 +11,17 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: acceptEdits
-skills: moai-foundation-claude, moai-foundation-core, moai-docs-generation, moai-workflow-jit-docs, moai-workflow-templates, moai-library-mermaid, moai-library-nextra, moai-formats-data, moai-foundation-context
+memory: project
+skills:
+  - moai-foundation-claude
+  - moai-foundation-core
+  - moai-docs-generation
+  - moai-workflow-jit-docs
+  - moai-workflow-templates
+  - moai-library-mermaid
+  - moai-library-nextra
+  - moai-formats-data
+  - moai-foundation-context
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"

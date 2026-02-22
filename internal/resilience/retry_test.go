@@ -452,7 +452,7 @@ func TestCalculateBackoffWithJitter(t *testing.T) {
 
 	// Run multiple times to verify jitter adds variance
 	var delays []time.Duration
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		delay := CalculateBackoff(2, baseDelay, maxDelay, true)
 		delays = append(delays, delay)
 	}

@@ -1,8 +1,5 @@
 ---
-paths:
-  - "**/*.cs"
-  - "**/*.csproj"
-  - "**/*.sln"
+paths: "**/*.cs,**/*.csproj,**/*.sln"
 ---
 
 # C# Rules

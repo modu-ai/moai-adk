@@ -211,6 +211,233 @@ func TestLocalUpdater_Download_ReturnsLocalPath(t *testing.T) {
 	}
 }
 
+// TestLocalChecker_NewLocalChecker_DefaultDir uses home dir.
+func TestLocalChecker_NewLocalChecker_DefaultDir(t *testing.T) {
+	t.Parallel()
+
+	checker := NewLocalChecker(LocalConfig{CurrentVersion: "v1.0.0"})
+	if checker == nil {
+		t.Fatal("NewLocalChecker with empty dir should return non-nil")
+	}
+}
+
+// TestLocalChecker_CheckLatest_InvalidJSON returns error.
+func TestLocalChecker_CheckLatest_InvalidJSON(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	versionJSON := filepath.Join(tmpDir, "version.json")
+	if err := os.WriteFile(versionJSON, []byte(`{invalid`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	checker := NewLocalChecker(LocalConfig{
+		ReleasesDir:    tmpDir,
+		CurrentVersion: "v1.0.0",
+	})
+
+	_, err := checker.CheckLatest(context.Background())
+	if err == nil {
+		t.Error("expected error for invalid JSON")
+	}
+}
+
+// TestLocalChecker_CheckLatest_MissingBinary returns error.
+func TestLocalChecker_CheckLatest_MissingBinary(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	versionJSON := filepath.Join(tmpDir, "version.json")
+	versionContent := `{"version":"1.0.0","date":"2026-02-04T10:00:00Z","platform":"darwin-arm64","binary":"nonexistent-binary"}`
+	if err := os.WriteFile(versionJSON, []byte(versionContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	checker := NewLocalChecker(LocalConfig{
+		ReleasesDir:    tmpDir,
+		CurrentVersion: "0.9.0",
+	})
+
+	_, err := checker.CheckLatest(context.Background())
+	if err == nil {
+		t.Error("expected error for missing binary")
+	}
+}
+
+// TestLocalChecker_CheckLatest_WithChecksum reads checksum file.
+func TestLocalChecker_CheckLatest_WithChecksum(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	releaseBinary := filepath.Join(tmpDir, "moai-1.0.0-darwin-arm64")
+	if err := os.WriteFile(releaseBinary, []byte("fake binary"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	checksumPath := releaseBinary + ".sha256"
+	if err := os.WriteFile(checksumPath, []byte("abc123def456\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	versionJSON := filepath.Join(tmpDir, "version.json")
+	versionContent := `{"version":"1.0.0","date":"2026-02-04T10:00:00Z","platform":"darwin-arm64","binary":"moai-1.0.0-darwin-arm64"}`
+	if err := os.WriteFile(versionJSON, []byte(versionContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	checker := NewLocalChecker(LocalConfig{
+		ReleasesDir:    tmpDir,
+		CurrentVersion: "0.9.0",
+	})
+
+	info, err := checker.CheckLatest(context.Background())
+	if err != nil {
+		t.Fatalf("CheckLatest: %v", err)
+	}
+	if info.Checksum != "abc123def456" {
+		t.Errorf("Checksum = %q, want %q", info.Checksum, "abc123def456")
+	}
+}
+
+// TestLocalChecker_CheckLatest_InvalidDate falls back to now.
+func TestLocalChecker_CheckLatest_InvalidDate(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	releaseBinary := filepath.Join(tmpDir, "moai-1.0.0")
+	if err := os.WriteFile(releaseBinary, []byte("binary"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	versionJSON := filepath.Join(tmpDir, "version.json")
+	versionContent := `{"version":"1.0.0","date":"not-a-date","platform":"darwin-arm64","binary":"moai-1.0.0"}`
+	if err := os.WriteFile(versionJSON, []byte(versionContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	checker := NewLocalChecker(LocalConfig{
+		ReleasesDir:    tmpDir,
+		CurrentVersion: "0.9.0",
+	})
+
+	info, err := checker.CheckLatest(context.Background())
+	if err != nil {
+		t.Fatalf("CheckLatest: %v", err)
+	}
+	// Date should be approximately now
+	if time.Since(info.Date) > 5*time.Second {
+		t.Errorf("invalid date should fallback to ~now, got %v", info.Date)
+	}
+}
+
+// TestLocalChecker_IsDevVersion tests various version strings.
+func TestLocalChecker_IsDevVersion(t *testing.T) {
+	t.Parallel()
+
+	lc := &localChecker{}
+
+	tests := []struct {
+		version string
+		isDev   bool
+	}{
+		{"2871559-dirty", true},
+		{"dev-build", true},
+		{"v0.0.0-none", true},
+		{"abcdef1", true}, // no prefix v, no dots
+		{"v1.0.0", false},
+		{"v2.3.4", false},
+		{"1.0.0", false}, // has dots
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.version, func(t *testing.T) {
+			got := lc.isDevVersion(tt.version)
+			if got != tt.isDev {
+				t.Errorf("isDevVersion(%q) = %v, want %v", tt.version, got, tt.isDev)
+			}
+		})
+	}
+}
+
+// TestLocalChecker_IsUpdateAvailable_SemverComparison tests version comparison.
+func TestLocalChecker_IsUpdateAvailable_SemverComparison(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	releaseBinary := filepath.Join(tmpDir, "moai-2.0.0")
+	if err := os.WriteFile(releaseBinary, []byte("binary"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	versionJSON := filepath.Join(tmpDir, "version.json")
+	versionContent := `{"version":"2.0.0","date":"2026-02-04T10:00:00Z","platform":"darwin-arm64","binary":"moai-2.0.0"}`
+	if err := os.WriteFile(versionJSON, []byte(versionContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	checker := NewLocalChecker(LocalConfig{
+		ReleasesDir:    tmpDir,
+		CurrentVersion: "1.0.0",
+	})
+
+	available, info, err := checker.IsUpdateAvailable("1.0.0")
+	if err != nil {
+		t.Fatalf("IsUpdateAvailable: %v", err)
+	}
+	if !available {
+		t.Error("expected update available when current < release")
+	}
+	if info == nil {
+		t.Fatal("info should not be nil")
+	}
+	if info.Version != "2.0.0" {
+		t.Errorf("Version = %q, want 2.0.0", info.Version)
+	}
+}
+
+// TestLocalChecker_IsUpdateAvailable_NoUpdate when current >= release.
+func TestLocalChecker_IsUpdateAvailable_NoUpdate(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	releaseBinary := filepath.Join(tmpDir, "moai-1.0.0")
+	if err := os.WriteFile(releaseBinary, []byte("binary"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	versionJSON := filepath.Join(tmpDir, "version.json")
+	versionContent := `{"version":"1.0.0","date":"2026-02-04T10:00:00Z","platform":"darwin-arm64","binary":"moai-1.0.0"}`
+	if err := os.WriteFile(versionJSON, []byte(versionContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	checker := NewLocalChecker(LocalConfig{
+		ReleasesDir:    tmpDir,
+		CurrentVersion: "2.0.0",
+	})
+
+	available, _, err := checker.IsUpdateAvailable("2.0.0")
+	if err != nil {
+		t.Fatalf("IsUpdateAvailable: %v", err)
+	}
+	if available {
+		t.Error("expected no update when current > release")
+	}
+}
+
+// TestLocalUpdater_Replace_SourceNotFound returns error.
+func TestLocalUpdater_Replace_SourceNotFound(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	updater := NewLocalUpdater(tmpDir, filepath.Join(tmpDir, "target"))
+
+	err := updater.Replace(context.Background(), filepath.Join(tmpDir, "nonexistent"))
+	if err == nil {
+		t.Error("expected error for nonexistent source")
+	}
+}
+
 // TestLocalUpdater_Replace_CopiesBinary copies the binary.
 func TestLocalUpdater_Replace_CopiesBinary(t *testing.T) {
 	tmpDir := t.TempDir()

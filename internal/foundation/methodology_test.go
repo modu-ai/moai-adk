@@ -197,49 +197,6 @@ func TestTDDCycleValidateTransition(t *testing.T) {
 	}
 }
 
-func TestHybridStrategyClassifyCode(t *testing.T) {
-	t.Parallel()
-
-	h := &HybridStrategy{
-		DDD: &DDDCycle{},
-		TDD: &TDDCycle{},
-	}
-
-	tests := []struct {
-		name  string
-		isNew bool
-		want  CycleType
-	}{
-		{name: "new_code_uses_TDD", isNew: true, want: CycleTDD},
-		{name: "legacy_code_uses_DDD", isNew: false, want: CycleDDD},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			if got := h.ClassifyCode(tt.isNew); got != tt.want {
-				t.Errorf("ClassifyCode(%v) = %q, want %q", tt.isNew, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestHybridStrategyGetCycles(t *testing.T) {
-	t.Parallel()
-
-	h := &HybridStrategy{
-		DDD: &DDDCycle{},
-		TDD: &TDDCycle{},
-	}
-
-	if h.GetDDDCycle() == nil {
-		t.Error("GetDDDCycle() should not return nil")
-	}
-	if h.GetTDDCycle() == nil {
-		t.Error("GetTDDCycle() should not return nil")
-	}
-}
-
 func TestNewMethodology(t *testing.T) {
 	t.Parallel()
 
@@ -249,7 +206,6 @@ func TestNewMethodology(t *testing.T) {
 		wantErr bool
 		hasDDD  bool
 		hasTDD  bool
-		hasHyb  bool
 	}{
 		{
 			name:    "DDD_mode",
@@ -257,7 +213,6 @@ func TestNewMethodology(t *testing.T) {
 			wantErr: false,
 			hasDDD:  true,
 			hasTDD:  false,
-			hasHyb:  false,
 		},
 		{
 			name:    "TDD_mode",
@@ -265,15 +220,6 @@ func TestNewMethodology(t *testing.T) {
 			wantErr: false,
 			hasDDD:  false,
 			hasTDD:  true,
-			hasHyb:  false,
-		},
-		{
-			name:    "Hybrid_mode",
-			mode:    models.ModeHybrid,
-			wantErr: false,
-			hasDDD:  false,
-			hasTDD:  false,
-			hasHyb:  true,
 		},
 		{
 			name:    "invalid_mode",
@@ -308,9 +254,6 @@ func TestNewMethodology(t *testing.T) {
 			}
 			if (cfg.TDD != nil) != tt.hasTDD {
 				t.Errorf("TDD present = %v, want %v", cfg.TDD != nil, tt.hasTDD)
-			}
-			if (cfg.Hybrid != nil) != tt.hasHyb {
-				t.Errorf("Hybrid present = %v, want %v", cfg.Hybrid != nil, tt.hasHyb)
 			}
 		})
 	}
@@ -355,17 +298,6 @@ func TestMethodologyConfigActivePhases(t *testing.T) {
 		}
 	})
 
-	t.Run("Hybrid_phases", func(t *testing.T) {
-		t.Parallel()
-		cfg, err := NewMethodology(models.ModeHybrid)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		phases := cfg.ActivePhases()
-		if len(phases) != 6 {
-			t.Fatalf("Hybrid ActivePhases() returned %d, want 6", len(phases))
-		}
-	})
 }
 
 func TestDDDCycleFullLoop(t *testing.T) {
@@ -375,7 +307,7 @@ func TestDDDCycleFullLoop(t *testing.T) {
 	phases := c.Phases()
 
 	// Validate full cycle: Analyze -> Preserve -> Improve -> Analyze.
-	for i := 0; i < len(phases); i++ {
+	for i := range phases {
 		from := phases[i]
 		to := phases[(i+1)%len(phases)]
 		if err := c.ValidateTransition(from, to); err != nil {
@@ -391,7 +323,7 @@ func TestTDDCycleFullLoop(t *testing.T) {
 	phases := c.Phases()
 
 	// Validate full cycle: Red -> Green -> Refactor -> Red.
-	for i := 0; i < len(phases); i++ {
+	for i := range phases {
 		from := phases[i]
 		to := phases[(i+1)%len(phases)]
 		if err := c.ValidateTransition(from, to); err != nil {

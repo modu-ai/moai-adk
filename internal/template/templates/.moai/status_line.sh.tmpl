@@ -10,12 +10,6 @@ trap 'rm -f "$temp_file"' EXIT
 # Read stdin into temp file
 cat > "$temp_file"
 
-# Load GLM environment variables if configured (for Agent Teams tmux mode)
-if [ -f "$CLAUDE_PROJECT_DIR/.moai/.env.glm" ]; then
-	# shellcheck disable=SC1091
-	source "$CLAUDE_PROJECT_DIR/.moai/.env.glm"
-fi
-
 # Try moai command in PATH first
 if command -v moai &> /dev/null; then
 	exec moai statusline < "$temp_file"

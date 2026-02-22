@@ -108,24 +108,20 @@ func TestExitCodeBehavior_DefaultHandlers(t *testing.T) {
 	}
 }
 
-// TestExitCodeBehavior_RegistryPreservesExitCode verifies the registry's behavior
-// with ExitCode. The registry dispatch uses block-decision short-circuiting: if a
-// handler returns a blocking decision, that output (including ExitCode) is returned
-// directly. For non-blocking outputs, the registry returns defaultOutputForEvent.
-//
-// ExitCode=2 without a block Decision is a process-level signal (not JSON-level),
-// so the registry's default output path returns ExitCode=0. The CLI layer is
-// responsible for reading ExitCode from individual handler results.
+// TestExitCodeBehavior_RegistryPreservesExitCode verifies that the registry
+// short-circuits and returns a handler's output when ExitCode==2, so the CLI
+// can exit with code 2 for TeammateIdle (keep-working) and TaskCompleted (reject).
 func TestExitCodeBehavior_RegistryPreservesExitCode(t *testing.T) {
 	t.Parallel()
 
-	t.Run("non-blocking handler ExitCode is not preserved through dispatch default path", func(t *testing.T) {
+	t.Run("handler ExitCode=2 is preserved through dispatch (TeammateIdle keep-working)", func(t *testing.T) {
 		t.Parallel()
 
-		// ExitCode=2 without a block Decision: registry returns defaultOutputForEvent
+		// NewTeammateKeepWorkingOutput returns ExitCode=2 without a block Decision.
+		// The registry must short-circuit and return this output so the CLI can exit(2).
 		handler := &mockHandler{
 			event:  EventTeammateIdle,
-			output: NewTeammateKeepWorkingOutput(), // ExitCode=2, no Decision
+			output: NewTeammateKeepWorkingOutput(), // ExitCode=2, no block Decision
 		}
 
 		cfg := &mockConfigProvider{cfg: newTestConfig()}
@@ -133,10 +129,10 @@ func TestExitCodeBehavior_RegistryPreservesExitCode(t *testing.T) {
 		reg.Register(handler)
 
 		input := &HookInput{
-			SessionID:     "test-exit-default",
+			SessionID:     "test-exit-keep-working",
 			CWD:           "/tmp",
 			HookEventName: string(EventTeammateIdle),
-			AgentID:       "tm-default",
+			AgentID:       "tm-keep-working",
 		}
 
 		got, err := reg.Dispatch(context.Background(), EventTeammateIdle, input)
@@ -147,9 +143,45 @@ func TestExitCodeBehavior_RegistryPreservesExitCode(t *testing.T) {
 			t.Fatal("Dispatch() returned nil output")
 		}
 
-		// Registry returns defaultOutputForEvent which has ExitCode=0
-		if got.ExitCode != 0 {
-			t.Errorf("ExitCode = %d, want 0 (default output path)", got.ExitCode)
+		// ExitCode=2 must be preserved so the CLI can call os.Exit(2).
+		if got.ExitCode != 2 {
+			t.Errorf("ExitCode = %d, want 2 (TeammateIdle keep-working signal)", got.ExitCode)
+		}
+		if !handler.called {
+			t.Error("handler was not called")
+		}
+	})
+
+	t.Run("handler ExitCode=2 is preserved through dispatch (TaskCompleted reject)", func(t *testing.T) {
+		t.Parallel()
+
+		handler := &mockHandler{
+			event:  EventTaskCompleted,
+			output: NewTaskRejectedOutput(), // ExitCode=2, no block Decision
+		}
+
+		cfg := &mockConfigProvider{cfg: newTestConfig()}
+		reg := NewRegistry(cfg)
+		reg.Register(handler)
+
+		input := &HookInput{
+			SessionID:     "test-exit-task-rejected",
+			CWD:           "/tmp",
+			HookEventName: string(EventTaskCompleted),
+			AgentID:       "tm-reject",
+		}
+
+		got, err := reg.Dispatch(context.Background(), EventTaskCompleted, input)
+		if err != nil {
+			t.Fatalf("Dispatch() unexpected error: %v", err)
+		}
+		if got == nil {
+			t.Fatal("Dispatch() returned nil output")
+		}
+
+		// ExitCode=2 must be preserved so the CLI can call os.Exit(2).
+		if got.ExitCode != 2 {
+			t.Errorf("ExitCode = %d, want 2 (TaskCompleted reject signal)", got.ExitCode)
 		}
 		if !handler.called {
 			t.Error("handler was not called")

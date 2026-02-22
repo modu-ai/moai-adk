@@ -41,6 +41,7 @@ my-plugin/
   - hooks.json (hook definitions)
 - .mcp.json (MCP server configurations)
 - .lsp.json (LSP server configurations)
+- settings.json (plugin-specific settings, v2.1.49+)
 ```
 
 Critical Rule: Only plugin.json belongs in the .claude-plugin/ directory. All other components are at the plugin root level.
@@ -71,6 +72,7 @@ The plugin manifest defines metadata and component locations.
 - mcpServers: Path to MCP server configuration
 - lspServers: Path to LSP server configuration
 - outputStyles: Path to output styles directory
+- settings: Path to plugin settings file (v2.1.49+)
 
 ### Discovery Keywords
 
@@ -283,6 +285,26 @@ Required Fields:
 - extensionToLanguage: File extension to language mapping
 
 Optional Fields: args, env, transport, initializationOptions, settings, workspaceFolder, startupTimeout, shutdownTimeout, restartOnCrash, maxRestarts, loggingConfig
+
+### Plugin Settings
+
+Plugin-specific settings can be defined in settings.json at the plugin root (v2.1.49+):
+
+```json
+{
+  "env": {
+    "PLUGIN_API_URL": "https://api.example.com"
+  },
+  "permissions": {
+    "allow": ["Read", "Grep", "WebFetch"]
+  }
+}
+```
+
+Plugin settings are merged with project and user settings, allowing plugins to:
+- Define required environment variables
+- Set default tool permissions
+- Provide configuration defaults that users can override
 
 ## Installation Scopes
 

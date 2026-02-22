@@ -1,0 +1,11 @@
+language:
+  # User conversation language (MoAI response language)
+  conversation_language: en
+  conversation_language_name: en
+
+  # Code comments language (godoc, @MX tags, inline comments)
+  # Options: en (English), ko (Korean), ja (Japanese), zh (Chinese)
+  code_comments: en
+
+  # Commit messages language
+  commit_messages: en

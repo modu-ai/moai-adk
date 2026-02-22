@@ -9,8 +9,9 @@ description: |
   JA: Chrome拡張, ブラウザ拡張, マニフェスト, サービスワーカー, コンテンツスクリプト, ポップアップ, サイドパネル, Chrome API, ウェブストア, バックグラウンドスクリプト, 拡張機能
   ZH: Chrome扩展, 浏览器扩展, 清单, 服务工作者, 内容脚本, 弹出窗口, 侧面板, Chrome API, 网上应用店, 后台脚本, 扩展程序, 消息传递
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: inherit
+model: opus
 permissionMode: default
+memory: project
 skills: moai-foundation-claude, moai-foundation-core, moai-platform-chrome-extension, moai-lang-typescript, moai-lang-javascript, moai-domain-frontend, moai-foundation-quality
 ---
 

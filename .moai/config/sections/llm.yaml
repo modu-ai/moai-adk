@@ -1,0 +1,21 @@
+llm:
+    mode: ""
+    team_mode: cg
+    glm_env_var: GLM_API_KEY
+    performance_tier: ""
+    claude_models:
+        high: ""
+        medium: ""
+        low: ""
+    glm:
+        base_url: https://api.z.ai/api/anthropic
+        models:
+            high: ""
+            medium: ""
+            low: ""
+            opus: ""
+            sonnet: ""
+            haiku: ""
+    default_model: ""
+    quality_model: ""
+    speed_model: ""

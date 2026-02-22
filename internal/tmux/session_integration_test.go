@@ -2,6 +2,7 @@ package tmux
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -89,10 +90,8 @@ func TestIntegration_TmuxDetectorToSessionManager(t *testing.T) {
 		allCalls = append(allCalls, call)
 
 		// Respond appropriately based on the command.
-		for _, a := range args {
-			if a == "-V" {
-				return "tmux 3.4", nil
-			}
+		if slices.Contains(args, "-V") {
+			return "tmux 3.4", nil
 		}
 		return "", nil
 	}
@@ -141,7 +140,7 @@ func TestIntegration_TmuxDetectorToSessionManager(t *testing.T) {
 	}
 
 	// First two calls should be version checks.
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		hasVersion := false
 		for _, arg := range allCalls[i] {
 			if arg == "-V" {

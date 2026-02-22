@@ -182,7 +182,7 @@ func TestProtocol_WriteOutput_NewEventOutputs(t *testing.T) {
 				if !json.Valid(data) {
 					t.Fatalf("output is not valid JSON: %s", data)
 				}
-				var m map[string]interface{}
+				var m map[string]any
 				if err := json.Unmarshal(data, &m); err != nil {
 					t.Fatalf("unmarshal error: %v", err)
 				}
@@ -196,11 +196,11 @@ func TestProtocol_WriteOutput_NewEventOutputs(t *testing.T) {
 			output: NewPermissionRequestOutput(DecisionAsk, "deferred to user"),
 			check: func(t *testing.T, data []byte) {
 				t.Helper()
-				var m map[string]interface{}
+				var m map[string]any
 				if err := json.Unmarshal(data, &m); err != nil {
 					t.Fatalf("unmarshal error: %v", err)
 				}
-				hso, ok := m["hookSpecificOutput"].(map[string]interface{})
+				hso, ok := m["hookSpecificOutput"].(map[string]any)
 				if !ok {
 					t.Fatal("hookSpecificOutput missing or wrong type")
 				}
@@ -210,8 +210,8 @@ func TestProtocol_WriteOutput_NewEventOutputs(t *testing.T) {
 				if hso["permissionDecisionReason"] != "deferred to user" {
 					t.Errorf("permissionDecisionReason = %v, want %q", hso["permissionDecisionReason"], "deferred to user")
 				}
-				if hso["hookEventName"] != "PermissionRequest" {
-					t.Errorf("hookEventName = %v, want %q", hso["hookEventName"], "PermissionRequest")
+				if hso["hookEventName"] != "PreToolUse" {
+					t.Errorf("hookEventName = %v, want %q", hso["hookEventName"], "PreToolUse")
 				}
 			},
 		},
@@ -248,11 +248,11 @@ func TestProtocol_WriteOutput_NewEventOutputs(t *testing.T) {
 			output: NewPermissionRequestOutput(DecisionAllow, "approved by policy"),
 			check: func(t *testing.T, data []byte) {
 				t.Helper()
-				var m map[string]interface{}
+				var m map[string]any
 				if err := json.Unmarshal(data, &m); err != nil {
 					t.Fatalf("unmarshal error: %v", err)
 				}
-				hso, ok := m["hookSpecificOutput"].(map[string]interface{})
+				hso, ok := m["hookSpecificOutput"].(map[string]any)
 				if !ok {
 					t.Fatal("hookSpecificOutput missing or wrong type")
 				}
@@ -286,7 +286,7 @@ func TestProtocol_WriteOutput_NewEventOutputs(t *testing.T) {
 			output: &HookOutput{UpdatedInput: "modified prompt text"},
 			check: func(t *testing.T, data []byte) {
 				t.Helper()
-				var m map[string]interface{}
+				var m map[string]any
 				if err := json.Unmarshal(data, &m); err != nil {
 					t.Fatalf("unmarshal error: %v", err)
 				}
@@ -327,7 +327,7 @@ func TestProtocol_FullRoundTrip_NewEvents(t *testing.T) {
 		name        string
 		inputJSON   string
 		makeOutput  func(input *HookInput) *HookOutput
-		checkOutput func(t *testing.T, parsed map[string]interface{})
+		checkOutput func(t *testing.T, parsed map[string]any)
 	}{
 		{
 			name:      "PostToolUseFailure round-trip",
@@ -336,7 +336,7 @@ func TestProtocol_FullRoundTrip_NewEvents(t *testing.T) {
 				// PostToolUseFailure handler returns empty output
 				return &HookOutput{}
 			},
-			checkOutput: func(t *testing.T, parsed map[string]interface{}) {
+			checkOutput: func(t *testing.T, parsed map[string]any) {
 				t.Helper()
 				if _, ok := parsed["hookSpecificOutput"]; ok {
 					t.Error("PostToolUseFailure should not have hookSpecificOutput")
@@ -349,7 +349,7 @@ func TestProtocol_FullRoundTrip_NewEvents(t *testing.T) {
 			makeOutput: func(_ *HookInput) *HookOutput {
 				return &HookOutput{}
 			},
-			checkOutput: func(t *testing.T, parsed map[string]interface{}) {
+			checkOutput: func(t *testing.T, parsed map[string]any) {
 				t.Helper()
 				if _, ok := parsed["hookSpecificOutput"]; ok {
 					t.Error("Notification should not have hookSpecificOutput")
@@ -362,7 +362,7 @@ func TestProtocol_FullRoundTrip_NewEvents(t *testing.T) {
 			makeOutput: func(_ *HookInput) *HookOutput {
 				return &HookOutput{}
 			},
-			checkOutput: func(t *testing.T, parsed map[string]interface{}) {
+			checkOutput: func(t *testing.T, parsed map[string]any) {
 				t.Helper()
 				if _, ok := parsed["hookSpecificOutput"]; ok {
 					t.Error("SubagentStart should not have hookSpecificOutput")
@@ -375,7 +375,7 @@ func TestProtocol_FullRoundTrip_NewEvents(t *testing.T) {
 			makeOutput: func(_ *HookInput) *HookOutput {
 				return &HookOutput{UpdatedInput: "hello world (sanitized)"}
 			},
-			checkOutput: func(t *testing.T, parsed map[string]interface{}) {
+			checkOutput: func(t *testing.T, parsed map[string]any) {
 				t.Helper()
 				v, ok := parsed["updatedInput"]
 				if !ok {
@@ -392,17 +392,17 @@ func TestProtocol_FullRoundTrip_NewEvents(t *testing.T) {
 			makeOutput: func(_ *HookInput) *HookOutput {
 				return NewPermissionRequestOutput(DecisionAllow, "safe tool")
 			},
-			checkOutput: func(t *testing.T, parsed map[string]interface{}) {
+			checkOutput: func(t *testing.T, parsed map[string]any) {
 				t.Helper()
-				hso, ok := parsed["hookSpecificOutput"].(map[string]interface{})
+				hso, ok := parsed["hookSpecificOutput"].(map[string]any)
 				if !ok {
 					t.Fatal("hookSpecificOutput missing for PermissionRequest")
 				}
 				if hso["permissionDecision"] != DecisionAllow {
 					t.Errorf("permissionDecision = %v, want %q", hso["permissionDecision"], DecisionAllow)
 				}
-				if hso["hookEventName"] != "PermissionRequest" {
-					t.Errorf("hookEventName = %v, want %q", hso["hookEventName"], "PermissionRequest")
+				if hso["hookEventName"] != "PreToolUse" {
+					t.Errorf("hookEventName = %v, want %q", hso["hookEventName"], "PreToolUse")
 				}
 			},
 		},
@@ -412,7 +412,7 @@ func TestProtocol_FullRoundTrip_NewEvents(t *testing.T) {
 			makeOutput: func(_ *HookInput) *HookOutput {
 				return NewTeammateKeepWorkingOutput()
 			},
-			checkOutput: func(t *testing.T, parsed map[string]interface{}) {
+			checkOutput: func(t *testing.T, parsed map[string]any) {
 				t.Helper()
 				// ExitCode should not appear in JSON
 				if _, ok := parsed["exitCode"]; ok {
@@ -429,7 +429,7 @@ func TestProtocol_FullRoundTrip_NewEvents(t *testing.T) {
 			makeOutput: func(_ *HookInput) *HookOutput {
 				return NewTaskRejectedOutput()
 			},
-			checkOutput: func(t *testing.T, parsed map[string]interface{}) {
+			checkOutput: func(t *testing.T, parsed map[string]any) {
 				t.Helper()
 				// ExitCode should not appear in JSON
 				if _, ok := parsed["exitCode"]; ok {
@@ -473,7 +473,7 @@ func TestProtocol_FullRoundTrip_NewEvents(t *testing.T) {
 				t.Fatalf("WriteOutput produced invalid JSON: %s", written)
 			}
 
-			var parsed map[string]interface{}
+			var parsed map[string]any
 			if err := json.Unmarshal(written, &parsed); err != nil {
 				t.Fatalf("unmarshal round-trip output: %v", err)
 			}

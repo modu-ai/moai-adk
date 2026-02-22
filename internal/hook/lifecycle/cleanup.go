@@ -223,19 +223,19 @@ func (c *sessionCleanupImpl) GenerateCleanupReport() string {
 	sb.WriteString("Cleanup Summary\n")
 	sb.WriteString(strings.Repeat("-", 30) + "\n")
 
-	sb.WriteString(fmt.Sprintf("Files deleted: %d\n", c.result.FilesDeleted))
-	sb.WriteString(fmt.Sprintf("Directories deleted: %d\n", c.result.DirsDeleted))
-	sb.WriteString(fmt.Sprintf("Space freed: %s\n", formatBytes(c.result.BytesFreed)))
-	sb.WriteString(fmt.Sprintf("Duration: %v\n", c.result.Duration.Round(time.Millisecond)))
+	fmt.Fprintf(&sb, "Files deleted: %d\n", c.result.FilesDeleted)
+	fmt.Fprintf(&sb, "Directories deleted: %d\n", c.result.DirsDeleted)
+	fmt.Fprintf(&sb, "Space freed: %s\n", formatBytes(c.result.BytesFreed))
+	fmt.Fprintf(&sb, "Duration: %v\n", c.result.Duration.Round(time.Millisecond))
 
 	if len(c.result.Errors) > 0 {
-		sb.WriteString(fmt.Sprintf("Errors: %d\n", len(c.result.Errors)))
+		fmt.Fprintf(&sb, "Errors: %d\n", len(c.result.Errors))
 		for i, errMsg := range c.result.Errors {
 			if i >= 5 { // Limit error display
-				sb.WriteString(fmt.Sprintf("  ... and %d more errors\n", len(c.result.Errors)-5))
+				fmt.Fprintf(&sb, "  ... and %d more errors\n", len(c.result.Errors)-5)
 				break
 			}
-			sb.WriteString(fmt.Sprintf("  - %s\n", errMsg))
+			fmt.Fprintf(&sb, "  - %s\n", errMsg)
 		}
 	}
 

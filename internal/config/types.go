@@ -1,6 +1,8 @@
 package config
 
 import (
+	"slices"
+
 	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
@@ -42,16 +44,30 @@ type SystemConfig struct {
 
 // LLMConfig represents the LLM configuration section.
 type LLMConfig struct {
-	// Mode selection: claude-only, glm-only, mashup
+	// Mode selection: "", "glm"
 	Mode string `yaml:"mode"`
+	// TeamMode selection: "", "claude", "glm", "hybrid"
+	TeamMode string `yaml:"team_mode"`
 	// Environment variable name for GLM API key
 	GLMEnvVar string `yaml:"glm_env_var"`
+	// Performance tier: "high", "medium", "low"
+	// Controls model selection for all sub-agents and team agents
+	PerformanceTier string `yaml:"performance_tier"`
+	// Claude model mapping by tier
+	ClaudeModels ClaudeTierModels `yaml:"claude_models"`
 	// GLM API configuration
 	GLM GLMSettings `yaml:"glm"`
-	// Legacy fields (kept for backward compatibility)
+	// Legacy fields (kept for backward compatibility, mapped from tiers)
 	DefaultModel string `yaml:"default_model"`
 	QualityModel string `yaml:"quality_model"`
 	SpeedModel   string `yaml:"speed_model"`
+}
+
+// ClaudeTierModels represents Claude model mappings by performance tier.
+type ClaudeTierModels struct {
+	High   string `yaml:"high"`   // Complex reasoning, architecture, security
+	Medium string `yaml:"medium"` // Balanced performance for most tasks
+	Low    string `yaml:"low"`    // Fast exploration, simple tasks
 }
 
 // GLMSettings represents GLM API configuration.
@@ -60,11 +76,15 @@ type GLMSettings struct {
 	Models  GLMModels `yaml:"models"`
 }
 
-// GLMModels represents GLM model mappings.
+// GLMModels represents GLM model mappings by performance tier.
 type GLMModels struct {
-	Haiku  string `yaml:"haiku"`
-	Sonnet string `yaml:"sonnet"`
-	Opus   string `yaml:"opus"`
+	High   string `yaml:"high"`   // Complex reasoning
+	Medium string `yaml:"medium"` // Balanced performance
+	Low    string `yaml:"low"`    // Fast exploration
+	// Legacy fields for backward compatibility
+	Opus   string `yaml:"opus"`   // Maps to High
+	Sonnet string `yaml:"sonnet"` // Maps to Medium
+	Haiku  string `yaml:"haiku"`  // Maps to Low
 }
 
 // PricingConfig represents the pricing configuration section.
@@ -127,12 +147,7 @@ var sectionNames = []string{
 
 // IsValidSectionName checks if the given name is a valid section name.
 func IsValidSectionName(name string) bool {
-	for _, s := range sectionNames {
-		if s == name {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(sectionNames, name)
 }
 
 // ValidSectionNames returns all valid section names.
@@ -162,4 +177,9 @@ type qualityFileWrapper struct {
 // gitConventionFileWrapper handles the git-convention.yaml section file.
 type gitConventionFileWrapper struct {
 	GitConvention models.GitConventionConfig `yaml:"git_convention"`
+}
+
+// llmFileWrapper handles the llm.yaml section file.
+type llmFileWrapper struct {
+	LLM LLMConfig `yaml:"llm"`
 }

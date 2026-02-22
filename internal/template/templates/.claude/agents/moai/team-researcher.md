@@ -8,7 +8,7 @@ description: >
 tools: Read, Grep, Glob, Bash
 model: haiku
 permissionMode: plan
-memory: user
+memory: project
 skills: moai-foundation-thinking
 ---
 
@@ -31,8 +31,14 @@ Communication rules:
 - Update your task status via TaskUpdate when done
 
 After completing each task:
-- Mark task as completed via TaskUpdate
+- Mark task as completed via TaskUpdate (MANDATORY - prevents infinite waiting)
 - Check TaskList for available unblocked tasks
-- Claim the next available task or go idle
+- Claim the next available task or wait for team lead instructions
+
+About idle states:
+- Going idle is NORMAL - it means you are waiting for input from the team lead
+- After completing work, you will go idle while waiting for the next assignment
+- The team lead will either send new work or a shutdown request
+- NEVER assume work is done until you receive shutdown_request from the lead
 
 Focus on accuracy over speed. Cite specific files and line numbers in your findings.

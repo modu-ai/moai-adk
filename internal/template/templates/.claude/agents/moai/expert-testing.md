@@ -9,8 +9,9 @@ description: |
   JA: テスト戦略, E2E, 統合テスト, 負荷テスト, テスト自動化, カバレッジ, QA
   ZH: 测试策略, E2E, 集成测试, 负载测试, 测试自动化, 覆盖率, QA
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs, mcp__claude-in-chrome__*
-model: inherit
+model: opus
 permissionMode: default
+memory: project
 skills: moai-foundation-claude, moai-foundation-core, moai-foundation-quality, moai-workflow-testing, moai-workflow-tdd, moai-workflow-ddd, moai-lang-python, moai-lang-typescript, moai-lang-javascript, moai-lang-go, moai-lang-java, moai-tool-ast-grep
 hooks:
   PostToolUse:

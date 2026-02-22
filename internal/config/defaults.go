@@ -17,8 +17,6 @@ const (
 	DefaultTestCoverageTarget    = 85
 	DefaultMaxTransformationSize = "small"
 	DefaultMinCoveragePerCommit  = 80
-	DefaultMinCoverageNew        = 90
-	DefaultMinCoverageLegacy     = 85
 	DefaultMaxExemptPercentage   = 5
 
 	DefaultLogLevel  = "info"
@@ -38,6 +36,19 @@ const (
 
 	DefaultBranchPrefix = "moai/"
 	DefaultCommitStyle  = "conventional"
+
+	DefaultGLMEnvVar  = "GLM_API_KEY"
+	DefaultGLMBaseURL = "https://api.z.ai/api/anthropic"
+	// GLM model tiers
+	DefaultGLMHigh   = "glm-5"
+	DefaultGLMMedium = "glm-4.7"
+	DefaultGLMLow    = "glm-4.7-flashx"
+	// Legacy GLM model names (map to tiers)
+	DefaultGLMHaiku  = "glm-4.7-flashx"
+	DefaultGLMSonnet = "glm-4.7"
+	DefaultGLMOpus   = "glm-5"
+	// Default performance tier
+	DefaultPerformanceTier = "medium"
 
 	DefaultCacheTTLSeconds = 5
 	DefaultTimeoutSeconds  = 3
@@ -89,12 +100,11 @@ func NewDefaultLanguageConfig() models.LanguageConfig {
 // NewDefaultQualityConfig returns a QualityConfig with default values.
 func NewDefaultQualityConfig() models.QualityConfig {
 	return models.QualityConfig{
-		DevelopmentMode:    models.ModeHybrid,
+		DevelopmentMode:    models.ModeTDD,
 		EnforceQuality:     true,
 		TestCoverageTarget: DefaultTestCoverageTarget,
 		DDDSettings:        NewDefaultDDDSettings(),
 		TDDSettings:        NewDefaultTDDSettings(),
-		HybridSettings:     NewDefaultHybridSettings(),
 		CoverageExemptions: NewDefaultCoverageExemptions(),
 	}
 }
@@ -117,17 +127,6 @@ func NewDefaultTDDSettings() models.TDDSettings {
 		TestFirstRequired:      true,
 		MinCoveragePerCommit:   DefaultMinCoveragePerCommit,
 		MutationTestingEnabled: false,
-	}
-}
-
-// NewDefaultHybridSettings returns HybridSettings with default values.
-func NewDefaultHybridSettings() models.HybridSettings {
-	return models.HybridSettings{
-		NewFeatures:         "tdd",
-		LegacyRefactoring:   "ddd",
-		MinCoverageNew:      DefaultMinCoverageNew,
-		MinCoverageLegacy:   DefaultMinCoverageLegacy,
-		PreserveRefactoring: true,
 	}
 }
 
@@ -166,9 +165,28 @@ func NewDefaultSystemConfig() SystemConfig {
 // NewDefaultLLMConfig returns a LLMConfig with default values.
 func NewDefaultLLMConfig() LLMConfig {
 	return LLMConfig{
+		GLMEnvVar:       DefaultGLMEnvVar,
+		PerformanceTier: DefaultPerformanceTier,
+		ClaudeModels: ClaudeTierModels{
+			High:   "opus",
+			Medium: "sonnet",
+			Low:    "haiku",
+		},
 		DefaultModel: DefaultModel,
 		QualityModel: DefaultQualModel,
 		SpeedModel:   DefaultSpeedModel,
+		GLM: GLMSettings{
+			BaseURL: DefaultGLMBaseURL,
+			Models: GLMModels{
+				High:   DefaultGLMHigh,
+				Medium: DefaultGLMMedium,
+				Low:    DefaultGLMLow,
+				// Legacy fields for backward compatibility
+				Opus:   DefaultGLMOpus,
+				Sonnet: DefaultGLMSonnet,
+				Haiku:  DefaultGLMHaiku,
+			},
+		},
 	}
 }
 

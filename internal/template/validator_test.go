@@ -184,6 +184,31 @@ func TestValidatorValidateDeployment(t *testing.T) {
 		}
 	})
 
+	t.Run("directory_in_expected_files", func(t *testing.T) {
+		root := t.TempDir()
+
+		// Create a directory at the expected path (not a file)
+		dirPath := filepath.Join(root, ".claude", "agents")
+		if err := os.MkdirAll(dirPath, 0o755); err != nil {
+			t.Fatalf("MkdirAll error: %v", err)
+		}
+
+		report := v.ValidateDeployment(root, []string{
+			".claude/agents",
+		})
+
+		// Should be valid (directory is a warning, not an error)
+		if !report.Valid {
+			t.Errorf("report.Valid = false, want true for directory warning")
+		}
+		if len(report.Warnings) != 1 {
+			t.Fatalf("expected 1 warning, got %d: %v", len(report.Warnings), report.Warnings)
+		}
+		if report.FilesChecked != 1 {
+			t.Errorf("FilesChecked = %d, want 1", report.FilesChecked)
+		}
+	})
+
 	t.Run("empty_file_list", func(t *testing.T) {
 		root := t.TempDir()
 

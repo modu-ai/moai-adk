@@ -148,6 +148,7 @@ my-plugin/
   - hooks.json
 - .mcp.json (optional, MCP servers)
 - .lsp.json (optional, LSP servers)
+- settings.json (optional, plugin-specific settings - v2.1.49+)
 - LICENSE
 - CHANGELOG.md
 - README.md
@@ -178,6 +179,7 @@ Optional Fields:
 - mcpServers: Path to MCP server configuration file (must start with "./")
 - outputStyles: Path to output styles directory (must start with "./")
 - lspServers: Path to LSP server configuration file (must start with "./")
+- settings: Path to plugin settings file (must start with "./") - v2.1.49+
 
 Path Rules:
 - All paths are relative to plugin root
@@ -370,6 +372,31 @@ LSP Server Fields:
 - restartOnCrash: Automatically restart on crash (boolean)
 - maxRestarts: Maximum restart attempts
 - loggingConfig: Debug logging configuration with args and env
+
+### Step 4.7: Plugin Settings (v2.1.49+)
+
+If plugin-specific settings are required, create settings.json at plugin root:
+- Define plugin configuration options
+- Include default values for settings
+- Settings are merged with project/user settings
+
+Plugin Settings Structure:
+```json
+{
+  "env": {
+    "PLUGIN_CUSTOM_VAR": "value"
+  },
+  "permissions": {
+    "allow": ["Read", "Grep"],
+    "deny": ["Bash"]
+  }
+}
+```
+
+Plugin settings.json supports:
+- env: Environment variables for the plugin context
+- permissions: Tool permission allowlists/denylists
+- Custom configuration keys specific to plugin functionality
 
 ---
 

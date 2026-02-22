@@ -232,11 +232,11 @@ Use `internal/i18n.CommentGenerator` to produce a multilingual comment:
 
 Comment templates are language-aware. Example (Korean):
 ```
-✅ 이슈가 성공적으로 해결되었습니다!
+Issue resolved successfully!
 
-구현 내용: 사용자 인증 기능 추가
-관련 PR: #456
-병합 시간: 2026-02-16 16:30 KST
+Implementation: Added user authentication
+Related PR: #456
+Merge time: 2026-02-16 16:30 KST
 ```
 
 ### Step 5.3: Close Issue

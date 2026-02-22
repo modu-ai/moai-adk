@@ -95,7 +95,7 @@ func TestSubmitSyncBatches_BatchFailure(t *testing.T) {
 
 	// Create fake transcript files so SyncState.MarkSynced can stat them.
 	var paths []string
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		p := filepath.Join(tmpDir, "transcript"+string(rune('A'+i))+".jsonl")
 		if err := os.WriteFile(p, []byte(`{}`), 0o644); err != nil {
 			t.Fatalf("create transcript file: %v", err)

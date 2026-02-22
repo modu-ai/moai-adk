@@ -80,7 +80,7 @@ var agentModelMap = map[string][3]string{
 func GetAgentModel(policy ModelPolicy, agentName string) string {
 	models, ok := agentModelMap[agentName]
 	if !ok {
-		return "inherit" // Unknown agent defaults to inherit
+		return "" // Unknown agent: caller should skip to preserve current model
 	}
 
 	switch policy {
@@ -91,7 +91,7 @@ func GetAgentModel(policy ModelPolicy, agentName string) string {
 	case ModelPolicyLow:
 		return models[2]
 	default:
-		return "inherit"
+		return "sonnet" // Unknown policy: safe fallback
 	}
 }
 
@@ -118,8 +118,8 @@ func ApplyModelPolicy(projectRoot string, policy ModelPolicy, mgr manifest.Manag
 
 		agentName := strings.TrimSuffix(entry.Name(), ".md")
 		targetModel := GetAgentModel(policy, agentName)
-		if targetModel == "inherit" {
-			continue // No change needed
+		if targetModel == "" {
+			continue // Unknown agent: preserve current model
 		}
 
 		filePath := filepath.Join(agentsDir, entry.Name())

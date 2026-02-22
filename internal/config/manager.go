@@ -20,6 +20,8 @@ const (
 	stateWatching
 )
 
+// @MX:ANCHOR: [AUTO] ConfigManager는 스레드 안전한 설정 관리를 제공하는 핵심 구조체입니다. Load() 호출 후 사용해야 합니다.
+// @MX:REASON: fan_in=12+, 모든 설정 접근의 진입점이며 시스템 전체에서 사용됩니다
 // ConfigManager provides thread-safe configuration management.
 // It must be initialized via Load() before use.
 type ConfigManager struct {
@@ -40,6 +42,7 @@ func NewConfigManager() *ConfigManager {
 	}
 }
 
+// @MX:NOTE: [AUTO] 파일 값, 컴파일된 기본값, 환경 변수 우선순위를 병합합니다. MOAI_CONFIG_DIR 환경 변수로 설정 디렉토리를 재정의할 수 있습니다.
 // Load reads configuration from the project root's .moai/ directory.
 // It merges file values with compiled defaults and applies environment
 // variable overrides. The configuration is validated before being stored.
@@ -151,6 +154,11 @@ func (m *ConfigManager) Save() error {
 	// Save git convention section
 	if err := saveSection(sectionsDir, "git-convention.yaml", gitConventionFileWrapper{GitConvention: m.config.GitConvention}); err != nil {
 		return fmt.Errorf("save git convention config: %w", err)
+	}
+
+	// Save LLM section
+	if err := saveSection(sectionsDir, "llm.yaml", llmFileWrapper{LLM: m.config.LLM}); err != nil {
+		return fmt.Errorf("save LLM config: %w", err)
 	}
 
 	return nil

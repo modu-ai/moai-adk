@@ -174,29 +174,25 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 	var versionResult *VersionData
 
 	if b.gitProvider != nil {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			result, err := b.gitProvider.CollectGitStatus(ctx)
 			if err != nil {
 				slog.Debug("git collection failed", "error", err)
 				return
 			}
 			gitResult = result
-		}()
+		})
 	}
 
 	if b.updateProvider != nil {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			result, err := b.updateProvider.CheckUpdate(ctx)
 			if err != nil {
 				slog.Debug("update check failed", "error", err)
 				return
 			}
 			versionResult = result
-		}()
+		})
 	}
 
 	wg.Wait()

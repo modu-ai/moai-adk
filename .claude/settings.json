@@ -27,7 +27,7 @@
         "hooks": [
           {
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-end.sh\"",
-            "timeout": 5,
+            "timeout": 10,
             "type": "command"
           }
         ]
@@ -155,6 +155,28 @@
           }
         ]
       }
+    ],
+    "WorktreeCreate": [
+      {
+        "hooks": [
+          {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-worktree-create.sh\"",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "WorktreeRemove": [
+      {
+        "hooks": [
+          {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-worktree-remove.sh\"",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
@@ -162,14 +184,13 @@
     "command": ".moai/status_line.sh"
   },
   "outputStyle": "MoAI",
-  "plansDirectory": ".moai/plans",
   "cleanupPeriodDays": 30,
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS": "64000",
     "ENABLE_TOOL_SEARCH": "1",
     "MOAI_CONFIG_SOURCE": "sections",
-    "PATH": "/Users/goos/bin:/Users/goos/go/bin:/Users/goos/.local/bin:/Users/goos/.pyenv/shims:/Users/goos/.codeium/windsurf/bin:/Users/goos/.cache/lm-studio/bin:/opt/homebrew/bin:/opt/homebrew/opt/python@3.13/bin:/opt/homebrew/opt/postgresql@17/bin:/Users/goos/.local/bin:/Users/goos/.bun/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/opt/pmk/env/global/bin:/Library/Apple/usr/bin:/opt/homebrew/bin:/opt/homebrew/opt/python@3.13/bin:/Users/goos/.cargo/bin:/path/to/flutter/bin:/Applications/Ghostty.app/Contents/MacOS"
+    "PATH": "/Users/goos/bin:/Users/goos/go/bin:/Users/goos/.local/bin:/Users/goos/.pyenv/shims:/Users/goos/.codeium/windsurf/bin:/Users/goos/.cache/lm-studio/bin:/opt/homebrew/bin:/opt/homebrew/opt/python@3.13/bin:/opt/homebrew/opt/postgresql@17/bin:/Users/goos/.local/bin:/Users/goos/.bun/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/opt/pmk/env/global/bin:/Library/Apple/usr/bin:/opt/homebrew/bin:/opt/homebrew/opt/python@3.13/bin:/Users/goos/.cargo/bin:/path/to/flutter/bin"
   },
   "permissions": {
     "defaultMode": "acceptEdits",
@@ -363,5 +384,5 @@
   },
   "enableAllProjectMcpServers": true,
   "respectGitignore": true,
-  "spinnerTipsEnabled": true
+  "teammateMode": "auto"
 }

@@ -296,6 +296,73 @@ func TestNewFileCredentialStore_CustomDir(t *testing.T) {
 	}
 }
 
+func TestFileCredentialStore_Save_CreatesDirectory(t *testing.T) {
+	tmpDir := t.TempDir()
+	// Use a deep nested path that doesn't exist yet
+	nestedDir := filepath.Join(tmpDir, "deep", "nested", "rank")
+	store := NewFileCredentialStore(nestedDir)
+
+	creds := &Credentials{APIKey: "nested-key"}
+	if err := store.Save(creds); err != nil {
+		t.Fatalf("Save should create directories: %v", err)
+	}
+
+	loaded, err := store.Load()
+	if err != nil {
+		t.Fatalf("Load after Save: %v", err)
+	}
+	if loaded == nil || loaded.APIKey != "nested-key" {
+		t.Errorf("expected nested-key, got %v", loaded)
+	}
+}
+
+func TestFileCredentialStore_Save_ReadOnlyDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("read-only directory test not reliable on Windows")
+	}
+
+	tmpDir := t.TempDir()
+	store := NewFileCredentialStore(tmpDir)
+
+	// Save initial credentials
+	creds := &Credentials{APIKey: "init-key"}
+	if err := store.Save(creds); err != nil {
+		t.Fatal(err)
+	}
+
+	// Make directory read-only
+	if err := os.Chmod(tmpDir, 0o444); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(tmpDir, 0o755) })
+
+	err := store.Save(&Credentials{APIKey: "new-key"})
+	if err == nil {
+		t.Skip("expected error writing to read-only dir, but succeeded (possibly running as root)")
+	}
+}
+
+func TestFileCredentialStore_DeviceID_Serialization(t *testing.T) {
+	dir := t.TempDir()
+	store := NewFileCredentialStore(dir)
+
+	creds := &Credentials{
+		APIKey:   "key",
+		DeviceID: "abc123def456",
+	}
+	if err := store.Save(creds); err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, err := store.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.DeviceID != "abc123def456" {
+		t.Errorf("DeviceID = %q, want abc123def456", loaded.DeviceID)
+	}
+}
+
 func TestCredentials_JSONSerialization(t *testing.T) {
 	creds := Credentials{
 		APIKey:    "test-key",

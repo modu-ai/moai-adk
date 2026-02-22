@@ -186,14 +186,14 @@ func FormatDiagnostics(filePath string, diagnostics []Diagnostic) string {
 	counts := (&diagnosticsCollector{}).GetSeverityCounts(diagnostics)
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("LSP: %d error(s), %d warning(s) in %s\n",
-		counts.Errors, counts.Warnings, filepath.Base(filePath)))
+	fmt.Fprintf(&sb, "LSP: %d error(s), %d warning(s) in %s\n",
+		counts.Errors, counts.Warnings, filepath.Base(filePath))
 
 	for _, d := range diagnostics {
-		sb.WriteString(fmt.Sprintf("  - [%s] Line %d: %s",
-			strings.ToUpper(d.Severity.String()), d.Range.Start.Line+1, d.Message))
+		fmt.Fprintf(&sb, "  - [%s] Line %d: %s",
+			strings.ToUpper(d.Severity.String()), d.Range.Start.Line+1, d.Message)
 		if d.Source != "" {
-			sb.WriteString(fmt.Sprintf(" [%s]", d.Source))
+			fmt.Fprintf(&sb, " [%s]", d.Source)
 		}
 		sb.WriteString("\n")
 	}

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -164,10 +165,8 @@ func TestSessionManager_Create_SessionCreateFails(t *testing.T) {
 	t.Parallel()
 
 	runner := func(_ context.Context, name string, args ...string) (string, error) {
-		for _, a := range args {
-			if a == "new-session" {
-				return "", fmt.Errorf("session create failed")
-			}
+		if slices.Contains(args, "new-session") {
+			return "", fmt.Errorf("session create failed")
 		}
 		return "", nil
 	}
@@ -263,10 +262,8 @@ func TestSessionManager_Create_SplitWindowFails_Continues(t *testing.T) {
 	var calls [][]string
 	runner := func(_ context.Context, name string, args ...string) (string, error) {
 		calls = append(calls, append([]string{name}, args...))
-		for _, a := range args {
-			if a == "split-window" {
-				return "", fmt.Errorf("split failed")
-			}
+		if slices.Contains(args, "split-window") {
+			return "", fmt.Errorf("split failed")
 		}
 		return "", nil
 	}
@@ -295,10 +292,8 @@ func TestSessionManager_Create_SendKeysFails_Continues(t *testing.T) {
 	t.Parallel()
 
 	runner := func(_ context.Context, name string, args ...string) (string, error) {
-		for _, a := range args {
-			if a == "send-keys" {
-				return "", fmt.Errorf("send-keys failed")
-			}
+		if slices.Contains(args, "send-keys") {
+			return "", fmt.Errorf("send-keys failed")
 		}
 		return "", nil
 	}
@@ -398,10 +393,8 @@ func TestSessionManager_WithSessionLogger(t *testing.T) {
 func assertCallContains(t *testing.T, calls [][]string, target string) {
 	t.Helper()
 	for _, call := range calls {
-		for _, arg := range call {
-			if arg == target {
-				return
-			}
+		if slices.Contains(call, target) {
+			return
 		}
 	}
 	t.Errorf("no call contains %q in %d calls", target, len(calls))
@@ -430,11 +423,8 @@ func countSplits(calls [][]string, direction string) int {
 func countCallsContaining(calls [][]string, target string) int {
 	count := 0
 	for _, call := range calls {
-		for _, arg := range call {
-			if arg == target {
-				count++
-				break
-			}
+		if slices.Contains(call, target) {
+			count++
 		}
 	}
 	return count

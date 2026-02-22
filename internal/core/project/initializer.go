@@ -29,7 +29,7 @@ type InitOptions struct {
 	Features          []string // Selected features (e.g., "LSP", "Quality Gates").
 	UserName          string   // User display name for configuration.
 	ConvLang          string   // Conversation language code (e.g., "en", "ko").
-	DevelopmentMode   string   // "ddd", "tdd", or "hybrid".
+	DevelopmentMode   string   // "ddd" or "tdd".
 	GitMode           string   // Git workflow mode: "manual", "personal", or "team".
 	GitProvider       string   // Git provider: "github", "gitlab".
 	GitHubUsername    string   // GitHub username (for personal/team modes).
@@ -152,11 +152,16 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		}
 	}
 
-	// Step 3b: Apply model policy to agent files (post-deployment patching)
-	if opts.ModelPolicy != "" {
-		if err := template.ApplyModelPolicy(opts.ProjectRoot, template.ModelPolicy(opts.ModelPolicy), i.manifestMgr); err != nil {
+	// Step 3b: Apply model policy to agent files (post-deployment patching).
+	// Always apply a policy; default to high when not explicitly set.
+	// "inherit" is no longer a supported model value in Claude Code.
+	{
+		policy := template.ModelPolicy(opts.ModelPolicy)
+		if policy == "" {
+			policy = template.DefaultModelPolicy
+		}
+		if err := template.ApplyModelPolicy(opts.ProjectRoot, policy, i.manifestMgr); err != nil {
 			i.logger.Warn("failed to apply model policy", "error", err)
-			// Non-fatal: agents will use default inherit
 		}
 	}
 
@@ -449,12 +454,12 @@ func (i *projectInitializer) createClaudeMD(opts InitOptions, result *InitResult
 func buildClaudeMDContent(opts InitOptions) string {
 	var b strings.Builder
 	b.WriteString("# MoAI Execution Directive\n\n")
-	b.WriteString(fmt.Sprintf("Project: %s\n", opts.ProjectName))
-	b.WriteString(fmt.Sprintf("Language: %s\n", opts.Language))
+	fmt.Fprintf(&b, "Project: %s\n", opts.ProjectName)
+	fmt.Fprintf(&b, "Language: %s\n", opts.Language)
 	if opts.Framework != "" && opts.Framework != "none" {
-		b.WriteString(fmt.Sprintf("Framework: %s\n", opts.Framework))
+		fmt.Fprintf(&b, "Framework: %s\n", opts.Framework)
 	}
-	b.WriteString(fmt.Sprintf("Development Mode: %s\n\n", opts.DevelopmentMode))
+	fmt.Fprintf(&b, "Development Mode: %s\n\n", opts.DevelopmentMode)
 	b.WriteString("## Configuration\n\n")
 	b.WriteString("Configuration files are located in `.moai/config/sections/`.\n\n")
 	b.WriteString("## Quick Start\n\n")

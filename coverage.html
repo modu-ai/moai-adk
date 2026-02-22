@@ -1,0 +1,1880 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>rank: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/modu-ai/moai-adk/internal/rank/auth.go (80.7%)</option>
+				
+				<option value="file1">github.com/modu-ai/moai-adk/internal/rank/browser.go (12.5%)</option>
+				
+				<option value="file2">github.com/modu-ai/moai-adk/internal/rank/client.go (86.5%)</option>
+				
+				<option value="file3">github.com/modu-ai/moai-adk/internal/rank/config.go (81.4%)</option>
+				
+				<option value="file4">github.com/modu-ai/moai-adk/internal/rank/device.go (85.7%)</option>
+				
+				<option value="file5">github.com/modu-ai/moai-adk/internal/rank/patterns.go (91.5%)</option>
+				
+				<option value="file6">github.com/modu-ai/moai-adk/internal/rank/pricing.go (100.0%)</option>
+				
+				<option value="file7">github.com/modu-ai/moai-adk/internal/rank/sync_state.go (81.5%)</option>
+				
+				<option value="file8">github.com/modu-ai/moai-adk/internal/rank/transcript.go (89.8%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package rank
+
+import (
+        "bytes"
+        "context"
+        "crypto/rand"
+        "encoding/hex"
+        "encoding/json"
+        "fmt"
+        "net"
+        "net/http"
+        "time"
+)
+
+// OAuth authentication constants.
+const (
+        DefaultOAuthTimeout = 300 * time.Second
+        OAuthPortMin        = 8080
+        OAuthPortMax        = 8180
+        StateTokenBytes     = 32
+)
+
+// BrowserOpener abstracts browser opening for testability.
+type BrowserOpener interface {
+        Open(url string) error
+}
+
+// OAuthHandler defines the interface for OAuth authentication flows.
+type OAuthHandler interface {
+        // StartOAuthFlow initiates the GitHub OAuth flow and waits for credentials.
+        StartOAuthFlow(ctx context.Context, timeout time.Duration) (*Credentials, error)
+}
+
+// OAuthConfig holds configuration for the OAuth flow.
+type OAuthConfig struct {
+        BaseURL string
+        Browser BrowserOpener
+}
+
+// DefaultOAuthHandler implements OAuthHandler using a local HTTP callback server.
+type DefaultOAuthHandler struct {
+        config OAuthConfig
+}
+
+// Compile-time interface check.
+var _ OAuthHandler = (*DefaultOAuthHandler)(nil)
+
+// NewOAuthHandler creates a new DefaultOAuthHandler with the given configuration.
+func NewOAuthHandler(config OAuthConfig) *DefaultOAuthHandler <span class="cov8" title="1">{
+        if config.BaseURL == "" </span><span class="cov8" title="1">{
+                config.BaseURL = DefaultBaseURL
+        }</span>
+        <span class="cov8" title="1">return &amp;DefaultOAuthHandler{config: config}</span>
+}
+
+// GenerateStateToken generates a cryptographically random state token for CSRF protection.
+// Returns a hex-encoded string of StateTokenBytes random bytes.
+func GenerateStateToken() (string, error) <span class="cov8" title="1">{
+        b := make([]byte, StateTokenBytes)
+        if _, err := rand.Read(b); err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("generate state token: %w", err)
+        }</span>
+        <span class="cov8" title="1">return hex.EncodeToString(b), nil</span>
+}
+
+// FindAvailablePort finds an available TCP port in the range [OAuthPortMin, OAuthPortMax].
+// Returns the port number and the listener. The caller must close the listener.
+func FindAvailablePort() (int, net.Listener, error) <span class="cov8" title="1">{
+        for port := OAuthPortMin; port &lt;= OAuthPortMax; port++ </span><span class="cov8" title="1">{
+                addr := fmt.Sprintf("127.0.0.1:%d", port)
+                ln, err := net.Listen("tcp", addr)
+                if err != nil </span><span class="cov8" title="1">{
+                        continue</span> // port in use, try next
+                }
+                <span class="cov8" title="1">return port, ln, nil</span>
+        }
+        <span class="cov0" title="0">return 0, nil, fmt.Errorf("no available port in range %d-%d", OAuthPortMin, OAuthPortMax)</span>
+}
+
+// CallbackResult holds the result received from the OAuth callback.
+type CallbackResult struct {
+        Credentials *Credentials
+        Error       error
+}
+
+// StartOAuthFlow initiates the GitHub OAuth authentication flow.
+// It starts a local HTTP server to receive the callback, opens the browser,
+// and waits for the user to complete authentication.
+func (h *DefaultOAuthHandler) StartOAuthFlow(ctx context.Context, timeout time.Duration) (*Credentials, error) <span class="cov8" title="1">{
+        if timeout == 0 </span><span class="cov0" title="0">{
+                timeout = DefaultOAuthTimeout
+        }</span>
+
+        // Generate CSRF state token.
+        <span class="cov8" title="1">state, err := GenerateStateToken()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Find available port for callback server.
+        <span class="cov8" title="1">port, ln, err := FindAvailablePort()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("find callback port: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">callbackURL := fmt.Sprintf("http://127.0.0.1:%d/callback", port)
+        resultCh := make(chan CallbackResult, 1)
+
+        // Create callback handler.
+        mux := http.NewServeMux()
+        mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) </span><span class="cov0" title="0">{
+                h.handleCallback(w, r, state, resultCh)
+        }</span>)
+
+        <span class="cov8" title="1">server := &amp;http.Server{
+                Handler:           mux,
+                ReadHeaderTimeout: 10 * time.Second,
+        }
+
+        // Start server in background.
+        go func() </span><span class="cov8" title="1">{
+                if serveErr := server.Serve(ln); serveErr != nil &amp;&amp; serveErr != http.ErrServerClosed </span><span class="cov0" title="0">{
+                        resultCh &lt;- CallbackResult{Error: fmt.Errorf("callback server: %w", serveErr)}
+                }</span>
+        }()
+        <span class="cov8" title="1">defer func() </span><span class="cov8" title="1">{
+                shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+                defer cancel()
+                _ = server.Shutdown(shutdownCtx)
+        }</span>()
+
+        // Build auth URL and open browser.
+        // Use /api/auth/cli endpoint (matching Python moai-adk implementation)
+        <span class="cov8" title="1">authURL := fmt.Sprintf("%s/api/auth/cli?redirect_uri=%s&amp;state=%s", h.config.BaseURL, callbackURL, state)
+        if h.config.Browser != nil </span><span class="cov8" title="1">{
+                if openErr := h.config.Browser.Open(authURL); openErr != nil </span><span class="cov8" title="1">{
+                        return nil, fmt.Errorf("open browser: %w", openErr)
+                }</span>
+        }
+
+        // Wait for callback or timeout.
+        <span class="cov8" title="1">ctx, cancel := context.WithTimeout(ctx, timeout)
+        defer cancel()
+
+        select </span>{
+        case result := &lt;-resultCh:<span class="cov0" title="0">
+                if result.Error != nil </span><span class="cov0" title="0">{
+                        return nil, result.Error
+                }</span>
+                <span class="cov0" title="0">return result.Credentials, nil</span>
+        case &lt;-ctx.Done():<span class="cov8" title="1">
+                return nil, &amp;AuthenticationError{Message: "OAuth flow timed out"}</span>
+        }
+}
+
+// handleCallback processes the OAuth callback request.
+// Validates the state token and extracts credentials from the response.
+func (h *DefaultOAuthHandler) handleCallback(w http.ResponseWriter, r *http.Request, expectedState string, resultCh chan&lt;- CallbackResult) <span class="cov8" title="1">{
+        query := r.URL.Query()
+
+        // Validate state token for CSRF protection (R-SEC-003).
+        receivedState := query.Get("state")
+        if receivedState != expectedState </span><span class="cov8" title="1">{
+                w.WriteHeader(http.StatusBadRequest)
+                _, _ = fmt.Fprint(w, "Invalid state token")
+                resultCh &lt;- CallbackResult{Error: &amp;AuthenticationError{Message: "state token mismatch"}}
+                return
+        }</span>
+
+        // Check for error response.
+        <span class="cov8" title="1">if errMsg := query.Get("error"); errMsg != "" </span><span class="cov8" title="1">{
+                w.WriteHeader(http.StatusBadRequest)
+                _, _ = fmt.Fprintf(w, "Authentication error: %s", errMsg)
+                resultCh &lt;- CallbackResult{Error: &amp;AuthenticationError{Message: errMsg}}
+                return
+        }</span>
+
+        // Try new flow: credentials directly in query params.
+        <span class="cov8" title="1">apiKey := query.Get("api_key")
+        if apiKey != "" </span><span class="cov8" title="1">{
+                creds := &amp;Credentials{
+                        APIKey:    apiKey,
+                        Username:  query.Get("username"),
+                        UserID:    query.Get("user_id"),
+                        CreatedAt: time.Now().UTC().Format(time.RFC3339),
+                }
+                w.WriteHeader(http.StatusOK)
+                _, _ = fmt.Fprint(w, "Authentication successful! You can close this window.")
+                resultCh &lt;- CallbackResult{Credentials: creds}
+                return
+        }</span>
+
+        // Try new flow: credentials in JSON body (POST callback).
+        <span class="cov8" title="1">if r.Method == http.MethodPost &amp;&amp; r.Body != nil </span><span class="cov0" title="0">{
+                var creds Credentials
+                if decodeErr := json.NewDecoder(r.Body).Decode(&amp;creds); decodeErr == nil &amp;&amp; creds.APIKey != "" </span><span class="cov0" title="0">{
+                        if creds.CreatedAt == "" </span><span class="cov0" title="0">{
+                                creds.CreatedAt = time.Now().UTC().Format(time.RFC3339)
+                        }</span>
+                        <span class="cov0" title="0">w.WriteHeader(http.StatusOK)
+                        _, _ = fmt.Fprint(w, "Authentication successful!")
+                        resultCh &lt;- CallbackResult{Credentials: &amp;creds}
+                        return</span>
+                }
+        }
+
+        // Legacy flow: exchange authorization code for API key.
+        <span class="cov8" title="1">code := query.Get("code")
+        if code != "" </span><span class="cov8" title="1">{
+                creds, exchangeErr := h.exchangeCode(code)
+                if exchangeErr != nil </span><span class="cov8" title="1">{
+                        w.WriteHeader(http.StatusInternalServerError)
+                        _, _ = fmt.Fprint(w, "Failed to exchange authorization code")
+                        resultCh &lt;- CallbackResult{Error: exchangeErr}
+                        return
+                }</span>
+                <span class="cov8" title="1">w.WriteHeader(http.StatusOK)
+                _, _ = fmt.Fprint(w, "Authentication successful! You can close this window.")
+                resultCh &lt;- CallbackResult{Credentials: creds}
+                return</span>
+        }
+
+        // No recognizable credential format.
+        <span class="cov8" title="1">w.WriteHeader(http.StatusBadRequest)
+        _, _ = fmt.Fprint(w, "Missing credentials in callback")
+        resultCh &lt;- CallbackResult{Error: &amp;AuthenticationError{Message: "no credentials in callback"}}</span>
+}
+
+// exchangeCode exchanges an authorization code for credentials via the Rank API.
+func (h *DefaultOAuthHandler) exchangeCode(code string) (*Credentials, error) <span class="cov8" title="1">{
+        payload := struct {
+                Code string `json:"code"`
+        }{Code: code}
+
+        body, marshalErr := json.Marshal(payload)
+        if marshalErr != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("marshal exchange request: %w", marshalErr)
+        }</span>
+
+        <span class="cov8" title="1">url := h.config.BaseURL + "/api/auth/cli/token"
+        req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, url, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("create exchange request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">req.Header.Set("Content-Type", "application/json")
+        req.Header.Set("User-Agent", UserAgent)
+        req.Body = http.NoBody
+
+        // Re-create request with body.
+        req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, url, bytes.NewReader(body))
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("create exchange request: %w", err)
+        }</span>
+        <span class="cov8" title="1">req.Header.Set("Content-Type", "application/json")
+        req.Header.Set("User-Agent", UserAgent)
+
+        client := &amp;http.Client{Timeout: DefaultTimeout}
+        resp, err := client.Do(req)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("exchange code request: %w", err)
+        }</span>
+        <span class="cov8" title="1">defer func() </span><span class="cov8" title="1">{
+                _ = resp.Body.Close()
+        }</span>()
+
+        <span class="cov8" title="1">if resp.StatusCode != http.StatusOK </span><span class="cov8" title="1">{
+                return nil, &amp;AuthenticationError{
+                        Message: fmt.Sprintf("code exchange failed with status %d", resp.StatusCode),
+                }
+        }</span>
+
+        <span class="cov8" title="1">var creds Credentials
+        if decodeErr := json.NewDecoder(resp.Body).Decode(&amp;creds); decodeErr != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("decode exchange response: %w", decodeErr)
+        }</span>
+
+        <span class="cov8" title="1">if creds.CreatedAt == "" </span><span class="cov8" title="1">{
+                creds.CreatedAt = time.Now().UTC().Format(time.RFC3339)
+        }</span>
+
+        <span class="cov8" title="1">return &amp;creds, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package rank
+
+import (
+        "fmt"
+        "os/exec"
+        "runtime"
+)
+
+// Browser implements BrowserOpener using platform-specific commands.
+type Browser struct{}
+
+// NewBrowser creates a new Browser instance.
+func NewBrowser() *Browser <span class="cov8" title="1">{
+        return &amp;Browser{}
+}</span>
+
+// Open opens the specified URL in the default browser.
+// It uses platform-specific commands:
+// - macOS: "open"
+// - Linux: "xdg-open"
+// - Windows: "start"
+func (b *Browser) Open(url string) error <span class="cov0" title="0">{
+        var cmd *exec.Cmd
+
+        switch runtime.GOOS </span>{
+        case "darwin":<span class="cov0" title="0">
+                cmd = exec.Command("open", url)</span>
+        case "linux":<span class="cov0" title="0">
+                cmd = exec.Command("xdg-open", url)</span>
+        case "windows":<span class="cov0" title="0">
+                cmd = exec.Command("cmd", "/c", "start", url)</span>
+        default:<span class="cov0" title="0">
+                return fmt.Errorf("unsupported platform: %s", runtime.GOOS)</span>
+        }
+
+        <span class="cov0" title="0">return cmd.Start()</span>
+}
+
+// compile-time interface check
+var _ BrowserOpener = (*Browser)(nil)
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">// Package rank provides a client for the MoAI Rank API service.
+// It supports session submission, leaderboard queries, user ranking,
+// and HMAC-SHA256 authenticated requests.
+package rank
+
+import (
+        "bytes"
+        "context"
+        "crypto/hmac"
+        "crypto/sha256"
+        "encoding/hex"
+        "encoding/json"
+        "fmt"
+        "io"
+        "net/http"
+        "os"
+        "strconv"
+        "time"
+)
+
+// Constants for the Rank API client.
+const (
+        MaxInputTokens  = 50_000_000
+        MaxOutputTokens = 10_000_000
+        MaxCacheTokens  = 100_000_000
+        MaxBatchSize    = 100
+        DefaultTimeout  = 30 * time.Second
+        DefaultBaseURL  = "https://rank.mo.ai.kr"
+        APIVersion      = "v1"
+        UserAgent       = "moai-adk/1.0"
+)
+
+// --- Error Types ---
+
+// ClientError represents a general client-side error.
+type ClientError struct {
+        Message string
+}
+
+func (e *ClientError) Error() string <span class="cov8" title="1">{
+        return fmt.Sprintf("rank client error: %s", e.Message)
+}</span>
+
+// AuthenticationError represents an authentication failure.
+type AuthenticationError struct {
+        Message string
+}
+
+func (e *AuthenticationError) Error() string <span class="cov8" title="1">{
+        return fmt.Sprintf("rank authentication error: %s", e.Message)
+}</span>
+
+// ApiError represents an API response error.
+type ApiError struct {
+        Message    string
+        StatusCode int
+        Details    map[string]any
+}
+
+func (e *ApiError) Error() string <span class="cov8" title="1">{
+        return fmt.Sprintf("rank API error (status %d): %s", e.StatusCode, e.Message)
+}</span>
+
+// --- Data Models ---
+
+// ApiStatus represents the Rank API health status response.
+type ApiStatus struct {
+        Status    string            `json:"status"`
+        Version   string            `json:"version"`
+        Timestamp string            `json:"timestamp"`
+        Endpoints map[string]string `json:"endpoints,omitempty"`
+}
+
+// RankInfo holds ranking position details for a time period.
+type RankInfo struct {
+        Position          int     `json:"position"`
+        CompositeScore    float64 `json:"compositeScore"`
+        TotalParticipants int     `json:"totalParticipants"`
+}
+
+// UserRankStats holds aggregate statistics for a user.
+type UserRankStats struct {
+        TotalTokens   int64 `json:"totalTokens"`
+        TotalSessions int   `json:"totalSessions"`
+        InputTokens   int64 `json:"inputTokens"`
+        OutputTokens  int64 `json:"outputTokens"`
+}
+
+// UserRankRankings holds ranking positions for all time periods.
+type UserRankRankings struct {
+        Daily   *RankInfo `json:"daily,omitempty"`
+        Weekly  *RankInfo `json:"weekly,omitempty"`
+        Monthly *RankInfo `json:"monthly,omitempty"`
+        AllTime *RankInfo `json:"allTime,omitempty"`
+}
+
+// UserRank represents the full ranking information for a user.
+type UserRank struct {
+        Username    string            `json:"username"`
+        Rankings    *UserRankRankings `json:"rankings,omitempty"`
+        Stats       *UserRankStats    `json:"stats,omitempty"`
+        LastUpdated string            `json:"lastUpdated"`
+}
+
+// LeaderboardEntry represents a single entry on the leaderboard.
+type LeaderboardEntry struct {
+        Rank            int     `json:"rank"`
+        UserID          string  `json:"userId"`
+        Username        string  `json:"username"`
+        AvatarURL       string  `json:"avatarUrl"`
+        TotalTokens     int64   `json:"totalTokens"`
+        CompositeScore  float64 `json:"compositeScore"`
+        SessionCount    int     `json:"sessionCount"`
+        EfficiencyScore float64 `json:"efficiencyScore"`
+        IsPrivate       bool    `json:"isPrivate"`
+}
+
+// SessionSubmission holds session data for submission to the Rank API.
+type SessionSubmission struct {
+        SessionHash         string         `json:"sessionHash"`
+        EndedAt             string         `json:"endedAt"`
+        InputTokens         int64          `json:"inputTokens"`
+        OutputTokens        int64          `json:"outputTokens"`
+        CacheCreationTokens int64          `json:"cacheCreationTokens"`
+        CacheReadTokens     int64          `json:"cacheReadTokens"`
+        ModelName           string         `json:"modelName,omitempty"`
+        AnonymousProjectID  string         `json:"anonymousProjectId,omitempty"`
+        StartedAt           string         `json:"startedAt,omitempty"`
+        DurationSeconds     int            `json:"durationSeconds,omitempty"`
+        TurnCount           int            `json:"turnCount,omitempty"`
+        ToolUsage           map[string]int `json:"toolUsage,omitempty"`
+        CodeMetrics         map[string]int `json:"codeMetrics,omitempty"`
+        DeviceID            string         `json:"deviceId,omitempty"`
+}
+
+// BatchResult represents the result of a batch session submission.
+type BatchResult struct {
+        Success   bool `json:"success"`
+        Processed int  `json:"processed"`
+        Succeeded int  `json:"succeeded"`
+        Failed    int  `json:"failed"`
+}
+
+// --- Client Interface ---
+
+// Client defines the interface for interacting with the Rank API.
+type Client interface {
+        CheckStatus(ctx context.Context) (*ApiStatus, error)
+        GetUserRank(ctx context.Context) (*UserRank, error)
+        GetLeaderboard(ctx context.Context, period string, limit, offset int) ([]LeaderboardEntry, error)
+        SubmitSession(ctx context.Context, session *SessionSubmission) error
+        SubmitSessionsBatch(ctx context.Context, sessions []*SessionSubmission) (*BatchResult, error)
+}
+
+// --- Client Options ---
+
+// ClientOption configures the RankClient.
+type ClientOption func(*RankClient)
+
+// WithBaseURL sets a custom base URL for the Rank API.
+func WithBaseURL(url string) ClientOption <span class="cov8" title="1">{
+        return func(c *RankClient) </span><span class="cov8" title="1">{
+                c.baseURL = url
+        }</span>
+}
+
+// WithHTTPClient sets a custom HTTP client.
+func WithHTTPClient(httpClient *http.Client) ClientOption <span class="cov8" title="1">{
+        return func(c *RankClient) </span><span class="cov8" title="1">{
+                c.httpClient = httpClient
+        }</span>
+}
+
+// --- Client Implementation ---
+
+// RankClient implements Client for the MoAI Rank API.
+type RankClient struct {
+        apiKey     string
+        baseURL    string
+        httpClient *http.Client
+}
+
+// Compile-time interface check.
+var _ Client = (*RankClient)(nil)
+
+// NewClient creates a new RankClient.
+// If apiKey is empty, authenticated endpoints will fail with AuthenticationError.
+func NewClient(apiKey string, opts ...ClientOption) *RankClient <span class="cov8" title="1">{
+        c := &amp;RankClient{
+                apiKey:  apiKey,
+                baseURL: DefaultBaseURL,
+                httpClient: &amp;http.Client{
+                        Timeout: DefaultTimeout,
+                },
+        }
+
+        // Check environment variable override for base URL.
+        if envURL := os.Getenv("MOAI_RANK_API_URL"); envURL != "" </span><span class="cov8" title="1">{
+                c.baseURL = envURL
+        }</span>
+
+        <span class="cov8" title="1">for _, opt := range opts </span><span class="cov8" title="1">{
+                opt(c)
+        }</span>
+
+        <span class="cov8" title="1">return c</span>
+}
+
+// --- HMAC Authentication ---
+
+// ComputeSignature calculates the HMAC-SHA256 signature for a request.
+// Signature = HMAC-SHA256(apiKey, timestamp + ":" + body)
+func ComputeSignature(apiKey, timestamp, body string) string <span class="cov8" title="1">{
+        message := timestamp + ":" + body
+        mac := hmac.New(sha256.New, []byte(apiKey))
+        // hmac.Write never returns an error per the hash.Hash contract.
+        _, _ = mac.Write([]byte(message))
+        return hex.EncodeToString(mac.Sum(nil))
+}</span>
+
+// getAuthHeaders generates the authentication headers for an API request.
+// Returns AuthenticationError if no API key is configured.
+func (c *RankClient) getAuthHeaders(body string) (map[string]string, error) <span class="cov8" title="1">{
+        if c.apiKey == "" </span><span class="cov8" title="1">{
+                return nil, &amp;AuthenticationError{Message: "API key not configured"}
+        }</span>
+
+        <span class="cov8" title="1">timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+        signature := ComputeSignature(c.apiKey, timestamp, body)
+
+        return map[string]string{
+                "X-API-Key":   c.apiKey,
+                "X-Timestamp": timestamp,
+                "X-Signature": signature,
+        }, nil</span>
+}
+
+// --- HTTP Helpers ---
+
+// doRequest performs an HTTP request and returns the response body.
+func (c *RankClient) doRequest(ctx context.Context, method, path string, body []byte, authenticated bool) ([]byte, error) <span class="cov8" title="1">{
+        url := c.baseURL + path
+
+        var bodyReader io.Reader
+        if body != nil </span><span class="cov8" title="1">{
+                bodyReader = bytes.NewReader(body)
+        }</span>
+
+        <span class="cov8" title="1">req, err := http.NewRequestWithContext(ctx, method, url, bodyReader)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, &amp;ClientError{Message: fmt.Sprintf("create request: %v", err)}
+        }</span>
+
+        <span class="cov8" title="1">req.Header.Set("User-Agent", UserAgent)
+        req.Header.Set("Content-Type", "application/json")
+
+        if authenticated </span><span class="cov8" title="1">{
+                bodyStr := ""
+                if body != nil </span><span class="cov8" title="1">{
+                        bodyStr = string(body)
+                }</span>
+                <span class="cov8" title="1">headers, authErr := c.getAuthHeaders(bodyStr)
+                if authErr != nil </span><span class="cov8" title="1">{
+                        return nil, authErr
+                }</span>
+                <span class="cov8" title="1">for k, v := range headers </span><span class="cov8" title="1">{
+                        req.Header.Set(k, v)
+                }</span>
+        }
+
+        <span class="cov8" title="1">resp, err := c.httpClient.Do(req)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, &amp;ClientError{Message: fmt.Sprintf("request failed: %v", err)}
+        }</span>
+        <span class="cov8" title="1">defer func() </span><span class="cov8" title="1">{
+                _ = resp.Body.Close()
+        }</span>()
+
+        <span class="cov8" title="1">respBody, err := io.ReadAll(resp.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, &amp;ClientError{Message: fmt.Sprintf("read response: %v", err)}
+        }</span>
+
+        // Try to parse response envelope
+        <span class="cov8" title="1">var envelope struct {
+                Success bool            `json:"success"`
+                Data    json.RawMessage `json:"data,omitempty"`
+                Error   *struct {
+                        Code    string         `json:"code"`
+                        Message string         `json:"message"`
+                        Details map[string]any `json:"details,omitempty"`
+                } `json:"error,omitempty"`
+        }
+
+        if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden </span><span class="cov8" title="1">{
+                return nil, &amp;AuthenticationError{Message: "authentication failed"}
+        }</span>
+
+        // Try to parse as envelope
+        <span class="cov8" title="1">if err := json.Unmarshal(respBody, &amp;envelope); err == nil &amp;&amp; (envelope.Data != nil || envelope.Error != nil) </span><span class="cov0" title="0">{
+                // Server uses envelope format
+                if resp.StatusCode &gt;= 400 || !envelope.Success </span><span class="cov0" title="0">{
+                        apiErr := &amp;ApiError{
+                                Message:    fmt.Sprintf("API returned status %d", resp.StatusCode),
+                                StatusCode: resp.StatusCode,
+                        }
+                        if envelope.Error != nil </span><span class="cov0" title="0">{
+                                apiErr.Message = envelope.Error.Message
+                                apiErr.Details = envelope.Error.Details
+                        }</span>
+                        <span class="cov0" title="0">return nil, apiErr</span>
+                }
+                <span class="cov0" title="0">if envelope.Data != nil </span><span class="cov0" title="0">{
+                        return []byte(envelope.Data), nil
+                }</span>
+        }
+
+        // Fallback: non-envelope response
+        <span class="cov8" title="1">if resp.StatusCode &gt;= 400 </span><span class="cov8" title="1">{
+                apiErr := &amp;ApiError{
+                        Message:    fmt.Sprintf("API returned status %d", resp.StatusCode),
+                        StatusCode: resp.StatusCode,
+                }
+                var details map[string]any
+                if jsonErr := json.Unmarshal(respBody, &amp;details); jsonErr == nil </span><span class="cov8" title="1">{
+                        apiErr.Details = details
+                        if msg, ok := details["message"].(string); ok </span><span class="cov8" title="1">{
+                                apiErr.Message = msg
+                        }</span>
+                }
+                <span class="cov8" title="1">return nil, apiErr</span>
+        }
+
+        <span class="cov8" title="1">return respBody, nil</span>
+}
+
+// --- API Methods ---
+
+// CheckStatus verifies the Rank API service availability.
+func (c *RankClient) CheckStatus(ctx context.Context) (*ApiStatus, error) <span class="cov8" title="1">{
+        body, err := c.doRequest(ctx, http.MethodGet, "/api/"+APIVersion+"/status", nil, false)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">var status ApiStatus
+        if err := json.Unmarshal(body, &amp;status); err != nil </span><span class="cov8" title="1">{
+                return nil, &amp;ClientError{Message: fmt.Sprintf("parse status response: %v", err)}
+        }</span>
+
+        <span class="cov8" title="1">return &amp;status, nil</span>
+}
+
+// GetUserRank returns the current user's ranking information.
+// Requires authentication.
+func (c *RankClient) GetUserRank(ctx context.Context) (*UserRank, error) <span class="cov8" title="1">{
+        body, err := c.doRequest(ctx, http.MethodGet, "/api/"+APIVersion+"/rank", nil, true)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">var userRank UserRank
+        if err := json.Unmarshal(body, &amp;userRank); err != nil </span><span class="cov0" title="0">{
+                return nil, &amp;ClientError{Message: fmt.Sprintf("parse rank response: %v", err)}
+        }</span>
+
+        <span class="cov8" title="1">return &amp;userRank, nil</span>
+}
+
+// GetLeaderboard returns the leaderboard for the specified period.
+// Public API - no authentication required. Limit is clamped to [1, 100].
+func (c *RankClient) GetLeaderboard(ctx context.Context, period string, limit, offset int) ([]LeaderboardEntry, error) <span class="cov8" title="1">{
+        if limit &lt; 1 </span><span class="cov8" title="1">{
+                limit = 1
+        }</span>
+        <span class="cov8" title="1">if limit &gt; 100 </span><span class="cov8" title="1">{
+                limit = 100
+        }</span>
+
+        <span class="cov8" title="1">path := fmt.Sprintf("/api/leaderboard?period=%s&amp;limit=%d&amp;offset=%d", period, limit, offset)
+        body, err := c.doRequest(ctx, http.MethodGet, path, nil, false)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">var entries []LeaderboardEntry
+        if err := json.Unmarshal(body, &amp;entries); err != nil </span><span class="cov0" title="0">{
+                return nil, &amp;ClientError{Message: fmt.Sprintf("parse leaderboard response: %v", err)}
+        }</span>
+
+        <span class="cov8" title="1">return entries, nil</span>
+}
+
+// SubmitSession submits a single session metric.
+// Requires HMAC authentication. Token fields are clamped to per-field maximums.
+func (c *RankClient) SubmitSession(ctx context.Context, session *SessionSubmission) error <span class="cov8" title="1">{
+        clampSessionTokens(session)
+
+        body, err := json.Marshal(session)
+        if err != nil </span><span class="cov0" title="0">{
+                return &amp;ClientError{Message: fmt.Sprintf("marshal session: %v", err)}
+        }</span>
+
+        <span class="cov8" title="1">_, reqErr := c.doRequest(ctx, http.MethodPost, "/api/"+APIVersion+"/sessions", body, true)
+        return reqErr</span>
+}
+
+// SubmitSessionsBatch submits up to 100 sessions at once.
+// Returns an error if more than 100 sessions are provided.
+func (c *RankClient) SubmitSessionsBatch(ctx context.Context, sessions []*SessionSubmission) (*BatchResult, error) <span class="cov8" title="1">{
+        if len(sessions) &gt; MaxBatchSize </span><span class="cov8" title="1">{
+                return nil, &amp;ClientError{
+                        Message: fmt.Sprintf("batch size %d exceeds maximum of %d", len(sessions), MaxBatchSize),
+                }
+        }</span>
+
+        <span class="cov8" title="1">for _, s := range sessions </span><span class="cov8" title="1">{
+                clampSessionTokens(s)
+        }</span>
+
+        <span class="cov8" title="1">payload := struct {
+                Sessions []*SessionSubmission `json:"sessions"`
+        }{Sessions: sessions}
+
+        body, err := json.Marshal(payload)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, &amp;ClientError{Message: fmt.Sprintf("marshal batch: %v", err)}
+        }</span>
+
+        <span class="cov8" title="1">respBody, reqErr := c.doRequest(ctx, http.MethodPost, "/api/"+APIVersion+"/sessions/batch", body, true)
+        if reqErr != nil </span><span class="cov0" title="0">{
+                return nil, reqErr
+        }</span>
+
+        <span class="cov8" title="1">var result BatchResult
+        if err := json.Unmarshal(respBody, &amp;result); err != nil </span><span class="cov0" title="0">{
+                return nil, &amp;ClientError{Message: fmt.Sprintf("parse batch response: %v", err)}
+        }</span>
+
+        <span class="cov8" title="1">return &amp;result, nil</span>
+}
+
+// --- Utility Functions ---
+
+// ComputeSessionHash generates a deterministic SHA-256 hash for a session.
+// The hash is computed from immutable session properties to ensure the same
+// session always produces the same hash, enabling deduplication.
+func ComputeSessionHash(endedAt string, inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens int64, modelName string) string <span class="cov8" title="1">{
+        data := fmt.Sprintf("%s:%d:%d:%d:%d:%s", endedAt, inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens, modelName)
+        hash := sha256.Sum256([]byte(data))
+        return hex.EncodeToString(hash[:])
+}</span>
+
+// clampTokensTo clamps a token value to the specified maximum.
+func clampTokensTo(value, max int64) int64 <span class="cov8" title="1">{
+        if value &gt; max </span><span class="cov8" title="1">{
+                return max
+        }</span>
+        <span class="cov8" title="1">return value</span>
+}
+
+// clampSessionTokens applies per-field token clamping to a session.
+func clampSessionTokens(s *SessionSubmission) <span class="cov8" title="1">{
+        s.InputTokens = clampTokensTo(s.InputTokens, MaxInputTokens)
+        s.OutputTokens = clampTokensTo(s.OutputTokens, MaxOutputTokens)
+        s.CacheCreationTokens = clampTokensTo(s.CacheCreationTokens, MaxCacheTokens)
+        s.CacheReadTokens = clampTokensTo(s.CacheReadTokens, MaxCacheTokens)
+}</span>
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package rank
+
+import (
+        "encoding/json"
+        "fmt"
+        "os"
+        "path/filepath"
+
+        "github.com/modu-ai/moai-adk/internal/defs"
+)
+
+// Credentials holds the user's authentication credentials.
+type Credentials struct {
+        APIKey    string `json:"api_key"`
+        Username  string `json:"username"`
+        UserID    string `json:"user_id"`
+        CreatedAt string `json:"created_at"`
+        DeviceID  string `json:"device_id,omitempty"`
+}
+
+// Config holds Rank service configuration.
+type Config struct {
+        BaseURL string `json:"base_url"`
+}
+
+// NewConfig creates a Config with defaults and environment variable overrides.
+func NewConfig() *Config <span class="cov8" title="1">{
+        cfg := &amp;Config{
+                BaseURL: DefaultBaseURL,
+        }
+        if envURL := os.Getenv("MOAI_RANK_API_URL"); envURL != "" </span><span class="cov8" title="1">{
+                cfg.BaseURL = envURL
+        }</span>
+        <span class="cov8" title="1">return cfg</span>
+}
+
+// CredentialStore defines the interface for credential persistence.
+type CredentialStore interface {
+        Save(creds *Credentials) error
+        Load() (*Credentials, error)
+        Delete() error
+        HasCredentials() bool
+        GetAPIKey() (string, error)
+}
+
+// FileCredentialStore implements CredentialStore using the filesystem.
+// Credentials are stored at ~/.moai/rank/credentials.json.
+type FileCredentialStore struct {
+        dir      string
+        credPath string
+}
+
+// Compile-time interface check.
+var _ CredentialStore = (*FileCredentialStore)(nil)
+
+// NewFileCredentialStore creates a FileCredentialStore with the given directory.
+// If dir is empty, it defaults to ~/.moai/rank/.
+func NewFileCredentialStore(dir string) *FileCredentialStore <span class="cov8" title="1">{
+        if dir == "" </span><span class="cov8" title="1">{
+                home, err := os.UserHomeDir()
+                if err != nil </span><span class="cov0" title="0">{
+                        home = "."
+                }</span>
+                <span class="cov8" title="1">dir = filepath.Join(home, defs.MoAIDir, defs.RankSubdir)</span>
+        }
+        <span class="cov8" title="1">return &amp;FileCredentialStore{
+                dir:      dir,
+                credPath: filepath.Join(dir, defs.CredentialsJSON),
+        }</span>
+}
+
+// Save persists credentials to disk atomically with secure file permissions.
+// Directory permissions: 0700, file permissions: 0600.
+func (s *FileCredentialStore) Save(creds *Credentials) error <span class="cov8" title="1">{
+        if err := os.MkdirAll(s.dir, defs.CredDirPerm); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("create credential directory: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">data, err := json.MarshalIndent(creds, "", "  ")
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("marshal credentials: %w", err)
+        }</span>
+
+        // Atomic write: write to temp file, then rename.
+        <span class="cov8" title="1">tmpFile := s.credPath + ".tmp"
+        if err := os.WriteFile(tmpFile, data, defs.CredFilePerm); err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("write temp credential file: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">if err := os.Rename(tmpFile, s.credPath); err != nil </span><span class="cov0" title="0">{
+                // Clean up temp file on rename failure.
+                _ = os.Remove(tmpFile)
+                return fmt.Errorf("rename credential file: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Load reads credentials from disk.
+// Returns nil without error if the file does not exist or contains invalid JSON.
+func (s *FileCredentialStore) Load() (*Credentials, error) <span class="cov8" title="1">{
+        data, err := os.ReadFile(s.credPath)
+        if err != nil </span><span class="cov8" title="1">{
+                if os.IsNotExist(err) </span><span class="cov8" title="1">{
+                        return nil, nil
+                }</span>
+                <span class="cov0" title="0">return nil, fmt.Errorf("read credential file: %w", err)</span>
+        }
+
+        <span class="cov8" title="1">var creds Credentials
+        if err := json.Unmarshal(data, &amp;creds); err != nil </span><span class="cov8" title="1">{
+                // Graceful handling of corrupted JSON.
+                return nil, nil
+        }</span>
+
+        <span class="cov8" title="1">return &amp;creds, nil</span>
+}
+
+// Delete removes the credentials file.
+// Returns nil if the file does not exist.
+func (s *FileCredentialStore) Delete() error <span class="cov8" title="1">{
+        err := os.Remove(s.credPath)
+        if err != nil &amp;&amp; !os.IsNotExist(err) </span><span class="cov0" title="0">{
+                return fmt.Errorf("remove credential file: %w", err)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// HasCredentials checks whether a credentials file exists.
+func (s *FileCredentialStore) HasCredentials() bool <span class="cov8" title="1">{
+        _, err := os.Stat(s.credPath)
+        return err == nil
+}</span>
+
+// GetAPIKey loads credentials and returns only the API key.
+// Returns an empty string without error if no credentials exist.
+func (s *FileCredentialStore) GetAPIKey() (string, error) <span class="cov8" title="1">{
+        creds, err := s.Load()
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov8" title="1">if creds == nil </span><span class="cov8" title="1">{
+                return "", nil
+        }</span>
+        <span class="cov8" title="1">return creds.APIKey, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">// Package rank provides device identification for MoAI Rank multi-device support.
+package rank
+
+import (
+        "crypto/sha256"
+        "encoding/hex"
+        "fmt"
+        "os"
+        "runtime"
+)
+
+// DeviceInfo holds information about the current device.
+type DeviceInfo struct {
+        DeviceID     string `json:"deviceId"`
+        HostName     string `json:"hostName"`
+        OS           string `json:"os"`
+        Architecture string `json:"architecture"`
+}
+
+// GetDeviceInfo returns information about the current device.
+// The DeviceID is a stable hash derived from hostname, ensuring
+// the same machine always produces the same ID.
+func GetDeviceInfo() DeviceInfo <span class="cov8" title="1">{
+        hostname, _ := os.Hostname()
+        if hostname == "" </span><span class="cov0" title="0">{
+                hostname = "unknown"
+        }</span>
+
+        <span class="cov8" title="1">return DeviceInfo{
+                DeviceID:     generateDeviceID(hostname),
+                HostName:     hostname,
+                OS:           runtime.GOOS,
+                Architecture: runtime.GOARCH,
+        }</span>
+}
+
+// generateDeviceID creates a stable device identifier from the hostname.
+// The ID is truncated to 16 characters for brevity.
+func generateDeviceID(hostname string) string <span class="cov8" title="1">{
+        data := fmt.Sprintf("moai-device:%s:%s:%s", hostname, runtime.GOOS, runtime.GOARCH)
+        hash := sha256.Sum256([]byte(data))
+        return hex.EncodeToString(hash[:])[:16]
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package rank
+
+import (
+        "fmt"
+        "os"
+        "path/filepath"
+        "sync"
+
+        "gopkg.in/yaml.v3"
+)
+
+// PatternStore manages exclusion and inclusion patterns for metrics sync.
+type PatternStore struct {
+        mu       sync.RWMutex
+        path     string
+        patterns *PatternConfig
+}
+
+// PatternConfig holds the pattern configuration.
+type PatternConfig struct {
+        ExcludePatterns []string `yaml:"exclude_patterns"`
+        IncludePatterns []string `yaml:"include_patterns"`
+}
+
+// NewPatternStore creates a new PatternStore with the given config directory.
+func NewPatternStore(configDir string) (*PatternStore, error) <span class="cov8" title="1">{
+        if configDir == "" </span><span class="cov0" title="0">{
+                homeDir, err := os.UserHomeDir()
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("get home dir: %w", err)
+                }</span>
+                <span class="cov0" title="0">configDir = filepath.Join(homeDir, ".moai", "config")</span>
+        }
+
+        <span class="cov8" title="1">path := filepath.Join(configDir, "rank.yaml")
+
+        store := &amp;PatternStore{
+                path: path,
+                patterns: &amp;PatternConfig{
+                        ExcludePatterns: []string{},
+                        IncludePatterns: []string{},
+                },
+        }
+
+        if err := store.load(); err != nil </span><span class="cov8" title="1">{
+                // If file doesn't exist, that's okay - start with empty patterns
+                if !os.IsNotExist(err) </span><span class="cov8" title="1">{
+                        return nil, fmt.Errorf("load patterns: %w", err)
+                }</span>
+        }
+
+        <span class="cov8" title="1">return store, nil</span>
+}
+
+// load reads the pattern configuration from disk.
+func (s *PatternStore) load() error <span class="cov8" title="1">{
+        s.mu.Lock()
+        defer s.mu.Unlock()
+
+        data, err := os.ReadFile(s.path)
+        if err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">var config PatternConfig
+        if err := yaml.Unmarshal(data, &amp;config); err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("unmarshal patterns: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">s.patterns = &amp;config
+        return nil</span>
+}
+
+// save writes the pattern configuration to disk.
+func (s *PatternStore) save() error <span class="cov8" title="1">{
+        // Ensure directory exists
+        if err := os.MkdirAll(filepath.Dir(s.path), 0o755); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("create config dir: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">data, err := yaml.Marshal(s.patterns)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("marshal patterns: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">if err := os.WriteFile(s.path, data, 0o644); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("write patterns: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// AddExclude adds a pattern to the exclusion list.
+func (s *PatternStore) AddExclude(pattern string) error <span class="cov8" title="1">{
+        s.mu.Lock()
+        defer s.mu.Unlock()
+
+        for _, p := range s.patterns.ExcludePatterns </span><span class="cov8" title="1">{
+                if p == pattern </span><span class="cov8" title="1">{
+                        return fmt.Errorf("pattern already exists in exclude list")
+                }</span>
+        }
+
+        <span class="cov8" title="1">s.patterns.ExcludePatterns = append(s.patterns.ExcludePatterns, pattern)
+        return s.save()</span>
+}
+
+// RemoveExclude removes a pattern from the exclusion list.
+func (s *PatternStore) RemoveExclude(pattern string) error <span class="cov8" title="1">{
+        s.mu.Lock()
+        defer s.mu.Unlock()
+
+        for i, p := range s.patterns.ExcludePatterns </span><span class="cov8" title="1">{
+                if p == pattern </span><span class="cov8" title="1">{
+                        s.patterns.ExcludePatterns = append(
+                                s.patterns.ExcludePatterns[:i],
+                                s.patterns.ExcludePatterns[i+1:]...,
+                        )
+                        return s.save()
+                }</span>
+        }
+
+        <span class="cov8" title="1">return fmt.Errorf("pattern not found in exclude list")</span>
+}
+
+// AddInclude adds a pattern to the inclusion list.
+func (s *PatternStore) AddInclude(pattern string) error <span class="cov8" title="1">{
+        s.mu.Lock()
+        defer s.mu.Unlock()
+
+        for _, p := range s.patterns.IncludePatterns </span><span class="cov8" title="1">{
+                if p == pattern </span><span class="cov8" title="1">{
+                        return fmt.Errorf("pattern already exists in include list")
+                }</span>
+        }
+
+        <span class="cov8" title="1">s.patterns.IncludePatterns = append(s.patterns.IncludePatterns, pattern)
+        return s.save()</span>
+}
+
+// RemoveInclude removes a pattern from the inclusion list.
+func (s *PatternStore) RemoveInclude(pattern string) error <span class="cov8" title="1">{
+        s.mu.Lock()
+        defer s.mu.Unlock()
+
+        for i, p := range s.patterns.IncludePatterns </span><span class="cov8" title="1">{
+                if p == pattern </span><span class="cov8" title="1">{
+                        s.patterns.IncludePatterns = append(
+                                s.patterns.IncludePatterns[:i],
+                                s.patterns.IncludePatterns[i+1:]...,
+                        )
+                        return s.save()
+                }</span>
+        }
+
+        <span class="cov8" title="1">return fmt.Errorf("pattern not found in include list")</span>
+}
+
+// ListPatterns returns all patterns.
+func (s *PatternStore) ListPatterns() (exclude, include []string) <span class="cov8" title="1">{
+        s.mu.RLock()
+        defer s.mu.RUnlock()
+
+        exclude = make([]string, len(s.patterns.ExcludePatterns))
+        copy(exclude, s.patterns.ExcludePatterns)
+
+        include = make([]string, len(s.patterns.IncludePatterns))
+        copy(include, s.patterns.IncludePatterns)
+
+        return exclude, include
+}</span>
+
+// ShouldExclude checks if a given path matches any exclusion pattern.
+func (s *PatternStore) ShouldExclude(path string) bool <span class="cov8" title="1">{
+        s.mu.RLock()
+        defer s.mu.RUnlock()
+
+        // Simple prefix matching for now
+        // Can be extended to support glob patterns
+        for _, pattern := range s.patterns.ExcludePatterns </span><span class="cov8" title="1">{
+                if pattern == path </span><span class="cov8" title="1">{
+                        return true
+                }</span>
+        }
+
+        <span class="cov8" title="1">return false</span>
+}
+
+// ShouldInclude checks if a given path matches any inclusion pattern.
+func (s *PatternStore) ShouldInclude(path string) bool <span class="cov8" title="1">{
+        s.mu.RLock()
+        defer s.mu.RUnlock()
+
+        for _, pattern := range s.patterns.IncludePatterns </span><span class="cov8" title="1">{
+                if pattern == path </span><span class="cov8" title="1">{
+                        return true
+                }</span>
+        }
+
+        <span class="cov8" title="1">return false</span>
+}
+
+// GetConfig returns a copy of the current pattern configuration.
+func (s *PatternStore) GetConfig() PatternConfig <span class="cov8" title="1">{
+        s.mu.RLock()
+        defer s.mu.RUnlock()
+
+        config := PatternConfig{
+                ExcludePatterns: make([]string, len(s.patterns.ExcludePatterns)),
+                IncludePatterns: make([]string, len(s.patterns.IncludePatterns)),
+        }
+        copy(config.ExcludePatterns, s.patterns.ExcludePatterns)
+        copy(config.IncludePatterns, s.patterns.IncludePatterns)
+
+        return config
+}</span>
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">// Package rank provides model pricing for MoAI Rank cost calculation.
+package rank
+
+// ModelPricing holds pricing information for a Claude model.
+// Prices are in USD per million tokens.
+type ModelPricing struct {
+        Input         float64 `json:"input"`
+        Output        float64 `json:"output"`
+        CacheCreation float64 `json:"cache_creation"`
+        CacheRead     float64 `json:"cache_read"`
+}
+
+// modelPricingDB holds the pricing database for all Claude models.
+// Source: https://platform.claude.com/docs/en/about-claude/pricing
+// Last updated: 2026-02
+var modelPricingDB = map[string]ModelPricing{
+        // Claude Opus 4.6 - Latest flagship model (same pricing tier as Opus 4/4.1)
+        "claude-opus-4-6-20260203": {
+                Input:         15.00,
+                Output:        75.00,
+                CacheCreation: 18.75,
+                CacheRead:     1.50,
+        },
+        // Claude Opus 4.5
+        "claude-opus-4-5-20251101": {
+                Input:         5.00,
+                Output:        25.00,
+                CacheCreation: 6.25,
+                CacheRead:     0.50,
+        },
+        // Claude Opus 4.1
+        "claude-opus-4-1-20250414": {
+                Input:         15.00,
+                Output:        75.00,
+                CacheCreation: 18.75,
+                CacheRead:     1.50,
+        },
+        // Claude Opus 4
+        "claude-opus-4-20250514": {
+                Input:         15.00,
+                Output:        75.00,
+                CacheCreation: 18.75,
+                CacheRead:     1.50,
+        },
+        // Claude Sonnet 4.5
+        "claude-sonnet-4-5-20251022": {
+                Input:         3.00,
+                Output:        15.00,
+                CacheCreation: 3.75,
+                CacheRead:     0.30,
+        },
+        // Claude Sonnet 4
+        "claude-sonnet-4-20250514": {
+                Input:         3.00,
+                Output:        15.00,
+                CacheCreation: 3.75,
+                CacheRead:     0.30,
+        },
+        // Claude Sonnet 3.7 (deprecated but still supported)
+        "claude-3-7-sonnet-20250219": {
+                Input:         3.00,
+                Output:        15.00,
+                CacheCreation: 3.75,
+                CacheRead:     0.30,
+        },
+        // Claude Haiku 4.5
+        "claude-haiku-4-5-20251022": {
+                Input:         1.00,
+                Output:        5.00,
+                CacheCreation: 1.25,
+                CacheRead:     0.10,
+        },
+        // Claude Haiku 3.5
+        "claude-3-5-haiku-20241022": {
+                Input:         0.80,
+                Output:        4.00,
+                CacheCreation: 1.00,
+                CacheRead:     0.08,
+        },
+        // Claude Opus 3 (deprecated)
+        "claude-3-opus-20240229": {
+                Input:         15.00,
+                Output:        75.00,
+                CacheCreation: 18.75,
+                CacheRead:     1.50,
+        },
+        // Claude Haiku 3
+        "claude-3-haiku-20240307": {
+                Input:         0.25,
+                Output:        1.25,
+                CacheCreation: 0.3125,
+                CacheRead:     0.025,
+        },
+}
+
+// GetModelPricing returns the pricing for a given model name.
+// Returns zero pricing if model is not found.
+func GetModelPricing(modelName string) ModelPricing <span class="cov8" title="1">{
+        if pricing, ok := modelPricingDB[modelName]; ok </span><span class="cov8" title="1">{
+                return pricing
+        }</span>
+        // Return zero pricing for unknown models
+        <span class="cov8" title="1">return ModelPricing{}</span>
+}
+
+// CalculateCost calculates the USD cost for token usage.
+func CalculateCost(inputTokens, outputTokens, cacheCreation, cacheRead int64, pricing ModelPricing) float64 <span class="cov8" title="1">{
+        inputCost := float64(inputTokens) / 1_000_000 * pricing.Input
+        outputCost := float64(outputTokens) / 1_000_000 * pricing.Output
+        cacheCreationCost := float64(cacheCreation) / 1_000_000 * pricing.CacheCreation
+        cacheReadCost := float64(cacheRead) / 1_000_000 * pricing.CacheRead
+
+        return inputCost + outputCost + cacheCreationCost + cacheReadCost
+}</span>
+
+// HasPricing returns true if the model has pricing information.
+func HasPricing(modelName string) bool <span class="cov8" title="1">{
+        _, ok := modelPricingDB[modelName]
+        return ok
+}</span>
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">// Package rank provides sync state tracking for MoAI Rank session submission.
+package rank
+
+import (
+        "encoding/json"
+        "fmt"
+        "os"
+        "path/filepath"
+        "time"
+
+        "github.com/modu-ai/moai-adk/internal/defs"
+)
+
+// SyncedFile records metadata about a synced transcript file.
+type SyncedFile struct {
+        FileModTime time.Time `json:"fileModTime"`
+        FileSize    int64     `json:"fileSize"`
+        SyncedAt    time.Time `json:"syncedAt"`
+}
+
+// SyncStateData represents the persistent sync state structure.
+type SyncStateData struct {
+        Version      int                    `json:"version"`
+        LastSyncTime time.Time              `json:"lastSyncTime"`
+        SyncedFiles  map[string]*SyncedFile `json:"syncedFiles"`
+}
+
+// SyncState manages the sync state for transcript submissions.
+type SyncState struct {
+        path string
+        data *SyncStateData
+}
+
+// NewSyncState creates a new SyncState with the default storage path.
+// If basePath is empty, uses ~/.moai/rank/sync-state.json.
+func NewSyncState(basePath string) (*SyncState, error) <span class="cov8" title="1">{
+        if basePath == "" </span><span class="cov0" title="0">{
+                homeDir, err := os.UserHomeDir()
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("get home directory: %w", err)
+                }</span>
+                <span class="cov0" title="0">basePath = filepath.Join(homeDir, defs.MoAIDir, defs.RankSubdir, "sync-state.json")</span>
+        }
+
+        <span class="cov8" title="1">s := &amp;SyncState{
+                path: basePath,
+                data: &amp;SyncStateData{
+                        Version:     1,
+                        SyncedFiles: make(map[string]*SyncedFile),
+                },
+        }
+
+        // Try to load existing state
+        if err := s.Load(); err != nil &amp;&amp; !os.IsNotExist(err) </span><span class="cov8" title="1">{
+                // If file exists but is corrupted, start fresh
+                s.data = &amp;SyncStateData{
+                        Version:     1,
+                        SyncedFiles: make(map[string]*SyncedFile),
+                }
+        }</span>
+
+        <span class="cov8" title="1">return s, nil</span>
+}
+
+// Load reads the sync state from disk.
+func (s *SyncState) Load() error <span class="cov8" title="1">{
+        data, err := os.ReadFile(s.path)
+        if err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">var state SyncStateData
+        if err := json.Unmarshal(data, &amp;state); err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("parse sync state: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">if state.SyncedFiles == nil </span><span class="cov8" title="1">{
+                state.SyncedFiles = make(map[string]*SyncedFile)
+        }</span>
+
+        <span class="cov8" title="1">s.data = &amp;state
+        return nil</span>
+}
+
+// Save writes the sync state to disk atomically.
+func (s *SyncState) Save() error <span class="cov8" title="1">{
+        // Ensure directory exists
+        dir := filepath.Dir(s.path)
+        if err := os.MkdirAll(dir, 0o700); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("create sync state directory: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">data, err := json.MarshalIndent(s.data, "", "  ")
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("marshal sync state: %w", err)
+        }</span>
+
+        // Atomic write via temp file
+        <span class="cov8" title="1">tmpPath := s.path + ".tmp"
+        if err := os.WriteFile(tmpPath, data, 0o600); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("write sync state: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">if err := os.Rename(tmpPath, s.path); err != nil </span><span class="cov0" title="0">{
+                // Fallback: direct write if rename fails (cross-device)
+                _ = os.Remove(tmpPath)
+                if err := os.WriteFile(s.path, data, 0o600); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("write sync state: %w", err)
+                }</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// IsSynced checks if a transcript file has been synced and hasn't changed since.
+func (s *SyncState) IsSynced(transcriptPath string) bool <span class="cov8" title="1">{
+        entry, ok := s.data.SyncedFiles[transcriptPath]
+        if !ok </span><span class="cov8" title="1">{
+                return false
+        }</span>
+
+        // Check if file has been modified since last sync
+        <span class="cov8" title="1">info, err := os.Stat(transcriptPath)
+        if err != nil </span><span class="cov8" title="1">{
+                return false
+        }</span>
+
+        <span class="cov8" title="1">return info.ModTime().Equal(entry.FileModTime) &amp;&amp; info.Size() == entry.FileSize</span>
+}
+
+// MarkSynced records a transcript file as successfully synced.
+func (s *SyncState) MarkSynced(transcriptPath string) error <span class="cov8" title="1">{
+        info, err := os.Stat(transcriptPath)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("stat transcript: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">s.data.SyncedFiles[transcriptPath] = &amp;SyncedFile{
+                FileModTime: info.ModTime(),
+                FileSize:    info.Size(),
+                SyncedAt:    time.Now(),
+        }
+
+        s.data.LastSyncTime = time.Now()
+        return nil</span>
+}
+
+// Reset clears all sync state, forcing a full resync.
+func (s *SyncState) Reset() <span class="cov8" title="1">{
+        s.data = &amp;SyncStateData{
+                Version:     1,
+                SyncedFiles: make(map[string]*SyncedFile),
+        }
+}</span>
+
+// SyncedCount returns the number of synced transcripts.
+func (s *SyncState) SyncedCount() int <span class="cov8" title="1">{
+        return len(s.data.SyncedFiles)
+}</span>
+
+// CleanStale removes entries for transcript files that no longer exist.
+func (s *SyncState) CleanStale() int <span class="cov8" title="1">{
+        removed := 0
+        for path := range s.data.SyncedFiles </span><span class="cov8" title="1">{
+                if _, err := os.Stat(path); os.IsNotExist(err) </span><span class="cov8" title="1">{
+                        delete(s.data.SyncedFiles, path)
+                        removed++
+                }</span>
+        }
+        <span class="cov8" title="1">return removed</span>
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">// Package rank provides transcript parsing for MoAI Rank session submission.
+package rank
+
+import (
+        "bufio"
+        "encoding/json"
+        "fmt"
+        "os"
+        "path/filepath"
+        "runtime"
+        "strings"
+        "time"
+)
+
+// TranscriptUsage represents token usage extracted from a Claude Code transcript.
+type TranscriptUsage struct {
+        InputTokens         int64  `json:"input_tokens"`
+        OutputTokens        int64  `json:"output_tokens"`
+        CacheCreationTokens int64  `json:"cache_creation_tokens"`
+        CacheReadTokens     int64  `json:"cache_read_tokens"`
+        ModelName           string `json:"model_name"`
+        StartedAt           string `json:"started_at,omitempty"`
+        EndedAt             string `json:"ended_at,omitempty"`
+        DurationSeconds     int64  `json:"duration_seconds,omitempty"`
+        TurnCount           int    `json:"turn_count,omitempty"`
+}
+
+// transcriptMessage represents a single line in the JSONL transcript file.
+type transcriptMessage struct {
+        Timestamp string        `json:"timestamp"`
+        Type      string        `json:"type"`
+        Message   transcriptMsg `json:"message"`
+        Model     string        `json:"model"`
+}
+
+// transcriptMsg represents the message content with usage data.
+type transcriptMsg struct {
+        Usage *transcriptUsage `json:"usage"`
+        Model string           `json:"model"`
+}
+
+// transcriptUsage represents token usage information.
+type transcriptUsage struct {
+        InputTokens              int64 `json:"input_tokens"`
+        OutputTokens             int64 `json:"output_tokens"`
+        CacheCreationInputTokens int64 `json:"cache_creation_input_tokens"`
+        CacheReadInputTokens     int64 `json:"cache_read_input_tokens"`
+}
+
+// ParseTranscript parses a Claude Code transcript JSONL file and extracts token usage.
+// The transcript file contains one JSON object per line, with token usage in message.usage fields.
+func ParseTranscript(transcriptPath string) (*TranscriptUsage, error) <span class="cov8" title="1">{
+        file, err := os.Open(transcriptPath)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("open transcript: %w", err)
+        }</span>
+        <span class="cov8" title="1">defer func() </span><span class="cov8" title="1">{
+                // Close errors are ignored for read-only files
+                _ = file.Close()
+        }</span>()
+
+        <span class="cov8" title="1">usage := &amp;TranscriptUsage{}
+        var firstTimestamp, lastTimestamp string
+        turnCount := 0
+
+        scanner := bufio.NewScanner(file)
+        for scanner.Scan() </span><span class="cov8" title="1">{
+                line := strings.TrimSpace(scanner.Text())
+                if line == "" </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">var msg transcriptMessage
+                if err := json.Unmarshal([]byte(line), &amp;msg); err != nil </span><span class="cov8" title="1">{
+                        // Skip invalid lines
+                        continue</span>
+                }
+
+                // Track timestamps for duration calculation
+                <span class="cov8" title="1">if msg.Timestamp != "" </span><span class="cov8" title="1">{
+                        if firstTimestamp == "" </span><span class="cov8" title="1">{
+                                firstTimestamp = msg.Timestamp
+                        }</span>
+                        <span class="cov8" title="1">lastTimestamp = msg.Timestamp</span>
+                }
+
+                // Count user turns
+                <span class="cov8" title="1">if msg.Type == "user" </span><span class="cov8" title="1">{
+                        turnCount++
+                }</span>
+
+                // Extract model name
+                <span class="cov8" title="1">model := msg.Model
+                if model != "" &amp;&amp; usage.ModelName == "" </span><span class="cov8" title="1">{
+                        usage.ModelName = model
+                }</span>
+                <span class="cov8" title="1">if msg.Message.Model != "" &amp;&amp; usage.ModelName == "" </span><span class="cov8" title="1">{
+                        usage.ModelName = msg.Message.Model
+                }</span>
+
+                // Extract token usage
+                <span class="cov8" title="1">if msg.Message.Usage != nil </span><span class="cov8" title="1">{
+                        usage.InputTokens += msg.Message.Usage.InputTokens
+                        usage.OutputTokens += msg.Message.Usage.OutputTokens
+                        usage.CacheCreationTokens += msg.Message.Usage.CacheCreationInputTokens
+                        usage.CacheReadTokens += msg.Message.Usage.CacheReadInputTokens
+                }</span>
+        }
+
+        <span class="cov8" title="1">if err := scanner.Err(); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("scan transcript: %w", err)
+        }</span>
+
+        // Set timing metadata
+        <span class="cov8" title="1">usage.StartedAt = firstTimestamp
+        usage.EndedAt = lastTimestamp
+        usage.TurnCount = turnCount
+
+        // Calculate duration if timestamps are available
+        if firstTimestamp != "" &amp;&amp; lastTimestamp != "" </span><span class="cov8" title="1">{
+                start, err := time.Parse(time.RFC3339Nano, firstTimestamp)
+                if err == nil </span><span class="cov8" title="1">{
+                        end, err := time.Parse(time.RFC3339Nano, lastTimestamp)
+                        if err == nil </span><span class="cov8" title="1">{
+                                usage.DurationSeconds = int64(end.Sub(start).Seconds())
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">return usage, nil</span>
+}
+
+// claudeDesktopConfigDir returns the Claude Desktop (Electron app) configuration directory
+// based on the platform.
+func claudeDesktopConfigDir() (string, error) <span class="cov8" title="1">{
+        homeDir, err := os.UserHomeDir()
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("get home directory: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">switch goos := runtime.GOOS; goos </span>{
+        case "darwin":<span class="cov8" title="1">
+                return filepath.Join(homeDir, "Library", "Application Support", "Claude"), nil</span>
+        case "linux":<span class="cov0" title="0">
+                return filepath.Join(homeDir, ".config", "Claude"), nil</span>
+        case "windows":<span class="cov0" title="0">
+                appData := os.Getenv("APPDATA")
+                if appData == "" </span><span class="cov0" title="0">{
+                        return "", fmt.Errorf("APPDATA environment variable not set")
+                }</span>
+                <span class="cov0" title="0">return filepath.Join(appData, "Claude"), nil</span>
+        default:<span class="cov0" title="0">
+                return "", fmt.Errorf("unsupported platform: %s", goos)</span>
+        }
+}
+
+// claudeCodeDir returns the Claude Code CLI configuration directory (~/.claude/).
+func claudeCodeDir() (string, error) <span class="cov8" title="1">{
+        homeDir, err := os.UserHomeDir()
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("get home directory: %w", err)
+        }</span>
+        <span class="cov8" title="1">return filepath.Join(homeDir, ".claude"), nil</span>
+}
+
+// globJSONL collects .jsonl files matching the given pattern, ignoring glob errors.
+func globJSONL(pattern string) []string <span class="cov8" title="1">{
+        matches, err := filepath.Glob(pattern)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+        <span class="cov8" title="1">return matches</span>
+}
+
+// FindTranscripts finds all Claude Code transcript JSONL files.
+// It searches multiple locations in priority order:
+//  1. ~/.claude/projects/*/*.jsonl  (Claude Code CLI - new format, UUID-based filenames)
+//  2. ~/.claude/transcripts/*.jsonl (Claude Code CLI - old/legacy format)
+//  3. Claude Desktop paths           (fallback for Desktop users)
+func FindTranscripts() ([]string, error) <span class="cov8" title="1">{
+        seen := make(map[string]struct{})
+        var results []string
+
+        addUnique := func(paths []string) </span><span class="cov8" title="1">{
+                for _, p := range paths </span><span class="cov8" title="1">{
+                        if _, exists := seen[p]; !exists </span><span class="cov8" title="1">{
+                                seen[p] = struct{}{}
+                                results = append(results, p)
+                        }</span>
+                }
+        }
+
+        // Priority 1: Claude Code CLI new format (~/.claude/projects/*/*.jsonl)
+        <span class="cov8" title="1">if codeDir, err := claudeCodeDir(); err == nil </span><span class="cov8" title="1">{
+                addUnique(globJSONL(filepath.Join(codeDir, "projects", "*", "*.jsonl")))
+        }</span>
+
+        // Priority 2: Claude Code CLI old/legacy format (~/.claude/transcripts/*.jsonl)
+        <span class="cov8" title="1">if codeDir, err := claudeCodeDir(); err == nil </span><span class="cov8" title="1">{
+                addUnique(globJSONL(filepath.Join(codeDir, "transcripts", "*.jsonl")))
+        }</span>
+
+        // Priority 3: Claude Desktop paths (fallback)
+        <span class="cov8" title="1">if desktopDir, err := claudeDesktopConfigDir(); err == nil </span><span class="cov8" title="1">{
+                addUnique(globJSONL(filepath.Join(desktopDir, "*", "transcripts", "*.jsonl")))
+        }</span>
+
+        <span class="cov8" title="1">return results, nil</span>
+}
+
+// isValidSessionID validates a session ID to prevent path traversal attacks.
+// Valid session IDs contain only alphanumeric characters, hyphens, and underscores.
+func isValidSessionID(sessionID string) bool <span class="cov8" title="1">{
+        if sessionID == "" || len(sessionID) &gt; 128 </span><span class="cov8" title="1">{
+                return false
+        }</span>
+        <span class="cov8" title="1">for _, c := range sessionID </span><span class="cov8" title="1">{
+                if (c &lt; 'a' || c &gt; 'z') &amp;&amp; (c &lt; 'A' || c &gt; 'Z') &amp;&amp; (c &lt; '0' || c &gt; '9') &amp;&amp; c != '-' &amp;&amp; c != '_' </span><span class="cov8" title="1">{
+                        return false
+                }</span>
+        }
+        <span class="cov8" title="1">return true</span>
+}
+
+// FindTranscriptForSession finds the transcript file for a specific session ID.
+// It searches Claude Code CLI paths first, then falls back to Desktop paths.
+// Returns the path if found, empty string otherwise.
+func FindTranscriptForSession(sessionID string) string <span class="cov8" title="1">{
+        if !isValidSessionID(sessionID) </span><span class="cov8" title="1">{
+                return ""
+        }</span>
+
+        // Priority 1: Claude Code CLI new format (~/.claude/projects/*/&lt;sessionID&gt;*.jsonl)
+        <span class="cov8" title="1">if codeDir, err := claudeCodeDir(); err == nil </span><span class="cov8" title="1">{
+                pattern := filepath.Join(codeDir, "projects", "*", sessionID+"*.jsonl")
+                if matches := globJSONL(pattern); len(matches) &gt; 0 </span><span class="cov8" title="1">{
+                        return matches[0]
+                }</span>
+        }
+
+        // Priority 2: Claude Code CLI old/legacy format (~/.claude/transcripts/&lt;sessionID&gt;*.jsonl)
+        <span class="cov8" title="1">if codeDir, err := claudeCodeDir(); err == nil </span><span class="cov8" title="1">{
+                pattern := filepath.Join(codeDir, "transcripts", sessionID+"*.jsonl")
+                if matches := globJSONL(pattern); len(matches) &gt; 0 </span><span class="cov8" title="1">{
+                        return matches[0]
+                }</span>
+        }
+
+        // Priority 3: Claude Desktop paths (fallback)
+        <span class="cov8" title="1">if desktopDir, err := claudeDesktopConfigDir(); err == nil </span><span class="cov8" title="1">{
+                pattern := filepath.Join(desktopDir, "*", "transcripts", sessionID+"*.jsonl")
+                if matches := globJSONL(pattern); len(matches) &gt; 0 </span><span class="cov0" title="0">{
+                        return matches[0]
+                }</span>
+        }
+
+        <span class="cov8" title="1">return ""</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

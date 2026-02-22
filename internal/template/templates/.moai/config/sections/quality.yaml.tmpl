@@ -1,6 +1,6 @@
 constitution:
   # Development methodology selection
-  # Options: ddd (Domain-Driven Development), tdd (Test-Driven Development), hybrid (mixed approach)
+  # Options: ddd (Domain-Driven Development), tdd (Test-Driven Development)
   development_mode: "{{.DevelopmentMode}}"
 
   # Enable TRUST 5 quality framework enforcement
@@ -10,7 +10,7 @@ constitution:
   test_coverage_target: {{.TestCoverageTarget}}
 
   # DDD Mode Settings (ANALYZE-PRESERVE-IMPROVE)
-  # Best for: Legacy refactoring only (existing codebase, no new features)
+  # Best for: Existing projects with minimal test coverage (< 10%)
   ddd_settings:
     # Require existing tests before modifications
     require_existing_tests: true
@@ -28,7 +28,7 @@ constitution:
     preserve_before_improve: true
 
   # TDD Mode Settings (RED-GREEN-REFACTOR)
-  # Best for: Isolated new modules with no existing code dependencies (rare)
+  # Best for: All development work, new projects, and projects with 10%+ test coverage (default)
   tdd_settings:
     # Enforce RED-GREEN-REFACTOR cycle
     red_green_refactor: true
@@ -41,24 +41,6 @@ constitution:
 
     # Enable mutation testing (experimental)
     mutation_testing_enabled: false
-
-  # Hybrid Mode Settings (TDD for new + DDD for legacy)
-  # Best for: All development work (new projects, new features, ongoing development)
-  hybrid_settings:
-    # Methodology for new features (tdd or ddd)
-    new_features: tdd
-
-    # Methodology for legacy refactoring (tdd or ddd)
-    legacy_refactoring: ddd
-
-    # Minimum coverage for new code (0-100)
-    min_coverage_new: 85
-
-    # Minimum coverage for legacy code (0-100)
-    min_coverage_legacy: 85
-
-    # Preserve existing behavior during refactoring
-    preserve_refactoring: true
 
   # Coverage exemption settings
   coverage_exemptions:

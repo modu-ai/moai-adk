@@ -1,6 +1,7 @@
 package worktree
 
 import (
+	"slices"
 	"testing"
 )
 
@@ -20,13 +21,7 @@ func TestWorktreeCmd_Alias(t *testing.T) {
 	if len(WorktreeCmd.Aliases) == 0 {
 		t.Fatal("WorktreeCmd should have aliases")
 	}
-	found := false
-	for _, alias := range WorktreeCmd.Aliases {
-		if alias == "wt" {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(WorktreeCmd.Aliases, "wt")
 	if !found {
 		t.Error("WorktreeCmd should have 'wt' alias")
 	}

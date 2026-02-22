@@ -1,8 +1,5 @@
 ---
-paths:
-  - "**/*.py"
-  - "**/pyproject.toml"
-  - "**/requirements*.txt"
+paths: "**/*.py,**/pyproject.toml,**/requirements*.txt"
 ---
 
 # Python Rules

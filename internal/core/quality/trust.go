@@ -1,9 +1,11 @@
+// @MX:ANCHOR: [AUTO] TRUST 5 품질 게이트 프레임워크의 핵심 패키지입니다. 5가지 품질 원칙(Tested, Readable, Understandable, Secured, Trackable)을 자동 검증합니다.
+// @MX:REASON: fan_in=15+, 모든 품질 검증의 진입점이며 시스템 전체에서 호출됩니다
 // Package quality implements the TRUST 5 Quality Gates framework.
 //
 // It provides automated validation of five quality principles:
 // Tested, Readable, Understandable, Secured, and Trackable.
 // The framework supports phase-specific thresholds, regression detection,
-// and methodology-aware validation (DDD, TDD, Hybrid).
+// and methodology-aware validation (DDD, TDD).
 package quality
 
 import (
@@ -12,6 +14,7 @@ import (
 	"log/slog"
 	"math"
 	"regexp"
+	"slices"
 	"sync"
 	"time"
 )
@@ -51,18 +54,15 @@ const (
 
 	// ModeTDD uses Test-Driven Development (RED-GREEN-REFACTOR).
 	ModeTDD DevelopmentMode = "tdd"
-
-	// ModeHybrid uses TDD for new code and DDD for legacy code.
-	ModeHybrid DevelopmentMode = "hybrid"
 )
 
 // ValidDevelopmentModes lists all supported development modes.
-var ValidDevelopmentModes = []DevelopmentMode{ModeDDD, ModeTDD, ModeHybrid}
+var ValidDevelopmentModes = []DevelopmentMode{ModeDDD, ModeTDD}
 
 // IsValid checks whether the DevelopmentMode is a recognized value.
 func (m DevelopmentMode) IsValid() bool {
 	switch m {
-	case ModeDDD, ModeTDD, ModeHybrid:
+	case ModeDDD, ModeTDD:
 		return true
 	}
 	return false
@@ -156,13 +156,6 @@ type ASTMatch struct {
 	Match   string
 }
 
-// ChangeClassification categorizes code changes for hybrid mode analysis.
-type ChangeClassification struct {
-	NewFiles      []string
-	ModifiedFiles []string
-	NewFunctions  []string
-}
-
 // --- Interfaces ---
 
 // Gate defines the TRUST 5 quality gate interface.
@@ -210,7 +203,6 @@ type QualityConfig struct {
 	RegressionDetection RegressionConfig
 	DDDSettings         DDDSettings
 	TDDSettings         TDDSettings
-	HybridSettings      HybridSettings
 	CacheTTL            time.Duration
 	Timeout             time.Duration
 }
@@ -266,12 +258,6 @@ type TDDSettings struct {
 	MutationScoreThreshold int
 }
 
-// HybridSettings holds hybrid mode quality gate configuration.
-type HybridSettings struct {
-	MinCoverageNew    int
-	MinCoverageLegacy int
-}
-
 // MethodologyContext provides methodology-specific validation inputs.
 type MethodologyContext struct {
 	// DDD-specific
@@ -283,11 +269,6 @@ type MethodologyContext struct {
 	TestFirstVerified          bool
 	CommitCoverage             int
 	CoverageExemptionRequested bool
-
-	// Hybrid-specific
-	Changes            *ChangeClassification
-	NewCodeCoverage    int
-	LegacyCodeCoverage int
 
 	// Transition tracking
 	PreviousMode DevelopmentMode
@@ -342,10 +323,6 @@ func DefaultQualityConfig() QualityConfig {
 			MinCoveragePerCommit:   80,
 			RequireTestFirst:       true,
 			MutationTestingEnabled: false,
-		},
-		HybridSettings: HybridSettings{
-			MinCoverageNew:    90,
-			MinCoverageLegacy: 85,
 		},
 		CacheTTL: 5 * time.Second,
 		Timeout:  3 * time.Second,
@@ -427,6 +404,8 @@ func NewTrustGate(config QualityConfig, validators []Validator, opts ...TrustGat
 // Compile-time interface compliance check.
 var _ Gate = (*TrustGate)(nil)
 
+// @MX:WARN: [AUTO] validators 수만큼 고루틴을 생성하여 동시에 실행합니다. 고루틴 누수 가능성을 제어해야 합니다.
+// @MX:REASON: [AUTO] validators 길이만큼 고루틴이 생성되어 리소스 부하 가능성
 // Validate runs all TRUST 5 principle validators and returns an aggregated report.
 // Validators are executed concurrently. If context is cancelled, partial results
 // are returned along with the context error.
@@ -736,7 +715,7 @@ func (g *TrustGate) validateMethodology() []Issue {
 		return []Issue{{
 			Severity: SeverityError,
 			Message: fmt.Sprintf(
-				"unknown development mode %q, valid modes: ddd, tdd, hybrid",
+				"unknown development mode %q, valid modes: ddd, tdd",
 				g.config.DevelopmentMode,
 			),
 			Rule: "methodology-invalid-mode",
@@ -748,8 +727,6 @@ func (g *TrustGate) validateMethodology() []Issue {
 		return g.validateDDDMode()
 	case ModeTDD:
 		return g.validateTDDMode()
-	case ModeHybrid:
-		return g.validateHybridMode()
 	default:
 		return nil
 	}
@@ -821,38 +798,6 @@ func (g *TrustGate) validateTDDMode() []Issue {
 	return issues
 }
 
-// validateHybridMode enforces hybrid-mode-specific quality rules.
-func (g *TrustGate) validateHybridMode() []Issue {
-	var issues []Issue
-	mCtx := g.methodologyCtx
-
-	if mCtx.Changes == nil {
-		return issues
-	}
-
-	minNew := g.config.HybridSettings.MinCoverageNew
-	if minNew > 0 && len(mCtx.Changes.NewFiles) > 0 && mCtx.NewCodeCoverage < minNew {
-		issues = append(issues, Issue{
-			Severity: SeverityError,
-			Message: fmt.Sprintf("new code coverage %d%% is below hybrid minimum %d%%",
-				mCtx.NewCodeCoverage, minNew),
-			Rule: "hybrid-new-coverage",
-		})
-	}
-
-	minLegacy := g.config.HybridSettings.MinCoverageLegacy
-	if minLegacy > 0 && len(mCtx.Changes.ModifiedFiles) > 0 && mCtx.LegacyCodeCoverage < minLegacy {
-		issues = append(issues, Issue{
-			Severity: SeverityError,
-			Message: fmt.Sprintf("legacy code coverage %d%% is below hybrid minimum %d%%",
-				mCtx.LegacyCodeCoverage, minLegacy),
-			Rule: "hybrid-legacy-coverage",
-		})
-	}
-
-	return issues
-}
-
 // buildReport aggregates validator results into a Report.
 func (g *TrustGate) buildReport(results map[string]*PrincipleResult) *Report {
 	report := &Report{
@@ -894,12 +839,7 @@ func (g *TrustGate) buildReport(results map[string]*PrincipleResult) *Report {
 
 // isValidPrinciple checks whether the given name is a valid TRUST principle.
 func isValidPrinciple(name string) bool {
-	for _, p := range ValidPrinciples {
-		if p == name {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ValidPrinciples, name)
 }
 
 // IsConventionalCommit checks whether a commit message follows Conventional Commits format.

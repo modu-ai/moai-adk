@@ -68,12 +68,12 @@ func TestSettingsTemplateRequiredHooks(t *testing.T) {
 	ctx := testContext("darwin")
 	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
 
-	var settings map[string]interface{}
+	var settings map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
 		t.Fatalf("Unmarshal error: %v", err)
 	}
 
-	hooks, ok := settings["hooks"].(map[string]interface{})
+	hooks, ok := settings["hooks"].(map[string]any)
 	if !ok {
 		t.Fatal("missing hooks section")
 	}
@@ -90,12 +90,12 @@ func TestSettingsTemplateRequiredEnvVars(t *testing.T) {
 	ctx := testContext("darwin")
 	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
 
-	var settings map[string]interface{}
+	var settings map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
 		t.Fatalf("Unmarshal error: %v", err)
 	}
 
-	env, ok := settings["env"].(map[string]interface{})
+	env, ok := settings["env"].(map[string]any)
 	if !ok {
 		t.Fatal("missing env section")
 	}
@@ -151,7 +151,7 @@ func TestSettingsTemplateNoSandbox(t *testing.T) {
 	ctx := testContext("darwin")
 	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
 
-	var settings map[string]interface{}
+	var settings map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
 		t.Fatalf("Unmarshal error: %v", err)
 	}
@@ -165,12 +165,12 @@ func TestSettingsTemplateAttribution(t *testing.T) {
 	ctx := testContext("darwin")
 	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
 
-	var settings map[string]interface{}
+	var settings map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
 		t.Fatalf("Unmarshal error: %v", err)
 	}
 
-	attr, ok := settings["attribution"].(map[string]interface{})
+	attr, ok := settings["attribution"].(map[string]any)
 	if !ok {
 		t.Fatal("missing attribution section")
 	}
@@ -188,12 +188,12 @@ func TestSettingsTemplateStatusLine(t *testing.T) {
 	ctx := testContext("darwin")
 	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
 
-	var settings map[string]interface{}
+	var settings map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
 		t.Fatalf("Unmarshal error: %v", err)
 	}
 
-	sl, ok := settings["statusLine"].(map[string]interface{})
+	sl, ok := settings["statusLine"].(map[string]any)
 	if !ok {
 		t.Fatal("missing statusLine section")
 	}
@@ -209,12 +209,12 @@ func TestSettingsTemplatePermissions(t *testing.T) {
 	ctx := testContext("darwin")
 	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
 
-	var settings map[string]interface{}
+	var settings map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
 		t.Fatalf("Unmarshal error: %v", err)
 	}
 
-	perms, ok := settings["permissions"].(map[string]interface{})
+	perms, ok := settings["permissions"].(map[string]any)
 	if !ok {
 		t.Fatal("missing permissions section")
 	}
@@ -223,7 +223,7 @@ func TestSettingsTemplatePermissions(t *testing.T) {
 		t.Errorf("permissions.defaultMode = %v, want %q", perms["defaultMode"], "acceptEdits")
 	}
 
-	allow, ok := perms["allow"].([]interface{})
+	allow, ok := perms["allow"].([]any)
 	if !ok {
 		t.Fatal("permissions.allow is not an array")
 	}
@@ -231,7 +231,7 @@ func TestSettingsTemplatePermissions(t *testing.T) {
 		t.Errorf("expected at least 50 allow entries, got %d", len(allow))
 	}
 
-	deny, ok := perms["deny"].([]interface{})
+	deny, ok := perms["deny"].([]any)
 	if !ok {
 		t.Fatal("permissions.deny is not an array")
 	}
@@ -244,7 +244,7 @@ func TestSettingsTemplateCleanupPeriod(t *testing.T) {
 	ctx := testContext("darwin")
 	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
 
-	var settings map[string]interface{}
+	var settings map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
 		t.Fatalf("Unmarshal error: %v", err)
 	}
@@ -262,7 +262,7 @@ func TestSettingsTemplateNewFields(t *testing.T) {
 	ctx := testContext("darwin")
 	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
 
-	var settings map[string]interface{}
+	var settings map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
 		t.Fatalf("Unmarshal error: %v", err)
 	}
@@ -271,7 +271,6 @@ func TestSettingsTemplateNewFields(t *testing.T) {
 	boolFields := map[string]bool{
 		"enableAllProjectMcpServers": true,
 		"respectGitignore":           true,
-		"spinnerTipsEnabled":         true,
 	}
 	for field, want := range boolFields {
 		val, ok := settings[field]
@@ -285,18 +284,19 @@ func TestSettingsTemplateNewFields(t *testing.T) {
 	}
 }
 
+
 func TestSettingsTemplateAllHookEvents(t *testing.T) {
 	t.Parallel()
 
 	ctx := testContext("darwin")
 	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
 
-	var settings map[string]interface{}
+	var settings map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
 		t.Fatalf("Unmarshal error: %v", err)
 	}
 
-	hooks, ok := settings["hooks"].(map[string]interface{})
+	hooks, ok := settings["hooks"].(map[string]any)
 	if !ok {
 		t.Fatal("missing hooks section")
 	}
@@ -321,12 +321,12 @@ func TestSettingsTemplateNewHookStructure(t *testing.T) {
 	ctx := testContext("darwin")
 	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
 
-	var settings map[string]interface{}
+	var settings map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
 		t.Fatalf("Unmarshal error: %v", err)
 	}
 
-	hooksSection, ok := settings["hooks"].(map[string]interface{})
+	hooksSection, ok := settings["hooks"].(map[string]any)
 	if !ok {
 		t.Fatal("missing hooks section")
 	}
@@ -355,7 +355,7 @@ func TestSettingsTemplateNewHookStructure(t *testing.T) {
 			}
 
 			// Hook config must be an array (Claude Code expects array of hook groups)
-			hookGroups, ok := eventData.([]interface{})
+			hookGroups, ok := eventData.([]any)
 			if !ok {
 				t.Fatalf("%q: expected array of hook groups, got %T", ne.event, eventData)
 			}
@@ -364,12 +364,12 @@ func TestSettingsTemplateNewHookStructure(t *testing.T) {
 			}
 
 			// Each hook group must have a "hooks" array
-			group, ok := hookGroups[0].(map[string]interface{})
+			group, ok := hookGroups[0].(map[string]any)
 			if !ok {
 				t.Fatalf("%q: hook group is not an object, got %T", ne.event, hookGroups[0])
 			}
 
-			hooksArr, ok := group["hooks"].([]interface{})
+			hooksArr, ok := group["hooks"].([]any)
 			if !ok {
 				t.Fatalf("%q: missing or invalid 'hooks' array in hook group", ne.event)
 			}
@@ -378,7 +378,7 @@ func TestSettingsTemplateNewHookStructure(t *testing.T) {
 			}
 
 			// Each hook entry must have command, timeout, and type fields
-			hookEntry, ok := hooksArr[0].(map[string]interface{})
+			hookEntry, ok := hooksArr[0].(map[string]any)
 			if !ok {
 				t.Fatalf("%q: hook entry is not an object, got %T", ne.event, hooksArr[0])
 			}
@@ -439,12 +439,12 @@ func TestSettingsTemplateNewHooksPlatformCompatibility(t *testing.T) {
 			ctx := testContext(platform)
 			output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
 
-			var settings map[string]interface{}
+			var settings map[string]any
 			if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
 				t.Fatalf("Unmarshal error: %v", err)
 			}
 
-			hooksSection, ok := settings["hooks"].(map[string]interface{})
+			hooksSection, ok := settings["hooks"].(map[string]any)
 			if !ok {
 				t.Fatal("missing hooks section")
 			}
@@ -456,10 +456,10 @@ func TestSettingsTemplateNewHooksPlatformCompatibility(t *testing.T) {
 						t.Fatalf("missing hook event %q", ne.event)
 					}
 
-					hookGroups := eventData.([]interface{})
-					group := hookGroups[0].(map[string]interface{})
-					hooksArr := group["hooks"].([]interface{})
-					hookEntry := hooksArr[0].(map[string]interface{})
+					hookGroups := eventData.([]any)
+					group := hookGroups[0].(map[string]any)
+					hooksArr := group["hooks"].([]any)
+					hookEntry := hooksArr[0].(map[string]any)
 					command := hookEntry["command"].(string)
 
 					switch platform {
@@ -492,24 +492,24 @@ func TestSettingsTemplateHookEventCount(t *testing.T) {
 	ctx := testContext("darwin")
 	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
 
-	var settings map[string]interface{}
+	var settings map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
 		t.Fatalf("Unmarshal error: %v", err)
 	}
 
-	hooks, ok := settings["hooks"].(map[string]interface{})
+	hooks, ok := settings["hooks"].(map[string]any)
 	if !ok {
 		t.Fatal("missing hooks section")
 	}
 
-	const expectedCount = 14
+	const expectedCount = 16
 	if len(hooks) != expectedCount {
 		t.Errorf("hook event count = %d, want %d; events: %v", len(hooks), expectedCount, hookKeys(hooks))
 	}
 }
 
 // hookKeys returns sorted keys from a map for diagnostic output.
-func hookKeys(m map[string]interface{}) []string {
+func hookKeys(m map[string]any) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
@@ -539,12 +539,12 @@ func TestMCPTemplateRequiredServers(t *testing.T) {
 	ctx := testContext("darwin")
 	output := renderTemplate(t, ".mcp.json.tmpl", ctx)
 
-	var config map[string]interface{}
+	var config map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &config); err != nil {
 		t.Fatalf("Unmarshal error: %v", err)
 	}
 
-	servers, ok := config["mcpServers"].(map[string]interface{})
+	servers, ok := config["mcpServers"].(map[string]any)
 	if !ok {
 		t.Fatal("missing mcpServers section")
 	}
@@ -581,12 +581,12 @@ func TestMCPTemplateStaggeredStartup(t *testing.T) {
 	ctx := testContext("darwin")
 	output := renderTemplate(t, ".mcp.json.tmpl", ctx)
 
-	var config map[string]interface{}
+	var config map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &config); err != nil {
 		t.Fatalf("Unmarshal error: %v", err)
 	}
 
-	startup, ok := config["staggeredStartup"].(map[string]interface{})
+	startup, ok := config["staggeredStartup"].(map[string]any)
 	if !ok {
 		t.Fatal("missing staggeredStartup section")
 	}
@@ -605,7 +605,7 @@ func TestMCPTemplateSchema(t *testing.T) {
 	ctx := testContext("darwin")
 	output := renderTemplate(t, ".mcp.json.tmpl", ctx)
 
-	var config map[string]interface{}
+	var config map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &config); err != nil {
 		t.Fatalf("Unmarshal error: %v", err)
 	}

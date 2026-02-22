@@ -393,10 +393,7 @@ type syncBatchResult struct {
 func submitSyncBatches(ctx context.Context, client rank.Client, sessions []*rank.SessionSubmission, paths []string, syncState *rank.SyncState, out io.Writer) syncBatchResult {
 	var res syncBatchResult
 	for i := 0; i < len(sessions); i += rankBatchSize {
-		end := i + rankBatchSize
-		if end > len(sessions) {
-			end = len(sessions)
-		}
+		end := min(i+rankBatchSize, len(sessions))
 
 		batch := sessions[i:end]
 		result, err := client.SubmitSessionsBatch(ctx, batch)

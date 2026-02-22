@@ -45,10 +45,10 @@ func TestStatsTracker_CacheHitRate(t *testing.T) {
 	st := NewStatsTracker()
 
 	// 3 cache hits, 7 cache misses = 30% hit rate
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		st.RecordOperation(10*time.Millisecond, true, false)
 	}
-	for i := 0; i < 7; i++ {
+	for range 7 {
 		st.RecordOperation(10*time.Millisecond, false, false)
 	}
 
@@ -197,30 +197,24 @@ func TestStatsTracker_ConcurrentAccess(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// Concurrent record operations
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for i := range 100 {
+		wg.Go(func() {
 			st.RecordOperation(10*time.Millisecond, i%2 == 0, false)
-		}()
+		})
 	}
 
 	// Concurrent pending updates
-	for i := 0; i < 50; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 50 {
+		wg.Go(func() {
 			st.IncrPending()
-		}()
+		})
 	}
 
 	// Concurrent reads
-	for i := 0; i < 50; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 50 {
+		wg.Go(func() {
 			_ = st.GetStats()
-		}()
+		})
 	}
 
 	wg.Wait()

@@ -1,5 +1,7 @@
 package worktree
 
+import "strings"
+
 import "github.com/charmbracelet/lipgloss"
 
 // Worktree CLI styles matching the parent CLI package palette.
@@ -27,15 +29,16 @@ func wtCard(title, content string) string {
 // wtSuccessCard renders a success message inside a rounded border card.
 func wtSuccessCard(title string, details ...string) string {
 	titleLine := wtSuccess.Render("\u2713") + " " + title
-	body := titleLine
+	var body strings.Builder
+	body.WriteString(titleLine)
 	if len(details) > 0 {
-		body += "\n\n"
+		body.WriteString("\n\n")
 		for i, d := range details {
 			if i > 0 {
-				body += "\n"
+				body.WriteString("\n")
 			}
-			body += d
+			body.WriteString(d)
 		}
 	}
-	return wtCardStyle().Render(body)
+	return wtCardStyle().Render(body.String())
 }

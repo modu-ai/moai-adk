@@ -67,6 +67,8 @@ func (e *qualityGateEnforcer) GetExitCode(counts SeverityCounts, gate QualityGat
 	return ExitCodeSuccess
 }
 
+// @MX:ANCHOR: [AUTO] 품질 게이트 설정을 YAML에서 로드합니다. 모든 훅이 이 함수를 통해 설정을 로드합니다.
+// @MX:REASON: [AUTO] fan_in=5+, 훅 설정 로드의 유일한 진입점입니다
 // LoadConfig loads quality gate configuration from YAML per REQ-HOOK-180.
 func (e *qualityGateEnforcer) LoadConfig() (QualityGate, error) {
 	data, err := os.ReadFile(e.configPath)
@@ -147,14 +149,14 @@ func FormatGateResult(counts SeverityCounts, gate QualityGate) string {
 	var sb strings.Builder
 
 	sb.WriteString("Quality Gate Check:\n")
-	sb.WriteString(fmt.Sprintf("  Errors: %d (max: %d)", counts.Errors, gate.MaxErrors))
+	fmt.Fprintf(&sb, "  Errors: %d (max: %d)", counts.Errors, gate.MaxErrors)
 
 	if counts.Errors > gate.MaxErrors {
 		sb.WriteString(" [EXCEEDED]")
 	}
 	sb.WriteString("\n")
 
-	sb.WriteString(fmt.Sprintf("  Warnings: %d (max: %d)", counts.Warnings, gate.MaxWarnings))
+	fmt.Fprintf(&sb, "  Warnings: %d (max: %d)", counts.Warnings, gate.MaxWarnings)
 	if counts.Warnings > gate.MaxWarnings {
 		sb.WriteString(" [EXCEEDED]")
 	}

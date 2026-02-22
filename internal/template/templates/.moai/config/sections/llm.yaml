@@ -1,0 +1,24 @@
+llm:
+  mode: ""
+  team_mode: ""
+  glm_env_var: "GLM_API_KEY"
+
+  # Performance tier selection (set once during init/update)
+  # Controls model selection for all sub-agents and team agents
+  # Options: high (complex reasoning), medium (balanced), low (fast/cheap)
+  performance_tier: "medium"
+
+  # Claude model mapping by tier
+  claude_models:
+    high: "opus"      # Complex reasoning, architecture, security
+    medium: "sonnet"  # Balanced performance for most tasks
+    low: "haiku"      # Fast exploration, simple tasks
+
+  # GLM backend configuration
+  glm:
+    base_url: "https://api.z.ai/api/anthropic"
+    models:
+      high: "glm-5"           # Complex reasoning
+      medium: "glm-4.7"       # Balanced performance
+      low: "glm-4.7-flashx"   # Fast exploration
+

@@ -617,9 +617,9 @@ func TestRunGLM_WithConfig(t *testing.T) {
 		t.Fatalf("runGLM with config error: %v", err)
 	}
 
-	// In test mode, should skip settings modification
-	if !strings.Contains(buf.String(), "Test environment detected") {
-		t.Errorf("output should mention test environment, got %q", buf.String())
+	// GLM Team mode should be enabled
+	if !strings.Contains(buf.String(), "GLM Team mode enabled") {
+		t.Errorf("output should mention GLM Team mode enabled, got %q", buf.String())
 	}
 }
 
@@ -627,8 +627,6 @@ func TestRunGLM_InjectsEnvToSettings(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
-	// Enable test mode to prevent modifying actual settings files
-	t.Setenv("MOAI_TEST_MODE", "1")
 	// Set GLM_API_KEY env var
 	t.Setenv("GLM_API_KEY", "test-api-key")
 
@@ -660,9 +658,19 @@ func TestRunGLM_InjectsEnvToSettings(t *testing.T) {
 		t.Fatalf("runGLM error: %v", err)
 	}
 
-	// In test mode, should skip settings modification
-	if !strings.Contains(buf.String(), "Test environment detected") {
-		t.Errorf("output should mention test environment, got %q", buf.String())
+	// GLM Team mode should be enabled
+	if !strings.Contains(buf.String(), "GLM Team mode enabled") {
+		t.Errorf("output should mention GLM Team mode enabled, got %q", buf.String())
+	}
+
+	// Verify settings.local.json was created with GLM env
+	settingsPath := filepath.Join(tmpDir, ".claude", "settings.local.json")
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("settings.local.json should be created: %v", err)
+	}
+	if !strings.Contains(string(data), "ANTHROPIC_AUTH_TOKEN") {
+		t.Error("settings.local.json should contain ANTHROPIC_AUTH_TOKEN")
 	}
 }
 
@@ -670,8 +678,6 @@ func TestRunGLM_NilConfig(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
-	// Enable test mode to prevent modifying actual settings files
-	t.Setenv("MOAI_TEST_MODE", "1")
 	// Set GLM_API_KEY env var
 	t.Setenv("GLM_API_KEY", "test-api-key")
 
@@ -700,9 +706,9 @@ func TestRunGLM_NilConfig(t *testing.T) {
 		t.Fatalf("runGLM nil deps should not error, got %v", err)
 	}
 
-	// In test mode, should skip settings modification
-	if !strings.Contains(buf.String(), "Test environment detected") {
-		t.Errorf("output should mention test environment, got %q", buf.String())
+	// GLM Team mode should be enabled (uses defaults when deps is nil)
+	if !strings.Contains(buf.String(), "GLM Team mode enabled") {
+		t.Errorf("output should mention GLM Team mode enabled, got %q", buf.String())
 	}
 }
 
@@ -1283,7 +1289,7 @@ func setupMinimalConfigWithMode(t *testing.T, dir string, mode string) { //nolin
 	}
 	if err := os.WriteFile(
 		filepath.Join(sectionsDir, "quality.yaml"),
-		[]byte(fmt.Sprintf("constitution:\n  development_mode: %s\n", mode)),
+		fmt.Appendf(nil, "constitution:\n  development_mode: %s\n", mode),
 		0o644,
 	); err != nil {
 		t.Fatal(err)

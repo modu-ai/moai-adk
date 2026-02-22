@@ -54,8 +54,8 @@ func (w *wizardImpl) runHeadless(ctx context.Context) (*WizardResult, error) {
 		result.Framework = v
 	}
 	if v, ok := w.headless.GetDefault("features"); ok && v != "" {
-		parts := strings.Split(v, ",")
-		for _, p := range parts {
+		parts := strings.SplitSeq(v, ",")
+		for p := range parts {
 			trimmed := strings.TrimSpace(p)
 			if trimmed != "" {
 				result.Features = append(result.Features, trimmed)

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
@@ -32,7 +33,7 @@ Usage patterns:
 Examples:
   moai init my-app           Creates ./my-app/ and initializes MoAI inside
   moai init .                Initializes MoAI in the current directory
-  moai init --mode hybrid    Initialize with specific development mode (default: hybrid)`,
+  moai init --mode tdd       Initialize with specific development mode (default: tdd)`,
 	Args:    cobra.MaximumNArgs(1),
 	PreRunE: validateInitFlags,
 	RunE:    runInit,
@@ -47,7 +48,7 @@ func init() {
 	initCmd.Flags().String("framework", "", "Framework name (default: auto-detect or \"none\")")
 	initCmd.Flags().String("username", "", "User display name")
 	initCmd.Flags().String("conv-lang", "", "Conversation language code (e.g., \"en\", \"ko\")")
-	initCmd.Flags().String("mode", "", "Development mode: ddd, tdd, or hybrid (default: hybrid, auto-configured by /moai project)")
+	initCmd.Flags().String("mode", "", "Development mode: ddd or tdd (default: tdd, auto-configured by /moai project)")
 	initCmd.Flags().String("git-mode", "", "Git workflow mode: manual, personal, or team (default: manual)")
 	initCmd.Flags().String("git-provider", "", "Git provider (github, gitlab)")
 	initCmd.Flags().String("github-username", "", "GitHub username (required for personal/team modes)")
@@ -83,16 +84,10 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 	// Validate development mode
 	mode := getStringFlag(cmd, "mode")
 	if mode != "" {
-		validModes := []string{"ddd", "tdd", "hybrid"}
-		valid := false
-		for _, m := range validModes {
-			if mode == m {
-				valid = true
-				break
-			}
-		}
+		validModes := []string{"ddd", "tdd"}
+		valid := slices.Contains(validModes, mode)
 		if !valid {
-			return fmt.Errorf("invalid --mode value %q: must be one of: ddd, tdd, hybrid", mode)
+			return fmt.Errorf("invalid --mode value %q: must be one of: ddd, tdd", mode)
 		}
 	}
 
@@ -100,13 +95,7 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 	gitMode := getStringFlag(cmd, "git-mode")
 	if gitMode != "" {
 		validGitModes := []string{"manual", "personal", "team"}
-		valid := false
-		for _, m := range validGitModes {
-			if gitMode == m {
-				valid = true
-				break
-			}
-		}
+		valid := slices.Contains(validGitModes, gitMode)
 		if !valid {
 			return fmt.Errorf("invalid --git-mode value %q: must be one of: manual, personal, team", gitMode)
 		}
@@ -116,13 +105,7 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 	gitProvider := getStringFlag(cmd, "git-provider")
 	if gitProvider != "" {
 		validProviders := []string{"github", "gitlab"}
-		valid := false
-		for _, p := range validProviders {
-			if gitProvider == p {
-				valid = true
-				break
-			}
-		}
+		valid := slices.Contains(validProviders, gitProvider)
 		if !valid {
 			return fmt.Errorf("invalid --git-provider value %q: must be one of: github, gitlab", gitProvider)
 		}
@@ -132,13 +115,7 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 	modelPolicy := getStringFlag(cmd, "model-policy")
 	if modelPolicy != "" {
 		validPolicies := []string{"high", "medium", "low"}
-		valid := false
-		for _, p := range validPolicies {
-			if modelPolicy == p {
-				valid = true
-				break
-			}
-		}
+		valid := slices.Contains(validPolicies, modelPolicy)
 		if !valid {
 			return fmt.Errorf("invalid --model-policy value %q: must be one of: high, medium, low", modelPolicy)
 		}
@@ -148,13 +125,7 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 	convLang := getStringFlag(cmd, "conv-lang")
 	if convLang != "" {
 		validLangs := []string{"en", "ko", "ja", "zh", "es", "fr", "de", "pt", "ru", "it"}
-		valid := false
-		for _, lang := range validLangs {
-			if convLang == lang {
-				valid = true
-				break
-			}
-		}
+		valid := slices.Contains(validLangs, convLang)
 		if !valid {
 			return fmt.Errorf("invalid --conv-lang value %q: must be a valid ISO 639-1 language code (e.g., en, ko, ja, zh)", convLang)
 		}
@@ -163,6 +134,8 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
+// @MX:ANCHOR: [AUTO] runInit is the main entry point for project initialization
+// @MX:REASON: [AUTO] fan_in=3, called from init.go init(), coverage_test.go, init_coverage_test.go
 // runInit executes the project initialization workflow.
 // It first checks for a binary update so the latest templates are used.
 func runInit(cmd *cobra.Command, args []string) error {
@@ -207,7 +180,14 @@ func runInit(cmd *cobra.Command, args []string) error {
 		// Positional argument provided (not ".")
 		// Create new folder with that name
 		targetDir := args[0]
-		rootFlag = filepath.Join(cwd, targetDir)
+		// Use filepath.Abs to correctly handle both absolute and relative paths.
+		// filepath.Join(cwd, absPath) incorrectly prepends cwd to absolute paths,
+		// e.g. Join("/a/b", "/c/d") = "/a/b/c/d" instead of "/c/d".
+		absTarget, err := filepath.Abs(targetDir)
+		if err != nil {
+			return fmt.Errorf("resolve project path %q: %w", targetDir, err)
+		}
+		rootFlag = absTarget
 
 		// Create the directory if it doesn't exist
 		if err := os.MkdirAll(rootFlag, 0755); err != nil {
@@ -269,7 +249,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		if opts.ConvLang == "" {
 			opts.ConvLang = result.Locale
 		}
-		// DevelopmentMode defaults to "hybrid" via template context;
+		// DevelopmentMode defaults to "tdd" via template context;
 		// auto-configured later by /moai project workflow based on project analysis.
 		if opts.GitMode == "" {
 			opts.GitMode = result.GitMode

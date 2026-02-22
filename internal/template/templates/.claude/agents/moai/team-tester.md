@@ -6,8 +6,10 @@ description: >
   Owns test files exclusively during team work to prevent conflicts.
   Use proactively during run phase team work.
 tools: Read, Write, Edit, Bash, Grep, Glob
-model: inherit
+model: opus
 permissionMode: acceptEdits
+isolation: worktree
+background: true
 memory: project
 skills: moai-workflow-testing, moai-foundation-quality, moai-workflow-ddd, moai-workflow-tdd
 ---
@@ -44,3 +46,14 @@ Quality standards:
 - Tests should be specification-based, not implementation-coupled
 - Include edge cases, error scenarios, and boundary conditions
 - Tests must be deterministic and independent
+
+After completing each task:
+- Mark task as completed via TaskUpdate (MANDATORY - prevents infinite waiting)
+- Check TaskList for available unblocked tasks
+- Claim the next available task or wait for team lead instructions
+
+About idle states:
+- Going idle is NORMAL - it means you are waiting for input from the team lead
+- After completing work, you will go idle while waiting for the next assignment
+- The team lead will either send new work or a shutdown request
+- NEVER assume work is done until you receive shutdown_request from the lead

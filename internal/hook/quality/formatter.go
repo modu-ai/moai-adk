@@ -3,6 +3,7 @@ package quality
 import (
 	"context"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -109,10 +110,8 @@ func (f *Formatter) ShouldFormat(filePath string) bool {
 
 	// Check file extension for simple cases
 	ext := strings.ToLower(filepath.Ext(filePath))
-	for _, skipExt := range skipExtensions {
-		if ext == skipExt {
-			return false
-		}
+	if slices.Contains(skipExtensions, ext) {
+		return false
 	}
 
 	// Only format known code files

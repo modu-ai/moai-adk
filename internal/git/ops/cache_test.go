@@ -116,7 +116,7 @@ func TestCache_LRUEviction(t *testing.T) {
 	c := NewCache(3, 60*time.Second)
 
 	// Add 3 items
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		c.Set(string(rune('a'+i)), GitResult{Stdout: string(rune('a' + i))}, 0)
 	}
 
@@ -237,7 +237,7 @@ func TestCache_ConcurrentAccess(t *testing.T) {
 	done := make(chan bool)
 
 	// Concurrent writes
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		go func(i int) {
 			key := string(rune('a' + i))
 			c.Set(key, GitResult{Stdout: key}, 0)
@@ -246,7 +246,7 @@ func TestCache_ConcurrentAccess(t *testing.T) {
 	}
 
 	// Concurrent reads
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		go func(i int) {
 			key := string(rune('a' + i))
 			c.Get(key)
@@ -255,7 +255,7 @@ func TestCache_ConcurrentAccess(t *testing.T) {
 	}
 
 	// Wait for all goroutines
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		<-done
 	}
 

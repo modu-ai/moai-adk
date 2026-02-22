@@ -5,14 +5,12 @@ description: >
   Finds LSP errors, linting issues, and type errors, classifies by severity,
   applies safe fixes via agent delegation, and reports results.
   Use when fixing errors, linting issues, or running diagnostics.
-license: Apache-2.0
-compatibility: Designed for Claude Code
 user-invocable: false
 metadata:
-  version: "2.0.0"
+  version: "2.5.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-07"
+  updated: "2026-02-21"
   tags: "fix, auto-fix, lsp, linting, diagnostics, errors, type-check"
 
 # MoAI Extension: Progressive Disclosure
@@ -110,6 +108,54 @@ If --dry flag: Display preview of all classified issues and exit without changes
 - Confirm fixes resolved the targeted issues
 - Detect any regressions introduced by fixes
 
+## Phase 4.5: MX Tag Update
+
+After fixes are verified, update @MX tags for modified files:
+
+**Tag Actions by Fix Level:**
+| Fix Level | MX Action |
+|-----------|-----------|
+| Level 1 (formatting) | No tag changes typically needed |
+| Level 2 (rename, type) | Update @MX:NOTE if signature changed |
+| Level 3 (logic, API) | Add @MX:NOTE for new logic, re-evaluate ANCHOR |
+| Level 4 (manual) | Requires @MX:WARN with @MX:REASON if security-related |
+
+**Specific Actions:**
+- Bug fix applied: Remove corresponding @MX:TODO if exists
+- New code introduced: Add appropriate @MX tags per protocol
+- Function signature changed: Re-evaluate @MX:ANCHOR (fan_in may change)
+- Complexity increased: Add @MX:WARN if cyclomatic complexity >= 15
+- Dangerous pattern introduced: Add @MX:WARN with @MX:REASON
+
+**MX Tag Report Generation:**
+Generate MX_TAG_REPORT section in fix report:
+```markdown
+## MX Tag Report
+
+### Tags Added (N)
+- file:line: @MX:NOTE: [description]
+
+### Tags Removed (N)
+- file:line: @MX:TODO (resolved)
+
+### Tags Updated (N)
+- file:line: @MX:ANCHOR (fan_in updated)
+
+### Attention Required
+- Files with new @MX:WARN requiring review
+```
+
+See @.claude/rules/moai/workflow/mx-tag-protocol.md for complete tag rules.
+
+## Phase 4.6: Dead Code Cleanup (Optional)
+
+After fixes are applied and verified, scan for dead code exposed by the fixes:
+
+- Delegate to clean workflow (workflows/clean.md) for comprehensive dead code analysis
+- Targets: Files modified during fix phase that may now have unused imports, orphaned functions, or unreferenced variables
+- Skip condition: --errors flag was set (errors-only mode skips cleanup) or no dead code detected
+- Clean workflow applies safe removal with test verification
+
 ## Task Tracking
 
 [HARD] Task management tools mandatory:
@@ -146,7 +192,7 @@ When --team flag is provided, fix delegates to a team-based debugging workflow u
 
 Team composition: 3 hypothesis agents (haiku) exploring different root causes in parallel.
 
-For detailed team orchestration steps, see workflows/team-debug.md.
+For detailed team orchestration steps, see team/debug.md.
 
 Fallback: If team mode is unavailable, standard single-agent fix workflow continues.
 

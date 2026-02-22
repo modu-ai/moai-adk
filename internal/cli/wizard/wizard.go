@@ -213,11 +213,13 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 		result.MaxTeammates = value
 	case "default_model":
 		result.DefaultModel = value
+	case "teammate_display":
+		result.TeammateDisplay = value
 	case "statusline_preset":
 		result.StatuslinePreset = value
 	default:
-		if strings.HasPrefix(id, statuslineSegmentPrefix) {
-			segName := strings.TrimPrefix(id, statuslineSegmentPrefix)
+		if after, ok := strings.CutPrefix(id, statuslineSegmentPrefix); ok {
+			segName := after
 			if result.StatuslineSegments == nil {
 				result.StatuslineSegments = make(map[string]bool)
 			}

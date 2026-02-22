@@ -1,8 +1,5 @@
 ---
-paths:
-  - "**/*.dart"
-  - "**/pubspec.yaml"
-  - "**/pubspec.lock"
+paths: "**/*.dart,**/pubspec.yaml,**/pubspec.lock"
 ---
 
 # Flutter/Dart Rules

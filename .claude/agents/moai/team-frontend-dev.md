@@ -8,6 +8,8 @@ description: >
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
 permissionMode: acceptEdits
+isolation: worktree
+background: true
 memory: project
 skills: moai-domain-frontend, moai-domain-uiux, moai-library-shadcn, moai-design-tools
 ---
@@ -43,3 +45,14 @@ Quality standards:
 - Accessibility (WCAG 2.1 AA) compliance
 - Responsive design for all viewport sizes
 - Follow existing component patterns and design system
+
+After completing each task:
+- Mark task as completed via TaskUpdate (MANDATORY - prevents infinite waiting)
+- Check TaskList for available unblocked tasks
+- Claim the next available task or wait for team lead instructions
+
+About idle states:
+- Going idle is NORMAL - it means you are waiting for input from the team lead
+- After completing work, you will go idle while waiting for the next assignment
+- The team lead will either send new work or a shutdown request
+- NEVER assume work is done until you receive shutdown_request from the lead

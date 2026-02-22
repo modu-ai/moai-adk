@@ -32,20 +32,16 @@ metadata:
 
 ```yaml
 constitution:
-  development_mode: hybrid    # or ddd, tdd
-  hybrid_settings:
-    new_features: tdd        # New code → use TDD
-    legacy_refactoring: ddd  # Existing code → use DDD (this workflow)
+  development_mode: ddd    # or tdd
 ```
 
 **When to use this workflow**:
-- `development_mode: ddd` → Always use DDD
-- `development_mode: hybrid` + refactoring existing code → Use DDD
-- `development_mode: hybrid` + new package/module → Use TDD instead (moai-workflow-tdd)
+- `development_mode: ddd` → Use DDD (this workflow)
+- `development_mode: tdd` → Use TDD instead (moai-workflow-tdd)
 
 **Key distinction**:
-- **New file/package** (doesn't exist yet) → TDD (RED-GREEN-REFACTOR)
-- **Existing code** (file already exists) → DDD (ANALYZE-PRESERVE-IMPROVE)
+- **DDD**: Characterization-test-first for existing codebases with minimal test coverage
+- **TDD** (default): Test-first development for all work, including brownfield projects with pre-RED analysis
 
 ## Quick Reference
 

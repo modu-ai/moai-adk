@@ -21,7 +21,7 @@ var (
 	ErrInitFailed = errors.New("initialization failed")
 
 	// ErrInvalidDevelopmentMode indicates an unrecognized development mode value.
-	ErrInvalidDevelopmentMode = errors.New("invalid development mode: must be ddd, tdd, or hybrid")
+	ErrInvalidDevelopmentMode = errors.New("invalid development mode: must be ddd or tdd")
 
 	// ErrMethodologyDetection indicates methodology detection failed.
 	ErrMethodologyDetection = errors.New("methodology detection failed")

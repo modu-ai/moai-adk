@@ -1,3 +1,7 @@
+---
+paths: "**/.claude/agents/**"
+---
+
 # Agent Authoring
 
 Guidelines for creating custom agents in MoAI-ADK.
@@ -9,6 +13,8 @@ Custom agents are defined in `.claude/agents/*.md` or `.claude/agents/**/*.md` (
 Directory convention:
 - User custom agents: `.claude/agents/<agent-name>.md` (root level)
 - MoAI-ADK system agents: `.claude/agents/moai/<agent-name>.md` (moai subdirectory)
+
+Platform Support: Windows ARM64 (`win32-arm64`) is natively supported as of Claude Code v2.1.41. No WSL required for ARM-based Windows devices.
 
 ## Supported Frontmatter Fields
 
@@ -27,6 +33,8 @@ All agent definitions use YAML frontmatter. The following fields are available:
 | mcpServers | No | None | MCP servers available to this agent |
 | hooks | No | None | Lifecycle hooks scoped to this agent |
 | memory | No | None | Persistent memory scope for cross-session learning |
+| background | No | false | Run agent in background without blocking conversation (v2.1.46+) |
+| isolation | No | none | Isolation mode: "worktree" creates isolated git worktree (v2.1.49+) |
 
 ### Field Details
 
@@ -39,6 +47,10 @@ All agent definitions use YAML frontmatter. The following fields are available:
 **mcpServers**: Either a server name reference (matching a key in `.mcp.json`) or an inline server definition with command and args.
 
 **hooks**: Supports PreToolUse, PostToolUse, and SubagentStop events scoped to this agent. See @hooks-system.md for configuration format.
+
+**background**: When set to true, the agent runs in the background without blocking the main conversation. Results are delivered asynchronously on the next turn. Available since Claude Code v2.1.46.
+
+**isolation**: Controls agent execution isolation. When set to "worktree", the agent runs in an isolated git worktree, preventing conflicts with the main working directory. Available since Claude Code v2.1.49.
 
 ## Task(agent_type) Restrictions
 
@@ -87,7 +99,7 @@ Coordinate workflows and multi-step processes:
 - manager-strategy: System design, architecture decisions
 - manager-git: Git operations, branching strategy
 
-### Expert Agents (8)
+### Expert Agents (9)
 
 Domain-specific implementation:
 
@@ -99,6 +111,7 @@ Domain-specific implementation:
 - expert-debug: Debugging and troubleshooting
 - expert-testing: Test creation and strategy
 - expert-refactoring: Code refactoring
+- expert-chrome-extension: Chrome Extension Manifest V3 development
 
 ### Builder Agents (3)
 
@@ -112,16 +125,16 @@ Create new MoAI components:
 
 Agents for Claude Code Agent Teams (v2.1.32+, requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1):
 
-| Agent | Model | Phase | Mode | Purpose |
-|-------|-------|-------|------|---------|
-| team-researcher | haiku | plan | plan (read-only) | Codebase exploration and research |
-| team-analyst | inherit | plan | plan (read-only) | Requirements analysis |
-| team-architect | inherit | plan | plan (read-only) | Technical design |
-| team-backend-dev | inherit | run | acceptEdits | Server-side implementation |
-| team-designer | inherit | run | acceptEdits | UI/UX design with Pencil/Figma MCP (requires Pencil MCP server) |
-| team-frontend-dev | inherit | run | acceptEdits | Client-side implementation |
-| team-tester | inherit | run | acceptEdits | Test creation with exclusive test file ownership |
-| team-quality | inherit | run | plan (read-only) | TRUST 5 quality validation |
+| Agent | Model | Phase | Mode | Isolation | Background | Purpose |
+|-------|-------|-------|------|-----------|------------|---------|
+| team-researcher | haiku | plan | plan (read-only) | none | false | Codebase exploration and research |
+| team-analyst | opus | plan | plan (read-only) | none | false | Requirements analysis |
+| team-architect | opus | plan | plan (read-only) | none | false | Technical design |
+| team-backend-dev | opus | run | acceptEdits | worktree | true | Server-side implementation |
+| team-designer | opus | run | acceptEdits | worktree | true | UI/UX design with Pencil/Figma MCP (requires Pencil MCP server) |
+| team-frontend-dev | opus | run | acceptEdits | worktree | true | Client-side implementation |
+| team-tester | opus | run | acceptEdits | worktree | true | Test creation with exclusive test file ownership |
+| team-quality | haiku | run | plan (read-only) | none | false | TRUST 5 quality validation |
 
 ## Rules
 

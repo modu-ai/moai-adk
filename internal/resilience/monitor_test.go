@@ -136,8 +136,7 @@ func TestResourceMonitorMemoryThreshold(t *testing.T) {
 		},
 	})
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	monitor.StartMonitoring(ctx, 20*time.Millisecond)
 
@@ -169,8 +168,7 @@ func TestResourceMonitorGoroutineThreshold(t *testing.T) {
 		},
 	})
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	monitor.StartMonitoring(ctx, 20*time.Millisecond)
 
@@ -194,22 +192,19 @@ func TestResourceMonitorConcurrentAccess(t *testing.T) {
 		GoroutineThreshold: 1000,
 	})
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	monitor.StartMonitoring(ctx, 10*time.Millisecond)
 
 	var wg sync.WaitGroup
 	numGoroutines := 50
 
-	for i := 0; i < numGoroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for j := 0; j < 10; j++ {
+	for range numGoroutines {
+		wg.Go(func() {
+			for range 10 {
 				_ = monitor.GetStats()
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -275,8 +270,7 @@ func TestResourceMonitorMultipleStartCalls(t *testing.T) {
 		},
 	})
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	// Start monitoring multiple times - should only have one goroutine
 	monitor.StartMonitoring(ctx, 20*time.Millisecond)

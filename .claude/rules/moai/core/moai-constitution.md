@@ -54,6 +54,19 @@ Rules:
 - Team mode quality: TeammateIdle hook validates work before idle acceptance
 - Team mode quality: TaskCompleted hook validates deliverables before completion
 
+## MX Tag Quality Gates
+
+Code changes should include appropriate @MX annotations.
+
+Rules:
+- New exported functions: Consider @MX:NOTE or @MX:ANCHOR
+- High fan_in functions (>=3 callers): MUST have @MX:ANCHOR
+- Dangerous patterns (goroutines, complexity >=15): SHOULD have @MX:WARN
+- Untested public functions: SHOULD have @MX:TODO
+- Legacy code without SPEC: Use @MX:LEGACY sub-line
+- MX tags are autonomous: Agents add/update/remove without human approval
+- Reports notify humans of tag changes
+
 ## URL Verification
 
 All URLs must be verified before inclusion in responses.

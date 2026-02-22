@@ -55,7 +55,7 @@ func TestCollectMemory(t *testing.T) {
 			name: "used_percentage takes priority",
 			input: &StdinData{
 				ContextWindow: &ContextWindowInfo{
-					UsedPercentage:    float64Ptr(25.0),
+					UsedPercentage:    new(25.0),
 					ContextWindowSize: 200000,
 				},
 			},
@@ -153,9 +153,4 @@ func TestUsagePercent(t *testing.T) {
 			}
 		})
 	}
-}
-
-// float64Ptr is a helper to create a pointer to a float64 value.
-func float64Ptr(v float64) *float64 {
-	return &v
 }

@@ -156,8 +156,7 @@ func TestEventDetector_PollDetectsChanges(t *testing.T) {
 
 	detector := NewEventDetector(dir, WithPollInterval(50*time.Millisecond))
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	ch := make(chan GitEvent, 10)
 

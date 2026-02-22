@@ -18,7 +18,7 @@ type MethodologyDetector interface {
 
 // MethodologyRecommendation provides a recommended development methodology with rationale.
 type MethodologyRecommendation struct {
-	Recommended      string                   // "ddd", "tdd", or "hybrid".
+	Recommended      string                   // "ddd" or "tdd".
 	Confidence       float64                  // 0.0–1.0.
 	Rationale        string                   // Human-readable explanation.
 	ProjectType      string                   // "greenfield" or "brownfield".
@@ -30,7 +30,7 @@ type MethodologyRecommendation struct {
 
 // AlternativeMethodology represents a non-recommended but available option.
 type AlternativeMethodology struct {
-	Mode    string // "ddd", "tdd", or "hybrid".
+	Mode    string // "ddd" or "tdd".
 	Reason  string // Why this is an alternative.
 	Warning string // Warning message if chosen despite recommendation.
 }
@@ -245,14 +245,14 @@ func (d *methodologyDetector) applyDecisionTree(testFiles, codeFiles int, covera
 
 	// Greenfield project: no code files
 	if codeFiles == 0 {
-		rec.Recommended = "hybrid"
-		rec.Confidence = 0.7
-		rec.Rationale = "Greenfield project with no existing code. Hybrid mode combines TDD for new features with DDD structure."
+		rec.Recommended = "tdd"
+		rec.Confidence = 0.85
+		rec.Rationale = "Greenfield project with no existing code. TDD is recommended for test-first development."
 		rec.ProjectType = "greenfield"
 		rec.Alternatives = []AlternativeMethodology{
 			{
-				Mode:   "tdd",
-				Reason: "Pure test-first development for new code.",
+				Mode:   "ddd",
+				Reason: "Use DDD if integrating with existing systems that need behavior preservation.",
 			},
 		}
 		return rec
@@ -271,16 +271,16 @@ func (d *methodologyDetector) applyDecisionTree(testFiles, codeFiles int, covera
 		)
 		rec.Alternatives = []AlternativeMethodology{
 			{
-				Mode:   "hybrid",
-				Reason: "Use DDD for legacy modules while maintaining TDD for new features.",
+				Mode:   "ddd",
+				Reason: "Use DDD for legacy modules that need behavior preservation.",
 			},
 		}
 	} else if coverageEstimate >= 10.0 {
-		// Partial coverage: recommend Hybrid
-		rec.Recommended = "hybrid"
+		// Partial coverage: recommend TDD
+		rec.Recommended = "tdd"
 		rec.Confidence = 0.75
 		rec.Rationale = fmt.Sprintf(
-			"Brownfield project with partial test coverage (estimated %.0f%%). Hybrid mode applies TDD for new code and DDD for existing code.",
+			"Brownfield project with partial test coverage (estimated %.0f%%). TDD is recommended to expand test coverage with test-first development.",
 			coverageEstimate,
 		)
 		rec.Alternatives = []AlternativeMethodology{
@@ -307,10 +307,6 @@ func (d *methodologyDetector) applyDecisionTree(testFiles, codeFiles int, covera
 					codeFiles, estimatedTests,
 				),
 			},
-			{
-				Mode:   "hybrid",
-				Reason: "Apply TDD for new features while gradually adding tests for existing code.",
-			},
 		}
 	}
 
@@ -319,8 +315,8 @@ func (d *methodologyDetector) applyDecisionTree(testFiles, codeFiles int, covera
 
 // isInTestDir checks if a path is within a known test directory.
 func isInTestDir(path string) bool {
-	parts := strings.Split(filepath.ToSlash(path), "/")
-	for _, part := range parts {
+	parts := strings.SplitSeq(filepath.ToSlash(path), "/")
+	for part := range parts {
 		lower := strings.ToLower(part)
 		if lower == "tests" || lower == "test" || lower == "__tests__" || lower == "spec" {
 			return true

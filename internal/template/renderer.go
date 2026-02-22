@@ -37,6 +37,7 @@ var unexpandedTokenPattern = regexp.MustCompile(`\$\{[A-Za-z_][A-Za-z0-9_]*\}|\{
 // at runtime and must not be flagged as unexpanded tokens (ADR-011 exception).
 var claudeCodePassthroughTokens = []string{
 	"$CLAUDE_PROJECT_DIR",
+	"$ARGUMENTS",
 }
 
 // Renderer renders Go text/template files with strict mode enabled.

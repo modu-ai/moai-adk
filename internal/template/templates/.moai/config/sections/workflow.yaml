@@ -1,122 +1,77 @@
-# Workflow Configuration
-# Execution mode, team settings, and automation preferences
-
 workflow:
-  # Execution mode selection
-  # Options: auto (intelligent selection), subagent (classic mode), team (agent teams)
-  execution_mode: "auto"
-
-  # Auto-clear strategy for context management
-  auto_clear:
-    enabled: true
-    after_plan: true
-    after_run: false
-    token_threshold: 150000
-
-  # Token budget allocations per phase
-  token_budget:
-    plan: 30000
-    run: 180000
-    sync: 40000
-
-  # Agent Teams configuration
-  # NOTE: Agent teams use significantly more tokens than a single session.
-  # Each teammate has its own independent context window, so token usage scales
-  # linearly with the number of active teammates (e.g., 3 teammates ~ 3x tokens).
-  # Use team mode for research, review, and cross-layer features where parallelism
-  # adds real value. For routine tasks, sub-agent mode is more cost-effective.
-  team:
-    # Master switch - also requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
-    enabled: true
-
-    # Maximum teammates per team (2-10 recommended)
-    max_teammates: 10
-
-    # Default model for teammates
-    # Options: inherit (use parent model), haiku (fast/cheap), sonnet (balanced), opus (powerful)
-    default_model: "inherit"
-
-    # Require teammates to get plan approved before implementing
-    require_plan_approval: true
-
-    # Team lead operates in delegate mode (coordination only, no direct implementation)
-    delegate_mode: true
-
-    # Display mode: auto (tmux if available, else in-process), in-process (same terminal), tmux (split panes)
-    teammate_display: "auto"
-
-    # Auto-selection thresholds for switching to team mode
-    auto_selection:
-      # Minimum number of distinct domains to trigger team mode
-      min_domains_for_team: 3
-
-      # Minimum number of affected files to trigger team mode
-      min_files_for_team: 10
-
-      # Minimum complexity score (1-10) to trigger team mode
-      min_complexity_score: 7
-
-    # Pre-defined team composition patterns used by team workflow files (team-plan.md, team-run.md, etc.)
-    patterns:
-      plan_research:
-        roles:
-          - researcher
-          - analyst
-          - architect
-        model: "inherit"
-        description: "Parallel SPEC research and design"
-
-      implementation:
-        roles:
-          - backend-dev
-          - frontend-dev
-          - tester
-        model: "inherit"
-        description: "Cross-layer feature implementation"
-
-      design_implementation:
-        roles:
-          - designer
-          - backend-dev
-          - frontend-dev
-          - tester
-        model: "inherit"
-        description: "Cross-layer feature implementation with UI/UX design"
-
-      full_stack:
-        roles:
-          - api-layer
-          - ui-layer
-          - data-layer
-          - quality
-        model: "inherit"
-        description: "Full-stack implementation with quality gate"
-
-      investigation:
-        roles:
-          - hypothesis-1
-          - hypothesis-2
-          - hypothesis-3
-        model: "haiku"
-        description: "Competing hypothesis debugging"
-
-      review:
-        roles:
-          - security-reviewer
-          - perf-reviewer
-          - quality-reviewer
-        model: "inherit"
-        description: "Multi-perspective code review"
-
-  # Completion markers for workflow state detection
-  completion:
-    markers:
-      done: "<moai>DONE</moai>"
-      complete: "<moai>COMPLETE</moai>"
-    detect_in_output: true
-
-  # Loop prevention guards
-  loop_prevention:
-    max_iterations: 100
-    max_retries_per_operation: 3
-    failure_pattern_detection: true
+    auto_clear:
+        after_plan: true
+        after_run: false
+        enabled: true
+        token_threshold: 150000
+    completion:
+        detect_in_output: true
+        markers:
+            complete: <moai>COMPLETE</moai>
+            done: <moai>DONE</moai>
+    execution_mode: team
+    loop_prevention:
+        failure_pattern_detection: true
+        max_iterations: 100
+        max_retries_per_operation: 3
+    team:
+        auto_selection:
+            min_complexity_score: 7
+            min_domains_for_team: 3
+            min_files_for_team: 10
+        default_model: sonnet
+        delegate_mode: true
+        enabled: true
+        max_teammates: 10
+        patterns:
+            design_implementation:
+                description: Cross-layer feature implementation with UI/UX design
+                model: inherit
+                roles:
+                    - designer
+                    - backend-dev
+                    - frontend-dev
+                    - tester
+            full_stack:
+                description: Full-stack implementation with quality gate
+                model: inherit
+                roles:
+                    - api-layer
+                    - ui-layer
+                    - data-layer
+                    - quality
+            implementation:
+                description: Cross-layer feature implementation
+                model: inherit
+                roles:
+                    - backend-dev
+                    - frontend-dev
+                    - tester
+            investigation:
+                description: Competing hypothesis debugging
+                model: haiku
+                roles:
+                    - hypothesis-1
+                    - hypothesis-2
+                    - hypothesis-3
+            plan_research:
+                description: Parallel SPEC research and design
+                model: inherit
+                roles:
+                    - researcher
+                    - analyst
+                    - architect
+            review:
+                description: Multi-perspective code review
+                model: inherit
+                roles:
+                    - security-reviewer
+                    - perf-reviewer
+                    - quality-reviewer
+                    - ux-reviewer
+        require_plan_approval: true
+        teammate_display: auto
+    token_budget:
+        plan: 30000
+        run: 180000
+        sync: 40000

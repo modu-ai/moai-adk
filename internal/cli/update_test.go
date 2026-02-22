@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -81,8 +82,14 @@ func TestUpdateCmd_CheckOnly_NoDeps(t *testing.T) {
 	updateCmd.SetOut(buf)
 	updateCmd.SetErr(buf)
 
-	// Reset flags before test
+	// Reset all flags before test to avoid state pollution from other tests
 	if err := updateCmd.Flags().Set("check", "true"); err != nil {
+		t.Fatal(err)
+	}
+	if err := updateCmd.Flags().Set("binary", "false"); err != nil {
+		t.Fatal(err)
+	}
+	if err := updateCmd.Flags().Set("templates-only", "false"); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
@@ -913,13 +920,7 @@ func TestBackupMoaiConfig_CreateBackup(t *testing.T) {
 	}
 
 	// Verify sections/system.yaml is in backed_up_items
-	foundSystem := false
-	for _, item := range metadata.BackedUpItems {
-		if item == ".moai/config/sections/system.yaml" {
-			foundSystem = true
-			break
-		}
-	}
+	foundSystem := slices.Contains(metadata.BackedUpItems, ".moai/config/sections/system.yaml")
 	if !foundSystem {
 		t.Errorf("sections/system.yaml should be in backed_up_items, got: %v", metadata.BackedUpItems)
 	}
@@ -963,7 +964,7 @@ func TestCleanupOldBackups(t *testing.T) {
 
 	// Create timestamped backups (using proper timestamp format)
 	now := time.Now()
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		// Create backups with different timestamps
 		ts := now.Add(-time.Duration(i) * time.Hour).Format("20060102_150405")
 		backupPath := filepath.Join(backupBaseDir, ts)
@@ -1294,8 +1295,8 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		settingsPath := filepath.Join(claudeDir, "settings.json")
 
 		// Create existing settings with moai-managed env keys and a custom env key
-		existing := map[string]interface{}{
-			"env": map[string]interface{}{
+		existing := map[string]any{
+			"env": map[string]any{
 				"CUSTOM_VAR":                           "custom_value",
 				"PATH":                                 "/old/go/bin:/usr/local/bin",
 				"ENABLE_TOOL_SEARCH":                   "1",
@@ -1319,7 +1320,7 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 			t.Fatalf("failed to read settings.json: %v", err)
 		}
 
-		var settings map[string]interface{}
+		var settings map[string]any
 		if err := json.Unmarshal(data, &settings); err != nil {
 			t.Fatalf("failed to parse settings.json: %v", err)
 		}
@@ -1329,7 +1330,7 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		if !hasEnv {
 			t.Fatal("env should still exist (CUSTOM_VAR is present)")
 		}
-		envMap := env.(map[string]interface{})
+		envMap := env.(map[string]any)
 
 		// Custom var should be preserved
 		if envMap["CUSTOM_VAR"] != "custom_value" {
@@ -1343,12 +1344,13 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		if _, exists := envMap["ENABLE_TOOL_SEARCH"]; exists {
 			t.Error("ENABLE_TOOL_SEARCH should be removed from global settings")
 		}
-		if _, exists := envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"]; exists {
-			t.Error("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be removed from global settings")
+		// CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be set to "1" as default
+		if envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] != "1" {
+			t.Errorf("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be set to '1', got: %v", envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"])
 		}
 
 		// SessionEnd hook should NOT be present (no longer managed globally)
-		if hooks, ok := settings["hooks"].(map[string]interface{}); ok {
+		if hooks, ok := settings["hooks"].(map[string]any); ok {
 			if _, exists := hooks["SessionEnd"]; exists {
 				t.Error("SessionEnd hook should not be added to global settings")
 			}
@@ -1365,12 +1367,12 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		settingsPath := filepath.Join(claudeDir, "settings.json")
 
 		// Create settings with the orphaned SessionEnd hook
-		existing := map[string]interface{}{
-			"hooks": map[string]interface{}{
-				"SessionEnd": []interface{}{
-					map[string]interface{}{
-						"hooks": []interface{}{
-							map[string]interface{}{
+		existing := map[string]any{
+			"hooks": map[string]any{
+				"SessionEnd": []any{
+					map[string]any{
+						"hooks": []any{
+							map[string]any{
 								"type":    "command",
 								"command": "\"$HOME/.claude/hooks/moai/handle-session-end.sh\"",
 								"timeout": 5,
@@ -1396,7 +1398,7 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 			t.Fatalf("failed to read settings.json: %v", err)
 		}
 
-		var settings map[string]interface{}
+		var settings map[string]any
 		if err := json.Unmarshal(data, &settings); err != nil {
 			t.Fatalf("failed to parse settings.json: %v", err)
 		}
@@ -1412,8 +1414,8 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		settingsPath := filepath.Join(claudeDir, "settings.json")
 
 		// Create settings with env containing only moai-managed keys
-		existing := map[string]interface{}{
-			"env": map[string]interface{}{
+		existing := map[string]any{
+			"env": map[string]any{
 				"PATH":                                 "/old/go/bin:/usr/bin",
 				"ENABLE_TOOL_SEARCH":                   "1",
 				"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
@@ -1435,18 +1437,27 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 			t.Fatalf("failed to read settings.json: %v", err)
 		}
 
-		var settings map[string]interface{}
+		var settings map[string]any
 		if err := json.Unmarshal(data, &settings); err != nil {
 			t.Fatalf("failed to parse settings.json: %v", err)
 		}
 
-		// env key should be completely removed (was empty after cleanup)
-		if _, exists := settings["env"]; exists {
-			t.Error("env should be removed entirely when all keys are moai-managed")
+		// env key should NOT be removed (CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS is added as default)
+		env, hasEnv := settings["env"]
+		if !hasEnv {
+			t.Fatal("env should exist (CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be added)")
+		}
+		envMap := env.(map[string]any)
+		// Only CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be present
+		if envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] != "1" {
+			t.Errorf("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be '1', got: %v", envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"])
+		}
+		if len(envMap) != 1 {
+			t.Errorf("env should only contain CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS, got: %v", envMap)
 		}
 
 		// SessionEnd hook should NOT be present (no longer managed globally)
-		if hooks, ok := settings["hooks"].(map[string]interface{}); ok {
+		if hooks, ok := settings["hooks"].(map[string]any); ok {
 			if _, exists := hooks["SessionEnd"]; exists {
 				t.Error("SessionEnd hook should not be present in global settings")
 			}
@@ -1459,15 +1470,15 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 
 		// Create settings with permissions that include user-added entries beyond Task:*
 		// and an orphaned handle-session-end.sh hook that should be cleaned up
-		existing := map[string]interface{}{
-			"permissions": map[string]interface{}{
-				"allow": []interface{}{"Task:*", "Bash(npm run build):*"},
+		existing := map[string]any{
+			"permissions": map[string]any{
+				"allow": []any{"Task:*", "Bash(npm run build):*"},
 			},
-			"hooks": map[string]interface{}{
-				"SessionEnd": []interface{}{
-					map[string]interface{}{
-						"hooks": []interface{}{
-							map[string]interface{}{
+			"hooks": map[string]any{
+				"SessionEnd": []any{
+					map[string]any{
+						"hooks": []any{
+							map[string]any{
 								"type":    "command",
 								"command": "\"$HOME/.claude/hooks/moai/handle-session-end.sh\"",
 								"timeout": 5,
@@ -1493,7 +1504,7 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 			t.Fatalf("failed to read settings.json: %v", err)
 		}
 
-		var settings map[string]interface{}
+		var settings map[string]any
 		if err := json.Unmarshal(data, &settings); err != nil {
 			t.Fatalf("failed to parse settings.json: %v", err)
 		}
@@ -1503,14 +1514,14 @@ func TestEnsureGlobalSettingsEnv(t *testing.T) {
 		if !exists {
 			t.Fatal("permissions should be preserved when it contains user-added entries")
 		}
-		permMap := permVal.(map[string]interface{})
-		allowArr := permMap["allow"].([]interface{})
+		permMap := permVal.(map[string]any)
+		allowArr := permMap["allow"].([]any)
 		if len(allowArr) != 2 {
 			t.Errorf("permissions.allow should have 2 entries, got %d", len(allowArr))
 		}
 
 		// Orphaned SessionEnd hook should be cleaned up
-		if hooks, ok := settings["hooks"].(map[string]interface{}); ok {
+		if hooks, ok := settings["hooks"].(map[string]any); ok {
 			if _, exists := hooks["SessionEnd"]; exists {
 				t.Error("orphaned SessionEnd hook should be cleaned up")
 			}
@@ -1543,22 +1554,22 @@ func TestEnsureGlobalSettingsEnv_CleanupMigratedSettings(t *testing.T) {
 	// Create existing settings with ALL moai-managed settings that should be cleaned up:
 	// env keys (PATH, ENABLE_TOOL_SEARCH, CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS),
 	// permissions with only Task:*, teammateMode "auto", orphaned SessionEnd hook, plus a custom env key
-	existing := map[string]interface{}{
-		"env": map[string]interface{}{
+	existing := map[string]any{
+		"env": map[string]any{
 			"PATH":                                 "/old/go/bin:/usr/local/bin:/usr/bin:/bin",
 			"ENABLE_TOOL_SEARCH":                   "1",
 			"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
 			"CUSTOM_VAR":                           "preserved",
 		},
-		"permissions": map[string]interface{}{
-			"allow": []interface{}{"Task:*"},
+		"permissions": map[string]any{
+			"allow": []any{"Task:*"},
 		},
 		"teammateMode": "auto",
-		"hooks": map[string]interface{}{
-			"SessionEnd": []interface{}{
-				map[string]interface{}{
-					"hooks": []interface{}{
-						map[string]interface{}{
+		"hooks": map[string]any{
+			"SessionEnd": []any{
+				map[string]any{
+					"hooks": []any{
+						map[string]any{
 							"type":    "command",
 							"command": "\"$HOME/.claude/hooks/moai/handle-session-end.sh\"",
 							"timeout": 5,
@@ -1584,7 +1595,7 @@ func TestEnsureGlobalSettingsEnv_CleanupMigratedSettings(t *testing.T) {
 		t.Fatalf("failed to read settings.json: %v", err)
 	}
 
-	var settings map[string]interface{}
+	var settings map[string]any
 	if err := json.Unmarshal(data, &settings); err != nil {
 		t.Fatalf("failed to parse settings.json: %v", err)
 	}
@@ -1594,7 +1605,7 @@ func TestEnsureGlobalSettingsEnv_CleanupMigratedSettings(t *testing.T) {
 	if !hasEnv {
 		t.Fatal("env should still exist (CUSTOM_VAR is present)")
 	}
-	envMap := env.(map[string]interface{})
+	envMap := env.(map[string]any)
 
 	if _, exists := envMap["PATH"]; exists {
 		t.Error("PATH should be removed from global settings (managed at project level)")
@@ -1602,8 +1613,9 @@ func TestEnsureGlobalSettingsEnv_CleanupMigratedSettings(t *testing.T) {
 	if _, exists := envMap["ENABLE_TOOL_SEARCH"]; exists {
 		t.Error("ENABLE_TOOL_SEARCH should be removed from global settings")
 	}
-	if _, exists := envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"]; exists {
-		t.Error("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be removed from global settings")
+	// CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be set to "1" as default
+	if envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] != "1" {
+		t.Errorf("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS should be set to '1', got: %v", envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"])
 	}
 
 	// Custom env keys should be PRESERVED
@@ -1623,7 +1635,7 @@ func TestEnsureGlobalSettingsEnv_CleanupMigratedSettings(t *testing.T) {
 
 	// SessionEnd hook (orphaned handle-session-end.sh) should be REMOVED
 	if hooks, hasHooks := settings["hooks"]; hasHooks {
-		if hooksMap, ok := hooks.(map[string]interface{}); ok {
+		if hooksMap, ok := hooks.(map[string]any); ok {
 			if _, hasSessionEnd := hooksMap["SessionEnd"]; hasSessionEnd {
 				t.Error("orphaned SessionEnd hook should be removed from global settings")
 			}
@@ -1698,12 +1710,12 @@ func TestCleanLegacyHooks_RemovesMoaiHandleHooks(t *testing.T) {
 
 	for _, tc := range moaiHookPatterns {
 		t.Run(tc.hookType, func(t *testing.T) {
-			settings := map[string]interface{}{
-				"hooks": map[string]interface{}{
-					tc.hookType: []interface{}{
-						map[string]interface{}{
-							"hooks": []interface{}{
-								map[string]interface{}{
+			settings := map[string]any{
+				"hooks": map[string]any{
+					tc.hookType: []any{
+						map[string]any{
+							"hooks": []any{
+								map[string]any{
 									"command": tc.command,
 									"timeout": float64(5),
 									"type":    "command",
@@ -1720,7 +1732,7 @@ func TestCleanLegacyHooks_RemovesMoaiHandleHooks(t *testing.T) {
 			}
 
 			if hooks, exists := settings["hooks"]; exists {
-				hooksMap, _ := hooks.(map[string]interface{})
+				hooksMap, _ := hooks.(map[string]any)
 				if _, hasHookType := hooksMap[tc.hookType]; hasHookType {
 					t.Errorf("%s hook should be removed from global settings", tc.hookType)
 				}
@@ -2701,7 +2713,7 @@ func TestRestoreMoaiConfig_CustomSectionPreserved(t *testing.T) {
 	}
 
 	// Simulate template sync: remove custom section (template doesn't have it)
-	os.Remove(customPath)
+	_ = os.Remove(customPath)
 
 	// Update standard section (as if template deployed a new version)
 	newStandardContent := []byte("moai:\n  version: \"2.0.0\"\n  new_field: \"added\"\n")

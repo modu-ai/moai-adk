@@ -17,7 +17,6 @@ func TestDevelopmentModeConstants(t *testing.T) {
 	}{
 		{"ModeDDD", models.ModeDDD, "ddd"},
 		{"ModeTDD", models.ModeTDD, "tdd"},
-		{"ModeHybrid", models.ModeHybrid, "hybrid"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -36,7 +35,6 @@ func TestDevelopmentModeIsValid(t *testing.T) {
 	}{
 		{"ddd is valid", models.ModeDDD, true},
 		{"tdd is valid", models.ModeTDD, true},
-		{"hybrid is valid", models.ModeHybrid, true},
 		{"empty is invalid", models.DevelopmentMode(""), false},
 		{"waterfall is invalid", models.DevelopmentMode("waterfall"), false},
 		{"DDD uppercase is invalid", models.DevelopmentMode("DDD"), false},
@@ -53,13 +51,12 @@ func TestDevelopmentModeIsValid(t *testing.T) {
 
 func TestValidDevelopmentModes(t *testing.T) {
 	modes := models.ValidDevelopmentModes()
-	if len(modes) != 3 {
-		t.Fatalf("expected 3 valid modes, got %d", len(modes))
+	if len(modes) != 2 {
+		t.Fatalf("expected 2 valid modes, got %d", len(modes))
 	}
 	expected := map[models.DevelopmentMode]bool{
-		models.ModeDDD:    true,
-		models.ModeTDD:    true,
-		models.ModeHybrid: true,
+		models.ModeDDD: true,
+		models.ModeTDD: true,
 	}
 	for _, m := range modes {
 		if !expected[m] {
@@ -156,31 +153,6 @@ func TestTDDSettingsFields(t *testing.T) {
 	}
 	if s.MutationTestingEnabled {
 		t.Error("MutationTestingEnabled: expected false")
-	}
-}
-
-func TestHybridSettingsFields(t *testing.T) {
-	s := models.HybridSettings{
-		NewFeatures:         "tdd",
-		LegacyRefactoring:   "ddd",
-		MinCoverageNew:      90,
-		MinCoverageLegacy:   85,
-		PreserveRefactoring: true,
-	}
-	if s.NewFeatures != "tdd" {
-		t.Errorf("NewFeatures: got %q, want %q", s.NewFeatures, "tdd")
-	}
-	if s.LegacyRefactoring != "ddd" {
-		t.Errorf("LegacyRefactoring: got %q, want %q", s.LegacyRefactoring, "ddd")
-	}
-	if s.MinCoverageNew != 90 {
-		t.Errorf("MinCoverageNew: got %d, want 90", s.MinCoverageNew)
-	}
-	if s.MinCoverageLegacy != 85 {
-		t.Errorf("MinCoverageLegacy: got %d, want 85", s.MinCoverageLegacy)
-	}
-	if !s.PreserveRefactoring {
-		t.Error("PreserveRefactoring: expected true")
 	}
 }
 

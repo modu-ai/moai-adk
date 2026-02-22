@@ -221,6 +221,7 @@ func TestSaveAnswer_AllFields(t *testing.T) {
 		{"agent_teams_mode", "auto", func() bool { return result.AgentTeamsMode == "auto" }, "AgentTeamsMode=auto"},
 		{"max_teammates", "3", func() bool { return result.MaxTeammates == "3" }, "MaxTeammates=3"},
 		{"default_model", "sonnet", func() bool { return result.DefaultModel == "sonnet" }, "DefaultModel=sonnet"},
+		{"teammate_display", "tmux", func() bool { return result.TeammateDisplay == "tmux" }, "TeammateDisplay=tmux"},
 		{"statusline_preset", "compact", func() bool { return result.StatuslinePreset == "compact" }, "StatuslinePreset=compact"},
 	}
 

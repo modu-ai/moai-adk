@@ -7,13 +7,13 @@ description: >
   visual rendering (Pencil MCP), and code generation (React/Tailwind).
 license: MIT
 compatibility: Designed for Claude Code
-allowed-tools: Read Write Edit Grep Glob Bash WebFetch WebSearch mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read Write Edit Grep Glob Bash WebFetch WebSearch mcp__context7__resolve-library-id mcp__context7__get-library-docs mcp__pencil__batch_design mcp__pencil__batch_get mcp__pencil__get_screenshot mcp__pencil__snapshot_layout mcp__pencil__get_editor_state mcp__pencil__get_variables mcp__pencil__set_variables mcp__pencil__get_guidelines mcp__pencil__get_style_guide mcp__pencil__get_style_guide_tags mcp__pencil__open_document mcp__pencil__find_empty_space_on_canvas
 user-invocable: false
 metadata:
-  version: "2.0.0"
+  version: "3.0.0"
   category: "domain"
   status: "active"
-  updated: "2026-02-09"
+  updated: "2026-02-21"
   modularized: "false"
   tools: "Figma, Pencil MCP"
   tags: "figma, pencil, design to code, design export, render dna, pen frame, react from design, tailwind from design, design context, ui implementation"
@@ -24,7 +24,7 @@ metadata:
 progressive_disclosure:
   enabled: true
   level1_tokens: 100
-  level2_tokens: 4500
+  level2_tokens: 5500
 
 # MoAI Extension: Triggers
 triggers:
@@ -36,6 +36,34 @@ triggers:
 # Design Tools Integration Specialist
 
 Comprehensive design-to-code workflow guidance covering three major capabilities: Figma MCP (design fetching), Pencil MCP (visual rendering), and Pencil-to-code export (React/Tailwind generation).
+
+## Default Design Style (shadcn/ui Nova)
+
+When no specific design style is requested, use the **shadcn/ui Nova** preset with Notion-style neutral color scheme:
+
+```
+bunx --bun shadcn@latest create --preset "https://ui.shadcn.com/init?base=radix&style=nova&baseColor=neutral&theme=neutral&iconLibrary=hugeicons&font=noto-sans&menuAccent=bold&menuColor=default&radius=small&template=next&rtl=false" --template next
+```
+
+### Nova Style Configuration
+
+| Property | Value | Description |
+|----------|-------|-------------|
+| Style | `nova` | Modern, clean design language |
+| Base Color | `neutral` | Notion-style grayscale palette |
+| Theme | `neutral` | Consistent neutral theming |
+| Icon Library | `hugeicons` | Comprehensive icon set |
+| Font | `noto-sans` | Clean, readable sans-serif |
+| Radius | `small` | Subtle rounded corners |
+| Menu Accent | `bold` | Strong menu highlighting |
+
+### When to Use Default Style
+
+Apply the Nova preset when:
+- User requests "clean", "modern", or "minimalist" design without specifics
+- No brand guidelines or design system specified
+- Creating dashboards, admin panels, or productivity tools
+- Building documentation or content-focused interfaces
 
 ## Quick Tool Selection
 
@@ -53,13 +81,30 @@ Context7 Library: /figma/docs
 
 ### Pencil MCP - Visual Design Rendering
 
-Pencil MCP integration for rendering DNA codes into visual .pen frames and creating design proposals.
+Pencil MCP integration for creating and editing .pen design files with AI-assisted design generation.
 
 Best For: Rapid prototyping, visual design iterations, creating UI mockups from text descriptions, collaborative design discussions, visual proposals before implementation.
 
-Key Strengths: Text-to-design conversion, DNA code format for version control, iterative design refinement, visual preview without implementation, collaborative design workflow.
+Key Strengths: Text-to-design conversion, batch design operations, style guide integration, visual preview without implementation, collaborative design workflow.
 
-Workflow: Describe UI in natural language → Generate DNA code → Render to .pen frame → Visually review → Iterate on design → Export to code when ready.
+**Available Pencil MCP Tools:**
+
+| Tool | Purpose |
+|------|---------|
+| `batch_design` | Create, modify, and manipulate design elements in batches |
+| `batch_get` | Read design components and hierarchy by patterns or node IDs |
+| `get_screenshot` | Render design previews as images |
+| `snapshot_layout` | Analyze computed layout structure |
+| `get_editor_state` | Get current editor context and active file |
+| `get_variables` | Read design tokens and theme variables |
+| `set_variables` | Update design tokens and theme variables |
+| `get_guidelines` | Get design guidelines for code, tables, Tailwind, or landing pages |
+| `get_style_guide` | Get style guide by name or tags |
+| `get_style_guide_tags` | List all available style guide tags |
+| `open_document` | Open existing .pen file or create new one |
+| `find_empty_space_on_canvas` | Find available space for new elements |
+
+Workflow: Describe UI in natural language → Generate design with batch_design → Visually review with get_screenshot → Iterate on design → Export to code when ready.
 
 Context7 Library: /pencil/docs
 
@@ -86,7 +131,7 @@ Choose Pencil MCP when:
 - Creating new designs from scratch
 - Rapid prototyping and visual iteration needed
 - Text-based design workflow preferred
-- Want version-controllable design format (DNA codes)
+- Want AI-assisted design generation
 - Collaborative design discussions with team
 
 Choose Pencil-to-Code Export when:
@@ -95,6 +140,76 @@ Choose Pencil-to-Code Export when:
 - Need React components with Tailwind styling
 - Maintaining design fidelity is critical
 - Rapid frontend development from designs
+
+## Pencil MCP Workflow
+
+### Starting a Design Session
+
+1. **Check Editor State**
+   ```
+   get_editor_state() → Determine active .pen file and user selection
+   ```
+
+2. **Open or Create Document**
+   ```
+   open_document(filePathOrNew: "new") → Create new .pen file
+   open_document(filePathOrNew: "/path/to/file.pen") → Open existing
+   ```
+
+3. **Get Design Guidelines**
+   ```
+   get_guidelines(topic: "code" | "table" | "tailwind" | "landing-page")
+   get_style_guide_tags() → Get available style tags
+   get_style_guide(tags: ["minimalist", "dashboard"], name: "nova")
+   ```
+
+### Creating Designs
+
+1. **Generate with batch_design**
+
+   Use batch_design for efficient batch operations. Syntax:
+   ```
+   foo=I("parent", { ... })    // Insert new node
+   baz=C("nodeid", "parent", { ... })  // Copy node
+   foo2=R("nodeid1/nodeid2", {...})    // Replace node
+   U(foo+"/nodeid", {...})     // Update node
+   D("dfFAeg2")               // Delete node
+   M("nodeid3", "parent", 2)   // Move node
+   G("baz", "ai", "...")       // Generate image with AI
+   ```
+
+2. **Design with Default Nova Style**
+
+   When creating components without user-specified style:
+   - Use neutral color palette (grays, whites)
+   - Apply small radius (4-6px)
+   - Use Noto Sans or system sans-serif
+   - Maintain clean, minimal aesthetic
+   - Apply consistent 4px/8px spacing grid
+
+3. **Review with get_screenshot**
+   ```
+   get_screenshot() → Visual validation of design
+   ```
+
+### Managing Design Tokens
+
+1. **Read Variables**
+   ```
+   get_variables() → Current design tokens and themes
+   ```
+
+2. **Update Variables**
+   ```
+   set_variables(variables: { primary: "#3B82F6", ... })
+   ```
+
+### Layout Analysis
+
+```
+snapshot_layout() → Analyze computed layout rectangles
+find_empty_space_on_canvas(direction: "right", size: { w: 200, h: 100 })
+```
 
 ## Common Design-to-Code Patterns
 
@@ -130,7 +245,7 @@ Applicable to all tools:
 
 **Version Control:**
 - Commit Figma metadata snapshots for reference
-- Version DNA codes in repository
+- Version .pen files in repository
 - Track design iterations with git
 - Document design decisions in code comments
 
@@ -162,9 +277,9 @@ Key sections: MCP configuration, authentication setup, file access patterns, met
 
 File: reference/pencil-renderer.md
 
-Covers DNA code format and syntax, text-to-design generation, .pen frame rendering, visual design iteration, collaborative workflows, and design version control.
+Covers batch_design operations, style guide integration, .pen frame rendering, visual design iteration, collaborative workflows, and design version control.
 
-Key sections: DNA code structure, natural language design prompts, rendering options, frame configuration, design refinement patterns, version control strategies, team collaboration workflows.
+Key sections: batch_design syntax, natural language design prompts, rendering options, frame configuration, design refinement patterns, version control strategies, team collaboration workflows.
 
 ### Pencil-to-Code Export
 
@@ -187,10 +302,11 @@ Key sections: Feature comparison table, workflow decision matrix, tool integrati
 When working with design-to-code features:
 
 1. Start with Quick Tool Selection (above) if choosing a tool
-2. Review Common Design-to-Code Patterns for universal concepts
-3. Open tool-specific reference file for implementation details
-4. Refer to comparison.md when evaluating multiple tools
-5. Use Context7 tools to access latest tool documentation
+2. Apply Default Nova Style when no style specified
+3. Review Common Design-to-Code Patterns for universal concepts
+4. Open tool-specific reference file for implementation details
+5. Refer to comparison.md when evaluating multiple tools
+6. Use Context7 tools to access latest tool documentation
 
 ## Context7 Documentation Access
 
@@ -204,11 +320,17 @@ Access up-to-date tool documentation using Context7 MCP:
 - Use resolve-library-id with "pencil" to get library ID
 - Use get-library-docs with topic "mcp", "dna-codes", "rendering", "export"
 
+## Official Documentation
+
+- Pencil Official: https://pencil.dev
+- Pencil Docs: https://docs.pencil.dev
+- Pencil AI Integration: https://docs.pencil.dev/getting-started/ai-integration
+
 ## Works Well With
 
 - moai-domain-uiux: Design systems and component architecture
 - moai-domain-frontend: React implementation patterns
-- moai-library-shadcn: shadcn/ui component integration
+- moai-library-shadcn: shadcn/ui component integration (Nova preset)
 - moai-lang-typescript: TypeScript for generated components
 - moai-lang-react: React best practices
 - moai-foundation-core: SPEC-driven development workflows
@@ -216,6 +338,7 @@ Access up-to-date tool documentation using Context7 MCP:
 ---
 
 Status: Active
-Version: 2.0.0 (Consolidated Design Tools Coverage)
-Last Updated: 2026-02-09
+Version: 3.0.0 (Nova Style + Pencil MCP Tools Integration)
+Last Updated: 2026-02-21
 Tools: Figma MCP, Pencil MCP, Pencil-to-Code Export
+Default Style: shadcn/ui Nova (neutral, noto-sans, small radius)

@@ -243,7 +243,7 @@ func TestThreadSafety(t *testing.T) {
 		done := make(chan bool, 10)
 
 		// Run 10 concurrent computations
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			go func() {
 				_, err := detector.ComputeHash(testFile)
 				if err != nil {
@@ -254,7 +254,7 @@ func TestThreadSafety(t *testing.T) {
 		}
 
 		// Wait for all goroutines
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			<-done
 		}
 	})
@@ -264,7 +264,7 @@ func TestThreadSafety(t *testing.T) {
 		done := make(chan bool, 10)
 
 		// Run 5 concurrent caches and 5 concurrent reads
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			go func(n int) {
 				testPath := "/test/file.go"
 				testHash := make([]byte, 32)
@@ -274,7 +274,7 @@ func TestThreadSafety(t *testing.T) {
 			}(i)
 		}
 
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			go func() {
 				detector.GetCachedHash("/test/file.go")
 				done <- true
@@ -282,7 +282,7 @@ func TestThreadSafety(t *testing.T) {
 		}
 
 		// Wait for all goroutines
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			<-done
 		}
 	})

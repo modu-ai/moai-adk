@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 func TestGLMCmd_Exists(t *testing.T) {
@@ -40,8 +42,6 @@ func TestGLMCmd_IsSubcommandOfRoot(t *testing.T) {
 }
 
 func TestGLMCmd_NoArgs(t *testing.T) {
-	// Enable test mode to prevent modifying actual settings files
-	t.Setenv("MOAI_TEST_MODE", "1")
 	// Set GLM_API_KEY env var
 	t.Setenv("GLM_API_KEY", "test-api-key")
 
@@ -73,15 +73,13 @@ func TestGLMCmd_NoArgs(t *testing.T) {
 	}
 
 	output := buf.String()
-	// In test mode, the command should skip settings modification
-	if !strings.Contains(output, "Test environment detected") {
-		t.Errorf("output should mention test environment, got %q", output)
+	// GLM Team mode should be enabled
+	if !strings.Contains(output, "GLM Team mode enabled") {
+		t.Errorf("output should mention GLM Team mode enabled, got %q", output)
 	}
 }
 
 func TestGLMCmd_InjectsEnv(t *testing.T) {
-	// Enable test mode to prevent modifying actual settings files
-	t.Setenv("MOAI_TEST_MODE", "1")
 	// Set GLM_API_KEY env var
 	t.Setenv("GLM_API_KEY", "test-api-key")
 
@@ -112,10 +110,22 @@ func TestGLMCmd_InjectsEnv(t *testing.T) {
 		t.Fatalf("glm should not error, got: %v", err)
 	}
 
-	// In test mode, settings.local.json should NOT be created
+	// GLM Team mode should create settings.local.json with GLM env vars
 	settingsPath := filepath.Join(claudeDir, "settings.local.json")
-	if _, err := os.Stat(settingsPath); !os.IsNotExist(err) {
-		t.Error("settings.local.json should not be created in test mode")
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("settings.local.json should be created: %v", err)
+	}
+
+	content := string(data)
+	if !strings.Contains(content, "ANTHROPIC_AUTH_TOKEN") {
+		t.Error("settings.local.json should contain ANTHROPIC_AUTH_TOKEN")
+	}
+	if !strings.Contains(content, "ANTHROPIC_BASE_URL") {
+		t.Error("settings.local.json should contain ANTHROPIC_BASE_URL")
+	}
+	if !strings.Contains(content, "CLAUDE_CODE_TEAMMATE_DISPLAY") {
+		t.Error("settings.local.json should contain CLAUDE_CODE_TEAMMATE_DISPLAY")
 	}
 }
 
@@ -303,6 +313,99 @@ func TestSaveGLMKey_EmptyKey(t *testing.T) {
 	}
 }
 
+// TestResolveGLMModels verifies backward compatibility fallback logic.
+func TestResolveGLMModels(t *testing.T) {
+	defaults := config.NewDefaultLLMConfig()
+
+	tests := []struct {
+		name       string
+		models     config.GLMModels
+		wantHigh   string
+		wantMedium string
+		wantLow    string
+	}{
+		{
+			name: "only High/Medium/Low set - uses them directly",
+			models: config.GLMModels{
+				High:   "custom-high",
+				Medium: "custom-medium",
+				Low:    "custom-low",
+			},
+			wantHigh:   "custom-high",
+			wantMedium: "custom-medium",
+			wantLow:    "custom-low",
+		},
+		{
+			name: "only Opus/Sonnet/Haiku set - falls back to legacy fields",
+			models: config.GLMModels{
+				Opus:   "legacy-opus",
+				Sonnet: "legacy-sonnet",
+				Haiku:  "legacy-haiku",
+			},
+			wantHigh:   "legacy-opus",
+			wantMedium: "legacy-sonnet",
+			wantLow:    "legacy-haiku",
+		},
+		{
+			name: "both set - High/Medium/Low takes priority over Opus/Sonnet/Haiku",
+			models: config.GLMModels{
+				High:   "new-high",
+				Medium: "new-medium",
+				Low:    "new-low",
+				Opus:   "old-opus",
+				Sonnet: "old-sonnet",
+				Haiku:  "old-haiku",
+			},
+			wantHigh:   "new-high",
+			wantMedium: "new-medium",
+			wantLow:    "new-low",
+		},
+		{
+			name:       "neither set - falls back to config defaults",
+			models:     config.GLMModels{},
+			wantHigh:   defaults.GLM.Models.High,
+			wantMedium: defaults.GLM.Models.Medium,
+			wantLow:    defaults.GLM.Models.Low,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotHigh, gotMedium, gotLow := resolveGLMModels(tt.models)
+			if gotHigh != tt.wantHigh {
+				t.Errorf("high = %q, want %q", gotHigh, tt.wantHigh)
+			}
+			if gotMedium != tt.wantMedium {
+				t.Errorf("medium = %q, want %q", gotMedium, tt.wantMedium)
+			}
+			if gotLow != tt.wantLow {
+				t.Errorf("low = %q, want %q", gotLow, tt.wantLow)
+			}
+		})
+	}
+}
+
+// TestLoadGLMConfig_BackwardCompatibility reproduces Issue #409:
+// Legacy users with llm.yaml configured using old field names (opus, sonnet, haiku)
+// should get correct model mapping via resolveGLMModels fallback.
+// NOTE: This test is now covered by glm_compat_test.go tests.
+func TestLoadGLMConfig_BackwardCompatibility(t *testing.T) {
+	t.Skip("Covered by glm_compat_test.go tests - kept for historical reference")
+}
+
+// configManagerMock is a minimal mock of config.ConfigManager for testing.
+type configManagerMock struct {
+	cfg *config.Config
+}
+
+func (m *configManagerMock) Get() *config.Config {
+	return m.cfg
+}
+
+func (m *configManagerMock) Reload() error {
+	return nil
+}
+
 func TestSaveGLMKey_OverwriteExisting(t *testing.T) {
 	// Create temp home directory
 	tmpHome := t.TempDir()
@@ -330,119 +433,5 @@ func TestSaveGLMKey_OverwriteExisting(t *testing.T) {
 	}
 	if loadedKey == firstKey {
 		t.Error("first key should be overwritten")
-	}
-}
-
-// --- Tests for project-level .env.glm (issue #384) ---
-
-func TestCreateProjectEnvGLM(t *testing.T) {
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
-	t.Setenv("USERPROFILE", tmpHome)
-
-	// Save a test API key so getGLMAPIKey can find it
-	if err := os.MkdirAll(filepath.Join(tmpHome, ".moai"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(
-		filepath.Join(tmpHome, ".moai", ".env.glm"),
-		[]byte("GLM_API_KEY=\"test-api-key\"\n"),
-		0o600,
-	); err != nil {
-		t.Fatal(err)
-	}
-
-	// Create temp project root with .moai directory
-	projectRoot := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(projectRoot, ".moai"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	glmConfig := &GLMConfigFromYAML{
-		BaseURL: "https://api.z.ai/api/anthropic",
-		Models: struct {
-			Haiku  string
-			Sonnet string
-			Opus   string
-		}{
-			Haiku:  "glm-4.7-flashx",
-			Sonnet: "glm-4.7",
-			Opus:   "glm-5",
-		},
-		EnvVar: "GLM_API_KEY",
-	}
-
-	err := createProjectEnvGLM(glmConfig, projectRoot)
-	if err != nil {
-		t.Fatalf("createProjectEnvGLM should succeed, got: %v", err)
-	}
-
-	// Verify file was created
-	envPath := filepath.Join(projectRoot, ".moai", ".env.glm")
-	content, err := os.ReadFile(envPath)
-	if err != nil {
-		t.Fatalf("failed to read project .env.glm: %v", err)
-	}
-
-	contentStr := string(content)
-
-	// Verify all ANTHROPIC_* export statements are present
-	expectedVars := []string{
-		`export ANTHROPIC_AUTH_TOKEN="test-api-key"`,
-		`export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"`,
-		`export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.7-flashx"`,
-		`export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-4.7"`,
-		`export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5"`,
-	}
-	for _, expected := range expectedVars {
-		if !strings.Contains(contentStr, expected) {
-			t.Errorf("project .env.glm should contain %q", expected)
-		}
-	}
-}
-
-func TestCreateProjectEnvGLM_CreatesDirectory(t *testing.T) {
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
-	t.Setenv("USERPROFILE", tmpHome)
-
-	// Save a test API key
-	if err := os.MkdirAll(filepath.Join(tmpHome, ".moai"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(
-		filepath.Join(tmpHome, ".moai", ".env.glm"),
-		[]byte("GLM_API_KEY=\"test-key\"\n"),
-		0o600,
-	); err != nil {
-		t.Fatal(err)
-	}
-
-	// Create project root WITHOUT .moai directory
-	projectRoot := t.TempDir()
-
-	glmConfig := &GLMConfigFromYAML{
-		BaseURL: "https://api.z.ai/api/anthropic",
-		Models: struct {
-			Haiku  string
-			Sonnet string
-			Opus   string
-		}{
-			Haiku:  "glm-4.7-flashx",
-			Sonnet: "glm-4.7",
-			Opus:   "glm-5",
-		},
-		EnvVar: "GLM_API_KEY",
-	}
-
-	err := createProjectEnvGLM(glmConfig, projectRoot)
-	if err != nil {
-		t.Fatalf("createProjectEnvGLM should create .moai dir and succeed, got: %v", err)
-	}
-
-	// Verify file exists
-	envPath := filepath.Join(projectRoot, ".moai", ".env.glm")
-	if _, err := os.Stat(envPath); os.IsNotExist(err) {
-		t.Fatal("expected .moai/.env.glm to be created")
 	}
 }

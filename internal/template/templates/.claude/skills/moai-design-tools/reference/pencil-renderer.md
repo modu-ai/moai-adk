@@ -1,452 +1,366 @@
 # Pencil MCP Rendering Guide
 
-Pencil MCP integration for rendering DNA codes into visual .pen frames and creating design proposals.
+Pencil MCP integration for creating and editing .pen design files with AI-assisted design generation.
 
 ## Overview
 
-Pencil MCP enables text-to-design conversion through DNA codes, a declarative format for describing UI designs that can be version controlled and rendered into visual .pen frames.
+Pencil MCP provides a comprehensive set of tools for creating, editing, and managing .pen design files. The editor is specifically designed for web and mobile applications with AI-assisted design generation capabilities.
 
-## DNA Code Format
+**Important Notes:**
+- .pen file contents are encrypted and can ONLY be accessed via Pencil MCP tools
+- NEVER use Read or Grep tools to read .pen file contents
+- ALWAYS use Pencil MCP tools (batch_get, batch_design) for .pen file operations
 
-### Basic Structure
+## Pencil MCP Tools Reference
 
-```dna
-// Button component DNA code
-component Button {
-  variant: primary
-  size: medium
-  content: "Click me"
-  onClick: handleSubmit
-}
+### Editor State and Document Management
+
+#### get_editor_state()
+
+Start with this tool to understand the current editor state:
+- Currently active .pen file
+- User's current selection
+- Other essential context information
+
+```
+get_editor_state() → { activeFile, selection, ... }
 ```
 
-### Layout Structure
+#### open_document(filePathOrNew)
 
-```dna
-// Form layout with multiple components
-layout LoginForm {
-  direction: column
-  spacing: 16
-  children: [
-    Input {
-      placeholder: "Email"
-      type: email
-    }
-    Input {
-      placeholder: "Password"
-      type: password
-    }
-    Button {
-      variant: primary
-      content: "Sign In"
-    }
-  ]
-}
+Open or create .pen files:
+- `"new"` → Create new empty .pen file
+- `"/path/to/file.pen"` → Open existing file
+
+### Design Reading Tools
+
+#### batch_get(patterns, nodeIds)
+
+Retrieve nodes by searching patterns or reading specific node IDs:
+- Use for discovering and understanding .pen file structure
+- Supports pattern matching for efficient searching
+
+#### get_screenshot()
+
+Render a visual preview of a node in a .pen file:
+- Use periodically to validate designs visually
+- Returns image data for review
+
+#### snapshot_layout()
+
+Check the current layout structure of a .pen file:
+- Examine computed layout rectangles
+- Decide where to insert new nodes
+- Understand spatial relationships
+
+#### get_variables()
+
+Extract current state of variables and themes:
+- Design tokens
+- Color definitions
+- Theme configuration
+
+### Design Creation and Modification
+
+#### batch_design(operations)
+
+Execute multiple design operations in a single call. **Maximum 25 operations per call recommended.**
+
+**Operation Syntax:**
+
+| Operation | Syntax | Description |
+|-----------|--------|-------------|
+| Insert | `foo=I("parent", { ... })` | Create new node |
+| Copy | `baz=C("nodeid", "parent", { ... })` | Copy existing node |
+| Replace | `foo2=R("nodeid1/nodeid2", {...})` | Replace node content |
+| Update | `U(foo+"/nodeid", {...})` | Update existing node |
+| Delete | `D("dfFAeg2")` | Remove node |
+| Move | `M("nodeid3", "parent", 2)` | Move node to new parent |
+| Generate Image | `G("baz", "ai", "...")` | AI image generation |
+
+**Example:**
+```
+// Create a button component
+button=I("root", {
+  type: "frame",
+  name: "Button",
+  style: { backgroundColor: "#3B82F6", borderRadius: 6 }
+})
+U(button, { children: ["Click me"] })
 ```
 
-## MCP Configuration
+#### set_variables()
 
-### Server Setup
+Add or update variables in the .pen file:
+- Define color tokens
+- Set theme values
+- Configure design system variables
 
-Add to `.mcp.json`:
+### Layout and Space Management
 
-```json
-{
-  "mcpServers": {
-    "pencil": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-pencil"],
-      "env": {
-        "PENCIL_API_KEY": "your-key-here"
-      }
-    }
+#### find_empty_space_on_canvas()
+
+Find available space on the canvas:
+- Direction parameter for search direction
+- Size parameter for desired dimensions
+- Returns coordinates for placement
+
+### Style Guide Integration
+
+#### get_guidelines(topic)
+
+Returns design guidelines and rules for working with .pen files.
+
+**Available Topics:**
+- `code` - Code-related design guidelines
+- `table` - Table design patterns
+- `tailwind` - Tailwind CSS integration
+- `landing-page` - Landing page design patterns
+
+#### get_style_guide_tags()
+
+Returns all available style guide tags for filtering:
+- Use to discover available style options
+- Filter style guides by relevant tags
+
+#### get_style_guide(tags, name)
+
+Returns a style guide based on tags or specific name:
+- Use when designing screens, websites, apps, or dashboards
+- Apply consistent styling across designs
+
+## Default Style: shadcn/ui Nova
+
+### Nova Preset Configuration
+
+When no specific style is requested, use the Nova preset with these defaults:
+
+```
+bunx --bun shadcn@latest create --preset "https://ui.shadcn.com/init?base=radix&style=nova&baseColor=neutral&theme=neutral&iconLibrary=hugeicons&font=noto-sans&menuAccent=bold&menuColor=default&radius=small&template=next&rtl=false" --template next
+```
+
+### Nova Style Tokens
+
+```javascript
+// Color Palette (Neutral/Notion-style)
+const novaColors = {
+  // Backgrounds
+  background: "#FFFFFF",
+  surface: "#FAFAFA",
+  surfaceHover: "#F5F5F5",
+  surfaceActive: "#EBEBEB",
+
+  // Borders
+  border: "#E5E5E5",
+  borderHover: "#D4D4D4",
+
+  // Text
+  textPrimary: "#171717",
+  textSecondary: "#525252",
+  textTertiary: "#A3A3A3",
+
+  // Accent (subtle blue)
+  accent: "#3B82F6",
+  accentHover: "#2563EB",
+  accentLight: "#EFF6FF"
+};
+
+// Spacing (4px base)
+const novaSpacing = {
+  xs: "4px",
+  sm: "8px",
+  md: "16px",
+  lg: "24px",
+  xl: "32px"
+};
+
+// Border Radius (small, subtle)
+const novaRadius = {
+  sm: "4px",
+  md: "6px",
+  lg: "8px"
+};
+
+// Typography
+const novaTypography = {
+  fontFamily: "'Noto Sans', system-ui, sans-serif",
+  fontSize: {
+    xs: "12px",
+    sm: "14px",
+    md: "16px",
+    lg: "18px",
+    xl: "20px"
+  },
+  fontWeight: {
+    normal: 400,
+    medium: 500,
+    semibold: 600,
+    bold: 700
   }
-}
-```
-
-### Authentication
-
-1. Obtain Pencil API key:
-   - Sign up at https://pencil.dev
-   - Generate API key in settings
-   - Add to MCP configuration
-
-2. Environment Variables:
-   - Set `PENCIL_API_KEY` in environment
-   - Required for rendering operations
-
-## Text-to-Design Generation
-
-### Natural Language Prompts
-
-```
-// Simple component prompt
-"Create a primary button with medium size"
-
-// Complex layout prompt
-"Design a login form with email input, password input,
-and submit button arranged vertically with 16px spacing"
-
-// Styled component prompt
-"Create a card component with white background, rounded
-corners, subtle shadow, and padding of 24px"
-```
-
-### DNA Code Generation
-
-```typescript
-// Generate DNA from natural language
-const dna = await pencil.generate_dna({
-  prompt: "Create a navigation bar with logo and links",
-  style: "minimalist"
-});
-
-// Returns DNA code structure
-```
-
-## .pen Frame Rendering
-
-### Render DNA to Frame
-
-```typescript
-// Render DNA code to visual frame
-const frame = await pencil.render_dna({
-  dna: dnaCode,
-  format: "pen",
-  options: {
-    width: 1200,
-    height: 800,
-    theme: "light"
-  }
-});
-
-// Returns .pen file URL or base64 data
-```
-
-### Frame Configuration
-
-```typescript
-// Configure rendering options
-const options = {
-  width: 1200,           // Frame width in pixels
-  height: 800,           // Frame height in pixels
-  theme: "light",        // light, dark, or auto
-  scale: 1,              // Resolution scale
-  interactive: true,     // Enable interactive elements
-  annotations: true      // Show design annotations
 };
 ```
 
-## Design Iteration Workflow
+### Applying Nova Style in batch_design
 
-### Iterative Refinement
-
-1. **Initial Design**
-   ```dna
-   component Button {
-     content: "Click me"
-   }
-   ```
-
-2. **Add Styling**
-   ```dna
-   component Button {
-     content: "Click me"
-     background: primary.500
-     color: white.100
-     padding: md
-     radius: md
-   }
-   ```
-
-3. **Add States**
-   ```dna
-   component Button {
-     content: "Click me"
-     states: [hover, active, disabled]
-     hover: {
-       background: primary.600
-     }
-     active: {
-       transform: scale(0.98)
-     }
-   }
-   ```
-
-4. **Final Polish**
-   ```dna
-   component Button {
-     content: "Click me"
-     variant: primary
-     size: medium
-     states: [hover, active, disabled]
-     animation: {
-       duration: 200ms
-       easing: ease-in-out
-     }
-   }
-   ```
-
-### Version Control Patterns
-
-```bash
-# Commit DNA code changes
-git add designs/button.dna
-git commit -m "design: add hover states to button"
-
-# Track design iterations
-git log --follow designs/button.dna
-
-# Compare design versions
-git diff HEAD~1 designs/button.dna
 ```
-
-## Collaborative Workflows
-
-### Design Review Process
-
-1. **Create Design Proposal**
-   - Generate DNA code from requirements
-   - Render to .pen frame
-   - Share with team for review
-
-2. **Collect Feedback**
-   - Add comments to .pen frame
-   - Document requested changes
-   - Create feedback issue
-
-3. **Iterate on Design**
-   - Update DNA code based on feedback
-   - Re-render to .pen frame
-   - Share updated version
-
-4. **Final Approval**
-   - Mark design as approved
-   - Export to code for implementation
-   - Archive design iterations
-
-### Team Collaboration
-
-```typescript
-// Share design for review
-const shareUrl = await pencil.share_design({
-  frame: penFrameUrl,
-  permissions: "comment",
-  expiresAt: "2026-02-16"
-});
-
-// Collect feedback
-const feedback = await pencil.get_feedback({
-  frame: penFrameUrl
-});
-
-// Apply feedback to DNA
-const updatedDna = apply_feedback(dnaCode, feedback);
-```
-
-## DNA Code Reference
-
-### Component Syntax
-
-```dna
-// Component definition
-component ComponentName {
-  // Properties
-  property: value
-
-  // Children
-  children: [
-    ChildComponent {}
-  ]
-
-  // States
-  states: [state1, state2]
-
-  // Styling
+// Create a Nova-styled card
+card=I("parent", {
+  type: "frame",
+  name: "Card",
   style: {
-    property: value
+    backgroundColor: "#FFFFFF",
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+    padding: 16,
+    boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
   }
-}
+})
+
+// Add heading with Nova typography
+heading=I(card, {
+  type: "text",
+  content: "Card Title",
+  style: {
+    fontFamily: "'Noto Sans', sans-serif",
+    fontSize: 18,
+    fontWeight: 600,
+    color: "#171717"
+  }
+})
+
+// Add body text
+body=I(card, {
+  type: "text",
+  content: "Card description text here.",
+  style: {
+    fontFamily: "'Noto Sans', sans-serif",
+    fontSize: 14,
+    fontWeight: 400,
+    color: "#525252"
+  }
+})
 ```
 
-### Design Tokens
+## Workflow Patterns
 
-```dna
-// Token references
-color: primary.500
-spacing: md
-radius: lg
+### Starting a New Design
 
-// Token definitions
-tokens {
-  primary.500 = #3B82F6
-  md = 16px
-  lg = 8px
-}
-```
+1. **Initialize Editor State**
+   ```
+   state = get_editor_state()
+   ```
 
-### Layout Syntax
+2. **Create or Open Document**
+   ```
+   open_document("new")  // or path to existing
+   ```
 
-```dna
-// Layout containers
-layout Container {
-  direction: row | column
-  justify: start | center | end | space-between
-  align: start | center | end | stretch
-  gap: 16
-  wrap: true | false
-}
-```
+3. **Get Style Guidelines**
+   ```
+   tags = get_style_guide_tags()
+   guide = get_style_guide(tags: ["minimalist", "neutral"])
+   ```
+
+4. **Set Design Tokens**
+   ```
+   set_variables(novaColors)
+   set_variables(novaSpacing)
+   ```
+
+### Creating a Component
+
+1. **Find Space on Canvas**
+   ```
+   space = find_empty_space_on_canvas(direction: "right", size: { w: 400, h: 300 })
+   ```
+
+2. **Design with batch_design**
+   ```
+   component=I("root", { ... })
+   U(component, { ... })
+   ```
+
+3. **Visual Validation**
+   ```
+   screenshot = get_screenshot()
+   ```
+
+4. **Iterate as Needed**
+   ```
+   U(component + "/child", { ... })
+   ```
+
+### Analyzing Existing Designs
+
+1. **Get Layout Structure**
+   ```
+   layout = snapshot_layout()
+   ```
+
+2. **Read Design Elements**
+   ```
+   nodes = batch_get(patterns: ["Button", "Card"])
+   ```
+
+3. **Extract Variables**
+   ```
+   vars = get_variables()
+   ```
 
 ## Best Practices
 
-### DNA Code Organization
+### batch_design Operations
 
-```
-designs/
-  tokens/          # Design token definitions
-  components/      # Reusable component DNA
-  layouts/         # Layout compositions
-  pages/           # Full page designs
-```
+- Maximum 25 operations per call
+- Group related operations together
+- Use variable references for node IDs
+- Build incrementally, validate with screenshots
 
-### Naming Conventions
+### Style Consistency
 
-```dna
-// Use clear, descriptive names
-component PrimaryButton {}  // Good
-component Btn {}            // Bad
+- Always use get_style_guide before designing
+- Apply Nova preset as default
+- Maintain consistent spacing and typography
+- Use design tokens from get_variables
 
-// Use kebab-case for files
-primary-button.dna          // Good
-primaryButton.dna           // Bad
-```
+### Performance
 
-### Documentation
-
-```dna
-/**
- * Primary Button Component
- *
- * Usage: Main call-to-action buttons
- * Variants: primary, secondary, tertiary
- * Sizes: small, medium, large
- * States: hover, active, disabled
- */
-component Button {}
-```
-
-## Advanced Patterns
-
-### Responsive Design
-
-```dna
-component Responsive {
-  breakpoints: {
-    mobile: 640px
-    tablet: 768px
-    desktop: 1024px
-  }
-  mobile: {
-    direction: column
-  }
-  desktop: {
-    direction: row
-  }
-}
-```
-
-### Theme Support
-
-```dna
-component Themed {
-  theme: {
-    light: {
-      background: white.100
-      color: gray.900
-    }
-    dark: {
-      background: gray.900
-      color: white.100
-    }
-  }
-}
-```
-
-### Animation
-
-```dna
-component Animated {
-  animation: {
-    property: transform
-    duration: 300ms
-    easing: ease-in-out
-    delay: 0ms
-  }
-  states: {
-    hover: {
-      transform: scale(1.05)
-    }
-  }
-}
-```
+- Batch operations efficiently
+- Use patterns in batch_get for searching
+- Cache style guide information
+- Minimize redundant screenshot calls
 
 ## Error Handling
 
-### Invalid DNA Syntax
+### Common Issues
+
+| Issue | Solution |
+|-------|----------|
+| "Cannot read .pen file" | Use batch_get, never Read tool |
+| "Node not found" | Check node ID with batch_get |
+| "Invalid operation syntax" | Verify batch_design syntax |
+| "Style not applied" | Check variable names match |
+
+### Validation Pattern
+
 ```
-Error: Failed to parse DNA code (line 15)
-Solution: Validate DNA syntax, check for missing brackets or commas
-```
-
-### Render Failure
-```
-Error: Failed to render .pen frame
-Solution: Check DNA code for unsupported properties or invalid tokens
-```
-
-### Token Resolution
-```
-Error: Token 'primary.500' not found
-Solution: Define missing token in tokens section or reference existing token
-```
-
-## Performance Optimization
-
-### Caching Rendered Frames
-
-```typescript
-// Cache rendered .pen frames
-const cacheKey = `pencil:${dnaHash}`;
-const cached = await cache.get(cacheKey);
-
-if (cached) {
-  return cached;
-}
-
-const frame = await pencil.render_dna({ dna });
-await cache.set(cacheKey, frame, 3600);
-```
-
-### Batch Rendering
-
-```typescript
-// Render multiple frames in parallel
-const frames = await Promise.all([
-  pencil.render_dna({ dna: buttonDna }),
-  pencil.render_dna({ dna: inputDna }),
-  pencil.render_dna({ dna: cardDna })
-]);
+// Always validate after batch operations
+batch_design([...])
+screenshot = get_screenshot()
+// Review screenshot for correctness
 ```
 
 ## Resources
 
+- Pencil Official: https://pencil.dev
 - Pencil Documentation: https://docs.pencil.dev
-- DNA Code Reference: https://docs.pencil.dev/dna
-- Pencil MCP Server: https://github.com/modelcontextprotocol/servers/tree/main/src/pencil
-- Design Examples: https://pencil.dev/examples
+- Pencil AI Integration: https://docs.pencil.dev/getting-started/ai-integration
+- shadcn/ui: https://ui.shadcn.com
+- shadcn Nova Style: https://ui.shadcn.com/docs/components
 
 ---
 
-Last Updated: 2026-02-09
-Tool Version: Pencil MCP 1.0.0
+Last Updated: 2026-02-21
+Tool Version: Pencil MCP (Latest)
+Default Style: shadcn/ui Nova (neutral, noto-sans, small radius)

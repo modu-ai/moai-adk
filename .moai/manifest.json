@@ -16,9 +16,9 @@
     },
     ".claude/agents/moai/builder-plugin.md": {
       "provenance": "template_managed",
-      "template_hash": "sha256:8e94233a291de1510f8213cb017815c4133523a3cbe5ee3536b78c550d021475",
-      "deployed_hash": "sha256:8e94233a291de1510f8213cb017815c4133523a3cbe5ee3536b78c550d021475",
-      "current_hash": "sha256:8e94233a291de1510f8213cb017815c4133523a3cbe5ee3536b78c550d021475"
+      "template_hash": "sha256:0edb80fc102bc5cd0b5143b7300d63d049501e71d4f43920fe6efe3a8cdd17b2",
+      "deployed_hash": "sha256:0edb80fc102bc5cd0b5143b7300d63d049501e71d4f43920fe6efe3a8cdd17b2",
+      "current_hash": "sha256:0edb80fc102bc5cd0b5143b7300d63d049501e71d4f43920fe6efe3a8cdd17b2"
     },
     ".claude/agents/moai/builder-skill.md": {
       "provenance": "template_managed",
@@ -34,21 +34,21 @@
     },
     ".claude/agents/moai/expert-chrome-extension.md": {
       "provenance": "template_managed",
-      "template_hash": "sha256:5476589269d20bb353cf3452efc8aeae3a5552980e9acf242b833fc7fef5e79b",
-      "deployed_hash": "sha256:5476589269d20bb353cf3452efc8aeae3a5552980e9acf242b833fc7fef5e79b",
-      "current_hash": "sha256:5476589269d20bb353cf3452efc8aeae3a5552980e9acf242b833fc7fef5e79b"
+      "template_hash": "sha256:4c9dd8fa72f9ddaa1b914232119626172fec7967033f913b18ef2836b9d32f54",
+      "deployed_hash": "sha256:4c9dd8fa72f9ddaa1b914232119626172fec7967033f913b18ef2836b9d32f54",
+      "current_hash": "sha256:4c9dd8fa72f9ddaa1b914232119626172fec7967033f913b18ef2836b9d32f54"
     },
     ".claude/agents/moai/expert-debug.md": {
       "provenance": "template_managed",
-      "template_hash": "sha256:2efbc69fba8381a00e63887f8aaf7bc39cf5b8fb3d50334342b5d981294e0dc7",
-      "deployed_hash": "sha256:2efbc69fba8381a00e63887f8aaf7bc39cf5b8fb3d50334342b5d981294e0dc7",
-      "current_hash": "sha256:2efbc69fba8381a00e63887f8aaf7bc39cf5b8fb3d50334342b5d981294e0dc7"
+      "template_hash": "sha256:7d4e5a1adcd84414e3ccc4af25171a891ce09538fecba2bf48a47fae0ec96972",
+      "deployed_hash": "sha256:7d4e5a1adcd84414e3ccc4af25171a891ce09538fecba2bf48a47fae0ec96972",
+      "current_hash": "sha256:7d4e5a1adcd84414e3ccc4af25171a891ce09538fecba2bf48a47fae0ec96972"
     },
     ".claude/agents/moai/expert-devops.md": {
       "provenance": "template_managed",
-      "template_hash": "sha256:783e5481b1b3e2b8012b074d69bb44995f152bd4ba484b2cb5c9037541c7421a",
-      "deployed_hash": "sha256:783e5481b1b3e2b8012b074d69bb44995f152bd4ba484b2cb5c9037541c7421a",
-      "current_hash": "sha256:783e5481b1b3e2b8012b074d69bb44995f152bd4ba484b2cb5c9037541c7421a"
+      "template_hash": "sha256:9a9149dde306a46240aea82ef18e8433218583a3c6fb4dfdbd8b258fff423ed4",
+      "deployed_hash": "sha256:9a9149dde306a46240aea82ef18e8433218583a3c6fb4dfdbd8b258fff423ed4",
+      "current_hash": "sha256:9a9149dde306a46240aea82ef18e8433218583a3c6fb4dfdbd8b258fff423ed4"
     },
     ".claude/agents/moai/expert-frontend.md": {
       "provenance": "template_managed",
@@ -58,15 +58,15 @@
     },
     ".claude/agents/moai/expert-performance.md": {
       "provenance": "template_managed",
-      "template_hash": "sha256:d6bfc32ecb0887b4939a0312cbcd9c169fe3eb46ddfe6adfbeca1647611a37d4",
-      "deployed_hash": "sha256:d6bfc32ecb0887b4939a0312cbcd9c169fe3eb46ddfe6adfbeca1647611a37d4",
-      "current_hash": "sha256:d6bfc32ecb0887b4939a0312cbcd9c169fe3eb46ddfe6adfbeca1647611a37d4"
+      "template_hash": "sha256:19704e4ecf78d8b741caeb7a26ce91b82a13e58b731ffdbfc8d515d935a92793",
+      "deployed_hash": "sha256:19704e4ecf78d8b741caeb7a26ce91b82a13e58b731ffdbfc8d515d935a92793",
+      "current_hash": "sha256:19704e4ecf78d8b741caeb7a26ce91b82a13e58b731ffdbfc8d515d935a92793"
     },
     ".claude/agents/moai/expert-refactoring.md": {
       "provenance": "template_managed",
-      "template_hash": "sha256:54504c799d9c6123d5296a16ec8f7f386829512fccf821c1e3d6f1b2ac947e06",
-      "deployed_hash": "sha256:54504c799d9c6123d5296a16ec8f7f386829512fccf821c1e3d6f1b2ac947e06",
-      "current_hash": "sha256:54504c799d9c6123d5296a16ec8f7f386829512fccf821c1e3d6f1b2ac947e06"
+      "template_hash": "sha256:f62d54fd8fd0374c4a52d54f3cc10b61bb86a99b4d8969be7de3671cee74a67f",
+      "deployed_hash": "sha256:f62d54fd8fd0374c4a52d54f3cc10b61bb86a99b4d8969be7de3671cee74a67f",
+      "current_hash": "sha256:f62d54fd8fd0374c4a52d54f3cc10b61bb86a99b4d8969be7de3671cee74a67f"
     },
     ".claude/agents/moai/expert-security.md": {
       "provenance": "template_managed",
@@ -76,21 +76,21 @@
     },
     ".claude/agents/moai/expert-testing.md": {
       "provenance": "template_managed",
-      "template_hash": "sha256:abedecd0c05008bcd7303d3266061ebd1dc404ed4bd0af46afdf48c1950cfa65",
-      "deployed_hash": "sha256:abedecd0c05008bcd7303d3266061ebd1dc404ed4bd0af46afdf48c1950cfa65",
-      "current_hash": "sha256:abedecd0c05008bcd7303d3266061ebd1dc404ed4bd0af46afdf48c1950cfa65"
+      "template_hash": "sha256:9d4bf3b559b442fcd34faee52e493e70981ab72bf311d5f82ba18485e64e0a08",
+      "deployed_hash": "sha256:9d4bf3b559b442fcd34faee52e493e70981ab72bf311d5f82ba18485e64e0a08",
+      "current_hash": "sha256:9d4bf3b559b442fcd34faee52e493e70981ab72bf311d5f82ba18485e64e0a08"
     },
     ".claude/agents/moai/manager-ddd.md": {
       "provenance": "template_managed",
-      "template_hash": "sha256:8aa9dbc32dc12f7254f5f8cab7026ebd886fe62649de3eb778d001df9115757d",
-      "deployed_hash": "sha256:8aa9dbc32dc12f7254f5f8cab7026ebd886fe62649de3eb778d001df9115757d",
-      "current_hash": "sha256:8aa9dbc32dc12f7254f5f8cab7026ebd886fe62649de3eb778d001df9115757d"
+      "template_hash": "sha256:e2b588bf5a76b7a9915d5fdbb2c54d3fa1b4e1e1890332cc287bfd25ae994e22",
+      "deployed_hash": "sha256:e2b588bf5a76b7a9915d5fdbb2c54d3fa1b4e1e1890332cc287bfd25ae994e22",
+      "current_hash": "sha256:e2b588bf5a76b7a9915d5fdbb2c54d3fa1b4e1e1890332cc287bfd25ae994e22"
     },
     ".claude/agents/moai/manager-docs.md": {
       "provenance": "template_managed",
-      "template_hash": "sha256:556dd75eb7ca7d02bad119608f0fe556281dd8f210259ff47bc02515d82a4638",
-      "deployed_hash": "sha256:556dd75eb7ca7d02bad119608f0fe556281dd8f210259ff47bc02515d82a4638",
-      "current_hash": "sha256:556dd75eb7ca7d02bad119608f0fe556281dd8f210259ff47bc02515d82a4638"
+      "template_hash": "sha256:230b49dad1f690a8f7347ce6b17d47a300dd71e2420f6b5473f0328e3073fef6",
+      "deployed_hash": "sha256:230b49dad1f690a8f7347ce6b17d47a300dd71e2420f6b5473f0328e3073fef6",
+      "current_hash": "sha256:230b49dad1f690a8f7347ce6b17d47a300dd71e2420f6b5473f0328e3073fef6"
     },
     ".claude/agents/moai/manager-git.md": {
       "provenance": "user_created",
@@ -100,9 +100,9 @@
     },
     ".claude/agents/moai/manager-project.md": {
       "provenance": "template_managed",
-      "template_hash": "sha256:546d7fc92815c79ca804709d5dbd51298137d17eb5e68dc301823c9a500d94d9",
-      "deployed_hash": "sha256:546d7fc92815c79ca804709d5dbd51298137d17eb5e68dc301823c9a500d94d9",
-      "current_hash": "sha256:546d7fc92815c79ca804709d5dbd51298137d17eb5e68dc301823c9a500d94d9"
+      "template_hash": "sha256:7702ef29ed7df40bfe9ed594281461536fa3d5e1ef127e84995a98703886ed6d",
+      "deployed_hash": "sha256:7702ef29ed7df40bfe9ed594281461536fa3d5e1ef127e84995a98703886ed6d",
+      "current_hash": "sha256:7702ef29ed7df40bfe9ed594281461536fa3d5e1ef127e84995a98703886ed6d"
     },
     ".claude/agents/moai/manager-quality.md": {
       "provenance": "template_managed",
@@ -124,15 +124,15 @@
     },
     ".claude/agents/moai/manager-tdd.md": {
       "provenance": "template_managed",
-      "template_hash": "sha256:9d2618d3d93624bca1be54abefbc147d12d7c383d30643195c7030a7f600ab80",
-      "deployed_hash": "sha256:9d2618d3d93624bca1be54abefbc147d12d7c383d30643195c7030a7f600ab80",
-      "current_hash": "sha256:9d2618d3d93624bca1be54abefbc147d12d7c383d30643195c7030a7f600ab80"
+      "template_hash": "sha256:44882a77971ac867477df643f4ca082fa4c684e2146dc75acf6f34fb67986305",
+      "deployed_hash": "sha256:44882a77971ac867477df643f4ca082fa4c684e2146dc75acf6f34fb67986305",
+      "current_hash": "sha256:44882a77971ac867477df643f4ca082fa4c684e2146dc75acf6f34fb67986305"
     },
     ".claude/agents/moai/team-analyst.md": {
       "provenance": "template_managed",
-      "template_hash": "sha256:291e67618f440f31ab01722e4ea642bbe4947e4c3a11221c24b7700c6f772bfc",
-      "deployed_hash": "sha256:291e67618f440f31ab01722e4ea642bbe4947e4c3a11221c24b7700c6f772bfc",
-      "current_hash": "sha256:291e67618f440f31ab01722e4ea642bbe4947e4c3a11221c24b7700c6f772bfc"
+      "template_hash": "sha256:bf3141d260121a679af34ee40f513b38689c2d3a1767260488c212d496346412",
+      "deployed_hash": "sha256:bf3141d260121a679af34ee40f513b38689c2d3a1767260488c212d496346412",
+      "current_hash": "sha256:bf3141d260121a679af34ee40f513b38689c2d3a1767260488c212d496346412"
     },
     ".claude/agents/moai/team-architect.md": {
       "provenance": "template_managed",
@@ -142,21 +142,21 @@
     },
     ".claude/agents/moai/team-backend-dev.md": {
       "provenance": "template_managed",
-      "template_hash": "sha256:888e70a55621d68edb59ace797e5793f0bc5d904118d515f8f5d9d622038ecc4",
-      "deployed_hash": "sha256:888e70a55621d68edb59ace797e5793f0bc5d904118d515f8f5d9d622038ecc4",
-      "current_hash": "sha256:888e70a55621d68edb59ace797e5793f0bc5d904118d515f8f5d9d622038ecc4"
+      "template_hash": "sha256:1ed8f8442faae67fe3ed66762939c9bd836a35fc3ffd61be0bb3db4f73e57aab",
+      "deployed_hash": "sha256:1ed8f8442faae67fe3ed66762939c9bd836a35fc3ffd61be0bb3db4f73e57aab",
+      "current_hash": "sha256:1ed8f8442faae67fe3ed66762939c9bd836a35fc3ffd61be0bb3db4f73e57aab"
     },
     ".claude/agents/moai/team-designer.md": {
       "provenance": "template_managed",
-      "template_hash": "sha256:ce01b5436db8ba3d85362be0ef9bfe9ef2f90fb90bbcb6e5ab4e5d255b70a715",
-      "deployed_hash": "sha256:ce01b5436db8ba3d85362be0ef9bfe9ef2f90fb90bbcb6e5ab4e5d255b70a715",
-      "current_hash": "sha256:ce01b5436db8ba3d85362be0ef9bfe9ef2f90fb90bbcb6e5ab4e5d255b70a715"
+      "template_hash": "sha256:437f7db7a673aadfb060a2619809873482628b2655efe53ffa8bb3fd18a58f41",
+      "deployed_hash": "sha256:437f7db7a673aadfb060a2619809873482628b2655efe53ffa8bb3fd18a58f41",
+      "current_hash": "sha256:437f7db7a673aadfb060a2619809873482628b2655efe53ffa8bb3fd18a58f41"
     },
     ".claude/agents/moai/team-frontend-dev.md": {
       "provenance": "template_managed",
-      "template_hash": "sha256:78b30d23542ef6e428f601517f7493e3b0f412ef2570ae665108d3b5865d8bc3",
-      "deployed_hash": "sha256:78b30d23542ef6e428f601517f7493e3b0f412ef2570ae665108d3b5865d8bc3",
-      "current_hash": "sha256:78b30d23542ef6e428f601517f7493e3b0f412ef2570ae665108d3b5865d8bc3"
+      "template_hash": "sha256:53384b465b2179a560d3bf34e6bc08eff163ad6f27ccb15cc999670fb4d6036c",
+      "deployed_hash": "sha256:53384b465b2179a560d3bf34e6bc08eff163ad6f27ccb15cc999670fb4d6036c",
+      "current_hash": "sha256:53384b465b2179a560d3bf34e6bc08eff163ad6f27ccb15cc999670fb4d6036c"
     },
     ".claude/agents/moai/team-quality.md": {
       "provenance": "template_managed",
@@ -172,9 +172,9 @@
     },
     ".claude/agents/moai/team-tester.md": {
       "provenance": "template_managed",
-      "template_hash": "sha256:0e1dbd44b8045d149290bf253816703c09800d0b272ae4f7af12f6878ff603ea",
-      "deployed_hash": "sha256:0e1dbd44b8045d149290bf253816703c09800d0b272ae4f7af12f6878ff603ea",
-      "current_hash": "sha256:0e1dbd44b8045d149290bf253816703c09800d0b272ae4f7af12f6878ff603ea"
+      "template_hash": "sha256:25d56622313f79c6016aac9f7f2ed3a035668f199a9a39631e4798e83406a590",
+      "deployed_hash": "sha256:25d56622313f79c6016aac9f7f2ed3a035668f199a9a39631e4798e83406a590",
+      "current_hash": "sha256:25d56622313f79c6016aac9f7f2ed3a035668f199a9a39631e4798e83406a590"
     },
     ".claude/hooks/moai/handle-agent-hook.sh": {
       "provenance": "template_managed",

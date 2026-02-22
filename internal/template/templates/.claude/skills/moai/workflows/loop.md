@@ -5,14 +5,12 @@ description: >
   repeats until all issues are resolved or max iterations reached.
   Includes memory pressure detection and snapshot-based resume.
   Use when iterative error resolution or continuous fixing is needed.
-license: Apache-2.0
-compatibility: Designed for Claude Code
 user-invocable: false
 metadata:
-  version: "2.0.0"
+  version: "2.5.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-07"
+  updated: "2026-02-21"
   tags: "loop, iterative, auto-fix, diagnostics, testing, coverage"
 
 # MoAI Extension: Progressive Disclosure
@@ -76,6 +74,7 @@ If --sequential flag: Run LSP, then AST-grep, then Tests, then Coverage sequenti
 Step 4 - Completion Condition Check:
 - Conditions: Zero errors AND all tests passing AND coverage meets threshold
 - If all conditions met: Prompt user to add completion marker or continue
+- If only coverage below target (zero errors + tests passing): Auto-route to coverage workflow (workflows/coverage.md) for intelligent gap analysis and test generation instead of blind looping. Coverage workflow identifies P1-P4 priority gaps and generates targeted tests.
 
 Step 5 - Task Generation:
 - [HARD] TaskCreate for all newly discovered issues with pending status
@@ -100,6 +99,16 @@ Fix levels applied per --auto setting:
 Step 7 - Verification:
 - [HARD] After each fix: TaskUpdate to change item to completed
 
+Step 7.5 - MX Tag Check:
+- After fixes applied, scan modified files for MX tag requirements
+- Add missing tags for modified functions:
+  - New exported functions: Add @MX:NOTE or @MX:ANCHOR if fan_in >= 3
+  - Dangerous patterns introduced: Add @MX:WARN with @MX:REASON
+  - Unresolved issues: Keep @MX:TODO
+- Remove resolved @MX:TODO tags for fixed issues
+- Generate MX_TAG_REPORT with tags added/removed/updated
+- See @.claude/rules/moai/workflow/mx-tag-protocol.md for tag rules
+
 Step 8 - Snapshot Save:
 - Save iteration snapshot to $CLAUDE_PROJECT_DIR/.moai/cache/loop-snapshots/
 - Increment iteration counter
@@ -116,6 +125,36 @@ The loop exits when any of these conditions are met:
 - Max iterations reached (displays remaining issues)
 - Memory pressure threshold exceeded (saves checkpoint)
 - User interruption (state auto-saved)
+
+Pre-exit clean sweep (when exiting with success):
+- Before final report, run clean workflow (workflows/clean.md) scan on all modified files
+- Remove dead code exposed by fixes (unused imports, orphaned functions)
+- Skip if no dead code detected or if --errors flag was set
+
+## MX Tag Integration
+
+Each iteration includes MX tag management:
+
+**Tag Updates During Loop:**
+- Fix resolves an issue: Remove corresponding @MX:TODO
+- Fix introduces new code: Add appropriate @MX tags
+- Fix changes function signature: Re-evaluate @MX:ANCHOR
+- Fix adds complexity: Add @MX:WARN if threshold exceeded
+
+**Tag Types for Fixes:**
+| Fix Type | MX Action |
+|----------|-----------|
+| Bug fix (resolved) | Remove @MX:TODO |
+| New function added | Add @MX:NOTE or @MX:ANCHOR |
+| Refactoring | Update @MX:NOTE, check ANCHOR |
+| Security fix | Add @MX:NOTE with security context |
+
+**MX Tag Report:**
+After each iteration, include MX_TAG_REPORT section:
+- Tags Added: List new tags with file:line
+- Tags Removed: List resolved TODOs
+- Tags Updated: List modified tags
+- Attention Required: WARN tags requiring review
 
 ## Snapshot Management
 

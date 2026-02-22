@@ -10,6 +10,14 @@ import (
 	"strings"
 )
 
+// Package-level compiled regexps to avoid repeated compilation.
+var (
+	reIssuesSummary = regexp.MustCompile(`(\d+)\s+issues?\s+found`)
+	reFileLineCol   = regexp.MustCompile(`^.+:\d+:\d+:\s+\w+`)
+	reFileLine      = regexp.MustCompile(`^.+:\d+:\s+\w+`)
+	reFixedSummary  = regexp.MustCompile(`(\d+)\s+(?:issues?\s+)?(?:fixed|corrected|resolved)`)
+)
+
 // Linter handles automatic code linting per REQ-HOOK-080.
 type Linter struct {
 	registry *toolRegistry
@@ -177,8 +185,8 @@ func (l *Linter) parseIssuesFromOutput(output, filePath string) int {
 
 	// Count issue lines
 	count := 0
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
 		if l.isIssueLine(line) {
 			// Check if issue is for our file
 			if strings.Contains(line, baseName) || !strings.Contains(line, ":") {
@@ -188,8 +196,7 @@ func (l *Linter) parseIssuesFromOutput(output, filePath string) int {
 	}
 
 	// Also check for summary patterns like "Found 3 issues"
-	re := regexp.MustCompile(`(\d+)\s+issues?\s+found`)
-	matches := re.FindStringSubmatch(output)
+	matches := reIssuesSummary.FindStringSubmatch(output)
 	if len(matches) > 1 {
 		// Use the count from summary if available
 		return count
@@ -223,20 +230,17 @@ func (l *Linter) isIssueLine(line string) bool {
 	}
 
 	// Check for file:line:col pattern
-	re := regexp.MustCompile(`^.+:\d+:\d+:\s+\w+`)
-	if re.MatchString(line) {
+	if reFileLineCol.MatchString(line) {
 		return true
 	}
 
-	re2 := regexp.MustCompile(`^.+:\d+:\s+\w+`)
-	return re2.MatchString(line)
+	return reFileLine.MatchString(line)
 }
 
 // countFixedIssues estimates how many issues were fixed by auto-fix.
 func (l *Linter) countFixedIssues(output string) int {
 	// Look for patterns like "fixed 3 issues", "3 problems fixed", etc.
-	re := regexp.MustCompile(`(\d+)\s+(?:issues?\s+)?(?:fixed|corrected|resolved)`)
-	matches := re.FindStringSubmatch(output)
+	matches := reFixedSummary.FindStringSubmatch(output)
 	if len(matches) > 1 {
 		count := 0
 		for _, c := range matches[1] {
@@ -247,8 +251,8 @@ func (l *Linter) countFixedIssues(output string) int {
 
 	// Fallback: count lines with "fixed" or similar
 	count := 0
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
 		if strings.Contains(strings.ToLower(line), "fixed") {
 			count++
 		}

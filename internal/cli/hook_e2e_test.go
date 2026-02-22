@@ -160,7 +160,7 @@ func TestHookDepsWiring_AllHandlersRegistered(t *testing.T) {
 	}
 }
 
-// --- Test 4: ValidEventTypes returns exactly 14 event types ---
+// --- Test 4: ValidEventTypes returns exactly 16 event types ---
 
 func TestHookValidEventTypes_Complete(t *testing.T) {
 	t.Parallel()
@@ -173,13 +173,15 @@ func TestHookValidEventTypes_Complete(t *testing.T) {
 		hook.EventPermissionRequest,
 		hook.EventTeammateIdle,
 		hook.EventTaskCompleted,
+		hook.EventWorktreeCreate,
+		hook.EventWorktreeRemove,
 	}
 
 	validTypes := hook.ValidEventTypes()
 
 	// Verify exact count.
-	if got := len(validTypes); got != 14 {
-		t.Errorf("ValidEventTypes() returned %d types, want 14", got)
+	if got := len(validTypes); got != 16 {
+		t.Errorf("ValidEventTypes() returned %d types, want 16", got)
 	}
 
 	// Build a lookup set for quick membership checks.
@@ -266,10 +268,8 @@ func TestHookValidEventTypes_AllHaveSubcommands(t *testing.T) {
 	t.Parallel()
 
 	// Events that do NOT have a direct hookCmd subcommand.
-	// SubagentStop is handled by the "agent" subcommand pattern.
-	excludedEvents := map[hook.EventType]bool{
-		hook.EventSubagentStop: true,
-	}
+	// (SubagentStop now has a direct subcommand in addition to the "agent" pattern.)
+	excludedEvents := map[hook.EventType]bool{}
 
 	// Build a mapping from EventType to expected subcommand name.
 	eventToSubcmd := map[hook.EventType]string{
@@ -286,6 +286,9 @@ func TestHookValidEventTypes_AllHaveSubcommands(t *testing.T) {
 		hook.EventPermissionRequest:  "permission-request",
 		hook.EventTeammateIdle:       "teammate-idle",
 		hook.EventTaskCompleted:      "task-completed",
+		hook.EventSubagentStop:       "subagent-stop",
+		hook.EventWorktreeCreate:     "worktree-create",
+		hook.EventWorktreeRemove:     "worktree-remove",
 	}
 
 	registeredNames := make(map[string]bool)
@@ -349,6 +352,8 @@ func TestHookDepsWiring_HandlerCounts(t *testing.T) {
 		hook.EventPermissionRequest,
 		hook.EventTeammateIdle,
 		hook.EventTaskCompleted,
+		hook.EventWorktreeCreate,
+		hook.EventWorktreeRemove,
 	}
 
 	for _, event := range singleHandlerEvents {

@@ -5,14 +5,13 @@
 //
 // # Development Modes
 //
-// The package defines three development methodologies:
-//   - DDD (Domain-Driven Development): ANALYZE-PRESERVE-IMPROVE cycle for legacy code
-//   - TDD (Test-Driven Development): RED-GREEN-REFACTOR cycle for new features
-//   - Hybrid: Combines TDD for new code and DDD for legacy refactoring
+// The package defines two development methodologies:
+//   - DDD (Domain-Driven Development): ANALYZE-PRESERVE-IMPROVE cycle for existing codebases
+//   - TDD (Test-Driven Development): RED-GREEN-REFACTOR cycle for new projects and feature development (default)
 //
 // Use [DevelopmentMode] type and its constants:
 //
-//	mode := models.ModeHybrid
+//	mode := models.ModeTDD
 //	if mode.IsValid() {
 //	    fmt.Println("Valid mode:", mode)
 //	}

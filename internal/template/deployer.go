@@ -11,6 +11,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/manifest"
 )
 
+// @MX:ANCHOR: [AUTO] Deployer는 임베디드 파일시스템에서 템플릿을 추출하고 프로젝트 루트에 배포하는 핵심 인터페이스입니다. 각 파일은 매니페스트에 추적됩니다.
+// @MX:REASON: fan_in=8+, 모든 프로젝트 초기화의 진입점이며 템플릿 배포의 핵심 계약입니다
 // Deployer extracts and deploys templates from an embedded filesystem
 // to a project root directory, tracking each file in the manifest.
 type Deployer interface {
@@ -57,6 +59,7 @@ func NewDeployerWithRendererAndForceUpdate(fsys fs.FS, renderer Renderer, forceU
 	return &deployer{fsys: fsys, renderer: renderer, forceUpdate: forceUpdate}
 }
 
+// @MX:NOTE: [AUTO] 컨텍스트 취소를 확인하여 파일 단위로 중단할 수 있습니다. .tmpl 접미사 파일은 Renderer로 렌더링되며 접미사 없이 저장됩니다.
 // Deploy walks the embedded filesystem and writes every file to projectRoot.
 // Files ending in .tmpl are rendered using the Renderer (if configured) and
 // saved without the .tmpl suffix.
@@ -197,8 +200,8 @@ func (d *deployer) ListTemplates() []string {
 		}
 		// Strip .tmpl suffix to return deployment target paths
 		targetPath := path
-		if strings.HasSuffix(path, ".tmpl") {
-			targetPath = strings.TrimSuffix(path, ".tmpl")
+		if before, ok := strings.CutSuffix(path, ".tmpl"); ok {
+			targetPath = before
 		}
 		list = append(list, targetPath)
 		return nil

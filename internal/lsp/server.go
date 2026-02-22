@@ -3,6 +3,7 @@ package lsp
 import (
 	"context"
 	"fmt"
+	"maps"
 	"sort"
 	"sync"
 	"time"
@@ -44,6 +45,8 @@ type ProcessHandle interface {
 	IsRunning() bool
 }
 
+// @MX:ANCHOR: [AUTO] ServerManager는 다중 언어 서버의 동시성 라이프사이클을 관리하는 핵심 인터페이스입니다. 모든 메서드는 스레드 안전하게 설계되었습니다.
+// @MX:REASON: fan_in=10+, LSP 서버 관리의 진입점이며 여러 곳에서 호출됩니다
 // ServerManager manages multiple language server lifecycles concurrently.
 // All methods are safe for concurrent use.
 //
@@ -235,9 +238,7 @@ func (m *serverManager) HealthCheck(_ context.Context) map[string]error {
 		defer m.mu.RUnlock()
 
 		s := make(map[string]*managedServer, len(m.servers))
-		for k, v := range m.servers {
-			s[k] = v
-		}
+		maps.Copy(s, m.servers)
 		return s
 	}()
 
@@ -252,6 +253,9 @@ func (m *serverManager) HealthCheck(_ context.Context) map[string]error {
 	return result
 }
 
+// @MX:WARN: [AUTO] 고루틴 풀을 사용하여 병렬로 서버를 시작합니다. 셈포어는 maxParallel로 제한됩니다.
+// @MX:REASON: [AUTO] 고루틴 수가 langs 길이만큼 생성되어 리소스 부하 가능성
+// @MX:NOTE: [AUTO] 개별 서버 실패는 치명적이지 않습니다 (graceful degradation).
 // StartAll starts servers for all given languages concurrently,
 // limited by maxParallel. Individual failures are non-fatal (graceful degradation).
 func (m *serverManager) StartAll(ctx context.Context, langs []string) error {
@@ -283,6 +287,8 @@ func (m *serverManager) StopAll(ctx context.Context) error {
 	return nil
 }
 
+// @MX:WARN: [AUTO] 고루틴을 사용하여 모든 활성 서버에서 병렬로 진단을 수집합니다.
+// @MX:REASON: [AUTO] 서버 수만큼 고루틴이 생성되어 리소스 부하 가능성
 // CollectAllDiagnostics collects diagnostics from all active servers concurrently.
 // Individual server errors are non-fatal; results from successful servers are returned.
 func (m *serverManager) CollectAllDiagnostics(ctx context.Context, uri string) ([]Diagnostic, error) {
@@ -340,6 +346,8 @@ func (m *serverManager) isRunning(lang string) bool {
 	return exists
 }
 
+// @MX:WARN: [AUTO] 고루틴에서 프로세스 종료를 차단하고 있습니다. 컨텍스트 취소에 응답하지 않습니다.
+// @MX:REASON: [AUTO] 고루틴이 process.Wait()에서 영구 차단될 수 있습니다
 // watchProcess monitors a server process and removes it from the registry
 // when the process exits unexpectedly (crash detection).
 func (m *serverManager) watchProcess(lang string, process ProcessHandle) {

@@ -1,3 +1,7 @@
+---
+paths: "**/.claude/skills/**"
+---
+
 # Skill Authoring
 
 Guidelines for creating MoAI skills following the Agent Skills open standard (agentskills.io).
@@ -15,7 +19,7 @@ Required fields:
 Optional standard fields:
 - license: SPDX license identifier (default: Apache-2.0)
 - compatibility: Target platform description, max 500 characters (default: Designed for Claude Code)
-- allowed-tools: Space-delimited string of tool names the skill can use (experimental)
+- allowed-tools: Comma-separated string of tool names the skill can use (experimental)
 - user-invocable: Boolean to control slash command menu visibility (default: true, set to false to hide from / menu)
 
 ### metadata Map
@@ -62,7 +66,7 @@ description: >
   Use YAML folded scalar (>) for multi-line descriptions.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read Grep Glob Bash mcp__context7__resolve-library-id mcp__context7__get-library-docs
+allowed-tools: Read, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 user-invocable: false
 metadata:
   version: "1.0.0"
@@ -88,8 +92,8 @@ triggers:
 
 ### Key Format Rules
 
-allowed-tools format: Space-delimited string, not YAML array.
-- Correct: `allowed-tools: Read Grep Glob Bash`
+allowed-tools format: Comma-separated string, not YAML array.
+- Correct: `allowed-tools: Read, Grep, Glob, Bash`
 - Wrong: `allowed-tools: [Read, Grep, Glob, Bash]`
 
 metadata values: All values must be quoted strings.
@@ -158,5 +162,5 @@ triggers:
 - Overestimate token usage by 10-20% for safety
 - Use YAML folded scalar (>) for description field
 - Keep all metadata values as quoted strings
-- Use space-delimited format for allowed-tools
+- Use comma-separated format for allowed-tools
 - Mark MoAI extension fields with standardized comments

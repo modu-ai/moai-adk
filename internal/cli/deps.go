@@ -45,6 +45,8 @@ type Dependencies struct {
 // CLI commands access this through the package-level variable.
 var deps *Dependencies
 
+// @MX:ANCHOR: [AUTO] InitDependencies is the Composition Root that wires all domain modules
+// @MX:REASON: [AUTO] fan_in=5, called from root.go, deps_test.go, integration_test.go, hook_e2e_test.go, deps.go
 // InitDependencies creates and wires all domain dependencies.
 // It should be called once during application startup.
 // Dependencies that require a project root (Config, Git) are
@@ -98,6 +100,8 @@ func InitDependencies() {
 	deps.HookRegistry.Register(hook.NewPermissionRequestHandler())
 	deps.HookRegistry.Register(hook.NewTeammateIdleHandler())
 	deps.HookRegistry.Register(hook.NewTaskCompletedHandler())
+	deps.HookRegistry.Register(hook.NewWorktreeCreateHandler())
+	deps.HookRegistry.Register(hook.NewWorktreeRemoveHandler())
 }
 
 // GetDeps returns the current Dependencies instance.

@@ -1,9 +1,5 @@
 ---
-paths:
-  - "**/*.java"
-  - "**/pom.xml"
-  - "**/build.gradle"
-  - "**/build.gradle.kts"
+paths: "**/*.java,**/pom.xml,**/build.gradle,**/build.gradle.kts"
 ---
 
 # Java Rules

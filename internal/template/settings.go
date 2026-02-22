@@ -42,7 +42,7 @@ func BuildSmartPATH() string {
 func PathContainsDir(pathStr, dir, sep string) bool {
 	dir = strings.TrimRight(dir, "/\\")
 
-	for _, entry := range strings.Split(pathStr, sep) {
+	for entry := range strings.SplitSeq(pathStr, sep) {
 		entry = strings.TrimRight(entry, "/\\")
 		if entry == dir {
 			return true

@@ -14,6 +14,9 @@ import (
 	"time"
 )
 
+// reASTGrepFinding matches ast-grep text output lines.
+var reASTGrepFinding = regexp.MustCompile(`([^:]+):(\d+):(\d+):\s*(error|warning|info|hint)\[([^\]]+)\]:\s*(.+)`)
+
 // astGrepScanner implements ASTGrepScanner interface.
 type astGrepScanner struct {
 	mu        sync.RWMutex
@@ -276,11 +279,10 @@ func parseASTGrepRegex(output string) []Finding {
 
 	// Pattern: file:line:column: severity[rule]: message
 	// Example: test.py:10:5: error[sql-injection]: Potential SQL injection
-	pattern := regexp.MustCompile(`([^:]+):(\d+):(\d+):\s*(error|warning|info|hint)\[([^\]]+)\]:\s*(.+)`)
 
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		matches := pattern.FindStringSubmatch(line)
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
+		matches := reASTGrepFinding.FindStringSubmatch(line)
 		if len(matches) == 7 {
 			// These conversions are safe because the regex ensures digits
 			lineNum, err := strconv.Atoi(matches[2])

@@ -16,6 +16,8 @@ var dynamicTokenPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`\$[A-Z_][A-Z0-9_]*`), // $VAR
 }
 
+// @MX:ANCHOR: [AUTO] 모든 CLI 명령의 설정 유효성을 검사하는 핵심 진입점입니다.
+// @MX:REASON: [AUTO] fan_in=37+, 모든 CLI 명령이 이 유효성 검사에 의존합니다
 // Validate checks the configuration for correctness.
 // The loadedSections map indicates which sections were loaded from YAML files
 // (as opposed to using defaults). Required field validation only applies
@@ -96,24 +98,6 @@ func validateQualityConfig(q *models.QualityConfig) []ValidationError {
 			Field:   "quality.tdd_settings.min_coverage_per_commit",
 			Message: "must be between 0 and 100",
 			Value:   q.TDDSettings.MinCoveragePerCommit,
-			Wrapped: ErrInvalidConfig,
-		})
-	}
-
-	if q.HybridSettings.MinCoverageNew < 0 || q.HybridSettings.MinCoverageNew > 100 {
-		errs = append(errs, ValidationError{
-			Field:   "quality.hybrid_settings.min_coverage_new",
-			Message: "must be between 0 and 100",
-			Value:   q.HybridSettings.MinCoverageNew,
-			Wrapped: ErrInvalidConfig,
-		})
-	}
-
-	if q.HybridSettings.MinCoverageLegacy < 0 || q.HybridSettings.MinCoverageLegacy > 100 {
-		errs = append(errs, ValidationError{
-			Field:   "quality.hybrid_settings.min_coverage_legacy",
-			Message: "must be between 0 and 100",
-			Value:   q.HybridSettings.MinCoverageLegacy,
 			Wrapped: ErrInvalidConfig,
 		})
 	}
@@ -210,8 +194,6 @@ func validateDynamicTokens(cfg *Config) []ValidationError {
 	// Quality section
 	errs = append(errs, checkStringField("quality.development_mode", string(cfg.Quality.DevelopmentMode))...)
 	errs = append(errs, checkStringField("quality.ddd_settings.max_transformation_size", cfg.Quality.DDDSettings.MaxTransformationSize)...)
-	errs = append(errs, checkStringField("quality.hybrid_settings.new_features", cfg.Quality.HybridSettings.NewFeatures)...)
-	errs = append(errs, checkStringField("quality.hybrid_settings.legacy_refactoring", cfg.Quality.HybridSettings.LegacyRefactoring)...)
 
 	// System section
 	errs = append(errs, checkStringField("system.version", cfg.System.Version)...)

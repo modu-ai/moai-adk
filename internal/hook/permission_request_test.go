@@ -66,8 +66,8 @@ func TestPermissionRequestHandler_Handle(t *testing.T) {
 			if got.HookSpecificOutput.PermissionDecision != DecisionAsk {
 				t.Errorf("PermissionDecision = %q, want %q", got.HookSpecificOutput.PermissionDecision, DecisionAsk)
 			}
-			if got.HookSpecificOutput.HookEventName != "PermissionRequest" {
-				t.Errorf("HookEventName = %q, want %q", got.HookSpecificOutput.HookEventName, "PermissionRequest")
+			if got.HookSpecificOutput.HookEventName != "PreToolUse" {
+				t.Errorf("HookEventName = %q, want %q", got.HookSpecificOutput.HookEventName, "PreToolUse")
 			}
 		})
 	}

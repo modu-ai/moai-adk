@@ -30,15 +30,16 @@ type WizardResult struct {
 	DocLang         string // Language for documentation: en, ko, ja, zh
 
 	// Development methodology
-	DevelopmentMode string // Development mode: ddd, tdd, hybrid
+	DevelopmentMode string // Development mode: ddd, tdd
 
 	// Model policy
 	ModelPolicy string // Token consumption tier: high, medium, low
 
 	// Agent Teams settings
-	AgentTeamsMode string // Agent Teams execution mode: auto, subagent, team
-	MaxTeammates   string // Maximum teammates (2-10, for team mode)
-	DefaultModel   string // Default model for teammates: haiku, sonnet, opus
+	AgentTeamsMode  string // Agent Teams execution mode: auto, subagent, team
+	MaxTeammates    string // Maximum teammates (2-10, for team mode)
+	DefaultModel    string // Default model for teammates: haiku, sonnet, opus
+	TeammateDisplay string // Teammate display mode: auto, in-process, tmux
 
 	// Statusline settings
 	StatuslinePreset   string          // Statusline preset: full, compact, minimal, custom

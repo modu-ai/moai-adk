@@ -58,6 +58,12 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		metrics["input_size"] = len(input.ToolInput)
 	}
 
+	// Collect Task subagent metrics (SPEC-MONITOR-001).
+	// Best-effort: errors are logged internally and never propagated.
+	if input.ToolName == "Task" {
+		logTaskMetrics(input)
+	}
+
 	// Collect LSP diagnostics for Write/Edit operations (REQ-HOOK-150, REQ-HOOK-153)
 	if (input.ToolName == "Write" || input.ToolName == "Edit") && h.diagnostics != nil {
 		h.collectDiagnostics(ctx, input, metrics)

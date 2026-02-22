@@ -884,10 +884,8 @@ func TestConcurrentGetClient(t *testing.T) {
 	var wg sync.WaitGroup
 	errs := make(chan error, 10)
 
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 10 {
+		wg.Go(func() {
 			client, err := mgr.GetClient("go")
 			if err != nil {
 				errs <- err
@@ -896,7 +894,7 @@ func TestConcurrentGetClient(t *testing.T) {
 			if client != expectedClient {
 				errs <- errors.New("wrong client returned")
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -923,7 +921,7 @@ func TestConcurrentStartStop(t *testing.T) {
 
 	// Run concurrent start and stop operations.
 	var wg sync.WaitGroup
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		wg.Add(1)
 		go func(n int) {
 			defer wg.Done()

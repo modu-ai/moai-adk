@@ -458,6 +458,175 @@ func TestAddPathEntry_BothPaths(t *testing.T) {
 	}
 }
 
+func TestAddPathEntry_FishSyntax(t *testing.T) {
+	tmpDir := t.TempDir()
+	fishDir := filepath.Join(tmpDir, ".config", "fish")
+	if err := os.MkdirAll(fishDir, 0o755); err != nil {
+		t.Fatalf("Failed to create fish config dir: %v", err)
+	}
+	configFile := filepath.Join(fishDir, "config.fish")
+
+	c := NewConfigurator()
+
+	result, err := c.AddPathEntry(configFile, "$HOME/.local/bin")
+	if err != nil {
+		t.Fatalf("AddPathEntry() error = %v", err)
+	}
+	if !result.Success {
+		t.Error("AddPathEntry() Success = false, want true")
+	}
+
+	// Verify fish syntax
+	content, err := os.ReadFile(configFile)
+	if err != nil {
+		t.Fatalf("Failed to read config file: %v", err)
+	}
+	if !strings.Contains(string(content), "set -gx PATH") {
+		t.Errorf("Config file doesn't contain fish PATH syntax: %s", content)
+	}
+}
+
+func TestAddPathEntry_PowerShellSyntax_GoBin(t *testing.T) {
+	tmpDir := t.TempDir()
+	psDir := filepath.Join(tmpDir, "Documents", "PowerShell")
+	if err := os.MkdirAll(psDir, 0o755); err != nil {
+		t.Fatalf("Failed to create PowerShell config dir: %v", err)
+	}
+	configFile := filepath.Join(psDir, "Microsoft.PowerShell_profile.ps1")
+
+	c := NewConfigurator()
+
+	result, err := c.AddPathEntry(configFile, "$HOME/go/bin")
+	if err != nil {
+		t.Fatalf("AddPathEntry() error = %v", err)
+	}
+	if !result.Success {
+		t.Error("AddPathEntry() Success = false, want true")
+	}
+
+	// Verify PowerShell syntax with Windows path
+	content, err := os.ReadFile(configFile)
+	if err != nil {
+		t.Fatalf("Failed to read config file: %v", err)
+	}
+	if !strings.Contains(string(content), "$env:PATH") {
+		t.Errorf("Config file doesn't contain PowerShell PATH syntax: %s", content)
+	}
+}
+
+func TestAddPathEntry_GenericPath(t *testing.T) {
+	tmpDir := t.TempDir()
+	configFile := filepath.Join(tmpDir, ".zshenv")
+
+	c := NewConfigurator()
+
+	result, err := c.AddPathEntry(configFile, "/opt/custom/bin")
+	if err != nil {
+		t.Fatalf("AddPathEntry() error = %v", err)
+	}
+	if !result.Success {
+		t.Error("AddPathEntry() Success = false, want true")
+	}
+
+	// Verify content
+	content, err := os.ReadFile(configFile)
+	if err != nil {
+		t.Fatalf("Failed to read config file: %v", err)
+	}
+	if !strings.Contains(string(content), "/opt/custom/bin") {
+		t.Errorf("Config file doesn't contain expected PATH export: %s", content)
+	}
+}
+
+func TestSelectConfigFile_Fish(t *testing.T) {
+	// Fish shell should always return config.fish path
+	configFile := selectConfigFile(ShellFish, true)
+	if !strings.HasSuffix(configFile, filepath.Join(".config", "fish", "config.fish")) {
+		t.Errorf("selectConfigFile(fish) = %q, want suffix .config/fish/config.fish", configFile)
+	}
+}
+
+func TestSelectConfigFile_UnknownNonLogin(t *testing.T) {
+	configFile := selectConfigFile(ShellUnknown, false)
+	if runtime.GOOS == "windows" {
+		if !strings.Contains(configFile, "PowerShell") && !strings.HasSuffix(configFile, ".ps1") {
+			t.Errorf("selectConfigFile(unknown, windows) = %q, want PowerShell path", configFile)
+		}
+	} else {
+		if !strings.HasSuffix(configFile, ".profile") {
+			t.Errorf("selectConfigFile(unknown, non-windows) = %q, want .profile suffix", configFile)
+		}
+	}
+}
+
+func TestGetPowerShellProfilePath(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	t.Run("no_directories_exist", func(t *testing.T) {
+		// When no directories exist, should return PowerShell Core path
+		result := getPowerShellProfilePath(tmpDir)
+		if !strings.Contains(result, "PowerShell") {
+			t.Errorf("getPowerShellProfilePath() = %q, want to contain 'PowerShell'", result)
+		}
+	})
+
+	t.Run("ps_core_directory_exists", func(t *testing.T) {
+		dir := t.TempDir()
+		psCoreDir := filepath.Join(dir, "Documents", "PowerShell")
+		if err := os.MkdirAll(psCoreDir, 0o755); err != nil {
+			t.Fatalf("MkdirAll error: %v", err)
+		}
+		result := getPowerShellProfilePath(dir)
+		if !strings.Contains(result, "PowerShell") {
+			t.Errorf("result = %q, want to contain 'PowerShell'", result)
+		}
+	})
+
+	t.Run("windows_ps_directory_exists", func(t *testing.T) {
+		dir := t.TempDir()
+		winPSDir := filepath.Join(dir, "Documents", "WindowsPowerShell")
+		if err := os.MkdirAll(winPSDir, 0o755); err != nil {
+			t.Fatalf("MkdirAll error: %v", err)
+		}
+		result := getPowerShellProfilePath(dir)
+		if !strings.Contains(result, "WindowsPowerShell") {
+			t.Errorf("result = %q, want to contain 'WindowsPowerShell'", result)
+		}
+	})
+
+	t.Run("ps_core_profile_exists", func(t *testing.T) {
+		dir := t.TempDir()
+		psCoreDir := filepath.Join(dir, "Documents", "PowerShell")
+		if err := os.MkdirAll(psCoreDir, 0o755); err != nil {
+			t.Fatalf("MkdirAll error: %v", err)
+		}
+		profilePath := filepath.Join(psCoreDir, "Microsoft.PowerShell_profile.ps1")
+		if err := os.WriteFile(profilePath, []byte("# profile"), 0o644); err != nil {
+			t.Fatalf("WriteFile error: %v", err)
+		}
+		result := getPowerShellProfilePath(dir)
+		if result != profilePath {
+			t.Errorf("result = %q, want %q", result, profilePath)
+		}
+	})
+
+	t.Run("windows_ps_profile_exists", func(t *testing.T) {
+		dir := t.TempDir()
+		winPSDir := filepath.Join(dir, "Documents", "WindowsPowerShell")
+		if err := os.MkdirAll(winPSDir, 0o755); err != nil {
+			t.Fatalf("MkdirAll error: %v", err)
+		}
+		profilePath := filepath.Join(winPSDir, "Microsoft.PowerShell_profile.ps1")
+		if err := os.WriteFile(profilePath, []byte("# profile"), 0o644); err != nil {
+			t.Fatalf("WriteFile error: %v", err)
+		}
+		result := getPowerShellProfilePath(dir)
+		if result != profilePath {
+			t.Errorf("result = %q, want %q", result, profilePath)
+		}
+	})
+}
+
 func TestIsPowerShellProfile(t *testing.T) {
 	tests := []struct {
 		name       string

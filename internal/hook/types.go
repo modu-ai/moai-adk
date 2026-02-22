@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"slices"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -57,6 +58,14 @@ const (
 
 	// EventTaskCompleted is triggered when a task is completed in Agent Teams.
 	EventTaskCompleted EventType = "TaskCompleted"
+
+	// EventWorktreeCreate is triggered when a worktree is created for an agent with isolation: worktree.
+	// Available since Claude Code v2.1.49+.
+	EventWorktreeCreate EventType = "WorktreeCreate"
+
+	// EventWorktreeRemove is triggered when a worktree is removed after an isolated agent terminates.
+	// Available since Claude Code v2.1.49+.
+	EventWorktreeRemove EventType = "WorktreeRemove"
 )
 
 // ValidEventTypes returns all valid event types.
@@ -76,17 +85,14 @@ func ValidEventTypes() []EventType {
 		EventPermissionRequest,
 		EventTeammateIdle,
 		EventTaskCompleted,
+		EventWorktreeCreate,
+		EventWorktreeRemove,
 	}
 }
 
 // IsValidEventType checks if the given event type is valid.
 func IsValidEventType(et EventType) bool {
-	for _, v := range ValidEventTypes() {
-		if v == et {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ValidEventTypes(), et)
 }
 
 // Permission decision constants for PreToolUse hooks (Claude Code protocol).
@@ -151,6 +157,18 @@ type HookInput struct {
 
 	// Legacy/internal field (deprecated, use CWD instead)
 	ProjectDir string `json:"project_dir,omitempty"`
+
+	// TeammateIdle and TaskCompleted fields (Agent Teams v2.1.33+)
+	TeamName        string `json:"team_name,omitempty"`
+	TeammateName    string `json:"teammate_name,omitempty"`
+	TaskID          string `json:"task_id,omitempty"`
+	TaskSubject     string `json:"task_subject,omitempty"`
+	TaskDescription string `json:"task_description,omitempty"`
+
+	// WorktreeCreate and WorktreeRemove fields (v2.1.49+)
+	WorktreePath   string `json:"worktree_path,omitempty"`   // Absolute path to the worktree directory
+	WorktreeBranch string `json:"worktree_branch,omitempty"` // Branch name for the worktree
+	AgentName      string `json:"agent_name,omitempty"`      // Name of the agent using the worktree
 
 	// Internal data (not serialized to JSON)
 	Data json.RawMessage `json:"-"`
@@ -296,10 +314,12 @@ func NewPostToolBlockOutput(reason string, additionalContext string) *HookOutput
 }
 
 // NewPermissionRequestOutput creates a HookOutput for PermissionRequest events.
+// Per Claude Code protocol, hookSpecificOutput.hookEventName must be "PreToolUse"
+// because PermissionRequest shares the PreToolUse output schema for permission decisions.
 func NewPermissionRequestOutput(decision, reason string) *HookOutput {
 	return &HookOutput{
 		HookSpecificOutput: &HookSpecificOutput{
-			HookEventName:            "PermissionRequest",
+			HookEventName:            "PreToolUse",
 			PermissionDecision:       decision,
 			PermissionDecisionReason: reason,
 		},

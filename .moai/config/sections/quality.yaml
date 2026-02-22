@@ -9,14 +9,8 @@ constitution:
         max_transformation_size: small
         preserve_before_improve: true
         require_existing_tests: true
-    development_mode: hybrid
+    development_mode: tdd
     enforce_quality: true
-    hybrid_settings:
-        legacy_refactoring: ddd
-        min_coverage_legacy: 85
-        min_coverage_new: 85
-        new_features: tdd
-        preserve_refactoring: true
     lsp_integration:
         diagnostic_sources:
             - typecheck

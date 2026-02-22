@@ -442,7 +442,7 @@ func TestConnectionMultipleCalls(t *testing.T) {
 
 	// Mock server: echoes the method name as result for each request.
 	go func() {
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			msg, err := serverTransport.ReadMessage(context.Background())
 			if err != nil {
 				return

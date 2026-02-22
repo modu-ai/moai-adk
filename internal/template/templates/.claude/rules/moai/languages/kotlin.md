@@ -1,8 +1,5 @@
 ---
-paths:
-  - "**/*.kt"
-  - "**/*.kts"
-  - "**/build.gradle.kts"
+paths: "**/*.kt,**/*.kts,**/build.gradle.kts"
 ---
 
 # Kotlin Rules

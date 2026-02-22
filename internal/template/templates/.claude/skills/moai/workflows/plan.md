@@ -5,14 +5,12 @@ description: >
   of the Plan-Run-Sync workflow. Handles project exploration, SPEC file
   generation, validation, and optional Git environment setup with worktree
   or branch creation. Use when planning features or creating specifications.
-license: Apache-2.0
-compatibility: Designed for Claude Code
 user-invocable: false
 metadata:
-  version: "1.0.0"
+  version: "2.5.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-03"
+  updated: "2026-02-22"
   tags: "plan, spec, ears, requirements, specification, design"
 
 # MoAI Extension: Progressive Disclosure
@@ -32,7 +30,9 @@ triggers:
 
 ## Purpose
 
-Create comprehensive SPEC documents using EARS format as the first step of the Plan-Run-Sync workflow. This workflow handles everything from project exploration to SPEC file generation and optional Git environment setup.
+Create comprehensive SPEC documents using EARS format as the first step of the Plan-Run-Sync workflow.
+
+For phase overview and token budgets, see: @.claude/rules/moai/workflow/spec-workflow.md
 
 ## Scope
 
@@ -51,7 +51,7 @@ Create comprehensive SPEC documents using EARS format as the first step of the P
 - --worktree: Create isolated Git worktree environment (highest priority)
 - --branch: Create traditional feature branch (second priority)
 - No flag: SPEC only by default; user may be prompted based on config
-- --team: Enable team-based exploration (see team-plan.md for parallel research team)
+- --team: Enable team-based exploration (see team/plan.md for parallel research team)
 - resume SPEC-XXX: Continue from last saved draft state
 
 Flag priority: --worktree takes precedence over --branch, which takes precedence over default.
@@ -66,6 +66,7 @@ Before execution, load these essential files:
 - .moai/project/product.md (product context)
 - .moai/project/structure.md (architecture context)
 - .moai/project/tech.md (technology context)
+- .moai/project/codemaps/ directory listing (architecture maps for existing codebase understanding)
 - .moai/specs/ directory listing (existing SPECs for deduplication)
 
 Pre-execution commands: git status, git branch, git log, git diff, find .moai/specs.
@@ -79,18 +80,16 @@ Pre-execution commands: git status, git branch, git log, git diff, find .moai/sp
 Agent: Explore subagent (read-only codebase analysis)
 
 When to run:
-
 - User provides vague or unstructured request
 - Need to discover existing files and patterns
 - Unclear about current project state
 
 When to skip:
-
 - User provides clear SPEC title (e.g., "Add authentication module")
 - Resume scenario with existing SPEC context
 
 Tasks for the Explore subagent:
-
+- If .moai/project/codemaps/ exists: Use as architecture baseline to accelerate exploration
 - Find relevant files by keywords from user request
 - Locate existing SPEC documents in .moai/specs/
 - Identify implementation patterns and dependencies
@@ -104,7 +103,6 @@ Agent: manager-spec subagent
 Input: User request plus Phase 1A results (if executed)
 
 Tasks for manager-spec:
-
 - Analyze project documents (product.md, structure.md, tech.md)
 - Propose 1-3 SPEC candidates with proper naming
 - Check for duplicate SPECs in .moai/specs/
@@ -119,7 +117,6 @@ Output: Implementation plan with SPEC candidates, EARS structure, and technical 
 Tool: AskUserQuestion (at orchestrator level only)
 
 Options:
-
 - Proceed with SPEC Creation
 - Request Plan Modification
 - Save as Draft
@@ -135,19 +132,17 @@ If "Cancel": Discard plan, exit with no files created.
 Purpose: Prevent common SPEC creation errors before file generation.
 
 Step 1 - Document Type Classification:
-
 - Detect keywords to classify as SPEC, Report, or Documentation
 - Reports route to .moai/reports/, Documentation to .moai/docs/
 - Only SPEC-type content proceeds to Phase 2
 
 Step 2 - SPEC ID Validation (all checks must pass):
-
 - ID Format: Must match SPEC-{DOMAIN}-{NUMBER} pattern (e.g., SPEC-AUTH-001)
 - Domain Name: Must be from the approved domain list (AUTH, API, UI, DB, REFACTOR, FIX, UPDATE, PERF, TEST, DOCS, INFRA, DEVOPS, SECURITY, and others)
 - ID Uniqueness: Search .moai/specs/ to confirm no duplicates exist
 - Directory Structure: Must create directory, never flat files
 
-Composite domain rules: Maximum 2 domains recommended (e.g., UPDATE-REFACTOR-001), maximum 3 allowed.
+Composite domain rules: Maximum 2 domains recommended, maximum 3 allowed.
 
 ### Phase 2: SPEC Document Creation
 
@@ -174,7 +169,6 @@ File generation (all three files created simultaneously):
   - Performance and quality gate criteria
 
 Quality constraints:
-
 - Requirement modules limited to 5 or fewer per SPEC
 - Acceptance criteria minimum 2 Given/When/Then scenarios
 - Technical terms and function names remain in English
@@ -182,7 +176,6 @@ Quality constraints:
 ### Phase 3: Git Environment Setup (Conditional)
 
 Execution conditions: Phase 2 completed successfully AND one of the following:
-
 - --worktree flag provided
 - --branch flag provided or user chose branch creation
 - Configuration permits branch creation (git_strategy settings)
@@ -192,7 +185,6 @@ Skipped when: develop_direct workflow, no flags and user chooses "Use current br
 #### Worktree Path (--worktree flag)
 
 Prerequisite: SPEC files MUST be committed before worktree creation.
-
 - Stage SPEC files: git add .moai/specs/SPEC-{ID}/
 - Create commit: feat(spec): Add SPEC-{ID} - {title}
 - Create worktree via WorktreeManager with branch feature/SPEC-{ID}
@@ -201,7 +193,6 @@ Prerequisite: SPEC files MUST be committed before worktree creation.
 #### Branch Path (--branch flag or user choice)
 
 Agent: manager-git subagent
-
 - Create branch: feature/SPEC-{ID}-{description}
 - Set tracking upstream if remote exists
 - Switch to new branch
@@ -212,12 +203,25 @@ Agent: manager-git subagent
 - No branch creation, no manager-git invocation
 - SPEC files remain on current branch
 
+### Phase 3.5: MX Tag Planning (Optional)
+
+Purpose: Identify code locations that will need @MX annotations during implementation.
+
+Execution conditions: SPEC involves modifying existing code OR creating new public APIs.
+
+Tasks:
+- Scan target files for high fan_in functions (potential @MX:ANCHOR)
+- Identify dangerous patterns (goroutines, complexity) for @MX:WARN
+- List magic constants and business rules for @MX:NOTE
+- Document MX tag strategy in plan.md
+
+Skip conditions: New feature with no existing code interaction.
+
 ### Decision Point 2: Development Environment Selection
 
 Tool: AskUserQuestion (when prompt_always config is true and auto_branch is true)
 
 Options:
-
 - Create Worktree (recommended for parallel SPEC development)
 - Create Branch (traditional workflow)
 - Use current branch
@@ -227,7 +231,6 @@ Options:
 Tool: AskUserQuestion (after SPEC creation completes)
 
 Options:
-
 - Start Implementation (execute /moai run SPEC-{ID})
 - Modify Plan
 - Add New Feature (create additional SPEC)
@@ -239,12 +242,12 @@ Options:
 When --team flag is provided or auto-selected, the plan phase MUST switch to team orchestration:
 
 1. Verify prerequisites: workflow.team.enabled == true AND CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var is set
-2. If prerequisites met: Read workflows/team-plan.md and execute the team workflow (TeamCreate with researcher + analyst + architect)
-3. If prerequisites NOT met: Warn user with message "Team mode requires workflow.team.enabled: true in workflow.yaml and CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var" then fallback to standard sub-agent mode (manager-spec)
+2. If prerequisites met: Read team/plan.md and execute the team workflow (TeamCreate with researcher + analyst + architect)
+3. If prerequisites NOT met: Warn user then fallback to standard sub-agent mode (manager-spec)
 
 Team composition: researcher (haiku) + analyst (inherit) + architect (inherit)
 
-For detailed team orchestration steps, see workflows/team-plan.md.
+For detailed team orchestration steps, see team/plan.md.
 
 ---
 
@@ -264,6 +267,5 @@ All of the following must be verified:
 
 ---
 
-Version: 2.0.0
-Updated: 2026-02-07
-Source: Extracted from .claude/commands/moai/1-plan.md v5.1.0. Added team mode support and --team flag.
+Version: 2.5.0
+Updated: 2026-02-22

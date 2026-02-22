@@ -255,3 +255,89 @@ func TestListMappings_ReturnsCopy(t *testing.T) {
 		t.Errorf("Status = %q, want %q (returned slice should be a copy)", original[0].Status, "active")
 	}
 }
+
+func TestSpecLinker_Load_NilMappings(t *testing.T) {
+	dir := t.TempDir()
+	moaiDir := filepath.Join(dir, ".moai")
+	if err := os.MkdirAll(moaiDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	// Write valid JSON with null mappings
+	registryPath := filepath.Join(moaiDir, RegistryFileName)
+	reg := `{"version": "1.0.0", "mappings": null}`
+	if err := os.WriteFile(registryPath, []byte(reg), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	linker, err := NewSpecLinker(dir)
+	if err != nil {
+		t.Fatalf("NewSpecLinker: %v", err)
+	}
+	mappings := linker.ListMappings()
+	if mappings == nil {
+		t.Error("ListMappings should return non-nil slice")
+	}
+	if len(mappings) != 0 {
+		t.Errorf("ListMappings len = %d, want 0", len(mappings))
+	}
+}
+
+func TestSpecLinker_Load_ReadPermissionError(t *testing.T) {
+	dir := t.TempDir()
+	moaiDir := filepath.Join(dir, ".moai")
+	if err := os.MkdirAll(moaiDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	registryPath := filepath.Join(moaiDir, RegistryFileName)
+	if err := os.WriteFile(registryPath, []byte("{}"), 0o000); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	_, err := NewSpecLinker(dir)
+	if err == nil {
+		// On some systems, root user can still read 0o000 files.
+		// Skip rather than fail.
+		t.Skip("expected error for unreadable file, but got nil (possibly running as root)")
+	}
+}
+
+func TestSpecLinker_Save_ReadOnlyDir(t *testing.T) {
+	dir := t.TempDir()
+
+	// Create linker first in a working directory
+	linker, err := NewSpecLinker(dir)
+	if err != nil {
+		t.Fatalf("NewSpecLinker: %v", err)
+	}
+
+	// Make the .moai directory read-only
+	moaiDir := filepath.Join(dir, ".moai")
+	if err := os.MkdirAll(moaiDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.Chmod(moaiDir, 0o444); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	t.Cleanup(func() {
+		// Restore permissions for cleanup
+		_ = os.Chmod(moaiDir, 0o755)
+	})
+
+	err = linker.LinkIssueToSpec(1, "SPEC-1")
+	if err == nil {
+		t.Skip("expected error writing to read-only dir, but succeeded (possibly running as root)")
+	}
+}
+
+func TestSpecLinker_ListMappings_EmptyRegistry(t *testing.T) {
+	linker, _ := setupLinker(t)
+	mappings := linker.ListMappings()
+	if mappings == nil {
+		t.Error("ListMappings should return non-nil for empty registry")
+	}
+	if len(mappings) != 0 {
+		t.Errorf("ListMappings len = %d, want 0", len(mappings))
+	}
+}

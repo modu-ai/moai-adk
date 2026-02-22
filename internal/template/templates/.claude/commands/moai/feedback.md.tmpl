@@ -1,0 +1,6 @@
+---
+description: {{if eq .ConversationLanguage "ko"}}피드백 수집 및 GitHub 이슈 생성 (버그 리포트, 기능 요청){{else if eq .ConversationLanguage "ja"}}フィードバック収集とGitHub Issue作成（バグ報告、機能リクエスト）{{else if eq .ConversationLanguage "zh"}}收集反馈并创建GitHub Issue（错误报告、功能请求）{{else}}Collect feedback and create GitHub issue (bug report, feature request){{end}}
+argument-hint: "{{if eq .ConversationLanguage "ko"}}[\"설명\"]{{else if eq .ConversationLanguage "ja"}}[\"説明\"]{{else if eq .ConversationLanguage "zh"}}[\"描述\"]{{else}}[\"description\"]{{end}}"
+---
+
+Use Skill("moai") with arguments: feedback $ARGUMENTS

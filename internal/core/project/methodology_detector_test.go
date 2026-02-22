@@ -19,10 +19,10 @@ func TestDetectMethodology(t *testing.T) {
 		wantHasWarning  bool
 	}{
 		{
-			name:            "greenfield project recommends hybrid",
+			name:            "greenfield project recommends tdd",
 			setup:           func(t *testing.T, root string) { t.Helper() },
 			languages:       []Language{{Name: "Go", Confidence: 1.0, FileCount: 0}},
-			wantRecommended: "hybrid",
+			wantRecommended: "tdd",
 			wantProjectType: "greenfield",
 			wantMinConf:     0.7,
 		},
@@ -69,7 +69,7 @@ func TestDetectMethodology(t *testing.T) {
 			wantMinCoverage: 50.0,
 		},
 		{
-			name: "brownfield partial tests recommends hybrid",
+			name: "brownfield partial tests recommends tdd",
 			setup: func(t *testing.T, root string) {
 				t.Helper()
 				// Create 20 source files and 5 test files
@@ -84,7 +84,7 @@ func TestDetectMethodology(t *testing.T) {
 				}
 			},
 			languages:       []Language{{Name: "Go", Confidence: 1.0, FileCount: 32}},
-			wantRecommended: "hybrid",
+			wantRecommended: "tdd",
 			wantProjectType: "brownfield",
 			wantMinConf:     0.7,
 			wantMinCoverage: 10.0,
@@ -113,7 +113,7 @@ func TestDetectMethodology(t *testing.T) {
 				writeFile(t, root, "tests/test_routes.py", "def test_routes(): pass\n")
 			},
 			languages:       []Language{{Name: "Python", Confidence: 1.0, FileCount: 4}},
-			wantRecommended: "hybrid",
+			wantRecommended: "tdd",
 			wantProjectType: "brownfield",
 			wantMinCoverage: 10.0,
 		},
@@ -125,7 +125,7 @@ func TestDetectMethodology(t *testing.T) {
 				writeFile(t, root, "src/app.spec.ts", "test('x', () => {});\n")
 			},
 			languages:       []Language{{Name: "TypeScript", Confidence: 1.0, FileCount: 2}},
-			wantRecommended: "hybrid",
+			wantRecommended: "tdd",
 			wantProjectType: "brownfield",
 		},
 	}

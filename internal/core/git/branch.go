@@ -137,8 +137,8 @@ func (b *branchManager) List() ([]Branch, error) {
 	}
 
 	var branches []Branch
-	lines := strings.Split(out, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(out, "\n")
+	for line := range lines {
 		name := strings.TrimSpace(line)
 		if name == "" {
 			continue

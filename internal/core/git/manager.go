@@ -24,6 +24,8 @@ type gitManager struct {
 	logger *slog.Logger
 }
 
+// @MX:ANCHOR: [AUTO] Git 리포지토리 관리의 진입점입니다. 모든 Git 작업이 이 함수를 통해 시작됩니다.
+// @MX:REASON: [AUTO] fan_in=15+, Git 작업의 시작점이며 시스템 전방위에서 호출됩니다
 // NewRepository opens a Git repository at the given path.
 // Returns ErrNotRepository if the path is not inside a Git repository.
 func NewRepository(path string) (*gitManager, error) {
@@ -88,8 +90,8 @@ func (m *gitManager) Status() (*GitStatus, error) {
 	status := &GitStatus{}
 
 	if out != "" {
-		lines := strings.Split(out, "\n")
-		for _, line := range lines {
+		lines := strings.SplitSeq(out, "\n")
+		for line := range lines {
 			if len(line) < 3 {
 				continue
 			}
@@ -178,8 +180,8 @@ func (m *gitManager) Log(n int) ([]Commit, error) {
 	}
 
 	var commits []Commit
-	lines := strings.Split(out, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(out, "\n")
+	for line := range lines {
 		if line == "" {
 			continue
 		}
@@ -240,6 +242,8 @@ func (m *gitManager) Root() string {
 	return m.root
 }
 
+// @MX:ANCHOR: [AUTO] execGit is the core git command executor used by all Repository methods
+// @MX:REASON: [AUTO] fan_in=5, called from branch.go, conflict.go, manager.go, worktree.go, event.go
 // execGit executes a git command in the given directory and returns stdout.
 // It sets GIT_TERMINAL_PROMPT=0 and LC_ALL=C for consistent behavior.
 func execGit(ctx context.Context, dir string, args ...string) (string, error) {

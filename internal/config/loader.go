@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
 	"sync"
@@ -52,6 +53,9 @@ func (l *Loader) Load(configDir string) (*Config, error) {
 	// Load git convention section
 	l.loadGitConventionSection(sectionsDir, cfg)
 
+	// Load LLM section
+	l.loadLLMSection(sectionsDir, cfg)
+
 	return cfg, nil
 }
 
@@ -62,9 +66,7 @@ func (l *Loader) LoadedSections() map[string]bool {
 	defer l.mu.RUnlock()
 
 	result := make(map[string]bool, len(l.loadedSections))
-	for k, v := range l.loadedSections {
-		result[k] = v
-	}
+	maps.Copy(result, l.loadedSections)
 	return result
 }
 
@@ -123,6 +125,20 @@ func (l *Loader) loadGitConventionSection(dir string, cfg *Config) {
 	if loaded {
 		cfg.GitConvention = wrapper.GitConvention
 		l.loadedSections["git_convention"] = true
+	}
+}
+
+// loadLLMSection loads the LLM configuration section from llm.yaml.
+func (l *Loader) loadLLMSection(dir string, cfg *Config) {
+	wrapper := &llmFileWrapper{LLM: cfg.LLM}
+	loaded, err := loadYAMLFile(dir, "llm.yaml", wrapper)
+	if err != nil {
+		slog.Warn("failed to load LLM config, using defaults", "error", err)
+		return
+	}
+	if loaded {
+		cfg.LLM = wrapper.LLM
+		l.loadedSections["llm"] = true
 	}
 }
 

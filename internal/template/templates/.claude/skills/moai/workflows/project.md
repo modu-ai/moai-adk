@@ -2,17 +2,16 @@
 name: moai-workflow-project
 description: >
   Generates project documentation from codebase analysis or user input.
-  Creates product.md, structure.md, and tech.md in .moai/project/ directory.
+  Creates product.md, structure.md, and tech.md in .moai/project/ directory,
+  plus architecture maps in .moai/project/codemaps/ directory.
   Supports new and existing project types with LSP server detection.
   Use when initializing projects or generating project documentation.
-license: Apache-2.0
-compatibility: Designed for Claude Code
 user-invocable: false
 metadata:
-  version: "2.0.0"
+  version: "2.5.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-07"
+  updated: "2026-02-21"
   tags: "project, documentation, initialization, codebase-analysis, setup"
 
 # MoAI Extension: Progressive Disclosure
@@ -30,7 +29,7 @@ triggers:
 
 # Workflow: project - Project Documentation Generation
 
-Purpose: Generate project documentation through smart questions and codebase analysis. Creates product.md, structure.md, and tech.md in .moai/project/ directory.
+Purpose: Generate project documentation through smart questions and codebase analysis. Creates product.md, structure.md, and tech.md in .moai/project/ directory, plus architecture documentation in .moai/project/codemaps/ directory.
 
 This workflow is also triggered automatically when project documentation does not exist and the user requests other workflows (plan, run, sync, etc.). See SKILL.md Step 2.5 for the auto-detection mechanism.
 
@@ -204,6 +203,31 @@ Output Files:
 
 ---
 
+## Phase 3.3: Codemaps Generation
+
+Purpose: Generate architecture documentation in `.moai/project/codemaps/` directory based on codebase analysis results from Phase 1.
+
+[HARD] This phase runs automatically after Phase 3 documentation generation.
+
+Agent Chain:
+- Explore subagent: Analyze codebase architecture (reuse Phase 1 results if available)
+- manager-docs subagent: Generate codemaps documentation files
+
+Output Files (in `.moai/project/codemaps/` directory):
+- overview.md: High-level architecture summary, design patterns, system boundaries
+- modules.md: Module descriptions, responsibilities, public interfaces
+- dependencies.md: Dependency graph, external packages, internal module relationships
+- entry-points.md: Application entry points, CLI commands, API routes, event handlers
+- data-flow.md: Data flow paths, request lifecycle, state management patterns
+
+Skip Conditions:
+- New projects with no existing code (Phase 0.5 path): Skip codemaps generation, create placeholder `.moai/project/codemaps/overview.md` with project goals only
+- User explicitly requests skip via AskUserQuestion in Phase 2
+
+For detailed codemaps generation process, delegate to codemaps workflow (workflows/codemaps.md).
+
+---
+
 ## Phase 3.5: Development Environment Check
 
 Goal: Verify LSP servers are installed for the detected technology stack.
@@ -244,16 +268,16 @@ Goal: Automatically set the `development_mode` in `.moai/config/sections/quality
 Auto-Detection Logic:
 
 For New Projects (Phase 0 classified as "New Project"):
-- Set `development_mode: "hybrid"` (TDD for new features, DDD for structure)
-- Rationale: New projects benefit from test-first development for new features while maintaining DDD structure for overall architecture
+- Set `development_mode: "tdd"` (test-first development)
+- Rationale: New projects benefit from test-first development with clean RED-GREEN-REFACTOR cycles
 
 For Existing Projects (Phase 0 classified as "Existing Project"):
 - Step 1: Check for existing test files using Glob patterns (*_test.go, *_test.py, *.test.ts, *.test.js, *.spec.ts, *.spec.js, test_*.py, tests/, __tests__/, spec/)
 - Step 2: Estimate test coverage level based on test file count relative to source file count:
   - No test files found (0%): Set `development_mode: "ddd"` (need characterization tests first)
-  - Few test files (< 10% ratio): Set `development_mode: "ddd"` (insufficient coverage for TDD)
-  - Moderate test files (10-49% ratio): Set `development_mode: "hybrid"` (expand with DDD, new code with TDD)
-  - Good test files (>= 50% ratio): Set `development_mode: "hybrid"` (sufficient base, hybrid approach)
+  - Few test files (< 10% ratio): Set `development_mode: "ddd"` (insufficient coverage, characterization tests first)
+  - Moderate test files (10-49% ratio): Set `development_mode: "tdd"` (partial tests, expand with test-first development)
+  - Good test files (>= 50% ratio): Set `development_mode: "tdd"` (strong test base for test-first development)
 
 Implementation:
 - Read current `.moai/config/sections/quality.yaml`
@@ -265,9 +289,9 @@ Methodology-to-Mode Mapping Reference:
 
 | Project State | Test Ratio | development_mode | Rationale |
 |--------------|-----------|------------------|-----------|
-| New (no code) | N/A | hybrid | Clean slate, TDD for features + DDD structure |
-| Existing | >= 50% | hybrid | Sufficient test base for hybrid development |
-| Existing | 10-49% | hybrid | Partial tests, expand with DDD then TDD for new |
+| New (no code) | N/A | tdd | Clean slate, test-first development |
+| Existing | >= 50% | tdd | Strong test base for test-first development |
+| Existing | 10-49% | tdd | Partial tests, expand with test-first development |
 | Existing | < 10% | ddd | No tests, gradual characterization test creation |
 
 ---
@@ -293,6 +317,7 @@ Next Steps (AskUserQuestion):
 - Phase 0-2: MoAI orchestrator (AskUserQuestion for all user interaction)
 - Phase 1: Explore subagent (codebase analysis)
 - Phase 3: manager-docs subagent (documentation generation)
+- Phase 3.3: Explore + manager-docs subagents (codemaps generation via codemaps workflow)
 - Phase 3.5: expert-devops subagent (optional LSP installation)
 - Phase 3.7: MoAI orchestrator (automatic development_mode configuration, no user interaction)
 

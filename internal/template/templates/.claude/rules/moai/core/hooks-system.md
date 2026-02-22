@@ -1,8 +1,5 @@
 ---
-paths:
-  - "**/.claude/hooks/**"
-  - "**/.claude/settings.json"
-  - "**/.claude/settings.local.json"
+paths: "**/.claude/hooks/**,**/.claude/settings.json,**/.claude/settings.local.json"
 ---
 
 # Hooks System
@@ -11,7 +8,7 @@ Claude Code hooks for extending functionality with custom scripts.
 
 ## Hook Events
 
-All 14 available hook event types:
+All 15 available hook event types:
 
 | Event | Matcher | Can Block | Description |
 |-------|---------|-----------|-------------|
@@ -29,10 +26,11 @@ All 14 available hook event types:
 | TeammateIdle | No | Yes | Runs when agent team teammate is about to go idle |
 | TaskCompleted | No | Yes | Runs when a task is being marked complete |
 | SessionEnd | Reason | No | Runs when session terminates |
+| ConfigChange | No | No | Runs when settings.json is modified (v2.1.49+) |
 
 ### Event Categories
 
-**Lifecycle Events**: SessionStart, SessionEnd, Stop, PreCompact
+**Lifecycle Events**: SessionStart, SessionEnd, Stop, PreCompact, ConfigChange
 
 **Prompt Events**: UserPromptSubmit, PermissionRequest, Notification
 
@@ -52,8 +50,11 @@ All 14 available hook event types:
 | TeammateIdle | `agentType`, `agentName`, `tasksSummary` | `systemMessage` | Exit 2 = keep working. Critical for team quality |
 | TaskCompleted | `taskId`, `taskSummary`, `agentName` | `reason` | Exit 2 = reject completion. Critical for team quality |
 | SessionEnd | `reason`, `sessionId` | - | Reasons: clear, logout, prompt_input_exit, bypass_permissions_disabled, other |
+| Stop | `last_assistant_message` | `systemMessage` | Includes last assistant message (v2.1.49+) |
+| SubagentStop | `agentType`, `agentName`, `last_assistant_message` | `systemMessage` | Includes last assistant message (v2.1.49+) |
+| ConfigChange | `configPath`, `changes` | - | Triggered on settings.json modification (v2.1.49+) |
 
-Standard events (SessionStart, PreCompact, PreToolUse, PostToolUse, Stop) use common stdin/stdout patterns: stdin receives event-specific fields, stdout accepts optional `systemMessage`.
+Standard events (SessionStart, PreCompact, PreToolUse, PostToolUse) use common stdin/stdout patterns: stdin receives event-specific fields, stdout accepts optional `systemMessage`.
 
 ## Hook Execution Types
 
@@ -197,6 +198,7 @@ Wrapper scripts are located at:
 - Prompt and agent hooks return JSON with `ok` and `reason` fields
 - Async hooks deliver results via `systemMessage` on the next turn
 - Exit code 2 is the universal "block/reject" signal for blocking events
+- Stop and SubagentStop hooks receive `last_assistant_message` field (v2.1.49+)
 
 ## Error Handling
 
@@ -219,3 +221,32 @@ Wrapper scripts are located at:
 - Hook scripts must follow coding-standards.md
 - Hook wrappers are managed by `internal/hook/` package
 - TeammateIdle and TaskCompleted hooks are critical for Agent Teams quality enforcement
+
+## MX Tag Integration with Hooks
+
+PostToolUse hooks can trigger MX tag validation after code modifications:
+
+**Trigger Conditions:**
+- Write or Edit tool used on source files (`.go`, `.py`, `.ts`, etc.)
+- New functions or classes added
+- Function signatures changed
+
+**PostToolUse MX Check Flow:**
+1. Detect if modified file is a source code file
+2. Check if file has `.moai/config/sections/mx.yaml` exclusion
+3. If new exported function added without @MX tag, log warning
+4. If function with @MX:ANCHOR modified, flag for review
+
+**Hook Wrapper Enhancement:**
+```bash
+# handle-post-tool.sh MX check
+if [[ "$TOOL_NAME" =~ ^(Write|Edit)$ ]] && is_source_file "$FILE_PATH"; then
+  # Check for MX tag needs
+  moai mx check --file "$FILE_PATH" --dry
+fi
+```
+
+**Non-Blocking Behavior:**
+- MX checks are informational only during hook execution
+- Actual tag insertion happens during workflow phases (run, sync)
+- Use `/moai mx --dry` to preview tag recommendations

@@ -161,7 +161,7 @@ func TestInit_QualityYAMLContent(t *testing.T) {
 		Language:        "Go",
 		UserName:        "test",
 		ConvLang:        "en",
-		DevelopmentMode: "hybrid",
+		DevelopmentMode: "tdd",
 	}
 
 	_, err := init.Init(context.Background(), opts)
@@ -173,8 +173,8 @@ func TestInit_QualityYAMLContent(t *testing.T) {
 	var qualYAMLData qualityYAML
 	readYAML(t, qualityPath, &qualYAMLData)
 
-	if qualYAMLData.Constitution.DevelopmentMode != "hybrid" {
-		t.Errorf("development_mode = %q, want %q", qualYAMLData.Constitution.DevelopmentMode, "hybrid")
+	if qualYAMLData.Constitution.DevelopmentMode != "tdd" {
+		t.Errorf("development_mode = %q, want %q", qualYAMLData.Constitution.DevelopmentMode, "tdd")
 	}
 	if !qualYAMLData.Constitution.EnforceQuality {
 		t.Error("enforce_quality should be true")
@@ -184,7 +184,7 @@ func TestInit_QualityYAMLContent(t *testing.T) {
 	}
 }
 
-func TestInit_InvalidDevelopmentModeFallsBackToHybrid(t *testing.T) {
+func TestInit_InvalidDevelopmentModeFallsBackToTDD(t *testing.T) {
 	root := t.TempDir()
 	init := NewInitializer(nil, nil, nil)
 
@@ -206,8 +206,8 @@ func TestInit_InvalidDevelopmentModeFallsBackToHybrid(t *testing.T) {
 	var qualYAMLData qualityYAML
 	readYAML(t, qualityPath, &qualYAMLData)
 
-	if qualYAMLData.Constitution.DevelopmentMode != "hybrid" {
-		t.Errorf("development_mode = %q, want fallback %q", qualYAMLData.Constitution.DevelopmentMode, "hybrid")
+	if qualYAMLData.Constitution.DevelopmentMode != "tdd" {
+		t.Errorf("development_mode = %q, want fallback %q", qualYAMLData.Constitution.DevelopmentMode, "tdd")
 	}
 }
 

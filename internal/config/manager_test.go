@@ -93,9 +93,9 @@ func TestConfigManagerLoadDefaults(t *testing.T) {
 		t.Errorf("Language.ConversationLanguage: got %q, want default %q",
 			cfg.Language.ConversationLanguage, DefaultConversationLanguage)
 	}
-	if cfg.Quality.DevelopmentMode != models.ModeHybrid {
+	if cfg.Quality.DevelopmentMode != models.ModeTDD {
 		t.Errorf("Quality.DevelopmentMode: got %q, want default %q",
-			cfg.Quality.DevelopmentMode, models.ModeHybrid)
+			cfg.Quality.DevelopmentMode, models.ModeTDD)
 	}
 }
 
@@ -650,10 +650,8 @@ func TestConfigManagerConcurrentReads(t *testing.T) {
 	const goroutines = 50
 
 	// Concurrent Get() calls
-	for i := 0; i < goroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range goroutines {
+		wg.Go(func() {
 			cfg := m.Get()
 			if cfg == nil {
 				t.Error("Get() returned nil during concurrent access")
@@ -663,14 +661,12 @@ func TestConfigManagerConcurrentReads(t *testing.T) {
 				t.Errorf("concurrent Get() User.Name: got %q, want %q",
 					cfg.User.Name, "TestUser")
 			}
-		}()
+		})
 	}
 
 	// Concurrent GetSection() calls
-	for i := 0; i < goroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range goroutines {
+		wg.Go(func() {
 			v, err := m.GetSection("user")
 			if err != nil {
 				t.Errorf("concurrent GetSection() error: %v", err)
@@ -681,7 +677,7 @@ func TestConfigManagerConcurrentReads(t *testing.T) {
 				t.Errorf("concurrent GetSection() User.Name: got %q, want %q",
 					u.Name, "TestUser")
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -701,17 +697,15 @@ func TestConfigManagerConcurrentReadWrite(t *testing.T) {
 	const goroutines = 30
 
 	// Concurrent readers
-	for i := 0; i < goroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range goroutines {
+		wg.Go(func() {
 			_ = m.Get()
 			_, _ = m.GetSection("language")
-		}()
+		})
 	}
 
 	// Concurrent writers
-	for i := 0; i < goroutines; i++ {
+	for i := range goroutines {
 		wg.Add(1)
 		go func(n int) {
 			defer wg.Done()
@@ -790,7 +784,6 @@ func TestConfigManagerSaveAndReloadRoundTrip(t *testing.T) {
 		TestCoverageTarget: 90,
 		DDDSettings:        NewDefaultDDDSettings(),
 		TDDSettings:        NewDefaultTDDSettings(),
-		HybridSettings:     NewDefaultHybridSettings(),
 		CoverageExemptions: NewDefaultCoverageExemptions(),
 	})
 
@@ -832,9 +825,9 @@ func TestApplyEnvOverrides(t *testing.T) {
 	applyEnvOverrides(cfg)
 
 	// Values should remain as defaults since no env vars are set in this test
-	if cfg.Quality.DevelopmentMode != models.ModeHybrid {
+	if cfg.Quality.DevelopmentMode != models.ModeTDD {
 		t.Errorf("DevelopmentMode: got %q, want default %q",
-			cfg.Quality.DevelopmentMode, models.ModeHybrid)
+			cfg.Quality.DevelopmentMode, models.ModeTDD)
 	}
 }
 
@@ -849,7 +842,7 @@ func TestSentinelErrors(t *testing.T) {
 		{"ErrConfigNotFound", ErrConfigNotFound, "config: configuration directory not found"},
 		{"ErrInvalidConfig", ErrInvalidConfig, "config: invalid configuration"},
 		{"ErrSectionNotFound", ErrSectionNotFound, "config: section not found"},
-		{"ErrInvalidDevelopmentMode", ErrInvalidDevelopmentMode, "config: invalid development_mode, must be one of: ddd, tdd, hybrid"},
+		{"ErrInvalidDevelopmentMode", ErrInvalidDevelopmentMode, "config: invalid development_mode, must be one of: ddd, tdd"},
 		{"ErrNotInitialized", ErrNotInitialized, "config: manager not initialized, call Load() first"},
 		{"ErrSectionTypeMismatch", ErrSectionTypeMismatch, "config: section type mismatch"},
 		{"ErrDynamicToken", ErrDynamicToken, "config: unexpanded dynamic token detected"},

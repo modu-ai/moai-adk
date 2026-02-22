@@ -42,17 +42,18 @@ func ghCardStyle() lipgloss.Style {
 
 func ghSuccessCard(title string, details ...string) string {
 	titleLine := ghSuccess.Render("\u2713") + " " + title
-	body := titleLine
+	var body strings.Builder
+	body.WriteString(titleLine)
 	if len(details) > 0 {
-		body += "\n\n"
+		body.WriteString("\n\n")
 		for i, d := range details {
 			if i > 0 {
-				body += "\n"
+				body.WriteString("\n")
 			}
-			body += d
+			body.WriteString(d)
 		}
 	}
-	return ghCardStyle().Render(body)
+	return ghCardStyle().Render(body.String())
 }
 
 func ghInfoCard(title, content string) string {

@@ -108,7 +108,7 @@ func DefaultQuestions(projectRoot string) []Question {
 			Default:     "",
 			Required:    false, // Conditional requirement handled by wizard
 			Condition: func(r *WizardResult) bool {
-				return (r.GitMode == "personal" || r.GitMode == "team") && r.GitProvider != "gitlab"
+				return (r.GitMode == "personal" || r.GitMode == "team") && r.GitProvider == "github"
 			},
 		},
 		// 5b. GitHub Token (conditional - only for github provider)
@@ -120,7 +120,7 @@ func DefaultQuestions(projectRoot string) []Question {
 			Default:     "",
 			Required:    false,
 			Condition: func(r *WizardResult) bool {
-				return (r.GitMode == "personal" || r.GitMode == "team") && r.GitProvider != "gitlab"
+				return (r.GitMode == "personal" || r.GitMode == "team") && r.GitProvider == "github"
 			},
 		},
 		// 5c. GitLab Username (conditional - only for gitlab provider)
@@ -260,6 +260,24 @@ func DefaultQuestions(projectRoot string) []Question {
 			Required: true,
 			Condition: func(r *WizardResult) bool {
 				return r.AgentTeamsMode == "team"
+			},
+		},
+		// 13b. Teammate Display Mode (conditional - only for team or auto mode)
+		{
+			ID:          "teammate_display",
+			Type:        QuestionTypeSelect,
+			Title:       "Select teammate display mode",
+			Description: "Controls how Agent Teammates are displayed. Requires tmux for split panes.",
+			// Default option must be first to avoid huh v0.8.x YOffset bug.
+			Options: []Option{
+				{Label: "Auto (Recommended)", Value: "auto", Desc: "Use tmux if available, else in-process (default)"},
+				{Label: "In-Process", Value: "in-process", Desc: "Run in same terminal (works everywhere)"},
+				{Label: "Tmux", Value: "tmux", Desc: "Split panes in tmux (requires tmux/iTerm2)"},
+			},
+			Default:  "auto",
+			Required: true,
+			Condition: func(r *WizardResult) bool {
+				return r.AgentTeamsMode == "team" || r.AgentTeamsMode == "auto"
 			},
 		},
 		// 14. Statusline Preset

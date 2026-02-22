@@ -52,6 +52,9 @@ type IssueParser interface {
 // ghIssueParser implements IssueParser using the gh CLI.
 type ghIssueParser struct {
 	root string
+	// execFn is the function used to execute gh commands.
+	// If nil, the package-level execGH function is used.
+	execFn execFunc
 }
 
 // NewIssueParser returns an IssueParser that uses the gh CLI.
@@ -59,6 +62,11 @@ type ghIssueParser struct {
 // which must be inside the target GitHub repository.
 func NewIssueParser(root string) IssueParser {
 	return &ghIssueParser{root: root}
+}
+
+// newIssueParserWithExec creates a ghIssueParser with a custom exec function for testing.
+func newIssueParserWithExec(root string, fn execFunc) IssueParser {
+	return &ghIssueParser{root: root, execFn: fn}
 }
 
 // issueFields is the comma-separated list of fields to request from gh.
@@ -71,7 +79,12 @@ func (p *ghIssueParser) ParseIssue(ctx context.Context, number int) (*Issue, err
 		return nil, fmt.Errorf("parse issue: invalid issue number %d", number)
 	}
 
-	output, err := execGH(ctx, p.root, "issue", "view",
+	exec := execGH
+	if p.execFn != nil {
+		exec = p.execFn
+	}
+
+	output, err := exec(ctx, p.root, "issue", "view",
 		strconv.Itoa(number), "--json", issueFields)
 	if err != nil {
 		return nil, fmt.Errorf("parse issue #%d: %w", number, err)

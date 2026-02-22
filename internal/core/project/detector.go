@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
 	"sort"
@@ -441,8 +442,8 @@ func validateRoot(root string) error {
 
 // extractGoModVersion extracts the version of a module from go.mod content.
 func extractGoModVersion(content, module string) string {
-	lines := strings.Split(content, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(content, "\n")
+	for line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if strings.Contains(trimmed, module) {
 			parts := strings.Fields(trimmed)
@@ -457,12 +458,8 @@ func extractGoModVersion(content, module string) string {
 // mergeMaps merges two string maps, with the second taking precedence.
 func mergeMaps(a, b map[string]string) map[string]string {
 	result := make(map[string]string, len(a)+len(b))
-	for k, v := range a {
-		result[k] = v
-	}
-	for k, v := range b {
-		result[k] = v
-	}
+	maps.Copy(result, a)
+	maps.Copy(result, b)
 	return result
 }
 

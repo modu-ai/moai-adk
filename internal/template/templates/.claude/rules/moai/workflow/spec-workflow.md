@@ -1,3 +1,7 @@
+---
+paths: "**/.moai/specs/**,**/.moai/config/sections/quality.yaml"
+---
+
 # SPEC Workflow
 
 MoAI's three-phase development workflow with token budget management.
@@ -36,7 +40,7 @@ Token Strategy:
 - Enables 70% larger implementations
 
 Development Methodology:
-- Configured in quality.yaml (development_mode: ddd, tdd, or hybrid)
+- Configured in quality.yaml (development_mode: ddd or tdd)
 - See @workflow-modes.md for detailed methodology cycles
 
 Success Criteria:
@@ -44,6 +48,7 @@ Success Criteria:
 - Methodology-specific tests passing
 - 85%+ code coverage
 - TRUST 5 quality gates passed
+- MX tags added for new code (NOTE, ANCHOR, WARN as appropriate)
 
 ## Sync Phase
 
@@ -140,31 +145,22 @@ When to prefer sub-agent mode:
 
 Detailed team orchestration steps are defined in dedicated workflow files:
 
-- Plan phase: @.claude/skills/moai/workflows/team-plan.md
-- Run phase: @.claude/skills/moai/workflows/team-run.md
-- Fix phase: @.claude/skills/moai/workflows/team-debug.md
-- Review: @.claude/skills/moai/workflows/team-review.md
+- Plan phase: @.claude/skills/moai/team/plan.md
+- Run phase: @.claude/skills/moai/team/run.md
+- Fix phase: @.claude/skills/moai/team/debug.md
+- Review: @.claude/skills/moai/team/review.md
 
 ### Known Limitations
 
-Agent teams are experimental. Current limitations from Claude Code documentation:
-
-- No session resumption: /resume and /rewind do not restore in-process teammates. After resuming a session, the lead may attempt to message teammates that no longer exist. Spawn new teammates if this occurs.
-- Task status can lag: Teammates sometimes fail to mark tasks as completed, which blocks dependent tasks. Check whether work is actually done and update task status manually if needed.
-- Shutdown can be slow: Teammates finish their current request or tool call before shutting down.
-- One team per session: A lead can only manage one team at a time. Clean up the current team before starting a new one.
-- No nested teams: Teammates cannot spawn their own teams or teammates. Only the lead can manage the team.
-- Lead is fixed: The session that creates the team is the lead for its lifetime. Leadership cannot be transferred.
-- Permissions set at spawn: All teammates start with the lead's permission mode. Individual teammate modes can be changed after spawning via permissionMode in agent definitions.
-- Split panes require tmux or iTerm2: The default in-process mode works in any terminal. Split-pane mode is not supported in VS Code integrated terminal, Windows Terminal, or Ghostty.
+For complete limitations list, see @CLAUDE.md Section 15.
 
 ### Prerequisites
 
-Both conditions must be met for team mode:
-- `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in environment or settings.json env
+Both conditions must be met:
+- `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env
 - `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml`
 
-If prerequisites are not met, all subcommands gracefully fall back to sub-agent mode.
+See @CLAUDE.md Section 15 for details.
 
 ### Mode Selection
 - --team flag: Force team mode

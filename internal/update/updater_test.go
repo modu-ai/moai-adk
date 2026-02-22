@@ -2,6 +2,7 @@ package update
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"bytes"
 	"compress/gzip"
 	"context"
@@ -488,6 +489,253 @@ func TestReplaceOnWindows(t *testing.T) {
 			t.Logf("note: orphaned file found (expected on Windows): %s", e.Name())
 		}
 	}
+}
+
+func TestUpdater_Download_FromZipArchive(t *testing.T) {
+	t.Parallel()
+
+	binaryName := "moai"
+	if runtime.GOOS == "windows" {
+		binaryName = "moai.exe"
+	}
+
+	binaryContent := []byte("zip binary content for testing")
+	archiveData := createZip(t, binaryName, binaryContent)
+	checksum := sha256Hex(archiveData)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(archiveData)
+	}))
+	defer ts.Close()
+
+	dir := t.TempDir()
+	u := NewUpdater(filepath.Join(dir, "moai"), http.DefaultClient)
+
+	info := &VersionInfo{
+		Version:  "v1.3.0",
+		URL:      ts.URL + "/moai-darwin-arm64.zip",
+		Checksum: checksum,
+	}
+
+	path, err := u.Download(context.Background(), info)
+	if err != nil {
+		t.Fatalf("Download from zip: %v", err)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read downloaded file: %v", err)
+	}
+	if string(data) != string(binaryContent) {
+		t.Error("extracted zip binary content mismatch")
+	}
+}
+
+func TestUpdater_Download_NoChecksum(t *testing.T) {
+	t.Parallel()
+
+	binaryName := "moai"
+	if runtime.GOOS == "windows" {
+		binaryName = "moai.exe"
+	}
+
+	binaryContent := []byte("binary without checksum")
+	archiveData := createTarGz(t, binaryName, binaryContent)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(archiveData)
+	}))
+	defer ts.Close()
+
+	dir := t.TempDir()
+	u := NewUpdater(filepath.Join(dir, "moai"), http.DefaultClient)
+
+	info := &VersionInfo{
+		Version: "v1.4.0",
+		URL:     ts.URL + "/moai.tar.gz",
+		// No Checksum - should still succeed
+	}
+
+	path, err := u.Download(context.Background(), info)
+	if err != nil {
+		t.Fatalf("Download without checksum: %v", err)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if string(data) != string(binaryContent) {
+		t.Error("content mismatch")
+	}
+}
+
+func TestExtractBinary_UnsupportedFormat(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	archivePath := filepath.Join(dir, "unknown.bin")
+	// Write a file with unknown magic bytes (not gzip, not zip)
+	if err := os.WriteFile(archivePath, []byte{0xAA, 0xBB, 0xCC, 0xDD}, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	u := &updaterImpl{binaryPath: filepath.Join(dir, "moai")}
+	_, err := u.extractBinary(archivePath)
+	if err == nil {
+		t.Fatal("expected error for unsupported format")
+	}
+	if !strings.Contains(err.Error(), "unsupported archive format") {
+		t.Errorf("error = %q, want to contain 'unsupported archive format'", err.Error())
+	}
+}
+
+func TestExtractFromZip_BinaryNotFound(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+
+	// Create a zip with a different file name
+	archiveData := createZip(t, "not-moai", []byte("some content"))
+	archivePath := filepath.Join(dir, "test.zip")
+	if err := os.WriteFile(archivePath, archiveData, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	u := &updaterImpl{binaryPath: filepath.Join(dir, "moai")}
+	_, err := u.extractFromZip(archivePath, "moai")
+	if err == nil {
+		t.Fatal("expected error when binary not found in zip")
+	}
+	if !strings.Contains(err.Error(), "not found in zip") {
+		t.Errorf("error = %q, want to contain 'not found in zip'", err.Error())
+	}
+}
+
+func TestExtractFromTarGz_BinaryNotFound(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+
+	archiveData := createTarGz(t, "not-moai", []byte("some content"))
+	archivePath := filepath.Join(dir, "test.tar.gz")
+	if err := os.WriteFile(archivePath, archiveData, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	u := &updaterImpl{binaryPath: filepath.Join(dir, "moai")}
+	_, err := u.extractFromTarGz(archivePath, "moai")
+	if err == nil {
+		t.Fatal("expected error when binary not found in tar.gz")
+	}
+	if !strings.Contains(err.Error(), "not found in tar.gz") {
+		t.Errorf("error = %q, want to contain 'not found in tar.gz'", err.Error())
+	}
+}
+
+func TestWriteExtractedBinary_Success(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	u := &updaterImpl{binaryPath: filepath.Join(dir, "moai")}
+
+	content := []byte("test binary content 12345")
+	reader := bytes.NewReader(content)
+
+	path, err := u.writeExtractedBinary(reader)
+	if err != nil {
+		t.Fatalf("writeExtractedBinary: %v", err)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read extracted: %v", err)
+	}
+	if string(data) != string(content) {
+		t.Errorf("content = %q, want %q", string(data), string(content))
+	}
+}
+
+func TestNewUpdater_NilClient(t *testing.T) {
+	t.Parallel()
+
+	u := NewUpdater("/tmp/moai", nil)
+	if u == nil {
+		t.Fatal("NewUpdater with nil client should return non-nil")
+	}
+}
+
+func TestValidateBinaryFormat_AllMachOVariants(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		magic []byte
+	}{
+		{"Mach-O 64-bit LE", []byte{0xcf, 0xfa, 0xed, 0xfe}},
+		{"Mach-O 32-bit LE", []byte{0xce, 0xfa, 0xed, 0xfe}},
+		{"Mach-O 64-bit BE", []byte{0xfe, 0xed, 0xfa, 0xcf}},
+		{"Mach-O 32-bit BE", []byte{0xfe, 0xed, 0xfa, 0xce}},
+		{"Mach-O Universal", []byte{0xca, 0xfe, 0xba, 0xbe}},
+		{"ELF", []byte{0x7f, 0x45, 0x4c, 0x46}},
+		{"PE", []byte{0x4d, 0x5a, 0x00, 0x00}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			path := filepath.Join(dir, "binary")
+			content := append(tt.magic, []byte("payload")...)
+			if err := os.WriteFile(path, content, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := validateBinaryFormat(path); err != nil {
+				t.Errorf("validateBinaryFormat should accept %s: %v", tt.name, err)
+			}
+		})
+	}
+}
+
+func TestValidateBinaryFormat_EmptyFile(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "empty")
+	if err := os.WriteFile(path, []byte{}, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	err := validateBinaryFormat(path)
+	if err == nil {
+		t.Fatal("expected error for empty file")
+	}
+	if !errors.Is(err, ErrReplaceFailed) {
+		t.Errorf("expected ErrReplaceFailed, got: %v", err)
+	}
+}
+
+// createZip creates a .zip archive containing a single file with the given name and content.
+func createZip(t *testing.T, name string, content []byte) []byte {
+	t.Helper()
+
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+
+	fw, err := zw.Create(name)
+	if err != nil {
+		t.Fatalf("zip create entry: %v", err)
+	}
+	if _, err := fw.Write(content); err != nil {
+		t.Fatalf("zip write content: %v", err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatalf("zip close: %v", err)
+	}
+
+	return buf.Bytes()
 }
 
 // createTarGz creates a .tar.gz archive containing a single file with the given name and content.

@@ -85,7 +85,6 @@ func TestValidateDevelopmentMode(t *testing.T) {
 	}{
 		{"ddd is valid", models.ModeDDD, false},
 		{"tdd is valid", models.ModeTDD, false},
-		{"hybrid is valid", models.ModeHybrid, false},
 		{"empty is valid (defaults applied)", "", false},
 		{"waterfall is invalid", models.DevelopmentMode("waterfall"), true},
 		{"agile is invalid", models.DevelopmentMode("agile"), true},
@@ -185,74 +184,6 @@ func TestValidateTDDMinCoveragePerCommit(t *testing.T) {
 			}
 			if !tt.wantErr && err != nil {
 				t.Errorf("expected no error for MinCoveragePerCommit %d, got: %v", tt.value, err)
-			}
-		})
-	}
-}
-
-func TestValidateHybridMinCoverageNew(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name    string
-		value   int
-		wantErr bool
-	}{
-		{"0 is valid", 0, false},
-		{"90 is valid", 90, false},
-		{"100 is valid", 100, false},
-		{"-1 is invalid", -1, true},
-		{"101 is invalid", 101, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			cfg := NewDefaultConfig()
-			cfg.Quality.HybridSettings.MinCoverageNew = tt.value
-			loaded := map[string]bool{}
-
-			err := Validate(cfg, loaded)
-			if tt.wantErr && err == nil {
-				t.Errorf("expected error for MinCoverageNew %d", tt.value)
-			}
-			if !tt.wantErr && err != nil {
-				t.Errorf("expected no error for MinCoverageNew %d, got: %v", tt.value, err)
-			}
-		})
-	}
-}
-
-func TestValidateHybridMinCoverageLegacy(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name    string
-		value   int
-		wantErr bool
-	}{
-		{"0 is valid", 0, false},
-		{"85 is valid", 85, false},
-		{"100 is valid", 100, false},
-		{"-1 is invalid", -1, true},
-		{"101 is invalid", 101, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			cfg := NewDefaultConfig()
-			cfg.Quality.HybridSettings.MinCoverageLegacy = tt.value
-			loaded := map[string]bool{}
-
-			err := Validate(cfg, loaded)
-			if tt.wantErr && err == nil {
-				t.Errorf("expected error for MinCoverageLegacy %d", tt.value)
-			}
-			if !tt.wantErr && err != nil {
-				t.Errorf("expected no error for MinCoverageLegacy %d, got: %v", tt.value, err)
 			}
 		})
 	}
@@ -410,7 +341,7 @@ func TestValidationErrorFormat(t *testing.T) {
 		t.Parallel()
 		ve := ValidationError{
 			Field:   "quality.development_mode",
-			Message: "must be one of: ddd, tdd, hybrid",
+			Message: "must be one of: ddd, tdd",
 			Value:   "waterfall",
 		}
 		got := ve.Error()
@@ -656,11 +587,11 @@ func TestDevelopmentModeStrings(t *testing.T) {
 	t.Parallel()
 
 	strs := developmentModeStrings()
-	if len(strs) != 3 {
-		t.Fatalf("expected 3 mode strings, got %d", len(strs))
+	if len(strs) != 2 {
+		t.Fatalf("expected 2 mode strings, got %d", len(strs))
 	}
 
-	expected := map[string]bool{"ddd": true, "tdd": true, "hybrid": true}
+	expected := map[string]bool{"ddd": true, "tdd": true}
 	for _, s := range strs {
 		if !expected[s] {
 			t.Errorf("unexpected mode string: %q", s)
