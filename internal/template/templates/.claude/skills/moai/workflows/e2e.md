@@ -6,7 +6,7 @@ description: >
   and automated test execution with intelligent tool selection.
 user-invocable: false
 metadata:
-  version: "2.6.0"
+  version: "2.7.0"
   category: "workflow"
   status: "active"
   updated: "2026-02-21"
@@ -34,7 +34,7 @@ Flow: Tool Selection -> Installation -> Journey Mapping -> Test Script Creation 
 
 ## Supported Flags
 
-- --tool TOOL: Force browser tool selection. Options: agent-browser, playwright, chrome-mcp (default: auto-detect)
+- --tool TOOL: Force browser tool selection, skipping user prompt. Options: agent-browser, playwright, chrome-mcp (default: always ask user)
 - --record: Record browser interactions as GIF for visual verification
 - --url URL: Target URL for browser-based testing (default: auto-detect from project config)
 - --journey NAME: Run a specific named user journey only
@@ -68,14 +68,14 @@ When --tool flag is not provided, auto-detect in this order:
 2. Check if Playwright is installed: `npx playwright --version` or `bunx playwright --version`
 3. Check if Chrome MCP is available: Verify mcp__claude-in-chrome tools exist
 
-If none found, present selection via AskUserQuestion.
+Detection results are used to mark availability status in AskUserQuestion options.
 
-### Auto-Selection Logic
+### Recommendation Logic
 
-When multiple tools are available, select based on task characteristics:
+[HARD] Always present tool selection to user via AskUserQuestion. The recommendation logic below determines which option is marked "(Recommended)":
 
-| Condition | Selected Tool | Rationale |
-|-----------|--------------|-----------|
+| Condition | Recommended Tool | Rationale |
+|-----------|-----------------|-----------|
 | --record flag with no specific tool | Claude in Chrome | Best GIF recording via MCP |
 | CI/CD environment detected | Playwright CLI | Most reliable headless support |
 | Journey requires AI exploration | Agent Browser | Built-in AI navigation |
@@ -94,18 +94,19 @@ Detection commands (run in parallel):
 - Playwright: `npx playwright --version 2>/dev/null || echo "not-installed"`
 - Chrome MCP: Check if mcp__claude-in-chrome tools are available in current session
 
-### Step 0.2: User Selection (if needed)
+### Step 0.2: User Selection
+
+[HARD] Always present tool selection to user via AskUserQuestion, regardless of how many tools are detected.
 
 If --tool flag provided: Use specified tool, skip to Step 0.3.
 
-If auto-detection finds exactly one tool: Use that tool.
+If --tool flag NOT provided: Always present via AskUserQuestion with detection status and recommendation:
 
-If auto-detection finds multiple tools or none: Present via AskUserQuestion:
+- Playwright CLI: Deterministic test execution with cross-browser support. Most stable and token-efficient. Ideal for CI/CD pipelines and comprehensive test suites. (Mark with availability status from detection)
+- Agent Browser: AI-powered browser navigation by Vercel. The agent autonomously explores and interacts with web pages. Best for exploratory testing and AI-driven user journey validation. (Mark with availability status from detection)
+- Claude in Chrome: Real-time browser automation via MCP tools. Best for interactive debugging, visual verification, and GIF recording. Requires Chrome with Claude extension. (Mark with availability status from detection)
 
-- Playwright CLI (Recommended): Deterministic test execution with cross-browser support. Most stable and token-efficient. Ideal for CI/CD pipelines and comprehensive test suites.
-- Agent Browser: AI-powered browser navigation by Vercel. The agent autonomously explores and interacts with web pages. Best for exploratory testing and AI-driven user journey validation.
-- Claude in Chrome: Real-time browser automation via MCP tools. Best for interactive debugging, visual verification, and GIF recording. Requires Chrome with Claude extension.
-- Auto-select: Let MoAI choose the best tool based on the task characteristics and available tools.
+Mark the recommended tool with "(Recommended)" based on the Recommendation Logic above. Include installation status (installed/not installed) in each option description so the user can make an informed choice.
 
 ### Step 0.3: Installation (if needed)
 
@@ -364,7 +365,7 @@ Next Steps (AskUserQuestion):
 ## Execution Summary
 
 1. Parse arguments (extract flags: --tool, --record, --url, --journey, --headless, --browser, --timeout, --retry)
-2. Phase 0: Detect available tools, select or prompt user, install if needed
+2. Phase 0: Detect available tools, always prompt user with recommendation, install if needed
 3. If --journey: Load specific journey, skip to Phase 2
 4. Phase 1: Delegate journey mapping to expert-testing subagent
 5. Present journey options to user via AskUserQuestion
@@ -376,4 +377,4 @@ Next Steps (AskUserQuestion):
 
 ---
 
-Version: 2.0.0
+Version: 2.1.0
