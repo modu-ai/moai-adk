@@ -35,14 +35,14 @@ func newTestLogger() *slog.Logger {
 
 func TestUpdateSettingsLocalEnv(t *testing.T) {
 	tests := []struct {
-		name          string
-		existingJSON  string // empty means file does not exist
-		key           string
-		value         string
-		wantKey       string
-		wantValue     string
-		wantErr       bool
-		errContains   string
+		name         string
+		existingJSON string // empty means file does not exist
+		key          string
+		value        string
+		wantKey      string
+		wantValue    string
+		wantErr      bool
+		errContains  string
 	}{
 		{
 			name:      "create new file when not exists",
@@ -2084,7 +2084,7 @@ func TestRunUpdate_BinaryOnly_DevBuild(t *testing.T) {
 	cmd.Flags().Bool("check", false, "")
 	cmd.Flags().Bool("shell-env", false, "")
 	cmd.Flags().Bool("config", false, "")
-	cmd.Flags().Bool("binary", true, "")         // binary only
+	cmd.Flags().Bool("binary", true, "")          // binary only
 	cmd.Flags().Bool("templates-only", false, "") // must exist
 	cmd.Flags().Bool("yes", false, "")
 	cmd.Flags().Bool("force", false, "")
@@ -5775,8 +5775,8 @@ func TestApplyWizardConfig_WithStatusline(t *testing.T) {
 	}
 
 	result := &wizard.WizardResult{
-		Locale:            "en",
-		StatuslinePreset:  "minimal",
+		Locale:             "en",
+		StatuslinePreset:   "minimal",
 		StatuslineSegments: map[string]bool{"version": true, "spec": true},
 	}
 

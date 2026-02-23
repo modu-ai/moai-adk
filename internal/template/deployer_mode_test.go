@@ -604,9 +604,9 @@ func TestModeAwareDeployer_ListTemplates(t *testing.T) {
 		}
 
 		expected := map[string]bool{
-			".claude/settings.json":              true,
-			".claude/agents/moai/backend.md":     true,
-			"CLAUDE.md":                          true,
+			".claude/settings.json":          true,
+			".claude/agents/moai/backend.md": true,
+			"CLAUDE.md":                      true,
 		}
 		for _, item := range list {
 			if !expected[item] {

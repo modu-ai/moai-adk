@@ -80,9 +80,9 @@ func NewTemplateContext(opts ...ContextOption) *TemplateContext {
 		TestCoverageTarget:       config.DefaultTestCoverageTarget,
 		AutoClear:                true,
 		PlanTokens:               config.DefaultPlanTokens,
-		RunTokens:   config.DefaultRunTokens,
-		SyncTokens:  config.DefaultSyncTokens,
-		ModelPolicy: string(DefaultModelPolicy),
+		RunTokens:                config.DefaultRunTokens,
+		SyncTokens:               config.DefaultSyncTokens,
+		ModelPolicy:              string(DefaultModelPolicy),
 	}
 
 	for _, opt := range opts {

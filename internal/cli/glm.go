@@ -51,7 +51,6 @@ type SettingsLocal struct {
 	Permissions           map[string]any    `json:"permissions,omitempty"`
 }
 
-
 // runGLM switches the LLM backend to GLM by modifying settings.local.json.
 func runGLM(cmd *cobra.Command, args []string) error {
 	out := cmd.OutOrStdout()
@@ -453,7 +452,6 @@ func saveLLMSection(sectionsDir string, llm config.LLMConfig) error {
 
 	return os.Rename(tmpName, path)
 }
-
 
 // GLMConfigFromYAML represents the GLM settings from llm.yaml.
 type GLMConfigFromYAML struct {

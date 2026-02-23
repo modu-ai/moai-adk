@@ -125,8 +125,8 @@ func TestIsIssueLine(t *testing.T) {
 		{"file.go:1:2: error: something", true},
 		{"file.go:1: warning: something", true},
 		{"file.go:1: note: something", true},
-		{"something ERR happened", true},   // " ERR " with surrounding spaces
-		{"something WARN happened", true},  // " WARN " with surrounding spaces
+		{"something ERR happened", true},  // " ERR " with surrounding spaces
+		{"something WARN happened", true}, // " WARN " with surrounding spaces
 		{"error: this is an error", true},
 		{"warning: this is a warning", true},
 		{"normal log line", false},

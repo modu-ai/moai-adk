@@ -410,7 +410,7 @@ func TestAnalysisFormatter_FormatFileTable_WithSelection(t *testing.T) {
 				{Path: "file2.go", Changes: "modified", Strategy: "merge", RiskLevel: "medium"},
 			},
 		},
-		0,                  // cursor on first item
+		0,                   // cursor on first item
 		[]bool{true, false}, // first selected, second not
 		true,                // showSelection = true
 	)

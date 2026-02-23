@@ -594,9 +594,9 @@ func TestRunAgentHook_PostImplementationAction(t *testing.T) {
 
 func TestResolveConventionName_EnvVariousValues(t *testing.T) {
 	tests := []struct {
-		name    string
-		envVal  string
-		want    string
+		name   string
+		envVal string
+		want   string
 	}{
 		{"conventional", "conventional", "conventional"},
 		{"angular", "angular", "angular"},
@@ -736,8 +736,8 @@ func TestRemoveGLMEnv_WithGLMVars(t *testing.T) {
 
 	settings := SettingsLocal{
 		Env: map[string]string{
-			"ANTHROPIC_AUTH_TOKEN":          "test-token",
-			"ANTHROPIC_BASE_URL":            "https://test.example.com",
+			"ANTHROPIC_AUTH_TOKEN":           "test-token",
+			"ANTHROPIC_BASE_URL":             "https://test.example.com",
 			"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "test-haiku",
 			"ANTHROPIC_DEFAULT_SONNET_MODEL": "test-sonnet",
 			"ANTHROPIC_DEFAULT_OPUS_MODEL":   "test-opus",
@@ -793,7 +793,7 @@ func TestRemoveGLMEnv_OnlyGLMVars(t *testing.T) {
 	settings := SettingsLocal{
 		Env: map[string]string{
 			"ANTHROPIC_AUTH_TOKEN": "test-token",
-			"ANTHROPIC_BASE_URL":  "https://test.example.com",
+			"ANTHROPIC_BASE_URL":   "https://test.example.com",
 		},
 	}
 
@@ -893,7 +893,7 @@ func TestRemoveGLMEnv_PreservesOtherFields(t *testing.T) {
 		EnabledMcpjsonServers: []string{"server1", "server2"},
 		Env: map[string]string{
 			"ANTHROPIC_AUTH_TOKEN": "test-token",
-			"CUSTOM_VAR":          "keep",
+			"CUSTOM_VAR":           "keep",
 		},
 	}
 

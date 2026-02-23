@@ -332,10 +332,10 @@ func TestResolveLanguageName(t *testing.T) {
 		wantName string
 	}{
 		{"en", "English"},
-		{"ko", ""},   // Just verify it returns something non-empty
-		{"ja", ""},   // Just verify it returns something non-empty
-		{"zh", ""},   // Just verify it returns something non-empty
-		{"xx", ""},   // Unknown code
+		{"ko", ""}, // Just verify it returns something non-empty
+		{"ja", ""}, // Just verify it returns something non-empty
+		{"zh", ""}, // Just verify it returns something non-empty
+		{"xx", ""}, // Unknown code
 	}
 
 	for _, tt := range tests {

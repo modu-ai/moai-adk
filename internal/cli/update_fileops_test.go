@@ -662,4 +662,3 @@ func TestGetProjectConfigVersion_ValidFile(t *testing.T) {
 		t.Errorf("getProjectConfigVersion = %q, want %q", ver, "2.5.0")
 	}
 }
-

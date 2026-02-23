@@ -284,7 +284,6 @@ func TestSettingsTemplateNewFields(t *testing.T) {
 	}
 }
 
-
 func TestSettingsTemplateAllHookEvents(t *testing.T) {
 	t.Parallel()
 

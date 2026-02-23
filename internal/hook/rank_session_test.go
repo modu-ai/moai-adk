@@ -160,10 +160,10 @@ type mockCredStore struct {
 }
 
 func (m *mockCredStore) Save(_ *rank.Credentials) error   { return nil }
-func (m *mockCredStore) Load() (*rank.Credentials, error)  { return nil, nil }
-func (m *mockCredStore) Delete() error                     { return nil }
-func (m *mockCredStore) HasCredentials() bool              { return m.hasCredentials }
-func (m *mockCredStore) GetAPIKey() (string, error)        { return m.apiKey, m.apiKeyErr }
+func (m *mockCredStore) Load() (*rank.Credentials, error) { return nil, nil }
+func (m *mockCredStore) Delete() error                    { return nil }
+func (m *mockCredStore) HasCredentials() bool             { return m.hasCredentials }
+func (m *mockCredStore) GetAPIKey() (string, error)       { return m.apiKey, m.apiKeyErr }
 
 // --- InitRankSessionHandlerWithStores tests ---
 
