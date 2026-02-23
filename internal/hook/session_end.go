@@ -173,6 +173,27 @@ func garbageCollectStaleTeams(homeDir string) {
 	}
 }
 
+// getCurrentTmuxSession returns the name of the current tmux session.
+// Returns empty string if not in tmux or if detection fails.
+func getCurrentTmuxSession(ctx context.Context) string {
+	// Check if we're in tmux
+	if os.Getenv("TMUX") == "" {
+		return ""
+	}
+
+	// Use tmux display-message to get current session name.
+	cmd := exec.CommandContext(ctx, "tmux", "display-message", "-p", "#S")
+	out, err := cmd.Output()
+	if err != nil {
+		slog.Warn("session_end: could not get current tmux session",
+			"error", err,
+		)
+		return ""
+	}
+
+	return strings.TrimSpace(string(out))
+}
+
 // cleanupOrphanedTmuxSessions kills tmux sessions that are not currently
 // attached. The cleanup is capped at 4 seconds to stay within the SessionEnd
 // hook timeout budget. If tmux is not installed or no sessions exist, the
@@ -181,6 +202,9 @@ func cleanupOrphanedTmuxSessions(ctx context.Context) {
 	// Reserve 4 seconds for tmux cleanup, leaving 1 second buffer.
 	cleanupCtx, cancel := context.WithTimeout(ctx, 4*time.Second)
 	defer cancel()
+
+	// Get current tmux session name to protect it from being killed.
+	currentSession := getCurrentTmuxSession(cleanupCtx)
 
 	// List all tmux sessions.
 	listCmd := exec.CommandContext(cleanupCtx, "tmux", "list-sessions")
@@ -195,14 +219,17 @@ func cleanupOrphanedTmuxSessions(ctx context.Context) {
 		if line == "" {
 			continue
 		}
-		// Sessions currently attached contain "(attached)".
-		if strings.Contains(line, "(attached)") {
+		// Skip the current tmux session - never kill the user's actual session.
+		name, _, found := strings.Cut(line, ":")
+		if !found || name == "" {
+			continue
+		}
+		if name == currentSession {
 			continue
 		}
 
-		// Session name is the part before the first colon.
-		name, _, found := strings.Cut(line, ":")
-		if !found || name == "" {
+		// Sessions currently attached contain "(attached)".
+		if strings.Contains(line, "(attached)") {
 			continue
 		}
 
