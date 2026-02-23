@@ -9,6 +9,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.5.2] - 2026-02-23
+
+### Summary
+
+This patch release fixes a critical issue where SessionEnd hook was incorrectly killing user's tmux sessions instead of only cleaning up CG mode teammate sessions.
+
+### Breaking Changes
+
+None.
+
+### Fixed
+
+- **SessionEnd tmux cleanup**: Removed the unsafe `cleanupOrphanedTmuxSessions()` function that was killing ALL non-current, non-attached tmux sessions regardless of whether they were CG mode teammate sessions or user sessions. The root cause was that CG mode teammates are created as tmux **panes** within the current session (not separate sessions), so `tmux kill-session` could never clean them up. Real teammate cleanup is properly handled by `cleanupCurrentSessionTeam()` and `garbageCollectStaleTeams()` which operate on the `~/.claude/teams/` directory structure.
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.5.2] - 2026-02-23 (한국어)
+
+### 요약
+
+이 패치 릴리즈는 SessionEnd 훅이 CG mode teammate 세션이 아닌 사용자의 tmux 세션을 잘못 종료하던 치명적인 문제를 수정합니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 수정됨 (Fixed)
+
+- **SessionEnd tmux 정리**: CG mode teammate 세션인지 여부를 구분하지 않고 **모든** non-current, non-attached tmux 세션을 kill하던 잘못된 `cleanupOrphanedTmuxSessions()` 함수를 제거했습니다. 근본 원인은 CG mode의 teammate들이 별도 tmux 세션이 아니라 현재 세션 내의 **pane**으로 생성되기 때문에 `tmux kill-session`로는 절대 정리할 수 없었습니다. 실제 teammate 정리는 `~/.claude/teams/` 디렉토리 구조를 기반으로 작동하는 `cleanupCurrentSessionTeam()`과 `garbageCollectStaleTeams()`가 올바르게 처리합니다.
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.5.1] - 2026-02-23
 
 ### Summary
