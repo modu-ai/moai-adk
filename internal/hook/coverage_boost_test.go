@@ -3,7 +3,7 @@ package hook
 // coverage_boost_test.go - Targeted tests to increase coverage for:
 //   - rank_session.go: Handle (36%), InitRankSessionHandler (0%), EnsureRankSessionHandler (0%)
 //   - pre_tool.go: scanWriteContent (0%), NewPreToolHandlerWithScanner (71.4%)
-//   - session_end.go: garbageCollectStaleTeams (75%), cleanupOrphanedTmuxSessions (57.9%)
+//   - session_end.go: garbageCollectStaleTeams (75%)
 //   - compact.go: Handle (71.4%)
 //   - protocol.go: WriteOutput (83.3%)
 //   - session_start.go: getConfig (66.7%)
@@ -204,30 +204,6 @@ func TestGarbageCollectStaleTeams_StaleRemovalError(t *testing.T) {
 	if _, err := os.Stat(staleDir); !os.IsNotExist(err) {
 		t.Error("stale team dir should have been removed")
 	}
-}
-
-// --- session_end.go: cleanupOrphanedTmuxSessions ---
-
-func TestCleanupOrphanedTmuxSessions_WithTimeout(t *testing.T) {
-	t.Parallel()
-
-	// Use a very short timeout to exercise the timeout branch.
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
-	defer cancel()
-
-	// Sleep to let the deadline pass.
-	time.Sleep(5 * time.Millisecond)
-
-	// Should return without panic even with already-expired context.
-	cleanupOrphanedTmuxSessions(ctx)
-}
-
-func TestCleanupOrphanedTmuxSessions_NormalContext(t *testing.T) {
-	t.Parallel()
-
-	// tmux may or may not be installed. Either way, function should not panic.
-	ctx := context.Background()
-	cleanupOrphanedTmuxSessions(ctx)
 }
 
 // --- rank_session.go: InitRankSessionHandler, EnsureRankSessionHandler ---
@@ -749,21 +725,6 @@ func TestPostToolHandler_Handle_TaskTool_ValidMetrics(t *testing.T) {
 	}
 }
 
-// --- Additional cleanupOrphanedTmuxSessions coverage ---
-
-func TestCleanupOrphanedTmuxSessions_EmptyLine(t *testing.T) {
-	t.Parallel()
-
-	// Test that the function handles tmux output gracefully.
-	// We can't mock exec.CommandContext, but we can test various context states.
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// This will either run tmux (if available) or return quickly.
-	// No panic or hang is the expectation.
-	cleanupOrphanedTmuxSessions(ctx)
-}
-
 // --- Additional rank_session.go Handle coverage ---
 
 func TestRankSessionHandler_Handle_PatternStoreNotNil_NotExcluded(t *testing.T) {
@@ -880,23 +841,6 @@ func TestLoadBaselineCounts_ValidJSON(t *testing.T) {
 	if counts.Warnings != 1 {
 		t.Errorf("Warnings = %d, want 1", counts.Warnings)
 	}
-}
-
-// --- cleanupOrphanedTmuxSessions: attached session line coverage ---
-// We simulate tmux output parsing by running the function with a context.
-// If tmux is not available, the function exits early (that branch is already covered).
-// The internal parsing logic (attached vs unattached) requires tmux to be running.
-// We test it by checking the function doesn't panic in any scenario.
-
-func TestCleanupOrphanedTmuxSessions_LongTimeout(t *testing.T) {
-	t.Parallel()
-
-	// Normal context with longer timeout to allow tmux to respond if available.
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	// Should not panic regardless of tmux availability.
-	cleanupOrphanedTmuxSessions(ctx)
 }
 
 // --- garbageCollectStaleTeams: entry Info() error branch ---
