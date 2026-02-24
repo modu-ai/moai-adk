@@ -9,6 +9,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.5.3] - 2026-02-25
+
+### Summary
+
+This patch release improves the E2E test workflow by always presenting tool selection to users with intelligent recommendations, rather than auto-selecting when only one tool is available. Also includes a Windows console encoding fix for proper Unicode rendering.
+
+### Breaking Changes
+
+None.
+
+### Changed
+
+- **E2E tool selection**: The `/moai:e2e` command now always prompts users to select between Playwright CLI, Agent Browser, and Claude in Chrome. Auto-selection logic has been converted to recommendation logic that marks the best option with "(Recommended)" based on task characteristics. Each option now displays installation status (installed/not installed) to help users make informed choices.
+
+### Fixed
+
+- **Windows PowerShell Unicode rendering**: Fixed mojibake (garbled characters like `Γò¡ΓöÇΓò«`) when displaying box-drawing borders in PowerShell on Windows. The CLI now calls `SetConsoleOutputCP(65001)` on startup to enable UTF-8 console mode, allowing proper rendering of Unicode characters (`╔═╗║╚╝`) and symbols (`✓✗⚠`).
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.5.3] - 2026-02-25 (한국어)
+
+### 요약
+
+이 패치 릴리즈는 E2E 테스트 워크플로우를 개선하여 도구가 하나만 감지되어도 사용자에게 항상 선택을 제시하고 지능적인 추천을 제공합니다. 또한 Windows 콘솔 인코딩 수정을 포함하여 유니코드 문자가 올바르게 렌더링되도록 합니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 변경됨 (Changed)
+
+- **E2E 도구 선택**: `/moai:e2e` 명령이 이제 Playwright CLI, Agent Browser, Claude in Chrome 중 선택을 항상 사용자에게 묻습니다. 자동 선택 로직은 추천 로직으로 변환되어 작업 특성에 따라 최적 옵션에 "(Recommended)" 표시를 합니다. 각 옵션은 설치 상태(설치됨/설치안됨)를 표시하여 사용자가 정보에 입각한 선택을 할 수 있습니다.
+
+### 수정됨 (Fixed)
+
+- **Windows PowerShell 유니코드 렌더링**: Windows PowerShell에서 박스 그리기 테두리 문자가 mojibake(`Γò¡ΓöÇΓò«` 같은 깨진 문자)로 표시되던 문제를 수정했습니다. CLI 시작 시 `SetConsoleOutputCP(65001)`을 호출하여 UTF-8 콘솔 모드를 활성화하므로 유니코드 문자(`╔═╗║╚╝`)와 기호(`✓✗⚠`)가 올바르게 렌더링됩니다.
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.5.2] - 2026-02-23
 
 ### Summary
