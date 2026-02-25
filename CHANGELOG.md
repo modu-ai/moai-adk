@@ -5,7 +5,71 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.6.0] - 2026-02-25
+
+### Summary
+
+This feature release introduces MX pre-scan for intelligent code context analysis and Context Memory system for cross-session learning. Also adds automatic GLM settings cleanup when using Agent Teams, improved Windows internationalization support with Korean path workarounds, and safer SessionEnd hook behavior.
+
+### Breaking Changes
+
+None.
+
+### Added
+
+- **MX Pre-scan system**: New workflow that performs intelligent codebase analysis before SPEC creation. Scans codebase for high-value targets (high fan_in functions, complex code, danger zones) and produces context-aware analysis to guide SPEC development.
+- **Context Memory system**: New `/moai context` command for managing persistent memory across sessions. View, search, add, and remove context memories that carry over between Claude Code sessions for improved continuity.
+- **Windows Korean path workaround**: Added special handling for Windows systems with Korean locale to work around Go's filepath.Join bug with absolute paths on non-English Windows versions.
+
+### Changed
+
+- **Team workflow GLM cleanup**: All team workflows (plan, run, debug, review) now automatically clean up GLM environment variables from `~/.claude/settings.local.json` before TeamDelete, ensuring main session returns to Claude models after team work completes.
+- **SessionEnd hook safety**: Removed unsafe tmux session cleanup that could accidentally kill user tmux sessions. CG mode teammates are properly managed through `~/.claude/teams/` directory structure.
+- **Manager-git agent**: Enhanced with additional task management capabilities for better team coordination.
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.6.0] - 2026-02-25 (한국어)
+
+### 요약
+
+이 기능 릴리즈는 지능형 코드 컨텍스트 분석을 위한 MX 사전 스캔과 세션 간 학습을 위한 컨텍스트 메모리 시스템을 도입합니다. 또한 Agent Teams 사용 시 자동 GLM 설정 정리, 한국어 경로 해결을 통한 개선된 Windows 국제화 지원, 그리고 더 안전한 SessionEnd 후크 동작을 추가합니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 추가됨 (Added)
+
+- **MX 사전 스캔 시스템**: SPEC 생성 전 지능형 코드베이스 분석을 수행하는 새로운 워크플로우. 높은 fan_in 함수, 복잡한 코드, 위험 영역 등 높은 가치 대상을 스캔하고 컨텍스트 인식 분석을 생성하여 SPEC 개발을 안내합니다.
+- **컨텍스트 메모리 시스템**: 세션 간 지속 메모리 관리를 위한 새로운 `/moai context` 명령어. Claude Code 세션 간에 지속되는 컨텍스트 메모리를 보고, 검색, 추가, 제거하여 개선된 연속성을 제공합니다.
+- **Windows 한국어 경로 해결책**: 비영어 Windows 버전에서 Go의 filepath.Join 버그를 우회하기 위한 한국어 로케일 Windows 시스템을 위한 특수 처리 추가.
+
+### 변경됨 (Changed)
+
+- **팀 워크플로우 GLM 정리**: 모든 팀 워크플로우(plan, run, debug, review)가 TeamDelete 전에 `~/.claude/settings.local.json`에서 GLM 환경 변수를 자동으로 정리하여 팀 작업 완료 후 메인 세션이 Claude 모델로 돌아오도록 합니다.
+- **SessionEnd 후크 안전성**: 사용자 tmux 세션을 실수로 종료할 수 있는 안전하지 않은 tmux 세션 정리를 제거했습니다. CG 모드 팀메이트는 `~/.claude/teams/` 디렉토리 구조를 통해 적절히 관리됩니다.
+- **manager-git 에이전트**: 향상된 팀 코디네이션을 위한 추가적인 작업 관리 기능.
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
 
 ---
 
