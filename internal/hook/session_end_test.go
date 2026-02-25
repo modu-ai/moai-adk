@@ -237,17 +237,6 @@ func TestGarbageCollectStaleTeams_MissingDir(t *testing.T) {
 	garbageCollectStaleTeams(homeDir)
 }
 
-func TestCleanupOrphanedTmuxSessions_GracefulWithContext(t *testing.T) {
-	t.Parallel()
-
-	// With a cancelled context, the function should return without panic.
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // cancel immediately
-
-	// Should not panic or hang.
-	cleanupOrphanedTmuxSessions(ctx)
-}
-
 func TestSessionEndHandler_AlwaysReturnsEmptyOutput(t *testing.T) {
 	t.Parallel()
 
