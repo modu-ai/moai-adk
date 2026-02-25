@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.2-teddy] - 2026-02-26
+
+### Summary
+
+**Teddy Edition** - Bug fix release with documentation optimization and Windows CI stability improvements. Resolves token efficiency issue and prevents CI test timeouts.
+
+### Breaking Changes
+
+None.
+
+### Fixed
+
+- **Token optimization**: Removed `@` direct references to `agent-authoring.md` from CLAUDE.md and SKILL.md to honor `paths` frontmatter restriction. Saves ~2,000–2,800 tokens per session for users not creating agents. (#427)
+- **Windows CI stability**: Skip Non-TTY interactive tests on Windows to prevent indefinite hangs in `huh.Form.Run()`. Test timeouts resolved across 7 affected tests. (#428)
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.6.2-teddy] - 2026-02-26 (한국어)
+
+### 요약
+
+**Teddy Edition** - 문서 최적화와 Windows CI 안정성 개선이 포함된 버그 수정 릴리즈입니다. 토큰 효율성 문제와 CI 테스트 타임아웃을 해결합니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 수정됨 (Fixed)
+
+- **토큰 최적화**: `agent-authoring.md`에 대한 `@` 직접 참조를 CLAUDE.md와 SKILL.md에서 제거하여 `paths` frontmatter 제약을 준수하도록 수정. 에이전트 생성을 하지 않는 사용자의 세션당 ~2,000–2,800 토큰 절약. (#427)
+- **Windows CI 안정성**: Windows에서 `huh.Form.Run()`의 무한 대기를 방지하기 위해 Non-TTY 인터랙티브 테스트 스킵. 7개 영향받은 테스트의 타임아웃 문제 해결. (#428)
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.6.1-teddy] - 2026-02-26
 
 ### Summary
