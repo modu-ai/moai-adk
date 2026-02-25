@@ -206,16 +206,25 @@ Task(
 
 #### 4.2 Team Shutdown
 
-```
-SendMessage(type: "shutdown_request", recipient: "backend-dev", content: "Phase complete")
-SendMessage(type: "shutdown_request", recipient: "frontend-dev", content: "Phase complete")
-SendMessage(type: "shutdown_request", recipient: "tester", content: "Phase complete")
-```
+1. Shutdown all teammates:
+   ```
+   SendMessage(type: "shutdown_request", recipient: "backend-dev", content: "Phase complete")
+   SendMessage(type: "shutdown_request", recipient: "frontend-dev", content: "Phase complete")
+   SendMessage(type: "shutdown_request", recipient: "tester", content: "Phase complete")
+   ```
 
-Wait for shutdown_response from each, then:
-```
-TeamDelete
-```
+2. Wait for shutdown_response from each teammate
+
+3. Clean up GLM env vars from ~/.claude/settings.local.json to restore Claude models:
+   ```
+   # Read settings, remove GLM env vars, write back
+   Read ~/.claude/settings.local.json
+   # Remove: ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL, ANTHROPIC_DEFAULT_OPUS_MODEL, ANTHROPIC_DEFAULT_SONNET_MODEL, ANTHROPIC_DEFAULT_HAIKU_MODEL
+   # Keep: CLAUDE_CODE_TEAMMATE_DISPLAY and other settings
+   Write ~/.claude/settings.local.json
+   ```
+
+4. TeamDelete to clean up team resources
 
 #### 4.3 Report Summary
 

@@ -170,10 +170,18 @@ AskUserQuestion with options:
    SendMessage(type: "shutdown_request", recipient: "architect", content: "Plan phase complete, shutting down")
    ```
 3. Wait maximum 30 seconds for shutdown_responses
-4. After 30 seconds: proceed with TeamDelete regardless of response status
-5. Log any unresponsive teammates for debugging
-6. Do NOT wait indefinitely for shutdown_response
-7. Execute /clear to free context for next phase
+4. Clean up GLM env vars from ~/.claude/settings.local.json to restore Claude models:
+   ```
+   # Read settings, remove GLM env vars, write back
+   Read ~/.claude/settings.local.json
+   # Remove: ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL, ANTHROPIC_DEFAULT_OPUS_MODEL, ANTHROPIC_DEFAULT_SONNET_MODEL, ANTHROPIC_DEFAULT_HAIKU_MODEL
+   # Keep: CLAUDE_CODE_TEAMMATE_DISPLAY and other settings
+   Write ~/.claude/settings.local.json
+   ```
+5. TeamDelete to clean up team resources
+6. Log any unresponsive teammates for debugging
+7. Do NOT wait indefinitely for shutdown_response
+8. Execute /clear to free context for next phase
 
 **Timeout Rule**: If a teammate does not respond to shutdown_request within 30 seconds, proceed without their confirmation. This prevents the common issue of teammates hanging during cleanup.
 
