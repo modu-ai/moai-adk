@@ -45,6 +45,6 @@ func GetLongPathName(shortPath string) (string, error) {
 }
 
 var (
-	modkernel32            = syscall.NewLazyDLL("kernel32.dll")
-	procGetLongPathNameW   = modkernel32.NewProc("GetLongPathNameW")
+	modkernel32          = syscall.NewLazyDLL("kernel32.dll")
+	procGetLongPathNameW = modkernel32.NewProc("GetLongPathNameW")
 )

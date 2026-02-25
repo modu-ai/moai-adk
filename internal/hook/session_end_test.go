@@ -277,13 +277,13 @@ func TestCleanupGLMSettings(t *testing.T) {
 			name: "removes GLM env vars but keeps TEAMMATE_DISPLAY",
 			existingData: map[string]any{
 				"env": map[string]any{
-					"ANTHROPIC_AUTH_TOKEN":         "glm-token",
-					"ANTHROPIC_BASE_URL":           "https://glm.example.com",
-					"ANTHROPIC_DEFAULT_OPUS_MODEL":  "glm-5",
+					"ANTHROPIC_AUTH_TOKEN":           "glm-token",
+					"ANTHROPIC_BASE_URL":             "https://glm.example.com",
+					"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5",
 					"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
-					"ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.7-air",
-					"CLAUDE_CODE_TEAMMATE_DISPLAY": "tmux",
-					"OTHER_VAR":                    "keep-me",
+					"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.7-air",
+					"CLAUDE_CODE_TEAMMATE_DISPLAY":   "tmux",
+					"OTHER_VAR":                      "keep-me",
 				},
 			},
 			wantRemoved: []string{
@@ -305,8 +305,8 @@ func TestCleanupGLMSettings(t *testing.T) {
 				},
 			},
 			wantRemoved:    []string{"ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL"},
-			wantRemaining:   nil,
-			wantEnvDeleted:  true, // env becomes empty, should be deleted
+			wantRemaining:  nil,
+			wantEnvDeleted: true, // env becomes empty, should be deleted
 		},
 		{
 			name: "no GLM vars - no changes",
@@ -320,10 +320,10 @@ func TestCleanupGLMSettings(t *testing.T) {
 			wantEnvDeleted: false,
 		},
 		{
-			name:          "no env section - no changes",
-			existingData:  map[string]any{},
-			wantRemoved:   nil,
-			wantRemaining: nil,
+			name:           "no env section - no changes",
+			existingData:   map[string]any{},
+			wantRemoved:    nil,
+			wantRemaining:  nil,
 			wantEnvDeleted: false,
 		},
 	}
