@@ -25,6 +25,7 @@ Git operations, quality gates, and autonomous development loop capabilities.`,
 // @MX:REASON: [AUTO] fan_in=3, called from cmd/moai/main.go, root_test.go, integration_test.go
 // Execute initializes dependencies and runs the root command.
 func Execute() error {
+	initConsole()
 	InitDependencies()
 	return rootCmd.Execute()
 }
