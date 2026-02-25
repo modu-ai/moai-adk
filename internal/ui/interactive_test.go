@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"io"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -203,6 +204,11 @@ func TestProgressModel_Update_FrameMsg_ColorTheme(t *testing.T) {
 // These tests exercise the interactive code paths and accept any non-nil error.
 
 func TestInputInteractive_NonTTY_ReturnsError(t *testing.T) {
+	// Skip on Windows: huh Form hangs without TTY in Windows CI
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping on Windows: huh Form.Run() hangs in non-TTY CI environment")
+	}
+
 	theme := testTheme()
 	theme.NoColor = false
 	hm := NewHeadlessManager()
@@ -224,6 +230,11 @@ func TestInputInteractive_NonTTY_ReturnsError(t *testing.T) {
 }
 
 func TestInputInteractive_WithPlaceholder_NonTTY(t *testing.T) {
+	// Skip on Windows: huh Form hangs without TTY in Windows CI
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping on Windows: huh Form.Run() hangs in non-TTY CI environment")
+	}
+
 	theme := testTheme()
 	theme.NoColor = false
 	hm := NewHeadlessManager()
@@ -240,6 +251,11 @@ func TestInputInteractive_WithPlaceholder_NonTTY(t *testing.T) {
 }
 
 func TestConfirmInteractive_NonTTY_ReturnsError(t *testing.T) {
+	// Skip on Windows: huh Form hangs without TTY in Windows CI
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping on Windows: huh Form.Run() hangs in non-TTY CI environment")
+	}
+
 	theme := testTheme()
 	theme.NoColor = false
 	hm := NewHeadlessManager()
@@ -259,6 +275,11 @@ func TestConfirmInteractive_NonTTY_ReturnsError(t *testing.T) {
 }
 
 func TestConfirmInteractive_DefaultFalse_NonTTY(t *testing.T) {
+	// Skip on Windows: huh Form hangs without TTY in Windows CI
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping on Windows: huh Form.Run() hangs in non-TTY CI environment")
+	}
+
 	theme := testTheme()
 	theme.NoColor = false
 	hm := NewHeadlessManager()
@@ -274,6 +295,11 @@ func TestConfirmInteractive_DefaultFalse_NonTTY(t *testing.T) {
 }
 
 func TestSelectInteractive_NonTTY_ReturnsError(t *testing.T) {
+	// Skip on Windows: huh Form hangs without TTY in Windows CI
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping on Windows: huh Form.Run() hangs in non-TTY CI environment")
+	}
+
 	theme := testTheme()
 	theme.NoColor = false
 	hm := NewHeadlessManager()
@@ -293,6 +319,11 @@ func TestSelectInteractive_NonTTY_ReturnsError(t *testing.T) {
 }
 
 func TestMultiSelectInteractive_NonTTY_ReturnsError(t *testing.T) {
+	// Skip on Windows: huh Form hangs without TTY in Windows CI
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping on Windows: huh Form.Run() hangs in non-TTY CI environment")
+	}
+
 	theme := testTheme()
 	theme.NoColor = false
 	hm := NewHeadlessManager()
@@ -357,6 +388,11 @@ func TestProgressImpl_Start_InteractivePath(t *testing.T) {
 // --- Wizard runInteractive: non-TTY error path coverage ---
 
 func TestWizardRunInteractive_NonTTY_ReturnsError(t *testing.T) {
+	// Skip on Windows: huh Form hangs without TTY in Windows CI
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping on Windows: huh Form.Run() hangs in non-TTY CI environment")
+	}
+
 	theme := NewTheme(ThemeConfig{NoColor: false, Mode: "dark"})
 	hm := NewHeadlessManager()
 	hm.ForceHeadless(false)
