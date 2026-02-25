@@ -3,15 +3,16 @@ name: moai-workflow-sync
 description: >
   Synchronizes documentation with code changes, verifies project quality,
   and finalizes pull requests. Third step of the Plan-Run-Sync workflow.
-  Includes SPEC divergence analysis and project document updates.
+  Includes deep code review with auto-fix, coverage analysis with test generation,
+  SPEC divergence analysis, project document updates, and Context Memory generation.
   Use when documentation sync, PR creation, or quality verification is needed.
 user-invocable: false
 metadata:
-  version: "2.5.0"
+  version: "3.3.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-21"
-  tags: "sync, documentation, pull-request, quality, verification, pr"
+  updated: "2026-02-25"
+  tags: "sync, documentation, pull-request, quality, verification, pr, context-memory"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -205,11 +206,28 @@ If any tests fail, use AskUserQuestion:
 - Continue: Proceed with sync despite failures
 - Abort: Stop sync, fix tests first (exit to Phase 4 graceful exit)
 
-#### Step 0.5.4: Code Review
+#### Step 0.5.4: Deep Code Review with Auto-Fix
 
 Agent: manager-quality subagent
 
-Invoke regardless of project language. Execute TRUST 5 quality validation and generate comprehensive quality report.
+Invoke regardless of project language. Execute multi-perspective code review beyond basic TRUST 5 validation:
+
+Review Perspectives:
+- Security: OWASP Top 10 compliance, injection risks, secrets exposure, dependency vulnerabilities
+- Performance: Algorithmic complexity, query efficiency (N+1), memory patterns, concurrency safety
+- Quality: TRUST 5 compliance, error handling completeness, naming conventions, code consistency
+- UX: User flow integrity, error states, accessibility (WCAG/ARIA), breaking changes in public interfaces
+
+Auto-Fix Behavior:
+- If critical issues found: Delegate auto-fix to expert-debug or appropriate expert subagent
+- Re-run review after fix to verify resolution
+- Maximum 3 auto-fix iterations for critical issues before escalating to user
+- Warnings and suggestions are logged in report but do not block pipeline
+
+Output:
+- Review report with findings by severity (critical, warning, suggestion)
+- @MX tag compliance status (integrated with Phase 0.6)
+- Auto-fix log if corrections were applied
 
 #### LSP Quality Gates
 
@@ -314,6 +332,63 @@ When MX tags are added during sync:
 - Report summarizes tag changes by category
 
 Status mode early exit: If mode is "status", display quality report and exit. No further phases execute.
+
+### Phase 0.7: Coverage Analysis and Test Generation
+
+Purpose: Measure test coverage, identify gaps, and generate missing tests to meet coverage targets before documentation sync.
+
+#### Step 0.7.1: Coverage Measurement
+
+Agent: expert-testing subagent
+
+Measure current coverage using language-specific tools:
+- Go: `go test -coverprofile=coverage.out -covermode=atomic ./...` then `go tool cover -func=coverage.out`
+- Python: `pytest --cov --cov-report=json`
+- TypeScript/JavaScript: `vitest run --coverage` or `jest --coverage --json`
+- Rust: `cargo llvm-cov --json`
+
+Output: Overall coverage percentage, per-file coverage, per-function data.
+
+#### Step 0.7.2: Gap Analysis
+
+Agent: expert-testing subagent
+
+Identify files below the coverage target (from quality.yaml test_coverage_target, default 85%).
+
+Prioritize gaps by risk:
+- P1 (Critical): Public API functions, high fan_in (>=3), functions with @MX:ANCHOR
+- P2 (High): Business logic, error handling paths
+- P3 (Medium): Internal utilities, helper functions
+- P4 (Low): Generated code, configuration, trivial getters/setters
+
+#### Step 0.7.3: Test Generation
+
+Agent: expert-testing subagent
+
+Generate missing tests for P1 and P2 gaps:
+- Follow development_mode for test style (TDD: table-driven tests, DDD: characterization tests)
+- Include edge cases and error scenarios
+- Follow existing test patterns in the codebase
+- Respect file naming conventions (*_test.go, *.test.ts, test_*.py)
+
+#### Step 0.7.4: Verification
+
+After test generation:
+- Run the full test suite to ensure no regressions
+- Re-measure coverage to confirm improvement
+- Compare before/after coverage percentages
+
+Behavior:
+- If coverage target met: Proceed to Phase 1
+- If coverage target not met after test generation: Log remaining gaps and proceed (do not block pipeline)
+
+#### Step 0.7.5: Coverage Report
+
+Include in sync quality report:
+- Before/after coverage percentages
+- Tests generated (count and file list)
+- Remaining gaps if target not fully met
+- Coverage by package/module breakdown
 
 ### Phase 1: Analysis and Planning
 
@@ -516,6 +591,94 @@ Agent: manager-git subagent
 - Commit message language follows `language.git_commit_messages` setting
 - Verify commit with git log
 
+#### Step 3.1.1: Context Memory Generation in Git Commits
+
+Purpose: Embed structured context within git commit operations to enable seamless session resumption across development cycles.
+
+**Context Collection Process:**
+
+1. **Decision Tracking**: Gather all decisions made during the sync phase
+   - Documentation choices and rationale
+   - SPEC update approach and divergence handling
+   - Project improvement selections
+   - Quality trade-offs accepted or deferred
+
+2. **Constraint Discovery**: Record any constraints identified
+   - Formatting requirements discovered
+   - API documentation standards applied
+   - Platform-specific considerations
+   - Technology limitations encountered
+
+3. **Gotcha Documentation**: Note issues found during documentation review
+   - Outdated references in existing documentation
+   - Missing API documentation sections
+   - Inconsistencies between code and docs
+   - Breaking changes requiring user notification
+
+4. **Pattern Usage**: Document patterns applied during sync
+   - Documentation templates used
+   - Code-to-doc mapping strategies
+   - Mermaid diagram patterns for architecture
+   - README.md structure improvements
+
+**Commit Format for Sync Phase:**
+
+All sync commits MUST include structured context using this format:
+
+```
+docs(sync): [brief description of changes]
+
+## SPEC Reference
+SPEC: SPEC-XXX
+Phase: SYNC
+Timestamp: ISO-8601 timestamp
+
+## Context (AI-Developer Memory)
+- Decision: [documentation decision 1]
+- Decision: [documentation decision 2]
+- Pattern: [pattern 1 applied]
+- Pattern: [pattern 2 applied]
+- Constraint: [constraint discovered]
+- Gotcha: [issue found and how resolved]
+
+## Affected Areas
+- Documents Updated: [count]
+- SPEC Status: [completed|in-progress]
+- Coverage Impact: [change or percentage]
+```
+
+**Session Boundary Tag Creation:**
+
+After successful commit, create a session boundary tag to enable `/moai context` reconstruction:
+
+```
+git tag -a "moai/SPEC-{ID}/sync-complete" \
+  -m "Sync phase completed
+SPEC: SPEC-XXX
+Docs updated: N files
+Coverage verified: XX%
+Context embedded in: [commit hash]
+Next action: Feature complete or /moai plan for next SPEC"
+```
+
+Tag naming convention: `moai/SPEC-{ID}/sync-complete`
+
+**Context Memory Integration:**
+
+The embedded context enables:
+
+1. **Session Resumption**: When resuming development, `/moai context` retrieves this information automatically
+2. **Decision History**: Future SPECs build on documented decisions
+3. **Pattern Reuse**: Similar documentation patterns are recognized and applied
+4. **Cross-Session Continuity**: Context persists across individual AI sessions
+
+**Implementation Details:**
+
+- Commit message MUST include complete decision/pattern documentation
+- Session boundary tag MUST be created after successful push
+- Context metadata saved to `.moai/memory/sync-context-{SPEC-ID}.json` for quick access
+- Tag message MUST reference the commit hash for traceability
+
 #### Step 3.2: Push and Deliver (Strategy-Aware)
 
 Behavior varies based on `github.git_workflow` setting and current branch context.
@@ -670,7 +833,8 @@ When user aborts at any decision point:
 All of the following must be verified:
 
 - Phase 0: Deployment readiness verified (tests, migrations, env changes, backward compatibility)
-- Phase 0.5: Quality verification completed (tests, linter, type checker, code review)
+- Phase 0.5: Quality verification completed (tests, linter, type checker, deep code review with auto-fix)
+- Phase 0.7: Coverage analysis completed (measurement, gap analysis, test generation, verification)
 - Phase 1: Prerequisites verified, project analyzed, divergence analysis completed, sync plan approved by user
 - Phase 2: Safety backup created and verified, documents synchronized, SPEC documents updated per lifecycle level, project documents updated (if applicable), quality verified, SPEC status updated
 - Phase 3: Changes committed, delivered per git_workflow strategy (PR created for github_flow/gitflow, direct push for main_direct), auto-merge executed (if flagged and PR exists)
@@ -678,6 +842,6 @@ All of the following must be verified:
 
 ---
 
-Version: 3.1.0
-Updated: 2026-02-13
-Source: Extracted from .claude/commands/moai/3-sync.md v3.4.0. Added SPEC divergence analysis, project document updates, SPEC lifecycle awareness, team mode section, LSP quality gates, strategy-aware git delivery, and deployment readiness check (Phase 0) with test verification, migration detection, environment changes, and backward compatibility assessment.
+Version: 3.3.0
+Updated: 2026-02-25
+Source: Extracted from .claude/commands/moai/3-sync.md v3.4.0. Added deep code review with 4-perspective analysis and auto-fix (Phase 0.5.4 enhanced), coverage analysis with test generation (Phase 0.7 new), SPEC divergence analysis, project document updates, SPEC lifecycle awareness, team mode section, LSP quality gates, strategy-aware git delivery, deployment readiness check, and Context Memory generation in git commits (Step 3.1.1 new) for seamless session resumption and decision tracking across development cycles.

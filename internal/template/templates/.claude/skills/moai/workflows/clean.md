@@ -82,8 +82,18 @@ Classification Results:
 - Likely Dead: Low confidence (dynamic usage possible)
 - False Positive: Actually used (via reflection, plugins, external consumers)
 
-If --safe-only flag: Only proceed with "Confirmed Dead" items.
-If --aggressive flag: Include "Likely Dead" items for removal.
+MX Tag Cross-Check (Pre-Removal Safety):
+
+After classification, cross-check all candidates against existing @MX tags:
+- @MX:ANCHOR candidates: Reclassify from "Confirmed Dead" to "False Positive" (ANCHOR indicates high fan_in; dynamic or cross-module usage is likely)
+- @MX:WARN candidates: Flag for manual review even if classified as "Confirmed Dead" (warned code may have hidden dependencies)
+- @MX:NOTE candidates: Include the NOTE context in the removal plan for informed user decision
+- @MX:TODO candidates: If TODO indicates pending work, reclassify as "Deferred" rather than dead
+- This cross-check supplements the Phase 4 safety measure: "Never remove @MX:ANCHOR without explicit approval"
+- See @.claude/rules/moai/workflow/mx-tag-protocol.md for tag type definitions
+
+If --safe-only flag: Only proceed with "Confirmed Dead" items (after MX cross-check).
+If --aggressive flag: Include "Likely Dead" items for removal (MX cross-check still applies).
 
 ## Phase 3: Removal Plan
 
@@ -213,15 +223,17 @@ Next Steps (AskUserQuestion):
 1. Parse arguments (extract flags: --dry, --safe-only, --file, --type, --aggressive)
 2. Delegate static analysis scan to expert-refactoring subagent
 3. Delegate usage graph analysis to expert-refactoring subagent
-4. Classify results (Confirmed Dead, Test-Only, Likely Dead, False Positive)
-5. If --dry: Display analysis results and exit
-6. Present removal plan to user via AskUserQuestion
-7. Delegate safe removal to expert-refactoring subagent
-8. Delegate test verification to expert-testing subagent
-9. Clean up @MX tags for removed code
-10. TaskCreate/TaskUpdate for all candidates
-11. Report results with next step options
+4. Cross-check candidates against @MX tags (MX Tag Cross-Check)
+5. Classify results (Confirmed Dead, Test-Only, Likely Dead, False Positive)
+6. If --dry: Display analysis results and exit
+7. Present removal plan to user via AskUserQuestion
+8. Delegate safe removal to expert-refactoring subagent
+9. Delegate test verification to expert-testing subagent
+10. Clean up @MX tags for removed code (Phase 5.5)
+11. TaskCreate/TaskUpdate for all candidates
+12. Report results with next step options
 
 ---
 
-Version: 1.0.0
+Version: 1.1.0
+Updated: 2026-02-25. Added MX Tag Cross-Check in Phase 2 for pre-removal safety validation.

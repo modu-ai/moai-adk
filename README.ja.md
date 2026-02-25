@@ -904,6 +904,58 @@ External imports:
 
 ---
 
+## MoAI Memory
+
+MoAI-ADKは、構造化されたgitコミットメッセージを活用してAI-開発者間のインタラクションコンテキストをセッション間で保持する**Gitベースコンテキストメモリシステム**を提供します。
+
+### 仕組み
+
+```
+セッション1 (Plan)        セッション2 (Run)         セッション3 (Sync)
+    │                          │                          │
+    ▼                          ▼                          ▼
+ 決定事項 ──→ git commit ──→ コンテキスト ──→ git commit ──→ コンテキスト
+ 制約条件    ## Context含む    gitから          ## Context含む    gitから
+ パターン    セクション        ロード            セクション        ロード
+```
+
+すべての実装コミットには、以下をキャプチャする構造化された`## Context`セクションが含まれます：
+
+| カテゴリ | 目的 | 例 |
+|---------|------|-----|
+| **Decision** | 技術的決定＋根拠 | "RSA256の代わりにEdDSA（パフォーマンス優先）" |
+| **Constraint** | アクティブな制約 | "/api/v1の後方互換性維持が必須" |
+| **Gotcha** | 発見された落とし穴 | "Redis TTLはトークン保存に不安定" |
+| **Pattern** | 使用した参照実装 | "auth.go:45のミドルウェアチェーンパターン" |
+| **Risk** | 既知のリスク/延期事項 | "レート制限はPhase 2に延期" |
+| **UserPref** | 開発者の好み | "関数型スタイルを好む" |
+
+### コンテキスト取得
+
+```bash
+# 特定SPECのコンテキスト表示
+/moai context --spec SPEC-AUTH-001
+
+# 前回のコンテキストを現在のセッションに注入
+/moai context --spec SPEC-AUTH-001 --inject
+
+# カテゴリでフィルタリング
+/moai context --category Decision --days 7
+```
+
+### 主なメリット
+
+- **ゼロ依存**: git自体をメモリストアとして使用 -- 外部DB不要
+- **チーム共有**: `git clone`でコンテキスト自動共有
+- **完全な監査証跡**: `git log`で全決定履歴を確認
+- **セッション継続性**: `/clear`やセッション中断後もフルコンテキストで作業再開
+
+### 設計のインスピレーション
+
+MoAI Memoryは[claude-mem](https://github.com/thedotmack/claude-mem)、[claude-brain](https://github.com/memvid/claude-brain)、[memory-mcp](https://github.com/yuvalsuede/memory-mcp)にインスピレーションを得て、追加インフラ不要のGitネイティブアプローチで実装しました。
+
+---
+
 ## コントリビューション
 
 コントリビューションを歓迎します！ 詳しいガイドは[CONTRIBUTING.md](CONTRIBUTING.md)をご覧ください。

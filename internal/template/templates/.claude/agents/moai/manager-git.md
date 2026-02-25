@@ -27,8 +27,8 @@ skills:
 
 Manage Git workflows, branch strategies, commit conventions, and code review processes with automated quality checks.
 
-Version: 2.0.0 (Claude 4 Best Practices)
-Last Updated: 2025-12-07
+Version: 2.1.0 (Context Memory + TDD Commits)
+Last Updated: 2026-02-25
 
 > Note: Interactive prompts use AskUserQuestion tool for TUI selection menus. This tool activates on-demand when user approval is required for operations.
 
@@ -740,6 +740,33 @@ Supported Languages Configuration:
 WHY: Language separation ensures documentation accessibility while maintaining Git standardization
 IMPACT: Localized commits create parsing errors and cross-team confusion
 
+TDD Phase Commit Formats [HARD]:
+
+RED Phase (Failing Test):
+
+- Format: "🔴 RED: [test description]"
+- Include SPEC ID: "RED:[SPEC_ID]-TEST"
+- Message: Describe the failing test that specifies new behavior
+
+GREEN Phase (Minimal Implementation):
+
+- Format: "🟢 GREEN: [implementation description]"
+- Include SPEC ID: "GREEN:[SPEC_ID]-IMPL"
+- Message: Describe the minimal code that makes the test pass
+
+REFACTOR Phase (Code Improvement):
+
+- Format: "♻ REFACTOR: [improvement description]"
+- Include SPEC ID: "REFACTOR:[SPEC_ID]-CLEAN"
+- Message: Describe refactoring while keeping tests green
+
+Phase Selection [HARD]:
+
+- Read development_mode from `.moai/config/sections/quality.yaml`
+- If development_mode == "ddd": Use DDD Phase Commit Formats (ANALYZE/PRESERVE/IMPROVE)
+- If development_mode == "tdd": Use TDD Phase Commit Formats (RED/GREEN/REFACTOR)
+- Include Phase indicator in ALL implementation commits
+
 ### 3. Branch Management
 
 Branch Management Philosophy [HARD]:
@@ -1093,6 +1120,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 This signature applies to all Git operations:
 
 - DDD phase commits (ANALYZE, PRESERVE, IMPROVE)
+- TDD phase commits (RED, GREEN, REFACTOR)
 - Release commits
 - Hotfix commits
 - Merge commits
@@ -1102,6 +1130,58 @@ Signature breakdown:
 
 - ` https://adk.mo.ai.kr` - Official MoAI-ADK homepage link
 - `Co-Authored-By: Claude <noreply@anthropic.com>` - Claude AI collaborator attribution
+
+### Context Memory Section [HARD]
+
+All implementation commits MUST include a `## Context` section in the commit body to preserve AI-developer interaction context across sessions.
+
+Context Memory Categories:
+
+| Category | Purpose | Example |
+|----------|---------|---------|
+| Decision | Technical decision + rationale | "EdDSA over RSA256 (user requested, performance priority)" |
+| Constraint | Active constraints | "Must maintain /api/v1 backward compatibility" |
+| Gotcha | Pitfalls discovered | "Redis TTL unreliable for RefreshToken storage" |
+| Pattern | Patterns/references used | "middleware chain pattern from auth.go:45" |
+| Risk | Known risks/deferred items | "Token rotation deferred to Phase 2" |
+| UserPref | User preferences captured | "User prefers functional style over OOP" |
+
+Context Section Format:
+
+```
+## Context (AI-Developer Memory)
+- Decision: [description] ([rationale])
+- Constraint: [description]
+- Gotcha: [description]
+- Pattern: [description]
+- Risk: [description]
+```
+
+MX Tags Changed Section:
+
+After the Context section, include MX tag changes:
+
+```
+## MX Tags Changed
+- Added: @MX:ANCHOR [function] (fan_in: N)
+- Removed: @MX:TODO [file:line] (resolved)
+- Updated: @MX:WARN [file:line] (reason updated)
+```
+
+Session and SPEC Tracking:
+
+Include structured metadata fields in the commit body:
+
+```
+SPEC: SPEC-XXX-NNN
+Phase: [PLAN|RUN-RED|RUN-GREEN|RUN-REFACTOR|RUN-ANALYZE|RUN-PRESERVE|RUN-IMPROVE|SYNC|FIX|LOOP]
+```
+
+Skip Conditions:
+
+- Level 1 fixes (formatting only): Context section optional
+- Merge commits: Context section not required
+- Release tags: Context section not required
 
 Implementation Example (HEREDOC):
 

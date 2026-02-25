@@ -920,6 +920,58 @@ External imports:
 
 ---
 
+## MoAI Memory
+
+MoAI-ADK 提供**基于 Git 的上下文记忆系统**，通过结构化的 git 提交信息在会话之间保存 AI-开发者交互上下文。
+
+### 工作原理
+
+```
+会话 1 (Plan)             会话 2 (Run)              会话 3 (Sync)
+    │                          │                          │
+    ▼                          ▼                          ▼
+ 决策 ──→ git commit ──→ 上下文 ──→ git commit ──→ 上下文
+ 约束    含 ## Context    从 git      含 ## Context    从 git
+ 模式    部分              加载        部分              加载
+```
+
+每个实现提交都包含一个结构化的 `## Context` 部分，捕获以下内容：
+
+| 类别 | 目的 | 示例 |
+|------|------|------|
+| **Decision** | 技术决策 + 理由 | "选择 EdDSA 而非 RSA256（性能优先）" |
+| **Constraint** | 活跃约束条件 | "必须保持 /api/v1 向后兼容" |
+| **Gotcha** | 发现的陷阱 | "Redis TTL 存储令牌不可靠" |
+| **Pattern** | 使用的参考实现 | "auth.go:45 的中间件链模式" |
+| **Risk** | 已知风险/延期项 | "限流推迟到 Phase 2" |
+| **UserPref** | 开发者偏好 | "偏好函数式风格" |
+
+### 上下文检索
+
+```bash
+# 查看特定 SPEC 的上下文
+/moai context --spec SPEC-AUTH-001
+
+# 将之前的上下文注入当前会话
+/moai context --spec SPEC-AUTH-001 --inject
+
+# 按类别筛选
+/moai context --category Decision --days 7
+```
+
+### 核心优势
+
+- **零依赖**：使用 git 本身作为记忆存储 -- 无需外部数据库
+- **团队共享**：通过 `git clone` 自动共享上下文 -- 团队知识传递
+- **完整审计追踪**：`git log` 提供完整的决策历史
+- **会话连续性**：`/clear` 或会话中断后仍可恢复完整上下文
+
+### 设计灵感
+
+MoAI Memory 的灵感来自 [claude-mem](https://github.com/thedotmack/claude-mem)、[claude-brain](https://github.com/memvid/claude-brain) 和 [memory-mcp](https://github.com/yuvalsuede/memory-mcp)，采用无需额外基础设施的 Git 原生方式实现。
+
+---
+
 ## 贡献
 
 欢迎贡献！详细指南请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)。
