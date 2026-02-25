@@ -112,7 +112,34 @@ cd moai-adk && make build
 
 > Prebuilt binaries are available on the [Releases](https://github.com/modu-ai/moai-adk/releases) page.
 
-### 2. Initialize a Project
+### 2. Windows-Specific Issues
+
+#### Korean Username Path Errors
+
+If your Windows username contains non-ASCII characters (Korean, Chinese, etc.),
+you may encounter `EINVAL` errors due to Windows 8.3 short filename conversion.
+
+**Workaround 1:** Set an alternative temp directory:
+
+```bash
+# Command Prompt
+set MOAI_TEMP_DIR=C:\temp
+mkdir C:\temp 2>nul
+
+# PowerShell
+$env:MOAI_TEMP_DIR="C:\temp"
+New-Item -ItemType Directory -Path "C:\temp" -Force
+```
+
+**Workaround 2:** Disable 8.3 filename generation (requires admin):
+
+```bash
+fsutil 8dot3name set 1
+```
+
+**Workaround 3:** Create a new Windows user account with ASCII-only username.
+
+### 3. Initialize a Project
 
 ```bash
 moai init my-project
