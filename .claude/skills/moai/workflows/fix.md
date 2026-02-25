@@ -85,6 +85,27 @@ Issues classified into four levels:
 - Level 3 (Review): User approval required. Examples: logic changes, API modifications
 - Level 4 (Manual): Auto-fix not allowed. Examples: security vulnerabilities, architecture changes
 
+## Phase 2.5: Pre-Fix MX Context Scan
+
+Before applying fixes, scan target files for existing @MX tags to understand context and constraints:
+
+**Scan Target:** All files with classified issues (from Phase 2 results).
+
+**MX Context Extraction:**
+- @MX:ANCHOR functions: Flag as critical path. Pass fan_in context to fix agent. Warn that signature changes may break multiple callers.
+- @MX:WARN zones: Pass danger context to fix agent. Ensure fix does not worsen the warned condition.
+- @MX:NOTE context: Pass business logic context to fix agent to prevent fixing symptoms while breaking intent.
+- @MX:TODO items: Check if any classified issues match existing TODOs (enables removal upon fix).
+
+**Output:** MX context map passed to Phase 3 agents as part of the fix prompt. Each fix agent receives:
+- List of @MX:ANCHOR functions in the target file (do not break these contracts)
+- List of @MX:WARN zones (approach with caution)
+- Relevant @MX:NOTE context (understand before modifying)
+
+**Skip Condition:** If no @MX tags found in target files, proceed directly to Phase 3.
+
+See @.claude/rules/moai/workflow/mx-tag-protocol.md for tag type definitions.
+
 ## Phase 3: Auto-Fix
 
 [HARD] Agent delegation mandate: ALL fix tasks MUST be delegated to specialized agents. NEVER execute fixes directly.
@@ -209,15 +230,17 @@ Team Prerequisites:
 4. Execute parallel scan (LSP + AST-grep + Linter)
 5. Aggregate results and remove duplicates
 6. Classify into Levels 1-4
-7. TaskCreate for all discovered issues
-8. If --dry: Display preview and exit
-9. Apply Level 1-2 fixes via agent delegation
-10. Request approval for Level 3 fixes via AskUserQuestion
-11. Verify fixes by re-running diagnostics
-12. Save snapshot to $CLAUDE_PROJECT_DIR/.moai/cache/fix-snapshots/
-13. Report with evidence (file:line changes)
+7. Scan target files for @MX tags (Phase 2.5: Pre-Fix MX Context Scan)
+8. TaskCreate for all discovered issues
+9. If --dry: Display preview and exit
+10. Apply Level 1-2 fixes via agent delegation (with MX context)
+11. Request approval for Level 3 fixes via AskUserQuestion
+12. Verify fixes by re-running diagnostics
+13. Update @MX tags for modified files (Phase 4.5)
+14. Save snapshot to $CLAUDE_PROJECT_DIR/.moai/cache/fix-snapshots/
+15. Report with evidence (file:line changes)
 
 ---
 
-Version: 2.0.0
-Source: fix.md command v2.2.0
+Version: 2.1.0
+Source: fix.md command v2.3.0. Added Phase 2.5 Pre-Fix MX Context Scan for context-aware fixing.

@@ -918,6 +918,84 @@ External imports:
 
 ---
 
+## MoAI Memory
+
+MoAI-ADK features a **Git-Based Context Memory System** that preserves AI-developer interaction context across sessions using structured git commit messages.
+
+### How It Works
+
+```
+Session 1 (Plan)          Session 2 (Run)           Session 3 (Sync)
+    │                          │                          │
+    ▼                          ▼                          ▼
+ Decisions ──→ git commit ──→ Context ──→ git commit ──→ Context
+ Constraints   with ## Context  loaded     with ## Context  loaded
+ Patterns      section          from git   section          from git
+```
+
+Every implementation commit includes a structured `## Context` section that captures:
+
+| Category | Purpose | Example |
+|----------|---------|---------|
+| **Decision** | Technical choices + rationale | "EdDSA over RSA256 (performance priority)" |
+| **Constraint** | Active constraints | "Must maintain /api/v1 compatibility" |
+| **Gotcha** | Discovered pitfalls | "Redis TTL unreliable for token storage" |
+| **Pattern** | Reference implementations used | "middleware chain from auth.go:45" |
+| **Risk** | Known risks / deferred items | "Rate limiting deferred to Phase 2" |
+| **UserPref** | Developer preferences | "Prefers functional style" |
+
+### Context Retrieval
+
+```bash
+# View context for a specific SPEC
+/moai context --spec SPEC-AUTH-001
+
+# Inject previous context into current session
+/moai context --spec SPEC-AUTH-001 --inject
+
+# Filter by category
+/moai context --category Decision --days 7
+```
+
+### Commit Format
+
+Both DDD and TDD workflows produce structured commits:
+
+**DDD Mode:**
+```
+🔴 ANALYZE: Document JWT validation behavior
+SPEC: SPEC-AUTH-001
+Phase: RUN-ANALYZE
+
+## Context (AI-Developer Memory)
+- Decision: Use EdDSA for JWT signing (performance priority)
+- Constraint: Must support existing RSA tokens during migration
+```
+
+**TDD Mode:**
+```
+🔴 RED: Add failing test for token expiry validation
+SPEC: SPEC-AUTH-001
+Phase: RUN-RED
+
+## Context (AI-Developer Memory)
+- Decision: 15-minute access token TTL (security best practice)
+- Gotcha: Clock skew between services requires 30s grace period
+```
+
+### Key Benefits
+
+- **Zero Dependencies**: Uses git itself as the memory store -- no external databases
+- **Team Sharing**: Context travels with `git clone` -- automatic team knowledge transfer
+- **Full Audit Trail**: `git log` provides complete decision history
+- **Session Continuity**: Resume work with full context after `/clear` or session breaks
+
+### Design Inspiration
+
+MoAI Memory is inspired by [claude-mem](https://github.com/thedotmack/claude-mem), [claude-brain](https://github.com/memvid/claude-brain), and [memory-mcp](https://github.com/yuvalsuede/memory-mcp), adapted for a Git-native approach that requires zero additional infrastructure.
+
+---
+
 ## Contributing
 
 Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.

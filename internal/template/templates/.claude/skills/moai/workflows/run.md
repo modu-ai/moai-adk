@@ -130,6 +130,26 @@ Constraints: Decompose into atomic tasks where each task completes in a single D
 
 Output: Task list with coverage_verified flag set to true.
 
+### Phase 1.8: Pre-Implementation MX Context Scan
+
+Purpose: Scan files that will be modified during implementation to build an MX context map for implementation agents.
+
+**Scan Target:** All existing files listed in the task decomposition (from Phase 1.5).
+
+**MX Context Extraction:**
+- @MX:ANCHOR: Identify invariant contracts. Pass to implementation agents as "do not break" constraints with fan_in counts.
+- @MX:WARN: Identify danger zones. Alert agents to approach these areas with extra caution.
+- @MX:NOTE: Collect business logic context. Include in agent prompts for informed implementation.
+- @MX:TODO: Match against SPEC requirements. If a TODO aligns with a task, the implementation resolves it.
+- @MX:LEGACY: Identify legacy code without SPEC. Flag for careful handling during modifications.
+
+**Output:** MX context map included in Phase 2 agent prompts. The map is structured per-file:
+- file_path: list of tags with type, line, description, and constraints
+
+**Skip Condition:** If target files do not exist (greenfield implementation), skip this phase.
+
+See @.claude/rules/moai/workflow/mx-tag-protocol.md for tag type definitions.
+
 ### Development Mode Routing
 
 Before Phase 2, determine the development methodology by reading `.moai/config/sections/quality.yaml`:
@@ -360,7 +380,8 @@ All of the following must be verified:
 - Phase 1: manager-strategy returned execution plan with requirements and success criteria
 - User approval checkpoint blocked Phase 2 until user confirmed
 - Phase 1.5: Tasks decomposed with requirement traceability
-- Phase 2: Implementation completed according to development_mode
+- Phase 1.8: MX context map built for target files (skipped for greenfield)
+- Phase 2: Implementation completed according to development_mode (with MX context)
 - Phase 2.5: manager-quality completed TRUST 5 validation with PASS or WARNING status
 - Quality gate blocked Phase 3 if status was CRITICAL
 - Phase 3: manager-git created commits (branch or direct) only if quality permitted
@@ -368,5 +389,5 @@ All of the following must be verified:
 
 ---
 
-Version: 2.6.0
-Updated: 2026-02-23
+Version: 2.7.0
+Updated: 2026-02-25. Added Phase 1.8 Pre-Implementation MX Context Scan for context-aware implementation.

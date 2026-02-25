@@ -918,6 +918,84 @@ External imports:
 
 ---
 
+## MoAI Memory
+
+MoAI-ADK는 구조화된 git 커밋 메시지를 활용하여 AI-개발자 간 상호작용 컨텍스트를 세션 간에 보존하는 **Git 기반 컨텍스트 메모리 시스템**을 제공합니다.
+
+### 작동 방식
+
+```
+세션 1 (Plan)             세션 2 (Run)              세션 3 (Sync)
+    │                          │                          │
+    ▼                          ▼                          ▼
+ 결정사항 ──→ git commit ──→ 컨텍스트 ──→ git commit ──→ 컨텍스트
+ 제약조건    ## Context 포함  git에서       ## Context 포함  git에서
+ 패턴        섹션              로드          섹션              로드
+```
+
+모든 구현 커밋에는 다음을 캡처하는 구조화된 `## Context` 섹션이 포함됩니다:
+
+| 카테고리 | 목적 | 예시 |
+|---------|------|------|
+| **Decision** | 기술 결정 + 근거 | "RSA256 대신 EdDSA (성능 우선)" |
+| **Constraint** | 활성 제약 조건 | "/api/v1 하위 호환성 유지 필수" |
+| **Gotcha** | 발견된 함정 | "Redis TTL로 토큰 저장 불안정" |
+| **Pattern** | 사용된 참조 구현 | "auth.go:45의 미들웨어 체인 패턴" |
+| **Risk** | 알려진 위험/연기 사항 | "Rate limiting Phase 2로 연기" |
+| **UserPref** | 개발자 선호도 | "함수형 스타일 선호" |
+
+### 컨텍스트 조회
+
+```bash
+# 특정 SPEC의 컨텍스트 조회
+/moai context --spec SPEC-AUTH-001
+
+# 이전 컨텍스트를 현재 세션에 주입
+/moai context --spec SPEC-AUTH-001 --inject
+
+# 카테고리별 필터링
+/moai context --category Decision --days 7
+```
+
+### 커밋 포맷
+
+DDD와 TDD 워크플로우 모두 구조화된 커밋을 생성합니다:
+
+**DDD 모드:**
+```
+🔴 ANALYZE: JWT 검증 동작 문서화
+SPEC: SPEC-AUTH-001
+Phase: RUN-ANALYZE
+
+## Context (AI-Developer Memory)
+- Decision: JWT 서명에 EdDSA 사용 (성능 우선)
+- Constraint: 마이그레이션 중 기존 RSA 토큰 지원 필수
+```
+
+**TDD 모드:**
+```
+🔴 RED: 토큰 만료 검증 실패 테스트 추가
+SPEC: SPEC-AUTH-001
+Phase: RUN-RED
+
+## Context (AI-Developer Memory)
+- Decision: 액세스 토큰 TTL 15분 (보안 모범 사례)
+- Gotcha: 서비스 간 시계 오차로 30초 유예 필요
+```
+
+### 핵심 장점
+
+- **제로 의존성**: git 자체를 메모리 저장소로 활용 -- 외부 DB 불필요
+- **팀 공유**: `git clone`으로 컨텍스트 자동 공유 -- 팀 지식 전파
+- **완전한 감사 추적**: `git log`로 전체 결정 히스토리 확인
+- **세션 연속성**: `/clear` 또는 세션 중단 후에도 전체 컨텍스트로 작업 재개
+
+### 설계 영감
+
+MoAI Memory는 [claude-mem](https://github.com/thedotmack/claude-mem), [claude-brain](https://github.com/memvid/claude-brain), [memory-mcp](https://github.com/yuvalsuede/memory-mcp)에서 영감을 받아 추가 인프라가 필요 없는 Git 네이티브 접근 방식으로 구현했습니다.
+
+---
+
 ## 기여
 
 기여를 환영합니다! 자세한 가이드는 [CONTRIBUTING.ko.md](CONTRIBUTING.ko.md)를 참조하세요.

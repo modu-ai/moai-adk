@@ -79,6 +79,16 @@ Step 4 - Completion Condition Check:
 Step 5 - Task Generation:
 - [HARD] TaskCreate for all newly discovered issues with pending status
 
+Step 5.5 - Pre-Fix MX Context Scan:
+- Scan files with newly discovered issues for existing @MX tags
+- @MX:ANCHOR functions: Pass as "do not break" constraints to fix agents
+- @MX:WARN zones: Pass danger context; ensure fix does not worsen the warned condition
+- @MX:NOTE context: Provide business logic understanding before modification
+- @MX:TODO items: Match against current issues for resolution tracking
+- Output: MX context map included in Step 6 fix agent prompts
+- Skip if no @MX tags found in target files
+- See @.claude/rules/moai/workflow/mx-tag-protocol.md for tag type definitions
+
 Step 6 - Fix Execution:
 - [HARD] Before each fix: TaskUpdate to change item to in_progress
 - [HARD] Agent delegation mandate: ALL fix tasks MUST be delegated to specialized agents. NEVER execute fixes directly.
@@ -198,11 +208,11 @@ All fixes within the loop follow CLAUDE.md Section 7 Safe Development Protocol:
 2. If --resume: Load state from specified snapshot and continue
 3. Detect project language from indicator files
 4. Initialize iteration counter and memory tracking (start time)
-5. Loop: Execute per-iteration cycle (Steps 1-9)
+5. Loop: Execute per-iteration cycle (Steps 1-9, including Step 5.5 MX Context Scan)
 6. On exit: Report final summary with evidence
 7. If memory checkpoint created: Display resume instructions
 
 ---
 
-Version: 2.0.0
-Source: loop.md command v2.2.0
+Version: 2.1.0
+Source: loop.md command v2.3.0. Added Step 5.5 Pre-Fix MX Context Scan for context-aware iterative fixing.
