@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.1-teddy] - 2026-02-26
+
+### Summary
+
+**Teddy Edition** - Special pre-release with code formatting improvements and build consistency updates. This edition celebrates community collaboration and contributions to the MoAI project.
+
+### Breaking Changes
+
+None.
+
+### Fixed
+
+- Code formatting consistency improvements across codebase
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.6.1-teddy] - 2026-02-26 (한국어)
+
+### 요약
+
+**Teddy Edition** - 코드 포맷팅 개선과 빌드 일관성 업데이트가 포함된 특별 pre-release입니다. 커뮤니티 협력과 MoAI 프로젝트에 대한 기여를 기립합니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 수정됨 (Fixed)
+
+- 코드베이스 전체의 코드 포맷팅 일관성 개선
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.6.0] - 2026-02-25
 
 ### Summary
