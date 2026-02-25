@@ -111,7 +111,7 @@ researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, qua
 
 Both `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` env var AND `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml` are required.
 
-For detailed agent descriptions, capabilities, and creation guidelines, see @.claude/rules/moai/development/agent-authoring.md.
+For detailed agent descriptions, see the Agent Catalog section above. For agent creation guidelines, use the builder-agent subagent or see `.claude/rules/moai/development/agent-authoring.md`.
 
 ---
 

@@ -29,7 +29,7 @@ Rules and constraints governing all workflows are always loaded from these sourc
 - Quality gates, security boundaries: @.claude/rules/moai/core/moai-constitution.md
 - SPEC workflow phases, token budgets: @.claude/rules/moai/workflow/spec-workflow.md
 - Development methodologies (DDD/TDD): @.claude/rules/moai/workflow/workflow-modes.md
-- Agent definitions and creation: @.claude/rules/moai/development/agent-authoring.md
+- Agent definitions: See CLAUDE.md Section 4. For agent creation, use builder-agent subagent.
 - @MX tag rules and protocol: @.claude/rules/moai/workflow/mx-tag-protocol.md
 
 ---
