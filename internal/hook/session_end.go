@@ -61,6 +61,16 @@ func (h *sessionEndHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 	// This ensures the lead session returns to Claude after team completion.
 	clearTmuxSessionEnv()
 
+	// Clean up GLM env vars from settings.local.json.
+	// This ensures that if the session ends unexpectedly (error, crash, agent not terminated),
+	// the next session starts with Claude models instead of continuing to use GLM.
+	// Note: We do NOT reset team_mode in llm.yaml - that is intentional config that
+	// should persist across sessions for consistent team mode usage.
+	// We also do NOT remove CLAUDE_CODE_TEAMMATE_DISPLAY - that is a display setting.
+	if input.ProjectDir != "" {
+		cleanupGLMSettings(input.ProjectDir)
+	}
+
 	// SessionEnd hooks return empty JSON {} per Claude Code protocol
 	// Do NOT use hookSpecificOutput for SessionEnd events
 	return &HookOutput{}, nil
@@ -277,5 +287,70 @@ func clearTmuxSessionEnv() {
 		} else {
 			slog.Info("session_end: cleared tmux env", "env", name)
 		}
+	}
+}
+
+// cleanupGLMSettings removes GLM env vars from settings.local.json.
+// This ensures the next session starts with Claude models.
+func cleanupGLMSettings(projectDir string) {
+	settingsPath := filepath.Join(projectDir, ".claude", "settings.local.json")
+
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			slog.Warn("session_end: could not read settings.local.json", "error", err)
+		}
+		return
+	}
+
+	var settings map[string]any
+	if err := json.Unmarshal(data, &settings); err != nil {
+		slog.Warn("session_end: could not parse settings.local.json", "error", err)
+		return
+	}
+
+	env, ok := settings["env"].(map[string]any)
+	if !ok {
+		return // No env section
+	}
+
+	// Remove GLM-related env vars only.
+	// We do NOT remove CLAUDE_CODE_TEAMMATE_DISPLAY - that is a tmux display setting
+	// that should persist for future team work sessions.
+	glmVars := []string{
+		"ANTHROPIC_AUTH_TOKEN",
+		"ANTHROPIC_BASE_URL",
+		"ANTHROPIC_DEFAULT_OPUS_MODEL",
+		"ANTHROPIC_DEFAULT_SONNET_MODEL",
+		"ANTHROPIC_DEFAULT_HAIKU_MODEL",
+	}
+
+	changed := false
+	for _, key := range glmVars {
+		if _, exists := env[key]; exists {
+			delete(env, key)
+			changed = true
+		}
+	}
+
+	if !changed {
+		return
+	}
+
+	// Clean up empty env map
+	if len(env) == 0 {
+		delete(settings, "env")
+	}
+
+	newData, err := json.MarshalIndent(settings, "", "  ")
+	if err != nil {
+		slog.Warn("session_end: could not marshal settings", "error", err)
+		return
+	}
+
+	if err := os.WriteFile(settingsPath, newData, 0o644); err != nil {
+		slog.Warn("session_end: could not write settings", "error", err)
+	} else {
+		slog.Info("session_end: cleaned up GLM env from settings.local.json")
 	}
 }

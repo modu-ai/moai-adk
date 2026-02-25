@@ -273,3 +273,139 @@ func TestSessionEndHandler_AlwaysReturnsEmptyOutput(t *testing.T) {
 		t.Errorf("ExitCode should be 0, got %d", got.ExitCode)
 	}
 }
+
+func TestCleanupGLMSettings(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		existingData   map[string]any
+		wantRemoved    []string
+		wantRemaining  []string
+		wantEnvDeleted bool
+	}{
+		{
+			name: "removes GLM env vars but keeps TEAMMATE_DISPLAY",
+			existingData: map[string]any{
+				"env": map[string]any{
+					"ANTHROPIC_AUTH_TOKEN":         "glm-token",
+					"ANTHROPIC_BASE_URL":           "https://glm.example.com",
+					"ANTHROPIC_DEFAULT_OPUS_MODEL":  "glm-5",
+					"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
+					"ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.7-air",
+					"CLAUDE_CODE_TEAMMATE_DISPLAY": "tmux",
+					"OTHER_VAR":                    "keep-me",
+				},
+			},
+			wantRemoved: []string{
+				"ANTHROPIC_AUTH_TOKEN",
+				"ANTHROPIC_BASE_URL",
+				"ANTHROPIC_DEFAULT_OPUS_MODEL",
+				"ANTHROPIC_DEFAULT_SONNET_MODEL",
+				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
+			},
+			wantRemaining:  []string{"OTHER_VAR", "CLAUDE_CODE_TEAMMATE_DISPLAY"},
+			wantEnvDeleted: false, // env still has OTHER_VAR and TEAMMATE_DISPLAY
+		},
+		{
+			name: "removes all GLM vars and deletes env section",
+			existingData: map[string]any{
+				"env": map[string]any{
+					"ANTHROPIC_AUTH_TOKEN": "glm-token",
+					"ANTHROPIC_BASE_URL":   "https://glm.example.com",
+				},
+			},
+			wantRemoved:    []string{"ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL"},
+			wantRemaining:   nil,
+			wantEnvDeleted:  true, // env becomes empty, should be deleted
+		},
+		{
+			name: "no GLM vars - no changes",
+			existingData: map[string]any{
+				"env": map[string]any{
+					"OTHER_VAR": "keep-me",
+				},
+			},
+			wantRemoved:    nil,
+			wantRemaining:  []string{"OTHER_VAR"},
+			wantEnvDeleted: false,
+		},
+		{
+			name:          "no env section - no changes",
+			existingData:  map[string]any{},
+			wantRemoved:   nil,
+			wantRemaining: nil,
+			wantEnvDeleted: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			tmpDir := t.TempDir()
+			claudeDir := filepath.Join(tmpDir, ".claude")
+			if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+				t.Fatalf("setup .claude dir: %v", err)
+			}
+
+			settingsPath := filepath.Join(claudeDir, "settings.local.json")
+			data, err := json.MarshalIndent(tt.existingData, "", "  ")
+			if err != nil {
+				t.Fatalf("marshal settings: %v", err)
+			}
+			if err := os.WriteFile(settingsPath, data, 0o644); err != nil {
+				t.Fatalf("write settings: %v", err)
+			}
+
+			cleanupGLMSettings(tmpDir)
+
+			// Read back and verify
+			resultData, err := os.ReadFile(settingsPath)
+			if err != nil {
+				t.Fatalf("read result settings: %v", err)
+			}
+
+			var result map[string]any
+			if err := json.Unmarshal(resultData, &result); err != nil {
+				t.Fatalf("unmarshal result: %v", err)
+			}
+
+			// Check removed vars
+			env, hasEnv := result["env"].(map[string]any)
+			for _, key := range tt.wantRemoved {
+				if hasEnv {
+					if _, exists := env[key]; exists {
+						t.Errorf("var %q should have been removed", key)
+					}
+				}
+			}
+
+			// Check remaining vars
+			for _, key := range tt.wantRemaining {
+				if !hasEnv {
+					t.Errorf("env section was deleted but %q should remain", key)
+					continue
+				}
+				if _, exists := env[key]; !exists {
+					t.Errorf("var %q should still exist", key)
+				}
+			}
+
+			// Check if env was deleted when empty
+			if tt.wantEnvDeleted {
+				if hasEnv {
+					t.Error("env section should have been deleted when empty")
+				}
+			}
+		})
+	}
+}
+
+func TestCleanupGLMSettings_MissingFile(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	// Don't create settings.local.json - should not panic
+	cleanupGLMSettings(tmpDir)
+}
