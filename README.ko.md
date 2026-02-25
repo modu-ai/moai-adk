@@ -112,7 +112,34 @@ cd moai-adk && make build
 
 > 프리빌트 바이너리는 [Releases](https://github.com/modu-ai/moai-adk/releases) 페이지에서 다운로드할 수 있습니다.
 
-### 2. 프로젝트 초기화
+### 2. Windows 특정 이슈
+
+#### 한글 사용명 경로 에러
+
+Windows 사용자 이름에 비ASCII 문자(한글, 중국어 등)가 포함된 경우,
+Windows 8.3 짧은 파일 이름 변환으로 인해 `EINVAL` 에러가 발생할 수 있습니다.
+
+**해결책 1:** 대체 임시 디렉토리 설정:
+
+```bash
+# 명령 프롬프트
+set MOAI_TEMP_DIR=C:\temp
+mkdir C:\temp 2>nul
+
+# PowerShell
+$env:MOAI_TEMP_DIR="C:\temp"
+New-Item -ItemType Directory -Path "C:\temp" -Force
+```
+
+**해결책 2:** 8.3 파일 이름 생성 비활성화 (관리자 권한 필요):
+
+```bash
+fsutil 8dot3name set 1
+```
+
+**해결책 3:** ASCII만 포함하는 새 Windows 사용자 계정 생성.
+
+### 3. 프로젝트 초기화
 
 ```bash
 moai init my-project
