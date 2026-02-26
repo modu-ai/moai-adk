@@ -472,7 +472,7 @@ func TestNewRankRegisterCmd_PrintsWarning(t *testing.T) {
 func TestSubmitSyncBatches_EmptySessions(t *testing.T) {
 	t.Parallel()
 
-	result := submitSyncBatches(nil, nil, nil, nil, nil, &bytes.Buffer{})
+	result := submitSyncBatches(context.TODO(), nil, nil, nil, nil, &bytes.Buffer{})
 	if result.Submitted != 0 || result.FailedTotal != 0 || result.ErroredTotal != 0 {
 		t.Errorf("empty sessions should give zero result, got %+v", result)
 	}
