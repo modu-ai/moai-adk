@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.12] - 2026-02-27
+
+### Summary
+
+This patch release fixes an OAuth token loss bug introduced in earlier releases.
+When `moai glm` injected GLM API credentials into `settings.local.json`, any
+pre-existing `ANTHROPIC_AUTH_TOKEN` (stored by Claude Code's `/login` OAuth flow)
+was silently overwritten. When `moai cc` then cleaned up GLM env vars, it deleted
+the token entirely — causing Claude Code to prompt for `/login` on every session
+restart.
+
+The fix uses a backup/restore pattern: `moai glm` backs up the existing OAuth token
+as `MOAI_BACKUP_AUTH_TOKEN` before overwriting, and `moai cc` restores it when
+removing the GLM key.
+
+### Breaking Changes
+
+None.
+
+### Fixed
+
+- **OAuth token preserved across moai glm/cc round-trip**: `injectGLMEnvForTeam`
+  and `injectGLMEnv` now back up any pre-existing `ANTHROPIC_AUTH_TOKEN` as
+  `MOAI_BACKUP_AUTH_TOKEN` before injecting the GLM key. `removeGLMEnv` restores
+  the backed-up token when cleaning up GLM env vars, eliminating the `/login` on
+  restart regression for OAuth users.
+
+### Tests
+
+- Added `oauth_token_preservation_test.go` with 4 test cases covering:
+  the full GLM→CC round-trip, individual inject/remove behavior, and the
+  no-prior-token case.
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
 ## [2.6.11] - 2026-02-27
 
 ### Summary
