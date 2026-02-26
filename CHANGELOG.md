@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.11] - 2026-02-27
+
+### Summary
+
+This patch release restores the pre-v2.6 unconditional GLM token cleanup in the SessionEnd hook, permanently fixing the `/login` prompt regression. Previously, cleanup was conditional on finding an active team session; this meant GLM environment variables could persist in tmux after a team session ended abnormally. The cleanup is now unconditional and safe: it's a no-op when not in tmux or when the variables don't exist.
+
+### Breaking Changes
+
+None.
+
+### Fixed
+
+- **Unconditional GLM token cleanup on SessionEnd**: Restored pre-v2.6 behavior where `clearTmuxSessionEnv()` is called unconditionally at every session end. The previous conditional logic (only cleaning up when a matching team session was found) allowed stale GLM env vars to persist in tmux, causing `/login` prompts on the next session.
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.6.11] - 2026-02-27 (한국어)
+
+### 요약
+
+이번 패치 릴리스는 SessionEnd 훅에서 pre-v2.6의 무조건적인 GLM 토큰 정리를 복원하여 `/login` 프롬프트 회귀 문제를 영구적으로 수정합니다. 이전에는 정리가 활성 팀 세션을 찾은 경우에만 조건부로 실행되어, 팀 세션이 비정상 종료될 경우 GLM 환경 변수가 tmux에 남아있을 수 있었습니다. 이제 정리는 무조건적으로 실행되며 안전합니다: tmux 환경이 아니거나 변수가 없는 경우 no-op으로 처리됩니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 수정됨 (Fixed)
+
+- **SessionEnd 시 무조건적인 GLM 토큰 정리**: 매 세션 종료 시 `clearTmuxSessionEnv()`가 무조건 호출되는 pre-v2.6 동작 복원. 이전의 조건부 로직(매칭되는 팀 세션이 발견된 경우에만 정리)은 비정상 종료 시 stale GLM env 변수를 tmux에 남겨 다음 세션에서 `/login` 프롬프트를 유발했음.
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.6.10] - 2026-02-26
 
 ### Summary
