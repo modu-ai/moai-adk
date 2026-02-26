@@ -340,7 +340,7 @@ func TestNewRankSyncCmd_ForceFlagDefaultIsFalse(t *testing.T) {
 }
 
 func TestNewRankSyncCmd_DepsNilReturnsError(t *testing.T) {
-	t.Parallel()
+	// Cannot use t.Parallel() — mutates global deps
 
 	origDeps := deps
 	deps = nil
@@ -445,7 +445,7 @@ func TestNewRankLoginCmd_Structure(t *testing.T) {
 }
 
 func TestNewRankLoginCmd_DepsNilReturnsError(t *testing.T) {
-	t.Parallel()
+	// Cannot use t.Parallel() — mutates global deps
 
 	origDeps := deps
 	deps = nil
@@ -470,7 +470,7 @@ func TestNewRankLoginCmd_DepsNilReturnsError(t *testing.T) {
 // =============================================================================
 
 func TestNewRankLogoutCmd_DepsNilReturnsError(t *testing.T) {
-	t.Parallel()
+	// Cannot use t.Parallel() — mutates global deps
 
 	origDeps := deps
 	deps = nil
@@ -777,7 +777,7 @@ func TestGetGLMEnvPath_WithCustomHome(t *testing.T) {
 // =============================================================================
 
 func TestNewRankStatusCmd_DepsNilPrintsMessage(t *testing.T) {
-	t.Parallel()
+	// Cannot use t.Parallel() — mutates global deps
 
 	origDeps := deps
 	deps = nil
