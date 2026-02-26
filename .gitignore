@@ -163,6 +163,7 @@ secret-*.*
 .claude/.env.local*
 .claude/local/
 .claude/plans/
+.claude/agent-memory/
 
 # Skill-specific credentials
 .claude/skills/*/.env*

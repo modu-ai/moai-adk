@@ -191,9 +191,11 @@ func clearTmuxSessionEnv() {
 		return
 	}
 
-	// GLM environment variables to clear
+	// GLM environment variables to clear from tmux session.
+	// ANTHROPIC_AUTH_TOKEN is intentionally excluded: it may be the user's
+	// permanent API credential (e.g. a GLM API key), not a temporary
+	// team-mode token. Clearing it would require /login on every restart.
 	envVars := []string{
-		"ANTHROPIC_AUTH_TOKEN",
 		"ANTHROPIC_BASE_URL",
 		"ANTHROPIC_DEFAULT_OPUS_MODEL",
 		"ANTHROPIC_DEFAULT_SONNET_MODEL",
@@ -241,8 +243,11 @@ func cleanupGLMSettings(projectDir string) {
 	// Remove GLM-related env vars only.
 	// We do NOT remove CLAUDE_CODE_TEAMMATE_DISPLAY - that is a tmux display setting
 	// that should persist for future team work sessions.
+	// We do NOT remove ANTHROPIC_AUTH_TOKEN - that is the user's API credential
+	// and may be a permanent GLM API key, not a temporary team-mode token.
+	// Removing it would force the user to /login on every session restart.
+	// The base URL and model overrides are sufficient to identify/reset GLM team mode.
 	glmVars := []string{
-		"ANTHROPIC_AUTH_TOKEN",
 		"ANTHROPIC_BASE_URL",
 		"ANTHROPIC_DEFAULT_OPUS_MODEL",
 		"ANTHROPIC_DEFAULT_SONNET_MODEL",

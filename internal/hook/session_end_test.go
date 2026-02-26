@@ -274,10 +274,10 @@ func TestCleanupGLMSettings(t *testing.T) {
 		wantEnvDeleted bool
 	}{
 		{
-			name: "removes GLM env vars but keeps TEAMMATE_DISPLAY",
+			name: "removes GLM env vars but keeps TEAMMATE_DISPLAY and AUTH_TOKEN",
 			existingData: map[string]any{
 				"env": map[string]any{
-					"ANTHROPIC_AUTH_TOKEN":           "glm-token",
+					"ANTHROPIC_AUTH_TOKEN":           "user-api-key",
 					"ANTHROPIC_BASE_URL":             "https://glm.example.com",
 					"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5",
 					"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
@@ -287,24 +287,32 @@ func TestCleanupGLMSettings(t *testing.T) {
 				},
 			},
 			wantRemoved: []string{
-				"ANTHROPIC_AUTH_TOKEN",
 				"ANTHROPIC_BASE_URL",
 				"ANTHROPIC_DEFAULT_OPUS_MODEL",
 				"ANTHROPIC_DEFAULT_SONNET_MODEL",
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
 			},
-			wantRemaining:  []string{"OTHER_VAR", "CLAUDE_CODE_TEAMMATE_DISPLAY"},
-			wantEnvDeleted: false, // env still has OTHER_VAR and TEAMMATE_DISPLAY
+			// ANTHROPIC_AUTH_TOKEN is kept: it is a permanent user API credential,
+			// not a temporary team-mode GLM token. Removing it forces /login on restart.
+			wantRemaining:  []string{"OTHER_VAR", "CLAUDE_CODE_TEAMMATE_DISPLAY", "ANTHROPIC_AUTH_TOKEN"},
+			wantEnvDeleted: false, // env still has remaining vars
 		},
 		{
-			name: "removes all GLM vars and deletes env section",
+			name: "removes all GLM model vars and deletes env section when only those remain",
 			existingData: map[string]any{
 				"env": map[string]any{
-					"ANTHROPIC_AUTH_TOKEN": "glm-token",
-					"ANTHROPIC_BASE_URL":   "https://glm.example.com",
+					"ANTHROPIC_BASE_URL":             "https://glm.example.com",
+					"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5",
+					"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
+					"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.7-air",
 				},
 			},
-			wantRemoved:    []string{"ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL"},
+			wantRemoved: []string{
+				"ANTHROPIC_BASE_URL",
+				"ANTHROPIC_DEFAULT_OPUS_MODEL",
+				"ANTHROPIC_DEFAULT_SONNET_MODEL",
+				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
+			},
 			wantRemaining:  nil,
 			wantEnvDeleted: true, // env becomes empty, should be deleted
 		},
