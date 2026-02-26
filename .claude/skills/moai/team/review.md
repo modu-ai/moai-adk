@@ -146,15 +146,12 @@ After all reviews complete:
    SendMessage(type: "shutdown_request", recipient: "quality-reviewer", content: "Review complete, shutting down")
    SendMessage(type: "shutdown_request", recipient: "ux-reviewer", content: "Review complete, shutting down")
    ```
-2. Clean up GLM env vars from ~/.claude/settings.local.json to restore Claude models:
+2. Clean up GLM env vars and restore Claude-only operation:
+   ```bash
+   moai cc
    ```
-   # Read settings, remove GLM env vars, write back
-   Read ~/.claude/settings.local.json
-   # Remove: ANTHROPIC_BASE_URL, ANTHROPIC_DEFAULT_OPUS_MODEL, ANTHROPIC_DEFAULT_SONNET_MODEL, ANTHROPIC_DEFAULT_HAIKU_MODEL
-   # Keep: ANTHROPIC_AUTH_TOKEN (permanent API credential - do NOT remove or user must /login every session)
-   # Keep: CLAUDE_CODE_TEAMMATE_DISPLAY and other settings
-   Write ~/.claude/settings.local.json
-   ```
+   This safely removes GLM env vars while preserving ANTHROPIC_AUTH_TOKEN and other settings.
+   Do NOT manually Read/Write settings.local.json — use the CLI command which handles JSON merging correctly.
 3. TeamDelete to clean up resources
 4. Optionally create fix tasks for critical issues
 
