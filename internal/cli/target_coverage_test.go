@@ -1343,7 +1343,11 @@ func TestNewRankLoginCmd_NilContextAndOAuthError(t *testing.T) {
 	origDeps := deps
 	deps = &Dependencies{
 		RankCredStore: &mockCredentialStore{},
-		// RankBrowser: nil means code will create rank.NewBrowser() (line 66-68)
+		RankBrowser: &mockBrowser{
+			openFunc: func(url string) error {
+				return fmt.Errorf("browser not available in test")
+			},
+		},
 	}
 	defer func() { deps = origDeps }()
 

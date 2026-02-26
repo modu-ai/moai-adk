@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Summary
 
-This release introduces the auto-memory system, which automatically injects the project's persistent memory directory into the Claude Code session context on startup. The hook registry now correctly merges SystemMessage content from multiple sources without overwriting previous entries.
+This release introduces the auto-memory system for persistent session context, fixes ANTHROPIC_AUTH_TOKEN preservation across all GLM cleanup paths, resolves cross-platform test failures, and removes deprecated WorktreeCreate/WorktreeRemove hooks from settings templates.
 
 ### Breaking Changes
 
@@ -21,9 +21,18 @@ None.
 - **Memory configuration**: New `.moai/config/sections/memory.yaml` and `.moai/config/sections/context.yaml` configuration files for controlling memory and context behavior.
 - **Template memory directory**: Added `.moai/memory/.gitkeep` to template output so projects initialize with a proper memory storage location.
 
+### Changed
+
+- **Template settings cleanup**: Removed deprecated `WorktreeCreate` and `WorktreeRemove` hook definitions from `settings.json.tmpl`.
+
 ### Fixed
 
-- **Registry SystemMessage merging**: `internal/hook/registry.go` now appends SystemMessage content from multiple hooks instead of overwriting the previous value, preventing context loss when multiple hooks contribute to the system message.
+- **ANTHROPIC_AUTH_TOKEN preservation**: `moai cc` now preserves `ANTHROPIC_AUTH_TOKEN` unless it matches the stored GLM key, preventing accidental deletion of the user's permanent API credential.
+- **Session-end GLM cleanup**: `cleanupGLMSettings()` now excludes `ANTHROPIC_AUTH_TOKEN` from removal during session-end cleanup.
+- **Registry SystemMessage merging**: `internal/hook/registry.go` now appends SystemMessage content from multiple hooks instead of overwriting the previous value.
+- **Windows CI test failures**: Fixed cross-platform test failures with `context.TODO()` and platform-specific path handling.
+- **Test race conditions**: Removed `t.Parallel()` from tests that mutate global `deps` variable.
+- **Test browser isolation**: Injected mock browser to prevent real browser opening during OAuth flow tests.
 
 ### Installation & Update
 
@@ -41,7 +50,7 @@ moai version
 
 ### 요약
 
-이번 릴리스는 자동 메모리 시스템을 도입하여 세션 시작 시 프로젝트의 영구 메모리 디렉토리를 Claude Code 세션 컨텍스트에 자동으로 주입합니다. 훅 레지스트리가 이제 여러 소스의 SystemMessage 내용을 덮어쓰지 않고 올바르게 병합합니다.
+이번 릴리스는 영구 세션 컨텍스트를 위한 자동 메모리 시스템 도입, 모든 GLM 정리 경로에서의 ANTHROPIC_AUTH_TOKEN 보존 수정, 크로스 플랫폼 테스트 실패 해결, 더 이상 사용되지 않는 WorktreeCreate/WorktreeRemove 훅의 설정 템플릿 제거를 포함합니다.
 
 ### 주요 변경 사항 (Breaking Changes)
 
@@ -53,9 +62,18 @@ moai version
 - **메모리 설정**: 메모리 및 컨텍스트 동작을 제어하는 새 설정 파일 `.moai/config/sections/memory.yaml`과 `.moai/config/sections/context.yaml` 추가.
 - **템플릿 메모리 디렉토리**: 프로젝트 초기화 시 적절한 메모리 저장 위치를 갖도록 템플릿 출력에 `.moai/memory/.gitkeep` 추가.
 
+### 변경됨 (Changed)
+
+- **템플릿 설정 정리**: `settings.json.tmpl`에서 더 이상 사용되지 않는 `WorktreeCreate`/`WorktreeRemove` 훅 정의 제거.
+
 ### 수정됨 (Fixed)
 
-- **레지스트리 SystemMessage 병합**: `internal/hook/registry.go`가 이제 여러 훅의 SystemMessage 내용을 덮어쓰지 않고 이어붙여, 여러 훅이 시스템 메시지에 기여할 때 컨텍스트 손실을 방지합니다.
+- **ANTHROPIC_AUTH_TOKEN 보존**: `moai cc`가 이제 저장된 GLM 키와 일치하지 않는 한 `ANTHROPIC_AUTH_TOKEN`을 보존하여 사용자의 영구 API 자격증명이 실수로 삭제되는 것을 방지.
+- **세션 종료 GLM 정리**: `cleanupGLMSettings()`가 세션 종료 정리 시 `ANTHROPIC_AUTH_TOKEN`을 제거 대상에서 제외.
+- **레지스트리 SystemMessage 병합**: `internal/hook/registry.go`가 이제 여러 훅의 SystemMessage 내용을 덮어쓰지 않고 이어붙임.
+- **Windows CI 테스트 실패**: `context.TODO()` 및 플랫폼별 경로 처리로 크로스 플랫폼 테스트 실패 수정.
+- **테스트 Race Condition**: 전역 `deps` 변수를 변경하는 테스트에서 `t.Parallel()` 제거.
+- **테스트 브라우저 격리**: OAuth 플로우 테스트에서 실제 브라우저가 열리지 않도록 mock 브라우저 주입.
 
 ### 설치 및 업데이트 (Installation & Update)
 
