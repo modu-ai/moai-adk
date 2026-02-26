@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.3] - 2026-02-26
+
+### Summary
+
+Bug fix release resolving session authentication persistence issue. Restores login state between Claude Code restarts by preserving API credentials during session cleanup.
+
+### Breaking Changes
+
+None.
+
+### Fixed
+
+- **Session authentication persistence**: Fixed `cleanupGLMSettings()` and `clearTmuxSessionEnv()` in `session_end.go` incorrectly removing `ANTHROPIC_AUTH_TOKEN` on session end. This token is the user's permanent API credential (e.g., GLM API key), not a temporary team-mode token. Removing it forced `/login` on every Claude Code restart. Now only `ANTHROPIC_BASE_URL` and model overrides are cleaned up to reset GLM team mode while preserving authentication.
+- **Agent memory cleanup**: Added `.claude/agent-memory/` to `.gitignore` as ephemeral agent state that should not be committed to version control.
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.6.3] - 2026-02-26 (한국어)
+
+### 요약
+
+세션 인증 지속성 문제를 해결하는 버그 수정 릴리즈입니다. 세션 정리 중 API 자격증명을 보존하여 Claude Code 재시작 간 로그인 상태를 유지합니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 수정됨 (Fixed)
+
+- **세션 인증 지속성**: `session_end.go`의 `cleanupGLMSettings()`와 `clearTmuxSessionEnv()`가 세션 종료 시 `ANTHROPIC_AUTH_TOKEN`을 잘못 삭제하는 문제 수정. 이 토큰은 임시 팀 모드 토큰이 아니라 사용자의 영구 API 자격증명(예: GLM API 키)임. 삭제 시 Claude Code 재시작마다 `/login`이 필요했음. 이제 `ANTHROPIC_BASE_URL`과 모델 오버라이드만 정리하여 GLM 팀 모드만 리셋하고 인증은 보존.
+- **에이전트 메모리 정리**: 버전 관리에 커밋되지 않아야 할 임시 에이전트 상태인 `.claude/agent-memory/`를 `.gitignore`에 추가.
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.6.2-teddy] - 2026-02-26
 
 ### Summary
