@@ -680,9 +680,8 @@ func TestCGAutoResetsGLMMode(t *testing.T) {
 		t.Fatalf("parse settings.local.json: %v", err)
 	}
 
-	// Should NOT have any GLM env vars
+	// Should NOT have GLM routing vars (but ANTHROPIC_AUTH_TOKEN is preserved)
 	for _, key := range []string{
-		"ANTHROPIC_AUTH_TOKEN",
 		"ANTHROPIC_BASE_URL",
 		"ANTHROPIC_DEFAULT_OPUS_MODEL",
 		"ANTHROPIC_DEFAULT_SONNET_MODEL",
@@ -691,6 +690,11 @@ func TestCGAutoResetsGLMMode(t *testing.T) {
 		if _, exists := cgSettings.Env[key]; exists {
 			t.Errorf("after 'moai cg', settings.local.json should NOT contain %s (lead uses Claude)", key)
 		}
+	}
+
+	// ANTHROPIC_AUTH_TOKEN should still be present (permanent credential)
+	if _, exists := cgSettings.Env["ANTHROPIC_AUTH_TOKEN"]; !exists {
+		t.Errorf("after 'moai cg', ANTHROPIC_AUTH_TOKEN should be preserved (permanent API credential)")
 	}
 
 	// Should have CLAUDE_CODE_TEAMMATE_DISPLAY=tmux

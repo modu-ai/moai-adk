@@ -264,8 +264,12 @@ func clearTmuxSessionEnv() error {
 		return nil
 	}
 
+	// GLM environment variables to clear from tmux session.
+	// ANTHROPIC_AUTH_TOKEN is intentionally omitted: it may be the user's
+	// permanent API credential (e.g. a GLM API key), not a temporary
+	// team-mode token. Clearing it would require /login on every restart.
+	// Only model routing and base URL overrides are removed here.
 	envVars := []string{
-		"ANTHROPIC_AUTH_TOKEN",
 		"ANTHROPIC_BASE_URL",
 		"ANTHROPIC_DEFAULT_OPUS_MODEL",
 		"ANTHROPIC_DEFAULT_SONNET_MODEL",

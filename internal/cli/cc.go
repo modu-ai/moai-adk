@@ -114,9 +114,12 @@ func removeGLMEnv(settingsPath string) error {
 		return fmt.Errorf("parse settings.local.json: %w", err)
 	}
 
-	// Remove GLM-specific env variables
+	// Remove GLM-specific env variables.
+	// ANTHROPIC_AUTH_TOKEN is intentionally preserved: it may be the user's
+	// permanent API credential (e.g. a GLM API key saved by 'moai glm'), not a
+	// temporary team-mode token. Removing it forces the user to /login on every
+	// session restart. Only model routing and base URL overrides are removed.
 	if settings.Env != nil {
-		delete(settings.Env, "ANTHROPIC_AUTH_TOKEN")
 		delete(settings.Env, "ANTHROPIC_BASE_URL")
 		delete(settings.Env, "ANTHROPIC_DEFAULT_HAIKU_MODEL")
 		delete(settings.Env, "ANTHROPIC_DEFAULT_SONNET_MODEL")

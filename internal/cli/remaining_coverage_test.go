@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -315,7 +316,7 @@ func TestRemoveGLMEnv_EnvBecomesEmptyAfterRemoval(t *testing.T) {
 	tmpDir := t.TempDir()
 	settingsPath := filepath.Join(tmpDir, "settings.local.json")
 
-	// Write settings with only GLM env vars
+	// Write settings with only GLM env vars - ANTHROPIC_AUTH_TOKEN will be preserved
 	content := `{"env":{"ANTHROPIC_AUTH_TOKEN":"tok","ANTHROPIC_BASE_URL":"http://x"}}`
 	if err := os.WriteFile(settingsPath, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
@@ -330,9 +331,20 @@ func TestRemoveGLMEnv_EnvBecomesEmptyAfterRemoval(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// env key should be gone (was set to nil)
-	if strings.Contains(string(data), "ANTHROPIC_AUTH_TOKEN") {
-		t.Error("GLM env vars should be removed")
+
+	var resultSettings SettingsLocal
+	if err := json.Unmarshal(data, &resultSettings); err != nil {
+		t.Fatal(err)
+	}
+
+	// ANTHROPIC_AUTH_TOKEN should be preserved
+	if _, exists := resultSettings.Env["ANTHROPIC_AUTH_TOKEN"]; !exists {
+		t.Error("ANTHROPIC_AUTH_TOKEN should be preserved")
+	}
+
+	// ANTHROPIC_BASE_URL should be removed
+	if _, exists := resultSettings.Env["ANTHROPIC_BASE_URL"]; exists {
+		t.Error("ANTHROPIC_BASE_URL should be removed")
 	}
 }
 

@@ -1450,13 +1450,17 @@ func TestRunCC_SuccessfulExecution(t *testing.T) {
 		t.Error("output should mention Claude")
 	}
 
-	// Verify GLM env was removed but OTHER was kept
+	// Verify GLM routing env was removed but ANTHROPIC_AUTH_TOKEN and OTHER were kept
 	data, err := os.ReadFile(filepath.Join(claudeDir, "settings.local.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(data), "ANTHROPIC_AUTH_TOKEN") {
-		t.Error("ANTHROPIC_AUTH_TOKEN should be removed")
+	// ANTHROPIC_AUTH_TOKEN should be preserved (permanent credential)
+	if !strings.Contains(string(data), "ANTHROPIC_AUTH_TOKEN") {
+		t.Error("ANTHROPIC_AUTH_TOKEN should be preserved")
+	}
+	if strings.Contains(string(data), "ANTHROPIC_BASE_URL") {
+		t.Error("ANTHROPIC_BASE_URL should be removed")
 	}
 	if !strings.Contains(string(data), "OTHER") {
 		t.Error("OTHER env var should be preserved")
@@ -2434,8 +2438,9 @@ func TestRemoveGLMEnv_WithExistingGLMVars(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if strings.Contains(string(data), "ANTHROPIC_AUTH_TOKEN") {
-		t.Error("ANTHROPIC_AUTH_TOKEN should be removed")
+	// ANTHROPIC_AUTH_TOKEN should be preserved (permanent API credential)
+	if !strings.Contains(string(data), "ANTHROPIC_AUTH_TOKEN") {
+		t.Error("ANTHROPIC_AUTH_TOKEN should be preserved")
 	}
 	if strings.Contains(string(data), "ANTHROPIC_BASE_URL") {
 		t.Error("ANTHROPIC_BASE_URL should be removed")
@@ -3293,7 +3298,7 @@ func TestRemoveGLMEnv_FileNotExist(t *testing.T) {
 	}
 }
 
-// removeGLMEnv — test when env section becomes empty after removal
+// removeGLMEnv — test when env section still has ANTHROPIC_AUTH_TOKEN after removal
 func TestRemoveGLMEnv_EmptyEnvAfterRemoval(t *testing.T) {
 	tmpDir := t.TempDir()
 	claudeDir := filepath.Join(tmpDir, ".claude")
@@ -3302,7 +3307,7 @@ func TestRemoveGLMEnv_EmptyEnvAfterRemoval(t *testing.T) {
 	}
 
 	settingsPath := filepath.Join(claudeDir, "settings.local.json")
-	// Only GLM keys, env should be removed entirely
+	// Only GLM keys - ANTHROPIC_AUTH_TOKEN is preserved, others removed
 	existing := `{"env":{"ANTHROPIC_AUTH_TOKEN":"tok","ANTHROPIC_BASE_URL":"url","ANTHROPIC_DEFAULT_HAIKU_MODEL":"h","ANTHROPIC_DEFAULT_SONNET_MODEL":"s","ANTHROPIC_DEFAULT_OPUS_MODEL":"o"}}`
 	if err := os.WriteFile(settingsPath, []byte(existing), 0o644); err != nil {
 		t.Fatal(err)
@@ -3323,9 +3328,21 @@ func TestRemoveGLMEnv_EmptyEnvAfterRemoval(t *testing.T) {
 		t.Fatalf("parse error: %v", err)
 	}
 
-	// env should be nil since all keys were removed
-	if settings.Env != nil {
-		t.Errorf("expected nil env after removing all GLM keys, got %v", settings.Env)
+	// env should NOT be nil since ANTHROPIC_AUTH_TOKEN is preserved
+	if settings.Env == nil {
+		t.Errorf("expected non-nil env after removing GLM routing keys (ANTHROPIC_AUTH_TOKEN is preserved)")
+	}
+
+	// ANTHROPIC_AUTH_TOKEN should still exist
+	if _, exists := settings.Env["ANTHROPIC_AUTH_TOKEN"]; !exists {
+		t.Error("ANTHROPIC_AUTH_TOKEN should be preserved")
+	}
+
+	// GLM routing vars should be removed
+	for _, key := range []string{"ANTHROPIC_BASE_URL", "ANTHROPIC_DEFAULT_HAIKU_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL"} {
+		if _, exists := settings.Env[key]; exists {
+			t.Errorf("%s should be removed", key)
+		}
 	}
 }
 
@@ -4995,10 +5012,11 @@ func TestRunCC_FullPath(t *testing.T) {
 		t.Errorf("expected Claude backend message, got: %s", output)
 	}
 
-	// Verify GLM vars were removed but other vars preserved
+	// Verify GLM routing vars were removed but ANTHROPIC_AUTH_TOKEN and OTHER_VAR were preserved
 	data, _ := os.ReadFile(settingsPath)
-	if strings.Contains(string(data), "ANTHROPIC_AUTH_TOKEN") {
-		t.Error("expected ANTHROPIC_AUTH_TOKEN to be removed")
+	// ANTHROPIC_AUTH_TOKEN should be preserved (permanent credential)
+	if !strings.Contains(string(data), "ANTHROPIC_AUTH_TOKEN") {
+		t.Error("expected ANTHROPIC_AUTH_TOKEN to be preserved")
 	}
 	if !strings.Contains(string(data), "OTHER_VAR") {
 		t.Error("expected OTHER_VAR to be preserved")
@@ -7464,8 +7482,9 @@ func TestRemoveGLMEnv_AllGLMVarsRemoved(t *testing.T) {
 
 	data, _ := os.ReadFile(settingsPath)
 	content := string(data)
-	if strings.Contains(content, "ANTHROPIC_AUTH_TOKEN") {
-		t.Error("ANTHROPIC_AUTH_TOKEN should be removed")
+	// ANTHROPIC_AUTH_TOKEN should be preserved (permanent credential)
+	if !strings.Contains(content, "ANTHROPIC_AUTH_TOKEN") {
+		t.Error("ANTHROPIC_AUTH_TOKEN should be preserved")
 	}
 	if strings.Contains(content, "ANTHROPIC_BASE_URL") {
 		t.Error("ANTHROPIC_BASE_URL should be removed")
@@ -7494,13 +7513,13 @@ func TestRemoveGLMEnv_EnvBecomesNull(t *testing.T) {
 	}
 
 	data, _ := os.ReadFile(settingsPath)
-	// After removing the only env var, env should be null/omitted
+	// ANTHROPIC_AUTH_TOKEN is preserved, so env should NOT be null/omitted
 	var result map[string]any
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatal(err)
 	}
-	if result["env"] != nil {
-		t.Error("env should be nil when all vars removed")
+	if result["env"] == nil {
+		t.Error("env should NOT be nil when ANTHROPIC_AUTH_TOKEN is preserved")
 	}
 }
 
