@@ -5,6 +5,70 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.8] - 2026-02-26
+
+### Summary
+
+This release introduces the auto-memory system, which automatically injects the project's persistent memory directory into the Claude Code session context on startup. The hook registry now correctly merges SystemMessage content from multiple sources without overwriting previous entries.
+
+### Breaking Changes
+
+None.
+
+### Added
+
+- **Auto-memory system**: `SessionStart` hook now automatically discovers and injects the `.claude/projects/` memory directory path into the SystemMessage, giving Claude Code persistent context across sessions.
+- **Memory configuration**: New `.moai/config/sections/memory.yaml` and `.moai/config/sections/context.yaml` configuration files for controlling memory and context behavior.
+- **Template memory directory**: Added `.moai/memory/.gitkeep` to template output so projects initialize with a proper memory storage location.
+
+### Fixed
+
+- **Registry SystemMessage merging**: `internal/hook/registry.go` now appends SystemMessage content from multiple hooks instead of overwriting the previous value, preventing context loss when multiple hooks contribute to the system message.
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.6.8] - 2026-02-26 (한국어)
+
+### 요약
+
+이번 릴리스는 자동 메모리 시스템을 도입하여 세션 시작 시 프로젝트의 영구 메모리 디렉토리를 Claude Code 세션 컨텍스트에 자동으로 주입합니다. 훅 레지스트리가 이제 여러 소스의 SystemMessage 내용을 덮어쓰지 않고 올바르게 병합합니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 추가됨 (Added)
+
+- **자동 메모리 시스템**: `SessionStart` 훅이 이제 `.claude/projects/` 메모리 디렉토리 경로를 자동으로 감지하여 SystemMessage에 주입, 세션 간 영구적인 컨텍스트를 제공합니다.
+- **메모리 설정**: 메모리 및 컨텍스트 동작을 제어하는 새 설정 파일 `.moai/config/sections/memory.yaml`과 `.moai/config/sections/context.yaml` 추가.
+- **템플릿 메모리 디렉토리**: 프로젝트 초기화 시 적절한 메모리 저장 위치를 갖도록 템플릿 출력에 `.moai/memory/.gitkeep` 추가.
+
+### 수정됨 (Fixed)
+
+- **레지스트리 SystemMessage 병합**: `internal/hook/registry.go`가 이제 여러 훅의 SystemMessage 내용을 덮어쓰지 않고 이어붙여, 여러 훅이 시스템 메시지에 기여할 때 컨텍스트 손실을 방지합니다.
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.6.5] - 2026-02-26
 
 ### Summary
