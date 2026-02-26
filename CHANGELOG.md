@@ -5,6 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.4] - 2026-02-26
+
+### Summary
+
+Bug fix release completing the login persistence fix by addressing remaining CLI paths that were removing API credentials. This release ensures `ANTHROPIC_AUTH_TOKEN` is preserved across all code paths (hooks and CLI commands).
+
+### Breaking Changes
+
+None.
+
+### Fixed
+
+- **CLI authentication persistence**: Fixed `removeGLMEnv()` in `cc.go` and `clearTmuxSessionEnv()` in `glm.go` incorrectly removing `ANTHROPIC_AUTH_TOKEN`. These CLI functions were not updated in the previous v2.6.3 fix (which only addressed the hook path), causing `/login` prompts to persist after `moai cc` or `moai cg` commands. Now all code paths (hooks and CLI) consistently preserve the authentication token.
+- **Test coverage**: Updated all related tests to expect token preservation behavior.
+
+### Changed
+
+- **Workflow documentation**: Standardized flag aliases across workflow skill files for consistency (`--solo` and `--team` flags now uniformly available).
+
+### Installation & Update
+
+\`\`\`bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+\`\`\`
+
+---
+
+## [2.6.4] - 2026-02-26 (한국어)
+
+### 요약
+
+로그인 지속성 수정을 완료하는 버그 수정 릴리스입니다. API 자격증명을 삭제하던 나머지 CLI 경로를 수정하여 모든 코드 경로(hooks 및 CLI 명령)에서 인증 토큰이 보존되도록 완성했습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 수정됨 (Fixed)
+
+- **CLI 인증 지속성**: `cc.go`의 `removeGLMEnv()`와 `glm.go`의 `clearTmuxSessionEnv()`가 `ANTHROPIC_AUTH_TOKEN`을 잘못 삭제하는 문제 수정. 이 CLI 함수들은 이전 v2.6.3 수정(hook 경로만 수정됨)에서 업데이트되지 않아 `moai cc` 또는 `moai cg` 명령 후 `/login` 프롬프트가 지속되었음. 이제 모든 코드 경로(hooks 및 CLI)가 인증 토큰을 일관되게 보존.
+- **테스트 커버리지**: 관련 모든 테스트를 토큰 보존 동작을 기대하도록 업데이트.
+
+### 변경됨 (Changed)
+
+- **워크플로우 문서화**: 워크플로우 스킬 파일 전체에서 플래그 별칭 표준화로 일관성 개선 (`--solo` 및 `--team` 플래그가 이제 모든 워크플로우에서 사용 가능).
+
+### 설치 및 업데이트 (Installation & Update)
+
+\`\`\`bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+\`\`\`
+
+---
+
 ## [2.6.3] - 2026-02-26
 
 ### Summary
