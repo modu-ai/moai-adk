@@ -265,11 +265,12 @@ func clearTmuxSessionEnv() error {
 	}
 
 	// GLM environment variables to clear from tmux session.
-	// ALL GLM vars including ANTHROPIC_AUTH_TOKEN are removed.
+	// ANTHROPIC_AUTH_TOKEN is intentionally excluded: it is the user's
+	// persistent authentication credential (Claude Max subscription), not a
+	// GLM-specific variable. Removing it would force /login every session (issue #433).
 	// The GLM API key is stored persistently in ~/.moai/.env.glm
 	// and re-injected by 'moai glm' when needed.
 	envVars := []string{
-		"ANTHROPIC_AUTH_TOKEN",
 		"ANTHROPIC_BASE_URL",
 		"ANTHROPIC_DEFAULT_OPUS_MODEL",
 		"ANTHROPIC_DEFAULT_SONNET_MODEL",
