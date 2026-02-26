@@ -454,7 +454,7 @@ type hookEntry struct {
 // It deploys a wrapper script to ~/.claude/hooks/moai-rank-session-end.sh (global)
 // and configures settings.json to call this script.
 func installRankHook() error {
-	homeDir, err := os.UserHomeDir()
+	homeDir, err := userHomeDir()
 	if err != nil {
 		return fmt.Errorf("get home directory: %w", err)
 	}
@@ -620,7 +620,7 @@ func detectGoBinPath(homeDir string) string {
 // removeRankHook removes the rank session hook from ~/.claude/settings.json
 // and deletes the global wrapper script from ~/.claude/hooks/.
 func removeRankHook() error {
-	homeDir, err := os.UserHomeDir()
+	homeDir, err := userHomeDir()
 	if err != nil {
 		return fmt.Errorf("get home directory: %w", err)
 	}

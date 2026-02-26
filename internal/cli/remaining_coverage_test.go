@@ -323,6 +323,9 @@ func TestRemoveGLMEnv_EnvBecomesEmptyAfterRemoval(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Simulate stored GLM key = "tok" so removeGLMEnv matches and removes ANTHROPIC_AUTH_TOKEN.
+	t.Setenv("MOAI_TEST_GLM_KEY", "tok")
+
 	err := removeGLMEnv(settingsPath)
 	if err != nil {
 		t.Fatalf("removeGLMEnv error: %v", err)

@@ -734,6 +734,9 @@ func TestRemoveGLMEnv_WithGLMVars(t *testing.T) {
 	tmpDir := t.TempDir()
 	settingsPath := filepath.Join(tmpDir, "settings.local.json")
 
+	// Simulate stored GLM key = "test-token" so removeGLMEnv matches and deletes it.
+	t.Setenv("MOAI_TEST_GLM_KEY", "test-token")
+
 	settings := SettingsLocal{
 		Env: map[string]string{
 			"ANTHROPIC_AUTH_TOKEN":           "test-token",
@@ -790,6 +793,9 @@ func TestRemoveGLMEnv_WithGLMVars(t *testing.T) {
 func TestRemoveGLMEnv_OnlyGLMVars(t *testing.T) {
 	tmpDir := t.TempDir()
 	settingsPath := filepath.Join(tmpDir, "settings.local.json")
+
+	// Simulate stored GLM key = "test-token" so removeGLMEnv matches and deletes it.
+	t.Setenv("MOAI_TEST_GLM_KEY", "test-token")
 
 	settings := SettingsLocal{
 		Env: map[string]string{

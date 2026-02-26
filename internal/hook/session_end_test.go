@@ -237,6 +237,55 @@ func TestGarbageCollectStaleTeams_MissingDir(t *testing.T) {
 	garbageCollectStaleTeams(homeDir)
 }
 
+func TestCleanupOrphanedTmuxSessions_GracefulWithContext(t *testing.T) {
+	t.Parallel()
+
+	// With a cancelled context, the function should return without panic.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // cancel immediately
+
+	// Should not panic or hang.
+	cleanupOrphanedTmuxSessions(ctx)
+}
+
+// TestGLMEnvVarsToClean_ExcludesAuthToken verifies that ANTHROPIC_AUTH_TOKEN
+// is not in the GLM cleanup list. Removing the auth token on session end would
+// force Claude Max subscribers to re-login every session (issue #433).
+func TestGLMEnvVarsToClean_ExcludesAuthToken(t *testing.T) {
+	t.Parallel()
+
+	for _, v := range glmEnvVarsToClean {
+		if v == "ANTHROPIC_AUTH_TOKEN" {
+			t.Errorf("glmEnvVarsToClean must not contain ANTHROPIC_AUTH_TOKEN: "+
+				"it is a permanent user credential, not a GLM-specific env var (issue #433); got list: %v", glmEnvVarsToClean)
+		}
+	}
+}
+
+// TestGLMEnvVarsToClean_ContainsExpectedVars verifies that all expected GLM
+// model routing variables are present in the cleanup list.
+func TestGLMEnvVarsToClean_ContainsExpectedVars(t *testing.T) {
+	t.Parallel()
+
+	expected := []string{
+		"ANTHROPIC_BASE_URL",
+		"ANTHROPIC_DEFAULT_OPUS_MODEL",
+		"ANTHROPIC_DEFAULT_SONNET_MODEL",
+		"ANTHROPIC_DEFAULT_HAIKU_MODEL",
+	}
+
+	varSet := make(map[string]bool, len(glmEnvVarsToClean))
+	for _, v := range glmEnvVarsToClean {
+		varSet[v] = true
+	}
+
+	for _, want := range expected {
+		if !varSet[want] {
+			t.Errorf("glmEnvVarsToClean missing expected GLM var %q; got list: %v", want, glmEnvVarsToClean)
+		}
+	}
+}
+
 func TestSessionEndHandler_AlwaysReturnsEmptyOutput(t *testing.T) {
 	t.Parallel()
 
@@ -261,150 +310,4 @@ func TestSessionEndHandler_AlwaysReturnsEmptyOutput(t *testing.T) {
 	if got.ExitCode != 0 {
 		t.Errorf("ExitCode should be 0, got %d", got.ExitCode)
 	}
-}
-
-func TestCleanupGLMSettings(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name           string
-		existingData   map[string]any
-		wantRemoved    []string
-		wantRemaining  []string
-		wantEnvDeleted bool
-	}{
-		{
-			name: "removes all GLM env vars including AUTH_TOKEN but keeps other vars",
-			existingData: map[string]any{
-				"env": map[string]any{
-					"ANTHROPIC_AUTH_TOKEN":           "glm-api-key",
-					"ANTHROPIC_BASE_URL":             "https://glm.example.com",
-					"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5",
-					"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
-					"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.7-air",
-					"CLAUDE_CODE_TEAMMATE_DISPLAY":   "auto",
-					"OTHER_VAR":                      "keep-me",
-				},
-			},
-			wantRemoved: []string{
-				"ANTHROPIC_AUTH_TOKEN",
-				"ANTHROPIC_BASE_URL",
-				"ANTHROPIC_DEFAULT_OPUS_MODEL",
-				"ANTHROPIC_DEFAULT_SONNET_MODEL",
-				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
-			},
-			// ANTHROPIC_AUTH_TOKEN is removed: the GLM API key is persisted in
-			// ~/.moai/.env.glm and re-injected by 'moai glm'. Leaving it in
-			// settings.local.json overrides Claude's OAuth and causes 401 errors.
-			wantRemaining:  []string{"OTHER_VAR", "CLAUDE_CODE_TEAMMATE_DISPLAY"},
-			wantEnvDeleted: false, // env still has OTHER_VAR and CLAUDE_CODE_TEAMMATE_DISPLAY
-		},
-		{
-			name: "removes all GLM model vars and deletes env section when only those remain",
-			existingData: map[string]any{
-				"env": map[string]any{
-					"ANTHROPIC_BASE_URL":             "https://glm.example.com",
-					"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5",
-					"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
-					"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.7-air",
-				},
-			},
-			wantRemoved: []string{
-				"ANTHROPIC_BASE_URL",
-				"ANTHROPIC_DEFAULT_OPUS_MODEL",
-				"ANTHROPIC_DEFAULT_SONNET_MODEL",
-				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
-			},
-			wantRemaining:  nil,
-			wantEnvDeleted: true, // env becomes empty, should be deleted
-		},
-		{
-			name: "no GLM vars - no changes",
-			existingData: map[string]any{
-				"env": map[string]any{
-					"OTHER_VAR": "keep-me",
-				},
-			},
-			wantRemoved:    nil,
-			wantRemaining:  []string{"OTHER_VAR"},
-			wantEnvDeleted: false,
-		},
-		{
-			name:           "no env section - no changes",
-			existingData:   map[string]any{},
-			wantRemoved:    nil,
-			wantRemaining:  nil,
-			wantEnvDeleted: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			tmpDir := t.TempDir()
-			claudeDir := filepath.Join(tmpDir, ".claude")
-			if err := os.MkdirAll(claudeDir, 0o755); err != nil {
-				t.Fatalf("setup .claude dir: %v", err)
-			}
-
-			settingsPath := filepath.Join(claudeDir, "settings.local.json")
-			data, err := json.MarshalIndent(tt.existingData, "", "  ")
-			if err != nil {
-				t.Fatalf("marshal settings: %v", err)
-			}
-			if err := os.WriteFile(settingsPath, data, 0o644); err != nil {
-				t.Fatalf("write settings: %v", err)
-			}
-
-			cleanupGLMSettings(tmpDir)
-
-			// Read back and verify
-			resultData, err := os.ReadFile(settingsPath)
-			if err != nil {
-				t.Fatalf("read result settings: %v", err)
-			}
-
-			var result map[string]any
-			if err := json.Unmarshal(resultData, &result); err != nil {
-				t.Fatalf("unmarshal result: %v", err)
-			}
-
-			// Check removed vars
-			env, hasEnv := result["env"].(map[string]any)
-			for _, key := range tt.wantRemoved {
-				if hasEnv {
-					if _, exists := env[key]; exists {
-						t.Errorf("var %q should have been removed", key)
-					}
-				}
-			}
-
-			// Check remaining vars
-			for _, key := range tt.wantRemaining {
-				if !hasEnv {
-					t.Errorf("env section was deleted but %q should remain", key)
-					continue
-				}
-				if _, exists := env[key]; !exists {
-					t.Errorf("var %q should still exist", key)
-				}
-			}
-
-			// Check if env was deleted when empty
-			if tt.wantEnvDeleted {
-				if hasEnv {
-					t.Error("env section should have been deleted when empty")
-				}
-			}
-		})
-	}
-}
-
-func TestCleanupGLMSettings_MissingFile(t *testing.T) {
-	t.Parallel()
-
-	tmpDir := t.TempDir()
-	// Don't create settings.local.json - should not panic
-	cleanupGLMSettings(tmpDir)
 }

@@ -16,7 +16,7 @@ import "path/filepath"
 func DefaultQuestions(projectRoot string) []Question {
 	// Use current directory name as default project name
 	defaultProjectName := filepath.Base(projectRoot)
-	if defaultProjectName == "." || defaultProjectName == "/" {
+	if defaultProjectName == "." || defaultProjectName == "/" || defaultProjectName == `\` {
 		defaultProjectName = "my-project"
 	}
 

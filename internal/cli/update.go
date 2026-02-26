@@ -454,7 +454,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				_, _ = fmt.Fprintf(out, "  %s Deploying templates...", symProgress())
 
 				// Build TemplateContext with detected paths for template rendering
-				homeDir, _ := os.UserHomeDir()
+				homeDir, _ := userHomeDir()
 				goBinPath := detectGoBinPathForUpdate(homeDir)
 				tmplCtx := template.NewTemplateContext(
 					template.WithGoBinPath(goBinPath),
@@ -1943,7 +1943,7 @@ func updateSettingsLocalEnv(settingsPath, key, value string) error {
 // The global hooks directory (~/.claude/hooks/moai/) is also removed since hooks
 // are only deployed to project-level directories via moai init.
 func ensureGlobalSettingsEnv() error {
-	homeDir, err := os.UserHomeDir()
+	homeDir, err := userHomeDir()
 	if err != nil {
 		return fmt.Errorf("get home directory: %w", err)
 	}

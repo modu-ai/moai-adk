@@ -32,6 +32,44 @@ import (
 )
 
 // =============================================================================
+// removeGLMEnv — ANTHROPIC_AUTH_TOKEN preserved when not matching GLM key
+// (issue #433: moai cc must not delete real /login auth tokens)
+// =============================================================================
+
+func TestRemoveGLMEnv_PreservesAuthTokenWhenNotGLMKey(t *testing.T) {
+	tmpDir := t.TempDir()
+	settingsPath := filepath.Join(tmpDir, "settings.local.json")
+
+	// Point HOME to tmpDir so there is no ~/.moai/.env.glm (no GLM key configured).
+	// ANTHROPIC_AUTH_TOKEN is a "real" Claude Max token that differs from any GLM key.
+	t.Setenv("HOME", tmpDir)
+
+	content := `{"env":{"ANTHROPIC_AUTH_TOKEN":"claude-max-real-token","ANTHROPIC_BASE_URL":"url","ANTHROPIC_DEFAULT_HAIKU_MODEL":"h"}}`
+	if err := os.WriteFile(settingsPath, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := removeGLMEnv(settingsPath); err != nil {
+		t.Fatalf("removeGLMEnv error: %v", err)
+	}
+
+	data, _ := os.ReadFile(settingsPath)
+	content = string(data)
+
+	// ANTHROPIC_AUTH_TOKEN must be preserved — it is a real /login token, not a GLM key.
+	if !strings.Contains(content, "claude-max-real-token") {
+		t.Error("ANTHROPIC_AUTH_TOKEN should be preserved when it does not match the stored GLM key (issue #433)")
+	}
+	// GLM routing vars must still be removed.
+	if strings.Contains(content, "ANTHROPIC_BASE_URL") {
+		t.Error("ANTHROPIC_BASE_URL (GLM routing var) should be removed")
+	}
+	if strings.Contains(content, "ANTHROPIC_DEFAULT_HAIKU_MODEL") {
+		t.Error("ANTHROPIC_DEFAULT_HAIKU_MODEL (GLM routing var) should be removed")
+	}
+}
+
+// =============================================================================
 // removeGLMEnv — empty file is a no-op (returns nil)
 // =============================================================================
 
@@ -57,10 +95,19 @@ func TestRemoveGLMEnv_EmptyFileNoOp(t *testing.T) {
 // =============================================================================
 
 func TestRemoveGLMEnv_GLMOnlyVarsResultsInNilEnv(t *testing.T) {
-	t.Parallel()
-
 	tmpDir := t.TempDir()
 	settingsPath := filepath.Join(tmpDir, "settings.local.json")
+
+	// Simulate stored GLM key = "tok" so removeGLMEnv matches and removes it.
+	// Write GLM key file to temp HOME dir (avoids env-var race with parallel tests).
+	moaiDir := filepath.Join(tmpDir, ".moai")
+	if err := os.MkdirAll(moaiDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(moaiDir, ".env.glm"), []byte("GLM_API_KEY=tok\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", tmpDir)
 
 	// Only GLM vars, so env map becomes empty → set to nil
 	content := `{"env":{"ANTHROPIC_AUTH_TOKEN":"tok","ANTHROPIC_BASE_URL":"x","ANTHROPIC_DEFAULT_HAIKU_MODEL":"y","ANTHROPIC_DEFAULT_SONNET_MODEL":"s","ANTHROPIC_DEFAULT_OPUS_MODEL":"o"}}`
@@ -472,7 +519,7 @@ func TestNewRankRegisterCmd_PrintsWarning(t *testing.T) {
 func TestSubmitSyncBatches_EmptySessions(t *testing.T) {
 	t.Parallel()
 
-	result := submitSyncBatches(nil, nil, nil, nil, nil, &bytes.Buffer{})
+	result := submitSyncBatches(context.TODO(), nil, nil, nil, nil, &bytes.Buffer{})
 	if result.Submitted != 0 || result.FailedTotal != 0 || result.ErroredTotal != 0 {
 		t.Errorf("empty sessions should give zero result, got %+v", result)
 	}
