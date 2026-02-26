@@ -5,6 +5,72 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.5] - 2026-02-26
+
+### Summary
+
+Emergency patch release fixing a critical authentication bug where GLM API keys were being sent to Anthropic's API, causing 401 authentication errors. The v2.6.4 release incorrectly preserved `ANTHROPIC_AUTH_TOKEN` in `settings.local.json`, causing Claude Code to send GLM keys (which are Anthropic-compatible format) to Anthropic's servers. This release properly removes all GLM environment variables including `ANTHROPIC_AUTH_TOKEN` during `moai cc` and session cleanup, relying on the persistent `~/.moai/.env.glm` file for GLM API key storage.
+
+### Breaking Changes
+
+None.
+
+### Fixed
+
+- **Critical: GLM key leakage to Anthropic API**: Fixed `removeGLMEnv()` in `cc.go`, `clearTmuxSessionEnv()` in `glm.go`, and `cleanupGLMSettings()` in `session_end.go` to now properly remove `ANTHROPIC_AUTH_TOKEN` from `settings.local.json`. The v2.6.4 release incorrectly preserved this token, causing GLM API keys to be sent to Anthropic's servers (resulting in 401 errors and `/login` prompts).
+- **Empty file handling**: Added graceful handling of empty `settings.local.json` files (0-byte files) in `cc.go`, `glm.go`, and `session_end.go` to prevent JSON parsing errors.
+- **Home directory detection**: Fixed `findProjectRoot()` in `glm.go` to skip `~/.moai/` (global cache directory) when searching for project root, preventing the global cache from being treated as a project.
+
+### Changed
+
+- **Agent Teams display mode**: Changed `CLAUDE_CODE_TEAMMATE_DISPLAY` from `"tmux"` to `"auto"` for better fallback support. Claude Code now automatically detects tmux availability and falls back to in-process display when tmux is not installed.
+- **Test coverage**: Increased test coverage for GLM-related functions and edge cases.
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.6.5] - 2026-02-26 (한국어)
+
+### 요약
+
+긴급 패치 릴리스: GLM API 키가 Anthropic API로 전송되어 401 인증 오류를 일으키는 치명적인 버그 수정. v2.6.4 릴리스는 `ANTHROPIC_AUTH_TOKEN`을 `settings.local.json`에 잘못 보존하여, Claude Code가 GLM 키(Anthropic 호환 형식)를 Anthropic 서버로 전송하는 문제가 있었음. 이 릴리스는 `moai cc` 및 세션 정리 시 모든 GLM 환경변수(`ANTHROPIC_AUTH_TOKEN` 포함)를 올바르게 제거하며, GLM API 키는 영구 저장소인 `~/.moai/.env.glm` 파일에서 관리.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 수정됨 (Fixed)
+
+- **치명적: GLM 키가 Anthropic API로 유출**: `cc.go`의 `removeGLMEnv()`, `glm.go`의 `clearTmuxSessionEnv()`, `session_end.go`의 `cleanupGLMSettings()`에서 `ANTHROPIC_AUTH_TOKEN`을 `settings.local.json`에서 올바르게 제거하도록 수정. v2.6.4 릴리스는 이 토큰을 잘못 보존하여 GLM API 키가 Anthropic 서버로 전송됨(401 오류 및 `/login` 프롬프트 원인).
+- **빈 파일 처리**: `cc.go`, `glm.go`, `session_end.go`에서 빈 `settings.local.json` 파일(0바이트)을 우아하게 처리하여 JSON 파싱 오류 방지.
+- **홈 디렉토리 감지**: `glm.go`의 `findProjectRoot()`가 프로젝트 루트 검색 시 `~/.moai/`(전역 캐시 디렉토리)를 건너뛰도록 수정하여 전역 캐시가 프로젝트로 처리되는 문제 해결.
+
+### 변경됨 (Changed)
+
+- **Agent Teams 표시 모드**: `CLAUDE_CODE_TEAMMATE_DISPLAY`를 `"tmux"`에서 `"auto"`로 변경하여 더 나은 폴백 지원. Claude Code가 tmux 사용 가능성을 자동 감지하고 tmux가 설치되지 않은 경우 in-process 표시로 폴백.
+- **테스트 커버리지**: GLM 관련 함수 및 엣지 케이스에 대한 테스트 커버리지 증대.
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.6.4] - 2026-02-26
 
 ### Summary
