@@ -1410,6 +1410,9 @@ func TestRestoreMoaiConfig_LegacyBackup(t *testing.T) {
 // =============================================================================
 
 func TestRunCC_SuccessfulExecution(t *testing.T) {
+	// Simulate stored GLM key = "tok" so removeGLMEnv deletes ANTHROPIC_AUTH_TOKEN.
+	t.Setenv("MOAI_TEST_GLM_KEY", "tok")
+
 	tmpDir := t.TempDir()
 	// Create .moai directory so findProjectRoot works
 	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai"), 0o755); err != nil {
@@ -2454,6 +2457,9 @@ func TestRunCC_WithProjectRoot(t *testing.T) {
 
 // removeGLMEnv — test removing from settings.local.json
 func TestRemoveGLMEnv_WithExistingGLMVars(t *testing.T) {
+	// Simulate stored GLM key = "tok" so ANTHROPIC_AUTH_TOKEN is removed.
+	t.Setenv("MOAI_TEST_GLM_KEY", "tok")
+
 	tmpDir := t.TempDir()
 	claudeDir := filepath.Join(tmpDir, ".claude")
 	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
@@ -3349,6 +3355,9 @@ func TestRemoveGLMEnv_FileNotExist(t *testing.T) {
 
 // removeGLMEnv — test when env section still has ANTHROPIC_AUTH_TOKEN after removal
 func TestRemoveGLMEnv_EmptyEnvAfterRemoval(t *testing.T) {
+	// Simulate stored GLM key = "tok" so ANTHROPIC_AUTH_TOKEN is removed.
+	t.Setenv("MOAI_TEST_GLM_KEY", "tok")
+
 	tmpDir := t.TempDir()
 	claudeDir := filepath.Join(tmpDir, ".claude")
 	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
@@ -5027,6 +5036,8 @@ func TestReadStdinWithTimeout_WithPipe(t *testing.T) {
 // --- runCC: full successful path ---
 
 func TestRunCC_FullPath(t *testing.T) {
+	// Simulate stored GLM key = "key" so removeGLMEnv deletes ANTHROPIC_AUTH_TOKEN.
+	t.Setenv("MOAI_TEST_GLM_KEY", "key")
 	tmpDir := t.TempDir()
 
 	// Create project structure
@@ -7547,6 +7558,9 @@ func TestCleanupMoaiWorktrees_NoGitRepo(t *testing.T) {
 // --- removeGLMEnv ---
 
 func TestRemoveGLMEnv_AllGLMVarsRemoved(t *testing.T) {
+	// Simulate stored GLM key = "key" so ANTHROPIC_AUTH_TOKEN is removed.
+	t.Setenv("MOAI_TEST_GLM_KEY", "key")
+
 	tmpDir := t.TempDir()
 	claudeDir := filepath.Join(tmpDir, ".claude")
 	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
@@ -7579,6 +7593,9 @@ func TestRemoveGLMEnv_AllGLMVarsRemoved(t *testing.T) {
 }
 
 func TestRemoveGLMEnv_EnvBecomesNull(t *testing.T) {
+	// Simulate stored GLM key = "key" so ANTHROPIC_AUTH_TOKEN is removed, leaving env nil.
+	t.Setenv("MOAI_TEST_GLM_KEY", "key")
+
 	tmpDir := t.TempDir()
 	claudeDir := filepath.Join(tmpDir, ".claude")
 	if err := os.MkdirAll(claudeDir, 0o755); err != nil {

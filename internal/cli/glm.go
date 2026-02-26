@@ -579,6 +579,12 @@ func saveGLMKey(key string) error {
 
 // loadGLMKey loads the GLM API key from ~/.moai/.env.glm.
 func loadGLMKey() string {
+	// Allow tests to simulate a specific GLM key without requiring a real
+	// ~/.moai/.env.glm file. Only set this in test code via t.Setenv.
+	if testKey := os.Getenv("MOAI_TEST_GLM_KEY"); testKey != "" {
+		return testKey
+	}
+
 	envPath := getGLMEnvPath()
 	if envPath == "" {
 		return ""

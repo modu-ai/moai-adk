@@ -125,12 +125,14 @@ func removeGLMEnv(settingsPath string) error {
 		return fmt.Errorf("parse settings.local.json: %w", err)
 	}
 
-	// Remove ALL GLM-injected env variables including ANTHROPIC_AUTH_TOKEN.
-	// The GLM API key is persisted in ~/.moai/.env.glm and re-injected by
-	// 'moai glm'. Keeping ANTHROPIC_AUTH_TOKEN here causes /login errors
-	// because Claude Code sends the GLM key to Anthropic's API (which rejects it).
+	// Remove GLM-specific env variables to restore Claude backend.
+	// ANTHROPIC_AUTH_TOKEN is only removed if its value matches the stored GLM
+	// API key — this preserves real Claude Max subscription tokens written by
+	// /login, which use the same field (issue #433).
 	if settings.Env != nil {
-		delete(settings.Env, "ANTHROPIC_AUTH_TOKEN")
+		if glmKey := loadGLMKey(); glmKey != "" && settings.Env["ANTHROPIC_AUTH_TOKEN"] == glmKey {
+			delete(settings.Env, "ANTHROPIC_AUTH_TOKEN")
+		}
 		delete(settings.Env, "ANTHROPIC_BASE_URL")
 		delete(settings.Env, "ANTHROPIC_DEFAULT_HAIKU_MODEL")
 		delete(settings.Env, "ANTHROPIC_DEFAULT_SONNET_MODEL")
