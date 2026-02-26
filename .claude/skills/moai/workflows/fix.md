@@ -40,7 +40,7 @@ Flow: Parallel Scan -> Classify -> Fix -> Verify -> Report
 - --errors (alias --errors-only): Fix errors only, skip warnings
 - --security (alias --include-security): Include security issues in scan
 - --no-fmt (alias --no-format): Skip formatting fixes
-- --resume [ID] (alias --resume-from): Resume from snapshot (latest if no ID)
+- --resume <ID> (alias --resume-from): Resume from snapshot (use 'latest' for most recent)
 - --team: Enable team-based debugging (see team-debug.md for competing hypothesis investigation)
 
 ## Phase 1: Parallel Scan

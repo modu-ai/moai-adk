@@ -60,7 +60,7 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **run** (aliases: impl): DDD/TDD implementation workflow (per quality.yaml development_mode)
 - **sync** (aliases: docs, pr): Documentation synchronization and PR creation
 - **project** (aliases: init): Project documentation generation
-- **feedback** (aliases: fb, bug, issue): GitHub issue creation
+- **feedback** (aliases: issue): GitHub issue creation
 - **fix**: Auto-fix errors in a single pass
 - **loop**: Iterative auto-fix until completion marker detected
 - **mx**: MX tag scan and annotation for codebase

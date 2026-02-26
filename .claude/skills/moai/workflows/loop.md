@@ -40,7 +40,7 @@ Flow: Check Completion -> Memory Check -> Diagnose -> Fix -> Verify -> Repeat
 - --errors (alias --errors-only): Fix errors only, skip warnings
 - --coverage (alias --include-coverage): Include coverage threshold (default 85%)
 - --memory-check: Enable memory pressure detection
-- --resume ID (alias --resume-from): Restore from snapshot
+- --resume <ID> (alias --resume-from): Restore from snapshot (e.g., 'latest', 'iteration-001', 'memory-pressure')
 
 ## Per-Iteration Cycle
 
@@ -211,6 +211,22 @@ All fixes within the loop follow CLAUDE.md Section 7 Safe Development Protocol:
 5. Loop: Execute per-iteration cycle (Steps 1-9, including Step 5.5 MX Context Scan)
 6. On exit: Report final summary with evidence
 7. If memory checkpoint created: Display resume instructions
+
+## Team Mode
+
+When --team flag is provided, loop delegates to a team-based iterative fixing workflow with parallel diagnostic and fix agents.
+
+Team composition: Multiple diagnostic and fix agents working in parallel on different issue types.
+
+Team Prerequisites:
+- `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env
+- `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml`
+
+Fallback Behavior:
+If prerequisites are not met:
+- Warn user about team mode unavailability
+- Continue in single-agent mode (sequential)
+- No data loss or state corruption
 
 ---
 

@@ -39,7 +39,7 @@ For phase overview, token budgets, and phase transitions, see: @.claude/rules/mo
 - --max N: Maximum iteration count for loop (default 100)
 - --branch: Auto-create feature branch
 - --pr: Auto-create pull request after completion
-- --resume SPEC-XXX: Resume previous work from existing SPEC
+- --resume <SPEC-ID>: Resume previous work from existing SPEC (e.g., SPEC-AUTH-001)
 - --team: Force Agent Teams mode for plan and run phases
 - --solo: Force sub-agent mode (single agent per phase)
 

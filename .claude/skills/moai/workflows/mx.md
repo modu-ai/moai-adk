@@ -219,6 +219,22 @@ During DDD ANALYZE phase:
 /moai mx --all --threshold 2
 ```
 
+## Team Mode
+
+When --team flag is provided, mx delegates to a team-based parallel scanning workflow with language-specific agents.
+
+Team composition: Multiple agents scanning different languages or code sections in parallel.
+
+Team Prerequisites:
+- `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env
+- `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml`
+
+Fallback Behavior:
+If prerequisites are not met:
+- Warn user about team mode unavailability
+- Continue in single-agent mode (sequential scan)
+- No data loss or state corruption
+
 ---
 
 Version: 2.5.0
