@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Summary
 
-Emergency patch release fixing a critical authentication bug where GLM API keys were being sent to Anthropic's API, causing 401 authentication errors. The v2.6.4 release incorrectly preserved `ANTHROPIC_AUTH_TOKEN` in `settings.local.json`, causing Claude Code to send GLM keys (which are Anthropic-compatible format) to Anthropic's servers. This release properly removes all GLM environment variables including `ANTHROPIC_AUTH_TOKEN` during `moai cc` and session cleanup, relying on the persistent `~/.moai/.env.glm` file for GLM API key storage.
+Hotfix release correcting a configuration management regression introduced in v2.6.4. The v2.6.4 release inadvertently preserved `ANTHROPIC_AUTH_TOKEN` in project `settings.local.json` files after GLM mode cleanup, causing GLM API keys to be routed to Anthropic's API endpoints (resulting in 401 authentication errors and persistent `/login` prompts). This release restores the correct behavior where GLM credentials are managed solely through `~/.moai/.env.glm` and properly removed from project settings during `moai cc` or session end.
 
 ### Breaking Changes
 
@@ -17,9 +17,10 @@ None.
 
 ### Fixed
 
-- **Critical: GLM key leakage to Anthropic API**: Fixed `removeGLMEnv()` in `cc.go`, `clearTmuxSessionEnv()` in `glm.go`, and `cleanupGLMSettings()` in `session_end.go` to now properly remove `ANTHROPIC_AUTH_TOKEN` from `settings.local.json`. The v2.6.4 release incorrectly preserved this token, causing GLM API keys to be sent to Anthropic's servers (resulting in 401 errors and `/login` prompts).
-- **Empty file handling**: Added graceful handling of empty `settings.local.json` files (0-byte files) in `cc.go`, `glm.go`, and `session_end.go` to prevent JSON parsing errors.
-- **Home directory detection**: Fixed `findProjectRoot()` in `glm.go` to skip `~/.moai/` (global cache directory) when searching for project root, preventing the global cache from being treated as a project.
+- **Configuration management regression**: Reverted v2.6.4's preservation of `ANTHROPIC_AUTH_TOKEN` in `settings.local.json`. The token is now correctly removed by `removeGLMEnv()` (cc.go), `clearTmuxSessionEnv()` (glm.go), and `cleanupGLMSettings()` (session_end.go) during cleanup operations.
+- **Root cause**: v2.6.4 attempted to preserve user's permanent API credentials, but this caused GLM keys (stored in `~/.moai/.env.glm`) to persist in project settings and be routed to Anthropic's API instead of GLM endpoints.
+- **Empty file handling**: Added graceful handling of empty `settings.local.json` files (0-byte files) to prevent JSON parsing errors.
+- **Home directory detection**: Fixed `findProjectRoot()` to skip `~/.moai/` (global cache) when searching for project root.
 
 ### Changed
 
@@ -42,7 +43,7 @@ moai version
 
 ### 요약
 
-긴급 패치 릴리스: GLM API 키가 Anthropic API로 전송되어 401 인증 오류를 일으키는 치명적인 버그 수정. v2.6.4 릴리스는 `ANTHROPIC_AUTH_TOKEN`을 `settings.local.json`에 잘못 보존하여, Claude Code가 GLM 키(Anthropic 호환 형식)를 Anthropic 서버로 전송하는 문제가 있었음. 이 릴리스는 `moai cc` 및 세션 정리 시 모든 GLM 환경변수(`ANTHROPIC_AUTH_TOKEN` 포함)를 올바르게 제거하며, GLM API 키는 영구 저장소인 `~/.moai/.env.glm` 파일에서 관리.
+v2.6.4에서 도입된 설정 관리 회귀를 수정하는 핫픽스 릴리스. v2.6.4 릴리스는 GLM 모드 정리 후 프로젝트 `settings.local.json`에 `ANTHROPIC_AUTH_TOKEN`을 실수로 보존하여, GLM API 키가 Anthropic API 엔드포인트로 라우팅되는 문제(401 인증 오류 및 지속적인 `/login` 프롬프트)를 일으켰음. 이 릴리스는 GLM 자격증명이 `~/.moai/.env.glm`를 통해 exclusive하게 관리되며 `moai cc` 또는 세션 종료 시 프로젝트 설정에서 올바르게 제거되는 올바른 동작을 복원.
 
 ### 주요 변경 사항 (Breaking Changes)
 
@@ -50,9 +51,10 @@ moai version
 
 ### 수정됨 (Fixed)
 
-- **치명적: GLM 키가 Anthropic API로 유출**: `cc.go`의 `removeGLMEnv()`, `glm.go`의 `clearTmuxSessionEnv()`, `session_end.go`의 `cleanupGLMSettings()`에서 `ANTHROPIC_AUTH_TOKEN`을 `settings.local.json`에서 올바르게 제거하도록 수정. v2.6.4 릴리스는 이 토큰을 잘못 보존하여 GLM API 키가 Anthropic 서버로 전송됨(401 오류 및 `/login` 프롬프트 원인).
-- **빈 파일 처리**: `cc.go`, `glm.go`, `session_end.go`에서 빈 `settings.local.json` 파일(0바이트)을 우아하게 처리하여 JSON 파싱 오류 방지.
-- **홈 디렉토리 감지**: `glm.go`의 `findProjectRoot()`가 프로젝트 루트 검색 시 `~/.moai/`(전역 캐시 디렉토리)를 건너뛰도록 수정하여 전역 캐시가 프로젝트로 처리되는 문제 해결.
+- **설정 관리 회귀**: v2.6.4의 `settings.local.json`에서 `ANTHROPIC_AUTH_TOKEN` 보존 동작을 되돌림. 토큰이 이제 `removeGLMEnv()` (cc.go), `clearTmuxSessionEnv()` (glm.go), `cleanupGLMSettings()` (session_end.go)에 의해 정리 작업 중 올바르게 제거됨.
+- **근본 원인**: v2.6.4는 사용자의 영구 API 자격증명을 보존하려 했으나, 이로 인해 `~/.moai/.env.glm`에 저장된 GLM 키가 프로젝트 설정에 남아 GLM 엔드포인트가 아닌 Anthropic API로 라우팅되는 문제 발생.
+- **빈 파일 처리**: 빈 `settings.local.json` 파일(0바이트)을 우아하게 처리하여 JSON 파싱 오류 방지.
+- **홈 디렉토리 감지**: 프로젝트 루트 검색 시 `~/.moai/`(전역 캐시)를 건너뛰도록 수정.
 
 ### 변경됨 (Changed)
 
