@@ -223,4 +223,3 @@ func runGitCommand(dir string, args ...string) (string, error) {
 	}
 	return string(output), nil
 }
-
