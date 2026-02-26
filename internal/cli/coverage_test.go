@@ -530,6 +530,15 @@ func TestRunCC_WithConfig(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	setupMinimalConfig(t, tmpDir)
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
 
 	mgr := config.NewConfigManager()
 	if _, err := mgr.Load(tmpDir); err != nil {
@@ -538,6 +547,13 @@ func TestRunCC_WithConfig(t *testing.T) {
 
 	deps = &Dependencies{Config: mgr}
 
+	// Override launchClaude to skip actual exec
+	origLaunch := launchClaudeFunc
+	defer func() { launchClaudeFunc = origLaunch }()
+	launchClaudeFunc = func(profile string, args []string) error {
+		return nil
+	}
+
 	buf := new(bytes.Buffer)
 	ccCmd.SetOut(buf)
 	ccCmd.SetErr(buf)
@@ -545,10 +561,6 @@ func TestRunCC_WithConfig(t *testing.T) {
 	err := ccCmd.RunE(ccCmd, []string{})
 	if err != nil {
 		t.Fatalf("runCC with config error: %v", err)
-	}
-
-	if !strings.Contains(buf.String(), "Switched to Claude backend") {
-		t.Errorf("output should confirm switch, got %q", buf.String())
 	}
 }
 
@@ -573,6 +585,13 @@ func TestRunCC_NilConfig(t *testing.T) {
 
 	deps = nil
 
+	// Override launchClaude to skip actual exec
+	origLaunch := launchClaudeFunc
+	defer func() { launchClaudeFunc = origLaunch }()
+	launchClaudeFunc = func(profile string, args []string) error {
+		return nil
+	}
+
 	buf := new(bytes.Buffer)
 	ccCmd.SetOut(buf)
 	ccCmd.SetErr(buf)
@@ -580,10 +599,6 @@ func TestRunCC_NilConfig(t *testing.T) {
 	err := ccCmd.RunE(ccCmd, []string{})
 	if err != nil {
 		t.Fatalf("runCC nil deps should not error, got %v", err)
-	}
-
-	if !strings.Contains(buf.String(), "Claude") {
-		t.Errorf("output should mention Claude, got %q", buf.String())
 	}
 }
 
@@ -600,6 +615,15 @@ func TestRunGLM_WithConfig(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	setupMinimalConfig(t, tmpDir)
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
 
 	mgr := config.NewConfigManager()
 	if _, err := mgr.Load(tmpDir); err != nil {
@@ -608,6 +632,13 @@ func TestRunGLM_WithConfig(t *testing.T) {
 
 	deps = &Dependencies{Config: mgr}
 
+	// Override launchClaude to skip actual exec
+	origLaunch := launchClaudeFunc
+	defer func() { launchClaudeFunc = origLaunch }()
+	launchClaudeFunc = func(profile string, args []string) error {
+		return nil
+	}
+
 	buf := new(bytes.Buffer)
 	glmCmd.SetOut(buf)
 	glmCmd.SetErr(buf)
@@ -615,11 +646,6 @@ func TestRunGLM_WithConfig(t *testing.T) {
 	err := glmCmd.RunE(glmCmd, []string{})
 	if err != nil {
 		t.Fatalf("runGLM with config error: %v", err)
-	}
-
-	// GLM Team mode should be enabled
-	if !strings.Contains(buf.String(), "GLM Team mode enabled") {
-		t.Errorf("output should mention GLM Team mode enabled, got %q", buf.String())
 	}
 }
 
@@ -649,6 +675,13 @@ func TestRunGLM_InjectsEnvToSettings(t *testing.T) {
 
 	deps = &Dependencies{Config: mgr}
 
+	// Override launchClaude to skip actual exec
+	origLaunch := launchClaudeFunc
+	defer func() { launchClaudeFunc = origLaunch }()
+	launchClaudeFunc = func(profile string, args []string) error {
+		return nil
+	}
+
 	buf := new(bytes.Buffer)
 	glmCmd.SetOut(buf)
 	glmCmd.SetErr(buf)
@@ -656,11 +689,6 @@ func TestRunGLM_InjectsEnvToSettings(t *testing.T) {
 	err := glmCmd.RunE(glmCmd, []string{})
 	if err != nil {
 		t.Fatalf("runGLM error: %v", err)
-	}
-
-	// GLM Team mode should be enabled
-	if !strings.Contains(buf.String(), "GLM Team mode enabled") {
-		t.Errorf("output should mention GLM Team mode enabled, got %q", buf.String())
 	}
 
 	// Verify settings.local.json was created with GLM env
@@ -697,6 +725,13 @@ func TestRunGLM_NilConfig(t *testing.T) {
 
 	deps = nil
 
+	// Override launchClaude to skip actual exec
+	origLaunch := launchClaudeFunc
+	defer func() { launchClaudeFunc = origLaunch }()
+	launchClaudeFunc = func(profile string, args []string) error {
+		return nil
+	}
+
 	buf := new(bytes.Buffer)
 	glmCmd.SetOut(buf)
 	glmCmd.SetErr(buf)
@@ -704,11 +739,6 @@ func TestRunGLM_NilConfig(t *testing.T) {
 	err := glmCmd.RunE(glmCmd, []string{})
 	if err != nil {
 		t.Fatalf("runGLM nil deps should not error, got %v", err)
-	}
-
-	// GLM Team mode should be enabled (uses defaults when deps is nil)
-	if !strings.Contains(buf.String(), "GLM Team mode enabled") {
-		t.Errorf("output should mention GLM Team mode enabled, got %q", buf.String())
 	}
 }
 

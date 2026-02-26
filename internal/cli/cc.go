@@ -13,27 +13,40 @@ import (
 )
 
 var ccCmd = &cobra.Command{
-	Use:   "cc",
-	Short: "Switch to Claude backend",
-	Long: `Switch the active LLM backend to Claude by removing GLM env variables from .claude/settings.local.json.
+	Use:   "cc [-p profile] [-- claude-args...]",
+	Short: "Login to Claude backend and launch Claude Code",
+	Long: `Login to Claude by removing GLM env variables, then launch Claude Code.
 
-This command removes the GLM-specific environment variables that were injected
-by 'moai glm' or 'moai cg', restoring Claude Code to use the default Claude API.
+This command:
+  1. Removes GLM-specific environment variables from .claude/settings.local.json
+  2. Resets team mode if it was enabled (glm or cg)
+  3. Optionally sets a profile via -p flag (CLAUDE_CONFIG_DIR)
+  4. Reads DO_CLAUDE_* settings and converts them to CLI flags
+  5. Launches Claude Code via exec (replaces current process)
 
-If team mode was enabled (glm or cg), it will be disabled automatically.
+Flags:
+  -p, --profile <name>   Use a named Claude profile (~/.claude-profiles/<name>/)
+  -b, --bypass           Enable --dangerously-skip-permissions
+  -c, --continue         Continue previous session
+  -m, --model <model>    Override model selection
+  --chrome / --no-chrome Toggle Chrome MCP
 
-Use 'moai glm' for all-GLM mode, or 'moai cg' for Claude + GLM hybrid mode.`,
-	Args: cobra.NoArgs,
-	RunE: runCC,
+Examples:
+  moai cc                     # Default profile, launch Claude
+  moai cc -p work             # Use 'work' profile
+  moai cc -p work -- --print  # Profile + pass-through args to Claude`,
+	DisableFlagParsing: true,
+	RunE:               runCC,
 }
 
 func init() {
 	rootCmd.AddCommand(ccCmd)
 }
 
-// runCC switches the LLM backend to Claude by removing GLM env from settings.local.json.
-func runCC(cmd *cobra.Command, _ []string) error {
-	out := cmd.OutOrStdout()
+// runCC switches the LLM backend to Claude, then launches Claude Code.
+func runCC(cmd *cobra.Command, args []string) error {
+	// Parse -p/--profile from args
+	profileName, filteredArgs := parseProfileFlag(args)
 
 	// Get project root
 	root, err := findProjectRoot()
@@ -54,27 +67,20 @@ func runCC(cmd *cobra.Command, _ []string) error {
 
 	// Handle team_mode: disable and cleanup worktrees
 	teamModeMsg := resetTeamModeForCC(root)
+	if teamModeMsg != "" {
+		fmt.Fprintln(os.Stderr, teamModeMsg)
+	}
 
 	// Cleanup moai worktrees if any exist
 	worktreeMsg := cleanupMoaiWorktrees(root)
-
-	details := []string{
-		"GLM configuration removed from:",
-		"  - .claude/settings.local.json",
-	}
-	if teamModeMsg != "" {
-		details = append(details, "", teamModeMsg)
-	}
 	if worktreeMsg != "" {
-		details = append(details, "", worktreeMsg)
+		fmt.Fprintln(os.Stderr, worktreeMsg)
 	}
-	details = append(details, "", "Run 'moai glm' for all-GLM mode, or 'moai cg' for hybrid mode.")
 
-	_, _ = fmt.Fprintln(out, renderSuccessCard(
-		"Switched to Claude backend",
-		details...,
-	))
-	return nil
+	fmt.Fprintln(os.Stderr, "Launching Claude Code...")
+
+	// Launch claude with profile and extra args
+	return launchClaude(profileName, filteredArgs)
 }
 
 // resetTeamModeForCC disables team_mode when switching to CC.
@@ -151,31 +157,22 @@ func cleanupMoaiWorktrees(projectRoot string) string {
 	}
 
 	// List worktrees and find moai-related ones
-	// git worktree list --porcelain
-	// Format: worktree /path/to/worktree
-	//         HEAD <sha>
-	//         branch refs/heads/worktree-<name>
 	output, err := runGitCommand(projectRoot, "worktree", "list", "--porcelain")
 	if err != nil {
 		return "" // Silently ignore errors
 	}
 
 	// Parse worktree list to find moai worker worktrees
-	// Look for worktrees with paths containing .claude/worktrees/worker-
 	worktreeBase := filepath.Join(projectRoot, ".claude", "worktrees")
 	var cleanedWorktrees []string
 
-	// Parse porcelain output
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
 		if strings.HasPrefix(line, "worktree ") {
 			worktreePath := strings.TrimPrefix(line, "worktree ")
-			// Check if this is a moai worker worktree
 			if strings.HasPrefix(worktreePath, worktreeBase) {
-				// Extract worker name from path
 				workerName := filepath.Base(worktreePath)
 				if strings.HasPrefix(workerName, "worker-") {
-					// Remove the worktree
 					if err := removeWorktree(projectRoot, workerName); err == nil {
 						cleanedWorktrees = append(cleanedWorktrees, workerName)
 					}

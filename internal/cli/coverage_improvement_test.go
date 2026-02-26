@@ -1435,6 +1435,13 @@ func TestRunCC_SuccessfulExecution(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 
+	// Override launchClaude to skip actual exec
+	origLaunch := launchClaudeFunc
+	defer func() { launchClaudeFunc = origLaunch }()
+	launchClaudeFunc = func(profile string, args []string) error {
+		return nil
+	}
+
 	cmd := &cobra.Command{Use: "cc-test"}
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -1443,11 +1450,6 @@ func TestRunCC_SuccessfulExecution(t *testing.T) {
 	err = runCC(cmd, nil)
 	if err != nil {
 		t.Fatalf("runCC error: %v", err)
-	}
-
-	output := buf.String()
-	if !strings.Contains(output, "Claude") {
-		t.Error("output should mention Claude")
 	}
 
 	// Verify GLM env was removed but OTHER was kept
@@ -1681,8 +1683,8 @@ func TestCGCmd_Exists(t *testing.T) {
 	if cgCmd == nil {
 		t.Fatal("cgCmd should not be nil")
 	}
-	if cgCmd.Use != "cg" {
-		t.Errorf("cgCmd.Use = %q, want %q", cgCmd.Use, "cg")
+	if !strings.HasPrefix(cgCmd.Use, "cg") {
+		t.Errorf("cgCmd.Use should start with 'cg', got %q", cgCmd.Use)
 	}
 }
 
@@ -2023,7 +2025,7 @@ func TestEnableTeamMode_Success_CG(t *testing.T) {
 	}
 }
 
-// runGLM — test with API key argument
+// runGLM — test with "setup" subcommand for API key saving
 func TestRunGLM_SavesAPIKey(t *testing.T) {
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
@@ -2047,15 +2049,15 @@ func TestRunGLM_SavesAPIKey(t *testing.T) {
 	cmd.SetOut(&buf)
 	cmd.SetErr(&buf)
 
-	// Test saving API key via args
-	err := runGLM(cmd, []string{"sk-my-test-key"})
+	// Test saving API key via "setup" subcommand (new API)
+	err := runGLM(cmd, []string{"setup", "sk-my-test-key"})
 	if err != nil {
-		t.Fatalf("runGLM error: %v", err)
+		t.Fatalf("runGLM setup error: %v", err)
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "GLM API key saved") {
-		t.Error("should indicate API key was saved")
+	if !strings.Contains(output, "GLM API key stored") {
+		t.Errorf("should indicate API key was stored, got: %s", output)
 	}
 
 	// Verify key was saved
@@ -2394,6 +2396,13 @@ func TestRunCC_WithProjectRoot(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 
+	// Override launchClaude to skip actual exec
+	origLaunch := launchClaudeFunc
+	defer func() { launchClaudeFunc = origLaunch }()
+	launchClaudeFunc = func(profile string, args []string) error {
+		return nil
+	}
+
 	cmd := &cobra.Command{Use: "cc-test"}
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -2402,11 +2411,6 @@ func TestRunCC_WithProjectRoot(t *testing.T) {
 	err := runCC(cmd, nil)
 	if err != nil {
 		t.Fatalf("runCC error: %v", err)
-	}
-
-	output := buf.String()
-	if !strings.Contains(output, "Claude") {
-		t.Error("output should mention Claude")
 	}
 }
 
@@ -3663,22 +3667,10 @@ func TestSaveTemplateDefaults_VerifyContent(t *testing.T) {
 	}
 }
 
-// runGLM — test with API key argument saving
+// runGLM — test with "setup" subcommand for API key saving
 func TestRunGLM_SavesKey(t *testing.T) {
-	tmpDir := t.TempDir()
-	// Create .moai for project root detection
-	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai", "config", "sections"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
-
-	oldWd, _ := os.Getwd()
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 
 	origDeps := deps
 	defer func() { deps = origDeps }()
@@ -3688,11 +3680,9 @@ func TestRunGLM_SavesKey(t *testing.T) {
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
 
-	err := runGLM(cmd, []string{"test-key-abc"})
-	// Should save the key and then fail on enableTeamMode (no API key detected since HOME is isolated)
-	// The key was saved to tmpHome/.moai/.env.glm
+	err := runGLM(cmd, []string{"setup", "test-key-abc"})
 	if err != nil {
-		t.Logf("runGLM error (expected due to enableTeamMode): %v", err)
+		t.Fatalf("runGLM setup error: %v", err)
 	}
 
 	// Verify key was saved
@@ -4981,6 +4971,13 @@ func TestRunCC_FullPath(t *testing.T) {
 	t.Setenv("HOME", tmpDir)
 	t.Setenv("MOAI_TEST_MODE", "1")
 
+	// Override launchClaude to skip actual exec
+	origLaunch := launchClaudeFunc
+	defer func() { launchClaudeFunc = origLaunch }()
+	launchClaudeFunc = func(profile string, args []string) error {
+		return nil
+	}
+
 	cmd := &cobra.Command{Use: "cc"}
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -4988,11 +4985,6 @@ func TestRunCC_FullPath(t *testing.T) {
 	err := runCC(cmd, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
-	}
-
-	output := buf.String()
-	if !strings.Contains(output, "Claude backend") {
-		t.Errorf("expected Claude backend message, got: %s", output)
 	}
 
 	// Verify GLM vars were removed but other vars preserved
@@ -5245,6 +5237,13 @@ func TestRunCC_WithTeamModeMessage(t *testing.T) {
 	t.Setenv("HOME", tmpDir)
 	t.Setenv("MOAI_TEST_MODE", "1")
 
+	// Override launchClaude to skip actual exec
+	origLaunch := launchClaudeFunc
+	defer func() { launchClaudeFunc = origLaunch }()
+	launchClaudeFunc = func(profile string, args []string) error {
+		return nil
+	}
+
 	cmd := &cobra.Command{Use: "cc"}
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -5252,11 +5251,6 @@ func TestRunCC_WithTeamModeMessage(t *testing.T) {
 	err := runCC(cmd, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
-	}
-
-	output := buf.String()
-	if !strings.Contains(output, "Team mode disabled") {
-		t.Errorf("expected team mode disabled message, got: %s", output)
 	}
 }
 

@@ -146,9 +146,9 @@ func TestBuildGLMEnvVars(t *testing.T) {
 // TestCGCommandRegistered verifies that the cg command is correctly registered
 // on the root command.
 func TestCGCommandRegistered(t *testing.T) {
-	// Verify cgCmd has the correct Use field (no api-key arg)
-	if cgCmd.Use != "cg" {
-		t.Errorf("cgCmd.Use = %q, want %q", cgCmd.Use, "cg")
+	// Verify cgCmd has the correct Use field
+	if !strings.HasPrefix(cgCmd.Use, "cg") {
+		t.Errorf("cgCmd.Use should start with 'cg', got %q", cgCmd.Use)
 	}
 
 	// Verify cgCmd does NOT have a --hybrid flag (it's always hybrid)
@@ -486,7 +486,7 @@ func TestEnableTeamModeCGRequiresAPIKey(t *testing.T) {
 
 	// Error should guide user to set up API key first
 	errMsg := err.Error()
-	if !strings.Contains(errMsg, "moai glm <api-key>") {
+	if !strings.Contains(errMsg, "moai glm setup <api-key>") {
 		t.Errorf("error should mention 'moai glm <api-key>', got: %v", err)
 	}
 	if !strings.Contains(errMsg, "moai cg") {
