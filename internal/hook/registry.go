@@ -180,10 +180,10 @@ func (r *registry) defaultOutputForEvent(event EventType) *HookOutput {
 		return &HookOutput{}
 	case EventPermissionRequest:
 		// PermissionRequest defaults to "ask" (defer to user).
-		// Per Claude Code protocol, hookEventName must be "PreToolUse" in output.
+		// Per Claude Code protocol (v2.1.59+), hookEventName must be "PermissionRequest".
 		return &HookOutput{
 			HookSpecificOutput: &HookSpecificOutput{
-				HookEventName:      "PreToolUse",
+				HookEventName:      "PermissionRequest",
 				PermissionDecision: DecisionAsk,
 			},
 		}

@@ -89,7 +89,7 @@ func TestRegistryDispatch_AllNewEventTypes(t *testing.T) {
 			},
 			wantNilHSO:        false,
 			wantPermDecision:  DecisionAsk,
-			wantHookEventName: "PreToolUse",
+			wantHookEventName: "PermissionRequest",
 		},
 		{
 			name:    "TeammateIdle dispatches with real handler and exits 0",
@@ -200,7 +200,7 @@ func TestRegistryDispatch_NewEventDefaults(t *testing.T) {
 			event:             EventPermissionRequest,
 			wantNilHSO:        false,
 			wantPermDecision:  DecisionAsk,
-			wantHookEventName: "PreToolUse",
+			wantHookEventName: "PermissionRequest",
 		},
 		{
 			name:       "TeammateIdle default is empty output",
@@ -465,7 +465,7 @@ func TestRegistryDispatch_FullPipeline_JSONRoundTrip(t *testing.T) {
 			},
 			wantNilHSO:        false,
 			wantPermDecision:  DecisionAsk,
-			wantHookEventName: "PreToolUse",
+			wantHookEventName: "PermissionRequest",
 		},
 		{
 			name:    "TeammateIdle round-trip",

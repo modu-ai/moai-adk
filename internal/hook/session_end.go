@@ -61,6 +61,14 @@ func (h *sessionEndHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 	// This ensures the lead session returns to Claude after team completion.
 	clearTmuxSessionEnv()
 
+	// Clean up GLM env vars from settings.local.json.
+	// This handles the case where the user ran 'moai glm' but ended the session
+	// without running 'moai cc'. Without this, the stale GLM key persists and
+	// the next session fails to authenticate with Claude (no API key error).
+	if input.ProjectDir != "" {
+		cleanupGLMSettingsLocal(input.ProjectDir)
+	}
+
 	// SessionEnd hooks return empty JSON {} per Claude Code protocol
 	// Do NOT use hookSpecificOutput for SessionEnd events
 	return &HookOutput{}, nil
@@ -296,4 +304,121 @@ func clearTmuxSessionEnv() {
 			slog.Info("session_end: cleared tmux env", "env", name)
 		}
 	}
+}
+
+// cleanupGLMSettingsLocal removes GLM env vars from .claude/settings.local.json
+// in the given project directory. This handles sessions ended without running
+// 'moai cc': the stale GLM key in settings.local.json would otherwise cause the
+// next Claude Code session to fail auth ("no API key available" / /login loop).
+//
+// Cleanup logic mirrors removeGLMEnv() in internal/cli/cc.go:
+//   - If MOAI_BACKUP_AUTH_TOKEN exists, restore it as ANTHROPIC_AUTH_TOKEN.
+//   - Otherwise, delete ANTHROPIC_AUTH_TOKEN (it was a GLM key, not OAuth).
+//   - Always delete: MOAI_BACKUP_AUTH_TOKEN, ANTHROPIC_BASE_URL, and the three
+//     ANTHROPIC_DEFAULT_*_MODEL vars.
+//
+// ANTHROPIC_BASE_URL is used as the GLM-active indicator: Claude Code's OAuth
+// flow never sets this variable, so its presence reliably signals GLM mode.
+//
+// All operations are best-effort. Errors are logged with slog.Warn and never
+// returned, following the SessionEnd convention of non-fatal cleanup.
+func cleanupGLMSettingsLocal(projectDir string) {
+	settingsPath := filepath.Join(projectDir, ".claude", "settings.local.json")
+
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			slog.Warn("session_end: could not read settings.local.json",
+				"path", settingsPath,
+				"error", err,
+			)
+		}
+		return
+	}
+
+	// Treat empty file as no-op (same as removeGLMEnv in cc.go).
+	if len(data) == 0 {
+		return
+	}
+
+	// Round-trip the file as a raw JSON map to preserve all unknown fields.
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		slog.Warn("session_end: could not parse settings.local.json",
+			"path", settingsPath,
+			"error", err,
+		)
+		return
+	}
+
+	// Extract the "env" object. If absent or not an object, nothing to clean.
+	envRaw, hasEnv := raw["env"]
+	if !hasEnv {
+		return
+	}
+
+	var env map[string]string
+	if err := json.Unmarshal(envRaw, &env); err != nil {
+		slog.Warn("session_end: could not parse env in settings.local.json",
+			"path", settingsPath,
+			"error", err,
+		)
+		return
+	}
+
+	// ANTHROPIC_BASE_URL is the GLM-active indicator.
+	// Claude Code's own OAuth flow never sets this variable.
+	if _, glmActive := env["ANTHROPIC_BASE_URL"]; !glmActive {
+		// Not in GLM mode — nothing to clean.
+		return
+	}
+
+	// Restore backed-up OAuth token if present; otherwise remove the GLM key.
+	if backup, ok := env["MOAI_BACKUP_AUTH_TOKEN"]; ok && backup != "" {
+		env["ANTHROPIC_AUTH_TOKEN"] = backup
+	} else {
+		delete(env, "ANTHROPIC_AUTH_TOKEN")
+	}
+
+	delete(env, "MOAI_BACKUP_AUTH_TOKEN")
+	delete(env, "ANTHROPIC_BASE_URL")
+	delete(env, "ANTHROPIC_DEFAULT_HAIKU_MODEL")
+	delete(env, "ANTHROPIC_DEFAULT_SONNET_MODEL")
+	delete(env, "ANTHROPIC_DEFAULT_OPUS_MODEL")
+
+	// Re-encode the cleaned env map back into the raw JSON document.
+	if len(env) == 0 {
+		delete(raw, "env")
+	} else {
+		envData, err := json.Marshal(env)
+		if err != nil {
+			slog.Warn("session_end: could not marshal cleaned env",
+				"path", settingsPath,
+				"error", err,
+			)
+			return
+		}
+		raw["env"] = json.RawMessage(envData)
+	}
+
+	out, err := json.MarshalIndent(raw, "", "  ")
+	if err != nil {
+		slog.Warn("session_end: could not marshal settings.local.json",
+			"path", settingsPath,
+			"error", err,
+		)
+		return
+	}
+
+	if err := os.WriteFile(settingsPath, out, 0o644); err != nil {
+		slog.Warn("session_end: could not write settings.local.json",
+			"path", settingsPath,
+			"error", err,
+		)
+		return
+	}
+
+	slog.Info("session_end: removed GLM env vars from settings.local.json",
+		"path", settingsPath,
+	)
 }

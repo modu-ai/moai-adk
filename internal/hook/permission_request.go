@@ -27,11 +27,11 @@ func (h *permissionRequestHandler) Handle(ctx context.Context, input *HookInput)
 		"tool_name", input.ToolName,
 	)
 	// Default to "ask" - defer decision to user/settings.
-	// Per Claude Code protocol, hookSpecificOutput.hookEventName must be "PreToolUse"
-	// (not "PermissionRequest") because PermissionRequest shares the PreToolUse output schema.
+	// Per Claude Code protocol (v2.1.59+), hookSpecificOutput.hookEventName must be
+	// "PermissionRequest" for PermissionRequest events.
 	return &HookOutput{
 		HookSpecificOutput: &HookSpecificOutput{
-			HookEventName:      "PreToolUse",
+			HookEventName:      "PermissionRequest",
 			PermissionDecision: DecisionAsk,
 		},
 	}, nil
