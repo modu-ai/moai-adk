@@ -126,14 +126,19 @@ func removeGLMEnv(settingsPath string) error {
 	}
 
 	// Remove all GLM-specific env variables to restore Claude backend.
-	// ANTHROPIC_AUTH_TOKEN is removed unconditionally, matching pre-v2.6 behavior.
-	// moai glm is the only thing that writes AUTH_TOKEN to the project
-	// settings.local.json; /login stores the Claude credential in the global
-	// ~/.claude/settings.local.json (a different file). Removing from project
-	// settings is therefore always safe — it either removes a GLM key (correct)
-	// or is a no-op when the field was never set.
+	//
+	// OAuth token preservation: if injectGLMEnvForTeam/injectGLMEnv backed up
+	// an existing ANTHROPIC_AUTH_TOKEN as MOAI_BACKUP_AUTH_TOKEN, restore it now.
+	// This prevents OAuth users from losing their credential on every moai cc run.
 	if settings.Env != nil {
-		delete(settings.Env, "ANTHROPIC_AUTH_TOKEN")
+		// Restore backed-up OAuth token before deleting GLM vars.
+		if backup, ok := settings.Env["MOAI_BACKUP_AUTH_TOKEN"]; ok && backup != "" {
+			settings.Env["ANTHROPIC_AUTH_TOKEN"] = backup
+		} else {
+			delete(settings.Env, "ANTHROPIC_AUTH_TOKEN")
+		}
+		delete(settings.Env, "MOAI_BACKUP_AUTH_TOKEN")
+
 		delete(settings.Env, "ANTHROPIC_BASE_URL")
 		delete(settings.Env, "ANTHROPIC_DEFAULT_HAIKU_MODEL")
 		delete(settings.Env, "ANTHROPIC_DEFAULT_SONNET_MODEL")

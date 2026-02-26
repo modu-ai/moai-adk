@@ -382,6 +382,10 @@ func disableTeamMode(projectRoot string) error {
 // injectGLMEnvForTeam injects GLM environment variables AND tmux display mode
 // to settings.local.json for GLM Team mode.
 // This enables teammates to use GLM models instead of Claude models.
+//
+// OAuth token preservation: if a non-GLM ANTHROPIC_AUTH_TOKEN already exists
+// in settings.local.json (e.g. a Claude OAuth credential), it is saved as
+// MOAI_BACKUP_AUTH_TOKEN before being overwritten. removeGLMEnv restores it.
 func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiKey string) error {
 	var settings SettingsLocal
 
@@ -395,6 +399,12 @@ func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiK
 	// Initialize env map if nil
 	if settings.Env == nil {
 		settings.Env = make(map[string]string)
+	}
+
+	// Back up any existing ANTHROPIC_AUTH_TOKEN that is not the GLM key itself.
+	// This preserves a Claude OAuth token so that removeGLMEnv can restore it.
+	if existing := settings.Env["ANTHROPIC_AUTH_TOKEN"]; existing != "" && existing != apiKey {
+		settings.Env["MOAI_BACKUP_AUTH_TOKEN"] = existing
 	}
 
 	// Inject GLM environment variables for teammates
@@ -654,6 +664,10 @@ func buildGLMEnvVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string]str
 }
 
 // injectGLMEnv adds GLM environment variables to settings.local.json.
+//
+// OAuth token preservation: if a non-GLM ANTHROPIC_AUTH_TOKEN already exists
+// in settings.local.json (e.g. a Claude OAuth credential), it is saved as
+// MOAI_BACKUP_AUTH_TOKEN before being overwritten. removeGLMEnv restores it.
 func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 	// Get API key from saved file or environment
 	apiKey := getGLMAPIKey(glmConfig.EnvVar)
@@ -673,6 +687,12 @@ func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 	// Initialize env map if nil
 	if settings.Env == nil {
 		settings.Env = make(map[string]string)
+	}
+
+	// Back up any existing ANTHROPIC_AUTH_TOKEN that is not the GLM key itself.
+	// This preserves a Claude OAuth token so that removeGLMEnv can restore it.
+	if existing := settings.Env["ANTHROPIC_AUTH_TOKEN"]; existing != "" && existing != apiKey {
+		settings.Env["MOAI_BACKUP_AUTH_TOKEN"] = existing
 	}
 
 	// Inject GLM environment variables with actual API key value
