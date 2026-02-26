@@ -679,6 +679,117 @@ The embedded context enables:
 - Context metadata saved to `.moai/memory/sync-context-{SPEC-ID}.json` for quick access
 - Tag message MUST reference the commit hash for traceability
 
+#### Step 3.1.5: Local CI Mirror Validation (Pre-PR Gate)
+
+Purpose: Replicate CI checks locally before pushing and creating a PR to catch failures fast, without waiting for slow remote CI. Windows-specific tests are skipped (cannot run locally).
+
+**Trigger condition**: Only run when a PR is about to be created (github_flow feature branch, gitflow feature/release/hotfix). Skip for `main_direct` strategy and direct pushes to main/develop.
+
+##### Step 3.1.5.1: Discover CI Configuration
+
+Read `.github/workflows/` to auto-detect CI jobs:
+- If `ci.yml` (or any CI file) exists: parse jobs, steps, and commands
+- If no CI config found: skip this phase entirely, log "No CI config detected"
+
+Build a local execution plan mapping each CI job to its local equivalent:
+
+| CI Job | CI Runner | Local Equivalent | Skippable |
+|--------|-----------|-----------------|-----------|
+| test (ubuntu) | ubuntu-latest | Local OS tests | No (run on current OS) |
+| test (macos) | macos-latest | Local OS tests | No (identical on macOS) |
+| test (windows) | windows-latest | **SKIP** | Yes — cannot run locally |
+| lint | ubuntu-latest | Local golangci-lint | No |
+| build (cross-compile) | ubuntu-latest | Local cross-compile | No |
+
+##### Step 3.1.5.2: Run Local Equivalents in Parallel
+
+**Go project** (detected via `go.mod`):
+
+Launch all checks in parallel:
+
+```bash
+# Check 1: go vet (mirrors CI step)
+go vet ./...
+
+# Check 2: Tests with race detector (mirrors CI test job)
+go test -race -coverprofile=coverage.out -covermode=atomic ./...
+
+# Check 3: golangci-lint (mirrors CI lint job)
+# Auto-detect if golangci-lint is available
+which golangci-lint && golangci-lint run --timeout=5m \
+  || echo "SKIP: golangci-lint not installed (run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6)"
+
+# Check 4: Cross-compile all CI targets (mirrors CI build job)
+# Run all 5 targets in parallel — CGO_ENABLED=0 for all
+GOOS=linux   GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-amd64     ./cmd/moai/ &
+GOOS=linux   GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-arm64     ./cmd/moai/ &
+GOOS=darwin  GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-amd64    ./cmd/moai/ &
+GOOS=darwin  GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-arm64    ./cmd/moai/ &
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-windows-amd64.exe ./cmd/moai/ &
+wait
+```
+
+**Python project** (detected via `pyproject.toml`):
+
+```bash
+pytest --tb=short
+ruff check . && ruff format --check .
+mypy . --ignore-missing-imports
+```
+
+**TypeScript/JavaScript project** (detected via `package.json`):
+
+```bash
+npm test -- --run
+npm run lint
+npm run build
+```
+
+**Other languages**: Run the standard test + lint + build commands discovered from CI config.
+
+**Cross-platform build targets**: If CI config shows `strategy.matrix` with multiple `os` or `GOOS/GOARCH` values, replicate all cross-compile targets using the local toolchain.
+
+##### Step 3.1.5.3: Skipped Checks Report
+
+Always report what was skipped and why:
+
+```
+CI Mirror: Skipped checks
+- test (windows-latest): Cannot run Windows tests locally — will be verified by remote CI
+- lint: golangci-lint not installed — install with: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
+```
+
+##### Step 3.1.5.4: Evaluate Results
+
+**All checks pass**: Proceed to Step 3.2 automatically. Log "Local CI mirror: PASS".
+
+**Any check fails**: Present failure summary via AskUserQuestion:
+
+- Fix now — delegate to expert-debug subagent with failure details, then re-run CI mirror
+- Push anyway — proceed to Step 3.2 with warning embedded in PR description
+- Abort — exit sync workflow, preserve commit (allow local fix and re-run)
+
+**golangci-lint not installed**: Treat as warning (not failure). Proceed to Step 3.2 with a note in the PR description: "Local lint check skipped: golangci-lint not installed."
+
+##### Step 3.1.5.5: Embed Results in PR Description
+
+Pass CI mirror results to Step 3.2 for inclusion in the PR body:
+
+```markdown
+## Local CI Mirror Results
+| Check | Status | Notes |
+|-------|--------|-------|
+| go vet | ✅ Pass | |
+| go test -race (macOS) | ✅ Pass | Coverage: 87% |
+| golangci-lint | ✅ Pass | |
+| build linux/amd64 | ✅ Pass | |
+| build linux/arm64 | ✅ Pass | |
+| build darwin/amd64 | ✅ Pass | |
+| build darwin/arm64 | ✅ Pass | |
+| build windows/amd64 | ✅ Pass | |
+| test (windows) | ⏭ Skipped | Cannot run locally |
+```
+
 #### Step 3.2: Push and Deliver (Strategy-Aware)
 
 Behavior varies based on `github.git_workflow` setting and current branch context.
@@ -837,11 +948,11 @@ All of the following must be verified:
 - Phase 0.7: Coverage analysis completed (measurement, gap analysis, test generation, verification)
 - Phase 1: Prerequisites verified, project analyzed, divergence analysis completed, sync plan approved by user
 - Phase 2: Safety backup created and verified, documents synchronized, SPEC documents updated per lifecycle level, project documents updated (if applicable), quality verified, SPEC status updated
-- Phase 3: Changes committed, delivered per git_workflow strategy (PR created for github_flow/gitflow, direct push for main_direct), auto-merge executed (if flagged and PR exists)
+- Phase 3: Changes committed, local CI mirror validated (Step 3.1.5: vet + test-race + lint + cross-compile — Windows skipped), delivered per git_workflow strategy (PR created for github_flow/gitflow, direct push for main_direct), auto-merge executed (if flagged and PR exists)
 - Phase 4: Completion report displayed with delivery result, appropriate next steps presented based on strategy and context
 
 ---
 
-Version: 3.3.0
+Version: 3.4.0
 Updated: 2026-02-25
 Source: Extracted from .claude/commands/moai/3-sync.md v3.4.0. Added deep code review with 4-perspective analysis and auto-fix (Phase 0.5.4 enhanced), coverage analysis with test generation (Phase 0.7 new), SPEC divergence analysis, project document updates, SPEC lifecycle awareness, team mode section, LSP quality gates, strategy-aware git delivery, deployment readiness check, and Context Memory generation in git commits (Step 3.1.1 new) for seamless session resumption and decision tracking across development cycles.
