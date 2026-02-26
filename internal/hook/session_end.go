@@ -192,10 +192,11 @@ func clearTmuxSessionEnv() {
 	}
 
 	// GLM environment variables to clear from tmux session.
-	// ANTHROPIC_AUTH_TOKEN is intentionally excluded: it may be the user's
-	// permanent API credential (e.g. a GLM API key), not a temporary
-	// team-mode token. Clearing it would require /login on every restart.
+	// ALL GLM vars including ANTHROPIC_AUTH_TOKEN are removed.
+	// The GLM API key is stored persistently in ~/.moai/.env.glm
+	// and re-injected by 'moai glm' when needed.
 	envVars := []string{
+		"ANTHROPIC_AUTH_TOKEN",
 		"ANTHROPIC_BASE_URL",
 		"ANTHROPIC_DEFAULT_OPUS_MODEL",
 		"ANTHROPIC_DEFAULT_SONNET_MODEL",
@@ -229,6 +230,11 @@ func cleanupGLMSettings(projectDir string) {
 		return
 	}
 
+	// Handle empty file gracefully (e.g. 0-byte file left by tests or crash)
+	if len(data) == 0 {
+		return
+	}
+
 	var settings map[string]any
 	if err := json.Unmarshal(data, &settings); err != nil {
 		slog.Warn("session_end: could not parse settings.local.json", "error", err)
@@ -240,14 +246,13 @@ func cleanupGLMSettings(projectDir string) {
 		return // No env section
 	}
 
-	// Remove GLM-related env vars only.
-	// We do NOT remove CLAUDE_CODE_TEAMMATE_DISPLAY - that is a tmux display setting
-	// that should persist for future team work sessions.
-	// We do NOT remove ANTHROPIC_AUTH_TOKEN - that is the user's API credential
-	// and may be a permanent GLM API key, not a temporary team-mode token.
-	// Removing it would force the user to /login on every session restart.
-	// The base URL and model overrides are sufficient to identify/reset GLM team mode.
+	// Remove ALL GLM env vars from settings.local.json.
+	// ANTHROPIC_AUTH_TOKEN is also removed: the GLM API key is stored
+	// persistently in ~/.moai/.env.glm and re-injected by 'moai glm'.
+	// Leaving AUTH_TOKEN in settings.local.json overrides Claude's OAuth
+	// and causes /login errors.
 	glmVars := []string{
+		"ANTHROPIC_AUTH_TOKEN",
 		"ANTHROPIC_BASE_URL",
 		"ANTHROPIC_DEFAULT_OPUS_MODEL",
 		"ANTHROPIC_DEFAULT_SONNET_MODEL",

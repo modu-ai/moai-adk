@@ -237,6 +237,10 @@ func TestEnableTeamModeAlwaysGLM(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return projectRoot, nil }
+	defer func() { findProjectRootFn = origFn }()
+
 	origDir, _ := os.Getwd()
 	defer func() { _ = os.Chdir(origDir) }()
 	if err := os.Chdir(projectRoot); err != nil {
@@ -386,6 +390,10 @@ GLM_API_KEY="test-glm-api-key-for-team-mode"
 	origHome := os.Getenv("HOME")
 	t.Setenv("HOME", homeDir)
 
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return projectRoot, nil }
+	defer func() { findProjectRootFn = origFn }()
+
 	// Change to project directory
 	origDir, _ := os.Getwd()
 	defer func() {
@@ -423,13 +431,13 @@ GLM_API_KEY="test-glm-api-key-for-team-mode"
 		t.Errorf("settings.env should preserve EXISTING_VAR")
 	}
 
-	// Check that CLAUDE_CODE_TEAMMATE_DISPLAY is set to "tmux"
+	// Check that CLAUDE_CODE_TEAMMATE_DISPLAY is set to "auto"
 	displayMode, exists := env["CLAUDE_CODE_TEAMMATE_DISPLAY"]
 	if !exists {
 		t.Errorf("settings.local.json should contain CLAUDE_CODE_TEAMMATE_DISPLAY after enableTeamMode, got:\n%s", string(data))
 	}
-	if displayMode != "tmux" {
-		t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want \"tmux\"", displayMode)
+	if displayMode != "auto" {
+		t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want \"auto\"", displayMode)
 	}
 
 	// Check that GLM ANTHROPIC_* vars ARE present (required for teammates to use GLM models)
@@ -473,6 +481,10 @@ func TestEnableTeamModeCGRequiresAPIKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return projectRoot, nil }
+	defer func() { findProjectRootFn = origFn }()
+
 	origDir, _ := os.Getwd()
 	defer func() { _ = os.Chdir(origDir) }()
 	if err := os.Chdir(projectRoot); err != nil {
@@ -512,6 +524,10 @@ func TestEnableTeamModeCGRequiresTmux(t *testing.T) {
 	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return projectRoot, nil }
+	defer func() { findProjectRootFn = origFn }()
 
 	origDir, _ := os.Getwd()
 	defer func() { _ = os.Chdir(origDir) }()
@@ -566,6 +582,10 @@ func TestEnableTeamModeCGInTmux(t *testing.T) {
 	// Set GLM API key via env
 	t.Setenv("GLM_API_KEY", "test-cg-api-key")
 
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return projectRoot, nil }
+	defer func() { findProjectRootFn = origFn }()
+
 	origDir, _ := os.Getwd()
 	defer func() { _ = os.Chdir(origDir) }()
 	if err := os.Chdir(projectRoot); err != nil {
@@ -602,9 +622,9 @@ func TestEnableTeamModeCGInTmux(t *testing.T) {
 		t.Fatalf("failed to unmarshal settings.local.json: %v", err)
 	}
 
-	// Should have CLAUDE_CODE_TEAMMATE_DISPLAY=tmux
-	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
-		t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want %q", settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"], "tmux")
+	// Should have CLAUDE_CODE_TEAMMATE_DISPLAY=auto
+	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "auto" {
+		t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want %q", settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"], "auto")
 	}
 
 	// Should NOT have ANTHROPIC_BASE_URL (lead must use Claude, not Z.AI)
@@ -637,6 +657,10 @@ func TestCGAutoResetsGLMMode(t *testing.T) {
 	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return projectRoot, nil }
+	defer func() { findProjectRootFn = origFn }()
 
 	origDir, _ := os.Getwd()
 	defer func() { _ = os.Chdir(origDir) }()
@@ -680,8 +704,10 @@ func TestCGAutoResetsGLMMode(t *testing.T) {
 		t.Fatalf("parse settings.local.json: %v", err)
 	}
 
-	// Should NOT have GLM routing vars (but ANTHROPIC_AUTH_TOKEN is preserved)
+	// Should NOT have ANY GLM vars including ANTHROPIC_AUTH_TOKEN
+	// (all removed by removeGLMEnv; GLM key is re-injected from ~/.moai/.env.glm by 'moai glm')
 	for _, key := range []string{
+		"ANTHROPIC_AUTH_TOKEN",
 		"ANTHROPIC_BASE_URL",
 		"ANTHROPIC_DEFAULT_OPUS_MODEL",
 		"ANTHROPIC_DEFAULT_SONNET_MODEL",
@@ -692,14 +718,9 @@ func TestCGAutoResetsGLMMode(t *testing.T) {
 		}
 	}
 
-	// ANTHROPIC_AUTH_TOKEN should still be present (permanent credential)
-	if _, exists := cgSettings.Env["ANTHROPIC_AUTH_TOKEN"]; !exists {
-		t.Errorf("after 'moai cg', ANTHROPIC_AUTH_TOKEN should be preserved (permanent API credential)")
-	}
-
-	// Should have CLAUDE_CODE_TEAMMATE_DISPLAY=tmux
-	if cgSettings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
-		t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want %q", cgSettings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"], "tmux")
+	// Should have CLAUDE_CODE_TEAMMATE_DISPLAY=auto
+	if cgSettings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "auto" {
+		t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY = %q, want %q", cgSettings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"], "auto")
 	}
 
 	// Verify llm.yaml shows cg mode (not glm)

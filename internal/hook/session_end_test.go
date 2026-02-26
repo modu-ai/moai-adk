@@ -274,28 +274,30 @@ func TestCleanupGLMSettings(t *testing.T) {
 		wantEnvDeleted bool
 	}{
 		{
-			name: "removes GLM env vars but keeps TEAMMATE_DISPLAY and AUTH_TOKEN",
+			name: "removes all GLM env vars including AUTH_TOKEN but keeps other vars",
 			existingData: map[string]any{
 				"env": map[string]any{
-					"ANTHROPIC_AUTH_TOKEN":           "user-api-key",
+					"ANTHROPIC_AUTH_TOKEN":           "glm-api-key",
 					"ANTHROPIC_BASE_URL":             "https://glm.example.com",
 					"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5",
 					"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
 					"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.7-air",
-					"CLAUDE_CODE_TEAMMATE_DISPLAY":   "tmux",
+					"CLAUDE_CODE_TEAMMATE_DISPLAY":   "auto",
 					"OTHER_VAR":                      "keep-me",
 				},
 			},
 			wantRemoved: []string{
+				"ANTHROPIC_AUTH_TOKEN",
 				"ANTHROPIC_BASE_URL",
 				"ANTHROPIC_DEFAULT_OPUS_MODEL",
 				"ANTHROPIC_DEFAULT_SONNET_MODEL",
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
 			},
-			// ANTHROPIC_AUTH_TOKEN is kept: it is a permanent user API credential,
-			// not a temporary team-mode GLM token. Removing it forces /login on restart.
-			wantRemaining:  []string{"OTHER_VAR", "CLAUDE_CODE_TEAMMATE_DISPLAY", "ANTHROPIC_AUTH_TOKEN"},
-			wantEnvDeleted: false, // env still has remaining vars
+			// ANTHROPIC_AUTH_TOKEN is removed: the GLM API key is persisted in
+			// ~/.moai/.env.glm and re-injected by 'moai glm'. Leaving it in
+			// settings.local.json overrides Claude's OAuth and causes 401 errors.
+			wantRemaining:  []string{"OTHER_VAR", "CLAUDE_CODE_TEAMMATE_DISPLAY"},
+			wantEnvDeleted: false, // env still has OTHER_VAR and CLAUDE_CODE_TEAMMATE_DISPLAY
 		},
 		{
 			name: "removes all GLM model vars and deletes env section when only those remain",

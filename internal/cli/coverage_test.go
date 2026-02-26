@@ -530,6 +530,13 @@ func TestRunCC_WithConfig(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	setupMinimalConfig(t, tmpDir)
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
 
 	mgr := config.NewConfigManager()
 	if _, err := mgr.Load(tmpDir); err != nil {
@@ -564,6 +571,10 @@ func TestRunCC_NilConfig(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(tmpDir, ".claude"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
 
 	origDir, _ := os.Getwd()
 	defer func() { _ = os.Chdir(origDir) }()
@@ -601,6 +612,10 @@ func TestRunGLM_WithConfig(t *testing.T) {
 	tmpDir := t.TempDir()
 	setupMinimalConfig(t, tmpDir)
 
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
+
 	mgr := config.NewConfigManager()
 	if _, err := mgr.Load(tmpDir); err != nil {
 		t.Fatalf("Load config: %v", err)
@@ -635,6 +650,10 @@ func TestRunGLM_InjectsEnvToSettings(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(tmpDir, ".claude"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
 
 	origDir, _ := os.Getwd()
 	defer func() { _ = os.Chdir(origDir) }()
@@ -688,6 +707,10 @@ func TestRunGLM_NilConfig(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(tmpDir, ".claude"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
 
 	origDir, _ := os.Getwd()
 	defer func() { _ = os.Chdir(origDir) }()

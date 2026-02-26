@@ -811,6 +811,71 @@ metadata:
 
 ---
 
+## 19. GLM Integration Testing Rules
+
+### [HARD] Never Run GLM Integration Tests in the Dev Project
+
+Running `go test ./internal/cli/` in the development project can invoke `moai cc` / `moai glm` command flows that modify **real settings files**:
+
+- `.claude/settings.local.json` in the project root
+- `~/.claude/settings.local.json` (global)
+
+This is destructive and can wipe auth tokens or GLM configuration.
+
+### Unit Tests vs Integration Tests
+
+| Test Type | Where to Run | What's Allowed |
+|-----------|-------------|----------------|
+| Unit tests (function-level) | Dev project (`go test ./...`) | File manipulation in `t.TempDir()` only |
+| Integration tests (full command) | `/tmp/test-project` via `claude -p` | Full `moai cc`, `moai glm`, `moai cg` |
+
+### Rule: Use `~/.moai/.env.glm` for Auth Token Tests
+
+Unit tests that verify ANTHROPIC_AUTH_TOKEN preservation must:
+1. Load the real key via `loadGLMKey()` (reads `~/.moai/.env.glm`)
+2. Skip with `t.Skip()` if the key is not configured
+3. Never hardcode fake keys like `"test-key-123"` in test fixtures
+
+```go
+// CORRECT: Load from ~/.moai/.env.glm
+realKey := loadGLMKey()
+if realKey == "" {
+    t.Skip("~/.moai/.env.glm not configured")
+}
+
+// WRONG: Hardcoded fake key
+"ANTHROPIC_AUTH_TOKEN": "test-key-123"
+```
+
+### Rule: Integration Testing with `/tmp` + `claude -p`
+
+For full command integration tests:
+```bash
+# 1. Create a temp test project
+mkdir -p /tmp/moai-test-project && cd /tmp/moai-test-project
+
+# 2. Initialize with moai
+moai init .
+
+# 3. Test with claude -p (pipe/programmatic mode)
+claude -p "moai cc should restore Claude mode" --output-format json
+
+# 4. Verify the settings file
+cat .claude/settings.local.json
+```
+
+### What NOT to Do
+
+```bash
+# WRONG: Runs moai cc on the real dev project, modifies real settings
+go test -run TestCCCmd_Execution ./internal/cli/
+
+# WRONG: Any test that reads/writes to dev project's .claude/ directory
+# WRONG: t.Setenv("HOME", tmpDir) — affects all parallel tests
+```
+
+---
+
 **Status**: Active (Local Development)
-**Version**: 1.5.0 (YAML Frontmatter Guide added)
-**Last Updated**: 2026-02-22
+**Version**: 1.6.0 (GLM Integration Testing Rules added)
+**Last Updated**: 2026-02-26

@@ -769,8 +769,9 @@ func TestRemoveGLMEnv_WithGLMVars(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// GLM routing vars should be removed (but ANTHROPIC_AUTH_TOKEN is preserved)
+	// ALL GLM vars should be removed (including ANTHROPIC_AUTH_TOKEN)
 	for _, key := range []string{
+		"ANTHROPIC_AUTH_TOKEN",
 		"ANTHROPIC_BASE_URL",
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL",
 		"ANTHROPIC_DEFAULT_OPUS_MODEL",
@@ -778,11 +779,6 @@ func TestRemoveGLMEnv_WithGLMVars(t *testing.T) {
 		if _, exists := resultSettings.Env[key]; exists {
 			t.Errorf("GLM env var %q should be removed", key)
 		}
-	}
-
-	// ANTHROPIC_AUTH_TOKEN should be preserved (permanent API credential)
-	if _, exists := resultSettings.Env["ANTHROPIC_AUTH_TOKEN"]; !exists {
-		t.Errorf("ANTHROPIC_AUTH_TOKEN should be preserved (permanent API credential)")
 	}
 
 	// Custom var should remain
@@ -826,19 +822,16 @@ func TestRemoveGLMEnv_OnlyGLMVars(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// ANTHROPIC_AUTH_TOKEN should be preserved, so env should NOT be nil
-	if resultSettings.Env == nil {
-		t.Errorf("Env should NOT be nil when ANTHROPIC_AUTH_TOKEN is preserved")
+	// All GLM vars are removed including ANTHROPIC_AUTH_TOKEN, so env should be nil
+	if resultSettings.Env != nil {
+		t.Errorf("Env should be nil after all GLM vars (including ANTHROPIC_AUTH_TOKEN) removed, got %v", resultSettings.Env)
 	}
 
 	// ANTHROPIC_BASE_URL should be removed
-	if _, exists := resultSettings.Env["ANTHROPIC_BASE_URL"]; exists {
-		t.Errorf("ANTHROPIC_BASE_URL should be removed")
-	}
-
-	// ANTHROPIC_AUTH_TOKEN should still exist
-	if _, exists := resultSettings.Env["ANTHROPIC_AUTH_TOKEN"]; !exists {
-		t.Errorf("ANTHROPIC_AUTH_TOKEN should be preserved")
+	if resultSettings.Env != nil {
+		if _, exists := resultSettings.Env["ANTHROPIC_BASE_URL"]; exists {
+			t.Errorf("ANTHROPIC_BASE_URL should be removed")
+		}
 	}
 }
 

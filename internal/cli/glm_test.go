@@ -56,6 +56,10 @@ func TestGLMCmd_NoArgs(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
+
 	// Change to temp dir
 	origDir, _ := os.Getwd()
 	defer func() { _ = os.Chdir(origDir) }()
@@ -93,6 +97,10 @@ func TestGLMCmd_InjectsEnv(t *testing.T) {
 	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
 
 	// Change to temp dir
 	origDir, _ := os.Getwd()

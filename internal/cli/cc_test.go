@@ -2,6 +2,8 @@ package cli
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -38,9 +40,19 @@ func TestCCCmd_IsSubcommandOfRoot(t *testing.T) {
 }
 
 func TestCCCmd_Execution_NoDeps(t *testing.T) {
+	// Use a temporary project root to prevent any mutation of real project files.
+	// The project root finder is overridden via findProjectRootFn.
+	tmpDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
+
 	origDeps := deps
 	defer func() { deps = origDeps }()
-
 	deps = nil
 
 	buf := new(bytes.Buffer)

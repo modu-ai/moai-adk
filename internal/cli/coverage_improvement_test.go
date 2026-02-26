@@ -799,8 +799,8 @@ func TestEnsureSettingsLocalJSON_CreatesNewFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
-		t.Error("should set CLAUDE_CODE_TEAMMATE_DISPLAY=tmux")
+	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "auto" {
+		t.Error("should set CLAUDE_CODE_TEAMMATE_DISPLAY=auto")
 	}
 }
 
@@ -835,8 +835,8 @@ func TestEnsureSettingsLocalJSON_PreservesExisting(t *testing.T) {
 	if settings.Env["MY_VAR"] != "keep_me" {
 		t.Error("existing env var should be preserved")
 	}
-	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
-		t.Error("should add CLAUDE_CODE_TEAMMATE_DISPLAY=tmux")
+	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "auto" {
+		t.Error("should add CLAUDE_CODE_TEAMMATE_DISPLAY=auto")
 	}
 }
 
@@ -1104,7 +1104,7 @@ func TestInjectGLMEnvForTeam_NewFile(t *testing.T) {
 	if settings.Env["ANTHROPIC_DEFAULT_OPUS_MODEL"] != "model-high" {
 		t.Error("should set ANTHROPIC_DEFAULT_OPUS_MODEL")
 	}
-	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
+	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "auto" {
 		t.Error("should set CLAUDE_CODE_TEAMMATE_DISPLAY")
 	}
 }
@@ -1435,6 +1435,10 @@ func TestRunCC_SuccessfulExecution(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
+
 	cmd := &cobra.Command{Use: "cc-test"}
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -1450,14 +1454,15 @@ func TestRunCC_SuccessfulExecution(t *testing.T) {
 		t.Error("output should mention Claude")
 	}
 
-	// Verify GLM routing env was removed but ANTHROPIC_AUTH_TOKEN and OTHER were kept
+	// Verify ALL GLM env vars were removed (including ANTHROPIC_AUTH_TOKEN);
+	// only non-GLM vars like OTHER are preserved.
 	data, err := os.ReadFile(filepath.Join(claudeDir, "settings.local.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	// ANTHROPIC_AUTH_TOKEN should be preserved (permanent credential)
-	if !strings.Contains(string(data), "ANTHROPIC_AUTH_TOKEN") {
-		t.Error("ANTHROPIC_AUTH_TOKEN should be preserved")
+	// ANTHROPIC_AUTH_TOKEN is also removed — it is re-injected from ~/.moai/.env.glm by 'moai glm'
+	if strings.Contains(string(data), "ANTHROPIC_AUTH_TOKEN") {
+		t.Error("ANTHROPIC_AUTH_TOKEN should be removed by removeGLMEnv")
 	}
 	if strings.Contains(string(data), "ANTHROPIC_BASE_URL") {
 		t.Error("ANTHROPIC_BASE_URL should be removed")
@@ -1762,7 +1767,9 @@ func TestCleanupOldBackups_ExceedsKeepCount(t *testing.T) {
 
 func TestGetGLMAPIKey_FromEnvVar(t *testing.T) {
 	// Ensure no saved key
-	t.Setenv("HOME", t.TempDir())
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+	t.Setenv("USERPROFILE", tmpHome)
 	t.Setenv("MY_GLM_KEY", "env-key-123")
 
 	key := getGLMAPIKey("MY_GLM_KEY")
@@ -1774,6 +1781,7 @@ func TestGetGLMAPIKey_FromEnvVar(t *testing.T) {
 func TestGetGLMAPIKey_SavedKeyTakesPriority(t *testing.T) {
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
+	t.Setenv("USERPROFILE", tmpHome)
 	t.Setenv("MY_GLM_KEY", "env-key")
 
 	// Save a key
@@ -1859,6 +1867,10 @@ func TestEnableTeamMode_NoAPIKey_GLM(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
+
 	cmd := &cobra.Command{Use: "glm-test"}
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -1891,6 +1903,10 @@ func TestEnableTeamMode_NoAPIKey_CG(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
 
 	cmd := &cobra.Command{Use: "cg-test"}
 	var buf bytes.Buffer
@@ -1930,6 +1946,10 @@ func TestEnableTeamMode_Success_GLM(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
 
 	cmd := &cobra.Command{Use: "glm-test"}
 	var buf bytes.Buffer
@@ -1991,6 +2011,10 @@ func TestEnableTeamMode_Success_CG(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
+
 	cmd := &cobra.Command{Use: "cg-test"}
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -2031,6 +2055,7 @@ func TestEnableTeamMode_Success_CG(t *testing.T) {
 func TestRunGLM_SavesAPIKey(t *testing.T) {
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
+	t.Setenv("USERPROFILE", tmpHome)
 
 	tmpDir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai", "config", "sections"), 0o755); err != nil {
@@ -2045,6 +2070,10 @@ func TestRunGLM_SavesAPIKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
 
 	cmd := &cobra.Command{Use: "glm-test"}
 	var buf bytes.Buffer
@@ -2364,6 +2393,10 @@ func TestRunCC_NoProjectRoot(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return "", fmt.Errorf("not in a MoAI project (test)") }
+	defer func() { findProjectRootFn = origFn }()
+
 	cmd := &cobra.Command{Use: "cc-test"}
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -2397,6 +2430,10 @@ func TestRunCC_WithProjectRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
 
 	cmd := &cobra.Command{Use: "cc-test"}
 	var buf bytes.Buffer
@@ -2438,9 +2475,9 @@ func TestRemoveGLMEnv_WithExistingGLMVars(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// ANTHROPIC_AUTH_TOKEN should be preserved (permanent API credential)
-	if !strings.Contains(string(data), "ANTHROPIC_AUTH_TOKEN") {
-		t.Error("ANTHROPIC_AUTH_TOKEN should be preserved")
+	// ANTHROPIC_AUTH_TOKEN is also removed (re-injected from ~/.moai/.env.glm by 'moai glm')
+	if strings.Contains(string(data), "ANTHROPIC_AUTH_TOKEN") {
+		t.Error("ANTHROPIC_AUTH_TOKEN should be removed by removeGLMEnv")
 	}
 	if strings.Contains(string(data), "ANTHROPIC_BASE_URL") {
 		t.Error("ANTHROPIC_BASE_URL should be removed")
@@ -2580,6 +2617,10 @@ func TestRunCG_NoProjectRoot(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return "", fmt.Errorf("not in a MoAI project (test)") }
+	defer func() { findProjectRootFn = origFn }()
+
 	cmd := &cobra.Command{Use: "cg-test"}
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -2615,6 +2656,10 @@ func TestRunCG_NoAPIKey(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
 	deps = nil
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
 
 	cmd := &cobra.Command{Use: "cg-test"}
 	var buf bytes.Buffer
@@ -2764,6 +2809,7 @@ func TestSaveLLMSection_Success(t *testing.T) {
 func TestSaveGLMKey_WritesFile(t *testing.T) {
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
+	t.Setenv("USERPROFILE", tmpHome)
 
 	err := saveGLMKey("test-api-key-123")
 	if err != nil {
@@ -2843,8 +2889,8 @@ func TestEnsureSettingsLocalJSON_NewFile(t *testing.T) {
 		t.Fatalf("parse json: %v", err)
 	}
 
-	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
-		t.Errorf("expected CLAUDE_CODE_TEAMMATE_DISPLAY=tmux, got %q", settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"])
+	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "auto" {
+		t.Errorf("expected CLAUDE_CODE_TEAMMATE_DISPLAY=auto, got %q", settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"])
 	}
 }
 
@@ -2881,8 +2927,8 @@ func TestEnsureSettingsLocalJSON_ExistingFile(t *testing.T) {
 	if settings.Env["EXISTING_KEY"] != "value" {
 		t.Error("existing key should be preserved")
 	}
-	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "tmux" {
-		t.Error("tmux display should be set")
+	if settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] != "auto" {
+		t.Error("auto display should be set")
 	}
 }
 
@@ -3307,7 +3353,7 @@ func TestRemoveGLMEnv_EmptyEnvAfterRemoval(t *testing.T) {
 	}
 
 	settingsPath := filepath.Join(claudeDir, "settings.local.json")
-	// Only GLM keys - ANTHROPIC_AUTH_TOKEN is preserved, others removed
+	// All GLM keys including ANTHROPIC_AUTH_TOKEN — all are removed, env becomes nil
 	existing := `{"env":{"ANTHROPIC_AUTH_TOKEN":"tok","ANTHROPIC_BASE_URL":"url","ANTHROPIC_DEFAULT_HAIKU_MODEL":"h","ANTHROPIC_DEFAULT_SONNET_MODEL":"s","ANTHROPIC_DEFAULT_OPUS_MODEL":"o"}}`
 	if err := os.WriteFile(settingsPath, []byte(existing), 0o644); err != nil {
 		t.Fatal(err)
@@ -3328,20 +3374,17 @@ func TestRemoveGLMEnv_EmptyEnvAfterRemoval(t *testing.T) {
 		t.Fatalf("parse error: %v", err)
 	}
 
-	// env should NOT be nil since ANTHROPIC_AUTH_TOKEN is preserved
-	if settings.Env == nil {
-		t.Errorf("expected non-nil env after removing GLM routing keys (ANTHROPIC_AUTH_TOKEN is preserved)")
+	// env should be nil since ALL vars (including ANTHROPIC_AUTH_TOKEN) are removed
+	if settings.Env != nil {
+		t.Errorf("expected nil env after removing all GLM keys, got %v", settings.Env)
 	}
 
-	// ANTHROPIC_AUTH_TOKEN should still exist
-	if _, exists := settings.Env["ANTHROPIC_AUTH_TOKEN"]; !exists {
-		t.Error("ANTHROPIC_AUTH_TOKEN should be preserved")
-	}
-
-	// GLM routing vars should be removed
-	for _, key := range []string{"ANTHROPIC_BASE_URL", "ANTHROPIC_DEFAULT_HAIKU_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL"} {
-		if _, exists := settings.Env[key]; exists {
-			t.Errorf("%s should be removed", key)
+	// All GLM vars should be removed
+	for _, key := range []string{"ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL", "ANTHROPIC_DEFAULT_HAIKU_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL"} {
+		if settings.Env != nil {
+			if _, exists := settings.Env[key]; exists {
+				t.Errorf("%s should be removed", key)
+			}
 		}
 	}
 }
@@ -3690,6 +3733,7 @@ func TestRunGLM_SavesKey(t *testing.T) {
 
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
+	t.Setenv("USERPROFILE", tmpHome)
 
 	oldWd, _ := os.Getwd()
 	if err := os.Chdir(tmpDir); err != nil {
@@ -3700,6 +3744,10 @@ func TestRunGLM_SavesKey(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
 	deps = nil
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
 
 	cmd := &cobra.Command{Use: "glm-test"}
 	var buf bytes.Buffer
@@ -4130,6 +4178,10 @@ func TestEnableTeamMode_NoAPIKey_Hybrid(t *testing.T) {
 	deps = &Dependencies{}
 	defer func() { deps = origDeps }()
 
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
+
 	cmd := &cobra.Command{Use: "cg"}
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -4166,6 +4218,10 @@ func TestEnableTeamMode_NoAPIKey_NonHybrid(t *testing.T) {
 	origDeps := deps
 	deps = &Dependencies{}
 	defer func() { deps = origDeps }()
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
 
 	cmd := &cobra.Command{Use: "glm"}
 	var buf bytes.Buffer
@@ -4211,6 +4267,10 @@ func TestEnableTeamMode_WithAPIKey_Hybrid(t *testing.T) {
 	deps = &Dependencies{}
 	defer func() { deps = origDeps }()
 
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
+
 	cmd := &cobra.Command{Use: "cg"}
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -4254,6 +4314,10 @@ func TestEnableTeamMode_WithAPIKey_GLM(t *testing.T) {
 	origDeps := deps
 	deps = &Dependencies{}
 	defer func() { deps = origDeps }()
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
 
 	cmd := &cobra.Command{Use: "glm"}
 	var buf bytes.Buffer
@@ -4998,6 +5062,10 @@ func TestRunCC_FullPath(t *testing.T) {
 	t.Setenv("HOME", tmpDir)
 	t.Setenv("MOAI_TEST_MODE", "1")
 
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
+
 	cmd := &cobra.Command{Use: "cc"}
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -5012,11 +5080,12 @@ func TestRunCC_FullPath(t *testing.T) {
 		t.Errorf("expected Claude backend message, got: %s", output)
 	}
 
-	// Verify GLM routing vars were removed but ANTHROPIC_AUTH_TOKEN and OTHER_VAR were preserved
+	// Verify ALL GLM env vars were removed (including ANTHROPIC_AUTH_TOKEN);
+	// only non-GLM vars like OTHER_VAR are preserved.
 	data, _ := os.ReadFile(settingsPath)
-	// ANTHROPIC_AUTH_TOKEN should be preserved (permanent credential)
-	if !strings.Contains(string(data), "ANTHROPIC_AUTH_TOKEN") {
-		t.Error("expected ANTHROPIC_AUTH_TOKEN to be preserved")
+	// ANTHROPIC_AUTH_TOKEN is also removed — re-injected from ~/.moai/.env.glm by 'moai glm'
+	if strings.Contains(string(data), "ANTHROPIC_AUTH_TOKEN") {
+		t.Error("ANTHROPIC_AUTH_TOKEN should be removed by removeGLMEnv")
 	}
 	if !strings.Contains(string(data), "OTHER_VAR") {
 		t.Error("expected OTHER_VAR to be preserved")
@@ -5155,6 +5224,7 @@ func TestEnsureGlobalSettingsEnv_NoFile(t *testing.T) {
 func TestSaveGLMKey_Permissions(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
+	t.Setenv("USERPROFILE", tmpDir)
 
 	err := saveGLMKey("test-key-perms")
 	if err != nil {
@@ -5262,6 +5332,10 @@ func TestRunCC_WithTeamModeMessage(t *testing.T) {
 
 	t.Setenv("HOME", tmpDir)
 	t.Setenv("MOAI_TEST_MODE", "1")
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+	defer func() { findProjectRootFn = origFn }()
 
 	cmd := &cobra.Command{Use: "cc"}
 	var buf bytes.Buffer
@@ -6096,6 +6170,10 @@ func TestEnableTeamMode_NoAPIKey(t *testing.T) {
 	_ = os.Chdir(projectDir)
 	defer func() { _ = os.Chdir(origDir) }()
 
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return projectDir, nil }
+	defer func() { findProjectRootFn = origFn }()
+
 	cmd := &cobra.Command{Use: "cg"}
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -6115,6 +6193,7 @@ func TestEnableTeamMode_NoAPIKey(t *testing.T) {
 func TestSaveGLMKey_CreatesDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
+	t.Setenv("USERPROFILE", tmpDir)
 
 	err := saveGLMKey("test-key-123")
 	if err != nil {
@@ -7482,9 +7561,9 @@ func TestRemoveGLMEnv_AllGLMVarsRemoved(t *testing.T) {
 
 	data, _ := os.ReadFile(settingsPath)
 	content := string(data)
-	// ANTHROPIC_AUTH_TOKEN should be preserved (permanent credential)
-	if !strings.Contains(content, "ANTHROPIC_AUTH_TOKEN") {
-		t.Error("ANTHROPIC_AUTH_TOKEN should be preserved")
+	// ANTHROPIC_AUTH_TOKEN is also removed (re-injected from ~/.moai/.env.glm by 'moai glm')
+	if strings.Contains(content, "ANTHROPIC_AUTH_TOKEN") {
+		t.Error("ANTHROPIC_AUTH_TOKEN should be removed by removeGLMEnv")
 	}
 	if strings.Contains(content, "ANTHROPIC_BASE_URL") {
 		t.Error("ANTHROPIC_BASE_URL should be removed")
@@ -7513,13 +7592,13 @@ func TestRemoveGLMEnv_EnvBecomesNull(t *testing.T) {
 	}
 
 	data, _ := os.ReadFile(settingsPath)
-	// ANTHROPIC_AUTH_TOKEN is preserved, so env should NOT be null/omitted
+	// ANTHROPIC_AUTH_TOKEN is also removed, so env becomes nil/omitted
 	var result map[string]any
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatal(err)
 	}
-	if result["env"] == nil {
-		t.Error("env should NOT be nil when ANTHROPIC_AUTH_TOKEN is preserved")
+	if result["env"] != nil {
+		t.Error("env should be nil after removing ANTHROPIC_AUTH_TOKEN (the only env var)")
 	}
 }
 
@@ -7852,6 +7931,7 @@ func TestPersistTeamMode_Phase6(t *testing.T) {
 func TestSaveGLMKey_Phase6(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
+	t.Setenv("USERPROFILE", tmpDir)
 
 	err := saveGLMKey("my-test-api-key-123")
 	if err != nil {

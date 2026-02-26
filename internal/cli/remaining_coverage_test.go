@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -316,7 +317,7 @@ func TestRemoveGLMEnv_EnvBecomesEmptyAfterRemoval(t *testing.T) {
 	tmpDir := t.TempDir()
 	settingsPath := filepath.Join(tmpDir, "settings.local.json")
 
-	// Write settings with only GLM env vars - ANTHROPIC_AUTH_TOKEN will be preserved
+	// Write settings with only GLM env vars - all are removed, env becomes nil
 	content := `{"env":{"ANTHROPIC_AUTH_TOKEN":"tok","ANTHROPIC_BASE_URL":"http://x"}}`
 	if err := os.WriteFile(settingsPath, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
@@ -337,14 +338,19 @@ func TestRemoveGLMEnv_EnvBecomesEmptyAfterRemoval(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// ANTHROPIC_AUTH_TOKEN should be preserved
-	if _, exists := resultSettings.Env["ANTHROPIC_AUTH_TOKEN"]; !exists {
-		t.Error("ANTHROPIC_AUTH_TOKEN should be preserved")
+	// ANTHROPIC_AUTH_TOKEN is also removed (re-injected from ~/.moai/.env.glm by 'moai glm')
+	if _, exists := resultSettings.Env["ANTHROPIC_AUTH_TOKEN"]; exists {
+		t.Error("ANTHROPIC_AUTH_TOKEN should be removed by removeGLMEnv")
 	}
 
 	// ANTHROPIC_BASE_URL should be removed
 	if _, exists := resultSettings.Env["ANTHROPIC_BASE_URL"]; exists {
 		t.Error("ANTHROPIC_BASE_URL should be removed")
+	}
+
+	// env should be nil since all vars were removed
+	if resultSettings.Env != nil {
+		t.Errorf("env should be nil after all GLM vars removed, got %v", resultSettings.Env)
 	}
 }
 
@@ -377,6 +383,10 @@ func TestRunCC_FindProjectRootFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return "", fmt.Errorf("not in a MoAI project (test)") }
+	defer func() { findProjectRootFn = origFn }()
 
 	cmd := &cobra.Command{Use: "cc-test"}
 	var buf bytes.Buffer

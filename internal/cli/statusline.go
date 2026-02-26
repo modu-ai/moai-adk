@@ -33,7 +33,7 @@ func runStatusline(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Get project root for git and version detection (error ignored: empty root is valid)
-	projectRoot, _ := findProjectRoot() //nolint:errcheck // empty root is acceptable fallback
+	projectRoot, _ := findProjectRootFn() //nolint:errcheck // empty root is acceptable fallback
 
 	// Load segment config from statusline.yaml (nil = all segments enabled)
 	segmentConfig := loadSegmentConfig(projectRoot)

@@ -74,7 +74,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 	out := cmd.OutOrStdout()
 
-	root, err := findProjectRoot()
+	root, err := findProjectRootFn()
 	if err != nil {
 		return fmt.Errorf("find project root: %w", err)
 	}
@@ -265,11 +265,11 @@ func clearTmuxSessionEnv() error {
 	}
 
 	// GLM environment variables to clear from tmux session.
-	// ANTHROPIC_AUTH_TOKEN is intentionally omitted: it may be the user's
-	// permanent API credential (e.g. a GLM API key), not a temporary
-	// team-mode token. Clearing it would require /login on every restart.
-	// Only model routing and base URL overrides are removed here.
+	// ALL GLM vars including ANTHROPIC_AUTH_TOKEN are removed.
+	// The GLM API key is stored persistently in ~/.moai/.env.glm
+	// and re-injected by 'moai glm' when needed.
 	envVars := []string{
+		"ANTHROPIC_AUTH_TOKEN",
 		"ANTHROPIC_BASE_URL",
 		"ANTHROPIC_DEFAULT_OPUS_MODEL",
 		"ANTHROPIC_DEFAULT_SONNET_MODEL",
@@ -308,12 +308,12 @@ func persistTeamMode(projectRoot, mode string) error {
 	return saveLLMSection(sectionsDir, llmCfg)
 }
 
-// ensureSettingsLocalJSON ensures settings.local.json exists with CLAUDE_CODE_TEAMMATE_DISPLAY=tmux.
+// ensureSettingsLocalJSON ensures settings.local.json exists with CLAUDE_CODE_TEAMMATE_DISPLAY=auto.
 func ensureSettingsLocalJSON(settingsPath string) error {
 	var settings SettingsLocal
 
-	// Read existing settings if file exists
-	if data, err := os.ReadFile(settingsPath); err == nil {
+	// Read existing settings if file exists (skip empty files)
+	if data, err := os.ReadFile(settingsPath); err == nil && len(data) > 0 {
 		if err := json.Unmarshal(data, &settings); err != nil {
 			return fmt.Errorf("parse settings.local.json: %w", err)
 		}
@@ -324,8 +324,9 @@ func ensureSettingsLocalJSON(settingsPath string) error {
 		settings.Env = make(map[string]string)
 	}
 
-	// Set tmux display mode for Agent Teams
-	settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] = "tmux"
+	// Set display mode to "auto": Claude Code detects tmux availability at runtime
+	// and falls back to in-progress display when tmux is not installed.
+	settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] = "auto"
 
 	// Ensure directory exists
 	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
@@ -384,8 +385,8 @@ func disableTeamMode(projectRoot string) error {
 func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiKey string) error {
 	var settings SettingsLocal
 
-	// Read existing settings if file exists
-	if data, err := os.ReadFile(settingsPath); err == nil {
+	// Read existing settings if file exists (skip empty files)
+	if data, err := os.ReadFile(settingsPath); err == nil && len(data) > 0 {
 		if err := json.Unmarshal(data, &settings); err != nil {
 			return fmt.Errorf("parse settings.local.json: %w", err)
 		}
@@ -404,8 +405,9 @@ func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiK
 	settings.Env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
 	settings.Env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
 
-	// Set tmux display mode for Agent Teams
-	settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] = "tmux"
+	// Set display mode to "auto": Claude Code detects tmux availability at runtime
+	// and falls back to in-progress display when tmux is not installed.
+	settings.Env["CLAUDE_CODE_TEAMMATE_DISPLAY"] = "auto"
 
 	// Ensure directory exists
 	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
@@ -655,8 +657,8 @@ func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 
 	var settings SettingsLocal
 
-	// Read existing settings if file exists
-	if data, err := os.ReadFile(settingsPath); err == nil {
+	// Read existing settings if file exists (skip empty files)
+	if data, err := os.ReadFile(settingsPath); err == nil && len(data) > 0 {
 		if err := json.Unmarshal(data, &settings); err != nil {
 			return fmt.Errorf("parse settings.local.json: %w", err)
 		}
@@ -711,13 +713,22 @@ func isTestEnvironment() bool {
 }
 
 // findProjectRoot finds the project root by looking for .moai directory.
+// It skips the user's home directory to prevent treating ~/.moai/ (global cache)
+// as a project root. The home directory's .moai/ is for global state only
+// (credentials, cache, releases), not a project.
 func findProjectRoot() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
 
+	homeDir, _ := os.UserHomeDir()
+
 	for {
+		// Skip home directory — ~/.moai/ is global state, not a project root
+		if homeDir != "" && dir == homeDir {
+			return "", fmt.Errorf("not in a MoAI project (reached home directory)")
+		}
 		if _, err := os.Stat(filepath.Join(dir, ".moai")); err == nil {
 			return dir, nil
 		}

@@ -9,8 +9,14 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/spf13/cobra"
 )
+
+// findProjectRootFn is the function used to locate the project root.
+// Tests may override this to return a temporary directory, preventing
+// any file mutations from reaching the real project or home directory.
+var findProjectRootFn = findProjectRoot
 
 var ccCmd = &cobra.Command{
 	Use:   "cc",
@@ -35,8 +41,8 @@ func init() {
 func runCC(cmd *cobra.Command, _ []string) error {
 	out := cmd.OutOrStdout()
 
-	// Get project root
-	root, err := findProjectRoot()
+	// Get project root (overridable via findProjectRootFn for test isolation)
+	root, err := findProjectRootFn()
 	if err != nil {
 		return fmt.Errorf("find project root: %w", err)
 	}
@@ -46,10 +52,10 @@ func runCC(cmd *cobra.Command, _ []string) error {
 		_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to clear tmux session env: %v\n", err)
 	}
 
-	// Remove env from settings.local.json
-	settingsPath := filepath.Join(root, ".claude", "settings.local.json")
-	if err := removeGLMEnv(settingsPath); err != nil {
-		return fmt.Errorf("remove GLM env: %w", err)
+	// Remove env from project settings.local.json (project-level only, never global)
+	projectSettingsPath := filepath.Join(root, defs.ClaudeDir, defs.SettingsLocalJSON)
+	if err := removeGLMEnv(projectSettingsPath); err != nil {
+		return fmt.Errorf("remove GLM env from project: %w", err)
 	}
 
 	// Handle team_mode: disable and cleanup worktrees
@@ -109,17 +115,22 @@ func removeGLMEnv(settingsPath string) error {
 		return fmt.Errorf("read settings.local.json: %w", err)
 	}
 
+	// Handle empty file gracefully (e.g. 0-byte file left by tests or crash)
+	if len(data) == 0 {
+		return nil
+	}
+
 	var settings SettingsLocal
 	if err := json.Unmarshal(data, &settings); err != nil {
 		return fmt.Errorf("parse settings.local.json: %w", err)
 	}
 
-	// Remove GLM-specific env variables.
-	// ANTHROPIC_AUTH_TOKEN is intentionally preserved: it may be the user's
-	// permanent API credential (e.g. a GLM API key saved by 'moai glm'), not a
-	// temporary team-mode token. Removing it forces the user to /login on every
-	// session restart. Only model routing and base URL overrides are removed.
+	// Remove ALL GLM-injected env variables including ANTHROPIC_AUTH_TOKEN.
+	// The GLM API key is persisted in ~/.moai/.env.glm and re-injected by
+	// 'moai glm'. Keeping ANTHROPIC_AUTH_TOKEN here causes /login errors
+	// because Claude Code sends the GLM key to Anthropic's API (which rejects it).
 	if settings.Env != nil {
+		delete(settings.Env, "ANTHROPIC_AUTH_TOKEN")
 		delete(settings.Env, "ANTHROPIC_BASE_URL")
 		delete(settings.Env, "ANTHROPIC_DEFAULT_HAIKU_MODEL")
 		delete(settings.Env, "ANTHROPIC_DEFAULT_SONNET_MODEL")
@@ -209,3 +220,4 @@ func runGitCommand(dir string, args ...string) (string, error) {
 	}
 	return string(output), nil
 }
+
