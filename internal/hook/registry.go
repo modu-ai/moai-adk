@@ -66,6 +66,10 @@ func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInp
 	ctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 
+	// Start with the default output for this event type and accumulate
+	// non-blocking fields (e.g. SystemMessage) from each handler.
+	merged := r.defaultOutputForEvent(event)
+
 	for i, h := range handlers {
 		slog.Debug("dispatching handler",
 			"event", string(event),
@@ -117,9 +121,20 @@ func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInp
 			)
 			return output, nil
 		}
+
+		// Accumulate SystemMessage from non-blocking handlers so that
+		// messages from earlier handlers (e.g. auto-update notifications,
+		// memory injection) are not silently discarded.
+		if output != nil && output.SystemMessage != "" {
+			if merged.SystemMessage != "" {
+				merged.SystemMessage += "\n" + output.SystemMessage
+			} else {
+				merged.SystemMessage = output.SystemMessage
+			}
+		}
 	}
 
-	return r.defaultOutputForEvent(event), nil
+	return merged, nil
 }
 
 // isBlockDecision checks if the output represents a blocking decision.

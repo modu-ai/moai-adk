@@ -1,0 +1,9 @@
+# Memory Configuration
+# Project-level persistent memory for Claude Code sessions
+# Content from .moai/memory/MEMORY.md is injected as SystemMessage at session start
+
+memory:
+  enabled: true
+  memory_dir: ".moai/memory"
+  max_tokens: 5000
+  auto_inject: true

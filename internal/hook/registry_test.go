@@ -369,3 +369,105 @@ func TestRegistryDispatchContextCancellation(t *testing.T) {
 		t.Fatal("expected context cancellation error, got nil")
 	}
 }
+
+func TestRegistryDispatchMergesSystemMessage(t *testing.T) {
+	t.Parallel()
+
+	cfg := &mockConfigProvider{cfg: newTestConfig()}
+	reg := NewRegistry(cfg)
+
+	h1 := &mockHandler{
+		event:  EventSessionStart,
+		output: &HookOutput{SystemMessage: "memory loaded"},
+	}
+	h2 := &mockHandler{
+		event:  EventSessionStart,
+		output: &HookOutput{SystemMessage: "update available"},
+	}
+
+	reg.Register(h1)
+	reg.Register(h2)
+
+	ctx := context.Background()
+	input := &HookInput{
+		SessionID:     "test-merge",
+		CWD:           "/tmp",
+		HookEventName: "SessionStart",
+	}
+
+	got, err := reg.Dispatch(ctx, EventSessionStart, input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got == nil {
+		t.Fatal("got nil output")
+	}
+
+	want := "memory loaded\nupdate available"
+	if got.SystemMessage != want {
+		t.Errorf("SystemMessage = %q, want %q", got.SystemMessage, want)
+	}
+}
+
+func TestRegistryDispatchMergesSystemMessage_SingleHandler(t *testing.T) {
+	t.Parallel()
+
+	cfg := &mockConfigProvider{cfg: newTestConfig()}
+	reg := NewRegistry(cfg)
+
+	h1 := &mockHandler{
+		event:  EventSessionStart,
+		output: &HookOutput{SystemMessage: "only message"},
+	}
+
+	reg.Register(h1)
+
+	ctx := context.Background()
+	input := &HookInput{SessionID: "test-single", CWD: "/tmp"}
+
+	got, err := reg.Dispatch(ctx, EventSessionStart, input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got.SystemMessage != "only message" {
+		t.Errorf("SystemMessage = %q, want %q", got.SystemMessage, "only message")
+	}
+}
+
+func TestRegistryDispatchMergesSystemMessage_EmptySkipped(t *testing.T) {
+	t.Parallel()
+
+	cfg := &mockConfigProvider{cfg: newTestConfig()}
+	reg := NewRegistry(cfg)
+
+	h1 := &mockHandler{
+		event:  EventSessionStart,
+		output: &HookOutput{SystemMessage: "first"},
+	}
+	h2 := &mockHandler{
+		event:  EventSessionStart,
+		output: &HookOutput{}, // No SystemMessage
+	}
+	h3 := &mockHandler{
+		event:  EventSessionStart,
+		output: &HookOutput{SystemMessage: "third"},
+	}
+
+	reg.Register(h1)
+	reg.Register(h2)
+	reg.Register(h3)
+
+	ctx := context.Background()
+	input := &HookInput{SessionID: "test-skip-empty", CWD: "/tmp"}
+
+	got, err := reg.Dispatch(ctx, EventSessionStart, input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := "first\nthird"
+	if got.SystemMessage != want {
+		t.Errorf("SystemMessage = %q, want %q", got.SystemMessage, want)
+	}
+}

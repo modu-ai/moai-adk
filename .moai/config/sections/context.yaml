@@ -13,3 +13,7 @@ context_search:
     token_budget:
         max_injection_tokens: 5000
         skip_if_usage_above: 150000
+    memory_integration:
+        enabled: true
+        include_in_context: true
+        priority_over_search: true

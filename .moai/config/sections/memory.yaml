@@ -1,0 +1,5 @@
+memory:
+    auto_inject: true
+    enabled: true
+    max_tokens: 5000
+    memory_dir: .moai/memory

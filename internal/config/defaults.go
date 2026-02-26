@@ -59,6 +59,9 @@ const (
 	DefaultGitConventionConfidenceThreshold = 0.5
 	DefaultGitConventionFallback            = "conventional-commits"
 	DefaultGitConventionMaxLength           = 100
+
+	DefaultMemoryDir       = ".moai/memory"
+	DefaultMemoryMaxTokens = 5000
 )
 
 // NewDefaultConfig returns a Config with all fields set to compiled defaults.
@@ -75,6 +78,7 @@ func NewDefaultConfig() *Config {
 		Pricing:       NewDefaultPricingConfig(),
 		Ralph:         NewDefaultRalphConfig(),
 		Workflow:      NewDefaultWorkflowConfig(),
+		Memory:        NewDefaultMemoryConfig(),
 	}
 }
 
@@ -213,6 +217,16 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		PlanTokens: DefaultPlanTokens,
 		RunTokens:  DefaultRunTokens,
 		SyncTokens: DefaultSyncTokens,
+	}
+}
+
+// NewDefaultMemoryConfig returns a MemoryConfig with default values.
+func NewDefaultMemoryConfig() MemoryConfig {
+	return MemoryConfig{
+		Enabled:    true,
+		MemoryDir:  DefaultMemoryDir,
+		MaxTokens:  DefaultMemoryMaxTokens,
+		AutoInject: true,
 	}
 }
 
