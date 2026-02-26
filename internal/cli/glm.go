@@ -545,7 +545,7 @@ func loadGLMConfig(root string) (*GLMConfigFromYAML, error) {
 
 // getGLMEnvPath returns the path to ~/.moai/.env.glm.
 func getGLMEnvPath() string {
-	home, err := os.UserHomeDir()
+	home, err := userHomeDir()
 	if err != nil {
 		return ""
 	}
@@ -703,9 +703,10 @@ func isTestEnvironment() bool {
 	if flag := os.Getenv("MOAI_TEST_MODE"); flag == "1" {
 		return true
 	}
-	// Check if running under go test by examining os.Args
+	// Check if running under go test by examining os.Args.
+	// On Windows the test binary has a .test.exe suffix instead of .test.
 	for _, arg := range os.Args {
-		if strings.HasSuffix(arg, ".test") || strings.Contains(arg, "go.test") {
+		if strings.HasSuffix(arg, ".test") || strings.HasSuffix(arg, ".test.exe") || strings.Contains(arg, "go.test") {
 			return true
 		}
 	}
@@ -722,7 +723,7 @@ func findProjectRoot() (string, error) {
 		return "", err
 	}
 
-	homeDir, _ := os.UserHomeDir()
+	homeDir, _ := userHomeDir()
 
 	for {
 		// Skip home directory — ~/.moai/ is global state, not a project root

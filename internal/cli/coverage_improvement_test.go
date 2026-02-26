@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -2831,11 +2832,13 @@ func TestSaveGLMKey_WritesFile(t *testing.T) {
 		t.Error("expected key value in file")
 	}
 
-	// Verify file permissions (0600)
-	info, _ := os.Stat(envPath)
-	perm := info.Mode().Perm()
-	if perm != 0o600 {
-		t.Errorf("expected 0600 permissions, got %o", perm)
+	// Verify file permissions (0600) — Windows does not support Unix permissions.
+	if runtime.GOOS != "windows" {
+		info, _ := os.Stat(envPath)
+		perm := info.Mode().Perm()
+		if perm != 0o600 {
+			t.Errorf("expected 0600 permissions, got %o", perm)
+		}
 	}
 }
 
@@ -5232,15 +5235,17 @@ func TestSaveGLMKey_Permissions(t *testing.T) {
 	}
 
 	envPath := filepath.Join(tmpDir, ".moai", ".env.glm")
-	info, err := os.Stat(envPath)
-	if err != nil {
+	if _, err := os.Stat(envPath); err != nil {
 		t.Fatalf("file not created: %v", err)
 	}
 
-	// Should be 0600
-	perm := info.Mode().Perm()
-	if perm != 0o600 {
-		t.Errorf("expected 0600 permissions, got: %o", perm)
+	// Verify file permissions (0600) — Windows does not support Unix permissions.
+	if runtime.GOOS != "windows" {
+		info, _ := os.Stat(envPath)
+		perm := info.Mode().Perm()
+		if perm != 0o600 {
+			t.Errorf("expected 0600 permissions, got: %o", perm)
+		}
 	}
 }
 
