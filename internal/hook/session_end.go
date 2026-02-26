@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -32,7 +33,7 @@ func (h *sessionEndHandler) EventType() EventType {
 
 // Handle processes a SessionEnd event. It logs the session completion,
 // performs best-effort team directory cleanup, garbage-collects stale teams,
-// and clears tmux session env vars.
+// clears tmux session env vars, and kills orphaned tmux sessions.
 // SessionEnd hooks should not use hookSpecificOutput per Claude Code protocol.
 // All cleanup is best-effort: errors are logged with slog.Warn, never returned.
 func (h *sessionEndHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
@@ -51,6 +52,7 @@ func (h *sessionEndHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 
 	cleanupCurrentSessionTeam(input.SessionID, homeDir)
 	garbageCollectStaleTeams(homeDir)
+	cleanupOrphanedTmuxSessions(ctx)
 
 	// Always clear tmux session-level GLM env vars to restore Claude models.
 	// This is safe to call unconditionally:
@@ -58,16 +60,6 @@ func (h *sessionEndHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 	//   - If env vars don't exist: tmux command is a no-op
 	// This ensures the lead session returns to Claude after team completion.
 	clearTmuxSessionEnv()
-
-	// Clean up GLM env vars from settings.local.json.
-	// This ensures that if the session ends unexpectedly (error, crash, agent not terminated),
-	// the next session starts with Claude models instead of continuing to use GLM.
-	// Note: We do NOT reset team_mode in llm.yaml - that is intentional config that
-	// should persist across sessions for consistent team mode usage.
-	// We also do NOT remove CLAUDE_CODE_TEAMMATE_DISPLAY - that is a display setting.
-	if input.ProjectDir != "" {
-		cleanupGLMSettings(input.ProjectDir)
-	}
 
 	// SessionEnd hooks return empty JSON {} per Claude Code protocol
 	// Do NOT use hookSpecificOutput for SessionEnd events
@@ -181,6 +173,91 @@ func garbageCollectStaleTeams(homeDir string) {
 	}
 }
 
+// getCurrentTmuxSession returns the name of the current tmux session.
+// Returns empty string if not in tmux or if detection fails.
+func getCurrentTmuxSession(ctx context.Context) string {
+	// Check if we're in tmux
+	if os.Getenv("TMUX") == "" {
+		return ""
+	}
+
+	// Use tmux display-message to get current session name.
+	cmd := exec.CommandContext(ctx, "tmux", "display-message", "-p", "#S")
+	out, err := cmd.Output()
+	if err != nil {
+		slog.Warn("session_end: could not get current tmux session",
+			"error", err,
+		)
+		return ""
+	}
+
+	return strings.TrimSpace(string(out))
+}
+
+// cleanupOrphanedTmuxSessions kills tmux sessions that are not currently
+// attached. The cleanup is capped at 4 seconds to stay within the SessionEnd
+// hook timeout budget. If tmux is not installed or no sessions exist, the
+// function returns silently.
+func cleanupOrphanedTmuxSessions(ctx context.Context) {
+	// Reserve 4 seconds for tmux cleanup, leaving 1 second buffer.
+	cleanupCtx, cancel := context.WithTimeout(ctx, 4*time.Second)
+	defer cancel()
+
+	// Get current tmux session name to protect it from being killed.
+	currentSession := getCurrentTmuxSession(cleanupCtx)
+
+	// List all tmux sessions.
+	listCmd := exec.CommandContext(cleanupCtx, "tmux", "list-sessions")
+	out, err := listCmd.Output()
+	if err != nil {
+		// tmux not installed, no server running, or no sessions — all fine.
+		return
+	}
+
+	lines := strings.SplitSeq(strings.TrimSpace(string(out)), "\n")
+	for line := range lines {
+		if line == "" {
+			continue
+		}
+		// Skip the current tmux session - never kill the user's actual session.
+		name, _, found := strings.Cut(line, ":")
+		if !found || name == "" {
+			continue
+		}
+		if name == currentSession {
+			continue
+		}
+
+		// Sessions currently attached contain "(attached)".
+		if strings.Contains(line, "(attached)") {
+			continue
+		}
+
+		killCmd := exec.CommandContext(cleanupCtx, "tmux", "kill-session", "-t", name)
+		if err := killCmd.Run(); err != nil {
+			slog.Warn("session_end: could not kill orphaned tmux session",
+				"session", name,
+				"error", err,
+			)
+		} else {
+			slog.Info("session_end: killed orphaned tmux session",
+				"session", name,
+			)
+		}
+	}
+}
+
+// glmEnvVarsToClean is the list of GLM-specific environment variables removed
+// from the tmux session on session end. ANTHROPIC_AUTH_TOKEN is intentionally
+// excluded: it is the user's persistent authentication credential, not a
+// GLM-specific variable, and must survive session boundaries.
+var glmEnvVarsToClean = []string{
+	"ANTHROPIC_BASE_URL",
+	"ANTHROPIC_DEFAULT_OPUS_MODEL",
+	"ANTHROPIC_DEFAULT_SONNET_MODEL",
+	"ANTHROPIC_DEFAULT_HAIKU_MODEL",
+}
+
 // clearTmuxSessionEnv removes GLM environment variables from tmux session.
 // Called when team mode completes to restore Claude models for the lead session.
 // This ensures that after --team mode, the leader returns to using Claude models
@@ -191,17 +268,7 @@ func clearTmuxSessionEnv() {
 		return
 	}
 
-	// GLM environment variables to clear from tmux session.
-	// ALL GLM vars including ANTHROPIC_AUTH_TOKEN are removed.
-	// The GLM API key is stored persistently in ~/.moai/.env.glm
-	// and re-injected by 'moai glm' when needed.
-	envVars := []string{
-		"ANTHROPIC_AUTH_TOKEN",
-		"ANTHROPIC_BASE_URL",
-		"ANTHROPIC_DEFAULT_OPUS_MODEL",
-		"ANTHROPIC_DEFAULT_SONNET_MODEL",
-		"ANTHROPIC_DEFAULT_HAIKU_MODEL",
-	}
+	envVars := glmEnvVarsToClean
 
 	for _, name := range envVars {
 		cmd := exec.Command("tmux", "set-environment", "-u", name)
@@ -214,77 +281,5 @@ func clearTmuxSessionEnv() {
 		} else {
 			slog.Info("session_end: cleared tmux env", "env", name)
 		}
-	}
-}
-
-// cleanupGLMSettings removes GLM env vars from settings.local.json.
-// This ensures the next session starts with Claude models.
-func cleanupGLMSettings(projectDir string) {
-	settingsPath := filepath.Join(projectDir, ".claude", "settings.local.json")
-
-	data, err := os.ReadFile(settingsPath)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			slog.Warn("session_end: could not read settings.local.json", "error", err)
-		}
-		return
-	}
-
-	// Handle empty file gracefully (e.g. 0-byte file left by tests or crash)
-	if len(data) == 0 {
-		return
-	}
-
-	var settings map[string]any
-	if err := json.Unmarshal(data, &settings); err != nil {
-		slog.Warn("session_end: could not parse settings.local.json", "error", err)
-		return
-	}
-
-	env, ok := settings["env"].(map[string]any)
-	if !ok {
-		return // No env section
-	}
-
-	// Remove ALL GLM env vars from settings.local.json.
-	// ANTHROPIC_AUTH_TOKEN is also removed: the GLM API key is stored
-	// persistently in ~/.moai/.env.glm and re-injected by 'moai glm'.
-	// Leaving AUTH_TOKEN in settings.local.json overrides Claude's OAuth
-	// and causes /login errors.
-	glmVars := []string{
-		"ANTHROPIC_AUTH_TOKEN",
-		"ANTHROPIC_BASE_URL",
-		"ANTHROPIC_DEFAULT_OPUS_MODEL",
-		"ANTHROPIC_DEFAULT_SONNET_MODEL",
-		"ANTHROPIC_DEFAULT_HAIKU_MODEL",
-	}
-
-	changed := false
-	for _, key := range glmVars {
-		if _, exists := env[key]; exists {
-			delete(env, key)
-			changed = true
-		}
-	}
-
-	if !changed {
-		return
-	}
-
-	// Clean up empty env map
-	if len(env) == 0 {
-		delete(settings, "env")
-	}
-
-	newData, err := json.MarshalIndent(settings, "", "  ")
-	if err != nil {
-		slog.Warn("session_end: could not marshal settings", "error", err)
-		return
-	}
-
-	if err := os.WriteFile(settingsPath, newData, 0o644); err != nil {
-		slog.Warn("session_end: could not write settings", "error", err)
-	} else {
-		slog.Info("session_end: cleaned up GLM env from settings.local.json")
 	}
 }
