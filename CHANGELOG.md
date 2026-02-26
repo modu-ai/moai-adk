@@ -5,6 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.10] - 2026-02-26
+
+### Summary
+
+This release fixes the root cause of `/login` prompts appearing on every session restart. The team skill cleanup instructions were manually overwriting `~/.claude/settings.local.json` using the AI's Write tool, which silently erased `ANTHROPIC_AUTH_TOKEN` and other settings. All cleanup now delegates to `moai cc` which safely handles JSON merging. Also includes worktree-isolated parallel processing and local CI mirror for the GitHub workflow.
+
+### Breaking Changes
+
+None.
+
+### Added
+
+- **Worktree-isolated parallel processing**: GitHub workflow now uses worktree isolation for parallel issue fixing, preventing file conflicts during concurrent work.
+- **Local CI mirror**: CI validation runs locally in worktrees before pushing, reducing failed remote CI runs.
+
+### Fixed
+
+- **Persistent /login prompts (root cause)**: Team skill cleanup in `plan.md`, `run.md`, `debug.md`, and `review.md` instructed MoAI to manually `Read`/`Write` `~/.claude/settings.local.json`. The `Write` tool overwrites the entire file, destroying `ANTHROPIC_AUTH_TOKEN` and forcing re-login on every session. All four skills now delegate cleanup to `moai cc` which handles JSON merging correctly.
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.6.10] - 2026-02-26 (한국어)
+
+### 요약
+
+이번 릴리스는 매 세션 재시작 시 `/login`이 나타나는 문제의 근본 원인을 수정합니다. 팀 스킬의 cleanup 지시가 AI의 `Write` 도구로 `~/.claude/settings.local.json`을 직접 덮어쓰며 `ANTHROPIC_AUTH_TOKEN` 및 기타 설정을 삭제했습니다. 이제 모든 cleanup은 JSON 병합을 안전하게 처리하는 `moai cc`에 위임합니다. GitHub 워크플로우용 워크트리 격리 병렬 처리 및 로컬 CI 미러도 포함합니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 추가됨 (Added)
+
+- **워크트리 격리 병렬 처리**: GitHub 워크플로우가 병렬 이슈 수정 시 워크트리 격리를 사용하여 동시 작업 중 파일 충돌 방지.
+- **로컬 CI 미러**: 푸시 전 워크트리에서 CI 검증을 로컬로 실행하여 원격 CI 실패 감소.
+
+### 수정됨 (Fixed)
+
+- **지속적인 /login 프롬프트 (근본 원인)**: `plan.md`, `run.md`, `debug.md`, `review.md`의 팀 스킬 cleanup이 MoAI에게 `~/.claude/settings.local.json`을 직접 `Read`/`Write`하도록 지시했음. `Write` 도구는 전체 파일을 덮어써 `ANTHROPIC_AUTH_TOKEN`을 삭제하여 매 세션마다 재로그인을 강제함. 4개 스킬 모두 JSON 병합을 올바르게 처리하는 `moai cc`에 cleanup을 위임하도록 수정.
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.6.8] - 2026-02-26
 
 ### Summary
