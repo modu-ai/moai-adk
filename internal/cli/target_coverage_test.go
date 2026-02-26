@@ -32,19 +32,17 @@ import (
 )
 
 // =============================================================================
-// removeGLMEnv — ANTHROPIC_AUTH_TOKEN preserved when not matching GLM key
-// (issue #433: moai cc must not delete real /login auth tokens)
+// removeGLMEnv — ANTHROPIC_AUTH_TOKEN removed unconditionally (pre-v2.6 behavior)
+// moai glm is the only writer of AUTH_TOKEN to project settings.local.json.
+// /login stores the Claude credential in ~/.claude/settings.local.json (global),
+// which is a different file — so removing from project settings is always safe.
 // =============================================================================
 
-func TestRemoveGLMEnv_PreservesAuthTokenWhenNotGLMKey(t *testing.T) {
+func TestRemoveGLMEnv_RemovesAuthTokenUnconditionally(t *testing.T) {
 	tmpDir := t.TempDir()
 	settingsPath := filepath.Join(tmpDir, "settings.local.json")
 
-	// Point HOME to tmpDir so there is no ~/.moai/.env.glm (no GLM key configured).
-	// ANTHROPIC_AUTH_TOKEN is a "real" Claude Max token that differs from any GLM key.
-	t.Setenv("HOME", tmpDir)
-
-	content := `{"env":{"ANTHROPIC_AUTH_TOKEN":"claude-max-real-token","ANTHROPIC_BASE_URL":"url","ANTHROPIC_DEFAULT_HAIKU_MODEL":"h"}}`
+	content := `{"env":{"ANTHROPIC_AUTH_TOKEN":"some-token","ANTHROPIC_BASE_URL":"url","ANTHROPIC_DEFAULT_HAIKU_MODEL":"h"}}`
 	if err := os.WriteFile(settingsPath, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -54,18 +52,18 @@ func TestRemoveGLMEnv_PreservesAuthTokenWhenNotGLMKey(t *testing.T) {
 	}
 
 	data, _ := os.ReadFile(settingsPath)
-	content = string(data)
+	result := string(data)
 
-	// ANTHROPIC_AUTH_TOKEN must be preserved — it is a real /login token, not a GLM key.
-	if !strings.Contains(content, "claude-max-real-token") {
-		t.Error("ANTHROPIC_AUTH_TOKEN should be preserved when it does not match the stored GLM key (issue #433)")
+	// ANTHROPIC_AUTH_TOKEN must be removed — moai glm is the only source for
+	// this field in project settings; /login writes to the global file instead.
+	if strings.Contains(result, "ANTHROPIC_AUTH_TOKEN") {
+		t.Error("ANTHROPIC_AUTH_TOKEN should be removed from project settings.local.json")
 	}
-	// GLM routing vars must still be removed.
-	if strings.Contains(content, "ANTHROPIC_BASE_URL") {
-		t.Error("ANTHROPIC_BASE_URL (GLM routing var) should be removed")
+	if strings.Contains(result, "ANTHROPIC_BASE_URL") {
+		t.Error("ANTHROPIC_BASE_URL should be removed")
 	}
-	if strings.Contains(content, "ANTHROPIC_DEFAULT_HAIKU_MODEL") {
-		t.Error("ANTHROPIC_DEFAULT_HAIKU_MODEL (GLM routing var) should be removed")
+	if strings.Contains(result, "ANTHROPIC_DEFAULT_HAIKU_MODEL") {
+		t.Error("ANTHROPIC_DEFAULT_HAIKU_MODEL should be removed")
 	}
 }
 

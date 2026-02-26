@@ -194,10 +194,15 @@ func getCurrentTmuxSession(ctx context.Context) string {
 	return strings.TrimSpace(string(out))
 }
 
-// cleanupOrphanedTmuxSessions kills tmux sessions that are not currently
-// attached. The cleanup is capped at 4 seconds to stay within the SessionEnd
-// hook timeout budget. If tmux is not installed or no sessions exist, the
-// function returns silently.
+// moaiTmuxSessionPrefix is the naming convention for tmux sessions created by
+// MoAI Agent Teams. Only sessions matching this prefix are eligible for cleanup.
+const moaiTmuxSessionPrefix = "moai-"
+
+// cleanupOrphanedTmuxSessions kills detached tmux sessions created by MoAI
+// Agent Teams (prefix "moai-"). User-created sessions are never touched.
+// The cleanup is capped at 4 seconds to stay within the SessionEnd hook
+// timeout budget. If tmux is not installed or no sessions exist, the function
+// returns silently.
 func cleanupOrphanedTmuxSessions(ctx context.Context) {
 	// Reserve 4 seconds for tmux cleanup, leaving 1 second buffer.
 	cleanupCtx, cancel := context.WithTimeout(ctx, 4*time.Second)
@@ -228,6 +233,12 @@ func cleanupOrphanedTmuxSessions(ctx context.Context) {
 			continue
 		}
 
+		// Only kill sessions created by MoAI (prefixed with "moai-").
+		// Never kill user-created tmux sessions.
+		if !strings.HasPrefix(name, moaiTmuxSessionPrefix) {
+			continue
+		}
+
 		// Sessions currently attached contain "(attached)".
 		if strings.Contains(line, "(attached)") {
 			continue
@@ -248,10 +259,15 @@ func cleanupOrphanedTmuxSessions(ctx context.Context) {
 }
 
 // glmEnvVarsToClean is the list of GLM-specific environment variables removed
-// from the tmux session on session end. ANTHROPIC_AUTH_TOKEN is intentionally
-// excluded: it is the user's persistent authentication credential, not a
-// GLM-specific variable, and must survive session boundaries.
+// from the tmux session on session end.
+// ANTHROPIC_AUTH_TOKEN is included: moai glm/cg sets it to the GLM API key in
+// the tmux session. Removing it unconditionally restores the pre-v2.6 behavior
+// that had no login issues. The user's real Claude credential is stored in
+// ~/.claude/ (system credential storage), not in the tmux environment, so
+// unsetting the tmux var is always safe — it either removes a GLM key (correct)
+// or is a no-op when it was never set.
 var glmEnvVarsToClean = []string{
+	"ANTHROPIC_AUTH_TOKEN",
 	"ANTHROPIC_BASE_URL",
 	"ANTHROPIC_DEFAULT_OPUS_MODEL",
 	"ANTHROPIC_DEFAULT_SONNET_MODEL",
@@ -268,9 +284,7 @@ func clearTmuxSessionEnv() {
 		return
 	}
 
-	envVars := glmEnvVarsToClean
-
-	for _, name := range envVars {
+	for _, name := range glmEnvVarsToClean {
 		cmd := exec.Command("tmux", "set-environment", "-u", name)
 		if err := cmd.Run(); err != nil {
 			// Log warning but don't fail - variable might not exist

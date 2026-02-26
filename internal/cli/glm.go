@@ -253,6 +253,10 @@ func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
 
 // clearTmuxSessionEnv removes GLM environment variables from tmux session.
 // Called when switching back to Claude mode (moai cc).
+// All GLM vars including ANTHROPIC_AUTH_TOKEN are removed unconditionally,
+// matching pre-v2.6 behavior. The user's real Claude credential lives in
+// ~/.claude/ (system credential storage), not in tmux env, so removing the
+// tmux var is safe — it either cleans up a GLM key (correct) or is a no-op.
 func clearTmuxSessionEnv() error {
 	// Skip in test environment
 	if isTestEnvironment() {
@@ -264,13 +268,8 @@ func clearTmuxSessionEnv() error {
 		return nil
 	}
 
-	// GLM environment variables to clear from tmux session.
-	// ANTHROPIC_AUTH_TOKEN is intentionally excluded: it is the user's
-	// persistent authentication credential (Claude Max subscription), not a
-	// GLM-specific variable. Removing it would force /login every session (issue #433).
-	// The GLM API key is stored persistently in ~/.moai/.env.glm
-	// and re-injected by 'moai glm' when needed.
 	envVars := []string{
+		"ANTHROPIC_AUTH_TOKEN",
 		"ANTHROPIC_BASE_URL",
 		"ANTHROPIC_DEFAULT_OPUS_MODEL",
 		"ANTHROPIC_DEFAULT_SONNET_MODEL",

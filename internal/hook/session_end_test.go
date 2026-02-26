@@ -248,17 +248,28 @@ func TestCleanupOrphanedTmuxSessions_GracefulWithContext(t *testing.T) {
 	cleanupOrphanedTmuxSessions(ctx)
 }
 
-// TestGLMEnvVarsToClean_ExcludesAuthToken verifies that ANTHROPIC_AUTH_TOKEN
-// is not in the GLM cleanup list. Removing the auth token on session end would
-// force Claude Max subscribers to re-login every session (issue #433).
-func TestGLMEnvVarsToClean_ExcludesAuthToken(t *testing.T) {
+// TestGLMEnvVarsToClean_IncludesAuthToken verifies that ANTHROPIC_AUTH_TOKEN
+// is in the GLM tmux cleanup list. This matches pre-v2.6 behavior which had no
+// login issues. moai glm/cg sets ANTHROPIC_AUTH_TOKEN in the tmux session to the
+// GLM API key; not clearing it causes the next Claude Code session to
+// authenticate with the GLM key against Anthropic's default base URL, resulting
+// in auth failure. The user's real Claude credential is stored in ~/.claude/
+// (system credential storage), not in tmux env, so clearing the tmux var is
+// always safe — it either removes a GLM key or is a no-op.
+func TestGLMEnvVarsToClean_IncludesAuthToken(t *testing.T) {
 	t.Parallel()
 
+	found := false
 	for _, v := range glmEnvVarsToClean {
 		if v == "ANTHROPIC_AUTH_TOKEN" {
-			t.Errorf("glmEnvVarsToClean must not contain ANTHROPIC_AUTH_TOKEN: "+
-				"it is a permanent user credential, not a GLM-specific env var (issue #433); got list: %v", glmEnvVarsToClean)
+			found = true
+			break
 		}
+	}
+	if !found {
+		t.Errorf("glmEnvVarsToClean must contain ANTHROPIC_AUTH_TOKEN: "+
+			"not clearing it leaves the GLM key in tmux, causing auth failure "+
+			"in the next session; got list: %v", glmEnvVarsToClean)
 	}
 }
 
@@ -283,6 +294,20 @@ func TestGLMEnvVarsToClean_ContainsExpectedVars(t *testing.T) {
 		if !varSet[want] {
 			t.Errorf("glmEnvVarsToClean missing expected GLM var %q; got list: %v", want, glmEnvVarsToClean)
 		}
+	}
+}
+
+// TestMoaiTmuxSessionPrefix verifies the naming convention constant used to
+// filter tmux sessions during cleanup. Only sessions with this prefix are
+// eligible for orphan cleanup — user-created sessions are never touched.
+func TestMoaiTmuxSessionPrefix(t *testing.T) {
+	t.Parallel()
+
+	if moaiTmuxSessionPrefix == "" {
+		t.Fatal("moaiTmuxSessionPrefix must not be empty")
+	}
+	if moaiTmuxSessionPrefix != "moai-" {
+		t.Errorf("moaiTmuxSessionPrefix = %q, want %q", moaiTmuxSessionPrefix, "moai-")
 	}
 }
 
