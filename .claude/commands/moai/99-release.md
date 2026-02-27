@@ -270,8 +270,18 @@ Use AskUserQuestion:
 
 **[HARD] ALL git operations MUST be delegated to manager-git agent.**
 **[HARD] Branch protection with enforce_admins is enabled. Direct push to main is blocked.**
+**[HARD] manager-git subagent MUST be invoked with `isolation: "worktree"` to enforce branch isolation.**
 
-If approved, delegate to manager-git subagent with this context:
+If approved, delegate to manager-git subagent with this context and Task invocation:
+
+```bash
+# Example Task invocation with worktree isolation
+Task(
+  subagent_type: "manager-git",
+  isolation: "worktree",
+  prompt: "[Mission context below]"
+)
+```
 
 ```
 ## Mission: Release Git Operations for Version X.Y.Z
@@ -330,12 +340,13 @@ If approved, delegate to manager-git subagent with this context:
 7. Handle tag conflicts:
    - If remote does NOT have vX.Y.Z: Create tag on current main HEAD and push
    - If remote already has vX.Y.Z: Report situation with options
-8. Create and push tag (tags bypass branch protection):
+8. Create and push tag (only if tag does NOT exist on remote):
    ```bash
+   # Only execute this block if vX.Y.Z tag does NOT exist on origin
    git tag vX.Y.Z
    git push origin vX.Y.Z
    ```
-9. Verify GoReleaser workflow triggered
+9. Verify GoReleaser workflow triggered (tags bypass branch protection)
 
 ### Expected Output
 
@@ -485,7 +496,6 @@ moai update
 1. Python 버전 제거: `uv tool uninstall moai-adk`
 2. Go 에디션 설치 (위 명령어 사용)
 3. 프로젝트 템플릿 업데이트: `moai init`
-\`\`\`
 RELEASE_EOF
 )"
 ```
