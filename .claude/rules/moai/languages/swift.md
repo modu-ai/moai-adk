@@ -45,8 +45,3 @@ Version: Swift 6+
 - Use async tests for concurrent code
 - Mock dependencies with protocols
 - Use snapshot testing for UI
-
-## MoAI Integration
-
-- Use Skill("moai-lang-swift") for detailed patterns
-- Follow TRUST 5 quality gates

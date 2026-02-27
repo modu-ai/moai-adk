@@ -45,8 +45,3 @@ Version: Scala 3.4+
 - Use property-based testing with ScalaCheck
 - Use mock libraries sparingly
 - Test effect types properly
-
-## MoAI Integration
-
-- Use Skill("moai-lang-scala") for detailed patterns
-- Follow TRUST 5 quality gates

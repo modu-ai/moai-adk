@@ -45,8 +45,3 @@ Version: Ruby 3.3+
 - Use FactoryBot for test data
 - Use VCR for HTTP recording
 - Use database_cleaner for isolation
-
-## MoAI Integration
-
-- Use Skill("moai-lang-ruby") for detailed patterns
-- Follow TRUST 5 quality gates

@@ -45,8 +45,3 @@ Version: Java 21 LTS
 - Use Mockito for mocking
 - Use AssertJ for fluent assertions
 - Use Testcontainers for integration tests
-
-## MoAI Integration
-
-- Use Skill("moai-lang-java") for detailed patterns
-- Follow TRUST 5 quality gates
