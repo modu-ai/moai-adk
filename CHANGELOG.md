@@ -5,6 +5,76 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.15] - 2026-02-28
+
+### Summary
+
+This release includes memory architecture migration to Claude Code's native auto-memory, builder-skill path enforcement, and multiple bug fixes for SessionEnd hooks and GLM compatibility.
+
+### Breaking Changes
+
+None.
+
+### Changed
+
+- **Memory-to-auto-memory migration**: Replaced custom `.moai/memory/` injection system with Claude Code's native auto-memory at `~/.claude/projects/`. Removed `InjectMemoryToPrompt` and related code.
+- Rules loading optimization, @MX tags English standardization, worktree isolation rules, skill definition updates.
+
+### Fixed
+
+- **builder-skill path enforcement** (#444): Skill creation now enforces correct skill path structure and uses `my-` prefix for user-created skills to prevent conflicts with built-in skills.
+- **State migration cleanup**: Completed memory-to-state migration with proper cleanup of deprecated state files and update logic.
+- **SessionEnd hook improvements**: Added `context.Context` with timeout to `clearTmuxSessionEnv`, CWD fallback for `ProjectDir`, cleanup failure summary logging, and timeout warning for tmux cleanup.
+- **GLM model compatibility**: Replaced deprecated `glm-4.7-flashx` with `glm-4.5-air` for coding plan compatibility.
+- **GLM settings cleanup**: Added GLM environment variable cleanup to SessionEnd handler to prevent stale variables.
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.6.15] - 2026-02-28 (한국어)
+
+### 요약
+
+이번 릴리스는 Claude Code 네이티브 자동 메모리로의 메모리 아키텍처 마이그레이션, builder-skill 경로 적용, SessionEnd 훅 및 GLM 호환성 관련 다수의 버그 수정을 포함합니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 변경됨 (Changed)
+
+- **메모리-자동메모리 마이그레이션**: 커스텀 `.moai/memory/` 주입 시스템을 Claude Code의 네이티브 자동 메모리(`~/.claude/projects/`)로 교체했습니다. `InjectMemoryToPrompt` 및 관련 코드가 제거되었습니다.
+- 규칙 로딩 최적화, @MX 태그 영어 표준화, 워크트리 격리 규칙, 스킬 정의 업데이트.
+
+### 수정됨 (Fixed)
+
+- **builder-skill 경로 적용** (#444): 스킬 생성 시 올바른 스킬 경로 구조를 적용하고, 내장 스킬과의 충돌을 방지하기 위해 사용자 생성 스킬에 `my-` 접두사를 사용합니다.
+- **상태 마이그레이션 정리**: 메모리-스테이트 마이그레이션을 완료하고 더 이상 사용되지 않는 상태 파일 및 업데이트 로직을 정리했습니다.
+- **SessionEnd 훅 개선**: `clearTmuxSessionEnv`에 타임아웃 `context.Context` 추가, `ProjectDir` CWD 폴백, 정리 실패 요약 로깅, tmux 정리 타임아웃 경고가 추가되었습니다.
+- **GLM 모델 호환성**: 더 이상 사용되지 않는 `glm-4.7-flashx`를 코딩 플랜 호환을 위해 `glm-4.5-air`로 교체했습니다.
+- **GLM 설정 정리**: stale 변수 방지를 위해 SessionEnd 핸들러에 GLM 환경 변수 정리가 추가되었습니다.
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.6.12] - 2026-02-27
 
 ### Summary

@@ -25,11 +25,13 @@ document_management:
 github:
     auto_delete_branches: true
     enable_trust_5: true
+    git_workflow: github_flow
+    merge_strategy: squash
     spec_git_workflow: feature_branch
 moai:
     template_version: v2.4.7-52-gd7e7d4d5
     update_check_frequency: daily
-    version: v2.6.13
+    version: v2.6.15
     version_check:
         cache_ttl_hours: 24
         enabled: true

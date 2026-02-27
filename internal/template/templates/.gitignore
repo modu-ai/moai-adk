@@ -163,6 +163,8 @@ secret-*.*
 .claude/.env.local*
 .claude/local/
 .claude/plans/
+.claude/agent-memory/
+.claude/worktrees/
 
 # Skill-specific credentials
 .claude/skills/*/.env*
@@ -172,6 +174,13 @@ secret-*.*
 .claude/skills/*/*/*token*
 # Re-include legitimate skill module files containing "token" in their name
 !.claude/skills/*/modules/*token*.md
+
+# ===========================================
+# Local-Only Files (never sync via git pull)
+# ===========================================
+.moai/status_line.sh
+.moai/memory/
+.moai/worktrees/
 
 # ===========================================
 # Node.js (for docs/Nextra)

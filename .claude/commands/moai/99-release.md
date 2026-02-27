@@ -1,10 +1,10 @@
 ---
-description: "MoAI-ADK v2.x production release with agent delegation and quality validation. Target branch is always main. Tag format vX.Y.Z triggers GoReleaser. All git operations delegated to manager-git. Quality failures escalate to expert-debug."
+description: "MoAI-ADK v2.x production release via GitHub Flow. Creates release/vX.Y.Z branch, version bump, CHANGELOG, PR to main, squash merge, then tag push. Tag vX.Y.Z triggers GoReleaser. All git operations delegated to manager-git. Quality failures escalate to expert-debug."
 argument-hint: "[VERSION] - optional target version (e.g., 2.1.0). If omitted, prompts for patch/minor/major selection."
 type: local
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, AskUserQuestion, Task
 model: sonnet
-version: 3.0.0
+version: 4.0.0
 metadata:
   release_target: "production"
   branch: "main"
@@ -17,8 +17,11 @@ metadata:
 
 ## Release Configuration
 
-- **Branch**: `main`
+- **Git workflow**: GitHub Flow with enforce_admins (direct main push blocked)
+- **Release branch**: `release/vX.Y.Z` (created from main, merged via PR)
+- **Target branch**: `main` (all releases merge to main)
 - **Tag format**: `vX.Y.Z` (standard semver, triggers GoReleaser via `.github/workflows/release.yml`)
+- **Merge strategy**: Squash merge with branch auto-delete
 - **Release URL**: https://github.com/modu-ai/moai-adk/releases/tag/vX.Y.Z
 - **Binaries**: darwin-arm64, darwin-amd64, linux-arm64, linux-amd64, windows-amd64
 
@@ -72,6 +75,13 @@ Before starting the release process, verify the working directory is clean:
    ```bash
    git pull origin main
    ```
+
+5. **Create release branch**:
+   ```bash
+   git checkout -b release/vX.Y.Z
+   ```
+   All version bump and CHANGELOG commits will be made on this branch.
+   The release branch will be merged to main via PR (enforce_admins is enabled).
 
 ---
 
@@ -153,6 +163,27 @@ Version files checklist:
 CHANGELOG.md and GitHub Release notes MUST follow English-first bilingual structure. This ensures international users see English first while maintaining Korean documentation.
 
 Get commits for changelog: `git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s (%h)"`
+
+### [HARD] Content Filtering: Separate User-Facing vs Internal Changes
+
+CHANGELOG and GitHub Release notes MUST prioritize **user-facing changes** that affect the moai binary behavior or CLI functionality.
+
+**Full description (individual bullet points):**
+- Go source code changes (`cmd/`, `internal/`, `pkg/`)
+- User-visible CLI commands and flags
+- Hook behavior changes that users experience
+- Breaking changes to configuration format
+- Security fixes
+
+**Abbreviated (single summary line, no individual bullets):**
+- Template/rules file optimization (`.claude/rules/`, `.claude/skills/`, `.claude/agents/`)
+- Code annotation changes (`@MX` tags, comments-only changes)
+- Internal documentation updates (worktree rules, agent authoring guides)
+- Skill definition template updates
+
+**Excluded entirely (do not mention):**
+- Local development configuration changes (`.gitignore`, IDE settings, editor configs)
+- Release workflow and CI pipeline modifications (`.github/workflows/`, release command updates)
 
 ### CHANGELOG.md Structure
 
@@ -251,16 +282,27 @@ Display release summary:
 
 Use AskUserQuestion:
 
-- Release: Create tag and push to main
-- Abort: Cancel (changes remain local)
+- Release: Push release branch, create PR, merge, and tag
+- Abort: Cancel (changes remain on local release branch)
 
 ---
 
-## PHASE 6: Tag and Push (AGENT DELEGATION REQUIRED)
+## PHASE 6: Release Branch PR and Tag (AGENT DELEGATION REQUIRED)
 
 **[HARD] ALL git operations MUST be delegated to manager-git agent.**
+**[HARD] Branch protection with enforce_admins is enabled. Direct push to main is blocked.**
+**[HARD] manager-git subagent MUST be invoked with `isolation: "worktree"` to enforce branch isolation.**
 
-If approved, delegate to manager-git subagent with this context:
+If approved, delegate to manager-git subagent with this context and Task invocation:
+
+```bash
+# Example Task invocation with worktree isolation
+Task(
+  subagent_type: "manager-git",
+  isolation: "worktree",
+  prompt: "[Mission context below]"
+)
+```
 
 ```
 ## Mission: Release Git Operations for Version X.Y.Z
@@ -268,28 +310,73 @@ If approved, delegate to manager-git subagent with this context:
 ### Context
 
 - Target version: X.Y.Z
-- Target branch: main
+- Current branch: release/vX.Y.Z (created in Phase 0)
 - Tag format: vX.Y.Z (standard semver)
-- Current state: [describe current git state]
+- Branch protection: enforce_admins enabled, direct main push blocked
 - Quality gates: All passed
-- Commits included: [list commit count and summary]
+- Commits on release branch: version bump + CHANGELOG
 
-### Required Actions
+### Required Actions (GitHub Flow Release)
 
-1. Check remote status: Verify if tag vX.Y.Z exists on remote (origin)
-2. Handle tag conflicts:
-   - If remote does NOT have vX.Y.Z: Create tag and push
+1. Push release branch to remote:
+   `git push -u origin release/vX.Y.Z`
+
+2. Create PR from release branch to main:
+   ```bash
+   gh pr create \
+     --head release/vX.Y.Z \
+     --base main \
+     --title "release: vX.Y.Z" \
+     --body "$(cat <<'EOF'
+   ## Release vX.Y.Z
+
+   ### Changes
+   - Version bump to vX.Y.Z
+   - CHANGELOG updated (bilingual)
+   - [list key changes from commits since last tag]
+
+   ### Quality Gates
+   - Tests: PASS
+   - Lint: PASS
+   - Build: PASS
+
+   This PR is auto-generated by the MoAI release workflow.
+   EOF
+   )"
+   ```
+
+3. Wait for CI checks to pass:
+   `gh pr checks --watch`
+
+4. Merge PR with squash:
+   `gh pr merge --squash --delete-branch`
+
+5. Sync local main with merged result:
+   ```bash
+   git checkout main
+   git pull origin main
+   ```
+
+6. Check remote status: Verify if tag vX.Y.Z exists on remote (origin)
+7. Handle tag conflicts:
+   - If remote does NOT have vX.Y.Z: Create tag on current main HEAD and push
    - If remote already has vX.Y.Z: Report situation with options
-3. Execute push: `git push origin main --tags`
-4. Verify GoReleaser workflow triggered
+8. Create and push tag (only if tag does NOT exist on remote):
+   ```bash
+   # Only execute this block if vX.Y.Z tag does NOT exist on origin
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
+   ```
+9. Verify GoReleaser workflow triggered (tags bypass branch protection)
 
 ### Expected Output
 
 Report back with:
-1. Remote tag status
-2. Action taken
-3. GitHub Actions workflow status
-4. Release URL: https://github.com/modu-ai/moai-adk/releases/tag/vX.Y.Z
+1. PR number and merge status
+2. Remote tag status
+3. Action taken
+4. GitHub Actions workflow status
+5. Release URL: https://github.com/modu-ai/moai-adk/releases/tag/vX.Y.Z
 ```
 
 ---
@@ -430,7 +517,6 @@ moai update
 1. Python 버전 제거: `uv tool uninstall moai-adk`
 2. Go 에디션 설치 (위 명령어 사용)
 3. 프로젝트 템플릿 업데이트: `moai init`
-\`\`\`
 RELEASE_EOF
 )"
 ```
@@ -586,12 +672,16 @@ Updating version files...
 ## Key Rules
 
 - **Target branch**: `main` (production releases)
+- **Git workflow**: GitHub Flow with enforce_admins (direct main push blocked)
+- **Release flow**: release/vX.Y.Z branch → PR → squash merge → tag → push tag
 - **Tag format**: `vX.Y.Z` (triggers GoReleaser via release.yml)
+- Tags bypass branch protection (only branch pushes are blocked)
 - Tests MUST pass to continue (85%+ coverage per package)
 - All 3 version files must be consistent
 - **[HARD] CHANGELOG and GitHub Release: English FIRST, Korean SECOND**
 - **[HARD] ALL git operations MUST be delegated to manager-git agent**
 - **[HARD] Quality gate failures MUST be delegated to expert-debug agent**
+- **[HARD] Never `git push origin main` — always use PR merge flow**
 
 ---
 
