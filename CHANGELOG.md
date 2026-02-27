@@ -5,6 +5,96 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.15] - 2026-02-28
+
+### Summary
+
+This release includes significant infrastructure improvements: GitHub Flow adoption with branch protection (enforce_admins), memory-to-state architecture migration, rules optimization, and multiple bug fixes for hooks, CI workflows, and GLM compatibility.
+
+### Breaking Changes
+
+None.
+
+### Added
+
+- **GitHub Flow release workflow**: Release process now uses `release/vX.Y.Z` branch with PR-based merge flow, respecting `enforce_admins` branch protection. Direct pushes to main are no longer permitted.
+- **GitHub Actions CI workflows**: Added Claude Code Review workflow and Claude PR Assistant workflow for automated PR review.
+
+### Changed
+
+- **Rules loading optimization**: Removed redundant content from 20+ language and development rule files, reducing token consumption during rule loading.
+- **Memory-to-auto-memory migration**: Replaced custom `.moai/memory/` injection system with Claude Code's native auto-memory at `~/.claude/projects/`. Removed `InjectMemoryToPrompt` and related code.
+- **@MX tags standardized to English**: Converted all Korean @MX tag descriptions to English across the entire codebase for consistency.
+- **Worktree isolation rules**: Added HARD isolation rules for parallel agent safety in team mode workflows.
+- **Skill definitions updated**: Updated docs-generation and database skill definitions with latest patterns.
+
+### Fixed
+
+- **builder-skill path enforcement** (#444): Skill creation now enforces correct skill path structure and uses `my-` prefix for user-created skills to prevent conflicts with built-in skills.
+- **State migration cleanup**: Completed memory-to-state migration with proper cleanup of deprecated state files and update logic.
+- **GitHub Actions security hardening**: Hardened CI workflows with explicit permissions, pinned action versions, and cost reduction measures.
+- **SessionEnd hook improvements**: Added `context.Context` with timeout to `clearTmuxSessionEnv`, CWD fallback for `ProjectDir`, cleanup failure summary logging, and timeout warning for tmux cleanup.
+- **GLM model compatibility**: Replaced deprecated `glm-4.7-flashx` with `glm-4.5-air` for coding plan compatibility.
+- **GLM settings cleanup**: Added GLM environment variable cleanup to SessionEnd handler to prevent stale variables.
+- **gitignore protection**: Added `.moai/status_line.sh`, `.moai/memory/`, `.moai/worktrees/`, and `.claude/worktrees/` to `.gitignore` to protect local-only files from deletion during `git pull`.
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.6.15] - 2026-02-28 (한국어)
+
+### 요약
+
+이번 릴리스는 주요 인프라 개선을 포함합니다: GitHub Flow 도입 및 브랜치 보호(enforce_admins), 메모리-스테이트 아키텍처 마이그레이션, 규칙 최적화, 그리고 훅, CI 워크플로우, GLM 호환성 관련 다수의 버그 수정이 포함되었습니다.
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 추가됨 (Added)
+
+- **GitHub Flow 릴리스 워크플로우**: 릴리스 프로세스가 `release/vX.Y.Z` 브랜치와 PR 기반 머지 플로우를 사용하며, `enforce_admins` 브랜치 보호를 준수합니다. main 브랜치에 대한 직접 푸시는 더 이상 허용되지 않습니다.
+- **GitHub Actions CI 워크플로우**: 자동 PR 리뷰를 위한 Claude Code Review 워크플로우 및 Claude PR Assistant 워크플로우가 추가되었습니다.
+
+### 변경됨 (Changed)
+
+- **규칙 로딩 최적화**: 20개 이상의 언어 및 개발 규칙 파일에서 중복 콘텐츠를 제거하여 규칙 로딩 시 토큰 소비를 절감했습니다.
+- **메모리-자동메모리 마이그레이션**: 커스텀 `.moai/memory/` 주입 시스템을 Claude Code의 네이티브 자동 메모리(`~/.claude/projects/`)로 교체했습니다. `InjectMemoryToPrompt` 및 관련 코드가 제거되었습니다.
+- **@MX 태그 영어 표준화**: 코드베이스 전체의 모든 한국어 @MX 태그 설명을 영어로 통일했습니다.
+- **워크트리 격리 규칙**: 팀 모드 워크플로우에서 병렬 에이전트 안전을 위한 HARD 격리 규칙이 추가되었습니다.
+- **스킬 정의 업데이트**: 최신 패턴으로 docs-generation 및 database 스킬 정의가 업데이트되었습니다.
+
+### 수정됨 (Fixed)
+
+- **builder-skill 경로 적용** (#444): 스킬 생성 시 올바른 스킬 경로 구조를 적용하고, 내장 스킬과의 충돌을 방지하기 위해 사용자 생성 스킬에 `my-` 접두사를 사용합니다.
+- **상태 마이그레이션 정리**: 메모리-스테이트 마이그레이션을 완료하고 더 이상 사용되지 않는 상태 파일 및 업데이트 로직을 정리했습니다.
+- **GitHub Actions 보안 강화**: 명시적 권한, 고정된 액션 버전, 비용 절감 조치로 CI 워크플로우를 강화했습니다.
+- **SessionEnd 훅 개선**: `clearTmuxSessionEnv`에 타임아웃 `context.Context` 추가, `ProjectDir` CWD 폴백, 정리 실패 요약 로깅, tmux 정리 타임아웃 경고가 추가되었습니다.
+- **GLM 모델 호환성**: 더 이상 사용되지 않는 `glm-4.7-flashx`를 코딩 플랜 호환을 위해 `glm-4.5-air`로 교체했습니다.
+- **GLM 설정 정리**: stale 변수 방지를 위해 SessionEnd 핸들러에 GLM 환경 변수 정리가 추가되었습니다.
+- **gitignore 보호**: `git pull` 시 로컬 전용 파일 삭제를 방지하기 위해 `.moai/status_line.sh`, `.moai/memory/`, `.moai/worktrees/`, `.claude/worktrees/`를 `.gitignore`에 추가했습니다.
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.6.12] - 2026-02-27
 
 ### Summary
