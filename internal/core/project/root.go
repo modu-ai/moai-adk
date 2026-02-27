@@ -14,10 +14,16 @@ import (
 //
 // This function ensures that all .moai operations (checkpoints, memory, etc.)
 // are anchored to the project root, preventing duplicate .moai directories in subfolders.
+// ~/.moai/ is treated as global state (credentials, cache), not a project root.
 func FindProjectRoot() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("get working directory: %w", err)
+	}
+
+	// Normalize to resolve symlinks (macOS /private/var) and Windows 8.3 short paths.
+	if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+		dir = resolved
 	}
 
 	// Convert to absolute path
@@ -26,8 +32,21 @@ func FindProjectRoot() (string, error) {
 		return "", fmt.Errorf("resolve absolute path: %w", err)
 	}
 
+	// Resolve home directory to prevent ~/.moai/ being treated as a project root.
+	homeDir, _ := os.UserHomeDir()
+	if homeDir != "" {
+		if resolved, err := filepath.EvalSymlinks(homeDir); err == nil {
+			homeDir = resolved
+		}
+	}
+
 	// Traverse upward to find .moai directory
 	for {
+		// Skip home directory — ~/.moai/ is global state, not a project root.
+		if homeDir != "" && absDir == homeDir {
+			return "", fmt.Errorf("not in a MoAI project (no .moai directory found in project directories)")
+		}
+
 		moaiPath := filepath.Join(absDir, ".moai")
 		if info, err := os.Stat(moaiPath); err == nil && info.IsDir() {
 			return absDir, nil
@@ -56,8 +75,16 @@ func FindProjectRootOrCurrent() (string, error) {
 		return root, nil
 	}
 
-	// Not in a project, return current directory
-	return filepath.Abs(dir)
+	// Not in a project, return current directory (normalized to resolve symlinks
+	// and Windows 8.3 short paths for consistent path comparison in tests).
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return "", fmt.Errorf("resolve absolute path: %w", err)
+	}
+	if resolved, err := filepath.EvalSymlinks(absDir); err == nil {
+		return resolved, nil
+	}
+	return absDir, nil
 }
 
 // MustFindProjectRoot is like FindProjectRoot but panics on error.

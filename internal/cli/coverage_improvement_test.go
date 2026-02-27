@@ -183,8 +183,8 @@ func TestInstallRankHook(t *testing.T) {
 	if err != nil {
 		t.Fatalf("hook script not created: %v", err)
 	}
-	// Should be executable
-	if info.Mode()&0o111 == 0 {
+	// Should be executable (Unix only — Windows does not support executable bits)
+	if runtime.GOOS != "windows" && info.Mode()&0o111 == 0 {
 		t.Error("hook script should be executable")
 	}
 
@@ -1203,12 +1203,12 @@ func TestDeployGlobalRankHookScript(t *testing.T) {
 		t.Error("script should reference moai hook session-end")
 	}
 
-	// Should be executable
+	// Should be executable (Unix only — Windows does not support executable bits)
 	info, err := os.Stat(scriptPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode()&0o111 == 0 {
+	if runtime.GOOS != "windows" && info.Mode()&0o111 == 0 {
 		t.Error("script should be executable")
 	}
 }
@@ -7086,9 +7086,9 @@ func TestDeployGlobalRankHookScript_Phase6(t *testing.T) {
 		t.Error("expected moai hook command")
 	}
 
-	// Verify executable permissions
+	// Verify executable permissions (Unix only — Windows does not support executable bits)
 	info, _ := os.Stat(scriptPath)
-	if info.Mode()&0o111 == 0 {
+	if runtime.GOOS != "windows" && info.Mode()&0o111 == 0 {
 		t.Error("expected script to be executable")
 	}
 }

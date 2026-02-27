@@ -16,6 +16,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -566,6 +567,9 @@ func TestRankSessionHandler_Handle_WithProjectDir(t *testing.T) {
 // --- logTaskMetrics: directory creation failure branch ---
 
 func TestLogTaskMetrics_MkdirAllFails(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not enforce directory write-permission restrictions")
+	}
 	if os.Getuid() == 0 {
 		t.Skip("cannot test permission denial as root")
 	}
@@ -1163,6 +1167,9 @@ func TestInitRankSessionHandler_EventTypeCheck(t *testing.T) {
 // --- post_tool_metrics.go: OpenFile error branch (line 86) ---
 
 func TestLogTaskMetrics_OpenFileFails(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not enforce directory write-permission restrictions")
+	}
 	if os.Getuid() == 0 {
 		t.Skip("cannot test permission denial as root")
 	}

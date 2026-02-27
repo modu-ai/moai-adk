@@ -350,6 +350,9 @@ func TestMultiSelectInteractive_NonTTY_ReturnsError(t *testing.T) {
 // and NoColor=false so the interactive path is taken.
 
 func TestProgressImpl_Spinner_InteractivePath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("charmbracelet/bubbletea blocks on Windows console ReadConsole in non-TTY CI")
+	}
 	theme := NewTheme(ThemeConfig{NoColor: false, Mode: "dark"})
 	hm := NewHeadlessManager()
 	// Force non-headless to reach newInteractiveSpinner.
