@@ -54,7 +54,7 @@ func newTaskCollector(ttl time.Duration) *taskCollector {
 	}
 	return &taskCollector{
 		ttl:       ttl,
-		statePath: filepath.Join(homeDir, ".moai", "memory", "last-session-state.json"),
+		statePath: filepath.Join(homeDir, ".moai", "state", "last-session-state.json"),
 	}
 }
 

@@ -787,13 +787,13 @@ func TestLoadBaselineCounts_InvalidJSON(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
-	moaiMemDir := filepath.Join(tmpDir, ".moai", "memory")
-	if err := os.MkdirAll(moaiMemDir, 0o755); err != nil {
+	moaiStateDir := filepath.Join(tmpDir, ".moai", "state")
+	if err := os.MkdirAll(moaiStateDir, 0o755); err != nil {
 		t.Fatalf("setup: %v", err)
 	}
 
 	// Write invalid JSON to the baseline file.
-	baselineFile := filepath.Join(moaiMemDir, "diagnostics-baseline.json")
+	baselineFile := filepath.Join(moaiStateDir, "diagnostics-baseline.json")
 	if err := os.WriteFile(baselineFile, []byte("{invalid json"), 0o644); err != nil {
 		t.Fatalf("write baseline: %v", err)
 	}
@@ -808,8 +808,8 @@ func TestLoadBaselineCounts_ValidJSON(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
-	moaiMemDir := filepath.Join(tmpDir, ".moai", "memory")
-	if err := os.MkdirAll(moaiMemDir, 0o755); err != nil {
+	moaiStateDir := filepath.Join(tmpDir, ".moai", "state")
+	if err := os.MkdirAll(moaiStateDir, 0o755); err != nil {
 		t.Fatalf("setup: %v", err)
 	}
 
@@ -826,7 +826,7 @@ func TestLoadBaselineCounts_ValidJSON(t *testing.T) {
 			}
 		}
 	}`
-	baselineFile := filepath.Join(moaiMemDir, "diagnostics-baseline.json")
+	baselineFile := filepath.Join(moaiStateDir, "diagnostics-baseline.json")
 	if err := os.WriteFile(baselineFile, []byte(baselineJSON), 0o644); err != nil {
 		t.Fatalf("write baseline: %v", err)
 	}

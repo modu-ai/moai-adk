@@ -288,7 +288,7 @@ Directory Structure (Standard 3-File Format):
   - spec.md: EARS format specification (Environment, Assumptions, Requirements, Specifications)
   - plan.md: Implementation plan, milestones, technical approach
   - acceptance.md: Detailed acceptance criteria, test scenarios (Given-When-Then format)
-- .moai/memory/: Session state files (last-session-state.json)
+- .moai/state/: Session state files (last-session-state.json)
 - .moai/docs/: Generated documentation (api-documentation.md)
 
 [HARD] Required File Set:
@@ -395,7 +395,7 @@ Session Strategy:
 Context Optimization:
 
 - SPEC document persists in .moai/specs/ directory
-- Session memory in .moai/memory/ for cross-session context
+- Session state in .moai/state/ for cross-session context
 - Minimal context transfer through SPEC ID reference
 - Agent delegation reduces token overhead
 

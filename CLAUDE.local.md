@@ -91,7 +91,7 @@ CLAUDE.local.md                # This file
 .claude/hooks/moai/handle-*.sh  # Generated hook wrappers (not templates)
 .moai/cache/                   # Cache
 .moai/logs/                    # Logs
-.moai/memory/                  # Memory storage
+.moai/state/                   # Session state storage
 ```
 
 ### Embedded Template System

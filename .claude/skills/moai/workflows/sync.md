@@ -676,7 +676,7 @@ The embedded context enables:
 
 - Commit message MUST include complete decision/pattern documentation
 - Session boundary tag MUST be created after successful push
-- Context metadata saved to `.moai/memory/sync-context-{SPEC-ID}.json` for quick access
+- Context metadata saved to `.moai/state/sync-context-{SPEC-ID}.json` for quick access
 - Tag message MUST reference the commit hash for traceability
 
 #### Step 3.1.5: Local CI Mirror Validation (Pre-PR Gate)
