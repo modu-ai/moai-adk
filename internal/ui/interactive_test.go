@@ -371,6 +371,10 @@ func TestProgressImpl_Spinner_InteractivePath(t *testing.T) {
 }
 
 func TestProgressImpl_Start_InteractivePath(t *testing.T) {
+	// Skip on Windows: bubbletea hangs on ReadConsole in non-TTY CI environment
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping on Windows: bubbletea Program.Wait() blocks on ReadConsole in non-TTY CI environment")
+	}
 	theme := NewTheme(ThemeConfig{NoColor: false, Mode: "dark"})
 	hm := NewHeadlessManager()
 	// Force non-headless to reach newInteractiveProgressBar.
