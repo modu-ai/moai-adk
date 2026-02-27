@@ -121,20 +121,18 @@ Create new MoAI components:
 - builder-skill: New skill creation
 - builder-plugin: Plugin creation
 
-### Team Agents (8) - Experimental
+### Team Agents (5) - Experimental
 
-Agents for Claude Code Agent Teams (v2.1.32+, requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1):
+Profile-based agents for Claude Code Agent Teams (v2.1.32+, requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1).
+Roles are assigned dynamically via Task() spawn prompt and model override. See team-protocol.md for shared protocol.
 
-| Agent | Model | Phase | Mode | Isolation | Background | Purpose |
-|-------|-------|-------|------|-----------|------------|---------|
-| team-researcher | haiku | plan | plan (read-only) | none | false | Codebase exploration and research |
-| team-analyst | opus | plan | plan (read-only) | none | false | Requirements analysis |
-| team-architect | opus | plan | plan (read-only) | none | false | Technical design |
-| team-backend-dev | opus | run | acceptEdits | worktree | true | Server-side implementation |
-| team-designer | opus | run | acceptEdits | worktree | true | UI/UX design with Pencil/Figma MCP (requires Pencil MCP server) |
-| team-frontend-dev | opus | run | acceptEdits | worktree | true | Client-side implementation |
-| team-tester | opus | run | acceptEdits | worktree | true | Test creation with exclusive test file ownership |
-| team-quality | haiku | run | plan (read-only) | none | false | TRUST 5 quality validation |
+| Agent | Default Model | Phase | Mode | Isolation | Background | Purpose |
+|-------|---------------|-------|------|-----------|------------|---------|
+| team-reader | sonnet | plan | plan (read-only) | none | false | Codebase exploration, requirements analysis, technical design (role via prompt) |
+| team-coder | sonnet | run | acceptEdits | worktree | true | Backend, frontend, or full-stack implementation (role via prompt) |
+| team-tester | sonnet | run | acceptEdits | worktree | true | Test creation with exclusive test file ownership |
+| team-designer | sonnet | run | acceptEdits | worktree | true | UI/UX design with Pencil/Figma MCP (requires Pencil MCP server) |
+| team-validator | haiku | run | plan (read-only) | none | false | TRUST 5 quality validation |
 
 ## Rules
 

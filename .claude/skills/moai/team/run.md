@@ -23,7 +23,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["team run", "glm worker", "parallel implementation"]
-  agents: ["team-backend-dev", "team-frontend-dev", "team-tester"]
+  agents: ["team-coder", "team-tester"]
   phases: ["run"]
 ---
 # Workflow: Team Run - Implementation with Agent Teams
@@ -115,25 +115,27 @@ from the tmux session, routing them through Z.AI API.
 
 ```
 Task(
-  subagent_type: "team-backend-dev",
+  subagent_type: "team-coder",
   team_name: "moai-run-SPEC-XXX",
   name: "backend-dev",
   mode: "acceptEdits",
   prompt: "You are backend-dev on team moai-run-SPEC-XXX.
     Implement backend tasks from the shared task list.
     SPEC: .moai/specs/SPEC-XXX/spec.md
+    File ownership: server-side files (*.go excluding *_test.go), API handlers, models, database code.
     Follow TDD methodology. Claim tasks via TaskUpdate.
     Mark tasks completed when done. Send results via SendMessage."
 )
 
 Task(
-  subagent_type: "team-frontend-dev",
+  subagent_type: "team-coder",
   team_name: "moai-run-SPEC-XXX",
   name: "frontend-dev",
   mode: "acceptEdits",
   prompt: "You are frontend-dev on team moai-run-SPEC-XXX.
     Implement frontend tasks from the shared task list.
     SPEC: .moai/specs/SPEC-XXX/spec.md
+    File ownership: client-side files (components, pages, styles, assets).
     Follow TDD methodology. Claim tasks via TaskUpdate.
     Mark tasks completed when done. Send results via SendMessage."
 )
@@ -146,7 +148,7 @@ Task(
   prompt: "You are tester on team moai-run-SPEC-XXX.
     Write tests for implemented features.
     SPEC: .moai/specs/SPEC-XXX/spec.md
-    Own all *_test.go files exclusively.
+    Own all test files (*_test.go, *.test.*, __tests__/) exclusively.
     Mark tasks completed when done. Send results via SendMessage."
 )
 ```
@@ -262,9 +264,9 @@ When `team_mode == "agent-teams"` in llm.yaml, use parallel teammates all on the
 Spawn teammates with file ownership boundaries:
 
 ```
-Task(subagent_type: "team-backend-dev", team_name: "moai-run-SPEC-XXX", name: "backend-dev", mode: "acceptEdits", ...)
-Task(subagent_type: "team-frontend-dev", team_name: "moai-run-SPEC-XXX", name: "frontend-dev", mode: "acceptEdits", ...)
-Task(subagent_type: "team-tester", team_name: "moai-run-SPEC-XXX", name: "tester", mode: "acceptEdits", ...)
+Task(subagent_type: "team-coder", team_name: "moai-run-SPEC-XXX", name: "backend-dev", mode: "acceptEdits", prompt: "Backend role. File ownership: server-side code. ...")
+Task(subagent_type: "team-coder", team_name: "moai-run-SPEC-XXX", name: "frontend-dev", mode: "acceptEdits", prompt: "Frontend role. File ownership: client-side code. ...")
+Task(subagent_type: "team-tester", team_name: "moai-run-SPEC-XXX", name: "tester", mode: "acceptEdits", prompt: "Testing role. File ownership: test files exclusively. ...")
 ```
 
 ### Phase 3: Handle Idle Notifications
@@ -305,7 +307,7 @@ SendMessage(type: "plan_approval_response", request_id: "{id}", recipient: "{nam
 
 ### Phase 5: Quality and Shutdown
 
-1. Assign quality validation task to team-quality (or use manager-quality subagent)
+1. Assign quality validation task to team-validator (or use manager-quality subagent)
 2. After all tasks complete, shutdown teammates:
    ```
    SendMessage(type: "shutdown_request", recipient: "backend-dev", content: "Phase complete")

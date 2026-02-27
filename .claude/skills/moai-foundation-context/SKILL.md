@@ -29,21 +29,7 @@ progressive_disclosure:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords:
-    - "token"
-    - "context"
-    - "session"
-    - "budget"
-    - "optimization"
-    - "handoff"
-    - "state"
-    - "memory"
-    - "/clear"
-    - "context window"
-    - "token limit"
-    - "session persistence"
-    - "context management"
-    - "multi-agent"
+  keywords: ["token", "context", "session", "budget", "optimization", "handoff", "state", "memory", "/clear", "context window", "token limit", "session persistence", "context management", "multi-agent"]
   agents:
     - "manager-spec"
     - "manager-ddd"

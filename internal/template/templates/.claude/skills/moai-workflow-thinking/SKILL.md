@@ -24,15 +24,7 @@ progressive_disclosure:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords:
-    - sequential thinking
-    - ultrathink
-    - deep analysis
-    - complex problem
-    - architecture decision
-    - technology selection
-    - trade-off
-    - breaking change
+  keywords: ["sequential thinking", "ultrathink", "deep analysis", "complex problem", "architecture decision", "technology selection", "trade-off", "breaking change"]
   phases:
     - plan
   agents:

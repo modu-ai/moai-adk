@@ -105,9 +105,9 @@ backend, frontend, security, devops, performance, debug, testing, refactoring, c
 
 agent, skill, plugin
 
-### Team Agents (8) - Experimental
+### Team Agents (5) - Experimental
 
-researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality (requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1)
+reader, coder, tester, designer, validator (requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1)
 
 Both `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` env var AND `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml` are required.
 

@@ -22,7 +22,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["team review", "multi-perspective review", "parallel review"]
-  agents: ["team-quality"]
+  agents: ["team-validator"]
   phases: ["review"]
 ---
 # Workflow: Team Review - Multi-Perspective Code Review
@@ -59,7 +59,7 @@ Use the review team pattern. All spawns MUST use Task() with `team_name` and `na
 
 ```
 Task(
-  subagent_type: "team-quality",
+  subagent_type: "team-validator",
   team_name: "moai-review-{target}",
   name: "security-reviewer",
   mode: "plan",
@@ -72,7 +72,7 @@ Task(
 )
 
 Task(
-  subagent_type: "team-quality",
+  subagent_type: "team-validator",
   team_name: "moai-review-{target}",
   name: "perf-reviewer",
   mode: "plan",
@@ -85,7 +85,7 @@ Task(
 )
 
 Task(
-  subagent_type: "team-quality",
+  subagent_type: "team-validator",
   team_name: "moai-review-{target}",
   name: "quality-reviewer",
   mode: "plan",
@@ -98,7 +98,7 @@ Task(
 )
 
 Task(
-  subagent_type: "team-quality",
+  subagent_type: "team-validator",
   team_name: "moai-review-{target}",
   name: "ux-reviewer",
   mode: "plan",

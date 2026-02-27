@@ -22,7 +22,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["team plan", "parallel research", "team spec"]
-  agents: ["team-researcher", "team-analyst", "team-architect"]
+  agents: ["team-reader"]
   phases: ["plan"]
 ---
 # Workflow: Team Plan - Agent Teams SPEC Creation
@@ -56,13 +56,14 @@ See @.claude/rules/moai/workflow/spec-workflow.md for team mode prerequisites.
 
 ## Phase 1: Spawn Research Team
 
-Spawn 3 teammates from the plan_research pattern. All spawns MUST use Task() with `team_name` and `name` parameters. Launch all three in a single response for parallel execution:
+Spawn 3 teammates using the **team-reader** profile with role-specific prompts and model overrides. All spawns MUST use Task() with `team_name` and `name` parameters. Launch all three in a single response for parallel execution:
 
 ```
 Task(
-  subagent_type: "team-researcher",
+  subagent_type: "team-reader",
   team_name: "moai-plan-{feature-slug}",
   name: "researcher",
+  model: "haiku",
   mode: "plan",
   prompt: "You are a codebase researcher on team moai-plan-{feature-slug}.
     Explore the codebase for {feature_description}.
@@ -72,30 +73,35 @@ Task(
     Search for REFERENCE IMPLEMENTATIONS — find similar patterns in the codebase that can guide the new feature.
     Document all findings with specific file paths and line references.
     DO NOT write implementation code — focus exclusively on research and analysis.
-    When done, write your findings to .moai/specs/SPEC-{ID}/research.md, mark your task as completed via TaskUpdate, and send findings to the team lead via SendMessage."
-)
-
-Task(
-  subagent_type: "team-analyst",
-  team_name: "moai-plan-{feature-slug}",
-  name: "analyst",
-  mode: "plan",
-  prompt: "You are a requirements analyst on team moai-plan-{feature-slug}.
-    Analyze requirements for {feature_description}.
-    Identify user stories, acceptance criteria, edge cases, risks, and constraints.
     When done, mark your task as completed via TaskUpdate and send findings to the team lead via SendMessage."
 )
 
 Task(
-  subagent_type: "team-architect",
+  subagent_type: "team-reader",
+  team_name: "moai-plan-{feature-slug}",
+  name: "analyst",
+  model: "sonnet",
+  mode: "plan",
+  prompt: "You are a requirements analyst on team moai-plan-{feature-slug}.
+    Analyze requirements for {feature_description}.
+    Identify user stories, acceptance criteria, edge cases, risks, and constraints.
+    Define acceptance criteria using EARS format.
+    Identify risks, constraints, dependencies, and non-functional requirements.
+    When done, mark your task as completed via TaskUpdate and send findings to the team lead via SendMessage."
+)
+
+Task(
+  subagent_type: "team-reader",
   team_name: "moai-plan-{feature-slug}",
   name: "architect",
+  model: "opus",
   mode: "plan",
   prompt: "You are a technical architect on team moai-plan-{feature-slug}.
     Design the technical approach for {feature_description}.
     Evaluate implementation alternatives, assess trade-offs, propose architecture.
     Consider existing patterns found by the researcher — build on reference implementations rather than designing from scratch.
     When a concrete reference implementation exists in the codebase, use it as the foundation for your design.
+    Define file impact analysis, interface contracts, and implementation order.
     DO NOT write implementation code — focus exclusively on architectural design and planning.
     When done, mark your task as completed via TaskUpdate and send findings to the team lead via SendMessage."
 )
@@ -185,4 +191,4 @@ If team creation fails or AGENT_TEAMS not enabled:
 
 ---
 
-Version: 2.7.0 (Research Phase + Annotation Cycle)
+Version: 3.0.0 (Dynamic team-reader profiles + Annotation Cycle)

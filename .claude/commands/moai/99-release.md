@@ -4,6 +4,7 @@ argument-hint: "[VERSION] - optional target version (e.g., 2.1.0). If omitted, p
 type: local
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, AskUserQuestion, Task
 model: sonnet
+disable-model-invocation: true
 version: 3.0.0
 metadata:
   release_target: "production"

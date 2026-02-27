@@ -28,20 +28,7 @@ progressive_disclosure:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords:
-    - "trust-5"
-    - "spec-first"
-    - "ddd"
-    - "delegation"
-    - "agent"
-    - "token"
-    - "progressive disclosure"
-    - "modular"
-    - "workflow"
-    - "orchestration"
-    - "quality gate"
-    - "spec"
-    - "ears format"
+  keywords: ["trust-5", "spec-first", "ddd", "delegation", "agent", "token", "progressive disclosure", "modular", "workflow", "orchestration", "quality gate", "spec", "ears format"]
   agents:
     - "manager-spec"
     - "manager-ddd"
