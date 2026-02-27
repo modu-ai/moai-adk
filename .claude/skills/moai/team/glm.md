@@ -148,7 +148,7 @@ Detection steps:
 | ANTHROPIC_BASE_URL | https://api.z.ai/api/anthropic | Z.AI endpoint |
 | ANTHROPIC_DEFAULT_OPUS_MODEL | glm-5 | Opus model override |
 | ANTHROPIC_DEFAULT_SONNET_MODEL | glm-4.7 | Sonnet model override |
-| ANTHROPIC_DEFAULT_HAIKU_MODEL | glm-4.7-flashx | Haiku model override |
+| ANTHROPIC_DEFAULT_HAIKU_MODEL | glm-4.5-air | Haiku model override |
 
 These are set via `tmux set-environment` (session-level, not global).
 
@@ -169,8 +169,8 @@ Agent model mapping in CG mode:
 | team-backend-dev | New pane | Z.AI | glm-5 / glm-4.7 |
 | team-frontend-dev | New pane | Z.AI | glm-5 / glm-4.7 |
 | team-tester | New pane | Z.AI | glm-5 / glm-4.7 |
-| team-researcher | New pane | Z.AI | glm-4.7-flashx |
-| team-quality | New pane | Z.AI | glm-4.7-flashx |
+| team-researcher | New pane | Z.AI | glm-4.5-air |
+| team-quality | New pane | Z.AI | glm-4.5-air |
 
 ## Error Recovery
 

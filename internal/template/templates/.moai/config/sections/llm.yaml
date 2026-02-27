@@ -20,5 +20,5 @@ llm:
     models:
       high: "glm-5"           # Complex reasoning
       medium: "glm-4.7"       # Balanced performance
-      low: "glm-4.7-flashx"   # Fast exploration
+      low: "glm-4.5-air"      # Lightweight tasks (Z.ai official default)
 

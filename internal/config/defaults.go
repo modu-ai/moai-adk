@@ -42,9 +42,9 @@ const (
 	// GLM model tiers
 	DefaultGLMHigh   = "glm-5"
 	DefaultGLMMedium = "glm-4.7"
-	DefaultGLMLow    = "glm-4.7-flashx"
+	DefaultGLMLow    = "glm-4.5-air"
 	// Legacy GLM model names (map to tiers)
-	DefaultGLMHaiku  = "glm-4.7-flashx"
+	DefaultGLMHaiku  = "glm-4.5-air"
 	DefaultGLMSonnet = "glm-4.7"
 	DefaultGLMOpus   = "glm-5"
 	// Default performance tier
