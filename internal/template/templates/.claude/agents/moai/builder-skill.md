@@ -208,6 +208,22 @@ The `moai-` namespace is reserved for MoAI-ADK system skills. Only use `moai-` p
 
 [HARD] Skills MUST be created in `.claude/skills/` directory, NEVER in `.moai/skills/`.
 
+[HARD] The skill file MUST always be named `SKILL.md`. NEVER name it after the skill or use any other filename.
+
+[HARD] The full skill name (e.g., `moai-library-pykrx`) is used as a SINGLE directory name. NEVER create nested subdirectories by splitting the name on hyphens. Hyphens are part of the directory name, not path separators.
+
+Correct path structure:
+
+```
+.claude/skills/{skill-name}/SKILL.md
+```
+
+Examples:
+- `.claude/skills/moai-library-pykrx/SKILL.md`  ✅ correct
+- `.claude/skills/custom-analyzing-code/SKILL.md` ✅ correct
+- `.claude/skills/moai/library/pykrx.md`          ❌ WRONG: nested dirs + wrong filename
+- `.claude/skills/moai-library/pykrx.md`           ❌ WRONG: wrong filename
+
 SKILL.md Line Budget (Hard Limit: 500 lines):
 
 - Frontmatter: 4-6 lines
