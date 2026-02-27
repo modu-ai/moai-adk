@@ -66,7 +66,8 @@ var glmStatusCmd = &cobra.Command{
 
 func init() {
 	// Note: glm has DisableFlagParsing=true, so subcommand routing is manual.
-	// We register setup and status as subcommands but handle routing in runGLM.
+	// We register setup and status as subcommands for discoverability (help output).
+	glmCmd.AddCommand(glmSetupCmd, glmStatusCmd)
 	rootCmd.AddCommand(glmCmd)
 }
 
@@ -81,6 +82,16 @@ type SettingsLocal struct {
 
 // runGLM launches Claude Code with GLM backend, or routes to subcommands.
 func runGLM(cmd *cobra.Command, args []string) error {
+	// Handle --help/-h manually since DisableFlagParsing: true
+	for _, arg := range args {
+		if arg == "--help" || arg == "-h" {
+			return cmd.Help()
+		}
+		if arg == "--" {
+			break
+		}
+	}
+
 	// Manual subcommand routing (DisableFlagParsing prevents automatic routing)
 	if len(args) > 0 {
 		switch args[0] {
@@ -132,7 +143,9 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	// Inject into tmux session if available
 	if isInTmuxSession() {
 		if err := injectTmuxSessionEnv(glmConfig, apiKey); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to inject tmux env: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Warning: failed to inject GLM env into tmux session: %v\n"+
+				"  Teammates spawned in new tmux panes may not have GLM credentials.\n"+
+				"  Manually set %s in new panes if needed.\n", err, glmConfig.EnvVar)
 		}
 	}
 
@@ -144,11 +157,11 @@ func runGLM(cmd *cobra.Command, args []string) error {
 
 // setGLMEnv sets GLM environment variables in the current process.
 func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
-	os.Setenv("ANTHROPIC_AUTH_TOKEN", apiKey)
-	os.Setenv("ANTHROPIC_BASE_URL", glmConfig.BaseURL)
-	os.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", glmConfig.Models.High)
-	os.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", glmConfig.Models.Medium)
-	os.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", glmConfig.Models.Low)
+	_ = os.Setenv("ANTHROPIC_AUTH_TOKEN", apiKey)           //nolint:errcheck
+	_ = os.Setenv("ANTHROPIC_BASE_URL", glmConfig.BaseURL)  //nolint:errcheck
+	_ = os.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", glmConfig.Models.High)   //nolint:errcheck
+	_ = os.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", glmConfig.Models.Medium) //nolint:errcheck
+	_ = os.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", glmConfig.Models.Low)   //nolint:errcheck
 }
 
 // runGLMSetup saves a GLM API key.
@@ -157,7 +170,7 @@ func runGLMSetup(cmd *cobra.Command, args []string) error {
 	if len(args) >= 1 {
 		apiKey = strings.TrimSpace(args[0])
 	} else {
-		fmt.Fprint(cmd.OutOrStdout(), "GLM API key: ")
+		_, _ = fmt.Fprint(cmd.OutOrStdout(), "GLM API key: ")
 		scanner := bufio.NewScanner(cmd.InOrStdin())
 		if !scanner.Scan() {
 			return nil
@@ -173,7 +186,7 @@ func runGLMSetup(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("save GLM API key: %w", err)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "GLM API key stored (%s)\n", maskAPIKey(apiKey))
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "GLM API key stored (%s)\n", maskAPIKey(apiKey))
 	return nil
 }
 
@@ -318,7 +331,14 @@ func isInTmuxSession() bool {
 	return os.Getenv("TMUX") != ""
 }
 
-// injectTmuxSessionEnv sets environment variables at the tmux session level.
+// escapeTmuxValue escapes special characters in values passed to tmux set-environment.
+func escapeTmuxValue(value string) string {
+	// tmux parses its arguments via shell-like quoting, so escape single quotes
+	return strings.ReplaceAll(value, "'", "'\\''")
+}
+
+// injectTmuxSessionEnv sets environment variables at the tmux session level
+// using a single batched tmux command to reduce subprocess overhead.
 func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
 	if isTestEnvironment() {
 		return nil
@@ -335,17 +355,24 @@ func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
 	}
 
+	// Build single batched tmux command: tmux set-environment VAR1 val1 \; set-environment VAR2 val2 ...
+	args := []string{}
 	for name, value := range envVars {
-		cmd := exec.Command("tmux", "set-environment", name, value)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("tmux set-environment %s: %w", name, err)
+		if len(args) > 0 {
+			args = append(args, ";")
 		}
+		args = append(args, "set-environment", name, escapeTmuxValue(value))
+	}
+	cmd := exec.Command("tmux", args...)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("tmux set-environment batch: %w", err)
 	}
 
 	return nil
 }
 
-// clearTmuxSessionEnv removes GLM environment variables from tmux session.
+// clearTmuxSessionEnv removes GLM environment variables from tmux session
+// using a single batched tmux command to reduce subprocess overhead.
 func clearTmuxSessionEnv() error {
 	if isTestEnvironment() {
 		return nil
@@ -354,7 +381,7 @@ func clearTmuxSessionEnv() error {
 		return nil
 	}
 
-	envVars := []string{
+	envVarNames := []string{
 		"ANTHROPIC_AUTH_TOKEN",
 		"ANTHROPIC_BASE_URL",
 		"ANTHROPIC_DEFAULT_OPUS_MODEL",
@@ -363,12 +390,15 @@ func clearTmuxSessionEnv() error {
 		"CLAUDE_CONFIG_DIR",
 	}
 
-	for _, name := range envVars {
-		cmd := exec.Command("tmux", "set-environment", "-u", name)
-		if err := cmd.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to clear tmux env %s: %v\n", name, err)
+	args := []string{}
+	for _, name := range envVarNames {
+		if len(args) > 0 {
+			args = append(args, ";")
 		}
+		args = append(args, "set-environment", "-u", name)
 	}
+	cmd := exec.Command("tmux", args...)
+	_ = cmd.Run() //nolint:errcheck // best-effort cleanup
 
 	return nil
 }

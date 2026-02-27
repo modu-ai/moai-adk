@@ -45,6 +45,16 @@ func init() {
 
 // runCC switches the LLM backend to Claude, then launches Claude Code.
 func runCC(cmd *cobra.Command, args []string) error {
+	// Handle --help/-h manually since DisableFlagParsing: true
+	for _, arg := range args {
+		if arg == "--help" || arg == "-h" {
+			return cmd.Help()
+		}
+		if arg == "--" {
+			break
+		}
+	}
+
 	// Parse -p/--profile from args
 	profileName, filteredArgs := parseProfileFlag(args)
 
@@ -150,6 +160,12 @@ func removeGLMEnv(settingsPath string) error {
 // cleanupMoaiWorktrees removes moai-related git worktrees.
 // These are worktrees created by /moai --team with names like worker-SPEC-XXX.
 func cleanupMoaiWorktrees(projectRoot string) string {
+	// Skip git call if no worktrees directory exists
+	worktreeBase := filepath.Join(projectRoot, ".claude", "worktrees")
+	if _, err := os.Stat(worktreeBase); os.IsNotExist(err) {
+		return ""
+	}
+
 	// Check if we're in a git repository
 	gitDir := filepath.Join(projectRoot, ".git")
 	if _, err := os.Stat(gitDir); os.IsNotExist(err) {
@@ -163,7 +179,6 @@ func cleanupMoaiWorktrees(projectRoot string) string {
 	}
 
 	// Parse worktree list to find moai worker worktrees
-	worktreeBase := filepath.Join(projectRoot, ".claude", "worktrees")
 	var cleanedWorktrees []string
 
 	lines := strings.Split(output, "\n")

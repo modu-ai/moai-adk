@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -95,12 +96,22 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		tryCmd.Stdin = os.Stdin
 		tryCmd.Stdout = os.Stdout
 		tryCmd.Stderr = os.Stderr
-		if err := tryCmd.Run(); err == nil {
+		err := tryCmd.Run()
+		if err == nil {
 			return nil
 		}
-		fmt.Fprintln(os.Stderr, "No previous session found, starting new session...")
+		var ee *exec.ExitError
+		if errors.As(err, &ee) && ee.ExitCode() == 1 {
+			// Likely "no previous session", fall back to new session
+			fmt.Fprintln(os.Stderr, "No previous session found, starting new session...")
+		} else {
+			return fmt.Errorf("resume session failed: %w", err)
+		}
 	}
 
+	// NOTE: syscall.Exec replaces the current process entirely.
+	// No defer() functions will execute after this point.
+	// Ensure all cleanup and setup is complete before calling.
 	return syscall.Exec(claudeBin, buildArgs(false), os.Environ())
 }
 
@@ -111,6 +122,11 @@ func parseProfileFlag(args []string) (string, []string) {
 	filtered := make([]string, 0, len(args))
 
 	for i := 0; i < len(args); i++ {
+		if args[i] == "--" {
+			// Everything after -- is pass-through to claude
+			filtered = append(filtered, args[i:]...)
+			break
+		}
 		if (args[i] == "--profile" || args[i] == "-p") && i+1 < len(args) {
 			profileName = args[i+1]
 			i++

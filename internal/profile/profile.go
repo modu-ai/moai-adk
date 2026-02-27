@@ -108,11 +108,25 @@ func Delete(name string) error {
 }
 
 // GetProfileDir returns the directory path for a named profile without creating it.
+// Returns an empty string for invalid profile names.
 func GetProfileDir(name string) string {
 	if name == "" || name == "default" {
 		return ""
 	}
+	if !isValidProfileName(name) {
+		return ""
+	}
 	return filepath.Join(GetBaseDir(), name)
+}
+
+// isValidProfileName checks that a profile name does not contain path traversal
+// characters. Names must not contain slashes, backslashes, or start with a dot.
+func isValidProfileName(name string) bool {
+	if strings.Contains(name, "/") || strings.Contains(name, "\\") ||
+		strings.HasPrefix(name, ".") || filepath.IsAbs(name) {
+		return false
+	}
+	return true
 }
 
 // EnsureDir creates the profile directory if it doesn't exist and sets
@@ -120,6 +134,10 @@ func GetProfileDir(name string) string {
 func EnsureDir(name string) error {
 	if name == "" || name == "default" {
 		return nil
+	}
+	// Validate: no path traversal possible
+	if !isValidProfileName(name) {
+		return fmt.Errorf("invalid profile name %q: must not contain path separators or start with '.'", name)
 	}
 	profileDir := filepath.Join(GetBaseDir(), name)
 	if err := os.MkdirAll(profileDir, 0755); err != nil {

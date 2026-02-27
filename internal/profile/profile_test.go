@@ -89,10 +89,16 @@ func TestList_WithProfiles(t *testing.T) {
 	BaseDirOverride = tmpDir
 
 	// Create profile directories
-	os.MkdirAll(filepath.Join(tmpDir, "work"), 0755)
-	os.MkdirAll(filepath.Join(tmpDir, "personal"), 0755)
+	if err := os.MkdirAll(filepath.Join(tmpDir, "work"), 0755); err != nil {
+		t.Fatalf("MkdirAll(work): %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(tmpDir, "personal"), 0755); err != nil {
+		t.Fatalf("MkdirAll(personal): %v", err)
+	}
 	// Create a file (should be ignored)
-	os.WriteFile(filepath.Join(tmpDir, "notes.txt"), []byte("ignored"), 0644)
+	if err := os.WriteFile(filepath.Join(tmpDir, "notes.txt"), []byte("ignored"), 0644); err != nil {
+		t.Fatalf("WriteFile(notes.txt): %v", err)
+	}
 
 	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(tmpDir, "work"))
 
@@ -184,7 +190,9 @@ func TestDelete_Success(t *testing.T) {
 
 	// Create the profile
 	profileDir := filepath.Join(tmpDir, "testprofile")
-	os.MkdirAll(profileDir, 0755)
+	if err := os.MkdirAll(profileDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(testprofile): %v", err)
+	}
 
 	err := Delete("testprofile")
 	if err != nil {
