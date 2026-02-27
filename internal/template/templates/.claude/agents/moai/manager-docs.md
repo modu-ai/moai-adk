@@ -55,7 +55,7 @@ checkpoint_strategy:
   enabled: true
   interval: every_phase
   # CRITICAL: Always use project root for .moai to prevent duplicate .moai in subfolders
-  location: $CLAUDE_PROJECT_DIR/.moai/memory/checkpoints/docs/
+  location: $CLAUDE_PROJECT_DIR/.moai/state/checkpoints/docs/
   resume_capability: true
 
 memory_management:
@@ -196,7 +196,7 @@ To prevent V8 heap memory overflow during large documentation generation session
 
 **Checkpoint Strategy**:
 - Checkpoint after each phase completion (Source Analysis, Architecture Design, Content Generation, Quality Assurance)
-- Checkpoint location: `.moai/memory/checkpoints/docs/`
+- Checkpoint location: `.moai/state/checkpoints/docs/`
 - Auto-checkpoint on memory pressure detection
 
 **Checkpoint Content**:

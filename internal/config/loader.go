@@ -56,8 +56,8 @@ func (l *Loader) Load(configDir string) (*Config, error) {
 	// Load LLM section
 	l.loadLLMSection(sectionsDir, cfg)
 
-	// Load memory section
-	l.loadMemorySection(sectionsDir, cfg)
+	// Load state section
+	l.loadStateSection(sectionsDir, cfg)
 
 	return cfg, nil
 }
@@ -145,17 +145,17 @@ func (l *Loader) loadLLMSection(dir string, cfg *Config) {
 	}
 }
 
-// loadMemorySection loads the memory configuration section from memory.yaml.
-func (l *Loader) loadMemorySection(dir string, cfg *Config) {
-	wrapper := &memoryFileWrapper{Memory: cfg.Memory}
-	loaded, err := loadYAMLFile(dir, "memory.yaml", wrapper)
+// loadStateSection loads the state configuration section from state.yaml.
+func (l *Loader) loadStateSection(dir string, cfg *Config) {
+	wrapper := &stateFileWrapper{State: cfg.State}
+	loaded, err := loadYAMLFile(dir, "state.yaml", wrapper)
 	if err != nil {
-		slog.Warn("failed to load memory config, using defaults", "error", err)
+		slog.Warn("failed to load state config, using defaults", "error", err)
 		return
 	}
 	if loaded {
-		cfg.Memory = wrapper.Memory
-		l.loadedSections["memory"] = true
+		cfg.State = wrapper.State
+		l.loadedSections["state"] = true
 	}
 }
 

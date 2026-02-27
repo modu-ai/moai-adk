@@ -213,8 +213,8 @@ func writeQualityConfig(t *testing.T, projectDir string, blockOnError bool) {
 // writeCoverageData writes a coverage.json file with the given coverage percentage.
 func writeCoverageData(t *testing.T, projectDir string, percent float64) {
 	t.Helper()
-	memDir := filepath.Join(projectDir, ".moai", "memory")
-	if err := os.MkdirAll(memDir, 0o755); err != nil {
+	stateDir := filepath.Join(projectDir, ".moai", "state")
+	if err := os.MkdirAll(stateDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	data, err := json.Marshal(map[string]any{
@@ -224,7 +224,7 @@ func writeCoverageData(t *testing.T, projectDir string, percent float64) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(memDir, "coverage.json"), data, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(stateDir, "coverage.json"), data, 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -234,8 +234,8 @@ func writeCoverageData(t *testing.T, projectDir string, percent float64) {
 // a list of severity strings per diagnostic.
 func writeBaseline(t *testing.T, projectDir string, filesSeverities map[string][]string) {
 	t.Helper()
-	memDir := filepath.Join(projectDir, ".moai", "memory")
-	if err := os.MkdirAll(memDir, 0o755); err != nil {
+	stateDir := filepath.Join(projectDir, ".moai", "state")
+	if err := os.MkdirAll(stateDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -262,7 +262,7 @@ func writeBaseline(t *testing.T, projectDir string, filesSeverities map[string][
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(memDir, "diagnostics-baseline.json"), data, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(stateDir, "diagnostics-baseline.json"), data, 0o644); err != nil {
 		t.Fatal(err)
 	}
 }

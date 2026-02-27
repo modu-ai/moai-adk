@@ -117,7 +117,7 @@ func (h *teammateIdleHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 // defaultCoverageThreshold is used when quality.yaml does not specify test_coverage_target.
 const defaultCoverageThreshold = 85.0
 
-// coverageData represents the JSON structure of .moai/memory/coverage.json.
+// coverageData represents the JSON structure of .moai/state/coverage.json.
 type coverageData struct {
 	CoveragePercent float64 `json:"coverage_percent"`
 	UpdatedAt       string  `json:"updated_at"`
@@ -130,10 +130,10 @@ type coverageThresholdConfig struct {
 	} `yaml:"constitution"`
 }
 
-// loadCoverageData reads coverage data from .moai/memory/coverage.json.
+// loadCoverageData reads coverage data from .moai/state/coverage.json.
 // Returns (percent, true) on success, or (0, false) if the file does not exist or cannot be parsed.
 func loadCoverageData(projectDir string) (float64, bool) {
-	coverageFile := filepath.Join(projectDir, defs.MoAIDir, defs.MemorySubdir, "coverage.json")
+	coverageFile := filepath.Join(projectDir, defs.MoAIDir, defs.StateSubdir, "coverage.json")
 	data, err := os.ReadFile(coverageFile)
 	if err != nil {
 		slog.Info("teammate_idle: no coverage data, skipping coverage check", "error", err)
@@ -171,7 +171,7 @@ func loadCoverageThreshold(projectDir string) float64 {
 // loadBaselineCounts reads the diagnostics baseline file and sums error counts
 // across all tracked files.
 func loadBaselineCounts(projectDir string) (lsphook.SeverityCounts, error) {
-	baselineFile := filepath.Join(projectDir, ".moai", "memory", lsphook.BaselineFileName)
+	baselineFile := filepath.Join(projectDir, ".moai", "state", lsphook.BaselineFileName)
 	data, err := os.ReadFile(baselineFile)
 	if err != nil {
 		return lsphook.SeverityCounts{}, err

@@ -60,7 +60,7 @@ checkpoint_strategy:
   enabled: true
   interval: every_transformation
   # CRITICAL: Always use project root for .moai to prevent duplicate .moai in subfolders
-  location: $CLAUDE_PROJECT_DIR/.moai/memory/checkpoints/ddd/
+  location: $CLAUDE_PROJECT_DIR/.moai/state/checkpoints/ddd/
   resume_capability: true
 
 memory_management:
@@ -662,7 +662,7 @@ To prevent V8 heap memory overflow during long-running refactoring sessions, thi
 
 **Checkpoint Strategy**:
 - Checkpoint after every transformation completion
-- Checkpoint location: `.moai/memory/checkpoints/ddd/`
+- Checkpoint location: `.moai/state/checkpoints/ddd/`
 - Auto-checkpoint on memory pressure detection
 
 **Checkpoint Content**:

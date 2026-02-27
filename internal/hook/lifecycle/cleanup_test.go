@@ -91,7 +91,7 @@ func TestCleanup_CleanTempFiles(t *testing.T) {
 				TempDir:        filepath.Join(moaiDir, "temp"),
 				CacheDir:       filepath.Join(moaiDir, "cache", "temp"),
 				LogDir:         filepath.Join(moaiDir, "logs"),
-				PreserveMemory: true,
+				PreserveState: true,
 			}
 
 			cleanup := NewSessionCleanup(config)
@@ -141,7 +141,7 @@ func TestCleanup_ClearCaches(t *testing.T) {
 		TempDir:        filepath.Join(moaiDir, "temp"),
 		CacheDir:       cacheDir,
 		LogDir:         filepath.Join(moaiDir, "logs"),
-		PreserveMemory: true,
+		PreserveState: true,
 	}
 
 	cleanup := NewSessionCleanup(config)
@@ -162,26 +162,26 @@ func TestCleanup_ClearCaches(t *testing.T) {
 	}
 }
 
-func TestCleanup_PreserveMemoryFiles(t *testing.T) {
+func TestCleanup_PreserveStateFiles(t *testing.T) {
 	t.Parallel()
 
 	baseDir := t.TempDir()
 	moaiDir := filepath.Join(baseDir, ".moai")
-	memoryDir := filepath.Join(moaiDir, "memory")
+	stateDir := filepath.Join(moaiDir, "state")
 	tempDir := filepath.Join(moaiDir, "temp")
 
-	// Create memory directory with state files
-	if err := os.MkdirAll(memoryDir, 0755); err != nil {
-		t.Fatalf("failed to create memory dir: %v", err)
+	// Create state directory with state files
+	if err := os.MkdirAll(stateDir, 0755); err != nil {
+		t.Fatalf("failed to create state dir: %v", err)
 	}
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
 
-	// Create memory files that should be preserved
-	memoryFile := filepath.Join(memoryDir, "last-session-state.json")
-	if err := os.WriteFile(memoryFile, []byte(`{"key": "value"}`), 0644); err != nil {
-		t.Fatalf("failed to create memory file: %v", err)
+	// Create state files that should be preserved
+	stateFile := filepath.Join(stateDir, "last-session-state.json")
+	if err := os.WriteFile(stateFile, []byte(`{"key": "value"}`), 0644); err != nil {
+		t.Fatalf("failed to create state file: %v", err)
 	}
 
 	// Create temp file that should be deleted
@@ -191,10 +191,10 @@ func TestCleanup_PreserveMemoryFiles(t *testing.T) {
 	}
 
 	config := CleanupConfig{
-		TempDir:        tempDir,
-		CacheDir:       filepath.Join(moaiDir, "cache", "temp"),
-		LogDir:         filepath.Join(moaiDir, "logs"),
-		PreserveMemory: true,
+		TempDir:       tempDir,
+		CacheDir:      filepath.Join(moaiDir, "cache", "temp"),
+		LogDir:        filepath.Join(moaiDir, "logs"),
+		PreserveState: true,
 	}
 
 	cleanup := NewSessionCleanup(config)
@@ -204,9 +204,9 @@ func TestCleanup_PreserveMemoryFiles(t *testing.T) {
 		t.Fatalf("CleanTempFiles() error = %v", err)
 	}
 
-	// Memory file should still exist
-	if _, err := os.Stat(memoryFile); os.IsNotExist(err) {
-		t.Error("memory file should be preserved")
+	// State file should still exist
+	if _, err := os.Stat(stateFile); os.IsNotExist(err) {
+		t.Error("state file should be preserved")
 	}
 
 	// Temp file should be deleted
@@ -238,7 +238,7 @@ func TestCleanup_GenerateCleanupReport(t *testing.T) {
 		TempDir:        tempDir,
 		CacheDir:       filepath.Join(moaiDir, "cache", "temp"),
 		LogDir:         filepath.Join(moaiDir, "logs"),
-		PreserveMemory: true,
+		PreserveState: true,
 	}
 
 	cleanup := NewSessionCleanup(config)
@@ -280,7 +280,7 @@ func TestCleanup_ContinueOnError(t *testing.T) {
 		TempDir:        tempDir,
 		CacheDir:       filepath.Join(moaiDir, "cache", "temp"),
 		LogDir:         filepath.Join(moaiDir, "logs"),
-		PreserveMemory: true,
+		PreserveState: true,
 	}
 
 	cleanup := NewSessionCleanup(config)
@@ -310,7 +310,7 @@ func TestCleanup_NonExistentDirectories(t *testing.T) {
 		TempDir:        filepath.Join(baseDir, "nonexistent", "temp"),
 		CacheDir:       filepath.Join(baseDir, "nonexistent", "cache"),
 		LogDir:         filepath.Join(baseDir, "nonexistent", "logs"),
-		PreserveMemory: true,
+		PreserveState: true,
 	}
 
 	cleanup := NewSessionCleanup(config)
@@ -383,7 +383,7 @@ func TestCleanup_SessionLogs(t *testing.T) {
 		CacheDir:          filepath.Join(moaiDir, "cache", "temp"),
 		LogDir:            logDir,
 		SessionLogPattern: "session-*.log",
-		PreserveMemory:    true,
+		PreserveState:    true,
 	}
 
 	cleanup := NewSessionCleanup(config)
@@ -428,7 +428,7 @@ func TestCleanup_ClearCachesWithSubdirs(t *testing.T) {
 		TempDir:        filepath.Join(baseDir, "temp"),
 		CacheDir:       cacheDir,
 		LogDir:         filepath.Join(baseDir, "logs"),
-		PreserveMemory: true,
+		PreserveState: true,
 	}
 
 	cleanup := NewSessionCleanup(config)
@@ -481,7 +481,7 @@ func TestCleanup_GenerateCleanupReportWithErrors(t *testing.T) {
 		TempDir:        "/nonexistent/path",
 		CacheDir:       "/nonexistent/cache",
 		LogDir:         "/nonexistent/logs",
-		PreserveMemory: true,
+		PreserveState: true,
 	}
 
 	cleanup := NewSessionCleanup(config)
@@ -517,7 +517,7 @@ func TestCleanup_EmptyCacheDir(t *testing.T) {
 		TempDir:        "",
 		CacheDir:       "",
 		LogDir:         "",
-		PreserveMemory: true,
+		PreserveState: true,
 	}
 
 	cleanup := NewSessionCleanup(config)

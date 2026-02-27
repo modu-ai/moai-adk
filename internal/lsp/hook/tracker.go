@@ -28,7 +28,7 @@ type regressionTracker struct {
 }
 
 // NewRegressionTracker creates a new regression tracker.
-// baselineDir is the directory where baseline files are stored (.moai/memory/).
+// baselineDir is the directory where baseline files are stored (.moai/state/).
 func NewRegressionTracker(baselineDir string) *regressionTracker {
 	return &regressionTracker{
 		baselineDir:  baselineDir,

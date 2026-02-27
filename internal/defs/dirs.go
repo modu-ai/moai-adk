@@ -18,7 +18,7 @@ const (
 	SectionsSubdir = "config/sections"
 	SpecsSubdir    = "specs"
 	ReportsSubdir  = "reports"
-	MemorySubdir   = "memory"
+	StateSubdir    = "state"
 	LogsSubdir     = "logs"
 	RankSubdir     = "rank"
 )

@@ -26,7 +26,7 @@ func NewWorkState(config WorkStateConfig) *workStateImpl {
 }
 
 // Save persists the work state to storage.
-// REQ-HOOK-380: Save work state to .moai/memory/last-session-state.json.
+// REQ-HOOK-380: Save work state to .moai/state/last-session-state.json.
 func (w *workStateImpl) Save(state *WorkStateData) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
