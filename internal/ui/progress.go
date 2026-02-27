@@ -109,8 +109,8 @@ type interactiveSpinner struct {
 	once    sync.Once
 }
 
-// @MX:WARN: [AUTO] 고루틴에 채널 전송으로 완료 신호를 보냅니다. 수신자가 없으면 영구 차단될 수 있습니다.
-// @MX:REASON: [AUTO] 고루틴 수명 주기가 테아 프로그램의 수명 주기에 종속됩니다
+// @MX:WARN: [AUTO] Sends completion signal via channel to goroutine. May block permanently if no receiver exists.
+// @MX:REASON: [AUTO] Goroutine lifecycle is bound to the tea program lifecycle
 func newInteractiveSpinner(theme *Theme, title string) *interactiveSpinner {
 	m := newSpinnerModel(theme, title)
 	p := tea.NewProgram(m)
@@ -220,8 +220,8 @@ type interactiveProgressBar struct {
 	once    sync.Once
 }
 
-// @MX:WARN: [AUTO] 고루틴에 채널 전송으로 완료 신호를 보냅니다. 수신자가 없으면 영구 차단될 수 있습니다.
-// @MX:REASON: [AUTO] 고루틴 수명 주기가 테아 프로그램의 수명 주기에 종속됩니다
+// @MX:WARN: [AUTO] Sends completion signal via channel to goroutine. May block permanently if no receiver exists.
+// @MX:REASON: [AUTO] Goroutine lifecycle is bound to the tea program lifecycle
 func newInteractiveProgressBar(theme *Theme, title string, total int) *interactiveProgressBar {
 	m := newProgressModel(theme, title, total)
 	p := tea.NewProgram(m)

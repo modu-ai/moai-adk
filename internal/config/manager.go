@@ -20,8 +20,8 @@ const (
 	stateWatching
 )
 
-// @MX:ANCHOR: [AUTO] ConfigManager는 스레드 안전한 설정 관리를 제공하는 핵심 구조체입니다. Load() 호출 후 사용해야 합니다.
-// @MX:REASON: fan_in=12+, 모든 설정 접근의 진입점이며 시스템 전체에서 사용됩니다
+// @MX:ANCHOR: [AUTO] ConfigManager is the core struct providing thread-safe configuration management. Must call Load() before use.
+// @MX:REASON: fan_in=12+, entry point for all configuration access, used system-wide
 // ConfigManager provides thread-safe configuration management.
 // It must be initialized via Load() before use.
 type ConfigManager struct {
@@ -42,7 +42,7 @@ func NewConfigManager() *ConfigManager {
 	}
 }
 
-// @MX:NOTE: [AUTO] 파일 값, 컴파일된 기본값, 환경 변수 우선순위를 병합합니다. MOAI_CONFIG_DIR 환경 변수로 설정 디렉토리를 재정의할 수 있습니다.
+// @MX:NOTE: [AUTO] Merges file values, compiled defaults, and environment variable priorities. MOAI_CONFIG_DIR env var can override config directory.
 // Load reads configuration from the project root's .moai/ directory.
 // It merges file values with compiled defaults and applies environment
 // variable overrides. The configuration is validated before being stored.

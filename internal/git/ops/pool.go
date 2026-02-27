@@ -20,8 +20,8 @@ type WorkerPool struct {
 	pending    atomic.Int32
 }
 
-// @MX:WARN: [AUTO] 고루틴이 context.Context 없이 실행됩니다. worker() 메서드는 context 취소를 처리하지 않아 풀 종료 시 지연될 수 있습니다.
-// @MX:REASON: 고루틴 라이프사이클이 부모 context와 분리되어 있어 정상 종료가 어렵습니다
+// @MX:WARN: [AUTO] Goroutines run without context.Context. worker() method does not handle context cancellation, may delay pool shutdown.
+// @MX:REASON: Goroutine lifecycle is decoupled from parent context, making graceful shutdown difficult
 func NewWorkerPool(maxWorkers int) *WorkerPool {
 	if maxWorkers <= 0 {
 		maxWorkers = 4
