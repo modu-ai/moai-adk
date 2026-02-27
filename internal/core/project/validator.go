@@ -55,7 +55,7 @@ var requiredMoAIDirs = []string{
 	"config/sections",
 	"specs",
 	"reports",
-	"memory",
+	"state",
 	"logs",
 }
 

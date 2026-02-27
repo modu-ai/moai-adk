@@ -2316,6 +2316,122 @@ func TestCleanMoaiManagedPaths(t *testing.T) {
 	}
 }
 
+func TestMigrateLegacyMemoryDir(t *testing.T) {
+	t.Parallel()
+
+	pathExists := func(base string, relPath string) bool {
+		_, err := os.Stat(filepath.Join(base, relPath))
+		return err == nil
+	}
+
+	tests := []struct {
+		name   string
+		setup  func(t *testing.T, root string)
+		verify func(t *testing.T, root string, output string)
+	}{
+		{
+			name:  "no legacy dir exists — noop",
+			setup: func(t *testing.T, root string) {},
+			verify: func(t *testing.T, root string, output string) {
+				if strings.Contains(output, "Migrat") {
+					t.Error("expected no migration output when legacy dir absent")
+				}
+			},
+		},
+		{
+			name: "only legacy dir — rename to state",
+			setup: func(t *testing.T, root string) {
+				legacyDir := filepath.Join(root, ".moai", "memory")
+				if err := os.MkdirAll(legacyDir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(legacyDir, "coverage.json"), []byte(`{}`), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			},
+			verify: func(t *testing.T, root string, output string) {
+				if pathExists(root, filepath.Join(".moai", "memory")) {
+					t.Error("legacy .moai/memory/ should have been removed")
+				}
+				if !pathExists(root, filepath.Join(".moai", "state")) {
+					t.Error(".moai/state/ should exist after migration")
+				}
+				if !pathExists(root, filepath.Join(".moai", "state", "coverage.json")) {
+					t.Error("coverage.json should have been moved to .moai/state/")
+				}
+				if !strings.Contains(output, "Migrated") {
+					t.Errorf("expected 'Migrated' in output, got: %s", output)
+				}
+			},
+		},
+		{
+			name: "both dirs exist — remove legacy, keep state",
+			setup: func(t *testing.T, root string) {
+				legacyDir := filepath.Join(root, ".moai", "memory")
+				stateDir := filepath.Join(root, ".moai", "state")
+				if err := os.MkdirAll(legacyDir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.MkdirAll(stateDir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				// Old file in legacy dir
+				if err := os.WriteFile(filepath.Join(legacyDir, "old.json"), []byte(`{}`), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				// New file in state dir
+				if err := os.WriteFile(filepath.Join(stateDir, "new.json"), []byte(`{}`), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			},
+			verify: func(t *testing.T, root string, output string) {
+				if pathExists(root, filepath.Join(".moai", "memory")) {
+					t.Error("legacy .moai/memory/ should have been removed")
+				}
+				if !pathExists(root, filepath.Join(".moai", "state", "new.json")) {
+					t.Error(".moai/state/new.json should be preserved")
+				}
+				if pathExists(root, filepath.Join(".moai", "state", "old.json")) {
+					t.Error("old.json should not have been copied to state dir")
+				}
+				if !strings.Contains(output, "Removed legacy") {
+					t.Errorf("expected 'Removed legacy' in output, got: %s", output)
+				}
+			},
+		},
+		{
+			name: "only state dir exists — noop",
+			setup: func(t *testing.T, root string) {
+				stateDir := filepath.Join(root, ".moai", "state")
+				if err := os.MkdirAll(stateDir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			},
+			verify: func(t *testing.T, root string, output string) {
+				if strings.Contains(output, "Migrat") || strings.Contains(output, "Removed legacy") {
+					t.Error("expected no migration output when only state dir exists")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			tt.setup(t, root)
+
+			var buf bytes.Buffer
+			err := migrateLegacyMemoryDir(root, &buf)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			tt.verify(t, root, buf.String())
+		})
+	}
+}
+
 // --- TDD RED: Statusline wizard config tests ---
 
 func TestPresetToSegments(t *testing.T) {
