@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -261,6 +262,9 @@ func TestRunTemplateSyncWithProgress_VersionMatchSkips(t *testing.T) {
 // =============================================================================
 
 func TestRunTemplateSyncWithProgress_ForceFlagBypassesVersionCheck(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("charmbracelet/bubbletea blocks on Windows console ReadConsole in non-TTY CI")
+	}
 	tmpDir := t.TempDir()
 
 	// Write system.yaml with a version that matches so normally would show "up-to-date",

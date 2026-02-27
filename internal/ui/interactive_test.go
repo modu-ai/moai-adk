@@ -350,6 +350,9 @@ func TestMultiSelectInteractive_NonTTY_ReturnsError(t *testing.T) {
 // and NoColor=false so the interactive path is taken.
 
 func TestProgressImpl_Spinner_InteractivePath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("charmbracelet/bubbletea blocks on Windows console ReadConsole in non-TTY CI")
+	}
 	theme := NewTheme(ThemeConfig{NoColor: false, Mode: "dark"})
 	hm := NewHeadlessManager()
 	// Force non-headless to reach newInteractiveSpinner.
@@ -368,6 +371,10 @@ func TestProgressImpl_Spinner_InteractivePath(t *testing.T) {
 }
 
 func TestProgressImpl_Start_InteractivePath(t *testing.T) {
+	// Skip on Windows: bubbletea hangs on ReadConsole in non-TTY CI environment
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping on Windows: bubbletea Program.Wait() blocks on ReadConsole in non-TTY CI environment")
+	}
 	theme := NewTheme(ThemeConfig{NoColor: false, Mode: "dark"})
 	hm := NewHeadlessManager()
 	// Force non-headless to reach newInteractiveProgressBar.

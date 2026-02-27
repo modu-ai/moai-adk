@@ -3,6 +3,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -97,10 +98,12 @@ func TestDeployGlobalRankHookScript_ExecutablePermissions(t *testing.T) {
 		t.Fatalf("stat script: %v", err)
 	}
 
-	// Check executable bit is set (at least for owner)
-	mode := info.Mode()
-	if mode&0o100 == 0 {
-		t.Errorf("script should be executable, got permissions %o", mode)
+	// Check executable bit is set (Unix only — Windows does not support executable bits)
+	if runtime.GOOS != "windows" {
+		mode := info.Mode()
+		if mode&0o100 == 0 {
+			t.Errorf("script should be executable, got permissions %o", mode)
+		}
 	}
 }
 

@@ -3,6 +3,7 @@ package project
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -210,6 +211,9 @@ func TestPhaseExecutor_SetReporter(t *testing.T) {
 }
 
 func TestValidateYAMLFiles_UnreadableFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not enforce file read-permission restrictions")
+	}
 	root := t.TempDir()
 	sectionsDir := filepath.Join(root, ".moai", "config", "sections")
 	mkDir(t, root, ".moai/config/sections")
@@ -234,6 +238,9 @@ func TestValidateYAMLFiles_UnreadableFile(t *testing.T) {
 }
 
 func TestValidateJSONFile_UnreadableFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not enforce file read-permission restrictions")
+	}
 	root := t.TempDir()
 	jsonPath := filepath.Join(root, "test.json")
 	if err := os.WriteFile(jsonPath, []byte(`{"valid": true}`), 0644); err != nil {
@@ -257,6 +264,9 @@ func TestValidateJSONFile_UnreadableFile(t *testing.T) {
 }
 
 func TestValidateYAMLFiles_UnreadableDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not enforce directory read-permission restrictions")
+	}
 	root := t.TempDir()
 	sectionsDir := filepath.Join(root, "unreadable")
 	if err := os.MkdirAll(sectionsDir, 0755); err != nil {

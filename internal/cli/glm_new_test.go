@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -358,10 +359,12 @@ func TestSaveGLMKey_DirectoryCreation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("env file should exist: %v", err)
 	}
-	// Verify file permissions (owner-only read/write).
-	perm := info.Mode().Perm()
-	if perm != 0o600 {
-		t.Errorf("file permissions = %o, want 0600", perm)
+	// Verify file permissions (Unix only — Windows does not support owner-only mode bits).
+	if runtime.GOOS != "windows" {
+		perm := info.Mode().Perm()
+		if perm != 0o600 {
+			t.Errorf("file permissions = %o, want 0600", perm)
+		}
 	}
 }
 

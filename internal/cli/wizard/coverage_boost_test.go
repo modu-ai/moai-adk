@@ -2,6 +2,7 @@ package wizard
 
 import (
 	"io"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -226,6 +227,9 @@ func TestBuildInputField_ValidateCallback_RequiredEmpty(t *testing.T) {
 // TestRunWithDefaults_ReturnsError verifies that RunWithDefaults returns an error
 // in non-TTY environments rather than panicking. This covers the function body.
 func TestRunWithDefaults_ReturnsError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("charmbracelet/bubbletea blocks on Windows console ReadConsole in non-TTY CI")
+	}
 	// In a non-TTY test environment, Run will fail with a huh error after the
 	// first question tries to open a form. We just verify it does not panic
 	// and returns ErrNoQuestions only when no questions given (covered elsewhere).

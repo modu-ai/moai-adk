@@ -749,7 +749,17 @@ func findProjectRoot() (string, error) {
 		return "", err
 	}
 
+	// Normalize to resolve symlinks (macOS /private/var) and Windows 8.3 short paths.
+	if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+		dir = resolved
+	}
+
 	homeDir, _ := userHomeDir()
+	if homeDir != "" {
+		if resolved, err := filepath.EvalSymlinks(homeDir); err == nil {
+			homeDir = resolved
+		}
+	}
 
 	for {
 		// Skip home directory — ~/.moai/ is global state, not a project root
