@@ -164,6 +164,27 @@ CHANGELOG.md and GitHub Release notes MUST follow English-first bilingual struct
 
 Get commits for changelog: `git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s (%h)"`
 
+### [HARD] Content Filtering: Separate User-Facing vs Internal Changes
+
+CHANGELOG and GitHub Release notes MUST prioritize **user-facing changes** that affect the moai binary behavior or CLI functionality.
+
+**Full description (individual bullet points):**
+- Go source code changes (`cmd/`, `internal/`, `pkg/`)
+- User-visible CLI commands and flags
+- Hook behavior changes that users experience
+- Breaking changes to configuration format
+- Security fixes
+
+**Abbreviated (single summary line, no individual bullets):**
+- Template/rules file optimization (`.claude/rules/`, `.claude/skills/`, `.claude/agents/`)
+- Code annotation changes (`@MX` tags, comments-only changes)
+- Internal documentation updates (worktree rules, agent authoring guides)
+- Skill definition template updates
+
+**Excluded entirely (do not mention):**
+- Local development configuration changes (`.gitignore`, IDE settings, editor configs)
+- Release workflow and CI pipeline modifications (`.github/workflows/`, release command updates)
+
 ### CHANGELOG.md Structure
 
 Prepend new version entry to CHANGELOG.md with this structure:
