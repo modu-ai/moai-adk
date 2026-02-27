@@ -206,7 +206,7 @@ Project Bootstrap:
 
 # Creates:
 # - .moai/config/config.yaml
-# - .moai/memory/ directory
+# - .moai/state/ directory
 # - CLAUDE.md template
 # - Memory structure files
 ```

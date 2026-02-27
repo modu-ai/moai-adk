@@ -314,12 +314,12 @@ func NewPostToolBlockOutput(reason string, additionalContext string) *HookOutput
 }
 
 // NewPermissionRequestOutput creates a HookOutput for PermissionRequest events.
-// Per Claude Code protocol, hookSpecificOutput.hookEventName must be "PreToolUse"
-// because PermissionRequest shares the PreToolUse output schema for permission decisions.
+// Per Claude Code protocol (v2.1.59+), hookSpecificOutput.hookEventName must be
+// "PermissionRequest" for PermissionRequest events.
 func NewPermissionRequestOutput(decision, reason string) *HookOutput {
 	return &HookOutput{
 		HookSpecificOutput: &HookSpecificOutput{
-			HookEventName:            "PreToolUse",
+			HookEventName:            "PermissionRequest",
 			PermissionDecision:       decision,
 			PermissionDecisionReason: reason,
 		},

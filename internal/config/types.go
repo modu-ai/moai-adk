@@ -21,7 +21,7 @@ type Config struct {
 	Pricing       PricingConfig              `yaml:"pricing"`
 	Ralph         RalphConfig                `yaml:"ralph"`
 	Workflow      WorkflowConfig             `yaml:"workflow"`
-	Memory        MemoryConfig               `yaml:"memory"`
+	State         StateConfig                `yaml:"state"`
 }
 
 // GitStrategyConfig represents the git strategy configuration section.
@@ -109,14 +109,11 @@ type WorkflowConfig struct {
 	SyncTokens int  `yaml:"sync_tokens"`
 }
 
-// MemoryConfig represents the memory injection configuration section.
-// It controls whether .moai/memory/MEMORY.md is loaded and injected
-// as a SystemMessage at session start.
-type MemoryConfig struct {
-	Enabled    bool   `yaml:"enabled"`
-	MemoryDir  string `yaml:"memory_dir"`
-	MaxTokens  int    `yaml:"max_tokens"`
-	AutoInject bool   `yaml:"auto_inject"`
+// StateConfig represents the project state storage configuration.
+// It controls the directory where structured state data (checkpoints,
+// coverage, diagnostics) is stored.
+type StateConfig struct {
+	StateDir string `yaml:"state_dir"`
 }
 
 // LSPQualityGates represents LSP quality gate configuration.
@@ -153,7 +150,7 @@ type SyncGate struct {
 var sectionNames = []string{
 	"user", "language", "quality", "project",
 	"git_strategy", "git_convention", "system", "llm",
-	"pricing", "ralph", "workflow", "memory",
+	"pricing", "ralph", "workflow", "state",
 }
 
 // IsValidSectionName checks if the given name is a valid section name.
@@ -195,7 +192,7 @@ type llmFileWrapper struct {
 	LLM LLMConfig `yaml:"llm"`
 }
 
-// memoryFileWrapper handles the memory.yaml section file.
-type memoryFileWrapper struct {
-	Memory MemoryConfig `yaml:"memory"`
+// stateFileWrapper handles the state.yaml section file.
+type stateFileWrapper struct {
+	State StateConfig `yaml:"state"`
 }

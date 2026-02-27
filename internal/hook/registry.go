@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
-// @MX:ANCHOR: [AUTO] Hook Registry는 모든 Claude Code 이벤트 핸들러의 중앙 등록 및 디스패치 시스템입니다. 순차 실행, 타임아웃, block short-circuit을 지원합니다.
-// @MX:REASON: fan_in=20+, 모든 훅 이벤트의 진입점이며 시스템의 핵심 인프라입니다
+// @MX:ANCHOR: [AUTO] Hook Registry is the central registration and dispatch system for all Claude Code event handlers. Supports sequential execution, timeout, and block short-circuit.
+// @MX:REASON: fan_in=20+, entry point for all hook events, core system infrastructure
 // registry is the default implementation of the Registry interface.
 // It manages handler registration and sequential event dispatch with
 // block short-circuit and timeout support.
@@ -18,7 +18,7 @@ type registry struct {
 	timeout  time.Duration
 }
 
-// @MX:NOTE: [AUTO] 기본 타임아웃은 30초(DefaultHookTimeout)입니다. 타임아웃 내에 핸들러가 완료되지 않으면 ErrHookTimeout이 반환됩니다.
+// @MX:NOTE: [AUTO] Default timeout is 30 seconds (DefaultHookTimeout). If handler does not complete within timeout, ErrHookTimeout is returned.
 // NewRegistry creates a new Registry with the default timeout (30 seconds).
 func NewRegistry(cfg ConfigProvider) *registry {
 	return &registry{
@@ -180,10 +180,10 @@ func (r *registry) defaultOutputForEvent(event EventType) *HookOutput {
 		return &HookOutput{}
 	case EventPermissionRequest:
 		// PermissionRequest defaults to "ask" (defer to user).
-		// Per Claude Code protocol, hookEventName must be "PreToolUse" in output.
+		// Per Claude Code protocol (v2.1.59+), hookEventName must be "PermissionRequest".
 		return &HookOutput{
 			HookSpecificOutput: &HookSpecificOutput{
-				HookEventName:      "PreToolUse",
+				HookEventName:      "PermissionRequest",
 				PermissionDecision: DecisionAsk,
 			},
 		}

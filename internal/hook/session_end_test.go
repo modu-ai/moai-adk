@@ -311,6 +311,358 @@ func TestMoaiTmuxSessionPrefix(t *testing.T) {
 	}
 }
 
+// TestCleanupGLMSettingsLocal verifies that SessionEnd removes GLM env vars
+// from settings.local.json and restores the backed-up OAuth token.
+func TestCleanupGLMSettingsLocal(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name             string
+		initialEnv       map[string]string
+		wantAuthToken    string // "" means the key should be absent
+		wantBaseURL      bool   // true means ANTHROPIC_BASE_URL should still be present
+		wantHaiku        bool
+		wantSonnet       bool
+		wantOpus         bool
+		wantBackupToken  bool // true means MOAI_BACKUP_AUTH_TOKEN should still be present
+		wantOtherPresent bool // true means non-GLM key should still be present
+	}{
+		{
+			name: "GLM active with backup OAuth token: restore OAuth token and remove GLM vars",
+			initialEnv: map[string]string{
+				"ANTHROPIC_AUTH_TOKEN":           "glm-api-key-12345",
+				"ANTHROPIC_BASE_URL":             "https://glm.example.com/v1",
+				"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.7-air",
+				"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
+				"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5",
+				"MOAI_BACKUP_AUTH_TOKEN":         "oauth-token-from-claude",
+				"CLAUDE_CODE_TEAMMATE_DISPLAY":   "compact",
+			},
+			wantAuthToken:    "oauth-token-from-claude",
+			wantBaseURL:      false,
+			wantHaiku:        false,
+			wantSonnet:       false,
+			wantOpus:         false,
+			wantBackupToken:  false,
+			wantOtherPresent: true,
+		},
+		{
+			name: "GLM active without backup OAuth token: remove GLM vars, delete auth token",
+			initialEnv: map[string]string{
+				"ANTHROPIC_AUTH_TOKEN":           "glm-api-key-only",
+				"ANTHROPIC_BASE_URL":             "https://glm.example.com/v1",
+				"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.7-air",
+				"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
+				"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5",
+			},
+			wantAuthToken:    "",
+			wantBaseURL:      false,
+			wantHaiku:        false,
+			wantSonnet:       false,
+			wantOpus:         false,
+			wantBackupToken:  false,
+			wantOtherPresent: false,
+		},
+		{
+			name: "no GLM vars present: file unchanged",
+			initialEnv: map[string]string{
+				"CLAUDE_CODE_TEAMMATE_DISPLAY": "compact",
+			},
+			wantAuthToken:    "",
+			wantBaseURL:      false,
+			wantHaiku:        false,
+			wantSonnet:       false,
+			wantOpus:         false,
+			wantBackupToken:  false,
+			wantOtherPresent: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Create temp dir with .claude/settings.local.json
+			projectDir := t.TempDir()
+			claudeDir := filepath.Join(projectDir, ".claude")
+			if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+				t.Fatalf("setup .claude dir: %v", err)
+			}
+
+			settingsPath := filepath.Join(claudeDir, "settings.local.json")
+			initial := map[string]any{
+				"env": tt.initialEnv,
+			}
+			data, err := json.Marshal(initial)
+			if err != nil {
+				t.Fatalf("marshal initial settings: %v", err)
+			}
+			if err := os.WriteFile(settingsPath, data, 0o644); err != nil {
+				t.Fatalf("write settings.local.json: %v", err)
+			}
+
+			// Call the function under test
+			cleanupGLMSettingsLocal(projectDir)
+
+			// Read back the file
+			result, err := os.ReadFile(settingsPath)
+			if err != nil {
+				t.Fatalf("read settings.local.json after cleanup: %v", err)
+			}
+
+			var out map[string]any
+			if err := json.Unmarshal(result, &out); err != nil {
+				t.Fatalf("parse settings.local.json after cleanup: %v", err)
+			}
+
+			env, _ := out["env"].(map[string]any)
+
+			// Check ANTHROPIC_AUTH_TOKEN
+			authToken, hasAuthToken := env["ANTHROPIC_AUTH_TOKEN"]
+			if tt.wantAuthToken != "" {
+				if !hasAuthToken {
+					t.Errorf("ANTHROPIC_AUTH_TOKEN should be present with value %q, but is absent", tt.wantAuthToken)
+				} else if authToken != tt.wantAuthToken {
+					t.Errorf("ANTHROPIC_AUTH_TOKEN = %q, want %q", authToken, tt.wantAuthToken)
+				}
+			} else if hasAuthToken {
+				t.Errorf("ANTHROPIC_AUTH_TOKEN should be absent, but has value %q", authToken)
+			}
+
+			// Check removed GLM vars
+			if _, ok := env["ANTHROPIC_BASE_URL"]; ok != tt.wantBaseURL {
+				t.Errorf("ANTHROPIC_BASE_URL present=%v, want present=%v", ok, tt.wantBaseURL)
+			}
+			if _, ok := env["ANTHROPIC_DEFAULT_HAIKU_MODEL"]; ok != tt.wantHaiku {
+				t.Errorf("ANTHROPIC_DEFAULT_HAIKU_MODEL present=%v, want present=%v", ok, tt.wantHaiku)
+			}
+			if _, ok := env["ANTHROPIC_DEFAULT_SONNET_MODEL"]; ok != tt.wantSonnet {
+				t.Errorf("ANTHROPIC_DEFAULT_SONNET_MODEL present=%v, want present=%v", ok, tt.wantSonnet)
+			}
+			if _, ok := env["ANTHROPIC_DEFAULT_OPUS_MODEL"]; ok != tt.wantOpus {
+				t.Errorf("ANTHROPIC_DEFAULT_OPUS_MODEL present=%v, want present=%v", ok, tt.wantOpus)
+			}
+			if _, ok := env["MOAI_BACKUP_AUTH_TOKEN"]; ok != tt.wantBackupToken {
+				t.Errorf("MOAI_BACKUP_AUTH_TOKEN present=%v, want present=%v", ok, tt.wantBackupToken)
+			}
+
+			// Check non-GLM var preservation
+			if _, ok := env["CLAUDE_CODE_TEAMMATE_DISPLAY"]; ok != tt.wantOtherPresent {
+				t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY present=%v, want present=%v", ok, tt.wantOtherPresent)
+			}
+		})
+	}
+}
+
+// TestCleanupGLMSettingsLocal_NoFile verifies that missing settings.local.json
+// is handled gracefully (no panic, no error).
+func TestCleanupGLMSettingsLocal_NoFile(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	// No .claude/settings.local.json created — should not panic
+	cleanupGLMSettingsLocal(projectDir)
+}
+
+// TestCleanupGLMSettingsLocal_EmptyFile verifies that an empty
+// settings.local.json is handled gracefully.
+func TestCleanupGLMSettingsLocal_EmptyFile(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	claudeDir := filepath.Join(projectDir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	settingsPath := filepath.Join(claudeDir, "settings.local.json")
+	if err := os.WriteFile(settingsPath, []byte{}, 0o644); err != nil {
+		t.Fatalf("write empty file: %v", err)
+	}
+
+	cleanupGLMSettingsLocal(projectDir)
+}
+
+// TestSessionEndHandler_Handle_CleansGLMFromSettingsLocal verifies that the
+// Handle method triggers settings.local.json cleanup when ProjectDir is set.
+func TestSessionEndHandler_Handle_CleansGLMFromSettingsLocal(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	claudeDir := filepath.Join(projectDir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		t.Fatalf("setup .claude dir: %v", err)
+	}
+
+	// Write settings.local.json with GLM vars and a backup token
+	settingsPath := filepath.Join(claudeDir, "settings.local.json")
+	initial := map[string]any{
+		"env": map[string]string{
+			"ANTHROPIC_AUTH_TOKEN":           "glm-key",
+			"ANTHROPIC_BASE_URL":             "https://glm.example.com/v1",
+			"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.7-air",
+			"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
+			"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5",
+			"MOAI_BACKUP_AUTH_TOKEN":         "real-oauth-token",
+		},
+	}
+	data, err := json.Marshal(initial)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if err := os.WriteFile(settingsPath, data, 0o644); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+
+	h := NewSessionEndHandler()
+	ctx := context.Background()
+	input := &HookInput{
+		SessionID:     "test-cleanup-session",
+		CWD:           projectDir,
+		ProjectDir:    projectDir,
+		HookEventName: "SessionEnd",
+	}
+
+	got, err := h.Handle(ctx, input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got == nil {
+		t.Fatal("got nil output")
+	}
+
+	// Verify GLM vars were cleaned and OAuth token was restored
+	result, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("read settings after Handle: %v", err)
+	}
+
+	var out map[string]any
+	if err := json.Unmarshal(result, &out); err != nil {
+		t.Fatalf("parse settings after Handle: %v", err)
+	}
+
+	env, _ := out["env"].(map[string]any)
+	if token, ok := env["ANTHROPIC_AUTH_TOKEN"]; !ok || token != "real-oauth-token" {
+		t.Errorf("ANTHROPIC_AUTH_TOKEN = %v (present=%v), want %q", token, ok, "real-oauth-token")
+	}
+	if _, ok := env["ANTHROPIC_BASE_URL"]; ok {
+		t.Error("ANTHROPIC_BASE_URL should have been removed")
+	}
+	if _, ok := env["MOAI_BACKUP_AUTH_TOKEN"]; ok {
+		t.Error("MOAI_BACKUP_AUTH_TOKEN should have been removed")
+	}
+}
+
+// TestSessionEndHandler_Handle_CWDFallbackToProjectDir verifies that Handle
+// uses CWD for GLM settings cleanup, falling back to ProjectDir for legacy.
+func TestSessionEndHandler_Handle_CWDFallbackToProjectDir(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		cwd        string
+		projectDir string
+		wantClean  bool // true if GLM cleanup should have occurred
+	}{
+		{
+			name:       "CWD set: uses CWD for cleanup",
+			cwd:        "SET", // placeholder, replaced with real tmpDir
+			projectDir: "",
+			wantClean:  true,
+		},
+		{
+			name:       "CWD empty, ProjectDir set: falls back to ProjectDir",
+			cwd:        "",
+			projectDir: "SET", // placeholder, replaced with real tmpDir
+			wantClean:  true,
+		},
+		{
+			name:       "both empty: no cleanup attempted",
+			cwd:        "",
+			projectDir: "",
+			wantClean:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var targetDir string
+			if tt.wantClean {
+				targetDir = t.TempDir()
+				claudeDir := filepath.Join(targetDir, ".claude")
+				if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+					t.Fatalf("setup .claude dir: %v", err)
+				}
+				settingsPath := filepath.Join(claudeDir, "settings.local.json")
+				initial := map[string]any{
+					"env": map[string]string{
+						"ANTHROPIC_AUTH_TOKEN":           "glm-key",
+						"ANTHROPIC_BASE_URL":             "https://glm.example.com/v1",
+						"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.7-air",
+						"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
+						"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5",
+						"MOAI_BACKUP_AUTH_TOKEN":         "real-oauth",
+					},
+				}
+				data, err := json.Marshal(initial)
+				if err != nil {
+					t.Fatalf("marshal: %v", err)
+				}
+				if err := os.WriteFile(settingsPath, data, 0o644); err != nil {
+					t.Fatalf("write settings: %v", err)
+				}
+			}
+
+			input := &HookInput{
+				SessionID:     "test-cwd-fallback",
+				HookEventName: "SessionEnd",
+			}
+			if tt.cwd == "SET" {
+				input.CWD = targetDir
+			} else {
+				input.CWD = tt.cwd
+			}
+			if tt.projectDir == "SET" {
+				input.ProjectDir = targetDir
+			} else {
+				input.ProjectDir = tt.projectDir
+			}
+
+			h := NewSessionEndHandler()
+			ctx := context.Background()
+			got, err := h.Handle(ctx, input)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got == nil {
+				t.Fatal("got nil output")
+			}
+
+			if tt.wantClean {
+				// Verify GLM vars were cleaned
+				settingsPath := filepath.Join(targetDir, ".claude", "settings.local.json")
+				result, err := os.ReadFile(settingsPath)
+				if err != nil {
+					t.Fatalf("read settings after Handle: %v", err)
+				}
+				var out map[string]any
+				if err := json.Unmarshal(result, &out); err != nil {
+					t.Fatalf("parse settings after Handle: %v", err)
+				}
+				env, _ := out["env"].(map[string]any)
+				if _, ok := env["ANTHROPIC_BASE_URL"]; ok {
+					t.Error("ANTHROPIC_BASE_URL should have been removed")
+				}
+				if token, ok := env["ANTHROPIC_AUTH_TOKEN"]; !ok || token != "real-oauth" {
+					t.Errorf("ANTHROPIC_AUTH_TOKEN = %v, want %q", token, "real-oauth")
+				}
+			}
+		})
+	}
+}
+
 func TestSessionEndHandler_AlwaysReturnsEmptyOutput(t *testing.T) {
 	t.Parallel()
 

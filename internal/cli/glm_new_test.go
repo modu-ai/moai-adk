@@ -25,8 +25,8 @@ func TestLoadGLMConfig_FallbackDefaults(t *testing.T) {
 	if cfg.BaseURL != "https://api.z.ai/api/anthropic" {
 		t.Errorf("BaseURL = %q, want %q", cfg.BaseURL, "https://api.z.ai/api/anthropic")
 	}
-	if cfg.Models.Low != "glm-4.7-flashx" {
-		t.Errorf("Models.Low = %q, want %q", cfg.Models.Low, "glm-4.7-flashx")
+	if cfg.Models.Low != "glm-4.5-air" {
+		t.Errorf("Models.Low = %q, want %q", cfg.Models.Low, "glm-4.5-air")
 	}
 	if cfg.Models.Medium != "glm-4.7" {
 		t.Errorf("Models.Medium = %q, want %q", cfg.Models.Medium, "glm-4.7")
@@ -103,7 +103,7 @@ func TestInjectGLMEnv_Success(t *testing.T) {
 		}{
 			High:   "glm-5",
 			Medium: "glm-4.7",
-			Low:    "glm-4.7-flashx",
+			Low:    "glm-4.5-air",
 		},
 		EnvVar: "GLM_API_KEY",
 	}
@@ -127,7 +127,7 @@ func TestInjectGLMEnv_Success(t *testing.T) {
 	expectedVars := map[string]string{
 		"ANTHROPIC_AUTH_TOKEN":           "my-test-key",
 		"ANTHROPIC_BASE_URL":             "https://api.z.ai/api/anthropic",
-		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.7-flashx",
+		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.5-air",
 		"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
 		"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5",
 	}
@@ -694,7 +694,7 @@ func TestInjectGLMEnvForTeam_NeverModifiesSettingsJson(t *testing.T) {
 		}{
 			High:   "glm-5",
 			Medium: "glm-4.7",
-			Low:    "glm-4.7-flashx",
+			Low:    "glm-4.5-air",
 		},
 		EnvVar: "GLM_API_KEY",
 	}

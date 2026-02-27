@@ -42,9 +42,9 @@ const (
 	// GLM model tiers
 	DefaultGLMHigh   = "glm-5"
 	DefaultGLMMedium = "glm-4.7"
-	DefaultGLMLow    = "glm-4.7-flashx"
+	DefaultGLMLow    = "glm-4.5-air"
 	// Legacy GLM model names (map to tiers)
-	DefaultGLMHaiku  = "glm-4.7-flashx"
+	DefaultGLMHaiku  = "glm-4.5-air"
 	DefaultGLMSonnet = "glm-4.7"
 	DefaultGLMOpus   = "glm-5"
 	// Default performance tier
@@ -60,8 +60,7 @@ const (
 	DefaultGitConventionFallback            = "conventional-commits"
 	DefaultGitConventionMaxLength           = 100
 
-	DefaultMemoryDir       = ".moai/memory"
-	DefaultMemoryMaxTokens = 5000
+	DefaultStateDir = ".moai/state"
 )
 
 // NewDefaultConfig returns a Config with all fields set to compiled defaults.
@@ -78,7 +77,7 @@ func NewDefaultConfig() *Config {
 		Pricing:       NewDefaultPricingConfig(),
 		Ralph:         NewDefaultRalphConfig(),
 		Workflow:      NewDefaultWorkflowConfig(),
-		Memory:        NewDefaultMemoryConfig(),
+		State:         NewDefaultStateConfig(),
 	}
 }
 
@@ -220,13 +219,10 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 	}
 }
 
-// NewDefaultMemoryConfig returns a MemoryConfig with default values.
-func NewDefaultMemoryConfig() MemoryConfig {
-	return MemoryConfig{
-		Enabled:    true,
-		MemoryDir:  DefaultMemoryDir,
-		MaxTokens:  DefaultMemoryMaxTokens,
-		AutoInject: true,
+// NewDefaultStateConfig returns a StateConfig with default values.
+func NewDefaultStateConfig() StateConfig {
+	return StateConfig{
+		StateDir: DefaultStateDir,
 	}
 }
 

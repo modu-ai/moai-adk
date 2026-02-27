@@ -22,19 +22,35 @@ jobs:
       contents: read
       pull-requests: read
       issues: read
+      # C2 Fix: id-token: write is required by claude-code-action for OIDC-based
+      # authentication to Anthropic's API when using OAuth tokens.
       id-token: write
       actions: read # Required for Claude to read CI results on PRs
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        # C1 Fix: Pinned to commit SHA to prevent supply chain attacks via floating tags.
+        # Tag: v4.3.1 | SHA: 34e114876b0b11c390a56381ad16ebd13914f8d5
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           fetch-depth: 1
 
+      # C5 Fix: Restored setup-go step so @claude can run Go commands (go test, go build, etc.)
+      - name: Setup Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: "1.26"
+          cache: true
+
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@v1
+        # C1 Fix: Pinned to commit SHA to prevent supply chain attacks via floating tags.
+        # Tag: v1 | SHA: 1dd74842e568f373608605d9e45c9e854f65f543
+        uses: anthropics/claude-code-action@1dd74842e568f373608605d9e45c9e854f65f543
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+          # C4 Fix: Restored max_turns to cap runaway executions and control costs.
+          max_turns: "20"
 
           # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
@@ -47,4 +63,3 @@ jobs:
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
           # claude_args: '--allowed-tools Bash(gh pr:*)'
-

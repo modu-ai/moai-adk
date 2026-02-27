@@ -59,7 +59,7 @@ checkpoint_strategy:
   enabled: true
   interval: every_cycle
   # CRITICAL: Always use project root for .moai to prevent duplicate .moai in subfolders
-  location: $CLAUDE_PROJECT_DIR/.moai/memory/checkpoints/tdd/
+  location: $CLAUDE_PROJECT_DIR/.moai/state/checkpoints/tdd/
   resume_capability: true
 
 memory_management:
@@ -637,7 +637,7 @@ To prevent V8 heap memory overflow during long-running TDD sessions, this agent 
 
 **Checkpoint Strategy**:
 - Checkpoint after every RED-GREEN-REFACTOR cycle completion
-- Checkpoint location: `.moai/memory/checkpoints/tdd/`
+- Checkpoint location: `.moai/state/checkpoints/tdd/`
 - Auto-checkpoint on memory pressure detection
 
 **Checkpoint Content**:

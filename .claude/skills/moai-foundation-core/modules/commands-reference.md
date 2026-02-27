@@ -57,7 +57,7 @@ What It Does:
 Output:
 - `.moai/` directory
 - `.moai/config/config.yaml`
-- `.moai/memory/` (empty, ready for session state)
+- `.moai/state/` (empty, ready for session state)
 - `.moai/logs/` (empty, ready for logging)
 
 Next Step: Ready for SPEC generation via `/moai:1-plan`

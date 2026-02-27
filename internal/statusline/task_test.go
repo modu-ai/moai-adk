@@ -17,7 +17,7 @@ func TestNewTaskCollector_DefaultPath(t *testing.T) {
 	if tc.ttl != time.Second {
 		t.Errorf("ttl = %v, want %v", tc.ttl, time.Second)
 	}
-	// statePath should contain ".moai/memory/last-session-state.json"
+	// statePath should contain ".moai/state/last-session-state.json"
 	if tc.statePath != "" {
 		if filepath.Base(tc.statePath) != "last-session-state.json" {
 			t.Errorf("statePath base = %q, want last-session-state.json", filepath.Base(tc.statePath))
