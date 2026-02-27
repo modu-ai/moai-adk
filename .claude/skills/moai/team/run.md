@@ -118,6 +118,7 @@ Task(
   subagent_type: "team-backend-dev",
   team_name: "moai-run-SPEC-XXX",
   name: "backend-dev",
+  isolation: "worktree",
   mode: "acceptEdits",
   prompt: "You are backend-dev on team moai-run-SPEC-XXX.
     Implement backend tasks from the shared task list.
@@ -130,6 +131,7 @@ Task(
   subagent_type: "team-frontend-dev",
   team_name: "moai-run-SPEC-XXX",
   name: "frontend-dev",
+  isolation: "worktree",
   mode: "acceptEdits",
   prompt: "You are frontend-dev on team moai-run-SPEC-XXX.
     Implement frontend tasks from the shared task list.
@@ -142,6 +144,7 @@ Task(
   subagent_type: "team-tester",
   team_name: "moai-run-SPEC-XXX",
   name: "tester",
+  isolation: "worktree",
   mode: "acceptEdits",
   prompt: "You are tester on team moai-run-SPEC-XXX.
     Write tests for implemented features.
@@ -151,7 +154,7 @@ Task(
 )
 ```
 
-All teammates spawn in parallel in separate tmux panes.
+All teammates spawn in parallel in separate tmux panes, each in an isolated worktree.
 
 #### 2.3 Monitor and Coordinate
 
@@ -266,13 +269,15 @@ When `team_mode == "agent-teams"` in llm.yaml, use parallel teammates all on the
 
 ### Phase 2: Spawn Implementation Team
 
-Spawn teammates with file ownership boundaries:
+Spawn teammates with file ownership boundaries and worktree isolation:
 
 ```
-Task(subagent_type: "team-backend-dev", team_name: "moai-run-SPEC-XXX", name: "backend-dev", mode: "acceptEdits", ...)
-Task(subagent_type: "team-frontend-dev", team_name: "moai-run-SPEC-XXX", name: "frontend-dev", mode: "acceptEdits", ...)
-Task(subagent_type: "team-tester", team_name: "moai-run-SPEC-XXX", name: "tester", mode: "acceptEdits", ...)
+Task(subagent_type: "team-backend-dev", team_name: "moai-run-SPEC-XXX", name: "backend-dev", isolation: "worktree", mode: "acceptEdits", ...)
+Task(subagent_type: "team-frontend-dev", team_name: "moai-run-SPEC-XXX", name: "frontend-dev", isolation: "worktree", mode: "acceptEdits", ...)
+Task(subagent_type: "team-tester", team_name: "moai-run-SPEC-XXX", name: "tester", isolation: "worktree", mode: "acceptEdits", ...)
 ```
+
+[HARD] All implementation teammates MUST use `isolation: "worktree"` for parallel file safety.
 
 ### Phase 3: Handle Idle Notifications
 
@@ -333,7 +338,7 @@ SendMessage(type: "plan_approval_response", request_id: "{id}", recipient: "{nam
 | Parallelism | Parallel (tmux panes) | Parallel (in-process/tmux) | Sequential |
 | Quality | Highest (Claude reviews) | High | High |
 | Requires tmux | Yes | No (optional) | No |
-| Isolation | tmux env + optional worktree | File ownership + optional worktree | None |
+| Isolation | tmux env + worktree (HARD) | File ownership + worktree (HARD) | None |
 
 ## Fallback
 
@@ -345,5 +350,5 @@ If team mode fails at any point:
 
 ---
 
-Version: 3.0.0 (tmux Agent Teams CG Mode)
-Last Updated: 2026-02-22
+Version: 3.2.0 (tmux Agent Teams CG Mode)
+Last Updated: 2026-02-27

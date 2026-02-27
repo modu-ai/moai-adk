@@ -17,7 +17,7 @@ MoAI is the Strategic Orchestrator for Claude Code. All tasks must be delegated 
 - [HARD] No Refusal: Never refuse explicit user requests or argue bugs are "by design" (See Section 7)
 - [HARD] No Autonomous Work: Do not start unrequested analysis, optimization, or refactoring (See Section 7)
 
-Core principles (1-4) are defined in @.claude/rules/moai/core/moai-constitution.md. Development safeguards (5-10) are detailed in Section 7.
+Core principles (1-4) are defined in .claude/rules/moai/core/moai-constitution.md. Development safeguards (5-10) are detailed in Section 7.
 
 ### Recommendations
 
@@ -125,7 +125,7 @@ MoAI uses DDD and TDD as its development methodologies, selected via quality.yam
 - /moai run SPEC-XXX → manager-ddd or manager-tdd subagent (per quality.yaml development_mode)
 - /moai sync SPEC-XXX → manager-docs subagent
 
-For detailed workflow specifications, see @.claude/rules/moai/workflow/spec-workflow.md
+For detailed workflow specifications, see .claude/rules/moai/workflow/spec-workflow.md
 
 ### Agent Chain for SPEC Execution
 
@@ -150,7 +150,7 @@ MX Tag Types:
 - `@MX:ANCHOR` - Invariant contract (high fan_in functions)
 - `@MX:TODO` - Incomplete work (resolved in GREEN phase)
 
-For MX protocol details, see @.claude/rules/moai/workflow/mx-tag-protocol.md
+For MX protocol details, see .claude/rules/moai/workflow/mx-tag-protocol.md
 
 For team-based parallel execution of these phases, see @.claude/skills/moai/team/plan.md and @.claude/skills/moai/team/run.md.
 
@@ -158,7 +158,7 @@ For team-based parallel execution of these phases, see @.claude/skills/moai/team
 
 ## 6. Quality Gates
 
-For TRUST 5 framework details, see @.claude/rules/moai/core/moai-constitution.md
+For TRUST 5 framework details, see .claude/rules/moai/core/moai-constitution.md
 
 ### LSP Quality Gates
 
@@ -286,7 +286,7 @@ MoAI-ADK uses Claude Code's official rules system at `.claude/rules/moai/`:
 
 ## 10. Web Search Protocol
 
-For anti-hallucination policy, see @.claude/rules/moai/core/moai-constitution.md
+For anti-hallucination policy, see .claude/rules/moai/core/moai-constitution.md
 
 ### Execution Steps
 
@@ -329,7 +329,7 @@ MoAI-ADK integrates multiple MCP servers for specialized capabilities:
 - **Pencil**: UI/UX design editing for .pen files (used by expert-frontend and team-designer agents).
 - **claude-in-chrome**: Browser automation for web-based tasks.
 
-For MCP configuration and usage patterns, see @.claude/rules/moai/core/mcp-integration.md.
+For MCP configuration and usage patterns, see .claude/rules/moai/core/settings-management.md.
 
 ---
 
@@ -351,13 +351,22 @@ MoAI-ADK implements a 3-level Progressive Disclosure system:
 
 ## 14. Parallel Execution Safeguards
 
-For core parallel execution principles, see @.claude/rules/moai/core/moai-constitution.md.
+For core parallel execution principles, see .claude/rules/moai/core/moai-constitution.md.
 
 - **File Write Conflict Prevention**: Analyze overlapping file access patterns and build dependency graphs before parallel execution
 - **Agent Tool Requirements**: All implementation agents MUST include Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet
 - **Loop Prevention**: Maximum 3 retries per operation with failure pattern detection and user intervention
 - **Platform Compatibility**: Always prefer Edit tool over sed/awk
 - **Team File Ownership**: In team mode, each teammate owns specific file patterns to prevent write conflicts
+
+### Worktree Isolation Rules [HARD]
+
+- [HARD] Implementation agents in team mode (team-backend-dev, team-frontend-dev, team-tester, team-designer) MUST use `isolation: "worktree"` when spawned via Task()
+- [HARD] Read-only agents (team-researcher, team-analyst, team-architect, team-quality) MUST NOT use `isolation: "worktree"`
+- [HARD] One-shot sub-agents making cross-file changes SHOULD use `isolation: "worktree"`
+- [HARD] GitHub workflow fixer agents MUST use `isolation: "worktree"` for branch isolation
+
+For the complete worktree selection decision tree, see .claude/rules/moai/workflow/worktree-integration.md
 
 ---
 
@@ -387,7 +396,7 @@ Call TeamDelete only after all teammates have shut down to release team resource
 
 TeammateIdle (exit 2 = keep working), TaskCompleted (exit 2 = reject completion)
 
-For complete Agent Teams documentation including team API reference, agent roster, file ownership strategy, team workflows, and configuration, see @.claude/rules/moai/workflow/spec-workflow.md and @.moai/config/sections/workflow.yaml.
+For complete Agent Teams documentation including team API reference, agent roster, file ownership strategy, team workflows, and configuration, see .claude/rules/moai/workflow/spec-workflow.md and @.moai/config/sections/workflow.yaml.
 
 ### CG Mode (Claude + GLM Cost Optimization)
 

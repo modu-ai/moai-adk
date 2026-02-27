@@ -46,8 +46,3 @@ Version: C++23 / C++20
 - Use GMock for mocking
 - Use sanitizers (ASan, UBSan) in CI
 - Use benchmark tests for performance
-
-## MoAI Integration
-
-- Use Skill("moai-lang-cpp") for detailed patterns
-- Follow TRUST 5 quality gates

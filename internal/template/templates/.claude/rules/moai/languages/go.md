@@ -45,8 +45,3 @@ Version: Go 1.23+
 - Use testify/assert or go-cmp for assertions
 - Mock external dependencies with interfaces
 - Use t.Parallel() for independent tests
-
-## MoAI Integration
-
-- Use Skill("moai-lang-go") for detailed patterns
-- Follow TRUST 5 quality gates

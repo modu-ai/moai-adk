@@ -358,6 +358,14 @@ When --team flag is provided or auto-selected, the run phase MUST switch to team
 
 Team composition: backend-dev (inherit) + frontend-dev (inherit) + tester (inherit) + quality (inherit, read-only)
 
+### Worktree Isolation [HARD]
+
+- [HARD] Implementation teammates (backend-dev, frontend-dev, tester) MUST use `isolation: "worktree"` when spawned via Task()
+- [HARD] Read-only teammates (quality) MUST NOT use `isolation: "worktree"` — permissionMode: plan is sufficient
+- After team shutdown, run `git worktree prune` to clean up stale worktree references
+
+See @.claude/rules/moai/workflow/worktree-integration.md for the complete worktree decision tree.
+
 For detailed team orchestration steps, see team/run.md.
 
 ---
@@ -389,5 +397,5 @@ All of the following must be verified:
 
 ---
 
-Version: 2.7.0
-Updated: 2026-02-25. Added Phase 1.8 Pre-Implementation MX Context Scan for context-aware implementation.
+Version: 2.8.0
+Updated: 2026-02-27. Added worktree isolation HARD rules for team mode routing.

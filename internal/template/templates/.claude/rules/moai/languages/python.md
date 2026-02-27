@@ -46,8 +46,3 @@ Version: Python 3.13+
 - Use pytest-asyncio for async tests
 - Use parametrize for test variations
 - Mock external services with pytest-mock
-
-## MoAI Integration
-
-- Use Skill("moai-lang-python") for detailed patterns
-- Follow TRUST 5 quality gates

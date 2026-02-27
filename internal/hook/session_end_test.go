@@ -53,9 +53,9 @@ func TestSessionEndHandler_Handle(t *testing.T) {
 
 			if tt.setupDir {
 				tmpDir := t.TempDir()
-				memDir := filepath.Join(tmpDir, ".moai", "memory")
-				if err := os.MkdirAll(memDir, 0o755); err != nil {
-					t.Fatalf("setup memory dir: %v", err)
+				stateDir := filepath.Join(tmpDir, ".moai", "state")
+				if err := os.MkdirAll(stateDir, 0o755); err != nil {
+					t.Fatalf("setup state dir: %v", err)
 				}
 				tt.input.CWD = tmpDir
 				tt.input.ProjectDir = tmpDir

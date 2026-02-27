@@ -85,7 +85,7 @@ var moaiDirs = []string{
 	"config/sections",
 	"specs",
 	"reports",
-	"memory",
+	"state",
 	"logs",
 }
 

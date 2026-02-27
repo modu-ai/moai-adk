@@ -45,8 +45,3 @@ Version: ES2024+ / Node.js 22 LTS
 - Use Testing Library for UI components
 - Mock modules with vi.mock() or jest.mock()
 - Use msw for HTTP mocking
-
-## MoAI Integration
-
-- Use Skill("moai-lang-javascript") for detailed patterns
-- Follow TRUST 5 quality gates

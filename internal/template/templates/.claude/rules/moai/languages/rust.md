@@ -46,8 +46,3 @@ Version: Rust 1.92+ (2024 edition)
 - Use proptest for property-based testing
 - Use mockall for mocking traits
 - Use test fixtures with rstest
-
-## MoAI Integration
-
-- Use Skill("moai-lang-rust") for detailed patterns
-- Follow TRUST 5 quality gates

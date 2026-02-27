@@ -1250,6 +1250,58 @@ func cleanMoaiManagedPaths(projectRoot string, out io.Writer) error {
 	}
 	_, _ = fmt.Fprintf(out, "\r  %s Removed %s\n", symSuccess(), configDisplayPath)
 
+	// Migrate legacy .moai/memory/ to .moai/state/.
+	// Prior to v2.x, state files (checkpoints, coverage, diagnostics) lived under
+	// .moai/memory/. If the old directory still exists, migrate or remove it.
+	if err := migrateLegacyMemoryDir(projectRoot, out); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// migrateLegacyMemoryDir handles the .moai/memory/ → .moai/state/ migration.
+// If only the old directory exists, it is renamed. If both exist, the old one
+// is removed (the new directory takes precedence). If neither exists, this is
+// a no-op because template deployment will create .moai/state/.
+func migrateLegacyMemoryDir(projectRoot string, out io.Writer) error {
+	legacyDir := filepath.Join(projectRoot, defs.MoAIDir, "memory")
+	stateDir := filepath.Join(projectRoot, defs.MoAIDir, defs.StateSubdir)
+
+	legacyDisplayPath := filepath.Join(defs.MoAIDir, "memory")
+
+	legacyExists := false
+	if _, err := os.Stat(legacyDir); err == nil {
+		legacyExists = true
+	}
+
+	if !legacyExists {
+		return nil
+	}
+
+	_, _ = fmt.Fprintf(out, "  %s Migrating %s...", symProgress(), legacyDisplayPath)
+
+	stateExists := false
+	if _, err := os.Stat(stateDir); err == nil {
+		stateExists = true
+	}
+
+	if !stateExists {
+		// Rename .moai/memory/ → .moai/state/ (fast atomic move).
+		if err := os.Rename(legacyDir, stateDir); err != nil {
+			_, _ = fmt.Fprintf(out, "\r  %s Failed to migrate %s: %v\n", symError(), legacyDisplayPath, err)
+			return fmt.Errorf("migrate %s to %s: %w", legacyDisplayPath, defs.StateSubdir, err)
+		}
+		_, _ = fmt.Fprintf(out, "\r  %s Migrated %s → %s\n", symSuccess(), legacyDisplayPath, filepath.Join(defs.MoAIDir, defs.StateSubdir))
+	} else {
+		// Both exist — state directory takes precedence; remove legacy.
+		if err := os.RemoveAll(legacyDir); err != nil {
+			_, _ = fmt.Fprintf(out, "\r  %s Failed to remove %s: %v\n", symError(), legacyDisplayPath, err)
+			return fmt.Errorf("remove legacy %s: %w", legacyDisplayPath, err)
+		}
+		_, _ = fmt.Fprintf(out, "\r  %s Removed legacy %s\n", symSuccess(), legacyDisplayPath)
+	}
+
 	return nil
 }
 

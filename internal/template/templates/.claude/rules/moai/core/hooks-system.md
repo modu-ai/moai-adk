@@ -215,13 +215,6 @@ Wrapper scripts are located at:
 - Do not store secrets in hook scripts
 - Agent hooks (type: "agent") have read-only tool access (Read, Grep, Glob)
 
-## MoAI Integration
-
-- Skill("moai-foundation-claude") for detailed patterns
-- Hook scripts must follow coding-standards.md
-- Hook wrappers are managed by `internal/hook/` package
-- TeammateIdle and TaskCompleted hooks are critical for Agent Teams quality enforcement
-
 ## MX Tag Integration with Hooks
 
 PostToolUse hooks can trigger MX tag validation after code modifications:

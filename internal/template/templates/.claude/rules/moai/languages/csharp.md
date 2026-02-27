@@ -45,8 +45,3 @@ Version: C# 12 / .NET 8
 - Use NSubstitute or Moq for mocking
 - Use FluentAssertions for readable assertions
 - Use Testcontainers for integration tests
-
-## MoAI Integration
-
-- Use Skill("moai-lang-csharp") for detailed patterns
-- Follow TRUST 5 quality gates

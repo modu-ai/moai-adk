@@ -46,8 +46,3 @@ Version: Elixir 1.17+
 - Use Mox for mocking behaviors
 - Use async: true for isolated tests
 - Use ExMachina for test factories
-
-## MoAI Integration
-
-- Use Skill("moai-lang-elixir") for detailed patterns
-- Follow TRUST 5 quality gates
