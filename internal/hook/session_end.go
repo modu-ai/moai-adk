@@ -59,15 +59,23 @@ func (h *sessionEndHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 	//   - If not in tmux: early return (checks TMUX env var)
 	//   - If env vars don't exist: tmux command is a no-op
 	// This ensures the lead session returns to Claude after team completion.
-	clearTmuxSessionEnv()
+	clearTmuxSessionEnv(ctx)
 
 	// Clean up GLM env vars from settings.local.json.
 	// This handles the case where the user ran 'moai glm' but ended the session
 	// without running 'moai cc'. Without this, the stale GLM key persists and
 	// the next session fails to authenticate with Claude (no API key error).
-	if input.ProjectDir != "" {
-		cleanupGLMSettingsLocal(input.ProjectDir)
+	projectDir := input.CWD
+	if projectDir == "" {
+		projectDir = input.ProjectDir // Fallback for legacy
 	}
+	if projectDir != "" {
+		cleanupGLMSettingsLocal(projectDir)
+	}
+
+	slog.Info("session_end: cleanup complete",
+		"session_id", input.SessionID,
+	)
 
 	// SessionEnd hooks return empty JSON {} per Claude Code protocol
 	// Do NOT use hookSpecificOutput for SessionEnd events
@@ -223,7 +231,11 @@ func cleanupOrphanedTmuxSessions(ctx context.Context) {
 	listCmd := exec.CommandContext(cleanupCtx, "tmux", "list-sessions")
 	out, err := listCmd.Output()
 	if err != nil {
-		// tmux not installed, no server running, or no sessions — all fine.
+		if cleanupCtx.Err() != nil {
+			slog.Warn("session_end: tmux cleanup timed out",
+				"timeout", 4*time.Second,
+			)
+		}
 		return
 	}
 
@@ -286,14 +298,14 @@ var glmEnvVarsToClean = []string{
 // Called when team mode completes to restore Claude models for the lead session.
 // This ensures that after --team mode, the leader returns to using Claude models
 // instead of continuing to use GLM from the tmux session-level env vars.
-func clearTmuxSessionEnv() {
+func clearTmuxSessionEnv(ctx context.Context) {
 	// Skip if not in tmux
 	if os.Getenv("TMUX") == "" {
 		return
 	}
 
 	for _, name := range glmEnvVarsToClean {
-		cmd := exec.Command("tmux", "set-environment", "-u", name)
+		cmd := exec.CommandContext(ctx, "tmux", "set-environment", "-u", name)
 		if err := cmd.Run(); err != nil {
 			// Log warning but don't fail - variable might not exist
 			slog.Warn("session_end: failed to clear tmux env",

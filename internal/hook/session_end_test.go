@@ -553,6 +553,116 @@ func TestSessionEndHandler_Handle_CleansGLMFromSettingsLocal(t *testing.T) {
 	}
 }
 
+// TestSessionEndHandler_Handle_CWDFallbackToProjectDir verifies that Handle
+// uses CWD for GLM settings cleanup, falling back to ProjectDir for legacy.
+func TestSessionEndHandler_Handle_CWDFallbackToProjectDir(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		cwd        string
+		projectDir string
+		wantClean  bool // true if GLM cleanup should have occurred
+	}{
+		{
+			name:       "CWD set: uses CWD for cleanup",
+			cwd:        "SET", // placeholder, replaced with real tmpDir
+			projectDir: "",
+			wantClean:  true,
+		},
+		{
+			name:       "CWD empty, ProjectDir set: falls back to ProjectDir",
+			cwd:        "",
+			projectDir: "SET", // placeholder, replaced with real tmpDir
+			wantClean:  true,
+		},
+		{
+			name:       "both empty: no cleanup attempted",
+			cwd:        "",
+			projectDir: "",
+			wantClean:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var targetDir string
+			if tt.wantClean {
+				targetDir = t.TempDir()
+				claudeDir := filepath.Join(targetDir, ".claude")
+				if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+					t.Fatalf("setup .claude dir: %v", err)
+				}
+				settingsPath := filepath.Join(claudeDir, "settings.local.json")
+				initial := map[string]any{
+					"env": map[string]string{
+						"ANTHROPIC_AUTH_TOKEN":           "glm-key",
+						"ANTHROPIC_BASE_URL":             "https://glm.example.com/v1",
+						"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.7-air",
+						"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
+						"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5",
+						"MOAI_BACKUP_AUTH_TOKEN":         "real-oauth",
+					},
+				}
+				data, err := json.Marshal(initial)
+				if err != nil {
+					t.Fatalf("marshal: %v", err)
+				}
+				if err := os.WriteFile(settingsPath, data, 0o644); err != nil {
+					t.Fatalf("write settings: %v", err)
+				}
+			}
+
+			input := &HookInput{
+				SessionID:     "test-cwd-fallback",
+				HookEventName: "SessionEnd",
+			}
+			if tt.cwd == "SET" {
+				input.CWD = targetDir
+			} else {
+				input.CWD = tt.cwd
+			}
+			if tt.projectDir == "SET" {
+				input.ProjectDir = targetDir
+			} else {
+				input.ProjectDir = tt.projectDir
+			}
+
+			h := NewSessionEndHandler()
+			ctx := context.Background()
+			got, err := h.Handle(ctx, input)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got == nil {
+				t.Fatal("got nil output")
+			}
+
+			if tt.wantClean {
+				// Verify GLM vars were cleaned
+				settingsPath := filepath.Join(targetDir, ".claude", "settings.local.json")
+				result, err := os.ReadFile(settingsPath)
+				if err != nil {
+					t.Fatalf("read settings after Handle: %v", err)
+				}
+				var out map[string]any
+				if err := json.Unmarshal(result, &out); err != nil {
+					t.Fatalf("parse settings after Handle: %v", err)
+				}
+				env, _ := out["env"].(map[string]any)
+				if _, ok := env["ANTHROPIC_BASE_URL"]; ok {
+					t.Error("ANTHROPIC_BASE_URL should have been removed")
+				}
+				if token, ok := env["ANTHROPIC_AUTH_TOKEN"]; !ok || token != "real-oauth" {
+					t.Errorf("ANTHROPIC_AUTH_TOKEN = %v, want %q", token, "real-oauth")
+				}
+			}
+		})
+	}
+}
+
 func TestSessionEndHandler_AlwaysReturnsEmptyOutput(t *testing.T) {
 	t.Parallel()
 
