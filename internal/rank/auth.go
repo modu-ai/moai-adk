@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// @MX:NOTE: [AUTO] OAuth 인증 흐름은 로컬 HTTP 콜백 서버를 사용하여 자격 증명을 수집합니다. DefaultOAuthTimeout은 300초입니다.
+// @MX:NOTE: [AUTO] OAuth authentication flow uses a local HTTP callback server to collect credentials. DefaultOAuthTimeout is 300 seconds.
 // OAuth authentication constants.
 const (
 	DefaultOAuthTimeout = 300 * time.Second
@@ -118,8 +118,8 @@ func (h *DefaultOAuthHandler) StartOAuthFlow(ctx context.Context, timeout time.D
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	// @MX:WARN: [AUTO] 고루틴이 독립적으로 실행되어 server.Shutdown()으로만 종료됩니다. HTTP 서버 라이프사이클에 주의가 필요합니다.
-	// @MX:REASON: 고루틴이 context를 공유하지 않아 부모 컨텍스트 취소 시 즉시 종료되지 않습니다
+	// @MX:WARN: [AUTO] Goroutine runs independently, terminated only by server.Shutdown(). HTTP server lifecycle requires careful management.
+	// @MX:REASON: Goroutine does not share context, preventing immediate termination on parent context cancellation
 	// Start server in background.
 	go func() {
 		if serveErr := server.Serve(ln); serveErr != nil && serveErr != http.ErrServerClosed {

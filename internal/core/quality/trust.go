@@ -1,5 +1,5 @@
-// @MX:ANCHOR: [AUTO] TRUST 5 품질 게이트 프레임워크의 핵심 패키지입니다. 5가지 품질 원칙(Tested, Readable, Understandable, Secured, Trackable)을 자동 검증합니다.
-// @MX:REASON: fan_in=15+, 모든 품질 검증의 진입점이며 시스템 전체에서 호출됩니다
+// @MX:ANCHOR: [AUTO] Core package of the TRUST 5 quality gate framework. Automatically validates 5 quality principles (Tested, Readable, Understandable, Secured, Trackable).
+// @MX:REASON: fan_in=15+, entry point for all quality validation, called system-wide
 // Package quality implements the TRUST 5 Quality Gates framework.
 //
 // It provides automated validation of five quality principles:
@@ -404,8 +404,8 @@ func NewTrustGate(config QualityConfig, validators []Validator, opts ...TrustGat
 // Compile-time interface compliance check.
 var _ Gate = (*TrustGate)(nil)
 
-// @MX:WARN: [AUTO] validators 수만큼 고루틴을 생성하여 동시에 실행합니다. 고루틴 누수 가능성을 제어해야 합니다.
-// @MX:REASON: [AUTO] validators 길이만큼 고루틴이 생성되어 리소스 부하 가능성
+// @MX:WARN: [AUTO] Spawns goroutines equal to the number of validators for concurrent execution. Goroutine leak potential must be controlled.
+// @MX:REASON: [AUTO] Goroutines created proportional to validators length, potential resource overhead
 // Validate runs all TRUST 5 principle validators and returns an aggregated report.
 // Validators are executed concurrently. If context is cancelled, partial results
 // are returned along with the context error.
