@@ -55,11 +55,11 @@ var glmStatusCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		key := loadGLMKey()
 		if key == "" {
-			fmt.Fprintln(cmd.OutOrStdout(), "no GLM credentials configured")
-			fmt.Fprintln(cmd.OutOrStdout(), "Run 'moai glm setup <api-key>' to save your key")
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "no GLM credentials configured")
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Run 'moai glm setup <api-key>' to save your key")
 			return nil
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "GLM API key: %s\n", maskAPIKey(key))
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "GLM API key: %s\n", maskAPIKey(key))
 		return nil
 	},
 }

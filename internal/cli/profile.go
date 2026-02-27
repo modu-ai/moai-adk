@@ -47,7 +47,7 @@ func init() {
 func runProfileList(cmd *cobra.Command, _ []string) error {
 	entries := profile.List()
 	if len(entries) == 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "no profiles found")
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "no profiles found")
 		return nil
 	}
 	for _, e := range entries {
@@ -55,13 +55,13 @@ func runProfileList(cmd *cobra.Command, _ []string) error {
 		if e.Current {
 			marker = "* "
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "%s%s\n", marker, e.Name)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s%s\n", marker, e.Name)
 	}
 	return nil
 }
 
 func runProfileCurrent(cmd *cobra.Command, _ []string) error {
-	fmt.Fprintln(cmd.OutOrStdout(), profile.GetCurrentName())
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), profile.GetCurrentName())
 	return nil
 }
 

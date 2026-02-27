@@ -125,6 +125,8 @@ func EnsureDir(name string) error {
 	if err := os.MkdirAll(profileDir, 0755); err != nil {
 		return fmt.Errorf("failed to create profile directory: %w", err)
 	}
-	os.Setenv("CLAUDE_CONFIG_DIR", profileDir)
+	if err := os.Setenv("CLAUDE_CONFIG_DIR", profileDir); err != nil {
+		return fmt.Errorf("set CLAUDE_CONFIG_DIR: %w", err)
+	}
 	return nil
 }
