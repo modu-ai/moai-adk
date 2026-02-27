@@ -688,3 +688,220 @@ func TestSessionEndHandler_AlwaysReturnsEmptyOutput(t *testing.T) {
 		t.Errorf("ExitCode should be 0, got %d", got.ExitCode)
 	}
 }
+
+// writeLLMYAML creates .moai/config/sections/llm.yaml in projectDir
+// with the given team_mode value.
+func writeLLMYAML(t *testing.T, projectDir, teamMode string) {
+	t.Helper()
+	sectionsDir := filepath.Join(projectDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatalf("setup sections dir: %v", err)
+	}
+	content := "llm:\n  team_mode: " + teamMode + "\n"
+	if err := os.WriteFile(filepath.Join(sectionsDir, "llm.yaml"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write llm.yaml: %v", err)
+	}
+}
+
+// writeGLMSettings creates .claude/settings.local.json in projectDir
+// with a full set of GLM environment variables.
+func writeGLMSettings(t *testing.T, projectDir string) {
+	t.Helper()
+	claudeDir := filepath.Join(projectDir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		t.Fatalf("setup .claude dir: %v", err)
+	}
+	initial := map[string]any{
+		"env": map[string]string{
+			"ANTHROPIC_AUTH_TOKEN":           "glm-persistent-api-key",
+			"ANTHROPIC_BASE_URL":             "https://api.z.ai/api/anthropic",
+			"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "glm-4.7-flashx",
+			"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
+			"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5",
+		},
+	}
+	data, err := json.Marshal(initial)
+	if err != nil {
+		t.Fatalf("marshal initial settings: %v", err)
+	}
+	settingsPath := filepath.Join(claudeDir, "settings.local.json")
+	if err := os.WriteFile(settingsPath, data, 0o644); err != nil {
+		t.Fatalf("write settings.local.json: %v", err)
+	}
+}
+
+// TestCleanupGLMSettingsLocal_PersistentGLMMode_PreservesEnvVars verifies that
+// session-end does NOT remove GLM env vars when team_mode is "glm" (persistent
+// mode set via `moai glm <api_key>`).
+//
+// Bug #448: the hook was removing GLM vars unconditionally, causing Claude Code
+// to lose auth on the next session and requiring the user to re-login.
+//
+// This test FAILS before the fix: cleanupGLMSettingsLocal removes vars even
+// when team_mode==glm, because it only checks for ANTHROPIC_BASE_URL.
+func TestCleanupGLMSettingsLocal_PersistentGLMMode_PreservesEnvVars(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+
+	// Simulate `moai glm <api_key>`: team_mode persisted as "glm"
+	writeLLMYAML(t, projectDir, "glm")
+
+	// Inject GLM env vars into settings.local.json (as moai glm does)
+	writeGLMSettings(t, projectDir)
+
+	// session-end fires — should NOT remove GLM vars in persistent mode
+	cleanupGLMSettingsLocal(projectDir)
+
+	// Verify GLM vars are still present
+	result, err := os.ReadFile(filepath.Join(projectDir, ".claude", "settings.local.json"))
+	if err != nil {
+		t.Fatalf("read settings.local.json after cleanup: %v", err)
+	}
+	var out map[string]any
+	if err := json.Unmarshal(result, &out); err != nil {
+		t.Fatalf("parse settings.local.json after cleanup: %v", err)
+	}
+	env, _ := out["env"].(map[string]any)
+
+	if _, ok := env["ANTHROPIC_BASE_URL"]; !ok {
+		t.Error("ANTHROPIC_BASE_URL must be preserved in persistent GLM mode (team_mode=glm)")
+	}
+	if _, ok := env["ANTHROPIC_AUTH_TOKEN"]; !ok {
+		t.Error("ANTHROPIC_AUTH_TOKEN must be preserved in persistent GLM mode (team_mode=glm)")
+	}
+	if _, ok := env["ANTHROPIC_DEFAULT_HAIKU_MODEL"]; !ok {
+		t.Error("ANTHROPIC_DEFAULT_HAIKU_MODEL must be preserved in persistent GLM mode (team_mode=glm)")
+	}
+	if _, ok := env["ANTHROPIC_DEFAULT_SONNET_MODEL"]; !ok {
+		t.Error("ANTHROPIC_DEFAULT_SONNET_MODEL must be preserved in persistent GLM mode (team_mode=glm)")
+	}
+	if _, ok := env["ANTHROPIC_DEFAULT_OPUS_MODEL"]; !ok {
+		t.Error("ANTHROPIC_DEFAULT_OPUS_MODEL must be preserved in persistent GLM mode (team_mode=glm)")
+	}
+}
+
+// TestCleanupGLMSettingsLocal_TemporaryCGMode_RemovesEnvVars verifies that
+// session-end DOES remove GLM env vars when team_mode is "cg" (temporary mode
+// set via `moai cg`). This is the correct existing behaviour.
+func TestCleanupGLMSettingsLocal_TemporaryCGMode_RemovesEnvVars(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+
+	// Simulate `moai cg`: team_mode persisted as "cg"
+	writeLLMYAML(t, projectDir, "cg")
+
+	// In CG mode settings.local.json has ANTHROPIC_BASE_URL (from tmux injection path)
+	writeGLMSettings(t, projectDir)
+
+	// session-end fires — SHOULD remove GLM vars for CG (temporary) mode
+	cleanupGLMSettingsLocal(projectDir)
+
+	result, err := os.ReadFile(filepath.Join(projectDir, ".claude", "settings.local.json"))
+	if err != nil {
+		t.Fatalf("read settings.local.json after cleanup: %v", err)
+	}
+	var out map[string]any
+	if err := json.Unmarshal(result, &out); err != nil {
+		t.Fatalf("parse settings.local.json after cleanup: %v", err)
+	}
+	env, _ := out["env"].(map[string]any)
+
+	if _, ok := env["ANTHROPIC_BASE_URL"]; ok {
+		t.Error("ANTHROPIC_BASE_URL should have been removed for CG (temporary) mode")
+	}
+	if _, ok := env["ANTHROPIC_AUTH_TOKEN"]; ok {
+		t.Error("ANTHROPIC_AUTH_TOKEN should have been removed for CG mode (no backup token)")
+	}
+}
+
+// TestCleanupGLMSettingsLocal_NoLLMYAML_RemovesEnvVars verifies that when
+// llm.yaml is absent the hook falls back to safe cleanup (removes GLM vars).
+// This preserves backward compatibility with projects that have not yet
+// persisted team_mode.
+func TestCleanupGLMSettingsLocal_NoLLMYAML_RemovesEnvVars(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+
+	// No llm.yaml created — simulates old project or missing config
+	writeGLMSettings(t, projectDir)
+
+	// session-end fires — should still clean up (safe default)
+	cleanupGLMSettingsLocal(projectDir)
+
+	result, err := os.ReadFile(filepath.Join(projectDir, ".claude", "settings.local.json"))
+	if err != nil {
+		t.Fatalf("read settings.local.json after cleanup: %v", err)
+	}
+	var out map[string]any
+	if err := json.Unmarshal(result, &out); err != nil {
+		t.Fatalf("parse settings.local.json after cleanup: %v", err)
+	}
+	env, _ := out["env"].(map[string]any)
+
+	if _, ok := env["ANTHROPIC_BASE_URL"]; ok {
+		t.Error("ANTHROPIC_BASE_URL should have been removed when llm.yaml is absent")
+	}
+}
+
+// TestReadTeamModeFromProject verifies the helper that reads team_mode
+// from .moai/config/sections/llm.yaml.
+func TestReadTeamModeFromProject(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		yaml     string // "" means don't create the file
+		wantMode string
+	}{
+		{
+			name:     "persistent GLM mode",
+			yaml:     "llm:\n  team_mode: glm\n",
+			wantMode: "glm",
+		},
+		{
+			name:     "CG hybrid mode",
+			yaml:     "llm:\n  team_mode: cg\n",
+			wantMode: "cg",
+		},
+		{
+			name:     "empty team_mode",
+			yaml:     "llm:\n  team_mode: \"\"\n",
+			wantMode: "",
+		},
+		{
+			name:     "missing llm.yaml",
+			yaml:     "",
+			wantMode: "",
+		},
+		{
+			name:     "invalid YAML",
+			yaml:     "not: valid: yaml: [\n",
+			wantMode: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			projectDir := t.TempDir()
+			if tt.yaml != "" {
+				sectionsDir := filepath.Join(projectDir, ".moai", "config", "sections")
+				if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+					t.Fatalf("setup: %v", err)
+				}
+				if err := os.WriteFile(filepath.Join(sectionsDir, "llm.yaml"), []byte(tt.yaml), 0o644); err != nil {
+					t.Fatalf("write llm.yaml: %v", err)
+				}
+			}
+
+			got := readTeamModeFromProject(projectDir)
+			if got != tt.wantMode {
+				t.Errorf("readTeamModeFromProject() = %q, want %q", got, tt.wantMode)
+			}
+		})
+	}
+}

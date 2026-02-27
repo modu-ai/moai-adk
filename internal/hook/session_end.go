@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 // teamConfig is the minimal structure read from ~/.claude/teams/*/config.json.
@@ -318,12 +320,47 @@ func clearTmuxSessionEnv(ctx context.Context) {
 	}
 }
 
+// readTeamModeFromProject reads the team_mode value from
+// .moai/config/sections/llm.yaml inside projectDir.
+//
+// Returns "" when the file is absent, unreadable, or contains no team_mode
+// entry. The caller treats "" identically to "cg": GLM env vars are cleaned.
+func readTeamModeFromProject(projectDir string) string {
+	llmPath := filepath.Join(projectDir, ".moai", "config", "sections", "llm.yaml")
+
+	data, err := os.ReadFile(llmPath)
+	if err != nil {
+		// File absent or unreadable — treat as "no persistent mode" (cleanup is safe).
+		return ""
+	}
+
+	var wrapper struct {
+		LLM struct {
+			TeamMode string `yaml:"team_mode"`
+		} `yaml:"llm"`
+	}
+	if err := yaml.Unmarshal(data, &wrapper); err != nil {
+		slog.Warn("session_end: could not parse llm.yaml",
+			"path", llmPath,
+			"error", err,
+		)
+		return ""
+	}
+
+	return wrapper.LLM.TeamMode
+}
+
 // cleanupGLMSettingsLocal removes GLM env vars from .claude/settings.local.json
 // in the given project directory. This handles sessions ended without running
 // 'moai cc': the stale GLM key in settings.local.json would otherwise cause the
 // next Claude Code session to fail auth ("no API key available" / /login loop).
 //
-// Cleanup logic mirrors removeGLMEnv() in internal/cli/cc.go:
+// Cleanup is skipped when team_mode in llm.yaml is "glm" (persistent mode set
+// via `moai glm <api_key>`). In persistent mode the user intentionally keeps
+// GLM vars across sessions; only `moai cc` should remove them.
+//
+// For temporary CG mode (team_mode == "cg") and all other cases, cleanup
+// mirrors removeGLMEnv() in internal/cli/cc.go:
 //   - If MOAI_BACKUP_AUTH_TOKEN exists, restore it as ANTHROPIC_AUTH_TOKEN.
 //   - Otherwise, delete ANTHROPIC_AUTH_TOKEN (it was a GLM key, not OAuth).
 //   - Always delete: MOAI_BACKUP_AUTH_TOKEN, ANTHROPIC_BASE_URL, and the three
@@ -335,6 +372,17 @@ func clearTmuxSessionEnv(ctx context.Context) {
 // All operations are best-effort. Errors are logged with slog.Warn and never
 // returned, following the SessionEnd convention of non-fatal cleanup.
 func cleanupGLMSettingsLocal(projectDir string) {
+	// Persistent GLM mode (moai glm <api_key>) stores team_mode="glm" in
+	// llm.yaml. The user expects GLM vars to survive session boundaries so they
+	// don't have to re-run `moai glm` every time. Only `moai cc` should remove
+	// them explicitly. Skip cleanup and leave settings.local.json untouched.
+	if readTeamModeFromProject(projectDir) == "glm" {
+		slog.Info("session_end: skipping GLM cleanup (persistent GLM mode)",
+			"project_dir", projectDir,
+		)
+		return
+	}
+
 	settingsPath := filepath.Join(projectDir, ".claude", "settings.local.json")
 
 	data, err := os.ReadFile(settingsPath)
