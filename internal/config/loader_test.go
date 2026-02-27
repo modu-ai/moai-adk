@@ -398,7 +398,7 @@ func TestLoaderLoadGitConventionSection(t *testing.T) {
 	}
 }
 
-func TestLoaderLoadMemorySection(t *testing.T) {
+func TestLoaderLoadStateSection(t *testing.T) {
 	t.Parallel()
 
 	tempDir := t.TempDir()
@@ -407,14 +407,11 @@ func TestLoaderLoadMemorySection(t *testing.T) {
 		t.Fatalf("failed to create sections dir: %v", err)
 	}
 
-	memoryYAML := []byte(`memory:
-  enabled: true
-  memory_dir: ".moai/custom-memory"
-  max_tokens: 3000
-  auto_inject: false
+	stateYAML := []byte(`state:
+  state_dir: ".moai/custom-state"
 `)
-	if err := os.WriteFile(filepath.Join(sectionsDir, "memory.yaml"), memoryYAML, 0o644); err != nil {
-		t.Fatalf("failed to write memory.yaml: %v", err)
+	if err := os.WriteFile(filepath.Join(sectionsDir, "state.yaml"), stateYAML, 0o644); err != nil {
+		t.Fatalf("failed to write state.yaml: %v", err)
 	}
 
 	loader := NewLoader()
@@ -423,30 +420,21 @@ func TestLoaderLoadMemorySection(t *testing.T) {
 		t.Fatalf("Load() error: %v", err)
 	}
 
-	if !cfg.Memory.Enabled {
-		t.Error("Memory.Enabled: expected true")
-	}
-	if cfg.Memory.MemoryDir != ".moai/custom-memory" {
-		t.Errorf("Memory.MemoryDir: got %q, want %q", cfg.Memory.MemoryDir, ".moai/custom-memory")
-	}
-	if cfg.Memory.MaxTokens != 3000 {
-		t.Errorf("Memory.MaxTokens: got %d, want 3000", cfg.Memory.MaxTokens)
-	}
-	if cfg.Memory.AutoInject {
-		t.Error("Memory.AutoInject: expected false")
+	if cfg.State.StateDir != ".moai/custom-state" {
+		t.Errorf("State.StateDir: got %q, want %q", cfg.State.StateDir, ".moai/custom-state")
 	}
 
 	sections := loader.LoadedSections()
-	if !sections["memory"] {
-		t.Error("expected memory section to be loaded")
+	if !sections["state"] {
+		t.Error("expected state section to be loaded")
 	}
 }
 
-func TestLoaderMemoryDefaults(t *testing.T) {
+func TestLoaderStateDefaults(t *testing.T) {
 	t.Parallel()
 
 	tempDir := t.TempDir()
-	// Load without a memory.yaml - should use defaults
+	// Load without a state.yaml - should use defaults
 	root := setupTestdataDir(t, tempDir, []string{"user.yaml"})
 
 	loader := NewLoader()
@@ -455,22 +443,13 @@ func TestLoaderMemoryDefaults(t *testing.T) {
 		t.Fatalf("Load() error: %v", err)
 	}
 
-	if !cfg.Memory.Enabled {
-		t.Error("Memory.Enabled: expected default true")
-	}
-	if cfg.Memory.MemoryDir != DefaultMemoryDir {
-		t.Errorf("Memory.MemoryDir: got %q, want default %q", cfg.Memory.MemoryDir, DefaultMemoryDir)
-	}
-	if cfg.Memory.MaxTokens != DefaultMemoryMaxTokens {
-		t.Errorf("Memory.MaxTokens: got %d, want default %d", cfg.Memory.MaxTokens, DefaultMemoryMaxTokens)
-	}
-	if !cfg.Memory.AutoInject {
-		t.Error("Memory.AutoInject: expected default true")
+	if cfg.State.StateDir != DefaultStateDir {
+		t.Errorf("State.StateDir: got %q, want default %q", cfg.State.StateDir, DefaultStateDir)
 	}
 
 	sections := loader.LoadedSections()
-	if sections["memory"] {
-		t.Error("expected memory section to NOT be loaded when file is missing")
+	if sections["state"] {
+		t.Error("expected state section to NOT be loaded when file is missing")
 	}
 }
 

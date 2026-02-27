@@ -43,8 +43,8 @@ type CleanupConfig struct {
 	// SessionLogPattern is the pattern for session log files to clean.
 	SessionLogPattern string
 
-	// PreserveMemory indicates whether to preserve .moai/memory/*.json files.
-	PreserveMemory bool
+	// PreserveState indicates whether to preserve .moai/state/*.json files.
+	PreserveState bool
 }
 
 // DefaultCleanupConfig returns the default cleanup configuration.
@@ -54,7 +54,7 @@ func DefaultCleanupConfig() CleanupConfig {
 		CacheDir:          defs.MoAIDir + "/cache/temp",
 		LogDir:            defs.MoAIDir + "/" + defs.LogsSubdir,
 		SessionLogPattern: "session-*.log",
-		PreserveMemory:    true,
+		PreserveState:     true,
 	}
 }
 
@@ -84,6 +84,6 @@ type WorkStateConfig struct {
 // DefaultWorkStateConfig returns the default work state configuration.
 func DefaultWorkStateConfig() WorkStateConfig {
 	return WorkStateConfig{
-		StoragePath: defs.MoAIDir + "/" + defs.MemorySubdir + "/last-session-state.json",
+		StoragePath: defs.MoAIDir + "/" + defs.StateSubdir + "/last-session-state.json",
 	}
 }

@@ -209,6 +209,6 @@ internal/cli/CLAUDE.md
 pencil/
 .moai/cache/
 .moai/logs/
-.moai/memory/
+.moai/state/
 .moai/reports/
 .moai/temp/

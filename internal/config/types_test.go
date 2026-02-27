@@ -138,7 +138,7 @@ func TestValidSectionNames(t *testing.T) {
 	expected := map[string]bool{
 		"user": true, "language": true, "quality": true, "project": true,
 		"git_strategy": true, "git_convention": true, "system": true, "llm": true,
-		"pricing": true, "ralph": true, "workflow": true, "memory": true,
+		"pricing": true, "ralph": true, "workflow": true, "state": true,
 	}
 	for _, name := range names {
 		if !expected[name] {
