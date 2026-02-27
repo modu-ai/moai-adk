@@ -98,25 +98,57 @@ Use with `isolation: worktree` for optimal parallel execution in team mode.
 
 Kill background agent: Press `Ctrl+F` in Claude Code interface.
 
-## When to Use Which
+## Worktree Selection Rules [HARD]
 
-### Use `claude --worktree` for:
+### Decision Tree
+
+```
+Is this a team mode implementation with parallel agents?
+  YES → Use Task(isolation: "worktree") for write agents
+        Do NOT use isolation for read-only agents
+  NO ↓
+
+Is this a multi-session SPEC development?
+  YES → Use MoAI Worktree (moai worktree new SPEC-XXX)
+  NO ↓
+
+Is this a user-initiated parallel session?
+  YES → Use claude --worktree (-w)
+  NO ↓
+
+Is this a one-shot sub-agent task?
+  YES → Use Task(isolation: "worktree") if agent writes files
+        Use Task() without isolation if agent is read-only
+  NO → No worktree needed
+```
+
+### HARD Rules
+
+- [HARD] Implementation agents in team mode (team-backend-dev, team-frontend-dev, team-tester, team-designer) MUST use `isolation: "worktree"` when spawned via Task()
+- [HARD] Read-only agents (team-researcher, team-analyst, team-architect, team-quality) MUST NOT use `isolation: "worktree"` — their `permissionMode: plan` already prevents writes
+- [HARD] One-shot sub-agents that write files (expert-backend, expert-frontend, manager-ddd, manager-tdd) SHOULD use `isolation: "worktree"` when making cross-file changes
+- [HARD] GitHub workflow agents (fixer agents in /moai github issues) MUST use `isolation: "worktree"` for branch isolation
+
+### When to Use Which
+
+### Use `claude --worktree` (`-w`) for:
 
 - **User-initiated isolation**: Starting a fresh session for exploratory work
 - **Parallel sessions**: Running multiple independent Claude sessions on same repo
 - **Quick experiments**: Testing code changes without affecting main workspace
 
-### Use `isolation: worktree` (agent frontmatter) for:
+### Use `Task(isolation: "worktree")` for:
 
 - **Parallel team agents**: Multiple implementation teammates working simultaneously
 - **File conflict prevention**: Agents that write to different file patterns
-- **Automated isolated execution**: Background implementation without user intervention
+- **One-shot sub-agents**: Sub-agents making cross-file modifications
+- **GitHub issue fixing**: Each issue gets isolated worktree for branch safety
 
 ### Use MoAI Worktree (`moai worktree`) for:
 
 - **SPEC implementation**: Multi-session development of a feature
 - **PR development**: Complete feature branches with commits
-- **Team collaboration**: Shared workspace for team members
+- **Persistent workspaces**: Work that spans multiple Claude sessions
 
 ## Integration Pattern (Hybrid Approach)
 
@@ -125,10 +157,12 @@ The recommended workflow combines both worktree systems:
 ```
 PLAN PHASE
   Claude Native (-w): Quick exploration, ephemeral, no persistence
+  Team researchers: No worktree (read-only, permissionMode: plan)
 
 RUN PHASE
   MoAI Worktree: SPEC implementation, persistent state
-  Team Agents with isolation: worktree for parallel execution
+  Team write agents: Task(isolation: "worktree") for parallel execution
+  Team read agents: No worktree (quality validation, analysis)
 
 SYNC PHASE
   MoAI Worktree: PR creation from persistent workspace
@@ -188,5 +222,5 @@ Currently the handlers log worktree creation and removal for session tracking.
 
 ---
 
-Version: 2.0.0 (Claude Code 2.1.50 Integration)
+Version: 3.0.0 (HARD Rules + Decision Tree)
 Source: SPEC-WORKTREE-001

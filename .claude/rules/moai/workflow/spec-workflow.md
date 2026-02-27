@@ -124,8 +124,11 @@ When team mode is enabled (workflow.team.enabled and AGENT_TEAMS env), phases ca
 ### Team Mode Run Phase
 - TeamCreate for implementation team
 - Task decomposition with file ownership boundaries
+- [HARD] Implementation teammates (backend-dev, frontend-dev, tester) MUST use `isolation: "worktree"` for parallel file safety
+- [HARD] Read-only teammates (quality) MUST NOT use isolation — permissionMode: plan is sufficient
 - Teammates self-claim tasks from shared list
 - Quality validation after all implementation completes
+- Worktree cleanup via `git worktree prune` after team shutdown
 - Shutdown team
 
 ### Token Cost Awareness

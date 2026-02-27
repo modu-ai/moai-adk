@@ -350,6 +350,15 @@ For core parallel execution principles, see @.claude/rules/moai/core/moai-consti
 - **Platform Compatibility**: Always prefer Edit tool over sed/awk
 - **Team File Ownership**: In team mode, each teammate owns specific file patterns to prevent write conflicts
 
+### Worktree Isolation Rules [HARD]
+
+- [HARD] Implementation agents in team mode (team-backend-dev, team-frontend-dev, team-tester, team-designer) MUST use `isolation: "worktree"` when spawned via Task()
+- [HARD] Read-only agents (team-researcher, team-analyst, team-architect, team-quality) MUST NOT use `isolation: "worktree"`
+- [HARD] One-shot sub-agents making cross-file changes SHOULD use `isolation: "worktree"`
+- [HARD] GitHub workflow fixer agents MUST use `isolation: "worktree"` for branch isolation
+
+For the complete worktree selection decision tree, see @.claude/rules/moai/workflow/worktree-integration.md
+
 ---
 
 ## 15. Agent Teams (Experimental)
