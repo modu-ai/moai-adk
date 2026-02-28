@@ -16,7 +16,7 @@ func TestGetBaseDir_Default(t *testing.T) {
 		}
 	}
 	home, _ := os.UserHomeDir()
-	expected := filepath.Join(home, ".claude-profiles")
+	expected := filepath.Join(home, ".moai", "claude-profiles")
 	if dir != expected {
 		t.Errorf("GetBaseDir() = %q, want %q", dir, expected)
 	}

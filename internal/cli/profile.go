@@ -10,10 +10,14 @@ import (
 var profileCmd = &cobra.Command{
 	Use:   "profile",
 	Short: "Manage Claude configuration profiles",
-	Long: `Profile lists and deletes Claude configuration profiles
-stored in ~/.claude-profiles/.
+	Long: `Manage Claude configuration profiles stored in ~/.moai/claude-profiles/.
 
-Profiles are shared with godo — both tools use the same storage.`,
+Each profile is an isolated Claude configuration directory (CLAUDE_CONFIG_DIR).
+Use -p/--profile with cc, cg, or glm to switch between profiles.
+
+Run 'moai profile setup [name]' or 'moai profile --setup [name]' to configure
+per-profile launch options (model, bypass, continue, Chrome MCP).`,
+	RunE: runProfileCmd,
 }
 
 var profileListCmd = &cobra.Command{
@@ -38,10 +42,20 @@ var profileDeleteCmd = &cobra.Command{
 }
 
 func init() {
+	profileCmd.Flags().BoolP("setup", "s", false, "Run interactive setup wizard for launch options")
 	profileCmd.AddCommand(profileListCmd)
 	profileCmd.AddCommand(profileCurrentCmd)
 	profileCmd.AddCommand(profileDeleteCmd)
 	rootCmd.AddCommand(profileCmd)
+}
+
+// runProfileCmd handles 'moai profile' with optional --setup/-s flag.
+func runProfileCmd(cmd *cobra.Command, args []string) error {
+	setup, _ := cmd.Flags().GetBool("setup")
+	if setup {
+		return runProfileSetup(cmd, args)
+	}
+	return cmd.Help()
 }
 
 func runProfileList(cmd *cobra.Command, _ []string) error {

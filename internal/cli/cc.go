@@ -25,7 +25,7 @@ This command:
   5. Launches Claude Code via exec (replaces current process)
 
 Flags:
-  -p, --profile <name>   Use a named Claude profile (~/.claude-profiles/<name>/)
+  -p, --profile <name>   Use a named Claude profile (~/.moai/claude-profiles/<name>/)
   -b, --bypass           Enable --dangerously-skip-permissions
   -c, --continue         Continue previous session
   -m, --model <model>    Override model selection

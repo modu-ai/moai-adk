@@ -40,15 +40,36 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		return fmt.Errorf("claude not found in PATH. Install Claude Code first")
 	}
 
-	// 3. Read settings.local.json for DO_CLAUDE_* flags
+	// 3. Read profile-level launch config (lowest priority defaults)
+	profileCfg, _ := profile.ReadLaunchConfig(profileName)
+
+	// 4. Read project settings.local.json for DO_CLAUDE_* flags (overrides profile config)
 	settings := readSettingsLocalForLaunch()
+
+	// Merge: profile config sets defaults; settings.local.json overrides
+	if settings["DO_CLAUDE_BYPASS"] != "true" && profileCfg.Bypass {
+		settings["DO_CLAUDE_BYPASS"] = "true"
+	}
+	if settings["DO_CLAUDE_CONTINUE"] != "true" && profileCfg.Continue {
+		settings["DO_CLAUDE_CONTINUE"] = "true"
+	}
+	if settings["DO_CLAUDE_MODEL"] == "" && profileCfg.Model != "" {
+		settings["DO_CLAUDE_MODEL"] = profileCfg.Model
+	}
+	if settings["DO_CLAUDE_CHROME"] == "" && profileCfg.Chrome != nil {
+		if *profileCfg.Chrome {
+			settings["DO_CLAUDE_CHROME"] = "true"
+		} else {
+			settings["DO_CLAUDE_CHROME"] = "false"
+		}
+	}
 
 	bypass := settings["DO_CLAUDE_BYPASS"] == "true"
 	chrome := settings["DO_CLAUDE_CHROME"] == "true"
 	cont := settings["DO_CLAUDE_CONTINUE"] == "true"
 	model := settings["DO_CLAUDE_MODEL"]
 
-	// 4. Parse extra args (overrides)
+	// 5. Parse extra args (overrides)
 	var passThrough []string
 	for i := 0; i < len(extraArgs); i++ {
 		arg := extraArgs[i]
@@ -71,7 +92,7 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		}
 	}
 
-	// 5. Build args
+	// 6. Build args
 	buildArgs := func(withContinue bool) []string {
 		a := []string{"claude"}
 		if bypass {
@@ -90,7 +111,7 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		return a
 	}
 
-	// 6. Execute with --continue fallback
+	// 7. Execute with --continue fallback
 	if cont {
 		tryCmd := exec.Command(claudeBin, buildArgs(true)[1:]...)
 		tryCmd.Stdin = os.Stdin

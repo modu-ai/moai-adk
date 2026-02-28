@@ -7,13 +7,13 @@ import (
 	"strings"
 )
 
-const profilesDir = ".claude-profiles"
+const profilesDir = ".moai/claude-profiles"
 
 // BaseDirOverride allows tests to inject a custom base directory.
-// When non-empty, GetBaseDir returns this value instead of ~/.claude-profiles.
+// When non-empty, GetBaseDir returns this value instead of ~/.moai/claude-profiles.
 var BaseDirOverride string
 
-// GetBaseDir returns ~/.claude-profiles/.
+// GetBaseDir returns ~/.moai/claude-profiles/.
 func GetBaseDir() string {
 	if BaseDirOverride != "" {
 		return BaseDirOverride

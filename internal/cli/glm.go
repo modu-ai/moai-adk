@@ -29,7 +29,7 @@ This command:
 Use 'moai glm setup <key>' to save your API key first.
 
 Flags:
-  -p, --profile <name>   Use a named Claude profile (~/.claude-profiles/<name>/)
+  -p, --profile <name>   Use a named Claude profile (~/.moai/claude-profiles/<name>/)
 
 Examples:
   moai glm setup sk-xxx    # Save API key (one-time)
