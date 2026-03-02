@@ -11,6 +11,13 @@ import (
 	astgrep "github.com/modu-ai/moai-adk/internal/astgrep"
 )
 
+// makeToolInput safely JSON-encodes key-value pairs for use as ToolInput.
+// It handles OS-specific path separators (e.g., Windows backslashes in file paths).
+func makeToolInput(fields map[string]string) json.RawMessage {
+	data, _ := json.Marshal(fields)
+	return json.RawMessage(data)
+}
+
 // mockFileAnalyzer는 테스트용 FileAnalyzer 목 구현체.
 type mockFileAnalyzer struct {
 	scanFileFunc func(ctx context.Context, filePath string, config *astgrep.ScanConfig) (*astgrep.ScanResult, error)
@@ -61,7 +68,7 @@ func TestPostToolHandler_AstScan_WriteToolWithMatches(t *testing.T) {
 		SessionID: "sess-ast-matches",
 		CWD:       tmpDir,
 		ToolName:  "Write",
-		ToolInput: json.RawMessage(`{"file_path": "` + tmpFile + `", "content": "package main\n"}`),
+		ToolInput: makeToolInput(map[string]string{"file_path": tmpFile, "content": "package main\n"}),
 	}
 
 	got, err := h.Handle(ctx, input)
@@ -112,22 +119,22 @@ func TestPostToolHandler_AstScan_TableDriven(t *testing.T) {
 		wantNonBlocking bool // 항상 true: 관찰 전용이므로 오류 발생해도 allow
 	}{
 		{
-			name:     "Write 툴로 매치 없음",
-			toolName: "Write",
-			toolInput: json.RawMessage(`{"file_path": "` + tmpFile + `", "content": "pkg"}`),
+			name:      "Write 툴로 매치 없음",
+			toolName:  "Write",
+			toolInput: makeToolInput(map[string]string{"file_path": tmpFile, "content": "pkg"}),
 			analyzer: &mockFileAnalyzer{
 				scanFileFunc: func(_ context.Context, _ string, _ *astgrep.ScanConfig) (*astgrep.ScanResult, error) {
 					return &astgrep.ScanResult{Matches: []astgrep.Match{}, Language: "go"}, nil
 				},
 			},
-			wantAstScan: true,
-			wantMatches: 0,
+			wantAstScan:     true,
+			wantMatches:     0,
 			wantNonBlocking: true,
 		},
 		{
-			name:     "Edit 툴로 매치 있음",
-			toolName: "Edit",
-			toolInput: json.RawMessage(`{"file_path": "` + tmpFile + `", "old_string": "a", "new_string": "b"}`),
+			name:      "Edit 툴로 매치 있음",
+			toolName:  "Edit",
+			toolInput: makeToolInput(map[string]string{"file_path": tmpFile, "old_string": "a", "new_string": "b"}),
 			analyzer: &mockFileAnalyzer{
 				scanFileFunc: func(_ context.Context, _ string, _ *astgrep.ScanConfig) (*astgrep.ScanResult, error) {
 					return &astgrep.ScanResult{
@@ -136,36 +143,36 @@ func TestPostToolHandler_AstScan_TableDriven(t *testing.T) {
 					}, nil
 				},
 			},
-			wantAstScan: true,
-			wantMatches: 1,
+			wantAstScan:     true,
+			wantMatches:     1,
 			wantNonBlocking: true,
 		},
 		{
-			name:     "AST 스캔 오류는 무시됨 (관찰 전용)",
-			toolName: "Write",
-			toolInput: json.RawMessage(`{"file_path": "` + tmpFile + `", "content": "pkg"}`),
+			name:      "AST 스캔 오류는 무시됨 (관찰 전용)",
+			toolName:  "Write",
+			toolInput: makeToolInput(map[string]string{"file_path": tmpFile, "content": "pkg"}),
 			analyzer: &mockFileAnalyzer{
 				scanFileFunc: func(_ context.Context, _ string, _ *astgrep.ScanConfig) (*astgrep.ScanResult, error) {
 					return nil, errors.New("sg CLI 오류")
 				},
 			},
-			wantAstScan: false, // 오류 시 ast_scan 메트릭 없음
+			wantAstScan:     false, // 오류 시 ast_scan 메트릭 없음
 			wantNonBlocking: true,
 		},
 		{
-			name:        "analyzer가 nil이면 ast_scan 없음",
-			toolName:    "Write",
-			toolInput:   json.RawMessage(`{"file_path": "` + tmpFile + `", "content": "pkg"}`),
-			analyzer:    nil,
-			wantAstScan: false,
+			name:            "analyzer가 nil이면 ast_scan 없음",
+			toolName:        "Write",
+			toolInput:       makeToolInput(map[string]string{"file_path": tmpFile, "content": "pkg"}),
+			analyzer:        nil,
+			wantAstScan:     false,
 			wantNonBlocking: true,
 		},
 		{
-			name:        "Read 툴은 ast_scan 수행 안 함",
-			toolName:    "Read",
-			toolInput:   json.RawMessage(`{"file_path": "` + tmpFile + `"}`),
-			analyzer:    &mockFileAnalyzer{},
-			wantAstScan: false,
+			name:            "Read 툴은 ast_scan 수행 안 함",
+			toolName:        "Read",
+			toolInput:       makeToolInput(map[string]string{"file_path": tmpFile}),
+			analyzer:        &mockFileAnalyzer{},
+			wantAstScan:     false,
 			wantNonBlocking: true,
 		},
 		{
