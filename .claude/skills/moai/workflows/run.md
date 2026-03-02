@@ -54,11 +54,24 @@ Before execution, load these essential files:
 - .moai/config/sections/git-strategy.yaml (auto_branch, branch creation policy)
 - .moai/config/sections/language.yaml (git_commit_messages setting)
 - .moai/specs/SPEC-{ID}/ directory (spec.md, plan.md, acceptance.md)
+- .moai/specs/SPEC-{ID}/progress.md (session resume context: if exists, load to identify completed phases and skip them; if absent, will be created at Phase 1 start)
 - .moai/project/structure.md (architecture context for implementation decisions)
 - .moai/project/tech.md (technology stack context)
 - .moai/project/codemaps/ directory listing (architecture maps for dependency and module understanding)
 
 Pre-execution commands: git status, git branch, git log, git diff.
+
+### Resume Check
+
+Before Phase 1, check if `.moai/specs/SPEC-{ID}/progress.md` exists:
+- If it exists: Load content, identify last completed phase checkpoint, skip all completed phases, resume from the next pending phase. Log: "Resuming SPEC-{ID} from Phase {N}"
+- If it does not exist: Create the file now with initial entry:
+  ```
+  ## SPEC-{ID} Progress
+
+  - Started: {current timestamp}
+  ```
+- The progress.md file persists across sessions and enables seamless resume after interruption.
 
 ---
 
@@ -130,6 +143,45 @@ Constraints: Decompose into atomic tasks where each task completes in a single D
 
 Output: Task list with coverage_verified flag set to true.
 
+### Phase 1.6: Acceptance Criteria Initialization (Failing Checklist)
+
+Purpose: Convert all SPEC acceptance criteria into explicit pending TaskList entries. This creates a visible "failing checklist" — all items start as pending and are marked completed (passing) as implementation progresses, following the Harness Engineering pattern.
+
+Action:
+- Read spec.md acceptance criteria for SPEC-{ID}
+- For each acceptance criterion, execute TaskCreate:
+  - subject: `[AC-N] <acceptance criterion statement>`
+  - description: Requirement reference, expected behavior, verification method
+  - status: pending (starts as "failing")
+- Verify all SPEC requirements are covered by at least one task
+
+Output: TaskList populated with all acceptance criteria as pending items.
+
+Progress update: Append to `.moai/specs/SPEC-{ID}/progress.md`:
+```
+- Phase 1.6 complete: {N} acceptance criteria registered as pending tasks
+```
+
+### Phase 1.7: File Structure Scaffolding
+
+Purpose: Create empty file stubs for all planned new files before implementation begins. This prevents entropy by establishing structure before coding, following the Harness Engineering "Blueprint" pattern.
+
+Condition: Execute only for planned new files (files that do not yet exist in the codebase). Skip if all planned files already exist (modification-only SPEC).
+
+Action:
+- Identify all planned new files from Phase 1.5 task decomposition
+- For each planned new file that does not yet exist:
+  - Create empty stub with minimal required structure matching the project's language conventions (e.g., package declaration for Go, module header for Python, empty class for TypeScript)
+  - Do NOT add any implementation logic — stubs only
+- After stub creation: Capture LSP baseline (this is the clean baseline before any implementation)
+
+Output: List of stub files created, LSP baseline diagnostics captured.
+
+Progress update: Append to `.moai/specs/SPEC-{ID}/progress.md`:
+```
+- Phase 1.7 complete: {N} stub files created, LSP baseline captured
+```
+
 ### Phase 1.8: Pre-Implementation MX Context Scan
 
 Purpose: Scan files that will be modified during implementation to build an MX context map for implementation agents.
@@ -188,7 +240,7 @@ Before Phase 2, determine the development methodology by reading `.moai/config/s
 
 Agent: manager-ddd subagent
 
-Input: Approved execution plan from Phase 1 plus task decomposition from Phase 1.5.
+Input: Approved execution plan from Phase 1 plus task decomposition from Phase 1.5. Include `.moai/project/structure.md` and `.moai/project/tech.md` as onboarding context in the agent prompt so the implementation agent understands the project's architecture conventions before writing code.
 
 Requirements:
 
@@ -217,7 +269,7 @@ This divergence data is consumed by /moai sync for SPEC document updates and pro
 
 Agent: manager-tdd subagent
 
-Input: Approved execution plan from Phase 1 plus task decomposition from Phase 1.5.
+Input: Approved execution plan from Phase 1 plus task decomposition from Phase 1.5. Include `.moai/project/structure.md` and `.moai/project/tech.md` as onboarding context in the agent prompt so the implementation agent understands the project's architecture conventions before writing code.
 
 Requirements:
 
@@ -436,5 +488,5 @@ All of the following must be verified:
 
 ---
 
-Version: 2.8.0
-Updated: 2026-02-27. Added worktree isolation HARD rules for team mode routing.
+Version: 2.9.0
+Updated: 2026-03-02. Added Harness Engineering improvements: progress.md resume (P1), failing checklist Phase 1.6 (P2), file scaffolding Phase 1.7 (P5), onboarding context propagation to implementation agents (P3).

@@ -2,7 +2,7 @@ language:
     conversation_language: ko
     conversation_language_name: ko
     agent_prompt_language: en
-    git_commit_messages: en
-    code_comments: en
+    git_commit_messages: ko
+    code_comments: ko
     documentation: ko
     error_messages: en
