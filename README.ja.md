@@ -31,7 +31,7 @@
 
 ---
 
-> 📚 **[公式ドキュメント](https://adk.mo.ai.kr)** | **[GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)** | **[Discordコミュニティ](https://discord.gg/moai-adk)**
+> 📚 **[公式ドキュメント](https://adk.mo.ai.kr)**
 
 ---
 
@@ -1017,8 +1017,6 @@ MoAI Memoryは[claude-mem](https://github.com/thedotmack/claude-mem)、[claude-b
 
 ### コミュニティ
 
-- [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) -- 質問、アイデア、フィードバック
-- [Discordコミュニティ](https://discord.gg/moai-adk) -- リアルタイムチャット、ヒント共有
 - [Issues](https://github.com/modu-ai/moai-adk/issues) -- バグ報告、機能リクエスト
 
 ---
@@ -1037,5 +1035,3 @@ MoAI Memoryは[claude-mem](https://github.com/thedotmack/claude-mem)、[claude-b
 
 - [公式ドキュメント](https://adk.mo.ai.kr)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
-- [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) -- 質問、アイデア、コミュニティ
-- [Discordコミュニティ](https://discord.gg/moai-adk) -- リアルタイムチャット、ヒント共有

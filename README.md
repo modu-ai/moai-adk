@@ -31,7 +31,7 @@
 
 ---
 
-> 📚 **[Official Documentation](https://adk.mo.ai.kr)** | **[GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)** | **[Discord Community](https://discord.gg/moai-adk)**
+> 📚 **[Official Documentation](https://adk.mo.ai.kr)**
 
 ---
 
@@ -1084,8 +1084,6 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed g
 
 ### Community
 
-- [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) -- Questions, ideas, feedback
-- [Discord Community](https://discord.gg/moai-adk) -- Real-time chat, tips sharing
 - [Issues](https://github.com/modu-ai/moai-adk/issues) -- Bug reports, feature requests
 
 ---
@@ -1104,5 +1102,3 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed g
 
 - [Official Documentation](https://adk.mo.ai.kr)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
-- [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) -- Questions, ideas, community
-- [Discord Community](https://discord.gg/moai-adk) -- Real-time chat, tips sharing

@@ -31,7 +31,7 @@
 
 ---
 
-> 📚 **[공식 문서](https://adk.mo.ai.kr)** | **[GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)** | **[Discord 커뮤니티](https://discord.gg/moai-adk)**
+> 📚 **[공식 문서](https://adk.mo.ai.kr)** | **[Discord 커뮤니티](https://discord.gg/Z7E7Mdc5aN)**
 
 ---
 
@@ -1084,7 +1084,6 @@ MoAI Memory는 [claude-mem](https://github.com/thedotmack/claude-mem), [claude-b
 
 ### 커뮤니티
 
-- [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) — 질문, 아이디어, 피드백
 - [Issues](https://github.com/modu-ai/moai-adk/issues) — 버그 리포트, 기능 요청
 
 ---
@@ -1103,5 +1102,4 @@ MoAI Memory는 [claude-mem](https://github.com/thedotmack/claude-mem), [claude-b
 
 - [공식 문서](https://adk.mo.ai.kr)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
-- [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) — 질문, 아이디어, 커뮤니티
-- [Discord 커뮤니티](https://discord.gg/moai-adk) — 실시간 소통, 팁 공유
+- [Discord 커뮤니티](https://discord.gg/Z7E7Mdc5aN) — 실시간 소통, 팁 공유

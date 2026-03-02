@@ -31,7 +31,7 @@
 
 ---
 
-> 📚 **[官方文档](https://adk.mo.ai.kr)** | **[GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)** | **[Discord 社区](https://discord.gg/moai-adk)**
+> 📚 **[官方文档](https://adk.mo.ai.kr)**
 
 ---
 
@@ -1033,8 +1033,6 @@ MoAI Memory 的灵感来自 [claude-mem](https://github.com/thedotmack/claude-me
 
 ### 社区
 
-- [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) -- 提问、想法、反馈
-- [Discord 社区](https://discord.gg/moai-adk) -- 实时交流、技巧分享
 - [Issues](https://github.com/modu-ai/moai-adk/issues) -- Bug 报告、功能请求
 
 ---
@@ -1053,5 +1051,3 @@ MoAI Memory 的灵感来自 [claude-mem](https://github.com/thedotmack/claude-me
 
 - [官方文档](https://adk.mo.ai.kr)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
-- [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) -- 提问、想法、社区
-- [Discord 社区](https://discord.gg/moai-adk) -- 实时交流、技巧分享
