@@ -130,7 +130,34 @@ cd moai-adk && make build
 
 > ビルド済みバイナリは[Releases](https://github.com/modu-ai/moai-adk/releases)ページからダウンロードできます。
 
-### 2. プロジェクトの初期化
+### 2. Windows固有の問題
+
+#### 韓国語ユーザー名パスエラー
+
+Windowsのユーザー名に非ASCII文字（韓国語、中国語など）が含まれている場合、
+Windows 8.3短縮ファイル名変換により `EINVAL` エラーが発生する可能性があります。
+
+**回避策1:** 代替一時ディレクトリの設定：
+
+```bash
+# コマンドプロンプト
+set MOAI_TEMP_DIR=C:\temp
+mkdir C:\temp 2>nul
+
+# PowerShell
+$env:MOAI_TEMP_DIR="C:\temp"
+New-Item -ItemType Directory -Path "C:\temp" -Force
+```
+
+**回避策2:** 8.3ファイル名生成を無効化（管理者権限が必要）：
+
+```bash
+fsutil 8dot3name set 1
+```
+
+**回避策3:** ASCIIのみのユーザー名で新しいWindowsユーザーアカウントを作成。
+
+### 3. プロジェクトの初期化
 
 ```bash
 moai init my-project
@@ -138,7 +165,7 @@ moai init my-project
 
 対話型ウィザードが言語、フレームワーク、方法論を自動検出し、Claude Code統合ファイルを生成します。
 
-### 3. Claude Codeで開発を開始
+### 4. Claude Codeで開発を開始
 
 ```bash
 # Claude Code 起動後
@@ -452,6 +479,21 @@ graph TB
     style Sync fill:#FFF3E0,stroke:#E65100
 ```
 
+#### 実行モード選択ゲート
+
+PlanフェーズからRunフェーズへの移行時、MoAIは現在の実行環境（cc/glm/cg）を自動検出し、実装開始前にユーザーがモードを確認または変更できる選択UIを表示します。
+
+```mermaid
+graph LR
+    A["Plan完了"] --> B["環境検出"]
+    B --> C{"モード選択UI"}
+    C -->|"CC"| D["Claude専用実行"]
+    C -->|"GLM"| E["GLM専用実行"]
+    C -->|"CG"| F["Claudeリーダー + GLMワーカー"]
+```
+
+このゲートにより、環境の状態に関係なく正しい実行モードが使用され、実装中のモード不一致を防止します。
+
 ### /moai サブコマンド
 
 すべてのサブコマンドはClaude Code内で `/moai <subcommand>` として呼び出されます。
@@ -507,6 +549,8 @@ graph TB
 | Claude-only | `moai cc` | Claude | Claude | 最高品質 |
 | GLM-only | `moai glm` | GLM | GLM | 最大コスト削減 |
 | CG (Claude+GLM) | `moai cg` | Claude | GLM | 品質とコストのバランス |
+
+> **v2.7.1 新機能**: CGモードが**デフォルト**のチームモードになりました。`--team` を使用する場合、`moai cc` または `moai glm` で明示的に変更しない限り、CGモードで実行されます。
 
 > **注意**: `moai cg` はtmuxペーンレベルの環境隔離を使用してClaudeリーダーとGLMワーカーを分離します。`moai glm` から切り替える場合、`moai cg` は自動的にGLM設定を最初にリセットします -- `moai cc` を実行する必要はありません。
 
@@ -732,6 +776,22 @@ moai-adk/
 | `cli` | Cobraコマンド | 92.0% |
 | `ralph` | 収束判定エンジン | 100% |
 | `statusline` | Claude Codeステータスライン | 100% |
+
+---
+
+## スポンサー
+
+### z.ai GLM 5
+
+MoAI-ADKは **z.ai GLM 5** とのパートナーシップにより、コスト効率の高いAI開発環境を提供しています。
+
+| メリット | 説明 |
+|---------|------|
+| 70%コスト削減 | Claudeの1/7の価格で同等のパフォーマンス |
+| 完全互換 | コード変更なしでClaude Codeと連携 |
+| 無制限使用 | 日次/週次のトークン制限なし |
+
+**[GLM 5に登録する（10%追加割引）](https://z.ai/subscribe?ic=1NDV03BGWU)** -- 紹介報酬はMoAIオープンソース開発に使用されます。
 
 ---
 

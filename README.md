@@ -165,7 +165,7 @@ moai init my-project
 
 An interactive wizard auto-detects your language, framework, and methodology, then generates Claude Code integration files.
 
-### 3. Start Developing with Claude Code
+### 4. Start Developing with Claude Code
 
 ```bash
 # After launching Claude Code
@@ -479,6 +479,21 @@ graph TB
     style Sync fill:#FFF3E0,stroke:#E65100
 ```
 
+#### Execution Mode Selection Gate
+
+When transitioning from Plan to Run phase, MoAI automatically detects the current execution environment (cc/glm/cg) and presents a selection UI for the user to confirm or change the mode before implementation begins.
+
+```mermaid
+graph LR
+    A["Plan Complete"] --> B["Detect Environment"]
+    B --> C{"Mode Selection UI"}
+    C -->|"CC"| D["Claude-only Execution"]
+    C -->|"GLM"| E["GLM-only Execution"]
+    C -->|"CG"| F["Claude Leader + GLM Workers"]
+```
+
+This gate ensures the correct execution mode is used regardless of the environment state, preventing mode mismatches during implementation.
+
 ### /moai Subcommands
 
 All subcommands are invoked within Claude Code as `/moai <subcommand>`.
@@ -534,6 +549,8 @@ Control how agents are dispatched during workflow execution:
 | Claude-only | `moai cc` | Claude | Claude | Maximum quality |
 | GLM-only | `moai glm` | GLM | GLM | Maximum cost savings |
 | CG (Claude+GLM) | `moai cg` | Claude | GLM | Quality + cost balance |
+
+> **New in v2.7.1**: CG mode is now the **default** team mode. When using `--team`, the system runs in CG mode unless explicitly changed with `moai cc` or `moai glm`.
 
 > **Note**: `moai cg` uses tmux pane-level env isolation to separate Claude leader from GLM workers. If switching from `moai glm`, `moai cg` automatically resets GLM settings first — no need to run `moai cc` in between.
 

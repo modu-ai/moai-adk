@@ -165,7 +165,7 @@ moai init my-project
 
 대화형 마법사가 언어, 프레임워크, 방법론을 자동 감지하고 Claude Code 통합 파일을 생성합니다.
 
-### 3. Claude Code에서 개발 시작
+### 4. Claude Code에서 개발 시작
 
 ```bash
 # Claude Code 실행 후
@@ -479,6 +479,21 @@ graph TB
     style Sync fill:#FFF3E0,stroke:#E65100
 ```
 
+#### 실행 모드 선택 게이트
+
+Plan 단계에서 Run 단계로 전환 시, MoAI가 현재 실행 환경(cc/glm/cg)을 자동으로 감지하고, 구현 시작 전에 사용자가 모드를 확인하거나 변경할 수 있는 선택 UI를 표시합니다.
+
+```mermaid
+graph LR
+    A["Plan 완료"] --> B["환경 감지"]
+    B --> C{"모드 선택 UI"}
+    C -->|"CC"| D["Claude 전용 실행"]
+    C -->|"GLM"| E["GLM 전용 실행"]
+    C -->|"CG"| F["Claude 리더 + GLM 워커"]
+```
+
+이 게이트는 환경 상태와 관계없이 올바른 실행 모드를 사용하도록 보장하여, 구현 중 모드 불일치를 방지합니다.
+
 ### /moai 서브커맨드
 
 모든 서브커맨드는 Claude Code 내에서 `/moai <서브커맨드>`로 실행합니다.
@@ -534,6 +549,8 @@ graph TB
 | Claude 전용 | `moai cc` | Claude | Claude | 최고 품질 |
 | GLM 전용 | `moai glm` | GLM | GLM | 최대 비용 절감 |
 | CG (Claude+GLM) | `moai cg` | Claude | GLM | 품질 + 비용 균형 |
+
+> **v2.7.1 신규**: CG 모드가 **기본** 팀 모드로 변경되었습니다. `--team` 사용 시, `moai cc` 또는 `moai glm`으로 명시적으로 변경하지 않는 한 CG 모드로 실행됩니다.
 
 > **참고**: `moai cg`는 tmux pane 레벨 환경 격리를 사용하여 Claude 리더와 GLM 워커를 분리합니다. `moai glm` 모드에서 전환 시, `moai cg`가 GLM 설정을 자동으로 리셋합니다 — 중간에 `moai cc`를 실행할 필요 없습니다.
 
