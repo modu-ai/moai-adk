@@ -425,53 +425,6 @@ MoAI-ADK supports CG Mode for 60-70% cost reduction on implementation-heavy task
 
 ---
 
-## 16. Context Search Protocol
-
-MoAI searches previous Claude Code sessions when context is needed to continue work on existing tasks or discussions.
-
-### When to Search
-
-Search previous sessions when:
-- User references past work without sufficient context in current session
-- User mentions a SPEC-ID that is not loaded in current context
-- User asks to continue previous work or resume interrupted tasks
-- User explicitly requests to find previous discussions
-
-### When NOT to Search
-
-Skip context search when:
-- Relevant SPEC document is already loaded in current context
-- Related documents or code are already present in conversation
-- User references content that exists in current session
-- Context duplication would provide no additional value
-
-### Search Process
-
-1. Check if relevant context already exists in current session (skip if found)
-2. Ask user confirmation before searching (via AskUserQuestion)
-3. Use Grep to search session index and transcript files in ~/.claude/projects/
-4. Limit search to recent sessions (configurable, default 30 days)
-5. Summarize findings and present for user approval
-6. Inject approved context into current conversation (avoid duplicates)
-
-### Token Budget
-
-- Maximum 5,000 tokens per injection
-- Skip search if current token usage exceeds 150,000
-- Summarize lengthy conversations to stay within budget
-
-### Manual Trigger
-
-User can explicitly request context search at any time during conversation.
-
-### Integration Notes
-
-- Complements @MX TAG system for code context
-- Automatically triggered when SPEC reference lacks context
-- Available in both solo and team modes
-
----
-
 ## Troubleshooting
 
 ### Debugging MoAI Sessions

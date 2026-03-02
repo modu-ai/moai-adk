@@ -216,6 +216,10 @@ File generation (all three files created simultaneously):
   - YAML frontmatter with 7 required fields (id, version, status, created, updated, author, priority)
   - HISTORY section immediately after frontmatter
   - Complete EARS structure with all 5 requirement types
+  - Implementation Log section (updated during /moai run phase, initially empty):
+    - Decisions: Key technical decisions made during implementation
+    - Gotchas: Pitfalls and warnings discovered during implementation
+    - Risks: Open risks and deferred items
   - Content written in conversation_language
 
 - .moai/specs/SPEC-{ID}/plan.md

@@ -293,6 +293,13 @@ The manager-tdd subagent must track deviations from the original SPEC plan durin
 
 This divergence data is consumed by /moai sync for SPEC document updates and project document synchronization.
 
+#### Implementation Log Update
+
+After implementation completes (Phase 2A or 2B), the implementation agent must update the Implementation Log section in `.moai/specs/SPEC-{ID}/spec.md` with:
+- **Decisions**: Key technical decisions made and their rationale
+- **Gotchas**: Pitfalls and warnings discovered during implementation
+- **Risks**: Open risks or deferred items that need future attention
+
 ### Phase 2.5: Quality Validation
 
 Agent: manager-quality subagent

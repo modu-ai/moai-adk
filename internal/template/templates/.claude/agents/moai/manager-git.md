@@ -28,7 +28,7 @@ skills:
 
 Manage Git workflows, branch strategies, commit conventions, and code review processes with automated quality checks.
 
-Version: 2.1.0 (Context Memory + TDD Commits)
+Version: 2.2.0 (TDD Commits)
 Last Updated: 2026-02-25
 
 > Note: Interactive prompts use AskUserQuestion tool for TUI selection menus. This tool activates on-demand when user approval is required for operations.
@@ -1132,35 +1132,9 @@ Signature breakdown:
 - ` https://adk.mo.ai.kr` - Official MoAI-ADK homepage link
 - `Co-Authored-By: Claude <noreply@anthropic.com>` - Claude AI collaborator attribution
 
-### Context Memory Section [HARD]
+### MX Tags Changed Section
 
-All implementation commits MUST include a `## Context` section in the commit body to preserve AI-developer interaction context across sessions.
-
-Context Memory Categories:
-
-| Category | Purpose | Example |
-|----------|---------|---------|
-| Decision | Technical decision + rationale | "EdDSA over RSA256 (user requested, performance priority)" |
-| Constraint | Active constraints | "Must maintain /api/v1 backward compatibility" |
-| Gotcha | Pitfalls discovered | "Redis TTL unreliable for RefreshToken storage" |
-| Pattern | Patterns/references used | "middleware chain pattern from auth.go:45" |
-| Risk | Known risks/deferred items | "Token rotation deferred to Phase 2" |
-| UserPref | User preferences captured | "User prefers functional style over OOP" |
-
-Context Section Format:
-
-```
-## Context (AI-Developer Memory)
-- Decision: [description] ([rationale])
-- Constraint: [description]
-- Gotcha: [description]
-- Pattern: [description]
-- Risk: [description]
-```
-
-MX Tags Changed Section:
-
-After the Context section, include MX tag changes:
+Include MX tag changes in commits when applicable:
 
 ```
 ## MX Tags Changed
@@ -1169,7 +1143,7 @@ After the Context section, include MX tag changes:
 - Updated: @MX:WARN [file:line] (reason updated)
 ```
 
-Session and SPEC Tracking:
+### Session and SPEC Tracking
 
 Include structured metadata fields in the commit body:
 
@@ -1177,12 +1151,6 @@ Include structured metadata fields in the commit body:
 SPEC: SPEC-XXX-NNN
 Phase: [PLAN|RUN-RED|RUN-GREEN|RUN-REFACTOR|RUN-ANALYZE|RUN-PRESERVE|RUN-IMPROVE|SYNC|FIX|LOOP]
 ```
-
-Skip Conditions:
-
-- Level 1 fixes (formatting only): Context section optional
-- Merge commits: Context section not required
-- Release tags: Context section not required
 
 Implementation Example (HEREDOC):
 

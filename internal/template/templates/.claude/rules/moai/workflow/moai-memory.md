@@ -2,9 +2,9 @@
 paths: "**/.moai/specs/**"
 ---
 
-# MoAI Memory and Context
+# MoAI SPEC Context and Session Continuity
 
-Rules for managing persistent context across sessions.
+Rules for managing cross-session context through SPEC documents and Claude Code memory hierarchy.
 
 ## Memory Hierarchy
 
@@ -17,25 +17,30 @@ Claude Code supports multiple memory levels (highest priority first):
 5. Local Instructions: CLAUDE.local.md (personal project, not committed)
 6. Auto Memory: ~/.claude/projects/{hash}/memory/ (AI-managed)
 
-## SPEC Context Persistence
+## SPEC as Primary Cross-Session Context
 
-SPEC documents serve as persistent context for multi-session work:
+SPEC documents are the primary mechanism for maintaining context across sessions:
 
 - SPEC document: `.moai/specs/SPEC-XXX/spec.md` (requirements and design)
 - Research artifact: `.moai/specs/SPEC-XXX/research.md` (codebase analysis)
 - Progress tracking: Task list state via TaskCreate/TaskUpdate
 
-## Session Continuity
+SPEC documents persist between sessions and provide complete context for resuming work without relying on conversation history.
+
+## Session Continuity via SPEC Documents
 
 When resuming work across sessions:
-- Reference SPEC documents for requirements context
-- Check git log for recent changes
+- Reference the relevant SPEC document for requirements context
+- Read research.md for codebase analysis from the plan phase
+- Check git log for recent implementation changes
 - Read task list if team mode was active
 - Use /clear between major phase transitions to free context
 
 ## Rules
 
-- SPEC documents are the primary cross-session context mechanism
+- SPEC documents are the single source of truth for cross-session context
+- All requirements, design decisions, and acceptance criteria live in SPEC documents
 - Auto memory should store stable patterns, not session-specific state
 - Maximum 5,000 tokens for injected context from previous sessions
-- Prefer referencing files over copying content into context
+- Prefer referencing SPEC files over copying content into context
+- When context is insufficient, re-read the SPEC document rather than relying on conversation history

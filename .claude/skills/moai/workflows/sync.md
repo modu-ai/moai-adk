@@ -4,7 +4,7 @@ description: >
   Synchronizes documentation with code changes, verifies project quality,
   and finalizes pull requests. Third step of the Plan-Run-Sync workflow.
   Includes deep code review with auto-fix, coverage analysis with test generation,
-  SPEC divergence analysis, project document updates, and Context Memory generation.
+  SPEC divergence analysis, and project document updates.
   Use when documentation sync, PR creation, or quality verification is needed.
 user-invocable: false
 metadata:
@@ -12,7 +12,7 @@ metadata:
   category: "workflow"
   status: "active"
   updated: "2026-02-25"
-  tags: "sync, documentation, pull-request, quality, verification, pr, context-memory"
+  tags: "sync, documentation, pull-request, quality, verification, pr"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -102,20 +102,6 @@ The `project` mode performs comprehensive project-wide synchronization:
 
 - --merge: After sync, auto-merge PR and clean up branch. Worktree/branch environment is auto-detected from git context.
 - --skip-mx: Skip MX tag validation and annotation during sync.
-
-## Context Loading
-
-Before execution, load these essential files:
-
-- .moai/config/config.yaml (git strategy, language settings)
-- .moai/config/sections/git-strategy.yaml (auto_branch, branch creation policy)
-- .moai/config/sections/language.yaml (git_commit_messages setting)
-- .moai/specs/ directory listing (SPEC documents for sync)
-- .moai/project/ directory listing (project documents for conditional update)
-- .moai/project/codemaps/ directory listing (architecture maps for conditional update)
-- README.md (current project documentation)
-
-Pre-execution commands: git status, git diff, git branch, git log, find .moai/specs.
 
 ---
 
@@ -591,65 +577,9 @@ Agent: manager-git subagent
 - Commit message language follows `language.git_commit_messages` setting
 - Verify commit with git log
 
-#### Step 3.1.1: Context Memory Generation in Git Commits
+#### Step 3.1.1: Session Boundary Tag Creation
 
-Purpose: Embed structured context within git commit operations to enable seamless session resumption across development cycles.
-
-**Context Collection Process:**
-
-1. **Decision Tracking**: Gather all decisions made during the sync phase
-   - Documentation choices and rationale
-   - SPEC update approach and divergence handling
-   - Project improvement selections
-   - Quality trade-offs accepted or deferred
-
-2. **Constraint Discovery**: Record any constraints identified
-   - Formatting requirements discovered
-   - API documentation standards applied
-   - Platform-specific considerations
-   - Technology limitations encountered
-
-3. **Gotcha Documentation**: Note issues found during documentation review
-   - Outdated references in existing documentation
-   - Missing API documentation sections
-   - Inconsistencies between code and docs
-   - Breaking changes requiring user notification
-
-4. **Pattern Usage**: Document patterns applied during sync
-   - Documentation templates used
-   - Code-to-doc mapping strategies
-   - Mermaid diagram patterns for architecture
-   - README.md structure improvements
-
-**Commit Format for Sync Phase:**
-
-All sync commits MUST include structured context using this format:
-
-```
-docs(sync): [brief description of changes]
-
-## SPEC Reference
-SPEC: SPEC-XXX
-Phase: SYNC
-Timestamp: ISO-8601 timestamp
-
-## Context (AI-Developer Memory)
-- Decision: [documentation decision 1]
-- Decision: [documentation decision 2]
-- Pattern: [pattern 1 applied]
-- Pattern: [pattern 2 applied]
-- Constraint: [constraint discovered]
-- Gotcha: [issue found and how resolved]
-
-## Affected Areas
-- Documents Updated: [count]
-- SPEC Status: [completed|in-progress]
-- Coverage Impact: [change or percentage]
-```
-
-**Session Boundary Tag Creation:**
-
-After successful commit, create a session boundary tag to enable `/moai context` reconstruction:
+After successful commit, create a session boundary tag for phase tracking:
 
 ```
 git tag -a "moai/SPEC-{ID}/sync-complete" \
@@ -657,26 +587,12 @@ git tag -a "moai/SPEC-{ID}/sync-complete" \
 SPEC: SPEC-XXX
 Docs updated: N files
 Coverage verified: XX%
-Context embedded in: [commit hash]
 Next action: Feature complete or /moai plan for next SPEC"
 ```
 
 Tag naming convention: `moai/SPEC-{ID}/sync-complete`
 
-**Context Memory Integration:**
-
-The embedded context enables:
-
-1. **Session Resumption**: When resuming development, `/moai context` retrieves this information automatically
-2. **Decision History**: Future SPECs build on documented decisions
-3. **Pattern Reuse**: Similar documentation patterns are recognized and applied
-4. **Cross-Session Continuity**: Context persists across individual AI sessions
-
-**Implementation Details:**
-
-- Commit message MUST include complete decision/pattern documentation
 - Session boundary tag MUST be created after successful push
-- Context metadata saved to `.moai/state/sync-context-{SPEC-ID}.json` for quick access
 - Tag message MUST reference the commit hash for traceability
 
 #### Step 3.1.5: Local CI Mirror Validation (Pre-PR Gate)
