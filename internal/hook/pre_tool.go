@@ -218,7 +218,8 @@ func DefaultSecurityPolicy() *SecurityPolicy {
 	// Resolve allowed external paths that bypass the project-boundary check.
 	var allowedExternal []string
 	if home, err := os.UserHomeDir(); err == nil {
-		allowedExternal = append(allowedExternal, filepath.Join(home, ".claude", "plans"))
+		allowedExternal = append(allowedExternal, filepath.Join(home, ".claude"))
+		allowedExternal = append(allowedExternal, filepath.Join(home, ".moai"))
 	}
 
 	return &SecurityPolicy{

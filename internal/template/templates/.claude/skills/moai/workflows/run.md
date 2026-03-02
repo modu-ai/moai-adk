@@ -439,6 +439,32 @@ Options:
 
 ---
 
+## Execution Mode Gate Integration
+
+When the run phase is invoked from plan.md Decision Point 3.5 or moai.md Phase 11.5, the gate passes these parameters:
+- `execution_mode`: worktree | team | sub-agent
+- `active_mode`: cc | glm | cg
+- `tmux_available`: true | false
+
+**If execution_mode == "worktree":**
+This run invocation is already inside the isolated tmux session and worktree.
+Proceed with standard sub-agent run phase in the current environment.
+No additional routing needed — CC/GLM/CG env is already configured by the Gate.
+
+**If execution_mode == "team":**
+Apply Team Mode Routing below. The active_mode determines worker model selection:
+- CC: All teammates use Claude (default behavior)
+- GLM: All teammates inherit GLM env from tmux session
+- CG: Leader=Claude (clean session), Workers=GLM (tmux env injected)
+
+**If execution_mode == "sub-agent":**
+Skip Team Mode Routing. Proceed directly to Phase 1 (Strategy).
+
+**If no execution_mode provided (direct `/moai run` invocation):**
+Apply existing --team/--solo flag logic in Team Mode Routing below.
+
+---
+
 ## Team Mode Routing
 
 When --team flag is provided or auto-selected, the run phase MUST switch to team orchestration:
