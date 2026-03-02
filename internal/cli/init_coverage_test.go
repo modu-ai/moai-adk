@@ -17,8 +17,6 @@ func newTestInitCmd() *cobra.Command {
 	cmd.Flags().String("mode", "", "Development mode")
 	cmd.Flags().String("git-mode", "", "Git workflow mode")
 	cmd.Flags().String("git-provider", "", "Git provider")
-	cmd.Flags().String("model-policy", "", "Agent model policy")
-	cmd.Flags().String("conv-lang", "", "Conversation language")
 	return cmd
 }
 
@@ -64,93 +62,12 @@ func TestValidateInitFlags_ValidGitProvider(t *testing.T) {
 	}
 }
 
-func TestValidateInitFlags_InvalidModelPolicy(t *testing.T) {
-	tests := []struct {
-		name  string
-		value string
-	}{
-		{"extreme", "extreme"},
-		{"max", "max"},
-		{"default", "default"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cmd := newTestInitCmd()
-			if err := cmd.Flags().Set("model-policy", tt.value); err != nil {
-				t.Fatal(err)
-			}
-			err := validateInitFlags(cmd, nil)
-			if err == nil {
-				t.Errorf("expected error for model-policy=%q, got nil", tt.value)
-			}
-			if !strings.Contains(err.Error(), "invalid --model-policy") {
-				t.Errorf("error should mention 'invalid --model-policy', got: %v", err)
-			}
-		})
-	}
-}
-
-func TestValidateInitFlags_ValidModelPolicy(t *testing.T) {
-	for _, val := range []string{"high", "medium", "low"} {
-		t.Run(val, func(t *testing.T) {
-			cmd := newTestInitCmd()
-			if err := cmd.Flags().Set("model-policy", val); err != nil {
-				t.Fatal(err)
-			}
-			if err := validateInitFlags(cmd, nil); err != nil {
-				t.Errorf("unexpected error for model-policy=%q: %v", val, err)
-			}
-		})
-	}
-}
-
-func TestValidateInitFlags_InvalidConvLang(t *testing.T) {
-	tests := []struct {
-		name  string
-		value string
-	}{
-		{"xx", "xx"},
-		{"klingon", "klingon"},
-		{"EN", "EN"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cmd := newTestInitCmd()
-			if err := cmd.Flags().Set("conv-lang", tt.value); err != nil {
-				t.Fatal(err)
-			}
-			err := validateInitFlags(cmd, nil)
-			if err == nil {
-				t.Errorf("expected error for conv-lang=%q, got nil", tt.value)
-			}
-			if !strings.Contains(err.Error(), "invalid --conv-lang") {
-				t.Errorf("error should mention 'invalid --conv-lang', got: %v", err)
-			}
-		})
-	}
-}
-
-func TestValidateInitFlags_ValidConvLang(t *testing.T) {
-	for _, val := range []string{"en", "ko", "ja", "zh", "es", "fr", "de", "pt", "ru", "it"} {
-		t.Run(val, func(t *testing.T) {
-			cmd := newTestInitCmd()
-			if err := cmd.Flags().Set("conv-lang", val); err != nil {
-				t.Fatal(err)
-			}
-			if err := validateInitFlags(cmd, nil); err != nil {
-				t.Errorf("unexpected error for conv-lang=%q: %v", val, err)
-			}
-		})
-	}
-}
-
 func TestValidateInitFlags_MultipleInvalidFlags_ReturnsFirstError(t *testing.T) {
 	// When multiple flags are invalid, the function returns the first error it encounters.
 	// mode is validated first in the function.
 	cmd := newTestInitCmd()
 	_ = cmd.Flags().Set("mode", "bad-mode")
 	_ = cmd.Flags().Set("git-mode", "bad-git")
-	_ = cmd.Flags().Set("model-policy", "bad-policy")
 
 	err := validateInitFlags(cmd, nil)
 	if err == nil {
@@ -175,8 +92,6 @@ func TestValidateInitFlags_AllValid(t *testing.T) {
 	_ = cmd.Flags().Set("mode", "tdd")
 	_ = cmd.Flags().Set("git-mode", "team")
 	_ = cmd.Flags().Set("git-provider", "github")
-	_ = cmd.Flags().Set("model-policy", "medium")
-	_ = cmd.Flags().Set("conv-lang", "ja")
 
 	if err := validateInitFlags(cmd, nil); err != nil {
 		t.Errorf("all-valid flags should pass, got: %v", err)

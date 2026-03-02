@@ -8,9 +8,10 @@ description: |
   KO: 문서, README, API문서, Nextra, 마크다운, 기술문서, 문서화
   JA: ドキュメント, README, APIドキュメント, Nextra, マークダウン, 技術文書
   ZH: 文档, README, API文档, Nextra, markdown, 技术写作
-tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 permissionMode: acceptEdits
+maxTurns: 150
 memory: project
 skills:
   - moai-foundation-claude
@@ -29,7 +30,7 @@ hooks:
         - type: command
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" docs-verification"
           timeout: 10
-  SubagentStop:
+  Stop:
     - hooks:
         - type: command
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" docs-completion"

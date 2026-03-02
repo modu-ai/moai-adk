@@ -8,11 +8,22 @@ description: |
   KO: 데브옵스, CI/CD, 도커, 쿠버네티스, 배포, 파이프라인, 인프라, 컨테이너
   JA: DevOps, CI/CD, Docker, Kubernetes, デプロイ, パイプライン, インフラ
   ZH: DevOps, CI/CD, Docker, Kubernetes, 部署, 流水线, 基础设施
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__github__create-or-update-file, mcp__github__push-files, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Agent, Skill, mcp__sequential-thinking__sequentialthinking, mcp__github__create-or-update-file, mcp__github__push-files, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
+maxTurns: 100
 permissionMode: default
 memory: project
-skills: moai-foundation-claude, moai-foundation-core, moai-foundation-philosopher, moai-foundation-quality, moai-workflow-project, moai-workflow-jit-docs, moai-workflow-templates, moai-platform-deployment, moai-platform-database-cloud, moai-framework-electron
+skills:
+  - moai-foundation-claude
+  - moai-foundation-core
+  - moai-foundation-philosopher
+  - moai-foundation-quality
+  - moai-workflow-project
+  - moai-workflow-jit-docs
+  - moai-workflow-templates
+  - moai-platform-deployment
+  - moai-platform-database-cloud
+  - moai-framework-electron
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"
@@ -20,7 +31,7 @@ hooks:
         - type: command
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" devops-verification"
           timeout: 15
-  SubagentStop:
+  Stop:
     - hooks:
         - type: command
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" devops-completion"

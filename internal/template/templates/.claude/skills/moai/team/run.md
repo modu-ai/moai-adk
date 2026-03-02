@@ -23,7 +23,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["team run", "glm worker", "parallel implementation"]
-  agents: ["team-backend-dev", "team-frontend-dev", "team-tester"]
+  agents: ["team-coder", "team-tester"]
   phases: ["run"]
 ---
 # Workflow: Team Run - Implementation with Agent Teams
@@ -39,7 +39,7 @@ Before executing this workflow, check `.moai/config/sections/llm.yaml`:
 
 | team_mode | Execution Mode | Description |
 |-----------|---------------|-------------|
-| (empty) | Sub-agent | Single session, Task() subagents |
+| (empty) | Sub-agent | Single session, Agent() subagents |
 | cg | CG Mode | Claude Leader + GLM Teammates via tmux |
 | agent-teams | Agent Teams | All same API, parallel teammates |
 
@@ -72,7 +72,7 @@ The Leader creates the SPEC document using Claude's reasoning capabilities.
 
 1. **Delegate to manager-spec subagent**:
    ```
-   Task(
+   Agent(
      subagent_type: "manager-spec",
      prompt: "Create SPEC document for: {user_description}
               Follow EARS format.
@@ -109,13 +109,13 @@ Teammates execute implementation in parallel using GLM via Z.AI API.
 
 #### 2.2 Spawn Teammates
 
-Spawn teammates using Task() with team_name. Because `CLAUDE_CODE_TEAMMATE_DISPLAY=tmux`
+Spawn teammates using Agent() with team_name. Because `CLAUDE_CODE_TEAMMATE_DISPLAY=tmux`
 is set, each teammate spawns in a new tmux pane. New panes inherit GLM env vars
 from the tmux session, routing them through Z.AI API.
 
 ```
-Task(
-  subagent_type: "team-backend-dev",
+Agent(
+  subagent_type: "team-coder",
   team_name: "moai-run-SPEC-XXX",
   name: "backend-dev",
   isolation: "worktree",
@@ -123,12 +123,13 @@ Task(
   prompt: "You are backend-dev on team moai-run-SPEC-XXX.
     Implement backend tasks from the shared task list.
     SPEC: .moai/specs/SPEC-XXX/spec.md
+    File ownership: server-side files (*.go excluding *_test.go), API handlers, models, database code.
     Follow TDD methodology. Claim tasks via TaskUpdate.
     Mark tasks completed when done. Send results via SendMessage."
 )
 
-Task(
-  subagent_type: "team-frontend-dev",
+Agent(
+  subagent_type: "team-coder",
   team_name: "moai-run-SPEC-XXX",
   name: "frontend-dev",
   isolation: "worktree",
@@ -136,11 +137,12 @@ Task(
   prompt: "You are frontend-dev on team moai-run-SPEC-XXX.
     Implement frontend tasks from the shared task list.
     SPEC: .moai/specs/SPEC-XXX/spec.md
+    File ownership: client-side files (components, pages, styles, assets).
     Follow TDD methodology. Claim tasks via TaskUpdate.
     Mark tasks completed when done. Send results via SendMessage."
 )
 
-Task(
+Agent(
   subagent_type: "team-tester",
   team_name: "moai-run-SPEC-XXX",
   name: "tester",
@@ -149,7 +151,7 @@ Task(
   prompt: "You are tester on team moai-run-SPEC-XXX.
     Write tests for implemented features.
     SPEC: .moai/specs/SPEC-XXX/spec.md
-    Own all *_test.go files exclusively.
+    Own all test files (*_test.go, *.test.*, __tests__/) exclusively.
     Mark tasks completed when done. Send results via SendMessage."
 )
 ```
@@ -181,12 +183,12 @@ When teammates complete:
 
 Leader validates quality using Claude's analysis:
 
-1. Run quality gates:
-   ```bash
-   go test -race ./...
-   golangci-lint run
-   go test -cover ./...
-   ```
+1. Run language-appropriate quality gates based on auto-detected project language:
+   - **Tests**: Language-specific test runner (e.g., `go test ./...` / `pytest` / `npm test` / `cargo test`)
+   - **Linter**: Language-specific linter (e.g., `golangci-lint` / `ruff` / `eslint` / `cargo clippy`)
+   - **Coverage**: Language-specific coverage tool (e.g., `go test -cover` / `coverage.py` / `c8` / `tarpaulin`)
+
+   For the complete language-to-command mapping table, see: `workflows/loop.md` Language-Specific Commands section.
 
 2. SPEC verification:
    - Read SPEC acceptance criteria
@@ -200,7 +202,7 @@ Leader validates quality using Claude's analysis:
 #### 4.1 Documentation
 
 ```
-Task(
+Agent(
   subagent_type: "manager-docs",
   prompt: "Generate documentation for SPEC-XXX implementation.
            Update CHANGELOG.md and README.md as needed."
@@ -272,9 +274,9 @@ When `team_mode == "agent-teams"` in llm.yaml, use parallel teammates all on the
 Spawn teammates with file ownership boundaries and worktree isolation:
 
 ```
-Task(subagent_type: "team-backend-dev", team_name: "moai-run-SPEC-XXX", name: "backend-dev", isolation: "worktree", mode: "acceptEdits", ...)
-Task(subagent_type: "team-frontend-dev", team_name: "moai-run-SPEC-XXX", name: "frontend-dev", isolation: "worktree", mode: "acceptEdits", ...)
-Task(subagent_type: "team-tester", team_name: "moai-run-SPEC-XXX", name: "tester", isolation: "worktree", mode: "acceptEdits", ...)
+Task(subagent_type: "team-coder", team_name: "moai-run-SPEC-XXX", name: "backend-dev", isolation: "worktree", mode: "acceptEdits", prompt: "Backend role. File ownership: server-side code. ...")
+Task(subagent_type: "team-coder", team_name: "moai-run-SPEC-XXX", name: "frontend-dev", isolation: "worktree", mode: "acceptEdits", prompt: "Frontend role. File ownership: client-side code. ...")
+Task(subagent_type: "team-tester", team_name: "moai-run-SPEC-XXX", name: "tester", isolation: "worktree", mode: "acceptEdits", prompt: "Testing role. File ownership: test files exclusively. ...")
 ```
 
 [HARD] All implementation teammates MUST use `isolation: "worktree"` for parallel file safety.
@@ -317,7 +319,7 @@ SendMessage(type: "plan_approval_response", request_id: "{id}", recipient: "{nam
 
 ### Phase 5: Quality and Shutdown
 
-1. Assign quality validation task to team-quality (or use manager-quality subagent)
+1. Assign quality validation task to team-validator (or use manager-quality subagent)
 2. After all tasks complete, shutdown teammates:
    ```
    SendMessage(type: "shutdown_request", recipient: "backend-dev", content: "Phase complete")
@@ -340,50 +342,6 @@ SendMessage(type: "plan_approval_response", request_id: "{id}", recipient: "{nam
 | Requires tmux | Yes | No (optional) | No |
 | Isolation | tmux env + worktree (HARD) | File ownership + worktree (HARD) | None |
 
-## Resilient Team Orchestration Protocol
-
-Rules for preventing teammate hangs, unresponsive agents, and unclean shutdowns.
-
-### Timeout Contract
-
-- Each teammate MUST send a TaskUpdate within 120 seconds of task assignment
-- If no update after 3 minutes: mark the task as failed via TaskUpdate, log the issue
-- Reassign failed tasks to another teammate or absorb into leader's workload
-
-### Graceful Degradation
-
-- If a teammate fails to respond to messages after 2 attempts: proceed without waiting
-- If a teammate's task fails: leader absorbs remaining work rather than blocking the pipeline
-- Never block the entire workflow waiting for a single unresponsive teammate
-
-### Rate Limit Resilience
-
-- If a teammate reports a rate limit error: redistribute their remaining tasks to other teammates
-- If multiple teammates hit rate limits: pause team work, commit current progress, resume later
-- Progress preservation: all teammates should commit intermediate work before long operations
-
-### Clean Shutdown Sequence
-
-After all tasks complete (or on workflow termination):
-
-```
-1. Send shutdown_request to ALL teammates (in parallel)
-2. Wait maximum 30 seconds for shutdown_responses
-3. After 30 seconds: proceed with TeamDelete regardless of response status
-4. Log any unresponsive teammates for debugging
-5. Do NOT wait indefinitely for shutdown_response
-```
-
-### Error Recovery Matrix
-
-| Failure | Detection | Recovery |
-|---------|-----------|----------|
-| Teammate unresponsive | No TaskUpdate in 3 min | Mark task failed, reassign |
-| Teammate stuck in loop | Same task in_progress > 5 min | Send interrupt message, then absorb |
-| Rate limit hit | Tool failure count >= 3 | Commit progress, redistribute work |
-| Shutdown unresponsive | No response in 30 sec | Proceed with TeamDelete |
-| Teammate spawn failure | Task() returns error | Fall back to sub-agent for that role |
-
 ## Fallback
 
 If team mode fails at any point:
@@ -394,5 +352,5 @@ If team mode fails at any point:
 
 ---
 
-Version: 3.2.0 (Worktree Isolation HARD Rules)
-Last Updated: 2026-02-27
+Version: 3.3.0 (Language-Agnostic Quality Gates)
+Last Updated: 2026-03-02

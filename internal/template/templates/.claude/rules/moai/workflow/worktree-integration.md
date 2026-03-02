@@ -68,19 +68,19 @@ For agents that need isolated execution (v2.1.49+):
 
 ```yaml
 ---
-name: team-backend-dev
+name: team-coder
 isolation: worktree   # Agent runs in its own isolated worktree
 background: true      # Agent runs without blocking main conversation
 ---
 ```
 
 When to use `isolation: worktree`:
-- Implementation agents that write files (team-backend-dev, team-frontend-dev, team-tester, team-designer)
+- Implementation agents that write files (team-coder, team-tester, team-designer)
 - Prevents file conflicts between parallel teammates
 - Each agent gets its own clean worktree at `.claude/worktrees/<auto-name>/`
 
 When NOT to use `isolation: worktree`:
-- Read-only agents (team-researcher, team-analyst, team-architect, team-quality)
+- Read-only agents (team-reader, team-validator)
 - `permissionMode: plan` already prevents writes; adding isolation adds overhead without benefit
 
 ### `background: true` in Agent Frontmatter
@@ -89,7 +89,7 @@ Run agent without blocking the main conversation (v2.1.46+):
 
 ```yaml
 ---
-name: team-backend-dev
+name: team-coder
 background: true   # Returns immediately; results delivered on next turn
 ---
 ```
@@ -173,7 +173,7 @@ SYNC PHASE
 ### Implementation Agents (isolation: worktree + background: true)
 
 ```yaml
-# team-backend-dev, team-frontend-dev, team-tester, team-designer
+# team-coder, team-tester, team-designer
 isolation: worktree   # Isolated worktree per agent
 background: true      # Non-blocking parallel execution
 permissionMode: acceptEdits
@@ -182,7 +182,7 @@ permissionMode: acceptEdits
 ### Research/Analysis Agents (no isolation needed)
 
 ```yaml
-# team-researcher, team-analyst, team-architect, team-quality
+# team-reader, team-validator
 # No isolation: worktree (read-only, permissionMode: plan prevents writes)
 permissionMode: plan  # Read-only mode already provides safety
 ```

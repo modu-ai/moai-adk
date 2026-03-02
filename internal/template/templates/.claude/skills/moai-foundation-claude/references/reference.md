@@ -89,7 +89,7 @@ Sequential Pattern:
 5. Result returned to command for presentation
 
 Parallel Pattern:
-- Multiple independent `Task()` calls execute concurrently
+- Multiple independent `Agent()` calls execute concurrently
 - Results aggregated after all complete
 - Use when tasks have no dependencies
 
@@ -146,13 +146,13 @@ Solutions:
 
 ### Sub-agent Delegation Failures
 
-Symptoms: Task() returns error, incomplete results
+Symptoms: Agent() returns error, incomplete results
 
 Solutions:
 1. Verify subagent_type is valid
 2. Check prompt clarity and specificity
 3. Ensure required context is provided
-4. Review token budget (each Task() gets 200K)
+4. Review token budget (each Agent() gets 200K)
 
 ### Hook Not Executing
 

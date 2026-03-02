@@ -22,33 +22,7 @@ metadata:
 
 # MoAI Extension: Triggers
 triggers:
-  keywords:
-    - database
-    - PostgreSQL
-    - MongoDB
-    - Redis
-    - Oracle
-    - SQL
-    - NoSQL
-    - PL/SQL
-    - query
-    - schema
-    - migration
-    - indexing
-    - ORM
-    - ODM
-    - SQLAlchemy
-    - Mongoose
-    - Prisma
-    - Drizzle
-    - python-oracledb
-    - cx_Oracle
-    - connection pool
-    - transaction
-    - data modeling
-    - aggregation
-    - partitioning
-    - hierarchical query
+  keywords: ["database", "PostgreSQL", "MongoDB", "Redis", "Oracle", "SQL", "NoSQL", "PL/SQL", "query", "schema", "migration", "indexing", "ORM", "ODM", "SQLAlchemy", "Mongoose", "Prisma", "Drizzle", "python-oracledb", "cx_Oracle", "connection pool", "transaction", "data modeling", "aggregation", "partitioning", "hierarchical query"]
 ---
 
 # Database Domain Specialist

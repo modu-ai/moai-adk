@@ -140,7 +140,7 @@ async def spec_then_implement():
  """Always execute /clear after SPEC."""
  
  # Phase 1: SPEC Generation (heavy context)
- spec = await Task(
+ spec = await Agent(
  subagent_type="spec-builder",
  prompt="Generate SPEC for user authentication"
  )
@@ -151,7 +151,7 @@ async def spec_then_implement():
  # Context: Reset to 0, saves 45-50K tokens
  
  # Phase 2: Implementation (fresh context)
- impl = await Task(
+ impl = await Agent(
  subagent_type="ddd-implementer",
  prompt="Implement SPEC-001",
  context={
@@ -554,7 +554,7 @@ backend_context = optimizer.optimize_context(large_context, "backend-expert")
 # Result: Only spec_id, api_design, database_schema
 # Size: ~25K tokens (vs 200K+ original)
 
-result = await Task(
+result = await Agent(
  subagent_type="backend-expert",
  prompt="Implement backend",
  context=backend_context # Optimized context

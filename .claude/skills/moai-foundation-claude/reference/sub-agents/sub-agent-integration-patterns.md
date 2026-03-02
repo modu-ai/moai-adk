@@ -11,7 +11,7 @@ Version: 2.0.0
 
 ## Quick Reference (30 seconds)
 
-Core Patterns: Sequential, Parallel, Conditional delegation. Coordination: Task() API, context passing, error handling. Best Practices: Single responsibility, clear boundaries, structured workflows. Quality Gates: Validation checkpoints, error recovery, result integration.
+Core Patterns: Sequential, Parallel, Conditional delegation. Coordination: Agent() API, context passing, error handling. Best Practices: Single responsibility, clear boundaries, structured workflows. Quality Gates: Validation checkpoints, error recovery, result integration.
 
 ---
 
@@ -34,13 +34,13 @@ def sequential_workflow(user_request):
  """Execute sequential sub-agent workflow."""
 
  # Phase 1: Specification
- spec_result = Task(
+ spec_result = Agent(
  subagent_type="workflow-spec",
  prompt=f"Create specification for: {user_request}"
  )
 
  # Phase 2: Implementation (passes spec as context)
- implementation_result = Task(
+ implementation_result = Agent(
  subagent_type="workflow-ddd",
  prompt="Implement from specification",
  context={
@@ -50,7 +50,7 @@ def sequential_workflow(user_request):
  )
 
  # Phase 3: Quality Validation
- quality_result = Task(
+ quality_result = Agent(
  subagent_type="core-quality",
  prompt="Validate implementation quality",
  context={
@@ -60,7 +60,7 @@ def sequential_workflow(user_request):
  )
 
  # Phase 4: Documentation
- docs_result = Task(
+ docs_result = Agent(
  subagent_type="workflow-docs",
  prompt="Generate documentation",
  context={
@@ -109,32 +109,32 @@ Implementation:
 def parallel_workflow(project_requirements):
  """Execute parallel sub-agent workflow.
 
- Note: In Claude Code, calling multiple Task() in a single response
+ Note: In Claude Code, calling multiple Agent() in a single response
  will automatically execute them in parallel (up to 10 concurrent).
  No need for asyncio.gather or Promise.all.
  """
 
- # Call multiple Task() for automatic parallel execution
+ # Call multiple Agent() for automatic parallel execution
  # Claude Code executes up to 10 Tasks concurrently
- frontend_design = Task(
+ frontend_design = Agent(
  subagent_type="code-frontend",
  prompt="Design frontend architecture",
  context={"requirements": project_requirements}
  )
 
- backend_design = Task(
+ backend_design = Agent(
  subagent_type="code-backend",
  prompt="Design backend architecture",
  context={"requirements": project_requirements}
  )
 
- database_design = Task(
+ database_design = Agent(
  subagent_type="data-database",
  prompt="Design database schema",
  context={"requirements": project_requirements}
  )
 
- security_analysis = Task(
+ security_analysis = Agent(
  subagent_type="security-expert",
  prompt="Security threat modeling",
  context={"requirements": project_requirements}
@@ -144,7 +144,7 @@ def parallel_workflow(project_requirements):
  # Results are available when all complete
 
  # Integration phase (runs after parallel tasks complete)
- integration_result = Task(
+ integration_result = Agent(
  subagent_type="integration-specialist",
  prompt="Integrate component designs",
  context={
@@ -213,7 +213,7 @@ class ConditionalWorkflow:
  """Analyze error and route to appropriate resolution agent."""
 
  # Phase 1: Analysis
- analysis_result = Task(
+ analysis_result = Agent(
  subagent_type="error-analyst",
  prompt="Analyze error and classify problem type",
  context={"error": error_context}
@@ -224,7 +224,7 @@ class ConditionalWorkflow:
  resolution_agent = self.get_resolution_agent(problem_type)
 
  # Phase 3: Resolution
- resolution_result = Task(
+ resolution_result = Agent(
  subagent_type=resolution_agent,
  prompt=f"Resolve {problem_type} issue",
  context={
@@ -404,7 +404,7 @@ class DevelopmentOrchestrator:
  }
 
  # Execute agent
- result = Task(
+ result = Agent(
  subagent_type=agent,
  prompt=f"Execute {phase_name} phase",
  context=phase_context
@@ -802,28 +802,28 @@ def handle_full_stack_request(request):
  results = {}
 
  if domain_analysis['frontend_required']:
- results['frontend'] = Task(
+ results['frontend'] = Agent(
  subagent_type="code-frontend",
  prompt="Design and implement frontend components",
  context={"request": request, "analysis": domain_analysis}
  )
 
  if domain_analysis['backend_required']:
- results['backend'] = Task(
+ results['backend'] = Agent(
  subagent_type="code-backend",
  prompt="Design and implement backend API",
  context={"request": request, "analysis": domain_analysis, "frontend": results.get('frontend')}
  )
 
  if domain_analysis['database_required']:
- results['database'] = Task(
+ results['database'] = Agent(
  subagent_type="data-database",
  prompt="Design database schema and optimization",
  context={"request": request, "analysis": domain_analysis, "frontend": results.get('frontend'), "backend": results.get('backend')}
  )
 
  # Integrate results
- integration_result = Task(
+ integration_result = Agent(
  subagent_type="integration-specialist",
  prompt="Integrate all components into cohesive application",
  context={"results": results, "request": request}

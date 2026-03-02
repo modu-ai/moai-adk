@@ -124,7 +124,7 @@ Quick Access:
 - MCP Resume pattern (40-60% token savings)
 
 Use Cases:
-- Agent selection for Task() delegation
+- Agent selection for Agent() delegation
 - Understanding agent hierarchy
 - MCP integrator usage
 - Historical agent merges
@@ -154,7 +154,7 @@ Use Cases:
 Security & Constraints - Security policies, execution constraints, and Git workflow strategies.
 
 Quick Access:
-- Agent-First Mandate (Task() only)
+- Agent-First Mandate (Agent() only)
 - Security Sandbox (protected paths, forbidden commands)
 - Permission System (RBAC 4 levels)
 - Git Strategy 3-Mode System (Manual/Personal/Team)

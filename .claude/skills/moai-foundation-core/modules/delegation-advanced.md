@@ -34,7 +34,7 @@ class ResilientDelegation:
 
         for attempt in range(self.max_retries):
             try:
-                result = await Task(
+                result = await Agent(
                     subagent_type=agent_type,
                     prompt=prompt,
                     context=context
@@ -56,7 +56,7 @@ class ResilientDelegation:
 
             except ContextTooLargeError as e:
                 compressed_context = self._compress_context(context)
-                return await Task(
+                return await Agent(
                     subagent_type=agent_type,
                     prompt=prompt,
                     context=compressed_context
@@ -76,7 +76,7 @@ class ResilientDelegation:
             "fallback_mode": True
         }
 
-        return await Task(
+        return await Agent(
             subagent_type=fallback_agent,
             prompt=f"[FALLBACK] {prompt}",
             context=fallback_context
@@ -106,12 +106,12 @@ async def hybrid_workflow(spec_id: str):
     """Combine sequential and parallel patterns."""
 
     # Phase 1: Sequential (SPEC → Design)
-    spec = await Task(
+    spec = await Agent(
         subagent_type="workflow-spec",
         prompt=f"Generate SPEC {spec_id}"
     )
 
-    design = await Task(
+    design = await Agent(
         subagent_type="api-designer",
         prompt="Design API",
         context={"spec_id": spec.id}
@@ -121,17 +121,17 @@ async def hybrid_workflow(spec_id: str):
 
     # Phase 2: Parallel (Implementation)
     impl_results = await Promise.all([
-        Task(
+        Agent(
             subagent_type="code-backend",
             prompt="Backend",
             context={"spec_id": spec.id, "api": design}
         ),
-        Task(
+        Agent(
             subagent_type="code-frontend",
             prompt="Frontend",
             context={"spec_id": spec.id, "api": design}
         ),
-        Task(
+        Agent(
             subagent_type="data-database",
             prompt="Database",
             context={"spec_id": spec.id, "api": design}
@@ -141,7 +141,7 @@ async def hybrid_workflow(spec_id: str):
     backend, frontend, database = impl_results
 
     # Phase 3: Sequential (Testing → QA)
-    tests = await Task(
+    tests = await Agent(
         subagent_type="core-quality",
         prompt="Integration tests",
         context={
@@ -152,7 +152,7 @@ async def hybrid_workflow(spec_id: str):
         }
     )
 
-    qa = await Task(
+    qa = await Agent(
         subagent_type="core-quality",
         prompt="Quality validation",
         context={
@@ -183,7 +183,7 @@ async def conditional_parallel_workflow(requests: list):
 
     # Phase 1: Parallel analysis
     analyses = await Promise.all([
-        Task(
+        Agent(
             subagent_type="plan",
             prompt=f"Analyze request",
             context={"request": req}
@@ -199,7 +199,7 @@ async def conditional_parallel_workflow(requests: list):
     for analysis in analyses:
         if analysis.category == "security":
             security_tasks.append(
-                Task(
+                Agent(
                     subagent_type="security-expert",
                     prompt="Handle security issue",
                     context={"analysis": analysis}
@@ -207,7 +207,7 @@ async def conditional_parallel_workflow(requests: list):
             )
         elif analysis.category == "feature":
             feature_tasks.append(
-                Task(
+                Agent(
                     subagent_type="code-backend",
                     prompt="Implement feature",
                     context={"analysis": analysis}
@@ -215,7 +215,7 @@ async def conditional_parallel_workflow(requests: list):
             )
         elif analysis.category == "bug":
             bug_tasks.append(
-                Task(
+                Agent(
                     subagent_type="support-debug",
                     prompt="Debug issue",
                     context={"analysis": analysis}

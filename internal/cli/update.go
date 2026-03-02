@@ -14,17 +14,19 @@ import (
 	"runtime"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mattn/go-isatty"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/merge"
+	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/shell"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -54,8 +56,9 @@ func symWarning() string  { return cliWarn.Render("!") }
 func symProgress() string { return cliMuted.Render("\u25CB") }
 
 var updateCmd = &cobra.Command{
-	Use:   "update",
-	Short: "Sync MoAI-ADK project templates to the latest version",
+	Use:     "update",
+	Short:   "Sync MoAI-ADK project templates to the latest version",
+	GroupID: "project",
 	Long:  "Check for binary updates, install if available, then synchronize embedded templates with the project.",
 	RunE:  runUpdate,
 }
@@ -98,6 +101,24 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// Validate mutually exclusive flags
 	if binaryOnly && templatesOnly {
 		return fmt.Errorf("--binary and --templates-only are mutually exclusive")
+	}
+
+	// Auto-prompt profile setup if no profile exists yet
+	nonInteractive := getBoolFlag(cmd, "yes")
+	if !nonInteractive && isatty.IsTerminal(os.Stdin.Fd()) {
+		profileName := profile.GetCurrentName()
+		if !profile.IsSetup(profileName) {
+			var wantSetup bool
+			confirm := huh.NewConfirm().
+				Title("No profile found. Set up profile preferences now?").
+				Description("Configure your name, language, and model preferences.").
+				Value(&wantSetup)
+			if err := confirm.Run(); err == nil && wantSetup {
+				if err := runProfileSetup(cmd, nil); err != nil {
+					_, _ = fmt.Fprintf(out, "Warning: profile setup failed: %v\n", err)
+				}
+			}
+		}
 	}
 
 	// Handle --config / -c mode (edit configuration only, no template updates)
@@ -171,7 +192,22 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		_, _ = fmt.Fprintln(out, "Binary update skipped (dev build). Template sync skipped (--binary).")
 		return nil
 	}
-	return runTemplateSyncWithProgress(cmd)
+	if err := runTemplateSyncWithProgress(cmd); err != nil {
+		return err
+	}
+
+	// Sync profile preferences to project config (after template deployment)
+	profileName := profile.GetCurrentName()
+	prefs, err := profile.ReadPreferences(profileName)
+	if err != nil {
+		_, _ = fmt.Fprintf(out, "Warning: failed to read profile preferences: %v\n", err)
+	} else {
+		if err := profile.SyncToProjectConfig(".", prefs); err != nil {
+			_, _ = fmt.Fprintf(out, "Warning: failed to sync profile to project config: %v\n", err)
+		}
+	}
+
+	return nil
 }
 
 // shouldSkipBinaryUpdate returns true when the binary update step should
@@ -1713,23 +1749,7 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 		return fmt.Errorf("apply configuration: %w", err)
 	}
 
-	// Apply model policy to agent files if selected
-	if result.ModelPolicy != "" {
-		mgr := manifest.NewManager()
-		if _, err := mgr.Load(cwd); err == nil {
-			if err := template.ApplyModelPolicy(cwd, template.ModelPolicy(result.ModelPolicy), mgr); err != nil {
-				_, _ = fmt.Fprintf(out, "Warning: failed to apply model policy: %v\n", err)
-			} else {
-				if err := mgr.Save(); err != nil {
-					_, _ = fmt.Fprintf(out, "Warning: failed to save manifest after model policy: %v\n", err)
-				}
-			}
-		}
-	}
-
 	_, _ = fmt.Fprintf(out, "%s Configuration updated successfully.\n", symSuccess())
-	_, _ = fmt.Fprintln(out)
-	_, _ = fmt.Fprintf(out, "  Language: %s\n", result.Locale)
 
 	return nil
 }
@@ -1737,108 +1757,6 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 // applyWizardConfig applies wizard results to the project configuration files.
 func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 	sectionsDir := filepath.Join(projectRoot, defs.MoAIDir, defs.SectionsSubdir)
-
-	// Update language.yaml
-	langPath := filepath.Join(sectionsDir, defs.LanguageYAML)
-	langContent := fmt.Sprintf("language:\n  conversation_language: %s\n  conversation_language_name: %s\n",
-		result.Locale, result.Locale)
-	if err := os.WriteFile(langPath, []byte(langContent), defs.FilePerm); err != nil {
-		return fmt.Errorf("write language.yaml: %w", err)
-	}
-
-	// Development mode is no longer configured via wizard.
-	// It defaults to "tdd" and is auto-configured by /moai project workflow.
-
-	// Update workflow.yaml with Agent Teams settings
-	if result.AgentTeamsMode != "" {
-		workflowPath := filepath.Join(sectionsDir, defs.WorkflowYAML)
-		// Read existing content
-		workflowData, err := os.ReadFile(workflowPath)
-		if err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("read workflow.yaml: %w", err)
-		}
-
-		// Parse YAML
-		var workflow map[string]any
-		if len(workflowData) > 0 {
-			if err := yaml.Unmarshal(workflowData, &workflow); err != nil {
-				return fmt.Errorf("parse workflow.yaml: %w", err)
-			}
-		} else {
-			workflow = make(map[string]any)
-		}
-
-		// Ensure workflow and workflow.team exist
-		workflowVal, ok := workflow["workflow"].(map[string]any)
-		if !ok {
-			workflowVal = make(map[string]any)
-			workflow["workflow"] = workflowVal
-		}
-
-		// Set execution_mode
-		workflowVal["execution_mode"] = result.AgentTeamsMode
-
-		// Handle team configuration
-		var teamConfig map[string]any
-		if existingTeam, ok := workflowVal["team"].(map[string]any); ok {
-			teamConfig = existingTeam
-		} else {
-			teamConfig = make(map[string]any)
-		}
-
-		// Set enabled flag based on AgentTeamsMode.
-		// "auto" and "team" both enable team mode; only "subagent" disables it.
-		teamConfig["enabled"] = (result.AgentTeamsMode != "subagent")
-
-		// Set max_teammates if provided (valid values: 2-10)
-		if result.MaxTeammates != "" {
-			// Validate max_teammates is between 2 and 10
-			if val, err := strconv.Atoi(result.MaxTeammates); err == nil && val >= 2 && val <= 10 {
-				teamConfig["max_teammates"] = val
-			}
-		}
-
-		// Set default_model if provided
-		if result.DefaultModel != "" {
-			// Validate default_model is one of: haiku, sonnet, opus
-			if result.DefaultModel == "haiku" || result.DefaultModel == "sonnet" || result.DefaultModel == "opus" {
-				teamConfig["default_model"] = result.DefaultModel
-			}
-		}
-
-		workflowVal["team"] = teamConfig
-		workflow["workflow"] = workflowVal
-
-		// Write back
-		updatedData, err := yaml.Marshal(workflow)
-		if err != nil {
-			return fmt.Errorf("marshal workflow.yaml: %w", err)
-		}
-		if err := os.WriteFile(workflowPath, updatedData, defs.FilePerm); err != nil {
-			return fmt.Errorf("write workflow.yaml: %w", err)
-		}
-	}
-
-	// Write statusline.yaml from wizard results
-	if result.StatuslinePreset != "" {
-		segments := presetToSegments(result.StatuslinePreset, result.StatuslineSegments)
-		statuslinePath := filepath.Join(sectionsDir, defs.StatuslineYAML)
-
-		statuslineConfig := map[string]any{
-			"statusline": map[string]any{
-				"preset":   result.StatuslinePreset,
-				"segments": segments,
-			},
-		}
-
-		data, err := yaml.Marshal(statuslineConfig)
-		if err != nil {
-			return fmt.Errorf("marshal statusline.yaml: %w", err)
-		}
-		if err := os.WriteFile(statuslinePath, data, defs.FilePerm); err != nil {
-			return fmt.Errorf("write statusline.yaml: %w", err)
-		}
-	}
 
 	// Update user.yaml with GitHub username and token
 	if result.GitHubUsername != "" || result.GitHubToken != "" {
@@ -1886,14 +1804,6 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		}
 		if err := os.WriteFile(userPath, updatedData, defs.FilePerm); err != nil {
 			return fmt.Errorf("write user.yaml: %w", err)
-		}
-	}
-
-	// Update settings.local.json with CLAUDE_CODE_TEAMMATE_DISPLAY if teammate_display is set
-	if result.TeammateDisplay != "" {
-		settingsPath := filepath.Join(projectRoot, defs.ClaudeDir, defs.SettingsLocalJSON)
-		if err := updateSettingsLocalEnv(settingsPath, "CLAUDE_CODE_TEAMMATE_DISPLAY", result.TeammateDisplay); err != nil {
-			return fmt.Errorf("update settings.local.json: %w", err)
 		}
 	}
 

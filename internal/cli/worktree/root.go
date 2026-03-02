@@ -16,6 +16,7 @@ var WorktreeCmd = &cobra.Command{
 	Use:     "worktree",
 	Aliases: []string{"wt"},
 	Short:   "Git worktree management",
+	GroupID: "tools",
 	Long:    "Manage Git worktrees for parallel SPEC development. Supports creating, listing, switching, syncing, removing, and cleaning worktrees.",
 }
 

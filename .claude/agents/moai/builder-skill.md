@@ -8,11 +8,16 @@ description: |
   KO: 스킬생성, 새스킬, 스킬최적화, 지식도메인, YAML프론트매터
   JA: スキル作成, 新スキル, スキル最適化, 知識ドメイン, YAMLフロントマター
   ZH: 创建技能, 新技能, 技能优化, 知识领域, YAML前置信息
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Agent, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
+maxTurns: 50
 permissionMode: bypassPermissions
 memory: user
-skills: moai-foundation-claude, moai-foundation-core, moai-workflow-project, moai-workflow-templates
+skills:
+  - moai-foundation-claude
+  - moai-foundation-core
+  - moai-workflow-project
+  - moai-workflow-templates
 ---
 
 # Skill Creation Specialist
@@ -290,7 +295,7 @@ Recommended Tool Access by Skill Type:
 
 Tool Permissions by MoAI Category:
 
-- Foundation skills: Read, Grep, Glob, Context7 MCP. Never: Bash, Task
+- Foundation skills: Read, Grep, Glob, Context7 MCP. Never: Bash, Agent
 - Workflow skills: Read, Write, Edit, Grep, Glob, Bash, TodoWrite
 - Domain skills: Read, Grep, Glob, Bash. Conditional: Write, Edit for implementation
 - Language skills: Read, Grep, Glob, Bash, Context7 MCP. Conditional: Write, Edit for implementation

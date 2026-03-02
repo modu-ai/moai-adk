@@ -9,9 +9,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// statuslineSegmentPrefix is the prefix used for statusline segment question IDs.
-const statuslineSegmentPrefix = "statusline_seg_"
-
 // Run executes the wizard and returns the result.
 // Each question runs as its own independent huh.Form to avoid the huh v0.8.x
 // YOffset scroll bug that occurs when multiple groups share a single viewport.
@@ -178,13 +175,10 @@ func buildInputField(q *Question, result *WizardResult, locale *string) *huh.Inp
 // saveAnswer stores an answer in the result.
 func saveAnswer(id, value string, result *WizardResult, locale *string) {
 	switch id {
-	case "locale":
-		result.Locale = value
-		*locale = value
-	case "user_name":
-		result.UserName = value
 	case "project_name":
 		result.ProjectName = value
+	case "development_mode":
+		result.DevelopmentMode = value
 	case "git_mode":
 		result.GitMode = value
 	case "git_provider":
@@ -199,33 +193,8 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 		result.GitLabUsername = value
 	case "gitlab_token":
 		result.GitLabToken = value
-	case "git_commit_lang":
-		result.GitCommitLang = value
-	case "code_comment_lang":
-		result.CodeCommentLang = value
-	case "doc_lang":
-		result.DocLang = value
-	case "model_policy":
-		result.ModelPolicy = value
-	case "agent_teams_mode":
-		result.AgentTeamsMode = value
-	case "max_teammates":
-		result.MaxTeammates = value
-	case "default_model":
-		result.DefaultModel = value
-	case "teammate_display":
-		result.TeammateDisplay = value
-	case "statusline_preset":
-		result.StatuslinePreset = value
-	default:
-		if after, ok := strings.CutPrefix(id, statuslineSegmentPrefix); ok {
-			segName := after
-			if result.StatuslineSegments == nil {
-				result.StatuslineSegments = make(map[string]bool)
-			}
-			result.StatuslineSegments[segName] = (value == "true")
-		}
 	}
+	_ = locale // locale is kept for GetLocalizedQuestion compatibility
 }
 
 // newMoAIWizardTheme creates a huh.Theme with MoAI wizard branding.

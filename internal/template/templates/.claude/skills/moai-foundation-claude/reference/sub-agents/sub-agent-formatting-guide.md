@@ -11,7 +11,7 @@ Version: 2.0.0
 
 ## Quick Reference (30 seconds)
 
-Core Format: YAML frontmatter + system prompt with clear domain focus. Naming: kebab-case, unique, max 64 chars. Constraints: No sub-agent nesting, Task() delegation only, isolated context windows. Key Features: Specific domain expertise, clear trigger scenarios, proper tool permissions.
+Core Format: YAML frontmatter + system prompt with clear domain focus. Naming: kebab-case, unique, max 64 chars. Constraints: No sub-agent nesting, Agent() delegation only, isolated context windows. Key Features: Specific domain expertise, clear trigger scenarios, proper tool permissions.
 
 ---
 
@@ -59,7 +59,7 @@ Focus Areas: [Specific areas within the domain]
 
 ## Critical Constraints
 
-- No sub-agent spawning: This agent CANNOT create other sub-agents. Use Task() delegation for complex workflows.
+- No sub-agent spawning: This agent CANNOT create other sub-agents. Use Agent() delegation for complex workflows.
 - Domain focus: Stay within defined domain expertise. Delegate to other agents for outside-domain tasks.
 - Tool permissions: Only use tools explicitly granted in the frontmatter.
 - Quality standards: All outputs must meet [specific quality standards]
@@ -257,7 +257,7 @@ Critical Constraints Section:
 ```markdown
 ## Critical Constraints
 
-- No sub-agent spawning: This agent CANNOT create other sub-agents. Use Task() delegation only.
+- No sub-agent spawning: This agent CANNOT create other sub-agents. Use Agent() delegation only.
 - Domain focus: Stay within backend domain. Delegate frontend tasks to code-frontend.
 - Security-first: All designs must pass OWASP validation.
 - Performance-aware: Include scalability and optimization considerations.
@@ -486,7 +486,7 @@ Naming Convention:
 Description Writing:
 - Include PROACTIVELY clause
 - Specify called-from contexts
-- Include Task() invocation requirement
+- Include Agent() invocation requirement
 - Provide specific trigger scenarios
 
 System Prompt Development:
@@ -508,20 +508,20 @@ Example: `workflow-spec` → `workflow-ddd` → `workflow-docs`
 ```python
 # Sequential delegation example
 # Phase 1: Specification
-spec_result = Task(
+spec_result = Agent(
  subagent_type="workflow-spec",
  prompt="Create specification for user authentication system"
 )
 
 # Phase 2: Implementation (passes spec as context)
-implementation_result = Task(
+implementation_result = Agent(
  subagent_type="workflow-ddd",
  prompt="Implement user authentication from specification",
  context={"specification": spec_result}
 )
 
 # Phase 3: Documentation (passes implementation as context)
-documentation_result = Task(
+documentation_result = Agent(
  subagent_type="workflow-docs",
  prompt="Generate API documentation",
  context={"implementation": implementation_result}
@@ -537,22 +537,22 @@ Example: `code-backend` + `code-frontend` + `data-database`
 ```python
 # Parallel delegation example
 results = await Promise.all([
- Task(
+ Agent(
  subagent_type="code-backend",
  prompt="Design backend API for user management"
  ),
- Task(
+ Agent(
  subagent_type="code-frontend",
  prompt="Design frontend user interface for user management"
  ),
- Task(
+ Agent(
  subagent_type="data-database",
  prompt="Design database schema for user management"
  )
 ])
 
 # Integration phase
-integrated_result = Task(
+integrated_result = Agent(
  subagent_type="integration-specialist",
  prompt="Integrate backend, frontend, and database designs",
  context={"results": results}
@@ -567,19 +567,19 @@ Example: `security-expert` vs `performance-engineer`
 
 ```python
 # Conditional delegation example
-analysis_result = Task(
+analysis_result = Agent(
  subagent_type="analysis-expert",
  prompt="Analyze code issue and classify problem type"
 )
 
 if analysis_result.type == "security":
- result = Task(
+ result = Agent(
  subagent_type="security-expert",
  prompt="Adddess security vulnerability",
  context={"analysis": analysis_result}
  )
 elif analysis_result.type == "performance":
- result = Task(
+ result = Agent(
  subagent_type="performance-engineer",
  prompt="Optimize performance issue",
  context={"analysis": analysis_result}

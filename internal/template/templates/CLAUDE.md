@@ -14,10 +14,8 @@ MoAI is the Strategic Orchestrator for Claude Code. All tasks must be delegated 
 - [HARD] Multi-File Decomposition: Split work when modifying 3+ files (See Section 7)
 - [HARD] Post-Implementation Review: List potential issues and suggest tests after coding (See Section 7)
 - [HARD] Reproduction-First Bug Fix: Write reproduction test before fixing bugs (See Section 7)
-- [HARD] No Refusal: Never refuse explicit user requests or argue bugs are "by design" (See Section 7)
-- [HARD] No Autonomous Work: Do not start unrequested analysis, optimization, or refactoring (See Section 7)
 
-Core principles (1-4) are defined in .claude/rules/moai/core/moai-constitution.md. Development safeguards (5-10) are detailed in Section 7.
+Core principles (1-4) are defined in @.claude/rules/moai/core/moai-constitution.md. Development safeguards (5-8) are detailed in Section 7.
 
 ### Recommendations
 
@@ -105,9 +103,9 @@ backend, frontend, security, devops, performance, debug, testing, refactoring, c
 
 agent, skill, plugin
 
-### Team Agents (8) - Experimental
+### Team Agents (5) - Experimental
 
-researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality (requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1)
+reader, coder, tester, designer, validator (requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1)
 
 Both `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` env var AND `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml` are required.
 
@@ -175,9 +173,9 @@ MoAI-ADK implements LSP-based quality gates:
 
 ## 7. Safe Development Protocol
 
-### Development Safeguards (6 HARD Rules)
+### Development Safeguards (4 HARD Rules)
 
-These rules ensure code quality, prevent regressions, and maintain predictable AI behavior.
+These rules ensure code quality and prevent regressions in the project codebase.
 
 **Rule 1: Approach-First Development**
 
@@ -211,20 +209,13 @@ When fixing bugs:
 - Fix the bug with minimal code changes
 - Verify the reproduction test passes after the fix
 
-**Rule 5: No Refusal of Explicit Requests**
+### Go-Specific Guidelines
 
-When the user reports a bug or requests a specific fix:
-- Make the requested change first
-- Explain concerns or alternatives separately after the fix
-- Never argue that a reported bug is "by design"
-- Never refuse an explicit implementation request
-
-**Rule 6: No Autonomous Work Without Request**
-
-- Do NOT start autonomous work (analysis, optimization, refactoring) unless explicitly requested
-- Wait for user instructions before acting
-- After /clear or session resume, do NOT analyze or optimize anything autonomously
-- Exceptions: Quality gate enforcement, hook-triggered validation
+For Go development:
+- Run `go test -race ./...` for concurrency safety
+- Use table-driven tests for comprehensive coverage
+- Maintain 85%+ test coverage per package
+- Run `go vet` and `golangci-lint` before commits
 
 ---
 
@@ -232,12 +223,12 @@ When the user reports a bug or requests a specific fix:
 
 ### Critical Constraint
 
-Subagents invoked via Task() operate in isolated, stateless contexts and cannot interact with users directly.
+Subagents invoked via Agent() operate in isolated, stateless contexts and cannot interact with users directly.
 
 ### Correct Workflow Pattern
 
 - Step 1: MoAI uses AskUserQuestion to collect user preferences
-- Step 2: MoAI invokes Task() with user choices in the prompt
+- Step 2: MoAI invokes Agent() with user choices in the prompt
 - Step 3: Subagent executes based on provided parameters
 - Step 4: Subagent returns structured response
 - Step 5: MoAI uses AskUserQuestion for next decision
@@ -434,41 +425,50 @@ MoAI-ADK supports CG Mode for 60-70% cost reduction on implementation-heavy task
 
 ---
 
-## 16. Session Continuity
+## 16. Context Search Protocol
 
-When resuming work from a previous session, provide structured context to avoid re-exploration.
+MoAI searches previous Claude Code sessions when context is needed to continue work on existing tasks or discussions.
 
-### Resume Prompt Pattern
+### When to Search
 
-Include the following in your first message when continuing previous work:
+Search previous sessions when:
+- User references past work without sufficient context in current session
+- User mentions a SPEC-ID that is not loaded in current context
+- User asks to continue previous work or resume interrupted tasks
+- User explicitly requests to find previous discussions
 
-```
-Continuing [SPEC-ID or task description].
-Previous session completed: [what was done]
-Remaining work: [what needs to be done]
-Modified files: [list of files changed]
-Start from: [specific starting point]
-```
+### When NOT to Search
 
-### When to Use
+Skip context search when:
+- Relevant SPEC document is already loaded in current context
+- Related documents or code are already present in conversation
+- User references content that exists in current session
+- Context duplication would provide no additional value
 
-- Continuing a SPEC implementation across multiple sessions
-- Resuming after rate limit interruption
-- Picking up after /clear was executed between phases
+### Search Process
 
-### Context Sources
-
-When context is needed from previous sessions:
-1. Check SPEC document at `.moai/specs/SPEC-XXX/spec.md` for requirements
-2. Check git log for recent changes: `git log --oneline -20`
-3. Check MX scan progress: `.moai/cache/mx-scan-progress.json`
-4. Read task list if team mode was active
+1. Check if relevant context already exists in current session (skip if found)
+2. Ask user confirmation before searching (via AskUserQuestion)
+3. Use Grep to search session index and transcript files in ~/.claude/projects/
+4. Limit search to recent sessions (configurable, default 30 days)
+5. Summarize findings and present for user approval
+6. Inject approved context into current conversation (avoid duplicates)
 
 ### Token Budget
 
-- Maximum 5,000 tokens for injected context
-- Summarize lengthy previous work into key decisions and outcomes
-- Prefer referencing files over copying content
+- Maximum 5,000 tokens per injection
+- Skip search if current token usage exceeds 150,000
+- Summarize lengthy conversations to stay within budget
+
+### Manual Trigger
+
+User can explicitly request context search at any time during conversation.
+
+### Integration Notes
+
+- Complements @MX TAG system for code context
+- Automatically triggered when SPEC reference lacks context
+- Available in both solo and team modes
 
 ---
 
@@ -513,8 +513,8 @@ Large PDFs (>10 pages) return a lightweight reference when @-mentioned. Always s
 
 ---
 
-Version: 13.2.0 (Usage Data Driven Improvements)
-Last Updated: 2026-02-22
+Version: 13.1.0 (Agent Teams Integration)
+Last Updated: 2026-02-10
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
 

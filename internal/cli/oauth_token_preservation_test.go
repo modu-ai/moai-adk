@@ -1,15 +1,21 @@
 package cli
 
-// TestOAuthTokenPreservation: Reproduction test for the OAuth token loss bug.
+// TestOAuthTokenPreservation: Reproduction test for the ANTHROPIC_AUTH_TOKEN loss bug.
 //
-// Bug: OAuth users must run /login on every Claude Code session restart.
+// Bug: Users who manually set ANTHROPIC_AUTH_TOKEN in settings.local.json
+// (e.g. an Anthropic API key) lose it after a moai glm → moai cc round-trip.
+//
+// Note: Claude Code OAuth tokens are stored in ~/.claude/ (internal credential
+// storage), NOT in settings.local.json. OAuth users are unaffected by this bug.
+// This backup logic protects API-key users who configure ANTHROPIC_AUTH_TOKEN
+// directly in settings.local.json.
 //
 // Root cause:
-//  1. moai glm writes ANTHROPIC_AUTH_TOKEN=<GLM_KEY> to .claude/settings.local.json
-//     This overwrites any pre-existing Claude OAuth token stored there.
+//  1. moai glm writes ANTHROPIC_AUTH_TOKEN=<GLM_KEY> to .claude/settings.local.json,
+//     overwriting any pre-existing API key stored there.
 //  2. moai cc calls removeGLMEnv() which deletes ANTHROPIC_AUTH_TOKEN entirely,
-//     never restoring the original OAuth token.
-//  3. On next Claude Code startup, ANTHROPIC_AUTH_TOKEN is missing => /login required.
+//     never restoring the original API key.
+//  3. On next Claude Code startup, the user's API key is gone.
 //
 // Fix: When injecting GLM env vars, back up any existing ANTHROPIC_AUTH_TOKEN
 // as MOAI_BACKUP_AUTH_TOKEN. When removing GLM env vars, restore the backup.

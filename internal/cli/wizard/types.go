@@ -12,8 +12,9 @@ import (
 type WizardResult struct {
 	// Core settings
 	ProjectName string // Project name (required)
-	Locale      string // Conversation language code: ko, en, ja, zh
-	UserName    string // User display name (optional)
+
+	// Development methodology
+	DevelopmentMode string // Development mode: ddd, tdd
 
 	// Git settings
 	GitMode           string // Git automation mode: manual, personal, team
@@ -23,27 +24,6 @@ type WizardResult struct {
 	GitLabInstanceURL string // GitLab instance URL (for self-hosted, e.g. "https://gitlab.company.com")
 	GitLabUsername    string // GitLab username (for personal/team modes with gitlab provider)
 	GitLabToken       string // GitLab personal access token (optional)
-
-	// Output language settings
-	GitCommitLang   string // Language for git commit messages: en, ko, ja, zh
-	CodeCommentLang string // Language for code comments: en, ko, ja, zh
-	DocLang         string // Language for documentation: en, ko, ja, zh
-
-	// Development methodology
-	DevelopmentMode string // Development mode: ddd, tdd
-
-	// Model policy
-	ModelPolicy string // Token consumption tier: high, medium, low
-
-	// Agent Teams settings
-	AgentTeamsMode  string // Agent Teams execution mode: auto, subagent, team
-	MaxTeammates    string // Maximum teammates (2-10, for team mode)
-	DefaultModel    string // Default model for teammates: haiku, sonnet, opus
-	TeammateDisplay string // Teammate display mode: auto, in-process, tmux
-
-	// Statusline settings
-	StatuslinePreset   string          // Statusline preset: full, compact, minimal, custom
-	StatuslineSegments map[string]bool // Segment toggles (used when preset is "custom")
 }
 
 // QuestionType represents the type of wizard question.

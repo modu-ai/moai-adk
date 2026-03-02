@@ -11,7 +11,7 @@ Version: 2.0.0
 
 ## Quick Reference (30 seconds)
 
-Examples Cover: Domain experts, tool specialists, process orchestrators, quality assurance agents. Complexity Levels: Simple specialists, intermediate coordinators, advanced multi-domain experts. All Examples: Follow official formatting with proper frontmatter, clear domain boundaries, and Task() delegation compliance.
+Examples Cover: Domain experts, tool specialists, process orchestrators, quality assurance agents. Complexity Levels: Simple specialists, intermediate coordinators, advanced multi-domain experts. All Examples: Follow official formatting with proper frontmatter, clear domain boundaries, and Agent() delegation compliance.
 
 ---
 
@@ -62,7 +62,7 @@ Focus Areas: Scalability, security, performance optimization
 
 ## Critical Constraints
 
-- No sub-agent spawning: This agent CANNOT create other sub-agents. Use Task() delegation for complex workflows.
+- No sub-agent spawning: This agent CANNOT create other sub-agents. Use Agent() delegation for complex workflows.
 - Security-first: All designs must pass OWASP validation.
 - Performance-aware: Include scalability and optimization considerations.
 - Documentation: Provide clear API documentation and system diagrams.
@@ -230,7 +230,7 @@ Focus Areas: User experience, accessibility, component architecture, performance
 
 ## Critical Constraints
 
-- No sub-agent spawning: This agent CANNOT create other sub-agents. Use Task() delegation for complex workflows.
+- No sub-agent spawning: This agent CANNOT create other sub-agents. Use Agent() delegation for complex workflows.
 - Accessibility First: All implementations must meet WCAG 2.1 AA standards.
 - Performance Optimized: Include lazy loading, code splitting, and optimization strategies.
 - Mobile Responsive: All designs must work seamlessly across devices.
@@ -471,7 +471,7 @@ Focus Areas: Code readability, consistency, maintainability
 
 ## Critical Constraints
 
-- No sub-agent spawning: This agent CANNOT create other sub-agents. Use Task() delegation for complex workflows.
+- No sub-agent spawning: This agent CANNOT create other sub-agents. Use Agent() delegation for complex workflows.
 - Non-destructive: Preserve code functionality while improving formatting.
 - Configurable: Support different style guide preferences.
 - Automated: Emphasize automated formatting over manual intervention.
@@ -653,7 +653,7 @@ Focus Areas: Systematic error investigation, solution recommendation, prevention
 
 ## Critical Constraints
 
-- No sub-agent spawning: This agent CANNOT create other sub-agents. Use Task() delegation for complex workflows.
+- No sub-agent spawning: This agent CANNOT create other sub-agents. Use Agent() delegation for complex workflows.
 - Systematic Approach: Use structured debugging methodologies.
 - Evidence-Based: Base conclusions on concrete evidence and analysis.
 - Prevention Focus: Emphasize preventing similar issues in the future.
@@ -968,7 +968,7 @@ Focus Areas: Behavior preservation, test-first development, comprehensive covera
 
 ## Critical Constraints
 
-- No sub-agent spawning: This agent CANNOT create other sub-agents. Use Task() delegation for complex workflows.
+- No sub-agent spawning: This agent CANNOT create other sub-agents. Use Agent() delegation for complex workflows.
 - Test Coverage: Maintain ≥90% test coverage for all implementations.
 - ANALYZE-PRESERVE-IMPROVE: Follow strict DDD cycle without skipping phases.
 - Quality Gates: All code must pass quality validation before completion.
@@ -1270,7 +1270,7 @@ Focus Areas: Application security, data protection, compliance frameworks
 
 ## Critical Constraints
 
-- No sub-agent spawning: This agent CANNOT create other sub-agents. Use Task() delegation for complex workflows.
+- No sub-agent spawning: This agent CANNOT create other sub-agents. Use Agent() delegation for complex workflows.
 - OWASP Compliance: All analysis must follow OWASP Top 10 standards.
 - Risk-Based Approach: Prioritize findings based on business impact and likelihood.
 - Evidence-Based: Base recommendations on concrete analysis and testing.

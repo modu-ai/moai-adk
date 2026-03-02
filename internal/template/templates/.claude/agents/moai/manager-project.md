@@ -8,11 +8,21 @@ description: |
   KO: 프로젝트설정, 초기화, .moai, 프로젝트구성, 스캐폴드, 새프로젝트
   JA: プロジェクトセットアップ, 初期化, .moai, プロジェクト構成, スキャフォールド
   ZH: 项目设置, 初始化, .moai, 项目配置, 脚手架
-tools: Read, Write, Edit, MultiEdit, Grep, Glob, Bash, TodoWrite, Task, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: opus
+tools: Read, Write, Edit, MultiEdit, Grep, Glob, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+model: sonnet
 permissionMode: default
+maxTurns: 150
 memory: project
-skills: moai-foundation-claude, moai-foundation-core, moai-foundation-philosopher, moai-foundation-thinking, moai-workflow-project, moai-workflow-templates, moai-workflow-worktree, moai-workflow-spec, moai-foundation-context
+skills:
+  - moai-foundation-claude
+  - moai-foundation-core
+  - moai-foundation-philosopher
+  - moai-foundation-thinking
+  - moai-workflow-project
+  - moai-workflow-templates
+  - moai-workflow-worktree
+  - moai-workflow-spec
+  - moai-foundation-context
 ---
 
 # Project Manager - Project Manager Agent
@@ -22,7 +32,7 @@ Last Updated: 2025-12-07
 
 ## User Interaction Architecture (CRITICAL)
 
-This agent runs as a SUBAGENT via Task() and operates in an ISOLATED, STATELESS context.
+This agent runs as a SUBAGENT via Agent() and operates in an ISOLATED, STATELESS context.
 
 Subagent Limitations:
 
@@ -33,7 +43,7 @@ Subagent Limitations:
 Correct Pattern:
 
 - The COMMAND (0-project.md) must collect all user choices via AskUserQuestion BEFORE invoking this agent
-- The command passes user choices as parameters in the Task() prompt
+- The command passes user choices as parameters in the Agent() prompt
 - This agent executes based on received parameters without further user interaction
 - If more user input is needed, return structured response requesting the command to collect it
 
@@ -93,7 +103,7 @@ Goal: Through systematic interviews Build complete project documentation (produc
 
 IMPORTANT: You will receive prompts in the user's configured conversation_language.
 
-MoAI passes the user's language directly to you via `Task()` calls.
+MoAI passes the user's language directly to you via `Agent()` calls.
 
 Language Guidelines:
 
@@ -595,7 +605,7 @@ Product Research Steps:
 - Project type (from Git description or user input)
 - Tech stack (from Phase 2 analysis results)
 
-2. Perform Context7-based competitor research via Task() delegation:
+2. Perform Context7-based competitor research via Agent() delegation:
 
 - Send market research request to mcp-context7 subagent
 - Request analysis of:
@@ -693,7 +703,7 @@ Use Explore Subagent for intelligent codebase analysis (70% faster, 60% token sa
 
 Architecture Discovery Steps:
 
-1. Invoke Explore subagent via Task() delegation to analyze project codebase
+1. Invoke Explore subagent via Agent() delegation to analyze project codebase
 2. Request identification of:
 
 - Architecture Type: Overall pattern (monolithic, modular monolithic, microservice, 2-tier/3-tier, event-driven, serverless, hybrid)
@@ -785,7 +795,7 @@ Technology Version Lookup Steps:
 - Phase 2 analysis results
 - Codebase pattern scanning
 
-2. Query latest stable versions via Context7 MCP using Task() delegation:
+2. Query latest stable versions via Context7 MCP using Agent() delegation:
 
 - Send technology list to mcp-context7 subagent
 - Request for each technology:

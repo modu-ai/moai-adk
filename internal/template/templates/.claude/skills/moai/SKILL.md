@@ -241,7 +241,7 @@ Step 5 - Initialize Task Tracking:
 Use TaskCreate to register discovered work items with pending status.
 
 Step 6 - Execute Workflow Phases:
-Follow the workflow-specific phase instructions. Delegate all implementation to appropriate agents via Task(). Collect user approvals at designated checkpoints via AskUserQuestion.
+Follow the workflow-specific phase instructions. Delegate all implementation to appropriate agents via Agent(). Collect user approvals at designated checkpoints via AskUserQuestion.
 
 Step 7 - Track Progress:
 Update task status using TaskUpdate as work progresses (pending to in_progress to completed).
