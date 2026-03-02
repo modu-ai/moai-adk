@@ -133,7 +133,7 @@ func cleanupCurrentSessionTeam(sessionID, homeDir string) {
 					"team_dir", teamDir,
 					"session_id", sessionID,
 				)
-				// team 디렉터리 삭제 성공 시 대응하는 task 디렉터리도 삭제
+				// Also remove the corresponding task directory when the team directory is successfully deleted
 				tasksDir := filepath.Join(homeDir, ".claude", "tasks", entry.Name())
 				if err := os.RemoveAll(tasksDir); err != nil {
 					slog.Warn("session_end: could not remove task directory for session",
@@ -198,7 +198,7 @@ func garbageCollectStaleTeams(homeDir string) {
 					"path", teamDir,
 					"age", time.Since(info.ModTime()).Round(time.Minute),
 				)
-				// 오래된 team 디렉터리 삭제 성공 시 대응하는 task 디렉터리도 삭제
+				// Also remove the corresponding task directory when a stale team directory is successfully deleted
 				taskDir := filepath.Join(homeDir, ".claude", "tasks", entry.Name())
 				if err := os.RemoveAll(taskDir); err != nil {
 					slog.Warn("session_end: could not remove stale task directory",
@@ -215,9 +215,9 @@ func garbageCollectStaleTeams(homeDir string) {
 	}
 }
 
-// garbageCollectOrphanedTasks는 ~/.claude/tasks/ 에서 대응하는 team 디렉터리가
-// 없는 고아 task 디렉터리를 정리한다. 인터럽트된 세션이나 불완전한 정리로 인해
-// 남겨진 task 디렉터리를 수집한다. 오류는 로그로 기록되며 반환되지 않는다.
+// garbageCollectOrphanedTasks cleans up orphaned task directories under ~/.claude/tasks/
+// that have no corresponding team directory. Collects task directories left behind by
+// interrupted sessions or incomplete cleanup. Errors are logged and never returned.
 func garbageCollectOrphanedTasks(homeDir string) {
 	tasksDir := filepath.Join(homeDir, ".claude", "tasks")
 	teamsDir := filepath.Join(homeDir, ".claude", "teams")
@@ -238,14 +238,14 @@ func garbageCollectOrphanedTasks(homeDir string) {
 			continue
 		}
 
-		// 대응하는 team 디렉터리가 존재하는지 확인
+		// Check whether the corresponding team directory exists
 		teamDir := filepath.Join(teamsDir, entry.Name())
 		if _, err := os.Stat(teamDir); err == nil {
-			// team 디렉터리가 존재하면 고아가 아님 — 유지
+			// Team directory exists, so this is not an orphan — keep it
 			continue
 		}
 
-		// team 디렉터리가 없으므로 고아 task 디렉터리 삭제
+		// No team directory, so remove the orphaned task directory
 		taskDir := filepath.Join(tasksDir, entry.Name())
 		if err := os.RemoveAll(taskDir); err != nil {
 			slog.Warn("session_end: could not remove orphaned task directory",

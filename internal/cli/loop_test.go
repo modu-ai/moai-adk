@@ -9,7 +9,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/loop"
 )
 
-// --- 커맨드 등록 검증 테스트 ---
+// --- Command registration validation tests ---
 
 func TestLoopCmd_Exists(t *testing.T) {
 	if loopCmd == nil {

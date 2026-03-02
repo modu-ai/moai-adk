@@ -165,7 +165,7 @@ func (m *DefaultSessionManager) Create(ctx context.Context, cfg *SessionConfig) 
 	}, nil
 }
 
-// InjectEnv는 현재 tmux 세션에 환경변수를 주입한다.
+// InjectEnv injects environment variables into the current tmux session.
 func (m *DefaultSessionManager) InjectEnv(ctx context.Context, vars map[string]string) error {
 	for key, value := range vars {
 		args := []string{"set-environment", key, value}
@@ -176,7 +176,7 @@ func (m *DefaultSessionManager) InjectEnv(ctx context.Context, vars map[string]s
 	return nil
 }
 
-// ClearEnv는 현재 tmux 세션에서 환경변수를 제거한다.
+// ClearEnv removes environment variables from the current tmux session.
 func (m *DefaultSessionManager) ClearEnv(ctx context.Context, vars []string) error {
 	for _, key := range vars {
 		args := []string{"set-environment", "-u", key}

@@ -160,19 +160,19 @@ func TestNewDetector_DefaultRunFunc(t *testing.T) {
 }
 
 func TestSystemDetector_InTmuxSession(t *testing.T) {
-	// t.Setenv는 t.Parallel()과 함께 사용할 수 없으므로 순차 실행
+	// t.Setenv cannot be used with t.Parallel(), so run sequentially
 	tests := []struct {
 		name     string
 		tmuxEnv  string
 		expected bool
 	}{
 		{
-			name:     "TMUX 환경변수가 설정된 경우 true 반환",
+			name:     "returns true when TMUX env var is set",
 			tmuxEnv:  "/tmp/tmux-1000/default,12345,0",
 			expected: true,
 		},
 		{
-			name:     "TMUX 환경변수가 비어있는 경우 false 반환",
+			name:     "returns false when TMUX env var is empty",
 			tmuxEnv:  "",
 			expected: false,
 		},

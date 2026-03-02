@@ -10,8 +10,8 @@ import (
 	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
 )
 
-// FileAnalyzer는 단일 파일의 AST 기반 코드 스캔을 수행하는 인터페이스.
-// astgrep.SGAnalyzer가 이 인터페이스를 구현한다.
+// FileAnalyzer is the interface for performing AST-based code scanning on a single file.
+// astgrep.SGAnalyzer implements this interface.
 type FileAnalyzer interface {
 	ScanFile(ctx context.Context, filePath string, config *astgrep.ScanConfig) (*astgrep.ScanResult, error)
 }
@@ -22,8 +22,8 @@ type FileAnalyzer interface {
 // Optionally integrates with LSP diagnostics for Write/Edit operations.
 type postToolHandler struct {
 	diagnostics lsphook.LSPDiagnosticsCollector
-	// analyzer는 Write/Edit 작업 후 AST 기반 스캔을 수행하는 선택적 분석기.
-	// nil이면 AST 스캔을 건너뜀.
+	// analyzer is an optional analyzer that performs AST-based scanning after Write/Edit operations.
+	// If nil, AST scanning is skipped.
 	analyzer FileAnalyzer
 }
 
@@ -38,8 +38,8 @@ func NewPostToolHandlerWithDiagnostics(diagnostics lsphook.LSPDiagnosticsCollect
 	return &postToolHandler{diagnostics: diagnostics}
 }
 
-// NewPostToolHandlerWithAstgrep는 LSP 진단과 AST 스캔을 모두 사용하는 PostToolUse 핸들러를 생성.
-// diagnostics 또는 analyzer가 nil이면 해당 기능을 건너뜀.
+// NewPostToolHandlerWithAstgrep creates a PostToolUse handler that uses both LSP diagnostics and AST scanning.
+// If diagnostics or analyzer is nil, the corresponding feature is skipped.
 func NewPostToolHandlerWithAstgrep(diagnostics lsphook.LSPDiagnosticsCollector, analyzer FileAnalyzer) Handler {
 	return &postToolHandler{diagnostics: diagnostics, analyzer: analyzer}
 }
@@ -85,7 +85,7 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		h.collectDiagnostics(ctx, input, metrics)
 	}
 
-	// Write/Edit 작업 후 AST 파일 스캔 수행 (관찰 전용, 절대 블록하지 않음)
+	// Perform AST file scan after Write/Edit operations (observation-only, never blocks)
 	if (input.ToolName == "Write" || input.ToolName == "Edit") && h.analyzer != nil {
 		h.runAstScan(ctx, input, metrics)
 	}
@@ -106,13 +106,13 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 	}, nil
 }
 
-// runAstScan은 수정된 파일에 대해 AST 기반 스캔을 수행.
-// 관찰 전용으로, 오류가 발생해도 절대 블록하지 않음.
+// runAstScan performs an AST-based scan on the modified file.
+// Observation-only: never blocks even if an error occurs.
 func (h *postToolHandler) runAstScan(ctx context.Context, input *HookInput, metrics map[string]any) {
-	// tool input에서 파일 경로 추출
+	// Extract file path from tool input
 	var parsed map[string]any
 	if err := json.Unmarshal(input.ToolInput, &parsed); err != nil {
-		slog.Debug("AST 스캔을 위한 tool input 파싱 실패", "error", err)
+		slog.Debug("failed to parse tool input for AST scan", "error", err)
 		return
 	}
 
@@ -121,17 +121,17 @@ func (h *postToolHandler) runAstScan(ctx context.Context, input *HookInput, metr
 		return
 	}
 
-	// AST 스캔 수행 (관찰 전용, 오류는 로그만 남김)
+	// Perform AST scan (observation-only, errors are only logged)
 	result, err := h.analyzer.ScanFile(ctx, filePath, nil)
 	if err != nil {
-		slog.Debug("AST 스캔 실패 (관찰 전용)",
+		slog.Debug("AST scan failed (observation-only)",
 			"file_path", filePath,
 			"error", err,
 		)
 		return
 	}
 
-	// 스캔 결과를 메트릭에 추가
+	// Add scan results to metrics
 	metrics["ast_scan"] = map[string]any{
 		"file":        filepath.Base(filePath),
 		"matches":     len(result.Matches),
@@ -139,7 +139,7 @@ func (h *postToolHandler) runAstScan(ctx context.Context, input *HookInput, metr
 		"duration_ms": result.Duration.Milliseconds(),
 	}
 
-	slog.Debug("AST 스캔 완료",
+	slog.Debug("AST scan complete",
 		"file_path", filepath.Base(filePath),
 		"matches", len(result.Matches),
 		"lang", result.Language,

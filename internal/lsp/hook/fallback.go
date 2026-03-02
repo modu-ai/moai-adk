@@ -35,7 +35,7 @@ type fallbackDiagnostics struct {
 	mu             sync.RWMutex
 	tools          map[string][]FallbackTool
 	available      map[string]bool
-	// circuitBreaker는 외부 도구 실행을 보호하는 서킷 브레이커다. nil이면 비활성화된다.
+	// circuitBreaker protects external tool execution. If nil, it is disabled.
 	circuitBreaker *resilience.CircuitBreaker
 }
 
@@ -51,7 +51,7 @@ func NewFallbackDiagnostics() *fallbackDiagnostics {
 
 // NewFallbackDiagnosticsWithCircuitBreaker creates a new fallback diagnostics provider
 // with circuit breaker protection for external tool execution.
-// go vet/golangci-lint 등 외부 도구가 반복 실패 시 빠르게 건너뛰기 위해 사용한다.
+// Used to skip quickly when external tools like go vet/golangci-lint fail repeatedly.
 func NewFallbackDiagnosticsWithCircuitBreaker(cb *resilience.CircuitBreaker) *fallbackDiagnostics {
 	fb := &fallbackDiagnostics{
 		tools:          make(map[string][]FallbackTool),
@@ -240,8 +240,8 @@ func (f *fallbackDiagnostics) runTool(ctx context.Context, tool FallbackTool, fi
 			return execErr
 		})
 		if cbErr != nil {
-			// 서킷이 열려 있거나 컨텍스트 취소 시 빈 진단을 반환한다.
-			// 관찰 전용이므로 에러를 전파하지 않는다.
+			// Return empty diagnostics when circuit is open or context is cancelled.
+			// Errors are not propagated because this is observation-only.
 			if errors.Is(cbErr, resilience.ErrCircuitOpen) {
 				return []Diagnostic{}, nil
 			}
@@ -253,7 +253,7 @@ func (f *fallbackDiagnostics) runTool(ctx context.Context, tool FallbackTool, fi
 	return f.execTool(ctx, tool, args, filePath)
 }
 
-// execTool은 실제 외부 도구를 실행하고 출력을 파싱한다.
+// execTool executes the actual external tool and parses its output.
 func (f *fallbackDiagnostics) execTool(ctx context.Context, tool FallbackTool, args []string, filePath string) ([]Diagnostic, error) {
 	// Set timeout
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)

@@ -444,17 +444,17 @@ func TestNewFallbackDiagnosticsWithCircuitBreaker(t *testing.T) {
 }
 
 // TestFallbackDiagnostics_NilCircuitBreaker verifies behavior is unchanged when circuit breaker is nil.
-// 서킷 브레이커가 nil이면 기존 동작과 동일해야 한다.
+// When circuit breaker is nil, behavior must be identical to the default behavior.
 func TestFallbackDiagnostics_NilCircuitBreaker(t *testing.T) {
 	t.Parallel()
 
-	// 서킷 브레이커 없이 생성
+	// Create without circuit breaker
 	fb := NewFallbackDiagnostics()
 	if fb.circuitBreaker != nil {
 		t.Fatal("expected nil circuit breaker for default constructor")
 	}
 
-	// 언어 감지 동작은 변경 없어야 한다.
+	// Language detection behavior must remain unchanged.
 	lang := fb.GetLanguage("test.go")
 	if lang != "go" {
 		t.Errorf("GetLanguage() = %q, want %q", lang, "go")

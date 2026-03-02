@@ -63,14 +63,18 @@ func InitDependencies() {
 	// Disable JSON logging for CLI commands by using a no-op logger
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	// Ralph 엔진과 루프 컨트롤러를 초기화한다.
+	// Initialize Ralph engine and loop controller.
 	ralphCfg := config.NewDefaultRalphConfig()
 	ralphEngine := ralph.NewRalphEngine(ralphCfg)
-	loopStorage := loop.NewFileStorage(filepath.Join(os.Getenv("HOME"), ".moai", "state", "loop"))
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		homeDir = os.TempDir()
+	}
+	loopStorage := loop.NewFileStorage(filepath.Join(homeDir, ".moai", "state", "loop"))
 	loopCtrl := loop.NewLoopController(loopStorage, ralphEngine, &noopFeedbackGenerator{}, ralphCfg.MaxIterations)
 
-	// GitOpsManager를 현재 작업 디렉토리 기반으로 초기화한다.
-	// WorkDir이 비어 있으면 GitManager 내부에서 os.Getwd()를 사용한다.
+	// Initialize GitOpsManager based on the current working directory.
+	// If WorkDir is empty, GitManager uses os.Getwd() internally.
 	gitOpsMgr := ops.NewGitManager(ops.ManagerConfig{
 		MaxWorkers:            2,
 		DefaultTimeoutSeconds: 10,
@@ -92,19 +96,19 @@ func InitDependencies() {
 	// Create security scanner for AST-based scanning
 	securityScanner := security.NewSecurityScanner()
 
-	// LSP fallback 도구 실행에 서킷 브레이커를 적용한다.
-	// go vet/golangci-lint가 반복 실패 시 빠르게 건너뛴다.
+	// Apply circuit breaker to LSP fallback tool execution.
+	// Allows go vet/golangci-lint to skip quickly on repeated failures.
 	lspCircuitBreaker := resilience.NewCircuitBreaker(resilience.CircuitBreakerConfig{
 		Threshold: 3,
 		Timeout:   30 * time.Second,
 	})
 
-	// LSP 진단 수집기와 AST 분석기를 초기화한다.
-	// LSP 클라이언트는 nil (아직 통합 안 됨), fallback CLI 도구가 작동한다.
+	// Initialize LSP diagnostics collector and AST analyzer.
+	// LSP client is nil (not yet integrated); fallback CLI tools are used.
 	fallbackDiags := lsphook.NewFallbackDiagnosticsWithCircuitBreaker(lspCircuitBreaker)
 	diagnosticsCollector := lsphook.NewDiagnosticsCollector(nil, fallbackDiags)
 
-	// ast-grep 분석기 초기화 (sg CLI가 없으면 ScanFile이 빈 결과 반환)
+	// Initialize ast-grep analyzer (ScanFile returns empty results if sg CLI is absent)
 	cwd, _ := os.Getwd()
 	astAnalyzer := astgrep.NewAnalyzer(cwd)
 
@@ -319,8 +323,9 @@ func buildAutoUpdateFunc() hook.AutoUpdateFunc {
 	}
 }
 
-// noopFeedbackGenerator는 실제 수집 없이 빈 Feedback을 반환하는 기본 구현체다.
-// CLI 실행 시 별도 피드백 소스가 없을 때 loop.FeedbackGenerator를 만족시키기 위해 사용된다.
+// noopFeedbackGenerator is a default implementation that returns an empty Feedback without
+// any actual collection. Used to satisfy loop.FeedbackGenerator when no feedback source
+// is available during CLI execution.
 type noopFeedbackGenerator struct{}
 
 func (n *noopFeedbackGenerator) Collect(_ context.Context) (*loop.Feedback, error) {

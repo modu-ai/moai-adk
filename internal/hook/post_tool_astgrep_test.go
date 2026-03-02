@@ -18,7 +18,7 @@ func makeToolInput(fields map[string]string) json.RawMessage {
 	return json.RawMessage(data)
 }
 
-// mockFileAnalyzer는 테스트용 FileAnalyzer 목 구현체.
+// mockFileAnalyzer is a mock FileAnalyzer implementation for testing.
 type mockFileAnalyzer struct {
 	scanFileFunc func(ctx context.Context, filePath string, config *astgrep.ScanConfig) (*astgrep.ScanResult, error)
 }
@@ -106,7 +106,7 @@ func TestPostToolHandler_AstScan_TableDriven(t *testing.T) {
 	tmpDir := t.TempDir()
 	tmpFile := filepath.Join(tmpDir, "example.go")
 	if err := os.WriteFile(tmpFile, []byte("package main\n"), 0o644); err != nil {
-		t.Fatalf("임시 파일 생성 실패: %v", err)
+		t.Fatalf("failed to create temp file: %v", err)
 	}
 
 	tests := []struct {
@@ -116,10 +116,10 @@ func TestPostToolHandler_AstScan_TableDriven(t *testing.T) {
 		analyzer      FileAnalyzer
 		wantAstScan   bool
 		wantMatches   int
-		wantNonBlocking bool // 항상 true: 관찰 전용이므로 오류 발생해도 allow
+		wantNonBlocking bool // always true: observation-only, allow even on error
 	}{
 		{
-			name:      "Write 툴로 매치 없음",
+			name:      "Write tool with no matches",
 			toolName:  "Write",
 			toolInput: makeToolInput(map[string]string{"file_path": tmpFile, "content": "pkg"}),
 			analyzer: &mockFileAnalyzer{
@@ -132,7 +132,7 @@ func TestPostToolHandler_AstScan_TableDriven(t *testing.T) {
 			wantNonBlocking: true,
 		},
 		{
-			name:      "Edit 툴로 매치 있음",
+			name:      "Edit tool with matches",
 			toolName:  "Edit",
 			toolInput: makeToolInput(map[string]string{"file_path": tmpFile, "old_string": "a", "new_string": "b"}),
 			analyzer: &mockFileAnalyzer{
@@ -148,19 +148,19 @@ func TestPostToolHandler_AstScan_TableDriven(t *testing.T) {
 			wantNonBlocking: true,
 		},
 		{
-			name:      "AST 스캔 오류는 무시됨 (관찰 전용)",
+			name:      "AST scan error is ignored (observation-only)",
 			toolName:  "Write",
 			toolInput: makeToolInput(map[string]string{"file_path": tmpFile, "content": "pkg"}),
 			analyzer: &mockFileAnalyzer{
 				scanFileFunc: func(_ context.Context, _ string, _ *astgrep.ScanConfig) (*astgrep.ScanResult, error) {
-					return nil, errors.New("sg CLI 오류")
+					return nil, errors.New("sg CLI error")
 				},
 			},
-			wantAstScan:     false, // 오류 시 ast_scan 메트릭 없음
+			wantAstScan:     false, // no ast_scan metric on error
 			wantNonBlocking: true,
 		},
 		{
-			name:            "analyzer가 nil이면 ast_scan 없음",
+			name:            "no ast_scan when analyzer is nil",
 			toolName:        "Write",
 			toolInput:       makeToolInput(map[string]string{"file_path": tmpFile, "content": "pkg"}),
 			analyzer:        nil,
@@ -168,7 +168,7 @@ func TestPostToolHandler_AstScan_TableDriven(t *testing.T) {
 			wantNonBlocking: true,
 		},
 		{
-			name:            "Read 툴은 ast_scan 수행 안 함",
+			name:            "Read tool does not perform ast_scan",
 			toolName:        "Read",
 			toolInput:       makeToolInput(map[string]string{"file_path": tmpFile}),
 			analyzer:        &mockFileAnalyzer{},
@@ -176,7 +176,7 @@ func TestPostToolHandler_AstScan_TableDriven(t *testing.T) {
 			wantNonBlocking: true,
 		},
 		{
-			name:        "tool input에 file_path 없으면 ast_scan 없음",
+			name:        "no ast_scan when tool input lacks file_path",
 			toolName:    "Write",
 			toolInput:   json.RawMessage(`{"content": "pkg"}`),
 			analyzer:    &mockFileAnalyzer{},
@@ -184,7 +184,7 @@ func TestPostToolHandler_AstScan_TableDriven(t *testing.T) {
 			wantNonBlocking: true,
 		},
 		{
-			name:        "tool input이 잘못된 JSON이면 ast_scan 없음",
+			name:        "no ast_scan when tool input is invalid JSON",
 			toolName:    "Write",
 			toolInput:   json.RawMessage(`{invalid json`),
 			analyzer:    &mockFileAnalyzer{},

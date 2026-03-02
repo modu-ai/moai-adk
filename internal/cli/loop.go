@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// loopCmd는 Ralph 피드백 루프의 생명주기를 제어하는 최상위 커맨드다.
+// loopCmd is the top-level command that controls the Ralph feedback loop lifecycle.
 var loopCmd = &cobra.Command{
 	Use:     "loop",
 	Short:   "Manage the Ralph feedback loop lifecycle",
@@ -34,7 +34,7 @@ Examples:
 	},
 }
 
-// loopStartCmd는 지정한 SPEC-ID에 대한 피드백 루프를 시작한다.
+// loopStartCmd starts a feedback loop for the specified SPEC-ID.
 var loopStartCmd = &cobra.Command{
 	Use:   "start <SPEC-ID>",
 	Short: "Start a feedback loop for a SPEC",
@@ -42,7 +42,7 @@ var loopStartCmd = &cobra.Command{
 	RunE:  runLoopStart,
 }
 
-// loopStatusCmd는 현재 피드백 루프 상태를 출력한다.
+// loopStatusCmd prints the current feedback loop status.
 var loopStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show current loop status",
@@ -50,7 +50,7 @@ var loopStatusCmd = &cobra.Command{
 	RunE:  runLoopStatus,
 }
 
-// loopPauseCmd는 실행 중인 루프를 일시정지한다.
+// loopPauseCmd pauses the running loop.
 var loopPauseCmd = &cobra.Command{
 	Use:   "pause",
 	Short: "Pause the running loop",
@@ -58,7 +58,7 @@ var loopPauseCmd = &cobra.Command{
 	RunE:  runLoopPause,
 }
 
-// loopResumeCmd는 일시정지된 루프를 재개한다.
+// loopResumeCmd resumes a paused loop.
 var loopResumeCmd = &cobra.Command{
 	Use:   "resume <SPEC-ID>",
 	Short: "Resume a paused loop",
@@ -66,7 +66,7 @@ var loopResumeCmd = &cobra.Command{
 	RunE:  runLoopResume,
 }
 
-// loopCancelCmd는 실행 중이거나 일시정지된 루프를 취소하고 상태를 삭제한다.
+// loopCancelCmd cancels the running or paused loop and removes its state.
 var loopCancelCmd = &cobra.Command{
 	Use:   "cancel",
 	Short: "Cancel the running loop",
@@ -83,7 +83,7 @@ func init() {
 	rootCmd.AddCommand(loopCmd)
 }
 
-// runLoopStart는 SPEC-ID에 대한 새 피드백 루프를 시작한다.
+// runLoopStart starts a new feedback loop for the given SPEC-ID.
 func runLoopStart(cmd *cobra.Command, args []string) error {
 	if deps == nil || deps.LoopController == nil {
 		return fmt.Errorf("loop controller not initialized")
@@ -96,7 +96,7 @@ func runLoopStart(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// runLoopStatus는 현재 루프 상태 스냅샷을 출력한다.
+// runLoopStatus prints a snapshot of the current loop status.
 func runLoopStatus(cmd *cobra.Command, _ []string) error {
 	if deps == nil || deps.LoopController == nil {
 		return fmt.Errorf("loop controller not initialized")
@@ -115,7 +115,7 @@ func runLoopStatus(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// runLoopPause는 실행 중인 루프를 일시정지한다.
+// runLoopPause pauses the running loop.
 func runLoopPause(cmd *cobra.Command, _ []string) error {
 	if deps == nil || deps.LoopController == nil {
 		return fmt.Errorf("loop controller not initialized")
@@ -127,7 +127,7 @@ func runLoopPause(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// runLoopResume는 일시정지된 루프를 스토리지에서 상태를 복원하여 재개한다.
+// runLoopResume resumes a paused loop by restoring state from storage.
 func runLoopResume(cmd *cobra.Command, args []string) error {
 	if deps == nil || deps.LoopController == nil {
 		return fmt.Errorf("loop controller not initialized")
@@ -140,7 +140,7 @@ func runLoopResume(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// runLoopCancel은 루프를 취소하고 영속 상태를 삭제한다.
+// runLoopCancel cancels the loop and removes its persistent state.
 func runLoopCancel(cmd *cobra.Command, _ []string) error {
 	if deps == nil || deps.LoopController == nil {
 		return fmt.Errorf("loop controller not initialized")

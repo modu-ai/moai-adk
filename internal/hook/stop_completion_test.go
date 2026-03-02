@@ -11,7 +11,7 @@ func TestNewStopHandlerWithMarkers(t *testing.T) {
 
 	h := NewStopHandlerWithMarkers([]string{"<done/>"})
 	if h == nil {
-		t.Fatal("NewStopHandlerWithMarkers가 nil 반환")
+		t.Fatal("NewStopHandlerWithMarkers returned nil")
 	}
 	if h.EventType() != EventStop {
 		t.Errorf("EventType() = %q, want %q", h.EventType(), EventStop)
@@ -25,47 +25,47 @@ func TestStopHandler_CompletionMarkers_TableDriven(t *testing.T) {
 		name       string
 		markers    []string
 		toolOutput json.RawMessage
-		// wantAllow: 항상 true (관찰 전용, 절대 블록 안 함)
+		// wantAllow: always true (observation-only, never blocks)
 		wantAllow bool
 	}{
 		{
-			name:       "DONE 마커 감지됨",
+			name:       "DONE marker detected",
 			markers:    defaultCompletionMarkers,
-			toolOutput: json.RawMessage(`"작업 완료 <moai>DONE</moai>"`),
+			toolOutput: json.RawMessage(`"task complete <moai>DONE</moai>"`),
 			wantAllow:  true,
 		},
 		{
-			name:       "COMPLETE 마커 감지됨",
+			name:       "COMPLETE marker detected",
 			markers:    defaultCompletionMarkers,
 			toolOutput: json.RawMessage(`"<moai>COMPLETE</moai>"`),
 			wantAllow:  true,
 		},
 		{
-			name:       "마커 없는 output은 그냥 통과",
+			name:       "output without marker passes through",
 			markers:    defaultCompletionMarkers,
-			toolOutput: json.RawMessage(`"일반 작업 출력"`),
+			toolOutput: json.RawMessage(`"normal task output"`),
 			wantAllow:  true,
 		},
 		{
-			name:       "ToolOutput이 비어있으면 감지 건너뜀",
+			name:       "detection skipped when ToolOutput is empty",
 			markers:    defaultCompletionMarkers,
 			toolOutput: nil,
 			wantAllow:  true,
 		},
 		{
-			name:       "커스텀 마커 감지됨",
+			name:       "custom marker detected",
 			markers:    []string{"<done/>"},
-			toolOutput: json.RawMessage(`"작업 완료 <done/>"`),
+			toolOutput: json.RawMessage(`"task complete <done/>"`),
 			wantAllow:  true,
 		},
 		{
-			name:       "마커 목록이 빈 슬라이스면 감지 건너뜀",
+			name:       "detection skipped when marker list is empty slice",
 			markers:    []string{},
 			toolOutput: json.RawMessage(`"<moai>DONE</moai>"`),
 			wantAllow:  true,
 		},
 		{
-			name:       "마커 목록이 nil이면 감지 건너뜀",
+			name:       "detection skipped when marker list is nil",
 			markers:    nil,
 			toolOutput: json.RawMessage(`"<moai>DONE</moai>"`),
 			wantAllow:  true,
@@ -88,18 +88,18 @@ func TestStopHandler_CompletionMarkers_TableDriven(t *testing.T) {
 			got, err := h.Handle(ctx, input)
 
 			if err != nil {
-				t.Fatalf("Handle() 오류 (관찰 전용이어야 함): %v", err)
+				t.Fatalf("Handle() returned error (should be observation-only): %v", err)
 			}
 			if got == nil {
-				t.Fatal("nil output 반환")
+				t.Fatal("returned nil output")
 			}
 
-			// 관찰 전용: Stop hook은 항상 비어있는 HookOutput을 반환 (allow)
+			// Observation-only: Stop hook always returns empty HookOutput (allow)
 			if got.Decision != "" {
-				t.Errorf("Decision = %q, want empty (마커 감지는 블록하지 않음)", got.Decision)
+				t.Errorf("Decision = %q, want empty (marker detection must not block)", got.Decision)
 			}
 			if got.HookSpecificOutput != nil {
-				t.Error("Stop hook은 HookSpecificOutput을 설정하면 안 됨")
+				t.Error("Stop hook must not set HookSpecificOutput")
 			}
 		})
 	}
@@ -108,15 +108,15 @@ func TestStopHandler_CompletionMarkers_TableDriven(t *testing.T) {
 func TestStopHandler_DefaultMarkers_AreSet(t *testing.T) {
 	t.Parallel()
 
-	// NewStopHandler가 기본 마커를 포함하는지 확인
+	// Verify that NewStopHandler includes the default markers
 	h := NewStopHandler()
 	impl, ok := h.(*stopHandler)
 	if !ok {
-		t.Fatal("핸들러가 *stopHandler가 아님")
+		t.Fatal("handler is not *stopHandler")
 	}
 
 	if len(impl.completionMarkers) != 2 {
-		t.Errorf("기본 마커 수 = %d, want 2", len(impl.completionMarkers))
+		t.Errorf("default marker count = %d, want 2", len(impl.completionMarkers))
 	}
 
 	markerSet := make(map[string]bool, len(impl.completionMarkers))
@@ -125,17 +125,17 @@ func TestStopHandler_DefaultMarkers_AreSet(t *testing.T) {
 	}
 
 	if !markerSet["<moai>DONE</moai>"] {
-		t.Error("기본 마커에 <moai>DONE</moai>가 없음")
+		t.Error("default markers do not include <moai>DONE</moai>")
 	}
 	if !markerSet["<moai>COMPLETE</moai>"] {
-		t.Error("기본 마커에 <moai>COMPLETE</moai>가 없음")
+		t.Error("default markers do not include <moai>COMPLETE</moai>")
 	}
 }
 
 func TestStopHandler_StopHookActive_SkipsMarkerCheck(t *testing.T) {
 	t.Parallel()
 
-	// StopHookActive가 true면 마커 체크 전에 early return
+	// When StopHookActive is true, early return before marker check
 	h := NewStopHandlerWithMarkers(defaultCompletionMarkers)
 	ctx := context.Background()
 
@@ -148,13 +148,13 @@ func TestStopHandler_StopHookActive_SkipsMarkerCheck(t *testing.T) {
 
 	got, err := h.Handle(ctx, input)
 	if err != nil {
-		t.Fatalf("Handle() 오류: %v", err)
+		t.Fatalf("Handle() error: %v", err)
 	}
 	if got == nil {
-		t.Fatal("nil output 반환")
+		t.Fatal("returned nil output")
 	}
 
-	// StopHookActive이면 무조건 빈 output (무한루프 방지)
+	// When StopHookActive, always return empty output (prevent infinite loop)
 	if got.Decision != "" {
 		t.Errorf("Decision = %q, want empty", got.Decision)
 	}

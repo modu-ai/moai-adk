@@ -407,7 +407,7 @@ func TestSessionManager_InjectEnv_Success(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// set-environment TEST_KEY test_value 호출 확인
+	// verify set-environment TEST_KEY test_value was called
 	found := false
 	for _, call := range calls {
 		if slices.Contains(call, "set-environment") &&

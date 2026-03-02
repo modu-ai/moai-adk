@@ -689,8 +689,8 @@ func TestSessionEndHandler_AlwaysReturnsEmptyOutput(t *testing.T) {
 	}
 }
 
-// TestCleanupCurrentSessionTeam_AlsoRemovesTaskDir는 세션 팀 디렉터리 삭제 시
-// 대응하는 tasks 디렉터리도 함께 삭제되는지 검증한다.
+// TestCleanupCurrentSessionTeam_AlsoRemovesTaskDir verifies that the corresponding
+// tasks directory is also removed when a session team directory is deleted.
 func TestCleanupCurrentSessionTeam_AlsoRemovesTaskDir(t *testing.T) {
 	t.Parallel()
 
@@ -698,13 +698,13 @@ func TestCleanupCurrentSessionTeam_AlsoRemovesTaskDir(t *testing.T) {
 		name          string
 		sessionID     string
 		teams         map[string]string // teamName -> leadSessionId
-		wantTeamGone  []string          // 삭제되어야 할 team 디렉터리
-		wantTeamKept  []string          // 유지되어야 할 team 디렉터리
-		wantTaskGone  []string          // 삭제되어야 할 task 디렉터리
-		wantTaskKept  []string          // 유지되어야 할 task 디렉터리
+		wantTeamGone  []string          // team directories that should be removed
+		wantTeamKept  []string          // team directories that should be kept
+		wantTaskGone  []string          // task directories that should be removed
+		wantTaskKept  []string          // task directories that should be kept
 	}{
 		{
-			name:      "매칭 세션의 team/task 디렉터리 모두 삭제",
+			name:      "remove both team/task directories for matching session",
 			sessionID: "sess-abc-123",
 			teams: map[string]string{
 				"my-team":    "sess-abc-123",
@@ -716,7 +716,7 @@ func TestCleanupCurrentSessionTeam_AlsoRemovesTaskDir(t *testing.T) {
 			wantTaskKept: []string{"other-team"},
 		},
 		{
-			name:      "매칭 없으면 team/task 디렉터리 모두 유지",
+			name:      "keep all team/task directories when no match",
 			sessionID: "sess-no-match",
 			teams: map[string]string{
 				"team-a": "sess-111",
@@ -737,65 +737,65 @@ func TestCleanupCurrentSessionTeam_AlsoRemovesTaskDir(t *testing.T) {
 			teamsDir := filepath.Join(homeDir, ".claude", "teams")
 			tasksDir := filepath.Join(homeDir, ".claude", "tasks")
 			if err := os.MkdirAll(teamsDir, 0o755); err != nil {
-				t.Fatalf("teams 디렉터리 생성 실패: %v", err)
+				t.Fatalf("failed to create teams directory: %v", err)
 			}
 			if err := os.MkdirAll(tasksDir, 0o755); err != nil {
-				t.Fatalf("tasks 디렉터리 생성 실패: %v", err)
+				t.Fatalf("failed to create tasks directory: %v", err)
 			}
 
-			// team 디렉터리와 대응하는 task 디렉터리 생성
+			// Create team directories and their corresponding task directories
 			for name, leadSessionID := range tt.teams {
 				teamDir := filepath.Join(teamsDir, name)
 				if err := os.MkdirAll(teamDir, 0o755); err != nil {
-					t.Fatalf("team 디렉터리 %s 생성 실패: %v", name, err)
+					t.Fatalf("failed to create team directory %s: %v", name, err)
 				}
 				cfg := teamConfig{LeadSessionID: leadSessionID}
 				data, err := json.Marshal(cfg)
 				if err != nil {
-					t.Fatalf("설정 직렬화 실패 %s: %v", name, err)
+					t.Fatalf("failed to marshal config for %s: %v", name, err)
 				}
 				if err := os.WriteFile(filepath.Join(teamDir, "config.json"), data, 0o644); err != nil {
-					t.Fatalf("설정 파일 쓰기 실패 %s: %v", name, err)
+					t.Fatalf("failed to write config file for %s: %v", name, err)
 				}
 
-				// 대응하는 task 디렉터리도 생성
+				// Also create the corresponding task directory
 				taskDir := filepath.Join(tasksDir, name)
 				if err := os.MkdirAll(taskDir, 0o755); err != nil {
-					t.Fatalf("task 디렉터리 %s 생성 실패: %v", name, err)
+					t.Fatalf("failed to create task directory %s: %v", name, err)
 				}
 			}
 
 			cleanupCurrentSessionTeam(tt.sessionID, homeDir)
 
-			// team 디렉터리 삭제 검증
+			// Verify team directory removal
 			for _, name := range tt.wantTeamGone {
 				if _, err := os.Stat(filepath.Join(teamsDir, name)); !os.IsNotExist(err) {
-					t.Errorf("team 디렉터리 %q가 삭제되어야 함", name)
+					t.Errorf("team directory %q should have been removed", name)
 				}
 			}
 			for _, name := range tt.wantTeamKept {
 				if _, err := os.Stat(filepath.Join(teamsDir, name)); os.IsNotExist(err) {
-					t.Errorf("team 디렉터리 %q가 유지되어야 함", name)
+					t.Errorf("team directory %q should have been kept", name)
 				}
 			}
 
-			// task 디렉터리 삭제 검증
+			// Verify task directory removal
 			for _, name := range tt.wantTaskGone {
 				if _, err := os.Stat(filepath.Join(tasksDir, name)); !os.IsNotExist(err) {
-					t.Errorf("task 디렉터리 %q가 삭제되어야 함", name)
+					t.Errorf("task directory %q should have been removed", name)
 				}
 			}
 			for _, name := range tt.wantTaskKept {
 				if _, err := os.Stat(filepath.Join(tasksDir, name)); os.IsNotExist(err) {
-					t.Errorf("task 디렉터리 %q가 유지되어야 함", name)
+					t.Errorf("task directory %q should have been kept", name)
 				}
 			}
 		})
 	}
 }
 
-// TestGarbageCollectStaleTeams_AlsoRemovesTaskDir는 오래된 팀 디렉터리 GC 시
-// 대응하는 오래된 tasks 디렉터리도 함께 삭제되는지 검증한다.
+// TestGarbageCollectStaleTeams_AlsoRemovesTaskDir verifies that the corresponding
+// stale tasks directory is also removed during stale team directory GC.
 func TestGarbageCollectStaleTeams_AlsoRemovesTaskDir(t *testing.T) {
 	t.Parallel()
 
@@ -803,96 +803,96 @@ func TestGarbageCollectStaleTeams_AlsoRemovesTaskDir(t *testing.T) {
 	teamsDir := filepath.Join(homeDir, ".claude", "teams")
 	tasksDir := filepath.Join(homeDir, ".claude", "tasks")
 	if err := os.MkdirAll(teamsDir, 0o755); err != nil {
-		t.Fatalf("teams 디렉터리 생성 실패: %v", err)
+		t.Fatalf("failed to create teams directory: %v", err)
 	}
 	if err := os.MkdirAll(tasksDir, 0o755); err != nil {
-		t.Fatalf("tasks 디렉터리 생성 실패: %v", err)
+		t.Fatalf("failed to create tasks directory: %v", err)
 	}
 
-	// 오래된 team/task 디렉터리 생성 (25시간 전)
+	// Create stale team/task directories (25 hours ago)
 	staleTeamDir := filepath.Join(teamsDir, "stale-team")
 	if err := os.MkdirAll(staleTeamDir, 0o755); err != nil {
-		t.Fatalf("오래된 team 디렉터리 생성 실패: %v", err)
+		t.Fatalf("failed to create stale team directory: %v", err)
 	}
 	staleTime := time.Now().Add(-25 * time.Hour)
 	if err := os.Chtimes(staleTeamDir, staleTime, staleTime); err != nil {
-		t.Fatalf("오래된 시간 설정 실패: %v", err)
+		t.Fatalf("failed to set stale time: %v", err)
 	}
 
 	staleTaskDir := filepath.Join(tasksDir, "stale-team")
 	if err := os.MkdirAll(staleTaskDir, 0o755); err != nil {
-		t.Fatalf("오래된 task 디렉터리 생성 실패: %v", err)
+		t.Fatalf("failed to create stale task directory: %v", err)
 	}
 
-	// 최신 team/task 디렉터리 생성
+	// Create fresh team/task directories
 	freshTeamDir := filepath.Join(teamsDir, "fresh-team")
 	if err := os.MkdirAll(freshTeamDir, 0o755); err != nil {
-		t.Fatalf("최신 team 디렉터리 생성 실패: %v", err)
+		t.Fatalf("failed to create fresh team directory: %v", err)
 	}
 
 	freshTaskDir := filepath.Join(tasksDir, "fresh-team")
 	if err := os.MkdirAll(freshTaskDir, 0o755); err != nil {
-		t.Fatalf("최신 task 디렉터리 생성 실패: %v", err)
+		t.Fatalf("failed to create fresh task directory: %v", err)
 	}
 
 	garbageCollectStaleTeams(homeDir)
 
-	// 오래된 team 디렉터리 삭제 검증
+	// Verify stale team directory removal
 	if _, err := os.Stat(staleTeamDir); !os.IsNotExist(err) {
-		t.Error("오래된 team 디렉터리가 삭제되어야 함")
+		t.Error("stale team directory should have been removed")
 	}
 
-	// 오래된 task 디렉터리도 삭제 검증
+	// Verify stale task directory removal
 	if _, err := os.Stat(staleTaskDir); !os.IsNotExist(err) {
-		t.Error("오래된 task 디렉터리가 삭제되어야 함")
+		t.Error("stale task directory should have been removed")
 	}
 
-	// 최신 team 디렉터리 유지 검증
+	// Verify fresh team directory is kept
 	if _, err := os.Stat(freshTeamDir); os.IsNotExist(err) {
-		t.Error("최신 team 디렉터리가 유지되어야 함")
+		t.Error("fresh team directory should have been kept")
 	}
 
-	// 최신 task 디렉터리 유지 검증
+	// Verify fresh task directory is kept
 	if _, err := os.Stat(freshTaskDir); os.IsNotExist(err) {
-		t.Error("최신 task 디렉터리가 유지되어야 함")
+		t.Error("fresh task directory should have been kept")
 	}
 }
 
-// TestGarbageCollectOrphanedTasks는 team 디렉터리 없이 남겨진 고아 task 디렉터리를
-// 정리하는지 검증한다.
+// TestGarbageCollectOrphanedTasks verifies that orphaned task directories
+// left without a corresponding team directory are cleaned up.
 func TestGarbageCollectOrphanedTasks(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name          string
-		teamNames     []string // ~/.claude/teams/ 에 존재하는 디렉터리
-		taskNames     []string // ~/.claude/tasks/ 에 존재하는 디렉터리
-		wantTaskGone  []string // 삭제되어야 할 task 디렉터리 (고아)
-		wantTaskKept  []string // 유지되어야 할 task 디렉터리 (team 대응)
+		teamNames     []string // directories present in ~/.claude/teams/
+		taskNames     []string // directories present in ~/.claude/tasks/
+		wantTaskGone  []string // task directories that should be removed (orphans)
+		wantTaskKept  []string // task directories that should be kept (have matching team)
 	}{
 		{
-			name:         "team 없는 고아 task 디렉터리 삭제",
+			name:         "remove orphaned task directories with no matching team",
 			teamNames:    []string{"team-a"},
 			taskNames:    []string{"team-a", "orphan-1", "orphan-2"},
 			wantTaskGone: []string{"orphan-1", "orphan-2"},
 			wantTaskKept: []string{"team-a"},
 		},
 		{
-			name:         "모든 task가 team에 대응하면 아무것도 삭제 안 함",
+			name:         "nothing removed when all tasks have matching teams",
 			teamNames:    []string{"team-x", "team-y"},
 			taskNames:    []string{"team-x", "team-y"},
 			wantTaskGone: nil,
 			wantTaskKept: []string{"team-x", "team-y"},
 		},
 		{
-			name:         "task만 있고 team 없으면 모두 삭제",
+			name:         "remove all tasks when no teams exist",
 			teamNames:    []string{},
 			taskNames:    []string{"orphan-a", "orphan-b"},
 			wantTaskGone: []string{"orphan-a", "orphan-b"},
 			wantTaskKept: nil,
 		},
 		{
-			name:         "team만 있고 task 없으면 아무 동작 없음",
+			name:         "no action when only teams exist and tasks are empty",
 			teamNames:    []string{"team-z"},
 			taskNames:    []string{},
 			wantTaskGone: nil,
@@ -908,53 +908,53 @@ func TestGarbageCollectOrphanedTasks(t *testing.T) {
 			teamsDir := filepath.Join(homeDir, ".claude", "teams")
 			tasksDir := filepath.Join(homeDir, ".claude", "tasks")
 			if err := os.MkdirAll(teamsDir, 0o755); err != nil {
-				t.Fatalf("teams 디렉터리 생성 실패: %v", err)
+				t.Fatalf("failed to create teams directory: %v", err)
 			}
 			if err := os.MkdirAll(tasksDir, 0o755); err != nil {
-				t.Fatalf("tasks 디렉터리 생성 실패: %v", err)
+				t.Fatalf("failed to create tasks directory: %v", err)
 			}
 
-			// team 디렉터리 생성
+			// Create team directories
 			for _, name := range tt.teamNames {
 				teamDir := filepath.Join(teamsDir, name)
 				if err := os.MkdirAll(teamDir, 0o755); err != nil {
-					t.Fatalf("team 디렉터리 %s 생성 실패: %v", name, err)
+					t.Fatalf("failed to create team directory %s: %v", name, err)
 				}
 			}
 
-			// task 디렉터리 생성
+			// Create task directories
 			for _, name := range tt.taskNames {
 				taskDir := filepath.Join(tasksDir, name)
 				if err := os.MkdirAll(taskDir, 0o755); err != nil {
-					t.Fatalf("task 디렉터리 %s 생성 실패: %v", name, err)
+					t.Fatalf("failed to create task directory %s: %v", name, err)
 				}
 			}
 
 			garbageCollectOrphanedTasks(homeDir)
 
-			// 삭제 검증
+			// Verify removal
 			for _, name := range tt.wantTaskGone {
 				if _, err := os.Stat(filepath.Join(tasksDir, name)); !os.IsNotExist(err) {
-					t.Errorf("고아 task 디렉터리 %q가 삭제되어야 함", name)
+					t.Errorf("orphaned task directory %q should have been removed", name)
 				}
 			}
 
-			// 유지 검증
+			// Verify preservation
 			for _, name := range tt.wantTaskKept {
 				if _, err := os.Stat(filepath.Join(tasksDir, name)); os.IsNotExist(err) {
-					t.Errorf("task 디렉터리 %q가 유지되어야 함", name)
+					t.Errorf("task directory %q should have been kept", name)
 				}
 			}
 		})
 	}
 }
 
-// TestGarbageCollectOrphanedTasks_MissingDir는 ~/.claude/tasks/ 디렉터리가
-// 없을 때 패닉이나 오류가 발생하지 않는지 검증한다.
+// TestGarbageCollectOrphanedTasks_MissingDir verifies that no panic or error
+// occurs when the ~/.claude/tasks/ directory does not exist.
 func TestGarbageCollectOrphanedTasks_MissingDir(t *testing.T) {
 	t.Parallel()
 
 	homeDir := t.TempDir()
-	// ~/.claude/tasks/ 디렉터리를 생성하지 않음 — 패닉이나 오류가 없어야 함
+	// Do not create ~/.claude/tasks/ directory — must not panic or return error
 	garbageCollectOrphanedTasks(homeDir)
 }
