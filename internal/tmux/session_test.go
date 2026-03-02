@@ -388,6 +388,155 @@ func TestSessionManager_WithSessionLogger(t *testing.T) {
 	}
 }
 
+func TestSessionManager_InjectEnv_Success(t *testing.T) {
+	t.Parallel()
+
+	var calls [][]string
+	runner := func(_ context.Context, name string, args ...string) (string, error) {
+		calls = append(calls, append([]string{name}, args...))
+		return "", nil
+	}
+
+	mgr := NewSessionManager(WithSessionRunFunc(runner))
+	vars := map[string]string{
+		"TEST_KEY": "test_value",
+	}
+
+	err := mgr.InjectEnv(context.Background(), vars)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// set-environment TEST_KEY test_value 호출 확인
+	found := false
+	for _, call := range calls {
+		if slices.Contains(call, "set-environment") &&
+			slices.Contains(call, "TEST_KEY") &&
+			slices.Contains(call, "test_value") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected set-environment call with TEST_KEY=test_value, got: %v", calls)
+	}
+}
+
+func TestSessionManager_InjectEnv_RunFuncError(t *testing.T) {
+	t.Parallel()
+
+	runner := func(_ context.Context, _ string, _ ...string) (string, error) {
+		return "", fmt.Errorf("tmux error")
+	}
+
+	mgr := NewSessionManager(WithSessionRunFunc(runner))
+	vars := map[string]string{
+		"FAIL_KEY": "value",
+	}
+
+	err := mgr.InjectEnv(context.Background(), vars)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "set tmux env") {
+		t.Errorf("error = %v, should mention 'set tmux env'", err)
+	}
+}
+
+func TestSessionManager_InjectEnv_EmptyVars(t *testing.T) {
+	t.Parallel()
+
+	var calls [][]string
+	runner := func(_ context.Context, name string, args ...string) (string, error) {
+		calls = append(calls, append([]string{name}, args...))
+		return "", nil
+	}
+
+	mgr := NewSessionManager(WithSessionRunFunc(runner))
+
+	// 빈 맵은 오류 없이 완료되어야 한다
+	err := mgr.InjectEnv(context.Background(), map[string]string{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(calls) != 0 {
+		t.Errorf("expected no calls for empty vars, got %d calls", len(calls))
+	}
+}
+
+func TestSessionManager_ClearEnv_Success(t *testing.T) {
+	t.Parallel()
+
+	var calls [][]string
+	runner := func(_ context.Context, name string, args ...string) (string, error) {
+		calls = append(calls, append([]string{name}, args...))
+		return "", nil
+	}
+
+	mgr := NewSessionManager(WithSessionRunFunc(runner))
+	vars := []string{"TEST_KEY", "OTHER_KEY"}
+
+	err := mgr.ClearEnv(context.Background(), vars)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// set-environment -u TEST_KEY 와 set-environment -u OTHER_KEY 호출 확인
+	for _, varName := range vars {
+		found := false
+		for _, call := range calls {
+			if slices.Contains(call, "set-environment") &&
+				slices.Contains(call, "-u") &&
+				slices.Contains(call, varName) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected set-environment -u %s call, got: %v", varName, calls)
+		}
+	}
+}
+
+func TestSessionManager_ClearEnv_RunFuncError(t *testing.T) {
+	t.Parallel()
+
+	runner := func(_ context.Context, _ string, _ ...string) (string, error) {
+		return "", fmt.Errorf("tmux error")
+	}
+
+	mgr := NewSessionManager(WithSessionRunFunc(runner))
+
+	err := mgr.ClearEnv(context.Background(), []string{"FAIL_KEY"})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "unset tmux env") {
+		t.Errorf("error = %v, should mention 'unset tmux env'", err)
+	}
+}
+
+func TestSessionManager_ClearEnv_EmptyVars(t *testing.T) {
+	t.Parallel()
+
+	var calls [][]string
+	runner := func(_ context.Context, name string, args ...string) (string, error) {
+		calls = append(calls, append([]string{name}, args...))
+		return "", nil
+	}
+
+	mgr := NewSessionManager(WithSessionRunFunc(runner))
+
+	// 빈 슬라이스는 오류 없이 완료되어야 한다
+	err := mgr.ClearEnv(context.Background(), []string{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(calls) != 0 {
+		t.Errorf("expected no calls for empty vars, got %d calls", len(calls))
+	}
+}
+
 // --- Test Helpers ---
 
 func assertCallContains(t *testing.T, calls [][]string, target string) {

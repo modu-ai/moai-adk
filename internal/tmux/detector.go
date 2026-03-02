@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -19,6 +20,9 @@ type Detector interface {
 
 	// Version returns the tmux version string (e.g., "3.4"), or an error.
 	Version() (string, error)
+
+	// InTmuxSession returns true if currently inside a tmux session.
+	InTmuxSession() bool
 }
 
 // SystemDetector implements Detector using the system PATH.
@@ -54,6 +58,11 @@ func NewDetector(opts ...DetectorOption) *SystemDetector {
 func (d *SystemDetector) IsAvailable() bool {
 	_, err := d.run(context.Background(), "tmux", "-V")
 	return err == nil
+}
+
+// InTmuxSession returns true if the current process is running inside a tmux session.
+func (d *SystemDetector) InTmuxSession() bool {
+	return os.Getenv("TMUX") != ""
 }
 
 // Version returns the parsed tmux version string.

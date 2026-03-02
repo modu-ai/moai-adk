@@ -16,12 +16,14 @@ import (
 	"github.com/modu-ai/moai-adk/internal/astgrep"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/git"
+	"github.com/modu-ai/moai-adk/internal/git/ops"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/hook/security"
 	"github.com/modu-ai/moai-adk/internal/loop"
 	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
 	"github.com/modu-ai/moai-adk/internal/ralph"
 	"github.com/modu-ai/moai-adk/internal/rank"
+	"github.com/modu-ai/moai-adk/internal/resilience"
 	"github.com/modu-ai/moai-adk/internal/update"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
@@ -35,6 +37,7 @@ type Dependencies struct {
 	Git            git.Repository
 	GitBranch      git.BranchManager
 	GitWorktree    git.WorktreeManager
+	GitOpsManager  *ops.GitManager
 	HookRegistry   hook.Registry
 	HookProtocol   hook.Protocol
 	UpdateChecker  update.Checker
@@ -66,8 +69,17 @@ func InitDependencies() {
 	loopStorage := loop.NewFileStorage(filepath.Join(os.Getenv("HOME"), ".moai", "state", "loop"))
 	loopCtrl := loop.NewLoopController(loopStorage, ralphEngine, &noopFeedbackGenerator{}, ralphCfg.MaxIterations)
 
+	// GitOpsManager를 현재 작업 디렉토리 기반으로 초기화한다.
+	// WorkDir이 비어 있으면 GitManager 내부에서 os.Getwd()를 사용한다.
+	gitOpsMgr := ops.NewGitManager(ops.ManagerConfig{
+		MaxWorkers:            2,
+		DefaultTimeoutSeconds: 10,
+		DefaultRetryCount:     1,
+	})
+
 	deps = &Dependencies{
 		Config:         config.NewConfigManager(),
+		GitOpsManager:  gitOpsMgr,
 		HookProtocol:   hook.NewProtocol(),
 		RankCredStore:  rank.NewFileCredentialStore(""),
 		LoopController: loopCtrl,
@@ -80,9 +92,16 @@ func InitDependencies() {
 	// Create security scanner for AST-based scanning
 	securityScanner := security.NewSecurityScanner()
 
+	// LSP fallback 도구 실행에 서킷 브레이커를 적용한다.
+	// go vet/golangci-lint가 반복 실패 시 빠르게 건너뛴다.
+	lspCircuitBreaker := resilience.NewCircuitBreaker(resilience.CircuitBreakerConfig{
+		Threshold: 3,
+		Timeout:   30 * time.Second,
+	})
+
 	// LSP 진단 수집기와 AST 분석기를 초기화한다.
 	// LSP 클라이언트는 nil (아직 통합 안 됨), fallback CLI 도구가 작동한다.
-	fallbackDiags := lsphook.NewFallbackDiagnostics()
+	fallbackDiags := lsphook.NewFallbackDiagnosticsWithCircuitBreaker(lspCircuitBreaker)
 	diagnosticsCollector := lsphook.NewDiagnosticsCollector(nil, fallbackDiags)
 
 	// ast-grep 분석기 초기화 (sg CLI가 없으면 ScanFile이 빈 결과 반환)

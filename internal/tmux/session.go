@@ -46,6 +46,12 @@ type SessionResult struct {
 type SessionManager interface {
 	// Create creates a new tmux session with the specified configuration.
 	Create(ctx context.Context, cfg *SessionConfig) (*SessionResult, error)
+
+	// InjectEnv sets environment variables in the current tmux session.
+	InjectEnv(ctx context.Context, vars map[string]string) error
+
+	// ClearEnv removes environment variables from the current tmux session.
+	ClearEnv(ctx context.Context, vars []string) error
 }
 
 // DefaultSessionManager implements SessionManager using tmux commands.
@@ -157,6 +163,28 @@ func (m *DefaultSessionManager) Create(ctx context.Context, cfg *SessionConfig) 
 		PaneCount:   len(cfg.Panes),
 		Attached:    false,
 	}, nil
+}
+
+// InjectEnv는 현재 tmux 세션에 환경변수를 주입한다.
+func (m *DefaultSessionManager) InjectEnv(ctx context.Context, vars map[string]string) error {
+	for key, value := range vars {
+		args := []string{"set-environment", key, value}
+		if _, err := m.run(ctx, "tmux", args...); err != nil {
+			return fmt.Errorf("set tmux env %s: %w", key, err)
+		}
+	}
+	return nil
+}
+
+// ClearEnv는 현재 tmux 세션에서 환경변수를 제거한다.
+func (m *DefaultSessionManager) ClearEnv(ctx context.Context, vars []string) error {
+	for _, key := range vars {
+		args := []string{"set-environment", "-u", key}
+		if _, err := m.run(ctx, "tmux", args...); err != nil {
+			return fmt.Errorf("unset tmux env %s: %w", key, err)
+		}
+	}
+	return nil
 }
 
 // sendKeys sends a command string to a specific pane in a session.

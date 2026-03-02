@@ -12,7 +12,9 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	gitops "github.com/modu-ai/moai-adk/internal/git/ops"
 	"github.com/modu-ai/moai-adk/internal/profile"
+	"github.com/modu-ai/moai-adk/internal/tmux"
 )
 
 // --- Unified Launch ---
@@ -120,7 +122,7 @@ func applyGLMMode(root, profileName string) error {
 		_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to inject GLM env into settings: %v\n", err)
 	}
 
-	if isInTmuxSession() {
+	if tmux.NewDetector().InTmuxSession() {
 		if err := injectTmuxSessionEnv(glmConfig, apiKey); err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to inject GLM env into tmux session: %v\n"+
 				"  Teammates spawned in new tmux panes may not have GLM credentials.\n"+
@@ -149,10 +151,8 @@ func applyCGMode(root, profileName string) error {
 	}
 
 	settingsPath := filepath.Join(root, defs.ClaudeDir, defs.SettingsLocalJSON)
-	// TODO: tmux.Detector 인터페이스에 InTmuxSession() 메서드가 추가되면
-	// isInTmuxSession() 호출을 tmux.NewDetector().InTmuxSession()으로 교체한다.
-	// 현재 tmux.Detector는 IsAvailable()과 Version()만 제공한다.
-	inTmux := isInTmuxSession()
+	detector := tmux.NewDetector()
+	inTmux := detector.InTmuxSession()
 
 	if !inTmux && os.Getenv("MOAI_TEST_MODE") != "1" {
 		return fmt.Errorf("CG mode requires a tmux session.\n\n" +
@@ -166,9 +166,6 @@ func applyCGMode(root, profileName string) error {
 	}
 
 	if inTmux {
-		// TODO: tmux.SessionManager는 새 세션 생성(Create)에 특화되어 있어
-		// 현재 세션에 env를 주입하는 용도에는 적합하지 않다.
-		// 환경 주입 전용 메서드가 추가되면 injectTmuxSessionEnv()를 SessionManager로 교체한다.
 		if err := injectTmuxSessionEnv(glmConfig, apiKey); err != nil {
 			return fmt.Errorf("failed to inject GLM env into tmux session: %w\n"+
 				"CG mode relies on tmux session env for teammate isolation.\n"+
@@ -320,14 +317,22 @@ func removeWorktree(projectRoot, worktreeName string) error {
 }
 
 // runGitCommand executes a git command in the given directory.
+// GitManager를 통해 실행하여 타임아웃과 에러 처리를 일관되게 적용한다.
 func runGitCommand(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
-	cmd.Dir = dir
-	output, err := cmd.Output()
-	if err != nil {
-		return "", err
+	mgr := gitops.NewGitManager(gitops.ManagerConfig{
+		WorkDir:               dir,
+		DefaultTimeoutSeconds: 10,
+		DefaultRetryCount:     0,
+	})
+	result := mgr.ExecuteRaw(args, 10)
+	if !result.Success {
+		if result.Error != nil {
+			return "", result.Error
+		}
+		return "", fmt.Errorf("git %s failed: %s", strings.Join(args, " "), result.Stderr)
 	}
-	return string(output), nil
+	// trailing newline 보존을 위해 TrimSpace 하지 않음 (기존 exec.Output() 동작과 동일)
+	return result.Stdout + "\n", nil
 }
 
 // --- Claude Launch ---
