@@ -176,6 +176,234 @@ func TestApplyWizardConfig_AllFieldsPopulated(t *testing.T) {
 	}
 }
 
+// --- REQ-4: applyWizardConfig git-strategy.yaml 저장 테스트 ---
+
+func TestApplyWizardConfig_GitStrategyYAML(t *testing.T) {
+	root := setupSectionsDir(t)
+
+	// git-strategy.yaml 사전 생성
+	sectionsDir := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir)
+	gitStratPath := filepath.Join(sectionsDir, defs.GitStrategyYAML)
+	existing := "git_strategy:\n  mode: manual\n  provider: github\n"
+	if err := os.WriteFile(gitStratPath, []byte(existing), defs.FilePerm); err != nil {
+		t.Fatalf("write git-strategy.yaml: %v", err)
+	}
+
+	result := &wizard.WizardResult{
+		GitMode:     "team",
+		GitProvider: "github",
+	}
+
+	if err := applyWizardConfig(root, result); err != nil {
+		t.Fatalf("applyWizardConfig: %v", err)
+	}
+
+	parsed := readYAML(t, gitStratPath)
+	gs, ok := parsed["git_strategy"].(map[string]any)
+	if !ok {
+		t.Fatal("expected git_strategy key in git-strategy.yaml")
+	}
+	if gs["mode"] != "team" {
+		t.Errorf("git_strategy.mode = %v, want %q", gs["mode"], "team")
+	}
+	if gs["provider"] != "github" {
+		t.Errorf("git_strategy.provider = %v, want %q", gs["provider"], "github")
+	}
+}
+
+func TestApplyWizardConfig_GitStrategyYAML_NoFileCreatedWhenEmpty(t *testing.T) {
+	root := setupSectionsDir(t)
+
+	result := &wizard.WizardResult{
+		GitMode:     "",
+		GitProvider: "",
+	}
+
+	if err := applyWizardConfig(root, result); err != nil {
+		t.Fatalf("applyWizardConfig: %v", err)
+	}
+
+	gitStratPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.GitStrategyYAML)
+	if _, err := os.Stat(gitStratPath); !os.IsNotExist(err) {
+		t.Error("git-strategy.yaml should not be created when GitMode and GitProvider are empty")
+	}
+}
+
+func TestApplyWizardConfig_QualityYAML(t *testing.T) {
+	root := setupSectionsDir(t)
+
+	// quality.yaml 사전 생성
+	sectionsDir := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir)
+	qualityPath := filepath.Join(sectionsDir, defs.QualityYAML)
+	existing := "constitution:\n  development_mode: tdd\n  enforce_quality: true\n"
+	if err := os.WriteFile(qualityPath, []byte(existing), defs.FilePerm); err != nil {
+		t.Fatalf("write quality.yaml: %v", err)
+	}
+
+	result := &wizard.WizardResult{
+		DevelopmentMode: "ddd",
+	}
+
+	if err := applyWizardConfig(root, result); err != nil {
+		t.Fatalf("applyWizardConfig: %v", err)
+	}
+
+	parsed := readYAML(t, qualityPath)
+	constitution, ok := parsed["constitution"].(map[string]any)
+	if !ok {
+		t.Fatal("expected constitution key in quality.yaml")
+	}
+	if constitution["development_mode"] != "ddd" {
+		t.Errorf("constitution.development_mode = %v, want %q", constitution["development_mode"], "ddd")
+	}
+	// 기존 필드 보존 확인
+	if constitution["enforce_quality"] != true {
+		t.Errorf("constitution.enforce_quality should be preserved, got %v", constitution["enforce_quality"])
+	}
+}
+
+func TestApplyWizardConfig_QualityYAML_NoFileCreatedWhenEmpty(t *testing.T) {
+	root := setupSectionsDir(t)
+
+	result := &wizard.WizardResult{
+		DevelopmentMode: "",
+	}
+
+	if err := applyWizardConfig(root, result); err != nil {
+		t.Fatalf("applyWizardConfig: %v", err)
+	}
+
+	qualityPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.QualityYAML)
+	if _, err := os.Stat(qualityPath); !os.IsNotExist(err) {
+		t.Error("quality.yaml should not be created when DevelopmentMode is empty")
+	}
+}
+
+// --- REQ-5: GitLab 크레덴셜 저장 테스트 ---
+
+func TestApplyWizardConfig_GitLabCredentials(t *testing.T) {
+	root := setupSectionsDir(t)
+
+	result := &wizard.WizardResult{
+		GitLabUsername: "gluser",
+		GitLabToken:    "glpat-test123",
+	}
+
+	if err := applyWizardConfig(root, result); err != nil {
+		t.Fatalf("applyWizardConfig: %v", err)
+	}
+
+	userPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.UserYAML)
+	parsed := readYAML(t, userPath)
+	user, ok := parsed["user"].(map[string]any)
+	if !ok {
+		t.Fatal("expected user key in user.yaml")
+	}
+	if user["gitlab_username"] != "gluser" {
+		t.Errorf("user.gitlab_username = %v, want %q", user["gitlab_username"], "gluser")
+	}
+	if user["gitlab_token"] != "glpat-test123" {
+		t.Errorf("user.gitlab_token = %v, want %q", user["gitlab_token"], "glpat-test123")
+	}
+}
+
+func TestApplyWizardConfig_GitLabInstanceURL(t *testing.T) {
+	root := setupSectionsDir(t)
+
+	sectionsDir := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir)
+	gitStratPath := filepath.Join(sectionsDir, defs.GitStrategyYAML)
+	existing := "git_strategy:\n  mode: personal\n  provider: gitlab\n  gitlab:\n    instance_url: https://gitlab.com\n"
+	if err := os.WriteFile(gitStratPath, []byte(existing), defs.FilePerm); err != nil {
+		t.Fatalf("write git-strategy.yaml: %v", err)
+	}
+
+	result := &wizard.WizardResult{
+		GitMode:           "personal",
+		GitProvider:       "gitlab",
+		GitLabInstanceURL: "https://gitlab.company.com",
+	}
+
+	if err := applyWizardConfig(root, result); err != nil {
+		t.Fatalf("applyWizardConfig: %v", err)
+	}
+
+	parsed := readYAML(t, gitStratPath)
+	gs, ok := parsed["git_strategy"].(map[string]any)
+	if !ok {
+		t.Fatal("expected git_strategy key")
+	}
+	gitlab, ok := gs["gitlab"].(map[string]any)
+	if !ok {
+		t.Fatal("expected gitlab key in git_strategy")
+	}
+	if gitlab["instance_url"] != "https://gitlab.company.com" {
+		t.Errorf("gitlab.instance_url = %v, want %q", gitlab["instance_url"], "https://gitlab.company.com")
+	}
+}
+
+func TestApplyWizardConfig_AllFields(t *testing.T) {
+	root := setupSectionsDir(t)
+	sectionsDir := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir)
+
+	// 기존 파일들 사전 생성
+	qualityExisting := "constitution:\n  development_mode: tdd\n"
+	if err := os.WriteFile(filepath.Join(sectionsDir, defs.QualityYAML), []byte(qualityExisting), defs.FilePerm); err != nil {
+		t.Fatalf("write quality.yaml: %v", err)
+	}
+	gitStratExisting := "git_strategy:\n  mode: manual\n"
+	if err := os.WriteFile(filepath.Join(sectionsDir, defs.GitStrategyYAML), []byte(gitStratExisting), defs.FilePerm); err != nil {
+		t.Fatalf("write git-strategy.yaml: %v", err)
+	}
+
+	result := &wizard.WizardResult{
+		GitHubUsername:    "ghuser",
+		GitHubToken:       "ghp_tok",
+		GitLabUsername:    "gluser",
+		GitLabToken:       "glpat-tok",
+		GitLabInstanceURL: "https://self-hosted.gl.com",
+		GitMode:           "team",
+		GitProvider:       "github",
+		DevelopmentMode:   "ddd",
+	}
+
+	if err := applyWizardConfig(root, result); err != nil {
+		t.Fatalf("applyWizardConfig: %v", err)
+	}
+
+	// user.yaml 검증
+	userParsed := readYAML(t, filepath.Join(sectionsDir, defs.UserYAML))
+	user := userParsed["user"].(map[string]any)
+	if user["github_username"] != "ghuser" {
+		t.Errorf("github_username = %v, want ghuser", user["github_username"])
+	}
+	if user["github_token"] != "ghp_tok" {
+		t.Errorf("github_token = %v, want ghp_tok", user["github_token"])
+	}
+	if user["gitlab_username"] != "gluser" {
+		t.Errorf("gitlab_username = %v, want gluser", user["gitlab_username"])
+	}
+	if user["gitlab_token"] != "glpat-tok" {
+		t.Errorf("gitlab_token = %v, want glpat-tok", user["gitlab_token"])
+	}
+
+	// quality.yaml 검증
+	qualityParsed := readYAML(t, filepath.Join(sectionsDir, defs.QualityYAML))
+	constitution := qualityParsed["constitution"].(map[string]any)
+	if constitution["development_mode"] != "ddd" {
+		t.Errorf("development_mode = %v, want ddd", constitution["development_mode"])
+	}
+
+	// git-strategy.yaml 검증
+	gsParsed := readYAML(t, filepath.Join(sectionsDir, defs.GitStrategyYAML))
+	gs := gsParsed["git_strategy"].(map[string]any)
+	if gs["mode"] != "team" {
+		t.Errorf("git_strategy.mode = %v, want team", gs["mode"])
+	}
+	if gs["provider"] != "github" {
+		t.Errorf("git_strategy.provider = %v, want github", gs["provider"])
+	}
+}
+
 // --- presetToSegments tests ---
 
 func TestPresetToSegments_Full(t *testing.T) {

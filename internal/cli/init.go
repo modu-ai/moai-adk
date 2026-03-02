@@ -244,7 +244,8 @@ func runInit(cmd *cobra.Command, args []string) error {
 		PrintBanner(version.GetVersion())
 		PrintWelcomeMessage()
 
-		result, err := wizard.RunWithDefaults(rootFlag)
+		// init.go에서는 locale 없이 실행 (기존 동작 유지)
+		result, err := wizard.RunWithDefaults(rootFlag, "")
 		if err != nil {
 			if errors.Is(err, wizard.ErrCancelled) {
 				_, _ = fmt.Fprintln(cmd.OutOrStderr(), "Initialization cancelled.")
