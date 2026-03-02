@@ -149,6 +149,9 @@ func applyCGMode(root, profileName string) error {
 	}
 
 	settingsPath := filepath.Join(root, defs.ClaudeDir, defs.SettingsLocalJSON)
+	// TODO: tmux.Detector 인터페이스에 InTmuxSession() 메서드가 추가되면
+	// isInTmuxSession() 호출을 tmux.NewDetector().InTmuxSession()으로 교체한다.
+	// 현재 tmux.Detector는 IsAvailable()과 Version()만 제공한다.
 	inTmux := isInTmuxSession()
 
 	if !inTmux && os.Getenv("MOAI_TEST_MODE") != "1" {
@@ -163,6 +166,9 @@ func applyCGMode(root, profileName string) error {
 	}
 
 	if inTmux {
+		// TODO: tmux.SessionManager는 새 세션 생성(Create)에 특화되어 있어
+		// 현재 세션에 env를 주입하는 용도에는 적합하지 않다.
+		// 환경 주입 전용 메서드가 추가되면 injectTmuxSessionEnv()를 SessionManager로 교체한다.
 		if err := injectTmuxSessionEnv(glmConfig, apiKey); err != nil {
 			return fmt.Errorf("failed to inject GLM env into tmux session: %w\n"+
 				"CG mode relies on tmux session env for teammate isolation.\n"+

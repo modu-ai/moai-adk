@@ -9,14 +9,18 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/astgrep"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/git"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/hook/security"
+	"github.com/modu-ai/moai-adk/internal/loop"
 	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
+	"github.com/modu-ai/moai-adk/internal/ralph"
 	"github.com/modu-ai/moai-adk/internal/rank"
 	"github.com/modu-ai/moai-adk/internal/update"
 	"github.com/modu-ai/moai-adk/pkg/version"
@@ -27,18 +31,19 @@ import (
 // are instantiated and wired together. All CLI commands access
 // dependencies through interfaces only.
 type Dependencies struct {
-	Config        *config.ConfigManager
-	Git           git.Repository
-	GitBranch     git.BranchManager
-	GitWorktree   git.WorktreeManager
-	HookRegistry  hook.Registry
-	HookProtocol  hook.Protocol
-	UpdateChecker update.Checker
-	UpdateOrch    update.Orchestrator
-	RankClient    rank.Client
-	RankCredStore rank.CredentialStore
-	RankBrowser   rank.BrowserOpener
-	Logger        *slog.Logger
+	Config         *config.ConfigManager
+	Git            git.Repository
+	GitBranch      git.BranchManager
+	GitWorktree    git.WorktreeManager
+	HookRegistry   hook.Registry
+	HookProtocol   hook.Protocol
+	UpdateChecker  update.Checker
+	UpdateOrch     update.Orchestrator
+	RankClient     rank.Client
+	RankCredStore  rank.CredentialStore
+	RankBrowser    rank.BrowserOpener
+	LoopController *loop.LoopController
+	Logger         *slog.Logger
 }
 
 // deps is the global dependencies instance, initialized by InitDependencies.
@@ -55,11 +60,18 @@ func InitDependencies() {
 	// Disable JSON logging for CLI commands by using a no-op logger
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
+	// Ralph 엔진과 루프 컨트롤러를 초기화한다.
+	ralphCfg := config.NewDefaultRalphConfig()
+	ralphEngine := ralph.NewRalphEngine(ralphCfg)
+	loopStorage := loop.NewFileStorage(filepath.Join(os.Getenv("HOME"), ".moai", "state", "loop"))
+	loopCtrl := loop.NewLoopController(loopStorage, ralphEngine, &noopFeedbackGenerator{}, ralphCfg.MaxIterations)
+
 	deps = &Dependencies{
-		Config:        config.NewConfigManager(),
-		HookProtocol:  hook.NewProtocol(),
-		RankCredStore: rank.NewFileCredentialStore(""),
-		Logger:        logger,
+		Config:         config.NewConfigManager(),
+		HookProtocol:   hook.NewProtocol(),
+		RankCredStore:  rank.NewFileCredentialStore(""),
+		LoopController: loopCtrl,
+		Logger:         logger,
 	}
 
 	// Hook registry requires a ConfigProvider; use ConfigManager
@@ -68,10 +80,14 @@ func InitDependencies() {
 	// Create security scanner for AST-based scanning
 	securityScanner := security.NewSecurityScanner()
 
-	// Create LSP diagnostics collector with fallback tools
-	// LSP client is nil (not yet integrated), but fallback CLI tools will work
+	// LSP 진단 수집기와 AST 분석기를 초기화한다.
+	// LSP 클라이언트는 nil (아직 통합 안 됨), fallback CLI 도구가 작동한다.
 	fallbackDiags := lsphook.NewFallbackDiagnostics()
 	diagnosticsCollector := lsphook.NewDiagnosticsCollector(nil, fallbackDiags)
+
+	// ast-grep 분석기 초기화 (sg CLI가 없으면 ScanFile이 빈 결과 반환)
+	cwd, _ := os.Getwd()
+	astAnalyzer := astgrep.NewAnalyzer(cwd)
 
 	// Register default hook handlers
 	deps.HookRegistry.Register(hook.NewSessionStartHandler(deps.Config))
@@ -91,7 +107,7 @@ func InitDependencies() {
 
 	deps.HookRegistry.Register(hook.NewStopHandler())
 	deps.HookRegistry.Register(hook.NewPreToolHandlerWithScanner(deps.Config, hook.DefaultSecurityPolicy(), securityScanner))
-	deps.HookRegistry.Register(hook.NewPostToolHandlerWithDiagnostics(diagnosticsCollector))
+	deps.HookRegistry.Register(hook.NewPostToolHandlerWithAstgrep(diagnosticsCollector, astAnalyzer))
 	deps.HookRegistry.Register(hook.NewCompactHandler())
 	deps.HookRegistry.Register(hook.NewPostToolUseFailureHandler())
 	deps.HookRegistry.Register(hook.NewNotificationHandler())
@@ -282,6 +298,14 @@ func buildAutoUpdateFunc() hook.AutoUpdateFunc {
 			NewVersion:      result.NewVersion,
 		}, nil
 	}
+}
+
+// noopFeedbackGenerator는 실제 수집 없이 빈 Feedback을 반환하는 기본 구현체다.
+// CLI 실행 시 별도 피드백 소스가 없을 때 loop.FeedbackGenerator를 만족시키기 위해 사용된다.
+type noopFeedbackGenerator struct{}
+
+func (n *noopFeedbackGenerator) Collect(_ context.Context) (*loop.Feedback, error) {
+	return &loop.Feedback{}, nil
 }
 
 // EnsureRank lazily initializes the Rank client.
