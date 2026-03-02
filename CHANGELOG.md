@@ -5,6 +5,88 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2026-03-02
+
+### Summary
+
+This release introduces true login-based profile management for cc/cg/glm commands, harness workflow skill improvements, and status line enhancements. Contributor: [@yejune](https://github.com/yejune) (PR [#431](https://github.com/modu-ai/moai-adk/pull/431)).
+
+### Breaking Changes
+
+None.
+
+### Added
+
+- **Profile-based login for cc/cg/glm commands**: `moai cc`, `moai cg`, and `moai glm` are now true login commands with persistent profile support. Profiles stored at `~/.moai/claude-profiles/`.
+- **Profile setup wizard**: Interactive wizard for initial profile configuration when using cc/cg/glm commands for the first time.
+- **Harness workflow improvements**: Updated workflow skills including enhanced batch mode decision logic, simplified run workflow, and streamlined team agents configuration.
+- **Status line enhancements**: Additional functionality for the status line template.
+
+### Changed
+
+- **Profile relocation**: Profile files moved to `~/.moai/claude-profiles/` for better organization.
+- **Template refinements**: Simplified simplify/batch pass integration into review workflow, streamlined team agents and skills format.
+- **CI dependency updates**: claude-code-action 1.0.63→1.0.64, actions/upload-artifact 6→7.
+
+### Fixed
+
+- **Security and performance issues** in profile and launch commands.
+- **errcheck lint violations** in profile and glm commands.
+- **Accidentally committed temp files** removed from repository; `temp/` added to `.gitignore`.
+
+### Installation & Update
+
+```bash
+# Update to the latest version
+moai update
+
+# Verify version
+moai version
+```
+
+---
+
+## [2.7.0] - 2026-03-02 (한국어)
+
+### 요약
+
+이번 릴리즈에서는 cc/cg/glm 명령어에 로그인 기반 프로파일 관리 기능이 추가되었습니다. harness 워크플로우 스킬 개선과 상태줄 기능 향상도 포함됩니다. 기여자: [@yejune](https://github.com/yejune) (PR [#431](https://github.com/modu-ai/moai-adk/pull/431)).
+
+### 주요 변경 사항 (Breaking Changes)
+
+없음.
+
+### 추가됨 (Added)
+
+- **cc/cg/glm 명령어 로그인 기반 프로파일 지원**: `moai cc`, `moai cg`, `moai glm`이 이제 영구 프로파일을 지원하는 진정한 로그인 명령어로 동작합니다. 프로파일은 `~/.moai/claude-profiles/`에 저장됩니다.
+- **프로파일 설정 위자드**: cc/cg/glm 명령어 최초 실행 시 대화형 프로파일 설정 위자드 제공.
+- **Harness 워크플로우 개선**: 배치 모드 결정 로직 강화, run 워크플로우 단순화, team agents 설정 정리.
+- **상태줄 기능 향상**: 상태줄 템플릿에 추가 기능 구현.
+
+### 변경됨 (Changed)
+
+- **프로파일 위치 변경**: 프로파일 파일이 `~/.moai/claude-profiles/`로 이동하여 구성이 개선되었습니다.
+- **템플릿 개선**: review 워크플로우에 simplify/batch 통합, team agents 및 skills 형식 정리.
+- **CI 의존성 업데이트**: claude-code-action 1.0.63→1.0.64, actions/upload-artifact 6→7.
+
+### 수정됨 (Fixed)
+
+- **프로파일 및 launch 명령어의 보안/성능 문제** 수정.
+- **errcheck lint 위반** 수정 (profile, glm 명령어).
+- **실수로 커밋된 temp 파일** 제거 및 `temp/`를 `.gitignore`에 추가.
+
+### 설치 및 업데이트 (Installation & Update)
+
+```bash
+# 최신 버전으로 업데이트
+moai update
+
+# 버전 확인
+moai version
+```
+
+---
+
 ## [2.6.15] - 2026-02-28
 
 ### Summary
