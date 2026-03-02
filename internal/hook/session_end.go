@@ -52,6 +52,7 @@ func (h *sessionEndHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 
 	cleanupCurrentSessionTeam(input.SessionID, homeDir)
 	garbageCollectStaleTeams(homeDir)
+	garbageCollectOrphanedTasks(homeDir)
 	cleanupOrphanedTmuxSessions(ctx)
 
 	// Always clear tmux session-level GLM env vars to restore Claude models.
@@ -132,6 +133,19 @@ func cleanupCurrentSessionTeam(sessionID, homeDir string) {
 					"team_dir", teamDir,
 					"session_id", sessionID,
 				)
+				// team 디렉터리 삭제 성공 시 대응하는 task 디렉터리도 삭제
+				tasksDir := filepath.Join(homeDir, ".claude", "tasks", entry.Name())
+				if err := os.RemoveAll(tasksDir); err != nil {
+					slog.Warn("session_end: could not remove task directory for session",
+						"path", tasksDir,
+						"error", err,
+					)
+				} else {
+					slog.Info("session_end: removed task directory for session",
+						"task_dir", tasksDir,
+						"session_id", sessionID,
+					)
+				}
 			}
 		}
 	}
@@ -184,7 +198,64 @@ func garbageCollectStaleTeams(homeDir string) {
 					"path", teamDir,
 					"age", time.Since(info.ModTime()).Round(time.Minute),
 				)
+				// 오래된 team 디렉터리 삭제 성공 시 대응하는 task 디렉터리도 삭제
+				taskDir := filepath.Join(homeDir, ".claude", "tasks", entry.Name())
+				if err := os.RemoveAll(taskDir); err != nil {
+					slog.Warn("session_end: could not remove stale task directory",
+						"path", taskDir,
+						"error", err,
+					)
+				} else {
+					slog.Info("session_end: removed stale task directory",
+						"path", taskDir,
+					)
+				}
 			}
+		}
+	}
+}
+
+// garbageCollectOrphanedTasks는 ~/.claude/tasks/ 에서 대응하는 team 디렉터리가
+// 없는 고아 task 디렉터리를 정리한다. 인터럽트된 세션이나 불완전한 정리로 인해
+// 남겨진 task 디렉터리를 수집한다. 오류는 로그로 기록되며 반환되지 않는다.
+func garbageCollectOrphanedTasks(homeDir string) {
+	tasksDir := filepath.Join(homeDir, ".claude", "tasks")
+	teamsDir := filepath.Join(homeDir, ".claude", "teams")
+
+	taskEntries, err := os.ReadDir(tasksDir)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			slog.Warn("session_end: could not read tasks directory for orphan GC",
+				"path", tasksDir,
+				"error", err,
+			)
+		}
+		return
+	}
+
+	for _, entry := range taskEntries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		// 대응하는 team 디렉터리가 존재하는지 확인
+		teamDir := filepath.Join(teamsDir, entry.Name())
+		if _, err := os.Stat(teamDir); err == nil {
+			// team 디렉터리가 존재하면 고아가 아님 — 유지
+			continue
+		}
+
+		// team 디렉터리가 없으므로 고아 task 디렉터리 삭제
+		taskDir := filepath.Join(tasksDir, entry.Name())
+		if err := os.RemoveAll(taskDir); err != nil {
+			slog.Warn("session_end: could not remove orphaned task directory",
+				"path", taskDir,
+				"error", err,
+			)
+		} else {
+			slog.Info("session_end: removed orphaned task directory",
+				"path", taskDir,
+			)
 		}
 	}
 }
