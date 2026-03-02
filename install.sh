@@ -265,9 +265,9 @@ verify_installation() {
         moai version
         echo ""
         print_info "To get started, run:"
-        echo "  moai init          # Initialize a new project"
-        echo "  moai doctor        # Check system health"
-        echo "  moai update --project # Update project templates"
+        echo "  moai init <project-folder-name>  # Create a new project"
+        echo "  moai doctor                      # Check system health"
+        echo "  moai update                      # Update project templates"
     else
         print_warning "Installation completed, but 'moai' command not found in PATH"
         print_info "Add the following to your ~/.bashrc or ~/.zshrc:"
@@ -345,7 +345,7 @@ main() {
     echo ""
     print_success "Installation complete!"
     echo ""
-    print_info "Documentation: https://github.com/modu-ai/moai-adk"
+    print_info "Documentation: https://adk.mo.ai.kr"
 }
 
 # Run main function
