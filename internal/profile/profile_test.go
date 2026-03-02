@@ -34,7 +34,7 @@ func TestGetBaseDir_Override(t *testing.T) {
 }
 
 func TestGetCurrentName_Default(t *testing.T) {
-	t.Setenv("CLAUDE_CONFIG_DIR", "")
+	t.Setenv("MOAI_PROFILE", "")
 	name := GetCurrentName()
 	if name != "default" {
 		t.Errorf("GetCurrentName() = %q, want %q", name, "default")
@@ -42,23 +42,10 @@ func TestGetCurrentName_Default(t *testing.T) {
 }
 
 func TestGetCurrentName_WithProfile(t *testing.T) {
-	tmpDir := t.TempDir()
-	orig := BaseDirOverride
-	defer func() { BaseDirOverride = orig }()
-	BaseDirOverride = tmpDir
-
-	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(tmpDir, "work"))
+	t.Setenv("MOAI_PROFILE", "work")
 	name := GetCurrentName()
 	if name != "work" {
 		t.Errorf("GetCurrentName() = %q, want %q", name, "work")
-	}
-}
-
-func TestGetCurrentName_UnrelatedPath(t *testing.T) {
-	t.Setenv("CLAUDE_CONFIG_DIR", "/some/random/path")
-	name := GetCurrentName()
-	if name != "/some/random/path" {
-		t.Errorf("GetCurrentName() = %q, want raw path", name)
 	}
 }
 
@@ -68,7 +55,7 @@ func TestList_DefaultOnly(t *testing.T) {
 	defer func() { BaseDirOverride = orig }()
 	BaseDirOverride = tmpDir
 
-	t.Setenv("CLAUDE_CONFIG_DIR", "")
+	t.Setenv("MOAI_PROFILE", "")
 
 	entries := List()
 	if len(entries) != 1 {
@@ -78,7 +65,7 @@ func TestList_DefaultOnly(t *testing.T) {
 		t.Errorf("entries[0].Name = %q, want %q", entries[0].Name, "default")
 	}
 	if !entries[0].Current {
-		t.Error("default should be current when CLAUDE_CONFIG_DIR is empty")
+		t.Error("default should be current when MOAI_PROFILE is empty")
 	}
 }
 
@@ -100,7 +87,7 @@ func TestList_WithProfiles(t *testing.T) {
 		t.Fatalf("WriteFile(notes.txt): %v", err)
 	}
 
-	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(tmpDir, "work"))
+	t.Setenv("MOAI_PROFILE", "work")
 
 	entries := List()
 	if len(entries) != 3 {
@@ -142,7 +129,8 @@ func TestEnsureDir_CreatesAndSetsEnv(t *testing.T) {
 	defer func() { BaseDirOverride = orig }()
 	BaseDirOverride = tmpDir
 
-	t.Setenv("CLAUDE_CONFIG_DIR", "")
+	t.Setenv("MOAI_PROFILE", "")
+	t.Setenv("CLAUDE_CONFIG_DIR", "") // Clear any inherited value
 
 	err := EnsureDir("myprofile")
 	if err != nil {
@@ -155,9 +143,14 @@ func TestEnsureDir_CreatesAndSetsEnv(t *testing.T) {
 		t.Error("profile directory should be created")
 	}
 
-	// Check env var was set
-	if os.Getenv("CLAUDE_CONFIG_DIR") != profileDir {
-		t.Errorf("CLAUDE_CONFIG_DIR = %q, want %q", os.Getenv("CLAUDE_CONFIG_DIR"), profileDir)
+	// Check MOAI_PROFILE was set (not CLAUDE_CONFIG_DIR)
+	if os.Getenv("MOAI_PROFILE") != "myprofile" {
+		t.Errorf("MOAI_PROFILE = %q, want %q", os.Getenv("MOAI_PROFILE"), "myprofile")
+	}
+
+	// Verify CLAUDE_CONFIG_DIR is NOT set by EnsureDir
+	if os.Getenv("CLAUDE_CONFIG_DIR") != "" {
+		t.Errorf("CLAUDE_CONFIG_DIR should not be set, got %q", os.Getenv("CLAUDE_CONFIG_DIR"))
 	}
 }
 
@@ -186,7 +179,7 @@ func TestDelete_Success(t *testing.T) {
 	defer func() { BaseDirOverride = orig }()
 	BaseDirOverride = tmpDir
 
-	t.Setenv("CLAUDE_CONFIG_DIR", "")
+	t.Setenv("MOAI_PROFILE", "")
 
 	// Create the profile
 	profileDir := filepath.Join(tmpDir, "testprofile")

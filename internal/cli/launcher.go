@@ -169,13 +169,8 @@ func applyCGMode(root, profileName string) error {
 				"Try restarting your tmux session", err)
 		}
 
-		if profileName != "" && profileName != "default" && !isTestEnvironment() {
-			profileDir := profile.GetProfileDir(profileName)
-			if profileDir != "" {
-				tmuxCmd := exec.Command("tmux", "set-environment", "CLAUDE_CONFIG_DIR", profileDir)
-				_ = tmuxCmd.Run()
-			}
-		}
+		// Profile preferences are synced to project config at launch time.
+		// No need to set CLAUDE_CONFIG_DIR — Claude Code always uses ~/.claude/.
 	}
 
 	if err := persistTeamMode(root, "cg"); err != nil {

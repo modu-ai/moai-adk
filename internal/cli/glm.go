@@ -25,7 +25,7 @@ All agents use GLM models via Z.AI proxy.
 This command:
   1. Loads GLM credentials from ~/.moai/.env.glm
   2. Injects GLM environment variables (ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL, etc.)
-  3. Optionally sets a profile via -p flag (CLAUDE_CONFIG_DIR)
+  3. Optionally syncs profile preferences via -p flag
   4. Launches Claude Code via exec (replaces current process)
 
 Use 'moai glm setup <key>' to save your API key first.
@@ -346,7 +346,6 @@ func clearTmuxSessionEnv() error {
 		"ANTHROPIC_DEFAULT_OPUS_MODEL",
 		"ANTHROPIC_DEFAULT_SONNET_MODEL",
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL",
-		"CLAUDE_CONFIG_DIR",
 	}
 
 	args := []string{}

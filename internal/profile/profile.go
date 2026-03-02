@@ -26,22 +26,13 @@ func GetBaseDir() string {
 	return filepath.Join(home, profilesDir)
 }
 
-// GetCurrentName returns the current profile name based on CLAUDE_CONFIG_DIR.
+// GetCurrentName returns the current profile name based on MOAI_PROFILE env var.
 func GetCurrentName() string {
-	configDir := os.Getenv("CLAUDE_CONFIG_DIR")
-	if configDir == "" {
+	name := os.Getenv("MOAI_PROFILE")
+	if name == "" {
 		return "default"
 	}
-
-	baseDir := GetBaseDir()
-
-	rel, err := filepath.Rel(baseDir, configDir)
-	if err != nil || strings.HasPrefix(rel, "..") || rel == "." {
-		return configDir
-	}
-
-	parts := strings.SplitN(rel, string(filepath.Separator), 2)
-	return parts[0]
+	return name
 }
 
 // ProfileEntry represents a single profile in the list.
@@ -130,7 +121,8 @@ func isValidProfileName(name string) bool {
 }
 
 // EnsureDir creates the profile directory if it doesn't exist and sets
-// CLAUDE_CONFIG_DIR in the current process.
+// MOAI_PROFILE in the current process. Claude Code always uses ~/.claude/
+// as its config directory; profiles only store MoAI preferences.
 func EnsureDir(name string) error {
 	if name == "" || name == "default" {
 		return nil
@@ -143,8 +135,8 @@ func EnsureDir(name string) error {
 	if err := os.MkdirAll(profileDir, 0755); err != nil {
 		return fmt.Errorf("failed to create profile directory: %w", err)
 	}
-	if err := os.Setenv("CLAUDE_CONFIG_DIR", profileDir); err != nil {
-		return fmt.Errorf("set CLAUDE_CONFIG_DIR: %w", err)
+	if err := os.Setenv("MOAI_PROFILE", name); err != nil {
+		return fmt.Errorf("set MOAI_PROFILE: %w", err)
 	}
 	return nil
 }

@@ -17,7 +17,7 @@ var ccCmd = &cobra.Command{
 This command:
   1. Removes GLM-specific environment variables from .claude/settings.local.json
   2. Resets team mode if it was enabled (glm or cg)
-  3. Optionally sets a profile via -p flag (CLAUDE_CONFIG_DIR)
+  3. Optionally syncs profile preferences via -p flag
   4. Reads DO_CLAUDE_* settings and converts them to CLI flags
   5. Launches Claude Code via exec (replaces current process)
 

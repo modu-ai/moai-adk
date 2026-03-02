@@ -17,7 +17,7 @@ This command:
   1. Validates tmux session (required for pane isolation)
   2. Removes GLM env from settings.local.json (lead = Claude)
   3. Injects GLM env into tmux session (teammates = GLM)
-  4. Optionally sets a profile via -p flag (CLAUDE_CONFIG_DIR)
+  4. Optionally syncs profile preferences via -p flag
   5. Sets CLAUDE_CODE_TEAMMATE_DISPLAY=tmux
   6. Saves team_mode: cg
   7. Launches Claude Code via exec (replaces current process)
